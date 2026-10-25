@@ -48,8 +48,11 @@
     "Cslib.Foundations.Logic.InferenceSystem",
     "Cslib.Foundations.Logic.Operators",
     "Cslib.Foundations.Relation.Defs",
+    "Cslib.Foundations.Syntax.Congruence",
     "Cslib.Foundations.Syntax.Context",
     "Cslib.Foundations.Syntax.HasSubstitution",
+    "Cslib.Languages.LambdaCalculus.LocallyNameless.Stlc.Basic",
+    "Cslib.Languages.LambdaCalculus.LocallyNameless.Untyped.FullBetaEtaConfluence",
     "Cslib.Logics.Propositional.NaturalDeduction.Theory",
     "Init.Data.ByteArray.Lemmas",
     "Init.Data.Float.Model.Float32",
@@ -101,6 +104,8 @@
     "Mathlib.CategoryTheory.Limits.Shapes.Pullback.IsPullback.Defs",
     "Mathlib.CategoryTheory.Limits.Shapes.Terminal",
     "Mathlib.CategoryTheory.Limits.Types.Pushouts",
+    "Mathlib.CategoryTheory.Monoidal.Cartesian.Basic",
+    "Mathlib.CategoryTheory.Monoidal.Closed.Basic",
     "Mathlib.CategoryTheory.ObjectProperty.FullSubcategory",
     "Mathlib.CategoryTheory.Opposites",
     "Mathlib.CategoryTheory.PathCategory.Basic",
@@ -303,13 +308,13 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "85c30c68e2a92aea815548a8a0d2782c2f14c805dafeda7fc1bcb2274f42c493",
-      "bytes": 3790
+      "sha256": "1322f69e0c112a903d3c89867332e34f7b7a0fb3de6f81b7d5f28fc3959f64e4",
+      "bytes": 3937
     },
     {
       "path": "CLAUDE.md",
-      "sha256": "85c30c68e2a92aea815548a8a0d2782c2f14c805dafeda7fc1bcb2274f42c493",
-      "bytes": 3790
+      "sha256": "1322f69e0c112a903d3c89867332e34f7b7a0fb3de6f81b7d5f28fc3959f64e4",
+      "bytes": 3937
     },
     {
       "path": "LICENSE",
@@ -423,13 +428,218 @@
     },
     {
       "path": "README.md",
-      "sha256": "4d0356737d04b5afdf2537916a10a7f36f273f0935900e42f0558aeb9aa15ce6",
-      "bytes": 3856
+      "sha256": "ed04c539d265e635efe4a25ed9c274f889a08f6cf087eb32e3c158bf1033bfcc",
+      "bytes": 4011
     },
     {
       "path": "Silmaril.lean",
-      "sha256": "f24aa00e4a40c422eb60a61c299c5e8de82083a7d96e1aeae3acf6e6add69b9f",
-      "bytes": 2617
+      "sha256": "298e0a9909da32876780a41e9941182a3ca9fec38bed496482cc021854825115",
+      "bytes": 2649
+    },
+    {
+      "path": "Silmaril/Calculi.lean",
+      "sha256": "81de183cbea6ca0695276e3634612f270a25545ad26c772a6e3a46324b7697a2",
+      "bytes": 169
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube.lean",
+      "sha256": "ef314b337f84fda587a508f1efb7b6628400444ce246f1c4d35f65c74990d3cc",
+      "bytes": 55
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Defs.lean",
+      "sha256": "ba60c035312d96569110d2284567b2a8b0032a4bf9f182585390f834a9088c13",
+      "bytes": 565
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Hets.lean",
+      "sha256": "f1d7f0a47808f60c7c408b8fa228e1f5757ab82faf59b02abd57aed1bc894fd4",
+      "bytes": 148
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Hets/Defs.lean",
+      "sha256": "6d39199297cb915b21dbb306d9142560ca94577ed13afde27382be1a4e148398",
+      "bytes": 4915
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Hets/Examples.lean",
+      "sha256": "fbeb9fb9117052e4de36eb58a5aedebfc7c1a5e071261fa6b48016d4deb3bfc6",
+      "bytes": 1692
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Hets/Thms.lean",
+      "sha256": "20230cf4ddd70e31468ff304334a788691e5a7837d0a939df02045d965281f4d",
+      "bytes": 2554
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Basic.lean",
+      "sha256": "934e99846536c80de864090769ab0333c835bc30dce27431c4eaf4d8d4192d65",
+      "bytes": 3377
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Combinatory.lean",
+      "sha256": "b522aaea13be6ec4786991d1938bc11b2f04a51fd433f394183776787928f788",
+      "bytes": 16081
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Cube.lean",
+      "sha256": "76223b1d838d1c486f95098ce1cca6549e277ec8c4927257ebeb425aa056356f",
+      "bytes": 129281
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/CubeMorphisms.lean",
+      "sha256": "0d8c7a732421f6fdcec118890004b755a453b79bf2a2657443e7d53c72ab1f51",
+      "bytes": 173
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/CubeMorphisms/Defs.lean",
+      "sha256": "566b04a08346c9f75f019a20347f51be5403c816444ec62f65a91786381ae796",
+      "bytes": 14507
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/CubeMorphisms/Thms.lean",
+      "sha256": "a331af74dec7470ea4e6decb0231f147ed0b3165825c9663c2533fa082a1511c",
+      "bytes": 1021
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Examples.lean",
+      "sha256": "638cb253fc5a72d585bd338a2fd02599aa3e566f11ec408670170a31c9a83fa9",
+      "bytes": 3106
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/OmegaChurchRosser.lean",
+      "sha256": "14ea8f501ceaa419e69f845572cafcaba788ee5fc9aec609c3c8902d182d565a",
+      "bytes": 27635
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/OmegaConvReflect.lean",
+      "sha256": "35f71b8f7cf96da40d273bd7bbf736628ae0d4177cf683a5a8674db1b1d4b19b",
+      "bytes": 17867
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/PTSMorphism.lean",
+      "sha256": "8ed64bf0f29355f0da9a3b30b97381c0e8a723ec3d3e69d8d0e7b2f7bec6fc74",
+      "bytes": 12571
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Parametricity.lean",
+      "sha256": "693e232cbaa19d9c7d67be4f3cc8d2266e4ccb3480b6613a778ec82a64ccc0fe",
+      "bytes": 73
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Parametricity/Defs.lean",
+      "sha256": "b3dda4b69a79bf68526f15b72a2e77b4a9ef58abf85a9912a17c45dbfaadc33c",
+      "bytes": 11545
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Parametricity/Thms.lean",
+      "sha256": "2293c2303f99d29b4847a99b845d24c70c1409da73cb8585019c92de8d1cf2ba",
+      "bytes": 3471
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/ParametricityOmega.lean",
+      "sha256": "7649826f795d26137cf62f68b8795ee0264e72359466ac5ba0e0253ac4d2f1bd",
+      "bytes": 78
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/ParametricityOmega/Defs.lean",
+      "sha256": "7c78b6bb45d2c9aa36dd3d9bf2703868375dc38a459ab8452468ad9930d12098",
+      "bytes": 17137
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/ParametricityOmega/Thms.lean",
+      "sha256": "a455ec7d39c48036a95160c3c0ecbd7128cdb79c0f1a143949ac41b7305e4852",
+      "bytes": 2539
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/Reynolds.lean",
+      "sha256": "b0907d97c45d2c06b2eb83fb39a6256b8a8edd94d9fb2f205b9e6a3e75379c55",
+      "bytes": 30067
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/SystemF.lean",
+      "sha256": "8f526910217f0307fee878fd28b2db5c84cc7aeafff3407095277adb7d71ce20",
+      "bytes": 25622
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PER/SystemFOmega.lean",
+      "sha256": "432e564a9f968e982747fb68b9a62502da384873a50e902df6bfbde77c69bdb6",
+      "bytes": 41019
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PTS.lean",
+      "sha256": "0396232a60877baede53c6f9512e3c096fd47d430555c8a3f12221587b8c1395",
+      "bytes": 10579
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PTSConfluence.lean",
+      "sha256": "80a948d34c01eb8dc78c220a359a7de2b0160ecc61fbbf0fce11c25e93b0f0dc",
+      "bytes": 13001
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/PTSMetatheory.lean",
+      "sha256": "06fc58af12241bd27ab68a26b41027346dd49ddaf91ee288b34fecfbcc8ccd58",
+      "bytes": 4066
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/STLC.lean",
+      "sha256": "f0d7e40f359b811fd6e26c7429c68d9511628977c3c06c4694ad471a56c4c256",
+      "bytes": 234
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/STLC/Defs.lean",
+      "sha256": "4b77cd1534e58da9940765cecd9b64197fd80a060fa4f97d7b60df8b5b1ee950",
+      "bytes": 31125
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/STLC/Thms.lean",
+      "sha256": "e83db5ada4aba7b4ab6ea3ec60b5ee7292671fd02a5b3f3e5685932ae4995c9d",
+      "bytes": 3086
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Semantics.lean",
+      "sha256": "e755a5e2439506d4ff2382091ccd57fa4462e439c76b430db3208b565cd77355",
+      "bytes": 4476
+    },
+    {
+      "path": "Silmaril/Calculi/LambdaCube/Thms.lean",
+      "sha256": "80c5d63fc6e9d0852c403237d91ea42daefd35c58532f97b0de69a02e385d445",
+      "bytes": 611
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda.lean",
+      "sha256": "b52c963899fb5804efa244369cab313186c4c2d7b1dcedef97d0b5ce780ee558",
+      "bytes": 471
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Categorical.lean",
+      "sha256": "80efa5d0da489720aac530dae89a1d46558f46a08fab8778a79eeef171444745",
+      "bytes": 15661
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Context.lean",
+      "sha256": "9f2baa449be0265d831b38f9b8221a2bc9c5a49ec5c30a1c96529cbc8f47c803",
+      "bytes": 16181
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Morphism.lean",
+      "sha256": "41bb90bd284e5d4d123bd028d60ca7fd67e3d30db1a2959d88f0a1adf44d9559",
+      "bytes": 6529
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Raw.lean",
+      "sha256": "238421063ae79c6c501cba472caf705b38fd67b67ef4d5184eb1898f67b9a4fa",
+      "bytes": 22690
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Substitution.lean",
+      "sha256": "cd5f4813ef231075bd97561bdb4da52a90d4c252e579d5aa051951d2d83852ed",
+      "bytes": 11577
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Syntax.lean",
+      "sha256": "4ce79a0f090b129d312cbb10bb50d5715874406777b139b589e69b0d64c5098b",
+      "bytes": 13515
     },
     {
       "path": "Silmaril/Compile/Category/Compiler.lean",
@@ -2082,9 +2292,39 @@
       "bytes": 2292
     },
     {
+      "path": "Silmaril/Prelude/DeBruijnTyped.lean",
+      "sha256": "b144bf53fa2615205482ed6520d8e86d37aa3a42f6bb426be7f070d216c10351",
+      "bytes": 2383
+    },
+    {
       "path": "Silmaril/Prelude/Defs.lean",
       "sha256": "27acceadb881adfb198a861bd91b785c3c35d1831ba53a36a8c1a582d7070909",
       "bytes": 157
+    },
+    {
+      "path": "Silmaril/Proofs/Calculi/LambdaCube/Hets.lean",
+      "sha256": "8cd42117db4c94a05a13bfb824daf7fb1496a692a9c64036ec210eb923848d42",
+      "bytes": 646
+    },
+    {
+      "path": "Silmaril/Proofs/Calculi/LambdaCube/PER/CubeMorphisms.lean",
+      "sha256": "08ed18ec0ebc0f7fa7df90903d88fb87efe9992e9e85deafadcbe3cd3fe4de75",
+      "bytes": 2088
+    },
+    {
+      "path": "Silmaril/Proofs/Calculi/LambdaCube/PER/Parametricity.lean",
+      "sha256": "40627da52bfe83888d04d7165cd6e56a5e09eac19e8644cd6d5a9203fd979a29",
+      "bytes": 5089
+    },
+    {
+      "path": "Silmaril/Proofs/Calculi/LambdaCube/PER/ParametricityOmega.lean",
+      "sha256": "e35abae7501b8b9f3b9e0f1fc6f8b93121d95e8580e1cacd7e461de874a74073",
+      "bytes": 5261
+    },
+    {
+      "path": "Silmaril/Proofs/Calculi/LambdaCube/STLC/Soundness.lean",
+      "sha256": "0a7e6c1cb2457d1ece8d221439ef2fdbe1626936f7eedd1581960d129e54566c",
+      "bytes": 4499
     },
     {
       "path": "Silmaril/Proofs/Compile/Category/Compiler.lean",
@@ -7008,8 +7248,8 @@
     },
     {
       "path": "docs/design.md",
-      "sha256": "aaff83061726491431d38737ed2a5ccc811fc6b950100d0f9df04635434ea00a",
-      "bytes": 8228
+      "sha256": "4de3faee0b763936656a3f6fc68f819271abf3ce8f8d3a7f2238dd0befbcf247",
+      "bytes": 8329
     },
     {
       "path": "docs/development.md",
@@ -7018,13 +7258,18 @@
     },
     {
       "path": "docs/projects/README.md",
-      "sha256": "46e5ed16b3cb6df246fa312ea72833a012026817d84266efcfef9f981fb0a020",
-      "bytes": 1077
+      "sha256": "6d1089544f3df010ecc55ca4c0a1855cc8dc9b6a73c05fef1d5484f53862b2d3",
+      "bytes": 1213
     },
     {
       "path": "docs/projects/compilers.md",
       "sha256": "4720586c4234b72222f5a31ba5af65a034b5e6ed6f0a236f6bdc0304f5beb301",
       "bytes": 4172
+    },
+    {
+      "path": "docs/projects/lambda-cube.md",
+      "sha256": "8ecf3885b1bbd3741e7923058fad3b8aeab0477fef57707c0cebfeb2c6161787",
+      "bytes": 9772
     },
     {
       "path": "docs/projects/logic-arithmetic.md",
@@ -7038,8 +7283,8 @@
     },
     {
       "path": "docs/projects/logic.md",
-      "sha256": "48ae0df04edc00d8797e8e97e8b4af3778bf081b5538ac8d3e64f46a3093772a",
-      "bytes": 6023
+      "sha256": "aeea54deb823b889cf08d634de3a06a20815416423dd2efc882d994a557f6d81",
+      "bytes": 6137
     },
     {
       "path": "docs/projects/metamath.md",
@@ -7103,8 +7348,8 @@
     },
     {
       "path": "references.bib",
-      "sha256": "585c6cc15e5b19ae4fe1ffc60860381609b36b6e1396f604af64f8b1d3a5a0e5",
-      "bytes": 9663
+      "sha256": "78dd52f7b80e2d0c204a9aef31687084077c40636f95db76887acee7e642b085",
+      "bytes": 12232
     },
     {
       "path": "regions.toml",

@@ -20,7 +20,8 @@ proposed API or automated check has shipped.
 - `build/bin/`: generated standalone commands and the dispatcher.
 
 The included Wasm and logic developments retain their implementation namespaces as a
-reviewed exception to the header and region layout below. Reusable APIs are
+reviewed exception to the header and region layout below. Lambda calculi live in
+`Calculi`, with longer STLC and parametricity proofs extracted into `Proofs`. Reusable APIs are
 factored into definitions, theorem statements and proof modules incrementally.
 This preserves executable behavior and theorem assumptions while reducing what
 an API reader must review. The root build checks every included library module.

@@ -2,7 +2,7 @@
 
 Silmaril uses Lean 4 to model programs and prove properties about them. It includes
 a WebAssembly toolkit with Binaryen-style commands and a library of logics,
-models and verified translations.
+models, lambda calculi and verified translations.
 
 ## Try the Binaryen demo
 
@@ -76,13 +76,15 @@ longer proofs under `Silmaril/Proofs/`.
 - [Compiler and pass APIs](docs/projects/compilers.md)
 - [Institutions and logics](docs/projects/logic.md): HOL, Metamath, ZF/ZFC,
   arithmetic and Hets-style development graphs
+- [Lambda cube and parametricity](docs/projects/lambda-cube.md): all eight pure type systems,
+  System F/Fω models, free theorems and institution graphs
 - [Library design](docs/design.md) and [contributing rules](AGENTS.md)
 - [Bibliography and artifact hashes](references.bib)
 
 ## Coming next
 
 Wasm led the first release. We’re preparing further ports covering game semantics,
-parametricity, x86 and RISC-V, ELF, C semantics and compilers, and more. These will
+x86 and RISC-V, ELF, C semantics and compilers, and more. These will
 arrive in follow-up releases with their own guides, examples and proof contracts.
 The [project index](docs/projects/README.md) tracks the public developments;
 the [x86 roadmap](docs/projects/x86.md) describes the path from assembly proofs
