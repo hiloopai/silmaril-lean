@@ -19,7 +19,7 @@ proposed API or automated check has shipped.
 - `docs/projects/`: a guide to each major development and its contracts.
 - `build/bin/`: generated standalone commands and the dispatcher.
 
-The included Wasm development retains its implementation namespaces as a
+The included Wasm and logic developments retain their implementation namespaces as a
 reviewed exception to the header and region layout below. Reusable APIs are
 factored into definitions, theorem statements and proof modules incrementally.
 This preserves executable behavior and theorem assumptions while reducing what

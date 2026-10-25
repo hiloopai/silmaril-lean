@@ -32,7 +32,7 @@ Working rules for agents in silmaril-lean. The design is in [docs/design.md](doc
 - One root Lake project builds the library and tools. Shared compiler, semantics,
   numeric and codec APIs belong in `Silmaril/`; executable drivers belong in
   `tools/`. `sil` groups commands by project and preserves standalone tool names.
-- The included Wasm proof closure retains its implementation module names. This
+- The included Wasm and logic proof closures retain their implementation module names. This
   is an explicit exception to the header layout and intended region map above;
   it does not assert that the existing imports already satisfy that map. Refine
   public headers in small reviewed changes, preserving functionality and theorem

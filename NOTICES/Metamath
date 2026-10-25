@@ -1,0 +1,12 @@
+The files data/metamath/set-axioms.mm and data/metamath/z2.mm are dedicated
+to the public domain under CC0-1.0, rather than the repository's default MIT
+license. Each retains its dedication and source comments.
+
+set-axioms.mm is an extracted fragment of metamath/set.mm at commit
+0bbe48280664bc0d584bb2c4b4ed90dfe4f07b7b. Its upstream source is:
+https://github.com/metamath/set.mm/blob/0bbe48280664bc0d584bb2c4b4ed90dfe4f07b7b/set.mm
+
+z2.mm was written for this formalization. Exact file hashes and checking
+instructions are in data/metamath/README.md.
+
+CC0-1.0: https://creativecommons.org/publicdomain/zero/1.0/legalcode

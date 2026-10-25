@@ -51,9 +51,10 @@ proof. A game model can instantiate the shared semantic carrier; connecting it
 to Wasm execution requires an adequacy or simulation theorem. Game semantics
 and LambdaSSA integration are planned extensions.
 
-The behavioral compiler framework includes satisfaction and read-back laws in
-the style of institution theory. The general institution API will arrive in a
-later port. See [references](../../references.bib) for the cited sources.
+The behavioral compiler framework includes satisfaction and read-back laws.
+The [institution API](logic.md) provides general signature-indexed theories,
+models and translations. Connecting these two presentations is a further
+adapter theorem. See [references](../../references.bib) for the cited sources.
 
 ## Read definitions and statements first
 
