@@ -69,3 +69,47 @@ CI workflow runs this check on Linux for both the container and Nix shell.
   tools in `build/bin/` and provides short project commands.
 
 Shared test libraries can grow alongside the other tool families.
+
+## S3-compatible build cache
+
+`make cache` fetches public Mathlib artifacts, then checks the optional Silmaril
+S3 cache. A normal clone needs no credentials. When a cache is configured, Lake
+restores outputs whose input hashes match the current build.
+
+The cache uses Lake's native `.art` files and revision mapping files, including
+all included library modules, correctness theorem roots, seven public tools and
+the test-only shell helper. The namespace separates this repository, native
+platform, Lean version, dependency pins and Lake configuration. A latest-main
+pointer also supports shallow clones and branches with a rewritten root commit.
+These are trusted build artifacts; `make check` still runs its native tests.
+
+To fetch from an authorized private cache, configure:
+
+```sh
+export SILMARIL_CACHE_ENDPOINT=https://your-s3-endpoint
+export SILMARIL_CACHE_BUCKET=your-bucket
+export SILMARIL_CACHE_PREFIX=silmaril-lean/v1
+export SILMARIL_CACHE_REGION=auto  # use the bucket's region for AWS S3
+export SILMARIL_CACHE_READ_KEY='access-id:secret'
+make cache
+```
+
+`SILMARIL_CACHE_PUBLIC_URL` can instead name an anonymous read endpoint for the
+bucket; the same release prefix is appended. No key is needed in that case.
+A missing configuration or mapping leaves Lake to build from source.
+
+CI restores before builds and uploads after the native release checks pass on
+`main`. The writer key, `SILMARIL_CACHE_KEY`, belongs to the GitHub environment
+`artifact-cache-publish`, whose deployment policy permits only `main`. Pull
+requests use `artifact-cache-read` and can use a separately provisioned
+**read-only** `SILMARIL_CACHE_READ_KEY`; fork jobs receive no secrets. Endpoint,
+bucket, prefix, region and optional public URL are repository variables with the
+same names. Cache network failures are reported without failing the proof/test job.
+
+The helper uses Python's standard library, curl's S3 SigV4 support and the pinned
+Lake executable. It does not copy an entire `.lake` directory or install a new
+cache client. Run its offline protocol tests with:
+
+```sh
+python3 -m unittest discover -s scripts -p test_lake_cache.py
+```

@@ -225,8 +225,8 @@
     },
     {
       "path": ".github/workflows/ci.yml",
-      "sha256": "0e5547425160183e1313254352b3d41862ed14c200bc094d38bb14cc353b7a21",
-      "bytes": 1202
+      "sha256": "79443f7df98b0add0952c6861ac0d0b00752dadbfd52cb4b540aadeb5faedc02",
+      "bytes": 2166
     },
     {
       "path": ".github/workflows/development-environments.yml",
@@ -235,8 +235,8 @@
     },
     {
       "path": ".github/workflows/wasm-toolkit.yml",
-      "sha256": "91f65c9c90b97ce9f2007e3b836f22ef1aed1b766ee79505420328ac99624160",
-      "bytes": 1934
+      "sha256": "4cec28efa44f271a9c69302f43c494a44cb067f554d7e5d816ccb46abee0a202",
+      "bytes": 3343
     },
     {
       "path": ".gitignore",
@@ -260,8 +260,8 @@
     },
     {
       "path": "Makefile",
-      "sha256": "650b5785252a8c02b923d84bb1727afd7b9ae9093c1c1087505df4513aaf4022",
-      "bytes": 1483
+      "sha256": "cee1ab5125099a93a7e11de093cbbdc6e7d9844b6c4ce785903e21aeaa0d7c38",
+      "bytes": 1545
     },
     {
       "path": "NOTICES/Binaryen/LICENSE.txt",
@@ -5595,8 +5595,8 @@
     },
     {
       "path": "docs/development.md",
-      "sha256": "c0bea7c9e5f7615e79cab2a86c60413f7472d6f6747a5babbd8537322e8eb045",
-      "bytes": 2993
+      "sha256": "82cb7e5b71f473cb05ca01a971e92392558896abf14b0f417f7d928c01fe9309",
+      "bytes": 5125
     },
     {
       "path": "docs/projects/README.md",
@@ -5679,6 +5679,11 @@
       "bytes": 1377
     },
     {
+      "path": "scripts/lake-cache.py",
+      "sha256": "a46880f6d2ec76cd6436a0bcefd17ee44409b6930a3b84878d43ae3626a03c22",
+      "bytes": 11728
+    },
+    {
       "path": "scripts/sil",
       "sha256": "8981e1cd70375f82d5e2ae7007dddfda89ce44f905e1ce8b5012abbeed12977a",
       "bytes": 1443
@@ -5687,6 +5692,11 @@
       "path": "scripts/source-manifest.py",
       "sha256": "629905f8172bfe445a8e8332bbed0d388bc174973759f73883bfcbb69c14ed3a",
       "bytes": 1865
+    },
+    {
+      "path": "scripts/test_lake_cache.py",
+      "sha256": "73af564a7e87246e924e87a3886431ef8f2e741f7f2117a618beb5bd2d86a838",
+      "bytes": 14006
     },
     {
       "path": "specs/wasm/core-2.0.json",

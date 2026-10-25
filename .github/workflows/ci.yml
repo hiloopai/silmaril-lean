@@ -21,10 +21,19 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 120
+    environment:
+      name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'hiloopai/silmaril-lean' && 'artifact-cache-publish' || 'artifact-cache-read' }}
+    env:
+      SILMARIL_CACHE_ENDPOINT: ${{ vars.SILMARIL_CACHE_ENDPOINT }}
+      SILMARIL_CACHE_BUCKET: ${{ vars.SILMARIL_CACHE_BUCKET || 'lean-cache' }}
+      SILMARIL_CACHE_PREFIX: ${{ vars.SILMARIL_CACHE_PREFIX || 'silmaril-lean/v1' }}
+      SILMARIL_CACHE_REGION: ${{ vars.SILMARIL_CACHE_REGION || 'auto' }}
+      SILMARIL_CACHE_PUBLIC_URL: ${{ vars.SILMARIL_CACHE_PUBLIC_URL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 100
       - name: Install Lean
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
@@ -36,6 +45,12 @@ jobs:
           use-github-cache: "false"
       - name: Fetch Mathlib artifacts
         run: lake exe cache get
+      - name: Restore optional S3 build artifacts
+        continue-on-error: true
+        env:
+          SILMARIL_CACHE_READ_KEY: ${{ secrets.SILMARIL_CACHE_READ_KEY }}
+          SILMARIL_CACHE_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SILMARIL_CACHE_KEY || '' }}
+        run: python3 scripts/lake-cache.py get
       - name: Build (warnings, including sorry, are errors)
         run: lake build --wfail
       - name: Check the layout rules

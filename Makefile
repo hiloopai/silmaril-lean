@@ -25,6 +25,7 @@ library:
 
 cache:
 	$(LAKE) exe cache get
+	$(PYTHON) scripts/lake-cache.py get
 
 check:
 	$(PYTHON) scripts/source-manifest.py
@@ -38,7 +39,7 @@ demo: tools
 help:
 	@echo 'make tools    Build seven native Wasm tools and stage build/bin/sil'
 	@echo 'make library  Check every included Lean library module'
-	@echo 'make cache    Fetch pinned public dependency artifacts'
+	@echo 'make cache    Fetch public dependency artifacts and optional S3 build artifacts'
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
 	@echo 'make stage    Stage already-built tools without compiling'
