@@ -1,0 +1,4 @@
+**
+!lean-toolchain
+!.devcontainer/
+!.devcontainer/install-tools.sh

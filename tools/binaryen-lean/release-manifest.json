@@ -1,0 +1,454 @@
+{
+  "schema_version": 1,
+  "trust_boundary": [
+    "These certificates concern successful pure functions.",
+    "File IO, command-line parsing/status formatting and Lean runtime/native compilation remain outside the pure semantic theorems. Pure canonical WAT rendering is certified where its module/text contract is listed.",
+    "Validation/check receipts and CI status are reported separately; this inventory does not assert that full CI passed.",
+    "Export-session theorems concern named function-invocation scripts. Arbitrary embedder reads/writes of exported memory/globals between calls require a separate contextual contract.",
+    "The inventory checker validates source references, selected pure-endpoint dependency links and runtime isolation. It does not compile proofs, inspect axioms, or establish whole-CLI correctness; build the listed Lean proof roots separately."
+  ],
+  "exit_codes": {
+    "0": "Success",
+    "1": "Rejected input or IO failure",
+    "2": "Usage or incompatible options",
+    "3": "Shell fuel exhausted; inconclusive",
+    "4": "Shell trap, exception or non-successful initialization result"
+  },
+  "output_policy": "Pure processing completes before opening output; rejected input preserves existing/absent output paths. An IO write failure may occur after processing succeeds.",
+  "forbidden_runtime_fragments": [
+    ".NTyping",
+    ".ArbitraryProfile",
+    ".PassAPI."
+  ],
+  "tools": [
+    {
+      "command": "as",
+      "status": "implemented",
+      "standalone": "wasm-as",
+      "entrypoint": "tools/binaryen-lean/WasmAsCompat.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatAsMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.AsBinaryenSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.assembleBinaryenText_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.assembleBinaryenText_of_core"
+          ]
+        }
+      ],
+      "contract": "The complete accepted original Core WAT or independently specified Binaryen source-macro input and emitted bytes denote the same validated Core module. Existing Core assembly successes are preserved exactly.",
+      "scope": [
+        "Original-source Core grammar certificates cover named/numeric indices, folded/flat control, implicit function and instruction signatures, parameter/multivalue blocks, recursive function/struct/array types, inline/separate imports, memory-data and bare-module abbreviations, every table operation, reference branches/branch tables, try_table/throw, SIMD constants/shuffle/lanes, and stateful declarations.",
+        "Source-directed elaboration checks exact source subtrees and its identifier/type-context fixed point; the original canonical reification API remains available. Original text is certified without trusting normalized output or the separate Rust wat parser.",
+        "The separate Binaryen macro grammar supports bare struct fields, array field wrappers and passive/declarative element segments omitting func. It preserves exact original source certification without weakening Core.ModuleT. Shared/atomic, continuation, descriptor, exact-reference and other proposal syntax, legacy exception instructions, tuple source macros and annotation payloads with nested groups/reserved punctuation remain incomplete. General WAST scripts and component-file assembly are outside this frontend.",
+        "Names require valid UTF-8; data may contain arbitrary bytes using checked hexadecimal, mnemonic and Unicode escapes. Quoted Core3 identifiers and ordinary atom/string annotation payloads are supported. Unsupported syntax and invalid modules reject; IO/native compilation remain outside pure certificates."
+      ]
+    },
+    {
+      "command": "dis",
+      "status": "implemented",
+      "standalone": "wasm-dis",
+      "entrypoint": "tools/binaryen-lean/WasmDisCompat.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatDisMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleLegacySound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleLegacyBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleToolkitBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleBinaryenMemorySound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleBinaryenMemoryBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleProposalBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleAtomicSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleAtomicBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleFullBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleExtendedSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleExtendedBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleSupportedBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleCompatSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleCompatBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.TextRoundTrip",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.assemble_disassembled_module"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleCompatRoundTrip",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.assemble_disassembledCompat_module"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binary.Extensions.SharedMemory.CoreEmbedding",
+          "theorems": [
+            "Silmaril.Wasm.Binary.Extensions.SharedMemory.of_compact_core",
+            "Silmaril.Wasm.Binary.Extensions.SharedMemory.of_standard_core"
+          ]
+        }
+      ],
+      "contract": "Original bytes and emitted canonical WAT denote the same retained module.",
+      "scope": [
+        "The command-line dispatcher preserves every existing Core/compact-import and shared-memory success. An additive standard-memory-atomic route retains complete atomic bodies and shared memory32/64 in a distinct artifact and explicit extension binary/text relations; it never claims Core validity or concurrent execution correctness.",
+        "Checked canonical rendering covers recursive function/struct/array types, every retained module field kind and import/export kind, memory/table address types and initialization, segments, starts, plus context-aware indexed/indirect/reference/GC/SIMD/exception instruction syntax.",
+        "Decoder/renderer acceptance is incomplete. The assembler accepts a narrower source surface; disassembly does not itself prove validity or unconditional reassembly acceptance. No full upstream WAST or component-file codec parity is claimed.",
+        "No byte/custom-section/source-format preservation; retained-module round trips require both calls to succeed. IO/native compilation remain outside pure certificates.",
+        "Shared memories require an explicit maximum. The atomic route covers the complete 66-access classic linear-memory table, fence and pause, including nested control, memory64 and explicit memory indices. GC/reference atomics, wait queues and other unsupported proposal syntax still reject; explicit linear-memory ordering is handled by the subsequent memory profile. Empty compact descriptor groups retain their original-byte extension certificate; AST projection is not a converse original-byte Core grammar theorem.",
+        "A further additive Binaryen memory profile retains scalar and full-width v128 array backing with its trailing type index, and explicit seqcst/acqrel/relaxed linear-memory atomic orders. Its independent binary/text grammars do not relabel backing/order bits as Core alignments. Concurrent semantics, experimental-proposal validity, GC atomics and wait queues remain outside this codec contract.",
+        "Legacy exception syntax retains nested try/do, ordered tagged catches, final catch_all, delegate and rethrow in a distinct complete-body AST and independent original-byte/canonical-text relations. All earlier profile successes remain unchanged. Runtime IO, operational exception equivalence and validity of every decoded module are outside the codec theorem."
+      ]
+    },
+    {
+      "command": "opt-select",
+      "status": "implemented",
+      "standalone": "wasm-opt",
+      "entrypoint": "tools/binaryen-lean/WasmOptCompatLean.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Exe.OptCompatMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Exe.CompatSelectedSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedCompatBytes_sound",
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedCompatBytes_exact",
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedCompatBytes_trapInsertion"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Exe.CompactInputSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Exe.CompactInput.prepare_sound",
+            "Silmaril.Wasm.Binaryen.Exe.CompactInput.optimizeUsing_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Exe.SelectedCleanupSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Exe.cleanupSelectedBytes_sound",
+            "Silmaril.Wasm.Binaryen.Exe.cleanupSelectedBytes_sound_hostState",
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedTrapGrowBytes_exact",
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedTrapGrowBytes_sound",
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedTrapGrowBytes_enabled_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.ArbitraryProfileCompiler",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.ArbitraryProfile.Compiler.selectedValidEndo_run_val",
+            "Silmaril.Wasm.Binaryen.ArbitraryProfile.Compiler.selectedValidEndo_exportEquiv"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Exe.ZeroGrowCleanupSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedZeroGrowBytes_sound",
+            "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedZeroGrowBytes_sound_hostState"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.PassAPI.ModeCategory",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Modes.ofModePass_mul",
+            "Silmaril.Wasm.Binaryen.Modes.lift_lower_run",
+            "Silmaril.Wasm.Binaryen.Modes.lower_lift_den"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.RefinementCompiler",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.ArbitraryProfile.Compiler.ofRefinementPass_feasible",
+            "Silmaril.Wasm.Binaryen.ArbitraryProfile.Compiler.zeroGrowSuccessCompiler_run",
+            "Silmaril.Wasm.Binaryen.ArbitraryProfile.Compiler.zeroGrowSuccessEndo_witness",
+            "Silmaril.Wasm.Binaryen.ArbitraryProfile.Compiler.trapInsertion_not_raw_refinement"
+          ]
+        }
+      ],
+      "contract": "Original input meaning in Core plus the explicit compact-import grouping extension, ordinary Core output meaning and validity; arbitrary ordered selections and rounds have exact same-profile initialization/session equivalence at any host-state type under the closed host. Optional growth policies retain their separate contracts.",
+      "scope": [
+        "Binary inputs; no passes by default. Ordered supported pass flags (including guarded small/leaf --inlining) and restricted -O presets, repetitions and explicit rounds.",
+        "Compact import groups are certified against a separate extension grammar and expanded with full source-module identity; standard inputs retain the original fast path. Standard-only APIs and other tool frontends retain their documented input boundaries.",
+        "Selected stages use validity-only certificates without the legacy whole-module output-profile guards or inliner type-section whitelist. Existing transforms, callee eligibility/heuristic/fuel and RUME's internal base-profile/imported-global/numeric-signature gates remain; older guarded APIs and original/experimental behavior are retained.",
+        "Presets retain version_133 feature-neutral/no-DWARF slot order, record missing slots and variant substitutions (including the small/leaf inliner for inlining-optimizing); no upstream algorithm/optimization-level parity.",
+        "Valid unsupported transformation shapes retain each pass identity fallback. Unsupported codecs/features may still reject.",
+        "Explicit --select-zero-grow-success removes an optional OOM trap only for the exact closed zero-growth wrapper, under specification-profile refinement or trap-insertion contracts; other shapes retain identity. Exact mode and competing growth policies reject before IO.",
+        "No uncertified implementation registry; --unverified rejects. IO/native compilation remain outside pure certificates."
+      ]
+    },
+    {
+      "command": "merge",
+      "status": "implemented",
+      "standalone": "wasm-merge",
+      "entrypoint": "tools/binaryen-lean/WasmMergeCompat.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatMergeMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.MergeSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.MergeProfileEquivalence",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeBytes_semantics_profile"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.MergeInterleavedSessions",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeBytes_interleaved_sessions_profile"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.SupportedMergeSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeSupportedBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeSupportedBytes_refines_original"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.MergeSourceSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.prepareMergeSource_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.PolicyMergeSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergePolicyBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.mergePolicyBytes_refines_original"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.EmptyIdentityMergeSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeEmptyIdentityBytes_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeEmptyIdentityBytes_refines_original"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.BarePreparedMergeSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.mergeBareAliasBytes_refines_original"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Link.FunctionSubtypeConservativity",
+          "theorems": [
+            "Silmaril.Wasm.Link.GC.resolveImports?_of_exact"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.disassembleBytes_sound"
+          ]
+        }
+      ],
+      "contract": "Selected successful pure byte routes preserve decoded meanings and validity and prove target-to-original behavior inclusion at every same numerical profile, with explicit source namespace/export-query mapping and retained-public-name visibility for skip. Original mergeBytes successes retain their stronger exact invocation/session theorems.",
+      "scope": [
+        "Closed host; arbitrary invocation argument lists after successful separate-source and target initialization.",
+        "Caller-supplied in-order acyclic function linking; distinct namespaces; equal or checked declared closed function subtypes; GC relocation guards remain.",
+        "Automatic checked finite silent starts; guarded function-only export rename/skip; exact original-byte left/right empty identities with validated import-free Core partners.",
+        "General stateful linking, declarative segments, open/cyclic imports, automatic dependency ordering, metadata/source-map/debug flags and arbitrary embedder contextual equivalence remain outside this compatible surface."
+      ]
+    },
+    {
+      "command": "shell",
+      "status": "implemented",
+      "standalone": "wasm-shell",
+      "entrypoint": "tools/binaryen-lean/WasmShellCompat.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatShellMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.ShellSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.shellBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.ShellSpecSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.shellBytes_spec_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.shellBytes_result_mem_spec",
+            "Silmaril.Wasm.Binaryen.Toolkit.shellBytes_spec_initial_export"
+          ]
+        }
+      ],
+      "contract": "Successful checked byte execution certifies valid decoded meaning, completed initialization/start, named export lookup, invocation typing, actual Core steps and exact classified result.",
+      "scope": [
+        "Empty initial store/import list; executable selects concrete numerical/growth choices, with the same initialization and result admitted by Profile.spec nd {} for either value of nd.",
+        "One-way specification conformance for either value of $ND with one global all-zero relaxed choice; no behavior-set equality, arbitrary nonzero relaxed-choice inclusion or exploration of all permitted outcomes.",
+        "Per-phase interpreter fuel; exhaustion is inconclusive. CLI arguments are i32 integers modulo 2^32.",
+        "General WAST/interactive/import-host execution is outside this runner."
+      ]
+    },
+    {
+      "command": "ctor-eval",
+      "status": "implemented",
+      "standalone": "wasm-ctor-eval",
+      "entrypoint": "tools/binaryen-lean/WasmCtorEvalCompat.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatCtorEvalMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.CtorEvalFallbackSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.CtorEval.evaluateBytesOrKeep_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.CtorEval.evaluateBytesOrKeep_of_unrecognized"
+          ]
+        }
+      ],
+      "contract": "Original/output byte meanings and validity; actual admission, initialization and shared-store export-session equivalence at every same numerical profile.",
+      "scope": [
+        "Recognized closed i32/i64 scalar-global wrapper: serializes assignment, retains functions/exports, removes start.",
+        "Other decoded/validated modules retain exact original bytes and report skipped; malformed/invalid modules reject.",
+        "Arbitrary constructor evaluation, memory/host effects and general serialization remain unimplemented."
+      ]
+    },
+    {
+      "command": "metadce",
+      "status": "implemented",
+      "standalone": "wasm-metadce",
+      "entrypoint": "tools/binaryen-lean/WasmMetaDCECompat.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatMetaDCEMain",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Toolkit.MetaDCEFallbackSound",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Toolkit.MetaDCE.eliminateBytesOrKeep_sound",
+            "Silmaril.Wasm.Binaryen.Toolkit.MetaDCE.eliminateBytesOrKeep_sound_hostState"
+          ]
+        }
+      ],
+      "contract": "Original-source/input and output bytes denote valid modules; graph reachability selects the observed export names exactly; same-profile source-first admission/session equivalence for function-call scripts naming only those exports. Skipped output may retain unselected exports.",
+      "scope": [
+        "Closed numeric-signature function-only base-profile modules; arbitrary loops/traps/direct calls.",
+        "Binaryen-shaped external graph name/reaches/root/export fields; graph imports, unknown/duplicate/dangling/absent bindings reject.",
+        "Ordinary full-export equivalence is not claimed for intentionally removed exports. Other decoded/validated module shapes retain exact original bytes and report skipped; graph parse/closure/binding errors still reject."
+      ]
+    }
+  ],
+  "additional_standalones": [],
+  "missing_tools": [],
+  "standalone_isolation": {},
+  "cli_compatibility": {
+    "executables": [
+      {
+        "binary": "wasm-as",
+        "entrypoint": "tools/binaryen-lean/WasmAsCompat.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatAsMain",
+        "contract_from_command": "as",
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Toolkit.assembleBinaryenText"
+        ]
+      },
+      {
+        "binary": "wasm-dis",
+        "entrypoint": "tools/binaryen-lean/WasmDisCompat.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatDisMain",
+        "contract_from_command": "dis",
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Toolkit.disassembleToolkitBytes"
+        ]
+      },
+      {
+        "binary": "wasm-opt",
+        "entrypoint": "tools/binaryen-lean/WasmOptCompatLean.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Exe.OptCompatMain",
+        "contract_from_command": "opt-select",
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Exe.optimizeSelectedCompatBytes"
+        ]
+      },
+      {
+        "binary": "wasm-merge",
+        "entrypoint": "tools/binaryen-lean/WasmMergeCompat.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatMergeMain",
+        "contract_from_command": "merge",
+        "contract_note": "Old endpoint successes retain exact original observations. Compatible CLI also accepts certified original WAT and checked -S rendering; automatic checked finite silent starts; exact byte-preserving left/right empty identities with arbitrary validated import-free Core partners; checked declared function-subtype imports; checked rename/skip on bare function-only sources. The selected pure byte endpoint proves target-to-original behavior inclusion at every numerical profile with explicit namespace/query mapping and skip visibility. Unsupported metadata flags reject.",
+        "proof_roots": [
+          {
+            "module": "Silmaril.Wasm.Binaryen.Toolkit.PolicyMergeSound",
+            "theorems": [
+              "Silmaril.Wasm.Binaryen.Toolkit.mergePolicyBytes_sound",
+              "Silmaril.Wasm.Binaryen.Toolkit.mergePolicyBytes_refines_original"
+            ]
+          },
+          {
+            "module": "Silmaril.Wasm.Binaryen.Toolkit.MergeSourceSound",
+            "theorems": [
+              "Silmaril.Wasm.Binaryen.Toolkit.prepareMergeSource_sound"
+            ]
+          },
+          {
+            "module": "Silmaril.Wasm.Binaryen.Toolkit.DisassembleSound",
+            "theorems": [
+              "Silmaril.Wasm.Binaryen.Toolkit.disassembleBytes_sound"
+            ]
+          }
+        ],
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Toolkit.prepareMergeSource",
+          "Silmaril.Wasm.Binaryen.Toolkit.mergePolicyBytes",
+          "Silmaril.Wasm.Binaryen.Toolkit.disassembleBytes"
+        ]
+      },
+      {
+        "binary": "wasm-shell",
+        "entrypoint": "tools/binaryen-lean/WasmShellCompat.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatShellMain",
+        "contract_from_command": "shell",
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Toolkit.shellBytes"
+        ]
+      },
+      {
+        "binary": "wasm-ctor-eval",
+        "entrypoint": "tools/binaryen-lean/WasmCtorEvalCompat.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatCtorEvalMain",
+        "contract_from_command": "ctor-eval",
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Toolkit.CtorEval.evaluateBytesOrKeep"
+        ]
+      },
+      {
+        "binary": "wasm-metadce",
+        "entrypoint": "tools/binaryen-lean/WasmMetaDCECompat.lean",
+        "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.CompatMetaDCEMain",
+        "contract_from_command": "metadce",
+        "pure_entrypoints": [
+          "Silmaril.Wasm.Binaryen.Toolkit.MetaDCE.eliminateBytesOrKeep"
+        ]
+      }
+    ]
+  },
+  "frontend": {
+    "binary": "wasm-shell-lean",
+    "entrypoint": "tools/binaryen-lean/WasmShellLean.lean",
+    "runtime_root": "Silmaril.Wasm.Binaryen.Toolkit.ShellMain",
+    "purpose": "Test-only positional shell driver; not an additional Binaryen-compatible command"
+  }
+}

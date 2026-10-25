@@ -1,0 +1,58 @@
+name = "silmaril"
+version = "0.1.0"
+defaultTargets = ["Silmaril"]
+restoreAllArtifacts = true
+[leanOptions]
+autoImplicit = false
+[[require]]
+name = "cslib"
+git = "https://github.com/leanprover/cslib"
+rev = "3c9db6a6a7207770c5a00849f4603ef460202dbf"
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "1f414401f69059aa7eead47b53ee40bd38455eeb"
+[[lean_lib]]
+name = "Silmaril"
+globs = ["Silmaril.*"]
+[[lean_exe]]
+name = "wasm-as"
+root = "WasmAsCompat"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-dis"
+root = "WasmDisCompat"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-opt"
+root = "WasmOptCompatLean"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-merge"
+root = "WasmMergeCompat"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-shell"
+root = "WasmShellCompat"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-ctor-eval"
+root = "WasmCtorEvalCompat"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-metadce"
+root = "WasmMetaDCECompat"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true
+[[lean_exe]]
+name = "wasm-shell-lean"
+root = "WasmShellLean"
+srcDir = "tools/binaryen-lean"
+supportInterpreter = true

@@ -1,0 +1,3 @@
+[
+  {"name": "public-entry", "root": true, "export": "run"}
+]

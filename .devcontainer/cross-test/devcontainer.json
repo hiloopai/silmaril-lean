@@ -1,0 +1,8 @@
+{
+  "name": "Silmaril with cross-testing tools",
+  "build": { "dockerfile": "../Dockerfile", "context": "../..", "target": "cross-test" },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": { "extensions": ["leanprover.lean4"] }
+  }
+}

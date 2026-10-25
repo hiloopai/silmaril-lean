@@ -1,0 +1,46 @@
+#!/bin/sh
+# Dispatch tool families without adding a runtime dependency.
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage: sil <family> <command> [arguments...]
+
+Families:
+  wasm    WebAssembly tools
+
+Commands:
+  sil wasm as          Assemble text into a binary module
+  sil wasm dis         Disassemble a binary module into text
+  sil wasm opt         Apply selected program transformations
+  sil wasm merge       Link named modules
+  sil wasm shell       Invoke an export with a step budget
+  sil wasm ctor-eval   Evaluate a supported constructor
+  sil wasm metadce     Remove code using a reachability graph
+
+Run `sil wasm <command> --help` for tool options.
+Build tools with `make tools`; see docs/projects/wasm.md for contracts and limits.
+EOF
+}
+
+case "${1:-}" in
+    ''|-h|--help|help) usage; exit 0 ;;
+    --version) echo 'sil 0.1.0'; exit 0 ;;
+    wasm) shift ;;
+    *) echo "sil: unknown family: $1 (see sil --help)" >&2; exit 2 ;;
+esac
+
+case "${1:-}" in
+    ''|-h|--help|help) usage; exit 0 ;;
+    as|dis|opt|merge|shell|ctor-eval|metadce) tool="wasm-$1"; shift ;;
+    *) echo "sil wasm: unknown command: $1 (see sil --help)" >&2; exit 2 ;;
+esac
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+for bin_dir in "$script_dir" "$script_dir/../.lake/build/bin"; do
+    if [ -x "$bin_dir/$tool" ]; then
+        exec "$bin_dir/$tool" "$@"
+    fi
+done
+echo "sil: $tool is not built; run 'make tools' from the repository root" >&2
+exit 127

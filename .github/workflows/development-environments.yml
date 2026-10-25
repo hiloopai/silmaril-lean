@@ -1,0 +1,42 @@
+name: Development environments
+
+on:
+  pull_request:
+    paths:
+      - '.devcontainer/**'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'lean-toolchain'
+      - '.github/workflows/development-environments.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.devcontainer/**'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'lean-toolchain'
+      - '.github/workflows/development-environments.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build developer image with optional tools
+        run: docker build -f .devcontainer/Dockerfile --target cross-test -t silmaril-dev .
+      - name: Check Lean, native compiler, Python, Node and reference tools
+        run: docker run --rm -v "$PWD:/workspaces/silmaril:ro" silmaril-dev sh .devcontainer/smoke-test.sh --cross-test
+
+  nix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - name: Check the shell with optional cross-testing tools
+        run: nix develop .#cross-test --command sh .devcontainer/smoke-test.sh --cross-test

@@ -1,0 +1,56 @@
+name: Wasm toolkit
+
+on:
+  push:
+    branches: [main]
+    paths: ['Silmaril/**', 'Silmaril.lean', 'tools/**', 'scripts/**', 'lake*', 'lean-toolchain', 'Makefile', '.github/workflows/wasm-toolkit.yml']
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ['Silmaril/**', 'Silmaril.lean', 'tools/**', 'scripts/**', 'lake*', 'lean-toolchain', 'Makefile', '.github/workflows/wasm-toolkit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wasm-toolkit-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  check:
+    name: Wasm native tools and proof roots
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 120
+    env:
+      LEAN_NUM_THREADS: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Lean
+        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
+        with:
+          auto-config: "false"
+          build: "false"
+          test: "false"
+          lint: "false"
+          use-mathlib-cache: "false"
+          use-github-cache: "false"
+      - name: Install independent Wasm execution oracle
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Fetch public dependency artifacts
+        run: lake exe cache get
+      - name: Compile tools and proof roots, then exercise native regressions
+        run: |
+          make check
+          build/bin/sil --help
+          build/bin/sil wasm opt --print-presets
+      - name: Retain check results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: wasm-release-checks
+          path: build/wasm-checks.json

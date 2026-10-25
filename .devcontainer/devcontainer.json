@@ -1,0 +1,8 @@
+{
+  "name": "Silmaril",
+  "build": { "dockerfile": "Dockerfile", "context": "..", "target": "development" },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": { "extensions": ["leanprover.lean4"] }
+  }
+}

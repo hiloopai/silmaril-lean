@@ -1,0 +1,10 @@
+# Intended axiom policy: every declaration may depend only on the standard
+# axioms, plus justified exceptions below. Transitive automated checking is
+# not implemented yet; review dependencies explicitly before merging.
+
+standard = ["propext", "Classical.choice", "Quot.sound"]
+
+# [[exception]]
+# name = "Silmaril.Region.decl"      # or a name prefix ending in ".*"
+# axioms = ["Lean.ofReduceBool"]
+# reason = "Why the extra trust is acceptable."

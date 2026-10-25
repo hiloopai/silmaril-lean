@@ -1,0 +1,170 @@
+{
+  "upstream": "https://github.com/WebAssembly/spec",
+  "revision": "608711107b7f1edb13efd57b7d79b49477462d36",
+  "astSha256": "7ae4c5806b39775969ddf8a757697f315395a50a187e27b253023292a670e095",
+  "decoder": "spectec_ast 2.0.0 (BSD-3-Clause)",
+  "sources": [
+    {
+      "sha256": "5c86799aff8748a2f4d45502fbc0896b533a1ffe25d76977d7776241b2c78fbe",
+      "path": "specification/wasm-3.0/0.1-aux.vars.spectec"
+    },
+    {
+      "sha256": "c8f397455513296d5056d58bd12f56c642bb5cd3d3e42d3cb05c3dfc46feb6ce",
+      "path": "specification/wasm-3.0/0.2-aux.num.spectec"
+    },
+    {
+      "sha256": "72856286fa2e7483ab17b3d0e8276323d4ba14b5592d5aa4ba020c3e6dc1d8f8",
+      "path": "specification/wasm-3.0/0.3-aux.seq.spectec"
+    },
+    {
+      "sha256": "a8750e15a3c0e6888bc77ca28e88a67cb9737191392a4614d9afef89eb81fd01",
+      "path": "specification/wasm-3.0/1.0-syntax.profiles.spectec"
+    },
+    {
+      "sha256": "cc55bf69755666d4f83ccd8e83a1a0ad35648c2e9f939a07a4134e1b236e3c61",
+      "path": "specification/wasm-3.0/1.1-syntax.values.spectec"
+    },
+    {
+      "sha256": "d0e7e98c90e6d093233a617b0e0bec7ad127f460a487455becfa177bc08e75c5",
+      "path": "specification/wasm-3.0/1.2-syntax.types.spectec"
+    },
+    {
+      "sha256": "03a7c3aacd0f6dd5ea68e609227707ddd451bb1bc0e57dfbb1dc42d19a312f4c",
+      "path": "specification/wasm-3.0/1.3-syntax.instructions.spectec"
+    },
+    {
+      "sha256": "04245713d59b2e4189eef8ca54fe49349130472371bfa68d8efd9e0f6205ba44",
+      "path": "specification/wasm-3.0/1.4-syntax.modules.spectec"
+    },
+    {
+      "sha256": "b42c12da0a7bf9dfaeabb21e5e14f16f1a8e2bcf4ede4cc23c576b6243e83edd",
+      "path": "specification/wasm-3.0/2.0-validation.contexts.spectec"
+    },
+    {
+      "sha256": "fe29444726505af0328144b93ebec011446afe298d19832f2e4537cd755dfd78",
+      "path": "specification/wasm-3.0/2.1-validation.types.spectec"
+    },
+    {
+      "sha256": "7dfbd51d4c9ac7c460a1e70e33c38d0f68323913048155d6f912152a01ac1c26",
+      "path": "specification/wasm-3.0/2.2-validation.subtyping.spectec"
+    },
+    {
+      "sha256": "c1c043a662d0eed145dee0dba440cef2f6c3009a4ef04eb7a7321288b983dcc9",
+      "path": "specification/wasm-3.0/2.3-validation.instructions.spectec"
+    },
+    {
+      "sha256": "cc53b1cee1b1763f8d38409393f180fe06831713a9a57deeff79559f0a601897",
+      "path": "specification/wasm-3.0/2.4-validation.modules.spectec"
+    },
+    {
+      "sha256": "70ccae258bfeb82a346ed7663c04458c34b7838bd46b2c4b81ba6ad4dcf4a398",
+      "path": "specification/wasm-3.0/3.0-numerics.relaxed.spectec"
+    },
+    {
+      "sha256": "daf9177f35111e3acc50d2e76c7563c02aab0511440470ef12402c9c8425809b",
+      "path": "specification/wasm-3.0/3.1-numerics.scalar.spectec"
+    },
+    {
+      "sha256": "22432ec847365aecc64a07f8464e9b7ba903679d6d773d0eb4a2f88baa450db8",
+      "path": "specification/wasm-3.0/3.2-numerics.vector.spectec"
+    },
+    {
+      "sha256": "d64581643463dc1234c62600509f1246796d22421346d4bece1428fb01f35e44",
+      "path": "specification/wasm-3.0/4.0-execution.configurations.spectec"
+    },
+    {
+      "sha256": "89da797541e2c9a6b7d734693858dd8f8a094b0b60e6629d78a7393b66050e60",
+      "path": "specification/wasm-3.0/4.1-execution.values.spectec"
+    },
+    {
+      "sha256": "f15612d3ce0d3b5845948d304d357c1ef45045efc8f83e72df1b7cd509491d6d",
+      "path": "specification/wasm-3.0/4.2-execution.types.spectec"
+    },
+    {
+      "sha256": "2d00920d82e2c0b26bb5b3a29e3db65bbcd014f4d843bab28c6cc6853515636b",
+      "path": "specification/wasm-3.0/4.3-execution.instructions.spectec"
+    },
+    {
+      "sha256": "4a34f8b5592e837e0b3f735230117ade01b5c8101a5e2ca75a816cc7c9c238ca",
+      "path": "specification/wasm-3.0/4.4-execution.modules.spectec"
+    },
+    {
+      "sha256": "7bdb1686c6fa9be9b67542b38e5be0537a29a44d48fb6b51f33b5a43b0f72d69",
+      "path": "specification/wasm-3.0/5.1-binary.values.spectec"
+    },
+    {
+      "sha256": "d0a42bbf3128933b4a1270f9f58acd291b06c5b9a10707a6d24b11ca35422d23",
+      "path": "specification/wasm-3.0/5.2-binary.types.spectec"
+    },
+    {
+      "sha256": "b47e5e15d4e88823ae7d0f747e748b16c47dd4d2c70b7834930835cc3648f4c5",
+      "path": "specification/wasm-3.0/5.3-binary.instructions.spectec"
+    },
+    {
+      "sha256": "bfbdb5acd61bc9cef34b16abe1a7fead941a5634dfc4d1a5b17e17bce314fa79",
+      "path": "specification/wasm-3.0/5.4-binary.modules.spectec"
+    },
+    {
+      "sha256": "efe79aead98b852167809cabd0ea01d3b59d92c363ac267727615473f6804cb0",
+      "path": "specification/wasm-3.0/6.0-text.lexical.spectec"
+    },
+    {
+      "sha256": "1ed1df0fe189f08e1457740ed7df90b1994d8c282b1f6a045c26f01bc376b743",
+      "path": "specification/wasm-3.0/6.1-text.values.spectec"
+    },
+    {
+      "sha256": "af5779436e5587734842db07c508cfce931912aba59cc5c33184ca0025469d61",
+      "path": "specification/wasm-3.0/6.2-text.types.spectec"
+    },
+    {
+      "sha256": "b91d5d856fb2112697287e7bf7fed2397883e58aa9e560cd81174a3211c2a194",
+      "path": "specification/wasm-3.0/6.3-text.instructions.spectec"
+    },
+    {
+      "sha256": "faede78a8d642df9645869bc9e7c75d1ed46cb8a1fbbbc6b30348550db08514c",
+      "path": "specification/wasm-3.0/6.4-text.modules.spectec"
+    },
+    {
+      "sha256": "ca2ddf5e10d3cb052682cb7d140b3b9e60d83c40c3546a4f639e65c6e32da6d3",
+      "path": "specification/wasm-3.0/7.0-soundness.contexts.spectec"
+    },
+    {
+      "sha256": "7e17ec6c9b87478883dd1101407674a3cda725da819e88692a93a88151a224af",
+      "path": "specification/wasm-3.0/7.1-soundness.configurations.spectec"
+    },
+    {
+      "sha256": "b445e0558cd19389d4c0725ba5fb51d12a7dd418840c5a71a0eec3b255d93301",
+      "path": "specification/wasm-3.0/X.1-notation.syntax.spectec"
+    },
+    {
+      "sha256": "6162ca2e3feb6958ed8affe1e3bfbc682cd007f02aa85500a8f58fac246aa79c",
+      "path": "specification/wasm-3.0/X.2-notation.typing.spectec"
+    },
+    {
+      "sha256": "3b9cfa575b1ef0d5302575fa27389b7683e7b09505c3f5431f5ed926da38c14f",
+      "path": "specification/wasm-3.0/X.3-notation.execution.spectec"
+    },
+    {
+      "sha256": "010b9127e5ed5015ca5837f1997109ec8305b539f5650da53447e9a64604cc3b",
+      "path": "specification/wasm-3.0/X.4-notation.binary.spectec"
+    },
+    {
+      "sha256": "1ef2b5dffa85cb4a2c38c2090fbba8c76c137eda578a5f53246f47a5c8d74cbd",
+      "path": "specification/wasm-3.0/X.5-notation.text.spectec"
+    }
+  ],
+  "administrativeCases": [
+    "REF.I31_NUM",
+    "REF.NULL_ADDR",
+    "REF.STRUCT_ADDR",
+    "REF.ARRAY_ADDR",
+    "REF.FUNC_ADDR",
+    "REF.EXN_ADDR",
+    "REF.HOST_ADDR",
+    "REF.EXTERN",
+    "LABEL_%{%}%",
+    "FRAME_%{%}%",
+    "HANDLER_%{%}%",
+    "TRAP"
+  ]
+}

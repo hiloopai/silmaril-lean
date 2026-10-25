@@ -1,0 +1,46 @@
+{
+  "upstream": "https://github.com/WebAssembly/spec",
+  "revision": "608711107b7f1edb13efd57b7d79b49477462d36",
+  "sources": [
+    {
+      "sha256": "14e42fbf1d618cde8354ed03c8275c007170817fbdfeca8f07627bd90738ebac",
+      "path": "specification/wasm-2.0/0-aux.spectec"
+    },
+    {
+      "sha256": "54fd756921a8a736b7db9e97497cd9952963b7d7cc85868eadcec71dd33fd8db",
+      "path": "specification/wasm-2.0/1-syntax.spectec"
+    },
+    {
+      "sha256": "2b123e9db3a26095539a5ee7bf84265cef05e7d1ba3664f64200e5e65e2a0fe2",
+      "path": "specification/wasm-2.0/2-syntax-aux.spectec"
+    },
+    {
+      "sha256": "6acc483c7c9c63f8cd0bda47c129dc779ea2b6289b6b53fbb56c6c0c05cd0fb0",
+      "path": "specification/wasm-2.0/3-numerics.spectec"
+    },
+    {
+      "sha256": "2c7f3c2e2596f686452dcb5d25b7be2816226efd36409fffe96184184846cb5c",
+      "path": "specification/wasm-2.0/4-runtime.spectec"
+    },
+    {
+      "sha256": "fff790acfeab3bdf8b9dc91d372e6ae24689355848c1377c4004e9f6c5580454",
+      "path": "specification/wasm-2.0/5-runtime-aux.spectec"
+    },
+    {
+      "sha256": "3355105ab97a2201fb83c845aa13989956ce0289b52295ebd02800cbcb024659",
+      "path": "specification/wasm-2.0/6-typing.spectec"
+    },
+    {
+      "sha256": "1481026807168d419ec9912ff85b943e777c6af4659f964ba5c5e4dcc037298f",
+      "path": "specification/wasm-2.0/8-reduction.spectec"
+    },
+    {
+      "sha256": "e31b8fbc5ea997141c2bebf93ee8f6cfac971f21cbbf60f6dc92f2fa0dd4537e",
+      "path": "specification/wasm-2.0/9-module.spectec"
+    },
+    {
+      "sha256": "24049efcaf4993d5dbc55c7eb81f59b70b11c3f96c7ca949092d6728b1c24b9e",
+      "path": "specification/wasm-2.0/A-binary.spectec"
+    }
+  ]
+}
