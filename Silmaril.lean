@@ -45,3 +45,5 @@ public import Silmaril.Wasm.Behaviour.Semantics.V2
 public import Silmaril.Wasm.Behaviour.Semantics.V3
 
 public import Silmaril.Wasm.Wat
+
+public import Silmaril.Logic
