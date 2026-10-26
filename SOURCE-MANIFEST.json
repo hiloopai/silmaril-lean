@@ -10928,6 +10928,11 @@
       "bytes": 4019
     },
     {
+      "path": "Silmaril/X86/Features/Checks.lean",
+      "sha256": "92beb9cacbfa9e1fde390b0e89f5bbd8f4ac320406ff3fd13a951055e57cd344",
+      "bytes": 17850
+    },
+    {
       "path": "Silmaril/X86/Features/Embed.lean",
       "sha256": "e8fa202850794cbe30299c560208b80935af88efdd8e815b4f9f8893799043fe",
       "bytes": 5171
@@ -10961,6 +10966,61 @@
       "path": "Silmaril/X86/Features/Ext/Avx/Syntax.lean",
       "sha256": "9ad3650d82b21bdb29c47503bb475f80e5305c754d9965bf507167b8be215d87",
       "bytes": 3003
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Arith.lean",
+      "sha256": "75de024baaa679b4d6661da038adbe1da7b6d600ee438aa772bd6edd3e3f6f9a",
+      "bytes": 26349
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Checks.lean",
+      "sha256": "8245d3fd9c8a59f660210caef0ffc2a8d95257c9b45ac9d1bb503bec8fcb0858",
+      "bytes": 5481
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Encoding.lean",
+      "sha256": "d497b5b282800b40a945869401eb7b0f76657c63b41cb7782071c3925cfb5b55",
+      "bytes": 19627
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Extension.lean",
+      "sha256": "526847c793f7c32c344eb78542837aa203e4f6446f23f87f9ddeea7e919b7f66",
+      "bytes": 1105
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Lattice.lean",
+      "sha256": "03c4c281e2cfe317c9059d47f35f493322a0053cb242f3065668fe562f1b577f",
+      "bytes": 8144
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Semantics.lean",
+      "sha256": "b8565ace05d51f9b6c502b41251518d1ffa4fbf03e38d0744fa7341964baace4",
+      "bytes": 26931
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Syntax.lean",
+      "sha256": "1355c5421de48efdcc533275099062b6315f1fa2ae78de8e5da598c94f272dc5",
+      "bytes": 4666
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Vectors/Assembler.lean",
+      "sha256": "5a6dba3d7b23d7262b7bdb75cfcd0782dfc0ccb326814e9e323a78c346c49e97",
+      "bytes": 36270
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Vectors/Exec0.lean",
+      "sha256": "d246ff3c95a744f6f45202d354da3d7fd4c4cd40db9c3991fbc5f2098f79d030",
+      "bytes": 479118
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Vectors/Exec1.lean",
+      "sha256": "66ddd3943beb289d3262a75c831f6af1361634db807f63d26141ff4953df30e7",
+      "bytes": 442178
+    },
+    {
+      "path": "Silmaril/X86/Features/Ext/X87/Vectors/Exec2.lean",
+      "sha256": "84dc19eb679d5cd9da1de5a198b1b4b5d24505569caf8976e300f2e6378b4100",
+      "bytes": 341040
     },
     {
       "path": "Silmaril/X86/Features/Extension.lean",
@@ -12171,6 +12231,16 @@
       "path": "scripts/test_lake_cache.py",
       "sha256": "73af564a7e87246e924e87a3886431ef8f2e741f7f2117a618beb5bd2d86a838",
       "bytes": 14006
+    },
+    {
+      "path": "scripts/x86-features/gen_x87_vectors.py",
+      "sha256": "101cbdde0c61781972600f7d81ac517961efb109c18c39a28dfbc7483b0aa81b",
+      "bytes": 27100
+    },
+    {
+      "path": "scripts/x86-features/x87_harness.py",
+      "sha256": "05cc1d8b4458bf96c2d4caa0803e57eb3f6a1bfe769a2c86c5d9d511d389c136",
+      "bytes": 5079
     },
     {
       "path": "specs/wasm/core-2.0.json",
