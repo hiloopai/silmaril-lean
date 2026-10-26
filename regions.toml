@@ -74,7 +74,8 @@ name = "Science"
 scope = "Units, physical constants and other scientific world models."
 deps = ["Prelude", "Numeric"]
 
-# Views re-export and restate; they are leaves (no region imports them).
+# Views are leaves: no region imports them. Papers, Standards and Thesis
+# re-export and restate; Courses may include self-contained teaching proofs.
 [[view]]
 name = "Papers"
 scope = "One folder per paper: Defs, Relations, Thms following the paper's numbering."
@@ -86,3 +87,7 @@ scope = "One folder per standard (RFCs, ISA manuals, the Wasm specification)."
 [[view]]
 name = "Thesis"
 scope = "imbrem/thesis, one folder per chapter, following the text."
+
+[[view]]
+name = "Courses"
+scope = "Self-contained course developments, with inline proofs and numbered references; imported by no library region."

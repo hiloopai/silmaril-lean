@@ -26,6 +26,8 @@ Working rules for agents in silmaril-lean. The design is in [docs/design.md](doc
   [regions.toml](regions.toml). Change that file deliberately, in its own commit.
 - **Views** (`Papers`, `Standards`, `Thesis`) re-export or restate, contain no
   non-trivial proofs, and are imported by nothing.
+- **Courses** are self-contained leaf views: their proofs may stay inline when
+  that helps readers follow the course. No library region imports `Courses`.
 - Use the module system (`module`, `public import`) everywhere.
 
 ## Executables and existing implementation modules
