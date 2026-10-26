@@ -45,6 +45,7 @@
   ],
   "external_imports": [
     "Batteries.Data.Except",
+    "Batteries.Data.Float.Lemmas",
     "Cslib.Foundations.Logic.InferenceSystem",
     "Cslib.Foundations.Logic.Operators",
     "Cslib.Foundations.Relation.Defs",
@@ -54,6 +55,7 @@
     "Init.Data.BitVec",
     "Init.Data.ByteArray.Lemmas",
     "Init.Data.Float.Model.Float32",
+    "Init.Data.Nat.ToString",
     "Lean",
     "Mathlib.Algebra.BigOperators.Group.Finset.Basic",
     "Mathlib.Algebra.BigOperators.Group.List.Basic",
@@ -68,6 +70,7 @@
     "Mathlib.Algebra.Order.Field.Power",
     "Mathlib.Algebra.Order.Field.Rat",
     "Mathlib.Algebra.Order.Floor.Ring",
+    "Mathlib.Algebra.Order.GroupWithZero.Basic",
     "Mathlib.Algebra.Order.Ring.Abs",
     "Mathlib.Algebra.Ring.Defs",
     "Mathlib.Analysis.Real.Sqrt",
@@ -75,6 +78,7 @@
     "Mathlib.Basic.Finite.Prod",
     "Mathlib.Basic.Finite.Sigma",
     "Mathlib.Basic.Finite.Sum",
+    "Mathlib.Basic.Real.Basic",
     "Mathlib.CategoryTheory.Adjunction.Basic",
     "Mathlib.CategoryTheory.Adjunction.Limits",
     "Mathlib.CategoryTheory.Adjunction.Reflective",
@@ -170,6 +174,7 @@
     "Mathlib.Order.GaloisConnection.Basic",
     "Mathlib.Order.Hom.CompleteLattice",
     "Mathlib.Order.Lattice",
+    "Mathlib.Order.Monotone.Basic",
     "Mathlib.Order.UpperLower.Basic",
     "Mathlib.Order.WellFounded",
     "Mathlib.SetTheory.ZFC.Basic",
@@ -2493,6 +2498,16 @@
       "bytes": 7405
     },
     {
+      "path": "Silmaril/Numeric/DecimalText.lean",
+      "sha256": "1a95c0b1c7e41132fd8dbe3f982ca1da9a446518a098f0aef1f2b00e3610a8fc",
+      "bytes": 3115
+    },
+    {
+      "path": "Silmaril/Numeric/DecimalTextProperties.lean",
+      "sha256": "17bccf4ed39bbb7cb6bd4b2515f35b26db3464a98ea6b074574bdfc70963d019",
+      "bytes": 8039
+    },
+    {
       "path": "Silmaril/Numeric/Float.lean",
       "sha256": "765682d2c4e7460be08166b2f2cc73a30d96c4ca4ba5cc57b83bcded5c79a49d",
       "bytes": 3242
@@ -2583,14 +2598,134 @@
       "bytes": 21636
     },
     {
+      "path": "Silmaril/Numeric/Ieee754/AdjacentRounding.lean",
+      "sha256": "f22dd50997ad07b0b899c847d2bd25f68700b8fb3e68481afe94326d31ee15b7",
+      "bytes": 7011
+    },
+    {
       "path": "Silmaril/Numeric/Ieee754/ArithmeticCorrectness.lean",
       "sha256": "3aa4eeef87679bb47d0bf6c7b0026bfd5baaef21ddb6295b3dca707f8705bf40",
       "bytes": 16442
     },
     {
+      "path": "Silmaril/Numeric/Ieee754/Binary64Signs.lean",
+      "sha256": "d936f8fb352f01f57c5a7e9e7390fd26e0650ebf102e24627b0a276c6b402672",
+      "bytes": 5327
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/BinaryMagnitude.lean",
+      "sha256": "23e98fec40ab81766b7f5cc17162da2de7ca768fa37b90d25cf4fabc71de29f9",
+      "bytes": 9024
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/BinaryMagnitudeOrder.lean",
+      "sha256": "f8104ceea529fed04bcbe72b0fe9bee9bab720f2f71d3b66a697e469083b26a3",
+      "bytes": 1506
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Bisection.lean",
+      "sha256": "f6e58301034379ad79e0f590b9d1c5c046b908b2df9b5eb9cf1d7d1ce03d2d98",
+      "bytes": 3119
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/ComparisonCorrectness.lean",
+      "sha256": "e292d3eec4998479207c8c5c8877f3919e9f69a2d599fed972e82f6fa9f6ed03",
+      "bytes": 5863
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Conformance.lean",
+      "sha256": "86eaef86b17b842cd1c41ae3f5b731ea8788f3d6dbec9f785a41ee781f43300a",
+      "bytes": 886
+    },
+    {
       "path": "Silmaril/Numeric/Ieee754/ConversionCorrectness.lean",
       "sha256": "8d0ef576d8db6d45ffa0151cedb514875072b7f120e242be56ea23f79d8077d1",
       "bytes": 7902
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/CoreFloat.lean",
+      "sha256": "ae985759f08ca0335e2d70fe5b8ffed05e3da09f0758f8971ddb0c691e9fd2b7",
+      "bytes": 4922
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/CoreFloatTest.lean",
+      "sha256": "8d957d606d9b979002ef37774a83ae1bdf09252f5b4cbb7381e9529454f4c24f",
+      "bytes": 9282
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Decimal.lean",
+      "sha256": "2fed6bd89c995ba95803cffa03482ce565bdca3b9bd42566f2c3662ea8d6c060",
+      "bytes": 5562
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalBounds.lean",
+      "sha256": "ef1647c70a410a5850aa3e83bc105a3a9498b6a762af177f9236033b11d2a5a8",
+      "bytes": 13455
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalEncodingBounds.lean",
+      "sha256": "c281ad7ca7cd2536d2c8afcf02770dea1eae699a53c1f66f4f6cf42077be4a29",
+      "bytes": 6131
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalLattice.lean",
+      "sha256": "cd9c25522b02b56cf70ae914d784372a7a82d52a705ef8d71baec3db834592cd",
+      "bytes": 8957
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalLayout.lean",
+      "sha256": "2e457c65c836ad12392a4d7904eb482c5ad41e29f0fe4ea0ca9510eba7e1c865",
+      "bytes": 9863
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalNormalization.lean",
+      "sha256": "b2c575f1034877e70f22ea4dd1ccb6d04fc0d82bf6f75b4aad566a406d3e4162",
+      "bytes": 5794
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalProperties.lean",
+      "sha256": "0df6fa296e5251bb8875bfee308415dd57b602c2ec80e59505913060ec81eb15",
+      "bytes": 10699
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalRepr.lean",
+      "sha256": "d430d89d8d3c4d335fb29b1e527dc6e6e29bce6eeb9dc4d45228fbc83b7447b9",
+      "bytes": 6057
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalReprExamples.lean",
+      "sha256": "9cb9bd4e7fe91502558cdfedf56d72af93d1d5ff438b366445827d5abae6beac",
+      "bytes": 3648
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalRounding.lean",
+      "sha256": "4db7bf29d6bd4204977f60785aeafa9c7ef900599c5e39f16c0540c4914e26d0",
+      "bytes": 11305
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalRoundingExamples.lean",
+      "sha256": "a2ed59b059112b8623b2006ec2a7c9736bd0b7ee704e58e1b914a3268430eed6",
+      "bytes": 2862
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalSelection.lean",
+      "sha256": "d61efde5f8b26b6ba2846400381333aae8fcee8f83a634bf20bc895e76649b4e",
+      "bytes": 11158
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalShortest.lean",
+      "sha256": "aaa9f1a7e369e06f0a6cc0c6d0e12c7a73e308fb6d7f9882e109a8dc9f84b9cf",
+      "bytes": 7135
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalShortestExamples.lean",
+      "sha256": "ddb3cbd93308b20022b1ac481fa318b52de13ffcfb9321d3038a4df216c48378",
+      "bytes": 3010
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/DecimalTie.lean",
+      "sha256": "2396ac9673f855634b4b587e67666c9b706c2c1eb64d245f4784e235214071fd",
+      "bytes": 2731
     },
     {
       "path": "Silmaril/Numeric/Ieee754/EncodingCorrectness.lean",
@@ -2601,6 +2736,11 @@
       "path": "Silmaril/Numeric/Ieee754/Environment.lean",
       "sha256": "ce97cd21b38896122b95abf2a9a5b0e2b038a26d3a927373b417a6c263f32a7a",
       "bytes": 18693
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/EnvironmentTests.lean",
+      "sha256": "571456e2a588ee3fb822db5ad55099d29905d6b2d1083ecc0aeee2c169aaf276",
+      "bytes": 4282
     },
     {
       "path": "Silmaril/Numeric/Ieee754/Exact.lean",
@@ -2668,9 +2808,19 @@
       "bytes": 13141
     },
     {
+      "path": "Silmaril/Numeric/Ieee754/Flags/Tests.lean",
+      "sha256": "36ea3da4d62dba00f3df5de68cd2898f0dee94c3339635a101c21f88a3a590fd",
+      "bytes": 10898
+    },
+    {
       "path": "Silmaril/Numeric/Ieee754/FloatRounding.lean",
       "sha256": "3cfaf843388fca8f63189498e7a05fe48b01232d1725a1625f9cd0876d6225bf",
       "bytes": 16115
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Inspection.lean",
+      "sha256": "09a6a355c0f0eb4c477a99b856dddd5ad4c5a3ed301d6d7e42b1be8b0e460e77",
+      "bytes": 18955
     },
     {
       "path": "Silmaril/Numeric/Ieee754/IntegerRounding.lean",
@@ -2681,6 +2831,16 @@
       "path": "Silmaril/Numeric/Ieee754/MantissaCorrectness.lean",
       "sha256": "c7a4f18641577ec08cd2bbbc7b9502794a3bf9e168560f162a495b27a451b8ec",
       "bytes": 12212
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/MaximumCorrectness.lean",
+      "sha256": "68d98d5b8f20627090cac7b0f3c7386f42f5a076e5136d082c0ac1c68af8a3d8",
+      "bytes": 13583
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/NatConversion.lean",
+      "sha256": "7705c1231bcc03498ead30cac4e63054a0f5882fee884830d31a719da57bed72",
+      "bytes": 1826
     },
     {
       "path": "Silmaril/Numeric/Ieee754/Normalization.lean",
@@ -2696,6 +2856,11 @@
       "path": "Silmaril/Numeric/Ieee754/PackingCorrectness.lean",
       "sha256": "f5f14443a4ab4a8f8369a9b18de7216136af98bae408d867b88e51aa5adce981",
       "bytes": 15279
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/RationalRounding.lean",
+      "sha256": "c6bd75cf68247be8b63ff32fade375726585b76bfb2becaf6f19701dbd63374f",
+      "bytes": 8623
     },
     {
       "path": "Silmaril/Numeric/Ieee754/Relations.lean",
@@ -2718,19 +2883,194 @@
       "bytes": 14360
     },
     {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Approximation.lean",
+      "sha256": "f6d3a75563bab69cf6fdb12b382f3aca8da4c4a2adbc27bc78cae8bd1e5ba1af",
+      "bytes": 6463
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Canonical.lean",
+      "sha256": "8719a1cad0e6be69700e714f1c2b630a90040f527e686d4647688bde82ae32b4",
+      "bytes": 6018
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Decoding.lean",
+      "sha256": "8d398a652deb47b344fddc41fd698f348d19ebcd7fd9dd052ac729bdde61aa11",
+      "bytes": 1354
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Division.lean",
+      "sha256": "1f2626f5d51b3fc47ab01cb52d446182f16aabf968ec756079bfb5248ee0c9a9",
+      "bytes": 9039
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Error.lean",
+      "sha256": "509176ad851127e6fde3d78746e66395c2bd8696daf3c922d492ae27b2321f1a",
+      "bytes": 10480
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Exact.lean",
+      "sha256": "7f12346d547da4d30629bdca54ad75f6d51e519ef08c571046feba8b820de648",
+      "bytes": 2502
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/PackedError.lean",
+      "sha256": "85060809a438cc1af8e0b6f2edf1c1041d99ef570d252fd2232bd9c7f3b9e006",
+      "bytes": 6212
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Packing.lean",
+      "sha256": "7f3afe1fb89ee16da71c47a6ce55a43633564aac68ec9321c5db522a173a22d4",
+      "bytes": 7892
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Range.lean",
+      "sha256": "edce67254fcc4ef3828dd684877471e66c529ff0d91e7b7a0188048b11868247",
+      "bytes": 3621
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/ScalarError.lean",
+      "sha256": "e2fa2d1c4e4c19f0a392ca97e2980261ca143d58e81af15b0e4994b3bec42fc6",
+      "bytes": 2862
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/Sqrt.lean",
+      "sha256": "20eb6eaefe6468057832e6f557edca3f7f616de9f2b238b491ff78817c215122",
+      "bytes": 6316
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Rounding/UnpackedError.lean",
+      "sha256": "75905c9956064a417e01fc01f52505928d1a4299616027c2fa6cfc23c79791c3",
+      "bytes": 5164
+    },
+    {
       "path": "Silmaril/Numeric/Ieee754/RoundingCorrectness.lean",
       "sha256": "528d17b3bb67665fd0360869c1e6c0a923f2364e663c7c09187b43b1410337bd",
       "bytes": 8674
     },
     {
+      "path": "Silmaril/Numeric/Ieee754/RoundingTests.lean",
+      "sha256": "81e3e38f8b2d5e9d96e2489e0dfe9a50fbd96434c8d8101bd14f3b5ddfc952e5",
+      "bytes": 5461
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/ScalarBridge.lean",
+      "sha256": "525bd0ef8eb94b7518cc58bdb6118cb525d08e0855e09bc0dedcdde42ec7bc9a",
+      "bytes": 1746
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/SignedRationalProperties.lean",
+      "sha256": "629008a67ffea89ffb8cc8af5474cfc0f5fa2065efcbdaa1b05fda5ae1d5d26a",
+      "bytes": 4841
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/SignedRationalRounding.lean",
+      "sha256": "a8f1c0831dc77bdb49cb00cb641bb6ccf74cdd729c8987e36d6e3b5c7cde94fe",
+      "bytes": 3839
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Bridge.lean",
+      "sha256": "446bf451ceeaaa13c62f4cad1c74eea297771c39d55126dace9db8687dbeaf3e",
+      "bytes": 8342
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/BridgeTests.lean",
+      "sha256": "c0a48bb62ca0e9a63b91ab08330e7404bc229d49289ac404cd8141311b317700",
+      "bytes": 2866
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Chaos.lean",
+      "sha256": "ad9462201ab68630c3ca887ba35abc2f4ab2d5fcf3507a24eb3cb2282c87a375",
+      "bytes": 14926
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/CoreBridge.lean",
+      "sha256": "62bf00f64e5fa9b0013c87e3fc1ef9b3b6f66504642e63c3a510d5d182e2dd99",
+      "bytes": 46553
+    },
+    {
       "path": "Silmaril/Numeric/Ieee754/Std/Defs.lean",
-      "sha256": "4b500738f071ae97f453498f7aa674610a7147dc6df3c290345a837bcbd4f350",
-      "bytes": 126
+      "sha256": "2199a0255b8097c6c029596dd168ecbb4fe5154f73984352fa8e4b3df23308b4",
+      "bytes": 702
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Encoding.lean",
+      "sha256": "f4695203649065d4343a6ad1f5ea430f926ec35f767c2663c14cd2af05c6bf92",
+      "bytes": 10477
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/EncodingCorrect.lean",
+      "sha256": "b15eab05ad59d8f88f0e80264247b7faa05d537284c045359fc82e9ec4437a83",
+      "bytes": 10108
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Format.lean",
+      "sha256": "ac9deb35d41eedfb44ed190340e1998599630651d1ac622e3602a2a24fe7277c",
+      "bytes": 10458
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/IntegerRound.lean",
+      "sha256": "05e10ac162052945bde53a7ec1367ba7ffaaa77803cd163a848163e53ce481c8",
+      "bytes": 2839
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Isa.lean",
+      "sha256": "76b39d376638cee8ca1cb339407de427914fa3d2dd37c2fc35a0d5694704ce95",
+      "bytes": 17335
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/KernelExamples.lean",
+      "sha256": "c8d94239c96cbf6c45f6198482110aa17171d1be92f3e64cb2c28ab0767230d4",
+      "bytes": 6452
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/NaN.lean",
+      "sha256": "22f061f7ce5723bbd25a6dfda974039ee244f019de57a6632944869735fc3d03",
+      "bytes": 14285
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Ops.lean",
+      "sha256": "3b080355c019442c8aef9a6c94326deb93c4943b4002d9ca9f8a0d19c6517793",
+      "bytes": 10028
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/ProfileBridge.lean",
+      "sha256": "e19666a375f19df27be6cdd6a5cad06b28b02a180029546363cd52d3c9ed6c56",
+      "bytes": 25818
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Round.lean",
+      "sha256": "e0b7e0cb75a41bce1fe8167cf476ce4aa6be11aa6850916fbdce48ee08769fa9",
+      "bytes": 18617
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Sqrt.lean",
+      "sha256": "0addcbed09c98424d5ac8426557c3a6940f20b38b083261e587a0b8f72f63037",
+      "bytes": 12406
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/TestFloat.lean",
+      "sha256": "9ac7c4cabcde3db1bea11281de90a61d03f8d5182ef638b42cc40889db7de9ba",
+      "bytes": 6721
     },
     {
       "path": "Silmaril/Numeric/Ieee754/Std/Thms.lean",
-      "sha256": "ac0f55d15678e45d681b0bc19eda0ee665f38699d295be5d9265998f9cb495d5",
-      "bytes": 130
+      "sha256": "ba3496d13ad0f521676770549abbceb2b24756f3da507db6494df4c83cc9a03c",
+      "bytes": 818
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/Vectors.lean",
+      "sha256": "0f9860089be4c3484f903bfa739218ca3ea70c2effb3213dcf79467475b1d3ae",
+      "bytes": 383670
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Std/WasmBridge.lean",
+      "sha256": "89c8fa0edfb90cd725477683b003f2561e13d1009b453d4ed0dd2ad818b4b0de",
+      "bytes": 5981
+    },
+    {
+      "path": "Silmaril/Numeric/Ieee754/Tests.lean",
+      "sha256": "6ce11edecc82abfb00e538fcc62be03cafbb71e650cda6eddb354e576904060e",
+      "bytes": 5976
     },
     {
       "path": "Silmaril/Numeric/Integer.lean",
@@ -2741,6 +3081,31 @@
       "path": "Silmaril/Numeric/Integer/Conversion.lean",
       "sha256": "8cf9919acef4d68706a2beed3c51073b10e1e86a690a908c5cd66b17dcbb8060",
       "bytes": 3274
+    },
+    {
+      "path": "Silmaril/Numeric/LowPrecision/Casts.lean",
+      "sha256": "83896d8000565ff881fee199b3a5d4877e825ae71e49d75121a54f3c1e6760e8",
+      "bytes": 25759
+    },
+    {
+      "path": "Silmaril/Numeric/LowPrecision/Formats.lean",
+      "sha256": "d0b10667253a76ffc0d0209618e141361ddafebba8f17c50d8942fdb483085e0",
+      "bytes": 12004
+    },
+    {
+      "path": "Silmaril/Numeric/Scalar.lean",
+      "sha256": "6b263f7d211e4cb9bc41122543d1bc8a92a238b2346a650b83423c2d8bfc4527",
+      "bytes": 18784
+    },
+    {
+      "path": "Silmaril/Numeric/ScalarInt.lean",
+      "sha256": "c7a57e0840dbed090d9ced25c8a5b8425601eebdbeefd87ccf05f48d58058ece",
+      "bytes": 577
+    },
+    {
+      "path": "Silmaril/Numeric/ScalarNat.lean",
+      "sha256": "9a59dda3c008823cb4bbf7af6f64a9ee4593c0aaf21fb8566ede29a8eafc2aca",
+      "bytes": 248
     },
     {
       "path": "Silmaril/Prelude/DeBruijn.lean",
@@ -10379,8 +10744,8 @@
     },
     {
       "path": "docs/Ieee754Std.md",
-      "sha256": "fcd0e2f0fa56f03d7606a758797bcf4885e529b97cbc40ca8e24298c83c4ac33",
-      "bytes": 8635
+      "sha256": "7d33cb757220d80f406db4ffdc8c9d0d45107af77217c161f194a137fd5d8bab",
+      "bytes": 8689
     },
     {
       "path": "docs/LPSProcess.md",
@@ -11194,8 +11559,8 @@
     },
     {
       "path": "references.bib",
-      "sha256": "585c6cc15e5b19ae4fe1ffc60860381609b36b6e1396f604af64f8b1d3a5a0e5",
-      "bytes": 9663
+      "sha256": "0da1ca8a98d220652f13b6d7345c5acc351a4fc82160ba8073e8303c7c647eb1",
+      "bytes": 11133
     },
     {
       "path": "regions.toml",
@@ -11208,9 +11573,44 @@
       "bytes": 1377
     },
     {
+      "path": "scripts/ieee754/BridgeCheck.lean",
+      "sha256": "c974ce55bf5edaaea781ce829676b0ff2d20663e080f5ed69aec3f4651579cb0",
+      "bytes": 2564
+    },
+    {
+      "path": "scripts/ieee754/TestFloatCheck.lean",
+      "sha256": "632fe718fce27d2379f176fb77aab42767bf140b866f3078a43b11d05063d3da",
+      "bytes": 2340
+    },
+    {
+      "path": "scripts/ieee754/fma-nan-check.sh",
+      "sha256": "eea0c95ad970ef7ed693ba7cb9551cf11666ed460d70cbd242199a13421ba077",
+      "bytes": 2838
+    },
+    {
+      "path": "scripts/ieee754/testfloat-check.sh",
+      "sha256": "5720a0df6aff4f2d6654ec890de42098721b730d95ad4d89222bff9af15e7a7f",
+      "bytes": 4078
+    },
+    {
+      "path": "scripts/ieee754/x86-hw-check.sh",
+      "sha256": "c5fd7eec3229fc92e8f398c26cef25cf6f6f80409799fddd8adf38b875929a43",
+      "bytes": 2829
+    },
+    {
+      "path": "scripts/ieee754/x86-hw-vectors.c",
+      "sha256": "a7f7a54f16659988446ce821b169868f8c4dd3628964cfe0d892bf3fb7d7c1d4",
+      "bytes": 23609
+    },
+    {
       "path": "scripts/lake-cache.py",
       "sha256": "a46880f6d2ec76cd6436a0bcefd17ee44409b6930a3b84878d43ae3626a03c22",
       "bytes": 11728
+    },
+    {
+      "path": "scripts/riscv/testfloat-vectors.py",
+      "sha256": "8d70e4d4b71c8c27d6bedc49b390e7676a719e8dffb06ef17a89953d043f5a2f",
+      "bytes": 2897
     },
     {
       "path": "scripts/sha256sum/recovered-provenance.json",
