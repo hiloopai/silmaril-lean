@@ -703,6 +703,11 @@
       "bytes": 2887
     },
     {
+      "path": "Silmaril/Compile/Examples/LPS/Obs.lean",
+      "sha256": "385c419f69d77ef78ae732d2ed0d6c918ec9843e58eba4c67c096bb54168d156",
+      "bytes": 16343
+    },
+    {
       "path": "Silmaril/Compile/PassAPI/Category.lean",
       "sha256": "9f84ab73267a9d9141309d15d0b32e809fd7fa523f2835be68d604c7f011facf",
       "bytes": 4915
@@ -10506,6 +10511,51 @@
       "path": "docs/releases/process-lps-v0.1.md",
       "sha256": "b7efd914b9906af29d2f5842d504ba90bf3f95c79c2e6253685a3d797d2593c0",
       "bytes": 1034
+    },
+    {
+      "path": "examples/compilers-on-lps/cat.c",
+      "sha256": "6a314d49034de4df544d7f12f073e8dec9a70429383e8e0224d1c649161556d5",
+      "bytes": 486
+    },
+    {
+      "path": "examples/compilers-on-lps/cp.c",
+      "sha256": "22474ef0c0dc465b755b99d827b098afc873e7c6456f45b3e6074da4242b6108",
+      "bytes": 788
+    },
+    {
+      "path": "examples/compilers-on-lps/crc32.c",
+      "sha256": "8304b938f29bd0cd161108c9ca4b5e8367c4dd04d57c0e836aac4451cf4cf839",
+      "bytes": 970
+    },
+    {
+      "path": "examples/compilers-on-lps/exit42.c",
+      "sha256": "4fee994950756ed891e2da772b8546632cd426af791ee86c2acedde4f97f039e",
+      "bytes": 125
+    },
+    {
+      "path": "examples/compilers-on-lps/hello-core.c",
+      "sha256": "f26e729e235ea4f5d8bd4a78f2c25b4c0c9aa395e12600a66f4c7ff2d96d0989",
+      "bytes": 359
+    },
+    {
+      "path": "examples/compilers-on-lps/hello.c",
+      "sha256": "309a477f9628c58357d45b2e613ef2fe37bc4e274549c42748a2acd874902d87",
+      "bytes": 420
+    },
+    {
+      "path": "examples/compilers-on-lps/malloc.c",
+      "sha256": "623261ab5c075f72d11649cb6e01c2b7363f17dd4f2c9bd9cd339c044d0b5896",
+      "bytes": 831
+    },
+    {
+      "path": "examples/compilers-on-lps/observe.py",
+      "sha256": "ef1ae2332c47d4acf87b6a327a793a7a8e958ec4de4769dfb72fd51ea333892b",
+      "bytes": 6240
+    },
+    {
+      "path": "examples/compilers-on-lps/wc.c",
+      "sha256": "1f516c84e633ee70b33af4090a87fa0552c2c2dbb59f7a5bd038a024f557f84c",
+      "bytes": 1386
     },
     {
       "path": "examples/verification-projects/theorem-dev/lps-probes/README.md",
