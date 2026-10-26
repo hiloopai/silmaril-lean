@@ -1,0 +1,43 @@
+{
+  "schema": "silmaril.problem-check.v1",
+  "problem": "sha256/gnu-sha256sum-x86-64/lps-partial",
+  "solution": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsPartial_close",
+  "module": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close",
+  "kind": "solves",
+  "statement": {
+    "declaration": "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsPartial",
+    "hash": "sha256:a03db84cca5a315146f120fc308b7c88096c0c77db82ad346a5e70ec9b3190f2",
+    "closure_hash": "sha256:df5ab3513ce8a51a5ffdea43823e3c30e030d1532600f06bd2c50e04e175b417"
+  },
+  "type_hash": "sha256:4d56c1e66848a360be4080b67d33652a596f2f811eb86ac6901849ac1d5262af",
+  "direct": true,
+  "defeq": true,
+  "tier": "coverage",
+  "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "allowed_axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "uses_solutions": [
+    "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBridge_solution"
+  ],
+  "deps": [
+    {
+      "problem": "sha256/gnu-sha256sum-x86-64/lps-total",
+      "role": "assume",
+      "via": []
+    }
+  ],
+  "label": "VERIFIED",
+  "verdict": "pass",
+  "failures": [],
+  "toolchain": "4.35.0-rc4",
+  "commit": "56bae0a9578830fd9d2d5949be1711cbab48a740",
+  "dirty": true,
+  "checker": "scripts/problems/check.py@v1"
+}

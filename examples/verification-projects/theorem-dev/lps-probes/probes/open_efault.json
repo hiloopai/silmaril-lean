@@ -1,0 +1,71 @@
+{
+  "probe": "open_efault",
+  "claim": "mutant of open_missing with the unmapped path pointer 0x1000: openat returns -EFAULT and the probe exits 14; the model determines this run, so the original's exit 2 is refuted",
+  "mutantOf": "open_missing",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "openat",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.OpenMissing",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.OpenEfault.checked",
+      "Silmaril.Process.LPS.Probes.OpenEfault.determined",
+      "Silmaril.Process.LPS.Probes.OpenEfault.admits",
+      "Silmaril.Process.LPS.Probes.OpenEfault.not_determined_missing"
+    ]
+  },
+  "sha256": "61d884245245031bc07a821315f4447fe65f3235e83bc55d81db488ff03ec0d2",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 257,
+        "name": "openat",
+        "args": [
+          4294967196,
+          4096,
+          0,
+          0
+        ],
+        "ret": -14
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          14
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 14
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

@@ -76,6 +76,11 @@ longer proofs under `Silmaril/Proofs/`.
 - [Compiler and pass APIs](docs/projects/compilers.md)
 - [Institutions and logics](docs/projects/logic.md): HOL, Metamath, ZF/ZFC,
   arithmetic and Hets-style development graphs
+- [Linux process promotion](docs/projects/process.md): LPS syscall semantics,
+  ELF/musl launch models, x86/RV64 slices and probe provenance
+- [SHA-256 process demos](docs/projects/sha256sum.md): the freestanding
+  `sha256-cli` filter and `sha256sum-min`, a libc-free reimplementation of GNU
+  coreutils 9.4 `sha256sum`, each proved end to end from its executable bytes
 - [Library design](docs/design.md) and [contributing rules](AGENTS.md)
 - [Bibliography and artifact hashes](references.bib)
 

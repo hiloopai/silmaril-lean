@@ -1,0 +1,61 @@
+schema = "silmaril.problem.v1"
+id = "sha256/gnu-sha256sum-x86-64/profile-total"
+family = "sha256"
+title = "GNU sha256sum (sha256sum-min) on the stdin tier as parity ProfileProblem statements"
+granularity = "process"
+tier = "total"
+expect = "solvable"
+# Solved: GnuSha256sum.Close.profileTotal_close (VERIFIED). Linked from lps-total by Parity.profileTotal_link (VERIFIED).
+# The parity format (Problems.Profile): ProfileProblem `Parity.problem oracle message`
+# over `Parity.profile` (lps-total's machine, launch, native table and refusal filter, on the
+# stdin-tier input domain), with the published `haltsMayFail` and `haltsWithinBudget` shapes
+# (exit set [0]) and the extended `haltsMayFailWith [0] (stdoutPrefix (expected message))`,
+# at every flag oracle and message. Implied by lps-total; the converse does not hold (the
+# halting shapes do not say that the complete ideal trace occurs).
+
+[statement]
+decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Parity.profileTotal"
+module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Profile"
+hash = "sha256:520d005fbe9997d5ec1056aec11acb7d4ff040c7fcf462c7c2900c904c4c92f6"
+closure_hash = "sha256:f5a326938460a73ed3d685eeb0aca34d717ad8c25f76b8bd361fd9bf41ef6b21"
+
+[[artifacts]]
+name = "sha256sum-min"
+role = "executable"
+inline = "Silmaril.Process.LPS.Problems.GnuSha256sum.elfBytes"
+sha256 = "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+bytes = 35512
+
+[[artifacts]]
+name = "sha256sum-min-file"
+role = "executable"
+cid = "bafkreibc7jrultc35uepa7knliednccrdaszu42aeryojv7xu6ubvvbic4"   # CIDv1 raw, sha2-256
+sha256 = "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+bytes = 35512
+
+[interface]
+abi = "x86_64-sysv-linux"
+kind = "process"
+imports = [{ symbol = "read" }, { symbol = "write" }, { symbol = "close" }, { symbol = "exit_group" }]
+exports = [{ symbol = "_start" }]
+
+[semantics]
+machine = { decl = "Silmaril.Process.LPS.Machines.x86WithFlagOracle8", note = "X86.Ext8 (X86.Ext plus 8-bit ALU forms) decoder/executor; undefined flags at syscall chosen by an oracle (quantified)" }
+os = { decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Parity.profile", note = "StatementProfile: X86Launch.init, NativeX86.extendedSyscallSpec, NativeX86.defaultRefusalFilter per reading, stdin-tier input domain; shapes of Problems.Profile" }
+spec = { decl = "Silmaril.Apps.Sha256sum.sha256sum", note = "GNU coreutils 9.4 sha256sum; stdin tier: (sha256sum w).stdout = hex(SHA-256(stdin)) ++ \"  -\\n\", status 0" }
+
+[[deps]]
+problem = "sha256/gnu-sha256sum-x86-64/lps-total"
+role = "assume"
+hash = "sha256:a0ac5cbc89b387b1c2a89a50f5c56cd187c7a24a15ab358fd61d87196533af14"
+
+[trust]
+policy = "standard"
+
+[solutions]
+modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Profile", "Silmaril.Process.LPS.Problems.GnuSha256sum.Close"]
+
+[provenance]
+authors = ["Silmaril contributors"]
+created = "2026-10-25"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS translation; sha256 filter end to end; parity Problems.Profile"

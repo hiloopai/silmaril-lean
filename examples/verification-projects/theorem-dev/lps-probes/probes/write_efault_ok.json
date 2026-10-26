@@ -1,0 +1,69 @@
+{
+  "probe": "write_efault_ok",
+  "claim": "mutant of write_efault (buffer 0x10 -> the message): Linux writes hello\\n and exits 250, so the original's determined claim is false",
+  "mutantOf": "write_efault",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.WriteEfault",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.WriteEfaultOk.checked",
+      "Silmaril.Process.LPS.Probes.WriteEfaultOk.admits",
+      "Silmaril.Process.LPS.Probes.WriteEfaultOk.not_determined_original"
+    ]
+  },
+  "sha256": "486091b01da2b37442cfb0808bbbcfdaeed3e1931a4e788377477b052dfd5319",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194461,
+          6
+        ],
+        "ret": 6
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          18446744073709551610
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68656c6c6f0a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 250
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

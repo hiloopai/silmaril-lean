@@ -1,0 +1,51 @@
+{
+  "probe": "lite_echo_nonl",
+  "claim": "mutant of lite_echo: drops the trailing newline",
+  "mutantOf": "lite_echo",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.EchoCat",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.echo_nonl_recorded",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.Registry.echoMutantNonl"
+    ]
+  },
+  "sha256": "34de1da033ad51b5b1c44ace0e1ae5f1df2d528a3ba98a7d4a9169c2881dd786",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "native",
+    "kernel": "6.8.0-139-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "native"
+    ]
+  }
+}
