@@ -10379,8 +10379,8 @@
     },
     {
       "path": "docs/Ieee754Std.md",
-      "sha256": "9d443820f2bac804c2651652db56cd7d42a51426bbad5f8e7784fc9076fd1803",
-      "bytes": 15001
+      "sha256": "fcd0e2f0fa56f03d7606a758797bcf4885e529b97cbc40ca8e24298c83c4ac33",
+      "bytes": 8635
     },
     {
       "path": "docs/LPSProcess.md",
@@ -10399,8 +10399,8 @@
     },
     {
       "path": "docs/LinuxProcess.md",
-      "sha256": "5f61aa2cb0359e3088491913ef732dc483c0c443f386b1c4e079d936ce0f1518",
-      "bytes": 3643
+      "sha256": "224da3d1d4b81899affe61b9856a2f8c42d31af4c1caaebf541bc5d496ac8a49",
+      "bytes": 3068
     },
     {
       "path": "docs/RiscVLPS.md",
@@ -10509,8 +10509,8 @@
     },
     {
       "path": "docs/releases/process-lps-v0.1.md",
-      "sha256": "b7efd914b9906af29d2f5842d504ba90bf3f95c79c2e6253685a3d797d2593c0",
-      "bytes": 1034
+      "sha256": "ce19bc1969e0fda9f682810a20eb1aa556e00caa6ced2b5c8f3b46d2fc36d154",
+      "bytes": 969
     },
     {
       "path": "examples/compilers-on-lps/cat.c",
