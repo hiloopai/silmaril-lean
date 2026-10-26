@@ -1,9 +1,5 @@
 # The `Std` IEEE 754-2019 core
 
-Status: this page describes the `Std` modules. They are not yet in this
-repository; today `Silmaril.Numeric.Ieee754.Std` re-exports
-`Silmaril.Numeric.Ieee754.Exact`.
-
 `Silmaril.Numeric.Ieee754.Std` is one IEEE 754-2019 binary floating-point core
 with four parts:
 
@@ -29,6 +25,10 @@ flowchart LR
 
 ## Modules
 
+The headers are `Silmaril.Numeric.Ieee754.Std.Defs` (definitions) and
+`Silmaril.Numeric.Ieee754.Std.Thms` (theorems); the implementation modules
+below keep their names.
+
 | Module | Contents |
 | --- | --- |
 | `Std.Round` | Rounding to a grid of representable numbers (`Grid.RoundMag`), its uniqueness, and the executable `Grid.roundMagQ` (`roundMagQ_spec`). |
@@ -38,7 +38,7 @@ flowchart LR
 | `Std.Encoding`, `Std.EncodingCorrect` | Bit encodings for every format, including the x87 extended classes (pseudo-denormal, unnormal, pseudo-infinity, pseudo-NaN). Non-NaN results are encoded faithfully (`decode_encode_fin`). |
 | `Std.NaN` | NaN rules as a lattice (`NaNSpec`); `runOp_spec_iff`: an ISA's operation is the only output its NaN rule allows. |
 | `Std.Isa`, `Std.Chaos` | ISA profiles; "chaos" variants that allow any value where hardware state is unknown (MXCSR flush bits, x87 encodings). |
-| `Std.CoreBridge`, `Std.WasmBridge` | Proved links to `Float.Model`, `F32`/`F64` and WebAssembly. |
+| `Std.CoreBridge`, `Std.WasmBridge`, `Std.ProfileBridge` | Proved links to `Float.Model`, `F32`/`F64`, WebAssembly and the `Numeric.Float` profiles. |
 | `Std.TestFloat`, `Std.Vectors`, `Std.KernelExamples`, `Std.Bridge`, `Std.BridgeTests` | TestFloat checker, sample vectors, kernel-checked examples and executable cross-checks. |
 
 ## How an operation is specified
