@@ -698,6 +698,11 @@
       "bytes": 13165
     },
     {
+      "path": "Silmaril/Compile/Examples/LPS/Cat.lean",
+      "sha256": "9dea69ccf21bdd43bf93d7779c9026c9860da182db05b2e22a7511952b2d28a2",
+      "bytes": 2887
+    },
+    {
       "path": "Silmaril/Compile/PassAPI/Category.lean",
       "sha256": "9f84ab73267a9d9141309d15d0b32e809fd7fa523f2835be68d604c7f011facf",
       "bytes": 4915
@@ -4026,6 +4031,31 @@
       "path": "Silmaril/Process/LPS/Problems/Basic.lean",
       "sha256": "fd8606198b835b978d28bce2da6e87380c0c4eb77abe094bc57e4cfdefee43df",
       "bytes": 20639
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/CoreutilsLite/EchoCat.lean",
+      "sha256": "f7546a7a1fc6afb4463380e9e2bda932f1544802909f90b37b72174fac764baf",
+      "bytes": 7990
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/CoreutilsLite/Probes.lean",
+      "sha256": "6ce286965521c188310f104788a56d649f85ee5f37adc2d59ebb77bbf14b981b",
+      "bytes": 10083
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/CoreutilsLite/Registry.lean",
+      "sha256": "2d08d30f03a249c5f251de0c9b1ef366d67401ac37c65c5d6d9b14169042622d",
+      "bytes": 5103
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/CoreutilsLite/Spec.lean",
+      "sha256": "94232dbfe7d461693079cb3499e7778826293d546f2d19a9422f736336dfec2f",
+      "bytes": 7834
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/CoreutilsLite/TrueFalse.lean",
+      "sha256": "bb424bed892a6ec73207e7576344e64fa36ce40b83b77045758c4d57d2645c77",
+      "bytes": 10969
     },
     {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Elf.lean",
