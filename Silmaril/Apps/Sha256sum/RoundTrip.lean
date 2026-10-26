@@ -404,8 +404,8 @@ theorem compute_files (P : Bytes) (posix : Bool) (fmt : Format) (fs : Bytes → 
   have hops : operandsOrStdin (files.map Prod.fst) = files.map Prod.fst := by
     simp [operandsOrStdin, hne]
   have hc : fmt.opts.check = false := by cases fmt <;> rfl
-  simp only [sha256sum, World.prog, List.headD_cons, List.tail_cons, scan_compute, validate_fmt,
-    runMode, hc, Bool.false_eq_true, ↓reduceIte, hops]
+  simp only [sha256sum, World.argv0, List.headD_cons, List.tail_cons, scan_compute,
+    validate_fmt, runMode, hc, Bool.false_eq_true, ↓reduceIte, hops]
   rw [computeAll_files _ _ _ files hg]
   simp [finish, computeLine_fmt]
 
@@ -444,8 +444,8 @@ theorem check_after_compute (P : Bytes) (posix posix' : Bool) (fmt : Format)
     cf fmt rest p { stdin := stdin' } {} 1 hg' (by simp)
   have hv : validate checkOpts = none := rfl
   have hck : checkOpts.check = true := rfl
-  simp only [sha256sum, World.prog, List.headD_cons, List.tail_cons, scan_check, hv, runMode, hck,
-    ↓reduceIte, operandsOrStdin, reduceCtorEq, checkAll, checkFile, hcf, decide_false,
+  simp only [sha256sum, World.argv0, List.headD_cons, List.tail_cons, scan_check, hv,
+    runMode, hck, ↓reduceIte, operandsOrStdin, reduceCtorEq, checkAll, checkFile, hcf, decide_false,
     readPath_file _ _ _ hcf, hcs, hlines, e, summary_clean]
   simp [finish, Counters.ok]
 

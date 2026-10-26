@@ -5,15 +5,16 @@ title = "Total correctness of GNU sha256sum over the X86Sys process model on the
 granularity = "process"
 tier = "total"
 expect = "solvable"
-# Open (WIP). Splits into five segments with parametric cut points
+# Solved: GnuSha256sum.Close.sysTotal_close (VERIFIED). Splits into five segments with parametric cut points
 # (SysModel.sysTotalOn_of_segments, VERIFIED): startup, read loop, final, format, exit.
-# Needs the 8-bit ALU forms in X86.Ext (branch x86/alu8-variant).
+# The read loop is VERIFIED (ReadLoop.readLoopSeg; also SysTotal.readLoop + ReadEof.eofStep);
+# Release.sysTotal_of takes the remaining segments (Release.Open) as hypotheses.
 
 [statement]
 decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.sysTotal"
 module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"
 hash = "sha256:49349e46977511f370a3cc9c3989dff676dcbc695c6fc090fff65db6d37ea162"
-closure_hash = "sha256:3fcd39558cf077764ee2a9983561f2e8a2bbf49b1d440863f49b50b21aa6429a"
+closure_hash = "sha256:6a660caf78f2a62a7bd48645d9a749bb96c2059edd313431e5afbe1d16908c13"
 
 [[artifacts]]
 name = "sha256sum-min"
@@ -44,9 +45,9 @@ spec = { decl = "Silmaril.Apps.Sha256sum.sha256sum", note = "GNU coreutils 9.4 s
 policy = "standard"
 
 [solutions]
-modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"]
+modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry", "Silmaril.Process.LPS.Problems.GnuSha256sum.Close"]
 
 [provenance]
 authors = ["Silmaril contributors"]
 created = "2026-10-25"
-source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS #3490/#3492/#3534; sha256 filter e2e #3578"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS translation; sha256 filter end to end"

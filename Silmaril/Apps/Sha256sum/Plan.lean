@@ -22,7 +22,10 @@ standard output full or not) has
   no bad pointer passed to the kernel) and every run on `w` is at most `N w` steps.
 
 `FullDom` excludes only what the kernel itself fixes: `argv` nonempty and NUL-free, the
-empty path and paths of 4096 bytes or more failing as Linux makes them fail. The
+empty path and paths of 4096 bytes or more failing as Linux makes them fail. Every `argv[0]`
+is in the domain: diagnostics use `progName` of it (gnulib `set_program_name`, which strips a
+`/.libs/` directory and an `lt-` prefix) and getopt's messages use it verbatim; before that
+fix `FullGoal` was false at `argv[0] = "./d/.libs/lt-P"` (`libtool_old_stderr_ne`). The
 specification's own exclusions (spec.md §1: C locale, descriptors 0–2 open, default
 `SIGPIPE`, no concurrent file change, no out-of-memory) are built into `Sys.WorldStep` and
 `X86Sys`.

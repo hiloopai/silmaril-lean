@@ -282,7 +282,7 @@ def runMode (w : World) (o : Opts) (ops : List Bytes) : St × Bool :=
   else computeAll w o st (operandsOrStdin ops)
 
 def sha256sum (w : World) : Outcome :=
-  match scan w.prog w.posix w.argv.tail with
+  match scan w.argv0 w.posix w.argv.tail with
   | .help => finish w (helpText w.prog) [] 0
   | .version => finish w versionText [] 0
   | .usage msg => finish w [] (msg ++ tryHelp w.prog) 1

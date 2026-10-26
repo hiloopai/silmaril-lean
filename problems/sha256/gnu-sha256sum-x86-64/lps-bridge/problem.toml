@@ -5,14 +5,16 @@ title = "Every admissible LPS launch of sha256sum-min is simulated by the X86Sys
 granularity = "process"
 tier = "total"
 expect = "solvable"
-# Open (WIP). SysBridge.SimulationObligation; with sys-total gives lps-total
-# (SysBridge.bridge_of_simulation, VERIFIED). Image half proved: NonVacuity.segs_bytes.
+# Solved: Registry.lpsBridge_solution (GnuSha256sum.simulationObligation, VERIFIED): the
+# launch correspondence (Launch.launchObligation), read(0)/write(1)/close/exit_group
+# (ReadWrite, Syscalls, StdRel.syscallObligations) and the instruction level (Instr).
+# With sys-total gives lps-total (Registry.lpsTotal_of_sysTotal).
 
 [statement]
 decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBridge"
 module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"
 hash = "sha256:ee8b958894279f90795e1199065bd12345dfcce0926bd7d63c6642a0ffaae11d"
-closure_hash = "sha256:a4e211805e8e7dc7c016501691e1c292a78773876518c2878f316dbdfbdc8477"
+closure_hash = "sha256:d5eab2d3ddd5ddecd8e536018a4774aa5eb483f8cbffcc7b6c1243ae28e41b2e"
 
 [[artifacts]]
 name = "sha256sum-min"
@@ -48,4 +50,4 @@ modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"]
 [provenance]
 authors = ["Silmaril contributors"]
 created = "2026-10-25"
-source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS #3490/#3492/#3534; sha256 filter e2e #3578"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS translation; sha256 filter end to end"

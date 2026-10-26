@@ -218,7 +218,7 @@ source bytes to the destination, by internal process steps (no system call), and
 theorem copy_runs (r11 : Core → Word) (c : Ctx) (s : XState) (hlv : s.faulted = false)
     (hl : Loaded s.memory base code) (hrip : s.core.rip = base + BitVec.ofNat 64 121)
     (hpre : pre c s) :
-    ∃ t, Silmaril.Machine.Execution.Reaches (tauStep r11) s t ∧ post c t ∧
+    ∃ t, Silmaril.Machine.Execution.Reaches rStep s t ∧ post c t ∧
       t.core.rip = base + BitVec.ofNat 64 145 ∧ Loaded t.memory base code ∧
       t.faulted = false :=
   sound_one (I := Isa.sys r11) listing_valid (vc_all r11 c) s hlv hl hrip hpre

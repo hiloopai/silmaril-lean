@@ -66,7 +66,7 @@ def StdinDom (w : World) : Prop :=
 theorem sha256sum_stdin (P : Bytes) (posix : Bool) (fs : Bytes → ReadResult) (b : Bytes) :
     sha256sum { argv := [P], posix, fs, stdin := .bytes b } =
       { stdout := stdinRecord b, stderr := [], status := 0 } := by
-  simp only [sha256sum, World.prog, List.headD_cons, List.tail_cons]
+  simp only [sha256sum, World.argv0, World.prog, List.headD_cons, List.tail_cons]
   have hs : scan P posix [] = .done {} [] := rfl
   have hv : validate {} = none := rfl
   simp only [hs, hv, runMode, operandsOrStdin, ↓reduceIte, computeAll, computeOne, readPath,

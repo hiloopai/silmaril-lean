@@ -88,7 +88,7 @@ theorem shaped_step {message : List Byte} {fs : FileSystem} {w : Apps.Sha256sum.
     (step : GStep w g es g') (ok' : Ok message g' (h ++ es)) : Shaped fs (h ++ es) := by
   rcases gstep_cases step with ⟨rfl, -⟩ | ⟨c, r, rfl, -⟩ | ⟨n, rfl, exited⟩
   · simpa using shaped
-  · obtain ⟨_, _, _, _, order⟩ := ok
+  · obtain ⟨_, _, _, _, order, _⟩ := ok
     obtain ⟨_, _, readPre', _, _⟩ := ok'
     unfold Shaped at shaped ⊢
     have e1 : [Ev.sys c r].flatMap (evFlat fs) =
@@ -151,7 +151,7 @@ theorem trace_shape {message : List Byte} {fs : FileSystem} {w : Apps.Sha256sum.
 theorem shaped_prefix {message : List Byte} {fs : FileSystem} {g : GS} {h : List Ev}
     (ok : Ok message g h) (shaped : Shaped fs h) :
     h.flatMap (evFlat fs) <+: idealTrace message fs := by
-  obtain ⟨_, _, readPre, outPre, order⟩ := ok
+  obtain ⟨_, _, readPre, outPre, order, _⟩ := ok
   rw [shaped]
   unfold idealTrace
   rcases order with silent | whole

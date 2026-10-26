@@ -339,8 +339,8 @@
     },
     {
       "path": ".process-promotion.json",
-      "sha256": "117f0203a23d403a4779477c57c543002ef15e63315bf789c5255edba6910419",
-      "bytes": 219979
+      "sha256": "40716bcc73d98b2e698b7469e75df74aec4d3553694eb52a1a5cf04eb1804722",
+      "bytes": 255376
     },
     {
       "path": "AGENTS.md",
@@ -359,8 +359,8 @@
     },
     {
       "path": "Makefile",
-      "sha256": "1878d420f719dd6cac751192e59927d5ef96b16ad5f6b1ff98d4ce5e504df6ca",
-      "bytes": 2902
+      "sha256": "c5c9713131ad16ea94bb1175080da3b19bb696a152804ed6e6ef705fd7e8a5b9",
+      "bytes": 2986
     },
     {
       "path": "NOTICES/Binaryen/LICENSE.txt",
@@ -378,9 +378,14 @@
       "bytes": 1062
     },
     {
+      "path": "NOTICES/GPLv3/COPYING",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149
+    },
+    {
       "path": "NOTICES/GPLv3/SHA256SUM-MIN.md",
-      "sha256": "fa4be7a1e46981faae9feda4a6ef58f69d0ecece4e80e687f27136103ace6b52",
-      "bytes": 506
+      "sha256": "1b14d11e53a8ad077c7c0d895ce828d334902b2abc05e81e803378e5687bfb0e",
+      "bytes": 1320
     },
     {
       "path": "NOTICES/LPS/README.md",
@@ -484,8 +489,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "5bb2c45d05227aad51c3e28f3251bd573cb13cb656a704efdea5ea647ac5a6ef",
-      "bytes": 4119
+      "sha256": "345fa435ac3f11ca9a86685136f3066c5496c6ad424b48df4fb356103c7b8526",
+      "bytes": 4226
     },
     {
       "path": "Silmaril.lean",
@@ -494,8 +499,8 @@
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Basic.lean",
-      "sha256": "a6e74f52b0fd388544a30638c6f6d032eeb3386383496a65e586d11a8e6b5361",
-      "bytes": 5707
+      "sha256": "8fa1f5596d6cefd613a2721ec22b6da55b9ed28b327f76d356cb2eb474e99938",
+      "bytes": 6435
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary.lean",
@@ -509,8 +514,8 @@
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Compress.lean",
-      "sha256": "e451b1ea7865efe21ddb8449bee3141f0998826ba4f4ac469b12de422a57210c",
-      "bytes": 23102
+      "sha256": "effd5f2fc2599116fc399f16da93a5d7fb4189a30b9844bc9de888aac4b491c4",
+      "bytes": 23104
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Code.lean",
@@ -524,18 +529,53 @@
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Copy.lean",
-      "sha256": "c2051ce2194771a03e7ffcc761f46b532b88db436b9195cfd698a406fa4d2d3b",
-      "bytes": 11296
+      "sha256": "f2639f2ae4e372a7fefbea3f7bf65ce929cb74a5197cca8422dbbea0e35146ce",
+      "bytes": 11288
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Facts.lean",
+      "sha256": "77a04e7beb0f1d6757d01010be7ef7f5aca3ef2354518123859b1523fb12bcc8",
+      "bytes": 10223
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Final.lean",
+      "sha256": "c7a345a476a00779cd3c06175df994f1c08c288b38473ef1c6205877d597bf3c",
+      "bytes": 67504
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/FinalCode.lean",
+      "sha256": "fab2d87ded19f0c6ee77316d21873ad162e7414579ce344f5709e12782781e7f",
+      "bytes": 13416
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/FinalSpec.lean",
+      "sha256": "e7f99b3acba4e30f793d94adbbeab0041fde50fbd42a594e0e335728485efb7d",
+      "bytes": 6502
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Prologue.lean",
+      "sha256": "ac3bd12b75d6c251e5b662d565988f392ceaefb5c1568aa5934fdbf1989dce1e",
+      "bytes": 7792
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/ReadCall.lean",
+      "sha256": "2ab0335f265abdaabb547f196e29ca74e678e28420511219b7c6b2e7447811c8",
+      "bytes": 17905
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Spec.lean",
+      "sha256": "19cc3528ae18f1ee1684b7bd26fdce2b79c8071fa7951010384c85d74c0e5775",
+      "bytes": 10352
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Update.lean",
-      "sha256": "4e9d930839e9ef1967020807104e036cec794f88549d21526d46949ca43b3328",
-      "bytes": 8220
+      "sha256": "9051ff377248c44a55be5f5dfda35e4a8627bb0b918b8b0cf35a7480062de119",
+      "bytes": 50597
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Ext8Cover.lean",
-      "sha256": "8e6a47aa5204453d2db4ed512cca5199a2735c218660d18c2f20ad0186973157",
-      "bytes": 5712
+      "sha256": "257312fa25169b605e5f99c63704063ff6cdcadee236a848fde27e6c13514763",
+      "bytes": 5402
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Image.lean",
@@ -558,6 +598,151 @@
       "bytes": 7498
     },
     {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Sc3.lean",
+      "sha256": "5ef8cabc63317cb571641ca117c157d4559b4396cf2a6dc7e79cd198a65d5972",
+      "bytes": 2229
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/Cmain.lean",
+      "sha256": "aa4f4634fcd123616f6eaee6789fa091cd164f7792da0930840a62417e184931",
+      "bytes": 8221
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/CmainBase.lean",
+      "sha256": "f6d552ec938328c5cae58f8cdb13b26d353e003bce8e3d71fff0019c24646f70",
+      "bytes": 28496
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/CmainCut.lean",
+      "sha256": "6ead744c6ddd05a8130f2b74106d6e8a519653efaa601e3e1e2ad08d52ca7b72",
+      "bytes": 1942
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/CmainLoop.lean",
+      "sha256": "45e1dab07ce4258eb809d6e7569896012a8dfc9c38234b0202a35d8b44eb95d9",
+      "bytes": 15072
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/CmainTail.lean",
+      "sha256": "a4c3d0b9ee20006896eecf3c51360c7db9786640d1a9bc7dcee399bb44250c34",
+      "bytes": 28127
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/Code.lean",
+      "sha256": "b674591317230b109e2eda5bd5fcd8fd38b39892a9c4ec8ddcdb5960c4c27634",
+      "bytes": 31041
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/Cuts.lean",
+      "sha256": "5df7f872320e04cda63370573c3a204890da134f9fe4fe3b3f1f5099409165f5",
+      "bytes": 10722
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/Entry.lean",
+      "sha256": "a566e7eee8b776449da6b78f09026d56c5d0f7d538536a368ae27fca75f7dd85",
+      "bytes": 3405
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/Facts.lean",
+      "sha256": "891cb3c76de117a46317d1037bfbf969ab60f05cfe8a5513b9de70cb773242dd",
+      "bytes": 26121
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/Prologue.lean",
+      "sha256": "b36f99417a92071d38c978326e82fa8ed0dfd727f15d676b707020a3d6776f8d",
+      "bytes": 9060
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/PrologueCMain.lean",
+      "sha256": "b965fc1ef78e53ec87c649e5eb810208462426c34f840a9b0f1425fd72ff9093",
+      "bytes": 8373
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/PrologueImage.lean",
+      "sha256": "e3e3873cf0e4536ce727508a1b7e4ef97d82c2b2a3117ba5582433e88b8857ed",
+      "bytes": 5917
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/PrologueRun.lean",
+      "sha256": "8b7189594e37e2bf09e1745137e7a67387ef72df017bd8cb44837672f632b304",
+      "bytes": 9982
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetName.lean",
+      "sha256": "16f0c615144e1372f451e47b6b9e912c41ac3eb97aa775bfeaefad5d9d913b41",
+      "bytes": 10298
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameCmp.lean",
+      "sha256": "7b512e64127a9bf35df15f335252c50ed724067faf4a3a714681d742486efcf3",
+      "bytes": 3784
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameJoin.lean",
+      "sha256": "3c44434a4c41c666b323d54cc3f3233a77a6d96d416bb26fd37574273a3cd683",
+      "bytes": 1300
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibs.lean",
+      "sha256": "23f9051a7cac0e5aeb1f9912f7640d910ae019bd3515ee23211abafd2d2e1714",
+      "bytes": 3566
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK0.lean",
+      "sha256": "088b72acd5ee9bef56875821ab0d71d03a091e9208b873ee507ec9680cb98e82",
+      "bytes": 3543
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK1.lean",
+      "sha256": "6374e79fdb5cb3f0a09e39bdc42d8e03f6ca9b3634686509f47db806efa5cd28",
+      "bytes": 3543
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK2.lean",
+      "sha256": "72022dadcd290e7387315ed4f2283ea65bf541057ec289bc83b85c10446caadc",
+      "bytes": 3528
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK3.lean",
+      "sha256": "87acc32fd4d09617a3e0bd5f5adf38fb46c8c398248da1523b18c84815b319e5",
+      "bytes": 3544
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK4.lean",
+      "sha256": "f277166520ca285d74c25eadf5983fc40aff5976beda74a34f9ff88d42e14e7b",
+      "bytes": 3541
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK5.lean",
+      "sha256": "a1e3a38840e8a34a20afc25724938deb9ebd27cfc5d186bcff93178f9214a9a8",
+      "bytes": 3549
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLibsK6.lean",
+      "sha256": "bf63f01aa10e530fd7bd4e9b507ea1f84616a7b7ae02c01f7b8910618431c3b6",
+      "bytes": 3588
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameLt.lean",
+      "sha256": "6837e52e4d30a09434b5a143fd3affc479f4c9d84842d1ab0c0ec60ddeb3db3c",
+      "bytes": 9017
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameRuns.lean",
+      "sha256": "7ebef23c087a210afded9dca814a733a25049e7bae0d9f310d5a8a002fe19713",
+      "bytes": 10329
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameSlash.lean",
+      "sha256": "675b3b646be86ff80aaf8d1d91981727375b3889a1f534581348f7a6e07e70e9",
+      "bytes": 6814
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Startup/SetNameSlashGlue.lean",
+      "sha256": "e7b1f8cc22d13fe9ed0de2edb0b8eb1ec690d11b91c576b3224d6d5e20b04a4f",
+      "bytes": 3728
+    },
+    {
       "path": "Silmaril/Apps/Sha256sum/CheckLine.lean",
       "sha256": "e5ccc930bf3220ee7550f3c5375a6e0b228e8653fbafffebfade7fba88bebf8b",
       "bytes": 5743
@@ -573,14 +758,84 @@
       "bytes": 2902
     },
     {
+      "path": "Silmaril/Apps/Sha256sum/IOLayer/Read.lean",
+      "sha256": "aa504868676f670454c5459fade7ebf220717769e02b9bc0c0c66568f5e5620f",
+      "bytes": 9663
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/IOLayer/Sim.lean",
+      "sha256": "7a5596f59400966e39d404ee44ea681a385b80c899d1cc2c3cad6ea7365b96bb",
+      "bytes": 3531
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/IOLayer/Stdin.lean",
+      "sha256": "7c2cf4ad3f09ee60dc9d15a939d618e9226e1c9a3762a21f69e2b0f13d179ba5",
+      "bytes": 12808
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/IOLayer/Write.lean",
+      "sha256": "1372da21fbc738743169a54aed2994306922b1b332b15be91b31eed811cdbb4a",
+      "bytes": 32336
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/IOLayer/X86Glue.lean",
+      "sha256": "28ec20a16a798e2af20847e40dd984854887fe2168738350e2e5dfcd8a5e7d97",
+      "bytes": 4199
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Check.lean",
+      "sha256": "cd3ee405cfa600eb65fe6c1189a93eebde35e1a692ebae4fc7620914940a8957",
+      "bytes": 6127
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Demo.lean",
+      "sha256": "1d9728b9cf1f03ae0bbc92614a1fd655c31b1fdefaed86a302137b5b16a48348",
+      "bytes": 1531
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Fetch.lean",
+      "sha256": "5ea964601b81c553a84c1abb2d23704d05e6d60f11df317bd1424aca7c03aed5",
+      "bytes": 6908
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Listing.lean",
+      "sha256": "dbde22eecb83b5dd987006c4c3b6bf3396d797019ed6323018eca9dfac556f5b",
+      "bytes": 240761
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Mem.lean",
+      "sha256": "f5e05a3480aeaf0d7ac91604cb0d95e7ae14c2b2db0a988010bd63821f10754e",
+      "bytes": 1551
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Ro.lean",
+      "sha256": "7362b4acc9e1656a65312b797f7fd764d15e09001434d557ef4ca7e122fb8fe5",
+      "bytes": 8275
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Sim.lean",
+      "sha256": "35f9872525e20c45c794aa64d5bd89a6e9e594075ff85c7c85ccd7854a41892d",
+      "bytes": 13299
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Tactic.lean",
+      "sha256": "f6f5cd3c907758c612ceab6bf5430a46137f62c297c41b771c741c68ed88dd98",
+      "bytes": 9307
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Lift/Wp8.lean",
+      "sha256": "7c695f207abfdc353b6a216421c76bf1cabdebe9d1c1f9f7e7e9e61afb18bc4f",
+      "bytes": 6500
+    },
+    {
       "path": "Silmaril/Apps/Sha256sum/Options.lean",
       "sha256": "302405393aa2b4b1c6f5d8c66fe2592adf05d85cb99316aa0d98ef3b4bac4921",
       "bytes": 7108
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Plan.lean",
-      "sha256": "3bd1c0d1735ce4f25b5e30fc33f3e8354ebcd88dfbef36e894131ace698cef7d",
-      "bytes": 7391
+      "sha256": "a5d631cf0e5b0b69819af121946b6310ca371ca7a1c0567727fb79017ad757cc",
+      "bytes": 7677
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Process.lean",
@@ -594,28 +849,118 @@
     },
     {
       "path": "Silmaril/Apps/Sha256sum/README.md",
-      "sha256": "276491584b17639b48b6b88c1879c25ea96cba287f8289c06f11ae24bf72a430",
-      "bytes": 401
+      "sha256": "5ebe4601a4346bf9e87d20e44d985b85173045fdc4520f67b64c4fdb1d0a635d",
+      "bytes": 563
     },
     {
       "path": "Silmaril/Apps/Sha256sum/RoundTrip.lean",
-      "sha256": "b1b489c0c42fd2b6878a5457d9e34aa12bb02f14c303d27cb4777c65188b289c",
-      "bytes": 21780
+      "sha256": "91c143adfc1ad6346a288f5425ed3ea75589c4e8235256a02493f78020c8440c",
+      "bytes": 21782
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Run.lean",
-      "sha256": "02a2f355f8ced349f6deadea062baa15b0a8a30ee66dbcabe0da2e1e29b10157",
-      "bytes": 12752
+      "sha256": "9cd8f00699659c5d65e3133dea2991c3a3fdfc68118d621e0c4c89c2f697d9e1",
+      "bytes": 12753
     },
     {
       "path": "Silmaril/Apps/Sha256sum/StdinRef.lean",
-      "sha256": "96c25d9d47c28ae179e93e513d0fa2cf91d941614fbdb9a7ccbf17f279cad5c7",
-      "bytes": 13949
+      "sha256": "a4b1bb248fcb3cd1f7cbcfedafa6e394e4514ba09424c1f61048af41c2f8e4a2",
+      "bytes": 13962
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/FmtPrefix.lean",
+      "sha256": "c19edf6c5df6a9698d9349f3334d657e3d438301f9e8fc918eca1731e8fbb961",
+      "bytes": 9557
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/FormatSuffix.lean",
+      "sha256": "71aec6c4941bbcd93103b617590037093602402b75bfa5f54a41f0976be7a338",
+      "bytes": 55785
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/HexHi.lean",
+      "sha256": "a3d60baa72da6afc84678951710b94fd4175536ec92aa57d89c93c149e3be3f8",
+      "bytes": 11656
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/HexLo.lean",
+      "sha256": "9bb35f36eda485a1eac282dc5f479ac01733f2c471284e8f028cdb64d0ff1a1e",
+      "bytes": 13668
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/HexLoop.lean",
+      "sha256": "f00038fe109906c7d24c9982846154824096ee8172c8db470408525ffe76cc2f",
+      "bytes": 33055
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/HexSeg.lean",
+      "sha256": "ed3dd3b8c40d7adb5205919d66b03a7bfb538f46a1331597a8fe253a1b7e9e46",
+      "bytes": 4997
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/LeadsX.lean",
+      "sha256": "97e1e8b3a3ab26179db5a5d850b2d4662e152ca2d18830999b164d5ecadf6fd7",
+      "bytes": 9827
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/OutFlush.lean",
+      "sha256": "25b4f5d00d82193ace009611d6357b882191ce6cc9b1a8bde2f9d39b04e01518",
+      "bytes": 22901
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/Putc.lean",
+      "sha256": "67af8f52dcda14912f588168edf33386452126b2e5b613af52675d5fa9ac35e7",
+      "bytes": 3721
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/PutcSite.lean",
+      "sha256": "a3ec3a78dc5ffeb1c8cd7ac6fbc6bcfef42743961139df57405589216fce7daf",
+      "bytes": 7160
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/Run.lean",
+      "sha256": "389b7a73701783d9caf806e851e474df7895eeaac0d11fade4310d2562216635",
+      "bytes": 17364
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/Sc3.lean",
+      "sha256": "df0dfd4dcd8060b6c223648ee79177acfc325ea3be9a9369b15e591eeadd6d86",
+      "bytes": 4628
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/Tactic.lean",
+      "sha256": "10f58f529a3c0c3d10d633dc57dae2491daa5c6ba759477cda2bcff89399ccbf",
+      "bytes": 10602
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Stdout/Tail.lean",
+      "sha256": "c020dc5fa4a3ce5ac73e108e3f3f17afe59f2191eb0424006d429633fb789ccb",
+      "bytes": 14549
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/TV/Couple.lean",
+      "sha256": "59134874942a6fda02311a0c87d8e6ae9d363613f0a6b88227d2b6fb6cea9699",
+      "bytes": 8520
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/TV/FormatIR.lean",
+      "sha256": "ccb8582db02ddd27c289d57c1f213eeda0eff7b9f815bc6b565276c967840f1c",
+      "bytes": 9480
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/TV/HexBody.lean",
+      "sha256": "da443ea07907ce90bd8677716e7a721ea54ffec9ee18b8f0962573ba1f323ed1",
+      "bytes": 10660
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/TV/Putc.lean",
+      "sha256": "8de56a03ef124acef060384379fa374165471f6f401f3d82acac4c1fb49028ed",
+      "bytes": 9130
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Theorems.lean",
-      "sha256": "0dfb1cb1ac5392a74f568bf6fca971d499c71f21851349e8480c8d039c57a171",
-      "bytes": 4586
+      "sha256": "ee2da4ce8be85ca2d42e44f504395fffee6a0ec90106210bba80a27daf8b0fc1",
+      "bytes": 7863
     },
     {
       "path": "Silmaril/Apps/Sha256sum/X86Sys.lean",
@@ -624,8 +969,13 @@
     },
     {
       "path": "Silmaril/Apps/Sha256sum/X86Sys/SegVC.lean",
-      "sha256": "39cba2ae4c6671926c5d16f18313265dad1ef17b17fa33158253971f41690865",
-      "bytes": 7382
+      "sha256": "50241b899d11d44bf8db462fa03d76cef8845d0a3ec3598fe0b4df9770adb0d1",
+      "bytes": 11764
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/X86Sys/SegVC8.lean",
+      "sha256": "888b60e6d27134faaba1f4d3447c94d3811f2d1d42dacb8811a2ab6d898fe983",
+      "bytes": 9579
     },
     {
       "path": "Silmaril/Apps/Sha256sum/X86Sys/Silent.lean",
@@ -4063,9 +4413,39 @@
       "bytes": 10969
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Backing8.lean",
+      "sha256": "fb65950f3cab5185f3b4419ec2f5366a7c11bef55d564e0e437ca319d8ecf964",
+      "bytes": 3406
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Close.lean",
+      "sha256": "6bc6c43eb4efd1e1796645fdd23ce90478a7328a0d921a5d4d1d2a9aa45167df",
+      "bytes": 4678
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/DigestFinal.lean",
+      "sha256": "1899c30c935e297bd009308df16d34f4ca894cb93ece7caf81a8a6def84a3e6d",
+      "bytes": 2579
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/DigestLoop.lean",
+      "sha256": "64f06331b0ef70188c4c67f82b2a67855a070ee782cbcba4da72516f25c3ed9f",
+      "bytes": 3456
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Elf.lean",
       "sha256": "b12eb0355e6c8eb65464ffdaf6f702082307d76f4457b10f89dc3b82047fa083",
       "bytes": 221172
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Fetchable.lean",
+      "sha256": "9acdca7a973ccd86d0ec6f7407c993b3f0cca06ffabd9f0589804b3af02aec29",
+      "bytes": 5674
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/FormatGlue.lean",
+      "sha256": "b8920d77acf5fb51277fdcdffadd9b7486068816f23db2df8c33f98edc508375",
+      "bytes": 7068
     },
     {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Instr.lean",
@@ -4073,14 +4453,74 @@
       "bytes": 19567
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Launch.lean",
+      "sha256": "11abb511a01aaa8ea98bfa9e1afd37ee2f740b832f887d72bb428cc1f39bd6ed",
+      "bytes": 35721
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/NonVacuity.lean",
       "sha256": "0db9079dd14b5359f4bf8bdf0e6f3cb6c64ad6476fd0fa71eff723489497363b",
       "bytes": 3871
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Profile.lean",
+      "sha256": "ee49ee500aa21d631292fffbef1eeb993e43c2c3fbb69e1f276d8117f2034020",
+      "bytes": 13531
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Prologue.lean",
+      "sha256": "efbfa47c2bf83a2f31d8c9b550e06b81d492650cedd2f812b6c32faac7b9c980",
+      "bytes": 7217
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/README.md",
+      "sha256": "4525076a4a06e10ab88dfbfca2bdc30e6ec92008e85e4b0f2b41401a67b3fe4a",
+      "bytes": 318
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/ReadEof.lean",
+      "sha256": "563457347cf357980617de51673e356f2731f10c9446edcda1941a2fec84b6d7",
+      "bytes": 3993
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/ReadLoop.lean",
+      "sha256": "253c97b9bcf5477c3a6a7dec18e76735c262be6934592bb06070232be5316995",
+      "bytes": 18456
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/ReadWrite.lean",
+      "sha256": "f56c43acf40afdad42191d23a904c74115b04385c141d0760613a5d79086f98d",
+      "bytes": 34412
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Registry.lean",
-      "sha256": "0f6f4f2418b41555b6d2c3e0823e5a3a88dc8034459ba7efa5ac4e74c62bea38",
-      "bytes": 7085
+      "sha256": "8cc0b07fc1deb066c14f917b249c42b0f34aa8e4904c324c68058e501162331e",
+      "bytes": 8298
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Release.lean",
+      "sha256": "e01edd91eae8aae2cdfd599428cb6c12681668b54a3d33d27407eebc3ebb9cc6",
+      "bytes": 4993
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Silent.lean",
+      "sha256": "94213f7cbad12132b2aeea9544cd236f443007673a7fb68165c83be29714b62c",
+      "bytes": 10534
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/StartEntry.lean",
+      "sha256": "092c170a44a0ca0213750a8f2b72b9c21019defce247a87eda859743fe56282f",
+      "bytes": 7463
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Startup.lean",
+      "sha256": "52a198256f2cf1527e35468fcc90e5e617f670de3d464ecad0452806a6e6d05f",
+      "bytes": 3773
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/StartupCmain.lean",
+      "sha256": "d54d03d95f5100c36b42d50d2c9bf42b66788f265cb87a586602fe3b12530f26",
+      "bytes": 2309
     },
     {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Statement.lean",
@@ -4088,14 +4528,39 @@
       "bytes": 12223
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/StdRel.lean",
+      "sha256": "929c41fb8a170afd06bf350ff4a0c68b53f694114922bd91ec1de7be4e8a0aa3",
+      "bytes": 15644
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/SysBridge.lean",
-      "sha256": "2e292591d1371f51854e1825155ff282997364489d3a83c93197216d77027ee7",
-      "bytes": 12691
+      "sha256": "1a8b5b8568aac0cbf842ed1a01ef35d96ac2f708f15f6ab9886ca9e011bc6049",
+      "bytes": 12697
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/SysGlue.lean",
+      "sha256": "1195b81361ae22ed8c8272e121b7a368502d0a3aecb6d8da5eefb1d221a848a3",
+      "bytes": 4430
     },
     {
       "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/SysModel.lean",
-      "sha256": "2ac6e5a892c1867393f348e3a0ccf282d381a0027ec3060c6b535f082e05c5c2",
-      "bytes": 12092
+      "sha256": "2d3d160fe2d4ecdb560661399d52c6a1394b3b852e0d81aca75fdf33429ef7f5",
+      "bytes": 16974
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/SysTotal.lean",
+      "sha256": "abc3379f529aa8f251627e5e81cfdc5c830ddce91fb28ce52d3a945b951b148a",
+      "bytes": 13985
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Syscalls.lean",
+      "sha256": "81484410748049756482ce52fbaec734371c11bd9f8be02831cbab096c1aab5e",
+      "bytes": 22706
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Wire.lean",
+      "sha256": "9df1930ea40b51b181aa4241a9c875d64d95c1c7a93fa37e88f78c27e60de6a4",
+      "bytes": 33803
     },
     {
       "path": "Silmaril/Process/LPS/Problems/NativeX86.lean",
@@ -4181,6 +4646,11 @@
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/Leads.lean",
       "sha256": "616de74517e3582b936fc66ae93e3e706b9f0a8984501c7d499c0ad974362109",
       "bytes": 4216
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/Sha256Cli/LeadsBounded.lean",
+      "sha256": "66110d26ad6e0c932e4a0b3be1670391922b415a685cd8db86c817793f92ffbe",
+      "bytes": 4061
     },
     {
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/LoopSegment.lean",
@@ -4924,13 +5394,13 @@
     },
     {
       "path": "Silmaril/Process/Sha256/Defs.lean",
-      "sha256": "3d434f7ac4cf80b7d66b64e980554eb94a81c750085b73ee3f0a80f144987df3",
-      "bytes": 326
+      "sha256": "a884a0ca0b51d0d1046c6b715ae4a8a0cc58478da199a9378a0f1235c10a3e95",
+      "bytes": 555
     },
     {
       "path": "Silmaril/Process/Sha256/Thms.lean",
-      "sha256": "601eca6cd7680854e2e7348690bcbaa8c3a264fdc2e577a5a97d0b74c34082dc",
-      "bytes": 243
+      "sha256": "f2fdff822edc1c15f5594695aa98baca00939cce60e0195d635c24d2b05456f1",
+      "bytes": 240
     },
     {
       "path": "Silmaril/Process/Shapes/Defs.lean",
@@ -4979,8 +5449,8 @@
     },
     {
       "path": "Silmaril/Process/Thms.lean",
-      "sha256": "100059d163c3db9af6c561a6532ca9a34229a67ef830fd8f9a71e84e4b7ce76b",
-      "bytes": 539
+      "sha256": "1c82bde1f0f79bf7420996cc34f58ccb5ab397e0b1c5793106777f72c7dd8e30",
+      "bytes": 2141
     },
     {
       "path": "Silmaril/Process/X86/Defs.lean",
@@ -10084,8 +10554,13 @@
     },
     {
       "path": "Silmaril/X86/Ext8/Basic.lean",
-      "sha256": "e3e4137ccf62107d3cf3eab0ed36242076de5e21da836c5c433ed1d748fa7423",
-      "bytes": 19261
+      "sha256": "e9370e5982f85fe96e077fac4b8b35a5874598090dc5a49cab7b6f8e6e5d098d",
+      "bytes": 21610
+    },
+    {
+      "path": "Silmaril/X86/Ext8/Lemmas.lean",
+      "sha256": "93ea785c20e0529b81bfb2590b2b4c000750066b060166da14964a507ddd0e10",
+      "bytes": 4019
     },
     {
       "path": "Silmaril/X86/Features/Embed.lean",
@@ -10219,8 +10694,13 @@
     },
     {
       "path": "Silmaril/X86/SegVC.lean",
-      "sha256": "92373dea47b64284245a51a47408000e42aae1277b6d4f93067980c6c93ebf9d",
-      "bytes": 20814
+      "sha256": "d7c9b6ab1004fe41a0bce26f3f37484e3290d6c97a7ab4542bd745fe15acf40d",
+      "bytes": 21286
+    },
+    {
+      "path": "Silmaril/X86/SegVC/Ext8.lean",
+      "sha256": "36e96ca199b11127c733ffc262dc1460cc0f2bf966049844e54a5f953dcb6fc8",
+      "bytes": 5696
     },
     {
       "path": "Silmaril/X86/SegVC/Mem.lean",
@@ -10228,9 +10708,14 @@
       "bytes": 2569
     },
     {
+      "path": "Silmaril/X86/SegVC/Mono.lean",
+      "sha256": "8308205ec0b148b74df6971cca6e3bf7a9e77c19efb34519dd728e99ac851fb6",
+      "bytes": 2575
+    },
+    {
       "path": "Silmaril/X86/SegVC/Tactic.lean",
-      "sha256": "226c80019dd8774caec164748bf6b8e615b959d787f6cead7abd7e37e0a3a6a8",
-      "bytes": 13586
+      "sha256": "935c35cafbf7031abc2094ea7da717638da048d289f26fd9b1bb5c965f7bc530",
+      "bytes": 15135
     },
     {
       "path": "Silmaril/X86/Semantics.lean",
@@ -10241,6 +10726,21 @@
       "path": "Silmaril/X86/Stack.lean",
       "sha256": "bb12f5ef67905c7691400c812ddd6be001e5ca13257395e2b49ca77705417e90",
       "bytes": 29044
+    },
+    {
+      "path": "Silmaril/X86/Stencils/HexLoop.lean",
+      "sha256": "94fa6805f488cd48a6308ce5c1052d1830b856884a726c7d1f95b97119c0b7f1",
+      "bytes": 8084
+    },
+    {
+      "path": "Silmaril/X86/TVIR/Core.lean",
+      "sha256": "7e25d7b7811fb7c65e6c0f42660b6a28d6e20faa0ba831bb5260b1a737c14f90",
+      "bytes": 15344
+    },
+    {
+      "path": "Silmaril/X86/TVIR/Flags.lean",
+      "sha256": "f35a051cec71c2501ddec8b955ebd7ec2b8ea699d4acde64a8b7e34da809b5ce",
+      "bytes": 4856
     },
     {
       "path": "apps/sha256-cli/README.md",
@@ -10429,7 +10929,7 @@
     },
     {
       "path": "docs/facts.json",
-      "sha256": "931b145c6cd095dc25017210d7b2c5fc5c1e4e8b7e7c97e6171b1fa4c0693c41",
+      "sha256": "0a1a774b1632a765b4a108d6a0f5e638a7d5053ea182acd32c2b330b5e26805a",
       "bytes": 661
     },
     {
@@ -10474,13 +10974,13 @@
     },
     {
       "path": "docs/projects/process.md",
-      "sha256": "4c592997fbb1052eb262ce22c102d07adff1cef7c149afd28bb091c6218bc52b",
-      "bytes": 1051
+      "sha256": "24113c83690deff6943a0f7920617adc8c5b57c6b81f53c23145a8ff273e357d",
+      "bytes": 1084
     },
     {
       "path": "docs/projects/sha256sum.md",
-      "sha256": "1218fc9ef80dbaf0a978cf036056c75ea9409396061ea28e1eb5a46b93f56c3f",
-      "bytes": 977
+      "sha256": "a7a9da6fe6d79c9ef75fc6dc6e7a3575ac338b64834b67c4cd85d3ca64299011",
+      "bytes": 4975
     },
     {
       "path": "docs/projects/wasm-benchmarks.md",
@@ -10509,8 +11009,8 @@
     },
     {
       "path": "docs/releases/process-lps-v0.1.md",
-      "sha256": "8e9aca9a40b79256c49b2a33b016bca1708c7f46be8e557889d92e8b1554e139",
-      "bytes": 954
+      "sha256": "85029f56b607d9b0d59b5f569483b4184ca546c353ee6bbf4e6a44522f97b9e3",
+      "bytes": 1089
     },
     {
       "path": "examples/compilers-on-lps/cat.c",
@@ -11163,34 +11663,74 @@
       "bytes": 448
     },
     {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/agree-sha256-cli/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Close.agree_close.json",
+      "sha256": "b4eb5d89edc28171d6e76cef59dcca9f8a201b76db0084e71ced1fce7145dcb0",
+      "bytes": 1558
+    },
+    {
       "path": "problems/sha256/gnu-sha256sum-x86-64/agree-sha256-cli/problem.toml",
-      "sha256": "26cb43af12a57986ca37789de234c20e0f82c5874f5c7a367e9f33f2c86bed7d",
-      "bytes": 2576
+      "sha256": "1396e770ea5b22a097b4ebc479cbd0486be4a5900fe488c9c72a0872626dbbe8",
+      "bytes": 2654
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-bounded-1024/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsBounded_close.json",
+      "sha256": "7f60b30e62f0a7546e1b89f153d23aadeea3962a720b54445dce92cc0d2baee8",
+      "bytes": 1304
     },
     {
       "path": "problems/sha256/gnu-sha256sum-x86-64/lps-bounded-1024/problem.toml",
-      "sha256": "38fd2d3fcf0c65e18ed2f2db6707ed4b8d61d392ef13625bc62850fb680397ad",
-      "bytes": 2329
+      "sha256": "9b3838b7fed59b5f1759917485ec085c484f916bcb7f9a1c6004e3f1a166c19e",
+      "bytes": 2420
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-bridge/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBridge_solution.json",
+      "sha256": "ae4ba61938d3c047922c2ef652787f7c11a27294d077bd485a1ffdf686e67817",
+      "bytes": 1110
     },
     {
       "path": "problems/sha256/gnu-sha256sum-x86-64/lps-bridge/problem.toml",
-      "sha256": "67715ac22758bd74c579835f327609c02d66e1150c306b45ae21c3247c6007e7",
-      "bytes": 2264
+      "sha256": "bfc53a068c60a0050434b6f1ffb0f6a55a4258661950388ec72059c16e97e1cc",
+      "bytes": 2420
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-partial/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsPartial_close.json",
+      "sha256": "034ae3e7e29007b82d500a98d4647069f8df9f8ee01bb89c9894c31b5e36e8f3",
+      "bytes": 1300
     },
     {
       "path": "problems/sha256/gnu-sha256sum-x86-64/lps-partial/problem.toml",
-      "sha256": "c4afec8e4e3bc0eae25fd27cc4f0b3aa365f4fc3d0092051db6205cb1b73af8f",
-      "bytes": 2323
+      "sha256": "39de3d2ea7c80c25b6699bcc60ed3b9edc9dc3b2e6d5908244a6728cb484ea99",
+      "bytes": 2414
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-total/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsTotal_close.json",
+      "sha256": "ec368fdf560688c68d6acda4194f73370544308f9fec8c791d23247abde441eb",
+      "bytes": 1491
     },
     {
       "path": "problems/sha256/gnu-sha256sum-x86-64/lps-total/problem.toml",
-      "sha256": "ec792dccd4657910fcafc72f5e52da255e28c296ea45c6744c8ebb2b040bb509",
-      "bytes": 2758
+      "sha256": "da3988bebd84206c3cef9009c8421014c171addf0a2ba07534e2bc642716d00b",
+      "bytes": 3380
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/profile-total/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Close.profileTotal_close.json",
+      "sha256": "f4f130f6e0f83fc54d0998e73e646fb71161c42135ef06d85ad1b9dcc603fc37",
+      "bytes": 1375
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/profile-total/problem.toml",
+      "sha256": "addccb60e8b0bb453651c3e8b9be70c944028d04f2135f08a2a29f1440f56658",
+      "bytes": 3060
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/sys-total/checks/Silmaril.Process.LPS.Problems.GnuSha256sum.Close.sysTotal_close.json",
+      "sha256": "cb00d83b69ab07b9bdfd5141a5aa471aa8163d1c8329b293acb332e4946bbb5b",
+      "bytes": 1098
     },
     {
       "path": "problems/sha256/gnu-sha256sum-x86-64/sys-total/problem.toml",
-      "sha256": "c557c457a98f33860e65f5ce6c07e1b3926686d3ee0de21193b21ba8bfbfc85c",
-      "bytes": 2189
+      "sha256": "be868c746521d9f55f203797da5c2f1a9d18033e4adc2de51dddc51d09713627",
+      "bytes": 2387
     },
     {
       "path": "references.bib",

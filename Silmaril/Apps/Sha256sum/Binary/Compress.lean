@@ -18,7 +18,7 @@ public import Silmaril.Apps.Sha256sum.Binary.Layout
 (iced-x86, mapped into `Silmaril.X86.Ext.Instr`). Nothing here is trusted:
 `transcript_verify` re-runs the model's decoder `Ext.decode`, `Decompile.check`,
 `Decompile.checkCfg` and `CfgPropose.ofFunction` on the literal in the kernel
-(`decide +kernel`; no native decision tactic), and `verified` packages the result as
+(`decide +kernel`; no `native decision tactic`), and `verified` packages the result as
 `Transcript.Verified`. See `Silmaril/X86/Lift/Transcript.lean` for what that
 establishes and for the trust boundary (the bytes and the image metadata).
 

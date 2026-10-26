@@ -62,11 +62,83 @@ theorem faulted_of_tau {r11Of : Core → Word} {s t : XState} (hs : s.faulted = 
       · split <;> exact hs
     · cases h
 
-/-- The `X86Sys` process machine's internal steps, as a `SegVC` instance. -/
-@[reducible] def Isa.sys (r11Of : Core → Word) : Isa XState :=
+/-- The internal step at an instruction that **retires** (no system call, no `brk`): the
+step of every segment between two system calls. It mentions no `r11`. -/
+def rStep (s : XState) : Option XState :=
+  if s.faulted then none else
+  match Process.CLI.X86Linux.step s.core s.memory with
+  | .retired c m => some { s with core := c, memory := m }
+  | _ => none
+
+theorem rStep_eq_some {s t : XState} :
+    rStep s = some t ↔ s.faulted = false ∧ ∃ c m,
+      Process.CLI.X86Linux.step s.core s.memory = .retired c m ∧
+        t = { s with core := c, memory := m } := by
+  unfold rStep
+  cases hf : s.faulted
+  · simp only [Bool.false_eq_true, ite_false, true_and]
+    cases h : Process.CLI.X86Linux.step s.core s.memory with
+    | retired c m =>
+      simp only [Option.some.injEq, Process.CLI.Step.retired.injEq]
+      exact ⟨fun e => ⟨c, m, ⟨rfl, rfl⟩, e.symm⟩,
+        fun ⟨_, _, ⟨e1, e2⟩, e⟩ => by subst e1 e2; exact e.symm⟩
+    | fault _ => simp
+    | syscall _ => simp
+  · simp
+
+/-- A retiring step is an internal step of `x86Machine r11Of`, for every `r11Of`. -/
+theorem tauStep_of_rStep {r11Of : Core → Word} {s t : XState} (h : rStep s = some t) :
+    tauStep r11Of s = some t := by
+  obtain ⟨hf, c, m, hs, rfl⟩ := rStep_eq_some.mp h
+  rw [tauStep_eq_some]
+  simp [x86Machine, step, hf, hs]
+
+/-- A retiring `X86.Ext` step of an unfaulted process is an `rStep`. -/
+theorem rStep_of_ext_retired {exit : Word} {s : XState} {final : MState}
+    (running : s.faulted = false) (retired : X86.Ext.step exit (toExtState s) = .retired final) :
+    rStep s = some (withExtState s final) :=
+  rStep_eq_some.mpr ⟨running, _, _, Process.CLI.X86Linux.step_of_ext_retired retired, rfl⟩
+
+theorem rStep_of_ext_returned {exit : Word} {s : XState} {final : MState}
+    (running : s.faulted = false) (returned : X86.Ext.step exit (toExtState s) = .returned final) :
+    rStep s = some (withExtState s final) :=
+  rStep_eq_some.mpr ⟨running, _, _, Process.CLI.X86Linux.step_of_ext_returned returned, rfl⟩
+
+/-- An `X86.Ext` call that returns is a run of retiring steps (no system call). -/
+theorem rReaches_of_ext_run {exit : Word} {n : Nat} {s : XState} {final : MState}
+    (running : s.faulted = false)
+    (executed : run (X86.Ext.stepOpt exit) n (toExtState s) = some final) :
+    Reaches rStep s (withExtState s final) := by
+  induction n generalizing s with
+  | zero =>
+    simp only [Silmaril.Machine.Execution.run_zero, Option.some.injEq] at executed
+    subst final
+    simpa using (Reaches.refl _ s : Reaches rStep s s)
+  | succ n ih =>
+    simp only [Silmaril.Machine.Execution.run_succ] at executed
+    cases head : X86.Ext.stepOpt exit (toExtState s) with
+    | none => simp [head] at executed
+    | some mid =>
+      simp only [head, Option.bind_some] at executed
+      have first := rStep_of_ext_retired running (X86.Ext.stepOpt_eq_some_iff.mp head)
+      have rest := ih (s := withExtState s mid) running (by simpa using executed)
+      have r1 : Reaches rStep s (withExtState s mid) := ⟨1, by simp [run, first]⟩
+      simpa only [withExtState_withExtState] using r1.trans rest
+
+theorem rReaches_of_ext_returns {exit : Word} {s : XState} {final : MState}
+    (running : s.faulted = false) (returned : X86.Ext.Returns exit (toExtState s) final) :
+    Reaches rStep s (withExtState s final) := by
+  obtain ⟨n, mid, executed, last⟩ := returned
+  have first := rReaches_of_ext_run running executed
+  have lastStep := rStep_of_ext_returned (s := withExtState s mid) running (by simpa using last)
+  simpa only [withExtState_withExtState] using first.trans ⟨1, by simp [run, lastStep]⟩
+
+/-- The `X86Sys` process machine's retiring steps, as a `SegVC` instance. -/
+@[reducible] def Isa.sys (_r11Of : Core → Word) : Isa XState :=
   Isa.ofExt XState.core XState.memory (fun s c m => { s with core := c, memory := m })
-    (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ => True) (fun s => s.faulted = false)
-    (tauStep r11Of) (fun hs h => faulted_of_tau hs (tauStep_eq_some.mp h)) (by
+    (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ => rfl) (fun _ _ => True)
+    (fun s => s.faulted = false)
+    rStep (fun hs h => by obtain ⟨_, _, _, _, rfl⟩ := rStep_eq_some.mp h; exact hs) (by
       intro s base code o l i c m hlv hl hrip hfit hdec hx _
       have hlen : l = i.length := (X86.Ext.decode_length hdec).1
       subst hlen
@@ -85,7 +157,7 @@ theorem faulted_of_tau {r11Of : Core → Word} {s t : XState} (hs : s.faulted = 
         have : ¬ (i = X86.Ext.Instr.ret ∧ c.rip = c.rip + 1) := fun h => by
           have := h.2; bv_omega
         simp only [this, ite_false]
-      exact tauStep_eq_some.mpr (step_of_ext_retired hlv hstep))
+      exact rStep_of_ext_retired hlv hstep)
 
 /-- A `SegVC` run of the process machine is a silent segment. -/
 theorem tauRun_of_reaches {r11Of : Core → Word} {s t : XState}
@@ -96,18 +168,11 @@ theorem tauRun_of_reaches {r11Of : Core → Word} {s t : XState}
   | zero => cases Option.some.inj hn; exact .refl
   | succ n ih =>
     simp only [Silmaril.Machine.Execution.run_succ] at hn
-    cases hs : tauStep r11Of s with
+    cases hs : rStep s with
     | none => simp [hs] at hn
     | some mid =>
       simp only [hs, Option.bind_some] at hn
-      exact .cons (tauStep_eq_some.mp hs) (ih hn)
-
-/-- A silent segment is a `SegVC` run. -/
-theorem reaches_of_tauRun {r11Of : Core → Word} {n : Nat} {s t : XState}
-    (h : TauRun r11Of n s t) : Reaches (Isa.sys r11Of).step s t := by
-  induction h with
-  | refl => exact .refl _ _
-  | cons head _ ih => exact Silmaril.X86.SegVC.reaches_cons (I := Isa.sys r11Of) (tauStep_eq_some.mpr head) ih
+      exact .cons (tauStep_eq_some.mp (tauStep_of_rStep hs)) (ih hn)
 
 /-- **The call bridge, as a VC rule.** A callee entered in a live state whose
 `X86.Ext.Returns` run (to the exit address the contract names) ends in a final core and
@@ -122,8 +187,7 @@ def Call.ofReturns (r11Of : Core → Word) (pre : XState → Prop) (post : XStat
   runs := by
     intro s hlv hpre
     obtain ⟨exit, fin, hret, hpost⟩ := contract s hlv hpre
-    obtain ⟨n, hrun⟩ := ext_returns_tauRun (r11Of := r11Of) hlv hret
-    exact ⟨_, reaches_of_tauRun hrun, hpost⟩
+    exact ⟨_, rReaches_of_ext_returns hlv hret, hpost⟩
 
 /-- A segment proved by the generator, inside a completed process execution: the run up to
 the stop may be dropped (the same calls, replies and exit status). -/
@@ -152,6 +216,30 @@ theorem tau8Step_of_tauStep {r11Of : Core → Word} {s t : XState} (h : tauStep 
   have h' := tauStep_eq_some.mp h
   have h8 : step8 r11Of s = .tau t := step8_of_step h' (by intro e; cases e)
   simp [tau8Step, h8]
+
+/-- The retiring step of the `Ext8` variant (`GnuSha256sum.retStep`, by definition). -/
+def rStep8 (s : XState) : Option XState :=
+  if s.faulted then none else
+  match Process.CLI.X86Linux8.step s.core s.memory with
+  | .retired c m => some { s with core := c, memory := m }
+  | _ => none
+
+theorem rStep8_of_rStep {s t : XState} (h : rStep s = some t) : rStep8 s = some t := by
+  obtain ⟨hf, c, m, hs, rfl⟩ := rStep_eq_some.mp h
+  have h8 : Process.CLI.X86Linux8.step s.core s.memory = .retired c m := by
+    rcases Process.CLI.X86Linux8.step_eq_or_unmodeled s.core s.memory with e | e
+    · rw [e, hs]
+    · rw [hs] at e; cases e
+  simp [rStep8, hf, h8]
+
+/-- **A segment proved over `Isa.sys` is a run of the `Ext8` variant's retiring steps** (the
+silent steps of `GStep`). -/
+theorem reaches_rStep8 {s t : XState} (h : Reaches rStep s t) : Reaches rStep8 s t := by
+  obtain ⟨n, hn⟩ := h
+  refine ⟨n, ?_⟩
+  exact Silmaril.Machine.Execution.run_simulates rStep rStep8 (· = ·)
+    (fun a b a' hab ha => ⟨a', by subst hab; exact rStep8_of_rStep ha, rfl⟩) n rfl hn
+    |>.elim fun t' ⟨ht, he⟩ => he ▸ ht
 
 /-- A `SegVC` run over `Isa.sys` is a run of the `Ext8` process machine. -/
 theorem reaches8_of_reaches {r11Of : Core → Word} {s t : XState}

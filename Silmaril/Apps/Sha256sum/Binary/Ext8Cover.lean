@@ -112,15 +112,7 @@ theorem sum_walk : ∀ (fuel : Nat) {bytes : List Byte} {items : List (Item × N
                 obtain ⟨⟨j, m⟩, hj, he⟩ := hd
                 simp only [Prod.mk.injEq] at he
                 obtain ⟨-, rfl⟩ := he
-                unfold Silmaril.X86.Ext8.decodeNew at hj
-                split at hj
-                · split at hj
-                  · simp at hj
-                  · simp only [Option.map_eq_some_iff] at hj
-                    obtain ⟨_, -, he⟩ := hj
-                    simp only [Prod.mk.injEq] at he
-                    omega
-                · simp at hj
+                exact Silmaril.X86.Ext8.decodeNew_le hj
             simp [this] at *
             omega
 

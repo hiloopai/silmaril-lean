@@ -11,6 +11,10 @@ public import Silmaril.Apps.Sha256sum.Run
   completed scan.
 - `stdout_full_status`: when standard output is full and anything was to be printed, the
   status is 1.
+- The program name (`libtool_stderr`, `libtool_old_stderr_ne`): diagnostics use gnulib's
+  `set_program_name` of `argv[0]` and getopt's messages `argv[0]` verbatim. The
+  specification used `argv[0]` verbatim everywhere until this was fixed, which made it
+  disagree with the binary for every `argv[0]` whose directory ends in `/.libs/`.
 -/
 
 @[expose] public section
@@ -106,7 +110,7 @@ theorem checkAll_out (w : World) (o : Opts) (h : o.statusOnly = true) :
 
 /-- `--check --status` writes nothing to standard output (spec.md §11.3). -/
 theorem stdout_eq_nil_of_status (w : World) (o : Opts) (ops : List Bytes)
-    (hs : scan w.prog w.posix w.argv.tail = .done o ops) (hv : validate o = none)
+    (hs : scan w.argv0 w.posix w.argv.tail = .done o ops) (hv : validate o = none)
     (hc : o.check = true) (hq : o.statusOnly = true) : (sha256sum w).stdout = [] := by
   unfold sha256sum
   rw [hs]
@@ -126,5 +130,67 @@ theorem stdout_full_status (w : World) (out err : Bytes) (s : Nat) (h : w.stdout
   unfold finish
   have : out.isEmpty = false := by cases out <;> simp_all
   simp [h, this]
+
+/-! ## The program name
+
+gnulib's `set_program_name` (copied in `sha256sum.c`) drops the directory of an `argv[0]`
+whose directory ends in `/.libs/`, and then a leading `lt-` (libtool's uninstalled
+wrappers). `error` and `usage` print that name; glibc `getopt` prints `argv[0]` itself.
+Measured on the pinned `sha256sum-min` (sha256 `22fa6345…d42817`), run as `./d/.libs/lt-P -x`:
+
+```
+./d/.libs/lt-P: invalid option -- 'x'
+Try 'P --help' for more information.
+```
+
+with status 1. `libtool_stderr` is that output. The specification before the fix printed
+`argv[0]` in both lines (`libtool_old_stderr_ne`), so `Plan.FullGoal` was false for this
+`argv[0]`. On the stdin tier (`argv = [prog]`) nothing is printed to stderr and stdout does not
+mention the name (`Sys.sha256sum_stdin`, for every `prog`), so that tier is unaffected. -/
+
+/-- The counterexample world: `argv = ["./d/.libs/lt-P", "-x"]`. -/
+def libtoolWorld : World :=
+  { argv := [lit "./d/.libs/lt-P", lit "-x"], fs := fun _ => .openErr .ENOENT }
+
+theorem libtool_argv0 : libtoolWorld.argv0 = lit "./d/.libs/lt-P" := rfl
+
+theorem libtool_prog : libtoolWorld.prog = lit "P" := by decide
+
+/-- The specification's diagnostic for `./d/.libs/lt-P -x`: the binary's (measured). -/
+theorem libtool_stderr : sha256sum libtoolWorld =
+    { stdout := [], status := 1,
+      stderr := lit "./d/.libs/lt-P: invalid option -- 'x'\n" ++
+        lit "Try 'P --help' for more information.\n" } := by
+  decide
+
+/-- **Counterexample to the old statement.** The old specification's stderr (`argv[0]` as the
+program name everywhere) is not the binary's. -/
+theorem libtool_old_stderr_ne : (sha256sum libtoolWorld).stderr ≠
+    lit "./d/.libs/lt-P: invalid option -- 'x'\n" ++
+      lit "Try './d/.libs/lt-P --help' for more information.\n" := by
+  rw [libtool_stderr]; decide
+
+/-- `progName` on ordinary names: unchanged. -/
+example : progName (lit "sha256sum") = lit "sha256sum" := by decide
+example : progName (lit "/usr/bin/sha256sum") = lit "/usr/bin/sha256sum" := by decide
+/-- The boundary cases of `base - argv0 >= 7`. -/
+example : progName (lit ".libs/lt-P") = lit ".libs/lt-P" := by decide
+example : progName (lit "/.libs/P") = lit "P" := by decide
+example : progName (lit "x/.libs/lt-") = [] := by decide
+example : progName (lit "x/.libs/lt") = lit "lt" := by decide
+
+theorem takeWhile_no_slash : ∀ a : Bytes, 47 ∉ a → a.takeWhile (· != 47) = a
+  | [], _ => rfl
+  | x :: xs, h => by
+    have hx : x ≠ 47 := fun e => h (e ▸ List.mem_cons_self)
+    have hxs : 47 ∉ xs := fun m => h (List.mem_cons_of_mem _ m)
+    simp [hx, takeWhile_no_slash xs hxs]
+
+/-- A name without `/` is unchanged. -/
+theorem progName_of_no_slash (a : Bytes) (h : 47 ∉ a) : progName a = a := by
+  have base : (a.reverse.takeWhile (· != 47)).reverse = a := by
+    rw [takeWhile_no_slash _ (by simpa using h), List.reverse_reverse]
+  simp only [progName, base, Nat.sub_self, List.take_zero]
+  rfl
 
 end Silmaril.Apps.Sha256sum

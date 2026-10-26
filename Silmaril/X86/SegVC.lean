@@ -67,6 +67,7 @@ structure Isa (σ : Type) where
   upd : σ → State → Memory → σ
   core_upd : ∀ s c m, core (upd s c m) = c
   mem_upd : ∀ s c m, mem (upd s c m) = m
+  upd_self : ∀ s, upd s (core s) (mem s) = s
   /-- A side condition on a successful execution (`Isa.ext`: a `ret` does not pop the
   designated exit; `True` for a process machine). -/
   ok : Instr → State → Prop
@@ -147,7 +148,8 @@ def after (μ : Option Nat) (cont : Nat → σ → Prop) (o : Nat) (i : I.Instr)
     match calls.lookup o with
     | some (o', cl) => cl.pre (I.upd s c m) ∧ ∀ t, cl.post (I.upd s c m) t →
         (I.core t).rip = base + BitVec.ofNat 64 o' ∧ Loaded (I.mem t) base code ∧
-          nextAt cuts stops μ cont (o' % 2 ^ 64) t
+          nextAt cuts stops μ cont (o' % 2 ^ 64)
+            (I.upd t { I.core t with rip := base + BitVec.ofNat 64 o' } (I.mem t))
     | none => nextAt cuts stops μ cont (offOf base c) (I.upd s c m)
 
 def wpI (μ : Option Nat) (cont : Nat → σ → Prop) (o : Nat) : Option (I.Instr × Nat) → σ → Prop
@@ -163,7 +165,8 @@ def wpN (μ : Option Nat) : Nat → Nat → σ → Prop
     match subs.lookup o with
     | some (o', sb) => sb.pre s ∧ ∀ t, sb.post s t →
         (I.core t).rip = base + BitVec.ofNat 64 o' ∧ Loaded (I.mem t) base code ∧
-          nextAt cuts stops μ (wpN μ k) (o' % 2 ^ 64) t
+          nextAt cuts stops μ (wpN μ k) (o' % 2 ^ 64)
+            (I.upd t { I.core t with rip := base + BitVec.ofNat 64 o' } (I.mem t))
     | none => wpI I code cuts stops calls base μ (wpN μ k) o (L.lookup o) s
 
 /-- The VCs of an annotated segment entered at `entry`: from the entry under the
@@ -192,6 +195,9 @@ variable {I} {code : List Byte} {L : Listing I} {cuts : List (Nat × Cut (σ := 
 theorem rip_offOf (base : Word) (c : State) :
     c.rip = base + BitVec.ofNat 64 (offOf base c) := by
   simp only [offOf, BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
+
+theorem upd_rip_self (I : Isa σ) (t : σ) :
+    I.upd t { I.core t with rip := (I.core t).rip } (I.mem t) = t := I.upd_self t
 
 theorem offOf_of_rip {base : Word} {c : State} {o : Nat} (h : c.rip = base + BitVec.ofNat 64 o) :
     offOf base c = o % 2 ^ 64 := by
@@ -287,7 +293,7 @@ theorem path (hv : L.valid I code = true) (μ : Option Nat) :
       obtain ⟨hpre, hpost⟩ := h
       obtain ⟨t, hr, ht⟩ := sb.runs s hlv hpre
       obtain ⟨hrip', hl', hn⟩ := hpost t ht
-      rw [← offOf_of_rip hrip'] at hn
+      rw [← hrip', upd_rip_self, ← offOf_of_rip hrip'] at hn
       exact Arrive.head hr (arrive_next ih hn (live_reaches hlv hr) hl')
     | none =>
     rw [hsb] at h
@@ -313,7 +319,7 @@ theorem path (hv : L.valid I code = true) (μ : Option Nat) :
           obtain ⟨hpre, hpost⟩ := hn
           obtain ⟨t, hr, ht⟩ := cl.runs _ hlv' hpre
           obtain ⟨hrip', hl'', hn⟩ := hpost t ht
-          rw [← offOf_of_rip hrip'] at hn
+          rw [← hrip', upd_rip_self, ← offOf_of_rip hrip'] at hn
           exact Arrive.head (reaches_cons hs hr) (arrive_next ih hn (live_reaches hlv' hr) hl'')
         | none =>
           rw [hcl] at hn
@@ -393,7 +399,7 @@ has returned, which `ok` excludes inside a segment). -/
 /-- An instance whose instructions, decoder and executor are `X86.Ext`'s. -/
 @[reducible] def Isa.ofExt (core : σ → State) (mem : σ → Memory) (upd : σ → State → Memory → σ)
     (core_upd : ∀ s c m, core (upd s c m) = c) (mem_upd : ∀ s c m, mem (upd s c m) = m)
-    (ok : Ext.Instr → State → Prop) (live : σ → Prop) (step : σ → Option σ)
+    (upd_self : ∀ s, upd s (core s) (mem s) = s) (ok : Ext.Instr → State → Prop) (live : σ → Prop) (step : σ → Option σ)
     (live_step : ∀ {s t}, live s → step s = some t → live t)
     (step_of : ∀ {s : σ} {base : Word} {code : List Byte} {o l : Nat} {i : Ext.Instr} {c : State}
       {m : Memory}, live s → Loaded (mem s) base code → (core s).rip = base + BitVec.ofNat 64 o →
@@ -408,6 +414,7 @@ has returned, which `ok` excludes inside a segment). -/
   upd := upd
   core_upd := core_upd
   mem_upd := mem_upd
+  upd_self := upd_self
   ok := ok
   live := live
   step := step
@@ -417,7 +424,7 @@ has returned, which `ok` excludes inside a segment). -/
 /-- `X86.Ext` with designated exit `exit`. -/
 @[reducible] def Isa.ext (exit : Word) : Isa MState :=
   Isa.ofExt MState.core MState.memory (fun _ c m => ⟨c, m⟩) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
-    (fun i c => ¬ (i = .ret ∧ c.rip = exit)) (fun _ => True) (Ext.stepOpt exit)
+    (fun _ => rfl) (fun i c => ¬ (i = .ret ∧ c.rip = exit)) (fun _ => True) (Ext.stepOpt exit)
     (fun _ _ => trivial) (by
       intro s base code o l i c m _ hl hrip hfit hdec hx hok
       have hlen : l = i.length := (Ext.decode_length hdec).1

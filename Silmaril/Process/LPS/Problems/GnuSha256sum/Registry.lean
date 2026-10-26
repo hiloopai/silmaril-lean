@@ -3,7 +3,8 @@ module
 public import Silmaril.Problems.Basic
 public import Silmaril.Problems.Compose
 public import Silmaril.Process.LPS.Problems.GnuSha256sum.SysBridge
-public import Silmaril.Process.LPS.Problems.GnuSha256sum.NonVacuity
+public import Silmaril.Process.LPS.Problems.GnuSha256sum.Fetchable
+public import Silmaril.Process.LPS.Problems.GnuSha256sum.Launch
 public import Silmaril.Process.LPS.Problems.Sha256Cli.Registry
 
 /-! # GNU `sha256sum` as problems
@@ -18,16 +19,21 @@ Problems in the family `sha256` about the pinned ELF `sha256sum-min`
 * `…/sys-total`: the middle statement over `X86Sys` (`SysTotalOn`). Open; it splits into five
   segments with parametric cut points (`sysTotalOn_of_segments`, VERIFIED).
 * `…/lps-bridge`: the simulation obligation from `X86Sys` to LPS (`SimulationObligation`).
-  Open.
+  **Solved**: `lpsBridge_solution` (`GnuSha256sum.simulationObligation`: the launch
+  correspondence, `read(0)`/`write(1)`/`close`/`exit_group` and the instruction level).
 * `…/agree-sha256-cli`: composition with the solved `sha256` filter problems: on the same
   stdin, every exiting complete run of GNU `sha256sum` writes exactly what the filter writes
   with its final `"\n"` replaced by `"  -\n"` (`Sha256Cli.gnu_stdout`). Linked from
   `gnu lps-total` and `sha256-cli lps-total` by `agree_link` (VERIFIED), so it is solved
   once `lps-total` is.
+* `…/profile-total` (`GnuSha256sum.Profile`): the stdin tier as `ProfileProblem` statements in
+  the parity format (`Parity.problem`), linked from `lps-total` by
+  `Parity.profileTotal_link` (VERIFIED).
 
-Status: every theorem in this file is VERIFIED (no `sorry`, no new axiom); the problems
-`lps-total`, `lps-bounded-1024`, `lps-partial`, `sys-total`, `lps-bridge` and
-`agree-sha256-cli` are open (WIP).
+Status: every theorem in this file is VERIFIED (no `sorry`, no new axiom); `lps-bridge` is
+solved; `lps-total`, `lps-bounded-1024`, `lps-partial`, `sys-total`, `agree-sha256-cli` and
+`profile-total` are solved in `GnuSha256sum.Close`, and each follows from `sys-total` alone
+(`lpsTotal_of_sysTotal`).
 -/
 
 @[expose] public section
@@ -142,11 +148,24 @@ theorem agree_of_lpsTotal (total : lpsTotal) : agree :=
 theorem lpsTotal_of (sys : sysTotal) (bridge : lpsBridge) : lpsTotal :=
   compose (components := [sysTotal, lpsBridge]) ⟨sys, bridge, trivial⟩ lpsTotal_link
 
-/-! ## Non-vacuity (VERIFIED modulo `EntryFetchable`) -/
+/-- **`lps-bridge` (VERIFIED).** -/
+@[solves "sha256/gnu-sha256sum-x86-64/lps-bridge"]
+theorem lpsBridge_solution : lpsBridge := simulationObligation
 
-theorem lps_hypotheses (oracle : Nat → Machines.X86FlagChoices.Choice)
-    (fetchable : EntryFetchable oracle) (message : List Byte) :
+/-- `lps-total` modulo `sys-total` alone (VERIFIED). -/
+theorem lpsTotal_of_sysTotal (sys : sysTotal) : lpsTotal := lpsTotal_of sys lpsBridge_solution
+
+/-! ## Non-vacuity (VERIFIED) -/
+
+/-- The hypotheses of the LPS problems hold on every message, for every flag oracle. -/
+theorem lps_hypotheses (oracle : Nat → Machines.X86FlagChoices.Choice) (message : List Byte) :
     ∃ en inp, Admissible oracle en inp message :=
-  admissible_exists oracle fetchable message
+  admissible oracle message
+
+/-- The hypotheses of `sys-total` are not contradictory with its conclusion's shape: `Ok`
+holds at the empty history of any running, unfaulted process. -/
+theorem ok_nil (message : List Byte) (g : GS) (running : g.exited = none)
+    (unfaulted : g.x.faulted = false) : Ok message g [] :=
+  ⟨running, by simp, by simp [stdinRead], by simp [out], .inl rfl, unfaulted⟩
 
 end Silmaril.Process.LPS.Problems.GnuSha256sum.Registry

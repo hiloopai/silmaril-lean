@@ -128,7 +128,8 @@ theorem wpN_succ_subs {σ : Type} {I : Isa σ} {code : List Byte} {L : Listing I
       match subs.lookup o with
       | some (o', sb) => sb.pre s ∧ ∀ t, sb.post s t →
           (I.core t).rip = base + BitVec.ofNat 64 o' ∧ Loaded (I.mem t) base code ∧
-            nextAt cuts stops μ (wpN I code L cuts stops calls subs base μ k) (o' % 2 ^ 64) t
+            nextAt cuts stops μ (wpN I code L cuts stops calls subs base μ k) (o' % 2 ^ 64)
+              (I.upd t { I.core t with rip := base + BitVec.ofNat 64 o' } (I.mem t))
       | none =>
         wpI I code cuts stops calls base μ (wpN I code L cuts stops calls subs base μ k) o (L.lookup o) s :=
   rfl
@@ -169,6 +170,36 @@ theorem onOk_jcc {P : State → Memory → Prop} {c : Cond} {rel : BitVec 32} {s
   cases h : c.eval s.flags with
   | none => simp [onOk]
   | some b => cases b <;> simp [onOk]
+
+/-- A `call`: it pushes the return address (the memory after the push is left opaque, named
+by its `writeBytes` equation) and jumps. Like the branches, a pre-exec rewrite. -/
+theorem onOk_call {P : State → Memory → Prop} {rel : BitVec 32} {s : State} {m : Memory}
+    {l : Nat} :
+    onOk P (Ext.exec (.call rel) s m l) ↔
+      m.Permitted .write (s.read .rsp - 8#64).toNat 8 ∧
+        ∀ after, m.writeBytes (s.read .rsp - 8#64).toNat
+            (Silmaril.Machine.LittleEndian.encodeWords [s.rip + BitVec.ofNat 64 l]) = some after →
+          P { s.write .rsp (s.read .rsp - 8#64) with
+              rip := s.rip + BitVec.ofNat 64 l + rel.signExtend 64 } after := by
+  simp only [Ext.exec, Silmaril.X86.pushWord]
+  cases hw : m.writeBytes (s.read .rsp - 8#64).toNat
+      (Silmaril.Machine.LittleEndian.encodeWords [s.rip + BitVec.ofNat 64 l]) with
+  | none =>
+    simp only [Option.map_none, onOk, false_iff, not_and]
+    intro hp
+    have hc : m.checkSpan .write (s.read .rsp - 8#64).toNat 8 = true := hp
+    unfold Memory.writeBytes at hw
+    rw [Silmaril.X86.length_encodeWords_singleton, ite_eq_left hc] at hw
+    cases hw
+  | some after =>
+    simp only [Option.map_some, onOk]
+    constructor
+    · intro h
+      refine ⟨?_, fun a ha => ?_⟩
+      · have := Memory.writeBytes_permitted hw
+        simpa [Silmaril.X86.length_encodeWords_singleton] using this
+      · cases ha; exact h
+    · rintro ⟨_, h⟩; exact h after rfl
 
 /-! ## Stores, with the successor memory left opaque
 
@@ -218,7 +249,7 @@ syntax "seg_vc_pass " "(" &"maxSteps" " := " num ")" " [" Lean.Parser.Tactic.sim
 
 macro_rules
   | `(tactic| seg_vc_pass (maxSteps := $n) [$ls,*]) => `(tactic|
-    (simp (maxSteps := $n) only [wpN_succ, wpN_succ_subs, wpN_zero, wpI, onOk_jcc8, onOk_jcc, after, nextAt,
+    (simp (maxSteps := $n) only [wpN_succ, wpN_succ_subs, wpN_zero, wpI, onOk_jcc8, onOk_jcc, onOk_call, after, nextAt,
         onOk_ok, onOk_dataFault, onOk_divideError, onOk_undefinedCondition, onOk_trap,
         mk_write, regs_mk, read_mk, core_regs, setWidth_32_64, base_reg_value,
         Option.getD_none, Option.getD_some, BitVec.reduceSetWidth, BitVec.reduceShiftLeft,

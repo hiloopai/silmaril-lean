@@ -5,16 +5,22 @@ title = "Total correctness of GNU sha256sum (sha256sum-min) in LPS on the stdin 
 granularity = "process"
 tier = "total"
 expect = "solvable"
-# Open (WIP). Linked: Registry.lpsTotal_link : All [sys-total, lps-bridge] -> lps-total (VERIFIED).
+# Solved: GnuSha256sum.Close.lpsTotal_close (VERIFIED). Linked: Registry.lpsTotal_link : All [sys-total, lps-bridge] -> lps-total (VERIFIED);
+# lps-bridge is solved, and Release.lpsTotal_of derives lps-total from the open segments
+# (Release.Open: startup, final, format, exit; the read loop is ReadLoop.readLoopSeg), VERIFIED.
 # argv = [prog], finite stdin, every flag oracle / refusal configuration / budget: no error,
 # nothing unmodelled, every trace a prefix of idealTrace (read stdin, write (sha256sum w).stdout,
 # exit 0), every execution exits 0, and the ideal trace occurs.
+# closure_hash re-pinned after main's LPS v0.1 fixes: x86LaunchBounds.spWindowLo is now
+# 0x7ffb7fffe000 (2 GiB below the lowest randomized x86-64 stack top; was 0x7fff7ffff000), so
+# ValidEntry admits every Linux v6.13-v6.18 initial rsp; the native syscall table also changed
+# (socket, epoll, signal, mm fixes). The statement hash is unchanged.
 
 [statement]
 decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsTotal"
 module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"
 hash = "sha256:a0ac5cbc89b387b1c2a89a50f5c56cd187c7a24a15ab358fd61d87196533af14"
-closure_hash = "sha256:e39540c734cc1093a4b5b122b3e114ed0147849e9885953f1d25120d0d14509b"
+closure_hash = "sha256:c53a01fdc491a3b3dfcf5318db21759f533188d1e431023f5f67323c374e2e51"
 
 [[artifacts]]
 name = "sha256sum-min"
@@ -55,9 +61,9 @@ hash = "sha256:ee8b958894279f90795e1199065bd12345dfcce0926bd7d63c6642a0ffaae11d"
 policy = "standard"
 
 [solutions]
-modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"]
+modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry", "Silmaril.Process.LPS.Problems.GnuSha256sum.Close"]
 
 [provenance]
 authors = ["Silmaril contributors"]
 created = "2026-10-25"
-source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS #3490/#3492/#3534; sha256 filter e2e #3578"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS translation; sha256 filter end to end"

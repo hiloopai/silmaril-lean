@@ -5,14 +5,14 @@ title = "GNU sha256sum and the sha256 filter write the same digest line on the s
 granularity = "process"
 tier = "total"
 expect = "solvable"
-# Open (WIP); solved once gnu lps-total is: Registry.agree_link :
-# All [gnu lps-total, sha256-cli lps-total] -> agree (VERIFIED), sha256-cli lps-total solved (#3578).
+# Solved: GnuSha256sum.Close.agree_close (VERIFIED). solved once gnu lps-total is: Registry.agree_link :
+# All [gnu lps-total, sha256-cli lps-total] -> agree (VERIFIED), sha256-cli lps-total solved.
 
 [statement]
 decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.agree"
 module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"
 hash = "sha256:6fb71fed4c9b604c7a92bc9a7ec51be4dfba211ef37cedc0d3a0168627153519"
-closure_hash = "sha256:89ccf728514b1e2c88011ac892cc73fcf9be600c6587dae6b45279e917ca4e1c"
+closure_hash = "sha256:e42555aa8034d0e6e433b88d9795c1d5c89ee9421ee300de9980786e5e66c52b"
 
 [[artifacts]]
 name = "sha256sum-min"
@@ -53,9 +53,9 @@ hash = "sha256:1034894e01200f52385173ded7631b364625d314ef0f1a7e92214536c426f666"
 policy = "standard"
 
 [solutions]
-modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"]
+modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry", "Silmaril.Process.LPS.Problems.GnuSha256sum.Close"]
 
 [provenance]
 authors = ["Silmaril contributors"]
 created = "2026-10-25"
-source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS #3490/#3492/#3534; sha256 filter e2e #3578"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS translation; sha256 filter end to end"

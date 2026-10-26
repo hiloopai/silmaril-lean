@@ -67,7 +67,7 @@ namespace Silmaril.X86.Ext8
 
 open Silmaril.X86 (Reg Word State Flags AluOp Byte MState fetchWindow maxInstrLength)
 open Silmaril.X86.Ext (Mem Sz Cond ShiftOp Count Result retire loadN storeN writeByte
-  Rex Opc Pfx ModRM ModrmPart PResult mkReg decodeMem pHead pModrm)
+  Rex Opc Pfx ModRM ModrmPart PResult ByteParser mkReg decodeMem pHead pModrm good_pHead good_pModrm)
 open Silmaril.Process (Memory)
 
 /-! ## Byte registers -/
@@ -168,80 +168,139 @@ def rm8Of (rex : Option Rex) (mp : ModrmPart) : RM8 :=
 def reg8Of (rex : Option Rex) (mp : ModrmPart) : BReg :=
   BReg.ofField rex (rex.getD Rex.zero).r mp.1.reg
 
-/-- Read a ModRM part and continue. -/
-def withModrm (rest : List Byte) (k : ModrmPart → List Byte → Option (New × List Byte)) :
-    Option (New × List Byte) :=
-  match pModrm true rest with
-  | .ok (some mp) rest' => k mp rest'
-  | _ => none
+/-- A parser that returns the option's value or rejects. -/
+def optP {α : Type} : Option α → ByteParser α
+  | some a => ByteParser.pure a
+  | none => ByteParser.fail
 
-/-- Read an imm8 and continue. -/
-def withImm8 (rest : List Byte) (k : BitVec 8 → List Byte → Option (New × List Byte)) :
-    Option (New × List Byte) :=
-  match rest with
-  | v :: rest' => k v rest'
-  | [] => none
+/-- A ModRM part (with SIB and displacement). -/
+def pM : ByteParser ModrmPart :=
+  ByteParser.bind (pModrm true) optP
 
-/-- Decode the opcode and operands of a new form, after the head. -/
-def decodeBody (rex : Option Rex) : Opc → List Byte → Option (New × List Byte)
-  | .one b, rest =>
+/-- The opcode and operands of a new form, after the head. -/
+def pBody (rex : Option Rex) : Opc → ByteParser New
+  | .one b =>
     let lo := b.toNat % 8
     let digit : BitVec 3 := BitVec.ofNat 3 (b.toNat / 8)
     if b.toNat < 0x40 ∧ lo = 0 then
-      (aluOfDigit digit).bind fun op =>
-        withModrm rest fun mp r => some (.alu op (rm8Of rex mp) (reg8Of rex mp), r)
+      ByteParser.bind (optP (aluOfDigit digit)) fun op =>
+        ByteParser.map (fun mp => .alu op (rm8Of rex mp) (reg8Of rex mp)) pM
     else if b.toNat < 0x40 ∧ lo = 2 then
-      (aluOfDigit digit).bind fun op =>
-        withModrm rest fun mp r => some (.aluR op (reg8Of rex mp) (rm8Of rex mp), r)
+      ByteParser.bind (optP (aluOfDigit digit)) fun op =>
+        ByteParser.map (fun mp => .aluR op (reg8Of rex mp) (rm8Of rex mp)) pM
     else if b.toNat < 0x40 ∧ lo = 4 then
-      (aluOfDigit digit).bind fun op =>
-        withImm8 rest fun v r => some (.aluA op v, r)
+      ByteParser.bind (optP (aluOfDigit digit)) fun op =>
+        ByteParser.map (fun v => .aluA op v) ByteParser.byte
     else if b = 0x80#8 then
-      withModrm rest fun mp r =>
-        (aluOfDigit mp.1.reg).bind fun op =>
-          withImm8 r fun v r' => some (.aluI op (rm8Of rex mp) v, r')
+      ByteParser.bind pM fun mp =>
+        ByteParser.bind (optP (aluOfDigit mp.1.reg)) fun op =>
+          ByteParser.map (fun v => .aluI op (rm8Of rex mp) v) ByteParser.byte
     else if b = 0x84#8 then
-      withModrm rest fun mp r => some (.test (rm8Of rex mp) (reg8Of rex mp), r)
+      ByteParser.map (fun mp => .test (rm8Of rex mp) (reg8Of rex mp)) pM
     else if b = 0x88#8 then
-      withModrm rest fun mp r => some (.mov (rm8Of rex mp) (reg8Of rex mp), r)
+      ByteParser.map (fun mp => .mov (rm8Of rex mp) (reg8Of rex mp)) pM
     else if b = 0x8A#8 then
-      withModrm rest fun mp r => some (.movR (reg8Of rex mp) (rm8Of rex mp), r)
+      ByteParser.map (fun mp => .movR (reg8Of rex mp) (rm8Of rex mp)) pM
     else if b = 0xC0#8 then
-      withModrm rest fun mp r =>
-        (shiftOfDigit mp.1.reg).bind fun op =>
-          withImm8 r fun v r' => some (.shift op (rm8Of rex mp) (.imm v), r')
+      ByteParser.bind pM fun mp =>
+        ByteParser.bind (optP (shiftOfDigit mp.1.reg)) fun op =>
+          ByteParser.map (fun v => .shift op (rm8Of rex mp) (.imm v)) ByteParser.byte
     else if b = 0xD0#8 then
-      withModrm rest fun mp r =>
-        (shiftOfDigit mp.1.reg).map fun op => (.shift op (rm8Of rex mp) .one, r)
+      ByteParser.bind pM fun mp =>
+        ByteParser.map (fun op => .shift op (rm8Of rex mp) .one) (optP (shiftOfDigit mp.1.reg))
     else if b = 0xD2#8 then
-      withModrm rest fun mp r =>
-        (shiftOfDigit mp.1.reg).map fun op => (.shift op (rm8Of rex mp) .cl, r)
-    else none
-  | .two b, rest =>
+      ByteParser.bind pM fun mp =>
+        ByteParser.map (fun op => .shift op (rm8Of rex mp) .cl) (optP (shiftOfDigit mp.1.reg))
+    else ByteParser.fail
+  | .two b =>
     let x := rex.getD Rex.zero
     if b = 0xB6#8 ∨ b = 0xBE#8 then
-      withModrm rest fun mp r =>
-        some (.movx (b = 0xBE#8) (Sz.ofW x.w) (mkReg x.r mp.1.reg) (rm8Of rex mp), r)
+      ByteParser.map (fun mp => .movx (b = 0xBE#8) (Sz.ofW x.w) (mkReg x.r mp.1.reg) (rm8Of rex mp)) pM
     else if b.toNat / 16 = 9 then
-      withModrm rest fun mp r =>
+      ByteParser.bind pM fun mp =>
         if mp.1.reg = 0#3 then
-          some (.setcc (Cond.ofCode (BitVec.ofNat 4 (b.toNat % 16))) (rm8Of rex mp), r)
-        else none
-    else none
+          ByteParser.pure (.setcc (Cond.ofCode (BitVec.ofNat 4 (b.toNat % 16))) (rm8Of rex mp))
+        else ByteParser.fail
+    else ByteParser.fail
 
 /-- Whether the instruction's REX.W bit is meaningful (only for MOVZX/MOVSX). -/
 def allowsW : Opc → Bool
   | .two b => b = 0xB6#8 ∨ b = 0xBE#8
   | .one _ => false
 
-/-- Decode a new form: no FS override, no legacy prefix, and no REX.W except on
-MOVZX/MOVSX. Returns the instruction and the number of bytes consumed. -/
+/-- The parser of a new form: no FS override, no legacy prefix, and no REX.W
+except on MOVZX/MOVSX. -/
+def pNew : ByteParser New :=
+  ByteParser.bind pHead fun h =>
+    if h.1 = true ∨ h.2.1 ≠ .none ∨ ((h.2.2.1.getD Rex.zero).w = true ∧ allowsW h.2.2.2 = false)
+    then ByteParser.fail
+    else pBody h.2.2.1 h.2.2.2
+
+/-- Decode a new form; returns the instruction and the number of bytes consumed. -/
 def decodeNew (bytes : List Byte) : Option (New × Nat) :=
-  match pHead bytes with
-  | .ok (fs, pfx, rex, opc) rest =>
-    if fs = true ∨ pfx ≠ .none ∨ ((rex.getD Rex.zero).w = true ∧ allowsW opc = false) then none
-    else (decodeBody rex opc rest).map fun (i, r) => (i, bytes.length - r.length)
+  match pNew bytes with
+  | .ok i rest => some (i, bytes.length - rest.length)
   | _ => none
+
+open Ext.ByteParser in
+theorem good_optP {α : Type} (o : Option α) : Good (optP o) := by
+  cases o
+  · exact good_fail
+  · exact good_pure _
+
+open Ext.ByteParser in
+theorem good_pM : Good pM := good_bind (good_pModrm true) good_optP
+
+open Ext.ByteParser in
+theorem good_pBody (rex : Option Rex) (opc : Opc) : Good (pBody rex opc) := by
+  cases opc with
+  | one b =>
+    simp only [pBody]
+    refine good_ite (good_bind (good_optP _) fun _ => good_map _ good_pM) ?_
+    refine good_ite (good_bind (good_optP _) fun _ => good_map _ good_pM) ?_
+    refine good_ite (good_bind (good_optP _) fun _ => good_map _ good_byte) ?_
+    refine good_ite (good_bind good_pM fun _ => good_bind (good_optP _) fun _ =>
+      good_map _ good_byte) ?_
+    refine good_ite (good_map _ good_pM) ?_
+    refine good_ite (good_map _ good_pM) ?_
+    refine good_ite (good_map _ good_pM) ?_
+    refine good_ite (good_bind good_pM fun _ => good_bind (good_optP _) fun _ =>
+      good_map _ good_byte) ?_
+    refine good_ite (good_bind good_pM fun _ => good_map _ (good_optP _)) ?_
+    refine good_ite (good_bind good_pM fun _ => good_map _ (good_optP _)) ?_
+    exact good_fail
+  | two b =>
+    simp only [pBody]
+    refine good_ite (good_map _ good_pM) ?_
+    refine good_ite (good_bind good_pM fun _ => good_ite (good_pure _) good_fail) good_fail
+
+open Ext.ByteParser in
+theorem good_pNew : Good pNew :=
+  good_bind good_pHead fun _ => good_ite good_fail (good_pBody _ _)
+
+/-- A decoded new form keeps its reading whatever bytes follow. -/
+theorem decodeNew_append {bytes : List Byte} {i : New} {n : Nat}
+    (h : decodeNew bytes = some (i, n)) (more : List Byte) :
+    decodeNew (bytes ++ more) = some (i, n) := by
+  unfold decodeNew at h ⊢
+  split at h
+  · rename_i j rest hp
+    simp only [Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl⟩ := h
+    obtain ⟨-, ext⟩ := good_pNew.ok hp
+    rw [ext more]
+    simp only [List.length_append, Option.some.injEq, Prod.mk.injEq, true_and]
+    omega
+  · simp at h
+
+/-- A decoded new form consumes at most its input. -/
+theorem decodeNew_le {bytes : List Byte} {i : New} {n : Nat}
+    (h : decodeNew bytes = some (i, n)) : n ≤ bytes.length := by
+  unfold decodeNew at h
+  split at h
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h
+    omega
+  · simp at h
 
 /-- The variant's decoder: `Ext.decode` first, then the new forms. -/
 def decode (bytes : List Byte) : Option (Instr × Nat) :=

@@ -9,8 +9,7 @@ in `Silmaril.Apps.Sha256sum`. This file holds the pieces every other part uses: 
 strings, the error numbers the program can report and their C-locale `strerror` texts,
 the abstract world the program runs in, and the observable outcome.
 
-The world is the one of the research note `spec.md` §2 (in
-`/srv/scratch/campaigns/research/sha256sum/`): `argv`, whether `POSIXLY_CORRECT` is set,
+The world is: `argv`, whether `POSIXLY_CORRECT` is set,
 a read oracle for the file system, standard input as a once-consumable stream, and whether
 standard output is a full device. The outcome is the exact bytes written to standard
 output and to standard error, and the exit status.
@@ -71,7 +70,8 @@ inductive Stdin where
   deriving DecidableEq, Repr
 
 structure World where
-  /-- `argv[0]` is the program name used in every diagnostic. -/
+  /-- The arguments. `argv[0]` gives the program name (`World.prog`, after gnulib's
+  `set_program_name`) and, verbatim, the prefix of glibc `getopt`'s messages. -/
   argv : List Bytes
   /-- `POSIXLY_CORRECT` is set: no argument permutation. -/
   posix : Bool := false
@@ -81,8 +81,22 @@ structure World where
   /-- Standard output is a device on which every write fails with `ENOSPC`. -/
   stdoutFull : Bool := false
 
-/-- The program name, `argv[0]`. -/
-def World.prog (w : World) : Bytes := w.argv.headD []
+/-- `argv[0]` verbatim: glibc `getopt` prefixes its messages with it. -/
+def World.argv0 (w : World) : Bytes := w.argv.headD []
+
+/-- gnulib `set_program_name` (`progname.c`; `sha256sum.c` `set_program_name`): if the
+directory part of `argv[0]` ends in `/.libs/`, the base name, without a leading `lt-`
+(the libtool wrapper's names); otherwise `argv[0]` unchanged. -/
+def progName (argv0 : Bytes) : Bytes :=
+  let base := (argv0.reverse.takeWhile (· != 47)).reverse
+  let dir := argv0.take (argv0.length - base.length)
+  if (lit "/.libs/").isSuffixOf dir then
+    if (lit "lt-").isPrefixOf base then base.drop 3 else base
+  else argv0
+
+/-- The program name of every diagnostic (`program_name`, which `error` and `usage`
+print): `progName` of `argv[0]`. -/
+def World.prog (w : World) : Bytes := progName w.argv0
 
 /-- The observable result of a run. -/
 structure Outcome where
