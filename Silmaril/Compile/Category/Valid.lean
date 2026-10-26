@@ -15,7 +15,7 @@ translated interface, and every specification `p` satisfies transports through `
 
 Equivalently (`valid_iff_beh`, unconditionally) the target behaviours are realisations of source
 behaviours, `beh p' ⊆ c.lift (beh p)` — CompCert's backward-simulation correctness statement
-(Leroy (2009), *A formally verified compiler back-end* (see references.bib), §2.1, Definition 2, p. 4: "C ⇓ B ⇒ S ⇓ B",
+(`papers/compilers/leroy-2009-compcert-backend.pdf`, §2.1, Definition 2, p. 4: "C ⇓ B ⇒ S ⇓ B",
 here up to the convention), and, for read-back conventions, reading `p'` back through the
 comorphism yields a model of every specification of `p` (`valid_iff_readBack`).
 

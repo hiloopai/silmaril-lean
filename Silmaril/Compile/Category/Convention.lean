@@ -11,9 +11,10 @@ public import Mathlib.Logic.Relation
 A *convention* `c : L ⟶ L'` between languages fixes how source interfaces are realised in the
 target (`Φ`, the interface/ABI translation) and how target observations correspond to source
 observations (`R`, a relation `L.Obs → L'.Obs → Prop`). This is the behaviour-level shadow of a
-CompCertO simulation convention (Koenig and Shao (2021), *CompCertO* (see references.bib),
+CompCertO simulation convention (`papers/compilers/koenig-shao-2021-compcerto.pdf`,
 Definition 2.6, p. 4; refinement of conventions is Definition 5.1, p. 12), with the Kripke
-world structure collapsed into the relation.
+world structure collapsed into the relation; the Wasm-level
+conventions of `Silmaril.Wasm.Behaviour.Refinement.SimConv` are instances.
 
 Conventions compose (`Φ` by composition, `R` by relational composition), so languages and
 conventions form a category; the identity convention has `R = Eq`. Conventions are ordered:
@@ -22,16 +23,16 @@ conventions form a category; the identity convention has `R = Eq`. Conventions a
 Each convention induces the sentence translation `α = c.lift` (the existential image of a
 specification). When the convention is a *read-back* (`R o o' ↔ o = g o'` for a function
 `g : L'.Obs → L.Obs` reading target observations back as source observations) it also has the
-model translation `β = g ''`. These are the data for a read-back construction
-in institution theory. A general institution/comorphism API and its
-correspondence theorem are not included in this public closure.
+model translation `β = g ''`, and `(Φ, α, β)` is an institution comorphism
+`L.inst → L'.inst` (`Convention.comorphism`, in `Silmaril.Compile.Category.Institution`).
 
 ## Main definitions
 
 * `Convention L L'`, the category instance on `Language` (objects: languages; morphisms:
   conventions), the partial order on conventions.
 * `Convention.lift`: `α`, translation of specifications (and behaviour sets) through `c`.
-* `Convention.ReadBack`: conventions determined by a target-to-source observation function.
+* `Convention.ReadBack`: read-back conventions (their comorphisms are in
+  `Silmaril.Compile.Category.Institution`).
 -/
 
 namespace Silmaril.Compile.Category
@@ -42,7 +43,7 @@ universe u
 
 /-- A convention between two languages: interface translation and observation matching.
 
-Source: Koenig and Shao (2021), *CompCertO* (see references.bib), Definition 2.6, p. 4
+Source: `papers/compilers/koenig-shao-2021-compcerto.pdf`, Definition 2.6, p. 4
 (simulation conventions; here without Kripke worlds). -/
 @[ext]
 structure Convention (L L' : Language.{u}) : Type u where
@@ -58,7 +59,7 @@ def id (L : Language.{u}) : Convention L L := ⟨_root_.id, (· = ·)⟩
 
 /-- Composition of conventions.
 
-Source: Koenig and Shao (2021), *CompCertO* (see references.bib), Definition 3.6, p. 8
+Source: `papers/compilers/koenig-shao-2021-compcerto.pdf`, Definition 3.6, p. 8
 (composition of simulation conventions). -/
 def comp {L₁ L₂ L₃ : Language.{u}} (c : Convention L₁ L₂) (d : Convention L₂ L₃) :
     Convention L₁ L₃ :=

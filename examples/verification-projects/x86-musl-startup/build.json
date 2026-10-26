@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "x86-musl-startup",
+  "abi": "linux-x86_64-sysv",
+  "linkage": "static-non-pie",
+  "source": {
+    "path": "checksum.c",
+    "sha256": "a232c4e6c170127a922ec1ba0fbf6b8bc0b44b9d68d538143f15bf60fc074278",
+    "bytes": 691
+  },
+  "runtime": {
+    "name": "musl",
+    "version": "1.2.5",
+    "url": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+    "sha256": "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4",
+    "cFlags": [
+      "-O2",
+      "-g0",
+      "-fno-tree-vectorize",
+      "-fno-tree-slp-vectorize",
+      "-mno-avx"
+    ]
+  },
+  "compiler": "x86_64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "compilerTarget": "x86_64-linux-gnu",
+  "cFlags": [
+    "-O2",
+    "-g0",
+    "-fno-tree-vectorize",
+    "-fno-tree-slp-vectorize",
+    "-mno-avx",
+    "-mno-sse",
+    "-mno-sse2",
+    "-mno-mmx"
+  ],
+  "linkFlags": [
+    "-fno-pie",
+    "-no-pie",
+    "-static",
+    "-Wl,--build-id=none",
+    "-Wl,--strip-debug"
+  ],
+  "sourceDateEpoch": 1700000000,
+  "artifacts": {
+    "checksum.elf": {
+      "sha256": "0ef7a89e9e1e07386fb608d06255b5523081ff9a48e0aa4c69a42e2311ed4ad0",
+      "bytes": 16256
+    },
+    "checksum.disassembly.txt": {
+      "sha256": "7f78d65411fa1429b0793858cc26d5916a5f8836c3113325bb41f084ea918d46",
+      "bytes": 31014
+    },
+    "checksum.readelf.txt": {
+      "sha256": "6ee0bdaebd7e6074029c3bbc5984adb3ceb43a3b8b18fed95d1ed0a6fbfb27d0",
+      "bytes": 9606
+    }
+  }
+}

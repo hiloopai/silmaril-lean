@@ -23,7 +23,7 @@ bookkeeping for such families, in the vocabulary of `Silmaril.Compile.Category`:
   pointwise intersections and unions. A *sub-family* (the rungs of a ladder) need not be closed
   under them;
 * a *fragment* is a set of programs; `S ⊑[F] T` (`RefinesOn F S T`) says that `S` refines `T`
-  on `F`: `∀ p ∈ F, S p ⊆ T p`. This is a valid stepping-stone condition: `S` may be more
+  on `F`: `∀ p ∈ F, S p ⊆ T p`. This is silmaril#2868's "valid stepping stone": `S` may be more
   defined and more deterministic than `T` (fix evaluation order, implementation-defined
   choices, give undefined behaviour a result), and must never forbid what `T` requires;
 * `refinesSet S T` is the largest fragment on which `S ⊑ T` (`refinesOn_iff_subset`), and

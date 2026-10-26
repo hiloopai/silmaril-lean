@@ -1,0 +1,91 @@
+{
+  "clang_repeat": {
+    "artifact": {
+      "bytes": 2800,
+      "path": "sha256.elf.hex",
+      "sha256": "c8a90ab96318b415eb7649eedaee8be543799dd8f47bdb0f8f93780478f5bb60"
+    },
+    "identical_artifact_and_objects": true,
+    "objects": {
+      "compress.o": {
+        "bytes": 1488,
+        "sha256": "9adf9263e505abea32ac0abb469af48eb23c9de1c83d5c1e8e6b360110b45fdd"
+      },
+      "sha256.o": {
+        "bytes": 2720,
+        "sha256": "61a8c37c527c8f1ffa1717344f15ff3ff320937aecc29457c4eb68eef4543117"
+      },
+      "start.o": {
+        "bytes": 616,
+        "sha256": "c19b2632c4852ce6a236da88b4b3438f3fd612e4f02dcecb3e81edda74fb73df"
+      }
+    },
+    "observed_build_seconds": [
+      0.15995554183609784,
+      0.1588845420628786
+    ]
+  },
+  "evidence_stage": "runtime/reproducibility observations, no formal binary theorem",
+  "gcc_repeat": {
+    "artifact": {
+      "bytes": 9656,
+      "path": "sha256.elf.hex",
+      "sha256": "05fd7f70f202353177c364563519e0a540adeba2581dc58016e95ccd4feb3f13"
+    },
+    "identical_artifact_and_objects": true,
+    "objects": {
+      "compress.o": {
+        "bytes": 1744,
+        "sha256": "a5b5571911c8b7c5fc2892ff7bddc66bf4105cf4eb9539c07a3a5f685d358ab2"
+      },
+      "sha256.o": {
+        "bytes": 3648,
+        "sha256": "f66a7f12c1f840fe0bb12c8dc8343922e20b9dbbdac76c9c9ecae091ab8cdda7"
+      },
+      "start.o": {
+        "bytes": 832,
+        "sha256": "f11465464e076ec02534a7d23c9ab0e001639cffbb378c50b5035fecb4069b56"
+      }
+    },
+    "observed_build_seconds": [
+      0.17383871413767338,
+      0.0945185930468142
+    ]
+  },
+  "proof_stage": {
+    "assisted": "build/test recipe authored by agent",
+    "automatic": "C/ASM compilation, content hashing, manifest verification, native examples and mutation rejection",
+    "full_local_build_or_replay": false,
+    "new_binary_theorems": 0,
+    "new_lean_certificate_bytes": 0,
+    "solver_calls": 0
+  },
+  "shell_difftest": {
+    "missing_newline_case_rejected": true,
+    "missing_newline_mutation_exit": 1,
+    "mutation_stdout": "FAIL empty: rc=0 want=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 got=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 stderr=\nFAIL abc: rc=0 want=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad got=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad stderr=\nFAIL len1: rc=0 want=ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb got=ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb stderr=\nFAIL len55: rc=0 want=9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318 got=9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318 stderr=\nFAIL len56: rc=0 want=b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a got=b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a stderr=\nFAIL len57: rc=0 want=f13b2d724659eb3bf47f2dd6af1accc87b81f09f59f2b75e5c0bed6589dfe8c6 got=f13b2d724659eb3bf47f2dd6af1accc87b81f09f59f2b75e5c0bed6589dfe8c6 stderr=\nFAIL len63: rc=0 want=7d3e74a05d7db15bce4ad9ec0658ea98e3f06eeecf16b4c6fff2da457ddc2f34 got=7d3e74a05d7db15bce4ad9ec0658ea98e3f06eeecf16b4c6fff2da457ddc2f34 stderr=\nFAIL len64: rc=0 want=ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb got=ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb stderr=\nFAIL len65: rc=0 want=635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0 got=635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0 stderr=\nFAIL len119: rc=0 want=31eba51c313a5c08226adf18d4a359cfdfd8d2e816b13f4af952f7ea6584dcfb got=31eba51c313a5c08226adf18d4a359cfdfd8d2e816b13f4af952f7ea6584dcfb stderr=\nFAIL len120: rc=0 want=2f3d335432c70b580af0e8e1b3674a7c020d683aa5f73aaaedfdc55af904c21c got=2f3d335432c70b580af0e8e1b3674a7c020d683aa5f73aaaedfdc55af904c21c stderr=\nFAIL len128: rc=0 want=6836cf13bac400e9105071cd6af47084dfacad4e5e302c94bfed24e013afb73e got=6836cf13bac400e9105071cd6af47084dfacad4e5e302c94bfed24e013afb73e stderr=\nFAIL len1000: rc=0 want=41edece42d63e8d9bf515a9ba6932e1c20cbc9f5a5d134645adb5db1b9737ea3 got=41edece42d63e8d9bf515a9ba6932e1c20cbc9f5a5d134645adb5db1b9737ea3 stderr=\nFAIL rand1M: rc=0 want=2f8ac722e7dcc86e142aeaa4d08d0e8fce234e0945a66c75301c1116c3c8044d got=2f8ac722e7dcc86e142aeaa4d08d0e8fce234e0945a66c75301c1116c3c8044d stderr=\n1c1\n< 4a1e67f2fe1d1cc7b31d0ca2ec441da4778203a036a77da10344c85e24ff0f92\n---\n> 4a1e67f2fe1d1cc7b31d0ca2ec441da4778203a036a77da10344c85e24ff0f92\n\\ No newline at end of file\n",
+    "positive_exit": 0,
+    "positive_stdout": "ok   empty (0 bytes) e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nok   abc (3 bytes) ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\nok   len1 (1 bytes) ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb\nok   len55 (55 bytes) 9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318\nok   len56 (56 bytes) b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a\nok   len57 (57 bytes) f13b2d724659eb3bf47f2dd6af1accc87b81f09f59f2b75e5c0bed6589dfe8c6\nok   len63 (63 bytes) 7d3e74a05d7db15bce4ad9ec0658ea98e3f06eeecf16b4c6fff2da457ddc2f34\nok   len64 (64 bytes) ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb\nok   len65 (65 bytes) 635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0\nok   len119 (119 bytes) 31eba51c313a5c08226adf18d4a359cfdfd8d2e816b13f4af952f7ea6584dcfb\nok   len120 (120 bytes) 2f3d335432c70b580af0e8e1b3674a7c020d683aa5f73aaaedfdc55af904c21c\nok   len128 (128 bytes) 6836cf13bac400e9105071cd6af47084dfacad4e5e302c94bfed24e013afb73e\nok   len1000 (1000 bytes) 41edece42d63e8d9bf515a9ba6932e1c20cbc9f5a5d134645adb5db1b9737ea3\nok   rand1M (1048576 bytes) 80a4900329c7928b234b2f4e4946943c2ee82681ce9dfe9a28ad342c9b5bc759\nok   pipe\n",
+    "script_sha256": "2d318557123509c30ba322128980edd3069394d374cf0baf17980f53aed767f6"
+  },
+  "sizes": {
+    "clang-o3": {
+      "compress.o.hex": 3023,
+      "manifest.json": 7472,
+      "runtime.json": 1258,
+      "sha256.elf.hex": 5688,
+      "sha256.o.hex": 5525,
+      "sha256.preprocessed.c": 2788,
+      "start.o.hex": 1252
+    },
+    "gcc-o3": {
+      "compress.o.hex": 3543,
+      "manifest.json": 7848,
+      "runtime.json": 1256,
+      "sha256.elf.hex": 19614,
+      "sha256.o.hex": 7410,
+      "sha256.preprocessed.c": 2869,
+      "start.o.hex": 1690
+    }
+  }
+}

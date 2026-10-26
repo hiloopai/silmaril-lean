@@ -5,7 +5,7 @@ LAKE ?= lake
 PYTHON ?= python3
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache check demo help
+.PHONY: tools stage library cache check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -36,10 +36,18 @@ check:
 demo: tools
 	$(PYTHON) tools/binaryen-lean/test-release-demo.py --bin-dir build/bin
 
+demo-process:
+	$(LAKE) build --wfail Silmaril.Process.Thms
+
+demo-sha256:
+	$(LAKE) build --wfail Silmaril.Process.CLI.Sha256Cli.Binary Silmaril.Process.LPS.Problems.Sha256Cli.EndToEnd
+
 help:
 	@echo 'make tools    Build seven native Wasm tools and stage build/bin/sil'
 	@echo 'make library  Check every included Lean library module'
 	@echo 'make cache    Fetch public dependency artifacts and optional S3 build artifacts'
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
+	@echo 'make demo-process  Build the public process headers and theorem slice'
+	@echo 'make demo-sha256   Build the freestanding sha256-cli proof roots'
 	@echo 'make stage    Stage already-built tools without compiling'
