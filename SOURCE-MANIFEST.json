@@ -47,7 +47,13 @@
     "Batteries.Data.Except",
     "Cslib.Foundations.Logic.InferenceSystem",
     "Cslib.Foundations.Logic.Operators",
+    "Cslib.Foundations.Relation.Attr",
+    "Cslib.Foundations.Relation.Confluence",
     "Cslib.Foundations.Relation.Defs",
+    "Cslib.Foundations.Relation.Termination",
+    "Cslib.Foundations.Semantics.LTS.Bisimulation",
+    "Cslib.Foundations.Semantics.LTS.Execution",
+    "Cslib.Foundations.Semantics.LTS.Relation",
     "Cslib.Foundations.Syntax.Congruence",
     "Cslib.Foundations.Syntax.Context",
     "Cslib.Foundations.Syntax.HasSubstitution",
@@ -63,10 +69,15 @@
     "Mathlib.Algebra.Group.End",
     "Mathlib.Algebra.Group.Ext",
     "Mathlib.Algebra.Group.Hom.Defs",
+    "Mathlib.Algebra.Group.Int.Even",
     "Mathlib.Algebra.Group.MinimalAxioms",
     "Mathlib.Algebra.Group.Opposite",
     "Mathlib.Algebra.Group.Submonoid.Defs",
+    "Mathlib.Algebra.Order.BigOperators.Group.Finset",
+    "Mathlib.Algebra.Order.Ring.Int",
     "Mathlib.Algebra.Ring.Defs",
+    "Mathlib.Algebra.Ring.Int.Defs",
+    "Mathlib.Algebra.Ring.Parity",
     "Mathlib.Basic.Finite.Prod",
     "Mathlib.Basic.Finite.Sigma",
     "Mathlib.Basic.Finite.Sum",
@@ -112,10 +123,15 @@
     "Mathlib.CategoryTheory.Skeletal",
     "Mathlib.CategoryTheory.Types.Basic",
     "Mathlib.CategoryTheory.Widesubcategory",
+    "Mathlib.Computability.PartrecBasis",
+    "Mathlib.Control.Fix",
+    "Mathlib.Control.LawfulFix",
     "Mathlib.Data.BitVec",
+    "Mathlib.Data.ENat.Lattice",
     "Mathlib.Data.Fin.Basic",
     "Mathlib.Data.Fin.Tuple.Basic",
     "Mathlib.Data.Fin.VecNotation",
+    "Mathlib.Data.Finmap",
     "Mathlib.Data.Finset.Basic",
     "Mathlib.Data.Finset.Image",
     "Mathlib.Data.Finset.Lattice.Fold",
@@ -123,20 +139,40 @@
     "Mathlib.Data.Finset.Sort",
     "Mathlib.Data.Finset.Union",
     "Mathlib.Data.Fintype.Basic",
+    "Mathlib.Data.Fintype.Card",
     "Mathlib.Data.Fintype.EquivFin",
     "Mathlib.Data.Fintype.Fin",
+    "Mathlib.Data.Fintype.Option",
+    "Mathlib.Data.Fintype.Order",
+    "Mathlib.Data.Fintype.Pi",
+    "Mathlib.Data.Fintype.Powerset",
+    "Mathlib.Data.Fintype.Sum",
+    "Mathlib.Data.Int.Basic",
+    "Mathlib.Data.Int.Bitwise",
     "Mathlib.Data.List.Basic",
+    "Mathlib.Data.List.Chain",
+    "Mathlib.Data.List.FinRange",
     "Mathlib.Data.List.Find",
     "Mathlib.Data.List.Forall2",
     "Mathlib.Data.List.Induction",
     "Mathlib.Data.List.OfFn",
+    "Mathlib.Data.List.Perm.Basic",
+    "Mathlib.Data.List.Rotate",
+    "Mathlib.Data.Matrix.Mul",
     "Mathlib.Data.Nat.Basic",
+    "Mathlib.Data.Nat.Factorial.Basic",
+    "Mathlib.Data.Nat.PSub",
+    "Mathlib.Data.PFun",
+    "Mathlib.Data.Part",
     "Mathlib.Data.Quot",
     "Mathlib.Data.Rat.Defs",
     "Mathlib.Data.Set.Basic",
     "Mathlib.Data.Set.Defs",
+    "Mathlib.Data.Set.Finite.Range",
     "Mathlib.Data.Set.Image",
+    "Mathlib.Data.Set.Insert",
     "Mathlib.Data.Set.Lattice.Indexed",
+    "Mathlib.Data.Set.Lattice.Order",
     "Mathlib.Data.String.Basic",
     "Mathlib.GroupTheory.Perm.Basic",
     "Mathlib.Init",
@@ -147,20 +183,32 @@
     "Mathlib.Logic.Relation",
     "Mathlib.Order.Antisymmetrization",
     "Mathlib.Order.Basic",
+    "Mathlib.Order.Bounds.Basic",
     "Mathlib.Order.Closure",
+    "Mathlib.Order.CompleteBooleanAlgebra",
     "Mathlib.Order.CompleteLattice.Basic",
     "Mathlib.Order.CompleteLattice.Lemmas",
     "Mathlib.Order.Defs.Unbundled",
+    "Mathlib.Order.DirSupClosed",
+    "Mathlib.Order.FixedPoints",
     "Mathlib.Order.GaloisConnection.Basic",
+    "Mathlib.Order.Hom.Bounded",
     "Mathlib.Order.Hom.CompleteLattice",
+    "Mathlib.Order.Iterate",
+    "Mathlib.Order.OmegaCompletePartialOrder",
+    "Mathlib.Order.OrderIsoNat",
+    "Mathlib.Order.Preorder.Finite",
+    "Mathlib.Order.Setoid.Basic",
     "Mathlib.Order.UpperLower.Basic",
     "Mathlib.Order.WellFounded",
+    "Mathlib.SetTheory.Cardinal.NatCard",
     "Mathlib.SetTheory.ZFC.Basic",
     "Mathlib.SetTheory.ZFC.Ordinal",
     "Mathlib.Tactic.Cases",
     "Mathlib.Tactic.Choose",
     "Mathlib.Tactic.Convert",
     "Mathlib.Tactic.DefEqTransformations",
+    "Mathlib.Tactic.FinCases",
     "Mathlib.Tactic.IntervalCases",
     "Mathlib.Tactic.Linarith",
     "Mathlib.Tactic.Ring",
@@ -308,13 +356,13 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "1322f69e0c112a903d3c89867332e34f7b7a0fb3de6f81b7d5f28fc3959f64e4",
-      "bytes": 3937
+      "sha256": "77aa8d83c40ae2f11093aadd9ae03dd942e4a26200b8a8db1b544f46e4cca7bd",
+      "bytes": 4093
     },
     {
       "path": "CLAUDE.md",
-      "sha256": "1322f69e0c112a903d3c89867332e34f7b7a0fb3de6f81b7d5f28fc3959f64e4",
-      "bytes": 3937
+      "sha256": "77aa8d83c40ae2f11093aadd9ae03dd942e4a26200b8a8db1b544f46e4cca7bd",
+      "bytes": 4093
     },
     {
       "path": "LICENSE",
@@ -428,8 +476,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "ed04c539d265e635efe4a25ed9c274f889a08f6cf087eb32e3c158bf1033bfcc",
-      "bytes": 4011
+      "sha256": "7b1345f129308deff434b327de91395aad6771cab34b3b0891a073e84c43c257",
+      "bytes": 4138
     },
     {
       "path": "Silmaril.lean",
@@ -440,6 +488,31 @@
       "path": "Silmaril/Calculi.lean",
       "sha256": "81de183cbea6ca0695276e3634612f270a25545ad26c772a6e3a46324b7697a2",
       "bytes": 169
+    },
+    {
+      "path": "Silmaril/Calculi/Imp.lean",
+      "sha256": "5874685cc76d466a43ecb7cc4cc65cafc5569b70f4f2c63018313a4cc4b5e4d8",
+      "bytes": 184
+    },
+    {
+      "path": "Silmaril/Calculi/Imp/BigStep.lean",
+      "sha256": "e95aada454b6cecaf8fc569e05005a3147342b30c24e96a4c74b62c10340d9ce",
+      "bytes": 4859
+    },
+    {
+      "path": "Silmaril/Calculi/Imp/Denotation.lean",
+      "sha256": "aa948260f9dba286105f10b7f84a264fbfa9997ea1227a3f9b92754c0cbe5de1",
+      "bytes": 6323
+    },
+    {
+      "path": "Silmaril/Calculi/Imp/Factorial.lean",
+      "sha256": "db00cd46d84674532e51758e632de45ba7a3f7f5ebc8ccc831ebcf9c0135cc80",
+      "bytes": 10004
+    },
+    {
+      "path": "Silmaril/Calculi/Imp/Syntax.lean",
+      "sha256": "d8af2eca6c33d4549816eea439ec86c17958d9732c237c6f0d76b3b60763bd8d",
+      "bytes": 1992
     },
     {
       "path": "Silmaril/Calculi/LambdaCube.lean",
@@ -607,9 +680,129 @@
       "bytes": 611
     },
     {
+      "path": "Silmaril/Calculi/PCF.lean",
+      "sha256": "7ef6ecc41c9f9ad33b16529e0e4e0f6db637f161d6f5d32738e7a34aa4f3f979",
+      "bytes": 1008
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Adequacy.lean",
+      "sha256": "42ddfd81e3068ec978fe64460d79b22748efe3d38302ec06a57e8728e2bc2fd9",
+      "bytes": 17535
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Applicative.lean",
+      "sha256": "acc7771a9fc6ec7454165c33c345ecb57ba3cc47c1fc2eb88e29c9e3853dadc5",
+      "bytes": 2845
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/BigStep.lean",
+      "sha256": "10ff3d25c5603db22dc351713b21013e54a29c4333797c5339addb650a29afeb",
+      "bytes": 10466
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/BoolFragment.lean",
+      "sha256": "88bc1b0e9bf257b2e4d46e0a6dd283994bf22dbd613e83fe622eb0c59728e48b",
+      "bytes": 23325
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/CallByValue.lean",
+      "sha256": "616fbd0872c90e897482fdc9af0d2ffef56f18a33cc44a0e6f281195fda11df7",
+      "bytes": 4060
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Contextual.lean",
+      "sha256": "75a61e8614429e9477ab3bbfe8b2171645b29a2165b3b43ec1a8fbf6466e7112",
+      "bytes": 2805
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Definability.lean",
+      "sha256": "a943679be341be63f005d126eeb631052571009878dd8713c5643217a9d6f41f",
+      "bytes": 11743
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Denotation.lean",
+      "sha256": "ca5d1874fc9b8ab4fe47e8a92aac9d1de4b5eb73d2047fd7a41cf6e1180a6dfa",
+      "bytes": 9678
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Density.lean",
+      "sha256": "28644cdcdb6648a810e8da167fcfabd1f01ae04691c9a2f0ad7539bd5cb59fd0",
+      "bytes": 8597
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Examples.lean",
+      "sha256": "d6e4ad58edbeb48f97e21477cd1b8d1c83bb03a345cf5d9eb4ebd77712622b1a",
+      "bytes": 7630
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Extensionality.lean",
+      "sha256": "8201ff54e8cc5ea6e4ba010af631a5b9076c6de1632d7032d1e208046d9717cf",
+      "bytes": 10429
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/FullAbstraction.lean",
+      "sha256": "a49a5974adb08e353c26cd3ad0195d0b97e1898663ff34a944bd5ff07536e3b6",
+      "bytes": 12647
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Morphism.lean",
+      "sha256": "0ef7c6e7eb5cffd10f87737c63ff2ac4c5a57baf8202f2cfe3e42851f2738d11",
+      "bytes": 12129
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Parallel.lean",
+      "sha256": "bf265a879b25dc705fea09bc1288502e25f3b9ac56b2b293ac1c991a646a2bb4",
+      "bytes": 8428
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Partrec.lean",
+      "sha256": "a897897bc63cf182070e7f0150bc3ec55111c57689f75aa99f98d50d84c4b5ee",
+      "bytes": 20071
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Por.lean",
+      "sha256": "9c71ce7bb9d43fa9fddcb3e8df6123a01208bc6d933febbfdc0aa553545e90d4",
+      "bytes": 7419
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Projection.lean",
+      "sha256": "2e942754b8e340df08b38c70f9cd84bde7d4740080eacc414c91e2617e718fa7",
+      "bytes": 7869
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/SmallStep.lean",
+      "sha256": "097f5c664443daf87b255efab118535961450979af2684862fc353fcda7933dc",
+      "bytes": 13124
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Soundness.lean",
+      "sha256": "1da8146f01866b7a99d88bb13b4e2f50f9ed0d9f86c793957025b8461e84fbde",
+      "bytes": 6050
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Stability.lean",
+      "sha256": "70746eee251f29adac88fa1113788075aaaac24504f1db6ccf0cf3ad5ea7cb7d",
+      "bytes": 6279
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Syntax.lean",
+      "sha256": "2defff5236ca90b13adceb1ca0f5430b05dc88c1bf0110dc68b2ce9793454495",
+      "bytes": 11013
+    },
+    {
+      "path": "Silmaril/Calculi/PCF/Undefinability.lean",
+      "sha256": "ab582705dfc90eefa5d3bbd828b4eab9090d8c7462c3eb2304e40498ed13b1eb",
+      "bytes": 4839
+    },
+    {
       "path": "Silmaril/Calculi/TypedLambda.lean",
       "sha256": "b52c963899fb5804efa244369cab313186c4c2d7b1dcedef97d0b5ce780ee558",
       "bytes": 471
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Applicative.lean",
+      "sha256": "e4eb23f50acd24e13409842e141d7707160235aa92c5dcc1488e7e2fb4ff4fee",
+      "bytes": 21142
     },
     {
       "path": "Silmaril/Calculi/TypedLambda/Categorical.lean",
@@ -622,6 +815,26 @@
       "bytes": 16181
     },
     {
+      "path": "Silmaril/Calculi/TypedLambda/Denotation.lean",
+      "sha256": "8ad70b6713f18900ca2ffdde55f68821ff65c12af43bbb000d1c292a1d9eb266",
+      "bytes": 21776
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Finite.lean",
+      "sha256": "ab1f31b39c88a8db4b4b84c1520731fd7293b306ffa4d7af5b6d089f51d476e9",
+      "bytes": 6041
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/FullAbstraction.lean",
+      "sha256": "266d939a28fb125e11879040e3b970bc34b5e8cd1103fff526ce9a5028004536",
+      "bytes": 4537
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/LogicalRelation.lean",
+      "sha256": "ccc6b7d5e92c281a4597224690ca9922079eefea6f57f5693613e4de5e184162",
+      "bytes": 10517
+    },
+    {
       "path": "Silmaril/Calculi/TypedLambda/Morphism.lean",
       "sha256": "41bb90bd284e5d4d123bd028d60ca7fd67e3d30db1a2959d88f0a1adf44d9559",
       "bytes": 6529
@@ -630,6 +843,11 @@
       "path": "Silmaril/Calculi/TypedLambda/Raw.lean",
       "sha256": "238421063ae79c6c501cba472caf705b38fd67b67ef4d5184eb1898f67b9a4fa",
       "bytes": 22690
+    },
+    {
+      "path": "Silmaril/Calculi/TypedLambda/Stability.lean",
+      "sha256": "fd60e194e60efa5297e93167b2bbc2c04a6ca87fe6f3a4b7d5ed11bbcf7abd88",
+      "bytes": 3633
     },
     {
       "path": "Silmaril/Calculi/TypedLambda/Substitution.lean",
@@ -725,6 +943,571 @@
       "path": "Silmaril/Compile/PassAPI/Pass.lean",
       "sha256": "63b9cded5bbcc0cf135e61453702591b2bb8dad3538540a6b9602220e9ac9848",
       "bytes": 13961
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge.lean",
+      "sha256": "ade530d1b29352b2bce6899b93bc108717d931f4aa9e2966c4d1f52eb0e6eee4",
+      "bytes": 458
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics.lean",
+      "sha256": "5588272a2492657b8d3d620957b1e002e267339ac9c675c228238e6088143c15",
+      "bytes": 2065
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/Adequacy.lean",
+      "sha256": "aece9da989c3e4777f059a6de8e109b32555fbfc212628faf4cff55789ac214e",
+      "bytes": 13610
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/Constructions.lean",
+      "sha256": "44557d2402acb3be52ac9a8664871e3d4c807fd49794e789bf712dde6abfad8e",
+      "bytes": 11116
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/Denotation.lean",
+      "sha256": "780dd2e10ced6b6042ee734035506f4da2ee3ce99c7a2a7d62572f1c35903bc0",
+      "bytes": 11040
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/FullAbstraction.lean",
+      "sha256": "f9b223135d2ee7e5e4140c8648ac46ee0dd5f9647cfaeee679ed99a37a81fc86",
+      "bytes": 16601
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/Introduction.lean",
+      "sha256": "4eb8665bf87e1124d69cd3fccf9d41f1fc1c867a20f148589a857baff7fef6df",
+      "bytes": 5997
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/LeastFixedPoints.lean",
+      "sha256": "97b7066c88604ca99cc776d76e0ffa8e7ce4c3adffb248425667e4283edb059d",
+      "bytes": 14678
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/PCF.lean",
+      "sha256": "5e085d2f8537d708efb8948b2ae2a81cdd0c796959df050b66125d5c7059ec1a",
+      "bytes": 13012
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/ScottInduction.lean",
+      "sha256": "253a4eb24c1c175a24bf1d7162274290594298584de3c0c7f6f5663ba4be2716",
+      "bytes": 6407
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1.lean",
+      "sha256": "f01cf16887eb790f026b0c2cc0594a7928a55f632f1030c72b82c07172b2e6cd",
+      "bytes": 286
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Course.lean",
+      "sha256": "684ebc419cf53e0b9724b4b27746a68c0309cecc27a2048c7522e73e13d1b366",
+      "bytes": 1397
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Examples.lean",
+      "sha256": "7efa2a85c6863f8b30fbc918f490cb8c722e3103746f6f88ac6781fc94cee58f",
+      "bytes": 1197
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/DerivationPrinter.lean",
+      "sha256": "f83e337ee8f16a7f3df5fdd272a67ed04f19cecfa2c2bfbaef81c7fac331585e",
+      "bytes": 8427
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/EvaluationOrder.lean",
+      "sha256": "1fe49619317c2cf0fe57fbb59e92d0cf18c9050ceff85ee81eb9370e10c95592",
+      "bytes": 1902
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/MachineIntegers.lean",
+      "sha256": "6fd6819ff15927d444dfa581a3fbd55001bbcb3dc0c615864bcd58d3844802c0",
+      "bytes": 6516
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/OneToThree.lean",
+      "sha256": "799837f42f172a746d2f787e4decebf72f60bb7d518b39dd6b8395130f5471aa",
+      "bytes": 5379
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/TypingDerivations.lean",
+      "sha256": "969dd34dcbf9b5678c29182846fff4c8766c75c24633e9255775312c96c62f86",
+      "bytes": 1366
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/ValueAssignmentTyping.lean",
+      "sha256": "af5df29351b07a842514b6f88ed7fd515060001a1c1e359512b710a6492b63e4",
+      "bytes": 8186
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Exercises/Variants.lean",
+      "sha256": "996c2f703f31b62dc420abb610040a951464059c5577d6e4d650ff8ab4e47b5d",
+      "bytes": 13589
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/Determinacy.lean",
+      "sha256": "6891b9028e00e837e19e4be51040976488d3c17cb35c22dbc7bc2ae7ac9d547b",
+      "bytes": 3871
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/Inversion.lean",
+      "sha256": "e25dae910e5d0152c53b6af39706bc21c6a52659c4fad31821f4519b6fb9b1db",
+      "bytes": 5383
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/Preservation.lean",
+      "sha256": "0700920ae45725fe5dc33a396c17b34d1aa029c3e6d28a802c436cac8e87971c",
+      "bytes": 3228
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/PreservationByTyping.lean",
+      "sha256": "cd5f87f2f39f10b37e860e28ec193be2ef3231d3a1c10f9ae804b12ca3f8a8a3",
+      "bytes": 2581
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/Progress.lean",
+      "sha256": "d3d6ad7be56ca30869cc3162307b36b2ab5c0f1838ff49be47dc3a70cc435552",
+      "bytes": 4346
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/Safety.lean",
+      "sha256": "4c7813b0edab01fe8478725e1d3043ef2abdb280662e1639ce411e1ede23d300",
+      "bytes": 1790
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Metatheory/TypingUniqueness.lean",
+      "sha256": "05af30ec7eda04653578525bf855ae2ae32c053b3a2851ed087ceeb08d3a5c44",
+      "bytes": 1185
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Reduction.lean",
+      "sha256": "bb61fe5f145b5b918a03ec984c4e3bf702aa7cbfcc911c1c8108e2dda8620a45",
+      "bytes": 3853
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Store.lean",
+      "sha256": "81fe186617da991699a8d62f9dba7feb21c1fdfce0e88993f02c0f803117321e",
+      "bytes": 2459
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Syntax.lean",
+      "sha256": "035f67d0482b345f3f8627085b88757063722ca16b03fdd4cc324ca2f82cf314",
+      "bytes": 1422
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L1/Typing.lean",
+      "sha256": "2a3fc7db6aff2ba2991f894e9bafd9c122a47b731eb73b0db8916903b0a8c7ae",
+      "bytes": 5695
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2.lean",
+      "sha256": "52b26aa346362cdacd099d3e93e060ccccfd561c31d1aa7fd02fe98760e94aea",
+      "bytes": 531
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/CallByName.lean",
+      "sha256": "567ad8376b24cbb4340b599f2245ae0fb128ba3e69913fa51e36b8a2bbc51261",
+      "bytes": 4275
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/ClosureInterpreter.lean",
+      "sha256": "3dc45fd4d449e07e47ff8e404bd5fe9c0ef8c999c1ddf033905a2d3405a6a0bc",
+      "bytes": 4987
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Course.lean",
+      "sha256": "8b814366b94477813eb334755ba9a78978e0f04e22b7f947b88365d8958c487a",
+      "bytes": 1047
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/CallByNameInterpreter.lean",
+      "sha256": "80d38596bd14aa2e41eab8641036c82e343258133803d655ecba32d699b10a3b",
+      "bytes": 2550
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/Closures.lean",
+      "sha256": "d82101640c20bd684068bce1e377534cbaa076769e2850d1fa5513d70547bd9c",
+      "bytes": 1760
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/EvaluationStrategies.lean",
+      "sha256": "febe6c3bfbe0fe5a9a981109635dbd9248d5f0aa5e63dc101792b6533102520b",
+      "bytes": 4211
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/FirstOrder.lean",
+      "sha256": "44e1d72076a70d65b421a066b4402d5f4e0be28c214c6676877a8521fde133e1",
+      "bytes": 4028
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/FreeVariables.lean",
+      "sha256": "8a596b8eb38b833b3710f4cf5907b8411a362e01d2777f0f051d153c150ae661",
+      "bytes": 1836
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/Substitution.lean",
+      "sha256": "d0778478b45a02544621ea2ef22b897a7369ac6854b8adb50eb7e8e3e87c611f",
+      "bytes": 2086
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Exercises/TypingDerivations.lean",
+      "sha256": "204fb721c025b00d01519f734e8c58317d8498d7ed29b768f40f8164ba80695b",
+      "bytes": 1778
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/FullBeta.lean",
+      "sha256": "318023db241e9e261ed5c90ada7f013cc0ed64433cbaf5f067a7ffe1459a68f4",
+      "bytes": 4610
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Interpreter.lean",
+      "sha256": "ef869875f2da8d00774de67185ddf2c06eea8eabbef29dc386401197f2d0b452",
+      "bytes": 3705
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Metatheory/Closedness.lean",
+      "sha256": "94dd727de70b0c5ab5ddc0770438a35fd4ff4551e6363e90a9eb0ffdbd3614de",
+      "bytes": 14045
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Metatheory/Preservation.lean",
+      "sha256": "08f93132771cbd8ef34e3e00b3b58fde757e3367bc820c95b8d1d7b49cb86ace",
+      "bytes": 5458
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Metatheory/Progress.lean",
+      "sha256": "5548b763e9591dc2955e25bf97182bb56ac8d43389fe893dc3c64f0e695ec041",
+      "bytes": 7405
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Metatheory/Substitution.lean",
+      "sha256": "cfa2475528f950f95268feaa04ed3602b3a5097ec727e9a4e87937088e81f9ea",
+      "bytes": 6431
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Reduction.lean",
+      "sha256": "4aafa5cce76e25ec237c5ba2559d58c6b00fdcd188af90eb5c37f4aadc8ab551",
+      "bytes": 6490
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Substitution.lean",
+      "sha256": "980b092b778dcbbd724dcbf1ab297f765745a1410fb30d03121d0ca0faa72aee",
+      "bytes": 8340
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Syntax.lean",
+      "sha256": "f1d6996ca338e808d3c6334339b9ae90afe962743eae953adce6898037c80f05",
+      "bytes": 7583
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/L2/Typing.lean",
+      "sha256": "c6df94f22914c94a95d4a29c28b4f2434090379cf8cfab882c53cb7d40692fb2",
+      "bytes": 8763
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers.lean",
+      "sha256": "4eba95dfc4ffbf7e27db5bf2658ec6f9302aec98999a0735667cb961a995b5fe",
+      "bytes": 76
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/AbstractInterpretation.lean",
+      "sha256": "659474f53c2f6032f96c8231a26eb21256a46da7fb0143cf96e1fc142fe72ed2",
+      "bytes": 5575
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/AvailableExpressions.lean",
+      "sha256": "a8e395872ac0b82f2401d8abcdb313ea847cff18b0911e4bcd48855248ce4872",
+      "bytes": 10743
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/BasicBlocks.lean",
+      "sha256": "1a4d5b648791232b0a86553ce6afc5ffdef52057a8b69c55ecaaa45ade368b02",
+      "bytes": 18495
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/CodeMotion.lean",
+      "sha256": "cff4ef958139bf427cd2e48f41d5d2b72b1441411e75736991c2692cad4eab54",
+      "bytes": 17445
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/CommonSubexpression.lean",
+      "sha256": "55c6bef5d713203bd8668cb540498f1f363dfd96e1b7ebc79781bd0c4e8fcf0c",
+      "bytes": 24412
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/ConstraintBased.lean",
+      "sha256": "eb24b9a8ab0abc684c218b521405a10dd4fb65a1a3db1d1d891ea1e9daeefb79",
+      "bytes": 3527
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/ControlFlowAnalysis.lean",
+      "sha256": "f64ff6a382df064f90534512911f40258c2b6761b34bc853f17eefe8c0b56dfe",
+      "bytes": 9849
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Course.lean",
+      "sha256": "f2b6110bf3b4e0365807a02a844cf9684034dc0f10de3f798ca4d5fcb3be1269",
+      "bytes": 5165
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/DataflowAnomalies.lean",
+      "sha256": "ae0b49bff43c613440a5fe222049807346172baf57cbff4095b4fbc726fe84a8",
+      "bytes": 3831
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/DeadCode.lean",
+      "sha256": "6f79753dab36d054890cdaa30621b0516cf5b6f54d0ab2c89286c1995d6fc8ff",
+      "bytes": 10703
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Decompilation.lean",
+      "sha256": "8a668ef8b08f63a3414f431756bca6d4c6ae8270be5f11e9f925d871e3f7e816",
+      "bytes": 41603
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/EffectSystems.lean",
+      "sha256": "cd50cec144436e856c495b9eb88e10c267bdb30544c3ad7d589031cda9f62892",
+      "bytes": 13406
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Execution.lean",
+      "sha256": "22c7d714687945b97a50f06c95638bd6fd5099e84c68aa2bb4521cd465db108c",
+      "bytes": 6159
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S1Q1.lean",
+      "sha256": "5090baab6773b94dea29b455d7deb9ac40a9ef68cca4d24bbd3654342a88e26e",
+      "bytes": 3293
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S1Q2.lean",
+      "sha256": "e880553b6a627c0a581bef0892e6acf9c03454b559efd26638e6201f69f37b2c",
+      "bytes": 3363
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S1Q3.lean",
+      "sha256": "663c8d1d644f72e5b06448aa1e349f3f28d503e0594da5c9cdd97e0b35bac751",
+      "bytes": 1917
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S2Q1.lean",
+      "sha256": "2b3c7e9d8b6920f9ba8150dd0497c0b1cd38c6eb0b3653d9be8ae4c9adc756f6",
+      "bytes": 2097
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S2Q2.lean",
+      "sha256": "640968646ee1c0a0fe9a538ed80d0661bee5fb745f15016ffbbb349885dbc727",
+      "bytes": 7833
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S2Q3.lean",
+      "sha256": "02236c7b51cc1305c27a98b0afaa5b0d7e2e3dbfa74ee97b3c39d849085bfa52",
+      "bytes": 4892
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S3Q1.lean",
+      "sha256": "85170c3061f2ca8706466a75863449a87e853c3ddcc9e8401214b71386ffe96a",
+      "bytes": 1564
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S3Q2.lean",
+      "sha256": "73c95b538de0d09d1e90383a07b1718e8efba356bcaee20f66790d75bfaf5613",
+      "bytes": 5806
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S3Q3.lean",
+      "sha256": "e2921d482fead419b2048b78a8cae189ab48229bca7abc2530c44052eabcbcbd",
+      "bytes": 4401
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q1.lean",
+      "sha256": "4b185b953904843f6abd354daa098de3734b559a661e372f77b1eb3fd66d130e",
+      "bytes": 1075
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q10.lean",
+      "sha256": "4b5848a1935dd64cc715189a1c35ad124397334ca54a92a41260a0aa63b4c2fe",
+      "bytes": 3332
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q11.lean",
+      "sha256": "df347dca4a10fa55b07e94e6bda73293d880126d809a8d909b3db7d3007fd9af",
+      "bytes": 2363
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q12.lean",
+      "sha256": "c3ef8d81c0d612e274b038cdc4d921e09d97943ec246c86d65763895d17b996a",
+      "bytes": 7342
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q13.lean",
+      "sha256": "e612e4c0d502826cda444876c14d462b2dcf213fc0911cb91c0603f1c9ed94ab",
+      "bytes": 2409
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q14.lean",
+      "sha256": "285a4d8a42409dd9097cf5da75d73ba445eb55c43a53099ea65fb55abca1fd6e",
+      "bytes": 11031
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q15.lean",
+      "sha256": "cc92a0e70ccae27d11e45fc95af10b89bb66950bca58e2d906067a2385984fe0",
+      "bytes": 712
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q16.lean",
+      "sha256": "a44039ffd2489b836334c952bf02fd515847ded87cc4c599e2bf69b9bc7fafa0",
+      "bytes": 683
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q17.lean",
+      "sha256": "98abec736c3ce35d7502253d4048486f436f6e628771b7770840f0dfbdbd5036",
+      "bytes": 1560
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q18.lean",
+      "sha256": "d7d89ba1c15743d731d1337e9db987ae44ea8f75f6a20c1fce91dcac8681dd37",
+      "bytes": 7541
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q19.lean",
+      "sha256": "059a0cba3db9d30c963d46d41b775c376c5e94174c5af7856a3098b2942139b5",
+      "bytes": 27001
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q2.lean",
+      "sha256": "d19faced9d15874ce5978c27606e44f4f4b94490358f2fdedbf6dedcfc38d237",
+      "bytes": 901
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q20.lean",
+      "sha256": "7f5d3cd8e83296b5523268c9d1d6f8f5847e131c65566589eca5e824ac1402a8",
+      "bytes": 361
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q3.lean",
+      "sha256": "5959406e50a95130b72183f9894faac879d8e50eca3fe267dbe445e27124433a",
+      "bytes": 832
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q4.lean",
+      "sha256": "dfec8fad9f50e728b08bf236690bb21426c46ab06dd0cddbb30640413647b34b",
+      "bytes": 4576
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q5.lean",
+      "sha256": "0765392bd6a547159dc1cefe3c5b3f89468ebb105c670012d011bce18d4bd68d",
+      "bytes": 2783
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q6.lean",
+      "sha256": "b058f37a089b8bb4e252295daaed6d7bf07894f3df446472cd6f5f62a9e48620",
+      "bytes": 366
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q7.lean",
+      "sha256": "bb8f7e5e9529fc5ad603a6b7f5b2e00976008879d075ef4322fb3162b209a381",
+      "bytes": 388
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q8.lean",
+      "sha256": "4eb131dc07b22cb1ca20e4d3b561c37263a350d2c5c2274bb59e154714da7ded",
+      "bytes": 2680
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Exercises/S4Q9.lean",
+      "sha256": "f50bef3606c76065f2a30fed55c7d58581ead5c4f31a6a23772963373617c422",
+      "bytes": 2902
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/InferenceBased.lean",
+      "sha256": "1d0d26669f3da5cb6ad61c0707f76e80f2d392aa6db5c192710cc40445d06822",
+      "bytes": 9939
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Institutions/Assertions.lean",
+      "sha256": "8df6f64fec30a7c245c2f7a94405bf5a5d2d1369fba3a292a6513db59c171524",
+      "bytes": 6739
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Institutions/Observational.lean",
+      "sha256": "ab90409fedbcd85dc3d3c03b2a001cd633a3e2980e69ede302c39802532cd24a",
+      "bytes": 18955
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Institutions/Relational.lean",
+      "sha256": "8fc95a1d28afb1a4e0d735c28326742381f096644bfb5802c11af40e9fdc9116",
+      "bytes": 10160
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Institutions/Signature.lean",
+      "sha256": "fbf27d75013ddaad1fbe4b4f16267810126458c3c3e85810c7a3f0333f70affd",
+      "bytes": 7638
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Institutions/Transitions.lean",
+      "sha256": "7a076540eccbce95cec0284fc22911f00fcbf513b2530a784750c4bad2a754bd",
+      "bytes": 12118
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/InstructionScheduling.lean",
+      "sha256": "a6a5d8ec3744f23ae89bb330bc0131323e583a3c1ab61ae35fb19be5bf5e6454",
+      "bytes": 15843
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Liveness.lean",
+      "sha256": "9cffca009c4da1a1bf498cd2a76ed0a260f1d8303a25aa2fd05deccfdad38ae2",
+      "bytes": 17208
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Passes.lean",
+      "sha256": "2da1ba0cd06fc8b0299fc3f2aa4395c96e9defabe693606d1ff3d6c1cb32ceb5",
+      "bytes": 2370
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/PlusSim.lean",
+      "sha256": "3e14afe3797cb127784349a12717f88fc96bbd6b13645b7b39349377bae11659",
+      "bytes": 6922
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/PointsTo.lean",
+      "sha256": "2411cb355990f6e6c9efaa4d6e0cc71a89fdf9f1856f71af35d0d3975a6b1bd5",
+      "bytes": 16030
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/RegisterAllocation.lean",
+      "sha256": "497de0032d20935bfa1b815d142a96bb7880cebd5a009f8ea8b04d62025b5492",
+      "bytes": 20770
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Runs.lean",
+      "sha256": "cd310e2af9c53bec34ed34f766cc61239656803c98ac1968b816e9dfb70ed402",
+      "bytes": 9984
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/SSA.lean",
+      "sha256": "7a21ef67cf311fa0c44fd88e851c759fda99e84f7df84cf8a2704ae14fa75421",
+      "bytes": 8346
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/StrengthReduction.lean",
+      "sha256": "b7860f3afc4e39a5876653b9f3fbe359477e4e9a20cf631d9093c84a6414641e",
+      "bytes": 6034
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/Strictness.lean",
+      "sha256": "fa278f1bcf1877b711a7e493e5887e02b1092fdab3d541a52452ac63fe3a2a09",
+      "bytes": 13995
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/ThreeAddress.lean",
+      "sha256": "8ad25c634f0db51ac09a8ed996c66c97f1be4d946ad83e89925fb712f65a424e",
+      "bytes": 13931
+    },
+    {
+      "path": "Silmaril/Courses/Cambridge/OptimisingCompilers/UnreachableCode.lean",
+      "sha256": "48d13c9f40c9295d14b582d04950deeb367f4a0bf79c50433611a6f1de46ffed",
+      "bytes": 7951
     },
     {
       "path": "Silmaril/Data/ByteArray.lean",
@@ -1617,6 +2400,11 @@
       "bytes": 14178
     },
     {
+      "path": "Silmaril/Logic/Institution/Observational/Sentence.lean",
+      "sha256": "7cdaa5445463c45923d05c8b18a84f4ab2195893c8eaec47efbedb30575339f5",
+      "bytes": 1393
+    },
+    {
       "path": "Silmaril/Logic/Institution/Room.lean",
       "sha256": "e96a179ba970e6f7d2444e5b9efe3c5f83dad7703ce5fd15540f26e8971a250b",
       "bytes": 17811
@@ -2410,6 +3198,126 @@
       "path": "Silmaril/Raw/README.md",
       "sha256": "0a677aaeaac1a357e4e74b2e330f98d54486c737b4ba1ea3ca31c04c547c4db8",
       "bytes": 476
+    },
+    {
+      "path": "Silmaril/Semantics/Dataflow.lean",
+      "sha256": "757102382e22bbaab5229a5e2aa2c263c6d7a80f48542a1105467463ed743b57",
+      "bytes": 162
+    },
+    {
+      "path": "Silmaril/Semantics/Dataflow/Framework.lean",
+      "sha256": "db843fb9380f370dfcb72b0da3bf4fd6039ba6cdd7f580423c8c4fb1e4830494",
+      "bytes": 4610
+    },
+    {
+      "path": "Silmaril/Semantics/Dataflow/GenKill.lean",
+      "sha256": "d025be954531712f946720eed7c2159b31e12b4b6716caf70b8ff89fb9a78167",
+      "bytes": 6132
+    },
+    {
+      "path": "Silmaril/Semantics/Dataflow/Iteration.lean",
+      "sha256": "07763e6211534f07f9dc9b2b3ff97c0540a2d84307d9f44be7545564d7a3154d",
+      "bytes": 5237
+    },
+    {
+      "path": "Silmaril/Semantics/Domain.lean",
+      "sha256": "e5b6d16ff065700c33c5b0c113895f646eeba0d43c8096e546cbf7b69ffeb37d",
+      "bytes": 790
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Basic.lean",
+      "sha256": "975bd216a445261a716aa29cb0b6a3617544da01eb436d120792d25c5bf44e3b",
+      "bytes": 3264
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/BoundedComplete.lean",
+      "sha256": "fdf8ec9364c1a8da68df7d70108aa595eeb9d3eec8461cd3016f4c016f73161b",
+      "bytes": 6015
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Chain.lean",
+      "sha256": "1632f812760c048bb75ed7d0e4654b4c6a847a3701f8ed827b4bce61e26fa131",
+      "bytes": 6018
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Continuity.lean",
+      "sha256": "5177d0313a4d3842cd6f24d44bc6c3434c3387a277c7e3261e6345d4bd3361fb",
+      "bytes": 4034
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Examples.lean",
+      "sha256": "b7a0df81936c2ed3e6431d42a54fb786153079c7a612e8e4ee4e7f226a3bbdf2",
+      "bytes": 6740
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Finite.lean",
+      "sha256": "7dd688a0b8c4154e7fa5e1e46be9980c0e30ee4a2aebbfe551784d3b06c6c0cc",
+      "bytes": 3024
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/FiniteProjection.lean",
+      "sha256": "e4a6fd44eec3cb4e104887fbf84eecb082053f585de5af370ed9aeaf802d6df2",
+      "bytes": 10780
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Flat.lean",
+      "sha256": "a033b401630adddfe1a00e033d4e508cefbbb3dcd6e28f9aa0e0351ddd327320",
+      "bytes": 7688
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Function.lean",
+      "sha256": "602bf01045777d6f4673961d7a2a4f80aac28ff8fec49d95993861eb8fe6c972",
+      "bytes": 7102
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Kleene.lean",
+      "sha256": "2571b116ee5770a0e4ea68e3c9ceb5dfae6bf4ff2a51a09380314451c5e9eae7",
+      "bytes": 5959
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Omega.lean",
+      "sha256": "188d9476062b491f2be4b9b23b1a956fb20203265fc37a309f5eabe153104984",
+      "bytes": 5291
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Order.lean",
+      "sha256": "31a5c72d859fe140438fc897c7c8ba0efdf890a7f5b790b823bccf8c3b0d292b",
+      "bytes": 2656
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Product.lean",
+      "sha256": "73ca82548837313d9d8835f7e57a35916f9fc4a423a85c305cf37a2aaafdd677",
+      "bytes": 5942
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/ScottInduction.lean",
+      "sha256": "1084ac9f81d45a54a957d2d9fa993ee6f320b8b12bf4394f33497a66f4b56017",
+      "bytes": 14193
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Sieber.lean",
+      "sha256": "f28bfdda22e1c3c3872f85ec304723e4179ebcef08c7c139ce9f1eee76700d61",
+      "bytes": 2861
+    },
+    {
+      "path": "Silmaril/Semantics/Domain/Stable.lean",
+      "sha256": "a695841a49f43adac9f375bab85d9d4841689df8ab91cc8dbb1d22064f254e3d",
+      "bytes": 17563
+    },
+    {
+      "path": "Silmaril/Semantics/Operational.lean",
+      "sha256": "7e07827158f27694c8bb9f16ea978b20afb5113e4ff9990a52be76d91bb4569c",
+      "bytes": 120
+    },
+    {
+      "path": "Silmaril/Semantics/Operational/Environment.lean",
+      "sha256": "253e649987d8c3bfe46e7f07ae902cd6de135e4ef3172d79fc4186ee1f45f4b0",
+      "bytes": 4556
+    },
+    {
+      "path": "Silmaril/Semantics/Operational/Execution.lean",
+      "sha256": "09ca1e916d3bfe1b2a5faa135fc3c02b0445453dbb012d6dbe71a34d67682b4d",
+      "bytes": 4806
     },
     {
       "path": "Silmaril/Wasm/Behaviour/Adapters/Core.lean",
@@ -7247,9 +8155,29 @@
       "bytes": 388902
     },
     {
+      "path": "docs/courses/cambridge-denotational.md",
+      "sha256": "5a27e5798d7e4e4ce964807d77a561e8a047f81470f26ae466f1ee6ec58265d9",
+      "bytes": 7633
+    },
+    {
+      "path": "docs/courses/cambridge-operational.md",
+      "sha256": "407c0bcdbe19635f4e96348e38cb8cf373e0694634e015a2f43924864c363440",
+      "bytes": 5585
+    },
+    {
+      "path": "docs/courses/cambridge-optimising.md",
+      "sha256": "0047b2adbca1e6341ac80717ca4d99d6a4f1fc95134c5cf5237be85ca476eaf0",
+      "bytes": 8161
+    },
+    {
+      "path": "docs/courses/cambridge.md",
+      "sha256": "81eae03f32f4414bdb2e7766a80e0f1b9ca50b2aeccd0d79cf084534cd5dd802",
+      "bytes": 2985
+    },
+    {
       "path": "docs/design.md",
-      "sha256": "4de3faee0b763936656a3f6fc68f819271abf3ce8f8d3a7f2238dd0befbcf247",
-      "bytes": 8329
+      "sha256": "f656084e01ee1925cf8e18bc4deb0baa92092691939bf5897558de51d353fa21",
+      "bytes": 8685
     },
     {
       "path": "docs/development.md",
@@ -7258,8 +8186,8 @@
     },
     {
       "path": "docs/projects/README.md",
-      "sha256": "6d1089544f3df010ecc55ca4c0a1855cc8dc9b6a73c05fef1d5484f53862b2d3",
-      "bytes": 1213
+      "sha256": "55288b6d66b1579d20e89a2cba301deb25ad2e69bb54273d344ee9b49827e40b",
+      "bytes": 1343
     },
     {
       "path": "docs/projects/compilers.md",
@@ -7348,13 +8276,13 @@
     },
     {
       "path": "references.bib",
-      "sha256": "78dd52f7b80e2d0c204a9aef31687084077c40636f95db76887acee7e642b085",
-      "bytes": 12232
+      "sha256": "bf4fe6b124d7d6d85eda551c6bf507f09a1b45aed5e442bde45e1badef2bbcb4",
+      "bytes": 15637
     },
     {
       "path": "regions.toml",
-      "sha256": "6a890a7d37d54b856d1ee1374fe49f46b0d5e786e505d34e4589f6efee0696af",
-      "bytes": 2971
+      "sha256": "4f5dccc8b2f2d131fd2b36f50da17dbfe7a83d853f4d688fea51e6c43a853c56",
+      "bytes": 3196
     },
     {
       "path": "scripts/check-layout.sh",
