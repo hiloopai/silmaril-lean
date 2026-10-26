@@ -1,0 +1,78 @@
+{
+  "probe": "write_closed2",
+  "claim": "mutant of write_closed (close(2) instead of close(1)): the write succeeds, Linux prints hello\\n and exits 250",
+  "mutantOf": "write_closed",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "close",
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.WriteClosed",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.WriteClosed2.checked",
+      "Silmaril.Process.LPS.Probes.WriteClosed2.admits",
+      "Silmaril.Process.LPS.Probes.WriteClosed2.not_determined_original"
+    ]
+  },
+  "sha256": "5e68921bb1c74dc06f889f65b61070ccafc4a92d5962b1d75e5a732da0759c2c",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 3,
+        "name": "close",
+        "args": [
+          2
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194473,
+          6
+        ],
+        "ret": 6
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          18446744073709551610
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68656c6c6f0a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 250
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

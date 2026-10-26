@@ -1,0 +1,188 @@
+{
+ "schema": "silmaril/x86-probe-problems/1",
+ "generator": "tools/verification-projects/x86_probe_problems.py",
+ "profile": "Problems.nativeX86",
+ "isa": "Machines.x86ExtNative",
+ "builds": ["plain"],
+ "fixtures": "examples/verification-projects/theorem-dev/lps-probes/probes",
+ "results": "Silmaril/Process/LPS/Problems/X86Probes/Results.lean",
+ "domain": "ProfileProblem statements over Problems.nativeX86, not Problem.denote?/Shapes forms: every entry and input with nativeX86.validEntry (= X86Launch.ValidEntry: sp in [x86LaunchBounds.spWindowLo, taskSize] (2 GiB below the lowest randomized stack top) and 16-aligned, mmap base in fixed bounds, the image below the stack reservation) and nativeX86.validInput false (= X86Launch.ValidInput, which fixes hwcap = 0, and abort() not modelled). theorem.dev's riscv64 Run.ValidInput (hwcap rv64gc or rv64gcv, Sv48, ValidEntryVa) is a different domain.",
+ "refutationReasons": {
+  "modelCoverage": "the model lacks the call: the run reaches an error (chaos), which refutes haltsMayFail for every exit set; says nothing about Linux's status; blocked on table coverage",
+  "faultInjection": "an error Env.mayFail injects (ENOMEM) at the probe's own launch",
+  "launchInput": "another valid launch input (a file system the harness's does not have)",
+  "shortWrite": "LPS may cut a channel write short; Linux prints the full message, so this measures the model's short-write semantics, not a Linux-observable difference",
+  "program": "the programs' own behaviour (a different exit status)"
+ },
+ "probes": [
+  {"probe": "arch_fs", "data": "ArchFs", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [127], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [127], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "arch_fs1", "data": "ArchFs1", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [69], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [69], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "arch_getfs", "data": "ArchGetfs", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [120], "status": "refuted", "refutedBy": "modelCoverage", "note": "ARCH_GET_FS is unmodeled: the run reaches an error at the probe's own launch"}
+  ]},
+  {"probe": "arch_getfs_exit", "data": "ArchGetfsExit", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [3], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [3], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "close_twice", "data": "CloseTwice", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [9], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [9], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "close_twice1", "data": "CloseTwice1", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [0], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "exit42", "data": "Exit42", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [42], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [42], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "exit43", "data": "Exit43", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [43], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [43], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "getrandom8", "data": "Getrandom8", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [8], "status": "stated"}
+  ]},
+  {"probe": "getrandom_badflags", "data": "GetrandomBadflags", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [234], "status": "refuted", "refutedBy": "modelCoverage", "note": "getrandom with unknown flag bits is unmodeled: the run reaches an error at the probe's own launch"}
+  ]},
+  {"probe": "identity", "data": "Identity", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "stated", "note": "the kit proof replays at the symbolic launch but exceeds the heartbeat budget"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [0], "trace": {"silent": true}, "status": "stated"}
+  ]},
+  {"probe": "identity1", "data": "Identity1", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [1], "status": "stated"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [1], "trace": {"silent": true}, "status": "stated"}
+  ]},
+  {"probe": "open_create", "data": "OpenCreate", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [2], "status": "refuted", "refutedBy": "faultInjection", "note": "an injected ENOMEM on openat makes the write fail with EBADF: exit 247 at the probe's own launch"}
+  ]},
+  {"probe": "open_create_ko", "data": "OpenCreateKo", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [2], "status": "refuted", "refutedBy": "faultInjection", "note": "an injected ENOMEM on openat: exit 247 at the probe's own launch"}
+  ]},
+  {"probe": "open_efault", "data": "OpenEfault", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [14], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [14], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "open_legacy", "data": "OpenLegacy", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [3], "status": "refuted", "refutedBy": "faultInjection", "note": "an injected ENOMEM on open: exit 244 at the probe's own launch"}
+  ]},
+  {"probe": "open_missing", "data": "OpenMissing", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [2], "status": "refuted", "refutedBy": "launchInput", "note": "the launch file system is the input's: with nofile present the open returns 3 and the probe exits 253"}
+  ]},
+  {"probe": "open_read", "data": "OpenRead", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "stated"}
+  ]},
+  {"probe": "open_read_legacy", "data": "OpenReadLegacy", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "stated"}
+  ]},
+  {"probe": "open_read_name", "data": "OpenReadName", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "stated"}
+  ]},
+  {"probe": "open_read_wr", "data": "OpenReadWr", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "stated"}
+  ]},
+  {"probe": "read_badfd", "data": "ReadBadfd", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [9], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [9], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "read_badfd0", "data": "ReadBadfd0", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0, 250, 251, 252, 253, 254, 255], "status": "proved", "note": "stdin is the input's: the read returns 0 to 6 bytes"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [0, 250, 251, 252, 253, 254, 255], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "read_echo", "data": "ReadEcho", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_echo", "kind": "haltsMayFailWith", "exits": [0], "trace": {"echo": true}, "status": "proved"}
+  ]},
+  {"probe": "read_echo2", "data": "ReadEcho2", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_echo", "kind": "haltsMayFailWith", "exits": [0], "trace": {"echo": true}, "status": "proved"}
+  ]},
+  {"probe": "unknown_exit_group", "data": "UnknownExitGroup", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [0], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "unknown_syscall", "data": "UnknownSyscall", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [218], "status": "refuted", "refutedBy": "modelCoverage", "note": "syscall 999 is unmodeled: the run reaches an error at the probe's own launch"}
+  ]},
+  {"probe": "write_closed", "data": "WriteClosed", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [9], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [9], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "write_closed2", "data": "WriteClosed2", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [250, 251, 252, 253, 254, 255], "status": "proved", "note": "a short write of k bytes exits 256 - k"},
+    {"name": "plain_halts_may_fail_stdout", "kind": "haltsMayFailWith", "exits": [250, 251, 252, 253, 254, 255], "trace": {"stdoutNonemptyPrefix": [104, 101, 108, 108, 111, 10]}, "status": "proved"}
+  ]},
+  {"probe": "write_efault", "data": "WriteEfault", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [14], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [14], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "write_efault_ok", "data": "WriteEfaultOk", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [250, 251, 252, 253, 254, 255], "status": "proved", "note": "a short write of k bytes exits 256 - k"},
+    {"name": "plain_halts_may_fail_stdout", "kind": "haltsMayFailWith", "exits": [250, 251, 252, 253, 254, 255], "trace": {"stdoutNonemptyPrefix": [104, 101, 108, 108, 111, 10]}, "status": "proved"}
+  ]},
+  {"probe": "write_hello", "data": "WriteHello", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_stdout", "kind": "haltsMayFailWith", "exits": [0], "trace": {"stdoutNonemptyPrefix": [104, 101, 108, 108, 111, 10]}, "status": "proved"}
+  ]},
+  {"probe": "write_hello5", "data": "WriteHello5", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_stdout", "kind": "haltsMayFailWith", "exits": [0], "trace": {"stdoutNonemptyPrefix": [104, 101, 108, 108, 111]}, "status": "proved"}
+  ]},
+  {"probe": "write_hello_split", "data": "WriteHelloSplit", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_pieces", "kind": "haltsMayFailWith", "exits": [0], "trace": {"stdoutPieces": [[104, 101, 108], [108, 111, 10]]}, "status": "proved"},
+    {"name": "plain_halts_may_fail_stdout", "kind": "haltsMayFailWith", "exits": [0], "trace": {"stdoutPrefix": [104, 101, 108, 108, 111, 10]}, "status": "refuted", "refutedBy": "shortWrite", "note": "the first write may be cut short: h then lo\\n is a run"}
+  ]},
+  {"probe": "write_zero", "data": "WriteZero", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "proved"},
+    {"name": "plain_halts_may_fail_silent", "kind": "haltsMayFailWith", "exits": [0], "trace": {"silent": true}, "status": "proved"}
+  ]},
+  {"probe": "write_zero1", "data": "WriteZero1", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [1], "status": "proved"},
+    {"name": "plain_halts_may_fail_stdout", "kind": "haltsMayFailWith", "exits": [1], "trace": {"stdoutNonemptyPrefix": [104]}, "status": "proved"}
+  ]},
+  {"probe": "brk_store", "data": "BrkStore", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [42], "status": "stated"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": [42], "status": "stated"}
+  ]},
+  {"probe": "brk_past", "data": "BrkPast", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": "any", "status": "stated", "note": "Linux kills the probe with SIGSEGV"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": "any", "status": "stated"}
+  ]},
+  {"probe": "mmap_einval", "data": "MmapEinval", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [234], "status": "stated"}
+  ]},
+  {"probe": "mmap_munmap", "data": "MmapMunmap", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": "any", "status": "stated", "note": "Linux kills the probe with SIGSEGV"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": "any", "status": "stated"}
+  ]},
+  {"probe": "mmap_munmap0", "data": "MmapMunmap0", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [42], "status": "stated"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": [42], "status": "stated"}
+  ]},
+  {"probe": "mmap_noreserve", "data": "MmapNoreserve", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [42], "status": "stated"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": [42], "status": "stated"}
+  ]},
+  {"probe": "mmap_noreserve_past", "data": "MmapNoreservePast", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": "any", "status": "stated", "note": "Linux kills the probe with SIGSEGV"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": "any", "status": "stated"}
+  ]},
+  {"probe": "mmap_private", "data": "MmapPrivate", "statements": [
+    {"name": "plain_halts_may_fail", "kind": "haltsMayFail", "exits": [0], "status": "stated"},
+    {"name": "plain_halts_within_budget", "kind": "haltsWithinBudget", "budgets": "standard", "exits": [0], "status": "stated"}
+  ]}
+ ],
+ "pairs": [
+  {"name": "exit42_vs_exit43", "first": "exit42", "second": "exit43", "shape": "agrees", "budgets": "standard", "status": "refuted", "refutedBy": "program"},
+  {"name": "write_hello_vs_split", "first": "write_hello", "second": "write_hello_split", "shape": "agrees", "budgets": "standard", "status": "refuted", "refutedBy": "shortWrite", "note": "channel writes may be cut short, so the split probe can write h then lo\\n, which write_hello cannot"},
+  {"name": "open_read_vs_legacy", "first": "open_read", "second": "open_read_legacy", "shape": "agrees", "budgets": "standard", "status": "stated"}
+ ]
+}

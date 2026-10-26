@@ -14,8 +14,10 @@ flowchart LR
   HEX --> EXIT[exit 0]
 ```
 
-The GNU `sha256sum-min` bytes and proof cone are kept in the separate
-`Silmaril.Apps.Sha256sum` area in this draft because the upstream artifact is
-GPLv3.  A final release must either remove that area or merge its complete
-license notice and provenance review; this draft does not silently relicense
-it.
+The GNU `sha256sum-min` source, build recipe, byte hash, and LPS problem cone
+are kept in the separate `Silmaril.Apps.Sha256sum` / `GnuSha256sum` area under
+the GPLv3 notice. `python3 apps/sha256sum-min/build.py --verify-only` checks the
+historical source and generator identities without rebuilding on the host.
+The GNU total-correctness and LPS-bridge entries remain explicit open problem
+goals in the registry; the freestanding `sha256-cli` end-to-end theorem is the
+closed permissive demonstration in this release.

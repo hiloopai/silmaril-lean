@@ -1,0 +1,55 @@
+schema = "silmaril.problem.v1"
+id = "sha256/gnu-sha256sum-x86-64/lps-partial"
+family = "sha256"
+title = "Partial correctness (safety) of GNU sha256sum in LPS on the stdin tier"
+granularity = "process"
+tier = "coverage"
+expect = "solvable"
+# Open (WIP). Linked from lps-total by Registry.lpsPartial_link (VERIFIED).
+
+[statement]
+decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsPartial"
+module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"
+hash = "sha256:a03db84cca5a315146f120fc308b7c88096c0c77db82ad346a5e70ec9b3190f2"
+closure_hash = "sha256:6e3f9b5d463e1591bdd6e4ff6c0ddc76a4ae37da0c895b695f7561e205c31869"
+
+[[artifacts]]
+name = "sha256sum-min"
+role = "executable"
+inline = "Silmaril.Process.LPS.Problems.GnuSha256sum.elfBytes"
+sha256 = "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+bytes = 35512
+
+[[artifacts]]
+name = "sha256sum-min-file"
+role = "executable"
+cid = "bafkreibc7jrultc35uepa7knliednccrdaszu42aeryojv7xu6ubvvbic4"   # CIDv1 raw, sha2-256
+sha256 = "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+bytes = 35512
+
+[interface]
+abi = "x86_64-sysv-linux"
+kind = "process"
+imports = [{ symbol = "read" }, { symbol = "write" }, { symbol = "close" }, { symbol = "exit_group" }]
+exports = [{ symbol = "_start" }]
+
+[semantics]
+machine = { decl = "Silmaril.Process.LPS.Machines.x86WithFlagOracle8", note = "X86.Ext8 (X86.Ext plus 8-bit ALU forms) decoder/executor; undefined flags at syscall chosen by an oracle (quantified)" }
+os = { decl = "Silmaril.Process.LPS.X86NativeLaunch.runWith", note = "LPS (Lean port of rocq-linux-process-semantics), native x86-64 launch and syscall table" }
+spec = { decl = "Silmaril.Apps.Sha256sum.sha256sum", note = "GNU coreutils 9.4 sha256sum; stdin tier: (sha256sum w).stdout = hex(SHA-256(stdin)) ++ \"  -\\n\", status 0" }
+
+[[deps]]
+problem = "sha256/gnu-sha256sum-x86-64/lps-total"
+role = "assume"
+hash = "sha256:a0ac5cbc89b387b1c2a89a50f5c56cd187c7a24a15ab358fd61d87196533af14"
+
+[trust]
+policy = "standard"
+
+[solutions]
+modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"]
+
+[provenance]
+authors = ["Silmaril contributors"]
+created = "2026-10-25"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS #3490/#3492/#3534; sha256 filter e2e #3578"

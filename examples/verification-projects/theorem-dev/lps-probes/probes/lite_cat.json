@@ -1,0 +1,103 @@
+{
+  "probe": "lite_cat",
+  "claim": "cat (GCC -O2): stdin to stdout under any chunking; exit 0 at end of file",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": "68656c6c6f0a"
+  },
+  "allow": [
+    "read",
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.EchoCat",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.cat_recorded",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.Registry.cat"
+    ]
+  },
+  "stackArgs": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      1
+    ]
+  ],
+  "sha256": "67d50304d3d4fa67dc4be24df5b58f0e61d67de78633695ed27fa7dde824d3f1",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 0,
+        "name": "read",
+        "args": [
+          0,
+          "sp",
+          4096
+        ],
+        "ret": 6
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          "sp",
+          6
+        ],
+        "ret": 6
+      },
+      {
+        "nr": 0,
+        "name": "read",
+        "args": [
+          0,
+          "sp",
+          4096
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68656c6c6f0a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

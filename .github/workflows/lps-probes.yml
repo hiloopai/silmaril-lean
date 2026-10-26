@@ -1,0 +1,42 @@
+name: LPS reality probes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Silmaril/Process/LPS/Probes/**'
+      - 'tools/verification-projects/*lps_probes*'
+      - 'examples/verification-projects/theorem-dev/lps-probes/**'
+      - '.github/workflows/lps-probes.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'Silmaril/Process/LPS/Probes/**'
+      - 'tools/verification-projects/*lps_probes*'
+      - 'examples/verification-projects/theorem-dev/lps-probes/**'
+      - '.github/workflows/lps-probes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probes:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install the tracer and binutils
+        run: sudo apt-get update -q && sudo apt-get install -y -q strace binutils
+      - name: Check sources, pins, JSON, Lean data and proof links (offline)
+        run: python3 -B tools/verification-projects/lps_probes.py check --offline
+      - name: Run the probes natively and compare with the fixtures
+        run: python3 -B tools/verification-projects/lps_probes.py --backend native check
+      - name: Unit, link-mutation and live tests
+        run: python3 -B tools/verification-projects/test_lps_probes.py
+      # Lean compilation uses the normal CI jobs.

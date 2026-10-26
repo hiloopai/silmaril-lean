@@ -1,0 +1,52 @@
+schema = "silmaril.problem.v1"
+id = "sha256/gnu-sha256sum-x86-64/sys-total"
+family = "sha256"
+title = "Total correctness of GNU sha256sum over the X86Sys process model on the stdin tier"
+granularity = "process"
+tier = "total"
+expect = "solvable"
+# Open (WIP). Splits into five segments with parametric cut points
+# (SysModel.sysTotalOn_of_segments, VERIFIED): startup, read loop, final, format, exit.
+# Needs the 8-bit ALU forms in X86.Ext (branch x86/alu8-variant).
+
+[statement]
+decl = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.sysTotal"
+module = "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"
+hash = "sha256:49349e46977511f370a3cc9c3989dff676dcbc695c6fc090fff65db6d37ea162"
+closure_hash = "sha256:3fcd39558cf077764ee2a9983561f2e8a2bbf49b1d440863f49b50b21aa6429a"
+
+[[artifacts]]
+name = "sha256sum-min"
+role = "executable"
+inline = "Silmaril.Process.LPS.Problems.GnuSha256sum.elfBytes"
+sha256 = "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+bytes = 35512
+
+[[artifacts]]
+name = "sha256sum-min-file"
+role = "executable"
+cid = "bafkreibc7jrultc35uepa7knliednccrdaszu42aeryojv7xu6ubvvbic4"   # CIDv1 raw, sha2-256
+sha256 = "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+bytes = 35512
+
+[interface]
+abi = "x86_64-sysv-linux"
+kind = "process"
+imports = [{ symbol = "read" }, { symbol = "write" }, { symbol = "close" }, { symbol = "exit_group" }]
+exports = [{ symbol = "_start" }]
+
+[semantics]
+machine = { decl = "Silmaril.Apps.Sha256sum.X86Sys.step8", note = "X86.Ext8 with syscall, x86-64 Linux read/write/close/openat/exit decoding; r11 arbitrary at return" }
+os = { decl = "Silmaril.Apps.Sha256sum.Sys.WorldStep", note = "world kernel: any read chunking, any nonempty partial write, close" }
+spec = { decl = "Silmaril.Apps.Sha256sum.sha256sum", note = "GNU coreutils 9.4 sha256sum; stdin tier" }
+
+[trust]
+policy = "standard"
+
+[solutions]
+modules = ["Silmaril.Process.LPS.Problems.GnuSha256sum.Registry"]
+
+[provenance]
+authors = ["Silmaril contributors"]
+created = "2026-10-25"
+source = "apps/sha256sum-min (gcc 13.3.0 -O2 driver, clang 18.1.3 -O2 sha256_compress); Apps/Sha256sum spec; LPS #3490/#3492/#3534; sha256 filter e2e #3578"

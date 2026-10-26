@@ -323,6 +323,11 @@
       "bytes": 1219
     },
     {
+      "path": ".github/workflows/lps-probes.yml",
+      "sha256": "d4548b65fe144f92cfa7790f46778cc6b2fa5b8fd167b1fd8e93c542b81297d5",
+      "bytes": 1582
+    },
+    {
       "path": ".github/workflows/wasm-toolkit.yml",
       "sha256": "4cec28efa44f271a9c69302f43c494a44cb067f554d7e5d816ccb46abee0a202",
       "bytes": 3343
@@ -354,8 +359,8 @@
     },
     {
       "path": "Makefile",
-      "sha256": "65bd5ee2c803eaa72a49742bd2e5e9847212cd6a33f6956bbb8f4929675d8771",
-      "bytes": 1907
+      "sha256": "1878d420f719dd6cac751192e59927d5ef96b16ad5f6b1ff98d4ce5e504df6ca",
+      "bytes": 2902
     },
     {
       "path": "NOTICES/Binaryen/LICENSE.txt",
@@ -504,8 +509,33 @@
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Compress.lean",
-      "sha256": "effd5f2fc2599116fc399f16da93a5d7fb4189a30b9844bc9de888aac4b491c4",
-      "bytes": 23104
+      "sha256": "e451b1ea7865efe21ddb8449bee3141f0998826ba4f4ac469b12de422a57210c",
+      "bytes": 23102
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Code.lean",
+      "sha256": "ce8c358215226685893127146ac2b2b3ef959e51d2f5d90e320283827c0a8015",
+      "bytes": 7944
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/CompressCall.lean",
+      "sha256": "e36f2031cf4a3652b8472352a8d681599e05e1d25baa74a78302bb268b193db6",
+      "bytes": 2579
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Copy.lean",
+      "sha256": "c2051ce2194771a03e7ffcc761f46b532b88db436b9195cfd698a406fa4d2d3b",
+      "bytes": 11296
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Digest/Update.lean",
+      "sha256": "4e9d930839e9ef1967020807104e036cec794f88549d21526d46949ca43b3328",
+      "bytes": 8220
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Ext8Cover.lean",
+      "sha256": "8e6a47aa5204453d2db4ed512cca5199a2735c218660d18c2f20ad0186973157",
+      "bytes": 5712
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Binary/Image.lean",
@@ -523,6 +553,11 @@
       "bytes": 4070
     },
     {
+      "path": "Silmaril/Apps/Sha256sum/Binary/Process.lean",
+      "sha256": "d5de9b9d2ca32cab42c210f1a24a12161419cd47d21de38db2be1a0c836c3fce",
+      "bytes": 7498
+    },
+    {
       "path": "Silmaril/Apps/Sha256sum/CheckLine.lean",
       "sha256": "e5ccc930bf3220ee7550f3c5375a6e0b228e8653fbafffebfade7fba88bebf8b",
       "bytes": 5743
@@ -533,9 +568,19 @@
       "bytes": 5428
     },
     {
+      "path": "Silmaril/Apps/Sha256sum/FsModel.lean",
+      "sha256": "a830da1778e06d5ae3df1ac4cf6157f2ee8d4b9a1a4efbafc977206c8d265c96",
+      "bytes": 2902
+    },
+    {
       "path": "Silmaril/Apps/Sha256sum/Options.lean",
       "sha256": "302405393aa2b4b1c6f5d8c66fe2592adf05d85cb99316aa0d98ef3b4bac4921",
       "bytes": 7108
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Plan.lean",
+      "sha256": "3bd1c0d1735ce4f25b5e30fc33f3e8354ebcd88dfbef36e894131ace698cef7d",
+      "bytes": 7391
     },
     {
       "path": "Silmaril/Apps/Sha256sum/Process.lean",
@@ -553,6 +598,11 @@
       "bytes": 401
     },
     {
+      "path": "Silmaril/Apps/Sha256sum/RoundTrip.lean",
+      "sha256": "b1b489c0c42fd2b6878a5457d9e34aa12bb02f14c303d27cb4777c65188b289c",
+      "bytes": 21780
+    },
+    {
       "path": "Silmaril/Apps/Sha256sum/Run.lean",
       "sha256": "02a2f355f8ced349f6deadea062baa15b0a8a30ee66dbcabe0da2e1e29b10157",
       "bytes": 12752
@@ -561,6 +611,36 @@
       "path": "Silmaril/Apps/Sha256sum/StdinRef.lean",
       "sha256": "96c25d9d47c28ae179e93e513d0fa2cf91d941614fbdb9a7ccbf17f279cad5c7",
       "bytes": 13949
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/Theorems.lean",
+      "sha256": "0dfb1cb1ac5392a74f568bf6fca971d499c71f21851349e8480c8d039c57a171",
+      "bytes": 4586
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/X86Sys.lean",
+      "sha256": "dc7296051756131aa05b17ddaf4c57b1fcfbf2b21549e805b88c6ca4f436f640",
+      "bytes": 7550
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/X86Sys/SegVC.lean",
+      "sha256": "39cba2ae4c6671926c5d16f18313265dad1ef17b17fa33158253971f41690865",
+      "bytes": 7382
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/X86Sys/Silent.lean",
+      "sha256": "88634bea81e4f02439771ef6b8a471aa9afe8b6aff215fb4014315c00824520d",
+      "bytes": 7885
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/X86Sys/SilentControls.lean",
+      "sha256": "26aa2f3238394b243ed38f938c84c8232c39be0610627b7f7a7af41a162c31c0",
+      "bytes": 8175
+    },
+    {
+      "path": "Silmaril/Apps/Sha256sum/X86Sys8.lean",
+      "sha256": "0c37c7c7814dc429f062e7e24f31a30e915b0ddc5c37842352508cdbf2752fee",
+      "bytes": 6935
     },
     {
       "path": "Silmaril/Compile/Category/Compiler.lean",
@@ -2663,6 +2743,21 @@
       "bytes": 157
     },
     {
+      "path": "Silmaril/Problems/Basic.lean",
+      "sha256": "f9083287cec2880af455b3ba9c1f068c85f0916d0bfb1d5584642c2515d9bd58",
+      "bytes": 16479
+    },
+    {
+      "path": "Silmaril/Problems/Compose.lean",
+      "sha256": "93dec798d2d65259bf59ee5d0648301e28fa7ce7a6bc61ade34ea4cd973c731d",
+      "bytes": 4795
+    },
+    {
+      "path": "Silmaril/Problems/Encode.lean",
+      "sha256": "43ca7b83d44c4d3e83b766ba03593ff5916d2c703e4e1d46b236bcb18dae92a3",
+      "bytes": 6356
+    },
+    {
       "path": "Silmaril/Process/CLI/Env.lean",
       "sha256": "90370ffd16d57acf7377fc2b536510b4e325f4ea6ae87a94020b31ea7e742e8d",
       "bytes": 9368
@@ -3113,6 +3208,11 @@
       "bytes": 7421
     },
     {
+      "path": "Silmaril/Process/CLI/X86Linux8.lean",
+      "sha256": "22c78ad3181500aa5bc6044c4188c13c5a4b42817aa585913ebd2290f63f0619",
+      "bytes": 3631
+    },
+    {
       "path": "Silmaril/Process/Defs.lean",
       "sha256": "b153fa239a4ee2d7ecf7fcb31aaf79fe8d2afa4d024f734dd330ec20a4dd9abc",
       "bytes": 576
@@ -3258,9 +3358,24 @@
       "bytes": 8062
     },
     {
+      "path": "Silmaril/Process/LPS/Machines/X86FlagChoices8.lean",
+      "sha256": "55b88aebc2f8c8aafbab89be81b5bc0153d4c0811cd902e08082c9901250648f",
+      "bytes": 4988
+    },
+    {
+      "path": "Silmaril/Process/LPS/Machines/X86FlagChoicesControls.lean",
+      "sha256": "02482e6dd4107c216d45bc073a6d64537f2af981601dbdd255adc12a6ba8baf7",
+      "bytes": 3132
+    },
+    {
       "path": "Silmaril/Process/LPS/Machines/X86FlagOracle.lean",
       "sha256": "6802ab479037dfa43b6e9bb782974ee295fcb10279dac4b594839176627aed7e",
       "bytes": 4985
+    },
+    {
+      "path": "Silmaril/Process/LPS/Machines/X86FlagOracleControls.lean",
+      "sha256": "19d3746ea51e53632bfc0127acdb6cc63e585df395ba167351bfcc7d7b64e219",
+      "bytes": 4166
     },
     {
       "path": "Silmaril/Process/LPS/Machines/X86Launch.lean",
@@ -3408,9 +3523,19 @@
       "bytes": 7208
     },
     {
+      "path": "Silmaril/Process/LPS/Machines/X86RepStosqControls.lean",
+      "sha256": "28a93ac2ffc4c96b48f71a4eb212dfc21028dd3ce39e4f319050cbe5ed3d0aff",
+      "bytes": 5391
+    },
+    {
       "path": "Silmaril/Process/LPS/Machines/X86Wire.lean",
       "sha256": "3c539cd28e5a5196144fb062844200be2a18cf52c6809ce4bb741c4d49e21769",
       "bytes": 4178
+    },
+    {
+      "path": "Silmaril/Process/LPS/Machines/X86WireControls.lean",
+      "sha256": "6165598e06206c0f041b41a57599c5e27ab4f21626bd69da174bf4a417df8887",
+      "bytes": 9548
     },
     {
       "path": "Silmaril/Process/LPS/Machines/X86WireFlagOracle.lean",
@@ -3493,6 +3618,11 @@
       "bytes": 8508
     },
     {
+      "path": "Silmaril/Process/LPS/Probes/CloseTwice.lean",
+      "sha256": "1413fe80acb4215dc51abc2a88edb46d40d46161687c1bd191c5885d16384e53",
+      "bytes": 4392
+    },
+    {
       "path": "Silmaril/Process/LPS/Probes/Data/ArchFs.lean",
       "sha256": "af2952714f4ac9c531ee843d3da0230171b9f9e17f5088d21f2826dde4838e09",
       "bytes": 3618
@@ -3511,6 +3641,36 @@
       "path": "Silmaril/Process/LPS/Probes/Data/ArchGetfsExit.lean",
       "sha256": "f76da18ea19a02027485aac0a15437925160c9cfc78860559df35ce2aed88e27",
       "bytes": 3703
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/BrkPast.lean",
+      "sha256": "b3f6241330fc410a15d7b50fedfd166bf5258f1d822fae1d1dab6b5c237b2e1f",
+      "bytes": 3722
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/BrkStore.lean",
+      "sha256": "cc18db7b6b893116eef351ebf7732932ff7daf31ee12b71b423d71f8063be6d3",
+      "bytes": 3746
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/CloseTwice.lean",
+      "sha256": "f4b1bc51b2848b61d5dc9f264acbdc989ae59e933f16e83a6ad2961ea5e63c7d",
+      "bytes": 3637
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/CloseTwice1.lean",
+      "sha256": "ba8a06f0a870f46476a01fdd95b748d57cc98c1741ad3ad3c8b844f99117007b",
+      "bytes": 3648
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/Exit42.lean",
+      "sha256": "56a02c5f627f2166b11bf1549f9c4a81aa46d224df0c10f6010dc8d43900aac8",
+      "bytes": 3413
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/Exit43.lean",
+      "sha256": "d3f760df5fcb38ca4c668a6104542d647a9c778357a80a74d66accbbf8871309",
+      "bytes": 3417
     },
     {
       "path": "Silmaril/Process/LPS/Probes/Data/Getrandom8.lean",
@@ -3533,6 +3693,226 @@
       "bytes": 4495
     },
     {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteCat.lean",
+      "sha256": "7f0c8fb12342c8bd046e61a9dd04be6f80422033ae24f468763577dbabc68030",
+      "bytes": 4728
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteCatDroplast.lean",
+      "sha256": "d8e028f0a9ff51e5b21efa1fdf026abeac7b4582ce0fbdaa6cf28c351c8066d4",
+      "bytes": 4871
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteCatDup.lean",
+      "sha256": "f18608783e379b0fc1b646141f9153d9fc539d0107b80360765977d3863ff18c",
+      "bytes": 4946
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteCatExit1.lean",
+      "sha256": "c7673f803d94b9a3fbf08c62c53bd097540e6d550f689766cc3a3ab9c09abbd9",
+      "bytes": 4762
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteCatOnce.lean",
+      "sha256": "ca8b8819b3f8b39a95a61962ddc8d1155f10ac1872abbd900983080a8ed1262e",
+      "bytes": 81161
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteEcho.lean",
+      "sha256": "6add84d7412131b7ad627b7c682b43bcf65027e11059a2b957e403e17c493353",
+      "bytes": 4837
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteEchoExit1.lean",
+      "sha256": "2bd1f191cac4721be6a6baeeee74aeb11fa3ef56746ff3f7d41372ba0cc8083c",
+      "bytes": 4872
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteEchoNonl.lean",
+      "sha256": "b4a599d8243cf05844f774f2abe3e0c2a403361c206666579799226b4f6a294d",
+      "bytes": 4520
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteEchoStderr.lean",
+      "sha256": "451c188b7b8f83697a8473a2d613004a55715d2628590c85acad271ac82100ee",
+      "bytes": 4877
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteFalse.lean",
+      "sha256": "50963cdd9a433e70d159a808be392a33c51c0c79a118b98c55b831938e7a2cf7",
+      "bytes": 3443
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteFalseStdout.lean",
+      "sha256": "365a32751b7a9da7301999a20bc9a2ce188863ee65c40ac52e265ffe87217447",
+      "bytes": 3713
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteTrue.lean",
+      "sha256": "6e538070be50b0562bc048ff3028cd637771af1f5e2944f1955e15371dcb2cf5",
+      "bytes": 3438
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/LiteTrueStderr.lean",
+      "sha256": "0a816afcb901d0ddad2100199f8968f947397afa75369ee62b2d5df590cce20c",
+      "bytes": 3625
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/MmapEinval.lean",
+      "sha256": "d84f38886215a15ca47fa03da318327d09e1934cfb4ab0ca79dafb10669eb749",
+      "bytes": 3650
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/MmapMunmap.lean",
+      "sha256": "633ddd637d3c31a8777f758b7ffba2be8c8b877ca84d4cd24780b778f6e40645",
+      "bytes": 3812
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/MmapMunmap0.lean",
+      "sha256": "e04004416272aa9191090be12a3174eb35cdbafb2256e0b5072d724977b9557d",
+      "bytes": 3853
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/MmapNoreserve.lean",
+      "sha256": "e152ec62b3896243a6048b1843cbc9c25ec71215d59beecdf7b8f1edc5c79005",
+      "bytes": 3765
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/MmapNoreservePast.lean",
+      "sha256": "ec52f6fe8f90b3e82a2f4b80a827952f381224766bd6a3e92890f0eebbcbf578",
+      "bytes": 3774
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/MmapPrivate.lean",
+      "sha256": "83a777c228a067b7539f463aa09a9537f0c488d24c0aa1df0baf1fc5b8319a80",
+      "bytes": 3665
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenCreate.lean",
+      "sha256": "8ca5cdd65b9ef1dbabc33bc907387c550916c90347027d8fe866543a992ecaf0",
+      "bytes": 4110
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenCreateKo.lean",
+      "sha256": "ebedbbc3c7380c9d130cb7cb240b91b98eecb92483e1fda925989226e4bdb820",
+      "bytes": 4132
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenEfault.lean",
+      "sha256": "d4ead1515250a7c021b64b02038ac16cabb81658934651a1e9b653fae9133c0c",
+      "bytes": 3699
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenLegacy.lean",
+      "sha256": "f8d81f8eeac7e7e9c45a38960980a6a822f2b548ba6ffcee3839728ad835936a",
+      "bytes": 4016
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenMissing.lean",
+      "sha256": "989dd4fb6733383b818fb89305189d8e9cb7f128eade2788a42067a9f41f8c97",
+      "bytes": 3694
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenRead.lean",
+      "sha256": "910fef5e89fafab51e614969bde9ad348c33f5c02ccb470ed81a0df38275b6d8",
+      "bytes": 4564
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenReadLegacy.lean",
+      "sha256": "26cbd7b6602771fd8991c25bca7e721302b9bb06d31c00cceba0ce8ab3c765db",
+      "bytes": 4560
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenReadName.lean",
+      "sha256": "7e63a30a7e0fa00dc87b608eadee26a6104a248f03c618cfdb7b075c1294a58e",
+      "bytes": 4620
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/OpenReadWr.lean",
+      "sha256": "45d8a9743bec2ca8a1eb77408fa4499ae5d89191507339af835d99d18fa865b3",
+      "bytes": 4566
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/ReadBadfd.lean",
+      "sha256": "b45ab5cc716470485941d036c9a1f6200012555025641f8dc41d34cbbd9aa6d0",
+      "bytes": 3671
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/ReadBadfd0.lean",
+      "sha256": "1e451b13ffb06a5a04b8ca7b0577f75e0e81b75295c207861bd355701fca738c",
+      "bytes": 3680
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/ReadEcho.lean",
+      "sha256": "57dfc34204886b8fa8165733347f97919e3b2d3c04099d5e58266bd07ce69785",
+      "bytes": 4098
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/ReadEcho2.lean",
+      "sha256": "c9e57ce8b7ebb01e8ec59d128b7d5d1b59e5c9a94426e342f887aedd6f4f7207",
+      "bytes": 4073
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/UnknownExitGroup.lean",
+      "sha256": "e84bc79e70a31945aba5dad85559922669dba432cb4c67395c90740e577dc4c9",
+      "bytes": 3529
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/UnknownSyscall.lean",
+      "sha256": "b4ece0e3de5e02b9a2a7bd3ab834296c1178ba001c9455d564f30c7d55c12c9c",
+      "bytes": 3570
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteClosed.lean",
+      "sha256": "d51e07596af12b56e6fa3479773354745229dd622514d2c2e12570440856e90a",
+      "bytes": 3754
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteClosed2.lean",
+      "sha256": "cbe97c7b6b06b5d6f099acd8b81b676b02dc46ccd63e34adf5462f3aba4cbf63",
+      "bytes": 3826
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteEfault.lean",
+      "sha256": "694123b6e309b6451840302921e1ac002f9634a4b5c42e09e2d56aaebda43cf1",
+      "bytes": 3678
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteEfaultOk.lean",
+      "sha256": "d73ecdd2149e8e1e410af913b71ab27906e8b42f3e682c895b06fd40d2de0b73",
+      "bytes": 3760
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteHello.lean",
+      "sha256": "8caa33ac871d3a3a010e4c2efaa8274347418cb8162903a599fef28e8422512f",
+      "bytes": 3711
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteHello5.lean",
+      "sha256": "a6910fa2a39cd04fd8a3aa8cbc5f9970cb4fad7a1506ece7ced83980c752731b",
+      "bytes": 3719
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteHelloSplit.lean",
+      "sha256": "80b77c2f263f4101217baae18a63158af5fa0718de6e79571954ba5e4815265c",
+      "bytes": 3841
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteZero.lean",
+      "sha256": "83e6f8c2803da90836dbd40b75979f340849c3fbef3d02b2ecf1d4e151517d78",
+      "bytes": 3615
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Data/WriteZero1.lean",
+      "sha256": "7714c85f2f1899e840c78801e4b3d64d6df682f94efc2633f4d8f39b2d75d477",
+      "bytes": 3637
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Exit42.lean",
+      "sha256": "c3c32e468b000ba359d4bc93dfdbf5bfbf27501c058cea0c6a9bc739ad07b46c",
+      "bytes": 3497
+    },
+    {
       "path": "Silmaril/Process/LPS/Probes/Files.lean",
       "sha256": "1a2cc6d980208a61730eef6865920e09211c10a5d71610fa0abd9164c75407f0",
       "bytes": 56045
@@ -3553,9 +3933,19 @@
       "bytes": 92332
     },
     {
+      "path": "Silmaril/Process/LPS/Probes/KitMemory.lean",
+      "sha256": "48bef4244930da98d8014fc1fd2c7d010685e4e899d07b28627faac1cc834866",
+      "bytes": 42311
+    },
+    {
       "path": "Silmaril/Process/LPS/Probes/KitMisc.lean",
       "sha256": "c0aed1f26b5b98507889edaebc0016cc8b6db2db3fa85bbe746af947b4463732",
       "bytes": 47739
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/KitReturns.lean",
+      "sha256": "06f63a2fa5a353c3e4151ac718ef1ce5d4b13e022009a501766c93e23204aeb7",
+      "bytes": 11090
     },
     {
       "path": "Silmaril/Process/LPS/Probes/Launches.lean",
@@ -3563,9 +3953,114 @@
       "bytes": 24201
     },
     {
+      "path": "Silmaril/Process/LPS/Probes/OpenCreate.lean",
+      "sha256": "00fc74f909ecd12f98493f2b81e92ac9223461c17270c3a67d2a3e6d5e56f840",
+      "bytes": 9630
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/OpenLegacy.lean",
+      "sha256": "9c570a684520dc1e1d591e0da33d486a9a507b536be1be90c64b9d405d8d018d",
+      "bytes": 5948
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/OpenMissing.lean",
+      "sha256": "115fdf985bb183538d0f302227ace252ef02697633a9a1a7445401558a5a260a",
+      "bytes": 6897
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/OpenRead.lean",
+      "sha256": "7e58f22a445151d8b04e62cc42567dd66c6aa22d2a772e1db09dbff40b3420f4",
+      "bytes": 19911
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/OpenReadLegacy.lean",
+      "sha256": "1fa350ab5465a94eb69864108b02073058263f045c5212b90ba29453c5430a4e",
+      "bytes": 7774
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/Oracle.lean",
+      "sha256": "08a4cd286dcdb48a0f6ef6e25b5fef9bdb7c96fa641f97e8a9eac25c48fc6088",
+      "bytes": 30375
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/ReadBadfd.lean",
+      "sha256": "0ef3bc4ae6f0264e0268b13dc42a78b237c6dae51b6d43e7d3e589f1906fe1d8",
+      "bytes": 4361
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/ReadEcho.lean",
+      "sha256": "8d7706dcf046b5a2597c5202f03949f076db629beb95e5b4aff4be576b663aa6",
+      "bytes": 12234
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/UnknownSyscall.lean",
+      "sha256": "7f21aa3c64a14dc47b4152ee0a59c2414dd3186c1ca8a4669bfa5c476f94dee0",
+      "bytes": 5573
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/WriteClosed.lean",
+      "sha256": "f2b12c1a1a56882f4687f8e8a5d4073cf0da2ba76602d0011014cd9e28839b1a",
+      "bytes": 4844
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/WriteEfault.lean",
+      "sha256": "496f686eb3114bab966501bad249714c8eb47090f95a0ffd5dde0319d0768d63",
+      "bytes": 4645
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/WriteHello.lean",
+      "sha256": "ddc3cf5592ae25abb2e7f4073ee5cf9b6d419499aed9daffefaa8c3bcef6645e",
+      "bytes": 7222
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/WriteHelloSplit.lean",
+      "sha256": "ba546916188584ef0d97d7e404a3edd53c6a27274dfafd3cc5722e0b917c7c72",
+      "bytes": 3141
+    },
+    {
+      "path": "Silmaril/Process/LPS/Probes/WriteZero.lean",
+      "sha256": "8e71061d3528d413a9f22aadb944a661a88fd8517d59308697661d420a2a0358",
+      "bytes": 4237
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/Basic.lean",
       "sha256": "fd8606198b835b978d28bce2da6e87380c0c4eb77abe094bc57e4cfdefee43df",
       "bytes": 20639
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Elf.lean",
+      "sha256": "b12eb0355e6c8eb65464ffdaf6f702082307d76f4457b10f89dc3b82047fa083",
+      "bytes": 221172
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Instr.lean",
+      "sha256": "01f51b273c4bf5a621a64a4d21b384da2c0097b25243e514dec2b0cf2ece0fa2",
+      "bytes": 19567
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/NonVacuity.lean",
+      "sha256": "0db9079dd14b5359f4bf8bdf0e6f3cb6c64ad6476fd0fa71eff723489497363b",
+      "bytes": 3871
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Registry.lean",
+      "sha256": "0f6f4f2418b41555b6d2c3e0823e5a3a88dc8034459ba7efa5ac4e74c62bea38",
+      "bytes": 7085
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/Statement.lean",
+      "sha256": "a5522ea666ccefc369e9424b7b5a45cc873d4c1404a3488d65b609fd97be0f7e",
+      "bytes": 12223
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/SysBridge.lean",
+      "sha256": "2e292591d1371f51854e1825155ff282997364489d3a83c93197216d77027ee7",
+      "bytes": 12691
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/GnuSha256sum/SysModel.lean",
+      "sha256": "2ac6e5a892c1867393f348e3a0ccf282d381a0027ec3060c6b535f082e05c5c2",
+      "bytes": 12092
     },
     {
       "path": "Silmaril/Process/LPS/Problems/NativeX86.lean",
@@ -3623,9 +4118,19 @@
       "bytes": 4269
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/Sha256Cli/Fetchable.lean",
+      "sha256": "89206cd495caa6c349988a065061994d6c7b0087efbae3fdabc4c441d9a30a75",
+      "bytes": 6698
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/FlagMono.lean",
       "sha256": "1d124445174a09a830e7b91b873b1926484bbdb41f145bae8001a8a3f4c3ef5d",
       "bytes": 17715
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/Sha256Cli/FlagMono8.lean",
+      "sha256": "380e20e0a45c0e6565efb7ebb906684d1637c9fc9addee9518ab49b3b8157bc4",
+      "bytes": 7093
     },
     {
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/Instr.lean",
@@ -3648,6 +4153,11 @@
       "bytes": 41362
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/Sha256Cli/NonVacuity.lean",
+      "sha256": "8e4497f54402d34a6b058aa21e13b69f84cc49ad5a8d036a827ba3032680bb4c",
+      "bytes": 3377
+    },
+    {
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/OutputSegment.lean",
       "sha256": "223673b56cce8075c895b71dbe14e9a4c8bd3293c3923900cdff65a901b81a96",
       "bytes": 16351
@@ -3666,6 +4176,11 @@
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/ReadStep.lean",
       "sha256": "46a65e7211d34555bf1810af7bc58bdb59763cfb26819b73e20c2767aa962354",
       "bytes": 24057
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/Sha256Cli/Registry.lean",
+      "sha256": "8877633eb89416349bf9b92868cbdd6458f4e802a84e74d9941456adc4cbda69",
+      "bytes": 5597
     },
     {
       "path": "Silmaril/Process/LPS/Problems/Sha256Cli/Segments.lean",
@@ -4013,6 +4528,66 @@
       "bytes": 14080
     },
     {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Basic.lean",
+      "sha256": "5a90e53fe46783f36d995f5f91c2b7cabbc87aa2da8d520c24dd67ae4adbeec8",
+      "bytes": 10630
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Budget.lean",
+      "sha256": "af37b294be94e7f7f81c705c2e73be11c024892bbbaaa16f36c6a16dcf2dfcbc",
+      "bytes": 8264
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Corpus.lean",
+      "sha256": "80398430d082dd51f5e0496303be935e556842b7d7c92cbd5c218b5c37aa12ba",
+      "bytes": 78538
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/Arch.lean",
+      "sha256": "4bc1cc758699825d17fbcd67dd0e6fcca70cee86b18ffbd2b500aeab75304cb8",
+      "bytes": 4168
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/Errors.lean",
+      "sha256": "2db62d4211ab3c6c48c3d9bff3d3d105790208f7927a2ed598bd78da9ca613a3",
+      "bytes": 12486
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/Exit.lean",
+      "sha256": "174a6e3712ad697f55c234ed5ebeca35f59241e5b3952917518685d555603486",
+      "bytes": 5043
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/Opens.lean",
+      "sha256": "798ee1f9ebd27409fae46af6c40ec5a1459fc6d7e21256c87093264705491682",
+      "bytes": 9934
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/Pairs.lean",
+      "sha256": "d17836c8dd033ce4fd82ae65ea1bfd48284e5dc9710f23351ebb4dc1dd847862",
+      "bytes": 4787
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/ReadBadfd0.lean",
+      "sha256": "ca38c23e98bf15073efb242de1a911cc440aff794e2022aba6aef3e09041be70",
+      "bytes": 4930
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/ReadEcho.lean",
+      "sha256": "f6eb914e810f7ab87eb220d447c6cc768b1ad15affa2e8776a6c4c04794367e6",
+      "bytes": 8342
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Launch/Split.lean",
+      "sha256": "9910cfcf4032fb66d8d2a6e161cf54f0b34ee9c3ca61e9dd438d5dae8efe8cae",
+      "bytes": 3812
+    },
+    {
+      "path": "Silmaril/Process/LPS/Problems/X86Probes/Results.lean",
+      "sha256": "471564d65023668409275f5b03e920eafb093be3c17f1c72510ab6afd4fdd880",
+      "bytes": 21136
+    },
+    {
       "path": "Silmaril/Process/LPS/Run.lean",
       "sha256": "ab1c7255df26094e8bb4713693e134c1b3712279d6e4d0d724d5eea4f2c7096f",
       "bytes": 26367
@@ -4273,6 +4848,66 @@
       "bytes": 2111
     },
     {
+      "path": "Silmaril/Process/Model/Defs.lean",
+      "sha256": "a2a3ff2e900d86a3311509557c80fa0d72957b9c14196c73726f68a30941ec98",
+      "bytes": 350
+    },
+    {
+      "path": "Silmaril/Process/Model/Thms.lean",
+      "sha256": "b85a1d0dfca8c8f391ab813c4310096bd6c50b127aa9311f0bec1cf2cb39e212",
+      "bytes": 155
+    },
+    {
+      "path": "Silmaril/Process/Musl/Defs.lean",
+      "sha256": "0e21e1b78e086593367a429b6929913ec02c039032b5a675cd6020177e7277af",
+      "bytes": 368
+    },
+    {
+      "path": "Silmaril/Process/Musl/Thms.lean",
+      "sha256": "242a3cf15807fce723a457189f8e54a3533d9dc54521252e2247b6d236387a54",
+      "bytes": 172
+    },
+    {
+      "path": "Silmaril/Process/Probes/Defs.lean",
+      "sha256": "9774f21cc3172c04da6f3155f7d1127c4877eb52ef4bd166094c33996d2a7368",
+      "bytes": 345
+    },
+    {
+      "path": "Silmaril/Process/Probes/Thms.lean",
+      "sha256": "3d3aa5d4ee28e8083d12f19e5d4f684372f1c0873958af923300c33df8359f1b",
+      "bytes": 176
+    },
+    {
+      "path": "Silmaril/Process/RiscV/Defs.lean",
+      "sha256": "3154083d89fb4175aaaaf5404e5434daeaf494f93ca61a84d5e11d8113f1078c",
+      "bytes": 398
+    },
+    {
+      "path": "Silmaril/Process/RiscV/Thms.lean",
+      "sha256": "80dc2ccc0720d3329dda5ffaf90e66c01fbaa83c062bfeb6e01b601b1c2b1411",
+      "bytes": 163
+    },
+    {
+      "path": "Silmaril/Process/Sha256/Defs.lean",
+      "sha256": "3d434f7ac4cf80b7d66b64e980554eb94a81c750085b73ee3f0a80f144987df3",
+      "bytes": 326
+    },
+    {
+      "path": "Silmaril/Process/Sha256/Thms.lean",
+      "sha256": "601eca6cd7680854e2e7348690bcbaa8c3a264fdc2e577a5a97d0b74c34082dc",
+      "bytes": 243
+    },
+    {
+      "path": "Silmaril/Process/Shapes/Defs.lean",
+      "sha256": "61996649460bb8b10216cf6e52322455fcec499c3d384f8975f568e9a0c14c94",
+      "bytes": 188
+    },
+    {
+      "path": "Silmaril/Process/Shapes/Thms.lean",
+      "sha256": "396e0341cb8ab35ea48bc44cc25e313227f88360a8524ed5dbdb667d33edffd7",
+      "bytes": 171
+    },
+    {
       "path": "Silmaril/Process/Syscall.lean",
       "sha256": "a7d59477d775730424a626ce98d929e5c837d49a39cfcf89d0c48e53773a8f26",
       "bytes": 17851
@@ -4288,9 +4923,39 @@
       "bytes": 2027
     },
     {
+      "path": "Silmaril/Process/Syscalls/Linux/Defs.lean",
+      "sha256": "0855e57dd12bc6c2f209c2e67ecb1ab6badd872d4cb01e3f6f2d990d7738dbf3",
+      "bytes": 292
+    },
+    {
+      "path": "Silmaril/Process/Syscalls/Linux/Thms.lean",
+      "sha256": "7e4c240ced312f27a16f9ebeacccec9ae1e5bcf71754259d24eb427b988f75b7",
+      "bytes": 194
+    },
+    {
+      "path": "Silmaril/Process/Syscalls/X86/Defs.lean",
+      "sha256": "2618d4d0ddc6ab90787248e103685473782801d821d3024ac1252599999943d3",
+      "bytes": 259
+    },
+    {
+      "path": "Silmaril/Process/Syscalls/X86/Thms.lean",
+      "sha256": "34aea6ee56c88530ccfe75d567bc0b02ea71b9c89ea3449c61fa59a7de42df54",
+      "bytes": 180
+    },
+    {
       "path": "Silmaril/Process/Thms.lean",
       "sha256": "100059d163c3db9af6c561a6532ca9a34229a67ef830fd8f9a71e84e4b7ce76b",
       "bytes": 539
+    },
+    {
+      "path": "Silmaril/Process/X86/Defs.lean",
+      "sha256": "62f4088c18d5ba8978b46cf5aaef322ba9e9b2784beac5207b87b1522d84602d",
+      "bytes": 438
+    },
+    {
+      "path": "Silmaril/Process/X86/Thms.lean",
+      "sha256": "29b726c360ab7713da4cdf8b8d93efa129c8e536b4fe931ac52bce28ec706e23",
+      "bytes": 215
     },
     {
       "path": "Silmaril/Proofs/Compile/Category/Compiler.lean",
@@ -4353,6 +5018,11 @@
       "bytes": 1121
     },
     {
+      "path": "Silmaril/Proofs/Process/README.md",
+      "sha256": "fb34e0aa56ac2238a10540961258e818359428740a341441d30f8f0672a78510",
+      "bytes": 377
+    },
+    {
       "path": "Silmaril/Proofs/README.md",
       "sha256": "8e39d0a81071e8b0ecd1135e1a275840f3818e856b0fb916374ef4a09bc4dc91",
       "bytes": 322
@@ -4371,6 +5041,11 @@
       "path": "Silmaril/Proofs/Wasm/Binaryen/Toolkit/WatSyntaxSound.lean",
       "sha256": "635459ea48344126bf88a721f5db20ba64077c9a6b779fcb0db13bab999d0b8d",
       "bytes": 63482
+    },
+    {
+      "path": "Silmaril/Raw/Process/README.md",
+      "sha256": "8a805070180a130221662f34ca54fa8b6a3fae87f417aa1a8e04bfbfa9c79028",
+      "bytes": 365
     },
     {
       "path": "Silmaril/Raw/README.md",
@@ -9373,6 +10048,11 @@
       "bytes": 6169
     },
     {
+      "path": "Silmaril/X86/Ext8/Basic.lean",
+      "sha256": "e3e4137ccf62107d3cf3eab0ed36242076de5e21da836c5c433ed1d748fa7423",
+      "bytes": 19261
+    },
+    {
       "path": "Silmaril/X86/Features/Embed.lean",
       "sha256": "e8fa202850794cbe30299c560208b80935af88efdd8e815b4f9f8893799043fe",
       "bytes": 5171
@@ -9503,6 +10183,21 @@
       "bytes": 27821
     },
     {
+      "path": "Silmaril/X86/SegVC.lean",
+      "sha256": "92373dea47b64284245a51a47408000e42aae1277b6d4f93067980c6c93ebf9d",
+      "bytes": 20814
+    },
+    {
+      "path": "Silmaril/X86/SegVC/Mem.lean",
+      "sha256": "83f0392546344e05b53d80a3b1be330911dc110eef703250a0d4b48ac53c3a5a",
+      "bytes": 2569
+    },
+    {
+      "path": "Silmaril/X86/SegVC/Tactic.lean",
+      "sha256": "226c80019dd8774caec164748bf6b8e615b959d787f6cead7abd7e37e0a3a6a8",
+      "bytes": 13586
+    },
+    {
       "path": "Silmaril/X86/Semantics.lean",
       "sha256": "fcb7e9d85ee5f7bdcf54e0f3d133b9b13c83bb207f91867e6367fbde823561a9",
       "bytes": 10353
@@ -9556,6 +10251,71 @@
       "path": "apps/sha256-cli/variants/validation.json",
       "sha256": "c014cd967a3d9530e306ea23a68722a0f1784d132912e9aa2ec489c033461141",
       "bytes": 6422
+    },
+    {
+      "path": "apps/sha256sum-min/README.md",
+      "sha256": "9cbc81e463905a7fb2a44141e481a7d1c078f6fc98bc184d6b2671df8424eb54",
+      "bytes": 3238
+    },
+    {
+      "path": "apps/sha256sum-min/build.py",
+      "sha256": "5e2d109d38985426eb16d6de31005def600fb9c324a35773ef726721f84ad33c",
+      "bytes": 7566
+    },
+    {
+      "path": "apps/sha256sum-min/historical-manifest.json",
+      "sha256": "6a359d31443d28321ce4af6eca4460bea881c66beb88cf1bac9082c87eaa8e86",
+      "bytes": 10105
+    },
+    {
+      "path": "apps/sha256sum-min/inputs/xc_sha256.c",
+      "sha256": "9dc8c350ca73a3d7d4898daf42106f6c21a68d75b882854f1bd5e5af47dd2f07",
+      "bytes": 2521
+    },
+    {
+      "path": "apps/sha256sum-min/scripts/build.sh",
+      "sha256": "3f40c7b54bd96f9cd4f32ec9940c09bbcef90252759eb40e646eeb8948aaad7b",
+      "bytes": 2044
+    },
+    {
+      "path": "apps/sha256sum-min/scripts/check_pilot_bytes.py",
+      "sha256": "1da13674ceca27bd63b2e0e709d60f37b341e32ce35a0b82da0e7bb211ccd0da",
+      "bytes": 1927
+    },
+    {
+      "path": "apps/sha256sum-min/scripts/gen_compress_S.py",
+      "sha256": "699ec4017d6e55e6c25f40374c9baf38dc852448886dad3689cf45f93ad7324e",
+      "bytes": 2459
+    },
+    {
+      "path": "apps/sha256sum-min/scripts/gen_tables.py",
+      "sha256": "6ba1501234a39e77b45de5215e2ada78ed2c532d2bceefdf32db174d39afe4eb",
+      "bytes": 1415
+    },
+    {
+      "path": "apps/sha256sum-min/src/compress_clang_O2.S",
+      "sha256": "fbe67a27f76c199781067ba6476b2c42e9dbe789bba5f65cfd5b4bec2d1faa25",
+      "bytes": 4420
+    },
+    {
+      "path": "apps/sha256sum-min/src/gen_tables.h",
+      "sha256": "74ca82564739556b8da92ea0deac5fc37e6ee8dec4c688c79fadcb26c54956a6",
+      "bytes": 6228
+    },
+    {
+      "path": "apps/sha256sum-min/src/sha256_compress_clang_O2.hex",
+      "sha256": "444cece8b812662476018819f3a1636a1824c49d522242988720942dee67356e",
+      "bytes": 919
+    },
+    {
+      "path": "apps/sha256sum-min/src/sha256sum.c",
+      "sha256": "4a81ef287baa97cc351d518d9173466b29fb1c8e1edef1070308ef29f56b92a6",
+      "bytes": 35667
+    },
+    {
+      "path": "apps/sha256sum-min/src/start.S",
+      "sha256": "835f8b194d8d14c115b97fdb9db3248b281408dea771808ab207d7c55b293cd5",
+      "bytes": 812
     },
     {
       "path": "data/README.md",
@@ -9633,6 +10393,11 @@
       "bytes": 5125
     },
     {
+      "path": "docs/facts.json",
+      "sha256": "931b145c6cd095dc25017210d7b2c5fc5c1e4e8b7e7c97e6171b1fa4c0693c41",
+      "bytes": 661
+    },
+    {
       "path": "docs/projects/README.md",
       "sha256": "46e5ed16b3cb6df246fa312ea72833a012026817d84266efcfef9f981fb0a020",
       "bytes": 1077
@@ -9641,6 +10406,16 @@
       "path": "docs/projects/compilers.md",
       "sha256": "4720586c4234b72222f5a31ba5af65a034b5e6ed6f0a236f6bdc0304f5beb301",
       "bytes": 4172
+    },
+    {
+      "path": "docs/projects/elf.md",
+      "sha256": "3e2c9b8a30a97fdfe756c5b55fc06559475fe20266e188133c4e6644c9da3d5b",
+      "bytes": 784
+    },
+    {
+      "path": "docs/projects/ieee754.md",
+      "sha256": "c7e9aa21bc6e40ff3776d33992119c48b6c495a5776bb3d180fbec28db061644",
+      "bytes": 713
     },
     {
       "path": "docs/projects/logic-arithmetic.md",
@@ -9669,8 +10444,8 @@
     },
     {
       "path": "docs/projects/sha256sum.md",
-      "sha256": "d341ccfd34c44f7e3a148af2a1139fbea699e93068cce68d9a94a95263c0cfc6",
-      "bytes": 762
+      "sha256": "1218fc9ef80dbaf0a978cf036056c75ea9409396061ea28e1eb5a46b93f56c3f",
+      "bytes": 977
     },
     {
       "path": "docs/projects/wasm-benchmarks.md",
@@ -9694,8 +10469,8 @@
     },
     {
       "path": "docs/projects/x86.md",
-      "sha256": "cdff4fd001ef0afeea6800cf753ae76b83135bf14d23ac9ba4110924e4babb5a",
-      "bytes": 1096
+      "sha256": "d040b518d0261010342ac1422a06064ad6d775cbff03bc25f0b248c5346f6761",
+      "bytes": 1438
     },
     {
       "path": "docs/releases/process-lps-v0.1.md",
@@ -9716,6 +10491,506 @@
       "path": "examples/verification-projects/theorem-dev/lps-probes/build.sh",
       "sha256": "65923682ee4b96742e9a419fd6dce10489809027c6b13d57a3fa0d9a1a54bd45",
       "bytes": 985
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_fs.json",
+      "sha256": "7b96771bf9c8715fa0a3d507d4da3071ee1519ec48fb2f708b4b66218fd37258",
+      "bytes": 1679
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_fs.s",
+      "sha256": "f21d888085284e5660c2372d4a21de9c067062c40fa5f8809dde8ea287afeef6",
+      "bytes": 505
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_fs1.json",
+      "sha256": "dca82ae21a405990bbe468e25d20b9f3405fb47e75fac4668be23c6fb033e070",
+      "bytes": 1649
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_fs1.s",
+      "sha256": "67f3a416cf9c24e9607bd3e40661a496bb226f521b2d3273b3281667b456dbc6",
+      "bytes": 484
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_getfs.json",
+      "sha256": "99fb798ae92d77a5fb41687cfef5a00de1754b3e758cdb5631cd16292c338294",
+      "bytes": 2155
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_getfs.s",
+      "sha256": "4a50b108f1bd090defdce32811d04b839eff1105fad33de3cda3759b69f67349",
+      "bytes": 700
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_getfs_exit.json",
+      "sha256": "362d7bd717132a442c06f2844a47035ea3d07d3b1d18793236671414513416ff",
+      "bytes": 1757
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/arch_getfs_exit.s",
+      "sha256": "c5f998f2ad3ab90f51576086de4ad37f8806edbccb69129365aa25530712e9c7",
+      "bytes": 645
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/close_twice.json",
+      "sha256": "9f4f7002e5456ac4d8a5927f86d2335f563691a4fcb53b43a55ab44f585f8218",
+      "bytes": 1822
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/close_twice.s",
+      "sha256": "03a9991b1c2e126ac8c6895833213f598d69dec64280aa2e734ffb872c5b4832",
+      "bytes": 721
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/close_twice1.json",
+      "sha256": "ac0111063a8da371f82d7e5a5f4c1f0f3336c252bb0944ef3c306ec03260a842",
+      "bytes": 1712
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/close_twice1.s",
+      "sha256": "3ab372080567c145bd605468766cb66e64919d09607f7963c3c2174f61c62def",
+      "bytes": 691
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/exit42.json",
+      "sha256": "7069522c8a72d3765bcbec991ac4a8329a9ce522bdec9c2b6fed969d99ebe8b9",
+      "bytes": 1572
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/exit42.s",
+      "sha256": "391dc6a51a1fcc98e8d0f6512c195bc1873d0b6b20b98d103a1f7183844f215a",
+      "bytes": 218
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/exit43.json",
+      "sha256": "60e4051d8297e10817d4ad67aa365fdd6f0e3aff596d487c932ddd49fd704de2",
+      "bytes": 1468
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/exit43.s",
+      "sha256": "6bcf7113a30d8ddbaf11159cd0bef3dd3e4b06f3c5beeff8b913a925eb85a071",
+      "bytes": 249
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/getrandom8.json",
+      "sha256": "2b39f24812253625c98383b67b67e9325cead3d43bbb281f4815f88b7106b5c9",
+      "bytes": 2089
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/getrandom8.s",
+      "sha256": "66f6ad5e7819160f156765b90ddb7c1e362d47577bfad375cc40df52aef35b5a",
+      "bytes": 551
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/getrandom_badflags.json",
+      "sha256": "64ef3b3d87d7ced849aaa8d80f7817cf0687412a8be38b56f75ff09c837dcee3",
+      "bytes": 2202
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/getrandom_badflags.s",
+      "sha256": "851bc3ed5ffc741382d5a87d3997f25cb7b0e521b345d078efb7333462bfb10a",
+      "bytes": 557
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/identity.json",
+      "sha256": "59a1945e7a66f2c1842c96649229c2904a0ea006dff796b82bc10d29b70d691b",
+      "bytes": 3020
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/identity.s",
+      "sha256": "7bd2f343b218b58bd42ce66e618b2e7bcd407d8f879716c5f6bdafef39df7ca8",
+      "bytes": 1180
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/identity1.json",
+      "sha256": "26413b462dfaf6ddbc5312189587439f80ed814163198f2ab9c01f2d5c3e4130",
+      "bytes": 2791
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/identity1.s",
+      "sha256": "eea38d6084fbdf20e116f7e5848f1eb9b82d432b78fb8d03ffc2c79d636872be",
+      "bytes": 1083
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat.json",
+      "sha256": "af2d6ed1e5dbc62b43331cd69bf84aaaf00cd96703331b55a9f9cfb295bdd9be",
+      "bytes": 1985
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat.s",
+      "sha256": "d2b6e824f8cf0a6b0f8748f0af2dd5ec6cb1a53eac706bdd6a2daa54dd575a22",
+      "bytes": 1163
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_droplast.json",
+      "sha256": "9f8fc92f5c6ef9cf11cd51b9d13a0b60ea3f3c9dda393fae3e14e9508a9b8c49",
+      "bytes": 2002
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_droplast.s",
+      "sha256": "a6628418b3b5605fe0ef1d124bc503d94c69db3d6af2b3baedbf7079fba2616c",
+      "bytes": 1200
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_dup.json",
+      "sha256": "7045aaf09a6ef7c4400f0c04c27fcb82771976e615fe71f1b18d7fc0039298b8",
+      "bytes": 2173
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_dup.s",
+      "sha256": "455e71caabf11db5f3c0db6724d0aaf776efafb3c3e7a7504473767f31988763",
+      "bytes": 1381
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_exit1.json",
+      "sha256": "8c280b75004818a12c6376112e39b52c95e2ad248a01a9f616b09fd9e6bc84d9",
+      "bytes": 1984
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_exit1.s",
+      "sha256": "fe1955503996b587e3583092bb8814b72d2c07dfc497a2a6c100e6251b63c8b1",
+      "bytes": 1167
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_once.json",
+      "sha256": "9c9f0d64e3602e15136e615081d45128309d31348d0d6f1bf212c8f31c286276",
+      "bytes": 18236
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_cat_once.s",
+      "sha256": "3de708b22a588f34a2708c2813de840a1ed1a6142ca007294dcc11d6e3ef4766",
+      "bytes": 969
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo.json",
+      "sha256": "6d3e0886dece68bc06fe761e081a5abe4f83c89ce753987133874d4c6ab31d45",
+      "bytes": 1273
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo.s",
+      "sha256": "d3b87520d11d7df670eb6286b3aab8fe253a4d80f1e551d9c65897d126bc6d26",
+      "bytes": 1695
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo_exit1.json",
+      "sha256": "a702662eb3f56613eba0e92f2e022ca611eab02ce81dc4bde5314254aca89e2c",
+      "bytes": 1265
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo_exit1.s",
+      "sha256": "ccbe593d40f8625621a07e4aff0e45417d2d5d752ea50805a79e32c77276855a",
+      "bytes": 1684
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo_nonl.json",
+      "sha256": "7e91533d16fe2ee235f106ffc1caa51d1ef81e0ce80736f107bb611a370b6780",
+      "bytes": 1130
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo_nonl.s",
+      "sha256": "2c1a305b737d0a249599f7f89a5ab6c56b602e6b6a5bad92c79df69bf008ee1d",
+      "bytes": 1353
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo_stderr.json",
+      "sha256": "36e6d5f4c199c4322900219298c6aaf8f40ccee4037a1a772f7d2e06eefe4201",
+      "bytes": 1277
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_echo_stderr.s",
+      "sha256": "e767f8496cb237312a1657223bfa23304a8d4b61cb67117a97d7b20d7fc881ab",
+      "bytes": 1732
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_false.json",
+      "sha256": "1f709c545248dd3f7ca2749250b6d2d975d56e12818d86e8638ba30f610587dd",
+      "bytes": 1240
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_false.s",
+      "sha256": "7dac83c11d2a089131adc9804b432c8249f6f6e653e5eccc3491a719d9b217f7",
+      "bytes": 287
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_false_stdout.json",
+      "sha256": "c285a8bd094338cc403de3e2a02898229d76733f26c0283b7684617f7b8dc1c7",
+      "bytes": 1305
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_false_stdout.s",
+      "sha256": "1c677e70979e5392484e083482e351d5451635004199e6f008bc63bea6b4bfc3",
+      "bytes": 464
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_true.json",
+      "sha256": "06aa02bbdc049dbb804125ac52087f671824803fad283772a75478ed7f28df6f",
+      "bytes": 1164
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_true.s",
+      "sha256": "442b18a5dd5488eea7eaaa9a4699abeb63e83c15e8d7396fd7f9236b4276d365",
+      "bytes": 288
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_true_stderr.json",
+      "sha256": "be7cbddf9e3b2254e57becb07b0b34c012cb0b8e366d257c58e736b33d13a4a6",
+      "bytes": 1290
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/lite_true_stderr.s",
+      "sha256": "9168313d5a98d50fcf1849f97774c75c9aadb857183031a3241667f70d6113bc",
+      "bytes": 474
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_create.json",
+      "sha256": "6556d226836eac86f4f8a7630ec3112e2800b19ae7a00e15e8a3a3531e4ec7bb",
+      "bytes": 2446
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_create.s",
+      "sha256": "831512de958a1e18bb23b466a4da1bca6efe20ce69bc4231ef104ad3f4e711f3",
+      "bytes": 1239
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_create_ko.json",
+      "sha256": "01ba94b532df86181ffefdd55bc5222d6ea15b3610805e3913c5d1d1ff49a26f",
+      "bytes": 2190
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_create_ko.s",
+      "sha256": "5a56ccadf94813c806b6a3aefe19c0da2725edcb171915c05ec1ce113a867849",
+      "bytes": 1204
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_efault.json",
+      "sha256": "526e9a85eceba92c61ba66941dea613474b76b7ee2d5609d2ae71fafe9febe71",
+      "bytes": 1785
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_efault.s",
+      "sha256": "6550f35c888eac9ac1341b72e92ab5f20c083a999c85e010783686b162a2bbc8",
+      "bytes": 655
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_legacy.json",
+      "sha256": "9b8d72dd0d77c6a74b6bba982b9245120f5c0372c18cbecf29326af5a15a656f",
+      "bytes": 2191
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_legacy.s",
+      "sha256": "715eff3d729fa20b610aae1e542494e73309ea6f35267e4467e9a1c2013093d5",
+      "bytes": 514
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_missing.json",
+      "sha256": "dd2448dbfce7e653280d22327e18606fa0cbc0c61667590c15ef71ed12e98dad",
+      "bytes": 1726
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_missing.s",
+      "sha256": "de8c242b360082052a03770e7d7f4d9033ecc2534924d4d6c73ba8b1bf40cc31",
+      "bytes": 616
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read.json",
+      "sha256": "e3a76cba180a41e90d1faea7b483622213557473fc51aaf7ba155f80c79ce6aa",
+      "bytes": 2750
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read.s",
+      "sha256": "6d9248b93e464349edc6a93d324e54c830b98dab98d852117fcb18934ecd7a7a",
+      "bytes": 1550
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read_legacy.json",
+      "sha256": "4e25bcd0e63238e97c45e9b5d3c12370564a90a9043dd8c72f05f10c840395e1",
+      "bytes": 2361
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read_legacy.s",
+      "sha256": "3fe6495b32ae1bee401dd59d226884adb6400e7be83f7371ff525a0c4bdfc7d4",
+      "bytes": 1705
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read_name.json",
+      "sha256": "b54a5fe2d870e4b1d301e9d6f56969042d706ac92bfb1a10c27f62fc6a21d3a8",
+      "bytes": 2571
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read_name.s",
+      "sha256": "f8e89ad41033c17943105e8d657a491c27319f2b33485ef23ad38eb32d2909ed",
+      "bytes": 1554
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read_wr.json",
+      "sha256": "da4fd5af6fcd45c27a903ec1e8786a6ea45ac60dd19716ce2f077cfc3231556f",
+      "bytes": 2482
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/open_read_wr.s",
+      "sha256": "86c7e15a8e00c05abbb8c34f90cf093ae0f67353d6034377a93750f5f00af777",
+      "bytes": 1550
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/probe-rwx.ld",
+      "sha256": "228725139047a35fe92fc3d68ecff80f9cd72cbed0add8b1cb6b8d3f59376ede",
+      "bytes": 609
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/probe.ld",
+      "sha256": "270579c944825c7a663aac0db1a6b8e2044b90d2c71d4f91d891bb47c02e0e9d",
+      "bytes": 493
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_badfd.json",
+      "sha256": "8fb12dbe199f2163e191d679b84c7c53aecaafefff5336e38b867563c027ec4f",
+      "bytes": 1750
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_badfd.s",
+      "sha256": "f9a9549a436f29089648736c8ffc33ef077dbfa12400054bf127782f0dd7480e",
+      "bytes": 860
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_badfd0.json",
+      "sha256": "f238b532b33c9fe2c46c7c178177f42d5ac552f5c523134839f95730810045d1",
+      "bytes": 1636
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_badfd0.s",
+      "sha256": "c6331cb350b0cbd30777a688765963c37f06eb7e6e04e689218f66b0ff44a030",
+      "bytes": 688
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_echo.json",
+      "sha256": "0ee6dfeae1fa88f6b236ed5aab36cdc67c69b64763f677be302f129ad37cd03b",
+      "bytes": 2040
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_echo.s",
+      "sha256": "83b2a9affe731b5de92849c25c08d66d3a7527a85c6343da5649c7cc83b25cdc",
+      "bytes": 875
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_echo2.json",
+      "sha256": "a4a66fc2b180ad27e533325fa50c2ca3895ac082baa5b9389bb527dbfcdd02b3",
+      "bytes": 1925
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/read_echo2.s",
+      "sha256": "16134df8943774df28c158e33abcc8f6f49ed7861a89fe58f5f5a4a32a58e069",
+      "bytes": 911
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/unknown_exit_group.json",
+      "sha256": "0a30f0245eb92fd59502cb2478cf9a6a79dda6b9784798fa367c8c9dc19263b2",
+      "bytes": 1686
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/unknown_exit_group.s",
+      "sha256": "8ec8fa6f7fadf972793e80706f903ecb701c9d4518c9bdf4d18fcd3cb9996bcb",
+      "bytes": 347
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/unknown_syscall.json",
+      "sha256": "17b6d03d92a4026443e1d0cda1a8da904773a46165ad21bdb7a38dd49cb56f21",
+      "bytes": 1920
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/unknown_syscall.s",
+      "sha256": "3a628afe90be9de094feb5a4b830cccc009ed3aa4af0d8744f4ce3c37099f9d5",
+      "bytes": 378
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_closed.json",
+      "sha256": "0d41ae71c5d1c1a4b2b305d415470b879ac835ad79e43b0af2996dd14c897557",
+      "bytes": 1887
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_closed.s",
+      "sha256": "4a2638e3a7fe6a7d862a28b9b796ae8fe09ab0088b95e5034775cd7ae0f98c70",
+      "bytes": 851
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_closed2.json",
+      "sha256": "e7410f3f14f0cdd610bd17d25f4bb5648b66eba65f427ead393895bb61831ff2",
+      "bytes": 1806
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_closed2.s",
+      "sha256": "939e3ddd22ad5a7e5ea7841d953923314f13e286a1be8c8f78df367ff9d424a6",
+      "bytes": 832
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_efault.json",
+      "sha256": "b7ec58d7b906b514a20dd1ebe1abdc4ca357777c1b2139d5afdf740963b6b0ef",
+      "bytes": 1752
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_efault.s",
+      "sha256": "88b5653a4df4d045a10d45e83bf3bdfc5b1ccc66f6e69646bf2061f9535a4564",
+      "bytes": 685
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_efault_ok.json",
+      "sha256": "86afe5da7b70f219a1805b1bbf88518352da494fde168667fabcc266dc28c033",
+      "bytes": 1704
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_efault_ok.s",
+      "sha256": "5058c82884b75a1f98bb0567811d295a5fe9c9cc22f38d19828d7243e48e4374",
+      "bytes": 696
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_hello.json",
+      "sha256": "a31c18e8be0e1312adf034d9fba422565973cf123e9764d470adb3e4816071e1",
+      "bytes": 1793
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_hello.s",
+      "sha256": "d4d8119955a116239530cd84920ed5bbc468b86ab6d5b3eab5b8f51cbcca105f",
+      "bytes": 570
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_hello5.json",
+      "sha256": "ad339284c9b57b947113600aee6023b8f52dff1ae6055a2f58edd4a116fcb14d",
+      "bytes": 1730
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_hello5.s",
+      "sha256": "ba1107a2ea40b6329c45259ed6d22d84f4fab614ccfcab2fefbc28bb11e84fcf",
+      "bytes": 561
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_hello_split.json",
+      "sha256": "4f0e63c04730ac42f185aabaea44116a88021961635b826a2e79f608998d4bf4",
+      "bytes": 1606
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_hello_split.s",
+      "sha256": "03d7678fb7128fdc9ab33c05223f56af11ac156882ebd467aefb38bf70d8c6a3",
+      "bytes": 862
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_zero.json",
+      "sha256": "5a81a87fd1f304af8fec0183c156d8ed98b64cd99dfd2f920c054fd6f4f7ef05",
+      "bytes": 1734
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_zero.s",
+      "sha256": "ef07640f610c7999f2f1df345c66b32a290cf9a4ecd73153f09d876688eb7da7",
+      "bytes": 613
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_zero1.json",
+      "sha256": "f597d300d542db0816f398ef524ba6e66af802f73c69109a7d29556d7630d6a7",
+      "bytes": 1603
+    },
+    {
+      "path": "examples/verification-projects/theorem-dev/lps-probes/probes/write_zero1.s",
+      "sha256": "9320662b9917693dfb7adc61b0a6ed785a86a737bceb9487396053741fb56b49",
+      "bytes": 612
     },
     {
       "path": "examples/verification-projects/x86-musl-startup/MUSL-COPYRIGHT",
@@ -9808,6 +11083,36 @@
       "bytes": 448
     },
     {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/agree-sha256-cli/problem.toml",
+      "sha256": "26cb43af12a57986ca37789de234c20e0f82c5874f5c7a367e9f33f2c86bed7d",
+      "bytes": 2576
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-bounded-1024/problem.toml",
+      "sha256": "38fd2d3fcf0c65e18ed2f2db6707ed4b8d61d392ef13625bc62850fb680397ad",
+      "bytes": 2329
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-bridge/problem.toml",
+      "sha256": "67715ac22758bd74c579835f327609c02d66e1150c306b45ae21c3247c6007e7",
+      "bytes": 2264
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-partial/problem.toml",
+      "sha256": "c4afec8e4e3bc0eae25fd27cc4f0b3aa365f4fc3d0092051db6205cb1b73af8f",
+      "bytes": 2323
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/lps-total/problem.toml",
+      "sha256": "ec792dccd4657910fcafc72f5e52da255e28c296ea45c6744c8ebb2b040bb509",
+      "bytes": 2758
+    },
+    {
+      "path": "problems/sha256/gnu-sha256sum-x86-64/sys-total/problem.toml",
+      "sha256": "c557c457a98f33860e65f5ce6c07e1b3926686d3ee0de21193b21ba8bfbfc85c",
+      "bytes": 2189
+    },
+    {
       "path": "references.bib",
       "sha256": "585c6cc15e5b19ae4fe1ffc60860381609b36b6e1396f604af64f8b1d3a5a0e5",
       "bytes": 9663
@@ -9826,6 +11131,11 @@
       "path": "scripts/lake-cache.py",
       "sha256": "a46880f6d2ec76cd6436a0bcefd17ee44409b6930a3b84878d43ae3626a03c22",
       "bytes": 11728
+    },
+    {
+      "path": "scripts/sha256sum/recovered-provenance.json",
+      "sha256": "2960d9c1d14ca5fbd8b3b58fb7aca3564d8bdaa57490ea7a7adb91845e5f41dc",
+      "bytes": 12093
     },
     {
       "path": "scripts/sil",
@@ -10081,6 +11391,36 @@
       "path": "tools/binaryen-lean/text-tools/memory.wat",
       "sha256": "d62ca8225932bab825ddffce7928e9b298a0f55b81d2e8142c7e80b6695fc6a3",
       "bytes": 881
+    },
+    {
+      "path": "tools/process-release/check_headers.py",
+      "sha256": "17c0e6f9342a25316543ac0c9095a5c8478eaaba0914ec5c3f3658deb30a91c1",
+      "bytes": 1833
+    },
+    {
+      "path": "tools/process-release/facts.py",
+      "sha256": "0fd1e2274a69d284e612b86f9891334b9f940ad18722170a4258e7e38a449970",
+      "bytes": 2096
+    },
+    {
+      "path": "tools/verification-projects/lps_probes.py",
+      "sha256": "24b2a6ef3f9cc9ab55028172dc8b9956b1473db17e25bd62df4ab17fc48c1252",
+      "bytes": 61446
+    },
+    {
+      "path": "tools/verification-projects/problems/x86-probes.json",
+      "sha256": "45aa48c5ad38f2bb7de014b207f5276f21133c962227fc1499e45a4dd7295932",
+      "bytes": 15573
+    },
+    {
+      "path": "tools/verification-projects/test_lps_probes.py",
+      "sha256": "103fa41b485aff89de1471372e2ef778b117a7bfbc6b3186cc416d002d7d2649",
+      "bytes": 23684
+    },
+    {
+      "path": "tools/verification-projects/x86_probe_problems.py",
+      "sha256": "2bb0eedcc5874503b7d98fd79e042edfd0154ac3adcd566e12607c996889d5a9",
+      "bytes": 18658
     }
   ]
 }

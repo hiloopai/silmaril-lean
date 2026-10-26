@@ -1,0 +1,25 @@
+{
+  "source_commit": "fc6be8f5e6f6de4c7795776842608dc9795c728f",
+  "translated_syscall_arms": 90,
+  "probe_fixtures": 49,
+  "probe_lean_data_modules": 57,
+  "x86_probe_problem_modules": 12,
+  "public_process_header_topics": [
+    "Model",
+    "Shapes",
+    "Syscalls/Linux",
+    "Syscalls/X86",
+    "X86",
+    "RiscV",
+    "Probes",
+    "Musl",
+    "Sha256"
+  ],
+  "verification_commands": [
+    "make library",
+    "make demo-process demo-sha256",
+    "python3 apps/sha256sum-min/build.py --verify-only",
+    "python3 -B tools/verification-projects/lps_probes.py check --offline",
+    "python3 -B tools/verification-projects/x86_probe_problems.py check"
+  ]
+}

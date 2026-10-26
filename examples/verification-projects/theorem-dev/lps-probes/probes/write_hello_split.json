@@ -1,0 +1,73 @@
+{
+  "probe": "write_hello_split",
+  "claim": "write(1, \"hel\", 3); write(1, \"lo\\n\", 3); exit(0): write_hello's bytes in two write calls; the model admits the recorded run (stdout hello\\n, exit 0)",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.WriteHelloSplit",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.WriteHelloSplit.checked",
+      "Silmaril.Process.LPS.Probes.WriteHelloSplit.admits",
+      "Silmaril.Process.LPS.Probes.WriteHelloSplit.admits_short"
+    ]
+  },
+  "sha256": "f6da24d129d3fefff53041f9709dd800e3cc47ff871db4ab89f9cdaaccf0f614",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194480,
+          3
+        ],
+        "ret": 3
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194483,
+          3
+        ],
+        "ret": 3
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68656c6c6f0a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap"
+    ]
+  }
+}

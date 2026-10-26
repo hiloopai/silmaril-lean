@@ -1,0 +1,333 @@
+{
+  "schema": "sha256sum-recovered-provenance-v1",
+  "observed_date": "2026-10-23",
+  "scope": "Recovered exact original source/build inputs and new offline reproducibility evidence; no new formal binary theorem",
+  "recovery": {
+    "host": "prodigy",
+    "read_only_original_directory": "/home/jad/recovered-originals-20261023/campaigns/research/sha256sum",
+    "destination": "apps/sha256sum-min",
+    "source_upload_performed": false,
+    "original_source_contents_preserved": true,
+    "historical_manifest": {
+      "path": "apps/sha256sum-min/historical-manifest.json",
+      "sha256": "6a359d31443d28321ce4af6eca4460bea881c66beb88cf1bac9082c87eaa8e86",
+      "bytes": 10105
+    },
+    "original_elf_observed": {
+      "path": "corpus/bin/sha256sum-min",
+      "sha256": "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817",
+      "bytes": 35512,
+      "matches_Lean_pinned_identity": true
+    },
+    "binary_archive_scope": "This source slice does not duplicate the original full ELF; byte/model track retains its image."
+  },
+  "source_files": {
+    "scripts/build.sh": {
+      "bytes": 2044,
+      "sha256": "3f40c7b54bd96f9cd4f32ec9940c09bbcef90252759eb40e646eeb8948aaad7b",
+      "matches_historical_manifest": true
+    },
+    "scripts/gen_compress_S.py": {
+      "bytes": 2459,
+      "sha256": "699ec4017d6e55e6c25f40374c9baf38dc852448886dad3689cf45f93ad7324e",
+      "matches_historical_manifest": true
+    },
+    "scripts/gen_tables.py": {
+      "bytes": 1415,
+      "sha256": "6ba1501234a39e77b45de5215e2ada78ed2c532d2bceefdf32db174d39afe4eb",
+      "matches_historical_manifest": true
+    },
+    "src/compress_clang_O2.S": {
+      "bytes": 4420,
+      "sha256": "fbe67a27f76c199781067ba6476b2c42e9dbe789bba5f65cfd5b4bec2d1faa25",
+      "matches_historical_manifest": true
+    },
+    "src/gen_tables.h": {
+      "bytes": 6228,
+      "sha256": "74ca82564739556b8da92ea0deac5fc37e6ee8dec4c688c79fadcb26c54956a6",
+      "matches_historical_manifest": true
+    },
+    "src/sha256_compress_clang_O2.hex": {
+      "bytes": 919,
+      "sha256": "444cece8b812662476018819f3a1636a1824c49d522242988720942dee67356e",
+      "matches_historical_manifest": true
+    },
+    "src/sha256sum.c": {
+      "bytes": 35667,
+      "sha256": "4a81ef287baa97cc351d518d9173466b29fb1c8e1edef1070308ef29f56b92a6",
+      "matches_historical_manifest": true
+    },
+    "src/start.S": {
+      "bytes": 812,
+      "sha256": "835f8b194d8d14c115b97fdb9db3248b281408dea771808ab207d7c55b293cd5",
+      "matches_historical_manifest": true
+    },
+    "inputs/xc_sha256.c": {
+      "bytes": 2521,
+      "sha256": "9dc8c350ca73a3d7d4898daf42106f6c21a68d75b882854f1bd5e5af47dd2f07",
+      "historical_path": "xcompile/wrappers/xc_sha256.c",
+      "matches_historical_manifest": true
+    }
+  },
+  "historical_host_receipt": {
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+    "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+    "objdump": "GNU objdump (GNU Binutils for Ubuntu) 2.42",
+    "python": "Python 3.12.3",
+    "kernel": "6.8.0-139-generic"
+  },
+  "historical_silmaril_inputs": {
+    "commit": "76eb80d5cb83e0396af429f1631b350cb898805e",
+    "inputs": {
+      "tests/x86/sha256_compress_clang_O2.hex": "444cece8b812662476018819f3a1636a1824c49d522242988720942dee67356e",
+      "xcompile/wrappers/xc_sha256.c": "9dc8c350ca73a3d7d4898daf42106f6c21a68d75b882854f1bd5e5af47dd2f07"
+    }
+  },
+  "historical_compiler_executable_hashes": "not recorded by the original manifest; current reproduction executable hashes below are new observations",
+  "reproduction": {
+    "scope": "new host-local offline reproduction from recovered inputs; no source uploaded; not historical compiler identity evidence or a proof",
+    "work_directory": "/tmp/sha256sum-source-reproduction-l7espzlp",
+    "seconds": 0.6472525948192924,
+    "compiler": {
+      "path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+      "sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+      "version": "x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+    },
+    "current_components": {
+      "cc1": {
+        "path": "/usr/libexec/gcc/x86_64-linux-gnu/13/cc1",
+        "sha256": "5d1679131184e2de4435b426eb264bf13472fe026db8e5c6bc97445814e8e2f4"
+      },
+      "as": {
+        "path": "/usr/bin/x86_64-linux-gnu-as",
+        "sha256": "21aff249b692b5c31a44007491f922dcb49f41323e362c57d2ada3f52eddb7f0"
+      },
+      "ld": {
+        "path": "/usr/bin/x86_64-linux-gnu-ld.bfd",
+        "sha256": "e9ceb054c12207970f2726dfc07e9a66b411602748628baf27399f02a9bbb31b"
+      }
+    },
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "/home/jad/recovered-originals-20261023/campaigns/research/sha256sum/scripts/gen_compress_S.py",
+          "/home/jad/recovered-originals-20261023/campaigns/research/sha256sum/build/sha256_compress_clang_O2.hex",
+          "compress_clang_O2.S"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gcc",
+          "-O2",
+          "-std=gnu11",
+          "-ffreestanding",
+          "-fno-builtin",
+          "-fno-stack-protector",
+          "-fcf-protection=none",
+          "-mgeneral-regs-only",
+          "-fno-pic",
+          "-fno-pie",
+          "-fno-asynchronous-unwind-tables",
+          "-fno-unwind-tables",
+          "-fno-jump-tables",
+          "-fno-tree-vectorize",
+          "-fno-tree-slp-vectorize",
+          "-fno-bit-tests",
+          "-fno-if-conversion",
+          "-fno-if-conversion2",
+          "-ffunction-sections",
+          "-fdata-sections",
+          "-fno-ident",
+          "-Wall",
+          "-Wextra",
+          "-Wno-unused-parameter",
+          "-c",
+          "src/sha256sum.c",
+          "-o",
+          "sha256sum.o"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gcc",
+          "-c",
+          "src/start.S",
+          "-o",
+          "start.o"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gcc",
+          "-c",
+          "compress_clang_O2.S",
+          "-o",
+          "compress_clang_O2.o"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gcc",
+          "-O2",
+          "-std=gnu11",
+          "-ffreestanding",
+          "-fno-builtin",
+          "-fno-stack-protector",
+          "-fcf-protection=none",
+          "-mgeneral-regs-only",
+          "-fno-pic",
+          "-fno-pie",
+          "-fno-asynchronous-unwind-tables",
+          "-fno-unwind-tables",
+          "-fno-jump-tables",
+          "-fno-tree-vectorize",
+          "-fno-tree-slp-vectorize",
+          "-fno-bit-tests",
+          "-fno-if-conversion",
+          "-fno-if-conversion2",
+          "-ffunction-sections",
+          "-fdata-sections",
+          "-fno-ident",
+          "-Wall",
+          "-Wextra",
+          "-Wno-unused-parameter",
+          "-c",
+          "xc_sha256_compress.c",
+          "-o",
+          "compress_gcc_O2.o"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gcc",
+          "-nostdlib",
+          "-static",
+          "-no-pie",
+          "-Wl,--gc-sections",
+          "-Wl,--build-id=none",
+          "-Wl,-z,noexecstack",
+          "-Wl,-z,norelro",
+          "-Wl,-e,_start",
+          "start.o",
+          "sha256sum.o",
+          "compress_clang_O2.o",
+          "-o",
+          "sha256sum-min"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gcc",
+          "-nostdlib",
+          "-static",
+          "-no-pie",
+          "-Wl,--gc-sections",
+          "-Wl,--build-id=none",
+          "-Wl,-z,noexecstack",
+          "-Wl,-z,norelro",
+          "-Wl,-e,_start",
+          "start.o",
+          "sha256sum.o",
+          "compress_gcc_O2.o",
+          "-o",
+          "sha256sum-min-gcc"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "/home/jad/recovered-originals-20261023/campaigns/research/sha256sum/scripts/check_pilot_bytes.py",
+          "/tmp/sha256sum-source-reproduction-l7espzlp/sha256sum-min",
+          "/home/jad/recovered-originals-20261023/campaigns/research/sha256sum/src/sha256_compress_clang_O2.hex"
+        ],
+        "returncode": 0,
+        "stdout": "{\n \"textBase\": \"0x405200\",\n \"rodataBase\": \"0x407f10\",\n \"disp32\": 11349,\n \"bytes_match_except_disp\": true,\n \"disp_reaches_K\": true,\n \"K_matches\": true,\n \"linked_function_sha256\": \"acfb62beed3dccddd419de9c2b317cd885baae7b6e797e909f6afd7ad833dd53\"\n}\n",
+        "stderr": ""
+      }
+    ],
+    "outputs": {
+      "sha256sum-min": {
+        "sha256": "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817",
+        "bytes": 35512,
+        "matches_historical": true
+      },
+      "sha256sum-min-gcc": {
+        "sha256": "9753ffd236e61bb9fcb793238d9b9f1c908f41569a8d79a5f6f38c15e3303463",
+        "bytes": 35520,
+        "matches_historical": true
+      }
+    },
+    "pilot_bytes_check": {
+      "textBase": "0x405200",
+      "rodataBase": "0x407f10",
+      "disp32": 11349,
+      "bytes_match_except_disp": true,
+      "disp_reaches_K": true,
+      "K_matches": true,
+      "linked_function_sha256": "acfb62beed3dccddd419de9c2b317cd885baae7b6e797e909f6afd7ad833dd53"
+    },
+    "runtime_examples": [
+      {
+        "input_hex": "",
+        "returncode": 0,
+        "stdout_hex": "6533623063343432393866633163313439616662663463383939366662393234323761653431653436343962393334636134393539393162373835326238353520202d0a",
+        "passed": true
+      },
+      {
+        "input_hex": "616263",
+        "returncode": 0,
+        "stdout_hex": "6261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616420202d0a",
+        "passed": true
+      }
+    ],
+    "original_recipe_invoked": false,
+    "original_recipe_scope": "literal flags and commands reused; frozen recovered build inputs replace mutable origin/main; generated tables preserved"
+  },
+  "local_controls": {
+    "build_wrapper_sha256": "5e2d109d38985426eb16d6de31005def600fb9c324a35773ef726721f84ad33c",
+    "full_wrapper_compilation_run": false,
+    "reason": "local host has Apple Clang masquerading as gcc; equivalent frozen-input GCC recipe ran wholly on original Linux host without source upload",
+    "results": {
+      "changed_pilot_hex_rejected": true,
+      "mutation_rejected:inputs/xc_sha256.c": true,
+      "mutation_rejected:scripts/build.sh": true,
+      "mutation_rejected:src/gen_tables.h": true,
+      "mutation_rejected:src/sha256sum.c": true,
+      "offline_input_verification": true,
+      "regenerated_compression_matches": true
+    }
+  },
+  "limits": [
+    "Historical recipe reads mutable origin/main; new offline wrapper consumes exact vendored inputs instead.",
+    "Generated GNU help/version/strerror tables are preserved, not regenerated against today's environment.",
+    "Historical two-consecutive-build claim is retained in the original manifest, not independently relabeled as a new historical observation.",
+    "A temp shared-clone attempt failed on a missing promisor Git object before compilation; the successful offline reproduction used exact recovered input contents.",
+    "Native runtime/pilot checks are evidence; source-to-machine equivalence and the driver/ABI/prefix/completed-result proof remain separate obligations.",
+    "No complete import/axiom closure, totality, crash-freedom, full local build or kernel replay was established."
+  ]
+}
