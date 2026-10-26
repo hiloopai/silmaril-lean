@@ -339,7 +339,7 @@
     },
     {
       "path": ".process-promotion.json",
-      "sha256": "40716bcc73d98b2e698b7469e75df74aec4d3553694eb52a1a5cf04eb1804722",
+      "sha256": "e83aa3cf06598f0ddd62ec59296381594a78e248bf2769c9c520564b32775182",
       "bytes": 255376
     },
     {
@@ -10929,7 +10929,7 @@
     },
     {
       "path": "docs/facts.json",
-      "sha256": "0a1a774b1632a765b4a108d6a0f5e638a7d5053ea182acd32c2b330b5e26805a",
+      "sha256": "93a615a25f70ced1cf542eca1aa4c64b304b9df6aa92db2abe63d68314cbe5de",
       "bytes": 661
     },
     {
@@ -10974,7 +10974,7 @@
     },
     {
       "path": "docs/projects/process.md",
-      "sha256": "24113c83690deff6943a0f7920617adc8c5b57c6b81f53c23145a8ff273e357d",
+      "sha256": "fd86dd5bbbc89a2f974ffaeb2eb2d6e8ffc20521c8ba5bd0bbb6698cc9e55c24",
       "bytes": 1084
     },
     {
@@ -11009,7 +11009,7 @@
     },
     {
       "path": "docs/releases/process-lps-v0.1.md",
-      "sha256": "85029f56b607d9b0d59b5f569483b4184ca546c353ee6bbf4e6a44522f97b9e3",
+      "sha256": "e0b5aabe8d821dd579b0198883019e58ca41511d58e22d83b52a4b2f09e14667",
       "bytes": 1089
     },
     {

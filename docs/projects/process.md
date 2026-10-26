@@ -1,7 +1,7 @@
 # Linux process semantics
 
 This promotion brings the reviewed process-model slice from source commit
-`27a27eb4d5af3ac24dcf276aa5700179575da173` into the public curated tree.  It
+`288ee492ad09224b78ac44f8456e2ffcd6482384` into the public curated tree.  It
 includes the syscall table and translated-arm checks, the x86-64 and RV64 LPS
 models, ELF CST/`IsCST` facts, musl launch models, the recorded probe
 families, and the two SHA-256 programs proved end to end

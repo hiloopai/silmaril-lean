@@ -2,7 +2,7 @@
 
 Status: under review as a pull request; no tag or GitHub release yet.
 
-Source commit: `27a27eb4d5af3ac24dcf276aa5700179575da173`.
+Source commit: `288ee492ad09224b78ac44f8456e2ffcd6482384`.
 The selected import closure contains 638 Lean modules.  The promotion records
 the source pin, file hashes, and selected roots in `.process-promotion.json`.
 
