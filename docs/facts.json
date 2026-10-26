@@ -1,5 +1,5 @@
 {
-  "source_commit": "fc6be8f5e6f6de4c7795776842608dc9795c728f",
+  "source_commit": "27a27eb4d5af3ac24dcf276aa5700179575da173",
   "translated_syscall_arms": 90,
   "probe_fixtures": 49,
   "probe_lean_data_modules": 57,

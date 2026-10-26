@@ -1,11 +1,12 @@
 # Linux process semantics
 
 This promotion brings the reviewed process-model slice from source commit
-`fc6be8f5e6f6de4c7795776842608dc9795c728f` into the public curated tree.  It
+`27a27eb4d5af3ac24dcf276aa5700179575da173` into the public curated tree.  It
 includes the syscall table and translated-arm checks, the x86-64 and RV64 LPS
-models, ELF CST/`IsCST` facts, musl launch models, and the recorded probe
-families.  The source snapshot contains 509 Lean modules in the selected
-closure; the full upstream closure is larger and is intentionally staged.
+models, ELF CST/`IsCST` facts, musl launch models, the recorded probe
+families, and the two SHA-256 programs proved end to end
+([sha256sum.md](sha256sum.md)).  The selected closure contains 638 Lean
+modules (`module_count` in `.process-promotion.json`).
 
 ```mermaid
 flowchart LR
