@@ -1,0 +1,114 @@
+{
+  "probe": "open_read_legacy",
+  "claim": "open_read with legacy open(2): open(\"in.txt\", O_RDONLY), read 64 bytes into the stack, write them to stdout, close, exit 0; the model admits the recorded run (stdout hi\\n, file system unchanged)",
+  "mutantOf": null,
+  "inputs": {
+    "files": {
+      "in.txt": "68690a"
+    },
+    "stdinHex": ""
+  },
+  "allow": [
+    "open",
+    "read",
+    "write",
+    "close",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.OpenReadLegacy",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.OpenReadLegacy.checked",
+      "Silmaril.Process.LPS.Probes.OpenReadLegacy.exec",
+      "Silmaril.Process.LPS.Probes.OpenReadLegacy.sound",
+      "Silmaril.Process.LPS.Probes.OpenReadLegacy.admits",
+      "Silmaril.Process.LPS.Probes.OpenReadLegacy.no_error"
+    ]
+  },
+  "skipBackends": {
+    "qemu-user": "qemu-user keeps its strace log open at descriptor 3 (-D), so the guest's lowest free descriptor there is 4, not 3"
+  },
+  "stackArgs": [
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      1
+    ]
+  ],
+  "sha256": "6b01ee13d663cf71bea4f8a344ce7921cf90286856816d068e9134c951ea8d2e",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 2,
+        "name": "open",
+        "args": [
+          4194517,
+          0,
+          0
+        ],
+        "ret": 3
+      },
+      {
+        "nr": 0,
+        "name": "read",
+        "args": [
+          3,
+          "sp",
+          64
+        ],
+        "ret": 3
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          "sp",
+          3
+        ],
+        "ret": 3
+      },
+      {
+        "nr": 3,
+        "name": "close",
+        "args": [
+          3
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68690a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    },
+    "files": {
+      "in.txt": "68690a"
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap"
+    ]
+  }
+}

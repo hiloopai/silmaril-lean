@@ -1,0 +1,124 @@
+{
+  "probe": "identity",
+  "claim": "getpid, gettid, set_tid_address(NULL), getuid, geteuid, then exit((tid-pid)+(stid-pid)+(euid-uid)): the model admits the recorded run (its pid as the thread-id choice, its uid as the launch uid), and every execution of that launch exits 0, whatever thread id the model chooses",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "getpid",
+    "gettid",
+    "set_tid_address",
+    "getuid",
+    "geteuid",
+    "exit"
+  ],
+  "hostDependent": [
+    {
+      "call": 0,
+      "ret": true,
+      "why": "process/thread id: differs on every run; LPS chooses it at the first observation"
+    },
+    {
+      "call": 1,
+      "ret": true,
+      "why": "process/thread id: differs on every run; LPS chooses it at the first observation"
+    },
+    {
+      "call": 2,
+      "ret": true,
+      "why": "process/thread id: differs on every run; LPS chooses it at the first observation"
+    },
+    {
+      "call": 3,
+      "ret": true,
+      "why": "user id of the harness: a launch input (ProcInput.uid)"
+    },
+    {
+      "call": 4,
+      "ret": true,
+      "why": "user id of the harness: a launch input (ProcInput.uid)"
+    }
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.Identity",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.Identity.checked",
+      "Silmaril.Process.LPS.Probes.Identity.determined",
+      "Silmaril.Process.LPS.Probes.Identity.sound",
+      "Silmaril.Process.LPS.Probes.Identity.admits",
+      "Silmaril.Process.LPS.Probes.Identity.no_error"
+    ]
+  },
+  "sha256": "2c46a1a8012a59cb551c88aea8488cb8cf7a928780c3814d97b8c0a71ed55342",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 39,
+        "name": "getpid",
+        "args": [],
+        "ret": 5
+      },
+      {
+        "nr": 186,
+        "name": "gettid",
+        "args": [],
+        "ret": 5
+      },
+      {
+        "nr": 218,
+        "name": "set_tid_address",
+        "args": [
+          0
+        ],
+        "ret": 5
+      },
+      {
+        "nr": 102,
+        "name": "getuid",
+        "args": [],
+        "ret": 1000
+      },
+      {
+        "nr": 107,
+        "name": "geteuid",
+        "args": [],
+        "ret": 1000
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

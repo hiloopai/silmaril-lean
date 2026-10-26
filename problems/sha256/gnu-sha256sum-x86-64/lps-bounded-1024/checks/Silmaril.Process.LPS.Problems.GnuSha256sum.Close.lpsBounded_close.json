@@ -1,0 +1,43 @@
+{
+  "schema": "silmaril.problem-check.v1",
+  "problem": "sha256/gnu-sha256sum-x86-64/lps-bounded-1024",
+  "solution": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsBounded_close",
+  "module": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close",
+  "kind": "solves",
+  "statement": {
+    "declaration": "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBounded",
+    "hash": "sha256:81aeb050a89889d46e51a99d995ec70731c7f9d86bcab79eb44a082e8be5e6f0",
+    "closure_hash": "sha256:3b86675ae1e4e2b12cfd394794055dbae54bff57e5f3741d275382f123fc51ba"
+  },
+  "type_hash": "sha256:4607d145df551e5a224538ce455cf526e4688910c9794a572f38ca75f90ec9ce",
+  "direct": true,
+  "defeq": true,
+  "tier": "bounded",
+  "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "allowed_axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "uses_solutions": [
+    "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBridge_solution"
+  ],
+  "deps": [
+    {
+      "problem": "sha256/gnu-sha256sum-x86-64/lps-total",
+      "role": "assume",
+      "via": []
+    }
+  ],
+  "label": "VERIFIED",
+  "verdict": "pass",
+  "failures": [],
+  "toolchain": "4.35.0-rc4",
+  "commit": "56bae0a9578830fd9d2d5949be1711cbab48a740",
+  "dirty": true,
+  "checker": "scripts/problems/check.py@v1"
+}

@@ -1,0 +1,152 @@
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x401062
+  Start of program headers:          64 (bytes into file)
+  Start of section headers:          15232 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           56 (bytes)
+  Number of program headers:         6
+  Size of section headers:           64 (bytes)
+  Number of section headers:         16
+  Section header string table index: 15
+
+Section Headers:
+  [Nr] Name              Type            Address          Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            0000000000000000 000000 000000 00      0   0  0
+  [ 1] .init             PROGBITS        0000000000401000 001000 000003 00  AX  0   0  1
+  [ 2] .text             PROGBITS        0000000000401010 001010 000861 00  AX  0   0 16
+  [ 3] .fini             PROGBITS        0000000000401871 001871 000003 00  AX  0   0  1
+  [ 4] .rodata           PROGBITS        0000000000402000 002000 000010 00   A  0   0  1
+  [ 5] .eh_frame         PROGBITS        0000000000402010 002010 000044 00   A  0   0  8
+  [ 6] .init_array       INIT_ARRAY      0000000000403fd0 002fd0 000008 08  WA  0   0  8
+  [ 7] .fini_array       FINI_ARRAY      0000000000403fd8 002fd8 000008 08  WA  0   0  8
+  [ 8] .got              PROGBITS        0000000000403fe0 002fe0 000008 00  WA  0   0  8
+  [ 9] .got.plt          PROGBITS        0000000000403fe8 002fe8 000018 08  WA  0   0  8
+  [10] .data             PROGBITS        0000000000404000 003000 000014 00  WA  0   0  8
+  [11] .bss              NOBITS          0000000000404020 003014 000258 00  WA  0   0 32
+  [12] .comment          PROGBITS        0000000000000000 003014 00002d 01  MS  0   0  1
+  [13] .symtab           SYMTAB          0000000000000000 003048 000750 18     14  38  8
+  [14] .strtab           STRTAB          0000000000000000 003798 00036f 00      0   0  1
+  [15] .shstrtab         STRTAB          0000000000000000 003b07 000079 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  D (mbind), l (large), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align
+  LOAD           0x000000 0x0000000000400000 0x0000000000400000 0x000190 0x000190 R   0x1000
+  LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x000874 0x000874 R E 0x1000
+  LOAD           0x002000 0x0000000000402000 0x0000000000402000 0x000054 0x000054 R   0x1000
+  LOAD           0x002fd0 0x0000000000403fd0 0x0000000000403fd0 0x000044 0x0002a8 RW  0x1000
+  GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10
+  GNU_RELRO      0x002fd0 0x0000000000403fd0 0x0000000000403fd0 0x000030 0x000030 R   0x1
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     
+   01     .init .text .fini 
+   02     .rodata .eh_frame 
+   03     .init_array .fini_array .got .got.plt .data .bss 
+   04     
+   05     .init_array .fini_array .got .got.plt 
+
+There is no dynamic section in this file.
+
+There are no relocations in this file.
+No processor specific unwind information to decode
+
+Symbol table '.symtab' contains 78 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS exit.c
+     2: 00000000004014b0     5 FUNC    LOCAL  DEFAULT    2 dummy
+     3: 00000000004014c0    58 FUNC    LOCAL  DEFAULT    2 libc_exit_fini
+     4: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS checksum.c
+     5: 0000000000404008     4 OBJECT  LOCAL  DEFAULT   10 seed
+     6: 0000000000402000     6 OBJECT  LOCAL  DEFAULT    4 input.0
+     7: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS Scrt1.c
+     8: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+     9: 00000000004010b0     0 FUNC    LOCAL  DEFAULT    2 deregister_tm_clones
+    10: 00000000004010e0     0 FUNC    LOCAL  DEFAULT    2 register_tm_clones
+    11: 0000000000401120     0 FUNC    LOCAL  DEFAULT    2 __do_global_dtors_aux
+    12: 0000000000404020     1 OBJECT  LOCAL  DEFAULT   11 completed.0
+    13: 0000000000403fd8     0 OBJECT  LOCAL  DEFAULT    7 __do_global_dtors_aux_fini_array_entry
+    14: 0000000000401160     0 FUNC    LOCAL  DEFAULT    2 frame_dummy
+    15: 0000000000403fd0     0 OBJECT  LOCAL  DEFAULT    6 __frame_dummy_init_array_entry
+    16: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS __libc_start_main.c
+    17: 00000000004011a0     5 FUNC    LOCAL  DEFAULT    2 dummy
+    18: 00000000004011b0     5 FUNC    LOCAL  DEFAULT    2 dummy1
+    19: 00000000004013f0    58 FUNC    LOCAL  DEFAULT    2 libc_start_init
+    20: 0000000000401430    54 FUNC    LOCAL  DEFAULT    2 libc_start_main_stage2
+    21: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS defsysinfo.c
+    22: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS libc.c
+    23: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS __environ.c
+    24: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS __init_tls.c
+    25: 0000000000401600   522 FUNC    LOCAL  DEFAULT    2 static_init_tls
+    26: 00000000004040e0    48 OBJECT  LOCAL  DEFAULT   11 main_tls
+    27: 0000000000404120   336 OBJECT  LOCAL  DEFAULT   11 builtin_tls
+    28: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS _Exit.c
+    29: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS default_attr.c
+    30: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    31: 0000000000402050     0 OBJECT  LOCAL  DEFAULT    5 __FRAME_END__
+    32: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS 
+    33: 0000000000403fe0     0 NOTYPE  LOCAL  DEFAULT    7 __fini_array_end
+    34: 0000000000403fd8     0 NOTYPE  LOCAL  DEFAULT    7 __fini_array_start
+    35: 0000000000403fd8     0 NOTYPE  LOCAL  DEFAULT    6 __init_array_end
+    36: 0000000000403fe8     0 OBJECT  LOCAL  DEFAULT    9 _GLOBAL_OFFSET_TABLE_
+    37: 0000000000403fd0     0 NOTYPE  LOCAL  DEFAULT    6 __init_array_start
+    38: 0000000000404270     4 OBJECT  GLOBAL HIDDEN    11 __thread_list_lock
+    39: 00000000004011c0   552 FUNC    GLOBAL HIDDEN     2 __init_libc
+    40: 0000000000404040     8 OBJECT  GLOBAL HIDDEN    11 __hwcap
+    41: 000000000040182f     0 FUNC    GLOBAL DEFAULT    2 memcpy
+    42: 0000000000404018     0 OBJECT  GLOBAL HIDDEN    10 __TMC_END__
+    43: 0000000000404060   104 OBJECT  GLOBAL HIDDEN    11 __libc
+    44: 0000000000404000     0 OBJECT  GLOBAL HIDDEN    10 __dso_handle
+    45: 0000000000401861     0 FUNC    GLOBAL HIDDEN     2 __set_thread_area
+    46: 0000000000401570   137 FUNC    GLOBAL HIDDEN     2 __copy_tls
+    47: 00000000004040c8     8 OBJECT  WEAK   DEFAULT   11 _environ
+    48: 00000000004040c8     8 OBJECT  GLOBAL DEFAULT   11 __environ
+    49: 0000000000401810    31 FUNC    GLOBAL DEFAULT    2 _Exit
+    50: 0000000000401170    39 FUNC    GLOBAL DEFAULT    2 wrapping_checksum
+    51: 0000000000401600   522 FUNC    WEAK   HIDDEN     2 __init_tls
+    52: 0000000000401000     0 NOTYPE  GLOBAL DEFAULT    1 _init
+    53: 00000000004014b0     5 FUNC    WEAK   HIDDEN     2 __funcs_on_exit
+    54: 000000000040182f     0 NOTYPE  GLOBAL HIDDEN     2 __memcpy_fwd
+    55: 00000000004040c8     8 OBJECT  WEAK   DEFAULT   11 environ
+    56: 00000000004040c8     8 OBJECT  WEAK   DEFAULT   11 ___environ
+    57: 0000000000404038     8 OBJECT  GLOBAL DEFAULT   11 __progname
+    58: 0000000000401062     0 NOTYPE  GLOBAL DEFAULT    2 _start
+    59: 0000000000401080    39 FUNC    GLOBAL DEFAULT    2 _start_c
+    60: 0000000000404038     8 OBJECT  WEAK   DEFAULT   11 program_invocation_short_name
+    61: 00000000004013f0    58 FUNC    WEAK   HIDDEN     2 __libc_start_init
+    62: 0000000000401500   111 FUNC    GLOBAL HIDDEN     2 __init_tp
+    63: 00000000004011b0     5 FUNC    WEAK   HIDDEN     2 __init_ssp
+    64: 0000000000404020     0 NOTYPE  GLOBAL DEFAULT   11 __bss_start
+    65: 0000000000401030    50 FUNC    GLOBAL DEFAULT    2 main
+    66: 00000000004014b0     5 FUNC    WEAK   DEFAULT    2 __stdio_exit
+    67: 0000000000401871     0 NOTYPE  GLOBAL DEFAULT    3 _fini
+    68: 00000000004014c0    58 FUNC    WEAK   HIDDEN     2 __libc_exit_fini
+    69: 0000000000404014     0 NOTYPE  GLOBAL DEFAULT   10 _edata
+    70: 0000000000404278     0 NOTYPE  GLOBAL DEFAULT   11 _end
+    71: 0000000000401010    31 FUNC    GLOBAL DEFAULT    2 exit
+    72: 0000000000401470    54 FUNC    GLOBAL DEFAULT    2 __libc_start_main
+    73: 0000000000404030     8 OBJECT  WEAK   DEFAULT   11 program_invocation_name
+    74: 0000000000404010     4 OBJECT  GLOBAL HIDDEN    10 __default_stacksize
+    75: 000000000040400c     4 OBJECT  GLOBAL HIDDEN    10 __default_guardsize
+    76: 0000000000404028     8 OBJECT  GLOBAL HIDDEN    11 __sysinfo
+    77: 0000000000404030     8 OBJECT  GLOBAL DEFAULT   11 __progname_full
+
+No version information found in this file.

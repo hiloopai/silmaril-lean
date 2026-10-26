@@ -1,0 +1,69 @@
+{
+  "probe": "arch_getfs_exit",
+  "claim": "mutant of arch_getfs (second call 158 -> 60): ARCH_SET_FS then exit(0x1003), status 3; admitted, every execution exits 3, so the original's unmodeled claim is refuted",
+  "mutantOf": "arch_getfs",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "arch_prctl",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.ArchPrctl",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.ArchGetfsExit.checked",
+      "Silmaril.Process.LPS.Probes.ArchGetfsExit.determined",
+      "Silmaril.Process.LPS.Probes.ArchGetfsExit.admits",
+      "Silmaril.Process.LPS.Probes.ArchGetfsExit.not_unmodeled"
+    ]
+  },
+  "sha256": "c288c8e7814955ccb5991ba9c0c770d472972e016d5ecd23e69177147e73e9d8",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 158,
+        "name": "arch_prctl",
+        "args": [
+          4098,
+          4194424
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          4099
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 3
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

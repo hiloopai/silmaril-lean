@@ -22,12 +22,14 @@ determines an institution, its *behavioural institution*:
 Specifications are trace properties, so satisfaction is closed under refinement (fewer
 behaviours) automatically; hyperproperties are not covered by this institution.
 
-Connecting these observations to configurations and finite runs requires a
-separate execution model and adequacy theorem. Neither is part of this module.
+The execution semantics of a language (its execution category: configurations and finite runs)
+lives in `Silmaril.Compile.Category.Exec`.
 
 ## Main definitions
 
 * `Language`: programs, interfaces, observations and behaviours.
+* `Language.room`, `Language.inst`: the behavioural institution, in
+  `Silmaril.Compile.Category.Institution` (it reuses `Silmaril.Logic.Institution`).
 * `Language.Sat`: `p ⊨ φ`, satisfaction of a program through its behaviour model.
 * `Language.Refines`, `Language.BehEquiv`: behavioural refinement and equivalence of programs.
 -/
@@ -41,9 +43,9 @@ universe u
 /-- A language: programs with interfaces and observable behaviours.
 
 Behaviours are observations of complete runs, in the style of CompCert's program behaviours
-(Leroy (2009), *A formally verified compiler back-end* (see references.bib), §2.1, p. 3) and CompCertO's language
-interfaces (Koenig and Shao (2021), *CompCertO* (see references.bib), Definition 2.1, p. 3); see
-the project guide for the boundary with execution semantics. -/
+(`papers/compilers/leroy-2009-compcert-backend.pdf`, §2.1, p. 3) and CompCertO's language
+interfaces (`papers/compilers/koenig-shao-2021-compcerto.pdf`, Definition 2.1, p. 3); see
+`Exec.adequate` for the link with an execution semantics. -/
 structure Language : Type (u + 1) where
   /-- Interfaces: the signatures of the behavioural institution. -/
   Iface : Type u
@@ -61,7 +63,8 @@ namespace Language
 variable (L : Language.{u})
 
 /-- Satisfaction of a specification by a program, through its behaviour model:
-`p ⊨ φ ↔ beh p ⊆ φ`. -/
+`p ⊨ φ ↔ beh p ⊆ φ`. This is satisfaction in the behavioural institution
+(`Language.sat_iff_room`). -/
 def Sat (p : L.Prog) (φ : Set L.Obs) : Prop := L.beh p ⊆ φ
 
 theorem sat_iff (p : L.Prog) (φ : Set L.Obs) : L.Sat p φ ↔ L.beh p ⊆ φ := Iff.rfl

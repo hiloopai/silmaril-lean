@@ -1,0 +1,61 @@
+{
+  "probe": "lite_false_stdout",
+  "claim": "mutant of lite_false: writes false\\n to stdout, then exits 1",
+  "mutantOf": "lite_false",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.TrueFalse",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.falseStdout_exec",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.false_mutant_stdout"
+    ]
+  },
+  "sha256": "45ca479e55a93930bf9ff4e2daa5ae2e700f6312c2294b4ae903a83010485115",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194459,
+          6
+        ],
+        "ret": 6
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          1
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "66616c73650a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 1
+    }
+  },
+  "recorded": {
+    "backend": "native",
+    "kernel": "6.8.0-139-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "native"
+    ]
+  }
+}

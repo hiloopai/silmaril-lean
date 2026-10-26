@@ -1,0 +1,35 @@
+{
+  "schema": "silmaril.problem-check.v1",
+  "problem": "sha256/gnu-sha256sum-x86-64/sys-total",
+  "solution": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close.sysTotal_close",
+  "module": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close",
+  "kind": "solves",
+  "statement": {
+    "declaration": "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.sysTotal",
+    "hash": "sha256:49349e46977511f370a3cc9c3989dff676dcbc695c6fc090fff65db6d37ea162",
+    "closure_hash": "sha256:6a660caf78f2a62a7bd48645d9a749bb96c2059edd313431e5afbe1d16908c13"
+  },
+  "type_hash": "sha256:de8b50c8fc9df4b9f43bf563e02a9a5372096515e519f86739739b9d17f60a9e",
+  "direct": true,
+  "defeq": true,
+  "tier": "total",
+  "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "allowed_axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "uses_solutions": [],
+  "deps": [],
+  "label": "VERIFIED",
+  "verdict": "pass",
+  "failures": [],
+  "toolchain": "4.35.0-rc4",
+  "commit": "56bae0a9578830fd9d2d5949be1711cbab48a740",
+  "dirty": true,
+  "checker": "scripts/problems/check.py@v1"
+}

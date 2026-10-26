@@ -1,0 +1,83 @@
+{
+  "probe": "read_echo2",
+  "claim": "mutant of read_echo (read length 16 -> 2): Linux echoes pi, and no trace of this ELF is the original's observation",
+  "mutantOf": "read_echo",
+  "image": "rwx",
+  "inputs": {
+    "files": {},
+    "stdinHex": "70696e670a"
+  },
+  "allow": [
+    "read",
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.ReadEcho",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.ReadEcho2.checked",
+      "Silmaril.Process.LPS.Probes.ReadEcho2.exec",
+      "Silmaril.Process.LPS.Probes.ReadEcho2.exec_any",
+      "Silmaril.Process.LPS.Probes.ReadEcho2.admits",
+      "Silmaril.Process.LPS.Probes.ReadEcho2.not_traces_original"
+    ]
+  },
+  "sha256": "d1d2603978e5e66c3c94c8eee6570facde6b3bd9e6347ad0d907049c2ff75cb9",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 0,
+        "name": "read",
+        "args": [
+          0,
+          4194473,
+          2
+        ],
+        "ret": 2
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194473,
+          2
+        ],
+        "ret": 2
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "7069",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

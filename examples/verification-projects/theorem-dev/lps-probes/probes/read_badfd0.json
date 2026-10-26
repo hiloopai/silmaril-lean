@@ -1,0 +1,70 @@
+{
+  "probe": "read_badfd0",
+  "claim": "mutant of read_badfd (fd 0 instead of 99): stdin is empty, the read returns 0 and the probe exits 0",
+  "mutantOf": "read_badfd",
+  "image": "rwx",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "read",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.ReadBadfd",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.ReadBadfd0.checked",
+      "Silmaril.Process.LPS.Probes.ReadBadfd0.admits",
+      "Silmaril.Process.LPS.Probes.ReadBadfd0.not_determined_original"
+    ]
+  },
+  "sha256": "9e8e66dff3e62e1d399d9ac2d37fafa73b38600ddaa1214d11e7dde9d3a164b7",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 0,
+        "name": "read",
+        "args": [
+          0,
+          4194461,
+          6
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

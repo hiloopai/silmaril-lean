@@ -1,0 +1,70 @@
+{
+  "probe": "write_hello5",
+  "claim": "mutant of write_hello (length immediate 6 -> 5): Linux prints hello without the newline, and no trace of this ELF is the original's observation",
+  "mutantOf": "write_hello",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.WriteHello",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.WriteHello5.checked",
+      "Silmaril.Process.LPS.Probes.WriteHello5.exec",
+      "Silmaril.Process.LPS.Probes.WriteHello5.admits",
+      "Silmaril.Process.LPS.Probes.WriteHello5.not_traces_original"
+    ]
+  },
+  "sha256": "3c6ab902952cdc80c7b367a6b705eb59bb533f2427b394e0a8add96a93402c32",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194458,
+          5
+        ],
+        "ret": 5
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68656c6c6f",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "probe": "lite_true",
+  "claim": "true (GCC -O2): every execution exits 0 with no other event",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.TrueFalse",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.true_exec",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.true_complete",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.true_total"
+    ]
+  },
+  "sha256": "faf558ec522716eb1b0979289f73782140a1812d73b2ae596040498f1dd74675",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "native",
+    "kernel": "6.8.0-139-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "native"
+    ]
+  }
+}

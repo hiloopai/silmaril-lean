@@ -1,0 +1,60 @@
+{
+  "probe": "exit42",
+  "claim": "exit(42): the model admits the recorded run, and every execution under any refusal filter halts with exactly exit status 42 and no other event",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.Exit42",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.Exit42.checked",
+      "Silmaril.Process.LPS.Probes.Exit42.determined",
+      "Silmaril.Process.LPS.Probes.Exit42.admits",
+      "Silmaril.Process.LPS.Probes.Exit42.no_error",
+      "Silmaril.Process.LPS.Probes.Exit42.no_unmodeled"
+    ]
+  },
+  "sha256": "558a2b05466cff8528f11ac57ee8672e5e4aba650f128e74eedf255bfd57c6e0",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          42
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 42
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

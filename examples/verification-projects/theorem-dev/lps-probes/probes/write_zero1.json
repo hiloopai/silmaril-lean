@@ -1,0 +1,69 @@
+{
+  "probe": "write_zero1",
+  "claim": "mutant of write_zero (length 1): Linux writes h, returns 1 and the probe exits 1",
+  "mutantOf": "write_zero",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.WriteZero",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.WriteZero1.checked",
+      "Silmaril.Process.LPS.Probes.WriteZero1.admits",
+      "Silmaril.Process.LPS.Probes.WriteZero1.not_determined_original"
+    ]
+  },
+  "sha256": "ded1027b7962a9f01f7138059a77cca5a01375153530e921f43b93a5fbd163eb",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194456,
+          1
+        ],
+        "ret": 1
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          1
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "68",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 1
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

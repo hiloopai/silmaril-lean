@@ -1,0 +1,35 @@
+{
+  "schema": "silmaril.problem-check.v1",
+  "problem": "sha256/gnu-sha256sum-x86-64/lps-bridge",
+  "solution": "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBridge_solution",
+  "module": "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry",
+  "kind": "solves",
+  "statement": {
+    "declaration": "Silmaril.Process.LPS.Problems.GnuSha256sum.Registry.lpsBridge",
+    "hash": "sha256:ee8b958894279f90795e1199065bd12345dfcce0926bd7d63c6642a0ffaae11d",
+    "closure_hash": "sha256:d5eab2d3ddd5ddecd8e536018a4774aa5eb483f8cbffcc7b6c1243ae28e41b2e"
+  },
+  "type_hash": "sha256:560d772cde9d19f90da8f4d4a0643c208cb59cad13e5aca070a1541ba4291fa0",
+  "direct": true,
+  "defeq": true,
+  "tier": "total",
+  "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "allowed_axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "uses_solutions": [],
+  "deps": [],
+  "label": "VERIFIED",
+  "verdict": "pass",
+  "failures": [],
+  "toolchain": "4.35.0-rc4",
+  "commit": "56bae0a9578830fd9d2d5949be1711cbab48a740",
+  "dirty": true,
+  "checker": "scripts/problems/check.py@v1"
+}

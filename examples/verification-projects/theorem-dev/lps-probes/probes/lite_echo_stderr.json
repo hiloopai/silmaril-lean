@@ -1,0 +1,61 @@
+{
+  "probe": "lite_echo_stderr",
+  "claim": "mutant of lite_echo: writes to stderr",
+  "mutantOf": "lite_echo",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.EchoCat",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.echo_stderr_recorded",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.Registry.echoMutantStderr"
+    ]
+  },
+  "sha256": "3074e516c0c03fc0e238b31d3f4ed65258b74dc9f2cefea82d1cca41e62232f0",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          2,
+          4194660,
+          1
+        ],
+        "ret": 1
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "0a",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "native",
+    "kernel": "6.8.0-139-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "native"
+    ]
+  }
+}
