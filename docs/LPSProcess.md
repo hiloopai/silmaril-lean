@@ -457,7 +457,7 @@ Where they differ or are not related:
 
 ## Correspondence table
 
-Generated from the docstrings (`scripts` in `/srv/scratch/campaigns/research/rocq-to-lean/`).
+Generated from the docstrings of the LPS translation.
 
 ### Syscall arms
 

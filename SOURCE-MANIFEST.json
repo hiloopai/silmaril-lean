@@ -10244,8 +10244,8 @@
     },
     {
       "path": "apps/sha256-cli/README.md",
-      "sha256": "9807654529c732cbda6251512211497259d7900e370edfa340c55e9b54acf9e1",
-      "bytes": 16170
+      "sha256": "eccd4777472cb24bbdcdab58bd6eff537a6652d1c0dcb72128e3ec76302c136c",
+      "bytes": 5896
     },
     {
       "path": "apps/sha256-cli/build.sh",
@@ -10289,8 +10289,8 @@
     },
     {
       "path": "apps/sha256sum-min/README.md",
-      "sha256": "9cbc81e463905a7fb2a44141e481a7d1c078f6fc98bc184d6b2671df8424eb54",
-      "bytes": 3238
+      "sha256": "69b1c56e79b1c5114f135a30d02bc345a8ddc96fc4b33a30aced243f8104382d",
+      "bytes": 2618
     },
     {
       "path": "apps/sha256sum-min/build.py",
@@ -10384,8 +10384,8 @@
     },
     {
       "path": "docs/LPSProcess.md",
-      "sha256": "9001ae1356a4835a144a77ab96ad6c17e103cd3fe487b0fe64ae3ec14ac44c6b",
-      "bytes": 83372
+      "sha256": "7337dca5d9a3ef1a92483acac715bc9b81081fbcb1f5e6b668efaedeaecf3a16",
+      "bytes": 83332
     },
     {
       "path": "docs/LPSShapesParity.md",
@@ -10394,8 +10394,8 @@
     },
     {
       "path": "docs/LPSX86Parity.md",
-      "sha256": "0e85da94223b578f27a7196d70771850f29c660f0761a3ff26f883dea35e2216",
-      "bytes": 31120
+      "sha256": "166560a0c29d5546705944d40f6dd01b8298fec19042a610678c1ee53dce81bd",
+      "bytes": 30789
     },
     {
       "path": "docs/LinuxProcess.md",
@@ -10409,8 +10409,8 @@
     },
     {
       "path": "docs/Sha256CompressionProcess.md",
-      "sha256": "fec5787a96869fd7a235cfcd3fe00aa255546cf89ff18fbb7a05452dcb37037d",
-      "bytes": 11285
+      "sha256": "ea582d277e5cbb769c4285f0811c95a5f40f3d626eb467b0969a6d21e2410e68",
+      "bytes": 10907
     },
     {
       "path": "docs/benchmarks/wasm-v133-2026-10-25.json",
@@ -10509,8 +10509,8 @@
     },
     {
       "path": "docs/releases/process-lps-v0.1.md",
-      "sha256": "ce19bc1969e0fda9f682810a20eb1aa556e00caa6ced2b5c8f3b46d2fc36d154",
-      "bytes": 969
+      "sha256": "8e9aca9a40b79256c49b2a33b016bca1708c7f46be8e557889d92e8b1554e139",
+      "bytes": 954
     },
     {
       "path": "examples/compilers-on-lps/cat.c",
@@ -11214,8 +11214,8 @@
     },
     {
       "path": "scripts/sha256sum/recovered-provenance.json",
-      "sha256": "2960d9c1d14ca5fbd8b3b58fb7aca3564d8bdaa57490ea7a7adb91845e5f41dc",
-      "bytes": 12093
+      "sha256": "1576a2db8ca02d7a8d114387c977b3c70d53606482dc5c1f468970a6cca9a71b",
+      "bytes": 11637
     },
     {
       "path": "scripts/sil",

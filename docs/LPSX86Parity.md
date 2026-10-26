@@ -3,10 +3,9 @@
 The claim this work supports, its caveats and its variant lattice, for x86-64 and riscv64,
 are in [AtLeastAsGoodAsTheoremDev.md](AtLeastAsGoodAsTheoremDev.md).
 
-This work is stacked on `parity/lps-x86` (#3470), which is stacked on the direct
-ISA-parametric LPS translation (#2923). Neither that stack nor #3466 is assumed
-merged. The syscall-family workflow owns `Sys/*` and `Table.lean`; this work
-adds machine, launch and native ABI integration without editing those files.
+This work builds on the direct ISA-parametric LPS translation. The syscall
+families own `Sys/*` and `Table.lean`; this work adds machine, launch and native
+ABI integration without editing those files.
 
 The semantic reference is LPS `f1006fe8178338a499b5e5c41be83006c4edd058`.
 The reference table (`specTable`) has all 90 arms translated. The reviewed
@@ -21,7 +20,7 @@ than an empty relation that could make a safety proof vacuous.
 into all ninety reference slots through `checkedTableWithFamilies`
 (`checked_referenceTable`), and composes twenty extensions separately: the
 eighteen family legacy arms, `getrlimit` (97, as `prlimit64(0, …)` with the
-x86-64 `access_ok`) and `arch_prctl(ARCH_SET_FS)`. Where #3492's `Legacy.arms`
+x86-64 `access_ok`) and `arch_prctl(ARCH_SET_FS)`. Where `Legacy.arms`
 and the families both export a legacy name (`open`, `stat`, `lstat`, `poll`,
 `access`, `pipe`, `dup2`, `unlink`, `readlink`), the family arm is used.
 
@@ -135,8 +134,8 @@ RISC-V (`CLONE_BACKWARDS`); the pinned LPS fork-only arm reads only flags, so
 that particular difference is inert for its current specification. A matching
 number and name do not establish ABI compatibility.
 
-The native review gate now also includes the five scalar FsCtl calls from
-#3489: `fcntl`, `ioctl`, `flock`, `fsync`, `fdatasync`. These remain pending in
+The native review gate now also includes the five scalar FsCtl calls
+`fcntl`, `ioctl`, `flock`, `fsync`, `fdatasync`. These remain pending in
 the default table until their reference translations are integrated. See
 [the native family integration notes](LPSX86NativeFamilies.md) for the review
 scope and opt-in layout-aware installer.
@@ -256,12 +255,11 @@ list-based memory view with a proved simulation lemma. Image reads already go
 through `segmentsView` (`ProcessMemorySupport`).
 ## ELF convention
 
-The parity lanes follow the ELF representation convention of issue #3532 and
-[`ELFRepresentations.md`](https://github.com/hiloopai/silmaril/blob/main/docs/ELFRepresentations.md) (merged on `main` in #3530):
+The parity lanes follow this ELF representation convention:
 file-level facts are stated on the lossless CST `Formats.ELF.Cst.File`, linked
 to the pinned bytes by the chunked check `Cst.File.IsCST` and its soundness
 theorem. The loaded image is LPS `Image`, built from the CST by
-`ELFImage.fromCst` and `fromCstX86` (`ELFImageCst`, PR #3622 on the hub). Raw-byte
+`ELFImage.fromCst` and `fromCstX86` (`ELFImageCst`). Raw-byte
 proofs remain where they already exist, and each is tied to the CST by a theorem.
 
 | Statement | Layer used |
@@ -272,7 +270,7 @@ proofs remain where they already exist, and each is tied to the CST by a theorem
 | `ELFImageCstControls` | CST + `IsCST` + `fromCst` (the standard) |
 | `Examples.MuslChecksum` (the static-musl checksum ELF, 16,256 bytes) | CST + `IsCST` (4 chunks of at most 4 KiB) + `fromCst`: `fromCst_eq`, `image_shape`, `validSnapshot`; the byte-loader statements `load_eq`, `loadX86_eq` are corollaries |
 | `X86.Ext.Wire.MuslStartupCoverage` (local decoding of the reached spans) | bytes; not yet restated on the CST's code view |
-| probe kit (`parity/lps-probes`, `Probes.Kit`) | raw byte lists (`Probe.fileBytes`) checked by the readers; not yet converted (see the PR for #3532/#3454) |
+| probe kit (`parity/lps-probes`, `Probes.Kit`) | raw byte lists (`Probe.fileBytes`) checked by the readers; not yet converted |
 `X86MuslRun.reaches_main` (`Machines/X86MuslRunMain.lean`) proves that the
 actual LPS run relation takes the flag-oracle launch to `main` (0x401030) in 542
 transitions with no events, under `NativeX86.extendedSyscallSpec` (the native

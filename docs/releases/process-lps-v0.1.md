@@ -2,7 +2,7 @@
 
 Status: under review as a pull request; no tag or GitHub release yet.
 
-Source pin: `hiloopai/silmaril@fc6be8f5e6f6de4c7795776842608dc9795c728f`.
+Source commit: `fc6be8f5e6f6de4c7795776842608dc9795c728f`.
 The selected import closure contains 509 Lean modules.  The promotion records
 the source pin, file hashes, and selected roots in `.process-promotion.json`.
 

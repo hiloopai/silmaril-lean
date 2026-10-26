@@ -1,14 +1,11 @@
 # SHA compression in process executions
 
-Tracking: [#3033](https://github.com/hiloopai/silmaril/issues/3033),
-[PR #3040](https://github.com/hiloopai/silmaril/pull/3040),
-[campaign #3025](https://github.com/hiloopai/silmaril/issues/3025).
-Baseline: merged #2938, `dae375685d8459ceccc6fb3fa083b3ff8d895b22`.
+Baseline: `dae375685d8459ceccc6fb3fa083b3ff8d895b22`.
 
 The new results connect the existing compression theorem to actual finite
 process steps. They do not prove the SHA driver's I/O, padding, hex output,
 launch or global progress contracts. There are no new compiler variants,
-instruction semantics, axioms, admitted proofs or unmerged PR dependencies.
+instruction semantics, axioms or admitted proofs.
 
 ## Generic adapter
 
@@ -82,10 +79,9 @@ another compression call can reuse the constants.
 
 The driver still owes its actual call-site registers, backed buffers, return
 slot, alignment, frame mapping and separation; preservation of constants
-through its preceding writes; and its read/padding/output invariants.
-The SHA owner is [#3029](https://github.com/hiloopai/silmaril/issues/3029).
-General Ext instruction changes belong to
-[#3032](https://github.com/hiloopai/silmaril/issues/3032).
+through its preceding writes; and its read/padding/output invariants. Those are proved by the
+driver modules under `Silmaril/Process/CLI/Sha256Cli/` and the end-to-end
+segments in `Silmaril/Process/LPS/Problems/Sha256Cli/`.
 
 ## Evidence and reproduction
 
@@ -140,9 +136,7 @@ for some later failing run, or coverage/progress for the surrounding driver.
 
 ## Concrete filter call-site increment
 
-[PR #3052](https://github.com/hiloopai/silmaril/pull/3052) is stacked on
-#3040, with its adapter interfaces as the explicit dependency. No other
-unmerged implementation is copied. New modules:
+This increment builds on the adapter interfaces above. Modules:
 
 * `X86Linux.Call` checks actual direct CALL execution, its five-byte length,
   return-slot backing and disjoint read preservation. `direct_call_frame`
@@ -172,7 +166,7 @@ unmerged implementation is copied. New modules:
   The environment witness has standard descriptors and is still running.
 * `empty_completed_contract` reduces any completed-observation contract to the
   certified continuation. `empty_prefix_contract` is separately conditional
-  on permitting `[]`. These can feed #3047's institutional interpretation
+  on permitting `[]`. These can feed the institutional interpretation
   without adding a second institution or a totality premise.
 
 The concrete stack is caller RSP `0x7ffeffe0`, callee RSP `0x7ffeffd8`;
@@ -180,8 +174,8 @@ buffers are the binary's actual H `0x401660` and block `0x401620`.
 These are nonvacuous executable-model call-site results. The prepared state
 is not asserted reachable from launch: the original EOF/read path and the
 driver's actual initialization/padding stores still need that connection.
-Hex serialization, accepted output and final exit correctness remain with
-#3029. No source-equivalence, graph-to-machine, O3 or hardware result follows
+Hex serialization, accepted output and final exit correctness are proved by the
+driver modules. No source-equivalence, graph-to-machine, O3 or hardware result follows
 merely from the call-site theorem. Unknown instructions remain residual.
 
 Additional targeted reproduction:
