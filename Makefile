@@ -46,7 +46,7 @@ process-check:
 		Silmaril.Process.Probes.Thms \
 		Silmaril.Process.Musl.Thms \
 		Silmaril.Process.Sha256.Thms \
-		Silmaril.Process.LPS.Problems.GnuSha256sum.Registry
+		Silmaril.Process.LPS.Problems.GnuSha256sum.Close
 	$(PYTHON) tools/process-release/facts.py --check
 	$(PYTHON) tools/process-release/check_headers.py
 	$(PYTHON) apps/sha256sum-min/build.py --verify-only
@@ -65,6 +65,7 @@ demo-process:
 
 demo-sha256:
 	$(LAKE) build --wfail Silmaril.Process.CLI.Sha256Cli.Binary Silmaril.Process.LPS.Problems.Sha256Cli.EndToEnd
+	$(LAKE) build --wfail Silmaril.Process.LPS.Problems.GnuSha256sum.Close
 
 help:
 	@echo 'make tools    Build seven native Wasm tools and stage build/bin/sil'
@@ -73,6 +74,6 @@ help:
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
 	@echo 'make demo-process  Build the public process headers and theorem slice'
-	@echo 'make demo-sha256   Build the freestanding sha256-cli proof roots'
+	@echo 'make demo-sha256   Build the sha256-cli and GNU sha256sum-min end-to-end proofs'
 	@echo 'make process-check Run process facts, layout, catalogue and probe gates'
 	@echo 'make stage    Stage already-built tools without compiling'
