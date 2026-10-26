@@ -1,4 +1,4 @@
-## Operational semantics: L1 and L2
+# Operational semantics: L1 and L2
 
 These developments follow chapters 1–4 of Peter Sewell's *Semantics of
 Programming Languages* notes for Cambridge Part IB, 2025–26. The course is a
@@ -19,7 +19,7 @@ All module names below start with `Silmaril.Courses.Cambridge.`.
 | `L1` | Integers, Booleans, conditionals, finite integer stores, assignment, sequencing and loops | Determinacy; decidable sound and complete type inference; type uniqueness; progress, preservation and safety over every finite reachable trace |
 | `L2` | L1 plus functions, application, strict `let` and recursive functions | Capture-avoiding substitution; decidable sound and complete type inference; type uniqueness; preservation of typing, closedness and allocated locations; progress for closed well-typed expressions |
 
-### Stores and safety assumptions
+## Stores and safety assumptions
 
 Stores are finite partial maps from location names to integers. Locations are
 opaque strings, and assignment updates an already allocated location; the
@@ -48,7 +48,7 @@ L2 keeps named source syntax in `RawExpr`. Resolution maps bound occurrences
 to de Bruijn indices while retaining free names. `AlphaEq` is equality of the
 resolved syntax; examples distinguish harmless binder renaming from capture.
 
-### Evaluation strategies and executable examples
+## Evaluation strategies and executable examples
 
 L2 has call-by-value (`Step`), call-by-name (`NameStep`) and a broader full-beta
 relation (`BetaStep`). Call-by-value and call-by-name steps embed in

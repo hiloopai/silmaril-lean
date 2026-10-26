@@ -951,8 +951,8 @@
     },
     {
       "path": "Silmaril/Courses/Cambridge/DenotationalSemantics.lean",
-      "sha256": "5588272a2492657b8d3d620957b1e002e267339ac9c675c228238e6088143c15",
-      "bytes": 2065
+      "sha256": "464ee4820654feebdbd5c8311f0ba3228d50af4a76233ec9edc262b645c6d6bc",
+      "bytes": 1975
     },
     {
       "path": "Silmaril/Courses/Cambridge/DenotationalSemantics/Adequacy.lean",
@@ -8156,13 +8156,13 @@
     },
     {
       "path": "docs/courses/cambridge-denotational.md",
-      "sha256": "5a27e5798d7e4e4ce964807d77a561e8a047f81470f26ae466f1ee6ec58265d9",
-      "bytes": 7633
+      "sha256": "bac395523383438119c7441b2d366d608042d3942b02faa187deb023d1407351",
+      "bytes": 7632
     },
     {
       "path": "docs/courses/cambridge-operational.md",
-      "sha256": "407c0bcdbe19635f4e96348e38cb8cf373e0694634e015a2f43924864c363440",
-      "bytes": 5585
+      "sha256": "90b14fff790aee7e767dba5aab5a414841a198eda752fd263e7424170a9102a3",
+      "bytes": 5582
     },
     {
       "path": "docs/courses/cambridge-optimising.md",

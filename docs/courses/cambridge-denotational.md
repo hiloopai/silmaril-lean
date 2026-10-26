@@ -1,4 +1,4 @@
-## Denotational semantics
+# Denotational semantics
 
 The Part II course follows Meven Lennon-Bertrand's *Lecture Notes on
 Denotational Semantics*, version of December 5, 2024, building on notes by
