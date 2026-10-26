@@ -44,8 +44,7 @@ the clang `-O2 sha256_compress` whose contract is
 **not proved** here. Proving it needs the loop invariants for the read,
 padding, hex and write loops and the bridge from `Sha256O2.sha256_compress_O2`
 (a function-contract `Ext.Returns` run) to an event-free `X86Linux` retirement
-sequence — the one lemma called out as open in `Plan.lean` (3) and the model
-research note. See `/srv/scratch/campaigns/research/sha256-x86/cli.md`.
+sequence — the one lemma called out as open in `Plan.lean` (3).
 -/
 
 @[expose] public section

@@ -339,7 +339,7 @@
     },
     {
       "path": ".process-promotion.json",
-      "sha256": "e83aa3cf06598f0ddd62ec59296381594a78e248bf2769c9c520564b32775182",
+      "sha256": "2ff97081577cc98e9740115ae9ff5518be724b179f8a7e78315057d09ed4472e",
       "bytes": 255376
     },
     {
@@ -1159,8 +1159,8 @@
     },
     {
       "path": "Silmaril/Data/BinaryImage.lean",
-      "sha256": "b11be5e0c23b0f69b63209fa4e91de521bfe2f84fec6bdf281ac77a51352dfe5",
-      "bytes": 22427
+      "sha256": "5b3a400b00b44e47f39cdd82f171036a16ae42d5b0aea57fac2e9dd04b9a804e",
+      "bytes": 22348
     },
     {
       "path": "Silmaril/Data/BinaryImage/Literal.lean",
@@ -3479,8 +3479,8 @@
     },
     {
       "path": "Silmaril/Process/CLI/Sha256Cli/Spec.lean",
-      "sha256": "4c28e4762b190adc2c86b31776ab127b929211179a9cd1501b37ef857f23d3fd",
-      "bytes": 13169
+      "sha256": "07235bc71227fffb68921d9098692f0b9c777d3716e46d676a2440544aa43080",
+      "bytes": 13084
     },
     {
       "path": "Silmaril/Process/CLI/Sha256Cli/Startup.lean",

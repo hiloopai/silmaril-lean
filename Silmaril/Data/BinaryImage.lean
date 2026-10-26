@@ -47,8 +47,7 @@ Lean: anyone can recompute the SHA-256 of the file named in the source and compa
 pin, and the elaborator refuses to build if they differ. What the elaborator does not do is
 prove, in the kernel, that the literal hashes to the pin; `foo.sha256` is recorded data. For a
 small file the kernel can check it (`BinaryImage.sha256Hex` against
-`Silmaril.Crypto.SHA256.digest`); see the measurements in
-`/srv/scratch/campaigns/research/low-hanging/embed.md` and `Silmaril.Data.BinaryImageExamples`.
+`Silmaril.Crypto.SHA256.digest`); see `Silmaril.Data.BinaryImageExamples`.
 
 The SHA-256 used at elaboration time (`sha256Meta`) is a separate `ByteArray` implementation,
 because the list-based specification takes about 50 s per MiB in the interpreter. It is not
