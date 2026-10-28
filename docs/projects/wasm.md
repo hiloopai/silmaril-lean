@@ -163,7 +163,10 @@ relationships. File IO and argument parsing are outside the pure semantic contra
 
 - [Contract inventory](../../tools/binaryen-lean/release-manifest.json): runtime and proof roots, theorem names and assumptions.
 - [Compiler API](../../Silmaril/Compile/Category/Compiler.lean) and [pass API](../../Silmaril/Wasm/Binaryen/PassAPI/ModeCategory.lean): proven translations compose. An **IR** is an internal program representation; a **pass** transforms programs. A pass back into the same language model is an **endomorphism**, which need not be reversible.
-- [Source manifest](../../SOURCE-MANIFEST.json): included file hashes and public dependency pins.
+- [Dependency pins](../../lake-manifest.json).
+- [Optional source inventory](../../scripts/source-manifest.py): run
+  `python3 scripts/source-manifest.py` to write an ignored local
+  `SOURCE-MANIFEST.json` with SHA-256 hashes and sizes of tracked working-tree files.
 
 ## Compare with Binaryen
 
