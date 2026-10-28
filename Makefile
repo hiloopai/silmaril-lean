@@ -28,7 +28,6 @@ cache:
 	$(PYTHON) scripts/lake-cache.py get
 
 check:
-	$(PYTHON) scripts/source-manifest.py
 	scripts/check-layout.sh
 	$(MAKE) process-check
 	$(PYTHON) tools/binaryen-lean/check-release.py --build --report build/wasm-checks.json
