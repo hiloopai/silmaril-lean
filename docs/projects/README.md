@@ -6,6 +6,7 @@
 | Compiler foundations | Semantic contracts, passes, checked transformations, translations and compiler categories | [Compiler APIs](compilers.md) |
 | Logics and institutions | HOL, Metamath, ZF/ZFC, arithmetic, proof translations and Hets-style development graphs | [Logic](logic.md) |
 | Lambda calculi | Eight cube corners, STLC categorical semantics, System F/Fω parametricity and institution graphs | [Lambda cube](lambda-cube.md) |
+| Cambridge courses | L1/L2 semantics, domains and PCF, optimising compilers and exercises | [Courses](../courses/cambridge.md) |
 | x86 process verification | Planned port: machine/process models, assembly proofs and whole-utility verification | [x86 roadmap](x86.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available

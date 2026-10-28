@@ -78,6 +78,8 @@ longer proofs under `Silmaril/Proofs/`.
   arithmetic and Hets-style development graphs
 - [Lambda cube and parametricity](docs/projects/lambda-cube.md): all eight pure type systems,
   System F/Fω models, free theorems and institution graphs
+- [Cambridge courses](docs/courses/cambridge.md): operational semantics, domains and PCF,
+  optimising compilers and exercises
 - [Linux process promotion](docs/projects/process.md): LPS syscall semantics,
   ELF/musl launch models, x86/RV64 slices and probe provenance
 - [SHA-256 process demos](docs/projects/sha256sum.md): the freestanding

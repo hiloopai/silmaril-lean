@@ -101,9 +101,13 @@ Compatibility scaffolding and migration records are not part of the library.
 
 ## Views
 
-Views re-export or restate. They hold no non-trivial proofs, and nothing imports
-them.
+Views are leaves: library regions do not import them. `Papers`, `Standards`
+and `Thesis` re-export and restate without non-trivial proofs. `Courses` may
+keep proofs inline so a reader can follow a self-contained development.
 
+- **`Courses/<University>/<Course>/`** follows a course and its exercises, with
+  numbered references, explicit coverage and checking instructions. Shared
+  foundations live in library regions beneath the course view.
 - **`Papers/<Key>/`**:
   - `Defs.lean`: the paper's definitions, re-exported, or stated in the paper's
     own form when they originate there;
