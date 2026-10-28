@@ -1,0 +1,118 @@
+{
+  "probe": "open_read_wr",
+  "claim": "mutant of open_read that writes instead of reading the read-only descriptor: EBADF, nothing is printed; every execution of the model prints nothing",
+  "mutantOf": "open_read",
+  "inputs": {
+    "files": {
+      "in.txt": "68690a"
+    },
+    "stdinHex": ""
+  },
+  "allow": [
+    "openat",
+    "write",
+    "close",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.OpenRead",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.OpenReadWr.checked",
+      "Silmaril.Process.LPS.Probes.OpenReadWr.determined",
+      "Silmaril.Process.LPS.Probes.OpenReadWr.admits",
+      "Silmaril.Process.LPS.Probes.OpenReadWr.not_traces_original"
+    ]
+  },
+  "skipBackends": {
+    "qemu-user": "qemu-user keeps its strace log open at descriptor 3 (-D), so the guest's lowest free descriptor there is 4, not 3"
+  },
+  "stackArgs": [
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      1
+    ]
+  ],
+  "sha256": "fed195822b30a3718bfb9e0724a4811439bd1a91bfd52436e605e451378f110e",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 257,
+        "name": "openat",
+        "args": [
+          4294967196,
+          4194517,
+          0,
+          0
+        ],
+        "ret": 3
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          3,
+          "sp",
+          64
+        ],
+        "ret": -9
+      },
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          "sp",
+          0
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 3,
+        "name": "close",
+        "args": [
+          3
+        ],
+        "ret": 0
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    },
+    "files": {
+      "in.txt": "68690a"
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native"
+    ]
+  }
+}

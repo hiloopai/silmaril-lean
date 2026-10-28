@@ -1,0 +1,327 @@
+{
+ "schema": "sha256sum-binary-corpus/1",
+ "created": "2026-10-23",
+ "host": {
+  "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+  "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+  "objdump": "GNU objdump (GNU Binutils for Ubuntu) 2.42",
+  "python": "Python 3.12.3",
+  "kernel": "6.8.0-139-generic"
+ },
+ "silmaril": {
+  "commit": "76eb80d5cb83e0396af429f1631b350cb898805e",
+  "inputs": {
+   "tests/x86/sha256_compress_clang_O2.hex": "444cece8b812662476018819f3a1636a1824c49d522242988720942dee67356e",
+   "xcompile/wrappers/xc_sha256.c": "9dc8c350ca73a3d7d4898daf42106f6c21a68d75b882854f1bd5e5af47dd2f07"
+  }
+ },
+ "build": {
+  "command": "scripts/build.sh /srv/scratch/campaigns/dataflow-dce",
+  "script": {
+   "path": "scripts/build.sh",
+   "sha256": "3f40c7b54bd96f9cd4f32ec9940c09bbcef90252759eb40e646eeb8948aaad7b",
+   "bytes": 2044
+  },
+  "generators": [
+   {
+    "path": "scripts/gen_compress_S.py",
+    "sha256": "699ec4017d6e55e6c25f40374c9baf38dc852448886dad3689cf45f93ad7324e",
+    "bytes": 2459
+   },
+   {
+    "path": "scripts/gen_tables.py",
+    "sha256": "6ba1501234a39e77b45de5215e2ada78ed2c532d2bceefdf32db174d39afe4eb",
+    "bytes": 1415
+   }
+  ],
+  "sources": [
+   {
+    "path": "src/compress_clang_O2.S",
+    "sha256": "fbe67a27f76c199781067ba6476b2c42e9dbe789bba5f65cfd5b4bec2d1faa25",
+    "bytes": 4420
+   },
+   {
+    "path": "src/gen_tables.h",
+    "sha256": "74ca82564739556b8da92ea0deac5fc37e6ee8dec4c688c79fadcb26c54956a6",
+    "bytes": 6228
+   },
+   {
+    "path": "src/sha256_compress_clang_O2.hex",
+    "sha256": "444cece8b812662476018819f3a1636a1824c49d522242988720942dee67356e",
+    "bytes": 919
+   },
+   {
+    "path": "src/sha256sum.c",
+    "sha256": "4a81ef287baa97cc351d518d9173466b29fb1c8e1edef1070308ef29f56b92a6",
+    "bytes": 35667
+   },
+   {
+    "path": "src/start.S",
+    "sha256": "835f8b194d8d14c115b97fdb9db3248b281408dea771808ab207d7c55b293cd5",
+    "bytes": 812
+   }
+  ],
+  "reproducible": "two consecutive builds gave identical outputs"
+ },
+ "outputs": {
+  "sha256sum-min": {
+   "path": "corpus/bin/sha256sum-min",
+   "sha256": "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817",
+   "bytes": 35512,
+   "role": "RECOMMENDED stage-1 target: libc-free C driver (gcc 13.3.0 -O2) + the pilot-proved clang 18.1.3 -O2 sha256_compress bytes",
+   "pilot_bytes_check": {
+    "textBase": "0x405200",
+    "rodataBase": "0x407f10",
+    "disp32": 11349,
+    "bytes_match_except_disp": true,
+    "disp_reaches_K": true,
+    "K_matches": true,
+    "linked_function_sha256": "acfb62beed3dccddd419de9c2b317cd885baae7b6e797e909f6afd7ad833dd53"
+   },
+   "census": {
+    "instructions": 4003,
+    "classes": {
+     "gpr-scalar": 3806,
+     "nop/padding": 167,
+     "cmov/setcc": 26,
+     "mul/div": 2,
+     "syscall": 1,
+     "bit": 1
+    },
+    "distinct_mnemonics": 55
+   },
+   "syscalls": [
+    "read",
+    "write",
+    "openat",
+    "close",
+    "brk",
+    "exit_group",
+    "getpid+kill (argc == 0 only)"
+   ],
+   "readelf_l": "\nElf file type is EXEC (Executable file)\nEntry point 0x401000\nThere are 5 program headers, starting at offset 64\n\nProgram Headers:\n  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align\n  LOAD           0x000000 0x0000000000400000 0x0000000000400000 0x000158 0x000158 R   0x1000\n  LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x0043cb 0x0043cb R E 0x1000\n  LOAD           0x006000 0x0000000000406000 0x0000000000406000 0x002010 0x002010 R   0x1000\n  LOAD           0x008010 0x0000000000409010 0x0000000000409010 0x00000c 0x00a140 RW  0x1000\n  GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10\n\n Section to Segment mapping:\n  Segment Sections...\n   00     \n   01     .text \n   02     .rodata \n   03     .data .bss \n   04     \n"
+  },
+  "sha256sum-min-gcc": {
+   "path": "corpus/bin/sha256sum-min-gcc",
+   "sha256": "9753ffd236e61bb9fcb793238d9b9f1c908f41569a8d79a5f6f38c15e3303463",
+   "bytes": 35520,
+   "role": "same driver; sha256_compress compiled by gcc 13.3.0 from xc_sha256.c with the driver flags (NOT the GccImages.lean bytes, which have the stack protector and endbr64)",
+   "census": {
+    "instructions": 4023,
+    "classes": {
+     "gpr-scalar": 3826,
+     "nop/padding": 168,
+     "cmov/setcc": 26,
+     "mul/div": 2,
+     "syscall": 1
+    },
+    "distinct_mnemonics": 54
+   }
+  }
+ },
+ "differential": {
+  "json_corpus": {
+   "oracle": "GNU coreutils 9.4 /usr/bin/sha256sum (recorded by the sibling refmodel/difftest workflow)",
+   "replayer": {
+    "path": "scripts/replay_corpus.py",
+    "sha256": "739e5f47147d3536a88113ee0939c6fcfadb0b7773acc503f605a7943833e7eb",
+    "bytes": 2859
+   },
+   "cases": 3159,
+   "case_set_sha256": "5f541d2026a482514944f36b04232c04a1338a134e815cfe223ec16931e55aa4"
+  },
+  "edge_cases": {
+   "script": {
+    "path": "scripts/edge_diff.sh",
+    "sha256": "4aa27b551c1b2912fd0121a8f92e7b8d8495407ff864ee455fe0a47ac43a0c93",
+    "bytes": 4101
+   },
+   "cases": 74
+  }
+ },
+ "references": {
+  "gnu_sha256sum": {
+   "path": "/usr/bin/sha256sum",
+   "sha256": "4d2db56c867e5324e0084c9e897f6360d37517de77ac96f2bd31494223d69a60",
+   "bytes": 39336,
+   "package": "coreutils 9.4-3ubuntu6.3",
+   "linkage": "dynamic: libcrypto.so.3 (SHA256_Init/Update/Final) + libc.so.6",
+   "census": {
+    "instructions": 4553,
+    "classes": {
+     "gpr-scalar": 4025,
+     "nop/padding": 351,
+     "indirect-branch": 68,
+     "sse": 59,
+     "cmov/setcc": 47,
+     "bit": 2,
+     "string": 1
+    },
+    "distinct_mnemonics": 68
+   }
+  },
+  "libcrypto": {
+   "path": "/usr/lib/x86_64-linux-gnu/libcrypto.so.3",
+   "sha256": "6866ed711dab8927e1bf82bf1cd30e828bdfc34f3cc1e83b1c9eb01ce6c37d9a",
+   "bytes": 5309400,
+   "package": "libssl3t64 3.0.13-0ubuntu3.16",
+   "census": {
+    "instructions": 816561,
+    "classes": {
+     "gpr-scalar": 624509,
+     "avx512": 73971,
+     "nop/padding": 40223,
+     "avx/avx2": 39969,
+     "sse": 20835,
+     "string": 2874,
+     "cmov/setcc": 2717,
+     "mul/div": 2407,
+     "bmi/adx": 2340,
+     "x87": 2087,
+     "indirect-branch": 1918,
+     "aes-ni/clmul": 1081,
+     "sha-ni": 512,
+     "bit": 483,
+     "atomic": 363,
+     "syscall": 253,
+     "cpuid/xgetbv/rd*": 19
+    },
+    "distinct_mnemonics": 667
+   }
+  },
+  "libc": {
+   "path": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+   "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf",
+   "bytes": 2129424,
+   "package": "libc6 2.39-0ubuntu8.9",
+   "census": {
+    "instructions": 385673,
+    "classes": {
+     "gpr-scalar": 330973,
+     "nop/padding": 21628,
+     "sse": 14500,
+     "avx/avx2": 7255,
+     "indirect-branch": 2859,
+     "cmov/setcc": 2640,
+     "bit": 1748,
+     "avx512": 1574,
+     "mul/div": 617,
+     "atomic": 603,
+     "syscall": 565,
+     "x87": 402,
+     "string": 157,
+     "bmi/adx": 150,
+     "cpuid/xgetbv/rd*": 2
+    },
+    "distinct_mnemonics": 333
+   }
+  },
+  "static_glibc_surface_probe": {
+   "path": "build/libcsurf/libc_surface",
+   "sha256": "2519bb508ab01c2781a601f63ffeadc084574bbcbec2668a26e0b0f19aeb5173",
+   "bytes": 840432,
+   "source": {
+    "path": "scripts/libc_surface.c",
+    "sha256": "d45717dbb67c0d7f1400149bc527f5d15dc15c4c8db9938563c18a1586245d38",
+    "bytes": 1343
+   },
+   "command": "gcc -O2 -static scripts/libc_surface.c -o build/libcsurf/libc_surface",
+   "census": {
+    "instructions": 133143,
+    "classes": {
+     "gpr-scalar": 111707,
+     "nop/padding": 7560,
+     "sse": 7315,
+     "avx/avx2": 3316,
+     "avx512": 792,
+     "cmov/setcc": 729,
+     "bit": 676,
+     "indirect-branch": 416,
+     "mul/div": 163,
+     "atomic": 159,
+     "syscall": 112,
+     "bmi/adx": 63,
+     "x87": 50,
+     "cpuid/xgetbv/rd*": 44,
+     "string": 41
+    },
+    "distinct_mnemonics": 265
+   }
+  },
+  "busybox": {
+   "path": "/usr/bin/busybox",
+   "sha256": "dbac288c29ba568459550a2da9e7ae0ded6b1fc728ee9fad3044c44e62d6ac14",
+   "bytes": 2124608,
+   "package": "busybox-static 1:1.36.1-6ubuntu3.1",
+   "linkage": "static (glibc), multi-call, 272 applets",
+   "census": {
+    "instructions": 440739,
+    "classes": {
+     "gpr-scalar": 398847,
+     "nop/padding": 14639,
+     "sse": 13114,
+     "avx/avx2": 5502,
+     "cmov/setcc": 2762,
+     "bit": 1482,
+     "mul/div": 1148,
+     "avx512": 1057,
+     "indirect-branch": 773,
+     "string": 472,
+     "syscall": 302,
+     "atomic": 263,
+     "sha-ni": 128,
+     "x87": 107,
+     "bmi/adx": 97,
+     "cpuid/xgetbv/rd*": 46
+    },
+    "distinct_mnemonics": 343
+   }
+  },
+  "toybox": {
+   "path": "downloads/toybox/extract/bin/toybox",
+   "sha256": "765dca8c449ed336d3f996fdd13f3c96fecdfe60107de756e3e2bfadbacafe25",
+   "bytes": 479864,
+   "deb": {
+    "path": "downloads/toybox/toybox_0.8.9+dfsg-1ubuntu1_amd64.deb",
+    "sha256": "c32bbb7e651047ba8d89d8de379c7f44b65e994549499ed5cfc180cac4712c99",
+    "bytes": 2554444
+   },
+   "linkage": "dynamic (libc, libm, libcrypt); not run",
+   "census": {
+    "instructions": 66634,
+    "classes": {
+     "gpr-scalar": 63187,
+     "nop/padding": 1819,
+     "cmov/setcc": 484,
+     "indirect-branch": 392,
+     "mul/div": 236,
+     "sse": 231,
+     "string": 158,
+     "bit": 120,
+     "x87": 7
+    },
+    "distinct_mnemonics": 140
+   }
+  }
+ },
+ "downloads": {
+  "coreutils-9.4": {
+   "tarball": {
+    "path": "downloads/coreutils-9.4/coreutils-9.4.tar.xz",
+    "sha256": "ea613a4cf44612326e917201bbbcdfbd301de21ffc3b59b6e5c07e040b275e52",
+    "bytes": 5979200
+   },
+   "signature": {
+    "path": "downloads/coreutils-9.4/coreutils-9.4.tar.xz.sig",
+    "sha256": "290c9baaf94bdad2f126cb9e7a1a98214afc4e3cbdf6d362b0acb4ffc56f72c7",
+    "bytes": 833
+   },
+   "gpg": "Good signature, primary key 6C37 DC12 121A 5006 BC1D B804 DF6F D971 3060 37D9 (Padraig Brady; key fetched from keyserver.ubuntu.com, not otherwise certified)",
+   "use": "source read only (src/digest.c, lib/quotearg.c, lib/close-stream.c, lib/closeout.c); not built"
+  },
+  "toybox": {
+   "deb": "apt-get download toybox (hash checked by apt against the signed Ubuntu index); extracted with dpkg-deb -x; not run"
+  }
+ }
+}

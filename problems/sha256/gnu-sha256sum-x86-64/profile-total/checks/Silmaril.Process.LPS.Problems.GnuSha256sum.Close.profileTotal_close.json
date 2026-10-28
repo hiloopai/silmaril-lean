@@ -1,0 +1,45 @@
+{
+  "schema": "silmaril.problem-check.v1",
+  "problem": "sha256/gnu-sha256sum-x86-64/profile-total",
+  "solution": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close.profileTotal_close",
+  "module": "Silmaril.Process.LPS.Problems.GnuSha256sum.Close",
+  "kind": "solves",
+  "statement": {
+    "declaration": "Silmaril.Process.LPS.Problems.GnuSha256sum.Parity.profileTotal",
+    "hash": "sha256:520d005fbe9997d5ec1056aec11acb7d4ff040c7fcf462c7c2900c904c4c92f6",
+    "closure_hash": "sha256:f5a326938460a73ed3d685eeb0aca34d717ad8c25f76b8bd361fd9bf41ef6b21"
+  },
+  "type_hash": "sha256:e098bf633287e62e6dc4162c130c32c7e5bc7c2ca510cd02ac1b364bf2caff15",
+  "direct": true,
+  "defeq": true,
+  "tier": "total",
+  "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "allowed_axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "uses_solutions": [
+    "Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsTotal_close"
+  ],
+  "deps": [
+    {
+      "problem": "sha256/gnu-sha256sum-x86-64/lps-total",
+      "role": "assume",
+      "via": [
+        "Silmaril.Process.LPS.Problems.GnuSha256sum.Close.lpsTotal_close"
+      ]
+    }
+  ],
+  "label": "VERIFIED",
+  "verdict": "pass",
+  "failures": [],
+  "toolchain": "4.35.0-rc4",
+  "commit": "56bae0a9578830fd9d2d5949be1711cbab48a740",
+  "dirty": true,
+  "checker": "scripts/problems/check.py@v1"
+}

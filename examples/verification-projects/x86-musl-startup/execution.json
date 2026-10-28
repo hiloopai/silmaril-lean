@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "-0",
+    "checksum",
+    "-singlestep",
+    "-d",
+    "in_asm,exec,nochain",
+    "-D",
+    "/tmp/silmaril-x86-musl/checksum.qemu.trace",
+    "-strace",
+    "/tmp/silmaril-x86-musl/checksum.elf"
+  ],
+  "environment": {},
+  "qemu": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+  "exitCode": 0,
+  "elf": {
+    "sha256": "0ef7a89e9e1e07386fb608d06255b5523081ff9a48e0aa4c69a42e2311ed4ad0",
+    "bytes": 16256
+  },
+  "trace": {
+    "sha256": "052c64a83cdaa76e618bd68126495efc35ec03e54aecd18c3aba7bfa1fa52e6e",
+    "bytes": 75841
+  }
+}

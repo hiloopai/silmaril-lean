@@ -55,6 +55,11 @@ scope = "Instruction sets (x86, RISC-V, AArch64), machine IRs, memory models, pr
 deps = ["Prelude", "Semantics", "Numeric", "Crypto", "Formats", "SSA"]
 
 [[region]]
+name = "Process"
+scope = "Linux process semantics, ELF launch models, syscall tables, musl startup, and process-level demonstrations."
+deps = ["Prelude", "Semantics", "Numeric", "Crypto", "Formats", "Machine"]
+
+[[region]]
 name = "Wasm"
 scope = "WebAssembly: core specifications, component model, text and binary formats, lowering."
 deps = ["Prelude", "Semantics", "Logic", "Numeric", "Crypto", "Formats", "SSA", "Machine"]

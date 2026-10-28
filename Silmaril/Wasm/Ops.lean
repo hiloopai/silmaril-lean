@@ -247,7 +247,7 @@ without a half (`i32x4 → f32x4`), or `sizenn(Fnn_2) = 2 * lsizenn(Jnn_1)` with
 `trunc_sat`/`relaxed_trunc` admit only the two encodable pairs. The grammar also
 admits `f32x4 → i16x8` with `ZERO`, but `$lcvtop__` is defined only for an
 `Inn` target (`I32`/`I64`), so that instruction has no semantics in the spec
-(execution stuck); it is rejected here instead (Silmaril.Wasm.Execution.Core.Instantiation, deviations). -/
+(execution stuck); it is rejected here instead (docs/WasmCore3.md, deviations). -/
 def VecConvertOp.valid (source target : Shape) : VecConvertOp → Bool
   | .extend _ _ => match source, target with
     | .int s, .int t => t.laneWidth == 2 * s.laneWidth

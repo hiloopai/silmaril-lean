@@ -1,0 +1,61 @@
+{
+  "probe": "lite_true_stderr",
+  "claim": "mutant of lite_true: writes one byte to stderr, then exits 0",
+  "mutantOf": "lite_true",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.TrueFalse",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.trueStderr_exec",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.true_mutant_stderr"
+    ]
+  },
+  "sha256": "9dd24bb059f591b787efa4e6cae2e035f53c497452881b3e884ea56df0e3942a",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          2,
+          4194461,
+          1
+        ],
+        "ret": 1
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "78",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "native",
+    "kernel": "6.8.0-139-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "native"
+    ]
+  }
+}

@@ -80,13 +80,18 @@ longer proofs under `Silmaril/Proofs/`.
   System F/Fω models, free theorems and institution graphs
 - [Cambridge courses](docs/courses/cambridge.md): operational semantics, domains and PCF,
   optimising compilers and exercises
+- [Linux process promotion](docs/projects/process.md): LPS syscall semantics,
+  ELF/musl launch models, x86/RV64 slices and probe provenance
+- [SHA-256 process demos](docs/projects/sha256sum.md): the freestanding
+  `sha256-cli` filter and `sha256sum-min`, a libc-free reimplementation of GNU
+  coreutils 9.4 `sha256sum`, each proved end to end from its executable bytes
 - [Library design](docs/design.md) and [contributing rules](AGENTS.md)
 - [Bibliography and artifact hashes](references.bib)
 
 ## Coming next
 
-Wasm led the first release. We’re preparing further ports covering game semantics,
-x86 and RISC-V, ELF, C semantics and compilers, and more. These will
+Wasm led the first release. Further releases will add game semantics, broader
+x86 and RISC-V coverage, C semantics and compilers, and more. These will
 arrive in follow-up releases with their own guides, examples and proof contracts.
 The [project index](docs/projects/README.md) tracks the public developments;
 the [x86 roadmap](docs/projects/x86.md) describes the path from assembly proofs

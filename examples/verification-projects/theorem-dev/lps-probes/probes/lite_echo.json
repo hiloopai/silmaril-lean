@@ -1,0 +1,61 @@
+{
+  "probe": "lite_echo",
+  "claim": "echo (GCC -O2): argv[1..] joined by spaces, then a newline; exit 0",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "write",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Problems.CoreutilsLite.EchoCat",
+    "theorems": [
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.echo_recorded",
+      "Silmaril.Process.LPS.Problems.CoreutilsLite.Registry.echo"
+    ]
+  },
+  "sha256": "b5379a0b8b71a0151cf8c20679b790a7e5fecd70934eff44df121b027fef38c9",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 1,
+        "name": "write",
+        "args": [
+          1,
+          4194654,
+          1
+        ],
+        "ret": 1
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          0
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "0a",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 0
+    }
+  },
+  "recorded": {
+    "backend": "native",
+    "kernel": "6.8.0-139-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "native"
+    ]
+  }
+}

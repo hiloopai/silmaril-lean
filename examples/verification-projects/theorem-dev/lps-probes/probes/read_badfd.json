@@ -1,0 +1,72 @@
+{
+  "probe": "read_badfd",
+  "claim": "read(99, buffer, 6) returns -EBADF since fd 99 is not open; the probe exits with the errno 9. Every execution does exactly this",
+  "mutantOf": null,
+  "image": "rwx",
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "read",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.ReadBadfd",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.ReadBadfd.checked",
+      "Silmaril.Process.LPS.Probes.ReadBadfd.determined",
+      "Silmaril.Process.LPS.Probes.ReadBadfd.sound",
+      "Silmaril.Process.LPS.Probes.ReadBadfd.admits",
+      "Silmaril.Process.LPS.Probes.ReadBadfd.no_error"
+    ]
+  },
+  "sha256": "9d05db39e206325a34b096c4dd081e99128c571710005f58a7b81b96291ce591",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 0,
+        "name": "read",
+        "args": [
+          99,
+          4194461,
+          6
+        ],
+        "ret": -9
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          9
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 9
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

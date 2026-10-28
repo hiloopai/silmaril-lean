@@ -1,0 +1,79 @@
+{
+  "probe": "getrandom8",
+  "claim": "getrandom(rsp, 8, 0) = 8 then exit(8): every execution exits 8; every 8-byte string can be the delivered bytes (the model is not lucky); the recorded run is admitted at Linux's stack pointer",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "getrandom",
+    "exit"
+  ],
+  "hostDependent": [
+    {
+      "call": 0,
+      "arg": 0,
+      "why": "entry stack pointer: a launch parameter (ExecEntry.sp); deterministic natively (ADDR_NO_RANDOMIZE), qemu-user places its own stack"
+    }
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.Getrandom",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.Getrandom.checked",
+      "Silmaril.Process.LPS.Probes.Getrandom.determined",
+      "Silmaril.Process.LPS.Probes.Getrandom.sound",
+      "Silmaril.Process.LPS.Probes.Getrandom.every_bytes",
+      "Silmaril.Process.LPS.Probes.Getrandom.admits",
+      "Silmaril.Process.LPS.Probes.Getrandom.no_error"
+    ]
+  },
+  "sha256": "a04549e3b271031d2c60b6a653c83ea0af79dc5cbd12eec9182b7c7ea2d95e98",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 318,
+        "name": "getrandom",
+        "args": [
+          140737488350752,
+          8,
+          0
+        ],
+        "ret": 8
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          8
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 8
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

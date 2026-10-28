@@ -1,0 +1,74 @@
+{
+  "probe": "unknown_syscall",
+  "claim": "syscall 999 then exit(its return): Linux returns -ENOSYS and exits 218; LPS fails closed: every execution stops unmodeled at the call (a reference design choice), and the recorded run is not admitted",
+  "mutantOf": null,
+  "inputs": {
+    "files": {},
+    "stdinHex": ""
+  },
+  "allow": [
+    "999",
+    "exit"
+  ],
+  "lean": {
+    "module": "Silmaril.Process.LPS.Probes.UnknownSyscall",
+    "theorems": [
+      "Silmaril.Process.LPS.Probes.UnknownSyscall.checked",
+      "Silmaril.Process.LPS.Probes.UnknownSyscall.unmodeled_at_call",
+      "Silmaril.Process.LPS.Probes.UnknownSyscall.unmodeled",
+      "Silmaril.Process.LPS.Probes.UnknownSyscall.not_admits",
+      "Silmaril.Process.LPS.Probes.UnknownSyscall.any_filter"
+    ]
+  },
+  "sha256": "a68fdeca0e8bcb77516b0ba0d2adf5351c0e1b26b807842e9f2ca93c9ac10396",
+  "expected": {
+    "syscalls": [
+      {
+        "nr": 999,
+        "name": "syscall_0x3e7",
+        "args": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "ret": -38
+      },
+      {
+        "nr": 60,
+        "name": "exit",
+        "args": [
+          18446744073709551578
+        ],
+        "ret": null
+      }
+    ],
+    "stdoutHex": "",
+    "stderrHex": "",
+    "outcome": {
+      "exit": 218
+    }
+  },
+  "recorded": {
+    "backend": "bwrap",
+    "kernel": "6.8.0-147-generic",
+    "machine": "x86_64",
+    "tools": {
+      "as": "GNU assembler (GNU Binutils for Ubuntu) 2.42",
+      "bwrap": "bubblewrap 0.9.0",
+      "container": "podman version 4.9.3",
+      "image": "docker.io/library/busybox:1.36 (no tracer)",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "qemu-user": "qemu-x86_64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+      "strace": "strace -- version 6.8"
+    },
+    "agreeingBackends": [
+      "bwrap",
+      "container",
+      "native",
+      "qemu-user"
+    ]
+  }
+}

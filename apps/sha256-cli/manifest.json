@@ -1,0 +1,17 @@
+{
+  "description": "Freestanding static x86-64 Linux sha256 filter. Reads stdin, writes the 64 lowercase hex digits of its SHA-256 digest and a newline, exits 0; nonzero exit on a read/write error. No libc.",
+  "toolchain": { "gcc": "13.3.0", "binutils": "2.42", "pin": "xcompile/toolchains.toml" },
+  "build": "apps/sha256-cli/build.sh",
+  "cflags": "-O2 -std=gnu11 -ffreestanding -fno-builtin -fno-pie -fno-stack-protector -fcf-protection=none -mgeneral-regs-only -fno-tree-vectorize -fno-tree-loop-distribute-patterns -fno-unroll-loops -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-ident -Wall -Wextra -Werror",
+  "ldflags": "-static -nostdlib -no-pie -Wl,--build-id=none -Wl,-z,noseparate-code -Wl,-z,norelro -Wl,-z,noexecstack -Wl,--no-dynamic-linker",
+  "sources": {
+    "src/sha256.c": "28074399fc93ce32322a714be334459288ecd2b91a3266a15cf9136dd29a9087",
+    "src/start.S": "a6db765dc5f81950d2319406c47720f71b756cb7800a364a129aeb584f864140",
+    "src/sha256_compress_clang_o2.S": "b46d250869a19c4baf55b1ca451783b57bafb2a625380491a344f831269cfdfb (generated from Silmaril/Crypto/X86/Sha256O2/Image.lean by gen_compress_s.py)"
+  },
+  "artifact": { "path": "build/sha256", "sha256": "6eaae1499692452beb67356cd6d2629f84544f64e3a93301a3da10389089e1f7" },
+  "compress_bytes_sha256": "b40a9bb4fe1c44697d153444180bf4e534b8c7b28b0ee5223f8c61fc66d07d44",
+  "compress_K_sha256": "74ef7306e7452d6859b6463ce496b8df30925f69e1b2969e1f3f34bbc9c6af04",
+  "lifted": "Silmaril/Process/CLI/Sha256Cli/Binary.lean",
+  "spec": "Silmaril/Process/CLI/Sha256Cli/Spec.lean"
+}
