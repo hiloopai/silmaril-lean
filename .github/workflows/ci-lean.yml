@@ -20,11 +20,10 @@ jobs:
     env:
       # Public Linux runners have four cores and 16 GB RAM.
       LEAN_NUM_THREADS: 2
-      SILMARIL_CACHE_ENDPOINT: ${{ vars.SILMARIL_CACHE_ENDPOINT }}
-      SILMARIL_CACHE_BUCKET: ${{ vars.SILMARIL_CACHE_BUCKET || 'lean-cache' }}
-      SILMARIL_CACHE_PREFIX: ${{ vars.SILMARIL_CACHE_PREFIX || 'silmaril-lean/v1' }}
-      SILMARIL_CACHE_REGION: ${{ vars.SILMARIL_CACHE_REGION || 'auto' }}
-      SILMARIL_CACHE_PUBLIC_URL: ${{ vars.SILMARIL_CACHE_PUBLIC_URL }}
+      LAKE_CI_ENDPOINT: ${{ vars.SILMARIL_CACHE_ENDPOINT }}
+      LAKE_CI_BUCKET: ${{ vars.SILMARIL_CACHE_BUCKET || 'lean-cache' }}
+      LAKE_CI_PREFIX: ${{ vars.SILMARIL_CACHE_PREFIX || 'silmaril-lean/v1' }}
+      LAKE_CI_REGION: ${{ vars.SILMARIL_CACHE_REGION || 'auto' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,17 +56,18 @@ jobs:
           node-version: '24'
       - name: Fetch public dependency artifacts on a disk miss
         if: steps.disk.outputs.cache-matched-key == ''
-        run: scripts/cache-dependencies.sh
+        run: python3 tools/lake-cache/lake_cache.py dependencies
       - name: Fill missing build artifacts from the optional S3 cache
         # Prefix entries are complete successful main builds with identical pins.
         # Lake checks current sources even when their outputs were restored.
         if: steps.disk.outputs.cache-matched-key == ''
         continue-on-error: true
         env:
-          SILMARIL_CACHE_READ_KEY: ${{ secrets.SILMARIL_CACHE_READ_KEY }}
-          SILMARIL_CACHE_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SILMARIL_CACHE_KEY || '' }}
-        run: python3 scripts/lake-cache.py get
+          LAKE_CI_KEY: ${{ secrets.SILMARIL_CACHE_READ_KEY || (github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SILMARIL_CACHE_KEY) || '' }}
+        run: python3 tools/lake-cache/lake_cache.py get --repository hiloopai/silmaril-lean
       - name: Build all Lean modules and run every native release check
+        env:
+          LAKE_CI_RECORD: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.disk.outputs.cache-hit != 'true' && 'build/lake-cache/root' || '' }}
         run: |
           du -sh .lake
           df -h .
@@ -80,8 +80,8 @@ jobs:
           github.repository == 'hiloopai/silmaril-lean' && steps.disk.outputs.cache-hit != 'true'
         continue-on-error: true
         env:
-          SILMARIL_CACHE_KEY: ${{ secrets.SILMARIL_CACHE_KEY }}
-        run: python3 scripts/lake-cache.py put
+          LAKE_CI_KEY: ${{ secrets.SILMARIL_CACHE_KEY }}
+        run: python3 tools/lake-cache/lake_cache.py put --repository hiloopai/silmaril-lean
       - name: Save successful main build or manual branch seed
         if: >-
           github.repository == 'hiloopai/silmaril-lean' && steps.disk.outputs.cache-hit != 'true' &&

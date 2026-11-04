@@ -2,6 +2,7 @@
 """Build the scoped toolkit and proof roots, then run native release checks."""
 
 import argparse
+import os
 import concurrent.futures
 import hashlib
 import json
@@ -42,7 +43,11 @@ def main():
         parser.error("Node.js 24 or later is required for the GC and memory64 reference checks")
 
     if args.build:
-        subprocess.run(["lake", "build", "--wfail", "Silmaril", *binaries, *proof_roots],
+        command = ["lake", "build", "--wfail"]
+        if record := os.environ.get("LAKE_CI_RECORD"):
+            command = [sys.executable, str(root / "tools/lake-cache/lake_cache.py"),
+                       "build", "--repository", "hiloopai/silmaril-lean", "--record", record, "--"]
+        subprocess.run([*command, "Silmaril", *binaries, *proof_roots],
                        cwd=root, check=True)
     bin_dir = args.bin_dir.resolve()
     for binary in binaries:

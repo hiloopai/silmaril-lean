@@ -24,8 +24,8 @@ library:
 	$(LAKE) build --wfail Silmaril
 
 cache:
-	LAKE=$(LAKE) scripts/cache-dependencies.sh
-	$(PYTHON) scripts/lake-cache.py get
+	LAKE=$(LAKE) $(PYTHON) tools/lake-cache/lake_cache.py dependencies
+	$(PYTHON) tools/lake-cache/lake_cache.py get --repository hiloopai/silmaril-lean
 
 check:
 	scripts/check-layout.sh

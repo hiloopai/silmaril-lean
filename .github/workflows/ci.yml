@@ -39,6 +39,9 @@ jobs:
         with:
           filters: .github/paths-filter.yml
 
+  cache:
+    uses: ./.github/workflows/ci-cache.yml
+
   helpers:
     uses: ./.github/workflows/ci-helpers.yml
 
@@ -64,7 +67,7 @@ jobs:
 
   result:
     name: CI
-    needs: [changes, helpers, lean, probes, environments]
+    needs: [changes, helpers, cache, lean, probes, environments]
     if: always() && !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -76,7 +79,7 @@ jobs:
         run: |
           jq -e '
             . as $jobs |
-            .changes.result == "success" and .helpers.result == "success" and
+            .changes.result == "success" and .helpers.result == "success" and .cache.result == "success" and
             all(["lean", "probes", "environments"][]; . as $name |
               if $jobs.changes.outputs[$name] == "true" or env.FORCE_ALL == "true"
               then $jobs[$name].result == "success"
