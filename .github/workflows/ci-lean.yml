@@ -1,0 +1,103 @@
+name: Lean and native checks
+
+on:
+  workflow_call:
+    inputs:
+      seed:
+        type: boolean
+        default: false
+        description: Allow a manual cache seed to finish a cold build
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.seed && 90 || 15 }}
+    environment:
+      name: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' && 'artifact-cache-publish' || 'artifact-cache-read' }}
+    env:
+      # Public Linux runners have four cores and 16 GB RAM.
+      LEAN_NUM_THREADS: 2
+      SILMARIL_CACHE_ENDPOINT: ${{ vars.SILMARIL_CACHE_ENDPOINT }}
+      SILMARIL_CACHE_BUCKET: ${{ vars.SILMARIL_CACHE_BUCKET || 'lean-cache' }}
+      SILMARIL_CACHE_PREFIX: ${{ vars.SILMARIL_CACHE_PREFIX || 'silmaril-lean/v1' }}
+      SILMARIL_CACHE_REGION: ${{ vars.SILMARIL_CACHE_REGION || 'auto' }}
+      SILMARIL_CACHE_PUBLIC_URL: ${{ vars.SILMARIL_CACHE_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 100
+      - name: Record runner capacity
+        run: |
+          nproc
+          free -m
+          df -h .
+      - name: Restore build tree from disk cache
+        id: disk
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: .lake
+          key: lake-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json', 'lakefile.toml') }}-${{ github.sha }}
+          restore-keys: lake-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json', 'lakefile.toml') }}-
+      - name: Install Lean
+        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
+        with:
+          auto-config: "false"
+          build: "false"
+          test: "false"
+          lint: "false"
+          use-mathlib-cache: "false"
+          use-github-cache: "false"
+      - name: Install independent Wasm execution oracle
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Fetch public dependency artifacts on a disk miss
+        if: steps.disk.outputs.cache-matched-key == ''
+        run: scripts/cache-dependencies.sh
+      - name: Fill missing build artifacts from the optional S3 cache
+        # Prefix entries are complete successful main builds with identical pins.
+        # Lake checks current sources even when their outputs were restored.
+        if: steps.disk.outputs.cache-matched-key == ''
+        continue-on-error: true
+        env:
+          SILMARIL_CACHE_READ_KEY: ${{ secrets.SILMARIL_CACHE_READ_KEY }}
+          SILMARIL_CACHE_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SILMARIL_CACHE_KEY || '' }}
+        run: python3 scripts/lake-cache.py get
+      - name: Build all Lean modules and run every native release check
+        run: |
+          du -sh .lake
+          df -h .
+          /usr/bin/time -v make check
+          build/bin/sil --help
+          build/bin/sil wasm opt --print-presets
+      - name: Publish successful main artifacts to S3
+        if: >-
+          github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+          github.repository == 'hiloopai/silmaril-lean' && steps.disk.outputs.cache-hit != 'true'
+        continue-on-error: true
+        env:
+          SILMARIL_CACHE_KEY: ${{ secrets.SILMARIL_CACHE_KEY }}
+        run: python3 scripts/lake-cache.py put
+      - name: Save successful main build or manual branch seed
+        if: >-
+          github.repository == 'hiloopai/silmaril-lean' && steps.disk.outputs.cache-hit != 'true' &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+           (github.event_name == 'workflow_dispatch' && inputs.seed))
+        # GitHub scopes a manual seed to its triggering ref. Other branches
+        # cannot replace a main cache entry, even when the key is identical.
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: .lake
+          key: ${{ steps.disk.outputs.cache-primary-key }}
+      - name: Retain native check results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: wasm-release-checks
+          path: build/wasm-checks.json
+          if-no-files-found: ignore
+          retention-days: 7
