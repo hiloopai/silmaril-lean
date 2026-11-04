@@ -103,7 +103,7 @@ theorem add_sound {s t : Sign} {a b : ℤ} (ha : a ∈ γ s) (hb : b ∈ γ t) :
 theorem mul_sound {s t : Sign} {a b : ℤ} (ha : a ∈ γ s) (hb : b ∈ γ t) : a * b ∈ γ (mul s t) := by
   cases s <;> cases t <;>
     simp only [γ, mul, Set.mem_ofPred_eq, Set.mem_singleton_iff, Set.mem_univ] at ha hb ⊢ <;>
-    first | trivial | (subst_vars; simp) | nlinarith
+    first | (subst_vars; simp) | nlinarith
 
 /-- The notes' example (p. 20): `abs((−1515) + 37) = (−)` but
 `abs(−1515) ⊕ abs(37) = (?)`. -/

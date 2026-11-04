@@ -100,9 +100,9 @@ def Behavior.Shows (b : Behavior) : LpsObs → Prop
 /-- A point of the lattice: an ISA, a syscall table, a refusal filter and an allocation
 limit. Observations are taken from valid entries and valid inputs. -/
 def procSem (isa : UserIsa) (spec : Sys SyscallEffect) (refused : RefusalFilter) (lim : Int) :
-    processSyntax.Sem := fun img o =>
+    processSyntax.Sem := fun img => {o |
   ValidEntry img o.1 o.2.1 ∧ ValidInput o.2.1 ∧
-    (runWith isa spec refused img lim o.1 o.2.1).Shows o.2.2
+    (runWith isa spec refused img lim o.1 o.2.1).Shows o.2.2}
 
 open Syntax in
 /-- A stronger refusal filter gives fewer behaviours. -/

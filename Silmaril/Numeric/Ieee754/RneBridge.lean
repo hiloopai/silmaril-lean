@@ -154,7 +154,7 @@ theorem mulRounded_rne (format : Format) (x y : UnpackedFloat)
       (UnpackedFloat.mul format x y).pack format := by
   cases x <;> cases y <;>
     simp only [Rounding.mulRounded, Rounding.mulExact, UnpackedFloat.mul]
-  all_goals first | rfl | skip
+  all_goals try first | rfl
   rw [packRounded_rne_finite, round_eq_roundWithAccuracy_of_ready]
   exact productExponent_ready format _ _ _ _ _ _ _ _ hx hy
 
@@ -185,7 +185,7 @@ theorem fmaRounded_rne (format : Format) (x y z : UnpackedFloat)
   cases x <;> cases y <;> cases z <;>
     simp_all [Rounding.fmaRounded, Rounding.mulExact, Rounding.addExact,
       UnpackedFloat.fma, Rounding.cancellationSign, packRounded_rne_eq_pack]
-  all_goals first | rfl | skip
+  all_goals try first | rfl
   all_goals try (split <;> rfl)
   rw [round_eq_roundWithAccuracy_of_ready]
   exact productExponent_ready format _ _ _ _ _ _ _ _ hx hy

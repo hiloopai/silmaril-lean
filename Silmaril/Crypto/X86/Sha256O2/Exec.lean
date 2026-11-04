@@ -2996,7 +2996,6 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h3w]
       simp only [← read32_eq]
       rw [read_d_of_other (r := Reg.rcx) h2w (by decide), v1]
-      try rfl
     have v4 : read32 c4.core Reg.r8 =
         (W (16 + i - 15)).rotateLeft 25 := by
       rw [read_d_of_writes h4w]
@@ -3008,7 +3007,6 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h5w]
       simp only [← read32_eq]
       rw [read_d_of_other (r := Reg.rcx) h4w (by decide), read_d_of_other (r := Reg.rcx) h3w (by decide), read_d_of_other (r := Reg.rcx) h2w (by decide), v1]
-      try rfl
     have v6 : read32 c6.core Reg.r9 =
         (W (16 + i - 15)).rotateLeft 14 := by
       rw [read_d_of_writes h6w]
@@ -3026,7 +3024,6 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h8w]
       simp only [← read32_eq]
       rw [read_d_of_other (r := Reg.rcx) h7w (by decide), read_d_of_other (r := Reg.rcx) h6w (by decide), read_d_of_other (r := Reg.rcx) h5w (by decide), read_d_of_other (r := Reg.rcx) h4w (by decide), read_d_of_other (r := Reg.rcx) h3w (by decide), read_d_of_other (r := Reg.rcx) h2w (by decide), v1]
-      try rfl
     have v9 : read32 c9.core Reg.r8 =
         (W (16 + i - 15)) >>> 3 := by
       rw [read_d_of_writes h9w]
@@ -3050,7 +3047,6 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h12w]
       simp only [← read32_eq]
       rw [read_d_of_other (r := Reg.rsi) h11w (by decide), read_d_of_other (r := Reg.rsi) h10w (by decide), read_d_of_other (r := Reg.rsi) h9w (by decide), read_d_of_other (r := Reg.rsi) h8w (by decide), read_d_of_other (r := Reg.rsi) h7w (by decide), read_d_of_other (r := Reg.rsi) h6w (by decide), read_d_of_other (r := Reg.rsi) h5w (by decide), read_d_of_other (r := Reg.rsi) h4w (by decide), read_d_of_other (r := Reg.rsi) h3w (by decide), v2]
-      try rfl
     have v13 : read32 c13.core Reg.rdx =
         (W (16 + i - 2)).rotateLeft 15 := by
       rw [read_d_of_writes h13w]
@@ -3062,7 +3058,6 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h14w]
       simp only [← read32_eq]
       rw [read_d_of_other (r := Reg.rsi) h13w (by decide), read_d_of_other (r := Reg.rsi) h12w (by decide), read_d_of_other (r := Reg.rsi) h11w (by decide), read_d_of_other (r := Reg.rsi) h10w (by decide), read_d_of_other (r := Reg.rsi) h9w (by decide), read_d_of_other (r := Reg.rsi) h8w (by decide), read_d_of_other (r := Reg.rsi) h7w (by decide), read_d_of_other (r := Reg.rsi) h6w (by decide), read_d_of_other (r := Reg.rsi) h5w (by decide), read_d_of_other (r := Reg.rsi) h4w (by decide), read_d_of_other (r := Reg.rsi) h3w (by decide), v2]
-      try rfl
     have v15 : read32 c15.core Reg.r9 =
         (W (16 + i - 2)).rotateLeft 13 := by
       rw [read_d_of_writes h15w]
@@ -3104,15 +3099,12 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h23w]
       simp only [← read32_eq]
       rw [read_d_of_other (r := Reg.rcx) h22w (by decide), read32_of_sameRegs h21regs, read_d_of_other (r := Reg.rcx) h20w (by decide), read_d_of_other (r := Reg.rcx) h19w (by decide), read_d_of_other (r := Reg.rcx) h18w (by decide), read_d_of_other (r := Reg.rcx) h17w (by decide), read_d_of_other (r := Reg.rcx) h16w (by decide), read_d_of_other (r := Reg.rcx) h15w (by decide), read_d_of_other (r := Reg.rcx) h14w (by decide), read_d_of_other (r := Reg.rcx) h13w (by decide), read_d_of_other (r := Reg.rcx) h12w (by decide), read_d_of_other (r := Reg.rcx) h11w (by decide), read_d_of_other (r := Reg.rcx) h10w (by decide), read_d_of_other (r := Reg.rcx) h9w (by decide), read_d_of_other (r := Reg.rcx) h8w (by decide), read_d_of_other (r := Reg.rcx) h7w (by decide), read_d_of_other (r := Reg.rcx) h6w (by decide), read_d_of_other (r := Reg.rcx) h5w (by decide), read_d_of_other (r := Reg.rcx) h4w (by decide), read_d_of_other (r := Reg.rcx) h3w (by decide), read_d_of_other (r := Reg.rcx) h2w (by decide), v1]
-      try rfl
     have f_stored : read32 c20.core Reg.r8 =
         (((((W (16 + i - 15)) >>> 3) ^^^ (((W (16 + i - 15)).rotateLeft 14) ^^^ ((W (16 + i - 15)).rotateLeft 25))) + (D)) + (W (16 + i - 7))) + (((W (16 + i - 2)) >>> 10) ^^^ (((W (16 + i - 2)).rotateLeft 13) ^^^ ((W (16 + i - 2)).rotateLeft 15))) := by
       rw [v20]
-      try rfl
     have f_carry : read32 c25.core Reg.rdx =
         W (16 + i - 15) := by
       rw [read32_of_sameRegs h25regs, read32_of_sameRegs h24regs, v23]
-      try rfl
     refine ⟨f_carry, ?_⟩
     rw [h25mem, h24mem, h23mem, h22mem, ← a20.mem]
     have hst := h21stored
@@ -5514,43 +5506,36 @@ theorem l3_trace_img
     rw [read_d_of_writes h1w]
     simp only [← read32_eq]
     rw [hE]
-    try rfl
   have v2 : read32 c2.core Reg.r9 =
       F := by
     rw [read_d_of_writes h2w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.rsi) h1w (by decide), hF]
-    try rfl
   have v3 : read32 c3.core Reg.rbx =
       G := by
     rw [read_d_of_writes h3w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.rbp) h2w (by decide), read_d_of_other (r := Reg.rbp) h1w (by decide), hG]
-    try rfl
   have v4 : read32 c4.core Reg.r13 =
       D := by
     rw [read_d_of_writes h4w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r11) h3w (by decide), read_d_of_other (r := Reg.r11) h2w (by decide), read_d_of_other (r := Reg.r11) h1w (by decide), hD]
-    try rfl
   have v5 : read32 c5.core Reg.r11 =
       C := by
     rw [read_d_of_writes h5w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.rdx) h4w (by decide), read_d_of_other (r := Reg.rdx) h3w (by decide), read_d_of_other (r := Reg.rdx) h2w (by decide), read_d_of_other (r := Reg.rdx) h1w (by decide), hC]
-    try rfl
   have v6 : read32 c6.core Reg.rdx =
       B := by
     rw [read_d_of_writes h6w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r8) h5w (by decide), read_d_of_other (r := Reg.r8) h4w (by decide), read_d_of_other (r := Reg.r8) h3w (by decide), read_d_of_other (r := Reg.r8) h2w (by decide), read_d_of_other (r := Reg.r8) h1w (by decide), hB]
-    try rfl
   have v7 : read32 c7.core Reg.rsi =
       E := by
     rw [read_d_of_writes h7w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
   have v8 : read32 c8.core Reg.rsi =
       (E).rotateLeft 26 := by
     rw [read_d_of_writes h8w]
@@ -5562,7 +5547,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h9w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r10) h8w (by decide), read_d_of_other (r := Reg.r10) h7w (by decide), read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
   have v10 : read32 c10.core Reg.rbp =
       (E).rotateLeft 21 := by
     rw [read_d_of_writes h10w]
@@ -5580,7 +5564,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h12w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r10) h11w (by decide), read_d_of_other (r := Reg.r10) h10w (by decide), read_d_of_other (r := Reg.r10) h9w (by decide), read_d_of_other (r := Reg.r10) h8w (by decide), read_d_of_other (r := Reg.r10) h7w (by decide), read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
   have v13 : read32 c13.core Reg.rsi =
       (E).rotateLeft 7 := by
     rw [read_d_of_writes h13w]
@@ -5598,7 +5581,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h15w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r9) h14w (by decide), read_d_of_other (r := Reg.r9) h13w (by decide), read_d_of_other (r := Reg.r9) h12w (by decide), read_d_of_other (r := Reg.r9) h11w (by decide), read_d_of_other (r := Reg.r9) h10w (by decide), read_d_of_other (r := Reg.r9) h9w (by decide), read_d_of_other (r := Reg.r9) h8w (by decide), read_d_of_other (r := Reg.r9) h7w (by decide), read_d_of_other (r := Reg.r9) h6w (by decide), read_d_of_other (r := Reg.r9) h5w (by decide), read_d_of_other (r := Reg.r9) h4w (by decide), read_d_of_other (r := Reg.r9) h3w (by decide), v2]
-    try rfl
   have v16 : read32 c16.core Reg.rbp =
       (F) &&& (E) := by
     rw [read_d_of_writes h16w]
@@ -5616,7 +5598,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h18w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r10) h17w (by decide), read_d_of_other (r := Reg.r10) h16w (by decide), read_d_of_other (r := Reg.r10) h15w (by decide), read_d_of_other (r := Reg.r10) h14w (by decide), read_d_of_other (r := Reg.r10) h13w (by decide), read_d_of_other (r := Reg.r10) h12w (by decide), read_d_of_other (r := Reg.r10) h11w (by decide), read_d_of_other (r := Reg.r10) h10w (by decide), read_d_of_other (r := Reg.r10) h9w (by decide), read_d_of_other (r := Reg.r10) h8w (by decide), read_d_of_other (r := Reg.r10) h7w (by decide), read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
   have v19 : read32 c19.core Reg.r14 =
       ~~~(E) := by
     rw [read_d_of_writes h19w]
@@ -5658,13 +5639,11 @@ theorem l3_trace_img
     rw [read_d_of_writes h25w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r12) h24w (by decide), read_d_of_other (r := Reg.r12) h23w (by decide), read_d_of_other (r := Reg.r12) h22w (by decide), read_d_of_other (r := Reg.r12) h21w (by decide), read_d_of_other (r := Reg.r12) h20w (by decide), read_d_of_other (r := Reg.r12) h19w (by decide), read_d_of_other (r := Reg.r12) h18w (by decide), read_d_of_other (r := Reg.r12) h17w (by decide), read_d_of_other (r := Reg.r12) h16w (by decide), read_d_of_other (r := Reg.r12) h15w (by decide), read_d_of_other (r := Reg.r12) h14w (by decide), read_d_of_other (r := Reg.r12) h13w (by decide), read_d_of_other (r := Reg.r12) h12w (by decide), read_d_of_other (r := Reg.r12) h11w (by decide), read_d_of_other (r := Reg.r12) h10w (by decide), read_d_of_other (r := Reg.r12) h9w (by decide), read_d_of_other (r := Reg.r12) h8w (by decide), read_d_of_other (r := Reg.r12) h7w (by decide), read_d_of_other (r := Reg.r12) h6w (by decide), read_d_of_other (r := Reg.r12) h5w (by decide), read_d_of_other (r := Reg.r12) h4w (by decide), read_d_of_other (r := Reg.r12) h3w (by decide), read_d_of_other (r := Reg.r12) h2w (by decide), read_d_of_other (r := Reg.r12) h1w (by decide), hA]
-    try rfl
   have v26 : read32 c26.core Reg.rsi =
       A := by
     rw [read_d_of_writes h26w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r12) h25w (by decide), read_d_of_other (r := Reg.r12) h24w (by decide), read_d_of_other (r := Reg.r12) h23w (by decide), read_d_of_other (r := Reg.r12) h22w (by decide), read_d_of_other (r := Reg.r12) h21w (by decide), read_d_of_other (r := Reg.r12) h20w (by decide), read_d_of_other (r := Reg.r12) h19w (by decide), read_d_of_other (r := Reg.r12) h18w (by decide), read_d_of_other (r := Reg.r12) h17w (by decide), read_d_of_other (r := Reg.r12) h16w (by decide), read_d_of_other (r := Reg.r12) h15w (by decide), read_d_of_other (r := Reg.r12) h14w (by decide), read_d_of_other (r := Reg.r12) h13w (by decide), read_d_of_other (r := Reg.r12) h12w (by decide), read_d_of_other (r := Reg.r12) h11w (by decide), read_d_of_other (r := Reg.r12) h10w (by decide), read_d_of_other (r := Reg.r12) h9w (by decide), read_d_of_other (r := Reg.r12) h8w (by decide), read_d_of_other (r := Reg.r12) h7w (by decide), read_d_of_other (r := Reg.r12) h6w (by decide), read_d_of_other (r := Reg.r12) h5w (by decide), read_d_of_other (r := Reg.r12) h4w (by decide), read_d_of_other (r := Reg.r12) h3w (by decide), read_d_of_other (r := Reg.r12) h2w (by decide), read_d_of_other (r := Reg.r12) h1w (by decide), hA]
-    try rfl
   have v27 : read32 c27.core Reg.rsi =
       (A).rotateLeft 30 := by
     rw [read_d_of_writes h27w]
@@ -5676,7 +5655,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h28w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r12) h27w (by decide), read_d_of_other (r := Reg.r12) h26w (by decide), read_d_of_other (r := Reg.r12) h25w (by decide), read_d_of_other (r := Reg.r12) h24w (by decide), read_d_of_other (r := Reg.r12) h23w (by decide), read_d_of_other (r := Reg.r12) h22w (by decide), read_d_of_other (r := Reg.r12) h21w (by decide), read_d_of_other (r := Reg.r12) h20w (by decide), read_d_of_other (r := Reg.r12) h19w (by decide), read_d_of_other (r := Reg.r12) h18w (by decide), read_d_of_other (r := Reg.r12) h17w (by decide), read_d_of_other (r := Reg.r12) h16w (by decide), read_d_of_other (r := Reg.r12) h15w (by decide), read_d_of_other (r := Reg.r12) h14w (by decide), read_d_of_other (r := Reg.r12) h13w (by decide), read_d_of_other (r := Reg.r12) h12w (by decide), read_d_of_other (r := Reg.r12) h11w (by decide), read_d_of_other (r := Reg.r12) h10w (by decide), read_d_of_other (r := Reg.r12) h9w (by decide), read_d_of_other (r := Reg.r12) h8w (by decide), read_d_of_other (r := Reg.r12) h7w (by decide), read_d_of_other (r := Reg.r12) h6w (by decide), read_d_of_other (r := Reg.r12) h5w (by decide), read_d_of_other (r := Reg.r12) h4w (by decide), read_d_of_other (r := Reg.r12) h3w (by decide), read_d_of_other (r := Reg.r12) h2w (by decide), read_d_of_other (r := Reg.r12) h1w (by decide), hA]
-    try rfl
   have v29 : read32 c29.core Reg.rbp =
       (A).rotateLeft 19 := by
     rw [read_d_of_writes h29w]
@@ -5688,7 +5666,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h30w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r12) h29w (by decide), read_d_of_other (r := Reg.r12) h28w (by decide), read_d_of_other (r := Reg.r12) h27w (by decide), read_d_of_other (r := Reg.r12) h26w (by decide), read_d_of_other (r := Reg.r12) h25w (by decide), read_d_of_other (r := Reg.r12) h24w (by decide), read_d_of_other (r := Reg.r12) h23w (by decide), read_d_of_other (r := Reg.r12) h22w (by decide), read_d_of_other (r := Reg.r12) h21w (by decide), read_d_of_other (r := Reg.r12) h20w (by decide), read_d_of_other (r := Reg.r12) h19w (by decide), read_d_of_other (r := Reg.r12) h18w (by decide), read_d_of_other (r := Reg.r12) h17w (by decide), read_d_of_other (r := Reg.r12) h16w (by decide), read_d_of_other (r := Reg.r12) h15w (by decide), read_d_of_other (r := Reg.r12) h14w (by decide), read_d_of_other (r := Reg.r12) h13w (by decide), read_d_of_other (r := Reg.r12) h12w (by decide), read_d_of_other (r := Reg.r12) h11w (by decide), read_d_of_other (r := Reg.r12) h10w (by decide), read_d_of_other (r := Reg.r12) h9w (by decide), read_d_of_other (r := Reg.r12) h8w (by decide), read_d_of_other (r := Reg.r12) h7w (by decide), read_d_of_other (r := Reg.r12) h6w (by decide), read_d_of_other (r := Reg.r12) h5w (by decide), read_d_of_other (r := Reg.r12) h4w (by decide), read_d_of_other (r := Reg.r12) h3w (by decide), read_d_of_other (r := Reg.r12) h2w (by decide), read_d_of_other (r := Reg.r12) h1w (by decide), hA]
-    try rfl
   have v31 : read32 c31.core Reg.r15 =
       (A).rotateLeft 10 := by
     rw [read_d_of_writes h31w]
@@ -5712,7 +5689,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h34w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.rdx) h33w (by decide), read_d_of_other (r := Reg.rdx) h32w (by decide), read_d_of_other (r := Reg.rdx) h31w (by decide), read_d_of_other (r := Reg.rdx) h30w (by decide), read_d_of_other (r := Reg.rdx) h29w (by decide), read_d_of_other (r := Reg.rdx) h28w (by decide), read_d_of_other (r := Reg.rdx) h27w (by decide), read_d_of_other (r := Reg.rdx) h26w (by decide), read_d_of_other (r := Reg.rdx) h25w (by decide), read_d_of_other (r := Reg.rdx) h24w (by decide), read_d_of_other (r := Reg.rdx) h23w (by decide), read_d_of_other (r := Reg.rdx) h22w (by decide), read_d_of_other (r := Reg.rdx) h21w (by decide), read_d_of_other (r := Reg.rdx) h20w (by decide), read_d_of_other (r := Reg.rdx) h19w (by decide), read_d_of_other (r := Reg.rdx) h18w (by decide), read_d_of_other (r := Reg.rdx) h17w (by decide), read_d_of_other (r := Reg.rdx) h16w (by decide), read_d_of_other (r := Reg.rdx) h15w (by decide), read_d_of_other (r := Reg.rdx) h14w (by decide), read_d_of_other (r := Reg.rdx) h13w (by decide), read_d_of_other (r := Reg.rdx) h12w (by decide), read_d_of_other (r := Reg.rdx) h11w (by decide), read_d_of_other (r := Reg.rdx) h10w (by decide), read_d_of_other (r := Reg.rdx) h9w (by decide), read_d_of_other (r := Reg.rdx) h8w (by decide), read_d_of_other (r := Reg.rdx) h7w (by decide), v6]
-    try rfl
   have v35 : read32 c35.core Reg.rsi =
       (B) ^^^ (C) := by
     rw [read_d_of_writes h35w]
@@ -5730,7 +5706,6 @@ theorem l3_trace_img
     rw [read_d_of_writes h37w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.rdx) h36w (by decide), read_d_of_other (r := Reg.rdx) h35w (by decide), read_d_of_other (r := Reg.rdx) h34w (by decide), read_d_of_other (r := Reg.rdx) h33w (by decide), read_d_of_other (r := Reg.rdx) h32w (by decide), read_d_of_other (r := Reg.rdx) h31w (by decide), read_d_of_other (r := Reg.rdx) h30w (by decide), read_d_of_other (r := Reg.rdx) h29w (by decide), read_d_of_other (r := Reg.rdx) h28w (by decide), read_d_of_other (r := Reg.rdx) h27w (by decide), read_d_of_other (r := Reg.rdx) h26w (by decide), read_d_of_other (r := Reg.rdx) h25w (by decide), read_d_of_other (r := Reg.rdx) h24w (by decide), read_d_of_other (r := Reg.rdx) h23w (by decide), read_d_of_other (r := Reg.rdx) h22w (by decide), read_d_of_other (r := Reg.rdx) h21w (by decide), read_d_of_other (r := Reg.rdx) h20w (by decide), read_d_of_other (r := Reg.rdx) h19w (by decide), read_d_of_other (r := Reg.rdx) h18w (by decide), read_d_of_other (r := Reg.rdx) h17w (by decide), read_d_of_other (r := Reg.rdx) h16w (by decide), read_d_of_other (r := Reg.rdx) h15w (by decide), read_d_of_other (r := Reg.rdx) h14w (by decide), read_d_of_other (r := Reg.rdx) h13w (by decide), read_d_of_other (r := Reg.rdx) h12w (by decide), read_d_of_other (r := Reg.rdx) h11w (by decide), read_d_of_other (r := Reg.rdx) h10w (by decide), read_d_of_other (r := Reg.rdx) h9w (by decide), read_d_of_other (r := Reg.rdx) h8w (by decide), read_d_of_other (r := Reg.rdx) h7w (by decide), v6]
-    try rfl
   have v38 : read32 c38.core Reg.r12 =
       (B) &&& (C) := by
     rw [read_d_of_writes h38w]
@@ -5766,51 +5741,40 @@ theorem l3_trace_img
     rw [read_d_of_writes h44w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.rbx) h43w (by decide), read_d_of_other (r := Reg.rbx) h42w (by decide), read_d_of_other (r := Reg.rbx) h41w (by decide), read_d_of_other (r := Reg.rbx) h40w (by decide), read_d_of_other (r := Reg.rbx) h39w (by decide), read_d_of_other (r := Reg.rbx) h38w (by decide), read_d_of_other (r := Reg.rbx) h37w (by decide), read_d_of_other (r := Reg.rbx) h36w (by decide), read_d_of_other (r := Reg.rbx) h35w (by decide), read_d_of_other (r := Reg.rbx) h34w (by decide), read_d_of_other (r := Reg.rbx) h33w (by decide), read_d_of_other (r := Reg.rbx) h32w (by decide), read_d_of_other (r := Reg.rbx) h31w (by decide), read_d_of_other (r := Reg.rbx) h30w (by decide), read_d_of_other (r := Reg.rbx) h29w (by decide), read_d_of_other (r := Reg.rbx) h28w (by decide), read_d_of_other (r := Reg.rbx) h27w (by decide), read_d_of_other (r := Reg.rbx) h26w (by decide), read_d_of_other (r := Reg.rbx) h25w (by decide), read_d_of_other (r := Reg.rbx) h24w (by decide), read_d_of_other (r := Reg.rbx) h23w (by decide), read_d_of_other (r := Reg.rbx) h22w (by decide), read_d_of_other (r := Reg.rbx) h21w (by decide), read_d_of_other (r := Reg.rbx) h20w (by decide), read_d_of_other (r := Reg.rbx) h19w (by decide), read_d_of_other (r := Reg.rbx) h18w (by decide), read_d_of_other (r := Reg.rbx) h17w (by decide), read_d_of_other (r := Reg.rbx) h16w (by decide), read_d_of_other (r := Reg.rbx) h15w (by decide), read_d_of_other (r := Reg.rbx) h14w (by decide), read_d_of_other (r := Reg.rbx) h13w (by decide), read_d_of_other (r := Reg.rbx) h12w (by decide), read_d_of_other (r := Reg.rbx) h11w (by decide), read_d_of_other (r := Reg.rbx) h10w (by decide), read_d_of_other (r := Reg.rbx) h9w (by decide), read_d_of_other (r := Reg.rbx) h8w (by decide), read_d_of_other (r := Reg.rbx) h7w (by decide), read_d_of_other (r := Reg.rbx) h6w (by decide), read_d_of_other (r := Reg.rbx) h5w (by decide), read_d_of_other (r := Reg.rbx) h4w (by decide), v3]
-    try rfl
   have v45 : read32 c45.core Reg.rbp =
       F := by
     rw [read_d_of_writes h45w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r9) h44w (by decide), read_d_of_other (r := Reg.r9) h43w (by decide), read_d_of_other (r := Reg.r9) h42w (by decide), read_d_of_other (r := Reg.r9) h41w (by decide), read_d_of_other (r := Reg.r9) h40w (by decide), read_d_of_other (r := Reg.r9) h39w (by decide), read_d_of_other (r := Reg.r9) h38w (by decide), read_d_of_other (r := Reg.r9) h37w (by decide), read_d_of_other (r := Reg.r9) h36w (by decide), read_d_of_other (r := Reg.r9) h35w (by decide), read_d_of_other (r := Reg.r9) h34w (by decide), read_d_of_other (r := Reg.r9) h33w (by decide), read_d_of_other (r := Reg.r9) h32w (by decide), read_d_of_other (r := Reg.r9) h31w (by decide), read_d_of_other (r := Reg.r9) h30w (by decide), read_d_of_other (r := Reg.r9) h29w (by decide), read_d_of_other (r := Reg.r9) h28w (by decide), read_d_of_other (r := Reg.r9) h27w (by decide), read_d_of_other (r := Reg.r9) h26w (by decide), read_d_of_other (r := Reg.r9) h25w (by decide), read_d_of_other (r := Reg.r9) h24w (by decide), read_d_of_other (r := Reg.r9) h23w (by decide), read_d_of_other (r := Reg.r9) h22w (by decide), read_d_of_other (r := Reg.r9) h21w (by decide), read_d_of_other (r := Reg.r9) h20w (by decide), read_d_of_other (r := Reg.r9) h19w (by decide), read_d_of_other (r := Reg.r9) h18w (by decide), read_d_of_other (r := Reg.r9) h17w (by decide), read_d_of_other (r := Reg.r9) h16w (by decide), read_d_of_other (r := Reg.r9) h15w (by decide), read_d_of_other (r := Reg.r9) h14w (by decide), read_d_of_other (r := Reg.r9) h13w (by decide), read_d_of_other (r := Reg.r9) h12w (by decide), read_d_of_other (r := Reg.r9) h11w (by decide), read_d_of_other (r := Reg.r9) h10w (by decide), read_d_of_other (r := Reg.r9) h9w (by decide), read_d_of_other (r := Reg.r9) h8w (by decide), read_d_of_other (r := Reg.r9) h7w (by decide), read_d_of_other (r := Reg.r9) h6w (by decide), read_d_of_other (r := Reg.r9) h5w (by decide), read_d_of_other (r := Reg.r9) h4w (by decide), read_d_of_other (r := Reg.r9) h3w (by decide), v2]
-    try rfl
   have v46 : read32 c46.core Reg.rsi =
       E := by
     rw [read_d_of_writes h46w]
     simp only [← read32_eq]
     rw [read_d_of_other (r := Reg.r10) h45w (by decide), read_d_of_other (r := Reg.r10) h44w (by decide), read_d_of_other (r := Reg.r10) h43w (by decide), read_d_of_other (r := Reg.r10) h42w (by decide), read_d_of_other (r := Reg.r10) h41w (by decide), read_d_of_other (r := Reg.r10) h40w (by decide), read_d_of_other (r := Reg.r10) h39w (by decide), read_d_of_other (r := Reg.r10) h38w (by decide), read_d_of_other (r := Reg.r10) h37w (by decide), read_d_of_other (r := Reg.r10) h36w (by decide), read_d_of_other (r := Reg.r10) h35w (by decide), read_d_of_other (r := Reg.r10) h34w (by decide), read_d_of_other (r := Reg.r10) h33w (by decide), read_d_of_other (r := Reg.r10) h32w (by decide), read_d_of_other (r := Reg.r10) h31w (by decide), read_d_of_other (r := Reg.r10) h30w (by decide), read_d_of_other (r := Reg.r10) h29w (by decide), read_d_of_other (r := Reg.r10) h28w (by decide), read_d_of_other (r := Reg.r10) h27w (by decide), read_d_of_other (r := Reg.r10) h26w (by decide), read_d_of_other (r := Reg.r10) h25w (by decide), read_d_of_other (r := Reg.r10) h24w (by decide), read_d_of_other (r := Reg.r10) h23w (by decide), read_d_of_other (r := Reg.r10) h22w (by decide), read_d_of_other (r := Reg.r10) h21w (by decide), read_d_of_other (r := Reg.r10) h20w (by decide), read_d_of_other (r := Reg.r10) h19w (by decide), read_d_of_other (r := Reg.r10) h18w (by decide), read_d_of_other (r := Reg.r10) h17w (by decide), read_d_of_other (r := Reg.r10) h16w (by decide), read_d_of_other (r := Reg.r10) h15w (by decide), read_d_of_other (r := Reg.r10) h14w (by decide), read_d_of_other (r := Reg.r10) h13w (by decide), read_d_of_other (r := Reg.r10) h12w (by decide), read_d_of_other (r := Reg.r10) h11w (by decide), read_d_of_other (r := Reg.r10) h10w (by decide), read_d_of_other (r := Reg.r10) h9w (by decide), read_d_of_other (r := Reg.r10) h8w (by decide), read_d_of_other (r := Reg.r10) h7w (by decide), read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
   have f_r12 : read32 c46.core Reg.r12 =
       ((((B) &&& (C)) ^^^ (((B) ^^^ (C)) &&& (A))) + (((A).rotateLeft 10) ^^^ (((A).rotateLeft 19) ^^^ ((A).rotateLeft 30)))) + ((((((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)))) + ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32)) + ((BitVec.ofNat 64 (wv.toNat % 2 ^ (8 * 4))).setWidth 32)) := by
     rw [read_d_of_other (r := Reg.r12) h46w (by decide), read_d_of_other (r := Reg.r12) h45w (by decide), read_d_of_other (r := Reg.r12) h44w (by decide), read_d_of_other (r := Reg.r12) h43w (by decide), v42]
-    try rfl
   have f_r8 : read32 c46.core Reg.r8 =
       A := by
     rw [read_d_of_other (r := Reg.r8) h46w (by decide), read_d_of_other (r := Reg.r8) h45w (by decide), read_d_of_other (r := Reg.r8) h44w (by decide), read_d_of_other (r := Reg.r8) h43w (by decide), read_d_of_other (r := Reg.r8) h42w (by decide), read_d_of_other (r := Reg.r8) h41w (by decide), read_d_of_other (r := Reg.r8) h40w (by decide), read_d_of_other (r := Reg.r8) h39w (by decide), read_d_of_other (r := Reg.r8) h38w (by decide), read_d_of_other (r := Reg.r8) h37w (by decide), read_d_of_other (r := Reg.r8) h36w (by decide), read_d_of_other (r := Reg.r8) h35w (by decide), read_d_of_other (r := Reg.r8) h34w (by decide), read_d_of_other (r := Reg.r8) h33w (by decide), read_d_of_other (r := Reg.r8) h32w (by decide), read_d_of_other (r := Reg.r8) h31w (by decide), read_d_of_other (r := Reg.r8) h30w (by decide), read_d_of_other (r := Reg.r8) h29w (by decide), read_d_of_other (r := Reg.r8) h28w (by decide), read_d_of_other (r := Reg.r8) h27w (by decide), read_d_of_other (r := Reg.r8) h26w (by decide), v25]
-    try rfl
   have f_rdx : read32 c46.core Reg.rdx =
       B := by
     rw [read_d_of_other (r := Reg.rdx) h46w (by decide), read_d_of_other (r := Reg.rdx) h45w (by decide), read_d_of_other (r := Reg.rdx) h44w (by decide), read_d_of_other (r := Reg.rdx) h43w (by decide), read_d_of_other (r := Reg.rdx) h42w (by decide), read_d_of_other (r := Reg.rdx) h41w (by decide), read_d_of_other (r := Reg.rdx) h40w (by decide), read_d_of_other (r := Reg.rdx) h39w (by decide), read_d_of_other (r := Reg.rdx) h38w (by decide), read_d_of_other (r := Reg.rdx) h37w (by decide), read_d_of_other (r := Reg.rdx) h36w (by decide), read_d_of_other (r := Reg.rdx) h35w (by decide), read_d_of_other (r := Reg.rdx) h34w (by decide), read_d_of_other (r := Reg.rdx) h33w (by decide), read_d_of_other (r := Reg.rdx) h32w (by decide), read_d_of_other (r := Reg.rdx) h31w (by decide), read_d_of_other (r := Reg.rdx) h30w (by decide), read_d_of_other (r := Reg.rdx) h29w (by decide), read_d_of_other (r := Reg.rdx) h28w (by decide), read_d_of_other (r := Reg.rdx) h27w (by decide), read_d_of_other (r := Reg.rdx) h26w (by decide), read_d_of_other (r := Reg.rdx) h25w (by decide), read_d_of_other (r := Reg.rdx) h24w (by decide), read_d_of_other (r := Reg.rdx) h23w (by decide), read_d_of_other (r := Reg.rdx) h22w (by decide), read_d_of_other (r := Reg.rdx) h21w (by decide), read_d_of_other (r := Reg.rdx) h20w (by decide), read_d_of_other (r := Reg.rdx) h19w (by decide), read_d_of_other (r := Reg.rdx) h18w (by decide), read_d_of_other (r := Reg.rdx) h17w (by decide), read_d_of_other (r := Reg.rdx) h16w (by decide), read_d_of_other (r := Reg.rdx) h15w (by decide), read_d_of_other (r := Reg.rdx) h14w (by decide), read_d_of_other (r := Reg.rdx) h13w (by decide), read_d_of_other (r := Reg.rdx) h12w (by decide), read_d_of_other (r := Reg.rdx) h11w (by decide), read_d_of_other (r := Reg.rdx) h10w (by decide), read_d_of_other (r := Reg.rdx) h9w (by decide), read_d_of_other (r := Reg.rdx) h8w (by decide), read_d_of_other (r := Reg.rdx) h7w (by decide), v6]
-    try rfl
   have f_r11 : read32 c46.core Reg.r11 =
       C := by
     rw [read_d_of_other (r := Reg.r11) h46w (by decide), read_d_of_other (r := Reg.r11) h45w (by decide), read_d_of_other (r := Reg.r11) h44w (by decide), read_d_of_other (r := Reg.r11) h43w (by decide), read_d_of_other (r := Reg.r11) h42w (by decide), read_d_of_other (r := Reg.r11) h41w (by decide), read_d_of_other (r := Reg.r11) h40w (by decide), read_d_of_other (r := Reg.r11) h39w (by decide), read_d_of_other (r := Reg.r11) h38w (by decide), read_d_of_other (r := Reg.r11) h37w (by decide), read_d_of_other (r := Reg.r11) h36w (by decide), read_d_of_other (r := Reg.r11) h35w (by decide), read_d_of_other (r := Reg.r11) h34w (by decide), read_d_of_other (r := Reg.r11) h33w (by decide), read_d_of_other (r := Reg.r11) h32w (by decide), read_d_of_other (r := Reg.r11) h31w (by decide), read_d_of_other (r := Reg.r11) h30w (by decide), read_d_of_other (r := Reg.r11) h29w (by decide), read_d_of_other (r := Reg.r11) h28w (by decide), read_d_of_other (r := Reg.r11) h27w (by decide), read_d_of_other (r := Reg.r11) h26w (by decide), read_d_of_other (r := Reg.r11) h25w (by decide), read_d_of_other (r := Reg.r11) h24w (by decide), read_d_of_other (r := Reg.r11) h23w (by decide), read_d_of_other (r := Reg.r11) h22w (by decide), read_d_of_other (r := Reg.r11) h21w (by decide), read_d_of_other (r := Reg.r11) h20w (by decide), read_d_of_other (r := Reg.r11) h19w (by decide), read_d_of_other (r := Reg.r11) h18w (by decide), read_d_of_other (r := Reg.r11) h17w (by decide), read_d_of_other (r := Reg.r11) h16w (by decide), read_d_of_other (r := Reg.r11) h15w (by decide), read_d_of_other (r := Reg.r11) h14w (by decide), read_d_of_other (r := Reg.r11) h13w (by decide), read_d_of_other (r := Reg.r11) h12w (by decide), read_d_of_other (r := Reg.r11) h11w (by decide), read_d_of_other (r := Reg.r11) h10w (by decide), read_d_of_other (r := Reg.r11) h9w (by decide), read_d_of_other (r := Reg.r11) h8w (by decide), read_d_of_other (r := Reg.r11) h7w (by decide), read_d_of_other (r := Reg.r11) h6w (by decide), v5]
-    try rfl
   have f_r13 : read32 c46.core Reg.r13 =
       (D) + ((((((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)))) + ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32)) + ((BitVec.ofNat 64 (wv.toNat % 2 ^ (8 * 4))).setWidth 32)) := by
     rw [read_d_of_other (r := Reg.r13) h46w (by decide), read_d_of_other (r := Reg.r13) h45w (by decide), read_d_of_other (r := Reg.r13) h44w (by decide), read_d_of_other (r := Reg.r13) h43w (by decide), read_d_of_other (r := Reg.r13) h42w (by decide), v41]
-    try rfl
   have f_rsi : read32 c46.core Reg.rsi =
       E := by
     rw [v46]
-    try rfl
   have f_rbp : read32 c46.core Reg.rbp =
       F := by
     rw [read_d_of_other (r := Reg.rbp) h46w (by decide), v45]
-    try rfl
   have f_r14 : read32 c46.core Reg.r14 =
       G := by
     rw [read_d_of_other (r := Reg.r14) h46w (by decide), read_d_of_other (r := Reg.r14) h45w (by decide), v44]
-    try rfl
   -- the round, in the specification's vocabulary
   have hrdef : SHA256.Kernel.round A B C D E F G H
       ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32)
@@ -5864,13 +5828,10 @@ theorem l3_trace_img
       (hld (h47mem.trans a46.mem)) h47rip (by rw [himg]; decide) e368 hcond htarget
   have g_r10 : read32 c48.core Reg.r10 = E := by
     rw [read32_of_sameRegs h48regs, read32_of_sameRegs h47regs, read_d_of_other (r := Reg.r10) h46w (by decide), read_d_of_other (r := Reg.r10) h45w (by decide), read_d_of_other (r := Reg.r10) h44w (by decide), read_d_of_other (r := Reg.r10) h43w (by decide), read_d_of_other (r := Reg.r10) h42w (by decide), read_d_of_other (r := Reg.r10) h41w (by decide), read_d_of_other (r := Reg.r10) h40w (by decide), read_d_of_other (r := Reg.r10) h39w (by decide), read_d_of_other (r := Reg.r10) h38w (by decide), read_d_of_other (r := Reg.r10) h37w (by decide), read_d_of_other (r := Reg.r10) h36w (by decide), read_d_of_other (r := Reg.r10) h35w (by decide), read_d_of_other (r := Reg.r10) h34w (by decide), read_d_of_other (r := Reg.r10) h33w (by decide), read_d_of_other (r := Reg.r10) h32w (by decide), read_d_of_other (r := Reg.r10) h31w (by decide), read_d_of_other (r := Reg.r10) h30w (by decide), read_d_of_other (r := Reg.r10) h29w (by decide), read_d_of_other (r := Reg.r10) h28w (by decide), read_d_of_other (r := Reg.r10) h27w (by decide), read_d_of_other (r := Reg.r10) h26w (by decide), read_d_of_other (r := Reg.r10) h25w (by decide), read_d_of_other (r := Reg.r10) h24w (by decide), read_d_of_other (r := Reg.r10) h23w (by decide), read_d_of_other (r := Reg.r10) h22w (by decide), read_d_of_other (r := Reg.r10) h21w (by decide), read_d_of_other (r := Reg.r10) h20w (by decide), read_d_of_other (r := Reg.r10) h19w (by decide), read_d_of_other (r := Reg.r10) h18w (by decide), read_d_of_other (r := Reg.r10) h17w (by decide), read_d_of_other (r := Reg.r10) h16w (by decide), read_d_of_other (r := Reg.r10) h15w (by decide), read_d_of_other (r := Reg.r10) h14w (by decide), read_d_of_other (r := Reg.r10) h13w (by decide), read_d_of_other (r := Reg.r10) h12w (by decide), read_d_of_other (r := Reg.r10) h11w (by decide), read_d_of_other (r := Reg.r10) h10w (by decide), read_d_of_other (r := Reg.r10) h9w (by decide), read_d_of_other (r := Reg.r10) h8w (by decide), read_d_of_other (r := Reg.r10) h7w (by decide), read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
   have g_r9 : read32 c48.core Reg.r9 = F := by
     rw [read32_of_sameRegs h48regs, read32_of_sameRegs h47regs, read_d_of_other (r := Reg.r9) h46w (by decide), read_d_of_other (r := Reg.r9) h45w (by decide), read_d_of_other (r := Reg.r9) h44w (by decide), read_d_of_other (r := Reg.r9) h43w (by decide), read_d_of_other (r := Reg.r9) h42w (by decide), read_d_of_other (r := Reg.r9) h41w (by decide), read_d_of_other (r := Reg.r9) h40w (by decide), read_d_of_other (r := Reg.r9) h39w (by decide), read_d_of_other (r := Reg.r9) h38w (by decide), read_d_of_other (r := Reg.r9) h37w (by decide), read_d_of_other (r := Reg.r9) h36w (by decide), read_d_of_other (r := Reg.r9) h35w (by decide), read_d_of_other (r := Reg.r9) h34w (by decide), read_d_of_other (r := Reg.r9) h33w (by decide), read_d_of_other (r := Reg.r9) h32w (by decide), read_d_of_other (r := Reg.r9) h31w (by decide), read_d_of_other (r := Reg.r9) h30w (by decide), read_d_of_other (r := Reg.r9) h29w (by decide), read_d_of_other (r := Reg.r9) h28w (by decide), read_d_of_other (r := Reg.r9) h27w (by decide), read_d_of_other (r := Reg.r9) h26w (by decide), read_d_of_other (r := Reg.r9) h25w (by decide), read_d_of_other (r := Reg.r9) h24w (by decide), read_d_of_other (r := Reg.r9) h23w (by decide), read_d_of_other (r := Reg.r9) h22w (by decide), read_d_of_other (r := Reg.r9) h21w (by decide), read_d_of_other (r := Reg.r9) h20w (by decide), read_d_of_other (r := Reg.r9) h19w (by decide), read_d_of_other (r := Reg.r9) h18w (by decide), read_d_of_other (r := Reg.r9) h17w (by decide), read_d_of_other (r := Reg.r9) h16w (by decide), read_d_of_other (r := Reg.r9) h15w (by decide), read_d_of_other (r := Reg.r9) h14w (by decide), read_d_of_other (r := Reg.r9) h13w (by decide), read_d_of_other (r := Reg.r9) h12w (by decide), read_d_of_other (r := Reg.r9) h11w (by decide), read_d_of_other (r := Reg.r9) h10w (by decide), read_d_of_other (r := Reg.r9) h9w (by decide), read_d_of_other (r := Reg.r9) h8w (by decide), read_d_of_other (r := Reg.r9) h7w (by decide), read_d_of_other (r := Reg.r9) h6w (by decide), read_d_of_other (r := Reg.r9) h5w (by decide), read_d_of_other (r := Reg.r9) h4w (by decide), read_d_of_other (r := Reg.r9) h3w (by decide), v2]
-    try rfl
   have g_rbx : read32 c48.core Reg.rbx = G := by
     rw [read32_of_sameRegs h48regs, read32_of_sameRegs h47regs, read_d_of_other (r := Reg.rbx) h46w (by decide), read_d_of_other (r := Reg.rbx) h45w (by decide), read_d_of_other (r := Reg.rbx) h44w (by decide), read_d_of_other (r := Reg.rbx) h43w (by decide), read_d_of_other (r := Reg.rbx) h42w (by decide), read_d_of_other (r := Reg.rbx) h41w (by decide), read_d_of_other (r := Reg.rbx) h40w (by decide), read_d_of_other (r := Reg.rbx) h39w (by decide), read_d_of_other (r := Reg.rbx) h38w (by decide), read_d_of_other (r := Reg.rbx) h37w (by decide), read_d_of_other (r := Reg.rbx) h36w (by decide), read_d_of_other (r := Reg.rbx) h35w (by decide), read_d_of_other (r := Reg.rbx) h34w (by decide), read_d_of_other (r := Reg.rbx) h33w (by decide), read_d_of_other (r := Reg.rbx) h32w (by decide), read_d_of_other (r := Reg.rbx) h31w (by decide), read_d_of_other (r := Reg.rbx) h30w (by decide), read_d_of_other (r := Reg.rbx) h29w (by decide), read_d_of_other (r := Reg.rbx) h28w (by decide), read_d_of_other (r := Reg.rbx) h27w (by decide), read_d_of_other (r := Reg.rbx) h26w (by decide), read_d_of_other (r := Reg.rbx) h25w (by decide), read_d_of_other (r := Reg.rbx) h24w (by decide), read_d_of_other (r := Reg.rbx) h23w (by decide), read_d_of_other (r := Reg.rbx) h22w (by decide), read_d_of_other (r := Reg.rbx) h21w (by decide), read_d_of_other (r := Reg.rbx) h20w (by decide), read_d_of_other (r := Reg.rbx) h19w (by decide), read_d_of_other (r := Reg.rbx) h18w (by decide), read_d_of_other (r := Reg.rbx) h17w (by decide), read_d_of_other (r := Reg.rbx) h16w (by decide), read_d_of_other (r := Reg.rbx) h15w (by decide), read_d_of_other (r := Reg.rbx) h14w (by decide), read_d_of_other (r := Reg.rbx) h13w (by decide), read_d_of_other (r := Reg.rbx) h12w (by decide), read_d_of_other (r := Reg.rbx) h11w (by decide), read_d_of_other (r := Reg.rbx) h10w (by decide), read_d_of_other (r := Reg.rbx) h9w (by decide), read_d_of_other (r := Reg.rbx) h8w (by decide), read_d_of_other (r := Reg.rbx) h7w (by decide), read_d_of_other (r := Reg.rbx) h6w (by decide), read_d_of_other (r := Reg.rbx) h5w (by decide), read_d_of_other (r := Reg.rbx) h4w (by decide), v3]
-    try rfl
   have halias : read32 c48.core Reg.r10 = read32 c48.core Reg.rsi ∧
       read32 c48.core Reg.r9 = read32 c48.core Reg.rbp ∧
       read32 c48.core Reg.rbx = read32 c48.core Reg.r14 := by

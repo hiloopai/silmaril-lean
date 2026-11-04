@@ -145,13 +145,12 @@ theorem step_low {c c' : Config H} (h : Step P host c c') {n : Nat} {gl : List (
         ⟨c'.store, ⟨gl', c'.frame.module⟩, c'.code⟩ ∧
       Agree n c'.frame.locals gl' ∧ lowAs n c'.code = true := by
   induction h generalizing gl
-  all_goals first
+  all_goals try first
     | (exfalso
        simp only [lowAs_append, lowAs_vals, lowAs_cons, lowAs_nil, lowA, lowI, throwing,
          lowA_val, lowA_constI32, Bool.and_true, Bool.true_and, Bool.and_false,
          Bool.false_and, Bool.false_eq_true] at hlow
        done)
-    | skip
   case parametric s f is is' hp => exact ⟨gl, .parametric hp, hg, parametric_low hp⟩
   case numeric s f is is' hp => exact ⟨gl, .numeric hp, hg, numeric_low hp⟩
   case vector s f is is' hv =>

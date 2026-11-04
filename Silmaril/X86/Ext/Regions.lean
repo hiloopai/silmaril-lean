@@ -124,7 +124,6 @@ theorem exec_regions {i : Instr} {s : State} {m : Memory} {len : Nat} {core : St
     | (cases h; exact keepsRegions_pushWord' ‹_›)
     | (refine retire_regions ?_ h
        first
-        | with_reducible apply keepsRegions_same
         | with_reducible apply keepsRegions_map_same
         | with_reducible apply keepsRegions_writeRM
         | with_reducible apply keepsRegions_writeNarrow

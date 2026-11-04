@@ -324,7 +324,7 @@ theorem hasSort_setCtx_class {t : Tree L V} (h : grammar.HasSort setCtx t .class
   | var hv => cases hs; cases hv
   | node hlen hargs =>
     rename_i l args
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     obtain ⟨a, rfl⟩ : ∃ a, args = [a] := match args, hlen with | [a], _ => ⟨a, rfl⟩
     obtain ⟨c, rfl⟩ := hasSort_setCtx_setvar (hargs (a, (.setvar, .x)) (by simp [grammar, rules]))
     exact ⟨c, rfl⟩
@@ -347,7 +347,7 @@ theorem IsPure.cases {t : Tree L V} (h : IsPure t) :
       intro l' _ h2
       match args, hlen.trans h2 with
       | [a, b], _ => exact ⟨a, b, rfl⟩
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · obtain ⟨a, rfl⟩ : ∃ a, args = [a] := match args, hlen with | [a], _ => ⟨a, rfl⟩
       exact .inl ⟨a, rfl, hargs (a, (.wff, .ph)) (by simp [grammar, rules])⟩
     all_goals obtain ⟨a, b, rfl⟩ := two _ rfl rfl

@@ -71,7 +71,7 @@ theorem checkFrom_sound (T : List Byte) (hT : T.length = textSize) : ∀ (L : Li
       rw [List.drop_drop]
       have : a - pos + (pos - textBase) = a - textBase := by omega
       have h2 : pos - textBase + (a - pos) = a - textBase := by omega
-      first | rw [this] | rw [h2]
+      first | rw [h2]
     rw [hd] at hw hrest
     rcases List.mem_cons.mp he with rfl | he
     · simp only [windowOk, Bool.and_eq_true, decide_eq_true_eq, bne_iff_ne, ne_eq] at hw

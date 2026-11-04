@@ -620,11 +620,10 @@ theorem tok1_unique {p : Profile} {top : Bool} {c₁ c₂ R₁ R₂ : Chars} {t�
         ⟨hx₁, ⟨a₁, rfl, hi₁⟩, fi₁⟩ <;>
       rcases v₂ with ⟨hx₂, rfl, rfl, -⟩ | ⟨hx₂, rfl, rfl⟩ | ⟨hx₂, bs₂, rfl, hs₂⟩ |
         ⟨hx₂, ⟨a₂, rfl, hi₂⟩, fi₂⟩
-    all_goals first
+    all_goals try first
       | exact ⟨rfl, rfl⟩
       | (exfalso; revert hx₂; decide)
       | (exfalso; subst hx₂; revert hx₁; decide)
-      | skip
     · obtain ⟨hc, hb⟩ := StringLit.prefix hs₁ hs₂ h
       exact ⟨hc, by rw [hb]⟩
     · have hc := idRun_max hi₁.chars.2 hi₂.chars.2 fi₁ fi₂ h
@@ -641,7 +640,7 @@ theorem tok1_unique {p : Profile} {top : Bool} {c₁ c₂ R₁ R₂ : Chars} {t�
         ⟨hx₁, rfl, rfl, -⟩ <;>
       rcases v₂ with ⟨hx₂, rfl, rfl, -, -⟩ | ⟨hx₂, rfl, rfl⟩ | ⟨hx₂, l₂, r₂, -, hp₂, -, fr₂⟩ |
         ⟨hx₂, rfl, rfl, -⟩
-    all_goals first
+    all_goals try first
       | exact ⟨rfl, rfl⟩
       | (exfalso; revert hx₂; decide)
       | (exfalso; subst hx₂; revert hx₁; decide)
@@ -651,7 +650,6 @@ theorem tok1_unique {p : Profile} {top : Bool} {c₁ c₂ R₁ R₂ : Chars} {t�
       | (exfalso; rcases hx₂ with hx₂ | hx₂
          · exact hx₁.not_isRunChar hx₂
          · exact hx₁.ne_quote hx₂)
-      | skip
     have hc := RunPieces.max hp₁ hp₂ fr₁ fr₂ h
     refine ⟨hc, ?_⟩
     rw [hc] at h₁
@@ -1085,7 +1083,7 @@ theorem iu_succ {N : Nat} (hIU : IU N) : IU (N + 1) := by
       ⟨idc', bd', ts', hp', rfl, hi', hf', hl', hbal'⟩ <;>
     simp only [List.cons_append, List.nil_append, List.append_assoc,
       List.cons.injEq] at h
-  all_goals first
+  all_goals try first
     | exact absurd h.1 (by decide)
     | exact absurd h.2.1 (by decide)
     | (rw [h.1] at hx; first | exact absurd hx not_space_semi | exact absurd hx not_space_lp)
@@ -1095,7 +1093,6 @@ theorem iu_succ {N : Nat} (hIU : IU N) : IU (N + 1) := by
        obtain ⟨rfl, rfl, -⟩ := split_first (P := IsNewlineP p) hb hb' hnl hnl' h
        rfl)
     | rw [blockTail_prefix _ (Nat.lt_succ_self _) ht ht' h.2.2]
-    | skip
   all_goals
     obtain ⟨-, -, h⟩ := h
     have e := annotId_unique hi hi' (annot_follow hf) (annot_follow hf') h

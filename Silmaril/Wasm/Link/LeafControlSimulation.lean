@@ -53,7 +53,7 @@ theorem reference_control {source target : Store H} {left right : Frame}
     cases step
     all_goals
       first
-      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [.ref _, .ref _]) (h := control) (by rfl)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [.ref _]) (h := control) (by rfl)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [.i32 _]) (h := control) (by rfl)
@@ -70,7 +70,7 @@ theorem reference_control {source target : Store H} {left right : Frame}
     cases step
     all_goals
       first
-      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [.ref _, .ref _]) (h := control) (by rfl)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [.ref _]) (h := control) (by rfl)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [.i32 _]) (h := control) (by rfl)
@@ -131,7 +131,7 @@ theorem variable_control {source target source' : Store H} {left right left' : F
     cases step
     all_goals
       first
-      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [_]) (h := control) (by rfl)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := []) (h := control) (by rfl)
     all_goals
@@ -147,7 +147,7 @@ theorem variable_control {source target source' : Store H} {left right left' : F
     cases step
     all_goals
       first
-      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+      | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [_]) (h := control) (by rfl)
       | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := []) (h := control) (by rfl)
     all_goals
@@ -184,7 +184,7 @@ theorem numeric_control {P : Profile} {mode : Mode} {left right : ModuleInst}
   cases step
   all_goals
     first
-    | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+    | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction
         (vs := [.num ⟨.int _, _⟩, .num ⟨.int _, _⟩]) (h := control) (by rfl)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction
@@ -214,7 +214,7 @@ theorem vector_control {P : Profile} {mode : Mode} {left right : ModuleInst}
   cases step
   all_goals
     first
-    | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+    | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction
         (vs := [.vec _, .vec _, .vec _]) (h := control) (by rfl)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction
@@ -264,7 +264,7 @@ theorem parametric_control {mode : Mode} {left right : ModuleInst}
   cases step
   all_goals
     first
-    | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by rfl)
+    | obtain ⟨j, rfl, rewrite⟩ := values_instruction (h := control) (by)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [_, _, .i32 _]) (h := control) (by rfl)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := [_]) (h := control) (by rfl)
     | obtain ⟨j, rfl, rewrite⟩ := values_instruction (vs := []) (h := control) (by rfl)

@@ -414,7 +414,7 @@ theorem zfcSchema_sound {M V : Type*} [Membership M M] [DecidableEq V]
 
 /-- The independent common-fragment proofs reuse the shared Hilbert rule constructors. -/
 abbrev ZFCHilbert {V : Type*} (Γ : List (Named.Formula V)) (p : Named.Formula V) :=
-  Named.Hilbert ZFCSchema Γ p
+  Named.Hilbert {p | ZFCSchema p} Γ p
 
 /-- A model bridge for the independently presented supported ZFC proof fragment. -/
 theorem zfcHilbert_sound {M V : Type*} [Membership M M] [DecidableEq V]

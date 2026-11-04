@@ -188,10 +188,9 @@ structures and arrays). -/
 theorem constInstr?_shape {s s' : Store H} {f : Frame} {vs vs' : List Val} {i : Instr}
     (h : constInstr? s f vs i = some (s', vs')) : s'.globals = s.globals ∧ s'.funcs = s.funcs := by
   cases i <;> simp only [constInstr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-  all_goals first
+  all_goals try first
     | (obtain ⟨rfl, -⟩ := h; exact ⟨rfl, rfl⟩)
-    | (obtain ⟨_, -, h⟩ := h; first | (obtain ⟨rfl, -⟩ := h; exact ⟨rfl, rfl⟩) | skip)
-    | skip
+    | (obtain ⟨_, -, h⟩ := h; try first | (obtain ⟨rfl, -⟩ := h; exact ⟨rfl, rfl⟩))
   case refI31 => obtain ⟨_, -, h⟩ := h; cases h; exact ⟨rfl, rfl⟩
   case structNew => exact structNew?_shape h
   case structNewDefault => obtain ⟨_, -, _, -, h⟩ := h; exact structNew?_shape h

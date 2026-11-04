@@ -98,7 +98,7 @@ def asAddr? : Val → Option ((a : AddrType) × BitVec a.intType.width)
 theorem asAddr?_sound {v : Val} {p : (a : AddrType) × BitVec a.intType.width}
     (h : asAddr? v = some p) : v.toAdmin = aconst p.1 p.2 := by
   rcases v with ⟨⟨t | t⟩, b⟩ | b | r
-  all_goals cases h <;> rfl
+  all_goals cases h; all_goals rfl
 
 @[simp] theorem asAddr?_aconst (a : AddrType) (i : BitVec a.intType.width) :
     asAddr? (.num ⟨.int a.intType, i⟩) = some ⟨a, i⟩ := by
@@ -113,7 +113,7 @@ def asAddrOf? : (a : AddrType) → Val → Option (BitVec a.intType.width)
 theorem asAddrOf?_sound {a : AddrType} {v : Val} {n : BitVec a.intType.width}
     (h : asAddrOf? a v = some n) : v.toAdmin = aconst a n := by
   rcases v with ⟨⟨t | t⟩, b⟩ | b | r
-  all_goals (try cases a) <;> cases h <;> rfl
+  all_goals (try cases a) <;> cases h; all_goals rfl
 
 @[simp] theorem asAddrOf?_aconst (a : AddrType) (i : BitVec a.intType.width) :
     asAddrOf? a (.num ⟨.int a.intType, i⟩) = some i := by
@@ -126,7 +126,7 @@ def asI32? : Val → Option (BitVec 32)
 theorem asI32?_sound {v : Val} {j : BitVec 32} (h : asI32? v = some j) :
     v.toAdmin = constI32 j := by
   rcases v with ⟨⟨t | t⟩, b⟩ | b | r
-  all_goals cases h <;> rfl
+  all_goals cases h; all_goals rfl
 
 @[simp] theorem asI32?_i32 (j : BitVec 32) : asI32? (Val.i32 j) = some j := rfl
 

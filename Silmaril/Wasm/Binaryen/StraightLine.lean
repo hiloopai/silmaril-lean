@@ -211,13 +211,11 @@ theorem StOk.weaken_initLocals {C : Context} {xs ys : List Nat} {s : Store H} {f
     StOk (C.initLocals ys) s f := by
   refine h.weaken ?_ (by rw [initLocals_length, initLocals_length]) hL
   rw [C.initLocals_eq_with ys, C.initLocals_eq_with xs]
-  try rfl
 
 theorem StOk.forget_initLocals {C : Context} {xs : List Nat} {s : Store H} {f : Frame}
     (h : StOk (C.initLocals xs) s f) : StOk C s f := by
   refine h.weaken (D' := C) ?_ (by rw [initLocals_length]) ?_
   · rw [C.initLocals_eq_with xs]
-    try rfl
   · intro y a hy
     rw [Context.initLocals_locals]
     split
@@ -272,7 +270,6 @@ theorem StOk.local_set {C : Context} {s : Store H} {f : Frame} (h : StOk C s f) 
             labels := [], return_ := none, locals := lts.set x.toNat ⟨.set, t₀⟩ } : Context) =
           { C with labels := [], return_ := none, locals := lts.set x.toNat ⟨.set, t₀⟩ } := by
         rw [C.initLocals_eq_with [x.toNat]]
-        try rfl
       rw [e1]
       have := congrArg (fun E : Context => ({ E with locals := lts.set x.toNat ⟨.set, t₀⟩ } :
         Context)) hC

@@ -36,7 +36,7 @@ def Instructions (n : Nat) (xs : List Instr) : Prop := ∀ i ∈ xs, Instruction
 
 theorem reference_scope {C : Context} {i : Instr} {it : InstrType}
     (valid : RefInstrOk C i it) : Instruction C.types.length i := by
-  cases valid <;> simp only [Instruction] <;> try trivial
+  cases valid <;> simp only [Instruction]
   case refTest valid _ _ => exact ControlViews.ref_scope_of_typing valid
   case refCast valid _ _ => exact ControlViews.ref_scope_of_typing valid
 

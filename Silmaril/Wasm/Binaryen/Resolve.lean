@@ -629,7 +629,6 @@ theorem labelDepth_scope {S : List (Option Nat)} (hS : GoodScopes S) {k : Nat} {
       · exact ⟨some (genLabel d), by simp [List.getElem?_map, hd], by simp⟩
     unfold labelDepth
     rw [hf]
-    try rfl
   · cases h
 
 theorem mapM_scopeName {S : List (Option Nat)} (hS : GoodScopes S) :

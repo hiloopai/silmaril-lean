@@ -451,7 +451,7 @@ theorem leBytes_setWidth32 (v : Word) :
     leBytes v 4 = leBytes ((v.setWidth 32 : BitVec 32).setWidth 64 : Word) 4 := by
   simp only [leBytes, List.ofFn_succ, List.ofFn_zero, Fin.val_zero, Fin.val_succ,
     Silmaril.Machine.LittleEndian.wordByte, List.cons.injEq, and_true]
-  and_intros <;> (refine BitVec.eq_of_toNat_eq ?_; simp [Nat.shiftRight_eq_div_pow] <;> omega)
+  and_intros <;> (refine BitVec.eq_of_toNat_eq ?_; simp [Nat.shiftRight_eq_div_pow]; all_goals omega)
 
 /-- **Normalising a four-byte slot fact.** Any witness to a four-byte slot can
 be replaced by its 32-bit truncation, widened back.

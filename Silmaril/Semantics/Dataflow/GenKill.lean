@@ -67,7 +67,7 @@ noncomputable def mustIn (n : ι) : Set α :=
   if (K.nbrs n).Nonempty then ⋂ m ∈ K.nbrs n, K.mustOut m else ∅
 
 /-- The may value entering a node. -/
-def mayIn (n : ι) : Set α := ⋃ m ∈ K.nbrs n, K.mayOut m
+noncomputable def mayIn (n : ι) : Set α := ⋃ m ∈ K.nbrs n, K.mayOut m
 
 /-- The greatest solution solves the must equations. -/
 theorem mustOut_eq (n : ι) : K.mustOut n = K.mustIn n \ K.kill n ∪ K.gen n :=

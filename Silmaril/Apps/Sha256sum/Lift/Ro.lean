@@ -157,7 +157,6 @@ theorem exec_ro {i : Instr} {s : State} {m : Memory} {len : Nat} {core : State}
     | (cases h; exact keepsRO_pushWord' ‹_›)
     | (refine retire_ro ?_ h
        first
-        | with_reducible apply keepsRO_same
         | with_reducible apply keepsRO_map_same
         | with_reducible apply keepsRO_writeRM
         | with_reducible apply keepsRO_writeNarrow

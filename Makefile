@@ -24,7 +24,7 @@ library:
 	$(LAKE) build --wfail Silmaril
 
 cache:
-	$(LAKE) exe cache get
+	LAKE=$(LAKE) scripts/cache-dependencies.sh
 	$(PYTHON) scripts/lake-cache.py get
 
 check:

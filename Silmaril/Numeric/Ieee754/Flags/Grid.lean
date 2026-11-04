@@ -72,6 +72,7 @@ theorem two_zpow_ne_zero (q : ℤ) : (2 : K) ^ q ≠ 0 := (two_zpow_pos q).ne'
 @[simp] theorem roundInt_zero (mode : RoundingMode) : roundInt mode (0 : K) = 0 := by
   simpa using roundInt_intCast (K := K) mode 0
 
+omit [IsStrictOrderedRing K] in
 /-- Every direction selects the floor or the next integer. -/
 theorem floor_le_roundInt (mode : RoundingMode) (x : K) : ⌊x⌋ ≤ roundInt mode x := by
   cases mode <;> simp only [roundInt]

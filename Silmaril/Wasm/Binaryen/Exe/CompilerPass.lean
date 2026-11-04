@@ -47,11 +47,11 @@ def exportLanguage {H : Type} (P : Profile) (host : HostSemantics H) : Category.
   Prog := BModule
   iface _ := ()
   Obs := Observation H
-  beh m := fun
+  beh m := {o | match o with
     | .instantiates store imports =>
       StoreOk store ∧ ∃ c, Instantiate P host store m.lower imports c
     | .session store imports script outcomes =>
-      StoreOk store ∧ outcomes ∈ moduleObs P host store imports m.lower script
+      StoreOk store ∧ outcomes ∈ moduleObs P host store imports m.lower script}
 
 private theorem exportEquiv_beh_subset {H : Type} {P : Profile} {host : HostSemantics H}
     {a b : BModule} (h : ExportEquiv (· = ·) P host a.lower b.lower) :

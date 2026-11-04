@@ -157,7 +157,6 @@ theorem numeric_out {n0 : Nat} {l l' : List Admin} (h : NumericStep P l l') :
     | exact valTrap_trap n0
     | exact valTrap_intConst n0 _ _
     | exact valTrap_floatConst n0 _ _
-    | exact valTrap_constI32 n0 _
     | exact valTrap_val trivial
 
 theorem vector_out {n0 : Nat} {l l' : List Admin} (h : VectorStep P l l') :

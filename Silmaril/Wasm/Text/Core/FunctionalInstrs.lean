@@ -1621,7 +1621,7 @@ theorem plain_uses {I : IdCtx} (hT : Distinct I.types) {xs : List SExp} {i : Ins
     {u : List FuncType} (h : Plain I xs i u) :
     ∀ {I' : IdCtx} {ys : List SExp} {i' : Instr} {u' : List FuncType}, TypesEq I I' →
       Plain I' ys i' u' → xs = ys → u = u' := by
-  cases h <;> intro I' ys i' u' hE h' hxs <;> cases h' <;> first | rfl | plain_kw_contra | skip
+  cases h <;> intro I' ys i' u' hE h' hxs <;> cases h' <;> try first | rfl | plain_kw_contra
   · rename_i tx tu tb t ls ht _ hu tx' tu' tb' t' ls' ht' _ hu'
     simp only [List.cons.injEq, true_and] at hxs
     obtain ⟨rfl, rfl⟩ := optIdx_typeUse_split ht hu ht' hu' hxs
@@ -1660,7 +1660,7 @@ theorem blockTypeT_uses {I I' : IdCtx} (hT : Distinct I.types) (hE : TypesEq I I
       ⟨x, ls, hu, -, rfl, hn⟩ <;>
     rcases h' with ⟨ts', hc', rfl, rfl, rfl⟩ | ⟨ts', t', hc', rfl, rfl, rfl⟩ |
       ⟨x', ls', hu', -, rfl, hn'⟩
-  all_goals first | rfl | skip
+  all_goals try first | rfl
   · rw [valueFormT_eq hE] at hc; exact absurd ⟨_, hc, by simp⟩ hn'
   · rw [valueFormT_eq hE] at hc; exact absurd ⟨_, hc, by simp⟩ hn'
   · rw [← valueFormT_eq hE] at hc'; exact absurd ⟨_, hc', by simp⟩ hn

@@ -113,7 +113,7 @@ theorem completed {input : ProcInput} {message : List Byte} {prior events : List
     Sha256.Success input (prior ++ events) := by
   generalize fuelEq : remaining off = fuel
   induction fuel using Nat.strong_induction_on generalizing c s off prior events final with
-  | h fuel ih =>
+  | ind fuel ih =>
     have actual := instruction c off s.memory ready intact
     have request := requested c off ready
     cases run with

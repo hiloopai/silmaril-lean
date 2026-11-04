@@ -1468,7 +1468,7 @@ theorem typeUseT_uses {I I' : IdCtx} (hT : Distinct I.types) (hE : TypesEq I I')
     rcases h' with ⟨tx', pxs₀', rxs₀', ft', e, -, -, -, -, -, rfl⟩ |
       ⟨tx', pxs', rxs', ft', ps', rs', e, -, -, hp', hr', -, -, -, rfl⟩ |
       ⟨pxs', rxs', ps', rs', e, hp', hr', -, -, -, -, rfl⟩
-  all_goals first | rfl | skip
+  all_goals try first | rfl
   · exact (noType hp' hr' e).elim
   · exact (noType hp' hr' e).elim
   · exact (noType hp hr e.symm).elim

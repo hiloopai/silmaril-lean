@@ -374,8 +374,6 @@ theorem trans_same {ob₁ : Obs R R' T T' F F'} {ob₂ : Obs R' R'' T' T'' F' F'
     | exact h₁
     | exact h₂
     | exact .inl h₂
-    | exact False.elim h₁
-    | exact False.elim h₂
     | exact h₁.elim .inl fun h => h₂.imp id fun h' => ⟨_, h, h'⟩
 
 /-- Transitivity: the composite is related in the join of the modes, by the

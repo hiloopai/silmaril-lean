@@ -52,7 +52,7 @@ jobs:
       - name: Test the artifact cache helper
         run: python3 -m unittest discover -s scripts -p test_lake_cache.py
       - name: Fetch public dependency artifacts
-        run: lake exe cache get
+        run: scripts/cache-dependencies.sh
       - name: Restore optional S3 build artifacts
         continue-on-error: true
         env:

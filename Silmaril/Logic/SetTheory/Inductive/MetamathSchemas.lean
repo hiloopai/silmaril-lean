@@ -495,7 +495,7 @@ theorem zfFrame_wellFormed (S : List Native.V) (Γ : List (Named.Formula Native.
 
 /-- Independent Hilbert ZF proofs compile to actual native fragment derivations. -/
 noncomputable def zfToNative {Γ : List (Named.Formula Native.V)} {p : Named.Formula Native.V}
-    (d : Named.Hilbert ZF.Schema Γ p) :
+    (d : Named.Hilbert {p | ZF.Schema p} Γ p) :
     TDerivation Native.grammar zfFragment
       (zfFrame (d.vars ++ Γ.flatMap Named.Formula.vars) Γ p) (T.pf (encode p)) := by
   let S := d.vars ++ Γ.flatMap Named.Formula.vars
@@ -518,7 +518,7 @@ noncomputable def zfToNative {Γ : List (Named.Formula Native.V)} {p : Named.For
 Intermediate names are declared in the finite frame, rather than hidden in a
 semantic agreement theorem. -/
 noncomputable def zfToNativeProof {Γ : List (Named.Formula Native.V)} {p : Named.Formula Native.V}
-    (d : Named.Hilbert ZF.Schema Γ p) :
+    (d : Named.Hilbert {p | ZF.Schema p} Γ p) :
     TProof Native.grammar zfFragment (zfFrame (d.vars ++ Γ.flatMap Named.Formula.vars) Γ p) := by
   refine ⟨TDummies.none _, ?_⟩
   rw [TAssertion.extend_none]
@@ -526,14 +526,14 @@ noncomputable def zfToNativeProof {Γ : List (Named.Formula Native.V)} {p : Name
 
 /-- The actual compiler's finite frame passes the native well-formedness specification. -/
 theorem zfToNative_wellFormed {Γ : List (Named.Formula Native.V)} {p : Named.Formula Native.V}
-    (d : Named.Hilbert ZF.Schema Γ p) :
+    (d : Named.Hilbert {p | ZF.Schema p} Γ p) :
     (zfFrame (d.vars ++ Γ.flatMap Named.Formula.vars) Γ p).WellFormed Native.grammar :=
   zfFrame_wellFormed _ Γ p (fun v hv => List.mem_append_left _ (d.conclusion_vars v hv))
     (fun q hq _v hv => List.mem_append_right _ (List.mem_flatMap.mpr ⟨q, hq, hv⟩))
 
 /-- Independent proofs yield theorems of native ZF0 with the same explicit finite frame. -/
 theorem zfToNative_derivable {Γ : List (Named.Formula Native.V)} {p : Named.Formula Native.V}
-    (d : Named.Hilbert ZF.Schema Γ p) :
+    (d : Named.Hilbert {p | ZF.Schema p} Γ p) :
     TDerivable Native.grammar Peano.ZF.ZF0 (zfFrame (d.vars ++ Γ.flatMap Named.Formula.vars) Γ p) := by
   refine ⟨⟨TDummies.none _, ?_⟩⟩
   rw [TAssertion.extend_none]
@@ -542,7 +542,7 @@ theorem zfToNative_derivable {Γ : List (Named.Formula Native.V)} {p : Named.For
 /-- Reuse the existing certified tree-to-string inference morphism, rather than
 identifying semantic agreement with a native database proof. -/
 theorem zfToNative_stringDerivable {Γ : List (Named.Formula Native.V)} {p : Named.Formula Native.V}
-    (d : Named.Hilbert ZF.Schema Γ p) :
+    (d : Named.Hilbert {p | ZF.Schema p} Γ p) :
     Silmaril.Logic.Metamath.Derivable (Native.grammar.axioms Peano.ZF.ZF0)
       ((zfFrame (d.vars ++ Γ.flatMap Named.Formula.vars) Γ p).flatten Native.grammar) :=
   (zfToNative_derivable d).flatten
@@ -552,7 +552,7 @@ theorem nativeToZF {Γ : List (Named.Formula Native.V)} {A : TAssertion Native.L
     (hpure : ∀ v s, A.ctx v s → s = .setvar)
     (hΓ : ∀ e ∈ A.essentials, ∃ p ∈ Γ, e = T.pf (encode p))
     {e : TExpr Native.L Native.C Native.V} (d : TDerivation Native.grammar zfFragment A e) :
-    ∃ p : Named.Formula Native.V, e = T.pf (encode p) ∧ Nonempty (Named.Hilbert ZF.Schema Γ p) := by
+    ∃ p : Named.Formula Native.V, e = T.pf (encode p) ∧ Nonempty (Named.Hilbert {p | ZF.Schema p} Γ p) := by
   apply nativeToHilbertWithAxioms hpure hΓ ?_ d
   intro B hB τ hs hdv
   rcases hB with hB | hB
@@ -564,7 +564,7 @@ theorem nativeToZF {Γ : List (Named.Formula Native.V)} {A : TAssertion Native.L
 Quantifier/equality inference rules and definition elimination are not included
 in `zfFragment` and require separate correspondence/conservativity proofs. -/
 theorem zf_fragment_correspondence (Γ : List (Named.Formula Native.V)) (p : Named.Formula Native.V) :
-    Nonempty (Named.Hilbert ZF.Schema Γ p) ↔
+    Nonempty (Named.Hilbert {p | ZF.Schema p} Γ p) ↔
     ∃ A : TAssertion Native.L Native.C Native.V,
       A.WellFormed Native.grammar ∧
       (∀ v s, A.ctx v s → s = .setvar) ∧
@@ -591,7 +591,7 @@ theorem zf_fragment_correspondence (Γ : List (Named.Formula Native.V)) (p : Nam
 
 /-- A nontrivial independent ZF derivation: extensionality applied by modus ponens. -/
 def extensionalityApplication {V : Type*} (a b c : V) (hn : [a, b, c].Nodup) :
-    Named.Hilbert ZF.Schema [.all c (.iff (.mem c a) (.mem c b))] (.eq a b) :=
+    Named.Hilbert {p | ZF.Schema p} [.all c (.iff (.mem c a) (.mem c b))] (.eq a b) :=
   .mp (.ax (.ext a b c hn)) (.hyp (by simp))
 
 /-- Transport the multi-step extensionality proof into the actual native ZF system. -/
@@ -600,7 +600,7 @@ noncomputable def nativeExtensionalityApplication (a b c : Native.V) (hn : [a, b
 
 /-- Finite named Hilbert ZF derivations also produce scoped natural-deduction objects. -/
 noncomputable def hilbertToScopedZF {n : Nat} {Γ : List (Named.Formula (Fin n))}
-    {p : Named.Formula (Fin n)} (d : Named.Hilbert ZF.Schema Γ p) :
+    {p : Named.Formula (Fin n)} (d : Named.Hilbert {p | ZF.Schema p} Γ p) :
     ZF.Derivation (Γ.map (Named.Formula.lower id)) (p.lower id) :=
   d.toClassical id (fun q hq => .ax ⟨n, q, some ∘ id, hq, Named.Formula.scope_total q id⟩)
 

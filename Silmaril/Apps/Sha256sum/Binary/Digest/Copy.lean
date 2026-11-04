@@ -192,7 +192,7 @@ theorem vc_loop (r11 : Core → Word) (c : Ctx) :
     intro j hj
     simp only [BitVec.toNat_add, BitVec.toNat_ofNat] at hj
     exact loads j (by omega)
-  · try seg_read []
+  ·
     have hkk := hF.kLt
     simp only [BitVec.toNat_add, BitVec.toNat_ofNat]; omega
   · exact hF' _ rfl fun r h1 h2 => by seg_read [h1, h2]

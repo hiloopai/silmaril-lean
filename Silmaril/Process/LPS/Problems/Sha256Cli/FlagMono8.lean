@@ -127,7 +127,6 @@ theorem execNew_mono (i : New) {s t : State} (memory : Memory) (next : Word) (h 
     split at e
     · cases e
     · rename_i x hx
-      try rw [hx]
       split at e
       · rename_i zero
         rw [ite_eq_left zero]

@@ -106,7 +106,7 @@ theorem isPure_tr (φ : Tree L V) (d : ℕ) : IsPure (tr φ d) := by
   fun_induction tr φ d <;> repeat (first
     | apply isPure_wn | apply isPure_wi | apply isPure_wb | apply isPure_wa | apply isPure_wo
     | apply isPure_wal | apply isPure_wex | exact isPure_weq _ _ | exact isPure_wel _ _
-    | exact hval _ _ _ | exact hnat _ _ | assumption)
+    | exact hval _ _ _ | assumption)
 
 end Pure
 
@@ -119,7 +119,6 @@ theorem sem_comp {D' N' : Type*} [Membership D' D'] [DecidableEq N'] {nm : ZF.V 
     ZF.sem nm t E ↔ ZF.sem id t (E ∘ nm) := by
   fun_induction ZF.sem nm t E <;> simp only [ZF.sem, id, Function.comp_apply]
   all_goals first
-    | rfl
     | (rename_i ih; exact not_congr ih)
     | (rename_i ih₁ ih₂; exact imp_congr ih₁ ih₂)
     | (rename_i ih₁ ih₂; exact iff_congr ih₁ ih₂)

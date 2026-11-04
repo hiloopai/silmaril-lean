@@ -4,15 +4,62 @@ defaultTargets = ["Silmaril"]
 restoreAllArtifacts = true
 [leanOptions]
 autoImplicit = false
-[[require]]
-name = "cslib"
-git = "https://github.com/leanprover/cslib"
-rev = "3c9db6a6a7207770c5a00849f4603ef460202dbf"
+# Temporary Lean downstream snapshot; replace these overrides with normal
+# upstream pins when CSLib supports the 4.37 release (owner: Thomas).
 [[require]]
 name = "mathlib"
-scope = "leanprover-community"
-git = "https://github.com/leanprover-community/mathlib4"
-rev = "1f414401f69059aa7eead47b53ee40bd38455eeb"
+git = "https://github.com/leanprover/downstream-lean4"
+rev = "0869f13b362a8b6fd5093164665f8fa9932a9493"
+subDir = "mathlib4"
+
+[[require]]
+name = "cslib"
+git = "https://github.com/leanprover/downstream-lean4"
+rev = "5f821169d39e325cf95348b839706330f1f94e47"
+subDir = "cslib"
+
+[[require]]
+name = "batteries"
+git = "https://github.com/leanprover-community/batteries"
+rev = "0041a661528d04567a89dca470115183e91d8b3a"
+
+[[require]]
+name = "Qq"
+git = "https://github.com/leanprover-community/quote4"
+rev = "7aa6104d4838734d0894f1e7c002b6950e4c51e7"
+
+[[require]]
+name = "aesop"
+git = "https://github.com/leanprover-community/aesop"
+rev = "fb8aa936d5607ac054fb732ba01ea37e1bc0404f"
+
+[[require]]
+name = "proofwidgets"
+git = "https://github.com/leanprover-community/ProofWidgets4"
+rev = "ab5717cea9074a46c5b678c80bd225c60ceae7d4"
+
+[[require]]
+name = "plausible"
+git = "https://github.com/leanprover-community/plausible"
+rev = "1cfc4bdd5be138c8c5ca20e61c0515a392b915c2"
+
+[[require]]
+name = "LeanSearchClient"
+git = "https://github.com/leanprover-community/LeanSearchClient"
+rev = "50cd21bc62f2c8357c4f269d1185921cbfcdfc90"
+
+[[require]]
+name = "importGraph"
+git = "https://github.com/leanprover/downstream-lean4"
+rev = "0869f13b362a8b6fd5093164665f8fa9932a9493"
+subDir = "import-graph"
+
+[[require]]
+name = "Cli"
+git = "https://github.com/leanprover/lean4-cli"
+rev = "13567aed1ac4f12aea9484178e07e51f8c9f7658"
+
+
 [[lean_lib]]
 name = "Silmaril"
 globs = ["Silmaril.*"]
