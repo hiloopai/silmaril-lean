@@ -178,7 +178,6 @@ theorem closeSpec_iff (fd : Word) (i : SyscallInput) (m : Model) (o : Outcome Sy
     constructor
     · rintro ⟨x, m₁, e₁, e₂, hx, hk, rfl⟩
       cases hx
-      try dsimp only at hk
       cases hl : fdLookup m.fds fd with
       | none =>
         rw [hl] at hk
@@ -206,7 +205,6 @@ theorem closeSpec_iff (fd : Word) (i : SyscallInput) (m : Model) (o : Outcome Sy
     · rintro (hx | ⟨x, m₁, e₁, hx, hk⟩)
       · cases hx
       · cases hx
-        try dsimp only at hk
         cases hl : fdLookup m.fds fd with
         | none => rw [hl] at hk; cases hk
         | some e =>

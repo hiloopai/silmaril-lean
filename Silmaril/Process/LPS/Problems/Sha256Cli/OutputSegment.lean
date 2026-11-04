@@ -194,7 +194,7 @@ theorem write_leads {input : CLI.ProcInput} {message : List Byte}
       Leads CStep (Ok message) (Done input message) (⟨c, s⟩ : PS) evs := by
   intro fuel
   induction fuel using Nat.strong_induction_on with
-  | h fuel ih =>
+  | ind fuel ih =>
   intro off c s evs fuelEq ready intact running answer accounted opened reads
   have actual := OutputUniversal.instruction c off s.memory ready intact
   have request := OutputUniversal.requested c off ready
