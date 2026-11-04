@@ -528,7 +528,7 @@ theorem stepArgs_complete {o : GrowOracle} {e : Admin} {l : List Admin}
     dataDrop, load_of_lt, store_of_lt, *])
   all_goals first
     | (cases ‹Signedness› <;> rfl)
-    | (split_ifs <;> (try rfl) <;> (try omega) <;> simp_all)
+    | (split_ifs <;> (try rfl) <;> (try omega); all_goals simp_all)
     | (split <;> simp_all)
 
 end Mem

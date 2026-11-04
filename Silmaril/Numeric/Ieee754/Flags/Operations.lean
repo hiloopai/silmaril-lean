@@ -227,7 +227,6 @@ theorem add_coherent (f : Format) (mode : RoundingMode) (tininess : Tininess) (x
   · split
     all_goals first
       | exact coherent_empty
-      | exact coherent_invalid
       | exact coherent_roundingFlags _ _ _ _
       | (split <;> first | exact coherent_empty | exact coherent_invalid)
 
@@ -242,7 +241,6 @@ theorem mul_coherent (f : Format) (mode : RoundingMode) (tininess : Tininess) (x
   · split
     all_goals first
       | exact coherent_empty
-      | exact coherent_invalid
       | exact coherent_roundingFlags _ _ _ _
       | (split <;> first | exact coherent_empty | exact coherent_invalid)
 
@@ -282,7 +280,6 @@ theorem fma_coherent (policy : FmaQuietAddend) (f : Format) (mode : RoundingMode
     · split
       all_goals first
         | exact coherent_empty
-        | exact coherent_invalid
         | exact coherent_roundingFlags _ _ _ _
         | (split <;> first | exact coherent_empty | exact coherent_invalid)
 

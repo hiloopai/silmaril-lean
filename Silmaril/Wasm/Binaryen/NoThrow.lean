@@ -122,7 +122,6 @@ end
     simp only [Val.toAdmin, okAdmin_plain, okAdmin_ref, OkInstr]
   all_goals first
     | exact Or.inl ((instrInProfile_flat' (by simp) (by simp) (by simp)).2 rfl)
-    | exact Or.inr (Or.inl ⟨_, _, rfl⟩)
     | exact Or.inr (Or.inr ⟨_, rfl⟩)
 
 @[simp] theorem okAdmins_vals (vs : List Val) : OkAdmins (vals vs) := by
@@ -210,7 +209,7 @@ theorem okAdmins_step {P : Profile} {c c' : Config H} (h : Step P closedHost c c
     refine ⟨?_, rfl⟩
     have hcc : OkAdmin c := by simp_all
     simpa using okAdmin_retToCallIn (m := fi'.module) hcr hcc
-  | _ => ok_simp <;> first | exact okAdmins_expression hc.2 | exact okAdmins_expression hc.1
+  | _ => ok_simp; all_goals first | exact okAdmins_expression hc.2 | exact okAdmins_expression hc.1
 
 theorem okAdmins_steps {P : Profile} {c c' : Config H} (h : Steps P closedHost c c')
     (hc : OkAdmins c.code) (hF : FuncsOk c.store.funcs) :

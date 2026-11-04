@@ -356,7 +356,7 @@ theorem foldE_rel : ∀ x : BExpr, ∃ n, InstrsRel (SBI n) x.lower (foldE x).lo
         List.nil_append, List.append_nil, List.singleton_append]
       exact .base (if_base bt k h₂ h₃)
 termination_by x => sizeOf x
-decreasing_by all_goals simp_wf <;> omega
+decreasing_by all_goals simp_wf; all_goals omega
 theorem foldL_rel : ∀ es : List BExpr,
     ∃ n, InstrsRel (SBI n) (BExpr.lowerList es) (BExpr.lowerList (foldL es))
   | [] => ⟨0, by simpa [foldL] using .nil⟩

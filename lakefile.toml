@@ -9,7 +9,7 @@ autoImplicit = false
 [[require]]
 name = "mathlib"
 git = "https://github.com/leanprover/downstream-lean4"
-rev = "5f821169d39e325cf95348b839706330f1f94e47"
+rev = "0869f13b362a8b6fd5093164665f8fa9932a9493"
 subDir = "mathlib4"
 
 [[require]]
@@ -51,7 +51,7 @@ rev = "50cd21bc62f2c8357c4f269d1185921cbfcdfc90"
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover/downstream-lean4"
-rev = "5f821169d39e325cf95348b839706330f1f94e47"
+rev = "0869f13b362a8b6fd5093164665f8fa9932a9493"
 subDir = "import-graph"
 
 [[require]]

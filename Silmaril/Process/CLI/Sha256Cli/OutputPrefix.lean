@@ -121,7 +121,7 @@ theorem safe {input : ProcInput} {message : List Byte} {prior events : List Even
     Sha256.PrefixOk input (prior ++ events) := by
   generalize fuelEq : remaining off = fuel
   induction fuel using Nat.strong_induction_on generalizing c s off prior events final with
-  | h fuel ih =>
+  | ind fuel ih =>
     have actual := OutputUniversal.instruction c off s.memory ready intact
     have request := OutputUniversal.requested c off ready
     cases execution with

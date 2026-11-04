@@ -1129,7 +1129,6 @@ theorem Step.good {P : Profile} {c c' : Config H} (h : Step P (fun _ _ _ _ => Fa
   | _ =>
     subst hs
     first
-      | exact ⟨.refl, hg⟩
       | exact ⟨.refl, hg.same (by sub_tac) (by sub_tac)⟩
 
 /-- The initial configuration of a thread is `Good`. -/

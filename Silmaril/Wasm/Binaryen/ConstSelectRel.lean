@@ -52,7 +52,7 @@ theorem foldA_rel : ∀ es : List BExpr,
   | [] => by simpa [foldA] using (InstrsRel.nil (BI := csBI))
   | e :: es => by simpa [foldA] using (foldE_rel e).append (foldA_rel es)
 termination_by es => sizeOf es
-decreasing_by all_goals simp_wf <;> omega
+decreasing_by all_goals simp_wf; all_goals omega
 
 theorem foldL_rel : ∀ es : List BExpr,
     InstrsRel csBI (BExpr.lowerList es) (BExpr.lowerList (foldL es))

@@ -744,7 +744,7 @@ theorem aggAccessStep?_complete {o : GrowOracle} {s : Store H} {f : Frame} {args
     fillArr, arrayCopy, copyArr, arrayInitElem, initElemArr, arrayInitData, initDataArr, trapC,
     oobA, oobE, oobD, Val.i32, *]
   all_goals (repeat' split) <;> (try dsimp only [NumType.width, IntType.width] at *) <;>
-    first | rfl | (exfalso; omega) | (simp_all; done) |
+    first | (exfalso; omega) | (simp_all; done) |
       ((split at * <;> simp_all); omega)
 
 end Silmaril.Wasm.SingleThreaded.Exec

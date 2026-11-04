@@ -28,7 +28,7 @@ theorem next420 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d420) (bytes := d420.bytes) realizes79 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d420, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes79] <;> rfl)
+      readWith_eq realizes79]; all_goals rfl)
 
 theorem next421 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -37,7 +37,7 @@ theorem next421 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d421) (bytes := d421.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d421, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next422 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -46,7 +46,7 @@ theorem next422 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d422) (bytes := d422.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d422, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next423 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -55,7 +55,7 @@ theorem next423 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d423) (bytes := d423.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d423, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next424 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -64,7 +64,7 @@ theorem next424 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d424) (bytes := d424.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d424, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next425 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -73,7 +73,7 @@ theorem next425 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d425) (bytes := d425.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d425, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next426 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -82,7 +82,7 @@ theorem next426 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d426) (bytes := d426.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d426, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next427 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -91,7 +91,7 @@ theorem next427 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d427) (bytes := d427.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d427, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next428 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -100,7 +100,7 @@ theorem next428 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d428) (bytes := d428.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d428, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next429 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -109,7 +109,7 @@ theorem next429 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d429) (bytes := d429.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d429, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next430 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -118,7 +118,7 @@ theorem next430 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d430) (bytes := d430.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d430, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next431 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -127,7 +127,7 @@ theorem next431 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d431) (bytes := d431.bytes) realizes80 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d431, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes80] <;> rfl)
+      readWith_eq realizes80]; all_goals rfl)
 
 theorem next432 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -136,7 +136,7 @@ theorem next432 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d432) (bytes := d432.bytes) realizes81 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d432, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes81] <;> rfl)
+      readWith_eq realizes81]; all_goals rfl)
 
 theorem next433 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -145,7 +145,7 @@ theorem next433 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d433) (bytes := d433.bytes) realizes81 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d433, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes81] <;> rfl)
+      readWith_eq realizes81]; all_goals rfl)
 
 theorem next434 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -154,7 +154,7 @@ theorem next434 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d434) (bytes := d434.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d434, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next435 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -163,7 +163,7 @@ theorem next435 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d435) (bytes := d435.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d435, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next436 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -172,7 +172,7 @@ theorem next436 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d436) (bytes := d436.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d436, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next437 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -181,7 +181,7 @@ theorem next437 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d437) (bytes := d437.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d437, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next438 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -190,7 +190,7 @@ theorem next438 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d438) (bytes := d438.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d438, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next439 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -199,7 +199,7 @@ theorem next439 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d439) (bytes := d439.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d439, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next440 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -208,7 +208,7 @@ theorem next440 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d440) (bytes := d440.bytes) realizes82 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d440, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes82] <;> rfl)
+      readWith_eq realizes82]; all_goals rfl)
 
 theorem next441 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -217,7 +217,7 @@ theorem next441 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d441) (bytes := d441.bytes) realizes83 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d441, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes83] <;> rfl)
+      readWith_eq realizes83]; all_goals rfl)
 
 theorem next442 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -226,7 +226,7 @@ theorem next442 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d442) (bytes := d442.bytes) realizes83 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d442, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes83] <;> rfl)
+      readWith_eq realizes83]; all_goals rfl)
 
 theorem next443 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -235,7 +235,7 @@ theorem next443 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d443) (bytes := d443.bytes) realizes83 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d443, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes83] <;> rfl)
+      readWith_eq realizes83]; all_goals rfl)
 
 theorem next444 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -244,7 +244,7 @@ theorem next444 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d444) (bytes := d444.bytes) realizes84 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d444, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes84] <;> rfl)
+      readWith_eq realizes84]; all_goals rfl)
 
 theorem next445 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -253,7 +253,7 @@ theorem next445 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d445) (bytes := d445.bytes) realizes84 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d445, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes84] <;> rfl)
+      readWith_eq realizes84]; all_goals rfl)
 
 theorem next446 (platform : Silmaril.X86.Ext.Wire.Platform)
     (oracle : Nat → X86FlagChoices.Choice) (segments : List Segment) :
@@ -262,7 +262,7 @@ theorem next446 (platform : Silmaril.X86.Ext.Wire.Platform)
   exact wire_step (d := d446) (bytes := d446.bytes) realizes84 (by decide +kernel) (by decide +kernel)
     (by decide +kernel) (by decide +kernel)
     (by simp only [d446, Silmaril.X86.Ext.Wire.exec, Silmaril.X86.Ext.Wire.execWithLength, Silmaril.X86.Ext.execWithLength, Silmaril.X86.Ext.exec, Silmaril.X86.Ext.readRM, Silmaril.X86.Ext.readNarrow, Silmaril.X86.Ext.loadN, Memory.readBytes, Silmaril.X86.popWord, Silmaril.X86.Ext.aluStep, Silmaril.X86.Ext.aluStepR,
-      readWith_eq realizes84] <;> rfl)
+      readWith_eq realizes84]; all_goals rfl)
 
 theorem run420_447 {segments : List Segment} {spec : Sys SyscallEffect}
     {refused : RefusalFilter} (platform : Silmaril.X86.Ext.Wire.Platform)

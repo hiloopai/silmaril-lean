@@ -44,7 +44,7 @@ jobs:
           use-mathlib-cache: "false"
           use-github-cache: "false"
       - name: Fetch Mathlib artifacts
-        run: lake exe cache get
+        run: scripts/cache-dependencies.sh
       - name: Restore optional S3 build artifacts
         continue-on-error: true
         env:

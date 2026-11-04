@@ -401,7 +401,6 @@ theorem resume_trap {o : GrowOracle} {s : Store H} {t : Thread} {hc : H} {args :
   split_ifs with h2 h3 h4
   all_goals first
     | exact Or.inr rfl
-    | exact Or.inl rfl
     | exact absurd (hex h2) h4
     | (rw [E.decompose?_fill_trap s]
        exact Or.inl rfl)

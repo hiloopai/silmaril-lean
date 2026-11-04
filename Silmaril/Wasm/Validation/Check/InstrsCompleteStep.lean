@@ -186,7 +186,6 @@ theorem directStep_complete (hatom : AtomComplete atom?) (htyOk : TyOkComplete t
     rw [hlt]
     dsimp only
     rw [hm, ite_eq_left hl2]
-    try dsimp only
     rw [hres, ite_eq_left (by rw [Bool.true_and]; exact hall)]
     have hXl : ((S.drop (S.length - (ts.length + 1))).take ts.length).length = ts.length := by
       simp; omega

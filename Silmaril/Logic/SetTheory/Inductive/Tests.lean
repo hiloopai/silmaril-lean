@@ -35,7 +35,7 @@ noncomputable def nativeExtensionality :=
   nativeExtensionalityApplication .x .y .z (by decide)
 
 /-- That native proof reflects back to the independent ZF inference system. -/
-example : Nonempty (Named.Hilbert (V := Native.V) ZF.Schema
+example : Nonempty (Named.Hilbert (V := Native.V) {p | ZF.Schema p}
     [.all .z (.iff (.mem .z .x) (.mem .z .y))] (.eq .x .y)) := by
   let d := extensionalityApplication (.x : Native.V) .y .z (by decide)
   obtain ⟨q, he, hq⟩ := nativeToZF

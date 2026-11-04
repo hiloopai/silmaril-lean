@@ -364,12 +364,10 @@ private theorem arrayNewFixed_static {s s' : Store H} {f : Frame} {vs vs' : List
 theorem constInstr_static {s s' : Store H} {f : Frame} {vs vs' : List Val} {i : Instr}
     (run : constInstr? s f vs i = some (s', vs')) : Static s s' := by
   cases i <;> simp only [constInstr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at run
-  all_goals first
+  all_goals try first
     | (obtain ⟨rfl, _⟩ := run; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩)
-    | (obtain ⟨_, _, run⟩ := run; first
-        | (obtain ⟨rfl, _⟩ := run; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩)
-        | skip)
-    | skip
+    | (obtain ⟨_, _, run⟩ := run; try
+        (obtain ⟨rfl, _⟩ := run; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩))
   case refI31 => obtain ⟨_, _, run⟩ := run; cases run; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
   case structNew => exact structNew_static run
   case structNewDefault => obtain ⟨_, _, _, _, run⟩ := run; exact structNew_static run

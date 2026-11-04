@@ -361,7 +361,6 @@ theorem exec_mono (i : Instr) {s t : State} (memory : Memory) (length : Nat) (h 
     split at e
     · cases e
     · rename_i x hx
-      try rw [hx]
       obtain ⟨⟨a, m⟩, hw, e⟩ := retire_map_ok e
       rw [hw]
       obtain ⟨rfl, rfl⟩ := retire_some_ok e
@@ -375,7 +374,6 @@ theorem exec_mono (i : Instr) {s t : State} (memory : Memory) (length : Nat) (h 
     split at e
     · cases e
     · rename_i x hx
-      try rw [hx]
       obtain ⟨⟨a, m⟩, hw, e⟩ := retire_map_ok e
       rw [hw]
       obtain ⟨rfl, rfl⟩ := retire_some_ok e
@@ -385,7 +383,6 @@ theorem exec_mono (i : Instr) {s t : State} (memory : Memory) (length : Nat) (h 
     split at e
     · cases e
     · rename_i value hv
-      try rw [hv]
       split at e
       · cases e
       · rename_i taken ht

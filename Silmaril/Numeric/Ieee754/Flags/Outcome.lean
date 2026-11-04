@@ -158,7 +158,6 @@ theorem div_eq_outcome (x y : Datum) :
   · rfl
   · cases x <;> cases y <;> simp only [Outcome.flags] <;>
       first
-        | rfl
         | (split_ifs <;> rfl)
         | simp [RoundingStage.ieee]
 

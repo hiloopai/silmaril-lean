@@ -105,7 +105,7 @@ theorem exportFunc_filter (names : List String) (mi : ModuleInst) {x : String} (
   · simp [he]
 
 theorem rename_identity (i : Instr) : (Ren.mk id id).instr i = i := by
-  cases i <;> try rfl
+  cases i
   case block bt body =>
     rw [Ren.instr_block]
     congr 1

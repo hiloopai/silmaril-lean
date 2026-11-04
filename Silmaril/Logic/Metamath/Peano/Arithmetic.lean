@@ -52,7 +52,7 @@ theorem hasSort_objCtx_binop {t : Tree L V} (h : grammar.HasSort objCtx t .binop
   | var hv => cases hs; cases hv
   | node hlen =>
     rename_i l args _
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · match args, hlen with
       | [], _ => exact .inl rfl
     · match args, hlen with
@@ -65,7 +65,7 @@ theorem hasSort_objCtx_binpred {t : Tree L V} (h : grammar.HasSort objCtx t .bin
   | var hv => cases hs; cases hv
   | node hlen =>
     rename_i l args _
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · match args, hlen with
       | [], _ => exact .inl rfl
     · match args, hlen with
@@ -79,7 +79,7 @@ theorem hasSort_objCtx_logbinop {t : Tree L V} (h : grammar.HasSort objCtx t .lo
   | var hv => cases hs; cases hv
   | node hlen =>
     rename_i l args _
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · match args, hlen with
       | [], _ => exact .inl rfl
     · match args, hlen with
@@ -96,7 +96,7 @@ theorem hasSort_objCtx_quant {t : Tree L V} (h : grammar.HasSort objCtx t .quant
   | var hv => cases hs; cases hv
   | node hlen =>
     rename_i l args _
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · match args, hlen with
       | [], _ => exact .inl rfl
     · match args, hlen with
@@ -113,7 +113,7 @@ theorem IsArithTerm.cases {t : Tree L V} (h : IsArithTerm t) :
   | var hv => cases hs; cases hv
   | node hlen hargs =>
     rename_i l args
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · obtain ⟨c, rfl⟩ : ∃ c, args = [c] := match args, hlen with | [c], _ => ⟨c, rfl⟩
       obtain ⟨a, rfl⟩ := hasSort_objCtx_var (hargs (c, (.var, .v)) (by simp [grammar, rules]))
       exact .inl ⟨a, rfl⟩
@@ -145,7 +145,7 @@ theorem IsArith.cases {t : Tree L V} (h : IsArith t) :
   | var hv => cases hs; cases hv
   | node hlen hargs =>
     rename_i l args
-    cases l <;> first | exact absurd hs (by decide) | skip
+    cases l <;> try first | exact absurd hs (by decide)
     · obtain ⟨a, b, c, rfl⟩ : ∃ a b c, args = [a, b, c] :=
         match args, hlen with | [a, b, c], _ => ⟨a, b, c, rfl⟩
       have ha : IsArithTerm a := hargs (a, (.term, .s)) (by simp [grammar, rules])
@@ -396,7 +396,6 @@ theorem evalWff_congr_fv {e e' : V → ℕ} (t : Tree L V) (h : ∀ a ∈ fvWff 
   fun_induction evalWff e t generalizing e' <;> simp only [evalWff] <;>
     simp only [fvWff, List.mem_append, List.mem_filter, decide_eq_true_eq] at h
   all_goals first
-    | rfl
     | (rename_i a b
        rw [evalTerm_congr a fun w hw => h w (.inl hw), evalTerm_congr b fun w hw => h w (.inr hw)])
     | (rename_i ih; exact not_congr (ih h))

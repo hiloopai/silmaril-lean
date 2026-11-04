@@ -136,7 +136,6 @@ theorem exec_grows {i : Instr} {s : State} {m : Memory} {len : Nat} {core : Stat
     | (cases h; exact keeps_pushWord' ‹_›)
     | (refine retire_grows ?_ h
        first
-        | with_reducible apply keeps_same
         | with_reducible apply keeps_map_same
         | with_reducible apply keeps_writeRM
         | with_reducible apply keeps_writeNarrow

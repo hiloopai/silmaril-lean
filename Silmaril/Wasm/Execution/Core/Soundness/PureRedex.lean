@@ -48,9 +48,8 @@ theorem AdminsOk.rec' {s : Store H} {motive : Context → List Admin → InstrTy
     {C : Context} {L : List Admin} {it : InstrType} (h : AdminsOk s C L it) : motive C L it := by
   refine AdminsOk.rec (motive_1 := fun _ _ _ _ => True)
     (motive_2 := fun C L it _ => motive C L it) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
-  all_goals first
+  all_goals try first
     | (intros; trivial)
-    | skip
   · exact nil
   · intro C a it ha _; exact single ha
   · intro C as₁ as₂ t₁ t₂ t₃ xs₁ xs₂ h₁ hx h₂ ih₁ ih₂; exact seq h₁ hx h₂ ih₁ ih₂

@@ -94,7 +94,7 @@ theorem InstrsOk.rangeRefs {C : Context} {is : List Instr} {it : InstrType}
     | exact InstrOk.tryTable (BlockTypeOk.rangeRefs ‹_›) ‹_›
         (fun c hc => CatchOk.rangeRefs (‹∀ c ∈ _, CatchOk _ c› c hc))
     | (apply InstrOk.br <;> assumption)
-    | (apply InstrOk.brIf <;> assumption)
+    | (apply InstrOk.brIf; all_goals assumption)
     | (apply InstrOk.brTable <;> assumption)
     | (apply InstrOk.brOnNull <;> assumption)
     | (apply InstrOk.brOnNonNull <;> assumption)
@@ -108,7 +108,7 @@ theorem InstrsOk.rangeRefs {C : Context} {is : List Instr} {it : InstrType}
     | (apply InstrOk.returnCallRef <;> assumption)
     | (apply InstrOk.returnCallIndirect <;> assumption)
     | (apply InstrOk.throw <;> assumption)
-    | (apply InstrOk.throwRef <;> assumption)
+    | (apply InstrOk.throwRef; all_goals assumption)
     | exact InstrsOk.nil
     | exact InstrsOk.instr ‹_›
     | (refine InstrsOk.seq ‹_› ‹_› ?_; rwa [← Context.initLocals_rangeRefs])

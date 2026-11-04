@@ -1843,10 +1843,8 @@ theorem readModule_go_ok (fuel : Nat) : ∀ {last : Nat} {s s' : Sections} {c c'
     obtain ⟨rfl, rfl⟩ := rest_of_remaining h₀
     obtain ⟨hb₁, hr₁⟩ := readByte_ok hb
     obtain ⟨hb₂, lb, hr₂, hl⟩ := readU_sound 32 hsize
-    try dsimp only at h
     split at h
     case isFalse => obtain ⟨_, _, he, _⟩ := run_bind_ok h; exact (decodeError_ok he).elim
-    try dsimp only at h
     split at h
     · rename_i hid
       obtain ⟨u, c₅, hc, h⟩ := run_bind_ok h
@@ -1856,14 +1854,12 @@ theorem readModule_go_ok (fuel : Nat) : ∀ {last : Nat} {s s' : Sections} {c c'
       refine ⟨hb₄.trans (hb₃.trans (hb₂.trans hb₁)), ([0] ++ lb ++ pc) ++ pre, last',
         by simp [hr₁, hr₂, hr₃, hr₄], h13', he', fun p hp => ?_⟩
       simpa [List.append_assoc] using hp' _ (hp.custom ⟨[()], Section.mk hl hlen.symm hcu⟩)
-    try dsimp only at h
     split at h
     case isFalse => obtain ⟨_, _, he, _⟩ := run_bind_ok h; exact (decodeError_ok he).elim
     rename_i hlt
     obtain ⟨s₁, c₅, hs₁, h⟩ := run_bind_ok h
     obtain ⟨r₁, c₆, h₁, h⟩ := run_bind_ok h
     obtain ⟨rfl, rfl⟩ := rest_of_remaining h₁
-    try dsimp only at h
     split at h
     case isFalse => obtain ⟨_, _, he, _⟩ := run_bind_ok h; exact (decodeError_ok he).elim
     rename_i hsz

@@ -234,7 +234,6 @@ theorem evalWff_congr {e e' : V → ℕ} (t : Tree L V) (h : ∀ a ∈ t.vars, e
     simp only [Tree.vars_node, List.flatMap_cons, List.flatMap_nil, List.mem_append,
       Tree.vars_var, List.mem_singleton, List.append_nil, List.not_mem_nil, false_or] at h
   all_goals first
-    | rfl
     | (rename_i a b
        rw [evalTerm_congr a fun w hw => h w (.inl hw), evalTerm_congr b fun w hw => h w (.inr hw)])
     | (rename_i ih; exact not_congr (ih h))

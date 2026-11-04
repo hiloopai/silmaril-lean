@@ -11,6 +11,10 @@ export LAKE_CONFIG="$PWD/.lake/packages/mathlib/.meta/lake-config.toml"
 for package in mathlib:mathlib4 cslib:cslib batteries:batteries Qq:quote4 \
     aesop:aesop proofwidgets:ProofWidgets4 plausible:plausible \
     LeanSearchClient:LeanSearchClient importGraph:import-graph Cli:lean4-cli; do
-    "$lake_bin" cache get --package="${package%%:*}" --rev="$snapshot" \
+    revision=$snapshot
+    if [ "${package%%:*}" = cslib ]; then
+        revision=$(git -C .lake/packages/cslib rev-parse HEAD)
+    fi
+    "$lake_bin" cache get --package="${package%%:*}" --rev="$revision" \
         --scope="$toolchain/${package#*:}"
 done

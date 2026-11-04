@@ -167,7 +167,7 @@ theorem numericType?_sound {C : Context} {i : Instr} {it : InstrType}
     (h : numericType? i = some it) : NumericInstrOk C i it := by
   unfold numericType? at h
   split at h <;> (try split at h) <;> cases h
-  all_goals (constructor <;> assumption)
+  all_goals (constructor; all_goals assumption)
 
 def numericCheck? (C : Context) (stk : List CValType) (i : Instr) :
     Option (Nat × List Nat × List CValType) :=

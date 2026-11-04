@@ -18,7 +18,7 @@ theorem MemoryStep.det {o : GrowKind → Nat → Nat → Nat → Bool} {s : Stor
     (h₁ : MemoryStep (Profile.deterministic o) ⟨s, f, l₁⟩ c₁)
     (h₂ : MemoryStep (Profile.deterministic o) ⟨s, f, l₂⟩ c₂) (hl : l₁ = vals p ++ l₂) :
     p = [] ∧ c₁ = c₂ := by
-  cases h₁ <;> cases h₂ <;> (fam_pre <;> first
+  cases h₁ <;> cases h₂ <;> (fam_pre; all_goals first
     | fam_post
     | (have := Memory.load_bound ‹_›; (try simp_all); (try casesm* _ ∧ _); (try subst_vars);
        (try omega))

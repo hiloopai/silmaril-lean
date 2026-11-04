@@ -882,7 +882,7 @@ theorem InstrsOk.ind {motive : (C : Context) → (is : List Instr) → (it : Ins
       motive C is it h := by
   intro C is it h
   apply InstrsOk.rec (motive_1 := fun _ _ _ _ => True) (motive_2 := motive) (t := h)
-  all_goals first | (intros; trivial) | skip
+  all_goals try first | (intros; trivial)
   case nil => exact nil
   case instr => exact fun h _ => instr h
   case seq => exact fun h₁ hx h₂ ih₁ ih₂ => seq h₁ hx h₂ ih₁ ih₂
