@@ -1,0 +1,34 @@
+# Keep all build inputs here, including fixtures consumed by make check.
+lean:
+  - 'Silmaril/**'
+  - '*.lean'
+  - 'tools/**'
+  - 'scripts/**'
+  - 'apps/**'
+  - 'examples/**'
+  - 'data/**'
+  - 'problems/**'
+  - 'specs/**'
+  - '.process-promotion.json'
+  - 'lake*'
+  - 'lean-toolchain'
+  - 'Makefile'
+  - 'regions.toml'
+  - 'policy.toml'
+  - '.github/**'
+
+probes:
+  - 'Silmaril/Process/LPS/Probes/**'
+  - 'tools/verification-projects/*lps_probes*'
+  - 'examples/verification-projects/theorem-dev/lps-probes/**'
+  - '.github/**'
+
+environments:
+  - '.devcontainer/**'
+  - '.dockerignore'
+  - 'flake.nix'
+  - 'flake.lock'
+  - 'lean-toolchain'
+  - 'Makefile'
+  - 'scripts/sil'
+  - '.github/**'

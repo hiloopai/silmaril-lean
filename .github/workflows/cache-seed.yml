@@ -1,0 +1,19 @@
+name: Seed Lean cache
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    if: github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci-lean.yml
+    secrets: inherit
+    with:
+      seed: true

@@ -11,47 +11,77 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build:
-    name: Lean build
-    # Drafts skip the build; marking a pull request ready starts it.
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 120
-    environment:
-      name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'hiloopai/silmaril-lean' && 'artifact-cache-publish' || 'artifact-cache-read' }}
-    env:
-      SILMARIL_CACHE_ENDPOINT: ${{ vars.SILMARIL_CACHE_ENDPOINT }}
-      SILMARIL_CACHE_BUCKET: ${{ vars.SILMARIL_CACHE_BUCKET || 'lean-cache' }}
-      SILMARIL_CACHE_PREFIX: ${{ vars.SILMARIL_CACHE_PREFIX || 'silmaril-lean/v1' }}
-      SILMARIL_CACHE_REGION: ${{ vars.SILMARIL_CACHE_REGION || 'auto' }}
-      SILMARIL_CACHE_PUBLIC_URL: ${{ vars.SILMARIL_CACHE_PUBLIC_URL }}
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      lean: ${{ steps.paths.outputs.lean }}
+      probes: ${{ steps.paths.outputs.probes }}
+      environments: ${{ steps.paths.outputs.environments }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 100
-      - name: Install Lean
-        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
+      - uses: dorny/paths-filter@15192bc058cc28a13dbf6cde61f19e18988b7af6 # v3
+        id: paths
         with:
-          auto-config: "false"
-          build: "false"
-          test: "false"
-          lint: "false"
-          use-mathlib-cache: "false"
-          use-github-cache: "false"
-      - name: Fetch Mathlib artifacts
-        run: scripts/cache-dependencies.sh
-      - name: Restore optional S3 build artifacts
-        continue-on-error: true
+          filters: .github/paths-filter.yml
+
+  helpers:
+    uses: ./.github/workflows/ci-helpers.yml
+
+  lean:
+    needs: changes
+    if: >-
+      !github.event.pull_request.draft &&
+      (needs.changes.outputs.lean == 'true' || github.event_name == 'workflow_dispatch')
+    uses: ./.github/workflows/ci-lean.yml
+    secrets: inherit
+
+  probes:
+    needs: changes
+    if: needs.changes.outputs.probes == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/lps-probes.yml
+
+  environments:
+    needs: changes
+    if: needs.changes.outputs.environments == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/development-environments.yml
+
+  result:
+    name: CI
+    needs: [changes, helpers, lean, probes, environments]
+    if: always() && !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Require every selected check to pass
         env:
-          SILMARIL_CACHE_READ_KEY: ${{ secrets.SILMARIL_CACHE_READ_KEY }}
-          SILMARIL_CACHE_KEY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SILMARIL_CACHE_KEY || '' }}
-        run: python3 scripts/lake-cache.py get
-      - name: Build (warnings, including sorry, are errors)
-        run: lake build --wfail
-      - name: Check the layout rules
-        run: scripts/check-layout.sh
+          RESULTS: ${{ toJSON(needs) }}
+          FORCE_ALL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          jq -e '
+            . as $jobs |
+            .changes.result == "success" and .helpers.result == "success" and
+            all(["lean", "probes", "environments"][]; . as $name |
+              if $jobs.changes.outputs[$name] == "true" or env.FORCE_ALL == "true"
+              then $jobs[$name].result == "success"
+              else $jobs[$name].result == "skipped" or $jobs[$name].result == "success"
+              end)
+          ' <<< "$RESULTS"
+
+  time-budget:
+    name: CI time budget
+    needs: result
+    if: always() && !github.event.pull_request.draft
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/ci-time-budget.yml
