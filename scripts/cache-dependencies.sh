@@ -7,6 +7,11 @@ lake_bin=${LAKE:-lake}
 "$lake_bin" env true
 snapshot=$(git -C .lake/packages/mathlib rev-parse HEAD)
 toolchain=$(cat lean-toolchain)
+cache_args=()
+# Small CI jobs request roots; Lake restores only their dependency closure.
+if (( $# )); then
+    cache_args=(--mappings-only)
+fi
 export LAKE_CONFIG="$PWD/.lake/packages/mathlib/.meta/lake-config.toml"
 for package in mathlib:mathlib4 cslib:cslib batteries:batteries Qq:quote4 \
     aesop:aesop proofwidgets:ProofWidgets4 plausible:plausible \
@@ -15,6 +20,9 @@ for package in mathlib:mathlib4 cslib:cslib batteries:batteries Qq:quote4 \
     if [ "${package%%:*}" = cslib ]; then
         revision=$(git -C .lake/packages/cslib rev-parse HEAD)
     fi
-    "$lake_bin" cache get --package="${package%%:*}" --rev="$revision" \
+    "$lake_bin" cache get "${cache_args[@]}" --package="${package%%:*}" --rev="$revision" \
         --scope="$toolchain/${package#*:}"
 done
+if (( $# )); then
+    "$lake_bin" build --wfail "$@"
+fi
