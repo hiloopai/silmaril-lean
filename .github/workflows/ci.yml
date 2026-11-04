@@ -6,6 +6,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      seed:
+        description: Run a bounded cold build and seed this branch's cache
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -44,6 +49,8 @@ jobs:
       (needs.changes.outputs.lean == 'true' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/ci-lean.yml
     secrets: inherit
+    with:
+      seed: ${{ github.event_name == 'workflow_dispatch' && inputs.seed }}
 
   probes:
     needs: changes
@@ -80,7 +87,9 @@ jobs:
   time-budget:
     name: CI time budget
     needs: result
-    if: always() && !github.event.pull_request.draft
+    if: >-
+      always() && !github.event.pull_request.draft &&
+      !(github.event_name == 'workflow_dispatch' && inputs.seed)
     permissions:
       actions: read
       contents: read
