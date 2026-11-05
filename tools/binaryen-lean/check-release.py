@@ -16,12 +16,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", action="store_true",
                         help="first build the included library, executables and proof roots with --wfail")
+    parser.add_argument("--record-cache", type=Path,
+                        help="record successful build outputs for publication with cov-lake-cache")
     parser.add_argument("--bin-dir", type=Path, default=Path(".lake/build/bin"))
     parser.add_argument("--reference-bin-dir", type=Path,
                         help="optionally check extension codecs and merge against Binaryen version_133")
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
+    if args.record_cache and not args.build:
+        parser.error("--record-cache requires --build")
     if args.jobs < 1:
         parser.error("--jobs must be positive")
     root = Path(__file__).resolve().parents[2]
@@ -42,7 +46,11 @@ def main():
         parser.error("Node.js 24 or later is required for the GC and memory64 reference checks")
 
     if args.build:
-        subprocess.run(["lake", "build", "--wfail", "Silmaril", *binaries, *proof_roots],
+        command = ["lake", "build", "--wfail"]
+        if args.record_cache:
+            command = ["cov-lake-cache", "build", "--repository", "hiloopai/silmaril-lean",
+                       "--record", str(args.record_cache), "--"]
+        subprocess.run([*command, "Silmaril", *binaries, *proof_roots],
                        cwd=root, check=True)
     bin_dir = args.bin_dir.resolve()
     for binary in binaries:

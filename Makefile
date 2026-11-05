@@ -24,13 +24,17 @@ library:
 	$(LAKE) build --wfail Silmaril
 
 cache:
-	LAKE=$(LAKE) scripts/cache-dependencies.sh
-	$(PYTHON) scripts/lake-cache.py get
+	LAKE=$(LAKE) cov-lake-cache dependencies
+	@if [ -n "$(LAKE_CI_BUCKET)" ]; then \
+		cov-lake-cache get --repository hiloopai/silmaril-lean; \
+	else \
+		echo 'No remote artifact bucket configured; public dependencies are ready.'; \
+	fi
 
 check:
 	scripts/check-layout.sh
 	$(MAKE) process-check
-	$(PYTHON) tools/binaryen-lean/check-release.py --build --report build/wasm-checks.json
+	$(PYTHON) tools/binaryen-lean/check-release.py --build $(if $(LAKE_CACHE_RECORD),--record-cache "$(LAKE_CACHE_RECORD)") --report build/wasm-checks.json
 	$(MAKE) stage
 
 process-check:

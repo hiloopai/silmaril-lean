@@ -72,44 +72,45 @@ Shared test libraries can grow alongside the other tool families.
 
 ## S3-compatible build cache
 
-`make cache` fetches public Mathlib artifacts, then checks the optional Silmaril
-S3 cache. A normal clone needs no credentials. When a cache is configured, Lake
-restores outputs whose input hashes match the current build.
+Install `cov-lake-cache` from the [Covalence releases](https://github.com/hiloopai/covalence/releases).
+The revision and archive checksum used by CI are in `.github/actions/lake-cache-tool`.
+`make cache` fetches public dependency artifacts. If `LAKE_CI_BUCKET` is set, it
+also restores the available project artifacts. A normal clone needs no credentials.
 
-The cache uses Lake's native `.art` files and revision mapping files, including
-all included library modules, correctness theorem roots, seven public tools and
-the test-only shell helper. The namespace separates this repository, native
-platform, Lean version, dependency pins and Lake configuration. A latest-main
-pointer also supports shallow clones and branches with a rewritten root commit.
-These are trusted build artifacts; `make check` still runs its native tests.
-
-To fetch from an authorized private cache, configure:
+For an authorized S3-compatible cache, configure:
 
 ```sh
-export SILMARIL_CACHE_ENDPOINT=https://your-s3-endpoint
-export SILMARIL_CACHE_BUCKET=your-bucket
-export SILMARIL_CACHE_PREFIX=silmaril-lean/v1
-export SILMARIL_CACHE_REGION=auto  # use the bucket's region for AWS S3
-export SILMARIL_CACHE_READ_KEY='access-id:secret'
+export AWS_ENDPOINT_URL=https://your-s3-endpoint
+export AWS_REGION=auto  # use the bucket's region for AWS S3
+export LAKE_CI_BUCKET=your-bucket
+export LAKE_CI_PREFIX=silmaril-lean/v1
+export AWS_ACCESS_KEY_ID=your-access-id
+export AWS_SECRET_ACCESS_KEY=your-secret
 make cache
 ```
 
-`SILMARIL_CACHE_PUBLIC_URL` can instead name an anonymous read endpoint for the
-bucket; the same release prefix is appended. No key is needed in that case.
-A missing configuration or mapping leaves Lake to build from source.
+For AWS S3, omit `AWS_ENDPOINT_URL` and use the standard AWS credential chain.
+The shared tool uses Covalence's S3 transport. It compresses Lake's native
+artifacts and records mappings for the successful build. Cache keys include the
+repository, platform, Lean version, dependency pins and Lake configuration.
+Lake validates restored artifacts; `make check` still runs every native test.
 
-CI restores before builds and uploads after the native release checks pass on
-`main`. The writer key, `SILMARIL_CACHE_KEY`, belongs to the GitHub environment
-`artifact-cache-publish`, whose deployment policy permits only `main`. Pull
-requests use `artifact-cache-read` and can use a separately provisioned
-**read-only** `SILMARIL_CACHE_READ_KEY`; fork jobs receive no secrets. Endpoint,
-bucket, prefix, region and optional public URL are repository variables with the
-same names. Cache network failures are reported without failing the proof/test job.
+`LAKE_CACHE_RECORD=build/lake-cache/root make check` records a successful build
+from a clean checkout. After all checks pass, trusted main CI calls
+`cov-lake-cache put --repository hiloopai/silmaril-lean`. Publication does not
+run another build. Old uncompressed entries are not used by this cache format.
 
-The helper uses Python's standard library, curl's S3 SigV4 support and the pinned
-Lake executable. It does not copy an entire `.lake` directory or install a new
-cache client. Run its offline protocol tests with:
+CI keeps its existing repository variables (`SILMARIL_CACHE_ENDPOINT`,
+`SILMARIL_CACHE_BUCKET`, `SILMARIL_CACHE_PREFIX`, `SILMARIL_CACHE_REGION`) and
+translates them to the shared tool's configuration. The combined writer secret,
+`SILMARIL_CACHE_KEY`, stays in the `artifact-cache-publish` environment, whose
+deployment policy permits only `main`. Pull requests use `artifact-cache-read`
+and can use a separately provisioned **read-only** `SILMARIL_CACHE_READ_KEY`;
+forks receive no secrets. Without a read credential, CI uses the disk cache or
+builds normally. Remote failures remain visible and do not suppress proof checks.
 
-```sh
-python3 -m unittest discover -s scripts -p test_lake_cache.py
-```
+Covalence owns the transfer, corruption and real-Lean integration tests. This
+repository tests its CI time guard and runs the complete release checks.
+Thomas owns this adapter. Remove it when Lake provides recorded-build
+publication with bounded authenticated S3 transfers. Remove the dependency
+adapter when the pinned upstream releases support the standard cache command.

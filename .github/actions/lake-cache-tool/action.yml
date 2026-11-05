@@ -1,0 +1,9 @@
+name: Install the shared Lake cache
+description: Install the verified Covalence binary pinned for this repository.
+runs:
+  using: composite
+  steps:
+    - uses: hiloopai/covalence/.github/actions/lake-cache@de3788a91f5a854cd0855de614c0363be883592b
+      with:
+        revision: 'de3788a91f5a854cd0855de614c0363be883592b'
+        sha256: '87936e6de6a08070a5bd7d282f1ae17f8e24c194db75bbc5e535b4134f4a7576'

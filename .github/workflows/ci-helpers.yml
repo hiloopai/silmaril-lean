@@ -19,5 +19,5 @@ jobs:
           nproc
           free -m
           df -h .
-      - name: Test cache credentials, cache paths and the time guard
+      - name: Test the CI time guard
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
