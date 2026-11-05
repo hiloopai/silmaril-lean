@@ -54,7 +54,6 @@ jobs:
         with:
           node-version: '24'
       - name: Install the shared Lake cache
-        if: steps.disk.outputs.cache-matched-key == '' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.disk.outputs.cache-hit != 'true')
         uses: ./.github/actions/lake-cache-tool
       - name: Configure artifact credentials
         id: credentials
