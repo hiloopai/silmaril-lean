@@ -32,7 +32,7 @@ outside this measurement. Reruns use the current attempt's start time.
    architecture, exact toolchain/dependency/configuration hashes, and commit.
    A compatible earlier main snapshot is a fallback.
 2. On a disk miss, fetch public dependency artifacts and try the optional S3
-   cache. The S3 configuration and credential rules are unchanged. Pull
+   cache. The shared Covalence tool uses the existing main-only writer environment. Pull
    requests can use a read key or public URL if configured; neither is required
    for the disk cache. A cache miss still runs the correctness checks.
 3. Lake checks the current input traces. Cache presence never counts as a

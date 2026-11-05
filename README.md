@@ -100,3 +100,10 @@ to whole-program input/output specifications.
 Original contributions use [MIT](LICENSE). Upstream-derived material retains
 its applicable terms and [notices](NOTICES). Dependencies are pinned public
 repositories.
+
+### Shared build artifacts
+
+Install `cov-lake-cache` from the [public Covalence releases](https://github.com/hiloopai/covalence/releases)
+for `make cache`. CI verifies the pinned binary and keeps disk outputs first.
+See [cache setup and publication](docs/development.md#s3-compatible-build-cache)
+for credentials, build recording and the ownership of this integration.
