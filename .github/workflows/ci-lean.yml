@@ -15,15 +15,18 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.seed && 90 || 15 }}
-    environment:
-      name: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' && 'artifact-cache-publish' || 'artifact-cache-read' }}
+    permissions:
+      contents: read
+      # GitHub OIDC for the shared Lean CAS roles (hiloop live/aws-foundation/lean-cas.tf).
+      id-token: write
     env:
       # Public Linux runners have four cores and 16 GB RAM.
       LEAN_NUM_THREADS: 2
-      AWS_ENDPOINT_URL: ${{ vars.SILMARIL_CACHE_ENDPOINT }}
-      LAKE_CI_BUCKET: ${{ vars.SILMARIL_CACHE_BUCKET || 'lean-cache' }}
-      LAKE_CI_PREFIX: ${{ vars.SILMARIL_CACHE_PREFIX || 'silmaril-lean/v1' }}
-      AWS_REGION: ${{ vars.SILMARIL_CACHE_REGION || 'auto' }}
+      LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
+      LAKE_CI_PREFIX: silmaril-lean/lake
+      AWS_REGION: us-east-1
+      # Only main pushes publish; every other run reads.
+      CACHE_PUBLISH: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,39 +58,26 @@ jobs:
           node-version: '24'
       - name: Install the shared Lake cache
         uses: ./.github/actions/lake-cache-tool
-      - name: Configure artifact credentials
+      - name: Assume the Lean CAS role
         id: credentials
-        env:
-          CACHE_KEY: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SILMARIL_CACHE_KEY || secrets.SILMARIL_CACHE_READ_KEY }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$CACHE_KEY" ]; then
-            echo 'No remote artifact credential; using disk outputs or a normal build.'
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          [[ "$LAKE_CI_PREFIX" == silmaril-lean/* && "/$LAKE_CI_PREFIX/" != */../* ]]
-          [[ "$CACHE_KEY" == *:* && -n "${CACHE_KEY%%:*}" && -n "${CACHE_KEY#*:}" ]]
-          [[ "$CACHE_KEY" != *$'\n'* && "$CACHE_KEY" != *$'\r'* ]]
-          printf '::add-mask::%s\n' "${CACHE_KEY%%:*}" "${CACHE_KEY#*:}"
-          {
-            printf 'AWS_ACCESS_KEY_ID=%s\n' "${CACHE_KEY%%:*}"
-            printf 'AWS_SECRET_ACCESS_KEY=%s\n' "${CACHE_KEY#*:}"
-            printf 'AWS_SESSION_TOKEN=\n'
-          } >> "$GITHUB_ENV"
-          echo 'available=true' >> "$GITHUB_OUTPUT"
+        # Fork pull requests receive no OIDC token; they use the disk cache or build.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-${{ env.CACHE_PUBLISH == 'true' && 'write' || 'read' }}-lean-cas
+          aws-region: us-east-1
+          role-duration-seconds: 7200
       - name: Fetch public dependency artifacts on a disk miss
         if: steps.disk.outputs.cache-matched-key == ''
         run: cov-lake-cache dependencies
       - name: Fill missing build artifacts from the optional S3 cache
         # Lake validates current sources when it unpacks restored artifacts.
-        if: steps.disk.outputs.cache-matched-key == '' && steps.credentials.outputs.available == 'true'
+        if: steps.disk.outputs.cache-matched-key == '' && steps.credentials.outcome == 'success'
         continue-on-error: true
         run: cov-lake-cache get --repository hiloopai/silmaril-lean
       - name: Build all Lean modules and run every native release check
         env:
-          LAKE_CACHE_RECORD: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.disk.outputs.cache-hit != 'true' && steps.credentials.outputs.available == 'true' && 'build/lake-cache/root' || '' }}
+          LAKE_CACHE_RECORD: ${{ env.CACHE_PUBLISH == 'true' && steps.disk.outputs.cache-hit != 'true' && 'build/lake-cache/root' || '' }}
         run: |
           du -sh .lake
           df -h .
@@ -95,10 +85,7 @@ jobs:
           build/bin/sil --help
           build/bin/sil wasm opt --print-presets
       - name: Publish successful main artifacts to S3
-        if: >-
-          github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-          github.repository == 'hiloopai/silmaril-lean' && steps.disk.outputs.cache-hit != 'true' &&
-          steps.credentials.outputs.available == 'true'
+        if: env.CACHE_PUBLISH == 'true' && steps.disk.outputs.cache-hit != 'true'
         continue-on-error: true
         run: cov-lake-cache put --repository hiloopai/silmaril-lean
       - name: Save successful main build or manual branch seed

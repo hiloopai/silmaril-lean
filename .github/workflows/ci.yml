@@ -48,7 +48,9 @@ jobs:
       !github.event.pull_request.draft &&
       (needs.changes.outputs.lean == 'true' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/ci-lean.yml
-    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
     with:
       seed: ${{ github.event_name == 'workflow_dispatch' && inputs.seed }}
 
