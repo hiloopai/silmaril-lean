@@ -77,19 +77,16 @@ The revision and archive checksum used by CI are in `.github/actions/lake-cache-
 `make cache` fetches public dependency artifacts. If `LAKE_CI_BUCKET` is set, it
 also restores the available project artifacts. A normal clone needs no credentials.
 
-For an authorized S3-compatible cache, configure:
+With read access to the project's S3 cache, use the standard AWS credential
+chain (a role, an instance profile or web identity):
 
 ```sh
-export AWS_ENDPOINT_URL=https://your-s3-endpoint
-export AWS_REGION=auto  # use the bucket's region for AWS S3
-export LAKE_CI_BUCKET=your-bucket
-export LAKE_CI_PREFIX=silmaril-lean/v1
-export AWS_ACCESS_KEY_ID=your-access-id
-export AWS_SECRET_ACCESS_KEY=your-secret
+export AWS_REGION=us-east-1
+export LAKE_CI_BUCKET=hiloop-lean-cas-607856468300-us-east-1
+export LAKE_CI_PREFIX=silmaril-lean/lake
 make cache
 ```
 
-For AWS S3, omit `AWS_ENDPOINT_URL` and use the standard AWS credential chain.
 The shared tool uses Covalence's S3 transport. It compresses Lake's native
 artifacts and records mappings for the successful build. Cache keys include the
 repository, platform, Lean version, dependency pins and Lake configuration.
@@ -98,16 +95,13 @@ Lake validates restored artifacts; `make check` still runs every native test.
 `LAKE_CACHE_RECORD=build/lake-cache/root make check` records a successful build
 from a clean checkout. After all checks pass, trusted main CI calls
 `cov-lake-cache put --repository hiloopai/silmaril-lean`. Publication does not
-run another build. Old uncompressed entries are not used by this cache format.
+run another build.
 
-CI keeps its existing repository variables (`SILMARIL_CACHE_ENDPOINT`,
-`SILMARIL_CACHE_BUCKET`, `SILMARIL_CACHE_PREFIX`, `SILMARIL_CACHE_REGION`) and
-translates them to the shared tool's configuration. The combined writer secret,
-`SILMARIL_CACHE_KEY`, stays in the `artifact-cache-publish` environment, whose
-deployment policy permits only `main`. Pull requests use `artifact-cache-read`
-and can use a separately provisioned **read-only** `SILMARIL_CACHE_READ_KEY`;
-forks receive no secrets. Without a read credential, CI uses the disk cache or
-builds normally. Remote failures remain visible and do not suppress proof checks.
+CI gets short-lived credentials through GitHub OIDC; no cache key is stored in
+the repository. Pushes to `main` assume a role that may write this prefix; every
+other run assumes a read-only role. Fork pull requests receive no OIDC token and
+use the disk cache or build normally. Remote failures remain visible and do not
+suppress proof checks.
 
 Covalence owns the transfer, corruption and real-Lean integration tests. This
 repository tests its CI time guard and runs the complete release checks.
