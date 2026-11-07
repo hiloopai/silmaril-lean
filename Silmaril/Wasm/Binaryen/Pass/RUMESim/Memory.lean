@@ -20,6 +20,8 @@ theorem memoryStep_frame {S : Store H} {f f' : Frame} {l : List Admin} {c : Conf
     MemoryStep P ⟨S, f', l⟩ ⟨c.store, f', c.code⟩ := by
   cases h <;> constructor <;>
     first | assumption | simp_all only [Store.mem?, Store.data?]
+  -- The `hm` premises left after simp_all hold by rfl.
+  all_goals rfl
 
 /-- Each memory reduction emits only memory instructions, constants and traps,
 which are identical on both sides of the function/global renaming. -/

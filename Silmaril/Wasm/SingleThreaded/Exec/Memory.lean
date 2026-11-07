@@ -50,6 +50,7 @@ theorem addrOf?_eq_some {v : Val} {a : AddrType} {i : BitVec a.intType.width} :
   intro h
   cases a <;> rcases v with ⟨⟨t | t⟩, c⟩ | _ | _ <;>
     simp [addrOf?, AddrType.intType] at h ⊢ <;> cases h
+  case i32.num.int.i32.refl | i64.num.int.i64.refl => rfl
 
 @[simp] theorem addrOf?_aconst (a : AddrType) (i : BitVec a.intType.width) :
     addrOf? (.num ⟨.int a.intType, i⟩) = some ⟨a, i⟩ := by

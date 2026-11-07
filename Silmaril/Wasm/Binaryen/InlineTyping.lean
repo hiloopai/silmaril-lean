@@ -239,6 +239,7 @@ theorem ParametricInstrOk.rel {i : Instr} {it : InstrType} (h : ParametricInstrO
 theorem NumericInstrOk.rel {i : Instr} {it : InstrType} (h : NumericInstrOk C i it) :
     NumericInstrOk (relCtx C L X r) i it := by
   cases h <;> constructor
+  case intUnOp => assumption
 
 theorem VectorInstrOk.rel {i : Instr} {it : InstrType} (h : VectorInstrOk C i it) :
     VectorInstrOk (relCtx C L X r) i it := by

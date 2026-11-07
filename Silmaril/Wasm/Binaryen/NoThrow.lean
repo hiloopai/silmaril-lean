@@ -209,6 +209,9 @@ theorem okAdmins_step {P : Profile} {c c' : Config H} (h : Step P closedHost c c
     refine ⟨?_, rfl⟩
     have hcc : OkAdmin c := by simp_all
     simpa using okAdmin_retToCallIn (m := fi'.module) hcr hcc
+  | block | loop | brLabelZero =>
+    ok_simp
+    first | exact okAdmins_expression hc.2 | exact okAdmins_expression hc.1
   | _ =>
     ok_simp
 
