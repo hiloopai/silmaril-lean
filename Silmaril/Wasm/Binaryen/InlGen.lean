@@ -136,7 +136,7 @@ theorem gen_flat (hok : PrmOk p) {s t : Store H} {f : Frame} {args : List Val} {
     | aggregate h =>
       exact absurd ((Det.famOf_of_shape (Det.AggregateStep.shape h)).2.symm.trans hfam)
         (by decide)
-    | _ => rcases hx with h | h | h <;> (try cases h) <;> simp_all [Admin.IsCallRef]
+    | _ => rcases hx with h | h | h <;> (cases h) <;> simp_all [Admin.IsCallRef]
 
 /-! ## Inversion of generic code -/
 

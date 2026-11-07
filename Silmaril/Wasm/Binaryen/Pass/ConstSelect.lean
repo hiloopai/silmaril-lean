@@ -40,7 +40,7 @@ def foldA : List BExpr → List BExpr
 termination_by es => sizeOf es
 decreasing_by
   all_goals simp_wf
-  all_goals omega
+  omega
 /-- Fold flat constant/operation pairs as well as folded trees. -/
 def foldL : List BExpr → List BExpr
   | [] => []

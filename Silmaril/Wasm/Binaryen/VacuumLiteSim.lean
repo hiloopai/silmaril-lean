@@ -222,11 +222,16 @@ theorem step_nop_inv {c c' : Config H} (h : Step P host c c') :
       rw [← hc]; simp [vals, throwing, Val.toAdmin]
     obtain ⟨-, h, -⟩ := vals_append_cons_inj rfl rfl hc'
     cases h
+  | callRefFunc | callRefHost | callRefHostDiv | callRefNull =>
+    intro us hc
+    have hl := congrArg List.getLast? hc
+    simp [constI32] at hl
+    subst hl
+    simp_all [Admin.IsCallRef, Admin.IsReturnCallRef]
   | _ =>
     intro us hc
     have hl := congrArg List.getLast? hc
     simp [constI32] at hl
-    all_goals (subst hl; simp_all [Admin.IsCallRef, Admin.IsReturnCallRef])
 
 set_option maxHeartbeats 1000000 in
 set_option linter.unusedSimpArgs false in
@@ -292,11 +297,16 @@ theorem step_drop_inv {c c' : Config H} (h : Step P host c c') :
       rw [← hc]; simp [vals, throwing, Val.toAdmin]
     obtain ⟨-, h, -⟩ := vals_append_cons_inj rfl rfl hc'
     cases h
+  | callRefFunc | callRefHost | callRefHostDiv | callRefNull =>
+    intro us hc
+    have hl := congrArg List.getLast? hc
+    simp [constI32] at hl
+    subst hl
+    simp_all [Admin.IsCallRef, Admin.IsReturnCallRef]
   | _ =>
     intro us hc
     have hl := congrArg List.getLast? hc
     simp [constI32] at hl
-    all_goals (subst hl; simp_all [Admin.IsCallRef, Admin.IsReturnCallRef])
 
 /-- An exit kernel holds neither `nop` nor `drop`. -/
 theorem exit_not_unit {k : List Admin} (hk : Exit k) :
