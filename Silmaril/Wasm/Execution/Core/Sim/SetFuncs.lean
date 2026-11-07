@@ -105,7 +105,7 @@ variable {P : Profile} {c c' : Config H}
 theorem VariableStep.setFuncs (h : VariableStep c c') (g : List (FuncInst H)) :
     VariableStep (H := H) ⟨c.store.setFuncs g, c.frame, c.code⟩
       ⟨c'.store.setFuncs g, c'.frame, c'.code⟩ := by
-  cases h <;> (try simp only [Store.setGlobal_setFuncs]) <;> constructor! <;> assumption
+  cases h <;> (simp only [Store.setGlobal_setFuncs]) <;> constructor! <;> assumption
 
 theorem VariableStep.funcs_eq (h : VariableStep c c') : c'.store.funcs = c.store.funcs := by
   cases h <;> rfl
@@ -113,7 +113,7 @@ theorem VariableStep.funcs_eq (h : VariableStep c c') : c'.store.funcs = c.store
 theorem TableStep.setFuncs (h : TableStep P c c') (g : List (FuncInst H)) :
     TableStep P (H := H) ⟨c.store.setFuncs g, c.frame, c.code⟩
       ⟨c'.store.setFuncs g, c'.frame, c'.code⟩ := by
-  cases h <;> (try simp only [Store.setTable_setFuncs, Store.setElem_setFuncs]) <;>
+  cases h <;> (simp only [Store.setTable_setFuncs, Store.setElem_setFuncs]) <;>
     constructor! <;> assumption
 
 theorem TableStep.funcs_eq (h : TableStep P c c') : c'.store.funcs = c.store.funcs := by
@@ -122,7 +122,7 @@ theorem TableStep.funcs_eq (h : TableStep P c c') : c'.store.funcs = c.store.fun
 theorem MemoryStep.setFuncs (h : MemoryStep P c c') (g : List (FuncInst H)) :
     MemoryStep P (H := H) ⟨c.store.setFuncs g, c.frame, c.code⟩
       ⟨c'.store.setFuncs g, c'.frame, c'.code⟩ := by
-  cases h <;> (try simp only [Store.setMem_setFuncs, Store.setData_setFuncs]) <;>
+  cases h <;> (simp only [Store.setMem_setFuncs, Store.setData_setFuncs]) <;>
     constructor! <;> assumption
 
 theorem MemoryStep.funcs_eq (h : MemoryStep P c c') : c'.store.funcs = c.store.funcs := by
@@ -132,7 +132,7 @@ theorem RefStep.setFuncs (h : RefStep c c') {g : List (FuncInst H)}
     (hg : g.map FuncInst.type = c.store.funcs.map FuncInst.type) :
     RefStep (H := H) ⟨c.store.setFuncs g, c.frame, c.code⟩
       ⟨c'.store.setFuncs g, c'.frame, c'.code⟩ := by
-  cases h <;> (try dsimp only at hg ⊢) <;> constructor! <;>
+  cases h <;> (dsimp only at hg ⊢) <;> constructor! <;>
     first
       | assumption
       | exact (RefOk.setFuncs_iff hg).2 ‹_›
@@ -145,7 +145,7 @@ theorem AggregateStep.setFuncs (h : AggregateStep c c') (g : List (FuncInst H)) 
     AggregateStep (H := H) ⟨c.store.setFuncs g, c.frame, c.code⟩
       ⟨c'.store.setFuncs g, c'.frame, c'.code⟩ := by
   cases h <;>
-    (try simp only [Store.setStructField_setFuncs, Store.setArrayField_setFuncs,
+    (simp only [Store.setStructField_setFuncs, Store.setArrayField_setFuncs,
       Store.addStruct_setFuncs, Store.addArray_setFuncs]) <;>
     first
       | (constructor! <;> assumption)

@@ -104,7 +104,7 @@ theorem RefOk.null_nullable {s : Store H} {rt : CRefType} (h : RefOk s .null rt)
 
 theorem Ref.type?_nonnull {s : Store H} {r : Ref} {rt₀ : CRefType} (e : Ref.type? s r = some rt₀)
     (hn : r ≠ .null) : ∃ h₀, rt₀ = .ref false h₀ := by
-  cases r <;> simp_all [Ref.type?] <;> (try obtain ⟨_, _, rfl⟩ := e) <;>
+  cases r <;> simp_all [Ref.type?] <;> (obtain ⟨_, _, rfl⟩ := e) <;>
     exact ⟨_, rfl⟩
 
 /-- A non-null reference has the non-null version of any of its types. -/

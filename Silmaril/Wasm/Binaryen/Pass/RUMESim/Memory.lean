@@ -18,8 +18,9 @@ theorem memoryStep_frame {S : Store H} {f f' : Frame} {l : List Admin} {c : Conf
     (hm : f.module.mems = f'.module.mems) (hd : f.module.datas = f'.module.datas)
     (h : MemoryStep P ⟨S, f, l⟩ c) :
     MemoryStep P ⟨S, f', l⟩ ⟨c.store, f', c.code⟩ := by
-  cases h <;> constructor <;>
-    first | assumption | (simp_all only [Store.mem?, Store.data?]; all_goals rfl)
+  have hmem : ∀ x, S.mem? f' x = S.mem? f x := fun x => by simp only [Store.mem?, hm]
+  have hdat : ∀ x, S.data? f' x = S.data? f x := fun x => by simp only [Store.data?, hd]
+  cases h <;> constructor <;> first | assumption | (simp only [hmem, hdat]; assumption)
 
 /-- Each memory reduction emits only memory instructions, constants and traps,
 which are identical on both sides of the function/global renaming. -/

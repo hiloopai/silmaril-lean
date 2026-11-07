@@ -77,7 +77,7 @@ def pick {K : Type*} [LinearOrder K] [Sub K] (mode : RoundingMode) (neg : Bool)
 theorem pickBy_map {K L : Type*} (φ : K → L) (mode : RoundingMode) (neg : Bool)
     (lt gt even : Prop) [Decidable lt] [Decidable gt] [Decidable even] (d u : K) :
     φ (pickBy mode neg lt gt even d u) = pickBy mode neg lt gt even (φ d) (φ u) := by
-  cases mode <;> simp only [pickBy] <;> (try split_ifs) <;> rfl
+  cases mode <;> simp only [pickBy] <;> split_ifs <;> rfl
 
 theorem pickBy_congr {K : Type*} (mode : RoundingMode) (neg : Bool)
     {lt gt even lt' gt' even' : Prop} [Decidable lt] [Decidable gt] [Decidable even]
@@ -89,7 +89,7 @@ theorem pickBy_congr {K : Type*} (mode : RoundingMode) (neg : Bool)
 theorem pickBy_self {K : Type*} (mode : RoundingMode) (neg : Bool)
     (lt gt even : Prop) [Decidable lt] [Decidable gt] [Decidable even] (d : K) :
     pickBy mode neg lt gt even d d = d := by
-  cases mode <;> simp only [pickBy] <;> (try split_ifs) <;> rfl
+  cases mode <;> simp only [pickBy] <;> split_ifs <;> rfl
 
 theorem pickBy_cases {K : Type*} (mode : RoundingMode) (neg : Bool)
     (lt gt even : Prop) [Decidable lt] [Decidable gt] [Decidable even] (d u : K) :

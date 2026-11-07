@@ -376,7 +376,7 @@ def Admin.isVal (a : Admin) : Bool := a.val?.isSome
 
 theorem Admin.eq_of_val? {c : Admin} {v : Val} (h : c.val? = some v) : c = v.toAdmin := by
   unfold Admin.val? at h
-  split at h <;> (try cases h) <;> rfl
+  split at h <;> (cases h) <;> rfl
 
 theorem Admin.val?_of_isCallRef {c : Admin} (h : c.IsCallRef) : c.val? = none := by
   cases hv : c.val? with

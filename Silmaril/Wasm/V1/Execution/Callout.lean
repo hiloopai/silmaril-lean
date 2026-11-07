@@ -221,12 +221,12 @@ theorem Step.of_internal {H : Type*} {host : HostSemantics H} {a b : Config H}
   | invokeHostDiverges _ _ _ _ _ _ _ _ hb => exact hb.elim
   | _ =>
     first
-    | (apply Step.pure; all_goals assumption)
-    | (apply Step.localGet; all_goals assumption)
+    | (apply Step.pure; assumption)
+    | (apply Step.localGet; assumption)
     | (apply Step.localSet <;> assumption)
     | (apply Step.globalGet <;> assumption)
     | (apply Step.globalSet <;> assumption)
-    | (apply Step.call; all_goals assumption)
+    | (apply Step.call; assumption)
     | (apply Step.callIndirect <;> assumption)
     | (apply Step.callIndirectBounds <;> assumption)
     | (apply Step.callIndirectNull <;> assumption)
@@ -303,12 +303,12 @@ theorem Step.internal_or_callout {H : Type*} {host : HostSemantics H} {a b : Con
   | _ =>
     refine .inl ?_
     first
-    | (apply Step.pure; all_goals assumption)
-    | (apply Step.localGet; all_goals assumption)
+    | (apply Step.pure; assumption)
+    | (apply Step.localGet; assumption)
     | (apply Step.localSet <;> assumption)
     | (apply Step.globalGet <;> assumption)
     | (apply Step.globalSet <;> assumption)
-    | (apply Step.call; all_goals assumption)
+    | (apply Step.call; assumption)
     | (apply Step.callIndirect <;> assumption)
     | (apply Step.callIndirectBounds <;> assumption)
     | (apply Step.callIndirectNull <;> assumption)

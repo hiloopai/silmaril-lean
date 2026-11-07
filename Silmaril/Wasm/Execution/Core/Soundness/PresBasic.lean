@@ -50,7 +50,7 @@ theorem _root_.Silmaril.Wasm.Validation.ParametricInstrOk.relabel (h : Parametri
 theorem _root_.Silmaril.Wasm.Validation.NumericInstrOk.reshape (h : NumericInstrOk C i it) :
     NumericInstrOk (C.reshape lo lb r) i it := by
   cases h <;> constructor
-  all_goals assumption
+  assumption
 
 theorem _root_.Silmaril.Wasm.Validation.VectorInstrOk.reshape (h : VectorInstrOk C i it) :
     VectorInstrOk (C.reshape lo lb r) i it := by
@@ -494,16 +494,16 @@ theorem AdminOk.toAdmin_inits {s : Store H} {C : Context} {v : Val} {it : InstrT
   rcases v with ⟨⟨t⟩ | ⟨t⟩, b⟩ | b | r
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
-      all_goals rfl
+      cases h <;> (rename_i hh; cases hh)
+      rfl
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
-      all_goals rfl
+      cases h <;> (rename_i hh; cases hh)
+      rfl
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
-      all_goals rfl
+      cases h <;> (rename_i hh; cases hh)
+      rfl
   · cases h with
     | ref h => rfl
 

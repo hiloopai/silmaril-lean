@@ -129,7 +129,7 @@ theorem TyOk.super_width {Δ : TypeCtx} {d : DefType} (hd : TyOk Δ d) {fin : Bo
           | idx x =>
             cases hu0 with
             | idx hx =>
-              try simp only [Ty.subst, Option.getD_none]
+              simp only [Ty.subst, Option.getD_none]
               obtain ⟨e, hx'⟩ : ∃ e, Δ.types[x]? = some e := ⟨_, hx⟩
               have h2 : (Δ.withRecs subs.toList).unrollUse (.idx x) = unrolldt e := by
                 simp [TypeCtx.unrollUse, TypeCtx.withRecs, hx']

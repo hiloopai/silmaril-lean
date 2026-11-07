@@ -168,7 +168,7 @@ theorem vc_entry (c : Ctx) (s : XState) (_hlv : s.faulted = false)
   all_goals (try (simp only [ofNat_toNat_mod64, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMul,
     Nat.reduceMod]))
   all_goals (try (exact hret))
-  all_goals (try (refine WW.of ?_; sv_mem))
+  (refine WW.of ?_; sv_mem)
   all_goals (intro i hi; (try simp only [Silmaril.Machine.LittleEndian.encodeWords_length,
     List.length_cons, List.length_nil] at hi); simp only [PW]; sv_disj)
 

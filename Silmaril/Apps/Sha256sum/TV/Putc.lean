@@ -139,8 +139,8 @@ theorem run_append {s : XState} (hf : s.faulted = false) (hc : Lift.Code s.memor
     exact hv
   · simp only [Lift.read_mk, Lift.core_regs, State.read_write_other _ _ _ _ hr]
   · refine ww_store hw2 (ww_store hw1 (Memory.WritesWithin.refl _ _) ?_) ?_
-    · intro x h1 h2; (try simp only [List.length_cons, List.length_nil] at h2); simp only [ObufFoot]; omega
-    · intro x h1 h2; (try simp only [X86.Ext.length_leBytes] at h2); simp only [ObufFoot]; omega
+    · intro x h1 h2; (simp only [List.length_cons, List.length_nil] at h2); simp only [ObufFoot]; omega
+    · intro x h1 h2; (simp only [X86.Ext.length_leBytes] at h2); simp only [ObufFoot]; omega
 
 /-! ## The output layer of the IR -/
 

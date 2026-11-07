@@ -148,8 +148,7 @@ theorem utf8Char_utf8EncodeChar (c : Char) : Utf8Char (String.utf8EncodeChar c) 
   · exact .four _ _ _ _ _ (by simp [Cont]; omega) (by simp [Cont]; omega) (by simp [Cont]; omega)
       (by simp; omega)
 theorem utf8_eq_flatMap (s : String) : utf8 s = s.toList.flatMap String.utf8EncodeChar := by
-  rw [utf8, String.toUTF8_eq_toByteArray, ← String.utf8Encode_toList, List.utf8Encode,
-    List.toList_data_toByteArray]
+  simp only [utf8, String.toUTF8_eq_toByteArray, ← String.utf8Encode_toList, List.utf8Encode]
 
 theorem utf8Chars_iff {b : List UInt8} {cs : List Char} :
     Utf8Chars b cs ↔ cs.flatMap String.utf8EncodeChar = b := by

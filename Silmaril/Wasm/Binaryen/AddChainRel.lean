@@ -31,7 +31,10 @@ theorem foldE_rel : ∀ x : BExpr, InstrsRel acBI x.lower (foldE x).lower
     · rename_i _ bt cs b
       simpa [BExpr.lower] using InstrsRel.cons (InstrRel.tryTable bt cs (foldL_rel b)) .nil
 termination_by x => sizeOf x
-decreasing_by all_goals (try subst_vars); all_goals simp_wf; all_goals omega
+decreasing_by
+  all_goals subst_vars
+  all_goals simp_wf
+  all_goals omega
 
 theorem foldL_rel : ∀ es : List BExpr,
     InstrsRel acBI (BExpr.lowerList es) (BExpr.lowerList (foldL es))
@@ -48,7 +51,10 @@ theorem foldL_rel : ∀ es : List BExpr,
     · rename_i _ e ys _ _
       simpa using (foldE_rel e).append (foldL_rel ys)
 termination_by es => sizeOf es
-decreasing_by all_goals (try subst_vars); all_goals simp_wf; all_goals omega
+decreasing_by
+  all_goals subst_vars
+  all_goals simp_wf
+  all_goals omega
 end
 
 /-- Every original function body is related to its rewritten body. -/

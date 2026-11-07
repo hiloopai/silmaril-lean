@@ -115,10 +115,9 @@ theorem candidate_none_iff (interval : Interval) (value : ℚ) (digits : Nat) :
   generalize decade value - (digits : Int) + 1 = exponent
   generalize (value / power exponent).num.toNat / (value / power exponent).den = lower
   split_ifs <;> simp_all
-  all_goals
-    by_cases zero : lower = 0
-    · exact Or.inl zero
-    · exact Or.inr (by solve_by_elim)
+  by_cases zero : lower = 0
+  · exact Or.inl zero
+  · exact Or.inr (by solve_by_elim)
 
 theorem candidate_exists_of_lower (interval : Interval) (value : ℚ) (digits : Nat)
     (positive : 0 < (lowerNeighbor value digits).coefficient)

@@ -591,27 +591,27 @@ theorem ne_throwRef_of_fam {j : Instr} {k : SingleThreaded.Det.Fam}
 
 theorem fixed_numeric {j : Instr} (hk : famOf (.plain j) = .numeric) :
     ∀ r i, Preimage r j i → i = j := by
-  cases j <;> (try simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
+  cases j <;> (simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
 
 theorem fixed_vector {j : Instr} (hk : famOf (.plain j) = .vector) :
     ∀ r i, Preimage r j i → i = j := by
-  cases j <;> (try simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
+  cases j <;> (simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
 
 theorem fixed_table {j : Instr} (hk : famOf (.plain j) = .table) :
     ∀ r i, Preimage r j i → i = j := by
-  cases j <;> (try simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
+  cases j <;> (simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
 
 theorem fixed_memory {j : Instr} (hk : famOf (.plain j) = .memory) :
     ∀ r i, Preimage r j i → i = j := by
-  cases j <;> (try simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
+  cases j <;> (simp only [famOf, reduceCtorEq] at hk) <;> exact fun _ _ hp => hp
 
 theorem none_table {j : Instr} (hk : famOf (.plain j) = .table) (r : Relocation) :
     instruction? r j = none := by
-  cases j <;> (try simp only [famOf, reduceCtorEq] at hk) <;> simp [instruction?]
+  cases j <;> (simp only [famOf, reduceCtorEq] at hk) <;> simp [instruction?]
 
 theorem none_memory {j : Instr} (hk : famOf (.plain j) = .memory) (r : Relocation) :
     instruction? r j = none := by
-  cases j <;> (try simp only [famOf, reduceCtorEq] at hk) <;> simp [instruction?]
+  cases j <;> (simp only [famOf, reduceCtorEq] at hk) <;> simp [instruction?]
 
 theorem Function.wasm_back {fi₀ fi : FuncInst H} {code : Func} (h : StoreRelation.Function fi₀ fi)
     (hc : fi.code = .wasm code) : ∃ code₀, fi₀.code = .wasm code₀ := by

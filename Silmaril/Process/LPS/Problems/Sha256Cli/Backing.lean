@@ -127,7 +127,7 @@ theorem keeps_pushWord' {s : State} {m : Memory} {v : Word} {t : State} {m' : Me
 theorem exec_grows {i : Instr} {s : State} {m : Memory} {len : Nat} {core : State}
     {m' : Memory} (h : exec i s m len = .ok core m') : Grows m m' := by
   cases i
-  all_goals try (unfold exec at h; dsimp only at h)
+  all_goals (unfold exec at h; dsimp only at h)
   all_goals repeat' split at h
   all_goals first
     | contradiction

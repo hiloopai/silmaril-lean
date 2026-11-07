@@ -239,7 +239,7 @@ theorem valF_readField {n0 : Nat} {z : CStorageType} {bytes : ByteArray} {off : 
 theorem valF_defaultVal {n0 : Nat} {t : CValType} {v : Val} (h : defaultVal? t = some v) :
     valF n0 v := by
   unfold defaultVal? at h
-  split at h <;> (try cases h) <;> trivial
+  split at h <;> (cases h) <;> trivial
 
 theorem valF_mapM_default {n0 : Nat} {α : Type} {g : α → CValType} :
     ∀ {l : List α} {vs : List Val}, l.mapM (fun x => defaultVal? (g x)) = some vs →
@@ -340,7 +340,8 @@ theorem refStep_withFG {n0 : Nat} {S : Store H} {f : Frame} {l : List Admin} {c'
   | castFail h => exact .castFail (fun h' => h ((hok _ _ (hl (.ref _) (by simp))).2 h'))
   | eqNull => exact .eqNull
   | eqTrue h => exact .eqTrue h
-  | _ => constructor; all_goals assumption
+  | asNonNullAddr | eqFalse | externConvertAddr | isNullFalse | refFunc => constructor; assumption
+  | _ => constructor
 
 theorem tableStep_fg {S : Store H} {f : Frame} {l : List Admin} {c' : Config H}
     (h : TableStep P ⟨S, f, l⟩ c') : c'.store.funcs = S.funcs ∧ c'.store.globals = S.globals ∧ c'.frame = f := by

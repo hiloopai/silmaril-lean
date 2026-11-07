@@ -82,7 +82,7 @@ theorem running_unique {o : GrowOracle} {s : Store H} {t : Thread}
     simp only at hs
     split_ifs at hs
     try cases hs
-    all_goals (split at hs <;> cases hs)
+    (split at hs <;> cases hs)
   obtain ⟨y, hy⟩ := hex
   exact ⟨y, hy, fun z hz => Internal.deterministic hy hz⟩
 

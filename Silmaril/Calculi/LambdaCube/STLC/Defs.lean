@@ -549,11 +549,11 @@ theorem mapSentence_identity {S : Signature} (j : Sentence S) : mapSentence (Sig
   cases j with
   | typing Γ t τ =>
       simp only [mapSentence]
-      congr 1 <;> try simp [SigMap.identity]
+      congr 1 <;> simp [SigMap.identity]
       exact mapRaw_identity t
   | equation t u =>
       simp only [mapSentence]
-      congr 1 <;> try simp [SigMap.identity]
+      congr 1 <;> simp [SigMap.identity]
       all_goals exact mapTerm_identity _
 
 /-- Composition acts by ordinary composition on base types. -/
@@ -603,13 +603,13 @@ theorem mapTerm_comp {S T U : Signature} (f : SigMap S T) (g : SigMap T U)
   induction t with
   | var x =>
       simp only [mapTerm]
-      congr 1 <;> try simp [List.map_map]
+      congr 1 <;> simp [List.map_map]
       exact (by rw [mapTy_comp]; exact var_map_comp _ _ x)
   | lam t ih => simp only [mapTerm]; congr 1 <;> simp_all [List.map_map]
   | app t u iht ihu => simp only [mapTerm]; congr 1 <;> simp_all [List.map_map]
   | op o args ih =>
       simp only [mapTerm]
-      congr 1 <;> try simp [List.map_map]
+      congr 1 <;> simp [List.map_map]
       · exact SigMap.comp_op f g o
       · change HEq
           (reindexTuple (mapTy (f.comp g).base) (fun _ x => mapTerm (f.comp g) (args _ x)))
@@ -629,7 +629,7 @@ theorem mapRaw_comp {S T U : Signature} (f : SigMap S T) (g : SigMap T U)
   | app t u iht ihu => simp only [mapRaw, iht, ihu]
   | @op as τ o args ih =>
       simp only [mapRaw]
-      congr 1 <;> try simp [List.map_map]
+      congr 1 <;> simp [List.map_map]
       · exact SigMap.comp_op f g o
       · apply fin_fun_heq (by simp)
         intro i
@@ -645,7 +645,7 @@ theorem mapSentence_comp {S T U : Signature} (f : SigMap S T) (g : SigMap T U)
       exact mapRaw_comp f g t
   | equation t u =>
       simp only [mapSentence]
-      congr 1 <;> try simp [List.map_map]
+      congr 1 <;> simp [List.map_map]
       all_goals exact mapTerm_comp f g _
 
 /-- Composition of arrow equivalences respects transport of codomain types. -/
@@ -686,7 +686,7 @@ theorem envMap_comp (f : A → B) (g : B → D) (base : D → Type)
   | nil => rfl
   | cons a Γ ih =>
       simp only [envMap]
-      congr 1 <;> try simp [List.map_map]
+      congr 1 <;> simp [List.map_map]
       · exact equiv_apply_heq (by simp) _ _ (carrierMap_comp f g base a) _
       · exact ih _
 

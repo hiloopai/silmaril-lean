@@ -569,10 +569,9 @@ theorem instructionSyntax?_sound {i : Instr} {xs : List SExp}
       exact .shuffle (mapM_sound (fun (l : LaneIdx) (x : SExp) hl =>
         unsignedSyntax?_sound (width := 8) (n := l.val) (x := x) hl) hx) hlen
     · cases h
-  all_goals
-    obtain ⟨name, hn, h⟩ := Option.bind_eq_some_iff.mp h
-    cases h
-    exact .nullary hn
+  obtain ⟨name, hn, h⟩ := Option.bind_eq_some_iff.mp h
+  cases h
+  exact .nullary hn
 
 private theorem instructionsSyntax_sound {is : List Instr} {xss : List (List SExp)}
     (h : is.mapM instructionSyntax? = some xss) (I : Text.Core.IdCtx) :

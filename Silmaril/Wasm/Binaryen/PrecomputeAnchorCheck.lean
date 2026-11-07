@@ -86,11 +86,16 @@ theorem step_add_inv {c c' : Config H} (h : Step P host c c') :
       rw [← hc]; simp [vals, throwing, Val.toAdmin]
     obtain ⟨-, h, -⟩ := vals_append_cons_inj rfl rfl hc'
     cases h
+  | callRefFunc | callRefHost | callRefHostDiv | callRefNull =>
+    intro t us hc
+    have hl := congrArg List.getLast? hc
+    simp [constI32] at hl
+    subst hl
+    simp_all [Admin.IsCallRef, Admin.IsReturnCallRef]
   | _ =>
     intro t us hc
     have hl := congrArg List.getLast? hc
     simp [constI32] at hl
-    all_goals (subst hl; simp_all [Admin.IsCallRef, Admin.IsReturnCallRef])
 
 
 def precBI (x y : List Instr) : Prop :=

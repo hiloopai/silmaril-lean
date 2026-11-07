@@ -34,7 +34,8 @@ end
 theorem teeAdminRank_pos (a : Admin) : 0 < teeAdminRank a := by
   cases a with
   | plain i => cases i <;> simp [teeAdminRank]
-  | _ => simp [teeAdminRank]; all_goals omega
+  | label | handler | frame => simp [teeAdminRank]; omega
+  | _ => simp [teeAdminRank]
 
 theorem teeCodeRank_pos {a : List Admin} (ha : a ≠ []) : 0 < teeCodeRank a := by
   cases a with

@@ -179,7 +179,7 @@ theorem head_flat {p : Prm} {P : Numerics.Profile} (hok : PrmOk p) {s t : Store 
     | aggregate h =>
       exact absurd ((Det.famOf_of_shape (Det.AggregateStep.shape h)).2.symm.trans hfam)
         (by decide)
-    | _ => rcases hx with h | h | h <;> (try cases h) <;> simp_all [Admin.IsCallRef]
+    | _ => rcases hx with h | h | h <;> cases h <;> simp_all [Admin.IsCallRef]
 
 /-! ## Structured plain heads -/
 

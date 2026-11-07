@@ -187,20 +187,20 @@ theorem length_encode (padded : Bool) (bs : List UInt8) :
 /-! ## RFC 4648 §10 test vectors -/
 
 example : encode std true [] = "" := by decide
-example : encode std true [0x66] = "Zg==" := by decide
-example : encode std true [0x66, 0x6f] = "Zm8=" := by decide
-example : encode std true [0x66, 0x6f, 0x6f] = "Zm9v" := by decide
-example : encode std true [0x66, 0x6f, 0x6f, 0x62] = "Zm9vYg==" := by decide
-example : encode std true [0x66, 0x6f, 0x6f, 0x62, 0x61] = "Zm9vYmE=" := by decide
-example : encode std true [0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72] = "Zm9vYmFy" := by decide
+example : encode std true [0x66] = "Zg==" := by decide +kernel
+example : encode std true [0x66, 0x6f] = "Zm8=" := by decide +kernel
+example : encode std true [0x66, 0x6f, 0x6f] = "Zm9v" := by decide +kernel
+example : encode std true [0x66, 0x6f, 0x6f, 0x62] = "Zm9vYg==" := by decide +kernel
+example : encode std true [0x66, 0x6f, 0x6f, 0x62, 0x61] = "Zm9vYmE=" := by decide +kernel
+example : encode std true [0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72] = "Zm9vYmFy" := by decide +kernel
 
 example : encode std false [] = "" := by decide
-example : encode std false [0x66] = "Zg" := by decide
-example : encode std false [0x66, 0x6f] = "Zm8" := by decide
-example : encode std false [0x66, 0x6f, 0x6f] = "Zm9v" := by decide
-example : encode std false [0x66, 0x6f, 0x6f, 0x62] = "Zm9vYg" := by decide
-example : encode std false [0x66, 0x6f, 0x6f, 0x62, 0x61] = "Zm9vYmE" := by decide
-example : encode std false [0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72] = "Zm9vYmFy" := by decide
+example : encode std false [0x66] = "Zg" := by decide +kernel
+example : encode std false [0x66, 0x6f] = "Zm8" := by decide +kernel
+example : encode std false [0x66, 0x6f, 0x6f] = "Zm9v" := by decide +kernel
+example : encode std false [0x66, 0x6f, 0x6f, 0x62] = "Zm9vYg" := by decide +kernel
+example : encode std false [0x66, 0x6f, 0x6f, 0x62, 0x61] = "Zm9vYmE" := by decide +kernel
+example : encode std false [0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72] = "Zm9vYmFy" := by decide +kernel
 
 example : decode? std true "Zm9vYmE=" = some [0x66, 0x6f, 0x6f, 0x62, 0x61] := by decide
 example : decode? std false "Zm9vYg" = some [0x66, 0x6f, 0x6f, 0x62] := by decide

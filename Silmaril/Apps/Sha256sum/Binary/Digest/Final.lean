@@ -538,7 +538,7 @@ theorem vc_166 (c : Ctx) (hg : Geo c) :
       have e0 := srcIdx_lane i 0 (by omega)
       simp only [Nat.add_zero] at e0
       rw [e0]
-      try simp only at *
+      simp only at *
       simp only [Nat.reduceSub, Option.some.injEq]
       congr 1
       simp only [BitVec.toNat_setWidth, BitVec.toNat_ofNat, BitVec.toNat_ushiftRight,

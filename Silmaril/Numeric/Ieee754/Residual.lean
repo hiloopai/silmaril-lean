@@ -30,7 +30,6 @@ theorem shiftRightOne_sound (em : ExtendedMantissa) (q : K)
   rcases hn with hn | hn <;> rw [hn] at he <;>
     cases rb <;> cases sb <;>
     simp_all [ExtendedMantissa.shiftRightOne, ExtendedMantissa.accuracy, AccuracySound] <;>
-    (try rcases h with ⟨hlo, hhi, hmid⟩) <;>
     (repeat' apply And.intro) <;> linarith
 
 /-- Repeated shifts preserve all information needed by every rounding direction. -/

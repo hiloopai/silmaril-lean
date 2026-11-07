@@ -158,7 +158,10 @@ theorem Decoded.edges_of_retiring {d : Decoded} (h : retiring d.instr = true) :
 /-- `Edge.ret` is listed exactly for `ret`. -/
 theorem Decoded.mem_edges_ret_iff {d : Decoded} : Edge.ret ∈ d.edges ↔ d.instr = .ret := by
   obtain ⟨addr, instr, size⟩ := d
-  cases instr <;> simp [Decoded.edges]
+  -- `delta` and `dsimp` reduce the match per constructor. Unfolding with `simp` would build the
+  -- equation lemmas of `edges`, whose splitter over every instruction runs out of heartbeats.
+  delta Decoded.edges
+  cases instr <;> dsimp only <;> simp
 
 /-- The address after the instruction, in the form `Ext.exec` produces it. -/
 theorem rip_add_length {d : Decoded} {s : State} (hrip : s.rip.toNat = d.addr)

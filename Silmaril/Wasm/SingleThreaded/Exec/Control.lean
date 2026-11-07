@@ -421,7 +421,7 @@ theorem controlStep?_complete {cast : Store H → Ref → CRefType → Bool} {o 
     rw [Ctl.plain_eq rfl]
     simp only [Ctl.plainStep?, ‹s.tag? f _ = _›, Expand.iff.mp ‹Expand _ _›,
       ← ‹List.length _ = Ty.length _›, Ctl.drop_suffix]
-    try simp
+    simp
   case throwRefNull => cmp1
   case callRefNull =>
     unfold controlStep?
@@ -435,6 +435,6 @@ theorem controlStep?_complete {cast : Store H → Ref → CRefType → Bool} {o 
     simp only [Ctl.callRef?, Ctl.getLast?_snoc, List.dropLast_concat, ‹s.funcs[_]? = _›,
       Expand.iff.mp ‹Expand _ _›, ‹FuncInst.code _ = _›, ← ‹List.length _ = Ty.length _›,
       Ctl.drop_suffix]
-    try simp
+    simp
 
 end Silmaril.Wasm.SingleThreaded.Exec

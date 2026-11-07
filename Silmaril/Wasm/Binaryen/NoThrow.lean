@@ -209,7 +209,11 @@ theorem okAdmins_step {P : Profile} {c c' : Config H} (h : Step P closedHost c c
     refine ⟨?_, rfl⟩
     have hcc : OkAdmin c := by simp_all
     simpa using okAdmin_retToCallIn (m := fi'.module) hcr hcc
-  | _ => ok_simp; all_goals first | exact okAdmins_expression hc.2 | exact okAdmins_expression hc.1
+  | block | loop | brLabelZero =>
+    ok_simp
+    first | exact okAdmins_expression hc.2 | exact okAdmins_expression hc.1
+  | _ =>
+    ok_simp
 
 theorem okAdmins_steps {P : Profile} {c c' : Config H} (h : Steps P closedHost c c')
     (hc : OkAdmins c.code) (hF : FuncsOk c.store.funcs) :
@@ -286,7 +290,7 @@ theorem throws_not_mem_nbeh {s : Store H} {a : Nat} {vs : List Val} (x : Nat) :
   · cases fl <;> simp [flowBeh] at hb
     subst hb
     unfold invokeRun at hrun
-    split at hrun <;> try simp at hrun
+    split at hrun <;> simp at hrun
     split at hrun <;> try simp at hrun
     split at hrun <;> simp at hrun
     obtain ⟨rfl, rfl⟩ := hrun

@@ -93,7 +93,7 @@ theorem vc_entry (c : Ctx) (hc : LaunchFacts c) :
   · simp only [postB]
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     all_goals (try (seg_read [hsp, hdi]))
-    all_goals (try sv_mem)
+    (sv_mem)
     all_goals sv_within
   · rename_i hb
     have hnz : c.arg[0] ≠ 0 := by simpa using hb
@@ -105,8 +105,8 @@ theorem vc_entry (c : Ctx) (hc : LaunchFacts c) :
     · seg_read [hsp, hdi]
     · refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
       all_goals (try (seg_read [hsp, hdi]; done))
-      all_goals (try sv_mem)
-      all_goals (try sv_within)
+      (sv_mem)
+      all_goals (sv_within)
 
 set_option maxHeartbeats 8000000 in
 /-- **VERIFIED.** One iteration of the scan of `argv[0]` for its last `/`: back to the loop head
@@ -149,7 +149,7 @@ theorem vc_scan (c : Ctx) (hc : LaunchFacts c) :
   have hnz' : ∀ q, q ≤ j + 1 → c.arg[q]! ≠ 0 → c.arg[q]! ≠ 0 := fun _ _ h => h
   sv_go [Main.listing, hrip, hl, hsp, hdi, hrax, hrdx, hr11, hrsi, hr14, hnext]
   all_goals rename_i h1 h2
-  all_goals (try simp only [beq_eq_false_iff_ne, beq_iff_eq, ne_eq, Bool.not_eq_eq_eq_not, Bool.not_true, Bool.not_false] at h1 h2)
+  all_goals (simp only [beq_eq_false_iff_ne, beq_iff_eq, ne_eq, Bool.not_eq_eq_eq_not, Bool.not_true, Bool.not_false] at h1 h2)
   · refine ⟨j + 1, hc.argStr.lt! hj h2, fun q hq => ?_, ?_, ?_, ?_, ?_⟩
     · rcases Nat.lt_or_ge q (j + 1) with h | h
       · exact hnz q (by omega)

@@ -332,7 +332,7 @@ theorem s1_call (s : XState) (buf : Bytes) (hf : s.faulted = false) (hc : Lift.C
   refine RunsTo.done ⟨⟨hf, by assumption, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega⟩, ?_,
     ⟨SiteFoot (s.core.read .rsp).toNat, ?_⟩, ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩⟩
   rfin [hlen] [SiteFoot]
-  all_goals try simp only [State.read_write_same, OutErrorZero]
+  all_goals simp only [State.read_write_same, OutErrorZero]
   all_goals first
     | (simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega)
     | xperm
@@ -467,7 +467,7 @@ theorem s2_call (s : XState) (buf : Bytes) (hf : s.faulted = false) (hc : Lift.C
   refine RunsTo.done ⟨⟨hf, by assumption, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega⟩, ?_,
     ⟨SiteFoot (s.core.read .rsp).toNat, ?_⟩, ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩⟩
   rfin [hlen] [SiteFoot]
-  all_goals try simp only [State.read_write_same, OutErrorZero]
+  all_goals simp only [State.read_write_same, OutErrorZero]
   all_goals first
     | (simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega)
     | xperm
@@ -690,7 +690,7 @@ theorem pf_call (s : XState) (buf : Bytes) (hf : s.faulted = false) (hc : Lift.C
   refine RunsTo.done ⟨⟨by assumption, by assumption, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega⟩, ?_,
     ⟨PfFoot (s.core.read .rsp).toNat, ?_⟩, ⟨⟨hsp, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩⟩
   rfin [hlen, hrsp1, hrbx, hrbp, hr12, hr13, hr14, hr15] [PfFoot]
-  all_goals try simp only [State.read_write_same, OutErrorZero]
+  all_goals simp only [State.read_write_same, OutErrorZero]
   all_goals first
     | (simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega)
     | xperm
@@ -852,7 +852,7 @@ theorem s4_call {s : XState} {buf : Bytes} (hf : s.faulted = false) (hc : Lift.C
   refine RunsTo.done ⟨⟨by assumption, by assumption, rfl, ?_, ?_, ?_, hob3.olenW, ?_, hob3.olen,
     hob3.obuf, hob3.cap⟩, hob3.outError, ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, hob3⟩
   rfin [] [SiteFoot]
-  all_goals try simp only [State.read_write_same, State.read_write_other, ne_eq, reduceCtorEq,
+  all_goals simp only [State.read_write_same, State.read_write_other, ne_eq, reduceCtorEq,
     not_false_eq_true, Lift.read_mk, Lift.core_regs]
   all_goals first
     | (simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega)
