@@ -24,7 +24,7 @@ def foldE : BExpr → BExpr
   | .if_ bt c t e => .if_ bt (foldL c) (foldL t) (foldL e)
   | .tryTable bt cs b => .tryTable bt cs (foldL b)
 termination_by x => sizeOf x
-decreasing_by all_goals first | (simp_wf; omega) | simp_wf
+decreasing_by all_goals simp_wf
 
 def foldL : List BExpr → List BExpr
   | .op (.intConst .i32 a) [] :: .op (.intBinOp .i32 .add) [] ::
@@ -36,7 +36,7 @@ def foldL : List BExpr → List BExpr
   | [] => []
   | e :: es => foldE e :: foldL es
 termination_by es => sizeOf es
-decreasing_by all_goals first | (simp_wf; omega) | simp_wf
+decreasing_by all_goals simp_wf
 end
 
 def addChain (m : BModule) : BModule :=

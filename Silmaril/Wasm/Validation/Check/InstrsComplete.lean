@@ -639,7 +639,7 @@ theorem checkInstr_complete (hD : DirectComplete atom? tyOk) (hT : TyOkOracleCom
     (fun bt cs b e => hty ⟨bt, cs, b, e⟩) (fun h' => hsel h'.1) h hS hl hsub
   exact ⟨r, hne ▸ hr', by cases r <;> exact hok⟩
 termination_by sizeOf i
-decreasing_by all_goals first | (subst_vars; simp; omega) | (subst_vars; simp)
+decreasing_by all_goals (subst_vars; simp)
 
 theorem checkSeq_complete (hD : DirectComplete atom? tyOk) (hT : TyOkOracleComplete tyOk)
     (l : List Instr) {C : Context} {s : List CValType} {poly : Bool}

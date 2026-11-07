@@ -234,7 +234,7 @@ theorem Control.same (m : ModuleInst) (xs : List Admin) : Control .same m m xs x
     | frame n f body => exact .frame (Frames.same f) (Control.same f.module body) rest
     | trap => exact .trap rest
 termination_by sizeOf xs
-decreasing_by all_goals first | (simp_wf; omega) | simp_wf
+decreasing_by all_goals simp_wf
 
 /-- A corresponding stored wasm definition supplies the next call frame's
 mode, matching locals and the actual rewritten expression. -/

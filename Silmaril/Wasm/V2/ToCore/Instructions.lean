@@ -579,10 +579,8 @@ theorem Instr.immediatesValid_toCore : ∀ {i : Instr} {c : Wasm.Instr},
   | .dataDrop _ =>
       simp only [Instr.toCore, Option.some.injEq] at hc
       subst hc
-      first
-        | (simp_all [Instr.immediatesValid, Instr.coreImmediatesValid, Wasm.Instr.immediatesValid,
-            VecExtUnOp.valid, VecExtUnOp.valid2]; omega)
-        | simp_all [Instr.immediatesValid, Instr.coreImmediatesValid, Wasm.Instr.immediatesValid]
+      simp_all [Instr.immediatesValid, Instr.coreImmediatesValid, Wasm.Instr.immediatesValid,
+        VecExtUnOp.valid, VecExtUnOp.valid2]
 termination_by i => sizeOf i
 
 /-- The expression-level form of `Instr.immediatesValid_toCore` (`1-syntax:525`). -/

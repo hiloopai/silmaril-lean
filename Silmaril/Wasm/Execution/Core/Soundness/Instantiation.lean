@@ -86,7 +86,7 @@ theorem TyOk.subst_recs {Δ Δ' : TypeCtx} (hT : Δ'.types = Δ.types) {σ : Sub
       exact TyOk.def_congr' hT (.defn hg hi)
   | _ =>
     intro h
-    first | (cases h; simp only [Ty.subst]; constructor <;> simp_all) | cases h
+    cases h
 
 theorem TyOk.toList_forall {Δ : TypeCtx} {k : TKind} :
     ∀ {l : Ty (.list k)}, TyOk Δ l → ∀ t ∈ l.toList, TyOk Δ t

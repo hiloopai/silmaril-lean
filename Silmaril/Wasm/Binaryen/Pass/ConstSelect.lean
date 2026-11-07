@@ -30,13 +30,13 @@ def foldE : BExpr → BExpr
   | .if_ bt c t e => .if_ bt (foldL c) (foldL t) (foldL e)
   | .tryTable bt cs b => .tryTable bt cs (foldL b)
 termination_by x => sizeOf x
-decreasing_by all_goals first | ((try subst_vars); simp_wf; omega) | ((try subst_vars); simp_wf)
+decreasing_by all_goals ((try subst_vars); simp_wf)
 /-- Visit operand trees without combining adjacent operand trees. -/
 def foldA : List BExpr → List BExpr
   | [] => []
   | e :: es => foldE e :: foldA es
 termination_by es => sizeOf es
-decreasing_by all_goals first | (simp_wf; omega) | simp_wf
+decreasing_by all_goals simp_wf
 /-- Fold flat constant/operation pairs as well as folded trees. -/
 def foldL : List BExpr → List BExpr
   | [] => []
@@ -50,7 +50,7 @@ def foldL : List BExpr → List BExpr
       .op (.br (ls[k.toNat]?.getD d)) [] :: foldL es
     | _, _ => foldE x :: foldL (y :: es)
 termination_by es => sizeOf es
-decreasing_by all_goals first | ((try subst_vars); simp_wf; omega) | ((try subst_vars); simp_wf)
+decreasing_by all_goals ((try subst_vars); simp_wf)
 end
 
 def constSelect (m : BModule) : BModule :=

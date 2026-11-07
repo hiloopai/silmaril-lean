@@ -168,9 +168,7 @@ theorem Step.label_inv_aux {c c' : Config H} (h : Step P host c c') :
   | _ =>
     intro us n cont b hc
     have hl := congrArg List.getLast? hc
-    first
-      | (simp [constI32] at hl; subst hl; simp [Admin.IsCallRef, Admin.IsReturnCallRef] at *)
-      | simp [constI32] at hl
+    simp [constI32] at hl
 
 /-- **`LABEL` inversion.** A step of `val* (LABEL_n{cont} b)` is a reduction of the
 `LABEL` redex, under the value prefix. -/
