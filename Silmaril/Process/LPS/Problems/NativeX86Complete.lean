@@ -449,16 +449,16 @@ theorem denote?_eq_none_iff (s : Statement) :
   rcases s with ⟨san, _, _⟩ | ⟨b, _, _⟩ | ⟨b, _⟩ | ⟨san, _, _⟩ | ⟨san, _, _⟩ <;>
     simp only [denote?, isUntranslated, Statement.needsDistribution, Statement.builds,
       withImages, withImage, List.any_cons, List.any_nil]
-  · cases p.images .plain <;> cases p.images san <;> (try simp) <;>
+  · cases p.images .plain <;> cases p.images san <;> (simp) <;>
     first | rfl | exact fun h => Option.some_ne_none _ h
-  · cases p.images b <;> (try simp) <;>
+  · cases p.images b <;> (simp) <;>
     first | rfl | exact fun h => Option.some_ne_none _ h
-  · cases p.images b <;> (try simp) <;>
+  · cases p.images b <;> (simp) <;>
     first | rfl | exact fun h => Option.some_ne_none _ h
   · cases p.harness.distribution <;> cases p.images .plain <;> cases p.images san <;>
-    (try simp) <;>
+    (simp) <;>
     first | rfl | exact fun h => Option.some_ne_none _ h
-  · cases p.images .plain <;> cases p.images san <;> (try simp) <;>
+  · cases p.images .plain <;> cases p.images san <;> (simp) <;>
     first | rfl | exact fun h => Option.some_ne_none _ h
 
 /-- Without a distribution, a bound statement is untranslated, whatever the snapshots. -/

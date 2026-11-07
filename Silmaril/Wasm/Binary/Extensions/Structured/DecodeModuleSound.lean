@@ -238,7 +238,7 @@ theorem readModule_go_ok (reader : DecodeM Body) (hreader : Sound E reader) (fue
     unfold readModule.go at h
     obtain ⟨r, c₁, hr, h⟩ := run_bind_ok h
     obtain ⟨rfl, rfl⟩ := rest_of_remaining hr
-    try dsimp only at h
+    dsimp only at h
     split at h
     · obtain ⟨rfl, rfl⟩ := run_pure_ok h
       exact ⟨rfl, [], last, by simp, h13, he, fun p hp => by simpa using hp⟩

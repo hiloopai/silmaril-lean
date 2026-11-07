@@ -34,7 +34,7 @@ theorem co_subst_norecs {Δ : TypeCtx} (hr : Δ.recs = []) {ρ : Subst}
   | idx x => intro _; simp [Ty.subst, hρ]
   | recv i => intro h; cases h with | recv hx => simp [hr] at hx
   | defn g i => intro _; exact Ty.recFree_def _ ρ hρ
-  | _ => intro h; cases h; simp_all [Ty.subst]
+  | _ => intro h; first | (cases h; simp_all [Ty.subst]) | cases h
 
 theorem co_def_rho (subs : Ty (.list .sub)) (d : DefType) : d.subst (unrollSubst subs) = d :=
   Ty.recFree_def d _ (fun _ => rfl)
