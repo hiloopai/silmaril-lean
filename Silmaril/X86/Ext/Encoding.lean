@@ -1075,7 +1075,7 @@ theorem decode_sound {bytes : List Byte} {i : Instr} {n : Nat}
       subst h1 h2
       exact ⟨rfl, key _ _ hp⟩
     · cases h
-  all_goals cases h
+  cases h
 
 theorem decode_eq_some_iff {bytes : List Byte} {i : Instr} {n : Nat} :
     decode bytes = some (i, n) ↔ n = (encode i).length ∧ encode i <+: bytes := by

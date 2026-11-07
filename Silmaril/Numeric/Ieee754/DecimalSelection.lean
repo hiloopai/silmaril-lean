@@ -51,7 +51,7 @@ theorem candidate_neighbor_preference (interval : Interval) (value : ℚ) (posit
     split_ifs at selected <;>
     simp_all only [Bool.and_eq_true, bne_iff_ne, beq_iff_eq, Option.some.injEq, reduceCtorEq]
   all_goals subst result
-  all_goals try simp_all
+  all_goals simp_all
   all_goals first | omega | (intro equal; linarith) | constructor <;> first | linarith | (intro equal; first | omega | linarith)
 
 /-- The selected decimal minimizes distance over every accepted positive

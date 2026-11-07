@@ -517,7 +517,7 @@ theorem signal_eq_ok_iff {m m' : MXCSR} {d : Detected} :
   cases h1 : m.unmasked d.pre <;> cases h2 : m.unmasked d.post <;>
     simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq, Except.ok.injEq, true_and,
       false_and, and_false]
-  all_goals exact eq_comm
+  exact eq_comm
 
 /-- #XM is raised exactly when a detected exception is unmasked. -/
 theorem signal_eq_error_iff {m m' : MXCSR} {d : Detected} :

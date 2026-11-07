@@ -115,7 +115,7 @@ theorem keepsRegions_pushWord' {s : State} {m : Memory} {v : Word} {t : State} {
 theorem exec_regions {i : Instr} {s : State} {m : Memory} {len : Nat} {core : State}
     {m' : Memory} (h : exec i s m len = .ok core m') : m'.regions = m.regions := by
   cases i
-  all_goals try (unfold exec at h; dsimp only at h)
+  all_goals (unfold exec at h; dsimp only at h)
   all_goals repeat' split at h
   all_goals first
     | contradiction

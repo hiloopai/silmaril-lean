@@ -368,6 +368,6 @@ theorem minMax_chaos (E : Encoding) (nan : List Fields → Fields)
   have hq : NaNSpec.quietNaN E [x, y] (nan [x, y]) := hnan _ _ rfl
   have hn := numericMinMax_cases E isMax x y
   unfold MinMaxChaos minMax
-  cases rule <;> dsimp only <;> (try split_ifs) <;> simp_all <;> tauto
+  cases rule <;> dsimp only <;> split_ifs <;> simp_all <;> tauto
 
 end Silmaril.Numeric.Ieee754.Std
