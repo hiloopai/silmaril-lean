@@ -93,7 +93,7 @@ theorem vc_entry (c : Ctx) (hc : LaunchFacts c) :
   · simp only [postB]
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     all_goals (try (seg_read [hsp, hdi]))
-    (try sv_mem)
+    (sv_mem)
     all_goals sv_within
   · rename_i hb
     have hnz : c.arg[0] ≠ 0 := by simpa using hb
@@ -105,7 +105,7 @@ theorem vc_entry (c : Ctx) (hc : LaunchFacts c) :
     · seg_read [hsp, hdi]
     · refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
       all_goals (try (seg_read [hsp, hdi]; done))
-      (try sv_mem)
+      (sv_mem)
       all_goals (sv_within)
 
 set_option maxHeartbeats 8000000 in

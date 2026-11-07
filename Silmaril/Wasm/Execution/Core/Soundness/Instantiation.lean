@@ -86,7 +86,8 @@ theorem TyOk.subst_recs {Δ Δ' : TypeCtx} (hT : Δ'.types = Δ.types) {σ : Sub
       exact TyOk.def_congr' hT (.defn hg hi)
   | _ =>
     intro h
-    cases h; simp only [Ty.subst]; all_goals constructor <;> simp_all
+    -- Some constructors leave no goal after `cases`; `repeat` runs the rest only where one is left.
+    cases h; repeat (simp only [Ty.subst]; all_goals constructor <;> simp_all)
 
 theorem TyOk.toList_forall {Δ : TypeCtx} {k : TKind} :
     ∀ {l : Ty (.list k)}, TyOk Δ l → ∀ t ∈ l.toList, TyOk Δ t

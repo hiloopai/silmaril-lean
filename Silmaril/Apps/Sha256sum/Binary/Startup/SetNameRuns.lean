@@ -98,7 +98,7 @@ theorem vc_join (c : Ctx) (hc : LaunchFacts c) :
   simp only [postB]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   all_goals (try (seg_read [hsp, hdi, hr11, hrsi, hr14]))
-  (try sv_mem)
+  (sv_mem)
   all_goals (sv_within)
 
 
