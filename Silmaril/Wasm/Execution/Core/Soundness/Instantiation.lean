@@ -84,9 +84,15 @@ theorem TyOk.subst_recs {Δ Δ' : TypeCtx} (hT : Δ'.types = Δ.types) {σ : Sub
         intro v; cases v <;> simp [Subst.minusRecs, hidx]
       simp only [Ty.subst, this]
       exact TyOk.def_congr' hT (.defn hg hi)
-  | _ =>
+  | sub | group =>
     intro h
-    cases h; all_goals simp only [Ty.subst]; all_goals constructor <;> simp_all
+    cases h
+  | nil | cons | dt | abs | bot | use | ref | num | vec | refv | botv | val | pack | field | struct
+    | array | func =>
+    intro h
+    cases h
+    simp only [Ty.subst]
+    constructor <;> simp_all
 
 theorem TyOk.toList_forall {Δ : TypeCtx} {k : TKind} :
     ∀ {l : Ty (.list k)}, TyOk Δ l → ∀ t ∈ l.toList, TyOk Δ t

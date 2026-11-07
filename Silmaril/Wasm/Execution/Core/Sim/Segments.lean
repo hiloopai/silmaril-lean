@@ -186,7 +186,7 @@ theorem codeSize_cons (a : Admin) (l : List Admin) :
 
 theorem codeSize_pos (l : List Admin) : 0 < codeSize l := by
   cases l <;> simp [codeSize]
-  all_goals omega
+  omega
 
 /-- Removing a nonempty infix makes the code strictly smaller. -/
 theorem codeSize_lt_of_infix (p m q : List Admin) (hm : m ≠ []) :

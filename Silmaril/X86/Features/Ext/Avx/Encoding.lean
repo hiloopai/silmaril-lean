@@ -360,7 +360,7 @@ theorem matches_toRaw (i : Syntax) : i.1.op.matches (toRaw i.1) = true := by
     · revert hk hkn
       cases i.op.info.kind <;> cases hr : i.rm <;>
         simp [kindOk, kindMatches, encodeRM_mem_mod, Opnd.toRM]
-      all_goals rfl
+      rfl
   · rename_i hmod
     have hkn : i.op.info.kind = .none := by
       cases h : i.op.info.kind <;> simp_all

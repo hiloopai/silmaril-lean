@@ -480,7 +480,7 @@ theorem div_invalid_iff (x y : Datum) :
   · simp only [hs, false_or, Bool.false_eq_true, ↓reduceIte]
     cases x <;> cases y <;>
       simp_all [Datum.isSignaling, roundingFlags, Datum.isZero, Datum.isInfinite]
-    all_goals split_ifs <;> simp_all
+    split_ifs <;> simp_all
 
 /-- Division by zero is raised exactly for a finite nonzero dividend and a zero
 divisor (§7.3); an infinite dividend gives an exact infinity. -/
@@ -494,7 +494,7 @@ theorem div_divisionByZero_iff (x y : Datum) :
     simp [Datum.isSignaling] at hs
   · simp only [hs, Bool.false_eq_true, ↓reduceIte]
     cases x <;> cases y <;> simp_all [Datum.isSignaling, roundingFlags]
-    all_goals split_ifs <;> simp_all
+    split_ifs <;> simp_all
 
 theorem sqrt_invalid_iff (x : Datum) :
     (sqrt f mode tininess x).invalidOperation = true ↔

@@ -190,7 +190,7 @@ theorem source_runs {source target result' : Store H} {left right : Frame}
       obtain ⟨_, _, rfl⟩ := rewrite
       simp [constInstr?] at run
   all_goals exfalso
-  all_goals (try simp only [instruction?, Option.map_eq_map, Option.map_eq_some_iff,
+  all_goals (simp only [instruction?, Option.map_eq_map, Option.map_eq_some_iff,
     Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq,
     reduceCtorEq] at rewrite)
   all_goals first

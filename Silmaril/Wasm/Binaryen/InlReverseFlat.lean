@@ -82,6 +82,6 @@ theorem reverse_generic_flat_head (parameters : PrmOk p)
     | aggregate step =>
       exact absurd ((Det.famOf_of_shape (Det.AggregateStep.shape step)).2.symm.trans family)
         (by decide)
-    | _ => rcases shape with eq | eq | eq <;> (try cases eq) <;> simp_all [Admin.IsCallRef]
+    | _ => rcases shape with eq | eq | eq <;> (cases eq) <;> simp_all [Admin.IsCallRef]
 
 end Silmaril.Wasm.Binaryen.InlR

@@ -98,8 +98,8 @@ theorem vc_join (c : Ctx) (hc : LaunchFacts c) :
   simp only [postB]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   all_goals (try (seg_read [hsp, hdi, hr11, hrsi, hr14]))
-  all_goals (try sv_mem)
-  all_goals (try sv_within)
+  (sv_mem)
+  all_goals (sv_within)
 
 
 /-- The scan exit without a `/`. -/
@@ -113,7 +113,7 @@ theorem vc_post0 (c : Ctx) (_hc : LaunchFacts c) :
       wpN Isa.sys8 Main.code postListing [] [(150, common c)] [] [] Main.base none 20 84 s := by
   intro s hlv hl hrip ⟨⟨n, hn, hn0, hnz, _, hsp, hdi, hr11, hrsi, hr14, hww⟩, h0⟩
   sv_go [postListing, hrip, hl, hsp, hdi, hr11, hrsi, hr14, h0]
-  all_goals cmn_close
+  cmn_close
 
 /-! ## Composition -/
 

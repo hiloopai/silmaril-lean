@@ -597,8 +597,8 @@ private theorem utf8Char_encode (c : Char) : Utf8Char c (String.utf8EncodeChar c
 
 /-- The specification's UTF-8 relation agrees with Lean's encoder. -/
 theorem Utf8.toUTF8 (s : String) : Utf8 s.toList s.toUTF8.data.toList := by
-  rw [String.toUTF8_eq_toByteArray, ← String.utf8Encode_toList, List.utf8Encode,
-    List.toList_data_toByteArray]
+  rw [String.toUTF8_eq_toByteArray, ← String.utf8Encode_toList]
+  show Utf8 s.toList (s.toList.flatMap String.utf8EncodeChar)
   generalize s.toList = l
   induction l with
   | nil => exact Seq.nil

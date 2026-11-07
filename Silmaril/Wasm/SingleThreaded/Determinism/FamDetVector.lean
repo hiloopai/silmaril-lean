@@ -92,9 +92,10 @@ theorem VectorStep.det {o : GrowKind → Nat → Nat → Nat → Bool} {l₁ l�
     {p : List Val} (h₁ : VectorStep (Profile.deterministic o) l₁ r₁)
     (h₂ : VectorStep (Profile.deterministic o) l₂ r₂) (hl : l₁ = vals p ++ l₂) :
     p = [] ∧ r₁ = r₂ := by
-  cases h₁ <;> cases h₂ <;> (fam_pre; all_goals first
+  cases h₁ <;> cases h₂ <;> fam_pre
+  all_goals first
     | fam_post
     | (rename_i h₁ h₂; rw [VecExtBinOpRel_fun h₁ h₂])
-    | (rename_i h₁ h₂; rw [VecConvertRel_det_fun h₁ h₂]))
+    | (rename_i h₁ h₂; rw [VecConvertRel_det_fun h₁ h₂])
 
 end Silmaril.Wasm.SingleThreaded.Det

@@ -212,11 +212,11 @@ theorem AdminOk.toAdmin_initsAgg {s : Store H} {C : Context} {v : Val} {it : Ins
     (h : AdminOk s C v.toAdmin it) : it.inits = [] := by
   rcases v with ⟨⟨t⟩ | ⟨t⟩, b⟩ | b | r
   · cases h with
-    | plain h => cases h <;> ((try (rename_i hh; cases hh)); all_goals rfl)
+    | plain h => (cases h <;> (rename_i hh; cases hh)); rfl
   · cases h with
-    | plain h => cases h <;> ((try (rename_i hh; cases hh)); all_goals rfl)
+    | plain h => (cases h <;> (rename_i hh; cases hh)); rfl
   · cases h with
-    | plain h => cases h <;> ((try (rename_i hh; cases hh)); all_goals rfl)
+    | plain h => (cases h <;> (rename_i hh; cases hh)); rfl
   · cases h with
     | ref h => rfl
 
@@ -1167,7 +1167,7 @@ theorem TyOk.super_kindAgg {Δ : TypeCtx} {d : DefType} (hd : TyOk Δ d) {fin : 
           | idx x =>
             cases hu0 with
             | idx hx =>
-              try simp only [Ty.subst, Option.getD_none]
+              simp only [Ty.subst, Option.getD_none]
               refine ⟨?_, .use (.idx hx)⟩
               obtain ⟨e, hx'⟩ : ∃ e, Δ.types[x]? = some e := ⟨_, hx⟩
               have h2 : (Δ.withRecs subs.toList).unrollUse (.idx x) = unrolldt e := by

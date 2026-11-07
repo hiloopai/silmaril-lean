@@ -141,7 +141,7 @@ theorem aggregate_typed_arity {s t : Store H} {f : Frame} {args vs : List Val}
     apply typed.fragment.active_arity
     intro C it ha
     have hi := ha.plain_inv_ne
-    cases hi <;> rename_i hi <;> cases hi; all_goals simp_all
+    cases hi <;> rename_i hi <;> cases hi; simp_all
 
 /-- Non-control instructions are active non-values; constants belong to control
 for decomposition purposes and therefore cannot satisfy this hypothesis. -/

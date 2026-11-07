@@ -196,7 +196,13 @@ theorem pure?_sound {o : GrowOracle} {i : Instr} {rv : List Val} {k : Nat} {out 
   all_goals first
     | (obtain ⟨hb, rfl⟩ := shuffle?_eq.mp hr; exact .vecShuffle _ _ _ hb)
     | exact .vecFloatBinOpTrap (fun r hr => by rw [VecFloatBinOpRel_det] at hr; simp_all)
-    | (constructor; all_goals (first | rfl | exact extBin_iff.mpr ‹_› | exact cvt_iff.mpr ‹_› | exact VecFloatBinOpRel_det.mpr ‹_› | exact inLane?_eq.mp hr))
+    | constructor
+  all_goals first
+    | rfl
+    | exact extBin_iff.mpr ‹_›
+    | exact cvt_iff.mpr ‹_›
+    | exact VecFloatBinOpRel_det.mpr ‹_›
+    | exact inLane?_eq.mp hr
 
 theorem pure?_complete {o : GrowOracle} {args : List Val} {e : Admin} {is' : List Admin}
     (h : VectorStep (Profile.deterministic o) (vals args ++ [e]) is') :

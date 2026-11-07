@@ -9,19 +9,19 @@ autoImplicit = false
 [[require]]
 name = "mathlib"
 git = "https://github.com/leanprover/downstream-lean4"
-rev = "0869f13b362a8b6fd5093164665f8fa9932a9493"
+rev = "569134c2fc750d92baa85d50cd925a7e20a93dd2"
 subDir = "mathlib4"
 
 [[require]]
 name = "cslib"
 git = "https://github.com/leanprover/downstream-lean4"
-rev = "5f821169d39e325cf95348b839706330f1f94e47"
+rev = "569134c2fc750d92baa85d50cd925a7e20a93dd2"
 subDir = "cslib"
 
 [[require]]
 name = "batteries"
 git = "https://github.com/leanprover-community/batteries"
-rev = "0041a661528d04567a89dca470115183e91d8b3a"
+rev = "6d1440736b73168c55f541c98aa29b62ad155a57"
 
 [[require]]
 name = "Qq"
@@ -51,7 +51,7 @@ rev = "50cd21bc62f2c8357c4f269d1185921cbfcdfc90"
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover/downstream-lean4"
-rev = "0869f13b362a8b6fd5093164665f8fa9932a9493"
+rev = "569134c2fc750d92baa85d50cd925a7e20a93dd2"
 subDir = "import-graph"
 
 [[require]]

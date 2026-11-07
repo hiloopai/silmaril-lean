@@ -89,6 +89,6 @@ theorem archGetfsExit_exec (en : ExecEntry) (inp : ProcInput)
   probe_trap 150
   probe_exit 0x1003
   exact ⟨_, rfl, rfl, rfl, rfl⟩
-  all_goals assumption
+  assumption
 
 end Silmaril.Process.LPS.Problems.X86Probes

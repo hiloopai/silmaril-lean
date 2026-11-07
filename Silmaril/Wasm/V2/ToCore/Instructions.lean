@@ -568,7 +568,7 @@ theorem Instr.immediatesValid_toCore : ∀ {i : Instr} {c : Wasm.Instr},
   | .vecAllTrue _ | .vecIntRelOp _ _ | .vecFloatRelOp _ _ | .vecShiftOp _ _
   | .vecBitmask _ | .vecSwizzle | .vecShuffle _ | .vecSplat _
   | .vecExtractLane _ _ _ | .vecReplaceLane _ _
-  | .vecExtUnOp _ _ _ | .vecExtBinOp _ _ _ | .vecNarrow _ _ _ | .vecCvtOp _ _ _
+  | .vecExtBinOp _ _ _ | .vecCvtOp _ _ _
   | .refNull _ | .refFunc _ | .refIsNull
   | .localGet _ | .localSet _ | .localTee _ | .globalGet _ | .globalSet _
   | .tableGet _ | .tableSet _ | .tableSize _ | .tableGrow _ | .tableFill _
@@ -579,9 +579,13 @@ theorem Instr.immediatesValid_toCore : ∀ {i : Instr} {c : Wasm.Instr},
   | .dataDrop _ =>
       simp only [Instr.toCore, Option.some.injEq] at hc
       subst hc
+      simp_all [Instr.immediatesValid, Instr.coreImmediatesValid, Wasm.Instr.immediatesValid]
+  | .vecExtUnOp _ _ _ | .vecNarrow _ _ _ =>
+      simp only [Instr.toCore, Option.some.injEq] at hc
+      subst hc
       simp_all [Instr.immediatesValid, Instr.coreImmediatesValid, Wasm.Instr.immediatesValid,
         VecExtUnOp.valid, VecExtUnOp.valid2]
-      all_goals omega
+      omega
 termination_by i => sizeOf i
 
 /-- The expression-level form of `Instr.immediatesValid_toCore` (`1-syntax:525`). -/

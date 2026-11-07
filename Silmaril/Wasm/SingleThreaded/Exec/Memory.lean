@@ -49,7 +49,8 @@ theorem addrOf?_eq_some {v : Val} {a : AddrType} {i : BitVec a.intType.width} :
     addrOf? v = some ⟨a, i⟩ → v = .num ⟨.int a.intType, i⟩ := by
   intro h
   cases a <;> rcases v with ⟨⟨t | t⟩, c⟩ | _ | _ <;>
-    simp [addrOf?, AddrType.intType] at h ⊢ <;> (cases h; try rfl)
+    simp [addrOf?, AddrType.intType] at h ⊢ <;> cases h
+  case i32.num.int.i32.refl | i64.num.int.i64.refl => rfl
 
 @[simp] theorem addrOf?_aconst (a : AddrType) (i : BitVec a.intType.width) :
     addrOf? (.num ⟨.int a.intType, i⟩) = some ⟨a, i⟩ := by
@@ -69,7 +70,7 @@ theorem floatOf?_eq_some {t : FloatType} {v : Val} {c : BitVec t.width} :
     floatOf? t v = some c → v = .num ⟨.float t, c⟩ := by
   intro h
   rcases v with ⟨⟨t' | t'⟩, c'⟩ | _ | _ <;> simp [floatOf?] at h
-  all_goals (obtain ⟨rfl, rfl⟩ := h; rfl)
+  (obtain ⟨rfl, rfl⟩ := h; rfl)
 
 @[simp] theorem floatOf?_self (t : FloatType) (c : BitVec t.width) :
     floatOf? t (.num ⟨.float t, c⟩) = some c := by
@@ -523,12 +524,12 @@ theorem stepArgs_complete {o : GrowOracle} {e : Admin} {l : List Admin}
     rename_i hg hp hm
     have hp' : o .memory _ _ _ = false := hp
     simp [stepArgs, memGrow, hm, profile, hp', hg]
-  all_goals (try simp [packExt, -List.getD_eq_getElem?_getD, stepArgs, loadInt, loadPack, loadFloat, vecLoad, vecLoadLane, storeInt,
+  all_goals (simp [packExt, -List.getD_eq_getElem?_getD, stepArgs, loadInt, loadPack, loadFloat, vecLoad, vecLoadLane, storeInt,
     storePack, storeFloat, vecStore, vecStoreLane, memSize, memFill, memCopy, memInit,
     dataDrop, load_of_lt, store_of_lt, *])
   all_goals first
     | (cases ‹Signedness› <;> rfl)
-    | (split_ifs <;> (try rfl) <;> (try omega); all_goals simp_all)
+    | (split_ifs <;> (try rfl) <;> (try omega); simp_all)
     | (split <;> simp_all)
 
 end Mem

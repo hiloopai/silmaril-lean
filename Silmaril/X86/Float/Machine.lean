@@ -621,7 +621,7 @@ theorem step_wellFormed {exit : Word} {m next : MState} (hw : m.state.mxcsr.Well
   · split at h
     · simp at h
     · split at h <;> rcases h with h | h <;> cases h <;> exact hw
-  · split at h <;> rcases h with h | h <;> (try cases h)
+  · split at h <;> rcases h with h | h <;> cases h
     rename_i hexec
     exact exec_commit_wellFormed hexec hw
   · split at h <;> rcases h with h | h <;> cases h <;> exact hw

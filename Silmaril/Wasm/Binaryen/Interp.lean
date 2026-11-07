@@ -466,7 +466,7 @@ theorem eval_of_run {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {es : L
   all_goals (try (obtain ⟨s', f', fl⟩ := r; rcases fl with vs | ⟨_ | k, vs⟩ | vs | _ | t))
   all_goals run_saturate
   all_goals (try eval_close)
-  all_goals (rcases vs with _ | ⟨_, _⟩ <;> (exfalso; solve_by_elim (maxDepth := 3)))
+  (rcases vs with _ | ⟨_, _⟩ <;> (exfalso; solve_by_elim (maxDepth := 3)))
 
 /-- `Eval` results are reached with enough fuel. -/
 theorem run_of_eval {s : Store H} {f : Frame} {stk : List Val} {es : List BExpr}

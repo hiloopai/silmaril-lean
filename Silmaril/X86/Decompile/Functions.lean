@@ -596,7 +596,9 @@ theorem checkBody_eq_none {ds : List Decoded} {p : Partition} {f : FunctionSpec}
 theorem instr_of_mem_edges_call {d : Decoded} {t : Nat} (h : Edge.call t ∈ d.edges) :
     ∃ rel, d.instr = .call rel := by
   obtain ⟨addr, instr, size⟩ := d
-  cases instr <;> simp [Decoded.edges] at h ⊢
+  -- See `Decoded.mem_edges_ret_iff`: `delta` avoids building the equation lemmas of `edges`.
+  delta Decoded.edges at h
+  cases instr <;> dsimp only at h <;> simp at h ⊢
 
 /-- A relocated call site is recorded. -/
 theorem mem_relocatedCallSites {ds : List Decoded} {p : Partition} {d : Decoded}
@@ -916,7 +918,8 @@ theorem relocatedCall_inv {ds : List Decoded} {p : Partition} {addr : Nat} {t : 
 /-- Every `call` instruction lists its own target as an edge. -/
 theorem mem_edges_call {d : Decoded} {rel : BitVec 32} (hi : d.instr = .call rel) :
     Edge.call (d.relTarget (rel.signExtend 64)) ∈ d.edges := by
-  simp only [Decoded.edges, hi]
+  delta Decoded.edges
+  rw [hi]
   exact List.Mem.head _
 
 /-- A relocated call whose declared target is internal still lands on the entry

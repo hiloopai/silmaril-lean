@@ -133,10 +133,10 @@ theorem schema_native {Δ : Set (TAssertion Native.L Native.C Native.V)}
         intro x y hxy u hu v hv
         simp [Peano.ZF.axNul, Peano.ZF.dvs] at hxy
         rcases hxy with hxy
-        all_goals cases hxy
-        all_goals simp [τ, schemaSubst] at hu hv
-        all_goals have hne : u ≠ v := by intro he; simp_all
-        all_goals refine ⟨hne, hd u ?_ v ?_ hne⟩
+        cases hxy
+        simp [τ, schemaSubst] at hu hv
+        have hne : u ≠ v := by intro he; simp_all
+        refine ⟨hne, hd u ?_ v ?_ hne⟩
         all_goals simp_all [ZF.Axioms.nul, Named.Formula.vars])
     exact ⟨by simpa [Peano.ZF.axNul, TExpr.subst, τ, schemaSubst, ZF.Axioms.nul, encode] using d⟩
   | pow a b c d hn =>

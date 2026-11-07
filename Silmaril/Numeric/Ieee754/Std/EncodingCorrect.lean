@@ -181,7 +181,7 @@ theorem decode_roundSpec {K : Type*} [Field K] [LinearOrder K] [IsStrictOrderedR
   obtain ⟨r, ru, hr, -, rfl, -⟩ := h
   split_ifs with hov
   · unfold overflowResult
-    cases mode <;> (try split_ifs) <;>
+    cases mode <;> split_ifs <;>
       first
       | exact F.decode_encode_inf _
       | exact F.decode_encode_fin _ F.fmt.rep_maxFinite le_rfl

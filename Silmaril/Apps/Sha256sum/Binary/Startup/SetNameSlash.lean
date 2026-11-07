@@ -124,7 +124,7 @@ theorem vc_slash_entry (c : Ctx) (_hc : LaunchFacts c) :
   sl_go [postListing, slashCuts, hrip, hl, hrcx, hdi, hR0, hsub]
   all_goals (try cmn_close)
   rename_i hb
-  exact ⟨n, i, 0, hn, hn0, hi, six_le_of_sle (by rw [BitVec.ofNat_add]; exact hb), by omega, by seg_read [hrcx], by seg_read []; try decide, by cmn_close⟩
+  exact ⟨n, i, 0, hn, hn0, hi, six_le_of_sle (by rw [BitVec.ofNat_add]; exact hb), by omega, by seg_read [hrcx], by seg_read []; decide, by cmn_close⟩
 
 
 end Silmaril.Apps.Sha256sum.Binary.Startup.SetName

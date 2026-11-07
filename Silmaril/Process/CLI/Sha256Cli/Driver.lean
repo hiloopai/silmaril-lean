@@ -87,6 +87,8 @@ theorem ReadInv.padding_zeros {consumed : List Byte} {blocks : List (List Byte)}
       if tail.length + 1 > 56 then (64 - (tail.length + 1)) + 56
       else 56 - (tail.length + 1) := by
   rw [Silmaril.Crypto.paddingZeroCount, h.remainder]
+  -- The equation lemma keeps the definition's `have`; `split_ifs` cannot see under it.
+  dsimp only
   have := h.room
   split_ifs <;> omega
 

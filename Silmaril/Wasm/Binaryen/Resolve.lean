@@ -562,7 +562,7 @@ theorem findIdx?_eq_some_of {α : Type} (xs : List α) (p : α → Bool) (k : Na
       rw [ha]
       simp only [Bool.false_eq_true, ↓reduceIte]
       rw [ih k (fun j x hj h => hk (j + 1) x (by omega) (by simpa using h)) (by simpa using hx)]
-      try rfl
+      rfl
 
 theorem toIdx_toNat {k : IndexKind} (i : Idx k) :
     (toIdx i.toNat : Except ResolveErr (Idx k)) = .ok i := by

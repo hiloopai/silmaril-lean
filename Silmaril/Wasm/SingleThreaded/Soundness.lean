@@ -197,7 +197,7 @@ theorem Thread.config_extend {s s' : Store H} (he : Extend s s') (t : Thread)
       simp only [vals_append, List.append_assoc] at hsv
       rw [decompose?] at hd
       split at hd <;> simp_all [vals, Val.toAdmin, hostArity?, Admin.isCallRef]
-      all_goals (obtain ⟨rfl, -, -⟩ := ‹_ ∧ _ ∧ _›; simp [List.getElem?_eq_none hf] at hd)
+      (obtain ⟨rfl, -, -⟩ := ‹_ ∧ _ ∧ _›; simp [List.getElem?_eq_none hf] at hd)
     | some fi =>
       obtain ⟨fi', hf', hty, -⟩ := he.funcs.2 a fi hf
       simp [hf', hty]

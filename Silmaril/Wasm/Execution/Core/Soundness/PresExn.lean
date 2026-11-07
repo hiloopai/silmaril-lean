@@ -232,11 +232,11 @@ theorem AdminOk.toAdmin_initsExn {s : Store H} {C : Context} {v : Val} {it : Ins
     (h : AdminOk s C v.toAdmin it) : it.inits = [] := by
   rcases v with ⟨⟨t⟩ | ⟨t⟩, b⟩ | b | r
   · cases h with
-    | plain h => (cases h <;> (try (rename_i hh; cases hh))); rfl
+    | plain h => (cases h <;> (rename_i hh; cases hh)); rfl
   · cases h with
-    | plain h => (cases h <;> (try (rename_i hh; cases hh))); rfl
+    | plain h => (cases h <;> (rename_i hh; cases hh)); rfl
   · cases h with
-    | plain h => (cases h <;> (try (rename_i hh; cases hh))); rfl
+    | plain h => (cases h <;> (rename_i hh; cases hh)); rfl
   · cases h with
     | ref h => rfl
 

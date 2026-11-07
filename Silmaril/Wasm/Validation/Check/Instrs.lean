@@ -968,7 +968,9 @@ theorem checkInstr_sound (hatom : AtomSound atom?) (htyOk : TyOkSound tyOk) (i :
     | some ts => exact directStep_sound hatom htyOk h
   all_goals (subst hi; exact directStep_sound hatom htyOk h)
 termination_by sizeOf i
-decreasing_by all_goals (subst_vars; simp; all_goals omega)
+decreasing_by
+  all_goals (subst_vars; simp)
+  omega
 
 theorem checkSeq_sound (hatom : AtomSound atom?) (htyOk : TyOkSound tyOk) (l : List Instr)
     {C : Context} {s : List CValType} {poly : Bool} {goal : Option (List CValType)}
@@ -1072,7 +1074,9 @@ theorem checkSeq_sound (hatom : AtomSound atom?) (htyOk : TyOkSound tyOk) (l : L
       · cases h
     · cases h
 termination_by sizeOf l
-decreasing_by all_goals (simp_wf; all_goals omega)
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 
 end
 

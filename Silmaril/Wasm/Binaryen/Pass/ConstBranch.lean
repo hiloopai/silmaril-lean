@@ -62,7 +62,9 @@ def foldE : BExpr → BExpr
   | .if_ bt c t e => ifNode bt c (foldL c) (foldL t) (foldL e)
   | .tryTable bt cs b => .tryTable bt cs (foldL b)
 termination_by x => sizeOf x
-decreasing_by all_goals simp_wf; all_goals omega
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
 /-- `foldE` on each tree of a sequence; a constant leaf followed by an `if` or `br_if`
 without operand trees (an unfolded body) is folded as a pair. -/
 def foldL : List BExpr → List BExpr
@@ -74,7 +76,9 @@ def foldL : List BExpr → List BExpr
     | some k, .op (.brIf l) [] => (if k = 0 then .op .nop [] else .op (.br l) []) :: foldL es
     | _, _ => foldE x :: foldL (y :: es)
 termination_by es => sizeOf es
-decreasing_by all_goals (try subst_vars); all_goals simp_wf; all_goals omega
+decreasing_by
+  all_goals ((try subst_vars); simp_wf)
+  all_goals omega
 end
 
 /-- The constant-condition fold of every function body. -/

@@ -113,7 +113,7 @@ theorem numericCheck?_complete_bot {C : Context} (hC : C.toTypeCtx.Ok) (hr : C.r
   · cases h <;> simp_all [numericType?]
   · intro t ht
     apply tyOk_of_isNumOrVec
-    cases h <;> simp at ht <;> (try rcases ht with rfl | rfl) <;>
+    cases h <;> simp at ht <;> (rcases ht with rfl | rfl) <;>
       simp [Ty.IsNumOrVec]
 
 theorem variableCheck?_complete_bot {C : Context} (hC : C.toTypeCtx.Ok) (hr : C.recs = [])
@@ -152,7 +152,7 @@ theorem vectorCheck?_complete_bot {C : Context} (hC : C.toTypeCtx.Ok) (hr : C.re
   · (cases h <;> simp_all [vectorType?]); omega
   · intro t ht
     apply tyOk_of_isNumOrVec
-    cases h <;> simp at ht <;> (try rcases ht with rfl | rfl | rfl) <;>
+    cases h <;> simp at ht <;> (rcases ht with rfl | rfl | rfl) <;>
       simp [Ty.IsNumOrVec, Ty.i32, Ty.v128]
 
 /-- `atomicA?_complete` without the no-BOT hypothesis; implicit `select` whose two value
