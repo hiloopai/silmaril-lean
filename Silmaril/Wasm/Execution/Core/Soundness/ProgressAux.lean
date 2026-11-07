@@ -358,7 +358,7 @@ theorem ParametricInstrOk.transport
 theorem NumericInstrOk.transport
     (h : NumericInstrOk { C with labels := L, return_ := R, locals := ls } i it) :
     NumericInstrOk C i it := by
-  cases h <;> (constructor; all_goals assumption)
+  cases h <;> (constructor)
 
 theorem VectorInstrOk.transport
     (h : VectorInstrOk { C with labels := L, return_ := R, locals := ls } i it) :

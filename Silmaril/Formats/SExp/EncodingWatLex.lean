@@ -221,12 +221,12 @@ theorem StringElem.prefix {e₁ e₂ x₁ x₂ : Chars} {b₁ b₂ : List UInt8}
     | _ =>
       simp only [List.cons_append, List.nil_append, List.append_assoc,
         List.cons.injEq] at he
-      (try casesm* _ ∧ _); subst_vars; simp_all
+      (casesm* _ ∧ _); subst_vars; simp_all
   | _ =>
     cases h₂ <;>
       simp only [List.cons_append, List.nil_append, List.append_assoc,
         List.cons.injEq] at he <;>
-      (try casesm* _ ∧ _) <;> subst_vars <;> simp_all
+      (casesm* _ ∧ _) <;> subst_vars <;> simp_all
 
 theorem StringBody.prefix {b₁ b₂ r₁ r₂ : Chars} {bs₁ bs₂ : List UInt8}
     (h₁ : StringBody b₁ bs₁) (h₂ : StringBody b₂ bs₂) (h : b₁ ++ '"' :: r₁ = b₂ ++ '"' :: r₂) :
@@ -1093,16 +1093,15 @@ theorem iu_succ {N : Nat} (hIU : IU N) : IU (N + 1) := by
        obtain ⟨rfl, rfl, -⟩ := split_first (P := IsNewlineP p) hb hb' hnl hnl' h
        rfl)
     | rw [blockTail_prefix _ (Nat.lt_succ_self _) ht ht' h.2.2]
-  all_goals
-    obtain ⟨-, -, h⟩ := h
-    have e := annotId_unique hi hi' (annot_follow hf) (annot_follow hf') h
-    subst e
-    have h' := List.append_cancel_left h
-    have e := annot_body hIU hl hbal hl' hbal' h'
-      (by simp only [List.cons_append, List.append_assoc, List.length_append, List.length_cons,
-        List.length_nil] at hn ⊢; omega)
-    subst e
-    rfl
+  obtain ⟨-, -, h⟩ := h
+  have e := annotId_unique hi hi' (annot_follow hf) (annot_follow hf') h
+  subst e
+  have h' := List.append_cancel_left h
+  have e := annot_body hIU hl hbal hl' hbal' h'
+    (by simp only [List.cons_append, List.append_assoc, List.length_append, List.length_cons,
+      List.length_nil] at hn ⊢; omega)
+  subst e
+  rfl
 
 theorem iu_all : ∀ N, IU N
   | 0 => fun _ _ _ _ _ hn => absurd hn (Nat.not_lt_zero _)

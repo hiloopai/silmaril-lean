@@ -60,7 +60,7 @@ theorem iHeadInv_plain {s : Store H} {f : Frame} {C : Context} {i : Instr} {it :
   refine ⟨?_, ?_⟩
   · rintro rt (he | he) <;> cases he <;> cases h with
     | plain h =>
-      cases h <;> (try (rename_i h; cases h))
+      cases h <;> (rename_i h; cases h)
       exact hT.cast ‹TyOk C.toTypeCtx (C.closeRef rt)›
   · rintro l rt₁ rt₂ (he | he) <;> cases he <;> cases h with
     | plain h =>

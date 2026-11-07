@@ -735,7 +735,7 @@ theorem aggAccessStep?_complete {o : GrowOracle} {s : Store H} {f : Frame} {args
   have H := congrArg fnv hl
   rw [fnv_vals_append, fnv_cons_of_none hev] at H
   cases hf <;> simp only [fnv_vals_append, fnv_toAdmin_cons, fnv_ref_cons, constI32,
-      arrRef] at H <;> (try rw [fnv_cons_of_none rfl] at H) <;>
+      arrRef] at H <;> (rw [fnv_cons_of_none rfl] at H) <;>
     simp only [Prod.mk.injEq, List.cons.injEq, and_true, List.append_nil] at H <;>
     obtain ⟨rfl, rfl⟩ := H <;> simp [AggAccessInstr] at hi
   all_goals clear h hl hev hfam hi

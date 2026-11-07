@@ -242,7 +242,7 @@ theorem checkField_closed (Δ Δ' : TypeCtx) {a b : CFieldType} (ha : a.Closed) 
       have hz₁ : z₁.Closed := ha
       have hz₂ : z₂.Closed := hb
       cases m₁ <;> cases m₂ <;> simp only [TypeCtx.checkField] <;>
-        (rw [checkStorage_closed Δ Δ' hz₁ hz₂]; try rw [checkStorage_closed Δ Δ' hz₂ hz₁])
+        (rw [checkStorage_closed Δ Δ' hz₁ hz₂])
 
 theorem forall2B_congr {α : Type} {f g : α → α → Bool} :
     ∀ {l₁ l₂ : List α}, (∀ a ∈ l₁, ∀ b ∈ l₂, f a b = g a b) → forall2B f l₁ l₂ = forall2B g l₁ l₂

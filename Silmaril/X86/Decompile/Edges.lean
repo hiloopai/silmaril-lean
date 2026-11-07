@@ -155,10 +155,12 @@ theorem Decoded.edges_of_retiring {d : Decoded} (h : retiring d.instr = true) :
   obtain ⟨addr, instr, size⟩ := d
   cases instr <;> first | rfl | exact Bool.noConfusion h
 
+-- One `simp` per instruction constructor; nightly-2026-11-05 needs more than the default budget.
+set_option maxHeartbeats 600000 in
 /-- `Edge.ret` is listed exactly for `ret`. -/
 theorem Decoded.mem_edges_ret_iff {d : Decoded} : Edge.ret ∈ d.edges ↔ d.instr = .ret := by
-  unfold Decoded.edges
-  split <;> simp_all
+  obtain ⟨addr, instr, size⟩ := d
+  cases instr <;> simp [Decoded.edges]
 
 /-- The address after the instruction, in the form `Ext.exec` produces it. -/
 theorem rip_add_length {d : Decoded} {s : State} (hrip : s.rip.toNat = d.addr)

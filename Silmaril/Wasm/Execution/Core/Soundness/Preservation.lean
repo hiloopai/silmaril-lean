@@ -472,31 +472,31 @@ theorem AdminsOk.redex1_inv {s : Store H} (hs : StoreOk s) (hts : StoreTypesOk s
 theorem InstrOk.localGet_inv {C : Context} {x : LocalIdx} {it : InstrType}
     (h : InstrOk C (.localGet x) it) :
     ∃ t, C.locals[x.toNat]? = some ⟨.set, t⟩ ∧ it = .plain [] [t] := by
-  cases h <;> (try (rename_i h'; cases h'))
+  cases h <;> (rename_i h'; cases h')
   exact ⟨_, ‹_›, rfl⟩
 
 theorem InstrOk.localSet_inv {C : Context} {x : LocalIdx} {it : InstrType}
     (h : InstrOk C (.localSet x) it) :
     ∃ i t, C.locals[x.toNat]? = some ⟨i, t⟩ ∧ it = ⟨[t], [x.toNat], []⟩ := by
-  cases h <;> (try (rename_i h'; cases h'))
+  cases h <;> (rename_i h'; cases h')
   exact ⟨_, _, ‹_›, rfl⟩
 
 theorem InstrOk.localTee_inv {C : Context} {x : LocalIdx} {it : InstrType}
     (h : InstrOk C (.localTee x) it) :
     ∃ i t, C.locals[x.toNat]? = some ⟨i, t⟩ ∧ it = ⟨[t], [x.toNat], [t]⟩ := by
-  cases h <;> (try (rename_i h'; cases h'))
+  cases h <;> (rename_i h'; cases h')
   exact ⟨_, _, ‹_›, rfl⟩
 
 theorem InstrOk.globalGet_inv {C : Context} {x : GlobalIdx} {it : InstrType}
     (h : InstrOk C (.globalGet x) it) :
     ∃ m t, C.globals[x.toNat]? = some ⟨m, t⟩ ∧ it = .plain [] [t] := by
-  cases h <;> (try (rename_i h'; cases h'))
+  cases h <;> (rename_i h'; cases h')
   exact ⟨_, _, ‹_›, rfl⟩
 
 theorem InstrOk.globalSet_inv {C : Context} {x : GlobalIdx} {it : InstrType}
     (h : InstrOk C (.globalSet x) it) :
     ∃ t, C.globals[x.toNat]? = some ⟨.var, t⟩ ∧ it = .plain [t] [] := by
-  cases h <;> (try (rename_i h'; cases h'))
+  cases h <;> (rename_i h'; cases h')
   exact ⟨_, ‹_›, rfl⟩
 
 theorem FrameOk.local_valOk {s : Store H} {f : Frame} {C : Context} (hf : FrameOk s f C)

@@ -233,16 +233,16 @@ theorem AdminOk.toAdmin_inv {s : Store H} {C : Context} {v : Val} {it : InstrTyp
   rcases v with ⟨⟨t⟩ | ⟨t⟩, b⟩ | b | r
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
-      all_goals exact ⟨rfl, _, .num ⟨.int t, b⟩, rfl⟩
+      cases h <;> (rename_i hh; cases hh)
+      exact ⟨rfl, _, .num ⟨.int t, b⟩, rfl⟩
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
-      all_goals exact ⟨rfl, _, .num ⟨.float t, b⟩, rfl⟩
+      cases h <;> (rename_i hh; cases hh)
+      exact ⟨rfl, _, .num ⟨.float t, b⟩, rfl⟩
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
-      all_goals exact ⟨rfl, _, .vec b, rfl⟩
+      cases h <;> (rename_i hh; cases hh)
+      exact ⟨rfl, _, .vec b, rfl⟩
   · cases h with
     | ref h => exact ⟨rfl, _, .ref h, rfl⟩
 

@@ -189,7 +189,7 @@ theorem vcvtop_isSome_of_valid {op : VecConvertOp} {src tgt : Shape}
     simp [vcvtop, h]
   | convert hf sx =>
     rcases src with s | s <;> rcases tgt with t | t <;> cases s <;> cases t <;>
-      simp [VecConvertOp.valid] at h <;> (try cases hf) <;> (try rename_i hf; cases hf) <;>
+      simp [VecConvertOp.valid] at h <;> (cases hf) <;> (try rename_i hf; cases hf) <;>
       simp_all [vcvtop]
   | truncSat sx z =>
     rcases src with s | s <;> rcases tgt with t | t <;> cases s <;> cases t <;> cases z <;>
@@ -209,13 +209,13 @@ theorem relaxedTrunc_nonempty (nd : Bool) (p : RelaxedParams) (t : FloatType) (s
     rcases e with e | r
     · refine ⟨truncSatFloat t .i32 .signed x, ?_⟩
       rcases nd with _ | _ <;> simp only [relaxed2, Bool.false_eq_true, ↓reduceIte]
-      (try split_ifs) <;> trivial
+      (split_ifs) <;> trivial
     · exact ⟨r, rfl⟩
   · generalize truncFloat t .i32 .unsigned x = e
     rcases e with e | r
     · refine ⟨truncSatFloat t .i32 .unsigned x, ?_⟩
       rcases nd with _ | _ <;> simp only [relaxed4, Bool.false_eq_true, ↓reduceIte]
-      (try split_ifs) <;> trivial
+      (split_ifs) <;> trivial
     · exact ⟨r, rfl⟩
 
 theorem forall₂_nonempty {α β : Type} {R : α → β → Prop} (h : ∀ x, ∃ y, R x y) :

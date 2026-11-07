@@ -71,7 +71,7 @@ theorem asInt_eq_some {t : IntType} {v : Val} {x : BitVec t.width} :
     asInt t v = some x ↔ v = .num ⟨.int t, x⟩ := by
   constructor
   · intro h
-    rcases v with ⟨(t' | t'), x'⟩ | _ | _ <;> try simp only [asInt] at h
+    rcases v with ⟨(t' | t'), x'⟩ | _ | _ <;> simp only [asInt] at h
     all_goals try (split at h)
     all_goals first
       | (rename_i he; subst he; injection h with h; subst h; rfl)
@@ -82,7 +82,7 @@ theorem asFloat_eq_some {t : FloatType} {v : Val} {x : BitVec t.width} :
     asFloat t v = some x ↔ v = .num ⟨.float t, x⟩ := by
   constructor
   · intro h
-    rcases v with ⟨(t' | t'), x'⟩ | _ | _ <;> try simp only [asFloat] at h
+    rcases v with ⟨(t' | t'), x'⟩ | _ | _ <;> simp only [asFloat] at h
     all_goals try (split at h)
     all_goals first
       | (rename_i he; subst he; injection h with h; subst h; rfl)
@@ -92,7 +92,7 @@ theorem asFloat_eq_some {t : FloatType} {v : Val} {x : BitVec t.width} :
 theorem asI32_eq_some {v : Val} {x : BitVec 32} : asI32 v = some x ↔ v = .num ⟨.int .i32, x⟩ := by
   constructor
   · intro h
-    rcases v with ⟨((_ | _) | t'), x'⟩ | _ | _ <;> try simp only [asI32] at h
+    rcases v with ⟨((_ | _) | t'), x'⟩ | _ | _ <;> simp only [asI32] at h
     all_goals first
       | (injection h with h; subst h; rfl)
       | cases h

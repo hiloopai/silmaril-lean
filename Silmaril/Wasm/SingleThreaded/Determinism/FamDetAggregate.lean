@@ -19,7 +19,7 @@ theorem AggregateStep.det {s : Store H} {f : Frame}
     (h₁ : AggregateStep ⟨s, f, l₁⟩ c₁) (h₂ : AggregateStep ⟨s, f, l₂⟩ c₂) (hl : l₁ = vals p ++ l₂) :
     p = [] ∧ c₁ = c₂ := by
   cases h₁ <;> cases h₂
-  all_goals try (fam_pre; all_goals fam_post)
+  all_goals try (fam_pre)
   case structNew.structNew =>
     rename_i x₁ d₁ fs₁ vs₁ he₁ hn₁ hp₁ hd₁ x₂ d₂ fs₂ vs₂ he₂ hn₂ hp₂ hd₂
     rw [← List.append_assoc, ← vals_append, append_singleton_inj] at hl

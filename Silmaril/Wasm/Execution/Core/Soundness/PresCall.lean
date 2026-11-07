@@ -296,15 +296,15 @@ theorem val_inits {s : Store H} {C : Context} {v : Val} {it : InstrType}
   rcases v with ⟨⟨t⟩ | ⟨t⟩, b⟩ | b | r
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
+      cases h <;> (rename_i hh; cases hh)
       rfl
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
+      cases h <;> (rename_i hh; cases hh)
       rfl
   · cases h with
     | plain h =>
-      cases h <;> try (rename_i hh; cases hh)
+      cases h <;> (rename_i hh; cases hh)
       rfl
   · cases h with
     | ref _ => rfl
