@@ -656,7 +656,7 @@ theorem cvtOp_toShared_source {target source : NumType} {op : CvtOp} {co : Conve
   cases op <;> rcases target with t | t <;> rcases source with s | s <;>
     cases t <;> cases s <;>
     simp_all [CvtOp.toShared, IntType.width, FloatType.width] <;>
-    (try subst_vars) <;> rfl
+    (subst_vars) <;> rfl
 
 /-- `V2.CvtOp.toShared` preserves the target type. -/
 theorem cvtOp_toShared_target {target source : NumType} {op : CvtOp} {co : ConvertOp}
@@ -664,7 +664,7 @@ theorem cvtOp_toShared_target {target source : NumType} {op : CvtOp} {co : Conve
   cases op <;> rcases target with t | t <;> rcases source with s | s <;>
     cases t <;> cases s <;>
     simp_all [CvtOp.toShared, IntType.width, FloatType.width] <;>
-    (try subst_vars) <;> rfl
+    (subst_vars) <;> rfl
 
 /-- `$cvtop__` agrees with the shared `Numerics.convertP` on the whole image of
 `V2.CvtOp.toShared`. Together with `cvtOp_toShared_source` and

@@ -177,7 +177,7 @@ theorem numericCheck?_complete {C : Context} (hC : C.toTypeCtx.Ok) (hr : C.recs 
   · cases h <;> simp_all [numericType?]
   · intro t ht
     apply tyOk_of_isNumOrVec
-    cases h <;> simp at ht <;> (try rcases ht with rfl | rfl) <;>
+    cases h <;> simp at ht <;> (rcases ht with rfl | rfl) <;>
       simp [Ty.IsNumOrVec]
 
 /-! ## Variable -/
@@ -221,7 +221,7 @@ theorem vectorCheck?_complete {C : Context} (hC : C.toTypeCtx.Ok) (hr : C.recs =
   · cases h <;> simp_all [vectorType?]; omega
   · intro t ht
     apply tyOk_of_isNumOrVec
-    cases h <;> simp at ht <;> (try rcases ht with rfl | rfl | rfl) <;>
+    cases h <;> simp at ht <;> (rcases ht with rfl | rfl | rfl) <;>
       simp [Ty.IsNumOrVec, Ty.i32, Ty.v128]
 
 /-! ## Dispatch -/

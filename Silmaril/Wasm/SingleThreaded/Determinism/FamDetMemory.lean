@@ -21,9 +21,9 @@ theorem MemoryStep.det {o : GrowKind → Nat → Nat → Nat → Bool} {s : Stor
   cases h₁ <;> cases h₂ <;> fam_pre
   all_goals first
     | fam_post
-    | (have := Memory.load_bound ‹_›; (try simp_all); (try casesm* _ ∧ _); (try subst_vars);
-       (try omega))
-    | (have := Memory.store_bound ‹_›; (try simp_all); (try casesm* _ ∧ _); (try subst_vars);
-       (try omega))
+    | (have := Memory.load_bound ‹_›; (simp_all); (casesm* _ ∧ _); (subst_vars);
+       (omega))
+    | (have := Memory.store_bound ‹_›; (simp_all); (casesm* _ ∧ _); (subst_vars);
+       (omega))
 
 end Silmaril.Wasm.SingleThreaded.Det

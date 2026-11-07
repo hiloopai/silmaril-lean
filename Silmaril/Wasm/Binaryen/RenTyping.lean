@@ -194,8 +194,7 @@ theorem parametric_ren (h : ParametricInstrOk C i it) :
 
 theorem numeric_ren (h : NumericInstrOk C i it) :
     NumericInstrOk { C with funcs := F, globals := G, refs := R } i it ∧ ρ.instr i = i := by
-  cases h <;> exact ⟨by constructor; all_goals assumption, ren_fixed ρ rfl (by simp [Instr.freeFuncs])
-    (by simp [instrGlobals])⟩
+  cases h <;> exact ⟨by constructor⟩
 
 -- FLAG(statement-change): vector_absurd is false after stack-only SIMD admission.
 -- Replaced by vector_ren in the leaf VectorRen; see its checked counterexample.
@@ -244,7 +243,7 @@ theorem instrConst_ren {i : Instr} (h : InstrConst C i) (hρ : RenOk ρ kf kg C 
     exact .globalGet (hρ.globals x (hg _ (by simp [instrGlobals])) _ h)
   | _ =>
     rw [ren_fixed ρ rfl (by simp [Instr.freeFuncs]) (by simp [instrGlobals])]
-    constructor; all_goals assumption
+    constructor
 
 theorem blockType_ren {bt : BlockType} {t₁ t₂ : List CValType} (h : BlockTypeOk C bt t₁ t₂) :
     BlockTypeOk { C with funcs := F, globals := G, refs := R } bt t₁ t₂ := by

@@ -220,12 +220,12 @@ theorem instrOk_if_inv {D : Context} {bt : BlockType} {b₁ b₂ : List Instr} {
 theorem instrOk_nop_inv {D : Context} {it : InstrType} (h : InstrOk D .nop it) :
     it = .plain [] [] := by
   cases h
-  all_goals (rename_i h; cases h; try rfl)
+  all_goals (rename_i h; cases h; rfl)
 
 theorem instrOk_intConst_inv {D : Context} {t : IntType} {b : BitVec t.width} {it : InstrType}
     (h : InstrOk D (.intConst t b) it) : it = .plain [] [.num (.int t)] := by
   cases h
-  all_goals (rename_i h; cases h; try rfl)
+  all_goals (rename_i h; cases h)
 
 /-- The empty context is well formed. -/
 theorem wf_emptyContext : ({} : Context).Wf := by

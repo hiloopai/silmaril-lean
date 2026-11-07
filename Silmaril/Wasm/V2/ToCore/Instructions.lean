@@ -581,7 +581,6 @@ theorem Instr.immediatesValid_toCore : ∀ {i : Instr} {c : Wasm.Instr},
       subst hc
       simp_all [Instr.immediatesValid, Instr.coreImmediatesValid, Wasm.Instr.immediatesValid,
         VecExtUnOp.valid, VecExtUnOp.valid2]
-      all_goals omega
 termination_by i => sizeOf i
 
 /-- The expression-level form of `Instr.immediatesValid_toCore` (`1-syntax:525`). -/

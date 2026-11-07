@@ -380,7 +380,7 @@ theorem ParametricInstrOk.mono (h : ParametricInstrOk C i it) (hL : LocalsLe C.l
 theorem NumericInstrOk.mono (h : NumericInstrOk C i it) :
     NumericInstrOk { C with locals := L, return_ := r } i it := by
   cases h <;> constructor
-  all_goals assumption
+  assumption
 
 theorem VectorInstrOk.mono (h : VectorInstrOk C i it) :
     VectorInstrOk { C with locals := L, return_ := r } i it := by
