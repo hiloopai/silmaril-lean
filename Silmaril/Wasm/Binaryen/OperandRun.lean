@@ -113,7 +113,7 @@ theorem InstrOk.closed {C : Context} {i : Instr} {it : InstrType} (h : InstrOk C
       cases h with
       | unreachable h => exact .unreachable h
       | _ => (constructor; all_goals assumption))
-  | .numeric h => .numeric (by cases h <;> (constructor))
+  | .numeric h => .numeric (by cases h <;> first | (constructor; assumption) | constructor)
   | .vector h => .vector (by cases h <;> constructor <;> assumption)
   | .variable h => .variable (by cases h <;> constructor <;> assumption)
   | .memory h => .memory (by cases h <;> constructor <;> assumption)
