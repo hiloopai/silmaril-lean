@@ -3001,7 +3001,7 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h4w]
       simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x19#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 25 from rfl]
       rw [v3]
-      try rfl
+      rfl
     have v5 : read32 c5.core Reg.r9 =
         W (16 + i - 15) := by
       rw [read_d_of_writes h5w]
@@ -3012,13 +3012,13 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h6w]
       simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x0e#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 14 from rfl]
       rw [v5]
-      try rfl
+      rfl
     have v7 : read32 c7.core Reg.r9 =
         ((W (16 + i - 15)).rotateLeft 14) ^^^ ((W (16 + i - 15)).rotateLeft 25) := by
       rw [read_d_of_writes h7w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
       rw [v6, read_d_of_other (r := Reg.r8) h6w (by decide), read_d_of_other (r := Reg.r8) h5w (by decide), v4]
-      try rfl
+      rfl
     have v8 : read32 c8.core Reg.r8 =
         W (16 + i - 15) := by
       rw [read_d_of_writes h8w]
@@ -3029,19 +3029,19 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h9w]
       simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x03#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 3 from rfl]
       rw [v8]
-      try rfl
+      rfl
     have v10 : read32 c10.core Reg.r8 =
         ((W (16 + i - 15)) >>> 3) ^^^ (((W (16 + i - 15)).rotateLeft 14) ^^^ ((W (16 + i - 15)).rotateLeft 25)) := by
       rw [read_d_of_writes h10w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
       rw [v9, read_d_of_other (r := Reg.r9) h9w (by decide), read_d_of_other (r := Reg.r9) h8w (by decide), v7]
-      try rfl
+      rfl
     have v11 : read32 c11.core Reg.r8 =
         (((W (16 + i - 15)) >>> 3) ^^^ (((W (16 + i - 15)).rotateLeft 14) ^^^ ((W (16 + i - 15)).rotateLeft 25))) + (D) := by
       rw [read_d_of_writes h11w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
       rw [v10, read_d_of_other (r := Reg.rdx) h10w (by decide), read_d_of_other (r := Reg.rdx) h9w (by decide), read_d_of_other (r := Reg.rdx) h8w (by decide), read_d_of_other (r := Reg.rdx) h7w (by decide), read_d_of_other (r := Reg.rdx) h6w (by decide), read_d_of_other (r := Reg.rdx) h5w (by decide), read_d_of_other (r := Reg.rdx) h4w (by decide), read_d_of_other (r := Reg.rdx) h3w (by decide), read_d_of_other (r := Reg.rdx) h2w (by decide), read_d_of_other (r := Reg.rdx) h1w (by decide), hD]
-      try rfl
+      rfl
     have v12 : read32 c12.core Reg.rdx =
         W (16 + i - 2) := by
       rw [read_d_of_writes h12w]
@@ -3052,7 +3052,7 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h13w]
       simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x0f#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 15 from rfl]
       rw [v12]
-      try rfl
+      rfl
     have v14 : read32 c14.core Reg.r9 =
         W (16 + i - 2) := by
       rw [read_d_of_writes h14w]
@@ -3063,37 +3063,37 @@ theorem l2_trace_img (h : SysVEntry L state block rspEntry frameSize m)
       rw [read_d_of_writes h15w]
       simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x0d#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 13 from rfl]
       rw [v14]
-      try rfl
+      rfl
     have v16 : read32 c16.core Reg.r9 =
         ((W (16 + i - 2)).rotateLeft 13) ^^^ ((W (16 + i - 2)).rotateLeft 15) := by
       rw [read_d_of_writes h16w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
       rw [v15, read_d_of_other (r := Reg.rdx) h15w (by decide), read_d_of_other (r := Reg.rdx) h14w (by decide), v13]
-      try rfl
+      rfl
     have v17 : read32 c17.core Reg.rsi =
         (W (16 + i - 2)) >>> 10 := by
       rw [read_d_of_writes h17w]
       simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x0a#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 10 from rfl]
       rw [read_d_of_other (r := Reg.rsi) h16w (by decide), read_d_of_other (r := Reg.rsi) h15w (by decide), read_d_of_other (r := Reg.rsi) h14w (by decide), read_d_of_other (r := Reg.rsi) h13w (by decide), read_d_of_other (r := Reg.rsi) h12w (by decide), read_d_of_other (r := Reg.rsi) h11w (by decide), read_d_of_other (r := Reg.rsi) h10w (by decide), read_d_of_other (r := Reg.rsi) h9w (by decide), read_d_of_other (r := Reg.rsi) h8w (by decide), read_d_of_other (r := Reg.rsi) h7w (by decide), read_d_of_other (r := Reg.rsi) h6w (by decide), read_d_of_other (r := Reg.rsi) h5w (by decide), read_d_of_other (r := Reg.rsi) h4w (by decide), read_d_of_other (r := Reg.rsi) h3w (by decide), v2]
-      try rfl
+      rfl
     have v18 : read32 c18.core Reg.rsi =
         ((W (16 + i - 2)) >>> 10) ^^^ (((W (16 + i - 2)).rotateLeft 13) ^^^ ((W (16 + i - 2)).rotateLeft 15)) := by
       rw [read_d_of_writes h18w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
       rw [v17, read_d_of_other (r := Reg.r9) h17w (by decide), v16]
-      try rfl
+      rfl
     have v19 : read32 c19.core Reg.r8 =
         ((((W (16 + i - 15)) >>> 3) ^^^ (((W (16 + i - 15)).rotateLeft 14) ^^^ ((W (16 + i - 15)).rotateLeft 25))) + (D)) + (W (16 + i - 7)) := by
       rw [read_d_of_writes h19w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
       rw [read_d_of_other (r := Reg.r8) h18w (by decide), read_d_of_other (r := Reg.r8) h17w (by decide), read_d_of_other (r := Reg.r8) h16w (by decide), read_d_of_other (r := Reg.r8) h15w (by decide), read_d_of_other (r := Reg.r8) h14w (by decide), read_d_of_other (r := Reg.r8) h13w (by decide), read_d_of_other (r := Reg.r8) h12w (by decide), v11]
-      try rfl
+      rfl
     have v20 : read32 c20.core Reg.r8 =
         (((((W (16 + i - 15)) >>> 3) ^^^ (((W (16 + i - 15)).rotateLeft 14) ^^^ ((W (16 + i - 15)).rotateLeft 25))) + (D)) + (W (16 + i - 7))) + (((W (16 + i - 2)) >>> 10) ^^^ (((W (16 + i - 2)).rotateLeft 13) ^^^ ((W (16 + i - 2)).rotateLeft 15))) := by
       rw [read_d_of_writes h20w]
       simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
       rw [v19, read_d_of_other (r := Reg.rsi) h19w (by decide), v18]
-      try rfl
+      rfl
     have v23 : read32 c23.core Reg.rdx =
         W (16 + i - 15) := by
       rw [read_d_of_writes h23w]
@@ -3772,7 +3772,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h1w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [hr0]
-    try rfl
+    rfl
   have perm0 : c1.memory.Permitted .read (state.toNat + 4 * 0) 4 := by
     rw [h1mem, Silmaril.Process.Memory.WritesWithin.permitted_iff hstart.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3808,7 +3808,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h3w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h2regs, read_d_of_other (r := Reg.r8) h1w (by decide), hr1]
-    try rfl
+    rfl
   have perm1 : c3.memory.Permitted .read (state.toNat + 4 * 1) 4 := by
     rw [h3mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a2.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3841,7 +3841,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h5w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h4regs, read_d_of_other (r := Reg.rdx) h3w (by decide), read32_of_sameRegs h2regs, read_d_of_other (r := Reg.rdx) h1w (by decide), hr2]
-    try rfl
+    rfl
   have perm2 : c5.memory.Permitted .read (state.toNat + 4 * 2) 4 := by
     rw [h5mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a4.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3871,7 +3871,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h7w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h6regs, read_d_of_other (r := Reg.r11) h5w (by decide), read32_of_sameRegs h4regs, read_d_of_other (r := Reg.r11) h3w (by decide), read32_of_sameRegs h2regs, read_d_of_other (r := Reg.r11) h1w (by decide), hr3]
-    try rfl
+    rfl
   have perm3 : c7.memory.Permitted .read (state.toNat + 4 * 3) 4 := by
     rw [h7mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a6.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3898,7 +3898,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h9w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h8regs, read_d_of_other (r := Reg.r13) h7w (by decide), read32_of_sameRegs h6regs, read_d_of_other (r := Reg.r13) h5w (by decide), read32_of_sameRegs h4regs, read_d_of_other (r := Reg.r13) h3w (by decide), read32_of_sameRegs h2regs, read_d_of_other (r := Reg.r13) h1w (by decide), hr4]
-    try rfl
+    rfl
   have perm4 : c9.memory.Permitted .read (state.toNat + 4 * 4) 4 := by
     rw [h9mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a8.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3922,7 +3922,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h11w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h10regs, read_d_of_other (r := Reg.r10) h9w (by decide), read32_of_sameRegs h8regs, read_d_of_other (r := Reg.r10) h7w (by decide), read32_of_sameRegs h6regs, read_d_of_other (r := Reg.r10) h5w (by decide), read32_of_sameRegs h4regs, read_d_of_other (r := Reg.r10) h3w (by decide), read32_of_sameRegs h2regs, read_d_of_other (r := Reg.r10) h1w (by decide), hr5]
-    try rfl
+    rfl
   have perm5 : c11.memory.Permitted .read (state.toNat + 4 * 5) 4 := by
     rw [h11mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a10.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3943,7 +3943,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h13w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h12regs, read_d_of_other (r := Reg.r9) h11w (by decide), read32_of_sameRegs h10regs, read_d_of_other (r := Reg.r9) h9w (by decide), read32_of_sameRegs h8regs, read_d_of_other (r := Reg.r9) h7w (by decide), read32_of_sameRegs h6regs, read_d_of_other (r := Reg.r9) h5w (by decide), read32_of_sameRegs h4regs, read_d_of_other (r := Reg.r9) h3w (by decide), read32_of_sameRegs h2regs, read_d_of_other (r := Reg.r9) h1w (by decide), hr6]
-    try rfl
+    rfl
   have perm6 : c13.memory.Permitted .read (state.toNat + 4 * 6) 4 := by
     rw [h13mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a12.frame]
     exact h.state_readable (by omega) (by omega)
@@ -3961,7 +3961,7 @@ theorem blockC (h : SysVEntry L state block rspEntry frameSize m)
     rw [read_d_of_writes h15w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN, trunc32']
     rw [read32_of_sameRegs h14regs, read_d_of_other (r := Reg.rbx) h13w (by decide), read32_of_sameRegs h12regs, read_d_of_other (r := Reg.rbx) h11w (by decide), read32_of_sameRegs h10regs, read_d_of_other (r := Reg.rbx) h9w (by decide), read32_of_sameRegs h8regs, read_d_of_other (r := Reg.rbx) h7w (by decide), read32_of_sameRegs h6regs, read_d_of_other (r := Reg.rbx) h5w (by decide), read32_of_sameRegs h4regs, read_d_of_other (r := Reg.rbx) h3w (by decide), read32_of_sameRegs h2regs, read_d_of_other (r := Reg.rbx) h1w (by decide), hr7]
-    try rfl
+    rfl
   have perm7 : c15.memory.Permitted .read (state.toNat + 4 * 7) 4 := by
     rw [h15mem, Silmaril.Process.Memory.WritesWithin.permitted_iff a14.frame]
     exact h.state_readable (by omega) (by omega)
@@ -4520,7 +4520,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv0 : (Silmaril.X86.Ext.Sz.d.read c10.core Reg.r12).setWidth 64
       = (sv 0).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c10.core Reg.r12 = read32 c10.core Reg.r12 from rfl, d0]
-    try rfl
+    rfl
   have p0 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 128) 4
       ((sv 0).setWidth 64) := by
     rw [← hv0]
@@ -4535,7 +4535,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv1 : (Silmaril.X86.Ext.Sz.d.read c11.core Reg.r8).setWidth 64
       = (sv 1).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c11.core Reg.r8 = read32 c11.core Reg.r8 from rfl, read32_of_sameRegs h11regs, d1]
-    try rfl
+    rfl
   have p1 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 124) 4
       ((sv 1).setWidth 64) := by
     rw [← hv1]
@@ -4549,7 +4549,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv2 : (Silmaril.X86.Ext.Sz.d.read c12.core Reg.rdx).setWidth 64
       = (sv 2).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c12.core Reg.rdx = read32 c12.core Reg.rdx from rfl, read32_of_sameRegs h12regs, read32_of_sameRegs h11regs, d2]
-    try rfl
+    rfl
   have p2 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 120) 4
       ((sv 2).setWidth 64) := by
     rw [← hv2]
@@ -4562,7 +4562,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv3 : (Silmaril.X86.Ext.Sz.d.read c13.core Reg.r11).setWidth 64
       = (sv 3).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c13.core Reg.r11 = read32 c13.core Reg.r11 from rfl, read32_of_sameRegs h13regs, read32_of_sameRegs h12regs, read32_of_sameRegs h11regs, d3]
-    try rfl
+    rfl
   have p3 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 116) 4
       ((sv 3).setWidth 64) := by
     rw [← hv3]
@@ -4574,7 +4574,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv7 : (Silmaril.X86.Ext.Sz.d.read c14.core Reg.r14).setWidth 64
       = (sv 7).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c14.core Reg.r14 = read32 c14.core Reg.r14 from rfl, read32_of_sameRegs h14regs, read32_of_sameRegs h13regs, read32_of_sameRegs h12regs, read32_of_sameRegs h11regs, d7]
-    try rfl
+    rfl
   have p7 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 100) 4
       ((sv 7).setWidth 64) := by
     rw [← hv7]
@@ -4585,7 +4585,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv6 : (Silmaril.X86.Ext.Sz.d.read c15.core Reg.rbp).setWidth 64
       = (sv 6).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c15.core Reg.rbp = read32 c15.core Reg.rbp from rfl, read32_of_sameRegs h15regs, read32_of_sameRegs h14regs, read32_of_sameRegs h13regs, read32_of_sameRegs h12regs, read32_of_sameRegs h11regs, d6]
-    try rfl
+    rfl
   have p6 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 104) 4
       ((sv 6).setWidth 64) := by
     rw [← hv6]
@@ -4595,7 +4595,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv5 : (Silmaril.X86.Ext.Sz.d.read c16.core Reg.rsi).setWidth 64
       = (sv 5).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c16.core Reg.rsi = read32 c16.core Reg.rsi from rfl, read32_of_sameRegs h16regs, read32_of_sameRegs h15regs, read32_of_sameRegs h14regs, read32_of_sameRegs h13regs, read32_of_sameRegs h12regs, read32_of_sameRegs h11regs, d5]
-    try rfl
+    rfl
   have p5 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 108) 4
       ((sv 5).setWidth 64) := by
     rw [← hv5]
@@ -4604,7 +4604,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
   have hv4 : (Silmaril.X86.Ext.Sz.d.read c17.core Reg.r13).setWidth 64
       = (sv 4).setWidth 64 := by
     rw [show Silmaril.X86.Ext.Sz.d.read c17.core Reg.r13 = read32 c17.core Reg.r13 from rfl, read32_of_sameRegs h17regs, read32_of_sameRegs h16regs, read32_of_sameRegs h15regs, read32_of_sameRegs h14regs, read32_of_sameRegs h13regs, read32_of_sameRegs h12regs, read32_of_sameRegs h11regs, d4]
-    try rfl
+    rfl
   have p4 : Silmaril.X86.Ext.HoldsLE c18.memory (rspEntry.toNat - 216 - 112) 4
       ((sv 4).setWidth 64) := by
     rw [← hv4]
@@ -5541,7 +5541,7 @@ theorem l3_trace_img
     rw [read_d_of_writes h8w]
     simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x1a#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 26 from rfl]
     rw [v7]
-    try rfl
+    rfl
   have v9 : read32 c9.core Reg.rbp =
       E := by
     rw [read_d_of_writes h9w]
@@ -5552,13 +5552,13 @@ theorem l3_trace_img
     rw [read_d_of_writes h10w]
     simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x15#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 21 from rfl]
     rw [v9]
-    try rfl
+    rfl
   have v11 : read32 c11.core Reg.rbp =
       ((E).rotateLeft 21) ^^^ ((E).rotateLeft 26) := by
     rw [read_d_of_writes h11w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v10, read_d_of_other (r := Reg.rsi) h10w (by decide), read_d_of_other (r := Reg.rsi) h9w (by decide), v8]
-    try rfl
+    rfl
   have v12 : read32 c12.core Reg.rsi =
       E := by
     rw [read_d_of_writes h12w]
@@ -5569,13 +5569,13 @@ theorem l3_trace_img
     rw [read_d_of_writes h13w]
     simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x07#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 7 from rfl]
     rw [v12]
-    try rfl
+    rfl
   have v14 : read32 c14.core Reg.rsi =
       ((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)) := by
     rw [read_d_of_writes h14w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v13, read_d_of_other (r := Reg.rbp) h13w (by decide), read_d_of_other (r := Reg.rbp) h12w (by decide), v11]
-    try rfl
+    rfl
   have v15 : read32 c15.core Reg.rbp =
       F := by
     rw [read_d_of_writes h15w]
@@ -5586,13 +5586,13 @@ theorem l3_trace_img
     rw [read_d_of_writes h16w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v15, read_d_of_other (r := Reg.r10) h15w (by decide), read_d_of_other (r := Reg.r10) h14w (by decide), read_d_of_other (r := Reg.r10) h13w (by decide), read_d_of_other (r := Reg.r10) h12w (by decide), read_d_of_other (r := Reg.r10) h11w (by decide), read_d_of_other (r := Reg.r10) h10w (by decide), read_d_of_other (r := Reg.r10) h9w (by decide), read_d_of_other (r := Reg.r10) h8w (by decide), read_d_of_other (r := Reg.r10) h7w (by decide), read_d_of_other (r := Reg.r10) h6w (by decide), read_d_of_other (r := Reg.r10) h5w (by decide), read_d_of_other (r := Reg.r10) h4w (by decide), read_d_of_other (r := Reg.r10) h3w (by decide), read_d_of_other (r := Reg.r10) h2w (by decide), v1]
-    try rfl
+    rfl
   have v17 : read32 c17.core Reg.rbp =
       ((F) &&& (E)) + (H) := by
     rw [read_d_of_writes h17w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v16, read_d_of_other (r := Reg.r14) h16w (by decide), read_d_of_other (r := Reg.r14) h15w (by decide), read_d_of_other (r := Reg.r14) h14w (by decide), read_d_of_other (r := Reg.r14) h13w (by decide), read_d_of_other (r := Reg.r14) h12w (by decide), read_d_of_other (r := Reg.r14) h11w (by decide), read_d_of_other (r := Reg.r14) h10w (by decide), read_d_of_other (r := Reg.r14) h9w (by decide), read_d_of_other (r := Reg.r14) h8w (by decide), read_d_of_other (r := Reg.r14) h7w (by decide), read_d_of_other (r := Reg.r14) h6w (by decide), read_d_of_other (r := Reg.r14) h5w (by decide), read_d_of_other (r := Reg.r14) h4w (by decide), read_d_of_other (r := Reg.r14) h3w (by decide), read_d_of_other (r := Reg.r14) h2w (by decide), read_d_of_other (r := Reg.r14) h1w (by decide), hH]
-    try rfl
+    rfl
   have v18 : read32 c18.core Reg.r14 =
       E := by
     rw [read_d_of_writes h18w]
@@ -5603,37 +5603,37 @@ theorem l3_trace_img
     rw [read_d_of_writes h19w]
     simp only [← read32_eq]
     rw [v18]
-    try rfl
+    rfl
   have v20 : read32 c20.core Reg.r14 =
       (~~~(E)) &&& (G) := by
     rw [read_d_of_writes h20w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v19, read_d_of_other (r := Reg.rbx) h19w (by decide), read_d_of_other (r := Reg.rbx) h18w (by decide), read_d_of_other (r := Reg.rbx) h17w (by decide), read_d_of_other (r := Reg.rbx) h16w (by decide), read_d_of_other (r := Reg.rbx) h15w (by decide), read_d_of_other (r := Reg.rbx) h14w (by decide), read_d_of_other (r := Reg.rbx) h13w (by decide), read_d_of_other (r := Reg.rbx) h12w (by decide), read_d_of_other (r := Reg.rbx) h11w (by decide), read_d_of_other (r := Reg.rbx) h10w (by decide), read_d_of_other (r := Reg.rbx) h9w (by decide), read_d_of_other (r := Reg.rbx) h8w (by decide), read_d_of_other (r := Reg.rbx) h7w (by decide), read_d_of_other (r := Reg.rbx) h6w (by decide), read_d_of_other (r := Reg.rbx) h5w (by decide), read_d_of_other (r := Reg.rbx) h4w (by decide), v3]
-    try rfl
+    rfl
   have v21 : read32 c21.core Reg.r14 =
       ((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H)) := by
     rw [read_d_of_writes h21w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v20, read_d_of_other (r := Reg.rbp) h20w (by decide), read_d_of_other (r := Reg.rbp) h19w (by decide), read_d_of_other (r := Reg.rbp) h18w (by decide), v17]
-    try rfl
+    rfl
   have v22 : read32 c22.core Reg.r14 =
       (((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26))) := by
     rw [read_d_of_writes h22w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v21, read_d_of_other (r := Reg.rsi) h21w (by decide), read_d_of_other (r := Reg.rsi) h20w (by decide), read_d_of_other (r := Reg.rsi) h19w (by decide), read_d_of_other (r := Reg.rsi) h18w (by decide), read_d_of_other (r := Reg.rsi) h17w (by decide), read_d_of_other (r := Reg.rsi) h16w (by decide), read_d_of_other (r := Reg.rsi) h15w (by decide), v14]
-    try rfl
+    rfl
   have v23 : read32 c23.core Reg.r14 =
       ((((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)))) + ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32) := by
     rw [read_d_of_writes h23w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v22]
-    try rfl
+    rfl
   have v24 : read32 c24.core Reg.r14 =
       (((((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)))) + ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32)) + ((BitVec.ofNat 64 (wv.toNat % 2 ^ (8 * 4))).setWidth 32) := by
     rw [read_d_of_writes h24w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v23]
-    try rfl
+    rfl
   have v25 : read32 c25.core Reg.r8 =
       A := by
     rw [read_d_of_writes h25w]
@@ -5649,7 +5649,7 @@ theorem l3_trace_img
     rw [read_d_of_writes h27w]
     simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x1e#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 30 from rfl]
     rw [v26]
-    try rfl
+    rfl
   have v28 : read32 c28.core Reg.rbp =
       A := by
     rw [read_d_of_writes h28w]
@@ -5660,7 +5660,7 @@ theorem l3_trace_img
     rw [read_d_of_writes h29w]
     simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x13#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 19 from rfl]
     rw [v28]
-    try rfl
+    rfl
   have v30 : read32 c30.core Reg.r15 =
       A := by
     rw [read_d_of_writes h30w]
@@ -5671,19 +5671,19 @@ theorem l3_trace_img
     rw [read_d_of_writes h31w]
     simp only [← read32_eq, Silmaril.X86.Ext.ShiftOp.result, show ((0x0a#8 : BitVec 8).toNat % Silmaril.X86.Ext.Sz.d.bits) = 10 from rfl]
     rw [v30]
-    try rfl
+    rfl
   have v32 : read32 c32.core Reg.rbp =
       ((A).rotateLeft 19) ^^^ ((A).rotateLeft 30) := by
     rw [read_d_of_writes h32w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [read_d_of_other (r := Reg.rbp) h31w (by decide), read_d_of_other (r := Reg.rbp) h30w (by decide), v29, read_d_of_other (r := Reg.rsi) h31w (by decide), read_d_of_other (r := Reg.rsi) h30w (by decide), read_d_of_other (r := Reg.rsi) h29w (by decide), read_d_of_other (r := Reg.rsi) h28w (by decide), v27]
-    try rfl
+    rfl
   have v33 : read32 c33.core Reg.r15 =
       ((A).rotateLeft 10) ^^^ (((A).rotateLeft 19) ^^^ ((A).rotateLeft 30)) := by
     rw [read_d_of_writes h33w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [read_d_of_other (r := Reg.r15) h32w (by decide), v31, v32]
-    try rfl
+    rfl
   have v34 : read32 c34.core Reg.rsi =
       B := by
     rw [read_d_of_writes h34w]
@@ -5694,13 +5694,13 @@ theorem l3_trace_img
     rw [read_d_of_writes h35w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v34, read_d_of_other (r := Reg.r11) h34w (by decide), read_d_of_other (r := Reg.r11) h33w (by decide), read_d_of_other (r := Reg.r11) h32w (by decide), read_d_of_other (r := Reg.r11) h31w (by decide), read_d_of_other (r := Reg.r11) h30w (by decide), read_d_of_other (r := Reg.r11) h29w (by decide), read_d_of_other (r := Reg.r11) h28w (by decide), read_d_of_other (r := Reg.r11) h27w (by decide), read_d_of_other (r := Reg.r11) h26w (by decide), read_d_of_other (r := Reg.r11) h25w (by decide), read_d_of_other (r := Reg.r11) h24w (by decide), read_d_of_other (r := Reg.r11) h23w (by decide), read_d_of_other (r := Reg.r11) h22w (by decide), read_d_of_other (r := Reg.r11) h21w (by decide), read_d_of_other (r := Reg.r11) h20w (by decide), read_d_of_other (r := Reg.r11) h19w (by decide), read_d_of_other (r := Reg.r11) h18w (by decide), read_d_of_other (r := Reg.r11) h17w (by decide), read_d_of_other (r := Reg.r11) h16w (by decide), read_d_of_other (r := Reg.r11) h15w (by decide), read_d_of_other (r := Reg.r11) h14w (by decide), read_d_of_other (r := Reg.r11) h13w (by decide), read_d_of_other (r := Reg.r11) h12w (by decide), read_d_of_other (r := Reg.r11) h11w (by decide), read_d_of_other (r := Reg.r11) h10w (by decide), read_d_of_other (r := Reg.r11) h9w (by decide), read_d_of_other (r := Reg.r11) h8w (by decide), read_d_of_other (r := Reg.r11) h7w (by decide), read_d_of_other (r := Reg.r11) h6w (by decide), v5]
-    try rfl
+    rfl
   have v36 : read32 c36.core Reg.rsi =
       ((B) ^^^ (C)) &&& (A) := by
     rw [read_d_of_writes h36w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v35, read_d_of_other (r := Reg.r12) h35w (by decide), read_d_of_other (r := Reg.r12) h34w (by decide), read_d_of_other (r := Reg.r12) h33w (by decide), read_d_of_other (r := Reg.r12) h32w (by decide), read_d_of_other (r := Reg.r12) h31w (by decide), read_d_of_other (r := Reg.r12) h30w (by decide), read_d_of_other (r := Reg.r12) h29w (by decide), read_d_of_other (r := Reg.r12) h28w (by decide), read_d_of_other (r := Reg.r12) h27w (by decide), read_d_of_other (r := Reg.r12) h26w (by decide), read_d_of_other (r := Reg.r12) h25w (by decide), read_d_of_other (r := Reg.r12) h24w (by decide), read_d_of_other (r := Reg.r12) h23w (by decide), read_d_of_other (r := Reg.r12) h22w (by decide), read_d_of_other (r := Reg.r12) h21w (by decide), read_d_of_other (r := Reg.r12) h20w (by decide), read_d_of_other (r := Reg.r12) h19w (by decide), read_d_of_other (r := Reg.r12) h18w (by decide), read_d_of_other (r := Reg.r12) h17w (by decide), read_d_of_other (r := Reg.r12) h16w (by decide), read_d_of_other (r := Reg.r12) h15w (by decide), read_d_of_other (r := Reg.r12) h14w (by decide), read_d_of_other (r := Reg.r12) h13w (by decide), read_d_of_other (r := Reg.r12) h12w (by decide), read_d_of_other (r := Reg.r12) h11w (by decide), read_d_of_other (r := Reg.r12) h10w (by decide), read_d_of_other (r := Reg.r12) h9w (by decide), read_d_of_other (r := Reg.r12) h8w (by decide), read_d_of_other (r := Reg.r12) h7w (by decide), read_d_of_other (r := Reg.r12) h6w (by decide), read_d_of_other (r := Reg.r12) h5w (by decide), read_d_of_other (r := Reg.r12) h4w (by decide), read_d_of_other (r := Reg.r12) h3w (by decide), read_d_of_other (r := Reg.r12) h2w (by decide), read_d_of_other (r := Reg.r12) h1w (by decide), hA]
-    try rfl
+    rfl
   have v37 : read32 c37.core Reg.r12 =
       B := by
     rw [read_d_of_writes h37w]
@@ -5711,31 +5711,31 @@ theorem l3_trace_img
     rw [read_d_of_writes h38w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v37, read_d_of_other (r := Reg.r11) h37w (by decide), read_d_of_other (r := Reg.r11) h36w (by decide), read_d_of_other (r := Reg.r11) h35w (by decide), read_d_of_other (r := Reg.r11) h34w (by decide), read_d_of_other (r := Reg.r11) h33w (by decide), read_d_of_other (r := Reg.r11) h32w (by decide), read_d_of_other (r := Reg.r11) h31w (by decide), read_d_of_other (r := Reg.r11) h30w (by decide), read_d_of_other (r := Reg.r11) h29w (by decide), read_d_of_other (r := Reg.r11) h28w (by decide), read_d_of_other (r := Reg.r11) h27w (by decide), read_d_of_other (r := Reg.r11) h26w (by decide), read_d_of_other (r := Reg.r11) h25w (by decide), read_d_of_other (r := Reg.r11) h24w (by decide), read_d_of_other (r := Reg.r11) h23w (by decide), read_d_of_other (r := Reg.r11) h22w (by decide), read_d_of_other (r := Reg.r11) h21w (by decide), read_d_of_other (r := Reg.r11) h20w (by decide), read_d_of_other (r := Reg.r11) h19w (by decide), read_d_of_other (r := Reg.r11) h18w (by decide), read_d_of_other (r := Reg.r11) h17w (by decide), read_d_of_other (r := Reg.r11) h16w (by decide), read_d_of_other (r := Reg.r11) h15w (by decide), read_d_of_other (r := Reg.r11) h14w (by decide), read_d_of_other (r := Reg.r11) h13w (by decide), read_d_of_other (r := Reg.r11) h12w (by decide), read_d_of_other (r := Reg.r11) h11w (by decide), read_d_of_other (r := Reg.r11) h10w (by decide), read_d_of_other (r := Reg.r11) h9w (by decide), read_d_of_other (r := Reg.r11) h8w (by decide), read_d_of_other (r := Reg.r11) h7w (by decide), read_d_of_other (r := Reg.r11) h6w (by decide), v5]
-    try rfl
+    rfl
   have v39 : read32 c39.core Reg.r12 =
       ((B) &&& (C)) ^^^ (((B) ^^^ (C)) &&& (A)) := by
     rw [read_d_of_writes h39w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v38, read_d_of_other (r := Reg.rsi) h38w (by decide), read_d_of_other (r := Reg.rsi) h37w (by decide), v36]
-    try rfl
+    rfl
   have v40 : read32 c40.core Reg.r12 =
       (((B) &&& (C)) ^^^ (((B) ^^^ (C)) &&& (A))) + (((A).rotateLeft 10) ^^^ (((A).rotateLeft 19) ^^^ ((A).rotateLeft 30))) := by
     rw [read_d_of_writes h40w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [v39, read_d_of_other (r := Reg.r15) h39w (by decide), read_d_of_other (r := Reg.r15) h38w (by decide), read_d_of_other (r := Reg.r15) h37w (by decide), read_d_of_other (r := Reg.r15) h36w (by decide), read_d_of_other (r := Reg.r15) h35w (by decide), read_d_of_other (r := Reg.r15) h34w (by decide), v33]
-    try rfl
+    rfl
   have v41 : read32 c41.core Reg.r13 =
       (D) + ((((((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)))) + ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32)) + ((BitVec.ofNat 64 (wv.toNat % 2 ^ (8 * 4))).setWidth 32)) := by
     rw [read_d_of_writes h41w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [read_d_of_other (r := Reg.r13) h40w (by decide), read_d_of_other (r := Reg.r13) h39w (by decide), read_d_of_other (r := Reg.r13) h38w (by decide), read_d_of_other (r := Reg.r13) h37w (by decide), read_d_of_other (r := Reg.r13) h36w (by decide), read_d_of_other (r := Reg.r13) h35w (by decide), read_d_of_other (r := Reg.r13) h34w (by decide), read_d_of_other (r := Reg.r13) h33w (by decide), read_d_of_other (r := Reg.r13) h32w (by decide), read_d_of_other (r := Reg.r13) h31w (by decide), read_d_of_other (r := Reg.r13) h30w (by decide), read_d_of_other (r := Reg.r13) h29w (by decide), read_d_of_other (r := Reg.r13) h28w (by decide), read_d_of_other (r := Reg.r13) h27w (by decide), read_d_of_other (r := Reg.r13) h26w (by decide), read_d_of_other (r := Reg.r13) h25w (by decide), read_d_of_other (r := Reg.r13) h24w (by decide), read_d_of_other (r := Reg.r13) h23w (by decide), read_d_of_other (r := Reg.r13) h22w (by decide), read_d_of_other (r := Reg.r13) h21w (by decide), read_d_of_other (r := Reg.r13) h20w (by decide), read_d_of_other (r := Reg.r13) h19w (by decide), read_d_of_other (r := Reg.r13) h18w (by decide), read_d_of_other (r := Reg.r13) h17w (by decide), read_d_of_other (r := Reg.r13) h16w (by decide), read_d_of_other (r := Reg.r13) h15w (by decide), read_d_of_other (r := Reg.r13) h14w (by decide), read_d_of_other (r := Reg.r13) h13w (by decide), read_d_of_other (r := Reg.r13) h12w (by decide), read_d_of_other (r := Reg.r13) h11w (by decide), read_d_of_other (r := Reg.r13) h10w (by decide), read_d_of_other (r := Reg.r13) h9w (by decide), read_d_of_other (r := Reg.r13) h8w (by decide), read_d_of_other (r := Reg.r13) h7w (by decide), read_d_of_other (r := Reg.r13) h6w (by decide), read_d_of_other (r := Reg.r13) h5w (by decide), v4, read_d_of_other (r := Reg.r14) h40w (by decide), read_d_of_other (r := Reg.r14) h39w (by decide), read_d_of_other (r := Reg.r14) h38w (by decide), read_d_of_other (r := Reg.r14) h37w (by decide), read_d_of_other (r := Reg.r14) h36w (by decide), read_d_of_other (r := Reg.r14) h35w (by decide), read_d_of_other (r := Reg.r14) h34w (by decide), read_d_of_other (r := Reg.r14) h33w (by decide), read_d_of_other (r := Reg.r14) h32w (by decide), read_d_of_other (r := Reg.r14) h31w (by decide), read_d_of_other (r := Reg.r14) h30w (by decide), read_d_of_other (r := Reg.r14) h29w (by decide), read_d_of_other (r := Reg.r14) h28w (by decide), read_d_of_other (r := Reg.r14) h27w (by decide), read_d_of_other (r := Reg.r14) h26w (by decide), read_d_of_other (r := Reg.r14) h25w (by decide), v24]
-    try rfl
+    rfl
   have v42 : read32 c42.core Reg.r12 =
       ((((B) &&& (C)) ^^^ (((B) ^^^ (C)) &&& (A))) + (((A).rotateLeft 10) ^^^ (((A).rotateLeft 19) ^^^ ((A).rotateLeft 30)))) + ((((((~~~(E)) &&& (G)) + (((F) &&& (E)) + (H))) + (((E).rotateLeft 7) ^^^ (((E).rotateLeft 21) ^^^ ((E).rotateLeft 26)))) + ((BitVec.ofNat 64 (kv.toNat % 2 ^ (8 * 4))).setWidth 32)) + ((BitVec.ofNat 64 (wv.toNat % 2 ^ (8 * 4))).setWidth 32)) := by
     rw [read_d_of_writes h42w]
     simp only [← read32_eq, Silmaril.X86.Ext.AluOp.resultN]
     rw [read_d_of_other (r := Reg.r12) h41w (by decide), v40, read_d_of_other (r := Reg.r14) h41w (by decide), read_d_of_other (r := Reg.r14) h40w (by decide), read_d_of_other (r := Reg.r14) h39w (by decide), read_d_of_other (r := Reg.r14) h38w (by decide), read_d_of_other (r := Reg.r14) h37w (by decide), read_d_of_other (r := Reg.r14) h36w (by decide), read_d_of_other (r := Reg.r14) h35w (by decide), read_d_of_other (r := Reg.r14) h34w (by decide), read_d_of_other (r := Reg.r14) h33w (by decide), read_d_of_other (r := Reg.r14) h32w (by decide), read_d_of_other (r := Reg.r14) h31w (by decide), read_d_of_other (r := Reg.r14) h30w (by decide), read_d_of_other (r := Reg.r14) h29w (by decide), read_d_of_other (r := Reg.r14) h28w (by decide), read_d_of_other (r := Reg.r14) h27w (by decide), read_d_of_other (r := Reg.r14) h26w (by decide), read_d_of_other (r := Reg.r14) h25w (by decide), v24]
-    try rfl
+    rfl
   have v44 : read32 c44.core Reg.r14 =
       G := by
     rw [read_d_of_writes h44w]

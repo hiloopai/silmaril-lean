@@ -149,7 +149,7 @@ theorem tail_cs2 {w : World} {message : List Byte} {k : KState} {h : List Ev} {x
   refine tail_cs3 (sp := sp) ⟨hfy, hh', by rw [in_close, hrd], by rw [out_close, hwr],
     hcy, hspb, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ ⟨?_, ?_, ?_, ?_, ?_⟩ hripy
     (by rw [hrspy]; simp [bv_sub_add]) hraxy
-  all_goals try rw [hmy]
+  all_goals rw [hmy]
   rfin [Bool.false_eq_true] [Bool.false_eq_true]
   · exact ⟨v13, by (repeat rmem [Bool.false_eq_true])⟩
   · exact ⟨v12, by (repeat rmem [Bool.false_eq_true])⟩
@@ -189,7 +189,7 @@ theorem tail_cs1b {w : World} {message : List Byte} {k : KState} {h : List Ev} {
       (by decide)]; simp)
     (by rw [hregs .r13 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
       (by decide)]; simp)
-  all_goals try rw [hmy]
+  all_goals rw [hmy]
   rfin [Bool.false_eq_true] [Bool.false_eq_true]
   · exact ⟨v13, by (repeat rmem [Bool.false_eq_true])⟩
   · exact ⟨v12, by (repeat rmem [Bool.false_eq_true])⟩
@@ -241,7 +241,7 @@ theorem tail_close0 {w : World} {message : List Byte} {k : KState} {h : List Ev}
     by rw [out_close, hwr], hcy, hspb, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     (by simp [KState.set, hk1]) (by simp [KState.set, hk2]) hripy
     (by rw [hrspy]; simp) hraxy
-  all_goals try rw [hmy]
+  all_goals rw [hmy]
   rfin [Bool.false_eq_true] [Bool.false_eq_true]
 
 /-- `0x40464d`, back in `cmain` after `output_file` (the record emitted and flushed): the

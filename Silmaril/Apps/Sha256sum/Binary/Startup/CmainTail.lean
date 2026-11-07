@@ -114,7 +114,7 @@ theorem vc_A (sp0 : Word) (m0 : Memory) (hG : G0 sp0 m0) (s : XState)
   cm_go [main_lk_0, main_lk_2, main_lk_4, main_lk_6, main_lk_8, main_lk_9, main_lk_10, main_lk_17, main_lk_20, main_lk_22, main_lk_28, main_lk_31, main_lk_35, main_lk_38, main_lk_44, main_lk_47, main_lk_50, main_lk_52, main_lk_54, main_lk_57, main_lk_59, main_lk_64, main_lk_67, main_lk_69, main_lk_72, main_lk_76, main_lk_80, main_lk_82, main_lk_84, main_lk_87, main_lk_89, main_lk_93, main_lk_96, main_lk_99, main_lk_103, main_lk_105, main_lk_107, main_lk_112, main_lk_114, main_lk_120, main_lk_124, main_lk_128, main_lk_134, main_lk_139, main_lk_145, main_lk_147, main_lk_150, main_lk_153, main_lk_157, main_lk_160, main_lk_167, main_lk_175, main_lk_182, main_lk_186, main_lk_189, main_lk_192, main_lk_194, main_lk_200, main_lk_205, main_lk_207, main_lk_216, main_lk_218, main_lk_224, main_lk_228, main_lk_232, main_lk_238, main_lk_245, main_lk_248, main_lk_250, main_lk_254, main_lk_258, main_lk_261, main_lk_263, main_lk_265, main_lk_270, main_lk_276, main_lk_279, main_lk_282, main_lk_285, main_lk_288, main_lk_313, main_lk_316, main_lk_319, main_lk_324, main_lk_327, main_lk_330, main_lk_334, main_lk_337, main_lk_386, main_lk_393, main_lk_399, main_lk_406, main_lk_544, main_lk_548, main_lk_552, main_lk_558, main_lk_561, main_lk_567, main_lk_745, main_lk_747, main_lk_752, main_lk_756, main_lk_760, main_lk_762, main_lk_767, main_lk_773, main_lk_779, main_lk_781, main_lk_783, main_lk_787, main_lk_792, main_lk_798, main_lk_800, main_lk_806, main_lk_813, main_lk_834, main_lk_841, main_lk_856, main_lk_863, main_lk_895, main_lk_902, main_lk_1239, main_lk_1246, main_lk_1381, main_lk_1383, main_lk_1385, main_lk_1387, main_lk_1393, main_lk_1395, main_lk_1397, main_lk_1405, main_lk_1410, main_lk_1412, main_lk_1420, main_lk_1428, main_lk_1433, main_lk_1437, main_lk_1442, main_lk_1446, main_lk_1450, main_lk_1456, main_lk_1461, main_lk_1466, main_lk_1472, main_lk_1477, main_lk_1479, postA, ofNat_toNat_mod8, call_ret, Mem.ofReg, Nat.reduceMul, Mem.ofRip, Silmaril.X86.Ext.Base.value, false_implies, Bool.not_true, Bool.not_false, msb_ff, shl_one3, zero_shl3, ofNat_toNat_modl, add16_comm, ult_self',
     Silmaril.X86.Lift.ix, hrip, hl, hrsp, hr11, hr14, hr15, hrbx, BitVec.reduceSLE,
     BitVec.reduceSLT]
-  all_goals (try (refine ⟨fun _ => ?_⟩; cm_mem))
+  (try (refine ⟨fun _ => ?_⟩; cm_mem))
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 100000 in
@@ -174,7 +174,7 @@ theorem vc_C1 (sp0 : Word) (m0 : Memory) (hG : G0 sp0 m0) (s : XState)
     BitVec.reduceSLT]
   all_goals (try (refine ⟨fun _ => ?_⟩; cm_mem))
   all_goals (try rfl)
-  all_goals (try (simp only [ofNat_toNat_mod8]))
+  (try (simp only [ofNat_toNat_mod8]))
 
 /-- The stop of chunk C2 (`0x4039b5`): `do_check` in `rbx`, the operand in `r12`. -/
 def postC2 (sp0 : Word) (m : Memory) (s : XState) : Prop :=
@@ -210,7 +210,7 @@ theorem vc_C3 (sp0 : Word) (m0 : Memory) (s : XState)
   sv [hrsp, hr14, hr12, main_lk_0, main_lk_2, main_lk_4, main_lk_6, main_lk_8, main_lk_9, main_lk_10, main_lk_17, main_lk_20, main_lk_22, main_lk_28, main_lk_31, main_lk_35, main_lk_38, main_lk_44, main_lk_47, main_lk_50, main_lk_52, main_lk_54, main_lk_57, main_lk_59, main_lk_64, main_lk_67, main_lk_69, main_lk_72, main_lk_76, main_lk_80, main_lk_82, main_lk_84, main_lk_87, main_lk_89, main_lk_93, main_lk_96, main_lk_99, main_lk_103, main_lk_105, main_lk_107, main_lk_112, main_lk_114, main_lk_120, main_lk_124, main_lk_128, main_lk_134, main_lk_139, main_lk_145, main_lk_147, main_lk_150, main_lk_153, main_lk_157, main_lk_160, main_lk_167, main_lk_175, main_lk_182, main_lk_186, main_lk_189, main_lk_192, main_lk_194, main_lk_200, main_lk_205, main_lk_207, main_lk_216, main_lk_218, main_lk_224, main_lk_228, main_lk_232, main_lk_238, main_lk_245, main_lk_248, main_lk_250, main_lk_254, main_lk_258, main_lk_261, main_lk_263, main_lk_265, main_lk_270, main_lk_276, main_lk_279, main_lk_282, main_lk_285, main_lk_288, main_lk_313, main_lk_316, main_lk_319, main_lk_324, main_lk_327, main_lk_330, main_lk_334, main_lk_337, main_lk_386, main_lk_393, main_lk_399, main_lk_406, main_lk_544, main_lk_548, main_lk_552, main_lk_558, main_lk_561, main_lk_567, main_lk_745, main_lk_747, main_lk_752, main_lk_756, main_lk_760, main_lk_762, main_lk_767, main_lk_773, main_lk_779, main_lk_781, main_lk_783, main_lk_787, main_lk_792, main_lk_798, main_lk_800, main_lk_806, main_lk_813, main_lk_834, main_lk_841, main_lk_856, main_lk_863, main_lk_895, main_lk_902, main_lk_1239, main_lk_1246, main_lk_1381, main_lk_1383, main_lk_1385, main_lk_1387, main_lk_1393, main_lk_1395, main_lk_1397, main_lk_1405, main_lk_1410, main_lk_1412, main_lk_1420, main_lk_1428, main_lk_1433, main_lk_1437, main_lk_1442, main_lk_1446, main_lk_1450, main_lk_1456, main_lk_1461, main_lk_1466, main_lk_1472, main_lk_1477, main_lk_1479, postC, ofNat_toNat_mod8, call_ret, Mem.ofReg, Nat.reduceMul, Mem.ofRip, Silmaril.X86.Ext.Base.value, false_implies, Bool.not_true, Bool.not_false, msb_ff, shl_one3, zero_shl3, ofNat_toNat_modl, add16_comm, ult_self',
     Silmaril.X86.Lift.ix, hrip, hl, hrsp, hr14, BitVec.reduceSLE,
     BitVec.reduceSLT, hrbx, L1, L2, L3, L6]
-  all_goals (try (exact hww))
+  (try (exact hww))
 
 /-- The stop of chunk D, in `loadN` form. -/
 def postD (sp0 : Word) (m0 : Memory) (s : XState) : Prop :=
@@ -246,7 +246,7 @@ theorem vc_D (sp0 : Word) (m0 : Memory) (hG : G0 sp0 m0) (s : XState)
     Silmaril.X86.Lift.ix, hrip, hl, hrsp, hr14, hr12, hrbx, l1, l2, l3, l4]
   all_goals (try (seg_read [hrsp, hr14, hr12, hrbx, Silmaril.Apps.Sha256sum.Binary.Startup.sub_sub_lit]))
   all_goals (try (with_reducible assumption))
-  all_goals (try (refine ⟨fun _ => ?_⟩; exact Silmaril.Apps.Sha256sum.Binary.Startup.ww_wb (by assumption) hww (fun i hi => by simp only [Silmaril.X86.length_encodeWords_singleton] at hi; simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega)))
+  (try (refine ⟨fun _ => ?_⟩; exact Silmaril.Apps.Sha256sum.Binary.Startup.ww_wb (by assumption) hww (fun i hi => by simp only [Silmaril.X86.length_encodeWords_singleton] at hi; simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega)))
 
 /-! ## The chunks as runs -/
 
