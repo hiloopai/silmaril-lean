@@ -32,13 +32,17 @@ theorem instrK_of_forall {W : Nat → Prop} (hW : ∀ x, W x) (i : Instr) : Inst
     | exact instrsK_of_forall hW _
     | exact ⟨instrsK_of_forall hW _, instrsK_of_forall hW _⟩
 termination_by sizeOf i
-decreasing_by all_goals simp_wf
+decreasing_by
+  all_goals simp_wf
+  omega
 theorem instrsK_of_forall {W : Nat → Prop} (hW : ∀ x, W x) (is : List Instr) : InstrsK W is := by
   cases is with
   | nil => trivial
   | cons i is => exact ⟨instrK_of_forall hW i, instrsK_of_forall hW is⟩
 termination_by sizeOf is
-decreasing_by all_goals (simp_wf; omega)
+decreasing_by
+  all_goals simp_wf
+  omega
 end
 
 /-- An instruction that writes no table keeps every table. -/
