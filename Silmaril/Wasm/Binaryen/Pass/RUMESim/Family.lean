@@ -340,6 +340,7 @@ theorem refStep_withFG {n0 : Nat} {S : Store H} {f : Frame} {l : List Admin} {c'
   | castFail h => exact .castFail (fun h' => h ((hok _ _ (hl (.ref _) (by simp))).2 h'))
   | eqNull => exact .eqNull
   | eqTrue h => exact .eqTrue h
+  | asNonNullAddr | eqFalse | externConvertAddr | isNullFalse | refFunc => constructor; assumption
   | _ => constructor
 
 theorem tableStep_fg {S : Store H} {f : Frame} {l : List Admin} {c' : Config H}
