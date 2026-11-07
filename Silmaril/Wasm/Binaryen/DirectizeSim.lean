@@ -134,7 +134,7 @@ theorem head_same {P : Numerics.Profile} {s t : Store H} {f : Frame}
     | aggregate h =>
       exact absurd ((Det.famOf_of_shape (Det.AggregateStep.shape h)).2.symm.trans hfam)
         (by decide)
-    | _ => rcases hx with h | h | h <;> (try cases h) <;> simp_all [Admin.IsCallRef]
+    | _ => rcases hx with h | h | h <;> cases h <;> simp_all [Admin.IsCallRef]
 
 /-- Two call forms with different annotations: the same call. -/
 theorem head_ann {P : Numerics.Profile} {s t : Store H} {f : Frame}

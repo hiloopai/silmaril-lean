@@ -205,7 +205,7 @@ private theorem filter_length_le {p q : Nat → Bool} :
     have ih := filter_length_le xs (fun x hx => h x (List.mem_cons_of_mem a hx))
     have ha := h a List.mem_cons_self
     simp only [List.filter_cons]
-    cases hp : p a <;> cases hq : q a <;> (simp_all; try omega)
+    cases hp : p a <;> cases hq : q a <;> simp_all
 
 private theorem filter_length_lt {p q : Nat → Bool} :
     ∀ (xs : List Nat), (∀ x ∈ xs, p x = true → q x = true) →
@@ -219,7 +219,7 @@ private theorem filter_length_lt {p q : Nat → Bool} :
     · simp [hqx, hpx]; omega
     · have ih := filter_length_lt xs (fun x hx => h x (List.mem_cons_of_mem a hx))
         ⟨x, hx, hqx, hpx⟩
-      cases hp : p a <;> cases hq : q a <;> (simp_all; try omega)
+      cases hp : p a <;> cases hq : q a <;> simp_all
 
 /-- The number of in-range live elements. -/
 def liveCount (m : BModule) (l : Live) : Nat :=

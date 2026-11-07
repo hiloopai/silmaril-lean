@@ -127,7 +127,6 @@ theorem step_set_inv {c c' : Config H} (h : Step P host c c') :
     intro us x hc
     have hl := congrArg List.getLast? hc
     simp [constI32] at hl
-    all_goals (subst hl; simp_all [Admin.IsCallRef, Admin.IsReturnCallRef])
 
 /-- An exit kernel holds no `local.set`. -/
 theorem exit_not_set {k : List Admin} (hk : Exit k) (x : LocalIdx) :
