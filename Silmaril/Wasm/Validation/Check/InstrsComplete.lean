@@ -747,7 +747,7 @@ theorem checkSeq_complete (hD : DirectComplete atom? tyOk) (hT : TyOkOracleCompl
       refine ⟨(o', xs'', t.length - s.length), ?_⟩
       simp only [checkSeq, hci, hrest]
 termination_by sizeOf l
-decreasing_by all_goals (simp_wf; (try subst_vars); all_goals omega)
+decreasing_by all_goals (simp_wf; (try subst_vars); omega)
 
 end
 
