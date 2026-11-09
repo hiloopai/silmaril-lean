@@ -36,9 +36,15 @@ cmp 03-zlib-checksums/build/O2/zlib-checksums 03-zlib-checksums/pinned/zlib-chec
 (cd 03-zlib-checksums/pinned && sha256sum -c zlib-checksums.sha256)
 ```
 
-That the Lean byte literals are the bytes these files load at the stated addresses is checked
-outside Lean (the module headers give the `dd` commands). No Lean theorem here parses the
-executables.
+`Silmaril.X86.Ladder.Pinned.Thms` proves that the Lean byte literals are the bytes these files
+load at the stated addresses: it runs the public LPS loader (`ELFImage.parse`) on the files,
+embedded as `Silmaril.X86.Link.Blob` literals in `Silmaril/X86/Ladder/Pinned/<Rung>.lean`, by
+kernel evaluation. `pin.sh` regenerates those modules from the pinned files, and
+`pin.sh --check` checks that they match the files and their `.sha256` (coreutils only):
+
+```sh
+bash pin.sh --check
+```
 
 ## Licences
 
