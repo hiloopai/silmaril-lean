@@ -35,11 +35,11 @@ per-family statement about `Ext9` and `Str9`:
 * `AllowsExec F i`: the form `F` allows every result of `Str9.exec i` (success or fault);
   with `allows_fs` this is tightening by `FormSpec.exact Str9.isa i`;
 * `Task.ctlAllows`, `Task.mulDivAllows`, `Task.intAllows`: every specified form of the group
-  allows the results of `Ext9`. `Task.ctlAllows` is proved (`ctlAllows` in `Thms`), as are the
-  string forms (`allowsExec_str`); `Task.mulDivAllows` and `Task.intAllows` are the open
-  goals;
+  allows the results of `Ext9`. All three are proved (`ctlAllows`, `mulDivAllows`,
+  `intAllows` in `Thms`), as are the string forms (`allowsExec_str`);
 * `Task.sv1Tight`: every form of `Σ v1` is tightened by its exact `Str9` form; it follows
-  from the three group tasks and the string forms (`sv1Tight_of` in `Thms`).
+  from the three group tasks and the string forms (`sv1Tight_of` in `Thms`), so it holds
+  (`sv1Tight`).
 -/
 
 @[expose] public section
@@ -105,15 +105,16 @@ def AllowsExec (F : EffSpec) (i : Silmaril.X86.Str9.Instr) : Prop :=
 def Task.ctlAllows : Prop :=
   ∀ i F, Loose.Ctl.ctlSpec i = some F → AllowsExec F (.ext9 i)
 
-/-- **Open goal**: every `MulDiv` form allows the results of `Ext9`. -/
+/-- Every `MulDiv` form allows the results of `Ext9` (proved: `mulDivAllows` in `Thms`). -/
 def Task.mulDivAllows : Prop :=
   ∀ i F, Loose.Forms.MulDiv.specOf i = some F → AllowsExec F (.ext9 i)
 
-/-- **Open goal**: every `Int` form allows the results of `Ext9`. -/
+/-- Every `Int` form allows the results of `Ext9` (proved: `intAllows` in `Thms`). -/
 def Task.intAllows : Prop :=
   ∀ i F, Loose.Forms.spec9 i = some F → AllowsExec F (.ext9 i)
 
-/-- **Every form of `Σ v1` is tightened by its exact `Str9` form.** -/
+/-- **Every form of `Σ v1` is tightened by its exact `Str9` form** (proved: `sv1Tight` in
+`Thms`). -/
 def Task.sv1Tight : Prop :=
   ∀ i F, Loose.Sv1 i = some F → F.Tightens (FormSpec.exact Silmaril.X86.Str9.isa i)
 
