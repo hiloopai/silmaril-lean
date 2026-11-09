@@ -8,6 +8,8 @@ lean:
   - 'examples/**'
   - 'data/**'
   - 'problems/**'
+  - 'silmaril/**'
+  - 'silmaril.toml'
   - 'specs/**'
   - '.process-promotion.json'
   - 'lake*'
