@@ -3,6 +3,7 @@ module
 public import Silmaril.X86.Ladder.ZlibChecksums.Spec.Defs
 public import Silmaril.X86.Stencils.TableFold.Thms
 public import Silmaril.X86.Stencils.AccumFold.Thms
+public import Silmaril.Formats.Compression.Checksum.Defs
 
 /-!
 # zlib checksums: proofs of the reference facts
@@ -13,6 +14,9 @@ public import Silmaril.X86.Stencils.AccumFold.Thms
   `fold_crcT`);
 * the transcribed table holds the polynomial entries (`crcTable_correct`, kernel `decide`) and
   a memory holding it satisfies the stencil's `TableAt` (`tableAt_of_readBytes`).
+* the reference `crc32` is the compression library's `Silmaril.Formats.Compression.crc32List`
+  on byte values (`crcBit_toNat`, `crcBits_toNat`, `crcByte_toNat`, `foldl_crcByte_toNat`,
+  `crc32_eq_crc32List`).
 -/
 
 @[expose] public section
@@ -125,5 +129,45 @@ theorem tableAt_of_readBytes {mem : Memory} {tbl : Nat}
   congr 1
   apply BitVec.eq_of_toNat_eq
   simp
+
+/-! ## Agreement with the compression library's CRC-32 -/
+
+theorem crcBit_toNat (c : BitVec 32) :
+    (crcBit c).toNat = if c.toNat % 2 = 0 then c.toNat / 2
+      else c.toNat / 2 ^^^ Silmaril.Formats.Compression.crc32Poly := by
+  have hb : c.getLsbD 0 = decide (c.toNat % 2 = 1) := by
+    rw [← BitVec.testBit_toNat, Nat.testBit_zero]
+  unfold crcBit
+  rw [hb]
+  rcases Nat.mod_two_eq_zero_or_one c.toNat with h | h <;>
+    simp [h, BitVec.toNat_ushiftRight, BitVec.toNat_xor, Nat.shiftRight_eq_div_pow,
+      Silmaril.Formats.Compression.crc32Poly]
+
+theorem crcBits_toNat : ∀ k (c : BitVec 32),
+    (crcBits k c).toNat = Silmaril.Formats.Compression.crc32Byte.go c.toNat k
+  | 0, _ => rfl
+  | k + 1, c => by
+    rw [crcBits, crcBits_toNat k, crcBit_toNat, Silmaril.Formats.Compression.crc32Byte.go]
+    split <;> rfl
+
+theorem crcByte_toNat (c : BitVec 32) (b : Byte) :
+    (crcByte c b).toNat = Silmaril.Formats.Compression.crc32Byte c.toNat b.toNat := by
+  have hb : (b.setWidth 32).toNat = b.toNat := by
+    rw [BitVec.toNat_setWidth]; exact Nat.mod_eq_of_lt (by have := b.isLt; omega)
+  rw [crcByte, crcBits_toNat, BitVec.toNat_xor, hb]; rfl
+
+theorem foldl_crcByte_toNat (bs : List Byte) (c : BitVec 32) :
+    (bs.foldl crcByte c).toNat =
+      (bs.map BitVec.toNat).foldl Silmaril.Formats.Compression.crc32Byte c.toNat := by
+  induction bs generalizing c with
+  | nil => rfl
+  | cons b bs ih => simp only [List.foldl_cons, List.map_cons, ih, crcByte_toNat]
+
+theorem toNat_not32 (x : BitVec 32) : (~~~x).toNat = x.toNat ^^^ 0xFFFFFFFF := by
+  rw [← BitVec.xor_allOnes, BitVec.toNat_xor, BitVec.toNat_allOnes]
+
+theorem crc32_eq_crc32List (bs : List Byte) :
+    (crc32 0 bs).toNat = Silmaril.Formats.Compression.crc32List (bs.map BitVec.toNat) := by
+  rw [crc32, toNat_not32, foldl_crcByte_toNat]; rfl
 
 end Silmaril.Proofs.X86.Ladder.ZlibChecksums

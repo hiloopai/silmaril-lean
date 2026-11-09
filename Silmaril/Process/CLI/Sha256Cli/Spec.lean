@@ -27,7 +27,7 @@ the clang `-O2 sha256_compress` whose contract is
 
 * `image_faithful`, `image_wf` — the transcription is faithful to the loadable
   image, re-exported from `Binary` (closed there by `decide +kernel`, no
-  `native decision tactic`), so `X86Linux.Transcript.step` applies at every transcribed
+  `decide +native`), so `X86Linux.Transcript.step` applies at every transcribed
   address.
 * `step_at` — at any transcribed address of a launched process, the machine
   takes the transcribed instruction's step. This is the bridge a functional

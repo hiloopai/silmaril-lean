@@ -3,6 +3,7 @@ module
 public import Silmaril.X86.Ladder.ZlibChecksums.Spec.Defs
 public import Silmaril.X86.Stencils.TableFold.Thms
 public import Silmaril.X86.Stencils.AccumFold.Thms
+public import Silmaril.Formats.Compression.Checksum.Defs
 import Silmaril.Proofs.X86.Ladder.ZlibChecksums.Crc
 
 /-!
@@ -18,6 +19,9 @@ import Silmaril.Proofs.X86.Ladder.ZlibChecksums.Crc
   stencil's `TableAt`;
 * `crc32_check`, `crcEntry_one`: the published check value `crc32(0, "123456789") = 0xcbf43926`
   and `crc_table[1] = 0x77073096`, as the rung's self-test checks.
+* `crc32_eq_crc32List`: from the initial value `0`, `crc32` is the compression library's
+  CRC-32 (`Silmaril.Formats.Compression.crc32List`, checked there against the same published
+  value), so the two specifications cannot drift apart.
 
 **Adler-32**
 * `adler32Chunked_eq`: zlib's deferred reduction (any input, `NMAX` chunks) equals the per-byte
@@ -62,6 +66,10 @@ theorem crcEntry_one : crcEntry 1 = 0x77073096#32 := by decide +kernel
 def nine : List Byte := [0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39]
 
 theorem crc32_check : crc32 0 nine = 0xcbf43926#32 := by decide +kernel
+
+theorem crc32_eq_crc32List (bs : List Byte) :
+    (crc32 0 bs).toNat = Silmaril.Formats.Compression.crc32List (bs.map BitVec.toNat) :=
+  Silmaril.Proofs.X86.Ladder.ZlibChecksums.crc32_eq_crc32List bs
 
 /-- The ASCII bytes of `"Wikipedia"`. -/
 def wikipedia : List Byte := [0x57, 0x69, 0x6b, 0x69, 0x70, 0x65, 0x64, 0x69, 0x61]

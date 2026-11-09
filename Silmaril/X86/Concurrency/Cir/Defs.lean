@@ -92,7 +92,8 @@ SC/TSO/XL machinery:
 
 `SeqRun s rs m tr rs' m'`: a thread run whose trace replays on one flat memory (`replay`:
 every read returns the current bytes, writes update them). The statement that a single-thread,
-spawn-free program's SC behaviours are its sequential runs is `Task.cirSeqSc`.
+spawn-free program's SC behaviours are its sequential runs is `Task.cirSeqSc`
+(proved: `Cir.Seq.cirSeqSc`).
 -/
 
 @[expose] public section
@@ -516,10 +517,11 @@ def Stmt.posSizes : Stmt → Bool
   | .loop _ _ b => b.posSizes
   | _ => true
 
-/-! ## Open goals -/
+/-! ## Frozen statements -/
 
-/-- **Single-thread lift** (stage 3): the SC behaviours of a one-thread, spawn-free program are
-its sequential runs from the initial memory. Plan: from an SC execution, `po` is total and
+/-- **Single-thread lift** (stage 3; PROVED: `Silmaril.X86.Concurrency.Cir.Seq.cirSeqSc`, in
+`Cir/Seq/Thms.lean`): the SC behaviours of a one-thread, spawn-free program are
+its sequential runs from the initial memory. Proof idea: from an SC execution, `po` is total and
 `acyclic (po ∪ com;sm)` forces every read byte to come from the `po`-latest write of that byte
 (or the initial value) and `co` to follow `po`, which is `replay`; conversely build `rf`/`co`
 from the replay and show `scRel` is contained in `po`. Without `posSizes` the statement is
