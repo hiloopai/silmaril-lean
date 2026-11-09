@@ -1,0 +1,6 @@
+schema = "silmaril.project.v0.1"
+sid = "12161b92d478b3e6fe5b4a7f9e7020e2c47244cb2f5c15db4268ce11fdcb0861"
+name = "silmaril"
+description = "The silmaril library: formats, standard shapes, and the self-test of sil project"
+modules = ["ProjectSelfTest", "Silmaril.Project.Formats.Thms", "Silmaril.Project.Shapes.Format.Thms"]
+roots = ["Silmaril.Project", "ProjectSelfTest"]

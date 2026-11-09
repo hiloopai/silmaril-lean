@@ -1,0 +1,49 @@
+# The records of the `sil project` self-test (examples/project/ProjectSelfTest.lean loads this
+# file with `silmaril load`): values, instances of an attribute-form problem and of a standard
+# shape, the groups and the root.
+schema = "silmaril.records.v0.2"
+root = "silmaril.selftest.all"
+
+[[value]]
+name = "silmaril.selftest.hello_toml"
+format = "bytes"
+source = "silmaril.selftest.hello_txt"
+
+[[value]]
+name = "silmaril.selftest.module"
+format = "wasm"
+source = "examples/project-formats/example.wasm"
+
+[[value]]
+name = "silmaril.selftest.exit"
+format = "elf.exec-x86"
+source = "silmaril.selftest.exec_elf"
+
+[[instance]]
+name = "silmaril.selftest.square.n4"
+of = "silmaril.selftest.square"
+args = { n = 4 }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.selftest.hello.six_row"
+of = "silmaril.shapes.value.satisfies"
+args = { X = "silmaril.selftest.hello_toml", P = "ProjectSelfTest.sixBytes" }
+
+[[group]]
+name = "silmaril.selftest.all"
+title = "The sil project self-test"
+children = ["silmaril.selftest.truth", "silmaril.selftest.small", "silmaril.selftest.open",
+  "silmaril.selftest.hello.six", "silmaril.selftest.square", "silmaril.selftest.hello.six_row",
+  "silmaril.selftest.formats", "silmaril.shapes"]
+
+[[group]]
+name = "silmaril.selftest.formats"
+title = "Artifacts read with silmaril's format adapters"
+children = ["silmaril.selftest.module.parses", "silmaril.selftest.exit.parses"]
+
+[[group]]
+name = "silmaril.shapes"
+title = "The standard format and value shapes"
+children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
+  "silmaril.shapes.value.satisfies"]
