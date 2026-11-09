@@ -58,6 +58,14 @@ lists supported inputs, passes and proof contracts. The
 [benchmark guide](docs/projects/wasm-benchmarks.md) gives reproducible comparisons
 with Binaryen 133, including acceptance counts, timings and output sizes.
 
+## Silmaril projects
+
+A Lean project can declare its artifacts (files, by content hash), the values read from them
+under formats, the problems about them, their proofs and the DAG that groups them, in TOML
+records and Lean attributes (`Silmaril.Project`). `sil project` (`make project-tool`) checks
+them, writes a canonical SQLite database and a static page that explores it. The
+[projects guide](docs/projects/silmaril-projects.md) starts with a quick start.
+
 ## Check and explore
 
 `make check` compiles every included Lean library module, builds the tools and
