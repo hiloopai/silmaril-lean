@@ -22,7 +22,7 @@ templates `Silmaril.Problems.Shapes.Correct` and `CorrectLoose` registered as sh
 | `silmaril.shapes.x86.contract_strict` | `ContractStrict M S`: first-return total correctness (`S.Strict M`) |
 | `silmaril.shapes.x86.abi_function` | `AbiFn M p S`: the contract `S` is entered at the function placed by `p` (`EntersAt`), is not vacuous (`Nonvacuous`), and holds on `M` |
 | `silmaril.shapes.x86.abi_function.{open,open9,str9}` | the same on a standard model |
-| `silmaril.shapes.elf.fn_contract` | `ElfFn L M exe addr code S`: `exe` loads `code` at `addr` (`rx`), `S` is about that code (`EntersCode`) and not vacuous (`Nonvacuous`), and `S` holds on `M` |
+| `silmaril.shapes.elf.fn_contract` | `ElfFn L M exe addr code S`: `exe` loads `code` at `addr` (`rx`), `S` is tied to those bytes and that `rip` range (`EntersCode`; `S.entry` may assume more memory than the ELF provides) and not vacuous (`Nonvacuous`), and `S` holds on `M` |
 | `silmaril.shapes.elf.fn_contract.{x86_open,x86_open9}` | the same with `Loader.x86` and `Open.isa` / `Open9.isa` |
 | `silmaril.shapes.x86.correct` | `Correct 𝓜 S`: for every placement `entry`, `S entry` is demonically totally correct on every member of the class `𝓜` (`FnCorrect`) |
 | `silmaril.shapes.x86.correct_loose` | `CorrectLoose D S`: the same on the down-set of the loose top over the listing table `D` |
@@ -138,7 +138,8 @@ def AbiFn (M : Model) (p : Placement) (S : FnContract.Spec MState) : Prop :=
 
 /-- **A function of an executable meets its System V contract** (segment theorem ⇒ ELF
 theorem): the loader `L` puts `code` at `addr` in an `rx` segment of `exe`; the contract `S`
-is about that code (`EntersCode`: every entry state has `code` at `addr` and `rip` in it) and
+is tied to those bytes and that `rip` range (`EntersCode`: every entry state has `code` at
+`addr` and `rip` in it; `S.entry` may still assume more memory than the ELF provides) and
 not vacuous (`Nonvacuous`: some System V entry state meets it); and `S` holds on `M`. -/
 @[problem "silmaril.shapes.elf.fn_contract"
   (title := "A function an executable loads meets its System V contract")]
