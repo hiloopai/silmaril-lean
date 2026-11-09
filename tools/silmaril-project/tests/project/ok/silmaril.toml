@@ -1,0 +1,9 @@
+schema = "silmaril.project.v0.1"
+name = "ok"
+sid = "1111111111111111111111111111111111111111111111111111111111111111"
+version = "0.1.0"
+description = "Golden case: every record kind, statuses, instances, an imported package"
+modules = ["Ok"]
+
+[[import]]
+package = "dep"

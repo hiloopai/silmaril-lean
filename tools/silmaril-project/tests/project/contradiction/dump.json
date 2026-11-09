@@ -1,0 +1,160 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "refutation_route",
+   "name": "X.top_refuted_of_child",
+   "module": "X",
+   "proof": "X.top_refuted_of_child",
+   "parent": "k.top",
+   "child": "k.child"
+  },
+  {
+   "kind": "decomposition",
+   "name": "X.mid_of",
+   "module": "X",
+   "proof": "X.mid_of",
+   "parent": "k.mid",
+   "children": [
+    "k.a"
+   ]
+  },
+  {
+   "kind": "refutation_route",
+   "name": "X.mid_refuted_of_child",
+   "module": "X",
+   "proof": "X.mid_refuted_of_child",
+   "parent": "k.mid",
+   "child": "k.child"
+  },
+  {
+   "kind": "predicate",
+   "name": "k.p",
+   "module": "X",
+   "decl": "X.p",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "x",
+     "type": "Nat"
+    }
+   ]
+  },
+  {
+   "kind": "answer",
+   "name": "k.p",
+   "module": "X",
+   "decl": "X.p_sat",
+   "status": "SAT",
+   "witness": [
+    "1"
+   ]
+  },
+  {
+   "kind": "answer",
+   "name": "k.p",
+   "module": "X",
+   "decl": "X.p_uns",
+   "status": "UNS"
+  },
+  {
+   "kind": "predicate",
+   "name": "k.q",
+   "module": "X",
+   "decl": "X.q",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "x",
+     "type": "Empty"
+    }
+   ]
+  },
+  {
+   "kind": "answer",
+   "name": "k.q",
+   "module": "X",
+   "decl": "X.q_thm",
+   "status": "THM"
+  },
+  {
+   "kind": "answer",
+   "name": "k.q",
+   "module": "X",
+   "decl": "X.q_uns",
+   "status": "UNS"
+  },
+  {
+   "kind": "group",
+   "name": "k.root",
+   "module": "X"
+  },
+  {
+   "kind": "children",
+   "name": "k.root",
+   "module": "X",
+   "children": [
+    "k.top",
+    "k.mid",
+    "k.p",
+    "k.q"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "k.root",
+   "module": "X"
+  }
+ ],
+ "problems": [
+  {
+   "name": "k.top",
+   "decl": "X.top",
+   "module": "X"
+  },
+  {
+   "name": "k.mid",
+   "decl": "X.mid",
+   "module": "X"
+  },
+  {
+   "name": "k.a",
+   "decl": "X.a",
+   "module": "X"
+  },
+  {
+   "name": "k.child",
+   "decl": "X.child",
+   "module": "X"
+  }
+ ],
+ "solutions": [
+  {
+   "problem": "k.top",
+   "decl": "X.top_sol",
+   "module": "X",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "k.a",
+   "decl": "X.a_sol",
+   "module": "X",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "k.child",
+   "decl": "X.child_ref",
+   "module": "X",
+   "kind": "refutes",
+   "axioms": []
+  }
+ ]
+}

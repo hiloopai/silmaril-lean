@@ -1,0 +1,1295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hiloop.ai/schemas/silmaril.records.v0.2.json",
+  "title": "silmaril records file",
+  "description": "A silmaril project's records in TOML, read by Lean's `silmaril load`",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "silmaril.records.v0.2"
+    },
+    "root": {
+      "type": "string",
+      "description": "The project's root group"
+    },
+    "artifact_type": {
+      "description": "An artifact type: `decl : ArtifactType`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The type's name"
+          },
+          "decl": {
+            "type": "string",
+            "description": "The `ArtifactType`"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "decl"
+        ]
+      }
+    },
+    "format": {
+      "description": "A format: `decl : Format T V` for a registered artifact type `T`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The format's name"
+          },
+          "decl": {
+            "type": "string",
+            "description": "The `Format`"
+          },
+          "base": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The format it is built on"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "decl"
+        ]
+      }
+    },
+    "format_default": {
+      "description": "A format family and its default format (`<family>.…`)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The family"
+          },
+          "format": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The default format"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "format"
+        ]
+      }
+    },
+    "format_law": {
+      "description": "A proved law of a format: `proof : RoundTrip F` or `SoundFor F rel`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "Default: the proof's name"
+          },
+          "format": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The format"
+          },
+          "law": {
+            "enum": [
+              "roundtrip",
+              "sound"
+            ],
+            "description": "`roundtrip` or `sound`"
+          },
+          "proof": {
+            "type": "string",
+            "description": "The theorem"
+          },
+          "rel": {
+            "type": "string",
+            "description": "The relation of a `sound` law"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "format",
+          "law",
+          "proof"
+        ]
+      }
+    },
+    "value": {
+      "description": "A named value: an artifact read with a format, its obligation `N.parses`, and `N.agrees.k` for each extra source",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The value's name"
+          },
+          "format": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The format (or a family)"
+          },
+          "source": {
+            "type": "string",
+            "description": "The artifact: a CID, a registry path or a registry name"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "format",
+                "source"
+              ],
+              "properties": {
+                "format": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Extra sources that must agree with it"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "format",
+          "source"
+        ]
+      }
+    },
+    "model": {
+      "description": "A model class",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The model's name"
+          },
+          "decl": {
+            "type": "string",
+            "description": "The class"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "decl"
+        ]
+      }
+    },
+    "spec": {
+      "description": "A spec over a model class and a format",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The spec's name"
+          },
+          "decl": {
+            "type": "string",
+            "description": "The spec"
+          },
+          "model": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The model class (a `model` record)"
+          },
+          "format": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The format of the values it is about"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "decl"
+        ]
+      }
+    },
+    "room": {
+      "description": "A room: `decl : Silmaril.Logic.Institution.Room`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The room's name"
+          },
+          "decl": {
+            "type": "string",
+            "description": "The room"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "decl"
+        ]
+      }
+    },
+    "instance": {
+      "description": "An instance of a problem over arguments: fix some of its arguments. The other keys go to the instance's judgement",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The instance's name"
+          },
+          "of": {
+            "type": "string",
+            "description": "The problem"
+          },
+          "args": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/reference"
+            },
+            "description": "The fixed arguments, by binder name or position"
+          },
+          "model": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The model class (a `model` record)"
+          },
+          "spec": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The spec (a `spec` record)"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+            },
+            "description": "The values the problem is about"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Artifacts the problem reads (CIDs or names)"
+          },
+          "expect": {
+            "enum": [
+              "CONTINGENT",
+              "CSA",
+              "OPN",
+              "SAT",
+              "THM",
+              "UNS",
+              "contingent",
+              "csa",
+              "opn",
+              "sat",
+              "thm",
+              "uns"
+            ],
+            "description": "The expected status"
+          },
+          "title": {
+            "type": "string",
+            "description": "A one-line title"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "of",
+          "args"
+        ]
+      }
+    },
+    "tasks": {
+      "description": "Every `Task.x : Prop` of a module as the open problem `<prefix>.x_in_snake_case`; the other keys go to each judgement",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "module": {
+            "type": "string",
+            "description": "The module"
+          },
+          "prefix": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The problems' prefix"
+          },
+          "model": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The model class (a `model` record)"
+          },
+          "spec": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The spec (a `spec` record)"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+            },
+            "description": "The values the problem is about"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Artifacts the problem reads (CIDs or names)"
+          },
+          "title": {
+            "type": "string",
+            "description": "A one-line title"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "module",
+          "prefix"
+        ]
+      }
+    },
+    "judgement": {
+      "description": "Metadata of an existing problem",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The problem"
+          },
+          "model": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The model class (a `model` record)"
+          },
+          "spec": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The spec (a `spec` record)"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+            },
+            "description": "The values the problem is about"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Artifacts the problem reads (CIDs or names)"
+          },
+          "expect": {
+            "enum": [
+              "CONTINGENT",
+              "CSA",
+              "OPN",
+              "SAT",
+              "THM",
+              "UNS",
+              "contingent",
+              "csa",
+              "opn",
+              "sat",
+              "thm",
+              "uns"
+            ],
+            "description": "The expected status"
+          },
+          "title": {
+            "type": "string",
+            "description": "A one-line title"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "detached": {
+      "description": "A problem that is not part of the project's verification",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The problem"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "decomposition": {
+      "description": "A proved edge `c₁ → … → cₙ → p`: one theorem (`proof`) or every such theorem of a module (`module`)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Default: the proof's name"
+          },
+          "proof": {
+            "type": "string",
+            "description": "The theorem"
+          },
+          "module": {
+            "type": "string",
+            "description": "Every theorem of this shape in the module"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": []
+      }
+    },
+    "refutation_route": {
+      "description": "A proved edge `¬c → ¬p`: one theorem (`proof`) or every such theorem of a module (`module`)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Default: the proof's name"
+          },
+          "proof": {
+            "type": "string",
+            "description": "The theorem"
+          },
+          "module": {
+            "type": "string",
+            "description": "Every theorem of this shape in the module"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": []
+      }
+    },
+    "group": {
+      "description": "A group: a DAG node without a statement, whose result is its children's",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The group's name"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Its children (problems or groups)"
+          },
+          "title": {
+            "type": "string",
+            "description": "A one-line title"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "children": {
+      "description": "Declared, unproved sub-edges of a problem",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The parent"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The children"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "children"
+        ]
+      }
+    },
+    "defaults": {
+      "description": "Keys every table of a kind gets unless it sets them",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "decl": {
+              "type": "string",
+              "description": "The `ArtifactType`"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "format": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "decl": {
+              "type": "string",
+              "description": "The `Format`"
+            },
+            "base": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The format it is built on"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "format_default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "format": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The default format"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "format_law": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "format": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The format"
+            },
+            "law": {
+              "enum": [
+                "roundtrip",
+                "sound"
+              ],
+              "description": "`roundtrip` or `sound`"
+            },
+            "proof": {
+              "type": "string",
+              "description": "The theorem"
+            },
+            "rel": {
+              "type": "string",
+              "description": "The relation of a `sound` law"
+            }
+          }
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "format": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The format (or a family)"
+            },
+            "source": {
+              "type": "string",
+              "description": "The artifact: a CID, a registry path or a registry name"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "format",
+                  "source"
+                ],
+                "properties": {
+                  "format": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Extra sources that must agree with it"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "decl": {
+              "type": "string",
+              "description": "The class"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "decl": {
+              "type": "string",
+              "description": "The spec"
+            },
+            "model": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The model class (a `model` record)"
+            },
+            "format": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The format of the values it is about"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "room": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "decl": {
+              "type": "string",
+              "description": "The room"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "instance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "of": {
+              "type": "string",
+              "description": "The problem"
+            },
+            "args": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "$ref": "#/$defs/reference"
+              },
+              "description": "The fixed arguments, by binder name or position"
+            },
+            "model": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The model class (a `model` record)"
+            },
+            "spec": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The spec (a `spec` record)"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+              },
+              "description": "The values the problem is about"
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Artifacts the problem reads (CIDs or names)"
+            },
+            "expect": {
+              "enum": [
+                "CONTINGENT",
+                "CSA",
+                "OPN",
+                "SAT",
+                "THM",
+                "UNS",
+                "contingent",
+                "csa",
+                "opn",
+                "sat",
+                "thm",
+                "uns"
+              ],
+              "description": "The expected status"
+            },
+            "title": {
+              "type": "string",
+              "description": "A one-line title"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "tasks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "module": {
+              "type": "string",
+              "description": "The module"
+            },
+            "prefix": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The problems' prefix"
+            },
+            "model": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The model class (a `model` record)"
+            },
+            "spec": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The spec (a `spec` record)"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+              },
+              "description": "The values the problem is about"
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Artifacts the problem reads (CIDs or names)"
+            },
+            "title": {
+              "type": "string",
+              "description": "A one-line title"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            }
+          }
+        },
+        "judgement": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "model": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The model class (a `model` record)"
+            },
+            "spec": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The spec (a `spec` record)"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$"
+              },
+              "description": "The values the problem is about"
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Artifacts the problem reads (CIDs or names)"
+            },
+            "expect": {
+              "enum": [
+                "CONTINGENT",
+                "CSA",
+                "OPN",
+                "SAT",
+                "THM",
+                "UNS",
+                "contingent",
+                "csa",
+                "opn",
+                "sat",
+                "thm",
+                "uns"
+              ],
+              "description": "The expected status"
+            },
+            "title": {
+              "type": "string",
+              "description": "A one-line title"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "detached": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Why"
+            }
+          }
+        },
+        "decomposition": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "proof": {
+              "type": "string",
+              "description": "The theorem"
+            },
+            "module": {
+              "type": "string",
+              "description": "Every theorem of this shape in the module"
+            }
+          }
+        },
+        "refutation_route": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "proof": {
+              "type": "string",
+              "description": "The theorem"
+            },
+            "module": {
+              "type": "string",
+              "description": "Every theorem of this shape in the module"
+            }
+          }
+        },
+        "group": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Its children (problems or groups)"
+            },
+            "title": {
+              "type": "string",
+              "description": "A one-line title"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "children": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The children"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "reference": {
+      "description": "A name, an integer, a boolean, { str = \"…\" } or an application [\"f\", …]",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "str"
+          ],
+          "properties": {
+            "str": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "string"
+            }
+          ],
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        }
+      ]
+    }
+  }
+}

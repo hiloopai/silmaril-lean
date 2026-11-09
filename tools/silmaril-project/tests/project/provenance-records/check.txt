@@ -1,0 +1,18 @@
+error: artifact pr.lost: derivation "pr.nobody" is not declared (P2)
+error: derivation pr.build: input 2: needs `sha256` (64 hex digits) (P3)
+error: derivation pr.build: input 3: git rev "main" is not a full 40-hex commit (P3)
+error: derivation pr.build: receipt data/RECEIPTS.sha256 does not list output bafkr4ibydiwad5egmb7gcrxcantrks4ist5fnaozwsk7mjdm4ecxgyztg4 (sha256 4ece060ea0ff0cca695aee0548b580bc97e596ffb12e2590707205c9325a46c3) (P4)
+error: derivation pr.loop: is its own (transitive) input (P5)
+error: derivation pr.orphan: input 1: give exactly one of `artifact`, `path`, `url`, `git` (P3)
+error: derivation pr.orphan: no artifact names it as its `derivation` (P4)
+error: derivation pr.orphan: op "bake" is not one of compile, link, patch, instrument, lift, segment, generate, fetch, revision-of
+error: derivation pr.orphan: recipe: pr:data/missing.sh does not exist (P1)
+error: silmaril/records.toml:14: judgement pr.unloaded is not in the dump (R11): load the file with `silmaril load` from a module in `modules`, rebuild it, and dump again
+error: silmaril/records.toml:20:10: judgement.expect must be one of CSA, OPN, SAT, THM, UNS, contingent (in any case)
+error: silmaril/records.toml:9: judgement pr.p: `title` is "new title" here and "old title" in the dump (R11: stale dump? rebuild the loading module and dump again)
+summary: 1 problems (1 local), 1 groups, 5 records, 1 edges, 5 artifacts
+verdicts: 0 holds, 0 fails, 1 unknown (all 1 problems); 0 holds, 0 fails, 1 unknown (1 local)
+root: pr.root
+group pr.root: [pr.p=OPN]
+provenance: 3 derivations; 4 of 5 local artifacts have one
+exit: failed

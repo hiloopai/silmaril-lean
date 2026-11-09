@@ -1,0 +1,36 @@
+error: answer X.none_sol: no problem r.none
+error: answer X.none_thm: no problem r.none
+error: answer X.p_sol: non-standard axioms: sorryAx
+error: answer X.q_maybe: status "MAYBE" is not THM, SAT, UNS or CSA (answers)
+error: children r.root: child r.nobody is not a problem or group
+error: children r.root: child r.s.x is not a problem or group
+error: children r.root: child r.v.parses is not a problem or group
+error: detached r.s2: not a problem or group
+error: format other.fmt: input: no artifact_type file
+error: format_default r: default other.fmt is not a format of family r
+error: instance r.orphan: parent r.no_general is not a problem or group
+error: instance r.q.one: argument 0 needs exactly one of term, value, cid
+error: instance r.q.one: argument position 3 is not a free position of r.q (arity 1)
+error: judgement r.ghost: no such problem
+error: judgement r.p: artifacts: no artifact r.no_blob in the registries
+error: judgement r.p: expect "MAYBE" is not one of CSA, OPN, SAT, THM, UNS, contingent
+error: judgement r.p: model: no model r.no-such-model
+error: judgement r.p: spec: no spec r.no-such-spec
+error: judgement r.p: values: no value r.no_value
+error: predicate r.q2: args must be positions 0..2
+error: predicate r.q: room: no room r.no_room
+error: problem r.orphan: not reachable from root r.root and not detached
+error: spec r.s: format: no format r.f2
+error: value r.v: 2 sources but 0 agreement obligations
+error: value r.v: format: no format no.such.format
+error: value r.v: obligation r.v.parses is not a problem
+error: value r.v: sources.cid: no artifact bafkr4icl6sfvmt23obrgvfnurfrers7lyib3umpjsynkjemiodxdmnxz44 in the registries
+error: value r.v: sources.cid: no artifact r.blobs.none in the registries
+error: value r.v: sources.format: no format no.such.format
+summary: 5 problems (5 local), 1 groups, 12 records, 5 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 5 unknown (all 5 problems); 0 holds, 0 fails, 5 unknown (5 local)
+root: r.root
+predicate r.q (arity 1): status OPN [], verdict unknown
+predicate r.q2 (arity 2): status OPN [], verdict unknown
+group r.root: [r.p=OPN, r.q=OPN, r.q.one=OPN, r.q2=OPN]
+exit: failed

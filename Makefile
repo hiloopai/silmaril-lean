@@ -3,9 +3,11 @@
 .DEFAULT_GOAL := tools
 LAKE ?= lake
 PYTHON ?= python3
+CARGO ?= cargo
+PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache check process-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache check process-check project-lean project-tool project-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -34,6 +36,7 @@ cache:
 check:
 	scripts/check-layout.sh
 	$(MAKE) process-check
+	$(MAKE) project-lean
 	$(PYTHON) tools/binaryen-lean/check-release.py --build $(if $(LAKE_CACHE_RECORD),--record-cache "$(LAKE_CACHE_RECORD)") --report build/wasm-checks.json
 	$(MAKE) stage
 
@@ -60,6 +63,26 @@ process-check:
 		echo 'lps probe ELF rebuild skipped on non-Linux host; CI runs the Linux offline and native gates'; \
 	fi
 
+# The project framework, its format adapters and shapes, and the self-test module (its own
+# library, see lakefile.toml). `make project-check` also runs the Rust CLI over them.
+project-lean:
+	$(LAKE) build --wfail \
+		Silmaril.Project.Defs \
+		Silmaril.Project.Formats.Thms \
+		Silmaril.Project.Shapes.Format.Thms \
+		Silmaril.Project.Room.Thms \
+		ProjectSelfTest
+
+project-tool:
+	$(CARGO) build --release --locked --manifest-path tools/silmaril-project/Cargo.toml
+	@mkdir -p build/bin
+	cp "$(PROJECT_TARGET)/release/silmaril-project" build/bin/silmaril-project
+	cp scripts/sil build/bin/sil
+	chmod +x build/bin/sil
+
+project-check: project-tool
+	LAKE="$(LAKE)" SIL=build/bin/silmaril-project examples/project/selftest.sh
+
 demo: tools
 	$(PYTHON) tools/binaryen-lean/test-release-demo.py --bin-dir build/bin
 
@@ -75,6 +98,8 @@ help:
 	@echo 'make library  Check every included Lean library module'
 	@echo 'make cache    Fetch public dependency artifacts and optional S3 build artifacts'
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
+	@echo 'make project-tool   Build sil project (Cargo) and stage it in build/bin'
+	@echo 'make project-check  Run the sil project self-test: init, lock, lint, dump, check, explore'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
 	@echo 'make demo-process  Build the public process headers and theorem slice'
 	@echo 'make demo-sha256   Build the sha256-cli and GNU sha256sum-min end-to-end proofs'

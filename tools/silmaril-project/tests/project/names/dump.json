@@ -1,0 +1,109 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "model",
+   "name": "N.Upper",
+   "module": "X",
+   "decl": "X.m"
+  },
+  {
+   "kind": "model",
+   "name": ".relative",
+   "module": "X",
+   "decl": "X.m"
+  },
+  {
+   "kind": "model",
+   "name": "a..b",
+   "module": "X",
+   "decl": "X.m"
+  },
+  {
+   "kind": "model",
+   "name": "n.twice",
+   "module": "X",
+   "decl": "X.m"
+  },
+  {
+   "kind": "model",
+   "name": "n.twice",
+   "module": "X",
+   "decl": "X.m2"
+  },
+  {
+   "kind": "model",
+   "name": "n.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "module": "X",
+   "decl": "X.m"
+  },
+  {
+   "kind": "format",
+   "name": "json",
+   "module": "X",
+   "decl": "X.json",
+   "input": "blob",
+   "value_type": "Json",
+   "printer": true
+  },
+  {
+   "kind": "format_default",
+   "name": "json",
+   "module": "X",
+   "format": "json"
+  },
+  {
+   "kind": "artifact_type",
+   "name": "blob",
+   "module": "X",
+   "decl": "Silmaril.Project.blob"
+  },
+  {
+   "kind": "group",
+   "name": "n.root",
+   "module": "X"
+  },
+  {
+   "kind": "children",
+   "name": "n.root",
+   "module": "X",
+   "children": [
+    "n/legacy",
+    "n.Bad"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "n.root",
+   "module": "X"
+  },
+  {
+   "kind": "model",
+   "name": "n.models.digits.5",
+   "module": "X",
+   "decl": "X.m5"
+  }
+ ],
+ "problems": [
+  {
+   "name": "n/legacy",
+   "decl": "X.legacy",
+   "module": "X"
+  },
+  {
+   "name": "n.Bad",
+   "decl": "X.bad",
+   "module": "X"
+  },
+  {
+   "name": "not/Valid",
+   "decl": "X.nv",
+   "module": "X"
+  }
+ ],
+ "solutions": []
+}

@@ -1,0 +1,19 @@
+error: artifact H.Bad: path "../x.bin" must be relative, without '..' or '.'
+error: artifact bafkr4icl6sfvmt23obrgvfnurfrers7lyib3umpjsynkjemiodxdmnxz44: imported by Lean but not in the registry (stale dump?)
+error: artifact bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi: Lean's copy differs from the registry (stale dump? rebuild and dump again)
+error: artifact h.missing: h:data/nope.bin does not exist
+error: artifact h.wrong: h:data/x.bin: cid mismatch: registry bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi, file bafkr4ib247mal5tytjsaflfxblkas2ufuvv7nacov4s4asj2y2lvjdjqwu
+error: artifact h.wrong: h:data/x.bin: git_sha1 mismatch: registry e69de29bb2d1d6434b8b29ae775ad8c2e48c5391, file c1b0730e0133447badcfd47fd144e254807b06e1
+error: artifact h.wrong: h:data/x.bin: sha256 mismatch: registry e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, file 2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881
+error: artifact h.wrong: h:data/x.bin: size mismatch: registry 0, file 1
+error: registry h:silmaril/artifacts.toml: H.Bad: invalid name: not a dotted name (segments [a-z][a-z0-9_-]* or [0-9]+)
+error: registry h:silmaril/artifacts.toml: H.Bad: type "tree" is not blob
+error: registry h:silmaril/artifacts.toml: bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi appears twice (merge its paths)
+error: registry h:silmaril/artifacts.toml: h.sha2: "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku" is not a CIDv1 raw BLAKE3-256 CID
+error: registry h:silmaril/artifacts.toml: h.unlocked: no cid (run `sil project lock`)
+error: value h.v: sources.cid: no artifact h.nobody in the registries
+summary: 1 problems (1 local), 1 groups, 6 records, 1 edges, 3 artifacts
+verdicts: 0 holds, 0 fails, 1 unknown (all 1 problems); 0 holds, 0 fails, 1 unknown (1 local)
+root: h.root
+group h.root: [h.v.parses=OPN]
+exit: failed

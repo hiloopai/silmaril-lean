@@ -1,0 +1,6 @@
+error: problem u.b: not reachable from root u.root and not detached
+summary: 2 problems (2 local), 1 groups, 3 records, 1 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 2 unknown (all 2 problems); 0 holds, 0 fails, 2 unknown (2 local)
+root: u.root
+group u.root: [u.a=OPN]
+exit: failed

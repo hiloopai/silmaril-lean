@@ -1,0 +1,20 @@
+schema = "silmaril.records.v0.2"
+root = "pr.root"
+
+[[group]]
+name = "pr.root"
+children = ["pr.p"]
+
+# the dump has the title "old title": stale (R11)
+[[judgement]]
+name = "pr.p"
+title = "new title"
+
+# not in the dump (R11)
+[[judgement]]
+name = "pr.unloaded"
+
+# a lint error
+[[judgement]]
+name = "pr.q"
+expect = "MAYBE"

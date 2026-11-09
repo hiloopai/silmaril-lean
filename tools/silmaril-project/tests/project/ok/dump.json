@@ -1,0 +1,683 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "Ok"
+ ],
+ "records": [
+  {
+   "kind": "artifact_type",
+   "name": "blob",
+   "module": "Dep.Core",
+   "decl": "Silmaril.Project.blob",
+   "doc": "Bytes"
+  },
+  {
+   "kind": "format",
+   "name": "json.rfc8259",
+   "module": "Dep.Core",
+   "decl": "Dep.Formats.json",
+   "input": "blob",
+   "value_type": "Json.Ast",
+   "printer": true
+  },
+  {
+   "kind": "format",
+   "name": "sexp.text",
+   "module": "Dep.Core",
+   "decl": "Dep.Formats.sexp",
+   "input": "blob",
+   "value_type": "SExp String",
+   "printer": true
+  },
+  {
+   "kind": "format",
+   "name": "sexp.wat",
+   "module": "Dep.Core",
+   "decl": "Dep.Formats.sexpWat",
+   "input": "blob",
+   "value_type": "SExpEncoding.SExp",
+   "printer": false
+  },
+  {
+   "kind": "format",
+   "name": "wat.sexp",
+   "module": "Dep.Core",
+   "decl": "Dep.Formats.wat",
+   "input": "blob",
+   "value_type": "Wasm.Module",
+   "printer": false,
+   "base": "sexp.wat",
+   "doc": "canonical WAT fragment"
+  },
+  {
+   "kind": "format_default",
+   "name": "json",
+   "module": "Dep.Core",
+   "format": "json.rfc8259"
+  },
+  {
+   "kind": "format_default",
+   "name": "sexp",
+   "module": "Dep.Core",
+   "format": "sexp.text"
+  },
+  {
+   "kind": "format_default",
+   "name": "wat",
+   "module": "Dep.Core",
+   "format": "wat.sexp"
+  },
+  {
+   "kind": "format_law",
+   "name": "Dep.Formats.sexpWat_sound",
+   "module": "Dep.Core",
+   "format": "sexp.wat",
+   "law": "sound",
+   "proof": "Dep.Formats.sexpWat_sound",
+   "rel": "Dep.Formats.sexpWatRel"
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4ibjwedvlefuhsklpybliykfg23uzgnhwbl7svs7t7h6k7p7z3ldfe",
+   "module": "Dep.Core",
+   "type": "blob",
+   "name": "dep.blobs.hello",
+   "paths": [
+    "data/hello.json"
+   ],
+   "size": 9
+  },
+  {
+   "kind": "value",
+   "name": "dep.hello",
+   "module": "Dep.Core",
+   "format": "json.rfc8259",
+   "decl": "dep.hello",
+   "parses": "dep.hello.parses",
+   "agrees": [],
+   "sources": [
+    {
+     "cid": "bafkr4ibjwedvlefuhsklpybliykfg23uzgnhwbl7svs7t7h6k7p7z3ldfe",
+     "path": "data/hello.json",
+     "format": "json.rfc8259",
+     "decl": "dep.hello"
+    }
+   ]
+  },
+  {
+   "kind": "predicate",
+   "name": "dep.small",
+   "module": "Dep.Core",
+   "decl": "Dep.small",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "n",
+     "type": "Nat"
+    }
+   ]
+  },
+  {
+   "kind": "answer",
+   "name": "dep.small",
+   "module": "Dep.Core",
+   "decl": "Dep.small_sat",
+   "status": "SAT",
+   "witness": [
+    "0"
+   ],
+   "axioms": []
+  },
+  {
+   "kind": "answer",
+   "name": "dep.small",
+   "module": "Dep.Core",
+   "decl": "Dep.small_csa",
+   "status": "CSA",
+   "witness": [
+    "3"
+   ],
+   "axioms": [
+    "propext"
+   ]
+  },
+  {
+   "kind": "predicate",
+   "name": "dep.unused",
+   "module": "Dep.Core",
+   "decl": "Dep.unused",
+   "arity": 0
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi",
+   "module": "Ok.Artifacts",
+   "type": "blob",
+   "name": "ok.blobs.empty",
+   "paths": [
+    "artifacts/empty"
+   ],
+   "size": 0,
+   "doc": "the empty blob"
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4id2mktu36wbrqhea574463ifvg2y33ezj67yrncotdup4u2iukdlu",
+   "module": "Ok.Artifacts",
+   "type": "blob",
+   "name": "ok.blobs.m_wat",
+   "paths": [
+    "artifacts/m-copy.wat",
+    "artifacts/m.wat"
+   ],
+   "size": 16
+  },
+  {
+   "kind": "value",
+   "name": "ok.m",
+   "module": "Ok.Values",
+   "format": "wat.sexp",
+   "decl": "ok.m",
+   "parses": "ok.m.parses",
+   "agrees": [],
+   "sources": [
+    {
+     "cid": "bafkr4id2mktu36wbrqhea574463ifvg2y33ezj67yrncotdup4u2iukdlu",
+     "path": "artifacts/m.wat",
+     "format": "wat.sexp",
+     "decl": "ok.m"
+    }
+   ],
+   "doc": "a WAT module"
+  },
+  {
+   "kind": "value",
+   "name": "ok.pair",
+   "module": "Ok.Values",
+   "format": "sexp.text",
+   "decl": "ok.pair",
+   "parses": "ok.pair.parses",
+   "agrees": [
+    "ok.pair.agrees.1"
+   ],
+   "sources": [
+    {
+     "cid": "bafkr4id2mktu36wbrqhea574463ifvg2y33ezj67yrncotdup4u2iukdlu",
+     "path": "artifacts/m.wat",
+     "format": "sexp.text",
+     "decl": "ok.pair"
+    },
+    {
+     "cid": "ok.blobs.empty",
+     "format": "sexp.text",
+     "decl": "ok.pair.alt.1"
+    }
+   ],
+   "sid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "kind": "model",
+   "name": "ok.models.m",
+   "module": "Ok.Problems",
+   "decl": "Ok.M"
+  },
+  {
+   "kind": "spec",
+   "name": "ok.specs.s",
+   "module": "Ok.Problems",
+   "decl": "Ok.S",
+   "model": "ok.models.m",
+   "format": "wat"
+  },
+  {
+   "kind": "room",
+   "name": "ok.rooms.cnf",
+   "module": "Ok.Problems",
+   "decl": "Ok.room",
+   "sen": "Ok.CNF",
+   "mod": "Ok.Assignment",
+   "doc": "CNF over Nat → Bool"
+  },
+  {
+   "kind": "predicate",
+   "name": "ok.cnf.holds",
+   "module": "Ok.Problems",
+   "decl": "Ok.cnfHolds",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": null,
+     "type": "Ok.Assignment"
+    }
+   ],
+   "room": "ok.rooms.cnf"
+  },
+  {
+   "kind": "answer",
+   "name": "ok.cnf.holds",
+   "module": "Ok.Problems",
+   "decl": "Ok.cnf_sat",
+   "status": "SAT",
+   "witness": [
+    "fun _ => true"
+   ],
+   "axioms": []
+  },
+  {
+   "kind": "predicate",
+   "name": "ok.json_port",
+   "module": "Ok.Problems",
+   "decl": "Ok.jsonPort",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "j",
+     "type": "Json.Ast"
+    }
+   ]
+  },
+  {
+   "kind": "predicate",
+   "name": "ok.trivial",
+   "module": "Ok.Problems",
+   "decl": "Ok.trivial",
+   "arity": 2,
+   "args": [
+    {
+     "pos": 0,
+     "name": "j",
+     "type": "Json.Ast"
+    },
+    {
+     "pos": 1,
+     "name": "inst",
+     "type": "Inhabited Nat"
+    }
+   ]
+  },
+  {
+   "kind": "answer",
+   "name": "ok.trivial",
+   "module": "Ok.Problems",
+   "decl": "Ok.trivial_thm",
+   "status": "THM",
+   "axioms": []
+  },
+  {
+   "kind": "predicate",
+   "name": "ok.trivial.hello",
+   "module": "Ok.Problems",
+   "decl": "ok.trivial.hello",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "inst",
+     "type": "Inhabited Nat"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "ok.small.two",
+   "module": "Ok.Problems",
+   "of": "dep.small",
+   "decl": "ok.small.two",
+   "args": [
+    {
+     "pos": 0,
+     "term": "2"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "ok.small.five",
+   "module": "Ok.Problems",
+   "of": "dep.small",
+   "decl": "ok.small.five",
+   "args": [
+    {
+     "pos": 0,
+     "term": "5"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "ok.hello.port",
+   "module": "Ok.Problems",
+   "of": "ok.json_port",
+   "decl": "ok.hello.port",
+   "args": [
+    {
+     "pos": 0,
+     "value": "dep.hello"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "ok.trivial.hello",
+   "module": "Ok.Problems",
+   "of": "ok.trivial",
+   "decl": "ok.trivial.hello",
+   "args": [
+    {
+     "pos": 0,
+     "value": "dep.hello"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "ok.cnf.empty",
+   "module": "Ok.Problems",
+   "of": "ok.cnf.holds",
+   "decl": "ok.cnf.empty",
+   "args": [
+    {
+     "pos": 0,
+     "cid": "ok.blobs.empty"
+    }
+   ]
+  },
+  {
+   "kind": "judgement",
+   "name": "ok.top",
+   "module": "Ok.Problems",
+   "model": "ok.models.m",
+   "spec": "ok.specs.s",
+   "values": [
+    "ok.m"
+   ],
+   "artifacts": [
+    "ok.blobs.m_wat",
+    "bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi"
+   ],
+   "expect": "THM",
+   "title": "the top problem"
+  },
+  {
+   "kind": "judgement",
+   "name": "ok.b",
+   "module": "Ok.Problems",
+   "expect": "THM"
+  },
+  {
+   "kind": "judgement",
+   "name": "ok.conj.mul_zero",
+   "module": "Ok.Problems",
+   "expect": "OPN",
+   "doc": "a conjecture (silmaril conjecture)",
+   "sid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  {
+   "kind": "judgement",
+   "name": "ok.cnf.holds",
+   "module": "Ok.Problems",
+   "expect": "SAT"
+  },
+  {
+   "kind": "judgement",
+   "name": "ok/legacy",
+   "module": "Ok.Problems",
+   "title": "a legacy id"
+  },
+  {
+   "kind": "decomposition",
+   "name": "Ok.top_of",
+   "module": "Ok.Problems",
+   "proof": "Ok.top_of",
+   "parent": "ok.top",
+   "children": [
+    "ok.a",
+    "ok.m.parses"
+   ]
+  },
+  {
+   "kind": "refutation_route",
+   "name": "Ok.bad_top_of_b",
+   "module": "Ok.Problems",
+   "proof": "Ok.bad_top_of_b",
+   "parent": "ok.bad_top",
+   "child": "ok.b"
+  },
+  {
+   "kind": "children",
+   "name": "ok.open_top",
+   "module": "Ok.Problems",
+   "children": [
+    "ok.c"
+   ]
+  },
+  {
+   "kind": "group",
+   "name": "ok.verify",
+   "module": "Ok",
+   "title": "Everything"
+  },
+  {
+   "kind": "group",
+   "name": "ok.values",
+   "module": "Ok"
+  },
+  {
+   "kind": "group",
+   "name": "ok.preds",
+   "module": "Ok"
+  },
+  {
+   "kind": "children",
+   "name": "ok.verify",
+   "module": "Ok",
+   "children": [
+    "ok.top",
+    "ok.bad_top",
+    "ok.open_top",
+    "ok.values",
+    "ok.preds"
+   ]
+  },
+  {
+   "kind": "children",
+   "name": "ok.values",
+   "module": "Ok",
+   "children": [
+    "ok.pair.parses",
+    "ok.pair.agrees.1",
+    "ok.hello.port",
+    "ok.trivial.hello"
+   ]
+  },
+  {
+   "kind": "children",
+   "name": "ok.preds",
+   "module": "Ok",
+   "children": [
+    "ok.small.two",
+    "ok.small.five",
+    "ok.cnf.holds",
+    "ok.cnf.empty",
+    "ok.conj.mul_zero",
+    "ok/legacy"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "ok.verify",
+   "module": "Ok"
+  },
+  {
+   "kind": "detached",
+   "name": "ok.misc",
+   "module": "Ok",
+   "reason": "not part of the verification"
+  }
+ ],
+ "problems": [
+  {
+   "name": "dep.hello.parses",
+   "decl": "dep.hello.parses",
+   "module": "Dep.Core"
+  },
+  {
+   "name": "dep.unused",
+   "decl": "Dep.unused",
+   "module": "Dep.Core"
+  },
+  {
+   "name": "ok.m.parses",
+   "decl": "ok.m.parses",
+   "module": "Ok.Values"
+  },
+  {
+   "name": "ok.pair.parses",
+   "decl": "ok.pair.parses",
+   "module": "Ok.Values"
+  },
+  {
+   "name": "ok.pair.agrees.1",
+   "decl": "ok.pair.agrees.1",
+   "module": "Ok.Values"
+  },
+  {
+   "name": "ok.a",
+   "decl": "Ok.a",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.b",
+   "decl": "Ok.b",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.c",
+   "decl": "Ok.c",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.top",
+   "decl": "Ok.top",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.bad_top",
+   "decl": "Ok.badTop",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.open_top",
+   "decl": "Ok.openTop",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.misc",
+   "decl": "Ok.misc",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.small.two",
+   "decl": "ok.small.two",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.small.five",
+   "decl": "ok.small.five",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.hello.port",
+   "decl": "ok.hello.port",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.cnf.empty",
+   "decl": "ok.cnf.empty",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok.conj.mul_zero",
+   "decl": "Task.ok.conj.mul_zero",
+   "module": "Ok.Problems"
+  },
+  {
+   "name": "ok/legacy",
+   "decl": "Ok.legacy",
+   "module": "Ok.Problems"
+  }
+ ],
+ "solutions": [
+  {
+   "problem": "dep.hello.parses",
+   "decl": "dep.hello.parses_sol",
+   "module": "Dep.Core",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "ok.m.parses",
+   "decl": "ok.m.parses_sol",
+   "module": "Ok.Values",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "ok.pair.parses",
+   "decl": "ok.pair.parses_sol",
+   "module": "Ok.Values",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "ok.a",
+   "decl": "Ok.a_sol",
+   "module": "Ok.Problems",
+   "kind": "solves",
+   "axioms": [
+    "propext",
+    "Quot.sound",
+    "propext"
+   ]
+  },
+  {
+   "problem": "ok.b",
+   "decl": "Ok.b_ref",
+   "module": "Ok.Problems",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "ok.small.two",
+   "decl": "ok.small.two_sol",
+   "module": "Ok.Problems",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "ok.small.five",
+   "decl": "ok.small.five_ref",
+   "module": "Ok.Problems",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "ok.hello.port",
+   "decl": "ok.hello.port_sol",
+   "module": "Ok.Problems",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "ok.misc",
+   "decl": "Ok.misc_sol",
+   "module": "Ok.Problems",
+   "kind": "solves",
+   "axioms": []
+  }
+ ]
+}

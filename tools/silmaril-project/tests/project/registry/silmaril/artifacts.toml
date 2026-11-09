@@ -1,0 +1,34 @@
+schema = "silmaril.artifacts.v0.1"
+
+[[artifact]]
+cid = "bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi"
+name = "h.wrong"
+paths = ["data/x.bin"]
+size = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+git_sha1 = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
+[[artifact]]
+name = "h.unlocked"
+paths = ["data/x.bin"]
+
+[[artifact]]
+cid = "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+name = "h.sha2"
+paths = ["data/x.bin"]
+
+[[artifact]]
+cid = "bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi"
+name = "h.twice"
+paths = ["data/y.bin"]
+
+[[artifact]]
+cid = "bafkr4iaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+name = "h.missing"
+paths = ["data/nope.bin"]
+
+[[artifact]]
+cid = "bafkr4ibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbba"
+name = "H.Bad"
+type = "tree"
+paths = ["../x.bin"]
