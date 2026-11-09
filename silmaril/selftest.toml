@@ -1,6 +1,6 @@
 # The records of the `sil project` self-test (examples/project/ProjectSelfTest.lean loads this
-# file with `silmaril load`): values, instances of an attribute-form problem and of a standard
-# shape, the groups and the root.
+# file with `silmaril load`): values, instances of an attribute-form problem and of two standard
+# shapes, the groups and the root.
 schema = "silmaril.records.v0.2"
 root = "silmaril.selftest.all"
 
@@ -30,6 +30,12 @@ name = "silmaril.selftest.hello.six_row"
 of = "silmaril.shapes.value.satisfies"
 args = { X = "silmaril.selftest.hello_toml", P = "ProjectSelfTest.sixBytes" }
 
+[[instance]]
+name = "silmaril.selftest.exit.entry"
+of = "silmaril.shapes.elf.entry.x86"
+args = { exe = "silmaril.selftest.exit", addr = 4194624 }
+title = "The entry point of example-exec.elf is 0x400140"
+
 [[group]]
 name = "silmaril.selftest.all"
 title = "The sil project self-test"
@@ -40,10 +46,14 @@ children = ["silmaril.selftest.truth", "silmaril.selftest.small", "silmaril.self
 [[group]]
 name = "silmaril.selftest.formats"
 title = "Artifacts read with silmaril's format adapters"
-children = ["silmaril.selftest.module.parses", "silmaril.selftest.exit.parses"]
+children = ["silmaril.selftest.module.parses", "silmaril.selftest.exit.parses",
+  "silmaril.selftest.exit.entry"]
 
 [[group]]
 name = "silmaril.shapes"
-title = "The standard format and value shapes"
+title = "The standard shapes: formats and values, ELF executables, x86-64 functions"
 children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
-  "silmaril.shapes.value.satisfies"]
+  "silmaril.shapes.value.satisfies", "silmaril.shapes.elf.loads", "silmaril.shapes.elf.entry",
+  "silmaril.shapes.elf.fn_contract", "silmaril.shapes.x86.contract",
+  "silmaril.shapes.x86.contract_strict", "silmaril.shapes.x86.abi_function",
+  "silmaril.shapes.x86.correct", "silmaril.shapes.x86.correct_loose"]

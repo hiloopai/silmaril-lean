@@ -10,8 +10,8 @@ explores it.
 | Piece | Where |
 | --- | --- |
 | Lean framework: records, the `silmaril` command, values and formats, the attribute forms | `Silmaril.Project.Defs` (`Silmaril/Project/`) |
-| Format adapters over silmaril's parsers (S-expressions, Wasm, WAT, ELF) | `Silmaril.Project.Formats.Defs`, laws in `….Thms` |
-| Standard format and value shapes | `Silmaril.Project.Shapes.Format.Defs` |
+| Format adapters over silmaril's parsers (S-expressions, Wasm, WAT, ELF, JSON) | `Silmaril.Project.Formats.Defs`, laws in `….Thms` |
+| Standard shapes: formats and values, ELF executables, x86-64 functions | `Silmaril.Project.Shapes.{Format,Elf,X86}.Defs`, lemmas in `….Thms` |
 | The CLI `sil project` (Rust) | `tools/silmaril-project/` |
 | The records-file JSON Schema | [`docs/schemas/silmaril-records.v0.2.schema.json`](../schemas/silmaril-records.v0.2.schema.json) |
 | The explorer page | [silmaril-projects-explore.md](silmaril-projects-explore.md) |
@@ -396,8 +396,10 @@ them against `RECEIPTS.sha256`):
 | **`wasm.binary.core`** | Core 3.0 module AST | yes | `sound` |
 | **`elf.elf64le`** | ELF64 relocatable objects | no | none |
 | `elf.exec-x86` | x86-64 fixed-address executables, to checked load records | no | `sound` |
+| **`json.rfc8259`** | RFC 8259 JSON to the ordered wire AST (`Silmaril.Formats.JsonWire`): UTF-16 strings, members in order with duplicates, exact decimals | yes | none |
 
-Known gaps: shared libraries fit neither ELF format; `wat.sexp` covers the supported fragment;
+Known gaps: shared libraries fit neither ELF format; `json.rfc8259` has no law (no round-trip
+theorem for its printer, no proof against an independent grammar); `wat.sexp` covers the supported fragment;
 `wasm.binary.core` has no `roundtrip` law (the printer is sound and printing then parsing can
 only return the printed module, `wasm_print_parse`). `example.wat` and `example.wasm` are
 equivalent conditional on a re-encoding fact checked by evaluation (`ExampleWatEncodes`), since
@@ -409,14 +411,38 @@ Do not restate a standard fact as a problem of your own: silmaril registers each
 once, as a **shape** (an open problem over arguments), and a project fills in a **row**, an
 instance for its own artifact, and proves it. Every project then states the same fact the same
 way, the shape collects SAT evidence from every solved row, and the transfer lemmas prove the
-rows. The format and value shapes are `Silmaril.Project.Shapes.Format.Defs` (lemmas in
-`….Thms`):
+rows. The shapes are `Silmaril.Project.Shapes.{Format,Elf,X86}.Defs` (lemmas in `….Thms`).
+An indented name is a named instance of the shape above it, with some arguments fixed:
 
 | shape | Lean (`Silmaril.Project.Shapes.…`) | statement | transfer lemmas |
 |---|---|---|---|
 | `silmaril.shapes.format.parses` | `Parses {V} (F : Format blob V) (b : Bytes)` | `b` parses under `F` | `parses_iff` |
 | `silmaril.shapes.format.agree` | `Agree {V} (F G : Format blob V) (a b : Bytes)` | `a` under `F` and `b` under `G` are one value of the data model `V` | `agree_iff` |
 | `silmaril.shapes.value.satisfies` | `Satisfies {V} (X : Value V) (P : V → Prop)` | `X` parses to a `v` with `P v` | `satisfies_iff`, `Satisfies.parses` |
+| `silmaril.shapes.elf.loads` | `Loads (L : Loader) {V} (exe : Value V) (perms : String) (addr : Nat) (code : List (BitVec 8))` | the loader `L` accepts `exe`, and a segment with permissions `perms` holds exactly `code` at `addr` | `loads_x86_iff`, `Loads.x86_of_check`, `Loads.x86_of_blob` |
+| &nbsp;&nbsp;`….loads.x86` | `L := Loader.x86` | the same with the LPS x86-64 loader of `elf.exec-x86` | |
+| `silmaril.shapes.elf.entry` | `Entry (L : Loader) {V} (exe : Value V) (addr : Nat)` | `L` accepts `exe` and its entry point is `addr` | `Entry.x86_of_blob`, `Entry.x86_of_satisfies` |
+| &nbsp;&nbsp;`….entry.x86` | `L := Loader.x86` | | |
+| `silmaril.shapes.elf.fn_contract` | `ElfFn (L : Loader) (M : Model) {V} (exe : Value V) (addr : Nat) (code : List Byte) (S : FnContract.Spec MState)` | `exe` loads `code` at `addr` (`rx`), every entry state of `S` has `code` there and `rip` inside it (`EntersCode`), some System V entry state meets `S.entry` (`Nonvacuous`), and `S` holds on `M` | `ElfFn.of_segment`, `AbiFn.elfFn`, `ElfFn.x86_of_blob`, `ElfFn.of_leafSpec`, `ElfFn.not_vacuous` |
+| &nbsp;&nbsp;`….fn_contract.x86_open`, `.x86_open9` | `L := Loader.x86`, `M := Open.isa` / `Open9.isa` | | |
+| `silmaril.shapes.x86.contract` | `Contract (M : Model) (S : FnContract.Spec MState)` | `S` is totally correct on `M` (`S.Total M`); names no code | `Contract.open9_of_open`, `Contract.str9_of_open9` |
+| &nbsp;&nbsp;`….contract.open`, `.open9`, `.str9` | `M := Open.isa` / `Open9.isa` / `Str9.isa` | | |
+| `silmaril.shapes.x86.contract_strict` | `ContractStrict (M : Model) (S : FnContract.Spec MState)` | first-return total correctness (`S.Strict M`) | `ContractStrict.contract` |
+| `silmaril.shapes.x86.abi_function` | `AbiFn (M : Model) (p : Placement) (S : FnContract.Spec MState)` | every entry state of `S` has the region of `p` loaded and `rip` at the function (`EntersAt`), `S` is not vacuous, and `S` holds on `M` | `AbiFn.of_spec`, `AbiFn.open9_of_open`, `AbiFn.str9_of_open9`, `AbiFn.not_vacuous` |
+| &nbsp;&nbsp;`….abi_function.open`, `.open9`, `.str9` | `M := Open.isa` / `Open9.isa` / `Str9.isa` | | |
+| `silmaril.shapes.x86.correct` | `Correct (𝓜 : Problems.Class MState) (S : Word → FnContract.Spec MState)` | for every placement `entry`, `S entry` is demonically totally correct on every member of `𝓜` (`Problems.FnCorrect`) | `correct_iff` |
+| `silmaril.shapes.x86.correct_loose` | `CorrectLoose (D : Loose.DTable Loose.Listing.LForm) (S : Word → FnContract.Spec MState)` | the same on the down-set of the loose x86-64 top over the listing table `D` | `correctLoose_iff` |
+
+`Contract M S` alone is filled by a spec no state enters. A row about a *function* uses
+`elf.fn_contract` or `x86.abi_function`, which add that the spec is entered at the code
+(`EntersCode`, `EntersAt`) and is not vacuous; `ElfFn.not_vacuous` checks that the vacuous spec
+`vacuousSpec` fills neither, while it fills the weak form `ElfFnWeak` (`Loads ∧ Contract`,
+not a shape). An executable's bytes are certified as a `Blob` literal by
+`blob_of_decode rfl (by decide +kernel)` (or `rfl` for the right-hand side computed from the
+chunks), so the kernel reads the file as one number instead of byte by byte; the example rows
+`exampleExec_entry` and `exampleExec_code` (`Silmaril.Project.Shapes.Elf.Thms`) do this for
+`examples/project-formats/example-exec.elf`, and `ilog2_abi` (`….X86.Thms`) is a row of
+`abi_function.open9`.
 
 A row, from the self-test (`silmaril/selftest.toml`):
 

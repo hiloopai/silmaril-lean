@@ -3,6 +3,7 @@ module
 public import Silmaril.Project.Defs
 public import Silmaril.Project.Formats.Defs
 public import Silmaril.Project.Shapes.Format.Defs
+public import Silmaril.Project.Shapes.Elf.Thms
 
 /-!
 # The `sil project` self-test
@@ -16,8 +17,8 @@ dump`, `check`, `sqlite`, `explore`):
 * artifacts: the registry `silmaril/artifacts.toml`, with one derivation;
 * values: a value with a problem about it, and values read with silmaril's format adapters
   (`wasm.binary.core`, `elf.exec-x86`);
-* the TOML route: `silmaril/selftest.toml` (values, instances, a row of a standard shape, the
-  groups and the root).
+* the TOML route: `silmaril/selftest.toml` (values, instances, rows of the standard shapes
+  `value.satisfies` and `elf.entry.x86`, the groups and the root).
 -/
 
 namespace ProjectSelfTest
@@ -74,6 +75,13 @@ silmaril load "silmaril/selftest.toml"
 @[solves "silmaril.selftest.exit.parses"] public theorem exit_parses :
     silmaril.selftest.exit.parses := by
   silmaril_decide
+
+/-- A row of `elf.entry.x86`: the file as a `Blob` from its chunk literals, then one run of the
+kernel-fast reader. -/
+@[answers "silmaril.selftest.exit.entry" thm] public theorem exit_entry :
+    silmaril.selftest.exit.entry :=
+  Silmaril.Project.Shapes.Entry.x86_of_blob (Silmaril.Project.Shapes.blob_of_decode rfl rfl)
+    (by decide +kernel)
 
 /--
 info: artifact_type blob (Silmaril.Project.Defs) {"decl":"Silmaril.Project.blob","doc":"Bytes, identified by a raw-codec BLAKE3 CIDv1 (bafkr4i…)"}
