@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Calculi.PCF.Partrec
+public import Silmaril.Calculi.PCF.ExactPartrec
 public import Silmaril.Calculi.PCF.CallByValue
 public import Silmaril.Calculi.PCF.SmallStep
 public import Silmaril.Calculi.PCF.Contextual
@@ -142,6 +142,12 @@ constrain evaluation at inputs where `φ` is undefined. -/
 theorem example19 {φ : ℕ →. ℕ} (hφ : Partrec φ) :
     ∃ φ' : Closed false (Ty.nat ⤳ Ty.nat), ∀ n, ∀ y ∈ φ n, .app φ' (Term.num n) ⇓ Term.num y :=
   partrec_definable hφ
+
+/-- Exact representation of Example 19, including undefined inputs. -/
+theorem example19_exact {φ : ℕ →. ℕ} (hφ : Partrec φ) :
+    ∃ φ' : Closed false (Ty.nat ⤳ Ty.nat), ∀ n y,
+      .app φ' (Term.num n) ⇓ Term.num y ↔ y ∈ φ n :=
+  partrec_definable_exact hφ
 
 /-- Example 19 (p. 43), for partial recursive functions `f : ℕⁿ ⇀ ℕ` of several
 arguments, coded curried by `t : nat -> ⋯ -> nat -> nat`: if `f(v)` is

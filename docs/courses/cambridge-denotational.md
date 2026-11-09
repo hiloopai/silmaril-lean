@@ -51,9 +51,20 @@ The theorem statements distinguish three useful contracts:
   where every closing program context observes ground results. The corresponding
   preorder agrees with the semantic order.
 
-`example19` simulates every defined result of a partial recursive function.
-For total recursive functions this gives computation at every input; the
-current `Realizes` predicate imposes no condition at undefined inputs.
+`example19` retains the defined-result simulation contract.
+`example19_exact` and `partrec_definable_exact` prove exact representation:
+`t n̄ ⇓ ȳ ↔ y ∈ f n`, including undefined inputs. The vector theorem covers
+every finite arity. `partrec_definable_exact_with_domain` also states that a
+generated program has no evaluation result exactly when the source function
+is undefined.
+
+The exact compiler uses `ExactRealizes.compTerm`, which forces every inner
+result before applying the outer function. This matches strict composition
+of partial functions under PCF's call-by-name evaluation. Its minimisation
+proof shows that every returned index is the first zero. The original
+`Realizes` contract and call-by-name composition remain available; their
+limitation is exhibited by the proved counterexamples
+`realizes_does_not_imply_exact` and `nonStrict_comp_ignores_undefined`.
 
 Soundness and ground adequacy cover both PCF variants. For sequential PCF,
 `theorem41` gives two contextually equivalent closed terms with different
