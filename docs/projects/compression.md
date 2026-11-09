@@ -42,11 +42,23 @@ Assumptions and scope:
   produced by zlib, CPython and GNU gzip check them against independent
   implementations.
 - The inflater is a mathematical machine, not a refinement of zlib's C code.
-- Open and frozen as `def Task.… : Prop` with conditional theorems:
-  `Deflate.Task.local` (the append law for DEFLATE members, from which
-  `Zlib.local_of_deflate` follows), `Inflate.Task.member_complete` and
-  `Inflate.Task.raw_complete` (completeness of the machines, which give the
-  append laws through `Incremental.local_of_sound_complete`).
+- The append laws and the completeness of the inflater are open; see Open goals.
+
+## Open goals
+
+Frozen as `def Task.… : Prop`, not proved; the theorems that need them take them as
+hypotheses.
+
+- `Silmaril.Formats.Compression.Deflate.Task.local`: bytes appended after a DEFLATE
+  member never change how it decodes (`Deflate.decoder.Local`). Conditional:
+  `Zlib.local_of_deflate` (the same law for zlib).
+- `Silmaril.Formats.Compression.Inflate.Task.member_complete`: zlib 1.3.1's member
+  machine (`Inflate.member .v131 .zlib`) finishes every member `Zlib.decoder` accepts,
+  when the whole input is given at the start. Conditional: `Inflate.zlib_local_of_task`
+  (the zlib append law, through `Incremental.local_of_sound_complete`).
+- `Silmaril.Formats.Compression.Inflate.Task.raw_complete`: the same for the raw-DEFLATE
+  machine (`Inflate.raw .v131`) against `Deflate.decoder`. Conditional:
+  `Inflate.deflate_local_of_task`, which proves `Deflate.Task.local`.
 
 ## Layout
 
