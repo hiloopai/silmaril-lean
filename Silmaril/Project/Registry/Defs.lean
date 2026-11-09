@@ -451,17 +451,30 @@ def runRecord (kind : String) (name? : Option String) (fs : Fields) : CommandEla
 
 /-! ## Package paths and generated declarations -/
 
-/-- The package root (the source file's directory, one level up per module component after
-the first; v0.1 requires `srcDir` = the package root) and the `include_bytes` prefix that
-reaches it from the source file. -/
+/-- The package root and the `include_bytes` prefix that reaches it from the source file.
+The module's source directory is the file's directory, one level up per module component after
+the first; with a Lake `srcDir`, the package root is the nearest directory at or above it with
+a `lakefile.toml` or `lakefile.lean` (else the source directory itself). -/
 def packageRoot : CommandElabM (System.FilePath × String) := do
   let mod := (← getEnv).mainModule
   if mod.isAnonymous then throwError "silmaril: paths need a named module (run under Lake)"
   let n := mod.components.length
-  let mut dir : System.FilePath := ← getFileName
-  for _ in [0:n] do dir := (dir.parent.getD ".")
-  if dir.toString.isEmpty then dir := "."
-  return (dir, String.join (List.replicate (n - 1) "../"))
+  let parent (d : System.FilePath) : Option System.FilePath :=
+    d.parent.map fun p => if p.toString.isEmpty then "." else p
+  let mut src : System.FilePath := ← getFileName
+  for _ in [0:n] do src := (parent src).getD "."
+  let isRoot (d : System.FilePath) : IO Bool := do
+    return (← (d / "lakefile.toml").pathExists) || (← (d / "lakefile.lean").pathExists)
+  let mut dir := src
+  let mut up := n - 1
+  let mut found := false
+  for _ in [0:32] do
+    if ← isRoot dir then found := true; break
+    let some p := parent dir | break
+    if p == dir then break
+    dir := p; up := up + 1
+  unless found do dir := src; up := n - 1
+  return (dir, String.join (List.replicate up "../"))
 
 /-- Elaborate a generated definition or theorem (public, and exposed, inside a module).
 `attrs` are attribute instances such as `problem "N"`. -/
