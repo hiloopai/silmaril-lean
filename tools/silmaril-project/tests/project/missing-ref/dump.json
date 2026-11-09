@@ -1,0 +1,204 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "value",
+   "name": "r.v",
+   "module": "X",
+   "format": "no.such.format",
+   "decl": "r.v",
+   "parses": "r.v.parses",
+   "agrees": [],
+   "sources": [
+    {
+     "cid": "bafkr4icl6sfvmt23obrgvfnurfrers7lyib3umpjsynkjemiodxdmnxz44",
+     "format": "no.such.format",
+     "decl": "r.v"
+    },
+    {
+     "cid": "r.blobs.none",
+     "format": "no.such.format",
+     "decl": "r.v.alt.1"
+    }
+   ]
+  },
+  {
+   "kind": "judgement",
+   "name": "r.p",
+   "module": "X",
+   "spec": "r.no-such-spec",
+   "model": "r.no-such-model",
+   "values": [
+    "r.no_value"
+   ],
+   "artifacts": [
+    "r.no_blob"
+   ],
+   "expect": "MAYBE"
+  },
+  {
+   "kind": "judgement",
+   "name": "r.ghost",
+   "module": "X"
+  },
+  {
+   "kind": "spec",
+   "name": "r.s",
+   "module": "X",
+   "decl": "X.s",
+   "format": "r.f2"
+  },
+  {
+   "kind": "format_default",
+   "name": "r",
+   "module": "X",
+   "format": "other.fmt"
+  },
+  {
+   "kind": "format",
+   "name": "other.fmt",
+   "module": "X",
+   "decl": "X.fmt",
+   "input": "file",
+   "value_type": "Nat",
+   "printer": false
+  },
+  {
+   "kind": "predicate",
+   "name": "r.q",
+   "module": "X",
+   "decl": "X.q",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "x",
+     "type": "Nat"
+    }
+   ],
+   "room": "r.no_room"
+  },
+  {
+   "kind": "predicate",
+   "name": "r.q2",
+   "module": "X",
+   "decl": "X.q2",
+   "arity": 2,
+   "args": [
+    {
+     "pos": 1,
+     "name": "x",
+     "type": "Nat"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "r.q.one",
+   "module": "X",
+   "of": "r.q",
+   "decl": "r.q.one",
+   "args": [
+    {
+     "pos": 3,
+     "term": "1"
+    },
+    {
+     "pos": 0,
+     "term": "1",
+     "value": "r.v"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "r.orphan",
+   "module": "X",
+   "of": "r.no_general",
+   "decl": "r.orphan",
+   "args": []
+  },
+  {
+   "kind": "answer",
+   "name": "r.q",
+   "module": "X",
+   "decl": "X.q_maybe",
+   "status": "MAYBE"
+  },
+  {
+   "kind": "answer",
+   "name": "r.none",
+   "module": "X",
+   "decl": "X.none_thm",
+   "status": "THM"
+  },
+  {
+   "kind": "children",
+   "name": "r.root",
+   "module": "X",
+   "children": [
+    "r.p",
+    "r.nobody",
+    "r.q",
+    "r.q.one",
+    "r.s.x",
+    "r.q2",
+    "r.v.parses"
+   ]
+  },
+  {
+   "kind": "group",
+   "name": "r.root",
+   "module": "X"
+  },
+  {
+   "kind": "root",
+   "name": "r.root",
+   "module": "X"
+  },
+  {
+   "kind": "detached",
+   "name": "r.s2",
+   "module": "X"
+  }
+ ],
+ "problems": [
+  {
+   "name": "r.p",
+   "decl": "X.p",
+   "module": "X"
+  },
+  {
+   "name": "r.q.one",
+   "decl": "r.q.one",
+   "module": "X"
+  },
+  {
+   "name": "r.orphan",
+   "decl": "r.orphan",
+   "module": "X"
+  }
+ ],
+ "solutions": [
+  {
+   "problem": "r.p",
+   "decl": "X.p_sol",
+   "module": "X",
+   "kind": "solves",
+   "axioms": [
+    "sorryAx"
+   ]
+  },
+  {
+   "problem": "r.none",
+   "decl": "X.none_sol",
+   "module": "X",
+   "kind": "solves",
+   "axioms": []
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+summary: 15 problems (15 local), 3 groups, 51 records, 18 edges, 4 artifacts
+verdicts: 7 holds, 2 fails, 6 unknown (all 15 problems); 7 holds, 2 fails, 6 unknown (15 local)
+root: silmaril.selftest.all
+predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails
+predicate silmaril.selftest.square (arity 1): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.format.agree (arity 5): status OPN [], verdict unknown
+predicate silmaril.shapes.format.parses (arity 3): status OPN [], verdict unknown
+predicate silmaril.shapes.value.satisfies (arity 3): status SAT [SAT], verdict unknown
+group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(2 holds, 0 fails, 0 unknown), silmaril.shapes=group(1 holds, 0 fails, 3 unknown)]
+group silmaril.selftest.formats: [silmaril.selftest.module.parses=THM, silmaril.selftest.exit.parses=THM]
+group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT]
+provenance: 1 derivations; 1 of 4 local artifacts have one

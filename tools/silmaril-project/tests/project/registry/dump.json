@@ -1,0 +1,85 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "artifact",
+   "cid": "bafkr4ifpcne3t5pzugtkaqcn5i3nzskjtpfslsnnyejlpte2spfoihzsmi",
+   "module": "X",
+   "type": "blob",
+   "name": "h.wrong",
+   "paths": [
+    "data/x.bin"
+   ],
+   "size": 1
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4icl6sfvmt23obrgvfnurfrers7lyib3umpjsynkjemiodxdmnxz44",
+   "module": "X",
+   "type": "blob",
+   "paths": [
+    "gone.json"
+   ]
+  },
+  {
+   "kind": "value",
+   "name": "h.v",
+   "module": "X",
+   "format": "bytes",
+   "decl": "h.v",
+   "parses": "h.v.parses",
+   "sources": [
+    {
+     "cid": "h.nobody",
+     "format": "bytes",
+     "decl": "h.v"
+    }
+   ]
+  },
+  {
+   "kind": "format",
+   "name": "bytes",
+   "module": "X",
+   "decl": "Silmaril.Project.Formats.bytes",
+   "input": "blob",
+   "value_type": "Bytes",
+   "printer": true
+  },
+  {
+   "kind": "artifact_type",
+   "name": "blob",
+   "module": "X",
+   "decl": "Silmaril.Project.blob"
+  },
+  {
+   "kind": "group",
+   "name": "h.root",
+   "module": "X"
+  },
+  {
+   "kind": "children",
+   "name": "h.root",
+   "module": "X",
+   "children": [
+    "h.v.parses"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "h.root",
+   "module": "X"
+  }
+ ],
+ "problems": [
+  {
+   "name": "h.v.parses",
+   "decl": "h.v.parses",
+   "module": "X"
+  }
+ ],
+ "solutions": []
+}

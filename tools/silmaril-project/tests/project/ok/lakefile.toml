@@ -1,0 +1,9 @@
+name = "ok"
+
+[[lean_lib]]
+name = "Ok"
+needs = ["registry"]
+
+[[input_file]]
+name = "registry"
+path = "silmaril/artifacts.toml"

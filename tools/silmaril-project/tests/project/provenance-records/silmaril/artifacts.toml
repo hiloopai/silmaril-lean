@@ -1,0 +1,98 @@
+# A silmaril artifact registry. `sil project lock` writes cid, size, sha256 and
+# git_sha1; edit paths, name, package, type and doc by hand.
+schema = "silmaril.artifacts.v0.2"
+
+[[artifact]]
+cid = "bafkr4iaihkuwrqfitdcmcbvqzcmzdml6lqbv4xgaidrldagc24kj7flb34"
+type = "blob"
+name = "pr.a_c"
+paths = ["data/a.c"]
+size = 7
+sha256 = "7c725f30854a46033dd94f728ac6b08caf10845993cd3ed48e40079cdb0a76a6"
+git_sha1 = "6d1a0d47b7f73eacb962f3711df06b21ed11f7ca"
+
+[[artifact]]
+cid = "bafkr4ibydiwad5egmb7gcrxcantrks4ist5fnaozwsk7mjdm4ecxgyztg4"
+type = "blob"
+name = "pr.b_o"
+paths = ["data/b.o"]
+size = 9
+sha256 = "4ece060ea0ff0cca695aee0548b580bc97e596ffb12e2590707205c9325a46c3"
+git_sha1 = "4f0f62fb9adc75a31b44a0070be8124d21cf69f3"
+derivation = "pr.build"
+
+[[artifact]]
+cid = "bafkr4idl66ik6yhyzcq2wsmhyrt73f4kl62cwiz22nwtfrd2cl3lppwjde"
+type = "blob"
+name = "pr.a_o"
+paths = ["data/a.o"]
+size = 9
+sha256 = "2378adc57649e1663cdd53b5861c954413177b8b36cab3c9782774214a4b96fe"
+git_sha1 = "bb1fec7e463c34fcb12e98a15f5ca516c738b279"
+derivation = "pr.build"
+
+[[artifact]]
+cid = "bafkr4iett2pbcqr3mtlpubgcv6siiv7u5wdu7yfwogextauh3fwau35kcm"
+type = "blob"
+name = "pr.lost"
+paths = ["data/lost.bin"]
+size = 5
+sha256 = "ed1d1a8db09e369fa33bde54f504d1fda0161a5ccd8a0d5517d92456fec28c41"
+git_sha1 = "a50bcb6003fee24cd0dcb7d7da23c9150cd95457"
+derivation = "pr.nobody"
+
+[[artifact]]
+cid = "bafkr4ifywc5dxwkycvdettqm2bk3ihijioy2ounkisbetigfpzjedajt5a"
+type = "blob"
+name = "pr.loop"
+paths = ["data/loop.bin"]
+size = 5
+sha256 = "98a002176a1ca96a19b1ab34b32240688a7aced94e019bcc7f7d99c342caceed"
+git_sha1 = "1ef2ddf24a4e36bff89febe6a977945fefc20597"
+derivation = "pr.loop"
+
+[[derivation]]
+name = "pr.build"
+op = "compile"
+status = "reproduced"
+recipe = { path = "data/build.sh", cid = "bafkr4iao4oxkmzduduxy4ez7rr7bxac5a6dzwstw5k7rosj77ka6rozoxq" }
+receipt = { path = "data/RECEIPTS.sha256", cid = "bafkr4iflnfndkx2vohqtroc4renkxciwjd26kfazj7spphsek7t7hj2qfq" }
+
+[[derivation.input]]
+role = "source"
+artifact = "pr.a_c"
+
+[[derivation.input]]
+role = "libc"
+url = "https://example.org/libc.tar.gz"
+
+[[derivation.input]]
+role = "source"
+git = { repo = "https://example.org/x", rev = "main" }
+
+[[derivation.input]]
+role = "patch"
+name = "private series"
+sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+available = "private:upstream"
+
+[[derivation]]
+name = "pr.loop"
+op = "generate"
+status = "pinned"
+
+[[derivation.input]]
+role = "tool"
+artifact = "pr.loop"
+
+[[derivation]]
+name = "pr.orphan"
+op = "bake"
+status = "pinned"
+recipe = { path = "data/missing.sh" }
+
+[[derivation.input]]
+role = "source"
+artifact = "pr.a_c"
+path = "data/a.c"
+cid = "bafkr4iaihkuwrqfitdcmcbvqzcmzdml6lqbv4xgaidrldagc24kj7flb34"

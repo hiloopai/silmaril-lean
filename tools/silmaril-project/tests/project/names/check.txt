@@ -1,0 +1,15 @@
+error: format_default json: a name is either a format or a family, not both
+error: format_default json: default json is not a format of family json
+error: model .relative: invalid name: relative names (a leading '.') are reserved
+error: model N.Upper: invalid name: not a dotted name (segments [a-z][a-z0-9_-]* or [0-9]+)
+error: model a..b: invalid name: not a dotted name (segments [a-z][a-z0-9_-]* or [0-9]+)
+error: model n.twice: declared twice (in X and X)
+error: model n.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: invalid name: longer than 200 bytes
+error: problem n.Bad: invalid name: not a dotted name (segments [a-z][a-z0-9_-]* or [0-9]+)
+error: problem not/Valid: invalid name: not a dotted name (segments [a-z][a-z0-9_-]* or [0-9]+)
+error: problem not/Valid: not reachable from root n.root and not detached
+summary: 3 problems (3 local), 1 groups, 12 records, 2 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 3 unknown (all 3 problems); 0 holds, 0 fails, 3 unknown (3 local)
+root: n.root
+group n.root: [n/legacy=OPN, n.Bad=OPN]
+exit: failed

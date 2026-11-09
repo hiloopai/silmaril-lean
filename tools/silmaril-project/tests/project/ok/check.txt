@@ -1,0 +1,15 @@
+warning: lakefile.toml artifacts/m.wat: Lean reads it but it is not an [[input_file]] or below an [[input_dir]] (add `[[input_file]] path = "artifacts/m.wat"` and list it in the library's `needs`)
+warning: problem ok.b: expect THM but the summary is UNS
+summary: 22 problems (20 local), 3 groups, 39 records, 24 edges, 3 artifacts
+verdicts: 10 holds, 4 fails, 8 unknown (all 22 problems); 9 holds, 3 fails, 8 unknown (20 local)
+root: ok.verify
+predicate dep.small (arity 1): status contingent [CSA SAT], verdict fails
+predicate ok.cnf.holds (arity 1): status SAT [SAT], verdict unknown
+predicate ok.json_port (arity 1): status SAT [SAT], verdict unknown
+predicate ok.trivial (arity 2): status THM [THM], verdict holds
+predicate ok.trivial.hello (arity 1): status THM [THM], verdict holds
+group ok.preds: [ok.small.two=THM, ok.small.five=UNS, ok.cnf.holds=SAT, ok.cnf.empty=OPN, ok.conj.mul_zero=OPN, ok/legacy=OPN]
+group ok.values: [ok.pair.parses=THM, ok.pair.agrees.1=OPN, ok.hello.port=THM, ok.trivial.hello=THM]
+group ok.verify: [ok.top=THM, ok.bad_top=UNS, ok.open_top=OPN, ok.values=group(3 holds, 0 fails, 1 unknown), ok.preds=group(1 holds, 1 fails, 4 unknown)]
+sql sha256: 3230314689bb59b3545771e99daea00d472de8de8b42cbb46b8481db4ec62415
+exit: ok

@@ -1,0 +1,4 @@
+schema = "silmaril.project.v0.1"
+name = "dep"
+sid = "2222222222222222222222222222222222222222222222222222222222222222"
+description = "an imported project"

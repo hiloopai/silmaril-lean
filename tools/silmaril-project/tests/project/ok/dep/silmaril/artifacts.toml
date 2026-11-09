@@ -1,0 +1,12 @@
+# A silmaril artifact registry. `sil project lock` writes cid, size, sha256 and
+# git_sha1; edit paths, name, package, type and doc by hand.
+schema = "silmaril.artifacts.v0.1"
+
+[[artifact]]
+cid = "bafkr4ibjwedvlefuhsklpybliykfg23uzgnhwbl7svs7t7h6k7p7z3ldfe"
+type = "blob"
+name = "dep.blobs.hello"
+paths = ["data/hello.json"]
+size = 9
+sha256 = "e8c628edc9968ef0c668f54e0ba2636b35503357eb1aca0ddc828aeace432f67"
+git_sha1 = "cb5b2f69babc53f9145b45ad20b9a075d48717ef"

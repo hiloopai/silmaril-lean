@@ -1,0 +1,31 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "group",
+   "name": "t.x",
+   "module": "X"
+  },
+  {
+   "kind": "group",
+   "name": "t.y",
+   "module": "X"
+  },
+  {
+   "kind": "root",
+   "name": "t.x",
+   "module": "X"
+  },
+  {
+   "kind": "root",
+   "name": "t.y",
+   "module": "X"
+  }
+ ],
+ "problems": [],
+ "solutions": []
+}
