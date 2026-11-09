@@ -17,7 +17,8 @@ The braided `W = 8` variant (`build/braid`) is **not** covered.
 **Code.** `crc32zCode`: the 291 bytes of `crc32_z` at `0x401990` in
 `build/O2/zlib-checksums` (sha256
 `eeb7934b8c5a13b6fb98ee1a3a15dd2e6861436a6502544dcc549695c39df343`; GCC 13.3.0, binutils 2.42),
-extracted with `dd if=zlib-checksums bs=1 skip=$((0x1990)) count=291 | od -An -v -tx1`. The
+extracted with `dd if=zlib-checksums bs=1 skip=$((0x1990)) count=291 | od -An -v -tx1`
+(`Silmaril.X86.Ladder.Pinned.Thms` proves that the pinned file loads these bytes there). The
 `xor (%rcx),%al` forms are `Ext8`-only, so the `Ext` lifter `x86-lift` cannot transcribe
 this function; the listings below are checked against the bytes by `listing8`
 (`Open.decode`, `decide +kernel`). The code addresses `crc_table` absolutely

@@ -44,7 +44,7 @@ slice of the transcribed region at the function's partition entry and size, and
 that the model's decoder reads those bytes as the transcribed listings. The transcribed regions
 are the bytes of the `-O2` executable `mem-loops` built by `examples/elf-ladder/02-mem-loops`
 (its SHA-256 is in the transcript headers and in `pinned/mem-loops.sha256`); that tie is
-checked outside Lean, not proved here.
+proved in `Silmaril.X86.Ladder.Pinned.Thms` (`memLoops_region`, `memLoops_strlen`).
 -/
 
 @[expose] public section
