@@ -5,11 +5,13 @@ public import Silmaril.X86.Institution.Thms
 import Silmaril.Proofs.X86.Exact.Le
 import Silmaril.Proofs.X86.Exact.Str
 import Silmaril.Proofs.X86.Exact.Ctl
+import Silmaril.Proofs.X86.Exact.Int
+import Silmaril.Proofs.X86.Exact.MulDiv
 
 /-!
 # `Σexact`: the concrete machines as models, and the morphism from `Σ v1`
 
-Proofs are in `Silmaril/Proofs/X86/Exact/{Le,Str}.lean`.
+Proofs are in `Silmaril/Proofs/X86/Exact/{Le,Str,Ctl,Int,MulDiv}.lean`.
 
 **Any machine.**
 
@@ -30,12 +32,19 @@ Proofs are in `Silmaril/Proofs/X86/Exact/{Le,Str}.lean`.
 * `allowsExec_str`: every string form of `Σ v1` allows the results of `Str9`;
 * `ctlAllows`: **`Task.ctlAllows` is proved**: every `Ctl` form allows the results of `Ext9`
   (where it is specified, `Ext9` retires to exactly the allowed successor);
-* `sv1Tight_of`, `sv1Tight_of'`: `Task.sv1Tight` from the group tasks; with `Ctl` and the
-  string forms proved, the open goals are `Task.mulDivAllows` and `Task.intAllows`;
-* `sv1_le_exact`: given `Task.sv1Tight`, **the signature morphism `Sig.sv1 D ⟶ Sig.exact D`**;
-* `open9Sv1Model`, `str9Sv1Model`, `sat_open9_of_sv1`, `sat_str9_of_sv1`: given
-  `Task.sv1Tight`, `Open9` and `Str9` are models of `Σ v1` (by reduct), so every sentence
-  that holds on the top of `Sig.sv1 D` holds on them.
+* `mulDivAllows`: **`Task.mulDivAllows` is proved**: every `MulDiv` form (`mul`, `imul` in
+  its three forms, `div`/`idiv`, `adc`/`sbb` in its three forms, `bt`, `bsf`, `bsr`) allows
+  every result of `Ext9`;
+* `intAllows`: **`Task.intAllows` is proved**: every `Int` form (moves, `load`/`store`,
+  `movzx`/`movsx`/`movsxd`, `lea`, the ALU, TEST and CMP forms at every width, `inc`/`dec`,
+  `neg`/`not`, the shifts, `bswap`, `cdq`/`cqo`, `cdqe`/`cwde`, `nop`, `endbr64`) allows
+  every result of `Ext9`;
+* `sv1Tight_of`, `sv1Tight_of'`: `Task.sv1Tight` from the group tasks; `sv1Tight`: **it
+  holds**;
+* `sv1_le_exact`: **the signature morphism `Sig.sv1 D ⟶ Sig.exact D`**;
+* `open9Sv1Model`, `str9Sv1Model`, `sat_open9_of_sv1`, `sat_str9_of_sv1`: `Open9` and `Str9`
+  are models of `Σ v1` (by reduct), so every sentence that holds on the top of `Sig.sv1 D`
+  holds on them.
 
 The examples at the end check small tables with `decide`.
 -/
@@ -146,40 +155,46 @@ theorem sv1Tight_of (hctl : Task.ctlAllows) (hmd : Task.mulDivAllows) (hint : Ta
       | none =>
         rw [hm] at hE; exact key (hint j E hE)
 
-/-- **`Task.sv1Tight` from the two open group tasks** (`Ctl` and the string forms are
-proved). -/
+/-- **`Task.sv1Tight` from the `MulDiv` and `Int` group tasks** (`Ctl` and the string forms
+are proved). -/
 theorem sv1Tight_of' (hmd : Task.mulDivAllows) (hint : Task.intAllows) : Task.sv1Tight :=
   sv1Tight_of ctlAllows hmd hint
 
+/-- **Every `MulDiv` form allows every result of `Ext9`** (`Task.mulDivAllows` holds). -/
+theorem mulDivAllows : Task.mulDivAllows := Proofs.X86.Exact.MulDiv.allowsExec_mulDiv
+
+/-- **Every `Int` form allows every result of `Ext9`** (`Task.intAllows` holds). -/
+theorem intAllows : Task.intAllows := Proofs.X86.Exact.Int.allowsExec_int
+
+/-- **Every form of `Σ v1` is tightened by its exact `Str9` form** (`Task.sv1Tight` holds). -/
+theorem sv1Tight : Task.sv1Tight := sv1Tight_of' mulDivAllows intAllows
+
 /-- **The signature morphism `Σ v1 ⟶ Σexact`**: `Σexact` lists the same table and tightens
 every form of `Σ v1`. -/
-theorem sv1_le_exact (h : Task.sv1Tight) (D : DTable Silmaril.X86.Str9.Instr) :
-    Sig.sv1 D ≤ Sig.exact D :=
-  ⟨fun _ he => he, fun i F hF => ⟨_, rfl, h i F hF⟩⟩
+theorem sv1_le_exact (D : DTable Silmaril.X86.Str9.Instr) : Sig.sv1 D ≤ Sig.exact D :=
+  ⟨fun _ he => he, fun i F hF => ⟨_, rfl, sv1Tight i F hF⟩⟩
 
 section
 variable {D : DTable Silmaril.X86.Str9.Instr}
 
 /-- **`Open9` is a model of `Σ v1`** (the reduct of `open9Model`). -/
-def open9Sv1Model (h : Task.sv1Tight) (hD : DTable.okOpen9 D = true) :
-    Model Views.mstate (Sig.sv1 D) :=
-  (open9Model hD).reduct (sv1_le_exact h D)
+def open9Sv1Model (hD : DTable.okOpen9 D = true) : Model Views.mstate (Sig.sv1 D) :=
+  (open9Model hD).reduct (sv1_le_exact D)
 
 /-- `Str9` is a model of `Σ v1` (the reduct of `str9Model`). -/
-def str9Sv1Model (h : Task.sv1Tight) (hD : DTable.decodes Silmaril.X86.Str9.isa D = true) :
+def str9Sv1Model (hD : DTable.decodes Silmaril.X86.Str9.isa D = true) :
     Model Views.mstate (Sig.sv1 D) :=
-  (str9Model hD).reduct (sv1_le_exact h D)
+  (str9Model hD).reduct (sv1_le_exact D)
 
 /-- **Every sentence of the top of `Σ v1` holds on `Open9`.** -/
-theorem sat_open9_of_sv1 (h : Task.sv1Tight) (hD : DTable.okOpen9 D = true) {φ : Sen MState}
+theorem sat_open9_of_sv1 (hD : DTable.okOpen9 D = true) {φ : Sen MState}
     (hφ : Sat ((Sig.sv1 D).top Views.mstate) φ) : Sat (ofIsa Silmaril.X86.Open9.isa) φ :=
-  sat_of_top hφ (open9Sv1Model h hD)
+  sat_of_top hφ (open9Sv1Model hD)
 
 /-- Every sentence of the top of `Σ v1` holds on `Str9`. -/
-theorem sat_str9_of_sv1 (h : Task.sv1Tight)
-    (hD : DTable.decodes Silmaril.X86.Str9.isa D = true) {φ : Sen MState}
+theorem sat_str9_of_sv1 (hD : DTable.decodes Silmaril.X86.Str9.isa D = true) {φ : Sen MState}
     (hφ : Sat ((Sig.sv1 D).top Views.mstate) φ) : Sat (ofIsa Silmaril.X86.Str9.isa) φ :=
-  sat_of_top hφ (str9Sv1Model h hD)
+  sat_of_top hφ (str9Sv1Model hD)
 
 end
 
