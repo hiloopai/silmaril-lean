@@ -7,8 +7,9 @@ public import Silmaril.Project.Registry.Predicate.Defs
 
 `silmaril room R := decl` registers a room over silmaril's `Room` (named, not imported:
 `Silmaril.Logic.Institution.Room`), and `silmaril problem N in R := φ` for a sentence
-`φ : R.Sen` is the predicate `fun M => Silmaril.Project.Room.Problem R φ M` over the room's models, so that THM is validity, SAT satisfiability, UNS
-unsatisfiability, CSA a countermodel, and `(M := m)` is `m ⊨ φ`.
+`φ : R.Sen` is the predicate `fun M => Silmaril.Project.Room.Problem R φ M` over the room's
+models, so that THM is validity, SAT satisfiability, UNS unsatisfiability, CSA a countermodel,
+and `(M := m)` is `m ⊨ φ`.
 -/
 
 public meta section
