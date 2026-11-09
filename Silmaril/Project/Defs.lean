@@ -28,7 +28,9 @@ The header of the `Project` region, and the module a project imports (the guide 
 * the built-in artifact type `blob` and the identity format `bytes`, registered below.
 
 The format adapters over silmaril's parsers are `Silmaril.Project.Formats.Defs`, the standard
-format and value shapes `Silmaril.Project.Shapes.Format.Defs`. A project registers its own
+shapes `Silmaril.Project.Shapes.Format.Defs` (formats and values),
+`Silmaril.Project.Shapes.Elf.Defs` (ELF executables) and `Silmaril.Project.Shapes.X86.Defs`
+(x86-64 functions). A project registers its own
 artifacts with `silmaril artifacts "silmaril/artifacts.toml"` in one of its modules; this
 header reads no file.
 -/

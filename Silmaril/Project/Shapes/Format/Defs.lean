@@ -9,7 +9,9 @@ A **shape** is a problem over arguments that silmaril registers once (open, with
 status), so that a project states a fact about its own artifact by filling in a row: an
 instance (`silmaril instance N := SHAPE (x := …)`, or `[[instance]]` in TOML) that fixes the
 shape's arguments, and an answer of that instance. Statuses transfer along the instance edge:
-a proved row is SAT evidence for the shape. The catalogue is in `docs/projects/silmaril-projects.md`.
+a proved row is SAT evidence for the shape. The catalogue is in
+`docs/projects/silmaril-projects.md`; the ELF and x86-64 shapes are
+`Silmaril.Project.Shapes.Elf.Defs` and `Silmaril.Project.Shapes.X86.Defs`.
 
 | name | statement |
 |---|---|
