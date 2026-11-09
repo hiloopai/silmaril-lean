@@ -81,7 +81,7 @@ deps = ["Prelude", "Numeric"]
 
 [[region]]
 name = "Project"
-scope = "Silmaril projects: artifact types, formats and values, problems over arguments, the problem DAG, records files, rooms, the standard shapes (formats and values, ELF executables, x86-64 functions) and format adapters over silmaril's parsers; the records `sil project` dumps and checks. Also imports the Problems core, model classes and shapes, and the include-bytes helper."
+scope = "Silmaril projects: artifact types, formats and values, problems over arguments, the problem DAG, records files, rooms, the standard shapes (formats and values, ELF executables, x86-64 functions) and format adapters over silmaril's parsers; the records `sil project` dumps and checks. Also imports the x86 tree (`Silmaril.X86`: function contracts, block certificates, the pinned ladder), `Silmaril.Problems` (core, model classes and shapes) and `Silmaril.Data` (the include-bytes helper); none of these is a region here, an existing exception to `deps`."
 deps = ["Formats", "Logic", "Process", "Wasm", "Machine"]
 
 # Views are leaves: no region imports them. Papers, Standards and Thesis
