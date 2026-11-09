@@ -20,8 +20,10 @@ import Silmaril.Proofs.X86.Sep.Algebra
   atoms (`readBytes_of_bytesPt`, `fetchBytes_of_codePt`, `readBytes_of_wordPt`,
   `permitted_of_blockAny`).
 * **Domains and re-valuation** (used to build triples from runs): the locations an atom owns
-  (`bytesAt_dom`, …), and an atom re-valued in a later state (`sep_reval`, `regPt_reval`,
-  `bytesAt_reval`, `blockAny_reval`, …).
+  (`bytesAt_dom`, `regPt_dom`, `ripPt_dom`, `flagsAny_dom`, …), re-valuation distributing over
+  disjoint unions (`Frag.reval_union`, `Frag.reval_disjoint`), and an atom re-valued in a later
+  state (`sep_reval`, `regPt_reval`, `ripPt_reval`, `flagsAny_reval`, `bytesAt_reval`,
+  `blockAny_reval`, …).
 -/
 
 @[expose] public section
@@ -177,6 +179,19 @@ theorem blockAny_dom {a n : Nat} {h : Frag} (hp : blockAny a n h) (i : Nat) (hi 
     (h (.mem (a + i))).isSome :=
   Silmaril.Proofs.X86.Sep.blockAny_dom hp i hi
 
+theorem regPt_dom {r : Reg} {v : Word} {h : Frag} (hp : regPt r v h) : (h (.reg r)).isSome :=
+  Silmaril.Proofs.X86.Sep.regPt_dom hp
+theorem ripPt_dom {v : Word} {h : Frag} (hp : ripPt v h) : (h .rip).isSome :=
+  Silmaril.Proofs.X86.Sep.ripPt_dom hp
+theorem flagsAny_dom {h : Frag} (hp : flagsAny h) : (h .flags).isSome :=
+  Silmaril.Proofs.X86.Sep.flagsAny_dom hp
+
+theorem Frag.reval_union (a b s : Frag) : reval (union a b) s = union (reval a s) (reval b s) :=
+  Silmaril.Proofs.X86.Sep.Frag.reval_union a b s
+theorem Frag.reval_disjoint {a b : Frag} (h : Disjoint a b) (s : Frag) :
+    Disjoint (reval a s) (reval b s) :=
+  Silmaril.Proofs.X86.Sep.Frag.reval_disjoint h s
+
 theorem sep_reval {P Q P' Q' : SProp} {h : Frag} (s : Frag) (hpq : (P ∗ Q) h)
     (hp : ∀ a, P a → P' (reval a s)) (hq : ∀ b, Q b → Q' (reval b s)) :
     (P' ∗ Q') (reval h s) :=
@@ -185,6 +200,14 @@ theorem sep_reval {P Q P' Q' : SProp} {h : Frag} (s : Frag) (hpq : (P ∗ Q) h)
 theorem regPt_reval {r : Reg} {v : Word} {h : Frag} (m : MState) (hp : regPt r v h) :
     regPt r (m.core.read r) (reval h (toFrag m)) :=
   Silmaril.Proofs.X86.Sep.regPt_reval m hp
+
+theorem ripPt_reval {v : Word} {h : Frag} (m : MState) (hp : ripPt v h) :
+    ripPt m.core.rip (reval h (toFrag m)) :=
+  Silmaril.Proofs.X86.Sep.ripPt_reval m hp
+
+theorem flagsAny_reval {h : Frag} (m : MState) (hp : flagsAny h) :
+    flagsAny (reval h (toFrag m)) :=
+  Silmaril.Proofs.X86.Sep.flagsAny_reval m hp
 
 theorem bytesAt_reval {need need' : Permissions → Prop} {a : Nat} {bs bs' : List Byte}
     {h : Frag} {m : MState} (hp : bytesAt need a bs h) (hlen : bs'.length = bs.length)

@@ -2,11 +2,13 @@ module
 
 public import Silmaril.Formats.Compression.Deflate.Defs
 public import Silmaril.Formats.Compression.Thms
+public import Silmaril.Formats.Compression.Deflate.HuffmanLemmas
 import Silmaril.Proofs.Formats.Compression.Deflate
 import Silmaril.Raw.Formats.Compression.Deflate.Stored
 import Silmaril.Raw.Formats.Compression.Deflate.RoundTrip
 import Silmaril.Raw.Formats.Compression.Deflate.WithHistory
 import Silmaril.Raw.Formats.Compression.Deflate.StoredWriter
+import Silmaril.Raw.Formats.Compression.Deflate.HuffmanLemmas
 
 /-!
 # DEFLATE (RFC 1951): facts
@@ -23,6 +25,11 @@ Proved (standard axioms):
   accepted (a semantic contract, not one encoder's block boundaries);
 * `history_stored`, `history_match`, `no_history_rejected`: preset histories
   are consulted, and a match into a missing history is rejected;
+* canonical Huffman codes (RFC 1951 §3.2.2): `assignCodes_getElem?` (the entry of each
+  symbol), the Kraft sums `kraftUpTo_zero`, `kraftUpTo_succ`, `kraft_foldl`, the first codes
+  `firstCode_zero`, `firstCode_succ`, `firstCode_kraft`, `firstCode_add_count_le`, the ranks
+  `count_take_lt`, `count_take_lt_of_lt`, `isValidLengths_le`, `listGet_eq`, and
+  `HuffmanTable.ofLengths_symOK` (every symbol with a nonzero length has a decodable code);
 * known-answer vectors produced by zlib (an independent implementation), one per
   block type, and two rejections (distance code 30, `BTYPE = 11`).
 
@@ -111,5 +118,67 @@ theorem kat_rejects_dist_code_30 : decompress ⟨#[0x73, 0x04, 0x3e, 0x00]⟩ = 
 /-- `BTYPE = 11` is reserved. -/
 theorem kat_rejects_reserved_btype : decompress ⟨#[0x07, 0x00]⟩ = none :=
   decompress_rejects_reserved_btype
+
+/-! ### Canonical Huffman codes -/
+
+theorem listGet_eq {α : Type} (l : List α) (i : Nat) : listGet l i = l[i]? :=
+  _root_.Silmaril.Formats.Compression.listGet_eq l i
+
+section Canonical
+
+variable (L : CodeLengths) (M : Nat)
+
+theorem assignCodes_getElem? (j : Nat) :
+    (assignCodes L M)[j]? =
+      L[j]?.map (fun len =>
+        canonEntry M (nextCode (countByLength L M)) j len ((L.take j).count len)) :=
+  _root_.Silmaril.Formats.Compression.assignCodes_getElem? L M j
+
+theorem kraftUpTo_zero : kraftUpTo L M 0 = 0 :=
+  _root_.Silmaril.Formats.Compression.kraftUpTo_zero L M
+
+theorem kraftUpTo_succ (k : Nat) :
+    kraftUpTo L M (k + 1) = kraftUpTo L M k + L.count (k + 1) * 2 ^ (M - (k + 1)) :=
+  _root_.Silmaril.Formats.Compression.kraftUpTo_succ L M k
+
+theorem kraft_foldl (acc : Nat) :
+    L.foldl (fun (acc : Nat) (len : Nat) => if len = 0 then acc else acc + (1 <<< (M - len))) acc =
+      acc + kraftTotal L M :=
+  _root_.Silmaril.Formats.Compression.kraft_foldl L M acc
+
+theorem isValidLengths_le (h : isValidLengths L M = true) : ∀ x ∈ L, x ≤ M :=
+  _root_.Silmaril.Formats.Compression.isValidLengths_le L M h
+
+theorem firstCode_zero (hM : 0 < M) : firstCode L M 0 = 0 :=
+  _root_.Silmaril.Formats.Compression.firstCode_zero L M hM
+
+theorem firstCode_succ (m : Nat) (hm : m + 1 < M) :
+    firstCode L M (m + 1) = (firstCode L M m + L.count (m + 1)) * 2 :=
+  _root_.Silmaril.Formats.Compression.firstCode_succ L M m hm
+
+theorem firstCode_kraft (m : Nat) (hm : m < M) :
+    (firstCode L M m + L.count (m + 1)) * 2 ^ (M - (m + 1)) = kraftUpTo L M (m + 1) :=
+  _root_.Silmaril.Formats.Compression.firstCode_kraft L M m hm
+
+theorem firstCode_add_count_le (hv : isValidLengths L M = true) (m : Nat) (hm : m < M) :
+    firstCode L M m + L.count (m + 1) ≤ 2 ^ (m + 1) :=
+  _root_.Silmaril.Formats.Compression.firstCode_add_count_le L M hv m hm
+
+end Canonical
+
+theorem count_take_lt (L : List Nat) (s : Nat) (hs : s < L.length) :
+    (L.take s).count L[s] < L.count L[s] :=
+  _root_.Silmaril.Formats.Compression.count_take_lt L s hs
+
+theorem count_take_lt_of_lt (L : List Nat) (j s : Nat) (hj : j < s) (hs : s < L.length) :
+    (L.take j).count L[j] < (L.take s).count L[j] :=
+  _root_.Silmaril.Formats.Compression.count_take_lt_of_lt L j s hj hs
+
+/-- Every symbol with a nonzero code length in a table built by `HuffmanTable.ofLengths` has a
+code the LSB decoder recovers. -/
+theorem HuffmanTable.ofLengths_symOK {L : CodeLengths} {M : Nat} {t : HuffmanTable}
+    (h : HuffmanTable.ofLengths L M = some t) {s : Nat} (hs : s < L.length)
+    (hpos : 0 < L[s]) : t.SymOK s :=
+  _root_.Silmaril.Formats.Compression.HuffmanTable.ofLengths_symOK h hs hpos
 
 end Silmaril.Formats.Compression.Deflate
