@@ -29,6 +29,25 @@ some reachable returned state, not the first one.
 (`SegVC.Call`). `Spec.comap` pulls a spec back along a machine extension's view; the transfer
 theorem `Spec.Total.lift` is in `FnContract/Thms.lean`.
 
+**First return.** On an open machine a run continues into the caller after the return, so
+`Spec.Total` only promises *some* reachable returned state. The first-return layer makes the
+first return the meaning of a contract:
+
+* `RunsIn I P s t`: a run from `s` to `t` whose every step is taken from a state satisfying
+  `P` (the final state is unconstrained);
+* `Returned I s m`: the function entered at `s` has returned in `m` (`rip` at the entry's
+  return address, `rsp` popped past it); `FirstReturn I s t`: `t` is the first such state;
+* `Spec.TotalIn I S P`: `Spec.Total` with the run inside `P s`; `Spec.Strict`: a `TotalIn`
+  whose run passes no returned state before its last step, so its result is the first
+  return; `Spec.StrictBelow`: `Strict` with the stack-depth invariant `Below` (the stack
+  pointer never rises above the entry's), the form that composes across calls;
+* `InCode`, `RetOutside`: the program counter inside the code, the return address outside
+  it (a run inside the code is strict when the return address is outside);
+* `FnContract.Strict`: a contract with a strict proof.
+
+`Spec.Strict.total` recovers `Spec.Total`; the transfers along machine extensions
+(`Spec.Strict.lift`, `Spec.StrictBelow.lift`, `Strict.lift`) are in `FnContract/Thms.lean`.
+
 This is a contract layer over the handwritten machine models, not an ABI-conformance claim
 beyond the stated hypotheses.
 -/
@@ -108,6 +127,61 @@ structure ReturnsPost (S : Spec MState) (m fin : MState) : Prop where
   frame : m.memory.WritesWithin fin.memory (S.footprint m)
   post : S.post m fin
 
+/-! ## First return -/
+
+/-- Runs of the machine `I` that take every step from a state satisfying `P` (the final
+state is unconstrained). -/
+inductive RunsIn (I : Isa σ) (P : σ → Prop) : σ → σ → Prop
+  | refl (s : σ) : RunsIn I P s s
+  | step {s s' t : σ} : P s → I.step s = some s' → RunsIn I P s' t → RunsIn I P s t
+
+/-- The function entered at `s` has returned in `m`: `rip` at the entry's return address
+and `rsp` popped past it. -/
+def Returned (I : Isa σ) (s m : σ) : Prop :=
+  (I.core m).rip = retOf (I.core s) (I.mem s) ∧
+    (I.core m).read .rsp = (I.core s).read .rsp + 8#64
+
+/-- `t` is the **first** returned state of the run from `s`. -/
+def FirstReturn (I : Isa σ) (s t : σ) : Prop :=
+  RunsIn I (fun m => ¬ Returned I s m) s t ∧ Returned I s t
+
+/-- The stack-depth invariant: the stack pointer of `m` is at or below the entry's (as
+unsigned numbers). With `(rsp s).toNat + 8 < 2^64` it excludes `Returned I s m`
+(`not_returned_of_below`), and it composes across calls. -/
+def Below (I : Isa σ) (s m : σ) : Prop :=
+  ((I.core m).read .rsp).toNat ≤ ((I.core s).read .rsp).toNat
+
+/-- The program counter lies inside `len` bytes of code at `base`. -/
+def InCode (I : Isa σ) (base : Word) (len : Nat) (m : σ) : Prop :=
+  ∃ o, o < len ∧ (I.core m).rip = base + BitVec.ofNat 64 o
+
+/-- The return address of the entry state lies outside `len` bytes of code at `base`. -/
+def RetOutside (I : Isa σ) (base : Word) (len : Nat) (s : σ) : Prop :=
+  ∀ o, o < len → retOf (I.core s) (I.mem s) ≠ base + BitVec.ofNat 64 o
+
+/-- `Spec.Total` with the run restricted to steps from states satisfying `P s` (`s` the
+entry state). -/
+def Spec.TotalIn (I : Isa σ) (S : Spec σ) (P : σ → σ → Prop) : Prop :=
+  ∀ s, I.live s → AbiEntry (I.core s) (I.mem s) → S.entry s →
+    ∃ t, RunsIn I (P s) s t ∧ S.Result I s t
+
+/-- **Strict (first-return) total correctness**: from every entry state, the run reaches a
+result state without passing through a returned state before (so the result is the
+*first* return, `Spec.Strict.firstReturn`). -/
+def Spec.Strict (I : Isa σ) (S : Spec σ) : Prop :=
+  S.TotalIn I fun s m => ¬ Returned I s m
+
+/-- Strict total correctness with the stack-depth invariant `Below`: the form that composes
+across calls (a caller sees no return of its own inside a deeper callee's run). -/
+def Spec.StrictBelow (I : Isa σ) (S : Spec σ) : Prop :=
+  S.TotalIn I fun s m => ¬ Returned I s m ∧ Below I s m
+
+/-- `S` with its precondition strengthened by `P` (for instance by `RetOutside`). -/
+def Spec.restrict (S : Spec σ) (P : σ → Prop) : Spec σ where
+  entry s := S.entry s ∧ P s
+  footprint := S.footprint
+  post := S.post
+
 end FnContract
 
 /-- **A total System V function contract** over the machine `I`. -/
@@ -129,5 +203,10 @@ def toCall (C : FnContract I) : Call I where
   runs s hl h := C.total s hl h.1 h.2
 
 end FnContract
+
+/-- **A strict (first-return) System V function contract**: a `FnContract` whose spec is
+also strictly totally correct (`Spec.Strict`). -/
+structure FnContract.Strict {σ : Type} (I : Isa σ) extends FnContract I where
+  strict : toSpec.Strict I
 
 end Silmaril.X86

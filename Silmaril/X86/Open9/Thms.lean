@@ -17,7 +17,9 @@ import Silmaril.Proofs.X86.Open9.Step
 * `extendsOpen : Open.isa.Extends Open9.isa`: every open step is an `Open9` step
   (`step_of_open`), hence `run_of_open`, `reaches_of_open`.
 * `FnContract.Spec.Total.toOpen9`, `FnContract.toOpen9`: **every contract on `Open.isa` is a
-  contract on `Open9.isa`** with the same spec.
+  contract on `Open9.isa`** with the same spec; `FnContract.Spec.Strict.toOpen9`,
+  `FnContract.Spec.StrictBelow.toOpen9`, `FnContract.Strict.toOpen9`: the same for strict
+  (first-return) specs and contracts.
 * `returns_open9`, `total_of_returns`, `contractOfReturns`: a callee proved under
   `Ext9.Returns R` is an `Open9` run ending at `R`, and a contract.
 * `fetch8_undecodable_of`, `step_of_fetch_new`: the fetch form of the law for new forms, for
@@ -168,5 +170,20 @@ def toOpen9 (C : FnContract Open.isa) : FnContract Open9.isa :=
   ⟨C.toSpec, C.total.toOpen9⟩
 
 @[simp] theorem toOpen9_toSpec (C : FnContract Open.isa) : C.toOpen9.toSpec = C.toSpec := rfl
+
+/-- **A strict (first-return) spec on the `Ext8` open machine is strict on the `Ext9` one.** -/
+theorem Spec.Strict.toOpen9 {S : Spec MState} (h : S.Strict Open.isa) : S.Strict Open9.isa :=
+  h.lift Open9.extendsOpen
+
+theorem Spec.StrictBelow.toOpen9 {S : Spec MState} (h : S.StrictBelow Open.isa) :
+    S.StrictBelow Open9.isa :=
+  h.lift Open9.extendsOpen
+
+/-- **Every strict `Ext8` open-machine contract is a strict `Ext9` open-machine contract.** -/
+def Strict.toOpen9 (C : FnContract.Strict Open.isa) : FnContract.Strict Open9.isa :=
+  ⟨C.toFnContract.toOpen9, C.strict.toOpen9⟩
+
+@[simp] theorem Strict.toOpen9_toSpec (C : FnContract.Strict Open.isa) :
+    C.toOpen9.toSpec = C.toSpec := rfl
 
 end Silmaril.X86.FnContract
