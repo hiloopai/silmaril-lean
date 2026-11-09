@@ -26,9 +26,8 @@ open Silmaril.Machine.Execution (Reaches)
 open Silmaril.X86.SegVC (Isa)
 open Silmaril.X86.Sep
 open Silmaril.X86.Sep.Frag (union Disjoint Le reval)
-open Silmaril.Proofs.X86.Sep (sep_reval_le regAny_reval_exact regPt_dom regAny_dom
-  ripPt_dom flagsAny_dom sep_dom_left sep_dom_right ripPt_reval flagsAny_reval
-  regAny_reval emp_reval none_of_disjoint call_step)
+open Silmaril.Proofs.X86.Sep (sep_reval_le regAny_reval_exact regAny_dom
+  sep_dom_left sep_dom_right regAny_reval emp_reval none_of_disjoint call_step)
 
 variable {σ : Type} {I : Isa σ}
 
