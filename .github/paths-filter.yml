@@ -32,3 +32,10 @@ environments:
   - 'Makefile'
   - 'scripts/sil'
   - '.github/**'
+
+rust:
+  - 'tools/silmaril-project/**'
+  # read by the crate's tests (include_str!): the Lean load order and the records JSON Schema
+  - 'Silmaril/Project/Registry/Load/Defs.lean'
+  - 'docs/schemas/**'
+  - '.github/**'
