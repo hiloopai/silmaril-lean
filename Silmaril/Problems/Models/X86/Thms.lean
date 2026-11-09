@@ -27,7 +27,7 @@ Proved with the standard axioms; the longer proofs are in
 `looseSv1_eq_top` (`looseSv1 D` is the top of `Exact.Sig.sv1 (str9Part D)`),
 `admissible_iff_model`, `fnJ_iff_sat`, **`fnCorrect_below_iff_thm`** (`FnCorrect` over the
 down-set of a signature's top is validity in its room) and **`refutesOn_below_iff_csa`** (a
-`RefutesOn` over the down-set is a countermodel). Given `Task.sv1Tight` and the decoder check
+`RefutesOn` over the down-set is a countermodel). Given the decoder check
 of the table, `open9_le_looseSv1` and `str9_le_looseSv1` put `Open9` and `Str9` below the
 top, and `fnCorrectDet_open9`, `fnCorrectDet_str9` turn a loose solution into the
 deterministic `Spec.Total` form on them.
@@ -134,34 +134,30 @@ end
 section
 variable {D : DTable LForm}
 
-/-- Given `Task.sv1Tight`, `Open9` is below the loose top over a table whose `Str9` part
+/-- `Open9` is below the loose top over a table whose `Str9` part
 `Open9.decode` reads. -/
-theorem open9_le_looseSv1 (h : Silmaril.X86.Exact.Task.sv1Tight)
-    (hD : Silmaril.X86.Exact.DTable.okOpen9 (str9Part D) = true) :
+theorem open9_le_looseSv1 (hD : Silmaril.X86.Exact.DTable.okOpen9 (str9Part D) = true) :
     Le (RelIsa.ofIsa Silmaril.X86.Open9.isa) (looseSv1 D) :=
   (Silmaril.X86.Exact.open9_le_exact hD).trans
-    (Sig.top_le _ (Silmaril.X86.Exact.sv1_le_exact h _))
+    (Sig.top_le _ (Silmaril.X86.Exact.sv1_le_exact _))
 
-/-- Given `Task.sv1Tight`, `Str9` is below the loose top over a table whose `Str9` part
+/-- `Str9` is below the loose top over a table whose `Str9` part
 `Str9.decode` reads. -/
-theorem str9_le_looseSv1 (h : Silmaril.X86.Exact.Task.sv1Tight)
-    (hD : Silmaril.X86.Exact.DTable.decodes Silmaril.X86.Str9.isa (str9Part D) = true) :
+theorem str9_le_looseSv1 (hD : Silmaril.X86.Exact.DTable.decodes Silmaril.X86.Str9.isa (str9Part D) = true) :
     Le (RelIsa.ofIsa Silmaril.X86.Str9.isa) (looseSv1 D) :=
   (Silmaril.X86.Exact.str9_le_exact hD).trans
-    (Sig.top_le _ (Silmaril.X86.Exact.sv1_le_exact h _))
+    (Sig.top_le _ (Silmaril.X86.Exact.sv1_le_exact _))
 
-/-- A loose solution gives the deterministic form on `Open9` (given `Task.sv1Tight`). -/
-theorem fnCorrectDet_open9 (h : Silmaril.X86.Exact.Task.sv1Tight)
-    (hD : Silmaril.X86.Exact.DTable.okOpen9 (str9Part D) = true) {S : Word → Spec MState}
+/-- A loose solution gives the deterministic form on `Open9`. -/
+theorem fnCorrectDet_open9 (hD : Silmaril.X86.Exact.DTable.okOpen9 (str9Part D) = true) {S : Word → Spec MState}
     (hS : FnCorrect (Class.below (looseSv1 D)) S) : FnCorrectDet Silmaril.X86.Open9.isa S :=
-  fnCorrectDet_of_fnCorrect hS (open9_le_looseSv1 h hD)
+  fnCorrectDet_of_fnCorrect hS (open9_le_looseSv1 hD)
 
-/-- A loose solution gives the deterministic form on `Str9` (given `Task.sv1Tight`). -/
-theorem fnCorrectDet_str9 (h : Silmaril.X86.Exact.Task.sv1Tight)
-    (hD : Silmaril.X86.Exact.DTable.decodes Silmaril.X86.Str9.isa (str9Part D) = true)
+/-- A loose solution gives the deterministic form on `Str9`. -/
+theorem fnCorrectDet_str9 (hD : Silmaril.X86.Exact.DTable.decodes Silmaril.X86.Str9.isa (str9Part D) = true)
     {S : Word → Spec MState} (hS : FnCorrect (Class.below (looseSv1 D)) S) :
     FnCorrectDet Silmaril.X86.Str9.isa S :=
-  fnCorrectDet_of_fnCorrect hS (str9_le_looseSv1 h hD)
+  fnCorrectDet_of_fnCorrect hS (str9_le_looseSv1 hD)
 
 end
 
