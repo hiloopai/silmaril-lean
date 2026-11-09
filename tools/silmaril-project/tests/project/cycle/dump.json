@@ -1,0 +1,43 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "children",
+   "name": "c.a",
+   "module": "X",
+   "children": [
+    "c.b"
+   ]
+  },
+  {
+   "kind": "children",
+   "name": "c.b",
+   "module": "X",
+   "children": [
+    "c.a"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "c.a",
+   "module": "X"
+  }
+ ],
+ "problems": [
+  {
+   "name": "c.a",
+   "decl": "X.a",
+   "module": "X"
+  },
+  {
+   "name": "c.b",
+   "decl": "X.b",
+   "module": "X"
+  }
+ ],
+ "solutions": []
+}

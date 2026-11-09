@@ -1,0 +1,6 @@
+error: silmaril/dag.toml:4: group dc.all: child dc.nope is not a problem or group
+summary: 1 problems (1 local), 1 groups, 3 records, 1 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 1 unknown (all 1 problems); 0 holds, 0 fails, 1 unknown (1 local)
+root: dc.all
+group dc.all: [dc.a=OPN]
+exit: failed

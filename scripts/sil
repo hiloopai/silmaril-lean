@@ -7,7 +7,8 @@ usage() {
 Usage: sil <family> <command> [arguments...]
 
 Families:
-  wasm    WebAssembly tools
+  wasm      WebAssembly tools
+  project   Silmaril projects: records, artifacts, the problem DAG
 
 Commands:
   sil wasm as          Assemble text into a binary module
@@ -18,8 +19,19 @@ Commands:
   sil wasm ctor-eval   Evaluate a supported constructor
   sil wasm metadce     Remove code using a reachability graph
 
-Run `sil wasm <command> --help` for tool options.
-Build tools with `make tools`; see docs/projects/wasm.md for contracts and limits.
+  sil project init       Write silmaril.toml, the artifact registry and a records file
+  sil project artifacts  Add a file to the artifact registry
+  sil project lock       Hash the registry's files
+  sil project lint       Check records files and the registry without Lean
+  sil project dump       Build the project's modules and write the Lean dump
+  sil project check      Check the dump: references, provenance, the DAG, statuses
+  sil project sqlite     Check, then write the canonical SQL and the SQLite database
+  sil project explore    Write a static HTML page over the database
+  sil project schema     Print the records-file schema as JSON Schema
+
+Run `sil wasm <command> --help` or `sil project --help` for options.
+Build the Wasm tools with `make tools` (docs/projects/wasm.md) and `sil project` with
+`make project-tool` (docs/projects/silmaril-projects.md).
 EOF
 }
 
@@ -27,6 +39,20 @@ case "${1:-}" in
     ''|-h|--help|help) usage; exit 0 ;;
     --version) echo 'sil 0.1.0'; exit 0 ;;
     wasm) shift ;;
+    project)
+        shift
+        # `silmaril-project` is a Cargo binary: staged next to this script by `make
+        # project-tool`, else a build in tools/silmaril-project, else on PATH.
+        script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+        crate="$script_dir/../tools/silmaril-project"
+        for bin in "$script_dir/silmaril-project" \
+            "${CARGO_TARGET_DIR:-$crate/target}/release/silmaril-project" \
+            "${CARGO_TARGET_DIR:-$crate/target}/debug/silmaril-project"; do
+            if [ -x "$bin" ]; then exec "$bin" "$@"; fi
+        done
+        if command -v silmaril-project >/dev/null 2>&1; then exec silmaril-project "$@"; fi
+        echo "sil: silmaril-project is not built; run 'make project-tool' from the repository root" >&2
+        exit 127 ;;
     *) echo "sil: unknown family: $1 (see sil --help)" >&2; exit 2 ;;
 esac
 

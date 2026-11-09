@@ -30,6 +30,7 @@ jobs:
       lean: ${{ steps.paths.outputs.lean }}
       probes: ${{ steps.paths.outputs.probes }}
       environments: ${{ steps.paths.outputs.environments }}
+      rust: ${{ steps.paths.outputs.rust }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -64,9 +65,14 @@ jobs:
     if: needs.changes.outputs.environments == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/development-environments.yml
 
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci-rust.yml
+
   result:
     name: CI
-    needs: [changes, helpers, lean, probes, environments]
+    needs: [changes, helpers, lean, probes, environments, rust]
     if: always() && !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -79,7 +85,7 @@ jobs:
           jq -e '
             . as $jobs |
             .changes.result == "success" and .helpers.result == "success" and
-            all(["lean", "probes", "environments"][]; . as $name |
+            all(["lean", "probes", "environments", "rust"][]; . as $name |
               if $jobs.changes.outputs[$name] == "true" or env.FORCE_ALL == "true"
               then $jobs[$name].result == "success"
               else $jobs[$name].result == "skipped" or $jobs[$name].result == "success"

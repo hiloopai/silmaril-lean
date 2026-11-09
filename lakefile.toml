@@ -63,6 +63,32 @@ rev = "13567aed1ac4f12aea9484178e07e51f8c9f7658"
 [[lean_lib]]
 name = "Silmaril"
 globs = ["Silmaril.*"]
+
+# The `sil project` self-test (examples/project/selftest.sh). Its module reads files while it
+# elaborates: the records files and the registry under `silmaril/` (`silmaril load`, `silmaril
+# artifacts`) and the files the registry names (`silmaril value`). Lake sees such reads only
+# through the `needs` of the module's library, and it mixes a library's `needs` into the trace
+# of every module of that library, so the readers have a library of their own: an input here
+# rebuilds only them, never `Silmaril`. (The format examples are also read by
+# `Silmaril.Project.Formats.*.Thms`; they are fixed test vectors with receipts.)
+[[lean_lib]]
+name = "ProjectSelfTest"
+srcDir = "examples/project"
+needs = ["projectRecords", "projectSelfTestData", "projectFormatExamples"]
+
+[[input_dir]]
+name = "projectRecords"
+path = "silmaril"
+filter = { extension = ["toml"] }
+text = true
+
+[[input_dir]]
+name = "projectSelfTestData"
+path = "examples/project/data"
+
+[[input_dir]]
+name = "projectFormatExamples"
+path = "examples/project-formats"
 [[lean_exe]]
 name = "wasm-as"
 root = "WasmAsCompat"

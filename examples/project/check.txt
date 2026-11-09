@@ -1,0 +1,30 @@
+summary: 34 problems (34 local), 3 groups, 102 records, 38 edges, 4 artifacts
+verdicts: 8 holds, 2 fails, 24 unknown (all 34 problems); 8 holds, 2 fails, 24 unknown (34 local)
+root: silmaril.selftest.all
+predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails
+predicate silmaril.selftest.square (arity 1): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.elf.entry (arity 4): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.elf.entry.x86 (arity 3): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.elf.fn_contract (arity 7): status OPN [], verdict unknown
+predicate silmaril.shapes.elf.fn_contract.x86_open (arity 5): status OPN [], verdict unknown
+predicate silmaril.shapes.elf.fn_contract.x86_open9 (arity 5): status OPN [], verdict unknown
+predicate silmaril.shapes.elf.loads (arity 6): status OPN [], verdict unknown
+predicate silmaril.shapes.elf.loads.x86 (arity 5): status OPN [], verdict unknown
+predicate silmaril.shapes.format.agree (arity 5): status OPN [], verdict unknown
+predicate silmaril.shapes.format.parses (arity 3): status OPN [], verdict unknown
+predicate silmaril.shapes.value.satisfies (arity 3): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.x86.abi_function (arity 3): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.abi_function.open (arity 2): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.abi_function.open9 (arity 2): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.abi_function.str9 (arity 2): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.contract (arity 2): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.contract.open (arity 1): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.contract.open9 (arity 1): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.contract.str9 (arity 1): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.contract_strict (arity 2): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.correct (arity 2): status OPN [], verdict unknown
+predicate silmaril.shapes.x86.correct_loose (arity 2): status OPN [], verdict unknown
+group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(2 holds, 0 fails, 21 unknown)]
+group silmaril.selftest.formats: [silmaril.selftest.module.parses=THM, silmaril.selftest.exit.parses=THM, silmaril.selftest.exit.entry=THM]
+group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN]
+provenance: 1 derivations; 1 of 4 local artifacts have one

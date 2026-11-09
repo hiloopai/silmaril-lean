@@ -79,6 +79,11 @@ name = "Science"
 scope = "Units, physical constants and other scientific world models."
 deps = ["Prelude", "Numeric"]
 
+[[region]]
+name = "Project"
+scope = "Silmaril projects: artifact types, formats and values, problems over arguments, the problem DAG, records files, rooms, the standard shapes (formats and values, ELF executables, x86-64 functions) and format adapters over silmaril's parsers; the records `sil project` dumps and checks. Also imports the Problems core, model classes and shapes, and the include-bytes helper."
+deps = ["Formats", "Logic", "Process", "Wasm", "Machine"]
+
 # Views are leaves: no region imports them. Papers, Standards and Thesis
 # re-export and restate; Courses may include self-contained teaching proofs.
 [[view]]
