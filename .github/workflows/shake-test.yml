@@ -75,15 +75,26 @@ jobs:
           git diff --shortstat | tee out/shake-shortstat.txt
           python3 -I cutoff/count_imports.py Silmaril Silmaril.lean examples/project | tee out/imports-after.json
           exit $rc
-      - name: Full build of the shaken tree
+      - name: Full build of the shaken tree, reverting files shake broke
         if: matrix.tree == 'shaken'
         run: |
-          rc=0; s=$(date +%s.%N); /usr/bin/time -v lake build --wfail -v Silmaril ProjectSelfTest > out/shaken-build.log 2>&1 || rc=$?; e=$(date +%s.%N)
-          python3 -c "print($e - $s)" > out/shaken-build-wall.txt
-          echo "$rc" > out/shaken-build-rc.txt
-          echo "rc=$rc wall=$(cat out/shaken-build-wall.txt) built=$(grep -c ' Built ' out/shaken-build.log)"
-          grep -E '^(error|warning)' out/shaken-build.log | head -50 || true
-          tail -40 out/shaken-build.log
+          : > out/reverted.txt
+          for i in 1 2 3 4 5 6 7 8; do
+            rc=0; s=$(date +%s.%N); /usr/bin/time -v lake build --wfail -v Silmaril ProjectSelfTest > out/shaken-build-$i.log 2>&1 || rc=$?; e=$(date +%s.%N)
+            echo "iteration $i rc=$rc wall=$(python3 -c "print($e - $s)") built=$(grep -c ' Built ' out/shaken-build-$i.log)" | tee -a out/shaken-build-iterations.txt
+            [ $rc = 0 ] && break
+            grep -oE '✖ \[[0-9/]+\] Building \S+' out/shaken-build-$i.log | awk '{print $4}' | sort -u > out/failed-$i.txt
+            wc -l < out/failed-$i.txt
+            [ -s out/failed-$i.txt ] || { tail -40 out/shaken-build-$i.log; exit 1; }
+            while read m; do
+              f=$(echo "$m" | tr . /).lean; [ "$m" = ProjectSelfTest ] && f=examples/project/ProjectSelfTest.lean
+              git checkout HEAD -- "$f" && echo "$m" >> out/reverted.txt
+            done < out/failed-$i.txt
+          done
+          git diff > out/shake-repaired.diff
+          git diff --shortstat | tee out/shake-repaired-shortstat.txt
+          python3 -I cutoff/count_imports.py Silmaril Silmaril.lean examples/project | tee out/imports-repaired.json
+          echo "reverted $(wc -l < out/reverted.txt) files"
           exit $rc
       - name: Snapshot and run the statement edit
         run: |
@@ -106,6 +117,9 @@ jobs:
         run: |
           lake build Silmaril > /dev/null 2>&1 || true
           lake shake $(cat out/shake-mods.txt) > out/shake-second.log 2>&1; echo "second shake rc=$?"; grep -c '^' out/shake-second.log
+          git diff --stat HEAD | tail -1
+          git checkout -- Silmaril Silmaril.lean examples
+          git apply out/shake-repaired.diff
           for f in tools/binaryen-lean/*.lean; do
             rc=0; lake env lean "$f" > /dev/null 2> out/exe-root.err || rc=$?
             echo "$f rc=$rc" | tee -a out/exe-roots.txt; head -5 out/exe-root.err
