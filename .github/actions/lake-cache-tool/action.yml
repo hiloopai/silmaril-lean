@@ -3,7 +3,7 @@ description: Install the verified Covalence binary pinned for this repository.
 runs:
   using: composite
   steps:
-    - uses: hiloopai/covalence/.github/actions/lake-cache@2f622ca082a77e6252840601e7c4028e15db2a39
+    - uses: hiloopai/covalence/.github/actions/lake-cache@1c667a9a691c9ce135ded2159cf170b25745fd80
       with:
-        revision: '2f622ca082a77e6252840601e7c4028e15db2a39'
-        sha256: '0fa841dbcf6bd45a060739a5f09324de8f326d186ce2f10b9c69ddd1efd6a096'
+        revision: '1c667a9a691c9ce135ded2159cf170b25745fd80'
+        sha256: '702a0c7e7d0818c053206742208387dd22ccee4d5ad2e5b672e28a8dde77fcd3'

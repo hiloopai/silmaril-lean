@@ -23,14 +23,21 @@ jobs:
       # Public Linux runners have four cores and 16 GB RAM.
       LEAN_NUM_THREADS: 2
       LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
-      LAKE_CI_PREFIX: silmaril-lean/lake
       AWS_REGION: us-east-1
+      # Every Lake run reads and fills one artifact cache. It lives in .lake so
+      # the disk cache below carries it; otherwise each run re-copies every
+      # module's outputs into a fresh cache.
+      LAKE_CACHE_DIR: ${{ github.workspace }}/.lake/cache
+      LAKE_ARTIFACT_CACHE: 'true'
       # Only main pushes publish; every other run reads.
       CACHE_PUBLISH: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `cov-lake-cache get` restores the nearest of 64 first-parent ancestors
+          # that main published; a shallower checkout cannot see them.
+          fetch-depth: 65
       - name: Record runner capacity
         run: |
           nproc
@@ -67,8 +74,9 @@ jobs:
           role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-${{ env.CACHE_PUBLISH == 'true' && 'write' || 'read' }}-lean-cas
           aws-region: us-east-1
           role-duration-seconds: 7200
-      - name: Fetch public dependency artifacts on a disk miss
-        if: steps.disk.outputs.cache-matched-key == ''
+      - name: Fetch dependency artifacts on a disk miss
+        # The pool needs credentials; fork pull requests build instead.
+        if: steps.disk.outputs.cache-matched-key == '' && steps.credentials.outcome == 'success'
         run: cov-lake-cache dependencies
       - name: Fill missing build artifacts from the optional S3 cache
         # Lake validates current sources when it unpacks restored artifacts.
@@ -77,7 +85,7 @@ jobs:
         run: cov-lake-cache get --repository hiloopai/silmaril-lean
       - name: Build all Lean modules and run every native release check
         env:
-          LAKE_CACHE_RECORD: ${{ env.CACHE_PUBLISH == 'true' && steps.disk.outputs.cache-hit != 'true' && 'build/lake-cache/root' || '' }}
+          LAKE_CACHE_RECORD: ${{ env.CACHE_PUBLISH == 'true' && steps.disk.outputs.cache-hit != 'true' && 'build/lake-cache' || '' }}
         run: |
           du -sh .lake
           df -h .
