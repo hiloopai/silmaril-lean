@@ -104,7 +104,7 @@ run another build.
 CI gets short-lived credentials through GitHub OIDC; no cache key is stored in
 the repository. Pushes to `main` assume a role that may write this prefix; every
 other run assumes a read-only role. Fork pull requests receive no OIDC token and
-use the disk cache or build normally. Remote failures remain visible and do not
+build normally. Remote failures remain visible and do not
 suppress proof checks.
 
 Covalence owns the transfer, corruption and real-Lean integration tests. This

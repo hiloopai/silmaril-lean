@@ -26,46 +26,30 @@ outside this measurement. Reruns use the current attempt's start time.
 
 ## Cache and first run
 
-1. Restore `.lake` from GitHub's cache archive. This downloads and extracts an
-   archive onto the runner disk; it is not an attached persistent volume.
-   Its key includes the runner OS and
-   architecture, exact toolchain/dependency/configuration hashes, and commit.
-   A compatible earlier main snapshot is a fallback.
-2. On a disk miss, fetch public dependency artifacts and try the optional S3
-   cache. The shared Covalence tool uses the existing main-only writer environment. Pull
-   requests can use a read key or public URL if configured; neither is required
-   for the disk cache. A cache miss still runs the correctness checks.
-3. Lake checks the current input traces. Cache presence never counts as a
+1. `make cache` restores the dependencies and this repository's packages from the
+   shared Lake pool: main's build at `HEAD`, else at its nearest published
+   first-parent ancestor. The pool is shared with every repository on the same
+   platform, Lean version and archive tool. Lake keeps the artifacts in one
+   artifact cache, so the build compiles only what changed since that commit.
+2. Lake checks the current input traces. Cache presence never counts as a
    passing test, and all native regression suites still run.
-4. After successful checks, canonical main publishes to S3 and saves a new disk
-   snapshot. An exact disk hit avoids both writes. Pull-request events never publish.
-   GitHub's branch-scoped cache prevents a pull-request cache from replacing the
-   default-branch entry.
+3. After successful checks, every main push records its build of every
+   `make check` target and publishes what the pool lacks. Only main can assume the
+   writer role; every other run reads. Fork pull requests get no OIDC token: they
+   build without the pool, which does not fit the automatic limit.
 
-Run **CI** manually with **seed** checked to build a missing cache. This runs
-all correctness checks, with a 90-minute Lean limit, then saves the disk snapshot
-on the triggering branch. Only this explicit manual mode skips the four-minute
-timing check. An ordinary manual `CI` run on the same branch then measures the
-full warm path, including the timing check. This works before a PR is merged.
-
-Manual seeds in the canonical repository can write only the triggering ref's
-GitHub cache; they cannot create an entry visible to main from another branch.
-They do not receive S3 writer access. After this workflow reaches main, seed
-**main** once if it has no compatible cache. Repeat after a toolchain change or
-eviction if an automatic 15-minute job cannot finish cold. Subsequent main
-pushes refresh disk and S3 snapshots. No scheduled cold builds are added.
+After a toolchain or archive-tool change no published build matches. Run **CI**
+manually on **main** with **seed** checked: it builds cold with a 90-minute Lean
+limit, runs all correctness checks, and publishes. Only this explicit manual mode
+skips the four-minute timing check.
 
 The public Linux runner has four CPUs and 16 GB RAM. `LEAN_NUM_THREADS=2`
 limits Lake's worker pool; native suites retain their existing two workers.
 Logs record available disk and memory, build-tree size and `time -v` results.
 The latter reports the largest process RSS, not total concurrent memory.
-The first seeded GitHub run must establish total memory, disk and transfer
-costs before treating this setup as a measured four-minute solution. Native
-toolchain cache entries can be several GB; GitHub cache eviction is expected.
 Changed-main S3 publication remains inside the time budget and can cause it
 to fail even when correctness passes.
 
-Thomas owns the disk-cache layer, manual seed and timing helper. Remove the
-disk cache and seed when the standard Lean action supports the same main-only
-publication and warm restore without them; remove the timing helper when
+Thomas owns the manual seed and timing helper. Remove the seed when the standard
+Lean action supports main-only publication without it; remove the timing helper when
 GitHub supplies a separate elapsed-time check that lets correctness finish.
