@@ -28,11 +28,13 @@ library:
 # Everything `make check` builds; a recorded build publishes exactly these.
 CHECK_TARGETS := Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
 
+# With the pool bucket, start from main's published seed (the whole recorded
+# build in bulk streams, dependencies included) and build CHECK_TARGETS.
 cache:
-	LAKE=$(LAKE) cov-lake-cache dependencies
 	@if [ -n "$(LAKE_CI_BUCKET)" ]; then \
-		cov-lake-cache get --repository hiloopai/silmaril-lean; \
+		LAKE=$(LAKE) cov-lake-cache get --seed --repository hiloopai/silmaril-lean -- $(CHECK_TARGETS); \
 	else \
+		LAKE=$(LAKE) cov-lake-cache dependencies; \
 		echo 'No remote artifact bucket configured; public dependencies are ready.'; \
 	fi
 
@@ -104,7 +106,7 @@ demo-sha256:
 help:
 	@echo 'make tools    Build seven native Wasm tools and stage build/bin/sil'
 	@echo 'make library  Check every included Lean library module'
-	@echo 'make cache    Fetch public dependency artifacts and optional S3 build artifacts'
+	@echo 'make cache    Restore dependencies; with LAKE_CI_BUCKET, the seed of main and the check targets'
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
 	@echo 'make project-tool   Build sil project (Cargo) and stage it in build/bin'
 	@echo 'make project-check  Run the sil project self-test: init, lock, lint, dump, check, explore'
