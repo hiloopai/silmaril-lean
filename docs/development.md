@@ -74,8 +74,10 @@ Shared test libraries can grow alongside the other tool families.
 
 Install `cov-lake-cache` from the [Covalence releases](https://github.com/hiloopai/covalence/releases).
 The revision and archive checksum used by CI are in `.github/actions/lake-cache-tool`.
-`make cache` fetches public dependency artifacts. If `LAKE_CI_BUCKET` is set, it
-also restores the available project artifacts. A normal clone needs no credentials.
+`make cache` fetches dependency artifacts from the shared Lake pool, and from
+Mathlib's upstream snapshot for any the pool lacks. If `LAKE_CI_BUCKET` is set, it
+also restores the project's artifacts. The pool needs read credentials; without
+them, build normally.
 
 With read access to the project's S3 cache, use the standard AWS credential
 chain (a role, an instance profile or web identity):
@@ -83,17 +85,19 @@ chain (a role, an instance profile or web identity):
 ```sh
 export AWS_REGION=us-east-1
 export LAKE_CI_BUCKET=hiloop-lean-cas-607856468300-us-east-1
-export LAKE_CI_PREFIX=silmaril-lean/lake
+export LAKE_CACHE_DIR=$HOME/.cache/lake
+export LAKE_ARTIFACT_CACHE=true
 make cache
 ```
 
 The shared tool uses Covalence's S3 transport. It compresses Lake's native
-artifacts and records mappings for the successful build. Cache keys include the
-repository, platform, Lean version, dependency pins and Lake configuration.
+artifacts and records mappings for the successful build. The pool is shared by
+every repository on the same platform, Lean version and archive tool; each
+commit's revision map names its outputs.
 Lake validates restored artifacts; `make check` still runs every native test.
 
-`LAKE_CACHE_RECORD=build/lake-cache/root make check` records a successful build
-from a clean checkout. After all checks pass, trusted main CI calls
+`LAKE_CACHE_RECORD=build/lake-cache make check` records a successful build of every
+`make check` target from a clean checkout. After all checks pass, trusted main CI calls
 `cov-lake-cache put --repository hiloopai/silmaril-lean`. Publication does not
 run another build.
 

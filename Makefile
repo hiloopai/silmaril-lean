@@ -25,6 +25,9 @@ stage:
 library:
 	$(LAKE) build --wfail Silmaril
 
+# Everything `make check` builds; a recorded build publishes exactly these.
+CHECK_TARGETS := Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
+
 cache:
 	LAKE=$(LAKE) cov-lake-cache dependencies
 	@if [ -n "$(LAKE_CI_BUCKET)" ]; then \
@@ -35,9 +38,12 @@ cache:
 
 check:
 	scripts/check-layout.sh
+	@if [ -n "$(LAKE_CACHE_RECORD)" ]; then \
+		LAKE=$(LAKE) cov-lake-cache build --repository hiloopai/silmaril-lean --record "$(LAKE_CACHE_RECORD)" -- $(CHECK_TARGETS); \
+	fi
 	$(MAKE) process-check
 	$(MAKE) project-lean
-	$(PYTHON) tools/binaryen-lean/check-release.py --build $(if $(LAKE_CACHE_RECORD),--record-cache "$(LAKE_CACHE_RECORD)") --report build/wasm-checks.json
+	$(PYTHON) tools/binaryen-lean/check-release.py --build --report build/wasm-checks.json
 	$(MAKE) stage
 
 process-check:
