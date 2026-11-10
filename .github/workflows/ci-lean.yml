@@ -13,14 +13,20 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-24.04
+    # Pull requests use free public runners. The main publisher records and
+    # uploads the whole build, so it runs on a larger Blacksmith runner; it is
+    # main-only, so forks never reach it. Same condition as CACHE_PUBLISH.
+    runs-on: >-
+      ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) &&
+          'blacksmith-16vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.seed && 90 || 15 }}
     permissions:
       contents: read
       # GitHub OIDC for the shared Lean CAS roles (hiloop live/aws-foundation/lean-cas.tf).
       id-token: write
     env:
-      # Public Linux runners have four cores and 16 GB RAM.
+      # Public Linux runners have four cores and 16 GB RAM; the publisher has more.
       LEAN_NUM_THREADS: 2
       LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
       AWS_REGION: us-east-1
