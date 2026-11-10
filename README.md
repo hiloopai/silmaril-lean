@@ -112,6 +112,6 @@ repositories.
 ### Shared build artifacts
 
 Install `cov-lake-cache` from the [public Covalence releases](https://github.com/hiloopai/covalence/releases)
-for `make cache`. CI verifies the pinned binary and keeps disk outputs first.
+for `make cache`. CI verifies the pinned binary and restores from the shared pool.
 See [cache setup and publication](docs/development.md#s3-compatible-build-cache)
 for credentials, build recording and the ownership of this integration.
