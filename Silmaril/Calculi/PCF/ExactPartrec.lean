@@ -177,7 +177,7 @@ theorem rfind_eval_inv {p : Bool} {n : ℕ} {k' : Closed p (Ty.arrows (n + 1))}
       EvalWithin k (Term.apps (.app (rfindAux k') u) us) (Term.num y) →
       c y = 0 ∧ z ≤ y ∧ ∀ a, z ≤ a → a < y → c a ≠ 0 := by
   induction k using Nat.strong_induction_on with
-  | h k ih =>
+  | _ k ih =>
       intro z u y hu he
       rw [← Term.apps_cons] at he
       obtain ⟨l, hl, hb⟩ := EvalWithin.apps_fix_lams_inv (by omega)
