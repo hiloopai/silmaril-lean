@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tree: [main, shaken]
+        tree: [shaken]
     env:
       LEAN_NUM_THREADS: 2
       LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
@@ -68,12 +68,9 @@ jobs:
           lake shake --help > out/shake-help.txt 2>&1 || true
           cat out/shake-help.txt
           python3 -I cutoff/count_imports.py Silmaril Silmaril.lean examples/project | tee out/imports-before.json
-          find Silmaril -name '*.lean' | sed 's/\.lean$//; s#/#.#g' | sort > out/mods.txt
-          echo Silmaril >> out/mods.txt; echo ProjectSelfTest >> out/mods.txt
-          wc -l out/mods.txt
-          rc=0; s=$(date +%s.%N); lake shake --fix $(cat out/mods.txt) > out/shake.log 2>&1 || rc=$?; e=$(date +%s.%N)
+          rc=0; s=$(date +%s.%N); python3 -I cutoff/shake_all.py || rc=$?; e=$(date +%s.%N)
           python3 -c "print($e - $s)" > out/shake-wall.txt
-          echo "shake rc=$rc wall=$(cat out/shake-wall.txt)"; tail -5 out/shake.log
+          echo "shake rc=$rc wall=$(cat out/shake-wall.txt)"; tail -5 out/shake.log; cat out/shake-excluded.json | head -40
           git diff > out/shake.diff
           git diff --shortstat | tee out/shake-shortstat.txt
           python3 -I cutoff/count_imports.py Silmaril Silmaril.lean examples/project | tee out/imports-after.json
@@ -108,7 +105,7 @@ jobs:
         continue-on-error: true
         run: |
           lake build Silmaril > /dev/null 2>&1 || true
-          lake shake $(cat out/mods.txt) > out/shake-second.log 2>&1; echo "second shake rc=$?"; grep -c '^' out/shake-second.log
+          lake shake $(cat out/shake-mods.txt) > out/shake-second.log 2>&1; echo "second shake rc=$?"; grep -c '^' out/shake-second.log
           for f in tools/binaryen-lean/*.lean; do
             rc=0; lake env lean "$f" > /dev/null 2> out/exe-root.err || rc=$?
             echo "$f rc=$rc" | tee -a out/exe-roots.txt; head -5 out/exe-root.err
