@@ -1,0 +1,124 @@
+name: Shake test (throwaway)
+
+on:
+  push:
+    branches: ['exp/shake-*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      matrix:
+        tree: [main, shaken]
+    env:
+      LEAN_NUM_THREADS: 2
+      LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
+      LAKE_CI_PREFIX: silmaril-lean/lake
+      AWS_REGION: us-east-1
+      BASE: Silmaril/X86/Machine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Restore main's build tree
+        id: disk
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: .lake
+          key: lake-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json', 'lakefile.toml') }}-551ddad493680359da8bf6fabd287d8a3b245523
+          restore-keys: lake-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json', 'lakefile.toml') }}-
+      - uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
+        with:
+          auto-config: "false"
+          build: "false"
+          test: "false"
+          lint: "false"
+          use-mathlib-cache: "false"
+          use-github-cache: "false"
+      - uses: ./.github/actions/lake-cache-tool
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-read-lean-cas
+          aws-region: us-east-1
+          role-duration-seconds: 7200
+      - name: Fill missing artifacts
+        run: |
+          nproc; free -m; df -h .
+          echo "disk cache matched: ${{ steps.disk.outputs.cache-matched-key }}"
+          cov-lake-cache dependencies
+          cov-lake-cache get --repository hiloopai/silmaril-lean || echo "cache get failed: $?"
+      - name: Warm build of main
+        run: |
+          mkdir -p out
+          lean --version | tee out/lean-version.txt
+          git rev-parse HEAD > out/head.txt
+          rc=0; s=$(date +%s.%N); lake build -v Silmaril ProjectSelfTest > out/warm.log 2>&1 || rc=$?; e=$(date +%s.%N)
+          python3 -c "print($e - $s)" > out/warm-wall.txt
+          tail -5 out/warm.log; echo "rc=$rc wall=$(cat out/warm-wall.txt) built=$(grep -c ' Built ' out/warm.log)"
+          exit $rc
+      - name: Shake
+        if: matrix.tree == 'shaken'
+        run: |
+          lake shake --help > out/shake-help.txt 2>&1 || true
+          cat out/shake-help.txt
+          python3 -I cutoff/count_imports.py Silmaril Silmaril.lean examples/project | tee out/imports-before.json
+          find Silmaril -name '*.lean' | sed 's/\.lean$//; s#/#.#g' | sort > out/mods.txt
+          echo Silmaril >> out/mods.txt; echo ProjectSelfTest >> out/mods.txt
+          wc -l out/mods.txt
+          rc=0; s=$(date +%s.%N); lake shake --fix $(cat out/mods.txt) > out/shake.log 2>&1 || rc=$?; e=$(date +%s.%N)
+          python3 -c "print($e - $s)" > out/shake-wall.txt
+          echo "shake rc=$rc wall=$(cat out/shake-wall.txt)"; tail -5 out/shake.log
+          git diff > out/shake.diff
+          git diff --shortstat | tee out/shake-shortstat.txt
+          python3 -I cutoff/count_imports.py Silmaril Silmaril.lean examples/project | tee out/imports-after.json
+          exit $rc
+      - name: Full build of the shaken tree
+        if: matrix.tree == 'shaken'
+        run: |
+          rc=0; s=$(date +%s.%N); /usr/bin/time -v lake build --wfail -v Silmaril ProjectSelfTest > out/shaken-build.log 2>&1 || rc=$?; e=$(date +%s.%N)
+          python3 -c "print($e - $s)" > out/shaken-build-wall.txt
+          echo "$rc" > out/shaken-build-rc.txt
+          echo "rc=$rc wall=$(cat out/shaken-build-wall.txt) built=$(grep -c ' Built ' out/shaken-build.log)"
+          grep -E '^(error|warning)' out/shaken-build.log | head -50 || true
+          tail -40 out/shaken-build.log
+          exit $rc
+      - name: Snapshot and run the statement edit
+        run: |
+          python3 -I cutoff/snapshot.py out/before.json
+          python3 -I cutoff/edits.py statement
+          git diff -- $BASE.lean | tee out/edit.diff
+          rc=0; s=$(date +%s.%N); /usr/bin/time -v lake build -v Silmaril > out/edit.log 2>&1 || rc=$?; e=$(date +%s.%N)
+          python3 -c "print($e - $s)" > out/edit-wall.txt
+          echo "$rc" > out/edit-rc.txt
+          tail -30 out/edit.log
+          python3 -I cutoff/snapshot.py out/after.json
+          python3 -I cutoff/compare.py out/before.json out/after.json out/edit.log out/edit-wall.txt > out/summary.json
+          head -12 out/summary.json
+          echo "built=$(grep -c ' Built ' out/edit.log) replayed=$(grep -c ' Replayed ' out/edit.log)"
+          git checkout -- $BASE.lean
+          exit $rc
+      - name: Shake idempotence and executable roots
+        if: always() && matrix.tree == 'shaken'
+        continue-on-error: true
+        run: |
+          lake build Silmaril > /dev/null 2>&1 || true
+          lake shake $(cat out/mods.txt) > out/shake-second.log 2>&1; echo "second shake rc=$?"; grep -c '^' out/shake-second.log
+          for f in tools/binaryen-lean/*.lean; do
+            rc=0; lake env lean "$f" > /dev/null 2> out/exe-root.err || rc=$?
+            echo "$f rc=$rc" | tee -a out/exe-roots.txt; head -5 out/exe-root.err
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: shake-${{ matrix.tree }}
+          path: |
+            out/
+            !out/before.json
+            !out/after.json
+          retention-days: 7
