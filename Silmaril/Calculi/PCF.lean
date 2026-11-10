@@ -9,6 +9,7 @@ public import Silmaril.Calculi.PCF.Contextual
 public import Silmaril.Calculi.PCF.Definability
 public import Silmaril.Calculi.PCF.Denotation
 public import Silmaril.Calculi.PCF.Density
+public import Silmaril.Calculi.PCF.ExactPartrec
 public import Silmaril.Calculi.PCF.Examples
 public import Silmaril.Calculi.PCF.Extensionality
 public import Silmaril.Calculi.PCF.FullAbstraction
