@@ -29,7 +29,7 @@ jobs:
       LAKE_ARTIFACT_CACHE: 'true'
       # Main pushes and main seeds publish; every other run reads.
       CACHE_PUBLISH: >-
-        ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
+        ${{ github.repository_id == '1433435622' && github.ref == 'refs/heads/main' &&
             (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
