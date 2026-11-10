@@ -1,0 +1,102 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "artifact",
+   "cid": "bafkr4iaihkuwrqfitdcmcbvqzcmzdml6lqbv4xgaidrldagc24kj7flb34",
+   "module": "X",
+   "type": "blob",
+   "name": "pr.a_c",
+   "paths": [
+    "data/a.c"
+   ],
+   "size": 7
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4ibydiwad5egmb7gcrxcantrks4ist5fnaozwsk7mjdm4ecxgyztg4",
+   "module": "X",
+   "type": "blob",
+   "name": "pr.b_o",
+   "paths": [
+    "data/b.o"
+   ],
+   "size": 9
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4idl66ik6yhyzcq2wsmhyrt73f4kl62cwiz22nwtfrd2cl3lppwjde",
+   "module": "X",
+   "type": "blob",
+   "name": "pr.a_o",
+   "paths": [
+    "data/a.o"
+   ],
+   "size": 9
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4iett2pbcqr3mtlpubgcv6siiv7u5wdu7yfwogextauh3fwau35kcm",
+   "module": "X",
+   "type": "blob",
+   "name": "pr.lost",
+   "paths": [
+    "data/lost.bin"
+   ],
+   "size": 5
+  },
+  {
+   "kind": "artifact",
+   "cid": "bafkr4ifywc5dxwkycvdettqm2bk3ihijioy2ounkisbetigfpzjedajt5a",
+   "module": "X",
+   "type": "blob",
+   "name": "pr.loop",
+   "paths": [
+    "data/loop.bin"
+   ],
+   "size": 5
+  },
+  {
+   "kind": "artifact_type",
+   "name": "blob",
+   "module": "X",
+   "decl": "Silmaril.Project.blob"
+  },
+  {
+   "kind": "judgement",
+   "name": "pr.p",
+   "module": "X",
+   "title": "old title"
+  },
+  {
+   "kind": "group",
+   "name": "pr.root",
+   "module": "X"
+  },
+  {
+   "kind": "children",
+   "name": "pr.root",
+   "module": "X",
+   "children": [
+    "pr.p"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "pr.root",
+   "module": "X"
+  }
+ ],
+ "problems": [
+  {
+   "name": "pr.p",
+   "decl": "pr.p",
+   "module": "X"
+  }
+ ],
+ "solutions": []
+}

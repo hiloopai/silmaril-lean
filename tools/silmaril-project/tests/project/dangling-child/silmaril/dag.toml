@@ -1,0 +1,7 @@
+schema = "silmaril.records.v0.2"
+root = "dc.all"
+
+[[group]]
+name = "dc.all"
+title = "Everything"
+children = ["dc.a", "dc.nope"]

@@ -6,8 +6,10 @@
 | Compiler foundations | Semantic contracts, passes, checked transformations, translations and compiler categories | [Compiler APIs](compilers.md) |
 | Logics and institutions | HOL, Metamath, ZF/ZFC, arithmetic, proof translations and Hets-style development graphs | [Logic](logic.md) |
 | Lambda calculi | Eight cube corners, STLC categorical semantics, System F/Fω parametricity and institution graphs | [Lambda cube](lambda-cube.md) |
+| Lossless compression | A decoder/codec/container/streaming framework; DEFLATE, zlib, gzip and a zlib 1.3.1 streaming inflater model | [Compression](compression.md) |
+| Silmaril projects | Records for artifacts, values, problems and the problem DAG; format adapters and shapes; the `sil project` CLI (check, SQLite, explorer) | [Silmaril projects](silmaril-projects.md) |
 | Cambridge courses | L1/L2 semantics, domains and PCF, optimising compilers and exercises | [Courses](../courses/cambridge.md) |
-| x86 process verification | Planned port: machine/process models, assembly proofs and whole-utility verification | [x86 roadmap](x86.md) |
+| x86-64 machines and processes | User-mode machines (`Ext` to `Str9`, `Sse9`, `Atomic9`), function contracts, segment VCs, block certificates, a separation logic, the loose specification and x86 institution, static linking, memory models, the ELF ladder proofs, and the process slice | [x86 machines](../x86.md), [x86 processes](x86.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide

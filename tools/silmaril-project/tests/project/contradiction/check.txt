@@ -1,0 +1,11 @@
+error: problem k.mid: soundness alarm: CSA by arity0 UNS, SAT by arity0 THM, THM by decomposition X.mid_of, UNS by refutation_route X.mid_refuted_of_child
+error: problem k.p: soundness alarm: SAT by answers X.p_sat, UNS by answers X.p_uns
+error: problem k.top: soundness alarm: CSA by arity0 UNS, SAT by arity0 THM, THM by solves X.top_sol, UNS by refutation_route X.top_refuted_of_child
+warning: problem k.q: THM and UNS: the argument domain is empty
+summary: 6 problems (6 local), 1 groups, 8 records, 7 edges, 0 artifacts
+verdicts: 2 holds, 1 fails, 3 unknown (all 6 problems); 2 holds, 1 fails, 3 unknown (6 local)
+root: k.root
+predicate k.p (arity 1): status UNK [SAT UNS], verdict unknown
+predicate k.q (arity 1): status THM [THM UNS], verdict holds
+group k.root: [k.top=UNK, k.mid=UNK, k.p=UNK, k.q=THM]
+exit: failed

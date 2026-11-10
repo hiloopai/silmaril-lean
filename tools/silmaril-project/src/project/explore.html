@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>__TITLE__</title>
+<!-- Written by `sil project explore` (tools/silmaril-project/src/project/explore.html). The page holds no data:
+     it opens a separate project.sqlite. Pinned scripts: sql.js-httpvfs 0.8.12 (lazy, HTTP Range),
+     sql.js 1.12.0 (whole file), cytoscape 3.30.2, dagre 0.8.5, cytoscape-dagre 2.5.0. -->
+<script src="https://cdn.jsdelivr.net/npm/sql.js-httpvfs@0.8.12/dist/index.js" integrity="sha384-5qk6GQWgVBG/l7V06WbohoowHyJEIsLh6E/83WVlhQDFH8EKMe1yAWpEmemrSUgn" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js" integrity="sha384-1fHJox8K973mCCD3PTAOc0ljrAGXD2VeK8zf+vNIdx55pWPULNlpxKMkU8bF4nUd" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js" integrity="sha384-IWROdLKRsN1UuJywMlWl7/blXQ8GEooN2n7dzTxfEPd7ybYIKCUJ2Ol/1Gpf3YV4" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js" integrity="sha384-2IH3T69EIKYC4c+RXZifZRvaH5SRUdacJW7j6HtE5rQbvLhKKdawxq6vpIzJ7j9M" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js" integrity="sha384-u69h9ebXeSjlg6q/rb1zKTRAGu/h8deCl0409xpS/QJctMKnc4M9Fzkm01VOQdeF" crossorigin="anonymous"></script>
+<style>
+:root { --fg:#1d2329; --muted:#66707a; --bg:#fbfbfa; --panel:#fff; --line:#dde1e5; --accent:#2f5d9e;
+  --holds:#2e9d4f; --fails:#d64545; --unknown:#9aa0a6; }
+* { box-sizing: border-box; }
+body { margin:0; font:14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--fg); background:var(--bg); }
+header { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+header h1 { font-size:16px; margin:0; }
+#source, #stats { color:var(--muted); font-size:12px; }
+nav { display:flex; flex-wrap:wrap; gap:4px; }
+nav a { padding:4px 10px; border-radius:4px; color:var(--fg); text-decoration:none; }
+nav a.on { background:var(--accent); color:#fff; }
+main { padding:16px; }
+a { color:var(--accent); }
+h2 { font-size:15px; margin:18px 0 8px; }
+h2:first-child { margin-top:0; }
+table { border-collapse:collapse; background:var(--panel); font-size:13px; }
+th, td { border:1px solid var(--line); padding:3px 7px; text-align:left; vertical-align:top; }
+th { background:#f1f3f5; font-weight:600; position:sticky; top:0; }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.tablebox { max-height:70vh; overflow:auto; display:inline-block; max-width:100%; }
+code, .mono, td { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+.badge { display:inline-block; padding:0 6px; border-radius:3px; color:#fff; font-size:12px; font-family:ui-monospace, monospace; }
+.holds { background:var(--holds); } .fails { background:var(--fails); } .unknown { background:var(--unknown); }
+.muted { color:var(--muted); }
+.grid { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.bar { display:flex; height:14px; width:320px; border-radius:3px; overflow:hidden; border:1px solid var(--line); }
+textarea { width:100%; min-height:110px; font:12px ui-monospace, monospace; padding:6px; }
+input[type=text], input[type=number], select { font:13px system-ui, sans-serif; padding:3px 6px; }
+button { font:13px system-ui, sans-serif; padding:3px 10px; cursor:pointer; }
+#graphwrap { display:flex; gap:12px; height:calc(100vh - 150px); min-height:420px; }
+#cy { flex:1 1 auto; border:1px solid var(--line); background:var(--panel); min-width:0; }
+#side { flex:0 0 380px; overflow:auto; border:1px solid var(--line); background:var(--panel); padding:8px 10px; }
+.controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px; }
+.legend span { margin-right:10px; }
+#drop { position:fixed; inset:0; background:rgba(47,93,158,.15); border:4px dashed var(--accent); display:none; align-items:center; justify-content:center; font-size:20px; z-index:10; }
+#msg { padding:10px; max-width:860px; }
+.pick { border:2px dashed var(--line); border-radius:6px; padding:12px 16px; background:var(--panel); }
+dl { display:grid; grid-template-columns:max-content 1fr; gap:2px 12px; margin:0; }
+dt { color:var(--muted); } dd { margin:0; font-family:ui-monospace, monospace; font-size:12px; word-break:break-all; }
+.err { color:var(--fails); white-space:pre-wrap; }
+@media (max-width: 800px) { #graphwrap { flex-direction:column; height:auto; } #cy { height:60vh; } #side { flex-basis:auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">__TITLE__</h1>
+  <nav id="nav">
+    <a href="#/summary">Summary</a><a href="#/graph">Graph</a><a href="#/problems">Problems</a>
+    <a href="#/artifacts">Artifacts</a><a href="#/values">Values</a><a href="#/formats">Formats</a><a href="#/sql">SQL</a>
+  </nav>
+  <span id="source">loading…</span>
+  <span id="stats"></span>
+  <label style="font-size:12px">open a project.sqlite <input type="file" id="file" accept=".sqlite,.sqlite3,.db"></label>
+</header>
+<main id="main"><div id="msg">Looking for the project database…</div></main>
+<div id="drop">Drop a project.sqlite</div>
+<script id="db-urls" type="application/json">__DB_URLS__</script>
+<script>
+"use strict";
+// The page holds no data. It opens a SQLite file, in this order: `?db=<url>`, the URLs written by
+// `sil project explore` (relative to the page), a file picker or drop. Over http(s) it reads the
+// file lazily with sql.js-httpvfs (HTTP Range requests, one SQLite page at a time) when the server
+// answers a Range request with 206, and otherwise downloads the whole file into sql.js.
+// `?load=full` forces the whole download.
+const SQLJS = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/";
+const SQLJS_WASM_SRI = "sha384-R/MwdqDq6/VfWyY+p8u2RAFr+3gVOgzxeJqDeDxCnpQaVqOc9tEFLu4wdQfoDpb5";
+const HTTPVFS = "https://cdn.jsdelivr.net/npm/sql.js-httpvfs@0.8.12/dist/";
+const HTTPVFS_WORKER_SRI = "sha384-BrR3wW39f7nMD+hl+U8cK/5koOrbeue14Qauqf765b5XI6FVLJ4X9MXtcJQwNLAf";
+const HTTPVFS_WASM_SRI = "sha384-CwaF51S8nw9DzEnqyuX2TtKOMgGc+3pdu8lNwsR0A95D6qEFmY6iEyTn4d4PiHGK";
+const SCHEMA = "silmaril.project-db.v0.1";
+const PARAMS = new URLSearchParams(location.search);
+const DB_URLS = JSON.parse(document.getElementById("db-urls").textContent);
+let be = null, cy = null;   // the open database (a backend, see below) and the graph
+let tables = new Set();     // tables and views of the open database
+let indexes = new Set();    // its indexes (`schema::INDEXES` in the checker)
+// Caches filled by bounded lookups: name -> whether it names an object of that kind; verdicts.
+const KINDS = ["problem", "value", "format", "artifact"];
+let known = {}, verdictOf = new Map(), summaryOf = new Map();
+// For tests and the curious: the state of the page.
+window.explore = { ready: false, busy: false, mode: null, source: null };
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kB = (n) => n < 1e6 ? (n / 1e3).toFixed(1) + " kB" : (n / 1e6).toFixed(2) + " MB";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function q(sql, params) { return be.query(sql, params || []); }
+function tq(t, sql, params) { return tables.has(t) ? q(sql, params) : Promise.resolve([]); }
+const ph = (n) => Array(n).fill("?").join(",");
+// `sql` with `$` replaced by placeholders, over `names` in chunks (one query per 300 names).
+async function inChunks(sql, names, twice) {
+  const out = [];
+  for (let i = 0; i < names.length; i += 300) {
+    const part = names.slice(i, i + 300);
+    out.push(...await q(sql.replaceAll("$", ph(part.length)), twice ? part.concat(part) : part));
+  }
+  return out;
+}
+// The first `n` rows of `sql` (which must not have a LIMIT), and whether there are more.
+async function first(n, sql, params) {
+  const rows = await q(sql + " LIMIT " + (n + 1), params);
+  return { rows: rows.slice(0, n), more: rows.length > n };
+}
+function href(kind, key) { return "#/" + kind + "/" + encodeURIComponent(key); }
+function link(kind, key, text) { return `<a href="${href(kind, key)}">${esc(text == null ? key : text)}</a>`; }
+function badge(v, text) { return v ? `<span class="badge ${esc(v)}">${esc(text || v)}</span>` : ""; }
+function verdictBadge(p) { const v = verdictOf.get(p); return v ? " " + badge(v, summaryOf.get(p) + " (verdict " + v + ")") : ""; }
+
+// ---------- cross-links ----------
+// A column hint says which kind a column names. Cells are looked up by index (`IN (…)`, never a
+// scan of a whole table); the SQL page looks up every string cell it shows.
+const HINTS = { problem:"problem", parent:"problem", child:"problem", obligation:"problem", parses:"problem",
+  root:"problem", group_name:"problem", record_name:"problem", focus:"problem", value:"value", format:"format",
+  base:"format", cid:"artifact", artifact:"artifact", subject:"artifact" };
+const BADGE_COLS = new Set(["problem", "child", "name", "parent", "obligation", "parses"]);
+const LOOKUP = {
+  problem: ["problems", () => tables.has("summary")
+    ? "SELECT p.name AS n, s.summary, s.verdict FROM problems p LEFT JOIN summary s ON s.problem = p.name WHERE p.name IN ($)"
+    : "SELECT name AS n FROM problems WHERE name IN ($)"],
+  value: ["value_defs", () => "SELECT name AS n FROM value_defs WHERE name IN ($)"],
+  format: ["formats", () => "SELECT name AS n FROM formats WHERE name IN ($)"],
+  artifact: ["artifacts", () => "SELECT cid AS n FROM artifacts WHERE cid IN ($) UNION SELECT sid FROM artifacts WHERE sid IN ($)"],
+};
+async function resolve(rows, cols, hints, all) {
+  const want = Object.fromEntries(KINDS.map((k) => [k, new Set()]));
+  for (const r of rows) for (const c of cols) {
+    const v = r[c];
+    if (typeof v !== "string" || !v || v.length > 300) continue;
+    for (const k of hints[c] ? [hints[c]] : all ? KINDS : []) if (!known[k].has(v)) want[k].add(v);
+  }
+  for (const k of KINDS) {
+    const names = [...want[k]];
+    if (!names.length) continue;
+    for (const n of names) known[k].set(n, false);
+    const [t, sql] = LOOKUP[k];
+    if (!tables.has(t)) continue;
+    for (const r of await inChunks(sql(), names, k === "artifact")) {
+      known[k].set(r.n, true);
+      if (r.verdict) { verdictOf.set(r.n, r.verdict); summaryOf.set(r.n, r.summary); }
+    }
+  }
+}
+function cell(col, v, hints) {
+  if (v === null || v === undefined) return '<span class="muted">NULL</span>';
+  if (v instanceof Uint8Array) return `<span class="muted">blob ${v.length} B</span>`;
+  const s = String(v);
+  for (const k of hints[col] ? [hints[col], ...KINDS] : KINDS) if (known[k].get(s)) {
+    return link(k, s) + (k === "problem" && BADGE_COLS.has(col) ? verdictBadge(s) : "");
+  }
+  if (col === "verdict" && /^(holds|fails|unknown)$/.test(s)) return badge(s);
+  return esc(s);
+}
+// opts: hints (merged over HINTS), limit (rows shown), all (look up every string cell), more
+// (the query was cut off; see `first`).
+async function table(rows, cols, opts) {
+  opts = opts || {};
+  if (!rows.length) return '<p class="muted">(none)</p>';
+  cols = cols || Object.keys(rows[0]);
+  const limit = opts.limit || 1000, shown = rows.slice(0, limit);
+  const hints = Object.assign({}, HINTS, opts.hints);
+  await resolve(shown, cols, hints, opts.all);
+  let h = '<div class="tablebox"><table><thead><tr>' + cols.map((c) => `<th>${esc(c)}</th>`).join("") + "</tr></thead><tbody>";
+  for (const r of shown) {
+    h += "<tr>" + cols.map((c) => `<td${typeof r[c] === "number" ? ' class="num"' : ""}>${cell(c, r[c], hints)}</td>`).join("") + "</tr>";
+  }
+  h += "</tbody></table></div>";
+  if (rows.length > limit) h += `<p class="muted">showing ${limit} of ${rows.length} rows</p>`;
+  if (opts.more) h += `<p class="muted">showing the first ${rows.length} rows; there are more (use the SQL tab)</p>`;
+  return h;
+}
+async function tableOf(r, cols, opts) { return table(r.rows, cols, Object.assign({ more: r.more }, opts)); }
+async function dl(row, hints) {
+  hints = Object.assign({}, HINTS, hints);
+  await resolve([row], Object.keys(row), hints, false);
+  return "<dl>" + Object.entries(row).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${cell(k, v, hints)}</dd>`).join("") + "</dl>";
+}
+
+// ---------- loading ----------
+function isSqlite(buf) { return buf.length >= 16 && new TextDecoder().decode(buf.slice(0, 15)) === "SQLite format 3"; }
+// A same-origin blob: URL for a CDN file checked against its SRI hash (workers must be same-origin).
+async function sriBlobUrl(url, integrity, type) {
+  const r = await fetch(url, { integrity, mode: "cors" });
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+  return URL.createObjectURL(new Blob([await r.arrayBuffer()], { type }));
+}
+let sqlJs = null;
+function loadSqlJs() {
+  return sqlJs || (sqlJs = (async () => {
+    const wasm = await sriBlobUrl(SQLJS + "sql-wasm.wasm", SQLJS_WASM_SRI, "application/wasm");
+    return initSqlJs({ locateFile: () => wasm });
+  })());
+}
+// A backend: query(sql, params) -> rows as objects; exec(sql) -> [{columns, values}]; stats().
+async function wholeBackend(bytes, mode) {
+  const SQL = await loadSqlJs();
+  const d = new SQL.Database(bytes);
+  return {
+    mode, size: bytes.length,
+    async query(sql, params) {
+      const st = d.prepare(sql);
+      try { st.bind(params); const out = []; while (st.step()) out.push(st.getAsObject()); return out; }
+      finally { st.free(); }
+    },
+    async exec(sql) { return d.exec(sql); },
+    async stats() { return { totalBytes: bytes.length, totalFetchedBytes: bytes.length, totalRequests: mode === "local file" ? 0 : 1 }; },
+    close() { d.close(); },
+  };
+}
+async function lazyBackend(url, pageSize) {
+  if (typeof createDbWorker !== "function") throw new Error("sql.js-httpvfs did not load");
+  const [worker, wasm] = await Promise.all([
+    sriBlobUrl(HTTPVFS + "sqlite.worker.js", HTTPVFS_WORKER_SRI, "text/javascript"),
+    sriBlobUrl(HTTPVFS + "sql-wasm.wasm", HTTPVFS_WASM_SRI, "application/wasm")]);
+  const w = await createDbWorker([{ from: "inline", config: { serverMode: "full", url, requestChunkSize: pageSize } }], worker, wasm);
+  return {
+    mode: `lazy (HTTP Range, ${pageSize} B pages)`, pageSize,
+    query: (sql, params) => w.db.query(sql, params),
+    exec: (sql) => w.db.exec(sql),
+    stats: () => w.worker.getStats(),
+    close() { /* the worker stays until the page closes */ },
+  };
+}
+// Open `u` over http(s): probe with a Range request for the 100-byte header. 206 -> lazy;
+// 200 (the server ignored Range) -> this response is the whole file.
+async function openUrl(u) {
+  const url = new URL(u, location.href).href;
+  let r;
+  try { r = await fetch(url, { headers: { Range: "bytes=0-99" }, cache: "no-store" }); }
+  catch (e) { throw new Error("could not fetch (" + e.message + ")"); }
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const enc = r.headers.get("content-encoding");
+  const ranged = r.status === 206 && (!enc || enc === "identity");
+  let note = "";
+  if (ranged) {
+    const head = new Uint8Array(await r.arrayBuffer());
+    if (!isSqlite(head)) throw new Error("not a SQLite database");
+    const ps = (head[16] << 8) | head[17];
+    if (PARAMS.get("load") !== "full") {
+      try { return await lazyBackend(url, ps === 1 ? 65536 : ps); }
+      catch (e) { note = ` (lazy loading failed: ${e.message || e})`; }
+    }
+    r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+  }
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  if (!isSqlite(bytes)) throw new Error("not a SQLite database");
+  return wholeBackend(bytes, (ranged ? "whole file" : "whole file (the server ignored Range)") + note);
+}
+function pickHelp(why) {
+  const def = DB_URLS[0] || "project.sqlite";
+  return `<div class="pick"><h2>Choose the database</h2>${why}
+    <p>Choose the project database with <b>open a project.sqlite</b> above, or drop it on this page.
+    <code>sil project sqlite</code> writes it to <code>${esc(def)}</code> (relative to this page).
+    The file is read in the browser; nothing is uploaded.</p>
+    <p>To have the page open it by itself, serve the project directory over HTTP, preferably with a
+    server that supports Range requests so that only the pages a view needs are fetched, e.g.
+    <code>npx http-server -p 8080 .lake/silmaril</code> in the project directory (by default the
+    page and the database are both there), then open <code>http://localhost:8080/explore.html</code>.
+    Another file: add <code>?db=&lt;url&gt;</code>.</p></div>`;
+}
+async function boot() {
+  const urls = [...new Set([PARAMS.get("db"), ...DB_URLS].filter(Boolean))];
+  if (location.protocol === "file:") {
+    $("#source").textContent = "no database";
+    $("#main").innerHTML = `<div id="msg">${pickHelp(`<p>This page was opened from a file (<code>file://</code>),
+      where browsers block it from reading other files, including ${urls.map((u) => `<code>${esc(u)}</code>`).join(", ")}.</p>`)}</div>`;
+    return;
+  }
+  const tried = [];
+  for (const u of urls) {
+    $("#msg") && ($("#msg").textContent = `Opening ${u}…`);
+    try { return await useDb(await openUrl(u), u); }
+    catch (e) { tried.push(`<li><code>${esc(u)}</code>: ${esc(e.message || e)}</li>`); }
+  }
+  $("#source").textContent = "no database";
+  $("#main").innerHTML = `<div id="msg">${pickHelp(`<p>No database could be opened from:</p><ul>${tried.join("")}</ul>`)}</div>`;
+}
+async function useDb(b, label) {
+  if (be && be.close) try { be.close(); } catch (e) { /* ignore */ }
+  be = b;
+  known = Object.fromEntries(KINDS.map((k) => [k, new Map()]));
+  verdictOf = new Map(); summaryOf = new Map();
+  tables = new Set((await q("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')")).map((r) => r.name));
+  indexes = new Set((await q("SELECT name FROM sqlite_master WHERE type = 'index'")).map((r) => r.name));
+  let schema = "?";
+  if (tables.has("meta")) schema = ((await q("SELECT value FROM meta WHERE key = 'schema'"))[0] || {}).value || "?";
+  $("#source").innerHTML = `source: ${esc(label)} · ${esc(b.mode)} · schema <code>${esc(schema)}</code>` +
+    (schema === SCHEMA ? "" : ` <span class="err">(this page expects ${esc(SCHEMA)})</span>`);
+  Object.assign(window.explore, { ready: true, mode: b.mode, source: label });
+  if (cy) { cy.destroy(); cy = null; }
+  await route();
+}
+async function updateStats() {
+  if (!be) return;
+  const s = await be.stats();
+  if (s) {
+    $("#stats").textContent = be.mode === "local file" ? `${kB(s.totalBytes)} in memory`
+      : `read ${kB(s.totalFetchedBytes)} of ${kB(s.totalBytes)}` + (s.totalRequests ? ` in ${s.totalRequests} requests` : "");
+    window.explore.stats = s;
+  }
+}
+async function openFile(f) {
+  try {
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (!isSqlite(bytes)) throw new Error("not a SQLite database (run `sil project sqlite` and choose its .sqlite file)");
+    await useDb(await wholeBackend(bytes, "local file"), f.name);
+  } catch (e) { $("#main").innerHTML = `<p class="err">could not open ${esc(f.name)}: ${esc(e.message || e)}</p>`; }
+}
+$("#file").addEventListener("change", (e) => { if (e.target.files[0]) openFile(e.target.files[0]); });
+document.addEventListener("dragover", (e) => { e.preventDefault(); $("#drop").style.display = "flex"; });
+document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) $("#drop").style.display = "none"; });
+document.addEventListener("drop", (e) => {
+  e.preventDefault(); $("#drop").style.display = "none";
+  if (e.dataTransfer.files[0]) openFile(e.dataTransfer.files[0]);
+});
+
+// ---------- routing ----------
+// A page returns its HTML, or {html, init} when it wires up controls after rendering.
+const PAGES = { summary, graph, problems, artifacts, values, formats, sql: sqlPage,
+  problem: problemPage, value: valuePage, format: formatPage, artifact: artifactPage };
+let routeTok = 0;
+async function route() {
+  if (!be) return;
+  const tok = ++routeTok;
+  const parts = location.hash.replace(/^#\/?/, "").split("/");
+  const page = PAGES[parts[0]] ? parts[0] : "summary";
+  const arg = decodeURIComponent(parts.slice(1).join("/"));
+  const tab = { problem: "problems", value: "values", format: "formats", artifact: "artifacts" }[page] || page;
+  for (const a of document.querySelectorAll("#nav a")) a.classList.toggle("on", a.getAttribute("href") === "#/" + tab);
+  if (page !== "graph" && cy) { cy.destroy(); cy = null; }
+  window.explore.busy = true;
+  try {
+    let r = await PAGES[page](arg);
+    if (tok !== routeTok) return;
+    if (typeof r === "string") r = { html: r };
+    $("#main").innerHTML = r.html;
+    if (page !== "graph") window.scrollTo(0, 0);
+    if (r.init) await r.init();
+  } catch (e) {
+    if (tok === routeTok) $("#main").innerHTML = `<p class="err">${esc(e.stack || e.message || e)}</p>`;
+  } finally {
+    if (tok === routeTok) { await updateStats(); window.explore.busy = false; }
+  }
+}
+window.addEventListener("hashchange", route);
+
+// ---------- summary ----------
+// The holds/fails/unknown coarsening of a status (as `sil project check`): UNS fails only for a
+// closed (arity 0) problem; `contingent` fails; otherwise the `szs` table's verdict.
+const COARSE = "CASE WHEN st.status = 'UNS' AND p.arity = 0 THEN 'fails' WHEN st.status = 'contingent' THEN 'fails' " +
+  "ELSE coalesce(z.verdict, 'unknown') END";
+// Every query here is an aggregate or has a LIMIT, so that a lazily loaded database only reads
+// the pages it needs.
+async function summary() {
+  const proj = await tq("projects", "SELECT * FROM projects ORDER BY origin DESC, name LIMIT 50");
+  const local = proj.find((p) => p.origin === "local");
+  let h = "<h2>Project</h2>" + (local ? await dl(local) : '<p class="muted">no local project row</p>');
+  const counts = [
+    ...await tq("objects", "SELECT kind, count(*) AS n FROM objects GROUP BY kind"),
+    ...await tq("artifacts", "SELECT 'artifact' AS kind, count(*) AS n FROM artifacts"),
+    ...await tq("edges", "SELECT 'edge:' || kind AS kind, count(*) AS n FROM edges GROUP BY kind"),
+    ...await tq("answers", "SELECT 'answer' AS kind, count(*) AS n FROM answers")];
+  h += '<div class="grid"><div><h2>Objects by kind</h2>' + await table(counts) + "</div>";
+  const vs = await tq("summary", "SELECT verdict, summary, count(*) AS n FROM summary GROUP BY 1, 2 ORDER BY 1, 2");
+  const by = { holds: 0, fails: 0, unknown: 0 };
+  for (const r of vs) by[r.verdict] = (by[r.verdict] || 0) + r.n;
+  const tot = vs.reduce((a, r) => a + r.n, 0) || 1;
+  h += "<div><h2>Derived verdicts (problems)</h2><div class=\"bar\">" +
+    ["holds", "fails", "unknown"].map((v) => by[v] ? `<div class="${v}" style="width:${100 * by[v] / tot}%" title="${v} ${by[v]}"></div>` : "").join("") +
+    "</div>" + await table(vs, ["summary", "verdict", "n"]) + "</div>";
+  if (tables.has("statuses")) {
+    h += "<div><h2>Statuses by SZS code</h2>" + await table(await q(
+      `SELECT st.status AS code, z.name, ${COARSE} AS verdict, count(*) AS statuses, count(DISTINCT st.problem) AS problems ` +
+      "FROM statuses st LEFT JOIN szs z ON z.code = st.status LEFT JOIN problems p ON p.name = st.problem GROUP BY 1, 3 ORDER BY 3, 1 LIMIT 200")) +
+      '<p class="muted">holds = THM; fails = CSA, contingent, UNS of a closed problem; unknown = the rest.</p></div>';
+  }
+  h += "</div>";
+  if (local && local.root) {
+    await resolve([local], ["root"], HINTS, false);
+    h += `<h2>Root</h2><p>${link("problem", local.root)}${verdictBadge(local.root)} · ${link("graph", local.root, "show in graph")}</p>`;
+  }
+  if (tables.has("objects") && tables.has("edges")) {
+    const ng = (await q("SELECT count(*) AS n FROM objects WHERE kind = 'group'"))[0].n;
+    if (ng) {
+      // Names only: counting or tallying every group's children would read most of `edges`.
+      const gs = await q("SELECT name AS group_name FROM objects WHERE kind = 'group' ORDER BY name LIMIT 100");
+      h += `<h2>Groups (${ng})</h2>` + await table(gs, null, { hints: { group_name: "problem" } }) +
+        (ng > 100 ? '<p class="muted">the first 100 groups</p>' : "") +
+        '<p class="muted">a group\'s verdict vector is on its page (children, in order) and in the graph</p>';
+    }
+  }
+  if (tables.has("summary")) {
+    // With the index on summary(verdict, summary), CROSS JOIN keeps `summary` as the outer
+    // loop and the scan ends after 100 rows. Without it, sorting or the detached filter would read
+    // all of `summary` and `problems`, so take the first 100 in key order.
+    const tuned = indexes.has("summary_verdict") || indexes.has("httpvfs_summary_verdict");
+    const open = tuned
+      ? await first(100, "SELECT s.problem AS name, s.summary, s.verdict FROM summary s CROSS JOIN problems p " +
+        "WHERE p.name = s.problem AND s.verdict IN ('fails', 'unknown') AND p.detached = 0 ORDER BY s.verdict, s.summary")
+      : await first(100, "SELECT problem AS name, summary, verdict FROM summary WHERE verdict IN ('fails', 'unknown')");
+    h += `<h2>Problems not holding (${(by.fails || 0) + (by.unknown || 0)}, detached included)</h2>` +
+      `<p class="muted">${tuned ? "not detached, fails first" : "in name order, detached included (the database predates the canonical indexes)"}</p>` +
+      await tableOf(open, null, { hints: { name: "problem" } });
+  }
+  h += "<h2>Meta</h2>" + await table(await tq("meta", "SELECT * FROM meta LIMIT 100"));
+  if (proj.length > 1) h += "<h2>Projects</h2>" + await table(proj, ["name", "origin", "version", "root", "url", "rev"]);
+  return h;
+}
+
+// ---------- lists ----------
+// A page of `PAGE` rows at a time; the filter is a case-insensitive substring of `filter` columns
+// and stops reading once a page of matches is found.
+const PAGE = 100;
+async function listPage(spec) {
+  const total = tables.has(spec.table) ? (await q(`SELECT count(*) AS n FROM ${spec.table}`))[0].n : 0;
+  const html = `<h2>${esc(spec.title)} (${total})</h2><div class="controls">
+    <input type="text" id="filter" placeholder="filter: ${esc(spec.filter.join(", "))} contains…" size="44">
+    <button id="prev">◀ previous</button><button id="next">next ▶</button><span id="range" class="muted"></span></div><div id="list"></div>`;
+  const init = async () => {
+    let off = 0, tok = 0;
+    const draw = async () => {
+      const mine = ++tok, f = $("#filter").value.trim().toLowerCase();
+      const where = f ? "WHERE " + spec.filter.map((c) => `instr(lower(${c}), ?) > 0`).join(" OR ") : "";
+      const rows = await q(`SELECT ${spec.select} ${where} ORDER BY ${spec.order} LIMIT ${PAGE + 1} OFFSET ${off}`, f ? spec.filter.map(() => f) : []);
+      const html = await table(rows.slice(0, PAGE), spec.cols, { hints: spec.hints });
+      if (mine !== tok || !$("#list")) return;
+      $("#list").innerHTML = html;
+      $("#range").textContent = rows.length ? `rows ${off + 1}–${off + Math.min(rows.length, PAGE)}${f ? " of the matches" : ` of ${total}`}` : "";
+      $("#prev").disabled = off === 0; $("#next").disabled = rows.length <= PAGE;
+      updateStats();
+    };
+    let timer = null;
+    $("#filter").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => { off = 0; draw(); }, 250); });
+    $("#prev").addEventListener("click", () => { off = Math.max(0, off - PAGE); draw(); });
+    $("#next").addEventListener("click", () => { off += PAGE; draw(); });
+    await draw();
+  };
+  return { html, init };
+}
+function problems() {
+  return listPage({ title: "Problems", table: "problems", order: "p.name", filter: ["p.name", "p.title", "p.module"], hints: { name: "problem" },
+    select: "p.name, p.kind, s.summary, s.verdict, p.expect, p.detached, p.title, p.module FROM problems p LEFT JOIN summary s ON s.problem = p.name",
+    cols: ["name", "kind", "summary", "verdict", "expect", "detached", "title", "module"] });
+}
+function artifacts() {
+  return listPage({ title: "Artifacts", table: "artifacts", order: "a.name, a.cid", filter: ["a.name", "a.cid", "a.type"], hints: { cid: "artifact" },
+    select: "a.cid, a.name, a.type, a.size, a.registry, (SELECT group_concat(package || ':' || path, ' ') FROM artifact_paths ap WHERE ap.artifact = a.sid) AS paths, " +
+      "(SELECT count(*) FROM value_sources v WHERE v.cid = a.cid) AS uses FROM artifacts a",
+    cols: ["cid", "name", "type", "size", "registry", "paths", "uses"] });
+}
+function values() {
+  return listPage({ title: "Values", table: "value_defs", order: "v.name", filter: ["v.name", "v.format", "v.module"], hints: { name: "value" },
+    select: "v.name, v.format, (SELECT group_concat(cid, ' ') FROM value_sources s WHERE s.value = v.name) AS cids, v.parses, " +
+      "(SELECT verdict FROM summary WHERE problem = v.parses) AS verdict, v.module FROM value_defs v",
+    cols: ["name", "format", "cids", "parses", "verdict", "module"] });
+}
+function formats() {
+  return listPage({ title: "Formats", table: "formats", order: "f.name", filter: ["f.name", "f.value_type", "f.module"], hints: { name: "format" },
+    select: "f.name, f.input, f.value_type, f.base, f.printer, (SELECT group_concat(law, ',') FROM format_laws l WHERE l.format = f.name) AS laws, " +
+      "(SELECT count(*) FROM value_sources s WHERE s.format = f.name) AS sources, f.module FROM formats f",
+    cols: ["name", "input", "value_type", "base", "printer", "laws", "sources", "module"] });
+}
+
+// ---------- details ----------
+// Lists on detail pages are cut at `DETAIL` rows.
+const DETAIL = 300;
+async function problemDetail(name) {
+  const p = (await q("SELECT * FROM problems WHERE name = ?", [name]))[0];
+  if (!p) return `<p class="err">no problem ${esc(name)}</p>`;
+  const s = (await tq("summary", "SELECT * FROM summary WHERE problem = ?", [name]))[0];
+  let h = `<h2>${p.kind === "group" ? "Group" : "Problem"} <code>${esc(name)}</code> ${s ? badge(s.verdict, s.summary + " " + s.verdict) : ""}</h2>`;
+  h += `<p>${link("graph", name, "show in graph")}</p>`;
+  if (p.title) h += `<p>${esc(p.title)}</p>`;
+  h += "<h2>Judgement</h2>" + await dl(Object.fromEntries(Object.entries(p).filter(([k, v]) => v !== null && k !== "title")), { name: "", spec: "", model: "" });
+  if (s) h += `<p class="muted">summary tier: ${esc(s.tier)}</p>`;
+  const args = await tq("problem_args", "SELECT pos, name, type FROM problem_args WHERE problem = ? ORDER BY pos LIMIT 100", [name]);
+  if (args.length) h += "<h2>Arguments</h2>" + await table(args, null, { hints: { name: "" } });
+  const ins = await tq("problem_inputs", "SELECT pos, value, cid FROM problem_inputs WHERE problem = ? ORDER BY pos LIMIT 100", [name]);
+  if (ins.length) h += "<h2>Inputs</h2>" + await table(ins);
+  const iargs = await tq("instance_args", "SELECT pos, term, value, cid FROM instance_args WHERE problem = ? ORDER BY pos LIMIT 100", [name]);
+  if (iargs.length) h += "<h2>Instance arguments</h2>" + await table(iargs);
+  h += "<h2>Solutions / answers</h2>" + await tableOf(await first(DETAIL, "SELECT a.decl, a.status, a.source, a.tier, a.witness, " +
+    "(SELECT group_concat(axiom, ', ') FROM answer_axioms x WHERE x.decl = a.decl) AS axioms FROM answers a WHERE a.problem = ? ORDER BY a.decl", [name]));
+  h += "<h2>Statuses</h2>" + await tableOf(await first(DETAIL, `SELECT st.status, ${COARSE} AS verdict, st.via_kind, st.via, st.tier FROM statuses st ` +
+    "LEFT JOIN szs z ON z.code = st.status LEFT JOIN problems p ON p.name = st.problem WHERE st.problem = ? ORDER BY st.status", [name]));
+  h += "<h2>Children (edges out)</h2>" + await tableOf(await first(DETAIL, "SELECT e.child, e.kind, e.via, e.record_kind, e.record_name, s.summary, s.verdict " +
+    "FROM edges e LEFT JOIN summary s ON s.problem = e.child WHERE e.parent = ? ORDER BY e.record_kind, e.record_name, e.pos", [name]));
+  h += "<h2>Parents (edges in)</h2>" + await tableOf(await first(DETAIL, "SELECT parent, kind, via, record_kind, record_name FROM edges WHERE child = ? ORDER BY parent", [name]));
+  const obl = await tq("value_sources", "SELECT value, pos, cid, format FROM value_sources WHERE obligation = ? LIMIT 100", [name]);
+  if (obl.length) h += "<h2>Obligation of value sources</h2>" + await table(obl);
+  return h;
+}
+function problemPage(name) { return problemDetail(name); }
+async function valuePage(name) {
+  const v = (await q("SELECT * FROM value_defs WHERE name = ?", [name]))[0];
+  if (!v) return `<p class="err">no value ${esc(name)}</p>`;
+  let h = `<h2>Value <code>${esc(name)}</code></h2>` + await dl(v, { name: "" });
+  h += "<h2>Sources</h2>" + await tableOf(await first(DETAIL, "SELECT s.pos, s.cid, s.format, s.decl, s.obligation, m.summary, m.verdict FROM value_sources s " +
+    "LEFT JOIN summary m ON m.problem = s.obligation WHERE s.value = ? ORDER BY s.pos", [name]));
+  h += "<h2>Problems over this value</h2>" + await tableOf(await first(DETAIL, "SELECT problem, pos, 'input' AS via FROM problem_inputs WHERE value = ? " +
+    "UNION ALL SELECT problem, pos, 'instance_arg' FROM instance_args WHERE value = ? ORDER BY 1", [name, name]));
+  return h;
+}
+async function formatPage(name) {
+  const f = (await q("SELECT * FROM formats WHERE name = ?", [name]))[0];
+  if (!f) return `<p class="err">no format ${esc(name)}</p>`;
+  let h = `<h2>Format <code>${esc(name)}</code></h2>` + await dl(f, { name: "" });
+  h += "<h2>Laws</h2>" + await tableOf(await first(DETAIL, "SELECT law, proof, rel, module FROM format_laws WHERE format = ?", [name]));
+  h += "<h2>Default of family</h2>" + await tableOf(await first(DETAIL, "SELECT name AS family, module FROM format_defaults WHERE format = ?", [name]));
+  h += "<h2>Formats based on it</h2>" + await tableOf(await first(DETAIL, "SELECT name, value_type FROM formats WHERE base = ?", [name]), null, { hints: { name: "format" } });
+  h += "<h2>Values in this format</h2>" + await tableOf(await first(DETAIL, "SELECT name AS value, decl, parses FROM value_defs WHERE format = ? ORDER BY name", [name]));
+  h += "<h2>Value sources read with it</h2>" + await tableOf(await first(DETAIL, "SELECT value, pos, cid, obligation FROM value_sources WHERE format = ? ORDER BY value, pos", [name]));
+  return h;
+}
+async function artifactPage(key) {
+  const a = (await q("SELECT * FROM artifacts WHERE cid = ? OR sid = ? LIMIT 1", [key, key]))[0];
+  if (!a) return `<p class="err">no artifact ${esc(key)}</p>`;
+  let h = `<h2>Artifact <code>${esc(a.name || a.cid)}</code></h2>` + await dl(a, { cid: "", name: "" });
+  h += "<h2>Paths</h2>" + await tableOf(await first(DETAIL, "SELECT package, path FROM artifact_paths WHERE artifact = ?", [a.sid]));
+  h += "<h2>Facts</h2>" + await tableOf(await first(DETAIL, "SELECT at, property, value, checker, tier FROM facts WHERE subject = ? ORDER BY at, property", [a.sid]), null, { hints: { value: "" } });
+  h += "<h2>Values read from it</h2>" + await tableOf(await first(DETAIL, "SELECT value, pos, format, obligation FROM value_sources WHERE cid = ?", [a.cid]));
+  h += "<h2>Problems over it</h2>" + await tableOf(await first(DETAIL, "SELECT problem, pos, 'input' AS via FROM problem_inputs WHERE cid = ? " +
+    "UNION ALL SELECT problem, pos, 'instance_arg' FROM instance_args WHERE cid = ?", [a.cid, a.cid]));
+  return h;
+}
+
+// ---------- SQL ----------
+const EXAMPLES = {
+  "tables": "SELECT name, type FROM sqlite_master WHERE type IN ('table','view') ORDER BY name;",
+  "problems with their verdict": "SELECT p.name, p.kind, s.summary, s.verdict FROM problems p LEFT JOIN summary s ON s.problem = p.name ORDER BY s.verdict, p.name LIMIT 200;",
+  "statuses by SZS code": "SELECT st.status, z.verdict AS szs_verdict, count(*) AS n FROM statuses st LEFT JOIN szs z ON z.code = st.status GROUP BY 1, 2;",
+  "proved edges": "SELECT parent, child, kind, via FROM edges WHERE via IS NOT NULL LIMIT 200;",
+  "axioms used by answers": "SELECT axiom, count(*) AS answers FROM answer_axioms GROUP BY axiom ORDER BY 2 DESC;",
+  "values and their files": "SELECT v.name, s.format, s.cid, ap.path FROM value_defs v JOIN value_sources s ON s.value = v.name JOIN artifacts a ON a.cid = s.cid LEFT JOIN artifact_paths ap ON ap.artifact = a.sid LIMIT 200;",
+};
+let lastSql = EXAMPLES["tables"];
+function sqlPage(arg) {
+  if (arg) lastSql = arg;
+  const html = '<h2>SQL</h2><div class="controls"><select id="ex"><option value="">examples…</option>' +
+    Object.keys(EXAMPLES).map((k) => `<option>${esc(k)}</option>`).join("") +
+    '</select><button id="run">Run (Ctrl+Enter)</button><span class="muted">results link known names. ' +
+    "Over HTTP the database is read lazily: a query reads only the pages it touches, so prefer a LIMIT and indexed columns.</span></div>" +
+    '<textarea id="sqltext" spellcheck="false"></textarea><div id="sqlout"></div>';
+  const init = async () => {
+    const ta = $("#sqltext"); ta.value = lastSql;
+    const run = async () => {
+      lastSql = ta.value;
+      $("#sqlout").innerHTML = '<p class="muted">running…</p>';
+      try {
+        const res = await be.exec(ta.value);
+        let h = "";
+        for (const r of res) h += `<p class="muted">${r.values.length} rows</p>` +
+          await table(r.values.map((row) => Object.fromEntries(r.columns.map((c, i) => [c, row[i]]))), r.columns, { all: true });
+        $("#sqlout").innerHTML = h || '<p class="muted">no result set</p>';
+      } catch (e) { $("#sqlout").innerHTML = `<p class="err">${esc(e.message || e)}</p>`; }
+      updateStats();
+    };
+    $("#run").addEventListener("click", run);
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); } });
+    $("#ex").addEventListener("change", (e) => { if (EXAMPLES[e.target.value]) { ta.value = EXAMPLES[e.target.value]; run(); } });
+    await run();
+  };
+  return { html, init };
+}
+
+// ---------- graph ----------
+const COLORS = { holds: "#2e9d4f", fails: "#d64545", unknown: "#9aa0a6" };
+const GROUP_LOOKUPS = 500;
+function shortName(n) {
+  const sep = n.includes("/") ? "/" : ".", p = n.split(sep);
+  return p.length > 2 ? "…" + sep + p.slice(-2).join(sep) : n;
+}
+async function graph(focus) {
+  const local = (await tq("projects", "SELECT root FROM projects WHERE origin = 'local' LIMIT 1"))[0];
+  const root = (local && local.root) || "";
+  focus = focus || root || ((await q("SELECT name FROM problems ORDER BY name LIMIT 1"))[0] || {}).name || "";
+  const html = `<div class="controls">
+    <label>focus <input type="text" id="gfocus" list="gnames" size="44" value="${esc(focus)}"></label>
+    <datalist id="gnames"></datalist>
+    <label>depth <input type="number" id="gdepth" min="1" max="999" value="99" style="width:4em"></label>
+    <label>max nodes <input type="number" id="gmax" min="10" max="5000" value="300" style="width:5em"></label>
+    <label><input type="checkbox" id="gdet"> detached problems</label>
+    <button id="gdraw">Draw</button> <button id="gfit">Fit</button>
+    <span class="legend"><span>${badge("holds")}</span><span>${badge("fails")}</span><span>${badge("unknown")}</span>
+    <span class="muted">box = group (holds/fails/unknown children) · dashed edge = refutation route · dotted = instance · thick edge = proved · thick border = root · dashed border = detached</span></span>
+    <span id="gcount" class="muted"></span></div>
+    <div id="graphwrap"><div id="cy"></div><div id="side"><p class="muted">Click a node for its details; double-click to refocus.</p></div></div>`;
+  const init = async () => {
+    const draw = () => drawGraph($("#gfocus").value.trim(), +$("#gdepth").value || 99, +$("#gmax").value || 300, $("#gdet").checked, root)
+      .catch((e) => { $("#gcount").innerHTML = `<span class="err">${esc(e.message || e)}</span>`; }).then(updateStats);
+    $("#gdraw").addEventListener("click", draw);
+    $("#gfocus").addEventListener("keydown", (e) => { if (e.key === "Enter") draw(); });
+    $("#gfit").addEventListener("click", () => cy && cy.fit(undefined, 20));
+    // Suggestions: the first 30 problem names containing the text (read from the name index).
+    let timer = null;
+    $("#gfocus").addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const t = $("#gfocus").value.trim();
+        if (t.length < 2) return;
+        const rows = await q("SELECT name FROM problems WHERE instr(name, ?) > 0 ORDER BY name LIMIT 30", [t]);
+        $("#gnames").innerHTML = rows.map((r) => `<option value="${esc(r.name)}">`).join("");
+        updateStats();
+      }, 300);
+    });
+    await draw();
+  };
+  return { html, init };
+}
+// Nodes: the focus's parents (up to 50), then whole levels below the focus, down to `depth` levels
+// and while the total stays within `maxNodes` (dagre is slow on thousands of nodes). Each level is
+// one bounded query for the edges out of the previous level.
+async function drawGraph(focus, depth, maxNodes, withDetached, root) {
+  const exists = async (n) => n && (await q("SELECT 1 AS x FROM problems WHERE name = ?", [n])).length > 0;
+  let note = "";
+  if (!(await exists(focus))) { if (focus) note = ` · no problem ${focus}`; focus = root; }
+  const keep = new Set(), out = new Map();
+  // The edges out of `names`, at most `cap` rows in all. Rows come in parent order, so when the
+  // cap cuts a read every parent before the cut is complete; `out` records only complete ones.
+  // Returns whether every parent was read.
+  const cap = 4 * maxNodes;
+  const fetchOut = async (names) => {
+    const todo = names.filter((n) => !out.has(n)).sort();
+    let budget = cap;
+    for (let i = 0; i < todo.length; i += 300) {
+      const part = todo.slice(i, i + 300);
+      const rows = await q(`SELECT parent, child, kind, via FROM edges WHERE parent IN (${ph(part.length)}) ORDER BY parent LIMIT ${budget + 1}`, part);
+      const cut = rows.length > budget ? rows[budget].parent : null;
+      for (const n of part) if (cut === null || n < cut) out.set(n, []);
+      for (const e of rows) if (out.has(e.parent) && e.parent !== cut) out.get(e.parent).push(e);
+      if (cut !== null) return false;
+      budget -= rows.length;
+    }
+    return true;
+  };
+  if (await exists(focus)) {
+    const parents = await q("SELECT DISTINCT parent FROM edges WHERE child = ? LIMIT 50", [focus]);
+    for (const r of parents) keep.add(r.parent);
+    keep.add(focus);
+    let frontier = [focus];
+    for (let d = 0; d < depth && frontier.length; d++) {
+      const complete = await fetchOut(frontier);
+      const next = new Set();
+      for (const n of frontier) for (const e of out.get(n) || []) if (!keep.has(e.child)) next.add(e.child);
+      if (!complete) { note += ` · stopped at depth ${d} (the next level has more than ${cap} edges; raise max nodes or refocus)`; break; }
+      if (next.size && keep.size + next.size > maxNodes) { note += ` · stopped at depth ${d} (next level has ${next.size} nodes; raise max nodes or refocus)`; break; }
+      for (const n of next) keep.add(n);
+      frontier = [...next];
+    }
+    await fetchOut([...keep]);
+  }
+  if (withDetached && keep.size < maxNodes) {
+    for (const r of await q("SELECT name FROM problems WHERE detached = 1 ORDER BY name LIMIT ?", [maxNodes - keep.size])) keep.add(r.name);
+    await fetchOut([...keep]);
+  }
+  // Node data from indexes where possible: group-ness from objects(kind, name), detached-ness,
+  // verdicts by problem; titles only for groups.
+  const names = [...keep];
+  const groupSet = new Set((await inChunks("SELECT name FROM objects WHERE kind = 'group' AND name IN ($)", names)).map((r) => r.name));
+  const detached = new Set((await inChunks("SELECT name FROM problems WHERE detached = 1 AND name IN ($)", names)).map((r) => r.name));
+  const titles = new Map((await inChunks("SELECT name, title FROM problems WHERE name IN ($)", [...groupSet])).map((r) => [r.name, r.title]));
+  const checked = new Set();
+  const lookUp = async (ns) => {
+    for (const n of ns) checked.add(n);
+    for (const r of await inChunks("SELECT problem, summary, verdict FROM summary WHERE problem IN ($)", ns)) { verdictOf.set(r.problem, r.verdict); summaryOf.set(r.problem, r.summary); }
+  };
+  await lookUp(names);
+  // A group's label tallies its children's verdicts; at most GROUP_LOOKUPS children that are not
+  // drawn are looked up, the rest are counted as unchecked.
+  const hiddenChildren = [...new Set([...groupSet].flatMap((g) => (out.get(g) || []).map((e) => e.child)).filter((c) => !checked.has(c)))];
+  await lookUp(hiddenChildren.slice(0, GROUP_LOOKUPS));
+  const gv = new Map();
+  for (const g of groupSet) {
+    const c = { holds: 0, fails: 0, unknown: 0, unchecked: 0 };
+    for (const e of out.get(g) || []) c[checked.has(e.child) ? verdictOf.get(e.child) || "unknown" : "unchecked"]++;
+    gv.set(g, c);
+  }
+  const els = [];
+  for (const n of keep) {
+    const isGroup = groupSet.has(n);
+    let label = shortName(n);
+    if (isGroup) {
+      const c = gv.get(n);
+      label = (titles.get(n) || shortName(n)) + (out.has(n) ? `\n${c.holds} / ${c.fails} / ${c.unknown}` + (c.unchecked ? ` (${c.unchecked} unchecked)` : "") : "");
+    } else if (summaryOf.has(n)) label += "\n" + summaryOf.get(n);
+    const hidden = (out.get(n) || []).filter((e) => !keep.has(e.child)).length;
+    if (hidden) label += ` (+${hidden} hidden)`;
+    else if (!out.has(n)) label += " (+ more, not read)";
+    els.push({ data: { id: n, label, verdict: verdictOf.get(n) || "unknown", group: isGroup ? 1 : 0, detached: detached.has(n) ? 1 : 0, root: n === root ? 1 : 0, focus: n === focus ? 1 : 0 } });
+  }
+  let i = 0;
+  for (const n of keep) for (const e of out.get(n) || []) if (keep.has(e.child)) els.push({ data: { id: "e" + (i++), source: e.parent, target: e.child, kind: e.kind, via: e.via || "" } });
+  $("#gcount").textContent = `${keep.size} problems, ${i} edges${note}`;
+  if (cy) cy.destroy();
+  cy = cytoscape({
+    container: $("#cy"), elements: els, minZoom: 0.05,
+    style: [
+      { selector: "node", style: { label: "data(label)", "text-wrap": "wrap", "text-overflow-wrap": "anywhere", "text-max-width": 140, "font-size": 10, "text-valign": "center", "text-halign": "center",
+        width: 150, height: 34, shape: "round-rectangle", "background-color": (n) => COLORS[n.data("verdict")], color: "#fff", "text-outline-width": 0,
+        "border-width": 1, "border-color": "#33393f" } },
+      { selector: "node[group = 1]", style: { shape: "rectangle", "background-color": "#f4f6f8", color: "#1d2329", width: 180, height: 44, "border-width": 2, "border-color": "#2f5d9e", "font-weight": 600 } },
+      { selector: "node[detached = 1]", style: { "border-style": "dashed", opacity: 0.75 } },
+      { selector: "node[root = 1]", style: { "border-width": 4, "border-color": "#111" } },
+      { selector: "node[focus = 1]", style: { "underlay-color": "#f2c94c", "underlay-opacity": 0.6, "underlay-padding": 6 } },
+      { selector: "node:selected", style: { "overlay-color": "#2f5d9e", "overlay-opacity": 0.25 } },
+      { selector: "edge", style: { width: 1.4, "curve-style": "bezier", "target-arrow-shape": "triangle", "arrow-scale": 0.8, "line-color": "#8a939c", "target-arrow-color": "#8a939c" } },
+      { selector: "edge[kind = 'refute']", style: { "line-style": "dashed", "line-color": "#c46a6a", "target-arrow-color": "#c46a6a" } },
+      { selector: "edge[kind = 'instance']", style: { "line-style": "dotted", "line-color": "#5b7fb5", "target-arrow-color": "#5b7fb5" } },
+      { selector: "edge[via != '']", style: { width: 2.2 } },
+    ],
+    layout: { name: "dagre", rankDir: "TB", nodeSep: 20, rankSep: 50, animate: false },
+  });
+  const side = async (h) => { const html = await h; $("#side").innerHTML = html; updateStats(); };
+  cy.on("tap", "node", (e) => side(problemDetail(e.target.id())));
+  cy.on("dbltap", "node", (e) => { location.hash = href("graph", e.target.id()); });
+  cy.on("tap", "edge", (e) => { const d = e.target.data();
+    side(dl({ parent: d.source, child: d.target, kind: d.kind, via: d.via || null }).then((x) => "<h2>Edge</h2>" + x)); });
+  // A wide level makes "fit" unreadable: then zoom in on the focus instead.
+  if (cy.zoom() < 0.5 && cy.getElementById(focus).length) { cy.zoom(0.8); cy.center(cy.getElementById(focus)); }
+  if (focus && cy.getElementById(focus).length) await side(problemDetail(focus));
+}
+
+boot().catch((e) => { $("#main").innerHTML = `<p class="err">${esc(e.stack || e)}</p>`; });
+</script>
+</body>
+</html>

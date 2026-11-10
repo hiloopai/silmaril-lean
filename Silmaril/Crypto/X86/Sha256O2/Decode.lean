@@ -36,7 +36,7 @@ decoded some of these bytes to an instruction it would have written
 differently would fail the walk rather than pass it with a different answer.
 
 These are `rfl`, so the kernel runs the decoder over the literal. The whole
-file elaborates in a few seconds; there is no `native decision tactic` and no
+file elaborates in a few seconds; there is no `decide +native` and no
 `bv_decide` anywhere.
 
 ## Which instruction forms this exercises

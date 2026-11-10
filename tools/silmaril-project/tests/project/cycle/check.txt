@@ -1,0 +1,6 @@
+error: dag: cycle: c.a -> c.b -> c.a
+error: root c.a: has a parent
+summary: 2 problems (2 local), 0 groups, 3 records, 2 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 2 unknown (all 2 problems); 0 holds, 0 fails, 2 unknown (2 local)
+root: c.a
+exit: failed

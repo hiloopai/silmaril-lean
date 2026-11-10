@@ -4640,7 +4640,7 @@ theorem blockB (h : SysVEntry L state block rspEntry frameSize m)
 
 The round function is where the object's formulation and the specification's
 differ most, and all of the difference is in four small identities. None needs
-bit-blasting; `bv_decide` and `native decision tactic` are not used anywhere in this
+bit-blasting; `bv_decide` and `decide +native` are not used anywhere in this
 file.
 
 These are stated over `SHA256.Kernel.Word` and mention no x86 at all, so they

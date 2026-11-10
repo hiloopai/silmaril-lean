@@ -5,7 +5,7 @@ public import Silmaril.X86.Decompile.CfgPropose
 /-!
 # Transcriptions of compiled machine code
 
-A *transcription* is what `tools/x86-lift` emits for a piece of compiled code:
+A *transcription* is what the `x86-lift` lifter emits for a piece of compiled code:
 the bytes, the instruction listing with addresses and lengths, the function
 partition, one control-flow graph per function, how each block is left, the
 relocations that patch the bytes and the constants the code reads, together
@@ -13,7 +13,9 @@ with a description of the binary they came from (sections, load segments,
 symbols, entry point) and its SHA-256 pin.
 
 The lifter is written in Rust on top of iced-x86, and **nothing it produces is
-trusted**. A generated module states one equation,
+trusted**. The generator (`x86-lift`) is not included in this repository; only
+the kernel check each generated module carries (its `transcript_verify`
+theorem) is trusted. A generated module states one equation,
 
 ```
 transcript.verify = true

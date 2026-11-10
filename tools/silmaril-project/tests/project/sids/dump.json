@@ -1,0 +1,49 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "X"
+ ],
+ "records": [
+  {
+   "kind": "group",
+   "name": "s.root",
+   "module": "X"
+  },
+  {
+   "kind": "children",
+   "name": "s.root",
+   "module": "X",
+   "children": [
+    "s.a",
+    "s.b"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "s.root",
+   "module": "X"
+  },
+  {
+   "kind": "group",
+   "name": "s.a",
+   "module": "X",
+   "sid": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  {
+   "kind": "group",
+   "name": "s.b",
+   "module": "X",
+   "sid": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  {
+   "kind": "model",
+   "name": "s.m",
+   "module": "X",
+   "decl": "X.m",
+   "sid": "XY"
+  }
+ ],
+ "problems": [],
+ "solutions": []
+}
