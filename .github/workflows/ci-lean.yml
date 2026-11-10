@@ -35,6 +35,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `cov-lake-cache get` restores the nearest of 64 first-parent ancestors
+          # that main published; a shallower checkout cannot see them.
+          fetch-depth: 65
       - name: Record runner capacity
         run: |
           nproc
