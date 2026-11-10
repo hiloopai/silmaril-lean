@@ -24,13 +24,13 @@ jobs:
       LEAN_NUM_THREADS: 2
       LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
       AWS_REGION: us-east-1
-      # Every Lake run reads and fills one artifact cache. It lives in .lake so
-      # the disk cache below carries it; otherwise each run re-copies every
-      # module's outputs into a fresh cache.
+      # Every Lake run reads and fills the one artifact cache the pool restores into.
       LAKE_CACHE_DIR: ${{ github.workspace }}/.lake/cache
       LAKE_ARTIFACT_CACHE: 'true'
-      # Only main pushes publish; every other run reads.
-      CACHE_PUBLISH: ${{ github.repository == 'hiloopai/silmaril-lean' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # Main pushes and main seeds publish; every other run reads.
+      CACHE_PUBLISH: >-
+        ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
+            (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,13 +43,6 @@ jobs:
           nproc
           free -m
           df -h .
-      - name: Restore build tree from disk cache
-        id: disk
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .lake
-          key: lake-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json', 'lakefile.toml') }}-${{ github.sha }}
-          restore-keys: lake-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json', 'lakefile.toml') }}-
       - name: Install Lean
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
@@ -67,25 +60,20 @@ jobs:
         uses: ./.github/actions/lake-cache-tool
       - name: Assume the Lean CAS role
         id: credentials
-        # Fork pull requests receive no OIDC token; they use the disk cache or build.
+        # Fork pull requests receive no OIDC token; they build without the pool.
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-${{ env.CACHE_PUBLISH == 'true' && 'write' || 'read' }}-lean-cas
           aws-region: us-east-1
           role-duration-seconds: 7200
-      - name: Fetch dependency artifacts on a disk miss
+      - name: Restore from the shared Lake pool
         # The pool needs credentials; fork pull requests build instead.
-        if: steps.disk.outputs.cache-matched-key == '' && steps.credentials.outcome == 'success'
-        run: cov-lake-cache dependencies
-      - name: Fill missing build artifacts from the optional S3 cache
-        # Lake validates current sources when it unpacks restored artifacts.
-        if: steps.disk.outputs.cache-matched-key == '' && steps.credentials.outcome == 'success'
-        continue-on-error: true
-        run: cov-lake-cache get --repository hiloopai/silmaril-lean
+        if: steps.credentials.outcome == 'success'
+        run: make cache
       - name: Build all Lean modules and run every native release check
         env:
-          LAKE_CACHE_RECORD: ${{ env.CACHE_PUBLISH == 'true' && steps.disk.outputs.cache-hit != 'true' && 'build/lake-cache' || '' }}
+          LAKE_CACHE_RECORD: ${{ env.CACHE_PUBLISH == 'true' && 'build/lake-cache' || '' }}
         run: |
           du -sh .lake
           df -h .
@@ -93,20 +81,8 @@ jobs:
           build/bin/sil --help
           build/bin/sil wasm opt --print-presets
       - name: Publish successful main artifacts to S3
-        if: env.CACHE_PUBLISH == 'true' && steps.disk.outputs.cache-hit != 'true'
-        continue-on-error: true
+        if: env.CACHE_PUBLISH == 'true'
         run: cov-lake-cache put --repository hiloopai/silmaril-lean
-      - name: Save successful main build or manual branch seed
-        if: >-
-          github.repository == 'hiloopai/silmaril-lean' && steps.disk.outputs.cache-hit != 'true' &&
-          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-           (github.event_name == 'workflow_dispatch' && inputs.seed))
-        # GitHub scopes a manual seed to its triggering ref. Other branches
-        # cannot replace a main cache entry, even when the key is identical.
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: .lake
-          key: ${{ steps.disk.outputs.cache-primary-key }}
       - name: Retain native check results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
