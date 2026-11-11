@@ -28,8 +28,6 @@ jobs:
     env:
       # Public Linux runners have four cores and 16 GB RAM; the publisher has more.
       LEAN_NUM_THREADS: 2
-      # Measurement only: the toolchain in RAM.
-      ELAN_HOME: /dev/shm/elan
       LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
       AWS_REGION: us-east-1
       # Every Lake run reads and fills the one artifact cache the pool restores into.
@@ -48,6 +46,8 @@ jobs:
           fetch-depth: 65
       - name: "Measurement only: sample memory every second"
         run: |
+          # lean-action hardcodes ~/.elan, so put that in RAM instead of setting ELAN_HOME.
+          mkdir -p /dev/shm/elan && ln -s /dev/shm/elan "$HOME/.elan"
           nohup setsid bash -c 'while :; do echo "$(date +%T) $(awk "/MemTotal/{t=\$2}/MemAvailable/{a=\$2}/^Shmem:/{h=\$2}/SwapTotal/{st=\$2}/SwapFree/{sf=\$2}END{printf \"used_mb=%d shmem_mb=%d swap_used_mb=%d\", (t-a)/1024, h/1024, (st-sf)/1024}" /proc/meminfo)"; sleep 1; done' > "$RUNNER_TEMP/mem.log" 2>&1 &
       - name: Record runner capacity
         run: |
