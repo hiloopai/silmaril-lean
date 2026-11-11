@@ -12,18 +12,22 @@ if grep -rnw 'native_decide' Silmaril --include='*.lean'; then
   echo "error: native_decide is not allowed" >&2; status=1
 fi
 # Proofs/Raw of topic Silmaril.{Proofs,Raw}.<Region>.<Topic> may be imported only
-# from the same region and topic, in the header, Proofs or Raw trees.
-violations=$(while IFS= read -r file; do
-  mod=${file%.lean}; mod=${mod//\//.}
-  topic=$(echo "$mod" | sed -E 's/^Silmaril\.(Proofs\.|Raw\.)?//' | cut -d. -f1-2)
-  grep -hoE '^(public )?(meta )?import (all )?Silmaril\.(Proofs|Raw)\.[A-Za-z0-9_.]+' "$file" \
-    | awk '{print $NF}' | while IFS= read -r dep; do
-      dtopic=$(echo "$dep" | sed -E 's/^Silmaril\.(Proofs|Raw)\.//' | cut -d. -f1-2)
-      if [ "$dtopic" != "$topic" ]; then
-        echo "$file: imports $dep from another topic; import its Thms header instead" >&2
-        echo fail
-      fi
-    done
-done < <(find Silmaril -name '*.lean') || true)
-if [ -n "$violations" ]; then status=1; fi
+# from the same region and topic, in the header, Proofs or Raw trees. One awk
+# pass over every module: a per-file shell loop took 15 s on CI.
+find Silmaril -name '*.lean' -print0 | xargs -0 awk '
+  function topic(name,   parts, n) {
+    sub(/^Silmaril\.(Proofs\.|Raw\.)?/, "", name)
+    n = split(name, parts, ".")
+    return n > 1 ? parts[1] "." parts[2] : parts[1]
+  }
+  FNR == 1 { mod = FILENAME; sub(/\.lean$/, "", mod); gsub("/", ".", mod); own = topic(mod) }
+  /^(public )?(meta )?import (all )?Silmaril\.(Proofs|Raw)\.[A-Za-z0-9_.]+/ {
+    match($0, /Silmaril\.(Proofs|Raw)\.[A-Za-z0-9_.]+/)
+    dep = substr($0, RSTART, RLENGTH)
+    if (topic(dep) != own) {
+      print FILENAME ": imports " dep " from another topic; import its Thms header instead" > "/dev/stderr"
+      bad = 1
+    }
+  }
+  END { exit bad }' || status=1
 exit $status
