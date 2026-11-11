@@ -44,6 +44,21 @@ jobs:
           # `cov-lake-cache get` restores the nearest of 64 first-parent ancestors
           # that main published; a shallower checkout cannot see them.
           fetch-depth: 65
+      - name: Record runner capacity
+        run: |
+          nproc
+          free -m
+          df -h .
+      # The Lake cache installs its archiver into the toolchain, and `scope` needs it.
+      - name: Install Lean
+        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
+        with:
+          auto-config: "false"
+          build: "false"
+          test: "false"
+          lint: "false"
+          use-mathlib-cache: "false"
+          use-github-cache: "false"
       - name: Install the shared Lake cache
         uses: ./.github/actions/lake-cache-tool
       - name: Choose the Lake targets
@@ -53,21 +68,6 @@ jobs:
           targets=$(make -s scope BASE=${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }})
           echo "CHECK_TARGETS=$targets" >> "$GITHUB_ENV"
           echo "Lake targets: ${targets:-none, so only the source gates run}"
-      - name: Record runner capacity
-        run: |
-          nproc
-          free -m
-          df -h .
-      - name: Install Lean
-        if: env.CHECK_TARGETS != ''
-        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
-        with:
-          auto-config: "false"
-          build: "false"
-          test: "false"
-          lint: "false"
-          use-mathlib-cache: "false"
-          use-github-cache: "false"
       - name: Install independent Wasm execution oracle
         if: contains(format(' {0} ', env.CHECK_TARGETS), ' wasm-opt ')
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6

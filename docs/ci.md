@@ -32,7 +32,7 @@ changed. These changes check everything:
 - any Lake configuration or toolchain file;
 - any other file that is not in the Makefile's `SCOPE_EXCLUDE` list (files that
   Lake never reads), such as `.github/`, the `Makefile` or `tools/binaryen-lean/`.
-With no Lake target, the job installs no Lean and runs only the source checks.
+With no Lake target, the job restores nothing and runs only the source checks.
 The timing check waits for all selected correctness jobs. It includes their
 setup, cache transfer, tests and publication, plus waits after the attempt
 starts. GitHub's wait before `run_started_at` and final workflow teardown are
