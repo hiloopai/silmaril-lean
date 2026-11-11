@@ -634,7 +634,7 @@ dump` drives.
 - `examples/project/selftest.sh` (`make project-check`) runs `init` (in a scratch directory),
   then `lock`, `lint`, `dump`, `check`, `sqlite` and `explore` on silmaril-lean's own project,
   and compares the check with `examples/project/check.txt` (`SIL_BLESS=1` rewrites it).
-- `make project-lean` (part of `make check`) builds the framework, the format adapters and
+- `make project-lean` (`make check` builds the same modules) builds the framework, the format adapters and
   shapes, and the self-test module with `--wfail`.
 
 ## Reference: provenance rules

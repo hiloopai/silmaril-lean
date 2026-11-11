@@ -1,0 +1,17 @@
+name: Nightly
+
+# Pull requests check only what their diff can change; this runs the full Lean and
+# native check on main every night.
+on:
+  schedule:
+    - cron: '17 5 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    uses: ./.github/workflows/ci-lean.yml
+    permissions:
+      contents: read
+      id-token: write

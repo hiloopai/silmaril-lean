@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache check process-check project-lean project-tool project-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache check release-check process-check process-gates project-lean project-tool project-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -25,11 +25,13 @@ stage:
 library:
 	$(LAKE) build --wfail Silmaril
 
-# Everything `make check` builds; a recorded build publishes exactly these.
-CHECK_TARGETS := Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
+# Everything `make check` builds; a recorded build publishes exactly these. A pull
+# request narrows it to what its diff can change (scripts/ci-scope.py --base).
+CHECK_TARGETS ?= Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
 
 # With the pool bucket, start from main's published seed (the whole recorded
-# build in bulk streams, dependencies included) and build CHECK_TARGETS.
+# build in bulk streams, dependencies included) and build CHECK_TARGETS. Naming
+# the targets installs only the mappings they need: 6 s, against 16 s for all.
 cache:
 	@if [ -n "$(LAKE_CI_BUCKET)" ]; then \
 		LAKE=$(LAKE) cov-lake-cache get --seed --repository hiloopai/silmaril-lean -- $(CHECK_TARGETS); \
@@ -38,15 +40,22 @@ cache:
 		echo 'No remote artifact bucket configured; public dependencies are ready.'; \
 	fi
 
+# The release suites run when CHECK_TARGETS holds the executables.
 check:
 	scripts/check-layout.sh
 	@if [ -n "$(LAKE_CACHE_RECORD)" ]; then \
 		LAKE=$(LAKE) cov-lake-cache build --repository hiloopai/silmaril-lean --record "$(LAKE_CACHE_RECORD)" -- $(CHECK_TARGETS); \
+	elif [ -n "$(strip $(CHECK_TARGETS))" ]; then \
+		$(LAKE) build --wfail $(CHECK_TARGETS); \
 	fi
-	$(MAKE) process-check
-	$(MAKE) project-lean
-	$(PYTHON) tools/binaryen-lean/check-release.py --build --jobs $$(nproc) --report build/wasm-checks.json
+	$(MAKE) process-gates
+	$(if $(filter wasm-opt,$(CHECK_TARGETS)),$(MAKE) release-check)
+
+release-check:
+	$(PYTHON) tools/binaryen-lean/check-release.py --jobs $$(nproc) --report build/wasm-checks.json
 	$(MAKE) stage
+	build/bin/sil --help >/dev/null
+	build/bin/sil wasm opt --print-presets >/dev/null
 
 process-check:
 	$(LAKE) build --wfail \
@@ -61,6 +70,10 @@ process-check:
 		Silmaril.Process.Musl.Thms \
 		Silmaril.Process.Sha256.Thms \
 		Silmaril.Process.LPS.Problems.GnuSha256sum.Close
+	$(MAKE) process-gates
+
+# Source-only process gates; they read no build output.
+process-gates:
 	$(PYTHON) tools/process-release/facts.py --check
 	$(PYTHON) tools/process-release/check_headers.py
 	$(PYTHON) apps/sha256sum-min/build.py --verify-only
