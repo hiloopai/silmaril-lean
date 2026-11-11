@@ -1,0 +1,23 @@
+# Probe, not for merge: does a fork pull request get a GitHub Actions OIDC token? Expected: no.
+name: prove OIDC fork probe
+on: pull_request
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Ask for an OIDC token for the staging prove api
+        run: |
+          echo "event: $GITHUB_EVENT_NAME, repository: $GITHUB_REPOSITORY, head: $GITHUB_HEAD_REF"
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "result: no OIDC token offered to this run"
+            exit 0
+          fi
+          token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.staging.hiloop.ai/v1/prove" | jq -r .value)
+          status=$(curl -sS -o body.json -w '%{http_code}' -X POST -H "Authorization: Bearer $token" \
+            -H 'content-type: application/json' -d '{}' https://api.staging.hiloop.ai/v1/prove/sessions)
+          echo "result: TOKEN OFFERED; staging answered HTTP $status"
