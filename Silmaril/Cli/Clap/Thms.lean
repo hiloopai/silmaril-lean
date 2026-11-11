@@ -32,7 +32,7 @@ before reading the rest (`-h --bogus`), refuses a value that looks like an optio
 
 The exit codes (`Outcome.exit`) are simp lemmas below. The derived clap view
 (`Tool.surface`) and the comparison with its reference reading (`compare`) are checked by
-evaluation on the pinned tools (`Silmaril.Cli.Spec.*.Examples`), not proved.
+evaluation on example tools (`Silmaril.Cli.Clap.Examples`), not proved.
 -/
 
 @[expose] public section

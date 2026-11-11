@@ -5,7 +5,7 @@ public import Silmaril.Cli.Behaviour.Defs
 /-!
 # CLI behaviour: files named on the command line, and file transformers
 
-Track *behaviour* of `docs/projects/wasm-binaryen-tooling.md`. Most tools of the Binaryen and wasm-tools families
+See `docs/projects/cli.md`. Most tools of the Binaryen and wasm-tools families
 read one input (a file named by an argument, or stdin) and write one output (a file named by
 `-o`, or stdout). This module gives that shape as one builder, so that a tool's spec is its
 argument handling plus a function on bytes.

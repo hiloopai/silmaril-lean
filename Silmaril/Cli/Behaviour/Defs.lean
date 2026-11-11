@@ -5,10 +5,9 @@ public import Mathlib.Order.CompleteLattice.Basic
 /-!
 # CLI behaviour: observations, specifications, refinement, composition
 
-A loose model of what a command-line program does, as seen from outside (`docs/projects/wasm-binaryen-tooling.md`,
-track *behaviour*). It is the target that argument grammars (track *args*), Lean `IO`
-programs and WASI `wasi:cli/command` components (track *bridge*) and real tools (track
-*apply*) are related to.
+A loose model of what a command-line program does, as seen from outside (`docs/projects/cli.md`).
+It is the target that argument grammars (`Silmaril.Cli.Args`, `Silmaril.Cli.Front`), Lean `IO`
+programs (`Silmaril.Cli.Io`), WASI `wasi:cli/command` components and real tools are related to.
 
 ## The model
 

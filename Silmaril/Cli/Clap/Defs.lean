@@ -27,7 +27,7 @@ data: the `-h` help in clap's layout, usage lines and the test corpus are functi
 they cannot drift from the grammar. `compare` sets the reading beside the surface's reference
 reading (`Surface.Command.parse`) on one argument vector.
 
-A Silmaril addition; the guide is `docs/projects/wasm-binaryen-tooling.md`.
+A Silmaril addition; the guide is `docs/projects/cli.md`.
 -/
 
 @[expose] public section

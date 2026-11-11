@@ -22,9 +22,7 @@ invocations is rendered by `Invocation.render`.
 
 **Derived, not written by hand:** the CLIs of real tools are args grammars
 (`Silmaril.Cli.Command`) in the clap dialect (`Silmaril.Cli.Clap.Tool`), and their surface is
-computed from them (`Clap.Tool.surface`); it reproduces the earlier hand-written surfaces
-exactly (help of every path, corpus, and this reading on the corpus; checked when they were
-replaced). The surface keeps three jobs: clap's `-h` layout, the corpus of test vectors, and
+computed from them (`Clap.Tool.surface`). The surface keeps three jobs: clap's `-h` layout, the corpus of test vectors, and
 `Command.parse` as the *reference reading* that `Clap.compare` sets beside the args-based
 reading `Clap.Tool.read`. New tools should be written as `Clap.Tool`s, not as surfaces.
 -/
@@ -222,9 +220,19 @@ def Command.find? (c : Command) : List String → Option Command
   | [] => some c
   | n :: p => (c.subs.find? (·.name == n)).bind (·.find? p)
 
+mutual
+
 /-- Every command path (without the program name), the root first, in help order. -/
-partial def Command.paths (c : Command) : List (List String) :=
-  [] :: c.subs.flatMap fun s => s.paths.map (s.name :: ·)
+def Command.paths : Command → List (List String)
+  | ⟨_, _, _, _, subs, _, _⟩ => [] :: Command.pathsOf subs
+
+/-- The command paths below a list of subcommands, each prefixed with its subcommand's name
+(`c.subs.flatMap fun s => s.paths.map (s.name :: ·)`). -/
+def Command.pathsOf : List Command → List (List String)
+  | [] => []
+  | s :: ss => s.paths.map (s.name :: ·) ++ Command.pathsOf ss
+
+end
 
 /-! ## The reference reading of an argument vector -/
 
@@ -418,8 +426,8 @@ def Command.parse (c : Command) (argv : List String) : Outcome :=
 
 /-! ## A corpus of argument vectors derived from a surface
 
-Used to compare a surface with an implementation (`tools/cli-spec/tests`) and, for tools
-written in Lean, inside Lean (`Silmaril.Wasm.Binaryen.DriverSpec`). -/
+Used to compare a surface with an implementation: by running the binary on each vector, or,
+for tools written in Lean, inside Lean. -/
 
 namespace Corpus
 
@@ -503,7 +511,7 @@ def Invocation.count (inv : Invocation) (key : String) : Nat :=
 /-- The normal form of an invocation: the path, every occurrence as `--long` or
 `--long=VALUE` (`-s`, `-s=VALUE` for short-only options), then `--` and the positionals.
 `Command.parse` reads it back (checked on the pinned surfaces by examples; the general round
-trip is the args track's). -/
+trip is `Silmaril.Cli.Args.Thms`'s `scan_render`). -/
 def Invocation.render (inv : Invocation) : List String :=
   inv.path ++ inv.opts.map (fun (k, v) =>
     let flag := if k.startsWith "-" then k else "--" ++ k

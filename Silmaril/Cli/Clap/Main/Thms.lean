@@ -14,12 +14,12 @@ PROVED (standard axioms):
   `Tool.main_refines_front`: every program behind the clap front end refines
   `Tool.frontSpec t`;
 * **`Tool.frontCheck_sound`**: the harness check `Tool.frontCheck` is sound for
-  `Tool.frontSpec` (`cli-harness front`, `tools/cli-harness/tests/surfaces.sh`);
+  `Tool.frontSpec`;
 * `Tool.spec_usageError`: with usage exit 2, the usage errors of `Tool.spec` refine the loose
   `Spec.usageError` (exit 2, nothing on stdout, no file changed or read, no stdin consumed);
 * `Tool.spec_mono`: refining the runs refines the tool;
-* `Tool.helpOr_help`: a tool that takes only its help from the grammar (`Tool.helpOr`, as
-  `wasm-opt` does) meets `Tool.spec` on every invocation that asks for help.
+* `Tool.helpOr_help`: a tool that takes only its help from the grammar (`Tool.helpOr`)
+  meets `Tool.spec` on every invocation that asks for help.
 
 As for `Command.main` (`Silmaril.Cli.Front`), the `IO` host reading each host operation as
 `Beh.host` does is the trusted step.
