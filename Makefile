@@ -47,9 +47,9 @@ scope:
 # the targets installs only the mappings they need: 6 s, against 16 s for all.
 cache:
 	@if [ -n "$(LAKE_CI_BUCKET)" ]; then \
-		LAKE=$(LAKE) cov-lake-cache get --seed --repository hiloopai/silmaril-lean -- $(CHECK_TARGETS); \
+		cov-lake-cache get --seed --repository hiloopai/silmaril-lean -- $(CHECK_TARGETS); \
 	else \
-		LAKE=$(LAKE) cov-lake-cache dependencies; \
+		cov-lake-cache dependencies; \
 		echo 'No remote artifact bucket configured; public dependencies are ready.'; \
 	fi
 
@@ -57,7 +57,7 @@ cache:
 check:
 	scripts/check-layout.sh
 	@if [ -n "$(LAKE_CACHE_RECORD)" ]; then \
-		LAKE=$(LAKE) cov-lake-cache build --repository hiloopai/silmaril-lean --record "$(LAKE_CACHE_RECORD)" -- $(CHECK_TARGETS); \
+		cov-lake-cache build --repository hiloopai/silmaril-lean --record "$(LAKE_CACHE_RECORD)" -- $(CHECK_TARGETS); \
 	elif [ -n "$(strip $(CHECK_TARGETS))" ]; then \
 		$(LAKE) build --wfail $(CHECK_TARGETS); \
 	fi
