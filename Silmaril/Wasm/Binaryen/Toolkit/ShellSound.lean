@@ -109,3 +109,4 @@ theorem shellBytes_initial_export {o : GrowOracle} {budget : Nat} {name : String
   exact lookup
 
 end Silmaril.Wasm.Binaryen.Toolkit
+-- scope measurement

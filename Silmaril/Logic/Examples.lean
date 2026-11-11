@@ -48,4 +48,3 @@ theorem specification_models {Sign : Type} [Category Sign]
   Institution.StrSpec.models_devGraph SP
 
 end Silmaril.Logic.Examples
--- scope measurement
