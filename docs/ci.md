@@ -22,12 +22,16 @@ checks, then all 18 native release suites. These checks use one build tree.
 Independent jobs run in parallel.
 
 On main and nightly, `make check` runs in full. A pull request runs it on the Lake
-targets `scripts/ci-scope.py --base HEAD^1` chooses: each changed module and every
-module importing it, a module whose `include_str` or `include_bytes` file changed,
-and a library whose `needs` input changed. The executables and the 18 release
-suites run when the diff touches `tools/binaryen-lean/`, an executable root or a
-release proof root. A change to `lakefile.toml`, `lake-manifest.json`,
-`lean-toolchain`, the `Makefile`, the scope script or `.github/` checks everything.
+targets that `make scope BASE=HEAD^1` (`cov-lake-cache scope`) chooses:
+- each changed module and every module that imports it;
+- a module whose `include_str` or `include_bytes` file changed;
+- a library whose `needs` input changed.
+
+The executables and the 18 release suites run when an executable's import closure
+changed. These changes check everything:
+- any Lake configuration or toolchain file;
+- any other file that is not in the Makefile's `SCOPE_EXCLUDE` list (files that
+  Lake never reads), such as `.github/`, the `Makefile` or `tools/binaryen-lean/`.
 With no Lake target, the job installs no Lean and runs only the source checks.
 The timing check waits for all selected correctness jobs. It includes their
 setup, cache transfer, tests and publication, plus waits after the attempt
