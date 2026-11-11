@@ -95,7 +95,7 @@ artifacts and records mappings for the successful build. The pool is shared by
 every repository on the same platform, Lean version and archive tool; each
 commit's revision map names its outputs.
 Lake validates restored artifacts; `make check` still runs every native test.
-`CHECK_TARGETS="$(scripts/ci-scope.py --base origin/main)" make check` checks only
+`CHECK_TARGETS="$(make -s scope BASE=origin/main)" make check` checks only
 what your branch can change, as pull request CI does.
 
 `LAKE_CACHE_RECORD=build/lake-cache make check` records a successful build of every

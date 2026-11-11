@@ -44,20 +44,13 @@ jobs:
           # `cov-lake-cache get` restores the nearest of 64 first-parent ancestors
           # that main published; a shallower checkout cannot see them.
           fetch-depth: 65
-      - name: Choose the Lake targets
-        # A pull request checks what its diff can change (HEAD^1 is the base of the
-        # merge commit); main and the nightly run check everything.
-        run: |
-          targets=$(python3 scripts/ci-scope.py ${{ github.event_name == 'pull_request' && '--base HEAD^1' || '' }})
-          echo "CHECK_TARGETS=$targets" >> "$GITHUB_ENV"
-          echo "Lake targets: ${targets:-none, so only the source gates run}"
       - name: Record runner capacity
         run: |
           nproc
           free -m
           df -h .
+      # The Lake cache installs its archiver into the toolchain, and `scope` needs it.
       - name: Install Lean
-        if: env.CHECK_TARGETS != ''
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           auto-config: "false"
@@ -66,14 +59,20 @@ jobs:
           lint: "false"
           use-mathlib-cache: "false"
           use-github-cache: "false"
+      - name: Install the shared Lake cache
+        uses: ./.github/actions/lake-cache-tool
+      - name: Choose the Lake targets
+        # A pull request checks what its diff can change (HEAD^1 is the base of the
+        # merge commit); main and the nightly run check everything.
+        run: |
+          targets=$(make -s scope BASE=${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }})
+          echo "CHECK_TARGETS=$targets" >> "$GITHUB_ENV"
+          echo "Lake targets: ${targets:-none, so only the source gates run}"
       - name: Install independent Wasm execution oracle
         if: contains(format(' {0} ', env.CHECK_TARGETS), ' wasm-opt ')
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-      - name: Install the shared Lake cache
-        if: env.CHECK_TARGETS != ''
-        uses: ./.github/actions/lake-cache-tool
       - name: Assume the Lean CAS role
         id: credentials
         # Fork pull requests receive no OIDC token; they build without the pool.

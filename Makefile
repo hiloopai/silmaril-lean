@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache check release-check process-check process-gates project-lean project-tool project-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -26,8 +26,21 @@ library:
 	$(LAKE) build --wfail Silmaril
 
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
-# request narrows it to what its diff can change (scripts/ci-scope.py --base).
+# request narrows it to what its diff can change (`make scope`).
 CHECK_TARGETS ?= Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
+
+# Files Lake never reads; only the source gates in `make check` read them.
+SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/**' \
+	'tools/process-release/**' 'tools/verification-projects/**' 'tools/silmaril-project/**' \
+	policy.toml regions.toml
+
+# Print CHECK_TARGETS, narrowed to what the change from BASE can affect when BASE is set.
+scope:
+	@if [ -n "$(BASE)" ]; then \
+		cov-lake-cache scope --base "$(BASE)" $(addprefix --exclude ,$(SCOPE_EXCLUDE)) -- $(CHECK_TARGETS); \
+	else \
+		echo $(CHECK_TARGETS); \
+	fi
 
 # With the pool bucket, start from main's published seed (the whole recorded
 # build in bulk streams, dependencies included) and build CHECK_TARGETS. Naming
