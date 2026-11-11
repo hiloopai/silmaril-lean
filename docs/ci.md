@@ -8,17 +8,27 @@ development-environment checks, but defer the full Lean build until ready.
 
 | Check | Work | Automatic timeout |
 | --- | --- | --- |
-| Lean and native | `make check`, staged CLI smoke | 15 minutes |
+| Lean and native | `make check` on what the diff can change, staged CLI smoke | 15 minutes |
+| Nightly | The full `make check` on main | 15 minutes |
 | LPS reality probes | Offline fixtures, 49 native probes, mutation/live tests | 5 minutes |
 | Development environments | Docker and Nix cross-tool smoke, in parallel | 10 minutes each |
 | CI helpers | Cache credential/path tests and timing tests | 2 minutes |
 | CI | Require every selected check to pass | 1 minute |
 | CI time budget | Fail separately when the attempt exceeds four minutes | 2 minutes |
 
-`make check` builds the full Lean library, native tools, release proof roots and
-process theorem roots with `--wfail`. It runs the layout, process facts, header,
-SHA artifact, x86 catalogue and offline LPS checks, then all 18 native release
-suites. These checks use one build tree. Independent jobs run in parallel.
+`make check` builds the full Lean library and native tools with `--wfail`. It runs
+the layout, process facts, header, SHA artifact, x86 catalogue and offline LPS
+checks, then all 18 native release suites. These checks use one build tree.
+Independent jobs run in parallel.
+
+On main and nightly, `make check` runs in full. A pull request runs it on the Lake
+targets `scripts/ci-scope.py --base HEAD^1` chooses: each changed module and every
+module importing it, a module whose `include_str` or `include_bytes` file changed,
+and a library whose `needs` input changed. The executables and the 18 release
+suites run when the diff touches `tools/binaryen-lean/`, an executable root or a
+release proof root. A change to `lakefile.toml`, `lake-manifest.json`,
+`lean-toolchain`, the `Makefile`, the scope script or `.github/` checks everything.
+With no Lake target, the job installs no Lean and runs only the source checks.
 The timing check waits for all selected correctness jobs. It includes their
 setup, cache transfer, tests and publication, plus waits after the attempt
 starts. GitHub's wait before `run_started_at` and final workflow teardown are
