@@ -45,7 +45,7 @@ check:
 	fi
 	$(MAKE) process-check
 	$(MAKE) project-lean
-	$(PYTHON) tools/binaryen-lean/check-release.py --build --report build/wasm-checks.json
+	$(PYTHON) tools/binaryen-lean/check-release.py --build --jobs $$(nproc) --report build/wasm-checks.json
 	$(MAKE) stage
 
 process-check:

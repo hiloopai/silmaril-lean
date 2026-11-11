@@ -44,7 +44,7 @@ limit, runs all correctness checks, and publishes. Only this explicit manual mod
 skips the four-minute timing check.
 
 The public Linux runner has four CPUs and 16 GB RAM. `LEAN_NUM_THREADS=2`
-limits Lake's worker pool; native suites retain their existing two workers.
+limits Lake's worker pool; the native release suites run one per core.
 Logs record available disk and memory, build-tree size and `time -v` results.
 The latter reports the largest process RSS, not total concurrent memory.
 Changed-main S3 publication remains inside the time budget and can cause it
