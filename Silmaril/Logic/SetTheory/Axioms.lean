@@ -131,3 +131,4 @@ structure ZFC : Prop extends ZF M V where
   ac2 : ∀ x y z v u : V, [x, y, z, v, u].Nodup → Valid (ac2 (M := M) x y z v u)
 
 end Silmaril.Logic.SetTheory
+-- measurement
