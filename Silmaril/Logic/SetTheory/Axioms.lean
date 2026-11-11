@@ -130,5 +130,7 @@ structure ZFC : Prop extends ZF M V where
   ac : ∀ x y z w v u t : V, [x, y, z, w, v, u, t].Nodup → Valid (ac (M := M) x y z w v u t)
   ac2 : ∀ x y z v u : V, [x, y, z, v, u].Nodup → Valid (ac2 (M := M) x y z v u)
 
+/-- Measurement only: changes this module's public interface. -/
+public def measurementMarker : Nat := 0
+
 end Silmaril.Logic.SetTheory
--- measurement
