@@ -29,11 +29,12 @@ library:
 # request narrows it to what its diff can change (scripts/ci-scope.py --base).
 CHECK_TARGETS ?= Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
 
-# With the pool bucket, install main's published seed: the whole recorded build in
-# bulk streams, dependencies included. `make check` then builds only what changed.
+# With the pool bucket, start from main's published seed (the whole recorded
+# build in bulk streams, dependencies included) and build CHECK_TARGETS. Naming
+# the targets installs only the mappings they need: 6 s, against 16 s for all.
 cache:
 	@if [ -n "$(LAKE_CI_BUCKET)" ]; then \
-		LAKE=$(LAKE) cov-lake-cache get --seed --repository hiloopai/silmaril-lean; \
+		LAKE=$(LAKE) cov-lake-cache get --seed --repository hiloopai/silmaril-lean -- $(CHECK_TARGETS); \
 	else \
 		LAKE=$(LAKE) cov-lake-cache dependencies; \
 		echo 'No remote artifact bucket configured; public dependencies are ready.'; \
