@@ -1,0 +1,17 @@
+# Pinned translation-validation runs through effect summaries (`wasm-egraph tv-seg`):
+# INPUT  BINARYEN-FLAGS  OUTPUT  LEAN-MODULE (under Silmaril/Wasm/Auto/ESeg/; `-` for none)
+locals40.wasm  -O1                       locals40.binaryen-O1.wasm       TvLocalsO1
+locals40.wasm  -O3                       locals40.binaryen-O3.wasm       TvLocalsO3
+locals40.wasm  -Os                       locals40.binaryen-Os.wasm       TvLocalsOs
+locals40.wasm  --simplify-locals         locals40.simplify-locals.wasm   TvLocalsSimplify
+locals40.wasm  --optimize-instructions   locals40.optimize-instructions.wasm TvLocalsOptInstr
+locals40.wasm  --precompute              locals40.precompute.wasm        TvLocalsPrecompute
+locals40.wasm  --rse                     locals40.rse.wasm               -
+locals40.wasm  --vacuum                  locals40.vacuum.wasm            -
+locals40.wasm  --local-cse               locals40.local-cse.wasm         -
+locals40.wasm  --merge-locals            locals40.merge-locals.wasm      -
+locals40.wasm  --code-pushing            locals40.code-pushing.wasm      -
+locals40.wasm  --coalesce-locals         locals40.coalesce-locals.wasm   TvLocalsCoalesce
+locals40.wasm  --reorder-locals          locals40.reorder-locals.wasm    TvLocalsReorder
+rand60.wasm    -O1                       rand60.binaryen-O1.wasm         TvRandomO1
+rand60.wasm    -Os                       rand60.binaryen-Os.wasm         TvRandomOs

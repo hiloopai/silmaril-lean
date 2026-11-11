@@ -1,0 +1,5 @@
+2ba57b443371479c851a76c8e1a4fdf1444721dc8e005d4237115260b14739b4  rand60.wasm
+7ec04c54e335d5ada51337c5e860fc0909bfb627c31c48b7eeef5a83dce83836  rand60.binaryen-O3.wasm
+1e57e24af8f4385c9eddcfd35ec72f4edce0796b4d65ed9bea256c721129aef3  opt-in.wasm
+aa1bcbad73fdbb3e623aa66b3e66b406012fa464d8bd4c6aae3de52915d1513e  opt-in.binaryen-O2.wasm
+1aad7c8bae359bd54763f9d49f5820c0fafc528fe4a5e0d5f7ead9f54a883930  opt-in.moria-peep.wasm

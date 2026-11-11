@@ -1,0 +1,61 @@
+Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files.
+
+This subcommand will parse a wasm spec test, in the `*.wast` format, and then emit both a JSON file
+and a number of auxiliary modules. This can perform all the parsing for various implementations of
+the wasm text format while deferring the actual processing of all commands.
+
+This subcommand is modelled after WABT's `wast2json` tool, found at
+<https://github.com/WebAssembly/wabt>. More documentation of the format can be found at
+<https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md>.
+
+Note that this subcommand does not output precisely the same output as `wast2json`, but there should
+be no major discrepancies.
+
+This will also emit a number of `*.wasm` and `*.wat` files in the current directory (or in
+`--wasm-dir`) which the JSON will reference. This command will print the JSON to stdout unless the
+`-o` flag is given.
+
+Usage: wasm-tools json-from-wast [OPTIONS] <WAST>
+
+Arguments:
+  <WAST>
+          Input `*.wast` file that will be parsed and converted to JSON
+
+Options:
+  -v, --verbose...
+          Use verbose output (-v info, -vv debug, -vvv trace)
+
+      --color <COLOR>
+          Configuration over whether terminal colors are used in output.
+          
+          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based
+          on the terminal environment, for example by using `isatty`.
+          
+          [default: auto]
+
+  -o, --output <OUTPUT>
+          Where to place output.
+          
+          Required when printing WebAssembly binary output.
+          
+          If not provided, then stdout is used.
+
+      --wasm-dir <WASM_DIR>
+          Where to place binary and text WebAssembly files referenced by tests.
+          
+          Defaults to the current directory.
+
+      --pretty
+          Output pretty-printed JSON instead of compact json
+
+      --allow-confusing-unicode <true|false>
+          Controls the "allow confusing unicode" option which will reject parsing files that have
+          unusual characters.
+          
+          This is defaulted to `true` to enable parsing all upstream spec tests but can be disabled
+          if desired too.
+          
+          [possible values: true, false]
+
+  -h, --help
+          Print help (see a summary with '-h')

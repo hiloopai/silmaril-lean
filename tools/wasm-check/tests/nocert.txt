@@ -1,0 +1,2 @@
+# Pairs whose certificates are not checked (one name per line). Empty since round 2 (kernel
+# track): the memory pairs adlersum8-O2 and adlersum8-mutant are kernel-checked.

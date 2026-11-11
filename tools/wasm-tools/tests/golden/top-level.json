@@ -1,0 +1,769 @@
+{
+ "description": "The top-level command line: unknown subcommands with clap's similar-subcommand tips, help NAME, the aliases. Everything compared exactly.",
+ "fixtures": {},
+ "stderr": "exact",
+ "cases": [
+  {
+   "args": [
+    "pars"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'pars'\n\n  tip: a similar subcommand exists: 'parse'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "valdate"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'valdate'\n\n  tip: a similar subcommand exists: 'validate'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "compnent"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'compnent'\n\n  tip: some similar subcommands exist: 'compose', 'completion', 'component'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "helpp"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'helpp'\n\n  tip: a similar subcommand exists: 'help'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "print2"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'print2'\n\n  tip: a similar subcommand exists: 'print'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strp"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'strp'\n\n  tip: a similar subcommand exists: 'strip'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wast2"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'wast2'\n\n  tip: some similar subcommands exist: 'wat2wasm', 'wasm2wat', 'wast2json', 'wast'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metdata"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'metdata'\n\n  tip: some similar subcommands exist: 'mutate', 'metadata'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "xyz"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'xyz'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangel"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'demangel'\n\n  tip: a similar subcommand exists: 'demangle'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "json"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'json'\n\n  tip: a similar subcommand exists: 'json-from-wast'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "mutat"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'mutat'\n\n  tip: some similar subcommands exist: 'metadata', 'mutate'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "smth"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'smth'\n\n  tip: a similar subcommand exists: 'smith'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "sm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'sm'\n\n  tip: some similar subcommands exist: 'wasm2wat', 'smith'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "co"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'co'\n\n  tip: some similar subcommands exist: 'completion', 'component', 'compose'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "comp"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'comp'\n\n  tip: some similar subcommands exist: 'completion', 'component', 'compose'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wit"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'wit'\n\n  tip: some similar subcommands exist: 'wast', 'wit-smith', 'wit-dylib'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump2"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'dump2'\n\n  tip: a similar subcommand exists: 'dump'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdmp"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'objdmp'\n\n  tip: a similar subcommand exists: 'objdump'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2lin"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'addr2lin'\n\n  tip: a similar subcommand exists: 'addr2line'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "completio"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'completio'\n\n  tip: some similar subcommands exist: 'compose', 'component', 'completion'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "x"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'x'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "help2"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'help2'\n\n  tip: a similar subcommand exists: 'help'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wit-smit"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'wit-smit'\n\n  tip: some similar subcommands exist: 'wit-dylib', 'wit-smith'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dylib"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'dylib'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "json-from"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'json-from'\n\n  tip: a similar subcommand exists: 'json-from-wast'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validat"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'validat'\n\n  tip: a similar subcommand exists: 'validate'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "e"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'e'\n\n  tip: some similar subcommands exist: 'demangle', 'metadata', 'help'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wat2was"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'wat2was'\n\n  tip: some similar subcommands exist: 'wast', 'wast2json', 'wasm2wat', 'wat2wasm'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wasm2wa"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'wasm2wa'\n\n  tip: some similar subcommands exist: 'wast', 'wat2wasm', 'wasm2wat'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wast2jso"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'wast2jso'\n\n  tip: some similar subcommands exist: 'wat2wasm', 'wast', 'wast2json'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wat2wasm",
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Parse the WebAssembly text format.\n\nThis subcommand will parse the provided input as the WebAssembly text format and optionally write\nthe binary or text form to a provided file.\n\nUsage: wasm-tools parse [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n      --generate-dwarf <lines|full>\n          Optionally generate DWARF debugging information from WebAssembly text files.\n          \n          When the input to this command is a WebAssembly text file, such as `*.wat`, then this\n          option will instruct the text parser to insert DWARF debugging information to map binary\n          locations back to the original source locations in the input `*.wat` file. This option has\n          no effect if the `INPUT` argument is already a WebAssembly binary or if the text format\n          uses `(module binary ...)`.\n\n  -g\n          Shorthand for `--generate-dwarf full`\n\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -t, --wat\n          Output the text format of WebAssembly instead of the binary format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n\nExamples:\n\n   To parse the file input.wat as WebAssembly text format and write the\n   normalized text format to stdout:\n\n          wasm-tools parse -t input.wat\n\n   To parse the file input.wat as WebAssembly text format and write the binary\n   form to the file output.wasm, including debugging information:\n\n          wasm-tools parse input.wat -g -o output.wasm\n\n   To parse the file input.wat as WebAssembly text format and write the\n   normalized text format to the file output.wat:\n\n          wasm-tools parse -t input.wat -o output.wat\n\nExit status:\n    0 if OK,\n    nonzero to indicate a parse error.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wasm2wat",
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Print the textual form of a WebAssembly binary\n\nUsage: wasm-tools print [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n      --generate-dwarf <lines|full>\n          Optionally generate DWARF debugging information from WebAssembly text files.\n          \n          When the input to this command is a WebAssembly text file, such as `*.wat`, then this\n          option will instruct the text parser to insert DWARF debugging information to map binary\n          locations back to the original source locations in the input `*.wat` file. This option has\n          no effect if the `INPUT` argument is already a WebAssembly binary or if the text format\n          uses `(module binary ...)`.\n\n  -g\n          Shorthand for `--generate-dwarf full`\n\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -p, --print-offsets\n          Whether or not to print binary offsets intermingled in the text format as comments for\n          debugging\n\n      --skeleton\n          Indicates that the \"skeleton\" of a module should be printed.\n          \n          Items such as function bodies, data segments, and element segments are replaced with \"...\"\n          instead of printing their actual contents.\n\n      --name-unnamed\n          Ensure all wasm items have `$`-based names, even if they don't have an entry in the `name`\n          section.\n          \n          This option, when enabled, will synthesize names for any item which doesn't previously\n          have a name.\n\n  -f, --fold-instructions\n          Print instructions in the folded format. (See\n          https://webassembly.github.io/spec/core/text/instructions.html#folded-instructions)\n\n      --print-operand-stack\n          Print the contents of the operand stack within function bodies\n\n      --indent-text <INDENT_TEXT>\n          The string to use when indenting\n\n      --indent <INDENT>\n          Number of spaces used for indentation, has lower priority than `--indent-text`\n\n  -h, --help\n          Print help (see a summary with '-h')\n\nExamples:\n\n    # Print the textual form of `foo.wasm` to stdout.\n    $ wasm-tools print foo.wasm\n(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (func $add (;0;) (type 0) (param $lhs i32) (param $rhs i32) (result i32)\n    local.get $lhs\n    local.get $rhs\n    i32.add\n )\n\n    # Print a \"skeleton\" form of `foo.wasm` to stdout.\n    $ wasm-tools print foo.wasm --skeleton\n(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (func $add (;0;) (type 0) (param $lhs i32) (param $rhs i32) (result i32) ...)\n\n    # Print the textual form of `foo.wasm` to stdout, with folded instructions,\n    # binary offsets, and indented 6 spaces.\n    $ wasm-tools print foo.wasm -p -f --indent 6\n(module\n(;@b     ;)      (type (;0;) (func (param i32 i32) (result i32)))\n(;@37    ;)      (func $add (;0;) (type 0) (param $lhs i32) (param $rhs i32) (result i32)\n(;@3c    ;)            (i32.add\n(;@38    ;)                  (local.get $lhs)\n(;@3a    ;)                  (local.get $rhs))\n                 )\n\n    # Print the textual form of `foo.wasm` to stdout, with synthesized names for\n    # items without a name in the `name` section. (Notice below that the type\n    # denoted by ;0; in the previous examples has been given a name.)\n    $ wasm-tools print foo.wasm --name-unnamed\n(module\n  (type $#type0 (;0;) (func (param i32 i32) (result i32)))\n  (func $add (;0;) (type $#type0) (param $lhs i32) (param $rhs i32) (result i32)\n...\n\n    # Print the textual form of `foo.wasm` to the file `foo.wat`.\n    $ wasm-tools print foo.wasm -o foo.wat\n\nExit status:\n    0 on success,\n    nonzero if the input file fails to parse.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wast2json",
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files.\n\nThis subcommand will parse a wasm spec test, in the `*.wast` format, and then emit both a JSON file\nand a number of auxiliary modules. This can perform all the parsing for various implementations of\nthe wasm text format while deferring the actual processing of all commands.\n\nThis subcommand is modelled after WABT's `wast2json` tool, found at\n<https://github.com/WebAssembly/wabt>. More documentation of the format can be found at\n<https://github.com/WebAssembly/wabt/blob/main/docs/wast2json.md>.\n\nNote that this subcommand does not output precisely the same output as `wast2json`, but there should\nbe no major discrepancies.\n\nThis will also emit a number of `*.wasm` and `*.wat` files in the current directory (or in\n`--wasm-dir`) which the JSON will reference. This command will print the JSON to stdout unless the\n`-o` flag is given.\n\nUsage: wasm-tools json-from-wast [OPTIONS] <WAST>\n\nArguments:\n  <WAST>\n          Input `*.wast` file that will be parsed and converted to JSON\n\nOptions:\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n      --wasm-dir <WASM_DIR>\n          Where to place binary and text WebAssembly files referenced by tests.\n          \n          Defaults to the current directory.\n\n      --pretty\n          Output pretty-printed JSON instead of compact json\n\n      --allow-confusing-unicode <true|false>\n          Controls the \"allow confusing unicode\" option which will reject parsing files that have\n          unusual characters.\n          \n          This is defaulted to `true` to enable parsing all upstream spec tests but can be disabled\n          if desired too.\n          \n          [possible values: true, false]\n\n  -h, --help\n          Print help (see a summary with '-h')\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "help",
+    "wat2wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Parse the WebAssembly text format.\n\nThis subcommand will parse the provided input as the WebAssembly text format and optionally write\nthe binary or text form to a provided file.\n\nUsage: wasm-tools parse [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n      --generate-dwarf <lines|full>\n          Optionally generate DWARF debugging information from WebAssembly text files.\n          \n          When the input to this command is a WebAssembly text file, such as `*.wat`, then this\n          option will instruct the text parser to insert DWARF debugging information to map binary\n          locations back to the original source locations in the input `*.wat` file. This option has\n          no effect if the `INPUT` argument is already a WebAssembly binary or if the text format\n          uses `(module binary ...)`.\n\n  -g\n          Shorthand for `--generate-dwarf full`\n\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -t, --wat\n          Output the text format of WebAssembly instead of the binary format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n\nExamples:\n\n   To parse the file input.wat as WebAssembly text format and write the\n   normalized text format to stdout:\n\n          wasm-tools parse -t input.wat\n\n   To parse the file input.wat as WebAssembly text format and write the binary\n   form to the file output.wasm, including debugging information:\n\n          wasm-tools parse input.wat -g -o output.wasm\n\n   To parse the file input.wat as WebAssembly text format and write the\n   normalized text format to the file output.wat:\n\n          wasm-tools parse -t input.wat -o output.wat\n\nExit status:\n    0 if OK,\n    nonzero to indicate a parse error.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "help",
+    "pars"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'pars'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "help",
+    "valdate"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unrecognized subcommand 'valdate'\n\nUsage: wasm-tools <COMMAND>\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wat2wasm",
+    "-x"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unexpected argument '-x' found\n\n  tip: to pass '-x' as a value, use '-- -x'\n\nUsage: wasm-tools parse [OPTIONS] [INPUT]\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wasm2wat",
+    "/nonexistent"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: failed to read from `/nonexistent`\n\nCaused by:\n    0: No such file or directory (os error 2)\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "wast2json",
+    "-h"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files\n\nUsage: wasm-tools json-from-wast [OPTIONS] <WAST>\n\nArguments:\n  <WAST>  Input `*.wast` file that will be parsed and converted to JSON\n\nOptions:\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output [default: auto]\n  -o, --output <OUTPUT>\n          Where to place output\n      --wasm-dir <WASM_DIR>\n          Where to place binary and text WebAssembly files referenced by tests\n      --pretty\n          Output pretty-printed JSON instead of compact json\n      --allow-confusing-unicode <true|false>\n          Controls the \"allow confusing unicode\" option which will reject parsing files that have\n          unusual characters [possible values: true, false]\n  -h, --help\n          Print help (see more with '--help')\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "help",
+    "wasm2wat"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Print the textual form of a WebAssembly binary\n\nUsage: wasm-tools print [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n      --generate-dwarf <lines|full>\n          Optionally generate DWARF debugging information from WebAssembly text files.\n          \n          When the input to this command is a WebAssembly text file, such as `*.wat`, then this\n          option will instruct the text parser to insert DWARF debugging information to map binary\n          locations back to the original source locations in the input `*.wat` file. This option has\n          no effect if the `INPUT` argument is already a WebAssembly binary or if the text format\n          uses `(module binary ...)`.\n\n  -g\n          Shorthand for `--generate-dwarf full`\n\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -p, --print-offsets\n          Whether or not to print binary offsets intermingled in the text format as comments for\n          debugging\n\n      --skeleton\n          Indicates that the \"skeleton\" of a module should be printed.\n          \n          Items such as function bodies, data segments, and element segments are replaced with \"...\"\n          instead of printing their actual contents.\n\n      --name-unnamed\n          Ensure all wasm items have `$`-based names, even if they don't have an entry in the `name`\n          section.\n          \n          This option, when enabled, will synthesize names for any item which doesn't previously\n          have a name.\n\n  -f, --fold-instructions\n          Print instructions in the folded format. (See\n          https://webassembly.github.io/spec/core/text/instructions.html#folded-instructions)\n\n      --print-operand-stack\n          Print the contents of the operand stack within function bodies\n\n      --indent-text <INDENT_TEXT>\n          The string to use when indenting\n\n      --indent <INDENT>\n          Number of spaces used for indentation, has lower priority than `--indent-text`\n\n  -h, --help\n          Print help (see a summary with '-h')\n\nExamples:\n\n    # Print the textual form of `foo.wasm` to stdout.\n    $ wasm-tools print foo.wasm\n(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (func $add (;0;) (type 0) (param $lhs i32) (param $rhs i32) (result i32)\n    local.get $lhs\n    local.get $rhs\n    i32.add\n )\n\n    # Print a \"skeleton\" form of `foo.wasm` to stdout.\n    $ wasm-tools print foo.wasm --skeleton\n(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (func $add (;0;) (type 0) (param $lhs i32) (param $rhs i32) (result i32) ...)\n\n    # Print the textual form of `foo.wasm` to stdout, with folded instructions,\n    # binary offsets, and indented 6 spaces.\n    $ wasm-tools print foo.wasm -p -f --indent 6\n(module\n(;@b     ;)      (type (;0;) (func (param i32 i32) (result i32)))\n(;@37    ;)      (func $add (;0;) (type 0) (param $lhs i32) (param $rhs i32) (result i32)\n(;@3c    ;)            (i32.add\n(;@38    ;)                  (local.get $lhs)\n(;@3a    ;)                  (local.get $rhs))\n                 )\n\n    # Print the textual form of `foo.wasm` to stdout, with synthesized names for\n    # items without a name in the `name` section. (Notice below that the type\n    # denoted by ;0; in the previous examples has been given a name.)\n    $ wasm-tools print foo.wasm --name-unnamed\n(module\n  (type $#type0 (;0;) (func (param i32 i32) (result i32)))\n  (func $add (;0;) (type $#type0) (param $lhs i32) (param $rhs i32) (result i32)\n...\n\n    # Print the textual form of `foo.wasm` to the file `foo.wat`.\n    $ wasm-tools print foo.wasm -o foo.wat\n\nExit status:\n    0 on success,\n    nonzero if the input file fails to parse.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "Usage: wasm-tools <COMMAND>\n\nCommands:\n  parse           Parse the WebAssembly text format\n  validate        Validate a WebAssembly binary\n  print           Print the textual form of a WebAssembly binary\n  smith           A WebAssembly test case generator\n  shrink          Shrink a Wasm file while maintaining a property of interest (such as triggering a\n                  compiler bug)\n  mutate          A WebAssembly test case mutator\n  dump            Debugging utility to dump information about a wasm binary\n  objdump         Dumps information about sections in a WebAssembly file\n  strip           Removes custom sections from an input WebAssembly file\n  compose         WebAssembly component composer\n  demangle        Demangle Rust and C++ symbol names in the `name` section\n  component       WebAssembly wit-based component tooling\n  metadata        Manipulate metadata (module name, producers) to a WebAssembly file\n  wit-smith       A WIT test case generator\n  wit-dylib       Generate a wasm dynamic library from the input WIT world\n  addr2line       Translate a WebAssembly address to a filename and line number using DWARF\n                  debugging information\n  completion      Generate shell completion scripts for this CLI\n  json-from-wast  Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files\n  wast            A subcommand to test `*.wast` files short of executing WebAssembly code\n  help            Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "-h"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Usage: wasm-tools <COMMAND>\n\nCommands:\n  parse           Parse the WebAssembly text format\n  validate        Validate a WebAssembly binary\n  print           Print the textual form of a WebAssembly binary\n  smith           A WebAssembly test case generator\n  shrink          Shrink a Wasm file while maintaining a property of interest (such as triggering a\n                  compiler bug)\n  mutate          A WebAssembly test case mutator\n  dump            Debugging utility to dump information about a wasm binary\n  objdump         Dumps information about sections in a WebAssembly file\n  strip           Removes custom sections from an input WebAssembly file\n  compose         WebAssembly component composer\n  demangle        Demangle Rust and C++ symbol names in the `name` section\n  component       WebAssembly wit-based component tooling\n  metadata        Manipulate metadata (module name, producers) to a WebAssembly file\n  wit-smith       A WIT test case generator\n  wit-dylib       Generate a wasm dynamic library from the input WIT world\n  addr2line       Translate a WebAssembly address to a filename and line number using DWARF\n                  debugging information\n  completion      Generate shell completion scripts for this CLI\n  json-from-wast  Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files\n  wast            A subcommand to test `*.wast` files short of executing WebAssembly code\n  help            Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Usage: wasm-tools <COMMAND>\n\nCommands:\n  parse           Parse the WebAssembly text format\n  validate        Validate a WebAssembly binary\n  print           Print the textual form of a WebAssembly binary\n  smith           A WebAssembly test case generator\n  shrink          Shrink a Wasm file while maintaining a property of interest (such as triggering a\n                  compiler bug)\n  mutate          A WebAssembly test case mutator\n  dump            Debugging utility to dump information about a wasm binary\n  objdump         Dumps information about sections in a WebAssembly file\n  strip           Removes custom sections from an input WebAssembly file\n  compose         WebAssembly component composer\n  demangle        Demangle Rust and C++ symbol names in the `name` section\n  component       WebAssembly wit-based component tooling\n  metadata        Manipulate metadata (module name, producers) to a WebAssembly file\n  wit-smith       A WIT test case generator\n  wit-dylib       Generate a wasm dynamic library from the input WIT world\n  addr2line       Translate a WebAssembly address to a filename and line number using DWARF\n                  debugging information\n  completion      Generate shell completion scripts for this CLI\n  json-from-wast  Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files\n  wast            A subcommand to test `*.wast` files short of executing WebAssembly code\n  help            Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Usage: wasm-tools <COMMAND>\n\nCommands:\n  parse           Parse the WebAssembly text format\n  validate        Validate a WebAssembly binary\n  print           Print the textual form of a WebAssembly binary\n  smith           A WebAssembly test case generator\n  shrink          Shrink a Wasm file while maintaining a property of interest (such as triggering a\n                  compiler bug)\n  mutate          A WebAssembly test case mutator\n  dump            Debugging utility to dump information about a wasm binary\n  objdump         Dumps information about sections in a WebAssembly file\n  strip           Removes custom sections from an input WebAssembly file\n  compose         WebAssembly component composer\n  demangle        Demangle Rust and C++ symbol names in the `name` section\n  component       WebAssembly wit-based component tooling\n  metadata        Manipulate metadata (module name, producers) to a WebAssembly file\n  wit-smith       A WIT test case generator\n  wit-dylib       Generate a wasm dynamic library from the input WIT world\n  addr2line       Translate a WebAssembly address to a filename and line number using DWARF\n                  debugging information\n  completion      Generate shell completion scripts for this CLI\n  json-from-wast  Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files\n  wast            A subcommand to test `*.wast` files short of executing WebAssembly code\n  help            Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "-V"
+   ],
+   "known": "the version line names this build instead of upstream's commit",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "wasm-tools 1.262.0 (e22db44da 2026-10-13)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "--version"
+   ],
+   "known": "the version line names this build instead of upstream's commit",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "wasm-tools 1.262.0 (e22db44da 2026-10-13)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  }
+ ]
+}

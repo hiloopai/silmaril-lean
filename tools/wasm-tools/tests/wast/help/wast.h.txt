@@ -1,0 +1,23 @@
+A subcommand to test `*.wast` files short of executing WebAssembly code
+
+Usage: wasm-tools wast [OPTIONS] [INPUT]
+
+Arguments:
+  [INPUT]  Input file to process
+
+Options:
+  -v, --verbose...               Use verbose output (-v info, -vv debug, -vvv trace)
+      --color <COLOR>            Configuration over whether terminal colors are used in output
+                                 [default: auto]
+      --ignore-error-messages    Whether to ignore the error message expectation in `(assert_invalid
+                                 ..)` directives
+  -f, --features <FEATURES>      Comma-separated list of WebAssembly features to enable during
+                                 validation
+      --allow-confusing-unicode  Whether or not "confusing unicode characters" are allowed to be
+                                 present in `*.wast` files
+  -a, --assert <ASSERT>          Perform extra internal assertions in `wasm-tools` itself over the
+                                 provided test [possible values: default, pretty-whitespace,
+                                 snapshot-print, snapshot-json, snapshot-folded, test-folded,
+                                 no-test-folded, permissive]
+      --snapshot <SNAPSHOT>      Directory to place snapshots in with `--assert snapshot-*` flags
+  -h, --help                     Print help (see more with '--help')

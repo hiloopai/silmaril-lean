@@ -1,0 +1,12 @@
+[package]
+name = "wasm-egraph"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+description = "Untrusted proof-producing equality saturation for straight-line integer Wasm; certificates are checked in Lean (Silmaril.Wasm.Auto.EGraph)."
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"

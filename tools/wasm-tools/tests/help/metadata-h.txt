@@ -1,0 +1,11 @@
+Manipulate metadata (module name, producers) to a WebAssembly file
+
+Usage: wasm-tools metadata <COMMAND>
+
+Commands:
+  show  Read metadata (module name, producers) from a WebAssembly file
+  add   Add metadata (module name, producers) to a WebAssembly file
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help

@@ -1,0 +1,202 @@
+module
+
+public import Mathlib.Order.Basic
+public import Mathlib.Data.List.Basic
+
+/-!
+# Wasm capabilities and feature sets
+
+Wasm versions and profiles are both sets of **capabilities** (`Cap`). Capabilities are fine
+enough to remove pieces of the MVP (floats, memory, tables, globals), not only to add
+proposals.
+
+* `Cap`: the capabilities; `Cap.pre c`: the capabilities `c` needs (already transitively
+  closed: `Cap.pre_trans`);
+* sets of capabilities are predicates `Cap → Bool` (kernel-evaluable, so the version facts are
+  `decide`); `Closed S`: every capability of `S` has its prerequisites in `S`; `close S`: the
+  least closed superset (`close_closed`, `close_min`);
+* `FeatureSet`: the closed sets of capabilities, a distributive lattice with `⊥` (nothing) and
+  `⊤` (everything) (`Thms`); `FeatureSet.leB`: the order as a Boolean check;
+* `FeatureSet.remove S c`: the largest closed subset of `S` without `c` (everything needing
+  `c` goes too);
+* the named sets `v10`, `v20`, `v30`, `lime1`, `micro S`, `functional`, `functionalMutGC`,
+  `wasmFX`, `wasmi200`.
+
+Choices worth recording:
+
+* `callIndirectOverlong` (an overlong LEB encoding of `call_indirect`'s table index) only
+  affects the binary format. It arrived with reference types in 2.0, so it is in `v20`; it is a
+  capability so that `lime1` has exactly its published definition.
+* Bulk operations need `bulkMemory` (or `bulkMemoryOpt` for `memory.copy`/`memory.fill`) *and*
+  the store kind they act on; `bulkMemory` itself does not imply `memory` (`table.copy` is a
+  bulk operation without memory).
+* `micro S := S.remove floatNum`: no floats, hence also no SIMD and no saturating truncation.
+
+New definitions.
+-/
+
+@[expose] public section
+
+namespace Silmaril.Wasm.Models
+
+/-- Wasm capabilities. -/
+inductive Cap where
+  -- MVP pieces (each removable by a profile)
+  | intNum | floatNum | control | directCall | memory | table | callIndirect
+  | globals | mutGlobal
+  -- 2.0 additions
+  | signExt | satConv | multiValue | refTypes | bulkMemory | bulkMemoryOpt | simd
+  | callIndirectOverlong
+  -- 3.0 additions
+  | tailCall | extConst | typedFuncRef | gcImm | gcMut | exn | memory64 | multiMemory
+  | relaxedSimd
+  -- beyond 3.0 (extensions)
+  | stackSwitching | wideArith | customPageSizes
+  deriving DecidableEq, Repr
+
+namespace Cap
+
+/-- Every capability, as a list (`Cap.mem_all`): checks over capabilities are list checks the
+kernel evaluates. -/
+def all : List Cap :=
+  [.intNum, .floatNum, .control, .directCall, .memory, .table, .callIndirect, .globals,
+    .mutGlobal, .signExt, .satConv, .multiValue, .refTypes, .bulkMemory, .bulkMemoryOpt, .simd,
+    .callIndirectOverlong, .tailCall, .extConst, .typedFuncRef, .gcImm, .gcMut, .exn, .memory64,
+    .multiMemory, .relaxedSimd, .stackSwitching, .wideArith, .customPageSizes]
+
+theorem mem_all (c : Cap) : c ∈ all := by cases c <;> decide
+
+/-- The prerequisites of a capability, transitively closed (`Cap.pre_trans`). -/
+def pre : Cap → List Cap
+  | .callIndirect => [.table]
+  | .mutGlobal => [.globals]
+  | .signExt => [.intNum]
+  | .satConv => [.intNum, .floatNum]
+  | .bulkMemory => [.bulkMemoryOpt]
+  | .simd => [.floatNum]
+  | .callIndirectOverlong => [.callIndirect, .table]
+  | .tailCall => [.directCall]
+  | .typedFuncRef => [.refTypes]
+  | .gcImm => [.typedFuncRef, .refTypes]
+  | .gcMut => [.gcImm, .typedFuncRef, .refTypes]
+  | .exn => [.refTypes]
+  | .memory64 => [.memory]
+  | .multiMemory => [.memory]
+  | .relaxedSimd => [.simd, .floatNum]
+  | .stackSwitching => [.typedFuncRef, .refTypes, .exn]
+  | .wideArith => [.intNum]
+  | .customPageSizes => [.memory]
+  | _ => []
+
+theorem pre_trans_check :
+    (all.all fun x => (pre x).all fun y => (pre y).all fun z => (pre x).contains z) = true := by
+  decide
+
+/-- The prerequisites are transitively closed. -/
+theorem pre_trans {x y z : Cap} (hy : y ∈ pre x) (hz : z ∈ pre y) : z ∈ pre x := by
+  have h := pre_trans_check
+  simp only [List.all_eq_true, List.contains_iff_mem] at h
+  exact h x (mem_all x) y hy z hz
+
+end Cap
+
+/-- A set of capabilities (a predicate) is **closed** when it contains the prerequisites of its
+members. -/
+def Closed (S : Cap → Bool) : Prop := ∀ c, S c = true → ∀ d ∈ Cap.pre c, S d = true
+
+/-- The closure of a set of capabilities: add the prerequisites (`Thms`: closed, least). -/
+def close (S : Cap → Bool) (c : Cap) : Bool :=
+  S c || Cap.all.any fun d => S d && (Cap.pre d).contains c
+
+theorem close_closed (S : Cap → Bool) : Closed (close S) := by
+  intro c hc d hd
+  simp only [close, Bool.or_eq_true, List.any_eq_true, Bool.and_eq_true,
+    List.contains_iff_mem] at hc ⊢
+  rcases hc with hc | ⟨e, -, he, hce⟩
+  · exact Or.inr ⟨c, Cap.mem_all c, hc, hd⟩
+  · exact Or.inr ⟨e, Cap.mem_all e, he, Cap.pre_trans hce hd⟩
+
+/-- A **feature set**: a closed set of capabilities. -/
+abbrev FeatureSet : Type := { S : Cap → Bool // Closed S }
+
+namespace FeatureSet
+
+/-- Membership of a capability. -/
+def has (S : FeatureSet) (c : Cap) : Bool := S.1 c
+
+/-- The feature set generated by a list of capabilities. -/
+def ofList (l : List Cap) : FeatureSet := ⟨close fun c => l.contains c, close_closed _⟩
+
+/-- The largest closed subset of `S` without `c`: drop `c` and everything that needs it. -/
+def remove (S : FeatureSet) (c : Cap) : FeatureSet :=
+  ⟨fun d => S.1 d && !decide (d = c ∨ c ∈ Cap.pre d), by
+    intro d hd e he
+    have hd' : S.1 d = true ∧ ¬ (d = c ∨ c ∈ Cap.pre d) := by simpa using hd
+    have hne : ¬ (e = c ∨ c ∈ Cap.pre e) := by
+      rintro (rfl | hc)
+      · exact hd'.2 (Or.inr he)
+      · exact hd'.2 (Or.inr (Cap.pre_trans he hc))
+    simpa [S.2 d hd'.1 e he] using hne⟩
+
+/-- Inclusion of feature sets, as a Boolean check over every capability. -/
+def leB (S T : FeatureSet) : Bool := Cap.all.all fun c => !S.1 c || T.1 c
+
+end FeatureSet
+
+open FeatureSet
+
+/-- The MVP capabilities. -/
+def mvpCaps : List Cap :=
+  [.intNum, .floatNum, .control, .directCall, .memory, .table, .callIndirect, .globals,
+    .mutGlobal]
+
+/-- The capabilities Wasm 2.0 adds. -/
+def caps20 : List Cap :=
+  [.signExt, .satConv, .multiValue, .refTypes, .bulkMemory, .bulkMemoryOpt, .simd,
+    .callIndirectOverlong]
+
+/-- The capabilities Wasm 3.0 adds. -/
+def caps30 : List Cap :=
+  [.tailCall, .extConst, .typedFuncRef, .gcImm, .gcMut, .exn, .memory64, .multiMemory,
+    .relaxedSimd]
+
+/-- Wasm 1.0 (the MVP). -/
+def v10 : FeatureSet := ofList mvpCaps
+
+/-- Wasm 2.0. -/
+def v20 : FeatureSet := ofList (mvpCaps ++ caps20)
+
+/-- Wasm 3.0. -/
+def v30 : FeatureSet := ofList (mvpCaps ++ caps20 ++ caps30)
+
+/-- Lime1: the MVP with mutable globals, multi-value, sign extension, saturating conversions,
+`memory.copy`/`memory.fill`, extended constant expressions and overlong `call_indirect`
+encodings. -/
+def lime1 : FeatureSet :=
+  ofList (mvpCaps ++ [.multiValue, .signExt, .satConv, .bulkMemoryOpt, .extConst,
+    .callIndirectOverlong])
+
+/-- **Micro Wasm** over `S`: no floats (hence no SIMD, no saturating truncation). -/
+def micro (S : FeatureSet) : FeatureSet := S.remove .floatNum
+
+/-- **Functional Wasm**: control, numbers, direct and tail calls, multi-value, typed function
+references, immutable GC and exceptions; no memory, tables or globals. -/
+def functional : FeatureSet :=
+  ofList [.control, .intNum, .floatNum, .directCall, .tailCall, .multiValue, .typedFuncRef,
+    .gcImm, .exn]
+
+/-- Functional Wasm with mutable GC aggregates. -/
+def functionalMutGC : FeatureSet := ofList [.control, .intNum, .floatNum, .directCall,
+  .tailCall, .multiValue, .typedFuncRef, .gcImm, .gcMut, .exn]
+
+/-- WasmFX: Wasm 3.0 with stack switching. -/
+def wasmFX : FeatureSet := ofList (mvpCaps ++ caps20 ++ caps30 ++ [.stackSwitching])
+
+/-- The features of wasmi 2.0.0 (README at `v2.0.0`): Wasm 2.0 plus tail calls, extended
+constants, memory64, multi-memory, relaxed SIMD, wide arithmetic and custom page sizes; no
+typed function references, GC or exception handling. -/
+def wasmi200 : FeatureSet :=
+  ofList (mvpCaps ++ caps20 ++ [.tailCall, .extConst, .memory64, .multiMemory, .relaxedSimd,
+    .wideArith, .customPageSizes])
+
+end Silmaril.Wasm.Models

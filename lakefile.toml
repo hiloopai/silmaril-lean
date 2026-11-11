@@ -129,3 +129,29 @@ name = "wasm-shell-lean"
 root = "WasmShellLean"
 srcDir = "tools/binaryen-lean"
 supportInterpreter = true
+
+# The subcommand groups of the wasm-tools executable (imported by its root as `WasmTools.*`).
+[[lean_lib]]
+name = "WasmToolsCli"
+srcDir = "tools/wasm-tools"
+globs = ["WasmTools.+"]
+
+[[lean_exe]]
+name = "wasm-tools"
+root = "WasmTools"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-asyncify"
+root = "WasmAsyncify"
+srcDir = "tools/wasm-asyncify"
+
+[[lean_exe]]
+name = "wasm-check"
+root = "WasmCheck"
+srcDir = "tools/wasm-check"
+supportInterpreter = true
+
+[[lean_lib]]
+name = "WasmAutoTests"
+globs = ["tests.wasm.auto.+"]
