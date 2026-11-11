@@ -49,8 +49,20 @@ jobs:
           nproc
           free -m
           df -h .
-      # The Lake cache installs its archiver into the toolchain, and `scope` needs it.
+      # Unpacking the 3.4 GB toolchain takes 4–6 s in RAM against 14–31 s on a
+      # free runner's disk. A Lean job peaks at 6.5–7.1 GB of the 16 GB, toolchain
+      # included (silmaril-lean#53).
+      - name: Keep the Lean toolchain in RAM
+        if: runner.environment == 'github-hosted'
+        run: |
+          mkdir -p /dev/shm/elan
+          echo "ELAN_HOME=/dev/shm/elan" >> "$GITHUB_ENV"
+          # lean-action ignores ELAN_HOME and installs into ~/.elan.
+          ln -s /dev/shm/elan "$HOME/.elan"
+      # The pool restore installs the toolchain and puts it on PATH. Fork pull
+      # requests get no pool credentials, so they install Lean with elan.
       - name: Install Lean
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           auto-config: "false"
