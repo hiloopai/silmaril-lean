@@ -13,6 +13,7 @@
 | Command-line interfaces | Argument grammars with a derived, proved front end; behaviour specifications with refinement and composition; Lean CLI programs and a test harness; the CLI institution | [CLI](cli.md) |
 | ELF files | One parse of an ELF64 file, ld.so's symbol lookup, a lookup index, facts and problem shapes over files, a checker for large files, and the x86-64 dynamic-loading models they relate to | [ELF](elf.md) |
 | C library contracts and allocators | The contract institution of C library signatures (allocator chain, stdio, tensor), the allocator signature hierarchy and its POSIX-safe contract over ELF shared objects, a concrete loading model with named import contracts, and the problem shapes | [Allocators](alloc.md) |
+| SpecTec | The Wasm 1.0, 2.0 and 3.0 specifications read from SpecTec's IL into Lean, patches, a surface-language fragment, grammar institutions and simulations with the Core semantics | [SpecTec](spectec/README.md), [divergences](spectec-divergences.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide

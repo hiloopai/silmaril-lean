@@ -1,6 +1,6 @@
 name = "silmaril"
 version = "0.1.0"
-defaultTargets = ["Silmaril"]
+defaultTargets = ["Silmaril", "SilmarilSpecTec"]
 restoreAllArtifacts = true
 [leanOptions]
 autoImplicit = false
@@ -62,7 +62,105 @@ rev = "13567aed1ac4f12aea9484178e07e51f8c9f7658"
 
 [[lean_lib]]
 name = "Silmaril"
-globs = ["Silmaril.*"]
+# Every `Silmaril.*` module except the SpecTec trees, which are `SilmarilSpecTec` below. Lake
+# globs cannot exclude, and a module matched by two libraries' globs is built under whichever
+# library fetches it first, so the siblings of `Wasm.SpecTec`, `Proofs.Wasm.SpecTec` and
+# `Raw.Wasm.SpecTec` are listed; scripts/check-layout.sh fails on a module neither library covers.
+# `roots` is narrowed because the default root `Silmaril` claims every module under it, SpecTec
+# included (an empty `roots` reads as the default to the cache tooling).
+roots = ["Silmaril.Prelude"]
+globs = [
+  "Silmaril", "Silmaril.Apps.+", "Silmaril.Calculi.*", "Silmaril.Cli.*", "Silmaril.Compile.+",
+  "Silmaril.Courses.+", "Silmaril.Crypto.+", "Silmaril.Data.+", "Silmaril.Elf.+", "Silmaril.Encoding.*",
+  "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Libc.+", "Silmaril.Logic.*",
+  "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+",
+  "Silmaril.Problems.+", "Silmaril.Process.+", "Silmaril.Project.+", "Silmaril.Proofs.Calculi.+",
+  "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Elf.+", "Silmaril.Proofs.Formats.+",
+  "Silmaril.Proofs.Games.+", "Silmaril.Proofs.Logic.+", "Silmaril.Proofs.Problems.+",
+  "Silmaril.Proofs.Process.+", "Silmaril.Proofs.Project.+", "Silmaril.Proofs.SSA.+",
+  "Silmaril.Proofs.Wasm.Auto.+", "Silmaril.Proofs.Wasm.Auto2.+",
+  "Silmaril.Proofs.Wasm.Behaviour.+", "Silmaril.Proofs.Wasm.Binaryen.+",
+  "Silmaril.Proofs.Wasm.Examples.+", "Silmaril.Proofs.Wasm.FX.+", "Silmaril.Proofs.Wasm.FnInst.+",
+  "Silmaril.Proofs.Wasm.Game.+", "Silmaril.Proofs.Wasm.Interp.+", "Silmaril.Proofs.Wasm.Logic.+",
+  "Silmaril.Proofs.Wasm.SSA.+", "Silmaril.Proofs.Wasm.Spec.+", "Silmaril.Proofs.Wasm.Tools.+",
+  "Silmaril.Proofs.Wasm.Verify.+", "Silmaril.Proofs.WasmSpec.+", "Silmaril.Proofs.X86.+",
+  "Silmaril.Raw.Elf.+", "Silmaril.Raw.Formats.+", "Silmaril.Raw.Process.+", "Silmaril.Raw.Semantics.+",
+  "Silmaril.Raw.Wasm.Auto.+", "Silmaril.Raw.Wasm.Auto2.+", "Silmaril.RiscV.+", "Silmaril.SSA.+",
+  "Silmaril.Semantics.+", "Silmaril.Wasm.Auto.+", "Silmaril.Wasm.Auto2.+",
+  "Silmaril.Wasm.Behaviour.+", "Silmaril.Wasm.Binary.+", "Silmaril.Wasm.Binaryen.+",
+  "Silmaril.Wasm.Component.+", "Silmaril.Wasm.Declaration", "Silmaril.Wasm.Equiv.+",
+  "Silmaril.Wasm.Examples.+", "Silmaril.Wasm.Execution.+", "Silmaril.Wasm.Extensions.+",
+  "Silmaril.Wasm.FX.+", "Silmaril.Wasm.FnInst.+", "Silmaril.Wasm.Game.+",
+  "Silmaril.Wasm.Institution.+", "Silmaril.Wasm.Instructions", "Silmaril.Wasm.Interp.+",
+  "Silmaril.Wasm.Lime1.+", "Silmaril.Wasm.Link.+", "Silmaril.Wasm.Logic.+",
+  "Silmaril.Wasm.Models.+", "Silmaril.Wasm.ModuleBuilder", "Silmaril.Wasm.Modules",
+  "Silmaril.Wasm.Numerics.+", "Silmaril.Wasm.Ops", "Silmaril.Wasm.SSA.+",
+  "Silmaril.Wasm.Scalar.+", "Silmaril.Wasm.SingleThreaded.+", "Silmaril.Wasm.Spec.+",
+  "Silmaril.Wasm.Text.+", "Silmaril.Wasm.Tools.+", "Silmaril.Wasm.TypeUse", "Silmaril.Wasm.Types",
+  "Silmaril.Wasm.V1.+", "Silmaril.Wasm.V2.+", "Silmaril.Wasm.Validation.+",
+  "Silmaril.Wasm.Verify.+", "Silmaril.Wasm.Wac.+", "Silmaril.Wasm.Wat.*", "Silmaril.WasmSpec.+",
+  "Silmaril.X86.+"
+]
+
+# The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
+# `spectec_check_slice`, `spectec_crosscheck`, `spectec_revalidate`, `spectec_source` and the
+# `checkStreamFile`/`readScript` evals) read the pinned streams and sources while elaborating:
+# see specs/spectec/README.md. Lake mixes a library's `needs` into the trace of every module of
+# that library, so they live here and not on `Silmaril`, whose traces (and published cache) stay
+# as on main. Declared after `Silmaril` so that imports resolve to this library.
+[[lean_lib]]
+name = "SilmarilSpecTec"
+globs = ["Silmaril.Wasm.SpecTec.+", "Silmaril.Proofs.Wasm.SpecTec.+", "Silmaril.Raw.Wasm.SpecTec.+"]
+needs = [
+  "spectecWasm10", "spectecWasm20", "spectecWasm30",
+  "spectecMainWasm10", "spectecMainWasm20", "spectecMainWasm30",
+  "spectecSurfaceVars", "spectecSurfaceNum", "spectecSurfaceBinary",
+]
+
+[[input_file]]
+name = "spectecWasm10"
+path = "specs/spectec/wasm-1.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecWasm20"
+path = "specs/spectec/wasm-2.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecWasm30"
+path = "specs/spectec/wasm-3.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecMainWasm10"
+path = "specs/spectec/e7a9df7c/wasm-1.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecMainWasm20"
+path = "specs/spectec/e7a9df7c/wasm-2.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecMainWasm30"
+path = "specs/spectec/e7a9df7c/wasm-3.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecSurfaceVars"
+path = "specs/spectec/src/specification/wasm-3.0/0.1-aux.vars.spectec"
+text = false
+
+[[input_file]]
+name = "spectecSurfaceNum"
+path = "specs/spectec/src/specification/wasm-3.0/0.2-aux.num.spectec"
+text = false
+
+[[input_file]]
+name = "spectecSurfaceBinary"
+path = "specs/spectec/src/specification/wasm-3.0/5.1-binary.values.spectec"
+text = false
 
 # The `sil project` self-test (examples/project/selftest.sh). Its module reads files while it
 # elaborates: the records files and the registry under `silmaril/` (`silmaril load`, `silmaril
