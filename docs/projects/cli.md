@@ -17,7 +17,7 @@ A CLI is specified in four layers, each a function of the one before.
 
 | Layer | Modules | Key names |
 | --- | --- | --- |
-| 1. The grammar is data | `Silmaril.Cli.Args`, `Silmaril.Cli.Clap`, `Silmaril.Cli.Surface` | `Command`, `Opt`, `Pos`, `flag`, `opt`, `arg`, `Command.WF`, `Extends` (`⊑`), `Clap.Tool` |
+| 1. The grammar is data | `Silmaril.Cli.Args`, `Silmaril.Cli.Clap`, `Silmaril.Cli.Getopt`, `Silmaril.Cli.Surface` | `Command`, `Opt`, `Pos`, `flag`, `opt`, `arg`, `Command.WF`, `Extends` (`⊑`), `Clap.Tool`, `Getopt.Tool` |
 | 2. The front end is derived | `Silmaril.Cli.Args`, `Silmaril.Cli.Front`, `Silmaril.Cli.Clap.Main` | `scan`, `interpret`, `Outcome`, `render`, `normalize`, `Command.help`, `Command.spec`, `Command.main` |
 | 3. The behaviour is a relation | `Silmaril.Cli.Behaviour`, `Files`, `Footprint`, `Check` | `Input`, `Obs`, `Spec`, `≤`, `seq`, `pipe`, `dispatch`, `Spec.Partial`, `Spec.orFail`, `Spec.orRefused`, `Check` |
 | 4. Implementations refine the spec | `Silmaril.Cli.Io`, `Silmaril.Cli.Io.Command`, `Silmaril.Cli.Io.Run` | `Prog`, `Prog.Sat`, `Prog.ofCommandCore`, `Prog.toIO`, `Check.Sound`, `checkCases` |
@@ -29,7 +29,8 @@ A CLI is specified in four layers, each a function of the one before.
    counted flags, exact tokens such as `-O2`, typed values, environment variables, defaults,
    subcommands and global options. `withHelp` and `withVersion` add the conventional flags.
    Well-formedness `c.WF` is decidable. The clap dialect (`Clap.Tool`) reads the same grammar
-   with the conventions of Rust's clap, and `Surface` renders clap's `-h` layout.
+   with the conventions of Rust's clap, the getopt dialect (`Getopt.Tool`) with those of C's
+   `getopt` and `getopt_long`, and `Surface` renders clap's `-h` layout.
 2. **The derived front end.** `interpret c env argv` parses (`scan`), resolves each value
    (command line, then environment, then default) and gives an `Outcome`: `.run m` with typed
    `Matches`, `.help path`, `.version v` or `.error path e`, with its exit code. The parser is
@@ -180,6 +181,69 @@ and check), `Silmaril.Cli.Io.Examples` (`echo`, `cat` and a file copy, the latte
 `Silmaril.Cli.Behaviour.Examples` (pipes, `&&` and dispatch) and `Silmaril.Cli.Footprint.Examples`
 (a pipe whose log is not the sequential one).
 
+## The getopt dialect
+
+Most C programs, and so most ELF binaries one verifies, read their arguments with POSIX
+`getopt(3)` or GNU `getopt_long(3)`. `Silmaril.Cli.Getopt` models both, and relates them to
+args grammars the way the clap dialect does.
+
+**Tables as data.** A `Getopt.Table` is what a C program hands to the library: the optstring
+(`shorts`: a character with no argument, `x:` a required one, `x::` an optional one; a leading
+`+`; GNU's `W;`) and the longopts array (`longs`: a name, its argument, the key it reports).
+`Table.ofOptstring "+n:c:qv"` reads an optstring and `Table.optstring` prints one;
+`Table.ofCommand c` derives the table from an args `Command` (one-letter single-dash names
+become optstring characters, long names become longopts entries, keyed by option `id`).
+
+**The reading.** `parse t ord argv` follows getopt's conventions: clusters `-abc`; a required
+argument attached (`-n5`) or in the next token, taken verbatim even when it starts with `-`
+(`-n -5`); an optional argument only attached (`-n5`, `--name=v`); `--name`, `--name=v`,
+`--name v`; any unambiguous prefix of a long name (`resolveLong`: an exact name wins, and
+prefixes of several names that mean one option, like GNU grep's `--color` and `--colour`, are
+not ambiguous); `-W name` as `--name` with `W;`; `--` ends the options; `-` is an operand
+(standard input by convention). The first usage error ends the reading, as in programs that
+print their usage and exit 2.
+
+**Ordering depends on the environment.** POSIX getopt stops at the first operand
+(`Order.requireOrder`). GNU getopt permutes (`Order.permute`): options may follow operands,
+unless the optstring starts with `+` or `POSIXLY_CORRECT` is set. So a `Getopt.Tool` (a grammar
+plus `gnu`, `plus`, `wLong`) is read as a function of the arguments **and** the environment:
+`Tool.order env`, `Tool.parse env argv`, `Tool.read env argv`. On a full invocation
+(`Silmaril.Cli.Getopt.Front`) `Tool.envVars` lists the variables read (`POSIXLY_CORRECT`, then
+the grammar's), `Tool.outcome i` reads them from `i : Input`, and `Tool.spec S` is the
+behaviour specification, as `Command.spec` is for the args dialect.
+
+```lean
+open Silmaril.Cli Silmaril.Cli.Getopt
+
+def head : Tool := { grammar := {
+  name := "head"
+  opts := [{ id := "lines", long := ["lines"], short := ["n"], arg := some .str }]
+  pos := [{ id := "file", arity := .many }] } }
+
+#guard head.table.optstring == "n:"
+-- GNU order: `-n 3` after a file is still an option.
+#guard ((head.parse (fun _ => none) ["a", "-n", "3"]).toOption.map (·.operands)) == some ["a"]
+-- With POSIXLY_CORRECT set, `-n` and `3` are files.
+#guard ((head.parse (fun v => if v == "POSIXLY_CORRECT" then some "" else none)
+    ["a", "-n", "3"]).toOption.map (·.operands)) == some ["a", "-n", "3"]
+```
+
+**Against the args front end.** `Tool.read` hands what getopt read to the same checks as
+`interpret` (`afterScan`: help, version, types, defaults, environment variables, positionals,
+value checks, rules). The pre-pass `Tool.pre env argv` names the first token where the two
+readings may differ (`Diverge`): an abbreviated long name, `-W`, an attached argument starting
+with `=` (`sort -t=` gives getopt the separator `=`; the args dialect reads `-t=x` as `x`), and,
+in POSIX order, an option-like token after the first operand. Where it passes, `read_agrees`
+proves that the getopt reading and `interpret` agree. `parse_permuted` proves that the GNU
+reading of an argument vector is the POSIX reading of its permuted vector (option tokens first,
+as glibc leaves `argv`).
+
+`Silmaril.Cli.Getopt.Examples` checks option tables of `head`, `wc`, `grep`, `sort` and `cut`
+against the behaviour POSIX and GNU document for them: clusters (`wc -lwc`), attached and
+separate arguments (`cut -d, -f1,3`, `cut -f 2 -d ' '`), arguments that start with `-`
+(`grep -e -v`), optional arguments (`grep --color` versus `--color=always`), unique and
+ambiguous prefixes (`--col`, `--in`), `--`, `-`, and the two orderings.
+
 ## Known limitations
 
 * **Partial correctness.** `Obs` describes terminating runs only; a spec says nothing about runs
@@ -193,6 +257,13 @@ and check), `Silmaril.Cli.Io.Examples` (`echo`, `cat` and a file copy, the latte
   pre-pass passes, and compares outcome classes, not message texts. The clap help layout of
   `Surface` and the comparison of its reference reading with `Clap.Tool.read` are checked by
   evaluation, not proved.
+* **getopt.** The model ends at the first usage error (getopt reports it and goes on; programs
+  conventionally exit). GNU's third ordering (an optstring starting with `-`), `getopt_long_only`
+  and the obsolete `head -5` style (parsed by programs before getopt) are not modelled; `-W name`
+  takes an argument only as `-W name=value`. `read_agrees` needs a grammar getopt can express
+  (`Fits`: no subcommands, no exact multi-letter tokens, no `--no-x` negation) and compares
+  outcome classes, not message texts. That the pre-pass passes the args normal form is still
+  open (`Task.pre_render`; `read_render_of` is conditional on it).
 * **Program bodies.** `Command.main` and `Clap.Tool.main` are proved to refine their front-end
   specifications given that the program run on each `Matches` refines its part
   (`main_refines`); what the body does is the user's obligation.
@@ -233,6 +304,13 @@ All theorems below are proved from the standard axioms only.
 **The clap dialect** (`Silmaril.Cli.Clap.Thms`, `Silmaril.Cli.Clap.Main.Thms`): `read_agrees`,
 `pre_render`, `read_render`, `read_run_valid`, `read_run_render`; `Tool.main_refines`,
 `Tool.main_refines_front`, `Tool.frontCheck_sound`, `Tool.spec_usageError`, `Tool.helpOr_help`.
+
+**The getopt dialect** (`Silmaril.Cli.Getopt.Thms`, `Getopt.Front.Thms`, proofs in
+`Silmaril/Proofs/Cli/Getopt/`): `read_agrees`, `parse_scan`, `readTok_readOpt`;
+`parse_permuted`, `Tool.parse_permuted`; `resolveLong_exact`, `resolveLong_ok`,
+`resolveLong_unique`; `order_posixly`, `order_plus`, `order_posix`, `order_gnu`, `order_envOf`;
+`outcome_agrees`, `spec_run`, `spec_usage`; `read_render_of` takes the open
+`Task.pre_render` as a hypothesis.
 
 **Behaviour** (`Silmaril.Cli.Behaviour.Thms`, `Files.Thms`, `Footprint.Thms`, `Check.Thms`):
 `det_le_iff`; monotonicity of every composition (`seq_mono`, `pipe_mono`, `dispatch_mono`, …);
