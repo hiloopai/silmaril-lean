@@ -16,7 +16,6 @@ namespace Silmaril.Process.CLI
 
 /-- A segment's contents (file bytes, then zero fill) span at least its memory size. -/
 theorem Segment.memSize_le_contents (s : Segment) : s.memSize ≤ s.contents.length := by
-  simp only [Segment.contents, List.length_append, List.length_replicate]
-  omega
+  simp only [Segment.contents, List.length_append, List.length_replicate]; omega
 
 end Silmaril.Process.CLI
