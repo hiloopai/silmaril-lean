@@ -5,7 +5,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     println!("args: {:?}", args);
     for (k, v) in std::env::vars() {
-        if k.starts_with("MORIA") { println!("env {k}={v}"); }
+        if k.starts_with("SIL") { println!("env {k}={v}"); }
     }
     let mut s = String::new();
     std::io::stdin().read_to_string(&mut s).unwrap();

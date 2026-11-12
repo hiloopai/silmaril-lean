@@ -66,7 +66,7 @@ measure() {
   echo "$best $((rss / 1024)) $rc"
 }
 
-# `row CASE INPUT SIZE MORIA-CMD… -- NATIVE-CMD…`
+# `row CASE INPUT SIZE LEAN-CMD… -- NATIVE-CMD…`
 row() {
   local case=$1 input=$2 size=$3; shift 3
   local mcmd=() ncmd=()
