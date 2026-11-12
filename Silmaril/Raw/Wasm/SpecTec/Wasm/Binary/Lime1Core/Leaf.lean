@@ -3,7 +3,7 @@ module
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.Lime1Core.Tables
 -- Silmaril addition for build time (not in the silmaril source): the non-nesting cases of
 -- `core_instr_aux` of `Lime1Core.lean`, moved out of its structural recursion unchanged.
--- Hand copy: source namespaces kept, only import lines rewritten.
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten.
 
 /-! # Lime1 and Core 3.0 agree on instruction encodings: Core to Lime1 without nesting
 

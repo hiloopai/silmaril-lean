@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.FwdRun10T
 
 /-!
-# The unrestricted `br-zero` leaf is false
+# The unrestricted `br-zero` leaf is false (track v10)
 
 Round 3 proved the control leaves `br-zero`, `br-succ`, `return-label`, `return-frame` and
 `trap-vals` only at a **plain** suffix (`Plain10`): each of these rules types the code after its

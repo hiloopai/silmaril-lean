@@ -5,7 +5,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.StoreValid10
 public import Silmaril.Wasm.Component.Lime1Bridge.Thms
 
 /-!
-# The forward 1.0 run from an instantiated store, without Core `StoreOk`
+# The forward 1.0 run from an instantiated store, without Core `StoreOk` (track v10)
 
 Round 4's `Task.wholeRunFwd10Inv` (proved, `wholeRunFwd10Inv`) and round 5's `simEnv10T` form
 (`wholeRunFwd10InvT`) assume that the Core image of the V1 store is valid

@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.InstWitnessHost10
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.InstWitnessExp10
 
 /-!
-# The 1.0 route, an earlier step
+# The 1.0 route, an earlier step (track v10-inst)
 
 See `docs/projects/spectec/README.md`, "v10-inst".
 

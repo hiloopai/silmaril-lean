@@ -44,7 +44,7 @@ def startGarbA (P : Profile)
   tasks := [task₂ startEx [] ⟨0⟩]
   threads := [{ (thread₁ ([] : List (Runtime.Task (E3 P)))).withIndex 1 with status := .exited }]
   callers := [.sub .start]
-  conts := Silmaril.Wasm.Execution.Core.Config.setSlot (Silmaril.Wasm.Execution.Core.Config.setSlot [] 0
+  conts := Config.setSlot (Config.setSlot [] 0
     (some (threadAct (DA P g) ⟨0⟩ (.liftImplicit ⟨0⟩ a)))) 0 none
   pending := []
   results := []
@@ -130,18 +130,18 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Game
 variable {I : ScalarInstance} {s : Store Nat} {a : Nat}
 
 /-- Host-free runs are runs for any host. -/
-theorem steps_of_noHostI {P : Profile} {H : Type} (host : HostSemantics H) {c c' : Silmaril.Wasm.Execution.Core.Config H}
-    (h : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost c c') : Silmaril.Wasm.Execution.Core.Steps P host c c' := by
+theorem steps_of_noHostI {P : Profile} {H : Type} (host : HostSemantics H) {c c' : Config H}
+    (h : Steps P Silmaril.Wasm.SingleThreaded.Det.noHost c c') : Steps P host c c' := by
   induction h with
   | refl => exact .refl
   | tail _ hst ih => exact .tail ih (Step.of_noHost host hst)
 
 /-- **Typed start results**, host-free, for an instance with imports: a result of the start
 function is `values []`, a trap or an exception. -/
-theorem start_resultI {P : Profile} (hw : I.WellFormed s) (ha : StartTyped s a) {c' : Silmaril.Wasm.Execution.Core.Config Nat}
-    {r : Result} (run : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) c')
+theorem start_resultI {P : Profile} (hw : I.WellFormed s) (ha : StartTyped s a) {c' : Config Nat}
+    {r : Result} (run : Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) c')
     (final : c'.code = r.toAdmin) : r = .values [] ∨ r = .trap ∨ ∃ x, r = .throw x := by
-  have run' : Silmaril.Wasm.Execution.Core.Steps P (hostOf (plusStartI I a).imports (Env.silent _))
+  have run' : Steps P (hostOf (plusStartI I a).imports (Env.silent _))
       (invoke s ((plusStartI I a).addr (startOpI I a).1) (startOpI I a).2.1) c' :=
     steps_of_noHostI _ run
   obtain ⟨w, hw', -⟩ := ScalarInstance.answer_of_run (plusStartI_wellFormed hw ha)
@@ -153,9 +153,9 @@ theorem start_wellFormedI {P : Profile} (hw : I.WellFormed s) (ha : StartTyped s
     {t' : Silmaril.Wasm.SingleThreaded.Thread} {r : Result}
     (run : Reach P (s, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) (s', t'))
     (final : ResultAt s' t' r) : I.WellFormed s' := by
-  have steps : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) (t'.config s') :=
+  have steps : Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) (t'.config s') :=
     internalP_steps (H := Nat) run
-  have run' : Silmaril.Wasm.Execution.Core.Steps P (hostOf (plusStartI I a).imports (Env.silent _))
+  have run' : Steps P (hostOf (plusStartI I a).imports (Env.silent _))
       (invoke s ((plusStartI I a).addr (startOpI I a).1) (startOpI I a).2.1) (t'.config s') :=
     steps_of_noHostI _ steps
   obtain ⟨w, hw', -⟩ := ScalarInstance.answer_of_run (plusStartI_wellFormed hw ha)
@@ -183,7 +183,7 @@ variable {c : SimpleI} {I : Silmaril.Wasm.Game.ScalarInstance}
 theorem start_runI (hF : CoreFactsIS c I cs ci (some a)) {y : CoreSt (E3 Pf)}
     (hy : Relation.ReflTransGen (CoreStep (E3 Pf))
       (cs, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) y) :
-    Silmaril.Wasm.Execution.Core.Steps Pf Silmaril.Wasm.SingleThreaded.Det.noHost (invoke I.store a [])
+    Steps Pf Silmaril.Wasm.SingleThreaded.Det.noHost (invoke I.store a [])
       (Config.mapH trampIdx (y.2.config y.1)) := by
   have h := invoke_steps_mapH (P := Pf) (xs := []) trampIdx (internalP_steps (coreSteps_internal hy))
   rw [hF.store] at h

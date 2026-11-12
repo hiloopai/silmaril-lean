@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.HostImplWitE10
 
 /-!
-# The 1.0 route with runs that call host functions, round 8
+# The 1.0 route with runs that call host functions, round 8 (track v10-host)
 
 See `docs/projects/spectec/README.md`, "v10-host".
 

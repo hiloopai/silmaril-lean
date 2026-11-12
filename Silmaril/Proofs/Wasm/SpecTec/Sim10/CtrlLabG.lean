@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.CtrlStuckG
 
 /-!
-# Stuck labels and frames in every environment like `simEnv10`
+# Stuck labels and frames in every environment like `simEnv10` (track v10)
 
 `LABEL_ 0 {ε} (x TRAP)` and `FRAME_ 0 {f} (x TRAP)`, for an administrative instruction `x` that is
 not a value and with `z; x TRAP` stuck (`CtrlStuckG`), are stuck in every environment `E` with

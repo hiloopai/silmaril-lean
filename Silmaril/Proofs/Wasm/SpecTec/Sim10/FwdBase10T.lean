@@ -5,7 +5,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.BwdWhole10T
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.TypOff10
 
 /-!
-# Building firings of `simEnv10T`
+# Building firings of `simEnv10T` (track v10)
 
 The forward leaves of rounds 2–4 (`fwdAt10_*`) build firings of `simEnv10 B` from the typings of
 `FwdAt10`, which are `simEnv10` typings and so exclude every state whose store holds a storing

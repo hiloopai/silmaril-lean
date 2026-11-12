@@ -43,7 +43,7 @@ theorem dead_after_new {s : EStore H} {ts : List (Option (ThreadV (CH H)))} {i k
   · exact (live_of_set_none hC).2 rfl
   · exact hne rfl
 
-theorem cbNew_back {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+theorem cbNew_back {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
     {ts : List (Option (ThreadV (CH H)))} {i k n : ℕ} {K : KStore} {f : Frame}
     {code code' : List AdminFX} (hi : ts[i]? = some (some (.fx K f code)))
     (hframe : ∀ j, j ≠ n → tb'.get? j = tb.get? j) :
@@ -60,7 +60,7 @@ theorem cbNew_back {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
     have hm : m ≠ n := fun hm => hne (by rw [hm])
     exact ⟨C', (hframe m hm) ▸ hC'⟩
 
-theorem inv_cbNew {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+theorem inv_cbNew {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
     {ts : List (Option (ThreadV (CH H)))} {g : Ghost} (hI : GInv ⟨⟨s, tb⟩, ts⟩ g) {i k n : ℕ}
     {K : KStore} {f : Frame} {code code' : List AdminFX} {C : ContFX}
     (hi : ts[i]? = some (some (.fx K f code))) (hk : K[k]? = some (some C))
@@ -72,7 +72,7 @@ theorem inv_cbNew {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
 
 /-! ## `take` -/
 
-theorem tab_back_of_remove {tb tb' : Table ContFX} {N : ℕ} {C : ContFX}
+theorem tab_back_of_remove {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX} {N : ℕ} {C : ContFX}
     (ht : tb.remove? N = some (C, tb')) (hwf : FreeOK tb) :
     ∀ (m : ℕ) (C' : ContFX), tb'.get? m = some C' → ∃ C'' : ContFX, tb.get? m = some C'' := by
   intro m C' hC'
@@ -85,7 +85,7 @@ theorem tab_back_of_remove {tb tb' : Table ContFX} {N : ℕ} {C : ContFX}
 
 
 /-- After `take`, the table entry is dead. -/
-theorem dead_after_take {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+theorem dead_after_take {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
     {ts : List (Option (ThreadV (CH H)))} {N : ℕ} {C : ContFX}
     (ht : tb.remove? N = some (C, tb')) (hwf : FreeOK tb) : ¬ Live ⟨⟨s, tb'⟩, ts⟩ (.tab N) := by
   rintro ⟨C', hC'⟩
@@ -94,7 +94,7 @@ theorem dead_after_take {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
   rw [hrm] at hC'
   cases hC'
 
-theorem cbTake_back {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+theorem cbTake_back {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
     {ts : List (Option (ThreadV (CH H)))} {i N : ℕ} {K : KStore} {f : Frame}
     {code code' : List AdminFX} {C : ContFX} (hi : ts[i]? = some (some (.fx K f code)))
     (ht : tb.remove? N = some (C, tb')) (hwf : FreeOK tb) :
@@ -111,7 +111,7 @@ theorem cbTake_back {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
     obtain ⟨C', hC'⟩ := hl
     exact tab_back_of_remove ht hwf m C' hC'
 
-theorem inv_cbTake {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+theorem inv_cbTake {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
     {ts : List (Option (ThreadV (CH H)))} {g : Ghost} (hI : GInv ⟨⟨s, tb⟩, ts⟩ g) {i N : ℕ}
     {K : KStore} {f : Frame} {code code' : List AdminFX} {C : ContFX}
     (hi : ts[i]? = some (some (.fx K f code))) (ht : tb.remove? N = some (C, tb')) :

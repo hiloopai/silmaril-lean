@@ -118,7 +118,7 @@ inductive GStep (P : Profile) : Pool H × Ghost → Pool H × Ghost → Prop whe
       (hk : KStep (threadConts t) (threadConts t') evs) :
       GStep P (p, g) (⟨s', p.ts.set i (some t')⟩, g.allocs i evs)
   /-- `new` in thread `i`: the identity of store entry `k` moves to table entry `n`. -/
-  | cbNew {s : Store (FXCode (CH H))} {tb tb' : Table ContFX} {ts : List (Option (ThreadV (CH H)))}
+  | cbNew {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX} {ts : List (Option (ThreadV (CH H)))}
       {g : Ghost} {i : ℕ} {K : List (Option ContFX)} {f : Frame} {E : CtxV} {a k n : ℕ}
       {c : Admin} {C : ContFX}
       (hi : ts[i]? = some (some (.fx K f (E.plug (.contRef k :: callAt a c)))))
@@ -128,7 +128,7 @@ inductive GStep (P : Profile) : Pool H × Ghost → Pool H × Ghost → Prop whe
         (⟨⟨s, tb'⟩, ts.set i (some (.fx (K.set k none) f (E.plug [handleVal n])))⟩,
           g.move (.store i k) (.tab n))
   /-- `take` in thread `i`: the identity of table entry `b` moves to the new store entry. -/
-  | cbTake {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+  | cbTake {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
       {ts : List (Option (ThreadV (CH H)))} {g : Ghost} {i : ℕ} {K : List (Option ContFX)}
       {f : Frame} {E : CtxV} {a : ℕ} {c : Admin} {b : BitVec 32} {C : ContFX}
       (hi : ts[i]? = some (some (.fx K f (E.plug (.core (constI32 b) :: callAt a c)))))

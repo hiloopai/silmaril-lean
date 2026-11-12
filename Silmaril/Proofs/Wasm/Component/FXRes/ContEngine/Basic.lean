@@ -43,15 +43,15 @@ inductive CRun (P : Profile) : EStore H × ThreadV (CH H) → EStore H × Thread
       {z : EStore H × ThreadV (CH H)} (hs : s'.tab = s.tab) (r : CRun P (s', resumeV s.core t res) z) :
       CRun P (s, t) z
 
-theorem steps_single {t t' : Table ContFX} {ev : Table.Event ContFX}
+theorem steps_single {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {ev : Table.Event ContFX}
     (h : t.step? ev.op = some (ev, t')) : Table.Steps t [ev] t' :=
   .cons h (.nil _)
 
-theorem steps_added {t t' : Table ContFX} {C : ContFX} {n : ℕ} (ht : t.add? C = some (n, t')) :
+theorem steps_added {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {C : ContFX} {n : ℕ} (ht : t.add? C = some (n, t')) :
     Table.Steps t [.added n C] t' :=
   steps_single (by simp [Table.step?, Table.Event.op, ht])
 
-theorem steps_removed {t t' : Table ContFX} {C : ContFX} {n : ℕ}
+theorem steps_removed {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {C : ContFX} {n : ℕ}
     (ht : t.remove? n = some (C, t')) : Table.Steps t [.removed n C] t' :=
   steps_single (by simp [Table.step?, Table.Event.op, ht])
 
@@ -88,7 +88,7 @@ theorem internalC_kstep {x y : EStore H × ThreadV (CH H)} (h : InternalC P x y)
   · exact internalV_kstep hv
   · exact bstep_kstep hb
 
-theorem steps_append' {t₁ t₂ t₃ : Table ContFX} {e₁ e₂ : List (Table.Event ContFX)}
+theorem steps_append' {t₁ t₂ t₃ : Silmaril.Wasm.Component.Runtime.Table ContFX} {e₁ e₂ : List (Table.Event ContFX)}
     (h₁ : Table.Steps t₁ e₁ t₂) (h₂ : Table.Steps t₂ e₂ t₃) : Table.Steps t₁ (e₁ ++ e₂) t₃ := by
   induction h₁ with
   | nil => exact h₂

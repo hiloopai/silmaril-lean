@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.CtrlRefuteAll
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.InstWitness10
 
 /-!
-# The 1.0 route, round 6: control leaves refuted, the forward run from instantiation
+# The 1.0 route, round 6 (track v10): control leaves refuted, the forward run from instantiation
 
 See `docs/projects/spectec/README.md`, "v10-inst".
 

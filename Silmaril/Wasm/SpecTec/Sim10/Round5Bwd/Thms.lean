@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.BwdRun10T
 
 /-!
-# The 1.0 route, an earlier step: the backward half with stores, and `GoodV1` from Core
+# The 1.0 route, an earlier step (track v10): the backward half with stores, and `GoodV1` from Core
 
 See `docs/projects/spectec/README.md`, "v10".
 

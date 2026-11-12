@@ -45,11 +45,11 @@ theorem rstep_store {st st' : JState H} {o : ROp} {ev : Table.Event ContFX}
   | drop _ => exact .same _
   | borrow _ => exact .same _
 
-theorem table_steps_single {t t' : Table ContFX} {ev : Table.Event ContFX}
+theorem table_steps_single {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {ev : Table.Event ContFX}
     (h : t.step? ev.op = some (ev, t')) : Table.Steps t [ev] t' :=
   .cons h (.nil t')
 
-theorem table_steps_append {t₁ t₂ t₃ : Table ContFX} {e₁ e₂ : List (Table.Event ContFX)}
+theorem table_steps_append {t₁ t₂ t₃ : Silmaril.Wasm.Component.Runtime.Table ContFX} {e₁ e₂ : List (Table.Event ContFX)}
     (h₁ : Table.Steps t₁ e₁ t₂) (h₂ : Table.Steps t₂ e₂ t₃) : Table.Steps t₁ (e₁ ++ e₂) t₃ := by
   induction h₁ with
   | nil => exact h₂
@@ -81,7 +81,7 @@ theorem jsteps_store {st st' : JState H} {tevs : List (Table.Event ContFX)}
   | refl => exact .refl _
   | cons h₁ _ ih => exact ksteps_trans (jstep_store h₁) ih
 
-theorem jstep_of_fx {t : Table ContFX} {c c' : ConfigFX H} (h : StepFX' P host fx c c') :
+theorem jstep_of_fx {t : Silmaril.Wasm.Component.Runtime.Table ContFX} {c c' : ConfigFX H} (h : StepFX' P host fx c c') :
     ∃ sevs, JStep P host fx ⟨t, c⟩ [] sevs ⟨t, c'⟩ := by
   obtain ⟨sevs, hk⟩ := kstep_of_stepFX' h
   exact ⟨sevs, .fx h hk⟩
@@ -196,7 +196,7 @@ theorem client_run_own {evs : List (HEv ℕ)} :
 
 /-! ## Liveness of handles -/
 
-theorem remove?_dead {t t' : Table ContFX} {i : ℕ} {C : ContFX} (h : t.remove? i = some (C, t')) :
+theorem remove?_dead {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {i : ℕ} {C : ContFX} (h : t.remove? i = some (C, t')) :
     t'.get? i = none := by
   obtain ⟨hg, rfl⟩ := remove?_parts h
   obtain ⟨arr, fr⟩ := t

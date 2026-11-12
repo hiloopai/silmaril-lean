@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.CtrlRefute10
 
 /-!
-# Stuck 1.0 control configurations in every environment like `simEnv10`
+# Stuck 1.0 control configurations in every environment like `simEnv10` (track v10)
 
 Round 5 refuted the unrestricted `br-zero` leaf in `simEnv10` only (`CtrlRefute10`). The
 argument reads three facts about the environment: its relations are those of `simEnv10`, a

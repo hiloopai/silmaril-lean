@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.FiresBack10T
 
 /-!
-# The 1.0 leaf rules backwards in `simEnv10T`
+# The 1.0 leaf rules backwards in `simEnv10T` (track v10)
 
 Round 2–4 proved every leaf rule of the wasm-1.0 script backwards in `simEnv10 B`: a firing at the
 image of a V1 configuration is the image of a V1 step. Their hypothesis is a firing in

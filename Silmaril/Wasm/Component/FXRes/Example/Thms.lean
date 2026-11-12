@@ -12,7 +12,7 @@ Proofs of the run in `Silmaril.Proofs.Wasm.Component.FXRes.Example.Run`.
 * `example_run`: from `start s f a ct` (with `s.funcs[a]? = some fi`), the joint system runs
   `cont.new` (store entry `0`), `new` (handle `1`, entry `0` consumed), `take` (entry `1`,
   handle `1` freed) and `resume` (entry `1` consumed) to `finish s f a fi`, where the resumed
-  continuation calls `a` under an empty handler frame. Table history
+  continuation calls `a` under an empty handler frame. Silmaril.Wasm.Component.Runtime.Table history
   `[added 1 C, removed 1 C]`, store history `[alloc 0, free 0, alloc 1, free 1]`.
 * `example_protocols`: both histories are accepted by the handle protocol in both roles, and the
   ownership history by `obProto` (instances of the general theorems of `FXRes.Handle`).

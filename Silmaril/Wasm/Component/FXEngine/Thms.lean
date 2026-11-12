@@ -47,7 +47,7 @@ public import Silmaril.Wasm.Component.Reference.Sound.Thms
   capturing a continuation) and `fxE_status_fx_call` (a Core call of an FX function is not a
   callout; the engine runs it).
 
-See `docs/projects/wasm-components.md`.
+See `docs/projects/wasm-components.md` (track compfx).
 
 New statements.
 -/

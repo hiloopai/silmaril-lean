@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.BwdLeaf10T
 
 /-!
-# `memory.size` and `call_indirect-trap` backwards in `simEnv10T`
+# `memory.size` and `call_indirect-trap` backwards in `simEnv10T` (track v10)
 
 The two 1.0 leaf rules whose round 2–4 proofs read more than evaluation:
 

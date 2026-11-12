@@ -4,7 +4,7 @@ public import Silmaril.Raw.Wasm.SpecTec.Wasm.V1.Binary
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Lime1.Binary
 public import Silmaril.Wasm.Lime1.FromV1
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Lime1.ToV1
--- Hand copy: source namespaces kept, only import lines rewritten.
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten.
 
 /-! # Agreement of the Wasm 1.0 and Lime1 binary encodings
 

@@ -30,7 +30,7 @@ open Silmaril.Wasm.Component (Syntax.Definition)
 section Offset
 
 variable {Pf : Silmaril.Wasm.Numerics.Profile} {σ : Type} {R : Recurse (core3P Pf) σ}
-  {inst : InstId} {outer : List (Silmaril.Wasm.Execution.Core.Frame (core3P Pf))} {args : Exports (core3P Pf)}
+  {inst : InstId} {outer : List (Frame (core3P Pf))} {args : Exports (core3P Pf)}
 
 /-- The `canon lift` of export `i` allocates component function `o + i`. -/
 theorem lift_runO (sc : Scope (core3P Pf)) (cfg : Machine.Config (core3P Pf) σ) {o i ft a : Nat}
@@ -71,7 +71,7 @@ theorem exportDefs_runO (m : NumModule) (o i : Nat) (x : SimpleExport) (sc : Sco
           sc₁.frame.types.length).1.head? } = some (liftedFt x) :=
     resolveFuncType_lifted (hR₁.imp fun _ _ h => h.mono hP₂.prefix) hR₂
   have h₃ := instDef_func (R := R) (inst := inst) (outer := outer) (args := args) sc₂ hft
-  have hci : (Silmaril.Wasm.Execution.Core.Frame.coreInstance? { sc₂.frame with types := sc₂.frame.types ++
+  have hci : (Frame.coreInstance? { sc₂.frame with types := sc₂.frame.types ++
       [.func (liftedFt x)] } 0) = some es₀ := by
     show sc₂.frame.coreInstances[0]? = some es₀
     rw [hinv₂.ci]

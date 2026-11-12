@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Wasm.Lime1.FromV1
--- Hand copy: source namespaces kept, import lines rewritten; one repair:
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, import lines rewritten; one repair:
 -- `set_option linter.unusedTactic false` for the file (an unused `<;>` in the mutual
 -- `Instr.toV1?_sound`; CI builds with --wfail).
 

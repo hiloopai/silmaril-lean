@@ -38,7 +38,7 @@ theorem tabHost_ofFns {fns : HostFuncId → CallerId → P E σ (Ret E)}
   cancel _ _ := P.Inv.pure _
 
 /-- **The stateful answering host is table-moving.** -/
-theorem tabHost_answerImplS (g : σ → HostFuncId → List Val → Option (List Val × σ)) :
+theorem tabHost_answerImplS (g : σ → HostFuncId → List Silmaril.Wasm.Component.Value.Val → Option (List Silmaril.Wasm.Component.Value.Val × σ)) :
     TabHost j (Silmaril.Wasm.Component.Reference.answerImplS g : HostImpl E σ) :=
   tabHost_ofFns fun fn _ _ =>
     P.Inv.bind (P.Inv.callVals _) fun args =>
@@ -50,7 +50,7 @@ theorem tabHost_answerImplS (g : σ → HostFuncId → List Val → Option (List
         | none => P.Inv.trap _
 
 /-- **The stateless answering host is table-moving.** -/
-theorem tabHost_answerImpl (g : HostFuncId → List Val → Option (List Val)) :
+theorem tabHost_answerImpl (g : HostFuncId → List Silmaril.Wasm.Component.Value.Val → Option (List Silmaril.Wasm.Component.Value.Val)) :
     TabHost j (Silmaril.Wasm.Component.Reference.answerImpl g : HostImpl E σ) :=
   tabHost_answerImplS _
 

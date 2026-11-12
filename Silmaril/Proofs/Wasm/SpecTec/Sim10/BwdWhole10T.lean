@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.BwdSpecial10T
 
 /-!
-# The 1.0 backward whole step with stores, in `simEnv10T`
+# The 1.0 backward whole step with stores, in `simEnv10T` (track v10)
 
 Round 4's `wholeStepBwd10B` reads steps of `simEnv10 (fwdB10 nd r)`, where no `STORE` is typed. It
 therefore runs under `GoodT10` (a typed code image), which keeps stores out of the code, and the two

@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.BwdWitness10T
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.ResCore10
 
 /-!
-# The backward half with stores along V1 runs
+# The backward half with stores along V1 runs (track v10)
 
 `GoodV1` now follows from Core typing and V1's `StoreOk10` along V1 runs (`goodV1_steps'`), and
 the backward half in `simEnv10T` needs only `GoodV1` (`wholeStepBwd10S`). Together:

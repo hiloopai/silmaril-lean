@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.Lime1Core.Leaf
--- Hand copy: source namespaces kept, only import lines rewritten.
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten.
 -- Split from the copied `Lime1Core.lean` for build time (Silmaril change): source declarations
 -- unchanged; the non-nesting cases of `core_instr_aux` are proved in `Lime1Core/Leaf.lean`.
 

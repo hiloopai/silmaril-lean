@@ -6,7 +6,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.TypOff10
 public import Silmaril.Proofs.Wasm.SpecTec.Sim20.ElseAgreeMove
 
 /-!
-# Firings of `simEnv10T` read back in `simEnv10`
+# Firings of `simEnv10T` read back in `simEnv10` (track v10)
 
 `simEnv10T B` is `simEnv10 B` with the `STORE` erratum: the type declarations `instr` and
 `admininstr` are corrected, nothing else changes. The evaluator cannot tell the two apart

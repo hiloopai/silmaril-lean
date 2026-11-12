@@ -150,7 +150,7 @@ theorem seq_of_summaryC {c : Core3Component} {ims : Iface} {name : String}
     {vs vs' rs rs' : List Value.Val} {s₀ : Nat}
     (h : seqSummaryC c ims name vs vs' s₀ =
       some ((.resolved, some (some rs)), (.resolved, some (some rs')))) :
-    ([rs], Silmaril.Wasm.Component.Reference.Outcome.returns (some rs')) ∈
+    ([rs], Outcome.returns (some rs')) ∈
       seqBehavioursI first.prof (Host.ofEmbedder embC) s₀ c ims [(name, vs)] name vs' := by
   unfold seqSummaryC at h
   obtain ⟨⟨r₁, inst, es⟩, hi, h₁⟩ := Option.bind_eq_some_iff.mp h
@@ -172,7 +172,7 @@ theorem seq_of_summaryC {c : Core3Component} {ims : Iface} {name : String}
 
 /-- **The reference machine threads the host state between calls**: from host state `10`, the
 counter host answers the first `f(3)` with `3 + 10 = 13` and the second with `3 + 11 = 14`. -/
-theorem fwd_seq_refS : ([[toRefVal (.u32 13)]], Silmaril.Wasm.Component.Reference.Outcome.returns (some [toRefVal (.u32 14)])) ∈
+theorem fwd_seq_refS : ([[toRefVal (.u32 13)]], Outcome.returns (some [toRefVal (.u32 14)])) ∈
     seqBehavioursI first.prof (Host.ofEmbedder embC) 10 fwdS.toRef fwdS.imports
       [("f", [toRefVal (.u32 3)])] "f" [toRefVal (.u32 3)] :=
   seq_of_summaryC (by decide +kernel)

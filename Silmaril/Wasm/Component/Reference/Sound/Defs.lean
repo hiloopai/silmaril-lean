@@ -316,8 +316,8 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.SingleThreaded
 /-- The Core outcomes of calling core export `k` of `I` on `xs` at the store `s`. -/
 def coreAt (P : Profile) (I : Silmaril.Wasm.Game.ScalarInstance) (k : Nat) (xs : List Flat)
     (s : Store Nat) : Set (Option (List Flat)) :=
-  {r | ∃ (c' : Silmaril.Wasm.Execution.Core.Config Nat) (res : Result),
-    Silmaril.Wasm.Execution.Core.Steps P Det.noHost (invoke s (I.addrs.getD k 0) (xs.map ofFlat)) c' ∧
+  {r | ∃ (c' : Config Nat) (res : Result),
+    Steps P Det.noHost (invoke s (I.addrs.getD k 0) (xs.map ofFlat)) c' ∧
     c'.code = res.toAdmin ∧
     r = match res with
       | .values vs => vs.mapM toFlat?
@@ -331,7 +331,7 @@ def specAt (P : Profile) (_c : Simple) (I : Silmaril.Wasm.Game.ScalarInstance) (
   | some xs =>
     {b | ∃ r ∈ coreAt P I x.core xs s, b = liftOutcome x.ty r} ∪
       {b | b = .diverges ∧
-        Silmaril.Wasm.Execution.Core.Diverges P Det.noHost (invoke s (I.addrs.getD x.core 0) (xs.map ofFlat))}
+        Diverges P Det.noHost (invoke s (I.addrs.getD x.core 0) (xs.map ofFlat))}
 
 /-- **A returned call** of export `x` on `vs` from the store `s`: the lowered arguments run
 host-free to values whose IR lift is `ws`, leaving the store `s'`. -/

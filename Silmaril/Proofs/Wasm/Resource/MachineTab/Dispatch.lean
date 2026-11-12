@@ -381,7 +381,7 @@ theorem tab_callerOnStart (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (c
   · exact P.Inv.pure _
   · exact P.Inv.onStartProg c
 
-theorem tab_callerOnResolve (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (c : CallerId) (r : Option (List Val)) :
+theorem tab_callerOnResolve (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (c : CallerId) (r : Option (List Silmaril.Wasm.Component.Value.Val)) :
     TI (callerOnResolve (σ := σ) lim q c r) := by
   unfold callerOnResolve
   refine P.Inv.bind (P.Inv.getObj _ _) fun cr => ?_
@@ -420,7 +420,7 @@ theorem tab_loopProg (lim : Silmaril.Wasm.Component.Limits) (hr : HostReady σ) 
   | callbackLoop task thread code si =>
     exact P.Inv.callbackLoopBody liftHyps_tab lim task thread code si
 
-theorem tab_hostInvokeProg (f : FuncId) (args : List Val) :
+theorem tab_hostInvokeProg (f : FuncId) (args : List Silmaril.Wasm.Component.Value.Val) :
     TI (hostInvokeProg (E := E) (σ := σ) f args) :=
   P.Inv.bind (P.Inv.allocObj _ _ (tf_insts fun _ => rfl)) fun _ =>
     P.Inv.bind (P.Inv.modifyStore (tf_insts fun _ => rfl)) fun _ =>

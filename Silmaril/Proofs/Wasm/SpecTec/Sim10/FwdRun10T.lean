@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.SubjRed10T
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.FwdValid
 
 /-!
-# The forward 1.0 half in `simEnv10T`: one invariant, along runs
+# The forward 1.0 half in `simEnv10T`: one invariant, along runs (track v10)
 
 * `valTyped10T`, **`typed10_step10T`**: subject reduction in `simEnv10T` (`SubjRed10T`), stores
   included: a V1 step from a configuration typed in `simEnv10T` with `GSetOk` reaches one typed

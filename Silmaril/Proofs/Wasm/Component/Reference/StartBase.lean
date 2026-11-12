@@ -189,10 +189,10 @@ theorem result_of_startTypeI {r : Result} {w : Answer startType}
 /-- **Typed start results**, host-free: a result of the start function is `values []`, a trap
 or an exception. -/
 theorem start_result {P : Silmaril.Wasm.Numerics.Profile} (hw : I.WellFormed s)
-    (ha : StartTyped s a) (hI : I.imports = []) {c' : Silmaril.Wasm.Execution.Core.Config Nat} {r : Result}
-    (run : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) c')
+    (ha : StartTyped s a) (hI : I.imports = []) {c' : Config Nat} {r : Result}
+    (run : Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) c')
     (final : c'.code = r.toAdmin) : r = .values [] ∨ r = .trap ∨ ∃ x, r = .throw x := by
-  have run' : Silmaril.Wasm.Execution.Core.Steps P (hostOf (plusStartI I a).imports (Env.silent _))
+  have run' : Steps P (hostOf (plusStartI I a).imports (Env.silent _))
       (invoke s ((plusStartI I a).addr (startOpI I a).1) (startOpI I a).2.1) c' := by
     rw [hostOf_nil (I := plusStartI I a) hI]
     exact run
@@ -202,10 +202,10 @@ theorem start_result {P : Silmaril.Wasm.Numerics.Profile} (hw : I.WellFormed s)
 
 /-- **The start function never calls out**, host-free. -/
 theorem start_no_callout {P : Silmaril.Wasm.Numerics.Profile} (hw : I.WellFormed s)
-    (ha : StartTyped s a) (hI : I.imports = []) {c' : Silmaril.Wasm.Execution.Core.Config Nat}
-    (run : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) c') :
+    (ha : StartTyped s a) (hI : I.imports = []) {c' : Config Nat}
+    (run : Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) c') :
     Silmaril.Wasm.SingleThreaded.decompose? c'.store c'.code = none := by
-  have run' : Silmaril.Wasm.Execution.Core.Steps P (hostOf (plusStartI I a).imports (Env.silent _))
+  have run' : Steps P (hostOf (plusStartI I a).imports (Env.silent _))
       (invoke s ((plusStartI I a).addr (startOpI I a).1) (startOpI I a).2.1) c' := by
     rw [hostOf_nil (I := plusStartI I a) hI]
     exact run
@@ -222,9 +222,9 @@ theorem start_wellFormed {P : Silmaril.Wasm.Numerics.Profile} (hw : I.WellFormed
     (ha : StartTyped s a) (hI : I.imports = []) {s' : Store Nat} {t' : Silmaril.Wasm.SingleThreaded.Thread} {r : Result}
     (run : Reach P (s, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) (s', t'))
     (final : ResultAt s' t' r) : I.WellFormed s' := by
-  have steps : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) (t'.config s') :=
+  have steps : Steps P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke s a []) (t'.config s') :=
     internalP_steps (H := Nat) run
-  have run' : Silmaril.Wasm.Execution.Core.Steps P (hostOf (plusStartI I a).imports (Env.silent _))
+  have run' : Steps P (hostOf (plusStartI I a).imports (Env.silent _))
       (invoke s ((plusStartI I a).addr (startOpI I a).1) (startOpI I a).2.1) (t'.config s') := by
     rw [hostOf_nil (I := plusStartI I a) hI]
     exact steps
@@ -255,8 +255,8 @@ variable (prof hr dispatch) in
 `m₂` such that `Post m₂ tr' a m'`, `K ()` runs to `m'` with the context's continuation applied
 to `a`. -/
 def Reaches (th : Option ThreadId) (X : Canon.P E σ Unit) {α : Type} (p : Canon.P E σ α)
-    (m : Silmaril.Wasm.Execution.Core.Config E σ) (tr : List (Label E σ)) (m₁ : Silmaril.Wasm.Execution.Core.Config E σ)
-    (Post : Silmaril.Wasm.Execution.Core.Config E σ → List (Label E σ) → α → Silmaril.Wasm.Execution.Core.Config E σ → Prop) : Prop :=
+    (m : Config E σ) (tr : List (Label E σ)) (m₁ : Config E σ)
+    (Post : Config E σ → List (Label E σ) → α → Config E σ → Prop) : Prop :=
   ∀ (f : α → Canon.P E σ (Ret E)) (segs : List (Seg E σ)) (rest : List (Activation E σ)),
     m.store.lockdown = false →
     ∃ K : Unit → Canon.P E σ (Ret E),
@@ -269,7 +269,7 @@ def Reaches (th : Option ThreadId) (X : Canon.P E σ Unit) {α : Type} (p : Cano
 namespace Reaches
 
 theorem here {th : Option ThreadId} {X : Canon.P E σ Unit} {α : Type}
-    (k : Unit → Canon.P E σ α) (m : Silmaril.Wasm.Execution.Core.Config E σ) :
+    (k : Unit → Canon.P E σ α) (m : Config E σ) :
     Reaches prof hr dispatch th X (X >>= k) m [] m
       (fun m₂ tr' a m' => RunsQ dispatch th (k ()) m₂ tr' a m') := by
   intro f segs rest _
@@ -279,8 +279,8 @@ theorem here {th : Option ThreadId} {X : Canon.P E σ Unit} {α : Type}
   exact .refl _
 
 theorem seq {th : Option ThreadId} {X : Canon.P E σ Unit} {α β : Type} {p : Canon.P E σ β}
-    {g : β → Canon.P E σ α} {m m₁ m₂ : Silmaril.Wasm.Execution.Core.Config E σ} {tr₁ tr₂ : List (Label E σ)} {b : β}
-    {Post : Silmaril.Wasm.Execution.Core.Config E σ → List (Label E σ) → α → Silmaril.Wasm.Execution.Core.Config E σ → Prop}
+    {g : β → Canon.P E σ α} {m m₁ m₂ : Config E σ} {tr₁ tr₂ : List (Label E σ)} {b : β}
+    {Post : Config E σ → List (Label E σ) → α → Config E σ → Prop}
     (h₁ : RunsQ dispatch th p m tr₁ b m₁) (h₂ : Reaches prof hr dispatch th X (g b) m₁ tr₂ m₂ Post) :
     Reaches prof hr dispatch th X (p >>= g) m (tr₁ ++ tr₂) m₂ Post := by
   intro f segs rest hl
@@ -291,8 +291,8 @@ theorem seq {th : Option ThreadId} {X : Canon.P E σ Unit} {α β : Type} {p : C
   exact d.trans r
 
 theorem left {th : Option ThreadId} {X : Canon.P E σ Unit} {α β : Type} {p : Canon.P E σ β}
-    {g : β → Canon.P E σ α} {m m₁ : Silmaril.Wasm.Execution.Core.Config E σ} {tr : List (Label E σ)}
-    {Post : Silmaril.Wasm.Execution.Core.Config E σ → List (Label E σ) → β → Silmaril.Wasm.Execution.Core.Config E σ → Prop}
+    {g : β → Canon.P E σ α} {m m₁ : Config E σ} {tr : List (Label E σ)}
+    {Post : Config E σ → List (Label E σ) → β → Config E σ → Prop}
     (h : Reaches prof hr dispatch th X p m tr m₁ Post) :
     Reaches prof hr dispatch th X (p >>= g) m tr m₁
       (fun m₂ tr' a m' => ∃ b m₃ tr₁ tr₂, Post m₂ tr₁ b m₃ ∧

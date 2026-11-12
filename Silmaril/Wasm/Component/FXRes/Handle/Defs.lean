@@ -53,7 +53,7 @@ open Silmaril.Wasm.Numerics (Profile)
 
 /-- The handle table of the `cont` resource and an FX configuration. -/
 structure JState (H : Type) where
-  tab : Table ContFX
+  tab : Silmaril.Wasm.Component.Runtime.Table ContFX
   cfg : ConfigFX H
 
 /-- A handle as an `i32` constant of FX code. -/
@@ -71,19 +71,19 @@ variable {H : Type}
 
 /-- **The canonical built-ins of the `cont` resource**, on the head of the code. -/
 inductive RStep : JState H → ROp → Table.Event ContFX → List (HEv ℕ) → JState H → Prop where
-  | new {t t' : Table ContFX} {s : Store H} {K : KStore} {f : Frame} {k h : ℕ} {C : ContFX}
+  | new {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {s : Store H} {K : KStore} {f : Frame} {k h : ℕ} {C : ContFX}
       {rest : List AdminFX} (hk : K[k]? = some (some C)) (ht : t.add? C = some (h, t')) :
       RStep ⟨t, ⟨s, K, f, .contRef k :: rest⟩⟩ .new (.added h C) [.free k]
         ⟨t', ⟨s, K.set k none, f, handleVal h :: rest⟩⟩
-  | take {t t' : Table ContFX} {s : Store H} {K : KStore} {f : Frame} {b : BitVec 32}
+  | take {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {s : Store H} {K : KStore} {f : Frame} {b : BitVec 32}
       {C : ContFX} {rest : List AdminFX} (ht : t.remove? b.toNat = some (C, t')) :
       RStep ⟨t, ⟨s, K, f, .core (constI32 b) :: rest⟩⟩ .take (.removed b.toNat C) [.alloc K.length]
         ⟨t', ⟨s, K ++ [some C], f, .contRef K.length :: rest⟩⟩
-  | drop {t t' : Table ContFX} {s : Store H} {K : KStore} {f : Frame} {b : BitVec 32}
+  | drop {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {s : Store H} {K : KStore} {f : Frame} {b : BitVec 32}
       {C : ContFX} {rest : List AdminFX} (ht : t.remove? b.toNat = some (C, t')) :
       RStep ⟨t, ⟨s, K, f, .core (constI32 b) :: rest⟩⟩ .drop (.removed b.toNat C) []
         ⟨t', ⟨s, K, f, rest⟩⟩
-  | borrow {t : Table ContFX} {s : Store H} {K : KStore} {f : Frame} {b : BitVec 32}
+  | borrow {t : Silmaril.Wasm.Component.Runtime.Table ContFX} {s : Store H} {K : KStore} {f : Frame} {b : BitVec 32}
       {C : ContFX} {rest : List AdminFX} (ht : t.get? b.toNat = some C) :
       RStep ⟨t, ⟨s, K, f, .core (constI32 b) :: rest⟩⟩ .borrow (.got b.toNat C) []
         ⟨t, ⟨s, K, f, .core (constI32 b) :: rest⟩⟩
@@ -91,7 +91,7 @@ inductive RStep : JState H → ROp → Table.Event ContFX → List (HEv ℕ) →
 /-- **The joint system**: FX steps and canonical built-ins. -/
 inductive JStep (P : Profile) (host : HostSemantics H) (fx : H → Option FuncFX) :
     JState H → List (Table.Event ContFX) → List (HEv ℕ) → JState H → Prop where
-  | fx {t : Table ContFX} {c c' : ConfigFX H} {sevs : List (HEv ℕ)}
+  | fx {t : Silmaril.Wasm.Component.Runtime.Table ContFX} {c c' : ConfigFX H} {sevs : List (HEv ℕ)}
       (h : StepFX' P host fx c c') (hk : KStep c.conts c'.conts sevs) :
       JStep P host fx ⟨t, c⟩ [] sevs ⟨t, c'⟩
   | op {st st' : JState H} {o : ROp} {ev : Table.Event ContFX} {sevs : List (HEv ℕ)}

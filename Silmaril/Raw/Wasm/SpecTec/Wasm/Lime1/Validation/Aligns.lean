@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Wasm.Lime1.Validation.Instructions
 public import Silmaril.Wasm.Lime1.Validation.Modules
--- Hand copy: source namespaces kept, only import lines rewritten.
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten.
 
 /-! # Memory arguments of valid Lime1 code
 

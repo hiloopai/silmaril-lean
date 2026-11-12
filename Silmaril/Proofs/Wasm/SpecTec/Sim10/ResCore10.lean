@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.StoreValid10
 
 /-!
-# `ResOkL10` from Core typing
+# `ResOkL10` from Core typing (track v10)
 
 `GoodV1`'s first field, `ResOkL10`, asks every instruction of a V1 configuration, at any depth of
 labels and frames and read in its own frame, to name resources that exist: locals, globals (and a

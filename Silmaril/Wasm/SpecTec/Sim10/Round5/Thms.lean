@@ -6,7 +6,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.SelCore
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.StoreValid10
 
 /-!
-# The 1.0 route, round 5: what is proved
+# The 1.0 route, round 5 (track v10): what is proved
 
 See `docs/projects/spectec/README.md`, "v10".
 

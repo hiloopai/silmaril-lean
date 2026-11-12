@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.HostStubWit10
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.Name10Store
 
 /-!
-# The 1.0 route with host functions, round 7
+# The 1.0 route with host functions, round 7 (track v10-host)
 
 See `docs/projects/spectec/README.md`, "v10-host".
 

@@ -118,7 +118,7 @@ def tracks : List Id → List ((Name × Name × Version × Name) × Id) → List
 /-- **The replacements**: every removed interface and its track's greatest. -/
 def replacements (is : List Id) : List (Id × Id) :=
   let (tops, removed) := tracks is [] []
-  removed.filterMap fun i =>.bind fun t => (tops.lookup t).map (i, ·)
+  removed.filterMap fun i => (track i).bind fun t => (tops.lookup t).map (i, ·)
 
 /-! ## The source transformation -/
 

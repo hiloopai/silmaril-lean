@@ -18,7 +18,7 @@ This module gives the engine `fxCE P`, next to `fxEV P` and without changing it,
   types are nominal: `StepFX'` is untyped and the built-in rules below do not read them.
 * `CH H = CB ⊕ H`: the host codes of the engine store are the built-ins and the host functions
   of the component machine (`H`).
-* `EStore H`: the FX store over `FXCode (CH H)` and the continuation table `tab : Table ContFX`
+* `EStore H`: the FX store over `FXCode (CH H)` and the continuation table `tab : Silmaril.Wasm.Component.Runtime.Table ContFX`
   (`Silmaril.Wasm.Component.Runtime.Table`, the Canonical ABI table). The index of a
   continuation in `tab` is the `i32` representation of a `cont` resource.
 * `prepareC?`: instantiation as `prepareFXV?`, then the three built-ins are allocated after the
@@ -87,7 +87,7 @@ abbrev CH (H : Type) := CB ⊕ H
 /-- **The engine store**: the FX store and the continuation table. -/
 structure EStore (H : Type) where
   core : Store (FXCode (CH H))
-  tab : Table ContFX
+  tab : Silmaril.Wasm.Component.Runtime.Table ContFX
 
 /-- Allocate the three built-ins. -/
 def allocCB {H : Type} (s : Store (FXCode (CH H))) : Store (FXCode (CH H)) :=
@@ -119,32 +119,32 @@ def callAt (a : Nat) (c : Admin) : List AdminFX := [.core (.ref (.func a)), .cor
 /-- **A call of a continuation built-in**, with its table event (`none`: a trap). -/
 inductive BStep : EStore H × ThreadV (CH H) → EStore H × ThreadV (CH H) →
     Option (Table.Event ContFX) → Prop where
-  | new {s : Store (FXCode (CH H))} {t t' : Table ContFX} {K : List (Option ContFX)} {f : Frame}
+  | new {s : Store (FXCode (CH H))} {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {K : List (Option ContFX)} {f : Frame}
       {E : CtxV} {a k n : Nat} {c : Admin} {C : ContFX} (hc : c.IsCallRef) (hb : IsCB s a .new)
       (hk : K[k]? = some (some C)) (ht : t.add? C = some (n, t')) :
       BStep (⟨s, t⟩, .fx K f (E.plug (.contRef k :: callAt a c)))
         (⟨s, t'⟩, .fx (K.set k none) f (E.plug [handleVal n])) (some (.added n C))
-  | take {s : Store (FXCode (CH H))} {t t' : Table ContFX} {K : List (Option ContFX)} {f : Frame}
+  | take {s : Store (FXCode (CH H))} {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {K : List (Option ContFX)} {f : Frame}
       {E : CtxV} {a : Nat} {c : Admin} {b : BitVec 32} {C : ContFX} (hc : c.IsCallRef)
       (hb : IsCB s a .take) (ht : t.remove? b.toNat = some (C, t')) :
       BStep (⟨s, t⟩, .fx K f (E.plug (.core (constI32 b) :: callAt a c)))
         (⟨s, t'⟩, .fx (K ++ [some C]) f (E.plug [.contRef K.length])) (some (.removed b.toNat C))
-  | drop {s : Store (FXCode (CH H))} {t t' : Table ContFX} {K : List (Option ContFX)} {f : Frame}
+  | drop {s : Store (FXCode (CH H))} {t t' : Silmaril.Wasm.Component.Runtime.Table ContFX} {K : List (Option ContFX)} {f : Frame}
       {E : CtxV} {a : Nat} {c : Admin} {b : BitVec 32} {C : ContFX} (hc : c.IsCallRef)
       (hb : IsCB s a .drop) (ht : t.remove? b.toNat = some (C, t')) :
       BStep (⟨s, t⟩, .fx K f (E.plug (.core (constI32 b) :: callAt a c)))
         (⟨s, t'⟩, .fx K f (E.plug [])) (some (.removed b.toNat C))
-  | newUsed {s : Store (FXCode (CH H))} {t : Table ContFX} {K : List (Option ContFX)} {f : Frame}
+  | newUsed {s : Store (FXCode (CH H))} {t : Silmaril.Wasm.Component.Runtime.Table ContFX} {K : List (Option ContFX)} {f : Frame}
       {E : CtxV} {a k : Nat} {c : Admin} (hc : c.IsCallRef) (hb : IsCB s a .new)
       (hk : K[k]? = some none) :
       BStep (⟨s, t⟩, .fx K f (E.plug (.contRef k :: callAt a c)))
         (⟨s, t⟩, .fx K f (E.plug [.core .trap])) none
-  | newFull {s : Store (FXCode (CH H))} {t : Table ContFX} {K : List (Option ContFX)} {f : Frame}
+  | newFull {s : Store (FXCode (CH H))} {t : Silmaril.Wasm.Component.Runtime.Table ContFX} {K : List (Option ContFX)} {f : Frame}
       {E : CtxV} {a k : Nat} {c : Admin} {C : ContFX} (hc : c.IsCallRef) (hb : IsCB s a .new)
       (hk : K[k]? = some (some C)) (ht : t.add? C = none) :
       BStep (⟨s, t⟩, .fx K f (E.plug (.contRef k :: callAt a c)))
         (⟨s, t⟩, .fx K f (E.plug [.core .trap])) none
-  | dead {s : Store (FXCode (CH H))} {t : Table ContFX} {K : List (Option ContFX)} {f : Frame}
+  | dead {s : Store (FXCode (CH H))} {t : Silmaril.Wasm.Component.Runtime.Table ContFX} {K : List (Option ContFX)} {f : Frame}
       {E : CtxV} {a : Nat} {c : Admin} {b : BitVec 32} {o : CB} (hc : c.IsCallRef)
       (hb : IsCB s a o) (ho : o ≠ .new) (ht : t.remove? b.toNat = none) :
       BStep (⟨s, t⟩, .fx K f (E.plug (.core (constI32 b) :: callAt a c)))

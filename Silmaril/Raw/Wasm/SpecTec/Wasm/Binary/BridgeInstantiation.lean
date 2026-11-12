@@ -4,7 +4,7 @@ public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.Agreement
 public import Silmaril.Wasm.Versions.Thms
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.Bridge
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.BridgeInstantiation.Prepare
--- Hand copy: source namespaces kept, only import lines rewritten
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten
 -- (imports of other topics' Raw modules go through their public headers).
 
 /-! # Instantiation of the binary-faithful image (`toCoreBinary`)

@@ -79,7 +79,7 @@ noncomputable def afterInstH {σ : Type} (P : Profile) (V : Silmaril.Wasm.Module
     (I : {H : Type} → Cfg3 H → Cfg3 H → Prop)
     (cs : (core3R P V I).Store (CanonHost (core3R P V I)))
     (fs : List (CFuncInst (core3R P V I))) (h : σ) : Machine.Config (core3R P V I) σ :=
-  Silmaril.Wasm.Execution.Core.Config.init { core := cs, insts := [{}], funcs := fs } h
+  Config.init { core := cs, insts := [{}], funcs := fs } h
 
 /-- The configuration after instantiation, with the host state `()`. -/
 noncomputable abbrev afterInst (P : Profile) (V : Silmaril.Wasm.Module → Prop)

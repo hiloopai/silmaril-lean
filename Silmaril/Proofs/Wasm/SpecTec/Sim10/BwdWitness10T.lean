@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.BwdWhole10T
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.StoreNest10TEx
 
 /-!
-# A witness for the backward half with stores
+# A witness for the backward half with stores (track v10)
 
 Round 4's `labelStoreCfg10` is a trapping `i32.store` under a label, over a store that holds one
 memory and one function whose body is `i32.store`. Its image is not typed in `simEnv10`

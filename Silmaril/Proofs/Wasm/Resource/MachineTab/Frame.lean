@@ -150,7 +150,7 @@ theorem TabProg.bind {p : P E σ α} {β : Type} {f : α → P E σ β} (hp : Ta
     (hf : ∀ a, TabProg j (f a)) : TabProg j (p >>= f) :=
   fun s₀ => P.Inv.bind (hp s₀) fun a => hf a s₀
 
-theorem tabProg_invokeProg (c : CallId) (f : FuncId) (args : List Val) :
+theorem tabProg_invokeProg (c : CallId) (f : FuncId) (args : List Silmaril.Wasm.Component.Value.Val) :
     TabProg j (StepDefs.invokeProg (E := E) (σ := σ) c f args) := fun _ =>
   P.Inv.bind (P.Inv.allocObj _ _ (tabFrom_of_insts fun _ => rfl)) fun _ =>
     P.Inv.bind (P.Inv.modifyStore (tabFrom_of_insts fun _ => rfl)) fun _ =>

@@ -4,7 +4,7 @@ public import Silmaril.Wasm.Binary.Core.Modules
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Lime1.Binary
 public import Silmaril.Wasm.Lime1.ToCore
 -- Split mechanically from the copied `Lime1Core.lean` for build time; declarations unchanged.
--- Hand copy: source namespaces kept, only import lines rewritten.
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten.
 
 /-! # Lime1 and Core 3.0 agree on instruction encodings: opcode tables and immediates
 

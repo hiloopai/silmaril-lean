@@ -45,10 +45,10 @@ def start (s : Store H) (f : Frame) (a : ℕ) (ct : TypeIdx) : JState H :=
   ⟨Table.empty, ⟨s, [], f, prog a ct⟩⟩
 
 /-- The table holding `C` at handle `1`. -/
-def tab₁ (C : ContFX) : Table ContFX := ⟨#[none, some C], []⟩
+def tab₁ (C : ContFX) : Silmaril.Wasm.Component.Runtime.Table ContFX := ⟨#[none, some C], []⟩
 
 /-- The table after handle `1` is taken. -/
-def tab₂ : Table ContFX := ⟨#[none, none], [1]⟩
+def tab₂ : Silmaril.Wasm.Component.Runtime.Table ContFX := ⟨#[none, none], [1]⟩
 
 /-- The final state. -/
 def finish (s : Store H) (f : Frame) (a : ℕ) (fi : FuncInst H) : JState H :=

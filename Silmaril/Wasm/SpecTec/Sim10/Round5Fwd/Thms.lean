@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.SpecTec.Sim10.FwdWitness10T
 public import Silmaril.Proofs.Wasm.SpecTec.Sim10.CtrlRefute10
 
 /-!
-# The 1.0 route, an earlier step: the forward half in `simEnv10T`, one invariant
+# The 1.0 route, an earlier step (track v10): the forward half in `simEnv10T`, one invariant
 
 See `docs/projects/spectec/README.md`, "v10".
 

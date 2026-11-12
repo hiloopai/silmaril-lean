@@ -78,7 +78,7 @@ theorem new_moves {s : EStore H} {ts : List (Option (ThreadV (CH H)))} {g : Ghos
   ⟨Function.update_self _ _ _, dead_after_new hi⟩
 
 /-- `take` moves the identity into the store and kills the table entry. -/
-theorem take_moves {s : Store (FXCode (CH H))} {tb tb' : Table ContFX}
+theorem take_moves {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component.Runtime.Table ContFX}
     {ts : List (Option (ThreadV (CH H)))} {g : Ghost} {i N : ℕ} {K : KStore} {C : ContFX}
     (ht : tb.remove? N = some (C, tb')) (hwf : Silmaril.Wasm.Resource.FreeOK tb) :
     (g.move (.tab N) (.store i K.length)).id (.store i K.length) = g.id (.tab N) ∧

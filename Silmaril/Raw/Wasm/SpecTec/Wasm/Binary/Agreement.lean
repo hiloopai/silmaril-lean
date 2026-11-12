@@ -10,7 +10,7 @@ public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.Agreement.Sections
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.V1Lime1
 public import Silmaril.Raw.Wasm.SpecTec.Wasm.Binary.Lime1Core
 public import Silmaril.Wasm.Component.Reference.Wasm.Lime1.Validation.FromV1.Thms
--- Hand copy: source namespaces kept, only import lines rewritten
+-- Hand copy (track ws4-p1-lime-wasmi): source namespaces kept, only import lines rewritten
 -- (imports of other topics' Raw modules go through their public headers).
 
 /-! # Agreement of the Wasm 1.0, Lime1 and Core 3.0 binary encodings

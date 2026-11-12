@@ -92,7 +92,7 @@ theorem importTypesE_noStart {m : Module} {mt : Validation.CModuleType}
 
 theorem coreImportsFor_noStart {m : Module} {mt : Validation.CModuleType}
     (h : Validation.validate? m = some mt) (s : (core3P Pf).Store (CanonHost (core3P Pf)))
-    (args : List (String × Nat)) (fr : Silmaril.Wasm.Execution.Core.Frame (core3P Pf)) :
+    (args : List (String × Nat)) (fr : Frame (core3P Pf)) :
     coreImportsFor? s ({ m with start := none } : Module) args fr = coreImportsFor? s m args fr := by
   unfold coreImportsFor?
   show (Core3.importTypesE _).mapM _ = (Core3.importTypesE _).mapM _
@@ -108,7 +108,7 @@ structure CoreFactsIS (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance)
   tramp : c.TrampOk cs
   prepare : (core3P Pf).prepare? (trampStore Pf c.imports) c.mod.mod
     ((List.range c.imports.length).map ExternAddr.func) = some (cs, ci, st)
-  imports : ∀ f : Silmaril.Wasm.Execution.Core.Frame (core3P Pf), f.coreInstance? 0 = some (envExports c.mod.imports) →
+  imports : ∀ f : Frame (core3P Pf), f.coreInstance? 0 = some (envExports c.mod.imports) →
     coreImportsFor? (trampStore Pf c.imports) c.mod.mod [("env", 0)] f =
       some ((List.range c.imports.length).map ExternAddr.func)
   lookup : ∀ x ∈ c.exports, lookupExport? ((core3P Pf).exports ci) (coreNameI c x) =

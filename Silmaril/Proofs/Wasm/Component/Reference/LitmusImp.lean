@@ -227,7 +227,7 @@ theorem fwdS_valid : ∃ ct, check? Features.p2 fwdS.toRef = .ok ct :=
 def callSummaryI (c : Core3Component) (ims : Iface) (name : String) (vs : List Value.Val) :
     Option (Machine.Outcome × Option (Option (List Value.Val))) :=
   (embI.instantiateRun first 400 c (importArgs ims)
-      (Silmaril.Wasm.Execution.Core.Config.init (hostFuncs 0 ims CStore.empty) ())).bind fun (r, _, es) =>
+      (Config.init (hostFuncs 0 ims CStore.empty) ())).bind fun (r, _, es) =>
     (es.lookup name).bind fun f =>
       (embI.callTop first 400 ⟨0⟩ f vs r.config).map fun r' => (r'.outcome, r'.config.result? ⟨0⟩)
 
@@ -235,7 +235,7 @@ def callSummaryI (c : Core3Component) (ims : Iface) (name : String) (vs : List V
 theorem returns_of_summaryI {c : Core3Component} {ims : Iface} {name : String}
     {vs rs : List Value.Val}
     (h : callSummaryI c ims name vs = some (.resolved, some (some rs))) :
-    Silmaril.Wasm.Component.Reference.Outcome.returns (some rs) ∈
+    Outcome.returns (some rs) ∈
       exportBehavioursI first.prof (Host.ofEmbedder embI) () c ims name vs := by
   unfold callSummaryI at h
   obtain ⟨⟨r₁, inst, es⟩, hi, h₁⟩ := Option.bind_eq_some_iff.mp h
@@ -249,7 +249,7 @@ theorem returns_of_summaryI {c : Core3Component} {ims : Iface} {name : String}
     callTop_mem embI first hc ho⟩
 
 /-- **The reference machine forwards `f(3)` to the host's `g`** and returns `g(3) = 4`. -/
-theorem fwd_ref : Silmaril.Wasm.Component.Reference.Outcome.returns (some [toRefVal (.u32 4)]) ∈
+theorem fwd_ref : Outcome.returns (some [toRefVal (.u32 4)]) ∈
     exportBehavioursI first.prof (Host.ofEmbedder embI) () fwdS.toRef fwdS.imports "f"
       [toRefVal (.u32 3)] :=
   returns_of_summaryI (by decide +kernel)
