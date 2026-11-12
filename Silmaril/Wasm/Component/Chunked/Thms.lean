@@ -172,7 +172,7 @@ theorem readAllOf_sound {α : Type} {G : Bytes → α → Prop} {f : DecodeM α}
       obtain ⟨hb₂, p₂, hr₂, hg₂⟩ := readAllOf_sound hf fuel hxs
       exact ⟨hb₂.trans hb₁, p₁ ++ p₂, by simp [hr₁, hr₂], Seq.cons hg₁ hg₂⟩
 
-theorem readInstrs_sound : ∀ fuel : Nat, Sound (Instrs Forms.all) (readInstrs fuel)
+theorem readInstrs_sound : ∀ fuel : Nat, Sound (Silmaril.Wasm.Binary.Core.Instrs Forms.all) (readInstrs fuel)
   | 0 => by
     intro c a c' h
     obtain ⟨rfl, rfl⟩ := run_pure_ok h
@@ -196,7 +196,7 @@ theorem readInstrs_sound : ∀ fuel : Nat, Sound (Instrs Forms.all) (readInstrs 
       refine ⟨hb₃.trans (hb₂.trans hbb), ([b] ++ p₂) ++ p₃, ?_, Instrs.cons hg₂ hg₃⟩
       simp [hbr, hr₂, hr₃]
 
-theorem readLocalsGroup_sound : Sound (Locals Forms.all) readLocalsGroup := by
+theorem readLocalsGroup_sound : Sound (Silmaril.Wasm.Binary.Core.Locals Forms.all) readLocalsGroup := by
   intro c a c' h
   obtain ⟨⟨n, t⟩, c₁, h₁, h⟩ := run_bind_ok
     (show ((do let n ← readU 32; let t ← readValType; pure (n, t)) >>=
@@ -207,9 +207,9 @@ theorem readLocalsGroup_sound : Sound (Locals Forms.all) readLocalsGroup := by
 
 /-! ## Grammar composition -/
 
-theorem instrs_append {b₂ : Bytes} {is₂ : List Instr} (h₂ : Instrs Forms.all b₂ is₂) :
-    ∀ {is₁ : List Instr} {b₁ : Bytes}, Instrs Forms.all b₁ is₁ →
-      Instrs Forms.all (b₁ ++ b₂) (is₁ ++ is₂)
+theorem instrs_append {b₂ : Bytes} {is₂ : List Instr} (h₂ : Silmaril.Wasm.Binary.Core.Instrs Forms.all b₂ is₂) :
+    ∀ {is₁ : List Instr} {b₁ : Bytes}, Silmaril.Wasm.Binary.Core.Instrs Forms.all b₁ is₁ →
+      Silmaril.Wasm.Binary.Core.Instrs Forms.all (b₁ ++ b₂) (is₁ ++ is₂)
   | [], _, h₁ => by cases h₁; exact h₂
   | _ :: _, _, h₁ => by
     cases h₁ with
@@ -237,7 +237,7 @@ theorem take_append_drop' (r : List UInt8) (k : Nat) : r = r.take k ++ r.drop k 
 
 theorem blockInstr_sound {op : UInt8} {bt : BlockType} {is : List Instr} {i : Instr}
     {hdr body : Bytes} (h : blockInstr op bt is = some i) (ht : Core.BlockType Forms.all hdr bt)
-    (hb : Instrs Forms.all body is) : Instr Forms.all ([op] ++ hdr ++ body ++ [0x0B]) i := by
+    (hb : Silmaril.Wasm.Binary.Core.Instrs Forms.all body is) : Binary.Core.Instr Forms.all ([op] ++ hdr ++ body ++ [0x0B]) i := by
   unfold blockInstr at h
   split at h
   · rename_i e; cases h; subst e; exact Instr.block ht hb
@@ -249,7 +249,7 @@ theorem blockInstr_sound {op : UInt8} {bt : BlockType} {is : List Instr} {i : In
 
 /-- **Instruction plans give `Instrs`** on the bytes they consume. -/
 theorem chkI_sound : ∀ (p : IPlan) {r r' : List UInt8} {is : List Instr},
-    chkI p r = some (is, r') → ∃ b, r = b ++ r' ∧ Instrs Forms.all b is
+    chkI p r = some (is, r') → ∃ b, r = b ++ r' ∧ Silmaril.Wasm.Binary.Core.Instrs Forms.all b is
   | .nil, r, r', is, h => by
     simp only [chkI, Option.some.injEq, Prod.mk.injEq] at h
     obtain ⟨rfl, rfl⟩ := h
@@ -342,15 +342,15 @@ theorem chkCode_parts {p : CPlan} {r r' : List UInt8} {code : List ValType × Ex
 
 /-- **A code entry plan gives `Code`** on the bytes it consumes. -/
 theorem chkCode_sound {p : CPlan} {r r' : List UInt8} {code : List ValType × Expr}
-    (h : chkCode p r = some (code, r')) : ∃ b, r = b ++ r' ∧ Code Forms.all b code := by
+    (h : chkCode p r = some (code, r')) : ∃ b, r = b ++ r' ∧ Silmaril.Wasm.Binary.Core.Code Forms.all b code := by
   obtain ⟨len, lss, is, hlen, hclen, hl, hbody, hcount, rfl, rfl⟩ := chkCode_parts h
   let c := (r.drop p.kSize).take len
-  obtain ⟨bb, hbb, hgb⟩ : ∃ bb, c.drop p.kLocals = bb ++ [0x0B] ∧ Instrs Forms.all bb is := by
+  obtain ⟨bb, hbb, hgb⟩ : ∃ bb, c.drop p.kLocals = bb ++ [0x0B] ∧ Silmaril.Wasm.Binary.Core.Instrs Forms.all bb is := by
     obtain ⟨bb, hbb, hgb⟩ := chkI_sound p.body hbody
     exact ⟨bb, hbb, hgb⟩
-  have hv : Vec (Locals Forms.all) (c.take p.kLocals) lss :=
+  have hv : Vec (Silmaril.Wasm.Binary.Core.Locals Forms.all) (c.take p.kLocals) lss :=
     runAll_sound (readVec_sound readLocalsGroup_sound) hl
-  have hf : Func Forms.all c (lss.flatten, is) := by
+  have hf : Silmaril.Wasm.Binary.Core.Func Forms.all c (lss.flatten, is) := by
     have hf' := Func.mk hv (Expr.mk hgb) hcount
     rwa [← hbb, List.take_append_drop] at hf'
   have hr : r = (r.take p.kSize ++ c) ++ (r.drop p.kSize).drop len := by
@@ -359,7 +359,7 @@ theorem chkCode_sound {p : CPlan} {r r' : List UInt8} {code : List ValType × Ex
 
 theorem chkCodes_sound : ∀ {ps : List CPlan} {r r' : List UInt8}
     {cs : List (List ValType × Expr)}, chkCodes ps r = some (cs, r') →
-      ∃ b, r = b ++ r' ∧ Seq (Code Forms.all) b cs ∧ cs.length = ps.length
+      ∃ b, r = b ++ r' ∧ Seq (Silmaril.Wasm.Binary.Core.Code Forms.all) b cs ∧ cs.length = ps.length
   | [], r, r', cs, h => by
     simp only [chkCodes, Option.some.injEq, Prod.mk.injEq] at h
     obtain ⟨rfl, rfl⟩ := h
@@ -380,7 +380,7 @@ theorem chkCodes_sound : ∀ {ps : List CPlan} {r r' : List UInt8}
 /-- **A group of code entries**: the plans consume all of `r`, which is the `Seq` of their
 entries, one per plan, with no data index. -/
 theorem codesOk_sound {ps : List CPlan} {r : List UInt8} (h : codesOk ps r = true) :
-    Seq (Code Forms.all) r (codesOf ps r) ∧ (codesOf ps r).length = ps.length ∧
+    Seq (Silmaril.Wasm.Binary.Core.Code Forms.all) r (codesOf ps r) ∧ (codesOf ps r).length = ps.length ∧
       codesDataIdxs (codesOf ps r) = [] := by
   unfold codesOk at h
   unfold codesOf
@@ -474,7 +474,7 @@ theorem chkSection_sound {α : Type} {N : UInt8} {G : Bytes → List α → Prop
 /-! ## Data segments -/
 
 theorem chkData0_sound {kk ke kl : Nat} {r r' : List UInt8} {d : Silmaril.Wasm.Data}
-    (h : chkData0 kk ke kl r = some (d, r')) : ∃ b, r = b ++ r' ∧ Data Forms.all b d := by
+    (h : chkData0 kk ke kl r = some (d, r')) : ∃ b, r = b ++ r' ∧ Silmaril.Wasm.Binary.Core.Data Forms.all b d := by
   unfold chkData0 at h
   split at h
   · rename_i e n hk he hn
@@ -495,7 +495,7 @@ theorem chkData0_sound {kk ke kl : Nat} {r r' : List UInt8} {d : Silmaril.Wasm.D
 
 theorem chkDatas_sound : ∀ {ps : List (Nat × Nat × Nat)} {r r' : List UInt8}
     {ds : List Silmaril.Wasm.Data}, chkDatas ps r = some (ds, r') →
-      ∃ b, r = b ++ r' ∧ Seq (Data Forms.all) b ds ∧ ds.length = ps.length
+      ∃ b, r = b ++ r' ∧ Seq (Silmaril.Wasm.Binary.Core.Data Forms.all) b ds ∧ ds.length = ps.length
   | [], r, r', ds, h => by
     simp only [chkDatas, Option.some.injEq, Prod.mk.injEq] at h
     obtain ⟨rfl, rfl⟩ := h
@@ -549,7 +549,7 @@ theorem vecSection_of {α : Type} {G : Bytes → α → Prop} {f : DecodeM α} (
     (fun hc => chkVec_sound hf hc) e
 
 theorem chkDataVec_sound {kC : Nat} {ps : List (Nat × Nat × Nat)} {r : List UInt8}
-    {ds : List Silmaril.Wasm.Data} (h : chkDataVec kC ps r = some ds) : Vec (Data Forms.all) r ds := by
+    {ds : List Silmaril.Wasm.Data} (h : chkDataVec kC ps r = some ds) : Vec (Silmaril.Wasm.Binary.Core.Data Forms.all) r ds := by
   unfold chkDataVec at h
   split at h
   · rename_i n ds' hn hs
@@ -558,7 +558,7 @@ theorem chkDataVec_sound {kC : Nat} {ps : List (Nat × Nat × Nat)} {r : List UI
       cases h
       obtain ⟨b, hb, hg, _⟩ := chkDatas_sound hs
       rw [List.append_nil] at hb
-      have hv := Vec.mk (G := Data Forms.all) (hlen ▸ runAll_sound (readU_sound 32) hn) hg
+      have hv := Vec.mk (G := Silmaril.Wasm.Binary.Core.Data Forms.all) (hlen ▸ runAll_sound (readU_sound 32) hn) hg
       rwa [← hb, List.take_append_drop] at hv
     · cases h
   · cases h
@@ -566,10 +566,10 @@ theorem chkDataVec_sound {kC : Nat} {ps : List (Nat × Nat × Nat)} {r : List UI
 /-- **The data section from its plan** (segment bytes not read). -/
 theorem dataSection_of {kS kC : Nat} {ps : List (Nat × Nat × Nat)} {r : List UInt8}
     (h : (chkSection 11 kS (chkDataVec kC ps) r).isSome = true) :
-    Section 11 (Vec (Data Forms.all)) r ((chkSection 11 kS (chkDataVec kC ps) r).getD []) := by
+    Section 11 (Vec (Silmaril.Wasm.Binary.Core.Data Forms.all)) r ((chkSection 11 kS (chkDataVec kC ps) r).getD []) := by
   have e : chkSection 11 kS (chkDataVec kC ps) r =
       some ((chkSection 11 kS (chkDataVec kC ps) r).getD []) := getD_of_isSome [] h
-  exact chkSection_sound (G := Vec (Data Forms.all)) (inner := chkDataVec kC ps)
+  exact chkSection_sound (G := Vec (Silmaril.Wasm.Binary.Core.Data Forms.all)) (inner := chkDataVec kC ps)
     (fun hc => chkDataVec_sound hc) e
 
 /-- **A section from its parts**: the id byte, the size, and the contents' production. -/
@@ -619,8 +619,8 @@ theorem customs_empty (l : List UInt8) (a : Nat) : Customs (slice l a a) := by
 
 /-- Restate a module's bytes. -/
 theorem moduleWith_of_eq {I : Bytes → List Silmaril.Wasm.Import → Prop} {bs bs' : Bytes}
-    {m : Silmaril.Wasm.Module} (h : ModuleWithImports Forms.all I bs m) (e : bs = bs') :
-    ModuleWithImports Forms.all I bs' m := e ▸ h
+    {m : Silmaril.Wasm.Module} (h : Silmaril.Wasm.Binary.Core.ModuleWithImports Forms.all I bs m) (e : bs = bs') :
+    Silmaril.Wasm.Binary.Core.ModuleWithImports Forms.all I bs' m := e ▸ h
 
 /-! ## Raw component frames -/
 

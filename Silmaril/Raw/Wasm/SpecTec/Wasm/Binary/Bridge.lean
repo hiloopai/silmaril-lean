@@ -65,7 +65,7 @@ The proof follows `ModuleValid.toCore_ok`; only the element segments (and hence 
 context's `elems`) differ: they are typed `(ref func)`, which is valid in the `funcref`
 tables since `(ref func) <: (ref null func)`, and every initializer `ref.func x` has
 type `(ref func)`. -/
-theorem Silmaril.Wasm.Validation.ModuleValid.toCoreBinary_ok {m : Module} (h : Silmaril.Wasm.Validation.ModuleValid m) :
+theorem ModuleValid.toCoreBinary_ok {m : Module} (h : ModuleValid m) :
     ∃ xtE, Wasm.Validation.ModuleOk m.toCoreBinary
       ⟨m.imports.map fun i => importC m.types i.desc, xtE⟩ := by
   -- Core index spaces
@@ -172,7 +172,7 @@ theorem Silmaril.Wasm.Validation.ModuleValid.toCoreBinary_ok {m : Module} (h : S
       simp only [Wasm.Validation.Context.type?, C, C', dts, Func.toCore, List.getElem?_map]
       rw [show m.types[f.type.toNat]? = some ft from hft]; rfl
     have hAf : Agrees (functionContext (moduleContext m) ft f.locals)
-        (C.funcBody (ft.params.map Silmaril.Wasm.Validation.Ty.num) (ft.results.map Silmaril.Wasm.Validation.Ty.num)
+        (C.funcBody (ft.params.map Ty.num) (ft.results.map Ty.num)
           (f.locals.map fun t => ⟨.set, .num t⟩)) :=
       ⟨hA.types, hA.funcs, hA.tables, hA.mems, hA.globals,
         by simp [functionContext, Wasm.Validation.Context.funcBody, Function.comp_def],
@@ -180,7 +180,7 @@ theorem Silmaril.Wasm.Validation.ModuleValid.toCoreBinary_ok {m : Module} (h : S
         by simp [functionContext, Wasm.Validation.Context.funcBody]⟩
     refine FuncOk.mk (lts := f.locals.map fun t => ⟨.set, .num t⟩) hd (expand_toDefType ft) ?_ ?_
     · exact forall₂_map_of _ _ f.locals (fun t _ => LocalOk.set (.num t) trivial)
-    · simpa [ExprOk, Silmaril.Wasm.Validation.Ty.toList_ofList, Func.toCore] using ExprType.toCore' hAf hbody
+    · simpa [ExprOk, Ty.toList_ofList, Func.toCore] using ExprType.toCore' hAf hbody
   have hdata : ∀ d ∈ m.toCore.data, DataOk C d := by
     intro d hd
     simp only [Module.toCore, List.mem_map] at hd
@@ -211,9 +211,9 @@ theorem Silmaril.Wasm.Validation.ModuleValid.toCoreBinary_ok {m : Module} (h : S
   exact ⟨xtE, ModuleOk.mk (jts := []) (typesOk_map m.types {}) himports rfl rfl .nil
     hglobals' hmems htables hfuncs hdata helems hstart hxtE hdisjoint⟩
 
-theorem Silmaril.Wasm.Validation.ModuleValid.toCoreBinary {m : Module} (h : Silmaril.Wasm.Validation.ModuleValid m) :
+theorem ModuleValid.toCoreBinary {m : Module} (h : ModuleValid m) :
     Wasm.Validation.ModuleValid m.toCoreBinary :=
-  let ⟨_, hok⟩ := Silmaril.Wasm.Validation.ModuleValid.toCoreBinary_ok h
+  let ⟨_, hok⟩ := ModuleValid.toCoreBinary_ok h
   ⟨_, hok⟩
 
 end Silmaril.Wasm.Lime1.Validation
@@ -221,9 +221,9 @@ end Silmaril.Wasm.Lime1.Validation
 namespace Silmaril.Wasm.V1.Validation
 
 /-- Through Lime1 (`ModuleValid.toLime`, `Module.toLime_toCoreBinary`). -/
-theorem Silmaril.Wasm.Validation.ModuleValid.toCoreBinary {m : Module} (h : Silmaril.Wasm.Validation.ModuleValid m) :
+theorem ModuleValid.toCoreBinary {m : Module} (h : ModuleValid m) :
     Wasm.Validation.ModuleValid m.toCoreBinary := by
-  have := Lime1.Validation.ModuleValid.toCoreBinary (Silmaril.Wasm.Validation.ModuleValid.toLime h)
+  have := Lime1.Validation.ModuleValid.toCoreBinary (ModuleValid.toLime h)
   simpa using this
 
 end Silmaril.Wasm.V1.Validation

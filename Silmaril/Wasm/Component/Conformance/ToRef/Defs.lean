@@ -36,7 +36,6 @@ executable entry point of the conformance runner (`tools/wasm-tools/README.md`).
 namespace Silmaril.Wasm.Component.Conformance
 
 open Silmaril.Wasm.Component
-open Silmaril.Wasm.Component
 
 /-- A component of the reference semantics over Core 3.0 modules. -/
 abbrev RefComponent : Type := Reference.Core3Component

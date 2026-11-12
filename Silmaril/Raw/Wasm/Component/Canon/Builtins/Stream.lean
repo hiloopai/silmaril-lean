@@ -102,7 +102,7 @@ without a memory, D-g); `future.read/write` and all cancels return an `i32`.
 namespace Silmaril.Wasm.Component.Canon.Builtins
 
 open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtime
-  _root_.Silmaril.Wasm.Component.Async
+  _root_.Silmaril.Wasm.Component.AsyncRef
 
 variable {E : CoreEngine} {σ : Type}
 

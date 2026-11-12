@@ -367,14 +367,14 @@ theorem instRef_typeIdx {m : CModuleInst} {y : TypeIdx} {d : DefType}
     (h : m.types[y.toNat]? = some d) :
     m.instRef ⟨true, .typeIdx y⟩ = .ref true (.use (.dt d)) := by
   simp [Silmaril.Wasm.Execution.Core.ModuleInst.instRef, liftRef, liftHeap, liftTypeIdx,
-    Silmaril.Wasm.Validation.Ty.substAll, Silmaril.Wasm.Validation.Ty.subst, Subst.all, h]
+    Ty.substAll, Ty.subst, Subst.all, h]
 
 /-- `$inst_reftype(f.MODULE, (REF NULL (_IDX y)))` when `y` names nothing. -/
 theorem instRef_typeIdx_none {m : CModuleInst} {y : TypeIdx}
     (h : m.types[y.toNat]? = none) :
     m.instRef ⟨true, .typeIdx y⟩ = .ref true (.use (.idx y.toNat)) := by
   simp [Silmaril.Wasm.Execution.Core.ModuleInst.instRef, liftRef, liftHeap, liftTypeIdx,
-    Silmaril.Wasm.Validation.Ty.substAll, Silmaril.Wasm.Validation.Ty.subst, Subst.all, h]
+    Ty.substAll, Ty.subst, Subst.all, h]
 
 /-- Every 2.0 value type is a Core 3.0 value type. -/
 theorem tyOk_toC (Δ : TypeCtx) (t : ValType) : TyOk Δ t.toC := by
@@ -384,7 +384,7 @@ theorem tyOk_toC (Δ : TypeCtx) (t : ValType) : TyOk Δ t.toC := by
   · cases r <;> exact TyOk.refv (TyOk.ref (TyOk.abs _))
 
 theorem tyOk_ofList_toC (Δ : TypeCtx) (ts : List ValType) :
-    TyOk Δ (Silmaril.Wasm.Validation.Ty.ofList (ts.map ValType.toC)) := by
+    TyOk Δ (Ty.ofList (ts.map ValType.toC)) := by
   induction ts with
   | nil => exact TyOk.nil
   | cons t ts ih => exact TyOk.cons (tyOk_toC Δ t) ih
@@ -395,18 +395,18 @@ theorem tyOk_toDefType (t : FuncType) : TyOk ({} : TypeCtx) t.toDefType := by
   simp only [liftRec, FuncType.toCoreRec, List.map_cons, List.map_nil, liftSub, liftComp,
     FuncType.toCore, liftResult_toCore]
   refine TyOk.defn (GroupOk2.cons (SubOk2.noSuper (TyOk.func ?_ ?_)) GroupOk2.nil)
-    (by simp [Silmaril.Wasm.Validation.Ty.length])
+    (by simp [Ty.length])
   · exact tyOk_ofList_toC _ _
   · exact tyOk_ofList_toC _ _
 
 theorem tyOk_ref_toDefType (n : Bool) (t : FuncType) :
-    TyOk ({} : TypeCtx) (Silmaril.Wasm.Validation.Ty.ref n (.use (.dt t.toDefType)) : CRefType) :=
+    TyOk ({} : TypeCtx) (Ty.ref n (.use (.dt t.toDefType)) : CRefType) :=
   TyOk.ref (TyOk.use (TyOk.dt (tyOk_toDefType t)))
 
 /-- `(ref null (_IDX y))` with `y` out of range is not even a type, so nothing
 has it. -/
 theorem not_tyOk_idx {n : Nat} :
-    ¬ TyOk ({} : TypeCtx) (Silmaril.Wasm.Validation.Ty.ref true (.use (.idx n)) : CRefType) := by
+    ¬ TyOk ({} : TypeCtx) (Ty.ref true (.use (.idx n)) : CRefType) := by
   intro h
   cases h with
   | ref hh =>
@@ -418,8 +418,8 @@ theorem not_tyOk_idx {n : Nat} :
 /-- The cast of `call_indirect` fails when the type index is out of range. -/
 theorem not_refOk_idx {cs : CStore H} {r : CRef} {n : Nat}
     (hr : ∀ rt₀, Silmaril.Wasm.Execution.Core.Ref.type? cs r = some rt₀ →
-      rt₀ ≠ (Silmaril.Wasm.Validation.Ty.ref true (.use (.idx n)) : CRefType)) :
-    ¬ Silmaril.Wasm.Execution.Core.RefOk cs r (Silmaril.Wasm.Validation.Ty.ref true (.use (.idx n))) := by
+      rt₀ ≠ (Ty.ref true (.use (.idx n)) : CRefType)) :
+    ¬ Silmaril.Wasm.Execution.Core.RefOk cs r (Ty.ref true (.use (.idx n))) := by
   intro hok
   obtain ⟨rt₀, e, hrt, -⟩ := hok.principal
   rcases hrt with hrt | ⟨hok', -⟩
@@ -429,7 +429,7 @@ theorem not_refOk_idx {cs : CStore H} {r : CRef} {n : Nat}
 /-- The cast of `call_indirect` fails on a host reference. -/
 theorem not_refOk_extern {cs : CStore H} {r : CRef} {t : FuncType} :
     ¬ Silmaril.Wasm.Execution.Core.RefOk cs (.extern r)
-      (Silmaril.Wasm.Validation.Ty.ref true (.use (.dt t.toDefType))) := by
+      (Ty.ref true (.use (.dt t.toDefType))) := by
   intro hok
   obtain ⟨rt₀, e, hsub, -⟩ :=
     (Silmaril.Wasm.Execution.Core.RefOk.iff_principal _ _ _ (tyOk_ref_toDefType true t)).mp hok
@@ -443,7 +443,7 @@ theorem not_refOk_extern {cs : CStore H} {r : CRef} {t : FuncType} :
 theorem not_refOk_funcNone {cs : CStore H} {a : Nat} {t : FuncType}
     (hf : cs.funcs[a]? = none) :
     ¬ Silmaril.Wasm.Execution.Core.RefOk cs (.func a)
-      (Silmaril.Wasm.Validation.Ty.ref true (.use (.dt t.toDefType))) := by
+      (Ty.ref true (.use (.dt t.toDefType))) := by
   intro hok
   obtain ⟨rt₀, e, -, -⟩ :=
     (Silmaril.Wasm.Execution.Core.RefOk.iff_principal _ _ _ (tyOk_ref_toDefType true t)).mp hok
@@ -456,7 +456,7 @@ theorem not_refOk_func {cs : CStore H} {a : Nat} {ci : ToCore.CFuncInst H}
     (hf : cs.funcs[a]? = some ci) {t₁ t₂ : FuncType} (ht : ci.type = t₁.toDefType)
     (hne : t₁ ≠ t₂) :
     ¬ Silmaril.Wasm.Execution.Core.RefOk cs (.func a)
-      (Silmaril.Wasm.Validation.Ty.ref true (.use (.dt t₂.toDefType))) := by
+      (Ty.ref true (.use (.dt t₂.toDefType))) := by
   intro hok
   obtain ⟨rt₀, e, hsub, -⟩ :=
     (Silmaril.Wasm.Execution.Core.RefOk.iff_principal _ _ _ (tyOk_ref_toDefType true t₂)).mp hok
@@ -465,7 +465,7 @@ theorem not_refOk_func {cs : CStore H} {a : Nat} {ci : ToCore.CFuncInst H}
   subst e
   have hc := Sub.check_complete TypeCtx.ok_empty rfl hsub
     (tyOk_ref_toDefType false t₁) (tyOk_ref_toDefType true t₂)
-  simp only [Sub.check, Sub.checkK, TypeCtx.checkRef, TypeCtx.checkHeap, Silmaril.Wasm.Validation.Ty.defHeap,
+  simp only [Sub.check, Sub.checkK, TypeCtx.checkRef, TypeCtx.checkHeap, Ty.defHeap,
     TypeCtx.resolve, Bool.not_false, Bool.true_or, Bool.true_and] at hc
   exact hne ((FuncType.toDefType_sub_iff _ _ _).mp (TypeCtx.checkDef_sound hc))
 
@@ -558,7 +558,7 @@ theorem read_callIndirectTrap {x : TableIdx} {y : TypeIdx} {i : BitVec 32} {ti :
         rw [instRef_typeIdx_none (by rw [htypes, hft]; rfl)]
         refine not_refOk_idx ?_
         rintro rt₀ e rfl
-        simp [Silmaril.Wasm.Execution.Core.Ref.type?, Silmaril.Wasm.Validation.Ty.defHeap] at e
+        simp [Silmaril.Wasm.Execution.Core.Ref.type?, Ty.defHeap] at e
       | some ft =>
         rw [instRef_typeIdx (show cf.module.types[y.toNat]? = some ft.toDefType by
           rw [htypes, hft]; rfl)]

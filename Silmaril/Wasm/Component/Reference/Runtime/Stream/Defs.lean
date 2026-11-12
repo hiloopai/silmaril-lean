@@ -77,24 +77,24 @@ open Engine Async
 
 /-- The peer class of an end class (`new_stream`/`new_future` pair a readable end with a
 writable end of the same kind). -/
-def _root_.Silmaril.Wasm.Component.Async.EndKind.dual : EndKind → EndKind
+def _root_.Silmaril.Wasm.Component.AsyncRef.EndKind.dual : EndKind → EndKind
   | .readableStream => .writableStream
   | .writableStream => .readableStream
   | .readableFuture => .writableFuture
   | .writableFuture => .readableFuture
 
 /-- `Readable*End` classes (their `copy` passes `is_read = True`, L1070-1083). -/
-def _root_.Silmaril.Wasm.Component.Async.EndKind.isReadable : EndKind → Bool
+def _root_.Silmaril.Wasm.Component.AsyncRef.EndKind.isReadable : EndKind → Bool
   | .readableStream | .readableFuture => true
   | .writableStream | .writableFuture => false
 
-@[simp] theorem _root_.Silmaril.Wasm.Component.Async.EndKind.dual_dual (k : EndKind) :
+@[simp] theorem _root_.Silmaril.Wasm.Component.AsyncRef.EndKind.dual_dual (k : EndKind) :
     k.dual.dual = k := by cases k <;> rfl
 
-@[simp] theorem _root_.Silmaril.Wasm.Component.Async.EndKind.isStream_dual (k : EndKind) :
+@[simp] theorem _root_.Silmaril.Wasm.Component.AsyncRef.EndKind.isStream_dual (k : EndKind) :
     k.dual.isStream = k.isStream := by cases k <;> rfl
 
-@[simp] theorem _root_.Silmaril.Wasm.Component.Async.EndKind.isReadable_dual (k : EndKind) :
+@[simp] theorem _root_.Silmaril.Wasm.Component.AsyncRef.EndKind.isReadable_dual (k : EndKind) :
     k.dual.isReadable = !k.isReadable := by cases k <;> rfl
 
 variable {E : CoreEngine}

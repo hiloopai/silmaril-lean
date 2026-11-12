@@ -37,7 +37,7 @@ abbrev D (P : Profile) : Call (E3 P) → Canon.P (E3 P) Unit (Ret (E3 P)) :=
   (refHost P).dispatch
 
 /-- The host caller record of top-level call `0`. -/
-def hostCaller (args : List Val) : Caller (E3 P) := .host ⟨0⟩ args 0
+def hostCaller (args : List Silmaril.Wasm.Component.Reference.Val) : Caller (E3 P) := .host ⟨0⟩ args 0
 
 theorem runs_allocObj {d : Call (E3 P) → Canon.P (E3 P) σ (Ret (E3 P))} {α Id : Type}
     {th : Option ThreadId} (F : ArenaField (E3 P) Id α) (x : α)
@@ -110,7 +110,7 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
     (hff : floatFreeList x.ty.results = true) {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList x.ty.results)
     (hnone : liftArgs x.ty.results ys = none)
-    {cx : LiftLowerContext (E3 P)} {f : List Val × FlatCursor → Canon.P (E3 P) Unit α}
+    {cx : LiftLowerContext (E3 P)} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit α}
     {g : α → Canon.P (E3 P) Unit (Ret (E3 P))} {M : Machine.Config (E3 P) Unit}
     {segs : List (Seg (E3 P) Unit)} {rest : List (Activation (E3 P) Unit)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
@@ -144,7 +144,7 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
 
 /-- The configuration after the host invoked function `j` on `args` from `afterInst`. -/
 def invokedCfgH (P : Profile) (cs : (core3P P).Store (CanonHost (core3P P)))
-    (fs : List (CFuncInst (core3P P))) (h : σ) (j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3P P))) (h : σ) (j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P) σ :=
   { afterInstH P cs fs h with
     pending := [] ++ [(⟨0⟩, ⟨j⟩, args)]
@@ -152,13 +152,13 @@ def invokedCfgH (P : Profile) (cs : (core3P P).Store (CanonHost (core3P P)))
 
 /-- The configuration after the host invoked function `j` on `args` from `afterInst`. -/
 abbrev invokedCfg (P : Profile) (cs : (core3P P).Store (CanonHost (core3P P)))
-    (fs : List (CFuncInst (core3P P))) (j : Nat) (args : List Val) : Machine.Config (E3 P) Unit :=
+    (fs : List (CFuncInst (core3P P))) (j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config (E3 P) Unit :=
   invokedCfgH P cs fs () j args
 
 /-- From `mS`, the call resolves with `rs`: a live run to a configuration with the host in
 control, results `rs`, from which a tick returns to itself. -/
 def Resolves (prof : ProfileKind) (P : Profile) (mS : Machine.Config (E3 P) Unit)
-    (rs : List Val) : Prop :=
+    (rs : List Silmaril.Wasm.Component.Reference.Val) : Prop :=
   ∃ tr mE, LRun prof (refHost P).hr (D P) mS tr mE ∧ mE.ctl = [] ∧
     mE.store.lockdown = false ∧ mE.result? ⟨0⟩ = some (some rs) ∧
     ∀ m₁, Step prof (refHost P).hr (D P) mE (.host .tick) m₁ →

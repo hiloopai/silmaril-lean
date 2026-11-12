@@ -28,7 +28,7 @@ New statements.
 namespace Silmaril.Wasm.Component.EngineRef
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference Silmaril.Wasm.Component.Param
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Runtime
 
 /-- **The reference-machine half over any engine, from its instantiation and run facts.** -/
 theorem refToSpecE_of_facts {E : Engine} [∀ a b, Decidable (E.ExternSub a b)]

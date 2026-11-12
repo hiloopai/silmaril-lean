@@ -113,7 +113,7 @@ def WireNodup (l : Linked2) : Prop := l.wire.Nodup
 
 section Trampolines
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Runtime
 
 /-- The import index of a `canon lower` trampoline of the importer in the shared store: the
 position, in the wiring, of the exporter's function it lowers (the inverse of `wireFid`). -/

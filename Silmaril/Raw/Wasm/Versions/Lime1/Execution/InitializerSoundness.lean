@@ -16,7 +16,7 @@ namespace Silmaril.Wasm.Lime1.Execution
 
 open Silmaril.Wasm.Execution.Runtime
 
-theorem constInstr?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.HostSemantics H) (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+theorem constInstr?_sound {H : Type} (host : HostSemantics H) (s : Store H) (f : Frame)
     {i : Instr} {v : Value} (h : constInstr? s f.module i = some v) :
     Steps host ⟨s, f, [.source i]⟩ ⟨s, f, [value v]⟩ := by
   cases i <;> simp only [constInstr?] at h
@@ -46,7 +46,7 @@ theorem constBinary?_success (t : IntType) (op : IntBinOp)
     obtain ⟨z, hz, rfl⟩ := Option.map_eq_some_iff.mp h
     exact ⟨x, y, z, rest, rfl, rfl, except_toOption_some hz⟩
 
-theorem constBinary?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.HostSemantics H) (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+theorem constBinary?_sound {H : Type} (host : HostSemantics H) (s : Store H) (f : Frame)
     (t : IntType) (op : IntBinOp) {stack result : List Value}
     (h : constBinary? t op stack = some result) :
     Steps host ⟨s, f, values stack.reverse ++ [.source (.intBinOp t op)]⟩
@@ -59,7 +59,7 @@ theorem constBinary?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.Ho
     (step.context rest.reverse []).steps
 
 /-- One evaluator instruction agrees with machine execution beneath an arbitrary stack. -/
-theorem constStep?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.HostSemantics H) (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+theorem constStep?_sound {H : Type} (host : HostSemantics H) (s : Store H) (f : Frame)
     {i : Instr} {stack result : List Value} (h : constStep? s f.module i stack = some result) :
     Steps host ⟨s, f, values stack.reverse ++ [.source i]⟩
       ⟨s, f, values result.reverse⟩ := by
@@ -75,7 +75,7 @@ theorem constStep?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.Host
       (constInstr?_sound host s f hv).context stack.reverse []
 
 /-- The evaluator's top-first stack is reversed at the machine boundary. -/
-theorem constFold?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.HostSemantics H) (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+theorem constFold?_sound {H : Type} (host : HostSemantics H) (s : Store H) (f : Frame)
     {es : Expr} {stack result : List Value}
     (h : es.foldlM (fun stack i => constStep? s f.module i stack) stack = some result) :
     Steps host ⟨s, f, values stack.reverse ++ expression es⟩
@@ -94,7 +94,7 @@ theorem constFold?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.Host
     simpa [values, expression, List.append_assoc] using begin.trans finish
 
 /-- Every successful initializer value is produced by an actual finite machine run. -/
-theorem constExpr?_sound {H : Type} (host : Silmaril.Wasm.Execution.Runtime.HostSemantics H) (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+theorem constExpr?_sound {H : Type} (host : HostSemantics H) (s : Store H) (f : Frame)
     {es : Expr} {v : Value} (h : constExpr? s f.module es = some v) :
     Steps host ⟨s, f, expression es⟩ ⟨s, f, [value v]⟩ := by
   simp only [constExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h

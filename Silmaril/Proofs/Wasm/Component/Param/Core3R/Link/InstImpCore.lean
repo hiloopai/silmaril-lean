@@ -33,7 +33,7 @@ open Silmaril.Wasm.Numerics (Profile)
 
 section Tramp
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Runtime
 
 variable {P : Profile}
 
@@ -54,8 +54,7 @@ end Tramp
 
 section Facts
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Engine
-  Silmaril.Wasm.Component.Instantiate
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Instantiate
 
 variable {Pf : Profile}
 

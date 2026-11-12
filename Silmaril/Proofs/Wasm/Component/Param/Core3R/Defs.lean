@@ -34,8 +34,7 @@ proof changes are where a core step is read as an `InternalP P` step (through `S
 namespace Silmaril.Proofs.Wasm.Component.Param.Core3R
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Machine Silmaril.Proofs.Wasm.Component.Reference
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine Silmaril.Proofs.Wasm.Component.Reference
 open Silmaril.Wasm.Numerics (Profile)
 
 /-- A Core 3.0 store and single-threaded thread at host type `H`. -/

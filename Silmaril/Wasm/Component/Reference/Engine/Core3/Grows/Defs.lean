@@ -473,7 +473,7 @@ theorem Grows.tableAddrType {s s' : Store H} (hg : Grows s s') {t : Nat} {at_ : 
 is reached only from `statusC` callouts (e.g. a flat wrapper mapping non-flat callouts to
 `stuck`). -/
 theorem Grows.status_callout_of {β : Type} {stepC stepC' : Config H → Option (Config H)}
-    {s s' : Store H} (hg : Grows s s') (F : Silmaril.Wasm.SingleThreaded.Status H → β) {b : β}
+    {s s' : Store H} (hg : Grows s s') (F : Status H → β) {b : β}
     (hF : ∀ st, F st = b → ∃ hc args, st = .callout hc args) {t : Thread}
     (h : F (statusC stepC s t) = b) : F (statusC stepC' s' t) = b := by
   obtain ⟨hc, args, e⟩ := hF _ h

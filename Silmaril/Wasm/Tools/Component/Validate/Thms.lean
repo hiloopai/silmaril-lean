@@ -28,7 +28,7 @@ import Silmaril.Wasm.Component.Reference.Validation.Laws.Thms
 namespace Silmaril.Wasm.Tools.Component.Validate
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Conformance
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Validation
+open Silmaril.Wasm.Component.Validation
 
 /-- The `BinaryP3` path of the decoder is in the grammar. -/
 theorem decodeP3_sound {b : ByteArray} {c : RefComponent} (h : decodeP3 b = .ok c) :

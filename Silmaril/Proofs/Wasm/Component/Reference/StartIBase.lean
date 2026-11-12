@@ -67,8 +67,7 @@ theorem noStart_good {c : SimpleI} (hc : c.Good) : c.noStart.Good :=
 
 section Facts
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Engine
-  Silmaril.Wasm.Component.Instantiate
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Instantiate
 
 variable {Pf : Profile}
 

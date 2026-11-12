@@ -18,7 +18,6 @@ namespace Silmaril.Wasm.Component.Streams.ACancel
 open Silmaril.Wasm.Component.Streams.Drop
 
 open Silmaril.Wasm.Component.Async (Obj Res Event upd blocked)
-open Silmaril.Wasm.Component.Streams.Drop
 open Silmaril.Wasm.Component.Streams.Cancel
 
 /-- A `Drop` store, with no flags and no futures. -/

@@ -28,9 +28,7 @@ open Silmaril.Proofs.Wasm.Component.Reference
 variable {V : Silmaril.Wasm.Module → Prop} {IR : {H : Type} → Cfg3 H → Cfg3 H → Prop}
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component (Syntax.Definition)
 
 variable {Pf : Silmaril.Wasm.Numerics.Profile} {σ : Type} {R : Recurse (core3R Pf V IR) σ}

@@ -22,7 +22,7 @@ namespace Silmaril.Proofs.Wasm.Component.Param.Core3R
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference Silmaril.Wasm.Component.Param
 open Silmaril.Proofs.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Runtime
 open Silmaril.Wasm.Numerics (Profile)
 
 /-- **The reference half from its phases** over `core3R P V IR`, for components within the

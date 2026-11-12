@@ -77,7 +77,7 @@ namespace Silmaril.Wasm.Component.Runtime
 
 open Engine Async
 
-theorem _root_.Silmaril.Wasm.Component.Async.EndKind.dual_ne (k : EndKind) : k.dual ≠ k := by
+theorem _root_.Silmaril.Wasm.Component.AsyncRef.EndKind.dual_ne (k : EndKind) : k.dual ≠ k := by
   cases k <;> decide
 
 variable {E : CoreEngine}

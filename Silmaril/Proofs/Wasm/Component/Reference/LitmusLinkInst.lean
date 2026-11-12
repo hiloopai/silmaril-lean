@@ -26,8 +26,7 @@ theorem fwdS_noSeg : fwdS.mod.mod.data = [] ∧ fwdS.mod.mod.elems = [] := ⟨rf
 
 section
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Execution.Core (Store)
 
 /-- **The instantiation of `dblFwdL.toRef`**: `instBehavioursL_inst` with every condition

@@ -27,9 +27,7 @@ function export whose name is not a generated type name is found by name
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component (Syntax.Definition)
 
 /-! ## Return values of programs -/

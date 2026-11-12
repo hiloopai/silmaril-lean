@@ -242,7 +242,7 @@ def Simple.SpecToIR : Prop :=
 
 section Float
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm.Component.Value (NanLower)
 open Silmaril.Wasm (FloatType)
 
@@ -361,8 +361,7 @@ end SeqSpec
 
 section SeqCalls
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Machine
 
 variable {E : CoreEngine} [∀ a b, Decidable (E.ExternSub a b)] {σ : Type}
 
@@ -610,7 +609,7 @@ def SimpleI.Arity (c : SimpleI) : Prop :=
 
 section HostImports
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon
 
 variable {E : Engine} {σ : Type}
 
@@ -761,7 +760,7 @@ end HostImports
 
 section CallPhaseI
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Runtime
 
 /-- The import index of a `canon lower` trampoline: the index of the function it lowers. -/
 def trampIdx {E : Engine} : CanonHost E → Nat
@@ -793,8 +792,7 @@ end CallPhaseI
 
 section SeqCallsI
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Machine
 
 /-- The calls are well typed. -/
 def SimpleI.TypedCalls (c : SimpleI)

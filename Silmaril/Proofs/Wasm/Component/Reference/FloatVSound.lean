@@ -32,7 +32,7 @@ canonicalisation of the arguments (`nanAtVList_deterministic`).
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Games Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Numerics (Profile)
 
 local notation "IVal" => Silmaril.Wasm.Component.Val

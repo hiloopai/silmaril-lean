@@ -27,11 +27,11 @@ variable {H : Type}
 
 /-! ## Helpers -/
 
-theorem mem_sim_inv {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {code : List Admin} {cfg : CConfig H}
+theorem mem_sim_inv {s : Store H} {f : Frame} {code : List Admin} {cfg : CConfig H}
     (hs : Sim ⟨s, f, code⟩ cfg) (hr : ∀ y ∈ Admin.listToCore s code, Rigid y) :
     cfg = ⟨cfg.store, cfg.frame, Admin.listToCore s code⟩ ∧
       ToCore.Store.erase cfg.store = s.toCore ∧ ToCore.Frame.erase cfg.frame = f.toCore ∧
-      ConfigWF (⟨s, f, code⟩ : Silmaril.Wasm.Execution.Runtime.Config H) := by
+      ConfigWF (⟨s, f, code⟩ : Config H) := by
   obtain ⟨hn, hwf⟩ := hs
   obtain ⟨cs, cf, cl⟩ := cfg
   rw [ToCore.Config.norm_eq_toCore_iff] at hn
@@ -40,22 +40,22 @@ theorem mem_sim_inv {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c
   have := map_norm_eq_of_rigid (L := Admin.listToCore s code) hr h3
   rw [this]
 
-theorem mem_sim_mk {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {code : List Admin} {cs : CStore H} {cf : CFrame}
+theorem mem_sim_mk {s : Store H} {f : Frame} {code : List Admin} {cs : CStore H} {cf : CFrame}
     (hE : ToCore.Store.erase cs = s.toCore) (hF : ToCore.Frame.erase cf = f.toCore)
-    (hwf : ConfigWF (⟨s, f, code⟩ : Silmaril.Wasm.Execution.Runtime.Config H)) :
+    (hwf : ConfigWF (⟨s, f, code⟩ : Config H)) :
     Sim ⟨s, f, code⟩ ⟨cs, cf, Admin.listToCore s code⟩ :=
   ⟨ToCore.Config.norm_eq_toCore_iff.mpr ⟨hE, hF, map_norm_listToCore _ _ _⟩, hwf⟩
 
-theorem mem_rigid_value (s : Silmaril.Wasm.Execution.Runtime.Store H) (v : Value) :
+theorem mem_rigid_value (s : Store H) (v : Value) :
     ∀ y ∈ Admin.toCore s (value v), Rigid y := by
   rw [value_toCore]; intro y hy; simp only [List.mem_singleton] at hy; subst hy; exact Rigid.val _
 
-theorem mem_rigid_source (s : Silmaril.Wasm.Execution.Runtime.Store H) (i : Instr) :
+theorem mem_rigid_source (s : Store H) (i : Instr) :
     ∀ y ∈ Admin.toCore s (.source i), Rigid y := by
   rw [source_toCore]; intro y hy; simp only [List.mem_singleton] at hy; subst hy
   exact Rigid.toCore _
 
-theorem mem_rigid_cons {s : Silmaril.Wasm.Execution.Runtime.Store H} {a : Admin} {l : List Admin}
+theorem mem_rigid_cons {s : Store H} {a : Admin} {l : List Admin}
     (h₁ : ∀ y ∈ Admin.toCore s a, Rigid y) (h₂ : ∀ y ∈ Admin.listToCore s l, Rigid y) :
     ∀ y ∈ Admin.listToCore s (a :: l), Rigid y := by
   rw [listToCore_cons]; intro y hy
@@ -63,12 +63,12 @@ theorem mem_rigid_cons {s : Silmaril.Wasm.Execution.Runtime.Store H} {a : Admin}
   · exact h₁ y h
   · exact h₂ y h
 
-theorem mem_rigid_nil (s : Silmaril.Wasm.Execution.Runtime.Store H) : ∀ y ∈ Admin.listToCore s [], Rigid y := by simp
+theorem mem_rigid_nil (s : Store H) : ∀ y ∈ Admin.listToCore s [], Rigid y := by simp
 
-theorem mem_wf_value (s : Silmaril.Wasm.Execution.Runtime.Store H) (v : Value) : Admin.WF s (value v) := by
+theorem mem_wf_value (s : Store H) (v : Value) : Admin.WF s (value v) := by
   rcases v with ⟨_ | _, _⟩ <;> simp [value, Admin.WF]
 
-theorem mem_lookup {cs : CStore H} {cf : CFrame} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {a : MemAddr}
+theorem mem_lookup {cs : CStore H} {cf : CFrame} {s : Store H} {f : Frame} {a : MemAddr}
     {m : MemInst} (hE : ToCore.Store.erase cs = s.toCore) (hF : ToCore.Frame.erase cf = f.toCore)
     (hm : frameMemory s f = some (a, m)) :
     cs.mem? cf ⟨0⟩ = some (a.value, m.toCore) := by
@@ -85,7 +85,7 @@ theorem mem_lookup {cs : CStore H} {cf : CFrame} {s : Silmaril.Wasm.Execution.Ru
   cases he
   simp [Silmaril.Wasm.Execution.Core.Store.mem?, h1, h2, ha, hm', Silmaril.Wasm.Idx.toNat]
 
-theorem mem_erase_setMem {cs : CStore H} {s : Silmaril.Wasm.Execution.Runtime.Store H} (hE : ToCore.Store.erase cs = s.toCore)
+theorem mem_erase_setMem {cs : CStore H} {s : Store H} (hE : ToCore.Store.erase cs = s.toCore)
     (a : MemAddr) (m' : MemInst) :
     ToCore.Store.erase (cs.setMem a.value m'.toCore) = (setMemory s a m').toCore := by
   have : ToCore.Store.erase (cs.setMem a.value m'.toCore) =
@@ -98,7 +98,7 @@ theorem mem_toCore_bytes (m : MemInst) (b : ByteArray) (h : b.size = m.data.size
       ({ m with data := b } : MemInst).toCore := by
   simp [MemInst.toCore, h]
 
-theorem mem_storeWF_set {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {a : MemAddr} {m m' : MemInst}
+theorem mem_storeWF_set {s : Store H} {f : Frame} {a : MemAddr} {m m' : MemInst}
     (hwf : StoreWF s) (hm : frameMemory s f = some (a, m)) (hsize : m'.data.size ≤ 2 ^ 32)
     (hmax : m'.max = m.max) : StoreWF (setMemory s a m') := by
   simp only [frameMemory, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
@@ -115,7 +115,7 @@ theorem mem_storeWF_set {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame
     · cases h
   · rw [ite_eq_right hi] at h; exact hwf.2 i mi h
 
-theorem mem_setMemory_self {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {a : MemAddr} {m : MemInst}
+theorem mem_setMemory_self {s : Store H} {f : Frame} {a : MemAddr} {m : MemInst}
     (hm : frameMemory s f = some (a, m)) : setMemory s a m = s := by
   simp only [frameMemory, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
     Option.some.injEq] at hm
@@ -141,7 +141,7 @@ theorem mem_store_size {data b : ByteArray} {start count : Nat} {w : BitVec (8 *
     (h : Memory.store data start w = some b) : b.size = data.size :=
   Memory.writeBytes_size _ _ _ _ h
 
-theorem mem_frameMemory_wf {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {a : MemAddr} {m : MemInst}
+theorem mem_frameMemory_wf {s : Store H} {f : Frame} {a : MemAddr} {m : MemInst}
     (hwf : StoreWF s) (hm : frameMemory s f = some (a, m)) :
     m.data.size ≤ 2 ^ 32 ∧ ∀ j, m.max = some j → j < 2 ^ 64 := by
   simp only [frameMemory, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
@@ -196,7 +196,7 @@ theorem mem_grow_toCore (m : MemInst) (delta : Nat) (bytes : ByteArray)
 
 /-! ## Loads -/
 
-theorem intLoad {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {packed} {arg} {c : BitVec 32}
+theorem intLoad {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {packed} {arg} {c : BitVec 32}
     {a : MemAddr} {m : MemInst} {v : Value}
     (memory : frameMemory s f = some (a, m))
     (loaded : loadInt t packed m.data (effectiveAddress c arg) = some v)
@@ -219,7 +219,7 @@ theorem intLoad {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.St
     cases p <;> cases sx <;>
       exact .single (.memory (.loadPackVal (a := .i32) (i := c) hm hx))
 
-theorem intLoadTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {packed} {arg}
+theorem intLoadTrap {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {packed} {arg}
     {c : BitVec 32} {a : MemAddr} {m : MemInst}
     (memory : frameMemory s f = some (a, m))
     (loaded : loadInt t packed m.data (effectiveAddress c arg) = none)
@@ -240,7 +240,7 @@ theorem intLoadTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtim
     cases p <;>
       exact .single (.memory (.loadPackOob (a := .i32) (i := c) hm (mem_load_none loaded)))
 
-theorem floatLoad {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {arg} {c : BitVec 32}
+theorem floatLoad {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {arg} {c : BitVec 32}
     {a : MemAddr} {m : MemInst} {v : Value}
     (memory : frameMemory s f = some (a, m))
     (loaded : loadFloat t m.data (effectiveAddress c arg) = some v)
@@ -258,7 +258,7 @@ theorem floatLoad {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.
   obtain ⟨x, hx, rfl⟩ := loaded
   exact .single (.memory (.loadFloatVal (a := .i32) (i := c) hm hx))
 
-theorem floatLoadTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {arg}
+theorem floatLoadTrap {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {arg}
     {c : BitVec 32} {a : MemAddr} {m : MemInst}
     (memory : frameMemory s f = some (a, m))
     (loaded : loadFloat t m.data (effectiveAddress c arg) = none)
@@ -277,7 +277,7 @@ theorem floatLoadTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runt
 
 /-! ## Stores -/
 
-theorem intStore {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {packed} {arg}
+theorem intStore {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {packed} {arg}
     {c : BitVec 32} {x : BitVec t.width} {a : MemAddr} {m : MemInst} {bytes : Memory.Bytes}
     (memory : frameMemory s f = some (a, m))
     (stored : storeInt t packed m.data (effectiveAddress c arg) x = some bytes)
@@ -300,7 +300,7 @@ theorem intStore {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.S
   · exact .single (.memory (.storeIntVal (a := .i32) (i := c) hm stored))
   · cases p <;> exact .single (.memory (.storePackVal (a := .i32) (i := c) hm stored))
 
-theorem intStoreTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {packed} {arg}
+theorem intStoreTrap {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {packed} {arg}
     {c : BitVec 32} {x : BitVec t.width} {a : MemAddr} {m : MemInst}
     (memory : frameMemory s f = some (a, m))
     (stored : storeInt t packed m.data (effectiveAddress c arg) x = none)
@@ -320,7 +320,7 @@ theorem intStoreTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runti
   · cases p <;>
       exact .single (.memory (.storePackOob (a := .i32) (i := c) hm (mem_store_none stored)))
 
-theorem floatStore {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {arg}
+theorem floatStore {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {arg}
     {c : BitVec 32} {x : BitVec t.width} {a : MemAddr} {m : MemInst} {bytes : Memory.Bytes}
     (memory : frameMemory s f = some (a, m))
     (stored : storeFloat t m.data (effectiveAddress c arg) x = some bytes)
@@ -341,7 +341,7 @@ theorem floatStore {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime
   rw [hc, ← mem_toCore_bytes m bytes hsize]
   exact .single (.memory (.storeFloatVal (a := .i32) (i := c) hm stored))
 
-theorem floatStoreTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {t} {arg}
+theorem floatStoreTrap {tgt : CHostSemantics H} {s : Store H} {f : Frame} {t} {arg}
     {c : BitVec 32} {x : BitVec t.width} {a : MemAddr} {m : MemInst}
     (memory : frameMemory s f = some (a, m))
     (stored : storeFloat t m.data (effectiveAddress c arg) x = none)
@@ -360,7 +360,7 @@ theorem floatStoreTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Run
 
 /-! ## Size and growth -/
 
-theorem memorySize {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {a : MemAddr}
+theorem memorySize {tgt : CHostSemantics H} {s : Store H} {f : Frame} {a : MemAddr}
     {m : MemInst} (memory : frameMemory s f = some (a, m))
     {cfg : CConfig H} (hs : Sim ⟨s, f, [.source .memorySize]⟩ cfg) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Silmaril.Wasm.Numerics.Profile.spec tgt) cfg c' ∧
@@ -373,7 +373,7 @@ theorem memorySize {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime
   rw [hc]
   exact .single (.memory (.size hm))
 
-theorem memoryGrow {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {a : MemAddr}
+theorem memoryGrow {tgt : CHostSemantics H} {s : Store H} {f : Frame} {a : MemAddr}
     {m : MemInst} {c r : BitVec 32} {bytes : Memory.Bytes}
     (memory : frameMemory s f = some (a, m))
     (grown : Memory.Grow m.data m.max c.toNat bytes r)

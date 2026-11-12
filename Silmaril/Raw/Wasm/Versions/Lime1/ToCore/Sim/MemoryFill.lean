@@ -128,7 +128,7 @@ theorem fill_loop {tgt : CHostSemantics H} (x : Silmaril.Wasm.MemIdx) (b : BitVe
       rw [fill_setMem_setMem] at hsteps
       exact hsteps
 
-theorem memoryFill {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame}
+theorem memoryFill {tgt : CHostSemantics H} {s : Store H} {f : Frame}
     {d byte n : BitVec 32} {a : MemAddr} {m : MemInst} {bytes : Memory.Bytes}
     (memory : frameMemory s f = some (a, m))
     (filled : Memory.fill m.data d.toNat (UInt8.ofNat byte.toNat) n.toNat = some bytes)
@@ -160,7 +160,7 @@ theorem memoryFill {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime
   rw [hc, ← mem_toCore_bytes m B hsize]
   exact hsteps
 
-theorem memoryFillTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame}
+theorem memoryFillTrap {tgt : CHostSemantics H} {s : Store H} {f : Frame}
     {d byte n : BitVec 32} {a : MemAddr} {m : MemInst}
     (memory : frameMemory s f = some (a, m))
     (filled : Memory.fill m.data d.toNat (UInt8.ofNat byte.toNat) n.toNat = none)

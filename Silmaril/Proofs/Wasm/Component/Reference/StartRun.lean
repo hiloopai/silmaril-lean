@@ -16,9 +16,7 @@ the start function, it runs to `afterStartCfg`, observing `instantiatedObs ‚ü®0‚
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 
@@ -76,9 +74,7 @@ end Silmaril.Proofs.Wasm.Component.Reference
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Numerics (Profile)
 
 variable {Pf : Profile} {prof : ProfileKind}

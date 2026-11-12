@@ -5,7 +5,7 @@ public import Silmaril.Wasm.Execution.Core.Properties
 
 @[expose] public section
 
-/-! # Silmaril.Wasm.Execution.Core.Step simulation: administrative label/frame/trap rules
+/-! # Step simulation: administrative label/frame/trap rules
 
 Head-rule lemmas for the Lime1 → Core step simulation, one per administrative
 `PureStep` constructor (`labelDone`, `labelBranch`, `labelBranchOuter`,
@@ -26,34 +26,34 @@ variable {H : Type}
 
 /-! ## Helpers -/
 
-theorem adm_listWF_append (s : Silmaril.Wasm.Execution.Runtime.Store H) :
+theorem adm_listWF_append (s : Store H) :
     (xs ys : List Admin) → (Admin.listWF s (xs ++ ys) ↔ Admin.listWF s xs ∧ Admin.listWF s ys)
   | [], ys => by simp [Admin.listWF]
   | x :: xs, ys => by
     simp only [List.cons_append, Admin.listWF]
     rw [adm_listWF_append s xs ys, and_assoc]
 
-theorem adm_listWF_values (s : Silmaril.Wasm.Execution.Runtime.Store H) : (vs : List Value) → Admin.listWF s (values vs)
+theorem adm_listWF_values (s : Store H) : (vs : List Value) → Admin.listWF s (values vs)
   | [] => by simp [values, Admin.listWF]
   | v :: vs => by
     simp only [values, List.map_cons, Admin.listWF]
     refine ⟨?_, adm_listWF_values s vs⟩
     rcases v with ⟨⟨_ | _⟩, _⟩ <;> simp [value, Admin.WF]
 
-theorem adm_listWF_expression (s : Silmaril.Wasm.Execution.Runtime.Store H) : (es : Expr) → Admin.listWF s (expression es)
+theorem adm_listWF_expression (s : Store H) : (es : Expr) → Admin.listWF s (expression es)
   | [] => by simp [expression, Admin.listWF]
   | e :: es => by
     simp only [expression, List.map_cons, Admin.listWF]
     exact ⟨by simp [Admin.WF], adm_listWF_expression s es⟩
 
-theorem adm_listWF_trap (s : Silmaril.Wasm.Execution.Runtime.Store H) : Admin.listWF s [.trap] := by
+theorem adm_listWF_trap (s : Store H) : Admin.listWF s [.trap] := by
   simp [Admin.listWF, Admin.WF]
 
-theorem adm_listWF_source (s : Silmaril.Wasm.Execution.Runtime.Store H) (i : Instr) : Admin.listWF s [.source i] := by
+theorem adm_listWF_source (s : Store H) (i : Instr) : Admin.listWF s [.source i] := by
   simp [Admin.listWF, Admin.WF]
 
 /-- Transfer `Sim` to a new code sequence on the same store and frame. -/
-theorem adm_sim_of {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {before after : List Admin}
+theorem adm_sim_of {s : Store H} {f : Frame} {before after : List Admin}
     {cs : CStore H} {cf : CFrame} {cl cl' : List CAdmin}
     (hs : Sim ⟨s, f, before⟩ ⟨cs, cf, cl⟩) (hwf : Admin.listWF s after)
     (hmap : cl'.map (ToCore.Admin.norm cf.module) = Admin.listToCore s after) :
@@ -64,7 +64,7 @@ theorem adm_sim_of {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {be
   rw [ToCore.Config.norm_eq_toCore_iff]
   exact ⟨hn.1, hn.2.1, hmap⟩
 
-theorem adm_code {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {before : List Admin}
+theorem adm_code {s : Store H} {f : Frame} {before : List Admin}
     {cs : CStore H} {cf : CFrame} {cl : List CAdmin}
     (hs : Sim ⟨s, f, before⟩ ⟨cs, cf, cl⟩) :
     cl.map (ToCore.Admin.norm cf.module) = Admin.listToCore s before := by
@@ -102,7 +102,7 @@ theorem adm_rigid_return : Rigid (.plain .return_) := by simp [Rigid]
 /-! ## Label rules -/
 
 theorem pure_labelDone {tgt : CHostSemantics H} {n : Nat} {cont : Expr} {vs : List Value}
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, [.label n cont (values vs)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, values vs⟩ c' := by
@@ -113,11 +113,11 @@ theorem pure_labelDone {tgt : CHostSemantics H} {n : Nat} {cont : Expr} {vs : Li
   obtain ⟨x, rfl, hx⟩ := adm_single hm
   obtain ⟨b, rfl, hb⟩ := norm_eq_label hx
   obtain rfl := map_norm_vals hb
-  exact ⟨_, .single Silmaril.Wasm.Execution.Core.Step.labelVals, adm_sim_of hs (adm_listWF_values s vs) (by simp)⟩
+  exact ⟨_, .single Step.labelVals, adm_sim_of hs (adm_listWF_values s vs) (by simp)⟩
 
 theorem pure_labelBranch {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
     {extra vs : List Value} {tail : List Admin} (arity : vs.length = n)
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f,
       [.label n cont (values extra ++ values vs ++ [.source (.br ⟨0⟩)] ++ tail)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
@@ -134,7 +134,7 @@ theorem pure_labelBranch {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
   obtain rfl := map_norm_vals h₅
   obtain rfl := map_norm_vals h₆
   obtain rfl := adm_br (adm_rigid_br _) h₄
-  refine ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.brLabelZero (vs' := extra.map Value.toCore)
+  refine ⟨_, .single (Step.brLabelZero (vs' := extra.map Value.toCore)
     (vs := vs.map Value.toCore) (rest := b₂) rfl (by simpa using arity)), ?_⟩
   refine adm_sim_of hs ((adm_listWF_append s _ _).2
     ⟨adm_listWF_values s vs, adm_listWF_expression s cont⟩) ?_
@@ -142,7 +142,7 @@ theorem pure_labelBranch {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
 
 theorem pure_labelBranchOuter {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
     {vs : List Value} {tail : List Admin} {l : LabelIdx} (outer : l.toNat ≠ 0)
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, [.label n cont (values vs ++ [.source (.br l)] ++ tail)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, values vs ++ [.source (.br (lowerLabel l))]⟩ c' := by
@@ -156,7 +156,7 @@ theorem pure_labelBranchOuter {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
   obtain ⟨b₃, b₄, rfl, h₃, h₄⟩ := adm_split h₁
   obtain rfl := map_norm_vals h₃
   obtain rfl := adm_br (adm_rigid_br _) h₄
-  refine ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.brLabelSucc (vs := vs.map Value.toCore) (rest := b₂)
+  refine ⟨_, .single (Step.brLabelSucc (vs := vs.map Value.toCore) (rest := b₂)
     (Nat.pos_of_ne_zero outer)), ?_⟩
   refine adm_sim_of hs ((adm_listWF_append s _ _).2
     ⟨adm_listWF_values s vs, adm_listWF_source s _⟩) ?_
@@ -165,7 +165,7 @@ theorem pure_labelBranchOuter {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
 
 theorem pure_labelReturn {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
     {vs : List Value} {tail : List Admin}
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, [.label n cont (values vs ++ [.source .return_] ++ tail)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, values vs ++ [.source .return_]⟩ c' := by
@@ -179,7 +179,7 @@ theorem pure_labelReturn {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
   obtain ⟨b₃, b₄, rfl, h₃, h₄⟩ := adm_split h₁
   obtain rfl := map_norm_vals h₃
   obtain rfl := adm_br adm_rigid_return h₄
-  refine ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.returnLabel (vs := vs.map Value.toCore) (rest := b₂)), ?_⟩
+  refine ⟨_, .single (Step.returnLabel (vs := vs.map Value.toCore) (rest := b₂)), ?_⟩
   refine adm_sim_of hs ((adm_listWF_append s _ _).2
     ⟨adm_listWF_values s vs, adm_listWF_source s _⟩) ?_
   simp [listToCore_append, adm_return_toCore, adm_rigid_return.norm]
@@ -188,7 +188,7 @@ theorem pure_labelReturn {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
 
 theorem pure_frameDone {tgt : CHostSemantics H} {n : Nat} {fr : Frame} {vs : List Value}
     (arity : vs.length = n)
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, [.frame n fr (values vs)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, values vs⟩ c' := by
@@ -199,12 +199,12 @@ theorem pure_frameDone {tgt : CHostSemantics H} {n : Nat} {fr : Frame} {vs : Lis
   obtain ⟨x, rfl, hx⟩ := adm_single hm
   obtain ⟨fi, b, rfl, -, hb⟩ := norm_eq_frame hx
   obtain rfl := map_norm_vals hb
-  exact ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.frameVals (by simpa using arity)),
+  exact ⟨_, .single (Step.frameVals (by simpa using arity)),
     adm_sim_of hs (adm_listWF_values s vs) (by simp)⟩
 
 theorem pure_frameReturn {tgt : CHostSemantics H} {n : Nat} {fr : Frame}
     {extra vs : List Value} {tail : List Admin} (arity : vs.length = n)
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f,
       [.frame n fr (values extra ++ values vs ++ [.source .return_] ++ tail)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
@@ -221,7 +221,7 @@ theorem pure_frameReturn {tgt : CHostSemantics H} {n : Nat} {fr : Frame}
   obtain rfl := map_norm_vals h₅
   obtain rfl := map_norm_vals h₆
   obtain rfl := adm_br adm_rigid_return h₄
-  exact ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.returnFrame (vs' := extra.map Value.toCore)
+  exact ⟨_, .single (Step.returnFrame (vs' := extra.map Value.toCore)
     (vs := vs.map Value.toCore) (rest := b₂) (by simpa using arity)),
     adm_sim_of hs (adm_listWF_values s vs) (by simp)⟩
 
@@ -229,7 +229,7 @@ theorem pure_frameReturn {tgt : CHostSemantics H} {n : Nat} {fr : Frame}
 
 theorem pure_trapValues {tgt : CHostSemantics H} {v : Value} {vs : List Value}
     {tail : List Admin}
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, values (v :: vs) ++ [.trap] ++ tail⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, [.trap]⟩ c' := by
@@ -241,11 +241,11 @@ theorem pure_trapValues {tgt : CHostSemantics H} {v : Value} {vs : List Value}
   obtain ⟨b₃, b₄, rfl, h₃, h₄⟩ := adm_split h₁
   obtain rfl := map_norm_vals h₃
   obtain rfl := adm_trap h₄
-  exact ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.trapInstrs (vs := (v :: vs).map Value.toCore) (rest := b₂)
+  exact ⟨_, .single (Step.trapInstrs (vs := (v :: vs).map Value.toCore) (rest := b₂)
     (.inl (by simp))), adm_sim_of hs (adm_listWF_trap s) (by simp)⟩
 
 theorem pure_trapTail {tgt : CHostSemantics H} {i : Admin} {tail : List Admin}
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, .trap :: i :: tail⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, [.trap]⟩ c' := by
@@ -258,12 +258,12 @@ theorem pure_trapTail {tgt : CHostSemantics H} {i : Admin} {tail : List Admin}
     rintro rfl
     simp only [List.map_nil] at h₂
     exact toCore_ne_nil s i (List.append_eq_nil_iff.mp h₂.symm).1
-  have hstep := Silmaril.Wasm.Execution.Core.Step.trapInstrs (P := Numerics.Profile.spec) (host := tgt) (s := cs) (f := cf)
+  have hstep := Step.trapInstrs (P := Numerics.Profile.spec) (host := tgt) (s := cs) (f := cf)
     (vs := []) (rest := b₂) (.inr hne)
   exact ⟨_, .single (by simpa [vals] using hstep), adm_sim_of hs (adm_listWF_trap s) (by simp)⟩
 
 theorem pure_labelTrap {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, [.label n cont [.trap]]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, [.trap]⟩ c' := by
@@ -274,10 +274,10 @@ theorem pure_labelTrap {tgt : CHostSemantics H} {n : Nat} {cont : Expr}
   obtain ⟨x, rfl, hx⟩ := adm_single hm
   obtain ⟨b, rfl, hb⟩ := norm_eq_label hx
   obtain rfl := adm_trap hb
-  exact ⟨_, .single Silmaril.Wasm.Execution.Core.Step.trapLabel, adm_sim_of hs (adm_listWF_trap s) (by simp)⟩
+  exact ⟨_, .single Step.trapLabel, adm_sim_of hs (adm_listWF_trap s) (by simp)⟩
 
 theorem pure_frameTrap {tgt : CHostSemantics H} {n : Nat} {fr : Frame}
-    {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {c : CConfig H}
+    {s : Store H} {f : Frame} {c : CConfig H}
     (hs : Sim ⟨s, f, [.frame n fr [.trap]]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Numerics.Profile.spec tgt) c c' ∧
       Sim ⟨s, f, [.trap]⟩ c' := by
@@ -288,6 +288,6 @@ theorem pure_frameTrap {tgt : CHostSemantics H} {n : Nat} {fr : Frame}
   obtain ⟨x, rfl, hx⟩ := adm_single hm
   obtain ⟨fi, b, rfl, -, hb⟩ := norm_eq_frame hx
   obtain rfl := adm_trap hb
-  exact ⟨_, .single Silmaril.Wasm.Execution.Core.Step.trapFrame, adm_sim_of hs (adm_listWF_trap s) (by simp)⟩
+  exact ⟨_, .single Step.trapFrame, adm_sim_of hs (adm_listWF_trap s) (by simp)⟩
 
 end Silmaril.Wasm.Lime1.Execution.ToCoreSim

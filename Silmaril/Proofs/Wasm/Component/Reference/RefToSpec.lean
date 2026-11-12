@@ -16,7 +16,7 @@ because export names are distinct (`Simple.Good`).
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Runtime
 open Silmaril.Wasm.Numerics (Profile)
 
 /-- Looking up the name of the `j`-th element of a list with distinct names, among the names

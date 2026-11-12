@@ -31,7 +31,6 @@ every binary with both and reports any disagreement (`tools/wasm-tools/README.md
 namespace Silmaril.Wasm.Component.Conformance
 
 open Silmaril.Wasm.Component
-open Silmaril.Wasm.Component
 
 namespace ToRefP3
 

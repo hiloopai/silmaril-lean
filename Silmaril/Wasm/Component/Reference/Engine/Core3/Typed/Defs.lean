@@ -25,7 +25,7 @@ import Silmaril.Wasm.Component.Reference.Engine.Core3.Typed.Store.Defs
   `allocHost` at `ofFlatType ft`);
 * `Ext s s'`: typed store extension `Extend s s'` (the spec's `Extend_store`);
 * `ThreadOkE s t rs`: the thread's configuration is typed with the numeric result types `rs`
-  (`SingleThreaded.ThreadOk s t (rs.map Silmaril.Wasm.Validation.Ty.num)`, i.e. `Config_ok`);
+  (`SingleThreaded.ThreadOk s t (rs.map Ty.num)`, i.e. `Config_ok`);
 * `HostTypedE s h ft`: every host function of `s` with code `h` has type `ofFlatType ft` (vacuous
   while there is none).
 
@@ -66,7 +66,7 @@ def HostTypedE (s : Store H) (h : H) (ft : V1.FuncType) : Prop :=
 
 /-- A typed thread with numeric result types `rs`. -/
 def ThreadOkE (s : Store H) (t : SingleThreaded.Thread) (rs : List NumType) : Prop :=
-  SingleThreaded.ThreadOk s t (rs.map Silmaril.Wasm.Validation.Ty.num)
+  SingleThreaded.ThreadOk s t (rs.map Ty.num)
 
 /-! ## Progress of running threads (no typing needed) -/
 
@@ -208,20 +208,20 @@ theorem invoke_ok {s : Store H} {a : Nat} {ft : V1.FuncType} {args : List FlatVa
     simp only [hfi, Option.map_some, Option.bind_some] at hft
     have hty : fi.type = SingleThreaded.ofFlatType ft := (SingleThreaded.flatType?_sound hft).symm
     have hexp : Expand fi.type
-        (.func (Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num)) (Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num))) := by
+        (.func (Ty.ofList (ft.params.map Ty.num)) (Ty.ofList (ft.results.map Ty.num))) := by
       rw [hty]
       exact expand_ofFlatType ft
     have hargsOk : List.Forall₂ (ValOk s) (args.map SingleThreaded.ofFlat)
-        (Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num)).toList := by
-      rw [Silmaril.Wasm.Validation.Ty.toList_ofList, ← hargs]
+        (Ty.ofList (ft.params.map Ty.num)).toList := by
+      rw [Ty.toList_ofList, ← hargs]
       exact SingleThreaded.forall₂_ofFlat args
     obtain ⟨fi', ps', rs', hf', hexp', hok⟩ :=
       Silmaril.Wasm.Execution.Core.invoke_ok hs.1 ⟨fi, _, _, hfi, hexp, hargsOk⟩
     obtain rfl : fi = fi' := Option.some.inj (hfi.symm.trans hf')
-    obtain ⟨-, hrs⟩ : _ ∧ Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num) = rs' :=
-      Silmaril.Wasm.Validation.Ty.func.inj (Expand.func_eq hexp hexp')
-    have hok' : ConfigOk (invoke s a (args.map SingleThreaded.ofFlat)) (ft.results.map Silmaril.Wasm.Validation.Ty.num) := by
-      simpa only [← hrs, Silmaril.Wasm.Validation.Ty.toList_ofList] using hok
+    obtain ⟨-, hrs⟩ : _ ∧ Ty.ofList (ft.results.map Ty.num) = rs' :=
+      Ty.func.inj (Expand.func_eq hexp hexp')
+    have hok' : ConfigOk (invoke s a (args.map SingleThreaded.ofFlat)) (ft.results.map Ty.num) := by
+      simpa only [← hrs, Ty.toList_ofList] using hok
     exact hok'
 
 theorem threadOk_ext {s s' : Store H} {t : SingleThreaded.Thread} {rs : List NumType}
@@ -253,10 +253,10 @@ theorem callout_flat_ne_stuck {o : SingleThreaded.GrowOracle} {s : Store H}
   obtain ⟨fi, hfi, hcode, ps, rs', hexp, hargs⟩ := callout_args_typed hs.1 ht hst
   obtain ⟨ft, hty⟩ := hs.2 fi hfi hc hcode
   have hexpF : Expand (SingleThreaded.ofFlatType ft) (.func ps rs') := hty ▸ hexp
-  obtain ⟨hps, -⟩ : Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num) = ps ∧ _ :=
-    Silmaril.Wasm.Validation.Ty.func.inj (Expand.func_eq (expand_ofFlatType ft) hexpF)
-  have hargsF : List.Forall₂ (ValOk s) args (ft.params.map Silmaril.Wasm.Validation.Ty.num) := by
-    simpa only [← hps, Silmaril.Wasm.Validation.Ty.toList_ofList] using hargs
+  obtain ⟨hps, -⟩ : Ty.ofList (ft.params.map Ty.num) = ps ∧ _ :=
+    Ty.func.inj (Expand.func_eq (expand_ofFlatType ft) hexpF)
+  have hargsF : List.Forall₂ (ValOk s) args (ft.params.map Ty.num) := by
+    simpa only [← hps, Ty.toList_ofList] using hargs
   obtain ⟨fargs, hm, -⟩ := mapM_toFlat?_of_forall₂ hargsF
   simp only [flatStatus, hm]
   intro e
@@ -301,9 +301,9 @@ theorem callout_typed {o : SingleThreaded.GrowOracle} {s : Store H} {t : SingleT
   obtain ⟨fi, hfi, hcode, ps, rs', hexp, hargs⟩ := callout_args_typed hs.1 ht hst
   rw [hh fi hfi hcode] at hexp
   have e := Expand.func_eq hexp (expand_ofFlatType ft)
-  simp only [Silmaril.Wasm.Validation.Ty.func.injEq] at e
+  simp only [Ty.func.injEq] at e
   obtain ⟨rfl, -⟩ := e
-  rw [Silmaril.Wasm.Validation.Ty.toList_ofList] at hargs
+  rw [Ty.toList_ofList] at hargs
   obtain ⟨fargs, hm', hty⟩ := mapM_toFlat?_of_forall₂ hargs
   rw [hm] at hm'
   cases hm'
@@ -324,10 +324,10 @@ theorem resume_ok {o : SingleThreaded.GrowOracle} {s s' : Store H} {t : SingleTh
   · exact resume_trap_extend hs.1 ht hst he hs'.1
   · refine SingleThreaded.resume_typed hs.1 ht hst hs'.1 he fun E a args'' hd => ?_
     obtain ⟨fi, -, -, -, hf, hcode, -, -, -, -⟩ := SingleThreaded.decompose?_sound hd
-    refine ⟨fi, Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num), Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num), hf, ?_, ?_⟩
+    refine ⟨fi, Ty.ofList (ft.params.map Ty.num), Ty.ofList (ft.results.map Ty.num), hf, ?_, ?_⟩
     · rw [hh fi (List.mem_of_getElem? hf) hcode]
       exact expand_ofFlatType ft
-    · rw [Silmaril.Wasm.Validation.Ty.toList_ofList, ← hvs]
+    · rw [Ty.toList_ofList, ← hvs]
       exact SingleThreaded.forall₂_ofFlat vs
 
 end Typed

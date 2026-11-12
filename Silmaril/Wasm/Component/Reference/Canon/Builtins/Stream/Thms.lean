@@ -35,7 +35,7 @@ the copy stay in the Raw module, which imports this one.
 namespace Silmaril.Wasm.Component.Canon.Builtins
 
 open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtime
-  _root_.Silmaril.Wasm.Component.Async
+  _root_.Silmaril.Wasm.Component.AsyncRef
 variable {E : CoreEngine} {σ : Type}
 
 namespace Inv
@@ -118,7 +118,7 @@ end Silmaril.Wasm.Component.Canon.Builtins
 namespace Silmaril.Wasm.Component.Canon.Builtins
 
 open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtime
-  _root_.Silmaril.Wasm.Component.Async
+  _root_.Silmaril.Wasm.Component.AsyncRef
 variable {E : CoreEngine} {σ : Type}
 
 namespace Inv

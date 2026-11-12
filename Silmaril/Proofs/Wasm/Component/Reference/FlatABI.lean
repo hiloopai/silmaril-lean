@@ -22,7 +22,7 @@ This module relates the reference flat ABI (`Canon/Flat.lean`) on these types to
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm.Component.Runtime (RtId)
 
 /-! ## Resolved types -/

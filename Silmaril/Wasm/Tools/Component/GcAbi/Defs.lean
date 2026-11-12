@@ -51,7 +51,7 @@ follow wasmparser's wording but print the core types in a simplified form.
 namespace Silmaril.Wasm.Tools.Component.GcAbi
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Conformance
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Validation
+open Silmaril.Wasm.Component.Validation
 open Silmaril.Wasm.Validation (Ty DefType CValType CStorageType CCompType CHeapType)
 
 /-- Semantic value types. -/

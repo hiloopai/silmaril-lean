@@ -57,7 +57,7 @@ open Silmaril.Wasm.Execution.Runtime
 
 section Scan
 
-variable {H : Type*} (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+variable {H : Type*} (s : Store H) (f : Frame)
 
 @[simp] theorem stepFrom?_value_cons (stack : List Value) (v : Value) (l : List Admin) :
     stepFrom? s f stack (value v :: l) = stepFrom? s f (v :: stack) l := by
@@ -135,7 +135,7 @@ theorem splitValues_append {l : List Admin} (t : List Admin) (h : (splitValues l
 @[simp] theorem splitValues_trap_cons (rest : List Admin) :
     splitValues (.trap :: rest) = ([], .trap :: rest) := rfl
 
-@[simp] theorem stepHead?_source {H : Type*} (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame) (stack : List Value)
+@[simp] theorem stepHead?_source {H : Type*} (s : Store H) (f : Frame) (stack : List Value)
     (tail : List Admin) (i : Instr) :
     stepHead? s f stack tail (.source i) = (stepInstr? s f stack i).map fun (rest, s', f', after) =>
       (s', f', values rest.reverse ++ after ++ tail) := by
@@ -149,7 +149,7 @@ def Admin.isBranch : Admin → Bool
 
 /-- The first non-value instruction of code that takes a host-free step exists and is not a
 bare `br` or `return` (those are consumed by an enclosing label or frame). -/
-theorem Internal.head_not_branch {H : Type*} {a b : Silmaril.Wasm.Execution.Runtime.Config H} (h : Internal a b) :
+theorem Internal.head_not_branch {H : Type*} {a b : Config H} (h : Internal a b) :
     ∃ x rest, (splitValues a.code).2 = x :: rest ∧ x.isBranch = false := by
   induction h with
   | pure s f hp =>
@@ -168,7 +168,7 @@ theorem Internal.head_not_branch {H : Type*} {a b : Silmaril.Wasm.Execution.Runt
     try simp only [splitValues_value_cons, splitValues_values_append]
     exact ⟨_, _, rfl, rfl⟩
 
-theorem Internal.stepFrom?_isSome_label {H : Type*} {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {f f' : Frame}
+theorem Internal.stepFrom?_isSome_label {H : Type*} {s s' : Store H} {f f' : Frame}
     {before after : List Admin} (h : Internal ⟨s, f, before⟩ ⟨s', f', after⟩) (n : Nat)
     (cont : Expr) (ih : ∀ stack tail, (stepFrom? s f stack (before ++ tail)).isSome)
     (stack : List Value) (tail : List Admin) :
@@ -189,7 +189,7 @@ theorem Internal.stepFrom?_isSome_label {H : Type*} {s s' : Silmaril.Wasm.Execut
   · have hih : (stepFrom? s f [] before).isSome := by simpa only [List.append_nil] using ih [] []
     simpa only [Option.isSome_map] using hih
 
-theorem Internal.stepFrom?_isSome_frame {H : Type*} {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {inner inner' : Frame}
+theorem Internal.stepFrom?_isSome_frame {H : Type*} {s s' : Store H} {inner inner' : Frame}
     {before after : List Admin} (h : Internal ⟨s, inner, before⟩ ⟨s', inner', after⟩) (n : Nat)
     (outer : Frame) (ih : ∀ stack tail, (stepFrom? s inner stack (before ++ tail)).isSome)
     (stack : List Value) (tail : List Admin) :
@@ -209,7 +209,7 @@ theorem Internal.stepFrom?_isSome_frame {H : Type*} {s s' : Silmaril.Wasm.Execut
       simpa only [List.append_nil] using ih [] []
     simpa only [Option.isSome_map] using hih
 
-theorem stepFrom?_isSome_callIndirect {H : Type*} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {i : TypeIdx}
+theorem stepFrom?_isSome_callIndirect {H : Type*} {s : Store H} {f : Frame} {i : TypeIdx}
     {c : BitVec 32} {table : TableInst} {a : FuncAddr} {fn : FuncInst Func H} {ft : FuncType}
     (tableFound : frameTable s f = some table) (typeFound : f.module.types[i.toNat]? = some ft)
     (element : table.refs[c.toNat]? = some (some a)) (found : s.funcs[a.value]? = some fn)
@@ -221,7 +221,7 @@ theorem stepFrom?_isSome_callIndirect {H : Type*} {s : Silmaril.Wasm.Execution.R
   simp [stepInstr?, tableFound, e1, typeFound, found]
   split <;> rfl
 
-theorem stepFrom?_isSome_callIndirect_trap {H : Type*} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {i : TypeIdx}
+theorem stepFrom?_isSome_callIndirect_trap {H : Type*} {s : Store H} {f : Frame} {i : TypeIdx}
     {c : BitVec 32} {table : TableInst} (tableFound : frameTable s f = some table)
     (bad : table.refs[c.toNat]? = none ∨ table.refs[c.toNat]? = some none)
     (stack : List Value) (tail : List Admin) :
@@ -234,7 +234,7 @@ theorem stepFrom?_isSome_callIndirect_trap {H : Type*} {s : Silmaril.Wasm.Execut
   · have e1' : table.refs[@BitVec.toNat IntType.i32.width c]? = some none := e1
     simp [stepInstr?, tableFound, e1']
 
-theorem Internal.stepFrom?_isSome {H : Type*} {a b : Silmaril.Wasm.Execution.Runtime.Config H} (h : Internal a b) :
+theorem Internal.stepFrom?_isSome {H : Type*} {a b : Config H} (h : Internal a b) :
     ∀ (stack : List Value) (tail : List Admin),
       (stepFrom? a.store a.frame stack (a.code ++ tail)).isSome := by
   induction h with
@@ -274,7 +274,7 @@ theorem Internal.stepFrom?_isSome {H : Type*} {a b : Silmaril.Wasm.Execution.Run
 /-- **Progress of `step?`.** Every configuration with a host-free step is stepped by `step?`.
 The step it takes may differ from the given one where `Internal` is nondeterministic (NaN
 payloads, `memory.grow` failure). -/
-theorem step?_progress {H : Type*} {cfg cfg' : Silmaril.Wasm.Execution.Runtime.Config H} (h : Internal cfg cfg') :
+theorem step?_progress {H : Type*} {cfg cfg' : Config H} (h : Internal cfg cfg') :
     (step? cfg).isSome := by
   have := Internal.stepFrom?_isSome h [] []
   rw [List.append_nil] at this

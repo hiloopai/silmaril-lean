@@ -128,8 +128,7 @@ theorem fwd_seq_soundS (P : Profile) (prof : Silmaril.Wasm.Component.ProfileKind
 
 section RefS
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Canon
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Canon
 open Silmaril.Wasm.Component.Reference.Core3Adder (first)
 
 /-- Instantiation from the host functions' store in host state `s₀`, then two calls of `name`

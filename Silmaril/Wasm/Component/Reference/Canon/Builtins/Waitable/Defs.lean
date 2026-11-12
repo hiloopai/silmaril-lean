@@ -83,7 +83,7 @@ delivered or a second cancellation `subtaskCancelTwice`, in a waitable set `subt
 namespace Silmaril.Wasm.Component.Canon.Builtins
 
 open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtime
-  _root_.Silmaril.Wasm.Component.Async _root_.Silmaril.Wasm.Component.Canon
+  _root_.Silmaril.Wasm.Component.AsyncRef _root_.Silmaril.Wasm.Component.Canon
 
 variable {E : CoreEngine} {σ : Type}
 

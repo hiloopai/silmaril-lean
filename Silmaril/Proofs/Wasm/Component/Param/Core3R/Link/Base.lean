@@ -28,7 +28,7 @@ variable {V : Silmaril.Wasm.Module → Prop} {IR : {H : Type} → Cfg3 H → Cfg
 
 /-- The reference host answering the imports by the stateful `g` (`Reference.answerHostS`). -/
 def answerHostS (P : Profile) (V : Silmaril.Wasm.Module → Prop)
-    (IR : {H : Type} → Cfg3 H → Cfg3 H → Prop) (g : σ → HostFuncId → List Val → Option (List Val × σ)) :
+    (IR : {H : Type} → Cfg3 H → Cfg3 H → Prop) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) :
     Host (core3R P V IR) σ :=
   { hr := fun _ _ => false, impl := answerImplS g }
 

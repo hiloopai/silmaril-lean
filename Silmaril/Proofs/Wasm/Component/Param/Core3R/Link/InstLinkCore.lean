@@ -34,8 +34,7 @@ variable {V : Silmaril.Wasm.Module → Prop} {IR : {H : Type} → Cfg3 H → Cfg
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Instantiate
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Instantiate
 open Silmaril.Wasm.Numerics (Profile)
 
 variable {Pf : Profile}

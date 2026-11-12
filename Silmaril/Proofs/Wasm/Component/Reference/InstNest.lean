@@ -23,9 +23,7 @@ dispatcher, whose `call` constructor runs the nested instantiation inside the pa
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 
 /-! ## Silent runs are big-step runs -/
 

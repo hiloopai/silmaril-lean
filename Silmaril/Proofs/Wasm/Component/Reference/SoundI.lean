@@ -20,7 +20,7 @@ at function `n + j` because export names are distinct (`SimpleI.Good`).
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Games Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Numerics (Profile)
 
 /-- The export map of `c.toRef` finds export `j` at function `n + j`. -/

@@ -77,7 +77,7 @@ not a conformance claim for any runtime behaviour.
 
 @[expose] public section
 
-namespace Silmaril.Wasm.Component.Async
+namespace Silmaril.Wasm.Component.AsyncRef
 
 /-! ## Shared bounds and sentinels -/
 
@@ -96,4 +96,4 @@ async-lower results (`canon_lower`) and stream copy results (`stream_event`). -/
 
 /-! ## Thread-local context and backpressure -/
 
-end Silmaril.Wasm.Component.Async
+end Silmaril.Wasm.Component.AsyncRef

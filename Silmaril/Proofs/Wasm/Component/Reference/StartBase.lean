@@ -244,8 +244,7 @@ end PlusStart
 
 section Hole
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Machine
 
 variable {E : CoreEngine} {σ : Type} {prof : ProfileKind} {hr : HostReady σ}
   {dispatch : Call E → Canon.P E σ (Ret E)}

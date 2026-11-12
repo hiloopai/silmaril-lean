@@ -21,58 +21,58 @@ open Silmaril.Wasm.Execution.Runtime
 
 variable {H : Type}
 
-/-! ## Silmaril.Wasm.Execution.Runtime.Store extension -/
+/-! ## Store extension -/
 
-theorem storeExt_refl (s : Silmaril.Wasm.Execution.Runtime.Store H) : StoreExt s s := ListExt.refl _ _
+theorem storeExt_refl (s : Store H) : StoreExt s s := ListExt.refl _ _
 
-theorem StoreExt.lt {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreExt s s') {i : Nat}
+theorem StoreExt.lt {s s' : Store H} (hext : StoreExt s s') {i : Nat}
     (hi : i < s.funcs.length) : i < s'.funcs.length := ListExt.lt hext hi
 
-theorem StoreExt.funcDefType {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreExt s s') {a : FuncAddr}
+theorem StoreExt.funcDefType {s s' : Store H} (hext : StoreExt s s') {a : FuncAddr}
     (ha : a.value < s.funcs.length) : s'.funcDefType a = s.funcDefType a := by
   simp only [Silmaril.Wasm.Execution.Runtime.Store.funcDefType,
     ListExt.map_getElem? hext (g := V1.FuncType.toDefType) ha]
 
-theorem ModWF.mono {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {m : ModuleInst} (h : ModWF s m) (hext : StoreExt s s') :
+theorem ModWF.mono {s s' : Store H} {m : ModuleInst} (h : ModWF s m) (hext : StoreExt s s') :
     ModWF s' m := fun a ha => StoreExt.lt hext (h a ha)
 
 /-! ## Well-formedness lemmas -/
 
-@[simp] theorem listWF_nil (s : Silmaril.Wasm.Execution.Runtime.Store H) : Admin.listWF s [] = True := by simp [Admin.listWF]
+@[simp] theorem listWF_nil (s : Store H) : Admin.listWF s [] = True := by simp [Admin.listWF]
 
-@[simp] theorem listWF_cons (s : Silmaril.Wasm.Execution.Runtime.Store H) (a : Admin) (as : List Admin) :
+@[simp] theorem listWF_cons (s : Store H) (a : Admin) (as : List Admin) :
     Admin.listWF s (a :: as) = (Admin.WF s a ∧ Admin.listWF s as) := by simp [Admin.listWF]
 
-@[simp] theorem WF_source (s : Silmaril.Wasm.Execution.Runtime.Store H) (i : Instr) : Admin.WF s (.source i) = True := by
+@[simp] theorem WF_source (s : Store H) (i : Instr) : Admin.WF s (.source i) = True := by
   simp [Admin.WF]
 
-@[simp] theorem WF_invoke (s : Silmaril.Wasm.Execution.Runtime.Store H) (a : FuncAddr) :
+@[simp] theorem WF_invoke (s : Store H) (a : FuncAddr) :
     Admin.WF s (.invoke a) = (a.value < s.funcs.length) := by simp [Admin.WF]
 
-@[simp] theorem WF_label (s : Silmaril.Wasm.Execution.Runtime.Store H) (n : Nat) (k : Expr) (b : List Admin) :
+@[simp] theorem WF_label (s : Store H) (n : Nat) (k : Expr) (b : List Admin) :
     Admin.WF s (.label n k b) = Admin.listWF s b := by simp [Admin.WF]
 
-@[simp] theorem WF_frame (s : Silmaril.Wasm.Execution.Runtime.Store H) (n : Nat) (f : Frame) (b : List Admin) :
+@[simp] theorem WF_frame (s : Store H) (n : Nat) (f : Frame) (b : List Admin) :
     Admin.WF s (.frame n f b) = (ModWF s f.module ∧ Admin.listWF s b) := by simp [Admin.WF]
 
-@[simp] theorem WF_trap (s : Silmaril.Wasm.Execution.Runtime.Store H) : Admin.WF s .trap = True := by simp [Admin.WF]
+@[simp] theorem WF_trap (s : Store H) : Admin.WF s .trap = True := by simp [Admin.WF]
 
-theorem listWF_append (s : Silmaril.Wasm.Execution.Runtime.Store H) (xs ys : List Admin) :
+theorem listWF_append (s : Store H) (xs ys : List Admin) :
     Admin.listWF s (xs ++ ys) ↔ Admin.listWF s xs ∧ Admin.listWF s ys := by
   induction xs with
   | nil => simp
   | cons x xs ih => simp [ih, and_assoc]
 
-theorem WF_value (s : Silmaril.Wasm.Execution.Runtime.Store H) (v : Value) : Admin.WF s (value v) := by
+theorem WF_value (s : Store H) (v : Value) : Admin.WF s (value v) := by
   rcases v with ⟨⟨_ | _⟩, _⟩ <;> simp [value]
 
-theorem listWF_values (s : Silmaril.Wasm.Execution.Runtime.Store H) (vs : List Value) : Admin.listWF s (values vs) := by
+theorem listWF_values (s : Store H) (vs : List Value) : Admin.listWF s (values vs) := by
   induction vs with
   | nil => simp [values]
   | cons v vs ih => exact (listWF_cons s _ _).mpr ⟨WF_value s v, ih⟩
 
 mutual
-theorem WF_mono {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreExt s s') :
+theorem WF_mono {s s' : Store H} (hext : StoreExt s s') :
     (a : Admin) → Admin.WF s a → Admin.WF s' a
   | .source _, _ => by simp
   | .invoke a, h => by simp only [WF_invoke] at h ⊢; exact StoreExt.lt hext h
@@ -81,7 +81,7 @@ theorem WF_mono {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreEx
     simp only [WF_frame] at h ⊢; exact ⟨ModWF.mono h.1 hext, listWF_mono hext b h.2⟩
   | .trap, _ => by simp
 
-theorem listWF_mono {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreExt s s') :
+theorem listWF_mono {s s' : Store H} (hext : StoreExt s s') :
     (l : List Admin) → Admin.listWF s l → Admin.listWF s' l
   | [], _ => by simp
   | a :: as, h => by
@@ -89,7 +89,7 @@ theorem listWF_mono {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : Sto
 end
 
 mutual
-theorem toCore_congr {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreExt s s') :
+theorem toCore_congr {s s' : Store H} (hext : StoreExt s s') :
     (a : Admin) → Admin.WF s a → Admin.toCore s' a = Admin.toCore s a
   | .source _, _ => by simp
   | .invoke a, h => by simp only [WF_invoke] at h; simp [StoreExt.funcDefType hext h]
@@ -97,7 +97,7 @@ theorem toCore_congr {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : St
   | .frame _ _ b, h => by simp only [WF_frame] at h; simp [listToCore_congr hext b h.2]
   | .trap, _ => by simp
 
-theorem listToCore_congr {s s' : Silmaril.Wasm.Execution.Runtime.Store H} (hext : StoreExt s s') :
+theorem listToCore_congr {s s' : Store H} (hext : StoreExt s s') :
     (l : List Admin) → Admin.listWF s l → Admin.listToCore s' l = Admin.listToCore s l
   | [], _ => by simp
   | a :: as, h => by
@@ -109,7 +109,7 @@ end
 /-! ## Invariants of Lime1 steps -/
 
 /-- Lime1 steps extend the function store (host calls by `HostPreserves`). -/
-theorem storeExt {src : Silmaril.Wasm.Execution.Runtime.HostSemantics H} (hp : HostPreserves src) {a b : Silmaril.Wasm.Execution.Runtime.Config H}
+theorem storeExt {src : HostSemantics H} (hp : HostPreserves src) {a b : Config H}
     (h : Step src a b) (hwf : StoreWF a.store) : StoreExt a.store b.store := by
   induction h with
   | context _ _ _ ih => exact ih hwf
@@ -120,7 +120,7 @@ theorem storeExt {src : Silmaril.Wasm.Execution.Runtime.HostSemantics H} (hp : H
   | _ => exact fun _ fi h => ⟨fi, h, rfl⟩
 
 /-- Lime1 steps do not change the module of the current frame. -/
-theorem module_eq {src : Silmaril.Wasm.Execution.Runtime.HostSemantics H} {a b : Silmaril.Wasm.Execution.Runtime.Config H} (h : Step src a b) :
+theorem module_eq {src : HostSemantics H} {a b : Config H} (h : Step src a b) :
     b.frame.module = a.frame.module := by
   induction h with
   | context _ _ _ ih => exact ih
@@ -190,7 +190,7 @@ open Silmaril.Wasm.Execution.Core (vals)
 variable {P : Silmaril.Wasm.Numerics.Profile} {tgt : ToCore.CHostSemantics H}
 
 /-- `Step.context`: values prefix and arbitrary tail. -/
-theorem context {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {f f' : Frame} {before after : List Admin}
+theorem context {s s' : Store H} {f f' : Frame} {before after : List Admin}
     (ih : ∀ c, Sim ⟨s, f, before⟩ c →
       ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step P tgt) c c' ∧ Sim ⟨s', f', after⟩ c')
     (hext : StoreExt s s') (hmod : f'.module = f.module)
@@ -226,7 +226,7 @@ theorem context {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {f f' : Frame} 
       ⟨(listWF_append _ _ _).mpr ⟨listWF_values _ _, hwf'.2.2⟩, listWF_mono hext tail htw⟩⟩
 
 /-- `Step.label`. -/
-theorem label {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {f f' : Frame} {before after : List Admin}
+theorem label {s s' : Store H} {f f' : Frame} {before after : List Admin}
     (ih : ∀ c, Sim ⟨s, f, before⟩ c →
       ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step P tgt) c c' ∧ Sim ⟨s', f', after⟩ c')
     (n : Nat) (cont : Expr) {c : ToCore.CConfig H}
@@ -253,7 +253,7 @@ theorem label {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {f f' : Frame} {b
   · exact ⟨hwf'.1, hwf'.2.1, by simpa using hwf'.2.2⟩
 
 /-- `Step.frame`. -/
-theorem frame {s s' : Silmaril.Wasm.Execution.Runtime.Store H} {inner inner' : Frame} {before after : List Admin}
+theorem frame {s s' : Store H} {inner inner' : Frame} {before after : List Admin}
     (ih : ∀ c, Sim ⟨s, inner, before⟩ c →
       ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step P tgt) c c' ∧ Sim ⟨s', inner', after⟩ c')
     (hext : StoreExt s s') (n : Nat) (outer : Frame) {c : ToCore.CConfig H}

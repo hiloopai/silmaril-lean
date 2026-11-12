@@ -40,7 +40,6 @@ open Silmaril.Parse.ByteParse.Grammar
 open Silmaril.Wasm.Component
 open Silmaril.Wasm.Component.Binary (tag0 ExternDesc externNameG externNameG_nonEmpty
   typeBoundG valTypeG sortIdxG)
-open Silmaril.Wasm.Component
 
 /-- `externdesc` as wasmparser reads it: `0x02 t:valtype` for a value. -/
 def externDescW : Grammar ExternDesc := tagged "externdesc" fun b => match b.toNat with

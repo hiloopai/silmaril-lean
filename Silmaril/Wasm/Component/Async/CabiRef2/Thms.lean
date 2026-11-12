@@ -847,7 +847,7 @@ theorem deliverEnd_sim_future (st st1 : Cabi.Store α) (s : CStore E) (e p : Nat
   obtain ⟨hstate, hres2⟩ := deliverStep_future_outcome x xs p ns r hout hks hxo
   have hpay : xs.payload (xs.clearPending.deliverStep p).2 p = r.toNat := by
     simp only [End.payload, hks, Bool.false_eq_true, ite_false,
-      Silmaril.Wasm.Component.Async.futureCopyPayload]
+      Silmaril.Wasm.Component.AsyncRef.futureCopyPayload]
     exact hres2
   refine ⟨_, _, takeEvent_future_eq s e p xs hxs hxp', ?_, ?_, ?_, ?_⟩
   · rw [(Prod.mk.inj hres).2, hxk, eventCode_kindR]

@@ -35,8 +35,8 @@ the rewrite loses nothing and touches only core-type and core-module positions o
 namespace Silmaril.Wasm.Tools.Component.Unbundle
 
 open Silmaril.Wasm.Component.Binary (CoreType ModuleDecl CoreImportDesc CoreFuncType CoreValType
-  Limits ExternDesc Alias AliasTarget ItemSort CoreSort SortIdx DefType ComponentDecl InstanceDecl
-  CoreInstanceExpr InstanceExpr Import Export ExternName)
+  Silmaril.Wasm.Component.Binary.Limits ExternDesc Alias AliasTarget ItemSort CoreSort SortIdx DefType ComponentDecl InstanceDecl
+  CoreInstanceExpr InstanceExpr Silmaril.Wasm.Component.Binary.Import Silmaril.Wasm.Component.Binary.Export ExternName)
 open Silmaril.Wasm.Component.BinaryP3 (Section Ast Canon)
 
 /-! ## Index maps -/
@@ -127,9 +127,9 @@ def mapInstance (f : IxMap) (d : Nat) : InstanceExpr → InstanceExpr
   | .instantiate c args => .instantiate c (args.map fun (n, s) => (n, mapSortIdx f d s))
   | .exports es => .exports (es.map fun (n, s) => (n, mapSortIdx f d s))
 
-def mapImport (f : IxMap) (d : Nat) (i : Import) : Import := { i with desc := mapExternDesc f d i.desc }
+def mapImport (f : IxMap) (d : Nat) (i : Silmaril.Wasm.Component.Binary.Import) : Silmaril.Wasm.Component.Binary.Import := { i with desc := mapExternDesc f d i.desc }
 
-def mapExport (f : IxMap) (d : Nat) (e : Export) : Export :=
+def mapExport (f : IxMap) (d : Nat) (e : Silmaril.Wasm.Component.Binary.Export) : Silmaril.Wasm.Component.Binary.Export :=
   { e with item := mapSortIdx f d e.item, desc := e.desc.map (mapExternDesc f d) }
 
 mutual
@@ -408,7 +408,7 @@ def unbundle (input : ByteArray) (threshold : Nat) : Except String (ByteArray ×
     tys := tys ++ [ti]
   let k := IxMap.shift it.section_.length ext.length
   let (c', _) := extract flags 0 (renameNames k 0 (mapAst k 0 c)) {}
-  let imports : List Import := tys.zipIdx.map fun (ti, n) =>
+  let imports : List Silmaril.Wasm.Component.Binary.Import := tys.zipIdx.map fun (ti, n) =>
     ⟨⟨s!"unbundled-module{n}", .plain0⟩, .coreModule ti⟩
   let out : Ast := .mk (.coreTypes it.section_ :: .imports imports :: c'.sections)
   match Silmaril.Wasm.Component.BinaryP3.encode out with

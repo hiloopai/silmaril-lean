@@ -34,7 +34,7 @@ float payload is re-encoded by `coerceLower`, a second C7 choice, which is not t
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm.Component.Runtime (RtId)
 open Silmaril.Wasm.Component.Value (NanLower)
 open Silmaril.Wasm (FloatType)

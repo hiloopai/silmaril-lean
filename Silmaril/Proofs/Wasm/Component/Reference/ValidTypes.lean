@@ -19,7 +19,7 @@ value type resolves to `toCl t` in every extension (`emitTy_chk`), and `toCl t` 
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Validation Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Validation Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm.Component.Types (TypeDef)
 
 mutual

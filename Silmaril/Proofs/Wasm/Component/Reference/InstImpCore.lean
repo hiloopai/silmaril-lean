@@ -87,7 +87,7 @@ end Hosts
 
 section CoreType
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.ABI
 
 theorem head_toList_toClosed {ts : List ValTy} (h : ts.length ≤ 1) :
     (toClosedList ts).head?.toList = toClosedList ts := by
@@ -123,7 +123,7 @@ end CoreType
 
 section Tramp
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Runtime
 
 variable {P : Profile}
 
@@ -296,8 +296,7 @@ theorem lookup_funcExport_gen {H : Type} {m : Module} {exports : CoreIface}
 
 section Facts
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Engine
-  Silmaril.Wasm.Component.Instantiate
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Instantiate
 
 variable {Pf : Profile}
 

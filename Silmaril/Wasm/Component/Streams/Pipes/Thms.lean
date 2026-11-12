@@ -38,7 +38,6 @@ open Silmaril.Wasm.Component (Val)
 open Silmaril.Wasm.Component.Streams
 open Silmaril.Wasm.Component.Streams.Net
 open Silmaril.Proofs.Wasm.Component.Streams.Net
-open Silmaril.Proofs.Wasm.Component.Streams.Net
 
 variable {σ τ : Type}
 

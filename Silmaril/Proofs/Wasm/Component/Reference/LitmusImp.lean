@@ -217,8 +217,7 @@ theorem fwd_ir (P : Profile) (x y : BitVec 32) :
 
 section Ref
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Canon
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Canon
 open Silmaril.Wasm.Component.Reference.Core3Adder (first noReady)
 
 theorem fwdS_valid : ∃ ct, check? Features.p2 fwdS.toRef = .ok ct :=

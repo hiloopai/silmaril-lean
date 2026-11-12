@@ -42,7 +42,7 @@ theorem Steps.preserves {P : Silmaril.Wasm.Numerics.Profile} {host : HostSemanti
 /-- A function of a typed store whose type is a subtype of a valid function type `[] -> []` is
 invoked with no arguments at `[]`. -/
 theorem invoke_configOk_of_sub {s : Store H} {a : Nat} {fi : FuncInst H} {d : DefType}
-    {ps rs : Silmaril.Wasm.Validation.Ty TKind.val.list} (hs : StoreOk s) (hfi : s.funcs[a]? = some fi)
+    {ps rs : Ty TKind.val.list} (hs : StoreOk s) (hfi : s.funcs[a]? = some fi)
     (hsubd : Validation.Sub {} fi.type d) (hdok : TyOk {} d) (he : Expand d (ps.func rs))
     (hps : ps.toList = []) (hrs : rs.toList = []) : ConfigOk (invoke s a []) [] := by
   have hfit : TyOk {} fi.type := by
@@ -57,7 +57,7 @@ theorem invoke_configOk_of_sub {s : Store H} {a : Nat} {fi : FuncInst H} {d : De
   rw [hfi] at hfi₂
   cases hfi₂
   have := Expand.func_eq he' he₂
-  simp only [Silmaril.Wasm.Validation.Ty.func.injEq] at this
+  simp only [Ty.func.injEq] at this
   obtain ⟨-, rfl⟩ := this
   rw [hrs''] at hok₂
   exact hok₂

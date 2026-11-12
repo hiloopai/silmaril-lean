@@ -25,9 +25,7 @@ namespace Silmaril.Proofs.Wasm.Component.EngineRef
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference Silmaril.Proofs.Wasm.Component.Reference
 open Silmaril.Wasm.Component.EngineRef Silmaril.Wasm.Component.Param
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component (Syntax.Definition Syntax.VT Syntax.DefValType)
 
 /-! ## Changing the core module type of the emitted definitions -/

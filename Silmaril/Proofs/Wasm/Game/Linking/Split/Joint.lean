@@ -38,9 +38,7 @@ set_option linter.unusedSimpArgs false
 
 namespace Silmaril.Proofs.Wasm.Game.Linking.Split
 
-open Silmaril.Games Silmaril.Wasm.Game Silmaril.Wasm.Game.Linking Silmaril.Proofs.Wasm.Game Silmaril.Proofs.Wasm.Game.GamesAux Silmaril Silmaril.Wasm Silmaril.Wasm.Execution.Core
-  Silmaril.Wasm.Validation Silmaril.Wasm.SingleThreaded Silmaril.Wasm.Game
-  Silmaril.Proofs.Wasm.Game.Linking
+open Silmaril.Games Silmaril.Wasm.Game Silmaril.Wasm.Game.Linking Silmaril.Proofs.Wasm.Game Silmaril.Proofs.Wasm.Game.GamesAux Silmaril Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation Silmaril.Wasm.SingleThreaded Silmaril.Proofs.Wasm.Game.Linking
 
 /-- The identity renaming. -/
 def Ren.id : Ren := ⟨fun a => a, fun a => a⟩

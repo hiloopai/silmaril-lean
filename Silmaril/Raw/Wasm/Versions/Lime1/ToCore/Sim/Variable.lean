@@ -27,23 +27,23 @@ theorem var_erase_mut (g : Silmaril.Wasm.Execution.Core.GlobalInst) :
     (ToCore.GlobalInst.erase g).type.mutability = g.type.mutability := by
   unfold ToCore.GlobalInst.erase; split <;> rfl
 
-theorem var_locals {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {code : List Admin} {cs : CStore H} {cf : CFrame}
+theorem var_locals {s : Store H} {f : Frame} {code : List Admin} {cs : CStore H} {cf : CFrame}
     {cl : List CAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩) :
     cf.locals = f.locals.map (some ∘ Value.toCore) :=
   congrArg Silmaril.Wasm.Execution.Core.Frame.locals (pb_frameEq hs)
 
-theorem var_globals {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {code : List Admin} {cs : CStore H} {cf : CFrame}
+theorem var_globals {s : Store H} {f : Frame} {code : List Admin} {cs : CStore H} {cf : CFrame}
     {cl : List CAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩) :
     cf.module.globals = f.module.globals.map Addr.value :=
   congrArg (fun fr => fr.module.globals) (pb_frameEq hs)
 
-theorem var_storeGlobals {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {code : List Admin} {cs : CStore H}
+theorem var_storeGlobals {s : Store H} {f : Frame} {code : List Admin} {cs : CStore H}
     {cf : CFrame} {cl : List CAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩) :
     cs.globals.map ToCore.GlobalInst.erase = s.globals.map GlobalInst.toCore :=
   congrArg Silmaril.Wasm.Execution.Core.Store.globals (pb_storeEq hs)
 
 /-- The Core global behind a Lime1 global lookup. -/
-theorem var_global {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {code : List Admin} {cs : CStore H}
+theorem var_global {s : Store H} {f : Frame} {code : List Admin} {cs : CStore H}
     {cf : CFrame} {cl : List CAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩)
     {i : GlobalIdx} {a : GlobalAddr} {g : GlobalInst}
     (index : f.module.globals[i.toNat]? = some a) (found : s.globals[a.value]? = some g) :
@@ -55,7 +55,7 @@ theorem var_global {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {co
   refine ⟨g0, ?_, hg0, he⟩
   simp [Silmaril.Wasm.Execution.Core.Store.global?, var_globals hs, index, hg0]
 
-theorem localGet {tgt : ToCore.CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {i : LocalIdx}
+theorem localGet {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {i : LocalIdx}
     {v : Value} (found : f.locals[i.toNat]? = some v) {c : ToCore.CConfig H}
     (hs : Sim ⟨s, f, [.source (.localGet i)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Profile.spec tgt) c c' ∧
@@ -66,7 +66,7 @@ theorem localGet {tgt : ToCore.CHostSemantics H} {s : Silmaril.Wasm.Execution.Ru
   pb_norm
   exact .variable (.localGet (by simp [Silmaril.Wasm.Execution.Core.Frame.local?, hl, found]))
 
-theorem localSet {tgt : ToCore.CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {i : LocalIdx}
+theorem localSet {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {i : LocalIdx}
     {v old : Value} (found : f.locals[i.toNat]? = some old) {c : ToCore.CConfig H}
     (hs : Sim ⟨s, f, [value v, .source (.localSet i)]⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.Execution.Core.Step Profile.spec tgt) c c' ∧
@@ -85,7 +85,7 @@ theorem localSet {tgt : ToCore.CHostSemantics H} {s : Silmaril.Wasm.Execution.Ru
       hfr, hl]
     simp [Silmaril.Wasm.Execution.Runtime.Frame.toCore, List.map_set]
 
-theorem globalGet {tgt : ToCore.CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {i : GlobalIdx}
+theorem globalGet {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {i : GlobalIdx}
     {a : GlobalAddr} {g : GlobalInst} (index : f.module.globals[i.toNat]? = some a)
     (found : s.globals[a.value]? = some g) {c : ToCore.CConfig H}
     (hs : Sim ⟨s, f, [.source (.globalGet i)]⟩ c) :
@@ -106,11 +106,11 @@ theorem var_setGlobal_erase (cs : CStore H) (n : Nat) (w : CVal) :
         globals := (cs.globals.modify n fun g => { g with value := w }).map
           ToCore.GlobalInst.erase } := rfl
 
-theorem var_setGlobal_toCore (s : Silmaril.Wasm.Execution.Runtime.Store H) (a : GlobalAddr) (g : GlobalInst) :
+theorem var_setGlobal_toCore (s : Store H) (a : GlobalAddr) (g : GlobalInst) :
     (setGlobal s a g).toCore =
       { s.toCore with globals := List.map GlobalInst.toCore (s.globals.set a.value g) } := rfl
 
-theorem globalSet {tgt : ToCore.CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame} {i : GlobalIdx}
+theorem globalSet {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {i : GlobalIdx}
     {a : GlobalAddr} {g : GlobalInst} {v : Value} (index : f.module.globals[i.toNat]? = some a)
     (found : s.globals[a.value]? = some g) (_mutable : g.mutability = .var)
     {c : ToCore.CConfig H}

@@ -17,8 +17,7 @@ emitted value type then resolves to `toClosed t` in every frame extending the ty
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
 open Silmaril.Wasm.Component (Syntax.Definition Syntax.VT Syntax.DefValType)
 
 variable {E : CoreEngine} {σ : Type}

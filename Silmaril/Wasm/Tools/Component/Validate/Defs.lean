@@ -61,7 +61,7 @@ Completeness is not claimed (the copied checker is not proved complete; see the 
 namespace Silmaril.Wasm.Tools.Component.Validate
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Conformance
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Validation
+open Silmaril.Wasm.Component.Validation
 
 /-- The component-model flags of wasmparser's `WasmFeatures` that the component validator
 reads: the gates of the reference (`feat`) and 🛸 `cm-gc` (`gc`). -/

@@ -25,7 +25,6 @@ decoder; `asyncBuiltins` moved here from its tests.
 namespace Silmaril.Wasm.Component.Conformance
 
 open Silmaril.Wasm.Component
-open Silmaril.Wasm.Component
 
 theorem canons_ofV0 (xs : List Binary.Canon) :
     ToRefP3.canons (xs.map BinaryP3.Canon.ofV0) = .ok (xs.map fun x => .canon (ToRef.canon x)) := by

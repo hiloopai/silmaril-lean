@@ -20,7 +20,7 @@ difference once its results are canonicalised:
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm (FloatType IntType NumType)
 
 local notation "IVal" => Silmaril.Wasm.Component.Val

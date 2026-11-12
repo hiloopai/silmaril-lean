@@ -48,7 +48,7 @@ open Engine Async
 
 variable {E : CoreEngine}
 
-theorem _root_.Silmaril.Wasm.Component.Async.EndState.copyingOrCancelling_iff (st : EndState) :
+theorem _root_.Silmaril.Wasm.Component.AsyncRef.EndState.copyingOrCancelling_iff (st : EndState) :
     st.copyingOrCancelling = true ↔ st = .copying ∨ st = .cancellingCopy := by
   cases st <;> decide
 

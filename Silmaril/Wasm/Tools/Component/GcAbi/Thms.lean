@@ -19,7 +19,7 @@ import Silmaril.Wasm.Component.Reference.Validation.Laws.Thms
 namespace Silmaril.Wasm.Tools.Component.GcAbi
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Conformance
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Validation
+open Silmaril.Wasm.Component.Validation
 open Silmaril.Wasm.Validation (Ty DefType CValType CStorageType CCompType CHeapType)
 
 variable {enc : ABI.StringEncoding}

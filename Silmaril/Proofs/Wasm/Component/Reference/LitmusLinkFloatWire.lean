@@ -505,8 +505,7 @@ theorem nanRb_ir (P : Profile) :
 
 section Ref
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 
 theorem nanRbL_valid : ∃ ct, check? Features.p2 nanRbL.toRef = .ok ct :=
   exists_of_accepts (by decide +kernel)

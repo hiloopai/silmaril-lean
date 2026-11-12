@@ -135,8 +135,7 @@ def fwdInst : Silmaril.Wasm.Game.ScalarInstance where
 
 section Host
 
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Canon
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Canon
 
 /-- The host's import `g(n) = n + 1`. -/
 def fwdG : HostFuncId → List Value.Val → Option (List Value.Val)

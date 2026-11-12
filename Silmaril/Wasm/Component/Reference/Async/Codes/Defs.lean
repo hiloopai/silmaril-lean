@@ -75,7 +75,7 @@ not a conformance claim for any runtime behaviour.
 
 @[expose] public section
 
-namespace Silmaril.Wasm.Component.Async
+namespace Silmaril.Wasm.Component.AsyncRef
 
 /-! ## Shared bounds and sentinels -/
 
@@ -429,4 +429,4 @@ def backpressureInc? (n : Nat) : Option Nat :=
 def backpressureDec? (n : Nat) : Option Nat :=
   if n = 0 then none else some (n - 1)
 
-end Silmaril.Wasm.Component.Async
+end Silmaril.Wasm.Component.AsyncRef

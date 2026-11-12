@@ -33,7 +33,6 @@ binary both read, `gcAgrees`).
 namespace Silmaril.Wasm.Component.Conformance
 
 open Silmaril.Wasm.Component
-open Silmaril.Wasm.Component
 
 namespace ToRefGC
 

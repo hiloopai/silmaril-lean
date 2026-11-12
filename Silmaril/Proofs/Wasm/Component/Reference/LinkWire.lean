@@ -17,7 +17,7 @@ public import Silmaril.Proofs.Wasm.Component.Reference.LitmusLinkInst
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference Silmaril.Wasm.Component.Reference.Litmus
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component.Runtime
 
 /-- **The import index of the trampoline of import `k`.** -/
 theorem trampIdxL_wireFid {E : Engine} {l : Linked2} (hn : l.WireNodup) {k : Nat}

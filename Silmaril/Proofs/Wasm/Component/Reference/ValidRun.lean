@@ -22,7 +22,7 @@ validator checks records nonempty), so there is at most one.
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Validation Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Validation Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm.Component.Types (TypeDef)
 
 /-! ## The flat arities from the lift flattening -/

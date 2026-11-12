@@ -79,7 +79,7 @@ end `liftBusyEnd`; an end in a waitable set `endInSet`.
 namespace Silmaril.Wasm.Component.Canon
 
 open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtime
-  _root_.Silmaril.Wasm.Component.Value _root_.Silmaril.Wasm.Component.Async
+  _root_.Silmaril.Wasm.Component.Value _root_.Silmaril.Wasm.Component.AsyncRef
 
 variable {E : CoreEngine} {σ : Type}
 

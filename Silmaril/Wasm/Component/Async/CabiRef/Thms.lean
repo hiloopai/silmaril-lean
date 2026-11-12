@@ -194,10 +194,10 @@ theorem view_of (st : Cabi.Store α) (s : CStore E) (hR : EndsRel st s) (e : Nat
     exact ⟨xs, hxs, h1, h2, h3, h4, h6, h7, h8⟩
 
 /-- `result | progress << 4` as a sum. -/
-theorem packStreamCopyResult_eq (r : Silmaril.Wasm.Component.Async.CopyResult) (p : Nat) :
-    Silmaril.Wasm.Component.Async.packStreamCopyResult r p = r.toNat + 16 * p := by
+theorem packStreamCopyResult_eq (r : Silmaril.Wasm.Component.AsyncRef.CopyResult) (p : Nat) :
+    Silmaril.Wasm.Component.AsyncRef.packStreamCopyResult r p = r.toNat + 16 * p := by
   have hr : r.toNat < 2 ^ 4 := by cases r <;> decide
-  rw [Silmaril.Wasm.Component.Async.packStreamCopyResult, Silmaril.Wasm.Component.Async.packLow4,
+  rw [Silmaril.Wasm.Component.AsyncRef.packStreamCopyResult, Silmaril.Wasm.Component.AsyncRef.packLow4,
     Nat.or_comm, ← Nat.shiftLeft_add_eq_or_of_lt hr, Nat.shiftLeft_eq]
   omega
 

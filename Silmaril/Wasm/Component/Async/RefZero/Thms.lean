@@ -50,7 +50,7 @@ A Silmaril addition.
 
 namespace Silmaril.Wasm.Component.Async.RefZero
 
-open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Async
+open Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.AsyncRef
 open Silmaril.Wasm.Component.Engine (CoreEngine)
 
 variable {E : CoreEngine}

@@ -37,14 +37,14 @@ open Silmaril.Wasm.Component.Runtime
 open Silmaril.Wasm.Component (WIT.ClosedType)
 
 /-- The end classes. -/
-def kindR : Cabi.EndKind → Silmaril.Wasm.Component.Async.EndKind
+def kindR : Cabi.EndKind → Silmaril.Wasm.Component.AsyncRef.EndKind
   | .streamR => .readableStream
   | .streamW => .writableStream
   | .futureR => .readableFuture
   | .futureW => .writableFuture
 
 /-- The end states. -/
-def stateR : Cabi.EndState → Silmaril.Wasm.Component.Async.EndState
+def stateR : Cabi.EndState → Silmaril.Wasm.Component.AsyncRef.EndState
   | .idle => .idle
   | .copying => .copying
   | .cancelling => .cancellingCopy
@@ -70,9 +70,9 @@ def pendR (k : Cabi.EndKind) (e : Nat) : Option Nat → Option PendingEvent
 
 /-- What the end state machine reads of an end. -/
 structure View (E : Silmaril.Wasm.Component.Engine.CoreEngine) where
-  kind : Silmaril.Wasm.Component.Async.EndKind
+  kind : Silmaril.Wasm.Component.AsyncRef.EndKind
   t : Option (WIT.ClosedType RtId)
-  state : Silmaril.Wasm.Component.Async.EndState
+  state : Silmaril.Wasm.Component.AsyncRef.EndState
   other : Option EndId
   buffer : Option (BufferDesc E)
   owner : Option InstId

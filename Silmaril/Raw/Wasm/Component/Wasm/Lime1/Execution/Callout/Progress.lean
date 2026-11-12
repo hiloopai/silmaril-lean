@@ -59,13 +59,13 @@ open Silmaril.Wasm.Execution.Runtime
 
 section Scan
 
-variable {H : Type*} (s : Silmaril.Wasm.Execution.Runtime.Store H) (f : Frame)
+variable {H : Type*} (s : Store H) (f : Frame)
 
 end Scan
 
 /-! ## Progress -/
 
-theorem step?_isSome_iff {H : Type*} {cfg : Silmaril.Wasm.Execution.Runtime.Config H} :
+theorem step?_isSome_iff {H : Type*} {cfg : Config H} :
     (step? cfg).isSome ↔ ∃ cfg', Internal cfg cfg' := by
   constructor
   · intro h
@@ -76,7 +76,7 @@ theorem step?_isSome_iff {H : Type*} {cfg : Silmaril.Wasm.Execution.Runtime.Conf
 
 /-- `step?` fails exactly on configurations without a host-free step: terminal ones, those
 parked at a callout, and stuck ones. -/
-theorem step?_eq_none_iff {H : Type*} {cfg : Silmaril.Wasm.Execution.Runtime.Config H} :
+theorem step?_eq_none_iff {H : Type*} {cfg : Config H} :
     step? cfg = none ↔ ¬ ∃ cfg', Internal cfg cfg' := by
   rw [← step?_isSome_iff, Option.not_isSome_iff_eq_none]
 
@@ -141,7 +141,7 @@ theorem terminal?_eq_none_iff {code : List Admin} :
 
 /-- What `Status.stuck` means: the configuration `run` stops at is not terminal, not parked at
 a callout, and has no host-free step. -/
-theorem run_stuck {H : Type*} {n : Nat} {cfg final : Silmaril.Wasm.Execution.Runtime.Config H}
+theorem run_stuck {H : Type*} {n : Nat} {cfg final : Config H}
     (h : run n cfg = (final, .stuck)) :
     terminal? final.code = none ∧ (∀ c, ¬ CalloutAt final c) ∧ ¬ ∃ cfg', Internal final cfg' := by
   induction n generalizing cfg with
@@ -169,7 +169,7 @@ theorem run_stuck {H : Type*} {n : Nat} {cfg final : Silmaril.Wasm.Execution.Run
 
 /-- **Characterisation of `Status.stuck`.** With fuel left, `run` stops at `cfg` itself with
 status `stuck` iff `cfg` is not terminal, not parked at a callout, and has no host-free step. -/
-theorem run_stuck_iff {H : Type*} (n : Nat) (cfg : Silmaril.Wasm.Execution.Runtime.Config H) :
+theorem run_stuck_iff {H : Type*} (n : Nat) (cfg : Config H) :
     run (n + 1) cfg = (cfg, .stuck) ↔
       terminal? cfg.code = none ∧ (∀ c, ¬ CalloutAt cfg c) ∧ ¬ ∃ cfg', Internal cfg cfg' := by
   constructor

@@ -19,9 +19,7 @@ part: `instPhase : InstPhase` holds for every `V` and `IR`.
 namespace Silmaril.Proofs.Wasm.Component.Param.Core3R
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference Silmaril.Proofs.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
-  Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate
-  Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Instantiate Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component (Syntax.Definition Syntax.VT Syntax.DefValType)
 
 section Core3P

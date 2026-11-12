@@ -29,7 +29,7 @@ integer afterwards) and lifted canonicalised.
 namespace Silmaril.Proofs.Wasm.Component.Reference
 
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Reference
-open Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
+open Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.ABI
 open Silmaril.Wasm.Component.Value (NanLower)
 open Silmaril.Wasm (FloatType IntType NumType)
 

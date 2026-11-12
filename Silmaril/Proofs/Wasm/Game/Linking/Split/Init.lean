@@ -29,9 +29,7 @@ set_option linter.unusedSimpArgs false
 
 namespace Silmaril.Proofs.Wasm.Game.Linking.Split
 
-open Silmaril.Games Silmaril.Wasm.Game Silmaril.Wasm.Game.Linking Silmaril.Proofs.Wasm.Game Silmaril.Proofs.Wasm.Game.GamesAux Silmaril Silmaril.Wasm Silmaril.Wasm.Execution.Core
-  Silmaril.Wasm.Validation Silmaril.Wasm.SingleThreaded Silmaril.Wasm.Game
-  Silmaril.Proofs.Wasm.Game.Linking Silmaril.Wasm.Link.GC
+open Silmaril.Games Silmaril.Wasm.Game Silmaril.Wasm.Game.Linking Silmaril.Proofs.Wasm.Game Silmaril.Proofs.Wasm.Game.GamesAux Silmaril Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation Silmaril.Wasm.SingleThreaded Silmaril.Proofs.Wasm.Game.Linking Silmaril.Wasm.Link.GC
 
 /-! ### The identity renaming -/
 
