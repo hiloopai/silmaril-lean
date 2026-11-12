@@ -159,6 +159,11 @@ A row group is one source function and its builds:
 | `silmaril.sysv_tv.max2.o2.compiles_to` | `c.compiles_to.open9` | proved from the two rows above (`o2_compiles_to_of`), so open while they are |
 | `silmaril.sysv_tv.max2.builds` | `c.compiles_to.builds` | proved from the per-build rows (`builds_of`, `builds_of_tasks`), so open while they are |
 
+**Non-vacuity of the example.** Every row's companions are stated: both placements are
+enterable (proved, `o0_enterable`, `o2_enterable`); the C function's safety on some argument
+tuple from every entry memory (`Task.max2_safe`) and the `-O2` Bir9 block's (`Task.o2_block_safe`)
+are open.
+
 The group `silmaril.sysv_tv.max2` of `silmaril/selftest.toml` collects these rows, and
 `sil project lint`, `dump` and `check` accept them. The project self-test
 (`make project-check`) runs all three.

@@ -28,6 +28,10 @@ The rows (`docs/projects/sysv-tv.md` explains the shapes):
 | `silmaril.sysv_tv.max2.o2.compiles_to` | the same at `-O2` | proved from the two `-O2` rows above (`o2_compiles_to_of`), so open with them |
 | `silmaril.sysv_tv.max2.builds` | `c.compiles_to.builds`: both builds implement `max2` | proved from the per-build rows (`builds_of`), so open with them |
 
+Non-vacuity companions: both placements are enterable (`o0_enterable`, `o2_enterable`, proved);
+the C function's and the Bir9 block's safety on some argument tuple are open (`Task.max2_safe`,
+`Task.o2_block_safe`).
+
 Same source, two builds: the C side (`cfn`, its elaboration row) is shared; each build
 has its own placed code and its own rows. The `-O0` build is checked against C directly; the
 `-O2` build goes through its lift, and `CompilesTo.of_lift` composes the two rows.
@@ -288,6 +292,21 @@ public def Task.o0_compiles_to : Prop := silmaril.sysv_tv.max2.o0.compiles_to
 public def Task.o2_lifts : Prop := silmaril.sysv_tv.max2.o2.lifts
 /-- Open: the Bir9 block corresponds to `max2`. -/
 public def Task.o2_ir_refines : Prop := silmaril.sysv_tv.max2.o2.ir_refines
+
+/-! ### Non-vacuity companions
+
+Each row asks that its source be safe somewhere (`Meaning.Inhabited`) and that its placement
+be enterable (proved above: `o0_enterable`, `o2_enterable`). For the C function this is the
+universal safety of the Core run of `max2` from every entry memory satisfying the verified
+library's invariant (the call is the whole program), on some argument tuple. -/
+
+/-- Open: `max2` is safe under its Cerberus meaning on some argument tuple (the `Inhabited`
+conjunct of the `compiles_to` and `ir_refines` rows). -/
+@[expose] public def Task.max2_safe : Prop := cfn.meaning.Inhabited
+/-- Open: the `-O2` Bir9 block is safe on some argument tuple (the `Inhabited` conjunct of the
+`-O2` lift row): it compares, pops the return address and returns. -/
+@[expose] public def Task.o2_block_safe : Prop :=
+  (Silmaril.Project.Shapes.SysV.bir9.meaning O2.birFn).Inhabited
 
 /-- **The `-O2` row from its lift and its correspondence** (the composition theorem). -/
 public theorem o2_compiles_to_of (hl : Task.o2_lifts) (hr : Task.o2_ir_refines) :
