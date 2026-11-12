@@ -74,6 +74,7 @@ globs = [
   "Silmaril.Courses.+", "Silmaril.Crypto.+", "Silmaril.Data.+", "Silmaril.Elf.+", "Silmaril.Encoding.*",
   "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Libc.+", "Silmaril.Logic.*",
   "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+",
+  "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+", "Silmaril.Project.+", "Silmaril.Proofs.Calculi.+",
   "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Elf.+",
   "Silmaril.Proofs.Formats.+",

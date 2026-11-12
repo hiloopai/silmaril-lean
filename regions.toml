@@ -86,7 +86,7 @@ deps = ["Prelude", "Formats", "Machine", "Process", "Project", "Cli"]
 
 [[region]]
 name = "Libc"
-scope = "C library contracts: the contract institution of C library signatures (signatures, contracts with reducts, invariants as a monoidal category, the institution, the allocator chain and stdio, the tensor), the abstract allocator heap and its signature hierarchy, and allocator contracts over ELF shared objects with their loading model (segments at a page-aligned base, imports bound to functions with named contracts) and problem shapes. Also imports the x86 tree (`Silmaril.X86`: relational machines, function contracts, the separation-logic allocator interface), which is not a region, as `Elf` does."
+scope = "C library contracts: the contract institution of C library signatures (signatures, contracts with reducts, invariants as a monoidal category, the institution, the allocator chain and stdio, the tensor), the abstract allocator heap and its signature hierarchy, and allocator contracts over ELF shared objects with their loading model (segments at a page-aligned base, imports bound to functions with named contracts) and problem shapes; and allocators in static x86-64 executables (specifications, problem shapes, the pinned toy-allocator ladder and its proofs). Also imports the x86 tree (`Silmaril.X86`: relational machines, function contracts, the separation-logic allocator interface), which is not a region, as `Elf` does."
 deps = ["Prelude", "Semantics", "Logic", "Formats", "Machine", "Process", "Elf", "Project"]
 
 [[region]]
