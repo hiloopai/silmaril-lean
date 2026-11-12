@@ -1,0 +1,10 @@
+[package]
+name = "spectec-gen"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Emit the pinned SpecTec --ast streams and their errata as explicit Lean IL data"
+
+[dependencies]
+
+[workspace]
