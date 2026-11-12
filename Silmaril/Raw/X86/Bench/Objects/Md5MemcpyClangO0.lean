@@ -21,6 +21,9 @@ public meta import Silmaril.Semantics.CPort.Formats.ELF.Extract.Defs
 /-!
 # An ingested ELF64 object: the clang `-O0` build of `MD5_memcpy`
 
+`md5.o` is built from `md5c.c` of RFC 1321 and an in-house wrapper: this object code is derived
+from the RSA Data Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`).
+
 `raw` is one pinned `xcompile` artifact, byte for byte; `artifactPath` names it
 and `artifactSha256` is its SHA-256, which is the digest `xcompile/manifest.json`
 records for that path. `scripts/elf_extract.py` refuses to emit this module
