@@ -50,7 +50,7 @@ single-dash name), passes values as separate tokens (`--name=VALUE` for optional
 `--no-name` for a negated flag, puts options before positionals and writes `--` before the
 positionals exactly when one of them is not a word or the command has subcommands.
 
-A Silmaril addition; the guide is `docs/projects/wasm-binaryen-tooling.md`.
+A Silmaril addition; the guide is `docs/projects/cli.md`.
 -/
 
 namespace Silmaril.Cli
@@ -1007,7 +1007,7 @@ def interpret (c : Command) (env : String → Option String) (argv : List String
       | _, _ => resolveOutcome c env fs
 
 /-- The exit code the front end decides: `none` when the program runs. Usage errors exit 2
-(the convention of clap, getopt-based tools and `wasm-opt`). -/
+(the convention of clap and getopt-based tools). -/
 def Outcome.exitCode? : Outcome → Option Nat
   | .run _ => none
   | .help _ => some 0

@@ -28,7 +28,7 @@ The `IO` host reads each operation the way `Beh.host` does (`IO.getEnv` per decl
 `IO.println`/`IO.eprintln` write the text and a newline); that correspondence is the trusted
 step, as for the bridge's `Prog.toIO`.
 
-A Silmaril addition; the guide is `docs/projects/wasm-binaryen-tooling.md`.
+A Silmaril addition; the guide is `docs/projects/cli.md`.
 -/
 
 namespace Silmaril.Cli

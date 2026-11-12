@@ -5,18 +5,16 @@ public import Silmaril.Cli.Io.Defs
 /-!
 # Example CLI programs built from pure cores, with their behaviour specifications
 
-* `echo`: prints its arguments joined by spaces, then `\n` (`echoProg`, `echoSpec`), the CLI of
-  `examples/wasip3-rust/echo`.
-* `cat`: copies stdin to stdout and consumes all of it (`catProg`, `catSpec`), the CLI of
-  `examples/wasip3-rust/cat`.
+* `echo`: prints its arguments joined by spaces, then `\n` (`echoProg`, `echoSpec`).
+* `cat`: copies stdin to stdout and consumes all of it (`catProg`, `catSpec`).
 * `copy SRC -o DST`: copies a file (`copyProg`). Its specification `copySpec` is the behaviour
-  track's file transformer `Spec.transform` with the identity, so a missing or unreadable `SRC`
+  model's file transformer `Spec.transform` with the identity, so a missing or unreadable `SRC`
   and a usage error are loose `Spec.failure`s; the program meets it up to environment refusals
   (`copy_sat : copyProg.Sat copySpec.orRefused`): it reads `SRC` before it finds that `DST`
   cannot be written.
 
 `Silmaril.Cli.Io.Examples.Thms` proves the programs satisfy them. The harness checks of the same
-specifications are in `Silmaril.Cli.Io.Run.Checks`.
+specifications are in `Silmaril.Cli.Io.Check`.
 
 A Silmaril addition.
 -/

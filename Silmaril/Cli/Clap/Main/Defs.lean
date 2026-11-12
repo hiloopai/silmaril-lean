@@ -30,9 +30,8 @@ uses:
   (`Tool.main_refines`), and `Tool.frontCheck`, the harness check of `Tool.spec t ⊤`, is sound
   (`Tool.frontCheck_sound`).
 
-`wasm-asyncify` and the component tools run behind `Tool.main` with their pinned grammars
-(`Silmaril.Cli.Spec.*`), and `wasm-opt` prints its derived help through `Tool.text`;
-see docs/projects/wasm-binaryen-tooling.md.
+A tool runs behind `Tool.main` with its grammar, or takes only its help from the grammar
+(`Tool.helpOr`) while it adopts the grammar step by step; see `docs/projects/cli.md`.
 
 A Silmaril addition.
 -/
@@ -139,7 +138,7 @@ def Tool.main (t : Tool) (run : Matches → IO UInt32) (argv : List String) : IO
 
 /-- **Only the help of the clap front end**: on a command line the reading answers with help,
 print the derived help (exit 0); hand every other command line to `other`, which reads it
-itself (a tool adopting the grammar step by step, as `wasm-opt` does). -/
+itself (a tool adopting the grammar step by step). -/
 def Tool.helpOr {m : Type → Type} [Monad m] (t : Tool) (h : Host m) (other : List String → m UInt32)
     (argv : List String) : m UInt32 :=
   h.getEnvs t.grammar.envVars >>= fun env =>

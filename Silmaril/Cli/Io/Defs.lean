@@ -6,7 +6,7 @@ public import Silmaril.Cli.Files.Defs
 # CLI programs in Lean: a small IO interface read into the behaviour model
 
 The bridge from Lean programs to the CLI behaviour model of `Silmaril.Cli.Behaviour`
-(`docs/projects/wasm-binaryen-tooling.md`, track bridge). Observations, specifications and refinement are the
+(`docs/projects/cli.md`). Observations, specifications and refinement are the
 behaviour model's: an invocation `Input` (program name, arguments, environment, stdin, the
 declared roots and the files under them), an observation `Obs` (stdout, stderr, exit code, stdin
 consumed, files read, the files after the run, whether the environment refused something), and

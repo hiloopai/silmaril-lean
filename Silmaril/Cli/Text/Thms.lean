@@ -16,8 +16,6 @@ PROVED (standard axioms), namespace `Silmaril.Cli.Text`:
 * `splitOn_comma_of_not_mem`: `s.splitOn "," = [s]` when `s` has no `,` (core has none for the
   legacy `String.splitOn`; Batteries leaves it a TODO). The induction `splitOnAux_comma`
   follows Batteries' `splitAux_of_valid`.
-
-They make `Silmaril.Wasm.Binaryen.DriverSpec.parseArgs_render` unconditional.
 -/
 
 @[expose] public section
