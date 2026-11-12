@@ -4,5 +4,6 @@ name = "silmaril"
 description = "The silmaril library: formats, standard shapes, and the self-test of sil project"
 modules = ["ProjectSelfTest", "Silmaril.Project.Formats.Thms", "Silmaril.Project.Shapes.Format.Thms",
   "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Project.Shapes.X86.Thms",
-  "Silmaril.Project.Shapes.SysV.Thms", "Silmaril.Project.Shapes.C.Thms", "SysVTvExample"]
-roots = ["Silmaril.Project", "ProjectSelfTest", "SysVTvExample"]
+  "Silmaril.Project.Shapes.SysV.Thms", "Silmaril.Project.Shapes.C.Thms", "SysVTvExample",
+  "Silmaril.Project.Shapes.CompilesTo.Thms", "CompilesToExamples"]
+roots = ["Silmaril.Project", "ProjectSelfTest", "SysVTvExample", "CompilesToExamples"]
