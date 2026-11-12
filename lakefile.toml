@@ -66,6 +66,9 @@ name = "Silmaril"
 # globs cannot exclude, and a module matched by two libraries' globs is built under whichever
 # library fetches it first, so the siblings of `Wasm.SpecTec`, `Proofs.Wasm.SpecTec` and
 # `Raw.Wasm.SpecTec` are listed; scripts/check-layout.sh fails on a module neither library covers.
+# `roots` is narrowed because the default root `Silmaril` claims every module under it, SpecTec
+# included (an empty `roots` reads as the default to the cache tooling).
+roots = ["Silmaril.Prelude"]
 globs = [
   "Silmaril", "Silmaril.Apps.*", "Silmaril.Calculi.*", "Silmaril.Cli.*", "Silmaril.Compile.*",
   "Silmaril.Courses.*", "Silmaril.Crypto.*", "Silmaril.Data.*", "Silmaril.Encoding.*",
