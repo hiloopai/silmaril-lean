@@ -11,7 +11,7 @@ deps = []
 
 [[region]]
 name = "Semantics"
-scope = "Semantic toolkit: domains, category theory, Elgot iteration, binding, traces, simulation, behaviours."
+scope = "Semantic toolkit: domains, category theory, Elgot iteration, binding, traces, simulation, behaviours. `Silmaril.Semantics.Behaviour` and its Raw tree also import `Silmaril.Machine.Behaviour` (outcomes and small-step semantics), an existing exception to `deps` until they move under `Machine`."
 deps = ["Prelude"]
 
 [[region]]
@@ -78,6 +78,16 @@ deps = ["Prelude", "Semantics", "Numeric", "Formats", "SSA", "GPU"]
 name = "Science"
 scope = "Units, physical constants and other scientific world models."
 deps = ["Prelude", "Numeric"]
+
+[[region]]
+name = "Elf"
+scope = "The ELF verification API: one parse of an ELF64 file into an AST, symbol lookup as ld.so does it (SysV and GNU hash, versions), a lookup index, facts about a file (kind, symbols, lookups, DT_NEEDED, relocations, placement, code) with their problem shapes, a checker for the parse of large files, and the x86-64 dynamic-loading models these facts relate to (ld.so's table readers, pages of included files, ElfBind, the loader relation ExeLoaded and its image). Also imports the x86 tree (`Silmaril.X86`: blobs, memory, symbolic execution), which is not a region, as `Project` does."
+deps = ["Prelude", "Formats", "Machine", "Process", "Project", "Cli"]
+
+[[region]]
+name = "Libc"
+scope = "C library contracts: the contract institution of C library signatures (signatures, contracts with reducts, invariants as a monoidal category, the institution, the allocator chain and stdio, the tensor), the abstract allocator heap and its signature hierarchy, and allocator contracts over ELF shared objects with their loading model (segments at a page-aligned base, imports bound to functions with named contracts) and problem shapes; and allocators in static x86-64 executables (specifications, problem shapes, the pinned toy-allocator ladder and its proofs). Also imports the x86 tree (`Silmaril.X86`: relational machines, function contracts, the separation-logic allocator interface), which is not a region, as `Elf` does."
+deps = ["Prelude", "Semantics", "Logic", "Formats", "Machine", "Process", "Elf", "Project"]
 
 [[region]]
 name = "Project"
