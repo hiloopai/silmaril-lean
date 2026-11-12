@@ -280,7 +280,7 @@ theorem sim_write_read (hR : Rel r w s er ew c m st) (xs : List Val) (hlen : xs.
         ⟨.streamRead, h, Silmaril.Wasm.Component.Async.packCopy .completed n, xs.take n⟩,
       16 * n) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamWrite, hR.tblW, hpend, resNat, hmin,
-      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
+      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.Async.CopyResult.toNat]
   refine ⟨_, st1, hm, hc1, ?_⟩
   have hwr : w ≠ h := Ne.symm hR.hrw
   exact {
@@ -301,7 +301,7 @@ theorem sim_write_read (hR : Rel r w s er ew c m st) (xs : List Val) (hlen : xs.
     evR := by
       simp [Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
         Silmaril.Wasm.Component.Async.upd, Silmaril.Wasm.Component.Async.packCopy,
-        Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
+        Silmaril.Wasm.Component.Async.CopyResult.toNat]
     evW := by
       simpa [Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
         Silmaril.Wasm.Component.Async.upd, hwr] using hR.evW
@@ -346,7 +346,7 @@ theorem sim_read_write (hR : Rel r w s er ew c m st) (hev : m.ev r = none) (h : 
         ⟨.streamWrite, h, Silmaril.Wasm.Component.Async.packCopy .completed c, []⟩,
       16 * c) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamRead, hR.tblR, hpend, resNat, hmin,
-      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
+      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.Async.CopyResult.toNat]
   refine ⟨_, st1, hm, hc1, ?_⟩
   have hrw : r ≠ h := hR.hrw
   exact {
@@ -370,7 +370,7 @@ theorem sim_read_write (hR : Rel r w s er ew c m st) (hev : m.ev r = none) (h : 
     evW := by
       simp [Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
         Silmaril.Wasm.Component.Async.upd, Silmaril.Wasm.Component.Async.packCopy,
-        Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
+        Silmaril.Wasm.Component.Async.CopyResult.toNat]
     hne := hR.hne
     endR := ⟨_, hfe, by simp [CabiRef.delivered, Cabi.End.withPending, Cabi.End.withState, hxrk],
       by simp [CabiRef.delivered, Cabi.End.withPending, Cabi.End.withState, hxro],
