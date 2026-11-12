@@ -2,22 +2,22 @@ module
 
 public import Silmaril.Problems.Models.ProcX.Defs
 public import Silmaril.Process.CLI.GapSim
-public import Silmaril.X86.Str9FsX.Thms
+public import Silmaril.X86.Str9FsXN.Thms
 import Silmaril.Proofs.Problems.Models.ProcX.Lift
 
 /-!
-# `musl-str9fsx`: the gap simulation from `musl-str9`, transfer, listing laws, gzip vectors
+# `musl-str9fsxn`: the gap simulation from `musl-str9`, transfer, listing laws, gzip vectors
 
 * `userStep_of_proc`: every `musl-str9` user step that is not the `unmodeled` fault is a step
   here, with the XMM file as a frame (`liftStep`); `isa_step_of_proc` adds the startup arms.
 * `gapLe : Proc.model.GapLe model`, hence `agrees_proc`, `halts_proc`, `bounded_proc`
   (statements move down to `musl-str9`) and `exitsOn_of_proc` (nonvacuity moves up).
 * `isa_step_of_step`, `isa_step_of_listed_sse`, `isa_step_of_listed`: the listing laws of
-  `Str9FsX` lifted to the process step, for a non-trapping `rip`.
-* Kernel-checked vectors: every SSE and atomic byte string of the statically linked
-  `h-gz-api` zlib harnesses (zlib 1.3.1, 1.3.2 and the dev builds, musl) that `Str9` rejects is
-  decoded here at its full length (`gz_sse_decoded`, `gz_atomic_decoded`), and `musl-str9`
-  rejects them (`gz_str9_rejects`).
+  `Str9FsXN` lifted to the process step, for a non-trapping `rip`.
+* Kernel-checked vectors: every SSE, atomic and narrow-shift byte string of the statically
+  linked `h-gz-api` zlib harnesses (zlib 1.3.1, 1.3.2 and the dev builds, musl) that `Str9`
+  rejects is decoded here at its full length (`gz_sse_decoded`, `gz_atomic_decoded`,
+  `gz_narrow_decoded`), and `musl-str9` rejects them (`gz_str9_rejects`).
 -/
 
 @[expose] public section
@@ -41,7 +41,7 @@ theorem isa_step_of_proc {c : State} (x : XFile) {m : Memory} {o : Step State}
     isa.step ⟨c, x⟩ m (liftStep x o) :=
   Silmaril.Proofs.Problems.Models.ProcX.isa_step_of_proc x h ho
 
-/-- **`musl-str9fsx` fills the gaps of `musl-str9`.** -/
+/-- **`musl-str9fsxn` fills the gaps of `musl-str9`.** -/
 theorem gapLe : Proc.model.GapLe model := ⟨Silmaril.Proofs.Problems.Models.ProcX.gapSim⟩
 
 theorem agrees_proc {image : Image} {S : CliSpec} (h : Agrees model image S) :
@@ -54,17 +54,17 @@ theorem bounded_proc {image : Image} {domain : ProcInput → Prop} {budget : Pro
     {perRefusal : Nat} (h : Bounded model image domain budget perRefusal) :
     Bounded Proc.model image domain budget perRefusal := Bounded.of_gapLe gapLe h
 
-/-- **Nonvacuity moves up**: a `musl-str9` witness is a `musl-str9fsx` witness. -/
+/-- **Nonvacuity moves up**: a `musl-str9` witness is a `musl-str9fsxn` witness. -/
 theorem exitsOn_of_proc {image : Image} {stdin : List Silmaril.Process.Byte}
     (h : Proc.ExitsOn Proc.model image stdin) : Proc.ExitsOn model image stdin :=
   Silmaril.Proofs.Problems.Models.ProcX.exitsOn_of_proc h
 
 /-! ## Listing laws -/
 
-/-- A non-trapping `Str9FsX` step is a step of the model. -/
+/-- A non-trapping `Str9FsXN` step is a step of the model. -/
 theorem isa_step_of_step {c : Core} {m : Memory} {y : XState}
     (nontrap : m.fetchBytes c.core.rip.toNat 2 ≠ some X86Linux.syscallBytes)
-    (h : Silmaril.X86.Str9FsX.step ⟨⟨c.core, m⟩, c.xmm⟩ = some y) :
+    (h : Silmaril.X86.Str9FsXN.step ⟨⟨c.core, m⟩, c.xmm⟩ = some y) :
     isa.step c m (.retired ⟨y.m.core, y.xmm⟩ y.m.memory) :=
   Silmaril.Proofs.Problems.Models.ProcX.isa_step_of_step nontrap h
 
@@ -79,19 +79,20 @@ theorem isa_step_of_listed_sse {c : Core} {m : Memory} {base : Word} {code : Lis
       .ok c' xs m') :
     isa.step c m (.retired ⟨c', xs⟩ m') :=
   isa_step_of_step (y := ⟨⟨c', m'⟩, xs⟩) nontrap
-    (Silmaril.X86.Str9FsX.step_of_listed_sse (x := ⟨⟨c.core, m⟩, c.xmm⟩) hl hrip hfit hdec hx)
+    (Silmaril.X86.Str9FsXN.step_of_listed_sse (x := ⟨⟨c.core, m⟩, c.xmm⟩) hl hrip hfit hdec hx)
 
-/-- **The integer listing law** at the process step (`Str9Fs`'s instructions, `rep stosd`). -/
+/-- **The integer listing law** at the process step (`Str9Fs`'s instructions, `rep stosd`,
+the `Narrow9` forms). -/
 theorem isa_step_of_listed {c : Core} {m : Memory} {base : Word} {code : List Byte}
-    {o l : Nat} {i : Silmaril.X86.Str9FsX.Instr} {c' : State} {m' : Memory}
+    {o l : Nat} {i : Silmaril.X86.Str9FsXN.Instr} {c' : State} {m' : Memory}
     (nontrap : m.fetchBytes c.core.rip.toNat 2 ≠ some X86Linux.syscallBytes)
     (hl : Silmaril.X86.Ext.Loaded m base code) (hrip : c.core.rip = base + BitVec.ofNat 64 o)
     (hfit : o + l ≤ code.length)
-    (hdec : Silmaril.X86.Str9FsX.decode ((code.drop o).take l) = some (i, l))
-    (hx : Silmaril.X86.Str9FsX.exec i c.core m l = .ok c' m') :
+    (hdec : Silmaril.X86.Str9FsXN.decode ((code.drop o).take l) = some (i, l))
+    (hx : Silmaril.X86.Str9FsXN.exec i c.core m l = .ok c' m') :
     isa.step c m (.retired ⟨c', c.xmm⟩ m') :=
   isa_step_of_step (y := ⟨⟨c', m'⟩, c.xmm⟩) nontrap
-    (Silmaril.X86.Str9FsX.step_of_listed (x := ⟨⟨c.core, m⟩, c.xmm⟩) hl hrip hfit hdec hx)
+    (Silmaril.X86.Str9FsXN.step_of_listed (x := ⟨⟨c.core, m⟩, c.xmm⟩) hl hrip hfit hdec hx)
 
 /-! ## The gzip vectors (kernel-checked)
 
@@ -99,7 +100,9 @@ The byte strings are every SSE and atomic instruction of the four `h-gz-api` har
 that `Str9` rejects, from `objdump -d` of `.init`/`.text`/`.fini`: `vfprintf`'s prologue
 (`pxor xmm0, xmm0`; `movaps`/`movups` stores; `movdqu xmm1, [rdx]`), `snprintf`'s varargs
 saves, `printf_core`'s positional-argument copy (`movdqa`), and `__lock`, `__lockfile`,
-`__unlockfile` (`lock cmpxchg`, `lock xadd`, `xchg`). -/
+`__unlockfile` (`lock cmpxchg`, `lock xadd`, `xchg`), and the compressor's narrow forms
+(`shr r/m16, imm8` in `deflate_fast`, `deflate_slow`, `_tr_align`, `_tr_flush_bits`;
+`sbb cl, 0xff` in `deflate`). -/
 
 /-- The SSE byte strings. -/
 def gzSse : List (List Byte) :=
@@ -124,19 +127,30 @@ def gzAtomic : List (List Byte) :=
    [0xF0, 0x44, 0x0F, 0xC1, 0x07],
    [0x87, 0x82, 0x8C, 0x00, 0x00, 0x00]]
 
+/-- The narrow integer byte strings. -/
+def gzNarrow : List (List Byte) :=
+  [[0x66, 0xC1, 0xE8, 0x0F], [0x66, 0xC1, 0xED, 0x07], [0x66, 0x41, 0xC1, 0xEC, 0x07],
+   [0x66, 0xC1, 0xA8, 0x30, 0x17, 0x00, 0x00, 0x08],
+   [0x66, 0xC1, 0xAF, 0x30, 0x17, 0x00, 0x00, 0x08], [0x80, 0xD9, 0xFF]]
+
 /-- Each SSE string is an SSE form of `Str9FsX`, read at its full length. -/
 theorem gz_sse_decoded :
     gzSse.all (fun w => (Silmaril.X86.Str9FsX.decodeSseL w).map (·.2) == some w.length) = true := by
   decide
 
-/-- Each atomic string is an integer form of `Str9FsX`, read at its full length. -/
+/-- Each atomic string is an integer form of `Str9FsXN`, read at its full length. -/
 theorem gz_atomic_decoded :
-    gzAtomic.all (fun w => (Silmaril.X86.Str9FsX.decode w).map (·.2) == some w.length) = true := by
+    gzAtomic.all (fun w => (Silmaril.X86.Str9FsXN.decode w).map (·.2) == some w.length) = true := by
+  decide
+
+/-- Each narrow string is an integer form of `Str9FsXN`, read at its full length. -/
+theorem gz_narrow_decoded :
+    gzNarrow.all (fun w => (Silmaril.X86.Str9FsXN.decode w).map (·.2) == some w.length) = true := by
   decide
 
 /-- `Str9`'s listing decoder rejects all of them (so `musl-str9` stops there). -/
 theorem gz_str9_rejects :
-    (gzSse ++ gzAtomic).all (fun w => (Silmaril.X86.Str9.decode w).isNone) = true := by
+    (gzSse ++ gzAtomic ++ gzNarrow).all (fun w => (Silmaril.X86.Str9.decode w).isNone) = true := by
   decide
 
 end Silmaril.Problems.Models.ProcX
