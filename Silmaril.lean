@@ -49,3 +49,25 @@ public import Silmaril.Wasm.Wat
 public import Silmaril.Logic
 
 public import Silmaril.Calculi
+
+-- SSA calculi, λRTL and the SSA-form machine RTL (docs/projects/ssa.md).
+public import Silmaril.Calculi.Dataflow.Thms
+public import Silmaril.Machine.LambdaRTLLir.Thms
+public import Silmaril.Machine.OfLambdaSSA.Thms
+public import Silmaril.Machine.RTL.Thms
+public import Silmaril.SSA.Isotope.Thms
+public import Silmaril.SSA.LambdaRTL.CFG.Thms
+public import Silmaril.SSA.LambdaRTL.Institution.Defs
+public import Silmaril.SSA.LambdaRTL.LocallyNameless.Thms
+public import Silmaril.SSA.LambdaRTL.Loop.Institution.Defs
+public import Silmaril.SSA.LambdaRTL.Loop.Thms
+public import Silmaril.SSA.LambdaRTL.Nameless.Institution.Thms
+public import Silmaril.SSA.LambdaRTL.Nameless.Thms
+public import Silmaril.SSA.LambdaRTL.Quotient.Defs
+public import Silmaril.SSA.LambdaRTL.Thms
+public import Silmaril.SSA.LambdaRTL.Version.Institution.Defs
+public import Silmaril.SSA.LambdaRTL.Version.Thms
+public import Silmaril.Semantics.Behaviour.Thms
+public import Silmaril.Semantics.Categories.Thms
+public import Silmaril.Semantics.Elgot.Thms
+public import Silmaril.Semantics.ElgotMonads.Thms

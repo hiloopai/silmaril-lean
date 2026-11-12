@@ -102,7 +102,10 @@ globs = [
   "Silmaril.Wasm.Text.+", "Silmaril.Wasm.Tools.+", "Silmaril.Wasm.TypeUse", "Silmaril.Wasm.Types",
   "Silmaril.Wasm.V1.+", "Silmaril.Wasm.V2.+", "Silmaril.Wasm.Validation.+",
   "Silmaril.Wasm.Verify.+", "Silmaril.Wasm.Wac.+", "Silmaril.Wasm.Wat.*", "Silmaril.WasmSpec.+",
-  "Silmaril.X86.+"
+  "Silmaril.X86.+",
+  # SSA calculi, λRTL and the machine RTL (docs/projects/ssa.md).
+  "Silmaril.Proofs.Machine.+", "Silmaril.Proofs.Semantics.+", "Silmaril.Raw.Calculi.+",
+  "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,

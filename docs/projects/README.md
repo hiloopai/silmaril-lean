@@ -16,6 +16,7 @@
 | SpecTec | The Wasm 1.0, 2.0 and 3.0 specifications read from SpecTec's IL into Lean, patches, a surface-language fragment, grammar institutions and simulations with the Core semantics | [SpecTec](spectec/README.md), [divergences](spectec-divergences.md) |
 | Data layouts | C struct layouts under LP64/ILP32 data models, byte lenses with frame lemmas, bit specifications, glibc malloc structures checked against DWARF; separation-logic cells, lists, bitmaps and boundary tags | [Data](data.md) |
 | Dynamically linked processes | An x86-64 process linked against glibc 2.39 with library functions as atomic contract steps, the C runtime, block certificates, library modules, the program API with standard executables and their tactics, and hello world, `cat` and an adder for gcc and clang | [Dynamic processes](dyn.md) |
+| SSA calculi and λRTL | The let family, λSSA, λRTL with loops, versioning, nameless presentations and institutions; a flat CFG with a sound validator; the SSA-form machine RTL with its λSSA translations | [SSA](ssa.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide
