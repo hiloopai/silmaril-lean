@@ -30,4 +30,23 @@ find Silmaril -name '*.lean' -print0 | xargs -0 awk '
     }
   }
   END { exit bad }' || status=1
+# Each Silmaril module is matched by the globs of exactly one of `Silmaril` and `SilmarilSpecTec`
+# (lakefile.toml lists `Silmaril`'s globs because Lake globs cannot exclude).
+python3 -I - <<'PY' || status=1
+import pathlib, tomllib
+libs = {l["name"]: l["globs"] for l in tomllib.load(open("lakefile.toml", "rb"))["lean_lib"]
+        if l["name"] in ("Silmaril", "SilmarilSpecTec")}
+def hit(g, m):
+    if g.endswith(".*"): return m == g[:-2] or m.startswith(g[:-1])
+    if g.endswith(".+"): return m.startswith(g[:-1])
+    return m == g
+bad = 0
+for p in sorted(pathlib.Path("Silmaril").rglob("*.lean")) + [pathlib.Path("Silmaril.lean")]:
+    m = ".".join(p.with_suffix("").parts)
+    owners = [n for n, gs in libs.items() if any(hit(g, m) for g in gs)]
+    if len(owners) != 1:
+        print(f"error: {p} is matched by {owners or 'no'} library globs in lakefile.toml", file=__import__("sys").stderr)
+        bad = 1
+raise SystemExit(bad)
+PY
 exit $status

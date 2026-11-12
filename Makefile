@@ -23,11 +23,11 @@ stage:
 	chmod +x build/bin/sil
 
 library:
-	$(LAKE) build --wfail Silmaril
+	$(LAKE) build --wfail Silmaril SilmarilSpecTec
 
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
-CHECK_TARGETS ?= Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
