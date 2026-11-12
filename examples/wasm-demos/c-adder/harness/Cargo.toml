@@ -1,0 +1,14 @@
+[package]
+name = "c-adder-harness"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+wasmi = "=0.40.0"
+
+[build-dependencies]
+cc = "=1.9.0"
+
+[dev-dependencies]
+proptest = "=1.6.0"

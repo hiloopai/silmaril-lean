@@ -1,0 +1,13 @@
+[package]
+name = "door-buggy"
+description = "The door lock compiled to a Wasm module (door-buggy)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+door-lock = { path = "../door-lock" }
