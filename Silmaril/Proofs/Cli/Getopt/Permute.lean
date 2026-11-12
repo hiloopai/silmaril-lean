@@ -91,13 +91,20 @@ theorem resolveLong_unique {ls : List Long} {n : String} {l : Long} (hl : l ∈ 
 
 /-! ## Tokens that keep the next token -/
 
-theorem readW_false {t : Table} {tok : String} {a : List Char} {c : Bool}
+theorem readW_false {t : Table} {tok : String} {a : List Char} {c : Bool} {x : Option String}
     {ps : List (String × Given)}
-    (h : readW t tok a c = .ok (ps, false)) : c = false := by
+    (h : readW t tok a c x = .ok (ps, false)) :
+    c = false ∧ Getopt.readLong t tok (String.ofList (splitEq a).1)
+      ((splitEq a).2.map String.ofList) x = .ok (ps, false) := by
   unfold readW at h
   cases hl : Getopt.readLong t tok (String.ofList (splitEq a).1) ((splitEq a).2.map String.ofList)
-      none <;>
-    simp_all [Except.map]
+      x with
+  | error e => simp [hl, Except.map] at h
+  | ok q =>
+    obtain ⟨q1, q2⟩ := q
+    simp only [hl, Except.map, Except.ok.injEq, Prod.mk.injEq, Bool.or_eq_false_iff] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    exact ⟨rfl, rfl⟩
 
 theorem readLong_false {t : Table} {tok n : String} {v x x' : Option String}
     {ps : List (String × Given)} (h : Getopt.readLong t tok n v x = .ok (ps, false)) :
@@ -111,6 +118,13 @@ theorem readLong_false {t : Table} {tok n : String} {v x x' : Option String}
     rw [hr] at h
     simp only at h ⊢
     cases ha : l.arg <;> cases v <;> cases x <;> simp_all
+
+theorem readW_keep {t : Table} {tok : String} {a : List Char} {x x' : Option String}
+    {ps : List (String × Given)} (h : readW t tok a false x = .ok (ps, false)) :
+    readW t tok a false x' = .ok (ps, false) := by
+  have hl := readLong_false (x' := x') (readW_false h).2
+  unfold readW
+  simp [hl, Except.map]
 
 theorem readCluster_false {t : Table} {tok : String} {x x' : Option String} :
     ∀ {cs : List Char} {ps : List (String × Given)},
@@ -127,8 +141,10 @@ theorem readCluster_false {t : Table} {tok : String} {x x' : Option String} :
         | none => simp at h
         | some y =>
           dsimp only at h
-          exact absurd (readW_false h) (by decide)
-      | cons a b => exact h
+          exact absurd (readW_false h).1 (by decide)
+      | cons a b =>
+        dsimp only at h ⊢
+        exact readW_keep h
     · simp only [Bool.not_eq_true] at hw
       simp only [hw, Bool.false_eq_true, ↓reduceIte] at h ⊢
       cases hf : findChar t ch with
@@ -152,13 +168,32 @@ theorem readCluster_false {t : Table} {tok : String} {x x' : Option String} :
           | nil => cases x <;> simp [ha] at h
           | cons a b => simpa [ha] using h
 
+theorem readLongOnly_false {t : Table} {tok : String} {x x' : Option String} {cs : List Char}
+    {ps : List (String × Given)} (h : readLongOnly t tok x cs = .ok (ps, false)) :
+    readLongOnly t tok x' cs = .ok (ps, false) := by
+  unfold readLongOnly at h ⊢
+  cases ho : oneShort t cs
+  · simp only [ho, Bool.false_eq_true, ↓reduceIte] at h ⊢
+    cases hr : resolveLong t.longs (String.ofList (splitEq cs).1) with
+    | error es =>
+      cases es with
+      | nil => simp only [hr] at h ⊢; exact readCluster_false h
+      | cons e es => simp only [hr] at h ⊢; exact readLong_false h
+    | ok l => simp only [hr] at h ⊢; exact readLong_false h
+  · simp only [ho, ↓reduceIte] at h ⊢
+    exact readCluster_false h
+
 theorem readTok_false {t : Table} {tok : String} {x x' : Option String}
     {ps : List (String × Given)} (h : readTok t tok x = .ok (ps, false)) :
     readTok t tok x' = .ok (ps, false) := by
   unfold readTok at h ⊢
   split at h
   · exact readLong_false h
-  · exact readCluster_false h
+  · cases hl : t.longOnly
+    · simp only [hl, Bool.false_eq_true, ↓reduceIte] at h ⊢
+      exact readCluster_false h
+    · simp only [hl, ↓reduceIte] at h ⊢
+      exact readLongOnly_false h
   · cases h
 
 /-! ## Permutation -/
