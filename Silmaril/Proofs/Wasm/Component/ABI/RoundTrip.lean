@@ -340,8 +340,8 @@ end
 
 /-! ## Lifted values are well typed -/
 
-mutual
 set_option linter.unusedTactic false in
+mutual
 theorem check_of_lift : ∀ (t : ValTy) (xs : List Flat) (v : Val) (r : List Flat),
     t.lift xs = some (v, r) → t.check v = true
   | .record ts, xs, v, r, h => by
@@ -444,8 +444,8 @@ theorem checkList_of_liftArgs {ts : List ValTy} {xs : List Flat} {vs : List Val}
 
 /-! ## Trivially represented types -/
 
-mutual
 set_option linter.unusedTactic false in
+mutual
 theorem lift_trivial : ∀ (t : ValTy), t.trivial = true → ∀ (xs : List Flat) (v : Val)
     (r : List Flat), t.lift xs = some (v, r) → xs = t.lower v ++ r
   | .s32, _, xs, v, r, h | .u32, _, xs, v, r, h | .s64, _, xs, v, r, h
