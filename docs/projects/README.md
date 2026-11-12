@@ -21,6 +21,7 @@
 | C semantics (Cerberus) | A Lean port of the Cerberus C semantics: C frontend, Cabs and typed Ail, Core dynamics and memory models, the Ail-to-Core elaboration with correctness theorems for restricted sources, the Core institution, and the `cerb-lean`, `ail-lean`, `core-lean`, `core-elab` and `cfront` tools | [Cerberus](cerberus.md) |
 | System V translation validation | Function-by-function shapes: a placed x86-64 function implements a C function (Cerberus meaning) or a specification, lifts to an IR, IR-to-C correspondence, their composition, and several builds of one source; a worked example at `-O0` and `-O2` | [System V TV](sysv-tv.md) |
 | System V AMD64 ABI | Argument classification and call planning for C types, native layouts of the Cerberus types, typed FFI contracts, real compiled examples | [System V ABI](systemv-abi.md) |
+| Calling conventions | Calling conventions as institution comorphisms (System V AMD64, Microsoft x64), cross-ABI thunks and link compatibility, and x86 function contracts as System V and FFI certificates | [ABI](abi.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide
