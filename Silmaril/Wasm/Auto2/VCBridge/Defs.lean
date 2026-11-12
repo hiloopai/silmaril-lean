@@ -8,7 +8,7 @@ public import Silmaril.Wasm.Logic.Total.Defs
 /-!
 # The VC generator at the module level: proved contracts and their check
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, track vcgen: the link between the VC generator 4
+The link between the VC generator
 (`Silmaril.Wasm.Auto2.VCGen`) and the statements of the front end (`ModMeets` of
 `Silmaril.Wasm.Auto.Front`), used by `wasm-check`.
 
@@ -73,7 +73,7 @@ structure VcEntry where
   total : S.total = true
   calls : S.calls = []
   mem : S.mem = false
-  /-- No globals (round 2, pass 2: generator 4's `FnSpec.globals`). -/
+  /-- No globals (`FnSpec.globals` is empty). -/
   globals : S.globals = [] := by rfl
 
 /-- Every formula of `l` is one of `conds`. -/

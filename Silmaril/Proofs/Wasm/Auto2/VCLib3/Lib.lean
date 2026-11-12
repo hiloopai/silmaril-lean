@@ -4,10 +4,10 @@ public import Silmaril.Wasm.Auto2.VCLib3.Defs
 public import Silmaril.Wasm.Auto2.VCLib2.Thms
 
 /-!
-# VC library, pass 3: conditions, entries and kernel-checked checks
+# VC library with linear arithmetic and recursion: conditions, entries and kernel-checked checks
 
 The proved contracts `dblEntry` and `add3Entry` (their conditions are those of `dblAddProg` and
-`add3Prog`), the library `entriesM3` that `wasm-check vc` searches (pass 2's `entriesM`, then
+`add3Prog`), the library `entriesM3` that `wasm-check vc` searches (`entriesM` of `VCLib2`, then
 these), and the checks of the demonstration modules by kernel evaluation of `vcCheckM`: the
 programs that differ from the contracts' by linear arithmetic are accepted, the mutants are not.
 
@@ -175,7 +175,7 @@ example : vcCheckM incr2Entry incr1Prog 0 = false := by decide +kernel
 
 /-! ## The library -/
 
-/-- The contracts of `wasm-check vc` (pass 3). -/
+/-- The contracts of `wasm-check vc`. -/
 def entriesM3 : List VcEntryM :=
   VCLib2.entriesM ++ [dblEntry, add3Entry, incr2Entry, drainEntry, countdownEntry]
 

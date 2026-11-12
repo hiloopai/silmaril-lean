@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Regression test of `wasm-check vc` (docs/projects/wasm-binaryen-tooling.md, round 2 of the goal, track
-# vcgen): each pinned binary of tests/inputs (and, for paths with a directory, of tests/, e.g.
+# Regression test of `wasm-check vc` (docs/projects/wasm-binaryen-tooling.md): each
+# pinned binary of tests/inputs (and, for paths with a directory, of tests/, e.g.
 # tests/vc-inputs) against a contract of the VC library (`Silmaril.Wasm.Auto2.VCLib3.entriesM3`), with
-# the expected number of conditions, of conditions that are not accepted (pass 2: normalised,
+# the expected number of conditions, of conditions that are not accepted (normalised,
 # renamed; `null` when a callee is missing or not accepted, or the types differ), and the
 # verdict (tests/vc-expected.tsv). An input `FILE#K` checks function export `K` (default `0`).
 #

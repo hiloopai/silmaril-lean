@@ -1,13 +1,13 @@
 module
 
-public import Silmaril.Wasm.ByteParse.Defs
+public import Silmaril.Parse.ByteParse.Defs
 
 /-!
 # WebAssembly component binaries: abstract syntax and grammar
 
 The abstract syntax of the component-model binary format (`Binary.md` of the
 component-model repository, revision below) and its grammar, built from the verified
-combinators of `Silmaril.Wasm.ByteParse`. Every `Grammar` here pairs its parser with the
+combinators of `Silmaril.Parse.ByteParse`. Every `Grammar` here pairs its parser with the
 grammar; the proofs that the parser is sound and complete for it are the `Grammar.Lawful`
 instances of `Silmaril.Proofs.Wasm.Component.Binary.Lawful` (exported by
 `Silmaril.Wasm.Component.Binary.Thms`).
@@ -49,7 +49,7 @@ commit `8505ba73dda2775b9438c0b8d169b96a556f864a` (2026-10-27).
 
 namespace Silmaril.Wasm.Component.Binary
 
-open Silmaril.Wasm.ByteParse (Grammar GrammarE NonEmpty StartsWith Bytes Error runAll)
+open Silmaril.Parse.ByteParse (Grammar GrammarE NonEmpty StartsWith Bytes Error runAll)
 
 /-! ## Abstract syntax -/
 
@@ -337,7 +337,7 @@ instance : Inhabited DefType := ⟨.resource .i32 none⟩
 /-! ## Grammar -/
 
 section Grammar
-open Silmaril.Wasm.ByteParse.Grammar
+open Silmaril.Parse.ByteParse.Grammar
 
 /-- The preamble bytes. -/
 def preambleBytes : List UInt8 := [0x00, 0x61, 0x73, 0x6d, 0x0d, 0x00, 0x01, 0x00]

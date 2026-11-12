@@ -27,17 +27,18 @@ wasm-check vc IMPL.wasm EXPORT CONTRACT [--lean FILE]
 wasm-check vc-emit DIR
 ```
 
-Round 2 of the goal (track vcgen): `bench` runs the reference-function cases that have a proved
+**Contracts (the VC stage).** `bench` runs the reference-function cases that have a proved
 contract (`Silmaril.Wasm.Auto2.VCLib.refEntries`) through `Silmaril.Wasm.Auto2.VCBridge.checkMeetsVC`
 (differential testing, then the VC stage: `proved` is `ModMeets` at every profile by
 `checkMeetsVC_proved`). `vc` checks export `EXPORT` of a binary against a contract of the VC
 library (`Silmaril.Wasm.Auto2.VCLib.entries`, by name: `sum`, `max`, `add`, `div10`): it computes the
-conditions of VC generator 4 on the export's code and reports how many are not proved conditions
-of the contract; `proved` (none missing, same types) is the total every-run specification of the
-export (`Silmaril.Wasm.Auto2.VCBridge.modTSpec_of_vcCheck`), and `--lean FILE` writes that theorem
-as a certificate (the binary embedded, `vcCheck` by kernel evaluation).
+conditions of the VC generator (`Silmaril.Wasm.Auto2.VCGen`) on the export's code and reports how
+many are not proved conditions of the contract; `proved` (none missing, same types) is the total
+every-run specification of the export (`Silmaril.Wasm.Auto2.VCBridge.modTSpec_of_vcCheck`), and
+`--lean FILE` writes that theorem as a certificate (the binary embedded, `vcCheck` by kernel
+evaluation).
 
-Round 2, pass 2 (track vcgen): both use the normalising check with memory and callees
+Both use the normalising check with memory and callees
 (`Silmaril.Wasm.Auto2.VCCheck.vcCheckM`: a condition is accepted if its normal form is `tt` or a
 renamed normal form of a proved condition; callees are read from the module and checked against
 their own contracts). `vc` searches `Silmaril.Wasm.Auto2.VCLib2.entriesM` (adds `double`, with a
@@ -45,17 +46,17 @@ callee, and `load2`, with memory), `proved` is `Silmaril.Wasm.Auto2.VCCheck.modT
 `bench` uses `checkMeetsVCN` (`checkMeetsVCN_proved`). `vc-emit DIR` writes the binaries of the
 library's demonstration modules (`Silmaril.Wasm.Auto2.VCLib2.demoModules`).
 
-Round 2, pass 3 (track vcgen): `vc` searches `Silmaril.Wasm.Auto2.VCLib3.entriesM3` (adds contracts
-whose callees read and write globals, `incr2` and `drain`, a variant over a global, `countdown`,
-and `dbl`, `add3`, whose demonstrations differ by linear arithmetic, normalised by
-`Silmaril.Wasm.Auto2.VCGen.Tm.lin`); certificates state `ModTSpecM P (entryM3 "NAME") modA j`.
-`bench --vc` checks the library's contracts against their demonstration modules and mutants
-(`Silmaril.Wasm.Auto2.VCLib3.vcBench`, expected verdicts built in); `vc-emit` also writes the new
-demonstration modules.
+`vc` also searches `Silmaril.Wasm.Auto2.VCLib3.entriesM3` (contracts whose callees read and write
+globals, `incr2` and `drain`, a variant over a global, `countdown`, and `dbl`, `add3`, whose
+demonstrations differ by linear arithmetic, normalised by `Silmaril.Wasm.Auto2.VCGen.Tm.lin`);
+certificates state `ModTSpecM P (entryM3 "NAME") modA j`. `bench --vc` checks the library's
+contracts against their demonstration modules and mutants (`Silmaril.Wasm.Auto2.VCLib3.vcBench`,
+expected verdicts built in); `vc-emit` also writes these demonstration modules.
 
-Round 3: the checks are `Silmaril.Wasm.Auto.Front.checkRefines`/`checkEquiv` (the basic stages,
-then the extended summaries of `Silmaril.Wasm.Auto.Bridge`: memory, globals, conversions, trap
-guards). `pass --lean` writes one certificate whose proved exports are checked in chunks of `K`
+**Basic stages and certificates.** The first checks are
+`Silmaril.Wasm.Auto.Front.checkRefines`/`checkEquiv` (the basic stages, then the extended summaries
+of `Silmaril.Wasm.Auto.Bridge`: memory, globals, conversions, trap guards). `pass --lean` writes one
+certificate whose proved exports are checked in chunks of `K`
 exports (default 4): one kernel evaluation of `Silmaril.Wasm.Auto.Bridge.checkAmong` per chunk
 (each decodes and instantiates both modules once), so that no single evaluation holds every
 export's terms; the e-graph side conditions likewise (`liftAmong`). `--lean-dir DIR` writes the
@@ -65,38 +66,36 @@ reading Binaryen's `tuple.make`/`tuple.drop`) instead of embedding the binaries:
 in the kernel is the dominant cost (a 2 KB module exceeded 20 GB), while the kernel checks a
 module term directly. The certificate is then about the modules of the WAT texts (for the
 benchmark, Binaryen's printing of the pinned binaries); that they are the binaries' modules is not
-checked by the kernel. `--link a|b|ab` (pass 2 of the kernel track) adds, for the named modules,
+checked by the kernel. `--link a|b|ab` adds, for the named modules,
 the module the tool decoded from the binary as a term and a proof by `rfl` that the WAT module is
 that term: a kernel-checked cross-check of the two front ends (Binaryen's printer with `wat3b!`,
 and the compiled decoder with the derived `Repr`), which holds for Binaryen-written binaries.
-`--link-equiv a|b|ab` (pass 3 of the kernel track) is the link for the other binaries, whose type
+`--link-equiv a|b|ab` is the link for the other binaries, whose type
 sections Binaryen's printer reorders and merges: the decoded module as a term, a kernel-checked
 equivalence of each proved export of the decoded module to the WAT module's (`checkAmong` over
 `instK?`, `linkA_<j>`/`linkB_<j>`), the same signatures (`Silmaril.Wasm.Auto2.Link.sigOkAll`), and
 each certificate equivalence transferred to the decoded modules (`decA_<j>`, `decB_<j>`,
 `decAB_<j>`, by `Silmaril.Proofs.Wasm.Auto2.Link.modEquiv_link`; `Rel.eq` only).
 
-Round 2 (kernel track, `docs/projects/wasm-binaryen-tooling.md`): without `--wat`, the modules the tool decoded
-are stated as Lean terms (their derived `Repr`; `--embed` embeds the binaries as round 3 did),
-and certificates validate each module once (`validA`, `validB`) and rewrite every later kernel
-goal to the validation-free, closed-form instantiation of `Silmaril.Wasm.Auto2.Kernel`
-(`--spec-kernel` writes round 3's form).
+**Kernel form.** Without `--wat`, the modules the tool decoded are stated as Lean terms (their
+derived `Repr`; `--embed` embeds the binaries instead), and certificates validate each module once
+(`validA`, `validB`) and rewrite every later kernel goal to the validation-free, closed-form
+instantiation of `Silmaril.Wasm.Auto2.Kernel` (`--spec-kernel` writes the older form, in which every
+kernel evaluation validates and instantiates the modules itself).
 
-Round 2 of the summaries track (`docs/projects/wasm-binaryen-tooling.md`, "Round 2 (wa2), summaries"): the
-checks are `Silmaril.Wasm.Auto2.Calls.checkRefinesC`/`checkEquivC` (round 3's stages, then summaries
-with constant-trip loops unrolled and a guard-aware comparison, stage `equivu`, then the same
-with calls inlined, stage `equivc`); `pass` proves the exports of these stages in chunks of
-`Silmaril.Wasm.Auto2.Summ.checkAmongU` and `Silmaril.Wasm.Auto2.Calls.checkAmongC`.
+**Summaries.** The checks `Silmaril.Wasm.Auto2.Calls.checkRefinesC`/`checkEquivC` run the basic
+stages, then summaries with constant-trip loops unrolled and a guard-aware comparison (stage
+`equivu`), then the same with calls inlined (stage `equivc`); `pass` proves the exports of these
+stages in chunks of `Silmaril.Wasm.Auto2.Summ.checkAmongU` and `Silmaril.Wasm.Auto2.Calls.checkAmongC`.
 
-Pass 2 of the summaries track (`docs/projects/wasm-binaryen-tooling.md`, "Round 2, track summaries (pass 2)"):
-the checks are `Silmaril.Wasm.Auto2.Front2.checkRefinesV`/`checkEquivV`, which add stage `equivv`
-(the same summaries with a third simplifier, `Silmaril.Wasm.Auto2.Summ2.fnCheckV`) and stage
+The full checks are `Silmaril.Wasm.Auto2.Front2.checkRefinesV`/`checkEquivV`, which add stage
+`equivv` (the same summaries with a third simplifier, `Silmaril.Wasm.Auto2.Summ2.fnCheckV`) and stage
 `vcequiv` (both exports checked against contracts of one functional contract of
 `Silmaril.Wasm.Auto2.VCEquiv.eqFuns`: loops whose trip count depends on the inputs). In the default
 (kernel) form, `pass` proves every export of the stages `equivu`, `equivc` and `equivv` in chunks
 of `Silmaril.Wasm.Auto2.Summ2.checkAmongV`, rewritten by `checkAmongV_eq_K` to the validation-free,
 closed-form instance (so modules with data segments are checked in the kernel); `--spec-kernel`
-keeps pass 1's `checkAmongU`/`checkAmongC` chunks. `vcequiv` exports are proved by
+keeps the `checkAmongU`/`checkAmongC` chunks. `vcequiv` exports are proved by
 `modEquiv_of_vcEquivAny`.
 
 `pass` checks every function export the two modules share (same name, same index) for
@@ -167,10 +166,10 @@ structure Opts where
   egraphTv : Option String := none
   egraphTvSeg : Option String := none
   chunk : Nat := 4
-  /-- Write certificates in round 3's form (every kernel evaluation validates and instantiates
+  /-- Write certificates in the specification form (every kernel evaluation validates and instantiates
   with the specification's functions) instead of over `Silmaril.Wasm.Auto2.Kernel`. -/
   specKernel : Bool := false
-  /-- Embed the binaries in the certificate, decoded in the kernel (round 3's form), instead of
+  /-- Embed the binaries in the certificate, decoded in the kernel, instead of
   stating the decoded modules as terms. -/
   embed : Bool := false
   /-- With `--wat`: also state these modules (`a`, `b`) as the tool decoded them from the
@@ -178,7 +177,7 @@ structure Opts where
   link : List Char := []
   /-- With `--wat`: for these modules (`a`, `b`), the decoded module, a kernel-checked equivalence
   to the WAT module at every proved export, and the certificate's equivalences transferred to the
-  decoded modules (`--link-equiv`, pass 3 of the kernel track). -/
+  decoded modules (`--link-equiv`). -/
   linkEquiv : List Char := []
   /-- `bench --vc`: the VC cases of the library (`Silmaril.Wasm.Auto2.VCLib3.vcBench`) instead of
   the front-end cases. -/
@@ -223,11 +222,11 @@ def valLean : Val → String
   | .vec b => s!"Val.vec {b.toNat}#128"
   | .ref _ => "Val.ref .null"
 
-/-- The imports and the validity theorems of a certificate over `Silmaril.Wasm.Auto2.Kernel` (round 2,
-kernel track): each module is validated once (`validA`, `validB`); every later kernel evaluation
+/-- The imports and the validity theorems of a certificate over `Silmaril.Wasm.Auto2.Kernel`:
+each module is validated once (`validA`, `validB`); every later kernel evaluation
 uses the validation-free instance `instK?` and closed-form data segments, through the equations
-of `Silmaril.Wasm.Auto2.Kernel.Thms`. Empty in round 3's form (`--spec-kernel`). Pass 3 (kernel
-track): validation through `Silmaril.Wasm.Auto2.Valid2` (`validG?_eq`: control flow, calls,
+of `Silmaril.Wasm.Auto2.Kernel.Thms`. Empty in the specification form (`--spec-kernel`).
+Validation goes through `Silmaril.Wasm.Auto2.Valid2` (`validG?_eq`: control flow, calls,
 globals and memory on the structural path; no type comparison per function). -/
 def kImport (k : Bool) : String :=
   if k then
@@ -277,8 +276,8 @@ def certHeader (a b : ByteArray) (extra : List String := []) (k : Bool := false)
 re-elaborated when the certificate is checked). -/
 def moduleLean (m : Module) : String := Std.Format.pretty (repr m) 100
 
-/-- The header of a certificate whose modules are stated as **decoded terms** (round 2, kernel
-track): the modules the tool decoded (silmaril-lean's decoder, compiled), printed as Lean terms,
+/-- The header of a certificate whose modules are stated as **decoded terms**:
+the modules the tool decoded (silmaril-lean's decoder, compiled), printed as Lean terms,
 so the kernel never decodes a binary. -/
 def certHeaderTerm (ma mb : Module) (extra : List String := []) (k : Bool := false) : String :=
   "import Silmaril.Wasm.Auto.Front.Thms\nimport Silmaril.Wasm.Auto.Bridge.Thms\n" ++
@@ -309,8 +308,8 @@ def certHeaderWat (ta tb : String) (extra : List String := []) (k : Bool := fals
 
 /-- The link of a WAT-stated module to the binary (`--link`): the module the tool decoded from
 the binary (silmaril-lean's decoder, compiled), as a term, and a proof by `rfl` that the WAT
-module is that term. It holds when Binaryen's printing is faithful to the binary (pass 2 of the
-kernel track: for Binaryen-written binaries; Binaryen reorders and merges the type section of
+module is that term. It holds when Binaryen's printing is faithful to the binary (for
+Binaryen-written binaries; Binaryen reorders and merges the type section of
 other binaries, and the `rfl` then fails). -/
 def linkThms (name : String) (m : Module) : String :=
   s!"/-- `{name}` as decoded from its binary by the tool. -/\n" ++
@@ -426,7 +425,7 @@ def provedChunkCThm (rel : Rel) (c : Nat) (js : List Nat) (i j : Nat) : String :
   s!"  Silmaril.Wasm.Auto2.Calls.modEquiv_of_checkAmongC (js := {natsLean js}) (i := {i}) " ++
   s!"(Silmaril.Wasm.Auto.Bridge.rel_refl _) rfl\n    (by rw [chunkC_{c}]; rfl)\n\n"
 
-/-- The shared fact of chunk `c` of the stages `equivu`, `equivc`, `equivv` (pass 2): the
+/-- The shared fact of chunk `c` of the stages `equivu`, `equivc`, `equivv`: the
 summaries with unrolled loops and inlined calls and the check with the third simplifier, each
 module instantiated once; over `Silmaril.Wasm.Auto2.Kernel` when `k` (`checkAmongV_eq_K`). -/
 def chunkVThm (c : Nat) (js : List Nat) (k : Bool) : String :=
@@ -624,7 +623,7 @@ def runPair (kind : String) (pa pb exp : String) (o : Opts) : IO UInt32 := do
   let (r, ms) ← timed <| evalReport fun _ =>
     if kind == "equiv" then Silmaril.Wasm.Auto2.Front2.checkEquivV o.rel ma mb ja o.random identical
     else Silmaril.Wasm.Auto2.Front2.checkRefinesV o.rel ma mb ja o.random identical
-  -- Stage `vcinfer` (round 2, summaries, pass 3): a search for inferred contracts, run only on
+  -- Stage `vcinfer`: a search for inferred contracts, run only on
   -- an unknown verdict; its result is a candidate whose certificate (`--lean`) is the proof.
   let (inf, msI) ← timed (pure (if r.verdict == .unknown then
       Silmaril.Wasm.Auto2.VCInfer.inferPair? Silmaril.Wasm.Auto2.VCInfer.inferFuns ma mb ja else none))
@@ -749,7 +748,7 @@ def runPass (pa pb : String) (o : Opts) : IO UInt32 := do
     toString nP ++ ",\"refuted\":" ++ toString nR ++ ",\"unknown\":" ++ toString nU ++
     ",\"egraphLifts\":" ++ toString nL ++ ",\"egraphSegLifts\":" ++ toString nS ++
     ",\"ms\":" ++ toString total ++ "}}")
-  -- `--link-equiv` (pass 3 of the kernel track): every proved export, with its theorem, that the
+  -- `--link-equiv`: every proved export, with its theorem, that the
   -- summaries of `checkAmong` cover on both decoded modules (checked here on each module
   -- against itself; the kernel checks it against the WAT module).
   let named : List (Nat × String) :=

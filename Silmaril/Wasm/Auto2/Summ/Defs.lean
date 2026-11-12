@@ -7,12 +7,11 @@ public import Silmaril.Wasm.Auto.Front.Defs
 @[expose] public section
 
 /-!
-# Function summaries, round 2 of the summaries track: unrolled loops, a guard-aware check
+# Function summaries: unrolled loops, a guard-aware check
 
-The third summariser of the front end (`docs/projects/wasm-binaryen-tooling.md`, section "Round 2 (wa2),
-summaries"). It extends the extended summaries of `Silmaril.Wasm.Auto.Bridge` in two ways:
+The third summariser of the front end (`docs/projects/wasm-binaryen-tooling.md`). It extends the extended summaries of `Silmaril.Wasm.Auto.Bridge` in two ways:
 
-* **Loops.** Bodies are run by track equiv's unrolling executor
+* **Loops.** Bodies are run by the unrolling executor
   `Silmaril.Wasm.Auto.EquivUnroll.xsexecU` instead of `Equiv.xsexec`: a `do … while` loop
   (`loop` whose body ends in `br_if 0`, entered with an empty operand stack) whose condition the
   simplifier decides at every iteration is unrolled. `fuel` bounds the instructions and
@@ -248,12 +247,12 @@ def checkAmongU (fuel : Nat) (m₁ m₂ : Module) (js : List Nat) : List Bool :=
 def upgradeU (r : Silmaril.Wasm.Auto.Front.Report) (ok : Bool) : Silmaril.Wasm.Auto.Front.Report :=
   if r.verdict == .unknown && ok then ⟨.proved, .stage "equivu"⟩ else r
 
-/-- **The front end for equivalence**: round 3's (`Front.checkEquiv`), then this check. -/
+/-- **The front end for equivalence**: the basic stages (`Front.checkEquiv`), then this check. -/
 def checkEquivU (R : Silmaril.Wasm.Auto.Front.Rel) (m₁ m₂ : Module) (j : Nat) (nRand : Nat)
     (identical : Bool) : Silmaril.Wasm.Auto.Front.Report :=
   upgradeU (Silmaril.Wasm.Auto.Front.checkEquiv R m₁ m₂ j nRand identical) (fnCheckU defFuel m₁ m₂ j)
 
-/-- **The front end for a refinement**: round 3's, then this check (which proves equivalence). -/
+/-- **The front end for a refinement**: the basic stages, then this check (which proves equivalence). -/
 def checkRefinesU (R : Silmaril.Wasm.Auto.Front.Rel) (impl spec : Module) (j : Nat) (nRand : Nat)
     (identical : Bool) : Silmaril.Wasm.Auto.Front.Report :=
   upgradeU (Silmaril.Wasm.Auto.Front.checkRefines R impl spec j nRand identical)

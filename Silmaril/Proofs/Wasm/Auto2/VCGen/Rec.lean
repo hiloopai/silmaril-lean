@@ -3,9 +3,9 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCGen.Func
 
 /-!
-# Generator 4: recursive functions (total correctness)
+# The VC generator: recursive functions (total correctness)
 
-Round 2, pass 3. A function that calls itself is verified with a **recursive callee contract**
+A function that calls itself is verified with a **recursive callee contract**
 and induction on a bound: the specification functions form a family `Fs N`; the caller's
 specification `S` is checked against the callee contract `S'` for its own code (an entry
 `(x, S', code)` of `S.calls`, where function `x` of the module is the function itself), with

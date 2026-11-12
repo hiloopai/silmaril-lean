@@ -174,7 +174,7 @@ def SpecOK (c : Corr) (P : Profile) (host : HostSemantics H) (a : Nat)
   | .part => FSpecValid P host a S
   | .total => TFSpecAt P host a S
 
-/-- `fspec` for calls from a store with the functions of `s₀` (round 2, pass 3: what a call
+/-- `fspec` for calls from a store with the functions of `s₀` (what a call
 needs of its callee, so that a function can be its own callee, `genFunc_tsound_rec`). -/
 def fspecIn (F : Fns) (S : FnSpec) (a : Nat) (fi : FuncInst H) (s₀ : Store H) :
     Silmaril.Wasm.Logic.Hoare.FSpec H where

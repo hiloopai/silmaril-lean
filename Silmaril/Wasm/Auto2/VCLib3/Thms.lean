@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCLib3.Lib
 
 /-!
-# VC library, pass 3: results
+# VC library with linear arithmetic and recursion: results
 
 `Silmaril.Proofs.Wasm.Auto2.VCLib3.Lib`:
 

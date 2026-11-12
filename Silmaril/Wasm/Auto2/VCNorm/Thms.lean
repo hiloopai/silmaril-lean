@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCNorm.Basic
 
 /-!
-# The normaliser of VC generator 4: results
+# The normaliser of the VC generator: results
 
 Proofs in `Silmaril.Proofs.Wasm.Auto2.VCNorm.Basic`, for `Silmaril.Wasm.Auto2.VCNorm.Defs`:
 

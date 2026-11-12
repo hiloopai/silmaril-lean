@@ -159,7 +159,7 @@ theorem setGs_self {s : Store H} {m : ModuleInst} {G : List Val}
     rw [← hval]
   · rfl
 
-/-! ## Setting a prefix of the globals again (calls, round 2, pass 3) -/
+/-! ## Setting a prefix of the globals again (calls) -/
 
 /-- The value of an address after setting the globals `G₁`, then a prefix `G₂` of them: `G₂`'s
 if it has one, else `G₁`'s. -/

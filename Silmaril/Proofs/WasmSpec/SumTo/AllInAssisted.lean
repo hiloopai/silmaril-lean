@@ -28,7 +28,7 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.
   Silmaril.WasmSpec Silmaril.WasmSpec.Ops Silmaril.WasmSpec.SumTo
 
 
-/-- Proposed by `gpt-6.1-sol` in round 1 for `vc_step`; checked by Lean. -/
+/-- A lemma for `vc_step` proposed by the model; checked by Lean. -/
 theorem triBV_step_aux (i : BitVec 32) (hi : i ≠ 0) :
     triBV i = triBV (i - 1) + i := by
   have hs (k : Nat) : tri (k + 1) = tri k + (k + 1) := by

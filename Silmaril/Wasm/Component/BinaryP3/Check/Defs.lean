@@ -36,7 +36,7 @@ are executable checks, not proved.
 
 namespace Silmaril.Wasm.Component.BinaryP3.Check
 
-def errStr (e : Silmaril.Wasm.ByteParse.Error) : String := reprStr e
+def errStr (e : Silmaril.Parse.ByteParse.Error) : String := reprStr e
 
 def bytesEq (a b : ByteArray) : Bool := a.data == b.data
 

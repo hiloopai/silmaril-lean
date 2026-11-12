@@ -3,10 +3,10 @@ module
 public import Silmaril.Wasm.Auto2.VCBridge.Defs
 
 /-!
-# A verified normaliser for the conditions of VC generator 4
+# A verified normaliser for the conditions of the VC generator
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, track vcgen (pass 2). The VC stage of `wasm-check`
-(`Silmaril.Wasm.Auto2.VCBridge.vcCheck`) accepted a condition only if it is *syntactically* one of a
+The basic VC stage of `wasm-check`
+(`Silmaril.Wasm.Auto2.VCBridge.vcCheck`) accepts a condition only if it is *syntactically* one of a
 contract's proved conditions. This module lets it accept conditions that differ from them by
 
 * **normalisation** (`Fm.norm`, `Tm.norm`): operands of commutative operators (`add`, `mul`,
@@ -133,7 +133,7 @@ def relTN {t : IntType} (op : IntRelOp) (a b : Tm t) : Tm .i32 :=
 def iteN {t : IntType} (c : Tm .i32) (a b : Tm t) : Tm t :=
   if a = b then a else .ite c a b
 
-/-! ## Linear arithmetic (round 2, pass 3)
+/-! ## Linear arithmetic
 
 A sum of multiples of atoms plus a constant, modulo `2 ^ width`: `([(c₁, a₁), …], k)` is
 `c₁ * a₁ + … + k`. `Tm.lin` reads `add`, `sub`, `mul` by a literal, `shl` by a literal and

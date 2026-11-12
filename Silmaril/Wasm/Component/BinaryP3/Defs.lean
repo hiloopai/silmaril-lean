@@ -49,7 +49,7 @@ the new parser accepts every component the old one accepts, with the embedded re
 
 namespace Silmaril.Wasm.Component.BinaryP3
 
-open Silmaril.Wasm.ByteParse (Grammar GrammarE NonEmpty Bytes Error runAll)
+open Silmaril.Parse.ByteParse (Grammar GrammarE NonEmpty Bytes Error runAll)
 open Silmaril.Wasm.Component.Binary (CoreValType CanonOpt ValType Alias CoreInstanceExpr
   CoreType InstanceExpr DefType Start Import Export Value)
 
@@ -241,7 +241,7 @@ partial def Ast.canons : Ast → List Canon
 /-! ## Grammar -/
 
 section Grammar
-open Silmaril.Wasm.ByteParse.Grammar
+open Silmaril.Parse.ByteParse.Grammar
 open Silmaril.Wasm.Component.Binary (canonOptsG coreValTypeG resultListG tag0 coreInstanceExprG
   coreTypeG coreTypeG_nonEmpty instanceExprG aliasG aliasG_nonEmpty startG importG
   externNameG_nonEmpty exportG valueG valTypeG_nonEmpty defTypeG defTypeG_nonEmpty

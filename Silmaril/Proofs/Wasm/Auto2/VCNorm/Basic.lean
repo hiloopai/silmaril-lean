@@ -4,7 +4,7 @@ public import Silmaril.Wasm.Auto2.VCNorm.Defs
 public import Silmaril.Wasm.Auto2.VCGen.Thms
 
 /-!
-# Soundness of the normaliser and of renaming (VC generator 4)
+# Soundness of the normaliser and of renaming (the VC generator)
 
 * `Tm.den_norm`, `Fm.den_norm`: normalisation preserves the meaning of terms and formulas;
 * `Tm.den_rn`, `Fm.den_rn`: renaming the variables is a change of environment (`Env.comp`);

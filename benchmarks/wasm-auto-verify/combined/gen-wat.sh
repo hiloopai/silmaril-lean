@@ -21,8 +21,7 @@ for b in rand60 rand60.binaryen-O3; do
 done
 # The opt-in corpus has a multi-value function: Binaryen reads it only with the feature enabled
 # (--all-features, which also prints every function's type use) and prints its result with its
-# non-standard `tuple.make`, which the certificates read with `wat3b!` (Silmaril.Wasm.Auto2.Wat;
-# round 2, kernel track). Before round 2 these certificates embedded the binaries.
+# non-standard `tuple.make`, which the certificates read with `wat3b!` (Silmaril.Wasm.Auto2.Wat).
 for b in opt-in opt-in.binaryen-O2 opt-in.peep; do
   "$W" --all-features "$C/$b.wasm" -S -o "$here/wat/$b.wat"
   echo "$(sha256sum "$C/$b.wasm" | cut -d' ' -f1)  $b.wasm" >> "$here/wat/SOURCES"

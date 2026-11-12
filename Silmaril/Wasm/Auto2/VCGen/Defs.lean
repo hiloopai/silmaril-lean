@@ -5,9 +5,9 @@ public import Silmaril.Wasm.Auto.VCGen.Defs
 /-!
 # A reflective VC generator with SSA names, linear memory, loop variants and entry facts
 
-Generator 4 of `docs/projects/wasm-binaryen-tooling.md` (round 2 of the goal, track vcgen). It is
-`Silmaril.Wasm.Auto.VCGen3` (generator 3, copied into this new topic so that it can change without
-touching the modules of the earlier rounds) with one change so far: the state at the head of a
+The VC generator of `Silmaril.Wasm.Auto2` (`docs/projects/wasm-binaryen-tooling.md`). It is
+`Silmaril.Wasm.Auto.VCGen3`, copied into this topic so that it can change independently, with one
+change: the state at the head of a
 loop keeps the **path condition of the loop's entry** (which contains the precondition) instead
 of the precondition alone. The entry facts only mention variables below the loop's first head
 variable, whose values the loop does not change, so an inner loop knows what the enclosing
@@ -23,11 +23,11 @@ turns `AllValid F (genFunc S fn fuel)` into the every-run function specification
 `genFunc_tsound` into the same specification for **total correctness** when `S.total` (every run
 terminates).
 
-This is `Silmaril.Wasm.Auto.VCGen2` (pass 2 of the track, unchanged) plus the variants: with
+This is `Silmaril.Wasm.Auto.VCGen2` (unchanged) plus the variants: with
 `S.total`, every branch back to loop `j` also asks that the variant `S.var[j]` (an `i32` term over
 the parameters and the locals, read unsigned, no memory) at the current locals be below its value
-at the locals the iteration started with (`varVC`). Like pass 2's generator it extends the
-generator of `Silmaril.Wasm.Auto.VCGen` (pass 1 of the track; unchanged) with:
+at the locals the iteration started with (`varVC`). Like `VCGen2` it extends the
+generator of `Silmaril.Wasm.Auto.VCGen` (unchanged) with:
 
 * **fresh variables** (SSA names): the state carries a counter `next`; `local.set`/`local.tee` of
   a value that is not a variable or a literal binds it to the fresh variable `var t next` with
@@ -49,19 +49,19 @@ generator of `Silmaril.Wasm.Auto.VCGen` (pass 1 of the track; unchanged) with:
 * loops are verified from a state with fresh variables for the locals the body writes (the
   other locals keep their values, so invariants need not restate them) and a fresh memory
   variable when the body stores or calls, the loop invariant **and the entry path condition**
-  (generator 3: the precondition only) in the path condition.
+  (`VCGen3`: the precondition only) in the path condition.
 
 Placeholders: `loc t j` is local `j` (in an invariant) or result `j` (in the postcondition);
 `MR.cur` is the current memory (in an invariant) or the final memory (in the postcondition).
 Memory `MR.v 0` in an annotation is the memory at entry.
 
-**Globals** (round 2, pass 2): `FnSpec.globals` declares the module's integer globals
+**Globals**: `FnSpec.globals` declares the module's integer globals
 `0, …, k - 1` the function uses; `global.get`/`global.set` read and write them as the symbolic
 locals after the declared ones (so `local.set`-style fresh names, loop heads and their havoc apply
 unchanged); their entry values are the variables `params.length + g`; `fspec` states them
 (`GlobOk`: distinct addresses, values at entry) and the final values (`setGs`).
 
-**Callees with globals, variants over globals and the memory at entry** (round 2, pass 3): a
+**Callees with globals, variants over globals and the memory at entry**: a
 callee may read and write a prefix of the caller's globals (`C.globals <+: S.globals`); the call
 binds the callee's entry globals to the caller's current values and its final globals to fresh
 names, which replace the caller's symbolic globals (`callStep`); loop heads havoc the globals of a
@@ -96,12 +96,12 @@ def Env.get (ρ : Env) : (t : IntType) → Nat → BitVec t.width
   | .i32, i => ρ.e32 i
   | .i64, i => ρ.e64 i
 
-/-- Specification functions: those of pass 1, `i32`-valued functions of a memory and two `i32`
+/-- Specification functions: those of `Silmaril.Wasm.Auto.VCGen.Fns`, `i32`-valued functions of a memory and two `i32`
 values, and predicates on a memory and a list of `i32` values. -/
 structure Fns extends Silmaril.Wasm.Auto.VCGen.Fns where
   mf : Nat → ByteArray → BitVec 32 → BitVec 32 → BitVec 32 := fun _ _ x _ => x
   pr : Nat → ByteArray → List (BitVec 32) → Prop := fun _ _ _ => True
-  /-- Predicates on two memories and a list of `i32` values (round 2, pass 2: e.g. "the words of
+  /-- Predicates on two memories and a list of `i32` values (e.g. "the words of
   the first memory are a permutation of those of the second"). -/
   pr2 : Nat → ByteArray → ByteArray → List (BitVec 32) → Prop := fun _ _ _ _ => True
 
@@ -452,7 +452,7 @@ def Tm.memFree : {t : IntType} → Tm t → Bool
   | _, .mfn .. => false
 
 /-- A term that does not read the current memory (the placeholder `cur`): it may read memory
-variables, e.g. the memory at entry `v 0` (a variant, round 2, pass 3). -/
+variables, e.g. the memory at entry `v 0` (in a variant). -/
 def Tm.curFree : {t : IntType} → Tm t → Bool
   | _, .var _ _ => true
   | _, .loc _ _ => true
@@ -527,8 +527,8 @@ structure FnSpec where
   `params.length + g` (`FnSpec.ents`); in the generator's state they are the symbolic locals after
   the declared ones, so invariants (`loc t (nl + g)`, with `nl` the number of parameters and
   declared locals) and loop heads treat them as locals; the postcondition sees the final value of
-  global `g` as `loc t (results.length + g)`. A callee may use a prefix of the caller's globals
-  (round 2, pass 3): at the call they hold the caller's current values, after it the callee's
+  global `g` as `loc t (results.length + g)`. A callee may use a prefix of the caller's globals:
+  at the call they hold the caller's current values, after it the callee's
   final ones. -/
   globals : List IntType := []
 
@@ -750,7 +750,7 @@ def headOK (b : Nat) (lt : List IntType) (hl : List SV) : Bool :=
 def invAt (S : FnSpec) (k : Nat) (ls : List SV) (cm : Nat) : Fm := (S.inv.getD k .tt).subst ls cm
 
 /-- The state at the head of loop `k`: the head locals `hl`, memory variable `hm`, the invariant
-and the path condition `E` of the loop's entry (which contains the precondition). Unlike pass 2's
+and the path condition `E` of the loop's entry (which contains the precondition). Unlike `VCGen2`'s
 generator, the entry facts are kept: they only mention variables below `b`, whose values the
 loop does not change, so an inner loop knows what the enclosing iterations established (needed
 to prove an enclosing loop's variant after an inner loop). -/
@@ -769,7 +769,7 @@ def lpVC (S : FnSpec) (lt : List IntType) (j b hm : Nat) (hl : List SV) (σ : SS
   else bad σ
 
 /-- Variant `k` at the symbolic locals `ls` (the declared locals, then the globals: a variant
-names global `g` as `loc t (nl + g)`, like an invariant, round 2, pass 3); it may read the memory
+names global `g` as `loc t (nl + g)`, like an invariant); it may read the memory
 at entry but not the current one. -/
 def varAt (S : FnSpec) (_lt : List IntType) (k : Nat) (ls : List SV) : Tm .i32 :=
   (S.var.getD k (.lit .i32 0)).subst ls 0

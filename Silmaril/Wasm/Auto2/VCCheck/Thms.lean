@@ -10,7 +10,7 @@ Proofs in `Silmaril.Proofs.Wasm.Auto2.VCCheck.Mod`, for `Silmaril.Wasm.Auto2.VCC
 * **`modTSpecM_of_vcCheckM`**: `vcCheckM e m j = true` gives the total every-run specification of
   export `j` (memory at entry and callees in the precondition), at every profile;
 * `calleesValid`: the callees of a proved contract meet their total specifications;
-* **`modMeets_of_vcCheckM`**, **`checkMeetsVCN_proved`**: for pass 1's contracts (no memory, no
+* **`modMeets_of_vcCheckM`**, **`checkMeetsVCN_proved`**: for the contracts of `VcEntry` (no memory, no
   callees) the front end's `ModMeets`.
 -/
 
