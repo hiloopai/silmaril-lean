@@ -82,7 +82,7 @@ programs, additions and bounded arithmetic; each says which. The general obligat
 | `ccomp-legacy` | `tools/ccomp` | the Mir/Lir compiler (`Compiler.C.Main`) |
 | `ccomp-verified` | `tools/ccomp-verified` | the verified Core compiler (`Compiler.Core.Main`): a Cerberus Core document to a linked x86-64 artifact |
 | `csem` | `tools/csem` | the C semantics ladder on typed-Ail documents: `run`, `c0` … `c7`, the ladder checks |
-| `decompile` | `tools/decompile` | the decompiler over relocatable x86-64 objects (`X86.Decompile`); input through `SIL_DECOMPILE_FILE` |
+| `decompile` | `tools/decompile` | the decompiler over relocatable x86-64 objects (`X86.Decompile`); input through `SIL_DECOMPILE_FILE`. Its examples are object code of third-party sources: the RFC 1321 MD5 reference code, derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`), and amosnier/sha-2 (`NOTICES/sha-2`) |
 
 ```sh
 lake build ccomp ccomp-legacy ccomp-verified csem decompile
@@ -125,4 +125,7 @@ Silmaril's own development, under this repository's MIT licence, except: the RV6
 adapts clauses of the Sail RISC-V model at `27224ccb` (BSD-2-Clause, `NOTICES/sail-riscv`); the
 frontend uses the Cerberus port (`NOTICES/Cerberus`); `runtime/libc.ail` is the Cerberus
 elaboration of `tools/ccomp/runtime/libc.c` (in-house) against the Cerberus runtime headers
-(BSD-2-Clause, `NOTICES/Cerberus`).
+(BSD-2-Clause, `NOTICES/Cerberus`). The decompiler's examples and its `sha256.o` object
+(`Machine.CSupport.Crypto.X86.Objects.Sha256ClangO0`) are object code of amosnier/sha-2 (Unlicense
+or 0BSD, `NOTICES/sha-2`) and of the RFC 1321 MD5 reference code, derived from the RSA Data
+Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`).

@@ -12,6 +12,10 @@ public meta import Silmaril.Machine.CSupport.Crypto.X86.Objects.Sha256ClangO0.De
 
 Who checks what, in the style of `Crypto.X86.Objects.Sha256ClangO0Facts`.
 
+The fixtures are object code of third-party sources: `MD5_memset` is from `md5c.c` of RFC 1321,
+derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`);
+`sha256.o` is from `sha-256.c` of amosnier/sha-2 (`NOTICES/sha-2`).
+
 ## Checked by the Lean kernel (`decide`/`rfl`, via `split_functions`)
 
 `MD5_memset`, the 64-byte, 20-instruction `clang -O0` fixture from
