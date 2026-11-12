@@ -21,7 +21,7 @@ developments, the WASI theories, and a small networking stack. It builds on the 
 | Transformations | `Silmaril.Wasm.Replace`, `Silmaril.Wasm.LambdaRTL`, `Silmaril.Wasm.Outcome`, `Silmaril.Wasm.RuntimeMap` | function replacement on reachable stores, the λRTL fragment, outcomes |
 | Examples | `Silmaril.Wasm.Examples` | compiled Rust, C and AssemblyScript adders with their proofs (sources in `examples/wasm-demos`) |
 | WASI | `Silmaril.Wasi` | WASI preview 1, 0.2 and 0.3 as theories, adapters between them, hosts, worlds, streams, the converse of linking, and the WIT import of the vendored interfaces (`Silmaril.Wasi.Versions.WitImport`) |
-| Networking | `Silmaril.Net` | wire formats, IP, UDP, TCP, HTTP/1 and HTTP |
+| Networking | `Silmaril.Net` | wire formats, IP, UDP, TCP, HTTP semantics, HTTP/1.1, HTTP/2 and HPACK (scope and roadmap: [http.md](http.md)) |
 | OCaml | `Silmaril.ML.OCaml` | the OCaml syntax and the generated standard library used by `Silmaril.Wasm.OCaml` |
 | Project registry | `Silmaril.Project.Components`, `Silmaril.Project.Formats.{Wit,Wac,Component}`, `Silmaril.Project.Shapes.{Component,Wasm}` | component registry records, the WIT, WAC and component formats, and the component and Wasm problem shapes |
 
