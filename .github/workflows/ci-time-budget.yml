@@ -23,7 +23,7 @@ jobs:
           gh api "$attempt" > "$RUNNER_TEMP/ci-run.json"
           # The finished jobs' logs give the time Lake spent compiling, which does not count.
           mkdir -p "$RUNNER_TEMP/logs"
-          for job in $(gh api --paginate "$attempt/jobs" --jq '.jobs[] | select(.status == "completed") | .id'); do
+          for job in $(gh api --paginate "$attempt/jobs" --jq '.jobs[] | select(.status == "completed" and .conclusion != "skipped") | .id'); do
             gh api --allow-escape-sequences "repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs" > "$RUNNER_TEMP/logs/$job.txt"
           done
           python3 scripts/check-ci-time.py "$RUNNER_TEMP/ci-run.json" "$RUNNER_TEMP"/logs/*.txt
