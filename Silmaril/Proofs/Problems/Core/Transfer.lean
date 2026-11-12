@@ -49,6 +49,14 @@ theorem total_of_mustTotal_ofIsa {I : Silmaril.X86.SegVC.Isa σ} {S : Spec σ}
   exact ⟨t, Silmaril.X86.FnContract.runsIn_reaches hr,
     ⟨hres.silent, hres.abi, hres.frame, hres.post⟩⟩
 
+/-- On a deterministic machine, total correctness is demonic total correctness. -/
+theorem mustTotal_ofIsa_of_total {I : Silmaril.X86.SegVC.Isa σ} {S : Spec σ} (h : S.Total I) :
+    S.MustTotal (RelIsa.ofIsa I) := by
+  intro s hl ha he
+  obtain ⟨t, ⟨n, hn⟩, hr⟩ := h s hl ha he
+  exact RelIsa.must_ofIsa_iff.2
+    ⟨t, Silmaril.X86.FnContract.RunsIn.of_run hn, ⟨hr.silent, hr.abi, hr.frame, hr.post⟩⟩
+
 /-- An invariant of the top `A` that excludes `Q`, is closed under `A`'s ok-steps and lies
 inside `C.live` refutes `Must C R Q` for every `C` below `A` with `Progress`. -/
 theorem never_refutes_core {A C : RelIsa σ} {R Q Inv : σ → Prop}
