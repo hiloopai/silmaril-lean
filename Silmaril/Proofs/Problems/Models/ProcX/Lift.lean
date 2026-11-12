@@ -28,7 +28,7 @@ theorem userStep_of_proc {c : State} (x : XFile) {m : Memory}
   unfold userStep Proc.userStep at *
   by_cases trap : m.fetchBytes c.rip.toNat 2 = some X86Linux.syscallBytes
   · simp [trap, liftStep]
-  · simp only [trap, if_false] at h ⊢
+  · simp only [trap, ↓reduceIte] at h ⊢
     cases hs : Silmaril.X86.Str9.step ⟨c, m⟩ with
     | none => rw [hs] at h; exact absurd rfl h
     | some n =>
@@ -67,7 +67,7 @@ theorem isa_step_of_proc {c : State} (x : XFile) {m : Memory} {o : Step State}
     rw [userStep_of_proc x (by rw [hu]; exact nofun), hu]
     simp only [liftStep]
     by_cases st : Proc.isStartup t
-    · simp only [st, if_true] at h ⊢
+    · simp only [st, ↓reduceIte] at h ⊢
       obtain ⟨core', startup, rfl⟩ := h
       exact ⟨⟨core', x⟩, ⟨startup, rfl⟩, rfl⟩
     · simp only [st] at h ⊢
