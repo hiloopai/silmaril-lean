@@ -1,5 +1,6 @@
 module
 
-public import Silmaril.Raw.Machine.X86.Ext.Lemmas
+public import Silmaril.X86.Ext.Lemmas
 
-/-! Pinned Raw interface for `Silmaril.X86.Ext.Lemmas`. -/
+/-! Interface for `Silmaril.X86.Ext.Lemmas`: the public module, reused (its Raw copy was the
+same file). -/
