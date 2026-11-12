@@ -24,6 +24,17 @@ waves; each section below says which.
 | x86 checks | `Silmaril.X86.{Verify,FetchTrace,Decompile.VC}` | assembly text against programs, fetched-trace decoding, decompilation VCs |
 | Ports of older Silmaril code | `Silmaril.Semantics.CPort.*` | the definitions the above import from the earlier Silmaril tree |
 
+## Verified Core fragments (second wave)
+
+| Area | Modules | What |
+| --- | --- | --- |
+| The specification | `Silmaril.Raw.Compiler.Core.Spec` (in #69) | what a compiled program may do: for every machine on which the trusted loader placed the artifact, every behaviour of the x86-64 fetch/decode/execute model is a behaviour Cerberus Core allows (`SoundSpec`) |
+| Verified fragments | `Silmaril.Compiler.Core.Verified.*` | compilers of Core fragments to x86-64 with their soundness proofs, fragment by fragment: integer state and arithmetic, control flow, calls and returns, `printf` of integers and strings, loops, argument vectors, exits; their typing, run and state lemmas |
+| Around them | `Silmaril.Compiler.Core.{Source,ReturnControl,Semantics,Main,ExactRun,Checks,BehaviourAdapter,Arguments}`, `Silmaril.Compiler.Decompile.WordC` | the Core source reader, return control, the behaviour adapter to the C-backend vocabulary, the verified driver, decompiled word-level C |
+
+Each fragment proves `SoundSpec` for the programs it accepts and rejects the rest; which C
+programs that covers is stated in each module.
+
 ## Status
 
 Proved where a theorem is stated (no `sorry`, no new `axiom`, no `native_decide`); open goals are
@@ -43,7 +54,7 @@ Left out, and why:
 
 ```sh
 lake build --wfail Silmaril.Compiler.Target.Backends.Defs Silmaril.Compiler.Mir.Interp.Defs \
-  Silmaril.Machine.RiscV.Lir.Defs Silmaril.Compiler.Registry.Defs
+  Silmaril.Machine.RiscV.Lir.Defs Silmaril.Compiler.Registry.Defs Silmaril.Compiler.Core.Main.Defs
 ```
 
 ## Provenance and licence
