@@ -20,7 +20,9 @@ deterministic refinement is admissible).
   top solves every admissible refinement.
 * `fnCorrect_of_sub`, `fnCorrect_single_iff`.
 * `total_of_mustTotal_ofIsa`: on `ofIsa I`, `Spec.MustTotal` is `Spec.Total`
-  (`RelIsa.must_ofIsa_iff`); `fnCorrectDet_of_fnJ`, and `fnCorrectDet_of_fnCorrect`: a class
+  (`RelIsa.must_ofIsa_iff`), and its converse `mustTotal_ofIsa_of_total`;
+  `fnCorrect_single_ofIsa_of_total`: a deterministic `Total` proof, weakened along `Spec.Sub`,
+  solves the singleton class `Class.single (ofIsa I)`; `fnCorrectDet_of_fnJ`, and `fnCorrectDet_of_fnCorrect`: a class
   solution gives the deterministic `Spec.Total` shape on any `ofIsa I` below the top.
 
 **Spec implication.** `mustTotal_mono_sub` (`Spec.MustTotal` is monotone along `Spec.Sub`),
@@ -93,6 +95,21 @@ theorem fnCorrect_single_iff {C : RelIsa σ} {S : Word → Spec σ} :
 theorem total_of_mustTotal_ofIsa {I : Silmaril.X86.SegVC.Isa σ} {S : Spec σ}
     (h : S.MustTotal (RelIsa.ofIsa I)) : S.Total I :=
   Silmaril.Proofs.Problems.Core.total_of_mustTotal_ofIsa h
+
+/-- **On a deterministic machine, total correctness is demonic total correctness**: the
+converse of `total_of_mustTotal_ofIsa`. -/
+theorem mustTotal_ofIsa_of_total {I : Silmaril.X86.SegVC.Isa σ} {S : Spec σ} (h : S.Total I) :
+    S.MustTotal (RelIsa.ofIsa I) :=
+  Silmaril.Proofs.Problems.Core.mustTotal_ofIsa_of_total h
+
+/-- **From a deterministic `Total` proof to a class solution**: deterministic total
+correctness of `S` on `I`, weakened along `Spec.Sub` to `T`, solves `T` on the singleton
+class of `ofIsa I`. -/
+theorem fnCorrect_single_ofIsa_of_total {I : Silmaril.X86.SegVC.Isa σ} {S T : Word → Spec σ}
+    (h : ∀ e, (S e).Total I) (hs : ∀ e, (S e).Sub (T e)) :
+    FnCorrect (Class.single (RelIsa.ofIsa I)) T :=
+  fnCorrect_single_iff.2 fun e =>
+    Silmaril.Proofs.Problems.Core.mustTotal_mono_sub (hs e) (mustTotal_ofIsa_of_total (h e))
 
 /-- The one-machine judgement on `ofIsa I` is the deterministic form. -/
 theorem fnCorrectDet_of_fnJ {I : Silmaril.X86.SegVC.Isa σ} {S : Word → Spec σ}
