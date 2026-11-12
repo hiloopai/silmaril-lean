@@ -39,6 +39,7 @@ def nullCases (names : List String) : List TypCase :=
 theorem floatInst_eq (c : String) (cs : List TypCase) :
     floatInst c cs = .instD [.expP "M" (.varT "M" [])] (floatPat c) (.variantT cs) := rfl
 
+set_option linter.unusedTactic false in
 theorem matchArgs_floatPat_miss {env : Env} {c : String} {a : Value} (n : Nat)
     (h : ∀ M, a ≠ .case "%X%" (.tuple [.case c (.tuple []), M])) :
     matchArgs (n + 8) env VarEnv.empty (floatPat c) [.val a] = .error .undef := by

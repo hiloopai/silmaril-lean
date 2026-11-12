@@ -138,6 +138,7 @@ theorem slot_map (fuel inst : Nat) (n : String)
   rcases lookupS n es with _ | ⟨s, k⟩ <;> try rfl
   simp only [Option.map_some, coreSortIdxTo, coreSortTo_func, ih]
 
+set_option linter.unusedTactic false in
 theorem coreR_map : ∀ fuel i, coreR (mapRS r) fuel i = Layout.coreR r fuel i
   | 0, _ => rfl
   | fuel + 1, i => by
@@ -180,6 +181,7 @@ theorem mapM_map {α β γ : Type} (g : α → β) (F : β → Option γ) :
   | [] => rfl
   | a :: l => by simp only [List.map_cons, List.mapM_cons, mapM_map g F l, Function.comp_apply]
 
+set_option linter.unusedTactic false in
 theorem expR_map (si : Silmaril.Wasm.Component.Binary.SortIdx) :
     expR (mapRS r) (sortIdxTo si) = Layout.expR r si := by
   obtain ⟨s, i⟩ := si

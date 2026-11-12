@@ -72,6 +72,7 @@ theorem project_impl {c : Ast} {ds : List ComponentDecl} (h : Implements c ds) :
   obtain ⟨st', h', hd'⟩ := replay_impl h {}
   simp [Wit.Project.project, h', hd']
 
+set_option linter.unusedTactic false in
 /-- **Code is silent.** -/
 theorem code_silent {s : Section} (h : Wit.Project.isCode s = true) : ∀ x ∈ Wit.Project.splitSection s, Silent x := by
   intro x hx st

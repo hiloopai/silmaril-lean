@@ -105,6 +105,7 @@ theorem canon1_eq (c : XCanon) (r : Layout.RS) :
       cfTo, ffTo, Syntax.Definition.sort]
   · simp [xcanonTo, def1, addExport, Layout.canon1, mapRS, cfOf, cfTo, Syntax.Definition.sort]
 
+set_option linter.unusedTactic false in
 theorem alias1_eq {a : Silmaril.Wasm.Component.Binary.Alias} {a' : Silmaril.Wasm.Component.Syntax.Alias}
     (h : aliasTo a = some a') (r : Layout.RS) :
     def1 (mapRS r) (.alias a' : Syntax.Definition M) = mapRS (Layout.alias1 r a) := by
@@ -114,6 +115,7 @@ theorem alias1_eq {a : Silmaril.Wasm.Component.Binary.Alias} {a' : Silmaril.Wasm
     simp [def1, addExport, Layout.alias1, mapRS, cfOf, ciOf, ffOf, iiOf, ttOf, cfTo, ciTo, ffTo,
       iiTo, ttTo, Syntax.Definition.sort, sortTo, coreSortTo]
 
+set_option linter.unusedTactic false in
 theorem type1_eq {t : Silmaril.Wasm.Component.Binary.DefType} {t' : Silmaril.Wasm.Component.Syntax.DefType}
     (h : defTypeTo t = some t') (r : Layout.RS) :
     def1 (mapRS r) (.type t' : Syntax.Definition M) = mapRS (Layout.type1 r t) := by
@@ -121,6 +123,7 @@ theorem type1_eq {t : Silmaril.Wasm.Component.Binary.DefType} {t' : Silmaril.Was
     (try obtain ⟨_, -, rfl⟩ := h) <;>
     simp [def1, addExport, Layout.type1, mapRS, ttOf, ttTo, Syntax.Definition.sort]
 
+set_option linter.unusedTactic false in
 theorem import1_eq (i : Silmaril.Wasm.Component.Binary.Import) (r : Layout.RS) :
     def1 (mapRS r) (.import_ (nameTo i.name) (descTo i.desc) : Syntax.Definition M) =
       mapRS (Layout.import1 r i) := by

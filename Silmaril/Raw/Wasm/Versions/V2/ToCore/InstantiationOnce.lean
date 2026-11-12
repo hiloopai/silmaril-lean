@@ -682,6 +682,7 @@ theorem instantiate_sim_once {P : Profile} {src : HostSemantics H}
 
 /-! ## The relational form is silmaril-lean's `instantiateOnce?` -/
 
+set_option linter.unusedTactic false in
 /-- The computable `$instantiate` gives the run of the relational one (no validity needed). -/
 theorem coreRun_of_instantiate? {P : Profile} {host : ToCore.CHostSemantics H}
     {ev : ToCore.CStore H → ToCore.CFrame → Wasm.Expr →

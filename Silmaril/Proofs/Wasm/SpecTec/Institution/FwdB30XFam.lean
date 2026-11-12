@@ -92,6 +92,7 @@ theorem flatA0 {a : Admin} (hnc : noCastAdmin a = true) :
     FlatA 0 (Typing.adminHead a) [a] :=
   flatA_split [] hnc (by simp)
 
+set_option linter.unusedTactic false in
 /-- `FlatA` at 1 value and an instruction. -/
 theorem flatA1 {b₁ a : Admin} (hnc : noCastAdmin a = true)
     (h₁ : IsVal b₁) :

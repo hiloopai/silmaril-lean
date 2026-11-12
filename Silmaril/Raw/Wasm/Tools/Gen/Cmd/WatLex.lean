@@ -18,6 +18,7 @@ namespace Silmaril.Wasm.Tools.Gen.Cmd.WatLex
 
 open Silmaril Silmaril.Formats.SExpEncoding Silmaril.Formats.SExpEncoding.Wat
 
+set_option linter.unusedTactic false in
 theorem blockTail?_shorter : ∀ (n : Nat) (cs rest : Chars), blockTail? n cs = some rest →
     rest.length < cs.length
   | 0, _, _, h => by simp [blockTail?] at h

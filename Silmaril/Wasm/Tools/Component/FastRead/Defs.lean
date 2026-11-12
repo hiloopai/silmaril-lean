@@ -49,6 +49,7 @@ def lexStrA (acc : List UInt8) : List Char → Option (List UInt8 × List Char)
       else if c.toNat < 0x80 then lexStrA (c.toNat.toUInt8 :: acc) cs
       else lexStrA ((charBytes c).reverse ++ acc) cs
 
+set_option linter.unusedTactic false in
 /-- `lexStrA` is `lexStr` with the accumulator in front. -/
 theorem lexStrA_eq (acc : List UInt8) (cs : List Char) :
     lexStrA acc cs = (lexStr cs).map (fun p => (acc.reverse ++ p.1, p.2)) := by
@@ -59,6 +60,7 @@ theorem lexStrA_eq (acc : List UInt8) (cs : List Char) :
     simp [Option.map_map, Function.comp_def]
   all_goals simp [charBytes, *]
 
+set_option linter.unusedTactic false in
 /-- `lex` with the tokens accumulated in reverse (`lexA_eq`). -/
 def lexA (acc : List Tok) (cs : List Char) : Option (List Tok) :=
   match cs with

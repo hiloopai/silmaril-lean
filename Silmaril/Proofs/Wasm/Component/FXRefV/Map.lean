@@ -406,6 +406,7 @@ theorem liftR_returned {r : Silmaril.Wasm.SingleThreaded.CallResult}
     cases Silmaril.Wasm.Component.Engine.Status.returned.inj h
     rfl
 
+set_option linter.unusedTactic false in
 theorem fxResult_returned {code : List AdminFX} {R : Silmaril.Wasm.Component.Engine.CallResult}
     (h : (fxResult code : Silmaril.Wasm.Component.Engine.Status H) = .returned R) :
     (fxResult code : Silmaril.Wasm.Component.Engine.Status H') = .returned R := by

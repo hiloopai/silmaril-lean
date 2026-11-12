@@ -97,6 +97,7 @@ private theorem PartRel.fn_of {ρ : Ren} {O : Own} {p σ : Store H} (hR : PartRe
   have hfi₀ : fi₀ = fi := Option.some.inj (h1.symm.trans hfi)
   exact hfi₀ ▸ ⟨fi', h2, h3, h4⟩
 
+set_option linter.unusedTactic false in
 /-- **One part step in the shared store.** -/
 theorem step_sim {P : Profile} {c c' : Config H} (h : Step P noHost c c') :
     ∀ {ρ : Ren} {O : Own} {σ : Store H}, PartRel ρ O c.store σ → O.FrameGood c.frame →

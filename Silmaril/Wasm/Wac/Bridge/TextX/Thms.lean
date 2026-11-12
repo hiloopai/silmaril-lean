@@ -107,6 +107,7 @@ theorem mapM_map_of {ε α β γ : Type} (f : α → Except ε β) (g : α → E
         have hys : ys = y :: ys' := by cases e; rfl
         rw [hys, List.mapM_cons, hfg x y hx, mapM_map_of f g h hfg xs ys' hxs]; rfl
 
+set_option linter.unusedTactic false in
 theorem ofTypeDeclX_of {d : Text.TypeDecl} {t : Wit.TypeDef} (h : ofTypeDecl d = .ok t) :
     ofTypeDeclX d = .inl t := by
   cases d with

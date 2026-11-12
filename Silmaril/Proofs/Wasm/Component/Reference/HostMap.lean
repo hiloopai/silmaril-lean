@@ -129,21 +129,25 @@ section Families
 
 variable {P : Profile} {c c' : Config H}
 
+set_option linter.unusedTactic false in
 theorem VariableStep.mapH (h : VariableStep c c') :
     VariableStep (Config.mapH g c) (Config.mapH g c') := by
   cases h <;> (try simp only [Config.mapH, Store.mapH_setGlobal]) <;> constructor! <;>
     assumption
 
+set_option linter.unusedTactic false in
 theorem TableStep.mapH (h : TableStep P c c') :
     TableStep P (Config.mapH g c) (Config.mapH g c') := by
   cases h <;> (try simp only [Config.mapH, Store.mapH_setTable, Store.mapH_setElem]) <;>
     constructor! <;> assumption
 
+set_option linter.unusedTactic false in
 theorem MemoryStep.mapH (h : MemoryStep P c c') :
     MemoryStep P (Config.mapH g c) (Config.mapH g c') := by
   cases h <;> (try simp only [Config.mapH, Store.mapH_setMem, Store.mapH_setData]) <;>
     constructor! <;> assumption
 
+set_option linter.unusedTactic false in
 theorem RefStep.mapH (h : RefStep c c') :
     RefStep (Config.mapH g c) (Config.mapH g c') := by
   cases h <;> (try simp only [Config.mapH]) <;> constructor! <;>
@@ -152,6 +156,7 @@ theorem RefStep.mapH (h : RefStep c c') :
       | exact (RefOk.mapH_iff g).2 ‹_›
       | exact fun h' => ‹¬ RefOk _ _ _› ((RefOk.mapH_iff g).1 h')
 
+set_option linter.unusedTactic false in
 theorem AggregateStep.mapH (h : AggregateStep c c') :
     AggregateStep (Config.mapH g c) (Config.mapH g c') := by
   cases h <;>

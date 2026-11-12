@@ -80,6 +80,7 @@ theorem allocModule?_funcs {s s' : Store H} {m : Module} {xas : List ExternAddr}
   cases hfn
   exact (List.of_mem_zip hp).2
 
+set_option linter.unusedTactic false in
 /-- **Allocation appends the module's functions**: after `prepare?`, the function instances are
 those of the input store followed by Wasm functions of the module. -/
 theorem prepare?_funcs {s : Store H} {m : Module} {xas : List ExternAddr} {c : Config H}

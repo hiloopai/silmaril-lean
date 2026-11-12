@@ -64,6 +64,7 @@ theorem lexStrF_length_le (cs : List Char) (bs : List UInt8) (r : List Char)
   funext cs
   exact (lexStrF_eq cs).symm
 
+set_option linter.unusedTactic false in
 /-- `Sexp.lex` with the tokens accumulated in reverse in `acc` (string literals through
 `lexStr`, which the compiler runs as `lexStrF`). -/
 def lexT (cs : List Char) (acc : List Tok) : Option (List Tok) :=

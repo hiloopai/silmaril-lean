@@ -143,33 +143,39 @@ theorem callIndirect_ctx {C : Context} {x : TableIdx} {y : TypeIdx} {it : InstrT
   cases h <;> (try (rename_i h'; cases h'))
   exact ⟨⟨_, ‹_›⟩, _, ‹_›⟩
 
+set_option linter.unusedTactic false in
 theorem intLoad_ctx {C : Context} {t : IntType} {q : Option (PackSize × Signedness)}
     {x : MemIdx} {arg : MemArg} {it : InstrType} (h : InstrOk C (.intLoad t q x arg) it) :
     ∃ mt, C.mems[x.toNat]? = some mt := by
   cases h <;> (try (rename_i h'; cases h')) <;> exact ⟨_, ‹_›⟩
 
+set_option linter.unusedTactic false in
 theorem floatLoad_ctx {C : Context} {t : FloatType} {x : MemIdx} {arg : MemArg}
     {it : InstrType} (h : InstrOk C (.floatLoad t x arg) it) :
     ∃ mt, C.mems[x.toNat]? = some mt := by
   cases h <;> (try (rename_i h'; cases h'))
   exact ⟨_, ‹_›⟩
 
+set_option linter.unusedTactic false in
 theorem intStore_ctx {C : Context} {t : IntType} {q : Option PackSize} {x : MemIdx}
     {arg : MemArg} {it : InstrType} (h : InstrOk C (.intStore t q x arg) it) :
     ∃ mt, C.mems[x.toNat]? = some mt := by
   cases h <;> (try (rename_i h'; cases h')) <;> exact ⟨_, ‹_›⟩
 
+set_option linter.unusedTactic false in
 theorem floatStore_ctx {C : Context} {t : FloatType} {x : MemIdx} {arg : MemArg}
     {it : InstrType} (h : InstrOk C (.floatStore t x arg) it) :
     ∃ mt, C.mems[x.toNat]? = some mt := by
   cases h <;> (try (rename_i h'; cases h'))
   exact ⟨_, ‹_›⟩
 
+set_option linter.unusedTactic false in
 theorem memorySize_ctx {C : Context} {x : MemIdx} {it : InstrType}
     (h : InstrOk C (.memorySize x) it) : ∃ mt, C.mems[x.toNat]? = some mt := by
   cases h <;> (try (rename_i h'; cases h'))
   exact ⟨_, ‹_›⟩
 
+set_option linter.unusedTactic false in
 theorem memoryGrow_ctx {C : Context} {x : MemIdx} {it : InstrType}
     (h : InstrOk C (.memoryGrow x) it) : ∃ mt, C.mems[x.toNat]? = some mt := by
   cases h <;> (try (rename_i h'; cases h'))

@@ -16,7 +16,7 @@ number of printed tokens and `rest` does not start with `<` (which would extend
 
 namespace Silmaril.Wasm.Wit.Text
 
-open Parse
+open _root_.Silmaril.Wasm.Wit.Text.Parse
 open Silmaril.Wasm.Component.Wat (natChars parseNat parseNat_natChars)
 
 /-- `rest` does not start with `<`. -/

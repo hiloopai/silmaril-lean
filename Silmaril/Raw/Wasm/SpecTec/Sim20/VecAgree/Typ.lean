@@ -132,6 +132,7 @@ theorem findVal_bindVal_shape (ρ : VarEnv) (v : Value) :
     (ρ.bindVal "shape" v).findVal? "shape" = some v := by
   simp [VarEnv.bindVal, VarEnv.findVal?, Map.bind]
 
+set_option linter.unusedTactic false in
 theorem evalArgs_shape {n : Nat} {env : Env} {ρ : VarEnv} {ws : List ArgV}
     (h : evalArgs n env ρ [.expA (.varE "shape")] = .ok ws) :
     ∃ a, ρ.findVal? "shape" = some a ∧ ws = [.val a] := by

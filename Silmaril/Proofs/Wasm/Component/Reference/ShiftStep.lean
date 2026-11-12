@@ -715,6 +715,7 @@ section Main
 
 variable (s₀ : Store H)
 
+set_option linter.unusedTactic false in
 /-- **A host-free Core step commutes with the relocation past `s₀`**, for threads whose module
 instances have no tags, memories, tables, element or data segments and whose code holds no
 exception or host references (for any ownership `O`). -/

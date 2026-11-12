@@ -170,6 +170,7 @@ theorem cb_dropW {st st' : DStore} {w : Nat} {r : Res}
     exact .inl (chanOp_cb (le_of_eq (dropW_cb hq)))
   · cases h
 
+set_option linter.unusedTactic false in
 theorem cb_other {st st' : DStore} {o : DOp} {r : Res}
     (ho : o = .wsNew ∨ ∃ hj s, o = .join hj s) (h : dstep st o = some (st', r)) (d : Nat) :
     CbStep st st' o d := by

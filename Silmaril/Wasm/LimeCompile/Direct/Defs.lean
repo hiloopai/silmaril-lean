@@ -43,6 +43,7 @@ def isNumType : ValType → Bool
 def selectNum (ts : List ValType) : Bool := ts.all isNumType
 
 mutual
+set_option linter.unusedTactic false in
 /-- **The direct rewrite of one instruction**: a typed `select` at number types becomes the
 untyped `select`; bodies are rewritten recursively; everything else is unchanged. -/
 def lowerI : Instr → Instr
@@ -55,6 +56,7 @@ def lowerI : Instr → Instr
 termination_by i => sizeOf i
 decreasing_by all_goals simp_wf; all_goals omega
 
+set_option linter.unusedTactic false in
 /-- The direct rewrite of an instruction sequence. -/
 def lowerL : List Instr → List Instr
   | [] => []

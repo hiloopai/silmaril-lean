@@ -98,6 +98,7 @@ theorem slice?_eraseC (v : Value) (i n : Nat) :
   | opt o => cases o <;> rfl
   | _ => rfl
 
+set_option linter.unusedTactic false in
 theorem setSlice_eraseC (v w : Value) (i n : Nat) :
     (swapX v).setSlice i n (swapX w) = (v.setSlice i n w).map swapX := by
   cases v with
@@ -218,6 +219,7 @@ theorem AllIn.slice? {v u : Value} {i n : Nat} (hv : AllIn Q v) (h : v.slice? i 
   | opt o => cases o <;> simp [Value.slice?] at h
   | _ => simp [Value.slice?] at h
 
+set_option linter.unusedTactic false in
 theorem AllIn.setSlice {v w u : Value} {i n : Nat} (hv : AllIn Q v) (hw : AllIn Q w)
     (h : v.setSlice i n w = some u) : AllIn Q u := by
   cases v with

@@ -231,6 +231,7 @@ theorem skipBlock_digits (cs : List Char) : ∀ ds : List Char, (∀ c ∈ ds, c
     rw [List.cons_append, Sexp.skipBlock.eq_def]
     split <;> simp_all
 
+set_option linter.unusedTactic false in
 theorem lex_cmt (n : Nat) (cs : List Char) :
     lex ('(' :: ';' :: (digits n ++ [';', ')']) ++ cs) = lex cs := by
   have hs := skipBlock_digits cs (digits n) (fun c hc => ⟨(digits_ne n c hc).1, (digits_ne n c hc).2.1⟩)

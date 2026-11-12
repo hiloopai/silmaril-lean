@@ -129,47 +129,56 @@ theorem defType_val (d : DefValType) :
 
 /-! ## Equations of the readers -/
 
+set_option linter.unusedTactic false in
 theorem defType_func (ss : List Sexp) :
     R.defType (.list (.atom "func" :: ss)) = (R.funcType ss).map .func := by
   rw [R.defType.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem defType_component (ss : List Sexp) :
     R.defType (.list (.atom "component" :: ss)) = (R.componentDecls ss).map .component := by
   rw [R.defType.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem defType_instance (ss : List Sexp) :
     R.defType (.list (.atom "instance" :: ss)) = (R.instanceDecls ss).map .instance := by
   rw [R.defType.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem defType_resource (ss : List Sexp) :
     R.defType (.list (.atom "resource" :: ss)) = R.resource ss := by
   rw [R.defType.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem instanceDecl_coreType (t : Sexp) :
     R.instanceDecl (.list [.atom "core", .atom "type", t]) = (R.coreType t).map .coreType := by
   rw [R.instanceDecl.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem instanceDecl_type (t : Sexp) :
     R.instanceDecl (.list [.atom "type", t]) = (R.defType t).map .type := by
   rw [R.instanceDecl.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem instanceDecl_alias' (ss : List Sexp) :
     R.instanceDecl (.list (.atom "alias" :: ss)) = (R.alias_ ss).map .alias := by
   rw [R.instanceDecl.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem instanceDecl_export (ss : List Sexp) :
     R.instanceDecl (.list (.atom "export" :: ss)) =
       (R.nameDesc ss).map fun p => .export p.1 p.2 := by
   rw [R.instanceDecl.eq_def]
   try rfl
 
+set_option linter.unusedTactic false in
 theorem componentDecl_import (ss : List Sexp) :
     R.componentDecl (.list (.atom "import" :: ss)) =
       (R.nameDesc ss).map fun p => .import p.1 p.2 := by

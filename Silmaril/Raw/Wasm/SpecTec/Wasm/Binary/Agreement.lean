@@ -408,6 +408,7 @@ theorem lime1_data_core {d : Lime1.Data} (h : Scalar.Binary.Data (Lime1.Binary.E
     subst hm
     exact .k0 hx (lime1_expr_core he ha) hb
 
+set_option linter.unusedTactic false in
 /-- No compatibility premise: only the legacy kind `0` is open, and it has memory `0`. -/
 theorem core_data_lime1 {d : Lime1.Data}
     (h : Core.Data (Core.Forms.ofOverlong ov) b d.toCore) :

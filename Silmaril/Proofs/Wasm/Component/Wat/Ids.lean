@@ -16,6 +16,7 @@ namespace Silmaril.Wasm.Component.Wat
 theorem rAtom_of_not {sc : List Scope} {sp : Space} {a : String} (h : isId a = false) :
     rAtom sc sp a = some (.atom a) := by simp [rAtom, h]
 
+set_option linter.unusedTactic false in
 theorem rRefs_noIds (sc : List Scope) (core : Bool) (sp : Space) (s : Sexp) :
     noIds s = true → rRefs sc core sp s = some s := by
   apply rRefs.induct sc (fun core sp s => noIds s = true → rRefs sc core sp s = some s)

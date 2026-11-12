@@ -147,6 +147,7 @@ def Admin.isBranch : Admin → Bool
   | .source .return_ => true
   | _ => false
 
+set_option linter.unusedTactic false in
 /-- The first non-value instruction of code that takes a host-free step exists and is not a
 bare `br` or `return` (those are consumed by an enclosing label or frame). -/
 theorem Internal.head_not_branch {H : Type*} {a b : Config H} (h : Internal a b) :
@@ -234,6 +235,7 @@ theorem stepFrom?_isSome_callIndirect_trap {H : Type*} {s : Store H} {f : Frame}
   · have e1' : table.refs[@BitVec.toNat IntType.i32.width c]? = some none := e1
     simp [stepInstr?, tableFound, e1']
 
+set_option linter.unusedTactic false in
 theorem Internal.stepFrom?_isSome {H : Type*} {a b : Config H} (h : Internal a b) :
     ∀ (stack : List Value) (tail : List Admin),
       (stepFrom? a.store a.frame stack (a.code ++ tail)).isSome := by

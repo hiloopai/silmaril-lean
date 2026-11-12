@@ -86,6 +86,7 @@ theorem segs_ParametricInstrOk (h : ParametricInstrOk C i it) :
     ParametricInstrOk (withSegs C D E) i it := by
   cases h <;> (constructor; all_goals assumption)
 
+set_option linter.unusedTactic false in
 theorem segs_NumericInstrOk (h : NumericInstrOk C i it) : NumericInstrOk (withSegs C D E) i it := by
   cases h <;> (constructor; all_goals assumption)
 

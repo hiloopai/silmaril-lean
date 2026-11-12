@@ -188,6 +188,7 @@ theorem padForF_eq {fa : Array DefType} {C : Context} (h : fa.toList = C.funcs) 
 
 mutual
 
+set_option linter.unusedTactic false in
 theorem checkInstrF_eq (fa : Array DefType) (rs : Std.HashSet Nat) (i : Instr) :
     ∀ (C : Context) (la : Array LocalType), fa.toList = C.funcs → RefsInv rs C →
       la.toList = C.locals → ∀ (S : List CValType),
@@ -232,6 +233,7 @@ theorem checkInstrF_eq (fa : Array DefType) (rs : Std.HashSet Nat) (i : Instr) :
 termination_by sizeOf i
 decreasing_by all_goals (subst_vars; simp; all_goals omega)
 
+set_option linter.unusedTactic false in
 theorem checkSeqF_eq (fa : Array DefType) (rs : Std.HashSet Nat) (l : List Instr) :
     ∀ (C : Context) (la : Array LocalType), fa.toList = C.funcs → RefsInv rs C →
       la.toList = C.locals → ∀ (s : List CValType) (poly : Bool) (goal : Option (List CValType)),

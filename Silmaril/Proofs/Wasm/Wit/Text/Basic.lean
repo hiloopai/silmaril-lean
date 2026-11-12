@@ -19,7 +19,7 @@ public import Silmaril.Wasm.Component.Wat.Thms
 
 namespace Silmaril.Wasm.Wit.Text
 
-open Parse
+open _root_.Silmaril.Wasm.Wit.Text.Parse
 open Silmaril.Wasm.Component.Wat (natChars parseNat parseNat_natChars digitChar)
 
 /-! ## Splitting and joining -/

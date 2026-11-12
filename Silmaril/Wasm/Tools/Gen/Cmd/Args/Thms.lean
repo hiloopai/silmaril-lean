@@ -41,6 +41,7 @@ theorem foldDigits_lt {cs : List Char} {a n : Nat} (ha : a < 2 ^ 64)
           (by simpa [bind, Except.bind] using h)
     · simp [bind, Except.bind] at h
 
+set_option linter.unusedTactic false in
 theorem parseU64_lt {s : String} {n : Nat} (h : parseU64 s = .ok n) : n < 2 ^ 64 := by
   unfold parseU64 at h
   dsimp only at h

@@ -108,6 +108,7 @@ theorem throw_inFeat {s : Store H} {f : Frame} {vs : List Val} {x : TagIdx} {e :
   exact ⟨by simp [throwing, instrB, Instr.inFeatB, Instr.headB, hx],
     storeIn_of_funcs rfl hc.2⟩
 
+set_option linter.unusedTactic false in
 theorem step_inFeat {P : Profile} {host : HostSemantics H} (hh : HostIn S host)
     {c c' : Config H} (h : Step P host c c') (hc : InFeat S c) : InFeat S c' := by
   induction h with

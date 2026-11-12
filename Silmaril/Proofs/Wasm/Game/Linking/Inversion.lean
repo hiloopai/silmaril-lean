@@ -80,6 +80,7 @@ theorem instruction?_val {r : Relocation} {i j : Instr} (h : instruction? r i = 
       | (obtain ⟨_, h'⟩ := instruction?_select h; cases h')
       | simp_all [instruction?, Option.bind_eq_some_iff])
 
+set_option linter.unusedTactic false in
 /-- A relocated instruction of a choice family is numeric and unchanged. -/
 theorem instruction?_choice {r : Relocation} {i j : Instr} (h : instruction? r i = some j)
     (hk : ChoiceFam (famOf (.plain j))) : i = j ∧ famOf (.plain j) = .numeric := by

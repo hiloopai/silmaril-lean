@@ -13,7 +13,7 @@ public import Silmaril.Proofs.Wasm.Wit.Text.Items
 
 namespace Silmaril.Wasm.Wit.Text
 
-open Parse
+open _root_.Silmaril.Wasm.Wit.Text.Parse
 
 theorem packageItem_iface (f : Interface) (hx : packageItemOk (.iface f) = true) (n : Nat) (r : List Tok)
     (h : (prPackageItem (.iface f)).length ≤ n) :

@@ -77,6 +77,7 @@ theorem instantiateOnce?_noStart (s : Store H) (m : Module) (xas : List ExternAd
       rw [initSegments?_noStart]
       split <;> rfl
 
+set_option linter.unusedTactic false in
 /-- **Validation without the start function** succeeds with the same module type. -/
 theorem validate?_noStart {m : Module} {mt : Validation.CModuleType}
     (h : Validation.validate? m = some mt) :

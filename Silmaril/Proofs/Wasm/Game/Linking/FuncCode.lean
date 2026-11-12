@@ -29,6 +29,7 @@ variable {H : Type}
 /-- Replace the function list of a store. -/
 def withFuncs (g : List (FuncInst H)) (s : Store H) : Store H := { s with funcs := g }
 
+set_option linter.unusedTactic false in
 theorem structNew?_withFuncs (g : List (FuncInst H)) {s r : Store H} {f : Frame}
     {vs out : List Val} {x : TypeIdx} (run : structNew? s f vs x = some (r, out)) :
     structNew? (withFuncs g s) f vs x = some (withFuncs g r, out) := by
@@ -41,6 +42,7 @@ theorem structNew?_withFuncs (g : List (FuncInst H)) {s r : Store H} {f : Frame}
     all_goals rfl
   · cases run
 
+set_option linter.unusedTactic false in
 theorem arrayNewFixed?_withFuncs (g : List (FuncInst H)) {s r : Store H} {f : Frame}
     {vs out : List Val} {x : TypeIdx} {n : Fin (2 ^ 32)}
     (run : arrayNewFixed? s f vs x n = some (r, out)) :

@@ -102,6 +102,7 @@ def isFlat : Silmaril.Wasm.V2.Instr → Bool
   | .block _ _ | .loop _ _ | .if_ _ _ _ => false
   | _ => true
 
+set_option linter.unusedTactic false in
 /-- The Core image of a 2.0 instruction without bodies is in `v20`. -/
 theorem flat_inFeat (i : Silmaril.Wasm.V2.Instr) {c : Instr}
     (h : Silmaril.Wasm.V2.Instr.toCore i = some c) (hf : isFlat i = true) :

@@ -46,6 +46,7 @@ theorem bind_apply {α β : Type} (p : DecodeM α) (f : α → DecodeM β) (c : 
   show (Except.bind (p c) _) = _
   cases p c <;> rfl
 
+set_option linter.unusedTactic false in
 theorem frame_pure {α : Type} (a : α) : Frame (pure a : DecodeM α) := by
   (try unfold Frame at *)
   intro pre post c C x c' hI h
@@ -53,6 +54,7 @@ theorem frame_pure {α : Type} (a : α) : Frame (pure a : DecodeM α) := by
   cases h
   exact ⟨rfl, C, rfl, hI⟩
 
+set_option linter.unusedTactic false in
 theorem frame_bind {α β : Type} {p : DecodeM α} {f : α → DecodeM β} (hp : Frame p)
     (hf : ∀ a, Frame (f a)) : Frame (p >>= f) := by
   (try unfold Frame at *)
@@ -67,6 +69,7 @@ theorem frame_bind {α β : Type} {p : DecodeM α} {f : α → DecodeM β} (hp :
     rw [bind_apply, hC₁]
     exact hC₂
 
+set_option linter.unusedTactic false in
 theorem eats_bind {α β : Type} {p : DecodeM α} {f : α → DecodeM β} (hp : Eats p) :
     Eats (p >>= f) := by
   (try unfold Eats at *)
@@ -74,17 +77,20 @@ theorem eats_bind {α β : Type} {p : DecodeM α} {f : α → DecodeM β} (hp : 
   obtain ⟨e, he⟩ := hp c hc
   exact ⟨e, by rw [bind_apply, he]⟩
 
+set_option linter.unusedTactic false in
 theorem frame_throw {α : Type} (e : String) : Frame (throw e : DecodeM α) := by
   (try unfold Frame at *)
   intro pre post c C x c' _ h
   cases h
 
+set_option linter.unusedTactic false in
 theorem frame_decodeError {α : Type} (m : String) : Frame (decodeError m : DecodeM α) := by
   (try unfold Frame at *)
   intro pre post c C x c' _ h
   simp only [decodeError, bind_apply] at h
   cases h
 
+set_option linter.unusedTactic false in
 theorem eats_decodeError {α : Type} (m : String) : Eats (decodeError m : DecodeM α) := by
   (try unfold Eats at *)
   intro c _
@@ -137,6 +143,7 @@ theorem readBytes_apply (c : Cursor) (n : Nat) : readBytes n c =
   split <;> rfl
 
 
+set_option linter.unusedTactic false in
 theorem frame_readByte : Frame readByte := by
   (try unfold Frame at *)
   intro pre post c C x c' hI h
@@ -150,11 +157,13 @@ theorem frame_readByte : Frame readByte := by
     · exact ⟨hI.1, by simp only [hI.2.1]; omega, by simp only; omega⟩
   · cases h
 
+set_option linter.unusedTactic false in
 theorem eats_readByte : Eats readByte := by
   (try unfold Eats at *)
   intro c hc
   exact ⟨_, by simp only [readByte_apply, show ¬ c.pos < c.bytes.size by omega, ↓reduceDIte]; rfl⟩
 
+set_option linter.unusedTactic false in
 theorem frame_peek_bind {α : Type} {f : Option UInt8 → DecodeM α}
     (hs : ∀ b, Frame (f (some b))) (hn : Eats (f none)) : Frame (peekByte >>= f) := by
   (try unfold Frame at *); (try unfold Eats at *)
@@ -173,6 +182,7 @@ theorem frame_peek_bind {α : Type} {f : Option UInt8 → DecodeM α}
     rw [he] at h
     cases h
 
+set_option linter.unusedTactic false in
 theorem eats_peek_bind {α : Type} {f : Option UInt8 → DecodeM α} (hn : Eats (f none)) :
     Eats (peekByte >>= f) := by
   (try unfold Eats at *)
@@ -197,6 +207,7 @@ theorem extract_inside {pre post : List UInt8} {c C : Cursor} (hI : Inside pre p
   · omega
   · congr 1; omega
 
+set_option linter.unusedTactic false in
 theorem frame_readBytes (n : Nat) : Frame (readBytes n) := by
   (try unfold Frame at *)
   intro pre post c C x c' hI h

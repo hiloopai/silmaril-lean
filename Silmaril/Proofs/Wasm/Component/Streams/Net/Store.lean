@@ -327,11 +327,13 @@ theorem wait_wh {st st' : DStore} {s c : Nat} {e : Event} (hc : Coh net st)
 
 /-! ## The built-ins keep the ends that are not dropped -/
 
+set_option linter.unusedTactic false in
 theorem read_gone {c c' : DChan} {n : Nat} {r : Res} (h : c.read n = some (c', r)) :
     c'.r.gone = c.r.gone ∧ c'.w.gone = c.w.gone := by
   unfold DChan.read at h
   split_ifs at h <;> (try split at h) <;> simp_all <;> (obtain ⟨rfl, rfl⟩ := h) <;> simp_all
 
+set_option linter.unusedTactic false in
 theorem write_gone {c c' : DChan} {xs : List Val} {r : Res} (h : c.write xs = some (c', r)) :
     c'.r.gone = c.r.gone ∧ c'.w.gone = c.w.gone := by
   unfold DChan.write at h

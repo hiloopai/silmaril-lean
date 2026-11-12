@@ -14,7 +14,7 @@ form of resource constructors).
 
 namespace Silmaril.Wasm.Wit.Text
 
-open Parse
+open _root_.Silmaril.Wasm.Wit.Text.Parse
 
 /-! ## Package names and paths -/
 

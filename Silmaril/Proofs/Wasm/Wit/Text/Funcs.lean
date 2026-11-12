@@ -15,7 +15,7 @@ functions and type definitions up to `ResourceFunc.norm`).
 
 namespace Silmaril.Wasm.Wit.Text
 
-open Parse
+open _root_.Silmaril.Wasm.Wit.Text.Parse
 
 /-! ## Item starts -/
 

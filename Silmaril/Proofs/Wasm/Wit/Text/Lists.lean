@@ -14,7 +14,7 @@ trailing comma) and `many` (item lists up to `}` or the end) read back what `prS
 
 namespace Silmaril.Wasm.Wit.Text
 
-open Parse
+open _root_.Silmaril.Wasm.Wit.Text.Parse
 
 macro "unfold_toks" : tactic =>
   `(tactic| simp only [toks_append, toks_cons, toks_nil, List.append_assoc, List.cons_append,

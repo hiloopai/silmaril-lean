@@ -126,6 +126,7 @@ theorem selBaseSim {F : FuncInst H → FuncInst H → Prop} : BaseSim P host F s
       exact SingleThreaded.Det.mem_vals hmem (by simp [Admin.val?])
 
 mutual
+set_option linter.unusedTactic false in
 /-- The rewrite relates an instruction to its image. -/
 theorem lowerI_rel (i : Instr) : InstrRel selBI i (lowerI i) ∨ selBI [i] [lowerI i] := by
   cases i with
@@ -145,6 +146,7 @@ theorem lowerI_rel (i : Instr) : InstrRel selBI i (lowerI i) ∨ selBI [i] [lowe
 termination_by sizeOf i
 decreasing_by all_goals simp_wf; all_goals omega
 
+set_option linter.unusedTactic false in
 /-- The rewrite relates an instruction sequence to its image. -/
 theorem lowerL_rel : ∀ is : List Instr, InstrsRel selBI is (lowerL is)
   | [] => by rw [lowerL]; exact .nil

@@ -68,6 +68,7 @@ theorem notifyBoth_hw (st st1 : Cabi.Store Val) (e b o ob : Nat)
     injection h with h; subst h; exact h34
   · injection h with h; subst h; exact h34
 
+set_option linter.unusedTactic false in
 /-- Delivering an end's event changes only the end. -/
 theorem deliverEnd_hw (st st1 : Cabi.Store Val) (e : Nat) (ev : Cabi.EventCode × Nat × Nat)
     (h : st.deliverEnd e = .ok (st1, ev)) : HW st st1 := by
