@@ -15,6 +15,9 @@ on:
 permissions:
   contents: read
 
+# A pull request's new push cancels its running CI. On main a running publish is
+# never cancelled: later pushes wait, and GitHub keeps only the newest waiting run,
+# which publishes everything the skipped ones merged.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
