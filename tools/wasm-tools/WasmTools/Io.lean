@@ -11,8 +11,8 @@ terminal is refused. Errors are printed as `error: MESSAGE` with exit status 1.
 
 namespace WasmTools.Io
 
-/-- Read the input named by the first positional (stdin when absent or `-`). -/
-def readInput (p : Args.Parsed) : ExceptT String IO ByteArray := do
+/-- Read the input `[INPUT]` (stdin when absent or `-`). -/
+def readInput (input : Option String) : ExceptT String IO ByteArray := do
   let b ← readRaw
   -- `wat::parse_bytes` of a text with no module fields (an empty input, for one)
   let magic := b.size ≥ 4 && b.extract 0 4 == ByteArray.mk #[0, 0x61, 0x73, 0x6d]
@@ -21,7 +21,7 @@ def readInput (p : Args.Parsed) : ExceptT String IO ByteArray := do
   pure b
 where
   readRaw : ExceptT String IO ByteArray := do
-    match p.positionals.head? with
+    match input with
     | none | some "-" => (← IO.getStdin).readBinToEnd
     | some path =>
       match ← (IO.FS.readBinFile path).toBaseIO with
@@ -34,8 +34,8 @@ where
         throw s!"failed to read from `{path}`\n\nCaused by:\n    0: {cause}"
 
 /-- Write binary output: to `-o PATH`, else stdout unless it is a terminal. -/
-def writeBinary (p : Args.Parsed) (b : ByteArray) : ExceptT String IO Unit := do
-  match p.value? "output" with
+def writeBinary (output : Option String) (b : ByteArray) : ExceptT String IO Unit := do
+  match output with
   | some path =>
     match ← (IO.FS.writeBinFile path b).toBaseIO with
     | .ok () => pure ()
@@ -47,8 +47,8 @@ def writeBinary (p : Args.Parsed) (b : ByteArray) : ExceptT String IO Unit := do
     out.write b; out.flush
 
 /-- Write text output: to `-o PATH`, else stdout. -/
-def writeText (p : Args.Parsed) (s : String) : ExceptT String IO Unit := do
-  match p.value? "output" with
+def writeText (output : Option String) (s : String) : ExceptT String IO Unit := do
+  match output with
   | some path =>
     match ← (IO.FS.writeFile path s).toBaseIO with
     | .ok () => pure ()

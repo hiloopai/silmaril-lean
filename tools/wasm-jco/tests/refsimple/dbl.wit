@@ -1,0 +1,6 @@
+package test:refs;
+
+world dbl {
+  export double: func(x: u32) -> u32;
+  export is-odd: func(x: u32) -> bool;
+}

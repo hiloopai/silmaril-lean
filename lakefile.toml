@@ -207,3 +207,49 @@ supportInterpreter = true
 [[lean_lib]]
 name = "WasmAutoTests"
 globs = ["tests.wasm.auto.+"]
+
+# The component and generator tools of the Wasm release (docs/projects/wasm-components.md).
+[[lean_exe]]
+name = "wasm-tools-gen"
+root = "WasmToolsGen"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-gen-check"
+root = "GenCheck"
+srcDir = "tools/wasm-tools-gen-check"
+
+[[lean_exe]]
+name = "wasm-jco"
+root = "WasmJco"
+srcDir = "tools/wasm-jco"
+
+[[lean_exe]]
+name = "wasm-wac"
+root = "WasmWac"
+srcDir = "tools/wasm-wac"
+
+[[lean_exe]]
+name = "wasm-wit"
+root = "WasmWit"
+srcDir = "tools/wasm-wit"
+
+[[lean_exe]]
+name = "wasm-perf"
+root = "WasmPerf"
+srcDir = "tools/wasm-perf"
+
+[[lean_exe]]
+name = "cli-spec"
+root = "CliSpec"
+srcDir = "tools/cli-spec"
+
+[[lean_exe]]
+name = "cli-harness"
+root = "CliHarness"
+srcDir = "tools/cli-harness"
+
+[[lean_exe]]
+name = "cli-demo"
+root = "CliDemo"
+srcDir = "tools/cli-demo"

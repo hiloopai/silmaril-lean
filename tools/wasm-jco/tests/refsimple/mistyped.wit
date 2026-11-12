@@ -1,0 +1,5 @@
+package test:refs;
+
+world mistyped {
+  export add: func(a: u64, b: u32) -> u32;
+}

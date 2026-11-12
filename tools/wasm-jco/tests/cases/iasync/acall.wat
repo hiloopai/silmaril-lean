@@ -1,0 +1,31 @@
+;; [async-lower] of an interface's async functions; run(k) = get(k) + 1000 pt(k).x + pt(k).y
+(module
+  (import "test:ia/svc" "[async-lower]get" (func $get (param i32 i32) (result i32)))
+  (import "test:ia/svc" "[async-lower]pt" (func $pt (param i32 i32) (result i32)))
+  (import "$root" "[waitable-set-new]" (func $ws_new (result i32)))
+  (import "$root" "[waitable-join]" (func $join (param i32 i32)))
+  (import "$root" "[waitable-set-wait]" (func $wait (param i32 i32) (result i32)))
+  (import "$root" "[subtask-drop]" (func $st_drop (param i32)))
+  (import "[export]$root" "[task-return]run" (func $ret (param i32)))
+  (memory (export "memory") 1)
+  (func (export "cabi_realloc") (param i32 i32 i32 i32) (result i32) i32.const 2048)
+  ;; wait for subtask status word $st to return
+  (func $await (param $st i32)
+    (local $ws i32)
+    (if (i32.ne (i32.and (local.get $st) (i32.const 15)) (i32.const 2))
+      (then
+        (local.set $ws (call $ws_new))
+        (call $join (i32.shr_u (local.get $st) (i32.const 4)) (local.get $ws))
+        (block $done (loop $l
+          (drop (call $wait (local.get $ws) (i32.const 32)))
+          (br_if $done (i32.and (i32.eq (i32.load (i32.const 32)) (i32.const 1))
+                                (i32.eq (i32.load (i32.const 36)) (i32.const 2))))
+          (br $l)))
+        (call $join (i32.shr_u (local.get $st) (i32.const 4)) (i32.const 0))
+        (call $st_drop (i32.shr_u (local.get $st) (i32.const 4))))))
+  (func (export "[async-lift-stackful]run") (param $k i32)
+    (call $await (call $get (local.get $k) (i32.const 16)))
+    (call $await (call $pt (local.get $k) (i32.const 24)))
+    (call $ret (i32.add (i32.load (i32.const 16))
+      (i32.add (i32.mul (i32.load (i32.const 24)) (i32.const 1000)) (i32.load (i32.const 28))))))
+)
