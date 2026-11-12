@@ -66,12 +66,12 @@ abbrev SRun {α : Type} (p : P E σ α) (s : CStore E) (a : α) (s' : CStore E) 
   Prog.Eval (S := Eff E σ) StoreH p s a s'
 
 /-- The handle table of instance `j`. -/
-def handles? (s : CStore E) (j : InstId) : Option (Table HandleEntry) :=
+def handles? (s : CStore E) (j : InstId) : Option (Silmaril.Wasm.Component.Runtime.Table HandleEntry) :=
   (s.inst? j).map (·.handles)
 
 /-- The table of instance `j` evolves from `s` to `s'` through the successful history `evs`. -/
-def TabSteps (s s' : CStore E) (j : InstId) (evs : List (Table.Event HandleEntry)) : Prop :=
-  ∀ t, handles? s j = some t → ∃ t', handles? s' j = some t' ∧ Table.Steps t evs t'
+def TabSteps (s s' : CStore E) (j : InstId) (evs : List (Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry)) : Prop :=
+  ∀ t, handles? s j = some t → ∃ t', handles? s' j = some t' ∧ Silmaril.Wasm.Component.Runtime.Table.Steps t evs t'
 
 /-- A call of a resource built-in core on instance `inst` at resource type `rt`. -/
 inductive ResCall where
@@ -88,13 +88,13 @@ def ResCall.inst : ResCall → InstId
 
 /-- The program of a call: the core of the built-in. `new` returns the new index, `rep` the
 representation, `drop` returns `0` (its destructor request is discarded). -/
-def ResCall.prog (lim : Limits) : ResCall → P E σ ℕ
+def ResCall.prog (lim : Silmaril.Wasm.Component.Limits) : ResCall → P E σ ℕ
   | .new inst rt v => resourceNewCore lim inst rt v
   | .rep inst rt i => resourceRepCore lim inst rt i
   | .drop inst rt i => do let _ ← resourceDropCore lim inst rt i; pure 0
 
 /-- Run calls in order, collecting their results. -/
-def resScript (lim : Limits) (cs : List ResCall) : P E σ (List ℕ) :=
+def resScript (lim : Silmaril.Wasm.Component.Limits) (cs : List ResCall) : P E σ (List ℕ) :=
   Prog.mapM (ResCall.prog lim) cs
 
 /-- The handle event of call `c` with result `n`. -/

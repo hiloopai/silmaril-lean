@@ -108,7 +108,7 @@ theorem global_value_of_type {s : Store H} (hs : StoreOk s) {a : Nat} {gi : Glob
   have hval : ValOk s gi.value gi.type.type := (hs.globals gi (List.mem_of_getElem? hgi)).2
   rw [ht] at hval
   generalize e : gi.value = w at hval
-  generalize e' : (Ty.num nt : CValType) = T at hval
+  generalize e' : (Silmaril.Wasm.Validation.Ty.num nt : CValType) = T at hval
   cases hval with
   | num m => exact ⟨m, rfl, by injection e' with e''; exact e''.symm⟩
   | vec => cases e'

@@ -90,7 +90,7 @@ theorem oks_bytesB10 (P : Silmaril.Wasm.Numerics.Profile) (x : IL.Id) (ws : List
 
 /-- **The primitives of `utf8Env10T (fwdB10 nd r)` commute with `swapX`.** -/
 theorem biSwap_fwdB10 (nd : Bool) (r : Silmaril.Wasm.Numerics.RelaxedChoice) (gd : String → Bool) :
-    BIErase (fun _ => True) gd (utf8Env10T (fwdB10 nd r)) := by
+    Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.BIErase (fun _ => True) gd (utf8Env10T (fwdB10 nd r)) := by
   intro x ws _ _
   refine ⟨swap_of_oks (fun ws => ?_), fun u _ => allIn_true u⟩
   by_cases hx : x = "utf8"
@@ -171,7 +171,7 @@ theorem rels_10T (B : Builtins) :
 
 /-- **`eraseAt`'s hypotheses on the 1.0 script, at `utf8Env10T (fwdB10 nd r)`.** -/
 theorem hyps10 (nd : Bool) (r : Silmaril.Wasm.Numerics.RelaxedChoice) :
-    Hyps (fun _ => True) gr10 gd10 (utf8Env10T (fwdB10 nd r)) :=
+    Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.Hyps (fun _ => True) gr10 gd10 (utf8Env10T (fwdB10 nd r)) :=
   ⟨qInj _, defs_10T _, rels_10T _, biSwap_fwdB10 nd r gd10,
     fun _ _ _ _ _ u _ _ _ _ _ => allIn_true u⟩
 

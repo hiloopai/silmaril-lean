@@ -83,7 +83,7 @@ theorem decRef_ext {a b : List Slot} (hx : Ext a b) {k : Nat} {r : TyRef} (h : d
   | error e => rw [hk] at h; cases h
   | ok s => rw [slotAt_ext hx hk]; rw [hk] at h; exact h
 
-theorem decValType_ext {a b : List Slot} (hx : Ext a b) {v : ValType} {t : Ty}
+theorem decValType_ext {a b : List Slot} (hx : Ext a b) {v : Silmaril.Wasm.Component.Binary.ValType} {t : Ty}
     (h : decValType a v = .ok t) : decValType b v = .ok t := by
   cases v with
   | prim p => exact h
@@ -93,7 +93,7 @@ theorem decValType_ext {a b : List Slot} (hx : Ext a b) {v : ValType} {t : Ty}
     | error e => rw [hk] at h; cases h
     | ok s => rw [slotAt_ext hx hk]; rw [hk] at h; exact h
 
-theorem decOpt_ext {a b : List Slot} (hx : Ext a b) {v : Option ValType} {t : Option Ty}
+theorem decOpt_ext {a b : List Slot} (hx : Ext a b) {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Ty}
     (h : decOpt a v = .ok t) : decOpt b v = .ok t := by
   cases v with
   | none => exact h

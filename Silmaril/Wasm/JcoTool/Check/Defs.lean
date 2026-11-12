@@ -44,11 +44,11 @@ def implsAre : List Impl → List (List Adapter × Nat) → Bool
   | _, _ => false
 
 /-- An export is `⟨name, ty, chain ⇒ call r⟩`. -/
-def exportIs (x : Export) (name : String) (ty : FuncTy) (chain : List Adapter) (r : Nat) : Bool :=
+def exportIs (x : Silmaril.Wasm.Component.Export) (name : String) (ty : FuncTy) (chain : List Adapter) (r : Nat) : Bool :=
   decide (x.name = name) && decide (x.ty = ty) && implIs x.impl chain r
 
 /-- Pointwise `exportIs`. -/
-def exportsAre : List Export → List (String × FuncTy × List Adapter × Nat) → Bool
+def exportsAre : List Silmaril.Wasm.Component.Export → List (String × FuncTy × List Adapter × Nat) → Bool
   | [], [] => true
   | x :: xs, (n, t, ch, r) :: ys => exportIs x n t ch r && exportsAre xs ys
   | _, _ => false

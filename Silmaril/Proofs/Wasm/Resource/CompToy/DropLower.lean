@@ -24,9 +24,9 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 variable {P : Silmaril.Wasm.Numerics.Profile}
 
 theorem lower_drop_eq (cx : LiftLowerContext (E3 P)) (vs : List Val) :
-    (lowerFlatValues Limits.spec Quirks.none cx ABI.maxFlatParams vs (paramTypes ftDrop) none :
+    (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatParams vs (paramTypes ftDrop) none :
       Canon.P (E3 P) Unit _) =
-      ptrType cx >>= fun p => lowerFlatTypes Limits.spec Quirks.none cx p vs [.own ⟨0⟩] := by
+      ptrType cx >>= fun p => lowerFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx p vs [.own ⟨0⟩] := by
   unfold lowerFlatValues
   congr 1
   funext p
@@ -34,7 +34,7 @@ theorem lower_drop_eq (cx : LiftLowerContext (E3 P)) (vs : List Val) :
 
 theorem lowerFlatAt_own_other (cx : LiftLowerContext (E3 P)) (p : Silmaril.Wasm.AddrType)
     (v : Val) (hv : ∀ n, v ≠ .own n) :
-    (lowerFlatAt Limits.spec Quirks.none cx p v (.own ⟨0⟩) : Canon.P (E3 P) Unit _) =
+    (lowerFlatAt Silmaril.Wasm.Component.Limits.spec Quirks.none cx p v (.own ⟨0⟩) : Canon.P (E3 P) Unit _) =
       flatMismatch := by
   rw [lowerFlatAt.eq_def]
   cases v <;> first | rfl | exact absurd rfl (hv _)
@@ -43,7 +43,7 @@ theorem lowerFlatAt_own_other (cx : LiftLowerContext (E3 P)) (p : Silmaril.Wasm.
 theorem runs_lowerOwn {th : Option ThreadId} (t : TaskId) (n : ℕ) {m : Machine.Config (E3 P) Unit}
     {ι₁ ι₂ : InstState} {i : ℕ} (hi : m.store.insts = [ι₁])
     (hadd : ι₁.addHandle? (.resource ⟨m.store.resHandles.length⟩) = some (i, ι₂)) :
-    RunsQ (D P) th (lowerOwn Limits.spec
+    RunsQ (D P) th (lowerOwn Silmaril.Wasm.Component.Limits.spec
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) ⟨0⟩ n) m
       ([.tau, .tau] ++ ([.tau] ++ ([.tau] ++ []))) i { m with store := newSt m.store n ι₂ } := by
   let h : ResourceHandle := { rt := ⟨0⟩, rep := n, own := true }
@@ -77,7 +77,7 @@ theorem runs_lowerOwn {th : Option ThreadId} (t : TaskId) (n : ℕ) {m : Machine
 theorem traps_lowerOwn {th : Option ThreadId} (t : TaskId) (n : ℕ) {m : Machine.Config (E3 P) Unit}
     {ι₁ : InstState} (hi : m.store.insts = [ι₁])
     (hadd : ι₁.addHandle? (.resource ⟨m.store.resHandles.length⟩) = none) :
-    ∃ tr mT, TrapsQ (D P) th (lowerOwn Limits.spec
+    ∃ tr mT, TrapsQ (D P) th (lowerOwn Silmaril.Wasm.Component.Limits.spec
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) ⟨0⟩ n) m tr mT := by
   let h : ResourceHandle := { rt := ⟨0⟩, rep := n, own := true }
   let s₁ := ArenaOps.allocSt ArenaField.resHandles h m.store
@@ -97,7 +97,7 @@ theorem runs_lower_drop {th : Option ThreadId} (t : TaskId) (n : ℕ) :
     ∃ tr, ∀ (m : Machine.Config (E3 P) Unit) (ι₁ ι₂ : InstState) (i : ℕ),
       m.store.insts = [ι₁] →
       ι₁.addHandle? (.resource ⟨m.store.resHandles.length⟩) = some (i, ι₂) →
-      RunsQ (D P) th (lowerFlatValues Limits.spec Quirks.none
+      RunsQ (D P) th (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
         ABI.maxFlatParams [.own n] (paramTypes ftDrop) none) m tr ([i32Flat i] ++ [])
         { m with store := newSt m.store n ι₂ } := by
@@ -105,7 +105,7 @@ theorem runs_lower_drop {th : Option ThreadId} (t : TaskId) (n : ℕ) :
   intro m ι₁ ι₂ i hi hadd
   rw [lower_drop_eq]
   apply RunsQ.get
-  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store
+  show RunsQ _ _ (lowerFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none _ (ptrTypeIn m.store
     ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))) [.own n]
     [.own ⟨0⟩]) _ _ _ _
   unfold lowerFlatTypes
@@ -123,10 +123,10 @@ theorem lower_drop_traps {th : Option ThreadId} (t : TaskId) (args : List Val)
     (m : Machine.Config (E3 P) Unit) {ι₁ : InstState} (hi : m.store.insts = [ι₁])
     (h : (∀ n, args ≠ [.own n]) ∨
       ∃ n, args = [.own n] ∧ ι₁.addHandle? (.resource ⟨m.store.resHandles.length⟩) = none) :
-    ∃ trT mT, TrapsQ (D P) th (lowerFlatValues Limits.spec Quirks.none
+    ∃ trT mT, TrapsQ (D P) th (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatParams args (paramTypes ftDrop) none) m trT mT := by
-  have hp : ∀ p, ∃ trT mT, TrapsQ (D P) th (lowerFlatTypes Limits.spec Quirks.none
+  have hp : ∀ p, ∃ trT mT, TrapsQ (D P) th (lowerFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) p args
       [.own ⟨0⟩]) m trT mT := by
     intro p
@@ -136,9 +136,9 @@ theorem lower_drop_traps {th : Option ThreadId} (t : TaskId) (args : List Val)
       unfold lowerFlatTypes
       by_cases hv : ∃ n, v = .own n
       · obtain ⟨n, rfl⟩ := hv
-        have hown : ∀ q, (lowerFlatAt Limits.spec Quirks.none
+        have hown : ∀ q, (lowerFlatAt Silmaril.Wasm.Component.Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) q (.own n)
-            (.own ⟨0⟩) : Canon.P (E3 P) Unit _) = lowerOwn Limits.spec
+            (.own ⟨0⟩) : Canon.P (E3 P) Unit _) = lowerOwn Silmaril.Wasm.Component.Limits.spec
               ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) ⟨0⟩ n >>=
               fun x => pure [i32Flat x] := by
           intro q

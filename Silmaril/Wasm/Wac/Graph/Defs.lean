@@ -149,7 +149,7 @@ def Graph.mkNodes (S : Nat → PkgSig) (P : Nat → Comp M) (g : Graph) (I : Ifa
   | k, n :: ns => .inst (P n.pkg) (g.argsOf S I k n) :: g.mkNodes S P I (k + 1) ns
 
 /-- The exports of the composition. -/
-def Graph.mkExports (S : Nat → PkgSig) (g : Graph) (I : Iface) : List Export :=
+def Graph.mkExports (S : Nat → PkgSig) (g : Graph) (I : Iface) : List Silmaril.Wasm.Component.Export :=
   g.exports.map fun p => ⟨p.1, g.tyOf S I p.2, g.resolve S I g.nodes.length p.2⟩
 
 /-- The composition, given the package interfaces `S` and the packages `P`. -/

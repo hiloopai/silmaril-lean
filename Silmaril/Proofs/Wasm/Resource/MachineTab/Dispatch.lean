@@ -171,26 +171,26 @@ theorem tab_withArgs3 {α : Type} {args : List FlatValue} {k : ℕ → ℕ → �
 theorem tf_memWrite : Builtins.Inv.MemWritePres (TabFrom j s₀ : CStore E → Prop) :=
   fun m p _ => tf_insts (writeMemSt_insts m p _)
 
-theorem tab_newBuiltin (lim : Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId)) :
+theorem tab_newBuiltin (lim : Silmaril.Wasm.Component.Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId)) :
     TI (Builtins.newBuiltin (σ := σ) lim k t) :=
   Builtins.Inv.newBuiltin tf_addHandle (fun _ _ _ => tf_insts fun _ => rfl)
     (fun _ _ => tf_insts fun _ => rfl) lim k t
 
-theorem tab_copyBuiltin (lim : Limits) (q : Quirks) (k : Async.EndKind)
+theorem tab_copyBuiltin (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (k : Async.EndKind)
     (t : Option (WIT.ClosedType RtId)) (opts : CanonOpts E) (i p n : ℕ) :
     TI (Builtins.copyBuiltin (σ := σ) lim q k t opts i p n) :=
   Builtins.Inv.copyBuiltin loadPres_tab storePres_tab awaitPres_tab
     (fun e b r => tf_insts (copySt_insts e b r)) lim q k t opts i p n
 
-theorem tab_cancelCopy (lim : Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId))
+theorem tab_cancelCopy (lim : Silmaril.Wasm.Component.Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId))
     (a : Bool) (i : ℕ) : TI (Builtins.cancelCopy (σ := σ) lim k t a i) :=
   Builtins.Inv.cancelCopy awaitPres_tab (fun e b => tf_insts (cancel_insts e b)) lim k t a i
 
-theorem tab_dropEnd (lim : Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId))
+theorem tab_dropEnd (lim : Silmaril.Wasm.Component.Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId))
     (i : ℕ) : TI (Builtins.dropEnd (σ := σ) lim k t i) :=
   Builtins.Inv.dropEnd tf_removeHandle (fun e => tf_insts (dropEnd_insts e)) lim k t i
 
-theorem tab_forwardBuiltin (lim : Limits) (q : Quirks) (k : Async.EndKind)
+theorem tab_forwardBuiltin (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (k : Async.EndKind)
     (t : Option (WIT.ClosedType RtId)) (ri wi : ℕ) :
     TI (Builtins.forwardBuiltin (σ := σ) lim q k t ri wi) :=
   Builtins.Inv.forwardBuiltin loadPres_tab storePres_tab tf_removeHandle
@@ -205,13 +205,13 @@ theorem tab_threadNewIndirect (tbl : E.TableAddr) (ft : Silmaril.Wasm.V1.FuncTyp
       hs.trans (tabMove_registerThreadSt task t s)
   · exact P.Inv.internal _
 
-theorem tab_resourceDrop (lim : Limits) (q : Quirks) (rt : RtId) (i : ℕ) :
+theorem tab_resourceDrop (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (rt : RtId) (i : ℕ) :
     TI (Builtins.resourceDrop (σ := σ) lim q (destructorCall lim q) rt i) :=
   Builtins.Inv.resourceDrop tf_removeHandle (fun t => tf_insts (g := HandleSt.decBorrows t)
     fun _ => rfl) lim q (fun inst req => P.Inv.destructorCall liftHyps_tab lim q inst req) rt i
 
 /-- **Every canon built-in is table-moving.** -/
-theorem tab_builtinProg (lim : Limits) (q : Quirks) (hr : HostReady σ) (b : ResolvedBuiltin E)
+theorem tab_builtinProg (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (hr : HostReady σ) (b : ResolvedBuiltin E)
     (args : List FlatValue) : TI (builtinProg lim q hr b args) := by
   cases b with
   | resourceNew rt _ =>
@@ -336,7 +336,7 @@ theorem tab_builtinProg (lim : Limits) (q : Quirks) (hr : HostReady σ) (b : Res
 
 variable {host : HostImpl E σ}
 
-theorem tab_calloutBody (hh : TabHost j host) (lim : Limits) (q : Quirks) (hr : HostReady σ)
+theorem tab_calloutBody (hh : TabHost j host) (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (hr : HostReady σ)
     (s : CStore E) (th : Option ThreadId) (h : CanonHost E) (args : List FlatValue) :
     TI (calloutBody lim q hr host s th h args) := by
   unfold calloutBody
@@ -351,7 +351,7 @@ theorem tab_calloutBody (hh : TabHost j host) (lim : Limits) (q : Quirks) (hr : 
     · exact P.Inv.bind (hh.embedder name ft args s₀) fun _ => P.Inv.pure _
     · exact P.Inv.bind (P.Inv.confine _ _) fun _ => P.Inv.pure _
 
-theorem tab_hostCalloutProg (hh : TabHost j host) (lim : Limits) (q : Quirks) (hr : HostReady σ)
+theorem tab_hostCalloutProg (hh : TabHost j host) (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (hr : HostReady σ)
     (h : CanonHost E) (args : List FlatValue) : TI (hostCalloutProg lim q hr host h args) := by
   rw [hostCalloutProg_eq]
   unfold withCalloutEntry
@@ -360,7 +360,7 @@ theorem tab_hostCalloutProg (hh : TabHost j host) (lim : Limits) (q : Quirks) (h
   · exact P.Inv.trap _
   · exact tab_calloutBody hh lim q hr s th h args
 
-theorem tab_funcInstProg (hh : TabHost j host) (lim : Limits) (q : Quirks) (f : FuncId)
+theorem tab_funcInstProg (hh : TabHost j host) (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (f : FuncId)
     (caller : CallerId) : TI (funcInstProg lim q host f caller) := by
   unfold funcInstProg
   refine P.Inv.bind (P.Inv.getObj _ _) fun fi => ?_
@@ -368,7 +368,7 @@ theorem tab_funcInstProg (hh : TabHost j host) (lim : Limits) (q : Quirks) (f : 
   | lifted core ft opts inst => exact P.Inv.canonLift liftHyps_tab lim q core ft opts inst caller
   | host _ fn => exact hh.funcs fn caller s₀
 
-theorem tab_callerOnStart (lim : Limits) (q : Quirks) (c : CallerId) :
+theorem tab_callerOnStart (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (c : CallerId) :
     TI (callerOnStart (σ := σ) lim q c) := by
   unfold callerOnStart
   refine P.Inv.bind (P.Inv.getObj _ _) fun cr => ?_
@@ -381,7 +381,7 @@ theorem tab_callerOnStart (lim : Limits) (q : Quirks) (c : CallerId) :
   · exact P.Inv.pure _
   · exact P.Inv.onStartProg c
 
-theorem tab_callerOnResolve (lim : Limits) (q : Quirks) (c : CallerId) (r : Option (List Val)) :
+theorem tab_callerOnResolve (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (c : CallerId) (r : Option (List Val)) :
     TI (callerOnResolve (σ := σ) lim q c r) := by
   unfold callerOnResolve
   refine P.Inv.bind (P.Inv.getObj _ _) fun cr => ?_
@@ -402,7 +402,7 @@ theorem tab_onCancelProg (hh : TabHost j host) (hr : HostReady σ) (r : CancelRe
   | host n => exact P.Inv.bind (hh.cancel n s₀) fun _ => P.Inv.pure _
   | none => exact P.Inv.pure _
 
-theorem tab_threadBodyProg (hh : TabHost j host) (lim : Limits) (q : Quirks) (b : ThreadBody E) :
+theorem tab_threadBodyProg (hh : TabHost j host) (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (b : ThreadBody E) :
     TI (threadBodyProg lim q host b) := by
   cases b with
   | liftImplicit task callee => exact P.Inv.liftThreadBody liftHyps_tab lim q task callee
@@ -413,7 +413,7 @@ theorem tab_threadBodyProg (hh : TabHost j host) (lim : Limits) (q : Quirks) (b 
   | host fn task => exact hh.threadBody fn task s₀
   | liftNoop task => exact P.Inv.liftNoopThreadBody liftHyps_tab lim q task
 
-theorem tab_loopProg (lim : Limits) (hr : HostReady σ) (l : LoopPoint E) :
+theorem tab_loopProg (lim : Silmaril.Wasm.Component.Limits) (hr : HostReady σ) (l : LoopPoint E) :
     TI (loopProg lim hr l) := by
   cases l with
   | syncLiftLoop task => exact P.Inv.syncLiftLoopBody liftHyps_tab hr task
@@ -587,7 +587,7 @@ the loops and thread bodies, every canon built-in, caller records, nested invoke
 cancellations, nested instantiation) moves every handle table by a successful history, given
 that the host's own programs do. -/
 theorem tabDispatch_canon [∀ a b, Decidable (E.ExternSub a b)] (hh : TabHost j host)
-    (lim : Limits) (q : Quirks) (hr : HostReady σ) : TabDispatch j (dispatch lim q hr host) := by
+    (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (hr : HostReady σ) : TabDispatch j (dispatch lim q hr host) := by
   intro c s₀
   cases c with
   | reallocate cx old oldLen align newLen =>

@@ -93,7 +93,7 @@ def decRef (slots : List Slot) (k : Nat) : DecM TyRef := do
   | .named r => pure r
   | _ => throw s!"type {k} is not a named type"
 
-def decValType (slots : List Slot) : ValType → DecM Ty
+def decValType (slots : List Slot) : Silmaril.Wasm.Component.Binary.ValType → DecM Ty
   | .prim p => pure (.prim p)
   | .idx k => do
     match ← slotAt slots k with
@@ -101,32 +101,32 @@ def decValType (slots : List Slot) : ValType → DecM Ty
     | .named r => pure (.ref r)
     | _ => throw s!"type {k} is not a value type"
 
-def decOpt (slots : List Slot) : Option ValType → DecM (Option Ty)
+def decOpt (slots : List Slot) : Option Silmaril.Wasm.Component.Binary.ValType → DecM (Option Ty)
   | none => pure none
   | some v => some <$> decValType slots v
 
-def decValTypes (slots : List Slot) : List ValType → DecM (List Ty)
+def decValTypes (slots : List Slot) : List Silmaril.Wasm.Component.Binary.ValType → DecM (List Ty)
   | [] => pure []
   | v :: vs => do
     let a ← decValType slots v
     let b ← decValTypes slots vs
     pure (a :: b)
 
-def decFields (slots : List Slot) : List (String × ValType) → DecM (List (Labeled Ty))
+def decFields (slots : List Slot) : List (String × Silmaril.Wasm.Component.Binary.ValType) → DecM (List (Labeled Ty))
   | [] => pure []
   | (n, v) :: fs => do
     let a ← decValType slots v
     let b ← decFields slots fs
     pure ({ name := n, ty := a } :: b)
 
-def decCases (slots : List Slot) : List (String × Option ValType) → DecM (List (Labeled (Option Ty)))
+def decCases (slots : List Slot) : List (String × Option Silmaril.Wasm.Component.Binary.ValType) → DecM (List (Labeled (Option Ty)))
   | [] => pure []
   | (n, v) :: cs => do
     let a ← decOpt slots v
     let b ← decCases slots cs
     pure ({ name := n, ty := a } :: b)
 
-def decParams (slots : List Slot) : List (String × ValType) → DecM (List (String × Ty))
+def decParams (slots : List Slot) : List (String × Silmaril.Wasm.Component.Binary.ValType) → DecM (List (String × Ty))
   | [] => pure []
   | (n, v) :: ps => do
     let a ← decValType slots v
@@ -159,7 +159,7 @@ def decDefVal (slots : List Slot) : DefValType → DecM Slot
   | .future o => (.ty ∘ .future) <$> decOpt slots o
   | .stream o => (.ty ∘ .stream) <$> decOpt slots o
 
-def decFuncType (slots : List Slot) (f : FuncType) : DecM Sig := do
+def decFuncType (slots : List Slot) (f : Silmaril.Wasm.Component.Binary.FuncType) : DecM Sig := do
   let ps ← decParams slots f.params
   let r ← decOpt slots f.result
   pure ⟨f.async, ps, r⟩

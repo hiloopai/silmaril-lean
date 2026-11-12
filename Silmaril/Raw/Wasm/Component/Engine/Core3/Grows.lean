@@ -137,7 +137,7 @@ theorem Thread.config_frame_eq (s s' : Store H) (t : Thread) :
 /-- Resuming a callout thread does not depend on functions allocated later. -/
 theorem resume_prefix {s s' : Store H} (hg : s.funcs <+: s'.funcs) {t : Thread}
     {x : Ctx × Nat × H × List Val} (hd : decompose? s (t.config s).code = some x)
-    (r : CallResult) : resume s' t r = resume s t r := by
+    (r : Silmaril.Wasm.SingleThreaded.CallResult) : resume s' t r = resume s t r := by
   obtain ⟨E, a, h, args⟩ := x
   unfold resume
   dsimp only

@@ -307,12 +307,12 @@ noncomputable def toyCfg (c : ℕ) (ι : InstState) (G : ToyGarb P) : Config (co
 /-- The thread table of an instance between calls: empty, with one freed slot (the implicit
 thread of the last call, slot `1`), or with two (slot `2` also held the thread of a destructor
 call made during the last call). -/
-def ThreadsFree (t : Table ThreadId) : Prop :=
+def ThreadsFree (t : Silmaril.Wasm.Component.Runtime.Table ThreadId) : Prop :=
   t = ⟨#[none], []⟩ ∨ t = ⟨#[none, none], [1]⟩ ∨ t = ⟨#[none, none, none], [1, 2]⟩
 
 /-- A handle table with a well-formed free list (`FreeOK`) and at most `maxLength + 1` slots,
 so that every index it hands out is below `2^32`. -/
-def TabB (t : Table HandleEntry) : Prop := FreeOK t ∧ t.array.size ≤ Table.maxLength + 1
+def TabB (t : Silmaril.Wasm.Component.Runtime.Table HandleEntry) : Prop := FreeOK t ∧ t.array.size ≤ Silmaril.Wasm.Component.Runtime.Table.maxLength + 1
 
 /-- **The reachability invariant of the toy** (the `R` of `CtrVCOn`): the exports are
 `toyEs`, and the configuration is `toyCfg P c ι G` for a counter `c < 2^32`, an instance with

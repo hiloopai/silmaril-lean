@@ -43,7 +43,7 @@ def imps : Externs := [("host", hostK)]
 
 /-- A world `import host: interface { print: func(); } export run: func();` with the
 type of `print` given. -/
-def worldWith (print : FuncType) (more : List ComponentDecl) : Wit.Project.WorldType :=
+def worldWith (print : Silmaril.Wasm.Component.Binary.FuncType) (more : List ComponentDecl) : Wit.Project.WorldType :=
   [.inst (.type (.instance [.type (.func print), .export ⟨"print", .plain0⟩ (.func 0)])),
    .import ⟨"host", .plain0⟩ (.instance 0),
    .inst (.type (.func ⟨[], none, false⟩)),

@@ -57,7 +57,7 @@ def alignExp : Nat → Nat
   | _ => 3
 
 /-- The packed size of a narrow access. -/
-def packOf : Nat → Option PackSize
+def packOf : Nat → Option Silmaril.Wasm.V1.PackSize
   | 1 => some .i8
   | 2 => some .i16
   | 4 => some .i32

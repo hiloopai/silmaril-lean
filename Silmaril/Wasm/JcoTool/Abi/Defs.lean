@@ -62,7 +62,7 @@ def joinList : List NumType → List NumType → List NumType
 
 mutual
 /-- The flattening of a resolved WIT value type, or why it is outside the fragment. -/
-def flat : Ty → Except String (List NumType)
+def flat : Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
   | .prim p => pure (primFlat p)
   | .list _ => pure [ti32, ti32]
   | .map _ _ => pure [ti32, ti32]
@@ -78,11 +78,11 @@ def flat : Ty → Except String (List NumType)
   | .fixedList _ _ => throw "fixed-size lists are not supported"
   | .ref r => throw s!"named type `{r.name}` is not supported (anonymous types only)"
 /-- An optional payload. -/
-def flatOpt : Option Ty → Except String (List NumType)
+def flatOpt : Option Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
   | none => pure []
   | some t => flat t
 /-- The concatenated flattening of a list of types. -/
-def flatList : List Ty → Except String (List NumType)
+def flatList : List Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
   | [] => pure []
   | t :: ts => do
     let a ← flat t
@@ -92,7 +92,7 @@ end
 
 mutual
 /-- Whether lifting or lowering a value of the type touches linear memory. -/
-def usesMem : Ty → Bool
+def usesMem : Silmaril.Wasm.Wit.Binary.Ty → Bool
   | .prim .string => true
   | .prim _ => false
   | .list _ | .map _ _ => true
@@ -101,10 +101,10 @@ def usesMem : Ty → Bool
   | .tuple ts => usesMemList ts
   | .fixedList t _ => usesMem t
   | .stream _ | .future _ | .own _ | .borrow _ | .ref _ => false
-def usesMemOpt : Option Ty → Bool
+def usesMemOpt : Option Silmaril.Wasm.Wit.Binary.Ty → Bool
   | none => false
   | some t => usesMem t
-def usesMemList : List Ty → Bool
+def usesMemList : List Silmaril.Wasm.Wit.Binary.Ty → Bool
   | [] => false
   | t :: ts => usesMem t || usesMemList ts
 end
@@ -117,24 +117,24 @@ def maxFlatResults : Nat := 1
 def maxFlatAsyncParams : Nat := 4
 
 /-- The flat parameters of a function. -/
-def flatParams (f : Func) : Except String (List NumType) := flatList (f.params.map (·.2))
+def flatParams (f : Silmaril.Wasm.Wit.Binary.Func) : Except String (List NumType) := flatList (f.params.map (·.2))
 
 /-- The flat results of a function. -/
-def flatResult (f : Func) : Except String (List NumType) := flatOpt f.result
+def flatResult (f : Silmaril.Wasm.Wit.Binary.Func) : Except String (List NumType) := flatOpt f.result
 
 /-- Parameters of a core entry point: flat, or one pointer above `limit`. -/
 def spill (limit : Nat) (ps : List NumType) : List NumType :=
   if ps.length ≤ limit then ps else [ti32]
 
 /-- The core type of the export `canon lift` calls (sync). -/
-def liftCore (f : Func) : Except String CoreFuncTy := do
+def liftCore (f : Silmaril.Wasm.Wit.Binary.Func) : Except String CoreFuncTy := do
   let ps ← flatParams f
   let rs ← flatResult f
   pure ⟨spill maxFlatParams ps, if rs.length ≤ maxFlatResults then rs else [ti32]⟩
 
 /-- The core type of the export an async `canon lift` calls: no results without a callback,
 the callback code with one. -/
-def liftAsyncCore (f : Func) (callback : Bool) : Except String CoreFuncTy := do
+def liftAsyncCore (f : Silmaril.Wasm.Wit.Binary.Func) (callback : Bool) : Except String CoreFuncTy := do
   let ps ← flatParams f
   pure ⟨spill maxFlatParams ps, if callback then [ti32] else []⟩
 
@@ -142,7 +142,7 @@ def liftAsyncCore (f : Func) (callback : Bool) : Except String CoreFuncTy := do
 def callbackCore : CoreFuncTy := ⟨[ti32, ti32, ti32], [ti32]⟩
 
 /-- The core type of `canon lower` of `f` (sync). -/
-def lowerCore (f : Func) : Except String CoreFuncTy := do
+def lowerCore (f : Silmaril.Wasm.Wit.Binary.Func) : Except String CoreFuncTy := do
   let ps ← flatParams f
   let rs ← flatResult f
   if rs.length ≤ maxFlatResults then pure ⟨spill maxFlatParams ps, rs⟩
@@ -151,23 +151,23 @@ def lowerCore (f : Func) : Except String CoreFuncTy := do
 /-- The core type of `canon lower` of `f` with the `async` option: more than
 `MAX_FLAT_ASYNC_PARAMS = 4` flat parameters are passed by one pointer, a result is written
 through a pointer appended to the parameters, and the call returns the subtask status. -/
-def lowerAsyncCore (f : Func) : Except String CoreFuncTy := do
+def lowerAsyncCore (f : Silmaril.Wasm.Wit.Binary.Func) : Except String CoreFuncTy := do
   let ps ← flatParams f
   pure ⟨spill maxFlatAsyncParams ps ++ (if f.result.isSome then [ti32] else []), [ti32]⟩
 
 /-- Whether an async lower of `f` needs the `memory` option: its parameters or result touch
 memory, its parameters spill, or it has a result (written through a pointer). -/
-def lowerAsyncUsesMemory (f : Func) : Except String Bool := do
+def lowerAsyncUsesMemory (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Bool := do
   let ps ← flatParams f
   pure (usesMemList (f.params.map (·.2)) || f.result.isSome || decide (maxFlatAsyncParams < ps.length))
 
 /-- The core type of `canon task.return` of `f`'s result. -/
-def taskReturnCore (f : Func) : Except String CoreFuncTy := do
+def taskReturnCore (f : Silmaril.Wasm.Wit.Binary.Func) : Except String CoreFuncTy := do
   let rs ← flatResult f
   pure ⟨spill maxFlatParams rs, []⟩
 
 /-- Whether the parameters or the result of `f` touch linear memory (or spill). -/
-def usesMemory (f : Func) : Except String Bool := do
+def usesMemory (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Bool := do
   let ps ← flatParams f
   let rs ← flatResult f
   pure (usesMemList (f.params.map (·.2)) || usesMemOpt f.result ||
@@ -175,12 +175,12 @@ def usesMemory (f : Func) : Except String Bool := do
 
 /-- Whether lifting `f` allocates in the callee (`realloc`): its parameters touch memory or
 spill. -/
-def needsRealloc (f : Func) : Except String Bool := do
+def needsRealloc (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Bool := do
   let ps ← flatParams f
   pure (usesMemList (f.params.map (·.2)) || decide (maxFlatParams < ps.length))
 
 /-- Whether `task.return` of `f`'s result needs the `memory` option. -/
-def taskReturnUsesMemory (f : Func) : Except String Bool := do
+def taskReturnUsesMemory (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Bool := do
   let rs ← flatResult f
   pure (usesMemOpt f.result || decide (maxFlatParams < rs.length))
 
@@ -188,14 +188,14 @@ def taskReturnUsesMemory (f : Func) : Except String Bool := do
 
 /-- An occurrence of a stream or future type in a signature, with its payload. -/
 inductive Chan where
-  | stream (t : Option Ty)
-  | future (t : Option Ty)
+  | stream (t : Option Silmaril.Wasm.Wit.Binary.Ty)
+  | future (t : Option Silmaril.Wasm.Wit.Binary.Ty)
   deriving Repr, DecidableEq, Inhabited
 
 mutual
 /-- The streams and futures of a type, outermost first, left to right (wit-component's
 `TypeInfo` order of `[stream-new-N]` indices). -/
-def chans : Ty → List Chan
+def chans : Silmaril.Wasm.Wit.Binary.Ty → List Chan
   | .stream t => .stream t :: chansOpt t
   | .future t => .future t :: chansOpt t
   | .list t | .option t | .fixedList t _ => chans t
@@ -203,10 +203,10 @@ def chans : Ty → List Chan
   | .result ok err => chansOpt ok ++ chansOpt err
   | .tuple ts => chansList ts
   | .prim _ | .own _ | .borrow _ | .ref _ => []
-def chansOpt : Option Ty → List Chan
+def chansOpt : Option Silmaril.Wasm.Wit.Binary.Ty → List Chan
   | none => []
   | some t => chans t
-def chansList : List Ty → List Chan
+def chansList : List Silmaril.Wasm.Wit.Binary.Ty → List Chan
   | [] => []
   | t :: ts => chans t ++ chansList ts
 end
@@ -218,7 +218,7 @@ def firstOccurrences {α : Type} [DecidableEq α] (xs : List α) : List α :=
 /-- The distinct stream and future types of a function, in order of first occurrence:
 parameters, then the result (the `N` of wit-component's `[stream-new-N]f`; checked against
 `wasm-tools component embed --dummy-names legacy`, wit-component 0.262.0). -/
-def funcChans (f : Func) : List Chan :=
+def funcChans (f : Silmaril.Wasm.Wit.Binary.Func) : List Chan :=
   firstOccurrences (chansList (f.params.map (·.2)) ++ chansOpt f.result)
 
 end Silmaril.Wasm.JcoTool

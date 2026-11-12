@@ -51,7 +51,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig TyRef Owner)
 
 mutual
 /-- A WIT type; `res` are the witResources in scope. -/
-def witTy (res : List String) : Wit.Ty → Ty
+def witTy (res : List String) : Wit.Ty → Silmaril.Wasm.Wit.Binary.Ty
   | .bool => .prim .bool
   | .s8 => .prim .s8
   | .s16 => .prim .s16
@@ -77,10 +77,10 @@ def witTy (res : List String) : Wit.Ty → Ty
   | .borrow r => .borrow ⟨.local, r⟩
   | .future t => .future (witTyOpt res t)
   | .stream t => .stream (witTyOpt res t)
-def witTyOpt (res : List String) : Option Wit.Ty → Option Ty
+def witTyOpt (res : List String) : Option Wit.Ty → Option Silmaril.Wasm.Wit.Binary.Ty
   | none => none
   | some t => some (witTy res t)
-def witTys (res : List String) : List Wit.Ty → List Ty
+def witTys (res : List String) : List Wit.Ty → List Silmaril.Wasm.Wit.Binary.Ty
   | [] => []
   | t :: ts => witTy res t :: witTys res ts
 end

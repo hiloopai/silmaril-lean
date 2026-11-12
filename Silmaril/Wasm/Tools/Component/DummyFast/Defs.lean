@@ -56,7 +56,7 @@ def repCut (lim n : Nat) (e : List NumType) : Option (List NumType) :=
 
 mutual
 /-- **Bounded flattening** of a type in scope `sc`: `flatR` cut at `lim`. -/
-def flatB (ρ : Resolver) : Nat → Scope → Ty → Nat → Except String (Option (List NumType))
+def flatB (ρ : Resolver) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → Nat → Except String (Option (List NumType))
   | 0, _, _, _ => throw "type nesting too deep"
   | fuel + 1, sc, t, lim => match t with
     | .prim p => pure (cut lim (primFlat p))
@@ -100,12 +100,12 @@ def flatKindB (ρ : Resolver) : Nat → Scope → TyDefKind → Nat →
     | .resource => pure (cut lim [ti32])
     | .type t => flatB ρ fuel sc t lim
 /-- Bounded flattening of an optional payload. -/
-def flatOptB (ρ : Resolver) : Nat → Scope → Option Ty → Nat →
+def flatOptB (ρ : Resolver) : Nat → Scope → Option Silmaril.Wasm.Wit.Binary.Ty → Nat →
     Except String (Option (List NumType))
   | _, _, none, _ => pure (some [])
   | fuel, sc, some t, lim => flatB ρ fuel sc t lim
 /-- Bounded flattening of a list of types: each gets the budget the earlier ones left. -/
-def flatListB (ρ : Resolver) : Nat → Scope → List Ty → Nat →
+def flatListB (ρ : Resolver) : Nat → Scope → List Silmaril.Wasm.Wit.Binary.Ty → Nat →
     Except String (Option (List NumType))
   | _, _, [], _ => pure (some [])
   | fuel, sc, t :: ts, lim => do
@@ -123,13 +123,13 @@ section
 variable (ρ : Resolver) (sc : Scope)
 
 /-- `liftCoreR` with bounded flattening. -/
-def liftCoreB (f : Func) : Except String CoreFuncTy := do
+def liftCoreB (f : Silmaril.Wasm.Wit.Binary.Func) : Except String CoreFuncTy := do
   let ps ← flatListB ρ flatFuel sc (f.params.map (·.2)) maxFlatParams
   let rs ← flatOptB ρ flatFuel sc f.result maxFlatResults
   pure ⟨spillB ps, spillB rs⟩
 
 /-- `lowerCoreR` with bounded flattening. -/
-def lowerCoreB (f : Func) : Except String CoreFuncTy := do
+def lowerCoreB (f : Silmaril.Wasm.Wit.Binary.Func) : Except String CoreFuncTy := do
   let ps ← flatListB ρ flatFuel sc (f.params.map (·.2)) maxFlatParams
   let rs ← flatOptB ρ flatFuel sc f.result maxFlatResults
   match rs with
@@ -159,7 +159,7 @@ def importsOfB (ρ : Resolver) (m : Mangling) : List DItem →
     pure (ds ++ (← importsOfB ρ m is))
 
 /-- `Dummy.exportFunc` with bounded flattening. -/
-def exportFuncB (ρ : Resolver) (m : Mangling) (k : Option (IfaceName ⊕ String)) (f : Func) :
+def exportFuncB (ρ : Resolver) (m : Mangling) (k : Option (IfaceName ⊕ String)) (f : Silmaril.Wasm.Wit.Binary.Func) :
     Except String (List DFunc) := do
   noAsync f
   let sc : Scope := match k with
@@ -179,7 +179,7 @@ def funcsOfB (ρ : Resolver) (m : Mangling) : List DItem → Except String (List
   | .type _ :: es => funcsOfB ρ m es
 
 /-- **`dummy_module`** with bounded flattening. -/
-def dummyFast (wf : WorldFull) (m : Mangling) : Except String Module := do
+def dummyFast (wf : WorldFull) (m : Mangling) : Except String Silmaril.Wasm.Tools.Component.Dummy.Module := do
   let ρ := JcoTool.NewI.rho wf
   let is ← importsOfB ρ m wf.imports
   let fs ← funcsOfB ρ m wf.exports

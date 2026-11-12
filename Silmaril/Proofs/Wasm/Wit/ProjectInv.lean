@@ -56,7 +56,7 @@ theorem track_nfSec (s : XState) (x : Section) : track s (nfSec x) = track s x :
   | component c => simp [track, nfSec]
   | _ => simp [track, nfSec]
 
-theorem exportDescX_norm (s : XState) (e : Export) :
+theorem exportDescX_norm (s : XState) (e : Silmaril.Wasm.Component.Binary.Export) :
     exportDescX s ⟨normName e.name, e.item, e.desc⟩ = exportDescX s e := rfl
 
 theorem step_types_nf (p : PState) (t : DefType) :
@@ -69,7 +69,7 @@ theorem stepX_types_nf (s : XState) (rest : List Section) (t : DefType) :
     step_normDefType]
   simp [Function.comp_def, normName_normName]
 
-theorem stepX_exports_nf (s : XState) (rest : List Section) (e : Export) :
+theorem stepX_exports_nf (s : XState) (rest : List Section) (e : Silmaril.Wasm.Component.Binary.Export) :
     stepX s (rest.map nfSec) (.exports [⟨normName e.name, e.item, e.desc⟩]) =
       stepX s rest (.exports [e]) := by
   have ht : track s (.exports [⟨normName e.name, e.item, e.desc⟩]) = track s (.exports [e]) := rfl
@@ -79,7 +79,7 @@ theorem stepX_exports_nf (s : XState) (rest : List Section) (e : Export) :
   · cases exportDescX s e with
     | none => rfl
     | some d =>
-      have hs : step s.base (.exports [{ (⟨normName e.name, e.item, e.desc⟩ : Export) with
+      have hs : step s.base (.exports [{ (⟨normName e.name, e.item, e.desc⟩ : Silmaril.Wasm.Component.Binary.Export) with
           desc := some d }]) = step s.base (.exports [{ e with desc := some d }]) :=
         step_normName_export s.base { e with desc := some d }
       simp only [hs]
@@ -182,7 +182,7 @@ def OSim : Option XState → Option XState → Prop
 theorem step_isCode (p : PState) (x : Section) (h : isCode x = true) : step p x = some p := by
   cases x <;> simp [isCode] at h <;> rfl
 
-theorem exportDescX_sim {a b : XState} (h : a.idesc = b.idesc) (e : Export)
+theorem exportDescX_sim {a b : XState} (h : a.idesc = b.idesc) (e : Silmaril.Wasm.Component.Binary.Export)
     (he : exportAscribed e = true) : exportDescX a e = exportDescX b e := by
   obtain ⟨n, ⟨srt, i⟩, d⟩ := e
   cases d with

@@ -37,7 +37,7 @@ open Silmaril.Wasm (NumType)
 
 /-- A Canonical ABI built-in (🔀), by its `canon` production. -/
 inductive Builtin where
-  | taskReturn (result : Option ValType) (opts : List CanonOpt)
+  | taskReturn (result : Option Silmaril.Wasm.Component.Binary.ValType) (opts : List CanonOpt)
   | taskCancel
   | backpressureInc
   | backpressureDec

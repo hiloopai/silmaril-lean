@@ -93,9 +93,9 @@ theorem resulttypeSubLG_of (O : ElseI) {L : List LocalType} {G : List CGlobalTyp
     DDerivesB (simEnv (BI P hn host)) O "Resulttype_sub" "%|-%<:%" []
       (.tuple [ctxLGV L G, .case "%" (.tuple [.list (ts.map tyV)]),
         .case "%" (.tuple [.list (ts'.map tyV)])]) := by
-  have l₁ : Round4.tyBnd (Ty.ofList ts) = true :=
+  have l₁ : Round4.tyBnd (Silmaril.Wasm.Validation.Ty.ofList ts) = true :=
     (Round6.AgreeOk.tyBnd_list_iff _).2 (by simpa using hb₁)
-  have l₂ : Round4.tyBnd (Ty.ofList ts') = true :=
+  have l₂ : Round4.tyBnd (Silmaril.Wasm.Validation.Ty.ofList ts') = true :=
     (Round6.AgreeOk.tyBnd_list_iff _).2 (by simpa using hb₂)
   have h := resultSub_of (ctxT_lg hcb) l₁ l₂
     (subDX_of (P := P) (hn := hn) (host := host) O (localsT hcb) (globalsT hcb)

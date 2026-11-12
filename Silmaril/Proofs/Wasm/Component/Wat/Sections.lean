@@ -69,7 +69,7 @@ theorem item_start (s : Start) : R.item (P.start s) = some (.start s) := by
   rw [item_kw _ _ (by decide), itemKw_start]
   simp [R.startItem, startArgs_rt, startResults_rt]
 
-theorem item_import (i : Import) :
+theorem item_import (i : Silmaril.Wasm.Component.Binary.Import) :
     R.item (P.import_ i) = some (.imports [⟨normName i.name, i.desc⟩]) := by
   simp only [P.import_, List.cons_append]
   rw [item_kw _ _ (by decide), itemKw_import, nameDesc_rt]; rfl

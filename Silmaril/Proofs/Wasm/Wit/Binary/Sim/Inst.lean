@@ -77,7 +77,7 @@ theorem exportType_inner_run {e : Enc} {s : Space InstanceDecl} (hs : e.inner = 
 def DSt.named (d : DSt) (sl : List Slot) (n : String) (k : TyDefKind) : DSt :=
   { d with slots := sl ++ [.named ⟨.local, n⟩], types := d.types ++ [{ name := n, kind := k }] }
 
-/-- Export the type `idx` claimable as `k` under `n`, and record the name. -/
+/-- Silmaril.Wasm.Component.Binary.Export the type `idx` claimable as `k` under `n`, and record the name. -/
 theorem nameType_inner {e e' : Enc} {cst : CSt} {d : DSt} (hI : Inv e cst (some d)) {n : String}
     {b : TypeBound} {k : TyDefKind} {sl : List Slot} (hsl : sl.length = d.slots.length)
     (hok : SlotsOK e.curMaps sl)

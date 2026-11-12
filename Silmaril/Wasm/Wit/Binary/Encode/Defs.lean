@@ -98,7 +98,7 @@ def defType (t : DefType) : EncM Nat := do
     set { e with outer := { e.outer with decls := e.outer.decls ++ [ComponentDecl.inst (.type t)], count := e.outer.count + 1 } }
     pure e.outer.count
 
-/-- Export (or, for world types, import) a type of the current space under
+/-- Silmaril.Wasm.Component.Binary.Export (or, for world types, import) a type of the current space under
 `n`; the index of the new type. -/
 def exportType (n : String) (b : TypeBound) : EncM Nat := do
   let e ← get
@@ -158,7 +158,7 @@ def refIdx (r : TyRef) : EncM Nat := do
       pure k
 
 /-- Look an anonymous type up, or define it with `mk` and record it. -/
-def anon (t : Ty) (mk : EncM DefValType) : EncM ValType := do
+def anon (t : Ty) (mk : EncM DefValType) : EncM Silmaril.Wasm.Component.Binary.ValType := do
   let m ← maps
   match lookup t m.anon with
   | some k => pure (.idx k)
@@ -170,7 +170,7 @@ def anon (t : Ty) (mk : EncM DefValType) : EncM ValType := do
 
 mutual
 /-- `encode_valtype`. -/
-def valType : Ty → EncM ValType
+def valType : Ty → EncM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .ref r => .idx <$> refIdx r
   | .list t => anon (.list t) (.list <$> valType t)
@@ -190,11 +190,11 @@ def valType : Ty → EncM ValType
   | .future t => anon (.future t) (.future <$> optValType t)
   | .stream t => anon (.stream t) (.stream <$> optValType t)
 
-def optValType : Option Ty → EncM (Option ValType)
+def optValType : Option Ty → EncM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => some <$> valType t
 
-def valTypes : List Ty → EncM (List ValType)
+def valTypes : List Ty → EncM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do
     let a ← valType t
@@ -224,21 +224,21 @@ def structural : Ty → EncM DefValType
   | .future t => .future <$> optValType t
   | .stream t => .stream <$> optValType t
 
-def fields : List (Labeled Ty) → EncM (List (String × ValType))
+def fields : List (Labeled Ty) → EncM (List (String × Silmaril.Wasm.Component.Binary.ValType))
   | [] => pure []
   | f :: fs => do
     let a ← valType f.ty
     let b ← fields fs
     pure ((f.name, a) :: b)
 
-def cases : List (Labeled (Option Ty)) → EncM (List (String × Option ValType))
+def cases : List (Labeled (Option Ty)) → EncM (List (String × Option Silmaril.Wasm.Component.Binary.ValType))
   | [] => pure []
   | c :: cs => do
     let a ← optValType c.ty
     let b ← cases cs
     pure ((c.name, a) :: b)
 
-def params : List (String × Ty) → EncM (List (String × ValType))
+def params : List (String × Ty) → EncM (List (String × Silmaril.Wasm.Component.Binary.ValType))
   | [] => pure []
   | p :: ps => do
     let a ← valType p.2
@@ -321,7 +321,7 @@ def funcKey (types : List TypeDef) (f : Func) : Nat :=
 def sortFuncs (types : List TypeDef) (fs : List Func) : List Func :=
   (List.range (types.length + 1)).flatMap fun i => fs.filter (funcKey types · = i)
 
-/-- Export the function `f` from the instance type being written. -/
+/-- Silmaril.Wasm.Component.Binary.Export the function `f` from the instance type being written. -/
 def exportFunc (f : Func) : EncM Unit := do
   let k ← funcType f
   modify fun e => match e.inner with

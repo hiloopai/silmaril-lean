@@ -20,7 +20,7 @@ public import Silmaril.Wasm.Tools.Component.Unbundle.Defs
 namespace Silmaril.Wasm.Tools.Component.Unbundle
 
 open Silmaril.Wasm.Component.Binary (CoreType ModuleDecl ExternDesc Alias DefType ComponentDecl
-  InstanceDecl CoreInstanceExpr InstanceExpr Import Export SortIdx)
+  InstanceDecl CoreInstanceExpr InstanceExpr Silmaril.Wasm.Component.Binary.Import Silmaril.Wasm.Component.Binary.Export SortIdx)
 open Silmaril.Wasm.Component.BinaryP3 (Section Ast Canon)
 
 /-! ## Leaves -/
@@ -187,18 +187,18 @@ theorem mapInstance_comp (f g : IxMap) (d : Nat) (x : InstanceExpr) :
     mapInstance f d (mapInstance g d x) = mapInstance (f.comp g) d x := by
   cases x <;> simp [mapInstance, mapSortIdx_comp, Function.comp_def]
 
-theorem mapImport_id (d : Nat) (x : Import) : mapImport IxMap.id d x = x := by
+theorem mapImport_id (d : Nat) (x : Silmaril.Wasm.Component.Binary.Import) : mapImport IxMap.id d x = x := by
   simp [mapImport, mapExternDesc_id]
 
-theorem mapImport_comp (f g : IxMap) (d : Nat) (x : Import) :
+theorem mapImport_comp (f g : IxMap) (d : Nat) (x : Silmaril.Wasm.Component.Binary.Import) :
     mapImport f d (mapImport g d x) = mapImport (f.comp g) d x := by
   simp [mapImport, mapExternDesc_comp]
 
-theorem mapExport_id (d : Nat) (x : Export) : mapExport IxMap.id d x = x := by
+theorem mapExport_id (d : Nat) (x : Silmaril.Wasm.Component.Binary.Export) : mapExport IxMap.id d x = x := by
   obtain ⟨n, s, desc⟩ := x
   cases desc <;> simp [mapExport, mapSortIdx_id, mapExternDesc_id]
 
-theorem mapExport_comp (f g : IxMap) (d : Nat) (x : Export) :
+theorem mapExport_comp (f g : IxMap) (d : Nat) (x : Silmaril.Wasm.Component.Binary.Export) :
     mapExport f d (mapExport g d x) = mapExport (f.comp g) d x := by
   obtain ⟨n, s, desc⟩ := x
   cases desc <;> simp [mapExport, mapSortIdx_comp, mapExternDesc_comp]

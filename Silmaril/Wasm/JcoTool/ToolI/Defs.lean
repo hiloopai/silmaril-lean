@@ -24,7 +24,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Func World WorldItem WorldFull)
 
 mutual
 /-- An anonymous type: no named type and no resource handle inside. -/
-def anon : Ty → Bool
+def anon : Silmaril.Wasm.Wit.Binary.Ty → Bool
   | .prim _ => true
   | .ref _ | .own _ | .borrow _ => false
   | .list t | .option t | .fixedList t _ => anon t
@@ -32,10 +32,10 @@ def anon : Ty → Bool
   | .result a b => anonOpt a && anonOpt b
   | .tuple ts => anonList ts
   | .stream t | .future t => anonOpt t
-def anonOpt : Option Ty → Bool
+def anonOpt : Option Silmaril.Wasm.Wit.Binary.Ty → Bool
   | none => true
   | some t => anon t
-def anonList : List Ty → Bool
+def anonList : List Silmaril.Wasm.Wit.Binary.Ty → Bool
   | [] => true
   | t :: ts => anon t && anonList ts
 end

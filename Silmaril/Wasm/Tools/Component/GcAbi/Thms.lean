@@ -42,7 +42,7 @@ theorem onArray_true {c : Option CCompType} {k : CStorageType → Bool} (h : onA
   · next m st => exact ⟨m, st, rfl, h⟩
   · cases h
 
-theorem onStruct_true {c : Option CCompType} {k : List (Ty .field) → Bool}
+theorem onStruct_true {c : Option CCompType} {k : List (Silmaril.Wasm.Validation.Ty .field) → Bool}
     (h : onStruct c k = true) : ∃ cs, c = some (.struct cs) ∧ k cs.toList = true := by
   unfold onStruct at h
   split at h
@@ -77,7 +77,7 @@ theorem ok_sound : ∀ (t : VT) (s : Slot), ok enc t s = true → Lowers enc t s
   | .map _ _, s, h => by simp only [ok] at h; cases h
   | .ref r, _, _ => nomatch r
 
-theorem recOk_sound : ∀ (fs : List (String × VT)) (cs : List (Ty .field)),
+theorem recOk_sound : ∀ (fs : List (String × VT)) (cs : List (Silmaril.Wasm.Validation.Ty .field)),
     recOk enc fs cs = true → Fields enc (fs.map (·.2)) cs
   | [], [], _ => .nil
   | (_, t) :: fs, .field _ _ :: cs, h =>
@@ -86,7 +86,7 @@ theorem recOk_sound : ∀ (fs : List (String × VT)) (cs : List (Ty .field)),
   | [], _ :: _, h => by simp only [recOk] at h; cases h
   | _ :: _, [], h => by simp only [recOk] at h; cases h
 
-theorem tupOk_sound : ∀ (ts : List VT) (cs : List (Ty .field)),
+theorem tupOk_sound : ∀ (ts : List VT) (cs : List (Silmaril.Wasm.Validation.Ty .field)),
     tupOk enc ts cs = true → Fields enc ts cs
   | [], [], _ => .nil
   | t :: ts, .field _ _ :: cs, h =>

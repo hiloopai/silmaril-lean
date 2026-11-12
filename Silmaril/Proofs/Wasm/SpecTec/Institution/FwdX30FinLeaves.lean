@@ -113,7 +113,7 @@ theorem sreadB_of_castRead {c : Config H} {is' : List Admin} (h : CastRead c is'
 SpecTec's code, with the `CALL_REF` index kept (`Round5.Fwd.fwd_returnCallRefFrameAddr_retToCall5`,
 before the lift). -/
 theorem sread_retFrameAddr {s : Store H} {f fi : Frame} {k : Nat} {vs' vs : List Val} {a : Nat}
-    {c : Admin} {rest : List Admin} {fn : FuncInst H} {ps rs : Ty (.list .val)}
+    {c : Admin} {rest : List Admin} {fn : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)}
     (hc : c.IsReturnCallRef) (hfn : s.funcs[a]? = some fn) (hex : Expand fn.type (.func ps rs))
     (hlen : vs.length = ps.length) (hd : Round4.tyBnd fn.type = true)
     (hz : TypedV EB stateT (stateV hn s f))

@@ -177,7 +177,7 @@ theorem foldE_erase {α : Type} {f : KSt → α → Except String KSt}
       have h2 := foldE_erase hf as s1 st' h'
       simp [h2.1, h2.2, h1.1, h1.2]
 
-theorem kImport_erase {imps : Externs} {st st' : KSt} {i : Import}
+theorem kImport_erase {imps : Externs} {st st' : KSt} {i : Silmaril.Wasm.Component.Binary.Import}
     (h : kImport imps st i = .ok st') :
     erase st'.imports = erase st.imports ++ [(i.name.name, Targets.sortOf i.desc)] ∧
       erase st'.exports = erase st.exports ++ [] := by
@@ -218,7 +218,7 @@ theorem kAlias_erase {st st' : KSt} {a : Alias} (h : kAlias st a = .ok st') :
     · simp at h
   · simp at h
 
-theorem kExport_erase {st st' : KSt} {e : Export} (h : kExport st e = .ok st') :
+theorem kExport_erase {st st' : KSt} {e : Silmaril.Wasm.Component.Binary.Export} (h : kExport st e = .ok st') :
     erase st'.imports = erase st.imports ++ [] ∧
       erase st'.exports = erase st.exports ++ [(e.name.name, Targets.itemSortName e.item.sort)] := by
   unfold kExport at h
@@ -272,7 +272,7 @@ theorem surface_flatMap (ss : List Section) :
   | nil => simp [Targets.surface, Ast.sections, Targets.imports, Targets.exports]
   | cons s ss ih => simp [surface_cons s ss, imports_append, exports_append, ih.1, ih.2]
 
-theorem exports_surface_exports (xs : List Export) :
+theorem exports_surface_exports (xs : List Silmaril.Wasm.Component.Binary.Export) :
     Targets.exports (Targets.surface (.mk [.exports xs])) =
       xs.map (fun x => (x.name.name, Targets.itemSortName x.item.sort)) := by
   simp only [Targets.surface, Ast.sections, Targets.exports, List.flatMap_cons,
@@ -290,14 +290,14 @@ abbrev SecErase (st st' : KSt) (s : Section) : Prop :=
     erase st'.exports = erase st.exports ++ Targets.exports (Targets.surface (.mk [s]))
 
 theorem kSection_imports_erase {K : Nat → Kind} {imps : Externs} {st st' : KSt}
-    {xs : List Import} (h : kSection K imps st (.imports xs) = .ok st') :
+    {xs : List Silmaril.Wasm.Component.Binary.Import} (h : kSection K imps st (.imports xs) = .ok st') :
     SecErase st st' (.imports xs) := by
   have r := foldE_erase (fun _ _ _ h => kImport_erase h) xs st st' h
   simpa [SecErase, Targets.surface, Ast.sections, Targets.imports, Targets.exports,
     flatMap_single, flatMap_nil', List.filterMap_map] using r
 
 theorem kSection_exports_erase {K : Nat → Kind} {imps : Externs} {st st' : KSt}
-    {xs : List Export} (h : kSection K imps st (.exports xs) = .ok st') :
+    {xs : List Silmaril.Wasm.Component.Binary.Export} (h : kSection K imps st (.exports xs) = .ok st') :
     SecErase st st' (.exports xs) := by
   have r := foldE_erase (fun _ _ _ h => kExport_erase h) xs st st' h
   rw [SecErase, exports_surface_exports xs]

@@ -95,7 +95,7 @@ def reqKind : New.Req → Option (OpKind × Option Chan)
 /-! ## The shape of a stream transformer export -/
 
 /-- The parameter and result streams of an async `stream<T> → stream<U>`. -/
-def xfStreams (f : Func) : Option (Chan × Chan) :=
+def xfStreams (f : Silmaril.Wasm.Wit.Binary.Func) : Option (Chan × Chan) :=
   match f.async, f.params, f.result with
   | true, [(_, .stream t)], some (.stream u) => some (.stream t, .stream u)
   | _, _, _ => none

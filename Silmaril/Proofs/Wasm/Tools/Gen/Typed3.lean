@@ -56,15 +56,15 @@ theorem heapC_ok : ∀ t, TyOk Δ0 (heapC t)
   | .exn => .abs _
 
 theorem sig_expand_b : ∀ j : Fin sigs.length,
-    (sigD j).expand? = some (.func (Ty.ofList ((sigP j).map toC)) (Ty.ofList ((sigR j).map toC))) := by
+    (sigD j).expand? = some (.func (Silmaril.Wasm.Validation.Ty.ofList ((sigP j).map toC)) (Silmaril.Wasm.Validation.Ty.ofList ((sigR j).map toC))) := by
   decide +kernel
 
 /-- Each signature's defined type expands to its function type. -/
 theorem sig_expand (j : Fin sigs.length) :
-    Expand (sigD j) (.func (Ty.ofList ((sigP j).map toC)) (Ty.ofList ((sigR j).map toC))) :=
+    Expand (sigD j) (.func (Silmaril.Wasm.Validation.Ty.ofList ((sigP j).map toC)) (Silmaril.Wasm.Validation.Ty.ofList ((sigR j).map toC))) :=
   Expand.iff.mpr (sig_expand_b j)
 
-theorem expand_S : Expand dS (.struct (Ty.ofList [.field .var (.val (.num (.int .i32))),
+theorem expand_S : Expand dS (.struct (Silmaril.Wasm.Validation.Ty.ofList [.field .var (.val (.num (.int .i32))),
     .field .var (.val (.num (.int .i64)))])) := Expand.iff.mpr (by decide +kernel)
 
 theorem expand_A : Expand dA (.array (.field .var (.val (.num (.int .i32))))) :=
@@ -72,9 +72,9 @@ theorem expand_A : Expand dA (.array (.field .var (.val (.num (.int .i32))))) :=
 
 theorem expand_tag0 : Expand (sigD j0) (.func .nil .nil) := sig_expand j0
 
-theorem expand_tag1 : Expand (sigD j1) (.func (Ty.ofList [toC I32]) .nil) := sig_expand j1
+theorem expand_tag1 : Expand (sigD j1) (.func (Silmaril.Wasm.Validation.Ty.ofList [toC I32]) .nil) := sig_expand j1
 
-theorem expand_F : Expand dF (.func (Ty.ofList [toC I32]) (Ty.ofList [toC I32])) :=
+theorem expand_F : Expand dF (.func (Silmaril.Wasm.Validation.Ty.ofList [toC I32]) (Silmaril.Wasm.Validation.Ty.ofList [toC I32])) :=
   sig_expand j2
 
 theorem dts_S : dts[0]? = some dS := by decide +kernel
@@ -195,7 +195,7 @@ theorem callT {e : Expr} {x : FuncIdx} {j : Fin sigs.length} {rs : List VT}
     (ha : InstrsOk C e (.plain [] ((sigP j).map toC))) (hf : C.funcs[x.toNat]? = some (sigD j))
     (hr : sigR j = rs) : InstrsOk C (e ++ [.call x]) (.plain [] (rs.map toC)) := by
   have hi := InstrOk.call (C := C) hf (sig_expand j)
-  rw [Ty.toList_ofList, Ty.toList_ofList, hr] at hi
+  rw [Silmaril.Wasm.Validation.Ty.toList_ofList, Silmaril.Wasm.Validation.Ty.toList_ofList, hr] at hi
   exact push ha hi
 
 /-- The memory access of a load. -/
@@ -443,10 +443,10 @@ theorem funcs_ok (k : Skel) : ∀ {l : List (Fin sigs.length)} (bs : Bodies k.ct
         (.plain [] ((sigR j).map toC)) :=
       cat (ts_typed (fctx_wf _ (ctx_wf k) j _) b.stmts) (ta_typed (fctx_wf _ (ctx_wf k) j _) b.rets)
         (rok (fctx_wf _ (ctx_wf k) j _) [])
-    have hb' : ExprOk (k.ctx.funcBody (Ty.ofList ((sigP j).map toC)).toList
-        (Ty.ofList ((sigR j).map toC)).toList (lts b.locals)) (b.stmts.erase ++ b.rets.erase)
-        (Ty.ofList ((sigR j).map toC)).toList := by
-      rw [Ty.toList_ofList, Ty.toList_ofList]
+    have hb' : ExprOk (k.ctx.funcBody (Silmaril.Wasm.Validation.Ty.ofList ((sigP j).map toC)).toList
+        (Silmaril.Wasm.Validation.Ty.ofList ((sigR j).map toC)).toList (lts b.locals)) (b.stmts.erase ++ b.rets.erase)
+        (Silmaril.Wasm.Validation.Ty.ofList ((sigR j).map toC)).toList := by
+      rw [Silmaril.Wasm.Validation.Ty.toList_ofList, Silmaril.Wasm.Validation.Ty.toList_ofList]
       exact hb
     exact .cons (.mk (typeAt (ctx_wf k) (dts_sig j) hj) (sig_expand j) (locals_ok rfl b.locals) hb')
       (funcs_ok k r)

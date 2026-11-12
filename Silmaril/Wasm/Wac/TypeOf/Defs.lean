@@ -208,7 +208,7 @@ components define the types of an exported interface anonymously at the top leve
 by index in the functions they lift, before passing them to the shim component that names
 them (`(with "import-type-r" (type i))`); the inference reads the exported instance's types off
 the shim's exports, so these placeholders do not reach the package's type. -/
-def decValL : ValType → DM Ty
+def decValL : ValType → DM Silmaril.Wasm.Wit.Binary.Ty
   | .prim p => pure (.prim p)
   | .idx i => do
     match ← typeAt i with
@@ -216,7 +216,7 @@ def decValL : ValType → DM Ty
     | _ => decVal (.idx i)
 
 /-- An optional value type, leniently. -/
-def decValOptL : Option ValType → DM (Option Ty)
+def decValOptL : Option ValType → DM (Option Silmaril.Wasm.Wit.Binary.Ty)
   | none => pure none
   | some v => some <$> decValL v
 

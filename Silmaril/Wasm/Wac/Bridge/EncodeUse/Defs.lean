@@ -128,7 +128,7 @@ def UPar.def (nu : Nat) : UPar → DefValType
   | .borrow r => .borrow (r.idx nu)
 
 /-- The parameters as value types, the first at type index `c`. -/
-def parVals : Nat → List (String × UPar) → List (String × ValType)
+def parVals : Nat → List (String × UPar) → List (String × Silmaril.Wasm.Component.Binary.ValType)
   | _, [] => []
   | c, (x, _) :: ps => (x, .idx c) :: parVals (c + 1) ps
 
@@ -165,7 +165,7 @@ def URes.rd (u : UIface) : URes → TyRef
   | .own j => ⟨.local, u.res.getD j ""⟩
 
 /-- The type of a parameter. -/
-def UPar.rd (u : UIface) : UPar → Ty
+def UPar.rd (u : UIface) : UPar → Silmaril.Wasm.Wit.Binary.Ty
   | .prim p => .prim p
   | .own r => .own (r.rd u)
   | .borrow r => .borrow (r.rd u)

@@ -36,7 +36,7 @@ theorem forM_error {σ ε α : Type} {f : α → StateT σ (Except ε) Unit} :
         obtain ⟨e, he⟩ := forM_error l hx hf s'
         exact ⟨e, he⟩
 
-theorem import_value {i : Import} {b : ValueBound} (h : i.desc = .value b) : Fails (import_ i) :=
+theorem import_value {i : Silmaril.Wasm.Component.Binary.Import} {b : ValueBound} (h : i.desc = .value b) : Fails (import_ i) :=
   fun s => ⟨_, by simp only [import_, h]; rfl⟩
 
 theorem export_value (S : Nat → PkgSig) {e : Binary.Export} (h : e.item.sort = .value) :

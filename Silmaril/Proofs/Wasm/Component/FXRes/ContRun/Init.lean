@@ -108,10 +108,10 @@ theorem contInst_ctl : (contInst P).ctl = [] := by kernel_rfl
 theorem contInst_lockdown : (contInst P).store.lockdown = false := by kernel_rfl
 
 /-- The engine's continuation table is empty after instantiation. -/
-theorem contInst_tab : (contInst P).store.core.tab = Table.empty := by kernel_rfl
+theorem contInst_tab : (contInst P).store.core.tab = Silmaril.Wasm.Component.Runtime.Table.empty := by kernel_rfl
 
 /-- The handle table of instance `0` (the `cont` handles) is empty after instantiation. -/
-theorem contInst_vtab : Silmaril.Wasm.Resource.vtab (contInst P).store ⟨0⟩ = Table.empty := by
+theorem contInst_vtab : Silmaril.Wasm.Resource.vtab (contInst P).store ⟨0⟩ = Silmaril.Wasm.Component.Runtime.Table.empty := by
   kernel_rfl
 
 theorem contInst_nesting : (contInst P).store.nestingDepth = 0 := by kernel_rfl

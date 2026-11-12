@@ -132,20 +132,20 @@ theorem spec_mapM {α β : Type} {f : α → DM β} (hf : ∀ a, Spec (f a) (fun
     rw [List.mapM_cons]
     exact spec_bind (hf a) fun _ _ => spec_bind (spec_mapM hf l) fun _ _ => spec_pure trivial
 
-theorem spec_decVal (v : ValType) : Spec (decVal v) (fun _ => True) := by
+theorem spec_decVal (v : Silmaril.Wasm.Component.Binary.ValType) : Spec (decVal v) (fun _ => True) := by
   cases v with
   | prim p => exact spec_pure trivial
   | idx i =>
     refine spec_bind (spec_typeAt i) fun t _ => ?_
     cases t <;> dsimp only <;> first | exact spec_pure trivial | exact spec_throw _
 
-theorem spec_decValOpt (v : Option ValType) : Spec (decValOpt v) (fun _ => True) := by
+theorem spec_decValOpt (v : Option Silmaril.Wasm.Component.Binary.ValType) : Spec (decValOpt v) (fun _ => True) := by
   cases v with
   | none => exact spec_pure trivial
   | some v => exact spec_bind (spec_decVal v) fun _ _ => spec_pure trivial
 
-theorem spec_decFunc (f : FuncType) : Spec (decFunc f) (fun _ => True) :=
-  spec_bind (spec_mapM (fun (p : String × ValType) => spec_bind (spec_decVal p.2) fun _ _ => spec_pure trivial) _) fun _ _ =>
+theorem spec_decFunc (f : Silmaril.Wasm.Component.Binary.FuncType) : Spec (decFunc f) (fun _ => True) :=
+  spec_bind (spec_mapM (fun (p : String × Silmaril.Wasm.Component.Binary.ValType) => spec_bind (spec_decVal p.2) fun _ _ => spec_pure trivial) _) fun _ _ =>
     spec_bind (spec_decValOpt _) fun _ _ => spec_pure trivial
 
 theorem spec_resAt (i : Nat) : Spec (resAt i) (fun r => r.owner = .local) := by
@@ -164,10 +164,10 @@ theorem spec_decDefVal_own (i : Nat) : Spec (decDefVal (.own i)) (fun t => isUse
 
 /-- The results of `decDefVal` are not used types. -/
 theorem spec_decDefVal (d : DefValType) : Spec (decDefVal d) (fun t => isUsed t = false) := by
-  have hv : ∀ (v : ValType) (g : Ty → TInfo), (∀ t, isUsed (g t) = false) →
+  have hv : ∀ (v : Silmaril.Wasm.Component.Binary.ValType) (g : Silmaril.Wasm.Wit.Binary.Ty → TInfo), (∀ t, isUsed (g t) = false) →
       Spec (do pure (g (← decVal v)) : DM TInfo) (fun t => isUsed t = false) :=
     fun v g hg => spec_bind (spec_decVal v) fun t _ => spec_pure (hg t)
-  have ho : ∀ (v : Option ValType) (g : Option Ty → TInfo), (∀ t, isUsed (g t) = false) →
+  have ho : ∀ (v : Option Silmaril.Wasm.Component.Binary.ValType) (g : Option Silmaril.Wasm.Wit.Binary.Ty → TInfo), (∀ t, isUsed (g t) = false) →
       Spec (do pure (g (← decValOpt v)) : DM TInfo) (fun t => isUsed t = false) :=
     fun v g hg => spec_bind (spec_decValOpt v) fun t _ => spec_pure (hg t)
   cases d with

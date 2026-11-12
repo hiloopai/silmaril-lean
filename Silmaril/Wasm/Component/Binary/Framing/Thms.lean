@@ -5,7 +5,7 @@ public import Silmaril.Wasm.Binary.Core.Decode
 public import Silmaril.Parse.ByteParse.Thms
 
 /-!
-# Section framing: soundness, completeness, silmaril's section grammar
+# Silmaril.Wasm.Binary.Section framing: soundness, completeness, silmaril's section grammar
 
 Statements in the shape of silmaril's `decode?_sound`
 (`Silmaril.Wasm.Binary.Core.DecodeSound`): a successful run explains the
@@ -39,10 +39,10 @@ theorem rawSectionG_iff {l : Bytes} {s : RawSection} : rawSectionG.G l s ↔ Raw
 
 /-- `RawSection` is silmaril's `Section id` with the body as its one item. -/
 theorem rawSection_iff_section {l : Bytes} {s : RawSection} :
-    RawSection.G l s ↔ Section s.id (fun c xs => xs = [c]) l [s.body.data.toList] := by
+    RawSection.G l s ↔ Silmaril.Wasm.Binary.Section s.id (fun c xs => xs = [c]) l [s.body.data.toList] := by
   constructor
   · rintro ⟨lb, rfl, hn⟩
-    exact Section.mk hn (Silmaril.Parse.ByteParse.size_eq_length _) rfl
+    exact Silmaril.Wasm.Binary.Section.mk hn (Silmaril.Parse.ByteParse.size_eq_length _) rfl
   · intro h
     cases h with
     | mk hl hlen hc =>
@@ -84,7 +84,7 @@ theorem framing_complete {pre rest : List UInt8} {secs : List RawSection}
 /-- **Soundness** of core framing, in the shape of silmaril's `decode?_sound`. -/
 theorem coreFraming_sound {b : ByteArray} {secs : List RawSection} (h : coreFraming b = .ok secs) :
     ∃ rest, b.data.toList = Silmaril.Wasm.Binary.magic ++ Silmaril.Wasm.Binary.version ++ rest ∧
-      ∀ s ∈ secs, ∃ l, Section s.id (fun c xs => xs = [c]) l [s.body.data.toList] := by
+      ∀ s ∈ secs, ∃ l, Silmaril.Wasm.Binary.Section s.id (fun c xs => xs = [c]) l [s.body.data.toList] := by
   obtain ⟨rest, h1, h2⟩ := framing_sound h
   refine ⟨rest, h1, ?_⟩
   intro s hs

@@ -30,7 +30,7 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Compon
 open Silmaril.Wasm.Resource
 
 /-- **The ownership reading of a table event**, given the mode of each entry. -/
-def obEvOf (μ : HandleEntry → Mode) : Table.Event HandleEntry → OEv ℕ
+def obEvOf (μ : HandleEntry → Mode) : Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry → OEv ℕ
   | .added i e => match μ e with
     | .owned => .alloc i
     | .borrowed => .lend i

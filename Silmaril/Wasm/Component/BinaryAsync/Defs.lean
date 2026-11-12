@@ -114,7 +114,7 @@ inductive SectionX where
   | types (xs : List DefType)
   | canons (xs : List CanonX)
   | start (s : Start)
-  | imports (xs : List Import)
+  | imports (xs : List Silmaril.Wasm.Component.Binary.Import)
   | exports (xs : List Export)
   | values (xs : List Value)
 

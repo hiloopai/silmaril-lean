@@ -207,12 +207,12 @@ theorem coreType_rt (t : CoreType) : R.coreType (P.coreType t) = some t := by
 
 theorem prim_rt (p : PrimValType) : R.prim (P.prim p) = some p := by cases p <;> rfl
 
-theorem valType_rt (t : ValType) : R.valType (P.valType t) = some t := by
+theorem valType_rt (t : Silmaril.Wasm.Component.Binary.ValType) : R.valType (P.valType t) = some t := by
   cases t with
   | prim p => cases p <;> rfl
   | idx i => simp [R.valType, P.valType]
 
-theorem optValType_rt (t : Option ValType) :
+theorem optValType_rt (t : Option Silmaril.Wasm.Component.Binary.ValType) :
     R.optValType (t.map P.valType).toList = some t := by
   cases t <;> simp [R.optValType, valType_rt]
 

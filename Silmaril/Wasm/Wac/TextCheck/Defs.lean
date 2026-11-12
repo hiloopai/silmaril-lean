@@ -34,7 +34,7 @@ def firstDup : List String → Option String
 
 mutual
 /-- The identifiers a value type names. -/
-def tyIdents : Ty → List String
+def tyIdents : Silmaril.Wasm.Wac.Text.Ty → List String
   | .ident id | .borrow id => [id]
   | .tuple ts => tyIdentsL ts
   | .list t | .option t => tyIdents t
@@ -42,54 +42,54 @@ def tyIdents : Ty → List String
   | .stream t | .future t => tyIdentsO t
   | _ => []
 /-- `tyIdents` of an optional type. -/
-def tyIdentsO : Option Ty → List String
+def tyIdentsO : Option Silmaril.Wasm.Wac.Text.Ty → List String
   | none => []
   | some t => tyIdents t
 /-- `tyIdents` of types. -/
-def tyIdentsL : List Ty → List String
+def tyIdentsL : List Silmaril.Wasm.Wac.Text.Ty → List String
   | [] => []
   | t :: ts => tyIdents t ++ tyIdentsL ts
 end
 
 /-- The identifiers a function type names. -/
-def funcIdents (f : FuncType) : List String :=
+def funcIdents (f : Silmaril.Wasm.Wac.Text.FuncType) : List String :=
   (f.params.map fun p => tyIdents p.ty).flatten ++
     match f.results with
     | .empty => []
     | .scalar t => tyIdents t
 
 /-- The function types of a resource. -/
-def methodFuncs : ResourceMethod → List FuncType
+def methodFuncs : ResourceMethod → List Silmaril.Wasm.Wac.Text.FuncType
   | .ctor _ ps => [⟨false, ps, .empty⟩]
   | .method _ _ _ f => [f]
 
 /-- The function types of a type declaration. -/
-def itemDeclFuncs : ItemTypeDecl → List FuncType
+def itemDeclFuncs : ItemTypeDecl → List Silmaril.Wasm.Wac.Text.FuncType
   | .resource _ _ ms => ms.flatMap methodFuncs
   | .decl (.alias _ _ (.func f)) => [f]
   | .decl _ => []
 
 /-- The function types of an interface item. -/
-def ifaceItemFuncs : InterfaceItem → List FuncType
+def ifaceItemFuncs : InterfaceItem → List Silmaril.Wasm.Wac.Text.FuncType
   | .use _ => []
   | .type d => itemDeclFuncs d
   | .export_ _ _ (.func f) => [f]
   | .export_ _ _ (.ident _) => []
 
 /-- The function types of a world item path. -/
-def pathFuncs : WorldItemPath → List FuncType
+def pathFuncs : WorldItemPath → List Silmaril.Wasm.Wac.Text.FuncType
   | .named _ (.func f) => [f]
   | .named _ (.interface items) => items.flatMap ifaceItemFuncs
   | _ => []
 
 /-- The function types of a world item. -/
-def worldItemFuncs : WorldItem → List FuncType
+def worldItemFuncs : WorldItem → List Silmaril.Wasm.Wac.Text.FuncType
   | .type d => itemDeclFuncs d
   | .import_ _ p | .export_ _ p => pathFuncs p
   | _ => []
 
 /-- Every function type of a statement. -/
-def stmtFuncs : Statement → List FuncType
+def stmtFuncs : Statement → List Silmaril.Wasm.Wac.Text.FuncType
   | .import_ _ _ _ (.func f) => [f]
   | .import_ _ _ _ (.interface items) => items.flatMap ifaceItemFuncs
   | .type (.interface _ _ items) => items.flatMap ifaceItemFuncs
@@ -98,7 +98,7 @@ def stmtFuncs : Statement → List FuncType
   | _ => []
 
 /-- The function types at the top level of a statement (outside interface and world bodies). -/
-def topFuncs : Statement → List FuncType
+def topFuncs : Statement → List Silmaril.Wasm.Wac.Text.FuncType
   | .import_ _ _ _ (.func f) => [f]
   | .type (.type (.alias _ _ (.func f))) => [f]
   | _ => []

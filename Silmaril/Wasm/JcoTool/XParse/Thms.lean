@@ -89,11 +89,11 @@ theorem b0_G {op : UInt8} {x : Builtin} {l : Bytes} (hk : xcanonK op = b0 x)
   cases h
   exact tagged_G _ hk pure_G
 
-theorem taskReturn_G {r : Option ValType} {o : List CanonOpt} {l : Bytes}
+theorem taskReturn_G {r : Option Silmaril.Wasm.Component.Binary.ValType} {o : List CanonOpt} {l : Bytes}
     (h : (Builtin.taskReturn r o).encode = some l) : xcanonG.G l (.builtin (.taskReturn r o)) := by
   obtain ⟨a, ha, b, hb, hl⟩ := bind2_some h
   rw [← hl]
-  exact tagged_G _ rfl (map_G (f := fun (p : Option ValType × List CanonOpt) =>
+  exact tagged_G _ rfl (map_G (f := fun (p : Option Silmaril.Wasm.Component.Binary.ValType × List CanonOpt) =>
     XCanon.builtin (Builtin.taskReturn p.1 p.2)) (a := (r, o)) (seq_G (resultList_G ha) (opts_G hb)))
 
 theorem contextGet_G {i : Nat} {l : Bytes} (h : (Builtin.contextGet i).encode = some l) :

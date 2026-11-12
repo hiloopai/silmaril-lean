@@ -54,7 +54,7 @@ structure TS where
 abbrev TyM := StateT TS (Except String)
 
 /-- The index of a value type definition, defined once. -/
-def intern (d : DefValType) : TyM ValType := do
+def intern (d : DefValType) : TyM Silmaril.Wasm.Component.Binary.ValType := do
   let s ← get
   match s.memo.find? (·.1 == d) with
   | some (_, i) => pure (.idx i)
@@ -64,7 +64,7 @@ def intern (d : DefValType) : TyM ValType := do
 
 mutual
 /-- A resolved WIT type as a component value type. -/
-def valType : Ty → TyM ValType
+def valType : Silmaril.Wasm.Wit.Binary.Ty → TyM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .list t => do
     let a ← valType t
@@ -92,10 +92,10 @@ def valType : Ty → TyM ValType
   | .fixedList _ _ => throw "fixed-size lists are not supported"
   | .own _ | .borrow _ => throw "resources are not supported by `wasm-jco new` yet"
   | .ref r => throw s!"named type `{r.name}` is not supported (anonymous types only)"
-def optType : Option Ty → TyM (Option ValType)
+def optType : Option Silmaril.Wasm.Wit.Binary.Ty → TyM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => some <$> valType t
-def valTypes : List Ty → TyM (List ValType)
+def valTypes : List Silmaril.Wasm.Wit.Binary.Ty → TyM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do
     let a ← valType t
@@ -104,7 +104,7 @@ def valTypes : List Ty → TyM (List ValType)
 end
 
 /-- The index of the function type of `f`. -/
-def funcType (f : Func) : TyM Nat := do
+def funcType (f : Silmaril.Wasm.Wit.Binary.Func) : TyM Nat := do
   let ps ← f.params.mapM fun (n, t) => do pure (n, ← valType t)
   let r ← optType f.result
   let s ← get
@@ -140,15 +140,15 @@ def chanOps : List (String × ChanOp) :=
 /-- What a core import of the module asks for. -/
 inductive Req where
   /-- `canon lower` of world import `i`. -/
-  | lower (i : Nat) (f : Func)
+  | lower (i : Nat) (f : Silmaril.Wasm.Wit.Binary.Func)
   /-- `canon lower` of world import `i` with the `async` option (`[async-lower]f`). -/
-  | lowerAsync (i : Nat) (f : Func)
+  | lowerAsync (i : Nat) (f : Silmaril.Wasm.Wit.Binary.Func)
   /-- `error-context.new` with the string encoding `enc` (`[error-context-new-<enc>]`). -/
   | errorContextNew (enc : CanonOpt)
   /-- `error-context.debug-message` with the string encoding `enc`. -/
   | errorContextDebugMessage (enc : CanonOpt)
   | errorContextDrop
-  | taskReturn (f : Func)
+  | taskReturn (f : Silmaril.Wasm.Wit.Binary.Func)
   | taskCancel
   | backpressureInc
   | backpressureDec
@@ -163,7 +163,7 @@ inductive Req where
   | waitableSetDrop
   | waitableJoin
   /-- An operation on stream or future `c` of function `f` (`async`: `[async-lower]`). -/
-  | chan (op : ChanOp) (async : Bool) (c : Chan) (f : Func)
+  | chan (op : ChanOp) (async : Bool) (c : Chan) (f : Silmaril.Wasm.Wit.Binary.Func)
   deriving Repr, Inhabited
 
 /-- The general built-ins, by their names in module `$root`. -/
@@ -192,7 +192,7 @@ def generalReq : String → Option Req
       | _ => none
 
 /-- A stream or future operation `[stream-<op>-N]f`, `f` looked up in `fs`. -/
-def chanReq (async : Bool) (fs : List Func) (s : String) : Except String (Option Req) := do
+def chanReq (async : Bool) (fs : List Silmaril.Wasm.Wit.Binary.Func) (s : String) : Except String (Option Req) := do
   let kinds : List (String × Bool) := [("[stream-", true), ("[future-", false)]
   for (pre, isStream) in kinds do
     if let some r := strip? pre s then
@@ -201,7 +201,7 @@ def chanReq (async : Bool) (fs : List Func) (s : String) : Except String (Option
           -- `[stream-<op>-unit]f`: a stream or future with no element type (`stream`,
           -- `future`); `f` names no function of the world (wit-component ignores it)
           if let some fname := strip? "unit]" r' then
-            let f : Func := { name := fname, params := [] }
+            let f : Silmaril.Wasm.Wit.Binary.Func := { name := fname, params := [] }
             return some (.chan op async (if isStream then .stream none else .future none) f)
           let some (n, fname) := indexBracket r' | throw s!"core import {s}: malformed index"
           let some f := fs.find? (·.name == fname) | throw s!"core import {s}: no function {fname}"
@@ -212,7 +212,7 @@ def chanReq (async : Bool) (fs : List Func) (s : String) : Except String (Option
   pure none
 
 /-- Classify a core import `(module, name)`. -/
-def classify (imps exps : List Func) (modName name : String) : Except String Req := do
+def classify (imps exps : List Silmaril.Wasm.Wit.Binary.Func) (modName name : String) : Except String Req := do
   let (async, base) := match strip? "[async-lower]" name with
     | some b => (true, b)
     | none => (false, name)
@@ -291,15 +291,15 @@ the implementation of each export, and the memory and allocator exports when nee
 structure Plan where
   core : ByteArray
   mod : CoreMod
-  imports : List Func
-  exports : List Func
+  imports : List Silmaril.Wasm.Wit.Binary.Func
+  exports : List Silmaril.Wasm.Wit.Binary.Func
   reqs : List ((String × String) × Req)
   lifts : List Lift
   memory : Option String
   realloc : Option String
 
 /-- The freestanding functions of world items. -/
-def worldFuncs (what : String) (items : List WorldItem) : Except String (List Func) :=
+def worldFuncs (what : String) (items : List WorldItem) : Except String (List Silmaril.Wasm.Wit.Binary.Func) :=
   items.filterMapM fun
     | .func f =>
       if f.kind = .freestanding then pure (some f)
@@ -323,7 +323,7 @@ def expectExport (m : CoreMod) (n : String) (t : CoreFuncTy) : Except String Uni
 def require (b : Bool) (msg : String) : Except String Unit := if b then pure () else throw msg
 
 /-- The post-return function of sync export `f` lifted at core type `t`, if any. -/
-def postReturn (m : CoreMod) (f : Func) (t : CoreFuncTy) : Except String Lift :=
+def postReturn (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) (t : CoreFuncTy) : Except String Lift :=
   match coreExport? m ("cabi_post_" ++ f.name) with
   | some t' =>
     if t' = ⟨t.results, []⟩ then pure (.sync f.name (some ("cabi_post_" ++ f.name)))
@@ -331,26 +331,26 @@ def postReturn (m : CoreMod) (f : Func) (t : CoreFuncTy) : Except String Lift :=
   | none => pure (.sync f.name none)
 
 /-- A sync export: the core export `f` at `liftCore f`. -/
-def liftSync (m : CoreMod) (f : Func) : Except String Lift := do
+def liftSync (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Lift := do
   let t ← liftCore f
   expectExport m f.name t
   postReturn m f t
 
 /-- An async export with a callback. -/
-def liftCallback (m : CoreMod) (f : Func) : Except String Lift := do
+def liftCallback (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Lift := do
   let t ← liftAsyncCore f true
   expectExport m ("[async-lift]" ++ f.name) t
   expectExport m ("[callback][async-lift]" ++ f.name) callbackCore
   pure (.callback ("[async-lift]" ++ f.name) ("[callback][async-lift]" ++ f.name))
 
 /-- A stackful async export. -/
-def liftStackful (m : CoreMod) (f : Func) : Except String Lift := do
+def liftStackful (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Lift := do
   let t ← liftAsyncCore f false
   expectExport m ("[async-lift-stackful]" ++ f.name) t
   pure (.stackful ("[async-lift-stackful]" ++ f.name))
 
 /-- How export `f` is implemented by the module. -/
-def liftOf (m : CoreMod) (f : Func) : Except String Lift :=
+def liftOf (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Lift :=
   if f.async then
     if (coreExport? m ("[async-lift]" ++ f.name)).isSome then liftCallback m f
     else liftStackful m f
@@ -365,7 +365,7 @@ def hasMemory (core : ByteArray) : Bool :=
   | none => false
 
 /-- Whether any export or request needs the memory or the allocator. -/
-def needs (exps : List Func) (reqs : List Req) : Except String (Bool × Bool) := do
+def needs (exps : List Silmaril.Wasm.Wit.Binary.Func) (reqs : List Req) : Except String (Bool × Bool) := do
   let mut mem := false
   let mut ra := false
   for f in exps do
@@ -382,7 +382,7 @@ def needs (exps : List Func) (reqs : List Req) : Except String (Bool × Bool) :=
   pure (mem, ra)
 
 /-- A core import of the module: its request, at the canonical core type. -/
-def reqOf (imps exps : List Func) (x : (String × String) × (String × CoreFuncTy)) :
+def reqOf (imps exps : List Silmaril.Wasm.Wit.Binary.Func) (x : (String × String) × (String × CoreFuncTy)) :
     Except String ((String × String) × Req) := do
   let r ← classify imps exps x.1.1 x.1.2
   let t' ← r.coreTy
@@ -437,8 +437,8 @@ def aliasCoreFunc (inst : Nat) (n : String) : EM Nat :=
 /-- The type index of stream or future `c` (already interned). -/
 def chanTy (ts : TS) (c : Chan) : Except String Nat := do
   let t := match c with
-    | .stream t => Ty.stream t
-    | .future t => Ty.future t
+    | .stream t => Silmaril.Wasm.Wit.Binary.Ty.stream t
+    | .future t => Silmaril.Wasm.Wit.Binary.Ty.future t
   match (valType t).run ts with
   | .ok (.idx i, _) => pure i
   | .ok _ => throw "internal: a stream type is not a defined type"
@@ -525,7 +525,7 @@ def fixupMod (tys : List CoreFuncTy) : CMod :=
     elems := [(0, List.range n)] }
 
 /-- The options of `canon lift` of export `f`. -/
-def liftOpts (mem ra : Option Nat) (f : Func) (postRet callback : Option Nat) :
+def liftOpts (mem ra : Option Nat) (f : Silmaril.Wasm.Wit.Binary.Func) (postRet callback : Option Nat) :
     Except String (List CanonOpt) := do
   let um ← usesMemory f
   let nr ← needsRealloc f

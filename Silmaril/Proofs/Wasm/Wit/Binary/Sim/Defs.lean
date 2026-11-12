@@ -20,7 +20,7 @@ open Silmaril.Wasm.Component.Binary Enc
 /-! ## Lists of components -/
 
 theorem decFields_ext {a b : List Slot} (hx : Ext a b) :
-    ∀ {fs : List (String × ValType)} {ls : List (Labeled Ty)}, decFields a fs = .ok ls → decFields b fs = .ok ls
+    ∀ {fs : List (String × Silmaril.Wasm.Component.Binary.ValType)} {ls : List (Labeled Ty)}, decFields a fs = .ok ls → decFields b fs = .ok ls
   | [], _, h => h
   | (n, v) :: fs, ls, h => by
     simp only [decFields] at h ⊢
@@ -33,7 +33,7 @@ theorem decFields_ext {a b : List Slot} (hx : Ext a b) :
       | ok ts' => rw [decValType_ext hx hv, decFields_ext hx hvs]; rw [hvs] at h; exact h
 
 theorem decCases_ext {a b : List Slot} (hx : Ext a b) :
-    ∀ {cs : List (String × Option ValType)} {ls : List (Labeled (Option Ty))},
+    ∀ {cs : List (String × Option Silmaril.Wasm.Component.Binary.ValType)} {ls : List (Labeled (Option Ty))},
       decCases a cs = .ok ls → decCases b cs = .ok ls
   | [], _, h => h
   | (n, v) :: cs, ls, h => by
@@ -47,7 +47,7 @@ theorem decCases_ext {a b : List Slot} (hx : Ext a b) :
       | ok ts' => rw [decOpt_ext hx hv, decCases_ext hx hvs]; rw [hvs] at h; exact h
 
 theorem decParams_ext {a b : List Slot} (hx : Ext a b) :
-    ∀ {ps : List (String × ValType)} {ls : List (String × Ty)}, decParams a ps = .ok ls → decParams b ps = .ok ls
+    ∀ {ps : List (String × Silmaril.Wasm.Component.Binary.ValType)} {ls : List (String × Ty)}, decParams a ps = .ok ls → decParams b ps = .ok ls
   | [], _, h => h
   | (n, v) :: ps, ls, h => by
     simp only [decParams] at h ⊢
@@ -73,10 +73,10 @@ theorem cons_sim {α β γ : Type} {e e' : Enc} {cst : CSt} {dst : Option DSt} {
   exact ⟨a, b, rfl, Sim.seq (hx h₁) hP (fun hI₁ => hy hI₁ h₃)⟩
 
 theorem fields_sim : ∀ (fs : List (Labeled Ty)) {e e' : Enc} {cst : CSt} {dst : Option DSt}
-    {vs : List (String × ValType)}, Inv e cst dst → (fields fs).run e = .ok (vs, e') →
+    {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)}, Inv e cst dst → (fields fs).run e = .ok (vs, e') →
     Sim e cst dst e' (fun cur => decFields cur vs = .ok (fs.map Labeled.strip))
   | [], _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List (String × ValType))) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List (String × Silmaril.Wasm.Component.Binary.ValType))) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | f :: fs, _, _, _, _, _, hI, h => by
     obtain ⟨a, b, rfl, hs⟩ := cons_sim (P := fun a cur => decValType cur a = .ok f.ty)
@@ -85,10 +85,10 @@ theorem fields_sim : ∀ (fs : List (Labeled Ty)) {e e' : Enc} {cst : CSt} {dst 
     exact hs.mono fun cur hc => by simp only [decFields, hc.1, hc.2]; rfl
 
 theorem cases_sim : ∀ (cs : List (Labeled (Option Ty))) {e e' : Enc} {cst : CSt} {dst : Option DSt}
-    {vs : List (String × Option ValType)}, Inv e cst dst → (cases cs).run e = .ok (vs, e') →
+    {vs : List (String × Option Silmaril.Wasm.Component.Binary.ValType)}, Inv e cst dst → (cases cs).run e = .ok (vs, e') →
     Sim e cst dst e' (fun cur => decCases cur vs = .ok (cs.map Labeled.strip))
   | [], _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List (String × Option ValType))) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List (String × Option Silmaril.Wasm.Component.Binary.ValType))) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | c :: cs, _, _, _, _, _, hI, h => by
     obtain ⟨a, b, rfl, hs⟩ := cons_sim (P := fun a cur => decOpt cur a = .ok c.ty)
@@ -97,10 +97,10 @@ theorem cases_sim : ∀ (cs : List (Labeled (Option Ty))) {e e' : Enc} {cst : CS
     exact hs.mono fun cur hc => by simp only [decCases, hc.1, hc.2]; rfl
 
 theorem params_sim : ∀ (ps : List (String × Ty)) {e e' : Enc} {cst : CSt} {dst : Option DSt}
-    {vs : List (String × ValType)}, Inv e cst dst → (params ps).run e = .ok (vs, e') →
+    {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)}, Inv e cst dst → (params ps).run e = .ok (vs, e') →
     Sim e cst dst e' (fun cur => decParams cur vs = .ok ps)
   | [], _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List (String × ValType))) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List (String × Silmaril.Wasm.Component.Binary.ValType))) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | p :: ps, _, _, _, _, _, hI, h => by
     obtain ⟨a, b, rfl, hs⟩ := cons_sim (P := fun a cur => decValType cur a = .ok p.2)

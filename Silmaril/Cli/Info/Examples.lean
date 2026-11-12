@@ -124,8 +124,7 @@ theorem asyncify_help (S : Matches → Spec) :
 /-! ## `wasm-opt`: the clap dialect, help among the information options -/
 
 theorem wasmOpt_wins (S : Matches → Spec) : Spec.WasmOpt.tool.spec S ≤ HelpVariant.wins.sen :=
-  Clap.spec_help (by decide +kernel) (fun p _ => HelpVariant.fits_line rfl rfl p _)
-    (fun h => by cases h) S
+  Clap.spec_help rfl (by decide +kernel) (fun p _ => HelpVariant.fits_line rfl rfl p _) S
 
 /-! ## A program that answers help with exit 1 -/
 

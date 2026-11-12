@@ -92,7 +92,7 @@ def fwdFrom (b n : Nat) : List Impl := (List.range n).map fun i => Impl.fwd (b +
 
 /-- `canon lift` exports of the functions `W`, the `j`-th one implemented by
 environment function `b + j`. -/
-def liftExports : Iface → Nat → List Export
+def liftExports : Iface → Nat → List Silmaril.Wasm.Component.Export
   | [], _ => []
   | x :: W, b => ⟨x.1, x.2, ⟨[.lift x.2], .call b⟩⟩ :: liftExports W (b + 1)
 

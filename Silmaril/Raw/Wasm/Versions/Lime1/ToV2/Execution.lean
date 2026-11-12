@@ -31,7 +31,7 @@ Every sort maps by a plain total function, named `X.toV2` uniformly with
   2.0 target is easier than the Core 3.0 one: `Lime1/ToCore/Runtime.lean` has to
   expand `.invoke a` into `REF.FUNC_ADDR a; CALL_REF dt` and to read `dt` out of
   the store, whereas `4-runtime:132` has `CALL_ADDR funcaddr` verbatim. So
-  `Admin.toV2 : Admin → V2.Admin` is a store-independent, length-preserving
+  `Admin.toV2 : Silmaril.Wasm.V2.Execution.Admin → V2.Admin` is a store-independent, length-preserving
   function, and so is `Config.toV2`.
 
 ## The simulation relation
@@ -252,22 +252,22 @@ def _root_.Silmaril.Wasm.Execution.Runtime.Store.toV2 (s : Store H) : VStore H w
 mutual
 /-- `admininstr` (`4-runtime:128`). Store-independent and length-preserving:
 `.invoke a` is `CALL_ADDR a` (`4-runtime:132`). -/
-def Admin.toV2 : Admin → VAdmin
+def Silmaril.Wasm.V2.Execution.Admin.toV2 : Silmaril.Wasm.V2.Execution.Admin → VAdmin
   | .source i => .plain (Instr.toV2 i)
   | .invoke a => .callAddr a.value
-  | .label n cont body => .label n (cont.map Instr.toV2) (Admin.listToV2 body)
-  | .frame n f body => .frame n f.toV2 (Admin.listToV2 body)
+  | .label n cont body => .label n (cont.map Instr.toV2) (Silmaril.Wasm.V2.Execution.Admin.listToV2 body)
+  | .frame n f body => .frame n f.toV2 (Silmaril.Wasm.V2.Execution.Admin.listToV2 body)
   | .trap => .trap
 
 /-- `Admin.toV2` on a sequence. -/
-def Admin.listToV2 : List Admin → List VAdmin
+def Silmaril.Wasm.V2.Execution.Admin.listToV2 : List Silmaril.Wasm.V2.Execution.Admin → List VAdmin
   | [] => []
-  | a :: as => Admin.toV2 a :: Admin.listToV2 as
+  | a :: as => Silmaril.Wasm.V2.Execution.Admin.toV2 a :: Silmaril.Wasm.V2.Execution.Admin.listToV2 as
 end
 
 /-- `config ::= state; admininstr*` (`4-runtime:117`). -/
 def _root_.Silmaril.Wasm.Execution.Runtime.Config.toV2 (c : Config H) : VConfig H :=
-  ⟨c.store.toV2, c.frame.toV2, Admin.listToV2 c.code⟩
+  ⟨c.store.toV2, c.frame.toV2, Silmaril.Wasm.V2.Execution.Admin.listToV2 c.code⟩
 
 /-- `result ::= _VALS val* | TRAP` (`4-runtime:46`). -/
 def _root_.Silmaril.Wasm.Execution.Runtime.Result.toV2 : Result → VResult
@@ -276,55 +276,55 @@ def _root_.Silmaril.Wasm.Execution.Runtime.Result.toV2 : Result → VResult
 
 /-! ## Commuting lemmas (the `simp` battery for the simulation proofs) -/
 
-@[simp] theorem listToV2_nil : Admin.listToV2 ([] : List Admin) = [] := by
-  simp [Admin.listToV2]
+@[simp] theorem listToV2_nil : Silmaril.Wasm.V2.Execution.Admin.listToV2 ([] : List Silmaril.Wasm.V2.Execution.Admin) = [] := by
+  simp [Silmaril.Wasm.V2.Execution.Admin.listToV2]
 
-@[simp] theorem listToV2_cons (a : Admin) (as : List Admin) :
-    Admin.listToV2 (a :: as) = Admin.toV2 a :: Admin.listToV2 as := by
-  simp [Admin.listToV2]
+@[simp] theorem listToV2_cons (a : Silmaril.Wasm.V2.Execution.Admin) (as : List Silmaril.Wasm.V2.Execution.Admin) :
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 (a :: as) = Silmaril.Wasm.V2.Execution.Admin.toV2 a :: Silmaril.Wasm.V2.Execution.Admin.listToV2 as := by
+  simp [Silmaril.Wasm.V2.Execution.Admin.listToV2]
 
-theorem listToV2_eq_map (l : List Admin) : Admin.listToV2 l = l.map Admin.toV2 := by
+theorem listToV2_eq_map (l : List Silmaril.Wasm.V2.Execution.Admin) : Silmaril.Wasm.V2.Execution.Admin.listToV2 l = l.map Silmaril.Wasm.V2.Execution.Admin.toV2 := by
   induction l with
   | nil => simp
   | cons a l ih => simp [ih]
 
-@[simp] theorem listToV2_append (xs ys : List Admin) :
-    Admin.listToV2 (xs ++ ys) = Admin.listToV2 xs ++ Admin.listToV2 ys := by
+@[simp] theorem listToV2_append (xs ys : List Silmaril.Wasm.V2.Execution.Admin) :
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 (xs ++ ys) = Silmaril.Wasm.V2.Execution.Admin.listToV2 xs ++ Silmaril.Wasm.V2.Execution.Admin.listToV2 ys := by
   simp [listToV2_eq_map]
 
-@[simp] theorem value_toV2 (v : Value) : Admin.toV2 (value v) = (Value.toV2 v).toAdmin := by
+@[simp] theorem value_toV2 (v : Value) : Silmaril.Wasm.V2.Execution.Admin.toV2 (value v) = (Value.toV2 v).toAdmin := by
   rcases v with ⟨_ | _, _⟩ <;> rfl
 
 @[simp] theorem values_toV2 (vs : List Value) :
-    Admin.listToV2 (values vs) = Silmaril.Wasm.V2.Execution.vals (vs.map Value.toV2) := by
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 (values vs) = Silmaril.Wasm.V2.Execution.vals (vs.map Value.toV2) := by
   simp [listToV2_eq_map, values, Silmaril.Wasm.V2.Execution.vals, List.map_map,
     Function.comp_def]
 
-@[simp] theorem source_toV2 (i : Instr) : Admin.toV2 (.source i) = .plain (Instr.toV2 i) := by
-  simp [Admin.toV2]
+@[simp] theorem source_toV2 (i : Instr) : Silmaril.Wasm.V2.Execution.Admin.toV2 (.source i) = .plain (Instr.toV2 i) := by
+  simp [Silmaril.Wasm.V2.Execution.Admin.toV2]
 
-@[simp] theorem invoke_toV2 (a : FuncAddr) : Admin.toV2 (.invoke a) = .callAddr a.value := by
-  simp [Admin.toV2]
+@[simp] theorem invoke_toV2 (a : FuncAddr) : Silmaril.Wasm.V2.Execution.Admin.toV2 (.invoke a) = .callAddr a.value := by
+  simp [Silmaril.Wasm.V2.Execution.Admin.toV2]
 
-@[simp] theorem label_toV2 (n : Nat) (cont : Expr) (body : List Admin) :
-    Admin.toV2 (.label n cont body) =
-      .label n (cont.map Instr.toV2) (Admin.listToV2 body) := by simp [Admin.toV2]
+@[simp] theorem label_toV2 (n : Nat) (cont : Expr) (body : List Silmaril.Wasm.V2.Execution.Admin) :
+    Silmaril.Wasm.V2.Execution.Admin.toV2 (.label n cont body) =
+      .label n (cont.map Instr.toV2) (Silmaril.Wasm.V2.Execution.Admin.listToV2 body) := by simp [Silmaril.Wasm.V2.Execution.Admin.toV2]
 
-@[simp] theorem frame_toV2 (n : Nat) (f : Frame) (body : List Admin) :
-    Admin.toV2 (.frame n f body) = .frame n f.toV2 (Admin.listToV2 body) := by simp [Admin.toV2]
+@[simp] theorem frame_toV2 (n : Nat) (f : Frame) (body : List Silmaril.Wasm.V2.Execution.Admin) :
+    Silmaril.Wasm.V2.Execution.Admin.toV2 (.frame n f body) = .frame n f.toV2 (Silmaril.Wasm.V2.Execution.Admin.listToV2 body) := by simp [Silmaril.Wasm.V2.Execution.Admin.toV2]
 
-@[simp] theorem trap_toV2 : Admin.toV2 .trap = .trap := by simp [Admin.toV2]
+@[simp] theorem trap_toV2 : Silmaril.Wasm.V2.Execution.Admin.toV2 .trap = .trap := by simp [Silmaril.Wasm.V2.Execution.Admin.toV2]
 
 @[simp] theorem expression_toV2 (es : Expr) :
-    Admin.listToV2 (expression es) =
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 (expression es) =
       Silmaril.Wasm.V2.Execution.expression (Expr.toV2 es) := by
   simp [listToV2_eq_map, expression, Silmaril.Wasm.V2.Execution.expression, Expr.toV2_eq_map,
-    List.map_map, Function.comp_def, Admin.toV2]
+    List.map_map, Function.comp_def, Silmaril.Wasm.V2.Execution.Admin.toV2]
 
 @[simp] theorem result_toV2 (r : Result) :
-    Admin.listToV2 (result r) = r.toV2.toAdmin := by
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 (result r) = r.toV2.toAdmin := by
   cases r <;>
-    simp [result, Runtime.Result.toV2, Silmaril.Wasm.V2.Execution.Result.toAdmin, Admin.toV2]
+    simp [result, Runtime.Result.toV2, Silmaril.Wasm.V2.Execution.Result.toAdmin, Silmaril.Wasm.V2.Execution.Admin.toV2]
 
 /-! ## Retractions
 
@@ -392,45 +392,45 @@ theorem Frame.toV2_injective : Function.Injective Runtime.Frame.toV2 :=
 mutual
 /-- The retraction of `Admin.toV2`: `REF.FUNC_ADDR`, `REF.HOST_ADDR` and the 2.0
 instructions outside the Lime1 image are rejected. -/
-def Admin.ofV2? : VAdmin → Option Admin
+def Silmaril.Wasm.V2.Execution.Admin.ofV2? : VAdmin → Option Silmaril.Wasm.V2.Execution.Admin
   | .plain i => (Instr.ofV2? i).map .source
   | .callAddr a => some (.invoke ⟨a⟩)
   | .label n cont body => do
-      return .label n (← Expr.ofV2? cont) (← Admin.listOfV2? body)
+      return .label n (← Expr.ofV2? cont) (← Silmaril.Wasm.V2.Execution.Admin.listOfV2? body)
   | .frame n f body => do
-      return .frame n (← Frame.ofV2? f) (← Admin.listOfV2? body)
+      return .frame n (← Frame.ofV2? f) (← Silmaril.Wasm.V2.Execution.Admin.listOfV2? body)
   | .trap => some .trap
   | _ => none
 
 /-- `Admin.ofV2?` on a sequence. -/
-def Admin.listOfV2? : List VAdmin → Option (List Admin)
+def Silmaril.Wasm.V2.Execution.Admin.listOfV2? : List VAdmin → Option (List Silmaril.Wasm.V2.Execution.Admin)
   | [] => some []
-  | a :: as => do return (← Admin.ofV2? a) :: (← Admin.listOfV2? as)
+  | a :: as => do return (← Silmaril.Wasm.V2.Execution.Admin.ofV2? a) :: (← Silmaril.Wasm.V2.Execution.Admin.listOfV2? as)
 end
 
 mutual
-@[simp] theorem Admin.ofV2?_toV2 : (a : Admin) → Admin.ofV2? (Admin.toV2 a) = some a
-  | .source i => by simp [Admin.ofV2?]
-  | .invoke a => by cases a; simp [Admin.ofV2?]
-  | .trap => by simp [Admin.ofV2?]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.ofV2?_toV2 : (a : Silmaril.Wasm.V2.Execution.Admin) → Silmaril.Wasm.V2.Execution.Admin.ofV2? (Silmaril.Wasm.V2.Execution.Admin.toV2 a) = some a
+  | .source i => by simp [Silmaril.Wasm.V2.Execution.Admin.ofV2?]
+  | .invoke a => by cases a; simp [Silmaril.Wasm.V2.Execution.Admin.ofV2?]
+  | .trap => by simp [Silmaril.Wasm.V2.Execution.Admin.ofV2?]
   | .label n cont body => by
-      simp [Admin.ofV2?, Admin.listOfV2?_listToV2 body, ← Expr.toV2_eq_map]
+      simp [Silmaril.Wasm.V2.Execution.Admin.ofV2?, Silmaril.Wasm.V2.Execution.Admin.listOfV2?_listToV2 body, ← Expr.toV2_eq_map]
   | .frame n f body => by
-      simp [Admin.ofV2?, Admin.listOfV2?_listToV2 body]
+      simp [Silmaril.Wasm.V2.Execution.Admin.ofV2?, Silmaril.Wasm.V2.Execution.Admin.listOfV2?_listToV2 body]
 
 /-- `Admin.ofV2?_toV2` on a sequence. -/
-@[simp] theorem Admin.listOfV2?_listToV2 :
-    (l : List Admin) → Admin.listOfV2? (Admin.listToV2 l) = some l
-  | [] => by simp [Admin.listOfV2?]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.listOfV2?_listToV2 :
+    (l : List Silmaril.Wasm.V2.Execution.Admin) → Silmaril.Wasm.V2.Execution.Admin.listOfV2? (Silmaril.Wasm.V2.Execution.Admin.listToV2 l) = some l
+  | [] => by simp [Silmaril.Wasm.V2.Execution.Admin.listOfV2?]
   | a :: as => by
-      simp [Admin.listOfV2?, Admin.ofV2?_toV2 a, Admin.listOfV2?_listToV2 as]
+      simp [Silmaril.Wasm.V2.Execution.Admin.listOfV2?, Silmaril.Wasm.V2.Execution.Admin.ofV2?_toV2 a, Silmaril.Wasm.V2.Execution.Admin.listOfV2?_listToV2 as]
 end
 
-theorem Admin.toV2_injective : Function.Injective Admin.toV2 :=
-  injective_of_ofV2? Admin.ofV2?_toV2
+theorem Silmaril.Wasm.V2.Execution.Admin.toV2_injective : Function.Injective Silmaril.Wasm.V2.Execution.Admin.toV2 :=
+  injective_of_ofV2? Silmaril.Wasm.V2.Execution.Admin.ofV2?_toV2
 
-theorem Admin.listToV2_injective : Function.Injective Admin.listToV2 :=
-  injective_of_ofV2? Admin.listOfV2?_listToV2
+theorem Silmaril.Wasm.V2.Execution.Admin.listToV2_injective : Function.Injective Silmaril.Wasm.V2.Execution.Admin.listToV2 :=
+  injective_of_ofV2? Silmaril.Wasm.V2.Execution.Admin.listOfV2?_listToV2
 
 /-! ## Normalisation and the simulation relation -/
 
@@ -460,20 +460,20 @@ mutual
 /-- Erase the module instances of the frames inside the code. Unlike
 `Lime1/ToCore/Runtime.lean`'s `Admin.norm`, nothing is *resolved*: 2.0's
 `CALL_ADDR` needs no annotation. -/
-def Admin.norm : VAdmin → VAdmin
-  | .label n cont body => .label n cont (Admin.normList body)
-  | .frame n f body => .frame n (Frame.erase f) (Admin.normList body)
+def Silmaril.Wasm.V2.Execution.Admin.norm : VAdmin → VAdmin
+  | .label n cont body => .label n cont (Silmaril.Wasm.V2.Execution.Admin.normList body)
+  | .frame n f body => .frame n (Frame.erase f) (Silmaril.Wasm.V2.Execution.Admin.normList body)
   | a => a
 
 /-- `Admin.norm` on a sequence. -/
-def Admin.normList : List VAdmin → List VAdmin
+def Silmaril.Wasm.V2.Execution.Admin.normList : List VAdmin → List VAdmin
   | [] => []
-  | a :: as => Admin.norm a :: Admin.normList as
+  | a :: as => Silmaril.Wasm.V2.Execution.Admin.norm a :: Silmaril.Wasm.V2.Execution.Admin.normList as
 end
 
 /-- Normalisation of a whole configuration. -/
 def Config.norm (c : VConfig H) : VConfig H :=
-  ⟨Store.erase c.store, Frame.erase c.frame, Admin.normList c.code⟩
+  ⟨Store.erase c.store, Frame.erase c.frame, Silmaril.Wasm.V2.Execution.Admin.normList c.code⟩
 
 /-- Module-instance similarity: the 2.0 instance additionally records element
 and data segment addresses, which Lime1 never has. -/
@@ -531,44 +531,44 @@ def HostCompatible (src : HostSemantics H) (tgt : VHostSemantics H) : Prop :=
 
 /-! ### Normalisation lemmas -/
 
-@[simp] theorem Admin.normList_nil : Admin.normList [] = [] := by simp [Admin.normList]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.normList_nil : Silmaril.Wasm.V2.Execution.Admin.normList [] = [] := by simp [Silmaril.Wasm.V2.Execution.Admin.normList]
 
-@[simp] theorem Admin.normList_cons (a : VAdmin) (as : List VAdmin) :
-    Admin.normList (a :: as) = Admin.norm a :: Admin.normList as := by simp [Admin.normList]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.normList_cons (a : VAdmin) (as : List VAdmin) :
+    Silmaril.Wasm.V2.Execution.Admin.normList (a :: as) = Silmaril.Wasm.V2.Execution.Admin.norm a :: Silmaril.Wasm.V2.Execution.Admin.normList as := by simp [Silmaril.Wasm.V2.Execution.Admin.normList]
 
-theorem Admin.normList_eq_map (l : List VAdmin) : Admin.normList l = l.map Admin.norm := by
+theorem Silmaril.Wasm.V2.Execution.Admin.normList_eq_map (l : List VAdmin) : Silmaril.Wasm.V2.Execution.Admin.normList l = l.map Silmaril.Wasm.V2.Execution.Admin.norm := by
   induction l with
   | nil => simp
   | cons a l ih => simp [ih]
 
-@[simp] theorem Admin.norm_plain (i : Silmaril.Wasm.V2.Instr) :
-    Admin.norm (.plain i) = .plain i := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_plain (i : Silmaril.Wasm.V2.Instr) :
+    Silmaril.Wasm.V2.Execution.Admin.norm (.plain i) = .plain i := by simp [Silmaril.Wasm.V2.Execution.Admin.norm]
 
-@[simp] theorem Admin.norm_refFuncAddr (a : Nat) :
-    Admin.norm (.refFuncAddr a) = .refFuncAddr a := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_refFuncAddr (a : Nat) :
+    Silmaril.Wasm.V2.Execution.Admin.norm (.refFuncAddr a) = .refFuncAddr a := by simp [Silmaril.Wasm.V2.Execution.Admin.norm]
 
-@[simp] theorem Admin.norm_refHostAddr (a : Nat) :
-    Admin.norm (.refHostAddr a) = .refHostAddr a := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_refHostAddr (a : Nat) :
+    Silmaril.Wasm.V2.Execution.Admin.norm (.refHostAddr a) = .refHostAddr a := by simp [Silmaril.Wasm.V2.Execution.Admin.norm]
 
-@[simp] theorem Admin.norm_callAddr (a : Nat) :
-    Admin.norm (.callAddr a) = .callAddr a := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_callAddr (a : Nat) :
+    Silmaril.Wasm.V2.Execution.Admin.norm (.callAddr a) = .callAddr a := by simp [Silmaril.Wasm.V2.Execution.Admin.norm]
 
-@[simp] theorem Admin.norm_trap : Admin.norm .trap = .trap := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_trap : Silmaril.Wasm.V2.Execution.Admin.norm .trap = .trap := by simp [Silmaril.Wasm.V2.Execution.Admin.norm]
 
-@[simp] theorem Admin.norm_label (n : Nat) (cont : List Silmaril.Wasm.V2.Instr)
-    (b : List VAdmin) : Admin.norm (.label n cont b) = .label n cont (b.map Admin.norm) := by
-  simp [Admin.norm, Admin.normList_eq_map]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_label (n : Nat) (cont : List Silmaril.Wasm.V2.Instr)
+    (b : List VAdmin) : Silmaril.Wasm.V2.Execution.Admin.norm (.label n cont b) = .label n cont (b.map Silmaril.Wasm.V2.Execution.Admin.norm) := by
+  simp [Silmaril.Wasm.V2.Execution.Admin.norm, Silmaril.Wasm.V2.Execution.Admin.normList_eq_map]
 
-@[simp] theorem Admin.norm_frame (n : Nat) (f : VFrame) (b : List VAdmin) :
-    Admin.norm (.frame n f b) = .frame n (Frame.erase f) (b.map Admin.norm) := by
-  simp [Admin.norm, Admin.normList_eq_map]
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_frame (n : Nat) (f : VFrame) (b : List VAdmin) :
+    Silmaril.Wasm.V2.Execution.Admin.norm (.frame n f b) = .frame n (Frame.erase f) (b.map Silmaril.Wasm.V2.Execution.Admin.norm) := by
+  simp [Silmaril.Wasm.V2.Execution.Admin.norm, Silmaril.Wasm.V2.Execution.Admin.normList_eq_map]
 
-@[simp] theorem Admin.norm_val (v : VVal) : Admin.norm v.toAdmin = v.toAdmin := by
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.norm_val (v : VVal) : Silmaril.Wasm.V2.Execution.Admin.norm v.toAdmin = v.toAdmin := by
   rcases v with ⟨_ | _, _⟩ | _ | (_ | _ | _) <;>
     simp [Silmaril.Wasm.V2.Execution.Val.toAdmin]
 
-@[simp] theorem Admin.map_norm_vals (vs : List VVal) :
-    (Silmaril.Wasm.V2.Execution.vals vs).map Admin.norm = Silmaril.Wasm.V2.Execution.vals vs := by
+@[simp] theorem Silmaril.Wasm.V2.Execution.Admin.map_norm_vals (vs : List VVal) :
+    (Silmaril.Wasm.V2.Execution.vals vs).map Silmaril.Wasm.V2.Execution.Admin.norm = Silmaril.Wasm.V2.Execution.vals vs := by
   simp [Silmaril.Wasm.V2.Execution.vals]
 
 /-- Everything that is not a label or a frame is left alone by normalisation,
@@ -578,8 +578,8 @@ def Rigid : VAdmin → Prop
   | .frame _ _ _ => False
   | _ => True
 
-theorem Rigid.eq_of_norm {x y : VAdmin} (hy : Rigid y) (h : Admin.norm x = y) : x = y := by
-  cases x <;> cases y <;> simp_all [Rigid, Admin.norm]
+theorem Rigid.eq_of_norm {x y : VAdmin} (hy : Rigid y) (h : Silmaril.Wasm.V2.Execution.Admin.norm x = y) : x = y := by
+  cases x <;> cases y <;> simp_all [Rigid, Silmaril.Wasm.V2.Execution.Admin.norm]
 
 theorem Rigid.val (v : VVal) : Rigid v.toAdmin := by
   rcases v with ⟨_ | _, _⟩ | _ | (_ | _ | _) <;> simp [Silmaril.Wasm.V2.Execution.Val.toAdmin, Rigid]
@@ -587,7 +587,7 @@ theorem Rigid.val (v : VVal) : Rigid v.toAdmin := by
 theorem Rigid.trap : Rigid (.trap : VAdmin) := trivial
 
 theorem map_norm_eq_of_rigid {l L : List VAdmin} (hL : ∀ y ∈ L, Rigid y)
-    (h : l.map Admin.norm = L) : l = L := by
+    (h : l.map Silmaril.Wasm.V2.Execution.Admin.norm = L) : l = L := by
   induction L generalizing l with
   | nil => simpa using h
   | cons y L ih =>
@@ -612,15 +612,15 @@ theorem Config.norm_eq_toV2_iff {cs : VStore H} {cf : VFrame} {cl : List VAdmin}
     {a : Config H} :
     Config.norm ⟨cs, cf, cl⟩ = a.toV2 ↔
       Store.erase cs = a.store.toV2 ∧ Frame.erase cf = a.frame.toV2 ∧
-        cl.map Admin.norm = Admin.listToV2 a.code := by
-  simp [Config.norm, Silmaril.Wasm.Execution.Runtime.Config.toV2, Admin.normList_eq_map]
+        cl.map Silmaril.Wasm.V2.Execution.Admin.norm = Silmaril.Wasm.V2.Execution.Admin.listToV2 a.code := by
+  simp [Config.norm, Silmaril.Wasm.Execution.Runtime.Config.toV2, Silmaril.Wasm.V2.Execution.Admin.normList_eq_map]
 
 end ToV2
 
 open ToV2 in
 mutual
 /-- Lime1 images are normal. -/
-theorem norm_toV2 : (a : Admin) → ToV2.Admin.norm (Admin.toV2 a) = Admin.toV2 a
+theorem norm_toV2 : (a : Silmaril.Wasm.V2.Execution.Admin) → ToV2.Admin.norm (Silmaril.Wasm.V2.Execution.Admin.toV2 a) = Silmaril.Wasm.V2.Execution.Admin.toV2 a
   | .source _ => by simp
   | .invoke _ => by simp
   | .trap => by simp
@@ -631,7 +631,7 @@ theorem norm_toV2 : (a : Admin) → ToV2.Admin.norm (Admin.toV2 a) = Admin.toV2 
 
 /-- `norm_toV2` on a sequence. -/
 theorem map_norm_listToV2 :
-    (l : List Admin) → (Admin.listToV2 l).map ToV2.Admin.norm = Admin.listToV2 l
+    (l : List Silmaril.Wasm.V2.Execution.Admin) → (Silmaril.Wasm.V2.Execution.Admin.listToV2 l).map ToV2.Admin.norm = Silmaril.Wasm.V2.Execution.Admin.listToV2 l
   | [] => by simp
   | a :: as => by
     simp only [listToV2_cons, List.map_cons]
@@ -695,8 +695,8 @@ theorem ToV2.StoreWF.setGlobal {s : Store H} (hwf : ToV2.StoreWF s) (ga : Global
 /-- Store well-formedness is preserved: a Lime1 step only writes bytes within a
 memory (which changes neither its size nor its alignment), grows a memory by
 whole pages (`Memory.Grow`, which keeps both), or changes a global. -/
-theorem Step.configWF {src : HostSemantics H} (hp : ToV2.HostPreserves src) {a b : Config H}
-    (h : Step src a b) (hwf : ToV2.ConfigWF a) : ToV2.ConfigWF b := by
+theorem Silmaril.Wasm.V2.Execution.Step.configWF {src : HostSemantics H} (hp : ToV2.HostPreserves src) {a b : Config H}
+    (h : Silmaril.Wasm.V2.Execution.Step src a b) (hwf : ToV2.ConfigWF a) : ToV2.ConfigWF b := by
   induction h with
   | context _ _ _ ih => exact ih hwf
   | label _ _ _ ih => exact ih hwf
@@ -810,11 +810,11 @@ NaN sets, whereas `V2.Execution.FloatUnOpResult P` is `Numerics.floatUnOpP P`,
 which at `P.nan = .canonical` demands the single canonical NaN. The statement is
 false for such a `P`, and `Profile.spec` is exactly the profile whose
 nondeterminism is Lime1's. -/
-theorem PureStep.toV2 {host : VHostSemantics H} {sV : VStore H} {fV : VFrame}
+theorem Silmaril.Wasm.V2.Execution.PureStep.toV2 {host : VHostSemantics H} {sV : VStore H} {fV : VFrame}
     {types : List FuncType} (hm : fV.module.types = types.map FuncType.toV2)
-    {before after : List Admin} (h : PureStep types before after) :
+    {before after : List Silmaril.Wasm.V2.Execution.Admin} (h : Silmaril.Wasm.V2.Execution.PureStep types before after) :
     Silmaril.Wasm.V2.Execution.Step v2Profile host
-      ⟨sV, fV, Admin.listToV2 before⟩ ⟨sV, fV, Admin.listToV2 after⟩ := by
+      ⟨sV, fV, Silmaril.Wasm.V2.Execution.Admin.listToV2 before⟩ ⟨sV, fV, Silmaril.Wasm.V2.Execution.Admin.listToV2 after⟩ := by
   cases h with
   | nop => refine .pure ?_; pure_norm; exact .nop
   | unreachable => refine .pure ?_; pure_norm; exact .unreachable
@@ -902,53 +902,53 @@ reduct contains a frame that `Sim` only pins down up to `Frame.erase`. -/
 
 namespace ToV2
 
-theorem sim_inv {s : Store H} {f : Frame} {code : List Admin} {cs : VStore H} {cf : VFrame}
+theorem sim_inv {s : Store H} {f : Frame} {code : List Silmaril.Wasm.V2.Execution.Admin} {cs : VStore H} {cf : VFrame}
     {cl : List VAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩)
-    (hr : ∀ y ∈ Admin.listToV2 code, Rigid y) :
-    cl = Admin.listToV2 code ∧ Store.erase cs = s.toV2 ∧
+    (hr : ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 code, Rigid y) :
+    cl = Silmaril.Wasm.V2.Execution.Admin.listToV2 code ∧ Store.erase cs = s.toV2 ∧
       Frame.erase cf = f.toV2 ∧ StoreWF s := by
   obtain ⟨hn, hwf⟩ := hs
   rw [Config.norm_eq_toV2_iff] at hn
   obtain ⟨h1, h2, h3⟩ := hn
   exact ⟨map_norm_eq_of_rigid hr h3, h1, h2, hwf⟩
 
-theorem sim_mk' {s : Store H} {f : Frame} {code : List Admin} {cs : VStore H} {cf : VFrame}
+theorem sim_mk' {s : Store H} {f : Frame} {code : List Silmaril.Wasm.V2.Execution.Admin} {cs : VStore H} {cf : VFrame}
     {cl : List VAdmin} (hE : Store.erase cs = s.toV2) (hF : Frame.erase cf = f.toV2)
-    (hcl : cl.map Admin.norm = Admin.listToV2 code) (hwf : StoreWF s) :
+    (hcl : cl.map Silmaril.Wasm.V2.Execution.Admin.norm = Silmaril.Wasm.V2.Execution.Admin.listToV2 code) (hwf : StoreWF s) :
     Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩ :=
   ⟨Config.norm_eq_toV2_iff.mpr ⟨hE, hF, hcl⟩, hwf⟩
 
-theorem sim_mk {s : Store H} {f : Frame} {code : List Admin} {cs : VStore H} {cf : VFrame}
+theorem sim_mk {s : Store H} {f : Frame} {code : List Silmaril.Wasm.V2.Execution.Admin} {cs : VStore H} {cf : VFrame}
     (hE : Store.erase cs = s.toV2) (hF : Frame.erase cf = f.toV2) (hwf : StoreWF s) :
-    Sim ⟨s, f, code⟩ ⟨cs, cf, Admin.listToV2 code⟩ :=
+    Sim ⟨s, f, code⟩ ⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 code⟩ :=
   sim_mk' hE hF (map_norm_listToV2 code) hwf
 
 /-! ### Rigidity of the Lime1 image -/
 
-theorem rigid_nil : ∀ y ∈ Admin.listToV2 ([] : List Admin), Rigid y := by simp
+theorem rigid_nil : ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 ([] : List Silmaril.Wasm.V2.Execution.Admin), Rigid y := by simp
 
-theorem rigid_value (v : Value) : Rigid (Admin.toV2 (value v)) := by
+theorem rigid_value (v : Value) : Rigid (Silmaril.Wasm.V2.Execution.Admin.toV2 (value v)) := by
   rw [value_toV2]; exact Rigid.val _
 
-theorem rigid_source (i : Instr) : Rigid (Admin.toV2 (.source i)) := by
+theorem rigid_source (i : Instr) : Rigid (Silmaril.Wasm.V2.Execution.Admin.toV2 (.source i)) := by
   rw [source_toV2]; trivial
 
-theorem rigid_invoke (a : FuncAddr) : Rigid (Admin.toV2 (.invoke a)) := by
+theorem rigid_invoke (a : FuncAddr) : Rigid (Silmaril.Wasm.V2.Execution.Admin.toV2 (.invoke a)) := by
   rw [invoke_toV2]; trivial
 
-theorem rigid_trap : Rigid (Admin.toV2 (.trap : Admin)) := by rw [trap_toV2]; trivial
+theorem rigid_trap : Rigid (Silmaril.Wasm.V2.Execution.Admin.toV2 (.trap : Silmaril.Wasm.V2.Execution.Admin)) := by rw [trap_toV2]; trivial
 
-theorem rigid_cons {a : Admin} {l : List Admin} (ha : Rigid (Admin.toV2 a))
-    (hl : ∀ y ∈ Admin.listToV2 l, Rigid y) : ∀ y ∈ Admin.listToV2 (a :: l), Rigid y := by
+theorem rigid_cons {a : Silmaril.Wasm.V2.Execution.Admin} {l : List Silmaril.Wasm.V2.Execution.Admin} (ha : Rigid (Silmaril.Wasm.V2.Execution.Admin.toV2 a))
+    (hl : ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 l, Rigid y) : ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 (a :: l), Rigid y := by
   intro y hy
   rw [listToV2_cons, List.mem_cons] at hy
   rcases hy with rfl | hy
   · exact ha
   · exact hl y hy
 
-theorem rigid_values {vs : List Value} {l : List Admin}
-    (hl : ∀ y ∈ Admin.listToV2 l, Rigid y) :
-    ∀ y ∈ Admin.listToV2 (values vs ++ l), Rigid y := by
+theorem rigid_values {vs : List Value} {l : List Silmaril.Wasm.V2.Execution.Admin}
+    (hl : ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 l, Rigid y) :
+    ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 (values vs ++ l), Rigid y := by
   intro y hy
   rw [listToV2_append, values_toV2, List.mem_append] at hy
   rcases hy with h | h
@@ -1161,24 +1161,24 @@ theorem transGen_frame {cs cs' : VStore H} {cf fi fi' : VFrame} {n : Nat}
 /-! ### Inverting normalisation at a label or a frame -/
 
 theorem norm_eq_label {x : VAdmin} {n : Nat} {cont : List Silmaril.Wasm.V2.Instr}
-    {b : List VAdmin} (h : Admin.norm x = .label n cont b) :
-    ∃ b', x = .label n cont b' ∧ b'.map Admin.norm = b := by
+    {b : List VAdmin} (h : Silmaril.Wasm.V2.Execution.Admin.norm x = .label n cont b) :
+    ∃ b', x = .label n cont b' ∧ b'.map Silmaril.Wasm.V2.Execution.Admin.norm = b := by
   cases x with
   | label n' cont' b' =>
-    rw [Admin.norm_label] at h
+    rw [Silmaril.Wasm.V2.Execution.Admin.norm_label] at h
     obtain ⟨rfl, rfl, rfl⟩ := Silmaril.Wasm.V2.Execution.Admin.label.inj h
     exact ⟨b', rfl, rfl⟩
-  | _ => simp [Admin.norm] at h
+  | _ => simp [Silmaril.Wasm.V2.Execution.Admin.norm] at h
 
 theorem norm_eq_frame {x : VAdmin} {n : Nat} {fr : VFrame} {b : List VAdmin}
-    (h : Admin.norm x = .frame n fr b) :
-    ∃ fr' b', x = .frame n fr' b' ∧ Frame.erase fr' = fr ∧ b'.map Admin.norm = b := by
+    (h : Silmaril.Wasm.V2.Execution.Admin.norm x = .frame n fr b) :
+    ∃ fr' b', x = .frame n fr' b' ∧ Frame.erase fr' = fr ∧ b'.map Silmaril.Wasm.V2.Execution.Admin.norm = b := by
   cases x with
   | frame n' fr' b' =>
-    rw [Admin.norm_frame] at h
+    rw [Silmaril.Wasm.V2.Execution.Admin.norm_frame] at h
     obtain ⟨rfl, rfl, rfl⟩ := Silmaril.Wasm.V2.Execution.Admin.frame.inj h
     exact ⟨fr', b', rfl, rfl, rfl⟩
-  | _ => simp [Admin.norm] at h
+  | _ => simp [Silmaril.Wasm.V2.Execution.Admin.norm] at h
 
 end ToV2
 
@@ -1200,7 +1200,7 @@ theorem rigid_vals (vs : List VVal) :
   exact Rigid.val v
 
 theorem map_norm_vals_inv {l : List VAdmin} {vs : List VVal}
-    (h : l.map Admin.norm = Silmaril.Wasm.V2.Execution.vals vs) :
+    (h : l.map Silmaril.Wasm.V2.Execution.Admin.norm = Silmaril.Wasm.V2.Execution.vals vs) :
     l = Silmaril.Wasm.V2.Execution.vals vs :=
   map_norm_eq_of_rigid (rigid_vals vs) h
 
@@ -1217,41 +1217,41 @@ theorem rigid_plain (i : Silmaril.Wasm.V2.Instr) : ∀ y ∈ [(.plain i : VAdmin
 theorem rigid_trap_singleton : ∀ y ∈ [(.trap : VAdmin)], Rigid y := by
   intro y hy; rw [List.mem_singleton] at hy; subst hy; exact Rigid.trap
 
-theorem map_norm_trap {l : List VAdmin} (h : l.map Admin.norm = [(.trap : VAdmin)]) :
+theorem map_norm_trap {l : List VAdmin} (h : l.map Silmaril.Wasm.V2.Execution.Admin.norm = [(.trap : VAdmin)]) :
     l = [.trap] :=
   map_norm_eq_of_rigid rigid_trap_singleton h
 
 /-- Peel a rigid prefix off a normalised code sequence: the prefix is determined
 exactly, the suffix only up to normalisation. -/
-theorem map_norm_split {l : List VAdmin} {A B : List VAdmin} (h : l.map Admin.norm = A ++ B)
-    (hA : ∀ y ∈ A, Rigid y) : ∃ t, l = A ++ t ∧ t.map Admin.norm = B := by
+theorem map_norm_split {l : List VAdmin} {A B : List VAdmin} (h : l.map Silmaril.Wasm.V2.Execution.Admin.norm = A ++ B)
+    (hA : ∀ y ∈ A, Rigid y) : ∃ t, l = A ++ t ∧ t.map Silmaril.Wasm.V2.Execution.Admin.norm = B := by
   obtain ⟨l1, t, rfl, h1, h2⟩ := List.map_eq_append_iff.mp h
   rw [map_norm_eq_of_rigid hA h1]
   exact ⟨t, rfl, h2⟩
 
 theorem map_norm_label {l : List VAdmin} {n : Nat} {cont : List Silmaril.Wasm.V2.Instr}
-    {body : List VAdmin} (h : l.map Admin.norm = [.label n cont body]) :
-    ∃ b', l = [.label n cont b'] ∧ b'.map Admin.norm = body := by
+    {body : List VAdmin} (h : l.map Silmaril.Wasm.V2.Execution.Admin.norm = [.label n cont body]) :
+    ∃ b', l = [.label n cont b'] ∧ b'.map Silmaril.Wasm.V2.Execution.Admin.norm = body := by
   obtain ⟨x, rfl, hx⟩ := List.map_eq_singleton_iff.mp h
   obtain ⟨b', rfl, hb⟩ := norm_eq_label hx
   exact ⟨b', rfl, hb⟩
 
 theorem map_norm_frame {l : List VAdmin} {n : Nat} {fr : VFrame} {body : List VAdmin}
-    (h : l.map Admin.norm = [.frame n fr body]) :
-    ∃ fr' b', l = [.frame n fr' b'] ∧ Frame.erase fr' = fr ∧ b'.map Admin.norm = body := by
+    (h : l.map Silmaril.Wasm.V2.Execution.Admin.norm = [.frame n fr body]) :
+    ∃ fr' b', l = [.frame n fr' b'] ∧ Frame.erase fr' = fr ∧ b'.map Silmaril.Wasm.V2.Execution.Admin.norm = body := by
   obtain ⟨x, rfl, hx⟩ := List.map_eq_singleton_iff.mp h
   obtain ⟨fr', b', rfl, hfr, hb⟩ := norm_eq_frame hx
   exact ⟨fr', b', rfl, hfr, hb⟩
 
 theorem pure_of_rigid {host : VHostSemantics H} {cs : VStore H} {cf : VFrame}
     {types : List FuncType} (hm : cf.module.types = types.map FuncType.toV2)
-    {before after : List Admin} (h : PureStep types before after) {cl : List VAdmin}
-    (hcl : cl.map Admin.norm = Admin.listToV2 before)
-    (hr : ∀ y ∈ Admin.listToV2 before, Rigid y) :
+    {before after : List Silmaril.Wasm.V2.Execution.Admin} (h : Silmaril.Wasm.V2.Execution.PureStep types before after) {cl : List VAdmin}
+    (hcl : cl.map Silmaril.Wasm.V2.Execution.Admin.norm = Silmaril.Wasm.V2.Execution.Admin.listToV2 before)
+    (hr : ∀ y ∈ Silmaril.Wasm.V2.Execution.Admin.listToV2 before, Rigid y) :
     Silmaril.Wasm.V2.Execution.Step v2Profile host ⟨cs, cf, cl⟩
-      ⟨cs, cf, Admin.listToV2 after⟩ := by
+      ⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 after⟩ := by
   rw [map_norm_eq_of_rigid hr hcl]
-  exact PureStep.toV2 hm h
+  exact Silmaril.Wasm.V2.Execution.PureStep.toV2 hm h
 
 end ToV2
 
@@ -1259,12 +1259,12 @@ open ToV2 in
 /-- `PureStep.toV2` up to normalisation of the 2.0 code: this is what the
 `Step/pure` case of `Step.toV2` needs, since `Sim` determines the code only up to
 `Admin.norm`. -/
-theorem PureStep.toV2_norm {host : VHostSemantics H} {cs : VStore H} {cf : VFrame}
+theorem Silmaril.Wasm.V2.Execution.PureStep.toV2_norm {host : VHostSemantics H} {cs : VStore H} {cf : VFrame}
     {types : List FuncType} (hm : cf.module.types = types.map FuncType.toV2)
-    {before after : List Admin} (h : PureStep types before after) {cl : List VAdmin}
-    (hcl : cl.map Admin.norm = Admin.listToV2 before) :
+    {before after : List Silmaril.Wasm.V2.Execution.Admin} (h : Silmaril.Wasm.V2.Execution.PureStep types before after) {cl : List VAdmin}
+    (hcl : cl.map Silmaril.Wasm.V2.Execution.Admin.norm = Silmaril.Wasm.V2.Execution.Admin.listToV2 before) :
     Silmaril.Wasm.V2.Execution.Step v2Profile host ⟨cs, cf, cl⟩
-      ⟨cs, cf, Admin.listToV2 after⟩ := by
+      ⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 after⟩ := by
   have h' := h
   cases h' with
   | labelDone n cont vs =>
@@ -1411,11 +1411,11 @@ namespace ToV2
 variable {tgt : VHostSemantics H}
 
 /-- `Step/ctxt-instrs`: a value prefix and an arbitrary tail. -/
-theorem step_context {s s' : Store H} {f f' : Frame} {before after : List Admin}
+theorem step_context {s s' : Store H} {f f' : Frame} {before after : List Silmaril.Wasm.V2.Execution.Admin}
     (ih : ∀ c : VConfig H, Sim ⟨s, f, before⟩ c →
       ∃ c', Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgt) c c' ∧
         Sim ⟨s', f', after⟩ c')
-    (vs : List Value) (tail : List Admin) {c : VConfig H}
+    (vs : List Value) (tail : List Silmaril.Wasm.V2.Execution.Admin) {c : VConfig H}
     (hs : Sim ⟨s, f, values vs ++ before ++ tail⟩ c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgt) c c' ∧
       Sim ⟨s', f', values vs ++ after ++ tail⟩ c' := by
@@ -1432,10 +1432,10 @@ theorem step_context {s s' : Store H} {f f' : Frame} {before after : List Admin}
   obtain ⟨hst', hfr', hl2'⟩ := hn'
   refine ⟨⟨cs', cf', Silmaril.Wasm.V2.Execution.vals (vs.map Value.toV2) ++ l2' ++ l3⟩,
     transGen_ctxtInstrs hT, sim_mk' hst' hfr' ?_ hwf'⟩
-  simp only [List.map_append, Admin.map_norm_vals, hl2', h3, listToV2_append, values_toV2]
+  simp only [List.map_append, Silmaril.Wasm.V2.Execution.Admin.map_norm_vals, hl2', h3, listToV2_append, values_toV2]
 
 /-- `Step/ctxt-label`. -/
-theorem step_label {s s' : Store H} {f f' : Frame} {before after : List Admin}
+theorem step_label {s s' : Store H} {f f' : Frame} {before after : List Silmaril.Wasm.V2.Execution.Admin}
     (ih : ∀ c : VConfig H, Sim ⟨s, f, before⟩ c →
       ∃ c', Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgt) c c' ∧
         Sim ⟨s', f', after⟩ c')
@@ -1455,10 +1455,10 @@ theorem step_label {s s' : Store H} {f f' : Frame} {before after : List Admin}
   refine ⟨⟨cs', cf', [.label n (cont.map Instr.toV2) b'']⟩, transGen_label hT,
     sim_mk' hst' hfr' ?_ hwf'⟩
   simp only [listToV2_cons, listToV2_nil, label_toV2, List.map_cons, List.map_nil,
-    Admin.norm_label, hb'']
+    Silmaril.Wasm.V2.Execution.Admin.norm_label, hb'']
 
 /-- `Step/ctxt-frame`. -/
-theorem step_frame {s s' : Store H} {inner inner' : Frame} {before after : List Admin}
+theorem step_frame {s s' : Store H} {inner inner' : Frame} {before after : List Silmaril.Wasm.V2.Execution.Admin}
     (ih : ∀ c : VConfig H, Sim ⟨s, inner, before⟩ c →
       ∃ c', Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgt) c c' ∧
         Sim ⟨s', inner', after⟩ c')
@@ -1477,7 +1477,7 @@ theorem step_frame {s s' : Store H} {inner inner' : Frame} {before after : List 
   obtain ⟨hst', hfi', hb''⟩ := hn'
   refine ⟨⟨cs', cf, [.frame n fi' b'']⟩, transGen_frame hT, sim_mk' hst' hfr ?_ hwf'⟩
   simp only [listToV2_cons, listToV2_nil, frame_toV2, List.map_cons, List.map_nil,
-    Admin.norm_frame, hb'', hfi']
+    Silmaril.Wasm.V2.Execution.Admin.norm_frame, hb'', hfi']
 
 end ToV2
 
@@ -1495,7 +1495,7 @@ theorem step_localGet {s : Store H} {f : Frame} {i : LocalIdx} {v : Value}
   obtain ⟨cs, cf, cl⟩ := c
   obtain ⟨hc, hE, hF, hwf⟩ := sim_inv hs (rigid_cons (rigid_source _) rigid_nil)
   subst hc
-  refine ⟨⟨cs, cf, Admin.listToV2 [value v]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [value v]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
   exact .localGet (by
@@ -1514,7 +1514,7 @@ theorem step_localSet {s : Store H} {f : Frame} {i : LocalIdx} {v old : Value}
   have hlt : i.toNat < cf.locals.length := by
     rw [erase_locals hF, List.length_map]
     exact (List.getElem?_eq_some_iff.mp found).1
-  refine ⟨⟨cs, cf.setLocal i v.toV2, Admin.listToV2 []⟩, ?_,
+  refine ⟨⟨cs, cf.setLocal i v.toV2, Silmaril.Wasm.V2.Execution.Admin.listToV2 []⟩, ?_,
     sim_mk hE (erase_setLocal hF i v) hwf⟩
   refine .single ?_
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
@@ -1533,7 +1533,7 @@ theorem step_globalGet {s : Store H} {f : Frame} {i : GlobalIdx} {a : GlobalAddr
   have hval : gi.value = g.value.toV2 := by
     have := congrArg Silmaril.Wasm.V2.Execution.GlobalInst.value hgi
     simpa [GlobalInst.erase, Silmaril.Wasm.Execution.Runtime.GlobalInst.toV2] using this
-  refine ⟨⟨cs, cf, Admin.listToV2 [value g.value]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [value g.value]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, ← hval]
   exact .globalGet (by simp [Silmaril.Wasm.V2.Execution.State.global?, ha, hg])
@@ -1556,7 +1556,7 @@ theorem step_globalSet {s : Store H} {f : Frame} {i : GlobalIdx} {a : GlobalAddr
       = ({ g with value := v } : GlobalInst).toV2 := by
     simp [GlobalInst.erase, Silmaril.Wasm.Execution.Runtime.GlobalInst.toV2, hmut,
       Silmaril.Wasm.Execution.Runtime.Value.toV2, Silmaril.Wasm.V2.Execution.Val.type]
-  refine ⟨⟨cs.setGlobalInst a.value { gi with value := v.toV2 }, cf, Admin.listToV2 []⟩, ?_,
+  refine ⟨⟨cs.setGlobalInst a.value { gi with value := v.toV2 }, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 []⟩, ?_,
     sim_mk (erase_setGlobalInst hE hera) hF (hwf.setGlobal _ _)⟩
   refine .single ?_
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
@@ -1570,7 +1570,7 @@ theorem step_call {s : Store H} {f : Frame} {i : FuncIdx} {a : FuncAddr}
   obtain ⟨cs, cf, cl⟩ := c
   obtain ⟨hc, hE, hF, hwf⟩ := sim_inv hs (rigid_cons (rigid_source _) rigid_nil)
   subst hc
-  refine ⟨⟨cs, cf, Admin.listToV2 [.invoke a]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.invoke a]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, invoke_toV2]
   exact .call (by
@@ -1594,7 +1594,7 @@ theorem tableInst_toV2_refs (t : TableInst) :
         | some a => .funcAddr a.value) := rfl
 
 theorem map_norm_expression (e : Silmaril.Wasm.V2.Expr) :
-    (Silmaril.Wasm.V2.Execution.expression e).map Admin.norm =
+    (Silmaril.Wasm.V2.Execution.expression e).map Silmaril.Wasm.V2.Execution.Admin.norm =
       Silmaril.Wasm.V2.Execution.expression e := by
   simp [Silmaril.Wasm.V2.Execution.expression, List.map_map, Function.comp_def]
 
@@ -1619,7 +1619,7 @@ theorem step_callIndirect {s : Store H} {f : Frame} {i : TypeIdx} {cc : BitVec 3
     have := congrArg Silmaril.Wasm.V2.Execution.FuncInst.type hfe
     rw [funcInst_toV2_type, typeMatch] at this
     exact this
-  refine ⟨⟨cs, cf, Admin.listToV2 [.invoke a]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.invoke a]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, invoke_toV2]
   refine .callIndirectCall (ti := table.toV2) (i := cc) (lookup_table rfl hE hF tableFound) ?_
@@ -1641,7 +1641,7 @@ theorem step_callIndirectBounds {s : Store H} {f : Frame} {i : TypeIdx} {cc : Bi
   subst hc
   have hrefs : (TableInst.toV2 table).refs[cc.toNat]? = none := by
     rw [tableInst_toV2_refs, List.getElem?_map, outOfBounds]; rfl
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   refine .callIndirectTrap (ti := table.toV2) (i := cc) (lookup_table rfl hE hF tableFound) ?_
@@ -1662,7 +1662,7 @@ theorem step_callIndirectNull {s : Store H} {f : Frame} {i : TypeIdx} {cc : BitV
   have hrefs : (TableInst.toV2 table).refs[cc.toNat]? =
       some (.null .funcref) := by
     rw [tableInst_toV2_refs, List.getElem?_map, null]; rfl
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   refine .callIndirectTrap (ti := table.toV2) (i := cc) (lookup_table rfl hE hF tableFound) ?_
@@ -1693,7 +1693,7 @@ theorem step_callIndirectType {s : Store H} {f : Frame} {i : TypeIdx} {cc : BitV
       = some (FuncType.toV2 ft) := by
     simp [Silmaril.Wasm.V2.Execution.State.type?, Silmaril.Wasm.V2.Execution.ModuleInst.type?,
       erase_types hF, typeFound]
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   refine .callIndirectTrap (ti := table.toV2) (i := cc) (lookup_table rfl hE hF tableFound) ?_
@@ -1741,7 +1741,7 @@ theorem step_invokeWasm {s : Store H} {f : Frame} {a : FuncAddr} {ft : FuncType}
         Function.comp_def, Silmaril.Wasm.V2.Execution.Frame.mk.injEq, and_true]
       congr 1
       exact List.map_congr_left fun t _ => defaultVal_toV2 t
-    simp only [List.map_cons, List.map_nil, Admin.norm_frame, Admin.norm_label,
+    simp only [List.map_cons, List.map_nil, Silmaril.Wasm.V2.Execution.Admin.norm_frame, Silmaril.Wasm.V2.Execution.Admin.norm_label,
       map_norm_expression, listToV2_cons, listToV2_nil, frame_toV2, label_toV2,
       expression_toV2, hty, funcType_toV2_results_length, hfr, hbody]
 
@@ -1773,7 +1773,7 @@ theorem step_invokeHost {src : HostSemantics H} (hosts : HostCompatible src tgt)
   have hcode : fi.code = .host fn := congrArg Silmaril.Wasm.V2.Execution.FuncInst.code hfe
   obtain ⟨outV, htgt, hsim⟩ := hosts.2 fn s args _ cs behavior hE
   obtain ⟨sV', rfl, hsV⟩ := hostOutcome_returned hsim
-  refine ⟨⟨sV', cf, Admin.listToV2 (result r)⟩, ?_,
+  refine ⟨⟨sV', cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 (result r)⟩, ?_,
     sim_mk hsV hF (hosts.1 _ _ _ _ _ behavior hwf)⟩
   refine .single ?_
   simp only [listToV2_append, values_toV2, listToV2_cons, listToV2_nil, invoke_toV2,
@@ -1795,7 +1795,7 @@ theorem step_invokeHostDiverges {src : HostSemantics H} (hosts : HostCompatible 
   have hcode : fi.code = .host fn := congrArg Silmaril.Wasm.V2.Execution.FuncInst.code hfe
   obtain ⟨outV, htgt, hsim⟩ := hosts.2 fn s args _ cs behavior hE
   rw [hostOutcome_diverged hsim] at htgt
-  refine ⟨⟨cs, cf, Admin.listToV2 (values args ++ [.invoke a])⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 (values args ++ [.invoke a])⟩, ?_, sim_mk hE hF hwf⟩
   refine .single ?_
   simp only [listToV2_append, values_toV2, listToV2_cons, listToV2_nil, invoke_toV2]
   exact .callAddrHostDiv hfi hcode (by simpa [hty] using arity) htgt
@@ -1891,7 +1891,7 @@ theorem step_intLoad {s : Store H} {f : Frame} {t : IntType}
     (rigid_cons (rigid_value _) (rigid_cons (rigid_source _) rigid_nil))
   subst hc
   have hm := lookup_mem hE hF memory
-  refine ⟨⟨cs, cf, Admin.listToV2 [value v]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [value v]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, loadPackToV2]
   rcases packed with _ | ⟨pk, sx⟩
@@ -1917,7 +1917,7 @@ theorem step_intLoadTrap {s : Store H} {f : Frame} {t : IntType}
     (rigid_cons (rigid_value _) (rigid_cons (rigid_source _) rigid_nil))
   subst hc
   have hm := lookup_mem hE hF memory
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2,
     loadPackToV2]
@@ -1941,7 +1941,7 @@ theorem step_floatLoad {s : Store H} {f : Frame} {t : FloatType} {arg : MemArg}
     (rigid_cons (rigid_value _) (rigid_cons (rigid_source _) rigid_nil))
   subst hc
   have hm := lookup_mem hE hF memory
-  refine ⟨⟨cs, cf, Admin.listToV2 [value v]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [value v]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
   simp only [loadFloat, Option.map_eq_some_iff] at loaded
@@ -1961,7 +1961,7 @@ theorem step_floatLoadTrap {s : Store H} {f : Frame} {t : FloatType} {arg : MemA
     (rigid_cons (rigid_value _) (rigid_cons (rigid_source _) rigid_nil))
   subst hc
   have hm := lookup_mem hE hF memory
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   simp only [loadFloat, Option.map_eq_none_iff] at loaded
@@ -1990,7 +1990,7 @@ theorem step_intStore {s : Store H} {f : Frame} {t : IntType} {packed : Option P
   have hsz : bytes.size = m.data.size := ToCoreSim.mem_store_size stored
   obtain ⟨hal, hle, -⟩ := frameMemory_wf hwf memory
   refine ⟨⟨cs.setMemInst a.value ({ m with data := bytes } : MemInst).toV2, cf,
-    Admin.listToV2 []⟩, ?_,
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 []⟩, ?_,
     sim_mk (erase_setMemInst hE a _) hF
       (storeWF_set hwf memory (by rw [show _ = _ from hsz]; exact hal)
         (by rw [show _ = _ from hsz]; exact hle) rfl)⟩
@@ -2020,7 +2020,7 @@ theorem step_intStoreTrap {s : Store H} {f : Frame} {t : IntType} {packed : Opti
     (rigid_cons (rigid_value _) (rigid_cons (rigid_value _)
       (rigid_cons (rigid_source _) rigid_nil)))
   subst hc
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single ?_
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   rcases packed with _ | pk
@@ -2050,7 +2050,7 @@ theorem step_floatStore {s : Store H} {f : Frame} {t : FloatType} {arg : MemArg}
   have hsz : bytes.size = m.data.size := ToCoreSim.mem_store_size stored
   obtain ⟨hal, hle, -⟩ := frameMemory_wf hwf memory
   refine ⟨⟨cs.setMemInst a.value ({ m with data := bytes } : MemInst).toV2, cf,
-    Admin.listToV2 []⟩, ?_,
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 []⟩, ?_,
     sim_mk (erase_setMemInst hE a _) hF
       (storeWF_set hwf memory (by rw [show _ = _ from hsz]; exact hal)
         (by rw [show _ = _ from hsz]; exact hle) rfl)⟩
@@ -2074,7 +2074,7 @@ theorem step_floatStoreTrap {s : Store H} {f : Frame} {t : FloatType} {arg : Mem
     (rigid_cons (rigid_value _) (rigid_cons (rigid_value _)
       (rigid_cons (rigid_source _) rigid_nil)))
   subst hc
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single ?_
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   simp only [storeFloat] at stored
@@ -2097,7 +2097,7 @@ theorem step_memorySize {s : Store H} {f : Frame} {a : MemAddr} {m : MemInst}
     have h2 : (2 : Nat) ^ 32 / Memory.pageSize = 65536 := rfl
     rw [h2] at h1
     exact Nat.lt_of_le_of_lt h1 (by norm_num)
-  refine ⟨⟨cs, cf, Admin.listToV2
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2
     [value (.int .i32 (BitVec.ofNat 32 (Memory.size m.data)))]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
@@ -2175,7 +2175,7 @@ theorem step_memoryGrow {s : Store H} {f : Frame} {a : MemAddr} {m : MemInst}
   | success _ hg =>
     obtain ⟨hgV, hal', hle'⟩ := mem_grow_toV2 hg hmx
     refine ⟨⟨cs.setMemInst a.value ({ m with data := bytes } : MemInst).toV2, cf,
-      Admin.listToV2 [value (.int .i32 (BitVec.ofNat 32 (Memory.size m.data)))]⟩, ?_,
+      Silmaril.Wasm.V2.Execution.Admin.listToV2 [value (.int .i32 (BitVec.ofNat 32 (Memory.size m.data)))]⟩, ?_,
       sim_mk (erase_setMemInst hE a _) hF (storeWF_set hwf memory hal' hle' rfl)⟩
     refine .single ?_
     simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
@@ -2185,7 +2185,7 @@ theorem step_memoryGrow {s : Store H} {f : Frame} {a : MemAddr} {m : MemInst}
     rw [show ({ m with data := m.data } : MemInst) = m from rfl, setMemory_self memory]
     have h1 : (-1 : BitVec 32) = BitVec.allOnes 32 := by decide
     rw [h1]
-    refine ⟨⟨cs, cf, Admin.listToV2 [value (.int .i32 (BitVec.allOnes 32))]⟩, ?_,
+    refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [value (.int .i32 (BitVec.allOnes 32))]⟩, ?_,
       sim_mk hE hF hwf⟩
     refine .single ?_
     simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2]
@@ -2342,7 +2342,7 @@ theorem step_memoryFill {s : Store H} {f : Frame} {d byte n : BitVec 32} {a : Me
     rw [hBget j, bulk_fill_get filled j]; rfl
   subst hB
   refine ⟨⟨cs.setMemInst a.value ({ m with data := B } : MemInst).toV2, cf,
-    Admin.listToV2 []⟩, ?_,
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 []⟩, ?_,
     sim_mk (erase_setMemInst hE a _) hF
       (storeWF_set hwf memory (by rw [show _ = _ from hsize]; exact hal)
         (by rw [show _ = _ from hsize]; exact hle) rfl)⟩
@@ -2364,7 +2364,7 @@ theorem step_memoryFillTrap {s : Store H} {f : Frame} {d byte n : BitVec 32} {a 
       (rigid_cons (rigid_value _) (rigid_cons (rigid_source _) rigid_nil))))
   subst hc
   have hlt := bulk_fill_none.mp filled
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   exact .memoryFillTrap (i := d) (n := n) (v := .num ⟨.int .i32, byte⟩)
@@ -2574,7 +2574,7 @@ theorem step_memoryCopy {s : Store H} {f : Frame} {d src n : BitVec 32} {a : Mem
     rw [hB j, bulk_copy_get copied j]; rfl
   subst hBeq
   refine ⟨⟨cs.setMemInst a.value ({ m with data := B } : MemInst).toV2, cf,
-    Admin.listToV2 []⟩, ?_,
+    Silmaril.Wasm.V2.Execution.Admin.listToV2 []⟩, ?_,
     sim_mk (erase_setMemInst hE a _) hF
       (storeWF_set hwf memory (by rw [show _ = _ from hsize]; exact hal)
         (by rw [show _ = _ from hsize]; exact hle) rfl)⟩
@@ -2595,7 +2595,7 @@ theorem step_memoryCopyTrap {s : Store H} {f : Frame} {d src n : BitVec 32} {a :
       (rigid_cons (rigid_value _) (rigid_cons (rigid_source _) rigid_nil))))
   subst hc
   have hb := bulk_copy_none.mp copied
-  refine ⟨⟨cs, cf, Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
+  refine ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 [.trap]⟩, ?_, sim_mk hE hF hwf⟩
   refine .single (.read ?_)
   simp only [listToV2_cons, listToV2_nil, source_toV2, Instr.toV2, value_toV2, trap_toV2]
   exact .memoryCopyTrap (j := d) (i := src) (n := n) (lookup_mem hE hF memory) hb
@@ -2609,9 +2609,9 @@ end ToV2
 (`8-reduction:617`, `:633`, `:640`); every other rule is in fact lock-step, and
 `CALL_ADDR` makes `call`, `call_indirect` and the invocations lock-step too —
 unlike the Core 3.0 target, where `call` expands to `ref.func; call_ref`. -/
-theorem Step.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Step.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     (hosts : ToV2.HostCompatible src tgt) {a b : Config H} {c : VConfig H}
-    (h : Step src a b) (hs : ToV2.Sim a c) :
+    (h : Silmaril.Wasm.V2.Execution.Step src a b) (hs : ToV2.Sim a c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgt) c c' ∧
       ToV2.Sim b c' := by
   induction h generalizing c with
@@ -2623,8 +2623,8 @@ theorem Step.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     obtain ⟨hn, hwf⟩ := hs
     rw [ToV2.Config.norm_eq_toV2_iff] at hn
     obtain ⟨hE, hF, hl⟩ := hn
-    exact ⟨⟨cs, cf, Admin.listToV2 _⟩,
-      .single (PureStep.toV2_norm (ToV2.erase_types hF) hp hl), ToV2.sim_mk hE hF hwf⟩
+    exact ⟨⟨cs, cf, Silmaril.Wasm.V2.Execution.Admin.listToV2 _⟩,
+      .single (Silmaril.Wasm.V2.Execution.PureStep.toV2_norm (ToV2.erase_types hF) hp hl), ToV2.sim_mk hE hF hwf⟩
   | localGet s f i v found => exact ToV2.step_localGet found hs
   | localSet s f i v old found => exact ToV2.step_localSet found hs
   | globalGet s f i a g index found => exact ToV2.step_globalGet index found hs
@@ -2666,19 +2666,19 @@ theorem Step.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     exact ToV2.step_memoryFillTrap memory filled hs
 
 /-- **Milestone.** Finite runs are simulated. -/
-theorem Steps.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Steps.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     (hosts : ToV2.HostCompatible src tgt) {a b : Config H} {c : VConfig H}
-    (h : Steps src a b) (hs : ToV2.Sim a c) :
+    (h : Silmaril.Wasm.V2.Execution.Steps src a b) (hs : ToV2.Sim a c) :
     ∃ c', Silmaril.Wasm.V2.Execution.Steps v2Profile tgt c c' ∧ ToV2.Sim b c' :=
-  LockstepSim.steps (R := ToV2.Sim) ⟨Step.toV2 hosts⟩ h hs
+  LockstepSim.steps (R := ToV2.Sim) ⟨Silmaril.Wasm.V2.Execution.Step.toV2 hosts⟩ h hs
 
 /-- **Milestone.** Divergence is preserved. This is what `TransGen` rather than
 `ReflTransGen` in `Step.toV2` is for. -/
-theorem Diverges.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Diverges.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     (hosts : ToV2.HostCompatible src tgt) {a : Config H} {c : VConfig H}
-    (h : Diverges src a) (hs : ToV2.Sim a c) :
+    (h : Silmaril.Wasm.V2.Execution.Diverges src a) (hs : ToV2.Sim a c) :
     Silmaril.Wasm.V2.Execution.Diverges v2Profile tgt c :=
-  LockstepSim.diverges (R := ToV2.Sim) ⟨Step.toV2 hosts⟩ h hs
+  LockstepSim.diverges (R := ToV2.Sim) ⟨Silmaril.Wasm.V2.Execution.Step.toV2 hosts⟩ h hs
 
 /-- A terminal Lime1 result is a terminal 2.0 result. -/
 theorem ToV2.Sim.result {a : Config H} {c : VConfig H} {r : Result}
@@ -4350,7 +4350,7 @@ theorem Instantiation.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
   obtain ⟨hv, hi, p, hp, rfl, hrun⟩ := h
   obtain ⟨c, S, hinst, hsteps, hS, hF, hl, hwf⟩ := ToV2.prepare_v2 (tgt := tgt) bounds hv hp
   obtain ⟨c₁, hsteps₁, hc₁, hsim₁⟩ := ToV2.start_sim_v2 (tgt := tgt) hp hwf hS hF hl
-  obtain ⟨c', hsteps', hsim'⟩ := Steps.toV2 hosts hrun hsim₁
+  obtain ⟨c', hsteps', hsim'⟩ := Silmaril.Wasm.V2.Execution.Steps.toV2 hosts hrun hsim₁
   refine ⟨c, c', hinst, (hsteps.trans hsteps₁).trans hsteps', ToV2.Sim.result hsim' rfl, ?_,
     hF, ?_⟩
   · obtain ⟨hn, -⟩ := hsim'
@@ -4370,7 +4370,7 @@ theorem InstantiationDiverges.toV2 {src : HostSemantics H} {tgt : VHostSemantics
   obtain ⟨c, S, hinst, hsteps, hS, hF, hl, hwf⟩ := ToV2.prepare_v2 (tgt := tgt) bounds hv hp
   obtain ⟨c₁, hsteps₁, -, hsim₁⟩ := ToV2.start_sim_v2 (tgt := tgt) hp hwf hS hF hl
   exact ⟨c, hinst, InfiniteTrace.of_steps (hsteps.trans hsteps₁)
-    (Diverges.toV2 hosts hdiv hsim₁)⟩
+    (Silmaril.Wasm.V2.Execution.Diverges.toV2 hosts hdiv hsim₁)⟩
 
 /-! ## The commuting triangle `Lime1 → 2.0 → 3.0` -/
 
@@ -4396,7 +4396,7 @@ structure CoreBridge (H : Type) (tgtC : ToCore.CHostSemantics H)
   /-- The simulation relation of the `2.0 → 3.0` execution unit. -/
   rel : VConfig H → ToCore.CConfig H → Prop
   /-- 2.0 steps are simulated in Core 3.0. This is what transports the 2.0 run
-  of `relation Step: config ~> config` (`8-reduction:5-8`, rules at
+  of `relation Silmaril.Wasm.V2.Execution.Step: config ~> config` (`8-reduction:5-8`, rules at
   `8-reduction:10-24`) along the third edge of the triangle. -/
   step : ∀ {d d' : VConfig H} {c : ToCore.CConfig H},
     Silmaril.Wasm.V2.Execution.Step v2Profile tgtV d d' → rel d c →
@@ -4444,60 +4444,60 @@ from `Step.toCore`.
 
 `Step.toV2_toCore_of_sim` below is the special case `c` = the configuration the
 direct route starts from, obtained by discharging `hrel` with `B.image`. -/
-theorem Step.toV2_toCore {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Step.toV2_toCore {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
     {tgtV : VHostSemantics H} (B : ToV2.CoreBridge H tgtC tgtV)
     (hostsV : ToV2.HostCompatible src tgtV)
     {a b : Config H} {d : VConfig H} {c : ToCore.CConfig H}
-    (h : Step src a b) (hd : ToV2.Sim a d) (hrel : B.rel d c) :
+    (h : Silmaril.Wasm.V2.Execution.Step src a b) (hd : ToV2.Sim a d) (hrel : B.rel d c) :
     ∃ (d' : VConfig H) (c' : ToCore.CConfig H),
       Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgtV) d d' ∧
       ToV2.Sim b d' ∧
       Relation.TransGen (Silmaril.Wasm.Execution.Core.Step coreProfile tgtC) c c' ∧
       Sim b c' ∧ B.rel d' c' := by
-  obtain ⟨d', hdd, hbd⟩ := Step.toV2 hostsV h hd
+  obtain ⟨d', hdd, hbd⟩ := Silmaril.Wasm.V2.Execution.Step.toV2 hostsV h hd
   obtain ⟨c', hcc, hrel'⟩ := B.sim.plus hdd hrel
   exact ⟨d', c', hdd, hbd, hcc, B.faithful hrel' hbd, hrel'⟩
 
 /-- The triangle in the form in which the *direct* route supplies its Core
 starting point: `B.image` turns `Sim a c` into `B.rel d c`. This is the exact
 statement the old, bridge-free formulation made, and it is now a corollary. -/
-theorem Step.toV2_toCore_of_sim {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Step.toV2_toCore_of_sim {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
     {tgtV : VHostSemantics H} (B : ToV2.CoreBridge H tgtC tgtV)
     (hostsV : ToV2.HostCompatible src tgtV)
     {a b : Config H} {d : VConfig H} {c : ToCore.CConfig H}
-    (h : Step src a b) (hd : ToV2.Sim a d) (hc : Sim a c) :
+    (h : Silmaril.Wasm.V2.Execution.Step src a b) (hd : ToV2.Sim a d) (hc : Sim a c) :
     ∃ (d' : VConfig H) (c' : ToCore.CConfig H),
       Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgtV) d d' ∧
       ToV2.Sim b d' ∧
       Relation.TransGen (Silmaril.Wasm.Execution.Core.Step coreProfile tgtC) c c' ∧
       Sim b c' ∧ B.rel d' c' :=
-  Step.toV2_toCore B hostsV h hd (B.image hd hc)
+  Silmaril.Wasm.V2.Execution.Step.toV2_toCore B hostsV h hd (B.image hd hc)
 
 /-- The finite-run form of the triangle, over `Steps` (`8-reduction:8`, rules
 `Steps/refl` and `Steps/trans` at `8-reduction:18-24`). The Core run is again
 the bridge's, by `LockstepSim.steps` at `ToV2.CoreBridge.sim`. -/
-theorem Steps.toV2_toCore {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Steps.toV2_toCore {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
     {tgtV : VHostSemantics H} (B : ToV2.CoreBridge H tgtC tgtV)
     (hostsV : ToV2.HostCompatible src tgtV)
     {a b : Config H} {d : VConfig H} {c : ToCore.CConfig H}
-    (h : Steps src a b) (hd : ToV2.Sim a d) (hrel : B.rel d c) :
+    (h : Silmaril.Wasm.V2.Execution.Steps src a b) (hd : ToV2.Sim a d) (hrel : B.rel d c) :
     ∃ (d' : VConfig H) (c' : ToCore.CConfig H),
       Silmaril.Wasm.V2.Execution.Steps v2Profile tgtV d d' ∧ ToV2.Sim b d' ∧
       Silmaril.Wasm.Execution.Core.Steps coreProfile tgtC c c' ∧ Sim b c' ∧ B.rel d' c' := by
-  obtain ⟨d', hdd, hbd⟩ := Steps.toV2 hostsV h hd
+  obtain ⟨d', hdd, hbd⟩ := Silmaril.Wasm.V2.Execution.Steps.toV2 hostsV h hd
   obtain ⟨c', hcc, hrel'⟩ := B.sim.steps hdd hrel
   exact ⟨d', c', hdd, hbd, hcc, B.faithful hrel' hbd, hrel'⟩
 
 /-- The finite-run triangle from the direct route's Core starting point. -/
-theorem Steps.toV2_toCore_of_sim {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Steps.toV2_toCore_of_sim {src : HostSemantics H} {tgtC : ToCore.CHostSemantics H}
     {tgtV : VHostSemantics H} (B : ToV2.CoreBridge H tgtC tgtV)
     (hostsV : ToV2.HostCompatible src tgtV)
     {a b : Config H} {d : VConfig H} {c : ToCore.CConfig H}
-    (h : Steps src a b) (hd : ToV2.Sim a d) (hc : Sim a c) :
+    (h : Silmaril.Wasm.V2.Execution.Steps src a b) (hd : ToV2.Sim a d) (hc : Sim a c) :
     ∃ (d' : VConfig H) (c' : ToCore.CConfig H),
       Silmaril.Wasm.V2.Execution.Steps v2Profile tgtV d d' ∧ ToV2.Sim b d' ∧
       Silmaril.Wasm.Execution.Core.Steps coreProfile tgtC c c' ∧ Sim b c' ∧ B.rel d' c' :=
-  Steps.toV2_toCore B hostsV h hd (B.image hd hc)
+  Silmaril.Wasm.V2.Execution.Steps.toV2_toCore B hostsV h hd (B.image hd hc)
 
 end Silmaril.Wasm.Lime1.Execution
 
@@ -4525,28 +4525,28 @@ def Config.toV2 (c : Config H) : VConfig H := c.toLime.toV2
     Silmaril.Wasm.Execution.Runtime.Config.toV2 c.toLime = c.toV2 := rfl
 
 /-- **Milestone.** One Wasm 1.0 step is simulated by at least one 2.0 step. -/
-theorem Step.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Step.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     (hosts : HostCompatible (src.mapCode Func.toLime) tgt)
     {a b : Config H} {c : VConfig H}
-    (h : Step src a b) (hs : Sim a.toLime c) :
+    (h : Silmaril.Wasm.V2.Execution.Step src a b) (hs : Sim a.toLime c) :
     ∃ c', Relation.TransGen (Silmaril.Wasm.V2.Execution.Step v2Profile tgt) c c' ∧
       Sim b.toLime c' :=
   Silmaril.Wasm.Lime1.Execution.Step.toV2 hosts h.toLime_mapHost hs
 
 /-- **Milestone.** Finite Wasm 1.0 runs are simulated. -/
-theorem Steps.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Steps.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     (hosts : HostCompatible (src.mapCode Func.toLime) tgt)
     {a b : Config H} {c : VConfig H}
-    (h : Steps src a b) (hs : Sim a.toLime c) :
+    (h : Silmaril.Wasm.V2.Execution.Steps src a b) (hs : Sim a.toLime c) :
     ∃ c', Silmaril.Wasm.V2.Execution.Steps v2Profile tgt c c' ∧ Sim b.toLime c' :=
   Silmaril.Wasm.Lime1.Execution.Steps.toV2 hosts
     (h.toLime (Runtime.HostSemantics.compatible_mapCode _ _)) hs
 
 /-- **Milestone.** Wasm 1.0 divergence is preserved. -/
-theorem Diverges.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
+theorem Silmaril.Wasm.V2.Execution.Diverges.toV2 {src : HostSemantics H} {tgt : VHostSemantics H}
     (hosts : HostCompatible (src.mapCode Func.toLime) tgt)
     {a : Config H} {c : VConfig H}
-    (h : Diverges src a) (hs : Sim a.toLime c) :
+    (h : Silmaril.Wasm.V2.Execution.Diverges src a) (hs : Sim a.toLime c) :
     Silmaril.Wasm.V2.Execution.Diverges v2Profile tgt c :=
   Silmaril.Wasm.Lime1.Execution.Diverges.toV2 hosts
     (h.toLime (Runtime.HostSemantics.compatible_mapCode _ _)) hs

@@ -118,7 +118,7 @@ def importWiring (w : World) (p : Plan) : List Impl :=
 
 /-- The exports of a thin wrapper: `canon lift` of the core exports of the
 instance (which starts at environment index `e`). -/
-def thinExports (e : Nat) (fs : Iface) (js : List Nat) : List Export :=
+def thinExports (e : Nat) (fs : Iface) (js : List Nat) : List Silmaril.Wasm.Component.Export :=
   (fs.zip js).map fun x => ⟨x.1.1, x.1.2, ⟨[.lift x.1.2], .call (e + x.2)⟩⟩
 
 variable {M : Type} [CoreModule M]

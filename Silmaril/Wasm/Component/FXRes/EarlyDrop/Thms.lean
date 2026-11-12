@@ -55,8 +55,8 @@ theorem reached_early_drop_rejected {E : CoreEngine} [∀ a b, Decidable (E.Exte
     (himpl : ∀ rty, ArenaField.resourceTypes.get? m.store rt = some rty → rty.impl ≠ some cx.inst)
     (h₁ : SRun (σ := σ) (lowerBorrow lim cx rt rep) m.store i s₁) :
     ∃ st e, s₁.inst? cx.inst = some st ∧ st.handles.get? i = some e ∧
-      ([Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) = [.lend i, .free i] ∧
-      ¬ (obProto ℕ).Accepts ([Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) ∧
+      ([Silmaril.Wasm.Component.Runtime.Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) = [.lend i, .free i] ∧
+      ¬ (obProto ℕ).Accepts ([Silmaril.Wasm.Component.Runtime.Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) ∧
       ∃ s₂, SRun (σ := σ) (resourceDropCore lim' cx.inst rt i) s₁ none s₂ :=
   early_drop_rejected hsc himpl (reached_freeOK hh hm) h₁
 
@@ -70,8 +70,8 @@ theorem cont_early_drop_rejected (P : Profile) {σ : Type} {prof : ProfileKind}
     (himpl : ∀ rty, ArenaField.resourceTypes.get? m.store rt = some rty → rty.impl ≠ some cx.inst)
     (h₁ : SRun (σ := σ) (lowerBorrow lim cx rt rep) m.store i s₁) :
     ∃ st e, s₁.inst? cx.inst = some st ∧ st.handles.get? i = some e ∧
-      ([Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) = [.lend i, .free i] ∧
-      ¬ (obProto ℕ).Accepts ([Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) ∧
+      ([Silmaril.Wasm.Component.Runtime.Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) = [.lend i, .free i] ∧
+      ¬ (obProto ℕ).Accepts ([Silmaril.Wasm.Component.Runtime.Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) ∧
       ∃ s₂, SRun (σ := σ) (resourceDropCore lim' cx.inst rt i) s₁ none s₂ :=
   reached_early_drop_rejected tabHost_none hm hsc himpl h₁
 

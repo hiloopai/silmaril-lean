@@ -100,9 +100,9 @@ theorem Head.ctlArm_nil (hp : [] = p ++ []) : p = [] := by
   simpa using hp.symm
 
 /-- `throw` against `throw`: the tag lookup and its expansion agree. -/
-theorem Head.ctlArm_throw {x : TagIdx} {ta₁ ta₂ : Nat} {ti₁ ti₂ : TagInst} {ts₁ ts₂ : Ty TKind.val.list}
+theorem Head.ctlArm_throw {x : TagIdx} {ta₁ ta₂ : Nat} {ti₁ ti₂ : TagInst} {ts₁ ts₂ : Silmaril.Wasm.Validation.Ty TKind.val.list}
     {args : List Val} (ht₁ : s.tag? f x = some (ta₁, ti₁)) (ht₂ : s.tag? f x = some (ta₂, ti₂))
-    (he₁ : Expand ti₁.type (ts₁.func Ty.nil)) (he₂ : Expand ti₂.type (ts₂.func Ty.nil))
+    (he₁ : Expand ti₁.type (ts₁.func Silmaril.Wasm.Validation.Ty.nil)) (he₂ : Expand ti₂.type (ts₂.func Silmaril.Wasm.Validation.Ty.nil))
     (hn₁ : (p ++ args).length = ts₁.length) (hn₂ : args.length = ts₂.length) :
     p = [] ∧ Join (SoftPair P c)
       ⟨s.addExn { tag := ta₁, fields := p ++ args }, f,
@@ -111,7 +111,7 @@ theorem Head.ctlArm_throw {x : TagIdx} {ta₁ ta₂ : Nat} {ti₁ ti₂ : TagIns
   have hti : (ta₁, ti₁) = (ta₂, ti₂) := Option.some.inj (ht₁.symm.trans ht₂)
   have hta : ta₁ = ta₂ := congrArg Prod.fst hti
   have hti' : ti₁ = ti₂ := congrArg Prod.snd hti
-  have he₂' : Expand ti₁.type (ts₂.func Ty.nil) := hti' ▸ he₂
+  have he₂' : Expand ti₁.type (ts₂.func Silmaril.Wasm.Validation.Ty.nil) := hti' ▸ he₂
   have hts : ts₁ = ts₂ := by simpa using Expand.det he₁ he₂'
   have hlen : p.length + args.length = args.length := by
     rw [← List.length_append, hn₁, hts, hn₂]
@@ -183,7 +183,7 @@ theorem Head.ctlArm_rcrInj {A₁ A₂ B₁ B₂ : List Val} {x y : Val} {d₁ d�
 
 /-- Two tail calls of function addresses out of a frame (instructions `d₁`, `d₂`): the results agree. -/
 theorem Head.ctlArm_rcrAddr {m : ModuleInst} {vs'₁ vs₁ vs'₂ vs₂ : List Val} {a₁ a₂ : Nat}
-    {fn₁ fn₂ : FuncInst H} {ps₁ rs₁ ps₂ rs₂ : Ty TKind.val.list} {d₁ d₂ : Admin}
+    {fn₁ fn₂ : FuncInst H} {ps₁ rs₁ ps₂ rs₂ : Silmaril.Wasm.Validation.Ty TKind.val.list} {d₁ d₂ : Admin}
     {r₁ r₂ : List Admin} (hp : [] = p ++ []) (hd₁ : d₁.val? = none) (hd₂ : d₂.val? = none)
     (hf₁ : s.funcs[a₁]? = some fn₁) (hf₂ : s.funcs[a₂]? = some fn₂)
     (he₁ : Expand fn₁.type (ps₁.func rs₁)) (he₂ : Expand fn₂.type (ps₂.func rs₂))
@@ -223,7 +223,7 @@ theorem Head.ctlArm_callRefNull {vs : List Val} {a : Nat}
 
 /-- Two `call_ref`s of function addresses: the arguments, function and code agree. -/
 theorem Head.ctlArm_callRefFunc {vs₁ vs₂ : List Val} {a₁ a₂ : Nat} {fi₁ fi₂ : FuncInst H}
-    {ps₁ rs₁ ps₂ rs₂ : Ty TKind.val.list} {code₁ code₂ : Func}
+    {ps₁ rs₁ ps₂ rs₂ : Silmaril.Wasm.Validation.Ty TKind.val.list} {code₁ code₂ : Func}
     (ha : p ++ (vs₂ ++ [Val.ref (.func a₂)]) = vs₁ ++ [Val.ref (.func a₁)])
     (hf₁ : s.funcs[a₁]? = some fi₁) (hf₂ : s.funcs[a₂]? = some fi₂)
     (he₁ : Expand fi₁.type (ps₁.func rs₁)) (he₂ : Expand fi₂.type (ps₂.func rs₂))

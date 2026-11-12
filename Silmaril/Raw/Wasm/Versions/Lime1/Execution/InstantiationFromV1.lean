@@ -36,12 +36,12 @@ private theorem mapM_preserves {A B C D : Type} (f : A → Option B) (g : C → 
     simp only [List.map_cons, List.mapM_cons, step x y hy, ih hys,
       Option.bind_eq_bind, Option.bind_some, Option.pure_def]
 
-@[simp] theorem constInstr?_toLime {H : Type} (s : Store H) (module : ModuleInst) (i : Instr) :
+@[simp] theorem constInstr?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst) (i : Instr) :
     Lime1.Execution.constInstr? (s.mapCode Func.toLime) module i.toLime =
       constInstr? s module i := by
   cases i <;> rfl
 
-theorem constStep?_toLime {H : Type} (s : Store H) (module : ModuleInst)
+theorem constStep?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst)
     {i : Instr} {v : Value} (h : constInstr? s module i = some v) (stack : List Value) :
     Lime1.Execution.constStep? (s.mapCode Func.toLime) module i.toLime stack = some (v :: stack) := by
   cases i <;> simp only [constInstr?] at h
@@ -54,7 +54,7 @@ theorem constStep?_toLime {H : Type} (s : Store H) (module : ModuleInst)
     rw [h]
     rfl
 
-private theorem constFold_toLime {H : Type} (s : Store H) (module : ModuleInst)
+private theorem constFold_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst)
     {es : Expr} {vs : List Value} (h : es.mapM (constInstr? s module) = some vs)
     (stack : List Value) :
     (Expr.toLime es).foldlM
@@ -73,7 +73,7 @@ private theorem constFold_toLime {H : Type} (s : Store H) (module : ModuleInst)
       Option.bind_eq_bind, Option.bind_some, ih hvs, List.reverse_cons, List.append_assoc,
       List.cons_append, List.nil_append]
 
-theorem constExpr?_toLime {H : Type} (s : Store H) (module : ModuleInst)
+theorem constExpr?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst)
     {es : Expr} {v : Value} (h : constExpr? s module es = some v) :
     Lime1.Execution.constExpr? (s.mapCode Func.toLime) module (Expr.toLime es) = some v := by
   simp only [constExpr?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -82,7 +82,7 @@ theorem constExpr?_toLime {H : Type} (s : Store H) (module : ModuleInst)
   rw [constFold_toLime s module hvs []]
   split at hv <;> simp_all
 
-theorem offset?_toLime {H : Type} (s : Store H) (module : ModuleInst)
+theorem offset?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst)
     {es : Expr} {n : Nat} (h : offset? s module es = some n) :
     Lime1.Execution.offset? (s.mapCode Func.toLime) module (Expr.toLime es) = some n := by
   simp only [offset?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -91,7 +91,7 @@ theorem offset?_toLime {H : Type} (s : Store H) (module : ModuleInst)
   rw [constExpr?_toLime s module hv]
   exact hn
 
-theorem ExternMatches.toLime {H : Type} {s : Store H} {v : ExternVal} {t : ExternType}
+theorem ExternMatches.toLime {H : Type} {s : Silmaril.Wasm.Execution.Runtime.Store H} {v : ExternVal} {t : ExternType}
     (h : ExternMatches s v t) : Lime1.Execution.ExternMatches (s.mapCode Func.toLime) v t := by
   cases h with
   | func a fn ft found typed =>
@@ -102,7 +102,7 @@ theorem ExternMatches.toLime {H : Type} {s : Store H} {v : ExternVal} {t : Exter
   | memory a memory mt found limits => exact .memory a memory mt found limits
   | global a global gt found type mutability => exact .global a global gt found type mutability
 
-theorem ImportsMatch.toLime {H : Type} {s : Store H} {m : Module} {imports : List ExternVal}
+theorem ImportsMatch.toLime {H : Type} {s : Silmaril.Wasm.Execution.Runtime.Store H} {m : Module} {imports : List ExternVal}
     (h : ImportsMatch s m imports) :
     Lime1.Execution.ImportsMatch (s.mapCode Func.toLime) m.toLime imports := by
   apply List.Forall₂.imp _ h
@@ -136,8 +136,8 @@ private theorem allocateFuncs_toLime {H : Type} (types : List FuncType) (module 
   obtain ⟨ft, hft, rfl⟩ := found
   simp only [Func.toLime, hft, Option.bind_some, FuncInst.mapCode]
 
-theorem allocate?_toLime {H : Type} (s : Store H) (m : Module) (imports : List ExternVal)
-    {s' : Store H} {module : ModuleInst} (h : allocate? s m imports = some (s', module)) :
+theorem allocate?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (m : Module) (imports : List ExternVal)
+    {s' : Silmaril.Wasm.Execution.Runtime.Store H} {module : ModuleInst} (h : allocate? s m imports = some (s', module)) :
     Lime1.Execution.allocate? (s.mapCode Func.toLime) m.toLime imports =
       some (s'.mapCode Func.toLime, module) := by
   simp only [allocate?, Option.bind_eq_bind, Option.bind_eq_some_iff,
@@ -151,7 +151,7 @@ theorem allocate?_toLime {H : Type} (s : Store H) (m : Module) (imports : List E
   simp only [List.map_id] at hi'
   unfold Lime1.Execution.allocate?
   simp only [Module.toLime, importedInstance_toLime, addresses_toLime,
-    Store.mapCode, List.length_map, exportValue?_toLime] at hi' ⊢
+    Silmaril.Wasm.Execution.Runtime.Store.mapCode, List.length_map, exportValue?_toLime] at hi' ⊢
   rw [hi']
   simp only [Option.bind_eq_bind, Option.bind_some, Option.pure_def]
   rw [he]
@@ -163,7 +163,7 @@ theorem allocate?_toLime {H : Type} (s : Store H) (m : Module) (imports : List E
 def ElemWrite.toLime (w : ElemWrite) : Lime1.Execution.ElemWrite := ⟨w.address, w.offset, w.values⟩
 def DataWrite.toLime (w : DataWrite) : Lime1.Execution.DataWrite := ⟨w.address, w.offset, w.bytes⟩
 
-theorem resolveElem?_toLime {H : Type} (s : Store H) (module : ModuleInst)
+theorem resolveElem?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst)
     {e : Elem} {w : ElemWrite} (h : resolveElem? s module e = some w) :
     Lime1.Execution.resolveElem? (s.mapCode Func.toLime) module e.toLime = some w.toLime := by
   simp only [resolveElem?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -173,10 +173,10 @@ theorem resolveElem?_toLime {H : Type} (s : Store H) (module : ModuleInst)
     subst w
     simp only [Lime1.Execution.resolveElem?, Elem.toLime]
     rw [offset?_toLime s module ho]
-    simp [Store.mapCode, ha, ht, hr, ElemWrite.toLime, ‹offset + refs.length ≤ table.refs.length›]
+    simp [Silmaril.Wasm.Execution.Runtime.Store.mapCode, ha, ht, hr, ElemWrite.toLime, ‹offset + refs.length ≤ table.refs.length›]
   · contradiction
 
-theorem resolveData?_toLime {H : Type} (s : Store H) (module : ModuleInst)
+theorem resolveData?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (module : ModuleInst)
     {d : Data} {w : DataWrite} (h : resolveData? s module d = some w) :
     Lime1.Execution.resolveData? (s.mapCode Func.toLime) module d.toLime = some w.toLime := by
   simp only [resolveData?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -186,33 +186,33 @@ theorem resolveData?_toLime {H : Type} (s : Store H) (module : ModuleInst)
     subst w
     simp only [Lime1.Execution.resolveData?, Data.toLime]
     rw [offset?_toLime s module ho]
-    simp [Store.mapCode, ha, hm, DataWrite.toLime,
+    simp [Silmaril.Wasm.Execution.Runtime.Store.mapCode, ha, hm, DataWrite.toLime,
       ‹offset + d.bytes.size ≤ memory.data.size›]
   · contradiction
 
-@[simp] theorem applyElem_toLime {H : Type} (s : Store H) (w : ElemWrite) :
+@[simp] theorem applyElem_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (w : ElemWrite) :
     Lime1.Execution.applyElem (s.mapCode Func.toLime) w.toLime =
       (applyElem s w).mapCode Func.toLime := rfl
 
-@[simp] theorem applyData_toLime {H : Type} (s : Store H) (w : DataWrite) :
+@[simp] theorem applyData_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (w : DataWrite) :
     Lime1.Execution.applyData (s.mapCode Func.toLime) w.toLime =
       (applyData s w).mapCode Func.toLime := rfl
 
-@[simp] theorem applyElems_toLime {H : Type} (s : Store H) (ws : List ElemWrite) :
+@[simp] theorem applyElems_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (ws : List ElemWrite) :
     (ws.map ElemWrite.toLime).foldl Lime1.Execution.applyElem (s.mapCode Func.toLime) =
       (ws.foldl applyElem s).mapCode Func.toLime := by
   induction ws generalizing s with
   | nil => rfl
   | cons w ws ih => simp only [List.map_cons, List.foldl_cons, applyElem_toLime, ih]
 
-@[simp] theorem applyDatas_toLime {H : Type} (s : Store H) (ws : List DataWrite) :
+@[simp] theorem applyDatas_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (ws : List DataWrite) :
     (ws.map DataWrite.toLime).foldl Lime1.Execution.applyData (s.mapCode Func.toLime) =
       (ws.foldl applyData s).mapCode Func.toLime := by
   induction ws generalizing s with
   | nil => rfl
   | cons w ws ih => simp only [List.map_cons, List.foldl_cons, applyData_toLime, ih]
 
-theorem prepare?_toLime {H : Type} (s : Store H) (m : Module) (imports : List ExternVal)
+theorem prepare?_toLime {H : Type} (s : Silmaril.Wasm.Execution.Runtime.Store H) (m : Module) (imports : List ExternVal)
     {p : Prepared H} (h : prepare? s m imports = some p) :
     Lime1.Execution.prepare? (s.mapCode Func.toLime) m.toLime imports = some p.toLime := by
   simp only [prepare?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def] at h
@@ -238,10 +238,10 @@ theorem prepare?_toLime {H : Type} (s : Store H) (m : Module) (imports : List Ex
     rfl
 
 /-- Preparation, initialized contents and the complete finite start result are preserved. -/
-theorem Instantiation.toLime {H : Type} {source : HostSemantics H}
+theorem Instantiation.toLime {H : Type} {source : Silmaril.Wasm.Execution.Runtime.HostSemantics H}
     {target : Lime1.Execution.HostSemantics H}
     (hosts : Runtime.HostSemantics.Compatible Func.toLime source target)
-    {before after : Store H} {m : Module} {imports : List ExternVal}
+    {before after : Silmaril.Wasm.Execution.Runtime.Store H} {m : Module} {imports : List ExternVal}
     {module : ModuleInst} {outcome : Result}
     (h : Instantiation source before m imports after module outcome) :
     Lime1.Execution.Instantiation target (before.mapCode Func.toLime) m.toLime imports
@@ -249,13 +249,13 @@ theorem Instantiation.toLime {H : Type} {source : HostSemantics H}
   refine ⟨h.valid.toLime, h.importsMatch.toLime, ?_⟩
   obtain ⟨p, hp, hm, run⟩ := h.prepared
   refine ⟨p.toLime, prepare?_toLime before m imports hp, hm, ?_⟩
-  simpa only [Config.toLime, Prepared.toLime, map_result] using run.toLime hosts
+  simpa only [Silmaril.Wasm.Execution.Runtime.Config.toLime, Prepared.toLime, map_result] using run.toLime hosts
 
 /-- A divergent start stays divergent; no termination or host determinism is assumed. -/
-theorem instantiationDiverges_toLime {H : Type} {source : HostSemantics H}
+theorem instantiationDiverges_toLime {H : Type} {source : Silmaril.Wasm.Execution.Runtime.HostSemantics H}
     {target : Lime1.Execution.HostSemantics H}
     (hosts : Runtime.HostSemantics.Compatible Func.toLime source target)
-    {before : Store H} {m : Module} {imports : List ExternVal}
+    {before : Silmaril.Wasm.Execution.Runtime.Store H} {m : Module} {imports : List ExternVal}
     (h : InstantiationDiverges source before m imports) :
     Lime1.Execution.InstantiationDiverges target (before.mapCode Func.toLime) m.toLime imports := by
   obtain ⟨valid, matched, p, hp, diverges⟩ := h

@@ -36,7 +36,7 @@ theorem exR_thinR_fuseR (H : HTab) :
 /-- The fused module's thin wrapper for the litmus world, from the empty canonical table. -/
 theorem exR_thinR (name : String) (vs : List RVal) :
     Sim ((thinR exMdR fuseReallocName).callExportH (fuseR exRInst exMdR) refTab name vs)
-      (exMdR.spec exRInst name vs) Table.empty fun a b t' => a = b ∧ refTab.Same Table.empty t' :=
+      (exMdR.spec exRInst name vs) Silmaril.Wasm.Component.Runtime.Table.empty fun a b t' => a = b ∧ refTab.Same Silmaril.Wasm.Component.Runtime.Table.empty t' :=
   thinR_fuseR_correct exRInst refTab refTab_lawful exMdR exR_names exR_conforms name vs empty_inv
     (exR_room name)
 

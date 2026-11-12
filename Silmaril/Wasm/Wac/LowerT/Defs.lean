@@ -51,7 +51,7 @@ abbrev Table := List (String × FuncTy)
 /-- An item of a profile component: one element of a section. -/
 inductive Item where
   | type (t : DefType)
-  | imp (i : Import)
+  | imp (i : Silmaril.Wasm.Component.Binary.Import)
   | comp
   | inst (e : InstanceExpr)
   | alias (a : Alias)
@@ -152,11 +152,11 @@ inductive Den (S : Nat → PkgSig) : List Item → Sp → Nat → (Loc × Table)
   | there {l : List Item} {x : Item} {s : Sp} {j : Nat} {e} :
       Den S l s j e → Den S (l ++ [x]) s j e
   /-- An imported function, with the type its type index reads as. -/
-  | impFunc {l : List Item} {i : Import} {t : Nat} {ft : FuncTy} :
+  | impFunc {l : List Item} {i : Silmaril.Wasm.Component.Binary.Import} {t : Nat} {ft : FuncTy} :
       i.desc = .func t → (typesOf l)[t]? = some (.func ft) →
       Den S (l ++ [.imp i]) .func (count .func l) (.inr (.imp i.name.name, ft))
   /-- An imported instance, with the function exports of its instance type. -/
-  | impInst {l : List Item} {i : Import} {t : Nat} {ds : List InstanceDecl} {tab : Table} :
+  | impInst {l : List Item} {i : Silmaril.Wasm.Component.Binary.Import} {t : Nat} {ds : List InstanceDecl} {tab : Table} :
       i.desc = .instance t → (typesOf l)[t]? = some (.inst ds) →
       Silmaril.Wasm.Component.Binary.Lower.instFuncs (typesOf l).toArray ds = .ok tab →
       Den S (l ++ [.imp i]) .inst (count .inst l) (.inl (.imp i.name.name, tab))
@@ -219,13 +219,13 @@ inductive Decls (S : Nat → PkgSig) : List Item → Iface → Prop
   | nil : Decls S [] []
   | other {l : List Item} {x : Item} {I : Iface} :
       (∀ i, x ≠ .imp i) → Decls S l I → Decls S (l ++ [x]) I
-  | impFunc {l : List Item} {i : Import} {I : Iface} {ft : FuncTy} :
+  | impFunc {l : List Item} {i : Silmaril.Wasm.Component.Binary.Import} {I : Iface} {ft : FuncTy} :
       Decls S l I → Den S (l ++ [.imp i]) .func (count .func l) (.inr (.imp i.name.name, ft)) →
       Decls S (l ++ [.imp i]) (I ++ [(i.name.name, ft)])
-  | impInst {l : List Item} {i : Import} {I : Iface} {tab : Table} :
+  | impInst {l : List Item} {i : Silmaril.Wasm.Component.Binary.Import} {I : Iface} {tab : Table} :
       Decls S l I → Den S (l ++ [.imp i]) .inst (count .inst l) (.inl (.imp i.name.name, tab)) →
       Decls S (l ++ [.imp i]) (I ++ tab.map fun p => (qual i.name.name p.1, p.2))
-  | impOther {l : List Item} {i : Import} {I : Iface} :
+  | impOther {l : List Item} {i : Silmaril.Wasm.Component.Binary.Import} {I : Iface} :
       (descSp i.desc = some .comp ∨ descSp i.desc = some .type) →
       Decls S l I → Decls S (l ++ [.imp i]) I
 
@@ -291,7 +291,7 @@ def argsT (S : Nat → PkgSig) (st : TSt) (c : Nat) :
   | a :: args => (argT S st c a).bind fun x => (argsT S st c args).map (x ++ ·)
 
 /-- An import. -/
-def importT (st : TSt) (i : Import) : Except String TSt :=
+def importT (st : TSt) (i : Silmaril.Wasm.Component.Binary.Import) : Except String TSt :=
   let n := i.name.name
   match i.desc with
   | .func t =>

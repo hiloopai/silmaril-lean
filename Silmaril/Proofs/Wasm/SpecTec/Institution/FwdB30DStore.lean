@@ -237,7 +237,7 @@ theorem single_exact {c : Config H} {s' : Store H} {f' : Frame} {a : Admin}
 
 /-- **`struct.new` at `builtins`, exactly.** -/
 theorem structNew_exact {s : Store H} {f : Frame} {x : TypeIdx} {d : DefType}
-    {fs : Ty (.list .field)} {vs : List Val} (hd : f.type? x = some d)
+    {fs : Silmaril.Wasm.Validation.Ty (.list .field)} {vs : List Val} (hd : f.type? x = some d)
     (he : Expand d (.struct fs)) (hn' : vs.length = fs.length)
     (hp : ∀ p ∈ fs.toList.zip vs, packable (fieldStorage p.1) p.2)
     (hc : DomDet (Profile.spec nd r) host ⟨s, f, vals vs ++ [.plain (.structNew x)]⟩) :
@@ -281,7 +281,7 @@ theorem arrayNewFixed_exact {s : Store H} {f : Frame} {x : TypeIdx} {n : Fin (2 
 
 /-- **`throw` at `builtins`, exactly.** -/
 theorem throw_exact {s : Store H} {f : Frame} {x : TagIdx} {vs : List Val} {ta : Nat}
-    {ti : TagInst} {ts : Ty (.list .val)} (ht : s.tag? f x = some (ta, ti))
+    {ti : TagInst} {ts : Silmaril.Wasm.Validation.Ty (.list .val)} (ht : s.tag? f x = some (ta, ti))
     (he : Expand ti.type (.func ts .nil)) (hn' : vs.length = ts.length)
     (hc : DomDet (Profile.spec nd r) host ⟨s, f, vals vs ++ [.plain (.throw x)]⟩) :
     let c' : Config H := ⟨s.addExn ⟨ta, vs⟩, f, throwing s.exns.length⟩
@@ -313,7 +313,7 @@ theorem callRefNull_exact {s : Store H} {f : Frame} {c : Admin} (hcr : c.IsCallR
 
 /-- **`call_ref-func` at `builtins`, up to `CfgRel`.** -/
 theorem callRefFunc_builtins {s : Store H} {f : Frame} {c : Admin} {vs : List Val} {a : Nat}
-    {fi : FuncInst H} {ps rs : Ty (.list .val)} {code : Func} (hcr : c.IsCallRef)
+    {fi : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} {code : Func} (hcr : c.IsCallRef)
     (hfa : s.funcs[a]? = some fi) (he : Expand fi.type (.func ps rs))
     (hn' : vs.length = ps.length) (hcode : fi.code = .wasm code)
     (hc : DomDet (Profile.spec nd r) host ⟨s, f, vals vs ++ [.ref (.func a), c]⟩) :
@@ -334,7 +334,7 @@ theorem callRefFunc_builtins {s : Store H} {f : Frame} {c : Admin} {vs : List Va
 /-- **`call_ref-func` at `builtins`, exactly**, when the function body has no `call_ref` at the
 top. -/
 theorem callRefFunc_exact {s : Store H} {f : Frame} {c : Admin} {vs : List Val} {a : Nat}
-    {fi : FuncInst H} {ps rs : Ty (.list .val)} {code : Func} (hcr : c.IsCallRef)
+    {fi : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} {code : Func} (hcr : c.IsCallRef)
     (hfa : s.funcs[a]? = some fi) (he : Expand fi.type (.func ps rs))
     (hn' : vs.length = ps.length) (hcode : fi.code = .wasm code) (hcf : callFree code.body = true)
     (hc : DomDet (Profile.spec nd r) host ⟨s, f, vals vs ++ [.ref (.func a), c]⟩) :

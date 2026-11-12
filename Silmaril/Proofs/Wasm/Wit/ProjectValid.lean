@@ -23,7 +23,7 @@ open Silmaril.Wasm.Component.Wat (normName normDefType normComponentDecl normIns
 
 /-! ## Monotonicity and the normal form -/
 
-theorem valOk_mono {t t' : Nat} (h : t ≤ t') (v : ValType) (hv : valOk t v = true) :
+theorem valOk_mono {t t' : Nat} (h : t ≤ t') (v : Silmaril.Wasm.Component.Binary.ValType) (hv : valOk t v = true) :
     valOk t' v = true := by
   cases v with
   | prim _ => rfl
@@ -235,7 +235,7 @@ theorem inv_applyDesc {x : XState} {k : CCount} (h : Inv x k) (decl : ComponentD
     exact ⟨world_step h decl _ fun wc hwc _ => ⟨_, hw wc hwc, hwc, rfl⟩, h.tCount, himE,
       h.fdesc, h.idesc, h.cdesc, h.hoisted⟩
 
-theorem stepX_imports {x x' : XState} {rest : List Section} {im : Import}
+theorem stepX_imports {x x' : XState} {rest : List Section} {im : Silmaril.Wasm.Component.Binary.Import}
     (hs : stepX x rest (.imports [im]) = some x') :
     x' = applyDesc x (.import (normName im.name) im.desc) im.desc := by
   obtain ⟨n, d⟩ := im
@@ -257,7 +257,7 @@ theorem stepX_imports {x x' : XState} {rest : List Section} {im : Import}
     simp only [step, isValueEq, Bool.false_eq_true, ite_false, Option.some.injEq] at hp
     subst hp; rfl
 
-theorem exportDescX_ok {x : XState} {k : CCount} (h : Inv x k) (e : Export)
+theorem exportDescX_ok {x : XState} {k : CCount} (h : Inv x k) (e : Silmaril.Wasm.Component.Binary.Export)
     (hi : itemOk k e.item = true) (ha : ascriptionOk k.t e = true) (d : ExternDesc)
     (hd : exportDescX x e = some d) : descOk k.t d = true ∧ descSort d = e.item.sort := by
   obtain ⟨n, ⟨srt, i⟩, desc⟩ := e
@@ -303,7 +303,7 @@ theorem exports_applyDesc_instance (x : XState) (n : ExternName) (i j : Nat)
   rw [← hp']
   simp [track, applyDesc, hd]
 
-theorem stepX_exports_applyDesc {x x' : XState} {rest : List Section} {e : Export}
+theorem stepX_exports_applyDesc {x x' : XState} {rest : List Section} {e : Silmaril.Wasm.Component.Binary.Export}
     (hh : ¬(e.item.sort = .type ∧ e.item.idx ∈ x.hoisted)) (d : ExternDesc)
     (hd : exportDescX x e = some d) (hsort : descSort d = e.item.sort)
     (hs : stepX x rest (.exports [e]) = some x') :
@@ -379,7 +379,7 @@ theorem inv_types {x x' : XState} {k k' : CCount} (h : Inv x k) (rest : List Sec
     rw [← Option.some.inj hs']
     exact inv_types_plain h dt hd
 
-theorem cStep_exports {k k' : CCount} {e : Export} (hc : cStep k (.exports [e]) = some k') :
+theorem cStep_exports {k k' : CCount} {e : Silmaril.Wasm.Component.Binary.Export} (hc : cStep k (.exports [e]) = some k') :
     itemOk k e.item = true ∧ ascriptionOk k.t e = true ∧ k' = k.bump e.item.sort := by
   by_cases hd : itemOk k e.item = true ∧ ascriptionOk k.t e = true
   · have hk : some (k.bump e.item.sort) = some k' := by simpa [cStep, hd] using hc
@@ -388,7 +388,7 @@ theorem cStep_exports {k k' : CCount} {e : Export} (hc : cStep k (.exports [e]) 
     simp [cStep, hd'] at hc
 
 theorem inv_export_hoisted {x x' : XState} {k : CCount} (h : Inv x k) (rest : List Section)
-    (e : Export) (hh : e.item.sort = .type ∧ e.item.idx ∈ x.hoisted)
+    (e : Silmaril.Wasm.Component.Binary.Export) (hh : e.item.sort = .type ∧ e.item.idx ∈ x.hoisted)
     (hs : stepX x rest (.exports [e]) = some x') : Inv x' (k.bump .type) := by
   rw [stepX_exports_eq, ite_eq_left hh] at hs
   cases Option.some.inj hs
@@ -406,7 +406,7 @@ theorem inv_export_hoisted {x x' : XState} {k : CCount} (h : Inv x k) (rest : Li
     fun j hj => Nat.lt_succ_of_lt (h.hoisted j (List.mem_of_mem_erase hj))⟩
 
 theorem inv_exports {x x' : XState} {k k' : CCount} (h : Inv x k) (rest : List Section)
-    (e : Export) (hc : cStep k (.exports [e]) = some k') (hs : stepX x rest (.exports [e]) = some x') :
+    (e : Silmaril.Wasm.Component.Binary.Export) (hc : cStep k (.exports [e]) = some k') (hs : stepX x rest (.exports [e]) = some x') :
     Inv x' k' := by
   obtain ⟨hi, ha, rfl⟩ := cStep_exports hc
   by_cases hh : e.item.sort = .type ∧ e.item.idx ∈ x.hoisted
@@ -421,7 +421,7 @@ theorem inv_exports {x x' : XState} {k k' : CCount} (h : Inv x k) (rest : List S
     exact inv_applyDesc h _ d (fun _ => rfl) hok
 
 theorem inv_imports {x x' : XState} {k k' : CCount} (h : Inv x k) (rest : List Section)
-    (im : Import) (hc : cStep k (.imports [im]) = some k') (hs : stepX x rest (.imports [im]) = some x') :
+    (im : Silmaril.Wasm.Component.Binary.Import) (hc : cStep k (.imports [im]) = some k') (hs : stepX x rest (.imports [im]) = some x') :
     Inv x' k' := by
   have hd : descOk k.t im.desc = true := by
     by_cases hd : descOk k.t im.desc = true

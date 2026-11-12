@@ -136,9 +136,9 @@ def resources (ts : List TypeDef) : List String :=
     | _ => none
 
 /-- A function name as wit-parser's `Function::name` (`[method]r.f`, `[constructor]r`, …). -/
-def fname (f : Func) : String := f.mangled
+def fname (f : Silmaril.Wasm.Wit.Binary.Func) : String := f.mangled
 
-def noAsync (f : Func) : Except String Unit :=
+def noAsync (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Unit :=
   if f.async then
     throw s!"function `{fname f}` is async: dummy modules of async functions are not implemented by this wasm-tools"
   else pure ()
@@ -174,7 +174,7 @@ def exportBuiltins (m : Mangling) (es : List DItem) : List (String × String × 
     | _ => []
 
 /-- An exported function and its post-return function. -/
-def exportFunc (ρ : Resolver) (m : Mangling) (k : Option (IfaceName ⊕ String)) (f : Func) :
+def exportFunc (ρ : Resolver) (m : Mangling) (k : Option (IfaceName ⊕ String)) (f : Silmaril.Wasm.Wit.Binary.Func) :
     Except String (List DFunc) := do
   noAsync f
   let sc : Scope := match k with

@@ -163,7 +163,7 @@ theorem l_shr {x : HL} {s : Store H} {f : Frame} (v : BitVec 64) (R : List Admin
 
 /-- **The call of an imported built-in**: Core's `call`, then the host's answer `lansAll`. -/
 theorem lcall {x x' : HL} {cs cs' : Store H} {F : Frame} {b : BI} {vs res : List Val} {a : Nat}
-    {fi : FuncInst H} {ps rs : Ty (.list .val)} (hfa : F.module.funcs[biFn b]? = some a)
+    {fi : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} (hfa : F.module.funcs[biFn b]? = some a)
     (hfi : cs.funcs[a]? = some fi) (hcode : fi.code = .host (hb b)) (hexp : Expand fi.type (.func ps rs))
     (hn : vs.length = ps.length) (hans : lansAll ma b x cs vs = some (x', cs', res)) (rest : List Admin) :
     LSteps Pf hb ma (x, ⟨cs, F, vals vs ++ Admin.plain (Instr.call (ix (biFn b))) :: rest⟩)

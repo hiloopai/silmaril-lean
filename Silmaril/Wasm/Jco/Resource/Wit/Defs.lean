@@ -58,7 +58,7 @@ def resEnv (w : World) : ResEnv :=
     | _ => []
 
 /-- A resolved WIT type with handles of the resources of interface `iname`. -/
-def RTy.ofWit (env : ResEnv) (iname : Option String) : Ty → Option RTy
+def RTy.ofWit (env : ResEnv) (iname : Option String) : Silmaril.Wasm.Wit.Binary.Ty → Option RTy
   | .own ⟨.local, r⟩ => do
     let i ← iname
     (env.find? (i, r)).map .own
@@ -68,7 +68,7 @@ def RTy.ofWit (env : ResEnv) (iname : Option String) : Ty → Option RTy
   | t => (PTy.ofWit t).map .base
 
 /-- The world function of a WIT function, named `name`, inside interface `iname` (if any). -/
-def RSig.ofWit (env : ResEnv) (iname : Option String) (name : String) (f : Func) :
+def RSig.ofWit (env : ResEnv) (iname : Option String) (name : String) (f : Silmaril.Wasm.Wit.Binary.Func) :
     Except String RSig := do
   if f.async then throw s!"{name}: async functions are not in the fragment"
   let ps ← f.params.mapM fun (p, t) => match RTy.ofWit env iname t with

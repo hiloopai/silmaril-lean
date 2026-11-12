@@ -53,7 +53,7 @@ def boxIface : Interface where
       result := some (.prim .u32) }]
 
 /-- The freestanding function `add`. -/
-def addFunc : Func where
+def addFunc : Silmaril.Wasm.Wit.Binary.Func where
   name := "add"
   params := [("a", .prim .u32), ("b", .prim .u32)]
   result := some (.prim .u32)

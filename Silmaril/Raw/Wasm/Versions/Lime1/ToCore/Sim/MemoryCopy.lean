@@ -207,7 +207,7 @@ theorem copy_bwd {tgt : CHostSemantics H} {cf : CFrame} {ma : Nat} :
 
 /-! ## Head rules -/
 
-theorem memoryCopy {tgt : CHostSemantics H} {s : Store H} {f : Frame}
+theorem memoryCopy {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame}
     {d src n : BitVec 32} {a : MemAddr} {m : MemInst} {bytes : Memory.Bytes}
     (memory : frameMemory s f = some (a, m))
     (copied : Memory.copy m.data d.toNat src.toNat n.toNat = some bytes)
@@ -252,7 +252,7 @@ theorem memoryCopy {tgt : CHostSemantics H} {s : Store H} {f : Frame}
   rw [hc, ← mem_toCore_bytes m B hsize]
   exact hsteps
 
-theorem memoryCopyTrap {tgt : CHostSemantics H} {s : Store H} {f : Frame}
+theorem memoryCopyTrap {tgt : CHostSemantics H} {s : Silmaril.Wasm.Execution.Runtime.Store H} {f : Frame}
     {d src n : BitVec 32} {a : MemAddr} {m : MemInst}
     (memory : frameMemory s f = some (a, m))
     (copied : Memory.copy m.data d.toNat src.toNat n.toNat = none)

@@ -286,7 +286,7 @@ theorem ctxBnd_gF64 : CtxBnd [] gF64 :=
 
 /-- `unreachable` at `[] -> [i32]`, through `Instrs_ok/sub` from its typing `[] -> [BOT]`: the
 result `BOT` is a subtype of `i32`. -/
-theorem fragOkY_unreachableBot : FragOkY [] [] [.unreachable] (.plain [] [Ty.i32]) := by
+theorem fragOkY_unreachableBot : FragOkY [] [] [.unreachable] (.plain [] [Silmaril.Wasm.Validation.Ty.i32]) := by
   have hbot : InstrOk (ctxLoc [] []) .unreachable (.plain [] [.botv]) :=
     .parametric (.unreachable ⟨fun _ h => absurd h List.not_mem_nil,
       fun t ht => (List.mem_singleton.1 ht) ▸ TyOk.botv, fun _ h => absurd h List.not_mem_nil⟩)
@@ -339,8 +339,8 @@ theorem globalAdd (one : BitVec 64) :
 `[] -> [BOT]` by `Instrs_ok/sub`, is an `Instrs_ok` fact of `stepModel BI` and Core-valid. -/
 theorem unreachableBot :
     (MB).D "Instrs_ok" "%|-%:%" []
-        (.tuple [ctxLGV [] [], .list (instrsToV [.unreachable]), instrtypeV (.plain [] [Ty.i32])]) ∧
-      InstrsOk (ctxLoc [] []) [.unreachable] (.plain [] [Ty.i32]) :=
+        (.tuple [ctxLGV [] [], .list (instrsToV [.unreachable]), instrtypeV (.plain [] [Silmaril.Wasm.Validation.Ty.i32])]) ∧
+      InstrsOk (ctxLoc [] []) [.unreachable] (.plain [] [Silmaril.Wasm.Validation.Ty.i32]) :=
   ⟨instrsY_sat P hn host ctxBnd_nil fragOkY_unreachableBot, fragOkY_sound fragOkY_unreachableBot⟩
 
 end Model

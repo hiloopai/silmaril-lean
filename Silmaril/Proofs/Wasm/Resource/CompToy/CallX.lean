@@ -97,7 +97,7 @@ theorem runs_returnMT {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     exact getElem?_mid
   have hor : RunsQ (D P) th (D P (.onResolve ⟨Gc.length⟩ (some vs))) m
       [.tau, .obs (.resolved c (some vs))] .unit (m.resolve c (some vs)) := by
-    show RunsQ _ _ (callerOnResolve Limits.spec Quirks.none ⟨Gc.length⟩ (some vs)) _ _ _ _
+    show RunsQ _ _ (callerOnResolve Silmaril.Wasm.Component.Limits.spec Quirks.none ⟨Gc.length⟩ (some vs)) _ _ _ _
     unfold callerOnResolve
     exact RunsQ.bind (runs_getObj ArenaField.callers _ _ hgc)
       (RunsQ.bind (tr₁ := [.obs (.resolved c (some vs))]) (.emit (.pure _ _)) (.pure _ _))
@@ -231,7 +231,7 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
     (hasync : ft.async_ = false)
     (hadd : ι.addThread? ⟨G.threads.length⟩ = some (1, ι'))
     (hlow : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ft c ι ι' G k args →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none) m trL xs
         { m with store := tStore₄ P ft c ι ι' G k args ι₄ H₄ }) :
@@ -240,7 +240,7 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
         ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat addr xs) K, segs⟩ :: rest ∧
       M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧
       (∀ ys, ∃ (β : Type) (f : List Val × FlatCursor → Canon.P (E3 P) Unit β)
-        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
+        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ft) >>= f) >>= g) ∧
       ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
@@ -250,7 +250,7 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
         (C : List (Option (Activation (E3 P) Unit))),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = tStoreX P ft c ι ι' G k args ιc Hc cs' Xt Xth Xc →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ft)) m trF (ws, cur)
             { m with store := tStoreX P ft c ι ι' G k args ι₅ H₅ cs' Xt Xth Xc }) →

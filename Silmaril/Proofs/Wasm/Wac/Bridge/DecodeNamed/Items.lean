@@ -55,7 +55,7 @@ theorem defTy_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ δ0 : DScope} {D : 
     ⟨instOnly_single _, fun rest is es => ?_⟩, hnew⟩
   simp [decCDecls, decIDecl, hd, pushTy]
 
-theorem defTy_val_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {d : DefValType} {t : Ty}
+theorem defTy_val_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty}
     (hm : M N Γ σ δ) (hd : DecDef δ d t) :
     VS N Γ (defTy (.val d)) σ δ (fun j δ' => δ'.types[j]? = some (.val t)) :=
   defTy_sim hm id (by simp [decDefType, hd δ (ext_refl δ)]) rfl hm.dnom
@@ -95,7 +95,7 @@ theorem nominalTy_sim {N : NomTable} {Γ : Ctx} {d : Nominal} (hd : NomOk Γ d) 
     show VS N Γ (nominalTy (.record fs)) σ δ (fun j δ' => δ'.types[j]? = some (.nominal (.record fs)))
     rw [nominalTy]
     refine vs_bind (mapM_sim
-      (R := fun (δ : DScope) (c : String × ValType) (f : String × Ty) => c.1 = f.1 ∧ DecVal δ c.2 f.2)
+      (R := fun (δ : DScope) (c : String × Silmaril.Wasm.Component.Binary.ValType) (f : String × Silmaril.Wasm.Wit.Binary.Ty) => c.1 = f.1 ∧ DecVal δ c.2 f.2)
       (fun _ _ _ _ e h => ⟨h.1, h.2.mono e⟩)
       (fun f hf σ δ hm => vs_bind (valTy_sim (hd f hf) σ δ hm) fun v σ1 δ1 hm1 _ hv =>
         vs_pure hm1 ⟨rfl, hv⟩) hm) fun cs σ1 δ1 hm1 _ hcs => defTy_sim hm1 id ?_ rfl hm1.dnom
@@ -105,8 +105,8 @@ theorem nominalTy_sim {N : NomTable} {Γ : Ctx} {d : Nominal} (hd : NomOk Γ d) 
   | variant cs =>
     show VS N Γ (nominalTy (.variant cs)) σ δ (fun j δ' => δ'.types[j]? = some (.nominal (.variant cs)))
     rw [nominalTy]
-    refine vs_bind (mapM_sim (R := fun (δ : DScope) (c : String × Option ValType)
-        (f : String × Option Ty) => c.1 = f.1 ∧ DecOpt δ c.2 f.2)
+    refine vs_bind (mapM_sim (R := fun (δ : DScope) (c : String × Option Silmaril.Wasm.Component.Binary.ValType)
+        (f : String × Option Silmaril.Wasm.Wit.Binary.Ty) => c.1 = f.1 ∧ DecOpt δ c.2 f.2)
       (fun _ _ _ _ e h => ⟨h.1, h.2.mono e⟩)
       (fun f hf σ δ hm => vs_bind (valTyOpt_sim (fun t ht => valTy_sim (hd f hf t ht)) hm)
         fun v σ1 δ1 hm1 _ hv => vs_pure hm1 ⟨rfl, hv⟩) hm) fun vs σ1 δ1 hm1 _ hvs =>

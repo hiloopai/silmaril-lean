@@ -33,18 +33,18 @@ local notation "CStep" => Silmaril.Wasm.Execution.Core.Step Profile.spec
 
 /-! ## Helpers -/
 
-theorem call_parts {s : Store H} {f : Frame} {code : List Admin} {cs : ToCore.CStore H}
+theorem call_parts {s : Store H} {f : Frame} {code : List Silmaril.Wasm.Execution.Core.Admin} {cs : ToCore.CStore H}
     {cf : ToCore.CFrame} {cl : List ToCore.CAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩) :
     ToCore.Store.erase cs = s.toCore ∧ ToCore.Frame.erase cf = f.toCore ∧
-      cl.map (ToCore.Admin.norm cf.module) = Admin.listToCore s code ∧ ConfigWF ⟨s, f, code⟩ := by
+      cl.map (ToCore.Admin.norm cf.module) = Silmaril.Wasm.Execution.Core.Admin.listToCore s code ∧ ConfigWF ⟨s, f, code⟩ := by
   obtain ⟨hn, hwf⟩ := hs
   obtain ⟨h1, h2, h3⟩ := ToCore.Config.norm_eq_toCore_iff.mp hn
   exact ⟨h1, h2, h3, hwf⟩
 
-theorem call_sim_of {s : Store H} {f : Frame} {code : List Admin} {cs : ToCore.CStore H}
+theorem call_sim_of {s : Store H} {f : Frame} {code : List Silmaril.Wasm.Execution.Core.Admin} {cs : ToCore.CStore H}
     {cf : ToCore.CFrame} {cl : List ToCore.CAdmin} (h1 : ToCore.Store.erase cs = s.toCore)
     (h2 : ToCore.Frame.erase cf = f.toCore)
-    (h3 : cl.map (ToCore.Admin.norm cf.module) = Admin.listToCore s code)
+    (h3 : cl.map (ToCore.Admin.norm cf.module) = Silmaril.Wasm.Execution.Core.Admin.listToCore s code)
     (hwf : ConfigWF ⟨s, f, code⟩) : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩ :=
   ⟨ToCore.Config.norm_eq_toCore_iff.mpr ⟨h1, h2, h3⟩, hwf⟩
 
@@ -87,7 +87,7 @@ theorem call_store_func {cs : ToCore.CStore H} {s : Store H} (h : ToCore.Store.e
     · rw [← this]
 
 theorem call_tyOk_ofList_num (Δ : TypeCtx) (ts : List NumType) :
-    TyOk Δ (Ty.ofList (ts.map Ty.num)) := by
+    TyOk Δ (Silmaril.Wasm.Validation.Ty.ofList (ts.map Silmaril.Wasm.Validation.Ty.num)) := by
   induction ts with
   | nil => exact TyOk.nil
   | cons t ts ih => exact TyOk.cons (TyOk.num t) ih
@@ -96,12 +96,12 @@ theorem call_tyOk_toDefType (t : V1.FuncType) : TyOk ({} : TypeCtx) t.toDefType 
   unfold V1.FuncType.toDefType
   simp only [liftRec, V1.FuncType.toCoreRec, List.map_cons, List.map_nil, liftSub, liftComp,
     V1.FuncType.toCore, V1.liftResult_toCore]
-  refine TyOk.defn (GroupOk2.cons (SubOk2.noSuper (TyOk.func ?_ ?_)) GroupOk2.nil) (by simp [Ty.length])
+  refine TyOk.defn (GroupOk2.cons (SubOk2.noSuper (TyOk.func ?_ ?_)) GroupOk2.nil) (by simp [Silmaril.Wasm.Validation.Ty.length])
   · exact call_tyOk_ofList_num _ _
   · exact call_tyOk_ofList_num _ _
 
 theorem call_tyOk_ref (n : Bool) (t : V1.FuncType) :
-    TyOk ({} : TypeCtx) (Ty.ref n (.use (.dt t.toDefType)) : CRefType) :=
+    TyOk ({} : TypeCtx) (Silmaril.Wasm.Validation.Ty.ref n (.use (.dt t.toDefType)) : CRefType) :=
   TyOk.ref (TyOk.use (TyOk.dt (call_tyOk_toDefType t)))
 
 /-! ### Core context helpers -/
@@ -154,21 +154,21 @@ theorem call_decomp_invoke {m : ToCore.CModuleInst} {cl : List ToCore.CAdmin} {v
 
 end
 
-theorem call_listWF_expression (s : Store H) (es : Expr) : Admin.listWF s (expression es) := by
+theorem call_listWF_expression (s : Store H) (es : Expr) : Silmaril.Wasm.Execution.Core.Admin.listWF s (expression es) := by
   induction es with
-  | nil => simp [expression, Admin.listWF]
-  | cons e es ih => simpa [expression, Admin.listWF, Admin.WF] using ih
+  | nil => simp [expression, Silmaril.Wasm.Execution.Core.Admin.listWF]
+  | cons e es ih => simpa [expression, Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF] using ih
 
-theorem call_listWF_values (s : Store H) (vs : List Value) : Admin.listWF s (values vs) := by
+theorem call_listWF_values (s : Store H) (vs : List Value) : Silmaril.Wasm.Execution.Core.Admin.listWF s (values vs) := by
   induction vs with
-  | nil => simp [values, Admin.listWF]
+  | nil => simp [values, Silmaril.Wasm.Execution.Core.Admin.listWF]
   | cons v vs ih =>
-    rcases v with ⟨⟨_ | _⟩, _⟩ <;> simpa [values, value, Admin.listWF, Admin.WF] using ih
+    rcases v with ⟨⟨_ | _⟩, _⟩ <;> simpa [values, value, Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF] using ih
 
-theorem call_listWF_result (s : Store H) (r : Result) : Admin.listWF s (result r) := by
+theorem call_listWF_result (s : Store H) (r : Result) : Silmaril.Wasm.Execution.Core.Admin.listWF s (result r) := by
   cases r with
   | values vs => exact call_listWF_values s vs
-  | trap => simp [result, Admin.listWF, Admin.WF]
+  | trap => simp [result, Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF]
 
 /-! ## Head rules -/
 
@@ -189,14 +189,14 @@ theorem call {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {i : Func
   refine ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.call hx hfi), ?_⟩
   refine call_sim_of hst hfr ?_ ⟨hwf.1, hwf.2.1, ?_⟩
   · simp [hty, Store.funcDefType, hfL]
-  · simp [Admin.listWF, Admin.WF, ha]
+  · simp [Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF, ha]
 
 /-! ### `call_indirect` -/
 
 theorem call_ci_code {s : Store H} {m : ToCore.CModuleInst} {cl : List ToCore.CAdmin}
     {c : BitVec 32} {i : TypeIdx}
     (h : cl.map (ToCore.Admin.norm m) =
-      Admin.listToCore s [value (.int .i32 c), .source (.callIndirect i)]) :
+      Silmaril.Wasm.Execution.Core.Admin.listToCore s [value (.int .i32 c), .source (.callIndirect i)]) :
     cl = [.plain (.intConst .i32 c), .plain (.callIndirect ⟨0⟩ i)] := by
   refine ToCore.map_norm_eq_of_rigid ?_ (h.trans ?_)
   · simp [ToCore.Rigid]
@@ -217,7 +217,7 @@ theorem call_instRef {m : ToCore.CModuleInst} {i : TypeIdx} {d : DefType}
     (h : m.types[i.toNat]? = some d) :
     m.instRef ⟨true, .typeIdx i⟩ = .ref true (.use (.dt d)) := by
   simp [Silmaril.Wasm.Execution.Core.ModuleInst.instRef, liftRef, liftHeap, liftTypeIdx,
-    Ty.substAll, Ty.subst, Subst.all, h]
+    Silmaril.Wasm.Validation.Ty.substAll, Silmaril.Wasm.Validation.Ty.subst, Subst.all, h]
 
 theorem call_not_refOk {cs : ToCore.CStore H} {a : Nat}
     {fi : Silmaril.Wasm.Execution.Core.FuncInst H} (hf : cs.funcs[a]? = some fi)
@@ -232,7 +232,7 @@ theorem call_not_refOk {cs : ToCore.CStore H} {a : Nat}
   have hc := Sub.check_complete TypeCtx.ok_empty rfl hsub (call_tyOk_ref false t₁)
     (call_tyOk_ref true t₂)
   simp [Sub.check, Sub.checkK, TypeCtx.checkRef, TypeCtx.checkHeap, TypeCtx.resolve,
-    Ty.defHeap] at hc
+    Silmaril.Wasm.Validation.Ty.defHeap] at hc
   exact hne ((V1.FuncType.toDefType_sub_iff _ _ _).mp (TypeCtx.checkDef_sound hc))
 
 theorem callIndirect {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {i : TypeIdx}
@@ -269,13 +269,13 @@ theorem callIndirect {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {
       (Silmaril.Wasm.Execution.Core.RefStep.castSucceed hok)))
   · refine call_sim_of hst hfr ?_ ⟨hwf.1, hwf.2.1, ?_⟩
     · simp [hty', Store.funcDefType, found, typeMatch]
-    · simp [Admin.listWF, Admin.WF, (List.getElem?_eq_some_iff.mp found).1]
+    · simp [Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF, (List.getElem?_eq_some_iff.mp found).1]
 
-theorem call_sim_trap {s : Store H} {f : Frame} {code : List Admin} {cs : ToCore.CStore H}
+theorem call_sim_trap {s : Store H} {f : Frame} {code : List Silmaril.Wasm.Execution.Core.Admin} {cs : ToCore.CStore H}
     {cf : ToCore.CFrame} {cl : List ToCore.CAdmin} (hs : Sim ⟨s, f, code⟩ ⟨cs, cf, cl⟩) :
     Sim ⟨s, f, [.trap]⟩ ⟨cs, cf, [.trap]⟩ := by
   obtain ⟨hst, hfr, -, hwf⟩ := call_parts hs
-  exact call_sim_of hst hfr (by simp) ⟨hwf.1, hwf.2.1, by simp [Admin.listWF, Admin.WF]⟩
+  exact call_sim_of hst hfr (by simp) ⟨hwf.1, hwf.2.1, by simp [Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF]⟩
 
 theorem callIndirectBounds {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame}
     {i : TypeIdx} {c : BitVec 32} {table : TableInst}
@@ -357,7 +357,7 @@ theorem callIndirectType {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Fram
 
 theorem call_invoke_code {s : Store H} {m : ToCore.CModuleInst} {cl : List ToCore.CAdmin}
     {args : List Value} {a : FuncAddr}
-    (h : cl.map (ToCore.Admin.norm m) = Admin.listToCore s (values args ++ [.invoke a])) :
+    (h : cl.map (ToCore.Admin.norm m) = Silmaril.Wasm.Execution.Core.Admin.listToCore s (values args ++ [.invoke a])) :
     ∃ x, cl = Silmaril.Wasm.Execution.Core.vals (args.map Value.toCore) ++ [.ref (.func a.value), x] ∧
       x.IsCallRef := by
   rw [listToCore_append, values_toCore] at h
@@ -391,17 +391,17 @@ theorem invokeWasm {tgt : ToCore.CHostSemantics H} {s : Store H} {f : Frame} {a 
   obtain ⟨x, rfl, hx⟩ := call_invoke_code hcl
   obtain ⟨fi, hfi, hty, hmod, hcode⟩ := call_store_func hst found
   simp only [FuncInst.type] at hty
-  have he : Expand fi.type (.func (Ty.ofList (ft.params.map Ty.num))
-      (Ty.ofList (ft.results.map Ty.num))) := by
+  have he : Expand fi.type (.func (Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num))
+      (Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num))) := by
     rw [hty]; exact Expand.iff.mpr (V1.FuncType.toDefType_expand _)
   have hcode' : fi.code = .wasm fn.toCore := hcode
   refine ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.callRefFunc
-    (vs := args.map Value.toCore) hx hfi he (by simp [Ty.length_ofList, arity]) hcode'), ?_⟩
+    (vs := args.map Value.toCore) hx hfi he (by simp [Silmaril.Wasm.Validation.Ty.length_ofList, arity]) hcode'), ?_⟩
   refine call_sim_of hst hfr ?_ ⟨hwf.1, hwf.2.1, ?_⟩
   · have hfe := call_forCall_erase hmod args fn.locals
     simp only [Func.toCore] at hfe ⊢
-    simp [Ty.length_ofList, hfe, Expr.toCore_eq_map]
-  · simp only [Admin.listWF, Admin.WF, and_true]
+    simp [Silmaril.Wasm.Validation.Ty.length_ofList, hfe, Expr.toCore_eq_map]
+  · simp only [Silmaril.Wasm.Execution.Core.Admin.listWF, Silmaril.Wasm.Execution.Core.Admin.WF, and_true]
     exact ⟨hwf.1.1 _ _ _ _ found, call_listWF_expression s fn.body⟩
 
 theorem invokeHost {src : HostSemantics H} {tgt : ToCore.CHostSemantics H}
@@ -416,8 +416,8 @@ theorem invokeHost {src : HostSemantics H} {tgt : ToCore.CHostSemantics H}
   obtain ⟨x, rfl, hx⟩ := call_invoke_code hcl
   obtain ⟨fi, hfi, hty, -, hcode⟩ := call_store_func hst found
   simp only [FuncInst.type] at hty
-  have he : Expand fi.type (.func (Ty.ofList (ft.params.map Ty.num))
-      (Ty.ofList (ft.results.map Ty.num))) := by
+  have he : Expand fi.type (.func (Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num))
+      (Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num))) := by
     rw [hty]; exact Expand.iff.mpr (V1.FuncType.toDefType_expand _)
   have hcode' : fi.code = .host fn := hcode
   obtain ⟨outC, htgt, hout⟩ := hosts.2 fn s args _ cs behavior hst
@@ -427,7 +427,7 @@ theorem invokeHost {src : HostSemantics H} {tgt : ToCore.CHostSemantics H}
     simp only [HostOutcomeSim] at hout
     obtain ⟨hsC, rfl⟩ := hout
     refine ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.callRefHost
-      (vs := args.map Value.toCore) hx hfi he (by simp [Ty.length_ofList, arity]) hcode' htgt), ?_⟩
+      (vs := args.map Value.toCore) hx hfi he (by simp [Silmaril.Wasm.Validation.Ty.length_ofList, arity]) hcode' htgt), ?_⟩
     obtain ⟨hwf', hext⟩ := hosts.1 fn s args s' r behavior hwf.1
     refine call_sim_of hsC hfr ?_ ⟨hwf', ?_, call_listWF_result s' r⟩
     · cases r <;> simp [Result.toCore, Silmaril.Wasm.Execution.Core.Result.toAdmin, result]
@@ -447,8 +447,8 @@ theorem invokeHostDiverges {src : HostSemantics H} {tgt : ToCore.CHostSemantics 
   obtain ⟨x, rfl, hx⟩ := call_invoke_code hcl
   obtain ⟨fi, hfi, hty, -, hcode⟩ := call_store_func hst found
   simp only [FuncInst.type] at hty
-  have he : Expand fi.type (.func (Ty.ofList (ft.params.map Ty.num))
-      (Ty.ofList (ft.results.map Ty.num))) := by
+  have he : Expand fi.type (.func (Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num))
+      (Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num))) := by
     rw [hty]; exact Expand.iff.mpr (V1.FuncType.toDefType_expand _)
   have hcode' : fi.code = .host fn := hcode
   obtain ⟨outC, htgt, hout⟩ := hosts.2 fn s args _ cs behavior hst
@@ -456,6 +456,6 @@ theorem invokeHostDiverges {src : HostSemantics H} {tgt : ToCore.CHostSemantics 
   | returned => simp [HostOutcomeSim] at hout
   | diverged =>
     exact ⟨_, .single (Silmaril.Wasm.Execution.Core.Step.callRefHostDiv
-      (vs := args.map Value.toCore) hx hfi he (by simp [Ty.length_ofList, arity]) hcode' htgt), hs⟩
+      (vs := args.map Value.toCore) hx hfi he (by simp [Silmaril.Wasm.Validation.Ty.length_ofList, arity]) hcode' htgt), hs⟩
 
 end Silmaril.Wasm.Lime1.Execution.ToCoreSim

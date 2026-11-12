@@ -49,7 +49,7 @@ theorem contProg_tables (P : Profile) (prof : ProfileKind) (j : InstId)
     {m' : Config (fxCE P) Unit} {out : CallOutcome}
     (hc : Calls prof (Silmaril.Wasm.Component.Param.refHostE (fxCE P)).hr
       (Silmaril.Wasm.Component.Param.refHostE (fxCE P)).dispatch mₙ c f args m' out) :
-    ∃ evs, Table.Steps Table.empty evs (vtab m'.store j) ∧
+    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m'.store j) ∧
       ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) :=
   refMulti_tables_host tabHost_none hi hr hc
 

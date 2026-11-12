@@ -26,7 +26,7 @@ open Silmaril.Wasm.SpecTec.Sim
 def dFn : DefType := .defn (.group (.cons (.sub true .nil (.func .nil .nil)) .nil)) 0
 
 /-- `ref dFn`, a non-flat value type. -/
-def refDFn : CValType := .refv (.ref false (Ty.defHeap dFn))
+def refDFn : CValType := .refv (.ref false (Silmaril.Wasm.Validation.Ty.defHeap dFn))
 
 /-- `ref null func`. -/
 def funcrefV : CValType := .refv (.ref true (.abs .func))

@@ -221,7 +221,7 @@ theorem item_funcR {N : NomTable} {Γ : Ctx} {n : String} {s : Sig} (hs : SigOkR
   exact vsr_bind (funcTy_simR hs hm) fun j σ1 δ1 hm1 _ hj => vsr_pure hm1 fun σ2 hm2 =>
     ⟨δ1, by simp [decExtern, typeAt_run hj, dk, rdKd], hm2⟩
 
-theorem item_valueR {N : NomTable} {Γ : Ctx} {n : String} {t : Ty} (ht : TyOkR Γ t) :
+theorem item_valueR {N : NomTable} {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOkR Γ t) :
     ∀ σ δ, MR N Γ σ δ → ItemSimR N Γ Γ n (.value t) σ δ := fun σ δ hm => by
   unfold ItemSimR; rw [externDesc]
   exact vsr_bind (valTy_simR ht hm) fun v σ1 δ1 hm1 _ hv => vsr_pure hm1 fun σ2 hm2 =>

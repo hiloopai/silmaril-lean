@@ -301,7 +301,7 @@ theorem mem_of_lookupH {k : Bool × Nat} {j : Nat} :
       exact List.mem_cons_of_mem _ (mem_of_lookupH h')
 
 /-- **A handle type**: shared, or defined at the next index. -/
-theorem handle_sim {N : NomTable} {Γ : Ctx} {o : Bool} {i : Nat} {t : Ty} {σ : Scope} {δ : DScope}
+theorem handle_sim {N : NomTable} {Γ : Ctx} {o : Bool} {i : Nat} {t : Silmaril.Wasm.Wit.Binary.Ty} {σ : Scope} {δ : DScope}
     (hm : M N Γ σ δ) (hd : DecDef δ (hdef o i) t) : VS N Γ (handle o i) σ δ (fun v δ' => DecVal δ' v t) := by
   cases hl : σ.hcache.lookup (o, i) with
   | some j =>
@@ -336,7 +336,7 @@ theorem handle_sim {N : NomTable} {Γ : Ctx} {o : Bool} {i : Nat} {t : Ty} {σ :
 /-! ## Anonymous types -/
 
 /-- **An anonymous type definition**: shared, or defined at the next index. -/
-theorem defVal_sim {N : NomTable} {Γ : Ctx} {d : DefValType} {t : Ty} {σ : Scope} {δ : DScope}
+theorem defVal_sim {N : NomTable} {Γ : Ctx} {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {σ : Scope} {δ : DScope}
     (hm : M N Γ σ δ) (hd : DecDef δ d t) : VS N Γ (defVal d) σ δ (fun v δ' => DecVal δ' v t) := by
   cases hl : σ.vcache.lookup d with
   | some j =>
@@ -363,10 +363,10 @@ theorem defVal_sim {N : NomTable} {Γ : Ctx} {d : DefValType} {t : Ty} {σ : Sco
 /-! ## Value types -/
 
 /-- What `valTy_sim` proves of a type. -/
-def ValOk (N : NomTable) (Γ : Ctx) (t : Ty) : Prop :=
+def ValOk (N : NomTable) (Γ : Ctx) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
   ∀ σ δ, M N Γ σ δ → VS N Γ (valTy t) σ δ (fun v δ' => DecVal δ' v t)
 
-theorem valTyOpt_sim {N : NomTable} {Γ : Ctx} {a : Option Ty} (ih : ∀ t ∈ a, ValOk N Γ t)
+theorem valTyOpt_sim {N : NomTable} {Γ : Ctx} {a : Option Silmaril.Wasm.Wit.Binary.Ty} (ih : ∀ t ∈ a, ValOk N Γ t)
     {σ : Scope} {δ : DScope} (hm : M N Γ σ δ) : VS N Γ (valTyOpt a) σ δ (fun v δ' => DecOpt δ' v a) := by
   cases a with
   | none =>
@@ -376,7 +376,7 @@ theorem valTyOpt_sim {N : NomTable} {Γ : Ctx} {a : Option Ty} (ih : ∀ t ∈ a
     rw [valTyOpt]
     exact vs_bind (ih t rfl σ δ hm) fun v σ1 δ1 hm1 _ hv => vs_pure hm1 (decOpt_some hv)
 
-theorem valTys_sim {N : NomTable} {Γ : Ctx} : ∀ {ts : List Ty}, (∀ t ∈ ts, ValOk N Γ t) →
+theorem valTys_sim {N : NomTable} {Γ : Ctx} : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts, ValOk N Γ t) →
     ∀ {σ : Scope} {δ : DScope}, M N Γ σ δ → VS N Γ (valTys ts) σ δ (fun vs δ' => DecVals δ' vs ts)
   | [], _, σ, δ, hm => by
     rw [valTys]
@@ -438,7 +438,7 @@ theorem borrowAlias_sim {N : NomTable} {Γ : Ctx} {a r : String} (h : Γ.lookup 
 
 /-- **Every value type of the fragment** is encoded as a value type that decodes back
 to it. -/
-theorem valTy_sim {N : NomTable} {Γ : Ctx} {t : Ty} (h : TyOk Γ t) : ValOk N Γ t := by
+theorem valTy_sim {N : NomTable} {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOk Γ t) : ValOk N Γ t := by
   induction h with
   | prim p => exact fun σ δ hm => by rw [valTy]; exact vs_pure hm (decVal_prim δ p)
   | refVal h => exact refVal_sim h
@@ -484,7 +484,7 @@ theorem valTy_sim {N : NomTable} {Γ : Ctx} {t : Ty} (h : TyOk Γ t) : ValOk N �
 
 /-! ## Function types -/
 
-theorem paramTys_sim {N : NomTable} {Γ : Ctx} : ∀ {ps : List (String × Ty)}, (∀ p ∈ ps, TyOk Γ p.2) →
+theorem paramTys_sim {N : NomTable} {Γ : Ctx} : ∀ {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, (∀ p ∈ ps, TyOk Γ p.2) →
     ∀ {σ : Scope} {δ : DScope}, M N Γ σ δ → VS N Γ (paramTys ps) σ δ (fun vs δ' => DecPs δ' vs ps)
   | [], _, σ, δ, hm => by
     rw [paramTys]
@@ -497,8 +497,8 @@ theorem paramTys_sim {N : NomTable} {Γ : Ctx} : ∀ {ps : List (String × Ty)},
       vs_bind (paramTys_sim hps hm1) fun vs σ2 δ2 hm2 e2 hvs =>
         vs_pure hm2 (decPs_cons n (hv.mono e2) hvs)
 
-theorem defFunc_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {vs : List (String × ValType)}
-    {vr : Option ValType} {s : Sig} (hm : M N Γ σ δ) (hps : DecPs δ vs s.params)
+theorem defFunc_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)}
+    {vr : Option Silmaril.Wasm.Component.Binary.ValType} {s : Sig} (hm : M N Γ σ δ) (hps : DecPs δ vs s.params)
     (hr : DecOpt δ vr s.result) :
     VS N Γ (do
         let j ← defTy (.func ⟨vs, vr, s.async⟩)

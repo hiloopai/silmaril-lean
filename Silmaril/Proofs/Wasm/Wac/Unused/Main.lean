@@ -33,7 +33,7 @@ theorem agree_src {U : List String} {V V' : Src → Impl} (h : AgreeOn U V V') {
   | out j q => exact h.1 j q
 
 theorem agree_extV {U : List String} {V V' : Src → Impl} (h : AgreeOn U V V') (k : Nat)
-    (xs : List Export) (σ : List Impl) : AgreeOn U (extV V k xs σ) (extV V' k xs σ) := by
+    (xs : List Silmaril.Wasm.Component.Export) (σ : List Impl) : AgreeOn U (extV V k xs σ) (extV V' k xs σ) := by
   refine ⟨fun j q => ?_, fun x hx => h.2 x hx⟩
   simp only [extV]
   split

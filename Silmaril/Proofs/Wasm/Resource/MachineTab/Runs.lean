@@ -80,7 +80,7 @@ theorem refMulti_tables {h : Host E σ} (hd : TabDispatch j h.dispatch) {σ0 : �
     {ds : List (DoneCall X)} {mₙ : Config E σ} (hr : RunCalls prof h p.names es m₀ 0 ds mₙ)
     {c : CallId} {f : FuncId} {args : List Val} {m' : Config E σ} {out : CallOutcome}
     (hc : Calls prof h.hr h.dispatch mₙ c f args m' out) :
-    ∃ evs, Table.Steps Table.empty evs (vtab m'.store j) ∧
+    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m'.store j) ∧
       ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) := by
   obtain ⟨hm₀, h₀⟩ := instantiates_tab hd hp hi (cfgTab_init CStore.empty σ0)
   obtain ⟨hmₙ, h₁⟩ := runCalls_tab hd hr hm₀
@@ -98,7 +98,7 @@ theorem refMulti_tables_host {h : Host E σ} (hh : TabHost j h.impl) {σ0 : σ} 
     {ds : List (DoneCall X)} {mₙ : Config E σ} (hr : RunCalls prof h p.names es m₀ 0 ds mₙ)
     {c : CallId} {f : FuncId} {args : List Val} {m' : Config E σ} {out : CallOutcome}
     (hc : Calls prof h.hr h.dispatch mₙ c f args m' out) :
-    ∃ evs, Table.Steps Table.empty evs (vtab m'.store j) ∧
+    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m'.store j) ∧
       ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) :=
   refMulti_tables (tabDispatch_canon hh h.lim h.q h.hr) (tabProg_instantiateProg _ _) hi hr hc
 

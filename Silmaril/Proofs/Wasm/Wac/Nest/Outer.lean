@@ -50,7 +50,7 @@ theorem simV_old {S S' : Nat → PkgSig} {g₂ : Graph} {j : Nat} {acc : IAcc} {
   rw [renSrc_append_lt _ _ hj', hren, hU t q' ht, hV j' q hj, hs.2.2 j' n q hn hj hq, hren]
 
 theorem names_mkExports (S : Nat → PkgSig) (g : Graph) (I : Iface) :
-    (g.mkExports S I).map Export.name = g.exports.map Prod.fst := by
+    (g.mkExports S I).map Silmaril.Wasm.Component.Export.name = g.exports.map Prod.fst := by
   simp [Graph.mkExports]
 
 theorem getElem_idxOf_map {β γ : Type} (F : β → γ) : ∀ (l : List (String × β)) (q : String),
@@ -105,7 +105,7 @@ theorem simV_ne_ext (P : Nat → Comp M) {k0 : Nat} {g₁ g₂ : Graph} {j : Nat
   · exact simV_old hs _ (fun j' q h => extV_ne V (Nat.ne_of_lt h) _ _ q)
       (fun t q h => extV_ne U (Nat.ne_of_lt h) _ _ q) j' n₀ q hn₀ hj hq
   · have hnn : n₀ = n := Option.some.inj (hn₀.symm.trans (hj ▸ hn))
-    have hq' : q ∈ (P n.pkg).exports.map Export.name := by
+    have hq' : q ∈ (P n.pkg).exports.map Silmaril.Wasm.Component.Export.name := by
       rw [← names_sigOf, ← hP, ← hnn]
       exact hq
     have hself : renSrc (stepNe acc n).ren (.out j' q) = .out acc.nodes.length q := by

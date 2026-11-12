@@ -91,7 +91,7 @@ def isResource : DefType → Bool
   | _ => false
 
 /-- The type of an export: its ascription, or `(type (eq i))` for a type export. -/
-def exportDesc (e : Export) : Option ExternDesc :=
+def exportDesc (e : Silmaril.Wasm.Component.Binary.Export) : Option ExternDesc :=
   match e.desc with
   | some d => some d
   | none => if e.item.sort = .type then some (.type (.eq e.item.idx)) else none

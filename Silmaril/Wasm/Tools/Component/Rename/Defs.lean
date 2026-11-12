@@ -29,7 +29,7 @@ duplicate keys, so the pairs are looked up from the end). -/
 def newName (m : List (String × String)) (n : String) : String :=
   (m.reverse.lookup n).getD n
 
-def renameImport (m : List (String × String)) (i : Import) : Import :=
+def renameImport (m : List (String × String)) (i : Silmaril.Wasm.Component.Binary.Import) : Silmaril.Wasm.Component.Binary.Import :=
   { i with name := { i.name with name := newName m i.name.name } }
 
 def renameSection (m : List (String × String)) : Section → Section

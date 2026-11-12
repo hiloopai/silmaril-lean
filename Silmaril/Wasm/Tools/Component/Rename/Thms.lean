@@ -24,11 +24,11 @@ theorem renameBytes_nil (b : ByteArray) : renameBytes [] b = .ok b := rfl
 
 theorem newName_nil (n : String) : newName [] n = n := rfl
 
-theorem renameImport_nil (i : Import) : renameImport [] i = i := by
+theorem renameImport_nil (i : Silmaril.Wasm.Component.Binary.Import) : renameImport [] i = i := by
   cases i
   rfl
 
-theorem map_renameImport_nil (is : List Import) : is.map (renameImport []) = is := by
+theorem map_renameImport_nil (is : List Silmaril.Wasm.Component.Binary.Import) : is.map (renameImport []) = is := by
   induction is with
   | nil => rfl
   | cons i is ih => rw [List.map_cons, renameImport_nil, ih]
@@ -53,13 +53,13 @@ theorem newName_of_not {m : List (String × String)} {n : String}
     (h : m.reverse.lookup n = none) : newName m n = n := by
   simp [newName, h]
 
-theorem renameImport_desc (m : List (String × String)) (i : Import) :
+theorem renameImport_desc (m : List (String × String)) (i : Silmaril.Wasm.Component.Binary.Import) :
     (renameImport m i).desc = i.desc := rfl
 
-theorem renameImport_form (m : List (String × String)) (i : Import) :
+theorem renameImport_form (m : List (String × String)) (i : Silmaril.Wasm.Component.Binary.Import) :
     (renameImport m i).name.form = i.name.form := rfl
 
-theorem renameSection_imports (m : List (String × String)) (is : List Import) :
+theorem renameSection_imports (m : List (String × String)) (is : List Silmaril.Wasm.Component.Binary.Import) :
     renameSection m (.imports is) = .imports (is.map (renameImport m)) := rfl
 
 theorem renameSection_other (m : List (String × String)) (s : Section)

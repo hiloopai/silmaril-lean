@@ -67,7 +67,7 @@ theorem moduleOk_stub (S : Execution.Core.Store H) (t : V1.FuncType)
 
 /-- **The Core image of a stub is a valid function instance** when its type is valid. -/
 theorem funcInstOk_stubC (S : Execution.Core.Store H) (t : V1.FuncType) (h : H)
-    (hdt : TyOk {} t.toDefType) {ps rs : Ty (.list .val)} (he : Expand t.toDefType (.func ps rs)) :
+    (hdt : TyOk {} t.toDefType) {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} (he : Expand t.toDefType (.func ps rs)) :
     FuncInstOk S (toC (stubF (.host t h : FuncInst V1.Func H))) := by
   have hr := (Expand.func_ok (Execution.Core.TyOk.of_empty (stubCtx t).toTypeCtx hdt) he).2
   have hb : ExprOk ((stubCtx t).funcBody ps.toList rs.toList []) [.unreachable] rs.toList :=

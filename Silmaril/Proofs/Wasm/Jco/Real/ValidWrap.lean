@@ -165,11 +165,11 @@ theorem shimC_not_ok {C : Context} (hT : C.types[0]? = some allocType.toDefType)
   | @mk ps rs lts hd he hl hb =>
     have hd0 : some d = some allocType.toDefType := by
       rw [← hd, ← hT, Context.type?, shimC_type, Silmaril.Proofs.Wasm.Jco.Real.ValidAll.mkIdx_toNat, hty]
-    have hx : (Ty.func ps rs : CCompType) = Ty.func (Ty.ofList (allocType.params.map Ty.num))
-        (Ty.ofList (allocType.results.map Ty.num)) :=
+    have hx : (Silmaril.Wasm.Validation.Ty.func ps rs : CCompType) = Silmaril.Wasm.Validation.Ty.func (Silmaril.Wasm.Validation.Ty.ofList (allocType.params.map Silmaril.Wasm.Validation.Ty.num))
+        (Silmaril.Wasm.Validation.Ty.ofList (allocType.results.map Silmaril.Wasm.Validation.Ty.num)) :=
       Option.some.inj ((Expand.iff.mp he).symm.trans
         (Expand.iff.mp (Option.some.inj hd0 ▸ Lime1.Validation.expand_toDefType allocType)))
-    have hps : ps = Ty.ofList (allocType.params.map Ty.num) := by injection hx
+    have hps : ps = Silmaril.Wasm.Validation.Ty.ofList (allocType.params.map Silmaril.Wasm.Validation.Ty.num) := by injection hx
     have hlts : lts = [] := List.forall₂_nil_left_iff.1 (shimC_locals N i ty ▸ hl)
     have hg : ((C.funcBody ps.toList rs.toList lts).locals[(mkIdx 2 : LocalIdx).toNat]?).isSome :=
       getsOk hb _ (shimC_get2 N i ty)

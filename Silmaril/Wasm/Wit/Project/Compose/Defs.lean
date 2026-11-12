@@ -37,8 +37,8 @@ def instantiateC (c : Ast) (k : Nat) (args : List (String × SortIdx)) : Ast :=
 def aliasC (c : Ast) (sort : ItemSort) (i : Nat) (n : String) : Ast :=
   extendC c [.aliases [⟨sort, .export i n⟩]]
 
-/-- Export an item. -/
-def exportC (c : Ast) (e : Export) : Ast := extendC c [.exports [e]]
+/-- Silmaril.Wasm.Component.Binary.Export an item. -/
+def exportC (c : Ast) (e : Silmaril.Wasm.Component.Binary.Export) : Ast := extendC c [.exports [e]]
 
 /-- The state of the projection with inference after the items of `c`. -/
 def projState (c : Ast) : Option IState := replayI {} (c.sections.flatMap splitSection)

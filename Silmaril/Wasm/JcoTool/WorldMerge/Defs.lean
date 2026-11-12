@@ -109,40 +109,40 @@ def Owner.rn : Owner → Owner
 
 def TyRef.rn (r : TyRef) : TyRef := ⟨Owner.rn f r.owner, r.name⟩
 
-def Ty.rn : Ty → Ty
+def Silmaril.Wasm.Wit.Binary.Ty.rn : Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Binary.Ty
   | .prim p => .prim p
   | .ref r => .ref (TyRef.rn f r)
-  | .list t => .list (Ty.rn t)
-  | .fixedList t n => .fixedList (Ty.rn t) n
-  | .map k v => .map (Ty.rn k) (Ty.rn v)
-  | .option t => .option (Ty.rn t)
-  | .result a b => .result (a.attach.map fun ⟨t, _⟩ => Ty.rn t) (b.attach.map fun ⟨t, _⟩ => Ty.rn t)
-  | .tuple ts => .tuple (ts.attach.map fun ⟨t, _⟩ => Ty.rn t)
+  | .list t => .list (Silmaril.Wasm.Wit.Binary.Ty.rn t)
+  | .fixedList t n => .fixedList (Silmaril.Wasm.Wit.Binary.Ty.rn t) n
+  | .map k v => .map (Silmaril.Wasm.Wit.Binary.Ty.rn k) (Silmaril.Wasm.Wit.Binary.Ty.rn v)
+  | .option t => .option (Silmaril.Wasm.Wit.Binary.Ty.rn t)
+  | .result a b => .result (a.attach.map fun ⟨t, _⟩ => Silmaril.Wasm.Wit.Binary.Ty.rn t) (b.attach.map fun ⟨t, _⟩ => Silmaril.Wasm.Wit.Binary.Ty.rn t)
+  | .tuple ts => .tuple (ts.attach.map fun ⟨t, _⟩ => Silmaril.Wasm.Wit.Binary.Ty.rn t)
   | .own r => .own (TyRef.rn f r)
   | .borrow r => .borrow (TyRef.rn f r)
-  | .future t => .future (t.attach.map fun ⟨t, _⟩ => Ty.rn t)
-  | .stream t => .stream (t.attach.map fun ⟨t, _⟩ => Ty.rn t)
+  | .future t => .future (t.attach.map fun ⟨t, _⟩ => Silmaril.Wasm.Wit.Binary.Ty.rn t)
+  | .stream t => .stream (t.attach.map fun ⟨t, _⟩ => Silmaril.Wasm.Wit.Binary.Ty.rn t)
 
 def TyDefKind.rn : TyDefKind → TyDefKind
-  | .record fs => .record (fs.map fun l => { l with ty := Ty.rn f l.ty })
-  | .variant cs => .variant (cs.map fun l => { l with ty := l.ty.map (Ty.rn f) })
+  | .record fs => .record (fs.map fun l => { l with ty := Silmaril.Wasm.Wit.Binary.Ty.rn f l.ty })
+  | .variant cs => .variant (cs.map fun l => { l with ty := l.ty.map (Silmaril.Wasm.Wit.Binary.Ty.rn f) })
   | .enum cs => .enum cs
   | .flags fs => .flags fs
   | .resource => .resource
-  | .type t => .type (Ty.rn f t)
+  | .type t => .type (Silmaril.Wasm.Wit.Binary.Ty.rn f t)
 
 def TypeDef.rn (t : TypeDef) : TypeDef := { t with kind := TyDefKind.rn f t.kind }
 
-def Func.rn (g : Func) : Func :=
-  { g with params := g.params.map fun (n, t) => (n, Ty.rn f t), result := g.result.map (Ty.rn f) }
+def Silmaril.Wasm.Wit.Binary.Func.rn (g : Silmaril.Wasm.Wit.Binary.Func) : Silmaril.Wasm.Wit.Binary.Func :=
+  { g with params := g.params.map fun (n, t) => (n, Silmaril.Wasm.Wit.Binary.Ty.rn f t), result := g.result.map (Silmaril.Wasm.Wit.Binary.Ty.rn f) }
 
 def Interface.rn (b : Interface) : Interface :=
-  { b with types := b.types.map (TypeDef.rn f), funcs := b.funcs.map (Func.rn f) }
+  { b with types := b.types.map (TypeDef.rn f), funcs := b.funcs.map (Silmaril.Wasm.Wit.Binary.Func.rn f) }
 
 def DItem.rn : DItem → DItem
   | .iface (.inl i) b => .iface (.inl (f i)) (Interface.rn f b)
   | .iface (.inr n) b => .iface (.inr n) (Interface.rn f b)
-  | .func g => .func (Func.rn f g)
+  | .func g => .func (Silmaril.Wasm.Wit.Binary.Func.rn f g)
   | .type t => .type (TypeDef.rn f t)
 
 end rename
@@ -245,10 +245,10 @@ def coreUsesSeq (groups : List (List (String × String))) : CoreUse :=
   { coreUses groups.flatten with seq := groups.flatMap fun g => (coreUses g).seq }
 
 /-- The plain name of a function (async prefixes removed), as core imports name it. -/
-def plainFn (g : Func) : String := { g with async := false }.mangled
+def plainFn (g : Silmaril.Wasm.Wit.Binary.Func) : String := { g with async := false }.mangled
 
 /-- Named type references of a type, in order. -/
-def tyRefs : Ty → List TyRef
+def tyRefs : Silmaril.Wasm.Wit.Binary.Ty → List TyRef
   | .prim _ => []
   | .ref r => [r]
   | .list t => tyRefs t
@@ -269,7 +269,7 @@ def kindRefs : TyDefKind → List TyRef
   | .type t => tyRefs t
   | _ => []
 
-def funcRefs (g : Func) : List TyRef :=
+def funcRefs (g : Silmaril.Wasm.Wit.Binary.Func) : List TyRef :=
   g.params.flatMap (fun p => tyRefs p.2) ++ (g.result.map tyRefs).getD [] ++
   match g.kind with
   | .method r | .static r | .constructor r => [⟨.local, r⟩]
@@ -343,13 +343,13 @@ def usesOf (u : CoreUse) : Option (IfaceName ⊕ String) → List Use
     if hit then acc ++ xs else acc) []
 
 /-- The functions of `fs` a list of uses imports. -/
-def usedFns (us : List Use) (fs : List Func) : List Func :=
+def usedFns (us : List Use) (fs : List Silmaril.Wasm.Wit.Binary.Func) : List Silmaril.Wasm.Wit.Binary.Func :=
   fs.filter fun g => us.contains (.fn (plainFn g))
 
 /-- The roots of the type closure of a scope's uses: the resources dropped, the types of the
 functions imported, the element types of the streams and futures whose built-ins are imported
 (wit-component's `LiveTypes` over the required functions and intrinsics). -/
-def useRefs (us : List Use) (fs : List Func) : List TyRef :=
+def useRefs (us : List Use) (fs : List Silmaril.Wasm.Wit.Binary.Func) : List TyRef :=
   us.flatMap fun
     | .drop r => [⟨.local, r⟩]
     | .fn n => ((fs.find? (plainFn · == n)).map funcRefs).getD []

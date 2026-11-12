@@ -44,7 +44,7 @@ open New (TS funcType expectExport require hasMemory mustEncode)
 its signature (named by its core export). -/
 structure AFn where
   iface : Option String
-  f : Func
+  f : Silmaril.Wasm.Wit.Binary.Func
   s : Sig
 
 /-- The exported functions: world-level, then each exported interface's. -/

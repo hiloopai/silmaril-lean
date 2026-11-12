@@ -201,14 +201,14 @@ def canon1 (r : RS) : XCanon → RS
   | .canon (.resourceDrop t) => { r with cf := r.cf.push (.resDrop t) }
   | .builtin b => { r with cf := r.cf.push (.builtin b) }
 
-def import1 (r : RS) (i : Import) : RS :=
+def import1 (r : RS) (i : Silmaril.Wasm.Component.Binary.Import) : RS :=
   match i.desc with
   | .func _ => { r with ff := r.ff.push (.imp i.name.name) }
   | .instance _ => { r with ii := r.ii.push (.imp i.name.name) }
   | .type _ => { r with tt := r.tt.push .other }
   | _ => r
 
-def export1 (r : RS) (e : Export) : RS :=
+def export1 (r : RS) (e : Silmaril.Wasm.Component.Binary.Export) : RS :=
   let r := { r with exports := r.exports.push (e.name.name, e.item) }
   match e.item.sort with
   | .func => { r with ff := r.ff.push .other }

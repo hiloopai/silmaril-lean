@@ -516,7 +516,7 @@ section Aggregate
 variable (s₀ : Store H)
 
 private theorem structNew_shift {P : Profile} {s : Store H} {f : Frame} {x : TypeIdx}
-    {d : DefType} {fs : Ty (.list .field)} {vs : List Val} (hd : f.type? x = some d)
+    {d : DefType} {fs : Silmaril.Wasm.Validation.Ty (.list .field)} {vs : List Val} (hd : f.type? x = some d)
     (he : Expand d (.struct fs)) (hn : vs.length = fs.length)
     (hp : ∀ p ∈ fs.toList.zip vs, packable (fieldStorage p.1) p.2) :
     Step P noHost (shC s₀ ⟨s, f, vals vs ++ [.plain (.structNew x)]⟩)

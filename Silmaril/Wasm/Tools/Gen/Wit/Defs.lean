@@ -73,19 +73,19 @@ def WitFeat.leB (a b : WitFeat) : Bool :=
 def WitFeat.any (l : List WitFeat) : WitFeat := l.foldr WitFeat.or {}
 
 /-- The flags a type needs. -/
-def tyNeeds (t : Ty) : WitFeat :=
-  { futures := !Ty.all (fun | .future _ => false | _ => true) t
-    streams := !Ty.all (fun | .stream _ => false | _ => true) t
-    errorContext := !Ty.all (fun | .errorContext => false | _ => true) t
-    fixedLists := !Ty.all (fun | .fixedList _ _ => false | _ => true) t }
+def tyNeeds (t : Silmaril.Wasm.Wit.Ty) : WitFeat :=
+  { futures := !Silmaril.Wasm.Wit.Ty.all (fun | .future _ => false | _ => true) t
+    streams := !Silmaril.Wasm.Wit.Ty.all (fun | .stream _ => false | _ => true) t
+    errorContext := !Silmaril.Wasm.Wit.Ty.all (fun | .errorContext => false | _ => true) t
+    fixedLists := !Silmaril.Wasm.Wit.Ty.all (fun | .fixedList _ _ => false | _ => true) t }
 
 /-- The flags an optional type needs. -/
-def optNeeds : Option Ty → WitFeat
+def optNeeds : Option Silmaril.Wasm.Wit.Ty → WitFeat
   | some t => tyNeeds t
   | none => {}
 
 /-- The flags a function type needs. -/
-def funcNeeds (f : Func) : WitFeat :=
+def funcNeeds (f : Silmaril.Wasm.Wit.Func) : WitFeat :=
   WitFeat.any ([{ async := f.async }, optNeeds f.result] ++ f.params.map fun p => tyNeeds p.2)
 
 /-- The flags a type definition needs. -/
@@ -144,7 +144,7 @@ def emptyU : Universe := [⟨pkgName, [], {}⟩]
 namespace Raw
 
 /-- The primitive types. -/
-def prims : List Ty := [.bool, .s8, .s16, .s32, .s64, .u8, .u16, .u32, .u64, .f32, .f64, .char,
+def prims : List Silmaril.Wasm.Wit.Ty := [.bool, .s8, .s16, .s32, .s64, .u8, .u16, .u32, .u64, .f32, .f64, .char,
   .string]
 
 /-- The scope of a type: named non-resource types and resources visible. -/
@@ -153,13 +153,13 @@ structure Scope where
   resources : List Name := []
 
 /-- A type expression over `sc`, of depth at most `n`; `borrow` only when `params`. -/
-def ty (F : WitFeat) (sc : Scope) (params : Bool) : Nat → Rand Ty
+def ty (F : WitFeat) (sc : Scope) (params : Bool) : Nat → Rand Silmaril.Wasm.Wit.Ty
   | 0 => do
-    let named := sc.types.map Ty.named ++ sc.resources.map Ty.named
+    let named := sc.types.map Silmaril.Wasm.Wit.Ty.named ++ sc.resources.map Silmaril.Wasm.Wit.Ty.named
     Rand.pick (prims ++ named) .u32
   | n + 1 => do
     let sub := ty F sc params n
-    let base : List (Rand Ty) :=
+    let base : List (Rand Silmaril.Wasm.Wit.Ty) :=
       [ ty F sc params 0, do return .list (← sub), do return .option (← sub),
         do return .tuple (← Rand.list (← Rand.range 1 3) sub),
         do
@@ -177,13 +177,13 @@ def ty (F : WitFeat) (sc : Scope) (params : Bool) : Nat → Rand Ty
       (if F.streams then [do
           -- wasmparser refuses `stream<char>`
           let t ← ty F {} false n
-          let t := match t with | .char => Ty.u8 | t => t
+          let t := match t with | .char => Silmaril.Wasm.Wit.Ty.u8 | t => t
           return .stream (if ← Rand.bool then some t else none)] else []) ++
       (if F.errorContext then [pure .errorContext] else [])
     (base.getD (← Rand.nat base.length) (ty F sc params 0))
 
 /-- A function type. -/
-def func (F : WitFeat) (sc : Scope) : Rand Func := do
+def func (F : WitFeat) (sc : Scope) : Rand Silmaril.Wasm.Wit.Func := do
   let np ← Rand.nat 4
   let params ← (List.range np).mapM fun i => do return (s!"p{i}", ← ty F sc true 2)
   let result ← if ← Rand.bool then some <$> ty F sc false 2 else pure none

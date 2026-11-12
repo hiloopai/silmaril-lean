@@ -100,11 +100,11 @@ theorem storeProg_expectResource (e : HandleEntry) :
   · exact storeProg_pure _
   all_goals exact storeProg_trap _
 
-theorem storeProg_resourceNewCore (lim : Limits) (inst : InstId) (rt : RtId) (rep : ℕ) :
+theorem storeProg_resourceNewCore (lim : Silmaril.Wasm.Component.Limits) (inst : InstId) (rt : RtId) (rep : ℕ) :
     StoreProg (resourceNewCore lim inst rt rep : P E σ ℕ) :=
   storeProg_bind (storeProg_allocObj _ _) fun _ => storeProg_handlesAdd _ _
 
-theorem storeProg_resourceRepCore (lim : Limits) (inst : InstId) (rt : RtId) (i : ℕ) :
+theorem storeProg_resourceRepCore (lim : Silmaril.Wasm.Component.Limits) (inst : InstId) (rt : RtId) (i : ℕ) :
     StoreProg (resourceRepCore lim inst rt i : P E σ ℕ) :=
   storeProg_bind (storeProg_handlesGet _ _) fun _ =>
     storeProg_bind (storeProg_expectResource _) fun _ =>
@@ -120,7 +120,7 @@ theorem storeProg_dropHandleTail (rt : RtId) (rh : ResourceHandle) :
     | some t => exact storeProg_bind (storeProg_modifyStore _) fun _ => storeProg_pure _
   · exact storeProg_bind (storeProg_getObj _ _) fun _ => storeProg_pure _
 
-theorem storeProg_resourceDropCore (lim : Limits) (inst : InstId) (rt : RtId) (i : ℕ) :
+theorem storeProg_resourceDropCore (lim : Silmaril.Wasm.Component.Limits) (inst : InstId) (rt : RtId) (i : ℕ) :
     StoreProg (resourceDropCore lim inst rt i : P E σ (Option (DtorRequest E))) :=
   storeProg_bind (storeProg_handlesRemove _ _) fun _ =>
     storeProg_bind (storeProg_expectResource _) fun _ =>
@@ -128,13 +128,13 @@ theorem storeProg_resourceDropCore (lim : Limits) (inst : InstId) (rt : RtId) (i
         storeProg_bind (storeProg_trapIf _ _) fun _ =>
           storeProg_bind (storeProg_trapIf _ _) fun _ => storeProg_dropHandleTail _ _
 
-theorem storeProg_resCall (lim : Limits) (c : ResCall) : StoreProg (c.prog lim : P E σ ℕ) := by
+theorem storeProg_resCall (lim : Silmaril.Wasm.Component.Limits) (c : ResCall) : StoreProg (c.prog lim : P E σ ℕ) := by
   cases c with
   | new => exact storeProg_resourceNewCore lim ..
   | rep => exact storeProg_resourceRepCore lim ..
   | drop => exact storeProg_bind (storeProg_resourceDropCore lim ..) fun _ => storeProg_pure _
 
-theorem storeProg_resScript (lim : Limits) (cs : List ResCall) :
+theorem storeProg_resScript (lim : Silmaril.Wasm.Component.Limits) (cs : List ResCall) :
     StoreProg (resScript lim cs : P E σ (List ℕ)) :=
   Prog.Every.mapM fun c _ => storeProg_resCall lim c
 
@@ -294,7 +294,7 @@ script, traps (and the machine is dead), or completes the script with results `n
 `s₁` and continues with `f ns`; in the last case the handle table of every instance `j` went
 from its value in the initial store to its value in `s₁` through a successful table history
 whose handle events are the events of the calls on `j`. -/
-theorem machine_resScript {lim : Limits} {cs : List ResCall} {f : List ℕ → P E σ (Ret E)}
+theorem machine_resScript {lim : Silmaril.Wasm.Component.Limits} {cs : List ResCall} {f : List ℕ → P E σ (Ret E)}
     {th : Option ThreadId} {segs : List (Seg E σ)} {rest : List (Activation E σ)}
     {m m' : Config E σ} {tr : List (Label E σ)}
     (h : Steps prof hr dispatch
@@ -319,12 +319,12 @@ script, traps, or completes it with results `ns`; in the last case the handle ev
 calls on an instance whose table was empty are accepted by `handleProto ℕ r`, in both
 orientations (`resource.new` returns a fresh index; `resource.rep`/`resource.drop` touch only
 live indices). -/
-theorem machine_resScript_accepts {lim : Limits} {cs : List ResCall}
+theorem machine_resScript_accepts {lim : Silmaril.Wasm.Component.Limits} {cs : List ResCall}
     {f : List ℕ → P E σ (Ret E)} {th : Option ThreadId} {segs : List (Seg E σ)}
     {rest : List (Activation E σ)} {m m' : Config E σ} {tr : List (Label E σ)}
     (h : Steps prof hr dispatch
       { m with ctl := ⟨th, .prog (resScript lim cs >>= f), segs⟩ :: rest } tr m')
-    {j : InstId} (hj : handles? m.store j = some Table.empty) :
+    {j : InstId} (hj : handles? m.store j = some Silmaril.Wasm.Component.Runtime.Table.empty) :
     (∃ q s₁, (∀ a s₂, SRun q s₁ a s₂ → SRun (resScript (σ := σ) lim cs) m.store a s₂) ∧
         m' = { m with store := s₁, ctl := ⟨th, .prog (q >>= f), segs⟩ :: rest }) ∨
       (m'.ctl = [] ∧ m'.store.lockdown = true) ∨

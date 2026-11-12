@@ -169,14 +169,14 @@ def expectedIface (w : World) : Except String (Iface × List (String × FuncTy))
 def importSecs (k : Nat) (name : String) (ft : FuncTy) : Except String (List XSection) := do
   let ps ← ft.params.mapM RefSimple.primOf
   let r ← ft.results.head?.mapM RefSimple.primOf
-  let t : FuncType := ⟨labels "a" (ps.map ValType.prim), r.map ValType.prim, false⟩
+  let t : Silmaril.Wasm.Component.Binary.FuncType := ⟨labels "a" (ps.map Silmaril.Wasm.Component.Binary.ValType.prim), r.map Silmaril.Wasm.Component.Binary.ValType.prim, false⟩
   pure [.sec (.types [.func t]), .sec (.imports [⟨⟨name, .plain0⟩, .func k⟩])]
 
 /-- The sections of export number `i` after `n` imports. -/
 def exportSecsAt (n i : Nat) (name : String) (ft : FuncTy) : Except String (List XSection) := do
   let ps ← ft.params.mapM RefSimple.primOf
   let r ← ft.results.head?.mapM RefSimple.primOf
-  let t : FuncType := ⟨labels "a" (ps.map ValType.prim), r.map ValType.prim, false⟩
+  let t : Silmaril.Wasm.Component.Binary.FuncType := ⟨labels "a" (ps.map Silmaril.Wasm.Component.Binary.ValType.prim), r.map Silmaril.Wasm.Component.Binary.ValType.prim, false⟩
   pure [.sec (.types [.func t]),
     .sec (.aliases [⟨.core .func, .coreExport 1 name⟩]),
     .sec (.canons [.lift (n + i) [] (n + i)]),

@@ -125,7 +125,7 @@ def withArg (s : PkgSig) (n : String) (x : SortIdx) : LM (List (String × Src)) 
   | _ => throw s!"argument {n}: unsupported sort"
 
 /-- One import. -/
-def import_ (i : Import) : LM Unit := do
+def import_ (i : Silmaril.Wasm.Component.Binary.Import) : LM Unit := do
   let n := i.name.name
   match i.desc with
   | .func _ =>

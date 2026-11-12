@@ -92,8 +92,8 @@ theorem traps_dropCallout {th : ThreadId} {m : Machine.Config (E3 P) Unit} {thr 
     refine TrapsQ.bind (runs_getObj ArenaField.insts _ m hgi) ?_
     rw [hrem]
     exact TrapsQ.trap _ (isTrap_trap _)
-  have hb : TrapsQ (D P) (some th) (Builtins.resourceDrop Limits.spec Quirks.none
-      (destructorCall Limits.spec Quirks.none) ⟨0⟩ (flatNat a)) m (tr₁ ++ ([.tau] ++ [])) m := by
+  have hb : TrapsQ (D P) (some th) (Builtins.resourceDrop Silmaril.Wasm.Component.Limits.spec Quirks.none
+      (destructorCall Silmaril.Wasm.Component.Limits.spec Quirks.none) ⟨0⟩ (flatNat a)) m (tr₁ ++ ([.tau] ++ [])) m := by
     unfold Builtins.resourceDrop resourceDropCore
     exact TrapsQ.bind h₁ (TrapsQ.left (TrapsQ.left hT))
   refine ⟨_, m, TrapsQ.bind (RunsQ.currentThread (RunsQ.pure _ _))
@@ -124,30 +124,30 @@ theorem hdrop_inv {w : BitVec 32} {h : CanonHost (E3 P)}
 /-! ## Thread tables during a drop -/
 
 /-- The thread table of the instance after the destructor thread of a drop is freed. -/
-def dropT (t : ThreadId) : Table ThreadId := ⟨#[none, some t, none], [2]⟩
+def dropT (t : ThreadId) : Silmaril.Wasm.Component.Runtime.Table ThreadId := ⟨#[none, some t, none], [2]⟩
 
-theorem callT_add (tb : Table ThreadId) (t t' : ThreadId) :
+theorem callT_add (tb : Silmaril.Wasm.Component.Runtime.Table ThreadId) (t t' : ThreadId) :
     (callT tb t).add? t' = some (2, ⟨#[none, some t, some t'], []⟩) := by
   unfold callT
   split <;> rfl
 
-theorem addThread?_drop (ι : InstState) (t t' : ThreadId) (T : Table HandleEntry) :
+theorem addThread?_drop (ι : InstState) (t t' : ThreadId) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry) :
     ({ callIn ι t with handles := T } : InstState).addThread? t' =
       some (2, { callIn ι t with handles := T, threads := ⟨#[none, some t, some t'], []⟩ }) := by
   simp only [InstState.addThread?, callIn, callT_add]
   rfl
 
-theorem removeThread?_drop (ι : InstState) (t t' : ThreadId) (T : Table HandleEntry) :
+theorem removeThread?_drop (ι : InstState) (t t' : ThreadId) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry) :
     ({ callIn ι t with handles := T, threads := ⟨#[none, some t, some t'], []⟩ } :
       InstState).removeThread? 2 =
       some (t', { callIn ι t with handles := T, threads := dropT t }) := rfl
 
-theorem removeThread?_dropT (ι : InstState) (t : ThreadId) (T : Table HandleEntry) :
+theorem removeThread?_dropT (ι : InstState) (t : ThreadId) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry) :
     ({ callIn ι t with handles := T, threads := dropT t } : InstState).removeThread? 1 =
       some (t, InstState.removeThread 1 { callIn ι t with handles := T, threads := dropT t }) :=
   rfl
 
-theorem removeThread_dropT (ι : InstState) (t : ThreadId) (T : Table HandleEntry) :
+theorem removeThread_dropT (ι : InstState) (t : ThreadId) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry) :
     InstState.removeThread 1 { callIn ι t with handles := T, threads := dropT t } =
       { ι with handles := T, threads := ⟨#[none, none, none], [1, 2]⟩ } := rfl
 
@@ -172,7 +172,7 @@ def DInv (M₀ : Machine.Config (E3 P) Unit) (S₀ : CStore (E3 P)) (rep : ℕ) 
   ∃ cs, B = dF0 M₀ S₀ cs ∨ ∃ dtk dthr C, B = dF1 M₀ S₀ rep ι₅ cs dtk dthr C
 
 /-- The store of a call of `drop` once `own n` is lowered to entry `i` of the table `T₄`. -/
-abbrev dS₀ (c : ℕ) (ι : InstState) (G : ToyGarb P) (k n : ℕ) (T₄ : Table HandleEntry) :
+abbrev dS₀ (c : ℕ) (ι : InstState) (G : ToyGarb P) (k n : ℕ) (T₄ : Silmaril.Wasm.Component.Runtime.Table HandleEntry) :
     CStore (E3 P) :=
   tStore₄ P ftDrop c ι (callI ι G) G k [.own n] { callI ι G with handles := T₄ }
     (G.handles ++ [{ rt := ⟨0⟩, rep := n, own := true }])
@@ -181,7 +181,7 @@ abbrev dS₀ (c : ℕ) (ι : InstState) (G : ToyGarb P) (k n : ℕ) (T₄ : Tabl
 `drop` allows: from the call's frame, `resource.drop(i)` removes the own handle at `i` and runs
 the no-op destructor; after that, `resource.drop(i)` traps. -/
 theorem drop_calloutsAns {M₀ : Machine.Config (E3 P) Unit} {c : ℕ} {ι : InstState}
-    {G : ToyGarb P} {k n i : ℕ} {T₄ T₅ : Table HandleEntry}
+    {G : ToyGarb P} {k n i : ℕ} {T₄ T₅ : Silmaril.Wasm.Component.Runtime.Table HandleEntry}
     {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))} {segs : List (Seg (E3 P) Unit)}
     {rest : List (Activation (E3 P) Unit)} (hi32 : i < 2 ^ 32)
     (hrm : T₄.remove? i = some (.resource ⟨G.handles.length⟩, T₅)) (hT₅ : T₅.get? i = none)
@@ -231,7 +231,7 @@ theorem drop_calloutsAns {M₀ : Machine.Config (E3 P) Unit} {c : ℕ} {ι : Ins
         threads := dropT ⟨G.threads.length⟩ } : InstState).removeHandle?
         (flatNat (.int .i32 (BitVec.ofNat 32 i))) = none := by
       rw [hflat]
-      simp [InstState.removeHandle?, Table.remove?, hT₅]
+      simp [InstState.removeHandle?, Silmaril.Wasm.Component.Runtime.Table.remove?, hT₅]
     obtain ⟨trT, mT, hT⟩ := traps_dropCallout (P := P)
       (m := calloutCfg (dF1 M₀ (dS₀ c ι G k n T₄) n
         { callIn ι ⟨G.threads.length⟩ with handles := T₅, threads := dropT ⟨G.threads.length⟩ }

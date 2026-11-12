@@ -132,42 +132,42 @@ theorem fwd_vectorSel {is is' : List Admin} (h : VectorStep P is is') (hsel : Ad
   have hr : HasRuleAt (simEnv (BI P hn host)) "Step" "%~>%" 0 pureRule :=
     (hasStepRules_simEnv _).pure
   have V : HasVectorRules (simEnv (BI P hn host)) := Vec.hasVectorRules_simEnv _
-  have Ty : Round5.SimdTy.VecTypingL (simEnv (BI P hn host)) :=
+  have Silmaril.Wasm.Validation.Ty : Round5.SimdTy.VecTypingL (simEnv (BI P hn host)) :=
     Round5.SimdTy.vecTypingL P hn host
   have A : Round5.Convert.VecAgreeNC (simEnv (BI P hn host)) P :=
     Round5.Convert.vecAgreeNC_builtins
   have Fy : Vec.FloatTyping (simEnv (BI P hn host)) := Floats.floatTyping_simEnv _
   cases h with
   | vecConvert hc => exact fwd_vecConvertSel hc hsel
-  | vecUnOp op a => exact Round5.Convert.fwdN_vecUnOp T hr V Ty A op a
-  | vecBinOp op a b => exact Round5.Convert.fwdN_vecBinOp T hr V Ty A op a b
-  | vecTernOp op a b c => exact Round5.Convert.fwdN_vecTernOp T hr V Ty A op a b c
-  | vecTestOp op a => exact Round5.Convert.fwdN_vecTestOp T hr V Ty A op a
-  | vecIntUnOp sh op a => exact Round5.Convert.fwdN_vecIntUnOp T hr V Ty A sh op a
-  | vecFloatUnOp h => exact Round5.Convert.fwdN_vecFloatUnOp T hr V Ty A h
-  | vecFloatUnOpTrap h => exact Round5.Convert.fwdN_vecFloatUnOpTrap T hr V Ty A h
-  | vecIntBinOp sh op a b => exact Round5.Convert.fwdN_vecIntBinOp T hr V Ty A sh op a b
-  | vecFloatBinOp h => exact Round5.Convert.fwdN_vecFloatBinOp T hr V Ty A h
-  | vecFloatBinOpTrap h => exact Round5.Convert.fwdN_vecFloatBinOpTrap T hr V Ty A h
-  | vecIntTernOp sh op a b c => exact Round5.Convert.fwdN_vecIntTernOp T hr V Ty A sh op a b c
-  | vecFloatTernOp h => exact Round5.Convert.fwdN_vecFloatTernOp T hr V Ty A h
-  | vecFloatTernOpTrap h => exact Round5.Convert.fwdN_vecFloatTernOpTrap T hr V Ty A h
-  | vecAllTrue sh a => exact Round5.Convert.fwdN_vecAllTrue T hr V Ty A sh a
-  | vecIntRelOp sh op a b => exact Round5.Convert.fwdN_vecIntRelOp T hr V Ty A sh op a b
-  | vecFloatRelOp sh op a b => exact Round5.Convert.fwdN_vecFloatRelOp T hr V Ty A sh op a b
-  | vecShiftOp sh op a n => exact Round5.Convert.fwdN_vecShiftOp T hr V Ty A sh op a n
-  | vecBitmask sh a => exact Round5.Convert.fwdN_vecBitmask T hr V Ty A sh a
-  | vecSwizzle a b => exact Round5.Convert.fwdN_vecSwizzle T hr V Ty A a b
-  | vecRelaxedSwizzle a b => exact Round5.Convert.fwdN_vecRelaxedSwizzle T hr V Ty A a b
-  | vecShuffle idx a b hidx => exact Round5.Convert.fwdN_vecShuffle T hr V Ty A idx a b hidx
-  | vecSplat sh x => exact Round5.Convert.fwdN_vecSplat T hr V Ty A sh x
+  | vecUnOp op a => exact Round5.Convert.fwdN_vecUnOp T hr V Silmaril.Wasm.Validation.Ty A op a
+  | vecBinOp op a b => exact Round5.Convert.fwdN_vecBinOp T hr V Silmaril.Wasm.Validation.Ty A op a b
+  | vecTernOp op a b c => exact Round5.Convert.fwdN_vecTernOp T hr V Silmaril.Wasm.Validation.Ty A op a b c
+  | vecTestOp op a => exact Round5.Convert.fwdN_vecTestOp T hr V Silmaril.Wasm.Validation.Ty A op a
+  | vecIntUnOp sh op a => exact Round5.Convert.fwdN_vecIntUnOp T hr V Silmaril.Wasm.Validation.Ty A sh op a
+  | vecFloatUnOp h => exact Round5.Convert.fwdN_vecFloatUnOp T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecFloatUnOpTrap h => exact Round5.Convert.fwdN_vecFloatUnOpTrap T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecIntBinOp sh op a b => exact Round5.Convert.fwdN_vecIntBinOp T hr V Silmaril.Wasm.Validation.Ty A sh op a b
+  | vecFloatBinOp h => exact Round5.Convert.fwdN_vecFloatBinOp T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecFloatBinOpTrap h => exact Round5.Convert.fwdN_vecFloatBinOpTrap T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecIntTernOp sh op a b c => exact Round5.Convert.fwdN_vecIntTernOp T hr V Silmaril.Wasm.Validation.Ty A sh op a b c
+  | vecFloatTernOp h => exact Round5.Convert.fwdN_vecFloatTernOp T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecFloatTernOpTrap h => exact Round5.Convert.fwdN_vecFloatTernOpTrap T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecAllTrue sh a => exact Round5.Convert.fwdN_vecAllTrue T hr V Silmaril.Wasm.Validation.Ty A sh a
+  | vecIntRelOp sh op a b => exact Round5.Convert.fwdN_vecIntRelOp T hr V Silmaril.Wasm.Validation.Ty A sh op a b
+  | vecFloatRelOp sh op a b => exact Round5.Convert.fwdN_vecFloatRelOp T hr V Silmaril.Wasm.Validation.Ty A sh op a b
+  | vecShiftOp sh op a n => exact Round5.Convert.fwdN_vecShiftOp T hr V Silmaril.Wasm.Validation.Ty A sh op a n
+  | vecBitmask sh a => exact Round5.Convert.fwdN_vecBitmask T hr V Silmaril.Wasm.Validation.Ty A sh a
+  | vecSwizzle a b => exact Round5.Convert.fwdN_vecSwizzle T hr V Silmaril.Wasm.Validation.Ty A a b
+  | vecRelaxedSwizzle a b => exact Round5.Convert.fwdN_vecRelaxedSwizzle T hr V Silmaril.Wasm.Validation.Ty A a b
+  | vecShuffle idx a b hidx => exact Round5.Convert.fwdN_vecShuffle T hr V Silmaril.Wasm.Validation.Ty A idx a b hidx
+  | vecSplat sh x => exact Round5.Convert.fwdN_vecSplat T hr V Silmaril.Wasm.Validation.Ty A sh x
   | vecExtractLane sh sx i a hi =>
-    exact Round5.Convert.fwdN_vecExtractLane T hr V Ty A Fy sh sx i a hi
-  | vecReplaceLane sh i a x hi => exact Round5.Convert.fwdN_vecReplaceLane T hr V Ty A sh i a x hi
-  | vecExtUnOp h => exact Round5.Convert.fwdN_vecExtUnOp T hr V Ty A h
-  | vecExtBinOp h => exact Round5.Convert.fwdN_vecExtBinOp T hr V Ty A h
-  | vecExtTernOp h => exact Round5.Convert.fwdN_vecExtTernOp T hr V Ty A h
-  | vecNarrow h => exact Round5.Convert.fwdN_vecNarrow T hr V Ty A h
+    exact Round5.Convert.fwdN_vecExtractLane T hr V Silmaril.Wasm.Validation.Ty A Fy sh sx i a hi
+  | vecReplaceLane sh i a x hi => exact Round5.Convert.fwdN_vecReplaceLane T hr V Silmaril.Wasm.Validation.Ty A sh i a x hi
+  | vecExtUnOp h => exact Round5.Convert.fwdN_vecExtUnOp T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecExtBinOp h => exact Round5.Convert.fwdN_vecExtBinOp T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecExtTernOp h => exact Round5.Convert.fwdN_vecExtTernOp T hr V Silmaril.Wasm.Validation.Ty A h
+  | vecNarrow h => exact Round5.Convert.fwdN_vecNarrow T hr V Silmaril.Wasm.Validation.Ty A h
 
 end
 
@@ -181,7 +181,7 @@ theorem forwardSel (hinj : Function.Injective hn) (hf : HostFinite host) {c c' :
     (h : Step P host c c') : Bounded c → ¬ CastRedex c.code → AdminsSel c.code →
       FwdUp (simEnv (BI P hn host)) hn c c' :=
   have T := Typing.typingFacts_simEnv (BI P hn host) hn
-  have Ty := Typing.ctrlTyping_simEnv (BI P hn host)
+  have Silmaril.Wasm.Validation.Ty := Typing.ctrlTyping_simEnv (BI P hn host)
   have St := Typing.stateTyping_simEnv (BI P hn host)
   have X := Typing.exnTyping_simEnv' (BI P hn host)
   have TB := Round5.Int.typesB (BI P hn host)
@@ -209,26 +209,26 @@ theorem forwardSel (hinj : Function.Injective hn) (hf : HostFinite host) {c c' :
       (ih (Round5.Fwd.bounded_ctxtFrame hb) (not_castRedex_frame hx) (adminsSel_frame hs')))
     (fun h₁ h₂ hb _ _ => fwdUp_of_fwdP (Round5.Fwd.fwd_block5 TB h₁ h₂ hb.frame))
     (fun h₁ h₂ hb _ _ => fwdUp_of_fwdP (Round5.Fwd.fwd_loop5 TB h₁ h₂ hb.frame))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_ifTrue _ T Ty h₁))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_ifFalse _ T Ty))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_ifTrue _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_ifFalse _ T Silmaril.Wasm.Validation.Ty))
     (fun _ _ _ => fwdUp_of_fwdP (fwd_labelVals _ T))
-    (fun h₁ h₂ _ _ _ => fwdUp_of_fwdP (fwd_brLabelZero _ T Ty h₁ h₂))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brLabelSucc _ T Ty h₁))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_brHandler _ T Ty))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brIfTrue _ T Ty h₁))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_brIfFalse _ T Ty))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brTableLt _ T Ty h₁))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brTableGe _ T Ty h₁))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_brOnNullNull _ T Ty))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brOnNullAddr _ T Ty h₁))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_brOnNonNullNull _ T Ty))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brOnNonNullAddr _ T Ty h₁))
+    (fun h₁ h₂ _ _ _ => fwdUp_of_fwdP (fwd_brLabelZero _ T Silmaril.Wasm.Validation.Ty h₁ h₂))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brLabelSucc _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_brHandler _ T Silmaril.Wasm.Validation.Ty))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brIfTrue _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_brIfFalse _ T Silmaril.Wasm.Validation.Ty))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brTableLt _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brTableGe _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_brOnNullNull _ T Silmaril.Wasm.Validation.Ty))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brOnNullAddr _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_brOnNonNullNull _ T Silmaril.Wasm.Validation.Ty))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_brOnNonNullAddr _ T Silmaril.Wasm.Validation.Ty h₁))
     (fun _ _ hx => absurd castRedex_brOnCast hx)
     (fun _ _ hx => absurd castRedex_brOnCast hx)
     (fun _ _ hx => absurd castRedex_brOnCastFail hx)
     (fun _ _ hx => absurd castRedex_brOnCastFail hx)
     (fun h₁ h₂ _ _ _ => fwdUp_of_fwdP (Round5.Fwd.fwd_call5 h₁ h₂))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_callRefNull _ T Ty h₁))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_callRefNull _ T Silmaril.Wasm.Validation.Ty h₁))
     (fun hc hfa hex hlen hcode hb _ _ => fwdUp_of_fwdP (Round5.Fwd.fwd_callRefFunc5 TB hc hfa hex hlen hcode
       (Round5.Fwd.tyBnd_funcType hb.storeBnd hfa)))
     (fun hc hfa hex hlen hcode hh hb _ _ => fwdUp_of_fwdP (Round5.FwdRef.fwd_callRefHostT TB hf hr hc hfa hex
@@ -236,15 +236,15 @@ theorem forwardSel (hinj : Function.Injective hn) (hf : HostFinite host) {c c' :
     (fun hc hfa hex hlen hcode hh hb _ _ => fwdUp_of_fwdP (Round5.FwdRef.fwd_callRefHostDivT TB hf hr hc hfa
       hex hlen hcode hh (Round5.Fwd.tyBnd_funcType hb.storeBnd hfa)))
     (fun h₁ h₂ _ _ _ => fwdUp_of_fwdP (Round5.Fwd.fwd_returnCall5 h₁ h₂))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnCallRefLabel _ T Ty h₁))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnCallRefHandler _ T Ty h₁))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnCallRefFrameNull _ T Ty h₁))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnCallRefLabel _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnCallRefHandler _ T Silmaril.Wasm.Validation.Ty h₁))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnCallRefFrameNull _ T Silmaril.Wasm.Validation.Ty h₁))
     (fun hc hfn hex hlen hb _ _ => (Round5.Fwd.fwdUp_returnCallRefFrameAddr5 TB hc hfn hex hlen
       (Round5.Fwd.tyBnd_funcType hb.storeBnd hfn)))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_callIndirect _ T Ty))
-    (fun _ _ _ => fwdUp_of_fwdP (fwd_returnCallIndirect _ T Ty))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_callIndirect _ T Silmaril.Wasm.Validation.Ty))
+    (fun _ _ _ => fwdUp_of_fwdP (fwd_returnCallIndirect _ T Silmaril.Wasm.Validation.Ty))
     (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_frameVals _ T h₁))
-    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnFrame _ T Ty h₁))
+    (fun h₁ _ _ _ => fwdUp_of_fwdP (fwd_returnFrame _ T Silmaril.Wasm.Validation.Ty h₁))
     (fun _ _ _ => fwdUp_of_fwdP (fwd_returnLabel _ T))
     (fun _ _ _ => fwdUp_of_fwdP (fwd_returnHandler _ T))
     (fun htag hex hlen hb _ _ => fwdUp_of_fwdP (Round5.Fwd.fwd_throw5 TB htag hex hlen hb.storeBnd))

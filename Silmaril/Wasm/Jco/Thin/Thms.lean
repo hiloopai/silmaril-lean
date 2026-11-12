@@ -81,7 +81,7 @@ theorem subst_lift_σ₁ (n w : Nat) (ft : FuncTy) (j : Nat) :
 /-! ## Flat forms -/
 
 /-- The flat exports of a thin wrapper. -/
-def flatExports (n w : Nat) (fs : Iface) (js : List Nat) : List Export :=
+def flatExports (n w : Nat) (fs : Iface) (js : List Nat) : List Silmaril.Wasm.Component.Export :=
   (fs.zip js).map fun x => ⟨x.1.1, x.1.2, liftAt n w x.1.2 x.2⟩
 
 /-- **The flat form of the thin wrapper.** -/
@@ -141,7 +141,7 @@ theorem flatten_wrapGlue (s : Style) (w : World) (m : M) (args G : List Impl) :
     have hl : (σ₁ w.imports.length (CoreModule.exports m).length).length =
         w.imports.length + (CoreModule.exports m).length := by simp
     have hz : (((adaptorTys s w).zip G).map fun x =>
-        ({ name := x.1.1, ty := CoreFuncTy.asFuncTy x.1.2, impl := x.2 } : Export))[k]? =
+        ({ name := x.1.1, ty := CoreFuncTy.asFuncTy x.1.2, impl := x.2 } : Silmaril.Wasm.Component.Export))[k]? =
         some ⟨s.exportName w.exports[k].1, CoreFuncTy.asFuncTy w.exports[k].2.flat, G[k]⟩ := by
       rw [List.getElem?_eq_getElem (by simp [adaptorTys]; omega)]
       simp [adaptorTys]

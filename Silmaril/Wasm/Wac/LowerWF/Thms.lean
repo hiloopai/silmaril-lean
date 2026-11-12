@@ -291,7 +291,7 @@ theorem src_mem_of_explicit {s : PkgSig} {n : Inst} (hex : explicitArgs s n.args
   have hm : (p.1, src) ∈ n.args := Silmaril.Wasm.Wac.LowerT.mem_of_lookup' hsrc
   exact ⟨(p.1, src), hm, by simp [Inst.src, hsrc]⟩
 
-theorem importT_res {st st₁ : TSt} {i : Import} (hs : importT st i = .ok st₁) : RStep S st st₁ := by
+theorem importT_res {st st₁ : TSt} {i : Silmaril.Wasm.Component.Binary.Import} (hs : importT st i = .ok st₁) : RStep S st st₁ := by
   cases hd : i.desc with
   | func t =>
     simp only [importT, hd] at hs
@@ -308,7 +308,7 @@ theorem importT_res {st st₁ : TSt} {i : Import} (hs : importT st i = .ok st₁
     exact RStep.same _
   | coreModule t | value t => simp [importT, hd] at hs
 where
-  importT_inst_res {st st₁ : TSt} {i : Import} {t : Nat} (hd : i.desc = .instance t)
+  importT_inst_res {st st₁ : TSt} {i : Silmaril.Wasm.Component.Binary.Import} {t : Nat} (hd : i.desc = .instance t)
       (hs : importT st i = .ok st₁) : RStep S st st₁ := by
     simp only [importT, hd] at hs
     split at hs

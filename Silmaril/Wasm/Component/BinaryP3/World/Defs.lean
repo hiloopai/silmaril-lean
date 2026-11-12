@@ -129,29 +129,29 @@ def CFields.toList : CFields → Table
 section Resolve
 variable (ts : List CType)
 
-def rVal : ValType → Option CType
+def rVal : Silmaril.Wasm.Component.Binary.ValType → Option CType
   | .prim p => some (.prim p)
   | .idx k => ts[k]?
 
-def rOpt : Option ValType → Option COpt
+def rOpt : Option Silmaril.Wasm.Component.Binary.ValType → Option COpt
   | none => some .none
   | some v => (rVal ts v).map .some
 
-def rFields : List (String × ValType) → Option CFields
+def rFields : List (String × Silmaril.Wasm.Component.Binary.ValType) → Option CFields
   | [] => some .nil
   | (n, v) :: r => do
     let t ← rVal ts v
     let r' ← rFields r
     pure (.cons n t r')
 
-def rCases : List (String × Option ValType) → Option CCases
+def rCases : List (String × Option Silmaril.Wasm.Component.Binary.ValType) → Option CCases
   | [] => some .nil
   | (n, v) :: r => do
     let t ← rOpt ts v
     let r' ← rCases r
     pure (.cons n t r')
 
-def rList : List ValType → Option CList
+def rList : List Silmaril.Wasm.Component.Binary.ValType → Option CList
   | [] => some .nil
   | v :: r => do
     let t ← rVal ts v
@@ -181,7 +181,7 @@ def rDefVal : DefValType → Option CType
     let b ← rVal ts v
     pure (.map a b)
 
-def rFunc (f : FuncType) : Option CType := do
+def rFunc (f : Silmaril.Wasm.Component.Binary.FuncType) : Option CType := do
   let ps ← rFields ts f.params
   let r ← rOpt ts f.result
   pure (.func ps r f.async)
@@ -332,7 +332,7 @@ def stepAlias (s : CSt) (a : Binary.Alias) : Option CSt :=
   | ⟨k, .export i n⟩ => (s.scope.instExport i n).bind fun t => s.add k t
   | _ => none
 
-def stepCanon (s : CSt) : Canon → Option CSt
+def stepCanon (s : CSt) : Silmaril.Wasm.Component.Binary.Canon → Option CSt
   | .lift _ _ t => (s.scope.types[t]?).bind fun ft => s.add .func ft
   | _ => some s
 
@@ -354,7 +354,7 @@ def stepExport (s : CSt) (e : Binary.Export) : Option CSt :=
 
 mutual
 /-- Replay the sections of a component. -/
-def walkSecs : CSt → List Section → Option CSt
+def walkSecs : CSt → List Silmaril.Wasm.Component.Binary.Section → Option CSt
   | s, [] => some s
   | s, .component c :: ss =>
     (resolveAst c).bind fun t => (s.add .component t).bind fun s' => walkSecs s' ss
@@ -368,7 +368,7 @@ def walkSecs : CSt → List Section → Option CSt
   | s, _ :: ss => walkSecs s ss
 
 /-- **The closed component type of a component**: its imports and exports. -/
-def resolveAst : Ast → Option CType
+def resolveAst : Silmaril.Wasm.Component.Binary.Ast → Option CType
   | .mk ss => (walkSecs {} ss).map fun s =>
       .comp (CFields.ofList s.scope.imports) (CFields.ofList s.scope.exports)
 end
@@ -390,7 +390,7 @@ def provides (have_ need : Table) : Bool :=
 
 /-- **The component `c` targets the world `W`**: `W` provides every import of `c` at a
 subtype and `c` provides every export of `W` at a subtype. -/
-def targets (c : Ast) (W : Silmaril.Wasm.Wit.Project.WorldType) : Bool :=
+def targets (c : Silmaril.Wasm.Component.Binary.Ast) (W : Silmaril.Wasm.Wit.Project.WorldType) : Bool :=
   match resolveAst c, resolveWorld W with
   | some (.comp ci ce), some (.comp wi we) => provides wi.toList ci.toList && provides ce.toList we.toList
   | _, _ => false

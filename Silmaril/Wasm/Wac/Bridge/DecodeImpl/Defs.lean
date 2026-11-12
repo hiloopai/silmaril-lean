@@ -45,12 +45,12 @@ inductive Impl : List Section → List ComponentDecl → Prop
   | nil : Impl [] []
   | silent {s : Section} {ss : List Section} {ds : List ComponentDecl} :
       Silent s → Impl ss ds → Impl (s :: ss) ds
-  | imp {i : Import} {ss : List Section} {ds : List ComponentDecl} :
+  | imp {i : Silmaril.Wasm.Component.Binary.Import} {ss : List Section} {ds : List ComponentDecl} :
       Wit.Project.isValueEq i.desc = false → Impl ss ds →
       Impl (.imports [i] :: ss) (.import i.name i.desc :: ds)
   | ty {t : DefType} {ss : List Section} {ds : List ComponentDecl} :
       Wit.Project.isResource t = false → Impl ss ds → Impl (.types [t] :: ss) (.inst (.type t) :: ds)
-  | exp {e : Export} {d : ExternDesc} {ss : List Section} {ds : List ComponentDecl} :
+  | exp {e : Silmaril.Wasm.Component.Binary.Export} {d : ExternDesc} {ss : List Section} {ds : List ComponentDecl} :
       Wit.Project.exportDesc e = some d → Wit.Project.isValueEq d = false → Impl ss ds →
       Impl (.exports [e] :: ss) (.inst (.export e.name d) :: ds)
 

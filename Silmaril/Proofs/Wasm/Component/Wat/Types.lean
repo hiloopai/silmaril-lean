@@ -15,12 +15,12 @@ namespace Silmaril.Wasm.Component.Wat
 
 open Silmaril.Wasm.Component.Binary Sexp
 
-theorem valType_atom (t : ValType) : ∃ a, P.valType t = .atom a := by
+theorem valType_atom (t : Silmaril.Wasm.Component.Binary.ValType) : ∃ a, P.valType t = .atom a := by
   cases t with
   | prim p => cases p <;> exact ⟨_, rfl⟩
   | idx i => exact ⟨_, rfl⟩
 
-theorem result_rt (ok err : Option ValType) :
+theorem result_rt (ok err : Option Silmaril.Wasm.Component.Binary.ValType) :
     R.defValType (P.defValType (.result ok err)) = some (.result ok err) := by
   cases ok with
   | none => cases err <;> simp [P.defValType, R.defValType, R.resultBody, valType_rt]
@@ -29,14 +29,14 @@ theorem result_rt (ok err : Option ValType) :
     have ht : R.valType (.atom a) = some t := ha ▸ valType_rt t
     cases err <;> simp [P.defValType, R.defValType, R.resultBody, ht, ha, valType_rt]
 
-theorem stream_rt (t : Option ValType) :
+theorem stream_rt (t : Option Silmaril.Wasm.Component.Binary.ValType) :
     R.defValType (P.defValType (.stream t)) = some (.stream t) := by
   have h : R.optValType (t.map P.valType).toList = some t := optValType_rt t
   exact (show R.defValType (.list (kw "stream" :: (t.map P.valType).toList)) =
     (R.optValType (t.map P.valType).toList).map .stream by cases t <;> rfl).trans
     (by rw [h]; rfl)
 
-theorem future_rt (t : Option ValType) :
+theorem future_rt (t : Option Silmaril.Wasm.Component.Binary.ValType) :
     R.defValType (P.defValType (.future t)) = some (.future t) := by
   have h : R.optValType (t.map P.valType).toList = some t := optValType_rt t
   exact (show R.defValType (.list (kw "future" :: (t.map P.valType).toList)) =
@@ -65,7 +65,7 @@ theorem defValType_rt (d : DefValType) : R.defValType (P.defValType d) = some d 
 
 theorem params_rt (rest : List Sexp)
     (h : ∀ p r, rest = .list (.atom "param" :: p) :: r → False) :
-    ∀ ps : List (String × ValType),
+    ∀ ps : List (String × Silmaril.Wasm.Component.Binary.ValType),
       R.params (ps.map (fun p => .list [kw "param", nm p.1, P.valType p.2]) ++ rest) =
         some (ps, rest)
   | [] => by
@@ -83,7 +83,7 @@ theorem params_rt (rest : List Sexp)
   | p :: ps => by
     simp [R.params, R.param, valType_rt, params_rt rest h ps]
 
-theorem funcType_rt (f : FuncType) :
+theorem funcType_rt (f : Silmaril.Wasm.Component.Binary.FuncType) :
     R.funcType (match P.funcType f with
       | .list (_ :: ss) => ss
       | _ => []) = some f := by

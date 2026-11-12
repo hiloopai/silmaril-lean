@@ -48,7 +48,7 @@ bound by `eq`), and the outer-alias charge (`outer_alias_type_size`) is not kept
 namespace Silmaril.Wasm.Tools.Component.Budget
 
 open Silmaril.Wasm.Component.Binary (ValType DefValType DefType InstanceDecl ComponentDecl
-  ExternDesc TypeBound ValueBound Alias AliasTarget ItemSort Import Export FuncType)
+  ExternDesc TypeBound ValueBound Alias AliasTarget ItemSort Silmaril.Wasm.Component.Binary.Import Silmaril.Wasm.Component.Binary.Export Silmaril.Wasm.Component.Binary.FuncType)
 
 /-! ## Type information -/
 
@@ -103,11 +103,11 @@ def Sc.ty (sc : Sc) (i : Nat) : TEnt := sc.types[i]?.getD ⟨TI.new, []⟩
 
 def Sc.tyInfo (sc : Sc) (i : Nat) : TI := (sc.ty i).info
 
-def Sc.valInfo (sc : Sc) : ValType → TI
+def Sc.valInfo (sc : Sc) : Silmaril.Wasm.Component.Binary.ValType → TI
   | .prim _ => TI.new
   | .idx i => sc.tyInfo i
 
-def Sc.optInfo (sc : Sc) : Option ValType → List TI
+def Sc.optInfo (sc : Sc) : Option Silmaril.Wasm.Component.Binary.ValType → List TI
   | none => []
   | some t => [sc.valInfo t]
 
@@ -166,7 +166,7 @@ def Sc.members (sc : Sc) : DefValType → List TI
   | .map k v => [sc.valInfo k, sc.valInfo v]
 
 /-- The members of a function type: its parameters, then its result. -/
-def Sc.funcMembers (sc : Sc) (f : FuncType) : List TI :=
+def Sc.funcMembers (sc : Sc) (f : Silmaril.Wasm.Component.Binary.FuncType) : List TI :=
   f.params.map (fun p => sc.valInfo p.2) ++ sc.optInfo f.result
 
 /-! ## Declarations -/
@@ -252,7 +252,7 @@ def itemsAt {α : Type} (enc : α → Option (List UInt8)) (start : Nat) (sc : S
     | .error e => .error s!"{e} (at offset {hex o})"
 
 /-- A top-level export (`sortidx`, with an optional ascribed type). -/
-def exportStep (sc : Sc) (e : Export) : Except String Sc :=
+def exportStep (sc : Sc) (e : Silmaril.Wasm.Component.Binary.Export) : Except String Sc :=
   match e.desc with
   | some d => sc.extern e.name.name d true
   | none =>
@@ -280,7 +280,7 @@ def typeStep (outer : List Sc) (sc : Sc) (t : DefType) : Except String Sc := do
   pure { sc with types := sc.types.push e }
 
 /-- A top-level import. -/
-def importStep (sc : Sc) (i : Import) : Except String Sc := sc.extern i.name.name i.desc false
+def importStep (sc : Sc) (i : Silmaril.Wasm.Component.Binary.Import) : Except String Sc := sc.extern i.name.name i.desc false
 
 /-- The functions a `canon` section adds (`lift` gives a component function of its type). -/
 def canonStep (sc : Sc) : Canon → Sc

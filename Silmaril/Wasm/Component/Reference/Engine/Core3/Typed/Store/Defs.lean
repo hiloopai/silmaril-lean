@@ -18,7 +18,7 @@ namespace Silmaril.Wasm.Component.Engine.Core3.Typed
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation
 variable {H : Type}
 
-theorem tyOk_ofList_num (Δ : TypeCtx) : ∀ ts : List NumType, TyOk Δ (Ty.ofList (ts.map Ty.num))
+theorem tyOk_ofList_num (Δ : TypeCtx) : ∀ ts : List NumType, TyOk Δ (Silmaril.Wasm.Validation.Ty.ofList (ts.map Silmaril.Wasm.Validation.Ty.num))
   | [] => .nil
   | t :: ts => .cons (.num t) (tyOk_ofList_num Δ ts)
 
@@ -29,12 +29,12 @@ theorem tyOk_ofFlatType (ft : V1.FuncType) :
   simp only [liftRec, V1.FuncType.toCoreRec, List.map_cons, List.map_nil, liftSub, liftComp,
     V1.FuncType.toCore, V1.liftResult_toCore]
   exact TyOk.defn (GroupOk2.cons (SubOk2.noSuper (TyOk.func (tyOk_ofList_num _ _)
-    (tyOk_ofList_num _ _))) GroupOk2.nil) (by simp [Ty.length])
+    (tyOk_ofList_num _ _))) GroupOk2.nil) (by simp [Silmaril.Wasm.Validation.Ty.length])
 
 /-- The defined type of a flat function type expands to its numeric signature. -/
 theorem expand_ofFlatType (ft : V1.FuncType) :
     Expand (SingleThreaded.ofFlatType ft)
-      (.func (Ty.ofList (ft.params.map Ty.num)) (Ty.ofList (ft.results.map Ty.num))) :=
+      (.func (Silmaril.Wasm.Validation.Ty.ofList (ft.params.map Silmaril.Wasm.Validation.Ty.num)) (Silmaril.Wasm.Validation.Ty.ofList (ft.results.map Silmaril.Wasm.Validation.Ty.num))) :=
   Expand.iff.mpr (V1.FuncType.toDefType_expand ft)
 
 /-- Appending a function instance that is typed in the extended store keeps the store typed and

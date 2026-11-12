@@ -93,8 +93,8 @@ def Item.toSection : Item → Section
 /-- The definition of a nominal type (record, variant, enum, flags), which kinds do not
 keep (`witTypeKind` keeps only the name). -/
 inductive Nominal where
-  | record (fields : List (String × Ty))
-  | variant (cases : List (String × Option Ty))
+  | record (fields : List (String × Silmaril.Wasm.Wit.Binary.Ty))
+  | variant (cases : List (String × Option Silmaril.Wasm.Wit.Binary.Ty))
   | enum (labels : List String)
   | flags (labels : List String)
   deriving Inhabited
@@ -139,7 +139,7 @@ def namedTy (n : String) : TM Nat := do
 /-- Define an anonymous value type once per scope; its index as a value type
 (wit-parser interns anonymous types, so the types of a package binary define each
 once). -/
-def defVal (d : DefValType) : TM ValType := do
+def defVal (d : DefValType) : TM Silmaril.Wasm.Component.Binary.ValType := do
   match (← get).vcache.lookup d with
   | some j => pure (.idx j)
   | none =>
@@ -149,7 +149,7 @@ def defVal (d : DefValType) : TM ValType := do
 
 /-- A handle type `own i` (`o = true`) or `borrow i`, defined once per scope (wac's
 value types `Own`/`Borrow` are compared structurally). -/
-def handle (o : Bool) (i : Nat) : TM ValType := do
+def handle (o : Bool) (i : Nat) : TM Silmaril.Wasm.Component.Binary.ValType := do
   match (← get).hcache.lookup (o, i) with
   | some j => pure (.idx j)
   | none =>
@@ -159,7 +159,7 @@ def handle (o : Bool) (i : Nat) : TM ValType := do
 
 mutual
 /-- A value type. -/
-def valTy : Ty → TM ValType
+def valTy : Silmaril.Wasm.Wit.Binary.Ty → TM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .ref r => do
     let i ← namedTy r.name
@@ -175,11 +175,11 @@ def valTy : Ty → TM ValType
   | .future t => do defVal (.future (← valTyOpt t))
   | .stream t => do defVal (.stream (← valTyOpt t))
 /-- An optional value type. -/
-def valTyOpt : Option Ty → TM (Option ValType)
+def valTyOpt : Option Silmaril.Wasm.Wit.Binary.Ty → TM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => do pure (some (← valTy t))
 /-- Value types. -/
-def valTys : List Ty → TM (List ValType)
+def valTys : List Silmaril.Wasm.Wit.Binary.Ty → TM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do let v ← valTy t; pure (v :: (← valTys ts))
 end
@@ -188,7 +188,7 @@ end
 (`none` for other types). wac gives every type expression of a document its own
 identity, and encodes the definiens of an alias declaration afresh (`DefinedType::Alias`
 of a defined type), even if an equal anonymous type was defined before. -/
-def freshVal : Ty → TM (Option Nat)
+def freshVal : Silmaril.Wasm.Wit.Binary.Ty → TM (Option Nat)
   | .list t => do pure (some (← defTy (.val (.list (← valTy t)))))
   | .fixedList t n => do pure (some (← defTy (.val (.fixedList (← valTy t) n))))
   | .map k v => do let k ← valTy k; pure (some (← defTy (.val (.map k (← valTy v)))))
@@ -211,7 +211,7 @@ def nominalTy : Nominal → TM Nat
   | .flags ls => defTy (.val (.flags ls))
 
 /-- Named parameters. -/
-def paramTys : List (String × Ty) → TM (List (String × ValType))
+def paramTys : List (String × Silmaril.Wasm.Wit.Binary.Ty) → TM (List (String × Silmaril.Wasm.Component.Binary.ValType))
   | [] => pure []
   | (n, t) :: ps => do let v ← valTy t; pure ((n, v) :: (← paramTys ps))
 
@@ -300,7 +300,7 @@ def typeBound : Kind → TM ExternDesc
     let ds ← nested true (do importDecls is; exportDecls es)
     pure (.type (.eq (← defTy (.component ds))))
   | .type _ => throw "a type of a type"
-/-- Export declarations of a scope. -/
+/-- Silmaril.Wasm.Component.Binary.Export declarations of a scope. -/
 def exportDecls : Externs → TM Unit
   | [] => pure ()
   | (n, k) :: es => do
@@ -308,7 +308,7 @@ def exportDecls : Externs → TM Unit
     modify fun s => { s with decls := s.decls ++ [.inst (.export ⟨n, .plain0⟩ d)] }
     declared n d
     exportDecls es
-/-- Import declarations of a scope. -/
+/-- Silmaril.Wasm.Component.Binary.Import declarations of a scope. -/
 def importDecls : Externs → TM Unit
   | [] => pure ()
   | (n, k) :: es => do

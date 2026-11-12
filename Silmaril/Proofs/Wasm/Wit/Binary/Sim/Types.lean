@@ -33,7 +33,7 @@ theorem Sim.seq {e e₁ e₂ : Enc} {cst : CSt} {dst : Option DSt} {P Q : List S
   exact ⟨c₂, d₂, hI₂, hG₁.trans hG₂, hP hp hG₂.cext, hq⟩
 
 theorem decValTypes_ext {a b : List Slot} (hx : Ext a b) :
-    ∀ {vs : List ValType} {ts : List Ty}, decValTypes a vs = .ok ts → decValTypes b vs = .ok ts
+    ∀ {vs : List Silmaril.Wasm.Component.Binary.ValType} {ts : List Ty}, decValTypes a vs = .ok ts → decValTypes b vs = .ok ts
   | [], _, h => h
   | v :: vs, ts, h => by
     simp only [decValTypes] at h ⊢
@@ -49,7 +49,7 @@ theorem decValTypes_ext {a b : List Slot} (hx : Ext a b) :
 
 /-- An anonymous type is looked up, or defined by `mk` and recorded. -/
 theorem anon_sim {e e' : Enc} {cst : CSt} {dst : Option DSt} (hI : Inv e cst dst) {t : Ty}
-    {mk : EncM DefValType} {v : ValType}
+    {mk : EncM DefValType} {v : Silmaril.Wasm.Component.Binary.ValType}
     (hmk : ∀ {d e₂}, mk.run e = .ok (d, e₂) → Sim e cst dst e₂ (fun cur => decDefVal cur d = .ok (.ty t)))
     (h : (anon t mk).run e = .ok (v, e')) : Sim e cst dst e' (fun cur => decValType cur v = .ok t) := by
   obtain ⟨m, e₁, h₁, h₂⟩ := run_bind_ok h
@@ -99,14 +99,14 @@ theorem pair_sim {α β : Type} {e e' : Enc} {cst : CSt} {dst : Option DSt} {x :
 
 mutual
 /-- **Value types round-trip**: the value type written for `t` decodes to `t`. -/
-theorem valType_sim : ∀ (t : Ty) {e e' : Enc} {cst : CSt} {dst : Option DSt} {v : ValType},
+theorem valType_sim : ∀ (t : Ty) {e e' : Enc} {cst : CSt} {dst : Option DSt} {v : Silmaril.Wasm.Component.Binary.ValType},
     Inv e cst dst → (valType t).run e = .ok (v, e') →
     Sim e cst dst e' (fun cur => decValType cur v = .ok t)
   | .prim p, _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ValType.prim p) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := Silmaril.Wasm.Component.Binary.ValType.prim p) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | .ref r, _, _, _, _, _, hI, h => by
-    obtain ⟨k, hk, rfl⟩ := run_map_ok (f := ValType.idx) h
+    obtain ⟨k, hk, rfl⟩ := run_map_ok (f := Silmaril.Wasm.Component.Binary.ValType.idx) h
     exact (refIdx_sim hI hk).mono fun _ hc => decValType_of_named hc
   | .list t, _, _, _, _, _, hI, h => anon_sim hI (fun hd => by
       obtain ⟨a, rfl, hs⟩ := map_sim (P := fun a cur => decValType cur a = .ok t) hd (valType_sim t hI)
@@ -144,20 +144,20 @@ theorem valType_sim : ∀ (t : Ty) {e e' : Enc} {cst : CSt} {dst : Option DSt} {
       exact hs.mono fun cur hc => by simp only [decDefVal, hc]; rfl) h
 
 theorem optValType_sim : ∀ (o : Option Ty) {e e' : Enc} {cst : CSt} {dst : Option DSt}
-    {v : Option ValType}, Inv e cst dst → (optValType o).run e = .ok (v, e') →
+    {v : Option Silmaril.Wasm.Component.Binary.ValType}, Inv e cst dst → (optValType o).run e = .ok (v, e') →
     Sim e cst dst e' (fun cur => decOpt cur v = .ok o)
   | none, _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := (none : Option ValType)) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := (none : Option Silmaril.Wasm.Component.Binary.ValType)) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | some t, _, _, _, _, _, hI, h => by
     obtain ⟨a, ha, rfl⟩ := run_map_ok (f := some) h
     exact (valType_sim t hI ha).mono fun cur hc => by simp only [decOpt, hc]; rfl
 
 theorem valTypes_sim : ∀ (ts : List Ty) {e e' : Enc} {cst : CSt} {dst : Option DSt}
-    {vs : List ValType}, Inv e cst dst → (valTypes ts).run e = .ok (vs, e') →
+    {vs : List Silmaril.Wasm.Component.Binary.ValType}, Inv e cst dst → (valTypes ts).run e = .ok (vs, e') →
     Sim e cst dst e' (fun cur => decValTypes cur vs = .ok ts)
   | [], _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List ValType)) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ([] : List Silmaril.Wasm.Component.Binary.ValType)) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | t :: ts, _, _, _, _, _, hI, h => by
     obtain ⟨a, e₁, h₁, h₂⟩ := run_bind_ok h

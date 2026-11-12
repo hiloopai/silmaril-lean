@@ -65,7 +65,7 @@ theorem wf_moduleDecl (d : ModuleDecl) : WF (P.moduleDecl d) := by
 theorem wf_coreType (t : CoreType) : WF (P.coreType t) := by
   cases t <;> wf_simp [P.coreType, wf_coreFuncType, wf_moduleDecl]
 theorem wf_prim (p : PrimValType) : WF (P.prim p) := by cases p <;> wf_simp [P.prim]
-theorem wf_valType (t : ValType) : WF (P.valType t) := by
+theorem wf_valType (t : Silmaril.Wasm.Component.Binary.ValType) : WF (P.valType t) := by
   cases t <;> simp [P.valType, wf_prim]
 theorem wf_defValType (d : DefValType) : WF (P.defValType d) := by
   cases d with
@@ -77,7 +77,7 @@ theorem wf_defValType (d : DefValType) : WF (P.defValType d) := by
   | stream t => cases t <;> wf_simp [P.defValType, wf_valType]
   | future t => cases t <;> wf_simp [P.defValType, wf_valType]
   | _ => wf_simp [P.defValType, wf_valType, wf_prim]
-theorem wf_funcType (f : FuncType) : WF (P.funcType f) := by
+theorem wf_funcType (f : Silmaril.Wasm.Component.Binary.FuncType) : WF (P.funcType f) := by
   obtain ⟨ps, r, a⟩ := f
   cases a <;> cases r <;> wf_simp [P.funcType, wf_valType]
 theorem wf_externDesc (d : ExternDesc) : WF (P.externDesc d) := by
@@ -129,7 +129,7 @@ theorem wf_start (s : Start) : WF (P.start s) := by
   induction r with
   | zero => exact wfl_nil
   | succ r ih => rw [List.replicate_succ]; wf_simp [ih]
-theorem wf_import (i : Import) : WF (P.import_ i) := by
+theorem wf_import (i : Silmaril.Wasm.Component.Binary.Import) : WF (P.import_ i) := by
   wf_simp [P.import_, wfl_name, wf_externDesc]
 theorem wf_export (e : Export) : WF (P.export_ e) := by
   cases h : e.desc <;> wf_simp [P.export_, wfl_name, wf_sortIdx, wf_externDesc, h]

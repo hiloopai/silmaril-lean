@@ -32,16 +32,16 @@ variable {P : Silmaril.Wasm.Numerics.Profile}
 /-! ## Lowering no arguments -/
 
 theorem lower_make_eq (cx : LiftLowerContext (E3 P)) (vs : List Val) :
-    (lowerFlatValues Limits.spec Quirks.none cx ABI.maxFlatParams vs (paramTypes ftMake) none :
+    (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatParams vs (paramTypes ftMake) none :
       Canon.P (E3 P) Unit _) =
-      ptrType cx >>= fun p => lowerFlatTypes Limits.spec Quirks.none cx p vs [] := by
+      ptrType cx >>= fun p => lowerFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx p vs [] := by
   unfold lowerFlatValues
   congr 1
   funext p
   cases p <;> (rw [ite_eq_right_iff.mpr (by intro h; exact absurd h (by decide +kernel))]; rfl)
 
 theorem runs_lower_make {th : Option ThreadId} (t : TaskId) (m : Machine.Config (E3 P) Unit) :
-    RunsQ (D P) th (lowerFlatValues Limits.spec Quirks.none
+    RunsQ (D P) th (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatParams [] (paramTypes ftMake) none) m [.tau] [] m := by
   rw [lower_make_eq]
@@ -50,7 +50,7 @@ theorem runs_lower_make {th : Option ThreadId} (t : TaskId) (m : Machine.Config 
 /-- Any argument list but `[]` makes the lowering of `make`'s arguments trap. -/
 theorem lower_make_traps {th : Option ThreadId} (t : TaskId) (args : List Val) (hne : args ≠ [])
     (m : Machine.Config (E3 P) Unit) :
-    ∃ trT mT, TrapsQ (D P) th (lowerFlatValues Limits.spec Quirks.none
+    ∃ trT mT, TrapsQ (D P) th (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatParams args (paramTypes ftMake) none) m trT mT := by
   obtain ⟨v, vs, rfl⟩ : ∃ v vs, args = v :: vs := by
@@ -122,7 +122,7 @@ def newSt (s : CStore (E3 P)) (rep : ℕ) (ι' : InstState) : CStore (E3 P) :=
 theorem runs_newCore {th : ThreadId} {m : Machine.Config (E3 P) Unit} {ι ι' : InstState}
     {rep i : ℕ} (hi : m.store.insts = [ι])
     (hadd : ι.addHandle? (.resource ⟨m.store.resHandles.length⟩) = some (i, ι')) :
-    ∃ tr, RunsQ (D P) (some th) (resourceNewCore Limits.spec ⟨0⟩ ⟨0⟩ rep) m tr i
+    ∃ tr, RunsQ (D P) (some th) (resourceNewCore Silmaril.Wasm.Component.Limits.spec ⟨0⟩ ⟨0⟩ rep) m tr i
       { m with store := newSt m.store rep ι' } := by
   let h : ResourceHandle := { rt := ⟨0⟩, rep := rep, own := true }
   let s₁ := ArenaOps.allocSt ArenaField.resHandles h m.store
@@ -166,7 +166,7 @@ theorem runs_newCallout {th : ThreadId} {m : Machine.Config (E3 P) Unit} {thr : 
   have hentry := calloutEntry_builtin (b := .resourceNew ⟨0⟩ .i32) hthr htk hinst
   obtain ⟨tr₁, h₁⟩ := runs_resourceEnter hthr htk hinst hi hleave
   obtain ⟨tr₂, h₂⟩ := runs_newCore (th := th) (rep := flatNat a) hi hadd
-  have hb : RunsQ (D P) (some th) (Builtins.resourceNew Limits.spec ⟨0⟩ (flatNat a)) m
+  have hb : RunsQ (D P) (some th) (Builtins.resourceNew Silmaril.Wasm.Component.Limits.spec ⟨0⟩ (flatNat a)) m
       (tr₁ ++ (tr₂ ++ [])) [i32Flat i] { m with store := newSt m.store (flatNat a) ι' } := by
     unfold Builtins.resourceNew
     exact RunsQ.bind h₁ (RunsQ.bind h₂ (.pure _ _))
@@ -192,7 +192,7 @@ theorem traps_newCallout {th : ThreadId} {m : Machine.Config (E3 P) Unit} {thr :
     exact insts_get₀ (s := s₁) hi
   have hadd' : ι.addHandle? (.resource ((ArenaField.resHandles (E := E3 P)).mkId
       ((ArenaField.resHandles (E := E3 P)).size m.store))) = none := hadd
-  have hcore : ∃ tr mT, TrapsQ (D P) (some th) (resourceNewCore Limits.spec ⟨0⟩ ⟨0⟩ (flatNat a)) m
+  have hcore : ∃ tr mT, TrapsQ (D P) (some th) (resourceNewCore Silmaril.Wasm.Component.Limits.spec ⟨0⟩ ⟨0⟩ (flatNat a)) m
       tr mT := by
     unfold resourceNewCore addResHandle handlesAdd
     refine ⟨_, { m with store := s₁ }, TrapsQ.bind (tr₂ := [.tau] ++ [])
@@ -201,7 +201,7 @@ theorem traps_newCallout {th : ThreadId} {m : Machine.Config (E3 P) Unit} {thr :
     rw [hadd']
     exact TrapsQ.trap _ (isTrap_trap _)
   obtain ⟨tr₂, mT, h₂⟩ := hcore
-  have hb : TrapsQ (D P) (some th) (Builtins.resourceNew Limits.spec ⟨0⟩ (flatNat a)) m
+  have hb : TrapsQ (D P) (some th) (Builtins.resourceNew Silmaril.Wasm.Component.Limits.spec ⟨0⟩ (flatNat a)) m
       (tr₁ ++ tr₂) mT := by
     unfold Builtins.resourceNew
     exact TrapsQ.bind h₁ (TrapsQ.left h₂)
@@ -215,30 +215,30 @@ theorem traps_newCallout {th : ThreadId} {m : Machine.Config (E3 P) Unit} {thr :
 /-! ## Handle tables -/
 
 /-- `add?` keeps `TabB` and returns an index below `2^32`. -/
-theorem add?_tabB {t t' : Table HandleEntry} {e : HandleEntry} {i : ℕ} (hb : TabB t)
+theorem add?_tabB {t t' : Silmaril.Wasm.Component.Runtime.Table HandleEntry} {e : HandleEntry} {i : ℕ} (hb : TabB t)
     (h : t.add? e = some (i, t')) : i < 2 ^ 32 ∧ TabB t' ∧ AddRes t t' e i := by
   have hr := add?_fresh hb.1 h
   obtain ⟨arr, fr⟩ := t
-  have hm : Table.maxLength < 2 ^ 32 := by decide
+  have hm : Silmaril.Wasm.Component.Runtime.Table.maxLength < 2 ^ 32 := by decide
   cases fr with
   | cons k fr =>
-    have h' : k = i ∧ (⟨arr.setIfInBounds k (some e), fr⟩ : Table HandleEntry) = t' := by
-      simpa [Table.add?] using h
+    have h' : k = i ∧ (⟨arr.setIfInBounds k (some e), fr⟩ : Silmaril.Wasm.Component.Runtime.Table HandleEntry) = t' := by
+      simpa [Silmaril.Wasm.Component.Runtime.Table.add?] using h
     obtain ⟨rfl, rfl⟩ := h'
     have hk : arr[k]? = some none := hb.1.1 k (by simp)
     have hlt : k < arr.size := lt_of_getElem?_eq_some hk
-    have hs : arr.size ≤ Table.maxLength + 1 := hb.2
+    have hs : arr.size ≤ Silmaril.Wasm.Component.Runtime.Table.maxLength + 1 := hb.2
     exact ⟨by omega, ⟨hr.2.2.2, by simpa using hs⟩, hr⟩
   | nil =>
-    have hs : arr.size ≤ Table.maxLength ∧ arr.size = i ∧
-        (⟨arr.push (some e), []⟩ : Table HandleEntry) = t' := by
-      simp only [Table.add?] at h
+    have hs : arr.size ≤ Silmaril.Wasm.Component.Runtime.Table.maxLength ∧ arr.size = i ∧
+        (⟨arr.push (some e), []⟩ : Silmaril.Wasm.Component.Runtime.Table HandleEntry) = t' := by
+      simp only [Silmaril.Wasm.Component.Runtime.Table.add?] at h
       split at h <;> simp_all
     obtain ⟨hs, rfl, rfl⟩ := hs
     exact ⟨by omega, ⟨hr.2.2.2, by simp; omega⟩, hr⟩
 
 /-- `remove?` keeps `TabB`. -/
-theorem remove?_tabB {t t' : Table HandleEntry} {e : HandleEntry} {i : ℕ} (hb : TabB t)
+theorem remove?_tabB {t t' : Silmaril.Wasm.Component.Runtime.Table HandleEntry} {e : HandleEntry} {i : ℕ} (hb : TabB t)
     (h : t.remove? i = some (e, t')) : TabB t' ∧ RemoveRes t t' e i := by
   have hr := remove?_live hb.1 h
   obtain ⟨-, rfl⟩ := remove?_parts h
@@ -248,7 +248,7 @@ theorem remove?_tabB {t t' : Table HandleEntry} {e : HandleEntry} {i : ℕ} (hb 
 
 /-- The frames of `make`'s core phase: the call's configuration `M₀` with the instance `ι'`
 holding the handle table `T`, the handle objects `Hs` and the core store `cs`. -/
-def mkB (M₀ : Machine.Config (E3 P) Unit) (ι' : InstState) (T : Table HandleEntry)
+def mkB (M₀ : Machine.Config (E3 P) Unit) (ι' : InstState) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry)
     (Hs : List ResourceHandle) (cs : (E3 P).Store (CanonHost (E3 P))) : Machine.Config (E3 P) Unit :=
   { M₀ with
     store := { M₀.store with
@@ -258,7 +258,7 @@ def mkB (M₀ : Machine.Config (E3 P) Unit) (ι' : InstState) (T : Table HandleE
 
 /-- The table `T` extends `T₀`, and every entry not live in `T₀` is an own handle of
 representation `c`. -/
-def NewOwn (T₀ T : Table HandleEntry) (Hs : List ResourceHandle) (c : ℕ) : Prop :=
+def NewOwn (T₀ T : Silmaril.Wasm.Component.Runtime.Table HandleEntry) (Hs : List ResourceHandle) (c : ℕ) : Prop :=
   (∀ j e, T₀.get? j = some e → T.get? j = some e) ∧
   ∀ j e, T.get? j = some e → T₀.get? j = none →
     ∃ hid : HandleObjId, e = .resource hid ∧ Hs[hid.idx]? = some { rt := ⟨0⟩, rep := c, own := true }
@@ -269,14 +269,14 @@ def MkInv (M₀ : Machine.Config (E3 P) Unit) (ι' : InstState) (c : ℕ) (B : M
   ∃ T Hs cs, B = mkB M₀ ι' T Hs cs ∧ TabB T ∧ NewOwn ι'.handles T Hs c
 
 /-- The indices `make` may return: below `2^32` and not live at the start of the call. -/
-def Jmake (T₀ : Table HandleEntry) (j : ℕ) : Prop := j < 2 ^ 32 ∧ T₀.get? j = none
+def Jmake (T₀ : Silmaril.Wasm.Component.Runtime.Table HandleEntry) (j : ℕ) : Prop := j < 2 ^ 32 ∧ T₀.get? j = none
 
-theorem newOwn_refl (T₀ : Table HandleEntry) (Hs : List ResourceHandle) (c : ℕ) :
+theorem newOwn_refl (T₀ : Silmaril.Wasm.Component.Runtime.Table HandleEntry) (Hs : List ResourceHandle) (c : ℕ) :
     NewOwn T₀ T₀ Hs c :=
   ⟨fun _ _ h => h, fun _ _ h h' => absurd (h.symm.trans h') (by simp)⟩
 
 /-- An added handle keeps `NewOwn`. -/
-theorem newOwn_add {T₀ T T' : Table HandleEntry} {Hs : List ResourceHandle} {c i : ℕ}
+theorem newOwn_add {T₀ T T' : Silmaril.Wasm.Component.Runtime.Table HandleEntry} {Hs : List ResourceHandle} {c i : ℕ}
     (hn : NewOwn T₀ T Hs c) (hr : AddRes T T' (.resource ⟨Hs.length⟩) i) :
     NewOwn T₀ T' (Hs ++ [{ rt := ⟨0⟩, rep := c, own := true }]) c := by
   obtain ⟨hfresh, hnew, hframe, -⟩ := hr
@@ -383,9 +383,9 @@ theorem make_calloutsAns {prof : ProfileKind} {M₀ : Machine.Config (E3 P) Unit
 /-! ## Lifting the `own` result -/
 
 theorem lift_make_eq (cx : LiftLowerContext (E3 P)) (vi : FlatCursor) :
-    (liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults vi (resultTypes ftMake) :
+    (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatResults vi (resultTypes ftMake) :
       Canon.P (E3 P) Unit _) =
-      ptrType cx >>= fun p => liftFlatTypes Limits.spec Quirks.none cx p [.own ⟨0⟩] vi := by
+      ptrType cx >>= fun p => liftFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx p [.own ⟨0⟩] vi := by
   unfold liftFlatValues
   congr 1
   funext p
@@ -393,7 +393,7 @@ theorem lift_make_eq (cx : LiftLowerContext (E3 P)) (vi : FlatCursor) :
 
 /-- The program of `liftOwn` up to the removal from the table. -/
 theorem liftOwn_eq (cx : LiftLowerContext (E3 P)) (rt : RtId) (i : ℕ) :
-    (liftOwn Limits.spec cx rt i : Canon.P (E3 P) Unit ℕ) =
+    (liftOwn Silmaril.Wasm.Component.Limits.spec cx rt i : Canon.P (E3 P) Unit ℕ) =
       handlesRemove cx.inst i >>= fun e => (expectResource e >>= fun hid => getResHandle hid >>=
         fun h => trapIf (h.rt != rt) .resourceTypeMismatch >>= fun _ =>
           trapIf (h.numLends != 0) .ownLent >>= fun _ => trapIf (!h.own) .notOwnHandle >>=
@@ -408,7 +408,7 @@ theorem runs_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (
     (hins : m.store.insts = [ι₁])
     (hrem : ι₁.removeHandle? j = some (.resource hid, ι₂))
     (hH : ArenaField.resHandles.get? m.store hid = some { rt := ⟨0⟩, rep := c, own := true }) :
-    RunsQ (D P) th (liftFlatValues Limits.spec Quirks.none
+    RunsQ (D P) th (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake)) m
       [.tau, .tau, .tau, .tau] ([.own c], ⟨[.int .i32 (BitVec.ofNat 32 j)], 1⟩)
@@ -431,7 +431,7 @@ theorem runs_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (
     exact RunsQ.bind (runs_modifyStore _ _ rfl) (.pure _ _)
   have hH' : ArenaField.resHandles.get? { m.store with insts := [ι₂] } hid =
       some { rt := ⟨0⟩, rep := c, own := true } := hH
-  have hown : RunsQ (D P) th (liftOwn Limits.spec
+  have hown : RunsQ (D P) th (liftOwn Silmaril.Wasm.Component.Limits.spec
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) ⟨0⟩ j) m
       (([.tau] ++ ([.tau] ++ [])) ++ ([] ++ ([.tau] ++ ([] ++ ([] ++ ([] ++ []))))))
       c { m with store := { m.store with insts := [ι₂] } } := by
@@ -441,7 +441,7 @@ theorem runs_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (
         (RunsQ.bind (runs_trapIf rfl _ _) (RunsQ.bind (runs_trapIf rfl _ _) (.pure _ _))))))
   rw [lift_make_eq]
   have hjn : flatNat (.int .i32 (BitVec.ofNat 32 j)) = j := flatNat_i32 hj
-  have hat : ∀ p, RunsQ (D P) th (liftFlatAt Limits.spec Quirks.none
+  have hat : ∀ p, RunsQ (D P) th (liftFlatAt Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) p (.own ⟨0⟩)
       (.ofList [.int .i32 (BitVec.ofNat 32 j)])) m
       ([] ++ ((([.tau] ++ ([.tau] ++ [])) ++ ([] ++ ([.tau] ++ ([] ++ ([] ++ ([] ++ [])))))) ++ []))
@@ -450,11 +450,11 @@ theorem runs_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (
     intro p
     rw [liftFlatAt.eq_def]
     refine RunsQ.bind (RunsQ.pure _ _) ?_
-    show RunsQ _ _ (liftOwn Limits.spec _ ⟨0⟩ (flatNat (.int .i32 (BitVec.ofNat 32 j))) >>= _) _ _ _ _
+    show RunsQ _ _ (liftOwn Silmaril.Wasm.Component.Limits.spec _ ⟨0⟩ (flatNat (.int .i32 (BitVec.ofNat 32 j))) >>= _) _ _ _ _
     rw [hjn]
     exact RunsQ.bind hown (.pure _ _)
   refine RunsQ.get ?_
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store
+  show RunsQ _ _ (liftFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none _ (ptrTypeIn m.store
     ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))) [.own ⟨0⟩]
     (.ofList [.int .i32 (BitVec.ofNat 32 j)])) _ _ _ _
   unfold liftFlatTypes
@@ -468,7 +468,7 @@ theorem runs_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (
 theorem traps_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (E3 P) Unit}
     {ι₁ : InstState} {j : ℕ} (hj : j < 2 ^ 32) (hins : m.store.insts = [ι₁])
     (hrem : ι₁.removeHandle? j = none) :
-    ∃ tr mT, TrapsQ (D P) th (liftFlatValues Limits.spec Quirks.none
+    ∃ tr mT, TrapsQ (D P) th (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake)) m tr mT := by
   have hgi : ArenaField.insts.get? m.store ⟨0⟩ = some ι₁ := by
@@ -478,7 +478,7 @@ theorem traps_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config 
     refine TrapsQ.bind (runs_getObj ArenaField.insts _ m hgi) ?_
     rw [hrem]
     exact TrapsQ.trap _ (isTrap_trap _)
-  have h₂ : TrapsQ (D P) th (liftOwn Limits.spec
+  have h₂ : TrapsQ (D P) th (liftOwn Silmaril.Wasm.Component.Limits.spec
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)) ⟨0⟩ j) m
       ([.tau] ++ []) m := by
     rw [liftOwn_eq]
@@ -486,7 +486,7 @@ theorem traps_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config 
   have hjn : flatNat (.int .i32 (BitVec.ofNat 32 j)) = j := flatNat_i32 hj
   rw [lift_make_eq]
   exact ⟨_, _, TrapsQ.bind (RunsQ.get (RunsQ.pure _ _)) (by
-    show TrapsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store
+    show TrapsQ _ _ (liftFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none _ (ptrTypeIn m.store
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))) [.own ⟨0⟩]
       (.ofList [.int .i32 (BitVec.ofNat 32 j)])) _ _ _
     unfold liftFlatTypes

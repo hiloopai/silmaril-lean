@@ -487,7 +487,7 @@ def emit (p : Plan) : Except String XAst := do
   let hookModIdx := nA + 1
   let shimModIdx := nA + 1 + (if hook then 1 else 0)
   let fixupModIdx := shimModIdx + 1
-  let go : StateT Idx EM Unit := do
+  let go : StateT Silmaril.Wasm.JcoTool.NewI.Idx EM Unit := do
     addSec (.sec (.coreModule p.core))
     for a in p.adapters do addSec (.sec (.coreModule a.gc.bytes))
     if hook then addSec (.sec (.coreModule (← (hookModule p.hooks : Except String _))))
@@ -616,7 +616,7 @@ def emit (p : Plan) : Except String XAst := do
       else pure 0
     -- a function of the main module (`none`) or of adapter `k`, through its task hook wrapper
     -- when it has one
-    let fnIn (who : Option Nat) (n : String) : StateT Idx EM Nat :=
+    let fnIn (who : Option Nat) (n : String) : StateT Silmaril.Wasm.JcoTool.NewI.Idx EM Nat :=
       let (iname, inst) := match who with
         | some k => (s!"adapter{k}", adInst[k]!)
         | none => ("main", main)
@@ -652,12 +652,12 @@ def emit (p : Plan) : Except String XAst := do
       let nMods := 1 + nA + (if hook then 1 else 0) + (if shim then 2 else 0)
       let _ ← coreInst (.instantiate nMods [("main", main)])
     -- lifts
-    let liftOne (im : Impl) (ty : Nat) : StateT Idx EM Nat := do
+    let liftOne (im : Impl) (ty : Nat) : StateT Silmaril.Wasm.JcoTool.NewI.Idx EM Nat := do
       let inst := match im.by_ with
         | some a => adInst[a]!
         | none => main
       let _ := inst
-      let fnOf (n : String) : StateT Idx EM Nat := fnIn im.by_ n
+      let fnOf (n : String) : StateT Silmaril.Wasm.JcoTool.NewI.Idx EM Nat := fnIn im.by_ n
       let raName := match im.by_ with
         | some a => p.adExpRa[a]!
         | none => p.mainExpRa

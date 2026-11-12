@@ -55,7 +55,7 @@ def adaptorBytes (md : Meta) : Except String ByteArray := do
 structure Plan where
   md : Meta
   mod : CoreMod
-  exports : List Func
+  exports : List Silmaril.Wasm.Wit.Binary.Func
 
 /-- **The plan** of a C-convention module against a world. -/
 def planAdaptor (core : ByteArray) (w : World) (alloc : String) : Except String Plan := do

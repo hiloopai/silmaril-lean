@@ -40,7 +40,7 @@ theorem getElem?_hybridGlue (rs : List (Option Nat)) (G : List Impl) (k : Nat) :
   · next h => rw [List.getElem?_range h]; rfl
   · next h => rw [List.getElem?_eq_none (by simpa using Nat.le_of_not_lt h)]; rfl
 
-/-- **The flat form of a hybrid wrapper.** Export `k` (with `k < rs.length`) is
+/-- **The flat form of a hybrid wrapper.** Silmaril.Wasm.Component.Export `k` (with `k < rs.length`) is
 `hybridAt` of the recognition `rs[k]` and the glue `G[k]`. -/
 theorem flatten_wrapGlue_hybrid (s : Style) (w : World) (m : M) (args : List Impl)
     (rs : List (Option Nat)) (G : List Impl) (hrs : rs.length = w.exports.length) :

@@ -40,7 +40,7 @@ namespace DecodeEnc
 /-! ## The fragment -/
 
 /-- A primitive value type. -/
-def PrimTy (t : Ty) : Prop := ∃ p, t = .prim p
+def PrimTy (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop := ∃ p, t = .prim p
 
 /-- A function type over primitive value types. -/
 def PrimSig (s : Sig) : Prop := (∀ p ∈ s.params, PrimTy p.2) ∧ ∀ t ∈ s.result, PrimTy t
@@ -49,12 +49,12 @@ def PrimSig (s : Sig) : Prop := (∀ p ∈ s.params, PrimTy p.2) ∧ ∀ t ∈ s
 def PrimFns (es : Externs) : Prop := ∀ p ∈ es, ∃ s, p.2 = .func s ∧ PrimSig s
 
 /-- The encoding of a primitive value type. -/
-def vt : Ty → ValType
+def vt : Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Component.Binary.ValType
   | .prim p => .prim p
   | _ => .idx 0
 
 /-- The function type the encoder defines for a signature over primitives. -/
-def ft (s : Sig) : FuncType := ⟨s.params.map (fun p => (p.1, vt p.2)), s.result.map vt, s.async⟩
+def ft (s : Sig) : Silmaril.Wasm.Component.Binary.FuncType := ⟨s.params.map (fun p => (p.1, vt p.2)), s.result.map vt, s.async⟩
 
 /-! ## The `Except` monad -/
 
@@ -66,7 +66,7 @@ attribute [local simp] ok_bind pure_ok Except.map_ok
 
 /-! ## The encoder -/
 
-theorem paramTys_run (σ : Scope) : ∀ (ps : List (String × Ty)), (∀ p ∈ ps, PrimTy p.2) →
+theorem paramTys_run (σ : Scope) : ∀ (ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)), (∀ p ∈ ps, PrimTy p.2) →
     (paramTys ps).run σ = .ok (ps.map (fun p => (p.1, vt p.2)), σ)
   | [], _ => rfl
   | (n, t) :: ps, h => by
@@ -75,7 +75,7 @@ theorem paramTys_run (σ : Scope) : ∀ (ps : List (String × Ty)), (∀ p ∈ p
     rw [e]
     simp [paramTys, valTy, vt, ih]
 
-theorem valTyOpt_run (σ : Scope) : ∀ (r : Option Ty), (∀ t ∈ r, PrimTy t) →
+theorem valTyOpt_run (σ : Scope) : ∀ (r : Option Silmaril.Wasm.Wit.Binary.Ty), (∀ t ∈ r, PrimTy t) →
     (valTyOpt r).run σ = .ok (r.map vt, σ)
   | none, _ => rfl
   | some t, h => by
@@ -104,8 +104,8 @@ theorem typeAt_run {δ : DScope} {i : Nat} {t : TInfo} (h : δ.types[i]? = some 
     (typeAt i).run δ = .ok (t, δ) := by
   simp [typeAt, h]
 
-theorem mapM_run {g : String × ValType → DM (String × Ty)} {δ : DScope} :
-    ∀ (ps : List (String × Ty)), (∀ p ∈ ps, (g (p.1, vt p.2)).run δ = .ok (p, δ)) →
+theorem mapM_run {g : String × Silmaril.Wasm.Component.Binary.ValType → DM (String × Silmaril.Wasm.Wit.Binary.Ty)} {δ : DScope} :
+    ∀ (ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)), (∀ p ∈ ps, (g (p.1, vt p.2)).run δ = .ok (p, δ)) →
       (List.mapM g (ps.map fun p => (p.1, vt p.2))).run δ = .ok (ps, δ)
   | [], _ => rfl
   | p :: ps, h => by
@@ -116,7 +116,7 @@ theorem mapM_run {g : String × ValType → DM (String × Ty)} {δ : DScope} :
     rfl
 
 theorem decFunc_ft {s : Sig} (hs : PrimSig s) (δ : DScope) : (decFunc (ft s)).run δ = .ok (s, δ) := by
-  have hp : (List.mapM (fun p : String × ValType => do let x ← decVal p.2; pure (p.1, x))
+  have hp : (List.mapM (fun p : String × Silmaril.Wasm.Component.Binary.ValType => do let x ← decVal p.2; pure (p.1, x))
       ((ft s).params)).run δ = .ok (s.params, δ) :=
     mapM_run s.params fun p hp' => by
       obtain ⟨q, e⟩ : PrimTy p.2 := hs.1 p hp'

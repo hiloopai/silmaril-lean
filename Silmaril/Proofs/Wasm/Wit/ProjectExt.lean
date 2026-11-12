@@ -17,7 +17,7 @@ namespace Silmaril.Wasm.Wit.Project
 
 open Silmaril.Wasm.Component.Binary
 
-theorem step_withDesc (s : PState) (e : Export) (d : ExternDesc) (h : exportDesc e = some d) :
+theorem step_withDesc (s : PState) (e : Silmaril.Wasm.Component.Binary.Export) (d : ExternDesc) (h : exportDesc e = some d) :
     step s (.exports [{ e with desc := some d }]) = step s (.exports [e]) := by
   have h2 : exportDesc { e with desc := some d } = some d := rfl
   simp only [step, h, h2]
@@ -36,7 +36,7 @@ theorem stepX_types (x : XState) (hh : x.hoisted = []) (rest : List Section) (t 
   simp only [stepX, hr, Bool.false_eq_true, ite_false, hp, Option.map_some]
   exact ⟨_, rfl, rfl, by rw [track_hoisted, hh]⟩
 
-theorem stepX_exports (x : XState) (hh : x.hoisted = []) (rest : List Section) (e : Export)
+theorem stepX_exports (x : XState) (hh : x.hoisted = []) (rest : List Section) (e : Silmaril.Wasm.Component.Binary.Export)
     (p : PState) (hp : step x.base (.exports [e]) = some p) :
     ∃ y, stepX x rest (.exports [e]) = some y ∧ y.base = p ∧ y.hoisted = [] := by
   obtain ⟨d, hd⟩ : ∃ d, exportDesc e = some d := by

@@ -239,7 +239,7 @@ theorem item_tyNom {N : NomTable} {Γ : Ctx} {n : String} {d : Nominal} (hn : Γ
 
 /-- The value type `v` the encoder returns for a type that is neither primitive nor a
 named reference is an index defining that type. -/
-theorem decVal_idx_of {δ : DScope} {v : ValType} {t : Ty} (h : DecVal δ v t) (hp : Plain t)
+theorem decVal_idx_of {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecVal δ v t) (hp : Plain t)
     (hnp : ∀ p, t ≠ .prim p) : ∃ j, v = .idx j ∧ δ.types[j]? = some (.val t) := by
   have h0 : (decVal v).run δ = .ok (t, δ) := h δ (ext_refl δ)
   cases v with
@@ -252,28 +252,28 @@ theorem decVal_idx_of {δ : DScope} {v : ValType} {t : Ty} (h : DecVal δ v t) (
       cases x with
       | val t' => simp_all [decVal, typeAt]
       | res r =>
-        have e : Ty.own ⟨.local, r⟩ = t := by simpa [decVal, typeAt, hj] using h0
-        have h' : Plain (Ty.own ⟨.local, r⟩) := e ▸ hp
+        have e : Silmaril.Wasm.Wit.Binary.Ty.own ⟨.local, r⟩ = t := by simpa [decVal, typeAt, hj] using h0
+        have h' : Plain (Silmaril.Wasm.Wit.Binary.Ty.own ⟨.local, r⟩) := e ▸ hp
         exact h'.elim
       | resAlias a r =>
-        have e : Ty.ref ⟨.local, a⟩ = t := by simpa [decVal, typeAt, hj] using h0
-        have h' : Plain (Ty.ref ⟨.local, a⟩) := e ▸ hp
+        have e : Silmaril.Wasm.Wit.Binary.Ty.ref ⟨.local, a⟩ = t := by simpa [decVal, typeAt, hj] using h0
+        have h' : Plain (Silmaril.Wasm.Wit.Binary.Ty.ref ⟨.local, a⟩) := e ▸ hp
         exact h'.elim
       | _ => simp [decVal, typeAt, hj] at h0
 
 /-- The definiens of an anonymous type item, defined anew (`freshVal`). -/
-def FreshOk (N : NomTable) (Γ : Ctx) (t : Ty) : Prop :=
+def FreshOk (N : NomTable) (Γ : Ctx) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
   ∀ σ δ, M N Γ σ δ → VS N Γ (freshVal t) σ δ
     (fun o δ' => ∃ j, o = some j ∧ δ'.types[j]? = some (.val t))
 
-theorem fresh_def {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {d : DefValType} {t : Ty}
+theorem fresh_def {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty}
     (hm : M N Γ σ δ) (hd : DecDef δ d t) :
     VS N Γ (do pure (some (← defTy (.val d)))) σ δ
       (fun o δ' => ∃ j, o = some j ∧ δ'.types[j]? = some (.val t)) :=
   vs_bind (defTy_val_sim hm hd) fun j _ _ hm2 _ hj => vs_pure hm2 ⟨j, rfl, hj⟩
 
 /-- **Every anonymous type of the fragment is defined anew** by `freshVal`. -/
-theorem freshVal_sim {N : NomTable} {Γ : Ctx} {t : Ty} (ht : TyOk Γ t)
+theorem freshVal_sim {N : NomTable} {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOk Γ t)
     (hanon : ∀ p, t ≠ .prim p) (hb : ∀ r, t ≠ .borrow r) (hp : Plain t) : FreshOk N Γ t := by
   intro σ δ hm
   cases ht with

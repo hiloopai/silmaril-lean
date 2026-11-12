@@ -191,7 +191,7 @@ theorem parTys_run (u : UIface) : ∀ (ps : List (String × UPar)) (X : List TIn
 
 theorem parVals_mapM (u : UIface) : ∀ (ps : List (String × UPar)) (c : Nat) (δ : DScope),
     (∀ i (h : i < ps.length), δ.types[c + i]? = some (.val (ps[i].2.rd u))) →
-    ((parVals c ps).mapM fun (p : String × ValType) => Prod.mk p.1 <$> decVal p.2).run δ =
+    ((parVals c ps).mapM fun (p : String × Silmaril.Wasm.Component.Binary.ValType) => Prod.mk p.1 <$> decVal p.2).run δ =
       .ok (ps.map fun p => (p.1, p.2.rd u), δ)
   | [], c, δ, _ => by simp [parVals]
   | (x, p) :: ps, c, δ, h => by

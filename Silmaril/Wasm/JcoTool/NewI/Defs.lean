@@ -70,7 +70,7 @@ def plainName (n : String) : String :=
       | none => n
 
 /-- A function's name in the plain form. -/
-def fname (f : Func) : String := plainName f.mangled
+def fname (f : Silmaril.Wasm.Wit.Binary.Func) : String := plainName f.mangled
 
 def plainExt (e : ExternName) : ExternName := { e with name := plainName e.name }
 
@@ -121,7 +121,7 @@ def worldTypes (wf : WorldFull) : List TypeDef :=
     | _ => none
 
 /-- The world-level functions (imported or exported). -/
-def worldFuncs (items : List DItem) : List Func :=
+def worldFuncs (items : List DItem) : List Silmaril.Wasm.Wit.Binary.Func :=
   items.filterMap fun
     | .func f => some f
     | _ => none
@@ -156,13 +156,13 @@ def refKey (sc : Scope) (r : TyRef) : Scope × String :=
 /-- An exported or imported function of a scope. -/
 structure Fn where
   sc : Scope
-  f : Func
+  f : Silmaril.Wasm.Wit.Binary.Func
 
 /-- What a core import of the module asks for. -/
 inductive IReq where
   /-- `canon lower` of the component function `fidx` (`async`: `[async-lower]`). -/
-  | lower (fidx : Nat) (sc : Scope) (f : Func) (async : Bool)
-  | taskReturn (sc : Scope) (f : Func)
+  | lower (fidx : Nat) (sc : Scope) (f : Silmaril.Wasm.Wit.Binary.Func) (async : Bool)
+  | taskReturn (sc : Scope) (f : Silmaril.Wasm.Wit.Binary.Func)
   /-- A resource built-in of the resource `(scope, name)`. -/
   | resNew (r : Scope × String)
   | resRep (r : Scope × String)
@@ -170,14 +170,14 @@ inductive IReq where
   resource is the imported one even when the interface is also exported. -/
   | resDrop (r : Scope × String) (exported : Bool)
   /-- A stream or future built-in of a function of scope `sc`. -/
-  | chan (op : ChanOp) (async : Bool) (sc : Scope) (c : Chan) (f : Func)
+  | chan (op : ChanOp) (async : Bool) (sc : Scope) (c : Chan) (f : Silmaril.Wasm.Wit.Binary.Func)
   /-- A scope-free built-in of `New` (task.cancel, waitable sets, context, error-context, …). -/
   | gen (r : New.Req)
 
 instance : Inhabited IReq := ⟨.gen .taskCancel⟩
 
 /-- A stream or future operation `[stream-<op>-N]f` of a function in `fs`. -/
-def chanReq (async : Bool) (sc : Scope) (fs : List Func) (s : String) :
+def chanReq (async : Bool) (sc : Scope) (fs : List Silmaril.Wasm.Wit.Binary.Func) (s : String) :
     Except String (Option IReq) := do
   let named := fs.map fun f => { f with name := fname f }
   match ← New.chanReq async named s with
@@ -222,7 +222,7 @@ def classify (wf : WorldFull) (tb : Tables) (modName name : String) : Except Str
     | none => (false, name)
   let imps := worldFuncs wf.imports
   let exps := worldFuncs wf.exports
-  let lowerIn (sc : Scope) (fs : List Func) (n : String) : Option IReq :=
+  let lowerIn (sc : Scope) (fs : List Silmaril.Wasm.Wit.Binary.Func) (n : String) : Option IReq :=
     match fs.find? (fname · == n), lookupIdx (sc, n) tb.funcIdx with
     | some f, some i => some (.lower i sc f async)
     | _, _ => none
@@ -309,7 +309,7 @@ end
 structure XFn where
   sc : Scope
   core : String
-  f : Func
+  f : Silmaril.Wasm.Wit.Binary.Func
 
 /-- The exported functions: world-level (`f`), then each exported interface's (`key#f`). -/
 def exportFns (wf : WorldFull) : List XFn :=
@@ -482,11 +482,11 @@ def at? (lm : List Nat) (i : Nat) : Except String Nat :=
   | some j => pure j
   | none => throw s!"instance type: type index {i} out of bounds"
 
-def remapV (lm : List Nat) : ValType → Except String ValType
+def remapV (lm : List Nat) : Silmaril.Wasm.Component.Binary.ValType → Except String Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .idx i => .idx <$> at? lm i
 
-def remapO (lm : List Nat) : Option ValType → Except String (Option ValType)
+def remapO (lm : List Nat) : Option Silmaril.Wasm.Component.Binary.ValType → Except String (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some v => some <$> remapV lm v
 
@@ -579,7 +579,7 @@ def cbDef (d : DefType) : CBM Nat := do
 mutual
 /-- A WIT type in the shim component: a named type by its index there, or defined
 structurally (with the definitions it needs) when the shim has none for it yet. -/
-def cbTy (wf : WorldFull) : Nat → Scope → Ty → CBM ValType
+def cbTy (wf : WorldFull) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → CBM Silmaril.Wasm.Component.Binary.ValType
   | 0, _, _ => throw "type nesting too deep"
   | fuel + 1, sc, t => match t with
     | .prim p => pure (.prim p)
@@ -611,7 +611,7 @@ def cbTy (wf : WorldFull) : Nat → Scope → Ty → CBM ValType
       let v' ← cbTy wf fuel sc v
       .idx <$> cbDef (.val (.map k' v'))
     | .fixedList t n => do .idx <$> cbDef (.val (.fixedList (← cbTy wf fuel sc t) n))
-def cbOpt (wf : WorldFull) : Nat → Scope → Option Ty → CBM (Option ValType)
+def cbOpt (wf : WorldFull) : Nat → Scope → Option Silmaril.Wasm.Wit.Binary.Ty → CBM (Option Silmaril.Wasm.Component.Binary.ValType)
   | _, _, none => pure none
   | fuel, sc, some t => some <$> cbTy wf fuel sc t
 /-- The structural definition of a named type's kind in the shim component. -/
@@ -755,7 +755,7 @@ def shimComp (wf : WorldFull) (sc : Scope) (ds : List InstanceDecl) :
 
 mutual
 /-- A resolved WIT type as a top-level value type: named types through `names`. -/
-def valType (names : List ((Scope × String) × Nat)) (sc : Scope) : Ty → TyM ValType
+def valType (names : List ((Scope × String) × Nat)) (sc : Scope) : Silmaril.Wasm.Wit.Binary.Ty → TyM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .ref r => match lookupIdx (refKey sc r) names with
     | some i => pure (.idx i)
@@ -774,10 +774,10 @@ def valType (names : List ((Scope × String) × Nat)) (sc : Scope) : Ty → TyM 
   | .future t => do intern (.future (← optType names sc t))
   | .map k v => do intern (.map (← valType names sc k) (← valType names sc v))
   | .fixedList t n => do intern (.fixedList (← valType names sc t) n)
-def optType (names : List ((Scope × String) × Nat)) (sc : Scope) : Option Ty → TyM (Option ValType)
+def optType (names : List ((Scope × String) × Nat)) (sc : Scope) : Option Silmaril.Wasm.Wit.Binary.Ty → TyM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => some <$> valType names sc t
-def valTypes (names : List ((Scope × String) × Nat)) (sc : Scope) : List Ty → TyM (List ValType)
+def valTypes (names : List ((Scope × String) × Nat)) (sc : Scope) : List Silmaril.Wasm.Wit.Binary.Ty → TyM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do
     let a ← valType names sc t
@@ -786,18 +786,18 @@ def valTypes (names : List ((Scope × String) × Nat)) (sc : Scope) : List Ty �
 end
 
 /-- The type of a stream or future. -/
-def chanTy : Chan → Ty
+def chanTy : Chan → Silmaril.Wasm.Wit.Binary.Ty
   | .stream t => .stream t
   | .future t => .future t
 
 /-- Run a type computation against the final type state (whose memo already holds it). -/
-def tyIdx (ts : TS) (m : TyM ValType) : Except String Nat :=
+def tyIdx (ts : TS) (m : TyM Silmaril.Wasm.Component.Binary.ValType) : Except String Nat :=
   match m.run ts with
   | .ok (.idx i, _) => pure i
   | .ok _ => throw "internal: not a defined type"
   | .error e => throw e
 
-def tyOpt (ts : TS) (m : TyM (Option ValType)) : Except String (Option ValType) :=
+def tyOpt (ts : TS) (m : TyM (Option Silmaril.Wasm.Component.Binary.ValType)) : Except String (Option Silmaril.Wasm.Component.Binary.ValType) :=
   match m.run ts with
   | .ok (r, _) => pure r
   | .error e => throw e

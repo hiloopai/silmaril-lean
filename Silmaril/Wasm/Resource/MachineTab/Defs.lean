@@ -39,11 +39,11 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Compon
 variable {E : CoreEngine} {σ : Type}
 
 /-- The handle table of instance `j`, empty if `j` is not an instance. -/
-def vtab (s : CStore E) (j : InstId) : Table HandleEntry := (handles? s j).getD Table.empty
+def vtab (s : CStore E) (j : InstId) : Silmaril.Wasm.Component.Runtime.Table HandleEntry := (handles? s j).getD Silmaril.Wasm.Component.Runtime.Table.empty
 
 /-- The handle table of `j` moves from `s` to `s'` through a successful table history. -/
 def TabMove (j : InstId) (s s' : CStore E) : Prop :=
-  ∃ evs, Table.Steps (vtab s j) evs (vtab s' j)
+  ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps (vtab s j) evs (vtab s' j)
 
 /-- The stores whose table of `j` is reached from that of `s₀` by a successful history. -/
 def TabFrom (j : InstId) (s₀ : CStore E) (s : CStore E) : Prop := TabMove j s₀ s

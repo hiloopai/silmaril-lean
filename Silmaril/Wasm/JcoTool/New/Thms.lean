@@ -39,8 +39,8 @@ theorem bind_ok {ε α β : Type} {x : Except ε α} {f : α → Except ε β} {
   | error e => cases h
   | ok a => exact ⟨a, rfl, h⟩
 
-/-- Export `f` is implemented by the module at the canonical core type. -/
-inductive LiftOk (m : CoreMod) (f : Func) : Lift → Prop
+/-- Silmaril.Wasm.Component.Binary.Export `f` is implemented by the module at the canonical core type. -/
+inductive LiftOk (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) : Lift → Prop
   | sync (t : CoreFuncTy) (pr : Option String) :
       f.async = false → liftCore f = .ok t → coreExport? m f.name = some t →
       LiftOk m f (.sync f.name pr)
@@ -69,7 +69,7 @@ theorem require_ok {b : Bool} {msg : String} {u : Unit} (h : require b msg = .ok
   · cases h
   · rfl
 
-theorem postReturn_ok {m : CoreMod} {f : Func} {t : CoreFuncTy} {l : Lift}
+theorem postReturn_ok {m : CoreMod} {f : Silmaril.Wasm.Wit.Binary.Func} {t : CoreFuncTy} {l : Lift}
     (h : postReturn m f t = .ok l) : ∃ pr, l = .sync f.name pr := by
   unfold postReturn at h
   split at h
@@ -80,14 +80,14 @@ theorem postReturn_ok {m : CoreMod} {f : Func} {t : CoreFuncTy} {l : Lift}
   · cases h
     exact ⟨_, rfl⟩
 
-theorem liftSync_ok {m : CoreMod} {f : Func} {l : Lift} (ha : f.async = false)
+theorem liftSync_ok {m : CoreMod} {f : Silmaril.Wasm.Wit.Binary.Func} {l : Lift} (ha : f.async = false)
     (h : liftSync m f = .ok l) : LiftOk m f l := by
   obtain ⟨t, ht, h₁⟩ := bind_ok h
   obtain ⟨_, he, h₂⟩ := bind_ok h₁
   obtain ⟨pr, rfl⟩ := postReturn_ok h₂
   exact .sync t pr ha ht (expectExport_ok he)
 
-theorem liftCallback_ok {m : CoreMod} {f : Func} {l : Lift} (ha : f.async = true)
+theorem liftCallback_ok {m : CoreMod} {f : Silmaril.Wasm.Wit.Binary.Func} {l : Lift} (ha : f.async = true)
     (h : liftCallback m f = .ok l) : LiftOk m f l := by
   obtain ⟨t, ht, h₁⟩ := bind_ok h
   obtain ⟨_, he, h₂⟩ := bind_ok h₁
@@ -95,7 +95,7 @@ theorem liftCallback_ok {m : CoreMod} {f : Func} {l : Lift} (ha : f.async = true
   cases h₃
   exact .callback t ha ht (expectExport_ok he) (expectExport_ok hc)
 
-theorem liftStackful_ok {m : CoreMod} {f : Func} {l : Lift} (ha : f.async = true)
+theorem liftStackful_ok {m : CoreMod} {f : Silmaril.Wasm.Wit.Binary.Func} {l : Lift} (ha : f.async = true)
     (h : liftStackful m f = .ok l) : LiftOk m f l := by
   obtain ⟨t, ht, h₁⟩ := bind_ok h
   obtain ⟨_, he, h₂⟩ := bind_ok h₁
@@ -103,7 +103,7 @@ theorem liftStackful_ok {m : CoreMod} {f : Func} {l : Lift} (ha : f.async = true
   exact .stackful t ha ht (expectExport_ok he)
 
 /-- `liftOf` is sound for `LiftOk`. -/
-theorem liftOf_ok {m : CoreMod} {f : Func} {l : Lift} (h : liftOf m f = .ok l) : LiftOk m f l := by
+theorem liftOf_ok {m : CoreMod} {f : Silmaril.Wasm.Wit.Binary.Func} {l : Lift} (h : liftOf m f = .ok l) : LiftOk m f l := by
   unfold liftOf at h
   cases ha : f.async
   · rw [ha] at h
@@ -115,11 +115,11 @@ theorem liftOf_ok {m : CoreMod} {f : Func} {l : Lift} (h : liftOf m f = .ok l) :
 
 /-- Core import `x` (module and field name, and core type) is the request `y.2` at its
 canonical type. -/
-def ReqOk (imps exps : List Func) (x : (String × String) × (String × CoreFuncTy))
+def ReqOk (imps exps : List Silmaril.Wasm.Wit.Binary.Func) (x : (String × String) × (String × CoreFuncTy))
     (y : (String × String) × Req) : Prop :=
   y.1 = x.1 ∧ classify imps exps x.1.1 x.1.2 = .ok y.2 ∧ y.2.coreTy = .ok x.2.2
 
-theorem reqOf_ok {imps exps : List Func} {x : (String × String) × (String × CoreFuncTy)}
+theorem reqOf_ok {imps exps : List Silmaril.Wasm.Wit.Binary.Func} {x : (String × String) × (String × CoreFuncTy)}
     {y : (String × String) × Req} (h : reqOf imps exps x = .ok y) : ReqOk imps exps x y := by
   obtain ⟨r, hr, h₁⟩ := bind_ok h
   obtain ⟨t', ht', h₂⟩ := bind_ok h₁

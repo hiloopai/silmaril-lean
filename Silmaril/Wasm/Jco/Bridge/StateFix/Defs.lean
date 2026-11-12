@@ -102,7 +102,7 @@ def LiftTotal (md : Meta) (m : SMod σ) : Prop :=
 /-- One world function `f : () -> u32`. -/
 def bumpMeta : Meta := ⟨[⟨"f", [], some (.val .u32)⟩], "alloc"⟩
 
-/-- Export `f` returns no value in state `false` (its result does not lift) and moves to `true`;
+/-- Silmaril.Wasm.Component.Export `f` returns no value in state `false` (its result does not lift) and moves to `true`;
 in state `true` it returns `7`. -/
 def bumpMod : SMod Bool where
   exports := [("f", ⟨[], [.int .i32]⟩)]

@@ -53,7 +53,7 @@ theorem decode_encode_anon {is es : Externs} (his : AnonFns is) (hes : AnonFns e
   · obtain ⟨s, e, -⟩ := hes (a, b) hab; rw [show b = .func s from e]
   · obtain ⟨s, e, -⟩ := hes (a, b) hab; rw [show b = .func s from e]
 
-theorem anon_of_prim {t : Ty} (h : DecodeEnc.PrimTy t) : Anon t := by
+theorem anon_of_prim {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecodeEnc.PrimTy t) : Anon t := by
   obtain ⟨p, rfl⟩ := h
   exact .prim p
 

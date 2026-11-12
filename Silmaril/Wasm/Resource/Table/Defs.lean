@@ -39,18 +39,18 @@ namespace Silmaril.Wasm.Resource
 open Silmaril.Wasm.Component.Runtime
 
 /-- A successful table operation as a handle event. -/
-def tableEv {α : Type} : Table.Event α → HEv ℕ
+def tableEv {α : Type} : Silmaril.Wasm.Component.Runtime.Table.Event α → HEv ℕ
   | .added i _ => .alloc i
   | .got i _ => .use i
   | .removed i _ => .free i
 
 /-- The representation invariant used here: free-stack entries are empty slots, without
 duplicates. -/
-def FreeOK {α : Type} (t : Table α) : Prop :=
+def FreeOK {α : Type} (t : Silmaril.Wasm.Component.Runtime.Table α) : Prop :=
   (∀ j ∈ t.free, t.array[j]? = some none) ∧ t.free.Nodup
 
 /-- The protocol state `L` lists exactly the valid indices of the table, without duplicates. -/
-def TabRel {α : Type} (L : List ℕ) (t : Table α) : Prop :=
+def TabRel {α : Type} (L : List ℕ) (t : Silmaril.Wasm.Component.Runtime.Table α) : Prop :=
   L.Nodup ∧ ∀ i, i ∈ L ↔ (t.get? i).isSome
 
 end Silmaril.Wasm.Resource

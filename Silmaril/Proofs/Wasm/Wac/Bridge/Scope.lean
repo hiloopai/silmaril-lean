@@ -102,7 +102,7 @@ theorem Pres.map' {α β : Type} {m : TM α} (f : α → β) (hm : Pres m) : Pre
   Pres.bind hm fun _ => Pres.pure _
 
 mutual
-theorem Pres.valTy : (t : Ty) → Pres (Bridge.valTy t)
+theorem Pres.valTy : (t : Silmaril.Wasm.Wit.Binary.Ty) → Pres (Bridge.valTy t)
   | .prim _ => by unfold Bridge.valTy; exact Pres.pure _
   | .ref r => by
     unfold Bridge.valTy
@@ -124,10 +124,10 @@ theorem Pres.valTy : (t : Ty) → Pres (Bridge.valTy t)
   | .borrow _ => by unfold Bridge.valTy; exact Pres.bind (Pres.namedTy _) fun _ => Pres.handle _ _
   | .future t => by unfold Bridge.valTy; exact Pres.bind (Pres.valTyOpt t) fun _ => Pres.defVal _
   | .stream t => by unfold Bridge.valTy; exact Pres.bind (Pres.valTyOpt t) fun _ => Pres.defVal _
-theorem Pres.valTyOpt : (t : Option Ty) → Pres (Bridge.valTyOpt t)
+theorem Pres.valTyOpt : (t : Option Silmaril.Wasm.Wit.Binary.Ty) → Pres (Bridge.valTyOpt t)
   | none => by unfold Bridge.valTyOpt; exact Pres.pure _
   | some t => by unfold Bridge.valTyOpt; exact Pres.bind (Pres.valTy t) fun _ => Pres.pure _
-theorem Pres.valTys : (ts : List Ty) → Pres (Bridge.valTys ts)
+theorem Pres.valTys : (ts : List Silmaril.Wasm.Wit.Binary.Ty) → Pres (Bridge.valTys ts)
   | [] => by unfold Bridge.valTys; exact Pres.pure _
   | t :: ts => by
     unfold Bridge.valTys
@@ -141,7 +141,7 @@ theorem Pres.mapM {α β : Type} {f : α → TM β} (hf : ∀ a, Pres (f a)) :
     rw [List.mapM_cons]
     exact Pres.bind (hf x) fun _ => Pres.bind (Pres.mapM hf xs) fun _ => Pres.pure _
 
-theorem Pres.paramTys : (ps : List (String × Ty)) → Pres (Bridge.paramTys ps)
+theorem Pres.paramTys : (ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)) → Pres (Bridge.paramTys ps)
   | [] => by unfold Bridge.paramTys; exact Pres.pure _
   | (_, t) :: ps => by
     unfold Bridge.paramTys
@@ -180,7 +180,7 @@ theorem Pres.nominalTy (d : Nominal) : Pres (Bridge.nominalTy d) := by
   | enum _ => unfold Bridge.nominalTy; exact Pres.defTy _
   | flags _ => unfold Bridge.nominalTy; exact Pres.defTy _
 
-theorem Pres.freshVal (t : Ty) : Pres (Bridge.freshVal t) := by
+theorem Pres.freshVal (t : Silmaril.Wasm.Wit.Binary.Ty) : Pres (Bridge.freshVal t) := by
   cases t with
   | list t | option t => unfold Bridge.freshVal; exact Pres.bind (Pres.valTy t) fun _ => Pres.bind (Pres.defTy _) fun _ => Pres.pure _
   | fixedList t n => unfold Bridge.freshVal; exact Pres.bind (Pres.valTy t) fun _ => Pres.bind (Pres.defTy _) fun _ => Pres.pure _
@@ -194,7 +194,7 @@ theorem Pres.freshVal (t : Ty) : Pres (Bridge.freshVal t) := by
   | future t | stream t => unfold Bridge.freshVal; exact Pres.bind (Pres.valTyOpt t) fun _ => Pres.bind (Pres.defTy _) fun _ => Pres.pure _
   | _ => unfold Bridge.freshVal; exact Pres.pure _
 
-theorem Pres.typeBound_value (t : Ty) : Pres (Bridge.typeBound (.value t)) := by
+theorem Pres.typeBound_value (t : Silmaril.Wasm.Wit.Binary.Ty) : Pres (Bridge.typeBound (.value t)) := by
   unfold Bridge.typeBound
   refine Pres.bind Pres.get fun s => ?_
   split
@@ -279,7 +279,7 @@ def isTypeDesc : ExternDesc → Prop
   | .type _ => True
   | _ => False
 
-theorem Ret.typeBound_value (t : Ty) : Ret isTypeDesc (Bridge.typeBound (.value t)) := by
+theorem Ret.typeBound_value (t : Silmaril.Wasm.Wit.Binary.Ty) : Ret isTypeDesc (Bridge.typeBound (.value t)) := by
   unfold Bridge.typeBound
   refine Ret.bind fun s => ?_
   split

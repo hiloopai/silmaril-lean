@@ -53,17 +53,17 @@ theorem sreadC_block {s : Store H} {f : Frame} {bt : BlockType} {body : List Ins
     SRead EB (configV hn ⟨s, f, vals vs ++ [.plain (.block bt body)]⟩)
       (adminsToV [.label t₂.length [] (vals vs ++ expression body)]) := by
   have T : TypingFacts EB hn := Typing.typingFacts_simEnv _ hn
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   obtain ⟨T₁, T₂, hl₁, hl₂, h₁, h₂, hb⟩ := Round5.Fwd.blocktypeB (Round5.Int.typesB _) s f hM bt t₁ t₂ hbt
   have hv : TypedV EB valsT (.list (adminsToV (vals vs))) := typedV_vals_prefix T h
   have hblk : TypedV EB instrT (adminToV (.plain (.block bt body))) :=
     typedV_code h (.plain (.block bt body)) (by simp)
-  obtain ⟨hbtT, hbody⟩ := Ty.blockInv _ _ hblk
+  obtain ⟨hbtT, hbody⟩ := Silmaril.Wasm.Validation.Ty.blockInv _ _ hblk
   have hw : (adminsToV (vals vs)).length = T₁.length := by
     rw [adminsToV_length, vals_length, hlen, hl₁]
   have key := sread_block (simEnv_readRules _).block (z := stateV hn s f)
-    (ws := adminsToV (vals vs)) (is := instrsToV body) hw hz (Ty.natM _) hv hbtT hbody
-    (Ty.nat _) h₁ h₂ hb
+    (ws := adminsToV (vals vs)) (is := instrsToV body) hw hz (Silmaril.Wasm.Validation.Ty.natM _) hv hbtT hbody
+    (Silmaril.Wasm.Validation.Ty.nat _) h₁ h₂ hb
   rw [hl₂] at key
   have e : adminsToV (vals vs ++ expression body) = adminsToV (vals vs) ++ instrsToV body := by
     rw [adminsToV_append, adminsToV_expression]
@@ -84,17 +84,17 @@ theorem sreadC_loop {s : Store H} {f : Frame} {bt : BlockType} {body : List Inst
     SRead EB (configV hn ⟨s, f, vals vs ++ [.plain (.loop bt body)]⟩)
       (adminsToV [.label t₁.length [.loop bt body] (vals vs ++ expression body)]) := by
   have T : TypingFacts EB hn := Typing.typingFacts_simEnv _ hn
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   obtain ⟨T₁, T₂, hl₁, hl₂, h₁, h₂, hb⟩ := Round5.Fwd.blocktypeB (Round5.Int.typesB _) s f hM bt t₁ t₂ hbt
   have hv : TypedV EB valsT (.list (adminsToV (vals vs))) := typedV_vals_prefix T h
   have hlp : TypedV EB instrT (adminToV (.plain (.loop bt body))) :=
     typedV_code h (.plain (.loop bt body)) (by simp)
-  obtain ⟨hbtT, hbody⟩ := Ty.loopInv _ _ hlp
+  obtain ⟨hbtT, hbody⟩ := Silmaril.Wasm.Validation.Ty.loopInv _ _ hlp
   have hw : (adminsToV (vals vs)).length = T₁.length := by
     rw [adminsToV_length, vals_length, hlen, hl₁]
   have key := sread_loop (simEnv_readRules _).loop (z := stateV hn s f)
-    (ws := adminsToV (vals vs)) (is := instrsToV body) hw hz (Ty.natM _) hv hbtT hbody
-    (Ty.nat _) h₁ h₂ hb
+    (ws := adminsToV (vals vs)) (is := instrsToV body) hw hz (Silmaril.Wasm.Validation.Ty.natM _) hv hbtT hbody
+    (Silmaril.Wasm.Validation.Ty.nat _) h₁ h₂ hb
   rw [hl₁] at key
   have e : adminsToV (vals vs ++ expression body) = adminsToV (vals vs) ++ instrsToV body := by
     rw [adminsToV_append, adminsToV_expression]
@@ -112,9 +112,9 @@ theorem sreadC_call {s : Store H} {f : Frame} {x : FuncIdx} {a : Nat} {fi : Func
     (hz : TypedV EB stateT (stateV hn s f)) :
     SRead EB (configV hn ⟨s, f, [.plain (.call x)]⟩)
       (adminsToV [.ref (.func a), .callRefType fi.type]) :=
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   have Pd := Prims.projDefs_simEnv (BI P hn host)
-  sread_call (simEnv_readRules _).call (k := x.toNat) hz (Ty.idx x) (Ty.addr a)
+  sread_call (simEnv_readRules _).call (k := x.toNat) hz (Silmaril.Wasm.Validation.Ty.idx x) (Silmaril.Wasm.Validation.Ty.addr a)
     (Prims.applies_funcinst Pd hn s f) (funcs_getElem_map hfi) rfl
     (Prims.applies_moduleinst Pd hn s f) rfl (moduleFuncs_getElem_map hx)
 
@@ -124,10 +124,10 @@ theorem sreadC_returnCall {s : Store H} {f : Frame} {x : FuncIdx} {a : Nat} {fi 
     (hz : TypedV EB stateT (stateV hn s f)) :
     SRead EB (configV hn ⟨s, f, [.plain (.returnCall x)]⟩)
       (adminsToV [.ref (.func a), .returnCallRefType fi.type]) :=
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   have Pd := Prims.projDefs_simEnv (BI P hn host)
-  sread_returnCall (simEnv_readRules _).returnCall (k := x.toNat) hz (Ty.idx x)
-    (Ty.addr a) (Prims.applies_funcinst Pd hn s f) (funcs_getElem_map hfi) rfl
+  sread_returnCall (simEnv_readRules _).returnCall (k := x.toNat) hz (Silmaril.Wasm.Validation.Ty.idx x)
+    (Silmaril.Wasm.Validation.Ty.addr a) (Prims.applies_funcinst Pd hn s f) (funcs_getElem_map hfi) rfl
     (Prims.applies_moduleinst Pd hn s f) rfl (moduleFuncs_getElem_map hx)
 
 /-- `return_call_ref` out of a label (`Sim.fwd_returnCallRefLabel`, before the lift). -/
@@ -138,7 +138,7 @@ theorem sreadC_returnCallRefLabel {s : Store H} {f : Frame} {k : Nat} {cont : Li
     SRead EB (configV hn ⟨s, f, [.label k cont (vals vs ++ [c] ++ rest)]⟩)
       (adminsToV (vals vs ++ [c])) := by
   have T : TypingFacts EB hn := Typing.typingFacts_simEnv _ hn
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   obtain ⟨yy, hyy⟩ := adminToV_of_isReturnCallRef hc
   obtain ⟨hk, hct, hb⟩ := T.label _ cont _ h
   have hb' : TypedV EB instrsT
@@ -147,7 +147,7 @@ theorem sreadC_returnCallRefLabel {s : Store H} {f : Frame} {k : Nat} {cont : Li
   obtain ⟨hab, hrest⟩ := typedV_list_append.1 hb'
   obtain ⟨hv, hcv⟩ := typedV_list_append.1 hab
   have hy : TypedV EB typeuseT yy :=
-    Ty.retCallRefInv yy (hyy ▸ typedV_list_single.1 hcv)
+    Silmaril.Wasm.Validation.Ty.retCallRefInv yy (hyy ▸ typedV_list_single.1 hcv)
   have key := sread_returnCallRefLabel (simEnv_readRules _).returnCallRefLabel
     (z := stateV hn s f) (k := .num (.natN k)) (cont := instrsToV cont) (ws := adminsToV (vals vs))
     (is := adminsToV rest) hz hk hct (typedV_vals_prefix T (b := []) (by simpa using hv)) hy hrest
@@ -161,7 +161,7 @@ theorem sreadC_returnCallRefHandler {s : Store H} {f : Frame} {k : Nat} {cs : Li
     SRead EB (configV hn ⟨s, f, [.handler k cs (vals vs ++ [c] ++ rest)]⟩)
       (adminsToV (vals vs ++ [c])) := by
   have T : TypingFacts EB hn := Typing.typingFacts_simEnv _ hn
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   obtain ⟨yy, hyy⟩ := adminToV_of_isReturnCallRef hc
   obtain ⟨hk, hcs, hb⟩ := T.handler _ cs _ h
   have hb' : TypedV EB instrsT
@@ -170,7 +170,7 @@ theorem sreadC_returnCallRefHandler {s : Store H} {f : Frame} {k : Nat} {cs : Li
   obtain ⟨hab, hrest⟩ := typedV_list_append.1 hb'
   obtain ⟨hv, hcv⟩ := typedV_list_append.1 hab
   have hy : TypedV EB typeuseT yy :=
-    Ty.retCallRefInv yy (hyy ▸ typedV_list_single.1 hcv)
+    Silmaril.Wasm.Validation.Ty.retCallRefInv yy (hyy ▸ typedV_list_single.1 hcv)
   have key := sread_returnCallRefHandler (simEnv_readRules _).returnCallRefHandler
     (z := stateV hn s f) (k := .num (.natN k)) (cs := cs.map Encode.toValue)
     (ws := adminsToV (vals vs)) (is := adminsToV rest) hz hk hcs
@@ -187,7 +187,7 @@ theorem sreadC_returnCallRefFrameNull {s : Store H} {f fi : Frame} {k : Nat} {vs
     SRead EB (configV hn ⟨s, f, [.frame k fi (vals vs ++ [.ref .null, c] ++ rest)]⟩)
       (adminsToV [.trap]) := by
   have T : TypingFacts EB hn := Typing.typingFacts_simEnv _ hn
-  have Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
+  have Silmaril.Wasm.Validation.Ty : CtrlTyping EB := Typing.ctrlTyping_simEnv _
   obtain ⟨yy, hyy⟩ := adminToV_of_isReturnCallRef hc
   obtain ⟨hk, hfi, hb⟩ := T.frame _ fi _ h
   have hb' : TypedV EB instrsT
@@ -198,7 +198,7 @@ theorem sreadC_returnCallRefFrameNull {s : Store H} {f fi : Frame} {k : Nat} {vs
   obtain ⟨hab, hcv⟩ := typedV_list_append.1 habc
   obtain ⟨hv, -⟩ := typedV_list_append.1 hab
   have hy : TypedV EB typeuseT yy :=
-    Ty.retCallRefInv yy (hyy ▸ typedV_list_single.1 hcv)
+    Silmaril.Wasm.Validation.Ty.retCallRefInv yy (hyy ▸ typedV_list_single.1 hcv)
   have key := sread_returnCallRefFrameNull (simEnv_readRules _).returnCallRefFrameNull
     (z := stateV hn s f) (k := .num (.natN k)) (f := frameV fi)
     (ws := adminsToV (vals vs)) (is := adminsToV rest) hz hk hfi

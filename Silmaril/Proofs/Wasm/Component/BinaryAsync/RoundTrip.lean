@@ -75,7 +75,7 @@ theorem context_G {op : UInt8} {i : Nat} {l : Bytes} {f : Nat → CanonX}
   rw [← hl]
   exact tagged_G _ hk (then_G (expect_G _ 0x7f) (map_G (u32_G ha)))
 
-theorem taskReturn_G {r : Option ValType} {o : List CanonOpt} {l : Bytes}
+theorem taskReturn_G {r : Option Silmaril.Wasm.Component.Binary.ValType} {o : List CanonOpt} {l : Bytes}
     (h : Builtin.encode (.taskReturn r o) = some l) : canonXG.G l (.builtin (.taskReturn r o)) := by
   obtain ⟨a, ha, b, hb, hl⟩ := bind2_some h
   rw [← hl]

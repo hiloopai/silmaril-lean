@@ -18,7 +18,7 @@ public import Silmaril.Raw.Wasm.Component.Engine.Core3.Typed.Prepare
   `allocHost` at `ofFlatType ft`);
 * `Ext s s'`: typed store extension `Extend s s'` (the spec's `Extend_store`);
 * `ThreadOkE s t rs`: the thread's configuration is typed with the numeric result types `rs`
-  (`SingleThreaded.ThreadOk s t (rs.map Ty.num)`, i.e. `Config_ok`);
+  (`SingleThreaded.ThreadOk s t (rs.map Silmaril.Wasm.Validation.Ty.num)`, i.e. `Config_ok`);
 * `HostTypedE s h ft`: every host function of `s` with code `h` has type `ofFlatType ft` (vacuous
   while there is none).
 

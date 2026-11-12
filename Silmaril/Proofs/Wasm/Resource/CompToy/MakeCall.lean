@@ -60,14 +60,14 @@ theorem coreCfg_mkB {M₀ : Machine.Config (E3 P) Unit} {ι' : InstState} {H : L
 
 /-- The lift of `make`'s result at the return point, for an own handle of representation `c`
 at index `j`. -/
-theorem make_liftAt {cs' : (core3P P).Store (CanonHost (core3P P))} {T T₅ : Table HandleEntry}
+theorem make_liftAt {cs' : (core3P P).Store (CanonHost (core3P P))} {T T₅ : Silmaril.Wasm.Component.Runtime.Table HandleEntry}
     {Hs : List ResourceHandle} {j : ℕ} {hid : HandleObjId} (hj : j < 2 ^ 32)
     (hrm : T.remove? j = some (.resource hid, T₅))
     (hH : Hs[hid.idx]? = some { rt := ⟨0⟩, rep := c, own := true }) :
     ∀ m : Machine.Config (E3 P) Unit,
       m.store = { tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T } Hs with
         core := cs' } →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake)) m
         [.tau, .tau, .tau, .tau] ([.own c], ⟨[.int .i32 (BitVec.ofNat 32 j)], 1⟩)
@@ -88,7 +88,7 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
     (hTB : TabB ι.handles)
     (hst : M₀.store = tStore₄ P ftMake c ι (callI ι G) G k [] (callI ι G) G.handles)
     (hK : ∀ ys, ∃ (β : Type) (f : List Val × FlatCursor → Canon.P (E3 P) Unit β)
-        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
+        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ftMake) >>= f) >>= g)
     (hret : ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
@@ -96,7 +96,7 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
         (trF : List (Label (E3 P) Unit)) (c' : ℕ),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = { tStore₄ P ftMake c ι (callI ι G) G k [] ιc Hc with core := cs' } →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ftMake)) m trF (ws, cur)
             { m with store := { tStore₄ P ftMake c ι (callI ι G) G k [] ι₅ H₅ with core := cs' } }) →
@@ -164,7 +164,7 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
     have hins : m₁.store.insts = [{ callI ι G with handles := T }] := by rw [hm₁']; rfl
     obtain ⟨trT, mT, hT⟩ := traps_lift_make (th := some ⟨G.threads.length⟩) ⟨G.tasks.length⟩ hj32
       hins (by simp [InstState.removeHandle?, hrm])
-    have hctl : m₁.ctl = ⟨some ⟨G.threads.length⟩, .prog ((liftFlatValues Limits.spec Quirks.none
+    have hctl : m₁.ctl = ⟨some ⟨G.threads.length⟩, .prog ((liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake) >>= f) >>= g),
         segs⟩ :: rest := by

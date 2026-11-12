@@ -40,12 +40,12 @@ open Silmaril.Wasm.Component.Binary
 /-! ## References -/
 
 /-- A value type refers to a bound type. -/
-def valOk (t : Nat) : ValType → Bool
+def valOk (t : Nat) : Silmaril.Wasm.Component.Binary.ValType → Bool
   | .prim _ => true
   | .idx k => decide (k < t)
 
 /-- An optional value type refers to a bound type. -/
-def optValOk (t : Nat) : Option ValType → Bool
+def optValOk (t : Nat) : Option Silmaril.Wasm.Component.Binary.ValType → Bool
   | none => true
   | some v => valOk t v
 
@@ -68,7 +68,7 @@ def defValOk (t : Nat) : DefValType → Bool
   | .map k v => valOk t k && valOk t v
 
 /-- A function type refers to bound types. -/
-def funcOk (t : Nat) (f : FuncType) : Bool := f.params.all (fun p => valOk t p.2) && optValOk t f.result
+def funcOk (t : Nat) (f : Silmaril.Wasm.Component.Binary.FuncType) : Bool := f.params.all (fun p => valOk t p.2) && optValOk t f.result
 
 /-- The outer aliases of a nested component or instance type refer to bound types of
 the enclosing scope. -/
@@ -167,7 +167,7 @@ def descSort : ExternDesc → ItemSort
   | .instance _ => .instance
 
 /-- An export's ascription has the sort of its item and refers to bound types. -/
-def ascriptionOk (t : Nat) (e : Export) : Bool :=
+def ascriptionOk (t : Nat) (e : Silmaril.Wasm.Component.Binary.Export) : Bool :=
   match e.desc with
   | none => true
   | some d => descOk t d && descSort d == e.item.sort

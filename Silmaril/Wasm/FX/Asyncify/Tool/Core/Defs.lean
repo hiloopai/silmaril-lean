@@ -69,7 +69,7 @@ def HoldsProg {H : Type} (s : Store H) (mi : ModuleInst) (E : Env) : Prop :=
     fi.code = .wasm ⟨ty, List.replicate fd.nlocals .i32, fd.body⟩ ∧
     Expand fi.type (.func ps rs) ∧ ps.length = fd.nparams ∧ rs.length = fd.nres
 
-/-- Steps of the bounded machine, each a `next`. -/
+/-- Silmaril.Wasm.Execution.Core.Steps of the bounded machine, each a `next`. -/
 inductive BSteps (cap : Nat) (E : Env) : Cfg → Cfg → Prop where
   | refl (c : Cfg) : BSteps cap E c c
   | cons {c c₁ c₂ : Cfg} : stepB cap E c = .next c₁ → BSteps cap E c₁ c₂ → BSteps cap E c c₂

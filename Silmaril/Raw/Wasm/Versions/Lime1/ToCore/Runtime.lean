@@ -76,7 +76,7 @@ def _root_.Silmaril.Wasm.Execution.Runtime.FuncInst.toCore : FuncInst Func H →
   | .host t h => ⟨t.toDefType, {}, .host h⟩
 
 def _root_.Silmaril.Wasm.Execution.Runtime.TableInst.toCore (t : TableInst) : Silmaril.Wasm.Execution.Core.TableInst :=
-  ⟨⟨.i32, ⟨Fin.ofNat _ t.refs.length, t.max.map (Fin.ofNat _)⟩, Ty.funcref⟩,
+  ⟨⟨.i32, ⟨Fin.ofNat _ t.refs.length, t.max.map (Fin.ofNat _)⟩, Silmaril.Wasm.Validation.Ty.funcref⟩,
     t.refs.map fun | none => .null | some a => .func a.value⟩
 
 def _root_.Silmaril.Wasm.Execution.Runtime.MemInst.toCore (m : MemInst) : Silmaril.Wasm.Execution.Core.MemInst :=
@@ -96,20 +96,20 @@ def _root_.Silmaril.Wasm.Execution.Runtime.Store.funcDefType (s : Store H) (a : 
   ((s.funcs[a.value]?).map fun fi => fi.type.toDefType).getD default
 
 mutual
-def Admin.toCore (s : Store H) : Admin → List CAdmin
+def Silmaril.Wasm.Execution.Core.Admin.toCore (s : Store H) : Silmaril.Wasm.Execution.Core.Admin → List CAdmin
   | .source i => [.plain i.toCore]
   | .invoke a => [.ref (.func a.value), .callRefType (s.funcDefType a)]
-  | .label n cont body => [.label n (cont.map Instr.toCore) (Admin.listToCore s body)]
-  | .frame n f body => [.frame n f.toCore (Admin.listToCore s body)]
+  | .label n cont body => [.label n (cont.map Instr.toCore) (Silmaril.Wasm.Execution.Core.Admin.listToCore s body)]
+  | .frame n f body => [.frame n f.toCore (Silmaril.Wasm.Execution.Core.Admin.listToCore s body)]
   | .trap => [.trap]
 
-def Admin.listToCore (s : Store H) : List Admin → List CAdmin
+def Silmaril.Wasm.Execution.Core.Admin.listToCore (s : Store H) : List Silmaril.Wasm.Execution.Core.Admin → List CAdmin
   | [] => []
-  | a :: as => Admin.toCore s a ++ Admin.listToCore s as
+  | a :: as => Silmaril.Wasm.Execution.Core.Admin.toCore s a ++ Silmaril.Wasm.Execution.Core.Admin.listToCore s as
 end
 
 def _root_.Silmaril.Wasm.Execution.Runtime.Config.toCore (c : Config H) : CConfig H :=
-  ⟨c.store.toCore, c.frame.toCore, Admin.listToCore c.store c.code⟩
+  ⟨c.store.toCore, c.frame.toCore, Silmaril.Wasm.Execution.Core.Admin.listToCore c.store c.code⟩
 
 def _root_.Silmaril.Wasm.Execution.Runtime.Result.toCore : Result → CResult
   | .values vs => .values (vs.map Value.toCore)
@@ -142,21 +142,21 @@ def Store.erase (s : CStore H) : CStore H :=
 
 mutual
 /-- Resolve `CALL_REF x` annotations against module `m`; erase segment addresses. -/
-def Admin.norm (m : CModuleInst) : CAdmin → CAdmin
+def Silmaril.Wasm.Execution.Core.Admin.norm (m : CModuleInst) : CAdmin → CAdmin
   | .plain (.callRef x) => .callRefType ((m.types[x.toNat]?).getD default)
   | .plain (.returnCallRef x) => .returnCallRefType ((m.types[x.toNat]?).getD default)
-  | .label n cont body => .label n cont (Admin.normList m body)
-  | .handler n cs body => .handler n cs (Admin.normList m body)
-  | .frame n f body => .frame n (Frame.erase f) (Admin.normList f.module body)
+  | .label n cont body => .label n cont (Silmaril.Wasm.Execution.Core.Admin.normList m body)
+  | .handler n cs body => .handler n cs (Silmaril.Wasm.Execution.Core.Admin.normList m body)
+  | .frame n f body => .frame n (Frame.erase f) (Silmaril.Wasm.Execution.Core.Admin.normList f.module body)
   | a => a
 
-def Admin.normList (m : CModuleInst) : List CAdmin → List CAdmin
+def Silmaril.Wasm.Execution.Core.Admin.normList (m : CModuleInst) : List CAdmin → List CAdmin
   | [] => []
-  | a :: as => Admin.norm m a :: Admin.normList m as
+  | a :: as => Silmaril.Wasm.Execution.Core.Admin.norm m a :: Silmaril.Wasm.Execution.Core.Admin.normList m as
 end
 
 def Config.norm (c : CConfig H) : CConfig H :=
-  ⟨Store.erase c.store, Frame.erase c.frame, Admin.normList c.frame.module c.code⟩
+  ⟨Store.erase c.store, Frame.erase c.frame, Silmaril.Wasm.Execution.Core.Admin.normList c.frame.module c.code⟩
 
 /-- Module-instance similarity: the Core instance additionally records (dropped)
 data and element segment addresses, which Lime1 never has. (Graft from design A.) -/
@@ -180,16 +180,16 @@ def ModWF (s : Store H) (m : Silmaril.Wasm.Execution.Runtime.ModuleInst) : Prop 
 
 mutual
 /-- Invoked addresses are allocated; frames have well-formed modules. -/
-def Admin.WF (s : Store H) : Admin → Prop
+def Silmaril.Wasm.Execution.Core.Admin.WF (s : Store H) : Silmaril.Wasm.Execution.Core.Admin → Prop
   | .source _ => True
   | .invoke a => a.value < s.funcs.length
-  | .label _ _ body => Admin.listWF s body
-  | .frame _ f body => ModWF s f.module ∧ Admin.listWF s body
+  | .label _ _ body => Silmaril.Wasm.Execution.Core.Admin.listWF s body
+  | .frame _ f body => ModWF s f.module ∧ Silmaril.Wasm.Execution.Core.Admin.listWF s body
   | .trap => True
 
-def Admin.listWF (s : Store H) : List Admin → Prop
+def Silmaril.Wasm.Execution.Core.Admin.listWF (s : Store H) : List Silmaril.Wasm.Execution.Core.Admin → Prop
   | [] => True
-  | a :: as => Admin.WF s a ∧ Admin.listWF s as
+  | a :: as => Silmaril.Wasm.Execution.Core.Admin.WF s a ∧ Silmaril.Wasm.Execution.Core.Admin.listWF s as
 end
 
 /-- Store well-formedness: module instances of Wasm functions are well formed, and
@@ -202,7 +202,7 @@ def StoreWF (s : Store H) : Prop :=
 
 /-- Configuration well-formedness. -/
 def ConfigWF (a : Config H) : Prop :=
-  StoreWF a.store ∧ ModWF a.store a.frame.module ∧ Admin.listWF a.store a.code
+  StoreWF a.store ∧ ModWF a.store a.frame.module ∧ Silmaril.Wasm.Execution.Core.Admin.listWF a.store a.code
 
 /-- Store extension as far as functions are concerned: allocated functions stay
 allocated with the same type. -/
@@ -233,24 +233,24 @@ def HostCompatible (src : HostSemantics H) (tgt : CHostSemantics H) : Prop :=
 /-! ## Commuting lemmas (the `simp` battery for the simulation proofs) -/
 
 @[simp] theorem value_toCore (s : Store H) (v : Value) :
-    Admin.toCore s (value v) = [(Value.toCore v).toAdmin] := by
+    Silmaril.Wasm.Execution.Core.Admin.toCore s (value v) = [(Value.toCore v).toAdmin] := by
   rcases v with ⟨⟨_ | _⟩, _⟩ <;> rfl
 
-@[simp] theorem listToCore_nil (s : Store H) : Admin.listToCore s [] = [] := by
-  simp [Admin.listToCore]
+@[simp] theorem listToCore_nil (s : Store H) : Silmaril.Wasm.Execution.Core.Admin.listToCore s [] = [] := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.listToCore]
 
-@[simp] theorem listToCore_cons (s : Store H) (a : Admin) (as : List Admin) :
-    Admin.listToCore s (a :: as) = Admin.toCore s a ++ Admin.listToCore s as := by
-  simp [Admin.listToCore]
+@[simp] theorem listToCore_cons (s : Store H) (a : Silmaril.Wasm.Execution.Core.Admin) (as : List Silmaril.Wasm.Execution.Core.Admin) :
+    Silmaril.Wasm.Execution.Core.Admin.listToCore s (a :: as) = Silmaril.Wasm.Execution.Core.Admin.toCore s a ++ Silmaril.Wasm.Execution.Core.Admin.listToCore s as := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.listToCore]
 
-theorem listToCore_append (s : Store H) (xs ys : List Admin) :
-    Admin.listToCore s (xs ++ ys) = Admin.listToCore s xs ++ Admin.listToCore s ys := by
+theorem listToCore_append (s : Store H) (xs ys : List Silmaril.Wasm.Execution.Core.Admin) :
+    Silmaril.Wasm.Execution.Core.Admin.listToCore s (xs ++ ys) = Silmaril.Wasm.Execution.Core.Admin.listToCore s xs ++ Silmaril.Wasm.Execution.Core.Admin.listToCore s ys := by
   induction xs with
   | nil => simp
   | cons x xs ih => simp [ih, List.append_assoc]
 
 @[simp] theorem values_toCore (s : Store H) (vs : List Value) :
-    Admin.listToCore s (values vs) = Silmaril.Wasm.Execution.Core.vals (vs.map Value.toCore) := by
+    Silmaril.Wasm.Execution.Core.Admin.listToCore s (values vs) = Silmaril.Wasm.Execution.Core.vals (vs.map Value.toCore) := by
   induction vs with
   | nil => rfl
   | cons v vs ih =>
@@ -258,25 +258,25 @@ theorem listToCore_append (s : Store H) (xs ys : List Admin) :
     rw [ih]; rfl
 
 @[simp] theorem source_toCore (s : Store H) (i : Instr) :
-    Admin.toCore s (.source i) = [.plain i.toCore] := by simp [Admin.toCore]
+    Silmaril.Wasm.Execution.Core.Admin.toCore s (.source i) = [.plain i.toCore] := by simp [Silmaril.Wasm.Execution.Core.Admin.toCore]
 
 @[simp] theorem invoke_toCore (s : Store H) (a : FuncAddr) :
-    Admin.toCore s (.invoke a) = [.ref (.func a.value), .callRefType (s.funcDefType a)] := by
-  simp [Admin.toCore]
+    Silmaril.Wasm.Execution.Core.Admin.toCore s (.invoke a) = [.ref (.func a.value), .callRefType (s.funcDefType a)] := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.toCore]
 
-@[simp] theorem label_toCore (s : Store H) (n : Nat) (cont : Expr) (body : List Admin) :
-    Admin.toCore s (.label n cont body) =
-      [.label n (cont.map Instr.toCore) (Admin.listToCore s body)] := by simp [Admin.toCore]
+@[simp] theorem label_toCore (s : Store H) (n : Nat) (cont : Expr) (body : List Silmaril.Wasm.Execution.Core.Admin) :
+    Silmaril.Wasm.Execution.Core.Admin.toCore s (.label n cont body) =
+      [.label n (cont.map Instr.toCore) (Silmaril.Wasm.Execution.Core.Admin.listToCore s body)] := by simp [Silmaril.Wasm.Execution.Core.Admin.toCore]
 
-@[simp] theorem frame_toCore (s : Store H) (n : Nat) (f : Frame) (body : List Admin) :
-    Admin.toCore s (.frame n f body) = [.frame n f.toCore (Admin.listToCore s body)] := by
-  simp [Admin.toCore]
+@[simp] theorem frame_toCore (s : Store H) (n : Nat) (f : Frame) (body : List Silmaril.Wasm.Execution.Core.Admin) :
+    Silmaril.Wasm.Execution.Core.Admin.toCore s (.frame n f body) = [.frame n f.toCore (Silmaril.Wasm.Execution.Core.Admin.listToCore s body)] := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.toCore]
 
-@[simp] theorem trap_toCore (s : Store H) : Admin.toCore s .trap = [.trap] := by
-  simp [Admin.toCore]
+@[simp] theorem trap_toCore (s : Store H) : Silmaril.Wasm.Execution.Core.Admin.toCore s .trap = [.trap] := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.toCore]
 
 @[simp] theorem expression_toCore (s : Store H) (es : Expr) :
-    Admin.listToCore s (expression es) =
+    Silmaril.Wasm.Execution.Core.Admin.listToCore s (expression es) =
       Silmaril.Wasm.Execution.Core.expression (es.map Instr.toCore) := by
   induction es with
   | nil => rfl
@@ -284,7 +284,7 @@ theorem listToCore_append (s : Store H) (xs ys : List Admin) :
     simp only [expression, List.map_cons, listToCore_cons, source_toCore] at ih ⊢
     rw [ih]; rfl
 
-theorem toCore_ne_nil (s : Store H) (a : Admin) : Admin.toCore s a ≠ [] := by
+theorem toCore_ne_nil (s : Store H) (a : Silmaril.Wasm.Execution.Core.Admin) : Silmaril.Wasm.Execution.Core.Admin.toCore s a ≠ [] := by
   cases a <;> simp
 
 theorem Instr.toCore_ne_callRef (i : Instr) (x : TypeIdx) : i.toCore ≠ .callRef x := by
@@ -299,71 +299,71 @@ namespace ToCore
 
 open Silmaril.Wasm.Execution.Core
 
-@[simp] theorem Admin.normList_nil (m : CModuleInst) : Admin.normList m [] = [] := by
-  simp [Admin.normList]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.normList_nil (m : CModuleInst) : Silmaril.Wasm.Execution.Core.Admin.normList m [] = [] := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.normList]
 
-@[simp] theorem Admin.normList_cons (m : CModuleInst) (a : CAdmin) (as : List CAdmin) :
-    Admin.normList m (a :: as) = Admin.norm m a :: Admin.normList m as := by
-  simp [Admin.normList]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.normList_cons (m : CModuleInst) (a : CAdmin) (as : List CAdmin) :
+    Silmaril.Wasm.Execution.Core.Admin.normList m (a :: as) = Silmaril.Wasm.Execution.Core.Admin.norm m a :: Silmaril.Wasm.Execution.Core.Admin.normList m as := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.normList]
 
-theorem Admin.normList_eq_map (m : CModuleInst) (l : List CAdmin) :
-    Admin.normList m l = l.map (Admin.norm m) := by
+theorem Silmaril.Wasm.Execution.Core.Admin.normList_eq_map (m : CModuleInst) (l : List CAdmin) :
+    Silmaril.Wasm.Execution.Core.Admin.normList m l = l.map (Silmaril.Wasm.Execution.Core.Admin.norm m) := by
   induction l with
   | nil => simp
   | cons a l ih => simp [ih]
 
-theorem Admin.norm_plain (m : CModuleInst) (i : Silmaril.Wasm.Instr)
+theorem Silmaril.Wasm.Execution.Core.Admin.norm_plain (m : CModuleInst) (i : Silmaril.Wasm.Instr)
     (h₁ : ∀ x, i ≠ .callRef x) (h₂ : ∀ x, i ≠ .returnCallRef x) :
-    Admin.norm m (.plain i) = .plain i := by
-  cases i <;> simp_all [Admin.norm]
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.plain i) = .plain i := by
+  cases i <;> simp_all [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_ref (m : CModuleInst) (r : Ref) : Admin.norm m (.ref r) = .ref r := by
-  simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_ref (m : CModuleInst) (r : Ref) : Silmaril.Wasm.Execution.Core.Admin.norm m (.ref r) = .ref r := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_trap (m : CModuleInst) : Admin.norm m .trap = .trap := by
-  simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_trap (m : CModuleInst) : Silmaril.Wasm.Execution.Core.Admin.norm m .trap = .trap := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_callRefType (m : CModuleInst) (d : DefType) :
-    Admin.norm m (.callRefType d) = .callRefType d := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_callRefType (m : CModuleInst) (d : DefType) :
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.callRefType d) = .callRefType d := by simp [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_returnCallRefType (m : CModuleInst) (d : DefType) :
-    Admin.norm m (.returnCallRefType d) = .returnCallRefType d := by simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_returnCallRefType (m : CModuleInst) (d : DefType) :
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.returnCallRefType d) = .returnCallRefType d := by simp [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_label (m : CModuleInst) (n : Nat) (k : List Silmaril.Wasm.Instr)
-    (b : List CAdmin) : Admin.norm m (.label n k b) = .label n k (b.map (Admin.norm m)) := by
-  simp [Admin.norm, Admin.normList_eq_map]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_label (m : CModuleInst) (n : Nat) (k : List Silmaril.Wasm.Instr)
+    (b : List CAdmin) : Silmaril.Wasm.Execution.Core.Admin.norm m (.label n k b) = .label n k (b.map (Silmaril.Wasm.Execution.Core.Admin.norm m)) := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm, Silmaril.Wasm.Execution.Core.Admin.normList_eq_map]
 
-@[simp] theorem Admin.norm_handler (m : CModuleInst) (n : Nat) (cs : List Catch)
-    (b : List CAdmin) : Admin.norm m (.handler n cs b) = .handler n cs (b.map (Admin.norm m)) := by
-  simp [Admin.norm, Admin.normList_eq_map]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_handler (m : CModuleInst) (n : Nat) (cs : List Catch)
+    (b : List CAdmin) : Silmaril.Wasm.Execution.Core.Admin.norm m (.handler n cs b) = .handler n cs (b.map (Silmaril.Wasm.Execution.Core.Admin.norm m)) := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm, Silmaril.Wasm.Execution.Core.Admin.normList_eq_map]
 
-@[simp] theorem Admin.norm_frame (m : CModuleInst) (n : Nat) (f : CFrame) (b : List CAdmin) :
-    Admin.norm m (.frame n f b) = .frame n (Frame.erase f) (b.map (Admin.norm f.module)) := by
-  simp [Admin.norm, Admin.normList_eq_map]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_frame (m : CModuleInst) (n : Nat) (f : CFrame) (b : List CAdmin) :
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.frame n f b) = .frame n (Frame.erase f) (b.map (Silmaril.Wasm.Execution.Core.Admin.norm f.module)) := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm, Silmaril.Wasm.Execution.Core.Admin.normList_eq_map]
 
-@[simp] theorem Admin.norm_callRef (m : CModuleInst) (x : TypeIdx) :
-    Admin.norm m (.plain (.callRef x)) = .callRefType ((m.types[x.toNat]?).getD default) := by
-  simp [Admin.norm]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_callRef (m : CModuleInst) (x : TypeIdx) :
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.plain (.callRef x)) = .callRefType ((m.types[x.toNat]?).getD default) := by
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_returnCallRef (m : CModuleInst) (x : TypeIdx) :
-    Admin.norm m (.plain (.returnCallRef x)) =
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_returnCallRef (m : CModuleInst) (x : TypeIdx) :
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.plain (.returnCallRef x)) =
       .returnCallRefType ((m.types[x.toNat]?).getD default) := by
-  simp [Admin.norm]
+  simp [Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.norm_toCore_plain (m : CModuleInst) (i : Instr) :
-    Admin.norm m (.plain i.toCore) = .plain i.toCore :=
-  Admin.norm_plain m _ (Instr.toCore_ne_callRef i) (Instr.toCore_ne_returnCallRef i)
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_toCore_plain (m : CModuleInst) (i : Instr) :
+    Silmaril.Wasm.Execution.Core.Admin.norm m (.plain i.toCore) = .plain i.toCore :=
+  Silmaril.Wasm.Execution.Core.Admin.norm_plain m _ (Instr.toCore_ne_callRef i) (Instr.toCore_ne_returnCallRef i)
 
-@[simp] theorem Admin.norm_val (m : CModuleInst) (v : Val) : Admin.norm m v.toAdmin = v.toAdmin := by
-  rcases v with ⟨⟨_ | _⟩, _⟩ | _ | _ <;> simp [Val.toAdmin, Admin.norm]
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.norm_val (m : CModuleInst) (v : Val) : Silmaril.Wasm.Execution.Core.Admin.norm m v.toAdmin = v.toAdmin := by
+  rcases v with ⟨⟨_ | _⟩, _⟩ | _ | _ <;> simp [Val.toAdmin, Silmaril.Wasm.Execution.Core.Admin.norm]
 
-@[simp] theorem Admin.map_norm_vals (m : CModuleInst) (vs : List Val) :
-    (vals vs).map (Admin.norm m) = vals vs := by
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.map_norm_vals (m : CModuleInst) (vs : List Val) :
+    (vals vs).map (Silmaril.Wasm.Execution.Core.Admin.norm m) = vals vs := by
   simp [vals]
 
-@[simp] theorem Admin.map_norm_expression (m : CModuleInst) (es : Expr) :
+@[simp] theorem Silmaril.Wasm.Execution.Core.Admin.map_norm_expression (m : CModuleInst) (es : Expr) :
     (Silmaril.Wasm.Execution.Core.expression (es.map Silmaril.Wasm.Lime1.Instr.toCore)).map
-      (Admin.norm m) =
+      (Silmaril.Wasm.Execution.Core.Admin.norm m) =
       Silmaril.Wasm.Execution.Core.expression (es.map Silmaril.Wasm.Lime1.Instr.toCore) := by
   simp [Silmaril.Wasm.Execution.Core.expression]
 
@@ -374,15 +374,15 @@ def Rigid : CAdmin → Prop
   | .trap => True
   | _ => False
 
-theorem Rigid.norm {m : CModuleInst} {y : CAdmin} (hy : Rigid y) : Admin.norm m y = y := by
+theorem Rigid.norm {m : CModuleInst} {y : CAdmin} (hy : Rigid y) : Silmaril.Wasm.Execution.Core.Admin.norm m y = y := by
   cases y with
-  | plain i => exact Admin.norm_plain m _ hy.1 hy.2
+  | plain i => exact Silmaril.Wasm.Execution.Core.Admin.norm_plain m _ hy.1 hy.2
   | ref => simp
   | trap => simp
   | _ => simp [Rigid] at hy
 
 theorem Rigid.eq_of_norm {m : CModuleInst} {x y : CAdmin} (hy : Rigid y)
-    (h : Admin.norm m x = y) : x = y := by
+    (h : Silmaril.Wasm.Execution.Core.Admin.norm m x = y) : x = y := by
   cases x with
   | plain i =>
     by_cases h₁ : ∃ z, i = .callRef z
@@ -390,7 +390,7 @@ theorem Rigid.eq_of_norm {m : CModuleInst} {x y : CAdmin} (hy : Rigid y)
     by_cases h₂ : ∃ z, i = .returnCallRef z
     · obtain ⟨z, rfl⟩ := h₂; simp at h; subst h; simp [Rigid] at hy
     push Not at h₁ h₂
-    rwa [Admin.norm_plain m i h₁ h₂] at h
+    rwa [Silmaril.Wasm.Execution.Core.Admin.norm_plain m i h₁ h₂] at h
   | label => simp at h; subst h; simp [Rigid] at hy
   | frame => simp at h; subst h; simp [Rigid] at hy
   | handler => simp at h; subst h; simp [Rigid] at hy
@@ -406,7 +406,7 @@ theorem Rigid.toCore (i : Instr) : Rigid (.plain i.toCore) :=
   ⟨Instr.toCore_ne_callRef i, Instr.toCore_ne_returnCallRef i⟩
 
 theorem map_norm_eq_of_rigid {m : CModuleInst} {l L : List CAdmin} (hL : ∀ y ∈ L, Rigid y)
-    (h : l.map (Admin.norm m) = L) : l = L := by
+    (h : l.map (Silmaril.Wasm.Execution.Core.Admin.norm m) = L) : l = L := by
   induction L generalizing l with
   | nil => simpa using h
   | cons y L ih =>
@@ -417,12 +417,12 @@ theorem map_norm_eq_of_rigid {m : CModuleInst} {l L : List CAdmin} (hL : ∀ y �
       rw [(hL.1).eq_of_norm h.1, ih hL.2 h.2]
 
 theorem map_norm_vals {m : CModuleInst} {l : List CAdmin} {vs : List Val}
-    (h : l.map (Admin.norm m) = vals vs) : l = vals vs :=
+    (h : l.map (Silmaril.Wasm.Execution.Core.Admin.norm m) = vals vs) : l = vals vs :=
   map_norm_eq_of_rigid (by simp only [vals, List.mem_map]; rintro _ ⟨v, _, rfl⟩; exact Rigid.val v) h
 
 theorem norm_eq_label {m : CModuleInst} {x : CAdmin} {n : Nat} {k : List Silmaril.Wasm.Instr}
-    {b : List CAdmin} (h : Admin.norm m x = .label n k b) :
-    ∃ b', x = .label n k b' ∧ b'.map (Admin.norm m) = b := by
+    {b : List CAdmin} (h : Silmaril.Wasm.Execution.Core.Admin.norm m x = .label n k b) :
+    ∃ b', x = .label n k b' ∧ b'.map (Silmaril.Wasm.Execution.Core.Admin.norm m) = b := by
   cases x with
   | plain i =>
     by_cases h₁ : ∃ z, i = .callRef z
@@ -430,13 +430,13 @@ theorem norm_eq_label {m : CModuleInst} {x : CAdmin} {n : Nat} {k : List Silmari
     by_cases h₂ : ∃ z, i = .returnCallRef z
     · obtain ⟨z, rfl⟩ := h₂; simp at h
     push Not at h₁ h₂
-    rw [Admin.norm_plain m i h₁ h₂] at h; cases h
+    rw [Silmaril.Wasm.Execution.Core.Admin.norm_plain m i h₁ h₂] at h; cases h
   | label n' k' b' => simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; exact ⟨b', rfl, rfl⟩
   | _ => simp at h
 
 theorem norm_eq_frame {m : CModuleInst} {x : CAdmin} {n : Nat} {f : CFrame} {b : List CAdmin}
-    (h : Admin.norm m x = .frame n f b) :
-    ∃ f' b', x = .frame n f' b' ∧ Frame.erase f' = f ∧ b'.map (Admin.norm f'.module) = b := by
+    (h : Silmaril.Wasm.Execution.Core.Admin.norm m x = .frame n f b) :
+    ∃ f' b', x = .frame n f' b' ∧ Frame.erase f' = f ∧ b'.map (Silmaril.Wasm.Execution.Core.Admin.norm f'.module) = b := by
   cases x with
   | plain i =>
     by_cases h₁ : ∃ z, i = .callRef z
@@ -444,12 +444,12 @@ theorem norm_eq_frame {m : CModuleInst} {x : CAdmin} {n : Nat} {f : CFrame} {b :
     by_cases h₂ : ∃ z, i = .returnCallRef z
     · obtain ⟨z, rfl⟩ := h₂; simp at h
     push Not at h₁ h₂
-    rw [Admin.norm_plain m i h₁ h₂] at h; cases h
+    rw [Silmaril.Wasm.Execution.Core.Admin.norm_plain m i h₁ h₂] at h; cases h
   | frame n' f' b' => simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; exact ⟨f', b', rfl, rfl, rfl⟩
   | _ => simp at h
 
 theorem norm_eq_callRefType {m : CModuleInst} {x : CAdmin} {d : DefType}
-    (h : Admin.norm m x = .callRefType d) :
+    (h : Silmaril.Wasm.Execution.Core.Admin.norm m x = .callRefType d) :
     x = .callRefType d ∨ ∃ y, x = .plain (.callRef y) ∧ (m.types[y.toNat]?).getD default = d := by
   cases x with
   | plain i =>
@@ -458,33 +458,33 @@ theorem norm_eq_callRefType {m : CModuleInst} {x : CAdmin} {d : DefType}
     by_cases h₂ : ∃ z, i = .returnCallRef z
     · obtain ⟨z, rfl⟩ := h₂; simp at h
     push Not at h₁ h₂
-    rw [Admin.norm_plain m i h₁ h₂] at h; cases h
+    rw [Silmaril.Wasm.Execution.Core.Admin.norm_plain m i h₁ h₂] at h; cases h
   | callRefType d' => simp at h; exact .inl (by rw [h])
   | _ => simp at h
 
 mutual
 /-- Normalisation only reads the enclosing module's types. -/
-theorem Admin.norm_congr {m m' : CModuleInst} (h : m.types = m'.types) :
-    (x : CAdmin) → Admin.norm m x = Admin.norm m' x
+theorem Silmaril.Wasm.Execution.Core.Admin.norm_congr {m m' : CModuleInst} (h : m.types = m'.types) :
+    (x : CAdmin) → Silmaril.Wasm.Execution.Core.Admin.norm m x = Silmaril.Wasm.Execution.Core.Admin.norm m' x
   | .plain i => by
     by_cases h₁ : ∃ z, i = .callRef z
     · obtain ⟨z, rfl⟩ := h₁; simp [h]
     by_cases h₂ : ∃ z, i = .returnCallRef z
     · obtain ⟨z, rfl⟩ := h₂; simp [h]
     push Not at h₁ h₂
-    rw [Admin.norm_plain m i h₁ h₂, Admin.norm_plain m' i h₁ h₂]
-  | .label n k b => by simp only [Admin.norm_label]; rw [Admin.map_norm_congr h b]
-  | .handler n cs b => by simp only [Admin.norm_handler]; rw [Admin.map_norm_congr h b]
+    rw [Silmaril.Wasm.Execution.Core.Admin.norm_plain m i h₁ h₂, Silmaril.Wasm.Execution.Core.Admin.norm_plain m' i h₁ h₂]
+  | .label n k b => by simp only [Silmaril.Wasm.Execution.Core.Admin.norm_label]; rw [Silmaril.Wasm.Execution.Core.Admin.map_norm_congr h b]
+  | .handler n cs b => by simp only [Silmaril.Wasm.Execution.Core.Admin.norm_handler]; rw [Silmaril.Wasm.Execution.Core.Admin.map_norm_congr h b]
   | .frame n f b => by simp
   | .ref r => by simp
   | .callRefType d => by simp
   | .returnCallRefType d => by simp
   | .trap => by simp
 
-theorem Admin.map_norm_congr {m m' : CModuleInst} (h : m.types = m'.types) :
-    (l : List CAdmin) → l.map (Admin.norm m) = l.map (Admin.norm m')
+theorem Silmaril.Wasm.Execution.Core.Admin.map_norm_congr {m m' : CModuleInst} (h : m.types = m'.types) :
+    (l : List CAdmin) → l.map (Silmaril.Wasm.Execution.Core.Admin.norm m) = l.map (Silmaril.Wasm.Execution.Core.Admin.norm m')
   | [] => rfl
-  | x :: l => by simp only [List.map_cons]; rw [Admin.norm_congr h x, Admin.map_norm_congr h l]
+  | x :: l => by simp only [List.map_cons]; rw [Silmaril.Wasm.Execution.Core.Admin.norm_congr h x, Silmaril.Wasm.Execution.Core.Admin.map_norm_congr h l]
 end
 
 theorem ModuleInst.erase_toCore (m : Silmaril.Wasm.Execution.Runtime.ModuleInst) :
@@ -504,15 +504,15 @@ theorem Config.norm_eq_toCore_iff {cs : CStore H} {cf : CFrame} {cl : List CAdmi
     {a : Config H} :
     Config.norm ⟨cs, cf, cl⟩ = a.toCore ↔
       Store.erase cs = a.store.toCore ∧ Frame.erase cf = a.frame.toCore ∧
-        cl.map (Admin.norm cf.module) = Admin.listToCore a.store a.code := by
-  simp [Config.norm, Silmaril.Wasm.Execution.Runtime.Config.toCore, Admin.normList_eq_map]
+        cl.map (Silmaril.Wasm.Execution.Core.Admin.norm cf.module) = Silmaril.Wasm.Execution.Core.Admin.listToCore a.store a.code := by
+  simp [Config.norm, Silmaril.Wasm.Execution.Runtime.Config.toCore, Silmaril.Wasm.Execution.Core.Admin.normList_eq_map]
 
 end ToCore
 
 open ToCore in
 mutual
 theorem map_norm_toCore (m : CModuleInst) (s : Store H) :
-    (a : Admin) → (Admin.toCore s a).map (ToCore.Admin.norm m) = Admin.toCore s a
+    (a : Silmaril.Wasm.Execution.Core.Admin) → (Silmaril.Wasm.Execution.Core.Admin.toCore s a).map (ToCore.Admin.norm m) = Silmaril.Wasm.Execution.Core.Admin.toCore s a
   | .source i => by simp
   | .invoke a => by simp
   | .label n cont body => by simp [map_norm_listToCore m s body]
@@ -522,7 +522,7 @@ theorem map_norm_toCore (m : CModuleInst) (s : Store H) :
   | .trap => by simp
 
 theorem map_norm_listToCore (m : CModuleInst) (s : Store H) :
-    (l : List Admin) → (Admin.listToCore s l).map (ToCore.Admin.norm m) = Admin.listToCore s l
+    (l : List Silmaril.Wasm.Execution.Core.Admin) → (Silmaril.Wasm.Execution.Core.Admin.listToCore s l).map (ToCore.Admin.norm m) = Silmaril.Wasm.Execution.Core.Admin.listToCore s l
   | [] => by simp
   | a :: as => by
     simp only [listToCore_cons, List.map_append]

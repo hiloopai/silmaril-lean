@@ -24,7 +24,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig TyRef Owner)
 
 namespace Alias
 
-theorem mem_of_lookup {Γ : Table} {x : String} {t : Ty} (h : Γ.lookup x = some t) : (x, t) ∈ Γ := by
+theorem mem_of_lookup {Γ : Table} {x : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : Γ.lookup x = some t) : (x, t) ∈ Γ := by
   induction Γ with
   | nil => cases h
   | cons p Γ ih =>
@@ -36,12 +36,12 @@ theorem mem_of_lookup {Γ : Table} {x : String} {t : Ty} (h : Γ.lookup x = some
     · have h' : Γ.lookup x = some t := by simpa [List.lookup, beq_false_of_ne e] using h
       exact List.mem_cons_of_mem _ (ih h')
 
-theorem normal_of_lookup {Γ : Table} (hN : Normal Γ) {x : String} {t : Ty} (h : Γ.lookup x = some t) :
+theorem normal_of_lookup {Γ : Table} (hN : Normal Γ) {x : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : Γ.lookup x = some t) :
     substA Γ t = t :=
   hN (x, t) (mem_of_lookup h)
 
 /-- **An alias and its definiens expand to the same type.** -/
-theorem substA_alias {Γ : Table} (hN : Normal Γ) {x : String} {t : Ty} (h : Γ.lookup x = some t) :
+theorem substA_alias {Γ : Table} (hN : Normal Γ) {x : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : Γ.lookup x = some t) :
     substA Γ (.ref ⟨.local, x⟩) = substA Γ t := by
   have e1 : substA Γ (.ref ⟨.local, x⟩) = t := by simp [substA, h]
   rw [e1, normal_of_lookup hN h]
@@ -98,7 +98,7 @@ theorem substA_borrow_resOf {Γ : Table} (hN : Normal Γ) (x : String) :
 
 mutual
 /-- **Expansion is idempotent** on a normal table. -/
-theorem substA_idem {Γ : Table} (hN : Normal Γ) : ∀ t : Ty, substA Γ (substA Γ t) = substA Γ t
+theorem substA_idem {Γ : Table} (hN : Normal Γ) : ∀ t : Silmaril.Wasm.Wit.Binary.Ty, substA Γ (substA Γ t) = substA Γ t
   | .prim _ => rfl
   | .ref ⟨.local, x⟩ => by
     cases hl : Γ.lookup x with
@@ -117,10 +117,10 @@ theorem substA_idem {Γ : Table} (hN : Normal Γ) : ∀ t : Ty, substA Γ (subst
   | .borrow ⟨.iface _, _⟩ => rfl
   | .future t => by simp only [substA, substAOpt_idem hN t]
   | .stream t => by simp only [substA, substAOpt_idem hN t]
-theorem substAOpt_idem {Γ : Table} (hN : Normal Γ) : ∀ t : Option Ty, substAOpt Γ (substAOpt Γ t) = substAOpt Γ t
+theorem substAOpt_idem {Γ : Table} (hN : Normal Γ) : ∀ t : Option Silmaril.Wasm.Wit.Binary.Ty, substAOpt Γ (substAOpt Γ t) = substAOpt Γ t
   | none => rfl
   | some t => by simp only [substAOpt, substA_idem hN t]
-theorem substAs_idem {Γ : Table} (hN : Normal Γ) : ∀ ts : List Ty, substAs Γ (substAs Γ ts) = substAs Γ ts
+theorem substAs_idem {Γ : Table} (hN : Normal Γ) : ∀ ts : List Silmaril.Wasm.Wit.Binary.Ty, substAs Γ (substAs Γ ts) = substAs Γ ts
   | [] => rfl
   | t :: ts => by simp only [substAs, substA_idem hN t, substAs_idem hN ts]
 end

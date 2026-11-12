@@ -138,7 +138,7 @@ def get (st : KSt) (x : SortIdx) : Option Kind :=
 end KSt
 
 /-- An import: its kind is `imps`' (promoted), and must have the import's sort. -/
-def kImport (imps : Externs) (st : KSt) (i : Import) : Except String KSt :=
+def kImport (imps : Externs) (st : KSt) (i : Silmaril.Wasm.Component.Binary.Import) : Except String KSt :=
   match imps.find i.name.name with
   | some k =>
     if sortName k.promote = Targets.sortOf i.desc then
@@ -170,7 +170,7 @@ def kAlias (st : KSt) (a : Alias) : Except String KSt :=
   | _ => .error "alias: outside the composition profile"
 
 /-- An export: the kind of its item. -/
-def kExport (st : KSt) (e : Export) : Except String KSt :=
+def kExport (st : KSt) (e : Silmaril.Wasm.Component.Binary.Export) : Except String KSt :=
   match st.get e.item with
   | some k =>
     if sortName k = Targets.itemSortName e.item.sort then

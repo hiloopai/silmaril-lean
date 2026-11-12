@@ -63,19 +63,19 @@ variable {H : Type}
 
 /-- Values typed at numeric types are flat, of those types. -/
 theorem mapM_toFlat?_of_forall₂ {s : Store H} {vs : List Val} {ns : List NumType}
-    (h : List.Forall₂ (ValOk s) vs (ns.map Ty.num)) :
+    (h : List.Forall₂ (ValOk s) vs (ns.map Silmaril.Wasm.Validation.Ty.num)) :
     ∃ fvs, vs.mapM SingleThreaded.toFlat? = some fvs ∧ fvs.map (·.type) = ns :=
   SingleThreaded.flat_of_typed (Δ := {}) h (ResultSub.refl _ _)
 
 /-- Returned values of a thread typed at numeric result types are flat, of those types. -/
 theorem returned_values_flat {o : SingleThreaded.GrowOracle} {s : Store H}
     {t : SingleThreaded.Thread} {ns : List NumType} {vs : List Val} (_hs : StoreOk s)
-    (ht : SingleThreaded.ThreadOk s t (ns.map Ty.num))
+    (ht : SingleThreaded.ThreadOk s t (ns.map Silmaril.Wasm.Validation.Ty.num))
     (h : SingleThreaded.status o s t = .returned (.values vs)) :
     ∃ fvs, vs.mapM SingleThreaded.toFlat? = some fvs ∧ fvs.map (·.type) = ns := by
   obtain ⟨C, -, hadm⟩ := ht
   rw [SingleThreaded.status_returned_values h] at hadm
-  obtain ⟨ts', hvs, hsub⟩ := SingleThreaded.AdminsOk.vals_num_aux hadm _ rfl (ns.map Ty.num)
+  obtain ⟨ts', hvs, hsub⟩ := SingleThreaded.AdminsOk.vals_num_aux hadm _ rfl (ns.map Silmaril.Wasm.Validation.Ty.num)
     (fun u hu => by
       obtain ⟨n, -, rfl⟩ := List.mem_map.mp hu
       exact .inl ⟨n, rfl⟩)

@@ -29,7 +29,7 @@ open Silmaril.Wasm.Wit.Binary (Ty TyRef Owner)
 /-! ## `semver-highest-version-retained` -/
 
 /-- The record `x` of `foo:bar/types`. -/
-def xRef : Ty := .ref ⟨.local, "x"⟩
+def xRef : Silmaril.Wasm.Wit.Binary.Ty := .ref ⟨.local, "x"⟩
 
 /-- `foo:bar/types@0.2.1` as `test:higher` imports it: the resource `w`. -/
 def typesHigh : Kind := .inst none [("w", .type (.resource "w"))]

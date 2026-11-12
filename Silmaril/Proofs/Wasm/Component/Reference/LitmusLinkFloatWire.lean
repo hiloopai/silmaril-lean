@@ -148,13 +148,13 @@ theorem rb_run {P : Profile} (x : BitVec 32) :
   have hf : rbStore.funcs[0]? = some fi := by rw [hfuncs]; rfl
   have he : Expand fi.type rbFn.toComp := FnType.expand_of_ofDefType? hty
   let F := Frame.forCall fi.module [Val.num ⟨.float .f32, x⟩] code.locals
-  let n := (Ty.ofList (rbFn.results.map ScalarType.toC)).length
+  let n := (Silmaril.Wasm.Validation.Ty.ofList (rbFn.results.map ScalarType.toC)).length
   have hn : [Val.i32 x].length = n :=
-    (Ty.length_ofList (rbFn.results.map ScalarType.toC)).symm
+    (Silmaril.Wasm.Validation.Ty.length_ofList (rbFn.results.map ScalarType.toC)).symm
   have s₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       (invoke rbStore 0 [Val.num ⟨.float .f32, x⟩])
       ⟨rbStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
-    .callRefFunc trivial hf he (Ty.length_ofList (rbFn.params.map ScalarType.toC)).symm hcode
+    .callRefFunc trivial hf he (Silmaril.Wasm.Validation.Ty.length_ofList (rbFn.params.map ScalarType.toC)).symm hcode
   have hl₀ : F.local? x₀ = some (some (Val.num ⟨.float .f32, x⟩)) := by
     simp [F, Frame.local?, Frame.forCall, hloc, h₀]
   have a₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
@@ -412,12 +412,12 @@ theorem nan_path (P : Profile) (y : BitVec 32) :
   have he1 : Expand fi.type fFn.toComp := FnType.expand_of_ofDefType? hti
   have he0 : Expand fh'.type gFn.toComp := FnType.expand_of_ofDefType? hth
   let F := Frame.forCall fi.module [] code.locals
-  let n := (Ty.ofList (fFn.results.map ScalarType.toC)).length
+  let n := (Silmaril.Wasm.Validation.Ty.ofList (fFn.results.map ScalarType.toC)).length
   have hn : [Val.i32 y].length = n :=
-    (Ty.length_ofList (fFn.results.map ScalarType.toC)).symm
+    (Silmaril.Wasm.Validation.Ty.length_ofList (fFn.results.map ScalarType.toC)).symm
   have s₁ : Step P Det.noHost (invoke nanStore 1 [])
       ⟨nanStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
-    .callRefFunc trivial hf1 he1 (Ty.length_ofList (fFn.params.map ScalarType.toC)).symm hcode
+    .callRefFunc trivial hf1 he1 (Silmaril.Wasm.Validation.Ty.length_ofList (fFn.params.map ScalarType.toC)).symm hcode
   have hxF : F.module.funcs[x.toNat]? = some 0 := by rw [hx]; exact hm
   have a₁ : Step P Det.noHost ⟨nanStore, F, vals [nanV] ++ [.plain (.call x)] ++ []⟩
       ⟨nanStore, F, vals [nanV] ++ [.ref (.func 0), .callRefType fh'.type] ++ []⟩ :=
@@ -437,7 +437,7 @@ theorem nan_path (P : Profile) (y : BitVec 32) :
   have hdec : decompose? nanStore (t₁.config nanStore).code = some (nanCtx n F, 0, 0, [nanV]) := by
     rw [hd₁]
     exact Silmaril.Proofs.Wasm.Game.Linking.decompose?_fill _ trivial hf0 he0
-      (Ty.length_ofList (gFn.params.map ScalarType.toC)).symm hcode0
+      (Silmaril.Wasm.Validation.Ty.length_ofList (gFn.params.map ScalarType.toC)).symm hcode0
   have hco : CalloutAt nanStore t₁ 0 [nanV] := ⟨_, _, hdec⟩
   have hfr : (t₁.config nanStore).frame = {} := by rw [hd₁]
   have hres : resumeResult nanStore t₁ (Answer.toResult (nanAI y)) =

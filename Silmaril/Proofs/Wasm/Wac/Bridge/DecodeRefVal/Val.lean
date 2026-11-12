@@ -56,13 +56,13 @@ theorem lookup_app {a : String} {x : NS} : ∀ {Γ : Ctx} (Δ : Ctx), Γ.lookup 
       have h' : Γ.lookup a = some x := by simpa [List.lookup, hb] using h
       simpa [List.lookup, hb] using lookup_app Δ h'
 
-theorem rdTo_congr {Γ Γ' : Ctx} {a : Option Ty} (h : ∀ t ∈ a, rdT Γ' t = rdT Γ t) :
+theorem rdTo_congr {Γ Γ' : Ctx} {a : Option Silmaril.Wasm.Wit.Binary.Ty} (h : ∀ t ∈ a, rdT Γ' t = rdT Γ t) :
     rdTo Γ' a = rdTo Γ a := by
   cases a with
   | none => rfl
   | some t => simp [rdTo, h t rfl]
 
-theorem rdTs_congr {Γ Γ' : Ctx} : ∀ {ts : List Ty}, (∀ t ∈ ts, rdT Γ' t = rdT Γ t) →
+theorem rdTs_congr {Γ Γ' : Ctx} : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts, rdT Γ' t = rdT Γ t) →
     rdTs Γ' ts = rdTs Γ ts
   | [], _ => rfl
   | t :: ts, h => by
@@ -70,7 +70,7 @@ theorem rdTs_congr {Γ Γ' : Ctx} : ∀ {ts : List Ty}, (∀ t ∈ ts, rdT Γ' t
 
 /-- **What a value type of the fragment reads back as does not change** when the
 context grows. -/
-theorem rdT_app {Γ : Ctx} (Δ : Ctx) {t : Ty} (h : TyOkR Γ t) : rdT (Γ ++ Δ) t = rdT Γ t := by
+theorem rdT_app {Γ : Ctx} (Δ : Ctx) {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOkR Γ t) : rdT (Γ ++ Δ) t = rdT Γ t := by
   induction h with
   | prim p => rfl
   | refVal h | refAlias h | refRes h | own h | ownAlias h => simp [rdT, h, lookup_app Δ h]
@@ -81,7 +81,7 @@ theorem rdT_app {Γ : Ctx} (Δ : Ctx) {t : Ty} (h : TyOkR Γ t) : rdT (Γ ++ Δ)
   | tuple _ ih => simp [rdT, rdTs_congr ih]
   | future _ ih | stream _ ih => simp [rdT, rdTo_congr ih]
 
-theorem tyOkR_app {Γ : Ctx} (Δ : Ctx) {t : Ty} (h : TyOkR Γ t) : TyOkR (Γ ++ Δ) t := by
+theorem tyOkR_app {Γ : Ctx} (Δ : Ctx) {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOkR Γ t) : TyOkR (Γ ++ Δ) t := by
   induction h with
   | prim p => exact .prim p
   | refVal h => exact .refVal (lookup_app Δ h)
@@ -100,7 +100,7 @@ theorem tyOkR_app {Γ : Ctx} (Δ : Ctx) {t : Ty} (h : TyOkR Γ t) : TyOkR (Γ ++
   | future _ ih => exact .future ih
   | stream _ ih => exact .stream ih
 
-theorem rdPs_congr {Γ Γ' : Ctx} : ∀ {ps : List (String × Ty)}, (∀ p ∈ ps, rdT Γ' p.2 = rdT Γ p.2) →
+theorem rdPs_congr {Γ Γ' : Ctx} : ∀ {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, (∀ p ∈ ps, rdT Γ' p.2 = rdT Γ p.2) →
     rdPs Γ' ps = rdPs Γ ps
   | [], _ => rfl
   | (n, t) :: ps, h => by
@@ -189,18 +189,18 @@ theorem indep_ref (r : TyRef) : Indep (valTy (.ref r)) := by
   · exact indep_handle _ _
   · exact indep_pure _
 
-theorem indep_valTyOpt {a : Option Ty} (ih : ∀ t ∈ a, Indep (valTy t)) : Indep (valTyOpt a) := by
+theorem indep_valTyOpt {a : Option Silmaril.Wasm.Wit.Binary.Ty} (ih : ∀ t ∈ a, Indep (valTy t)) : Indep (valTyOpt a) := by
   cases a with
   | none => exact indep_pure _
   | some t => exact indep_bind (ih t rfl) fun _ => indep_pure _
 
-theorem indep_valTys : ∀ {ts : List Ty}, (∀ t ∈ ts, Indep (valTy t)) → Indep (valTys ts)
+theorem indep_valTys : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts, Indep (valTy t)) → Indep (valTys ts)
   | [], _ => indep_pure _
   | t :: _, ih => indep_bind (ih t List.mem_cons_self) fun _ =>
       indep_bind (indep_valTys fun t' h => ih t' (List.mem_cons_of_mem _ h)) fun _ => indep_pure _
 
 /-- **Value types do not touch the two caches.** -/
-theorem indep_valTy {Γ : Ctx} {t : Ty} (h : TyOkR Γ t) : Indep (valTy t) := by
+theorem indep_valTy {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOkR Γ t) : Indep (valTy t) := by
   induction h with
   | prim p => exact indep_pure _
   | refVal _ | refAlias _ | refRes _ => exact indep_ref _
@@ -213,7 +213,7 @@ theorem indep_valTy {Γ : Ctx} {t : Ty} (h : TyOkR Γ t) : Indep (valTy t) := by
   | tuple _ ih => exact indep_bind (indep_valTys ih) fun _ => indep_defVal _
   | future _ ih | stream _ ih => exact indep_bind (indep_valTyOpt ih) fun _ => indep_defVal _
 
-theorem indep_paramTys {Γ : Ctx} : ∀ {ps : List (String × Ty)}, (∀ p ∈ ps, TyOkR Γ p.2) →
+theorem indep_paramTys {Γ : Ctx} : ∀ {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, (∀ p ∈ ps, TyOkR Γ p.2) →
     Indep (paramTys ps)
   | [], _ => indep_pure _
   | (n, t) :: _, h => indep_bind (indep_valTy (h (n, t) List.mem_cons_self)) fun _ =>
@@ -313,17 +313,17 @@ theorem vsr_of_vs {N : NomTable} {Γ : Ctx} {α : Type} {m : TM α} (hi : Indep 
 /-! ## Value types, at the level of `M` -/
 
 /-- What `valTy_simR0` proves of a type: it decodes back as `rdT Γ t`. -/
-def ValOkR (N : NomTable) (Γ : Ctx) (t : Ty) : Prop :=
+def ValOkR (N : NomTable) (Γ : Ctx) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
   ∀ σ δ, M N Γ σ δ → VS N Γ (valTy t) σ δ (fun v δ' => DecVal δ' v (rdT Γ t))
 
-theorem valTyOpt_simR0 {N : NomTable} {Γ : Ctx} {a : Option Ty} (ih : ∀ t ∈ a, ValOkR N Γ t)
+theorem valTyOpt_simR0 {N : NomTable} {Γ : Ctx} {a : Option Silmaril.Wasm.Wit.Binary.Ty} (ih : ∀ t ∈ a, ValOkR N Γ t)
     {σ : Scope} {δ : DScope} (hm : M N Γ σ δ) :
     VS N Γ (valTyOpt a) σ δ (fun v δ' => DecOpt δ' v (rdTo Γ a)) := by
   cases a with
   | none => exact vs_pure hm (decOpt_none δ)
   | some t => exact vs_bind (ih t rfl σ δ hm) fun v σ1 δ1 hm1 _ hv => vs_pure hm1 (decOpt_some hv)
 
-theorem valTys_simR0 {N : NomTable} {Γ : Ctx} : ∀ {ts : List Ty}, (∀ t ∈ ts, ValOkR N Γ t) →
+theorem valTys_simR0 {N : NomTable} {Γ : Ctx} : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts, ValOkR N Γ t) →
     ∀ {σ : Scope} {δ : DScope}, M N Γ σ δ →
       VS N Γ (valTys ts) σ δ (fun vs δ' => DecVals δ' vs (rdTs Γ ts))
   | [], _, _, δ, hm => vs_pure hm (decVals_nil δ)
@@ -349,7 +349,7 @@ theorem ownAlias_simR0 {N : NomTable} {Γ : Ctx} {a r : String} (h : Γ.lookup a
   exact vs_congr (valTy_own_run (r := ⟨.local, a⟩) hi) (handle_sim hm (decDef_own_alias hat))
 
 /-- A case of `DecodeNamed.valTy_sim` whose type reads back as itself. -/
-theorem keep_simR0 {N : NomTable} {Γ : Ctx} {t : Ty} (e : rdT Γ t = t)
+theorem keep_simR0 {N : NomTable} {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (e : rdT Γ t = t)
     (h : ∀ σ δ, M N Γ σ δ → VS N Γ (valTy t) σ δ (fun v δ' => DecVal δ' v t)) : ValOkR N Γ t := by
   intro σ δ hm
   rw [e]
@@ -357,7 +357,7 @@ theorem keep_simR0 {N : NomTable} {Γ : Ctx} {t : Ty} (e : rdT Γ t = t)
 
 /-- **Every value type of the fragment** is encoded as a value type that decodes back as
 `rdT Γ t`. -/
-theorem valTy_simR0 {N : NomTable} {Γ : Ctx} {t : Ty} (h : TyOkR Γ t) : ValOkR N Γ t := by
+theorem valTy_simR0 {N : NomTable} {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOkR Γ t) : ValOkR N Γ t := by
   induction h with
   | prim p => exact fun σ δ hm => vs_pure hm (decVal_prim δ p)
   | refVal h => exact keep_simR0 (by simp [rdT, h]) (DecodeNamed.refVal_sim h)
@@ -391,7 +391,7 @@ theorem valTy_simR0 {N : NomTable} {Γ : Ctx} {t : Ty} (h : TyOkR Γ t) : ValOkR
     exact fun σ δ hm => vs_bind (valTyOpt_simR0 ih hm) fun x σ1 δ1 hm1 _ hx =>
       defVal_sim hm1 (decDef_stream hx)
 
-theorem paramTys_simR0 {N : NomTable} {Γ : Ctx} : ∀ {ps : List (String × Ty)}, (∀ p ∈ ps, TyOkR Γ p.2) →
+theorem paramTys_simR0 {N : NomTable} {Γ : Ctx} : ∀ {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, (∀ p ∈ ps, TyOkR Γ p.2) →
     ∀ {σ : Scope} {δ : DScope}, M N Γ σ δ →
       VS N Γ (paramTys ps) σ δ (fun vs δ' => DecPs δ' vs (rdPs Γ ps))
   | [], _, _, δ, hm => vs_pure hm (decPs_nil δ)
@@ -402,12 +402,12 @@ theorem paramTys_simR0 {N : NomTable} {Γ : Ctx} : ∀ {ps : List (String × Ty)
 
 /-! ## Value types and function types against `MR` -/
 
-theorem valTy_simR {N : NomTable} {Γ : Ctx} {t : Ty} (h : TyOkR Γ t) {σ : Scope} {δ : DScope}
+theorem valTy_simR {N : NomTable} {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOkR Γ t) {σ : Scope} {δ : DScope}
     (hm : MR N Γ σ δ) : VSR N Γ (valTy t) σ δ (fun v δ' => DecVal δ' v (rdT Γ t)) :=
   vsr_of_vs (indep_valTy h) hm (valTy_simR0 h _ _ hm.m)
 
-theorem defFunc_simR {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {vs : List (String × ValType)}
-    {vr : Option ValType} {s : Sig} (hm : MR N Γ σ δ) (hs : SigOkR Γ s)
+theorem defFunc_simR {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)}
+    {vr : Option Silmaril.Wasm.Component.Binary.ValType} {s : Sig} (hm : MR N Γ σ δ) (hs : SigOkR Γ s)
     (hps : DecPs δ vs (rdS Γ s).params) (hr : DecOpt δ vr (rdS Γ s).result) :
     VSR N Γ (do
         let j ← defTy (.func ⟨vs, vr, s.async⟩)

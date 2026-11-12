@@ -138,7 +138,7 @@ theorem projectI_aliasC_world {c : Ast} {s : IState} (h : projState c = some s) 
 /-- **An export adds its declaration**, with the ascribed or inferred type
 (`exportDescX`, which reads the inferred tables), for a function, instance or
 component. -/
-theorem projectI_exportC {c : Ast} {s : IState} (h : projState c = some s) (e : Export)
+theorem projectI_exportC {c : Ast} {s : IState} (h : projState c = some s) (e : Silmaril.Wasm.Component.Binary.Export)
     (d : ExternDesc) (hd : exportDescX s.x e = some d) (hv : isValueEq d = false)
     (hsort : e.item.sort = .func ∨ e.item.sort = .instance ∨ e.item.sort = .component) :
     projectI (exportC c e) = some (s.x.base.decls ++ [.inst (.export (normName e.name) d)]) := by

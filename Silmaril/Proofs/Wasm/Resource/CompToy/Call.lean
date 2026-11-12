@@ -209,7 +209,7 @@ theorem nextG_ok {G : ToyGarb P} (hG : G.Ok) (ft : WIT.FuncType Empty RtId) (k j
 
 /-- The thread table of the toy's instance during a call whose implicit thread is `t`: slot
 `1` holds `t`; slot `2` stays free when the table between calls had two freed slots. -/
-def callT (tb : Table ThreadId) (t : ThreadId) : Table ThreadId :=
+def callT (tb : Silmaril.Wasm.Component.Runtime.Table ThreadId) (t : ThreadId) : Silmaril.Wasm.Component.Runtime.Table ThreadId :=
   if tb = ⟨#[none, none, none], [1, 2]⟩ then ⟨#[none, some t, none], [2]⟩ else ⟨#[none, some t], []⟩
 
 /-- The instance during a call whose implicit thread is `t`. -/
@@ -219,14 +219,14 @@ def callIn (ι : InstState) (t : ThreadId) : InstState := { ι with threads := c
 theorem addThread?_free {ι : InstState} (h : ThreadsFree ι.threads) (t : ThreadId) :
     ι.addThread? t = some (1, callIn ι t) := by
   rcases h with h | h | h <;>
-    simp [InstState.addThread?, Table.add?, callIn, callT, h, Table.maxLength]
+    simp [InstState.addThread?, Silmaril.Wasm.Component.Runtime.Table.add?, callIn, callT, h, Silmaril.Wasm.Component.Runtime.Table.maxLength]
 
 theorem removeThread?_call (ι : InstState) (t : ThreadId) :
     (callIn ι t).removeThread? 1 = some (t, InstState.removeThread 1 (callIn ι t)) := by
   unfold callIn callT
   split <;> rfl
 
-theorem removeThread?_callH (ι : InstState) (t : ThreadId) (T : Table HandleEntry) :
+theorem removeThread?_callH (ι : InstState) (t : ThreadId) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry) :
     ({ callIn ι t with handles := T } : InstState).removeThread? 1 =
       some (t, InstState.removeThread 1 { callIn ι t with handles := T }) := by
   unfold callIn callT
@@ -236,11 +236,11 @@ theorem removeThread?_callH (ι : InstState) (t : ThreadId) (T : Table HandleEnt
 theorem removeThread_call {ι : InstState} (h : ThreadsFree ι.threads) (t : ThreadId) :
     ∃ tb, InstState.removeThread 1 (callIn ι t) = { ι with threads := tb } ∧ ThreadsFree tb := by
   rcases h with h | h | h
-  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Table.remove?, Table.get?,
+  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Silmaril.Wasm.Component.Runtime.Table.remove?, Silmaril.Wasm.Component.Runtime.Table.get?,
       callIn, callT, h], .inr (.inl rfl)⟩
-  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Table.remove?, Table.get?,
+  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Silmaril.Wasm.Component.Runtime.Table.remove?, Silmaril.Wasm.Component.Runtime.Table.get?,
       callIn, callT, h], .inr (.inl rfl)⟩
-  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Table.remove?, Table.get?,
+  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Silmaril.Wasm.Component.Runtime.Table.remove?, Silmaril.Wasm.Component.Runtime.Table.get?,
       callIn, callT, h], .inr (.inr rfl)⟩
 
 /-- **`toyR` holds at the next configuration between calls.** -/
@@ -316,7 +316,7 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
     (hasync : ft.async_ = false)
     (hadd : ι.addThread? ⟨G.threads.length⟩ = some (1, ι'))
     (hlow : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ft c ι ι' G k args →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none) m trL xs
         { m with store := tStore₄ P ft c ι ι' G k args ι₄ H₄ }) :
@@ -325,7 +325,7 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
         ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat addr xs) K, segs⟩ :: rest ∧
       M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧
       (∀ ys, ∃ (β : Type) (f : List Val × FlatCursor → Canon.P (E3 P) Unit β)
-        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
+        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ft) >>= f) >>= g) ∧
       ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
@@ -333,7 +333,7 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
         (trF : List (Label (E3 P) Unit)) (c' : ℕ),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = { tStore₄ P ft c ι ι' G k args ιc Hc with core := cs' } →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ft)) m trF (ws, cur)
             { m with store := { tStore₄ P ft c ι ι' G k args ι₅ H₅ with core := cs' } }) →
@@ -445,7 +445,7 @@ theorem toy_callAt_trap (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j a
     (hasync : ft.async_ = false)
     (hadd : ι.addThread? ⟨G.threads.length⟩ = some (1, ι'))
     (hT : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ft c ι ι' G k args →
-      ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
+      ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none) m trT mT) :
     ∃ tr mT r, LRun prof (refHost P).hr (D P) (toyInvoked P c ι G k ⟨j⟩ args) tr mT ∧ Live mT ∧
@@ -455,7 +455,7 @@ theorem toy_callAt_trap (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j a
       (rest : List (Activation (E3 P) Unit))
       (tr : List (Label (E3 P) Unit)),
       LRun prof (refHost P).hr (D P) (toyInvoked P c ι G k ⟨j⟩ args) tr X ∧
-      X.ctl = ⟨some ⟨G.threads.length⟩, .prog (lowerFlatValues Limits.spec Quirks.none
+      X.ctl = ⟨some ⟨G.threads.length⟩, .prog (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none >>= f), segs⟩ :: rest ∧
       X.store = tStore₃ P ft c ι ι' G k args := by

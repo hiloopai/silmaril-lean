@@ -32,12 +32,12 @@ open Silmaril.Wasm.Validation
 abbrev valToC (t : ValType) : CValType := .num t
 
 /-- A Lime1 table type as a closed Core table type (`funcref`, `i32`). -/
-def tableToC (t : TableType) : CTableType := ⟨.i32, t.limits.toCore, Ty.funcref⟩
+def tableToC (t : TableType) : CTableType := ⟨.i32, t.limits.toCore, Silmaril.Wasm.Validation.Ty.funcref⟩
 
 def globalToC (g : GlobalType) : CGlobalType := ⟨g.mutability, .num g.value⟩
 
 /-- The Core context of a Lime1 context. -/
-def Context.toCore (C : Context) : Wasm.Validation.Context where
+def Silmaril.Wasm.Validation.Context.toCore (C : Silmaril.Wasm.Validation.Context) : Wasm.Validation.Context where
   types := C.types.map V1.FuncType.toDefType
   funcs := C.funcs.map V1.FuncType.toDefType
   tables := C.tables.map tableToC
@@ -47,15 +47,15 @@ def Context.toCore (C : Context) : Wasm.Validation.Context where
   labels := C.labels.map (·.map valToC)
   return_ := C.returnType.map (·.map valToC)
 
-@[simp] theorem Context.withLabel_toCore (C : Context) (ts : ResultType) :
+@[simp] theorem Silmaril.Wasm.Validation.Context.withLabel_toCore (C : Silmaril.Wasm.Validation.Context) (ts : ResultType) :
     (C.withLabel ts).toCore = C.toCore.withLabel (ts.map valToC) := rfl
 
 /-! ## Helpers -/
 
-@[simp] theorem valToC_eq (t : ValType) : valToC t = Ty.num t := rfl
-@[simp] theorem map_valToC (ts : ResultType) : ts.map valToC = ts.map Ty.num := rfl
-@[simp] theorem addrI32_valType : AddrType.i32.valType = Ty.num (.int .i32) := rfl
-@[simp] theorem ty_i32_eq : Ty.i32 = Ty.num (.int .i32) := rfl
+@[simp] theorem valToC_eq (t : ValType) : valToC t = Silmaril.Wasm.Validation.Ty.num t := rfl
+@[simp] theorem map_valToC (ts : ResultType) : ts.map valToC = ts.map Silmaril.Wasm.Validation.Ty.num := rfl
+@[simp] theorem addrI32_valType : AddrType.i32.valType = Silmaril.Wasm.Validation.Ty.num (.int .i32) := rfl
+@[simp] theorem ty_i32_eq : Silmaril.Wasm.Validation.Ty.i32 = Silmaril.Wasm.Validation.Ty.num (.int .i32) := rfl
 @[simp] theorem v1_i32_eq : V1.ValType.i32 = NumType.int .i32 := rfl
 
 theorem prefix_getElem? {α : Type _} {l₁ l₂ : List α} (h : l₁ <+: l₂) {n : Nat} {a : α}
@@ -73,7 +73,7 @@ theorem prefix_map_getElem? {α β : Type _} {f : α → β} {l₁ : List α} {l
 
 /-- A Core context agrees with (the image of) a Lime1 context: its index spaces
 extend the images, and locals, labels and return type are exactly the images. -/
-structure Agrees (C : Context) (D : Wasm.Validation.Context) : Prop where
+structure Agrees (C : Silmaril.Wasm.Validation.Context) (D : Wasm.Validation.Context) : Prop where
   types : C.types.map V1.FuncType.toDefType <+: D.types
   funcs : C.funcs.map V1.FuncType.toDefType <+: D.funcs
   tables : C.tables.map tableToC <+: D.tables
@@ -83,14 +83,14 @@ structure Agrees (C : Context) (D : Wasm.Validation.Context) : Prop where
   labels : D.labels = C.labels.map (·.map valToC)
   return_ : D.return_ = C.returnType.map (·.map valToC)
 
-theorem Agrees.refl (C : Context) : Agrees C C.toCore :=
+theorem Agrees.refl (C : Silmaril.Wasm.Validation.Context) : Agrees C C.toCore :=
   ⟨List.prefix_refl _, List.prefix_refl _, List.prefix_refl _, List.prefix_refl _,
     List.prefix_refl _, rfl, rfl, rfl⟩
 
-theorem Agrees.withLabel {C : Context} {D : Wasm.Validation.Context} (h : Agrees C D)
+theorem Agrees.withLabel {C : Silmaril.Wasm.Validation.Context} {D : Wasm.Validation.Context} (h : Agrees C D)
     (ts : ResultType) : Agrees (C.withLabel ts) (D.withLabel (ts.map valToC)) :=
   ⟨h.types, h.funcs, h.tables, h.mems, h.globals, h.locals,
-    by simp [Context.withLabel, Wasm.Validation.Context.withLabel, h.labels], h.return_⟩
+    by simp [Silmaril.Wasm.Validation.Context.withLabel, Wasm.Validation.Context.withLabel, h.labels], h.return_⟩
 
 theorem resultOk_map (Δ : TypeCtx) (ts : ResultType) : ResultOk Δ (ts.map valToC) := by
   intro t ht
@@ -129,7 +129,7 @@ theorem drop_inits {C : Wasm.Validation.Context} {is : List Wasm.Instr} {a b : L
     (hb : ResultOk C.toTypeCtx b) : InstrsOk C is (.plain a b) :=
   InstrsOk.sub h ⟨ResultSub.refl _ _, ResultSub.refl _ _, by simp⟩ ⟨ha, hb, by simp⟩
 
-theorem blockType_toCore {C : Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
+theorem blockType_toCore {C : Silmaril.Wasm.Validation.Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
     {bt : BlockType} {ft : FuncType}
     (h : blockType? C bt = some ft) :
     BlockTypeOk D bt.toCore (ft.params.map valToC) (ft.results.map valToC) := by
@@ -145,13 +145,13 @@ theorem blockType_toCore {C : Context} {D : Wasm.Validation.Context} (hA : Agree
     have hd : D.type? x = some ft.toDefType := prefix_map_getElem? hA.types h
     have he := Expand.iff.mpr (V1.FuncType.toDefType_expand ft)
     have := BlockTypeOk.typeIdx hd he
-    simpa [Ty.toList_ofList, BlockType.toCore] using this
+    simpa [Silmaril.Wasm.Validation.Ty.toList_ofList, BlockType.toCore] using this
 
 theorem memArgOk_toCore (arg : MemArg) (N : Nat) (h : Aligned arg N) :
     MemArgOk arg.toCore .i32 N :=
   ⟨h, by show arg.offset.val < 2 ^ 32; exact arg.offset.isLt⟩
 
-theorem mems_zero {C : Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
+theorem mems_zero {C : Silmaril.Wasm.Validation.Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
     (h : C.memories ≠ []) :
     ∃ l, D.mems[(⟨0⟩ : MemIdx).toNat]? = some ⟨.i32, l⟩ := by
   obtain ⟨m, ms, hm⟩ := List.exists_cons_of_ne_nil h
@@ -166,13 +166,13 @@ theorem packSize_toCore_width (p : PackSize) : p.toCore.width = p.width := by
 mutual
 
 /-- Single-instruction transport into any agreeing Core context. -/
-theorem InstrType.toCore' {C : Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
-    {i : Instr} {a b : ResultType} (h : InstrType C i a b) :
+theorem Silmaril.Wasm.Validation.InstrType.toCore' {C : Silmaril.Wasm.Validation.Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
+    {i : Instr} {a b : ResultType} (h : Silmaril.Wasm.Validation.InstrType C i a b) :
     Wasm.Validation.InstrsOk D [i.toCore] (.plain (a.map valToC) (b.map valToC)) := by
   have R := resultOk_map D.toTypeCtx
   match h with
   | .frame pre h' =>
-    have := InstrsOk.frame (InstrType.toCore' hA h') (R pre)
+    have := InstrsOk.frame (Silmaril.Wasm.Validation.InstrType.toCore' hA h') (R pre)
     simpa using this
   | .nop => exact single_plain (.parametric .nop) (by simp [ResultOk])
   | .unreachable a b =>
@@ -192,23 +192,23 @@ theorem InstrType.toCore' {C : Context} {D : Wasm.Validation.Context} (hA : Agre
     have ihr := ExprType.toCore' (hA.withLabel _) hr
     have := single_plain (.if_ (blockType_toCore hA type) ihl ihr) (R _)
     simpa [Instr.toCore] using this
-  | @InstrType.br _ l ts hl pre out =>
+  | @Silmaril.Wasm.Validation.InstrType.br _ l ts hl pre out =>
     have hl' : D.labels[l.toNat]? = some (ts.map valToC) := by
       rw [hA.labels]; simp [hl]
     have := single_plain (.br hl' ⟨R pre, R out, by simp⟩) (R out)
     simpa [Instr.toCore] using this
-  | @InstrType.brIf _ l ts hl =>
+  | @Silmaril.Wasm.Validation.InstrType.brIf _ l ts hl =>
     have hl' : D.labels[l.toNat]? = some (ts.map valToC) := by
       rw [hA.labels]; simp [hl]
     have := single_plain (.brIf hl') (R _)
     simpa [Instr.toCore] using this
-  | @InstrType.brTable _ ls d ts hd hs pre out =>
+  | @Silmaril.Wasm.Validation.InstrType.brTable _ ls d ts hd hs pre out =>
     have := single_plain (.brTable (C := D) (ls := ls) (l' := d) (ts := ts.map valToC)
       (fun l hl => ⟨ts.map valToC, by rw [hA.labels]; simp [hs l hl], ResultSub.refl _ _⟩)
       ⟨ts.map valToC, by rw [hA.labels]; simp [hd], ResultSub.refl _ _⟩
       ⟨by simpa using R (pre ++ ts ++ [V1.ValType.i32]), R out, by simp⟩) (R out)
     simpa [Instr.toCore] using this
-  | @InstrType.return_ _ ts hr pre out =>
+  | @Silmaril.Wasm.Validation.InstrType.return_ _ ts hr pre out =>
     have hr' : D.return_ = some (ts.map valToC) := by
       rw [hA.return_]; simp [hr]
     have := single_plain (.return_ hr' ⟨R pre, R out, by simp⟩) (R out)
@@ -217,26 +217,26 @@ theorem InstrType.toCore' {C : Context} {D : Wasm.Validation.Context} (hA : Agre
     have hf' := prefix_map_getElem? hA.funcs hf
     have := single_plain (.call hf' (Expand.iff.mpr (V1.FuncType.toDefType_expand _))) (by
       simpa using R _)
-    simpa [Ty.toList_ofList, Instr.toCore] using this
+    simpa [Silmaril.Wasm.Validation.Ty.toList_ofList, Instr.toCore] using this
   | .callIndirect y hy htab =>
     obtain ⟨t, ts, ht⟩ := List.exists_cons_of_ne_nil htab
     have htab' : D.tables[(⟨0⟩ : TableIdx).toNat]? =
-        some ⟨.i32, t.limits.toCore, Ty.funcref⟩ :=
+        some ⟨.i32, t.limits.toCore, Silmaril.Wasm.Validation.Ty.funcref⟩ :=
       prefix_map_getElem? (f := tableToC) hA.tables (by simp [ht, Idx.toNat])
     have hy' : D.type? y = some (V1.FuncType.toDefType _) := prefix_map_getElem? hA.types hy
     have := single_plain (.callIndirect htab' (Sub.refl _ (k := .ref) trivial _) hy'
       (Expand.iff.mpr (V1.FuncType.toDefType_expand _))) (by simpa using R _)
-    simpa [Ty.toList_ofList, Instr.toCore] using this
-  | @InstrType.localGet _ x t hx =>
+    simpa [Silmaril.Wasm.Validation.Ty.toList_ofList, Instr.toCore] using this
+  | @Silmaril.Wasm.Validation.InstrType.localGet _ x t hx =>
     have hx' : D.locals[x.toNat]? = some ⟨.set, valToC t⟩ := by
       rw [hA.locals]; simp [hx]
     exact single_plain (.variable (.localGet hx')) (R _)
-  | @InstrType.localSet _ x t hx =>
+  | @Silmaril.Wasm.Validation.InstrType.localSet _ x t hx =>
     have hx' : D.locals[x.toNat]? = some ⟨.set, valToC t⟩ := by
       rw [hA.locals]; simp [hx]
     exact drop_inits (single_gen (.variable (.localSet hx')) (by simp [hx'])
       (by simp [ResultOk])) (R _) (by simp [ResultOk])
-  | @InstrType.localTee _ x t hx =>
+  | @Silmaril.Wasm.Validation.InstrType.localTee _ x t hx =>
     have hx' : D.locals[x.toNat]? = some ⟨.set, valToC t⟩ := by
       rw [hA.locals]; simp [hx]
     exact drop_inits (single_gen (.variable (.localTee hx')) (by simp [hx'])
@@ -314,7 +314,7 @@ theorem InstrType.toCore' {C : Context} {D : Wasm.Validation.Context} (hA : Agre
   | .convert op => exact single_plain (.numeric (.convert op)) (R _)
 
 /-- Sequence transport into any agreeing Core context. -/
-theorem ExprType.toCore' {C : Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
+theorem ExprType.toCore' {C : Silmaril.Wasm.Validation.Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
     {es : Expr} {a b : ResultType} (h : ExprType C es a b) :
     Wasm.Validation.InstrsOk D (Expr.toCore es) (.plain (a.map valToC) (b.map valToC)) := by
   match h with
@@ -323,55 +323,55 @@ theorem ExprType.toCore' {C : Context} {D : Wasm.Validation.Context} (hA : Agree
       (resultOk_map _ ts)
     simpa [Expr.toCore] using this
   | .cons hi his =>
-    have := InstrsOk.append (xs₁ := []) (xs₂ := []) (InstrType.toCore' hA hi) (by simp)
+    have := InstrsOk.append (xs₁ := []) (xs₂ := []) (Silmaril.Wasm.Validation.InstrType.toCore' hA hi) (by simp)
       (by rw [initLocals_nil]; exact ExprType.toCore' hA his)
     simpa [Expr.toCore] using this
 
 end
 
 /-- Single-instruction transport. -/
-theorem InstrType.toCore {C : Context} {i : Instr} {a b : ResultType} (h : InstrType C i a b) :
+theorem Silmaril.Wasm.Validation.InstrType.toCore {C : Silmaril.Wasm.Validation.Context} {i : Instr} {a b : ResultType} (h : Silmaril.Wasm.Validation.InstrType C i a b) :
     Wasm.Validation.InstrsOk C.toCore [i.toCore] (.plain (a.map valToC) (b.map valToC)) :=
-  InstrType.toCore' (Agrees.refl C) h
+  Silmaril.Wasm.Validation.InstrType.toCore' (Agrees.refl C) h
 
 /-- Sequence transport. -/
-theorem ExprType.toCore {C : Context} {es : Expr} {a b : ResultType} (h : ExprType C es a b) :
+theorem ExprType.toCore {C : Silmaril.Wasm.Validation.Context} {es : Expr} {a b : ResultType} (h : ExprType C es a b) :
     Wasm.Validation.InstrsOk C.toCore (Expr.toCore es) (.plain (a.map valToC) (b.map valToC)) :=
   ExprType.toCore' (Agrees.refl C) h
 
 /-! ## Module validation -/
 
-theorem tyOk_ofList_num (Δ : TypeCtx) : (ts : List NumType) → TyOk Δ (Ty.ofList (ts.map Ty.num))
+theorem tyOk_ofList_num (Δ : TypeCtx) : (ts : List NumType) → TyOk Δ (Silmaril.Wasm.Validation.Ty.ofList (ts.map Silmaril.Wasm.Validation.Ty.num))
   | [] => .nil
   | t :: ts => .cons (.num t) (tyOk_ofList_num Δ ts)
 
 theorem liftComp_func_toCore (t : FuncType) :
     liftComp (.func t.toCore) =
-      .func (Ty.ofList (t.params.map Ty.num)) (Ty.ofList (t.results.map Ty.num)) := by
+      .func (Silmaril.Wasm.Validation.Ty.ofList (t.params.map Silmaril.Wasm.Validation.Ty.num)) (Silmaril.Wasm.Validation.Ty.ofList (t.results.map Silmaril.Wasm.Validation.Ty.num)) := by
   simp [liftComp, V1.FuncType.toCore, V1.liftResult_toCore]
 
 theorem tyOk_toDefType (Δ : TypeCtx) (t : FuncType) : TyOk Δ t.toDefType := by
   have h : t.toDefType = .defn (.group (.cons (.sub true .nil
-      (.func (Ty.ofList (t.params.map Ty.num)) (Ty.ofList (t.results.map Ty.num)))) .nil)) 0 := by
+      (.func (Silmaril.Wasm.Validation.Ty.ofList (t.params.map Silmaril.Wasm.Validation.Ty.num)) (Silmaril.Wasm.Validation.Ty.ofList (t.results.map Silmaril.Wasm.Validation.Ty.num)))) .nil)) 0 := by
     simp [V1.FuncType.toDefType, liftRec, V1.FuncType.toCoreRec, liftSub,
       liftComp_func_toCore]
   rw [h]
   exact .defn (.cons (.noSuper (.func (tyOk_ofList_num _ _) (tyOk_ofList_num _ _))) .nil)
-    (by simp [Ty.length])
+    (by simp [Silmaril.Wasm.Validation.Ty.length])
 
 theorem expand_toDefType (t : FuncType) :
-    Expand t.toDefType (.func (Ty.ofList (t.params.map Ty.num)) (Ty.ofList (t.results.map Ty.num))) :=
+    Expand t.toDefType (.func (Silmaril.Wasm.Validation.Ty.ofList (t.params.map Silmaril.Wasm.Validation.Ty.num)) (Silmaril.Wasm.Validation.Ty.ofList (t.results.map Silmaril.Wasm.Validation.Ty.num))) :=
   Expand.iff.mpr (V1.FuncType.toDefType_expand t)
 
 theorem rollGroup_toCoreRec (C : Wasm.Validation.Context) (t : FuncType) :
     C.rollGroup t.toCoreRec = [t.toDefType] := by
   simp [Wasm.Validation.Context.rollGroup, V1.FuncType.rolldt_toCoreRec,
-    Ty.substAll_closed (V1.FuncType.toDefType_closed t)]
+    Silmaril.Wasm.Validation.Ty.substAll_closed (V1.FuncType.toDefType_closed t)]
 
 theorem closeComp_func_toCore (C : Wasm.Validation.Context) (t : FuncType) :
     C.closeComp (.func t.toCore) =
-      .func (Ty.ofList (t.params.map Ty.num)) (Ty.ofList (t.results.map Ty.num)) := by
-  simp [Wasm.Validation.Context.closeComp, liftComp_func_toCore, Ty.substAll, Ty.subst,
+      .func (Silmaril.Wasm.Validation.Ty.ofList (t.params.map Silmaril.Wasm.Validation.Ty.num)) (Silmaril.Wasm.Validation.Ty.ofList (t.results.map Silmaril.Wasm.Validation.Ty.num)) := by
+  simp [Wasm.Validation.Context.closeComp, liftComp_func_toCore, Silmaril.Wasm.Validation.Ty.substAll, Silmaril.Wasm.Validation.Ty.subst,
     V1.subst_ofList_num]
 
 theorem typesOk_map : (ts : List FuncType) → (C : Wasm.Validation.Context) →
@@ -391,7 +391,7 @@ theorem typesOk_map : (ts : List FuncType) → (C : Wasm.Validation.Context) →
     C.closeVal (.num t) = .num t := rfl
 
 @[simp] theorem closeRef_funcref (C : Wasm.Validation.Context) :
-    C.closeRef V1.funcref = Ty.funcref := rfl
+    C.closeRef V1.funcref = Silmaril.Wasm.Validation.Ty.funcref := rfl
 
 @[simp] theorem closeHeap_func (C : Wasm.Validation.Context) :
     C.closeHeap (.abstract .func) = .abs .func := rfl
@@ -570,7 +570,7 @@ theorem mem_refs_of_elem {m : Module} {e : Elem} (he : e ∈ m.elems) {f : FuncI
   simp [funcRef, Expr.freeFuncs, Instr.freeFuncs]
 
 /-- Constant expressions transport. -/
-theorem constExpr_toCore {C : Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
+theorem constExpr_toCore {C : Silmaril.Wasm.Validation.Context} {D : Wasm.Validation.Context} (hA : Agrees C D)
     {body : Expr} {t : ValType} (h : ConstExprType C body t) :
     ExprOkConst D (Expr.toCore body) (.num t) := by
   refine ⟨?_, ?_⟩
@@ -588,17 +588,17 @@ theorem constExpr_toCore {C : Context} {D : Wasm.Validation.Context} (hA : Agree
     | mul t => exact .binop (Or.inr (Or.inr rfl))
 
 theorem refNull_ok (C : Wasm.Validation.Context) :
-    ExprOkConst C [.refNull (.abstract .func)] (.refv Ty.funcref) := by
+    ExprOkConst C [.refNull (.abstract .func)] (.refv Silmaril.Wasm.Validation.Ty.funcref) := by
   refine ⟨?_, ?_⟩
   · have := single_plain (C := C) (.reference (.refNull (ht := .abstract .func) (.abs _)))
       (by intro t ht; simp at ht; subst ht; exact .refv (.ref (.abs _)))
-    simpa [ExprOk, Ty.refT, Ty.funcref] using this
+    simpa [ExprOk, Silmaril.Wasm.Validation.Ty.refT, Silmaril.Wasm.Validation.Ty.funcref] using this
   · intro i hi
     simp at hi; subst hi; exact .refNull _
 
 theorem refFunc_ok (C : Wasm.Validation.Context) {x : FuncIdx} {ft : FuncType}
     (hf : C.funcs[x.toNat]? = some ft.toDefType) (hr : x.toNat ∈ C.refs) :
-    ExprOkConst C [.refFunc x] (.refv Ty.funcref) := by
+    ExprOkConst C [.refFunc x] (.refv Silmaril.Wasm.Validation.Ty.funcref) := by
   refine ⟨?_, ?_⟩
   · have h1 := single_plain (C := C) (.reference (.refFunc hf hr))
       (by intro t ht; simp at ht; subst ht
@@ -610,7 +610,7 @@ theorem refFunc_ok (C : Wasm.Validation.Context) {x : FuncIdx} {ft : FuncType}
     simp at hi; subst hi; exact .refFunc _
 
 /-- A valid Lime1 module maps to a Core module whose import types are `importC`. -/
-theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
+theorem Silmaril.Wasm.Validation.ModuleValid.toCore_ok {m : Module} (h : Silmaril.Wasm.Validation.ModuleValid m) :
     ∃ xtE, Wasm.Validation.ModuleOk m.toCore
       ⟨m.imports.map fun i => importC m.types i.desc, xtE⟩ := by
   -- Core index spaces
@@ -619,7 +619,7 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
   let fdts := (m.funcs.filterMap fun f => m.types[f.type.toNat]?).map V1.FuncType.toDefType
   let gts := m.globals.map fun g => globalToC g.type
   let tts := m.tables.map tableToC
-  let rts := m.elems.map fun _ => Ty.funcref
+  let rts := m.elems.map fun _ => Silmaril.Wasm.Validation.Ty.funcref
   let C' : Wasm.Validation.Context :=
     { types := dts, globals := CExternType.globals xtI,
       funcs := CExternType.funcs xtI ++ fdts, refs := funcIdxNonFuncs m.toCore }
@@ -717,7 +717,7 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
       simp only [Wasm.Validation.Context.type?, C, C', dts, Func.toCore, List.getElem?_map]
       rw [show m.types[f.type.toNat]? = some ft from hft]; rfl
     have hAf : Agrees (functionContext (moduleContext m) ft f.locals)
-        (C.funcBody (ft.params.map Ty.num) (ft.results.map Ty.num)
+        (C.funcBody (ft.params.map Silmaril.Wasm.Validation.Ty.num) (ft.results.map Silmaril.Wasm.Validation.Ty.num)
           (f.locals.map fun t => ⟨.set, .num t⟩)) :=
       ⟨hA.types, hA.funcs, hA.tables, hA.mems, hA.globals,
         by simp [functionContext, Wasm.Validation.Context.funcBody, Function.comp_def],
@@ -725,7 +725,7 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
         by simp [functionContext, Wasm.Validation.Context.funcBody]⟩
     refine FuncOk.mk (lts := f.locals.map fun t => ⟨.set, .num t⟩) hd (expand_toDefType ft) ?_ ?_
     · exact forall₂_map_of _ _ f.locals (fun t _ => LocalOk.set (.num t) trivial)
-    · simpa [ExprOk, Ty.toList_ofList, Func.toCore] using ExprType.toCore' hAf hbody
+    · simpa [ExprOk, Silmaril.Wasm.Validation.Ty.toList_ofList, Func.toCore] using ExprType.toCore' hAf hbody
   have hdata : ∀ d ∈ m.toCore.data, DataOk C d := by
     intro d hd
     simp only [Module.toCore, List.mem_map] at hd
@@ -733,7 +733,7 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
     obtain ⟨⟨mt, hmt⟩, hoff⟩ := h.data d₀ hd₀
     exact DataModeOk.active (prefix_map_getElem? hA.mems hmt) (constExpr_toCore hA hoff)
   have helems : List.Forall₂ (ElemOk C) m.toCore.elems rts := by
-    refine forall₂_map_of Elem.toCore (fun _ => Ty.funcref) m.elems ?_
+    refine forall₂_map_of Elem.toCore (fun _ => Silmaril.Wasm.Validation.Ty.funcref) m.elems ?_
     intro e he
     obtain ⟨⟨tt, htt⟩, hoff, hfs⟩ := h.elements e he
     refine ⟨rfl, .ref (.abs _), ?_, ?_⟩
@@ -754,9 +754,9 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
     hglobals' hmems htables hfuncs hdata helems hstart hxtE hdisjoint⟩
 
 /-- **Milestone.** Every valid Lime1 module maps to a valid Core 3.0 module. -/
-theorem ModuleValid.toCore {m : Module} (h : ModuleValid m) :
+theorem Silmaril.Wasm.Validation.ModuleValid.toCore {m : Module} (h : Silmaril.Wasm.Validation.ModuleValid m) :
     Wasm.Validation.ModuleValid m.toCore :=
-  let ⟨_, hok⟩ := ModuleValid.toCore_ok h
+  let ⟨_, hok⟩ := Silmaril.Wasm.Validation.ModuleValid.toCore_ok h
   ⟨_, hok⟩
 
 end Silmaril.Wasm.Lime1.Validation
@@ -765,9 +765,9 @@ namespace Silmaril.Wasm.V1.Validation
 
 /-- **Milestone.** Every valid V1 module maps to a valid Core 3.0 module
 (through Lime1: `ModuleValid.toLime` and `Module.toLime_toCore`). -/
-theorem ModuleValid.toCore {m : Module} (h : ModuleValid m) :
+theorem Silmaril.Wasm.Validation.ModuleValid.toCore {m : Module} (h : Silmaril.Wasm.Validation.ModuleValid m) :
     Wasm.Validation.ModuleValid m.toCore := by
-  have := Lime1.Validation.ModuleValid.toCore (ModuleValid.toLime h)
+  have := Lime1.Validation.ModuleValid.toCore (Silmaril.Wasm.Validation.ModuleValid.toLime h)
   simpa using this
 
 end Silmaril.Wasm.V1.Validation

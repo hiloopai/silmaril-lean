@@ -30,7 +30,7 @@ theorem export_eq (P : Nat → Comp M) {k0 : Nat} {g₁ g₂ : Graph} (ok : Nest
     (hs : SimV (fun k => sigOf (P k)) (fun k => sigOf (nestPkgs P k0 g₁ k)) g₂ g₂.nodes.length
       (inlineAcc (fun k => sigOf (P k)) k0 g₁ g₂) V U)
     {p : String × Src} (hp : p ∈ g₂.exports) :
-    (⟨p.1, g₂.tyOf (fun k => sigOf (nestPkgs P k0 g₁ k)) I p.2, V p.2⟩ : Export) =
+    (⟨p.1, g₂.tyOf (fun k => sigOf (nestPkgs P k0 g₁ k)) I p.2, V p.2⟩ : Silmaril.Wasm.Component.Export) =
       ⟨p.1, (Graph.inline (fun k => sigOf (P k)) k0 g₁ g₂).tyOf (fun k => sigOf (P k)) I
           (renSrc (inlineAcc (fun k => sigOf (P k)) k0 g₁ g₂).ren p.2),
         U (renSrc (inlineAcc (fun k => sigOf (P k)) k0 g₁ g₂).ren p.2)⟩ := by

@@ -59,7 +59,7 @@ def resExport (t : Nat) : List Section → Option ExternName
   | _ :: rest => resExport t rest
 
 /-- The descriptor an export has: its ascription, or the type its item was given. -/
-def exportDescX (s : XState) (e : Export) : Option ExternDesc :=
+def exportDescX (s : XState) (e : Silmaril.Wasm.Component.Binary.Export) : Option ExternDesc :=
   match exportDesc e with
   | some d => some d
   | none =>

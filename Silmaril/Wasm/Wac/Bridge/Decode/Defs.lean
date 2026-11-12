@@ -42,7 +42,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig TyRef Owner)
 
 /-- What a type index of a scope defines. -/
 inductive TInfo where
-  | val (t : Ty)
+  | val (t : Silmaril.Wasm.Wit.Binary.Ty)
   | func (s : Sig)
   | inst (es : Externs)
   | comp (is es : Externs)
@@ -73,7 +73,7 @@ def typeAt (i : Nat) : DM TInfo := do
 def pushTy (t : TInfo) : DM Unit := modify fun s => { s with types := s.types.push t }
 
 /-- A value type. -/
-def decVal : ValType → DM Ty
+def decVal : ValType → DM Silmaril.Wasm.Wit.Binary.Ty
   | .prim p => pure (.prim p)
   | .idx i => do
     match ← typeAt i with
@@ -82,7 +82,7 @@ def decVal : ValType → DM Ty
     | .resAlias n _ => pure (.ref ⟨.local, n⟩)
     | _ => throw s!"type index {i} is not a value type"
 
-def decValOpt : Option ValType → DM (Option Ty)
+def decValOpt : Option ValType → DM (Option Silmaril.Wasm.Wit.Binary.Ty)
   | none => pure none
   | some v => some <$> decVal v
 

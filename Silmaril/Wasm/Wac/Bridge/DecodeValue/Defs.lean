@@ -28,7 +28,7 @@ open DecodeNamed (Ctx TyOk SigOk NomOk Plain extend)
 /-- **Items of the named fragment with value items.** -/
 inductive EsOkV (N : NomTable) : Ctx → Externs → Prop
   | nil {Γ : Ctx} : EsOkV N Γ []
-  | value {Γ : Ctx} {n : String} {t : Ty} {es : Externs} :
+  | value {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} :
       TyOk Γ t → EsOkV N Γ es → EsOkV N Γ ((n, .value t) :: es)
   | func {Γ : Ctx} {n : String} {s : Sig} {es : Externs} :
       SigOk Γ s → EsOkV N Γ es → EsOkV N Γ ((n, .func s) :: es)
@@ -45,7 +45,7 @@ inductive EsOkV (N : NomTable) : Ctx → Externs → Prop
   | tyNom {Γ : Ctx} {n : String} {d : Nominal} {es : Externs} : Γ.lookup n = none →
       N.lookup n = some d → NomOk Γ d →
       EsOkV N (Γ ++ [(n, .val)]) es → EsOkV N Γ ((n, .type (.value (.ref ⟨.local, n⟩))) :: es)
-  | tyVal {Γ : Ctx} {n : String} {t : Ty} {es : Externs} : Plain t → TyOk Γ t →
+  | tyVal {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} : Plain t → TyOk Γ t →
       EsOkV N (Γ ++ [(n, .val)]) es → EsOkV N Γ ((n, .type (.value t)) :: es)
   | tyFunc {Γ : Ctx} {n : String} {s : Sig} {es : Externs} : SigOk Γ s →
       EsOkV N (Γ ++ [(n, .other)]) es → EsOkV N Γ ((n, .type (.func s)) :: es)

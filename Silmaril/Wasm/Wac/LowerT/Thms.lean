@@ -206,7 +206,7 @@ theorem stepOk_same {l : List Item} {st : TSt} {x : Item}
   have hf' : (x.sp == some .func) = false := by simpa using hf
   exact ⟨hi' ▸ grows_same, hf' ▸ grows_same, hn ▸ grows_same, hd, he⟩
 
-theorem importT_func {l : List Item} {st st₁ : TSt} {i : Import} {t : Nat} (h : Inv S l st)
+theorem importT_func {l : List Item} {st st₁ : TSt} {i : Silmaril.Wasm.Component.Binary.Import} {t : Nat} (h : Inv S l st)
     (hd : i.desc = .func t) (hs : importT st i = .ok st₁) : StepOk S l st (.imp i) st₁ := by
   simp only [importT, hd] at hs
   split at hs
@@ -222,7 +222,7 @@ theorem importT_func {l : List Item} {st st₁ : TSt} {i : Import} {t : Nat} (h 
       exact grows_one hden
   · simp at hs
 
-theorem importT_inst {l : List Item} {st st₁ : TSt} {i : Import} {t : Nat} (h : Inv S l st)
+theorem importT_inst {l : List Item} {st st₁ : TSt} {i : Silmaril.Wasm.Component.Binary.Import} {t : Nat} (h : Inv S l st)
     (hd : i.desc = .instance t) (hs : importT st i = .ok st₁) : StepOk S l st (.imp i) st₁ := by
   simp only [importT, hd] at hs
   split at hs
@@ -241,7 +241,7 @@ theorem importT_inst {l : List Item} {st st₁ : TSt} {i : Import} {t : Nat} (h 
     · simp at hs
   · simp at hs
 
-theorem importT_other {l : List Item} {st st₁ : TSt} {i : Import} (h : Inv S l st)
+theorem importT_other {l : List Item} {st st₁ : TSt} {i : Silmaril.Wasm.Component.Binary.Import} (h : Inv S l st)
     (hd : descSp i.desc = some .comp ∨ descSp i.desc = some .type) (hs : importT st i = .ok st₁) :
     StepOk S l st (.imp i) st₁ := by
   have e : st₁ = st := by
@@ -252,7 +252,7 @@ theorem importT_other {l : List Item} {st st₁ : TSt} {i : Import} (h : Inv S l
   refine stepOk_same ?_ ?_ rfl (.impOther hd h.decls) (.other (by simp) h.exps) <;>
     rcases hd with hd | hd <;> simp [hsp, hd]
 
-theorem importT_ok {l : List Item} {st st₁ : TSt} {i : Import} (h : Inv S l st)
+theorem importT_ok {l : List Item} {st st₁ : TSt} {i : Silmaril.Wasm.Component.Binary.Import} (h : Inv S l st)
     (hs : importT st i = .ok st₁) : StepOk S l st (.imp i) st₁ := by
   cases hd : i.desc with
   | func t => exact importT_func h hd hs

@@ -118,7 +118,7 @@ def valOfPrim : PrimValType → Option ValTy
 mutual
 /-- A memory-free resolved WIT type: primitives, tuples, `option`, `result` (named types are not
 resolved in this fragment). -/
-def valOfWit : Ty → Option ValTy
+def valOfWit : Silmaril.Wasm.Wit.Binary.Ty → Option ValTy
   | .prim p => valOfPrim p
   | .tuple ts => (valsOfWit ts).map .record
   | .option t => (valOfWit t).map ValTy.option
@@ -128,20 +128,20 @@ def valOfWit : Ty → Option ValTy
     pure (ValTy.result a b)
   | _ => none
 /-- A list of memory-free WIT types. -/
-def valsOfWit : List Ty → Option (List ValTy)
+def valsOfWit : List Silmaril.Wasm.Wit.Binary.Ty → Option (List ValTy)
   | [] => some []
   | t :: ts => do
     let a ← valOfWit t
     let b ← valsOfWit ts
     pure (a :: b)
 /-- An optional payload type. -/
-def optOfWit : Option Ty → Option (Option ValTy)
+def optOfWit : Option Silmaril.Wasm.Wit.Binary.Ty → Option (Option ValTy)
   | none => some none
   | some t => (valOfWit t).map some
 end
 
 /-- A resolved WIT type of the fragment: memory-free, `string`, or `list<u8>`. -/
-def PTy.ofWit : Ty → Option PTy
+def PTy.ofWit : Silmaril.Wasm.Wit.Binary.Ty → Option PTy
   | .prim .string => some .string
   | .list (.prim .u8) => some .bytes
   | t => (valOfWit t).map .val

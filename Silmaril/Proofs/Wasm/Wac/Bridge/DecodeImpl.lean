@@ -22,7 +22,7 @@ open Wit.Project (PState step replay)
 
 namespace DecodeImpl
 
-theorem step_imp (st : PState) {i : Import} (hv : Wit.Project.isValueEq i.desc = false) :
+theorem step_imp (st : PState) {i : Silmaril.Wasm.Component.Binary.Import} (hv : Wit.Project.isValueEq i.desc = false) :
     ∃ st', step st (.imports [i]) = some st' ∧
       st'.decls = st.decls ++ [normComponentDecl (.import i.name i.desc)] := by
   simp only [step, hv, Bool.false_eq_true, ite_false]
@@ -33,7 +33,7 @@ theorem step_ty (st : PState) {t : DefType} (hr : Wit.Project.isResource t = fal
   simp only [step, hr, Bool.false_eq_true, ite_false]
   exact ⟨_, rfl, rfl⟩
 
-theorem step_exp (st : PState) {e : Export} {d : ExternDesc} (he : Wit.Project.exportDesc e = some d)
+theorem step_exp (st : PState) {e : Silmaril.Wasm.Component.Binary.Export} {d : ExternDesc} (he : Wit.Project.exportDesc e = some d)
     (hv : Wit.Project.isValueEq d = false) :
     ∃ st', step st (.exports [e]) = some st' ∧
       st'.decls = st.decls ++ [normComponentDecl (.inst (.export e.name d))] := by

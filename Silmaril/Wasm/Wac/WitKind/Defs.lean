@@ -37,7 +37,7 @@ def ofTypeDef (d : TypeDef) : Kind :=
   | _ => .type (.value (.ref ⟨.local, d.name⟩))
 
 /-- A function, under its binary name. -/
-def ofFunc (f : Func) : String × Kind := (f.mangled, .func f.sig)
+def ofFunc (f : Silmaril.Wasm.Wit.Binary.Func) : String × Kind := (f.mangled, .func f.sig)
 
 /-- The exports of an interface body. -/
 def ofBody (i : Interface) : Externs :=

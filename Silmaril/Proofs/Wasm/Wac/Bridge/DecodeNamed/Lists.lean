@@ -34,7 +34,7 @@ theorem vs_mono {N : NomTable} {Γ : Ctx} {α : Type} {m : TM α} {σ : Scope} {
 
 /-- The branch of `typeBound (.value t)` for a type that is neither `own` nor a named
 reference. -/
-def tbv (t : Ty) : TM ExternDesc := do
+def tbv (t : Silmaril.Wasm.Wit.Binary.Ty) : TM ExternDesc := do
   let _s ← get
   match ← freshVal t with
   | some i => pure (.type (.eq i))
@@ -43,14 +43,14 @@ def tbv (t : Ty) : TM ExternDesc := do
     | .idx i => pure (.type (.eq i))
     | .prim p => pure (.type (.eq (← defTy (.val (.prim p)))))
 
-theorem typeBound_plain {t : Ty} (hp : Plain t) : typeBound (.value t) = tbv t := by
+theorem typeBound_plain {t : Silmaril.Wasm.Wit.Binary.Ty} (hp : Plain t) : typeBound (.value t) = tbv t := by
   cases t <;> first | rfl | exact absurd hp id
 
-theorem sortOf_plain {t : Ty} (hp : Plain t) : sortOf (.value t) = .val := by
+theorem sortOf_plain {t : Silmaril.Wasm.Wit.Binary.Ty} (hp : Plain t) : sortOf (.value t) = .val := by
   cases t <;> first | rfl | exact absurd hp id
 
 /-- What a plain type item's descriptor is: `(type (eq j))`, `j` defining the type. -/
-def TbOk (t : Ty) (d : ExternDesc) (δ : DScope) : Prop := ∃ j, d = .type (.eq j) ∧ δ.types[j]? = some (.val t)
+def TbOk (t : Silmaril.Wasm.Wit.Binary.Ty) (d : ExternDesc) (δ : DScope) : Prop := ∃ j, d = .type (.eq j) ∧ δ.types[j]? = some (.val t)
 
 theorem tbv_prim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} (p : PrimValType) (hm : M N Γ σ δ) :
     VS N Γ (tbv (.prim p)) σ δ (TbOk (.prim p)) := by
@@ -67,17 +67,17 @@ theorem tbv_borrow {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {r : TyR
       | .prim p => pure (.type (.eq (← defTy (.val (.prim p)))))).run σ := by
     simp [tbv, freshVal]
   refine vs_congr hrun (vs_bind (valTy_sim ht σ δ hm) fun v σ1 δ1 hm1 _ hv => ?_)
-  obtain ⟨j, rfl, hj⟩ := decVal_idx_of hv trivial (fun p e => Ty.noConfusion e)
+  obtain ⟨j, rfl, hj⟩ := decVal_idx_of hv trivial (fun p e => Silmaril.Wasm.Wit.Binary.Ty.noConfusion e)
   exact vs_pure hm1 ⟨j, rfl, hj⟩
 
-theorem tbv_anon {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Ty} (ht : TyOk Γ t)
+theorem tbv_anon {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOk Γ t)
     (hanon : ∀ p, t ≠ .prim p) (hb : ∀ r, t ≠ .borrow r) (hp : Plain t) (hm : M N Γ σ δ) :
     VS N Γ (tbv t) σ δ (TbOk t) := by
   refine vs_get (vs_bind (freshVal_sim ht hanon hb hp σ δ hm) fun o σ1 δ1 hm1 _ ho => ?_)
   obtain ⟨j, rfl, hj⟩ := ho
   exact vs_pure hm1 ⟨j, rfl, hj⟩
 
-theorem tbv_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Ty} (ht : TyOk Γ t)
+theorem tbv_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOk Γ t)
     (hp : Plain t) (hm : M N Γ σ δ) : VS N Γ (tbv t) σ δ (TbOk t) := by
   by_cases hpr : ∃ p, t = .prim p
   · obtain ⟨p, rfl⟩ := hpr
@@ -87,7 +87,7 @@ theorem tbv_sim {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Ty} (h
     exact tbv_borrow ht hm
   exact tbv_anon ht (fun p e => hpr ⟨p, e⟩) (fun r e => hbr ⟨r, e⟩) hp hm
 
-theorem item_tyVal {N : NomTable} {Γ : Ctx} {n : String} {t : Ty} (hp : Plain t) (ht : TyOk Γ t) :
+theorem item_tyVal {N : NomTable} {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hp : Plain t) (ht : TyOk Γ t) :
     ∀ σ δ, M N Γ σ δ → ItemSim N Γ (Γ ++ [(n, .val)]) n (.type (.value t)) σ δ := fun σ δ hm => by
   unfold ItemSim; rw [externDesc, typeBound_plain hp]
   refine vs_mono (tbv_sim ht hp hm) fun d δ1 hq σ1 hm1 => ?_

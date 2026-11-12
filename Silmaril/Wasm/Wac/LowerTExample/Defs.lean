@@ -24,7 +24,7 @@ namespace Silmaril.Wasm.Wac.LowerTExample
 open Silmaril.Wasm.Component Silmaril.Wasm.Component.Binary
 
 /-- The worked composition with `print` of the result type `r`. -/
-def astWith (r : Option ValType) : Binary.Ast := .mk [
+def astWith (r : Option Silmaril.Wasm.Component.Binary.ValType) : Binary.Ast := .mk [
   .types [.instance [.type (.func ⟨[], r, false⟩),
     .export ⟨"print", .plain0⟩ (.func 0)]],
   .imports [⟨⟨"host", .plain0⟩, .instance 0⟩],

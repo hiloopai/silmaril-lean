@@ -31,29 +31,29 @@ attribute [local simp] ok_bind pure_ok Except.map_ok DecodeIface.okb DecodeIface
 
 /-! ## Read-back of type items -/
 
-theorem rdTV_plain (Γ : Ctx) {t : Ty} (hp : Plain t) : rdTV Γ t = .value (rdT Γ t) := by
+theorem rdTV_plain (Γ : Ctx) {t : Silmaril.Wasm.Wit.Binary.Ty} (hp : Plain t) : rdTV Γ t = .value (rdT Γ t) := by
   cases t <;> first | rfl | exact absurd hp id
 
-theorem sortR_plain (Γ : Ctx) {t : Ty} (hp : Plain t) : sortR Γ (.value t) = .val := by
+theorem sortR_plain (Γ : Ctx) {t : Silmaril.Wasm.Wit.Binary.Ty} (hp : Plain t) : sortR Γ (.value t) = .val := by
   cases t <;> first | rfl | exact absurd hp id
 
-theorem rdKd_res {Γ : Ctx} {a : String} {t : Ty} (hf : AliForm a t) (ha : Γ.lookup a = some .res) :
+theorem rdKd_res {Γ : Ctx} {a : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hf : AliForm a t) (ha : Γ.lookup a = some .res) :
     rdKd Γ (.type (.value t)) = .type (.value (.own ⟨.local, a⟩)) := by
   rcases hf with rfl | rfl <;> simp [rdKd, rdTB, rdTV, rdAli, ha]
 
-theorem rdKd_ali {Γ : Ctx} {a r : String} {t : Ty} (hf : AliForm a t) (ha : Γ.lookup a = some (.ali r)) :
+theorem rdKd_ali {Γ : Ctx} {a r : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hf : AliForm a t) (ha : Γ.lookup a = some (.ali r)) :
     rdKd Γ (.type (.value t)) = .type (.value (.own ⟨.local, r⟩)) := by
   rcases hf with rfl | rfl <;> simp [rdKd, rdTB, rdTV, rdAli, ha]
 
-theorem stepR_res {Γ : Ctx} {n a : String} {t : Ty} (hf : AliForm a t) (ha : Γ.lookup a = some .res) :
+theorem stepR_res {Γ : Ctx} {n a : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hf : AliForm a t) (ha : Γ.lookup a = some .res) :
     stepR Γ (n, .type (.value t)) = Γ ++ [(n, .ali a)] := by
   rcases hf with rfl | rfl <;> simp [stepR, sortR, ha]
 
-theorem stepR_ali {Γ : Ctx} {n a r : String} {t : Ty} (hf : AliForm a t)
+theorem stepR_ali {Γ : Ctx} {n a r : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hf : AliForm a t)
     (ha : Γ.lookup a = some (.ali r)) : stepR Γ (n, .type (.value t)) = Γ ++ [(n, .ali r)] := by
   rcases hf with rfl | rfl <;> simp [stepR, sortR, ha]
 
-theorem typeBound_ali {σ : Scope} {a : String} {t : Ty} {i : Nat} (hf : AliForm a t)
+theorem typeBound_ali {σ : Scope} {a : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {i : Nat} (hf : AliForm a t)
     (hi : σ.names.lookup a = some i) : (typeBound (.value t)).run σ = .ok (.type (.eq i), σ) := by
   rcases hf with rfl | rfl <;> simp [typeBound, namedTy, hi]
 
@@ -68,7 +68,7 @@ theorem item_resR {N : NomTable} {Γ : Ctx} {n : String} :
     ⟨by rw [← hm1.m.size]; exact push_self δ _, by simp [declS]⟩
 
 /-- **`type n = own<a>` or `type n = a` of a resource `a`**: read back as `own<a>`. -/
-theorem item_tyResR {N : NomTable} {Γ : Ctx} {n a : String} {t : Ty} (hf : AliForm a t)
+theorem item_tyResR {N : NomTable} {Γ : Ctx} {n a : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hf : AliForm a t)
     (ha : Γ.lookup a = some .res) :
     ∀ σ δ, MR N Γ σ δ → ItemSimR N Γ (Γ ++ [(n, .ali a)]) n (.type (.value t)) σ δ := fun σ δ hm => by
   obtain ⟨i, hi, hat, -⟩ := hm.m.lookup ha
@@ -85,7 +85,7 @@ theorem item_tyResR {N : NomTable} {Γ : Ctx} {n a : String} {t : Ty} (hf : AliF
 
 /-- **`type n = own<a>` or `type n = a` of an alias `a` of the resource `r`**: read back
 as `own<r>`, and `n` is another alias of `r`. -/
-theorem item_tyAliR {N : NomTable} {Γ : Ctx} {n a r : String} {t : Ty} (hf : AliForm a t)
+theorem item_tyAliR {N : NomTable} {Γ : Ctx} {n a r : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hf : AliForm a t)
     (ha : Γ.lookup a = some (.ali r)) :
     ∀ σ δ, MR N Γ σ δ → ItemSimR N Γ (Γ ++ [(n, .ali r)]) n (.type (.value t)) σ δ := fun σ δ hm => by
   obtain ⟨i, hi, hat, -⟩ := hm.m.lookup ha
@@ -124,7 +124,7 @@ theorem indep_mapM {β γ : Type} {g : β → TM γ} : ∀ {l : List β}, (∀ x
     exact indep_bind (h x List.mem_cons_self) fun _ =>
       indep_bind (indep_mapM fun y hy => h y (List.mem_cons_of_mem _ hy)) fun _ => indep_pure _
 
-theorem tyOkR_of_tyOk {Γ : Ctx} {t : Ty} (h : TyOk Γ t) : TyOkR Γ t := by
+theorem tyOkR_of_tyOk {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOk Γ t) : TyOkR Γ t := by
   induction h with
   | prim p => exact .prim p
   | refVal h => exact .refVal h
@@ -178,11 +178,11 @@ theorem item_tyNomR {N : NomTable} {Γ : Ctx} {n : String} {d : Nominal} (hn : �
 /-! ## Anonymous, primitive and handle type items -/
 
 /-- The definiens of an anonymous type item, defined anew, read back as `rdT Γ t`. -/
-def FreshOkR (N : NomTable) (Γ : Ctx) (t : Ty) : Prop :=
+def FreshOkR (N : NomTable) (Γ : Ctx) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
   ∀ σ δ, M N Γ σ δ → VS N Γ (freshVal t) σ δ
     (fun o δ' => ∃ j, o = some j ∧ δ'.types[j]? = some (.val (rdT Γ t)))
 
-theorem freshVal_simR0 {N : NomTable} {Γ : Ctx} {t : Ty} (ht : TyOkR Γ t)
+theorem freshVal_simR0 {N : NomTable} {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOkR Γ t)
     (hanon : ∀ p, t ≠ .prim p) (hb : ∀ r, t ≠ .borrow r) (hp : Plain t) : FreshOkR N Γ t := by
   intro σ δ hm
   cases ht with
@@ -217,7 +217,7 @@ theorem tyOk_borrow {Γ : Ctx} {r : TyRef} (h : TyOkR Γ (.borrow r)) : TyOk Γ 
   | borrowRes h => exact .borrowRes h
   | borrowAlias h => exact .borrowAlias h
 
-theorem tbv_simR0 {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Ty} (ht : TyOkR Γ t)
+theorem tbv_simR0 {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOkR Γ t)
     (hp : Plain t) (hm : M N Γ σ δ) : VS N Γ (tbv t) σ δ (TbOk (rdT Γ t)) := by
   by_cases hpr : ∃ p, t = .prim p
   · obtain ⟨p, rfl⟩ := hpr
@@ -230,7 +230,7 @@ theorem tbv_simR0 {N : NomTable} {Γ : Ctx} {σ : Scope} {δ : DScope} {t : Ty} 
   obtain ⟨j, rfl, hj⟩ := ho
   exact vs_pure hm1 ⟨j, rfl, hj⟩
 
-theorem indep_freshVal {Γ : Ctx} {t : Ty} (ht : TyOkR Γ t) : Indep (freshVal t) := by
+theorem indep_freshVal {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOkR Γ t) : Indep (freshVal t) := by
   cases ht with
   | prim _ | refVal _ | refAlias _ | refRes _ | own _ | ownAlias _ | borrowRes _ | borrowAlias _ =>
     exact indep_pure _
@@ -250,7 +250,7 @@ theorem indep_freshVal {Γ : Ctx} {t : Ty} (ht : TyOkR Γ t) : Indep (freshVal t
     exact indep_bind (indep_valTyOpt fun t h' => indep_valTy (h t h')) fun _ =>
       indep_bind (indep_defTy _) fun _ => indep_pure _
 
-theorem indep_tbv {Γ : Ctx} {t : Ty} (ht : TyOkR Γ t) : Indep (tbv t) := by
+theorem indep_tbv {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOkR Γ t) : Indep (tbv t) := by
   unfold tbv
   refine indep_get (fun _ _ _ => rfl) fun _ => indep_bind (indep_freshVal ht) fun o => ?_
   split
@@ -260,7 +260,7 @@ theorem indep_tbv {Γ : Ctx} {t : Ty} (ht : TyOkR Γ t) : Indep (tbv t) := by
     · exact indep_pure _
     · exact indep_bind (indep_defTy _) fun _ => indep_pure _
 
-theorem item_tyValR {N : NomTable} {Γ : Ctx} {n : String} {t : Ty} (hp : Plain t) (ht : TyOkR Γ t) :
+theorem item_tyValR {N : NomTable} {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (hp : Plain t) (ht : TyOkR Γ t) :
     ∀ σ δ, MR N Γ σ δ → ItemSimR N Γ (Γ ++ [(n, .val)]) n (.type (.value t)) σ δ := fun σ δ hm => by
   have hk : rdKd Γ (.type (.value t)) = .type (.value (rdT Γ t)) := by
     simp only [rdKd, rdTB, rdTV_plain Γ hp]

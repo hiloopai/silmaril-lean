@@ -148,11 +148,11 @@ theorem flatMap_split_group : ∀ l : List Section,
       | none => rfl
       | some u => simp [split_merge hm]
 
-theorem step_normName_import (s : PState) (i : Import) :
+theorem step_normName_import (s : PState) (i : Silmaril.Wasm.Component.Binary.Import) :
     step s (.imports [⟨normName i.name, i.desc⟩]) = step s (.imports [i]) := by
   simp only [step, normName_normName]
 
-theorem step_normName_export (s : PState) (e : Export) :
+theorem step_normName_export (s : PState) (e : Silmaril.Wasm.Component.Binary.Export) :
     step s (.exports [⟨normName e.name, e.item, e.desc⟩]) = step s (.exports [e]) := by
   simp only [step, exportDesc, normName_normName]
 

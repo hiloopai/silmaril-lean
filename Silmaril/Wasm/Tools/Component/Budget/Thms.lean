@@ -93,7 +93,7 @@ theorem defType_val_ok {outer : List Sc} {sc : Sc} {d : DefValType} {e : TEnt}
     rw [← he]
     exact (combineAll_ok hc).1
 
-theorem defType_func_ok {outer : List Sc} {sc : Sc} {f : FuncType} {e : TEnt}
+theorem defType_func_ok {outer : List Sc} {sc : Sc} {f : Silmaril.Wasm.Component.Binary.FuncType} {e : TEnt}
     (h : defType outer sc (.func f) = .ok e) :
     e.info.size = 1 + ((sc.funcMembers f).map TI.size).sum := by
   unfold defType at h

@@ -28,7 +28,7 @@ namespace DecodeValue
 attribute [local simp] ok_bind pure_ok
 
 /-- **A value item.** -/
-theorem item_value {N : NomTable} {Γ : Ctx} {n : String} {t : Ty} (ht : TyOk Γ t) :
+theorem item_value {N : NomTable} {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} (ht : TyOk Γ t) :
     ∀ σ δ, M N Γ σ δ → ItemSim N Γ Γ n (.value t) σ δ := fun σ δ hm => by
   unfold ItemSim; rw [externDesc]
   exact vs_bind (valTy_sim ht σ δ hm) fun v σ1 δ1 hm1 _ hv => vs_pure hm1 fun σ2 hm2 =>

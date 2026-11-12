@@ -31,7 +31,7 @@ variable {E : CoreEngine} [∀ a b, Decidable (E.ExternSub a b)] {σ : Type} {pr
 `Table.empty`, accepted by the handle protocol in both orientations. -/
 theorem reached_tabMove {h : Host E σ} {j : InstId} (hh : TabHost j h.impl) {σ0 : σ}
     {X : CIface} {p : RefProg E X} {m : Config E σ} (hm : Reached prof h σ0 p m) :
-    ∃ evs, Table.Steps Table.empty evs (vtab m.store j) ∧
+    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m.store j) ∧
       ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) := by
   obtain ⟨m₀, inst, es, ds, mₙ, tr, hi, hr, hs, hn⟩ := hm
   have hd := tabDispatch_canon hh h.lim h.q h.hr

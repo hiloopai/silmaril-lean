@@ -33,7 +33,7 @@ def nfSec : Section → Section
   | s => s
 
 /-- Whether an export of a function or component carries a type ascription. -/
-def exportAscribed (e : Export) : Bool :=
+def exportAscribed (e : Silmaril.Wasm.Component.Binary.Export) : Bool :=
   match e.item.sort with
   | .func | .component => e.desc.isSome
   | _ => true

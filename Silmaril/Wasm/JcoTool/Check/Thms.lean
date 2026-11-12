@@ -42,13 +42,13 @@ theorem implsAre_eq : ∀ {is : List Impl} {xs : List (List Adapter × Nat)},
     rw [List.map_cons, implIs_eq h'.1, implsAre_eq h'.2]
   | [], _ :: _, h | _ :: _, [], h => by simp [implsAre] at h
 
-theorem exportIs_eq {x : Export} {n : String} {t : FuncTy} {ch : List Adapter} {r : Nat}
+theorem exportIs_eq {x : Silmaril.Wasm.Component.Export} {n : String} {t : FuncTy} {ch : List Adapter} {r : Nat}
     (h : exportIs x n t ch r = true) : x = ⟨n, t, ⟨ch, .call r⟩⟩ := by
   obtain ⟨n', t', im⟩ := x
   have h' : (n' = n ∧ t' = t) ∧ implIs im ch r = true := by simpa [exportIs] using h
   rw [h'.1.1, h'.1.2, implIs_eq h'.2]
 
-theorem exportsAre_eq : ∀ {xs : List Export} {ys : List (String × FuncTy × List Adapter × Nat)},
+theorem exportsAre_eq : ∀ {xs : List Silmaril.Wasm.Component.Export} {ys : List (String × FuncTy × List Adapter × Nat)},
     exportsAre xs ys = true → xs = ys.map fun y => ⟨y.1, y.2.1, ⟨y.2.2.1, .call y.2.2.2⟩⟩
   | [], [], _ => rfl
   | x :: xs, (n, t, ch, r) :: ys, h => by
@@ -70,7 +70,7 @@ theorem wiringSpec_eq (w : World) (p : Plan) :
   simp [wiringSpec, importWiring]
 
 theorem exportsSpec_eq (e : Nat) (fs : Iface) (js : List Nat) :
-    (exportsSpec e fs js).map (fun y => (⟨y.1, y.2.1, ⟨y.2.2.1, .call y.2.2.2⟩⟩ : Export)) =
+    (exportsSpec e fs js).map (fun y => (⟨y.1, y.2.1, ⟨y.2.2.1, .call y.2.2.2⟩⟩ : Silmaril.Wasm.Component.Export)) =
       thinExports e fs js := by
   simp [exportsSpec, thinExports]
 

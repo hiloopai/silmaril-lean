@@ -64,7 +64,7 @@ def Ref (a b : XState) : Prop :=
   a.base = b.base ∧ a.tCount = b.tCount ∧ a.hoisted = b.hoisted ∧ Le a.fdesc b.fdesc ∧
     Le a.idesc b.idesc ∧ Le a.cdesc b.cdesc
 
-theorem exportDescX_ref {a b : XState} (h : Ref a b) (e : Export) (d : ExternDesc)
+theorem exportDescX_ref {a b : XState} (h : Ref a b) (e : Silmaril.Wasm.Component.Binary.Export) (d : ExternDesc)
     (he : exportDescX a e = some d) : exportDescX b e = some d := by
   obtain ⟨_, _, _, hf, hi, hc⟩ := h
   unfold exportDescX at he ⊢
@@ -92,7 +92,7 @@ theorem track_ref_aliases {a b : XState} (h : Ref a b) (xs : List Alias) :
     all_goals exact ⟨hb, ht, hh, hf, hi, hc⟩
   · exact ⟨hb, ht, hh, hf, hi, hc⟩
 
-theorem track_ref_imports {a b : XState} (h : Ref a b) (xs : List Import) :
+theorem track_ref_imports {a b : XState} (h : Ref a b) (xs : List Silmaril.Wasm.Component.Binary.Import) :
     Ref (track a (.imports xs)) (track b (.imports xs)) := by
   obtain ⟨hb, ht, hh, hf, hi, hc⟩ := h
   rcases xs with _ | ⟨⟨n, d⟩, _ | ⟨f, r⟩⟩
@@ -105,7 +105,7 @@ theorem track_ref_imports {a b : XState} (h : Ref a b) (xs : List Import) :
     all_goals exact ⟨hb, ht, hh, hf, hi, hc⟩
   · exact ⟨hb, ht, hh, hf, hi, hc⟩
 
-theorem track_ref_exports {a b : XState} (h : Ref a b) (xs : List Export) :
+theorem track_ref_exports {a b : XState} (h : Ref a b) (xs : List Silmaril.Wasm.Component.Binary.Export) :
     Ref (track a (.exports xs)) (track b (.exports xs)) := by
   have hx : ∀ e d, exportDescX a e = some d → exportDescX b e = some d := exportDescX_ref h
   obtain ⟨hb, ht, hh, hf, hi, hc⟩ := h
@@ -169,7 +169,7 @@ theorem stepX_types_eq (s : XState) (rest : List Section) (t : DefType) :
             hoisted := s.tCount :: s.hoisted }
       else (step s.base (.types [t])).map fun b => { track s (.types [t]) with base := b } := rfl
 
-theorem stepX_exports_eq (s : XState) (rest : List Section) (e : Export) :
+theorem stepX_exports_eq (s : XState) (rest : List Section) (e : Silmaril.Wasm.Component.Binary.Export) :
     stepX s rest (.exports [e]) =
       if e.item.sort = .type ∧ e.item.idx ∈ s.hoisted then
         some { track s (.exports [e]) with
@@ -198,7 +198,7 @@ theorem stepX_ref_types {a b : XState} (h : Ref a b) (rest : List Section) (t : 
     rw [hp]
     exact ⟨_, rfl, rfl, hk.2⟩
 
-theorem stepX_ref_exports_desc {a b : XState} (h : Ref a b) (rest : List Section) (e : Export)
+theorem stepX_ref_exports_desc {a b : XState} (h : Ref a b) (rest : List Section) (e : Silmaril.Wasm.Component.Binary.Export)
     (hc : ¬(e.item.sort = .type ∧ e.item.idx ∈ a.hoisted)) (a' : XState)
     (ha : stepX a rest (.exports [e]) = some a') :
     ∃ b', stepX b rest (.exports [e]) = some b' ∧ Ref a' b' := by
@@ -217,7 +217,7 @@ theorem stepX_ref_exports_desc {a b : XState} (h : Ref a b) (rest : List Section
   refine ⟨{ track b (.exports [e]) with base := p }, ?_, rfl, hk.2⟩
   simp [stepX_exports_eq, hc', hd', hp']
 
-theorem stepX_ref_exports {a b : XState} (h : Ref a b) (rest : List Section) (e : Export)
+theorem stepX_ref_exports {a b : XState} (h : Ref a b) (rest : List Section) (e : Silmaril.Wasm.Component.Binary.Export)
     (a' : XState) (ha : stepX a rest (.exports [e]) = some a') :
     ∃ b', stepX b rest (.exports [e]) = some b' ∧ Ref a' b' := by
   by_cases hc : e.item.sort = .type ∧ e.item.idx ∈ a.hoisted
