@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Raw.Libc.X86Alloc.Frame
-import Silmaril.Proofs.X86.Sep.Algebra
+import Silmaril.X86.Sep.Thms
 
 /-!
 # Proofs: the whole-register-file step

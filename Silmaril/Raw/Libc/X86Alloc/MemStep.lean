@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Raw.Libc.X86Alloc.Whole
-import Silmaril.Proofs.X86.Sep.Algebra
+import Silmaril.X86.Sep.Thms
 
 /-!
 # Proofs: whole-frame steps with one memory operand

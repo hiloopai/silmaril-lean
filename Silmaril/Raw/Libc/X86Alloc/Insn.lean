@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Libc.X86Alloc.Insn.Defs
 public import Silmaril.X86.Sep.Insn.Thms
-import Silmaril.Proofs.X86.Sep.Algebra
+import Silmaril.X86.Sep.Thms
 
 /-!
 # Proofs: instruction triples of the allocator ladder
