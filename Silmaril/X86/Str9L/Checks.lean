@@ -3,6 +3,8 @@ module
 public import Silmaril.X86.Str9L.Defs
 public import Silmaril.X86.Features.Ext.Avx.Check
 public import Silmaril.X86.Features.Checks
+public import Silmaril.X86.Features.Ext.Sse2.Checks
+public import Silmaril.X86.Features.Ext.IntMerged.Check
 
 /-!
 # Checkers for the lane vectors on the tower
@@ -18,12 +20,19 @@ result.
   retire with every YMM register, the buffer and MXCSR as on the processor, RIP past the
   instruction. Forms `Str9V` decodes (`vpxor`, `vpcmpeqb`, `vpminub`, `vmovdqu`, …) are run
   by `Str9V`, so these vectors are also its difftest.
+* `checkFormLine`: a vector of the SSE/SSE2 (`gen_sse2_vectors.py`), packed SSE
+  (`gen_sse_packed_vectors.py`) or SSE3/SSSE3/SSE4 (`gen_sse4_vectors.py`) lane, with the
+  form's encoding as the code. Forms `Sse9` and `Str9G` decode (`pxor`, `pcmpeqb`, `pminub`,
+  `pmovmskb`, `pshufd`, `movdqu`, …) are run by them.
+* `checkIntLine`: a vector of the integer lanes (`gen_int_vectors.py`): BMI1/BMI2, ADX,
+  MOVBE, ADC/SBB, the 16-bit ALU, SHLD/SHRD, BTx, PUSH imm, `repz ret`; forms the tower's
+  integer layers decode are run by them.
 * `checkRoundLine`: a `roundss`/`roundsd xmm0, xmm1, imm8` vector
   (`scripts/x86-features/gen_vectors.py`): XMM0 and MXCSR as on the processor, the upper
   half of YMM0 kept.
 
-`host` is `v3` with AES and PCLMULQDQ, the features of the processor that produced the
-vectors (an i7-8700) that the lanes read.
+`host` is `v3` with AES, PCLMULQDQ, ADX, RDRAND and RDSEED, the features of the processor
+that produced the vectors (an i7-8700) that the lanes read.
 -/
 
 @[expose] public section
@@ -35,7 +44,7 @@ open Silmaril.Process (Memory)
 open Silmaril.X86.Features (FeatureSet)
 
 /-- The feature set of the vectors' processor, as far as the lanes read it. -/
-def host : FeatureSet := v3 ∪ FeatureSet.ofList [.aes, .pclmulqdq]
+def host : FeatureSet := v3 ∪ FeatureSet.ofList [.aes, .pclmulqdq, .adx, .rdrand, .rdseed]
 
 /-- A tower state: core `c`, the code at `0x1000`, one more read-write region, YMM registers
 `ymm`, MXCSR `mx`; DF clear, x87 after FNINIT. -/
@@ -86,6 +95,66 @@ def checkAvxLine : List Nat → Bool
         | _ => false
       | _ => false
     | _ => false
+  | _ => false
+
+/-- **One vector of the SSE/SSE2, packed SSE or SSE3/SSSE3/SSE4 lane through `Str9L.step`**:
+the form's encoding at `0x1000`, YMM0 = `a`, YMM1 = `b`, RAX, RDI at `off` in the 32-byte
+buffer at `0x10000` (the format of `Sse2.Checks.checkVector`). YMM0 must be the processor's
+`ra` (a legacy form keeps bits 255:128), YMM1, RDI kept, RAX and the buffer as on the
+processor, RIP past the encoding. -/
+def checkForm (code : List Byte) (a b rax off mem ra rax' mem' : Nat) : Bool :=
+  let base := Silmaril.X86.Features.Sse2.Checks.vbase
+  let c : State :=
+    { regs := fun r => if r = .rax then BitVec.ofNat 64 rax
+        else if r = .rdi then BitVec.ofNat 64 (base + off) else 0
+      rip := 0x1000, flags := ⟨none, none, none, none, none, none⟩ }
+  let ymm : XReg → BitVec 256 := fun r =>
+    if r = .xmm0 then BitVec.ofNat 256 a else if r = .xmm1 then BitVec.ofNat 256 b else 0
+  let s := stateOf c code Silmaril.X86.Features.Sse2.Checks.vregion
+    (Silmaril.X86.Features.Sse2.Checks.bytesOf mem 32) ymm 0x1F80
+  match step host lanes s with
+  | none => false
+  | some t =>
+    ymmOf t .xmm0 == BitVec.ofNat 256 ra && ymmOf t .xmm1 == BitVec.ofNat 256 b &&
+      t.core.read .rax == BitVec.ofNat 64 rax' && t.core.read .rdi == BitVec.ofNat 64 (base + off) &&
+      t.core.rip.toNat == 0x1000 + code.length &&
+      t.memory.readBytes base 32 == some (Silmaril.X86.Features.Sse2.Checks.bytesOf mem' 32)
+
+/-- A line `case ymm0 ymm1 rax offset buffer ymm0' rax' buffer'` of a lane whose case `n`
+is encoded as `enc n`. -/
+def checkFormLine (enc : Nat → List Byte) : List Nat → Bool
+  | [n, a, b, rax, off, mem, ra, rax', mem'] => checkForm (enc n) a b rax off mem ra rax' mem'
+  | _ => false
+
+/-- **One vector of the integer lanes through `Str9L.step`** (the format of
+`IntMerged.check`): the sixteen registers and RFLAGS, the 64-byte data area at
+`IntMerged.dataBase`, the sixteen bytes around RSP, the code at `0x1000`. The step must
+retire with the processor's registers, defined flags, data words and pushed word, RIP past
+the code; a vector the merged lane leaves `unmodeled` may also have no step. -/
+def checkIntLine (row : List Nat) : Bool :=
+  match row with
+  | _ :: len :: code :: rest =>
+    let regs := rest.take 16
+    let rflags := rest.getD 16 0
+    let data := (rest.drop 17).take 8
+    let rsp := regs.getD 4 0
+    let bytes := Silmaril.X86.Features.IntMerged.codeBytes len code
+    let c : State :=
+      { regs := fun r => BitVec.ofNat 64
+          (regs.getD (Silmaril.X86.Features.IntMerged.regList.idxOf r) 0)
+        rip := 0x1000, flags := Silmaril.X86.Features.IntMerged.flagsOf rflags }
+    let m := Silmaril.X86.Features.IntMerged.initMemory data rsp
+    let memory : Memory := ⟨⟨0x1000, bytes.length, ⟨true, false, true⟩⟩ :: m.regions,
+      Memory.install m.bytes 0x1000 bytes⟩
+    let s : LState := ⟨⟨⟨⟨⟨⟨⟨c, memory⟩, fun _ => 0⟩, fun _ => 0, true⟩, fun _ => 0⟩, false⟩,
+      Silmaril.X86.Features.X87.reset⟩, Silmaril.X86.Float.MXCSR.reset⟩
+    match step host lanes s with
+    | some t =>
+      Silmaril.X86.Features.IntMerged.agrees len rsp (view t) t.memory ((rest.drop 25).take 16)
+        (rest.getD 41 0) ((rest.drop 42).take 8) (rest.getD 50 0)
+    | none =>
+      Silmaril.X86.Features.IntMerged.check Silmaril.X86.Features.IntMerged.intMerged row ==
+        .unmodeled
   | _ => false
 
 /-- The upper half of YMM0 in the `roundss`/`roundsd` vectors (kept by the legacy form). -/

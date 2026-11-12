@@ -3,6 +3,9 @@ module
 public import Silmaril.X86.Str9X.Defs
 public import Silmaril.X86.Features.Embed
 public import Silmaril.X86.Features.Ext.Avx.Extension
+public import Silmaril.X86.Features.Ext.SseMerged.Extension
+public import Silmaril.X86.Features.Ext.Sse4.Extension
+public import Silmaril.X86.Features.Ext.IntMerged.Extension
 
 /-!
 # `Str9L`: `Str9X` with MXCSR and the lanes of the feature-parametric machine
@@ -13,7 +16,9 @@ The tower decodes only the SSE and AVX forms its layers list by hand (`Sse9`, `S
 `roundsd`, MXCSR, `ldmxcsr`/`stmxcsr`; what glibc's `printf`/`strtod` paths, gzip and coreutils
 `sort`, `df`, `ls`, `du`, `sleep`, `od` reach) and `Avx.ext` (998 VEX.128/256 forms, integer
 and floating point). `Str9L` runs any list of lanes **at the end of `Str9X`'s fetch chain**,
-on a processor with feature set `F`, unchanged.
+on a processor with feature set `F`, unchanged: with `lanes`, also the SSE/SSE2 integer
+forms of zlib and glibc's `sse2` string variants, SSSE3/SSE4.2 (`palignr`, `pshufb`,
+`pcmpistri`) and BMI/ADX.
 
 **State.** `LState` is a `Str9X.XState` (`x`) and MXCSR (`mxcsr`).
 
@@ -88,8 +93,14 @@ def v3 : FeatureSet :=
   FeatureSet.ofList [.x87, .sse, .sse2, .sse3, .ssse3, .sse41, .sse42, .popcnt, .lzcnt, .bmi1,
     .bmi2, .movbe, .avx, .avx2, .fma, .f16c]
 
-/-- The lanes: scalar SSE (`floatExt`) and AVX/AVX2 (`Avx.ext`). -/
-def lanes : List Extension := [Silmaril.X86.Features.floatExt, Silmaril.X86.Features.Avx.ext]
+/-- The lanes: the legacy-encoded SSE/SSE2 profile `sseExts` (scalar SSE `floatExt`, the
+SSE/SSE2 integer and move lane `sse2Ext`, the rest of the packed SSE/SSE2 lane), SSE3/SSSE3/
+SSE4.1/SSE4.2 (`sse4Ext`), the integer extensions (`IntMerged.intMerged`: BMI1, BMI2, ADX,
+MOVBE and the base forms `X86.Ext` lacks) and AVX/AVX2 (`Avx.ext`). -/
+def lanes : List Extension :=
+  Silmaril.X86.Features.sseExts ++
+    [Silmaril.X86.Features.sse4Ext, Silmaril.X86.Features.IntMerged.intMerged,
+      Silmaril.X86.Features.Avx.ext]
 
 /-! ## Step -/
 
