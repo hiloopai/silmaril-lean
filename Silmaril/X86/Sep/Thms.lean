@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.X86.Sep.Defs
-import Silmaril.Proofs.X86.Sep.Algebra
+public import Silmaril.Proofs.X86.Sep.Algebra
 
 /-!
 # Separation-logic laws and the bridge from atoms to the machine

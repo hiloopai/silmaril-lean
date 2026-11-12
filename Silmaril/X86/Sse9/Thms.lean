@@ -147,6 +147,28 @@ theorem decodeL_movups_store :
       some (.store .ups (.mem (Silmaril.X86.Ext.Mem.ofReg .rbx none 0x84)) .xmm0, 7) := by
   decide
 
+/-- The SSE parser has the prefix laws. -/
+theorem good_pSse : Silmaril.X86.Ext.ByteParser.Good pSse := Silmaril.Proofs.X86.Sse9.good_pSse
+
+/-- A decoded SSE form keeps its reading whatever bytes follow. -/
+theorem decodeSse_append {bytes : List Byte} {i : Instr} {n : Nat}
+    (h : decodeSse bytes = some (i, n)) (more : List Byte) :
+    decodeSse (bytes ++ more) = some (i, n) :=
+  Silmaril.Proofs.X86.Sse9.decodeSse_append h more
+
+/-- `Ext9`'s new-form decoder rejects every extension of a slice its parser rejects. -/
+theorem decodeNew_none_of_bad {w : List Byte} (h : ext9Bad w = true) (more : List Byte) :
+    Ext9.decodeNew (w ++ more) = none :=
+  Silmaril.Proofs.X86.Sse9.decodeNew_none_of_bad h more
+
+/-- What a listed SSE form says about the lower decoders: each rejects the bytes, and the
+SSE decoder reads them, in at most `maxInstrLength` bytes. -/
+theorem decodeL_spec {bytes : List Byte} {i : Instr} {n : Nat} (h : decodeL bytes = some (i, n)) :
+    Silmaril.X86.Ext.decode bytes = none ∧ Open9.newBad bytes = true ∧
+      Open9.rawNotEof bytes = true ∧ ext9Bad bytes = true ∧ decodeSse bytes = some (i, n) ∧
+      0 < n ∧ n ≤ Silmaril.X86.maxInstrLength :=
+  Silmaril.Proofs.X86.Sse9.decodeL_spec h
+
 /-- `movdqu (%rsi), %xmm0` (`F3 0F 6F 06`). -/
 theorem decodeL_movdqu_load :
     decodeL [0xF3, 0x0F, 0x6F, 0x06] =
