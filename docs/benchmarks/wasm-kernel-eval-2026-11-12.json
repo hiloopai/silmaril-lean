@@ -1,0 +1,791 @@
+{
+ "date": "2026-11-12",
+ "machine": "2-vCPU gVisor sandbox, Lean 4.37.0-nightly-2026-11-05",
+ "command": "python3 -I benchmarks/wasm-kernel-eval/bench.py --native",
+ "note": "the timed-out-looking failure (sumTo 10000, plain decide) is the elaborator's whnf hitting its limit; native cases ran after the csimp fix (the first run overflowed the stack)",
+ "cases": [
+  {
+   "ok": true,
+   "wall_s": 2.18,
+   "times_ms": {
+    "elaboration": 5.01,
+    "tactic execution": 0.44,
+    "type checking": 210.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 100,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 2.2,
+   "times_ms": {
+    "elaboration": 5.63,
+    "tactic execution": 0.437,
+    "type checking": 246.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 100,
+   "mem": "nat",
+   "driver": "run",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 2.33,
+   "times_ms": {
+    "elaboration": 35.9,
+    "tactic execution": 203.0,
+    "type checking": 209.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 100,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "decide",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 4.81,
+   "times_ms": {
+    "elaboration": 5.48,
+    "tactic execution": 0.401,
+    "type checking": 2810.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 1000,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 5.06,
+   "times_ms": {
+    "elaboration": 4.86,
+    "tactic execution": 0.39,
+    "type checking": 3060.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 1000,
+   "mem": "nat",
+   "driver": "run",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 6.95,
+   "times_ms": {
+    "elaboration": 505.0,
+    "tactic execution": 2220.0,
+    "type checking": 2810.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 1000,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "decide",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 31.47,
+   "times_ms": {
+    "elaboration": 4.79,
+    "tactic execution": 0.4,
+    "type checking": 29600.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 10000,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 35.54,
+   "times_ms": {
+    "elaboration": 4.82,
+    "tactic execution": 0.456,
+    "type checking": 33600.0
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 10000,
+   "mem": "nat",
+   "driver": "run",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": false,
+   "wall_s": 10.85,
+   "times_ms": {
+    "elaboration": 1570.0,
+    "tactic execution": 7390.0,
+    "type checking": 0.437
+   },
+   "error": "\ttypeclass inference 1.24ms",
+   "prog": "sumTo",
+   "n": 10000,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "decide",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 2.13,
+   "times_ms": {
+    "elaboration": 5.01,
+    "tactic execution": 0.4,
+    "type checking": 148.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 8,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 2.58,
+   "times_ms": {
+    "elaboration": 4.79,
+    "tactic execution": 0.38,
+    "type checking": 141.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 8,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 2.09,
+   "times_ms": {
+    "elaboration": 5.05,
+    "tactic execution": 0.414,
+    "type checking": 220.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 8,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 6.82,
+   "times_ms": {
+    "elaboration": 5.57,
+    "tactic execution": 0.715,
+    "type checking": 4900.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 8,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 3.12,
+   "times_ms": {
+    "elaboration": 5.36,
+    "tactic execution": 0.561,
+    "type checking": 684.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 16,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 2.47,
+   "times_ms": {
+    "elaboration": 5.8,
+    "tactic execution": 0.43,
+    "type checking": 588.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 16,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 3.13,
+   "times_ms": {
+    "elaboration": 5.16,
+    "tactic execution": 0.421,
+    "type checking": 1250.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 16,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 7.06,
+   "times_ms": {
+    "elaboration": 5.49,
+    "tactic execution": 0.529,
+    "type checking": 5190.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 16,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 4.51,
+   "times_ms": {
+    "elaboration": 5.4,
+    "tactic execution": 0.477,
+    "type checking": 2620.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 32,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 4.57,
+   "times_ms": {
+    "elaboration": 5.3,
+    "tactic execution": 0.388,
+    "type checking": 2670.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 32,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 9.23,
+   "times_ms": {
+    "elaboration": 5.08,
+    "tactic execution": 0.413,
+    "type checking": 7330.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 32,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 13.34,
+   "times_ms": {
+    "elaboration": 5.38,
+    "tactic execution": 0.419,
+    "type checking": 11400.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 32,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 13.27,
+   "times_ms": {
+    "elaboration": 5.46,
+    "tactic execution": 0.425,
+    "type checking": 11400.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 64,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 13.42,
+   "times_ms": {
+    "elaboration": 5.36,
+    "tactic execution": 0.502,
+    "type checking": 11500.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 64,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 49.44,
+   "times_ms": {
+    "elaboration": 4.84,
+    "tactic execution": 0.41,
+    "type checking": 47500.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 64,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 54.03,
+   "times_ms": {
+    "elaboration": 5.55,
+    "tactic execution": 0.441,
+    "type checking": 52100.0
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 64,
+   "mem": "list",
+   "driver": "runRec",
+   "tactic": "kernel",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 1.91,
+   "times_ms": {
+    "native evaluation": 0.886,
+    "elaboration": 5.51,
+    "interpretation": 0.885,
+    "tactic execution": 1.5,
+    "type checking": 1.85
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 100,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 1.91,
+   "times_ms": {
+    "native evaluation": 6.26,
+    "elaboration": 5.23,
+    "interpretation": 6.26,
+    "tactic execution": 1.2,
+    "type checking": 2.12
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 1000,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 1.98,
+   "times_ms": {
+    "native evaluation": 55.5,
+    "elaboration": 5.28,
+    "interpretation": 55.5,
+    "tactic execution": 1.75,
+    "type checking": 2.1
+   },
+   "error": null,
+   "prog": "sumTo",
+   "n": 10000,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": false
+  },
+  {
+   "ok": true,
+   "wall_s": 1.92,
+   "times_ms": {
+    "native evaluation": 1.0,
+    "elaboration": 4.53,
+    "interpretation": 1.0,
+    "tactic execution": 1.11,
+    "type checking": 2.15
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 8,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 1.91,
+   "times_ms": {
+    "native evaluation": 2.21,
+    "elaboration": 5.14,
+    "interpretation": 2.21,
+    "tactic execution": 1.08,
+    "type checking": 2.42
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 16,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 1.87,
+   "times_ms": {
+    "native evaluation": 6.97,
+    "elaboration": 5.14,
+    "interpretation": 6.97,
+    "tactic execution": 1.36,
+    "type checking": 1.88
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 32,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": true
+  },
+  {
+   "ok": true,
+   "wall_s": 1.87,
+   "times_ms": {
+    "native evaluation": 24.1,
+    "elaboration": 4.65,
+    "interpretation": 24.1,
+    "tactic execution": 1.18,
+    "type checking": 2.53
+   },
+   "error": null,
+   "prog": "fillSort",
+   "n": 64,
+   "mem": "nat",
+   "driver": "runRec",
+   "tactic": "native",
+   "page": true
+  }
+ ],
+ "chunked": {
+  "program": "fillSort 64, 64 KiB NatMem, 53342 steps",
+  "chunk_steps": 5000,
+  "pieces": 11,
+  "monolithic_wall_s": 11.5,
+  "one_file_wall_s": 11.5,
+  "per_piece_kernel_s": "0.6-0.9",
+  "separate_files_wall_s": {
+   "1 process at a time": 36.0,
+   "2 in parallel": 22.9
+  }
+ },
+ "census": {
+  "total": 32903,
+  "counts": [
+   [
+    "local.get",
+    9516
+   ],
+   [
+    "i32.const",
+    4281
+   ],
+   [
+    "i32.add",
+    2154
+   ],
+   [
+    "i32.load",
+    2061
+   ],
+   [
+    "local.tee",
+    1822
+   ],
+   [
+    "local.set",
+    1628
+   ],
+   [
+    "block",
+    1594
+   ],
+   [
+    "i32.store",
+    1593
+   ],
+   [
+    "br_if",
+    1563
+   ],
+   [
+    "call",
+    939
+   ],
+   [
+    "i32.eqz",
+    531
+   ],
+   [
+    "br",
+    491
+   ],
+   [
+    "i32.shl",
+    432
+   ],
+   [
+    "global.get",
+    373
+   ],
+   [
+    "unreachable",
+    322
+   ],
+   [
+    "i32.and",
+    303
+   ],
+   [
+    "i32.sub",
+    232
+   ],
+   [
+    "i32.or",
+    232
+   ],
+   [
+    "i32.eq",
+    224
+   ],
+   [
+    "i64.store",
+    195
+   ],
+   [
+    "i32.ne",
+    192
+   ],
+   [
+    "i32.lt_u",
+    173
+   ],
+   [
+    "call_indirect",
+    170
+   ],
+   [
+    "i32.store8",
+    166
+   ],
+   [
+    "i64.load",
+    166
+   ],
+   [
+    "select",
+    144
+   ],
+   [
+    "memory.copy",
+    141
+   ],
+   [
+    "i32.load16_u",
+    141
+   ],
+   [
+    "return",
+    136
+   ],
+   [
+    "loop",
+    129
+   ],
+   [
+    "global.set",
+    118
+   ],
+   [
+    "i32.load8_u",
+    108
+   ],
+   [
+    "i32.gt_u",
+    108
+   ],
+   [
+    "i32.store16",
+    100
+   ],
+   [
+    "i32.ge_u",
+    74
+   ],
+   [
+    "br_table",
+    68
+   ],
+   [
+    "i32.shr_u",
+    48
+   ],
+   [
+    "drop",
+    37
+   ],
+   [
+    "i64.const",
+    35
+   ],
+   [
+    "i32.le_u",
+    32
+   ],
+   [
+    "i32.xor",
+    27
+   ],
+   [
+    "i32.mul",
+    18
+   ],
+   [
+    "i32.wrap_i64",
+    17
+   ],
+   [
+    "i32.rotl",
+    12
+   ],
+   [
+    "i32.ctz",
+    9
+   ],
+   [
+    "i32.gt_s",
+    8
+   ],
+   [
+    "i64.shr_u",
+    7
+   ],
+   [
+    "i32.clz",
+    6
+   ],
+   [
+    "i64.store32",
+    6
+   ],
+   [
+    "i32.lt_s",
+    4
+   ],
+   [
+    "memory.grow",
+    3
+   ],
+   [
+    "memory.fill",
+    3
+   ],
+   [
+    "i64.extend_i32_u",
+    3
+   ],
+   [
+    "i32.div_u",
+    2
+   ],
+   [
+    "i32.le_s",
+    1
+   ],
+   [
+    "i64.load32_u",
+    1
+   ],
+   [
+    "i64.shl",
+    1
+   ],
+   [
+    "i64.or",
+    1
+   ],
+   [
+    "i32.ge_s",
+    1
+   ],
+   [
+    "i64.mul",
+    1
+   ]
+  ]
+ }
+}
