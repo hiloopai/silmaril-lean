@@ -185,7 +185,7 @@ fn unquote(name: &str) -> String {
         .to_string()
 }
 
-/// `(name, lean_lib roots)` of a `lakefile.toml`, if there is one.
+/// `(name, lean_lib roots and glob prefixes)` of a `lakefile.toml`, if there is one.
 fn lakefile(dir: &Path) -> Result<Option<(Option<String>, Vec<String>)>> {
     let path = dir.join("lakefile.toml");
     let Ok(text) = fs::read_to_string(&path) else {
@@ -212,6 +212,17 @@ fn lakefile(dir: &Path) -> Result<Option<(Option<String>, Vec<String>)>> {
                 .collect(),
         };
         libs.extend(roots);
+        // A library may narrow `roots` and list its modules by `globs` (`Silmaril` does): a glob
+        // `A.B.+`/`A.B.*` owns the modules under `A.B`, a plain `A.B` that module.
+        if let Some(gs) = lib.get("globs").and_then(|g| g.as_array()) {
+            libs.extend(gs.iter().filter_map(|g| g.as_str()).map(|g| {
+                let g = unquote(g);
+                g.strip_suffix(".+")
+                    .or_else(|| g.strip_suffix(".*"))
+                    .map(str::to_string)
+                    .unwrap_or(g)
+            }));
+        }
     }
     Ok(Some((name, libs)))
 }
