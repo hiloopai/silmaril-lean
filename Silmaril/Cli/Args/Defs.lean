@@ -185,8 +185,12 @@ end ValueCheck
 
 /-- A value check, as a value parser of clap would do it. -/
 inductive ValueCheck where
-  /-- Rust's `uN::from_str`: an optional `+`, decimal digits, below `2 ^ bits`. -/
+  /-- clap's `value_parser!(uN)`: an optional `+`, decimal digits, below `2 ^ bits`. Below 64
+  bits clap parses an `i64` first (`RangedI64ValueParser`), so `-0` (zero) is accepted too. -/
   | uint (bits : Nat)
+  /-- Rust's `uN::from_str` (a tool's own parsing, not clap's): an optional `+`, decimal
+  digits, below `2 ^ bits`; no `-`. -/
+  | fromStr (bits : Nat)
   /-- one of the given words (not shown in help; case-insensitive when `ci`) -/
   | oneOf (choices : List String) (ci : Bool := false)
   /-- parts separated by `sep`, each passing the check; with `skipEmpty` the parts are
@@ -207,7 +211,12 @@ inductive ValueCheck where
 
 /-- **The check**: `some true` accepted, `some false` rejected, `none` undecided. -/
 def ValueCheck.eval : ValueCheck → List Char → Option Bool
-  | .uint bits, cs =>
+  | .uint bits, '-' :: ds =>
+    some (bits < 64 && match ArgType.digitsAux 0 ds, ds with
+      | _, [] => false
+      | some n, _ => n == 0
+      | none, _ => false)
+  | .uint bits, cs | .fromStr bits, cs =>
     let ds := match cs with
       | '+' :: r => r
       | r => r
@@ -926,6 +935,46 @@ def Rule.broken (fs : Invocation) : Rule → Bool
   | .requires a b => present fs a && !present fs b
   | .conflicts a b => present fs a && present fs b
 
+/-- clap waives a requirement `requires a b` when a given argument conflicts with `b`
+(`is_missing_required_ok`: `--dummy --async-stackful` of `component embed`, where
+`--async-stackful` requires `--dummy-names`, which conflicts with `--dummy`). -/
+def Rule.waived (rs : List Rule) (fs : Invocation) : Rule → Bool
+  | .requires _ b => rs.any fun
+      | .conflicts x y => (x == b && present fs y) || (y == b && present fs x)
+      | .requires _ _ => false
+  | .conflicts _ _ => false
+
+/-- The position of the first occurrence of option `id` in an invocation (its length when
+absent). -/
+def firstPos (fs : Invocation) (id : String) : Nat :=
+  let ids := fs.flatMap fun f => f.opts.map (·.1)
+  (ids.findIdx? (· == id)).getD ids.length
+
+/-- A conflict named from the argument given first (clap reports the first argument, in
+command-line order, that conflicts with another). -/
+def Rule.orient (fs : Invocation) : Rule → Rule
+  | .conflicts a b => if firstPos fs b < firstPos fs a then .conflicts b a else .conflicts a b
+  | r => r
+
+/-- **The rule an invocation breaks first**, as clap's validator finds it: conflicts before
+requirements; among the conflicts, the one whose first argument comes first on the command
+line; requirements a conflicting argument waives (`Rule.waived`) do not count. -/
+def brokenRule (rs : List Rule) (fs : Invocation) : Option Rule :=
+  let bad := rs.filter fun r => r.broken fs && !r.waived rs fs
+  let confl := bad.filterMap fun r =>
+    match r with
+    | .conflicts _ _ => some (r.orient fs)
+    | .requires _ _ => none
+  let key : Rule → Nat := fun
+    | .conflicts a _ => firstPos fs a
+    | .requires a _ => firstPos fs a
+  match confl.foldl (fun (best : Option Rule) r =>
+      match best with
+      | some b => if key r < key b then some r else best
+      | none => some r) none with
+  | some r => some r
+  | none => bad.head?
+
 /-- The usage error of a broken rule. -/
 def Rule.error : Rule → ArgError
   | .requires a b => .requires a b
@@ -966,7 +1015,7 @@ def judge (c : Command) (env : String → Option String) (fs : Invocation) : Jud
     match resolve c env fs with
     | .error l => .unresolved l
     | .ok m =>
-      match (c.rulesAt m.path).find? (·.broken fs) with
+      match brokenRule (c.rulesAt m.path) fs with
       | some r => .broken m.path r
       | none =>
         let vs := checkMatches c m

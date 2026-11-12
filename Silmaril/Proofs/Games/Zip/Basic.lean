@@ -33,22 +33,6 @@ theorem prepend_right {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p : List (�
   | nil => exact h
   | cons c cs ih => exact .right c ih
 
-theorem append_left {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p : List (α ⊕ γ)}
-    (h : Zip s t p) (a : α) : Zip (s ++ [.inl a]) t (p ++ [.inl a]) := by
-  induction h with
-  | nil => exact .left a .nil
-  | left a' _ ih => exact .left a' ih
-  | right c _ ih => exact .right c ih
-  | sync b _ ih => exact .sync b ih
-
-theorem append_right {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p : List (α ⊕ γ)}
-    (h : Zip s t p) (c : γ) : Zip s (t ++ [.inr c]) (p ++ [.inr c]) := by
-  induction h with
-  | nil => exact .right c .nil
-  | left a _ ih => exact .left a ih
-  | right c' _ ih => exact .right c' ih
-  | sync b _ ih => exact .sync b ih
-
 theorem nil_right_iff {s : List (α ⊕ β)} {p : List (α ⊕ γ)} :
     Zip s ([] : List (β ⊕ γ)) p ↔ ∃ as : List α, s = as.map .inl ∧ p = as.map .inl := by
   constructor
@@ -146,28 +130,6 @@ theorem inr_right {c : γ} {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p : Li
     cases hT
     exact ⟨[], _, _, rfl, rfl, h⟩
   | sync => cases hT
-
-theorem of_prefix {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p q : List (α ⊕ γ)}
-    (h : Zip s t p) (hq : q <+: p) : ∃ s' t', s' <+: s ∧ t' <+: t ∧ Zip s' t' q := by
-  induction h generalizing q with
-  | nil =>
-    rw [List.prefix_nil] at hq
-    subst hq
-    exact ⟨[], [], List.nil_prefix, List.nil_prefix, .nil⟩
-  | left a _ ih =>
-    rcases List.prefix_cons_iff.1 hq with rfl | ⟨q', rfl, hq'⟩
-    · exact ⟨[], [], List.nil_prefix, List.nil_prefix, .nil⟩
-    · obtain ⟨s', t', hs, ht, h⟩ := ih hq'
-      exact ⟨_, t', List.cons_prefix_cons.2 ⟨rfl, hs⟩, ht, .left a h⟩
-  | right c _ ih =>
-    rcases List.prefix_cons_iff.1 hq with rfl | ⟨q', rfl, hq'⟩
-    · exact ⟨[], [], List.nil_prefix, List.nil_prefix, .nil⟩
-    · obtain ⟨s', t', hs, ht, h⟩ := ih hq'
-      exact ⟨s', _, hs, List.cons_prefix_cons.2 ⟨rfl, ht⟩, .right c h⟩
-  | sync b _ ih =>
-    obtain ⟨s', t', hs, ht, h⟩ := ih hq
-    exact ⟨_, _, List.cons_prefix_cons.2 ⟨rfl, hs⟩, List.cons_prefix_cons.2 ⟨rfl, ht⟩,
-      .sync b h⟩
 
 theorem assoc_mp {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {u : List (α ⊕ γ)}
     {r : List (γ ⊕ δ)} {p : List (α ⊕ δ)} (h₁ : Zip s t u) (h₂ : Zip u r p) :

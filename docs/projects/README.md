@@ -3,6 +3,7 @@
 | Project | Included in this release | Guide |
 | --- | --- | --- |
 | WebAssembly | Seven native tools, binary/text models, execution models and scoped transformation proofs | [Wasm](wasm.md) |
+| Wasm components | The component model (codec, validator, reference machine, streams), WIT, jco and WAC work-alikes, the component and generator subcommands of `wasm-tools`, the CLI specification API and the generator API | [Wasm components](wasm-components.md) |
 | Compiler foundations | Semantic contracts, passes, checked transformations, translations and compiler categories | [Compiler APIs](compilers.md) |
 | Logics and institutions | HOL, Metamath, ZF/ZFC, arithmetic, proof translations and Hets-style development graphs | [Logic](logic.md) |
 | Lambda calculi | Eight cube corners, STLC categorical semantics, System F/Fω parametricity and institution graphs | [Lambda cube](lambda-cube.md) |

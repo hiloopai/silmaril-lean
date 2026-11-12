@@ -103,6 +103,16 @@ globs = [
   "Silmaril.Wasm.V1.+", "Silmaril.Wasm.V2.+", "Silmaril.Wasm.Validation.+",
   "Silmaril.Wasm.Verify.+", "Silmaril.Wasm.Wac.+", "Silmaril.Wasm.Wat.*", "Silmaril.WasmSpec.+",
   "Silmaril.X86.+",
+  "Silmaril.Proofs.Parse.+", "Silmaril.Proofs.Wasm.Component.+",
+  "Silmaril.Proofs.Wasm.Instantiation.+", "Silmaril.Proofs.Wasm.Jco.+",
+  "Silmaril.Proofs.Wasm.JcoTool.+", "Silmaril.Proofs.Wasm.LimeCompile.+",
+  "Silmaril.Proofs.Wasm.Models.+", "Silmaril.Proofs.Wasm.Perf.+",
+  "Silmaril.Proofs.Wasm.Resource.+", "Silmaril.Proofs.Wasm.Wac.+", "Silmaril.Proofs.Wasm.Wit.+",
+  "Silmaril.Raw.Wasm.Component.+", "Silmaril.Raw.Wasm.Tools.+", "Silmaril.Raw.Wasm.Versions.+",
+  "Silmaril.Raw.Wasm.Wit.+", "Silmaril.Wasm.Atlas.+", "Silmaril.Wasm.Category.+",
+  "Silmaril.Wasm.InstObs.+", "Silmaril.Wasm.Instantiation.+", "Silmaril.Wasm.Jco.+",
+  "Silmaril.Wasm.JcoTool.+", "Silmaril.Wasm.LimeCompile.+", "Silmaril.Wasm.Perf.+",
+  "Silmaril.Wasm.Resource.+", "Silmaril.Wasm.Versions.+", "Silmaril.Wasm.Wit.+",
   # SSA calculi, λRTL and the machine RTL (docs/projects/ssa.md).
   "Silmaril.Proofs.Machine.+", "Silmaril.Proofs.Semantics.+", "Silmaril.Raw.Calculi.+",
   "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+"
@@ -259,3 +269,49 @@ supportInterpreter = true
 [[lean_lib]]
 name = "WasmAutoTests"
 globs = ["tests.wasm.auto.+"]
+
+# The component and generator tools of the Wasm release (docs/projects/wasm-components.md).
+[[lean_exe]]
+name = "wasm-tools-gen"
+root = "WasmToolsGen"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-gen-check"
+root = "GenCheck"
+srcDir = "tools/wasm-tools-gen-check"
+
+[[lean_exe]]
+name = "wasm-jco"
+root = "WasmJco"
+srcDir = "tools/wasm-jco"
+
+[[lean_exe]]
+name = "wasm-wac"
+root = "WasmWac"
+srcDir = "tools/wasm-wac"
+
+[[lean_exe]]
+name = "wasm-wit"
+root = "WasmWit"
+srcDir = "tools/wasm-wit"
+
+[[lean_exe]]
+name = "wasm-perf"
+root = "WasmPerf"
+srcDir = "tools/wasm-perf"
+
+[[lean_exe]]
+name = "cli-spec"
+root = "CliSpec"
+srcDir = "tools/cli-spec"
+
+[[lean_exe]]
+name = "cli-harness"
+root = "CliHarness"
+srcDir = "tools/cli-harness"
+
+[[lean_exe]]
+name = "cli-demo"
+root = "CliDemo"
+srcDir = "tools/cli-demo"

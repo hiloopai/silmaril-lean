@@ -1,0 +1,7 @@
+package silmaril:c;
+
+world textual {
+  export shout: func(s: string) -> string;
+  export sum: func(xs: list<s32>) -> s64;
+  export split: func(s: string) -> list<string>;
+}

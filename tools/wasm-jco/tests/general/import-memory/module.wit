@@ -1,0 +1,7 @@
+package silmaril:mem;
+
+world module {
+  export name: func() -> string;
+  export echo: func(s: string) -> string;
+  export total: func(xs: list<u32>) -> u32;
+}
