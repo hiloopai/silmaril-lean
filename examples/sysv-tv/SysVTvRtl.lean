@@ -21,7 +21,8 @@ lifter that would produce them from the machine code is not part of this release
 | `silmaril.sysv_tv.max2.o2.lifts_ssa` | `sysv.lifts.open9`, IR `rtlSSA Nat` | open (`Task.lifts_ssa_o2`) |
 | `silmaril.sysv_tv.max2.rtl.ir_refines`, `….ssa.ir_refines` | `c.ir_refines` | open (`Task.rtl_ir_refines`, `Task.ssa_ir_refines`) |
 
-One IR-to-C row serves both builds: `compiles_to_of_rtl` gives each build's `c.compiles_to`
+Non-vacuity: both IR functions are safe on `(3, 5)` from every memory (`rtl_inhabited`,
+`ssa_inhabited`, proved). One IR-to-C row serves both builds: `compiles_to_of_rtl` gives each build's `c.compiles_to`
 row from that build's lift and the shared correspondence. The RTL functions are run on sample
 arguments by compiled evaluation below (`#guard`).
 -/
@@ -92,6 +93,19 @@ namespace SysVTvRtl
 @[expose] public def Task.lifts_ssa_o2 : Prop := silmaril.sysv_tv.max2.o2.lifts_ssa
 @[expose] public def Task.rtl_ir_refines : Prop := silmaril.sysv_tv.max2.rtl.ir_refines
 @[expose] public def Task.ssa_ir_refines : Prop := silmaril.sysv_tv.max2.ssa.ir_refines
+
+/-- **The RTL lift is safe somewhere** (the `Inhabited` conjunct of the RTL rows): on `(3, 5)` the
+run returns from every initial memory, by evaluation (`RTL.run_returned`). -/
+public theorem rtl_inhabited :
+    ((Silmaril.Project.Shapes.SysV.rtl Nat).meaning max2Rtl).Inhabited :=
+  ⟨.cons (3 : BitVec 32) (.cons (5 : BitVec 32) .nil), fun mem =>
+    ⟨_, rfl, _, mem, Silmaril.Machine.RTL.run_returned (n := 4) (by rfl)⟩⟩
+
+/-- **The SSA-form lift is safe somewhere**, likewise. -/
+public theorem ssa_inhabited :
+    ((Silmaril.Project.Shapes.SysV.rtlSSA Nat).meaning max2SSA).Inhabited :=
+  ⟨.cons (3 : BitVec 32) (.cons (5 : BitVec 32) .nil), fun mem =>
+    ⟨_, rfl, _, mem, Silmaril.Machine.RTL.SSA.run_returned (n := 8) (by rfl)⟩⟩
 
 /-- **Both builds through one RTL function**: the two lifts and the one correspondence give
 the two-build row. -/
