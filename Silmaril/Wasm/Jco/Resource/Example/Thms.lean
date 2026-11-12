@@ -53,15 +53,15 @@ theorem exR_mergeOk : exMdR.MergeOk where
     have hsmall : ∀ s ∈ exMdR.world, smallRts (s.result.toList ++ s.params) = true := by decide
     exact rts_of_small (hsmall s hs) ht hr
 
-theorem empty_inv : refTab.Inv (Table.empty : Silmaril.Wasm.Component.Runtime.Table HEntry) :=
+theorem empty_inv : refTab.Inv (Silmaril.Wasm.Component.Runtime.Table.empty : Silmaril.Wasm.Component.Runtime.Table HEntry) :=
   ⟨Silmaril.Wasm.Resource.freeOK_empty, by
-    show (#[none] : Array (Option HEntry)).size ≤ Table.maxLength + 1; simp⟩
+    show (#[none] : Array (Option HEntry)).size ≤ Silmaril.Wasm.Component.Runtime.Table.maxLength + 1; simp⟩
 
-theorem exR_room (name : String) : exMdR.Room refTab Table.empty name := by
+theorem exR_room (name : String) : exMdR.Room refTab Silmaril.Wasm.Component.Runtime.Table.empty name := by
   intro s hs c hc
   have hle : ∀ s ∈ exMdR.world, ownCount s.params + ownRes s.result ≤ 1 := by decide
   have hc' : c = 2 ^ 28 - 1 := by
-    have h1 : refTab.cap Table.empty = some (2 ^ 28 - 1) := rfl
+    have h1 : refTab.cap Silmaril.Wasm.Component.Runtime.Table.empty = some (2 ^ 28 - 1) := rfl
     rw [h1] at hc
     exact (Option.some.inj hc).symm
   have := hle s (List.mem_of_find?_eq_some hs)
@@ -70,7 +70,7 @@ theorem exR_room (name : String) : exMdR.Room refTab Table.empty name := by
 /-- `wrapR_correct` for the litmus world, from the empty canonical table. -/
 theorem exR_wrapR (name : String) (vs : List RVal) :
     Sim ((wrapR exMdR).callExport exRInst refTab name vs) (exMdR.spec exRInst name vs)
-      Table.empty fun a b t' => a = b ∧ refTab.Same Table.empty t' :=
+      Silmaril.Wasm.Component.Runtime.Table.empty fun a b t' => a = b ∧ refTab.Same Silmaril.Wasm.Component.Runtime.Table.empty t' :=
   wrapR_correct_ref exRInst exMdR exR_conforms name vs empty_inv (exR_room name)
 
 /-- `merged_eq_specHost` for the litmus world. -/
@@ -83,7 +83,7 @@ theorem exR_merged_eq (H : HTab) (name : String) (vs : List RVal) :
 theorem exR_merged (name : String) (vs : List RVal) :
     Sim (canonHost refTab exRInst exMdR name vs)
       (exMdR.hostView ((merged exMdR).callExport (link exRInst (mgr refTab))) name vs)
-      Table.empty fun a b t' => a = b ∧ refTab.Same Table.empty t' :=
+      Silmaril.Wasm.Component.Runtime.Table.empty fun a b t' => a = b ∧ refTab.Same Silmaril.Wasm.Component.Runtime.Table.empty t' :=
   merged_sim exRInst refTab refTab_lawful exMdR exR_conforms exR_allocTotal exR_mergeOk name vs
     empty_inv (exR_room name)
 

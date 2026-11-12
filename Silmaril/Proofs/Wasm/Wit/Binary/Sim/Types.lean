@@ -103,10 +103,10 @@ theorem valType_sim : ∀ (t : Ty) {e e' : Enc} {cst : CSt} {dst : Option DSt} {
     Inv e cst dst → (valType t).run e = .ok (v, e') →
     Sim e cst dst e' (fun cur => decValType cur v = .ok t)
   | .prim p, _, _, cst, dst, _, hI, h => by
-    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := ValType.prim p) h
+    obtain ⟨rfl, rfl⟩ := run_pure_ok (a := Silmaril.Wasm.Component.Binary.ValType.prim p) h
     exact ⟨cst, dst, hI, Grows.refl _ _ _, rfl⟩
   | .ref r, _, _, _, _, _, hI, h => by
-    obtain ⟨k, hk, rfl⟩ := run_map_ok (f := ValType.idx) h
+    obtain ⟨k, hk, rfl⟩ := run_map_ok (f := Silmaril.Wasm.Component.Binary.ValType.idx) h
     exact (refIdx_sim hI hk).mono fun _ hc => decValType_of_named hc
   | .list t, _, _, _, _, _, hI, h => anon_sim hI (fun hd => by
       obtain ⟨a, rfl, hs⟩ := map_sim (P := fun a cur => decValType cur a = .ok t) hd (valType_sim t hI)

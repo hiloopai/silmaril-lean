@@ -40,7 +40,7 @@ section Lower
 
 variable {Silmaril.Wasm.Component.Canon.P : Silmaril.Wasm.Numerics.Profile}
 
-theorem lower_borrow_eq (cx : LiftLowerContext (E3 Silmaril.Wasm.Component.Canon.P)) (vs : List Val) :
+theorem lower_borrow_eq (cx : LiftLowerContext (E3 Silmaril.Wasm.Component.Canon.P)) (vs : List Silmaril.Wasm.Component.Reference.Val) :
     (lowerFlatValues Limits.spec Quirks.none cx ABI.maxFlatParams vs (paramTypes ftGet) none :
       Canon.P (E3 Silmaril.Wasm.Component.Canon.P) Unit _) =
       ptrType cx >>= fun p => lowerFlatTypes Limits.spec Quirks.none cx p vs [.borrow ⟨0⟩] := by
@@ -72,14 +72,14 @@ theorem runs_lower_borrow {th : Option ThreadId} (t : TaskId) (rep : ℕ)
 
 
 theorem lowerFlatAt_borrow_other (cx : LiftLowerContext (E3 Silmaril.Wasm.Component.Canon.P)) (p : Silmaril.Wasm.AddrType)
-    (v : Val) (hv : ∀ rep, v ≠ .borrow rep) :
+    (v : Silmaril.Wasm.Component.Reference.Val) (hv : ∀ rep, v ≠ .borrow rep) :
     (lowerFlatAt Limits.spec Quirks.none cx p v (.borrow ⟨0⟩) : Canon.P (E3 Silmaril.Wasm.Component.Canon.P) Unit _) =
       flatMismatch := by
   rw [lowerFlatAt.eq_def]
   cases v <;> first | rfl | exact absurd rfl (hv _)
 
 /-- Any argument list other than one borrow makes the lowering of `get`'s arguments trap. -/
-theorem lower_get_traps {th : Option ThreadId} (t : TaskId) (args : List Val)
+theorem lower_get_traps {th : Option ThreadId} (t : TaskId) (args : List Silmaril.Wasm.Component.Reference.Val)
     (hne : ∀ rep, args ≠ [.borrow rep]) (m : Machine.Config (E3 Silmaril.Wasm.Component.Canon.P) Unit)
     (hrt : m.store.resourceTypes = [{ impl := some ⟨0⟩ }]) :
     ∃ trT mT, TrapsQ (D Silmaril.Wasm.Component.Canon.P) th (lowerFlatValues Limits.spec Quirks.none
@@ -225,7 +225,7 @@ theorem runs_lift_get {th : Option ThreadId} (t : TaskId) (w : BitVec 32) :
   refine ⟨[Silmaril.Wasm.Component.Val.u32 w].map toRefVal, cur, fun m => ?_⟩
   rw [show resultTypes ftGet = resultTypes (liftedFt x) from rfl,
     resultTypes_liftedFt x (by decide),
-    show FlatCursor.ofList [.int .i32 w] = ⟨[.int .i32 w], 0⟩ from rfl,
+    show Silmaril.Wasm.Component.Canon.FlatCursor.ofList [.int .i32 w] = ⟨[.int .i32 w], 0⟩ from rfl,
     liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none _ (by decide)]
   refine .get ?_
   show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store _)

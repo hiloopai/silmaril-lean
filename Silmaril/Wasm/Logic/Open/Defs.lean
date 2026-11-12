@@ -103,7 +103,7 @@ def noHost : HostSemantics H := fun _ _ _ _ => False
 def modRed (P : Profile) (M : OMod H) (bind : H → Nat) : Reduction (WCall H) (WCall H) where
   Conf _ := Config H
   start q := invoke q.2.1 q.1 q.2.2
-  step {q} c c' := M.Accepts q ∧ Step P noHost c c'
+  step {q} c c' := M.Accepts q ∧ Silmaril.Games.Step P noHost c c'
   call {q} c m k := M.Accepts q ∧ ∃ E a h args, decompose? c.store c.code = some (E, a, h, args) ∧
     m = (bind h, c.store, args) ∧ k = fun ans => ⟨ans.1, c.frame, E.fill ans.2.toAdmin⟩
   done {q} c r := M.Accepts q ∧ c.store = r.1 ∧ c.code = r.2.toAdmin

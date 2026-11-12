@@ -220,7 +220,7 @@ theorem splitH_shift' (n i : Nat) (p : Payload) :
 theorem exportsH_toCompL (l : Linked2) {j : Nat} (hj : j < l.imp.exports.length) (p : Payload) :
     exportsH (l.exp.exports.length + l.imp.exports.length) l.toComp.exports (j, p) =
       .call (l.exp.exports.length + j, p) fun n => .pure n := by
-  have hget : (l.toComp.exports.map Export.impl)[j]? =
+  have hget : (l.toComp.exports.map Silmaril.Wasm.Component.Export.impl)[j]? =
       some ⟨[], .call (l.exp.exports.length + j)⟩ := by
     simp [Linked2.toComp, hj]
   simp only [exportsH, implsH, hget, Impl.prog, runChain, Target.prog,

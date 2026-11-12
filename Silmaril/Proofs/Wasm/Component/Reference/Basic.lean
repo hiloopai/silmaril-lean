@@ -77,7 +77,7 @@ theorem dispatch_ofEmbedder (emb : Embedder E σ) :
 
 /-- A classified executable top-level call is a behaviour of the call. -/
 theorem callTop_mem (emb : Embedder E σ) (o : Oracle E) {fuel : Nat} {c : CallId} {f : FuncId}
-    {args : List Silmaril.Wasm.Component.Reference.Val} {m : Config E σ} {r : RunResult E σ o.State} {out : CallOutcome}
+    {args : List Val} {m : Config E σ} {r : RunResult E σ o.State} {out : CallOutcome}
     (h : emb.callTop o fuel c f args m = some r) (ho : callOutcome? c r = some out) :
     Outcome.ofCall out ∈ callBehaviours o.prof (Host.ofEmbedder emb) m c f args :=
   Or.inl ⟨r.config, out, emb.callTop_sound o h ho, rfl⟩
@@ -93,7 +93,7 @@ theorem instantiateRun_mem (emb : Embedder E σ) (o : Oracle E) {fuel : Nat}
 /-- An executable instantiation from the initial configuration followed by a classified
 executable call of the export `name` is a behaviour of calling that export. -/
 theorem exportBehaviours_of_run (emb : Embedder E σ) (o : Oracle E) (σ0 : σ) {fuel fuel' : Nat}
-    {c : CompAst E.Module} {args : Instantiate.Exports E} {name : String} {vals : List Silmaril.Wasm.Component.Reference.Val}
+    {c : CompAst E.Module} {args : Instantiate.Exports E} {name : String} {vals : List Val}
     {r₁ : RunResult E σ o.State} {inst : InstId} {es : List (String × FuncId)} {f : FuncId}
     {r : RunResult E σ o.State} {out : CallOutcome}
     (hi : emb.instantiateRun o fuel c args (initConfig σ0) = some (r₁, inst, es))

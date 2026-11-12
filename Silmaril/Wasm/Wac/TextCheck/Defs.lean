@@ -52,44 +52,44 @@ def tyIdentsL : List Ty → List String
 end
 
 /-- The identifiers a function type names. -/
-def funcIdents (f : Silmaril.Wasm.Wac.Text.FuncType) : List String :=
+def funcIdents (f : FuncType) : List String :=
   (f.params.map fun p => tyIdents p.ty).flatten ++
     match f.results with
     | .empty => []
     | .scalar t => tyIdents t
 
 /-- The function types of a resource. -/
-def methodFuncs : ResourceMethod → List Silmaril.Wasm.Wac.Text.FuncType
+def methodFuncs : ResourceMethod → List FuncType
   | .ctor _ ps => [⟨false, ps, .empty⟩]
   | .method _ _ _ f => [f]
 
 /-- The function types of a type declaration. -/
-def itemDeclFuncs : ItemTypeDecl → List Silmaril.Wasm.Wac.Text.FuncType
+def itemDeclFuncs : ItemTypeDecl → List FuncType
   | .resource _ _ ms => ms.flatMap methodFuncs
   | .decl (.alias _ _ (.func f)) => [f]
   | .decl _ => []
 
 /-- The function types of an interface item. -/
-def ifaceItemFuncs : InterfaceItem → List Silmaril.Wasm.Wac.Text.FuncType
+def ifaceItemFuncs : InterfaceItem → List FuncType
   | .use _ => []
   | .type d => itemDeclFuncs d
   | .export_ _ _ (.func f) => [f]
   | .export_ _ _ (.ident _) => []
 
 /-- The function types of a world item path. -/
-def pathFuncs : WorldItemPath → List Silmaril.Wasm.Wac.Text.FuncType
+def pathFuncs : WorldItemPath → List FuncType
   | .named _ (.func f) => [f]
   | .named _ (.interface items) => items.flatMap ifaceItemFuncs
   | _ => []
 
 /-- The function types of a world item. -/
-def worldItemFuncs : WorldItem → List Silmaril.Wasm.Wac.Text.FuncType
+def worldItemFuncs : WorldItem → List FuncType
   | .type d => itemDeclFuncs d
   | .import_ _ p | .export_ _ p => pathFuncs p
   | _ => []
 
 /-- Every function type of a statement. -/
-def stmtFuncs : Statement → List Silmaril.Wasm.Wac.Text.FuncType
+def stmtFuncs : Statement → List FuncType
   | .import_ _ _ _ (.func f) => [f]
   | .import_ _ _ _ (.interface items) => items.flatMap ifaceItemFuncs
   | .type (.interface _ _ items) => items.flatMap ifaceItemFuncs
@@ -98,7 +98,7 @@ def stmtFuncs : Statement → List Silmaril.Wasm.Wac.Text.FuncType
   | _ => []
 
 /-- The function types at the top level of a statement (outside interface and world bodies). -/
-def topFuncs : Statement → List Silmaril.Wasm.Wac.Text.FuncType
+def topFuncs : Statement → List FuncType
   | .import_ _ _ _ (.func f) => [f]
   | .type (.type (.alias _ _ (.func f))) => [f]
   | _ => []

@@ -260,7 +260,7 @@ structure InvokeOkS (B : Builtins) (s : Store H) (f : Frame) : Prop where
 
 /-- **`InvokeOkS` and `StoreOkB` give `InvokeOk`.** -/
 theorem invokeOk_of_S {s : Store H} {f : Frame} (h : InvokeOkS B s f) (hs : StoreOkB s) :
-    InvokeOk B s f where
+    Silmaril.Wasm.SpecTec.Sim20.StoreBulk.InvokeOk B s f where
   frameTypes := h.frameTypes
   frameNames := h.frameNames
   funcs fi hfi := by

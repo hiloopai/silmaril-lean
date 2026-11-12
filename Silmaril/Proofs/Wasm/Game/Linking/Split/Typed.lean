@@ -38,10 +38,10 @@ open Silmaril.Games Silmaril.Wasm.Game Silmaril.Wasm.Game.Linking Silmaril.Proof
 
 theorem step_lift_instrs {P : Profile} {host : HostSemantics Nat} {s s' : Store Nat}
     {g g' : Frame} {pre : List Val} {is is' rest : List Admin}
-    (h : Step P host ⟨s, g, is⟩ ⟨s', g', is'⟩) :
-    Step P host ⟨s, g, vals pre ++ is ++ rest⟩ ⟨s', g', vals pre ++ is' ++ rest⟩ := by
+    (h : Silmaril.Games.Step P host ⟨s, g, is⟩ ⟨s', g', is'⟩) :
+    Silmaril.Games.Step P host ⟨s, g, vals pre ++ is ++ rest⟩ ⟨s', g', vals pre ++ is' ++ rest⟩ := by
   by_cases hne : pre ≠ [] ∨ rest ≠ []
-  · exact Step.ctxtInstrs h hne
+  · exact Silmaril.Games.Step.ctxtInstrs h hne
   · simp only [ne_eq, not_or, not_not] at hne
     obtain ⟨rfl, rfl⟩ := hne
     simpa [vals] using h
@@ -49,8 +49,8 @@ theorem step_lift_instrs {P : Profile} {host : HostSemantics Nat} {s s' : Store 
 /-- Host-free runs of active threads can be mapped along a step-preserving map of frames and
 code. -/
 theorem reach_map {P : Profile} (φ : Frame → List Admin → Frame × List Admin)
-    (hφ : ∀ (s s' : Store Nat) F F' X X', Step P noHost ⟨s, F, X⟩ ⟨s', F', X'⟩ →
-      Step P noHost ⟨s, (φ F X).1, (φ F X).2⟩ ⟨s', (φ F' X').1, (φ F' X').2⟩)
+    (hφ : ∀ (s s' : Store Nat) F F' X X', Silmaril.Games.Step P noHost ⟨s, F, X⟩ ⟨s', F', X'⟩ →
+      Silmaril.Games.Step P noHost ⟨s, (φ F X).1, (φ F X).2⟩ ⟨s', (φ F' X').1, (φ F' X').2⟩)
     {s s' : Store Nat} {F F' : Frame} {X X' : List Admin}
     (h : Reach P (s, .active F X) (s', .active F' X')) :
     Reach P (s, .active (φ F X).1 (φ F X).2) (s', .active (φ F' X').1 (φ F' X').2) := by
@@ -85,7 +85,7 @@ theorem fill_trap_reach (P : Profile) (s : Store Nat) :
       Reach P (s, .active F (vals pre ++ [.trap] ++ rest)) (s, .active F [.trap]) := by
     intro F pre rest
     by_cases hne : pre ≠ [] ∨ rest ≠ []
-    · exact .single ⟨F, [.trap], rfl, Step.trapInstrs hne⟩
+    · exact .single ⟨F, [.trap], rfl, Silmaril.Games.Step.trapInstrs hne⟩
     · have hnil : pre = [] ∧ rest = [] := by simpa only [ne_eq, not_or, not_not] using hne
       rw [hnil.1, hnil.2]
       simpa [vals] using (Relation.ReflTransGen.refl : Reach P (s, .active F [.trap]) _)
@@ -99,10 +99,10 @@ theorem fill_trap_reach (P : Profile) (s : Store Nat) :
     have h1 : Reach P (s, .active F (vals pre ++ [.label n cont (E.fill [.trap])] ++ rest))
         (s, .active F (vals pre ++ [.label n cont [.trap]] ++ rest)) :=
       reach_map (P := P) (fun g X => (g, vals pre ++ [.label n cont X] ++ rest))
-      (fun _ _ _ _ _ _ h => step_lift_instrs (Step.ctxtLabel h)) (ih F)
+      (fun _ _ _ _ _ _ h => step_lift_instrs (Silmaril.Games.Step.ctxtLabel h)) (ih F)
     have h2 : InternalP P (s, .active F (vals pre ++ [.label n cont [.trap]] ++ rest))
         (s, .active F (vals pre ++ [.trap] ++ rest)) :=
-      ⟨_, _, rfl, step_lift_instrs Step.trapLabel⟩
+      ⟨_, _, rfl, step_lift_instrs Silmaril.Games.Step.trapLabel⟩
     exact (h1.tail h2).trans (top F pre rest)
   | handler pre n cs E rest ih =>
     show ∀ F, Reach P (s, .active F ((Ctx.handler pre n cs E rest).fill [.trap]))
@@ -111,10 +111,10 @@ theorem fill_trap_reach (P : Profile) (s : Store Nat) :
     have h1 : Reach P (s, .active F (vals pre ++ [.handler n cs (E.fill [.trap])] ++ rest))
         (s, .active F (vals pre ++ [.handler n cs [.trap]] ++ rest)) :=
       reach_map (P := P) (fun g X => (g, vals pre ++ [.handler n cs X] ++ rest))
-      (fun _ _ _ _ _ _ h => step_lift_instrs (Step.ctxtHandler h)) (ih F)
+      (fun _ _ _ _ _ _ h => step_lift_instrs (Silmaril.Games.Step.ctxtHandler h)) (ih F)
     have h2 : InternalP P (s, .active F (vals pre ++ [.handler n cs [.trap]] ++ rest))
         (s, .active F (vals pre ++ [.trap] ++ rest)) :=
-      ⟨_, _, rfl, step_lift_instrs Step.trapHandler⟩
+      ⟨_, _, rfl, step_lift_instrs Silmaril.Games.Step.trapHandler⟩
     exact (h1.tail h2).trans (top F pre rest)
   | frame pre n fi E rest ih =>
     show ∀ F, Reach P (s, .active F ((Ctx.frame pre n fi E rest).fill [.trap]))
@@ -123,10 +123,10 @@ theorem fill_trap_reach (P : Profile) (s : Store Nat) :
     have h1 : Reach P (s, .active F (vals pre ++ [.frame n fi (E.fill [.trap])] ++ rest))
         (s, .active F (vals pre ++ [.frame n fi [.trap]] ++ rest)) :=
       reach_map (P := P) (fun g X => (F, vals pre ++ [.frame n g X] ++ rest))
-      (fun _ _ _ _ _ _ h => step_lift_instrs (Step.ctxtFrame h)) (ih fi)
+      (fun _ _ _ _ _ _ h => step_lift_instrs (Silmaril.Games.Step.ctxtFrame h)) (ih fi)
     have h2 : InternalP P (s, .active F (vals pre ++ [.frame n fi [.trap]] ++ rest))
         (s, .active F (vals pre ++ [.trap] ++ rest)) :=
-      ⟨_, _, rfl, step_lift_instrs Step.trapFrame⟩
+      ⟨_, _, rfl, step_lift_instrs Silmaril.Games.Step.trapFrame⟩
     exact (h1.tail h2).trans (top F pre rest)
 
 /-! ### Typed callouts and results -/
@@ -149,9 +149,9 @@ theorem callout_args_typed {P : Profile} {s : Store Nat} {t : Thread} {ts : List
   rcases Config.progress (P := P) hok ht with ⟨r, hr⟩ | ⟨c', hst⟩
   · exact absurd hco (resultAt_not_calloutAt (r := r) hr)
   obtain ⟨E, a, hd⟩ := hco
-  rcases Step.split_host hst with hfree | ⟨E', a', hh, args', hd', hret⟩
+  rcases Silmaril.Games.Step.split_host hst with hfree | ⟨E', a', hh, args', hd', hret⟩
   · have hnone : decompose? s (t.config s).code = none := by
-      simpa only [Thread.config_store] using decompose?_none_of_noRedex (Step.noRedex hfree)
+      simpa only [Thread.config_store] using decompose?_none_of_noRedex (Silmaril.Games.Step.noRedex hfree)
     exact absurd (hnone.symm.trans hd) (by simp)
   have hd'' : decompose? s (t.config s).code = some (E', a', hh, args') := by
     simpa only [Thread.config_store] using hd'

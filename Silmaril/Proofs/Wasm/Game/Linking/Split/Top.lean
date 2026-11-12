@@ -135,9 +135,9 @@ theorem AggregateStep.not_top {c c' : Config H} (h : AggregateStep c c') : ¬ To
 /-- **Frame independence at top level.** A step from top-level provider code keeps the frame,
 stays at top level, and can be replayed under any frame. -/
 theorem step_reframe {P : Profile} {host : HostSemantics H} {c c' : Config H}
-    (h : Step P host c c') (hc : TopOK c.code) :
+    (h : Silmaril.Games.Step P host c c') (hc : TopOK c.code) :
     c'.frame = c.frame ∧ TopOK c'.code ∧
-      ∀ g : Frame, Step P host ⟨c.store, g, c.code⟩ ⟨c'.store, g, c'.code⟩ := by
+      ∀ g : Frame, Silmaril.Games.Step P host ⟨c.store, g, c.code⟩ ⟨c'.store, g, c'.code⟩ := by
   induction h with
   | parametric h => exact absurd hc (ParametricStep.not_top h)
   | numeric h => exact absurd hc (NumericStep.not_top h)
@@ -152,33 +152,33 @@ theorem step_reframe {P : Profile} {host : HostSemantics H} {c c' : Config H}
     obtain ⟨hv, hi⟩ := TopOK.append.mp hvi
     obtain ⟨e1, e2, e3⟩ := ih hi
     exact ⟨e1, TopOK.append.mpr ⟨TopOK.append.mpr ⟨hv, e2⟩, hr⟩,
-      fun g => Step.ctxtInstrs (e3 g) hne⟩
+      fun g => Silmaril.Games.Step.ctxtInstrs (e3 g) hne⟩
   | ctxtLabel _ _ => exact absurd hc (by simp [TopOK, TopAdmin])
   | ctxtHandler _ _ => exact absurd hc (by simp [TopOK, TopAdmin])
   | ctxtFrame h _ =>
-    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.ctxtFrame h⟩
+    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.ctxtFrame h⟩
   | callRefNull hcr =>
-    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.callRefNull hcr⟩
+    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.callRefNull hcr⟩
   | callRefFunc hcr hf he hn hcode =>
-    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.callRefFunc hcr hf he hn hcode⟩
+    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.callRefFunc hcr hf he hn hcode⟩
   | callRefHost hcr hf he hn hcode hhost =>
-    exact ⟨rfl, TopOK.result_toAdmin _, fun g => Step.callRefHost hcr hf he hn hcode hhost⟩
+    exact ⟨rfl, TopOK.result_toAdmin _, fun g => Silmaril.Games.Step.callRefHost hcr hf he hn hcode hhost⟩
   | callRefHostDiv hcr hf he hn hcode hhost =>
-    exact ⟨rfl, hc, fun g => Step.callRefHostDiv hcr hf he hn hcode hhost⟩
+    exact ⟨rfl, hc, fun g => Silmaril.Games.Step.callRefHostDiv hcr hf he hn hcode hhost⟩
   | returnCallRefFrameNull hcr =>
-    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.returnCallRefFrameNull hcr⟩
+    exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.returnCallRefFrameNull hcr⟩
   | returnCallRefFrameAddr hcr hf he hn =>
-    refine ⟨rfl, ?_, fun g => Step.returnCallRefFrameAddr hcr hf he hn⟩
+    refine ⟨rfl, ?_, fun g => Silmaril.Games.Step.returnCallRefFrameAddr hcr hf he hn⟩
     exact TopOK.append.mpr ⟨TopOK.vals _, TopOK.cons.mpr ⟨trivial,
       TopOK.cons.mpr ⟨TopOK.retToCallIn hcr _, TopOK.nil⟩⟩⟩
-  | frameVals hn => exact ⟨rfl, TopOK.vals _, fun g => Step.frameVals hn⟩
-  | returnFrame hn => exact ⟨rfl, TopOK.vals _, fun g => Step.returnFrame hn⟩
-  | throwRefNull => exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.throwRefNull⟩
+  | frameVals hn => exact ⟨rfl, TopOK.vals _, fun g => Silmaril.Games.Step.frameVals hn⟩
+  | returnFrame hn => exact ⟨rfl, TopOK.vals _, fun g => Silmaril.Games.Step.returnFrame hn⟩
+  | throwRefNull => exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.throwRefNull⟩
   | throwRefInstrs hne =>
-    exact ⟨rfl, by simp [TopOK, TopAdmin, throwing], fun g => Step.throwRefInstrs hne⟩
-  | throwRefFrame => exact ⟨rfl, by simp [TopOK, TopAdmin, throwing], fun g => Step.throwRefFrame⟩
-  | trapInstrs hne => exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.trapInstrs hne⟩
-  | trapFrame => exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Step.trapFrame⟩
+    exact ⟨rfl, by simp [TopOK, TopAdmin, throwing], fun g => Silmaril.Games.Step.throwRefInstrs hne⟩
+  | throwRefFrame => exact ⟨rfl, by simp [TopOK, TopAdmin, throwing], fun g => Silmaril.Games.Step.throwRefFrame⟩
+  | trapInstrs hne => exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.trapInstrs hne⟩
+  | trapFrame => exact ⟨rfl, by simp [TopOK, TopAdmin], fun g => Silmaril.Games.Step.trapFrame⟩
   | _ =>
     exfalso
     first

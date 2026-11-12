@@ -177,7 +177,7 @@ theorem sim_write_idle (hR : Rel r w s er ew c m st) (xs : List Val) (hlen : xs.
       some (m.setChan s { m.chans s with pend := .write w xs }, Cabi.BLOCKED) := by
     have hd := hR.noDropR
     simp [mStep, Silmaril.Wasm.Component.Async.streamWrite, hR.tblW, hidle, hd, resNat,
-      Silmaril.Wasm.Component.Async.blocked, Cabi.BLOCKED]
+      Silmaril.Wasm.Component.AsyncRef.blocked, Cabi.BLOCKED]
   refine ⟨_, _, hm, cCopy_park st ew er xw xr _ hxw hW.2.1 hW.2.2 hxwo hR.hne hxr hRb, ?_⟩
   have hRs' : ∀ st' : Cabi.Store Val, RShape c st' (.write w xs) (m.ev r) xr := by
     intro st'
@@ -223,7 +223,7 @@ theorem sim_read_idle (hR : Rel r w s er ew c m st) (hev : m.ev r = none)
       some (m.setChan s { m.chans s with pend := .read r c }, Cabi.BLOCKED) := by
     have hd := hR.noDropW
     simp [mStep, Silmaril.Wasm.Component.Async.streamRead, hR.tblR, hidle, hd, resNat,
-      Silmaril.Wasm.Component.Async.blocked, Cabi.BLOCKED]
+      Silmaril.Wasm.Component.AsyncRef.blocked, Cabi.BLOCKED]
   refine ⟨_, _, hm, cCopy_park st er ew xr xw _ hxr hRx.2.1 hRx.2.2 hxro (Ne.symm hR.hne) hxw hWb,
     ?_⟩
   have hWs' : ∀ st' : Cabi.Store Val, WShape c st' (.read r c) (m.ev w) xw := by
@@ -280,7 +280,7 @@ theorem sim_write_read (hR : Rel r w s er ew c m st) (xs : List Val) (hlen : xs.
         ⟨.streamRead, h, Silmaril.Wasm.Component.Async.packCopy .completed n, xs.take n⟩,
       16 * n) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamWrite, hR.tblW, hpend, resNat, hmin,
-      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.Async.CopyResult.toNat]
+      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
   refine ⟨_, st1, hm, hc1, ?_⟩
   have hwr : w ≠ h := Ne.symm hR.hrw
   exact {
@@ -301,7 +301,7 @@ theorem sim_write_read (hR : Rel r w s er ew c m st) (xs : List Val) (hlen : xs.
     evR := by
       simp [Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
         Silmaril.Wasm.Component.Async.upd, Silmaril.Wasm.Component.Async.packCopy,
-        Silmaril.Wasm.Component.Async.CopyResult.toNat]
+        Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
     evW := by
       simpa [Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
         Silmaril.Wasm.Component.Async.upd, hwr] using hR.evW
@@ -346,7 +346,7 @@ theorem sim_read_write (hR : Rel r w s er ew c m st) (hev : m.ev r = none) (h : 
         ⟨.streamWrite, h, Silmaril.Wasm.Component.Async.packCopy .completed c, []⟩,
       16 * c) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamRead, hR.tblR, hpend, resNat, hmin,
-      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.Async.CopyResult.toNat]
+      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
   refine ⟨_, st1, hm, hc1, ?_⟩
   have hrw : r ≠ h := hR.hrw
   exact {
@@ -370,7 +370,7 @@ theorem sim_read_write (hR : Rel r w s er ew c m st) (hev : m.ev r = none) (h : 
     evW := by
       simp [Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
         Silmaril.Wasm.Component.Async.upd, Silmaril.Wasm.Component.Async.packCopy,
-        Silmaril.Wasm.Component.Async.CopyResult.toNat]
+        Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
     hne := hR.hne
     endR := ⟨_, hfe, by simp [CabiRef.delivered, Cabi.End.withPending, Cabi.End.withState, hxrk],
       by simp [CabiRef.delivered, Cabi.End.withPending, Cabi.End.withState, hxro],

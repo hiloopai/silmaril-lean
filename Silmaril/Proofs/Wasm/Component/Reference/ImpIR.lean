@@ -185,7 +185,7 @@ theorem exportsH_toCompI (c : SimpleI) {j : Nat} (hj : j < c.exports.length)
       | none => .pure none
       | some xs => .call (c.exports[j].core + c.imports.length, .flat xs)
           fun n => .pure (n.bind (Adapter.up (.lift c.exports[j].ty))) := by
-  have hget : (c.toComp.exports.map Export.impl)[j]? =
+  have hget : (c.toComp.exports.map Silmaril.Wasm.Component.Export.impl)[j]? =
       some ⟨[.lift c.exports[j].ty], .call (c.exports[j].core + c.imports.length)⟩ := by
     simp [SimpleI.toComp, hj]
   have hlt : c.exports[j].core + c.imports.length < c.imports.length + c.mod.exports.length := by

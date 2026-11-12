@@ -22,7 +22,7 @@ open Silmaril.Wasm.Component
 
 variable {M : Type}
 
-theorem extV_keep (V : Src → Impl) {k : Nat} (xs : List Silmaril.Wasm.Component.Export) (σ : List Impl) {s : Src}
+theorem extV_keep (V : Src → Impl) {k : Nat} (xs : List Export) (σ : List Impl) {s : Src}
     (h : ∀ t q, s = .out t q → t ≠ k) : extV V k xs σ s = V s := by
   cases s with
   | imp x => rfl

@@ -414,11 +414,11 @@ private theorem structNew_sim {P : Profile} {s : Store H} {f : Frame} {x : TypeI
       simpa only [List.zip_map_right] using hq
     obtain ⟨⟨ft, v⟩, hm, hq''⟩ := List.mem_map.mp hq'
     exact hq'' ▸ by simpa [Ren.packable_val] using hp _ hm
-  have hst : Step P noHost ⟨σ, ρ.frame f, vals (vs.map ρ.val) ++ [.plain (.structNew x)]⟩
+  have hst : Silmaril.Games.Step P noHost ⟨σ, ρ.frame f, vals (vs.map ρ.val) ++ [.plain (.structNew x)]⟩
       ⟨σ.addStruct ⟨d, (fs.toList.zip (vs.map ρ.val)).map
           fun (ft, v) => packField (fieldStorage ft) v⟩, ρ.frame f,
         [.ref (.struct σ.structs.length)]⟩ :=
-    Step.aggregate (AggregateStep.structNew hd he (by simpa using hn) hp')
+    Silmaril.Games.Step.aggregate (AggregateStep.structNew hd he (by simpa using hn) hp')
   have hg : Grow ρ O (PartRel.stAlloc ρ s σ) (PartRel.stOwn O s) σ := hR.grow_stAlloc
   refine ⟨_, _, _, ?_, hR.addStruct (si := ⟨d, _⟩) hsi, (hg.frameGood hf).2,
     by simp [PartRel.stOwn], hg, PartRel.touch_addStruct _⟩
@@ -445,10 +445,10 @@ private theorem arrayNewFixed_sim {P : Profile} {s : Store H} {f : Frame} {x : T
     intro v hv
     obtain ⟨w, hw, hv'⟩ := List.mem_map.mp hv
     exact hv' ▸ by simpa [Ren.packable_val] using hp w hw
-  have hst : Step P noHost ⟨σ, ρ.frame f, vals (vs.map ρ.val) ++ [.plain (.arrayNewFixed x n)]⟩
+  have hst : Silmaril.Games.Step P noHost ⟨σ, ρ.frame f, vals (vs.map ρ.val) ++ [.plain (.arrayNewFixed x n)]⟩
       ⟨σ.addArray ⟨d, (vs.map ρ.val).map (packField (fieldStorage ft))⟩, ρ.frame f,
         [arrRef σ.arrays.length]⟩ :=
-    Step.aggregate (AggregateStep.arrayNewFixed hd he (by simpa using hn) hp')
+    Silmaril.Games.Step.aggregate (AggregateStep.arrayNewFixed hd he (by simpa using hn) hp')
   have hg : Grow ρ O (PartRel.arAlloc ρ s σ) (PartRel.arOwn O s) σ := hR.grow_arAlloc
   refine ⟨_, _, _, ?_, hR.addArray (ai := ⟨d, _⟩) hai, (hg.frameGood hf).2,
     by simp [PartRel.arOwn], hg, PartRel.touch_addArray _⟩
@@ -468,23 +468,23 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
     refine .same hR hf ?_ ?_
     · rw [Own.codeGood_append, Own.codeGood_vals]
       exact ⟨hgood O, by simp⟩
-    · simpa [hmap] using Step.aggregate (P := P) (host := noHost)
+    · simpa [hmap] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.structNewDefault (s := σ) (f := ρ.frame f) hd he hdef)
   | structGetNull =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.structGetNull (s := σ) (f := ρ.frame _))))
   | @structGetStruct s f sx x i a si fv d fs ft hs hfv hd he hi hu =>
     have ha : O.st a := by simpa using hc.1 (.struct a) (by simp)
     obtain ⟨h1, h2⟩ := hR.struct ha hs
     refine .same hR hf (by simpa using (Own.goodVal_unpackField (sx := sx)
       (h2 fv (List.mem_of_getElem? hfv)))) ?_
-    simpa [Ren.unpackField_fval] using Step.aggregate (P := P) (host := noHost)
+    simpa [Ren.unpackField_fval] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.structGetStruct (s := σ) (f := ρ.frame f) (sx := sx) (i := i)
         (fv := ρ.fval fv) h1 (by simp [Ren.sinst, hfv]) hd he hi (by rwa [Ren.unpackable_fval]))
   | @structSetNull s f x i v =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.structSetNull (s := σ) (f := ρ.frame f) (x := x) (i := i) (v := ρ.val v))))
   | @structSetStruct s f x i v a d fs ft si hd he hi hs hfl hp =>
     show SimGoal P ρ O σ
@@ -495,7 +495,7 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
     have h1 : σ.structs[ρ.st a]? = some (ρ.sinst si) := (hR.struct ha hs).1
     refine ⟨ρ, O, _, ?_, hR.setStructField ha i.toNat (Own.goodFV_packField _ hv), hf,
       O.codeGood_nil, .refl ρ O σ, PartRel.touch_setStructField ha _ _⟩
-    simpa [Ren.fval_packField] using Step.aggregate (P := P) (host := noHost)
+    simpa [Ren.fval_packField] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.structSetStruct (s := σ) (f := ρ.frame f) (v := ρ.val v) hd he hi h1
         (by simpa [Ren.sinst] using hfl) (by rwa [Ren.packable_val]))
   | @arrayNew s f x v n =>
@@ -503,13 +503,13 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
     refine .same hR hf ?_ ?_
     · rw [Own.codeGood_append, Own.codeGood_vals]
       exact ⟨fun w hw => (List.eq_of_mem_replicate hw) ▸ hv, by simp⟩
-    · simpa [List.map_replicate] using Step.aggregate (P := P) (host := noHost)
+    · simpa [List.map_replicate] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayNew (s := σ) (f := ρ.frame f) (x := x) (ρ.val v) n)
   | @arrayNewDefault s f x n d ft v hd he hv =>
     refine .same hR hf ?_ ?_
     · rw [Own.codeGood_append, Own.codeGood_vals]
       exact ⟨fun w hw => (List.eq_of_mem_replicate hw) ▸ defaultVal?_good hv, by simp⟩
-    · simpa [List.map_replicate, defaultVal?_ren hv ρ] using Step.aggregate (P := P)
+    · simpa [List.map_replicate, defaultVal?_ren hv ρ] using Silmaril.Games.Step.aggregate (P := P)
         (host := noHost) (AggregateStep.arrayNewDefault (s := σ) (f := ρ.frame f) hd he hv)
   | arrayNewFixed hd he hn hp => exact arrayNewFixed_sim hd he hn hp hR hf hc
   | arrayNewElemOob he => exact nomatch (elem?_none he₀).symm.trans he
@@ -518,12 +518,12 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
   | arrayNewDataNum _ _ hdat => exact nomatch (data?_none hd₀).symm.trans hdat
   | arrayGetNull =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayGetNull (s := σ) (f := ρ.frame _))))
   | @arrayGetOob s f sx x i a ai ha hl =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayGetOob (s := σ) (f := ρ.frame f) (sx := sx) (x := x) h1
           (by simpa [Ren.ainst] using hl))))
   | @arrayGetArray s f sx x i a ai fv d ft ha hfv hd he hu =>
@@ -531,17 +531,17 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
     obtain ⟨h1, h2⟩ := hR.array ha' ha
     refine .same hR hf (by simpa using (Own.goodVal_unpackField (sx := sx)
       (h2 fv (List.mem_of_getElem? hfv)))) ?_
-    simpa [Ren.unpackField_fval] using Step.aggregate (P := P) (host := noHost)
+    simpa [Ren.unpackField_fval] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.arrayGetArray (s := σ) (f := ρ.frame f) (sx := sx) (i := i)
         (fv := ρ.fval fv) h1 (by simp [Ren.ainst, hfv]) hd he (by rwa [Ren.unpackable_fval]))
   | @arraySetNull s f x i v =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arraySetNull (s := σ) (f := ρ.frame f) (x := x) (i := i) (v := ρ.val v))))
   | @arraySetOob s f x i v a ai ha hl =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arraySetOob (s := σ) (f := ρ.frame f) (x := x) (v := ρ.val v) h1
           (by simpa [Ren.ainst] using hl))))
   | @arraySetArray s f x i v a ai d ft ha hl hd he hp =>
@@ -553,93 +553,93 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := (hR.array ha' ha).1
     refine ⟨ρ, O, _, ?_, hR.setArrayField ha' i.toNat (Own.goodFV_packField _ hv), hf,
       O.codeGood_nil, .refl ρ O σ, PartRel.touch_setArrayField ha' _ _⟩
-    simpa [Ren.fval_packField] using Step.aggregate (P := P) (host := noHost)
+    simpa [Ren.fval_packField] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.arraySetArray (s := σ) (f := ρ.frame f) (v := ρ.val v) h1
         (by simpa [Ren.ainst] using hl) hd he (by rwa [Ren.packable_val]))
   | arrayLenNull =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayLenNull (s := σ) (f := ρ.frame _))))
   | @arrayLenArray s f a ai ha =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     refine .same hR hf (by simp [constI32, Val.i32, Val.toAdmin]) ?_
-    simpa [Ren.ainst] using Step.aggregate (P := P) (host := noHost)
+    simpa [Ren.ainst] using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.arrayLenArray (s := σ) (f := ρ.frame f) h1)
   | @arrayFillNull s f x i n v =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayFillNull (s := σ) (f := ρ.frame f) (x := x) (i := i) (n := n)
           (v := ρ.val v))))
   | @arrayFillOob s f x i n v a ai ha hl =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayFillOob (s := σ) (f := ρ.frame f) (x := x) (v := ρ.val v) h1
           (by simpa [Ren.ainst] using hl))))
   | @arrayFillZero s f x i v a ai ha hl =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     exact .same hR hf O.codeGood_nil
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayFillZero (s := σ) (f := ρ.frame f) (x := x) (v := ρ.val v) h1
           (by simpa [Ren.ainst] using hl))))
   | @arrayFillSucc s f x i n v a ai ha hl hn =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     refine .same hR hf (by sub_good hc) ?_
-    simpa using Step.aggregate (P := P) (host := noHost)
+    simpa using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.arrayFillSucc (s := σ) (f := ρ.frame f) (x := x) (v := ρ.val v) h1
         (by simpa [Ren.ainst] using hl) hn)
   | @arrayCopyNull₁ s f x₁ x₂ i₁ i₂ n r =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayCopyNull₁ (s := σ) (f := ρ.frame f) (x₁ := x₁) (x₂ := x₂) (i₁ := i₁)
           (i₂ := i₂) (n := n) (r := ρ.ref r))))
   | @arrayCopyNull₂ s f x₁ x₂ i₁ i₂ n r =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayCopyNull₂ (s := σ) (f := ρ.frame f) (x₁ := x₁) (x₂ := x₂) (i₁ := i₁)
           (i₂ := i₂) (n := n) (r := ρ.ref r))))
   | @arrayCopyOob₁ s f x₁ x₂ i₁ i₂ n a₁ a₂ ai₁ ha hl =>
     have h1 : σ.arrays[ρ.ar a₁]? = some (ρ.ainst ai₁) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayCopyOob₁ (s := σ) (f := ρ.frame f) (x₁ := x₁) (x₂ := x₂)
           (i₂ := i₂) (a₂ := ρ.ar a₂) h1 (by simpa [Ren.ainst] using hl))))
   | @arrayCopyOob₂ s f x₁ x₂ i₁ i₂ n a₁ a₂ ai₂ ha hl =>
     have h1 : σ.arrays[ρ.ar a₂]? = some (ρ.ainst ai₂) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayCopyOob₂ (s := σ) (f := ρ.frame f) (x₁ := x₁) (x₂ := x₂)
           (i₁ := i₁) (a₁ := ρ.ar a₁) h1 (by simpa [Ren.ainst] using hl))))
   | @arrayCopyZero s f x₁ x₂ i₁ i₂ a₁ a₂ ai₁ ai₂ ha₁ ha₂ hl =>
     have h1 : σ.arrays[ρ.ar a₁]? = some (ρ.ainst ai₁) := hR.array_code hc (by simp) ha₁
     have h2 : σ.arrays[ρ.ar a₂]? = some (ρ.ainst ai₂) := hR.array_code hc (by simp) ha₂
     exact .same hR hf O.codeGood_nil
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayCopyZero (s := σ) (f := ρ.frame f) (x₁ := x₁) (x₂ := x₂) h1 h2
           (by simpa [Ren.ainst] using hl))))
   | @arrayCopyLe s f x₁ x₂ i₁ i₂ n a₁ a₂ ai₁ ai₂ d₂ ft₂ ha₁ ha₂ hl hn hd he hle =>
     have h1 : σ.arrays[ρ.ar a₁]? = some (ρ.ainst ai₁) := hR.array_code hc (by simp) ha₁
     have h2 : σ.arrays[ρ.ar a₂]? = some (ρ.ainst ai₂) := hR.array_code hc (by simp) ha₂
     refine .same hR hf (by sub_good hc) ?_
-    simpa using Step.aggregate (P := P) (host := noHost)
+    simpa using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.arrayCopyLe (s := σ) (f := ρ.frame f) h1 h2
         (by simpa [Ren.ainst] using hl) hn hd he hle)
   | @arrayCopyGt s f x₁ x₂ i₁ i₂ n a₁ a₂ ai₁ ai₂ d₂ ft₂ ha₁ ha₂ hl hn hd he hgt =>
     have h1 : σ.arrays[ρ.ar a₁]? = some (ρ.ainst ai₁) := hR.array_code hc (by simp) ha₁
     have h2 : σ.arrays[ρ.ar a₂]? = some (ρ.ainst ai₂) := hR.array_code hc (by simp) ha₂
     refine .same hR hf (by sub_good hc) ?_
-    simpa using Step.aggregate (P := P) (host := noHost)
+    simpa using Silmaril.Games.Step.aggregate (P := P) (host := noHost)
       (AggregateStep.arrayCopyGt (s := σ) (f := ρ.frame f) h1 h2
         (by simpa [Ren.ainst] using hl) hn hd he hgt)
   | @arrayInitElemNull s f x y i j n =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayInitElemNull (s := σ) (f := ρ.frame f) (x := x) (y := y) (i := i)
           (j := j) (n := n))))
   | @arrayInitElemOob₁ s f x y i j n a ai ha hl =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayInitElemOob₁ (s := σ) (f := ρ.frame f) (x := x) (y := y) (j := j)
           h1 (by simpa [Ren.ainst] using hl))))
   | arrayInitElemOob₂ he => exact nomatch (elem?_none he₀).symm.trans he
@@ -647,13 +647,13 @@ theorem AggregateStep.sim {P : Profile} {c c' : Config H} (h : AggregateStep c c
   | arrayInitElemSucc _ he => exact nomatch (elem?_none he₀).symm.trans he
   | @arrayInitDataNull s f x y i j n =>
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayInitDataNull (s := σ) (f := ρ.frame f) (x := x) (y := y) (i := i)
           (j := j) (n := n))))
   | @arrayInitDataOob₁ s f x y i j n a ai ha hl =>
     have h1 : σ.arrays[ρ.ar a]? = some (ρ.ainst ai) := hR.array_code hc (by simp) ha
     exact .same hR hf (by simp)
-      (by simpa using (Step.aggregate (P := P) (host := noHost)
+      (by simpa using (Silmaril.Games.Step.aggregate (P := P) (host := noHost)
         (AggregateStep.arrayInitDataOob₁ (s := σ) (f := ρ.frame f) (x := x) (y := y) (j := j)
           h1 (by simpa [Ren.ainst] using hl))))
   | arrayInitDataOob₂ _ _ hdat => exact nomatch (data?_none hd₀).symm.trans hdat

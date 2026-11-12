@@ -171,26 +171,26 @@ theorem tab_withArgs3 {α : Type} {args : List FlatValue} {k : ℕ → ℕ → �
 theorem tf_memWrite : Builtins.Inv.MemWritePres (TabFrom j s₀ : CStore E → Prop) :=
   fun m p _ => tf_insts (writeMemSt_insts m p _)
 
-theorem tab_newBuiltin (lim : Silmaril.Wasm.Component.Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId)) :
+theorem tab_newBuiltin (lim : Silmaril.Wasm.Component.Limits) (k : Silmaril.Wasm.Component.AsyncRef.EndKind) (t : Option (WIT.ClosedType RtId)) :
     TI (Builtins.newBuiltin (σ := σ) lim k t) :=
   Builtins.Inv.newBuiltin tf_addHandle (fun _ _ _ => tf_insts fun _ => rfl)
     (fun _ _ => tf_insts fun _ => rfl) lim k t
 
-theorem tab_copyBuiltin (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (k : Async.EndKind)
+theorem tab_copyBuiltin (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (k : Silmaril.Wasm.Component.AsyncRef.EndKind)
     (t : Option (WIT.ClosedType RtId)) (opts : CanonOpts E) (i p n : ℕ) :
     TI (Builtins.copyBuiltin (σ := σ) lim q k t opts i p n) :=
   Builtins.Inv.copyBuiltin loadPres_tab storePres_tab awaitPres_tab
     (fun e b r => tf_insts (copySt_insts e b r)) lim q k t opts i p n
 
-theorem tab_cancelCopy (lim : Silmaril.Wasm.Component.Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId))
+theorem tab_cancelCopy (lim : Silmaril.Wasm.Component.Limits) (k : Silmaril.Wasm.Component.AsyncRef.EndKind) (t : Option (WIT.ClosedType RtId))
     (a : Bool) (i : ℕ) : TI (Builtins.cancelCopy (σ := σ) lim k t a i) :=
   Builtins.Inv.cancelCopy awaitPres_tab (fun e b => tf_insts (cancel_insts e b)) lim k t a i
 
-theorem tab_dropEnd (lim : Silmaril.Wasm.Component.Limits) (k : Async.EndKind) (t : Option (WIT.ClosedType RtId))
+theorem tab_dropEnd (lim : Silmaril.Wasm.Component.Limits) (k : Silmaril.Wasm.Component.AsyncRef.EndKind) (t : Option (WIT.ClosedType RtId))
     (i : ℕ) : TI (Builtins.dropEnd (σ := σ) lim k t i) :=
   Builtins.Inv.dropEnd tf_removeHandle (fun e => tf_insts (dropEnd_insts e)) lim k t i
 
-theorem tab_forwardBuiltin (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (k : Async.EndKind)
+theorem tab_forwardBuiltin (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (k : Silmaril.Wasm.Component.AsyncRef.EndKind)
     (t : Option (WIT.ClosedType RtId)) (ri wi : ℕ) :
     TI (Builtins.forwardBuiltin (σ := σ) lim q k t ri wi) :=
   Builtins.Inv.forwardBuiltin loadPres_tab storePres_tab tf_removeHandle

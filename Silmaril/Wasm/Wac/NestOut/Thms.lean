@@ -94,14 +94,14 @@ theorem export_eq1 (P : Nat → Comp M) {k0 : Nat} {g₁ g₂ : Graph} (ok : Nes
     (hs : SimV (fun k => sigOf (P k)) (fun k => sigOf (nestPkgs P k0 g₁ k)) g₂ g₂.nodes.length
       (inlineAcc (fun k => sigOf (P k)) k0 g₁ g₂) V U)
     {p : String × Src} (hp : p ∈ g₂.exports) :
-    (⟨p.1, g₂.tyOf (fun k => sigOf (nestPkgs P k0 g₁ k)) I p.2, V p.2⟩ : Silmaril.Wasm.Component.Export) =
+    (⟨p.1, g₂.tyOf (fun k => sigOf (nestPkgs P k0 g₁ k)) I p.2, V p.2⟩ : Export) =
       ⟨p.1, (Graph.inline (fun k => sigOf (P k)) k0 g₁ g₂).tyOf (fun k => sigOf (P k)) I
           (renSrc (inlineAcc (fun k => sigOf (P k)) k0 g₁ g₂).ren p.2),
         U (renSrc (inlineAcc (fun k => sigOf (P k)) k0 g₁ g₂).ren p.2)⟩ := by
   obtain ⟨n, s⟩ := p
   cases s with
   | imp x =>
-    show (⟨n, (I.lookup x).getD anyTy, V (.imp x)⟩ : Silmaril.Wasm.Component.Export) = ⟨n, (I.lookup x).getD anyTy, U (.imp x)⟩
+    show (⟨n, (I.lookup x).getD anyTy, V (.imp x)⟩ : Export) = ⟨n, (I.lookup x).getD anyTy, U (.imp x)⟩
     rw [hs.2.1 x]
   | out j q =>
     have hres : g₂.Resolves (fun k => sigOf (nestPkgs P k0 g₁ k))
@@ -111,7 +111,7 @@ theorem export_eq1 (P : Nat → Comp M) {k0 : Nat} {g₁ g₂ : Graph} (ok : Nes
     obtain ⟨t, q', m', hren, hm', _, hl⟩ := hs.1.2 j m q hm hjl hq
     have hV : V (.out j q) = U (.out t q') := (hs.2.2 j m q hm hjl hq).trans (congrArg U hren)
     have hm'' : (Graph.inline (fun k => sigOf (P k)) k0 g₁ g₂).nodes[t]? = some m' := hm'
-    show (⟨n, g₂.tyOf _ I (.out j q), V (.out j q)⟩ : Silmaril.Wasm.Component.Export) =
+    show (⟨n, g₂.tyOf _ I (.out j q), V (.out j q)⟩ : Export) =
       ⟨n, (Graph.inline _ k0 g₁ g₂).tyOf _ I (renSrc _ (.out j q)), U (renSrc _ (.out j q))⟩
     rw [hren, tyOf_out _ g₂ I hm, tyOf_out _ _ I hm'', hl, hV]
 

@@ -109,18 +109,18 @@ theorem resolve_self (S : Nat → PkgSig) (g : Graph) (I : Iface) (k : Nat) (q :
 
 /-! ## Extending valuations -/
 
-theorem extV_imp (V : Src → Impl) (k : Nat) (xs : List Silmaril.Wasm.Component.Export) (σ : List Impl) (x : String) :
+theorem extV_imp (V : Src → Impl) (k : Nat) (xs : List Export) (σ : List Impl) (x : String) :
     extV V k xs σ (.imp x) = V (.imp x) := rfl
 
-theorem extV_ne (V : Src → Impl) {j k : Nat} (h : j ≠ k) (xs : List Silmaril.Wasm.Component.Export) (σ : List Impl)
+theorem extV_ne (V : Src → Impl) {j k : Nat} (h : j ≠ k) (xs : List Export) (σ : List Impl)
     (q : String) : extV V k xs σ (.out j q) = V (.out j q) := by
   simp [extV, h]
 
-theorem extV_self (V : Src → Impl) (k : Nat) {xs : List Silmaril.Wasm.Component.Export} {q : String}
+theorem extV_self (V : Src → Impl) (k : Nat) {xs : List Export} {q : String}
     (h : q ∈ xs.map Export.name) (σ : List Impl) : extV V k xs σ (.out k q) = expImpl xs σ q := by
   simp [extV, h]
 
-theorem extV_not_mem (V : Src → Impl) (k : Nat) {xs : List Silmaril.Wasm.Component.Export} {q : String}
+theorem extV_not_mem (V : Src → Impl) (k : Nat) {xs : List Export} {q : String}
     (h : q ∉ xs.map Export.name) (σ : List Impl) : extV V k xs σ (.out k q) = V (.out k q) := by
   simp [extV, h]
 
@@ -128,7 +128,7 @@ theorem names_sigOf (c : Comp M) : names (sigOf c).exports = c.exports.map Expor
   simp [sigOf, names]
 
 /-- The export `q` of the flat environment extended by the exports `xs`. -/
-theorem subst_append_export {σ : List Impl} {xs : List Silmaril.Wasm.Component.Export} {q : String}
+theorem subst_append_export {σ : List Impl} {xs : List Export} {q : String}
     (h : q ∈ xs.map Export.name) (τ : List Impl) :
     (Impl.fwd (σ.length + (xs.map Export.name).idxOf q)).subst
       (σ ++ xs.map fun x => x.impl.subst τ) = expImpl xs τ q := by

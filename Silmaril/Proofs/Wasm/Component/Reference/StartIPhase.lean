@@ -44,7 +44,7 @@ def startGarbA (P : Profile)
   tasks := [task₂ startEx [] ⟨0⟩]
   threads := [{ (thread₁ ([] : List (Runtime.Task (E3 P)))).withIndex 1 with status := .exited }]
   callers := [.sub .start]
-  conts := Config.setSlot (Config.setSlot [] 0
+  conts := Silmaril.Wasm.Execution.Core.Config.setSlot (Silmaril.Wasm.Execution.Core.Config.setSlot [] 0
     (some (threadAct (DA P g) ⟨0⟩ (.liftImplicit ⟨0⟩ a)))) 0 none
   pending := []
   results := []

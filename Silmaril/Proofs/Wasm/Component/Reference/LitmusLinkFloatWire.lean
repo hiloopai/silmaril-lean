@@ -151,19 +151,19 @@ theorem rb_run {P : Profile} (x : BitVec 32) :
   let n := (Ty.ofList (rbFn.results.map ScalarType.toC)).length
   have hn : [Val.i32 x].length = n :=
     (Ty.length_ofList (rbFn.results.map ScalarType.toC)).symm
-  have s₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have s₁ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       (invoke rbStore 0 [Val.num ⟨.float .f32, x⟩])
       ⟨rbStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
     .callRefFunc trivial hf he (Ty.length_ofList (rbFn.params.map ScalarType.toC)).symm hcode
   have hl₀ : F.local? x₀ = some (some (Val.num ⟨.float .f32, x⟩)) := by
     simp [F, Frame.local?, Frame.forCall, hloc, h₀]
-  have a₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have a₁ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       ⟨rbStore, F, vals [] ++ [.plain (.localGet x₀)] ++
         [.plain (.convert (.reinterpretInt .f32))]⟩
       ⟨rbStore, F, vals [] ++ [(Val.num ⟨.float .f32, x⟩).toAdmin] ++
         [.plain (.convert (.reinterpretInt .f32))]⟩ :=
     .ctxtInstrs (.variable (.localGet hl₀)) (.inr (by simp))
-  have a₂ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have a₂ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       ⟨rbStore, F, [(Val.num ⟨.float .f32, x⟩).toAdmin,
         .plain (.convert (.reinterpretInt .f32))]⟩
       ⟨rbStore, F, vals [Val.i32 x]⟩ :=
@@ -173,11 +173,11 @@ theorem rb_run {P : Profile} (x : BitVec 32) :
     rw [hbody]
     exact (Relation.ReflTransGen.single a₁).tail a₂
   have s₃ := steps_frame_label (f := {}) (n := n) (m := n) (cont := []) s₂
-  have s₄ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have s₄ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       ⟨rbStore, {}, [.frame n F [.label n [] (vals [Val.i32 x])]]⟩
       ⟨rbStore, {}, [.frame n F (vals [Val.i32 x])]⟩ :=
     .ctxtFrame .labelVals
-  have s₅ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have s₅ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       ⟨rbStore, {}, [.frame n F (vals [Val.i32 x])]⟩ ⟨rbStore, {}, vals [Val.i32 x]⟩ :=
     .frameVals hn
   exact (Relation.ReflTransGen.single s₁).trans (s₃.tail s₄ |>.tail s₅)
@@ -415,11 +415,11 @@ theorem nan_path (P : Profile) (y : BitVec 32) :
   let n := (Ty.ofList (fFn.results.map ScalarType.toC)).length
   have hn : [Val.i32 y].length = n :=
     (Ty.length_ofList (fFn.results.map ScalarType.toC)).symm
-  have s₁ : Step P Det.noHost (invoke nanStore 1 [])
+  have s₁ : Silmaril.Games.Step P Det.noHost (invoke nanStore 1 [])
       ⟨nanStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
     .callRefFunc trivial hf1 he1 (Ty.length_ofList (fFn.params.map ScalarType.toC)).symm hcode
   have hxF : F.module.funcs[x.toNat]? = some 0 := by rw [hx]; exact hm
-  have a₁ : Step P Det.noHost ⟨nanStore, F, vals [nanV] ++ [.plain (.call x)] ++ []⟩
+  have a₁ : Silmaril.Games.Step P Det.noHost ⟨nanStore, F, vals [nanV] ++ [.plain (.call x)] ++ []⟩
       ⟨nanStore, F, vals [nanV] ++ [.ref (.func 0), .callRefType fh'.type] ++ []⟩ :=
     .ctxtInstrs (.call hxF hf0) (.inl (by simp))
   have s₂ : Silmaril.Wasm.Execution.Core.Steps P Det.noHost ⟨nanStore, F, expression code.body⟩
@@ -513,7 +513,7 @@ theorem nanRbL_valid : ∃ ct, check? Features.p2 nanRbL.toRef = .ok ct :=
 /-- **The reference machine canonicalises the NaN**: over `core3 neverFail` with the
 deterministic first-alternative oracle, `f()` returns the bits `0x7fc00000` of the canonical
 NaN. -/
-theorem nanRb_ref : Outcome.returns (some [toRefVal (.u32 canonBits)]) ∈
+theorem nanRb_ref : Silmaril.Wasm.Component.Reference.Outcome.returns (some [toRefVal (.u32 canonBits)]) ∈
     exportBehaviours Silmaril.Wasm.Component.Reference.Core3Adder.first.prof
       (Host.ofEmbedder Silmaril.Wasm.Component.Reference.Core3Adder.emb) () nanRbL.toRef [] "f" [] :=
   returns_of_summary (by decide +kernel)

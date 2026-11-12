@@ -149,7 +149,7 @@ theorem threadStatus_last {s : CStore (E3 P)} {Gth : List Runtime.Thread} {z : R
     modify_concat_length]
 
 theorem setTaskState_last {s : CStore (E3 P)} {Gt : List (Runtime.Task (E3 P))}
-    {y : Runtime.Task (E3 P)} (h : s.tasks = Gt ++ [y]) (st : Async.TaskState) :
+    {y : Runtime.Task (E3 P)} (h : s.tasks = Gt ++ [y]) (st : Silmaril.Wasm.Component.AsyncRef.TaskState) :
     CStore.setTaskState ⟨Gt.length⟩ st s = { s with tasks := Gt ++ [y.withState st] } := by
   obtain ⟨⟩ := s
   dsimp only at h

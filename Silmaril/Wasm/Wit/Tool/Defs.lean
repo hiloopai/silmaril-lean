@@ -45,7 +45,7 @@ open Silmaril.Wasm.Wit.Binary
 instance (i : IfaceName) : Decidable i.Valid := by
   unfold IfaceName.Valid; infer_instance
 
-instance (f : Func) : Decidable f.Valid := by
+instance (f : Silmaril.Wasm.Wit.Binary.Func) : Decidable f.Valid := by
   unfold Func.Valid; split <;> infer_instance
 
 instance (b : Interface) : Decidable b.Valid := by

@@ -232,7 +232,7 @@ parameter names of `Simple.toRef`, the alias of the core export, the lift and th
 def exportSecs (i : Nat) (name : String) (ft : FuncTy) : Except String (List XSection) := do
   let ps ← ft.params.mapM primOf
   let r ← ft.results.head?.mapM primOf
-  let t : Silmaril.Wasm.Component.Binary.FuncType := ⟨labels "a" (ps.map ValType.prim), r.map ValType.prim, false⟩
+  let t : Silmaril.Wasm.Component.Binary.FuncType := ⟨labels "a" (ps.map Silmaril.Wasm.Component.Binary.ValType.prim), r.map Silmaril.Wasm.Component.Binary.ValType.prim, false⟩
   pure [.sec (.types [.func t]),
     .sec (.aliases [⟨.core .func, .coreExport 0 name⟩]),
     .sec (.canons [.lift i [] i]),

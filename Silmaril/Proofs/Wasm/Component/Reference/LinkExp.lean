@@ -37,7 +37,7 @@ open Silmaril.Proofs.Wasm.Game.Linking.Split (Own Ren)
 
 /-- Values whose image under a code map are flat are their own image. -/
 theorem map_val_flat (M : CMap) :
-    ∀ {vs : List Val} {zs : List Silmaril.Wasm.Execution.Runtime.Value},
+    ∀ {vs : List Silmaril.Wasm.Component.Reference.Val} {zs : List Silmaril.Wasm.Execution.Runtime.Value},
       (vs.map M.val).mapM toFlat? = some zs → vs.map M.val = vs
   | [], _, _ => rfl
   | v :: vs, zs, h => by
@@ -56,7 +56,7 @@ theorem map_val_flat (M : CMap) :
         rw [List.map_cons, hvv, map_val_flat M hm]
 
 /-- The values of a list never end with `THROW_REF`. -/
-theorem vals_ne_throwing' (vs : List Val) (a : Nat) : vals vs ≠ throwing a := by
+theorem vals_ne_throwing' (vs : List Silmaril.Wasm.Component.Reference.Val) (a : Nat) : vals vs ≠ throwing a := by
   intro h
   have h' : (vals vs).map Admin.val? = (throwing a).map Admin.val? := congrArg _ h
   have hl : (vals vs).map Admin.val? = vs.map some := by

@@ -124,7 +124,7 @@ theorem modify_mid {α : Type} (l r : List α) (a : α) (f : α → α) :
     rw [List.modify_succ_cons, ih]
 
 theorem setTaskState_mid {s : CStore (E3 P)} {Gt R : List (Runtime.Task (E3 P))}
-    {y : Runtime.Task (E3 P)} (h : s.tasks = Gt ++ [y] ++ R) (st : Async.TaskState) :
+    {y : Runtime.Task (E3 P)} (h : s.tasks = Gt ++ [y] ++ R) (st : Silmaril.Wasm.Component.AsyncRef.TaskState) :
     CStore.setTaskState ⟨Gt.length⟩ st s = { s with tasks := Gt ++ [y.withState st] ++ R } := by
   obtain ⟨⟩ := s
   dsimp only at h

@@ -104,7 +104,7 @@ theorem res_some {kf : String → FuncKind} {a a' : Bool} {r base : List Char} {
 
 /-- The mangled name of a decoded function. -/
 def mangledOf (k : FuncKind) (base : List Char) (a : Bool) : List Char :=
-  Func.mangledChars { name := String.ofList base, kind := k, async := a, params := [] }
+  Silmaril.Wasm.Wit.Binary.Func.mangledChars { name := String.ofList base, kind := k, async := a, params := [] }
 
 theorem mangled_res {p : List Char} {kf : String → FuncKind} {a : Bool} {r base : List Char}
     {k : FuncKind} {a' : Bool} (hp : ∀ x, mangledOf (kf (String.ofList x)) base a = p ++ x ++ '.' :: base)
@@ -116,27 +116,27 @@ theorem mangled_res {p : List Char} {kf : String → FuncKind} {a : Bool} {r bas
 theorem mangled_method (a : Bool) (base x : List Char) :
     mangledOf (.method (String.ofList x)) base a =
       (if a then pAsyncMethod else pMethod) ++ x ++ '.' :: base := by
-  simp [mangledOf, Func.mangledChars]
+  simp [mangledOf, Silmaril.Wasm.Wit.Binary.Func.mangledChars]
 
 theorem mangled_static (a : Bool) (base x : List Char) :
     mangledOf (.static (String.ofList x)) base a =
       (if a then pAsyncStatic else pStatic) ++ x ++ '.' :: base := by
-  simp [mangledOf, Func.mangledChars]
+  simp [mangledOf, Silmaril.Wasm.Wit.Binary.Func.mangledChars]
 
 theorem tail_async {cs r base : List Char} {k : FuncKind} {a : Bool} (h5 : dropPrefix? pAsync cs = some r)
     (e : FuncKind.freestanding = k ∧ r = base ∧ a = true) : mangledOf k base a = cs := by
   rw [← e.1, ← e.2.1, e.2.2, Valid.dropPrefix?_eq h5]
-  simp [mangledOf, Func.mangledChars]
+  simp [mangledOf, Silmaril.Wasm.Wit.Binary.Func.mangledChars]
 
 theorem tail_plain {cs base : List Char} {k : FuncKind} {a : Bool}
     (e : FuncKind.freestanding = k ∧ cs = base ∧ a = false) : mangledOf k base a = cs := by
   rw [← e.1, ← e.2.1, e.2.2]
-  simp [mangledOf, Func.mangledChars]
+  simp [mangledOf, Silmaril.Wasm.Wit.Binary.Func.mangledChars]
 
 theorem tail_ctor {cs r base : List Char} {k : FuncKind} {a : Bool} (h0 : dropPrefix? pConstructor cs = some r)
     (e : FuncKind.constructor (String.ofList r) = k ∧ r = base ∧ a = false) : mangledOf k base a = cs := by
   rw [← e.1, e.2.2, Valid.dropPrefix?_eq h0]
-  simp [mangledOf, Func.mangledChars]
+  simp [mangledOf, Silmaril.Wasm.Wit.Binary.Func.mangledChars]
 
 /-- **Demangling inverts mangling**: the decoded function's mangled name is the name. -/
 theorem demangleChars_mangled {cs base : List Char} {k : FuncKind} {a : Bool}
@@ -182,8 +182,8 @@ theorem demangle_mangled_name {n : String} {s : Sig} {f : Silmaril.Wasm.Wit.Bina
     · have hm : mangledOf k base a = n.toList := demangleChars_mangled hd
       have hf : f.mangledChars = mangledOf k base a := by
         simp [demangle, hd, ha] at h
-        rw [← pure_inj h, ha]; simp [mangledOf, Func.mangledChars]
-      rw [Func.mangled, hf, hm, String.ofList_toList]
+        rw [← pure_inj h, ha]; simp [mangledOf, Silmaril.Wasm.Wit.Binary.Func.mangledChars]
+      rw [Silmaril.Wasm.Wit.Binary.Func.mangled, hf, hm, String.ofList_toList]
     · simp [demangle, hd, ha] at h
 
 /-! ## Each declaration adds its import or export -/

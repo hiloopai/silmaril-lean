@@ -30,7 +30,7 @@ open Silmaril.Proofs.Wasm.Jco.Real.ValidAll
 section Module
 
 variable {cT sT : Sig → Lime1.FuncType} {m : Lime1.Module} {md : Meta} {f0 : Lime1.Func}
-  {F : Sig × Nat → Lime1.Func} (h : Shape m cT sT md f0 F) (hw : md.world.length < 2 ^ 31)
+  {F : Sig × Nat → Lime1.Func} (h : Silmaril.Proofs.Wasm.Jco.Real.ValidAll.Shape m cT sT md f0 F) (hw : md.world.length < 2 ^ 31)
 
 include h hw
 

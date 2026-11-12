@@ -74,13 +74,13 @@ theorem item_import (i : Silmaril.Wasm.Component.Binary.Import) :
   simp only [P.import_, List.cons_append]
   rw [item_kw _ _ (by decide), itemKw_import, nameDesc_rt]; rfl
 
-theorem export_rt (e : Export) :
+theorem export_rt (e : Silmaril.Wasm.Component.Binary.Export) :
     R.export_ (P.name e.name ++ P.sortIdx e.item :: (e.desc.map P.externDesc).toList) =
       some ⟨normName e.name, e.item, e.desc⟩ := by
   rw [R.export_, name_rt _ _ (by rintro s r ⟨rfl, rfl⟩; exact attr_sortIdx _)]
   cases e.desc <;> simp [sortIdx_rt, externDesc_rt, normDesc]
 
-theorem item_export (e : Export) :
+theorem item_export (e : Silmaril.Wasm.Component.Binary.Export) :
     R.item (P.export_ e) = some (.exports [⟨normName e.name, e.item, e.desc⟩]) := by
   simp only [P.export_, List.cons_append]
   rw [item_kw _ _ (by decide), itemKw_export, export_rt]; rfl

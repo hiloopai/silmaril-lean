@@ -131,7 +131,7 @@ theorem wf_start (s : Start) : WF (P.start s) := by
   | succ r ih => rw [List.replicate_succ]; wf_simp [ih]
 theorem wf_import (i : Silmaril.Wasm.Component.Binary.Import) : WF (P.import_ i) := by
   wf_simp [P.import_, wfl_name, wf_externDesc]
-theorem wf_export (e : Export) : WF (P.export_ e) := by
+theorem wf_export (e : Silmaril.Wasm.Component.Binary.Export) : WF (P.export_ e) := by
   cases h : e.desc <;> wf_simp [P.export_, wfl_name, wf_sortIdx, wf_externDesc, h]
 theorem wf_value (v : Value) : WF (P.value v) := by wf_simp [P.value, wf_valType]
 

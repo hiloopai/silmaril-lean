@@ -85,7 +85,7 @@ def optNeeds : Option Ty → WitFeat
   | none => {}
 
 /-- The flags a function type needs. -/
-def funcNeeds (f : Silmaril.Wasm.Wit.Func) : WitFeat :=
+def funcNeeds (f : Func) : WitFeat :=
   WitFeat.any ([{ async := f.async }, optNeeds f.result] ++ f.params.map fun p => tyNeeds p.2)
 
 /-- The flags a type definition needs. -/
@@ -183,7 +183,7 @@ def ty (F : WitFeat) (sc : Scope) (params : Bool) : Nat → Rand Ty
     (base.getD (← Rand.nat base.length) (ty F sc params 0))
 
 /-- A function type. -/
-def func (F : WitFeat) (sc : Scope) : Rand Silmaril.Wasm.Wit.Func := do
+def func (F : WitFeat) (sc : Scope) : Rand Func := do
   let np ← Rand.nat 4
   let params ← (List.range np).mapM fun i => do return (s!"p{i}", ← ty F sc true 2)
   let result ← if ← Rand.bool then some <$> ty F sc false 2 else pure none

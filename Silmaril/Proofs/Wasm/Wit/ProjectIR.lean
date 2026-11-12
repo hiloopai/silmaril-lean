@@ -21,7 +21,7 @@ open Silmaril.Wasm.Component
 
 variable {M : Type}
 
-theorem exportIface_mapImpl (f : Silmaril.Wasm.Component.Export → Impl) (xs : List Silmaril.Wasm.Component.Export) :
+theorem exportIface_mapImpl (f : Export → Impl) (xs : List Export) :
     exportIface (xs.map fun x => { x with impl := f x }) = exportIface xs := by
   simp [exportIface, Function.comp_def]
 

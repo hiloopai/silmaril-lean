@@ -104,7 +104,7 @@ theorem bridge_single {y : Sexp} (h : Bridge y) : ∀ x ∈ [y], Bridge x := by
   exact h
 
 /-- The sections `Wat`'s printer writes for every section but `canon` and `component`. -/
-theorem bridge_section (s : Binary.Section)
+theorem bridge_section (s : Silmaril.Wasm.Component.Binary.Section)
     (hs : ∀ xs, s ≠ .canons xs) (hc : ∀ c, s ≠ .component c) :
     ∀ x ∈ P0.section_ s, Bridge x := by
   cases s with
@@ -125,7 +125,7 @@ theorem bridge_section (s : Binary.Section)
 end Bridged
 
 /-- A bridged section reads back as `Wat`'s normal form, embedded. -/
-theorem section_rt_v0 (s : Binary.Section)
+theorem section_rt_v0 (s : Silmaril.Wasm.Component.Binary.Section)
     (hs : ∀ xs, s ≠ .canons xs) (hc : ∀ c, s ≠ .component c) :
     R.items (_root_.Silmaril.Wasm.Component.Wat.P.section_ s) =
       some ((_root_.Silmaril.Wasm.Component.Wat.normSection s).map Section.ofV0) := by

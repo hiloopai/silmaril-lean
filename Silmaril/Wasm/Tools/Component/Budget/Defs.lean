@@ -48,7 +48,7 @@ bound by `eq`), and the outer-alias charge (`outer_alias_type_size`) is not kept
 namespace Silmaril.Wasm.Tools.Component.Budget
 
 open Silmaril.Wasm.Component.Binary (ValType DefValType DefType InstanceDecl ComponentDecl
-  ExternDesc TypeBound ValueBound Alias AliasTarget ItemSort Silmaril.Wasm.Component.Binary.Import Silmaril.Wasm.Component.Binary.Export Silmaril.Wasm.Component.Binary.FuncType)
+  ExternDesc TypeBound ValueBound Alias AliasTarget ItemSort Import Export FuncType)
 
 /-! ## Type information -/
 

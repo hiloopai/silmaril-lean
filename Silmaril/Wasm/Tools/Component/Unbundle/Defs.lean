@@ -35,8 +35,8 @@ the rewrite loses nothing and touches only core-type and core-module positions o
 namespace Silmaril.Wasm.Tools.Component.Unbundle
 
 open Silmaril.Wasm.Component.Binary (CoreType ModuleDecl CoreImportDesc CoreFuncType CoreValType
-  Silmaril.Wasm.Component.Binary.Limits ExternDesc Alias AliasTarget ItemSort CoreSort SortIdx DefType ComponentDecl InstanceDecl
-  CoreInstanceExpr InstanceExpr Silmaril.Wasm.Component.Binary.Import Silmaril.Wasm.Component.Binary.Export ExternName)
+  Limits ExternDesc Alias AliasTarget ItemSort CoreSort SortIdx DefType ComponentDecl InstanceDecl
+  CoreInstanceExpr InstanceExpr Import Export ExternName)
 open Silmaril.Wasm.Component.BinaryP3 (Section Ast Canon)
 
 /-! ## Index maps -/

@@ -34,16 +34,16 @@ open Silmaril.Wasm.Execution.Core (Config Step)
 /-- `core3Sem` is monotone in the profile. -/
 theorem core3Sem_le {P Q : Profile}
     (hPQ : ∀ c c' : Config Nat,
-      Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' →
-        Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c') :
+      Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' →
+        Silmaril.Games.Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c') :
     (core3Sem P).Le (core3Sem Q) :=
   Silmaril.Proofs.Wasm.Component.Reference.core3Sem_le hPQ
 
 /-- Component denotations over Core 3.0 instances are monotone in the profile. -/
 theorem denU_core3Sem_le {P Q : Profile}
     (hPQ : ∀ c c' : Config Nat,
-      Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' →
-        Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c')
+      Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' →
+        Silmaril.Games.Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c')
     (c : Comp NumInstance) : c.denU (core3Sem P) ≤ c.denU (core3Sem Q) :=
   Silmaril.Proofs.Wasm.Component.Reference.denU_core3Sem_le hPQ c
 

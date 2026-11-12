@@ -39,11 +39,11 @@ def baseV (I : Iface) : Src → Impl
   | .out _ _ => .trap
 
 /-- The export `q` of the exports `xs`, substituted by `σ` (a trap if absent). -/
-def expImpl (xs : List Silmaril.Wasm.Component.Export) (σ : List Impl) (q : String) : Impl :=
+def expImpl (xs : List Export) (σ : List Impl) (q : String) : Impl :=
   ((xs.map fun x => x.impl.subst σ)[(xs.map Export.name).idxOf q]?).getD .trap
 
 /-- Extend the valuation `V` at the exports `xs` of instance `k`. -/
-def extV (V : Src → Impl) (k : Nat) (xs : List Silmaril.Wasm.Component.Export) (σ : List Impl) : Src → Impl
+def extV (V : Src → Impl) (k : Nat) (xs : List Export) (σ : List Impl) : Src → Impl
   | .imp x => V (.imp x)
   | .out j q => if j = k ∧ q ∈ xs.map Export.name then expImpl xs σ q else V (.out j q)
 

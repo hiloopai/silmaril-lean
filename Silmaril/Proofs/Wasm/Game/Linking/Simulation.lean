@@ -219,19 +219,19 @@ theorem reachReverse_profile (o : GrowOracle) : ReachReverse (profile o) :=
 is matched by a host step of the target. -/
 theorem step_hostOf_simulation {P : Silmaril.Wasm.Numerics.Profile} {ts : List FnType}
     {K : Silmaril.Wasm.Game.Env (ifaceSig ts)} {mode : AdminRelation.Mode} {c c₁ c' : Config Nat}
-    (step : Step P (hostOf ts K) c c₁)
+    (step : Silmaril.Games.Step P (hostOf ts K) c c₁)
     (hd : ∃ E a h args, decompose? c.store c.code = some (E, a, h, args))
     (matching : Simulation.Matching mode c c') :
-    ∃ c₁', Step P (hostOf ts K) c' c₁' ∧ Simulation.Matching mode c₁ c₁' := by
+    ∃ c₁', Silmaril.Games.Step P (hostOf ts K) c' c₁' ∧ Simulation.Matching mode c₁ c₁' := by
   obtain ⟨st, fr, code⟩ := c
   obtain ⟨st', fr', code'⟩ := c'
-  rcases Step.split_host step with hfree | ⟨E, a, hh, args, hd, ⟨s₁, r, hr, hc₁⟩ | ⟨hdiv, hc₁⟩⟩
+  rcases Silmaril.Games.Step.split_host step with hfree | ⟨E, a, hh, args, hd, ⟨s₁, r, hr, hc₁⟩ | ⟨hdiv, hc₁⟩⟩
   · obtain ⟨E, a, h, args, hd⟩ := hd
-    have hn : decompose? st code = none := decompose?_none_of_noRedex (Step.noRedex hfree)
+    have hn : decompose? st code = none := decompose?_none_of_noRedex (Silmaril.Games.Step.noRedex hfree)
     exact absurd (hn.symm.trans hd) (by simp)
-  · show ∃ c₁', Step P (hostOf ts K) ⟨st', fr', code'⟩ c₁' ∧ Simulation.Matching mode c₁ c₁'
+  · show ∃ c₁', Silmaril.Games.Step P (hostOf ts K) ⟨st', fr', code'⟩ c₁' ∧ Simulation.Matching mode c₁ c₁'
     obtain ⟨e, he, ⟨w, hw, heq⟩ | ⟨-, heq⟩⟩ := hr
-    · show ∃ c₁', Step P (hostOf ts K) ⟨st', fr', code'⟩ c₁' ∧ Simulation.Matching mode c₁ c₁'
+    · show ∃ c₁', Silmaril.Games.Step P (hostOf ts K) ⟨st', fr', code'⟩ c₁' ∧ Simulation.Matching mode c₁ c₁'
       obtain ⟨hs₁, hr'⟩ : s₁ = st ∧ r = Answer.toResult (ft := ts.get e.1) w := by
         simpa using heq
       obtain ⟨E', hd', mode₀, m₀, m₀', hfill⟩ :=
@@ -241,12 +241,12 @@ theorem step_hostOf_simulation {P : Silmaril.Wasm.Numerics.Profile} {ts : List F
       refine ⟨⟨st', fr', E'.fill (Result.toAdmin (Answer.toResult (ft := ts.get e.1) w))⟩,
         ?_, ?_⟩
       · rw [hcode'']
-        exact E'.step_fill (fun g => Step.callRefHost hyy hf hex hn hc
+        exact E'.step_fill (fun g => Silmaril.Games.Step.callRefHost hyy hf hex hn hc
           ⟨e, he, Or.inl ⟨w, hw, rfl⟩⟩) fr'
       · rw [hc₁, hs₁, hr']
         exact ⟨matching.stores, matching.frames, hfill _ _ (Control.result_refl _ _ _ _)⟩
     · exact absurd heq (by simp)
-  · show ∃ c₁', Step P (hostOf ts K) ⟨st', fr', code'⟩ c₁' ∧ Simulation.Matching mode c₁ c₁'
+  · show ∃ c₁', Silmaril.Games.Step P (hostOf ts K) ⟨st', fr', code'⟩ c₁' ∧ Simulation.Matching mode c₁ c₁'
     obtain ⟨E', hd', -⟩ := decompose?_transfer matching.stores matching.code hd
     obtain ⟨fi, yy, ps, rs, hf, hc, hyy, hex, hn, hcode'⟩ := decompose?_sound hd'
     have hcode'' : code' = E'.fill (vals args ++ [.ref (.func a), yy]) := hcode'
@@ -256,7 +256,7 @@ theorem step_hostOf_simulation {P : Silmaril.Wasm.Numerics.Profile} {ts : List F
       · exact ⟨e, he, Or.inr ⟨hno, rfl⟩⟩
     refine ⟨⟨st', fr', code'⟩, ?_, hc₁ ▸ matching⟩
     rw [hcode'']
-    exact E'.step_fill (fun g => Step.callRefHostDiv hyy hf hex hn hc hdiv') fr'
+    exact E'.step_fill (fun g => Silmaril.Games.Step.callRefHostDiv hyy hf hex hn hc hdiv') fr'
 
 end Linking
 

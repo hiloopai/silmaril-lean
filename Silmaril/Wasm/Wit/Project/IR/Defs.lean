@@ -27,7 +27,7 @@ structure IRWorld where
   deriving Repr, DecidableEq, Inhabited
 
 /-- The named function types of exports. -/
-def exportIface (xs : List Silmaril.Wasm.Component.Export) : Iface := xs.map fun x => (x.name, x.ty)
+def exportIface (xs : List Export) : Iface := xs.map fun x => (x.name, x.ty)
 
 /-- The world of a nested IR component. -/
 def compWorld {M : Type} (c : Comp M) : IRWorld := ⟨c.imports, exportIface c.exports⟩

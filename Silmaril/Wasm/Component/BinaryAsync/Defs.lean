@@ -115,7 +115,7 @@ inductive SectionX where
   | canons (xs : List CanonX)
   | start (s : Start)
   | imports (xs : List Silmaril.Wasm.Component.Binary.Import)
-  | exports (xs : List Export)
+  | exports (xs : List Silmaril.Wasm.Component.Binary.Export)
   | values (xs : List Value)
 
 /-- An extended component: its sections in order. -/

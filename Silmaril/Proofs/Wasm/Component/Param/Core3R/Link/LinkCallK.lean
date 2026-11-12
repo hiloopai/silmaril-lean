@@ -135,7 +135,7 @@ theorem insts_get_two {s : CStore (E3 P V IR)} {ι₀ ιe ι : InstState} (h : s
   rfl
 
 theorem setTaskState_mid {s : CStore (E3 P V IR)} {Gt R : List (Runtime.Task (E3 P V IR))}
-    {y : Runtime.Task (E3 P V IR)} (h : s.tasks = Gt ++ [y] ++ R) (st : Async.TaskState) :
+    {y : Runtime.Task (E3 P V IR)} (h : s.tasks = Gt ++ [y] ++ R) (st : Silmaril.Wasm.Component.AsyncRef.TaskState) :
     CStore.setTaskState ⟨Gt.length⟩ st s = { s with tasks := Gt ++ [y.withState st] ++ R } := by
   obtain ⟨⟩ := s
   dsimp only at h

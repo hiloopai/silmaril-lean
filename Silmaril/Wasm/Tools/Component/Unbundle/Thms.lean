@@ -20,7 +20,7 @@ public import Silmaril.Wasm.Tools.Component.Unbundle.Defs
 namespace Silmaril.Wasm.Tools.Component.Unbundle
 
 open Silmaril.Wasm.Component.Binary (CoreType ModuleDecl ExternDesc Alias DefType ComponentDecl
-  InstanceDecl CoreInstanceExpr InstanceExpr Silmaril.Wasm.Component.Binary.Import Silmaril.Wasm.Component.Binary.Export SortIdx)
+  InstanceDecl CoreInstanceExpr InstanceExpr Import Export SortIdx)
 open Silmaril.Wasm.Component.BinaryP3 (Section Ast Canon)
 
 /-! ## Leaves -/

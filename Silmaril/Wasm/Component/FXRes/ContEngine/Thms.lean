@@ -41,10 +41,10 @@ variable {H : Type} {P : Profile}
 
 /-- **The continuation table of every thread run respects the handle protocol.** -/
 theorem cRun_table_protocol {s : EStore H} {t : ThreadV (CH H)} {y : EStore H × ThreadV (CH H)}
-    (hs : s.tab = Table.empty) (h : CRun P (s, t) y) :
-    ∃ evs, Table.Steps Table.empty evs y.1.tab ∧ ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) := by
+    (hs : s.tab = Silmaril.Wasm.Component.Runtime.Table.empty) (h : CRun P (s, t) y) :
+    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs y.1.tab ∧ ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) := by
   obtain ⟨evs, he⟩ := cRun_tab h
-  have he' : Table.Steps Table.empty evs y.1.tab := hs ▸ he
+  have he' : Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs y.1.tab := hs ▸ he
   exact ⟨evs, he', table_steps_accepts he'⟩
 
 /-- **The store history of a thread run from a Core thread respects the handle protocol.** -/
