@@ -36,17 +36,15 @@ checked; it only redirects compilation).
 
 Not proved, and listed here so that a reader can see where the proofs stop:
 
-**`partial def`s** (no termination proof, so no theorem can unfold them):
+**`partial def`s.** None in the executable. Every function of the closure described below,
+the component validator, the folded-instruction printer and the component binary checker
+included, is a total definition (structural or well-founded recursion), so theorems can unfold
+it. The `partial def`s left in the wave-1 sources are not part of `wasm-tools`:
 
 | Module | Functions | Role |
 | --- | --- | --- |
-| `Wasm/Tools/Print/Defs` | `printF`, `instrF`, `endF`, `instrsF` | the folded-instruction printer (`print -f`) |
-| `Wasm/Tools/CompValidate/Defs` | `RTy.hasBorrow`, `RTy.hasPtr`, `flat`, `flatAll`, `flatVariant`, `namedVal`, `namedTy`, `namedInst`, `registerNamed`, `RTy.subst`, `TyInfo.subst`, `Ent.subst`, `valSub`, `optSub`, `entSub`, `tySub`, `instSub`, `checkDefType`, `checkInstDecl`, `checkSection`, `checkComponent` | component validation (23 functions) |
-| `Wasm/Tools/Wast/CompText/Defs` | `replacements` | component text in `.wast` scripts |
-| `Wasm/Component/BinaryP3/Check/Defs` | `defTypeOk`, `instanceDeclOk`, `componentDeclOk`, `strict` | the component binary checker used by `wast` and component `validate` |
-| `Wasm/Component/BinaryP3/Defs` | `Ast.canons` | the same |
-| `tools/wasm-tools/WasmTools/Args` | `go` | the argument scanner of the shared grammar |
-| `tools/wasm-tools/WasmToolsWastBench` | `syms` | a benchmark driver, not part of `wasm-tools` |
+| `Wasm/Auto/VCGen/Thms`, `Wasm/Auto/VCGen2/Thms`, `Wasm/Auto2/VCGen/Thms` | `envAtoms` (`meta`) | tactic code of the Auto verification-condition generators, run while proofs elaborate; the kernel checks the proofs it builds |
+| `tools/wasm-tools/WasmToolsWastBench` | `syms` | a benchmark driver, not part of `wasm-tools` and not in wave 1 |
 
 **Glue without theorems.** `tools/wasm-tools/**` (about 2,300 lines, of which about 700 are
 captured help texts and completion scripts): argument dispatch, reading and writing files,
@@ -92,8 +90,9 @@ longer imports the WIT tool.
   `Silmaril/Proofs/Wasm/Tools`, `Silmaril/Wasm/Models` or `tools/wasm-tools` (textual search). No
   module of `Silmaril/Wasm/Tools` is in `Raw` any more.
 - The `partial def`, `unsafe def`, `@[csimp]`, `@[implemented_by]` and `@[extern]` lists
-  above are a textual search over the closure described above. No `unsafe def`,
-  `@[implemented_by]` or `@[extern]` occurs in it; the one `@[csimp]` is in silmaril-lean
+  above are a textual search over the closure described above (for `partial def`, also over
+  every Lean file of the wave-1 copy list). No `partial def`, `unsafe def`,
+  `@[implemented_by]` or `@[extern]` occurs in the closure; the one `@[csimp]` is in silmaril-lean
   (`Silmaril.Formats.SExp.PrinterChunks`).
 - **Axiom audit** (repeatable). The module `scripts/oss-wasm/Wave1AxiomAudit.lean`, generated
   from the wave-1 copy list by `scripts/oss-wasm/gen-axiom-audit.sh`, imports every Lean

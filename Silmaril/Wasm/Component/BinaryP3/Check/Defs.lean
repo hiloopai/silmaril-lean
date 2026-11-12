@@ -64,40 +64,62 @@ def nameOk (n : ExternName) : Bool :=
 def both (a b : Bool × Bool) : Bool × Bool := (a.1 && b.1, a.2 && b.2)
 
 mutual
-partial def defTypeOk : DefType → Bool × Bool
-  | .component ds => ds.foldl (fun acc d => both acc (componentDeclOk d)) (true, true)
-  | .instance ds => ds.foldl (fun acc d => both acc (instanceDeclOk d)) (true, true)
+def defTypeOk : DefType → Bool × Bool
+  | .component ds => componentDeclsOk (true, true) ds
+  | .instance ds => instanceDeclsOk (true, true) ds
   | _ => (true, true)
 
-partial def instanceDeclOk : InstanceDecl → Bool × Bool
+def instanceDeclOk : InstanceDecl → Bool × Bool
   | .type t => defTypeOk t
   | .alias a => (aliasOk a, true)
   | .export n _ => (true, nameOk n)
   | .coreType _ => (true, true)
 
-partial def componentDeclOk : ComponentDecl → Bool × Bool
+def componentDeclOk : ComponentDecl → Bool × Bool
   | .import n _ => (true, nameOk n)
   | .inst d => instanceDeclOk d
 
+/-- `ds.foldl (fun acc d => both acc (instanceDeclOk d)) acc`. -/
+def instanceDeclsOk (acc : Bool × Bool) : List InstanceDecl → Bool × Bool
+  | [] => acc
+  | d :: ds => instanceDeclsOk (both acc (instanceDeclOk d)) ds
 
+/-- `ds.foldl (fun acc d => both acc (componentDeclOk d)) acc`. -/
+def componentDeclsOk (acc : Bool × Bool) : List ComponentDecl → Bool × Bool
+  | [] => acc
+  | d :: ds => componentDeclsOk (both acc (componentDeclOk d)) ds
 end
 
+/-- One step of `strict`: combine the running triple with a section's own triple. -/
+def strictStep (acc r : Bool × Bool × List ByteArray) : Bool × Bool × List ByteArray :=
+  let (o, att, ms) := acc
+  let (o', at', ms') := r
+  (o && o', att && at', ms ++ ms')
+
+mutual
+/-- The triple of one section (its nested component's, for a `component` section). -/
+def strictSection : Section → Bool × Bool × List ByteArray
+  | .aliases xs => (xs.all aliasOk, true, [])
+  | .types xs => let r := xs.foldl (fun acc t => both acc (defTypeOk t)) (true, true)
+    (r.1, r.2, [])
+  | .imports xs => (true, xs.all (nameOk ·.name), [])
+  | .exports xs => (true, xs.all (nameOk ·.name), [])
+  | .instances xs => (true, xs.all (fun
+      | .exports es => es.all (nameOk ·.1)
+      | _ => true), [])
+  | .coreModule b => (true, true, [b])
+  | .component c => strict c
+  | _ => (true, true, [])
+
+/-- `ss.foldl (fun acc s => strictStep acc (strictSection s)) acc`. -/
+def strictSections (acc : Bool × Bool × List ByteArray) : List Section → Bool × Bool × List ByteArray
+  | [] => acc
+  | s :: ss => strictSections (strictStep acc (strictSection s)) ss
+
 /-- (outer alias sorts ok, attributes ok, core modules) of a component, nested ones included. -/
-partial def strict : Ast → Bool × Bool × List ByteArray
-  | .mk ss => ss.foldl (fun (o, att, ms) s =>
-      let (o', at', ms') : Bool × Bool × List ByteArray := match s with
-        | .aliases xs => (xs.all aliasOk, true, [])
-        | .types xs => let r := xs.foldl (fun acc t => both acc (defTypeOk t)) (true, true)
-          (r.1, r.2, [])
-        | .imports xs => (true, xs.all (nameOk ·.name), [])
-        | .exports xs => (true, xs.all (nameOk ·.name), [])
-        | .instances xs => (true, xs.all (fun
-            | .exports es => es.all (nameOk ·.1)
-            | _ => true), [])
-        | .coreModule b => (true, true, [b])
-        | .component c => strict c
-        | _ => (true, true, [])
-      (o && o', att && at', ms ++ ms')) (true, true, [])
+def strict : Ast → Bool × Bool × List ByteArray
+  | .mk ss => strictSections (true, true, []) ss
+end
 
 def okBad (b : Bool) : String := if b then "ok" else "bad"
 

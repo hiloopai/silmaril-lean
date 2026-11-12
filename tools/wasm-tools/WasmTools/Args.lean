@@ -111,7 +111,7 @@ def record (spec : CmdSpec) (p : Parsed) (o : OptSpec) (v : String) : Except Out
     throw (errNoUsage s!"invalid value '{v}' for '{o.name}'{why}")
   pure { p with occ := (o.key, v) :: p.occ }
 
-partial def go (spec : CmdSpec) (p : Parsed) (onlyPos : Bool) : List String → Except Outcome Parsed
+def go (spec : CmdSpec) (p : Parsed) (onlyPos : Bool) : List String → Except Outcome Parsed
   | [] => pure p
   | a :: rest =>
     let positional : Except Outcome Parsed :=
@@ -145,8 +145,9 @@ partial def go (spec : CmdSpec) (p : Parsed) (onlyPos : Bool) : List String → 
           | [] => throw (errNoUsage s!"a value is required for '{o.name}' but none was supplied")
     else if a.startsWith "-" && a.length > 1 then do
       -- a cluster of short options
-      let rec cluster (p : Parsed) : List Char → Except Outcome (Parsed × List String)
-        | [] => pure (p, rest)
+      let rec cluster (p : Parsed) :
+          List Char → Except Outcome (Parsed × {r : List String // r.length ≤ rest.length})
+        | [] => pure (p, ⟨rest, Nat.le_refl _⟩)
         | c :: cs =>
           if c == 'h' then throw (.help spec.shortHelp) else
           match spec.opts.find? (·.short == some c) with
@@ -161,12 +162,15 @@ partial def go (spec : CmdSpec) (p : Parsed) (onlyPos : Bool) : List String → 
                 | v :: rest' =>
                   if v.startsWith "-" && v != "-" then
                     throw (errNoUsage s!"a value is required for '{o.name}' but none was supplied")
-                  else do pure ((← record spec p o v), rest')
+                  else do
+                    pure ((← record spec p o v), ⟨rest', by simp⟩)
                 | [] => throw (errNoUsage s!"a value is required for '{o.name}' but none was supplied")
-              else do pure ((← record spec p o v), rest)
-      let (p', rest') ← cluster p (a.toList.drop 1)
+              else do pure ((← record spec p o v), ⟨rest, Nat.le_refl _⟩)
+      let (p', ⟨rest', hle⟩) ← cluster p (a.toList.drop 1)
       go spec p' onlyPos rest'
     else positional
+termination_by args => args.length
+decreasing_by all_goals simp_all <;> omega
 
 def parseArgs (spec : CmdSpec) (args : List String) : Outcome :=
   match go spec {} false args with

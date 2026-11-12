@@ -503,8 +503,14 @@ def tvSegTheorems (path : String) : IO (String × String × List String) := do
   return (modName, ns, names)
 
 /-- Split a list into chunks of `k` (`k > 0`). -/
-partial def chunks {α : Type} (k : Nat) (l : List α) : List (List α) :=
-  if l.isEmpty || k == 0 then [] else l.take k :: chunks k (l.drop k)
+def chunks {α : Type} (k : Nat) (l : List α) : List (List α) :=
+  if _h : l.isEmpty || k == 0 then [] else l.take k :: chunks k (l.drop k)
+termination_by l.length
+decreasing_by
+  simp only [Bool.or_eq_true, beq_iff_eq, List.isEmpty_iff, not_or] at _h
+  have := List.length_pos_iff.mpr _h.1
+  simp only [List.length_drop]
+  omega
 
 /-- The theorem names of an e-graph translation-validation module (`wasm-egraph tv --lean`), in
 order, with its namespace, and the module name derived from the path. -/

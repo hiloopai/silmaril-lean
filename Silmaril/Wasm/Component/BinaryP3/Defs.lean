@@ -231,12 +231,22 @@ def Ast.ofV0 : Binary.Ast → Ast
   | .mk ss => .mk (Section.listOfV0 ss)
 end
 
+mutual
+/-- The built-ins of one section, nested components included. -/
+def Section.allCanons : Section → List Canon
+  | .canons xs => xs
+  | .component c => Ast.canons c
+  | _ => []
+
+/-- `ss.flatMap Section.allCanons`, by structural recursion. -/
+def Section.listAllCanons : List Section → List Canon
+  | [] => []
+  | s :: ss => Section.allCanons s ++ Section.listAllCanons ss
+
 /-- Every built-in of a component, nested components included, in section order. -/
-partial def Ast.canons : Ast → List Canon
-  | .mk ss => ss.flatMap fun
-    | .canons xs => xs
-    | .component c => c.canons
-    | _ => []
+def Ast.canons : Ast → List Canon
+  | .mk ss => Section.listAllCanons ss
+end
 
 /-! ## Grammar -/
 
