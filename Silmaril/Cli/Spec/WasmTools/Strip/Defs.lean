@@ -7,8 +7,7 @@ public import Silmaril.Cli.Files.Defs
 /-!
 # Adopting the CLI spec in `wasm-tools`: `strip`, a worked example
 
-The guide of docs/projects/wasm-binaryen-tooling.md ("apply", an earlier step) for the wasm-tools-core workflow
-(`tools/wasm-tools`, branches `wtc-*`), worked out on one subcommand, `wasm-tools strip`
+The guide of docs/projects/wasm-binaryen-tooling.md ("apply") for `tools/wasm-tools`, worked out on one subcommand, `wasm-tools strip`
 (upstream 1.262.0: `strip [OPTIONS] [INPUT]` with `-o, --output`, `-a, --all`,
 `-d, --delete REGEX` (repeatable), `-t, --wat`, `-v`, `--color`):
 
@@ -21,7 +20,7 @@ The guide of docs/projects/wasm-binaryen-tooling.md ("apply", an earlier step) f
 3. **Its behaviour is a spec on the record.** `strip` is a file transformer: the input file
    (or stdin), the output file (or stdout), a function on bytes (`Spec.transform`,
    `Silmaril.Cli.Files`). The function is a parameter here (`f`), since the stripping itself
-   (`Silmaril.Wasm.Tools.Strip.strip` on `wtc-*`) lives in region `Wasm`, which `Cli` does not
+   (`Silmaril.Wasm.Tools.Strip.strip`) lives in region `Wasm`, which `Cli` does not
    import; on the tool's side `f a` is `Strip.strip` (then the printer for `-t`), with
    upstream's error text.
 4. **The whole tool's spec** is `WasmTools.tool.spec` with `strip`'s spec at `["strip"]` and
