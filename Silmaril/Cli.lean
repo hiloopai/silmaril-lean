@@ -20,6 +20,11 @@ public import Silmaril.Cli.Footprint.Examples
 public import Silmaril.Cli.Footprint.Thms
 public import Silmaril.Cli.Front.Defs
 public import Silmaril.Cli.Front.Thms
+public import Silmaril.Cli.Getopt.Defs
+public import Silmaril.Cli.Getopt.Examples
+public import Silmaril.Cli.Getopt.Front.Defs
+public import Silmaril.Cli.Getopt.Front.Thms
+public import Silmaril.Cli.Getopt.Thms
 public import Silmaril.Cli.Guide.Defs
 public import Silmaril.Cli.Guide.Thms
 public import Silmaril.Cli.Institution.Defs
