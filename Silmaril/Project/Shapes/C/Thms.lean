@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Project.Shapes.C.Defs
 public import Silmaril.Project.Shapes.SysV.Thms
+import Silmaril.Proofs.Project.Shapes.C
 
 /-! # Standard problem shapes: C functions (theorems)
 
@@ -15,6 +16,10 @@ public import Silmaril.Project.Shapes.SysV.Thms
 * `CompilesToBuilds.of_lifts`: same source, several builds: a lift per build, each with its
   correspondence to the C function, give the row of `c.compiles_to.builds`.
 * `CompilesTo.not_of_never_safe`: a C function that is never safe has no `compiles_to` row.
+* `CFn.safe_of_final`: a returned state of a call with the empty continuation is safe (Core
+  pops the procedure frame and halts with the defined value). `CFn.not_safe_of_final_mainNext`:
+  with a continuation that goes wrong it is not, which is why `CFn.meaning` fixes the empty
+  continuation.
 -/
 
 @[expose] public section
@@ -60,6 +65,26 @@ theorem CompilesToBuilds.of_lifts {sig : Signature} {M : Model} {F : CFn sig}
   obtain ⟨build, ir, fn, sig_eq⟩ := lb
   subst sig_eq
   exact h
+
+/-! ## After the return -/
+
+/-- **A returned call is safe** (the empty caller continuation): Core pops the procedure frame
+and halts with the defined value, so nothing after the return can go wrong. -/
+theorem CFn.safe_of_final {sig : Signature} {F : CFn sig} {s : Silmaril.Cerberus.Core.Dynamics.State}
+    {v : Silmaril.Cerberus.Core.Dynamics.Val} (h : (F.source []).final s v) :
+    (F.source []).Safe s :=
+  Silmaril.Proofs.Project.Shapes.C.safe_of_final h
+
+/-- **A continuation that goes wrong makes a returned state unsafe**: Core runs on in the
+caller's continuation after the return, here a `mainNext` frame outside the startup sequence,
+which ends the run with an error. A meaning quantified over every continuation would therefore
+be safe on no argument tuple; `CFn.meaning` fixes the empty one. -/
+theorem CFn.not_safe_of_final_mainNext {sig : Signature} {F : CFn sig}
+    {p : Silmaril.Cerberus.Mem.Concrete.Pointer} {w : Silmaril.Cerberus.Core.Dynamics.Val}
+    {s : Silmaril.Cerberus.Core.Dynamics.State} {v : Silmaril.Cerberus.Core.Dynamics.Val}
+    (h : (F.source [.mainNext p (.value w)]).final s v) :
+    ¬ (F.source [.mainNext p (.value w)]).Safe s :=
+  Silmaril.Proofs.Project.Shapes.C.not_safe_of_final_mainNext h
 
 end Silmaril.Project.Shapes.C
 
