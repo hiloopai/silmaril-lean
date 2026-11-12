@@ -105,7 +105,10 @@ globs = [
   "Silmaril.X86.+",
   # SSA calculi, λRTL and the machine RTL (docs/projects/ssa.md).
   "Silmaril.Proofs.Machine.+", "Silmaril.Proofs.Semantics.+", "Silmaril.Raw.Calculi.+",
-  "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+"
+  "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+",
+  # The Cerberus C semantics and the compiler machinery over it (docs/projects/cerberus.md).
+  "Silmaril.Cerberus.+", "Silmaril.Compiler.+", "Silmaril.Proofs.Cerberus.+",
+  "Silmaril.Proofs.Compiler.+", "Silmaril.Raw.Cerberus.+", "Silmaril.Raw.Compiler.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
@@ -259,3 +262,35 @@ supportInterpreter = true
 [[lean_lib]]
 name = "WasmAutoTests"
 globs = ["tests.wasm.auto.+"]
+
+# Cerberus C semantics (docs/projects/cerberus.md): the compile-time tests and the
+# executables (C text to Cabs, typed Ail and Core; Core run and elaboration; the Clang
+# JSON frontend).
+[[lean_lib]]
+name = "CerberusTests"
+globs = ["tests.cerberus.+"]
+
+[[lean_exe]]
+name = "cerb-lean"
+root = "CerbLean"
+srcDir = "tools/cerb-lean"
+
+[[lean_exe]]
+name = "ail-lean"
+root = "AilLean"
+srcDir = "tools/ail-lean"
+
+[[lean_exe]]
+name = "core-lean"
+root = "CoreLean"
+srcDir = "tools/core-lean"
+
+[[lean_exe]]
+name = "core-elab"
+root = "CoreElab"
+srcDir = "tools/core-elab"
+
+[[lean_exe]]
+name = "cfront"
+root = "Cfront"
+srcDir = "tools/cfront"
