@@ -52,6 +52,28 @@ C0 integers, C1 flat memory, …, C7 the full Cerberus semantics.
 `Targets` states each claim of the semantics as a `Prop`; a claim is proved when a theorem of
 exactly that type exists. Which are proved, and which stay open, is listed in `Targets`.
 
+## The native x86-64 compiler (fourth wave)
+
+`ccomp`'s native pipeline from typed Ail and Core to x86-64 assembly: a native IR with its
+layout, initialization and ABI (System V, variadic calls, x87), lowering, optimization passes
+over Mir and λSSA, emission (prologues, epilogues, scalar code) and the driver.
+
+| Area | Modules | What |
+| --- | --- | --- |
+| Pipeline | `Silmaril.Compiler.Native.{Frontend,IR,Types,Layout,Initialization,Abi,Varargs,X87,Lower,Semantics,Analysis,TargetCoherence}` | the native IR and the passes from Core to it |
+| Optimization | `Silmaril.Compiler.Native.Optimize.*` | Mir and λSSA optimizations with their local lemmas |
+| Emission | `Silmaril.Compiler.Native.{Emit,Asm,Assembly}.*` | assembly emission and its byte-level checks |
+| Driver | `Silmaril.Compiler.Native.Driver` | `compile`, and the `ccomp` command's pure core (`tools/ccomp-native/{include,runtime}` are the header and start-up code it embeds) |
+| Correctness | `Silmaril.Compiler.Native.Correctness.*` | the correctness obligations of the actual `Driver.compile` and their discharge for fragments |
+
+**What is proved.** `Correctness.Defs` states, for an explicit source domain, two obligations:
+`Task.elaborationCoversAccepted` (every program the compiler accepts elaborates) and
+`Task.machineRefinement` (every behaviour of the compiled machine code, stops and divergence
+included, is a behaviour of the program's elaborated Core). They are `def Task.… : Prop`, not
+claims: a `Certificate` needs both and a domain with an accepted program. The modules
+`Correctness.{Literal*,Addition*,Arithmetic*}` discharge them, or parts of them, for literal
+programs, additions and bounded arithmetic; each says which. The general obligation is open.
+
 ## Status
 
 Proved where a theorem is stated (no `sorry`, no new `axiom`, no `native_decide`); open goals are
@@ -72,7 +94,8 @@ Left out, and why:
 ```sh
 lake build --wfail Silmaril.Compiler.Target.Backends.Defs Silmaril.Compiler.Mir.Interp.Defs \
   Silmaril.Machine.RiscV.Lir.Defs Silmaril.Compiler.Registry.Defs Silmaril.Compiler.Core.Main.Defs \
-  Silmaril.Compiler.C.Sem.Main.Defs
+  Silmaril.Compiler.C.Sem.Main.Defs Silmaril.Compiler.Native.Driver.Defs \
+  Silmaril.Compiler.Native.Correctness.Thms
 ```
 
 ## Provenance and licence
