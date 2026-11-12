@@ -53,7 +53,10 @@ cache:
 		echo 'No remote artifact bucket configured; public dependencies are ready.'; \
 	fi
 
-# The release suites run when CHECK_TARGETS holds the executables.
+# The release suites run when CHECK_TARGETS holds the executables. A change scoped to a library
+# that wasm-opt imports puts only wasm-opt in scope, so the other release binaries are built first.
+RELEASE_BINARIES := wasm-opt wasm-as wasm-dis wasm-merge wasm-shell wasm-ctor-eval wasm-metadce wasm-shell-lean
+
 check:
 	scripts/check-layout.sh
 	@if [ -n "$(LAKE_CACHE_RECORD)" ]; then \
@@ -62,7 +65,7 @@ check:
 		$(LAKE) build --wfail $(CHECK_TARGETS); \
 	fi
 	$(MAKE) process-gates
-	$(if $(filter wasm-opt,$(CHECK_TARGETS)),$(MAKE) release-check)
+	$(if $(filter wasm-opt,$(CHECK_TARGETS)),$(LAKE) build --wfail $(RELEASE_BINARIES) && $(MAKE) release-check)
 
 release-check:
 	$(PYTHON) tools/binaryen-lean/check-release.py --jobs $$(nproc) --report build/wasm-checks.json
