@@ -2,7 +2,9 @@ module
 
 public import Silmaril.Cli.Getopt.Thms
 public import Silmaril.Cli.Getopt.Front.Thms
+public import Silmaril.Cli.Getopt.Stream.Thms
 public meta import Silmaril.Cli.Getopt.Front.Defs
+public meta import Silmaril.Cli.Getopt.Stream.Defs
 
 /-!
 # The getopt dialect: real option tables
@@ -145,6 +147,10 @@ def headW : Tool := { head with wLong := true }
 #guard (headW.parse noEnv ["-W", "lines=5"]).toOption.map (·.opts) == some [("lines", .val "5")]
 #guard (headW.parse noEnv ["-Wlines=5"]).toOption.map (·.opts) == some [("lines", .val "5")]
 #guard headW.table.optstring == "n:c:qvzW;"
+-- `-Wlines 5`: a required argument in the next token.
+#guard split (headW.parse noEnv ["-Wlines", "5", "f"]) == some ([("lines", .val "5")], ["f"])
+-- `-W lines 5`: the model gives `-W name` no further token (an error here).
+#guard (headW.parse noEnv ["-W", "lines", "5"]) matches .error (.missing "-W")
 
 /-! ## wc -/
 
@@ -275,5 +281,47 @@ def cut : Tool := { grammar := cutCmd }
   some ([("a", .on), ("b", .on)], ["x"])
 #guard (parse (Table.ofOptstring "ab::") .permute ["-abx"]).toOption.map (·.opts) ==
   some [("a", .on), ("b", .val "x")]
+
+/-! ## getopt_long_only -/
+
+/-- An optstring `ab:` with long options `all` and `bytes=`, read by `getopt_long_only`. -/
+def longOnly : Table :=
+  { Table.ofOptstring "ab:" [{ name := "all" }, { name := "bytes", arg := .required }] with
+    longOnly := true }
+
+-- A single dash names a long option, prefixes included.
+#guard (parse longOnly .permute ["-all"]).toOption.map (·.opts) == some [("all", .on)]
+#guard (parse longOnly .permute ["-al"]).toOption.map (·.opts) == some [("all", .on)]
+#guard (parse longOnly .permute ["-by", "3"]).toOption.map (·.opts) == some [("bytes", .val "3")]
+#guard (parse longOnly .permute ["-bytes=3"]).toOption.map (·.opts) == some [("bytes", .val "3")]
+-- One optstring character stays a short option, though `-a` is a prefix of `-all`.
+#guard (parse longOnly .permute ["-a"]).toOption.map (·.opts) == some [("a", .on)]
+-- No long name has the prefix: the token is a cluster.
+#guard (parse longOnly .permute ["-ab5"]).toOption.map (·.opts) ==
+  some [("a", .on), ("b", .val "5")]
+#guard (parse longOnly .permute ["-x"]) matches .error (.unknown "-x")
+-- `--` long names read as with getopt_long.
+#guard (parse longOnly .permute ["--al"]).toOption.map (·.opts) == some [("all", .on)]
+
+/-! ## Going on after errors -/
+
+-- getopt reports `-x` and goes on with the rest of the cluster and the next tokens.
+#guard (wc.parseAll noEnv ["-xl", "--bogus", "-w", "f"]).events ==
+  [.error (.unknown "-xl"), .opt "lines" .on, .error (.unknown "--bogus"), .opt "words" .on]
+#guard (wc.parseAll noEnv ["-xl", "--bogus", "-w", "f"]).opts == [("lines", .on), ("words", .on)]
+#guard (wc.parseAll noEnv ["-xl", "--bogus", "-w", "f"]).operands == ["f"]
+-- The first diagnostic is where `parse` stops.
+#guard (wc.parse noEnv ["-xl", "--bogus", "-w", "f"]) matches .error (.unknown "-xl")
+-- A missing argument at the end.
+#guard (head.parseAll noEnv ["-v", "-n"]).events == [.opt "verbose" .on, .error (.missing "-n")]
+
+/-! ## Operands in order -/
+
+-- With an optstring starting with `-`, operands come back in place (`-` among them); only the
+-- tokens after `--` stay operands.
+#guard (head.parseInOrder ["a", "-n", "3", "-", "--", "-v"]).toOption ==
+  some ([.operand "a", .opt "lines" (.val "3"), .operand "-"], ["-v"])
+#guard ((head.parseInOrder ["a", "-n", "3", "-", "--", "-v"]).map splitInOrder).toOption ==
+  some ([("lines", .val "3")], ["a", "-", "-v"])
 
 end Silmaril.Cli.Getopt.Examples

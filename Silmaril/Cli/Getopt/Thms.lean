@@ -4,6 +4,7 @@ public import Silmaril.Cli.Getopt.Defs
 public import Silmaril.Cli.Args.Thms
 import Silmaril.Proofs.Cli.Getopt.Permute
 import Silmaril.Proofs.Cli.Getopt.Agree
+import Silmaril.Proofs.Cli.Getopt.Render
 
 /-!
 # The getopt dialect: theorems (header)
@@ -25,12 +26,17 @@ PROVED (standard axioms; proofs in `Silmaril.Proofs.Cli.Getopt.*`):
   help or version, or usage errors on both sides). The proof goes token by token:
   `readTok_readOpt` (an option token: the derived table finds the option the args lookups find,
   `find_longsOf`, `find_shortsOf`; clusters letter by letter);
+* **getopt_long_only** (here): `readTok_dashdash_long` (`--name` reads as with `getopt_long`),
+  `readLongOnly_short` (`-f` for an optstring character `f` is that short option),
+  `readLongOnly_long` (otherwise `-name` is `--name` when a long name has the prefix `name`),
+  `readLongOnly_cluster` (else a cluster), `readTok_short` (without `longOnly`, a cluster);
 * **The environment** (here): `order_posixly` (a set `POSIXLY_CORRECT` stops at the first
   operand), `order_plus`, `order_posix`, `order_gnu` (otherwise GNU getopt permutes).
 
-TASK-CONDITIONAL: `read_render_of` (on `Task.pre_render`, frozen in `Silmaril.Cli.Getopt.Defs`):
-the getopt reading of the args normal form of a valid invocation agrees with the checks of the
-args front end on that invocation.
+* **The normal form** (`Render`): **`pre_render`**: for a well-formed grammar getopt can
+  express, the pre-pass (without `W;`, in either ordering) passes the args normal form
+  (`render`) of every valid invocation; so **`read_render`**: the getopt reading of the normal
+  form agrees with the checks of the args front end on the invocation itself.
 
 Where the pre-pass stops the readings may differ, by design: getopt_long accepts abbreviated
 long names and `-W name`; `-t=` gives getopt the argument `=` (the args dialect reads an
@@ -59,6 +65,44 @@ theorem resolveLong_unique {ls : List Long} {n : String} {l : Long} (hl : l ∈ 
     (hu : ∀ l' ∈ ls, prefixOf n l'.name = true → l'.target = l.target) :
     ∃ l', resolveLong ls n = .ok l' ∧ l'.target = l.target :=
   Proofs.Cli.Getopt.resolveLong_unique hl hp hu
+
+/-! ## getopt_long_only -/
+
+/-- `getopt_long_only` reads `--name` as `getopt_long` does. -/
+theorem readTok_dashdash_long {t : Table} {tok n : String} {v next : Option String}
+    (h : classify tok = .long n v) : readTok t tok next = readLong t tok n v next := by
+  simp [readTok, h]
+
+/-- One optstring character stays a short option. -/
+theorem readLongOnly_short {t : Table} {tok : String} {next : Option String} {cs : List Char}
+    (h : oneShort t cs = true) : readLongOnly t tok next cs = readCluster t tok next cs := by
+  simp [readLongOnly, h]
+
+/-- Otherwise `-name` is `--name` when some long name has `name` as a prefix… -/
+theorem readLongOnly_long {t : Table} {tok : String} {next : Option String} {cs : List Char}
+    (h : oneShort t cs = false)
+    (hr : resolveLong t.longs (String.ofList (splitEq cs).1) ≠ .error []) :
+    readLongOnly t tok next cs = readLong t tok (String.ofList (splitEq cs).1)
+      ((splitEq cs).2.map String.ofList) next := by
+  unfold readLongOnly
+  cases hq : resolveLong t.longs (String.ofList (splitEq cs).1) with
+  | ok l => simp [h]
+  | error es => cases es with
+    | nil => exact absurd hq hr
+    | cons _ _ => simp [h]
+
+/-- …and a cluster when none has. -/
+theorem readLongOnly_cluster {t : Table} {tok : String} {next : Option String} {cs : List Char}
+    (h : oneShort t cs = false)
+    (hr : resolveLong t.longs (String.ofList (splitEq cs).1) = .error []) :
+    readLongOnly t tok next cs = readCluster t tok next cs := by
+  simp [readLongOnly, h, hr]
+
+/-- A table read by `getopt_long` (not `_only`) reads a single-dash token as a cluster. -/
+theorem readTok_short {t : Table} (hl : t.longOnly = false) {tok n : String}
+    {next : Option String} (h : classify tok = .short n) :
+    readTok t tok next = readCluster t tok next n.toList := by
+  simp [readTok, h, hl]
 
 /-! ## Permutation -/
 
@@ -116,14 +160,22 @@ theorem read_agrees (t : Tool) (env : String → Option String) (argv : List Str
     Agrees (t.read env argv) (interpret t.grammar env argv) :=
   Proofs.Cli.Getopt.read_agrees t env argv hf hp
 
-/-- Conditional on `Task.pre_render`: the getopt reading of the normal form of a valid
-invocation agrees with the args checks on that invocation. -/
-theorem read_render_of (h : Task.pre_render) (t : Tool) (hw : t.wLong = false)
-    (env : String → Option String) {fs : Invocation} (hf : Fits t.grammar) (hwf : t.grammar.WF)
-    (hv : Valid t.grammar fs) :
+/-- **The pre-pass passes the args normal form** of every valid invocation of a well-formed
+grammar getopt can express, in either ordering, without `W;`. (The normal form uses exact long
+names, gives values as separate tokens or as `--name=value`, and writes `--` before positionals
+that are not words.) -/
+theorem pre_render (c : Command) (plus : Bool) (ord : Order) (fs : Invocation) (hf : Fits c)
+    (hwf : c.WF) (hv : Valid c fs) :
+    pre (Table.ofCommand c plus false) ord (render c fs) = none :=
+  Proofs.Cli.Getopt.pre_render c plus ord fs hf hwf hv
+
+/-- **The getopt reading of the normal form** of a valid invocation agrees with the args checks
+on that invocation. -/
+theorem read_render (t : Tool) (hw : t.wLong = false) (env : String → Option String)
+    {fs : Invocation} (hf : Fits t.grammar) (hwf : t.grammar.WF) (hv : Valid t.grammar fs) :
     Agrees (t.read env (render t.grammar fs)) (afterScan t.grammar env fs) := by
   have hp : t.pre env (render t.grammar fs) = none := by
-    unfold Tool.pre Tool.table; rw [hw]; exact h _ _ _ _ hf hwf hv
+    unfold Tool.pre Tool.table; rw [hw]; exact pre_render _ _ _ _ hf hwf hv
   have ha := read_agrees t env _ hf hp
   rw [Proofs.Cli.Getopt.interpret_afterScan, scan_render hwf hv] at ha
   exact ha

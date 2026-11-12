@@ -34,7 +34,10 @@ The conventions, one token at a time (`readTok`, then the loop `parse`):
   (`resolveLong`: an exact name wins; prefixes of several entries are ambiguous unless all of them
   mean the same option, as GNU grep's `--color` and `--colour`);
 * with `W;` in the optstring, `-W name` and `-Wname` read as `--name` (an argument is given as
-  `-W name=value`; the model does not take it from a further token);
+  `-W name=value`, or for `-Wname` in the next token; `-W name value` is not modelled);
+* with `Table.longOnly` (`getopt_long_only`), a single-dash token that is not one optstring
+  character is first read as a long name (`-name`, prefixes included), and as a cluster when
+  no long name has it as a prefix (`readLongOnly`);
 * `--` ends the options: every later token is an operand;
 * `-` alone, and every token not starting with `-`, is an operand (by convention `-` means
   standard input).
@@ -45,7 +48,8 @@ follow operands (`permute`), unless the optstring starts with `+` or the environ
 `POSIXLY_CORRECT` is set. So **the reading is a function of the argument vector and the
 environment** (`Tool.order`, `Tool.read`); `Silmaril.Cli.Getopt.Front` reads both from a full
 invocation (`Silmaril.Cli.Input`). GNU's third ordering (an optstring starting with `-`, operands
-reported in order as options) is not modelled.
+reported in order as options) is the in-order reading `parseInOrder` of
+`Silmaril.Cli.Getopt.Stream`.
 
 The result (`Parsed`) is the option occurrences in order (with the `Given` of the args dialect:
 `on`, or `val x`), the operands, and the option tokens in order (`front`): the arguments glibc
@@ -56,7 +60,8 @@ moves to the front when it permutes. `Parsed.permuted` is the permuted argument 
 The first usage error ends the reading (`Error`): an unknown option character or name, a
 missing argument, an argument given to a long option without one, or an ambiguous prefix.
 (`getopt` itself reports the error and goes on; programs conventionally print their usage and
-exit 2, which is what the args front end does.)
+exit 2, which is what the args front end does. `Silmaril.Cli.Getopt.Stream` models the loop
+that goes on: `parseAll`.)
 
 ## The relation to the args dialect
 
@@ -115,6 +120,8 @@ structure Table where
   plus : Bool := false
   /-- the optstring contains `W;`: `-W name` means `--name` -/
   wLong : Bool := false
+  /-- read by `getopt_long_only`: a single-dash token may name a long option (`-name`) -/
+  longOnly : Bool := false
   deriving DecidableEq, Repr, Inhabited
 
 /-- The argument suffix of an optstring character. -/
@@ -203,11 +210,14 @@ def readLong (t : Table) (tok n : String) (v next : Option String) : Except Erro
 /-- The optstring character `ch`. -/
 def findChar (t : Table) (ch : Char) : Option Short := t.shorts.find? (·.ch == ch)
 
-/-- `-W name[=value]` (with `W;`): the argument read as a long option. -/
-def readW (t : Table) (tok : String) (a : List Char) (consumed : Bool) : Except Error Read :=
+/-- `-W name[=value]` (with `W;`): the argument `a` read as a long option. `consumed`: the name
+came from the next token; `next`: the token that may hold a required argument (`-Wname value`;
+for `-W name value` the model gives none). -/
+def readW (t : Table) (tok : String) (a : List Char) (consumed : Bool) (next : Option String) :
+    Except Error Read :=
   match splitEq a with
-  | (n, v) => (readLong t tok (String.ofList n) (v.map String.ofList) none).map
-      fun p => (p.1, consumed)
+  | (n, v) => (readLong t tok (String.ofList n) (v.map String.ofList) next).map
+      fun p => (p.1, consumed || p.2)
 
 /-- Read a cluster of option characters (the characters after `-`). -/
 def readCluster (t : Table) (tok : String) (next : Option String) :
@@ -216,9 +226,9 @@ def readCluster (t : Table) (tok : String) (next : Option String) :
   | ch :: r =>
     if t.wLong && ch == 'W' then
       match r, next with
-      | [], some x => readW t tok x.toList true
+      | [], some x => readW t tok x.toList true none
       | [], none => .error (.missing tok)
-      | _, _ => readW t tok r false
+      | _, _ => readW t tok r false next
     else
     match findChar t ch with
     | none => .error (.unknown tok)
@@ -232,18 +242,36 @@ def readCluster (t : Table) (tok : String) (next : Option String) :
         | none => .error (.missing tok)
       | _, _ => .ok ([(s.key, .val (String.ofList r))], false)
 
+/-- The characters after `-` are one optstring character. -/
+def oneShort (t : Table) : List Char → Bool
+  | [ch] => (findChar t ch).isSome
+  | _ => false
+
+/-- `getopt_long_only` on a single-dash token (`cs`: the characters after `-`). A token that is
+one optstring character is that short option (so `-f` stays reachable); otherwise the token is
+first read as a long name (`-name`, `-name=value`, unambiguous prefixes included), and when no
+long name has it as a prefix, as a cluster (glibc falls back to the optstring, or reports an
+unknown option). -/
+def readLongOnly (t : Table) (tok : String) (next : Option String) (cs : List Char) :
+    Except Error Read :=
+  if oneShort t cs then readCluster t tok next cs else
+  match resolveLong t.longs (String.ofList (splitEq cs).1) with
+  | .error [] => readCluster t tok next cs
+  | _ => readLong t tok (String.ofList (splitEq cs).1) ((splitEq cs).2.map String.ofList) next
+
 /-- **Read an option token** `tok`, followed by `next`: occurrences, and whether `next` was
 taken as an argument. -/
 def readTok (t : Table) (tok : String) (next : Option String) : Except Error Read :=
   match classify tok with
   | .long n v => readLong t tok n v next
-  | .short n => readCluster t tok next n.toList
+  | .short n => if t.longOnly then readLongOnly t tok next n.toList else
+      readCluster t tok next n.toList
   | _ => .error (.unknown tok)
 
 /-! ## The reading -/
 
-/-- The argument orderings of glibc's getopt (the third, `-` in the optstring, is not
-modelled). -/
+/-- The argument orderings of glibc's getopt (the third, `-` in the optstring, is
+`Silmaril.Cli.Getopt.parseInOrder`). -/
 inductive Order where
   /-- options may follow operands (GNU's default) -/
   | permute
@@ -439,15 +467,6 @@ def pre (t : Table) (ord : Order) : List String → Option Diverge
 /-- The pre-pass of a tool in an environment. -/
 def Tool.pre (t : Tool) (env : String → Option String) (argv : List String) : Option Diverge :=
   Getopt.pre t.table (t.order env) argv
-
-/-- **Open**: the pre-pass passes the args normal form (`render`) of every valid invocation of a
-well-formed grammar getopt can express, in either ordering, without `W;`. (Normal form uses
-exact long names, gives values as separate tokens or as `--name=value`, and writes `--` before
-positionals that are not words.) `Silmaril.Cli.Getopt.Thms.read_render_of` is conditional on
-it. -/
-def Task.pre_render : Prop :=
-  ∀ (c : Command) (plus : Bool) (ord : Order) (fs : Invocation), Fits c → c.WF → Valid c fs →
-    pre (Table.ofCommand c plus false) ord (render c fs) = none
 
 /-- Two outcomes of the args front end agree: equal, or usage errors on both sides (the
 messages may differ). -/

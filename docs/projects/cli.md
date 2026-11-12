@@ -199,9 +199,12 @@ argument attached (`-n5`) or in the next token, taken verbatim even when it star
 (`-n -5`); an optional argument only attached (`-n5`, `--name=v`); `--name`, `--name=v`,
 `--name v`; any unambiguous prefix of a long name (`resolveLong`: an exact name wins, and
 prefixes of several names that mean one option, like GNU grep's `--color` and `--colour`, are
-not ambiguous); `-W name` as `--name` with `W;`; `--` ends the options; `-` is an operand
-(standard input by convention). The first usage error ends the reading, as in programs that
-print their usage and exit 2.
+not ambiguous); `-W name` as `--name` with `W;` (`-Wname value` takes a required argument from
+the next token); `--` ends the options; `-` is an operand (standard input by convention). The
+first usage error ends the reading, as in programs that print their usage and exit 2. A table
+with `longOnly` is read as `getopt_long_only` reads it: a single-dash token that is not one
+optstring character is a long name (`-name`, `-na`) when some long name has it as a prefix, and
+a cluster otherwise (`readLongOnly`).
 
 **Ordering depends on the environment.** POSIX getopt stops at the first operand
 (`Order.requireOrder`). GNU getopt permutes (`Order.permute`): options may follow operands,
@@ -234,15 +237,48 @@ value checks, rules). The pre-pass `Tool.pre env argv` names the first token whe
 readings may differ (`Diverge`): an abbreviated long name, `-W`, an attached argument starting
 with `=` (`sort -t=` gives getopt the separator `=`; the args dialect reads `-t=x` as `x`), and,
 in POSIX order, an option-like token after the first operand. Where it passes, `read_agrees`
-proves that the getopt reading and `interpret` agree. `parse_permuted` proves that the GNU
+proves that the getopt reading and `interpret` agree. `pre_render` proves that it passes the
+args normal form of every valid invocation (without `W;`), so `read_render`: the getopt reading
+of `render fs` agrees with the args checks on `fs`. `parse_permuted` proves that the GNU
 reading of an argument vector is the POSIX reading of its permuted vector (option tokens first,
 as glibc leaves `argv`).
+
+**The getopt loop** (`Silmaril.Cli.Getopt.Stream`). A program calls `getopt` until it returns
+`-1`; each call returns an option, `?` with a diagnostic, or (with an optstring starting with
+`-`, GNU's third ordering) an operand in place. `parseAll t ord argv` goes on after usage errors
+as getopt does (the rest of a cluster, then the next token): the results in order (`Event`), the
+operands. Without a usage error it reads what `parse` reads (`parseAll_ok`, `parseAll_opts`);
+otherwise its first diagnostic is the error `parse` stops at (`parseAll_error`), and it reports
+none exactly when `parse` succeeds (`parseAll_errors_nil`). `parseInOrder t argv` returns
+operands in place (`-` among them) and keeps only those after `--` as operands; split into
+options and operands it is the GNU permuting reading (`parseInOrder_permute`).
 
 `Silmaril.Cli.Getopt.Examples` checks option tables of `head`, `wc`, `grep`, `sort` and `cut`
 against the behaviour POSIX and GNU document for them: clusters (`wc -lwc`), attached and
 separate arguments (`cut -d, -f1,3`, `cut -f 2 -d ' '`), arguments that start with `-`
 (`grep -e -v`), optional arguments (`grep --color` versus `--color=always`), unique and
 ambiguous prefixes (`--col`, `--in`), `--`, `-`, and the two orderings.
+
+**getopt and clap.** A grammar both dialects can express is read by a getopt tool `t` and by
+its clap tool `t.clap`. Each dialect agrees with `interpret` where its pre-pass passes, so
+`read_clap` (`Silmaril.Cli.Getopt.Clap.Thms`): for `Fits` grammars whose help and version
+options are flags (`Clap.HelpFlags`), on every argument vector both pre-passes pass and in
+every environment, the clap reading agrees with the getopt reading (the same run, help or
+version, or usage errors on both sides). Where a pre-pass stops they may differ;
+`Silmaril.Cli.Getopt.Clap.Examples` checks each case on one grammar (POSIX order: POSIX
+getopt, a `+` optstring or a set `POSIXLY_CORRECT`; the model reads long names in both orders,
+as glibc does):
+
+| Command line | getopt, GNU order | getopt, POSIX order | clap |
+| --- | --- | --- | --- |
+| `a -n 3` (option after an operand) | option `-n 3` | operands `a -n 3` | option `-n 3` |
+| `--li 3` (prefix of `--lines`) | `--lines 3` | `--lines 3` | usage error |
+| `-n -5` (argument starting with `-`) | `-5` | `-5` | usage error |
+| `-n=5` | `=5` | `=5` | `5` |
+| `-n5`, `--lines=5` | `5` | `5` | `5` |
+| `--color always` (optional value) | bare `--color`, operand `always` | the same | the same |
+| `-- -v` | operand `-v` | operand `-v` | operand `-v` |
+| `-h --bogus` | usage error (the whole line is read) | usage error | help |
 
 ## Known limitations
 
@@ -257,13 +293,14 @@ ambiguous prefixes (`--col`, `--in`), `--`, `-`, and the two orderings.
   pre-pass passes, and compares outcome classes, not message texts. The clap help layout of
   `Surface` and the comparison of its reference reading with `Clap.Tool.read` are checked by
   evaluation, not proved.
-* **getopt.** The model ends at the first usage error (getopt reports it and goes on; programs
-  conventionally exit). GNU's third ordering (an optstring starting with `-`), `getopt_long_only`
-  and the obsolete `head -5` style (parsed by programs before getopt) are not modelled; `-W name`
-  takes an argument only as `-W name=value`. `read_agrees` needs a grammar getopt can express
-  (`Fits`: no subcommands, no exact multi-letter tokens, no `--no-x` negation) and compares
-  outcome classes, not message texts. That the pre-pass passes the args normal form is still
-  open (`Task.pre_render`; `read_render_of` is conditional on it).
+* **getopt.** `Tool.read` ends at the first usage error (programs conventionally exit);
+  the loop that goes on (`parseAll`) and the in-order reading (`parseInOrder`) are readings of
+  a table, not yet front ends of a `Tool`, and so is `getopt_long_only` (`Table.longOnly`;
+  `Tool.table` reads with `getopt_long`). In `parseAll`, which token an erroneous `-W` consumes
+  is a modelling choice. `-W name value` (an argument in a second further token) and the
+  obsolete `head -5` style (parsed by programs before getopt) are not modelled. `read_agrees`
+  needs a grammar getopt can express (`Fits`: no subcommands, no exact multi-letter tokens, no
+  `--no-x` negation) and compares outcome classes, not message texts; so does `read_clap`.
 * **Program bodies.** `Command.main` and `Clap.Tool.main` are proved to refine their front-end
   specifications given that the program run on each `Matches` refines its part
   (`main_refines`); what the body does is the user's obligation.
@@ -309,8 +346,11 @@ All theorems below are proved from the standard axioms only.
 `Silmaril/Proofs/Cli/Getopt/`): `read_agrees`, `parse_scan`, `readTok_readOpt`;
 `parse_permuted`, `Tool.parse_permuted`; `resolveLong_exact`, `resolveLong_ok`,
 `resolveLong_unique`; `order_posixly`, `order_plus`, `order_posix`, `order_gnu`, `order_envOf`;
-`outcome_agrees`, `spec_run`, `spec_usage`; `read_render_of` takes the open
-`Task.pre_render` as a hypothesis.
+`outcome_agrees`, `spec_run`, `spec_usage`; `pre_render`, `read_render`;
+`readTok_dashdash_long`, `readLongOnly_short`, `readLongOnly_long`, `readLongOnly_cluster`,
+`readTok_short` (`getopt_long_only`); `parseAll_ok`, `parseAll_error`, `parseAll_errors_nil`,
+`parseAll_opts`, `parseInOrder_permute` (`Getopt.Stream.Thms`); `read_clap`, `Tool.read_clap`
+(`Getopt.Clap.Thms`).
 
 **Behaviour** (`Silmaril.Cli.Behaviour.Thms`, `Files.Thms`, `Footprint.Thms`, `Check.Thms`):
 `det_le_iff`; monotonicity of every composition (`seq_mono`, `pipe_mono`, `dispatch_mono`, …);
