@@ -224,7 +224,8 @@ quoted-Core method.
 ## What is not covered
 
 * **Universal safety** (`Task.<f>_safe`): no proof here shows a C function safe from every entry
-  memory; the `c.compiles_to` rows stay open on it, and the canonical rows say less.
+  memory; the `c.compiles_to` rows stay open on it, and the canonical rows say less. The
+  [System V example](sysv-tv.md) states the same goal for its `max2` (`Task.max2_safe`).
 * **The System V example's `-O0` row**: its object (gcc 14.2.0) has no debug information, so
   `c-tv` cannot read its points and slots. A twin build with `-g` would give them; its
   `if (a > b) return a;` without `else` also needs a segment theorem for the empty `else`.
