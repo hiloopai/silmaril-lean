@@ -115,6 +115,7 @@ project-lean:
 		Silmaril.Project.Room.Thms \
 		Silmaril.Project.Shapes.SysV.Thms \
 		Silmaril.Project.Shapes.C.Thms \
+		Silmaril.Project.Shapes.SysV.Rtl.Defs \
 		ProjectSelfTest \
 		SysVTvExample
 
