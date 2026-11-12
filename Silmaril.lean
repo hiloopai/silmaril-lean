@@ -71,4 +71,8 @@ public import Silmaril.Semantics.Behaviour.Thms
 public import Silmaril.Semantics.Categories.Thms
 public import Silmaril.Semantics.Elgot.Thms
 public import Silmaril.Semantics.ElgotMonads.Thms
+public import Silmaril.SSA.Isotope.Institution.Thms
+public import Silmaril.SSA.Isotope.Bridge.Thms
+public import Silmaril.SSA.Thesis.Thms
+public import Silmaril.SSA.Thesis.Categorical.Thms
 public import Silmaril.Machine.LambdaRTLLir.Sim.Thms
