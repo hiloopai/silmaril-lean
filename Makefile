@@ -30,7 +30,7 @@ library:
 CHECK_TARGETS ?= Silmaril ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
 
 # Files Lake never reads; only the source gates in `make check` read them.
-SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/**' \
+SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
 	'tools/process-release/**' 'tools/verification-projects/**' 'tools/silmaril-project/**' \
 	policy.toml regions.toml
 
