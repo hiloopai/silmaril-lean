@@ -15,6 +15,7 @@
 | C library contracts and allocators | The contract institution of C library signatures (allocator chain, stdio, tensor), the allocator signature hierarchy and its POSIX-safe contract over ELF shared objects, a concrete loading model with named import contracts, and the problem shapes | [Allocators](alloc.md) |
 | SpecTec | The Wasm 1.0, 2.0 and 3.0 specifications read from SpecTec's IL into Lean, patches, a surface-language fragment, grammar institutions and simulations with the Core semantics | [SpecTec](spectec/README.md), [divergences](spectec-divergences.md) |
 | Data layouts | C struct layouts under LP64/ILP32 data models, byte lenses with frame lemmas, bit specifications, glibc malloc structures checked against DWARF; separation-logic cells, lists, bitmaps and boundary tags | [Data](data.md) |
+| glibc's allocator | A layered model of glibc's ptmalloc (algorithm, byte representation, x86 block simulations, per-version pins) and the unconditional end-to-end theorems for the tcache paths of glibc 2.39's `malloc` and `free` | [ptmalloc](ptmalloc.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide
