@@ -54,6 +54,10 @@ Further results:
   `X86sim.Gcc13.mallocTcacheHitK'` at 2.40's bytes; `E2e.freeTcache240_of`.
 * **glibc 2.36** (`E2e.V236`): `E2e.mallocTcache236` (gcc 12 keeps the bin index in `rbp`; the
   register-parametric `tcache_get`), `E2e.freeTcache236_of` (from a simulation of `_int_free`).
+* **2.36 and 2.40, unconditional** (`E2e.PinsSys`): `E2e.mallocTcache236_refInv` and
+  `E2e.mallocTcache240_refInv`, the two `malloc` theorems from any world with `RefInv`, with no
+  `SafeMF` hypothesis (`E2e.safeMF_refInv`). `free` at 2.36 and 2.40 stays conditional on an x86
+  simulation of `_int_free` (`hX`).
 * **Versions**: `Versions.pin236_matches`, `pin239_matches`, `pin240_matches` check every number
   of the hand-written pin records against generated facts (`decide`); `Version.Thms` proves the
   configurations' sanity conditions.
