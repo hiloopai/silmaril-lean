@@ -109,6 +109,7 @@ project-lean:
 		Silmaril.Project.Shapes.Format.Thms \
 		Silmaril.Project.Shapes.Elf.Thms \
 		Silmaril.Project.Shapes.X86.Thms \
+		Silmaril.Project.Shapes.Cli.Thms \
 		Silmaril.Project.Room.Thms \
 		ProjectSelfTest
 

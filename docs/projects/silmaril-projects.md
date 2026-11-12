@@ -11,7 +11,7 @@ explores it.
 | --- | --- |
 | Lean framework: records, the `silmaril` command, values and formats, the attribute forms | `Silmaril.Project.Defs` (`Silmaril/Project/`) |
 | Format adapters over silmaril's parsers (S-expressions, Wasm, WAT, ELF, JSON) | `Silmaril.Project.Formats.Defs`, laws in `….Thms` |
-| Standard shapes: formats and values, ELF executables, x86-64 functions | `Silmaril.Project.Shapes.{Format,Elf,X86}.Defs`, lemmas in `….Thms` |
+| Standard shapes: formats and values, ELF executables, x86-64 functions, command-line programs | `Silmaril.Project.Shapes.{Format,Elf,X86,Cli}.Defs`, lemmas in `….Thms` |
 | The CLI `sil project` (Rust) | `tools/silmaril-project/` |
 | The records-file JSON Schema | [`docs/schemas/silmaril-records.v0.2.schema.json`](../schemas/silmaril-records.v0.2.schema.json) |
 | The explorer page | [silmaril-projects-explore.md](silmaril-projects-explore.md) |
@@ -411,7 +411,7 @@ Do not restate a standard fact as a problem of your own: silmaril registers each
 once, as a **shape** (an open problem over arguments), and a project fills in a **row**, an
 instance for its own artifact, and proves it. Every project then states the same fact the same
 way, the shape collects SAT evidence from every solved row, and the transfer lemmas prove the
-rows. The shapes are `Silmaril.Project.Shapes.{Format,Elf,X86}.Defs` (lemmas in `….Thms`).
+rows. The shapes are `Silmaril.Project.Shapes.{Format,Elf,X86,Cli}.Defs` (lemmas in `….Thms`).
 An indented name is a named instance of the shape above it, with some arguments fixed:
 
 | shape | Lean (`Silmaril.Project.Shapes.…`) | statement | transfer lemmas |
@@ -432,6 +432,12 @@ An indented name is a named instance of the shape above it, with some arguments 
 | &nbsp;&nbsp;`….abi_function.open`, `.open9`, `.str9` | `M := Open.isa` / `Open9.isa` / `Str9.isa` | | |
 | `silmaril.shapes.x86.correct` | `Correct (𝓜 : Problems.Class MState) (S : Word → FnContract.Spec MState)` | for every placement `entry`, `S entry` is demonically totally correct on every member of `𝓜` (`Problems.FnCorrect`) | `correct_iff` |
 | `silmaril.shapes.x86.correct_loose` | `CorrectLoose (D : Loose.DTable Loose.Listing.LForm) (S : Word → FnContract.Spec MState)` | the same on the down-set of the loose x86-64 top over the listing table `D` | `correctLoose_iff` |
+| `silmaril.shapes.cli.help` | `Help (M : Silmaril.Cli.Institution.Model Level.full.sig) (v : HelpVariant)` | the CLI model `M` answers help requests as the variant `v` says (spellings, subcommand paths, extra arguments, exit code, stream, substrings; nothing else happens) | `Help.of_sat`, `Help.ofCommand`, `Help.mono`, `help_via_iff` |
+| &nbsp;&nbsp;`….help.{basic,short,loose,wins,either}` | `v :=` a named variant | | |
+| `silmaril.shapes.cli.help.subcommands` | `HelpSubcommands M (ps : List (List String))` | `--help` and `-h` at the root and after each path in `ps` | |
+| `silmaril.shapes.cli.version` | `Version M (v : VersionVariant)` | `M` answers version requests as `v` says | `Version.of_sat`, `Version.ofCommand`, `Version.mono`, `version_via_iff` |
+| &nbsp;&nbsp;`….version.{basic,short}` | `v :=` a named variant | | |
+| `silmaril.shapes.cli.version.pinned` | `VersionPinned M (ver : String)` | `--version` prints a text containing `ver` | |
 
 `Contract M S` alone is filled by a spec no state enters. A row about a *function* uses
 `elf.fn_contract` or `x86.abi_function`, which add that the spec is entered at the code
