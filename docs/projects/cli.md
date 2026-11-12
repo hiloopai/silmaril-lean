@@ -280,6 +280,102 @@ as glibc does):
 | `-- -v` | operand `-v` | operand `-v` | operand `-v` |
 | `-h --bogus` | usage error (the whole line is read) | usage error | help |
 
+## Standard problems: `--help` and `--version`
+
+`Silmaril.Cli.Info` states "`--help` works" and "`--version` works" once, as sentences of the CLI
+institution, so that the same problem applies to every model: a Lean program, a program behind
+a derived front end, and any program semantics with a reduct to the full interface (a WASI
+component, an ELF process model). Neither pins the help text; a **variant** says what is
+asked:
+
+| field of `HelpVariant` | meaning | default |
+| --- | --- | --- |
+| `long`, `short`, `word` | `--help`, `-h`, the subcommand word `help` (`tool help`, `tool help sub`) trigger help | `--help` only |
+| `paths` | subcommand paths besides the root where the spellings must work (`tool sub --help`) | none |
+| `extra` | what `--help` followed by more arguments must do: `ignore`, `wins` (help wins over anything, as clap's pre-pass), `winsOperands` (over operands), `error` (a usage error), `either` (help or a usage error, as a derived args front end) | `ignore` |
+| `reply` | `exit` (`zero` or `any`), `dest` (`stdout`, nothing on stderr; or `either` stream), `nonEmpty`, `mentions` (substrings such as the program name or `Usage:`) | exit 0, non-empty, stdout |
+| `texts` | exact texts, by subcommand path (optional) | none |
+| `quiet` | nothing else happens: no file read, changed or logged, no stdin consumed | yes |
+
+`VersionVariant` has `long` (`--version`), `short` (`-V`), `reply`, `version?` (a version
+string the text must contain) and `quiet`.
+
+Each variant is an `L2` sentence (`sen2`: program name, arguments and stdin to stdout, stderr
+and exit code) and an `L3` sentence (`sen`, a `Spec`: `sen2` on the projections and, with
+`quiet`, `Quiet` on the full observation). Both are **safety** sentences: they constrain only
+the invocations that ask for help or the version, so they can be checked of a large binary
+before anything else is specified. `sen ≤ Level.liftAll sen2`, with equality without `quiet`
+(`sen_le_liftAll`, `sen_eq_liftAll`), so a full model that meets `sen` has an `L2` reduct that
+meets `sen2` (`sat_reduct`).
+
+**Named variants and ids** (`HelpVariant.named`, `VersionVariant.named`), strictest first,
+each implying the next (`HelpVariant.sen_mono` along `HelpVariant.Le`; `wins_le_basicShort`,
+`either_le_basicShort`, `basicShort_le_basic`, `basic_le_loose`, `wins_le_either`,
+`subcommands_le_basicShort`):
+
+| id | variant |
+| --- | --- |
+| `cli.help.wins` | `--help`, `-h`; help wins over everything after them |
+| `cli.help.either` | `--help`, `-h`; after them, help or a usage error |
+| `cli.help.subcommands` | `--help`, `-h` at the root and after given subcommand paths (`subcommands ps`) |
+| `cli.help.short` | `--help`, `-h` at the root |
+| `cli.help.basic` | `--help` at the root: exit 0, non-empty text on stdout, nothing on stderr, nothing else |
+| `cli.help.loose` | `--help` at the root, any exit code, text on stdout or stderr |
+| `cli.version.short`, `cli.version.basic` | `--version` (and `-V`): exit 0, non-empty text on stdout, nothing else |
+| `cli.version.pinned` | `--version` prints a text containing a given version (`pinned ver`) |
+
+They are registered as standard problem shapes `silmaril.shapes.cli.help`, `….help.<name>`,
+`….help.subcommands`, `silmaril.shapes.cli.version`, `….version.<name>` and
+`….version.pinned` (`Silmaril.Project.Shapes.Cli`), over a model `M` of the full interface and
+the variant.
+
+**Models.** A Lean program is the model `p.model` (`Prog.model_sat_iff`: `p.model.Sat φ ↔
+p.Sat φ`); a spec is the model `ofSpec S` (`ofSpec_sat_iff`), so `Command.main` and
+`Clap.Tool.main` are models through `Beh.toSpec (c.modelMain run)`. A program semantics at
+another interface `A` plugs in with a morphism `h : Level.full.sig ⟶ A`: it meets
+`Hom.sen h v.sen` iff its reduct `Hom.mod h M` meets `v.sen` (`sat_via_iff`, and
+`help_via_iff` for the shapes). For an x86-64 ELF process model, `A.In` would be the initial
+process (argument and environment vectors, stdin, the files) and `h.inp` the relation saying
+which processes represent an `Input`; `h.out` reads the finished run (the bytes written to file
+descriptors 1 and 2, the exit status, the file effects) as an `Obs`. That morphism belongs to
+the translation to `Silmaril.Process.CLI` described above, and is not built here.
+
+**Derived front ends meet them for free.** `Command.helpTriggers c v` (`Clap.helpTriggers t v`
+for the clap dialect, `versionTriggers` for the version) is a decidable condition: the words
+of every path of `v` select a level of the grammar where every spelling reads as the help flag
+(no `help` word and no `wins` or `error` claim in the args dialect, which reads the whole
+command line first; no `error` claim in the clap dialect). Under it, and when the derived text
+fits the variant (`HelpVariant.Fits`: non-empty, the required substrings, the pinned texts),
+the front end's spec refines the sentence, whatever the program does on its matches:
+
+```lean
+theorem spec_help (h : c.helpTriggers v = true)
+    (hfit : ∀ p ∈ v.roots, v.Fits p (c.helpBytes p)) (S : Matches → Spec) : c.spec S ≤ v.sen
+theorem Clap.spec_help (h : Clap.helpTriggers t v = true) (hfit : …) (hword : …) (S) :
+    t.spec S ≤ v.sen
+```
+
+and every well-formed grammar built with the conventional flags meets the conditions:
+`Command.spec_le_help` (a grammar with `helpOpt`, as `withHelp` adds it: every variant without
+substrings or pinned texts, without a `help` word, with an extra-argument claim the args
+dialect meets), `Command.spec_le_version` (`withVersion`: every version variant whose
+substrings are the name or the version), `Clap.Tool.spec_le_help` (`helpEverywhere`: every
+variant without substrings, pinned texts or an `error` claim). So every
+`Prog.ofCommand c body` and `Prog.ofCommandCore c core` meets them
+(`Prog.ofCommand_sat_help`, `Prog.ofCommand_sat_version`), as do `Command.main` and
+`Clap.Tool.main` read in the behaviour model (`Command.modelMain_help`,
+`Clap.Tool.modelMain_help`).
+
+`Silmaril.Cli.Info.Examples`: the guide's `greet` (args dialect) meets `cli.help.either`, help
+over operands and `cli.version.pinned "1.0.0"`, and does not meet `cli.help.wins`
+(`greet --help --bogus` is a usage error, `greetProg_not_wins`); `wasm-asyncify`
+(`helpEverywhere`) meets help after each of its subcommands with help winning; `wasm-opt`
+meets `cli.help.wins`; and a program that prints a usage text and exits 1 fails
+`cli.help.basic` and meets `cli.help.loose` (`badHelp_not_basic`, `badHelp_loose`). A variant
+whose text must contain `Usage: greet` is met given that the text fits, which is checked by
+evaluation (`greet_usage_of`): the kernel does not reduce the UTF-8 encoding of a computed help
+text.
+
 ## Known limitations
 
 * **Partial correctness.** `Obs` describes terminating runs only; a spec says nothing about runs
@@ -301,6 +397,13 @@ as glibc does):
   obsolete `head -5` style (parsed by programs before getopt) are not modelled. `read_agrees`
   needs a grammar getopt can express (`Fits`: no subcommands, no exact multi-letter tokens, no
   `--no-x` negation) and compares outcome classes, not message texts; so does `read_clap`.
+* **Help and version problems.** The theorems about derived front ends cover variants without
+  required substrings or pinned texts in general; for a given grammar such a text condition is a
+  hypothesis checked by evaluation (`greet_usage_of`). "Help before an invalid option" is
+  covered by `extra := .wins` (clap's reading); "help after an invalid option" is not a field of
+  the variants, because which option is invalid depends on the program. The shapes are
+  declared in `Silmaril.Project.Shapes.Cli`, but not yet in silmaril-lean's own project
+  records (`silmaril.toml`, `silmaril/selftest.toml`, `examples/project/check.txt`).
 * **Program bodies.** `Command.main` and `Clap.Tool.main` are proved to refine their front-end
   specifications given that the program run on each `Matches` refines its part
   (`main_refines`); what the body does is the user's obligation.
@@ -369,6 +472,17 @@ All theorems below are proved from the standard axioms only.
 functor `inst` and `classic`; `hom_comp`, `toSig`, `sat_lift_iff`, `sat_liftAll_iff`,
 `liftAll_le_lift`, `lift_hom`, `lift_filter_iff`, `lift_prints_iff`; `Model.Sat.mono`,
 `Model.Sat.anti`; `Sen.filter_agree` and its instances.
+
+**Help and version** (`Silmaril.Cli.Info.Thms`, proofs in `Silmaril/Proofs/Cli/Info/`,
+`Silmaril.Project.Shapes.Cli.Thms`): `HelpVariant.sen_mono`, `HelpVariant.sen2_mono`,
+`HelpVariant.Le.trans`, `VersionVariant.sen_mono`, the named-variant order (`wins_le_basicShort`,
+…); `sen_le_liftAll`, `sen_eq_liftAll`, `sat_reduct`; `Prog.model_sat_iff`, `ofSpec_sat_iff`,
+`sat_via_iff`; `spec_help`, `spec_version`, `Clap.spec_help`, `Clap.spec_version`;
+`helpTriggers_of_wf`, `versionTriggers_of_wf`, `Clap.helpTriggers_everywhere`;
+`Command.spec_le_help`, `Command.spec_le_version`, `Clap.Tool.spec_le_help`,
+`Prog.ofCommand_sat_help`, `Prog.ofCommand_sat_version`, `Command.modelMain_help`,
+`Clap.Tool.modelMain_help`; `Help.of_sat`, `Help.ofCommand`, `Help.mono`, `help_via_iff` and
+the version forms.
 
 **sha256sum** (`Silmaril.Cli.Spec.Sha256sum.Thms`): `spec_anti`, `spec_le_lift_stdin`,
 `spec_le_lift_cmd`, `spec_le_lift_cmdOn`.

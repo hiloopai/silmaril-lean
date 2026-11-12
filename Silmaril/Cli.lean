@@ -32,6 +32,9 @@ public import Silmaril.Cli.Getopt.Stream.Thms
 public import Silmaril.Cli.Getopt.Thms
 public import Silmaril.Cli.Guide.Defs
 public import Silmaril.Cli.Guide.Thms
+public import Silmaril.Cli.Info.Defs
+public import Silmaril.Cli.Info.Examples
+public import Silmaril.Cli.Info.Thms
 public import Silmaril.Cli.Institution.Defs
 public import Silmaril.Cli.Institution.Std.Defs
 public import Silmaril.Cli.Institution.Std.Thms
