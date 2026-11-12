@@ -170,7 +170,13 @@ A row group is one source function and its builds:
 arguments by `#guard`): the rows `….{o0,o2}.lifts_rtl` and `….o2.lifts_ssa` (`sysv.lifts.open9`)
 and `….rtl.ir_refines`, `….ssa.ir_refines` (`c.ir_refines`) are open (`Task`); one RTL
 correspondence serves both builds (`builds_of_rtl`), and the `-O2` row also follows from the SSA
-route (`o2_compiles_to_of_ssa`).
+route (`o2_compiles_to_of_ssa`). Both IR functions are safe on `(3, 5)` from every memory
+(`rtl_inhabited`, `ssa_inhabited`, proved).
+
+**Non-vacuity of the example.** Every row's companions are stated: both placements are
+enterable (proved, `o0_enterable`, `o2_enterable`); the C function's safety on some argument
+tuple from every entry memory (`Task.max2_safe`) and the `-O2` Bir9 block's (`Task.o2_block_safe`)
+are open.
 
 The group `silmaril.sysv_tv.max2` of `silmaril/selftest.toml` collects these rows, and
 `sil project lint`, `dump` and `check` accept them. The project self-test
