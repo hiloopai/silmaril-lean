@@ -20,6 +20,7 @@
 | glibc's allocator | A layered model of glibc's ptmalloc (algorithm, byte representation, x86 block simulations, per-version pins) and the unconditional end-to-end theorems for the tcache paths of glibc 2.39's `malloc` and `free` | [ptmalloc](ptmalloc.md) |
 | C semantics (Cerberus) | A Lean port of the Cerberus C semantics: C frontend, Cabs and typed Ail, Core dynamics and memory models, the Ail-to-Core elaboration with correctness theorems for restricted sources, the Core institution, and the `cerb-lean`, `ail-lean`, `core-lean`, `core-elab` and `cfront` tools | [Cerberus](cerberus.md) |
 | System V translation validation | Function-by-function shapes: a placed x86-64 function implements a C function (Cerberus meaning) or a specification, lifts to an IR, IR-to-C correspondence, their composition, and several builds of one source; a worked example at `-O0` and `-O2` | [System V TV](sysv-tv.md) |
+| C to x86, segment by segment | Program points between a C function's Cerberus Core and its machine code (DWARF line table and frame slots), segment goals with generic `-O0`/`-O2` segment theorems, the bridge to `c.compiles_to`, the `c-tv` generator and three examples at `-O0` and `-O2` | [Compiles-to](compiles-to.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide
