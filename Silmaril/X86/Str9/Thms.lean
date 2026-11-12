@@ -140,6 +140,11 @@ theorem decodeStr_some {bytes : List Byte} {i : Str} {n : Nat}
     (h : decodeStr bytes = some (i, n)) : i.bytes <+: bytes ∧ n = i.bytes.length :=
   Silmaril.Proofs.X86.Str9.decodeStr_some h
 
+/-- `Ext9`'s new-form decoder rejects every extension of a slice its parser rejects. -/
+theorem decodeNew_none_of_bad {w : List Byte} (h : ext9Bad w = true) (more : List Byte) :
+    Ext9.decodeNew (w ++ more) = none :=
+  Silmaril.Proofs.X86.Str9.decodeNew_none_of_bad h more
+
 /-- A store keeps the bytes fetched from a range with no writable byte, and the
 non-writability of that range. -/
 theorem fetch_keep {mem mem' : Memory} {a : Word} {k : Nat} {v : Word}
