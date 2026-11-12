@@ -450,9 +450,9 @@ theorem stack_len (r out : List CValType) (n : Nat) :
   simp only [List.length_append, List.length_reverse, List.length_drop]
   omega
 
+set_option linter.unusedTactic false in
 mutual
 
-set_option linter.unusedTactic false in
 theorem checkInstrR_eq (fa : Array DefType) (rs : Std.HashSet Nat) (i : Instr) :
     ∀ (la : Array LocalType) (C : Context) (R : List CValType),
       checkInstrR fa rs la C R i = checkInstrF fa rs la C R.reverse i := by

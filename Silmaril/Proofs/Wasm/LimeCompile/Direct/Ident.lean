@@ -18,8 +18,8 @@ namespace Silmaril.Proofs.Wasm.LimeCompile.Direct
 open Silmaril.Wasm
 open Silmaril.Wasm.LimeCompile.Direct
 
-mutual
 set_option linter.unusedTactic false in
+mutual
 theorem lowerI_toCore (j : Lime1.Instr) : lowerI (Lime1.Instr.toCore j) = Lime1.Instr.toCore j := by
   cases j with
   | block t b =>
@@ -32,7 +32,6 @@ theorem lowerI_toCore (j : Lime1.Instr) : lowerI (Lime1.Instr.toCore j) = Lime1.
 termination_by sizeOf j
 decreasing_by all_goals simp_wf; all_goals omega
 
-set_option linter.unusedTactic false in
 theorem lowerL_toCore (es : Lime1.Expr) : lowerL (Lime1.Expr.toCore es) = Lime1.Expr.toCore es := by
   cases es with
   | nil => rw [Lime1.Expr.toCore, lowerL]
