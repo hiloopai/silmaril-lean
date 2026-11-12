@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Problems.Models.Proc.Defs
-public import Silmaril.X86.Str9FsX.Defs
+public import Silmaril.X86.Str9FsXN.Defs
 
 /-!
 # `musl-str9fsx`: the musl process model with the XMM file, SSE moves and atomics
@@ -16,9 +16,14 @@ stores of zeroed XMM registers, `movdqu` of the `va_list`), so every run through
 over the core and **sixteen XMM registers**, instead of `Str9.step` over the core. `Str9FsX`
 is `Str9` followed by `Str9Fs`'s atomic and FS-segment forms, `Sse9`'s SSE data-movement
 subset (`movups`/`movaps`/`movdqu`/`movdqa` both ways, `movd`/`movq`, `pxor`, `xorps`,
-`punpckl{dq,qdq}`) and `rep stosd`. Everything else is `musl-str9`'s:
+`punpckl{dq,qdq}`) and `rep stosd`. The step is `Silmaril.X86.Str9FsXN.step`: `Str9FsX` followed
+by the `Narrow9` forms (`rol`/`ror`/`shl`/`shr`/`sar r/m16`, `rol`/`ror r/m8`, `adc`/`sbb` at 8
+and 16 bits), which zlib's compressor needs (`shr r/m16, imm8` in `deflate_fast`,
+`deflate_slow`, `_tr_align`, `_tr_flush_bits`; `sbb r/m8, imm8` in `deflate`). `Str9FsXN`
+extends `Str9FsX` on the same states (`Str9FsXN.extendsStr9FsX`). Everything else is
+`musl-str9`'s:
 
-* `syscall` (`0F 05`) is recognised first; `none` from `Str9FsX.step` is `unmodeled`;
+* `syscall` (`0F 05`) is recognised first; `none` from `Str9FsXN.step` is `unmodeled`;
 * the startup calls (`arch_prctl (ARCH_SET_FS)`, `set_tid_address`) retire silently as in
   `Proc.Startup`; they and every other system call leave the XMM file unchanged (the Linux
   `syscall` ABI preserves the vector registers);
@@ -35,7 +40,7 @@ for `musl-str9` (`agrees_proc`, `halts_proc`, `bounded_proc`), and every nonvacu
 stops at an SSE instruction continues here.
 
 **Trust.** A model, not a theorem: `musl-str9`'s trust base, and the handwritten `Atomic9`,
-`Str9Fs` and `Sse9` semantics (written from the Intel SDM and differentially tested against
+`Str9Fs`, `Sse9` and `Narrow9` semantics (written from the Intel SDM and differentially tested against
 the host CPU outside this repository, not proved to correspond to hardware). MXCSR, x87, the
 upper YMM/ZMM halves and the direction flag are not modelled (no instruction here reads or
 writes them; DF is clear, as in `Str9`). Whether every instruction on a witness path is
@@ -56,12 +61,12 @@ structure Core where
   core : State
   xmm : XFile
 
-/-- One user-mode step: `syscall` traps; otherwise one `Str9FsX` step (`none`: unmodeled). -/
+/-- One user-mode step: `syscall` traps; otherwise one `Str9FsXN` step (`none`: unmodeled). -/
 def userStep (c : Core) (memory : Memory) : Step Core :=
   if memory.fetchBytes c.core.rip.toNat 2 = some X86Linux.syscallBytes then
     .syscall { c with core := { c.core with rip := c.core.rip + 2 } }
   else
-    match Silmaril.X86.Str9FsX.step ⟨⟨c.core, memory⟩, c.xmm⟩ with
+    match Silmaril.X86.Str9FsXN.step ⟨⟨c.core, memory⟩, c.xmm⟩ with
     | some next => .retired ⟨next.m.core, next.xmm⟩ next.m.memory
     | none => .fault .unmodeled
 

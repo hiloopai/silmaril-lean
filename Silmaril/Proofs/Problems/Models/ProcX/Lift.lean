@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Problems.Models.ProcX.Defs
 public import Silmaril.Process.CLI.GapSim
-public import Silmaril.X86.Str9FsX.Thms
+public import Silmaril.X86.Str9FsXN.Thms
 
 /-!
 # `musl-str9fsx` fills the gaps of `musl-str9`
@@ -28,12 +28,13 @@ theorem userStep_of_proc {c : State} (x : XFile) {m : Memory}
   unfold userStep Proc.userStep at *
   by_cases trap : m.fetchBytes c.rip.toNat 2 = some X86Linux.syscallBytes
   · simp [trap, liftStep]
-  · simp only [trap, if_false] at h ⊢
+  · simp only [trap, ite_false] at h ⊢
     cases hs : Silmaril.X86.Str9.step ⟨c, m⟩ with
     | none => rw [hs] at h; exact absurd rfl h
     | some n =>
-      have := Silmaril.X86.Str9FsX.step_of_str9fs (x := ⟨⟨c, m⟩, x⟩)
-        (Silmaril.X86.Str9Fs.step_of_str9 hs)
+      have := Silmaril.X86.Str9FsXN.step_of_str9fsx
+        (Silmaril.X86.Str9FsX.step_of_str9fs (x := ⟨⟨c, m⟩, x⟩)
+          (Silmaril.X86.Str9Fs.step_of_str9 hs))
       simp [this, liftStep]
 
 theorem isa_step_of_proc {c : State} (x : XFile) {m : Memory} {o : Step State}
@@ -67,7 +68,7 @@ theorem isa_step_of_proc {c : State} (x : XFile) {m : Memory} {o : Step State}
     rw [userStep_of_proc x (by rw [hu]; exact nofun), hu]
     simp only [liftStep]
     by_cases st : Proc.isStartup t
-    · simp only [st, if_true] at h ⊢
+    · simp only [st, ite_true] at h ⊢
       obtain ⟨core', startup, rfl⟩ := h
       exact ⟨⟨core', x⟩, ⟨startup, rfl⟩, rfl⟩
     · simp only [st] at h ⊢
@@ -107,16 +108,16 @@ theorem exitsOn_of_proc {image : Image} {stdin : List Silmaril.Process.Byte}
   obtain ⟨x', y', init', run', stop'⟩ := gapSim.exits init run stop
   exact ⟨input, x', events, y', valid, stdinEq, init', run', stop'⟩
 
-/-- A non-trapping `Str9FsX` step is a step of `userStep`. -/
+/-- A non-trapping `Str9FsXN` step is a step of `userStep`. -/
 theorem userStep_of_step {c : Core} {m : Memory} {y : XState}
     (nontrap : m.fetchBytes c.core.rip.toNat 2 ≠ some X86Linux.syscallBytes)
-    (h : Silmaril.X86.Str9FsX.step ⟨⟨c.core, m⟩, c.xmm⟩ = some y) :
+    (h : Silmaril.X86.Str9FsXN.step ⟨⟨c.core, m⟩, c.xmm⟩ = some y) :
     userStep c m = .retired ⟨y.m.core, y.xmm⟩ y.m.memory := by
   simp [userStep, nontrap, h]
 
 theorem isa_step_of_step {c : Core} {m : Memory} {y : XState}
     (nontrap : m.fetchBytes c.core.rip.toNat 2 ≠ some X86Linux.syscallBytes)
-    (h : Silmaril.X86.Str9FsX.step ⟨⟨c.core, m⟩, c.xmm⟩ = some y) :
+    (h : Silmaril.X86.Str9FsXN.step ⟨⟨c.core, m⟩, c.xmm⟩ = some y) :
     isa.step c m (.retired ⟨y.m.core, y.xmm⟩ y.m.memory) := by
   simp only [isa, userStep_of_step nontrap h]
 
