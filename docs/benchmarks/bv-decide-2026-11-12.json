@@ -1,0 +1,916 @@
+{
+ "date": "2026-11-12",
+ "machine": "2-vCPU Linux sandbox (gVisor), one process at a time",
+ "note": "Wall time of `lean FILE`, minimum over reps, Lean startup (~0.23 s) included. pr-release-12509 contains `sorry`s in Std; its rows measure feasibility, not soundness.",
+ "runs": [
+  {
+   "lean": "Lean (version 4.37.0-nightly-2026-11-05, x86_64-unknown-linux-gnu, commit 67dafde474fbaf278d6d7f822068549bf6e532fa, Release)",
+   "lean_command": "lean",
+   "reps": 3,
+   "rows": [
+    {
+     "goal": "setLane32",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.24,
+     "seconds": [
+      0.396,
+      0.24,
+      0.241
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "setLane32",
+     "tactic": "bv_normalize",
+     "ok": true,
+     "seconds_min": 0.241,
+     "seconds": [
+      0.259,
+      0.241,
+      0.299
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "zeroLane64",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.244,
+     "seconds": [
+      0.32,
+      0.32,
+      0.244
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "zeroLane64",
+     "tactic": "bv_normalize",
+     "ok": true,
+     "seconds_min": 0.239,
+     "seconds": [
+      0.239,
+      0.269,
+      0.241
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le32",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.24,
+     "seconds": [
+      0.24,
+      0.242,
+      0.24
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le32",
+     "tactic": "bv_normalize",
+     "ok": true,
+     "seconds_min": 0.24,
+     "seconds": [
+      0.243,
+      0.24,
+      0.321
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le64",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.284,
+     "seconds": [
+      0.33,
+      0.307,
+      0.284
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le64",
+     "tactic": "bv_normalize",
+     "ok": true,
+     "seconds_min": 0.24,
+     "seconds": [
+      0.243,
+      0.24,
+      0.244
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "addsub64",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.239,
+     "seconds": [
+      0.239,
+      0.242,
+      0.241
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "addsub64",
+     "tactic": "bv_normalize",
+     "ok": true,
+     "seconds_min": 0.239,
+     "seconds": [
+      0.24,
+      0.24,
+      0.239
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "xorswap32",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.258,
+     "seconds": [
+      0.278,
+      0.258,
+      0.271
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "xorswap32",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.238,
+     "seconds": [
+      0.241,
+      0.239,
+      0.238
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "lowbit8",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.267,
+     "seconds": [
+      0.267,
+      0.273,
+      0.269
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "lowbit8",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.242,
+     "seconds": [
+      0.243,
+      0.242,
+      0.276
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "lowbit8",
+     "tactic": "decide_kernel",
+     "ok": true,
+     "seconds_min": 0.284,
+     "seconds": [
+      0.302,
+      0.284,
+      0.295
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "lowbit32",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.262,
+     "seconds": [
+      0.262,
+      0.265,
+      0.263
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "lowbit32",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.241,
+     "seconds": [
+      0.243,
+      0.241,
+      0.241
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "avg32",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 0.277,
+     "seconds": [
+      0.279,
+      0.277,
+      0.279
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "avg32",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.241,
+     "seconds": [
+      0.243,
+      0.241,
+      0.245
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "mulcomm8",
+     "tactic": "bv_decide",
+     "ok": true,
+     "seconds_min": 1.636,
+     "seconds": [
+      1.67,
+      1.638,
+      1.636
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "mulcomm8",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.235,
+     "seconds": [
+      0.239,
+      0.238,
+      0.235
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "mulcomm8",
+     "tactic": "decide_kernel",
+     "ok": true,
+     "seconds_min": 9.849,
+     "seconds": [
+      10.006,
+      9.849,
+      9.967
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "mulcomm16",
+     "tactic": "bv_decide",
+     "ok": false,
+     "seconds_min": 10.394,
+     "seconds": [
+      10.414,
+      10.394,
+      10.398
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "The SAT solver timed out while solving the problem."
+    },
+    {
+     "goal": "mulcomm16",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.235,
+     "seconds": [
+      0.247,
+      0.235,
+      0.236
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "muldist8",
+     "tactic": "bv_decide",
+     "ok": false,
+     "seconds_min": 10.404,
+     "seconds": [
+      10.404,
+      10.424,
+      10.417
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "The SAT solver timed out while solving the problem."
+    },
+    {
+     "goal": "muldist8",
+     "tactic": "bv_normalize",
+     "ok": false,
+     "seconds_min": 0.235,
+     "seconds": [
+      0.235,
+      0.242,
+      0.24
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": "unsolved goals"
+    },
+    {
+     "goal": "muldist4",
+     "tactic": "decide_kernel",
+     "ok": true,
+     "seconds_min": 0.837,
+     "seconds": [
+      0.859,
+      0.837,
+      0.87
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    }
+   ]
+  },
+  {
+   "lean": "Lean (version 4.32.0-pre, x86_64-unknown-linux-gnu, commit c419b98e328e7a774099898c74450f455c54ea44, Release)",
+   "lean_command": "lean +leanprover/lean4-pr-releases:pr-release-12509",
+   "reps": 2,
+   "rows": [
+    {
+     "goal": "setLane32",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.274,
+     "seconds": [
+      0.705,
+      0.274
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "setLane32",
+     "tactic": "cbv",
+     "ok": true,
+     "seconds_min": 0.277,
+     "seconds": [
+      0.299,
+      0.277
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "zeroLane64",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.265,
+     "seconds": [
+      0.276,
+      0.265
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "zeroLane64",
+     "tactic": "cbv",
+     "ok": true,
+     "seconds_min": 0.264,
+     "seconds": [
+      0.266,
+      0.264
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le32",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.276,
+     "seconds": [
+      0.276,
+      0.278
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le32",
+     "tactic": "cbv",
+     "ok": true,
+     "seconds_min": 0.276,
+     "seconds": [
+      0.276,
+      0.279
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le64",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.286,
+     "seconds": [
+      0.295,
+      0.286
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "le64",
+     "tactic": "cbv",
+     "ok": true,
+     "seconds_min": 0.283,
+     "seconds": [
+      0.283,
+      0.284
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "addsub64",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.27,
+     "seconds": [
+      0.301,
+      0.27
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "addsub64",
+     "tactic": "cbv",
+     "ok": true,
+     "seconds_min": 0.264,
+     "seconds": [
+      0.269,
+      0.264
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+     ],
+     "error": null
+    },
+    {
+     "goal": "xorswap32",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.337,
+     "seconds": [
+      0.337,
+      0.337
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "xorswap32",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 0.615,
+     "seconds": [
+      0.622,
+      0.615
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Quot.sound"
+     ],
+     "error": "unexpected kernel projection term during structural definitional equality"
+    },
+    {
+     "goal": "lowbit8",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.34,
+     "seconds": [
+      0.34,
+      0.341
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "lowbit8",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 8.433,
+     "seconds": [
+      8.494,
+      8.433
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Quot.sound"
+     ],
+     "error": "unexpected kernel projection term during structural definitional equality"
+    },
+    {
+     "goal": "lowbit32",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.344,
+     "seconds": [
+      0.347,
+      0.344
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "lowbit32",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 8.421,
+     "seconds": [
+      8.538,
+      8.421
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Quot.sound"
+     ],
+     "error": "unexpected kernel projection term during structural definitional equality"
+    },
+    {
+     "goal": "avg32",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 0.36,
+     "seconds": [
+      0.36,
+      0.361
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "avg32",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 0.702,
+     "seconds": [
+      0.706,
+      0.702
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "propext",
+      "sorryAx",
+      "Quot.sound"
+     ],
+     "error": "unexpected kernel projection term during structural definitional equality"
+    },
+    {
+     "goal": "mulcomm8",
+     "tactic": "native",
+     "ok": true,
+     "seconds_min": 1.802,
+     "seconds": [
+      1.802,
+      1.804
+     ],
+     "native_axiom": true,
+     "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound",
+      "T._native.bv_decide.ax_…"
+     ],
+     "error": null
+    },
+    {
+     "goal": "mulcomm8",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 1.572,
+     "seconds": [
+      1.601,
+      1.572
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "sorryAx"
+     ],
+     "error": "unexpected kernel projection term during structural definitional equality"
+    },
+    {
+     "goal": "mulcomm16",
+     "tactic": "native",
+     "ok": false,
+     "seconds_min": 10.435,
+     "seconds": [
+      10.435,
+      10.439
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "sorryAx"
+     ],
+     "error": "The SAT solver timed out while solving the problem."
+    },
+    {
+     "goal": "mulcomm16",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 10.461,
+     "seconds": [
+      10.47,
+      10.461
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "sorryAx"
+     ],
+     "error": "The SAT solver timed out while solving the problem."
+    },
+    {
+     "goal": "muldist8",
+     "tactic": "native",
+     "ok": false,
+     "seconds_min": 10.438,
+     "seconds": [
+      10.438,
+      10.444
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "sorryAx"
+     ],
+     "error": "The SAT solver timed out while solving the problem."
+    },
+    {
+     "goal": "muldist8",
+     "tactic": "cbv",
+     "ok": false,
+     "seconds_min": 10.44,
+     "seconds": [
+      10.44,
+      10.471
+     ],
+     "native_axiom": false,
+     "axioms": [
+      "sorryAx"
+     ],
+     "error": "The SAT solver timed out while solving the problem."
+    }
+   ]
+  }
+ ]
+}
