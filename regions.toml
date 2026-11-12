@@ -11,7 +11,7 @@ deps = []
 
 [[region]]
 name = "Semantics"
-scope = "Semantic toolkit: domains, category theory, Elgot iteration, binding, traces, simulation, behaviours."
+scope = "Semantic toolkit: domains, category theory, Elgot iteration, binding, traces, simulation, behaviours. `Silmaril.Semantics.Behaviour` and its Raw tree also import `Silmaril.Machine.Behaviour` (outcomes and small-step semantics), an existing exception to `deps` until they move under `Machine`."
 deps = ["Prelude"]
 
 [[region]]
