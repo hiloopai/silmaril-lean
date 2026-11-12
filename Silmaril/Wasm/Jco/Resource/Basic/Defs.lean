@@ -113,7 +113,7 @@ structure HEntry where
 
 /-- A handle-table implementation. -/
 structure HTab where
-  /-- Silmaril.Wasm.Component.Runtime.Table states. -/
+  /-- Table states. -/
   T : Type
   /-- `add(e)`: a new index, or a trap. -/
   add? : T → HEntry → Option (Nat × T)

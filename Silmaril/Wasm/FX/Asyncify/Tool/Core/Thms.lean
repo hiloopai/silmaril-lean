@@ -177,11 +177,11 @@ theorem call_trap_core (ht : Task.machine_core) (Pf : Profile) (host : HostSeman
   exact ⟨C', hC.trans h1, h2⟩
 
 /-- info: 'Silmaril.Wasm.FX.Asyncify.Tool.store_core' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms store_core
 
 /-- info: 'Silmaril.Wasm.FX.Asyncify.Tool.pure_core' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms pure_core
 
 end Silmaril.Wasm.FX.Asyncify.Tool

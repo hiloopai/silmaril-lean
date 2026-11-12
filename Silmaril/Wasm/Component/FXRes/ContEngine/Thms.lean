@@ -65,11 +65,11 @@ theorem cRun_one_shot {x y : EStore H × ThreadV (CH H)} (h : CRun P x y) :
   exact ⟨evs, hs, ksteps_count_free hs⟩
 
 /-- info: 'Silmaril.Wasm.Component.FXRes.ContEngine.cRun_table_protocol' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms cRun_table_protocol
 
 /-- info: 'Silmaril.Wasm.Component.FXRes.ContEngine.cRun_store_protocol' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms cRun_store_protocol
 
 end Silmaril.Wasm.Component.FXRes.ContEngine

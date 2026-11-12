@@ -33,7 +33,7 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Compon
 
 variable {E : CoreEngine} {σ : Type} {α : Type} {j : InstId}
 
-/-! ## Table moves -/
+/-! ## Silmaril.Wasm.Component.Runtime.Table moves -/
 
 theorem TabMove.refl (s : CStore E) : TabMove j s s := ⟨[], .nil _⟩
 
@@ -136,7 +136,7 @@ theorem tabFrom_of_insts {s₀ : CStore E} {g : CStore E → CStore E}
     (hg : ∀ s, (g s).insts = s.insts) : ∀ s, TabFrom j s₀ s → TabFrom j s₀ (g s) :=
   tabFrom_of_move fun s => TabMove.of_insts (hg s)
 
-/-! ## Table-moving programs -/
+/-! ## Silmaril.Wasm.Component.Runtime.Table-moving programs -/
 
 theorem TabProg.cont {o : (Eff E σ).Op} {k : (Eff E σ).Resp o → P E σ α}
     (h : TabProg j (.op (S := Eff E σ) o k)) (r : (Eff E σ).Resp o) : TabProg j (k r) :=

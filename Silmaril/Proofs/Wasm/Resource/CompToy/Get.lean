@@ -208,6 +208,7 @@ theorem get_core {c : ℕ} {w : BitVec 32} {y : CoreSt (E3 P)}
     · exact Silmaril.Wasm.Logic.Open.not_exits_of_redex P hd o he
 
 
+open Silmaril.Proofs.Wasm.Component.Reference Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine in
 /-- The lift of `get`'s result `[i32 w]`: one `u32`, no store access but the pointer type. -/
 theorem runs_lift_get {th : Option ThreadId} (t : TaskId) (w : BitVec 32) :

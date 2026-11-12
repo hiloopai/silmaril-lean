@@ -60,7 +60,7 @@ abbrev VT := Types.ValType Nat
 /-- Semantic function types. -/
 abbrev FT := Types.FuncType Nat
 
-/-! ## Limits -/
+/-! ## Silmaril.Wasm.Component.Limits -/
 
 /-- wasmparser's `MAX_WASM_COMPONENT_TYPE_DEPTH`. -/
 def maxDepth : Nat := 100

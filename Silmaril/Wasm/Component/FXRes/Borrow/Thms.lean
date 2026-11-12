@@ -71,11 +71,11 @@ theorem cont_return (P : Profile) {τ : TaskId} {vs : List Silmaril.Wasm.Compone
   crun_return h
 
 /-- info: 'Silmaril.Wasm.Component.FXRes.Borrow.borrow_not_given' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms borrow_not_given
 
 /-- info: 'Silmaril.Wasm.Component.FXRes.Borrow.crun_return' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms crun_return
 
 end Silmaril.Wasm.Component.FXRes.Borrow

@@ -18,7 +18,7 @@ This module gives the engine `fxCE P`, next to `fxEV P` and without changing it,
   types are nominal: `StepFX'` is untyped and the built-in rules below do not read them.
 * `CH H = CB ⊕ H`: the host codes of the engine store are the built-ins and the host functions
   of the component machine (`H`).
-* `EStore H`: the FX store over `FXCode (CH H)` and the continuation table `tab : Silmaril.Wasm.Component.Runtime.Table ContFX`
+* `EStore H`: the FX store over `FXCode (CH H)` and the continuation table `tab : Table ContFX`
   (`Silmaril.Wasm.Component.Runtime.Table`, the Canonical ABI table). The index of a
   continuation in `tab` is the `i32` representation of a `cont` resource.
 * `prepareC?`: instantiation as `prepareFXV?`, then the three built-ins are allocated after the

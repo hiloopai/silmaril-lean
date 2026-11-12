@@ -50,7 +50,7 @@ theorem fxXGV_suspend_play (P : Profile) :
     (Or.inl ⟨_, status_ex P, rfl⟩)
 
 /-- info: 'Silmaril.Wasm.Component.FXSuspend.fxXGV_suspend_play' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms fxXGV_suspend_play
 
 end Silmaril.Wasm.Component.FXSuspend

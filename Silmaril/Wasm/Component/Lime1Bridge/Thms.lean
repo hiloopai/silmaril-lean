@@ -74,7 +74,7 @@ theorem Simple.sound_lime1_of_E (hR : RefToSpecELime1) (hB : InstBridgeE)
   Lime1Ref.Simple.sound_lime1_of (refToSpec_lime1_of_E hR hB) prof c hD hc hf hi ha j vs hvs b hb
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Bridge.refToSpec_lime1_of_E' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpec_lime1_of_E
 
 end Silmaril.Wasm.Component.Lime1Bridge

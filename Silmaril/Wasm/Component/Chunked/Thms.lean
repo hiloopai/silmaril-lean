@@ -176,7 +176,7 @@ theorem readInstrs_sound : ∀ fuel : Nat, Sound (Silmaril.Wasm.Binary.Core.Inst
   | 0 => by
     intro c a c' h
     obtain ⟨rfl, rfl⟩ := run_pure_ok h
-    exact ⟨rfl, [], by simp, Instrs.nil⟩
+    exact ⟨rfl, [], by simp, Silmaril.Wasm.Binary.Core.Instrs.nil⟩
   | fuel + 1 => by
     intro c a c' h
     simp only [readInstrs] at h
@@ -185,7 +185,7 @@ theorem readInstrs_sound : ∀ fuel : Nat, Sound (Silmaril.Wasm.Binary.Core.Inst
     cases hn
     split at h
     · obtain ⟨rfl, rfl⟩ := run_pure_ok h
-      exact ⟨rfl, [], by simp, Instrs.nil⟩
+      exact ⟨rfl, [], by simp, Silmaril.Wasm.Binary.Core.Instrs.nil⟩
     · obtain ⟨b, c₁, hb, h⟩ := run_bind_ok h
       obtain ⟨hbb, hbr⟩ := readByte_ok hb
       obtain ⟨i, c₂, hi, h⟩ := run_bind_ok h
@@ -193,7 +193,7 @@ theorem readInstrs_sound : ∀ fuel : Nat, Sound (Silmaril.Wasm.Binary.Core.Inst
       obtain ⟨rfl, rfl⟩ := run_pure_ok h
       obtain ⟨hb₂, p₂, hr₂, hg₂⟩ := (readInstr_readSeq_sound fuel).1 b hi
       obtain ⟨hb₃, p₃, hr₃, hg₃⟩ := readInstrs_sound fuel his
-      refine ⟨hb₃.trans (hb₂.trans hbb), ([b] ++ p₂) ++ p₃, ?_, Instrs.cons hg₂ hg₃⟩
+      refine ⟨hb₃.trans (hb₂.trans hbb), ([b] ++ p₂) ++ p₃, ?_, Silmaril.Wasm.Binary.Core.Instrs.cons hg₂ hg₃⟩
       simp [hbr, hr₂, hr₃]
 
 theorem readLocalsGroup_sound : Sound (Silmaril.Wasm.Binary.Core.Locals Forms.all) readLocalsGroup := by
@@ -214,7 +214,7 @@ theorem instrs_append {b₂ : Bytes} {is₂ : List Instr} (h₂ : Silmaril.Wasm.
   | _ :: _, _, h₁ => by
     cases h₁ with
     | cons h hs =>
-      simpa only [List.append_assoc, List.cons_append] using Instrs.cons h (instrs_append h₂ hs)
+      simpa only [List.append_assoc, List.cons_append] using Silmaril.Wasm.Binary.Core.Instrs.cons h (instrs_append h₂ hs)
 
 theorem seq_append {α : Type} {G : Bytes → α → Prop} {b₁ b₂ : Bytes} {l₁ l₂ : List α}
     (h₁ : Seq G b₁ l₁) (h₂ : Seq G b₂ l₂) : Seq G (b₁ ++ b₂) (l₁ ++ l₂) := by
@@ -240,11 +240,11 @@ theorem blockInstr_sound {op : UInt8} {bt : BlockType} {is : List Instr} {i : In
     (hb : Silmaril.Wasm.Binary.Core.Instrs Forms.all body is) : Silmaril.Wasm.Binary.Core.Instr Forms.all ([op] ++ hdr ++ body ++ [0x0B]) i := by
   unfold blockInstr at h
   split at h
-  · rename_i e; cases h; subst e; exact Instr.block ht hb
+  · rename_i e; cases h; subst e; exact Silmaril.Wasm.Binary.Core.Instr.block ht hb
   · split at h
-    · rename_i e; cases h; subst e; exact Instr.loop ht hb
+    · rename_i e; cases h; subst e; exact Silmaril.Wasm.Binary.Core.Instr.loop ht hb
     · split at h
-      · rename_i e; cases h; subst e; exact Instr.if_ ht hb
+      · rename_i e; cases h; subst e; exact Silmaril.Wasm.Binary.Core.Instr.if_ ht hb
       · cases h
 
 /-- **Instruction plans give `Instrs`** on the bytes they consume. -/
@@ -253,7 +253,7 @@ theorem chkI_sound : ∀ (p : IPlan) {r r' : List UInt8} {is : List Instr},
   | .nil, r, r', is, h => by
     simp only [chkI, Option.some.injEq, Prod.mk.injEq] at h
     obtain ⟨rfl, rfl⟩ := h
-    exact ⟨[], rfl, Instrs.nil⟩
+    exact ⟨[], rfl, Silmaril.Wasm.Binary.Core.Instrs.nil⟩
   | .leaf k p, r, r', is, h => by
     simp only [chkI] at h
     split at h
@@ -279,7 +279,7 @@ theorem chkI_sound : ∀ (p : IPlan) {r r' : List UInt8} {is : List Instr},
           obtain ⟨bb, hbb, hgb⟩ := chkI_sound body hbody
           obtain ⟨b', hb', hg'⟩ := chkI_sound p h₃
           refine ⟨([op] ++ r₁.take (k - 1) ++ bb ++ [0x0B]) ++ b', ?_,
-            Instrs.cons (blockInstr_sound hi (runAll_sound readBlockType_sound hbt) hgb) hg'⟩
+            Silmaril.Wasm.Binary.Core.Instrs.cons (blockInstr_sound hi (runAll_sound readBlockType_sound hbt) hgb) hg'⟩
           calc op :: r₁ = op :: (r₁.take (k - 1) ++ r₁.drop (k - 1)) := by
                 rw [List.take_append_drop]
             _ = _ := by rw [hbb, hb']; simp
@@ -304,7 +304,7 @@ theorem chkI_sound : ∀ (p : IPlan) {r r' : List UInt8} {is : List Instr},
             obtain ⟨b', hb', hg'⟩ := chkI_sound p h₄
             subst hop
             refine ⟨([0x04] ++ r₁.take (k - 1) ++ b₁ ++ [0x05] ++ b₂ ++ [0x0B]) ++ b', ?_,
-              Instrs.cons (Instr.ifElse (runAll_sound readBlockType_sound hbt) hg₁ hg₂) hg'⟩
+              Silmaril.Wasm.Binary.Core.Instrs.cons (Silmaril.Wasm.Binary.Core.Instr.ifElse (runAll_sound readBlockType_sound hbt) hg₁ hg₂) hg'⟩
             calc 0x04 :: r₁ = 0x04 :: (r₁.take (k - 1) ++ r₁.drop (k - 1)) := by
                   rw [List.take_append_drop]
               _ = _ := by rw [hb₁, hb₂, hb']; simp
@@ -351,7 +351,7 @@ theorem chkCode_sound {p : CPlan} {r r' : List UInt8} {code : List ValType × Ex
   have hv : Vec (Silmaril.Wasm.Binary.Core.Locals Forms.all) (c.take p.kLocals) lss :=
     runAll_sound (readVec_sound readLocalsGroup_sound) hl
   have hf : Silmaril.Wasm.Binary.Core.Func Forms.all c (lss.flatten, is) := by
-    have hf' := Func.mk hv (Expr.mk hgb) hcount
+    have hf' := Silmaril.Wasm.Binary.Core.Func.mk hv (Silmaril.Wasm.Binary.Core.Expr.mk hgb) hcount
     rwa [← hbb, List.take_append_drop] at hf'
   have hr : r = (r.take p.kSize ++ c) ++ (r.drop p.kSize).drop len := by
     rw [List.append_assoc, List.take_append_drop, List.take_append_drop]

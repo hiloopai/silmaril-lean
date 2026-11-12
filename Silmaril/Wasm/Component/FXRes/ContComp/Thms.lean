@@ -54,7 +54,7 @@ theorem contProg_tables (P : Profile) (prof : ProfileKind) (j : InstId)
   refMulti_tables_host tabHost_none hi hr hc
 
 /-- info: 'Silmaril.Wasm.Component.FXRes.ContComp.contProg_tables' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms contProg_tables
 
 end Silmaril.Wasm.Component.FXRes.ContComp

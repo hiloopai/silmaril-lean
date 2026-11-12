@@ -86,7 +86,7 @@ theorem take_moves {s : Store (FXCode (CH H))} {tb tb' : Silmaril.Wasm.Component
   ⟨Function.update_self _ _ _, dead_after_take ht hwf⟩
 
 /-- info: 'Silmaril.Wasm.Component.FXRes.ContPool.pool_identities' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms pool_identities
 
 end Silmaril.Wasm.Component.FXRes.ContPool

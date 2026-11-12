@@ -117,7 +117,7 @@ theorem instBridgeE_noGlobals (c : Simple) (hD : Lime1Dom c) (hi : c.Inst)
   Silmaril.Proofs.Wasm.Component.Lime1Inst.instBridgeE_noGlobals c hD hi hg I hI
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Inst.instBridgeE_noGlobals' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms instBridgeE_noGlobals
 
 /-- **The Lime1 instantiation bridge** (`Lime1Bridge.InstBridgeE`, proved). -/
@@ -147,11 +147,11 @@ theorem Simple.sound_lime1_of_machine (hR : RefToSpecELime1)
   Simple.sound_lime1_of_E hR instBridgeE prof c hD hc hf hi ha j vs hvs b hb
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Inst.instBridgeE' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms instBridgeE
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Inst.refToSpec_lime1_of_machine' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpec_lime1_of_machine
 
 end Silmaril.Wasm.Component.Lime1Inst

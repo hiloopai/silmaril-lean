@@ -97,7 +97,7 @@ theorem sound_fxEV_frag (P : Profile) (prof : Silmaril.Wasm.Component.ProfileKin
   FXRefV.SimpleFX.sound_fxEV P prof c hc hf hi ha (typed_of_frag hi hc hF) j vs hvs b hb
 
 /-- info: 'Silmaril.Wasm.Component.FXTyped.refToSpecFX_frag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpecFX_frag
 
 end Silmaril.Wasm.Component.FXTyped

@@ -124,11 +124,11 @@ theorem v10EmbM_v20 (H : Type) (m : Silmaril.Wasm.V1.Module) :
   (Silmaril.Wasm.V1.Module.toV2_toCore m).symm
 
 /-- info: 'Silmaril.Wasm.Models.V10Mvp.v10EmbM' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms v10EmbM
 
 /-- info: 'Silmaril.Wasm.Models.V10Mvp.validInM_v10' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms validInM_v10
 
 end Silmaril.Wasm.Models.V10Mvp

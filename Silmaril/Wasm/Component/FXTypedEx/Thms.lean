@@ -84,11 +84,11 @@ theorem typed_not_general (P : Profile) :
     Silmaril.Proofs.Wasm.Component.FXTypedEx.badC_arity)
 
 /-- info: 'Silmaril.Wasm.Component.FXTypedEx.susC_refToSpec' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms susC_refToSpec
 
 /-- info: 'Silmaril.Wasm.Component.FXTypedEx.typed_not_general' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms typed_not_general
 
 end Silmaril.Wasm.Component.FXTypedEx

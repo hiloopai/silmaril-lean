@@ -49,7 +49,7 @@ theorem refToSpecFXE_nil (P : Profile) (prof : Silmaril.Wasm.Component.ProfileKi
   exact Silmaril.Wasm.Component.FXRefE.refToSpecE_fx P prof _ hc hf hinst ha
 
 /-- info: 'Silmaril.Wasm.Component.FXRefX.refToSpecFXE_nil' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpecFXE_nil
 
 end Silmaril.Wasm.Component.FXRefX

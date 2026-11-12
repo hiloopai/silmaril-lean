@@ -156,15 +156,15 @@ theorem v10_storeIn {H : Type} (s : Silmaril.Wasm.V1.Execution.Store H) :
   Silmaril.Proofs.Wasm.Models.Lime1Mvp.storeIn_v10 s
 
 /-- info: 'Silmaril.Wasm.Models.Lime1Mvp.v10_storeIn' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms v10_storeIn
 
 /-- info: 'Silmaril.Wasm.Models.Lime1Mvp.lime1EmbM' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms lime1EmbM
 
 /-- info: 'Silmaril.Wasm.Models.Lime1Mvp.table_obstruction' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms table_obstruction
 
 end Silmaril.Wasm.Models.Lime1Mvp

@@ -155,19 +155,19 @@ theorem suspend_to_label_stuck (s : Store H) (K : List (Option ContFX)) (f : Fra
   Silmaril.Proofs.Wasm.Models.FXLower.suspend_to_label_stuck s K f n k vs j l
 
 /-- info: 'Silmaril.Wasm.Models.FXLower.lower_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms lower_correct
 
 /-- info: 'Silmaril.Wasm.Models.FXLower.lower_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms lower_sound
 
 /-- info: 'Silmaril.Wasm.Models.FXLower.behaviours_onHandler' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms behaviours_onHandler
 
 /-- info: 'Silmaril.Wasm.Models.FXLower.lower_after_admin' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms lower_after_admin
 
 end Silmaril.Wasm.Models.FXLower

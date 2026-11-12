@@ -71,7 +71,7 @@ theorem SimpleFX.sound_fxEV (P : Profile) (prof : Silmaril.Wasm.Component.Profil
     (refToSpecFX P prof c hc hf hi ha ht _ (List.getElem_mem j.isLt) vs hvs hb)
 
 /-- info: 'Silmaril.Wasm.Component.FXRefV.refToSpecFX' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpecFX
 
 /--

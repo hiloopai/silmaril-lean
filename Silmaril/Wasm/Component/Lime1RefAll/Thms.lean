@@ -26,7 +26,7 @@ theorem refToSpec_lime1_of_engine (hI : Lime1RefE.Lime1InstOk)
   Lime1RefE.refToSpec_lime1_of_E' hI hT Lime1Inst.instBridgeE
 
 /-- info: 'Silmaril.Wasm.Component.Lime1RefAll.refToSpec_lime1_of_engine' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpec_lime1_of_engine
 
 end Silmaril.Wasm.Component.Lime1RefAll

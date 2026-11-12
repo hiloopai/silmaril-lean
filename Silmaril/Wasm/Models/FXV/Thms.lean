@@ -69,11 +69,11 @@ theorem behavioursFX'_ofCoreK (K : List (Option ContFX)) (c : Config H) :
   Silmaril.Proofs.Wasm.Models.FXV.behavioursFX'_ofCoreK K c
 
 /-- info: 'Silmaril.Wasm.Models.FXV.behavioursFX_incl' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms behavioursFX_incl
 
 /-- info: 'Silmaril.Wasm.Models.FXV.behavioursFX'_ofCoreK' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms behavioursFX'_ofCoreK
 
 end Silmaril.Wasm.Models.FXV

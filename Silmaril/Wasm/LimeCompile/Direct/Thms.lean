@@ -136,7 +136,7 @@ theorem lowerL_length : ∀ es : List Instr, (lowerL es).length = es.length
   | i :: es => by rw [lowerL, List.length_cons, List.length_cons, lowerL_length es]
 
 /-- info: 'Silmaril.Wasm.LimeCompile.Direct.compile_correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms compile_correct
 
 end Silmaril.Wasm.LimeCompile.Direct

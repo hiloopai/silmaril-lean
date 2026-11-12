@@ -72,19 +72,19 @@ theorem Simple.sound_lime1 (prof : Silmaril.Wasm.Component.ProfileKind) (c : Sim
   Lime1Inst.Simple.sound_lime1_of_machine refToSpecE_lime1 prof c hD hc hf hi ha j vs hvs b hb
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Eng.lime1Typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms lime1Typed
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Eng.lime1Inst' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms lime1Inst
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Eng.refToSpec_lime1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms refToSpec_lime1
 
 /-- info: 'Silmaril.Wasm.Component.Lime1Eng.Simple.sound_lime1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
+#guard_msgs (whitespace := lax) in
 #print axioms Simple.sound_lime1
 
 end Silmaril.Wasm.Component.Lime1Eng
