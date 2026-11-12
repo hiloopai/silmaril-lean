@@ -77,7 +77,7 @@ globs = [
   "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+", "Silmaril.Project.+", "Silmaril.Proofs.Calculi.+",
   "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Elf.+",
-  "Silmaril.Proofs.Formats.+",
+  "Silmaril.Proofs.Formats.+", "Silmaril.Proofs.Libc.+",
   "Silmaril.Proofs.Games.+", "Silmaril.Proofs.Logic.+", "Silmaril.Proofs.Problems.+",
   "Silmaril.Proofs.Process.+", "Silmaril.Proofs.Project.+", "Silmaril.Proofs.SSA.+",
   "Silmaril.Proofs.Wasm.Auto.+", "Silmaril.Proofs.Wasm.Auto2.+",
@@ -102,7 +102,10 @@ globs = [
   "Silmaril.Wasm.Text.+", "Silmaril.Wasm.Tools.+", "Silmaril.Wasm.TypeUse", "Silmaril.Wasm.Types",
   "Silmaril.Wasm.V1.+", "Silmaril.Wasm.V2.+", "Silmaril.Wasm.Validation.+",
   "Silmaril.Wasm.Verify.+", "Silmaril.Wasm.Wac.+", "Silmaril.Wasm.Wat.*", "Silmaril.WasmSpec.+",
-  "Silmaril.X86.+"
+  "Silmaril.X86.+",
+  # SSA calculi, λRTL and the machine RTL (docs/projects/ssa.md).
+  "Silmaril.Proofs.Machine.+", "Silmaril.Proofs.Semantics.+", "Silmaril.Raw.Calculi.+",
+  "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
