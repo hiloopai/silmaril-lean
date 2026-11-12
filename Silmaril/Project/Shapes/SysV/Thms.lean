@@ -5,6 +5,7 @@ public import Silmaril.Project.Shapes.X86.Thms
 public import Silmaril.X86.FnContract.Thms
 public import Silmaril.X86.Link.Blob.Thms
 public import Silmaril.X86.Bir9.Defs
+import Silmaril.Proofs.Project.Shapes.SysV
 
 /-! # Standard problem shapes: System V functions (theorems)
 
@@ -16,6 +17,10 @@ public import Silmaril.X86.Bir9.Defs
   `Silmaril.Project.Shapes.C.CompilesTo.of_lift`; `Lifts.implements_of_refines` is it for a lift.
 * `Implements.abiFn`: an `Implements` row is a row of `silmaril.shapes.x86.abi_function` for its
   System V contract, on a model whose views are the open state's (the standard ones).
+* `Enterable.of_fits`: a placement that leaves room for its frame and a return address below
+  the top of the address space can be entered for every argument tuple of a signature with at
+  most six INTEGER arguments, on a model whose states are all live (the standard ones) — so
+  `Enterable` is satisfiable (`Silmaril.Proofs.Project.Shapes.SysV.exists_callEntry`).
 * `Implements.not_of_never_safe`: a source that is never safe has no `Implements` row.
 * `ObjectFn.of_blob`: a row of `elf.object_fn` from a `Blob` certificate of the file and one run
   of the kernel-fast object reader.
@@ -96,6 +101,16 @@ theorem Implements.abiFn {M : Model} (hmem : ∀ s, M.mem s = s.memory)
   obtain ⟨m, hl, habi, hce⟩ := hen a
   refine ⟨entersAt_sysvSpec hmem hcore, ⟨m, hl, ?_, a, hce, ha⟩, hc.contract⟩
   rw [hmem, hcore]; exact habi
+
+/-- **A placement that fits can be entered for every argument tuple** (at most six INTEGER
+arguments, all in registers). -/
+theorem Enterable.of_fits {M : Model} (hlive : ∀ s, M.live s) {p : Placement} {frame : Nat}
+    (hargs : sig.arguments.length ≤ 6)
+    (fits : p.base.toNat + p.code.length + frame + 48 ≤ 2 ^ 64) (hoff : p.off ≤ p.code.length) :
+    Enterable M p sig frame := fun a =>
+  let ⟨m, habi, hce⟩ := Silmaril.Proofs.Project.Shapes.SysV.exists_callEntry p sig frame hargs
+    fits hoff a
+  ⟨m, hlive m, habi, hce⟩
 
 /-- **A source that is never safe has no `Implements` row.** -/
 theorem Implements.not_of_never_safe {M : Model} {p : Placement} {frame : Nat}

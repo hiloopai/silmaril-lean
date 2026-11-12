@@ -162,10 +162,10 @@ The group `silmaril.sysv_tv.max2` of `silmaril/selftest.toml` collects these row
 
 | | |
 | --- | --- |
-| **Proved** | `Meaning.Refines.{refl,trans}`, `sysvSpec_sub`, `strict_mono`, `Implements.of_refines`, `Lifts.implements_of_refines`, `C.CompilesTo.of_lift` (the composition), `C.CompilesToBuilds.of_lifts`, `Implements.abiFn`, `Implements.not_of_never_safe`, `ObjectFn.of_blob`; the generic cut-point simulation `Silmaril.Compiler.CompilesTo.Sim` with `Corr.whole_of_segments` |
+| **Proved** | `Meaning.Refines.{refl,trans}`, `sysvSpec_sub`, `strict_mono`, `Implements.of_refines`, `Lifts.implements_of_refines`, `C.CompilesTo.of_lift` (the composition), `C.CompilesToBuilds.of_lifts`, `Implements.abiFn`, `Implements.not_of_never_safe`, `ObjectFn.of_blob`, `Enterable.of_fits` (every placement that fits is enterable for signatures with up to six INTEGER arguments, by an explicit witness state); the generic cut-point simulation `Silmaril.Compiler.CompilesTo.Sim` with `Corr.whole_of_segments` |
 | **Trusted definitions** | The x86 model (`Open9.isa` and the others; see [x86](../x86.md)). The System V reading of arguments and results (`Silmaril.X86.SystemV`). The Cerberus port and its Core dynamics. The meaning of a construct the port does not support is "unsafe" (it permits anything). |
 | **Checked by compiled evaluation only** | C text to typed Ail (the frontend's typing pass is `partial`) |
-| **Open** | The example's `compiles_to`, `lifts` and `ir_refines` rows. `Enterable` is not yet proved generically for placements (a witness-state construction like `Nonvacuous.of_entered`). The relation of `C.CompilesTo` to segment-level simulations built on `Sim`. |
+| **Open** | The example's `compiles_to`, `lifts` and `ir_refines` rows (their `Enterable` conjuncts are proved: `o0_enterable`, `o2_enterable`). `Enterable` for signatures with stack arguments (more than six). The relation of `C.CompilesTo` to segment-level simulations built on `Sim`. |
 
 **Profile:** INTEGER-class scalar arguments and results. The Core meaning additionally takes
 `int` parameters (the objects of the verified Core library). The function writes only its stack

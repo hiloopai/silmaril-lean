@@ -226,6 +226,18 @@ evaluates the elaborator). The first conjunct of the `elaborates` row. -/
 public theorem elab_ok : Silmaril.Project.Shapes.C.ElabAil ail = .ok elaborated := by
   cbv
 
+/-- Both placements can be entered for every argument tuple (the first conjunct of the
+`compiles_to` and `lifts` rows). -/
+public theorem o0_enterable : Silmaril.Project.Shapes.SysV.Enterable Silmaril.X86.Open9.isa
+    O0.placement sig 16 :=
+  Silmaril.Project.Shapes.SysV.Enterable.of_fits (fun _ => trivial) (by decide) (by decide)
+    (by decide)
+
+public theorem o2_enterable : Silmaril.Project.Shapes.SysV.Enterable Silmaril.X86.Open9.isa
+    O2.placement sig 0 :=
+  Silmaril.Project.Shapes.SysV.Enterable.of_fits (fun _ => trivial) (by decide) (by decide)
+    (by decide)
+
 /-! ### Open rows, frozen as `Task` statements -/
 
 /-- Open: C to Core (checked by compiled evaluation above; a kernel proof evaluates the
