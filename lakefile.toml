@@ -63,6 +63,58 @@ rev = "13567aed1ac4f12aea9484178e07e51f8c9f7658"
 [[lean_lib]]
 name = "Silmaril"
 globs = ["Silmaril.*"]
+# The SpecTec streams and sources read while elaborating (`spectec_import`,
+# `spectec_check_stream`, the surface-language checks): see specs/spectec/README.md.
+needs = [
+  "spectecWasm10", "spectecWasm20", "spectecWasm30",
+  "spectecMainWasm10", "spectecMainWasm20", "spectecMainWasm30",
+  "spectecSurfaceVars", "spectecSurfaceNum", "spectecSurfaceBinary",
+]
+
+[[input_file]]
+name = "spectecWasm10"
+path = "specs/spectec/wasm-1.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecWasm20"
+path = "specs/spectec/wasm-2.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecWasm30"
+path = "specs/spectec/wasm-3.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecMainWasm10"
+path = "specs/spectec/e7a9df7c/wasm-1.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecMainWasm20"
+path = "specs/spectec/e7a9df7c/wasm-2.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecMainWasm30"
+path = "specs/spectec/e7a9df7c/wasm-3.0.ast"
+text = false
+
+[[input_file]]
+name = "spectecSurfaceVars"
+path = "specs/spectec/src/specification/wasm-3.0/0.1-aux.vars.spectec"
+text = false
+
+[[input_file]]
+name = "spectecSurfaceNum"
+path = "specs/spectec/src/specification/wasm-3.0/0.2-aux.num.spectec"
+text = false
+
+[[input_file]]
+name = "spectecSurfaceBinary"
+path = "specs/spectec/src/specification/wasm-3.0/5.1-binary.values.spectec"
+text = false
 
 # The `sil project` self-test (examples/project/selftest.sh). Its module reads files while it
 # elaborates: the records files and the registry under `silmaril/` (`silmaril load`, `silmaril
