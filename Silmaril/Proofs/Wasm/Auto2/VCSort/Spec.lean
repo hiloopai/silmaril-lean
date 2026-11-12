@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCSort.Conds
 
 /-!
-# Insertion sort through VC generator 4: the specification
+# Insertion sort through the VC generator: the specification
 
 `sort_tspec`: every function instance running `insertion_sort` meets `fspec sortFns sortSpecV`
 for total correctness (`genFunc_tsound` on `sort_vcs`). `spec_vcgen`: the same, restated as the

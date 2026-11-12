@@ -73,9 +73,9 @@ import closure (textual, `mor runtime-closure wasm-tools-core --list`) is 79 pro
   BinaryP3/Encode,BinaryP3/Check,Wat,Wat/Ids,Wat/Sexp}/Defs` and the component text reader
   `Silmaril/Wasm/Wac/WatX/Defs` (8 + 1 modules). They ship in wave 1 as part of the core
   CLI; the `component` subcommands that build on them do not;
-- the parser combinators of the component binary decoder: `Silmaril/Wasm/ByteParse/Defs` only.
+- the parser combinators of the component binary decoder: `Silmaril/Parse/ByteParse/Defs` only.
   A `Grammar` there pairs a parser with the relation it implements; the laws (soundness and
-  completeness, `Grammar.Lawful`) are instances proved in `Silmaril/Proofs/Wasm/ByteParse/*` and
+  completeness, `Grammar.Lawful`) are instances proved in `Silmaril/Proofs/Parse/ByteParse/*` and
   `Silmaril/Proofs/Wasm/Component/*/Lawful`, which the executable does not import. Those proofs,
   and the round trips of the component codec, belong to the component half of the CLI and are
   not part of wave 1: in wave 1 the component decoder is shipped, and tested, as definitions.

@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.Auto2.VCBTree.Conds
 public import Silmaril.Wasm.Auto2.VCSort.Thms
 
 /-!
-# The B-tree library's array functions through VC generator 4: the specification
+# The B-tree library's array functions through the VC generator: the specification
 
 `get_tspec`, `find_tspec`: total correctness of `oba_get` and `oba_find` against the annotated
 specifications (`genFunc_tsound`); `obaSpec_vcgen`: the specification library's

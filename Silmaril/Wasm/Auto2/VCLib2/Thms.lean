@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCLib2.Lib
 
 /-!
-# Contracts with memory and callees (VC library, pass 2): results
+# Contracts with memory and callees (VC library): results
 
 `Silmaril.Proofs.Wasm.Auto2.VCLib2.Lib`:
 
@@ -12,7 +12,7 @@ public import Silmaril.Proofs.Wasm.Auto2.VCLib2.Lib
 * kernel-checked checks (`decide +kernel` of `vcCheckM`): `double_spec`, `doubleSwap_spec` (a
   callee with other code), `load2_spec`, `load2Swap_spec` (accepted by normalisation),
   `maxSelect_spec` and `addSwap_spec` (the front-end benchmark's `max-select` and `add-swap`
-  against the `max` and `add` contracts, which pass 1's syntactic check left unknown); the
+  against the `max` and `add` contracts, which the syntactic check of `VCBridge.vcCheck` leaves unknown); the
   mutants `doubleSubProg`, `load2OffProg`, `addSub` are not accepted;
 * globals: `bumpEntry`, `addnEntry` (a global written in a loop), `frameEntry` (a stack pointer
   restored), kernel-checked `bump_spec`, `addn_spec`, `frame_spec`; the mutants `bumpLostProg` and

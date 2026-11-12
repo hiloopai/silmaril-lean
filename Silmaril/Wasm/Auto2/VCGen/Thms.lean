@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.Auto2.VCGen.Rec
 public import Silmaril.Wasm.Auto.VCGen.Thms
 
 /-!
-# Generator 4 (SSA names, memory, variants, entry facts): results and tactics
+# The VC generator (SSA names, memory, variants, entry facts): results and tactics
 
 `Silmaril.Wasm.Auto2.VCGen` is `Silmaril.Wasm.Auto.VCGen3` (loop variants for total correctness) whose
 loop heads keep the entry path condition (see `Silmaril.Wasm.Auto2.VCGen.Defs`). Proofs in `Silmaril.Proofs.Wasm.Auto2.VCGen.{Basic,Step,Ren,Call,Sound,Func}`,
@@ -19,11 +19,11 @@ written once for both readings `c : Corr` of the every-run logic (`Wp .part = HW
   the iteration), the same conditions give `TFSpecAt P host a (fspec F S a fi)`: every run of
   every call terminates (no trap, no exception) with results of the declared types and a final
   memory satisfying `S.post`. Callees must then be totally correct (`CalleesValid .total`);
-* **`genFunc_tsound_rec`** (round 2, pass 3, `Silmaril.Proofs.Wasm.Auto2.VCGen.Rec`): a function
+* **`genFunc_tsound_rec`** (`Silmaril.Proofs.Wasm.Auto2.VCGen.Rec`): a function
   that calls itself, checked against a recursive callee contract under a family of specification
   functions `Fs N` (a bound), meets its specification under every `Fs N` (induction on `N`);
   callees are assumed for calls from a store with the same functions (`fspecIn`, `CallsOK`);
-* callees with globals (pass 3): a callee may use a prefix of the caller's globals; `callStep`
+* callees with globals: a callee may use a prefix of the caller's globals; `callStep`
   binds its entry globals to the caller's current values and its final globals to fresh names;
   variants may name globals and read the memory at entry (`varOK`, `Tm.curFree`);
 * `gen_sound` (any code, labels and continuation, either reading), `step1_sound`, `sound_call`,
@@ -31,7 +31,7 @@ written once for both readings `c : Corr` of the every-run logic (`Wp .part = HW
   variable: what keeps the head values of a loop, and so its variant bound, fixed during an
   iteration).
 
-**Globals** (round 2, pass 2): `FnSpec.globals` lists the module's integer globals
+**Globals**: `FnSpec.globals` lists the module's integer globals
 `0, …, k - 1` the function reads and writes; the generator keeps them as symbolic locals after the
 declared ones (fresh names on `global.set`, havoc at loop heads like locals; callees may not use
 globals), `fspec`'s precondition states their entry values (`GlobOk`: distinct addresses, values
@@ -44,7 +44,7 @@ placeholders). Store lemmas in `Silmaril.Proofs.Wasm.Auto2.VCGen.Glob`, `global.
 
 * **`vcgen4_reduce`**: on a goal `AllValid F l` with `l` closed (typically
   `genFunc S code fuel`), computes the list of conditions by `Meta.reduce` and replaces `l` by
-  it, through an auxiliary lemma checked by the kernel (as pass 1's `vcgen_reduce`);
+  it, through an auxiliary lemma checked by the kernel (as `vcgen_reduce` of `Silmaril.Wasm.Auto.VCGen`);
 * **`vcgen4`**: `vcgen4_reduce`, then unfold the denotation of the conditions with `simp only`,
   split them into one goal each and name the variables (`ρ.e32 i` is `vi`, `ρ.e64 i` is `wi`,
   memory variable `ρ.mem i` is `Mi`; `M0` is the memory at entry), as `vcgen2`.

@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCBTree.Spec
 
 /-!
-# The B-tree library's array functions through VC generator 4: results
+# The B-tree library's array functions through the VC generator: results
 
 Proofs in `Silmaril.Proofs.Wasm.Auto2.VCBTree.{Conds,Spec}`, for `Silmaril.Wasm.Auto2.VCBTree.Defs`:
 
@@ -12,7 +12,7 @@ Proofs in `Silmaril.Proofs.Wasm.Auto2.VCBTree.{Conds,Spec}`, for `Silmaril.Wasm.
 * `get_tspec`, `find_tspec`: total correctness against the annotated specifications;
 * **`obaSpec_vcgen`**: the specification library's `Silmaril.WasmSpec.BTree.OBASpec`, a second
   solution through the generator. (`btree_search`, `SearchSpec`, stays open: its loop descends a
-  tree whose depth is not an `i32` term of the locals, so it has no variant in generator 4's
+  tree whose depth is not an `i32` term of the locals, so it has no variant in the generator's
   sense; see `docs/projects/wasm-binaryen-tooling.md`.)
 -/
 

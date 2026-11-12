@@ -18,10 +18,10 @@ not a fast serializer.
 
 namespace Silmaril.Wasm.Component.Binary.Encode
 
-open Silmaril.Wasm.ByteParse (Bytes)
-open Silmaril.Wasm.ByteParse.Enc (u32 sized)
+open Silmaril.Parse.ByteParse (Bytes)
+open Silmaril.Parse.ByteParse.Enc (u32 sized)
 
-def name (s : String) : Option Bytes := Silmaril.Wasm.ByteParse.Enc.name s
+def name (s : String) : Option Bytes := Silmaril.Parse.ByteParse.Enc.name s
 
 def attribute_ : Attribute → Option Bytes
   | .implements s => (0x00 :: ·) <$> name s
@@ -35,14 +35,14 @@ def externName (n : ExternName) : Option Bytes :=
   | .plain1 => (0x01 :: ·) <$> name n.name
   | .attrs as => do
     let a ← name n.name
-    let b ← Silmaril.Wasm.ByteParse.Enc.vec attribute_ as
+    let b ← Silmaril.Parse.ByteParse.Enc.vec attribute_ as
     pure (0x02 :: (a ++ b))
 
 def vec {α : Type} (f : α → Option Bytes) (xs : List α) : Option Bytes :=
-  Silmaril.Wasm.ByteParse.Enc.vec f xs
+  Silmaril.Parse.ByteParse.Enc.vec f xs
 
 def opt {α : Type} (f : α → Option Bytes) (o : Option α) : Option Bytes :=
-  Silmaril.Wasm.ByteParse.Enc.opt f o
+  Silmaril.Parse.ByteParse.Enc.opt f o
 
 def coreSort : CoreSort → Bytes
   | .func => [0x00] | .table => [0x01] | .memory => [0x02] | .global => [0x03]
@@ -181,7 +181,7 @@ def coreType : CoreType → Option Bytes
 
 def valType : ValType → Option Bytes
   | .prim p => some [p.byte]
-  | .idx i => if i < 2 ^ 32 then Silmaril.Wasm.ByteParse.Enc.sN 33 i else none
+  | .idx i => if i < 2 ^ 32 then Silmaril.Parse.ByteParse.Enc.sN 33 i else none
 
 def labelValType (p : String × ValType) : Option Bytes := do
   let n ← name p.1

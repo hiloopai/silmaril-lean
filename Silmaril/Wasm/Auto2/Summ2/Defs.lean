@@ -4,19 +4,19 @@ public import Silmaril.Wasm.Auto2.Calls.Defs
 public import Silmaril.Wasm.Auto2.Kernel.Defs
 
 /-!
-# Function summaries, pass 2 of the summaries track: a third simplifier, kernel-cheap checks
+# Function summaries: a third simplifier, kernel-cheap checks
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, section "Round 2, track summaries (pass 2)". Two additions
+Two additions
 to the summaries with unrolled loops and inlined calls (`Silmaril.Wasm.Auto2.Calls`):
 
 * **A third simplifier** `simp3`, applied after `Silmaril.Wasm.Auto2.Summ.canon2` (`canon3`): an
   unsigned remainder by a constant `2^k` is a mask (`x rem_u 2^k = x and (2^k - 1)`), and the
   count of a shift or rotation by a constant is reduced modulo the width (`rotl x (-2)` is
   `rotl x 30` on `i32`). These are the identities Binaryen `-O2` uses on the `opt-in` corpus'
-  `f29` and `f30`, which pass 1 proved only by e-graph lifts. `sumCheckV` is
+  `f29` and `f30`, which the summaries without `simp3` prove only by e-graph lifts. `sumCheckV` is
   `Silmaril.Wasm.Auto2.Summ.sumCheckU` with `canon3` for the results (it accepts every pair
   `sumCheckU` accepts: `canon3 = canon ∘ simp3 ∘ canon2`).
-* **Kernel-cheap checks**: `checkAmongVK` is `checkAmongV` over the kernel track's validation-free
+* **Kernel-cheap checks**: `checkAmongVK` is `checkAmongV` over the validation-free
   instance `Silmaril.Wasm.Auto2.Kernel.instK?`, with memories compared by
   `Silmaril.Wasm.Auto2.Kernel.bytesEqL` (`checkAmongV_eq_K`, given that both modules validate). The
   `chunkV` theorems of `wasm-check` certificates rewrite to it, so the summaries of modules
@@ -68,7 +68,7 @@ def simp3 : IntType → XT → XT
   | t, .sel c a b => .sel (simp3 .i32 c) (simp3 t a) (simp3 t b)
   | _, e => e
 
-/-- **The simplifier of pass 2**: `canon2`, the third simplifier, `canon`. -/
+/-- **The simplifier of `sumCheckV`**: `canon2`, the third simplifier, `canon`. -/
 def canon3 (t : IntType) (e : XT) : XT := canon t (simp3 t (canon2 t e))
 
 /-- Simplified slots. -/

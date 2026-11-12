@@ -5,7 +5,7 @@ public import Silmaril.Wasm.Wat
 public import Silmaril.Wasm.Auto2.VCLib.Defs
 
 /-!
-# Equivalence of loops through a shared contract (round 2, summaries, pass 2)
+# Equivalence of loops through a shared contract
 
 The function summaries of `Silmaril.Wasm.Auto2.Summ` and `Silmaril.Wasm.Auto2.Calls` unroll a loop only
 when its trip count is a constant. A loop whose trip count depends on the inputs needs an

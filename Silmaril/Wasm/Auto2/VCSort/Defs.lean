@@ -4,11 +4,11 @@ public import Silmaril.Wasm.Auto2.VCGen.Defs
 public import Silmaril.WasmSpec.InsertionSort.Thms
 
 /-!
-# Insertion sort through VC generator 4 (two-memory predicates)
+# Insertion sort through the VC generator (two-memory predicates)
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, track vcgen (pass 2): the Wasm specification library's
+The Wasm specification library's
 `insertion_sort` (`Silmaril.WasmSpec.InsertionSort.sortFunc`) against an annotated specification of
-generator 4 whose postcondition and invariants relate the current memory to the memory at entry
+the VC generator whose postcondition and invariants relate the current memory to the memory at entry
 (`Fm.pr2`, `Fns.pr2`):
 
 * precondition (`pr 0`): the segment `[p, p + 4 n)` is in memory and does not wrap;

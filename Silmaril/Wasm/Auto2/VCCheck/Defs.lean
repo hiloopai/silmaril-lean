@@ -5,9 +5,9 @@ public import Silmaril.Wasm.Auto2.VCNorm.Defs
 /-!
 # The VC stage with memory, callees and normalised conditions
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, track vcgen (pass 2). Pass 1's check
-(`Silmaril.Wasm.Auto2.VCBridge.vcCheck`) took contracts without memory and without callees, and
-accepted a condition only if it was syntactically a proved one. Here:
+The basic check
+(`Silmaril.Wasm.Auto2.VCBridge.vcCheck`) takes contracts without memory and without callees, and
+accepts a condition only if it is syntactically a proved one. Here:
 
 * `VcEntryM`: a proved contract that **may use memory `0`** and **may call** functions of the same
   module (`calls`: index, total specification without callees, proved conditions). The callees'
@@ -19,7 +19,7 @@ accepted a condition only if it was syntactically a proved one. Here:
   of a proved condition);
 * `ModTSpecM`: the total every-run specification of the export (`fspec`, whose precondition states
   the memory at entry, `MemOk`, and the callees in the store, `Callees`);
-* `VcEntry.toM`: pass 1's contracts; `checkMeetsVCN`: the front end with this check (for
+* `VcEntry.toM`: the contracts of `VcEntry`; `checkMeetsVCN`: the front end with this check (for
   contracts without memory and callees, where the statement is the front end's `ModMeets`).
 
 Soundness in `Silmaril.Wasm.Auto2.VCCheck.Thms`.
@@ -60,7 +60,7 @@ structure VcEntryM where
   callsOK : ∀ c ∈ calls, c.2.1.total = true ∧ c.2.1.calls = [] ∧ AllValid F c.2.2 := by
     intro c hc; cases hc
 
-/-- Pass 1's contracts (no memory, no callees). -/
+/-- The contracts of `VcEntry` (no memory, no callees). -/
 def _root_.Silmaril.Wasm.Auto2.VCBridge.VcEntry.toM (e : VcEntry) : VcEntryM where
   name := e.name
   F := e.F

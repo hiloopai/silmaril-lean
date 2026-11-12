@@ -5,7 +5,7 @@ public import Silmaril.Wasm.Auto2.VCGen.Thms
 public import Silmaril.Wasm.Logic.Words.Thms
 
 /-!
-# The B-tree library's array functions through VC generator 4: the conditions
+# The B-tree library's array functions through the VC generator: the conditions
 
 The 2 conditions of `oba_get` and the 7 of `oba_find` (loop entry, the length's load, the two
 exits, the element's load, invariant step, variant), from the `OBA` facts.

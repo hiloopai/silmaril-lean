@@ -4,11 +4,11 @@ public import Silmaril.Wasm.Auto2.VCGen.Defs
 public import Silmaril.WasmSpec.BTree.Defs
 
 /-!
-# The B-tree library's array functions through VC generator 4
+# The B-tree library's array functions through the VC generator
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, track vcgen (pass 2): `oba_get` and `oba_find` of the Wasm
+`oba_get` and `oba_find` of the Wasm
 specification library's B-tree entry (`Silmaril.WasmSpec.BTree`, the ordered bounded arrays of Watt
-et al.) against annotated specifications of generator 4, whose user predicates state the
+et al.) against annotated specifications of the VC generator, whose user predicates state the
 library's `OBA` facts for every capacity and contents:
 
 * `oba_get(x, k)`: if `OBA B x n α` and `k < |α|` for some `n, α` (precondition `pr 0`), the

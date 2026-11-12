@@ -11,8 +11,8 @@ public import Silmaril.Wasm.Auto.Front.Defs
 # Kernel-cheap instantiation of decoded modules
 
 The certificates of `wasm-check` decide statements about `Silmaril.Wasm.Verify.instance? m`
-by kernel evaluation (`decide +kernel`, `kernel_rfl`). Round 3 of `docs/projects/wasm-binaryen-tooling.md`
-found two costs besides decoding binaries (which `wat3b!` terms avoid):
+by kernel evaluation (`decide +kernel`, `kernel_rfl`). Measurements
+(`docs/projects/wasm-binaryen-tooling.md`) show two costs besides decoding binaries (which `wat3b!` terms avoid):
 
 * **every kernel evaluation validates both modules again**: a certificate of an optimizer run
   evaluates `instance?` in every chunk of exports and every e-graph lift (18 times for the
@@ -32,7 +32,7 @@ specification one (`Silmaril.Wasm.Auto2.Kernel.Thms`):
   list of bytes (linear, lazy in the part of the memory after the segment) under the same bounds
   checks; outside the fast path (an address range that wraps) it is `memoryInitLoop` itself;
   `tableInitLoopK` is the same for element segments (`tableInitLoop`: one `List.set` of the table
-  per element; pass 2 of the kernel track);
+  per element);
 * `initDataSegK?`, `initDataListK?`, `initSegmentsK?`, `prepareDirectK?`, `instantiateOnceK?`:
   the segment initialisation and the instantiation with `memoryInitLoopK`
   (`instantiateOnceK?_eq : instantiateOnceK? = instantiateOnce?`);

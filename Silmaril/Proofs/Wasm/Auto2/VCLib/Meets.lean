@@ -198,8 +198,8 @@ def refEntries : List (String × RefEntry) :=
    ("add-ref", ⟨addEntry, addRef, fun _ _ => trivial, add_ref⟩),
    ("div10-mulhi-ref", ⟨div10Entry, div10RefFn, fun _ _ => trivial, div10_ref⟩)]
 
-/-- The benchmark cases the VC stage proves (their expected verdict was `unknown` in round 3 of the
-front end). -/
+/-- The benchmark cases the VC stage proves (the summary stages of the front end leave them
+`unknown`). -/
 def vcProved : List String := ["sum-ref", "max-ref", "add-ref", "div10-mulhi-ref"]
 
 /-- The `sum-ref` case: `SumTo`'s program meets the triangular numbers, at every profile (its

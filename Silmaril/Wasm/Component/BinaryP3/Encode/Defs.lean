@@ -16,8 +16,8 @@ sections and components are `Silmaril.Wasm.Component.Binary.Encode`'s. The round
 
 namespace Silmaril.Wasm.Component.BinaryP3.Encode
 
-open Silmaril.Wasm.ByteParse (Bytes)
-open Silmaril.Wasm.ByteParse.Enc (u32 sized)
+open Silmaril.Parse.ByteParse (Bytes)
+open Silmaril.Parse.ByteParse.Enc (u32 sized)
 open Silmaril.Wasm.Component.Binary (preambleBytes)
 open Silmaril.Wasm.Component.Binary.Encode (vec canonOpt resultList coreValType name)
 

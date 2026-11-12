@@ -3,9 +3,9 @@ module
 public import Silmaril.Wasm.Auto2.VCLib2.Defs
 
 /-!
-# VC library, pass 3: programs and specifications
+# VC library with linear arithmetic and recursion: programs and specifications
 
-Round 2 of `docs/projects/wasm-binaryen-tooling.md`, track vcgen (pass 3). Programs and annotated
+Programs and annotated
 specifications for the VC stage of `wasm-check` (`Silmaril.Wasm.Auto2.VCCheck.vcCheckM`); the
 proved contracts and the kernel-checked checks are in `Silmaril.Wasm.Auto2.VCLib3.Thms`.
 
@@ -103,7 +103,7 @@ def demoModules3 : List (String × Module) :=
    ("dbl-shl2", dblShl2Prog), ("add3", add3Prog), ("add3-assoc", add3AssocProg),
    ("add3-sub", add3SubProg), ("add3-mut", add3MutProg)]
 
-/-! ## Callees with globals, variants over globals (generator 4, pass 3) -/
+/-! ## Callees with globals, variants over globals -/
 
 /-- `incr2` calls `incr` (`g := g + 1`) twice. -/
 def incr2Prog := wat3! r#"
