@@ -58,11 +58,38 @@ Further results:
   of the hand-written pin records against generated facts (`decide`); `Version.Thms` proves the
   configurations' sanity conditions.
 
+**`calloc` and `realloc`, algorithm level** (`Silmaril.Proofs.Libc.Ptmalloc.Algo.{ReallocSteps,
+ReallocBody, Mremap, WorldRealloc, CallocReallocInst}`), unconditional for every `C` with `C.Ok`:
+
+* `Algo.bodyRealloc` (= `Task.algo.bodyRealloc`) and `Algo.wfIntRealloc`
+  (= `Task.algo.wfIntRealloc`): `_int_realloc` of a lent-out arena chunk, on all its paths (keep;
+  shrink with the remainder `_int_free`d; grow into top; grow into a free next chunk; and
+  `_int_malloc`, then glibc's in-place `newp == next` fusion or copy and `_int_free`), keeps
+  `LocalWF`, has a `Frame` and replaces the old payload by one of at least `nb - SIZE_SZ` bytes;
+* `Algo.mremap_body`: `mremap_chunk` moving an `mmap`ed chunk;
+* `Algo.wfCallocRealloc` (= `Task.algo.wfCallocRealloc C (ptmalloc C)`): `__libc_calloc` and
+  `__libc_realloc` (all paths: `realloc (p, 0)`, `mmap`ed chunks, arena chunks, the
+  multi-threaded retry) keep `WorldWF` and the thread set and change the live set as `allocLoose`
+  allows;
+* `Algo.calloc_refines`, `Algo.realloc_refines`: with ghost tokens (`RefInv`) a `calloc` or
+  `realloc` step meets the institution's `calloc`/`realloc` and keeps `RefInv`; at the pins:
+  `E2e.calloc239`, `E2e.realloc239`, and the data-only `calloc236`, `realloc236`, `calloc240`,
+  `realloc240`;
+* `Algo.noAbort` (= `Task.algo.noAbort C (ptmalloc C)`, stated on a view with its spatial facts):
+  `_int_malloc` and `_int_free` of a live arena payload never abort.
+
+The `_int_realloc` model's fallback (`Algo.reallocCopy`) states two facts about glibc's
+`next == newp` test as `internal` aborts (states the model's invariants exclude): `next` was
+not lent out before `_int_malloc`, and the new chunk is the old one's neighbour in the tiling
+(glibc's `next` is then a fence post or a lent-out chunk, which `_int_malloc` never returns).
+`wfIntRealloc` and `bodyRealloc` are about successful runs; that these aborts are unreachable (a
+`realloc` totality theorem) is not proved.
+
 Open: the other obligations remain `def Task.… : Prop` (for example the x86 simulations of the
-non-tcache paths, `Task.sim.*`, and `realloc`/`calloc`, `Task.algo.wfIntRealloc`,
-`Task.algo.wfCallocRealloc`); the theorems that use them take them as hypotheses. They are
-defined in `Silmaril.Libc.Ptmalloc.Algo.Tasks.Defs`, `Silmaril.Libc.Ptmalloc.Sim.Defs` and the
-modules they concern.
+non-tcache paths, `Task.sim.*`, and the design's `Task.algo.wfIntMalloc`, stated without the
+view's spatial facts; its proved form is `Task.algo.bodyMalloc`); the theorems that use them take
+them as hypotheses. They are defined in `Silmaril.Libc.Ptmalloc.Algo.Tasks.Defs`,
+`Silmaril.Libc.Ptmalloc.Sim.Defs` and the modules they concern.
 
 ## Trusted base
 
@@ -89,10 +116,12 @@ they say something about glibc:
 5. **The contract.** `Silmaril.Libc.Alloc.allocLoose` and the token heap `Heap` (the allocator
    institution), and `Algo.RefInv`.
 
-Not covered: other paths of `malloc` and `free` (they are stated, conditionally), threads
-running concurrently (the model is arena-parametric but the triples are sequential), `realloc`,
-`calloc`, `memalign`, and the loading of `libc.so.6` itself (the entry condition asks for the
-bytes to be in memory at the load base).
+Not covered: the x86 code of other paths of `malloc` and `free` (they are stated,
+conditionally), the x86 code of `__libc_calloc` and `__libc_realloc` (proved at the algorithm
+level only; glibc 2.39's `calloc` has no tcache path, it always runs `_int_malloc`), threads
+running concurrently (the model is arena-parametric but the triples are sequential), `memalign`,
+and the loading of `libc.so.6` itself (the entry condition asks for the bytes to be in memory at
+the load base).
 
 ## Pins
 
