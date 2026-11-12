@@ -18,7 +18,7 @@ import Silmaril.Proofs.X86.FnContract.Strict
   with the same states and the identity lens (`Open.isa` to `Open9.isa`) it is the same
   spec;
 * **first return**: `runsIn_mono`, `runsIn_trans`, `runsIn_reaches`, `runsIn_live`,
-  `runsIn_map`; `Spec.TotalIn.total`, `Spec.Total.totalIn`; `Spec.Strict.total` (**strict
+  `RunsIn.of_run` (an `n`-step run is a run inside `True`), `runsIn_map`; `Spec.TotalIn.total`, `Spec.Total.totalIn`; `Spec.Strict.total` (**strict
   implies total**); `Spec.Strict.firstReturn` (**a strict spec's result is the first
   return**); `firstReturn_unique`; `Spec.strict_of_totalIn`, `Spec.StrictBelow.strict`,
   `Spec.strict_of_inCode`; `not_returned_of_below`, `not_returned_of_inCode`;
@@ -171,6 +171,11 @@ theorem runsIn_reaches {P : σ → Prop} {s t : σ} (r : RunsIn I P s t) : Reach
 
 theorem runsIn_live {P : σ → Prop} {s t : σ} (r : RunsIn I P s t) (h : I.live s) : I.live t :=
   Silmaril.Proofs.X86.FnContract.runsIn_live r h
+
+/-- **A run of `n` steps is a run inside `True`.** -/
+theorem RunsIn.of_run {n : Nat} {s t : σ} (h : Silmaril.Machine.Execution.run I.step n s = some t) :
+    RunsIn I (fun _ => True) s t :=
+  Silmaril.Proofs.X86.FnContract.runsIn_of_run n h
 
 /-- Runs carry over to a machine with more steps on the same states. -/
 theorem runsIn_map {J : Isa σ} (hJ : ∀ {s s'}, I.step s = some s' → J.step s = some s')
