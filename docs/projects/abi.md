@@ -62,7 +62,7 @@ four layers of the separation logic, ported onto the ISA-generic `Sep`/`Safe` of
 | `Silmaril.X86.Sep.Xmm` | fragments with an XMM component (`XFrag`, `XSProp`, `xmmPt`); `XSafeN M` (the public `Safe.SafeN` on an XMM machine `M : SegVC.Isa XState`), `XSTriple M`; `ExtendsOpen9X M`, which follows from `Open9.isa.Extends M` along `x ↦ x.m` (`Sse9.isa` is an instance); the bridge from `Open9` triples (`xstriple_of_striple`, `xstriple_of_triple`) |
 | `Silmaril.X86.Sep.Plan` | System V call plans (`Silmaril.Machine.SystemV.Abi.CallPlan`) as assertions: every argument location comes from the plan |
 | `Silmaril.X86.Sep.CSpec` | the C author spec `CSpec` over `XSProp`, `CSpec.Sat M`/`SatN M`/`SatT M`, the direct and indirect call rules, `FnSpec.toC` (`sat_toC_of_sat`: every integer `FnSpec` proof on `Open.isa` is a `CSpec` proof on every XMM machine extending `Open9`); libmini's `strlen` on `Sse9.isa` |
-| `Silmaril.X86.Sep.{BI,Demo}`, `Silmaril.X86.Safe.Open9` | the bunched-implication laws of `XFrag`; worked specs (an addition leaf and its caller by the call rule, `MD5_memcpy`); `SafeN` on `Open.isa` as `SafeN` on `Open9.isa` |
+| `Silmaril.X86.Sep.{BI,Demo}`, `Silmaril.X86.Safe.Open9` | the bunched-implication laws of `XFrag`; worked specs (an addition leaf and its caller by the call rule, `MD5_memcpy` of the RFC 1321 reference MD5, see Provenance); `SafeN` on `Open.isa` as `SafeN` on `Open9.isa` |
 
 All proved. The port keeps every statement's meaning; the machine parameter changed shape
 (a `SegVC.Isa` instead of a step function), as listed in the pull request that added it.
@@ -78,11 +78,17 @@ bash examples/elf-ladder/pin.sh --check
 
 ## Provenance and licence
 
-All of it is Silmaril's own development, under this repository's MIT licence. The rung-01
+Silmaril's own development, under this repository's MIT licence, except the embedded object
+code listed below. The rung-01
 executable is built from `examples/elf-ladder/01-leaf-arith` and `common/` (MIT) by GCC
 13.3.0 and GNU ld 2.42, freestanding and statically linked, with no third-party code; the
 GCC `call_ms`/`ms_calls_sysv` byte sequences are short instruction sequences GCC emits, given as
-byte lists. The `right_rot` object bytes (`Bench.Objects.RightRotClangO0`) come from clang `-O0`
-builds of the same in-house SHA-256 cross-compilation corpus as `Silmaril.Crypto.X86.Sha256O2`. The calling conventions follow the System V AMD64 psABI (H. J. Lu et al., *System V
-Application Binary Interface, AMD64 Architecture Processor Supplement*) and Microsoft's x64
-calling convention documentation.
+byte lists. The `right_rot` object bytes (`Bench.Objects.RightRotClangO0`) are a clang `-O0`
+build of `sha-256.c` of amosnier/sha-2 at `565f6500` with an in-house wrapper (Unlicense or
+0BSD, `NOTICES/sha-2`). The `MD5_memcpy` object bytes (`Bench.Objects.Md5MemcpyClangO0`,
+decompiled by `Decompile.Md5Memcpy` and specified in `Sep.Demo`) are a clang `-O0` build of
+`md5c.c` of RFC 1321 with an in-house wrapper: this material is derived from the RSA Data
+Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`, with the original notice).
+The calling conventions follow the System V AMD64 psABI (H. J. Lu et al., *System V Application
+Binary Interface, AMD64 Architecture Processor Supplement*) and Microsoft's x64 calling
+convention documentation.
