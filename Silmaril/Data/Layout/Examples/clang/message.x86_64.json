@@ -1,0 +1,28 @@
+{"schema": "silmaril.c-record-layout", "version": 1, "unit": "bit",
+  "provenance": {
+    "producer": "clang",
+    "producerVersion": "Debian clang version 19.1.7 (3+b1)",
+    "method": "clang -cc1 -triple x86_64-unknown-linux-gnu -fsyntax-only -fdump-record-layouts-simple -fdump-record-layouts-complete message.c; clang -cc1 -triple x86_64-unknown-linux-gnu -fsyntax-only -ast-dump=json message.c",
+    "target": "x86_64-unknown-linux-gnu",
+    "adapter": "tools/c-layout/clang_record_layouts.py v1",
+    "source": "/* The worked example of the C record-layout slice (docs/projects/c-record-layout.md). */\nstruct Point { short x; short y; };\n\nstruct Header {\n  char tag;\n  int length;\n  double stamp;\n  struct Point corners[2];\n  long long id;\n  void *next;\n};\n\nunion Value { char bytes[12]; int i; double d; long double ld; };\n\nstruct Message { struct Header header; union Value value; unsigned char flags; };\n"},
+  "records": [
+    {"kind": "struct", "name": "Point", "size": 32, "dataSize": 32, "align": 16, "fields": [
+      {"name": "x", "offset": 0},
+      {"name": "y", "offset": 16}]},
+    {"kind": "struct", "name": "Header", "size": 320, "dataSize": 320, "align": 64, "fields": [
+      {"name": "tag", "offset": 0},
+      {"name": "length", "offset": 32},
+      {"name": "stamp", "offset": 64},
+      {"name": "corners", "offset": 128},
+      {"name": "id", "offset": 192},
+      {"name": "next", "offset": 256}]},
+    {"kind": "union", "name": "Value", "size": 128, "dataSize": 128, "align": 128, "fields": [
+      {"name": "bytes", "offset": 0},
+      {"name": "i", "offset": 0},
+      {"name": "d", "offset": 0},
+      {"name": "ld", "offset": 0}]},
+    {"kind": "struct", "name": "Message", "size": 640, "dataSize": 640, "align": 128, "fields": [
+      {"name": "header", "offset": 0},
+      {"name": "value", "offset": 384},
+      {"name": "flags", "offset": 512}]}]}

@@ -18,6 +18,11 @@ and proves them in the `Thms` headers. The one goal left open is `Task.bitfieldL
 
 Bit-fields are rejected by `layoutTy` for now (`Task.bitfieldLayout`).
 
+[C record layouts from source text](c-record-layout.md) adds a parser for C `struct`/`union`
+text with a soundness proof, type-free resolved layouts (`Layout.Record`), a versioned JSON
+schema for observed compiler layouts with a Clang adapter (`Layout.Interchange`), and the
+`c_layout` command that produces named declarations and certificates.
+
 ## Fragments (`Silmaril.Data.Cells`, `SepList`, `Bitmap`, `BoundaryTag`)
 
 `Cells` is a small separation-logic kernel over an abstract byte memory: cells,

@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-check c-layout-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -123,6 +123,15 @@ project-tool:
 project-check: project-tool
 	LAKE="$(LAKE)" SIL=build/bin/silmaril-project examples/project/selftest.sh
 
+# The C record-layout examples, and their fixtures against the local clang (not part of `check`).
+C_LAYOUT_FIXTURES := Silmaril/Data/Layout/Examples/clang
+c-layout-check:
+	$(LAKE) build --wfail Silmaril.Data.Layout.Examples.Clang Silmaril.Data.Layout.Examples.Rejections
+	@for f in $(C_LAYOUT_FIXTURES)/message.*.json; do \
+		$(PYTHON) -I tools/c-layout/clang_record_layouts.py --check "$$f" $(C_LAYOUT_FIXTURES)/message.c || exit 1; \
+	done
+	$(PYTHON) -I tools/c-layout/check_offsetof.py $(C_LAYOUT_FIXTURES)/message.*.json
+
 demo: tools
 	$(PYTHON) tools/binaryen-lean/test-release-demo.py --bin-dir build/bin
 
@@ -140,6 +149,7 @@ help:
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
 	@echo 'make project-tool   Build sil project (Cargo) and stage it in build/bin'
 	@echo 'make project-check  Run the sil project self-test: init, lock, lint, dump, check, explore'
+	@echo 'make c-layout-check  Build the C record-layout examples; re-check their Clang fixtures (needs clang)'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
 	@echo 'make demo-process  Build the public process headers and theorem slice'
 	@echo 'make demo-sha256   Build the sha256-cli and GNU sha256sum-min end-to-end proofs'
