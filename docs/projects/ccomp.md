@@ -74,6 +74,27 @@ claims: a `Certificate` needs both and a domain with an accepted program. The mo
 `Correctness.{Literal*,Addition*,Arithmetic*}` discharge them, or parts of them, for literal
 programs, additions and bounded arithmetic; each says which. The general obligation is open.
 
+## Tools
+
+| Command | Root | What |
+| --- | --- | --- |
+| `ccomp` | `tools/ccomp-native` | the native compiler (`Compiler.Native.Driver`): gcc-style options; C to x86-64 assembly, objects and static executables through the system assembler and linker |
+| `ccomp-legacy` | `tools/ccomp` | the Mir/Lir compiler (`Compiler.C.Main`) |
+| `ccomp-verified` | `tools/ccomp-verified` | the verified Core compiler (`Compiler.Core.Main`): a Cerberus Core document to a linked x86-64 artifact |
+| `csem` | `tools/csem` | the C semantics ladder on typed-Ail documents: `run`, `c0` … `c7`, the ladder checks |
+| `decompile` | `tools/decompile` | the decompiler over relocatable x86-64 objects (`X86.Decompile`); input through `SIL_DECOMPILE_FILE` |
+
+```sh
+lake build ccomp ccomp-legacy ccomp-verified csem decompile
+printf 'int main(void) { return 40 + 2; }\n' > t.c
+.lake/build/bin/ccomp t.c -o t && ./t; echo $?   # 42
+```
+
+`ccomp` needs the system's C preprocessor, assembler and linker; programs that include the
+system's `<stdio.h>` are rejected where its headers use features the frontend does not support
+yet (bit-fields, for example). The usage texts name the source's design documents, which are
+not part of this repository.
+
 ## Status
 
 Proved where a theorem is stated (no `sorry`, no new `axiom`, no `native_decide`); open goals are

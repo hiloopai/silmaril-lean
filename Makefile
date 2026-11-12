@@ -29,7 +29,9 @@ library:
 # request narrows it to what its diff can change (`make scope`).
 # The Cerberus tests and executables (docs/projects/cerberus.md).
 CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample
+# The C compiler's executables (docs/projects/ccomp.md).
+CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample $(CCOMP_TARGETS)
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
