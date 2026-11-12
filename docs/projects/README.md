@@ -12,6 +12,7 @@
 | x86-64 machines and processes | User-mode machines (`Ext` to `Str9`, `Sse9`, `Atomic9`), function contracts, segment VCs, block certificates, a separation logic, the loose specification and x86 institution, static linking, memory models, the ELF ladder proofs, and the process slice | [x86 machines](../x86.md), [x86 processes](x86.md) |
 | Command-line interfaces | Argument grammars with a derived, proved front end; behaviour specifications with refinement and composition; Lean CLI programs and a test harness; the CLI institution | [CLI](cli.md) |
 | ELF files | One parse of an ELF64 file, ld.so's symbol lookup, a lookup index, facts and problem shapes over files, a checker for large files, and the x86-64 dynamic-loading models they relate to | [ELF](elf.md) |
+| C library contracts and allocators | The contract institution of C library signatures (allocator chain, stdio, tensor), the allocator signature hierarchy and its POSIX-safe contract over ELF shared objects, a concrete loading model with named import contracts, and the problem shapes | [Allocators](alloc.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide

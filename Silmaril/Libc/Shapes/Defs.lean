@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Libc.AllocElf.Defs
+public import Silmaril.Libc.AllocLoad.Defs
 public import Silmaril.Project.Defs
 
 /-!
@@ -17,6 +18,8 @@ steps):
 | `silmaril.shapes.alloc.elf.contract` | `ElfAllocContract T LM s F S`: `F` binds the functions of `s` and, for some owned regions, invariant and ghost heap, the started image establishes the invariant and every valid POSIX call returns as `T` allows, in the invariant, within the frame (`AllocElf.Contract`) |
 | `silmaril.shapes.alloc.elf.posix_safe` | `T := loose`: **POSIX-safe with invariant** (`AllocElf.PosixSafe`; `NULL`/`ENOMEM` always allowed, nothing promised after UB) |
 | `….posix_safe.mf`, `.mfc`, `.mfcr`, `.full` | the four levels |
+| `silmaril.shapes.alloc.elf.loaded` | `ElfAllocLoaded s F S`: `AllocLoad.Row`, **for every environment whose bound imports satisfy their named contracts, `F` is POSIX-safe at `s` in the concrete loading model** `AllocLoad.model` |
+| `….loaded.mf`, `.mfc`, `.mfcr`, `.full` | the four levels |
 
 A row at `s'` gives the row at every `s ≤ s'` (`AllocElf.Thms.reduct`), and a row at a stronger
 relation the row at `loose` (`AllocElf.Thms.mono`).
@@ -45,6 +48,13 @@ def ElfAllocContract (T : Rel) (LM : LoadModel) (s : Sig) (F : Silmaril.X86.Link
 def ElfAllocPosixSafe (LM : LoadModel) (s : Sig) (F : Silmaril.X86.Link.Blob) (S : Syms) : Prop :=
   Silmaril.Libc.AllocElf.PosixSafe LM s F S
 
+/-- **An ELF file is a POSIX-safe allocator at signature `s` in the concrete loading model**, for
+every environment whose imports satisfy their named contracts (`AllocLoad.Row`). -/
+@[problem "silmaril.shapes.alloc.elf.loaded"
+  (title := "An ELF file's exported allocator, loaded with its imports bound to functions meeting named contracts, is POSIX-safe at a signature level")]
+def ElfAllocLoaded (s : Sig) (F : Silmaril.X86.Link.Blob) (S : Syms) : Prop :=
+  Silmaril.Libc.AllocLoad.Row s F S
+
 end Silmaril.Libc.Shapes
 
 end
@@ -61,3 +71,15 @@ silmaril instance silmaril.shapes.alloc.elf.posix_safe.mfcr
 silmaril instance silmaril.shapes.alloc.elf.posix_safe.full
     (title := "POSIX-safe malloc, free, calloc, realloc, aligned_alloc, posix_memalign, malloc_usable_size") :=
   silmaril.shapes.alloc.elf.posix_safe (s := Silmaril.Libc.AllocSig.Sig.full)
+silmaril instance silmaril.shapes.alloc.elf.loaded.mf
+    (title := "POSIX-safe malloc and free, loaded with contracted imports") :=
+  silmaril.shapes.alloc.elf.loaded (s := Silmaril.Libc.AllocSig.Sig.mf)
+silmaril instance silmaril.shapes.alloc.elf.loaded.mfc
+    (title := "POSIX-safe malloc, free and calloc, loaded with contracted imports") :=
+  silmaril.shapes.alloc.elf.loaded (s := Silmaril.Libc.AllocSig.Sig.mfc)
+silmaril instance silmaril.shapes.alloc.elf.loaded.mfcr
+    (title := "POSIX-safe malloc, free, calloc and realloc, loaded with contracted imports") :=
+  silmaril.shapes.alloc.elf.loaded (s := Silmaril.Libc.AllocSig.Sig.mfcr)
+silmaril instance silmaril.shapes.alloc.elf.loaded.full
+    (title := "POSIX-safe malloc, free, calloc, realloc, aligned_alloc, posix_memalign, malloc_usable_size, loaded with contracted imports") :=
+  silmaril.shapes.alloc.elf.loaded (s := Silmaril.Libc.AllocSig.Sig.full)
