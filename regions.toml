@@ -104,7 +104,7 @@ scope = "Self-contained course developments, with inline proofs and numbered ref
 
 [[region]]
 name = "Cli"
-scope = "Command-line interfaces as specifications: argument grammars as data with a derived front end (parser proved sound and complete, renderer with round trip, help, usage errors, exit codes, grammar morphisms), the clap dialect, a behaviour model of CLI programs (arguments, environment, stdin, stdout, stderr, files under declared roots, exit code) with refinement and composition, Lean programs as a free monad with a test harness, and the CLI institution with its observation levels and standard sentences. Also imports `Silmaril.Apps.Sha256sum` (the reference behaviour of `sha256sum`), which is not a region."
+scope = "Command-line interfaces as specifications: argument grammars as data with a derived front end (parser proved sound and complete, renderer with round trip, help, usage errors, exit codes, grammar morphisms), the clap and getopt dialects, a behaviour model of CLI programs (arguments, environment, stdin, stdout, stderr, files under declared roots, exit code) with refinement and composition, Lean programs as a free monad with a test harness, and the CLI institution with its observation levels and standard sentences. Also imports `Silmaril.Apps.Sha256sum` (the reference behaviour of `sha256sum`), which is not a region."
 deps = ["Logic"]
 
 [[region]]
