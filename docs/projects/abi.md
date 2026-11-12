@@ -51,15 +51,27 @@ in `Silmaril.X86.*` namespaces the public tree does not otherwise use. They are 
 
 No `sorry`, no `axiom` beyond the standard three, no `native_decide`.
 
-Not in this wave: the C-level separation-logic specs (`Silmaril.Machine.Abi.CSpecFfi`) and the
-XMM, C-spec, plan and demo layers of the separation logic (`Sep.{Xmm,CSpec,Plan,Demo,BI}`) they
-rest on. They are written against an earlier, step-function form of `Safe`/`Sep` and need
-porting to the ISA-generic `Sep`/`Safe` of `Silmaril.X86`.
+## C-level specs with XMM registers
+
+`Silmaril.Machine.Abi.CSpecFfi` connects the author spec of a C function with vector arguments
+(`Sep.CSpec`) to the exported FFI certificate (`CallFootprint.FfiRealizesCall`). It rests on
+four layers of the separation logic, ported onto the ISA-generic `Sep`/`Safe` of `Silmaril.X86`:
+
+| Module | What |
+| --- | --- |
+| `Silmaril.X86.Sep.Xmm` | fragments with an XMM component (`XFrag`, `XSProp`, `xmmPt`); `XSafeN M` (the public `Safe.SafeN` on an XMM machine `M : SegVC.Isa XState`), `XSTriple M`; `ExtendsOpen9X M`, which follows from `Open9.isa.Extends M` along `x ↦ x.m` (`Sse9.isa` is an instance); the bridge from `Open9` triples (`xstriple_of_striple`, `xstriple_of_triple`) |
+| `Silmaril.X86.Sep.Plan` | System V call plans (`Silmaril.Machine.SystemV.Abi.CallPlan`) as assertions: every argument location comes from the plan |
+| `Silmaril.X86.Sep.CSpec` | the C author spec `CSpec` over `XSProp`, `CSpec.Sat M`/`SatN M`/`SatT M`, the direct and indirect call rules, `FnSpec.toC` (`sat_toC_of_sat`: every integer `FnSpec` proof on `Open.isa` is a `CSpec` proof on every XMM machine extending `Open9`); libmini's `strlen` on `Sse9.isa` |
+| `Silmaril.X86.Sep.{BI,Demo}`, `Silmaril.X86.Safe.Open9` | the bunched-implication laws of `XFrag`; worked specs (an addition leaf and its caller by the call rule, `MD5_memcpy`); `SafeN` on `Open.isa` as `SafeN` on `Open9.isa` |
+
+All proved. The port keeps every statement's meaning; the machine parameter changed shape
+(a `SegVC.Isa` instead of a step function), as listed in the pull request that added it.
 
 ## Build
 
 ```sh
 lake build --wfail Silmaril.Machine.Abi.Thms Silmaril.Machine.Abi.SpecNotions.Thms \
+  Silmaril.Machine.Abi.CSpecFfi.Thms Silmaril.X86.Sep.Demo.Thms \
   Silmaril.X86.AbiFunction.LeafArith.Thms Silmaril.X86.FnContract.Must.Thms
 bash examples/elf-ladder/pin.sh --check
 ```
