@@ -7,6 +7,7 @@ public import Silmaril.X86.Features.Ext.Sse2.Vectors
 public import Silmaril.X86.Features.Ext.Sse4.Vectors
 public import Silmaril.X86.Features.Ext.SseMerged.PackedVectors
 public import Silmaril.X86.Features.Ext.IntMerged.Vectors
+public import Silmaril.X86.Features.Cpuid.Models
 public meta import Silmaril.X86.Str9L.Checks
 public meta import Silmaril.X86.Features.Ext.Avx.Vectors
 public meta import Silmaril.X86.Features.Vectors.Round
@@ -14,6 +15,7 @@ public meta import Silmaril.X86.Features.Ext.Sse2.Vectors
 public meta import Silmaril.X86.Features.Ext.Sse4.Vectors
 public meta import Silmaril.X86.Features.Ext.SseMerged.PackedVectors
 public meta import Silmaril.X86.Features.Ext.IntMerged.Vectors
+public meta import Silmaril.X86.Features.Cpuid.Models
 
 /-! The `avx` lane's native vectors (`Features.Avx.Vectors`, 3,627 vectors from
 `scripts/x86-features/gen_avx_vectors.py`) and the `roundss`/`roundsd` vectors
@@ -91,5 +93,42 @@ def readsAt (bytes : List Silmaril.X86.Byte) : Bool :=
 #guard [[0xC4, 0xE2, 0x78, 0xF2, 0xC1], [0xC4, 0xE2, 0x78, 0xF3, 0xC9]].all fun bs =>
   (Silmaril.X86.Features.extDecode lanes bs).map (·.1.name) ==
     some Silmaril.X86.Features.IntMerged.intMerged.name
+
+/-! ## CPUID and XGETBV on the tower
+
+On each of the thirteen dumped processor models (`Features.Profile.models`: the native i7-8700 and
+twelve qemu models), `cpuid` (`0F A2`) through `Str9L.stepOf p` writes the profile's answer
+for leaves 0, 1 and 7 to EAX, EBX, ECX and EDX, and `xgetbv` (`0F 01 D0`, ECX = 0) writes
+XCR0 to EDX:EAX where OSXSAVE is set and has no step where it is not. -/
+
+/-- One `stepOf p` of `code` with RAX = `eax`, RCX = `ecx`. -/
+def runSys (p : Silmaril.X86.Features.Profile) (code : List Silmaril.X86.Byte) (eax ecx : Nat) :
+    Option LState :=
+  let c : Silmaril.X86.State :=
+    { Silmaril.X86.Features.vcore with
+      regs := fun r => if r = .rax then BitVec.ofNat 64 eax else if r = .rcx then BitVec.ofNat 64 ecx
+        else 0 }
+  stepOf p (Checks.stateOf c code Silmaril.X86.Features.Avx.bufRegion [] (fun _ => 0) 0x1F80)
+
+def cpuidOk (p : Silmaril.X86.Features.Profile) (leaf : Nat) : Bool :=
+  match runSys p [0x0F, 0xA2] leaf 0 with
+  | some t =>
+    let r := p.cpuid (BitVec.ofNat 32 leaf) 0
+    t.core.read .rax == r.eax.setWidth 64 && t.core.read .rbx == r.ebx.setWidth 64 &&
+      t.core.read .rcx == r.ecx.setWidth 64 && t.core.read .rdx == r.edx.setWidth 64 &&
+      t.core.rip.toNat == 0x1002
+  | none => false
+
+def xgetbvOk (p : Silmaril.X86.Features.Profile) : Bool :=
+  match runSys p [0x0F, 0x01, 0xD0] 0 0, p.osxsave with
+  | some t, true =>
+    t.core.read .rax == (p.xcr0.setWidth 32).setWidth 64 &&
+      t.core.read .rdx == (p.xcr0 >>> 32).setWidth 64 && t.core.rip.toNat == 0x1003
+  | none, false => true
+  | _, _ => false
+
+#guard Silmaril.X86.Features.Profile.models.length == 13
+
+#guard Silmaril.X86.Features.Profile.models.all fun p => [0, 1, 7].all (cpuidOk p) && xgetbvOk p
 
 end Silmaril.X86.Str9L.Vectors

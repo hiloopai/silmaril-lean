@@ -6,6 +6,7 @@ public import Silmaril.X86.Features.Ext.Avx.Extension
 public import Silmaril.X86.Features.Ext.SseMerged.Extension
 public import Silmaril.X86.Features.Ext.Sse4.Extension
 public import Silmaril.X86.Features.Ext.IntMerged.Extension
+public import Silmaril.X86.Features.Cpuid.Extension
 
 /-!
 # `Str9L`: `Str9X` with MXCSR and the lanes of the feature-parametric machine
@@ -102,6 +103,11 @@ def lanes : List Extension :=
     [Silmaril.X86.Features.sse4Ext, Silmaril.X86.Features.IntMerged.intMerged,
       Silmaril.X86.Features.Avx.ext]
 
+/-- The lanes of a processor profile `p`: `lanes` and CPUID/XGETBV answered by `p`
+(`Features.sysExt p`; ld.so's `init_cpu_features` reads both). -/
+def lanesWith (p : Silmaril.X86.Features.Profile) : List Extension :=
+  lanes ++ [Silmaril.X86.Features.sysExt p]
+
 /-! ## Step -/
 
 /-- Some decoder of `Str9X` claims the bytes at RIP. -/
@@ -125,5 +131,9 @@ def step (F : FeatureSet) (exts : List Extension) (s : LState) : Option LState :
     | some ⟨e, i, n⟩ =>
       if s.memory.Permitted .execute s.core.rip.toNat n then execLane F e i n s else none
     | none => none
+
+/-- The machine of a processor profile: its features, `lanesWith p`. -/
+abbrev stepOf (p : Silmaril.X86.Features.Profile) (s : LState) : Option LState :=
+  step p.features (lanesWith p) s
 
 end Silmaril.X86.Str9L
