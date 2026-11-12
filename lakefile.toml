@@ -1,6 +1,6 @@
 name = "silmaril"
 version = "0.1.0"
-defaultTargets = ["Silmaril", "SilmarilSpecTec"]
+defaultTargets = ["Silmaril", "SilmarilSpecTec", "SilmarilWasiWit"]
 restoreAllArtifacts = true
 [leanOptions]
 autoImplicit = false
@@ -115,7 +115,33 @@ globs = [
   "Silmaril.Wasm.Resource.+", "Silmaril.Wasm.Versions.+", "Silmaril.Wasm.Wit.+",
   # SSA calculi, λRTL and the machine RTL (docs/projects/ssa.md).
   "Silmaril.Proofs.Machine.+", "Silmaril.Proofs.Semantics.+", "Silmaril.Raw.Calculi.+",
-  "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+"
+  "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+",
+  # More Wasm: semantics, WASI and networking (docs/projects/wasm-wasi.md). The WIT readers
+  # `Silmaril.Wasi.Versions.WitImport.*` are `SilmarilWasiWit` below.
+  "Silmaril.ML.+", "Silmaril.Net.+", "Silmaril.Proofs.Net.+", "Silmaril.Proofs.Wasi.+",
+  "Silmaril.Proofs.Wasm.Category.+", "Silmaril.Proofs.Wasm.Dataflow.+",
+  "Silmaril.Proofs.Wasm.Det.+", "Silmaril.Proofs.Wasm.Institution.+",
+  "Silmaril.Proofs.Wasm.LambdaRTL.+", "Silmaril.Proofs.Wasm.OCaml.+",
+  "Silmaril.Proofs.Wasm.Replace.+", "Silmaril.Proofs.Wasm.Wasmi.+",
+  "Silmaril.Proofs.Wasm.WatSpec.+", "Silmaril.Raw.ML.+", "Silmaril.Raw.Wasm.LimeCompile.+",
+  "Silmaril.Raw.Wasm.Models.+", "Silmaril.Raw.Wasm.OCaml.+", "Silmaril.Raw.Wasm.Unified.+",
+  "Silmaril.Wasi.Cli.+", "Silmaril.Wasi.Comp.+", "Silmaril.Wasi.Component.+",
+  "Silmaril.Wasi.Converse.+", "Silmaril.Wasi.Examples.+", "Silmaril.Wasi.Host.+",
+  "Silmaril.Wasi.Theory.+", "Silmaril.Wasi.Versions.Adapter.+",
+  "Silmaril.Wasi.Versions.Cli3More.+", "Silmaril.Wasi.Versions.DnsOver.+",
+  "Silmaril.Wasi.Versions.EnvOver.+", "Silmaril.Wasi.Versions.FsMore.+",
+  "Silmaril.Wasi.Versions.FsMut.+", "Silmaril.Wasi.Versions.FsMutOver.+",
+  "Silmaril.Wasi.Versions.FsOver.+", "Silmaril.Wasi.Versions.FwdT.+",
+  "Silmaril.Wasi.Versions.Http3.+", "Silmaril.Wasi.Versions.HttpBody.+",
+  "Silmaril.Wasi.Versions.HttpOver.+", "Silmaril.Wasi.Versions.Net.+",
+  "Silmaril.Wasi.Versions.Net3.+", "Silmaril.Wasi.Versions.NetAddr.+",
+  "Silmaril.Wasi.Versions.NetMore.+", "Silmaril.Wasi.Versions.P1.+", "Silmaril.Wasi.Versions.P2.+",
+  "Silmaril.Wasi.Versions.SockMore.+", "Silmaril.Wasi.Versions.Stateful.+",
+  "Silmaril.Wasi.Versions.Udp.+", "Silmaril.Wasi.Versions.Udp3Conn.+", "Silmaril.Wasi.World.+",
+  "Silmaril.Wasm.ClosureCex.+", "Silmaril.Wasm.Dataflow.+", "Silmaril.Wasm.Det.+",
+  "Silmaril.Wasm.LambdaRTL.+", "Silmaril.Wasm.Lime1ToV1.+", "Silmaril.Wasm.OCaml.+",
+  "Silmaril.Wasm.Outcome.+", "Silmaril.Wasm.Replace.+", "Silmaril.Wasm.RuntimeMap.+",
+  "Silmaril.Wasm.Unified.+", "Silmaril.Wasm.Wasmi.+", "Silmaril.Wasm.WatSpec.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
@@ -177,6 +203,21 @@ text = false
 name = "spectecSurfaceBinary"
 path = "specs/spectec/src/specification/wasm-3.0/5.1-binary.values.spectec"
 text = false
+
+# The WASI WIT readers (`Silmaril.Wasi.Versions.WitImport.*`): their `wit_*` commands and terms
+# read the vendored WIT files of specs/wasi while they elaborate. Lake mixes a library's `needs`
+# into the trace of every module of that library, so they have a library of their own and the
+# `Silmaril` library's traces stay as they are.
+[[lean_lib]]
+name = "SilmarilWasiWit"
+globs = ["Silmaril.Wasi.Versions.WitImport.+"]
+needs = ["wasiWit"]
+
+[[input_dir]]
+name = "wasiWit"
+path = "specs/wasi"
+filter = { extension = ["wit"] }
+text = true
 
 # The `sil project` self-test (examples/project/selftest.sh). Its module reads files while it
 # elaborates: the records files and the registry under `silmaril/` (`silmaril load`, `silmaril
