@@ -160,7 +160,7 @@ theorem Static.idle (St : Static S) : Idle St S.sc S.sp S.scs :=
 theorem internal_config {P : Profile} {s s' : Store Nat} {t t' : Thread}
     (h : InternalP P (s, t) (s', t')) :
     ∃ f' c', t' = .active f' c' ∧
-      Silmaril.Games.Step P noHost ⟨s, (t.config s).frame, (t.config s).code⟩ ⟨s', f', c'⟩ := by
+      Step P noHost ⟨s, (t.config s).frame, (t.config s).code⟩ ⟨s', f', c'⟩ := by
   obtain ⟨f', c', rfl, hst⟩ := h
   refine ⟨f', c', rfl, ?_⟩
   rw [← Thread.config_eta]
@@ -168,7 +168,7 @@ theorem internal_config {P : Profile} {s s' : Store Nat} {t t' : Thread}
 
 theorem internal_of_step {P : Profile} {s s' : Store Nat} {t : Thread} {F : Frame}
     {X : List Admin} {f' : Frame} {c' : List Admin} (ht : t.config s = ⟨s, F, X⟩)
-    (h : Silmaril.Games.Step P noHost ⟨s, F, X⟩ ⟨s', f', c'⟩) :
+    (h : Step P noHost ⟨s, F, X⟩ ⟨s', f', c'⟩) :
     InternalP P (s, t) (s', .active f' c') :=
   ⟨f', c', rfl, by rw [ht]; exact h⟩
 
@@ -300,8 +300,8 @@ theorem CRel.call {St : Static S} {P : Profile} {σ π κ : Store Nat} {ts tc : 
   -- the provider's first step
   let Y : List Admin := [.frame rs.length (Frame.forCall fp.module args c.locals)
     [.label rs.length [] (expression c.body)]]
-  have hstp : Silmaril.Games.Step P noHost (invoke π a args) ⟨π, {}, Y⟩ :=
-    Silmaril.Games.Step.callRefFunc (c := .callRefType ((π.funcs[a]?.map FuncInst.type).getD default))
+  have hstp : Step P noHost (invoke π a args) ⟨π, {}, Y⟩ :=
+    Step.callRefFunc (c := .callRefType ((π.funcs[a]?.map FuncInst.type).getD default))
       trivial hfp he' hn hc'
   -- the shared step
   have hcode' : (ts.config σ).code = (ρc.ctx E).fill (vals args ++ [.ref (.func a), yy]) := by
@@ -309,11 +309,11 @@ theorem CRel.call {St : Static S} {P : Profile} {σ π κ : Store Nat} {ts tc : 
     simp only
     rw [hX, Ren.code_fill]
     simp [Ren.code_callRef ρc hyy, forall₂_hasVal_ren hargs]
-  have hstep : Silmaril.Games.Step P noHost
+  have hstep : Step P noHost
       ⟨σ, (ts.config σ).frame, (ts.config σ).code⟩
       ⟨σ, (ts.config σ).frame, (ρc.ctx E).fill Y⟩ := by
     rw [hcode']
-    exact (ρc.ctx E).step_fill (fun g => Silmaril.Games.Step.callRefFunc (P := P)
+    exact (ρc.ctx E).step_fill (fun g => Step.callRefFunc (P := P)
       (host := noHost) (s := σ) (f := g) hyy hfsσ he' hn hc') (ts.config σ).frame
   have heta : ts.config σ = ⟨σ, (ts.config σ).frame, (ts.config σ).code⟩ := by
     rw [Thread.config_eta σ ts]

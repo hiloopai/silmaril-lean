@@ -127,7 +127,7 @@ theorem config_funcs {s s' : Store H} (hf : s'.funcs = s.funcs) (t : Thread) :
 
 /-- The resumption of a thread stopped at a host call is the callout context filled with the
 result. -/
-theorem resumeResult_eq {s : Store H} {t : Thread} {E : Ctx} {a : Nat} {h : H} {args : List Silmaril.Wasm.Component.Reference.Val}
+theorem resumeResult_eq {s : Store H} {t : Thread} {E : Ctx} {a : Nat} {h : H} {args : List Val}
     (hd : decompose? s (t.config s).code = some (E, a, h, args)) (r : Result) :
     resumeResult s t r = .active (t.config s).frame (E.fill r.toAdmin) := by
   simp only [resumeResult, hd]
@@ -136,8 +136,8 @@ variable {s₀ : Store H} {ρ : Ren} {O : Own} {x y : Store H × Thread}
 
 /-- **Resuming a part with scalar values keeps the relation**: the image of the resumed part is
 the resumption of the image. -/
-theorem link_resume (hL : LinkSt s₀ ρ O x y) {E : Ctx} {a : Nat} {h : H} {args : List Silmaril.Wasm.Component.Reference.Val}
-    (hd : decompose? x.1 (x.2.config x.1).code = some (E, a, h, args)) {vs : List Silmaril.Wasm.Component.Reference.Val}
+theorem link_resume (hL : LinkSt s₀ ρ O x y) {E : Ctx} {a : Nat} {h : H} {args : List Val}
+    (hd : decompose? x.1 (x.2.config x.1).code = some (E, a, h, args)) {vs : List Val}
     (hvs : ∀ v ∈ vs, ∀ r, v ≠ .ref r) :
     LinkSt s₀ ρ O (x.1, resumeResult x.1 x.2 (.values vs))
       (y.1, resumeResult y.1 y.2 (.values vs)) := by

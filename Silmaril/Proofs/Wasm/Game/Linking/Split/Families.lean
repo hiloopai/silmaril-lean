@@ -36,13 +36,13 @@ abbrev noHost : HostSemantics H := fun _ _ _ _ => False
 /-- The conclusion of the simulation of one part step `c ⟶ c'` from a renamed configuration
 `d` over the shared store `σ`. -/
 def SimGoal (P : Profile) (ρ : Ren) (O : Own) (σ : Store H) (d c' : Config H) : Prop :=
-  ∃ ρ' O' σ', Silmaril.Games.Step P noHost d ⟨σ', ρ'.frame c'.frame, ρ'.code c'.code⟩ ∧
+  ∃ ρ' O' σ', Step P noHost d ⟨σ', ρ'.frame c'.frame, ρ'.code c'.code⟩ ∧
     PartRel ρ' O' c'.store σ' ∧ O'.FrameGood c'.frame ∧ O'.CodeGood c'.code ∧
     Grow ρ O ρ' O' σ ∧ Touch ρ O σ σ'
 
 theorem SimGoal.same {P : Profile} {ρ : Ren} {O : Own} {σ : Store H} {d c' : Config H}
     (hR : PartRel ρ O c'.store σ) (hf : O.FrameGood c'.frame) (hc : O.CodeGood c'.code)
-    (hs : Silmaril.Games.Step P noHost d ⟨σ, ρ.frame c'.frame, ρ.code c'.code⟩) : SimGoal P ρ O σ d c' :=
+    (hs : Step P noHost d ⟨σ, ρ.frame c'.frame, ρ.code c'.code⟩) : SimGoal P ρ O σ d c' :=
   ⟨ρ, O, σ, hs, hR, hf, hc, .refl ρ O σ, .refl ρ O σ⟩
 
 /-- Rebuild `CodeGood` for successor code. -/
@@ -243,27 +243,27 @@ theorem VariableStep.sim {P : Profile} {c c' : Config H} (h : VariableStep c c')
       have hl₀ : f.locals[x.toNat]? = some (some v) := hl
       simp [Frame.local?, Ren.frame_locals, List.getElem?_map, hl₀]
     refine .same hR hf ((O.codeGood_single_toAdmin v).mpr (hf.2 v hv)) ?_
-    simpa using Silmaril.Games.Step.variable (P := P) (host := noHost) (VariableStep.localGet (s := σ) hl')
+    simpa using Step.variable (P := P) (host := noHost) (VariableStep.localGet (s := σ) hl')
   | @localSet s f x v hx =>
     refine .same hR (hf.setLocal x hc.head_val) O.codeGood_nil ?_
-    simpa using Silmaril.Games.Step.variable (P := P) (host := noHost)
+    simpa using Step.variable (P := P) (host := noHost)
       (VariableStep.localSet (s := σ) (f := ρ.frame f) (v := ρ.val v) (x := x)
         (by simpa using hx))
   | @localTee s f x v =>
     have hv : O.GoodVal v := hc.head_val
     refine .same hR hf (.cons_val hv (.cons_val hv (O.codeGood_single_plain _))) ?_
-    simpa using Silmaril.Games.Step.variable (P := P) (host := noHost)
+    simpa using Step.variable (P := P) (host := noHost)
       (VariableStep.localTee (s := σ) (f := ρ.frame f) (v := ρ.val v) (x := x))
   | @globalGet s f x a g hg =>
     obtain ⟨-, hg', hv⟩ := hR.global? hf hg
     refine .same hR hf ((O.codeGood_single_toAdmin _).mpr hv) ?_
-    simpa [Ren.ginst] using Silmaril.Games.Step.variable (P := P) (host := noHost)
+    simpa [Ren.ginst] using Step.variable (P := P) (host := noHost)
       (VariableStep.globalGet (s := σ) (f := ρ.frame f) hg')
   | @globalSet s f x a g v hg =>
     obtain ⟨ha, hg', -⟩ := hR.global? hf hg
     refine ⟨ρ, O, σ.setGlobal a (ρ.val v), ?_, hR.setGlobal hc.head_val, hf, O.codeGood_nil,
       .refl ρ O σ, PartRel.touch_setGlobal ha _⟩
-    simpa using Silmaril.Games.Step.variable (P := P) (host := noHost)
+    simpa using Step.variable (P := P) (host := noHost)
       (VariableStep.globalSet (s := σ) (f := ρ.frame f) (v := ρ.val v) hg')
 
 /-! ### Reference instructions -/
@@ -275,92 +275,92 @@ theorem RefStep.sim {P : Profile} {c c' : Config H} (h : RefStep c c') {ρ : Ren
   cases h with
   | @refNull s f ht =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.refNull (s := σ) (f := ρ.frame f) ht)
   | @refFunc s f x a hx =>
     refine .same hR hf ((O.codeGood_single_ref _).mpr (hf.1.funcs a (List.mem_of_getElem? hx))) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.refFunc (s := σ) (f := ρ.frame f) hx)
   | @refI31 s f i =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.refI31 (s := σ) (f := ρ.frame f) i)
   | @isNullTrue s f =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.isNullTrue (s := σ) (f := ρ.frame f))
   | @isNullFalse s f r hr =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.isNullFalse (s := σ) (f := ρ.frame f) (r := ρ.ref r)
         (by rwa [Ne, Ren.ref_eq_null_iff]))
   | @asNonNullNull s f =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.asNonNullNull (s := σ) (f := ρ.frame f))
   | @asNonNullAddr s f r hr =>
     refine .same hR hf ((O.codeGood_single_ref _).mpr hc.head_ref) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.asNonNullAddr (s := σ) (f := ρ.frame f) (r := ρ.ref r)
         (by rwa [Ne, Ren.ref_eq_null_iff]))
   | @eqNull s f =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost) (RefStep.eqNull (s := σ) (f := ρ.frame f))
+    simpa using Step.reference (P := P) (host := noHost) (RefStep.eqNull (s := σ) (f := ρ.frame f))
   | @eqTrue s f r hr =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.eqTrue (s := σ) (f := ρ.frame f) (r := ρ.ref r)
         (by rwa [Ne, Ren.ref_eq_null_iff]))
   | @eqFalse s f r₁ r₂ hr =>
     have h₁ : O.GoodRef r₁ := hc.head_ref
     have h₂ : O.GoodRef r₂ := hc.cons_right.head_ref
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.eqFalse (s := σ) (f := ρ.frame f) (r₁ := ρ.ref r₁) (r₂ := ρ.ref r₂)
         (fun e => hr (hR.ref_injective h₁ h₂ e)))
   | @testTrue s f r rt hr =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.testTrue (s := σ) (f := ρ.frame f) ((hR.refOk_iff hc.head_ref).mpr hr))
   | @testFalse s f r rt hr =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.testFalse (s := σ) (f := ρ.frame f) (rt := rt)
         (fun h' => hr ((hR.refOk_iff hc.head_ref).mp h')))
   | @castSucceed s f r rt hr =>
     refine .same hR hf ((O.codeGood_single_ref _).mpr hc.head_ref) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.castSucceed (s := σ) (f := ρ.frame f) ((hR.refOk_iff hc.head_ref).mpr hr))
   | @castFail s f r rt hr =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.castFail (s := σ) (f := ρ.frame f) (rt := rt)
         (fun h' => hr ((hR.refOk_iff hc.head_ref).mp h')))
   | @i31GetNull s f sx =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.i31GetNull (s := σ) (f := ρ.frame f) sx)
   | @i31GetNum s f sx i =>
     refine .same hR hf (O.codeGood_constI32 _) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.i31GetNum (s := σ) (f := ρ.frame f) sx i)
   | @externConvertNull s f =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.externConvertNull (s := σ) (f := ρ.frame f))
   | @externConvertAddr s f r hr =>
     refine .same hR hf ((O.codeGood_single_ref _).mpr hc.head_ref) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.externConvertAddr (s := σ) (f := ρ.frame f) (r := ρ.ref r)
         (by rwa [Ne, Ren.ref_eq_null_iff]))
   | @anyConvertNull s f =>
     refine .same hR hf (by simp) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.anyConvertNull (s := σ) (f := ρ.frame f))
   | @anyConvertAddr s f r =>
     have hr : O.GoodRef (.extern r) := hc.head_ref
     refine .same hR hf ((O.codeGood_single_ref _).mpr hr) ?_
-    simpa using Silmaril.Games.Step.reference (P := P) (host := noHost)
+    simpa using Step.reference (P := P) (host := noHost)
       (RefStep.anyConvertAddr (s := σ) (f := ρ.frame f) (ρ.ref r))
 
 end Silmaril.Proofs.Wasm.Game.Linking.Split

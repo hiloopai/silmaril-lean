@@ -23,13 +23,13 @@ open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Execution.Core (Config Step)
 
 theorem core3Sem_le {P Q : Profile}
-    (hPQ : ∀ c c' : Config Nat, Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' → Silmaril.Games.Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c') :
+    (hPQ : ∀ c c' : Config Nat, Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' → Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c') :
     (core3Sem P).Le (core3Sem Q) := fun (m : NumInstance) =>
   Strategy.comp_mono le_rfl
     (Strategy.comp_mono (m.inst.strategy_mono hPQ m.inst.store) le_rfl)
 
 theorem denU_core3Sem_le {P Q : Profile}
-    (hPQ : ∀ c c' : Config Nat, Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' → Silmaril.Games.Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c')
+    (hPQ : ∀ c c' : Config Nat, Step P Silmaril.Wasm.SingleThreaded.Det.noHost c c' → Step Q Silmaril.Wasm.SingleThreaded.Det.noHost c c')
     (c : Comp NumInstance) : c.denU (core3Sem P) ≤ c.denU (core3Sem Q) :=
   denU_mono (core3Sem_le hPQ) c
 

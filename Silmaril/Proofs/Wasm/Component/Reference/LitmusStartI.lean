@@ -312,7 +312,7 @@ end Spec
 
 /-- A configuration that steps without host functions is at no host-call redex. -/
 theorem decompose_none_of_step {P : Profile} {c c'' : Config Nat}
-    (h : Silmaril.Games.Step P Det.noHost c c'') : decompose? c.store c.code = none := by
+    (h : Step P Det.noHost c c'') : decompose? c.store c.code = none := by
   rcases Step.split_host h with h' | ⟨E, a, hh, args, -, hhost⟩
   · exact decompose?_none_of_noRedex (Step.noRedex h')
   · rcases hhost with ⟨s', r, hr, -⟩ | ⟨hr, -⟩

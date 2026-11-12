@@ -52,8 +52,8 @@ variable {Op₀ Oc₀ : Own} {ρp ρc : Ren} {Op Oc : Own} {σ π κ : Store H}
 /-- The consumer moves the shared world. -/
 theorem consumer_step {P : Profile} (hR : Rel4 Op₀ Oc₀ ρp Op ρc Oc σ π κ) {F F' : Frame}
     {X X' : List Admin} {κ' : Store H} (hf : Oc.FrameGood F) (hc : Oc.CodeGood X)
-    (h : Silmaril.Games.Step P noHost ⟨κ, F, X⟩ ⟨κ', F', X'⟩) :
-    ∃ ρc' Oc' σ', Silmaril.Games.Step P noHost ⟨σ, ρc.frame F, ρc.code X⟩ ⟨σ', ρc'.frame F', ρc'.code X'⟩ ∧
+    (h : Step P noHost ⟨κ, F, X⟩ ⟨κ', F', X'⟩) :
+    ∃ ρc' Oc' σ', Step P noHost ⟨σ, ρc.frame F, ρc.code X⟩ ⟨σ', ρc'.frame F', ρc'.code X'⟩ ∧
       Rel4 Op₀ Oc₀ ρp Op ρc' Oc' σ' π κ' ∧ Oc'.FrameGood F' ∧ Oc'.CodeGood X' ∧
       Grow ρc Oc ρc' Oc' σ ∧ σ.structs.length ≤ σ'.structs.length ∧
       σ.arrays.length ≤ σ'.arrays.length := by
@@ -78,8 +78,8 @@ theorem consumer_step {P : Profile} (hR : Rel4 Op₀ Oc₀ ρp Op ρc Oc σ π �
 /-- The provider moves the shared world (in the store; the code is handled by the caller). -/
 theorem provider_step {P : Profile} (hR : Rel4 Op₀ Oc₀ ρp Op ρc Oc σ π κ) {F F' : Frame}
     {X X' : List Admin} {π' : Store H} (hf : Op.FrameGood F) (hc : Op.CodeGood X)
-    (h : Silmaril.Games.Step P noHost ⟨π, F, X⟩ ⟨π', F', X'⟩) :
-    ∃ ρp' Op' σ', Silmaril.Games.Step P noHost ⟨σ, ρp.frame F, ρp.code X⟩ ⟨σ', ρp'.frame F', ρp'.code X'⟩ ∧
+    (h : Step P noHost ⟨π, F, X⟩ ⟨π', F', X'⟩) :
+    ∃ ρp' Op' σ', Step P noHost ⟨σ, ρp.frame F, ρp.code X⟩ ⟨σ', ρp'.frame F', ρp'.code X'⟩ ∧
       Rel4 Op₀ Oc₀ ρp' Op' ρc Oc σ' π' κ ∧ Op'.FrameGood F' ∧ Op'.CodeGood X' ∧
       Grow ρp Op ρp' Op' σ ∧ σ.structs.length ≤ σ'.structs.length ∧
       σ.arrays.length ≤ σ'.arrays.length := by
@@ -114,8 +114,8 @@ theorem Own.frameGood_empty (O : Own) : O.FrameGood ({} : Frame) :=
 theorem provider_step_fill {P : Profile} {Op₀ Oc₀ : Own} {ρp ρc : Ren} {Op Oc : Own}
     {σ π κ : Store H} (hR : Rel4 Op₀ Oc₀ ρp Op ρc Oc σ π κ) {X X' : List Admin} {F' : Frame}
     {π' : Store H} (hc : Op.CodeGood X) (htop : TopOK X)
-    (h : Silmaril.Games.Step P noHost ⟨π, {}, X⟩ ⟨π', F', X'⟩) (E : Ctx) (G : Frame) :
-    ∃ ρp' Op' σ', Silmaril.Games.Step P noHost ⟨σ, G, E.fill (ρp.code X)⟩ ⟨σ', G, E.fill (ρp'.code X')⟩ ∧
+    (h : Step P noHost ⟨π, {}, X⟩ ⟨π', F', X'⟩) (E : Ctx) (G : Frame) :
+    ∃ ρp' Op' σ', Step P noHost ⟨σ, G, E.fill (ρp.code X)⟩ ⟨σ', G, E.fill (ρp'.code X')⟩ ∧
       F' = {} ∧ TopOK X' ∧
       Rel4 Op₀ Oc₀ ρp' Op' ρc Oc σ' π' κ ∧ Op'.CodeGood X' ∧
       Grow ρp Op ρp' Op' σ ∧ σ.structs.length ≤ σ'.structs.length ∧

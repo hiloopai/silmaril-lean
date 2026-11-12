@@ -56,7 +56,7 @@ theorem sreadL_memorySize (M : MemTyping (simEnv B)) {s : Store H} {f : Frame} {
     (hc : Typed (simEnv B) hn ⟨s, f, [.plain (.memorySize x)]⟩) :
     SRead (simEnv B) (configV hn ⟨s, f, [.plain (.memorySize x)]⟩)
       (adminsToV ([aconst mi.type.address (BitVec.ofNat _ mi.pages)])) := by
-  obtain ⟨-, hmi⟩ := Silmaril.Wasm.SpecTec.Sim.Memory.Store.mem?_eq_some hm
+  obtain ⟨-, hmi⟩ := Store.mem?_eq_some hm
   have hL := M.memType hn s f mi (List.mem_of_getElem? hmi) (State.typedV_state T hc)
   have hp : mi.pages * (64 * 1024) = (bytesL mi.bytes).length := by
     rw [bytesL_length, MemInst.pages]

@@ -138,7 +138,7 @@ theorem dbl_run {P : Profile} (x : BitVec 32) :
   let n := (Ty.ofList (dblFn.results.map ScalarType.toC)).length
   have hn : [Val.i32 (x + x)].length = n :=
     (Ty.length_ofList (dblFn.results.map ScalarType.toC)).symm
-  have s₁ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke dblStore 0 [Val.i32 x])
+  have s₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke dblStore 0 [Val.i32 x])
       ⟨dblStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
     .callRefFunc trivial hf he (Ty.length_ofList (dblFn.params.map ScalarType.toC)).symm hcode
   have hl₀ : F.local? x₀ = some (some (Val.i32 x)) := by
@@ -153,11 +153,11 @@ theorem dbl_run {P : Profile} (x : BitVec 32) :
       ⟨dblStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩
       ⟨dblStore, {}, [.frame n F [.label n [] (vals [Val.i32 (x + x)])]]⟩ :=
     steps_frame_label s₂
-  have s₄ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have s₄ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       ⟨dblStore, {}, [.frame n F [.label n [] (vals [Val.i32 (x + x)])]]⟩
       ⟨dblStore, {}, [.frame n F (vals [Val.i32 (x + x)])]⟩ :=
     .ctxtFrame .labelVals
-  have s₅ : Silmaril.Games.Step P Silmaril.Wasm.SingleThreaded.Det.noHost
+  have s₅ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       ⟨dblStore, {}, [.frame n F (vals [Val.i32 (x + x)])]⟩ ⟨dblStore, {}, vals [Val.i32 (x + x)]⟩ :=
     .frameVals hn
   exact (Relation.ReflTransGen.single s₁).trans (s₃.tail s₄ |>.tail s₅)

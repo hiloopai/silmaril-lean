@@ -111,7 +111,7 @@ theorem step_lift_instrs' {host : HostSemantics Nat} {s s' : Store Nat}
     (h : Execution.Core.Step P host ⟨s, g, is⟩ ⟨s', g', is'⟩) :
     Execution.Core.Step P host ⟨s, g, vals pre ++ is ++ rest⟩ ⟨s', g', vals pre ++ is' ++ rest⟩ := by
   by_cases hne : pre ≠ [] ∨ rest ≠ []
-  · exact Silmaril.Games.Step.ctxtInstrs h hne
+  · exact Step.ctxtInstrs h hne
   · have hnil : pre = [] ∧ rest = [] := by simpa only [ne_eq, not_or, not_not] using hne
     rw [hnil.1, hnil.2]
     simpa [vals] using h
@@ -156,7 +156,7 @@ theorem trap_top_reach (s : Store Nat) (F : Frame) (pre : List Execution.Core.Va
     (rest : List Admin) :
     Silmaril.Wasm.Game.Reach P (s, .active F (vals pre ++ [.trap] ++ rest)) (s, .active F [.trap]) := by
   by_cases hne : pre ≠ [] ∨ rest ≠ []
-  · exact .single ⟨F, [.trap], rfl, Silmaril.Games.Step.trapInstrs hne⟩
+  · exact .single ⟨F, [.trap], rfl, Step.trapInstrs hne⟩
   · have hnil : pre = [] ∧ rest = [] := by simpa only [ne_eq, not_or, not_not] using hne
     rw [hnil.1, hnil.2]
     simpa [vals] using (Relation.ReflTransGen.refl : Silmaril.Wasm.Game.Reach P (s, .active F [.trap]) _)
@@ -176,10 +176,10 @@ theorem fill_trap_reach' (s : Store Nat) :
     have h1 : Silmaril.Wasm.Game.Reach P (s, .active F (vals pre ++ [.label n cont (E.fill [.trap])] ++ rest))
         (s, .active F (vals pre ++ [.label n cont [.trap]] ++ rest)) :=
       reach_map' (fun g X => (g, vals pre ++ [.label n cont X] ++ rest))
-        (fun _ _ _ _ _ _ h => step_lift_instrs' (Silmaril.Games.Step.ctxtLabel h)) (ih F)
+        (fun _ _ _ _ _ _ h => step_lift_instrs' (Step.ctxtLabel h)) (ih F)
     have h2 : Silmaril.Wasm.Game.InternalP P (s, .active F (vals pre ++ [.label n cont [.trap]] ++ rest))
         (s, .active F (vals pre ++ [.trap] ++ rest)) :=
-      ⟨_, _, rfl, step_lift_instrs' Silmaril.Games.Step.trapLabel⟩
+      ⟨_, _, rfl, step_lift_instrs' Step.trapLabel⟩
     exact (h1.tail h2).trans (trap_top_reach s F pre rest)
   | handler pre n cs E rest ih =>
     show ∀ F, Silmaril.Wasm.Game.Reach P (s, .active F ((Ctx.handler pre n cs E rest).fill [.trap]))
@@ -188,10 +188,10 @@ theorem fill_trap_reach' (s : Store Nat) :
     have h1 : Silmaril.Wasm.Game.Reach P (s, .active F (vals pre ++ [.handler n cs (E.fill [.trap])] ++ rest))
         (s, .active F (vals pre ++ [.handler n cs [.trap]] ++ rest)) :=
       reach_map' (fun g X => (g, vals pre ++ [.handler n cs X] ++ rest))
-        (fun _ _ _ _ _ _ h => step_lift_instrs' (Silmaril.Games.Step.ctxtHandler h)) (ih F)
+        (fun _ _ _ _ _ _ h => step_lift_instrs' (Step.ctxtHandler h)) (ih F)
     have h2 : Silmaril.Wasm.Game.InternalP P (s, .active F (vals pre ++ [.handler n cs [.trap]] ++ rest))
         (s, .active F (vals pre ++ [.trap] ++ rest)) :=
-      ⟨_, _, rfl, step_lift_instrs' Silmaril.Games.Step.trapHandler⟩
+      ⟨_, _, rfl, step_lift_instrs' Step.trapHandler⟩
     exact (h1.tail h2).trans (trap_top_reach s F pre rest)
   | frame pre n fi E rest ih =>
     show ∀ F, Silmaril.Wasm.Game.Reach P (s, .active F ((Ctx.frame pre n fi E rest).fill [.trap]))
@@ -200,10 +200,10 @@ theorem fill_trap_reach' (s : Store Nat) :
     have h1 : Silmaril.Wasm.Game.Reach P (s, .active F (vals pre ++ [.frame n fi (E.fill [.trap])] ++ rest))
         (s, .active F (vals pre ++ [.frame n fi [.trap]] ++ rest)) :=
       reach_map' (fun g X => (F, vals pre ++ [.frame n g X] ++ rest))
-        (fun _ _ _ _ _ _ h => step_lift_instrs' (Silmaril.Games.Step.ctxtFrame h)) (ih fi)
+        (fun _ _ _ _ _ _ h => step_lift_instrs' (Step.ctxtFrame h)) (ih fi)
     have h2 : Silmaril.Wasm.Game.InternalP P (s, .active F (vals pre ++ [.frame n fi [.trap]] ++ rest))
         (s, .active F (vals pre ++ [.trap] ++ rest)) :=
-      ⟨_, _, rfl, step_lift_instrs' Silmaril.Games.Step.trapFrame⟩
+      ⟨_, _, rfl, step_lift_instrs' Step.trapFrame⟩
     exact (h1.tail h2).trans (trap_top_reach s F pre rest)
 
 /-! ## Typing under the stateful environment of `g` -/
