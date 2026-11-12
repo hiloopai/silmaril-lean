@@ -29,7 +29,7 @@ library:
 # request narrows it to what its diff can change (`make scope`).
 # The Cerberus tests and executables (docs/projects/cerberus.md).
 CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS)
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
@@ -113,7 +113,10 @@ project-lean:
 		Silmaril.Project.Shapes.X86.Thms \
 		Silmaril.Project.Shapes.Cli.Thms \
 		Silmaril.Project.Room.Thms \
-		ProjectSelfTest
+		Silmaril.Project.Shapes.SysV.Thms \
+		Silmaril.Project.Shapes.C.Thms \
+		ProjectSelfTest \
+		SysVTvExample
 
 project-tool:
 	$(CARGO) build --release --locked --manifest-path tools/silmaril-project/Cargo.toml

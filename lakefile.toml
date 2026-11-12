@@ -294,3 +294,14 @@ srcDir = "tools/core-elab"
 name = "cfront"
 root = "Cfront"
 srcDir = "tools/cfront"
+
+# The worked example of the System V translation-validation shapes (docs/projects/sysv-tv.md):
+# it reads the records and the registry under `silmaril/` and the objects it registers.
+[[lean_lib]]
+name = "SysVTvExample"
+srcDir = "examples/sysv-tv"
+needs = ["projectRecords", "sysvTvData"]
+
+[[input_dir]]
+name = "sysvTvData"
+path = "examples/sysv-tv/max2"
