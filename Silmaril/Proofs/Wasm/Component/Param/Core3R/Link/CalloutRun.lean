@@ -37,7 +37,7 @@ open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat)
 section Callout
 
 variable {P : Profile} {σ : Type} {d : Call (E3 P V IR) → Canon.P (E3 P V IR) σ (Ret (E3 P V IR))}
-  {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+  {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
 
 /-- The flat arguments of a callout lifted at the parameter types: `liftFlatValues` is the
 IR lift, or traps. -/
@@ -114,7 +114,7 @@ theorem runs_lowerOnResolve {th : Option ThreadId} {m : Machine.Config (E3 P V I
   exact RunsQ.modify rfl (RunsQ.pure _ _)
 
 /-- The dispatcher of the stateful host answering by `g`. -/
-abbrev DA (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ)) :
+abbrev DA (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) :
     Call (E3 P V IR) → Canon.P (E3 P V IR) σ (Ret (E3 P V IR)) := (answerHostS P V IR g).dispatch
 
 /-- The `canon_lower` caller record of a callout with flat arguments `ys` to a function of type

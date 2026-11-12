@@ -83,7 +83,7 @@ def arbitraryConfig : G Config := do
            errorContext, fixedLengthLists }
 
 /-- The primitive types. -/
-def prims : List Silmaril.Wasm.Wit.Ty :=
+def prims : List Ty :=
   [.bool, .s8, .s16, .s32, .s64, .u8, .u16, .u32, .u64, .f32, .f64, .char, .string]
 
 /-- A type definition in scope: its name and whether it is a resource. -/
@@ -106,13 +106,13 @@ def tks (cfg : Config) (sc : Scope) : List TK :=
 
 /-- Does a type mention `char` outside nested `stream`s? (`stream<char>` is refused by
 wasmparser; upstream rejects such seeds.) -/
-def Silmaril.Wasm.Wit.Ty.isChar : Silmaril.Wasm.Wit.Ty → Bool
+def Ty.isChar : Ty → Bool
   | .char => true
   | _ => false
 
 mutual
 /-- A type of size at most `fuel` (leaves at `0`): handles to resources in scope only owned. -/
-def genTy (cfg : Config) (sc : Scope) : Nat → G Silmaril.Wasm.Wit.Ty
+def genTy (cfg : Config) (sc : Scope) : Nat → G Ty
   | 0 => G.pick .u32 prims
   | fuel + 1 => do
     match ← G.pick .prim (tks cfg sc) with
@@ -131,18 +131,18 @@ def genTy (cfg : Config) (sc : Scope) : Nat → G Silmaril.Wasm.Wit.Ty
     | .future => return .future (← genOpt cfg sc fuel)
     | .stream =>
       let t ← genOpt cfg sc fuel
-      return .stream (if t.any Silmaril.Wasm.Wit.Ty.isChar then some .u8 else t)
+      return .stream (if t.any Ty.isChar then some .u8 else t)
     | .errCtx => return .errorContext
     | .fixed => return .fixedList (← genTy cfg sc fuel) (← G.range 1 8)
 termination_by fuel => (fuel, 0)
 
 /-- An optional type. -/
-def genOpt (cfg : Config) (sc : Scope) (fuel : Nat) : G (Option Silmaril.Wasm.Wit.Ty) := do
+def genOpt (cfg : Config) (sc : Scope) (fuel : Nat) : G (Option Ty) := do
   if ← G.bool then return some (← genTy cfg sc fuel) else return none
 termination_by (fuel, 1)
 
 /-- `n` types. -/
-def genTys (cfg : Config) (sc : Scope) (fuel : Nat) : Nat → G (List Silmaril.Wasm.Wit.Ty)
+def genTys (cfg : Config) (sc : Scope) (fuel : Nat) : Nat → G (List Ty)
   | 0 => return []
   | n + 1 => return (← genTy cfg sc fuel) :: (← genTys cfg sc fuel n)
 termination_by n => (fuel, n + 1)
@@ -165,7 +165,7 @@ def genFunc (cfg : Config) (sc : Scope) : G Silmaril.Wasm.Wit.Func := do
   let np ← G.choose (min cfg.maxTypeParts 4 + 1)
   let params ← many (fun j => do
     let t ← if sc.any (·.2) && (← G.choose 4) == 0 then
-        pure (Silmaril.Wasm.Wit.Ty.borrow (← G.pick "" ((sc.filter (·.2)).map (·.1))))
+        pure (Ty.borrow (← G.pick "" ((sc.filter (·.2)).map (·.1))))
       else genTy cfg sc (depthOf cfg)
     return (s!"p{j}", t)) np
   let result ← if ← G.bool then pure (some (← genTy cfg sc (depthOf cfg))) else pure none

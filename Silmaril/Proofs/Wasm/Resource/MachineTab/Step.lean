@@ -257,13 +257,13 @@ theorem cfgTab_init (s : CStore E) (σ0 : σ) : CfgTab j (Config.init s σ0) := 
   rw [Config.init_cont?] at e
   cases e
 
-theorem vtab_empty : vtab (CStore.empty (E := E)) j = Silmaril.Wasm.Component.Runtime.Table.empty := rfl
+theorem vtab_empty : vtab (CStore.empty (E := E)) j = Table.empty := rfl
 
 /-- **From the initial configuration**: every machine run with a table-moving dispatcher
 keeps the handle table of every instance on a successful history from `Table.empty`. -/
 theorem steps_init_tab (hd : TabDispatch j dispatch) {σ0 : σ} {m' : Config E σ}
     {tr : List (Label E σ)} (h : Steps prof hr dispatch (Config.init CStore.empty σ0) tr m')
-    (hl : RunTab j tr) : ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m'.store j) :=
+    (hl : RunTab j tr) : ∃ evs, Table.Steps Table.empty evs (vtab m'.store j) :=
   vtab_empty (j := j) ▸ (steps_tab hd h (cfgTab_init _ _) hl).2
 
 end Silmaril.Wasm.Resource

@@ -60,7 +60,7 @@ abbrev VT := Types.ValType Nat
 /-- Semantic function types. -/
 abbrev FT := Types.FuncType Nat
 
-/-! ## Silmaril.Wasm.Component.Limits -/
+/-! ## Limits -/
 
 /-- wasmparser's `MAX_WASM_COMPONENT_TYPE_DEPTH`. -/
 def maxDepth : Nat := 100
@@ -261,7 +261,7 @@ def typeNameProblem {X : Type} (before after : Ctx X) : Option String :=
     | none => none
   else none
 
-/-- wasmparser's `add_entity` with `ExternKind::Silmaril.Wasm.Component.Export` on an inline-export instance
+/-- wasmparser's `add_entity` with `ExternKind::Export` on an inline-export instance
 (`instance (export …)`): an exported value's type cannot contain a `borrow`. -/
 def inlineValueProblem {X : Type} (Γ : Ctx X)
     (items : List (Syntax.ExternName × Syntax.SortIdx Syntax.Sort_)) : Option String :=

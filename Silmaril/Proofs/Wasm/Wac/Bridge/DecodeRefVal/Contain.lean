@@ -20,23 +20,23 @@ open DecodeNamed (Ctx EsOk TyOk SigOk extend sortOf sortOf_plain)
 
 namespace DecodeRefVal
 
-theorem rdTo_id {Γ : Ctx} {a : Option Silmaril.Wasm.Wit.Binary.Ty} (h : ∀ t ∈ a, rdT Γ t = t) : rdTo Γ a = a := by
+theorem rdTo_id {Γ : Ctx} {a : Option Ty} (h : ∀ t ∈ a, rdT Γ t = t) : rdTo Γ a = a := by
   cases a with
   | none => rfl
   | some t => simp [rdTo, h t rfl]
 
-theorem rdTs_id {Γ : Ctx} : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts, rdT Γ t = t) → rdTs Γ ts = ts
+theorem rdTs_id {Γ : Ctx} : ∀ {ts : List Ty}, (∀ t ∈ ts, rdT Γ t = t) → rdTs Γ ts = ts
   | [], _ => rfl
   | t :: _, h => by
     simp [rdTs, h t List.mem_cons_self, rdTs_id (fun t' ht => h t' (List.mem_cons_of_mem _ ht))]
 
-theorem rdPs_id {Γ : Ctx} : ∀ {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, (∀ p ∈ ps, rdT Γ p.2 = p.2) → rdPs Γ ps = ps
+theorem rdPs_id {Γ : Ctx} : ∀ {ps : List (String × Ty)}, (∀ p ∈ ps, rdT Γ p.2 = p.2) → rdPs Γ ps = ps
   | [], _ => rfl
   | (n, t) :: _, h => by
     simp [rdPs, h (n, t) List.mem_cons_self, rdPs_id (fun p hp => h p (List.mem_cons_of_mem _ hp))]
 
 /-- On `TyOk`, the read-back is the identity. -/
-theorem rdT_of_tyOk {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : TyOk Γ t) : rdT Γ t = t := by
+theorem rdT_of_tyOk {Γ : Ctx} {t : Ty} (h : TyOk Γ t) : rdT Γ t = t := by
   induction h with
   | prim _ => rfl
   | refVal h | refAlias h | own h => simp [rdT, h]

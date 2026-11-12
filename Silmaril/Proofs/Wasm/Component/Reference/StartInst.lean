@@ -30,7 +30,7 @@ open Silmaril.Wasm.Component (Syntax.Definition)
 section Offset
 
 variable {Pf : Silmaril.Wasm.Numerics.Profile} {σ : Type} {R : Recurse (core3P Pf) σ}
-  {inst : InstId} {outer : List (Frame (core3P Pf))} {args : Exports (core3P Pf)}
+  {inst : InstId} {outer : List (Silmaril.Wasm.Execution.Core.Frame (core3P Pf))} {args : Exports (core3P Pf)}
 
 /-- The `canon lift` of export `i` allocates component function `o + i`. -/
 theorem lift_runO (sc : Scope (core3P Pf)) (cfg : Machine.Config (core3P Pf) σ) {o i ft a : Nat}

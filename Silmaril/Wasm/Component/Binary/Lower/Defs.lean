@@ -351,7 +351,7 @@ def canon (c : Canon) : M Unit := do
     set { s with coreFuncs := s.coreFuncs.push ⟨.lower ft :: im.chain, im.target⟩ }
   | _ => throw "resource built-ins are not supported"
 
-def export_ (e : Silmaril.Wasm.Component.Export) : M Unit := do
+def export_ (e : Export) : M Unit := do
   let s ← get
   match e.item.sort with
   | .func =>

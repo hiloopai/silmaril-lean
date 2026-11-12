@@ -39,8 +39,8 @@ together with the named pure store updates they issue.
 | `Subtask.resolveDelivered` (`subtaskResolveDelivered`) | `Subtask.resolve_delivered` (L866-868) |
 | `subtaskDrop` | `Subtask.drop` (L870-872) |
 
-Event codes, event tuples and subtask states are the `Async.EventCode`,
-`Async.EventTuple` and `Async.SubtaskState` (`Async/Codes.lean`).
+Event codes, event tuples and subtask states are the `AsyncRef.EventCode`,
+`AsyncRef.EventTuple` and `AsyncRef.SubtaskState` (`Async/Codes.lean`).
 
 **Pending events.** A REF `pending_event` closure is the data `PendingEvent`
 (`Runtime/Objects.lean`). `getPendingEvent w` clears the slot and RUNS the closure in one named
@@ -92,7 +92,7 @@ has exactly one named update.
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon
+open Engine AsyncRef Canon
 
 variable {E : CoreEngine}
 

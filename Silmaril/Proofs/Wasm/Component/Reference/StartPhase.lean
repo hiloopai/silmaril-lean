@@ -87,7 +87,7 @@ variable {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
 theorem start_run (hF : CoreFactsS c I cs ci (some a)) {y : CoreSt (E3 Pf)}
     (hy : Relation.ReflTransGen (CoreStep (E3 Pf))
       (cs, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) y) :
-    Steps Pf Silmaril.Wasm.SingleThreaded.Det.noHost (invoke I.store a [])
+    Silmaril.Wasm.Execution.Core.Steps Pf Silmaril.Wasm.SingleThreaded.Det.noHost (invoke I.store a [])
       (Config.mapH (fun _ => 0) (y.2.config y.1)) := by
   have h := coreSteps_run (P := Pf) (xs := []) hy
   rw [hF.store] at h

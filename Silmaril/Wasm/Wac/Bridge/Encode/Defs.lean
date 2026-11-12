@@ -93,8 +93,8 @@ def Item.toSection : Item → Section
 /-- The definition of a nominal type (record, variant, enum, flags), which kinds do not
 keep (`witTypeKind` keeps only the name). -/
 inductive Nominal where
-  | record (fields : List (String × Silmaril.Wasm.Wit.Binary.Ty))
-  | variant (cases : List (String × Option Silmaril.Wasm.Wit.Binary.Ty))
+  | record (fields : List (String × Ty))
+  | variant (cases : List (String × Option Ty))
   | enum (labels : List String)
   | flags (labels : List String)
   deriving Inhabited
@@ -159,7 +159,7 @@ def handle (o : Bool) (i : Nat) : TM Silmaril.Wasm.Component.Binary.ValType := d
 
 mutual
 /-- A value type. -/
-def valTy : Silmaril.Wasm.Wit.Binary.Ty → TM Silmaril.Wasm.Component.Binary.ValType
+def valTy : Ty → TM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .ref r => do
     let i ← namedTy r.name
@@ -175,11 +175,11 @@ def valTy : Silmaril.Wasm.Wit.Binary.Ty → TM Silmaril.Wasm.Component.Binary.Va
   | .future t => do defVal (.future (← valTyOpt t))
   | .stream t => do defVal (.stream (← valTyOpt t))
 /-- An optional value type. -/
-def valTyOpt : Option Silmaril.Wasm.Wit.Binary.Ty → TM (Option Silmaril.Wasm.Component.Binary.ValType)
+def valTyOpt : Option Ty → TM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => do pure (some (← valTy t))
 /-- Value types. -/
-def valTys : List Silmaril.Wasm.Wit.Binary.Ty → TM (List Silmaril.Wasm.Component.Binary.ValType)
+def valTys : List Ty → TM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do let v ← valTy t; pure (v :: (← valTys ts))
 end
@@ -188,7 +188,7 @@ end
 (`none` for other types). wac gives every type expression of a document its own
 identity, and encodes the definiens of an alias declaration afresh (`DefinedType::Alias`
 of a defined type), even if an equal anonymous type was defined before. -/
-def freshVal : Silmaril.Wasm.Wit.Binary.Ty → TM (Option Nat)
+def freshVal : Ty → TM (Option Nat)
   | .list t => do pure (some (← defTy (.val (.list (← valTy t)))))
   | .fixedList t n => do pure (some (← defTy (.val (.fixedList (← valTy t) n))))
   | .map k v => do let k ← valTy k; pure (some (← defTy (.val (.map k (← valTy v)))))
@@ -211,7 +211,7 @@ def nominalTy : Nominal → TM Nat
   | .flags ls => defTy (.val (.flags ls))
 
 /-- Named parameters. -/
-def paramTys : List (String × Silmaril.Wasm.Wit.Binary.Ty) → TM (List (String × Silmaril.Wasm.Component.Binary.ValType))
+def paramTys : List (String × Ty) → TM (List (String × Silmaril.Wasm.Component.Binary.ValType))
   | [] => pure []
   | (n, t) :: ps => do let v ← valTy t; pure ((n, v) :: (← paramTys ps))
 
@@ -300,7 +300,7 @@ def typeBound : Kind → TM ExternDesc
     let ds ← nested true (do importDecls is; exportDecls es)
     pure (.type (.eq (← defTy (.component ds))))
   | .type _ => throw "a type of a type"
-/-- Silmaril.Wasm.Component.Binary.Export declarations of a scope. -/
+/-- Export declarations of a scope. -/
 def exportDecls : Externs → TM Unit
   | [] => pure ()
   | (n, k) :: es => do
@@ -308,7 +308,7 @@ def exportDecls : Externs → TM Unit
     modify fun s => { s with decls := s.decls ++ [.inst (.export ⟨n, .plain0⟩ d)] }
     declared n d
     exportDecls es
-/-- Silmaril.Wasm.Component.Binary.Import declarations of a scope. -/
+/-- Import declarations of a scope. -/
 def importDecls : Externs → TM Unit
   | [] => pure ()
   | (n, k) :: es => do

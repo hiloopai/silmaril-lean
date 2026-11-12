@@ -332,7 +332,7 @@ def stepAlias (s : CSt) (a : Binary.Alias) : Option CSt :=
   | ⟨k, .export i n⟩ => (s.scope.instExport i n).bind fun t => s.add k t
   | _ => none
 
-def stepCanon (s : CSt) : Silmaril.Wasm.Component.Binary.Canon → Option CSt
+def stepCanon (s : CSt) : Canon → Option CSt
   | .lift _ _ t => (s.scope.types[t]?).bind fun ft => s.add .func ft
   | _ => some s
 
@@ -354,7 +354,7 @@ def stepExport (s : CSt) (e : Binary.Export) : Option CSt :=
 
 mutual
 /-- Replay the sections of a component. -/
-def walkSecs : CSt → List Silmaril.Wasm.Component.Binary.Section → Option CSt
+def walkSecs : CSt → List Section → Option CSt
   | s, [] => some s
   | s, .component c :: ss =>
     (resolveAst c).bind fun t => (s.add .component t).bind fun s' => walkSecs s' ss
@@ -368,7 +368,7 @@ def walkSecs : CSt → List Silmaril.Wasm.Component.Binary.Section → Option CS
   | s, _ :: ss => walkSecs s ss
 
 /-- **The closed component type of a component**: its imports and exports. -/
-def resolveAst : Silmaril.Wasm.Component.Binary.Ast → Option CType
+def resolveAst : Ast → Option CType
   | .mk ss => (walkSecs {} ss).map fun s =>
       .comp (CFields.ofList s.scope.imports) (CFields.ofList s.scope.exports)
 end
@@ -390,7 +390,7 @@ def provides (have_ need : Table) : Bool :=
 
 /-- **The component `c` targets the world `W`**: `W` provides every import of `c` at a
 subtype and `c` provides every export of `W` at a subtype. -/
-def targets (c : Silmaril.Wasm.Component.Binary.Ast) (W : Silmaril.Wasm.Wit.Project.WorldType) : Bool :=
+def targets (c : Ast) (W : Silmaril.Wasm.Wit.Project.WorldType) : Bool :=
   match resolveAst c, resolveWorld W with
   | some (.comp ci ce), some (.comp wi we) => provides wi.toList ci.toList && provides ce.toList we.toList
   | _, _ => false

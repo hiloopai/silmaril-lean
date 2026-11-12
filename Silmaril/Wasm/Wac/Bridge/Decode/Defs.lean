@@ -42,7 +42,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig TyRef Owner)
 
 /-- What a type index of a scope defines. -/
 inductive TInfo where
-  | val (t : Silmaril.Wasm.Wit.Binary.Ty)
+  | val (t : Ty)
   | func (s : Sig)
   | inst (es : Externs)
   | comp (is es : Externs)
@@ -73,7 +73,7 @@ def typeAt (i : Nat) : DM TInfo := do
 def pushTy (t : TInfo) : DM Unit := modify fun s => { s with types := s.types.push t }
 
 /-- A value type. -/
-def decVal : ValType → DM Silmaril.Wasm.Wit.Binary.Ty
+def decVal : Silmaril.Wasm.Component.Binary.ValType → DM Ty
   | .prim p => pure (.prim p)
   | .idx i => do
     match ← typeAt i with
@@ -82,7 +82,7 @@ def decVal : ValType → DM Silmaril.Wasm.Wit.Binary.Ty
     | .resAlias n _ => pure (.ref ⟨.local, n⟩)
     | _ => throw s!"type index {i} is not a value type"
 
-def decValOpt : Option ValType → DM (Option Silmaril.Wasm.Wit.Binary.Ty)
+def decValOpt : Option Silmaril.Wasm.Component.Binary.ValType → DM (Option Ty)
   | none => pure none
   | some v => some <$> decVal v
 
@@ -115,7 +115,7 @@ def decDefVal : DefValType → DM TInfo
   | .flags ls => pure (.nominal (.flags ls))
 
 /-- A function type. -/
-def decFunc (f : FuncType) : DM Sig := do
+def decFunc (f : Silmaril.Wasm.Component.Binary.FuncType) : DM Sig := do
   let ps ← f.params.mapM fun p => do pure (p.1, ← decVal p.2)
   pure ⟨f.async, ps, ← decValOpt f.result⟩
 

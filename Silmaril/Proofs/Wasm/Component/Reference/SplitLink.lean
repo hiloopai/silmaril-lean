@@ -57,7 +57,7 @@ theorem goodRef_shift : ∀ {r : Ref}, O.GoodRef r → (shOwn δ O).GoodRef (δ.
   | .host _, h => h.elim
   | .extern r, h => goodRef_shift (r := r) h
 
-theorem goodVal_shift {v : Val} (h : O.GoodVal v) : (shOwn δ O).GoodVal (δ.val v) := by
+theorem goodVal_shift {v : Silmaril.Wasm.Execution.Core.Val} (h : O.GoodVal v) : (shOwn δ O).GoodVal (δ.val v) := by
   cases v with
   | ref r => exact goodRef_shift δ h
   | num => trivial

@@ -68,7 +68,7 @@ theorem runs_enterN {m : Machine.Config (E3 P) Unit} {Gt : List (Runtime.Task (E
   rfl
 
 /-- The value of `rep` passed to a destructor by `on_start` in store `S` (caller record `c`). -/
-def dtorArg (S : CStore (E3 P)) (c : CallerId) (rep : ℕ) : Val :=
+def dtorArg (S : CStore (E3 P)) (c : CallerId) (rep : ℕ) : Silmaril.Wasm.Component.Reference.Val :=
   repVal (((callerTaskFt? S c).map paramTypes).getD []) rep
 
 /-- `Task.start` of a task whose caller record is the destructor record of `rep`. -/
@@ -89,7 +89,7 @@ theorem runs_startD {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
   unfold callVals callRet perform Prog.lift
   refine RunsQ.call (r := .vals [dtorArg S ⟨Gc.length⟩ rep]) (tr₁ := [.tau, .tau, .tau]) ?_
     (.pure _ _)
-  show RunsQ _ _ (callerOnStart Silmaril.Wasm.Component.Limits.spec Quirks.none ⟨Gc.length⟩) _ _ _ _
+  show RunsQ _ _ (callerOnStart Limits.spec Quirks.none ⟨Gc.length⟩) _ _ _ _
   unfold callerOnStart
   refine RunsQ.getObj_bind _ _ hc' ?_
   show RunsQ _ _ (onStartProg ⟨Gc.length⟩) _ _ _ _
@@ -106,7 +106,7 @@ theorem dtorArg_int (S : CStore (E3 P)) (c : CallerId) (rep : ℕ) :
 /-- `Task.return_` of a task whose caller record is a destructor record. -/
 theorem runs_returnD {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     {Gt : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc : List (Caller (E3 P))}
-    {rep : ℕ} (vs : List Val) (ht : m.store.tasks = Gt ++ [y]) (hy : y.caller = ⟨Gc.length⟩)
+    {rep : ℕ} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y]) (hy : y.caller = ⟨Gc.length⟩)
     (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.sub (.destructor rep)]) :
     RunsQ (D P) th (Task.return_ ⟨Gt.length⟩ vs) m [.tau, .tau, .tau, .tau, .tau, .tau] ()
@@ -120,7 +120,7 @@ theorem runs_returnD {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
   rw [hy]
   unfold callUnit callRet perform Prog.lift
   refine RunsQ.bind (RunsQ.call (r := .unit) (tr₁ := [.tau, .tau]) ?_ (.pure _ _)) (runs_modifyStore _ _ rfl)
-  show RunsQ _ _ (callerOnResolve Silmaril.Wasm.Component.Limits.spec Quirks.none ⟨Gc.length⟩ (some vs)) _ _ _ _
+  show RunsQ _ _ (callerOnResolve Limits.spec Quirks.none ⟨Gc.length⟩ (some vs)) _ _ _ _
   unfold callerOnResolve
   refine RunsQ.getObj_bind _ _ hc' ?_
   show RunsQ _ _ (onResolveProg ⟨Gc.length⟩ (some vs)) _ _ _ _
@@ -128,14 +128,14 @@ theorem runs_returnD {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
   exact RunsQ.getObj_bind _ _ hc' (.pure _ _)
 
 /-- The lowering of an integer at the destructor's parameter type. -/
-theorem runs_lowerDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P)) (v : Val)
+theorem runs_lowerDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P)) (v : Silmaril.Wasm.Component.Reference.Val)
     (k : Value.IntKind) (n : ℤ) (hv : v = .int k n) (m : Machine.Config (E3 P) Unit) :
-    RunsQ (D P) th (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatParams
+    RunsQ (D P) th (lowerFlatValues Limits.spec Quirks.none cx ABI.maxFlatParams
       [v] (paramTypes (dtorType .i32)) none) m [.tau] ([lowerFlatInt .u32 n] ++ []) m := by
   subst hv
-  have e : (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatParams [.int k n]
+  have e : (lowerFlatValues Limits.spec Quirks.none cx ABI.maxFlatParams [.int k n]
       (paramTypes (dtorType .i32)) none : Canon.P (E3 P) Unit _) =
-      ptrType cx >>= fun p => lowerFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx p [.int k n]
+      ptrType cx >>= fun p => lowerFlatTypes Limits.spec Quirks.none cx p [.int k n]
         [.prim .u32] := by
     unfold lowerFlatValues
     congr 1
@@ -143,7 +143,7 @@ theorem runs_lowerDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P)) (v 
     cases p <;> (rw [ite_eq_right_iff.mpr (by intro h; exact absurd h (by decide +kernel))]; rfl)
   rw [e]
   apply RunsQ.get
-  show RunsQ _ _ (lowerFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx (ptrTypeIn m.store cx) [.int k n]
+  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx) [.int k n]
     [.prim .u32]) _ _ _ _
   unfold lowerFlatTypes
   rw [lowerFlatAt.eq_def]
@@ -152,18 +152,18 @@ theorem runs_lowerDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P)) (v 
 /-- The lift of no flat values at the destructor's result type. -/
 theorem runs_liftDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P))
     (m : Machine.Config (E3 P) Unit) :
-    RunsQ (D P) th (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatResults
+    RunsQ (D P) th (liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
       (.ofList []) (resultTypes (dtorType .i32))) m [.tau] ([], .ofList []) m := by
-  have e : (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none cx ABI.maxFlatResults (.ofList [])
+  have e : (liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults (.ofList [])
       (resultTypes (dtorType .i32)) : Canon.P (E3 P) Unit _) =
-      ptrType cx >>= fun p => liftFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx p [] (.ofList []) := by
+      ptrType cx >>= fun p => liftFlatTypes Limits.spec Quirks.none cx p [] (.ofList []) := by
     unfold liftFlatValues
     congr 1
     funext p
     cases p <;> (rw [ite_eq_right_iff.mpr (by intro h; exact absurd h (by decide +kernel))]; rfl)
   rw [e]
   apply RunsQ.get
-  show RunsQ _ _ (liftFlatTypes Silmaril.Wasm.Component.Limits.spec Quirks.none cx (ptrTypeIn m.store cx) [] (.ofList []))
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx) [] (.ofList []))
     _ _ _ _
   unfold liftFlatTypes
   exact .pure _ _
@@ -245,7 +245,7 @@ theorem runs_dropCore {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     (hH : ArenaField.resHandles.get? m.store hid = some h) (hrt : h.rt = ⟨0⟩)
     (hlend : h.numLends = 0) (hown : h.own = true)
     (hty : m.store.resourceTypes = [{ impl := some ⟨0⟩ }]) :
-    ∃ tr, RunsQ (D P) th (resourceDropCore Silmaril.Wasm.Component.Limits.spec ⟨0⟩ ⟨0⟩ i) m tr
+    ∃ tr, RunsQ (D P) th (resourceDropCore Limits.spec ⟨0⟩ ⟨0⟩ i) m tr
       (some { rt := ⟨0⟩, impl := some ⟨0⟩, dtor := none, rep := h.rep })
       { m with store := { m.store with insts := [ι₂] } } := by
   have hH' : ArenaField.resHandles.get? { m.store with insts := [ι₂] } hid = some h := hH
@@ -331,8 +331,8 @@ theorem lrun_dropCallout {prof : ProfileKind} {M : Machine.Config (E3 P) Unit} {
   show LRun _ _ _ { M with ctl := ⟨some t, .prog (match calloutEntry M.store (some t) (dropH P)
     with | some r => trap r | none => _), sg⟩ :: R } _ _
   rw [hentry]
-  show LRun _ _ _ { M with ctl := ⟨some t, .prog (Builtins.resourceDrop Silmaril.Wasm.Component.Limits.spec Quirks.none
-    (destructorCall Silmaril.Wasm.Component.Limits.spec Quirks.none) ⟨0⟩ (flatNat a) >>= fun fl => pure (Ret.flat fl)),
+  show LRun _ _ _ { M with ctl := ⟨some t, .prog (Builtins.resourceDrop Limits.spec Quirks.none
+    (destructorCall Limits.spec Quirks.none) ⟨0⟩ (flatNat a) >>= fun fl => pure (Ret.flat fl)),
     sg⟩ :: R } _ _
   unfold Builtins.resourceDrop
   apply RunsQ.chunk2 rfl (runs_resourceEnter (by exact hthr) (by exact htk) hinst

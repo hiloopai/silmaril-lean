@@ -56,7 +56,7 @@ def repCut (lim n : Nat) (e : List NumType) : Option (List NumType) :=
 
 mutual
 /-- **Bounded flattening** of a type in scope `sc`: `flatR` cut at `lim`. -/
-def flatB (ρ : Resolver) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → Nat → Except String (Option (List NumType))
+def flatB (ρ : Resolver) : Nat → Scope → Ty → Nat → Except String (Option (List NumType))
   | 0, _, _, _ => throw "type nesting too deep"
   | fuel + 1, sc, t, lim => match t with
     | .prim p => pure (cut lim (primFlat p))
@@ -100,12 +100,12 @@ def flatKindB (ρ : Resolver) : Nat → Scope → TyDefKind → Nat →
     | .resource => pure (cut lim [ti32])
     | .type t => flatB ρ fuel sc t lim
 /-- Bounded flattening of an optional payload. -/
-def flatOptB (ρ : Resolver) : Nat → Scope → Option Silmaril.Wasm.Wit.Binary.Ty → Nat →
+def flatOptB (ρ : Resolver) : Nat → Scope → Option Ty → Nat →
     Except String (Option (List NumType))
   | _, _, none, _ => pure (some [])
   | fuel, sc, some t, lim => flatB ρ fuel sc t lim
 /-- Bounded flattening of a list of types: each gets the budget the earlier ones left. -/
-def flatListB (ρ : Resolver) : Nat → Scope → List Silmaril.Wasm.Wit.Binary.Ty → Nat →
+def flatListB (ρ : Resolver) : Nat → Scope → List Ty → Nat →
     Except String (Option (List NumType))
   | _, _, [], _ => pure (some [])
   | fuel, sc, t :: ts, lim => do

@@ -164,10 +164,10 @@ theorem spec_decDefVal_own (i : Nat) : Spec (decDefVal (.own i)) (fun t => isUse
 
 /-- The results of `decDefVal` are not used types. -/
 theorem spec_decDefVal (d : DefValType) : Spec (decDefVal d) (fun t => isUsed t = false) := by
-  have hv : ∀ (v : Silmaril.Wasm.Component.Binary.ValType) (g : Silmaril.Wasm.Wit.Binary.Ty → TInfo), (∀ t, isUsed (g t) = false) →
+  have hv : ∀ (v : Silmaril.Wasm.Component.Binary.ValType) (g : Ty → TInfo), (∀ t, isUsed (g t) = false) →
       Spec (do pure (g (← decVal v)) : DM TInfo) (fun t => isUsed t = false) :=
     fun v g hg => spec_bind (spec_decVal v) fun t _ => spec_pure (hg t)
-  have ho : ∀ (v : Option Silmaril.Wasm.Component.Binary.ValType) (g : Option Silmaril.Wasm.Wit.Binary.Ty → TInfo), (∀ t, isUsed (g t) = false) →
+  have ho : ∀ (v : Option Silmaril.Wasm.Component.Binary.ValType) (g : Option Ty → TInfo), (∀ t, isUsed (g t) = false) →
       Spec (do pure (g (← decValOpt v)) : DM TInfo) (fun t => isUsed t = false) :=
     fun v g hg => spec_bind (spec_decValOpt v) fun t _ => spec_pure (hg t)
   cases d with

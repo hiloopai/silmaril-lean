@@ -261,7 +261,7 @@ theorem holds_trapCfg {m : Machine.Config (E3 P) Unit} {out : CallOutcome}
   | deadlock => exact absurd ho.1.2.1 (by simp)
 
 /-- After a resolving suffix, the only outcome is the resolution. -/
-theorem out_of_resolves {m₁ m' : Machine.Config (E3 P) Unit} {rs : List Val}
+theorem out_of_resolves {m₁ m' : Machine.Config (E3 P) Unit} {rs : List Silmaril.Wasm.Component.Reference.Val}
     {tr : List (Label (E3 P) Unit)} {out : CallOutcome} (hR : Resolves prof P m₁ rs)
     (hs : Steps prof (refHost P).hr (D P) m₁ tr m')
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨0⟩ ev)
@@ -295,7 +295,7 @@ theorem out_of_trapsNext {m₁ m' : Machine.Config (E3 P) Unit}
     exact holds_trapCfg ho
 
 /-- A resolving suffix does not diverge. -/
-theorem resolves_not_diverges {m₁ : Machine.Config (E3 P) Unit} {rs : List Val}
+theorem resolves_not_diverges {m₁ : Machine.Config (E3 P) Unit} {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hR : Resolves prof P m₁ rs) : ¬ Diverges prof (refHost P).hr (D P) m₁ := by
   obtain ⟨tr₃, mE, hlr, hctl, -⟩ := hR
   exact fun hd => not_diverges_of_ctl_nil hctl (hlr.diverges hd)
@@ -392,7 +392,7 @@ theorem exit_not_diverges (C : CallCtx P c I cs x vs) {M₀ : Machine.Config (E3
   · exact (no_callout C.inst C.store rfl hcore C.lowered hy hst).elim
 
 /-- The host invocation from `afterInst`. -/
-theorem invoke_inv {fs : List (CFuncInst (core3P P))} {j : Nat} {args : List Val}
+theorem invoke_inv {fs : List (CFuncInst (core3P P))} {j : Nat} {args : List Silmaril.Wasm.Component.Reference.Val}
     {m : Machine.Config (E3 P) Unit}
     (h : Step prof (refHost P).hr (D P) (afterInst P cs fs) (.host (.invoke ⟨0⟩ ⟨j⟩ args)) m) :
     m = invokedCfg P cs fs j args := by

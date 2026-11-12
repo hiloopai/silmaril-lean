@@ -43,7 +43,7 @@ theorem seq_stepP (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.Is
     {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState} {G : Garb P} {k : Nat}
     (R : ReadyAt I cs ι G k) (j : Fin c.exports.length) {vs : List Silmaril.Wasm.Component.Val}
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) {m₁ : Machine.Config (E3 P) Unit}
-    {rs : List Val}
+    {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hcall : Calls prof (refHost P).hr (D P)
       (readyCfg cs ι (pre ++ liftedFuncs P (fun k => I.addrs.getD k 0) c) G) ⟨k⟩
       ⟨pre.length + j⟩ (vs.map toRefVal) m₁ (.resolved (some rs))) :
@@ -64,7 +64,7 @@ theorem seq_stepP (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.Is
 /-- The calls of `calls` as reference calls after the prefix `pre`. -/
 def callArgsP (c : Simple) (n : Nat)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val)) :
-    List (FuncId × List Val) :=
+    List (FuncId × List Silmaril.Wasm.Component.Reference.Val) :=
   calls.map fun q => (⟨n + q.1⟩, q.2.map toRefVal)
 
 /-- **Sequences of resolved calls between calls**, the lifts after `pre`. -/
@@ -72,7 +72,7 @@ theorem seq_invP (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.IsI
     (pre : List (CFuncInst (core3P P))) :
     ∀ (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
       (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState) (G : Garb P) (k : Nat)
-      (rss : List (List Val)) (mₙ : Machine.Config (E3 P) Unit),
+      (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P) Unit),
       ReadyAt I cs ι G k → TypedCalls c calls →
       SeqCalls prof (refHost P) (readyCfg cs ι (pre ++ liftedFuncs P (fun k => I.addrs.getD k 0) c) G)
         k (callArgsP c pre.length calls) rss mₙ →
@@ -165,7 +165,7 @@ theorem seq_refToSpecS (P : Profile) (prof : ProfileKind) (c : Simple) (hc : c.G
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : TypedCalls c calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (refHost P) () c.toRef
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :

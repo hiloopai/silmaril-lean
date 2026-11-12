@@ -130,7 +130,7 @@ inductive HStep (Pf : Numerics.Profile) (hb : BI → H) (ma : Nat) :
       HStep Pf hb ma (q, C) (q, C')
   /-- The call of the host function `hb b`, answered by `bans ma b` (Core's `callRefHost`). -/
   | host {q q' : HQ} {s s' : Store H} {f : Frame} {c : Admin} {args res : List W} {a : Nat}
-      {fi : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} {b : BI}
+      {fi : FuncInst H} {ps rs : Ty (.list .val)} {b : BI}
       (hc : c.IsCallRef) (hf : s.funcs[a]? = some fi) (he : Expand fi.type (.func ps rs))
       (hn : args.length = ps.length) (hcode : fi.code = .host (hb b))
       (hans : bans ma b q s args = some (q', s', res)) :
@@ -432,7 +432,7 @@ inductive LStep (Pf : Numerics.Profile) (hb : BI → H) (ma : Nat) :
   | core {x : HL} {C C' : Config H} (h : Step Pf (fun _ _ _ _ => False) C C') :
       LStep Pf hb ma (x, C) (x, C')
   | host {x x' : HL} {s s' : Store H} {f : Frame} {c : Admin} {vs res : List Val} {a : Nat}
-      {fi : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} {b : BI}
+      {fi : FuncInst H} {ps rs : Ty (.list .val)} {b : BI}
       (hc : c.IsCallRef) (hf : s.funcs[a]? = some fi) (he : Expand fi.type (.func ps rs))
       (hn : vs.length = ps.length) (hcode : fi.code = .host (hb b))
       (hans : lansAll ma b x s vs = some (x', s', res)) :

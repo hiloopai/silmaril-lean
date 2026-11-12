@@ -34,7 +34,7 @@ def firstDup : List String → Option String
 
 mutual
 /-- The identifiers a value type names. -/
-def tyIdents : Silmaril.Wasm.Wac.Text.Ty → List String
+def tyIdents : Ty → List String
   | .ident id | .borrow id => [id]
   | .tuple ts => tyIdentsL ts
   | .list t | .option t => tyIdents t
@@ -42,11 +42,11 @@ def tyIdents : Silmaril.Wasm.Wac.Text.Ty → List String
   | .stream t | .future t => tyIdentsO t
   | _ => []
 /-- `tyIdents` of an optional type. -/
-def tyIdentsO : Option Silmaril.Wasm.Wac.Text.Ty → List String
+def tyIdentsO : Option Ty → List String
   | none => []
   | some t => tyIdents t
 /-- `tyIdents` of types. -/
-def tyIdentsL : List Silmaril.Wasm.Wac.Text.Ty → List String
+def tyIdentsL : List Ty → List String
   | [] => []
   | t :: ts => tyIdents t ++ tyIdentsL ts
 end

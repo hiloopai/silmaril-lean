@@ -114,7 +114,7 @@ def asyncifyHelp : HelpVariant :=
 
 theorem asyncify_help (S : Matches → Spec) :
     Spec.Asyncify.tool.spec S ≤ asyncifyHelp.sen :=
-  Clap.Tool.spec_le_help rfl Spec.Asyncify.tool_wf rfl rfl (by decide) (fun h => by cases h)
+  Clap.Tool.spec_le_help rfl rfl Spec.Asyncify.tool_wf rfl rfl (by decide) (fun h => by cases h)
     (by decide +kernel) S
 
 #guard Clap.helpTriggers Spec.Asyncify.tool asyncifyHelp

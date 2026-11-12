@@ -29,7 +29,7 @@ the copy stay in the Raw module, which imports this one.
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon Value
+open Engine AsyncRef Canon Value
 variable {E : CoreEngine} {σ : Type}
 
 section Inv
@@ -74,7 +74,7 @@ end Silmaril.Wasm.Component.Runtime
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon Value
+open Engine AsyncRef Canon Value
 variable {E : CoreEngine} {σ : Type}
 
 section Inv

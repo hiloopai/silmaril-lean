@@ -174,13 +174,13 @@ def canon_ : Canon → TM Unit
   | _ => pure ()
 
 /-- One import. -/
-def import_ (i : Import) : TM Unit := do
+def import_ (i : Silmaril.Wasm.Component.Binary.Import) : TM Unit := do
   let k ← liftD (Bridge.decExtern i.name.name i.desc)
   pushKind k
   modify fun s => { s with imports := s.imports ++ [(i.name.name, k)] }
 
 /-- One export. -/
-def export_ (e : Export) : TM Unit := do
+def export_ (e : Silmaril.Wasm.Component.Binary.Export) : TM Unit := do
   let n := e.name.name
   let k ← match e.desc with
     | some d => do
@@ -208,7 +208,7 @@ components define the types of an exported interface anonymously at the top leve
 by index in the functions they lift, before passing them to the shim component that names
 them (`(with "import-type-r" (type i))`); the inference reads the exported instance's types off
 the shim's exports, so these placeholders do not reach the package's type. -/
-def decValL : ValType → DM Silmaril.Wasm.Wit.Binary.Ty
+def decValL : Silmaril.Wasm.Component.Binary.ValType → DM Ty
   | .prim p => pure (.prim p)
   | .idx i => do
     match ← typeAt i with
@@ -216,7 +216,7 @@ def decValL : ValType → DM Silmaril.Wasm.Wit.Binary.Ty
     | _ => decVal (.idx i)
 
 /-- An optional value type, leniently. -/
-def decValOptL : Option ValType → DM (Option Silmaril.Wasm.Wit.Binary.Ty)
+def decValOptL : Option Silmaril.Wasm.Component.Binary.ValType → DM (Option Ty)
   | none => pure none
   | some v => some <$> decValL v
 

@@ -111,13 +111,13 @@ def recσX (ls gs l : List Value) (i : Nat) (fin : Bool) (rest : List (IL.Id × 
 
 /-- The value of `SUB final? eps STRUCT %(fieldtype*)` under `recσX`. -/
 theorem evalExp_recStructSubX {ls gs l : List Value} {i : Nat} {fin : Bool}
-    {fs : Silmaril.Wasm.Validation.Ty (.list .field)} :
+    {fs : Ty (.list .field)} :
     EvalExp (simEnv B) (VarEnv.empty.bindVals (recσX ls gs l i fin [("fieldtype*", tyV fs)]))
       (.caseE "SUB" (.tupE [.iterE (.varE "final") (.mk .opt [.mk "final" (.varE "final?")]),
         .listE [], .caseE "STRUCT" (Round6.AgreeOk.resE "fieldtype")]))
-      (tyV (Silmaril.Wasm.Validation.Ty.sub fin .nil (.struct fs) : CSubType)) := by
+      (tyV (Ty.sub fin .nil (.struct fs) : CSubType)) := by
   have hs : EvalExp (simEnv B) (VarEnv.empty.bindVals (recσX ls gs l i fin [("fieldtype*", tyV fs)]))
-      (.caseE "STRUCT" (Round6.AgreeOk.resE "fieldtype")) (tyV (Silmaril.Wasm.Validation.Ty.struct fs)) := by
+      (.caseE "STRUCT" (Round6.AgreeOk.resE "fieldtype")) (tyV (Ty.struct fs)) := by
     rw [tyV, tyV_list]
     exact evalExp_case (evalExp_resE rfl fun _ => rfl)
   exact evalExp_case (evalExp_tup3 (evalExp_finalIter rfl fun _ => rfl)
@@ -125,9 +125,9 @@ theorem evalExp_recStructSubX {ls gs l : List Value} {i : Nat} {fin : Bool}
 
 /-- **`Heaptype_sub/rec-struct`** in `ctxRX ls gs l`. -/
 theorem dd_recStructX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs l)) {i : Nat}
-    {fin : Bool} {fs : Silmaril.Wasm.Validation.Ty (.list .field)} (hb : tyBnd (Silmaril.Wasm.Validation.Ty.struct fs) = true)
-    (hi : l[i]? = some (tyV (Silmaril.Wasm.Validation.Ty.sub fin .nil (.struct fs) : CSubType))) :
-    HSub B O (ctxRX ls gs l) (tyV (Silmaril.Wasm.Validation.Ty.recv i : CTypeUse)) (absV .struct) :=
+    {fin : Bool} {fs : Ty (.list .field)} (hb : tyBnd (Ty.struct fs) = true)
+    (hi : l[i]? = some (tyV (Ty.sub fin .nil (.struct fs) : CSubType))) :
+    HSub B O (ctxRX ls gs l) (tyV (Ty.recv i : CTypeUse)) (absV .struct) :=
   dderivesB_of_ruleAt ruleAt_recStruct (self_mem_conclAlts _)
     (recσX ls gs l i fin [("fieldtype*", tyV fs)])
     (QuantsOk.cons rfl (hc _ (valsOnly_bind _)) (QuantsOk.cons rfl
@@ -140,9 +140,9 @@ theorem dd_recStructX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls 
 
 /-- **`Heaptype_sub/rec-array`** in `ctxRX ls gs l`. -/
 theorem dd_recArrayX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs l)) {i : Nat}
-    {fin : Bool} {f : CFieldType} (hb : tyBnd (Silmaril.Wasm.Validation.Ty.array f) = true)
-    (hi : l[i]? = some (tyV (Silmaril.Wasm.Validation.Ty.sub fin .nil (.array f) : CSubType))) :
-    HSub B O (ctxRX ls gs l) (tyV (Silmaril.Wasm.Validation.Ty.recv i : CTypeUse)) (absV .array) :=
+    {fin : Bool} {f : CFieldType} (hb : tyBnd (Ty.array f) = true)
+    (hi : l[i]? = some (tyV (Ty.sub fin .nil (.array f) : CSubType))) :
+    HSub B O (ctxRX ls gs l) (tyV (Ty.recv i : CTypeUse)) (absV .array) :=
   dderivesB_of_ruleAt ruleAt_recArray (self_mem_conclAlts _)
     (recσX ls gs l i fin [("fieldtype", tyV f)])
     (QuantsOk.cons rfl (hc _ (valsOnly_bind _)) (QuantsOk.cons rfl
@@ -157,16 +157,16 @@ theorem dd_recArrayX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls g
       (evalExp_case (Sim.evalExp_var rfl)))) hi)))
 
 /-- The value of `SUB final? eps FUNC %(t_1*) -> %(t_2*)` under `recσX`. -/
-theorem evalExp_recFuncSubX {ls gs l : List Value} {i : Nat} {fin : Bool} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} :
+theorem evalExp_recFuncSubX {ls gs l : List Value} {i : Nat} {fin : Bool} {ps rs : Ty (.list .val)} :
     EvalExp (simEnv B)
       (VarEnv.empty.bindVals (recσX ls gs l i fin [("t_1*", tyV ps), ("t_2*", tyV rs)]))
       (.caseE "SUB" (.tupE [.iterE (.varE "final") (.mk .opt [.mk "final" (.varE "final?")]),
         .listE [], .caseE "FUNC%->%" (.tupE [Round6.AgreeOk.resE "t_1", Round6.AgreeOk.resE "t_2"])]))
-      (tyV (Silmaril.Wasm.Validation.Ty.sub fin .nil (.func ps rs) : CSubType)) := by
+      (tyV (Ty.sub fin .nil (.func ps rs) : CSubType)) := by
   have hs : EvalExp (simEnv B)
       (VarEnv.empty.bindVals (recσX ls gs l i fin [("t_1*", tyV ps), ("t_2*", tyV rs)]))
       (.caseE "FUNC%->%" (.tupE [Round6.AgreeOk.resE "t_1", Round6.AgreeOk.resE "t_2"]))
-      (tyV (Silmaril.Wasm.Validation.Ty.func ps rs)) := by
+      (tyV (Ty.func ps rs)) := by
     rw [tyV, tyV_list, tyV_list]
     exact evalExp_case (evalExp_tup2 (evalExp_resE rfl fun _ => rfl)
       (evalExp_resE rfl fun _ => rfl))
@@ -175,9 +175,9 @@ theorem evalExp_recFuncSubX {ls gs l : List Value} {i : Nat} {fin : Bool} {ps rs
 
 /-- **`Heaptype_sub/rec-func`** in `ctxRX ls gs l`. -/
 theorem dd_recFuncX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs l)) {i : Nat}
-    {fin : Bool} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)} (hb : tyBnd (Silmaril.Wasm.Validation.Ty.func ps rs) = true)
-    (hi : l[i]? = some (tyV (Silmaril.Wasm.Validation.Ty.sub fin .nil (.func ps rs) : CSubType))) :
-    HSub B O (ctxRX ls gs l) (tyV (Silmaril.Wasm.Validation.Ty.recv i : CTypeUse)) (absV .func) :=
+    {fin : Bool} {ps rs : Ty (.list .val)} (hb : tyBnd (Ty.func ps rs) = true)
+    (hi : l[i]? = some (tyV (Ty.sub fin .nil (.func ps rs) : CSubType))) :
+    HSub B O (ctxRX ls gs l) (tyV (Ty.recv i : CTypeUse)) (absV .func) :=
   have hpr := tyBnd_func' hb
   dderivesB_of_ruleAt ruleAt_recFunc (self_mem_conclAlts _)
     (recσX ls gs l i fin [("t_1*", tyV ps), ("t_2*", tyV rs)])
@@ -194,21 +194,21 @@ theorem dd_recFuncX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs
 /-- **`REC i` is below the kind of a parent-free `RECS[i]`**, in `ctxRX ls gs l`. -/
 theorem dd_recKindX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs l)) {i : Nat}
     {fin : Bool} {ct : CCompType} (hb : tyBnd ct = true)
-    (hi : l[i]? = some (tyV (Silmaril.Wasm.Validation.Ty.sub fin .nil ct : CSubType))) :
-    HSub B O (ctxRX ls gs l) (tyV (Silmaril.Wasm.Validation.Ty.recv i : CTypeUse)) (absV (compAbs ct)) := by
+    (hi : l[i]? = some (tyV (Ty.sub fin .nil ct : CSubType))) :
+    HSub B O (ctxRX ls gs l) (tyV (Ty.recv i : CTypeUse)) (absV (compAbs ct)) := by
   cases ct with
   | struct fs => exact dd_recStructX O hc hb hi
   | array f => exact dd_recArrayX O hc hb hi
   | func ps rs => exact dd_recFuncX O hc hb hi
 
 /-- The scope of `rec-sub`. -/
-def recSubσX (ls gs l : List Value) (i : Nat) (sups : Silmaril.Wasm.Validation.Ty (.list .use)) (j : Nat) (fin : Bool)
+def recSubσX (ls gs l : List Value) (i : Nat) (sups : Ty (.list .use)) (j : Nat) (fin : Bool)
     (ct : CCompType) : List (IL.Id × Value) :=
   [("C", ctxRX ls gs l), ("i", natV i), ("typeuse*", tyV sups), ("j", natV j),
     ("final?", finalV fin), ("ct", tyV ct)]
 
 /-- `typeuse*` under `recSubσX`. -/
-theorem evalExp_recSubUsesX {env : Env} {ls gs l : List Value} {i : Nat} {sups : Silmaril.Wasm.Validation.Ty (.list .use)}
+theorem evalExp_recSubUsesX {env : Env} {ls gs l : List Value} {i : Nat} {sups : Ty (.list .use)}
     {j : Nat} {fin : Bool} {ct : CCompType} :
     EvalExp env (VarEnv.empty.bindVals (recSubσX ls gs l i sups j fin ct)) typeusesE (tyV sups) := by
   have hu := evalExp_iterMap (env := env)
@@ -220,10 +220,10 @@ theorem evalExp_recSubUsesX {env : Env} {ls gs l : List Value} {i : Nat} {sups :
 
 /-- **`Heaptype_sub/rec-sub`** in `ctxRX ls gs l`. -/
 theorem dd_recSubX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs l)) {i j : Nat}
-    {fin : Bool} {sups : Silmaril.Wasm.Validation.Ty (.list .use)} {ct : CCompType} {u : CTypeUse}
-    (hb : tyBnd (Silmaril.Wasm.Validation.Ty.sub fin sups ct : CSubType) = true)
-    (hi : l[i]? = some (tyV (Silmaril.Wasm.Validation.Ty.sub fin sups ct : CSubType))) (hj : sups.toList[j]? = some u) :
-    HSub B O (ctxRX ls gs l) (tyV (Silmaril.Wasm.Validation.Ty.recv i : CTypeUse)) (tyV u) :=
+    {fin : Bool} {sups : Ty (.list .use)} {ct : CCompType} {u : CTypeUse}
+    (hb : tyBnd (Ty.sub fin sups ct : CSubType) = true)
+    (hi : l[i]? = some (tyV (Ty.sub fin sups ct : CSubType))) (hj : sups.toList[j]? = some u) :
+    HSub B O (ctxRX ls gs l) (tyV (Ty.recv i : CTypeUse)) (tyV u) :=
   have T := Round5.Int.typesB B
   have hb' := tyBnd_sub' hb
   dderivesB_of_ruleAt ruleAt_recSub (self_mem_conclAlts _) (recSubσX ls gs l i sups j fin ct)
@@ -253,7 +253,7 @@ theorem argSubOk_recX (c : Value) (i : Nat) :
 
 /-- **`$unrollht_(C, REC i) = C.RECS[i]`**, in `ctxRX ls gs l`. -/
 theorem applies_unrollht_recX {ls gs l : List Value} {i : Nat} {w : Value} (hi : l[i]? = some w) :
-    Applies (simEnv B) "unrollht_" [.val (ctxRX ls gs l), .val (tyV (Silmaril.Wasm.Validation.Ty.recv i : CTypeUse))] w := by
+    Applies (simEnv B) "unrollht_" [.val (ctxRX ls gs l), .val (tyV (Ty.recv i : CTypeUse))] w := by
   obtain ⟨ps, t, hd⟩ := findDef_unrollht (B := B)
   refine ⟨ps, t, _, hd, Or.inl ?_⟩
   have hs : argSubOk (simEnv B) (VarEnv.empty.bindVal "C" (ctxRX ls gs l))
@@ -274,7 +274,7 @@ set_option maxRecDepth 100000 in
 theorem argSubOk_defX (c : Value) (g : CRecType) (k : Nat) :
     argSubOk (simEnv B) (VarEnv.empty.bindVal "C" c)
       (.subE (.varE "deftype") (.varT "deftype" []) (.varT "heaptype" []))
-      (tyV (Silmaril.Wasm.Validation.Ty.defn g k : DefType)) = true := by
+      (tyV (Ty.defn g k : DefType)) = true := by
   simp only [argSubOk, subCaseOk, VarEnv.findTyp?, VarEnv.bindVal, tyV]
   rw [Round5.Pos.findTyp_deftype]
   rfl
@@ -295,12 +295,12 @@ theorem applies_unrollht_dtX {c : Value} {d : DefType} {st : CSubType} (h : unro
 /-! ## `Deftype_ok` -/
 
 /-- The scope of `Deftype_ok` at member `i` of `REC subtype*`, in `ctxRX ls gs l`. -/
-def defNσX (ls gs l : List Value) (subs : Silmaril.Wasm.Validation.Ty (.list .sub)) (i : Nat) : List (IL.Id × Value) :=
-  [("C", ctxRX ls gs l), ("rectype", tyV (Silmaril.Wasm.Validation.Ty.group subs : CRecType)), ("i", natV i),
+def defNσX (ls gs l : List Value) (subs : Ty (.list .sub)) (i : Nat) : List (IL.Id × Value) :=
+  [("C", ctxRX ls gs l), ("rectype", tyV (Ty.group subs : CRecType)), ("i", natV i),
     ("n", natV subs.toList.length), ("subtype*", .list (subs.toList.map tyV))]
 
 /-- `subtype^n` under `defNσX`. -/
-theorem evalExp_subsNX {ls gs l : List Value} {subs : Silmaril.Wasm.Validation.Ty (.list .sub)} {i : Nat} :
+theorem evalExp_subsNX {ls gs l : List Value} {subs : Ty (.list .sub)} {i : Nat} :
     EvalExp (simEnv B) (VarEnv.empty.bindVals (defNσX ls gs l subs i))
       (.iterE (.varE "subtype") Round6.RefOkB.subsNIt) (.list (subs.toList.map tyV)) := by
   have h := evalExp_iterNMap (env := simEnv B) (ρ := VarEnv.empty.bindVals (defNσX ls gs l subs i))
@@ -311,7 +311,7 @@ theorem evalExp_subsNX {ls gs l : List Value} {subs : Silmaril.Wasm.Validation.T
 
 set_option linter.unusedSimpArgs false in
 /-- **`{RECS subtype^n} ⊕ C` is `ctxRX ls gs (subtype* ++ l)`.** -/
-theorem evalExp_recsCtxNX {ls gs l : List Value} {subs : Silmaril.Wasm.Validation.Ty (.list .sub)} {i : Nat} :
+theorem evalExp_recsCtxNX {ls gs l : List Value} {subs : Ty (.list .sub)} {i : Nat} :
     EvalExp (simEnv B) (VarEnv.empty.bindVals (defNσX ls gs l subs i)) Round6.RefOkB.recsCtxE
       (ctxRX ls gs (subs.toList.map tyV ++ l)) := by
   obtain ⟨n, hn⟩ := evalExp_subsNX (B := B) (ls := ls) (gs := gs) (l := l) (subs := subs) (i := i)
@@ -324,24 +324,24 @@ theorem evalExp_recsCtxNX {ls gs l : List Value} {subs : Silmaril.Wasm.Validatio
 /-- **`Deftype_ok` at any member of any group**, in `ctxRX ls gs l`, from `Rectype_ok2` of the
 group under `RECS = subtype* ++ l`. -/
 theorem dd_deftypeOkX (O : ElseI) {ls gs l : List Value} (hc : CtxT B (ctxRX ls gs l))
-    {subs : Silmaril.Wasm.Validation.Ty (.list .sub)} {i : Nat} (hb : tyBnd (Silmaril.Wasm.Validation.Ty.group subs : CRecType) = true)
+    {subs : Ty (.list .sub)} {i : Nat} (hb : tyBnd (Ty.group subs : CRecType) = true)
     (hi : i < subs.toList.length)
     (hg : DDerivesB (simEnv B) O "Rectype_ok2" "%|-%:%" []
-      (.tuple [ctxRX ls gs (subs.toList.map tyV ++ l), tyV (Silmaril.Wasm.Validation.Ty.group subs : CRecType),
+      (.tuple [ctxRX ls gs (subs.toList.map tyV ++ l), tyV (Ty.group subs : CRecType),
         .case "OK" (natV 0)])) :
     DDerivesB (simEnv B) O "Deftype_ok" "%|-%:OK" []
-      (.tuple [ctxRX ls gs l, tyV (Silmaril.Wasm.Validation.Ty.defn (.group subs) i : DefType)]) :=
+      (.tuple [ctxRX ls gs l, tyV (Ty.defn (.group subs) i : DefType)]) :=
   have hsubs : ∀ w ∈ subs.toList.map tyV, TypedV (simEnv B) (.varT "subtype" []) w :=
     Round5.Pos.tyT_list_of subs (Round5.Pos.tyT_tyV subs (Round5.Pos.tyBnd_group.1 hb).2)
   have hrt : EvalExp (simEnv B) (VarEnv.empty.bindVals (defNσX ls gs l subs i))
       (.caseE "REC" (.caseE "%" (.tupE [.iterE (.varE "subtype") Round6.RefOkB.subsNIt])))
-      (tyV (Silmaril.Wasm.Validation.Ty.group subs : CRecType)) := by
+      (tyV (Ty.group subs : CRecType)) := by
     rw [tyV, tyV_list]
     exact evalExp_case (evalExp_case (evalExp_tupE_iff.2 ⟨_, evalExps_cons evalExp_subsNX
       evalExps_nil, rfl⟩))
   dderivesB_of_ruleAt Round6.RefOkB.ruleAt_deftypeOk (self_mem_conclAlts _) (defNσX ls gs l subs i)
     (QuantsOk.cons rfl (hc _ (valsOnly_bind _)) (QuantsOk.cons rfl
-      (Round5.Pos.tyT_tyV (Silmaril.Wasm.Validation.Ty.group subs : CRecType) hb _ (valsOnly_bind _)) (QuantsOk.cons rfl
+      (Round5.Pos.tyT_tyV (Ty.group subs : CRecType) hb _ (valsOnly_bind _)) (QuantsOk.cons rfl
         (Round6.RefOkB.typedV_n i _ (valsOnly_bind _)) (QuantsOk.cons rfl
           (Round6.RefOkB.typedV_n _ _ (valsOnly_bind _)) (QuantsOk.cons rfl
             (typedV_list_iff.2 hsubs _ (valsOnly_bind _)) QuantsOk.nil)))))

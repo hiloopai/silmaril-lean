@@ -4,7 +4,7 @@ public import Silmaril.Proofs.Wasm.Resource.MachineTab.Dispatch
 public import Silmaril.Wasm.Component.Reference.Sound.Defs
 
 /-!
-# Silmaril.Wasm.Component.Runtime.Table-moving hosts with host functions
+# Table-moving hosts with host functions
 
 `tabHost_none` covers the host without functions. This file covers the answering hosts of the
 component soundness theorems (`Silmaril.Wasm.Component.Reference.answerImplS`,

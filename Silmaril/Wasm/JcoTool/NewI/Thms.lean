@@ -28,7 +28,7 @@ open Silmaril.Wasm.Component.Binary
 open Silmaril.Wasm.Component (CoreFuncTy)
 open Silmaril.Wasm.JcoTool.New (bind_ok expectExport_ok require_ok coreExport? Lift expectExport)
 
-/-- Silmaril.Wasm.Component.Binary.Export `x` is implemented by the module at its canonical core type. -/
+/-- Export `x` is implemented by the module at its canonical core type. -/
 inductive LiftOk (wf : WorldFull) (m : CoreMod) (x : XFn) : Lift → Prop
   | sync (t : CoreFuncTy) (pr : Option String) :
       x.f.async = false → liftCoreR (rho wf) x.sc x.f = .ok t → coreExport? m x.core = some t →

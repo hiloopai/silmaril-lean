@@ -40,7 +40,7 @@ def thread₁ (Gt : List (Runtime.Task (E3 P V IR))) : Runtime.Thread :=
 /-- The store when the thread of call `k` starts running. -/
 def store₁ (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (x : SimpleExport) (k : Nat)
-    (args : List Val) : CStore (E3 P V IR) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P V IR) :=
   { readyStore cs ι fs G with
     tasks := G.tasks ++ [task₀ x G.callers]
     threads := G.threads ++ [thread₁ G.tasks]
@@ -50,7 +50,7 @@ def store₁ (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : Inst
 /-- The store once the thread entered its task. -/
 def store₂ (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι ι' : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (x : SimpleExport) (k : Nat)
-    (args : List Val) : CStore (E3 P V IR) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P V IR) :=
   { store₁ cs ι fs G x k args with
     tasks := G.tasks ++ [task₁ x G.callers ⟨G.threads.length⟩]
     insts := [ι']
@@ -59,14 +59,14 @@ def store₂ (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι ι' : 
 /-- The store when the core activation starts. -/
 def store₃ (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι ι' : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (x : SimpleExport) (k : Nat)
-    (args : List Val) : CStore (E3 P V IR) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P V IR) :=
   { store₂ cs ι ι' fs G x k args with
     tasks := G.tasks ++ [(task₁ x G.callers ⟨G.threads.length⟩).withState .started] }
 
 /-- The store when the call resolved (core store `cs'`). -/
 def store₄ (cs' : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι ι' : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (x : SimpleExport) (k : Nat)
-    (args : List Val) : CStore (E3 P V IR) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P V IR) :=
   { store₃ cs' ι ι' fs G x k args with
     tasks := G.tasks ++ [((task₁ x G.callers ⟨G.threads.length⟩).withState .started).withState
       .resolved] }
@@ -79,7 +79,7 @@ def task₂ (x : SimpleExport) (Gc : List (Caller (E3 P V IR))) (t : ThreadId) :
 /-- The store when the thread of call `k` exited. -/
 def store₅ (cs' : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι ι' : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (x : SimpleExport) (k : Nat)
-    (args : List Val) : CStore (E3 P V IR) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P V IR) :=
   { store₄ cs' ι ι' fs G x k args with
     tasks := G.tasks ++ [task₂ x G.callers ⟨G.threads.length⟩]
     insts := [InstState.removeThread 1 ι']
@@ -87,7 +87,7 @@ def store₅ (cs' : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι ι' :
 
 /-- The leftovers after call `k` of function `j` on `args` with results `rs`. -/
 def nextGarb (G : Garb P V IR) (x : SimpleExport) (k j : Nat) (a : (E3 P V IR).FuncAddr)
-    (args rs : List Val) : Garb P V IR where
+    (args rs : List Silmaril.Wasm.Component.Reference.Val) : Garb P V IR where
   tasks := G.tasks ++ [task₂ x G.callers ⟨G.threads.length⟩]
   threads := G.threads ++ [{ (thread₁ G.tasks).withIndex 1 with status := .exited }]
   callers := G.callers ++ [.host ⟨k⟩ args 0]

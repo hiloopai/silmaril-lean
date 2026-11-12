@@ -40,9 +40,9 @@ structure Garb (P : Profile) (σ : Type := Unit) where
   /-- Saved-continuation slots. -/
   conts : List (Option (Activation (E3 P) σ))
   /-- Pending top-level calls. -/
-  pending : List (CallId × FuncId × List Val)
+  pending : List (CallId × FuncId × List Silmaril.Wasm.Component.Reference.Val)
   /-- Resolutions. -/
-  results : List (CallId × Option (List Val))
+  results : List (CallId × Option (List Silmaril.Wasm.Component.Reference.Val))
   /-- `on_cancel`s. -/
   cancels : List (CallId × CancelRef)
 
@@ -74,7 +74,7 @@ structure Garb.Fresh (G : Garb P σ) (k : Nat) : Prop where
 
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
 def invokedAtH (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
-    (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (h : σ) (k j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (h : σ) (k j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P) σ :=
   { readyCfgH cs ι fs G h with
     pending := G.pending ++ [(⟨k⟩, ⟨j⟩, args)]
@@ -82,7 +82,7 @@ def invokedAtH (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
 
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
 abbrev invokedAt (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
-    (fs : List (CFuncInst (core3P P))) (G : Garb P) (k j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3P P))) (G : Garb P) (k j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P) Unit :=
   invokedAtH cs ι fs G () k j args
 
@@ -238,8 +238,8 @@ theorem unregisterThreadSt_eq {s : CStore (E3 P)} {Gt : List (Runtime.Task (E3 P
   rfl
 
 /-- A host frame of call `k` returning its `on_cancel` at the bottom of the chain. -/
-theorem hostFinish_cancel (m : Machine.Config (E3 P) σ) (Pd : List (CallId × FuncId × List Val))
-    (c : CallId) (f : FuncId) (args : List Val) (cr : CancelRef)
+theorem hostFinish_cancel (m : Machine.Config (E3 P) σ) (Pd : List (CallId × FuncId × List Silmaril.Wasm.Component.Reference.Val))
+    (c : CallId) (f : FuncId) (args : List Silmaril.Wasm.Component.Reference.Val) (cr : CancelRef)
     (hp : m.pending = Pd ++ [(c, f, args)]) :
     hostFinish (.cancel cr) [] m = ({ m with ctl := [] } : Machine.Config (E3 P) σ).setCancel c cr := by
   have hl : lastCall? m = some c := by

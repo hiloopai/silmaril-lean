@@ -93,7 +93,7 @@ def selectImplTypeR (R : List CValType) : Option CValType :=
   | _ => none
 
 /-- `parametricType?` on the reversed stack. -/
-def parametricTypeR (tyOk : {k : TKind} → Silmaril.Wasm.Validation.Ty k → Bool) (C : Context) (R : List CValType) :
+def parametricTypeR (tyOk : {k : TKind} → Ty k → Bool) (C : Context) (R : List CValType) :
     Instr → Option InstrType
   | .nop => some (.plain [] [])
   | .drop =>
@@ -111,7 +111,7 @@ def parametricTypeR (tyOk : {k : TKind} → Silmaril.Wasm.Validation.Ty k → Bo
   | _ => none
 
 /-- `atomicA?` on the reversed stack. -/
-def atomicAR (tyOk : {k : TKind} → Silmaril.Wasm.Validation.Ty k → Bool) (C : Context) (R : List CValType)
+def atomicAR (tyOk : {k : TKind} → Ty k → Bool) (C : Context) (R : List CValType)
     (i : Instr) : Option (Nat × List Nat × List CValType) :=
   match (parametricTypeR tyOk C R i).bind (finishCheckR C R) with
   | some r => some r
@@ -124,7 +124,7 @@ def atomicAR (tyOk : {k : TKind} → Silmaril.Wasm.Validation.Ty k → Bool) (C 
       | none => (vectorType? i).bind (finishCheckR C R)
 
 /-- `atomicB?` on the reversed stack. -/
-def atomicBR (tyOk : {k : TKind} → Silmaril.Wasm.Validation.Ty k → Bool) (C : Context) (R : List CValType)
+def atomicBR (tyOk : {k : TKind} → Ty k → Bool) (C : Context) (R : List CValType)
     (i : Instr) : Option (Nat × List Nat × List CValType) :=
   match checkBySigR C.toTypeCtx (tableSig? C i) R with
   | some r => some r
@@ -190,7 +190,7 @@ def directStepGR (C : Context) (R : List CValType) (i : Instr) : Option StepRes 
             Sub.check C.toTypeCtx (C.closeRef rt₂) (C.closeRef rt₁) &&
             Sub.check C.toTypeCtx (C.closeRef rt₂) rt then
           stepAR C.toTypeCtx R (ts ++ [.refv (C.closeRef rt₁)]) []
-            (ts ++ [.refv (Silmaril.Wasm.Validation.Ty.diffrt (C.closeRef rt₁) (C.closeRef rt₂))])
+            (ts ++ [.refv (Ty.diffrt (C.closeRef rt₁) (C.closeRef rt₂))])
         else none
       | _ => none
     | none => none
@@ -201,7 +201,7 @@ def directStepGR (C : Context) (R : List CValType) (i : Instr) : Option StepRes 
       | some (ts, .refv rt) =>
         if tyOkC C.toTypeCtx (C.closeRef rt₁) && tyOkC C.toTypeCtx (C.closeRef rt₂) &&
             Sub.check C.toTypeCtx (C.closeRef rt₂) (C.closeRef rt₁) &&
-            Sub.check C.toTypeCtx (Silmaril.Wasm.Validation.Ty.diffrt (C.closeRef rt₁) (C.closeRef rt₂)) rt then
+            Sub.check C.toTypeCtx (Ty.diffrt (C.closeRef rt₁) (C.closeRef rt₂)) rt then
           stepAR C.toTypeCtx R (ts ++ [.refv (C.closeRef rt₁)]) []
             (ts ++ [.refv (C.closeRef rt₂)])
         else none
@@ -225,7 +225,7 @@ def directStepGR (C : Context) (R : List CValType) (i : Instr) : Option StepRes 
   | .callIndirect x y =>
     match C.tables[x.toNat]?, C.type? y with
     | some tt, some d =>
-      if Sub.check C.toTypeCtx tt.element Silmaril.Wasm.Validation.Ty.funcref then
+      if Sub.check C.toTypeCtx tt.element Ty.funcref then
         match funcOfDef? d with
         | some (ps, rs) =>
           stepAR C.toTypeCtx R (ps.toList ++ [tt.address.valType]) [] rs.toList
@@ -257,7 +257,7 @@ def directStepGR (C : Context) (R : List CValType) (i : Instr) : Option StepRes 
   | .returnCallIndirect x y =>
     match C.tables[x.toNat]?, C.type? y, C.return_ with
     | some tt, some d, some rs' =>
-      if Sub.check C.toTypeCtx tt.element Silmaril.Wasm.Validation.Ty.funcref then
+      if Sub.check C.toTypeCtx tt.element Ty.funcref then
         match funcOfDef? d with
         | some (ps, rs) =>
           if resSub C.toTypeCtx rs.toList rs' then

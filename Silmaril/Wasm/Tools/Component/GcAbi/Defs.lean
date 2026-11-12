@@ -161,11 +161,11 @@ inductive Lowers (enc : ABI.StringEncoding) : VT → Slot → Prop
       (hs : s.concrete? = some (.array (.field m st))) (he : Lowers enc e (.field st)) :
       Lowers enc (.fixedList e n) s
   /-- `record` to a reference to a struct of its lowered fields. -/
-  | record {fs : List (String × VT)} {s : Slot} {cs : Silmaril.Wasm.Validation.Ty (.list .field)}
+  | record {fs : List (String × VT)} {s : Slot} {cs : Ty (.list .field)}
       (hs : s.concrete? = some (.struct cs)) (hf : Fields enc (fs.map (·.2)) cs.toList) :
       Lowers enc (.record fs) s
   /-- `tuple` to a reference to a struct of its lowered members. -/
-  | tuple {ts : List VT} {s : Slot} {cs : Silmaril.Wasm.Validation.Ty (.list .field)}
+  | tuple {ts : List VT} {s : Slot} {cs : Ty (.list .field)}
       (hs : s.concrete? = some (.struct cs)) (hf : Fields enc ts cs.toList) :
       Lowers enc (.tuple ts) s
   /-- `variant`, `option`, `result` to a reference to the empty struct. -/
@@ -177,10 +177,10 @@ inductive Lowers (enc : ABI.StringEncoding) : VT → Slot → Prop
   | handle {t : VT} {s : Slot} (ht : IsHandle t) (hs : s.IsExtern) : Lowers enc t s
 
 /-- Members lower to the struct's fields, one by one. -/
-inductive Fields (enc : ABI.StringEncoding) : List VT → List (Silmaril.Wasm.Validation.Ty .field) → Prop
+inductive Fields (enc : ABI.StringEncoding) : List VT → List (Ty .field) → Prop
   | nil : Fields enc [] []
   | cons {t : VT} {ts : List VT} {m : Silmaril.Wasm.Mutability} {st : CStorageType}
-      {cs : List (Silmaril.Wasm.Validation.Ty .field)} (h : Lowers enc t (.field st)) (hs : Fields enc ts cs) :
+      {cs : List (Ty .field)} (h : Lowers enc t (.field st)) (hs : Fields enc ts cs) :
       Fields enc (t :: ts) (.field m st :: cs)
 end
 
@@ -201,7 +201,7 @@ def onArray (c : Option CCompType) (k : CStorageType → Bool) : Bool :=
   | _ => false
 
 /-- Continue with the fields of a struct. -/
-def onStruct (c : Option CCompType) (k : List (Silmaril.Wasm.Validation.Ty .field) → Bool) : Bool :=
+def onStruct (c : Option CCompType) (k : List (Ty .field) → Bool) : Bool :=
   match c with
   | some (.struct cs) => k cs.toList
   | _ => false
@@ -221,13 +221,13 @@ def ok (enc : ABI.StringEncoding) : VT → Slot → Bool
   | .own _, s | .borrow _, s | .future _, s | .stream _, s | .errorContext, s => decide s.IsExtern
 
 /-- Record fields against struct fields. -/
-def recOk (enc : ABI.StringEncoding) : List (String × VT) → List (Silmaril.Wasm.Validation.Ty .field) → Bool
+def recOk (enc : ABI.StringEncoding) : List (String × VT) → List (Ty .field) → Bool
   | [], [] => true
   | (_, t) :: fs, .field _ st :: cs => ok enc t (.field st) && recOk enc fs cs
   | _, _ => false
 
 /-- Tuple members against struct fields. -/
-def tupOk (enc : ABI.StringEncoding) : List VT → List (Silmaril.Wasm.Validation.Ty .field) → Bool
+def tupOk (enc : ABI.StringEncoding) : List VT → List (Ty .field) → Bool
   | [], [] => true
   | t :: ts, .field _ st :: cs => ok enc t (.field st) && tupOk enc ts cs
   | _, _ => false
@@ -433,7 +433,7 @@ end
 /-! ## 🪙 value exports
 
 wasmparser marks the value an `export` of a value creates as used (`add_entity` with
-`ExternKind::Silmaril.Wasm.Component.Export`: `value_used = true`); the copied reference pushes it unconsumed
+`ExternKind::Export`: `value_used = true`); the copied reference pushes it unconsumed
 (`DState.exportItem`), so its `ComponentDone` rejects every component that exports a value
 (`value index i was not used …`). The fold below marks it consumed after the reference's step
 (`fixExport`). -/

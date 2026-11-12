@@ -92,7 +92,7 @@ theorem step_resume {Hc : HostSemantics (CanonHost (E3 P))} {y : CoreSt (E3 P)}
 
 /-- A live configuration followed by a trap does not resolve a call. -/
 theorem not_resolved_of_trapRun {M mT m' : Machine.Config (E3 P) Unit}
-    {trT tr : List (Label (E3 P) Unit)} {rT : TrapReason} {cid : CallId} {r : Option (List Val)}
+    {trT tr : List (Label (E3 P) Unit)} {rT : TrapReason} {cid : CallId} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hrun : LRun prof (refHost P).hr (D P) M trT mT) (hlive : Live mT)
     (hu : UniqueStep prof (refHost P).hr (D P) mT (.trap rT) (trapCfg mT))
     (hs : Steps prof (refHost P).hr (D P) M tr m') :
@@ -123,7 +123,7 @@ theorem core_inv_callout {Hc : HostSemantics (CanonHost (E3 P))}
     {Inv : Machine.Config (E3 P) Unit → Prop} {c₀ : Silmaril.Wasm.Execution.Core.Config (CanonHost (E3 P))}
     {th : Option ThreadId} {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))}
     {segs : List (Seg (E3 P) Unit)} {rest : List (Activation (E3 P) Unit)} {cid : CallId}
-    {r : Option (List Val)} {n : ℕ}
+    {r : Option (List Silmaril.Wasm.Component.Reference.Val)} {n : ℕ}
     (ih : ∀ B x tr m', tr.length ≤ n → Inv B → Steps P Hc c₀ (x.2.config x.1) →
       Steps prof (refHost P).hr (D P) (coreCfg B th K segs rest x) tr m' →
       (CallOutcome.resolved r).Holds (refHost P).hr cid m' →
@@ -158,7 +158,7 @@ callout, from a frame satisfying `Inv` and a core state reachable under `Hc`. -/
 theorem core_inv {Hc : HostSemantics (CanonHost (E3 P))} {Inv : Machine.Config (E3 P) Unit → Prop}
     {c₀ : Silmaril.Wasm.Execution.Core.Config (CanonHost (E3 P))} {th : Option ThreadId}
     {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))} {segs : List (Seg (E3 P) Unit)}
-    {rest : List (Activation (E3 P) Unit)} {cid : CallId} {r : Option (List Val)}
+    {rest : List (Activation (E3 P) Unit)} {cid : CallId} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hl : ∀ B, Inv B → B.store.lockdown = false)
     (hco : CalloutsAns (prof := prof) Hc Inv th K segs rest)
     (hsafe : ∀ c, Steps P Hc c₀ c →

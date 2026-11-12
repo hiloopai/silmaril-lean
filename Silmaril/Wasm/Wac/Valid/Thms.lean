@@ -314,13 +314,13 @@ theorem checkNames_sound {g : CGraph} (h : checkNames g = .ok ()) : NamesOk g :=
 
 /-! ## 4. Borrows in results -/
 
-theorem hasBorrowList_of_mem {t : Silmaril.Wasm.Wit.Binary.Ty} : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, t ∈ ts → hasBorrow t = true →
+theorem hasBorrowList_of_mem {t : Ty} : ∀ {ts : List Ty}, t ∈ ts → hasBorrow t = true →
     hasBorrowList ts = true
   | _ :: _, .head _, h => by simp [hasBorrowList, h]
   | _ :: _, .tail _ hm, h => by simp [hasBorrowList, hasBorrowList_of_mem hm h]
 
 /-- **`hasBorrow` finds every borrow.** -/
-theorem hasBorrow_of_borrowIn {t : Silmaril.Wasm.Wit.Binary.Ty} (h : BorrowIn t) : hasBorrow t = true := by
+theorem hasBorrow_of_borrowIn {t : Ty} (h : BorrowIn t) : hasBorrow t = true := by
   induction h with
   | borrow r => rfl
   | tuple hm _ ih => simpa [hasBorrow] using hasBorrowList_of_mem hm ih
@@ -384,7 +384,7 @@ theorem tyEqS_ref {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} {r r' : TyRef}
     have e : r = r' := by cases hb : nomOf B r' <;> simpa [tyEqS, ha, hb] using h
     exact e ▸ .refOpaque (Or.inl ha)
 
-theorem tyEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty}
+theorem tyEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} {t u : Ty}
     (h : tyEqS (n + 1) A B t u = true) : TyEqS A B t u := by
   cases t <;> cases u <;> simp only [tyEqS, Bool.false_eq_true, Bool.and_eq_true, beq_iff_eq] at h
   case prim.prim p q => exact h ▸ .prim p
@@ -401,13 +401,13 @@ theorem tyEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} {t u : Silmar
   case stream.stream => exact .stream (ih.opt h)
 
 theorem optEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} :
-    ∀ {a b : Option Silmaril.Wasm.Wit.Binary.Ty}, optEqS (n + 1) A B a b = true → OptEqS A B a b
+    ∀ {a b : Option Ty}, optEqS (n + 1) A B a b = true → OptEqS A B a b
   | none, none, _ => .none
   | some _, some _, h => .some (ih.ty h)
   | none, some _, h | some _, none, h => absurd h (by simp [optEqS])
 
 theorem tysEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} :
-    ∀ {ts us : List Silmaril.Wasm.Wit.Binary.Ty}, tysEqS (n + 1) A B ts us = true → TysEqS A B ts us
+    ∀ {ts us : List Ty}, tysEqS (n + 1) A B ts us = true → TysEqS A B ts us
   | [], [], _ => .nil
   | _ :: _, _ :: _, h => by
     have h' := Bool.and_eq_true _ _ ▸ h
@@ -415,7 +415,7 @@ theorem tysEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} :
   | [], _ :: _, h | _ :: _, [], h => absurd h (by simp [tysEqS])
 
 theorem fieldsEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} :
-    ∀ {fs gs : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, fieldsEqS (n + 1) A B fs gs = true → FieldsEqS A B fs gs
+    ∀ {fs gs : List (String × Ty)}, fieldsEqS (n + 1) A B fs gs = true → FieldsEqS A B fs gs
   | [], [], _ => .nil
   | (k, t) :: fs, (k', u) :: gs, h => by
     have h' : (k = k' ∧ tyEqS n A B t u = true) ∧ fieldsEqS n A B fs gs = true := by
@@ -424,7 +424,7 @@ theorem fieldsEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} :
   | [], _ :: _, h | _ :: _, [], h => absurd h (by simp [fieldsEqS])
 
 theorem casesEqS_succ {n : Nat} (ih : EqIH n) {A B : Bridge.NomTable} :
-    ∀ {cs ds : List (String × Option Silmaril.Wasm.Wit.Binary.Ty)}, casesEqS (n + 1) A B cs ds = true → CasesEqS A B cs ds
+    ∀ {cs ds : List (String × Option Ty)}, casesEqS (n + 1) A B cs ds = true → CasesEqS A B cs ds
   | [], [], _ => .nil
   | (k, t) :: cs, (k', u) :: ds, h => by
     have h' : (k = k' ∧ optEqS n A B t u = true) ∧ casesEqS n A B cs ds = true := by

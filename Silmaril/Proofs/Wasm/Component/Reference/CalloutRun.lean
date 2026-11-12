@@ -177,7 +177,7 @@ end Generic
 section Callout
 
 variable {P : Profile} {σ : Type} {d : Call (E3 P) → Canon.P (E3 P) σ (Ret (E3 P))}
-  {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+  {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
 
 @[simp] theorem callers_get?_subtasks_modify {E : CoreEngine} (s : CStore E) (i : SubtaskId)
     (f : Subtask → Subtask) (c : CallerId) :
@@ -279,7 +279,7 @@ theorem runs_lowerOnResolve {th : Option ThreadId} {m : Machine.Config (E3 P) σ
   exact RunsQ.modify rfl (RunsQ.pure _ _)
 
 /-- The dispatcher of the stateful host answering by `g`. -/
-abbrev DA (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ)) :
+abbrev DA (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) :
     Call (E3 P) → Canon.P (E3 P) σ (Ret (E3 P)) := (answerHostS P g).dispatch
 
 /-- The `canon_lower` caller record of a callout with flat arguments `ys` to a function of type
@@ -322,7 +322,7 @@ theorem allocSC_subtasks (s : CStore (E3 P)) (inst : InstId) (ys : List Flat)
 
 /-- `on_start` dispatched to a `canon_lower` caller record. -/
 theorem runs_onStartLower {th : Option ThreadId} {m m' : Machine.Config (E3 P) σ} {c : CallerId}
-    {x : Caller (E3 P)} {tr : List (Label (E3 P) σ)} {vs : List Val}
+    {x : Caller (E3 P)} {tr : List (Label (E3 P) σ)} {vs : List Silmaril.Wasm.Component.Reference.Val}
     (hc : ArenaField.callers.get? m.store c = some x)
     (hx : ∀ S cx ys pos ft mp mr, x = .lower S cx ys pos ft mp mr →
       RunsQ (DA P g) th (lowerOnStart Limits.spec Quirks.none c) m tr vs m')

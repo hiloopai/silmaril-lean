@@ -77,7 +77,7 @@ theorem sreadL_arrayGetArray {s : Store H} {f : Frame} [Fact (Round4.ModuleBnd f
 /-- `struct.get` at a struct, at every storage type (`Round5.Fwd.fwd_structGetStruct_anyB`). -/
 theorem sreadL_structGetStruct {s : Store H} {f : Frame} [Fact (Round4.ModuleBnd f.module)]
     {sx : Option Signedness} {x : TypeIdx} {i : FieldIdx} {a : Nat} {si : StructInst}
-    {fv : FieldVal} {d : DefType} {fs : Silmaril.Wasm.Validation.Ty (.list .field)} {ft : CFieldType}
+    {fv : FieldVal} {d : DefType} {fs : Ty (.list .field)} {ft : CFieldType}
     (hs : s.structs[a]? = some si) (hf : si.fields[i.toNat]? = some fv)
     (hd : f.type? x = some d) (he : Expand d (.struct fs)) (hi : fs.toList[i.toNat]? = some ft)
     (hu' : unpackable (fieldStorage ft) sx fv = true)

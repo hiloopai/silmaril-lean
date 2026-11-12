@@ -43,7 +43,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig TyRef Owner)
 namespace Alias
 
 /-- An alias table: local names and their definientia. -/
-abbrev Table := List (String × Silmaril.Wasm.Wit.Binary.Ty)
+abbrev Table := List (String × Ty)
 
 /-- The aliases among named items. -/
 def aliases (es : Externs) : Table :=
@@ -59,7 +59,7 @@ def resOf (Γ : Table) (x : String) : TyRef :=
 
 mutual
 /-- Replace the local references to aliases by their definientia (one level). -/
-def substA (Γ : Table) : Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Binary.Ty
+def substA (Γ : Table) : Ty → Ty
   | .prim p => .prim p
   | .ref ⟨.local, x⟩ => (Γ.lookup x).getD (.ref ⟨.local, x⟩)
   | .ref r => .ref r
@@ -75,10 +75,10 @@ def substA (Γ : Table) : Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Bina
   | .borrow r => .borrow r
   | .future t => .future (substAOpt Γ t)
   | .stream t => .stream (substAOpt Γ t)
-def substAOpt (Γ : Table) : Option Silmaril.Wasm.Wit.Binary.Ty → Option Silmaril.Wasm.Wit.Binary.Ty
+def substAOpt (Γ : Table) : Option Ty → Option Ty
   | none => none
   | some t => some (substA Γ t)
-def substAs (Γ : Table) : List Silmaril.Wasm.Wit.Binary.Ty → List Silmaril.Wasm.Wit.Binary.Ty
+def substAs (Γ : Table) : List Ty → List Ty
   | [] => []
   | t :: ts => substA Γ t :: substAs Γ ts
 end

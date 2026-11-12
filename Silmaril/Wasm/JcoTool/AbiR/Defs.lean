@@ -45,7 +45,7 @@ def flagsFlat (n : Nat) : List NumType := List.replicate ((n + 31) / 32) ti32
 
 mutual
 /-- The flattening of a type in scope `sc`. -/
-def flatR (ρ : Resolver) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
+def flatR (ρ : Resolver) : Nat → Scope → Ty → Except String (List NumType)
   | 0, _, _ => throw "type nesting too deep"
   | fuel + 1, sc, t => match t with
     | .prim p => pure (primFlat p)
@@ -73,10 +73,10 @@ def flatKindR (ρ : Resolver) : Nat → Scope → TyDefKind → Except String (L
     | .flags fs => pure (flagsFlat fs.length)
     | .resource => pure [ti32]
     | .type t => flatR ρ fuel sc t
-def flatOptR (ρ : Resolver) : Nat → Scope → Option Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
+def flatOptR (ρ : Resolver) : Nat → Scope → Option Ty → Except String (List NumType)
   | _, _, none => pure []
   | fuel, sc, some t => flatR ρ fuel sc t
-def flatListR (ρ : Resolver) : Nat → Scope → List Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
+def flatListR (ρ : Resolver) : Nat → Scope → List Ty → Except String (List NumType)
   | _, _, [] => pure []
   | fuel, sc, t :: ts => do
     let a ← flatR ρ fuel sc t
@@ -86,7 +86,7 @@ end
 
 mutual
 /-- Whether lifting or lowering a value of the type touches linear memory. -/
-def usesMemR (ρ : Resolver) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → Except String Bool
+def usesMemR (ρ : Resolver) : Nat → Scope → Ty → Except String Bool
   | 0, _, _ => throw "type nesting too deep"
   | fuel + 1, sc, t => match t with
     | .prim .string => pure true
@@ -104,10 +104,10 @@ def usesMemR (ρ : Resolver) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty →
       | .variant cs => usesMemListR ρ fuel sc' (cs.filterMap (·.ty))
       | .enum _ | .flags _ | .resource => pure false
       | .type t => usesMemR ρ fuel sc' t
-def usesMemOptR (ρ : Resolver) : Nat → Scope → Option Silmaril.Wasm.Wit.Binary.Ty → Except String Bool
+def usesMemOptR (ρ : Resolver) : Nat → Scope → Option Ty → Except String Bool
   | _, _, none => pure false
   | fuel, sc, some t => usesMemR ρ fuel sc t
-def usesMemListR (ρ : Resolver) : Nat → Scope → List Silmaril.Wasm.Wit.Binary.Ty → Except String Bool
+def usesMemListR (ρ : Resolver) : Nat → Scope → List Ty → Except String Bool
   | _, _, [] => pure false
   | fuel, sc, t :: ts => do pure ((← usesMemR ρ fuel sc t) || (← usesMemListR ρ fuel sc ts))
 end

@@ -118,7 +118,7 @@ calls. Tests: none here. -/
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon Value
+open Engine AsyncRef Canon Value
 
 variable {E : CoreEngine} {σ : Type}
 

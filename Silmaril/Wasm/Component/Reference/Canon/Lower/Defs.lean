@@ -41,7 +41,7 @@ the same named update as `inst.handles.add(subtask)` (`LowerSt.addSubtaskSt`, is
 `handlesAddSubtask`), i.e. AFTER the callee ran, as in REF, where `subtaski` is the value of
 `handles.add` itself (L2223): a subtask is never in a handle table without its index.
 
-**Async result.** The `i32` returned by an async lower is `Async.AsyncLowerResult.pack`:
+**Async result.** The `i32` returned by an async lower is `AsyncRef.AsyncLowerResult.pack`:
 `.returned` (REF `[Subtask.State.RETURNED]`) or `.pending state subtaski` (REF
 `[subtask.state | (subtaski << 4)]`).
 
@@ -52,7 +52,7 @@ the same named update as `inst.handles.add(subtask)` (`LowerSt.addSubtaskSt`, is
   RETURNED` after the callee returned; `STARTING` in `on_start`; `STARTED` (and, for `None`,
   `cancellation_requested`) in `on_resolve`; `flat_results == []` in the eager async branch;
   `0 < subtaski <= Table.MAX_LENGTH` and `state < 2^4` (facts about `handlesAdd` and
-  `SubtaskState`, see `Async.AsyncLowerResult.WellFormed`).
+  `SubtaskState`, see `AsyncRef.AsyncLowerResult.WellFormed`).
 * `Store.lower`'s `assert(inst is current_instance())` (L548) is checked, by the entry check
   `Canon.calloutEntry` of the only caller of `canonLower`, the dispatched callout program
   `Canon.hostCalloutProg`: a lowered callout from a thread of another instance, or from a host
@@ -256,11 +256,11 @@ def canonLower (_lim : Limits) (_q : Quirks) (callee : FuncId) (ft : WIT.FuncTyp
   else
     if ← gets (·.subtaskResolved s) then
       Subtask.deliverResolve s
-      return [i32Flat Async.AsyncLowerResult.returned.pack]
+      return [i32Flat AsyncRef.AsyncLowerResult.returned.pack]
     else
       let i ← handlesAddSubtask inst s
       let x ← getObj ArenaField.subtasks s
-      return [i32Flat (Async.AsyncLowerResult.pending x.state i).pack]
+      return [i32Flat (AsyncRef.AsyncLowerResult.pending x.state i).pack]
 
 /-! ## Program-logic lemmas -/
 

@@ -165,7 +165,7 @@ def URes.rd (u : UIface) : URes → TyRef
   | .own j => ⟨.local, u.res.getD j ""⟩
 
 /-- The type of a parameter. -/
-def UPar.rd (u : UIface) : UPar → Silmaril.Wasm.Wit.Binary.Ty
+def UPar.rd (u : UIface) : UPar → Ty
   | .prim p => .prim p
   | .own r => .own (r.rd u)
   | .borrow r => .borrow (r.rd u)

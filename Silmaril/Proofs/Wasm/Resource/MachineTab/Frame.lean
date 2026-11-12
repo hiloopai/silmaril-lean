@@ -33,7 +33,7 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Compon
 
 variable {E : CoreEngine} {σ : Type} {α : Type} {j : InstId}
 
-/-! ## Silmaril.Wasm.Component.Runtime.Table moves -/
+/-! ## Table moves -/
 
 theorem TabMove.refl (s : CStore E) : TabMove j s s := ⟨[], .nil _⟩
 
@@ -51,7 +51,7 @@ theorem TabMove.of_insts {s s' : CStore E} (h : s'.insts = s.insts) : TabMove j 
 
 theorem vtab_modify_self (s : CStore E) (i : InstId) (f : InstState → InstState) :
     vtab (ArenaField.insts.modify s i f) i =
-      ((s.inst? i).map fun st => (f st).handles).getD Silmaril.Wasm.Component.Runtime.Table.empty := by
+      ((s.inst? i).map fun st => (f st).handles).getD Table.empty := by
   rw [vtab, handles?_modify_self]
 
 theorem vtab_modify_ne (s : CStore E) {i : InstId} (f : InstState → InstState) (h : j ≠ i) :
@@ -60,7 +60,7 @@ theorem vtab_modify_ne (s : CStore E) {i : InstId} (f : InstState → InstState)
 
 /-- An instance update that moves the instance's table by a successful history. -/
 theorem tabMove_modify (s : CStore E) (i : InstId) {f : InstState → InstState}
-    (hf : ∀ st, ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps st.handles evs (f st).handles) :
+    (hf : ∀ st, ∃ evs, Table.Steps st.handles evs (f st).handles) :
     TabMove j s (ArenaField.insts.modify s i f) := by
   by_cases hj : j = i
   · subst hj
@@ -83,24 +83,24 @@ theorem tabMove_modify_frame (s : CStore E) (i : InstId) {g : InstState → Inst
   tabMove_modify s i fun st => ⟨[], (hg st).symm ▸ .nil _⟩
 
 theorem steps_addHandle (e : HandleEntry) (st : InstState) :
-    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps st.handles evs (InstState.addHandle e st).handles := by
+    ∃ evs, Table.Steps st.handles evs (InstState.addHandle e st).handles := by
   cases ha : st.addHandle? e with
   | none =>
     have hn : InstState.addHandle e st = st := by simp [InstState.addHandle, ha]
     exact ⟨[], by rw [hn]; exact .nil _⟩
   | some p =>
     obtain ⟨hadd, hst⟩ := addHandle?_tab ha
-    exact ⟨[.added p.1 e], hst ▸ steps_single (by simp [Silmaril.Wasm.Component.Runtime.Table.Event.op, Silmaril.Wasm.Component.Runtime.Table.step?, hadd])⟩
+    exact ⟨[.added p.1 e], hst ▸ steps_single (by simp [Table.Event.op, Table.step?, hadd])⟩
 
 theorem steps_removeHandle (k : ℕ) (st : InstState) :
-    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps st.handles evs (InstState.removeHandle k st).handles := by
+    ∃ evs, Table.Steps st.handles evs (InstState.removeHandle k st).handles := by
   cases ha : st.removeHandle? k with
   | none =>
     have hn : InstState.removeHandle k st = st := by simp [InstState.removeHandle, ha]
     exact ⟨[], by rw [hn]; exact .nil _⟩
   | some p =>
     obtain ⟨hrem, hst⟩ := removeHandle?_tab ha
-    exact ⟨[.removed k p.1], hst ▸ steps_single (by simp [Silmaril.Wasm.Component.Runtime.Table.Event.op, Silmaril.Wasm.Component.Runtime.Table.step?, hrem])⟩
+    exact ⟨[.removed k p.1], hst ▸ steps_single (by simp [Table.Event.op, Table.step?, hrem])⟩
 
 theorem tabMove_addHandle (s : CStore E) (i : InstId) (e : HandleEntry) :
     TabMove j s (ArenaField.insts.modify s i (InstState.addHandle e)) :=
@@ -111,7 +111,7 @@ theorem tabMove_removeHandle (s : CStore E) (i : InstId) (k : ℕ) :
   tabMove_modify s i (steps_removeHandle k)
 
 /-- Allocating an instance with an empty handle table is a table move. -/
-theorem tabMove_allocInst (s : CStore E) {x : InstState} (hx : x.handles = Silmaril.Wasm.Component.Runtime.Table.empty) :
+theorem tabMove_allocInst (s : CStore E) {x : InstState} (hx : x.handles = Table.empty) :
     TabMove j s (ArenaOps.allocSt ArenaField.insts x s) := by
   refine ⟨[], ?_⟩
   have ha := ArenaField.get?_alloc (E := E) ArenaField.insts s x j
@@ -136,7 +136,7 @@ theorem tabFrom_of_insts {s₀ : CStore E} {g : CStore E → CStore E}
     (hg : ∀ s, (g s).insts = s.insts) : ∀ s, TabFrom j s₀ s → TabFrom j s₀ (g s) :=
   tabFrom_of_move fun s => TabMove.of_insts (hg s)
 
-/-! ## Silmaril.Wasm.Component.Runtime.Table-moving programs -/
+/-! ## Table-moving programs -/
 
 theorem TabProg.cont {o : (Eff E σ).Op} {k : (Eff E σ).Resp o → P E σ α}
     (h : TabProg j (.op (S := Eff E σ) o k)) (r : (Eff E σ).Resp o) : TabProg j (k r) :=

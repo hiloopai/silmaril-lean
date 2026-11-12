@@ -94,7 +94,7 @@ end Ends
 /-! ## Configurations between linked calls -/
 
 theorem result?_nextL {G : Garb P σ} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j : Nat)
-    (args rs : List Val) (N : List (NRec P)) (C : List (Option (Activation (E3 P) σ)))
+    (args rs : List Silmaril.Wasm.Component.Reference.Val) (N : List (NRec P)) (C : List (Option (Activation (E3 P) σ)))
     (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3P P))) (ST : List Subtask) (h₀ : σ) :
     (readyCfgL cs ιe ιi fs (nextGarbL G x k j args rs N C) ST h₀).result? ⟨k⟩ = some (some rs) := by
@@ -105,7 +105,7 @@ theorem result?_nextL {G : Garb P σ} {k : Nat} (h : G.Fresh k) (x : SimpleExpor
   simp
 
 theorem fresh_nextL {G : Garb P σ} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j : Nat)
-    (args rs : List Val) (N : List (NRec P)) (C : List (Option (Activation (E3 P) σ))) :
+    (args rs : List Silmaril.Wasm.Component.Reference.Val) (N : List (NRec P)) (C : List (Option (Activation (E3 P) σ))) :
     (nextGarbL G x k j args rs N C).Fresh (k + 1) where
   pending := by
     intro y hy
@@ -125,7 +125,7 @@ the resolution there. -/
 theorem out_of_resolvesL {m₁ m' : Machine.Config (E3 P) σ}
     {cs : (core3P P).Store (CanonHost (core3P P))} {ιe ιi : InstState}
     {fs : List (CFuncInst (core3P P))} {G : Garb P σ} {ST : List Subtask} {h₀ : σ} {k : Nat}
-    {rs : List Val} (hR : ResolvesAtL prof P impl m₁ (readyCfgL cs ιe ιi fs G ST h₀))
+    {rs : List Silmaril.Wasm.Component.Reference.Val} (hR : ResolvesAtL prof P impl m₁ (readyCfgL cs ιe ιi fs G ST h₀))
     (hres : (readyCfgL cs ιe ιi fs G ST h₀).result? ⟨k⟩ = some (some rs))
     {tr : List (Label (E3 P) σ)} {out : CallOutcome}
     (hs : Steps prof (fun _ _ => false) (DI P impl) m₁ tr m')

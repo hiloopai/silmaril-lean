@@ -39,7 +39,7 @@ def CastRead (c : Config H) (is' : List Admin) : Prop :=
 inductive RetFrameAddr : Config H → List Admin → Prop where
   /-- Core's `Step.returnCallRefFrameAddr`. -/
   | mk {s : Store H} {f fi : Frame} {k : Nat} {vs' vs : List Val} {a : Nat} {c : Admin}
-      {rest : List Admin} {fn : FuncInst H} {ps rs : Silmaril.Wasm.Validation.Ty (.list .val)}
+      {rest : List Admin} {fn : FuncInst H} {ps rs : Ty (.list .val)}
       (hc : c.IsReturnCallRef) (hf : s.funcs[a]? = some fn) (he : Expand fn.type (.func ps rs))
       (hn : vs.length = ps.length) :
       RetFrameAddr ⟨s, f, [.frame k fi (vals vs' ++ vals vs ++ [.ref (.func a), c] ++ rest)]⟩

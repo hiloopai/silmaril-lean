@@ -149,7 +149,7 @@ theorem access_spec {st : ESt} {i : Nat} {es : Externs} {n w : String} {r : ESt 
 mutual
 /-- **Expressions elaborate soundly.** -/
 theorem elabExpr_sound {cx : ECtx} :
-    ∀ {e : Expr} {st : ESt} {r : ESt × Nat}, elabExpr cx st e = .ok r → ElabExpr cx st e r
+    ∀ {e : Silmaril.Wasm.Wac.Syntax.Expr} {st : ESt} {r : ESt × Nat}, elabExpr cx st e = .ok r → ElabExpr cx st e r
   | .ident x, st, r, h => by
     rw [elabExpr] at h
     obtain ⟨i, hi, h⟩ := bind_ok h

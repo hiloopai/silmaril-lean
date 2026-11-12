@@ -38,8 +38,8 @@ mutate only through `Runtime.Task.return_`/`Runtime.Task.cancel` and the lifting
 
 * `backpressure.inc/dec`: REF first updates the counter and then traps
   (`trap_if(backpressure == 2**16)` / `trap_if(backpressure < 0)`); here the trap is evaluated
-  first, with the same conditions (`Async.backpressureInc?`/`Async.backpressureDec?`, bound
-  `Async.backpressureLimit = 2^16`), and the counter is only updated when no trap fires. A trap
+  first, with the same conditions (`AsyncRef.backpressureInc?`/`AsyncRef.backpressureDec?`, bound
+  `AsyncRef.backpressureLimit = 2^16`), and the counter is only updated when no trap fires. A trap
   locks the whole store down (head semantics), so the two orders are indistinguishable. Proved
   here only at the level of the pure update: if the counter is in `[0, 2^16)` before the call
   (the REF assert, not a hypothesis of the programs) and no trap fires, it is in `[0, 2^16)`
@@ -47,7 +47,7 @@ mutate only through `Runtime.Task.return_`/`Runtime.Task.cancel` and the lifting
   the counter is proved. Neither built-in wakes any thread: waiters on the K1 backpressure
   gate merely become ready (REF).
 * `context.get/set` (D-f): REF asserts `t ∈ {i32, i64}` (guaranteed by `AddrType`),
-  `i < len(thread.storage)` (validation guarantees `i < Async.contextSlotCount = 2`) and the
+  `i < len(thread.storage)` (validation guarantees `i < AsyncRef.contextSlotCount = 2`) and the
   value range `v < 2^(ptr_size(t)*8)`. The index assert is handled by trapping `contextIndex`
   (unreachable for validated components); the value range is a precondition: `contextSet`
   stores the given number unchanged and `contextGet` returns `result mod 2^width` as a flat
@@ -140,25 +140,25 @@ theorem decBackpressureSt_frame (st : InstState) :
 
 /-- When the overflow check of `backpressure.inc` passes, the update is the checked value. -/
 theorem incBackpressureSt_eq {st : InstState} {m : Nat}
-    (h : Async.backpressureInc? st.backpressure = some m) :
+    (h : AsyncRef.backpressureInc? st.backpressure = some m) :
     (incBackpressureSt st).backpressure = m := by
-  unfold Async.backpressureInc? at h
+  unfold AsyncRef.backpressureInc? at h
   split at h <;> simp_all [incBackpressureSt]
 
 /-- When the underflow check of `backpressure.dec` passes, the update is the checked value. -/
 theorem decBackpressureSt_eq {st : InstState} {m : Nat}
-    (h : Async.backpressureDec? st.backpressure = some m) :
+    (h : AsyncRef.backpressureDec? st.backpressure = some m) :
     (decBackpressureSt st).backpressure = m := by
-  unfold Async.backpressureDec? at h
+  unfold AsyncRef.backpressureDec? at h
   split at h <;> simp_all [decBackpressureSt]
 
 /-- Range preservation of `backpressure.inc` (REF assert `0 <= backpressure < 2^16`): if the
 counter is below the limit and the overflow check passes, the new counter is below the limit. -/
 theorem incBackpressureSt_lt {st : InstState}
-    (hlt : st.backpressure < Async.backpressureLimit)
-    (hok : (Async.backpressureInc? st.backpressure).isSome) :
-    (incBackpressureSt st).backpressure < Async.backpressureLimit := by
-  unfold Async.backpressureInc? at hok
+    (hlt : st.backpressure < AsyncRef.backpressureLimit)
+    (hok : (AsyncRef.backpressureInc? st.backpressure).isSome) :
+    (incBackpressureSt st).backpressure < AsyncRef.backpressureLimit := by
+  unfold AsyncRef.backpressureInc? at hok
   split at hok
   · simp at hok
   · simp only [incBackpressureSt]; omega
@@ -166,8 +166,8 @@ theorem incBackpressureSt_lt {st : InstState}
 /-- Range preservation of `backpressure.dec`: the new counter is below the limit whenever the
 old one is (and the underflow check guarantees the old counter was positive). -/
 theorem decBackpressureSt_lt {st : InstState}
-    (hlt : st.backpressure < Async.backpressureLimit) :
-    (decBackpressureSt st).backpressure < Async.backpressureLimit := by
+    (hlt : st.backpressure < AsyncRef.backpressureLimit) :
+    (decBackpressureSt st).backpressure < AsyncRef.backpressureLimit := by
   simp only [decBackpressureSt]; omega
 
 /-! ## Checks -/
@@ -189,9 +189,9 @@ example : (incBackpressureSt { backpressure := 3 }).backpressure = 4 := rfl
 example : (decBackpressureSt { backpressure := 3 }).backpressure = 2 := rfl
 
 /-- The overflow and underflow trap conditions. -/
-example : (Async.backpressureInc? (2 ^ 16 - 1)).isNone = true := by decide
-example : (Async.backpressureInc? (2 ^ 16 - 2)).isNone = false := by decide
-example : (Async.backpressureDec? 0).isNone = true := by decide
+example : (AsyncRef.backpressureInc? (2 ^ 16 - 1)).isNone = true := by decide
+example : (AsyncRef.backpressureInc? (2 ^ 16 - 2)).isNone = false := by decide
+example : (AsyncRef.backpressureDec? 0).isNone = true := by decide
 
 /-- Without quirks, a `task.return` without memory does not match a lift with memory; with
 `Quirks.wasmtime` it does. -/

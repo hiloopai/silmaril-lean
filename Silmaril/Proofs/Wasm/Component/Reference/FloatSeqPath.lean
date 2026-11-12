@@ -38,7 +38,7 @@ canonicalised results. -/
 structure CallAtKF (prof : ProfileKind) (P : Profile)
     (cs : (core3P P).Store (CanonHost (core3P P))) (ι' : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P) (k j : Nat) (x : SimpleExport)
-    (a : (E3 P).FuncAddr) (args : List Val) (xs : List Flat) (M₀ : Machine.Config (E3 P) Unit)
+    (a : (E3 P).FuncAddr) (args : List Silmaril.Wasm.Component.Reference.Val) (xs : List Flat) (M₀ : Machine.Config (E3 P) Unit)
     (th : Option ThreadId) (K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P)))
     (segs : List (Seg (E3 P) Unit)) (rest : List (Activation (E3 P) Unit)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a xs) K, segs⟩ :: rest

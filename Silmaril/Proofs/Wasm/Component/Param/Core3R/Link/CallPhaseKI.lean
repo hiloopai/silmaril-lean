@@ -44,7 +44,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat checkLower Payload sigN)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
   {prof : ProfileKind} {c : SimpleI} {I : Silmaril.Wasm.Game.ScalarInstance}
 
 /-! ## Configurations between calls -/

@@ -37,7 +37,7 @@ as specification programs in `P E σ` over closed types `WIT.ClosedType RtId`:
 | `lowerFlatAt` (`flags`) | `lower_flat_flags` (L2034-2036) |
 | `liftFlatValues lim q cx max vi ts` | `lift_flat_values` (L2040-2049) |
 | `lowerFlatValues lim q cx max vs ts outParam` | `lower_flat_values` (L2051-2070) |
-| `unpackCallbackResult` (`Async.unpackCallbackResult`) | `unpack_callback_result` (L2153-2159) |
+| `unpackCallbackResult` (`AsyncRef.unpackCallbackResult`) | `unpack_callback_result` (L2153-2159) |
 | `ABI.maxFlatParams`/`maxFlatAsyncParams`/`maxFlatResults` (reused) | `MAX_FLAT_*` (L1765-1767) |
 
 Flat types are the `ABI.flatten p` (REF `flatten_type`, with `ABI.variantPayload` the
@@ -174,12 +174,12 @@ section Examples
 
 /-- `unpack_callback_result(0x22)`: `WAIT` on waitable set 2. -/
 example : (unpackCallbackResult 0x22 : P E σ _) = pure (.wait, 2) := by
-  rw [unpackCallbackResult, show Async.unpackCallbackResult 0x22 = some (.wait, 2) by decide]
+  rw [unpackCallbackResult, show AsyncRef.unpackCallbackResult 0x22 = some (.wait, 2) by decide]
   rfl
 
 /-- `unpack_callback_result(0x13)`: code 3 is unsupported. -/
 example : (unpackCallbackResult 0x13 : P E σ _) = trap .unsupportedCallbackCode := by
-  rw [unpackCallbackResult, show Async.unpackCallbackResult 0x13 = none by decide]
+  rw [unpackCallbackResult, show AsyncRef.unpackCallbackResult 0x13 = none by decide]
   rfl
 
 /-- `CoreValueIter.next` returns the value at the current position. -/

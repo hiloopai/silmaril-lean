@@ -22,7 +22,7 @@ the copy stay in the Raw module, which imports this one.
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon Value
+open Engine AsyncRef Canon Value
 
 section Updates
 

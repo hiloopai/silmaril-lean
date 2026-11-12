@@ -133,7 +133,7 @@ def storeU32 (cx : LiftLowerContext E) (ptr v : Nat) : P E σ Unit := do
 and bounds of the whole 8-byte slot first (like wasmtime's `POINTER_PAIR` check, so a trap
 writes nothing), then store the index and payload as `u32`s at `ptr` and `ptr + 4`; returns
 the event code. -/
-def unpackEvent (cx : LiftLowerContext E) (ptr : Nat) (e : Async.EventTuple) : P E σ Nat := do
+def unpackEvent (cx : LiftLowerContext E) (ptr : Nat) (e : AsyncRef.EventTuple) : P E σ Nat := do
   checkAligned ptr 4
   checkInBounds cx ptr 8
   writeMem cx ptr (u32Bytes e.index)

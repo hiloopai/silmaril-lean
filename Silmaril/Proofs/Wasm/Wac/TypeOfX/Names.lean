@@ -168,7 +168,7 @@ theorem track_instance (e : InstanceExpr) : Track (instance_ e) [] [] := by
     exact track_bind0 (track_mapM _ (fun _ => track_bind0 (track_itemKind _ _ _)
       fun _ => track_pure _) es) fun _ => track_pushInst _
 
-theorem track_import (i : Import) : Track (import_ i) [i.name.name] [] := by
+theorem track_import (i : Silmaril.Wasm.Component.Binary.Import) : Track (import_ i) [i.name.name] [] := by
   unfold import_
   refine track_congr (track_bind (track_liftD _) fun k =>
     track_bind (c := [i.name.name]) (d := []) (track_pushKind k) fun _ => ?_) (by simp) (by simp)
@@ -184,7 +184,7 @@ theorem track_appendExport (n : String) (k : Kind) :
   rw [← hr]
   exact ⟨(List.append_nil _).symm, by simp⟩
 
-theorem track_export (e : Export) : Track (export_ e) [] [e.name.name] := by
+theorem track_export (e : Silmaril.Wasm.Component.Binary.Export) : Track (export_ e) [] [e.name.name] := by
   unfold export_
   split
   · exact track_congr (track_bind (track_liftD _) fun k => track_bind (track_pushKind k) fun _ =>

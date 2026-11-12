@@ -71,21 +71,21 @@ def extend : Ctx → Externs → Ctx
 /-! ## Value types -/
 
 /-- **Value types of the fragment** in the context `Γ`. -/
-inductive TyOk (Γ : Ctx) : Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive TyOk (Γ : Ctx) : Ty → Prop
   | prim (p : PrimValType) : TyOk Γ (.prim p)
   | refVal {a : String} : Γ.lookup a = some .val → TyOk Γ (.ref ⟨.local, a⟩)
   | refAlias {a r : String} : Γ.lookup a = some (.ali r) → TyOk Γ (.ref ⟨.local, a⟩)
   | own {a : String} : Γ.lookup a = some .res → TyOk Γ (.own ⟨.local, a⟩)
   | borrowRes {a : String} : Γ.lookup a = some .res → TyOk Γ (.borrow ⟨.local, a⟩)
   | borrowAlias {a r : String} : Γ.lookup a = some (.ali r) → TyOk Γ (.borrow ⟨.local, a⟩)
-  | list {t : Silmaril.Wasm.Wit.Binary.Ty} : TyOk Γ t → TyOk Γ (.list t)
-  | fixedList {t : Silmaril.Wasm.Wit.Binary.Ty} (n : Nat) : TyOk Γ t → TyOk Γ (.fixedList t n)
-  | map {k v : Silmaril.Wasm.Wit.Binary.Ty} : TyOk Γ k → TyOk Γ v → TyOk Γ (.map k v)
-  | option {t : Silmaril.Wasm.Wit.Binary.Ty} : TyOk Γ t → TyOk Γ (.option t)
-  | result {a b : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, TyOk Γ t) → (∀ t ∈ b, TyOk Γ t) → TyOk Γ (.result a b)
-  | tuple {ts : List Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ ts, TyOk Γ t) → TyOk Γ (.tuple ts)
-  | future {a : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, TyOk Γ t) → TyOk Γ (.future a)
-  | stream {a : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, TyOk Γ t) → TyOk Γ (.stream a)
+  | list {t : Ty} : TyOk Γ t → TyOk Γ (.list t)
+  | fixedList {t : Ty} (n : Nat) : TyOk Γ t → TyOk Γ (.fixedList t n)
+  | map {k v : Ty} : TyOk Γ k → TyOk Γ v → TyOk Γ (.map k v)
+  | option {t : Ty} : TyOk Γ t → TyOk Γ (.option t)
+  | result {a b : Option Ty} : (∀ t ∈ a, TyOk Γ t) → (∀ t ∈ b, TyOk Γ t) → TyOk Γ (.result a b)
+  | tuple {ts : List Ty} : (∀ t ∈ ts, TyOk Γ t) → TyOk Γ (.tuple ts)
+  | future {a : Option Ty} : (∀ t ∈ a, TyOk Γ t) → TyOk Γ (.future a)
+  | stream {a : Option Ty} : (∀ t ∈ a, TyOk Γ t) → TyOk Γ (.stream a)
 
 /-- A function type over value types of the fragment. -/
 def SigOk (Γ : Ctx) (s : Sig) : Prop := (∀ p ∈ s.params, TyOk Γ p.2) ∧ ∀ t ∈ s.result, TyOk Γ t
@@ -99,7 +99,7 @@ def NomOk (Γ : Ctx) : Nominal → Prop
 
 /-- The definiens of a type item that the encoder defines anew or as a handle (neither a
 named reference nor `own`). -/
-def Plain : Silmaril.Wasm.Wit.Binary.Ty → Prop
+def Plain : Ty → Prop
   | .ref _ | .own _ => False
   | _ => True
 
@@ -123,7 +123,7 @@ inductive EsOk (N : NomTable) : Ctx → Externs → Prop
   | tyNom {Γ : Ctx} {n : String} {d : Nominal} {es : Externs} : Γ.lookup n = none →
       N.lookup n = some d → NomOk Γ d →
       EsOk N (Γ ++ [(n, .val)]) es → EsOk N Γ ((n, .type (.value (.ref ⟨.local, n⟩))) :: es)
-  | tyVal {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} : Plain t → TyOk Γ t →
+  | tyVal {Γ : Ctx} {n : String} {t : Ty} {es : Externs} : Plain t → TyOk Γ t →
       EsOk N (Γ ++ [(n, .val)]) es → EsOk N Γ ((n, .type (.value t)) :: es)
   | tyFunc {Γ : Ctx} {n : String} {s : Sig} {es : Externs} : SigOk Γ s →
       EsOk N (Γ ++ [(n, .other)]) es → EsOk N Γ ((n, .type (.func s)) :: es)

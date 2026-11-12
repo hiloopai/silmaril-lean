@@ -83,7 +83,7 @@ programs and for `CStore.candidates (hr m.host)` / `CStore.instCandidates`.
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon
+open Engine AsyncRef Canon
 
 /-! ## Thread predicates -/
 

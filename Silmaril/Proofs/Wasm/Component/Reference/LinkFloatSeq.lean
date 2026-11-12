@@ -246,7 +246,7 @@ def SeqFactsLV (P : Profile) (prof : ProfileKind) (l : Linked2)
     (F₀ : List (FuncInst (CanonHost (E3 P)))) (fs : List (CFuncInst (core3P P))) (h₀ : σ)
     (u π : Store Nat) (k : Nat)
     (calls : List (Fin l.imp.exports.length × List Silmaril.Wasm.Component.Val))
-    (rss : List (List Val)) (mₙ : Machine.Config (E3 P) σ) : Prop :=
+    (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P) σ) : Prop :=
   ∃ (calls' : List (Fin l.imp.exports.length × List Silmaril.Wasm.Component.Val))
     (lr : List (CRound Ii.E Ii.F)) (dss : List (List (Round (sigN l.imp.imports.length))))
     (wss : List (List Silmaril.Wasm.Component.Val)) (cs' : (core3P P).Store (CanonHost (core3P P)))
@@ -266,7 +266,7 @@ theorem seqL_invV (hIg : l.imp.Good) (har : l.imp.Arity)
     (hfs : LiftedOk l Ii s₀ fs) (h₀ : σ) :
     ∀ (calls : List (Fin l.imp.exports.length × List Silmaril.Wasm.Component.Val))
       (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstState) (G : Garb P σ)
-      (ST : List Subtask) (u π : Store Nat) (k : Nat) (rss : List (List Val))
+      (ST : List Subtask) (u π : Store Nat) (k : Nat) (rss : List (List Silmaril.Wasm.Component.Reference.Val))
       (mₙ : Machine.Config (E3 P) σ),
       ReadyL P l.dropExports Ie Ii s₀ u₀ F₀ cs ιe ιi G u π k →
       SimpleI.TypedCalls l.imp calls →
@@ -359,7 +359,7 @@ theorem linked2_sound_seq_floatV (P : Profile) (prof : ProfileKind) (l : Linked2
     (j : Fin l.imp.exports.length) (vs : List Silmaril.Wasm.Component.Val)
     (ht : SimpleI.TypedCalls l.imp calls)
     (hvs : ValTy.checkList l.imp.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (linkHost impl) h₀ l.toRef
       (calls.map fun q => (l.imp.exports[q.1].name, q.2.map toRefVal)) l.imp.exports[j].name
       (vs.map toRefVal)) :
@@ -491,7 +491,7 @@ theorem linked2_sound_seq_floatV_deterministic (P : Profile) (l : Linked2) (hEg 
     (j : Fin l.imp.exports.length) (vs : List Silmaril.Wasm.Component.Val)
     (ht : SimpleI.TypedCalls l.imp calls)
     (hvs : ValTy.checkList l.imp.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours .deterministic (linkHost impl) h₀ l.toRef
       (calls.map fun q => (l.imp.exports[q.1].name, q.2.map toRefVal)) l.imp.exports[j].name
       (vs.map toRefVal)) :

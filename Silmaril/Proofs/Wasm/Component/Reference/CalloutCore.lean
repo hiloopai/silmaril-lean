@@ -33,7 +33,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)} {prof : ProfileKind}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)} {prof : ProfileKind}
 
 /-! ## Callout sites -/
 
@@ -77,7 +77,7 @@ arguments `ys` is answered by `g` as the IR adapter prescribes: the entry check 
 instance may leave, `L.f` is the host function `L.fn`, the types are float-free and within the
 flat arities of a synchronous lower, the arguments have the flat parameter types, and `g`
 answers images of well-typed values. -/
-structure LowerSite.Ok (L : LowerSite P) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+structure LowerSite.Ok (L : LowerSite P) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (B : CStore (E3 P)) (th : Option ThreadId) (ys : List Flat) : Prop where
   entry : calloutEntry B th L.host = none
   inst : ArenaField.insts.get? B L.inst = some L.st
@@ -95,19 +95,19 @@ structure LowerSite.Ok (L : LowerSite P) (g : σ → HostFuncId → List Val →
 
 /-- The callout `h ys` from thread `th` in store `B` is to a `canon lower` site that `g` answers
 as the IR prescribes. -/
-def LowerAt (g : σ → HostFuncId → List Val → Option (List Val × σ)) (Q : LowerSite P → Prop)
+def LowerAt (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (Q : LowerSite P → Prop)
     (B : CStore (E3 P)) (th : Option ThreadId) (h : CanonHost (E3 P)) (ys : List Flat) : Prop :=
   ∃ L : LowerSite P, Q L ∧ h = L.host ∧ L.Ok g B th ys
 
 /-- The callout is answered in host state `s` with the flat results `flat`, moving to `s'`. -/
-def LowerSite.Answers (L : LowerSite P) (g : σ → HostFuncId → List Val → Option (List Val × σ)) (s : σ)
+def LowerSite.Answers (L : LowerSite P) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (s : σ)
     (ys flat : List Flat) (s' : σ) : Prop :=
   ∃ ws us, liftArgs L.p.params ys = some ws ∧
     g s L.fn (ws.map toRefVal) = some (us.map toRefVal, s') ∧
     ValTy.checkList L.p.results us = true ∧ flat = lowerArgs L.p.results us
 
 /-- The callout traps in host state `s`: its arguments do not lift, or `g` has no answer. -/
-def LowerSite.Fails (L : LowerSite P) (g : σ → HostFuncId → List Val → Option (List Val × σ)) (s : σ)
+def LowerSite.Fails (L : LowerSite P) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (s : σ)
     (ys : List Flat) : Prop :=
   liftArgs L.p.params ys = none ∨
     ∃ ws, liftArgs L.p.params ys = some ws ∧ g s L.fn (ws.map toRefVal) = none
@@ -355,7 +355,7 @@ end Inv
 
 /-- The callouts reachable from `x` in host state `s` along runs answered by `g` are
 `canon lower` sites answered as the IR prescribes. -/
-def CalloutsOk (g : σ → HostFuncId → List Val → Option (List Val × σ)) (Q : LowerSite P → Prop)
+def CalloutsOk (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (Q : LowerSite P → Prop)
     (B : CStore (E3 P)) (th : Option ThreadId) (s : σ) (x : CoreSt (E3 P)) : Prop :=
   ∀ calls s' y h ys, ASeg g Q B th s x calls s' y → (E3 P).status y.1 y.2 = .callout h ys →
     LowerAt g Q B th h ys
@@ -372,7 +372,7 @@ theorem CalloutsOk.after {B : CStore (E3 P)} {th : Option ThreadId} {s s' : σ}
   fun _ _ z h ys' hz hs' => hc _ _ z h ys' (.call hy hs hq hok ha hd hz) hs'
 
 /-- How a run of the core phase from host state `s` ends where a call outcome holds. -/
-def CoreEnd (g : σ → HostFuncId → List Val → Option (List Val × σ)) (Q : LowerSite P → Prop)
+def CoreEnd (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (Q : LowerSite P → Prop)
     (B : Machine.Config (E3 P) σ) (s : σ)
     (th : Option ThreadId) (K : List Flat → Canon.P (E3 P) σ (Ret (E3 P)))
     (segs : List (Seg (E3 P) σ)) (rest : List (Activation (E3 P) σ)) (x : CoreSt (E3 P))

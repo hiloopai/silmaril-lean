@@ -30,8 +30,8 @@ variable (P : Silmaril.Wasm.Numerics.Profile)
 
 /-- `step` and `mono` of `CtrVCOn` at every export of the toy. -/
 theorem toyR_step (prof : ProfileKind) {es : List (String × FuncId)}
-    {m m' : Machine.Config (core3P P) Unit} {k : ℕ} {j : Xt.Exp} {f : FuncId} {a : List Val}
-    {r : Option (List Val)} (hR : toyR P es m) (hf : es.lookup ((toyProgP P).names j) = some f)
+    {m m' : Machine.Config (core3P P) Unit} {k : ℕ} {j : Xt.Exp} {f : FuncId} {a : List Silmaril.Wasm.Component.Reference.Val}
+    {r : Option (List Silmaril.Wasm.Component.Reference.Val)} (hR : toyR P es m) (hf : es.lookup ((toyProgP P).names j) = some f)
     (h : Calls prof (refHost P).hr (refHost P).dispatch m ⟨k⟩ f a m' (.resolved r)) :
     toyR P es m' ∧ toyCtrP P m ≤ toyCtrP P m' := by
   obtain ⟨j, hj⟩ := j

@@ -285,7 +285,7 @@ theorem oks_withUtf8 (P : Silmaril.Wasm.Numerics.Profile) (x : IL.Id) (ws : List
 
 /-- **The primitives of `utf8Env20T (storeB P)` commute with `swapX`.** -/
 theorem biSwap_storeB (P : Silmaril.Wasm.Numerics.Profile) (gd : String → Bool) :
-    Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.BIErase (fun _ => True) gd (Utf8Mono.utf8Env20T (Whole.storeB P)) := by
+    BIErase (fun _ => True) gd (Utf8Mono.utf8Env20T (Whole.storeB P)) := by
   intro x ws _ _
   exact ⟨swap_of_oks (oks_withUtf8 P x), fun u _ => allIn_true u⟩
 

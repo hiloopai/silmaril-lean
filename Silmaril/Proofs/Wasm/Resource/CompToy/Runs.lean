@@ -55,8 +55,8 @@ theorem bugComp_valid : ∃ ct, Valid Silmaril.Wasm.Component.Features.p2 bugCom
 abbrev H0 : Host E0 Unit := Host.ofEmbedder emb
 
 /-- A resolved executable top-level call is a `Calls` fact of the embedder's host. -/
-theorem calls_of_callTop {fuel k : ℕ} {f : FuncId} {args : List Val} {m : Config E0 Unit}
-    {r : RunResult E0 Unit first.State} {res : Option (List Val)}
+theorem calls_of_callTop {fuel k : ℕ} {f : FuncId} {args : List Silmaril.Wasm.Component.Reference.Val} {m : Config E0 Unit}
+    {r : RunResult E0 Unit first.State} {res : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (h : emb.callTop first fuel ⟨k⟩ f args m = some r) (ho : r.outcome = .resolved)
     (hr : r.config.result? ⟨k⟩ = some res) :
     Calls first.prof H0.hr H0.dispatch m ⟨k⟩ f args r.config (.resolved res) := by
@@ -65,8 +65,8 @@ theorem calls_of_callTop {fuel k : ℕ} {f : FuncId} {args : List Val} {m : Conf
   exact emb.callTop_sound first h hc
 
 /-- One resolved call of `callSeq`. -/
-theorem callSeq_cons {es : List (String × FuncId)} {k : ℕ} {j : Xt.Exp} {a : List Val}
-    {cs : List (Xt.Exp × List Val)} {m m' : Config E0 Unit} {ds : List (DoneCall Xt)}
+theorem callSeq_cons {es : List (String × FuncId)} {k : ℕ} {j : Xt.Exp} {a : List Silmaril.Wasm.Component.Reference.Val}
+    {cs : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val)} {m m' : Config E0 Unit} {ds : List (DoneCall Xt)}
     (h : callSeq es k ((j, a) :: cs) m = some (ds, m')) :
     ∃ f r res ds', es.lookup (names j) = some f ∧
       Calls first.prof H0.hr H0.dispatch m ⟨k⟩ f a r (.resolved res) ∧
@@ -87,7 +87,7 @@ theorem callSeq_cons {es : List (String × FuncId)} {k : ℕ} {j : Xt.Exp} {a : 
 
 /-- **A successful `callSeq` is a multi-call run.** -/
 theorem callSeq_runCalls {es : List (String × FuncId)} :
-    ∀ {k : ℕ} {cs : List (Xt.Exp × List Val)} {m m' : Config E0 Unit} {ds : List (DoneCall Xt)},
+    ∀ {k : ℕ} {cs : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val)} {m m' : Config E0 Unit} {ds : List (DoneCall Xt)},
       callSeq es k cs m = some (ds, m') → RunCalls first.prof H0 names es m k ds m'
   | k, [], m, m', ds, h => by
     have he : ([], m) = (ds, m') := Option.some.inj h
@@ -98,8 +98,8 @@ theorem callSeq_runCalls {es : List (String × FuncId)} :
     exact .cons hf hc (callSeq_runCalls hs)
 
 /-- **A successful session is an instantiation and a multi-call run.** -/
-theorem session_runCalls {c : Core3Component} {cs : List (Xt.Exp × List Val)}
-    {l : List (Xt.Exp × List Val × Option (List Val))} (h : session c cs = some l) :
+theorem session_runCalls {c : Core3Component} {cs : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val)}
+    {l : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val × Option (List Silmaril.Wasm.Component.Reference.Val))} (h : session c cs = some l) :
     ∃ m₀ inst es ds mₙ,
       InstResult.instance m₀ inst es ∈ instBehaviours first.prof H0 (initConfig ()) c [] ∧
       RunCalls first.prof H0 names es m₀ 0 ds mₙ ∧ ds.map (fun d => (d.exp, d.args, d.res)) = l := by
@@ -133,7 +133,7 @@ theorem sessionCtrs_bug : sessionCtrs bugComp twoMakes = some [0, 0, 0] := by
   decide +kernel
 
 /-- The resolved calls of a session, read back. -/
-theorem doneCalls_eq {ds : List (DoneCall Xt)} {l : List (Xt.Exp × List Val × Option (List Val))}
+theorem doneCalls_eq {ds : List (DoneCall Xt)} {l : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val × Option (List Silmaril.Wasm.Component.Reference.Val))}
     (h : ds.map (fun d => (d.exp, d.args, d.res)) = l) :
     ds = l.map fun (j, a, r) => ⟨j, a, r⟩ := by
   subst h

@@ -160,12 +160,12 @@ theorem bin_run {P : Profile} {op : IntBinOp} (h : instSummary op = true) {x y z
   have hf : (binStore op).funcs[0]? = some fi := by rw [hfuncs]; rfl
   have he : Expand fi.type binFn.toComp := FnType.expand_of_ofDefType? hty
   let F := Frame.forCall fi.module [Val.i32 x, Val.i32 y] code.locals
-  let n := (Silmaril.Wasm.Validation.Ty.ofList (binFn.results.map ScalarType.toC)).length
-  have hn : [Val.i32 z].length = n := (Silmaril.Wasm.Validation.Ty.length_ofList (binFn.results.map ScalarType.toC)).symm
+  let n := (Ty.ofList (binFn.results.map ScalarType.toC)).length
+  have hn : [Val.i32 z].length = n := (Ty.length_ofList (binFn.results.map ScalarType.toC)).symm
   have s₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost
       (invoke (binStore op) 0 [Val.i32 x, Val.i32 y])
       ⟨binStore op, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
-    .callRefFunc trivial hf he (Silmaril.Wasm.Validation.Ty.length_ofList (binFn.params.map ScalarType.toC)).symm hcode
+    .callRefFunc trivial hf he (Ty.length_ofList (binFn.params.map ScalarType.toC)).symm hcode
   have hl₀ : F.local? x₀ = some (some (Val.i32 x)) := by
     simp [F, Frame.local?, Frame.forCall, hloc, h₀]
   have hl₁ : F.local? x₁ = some (some (Val.i32 y)) := by

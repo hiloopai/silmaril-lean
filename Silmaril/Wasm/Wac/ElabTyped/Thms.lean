@@ -175,7 +175,7 @@ theorem new_nodeOk {env : PkgEnv} (hE : EnvWit env) {key : String} {pk : PkgType
 
 mutual
 theorem ElabExpr.inv {cx : ECtx} (hE : EnvWit cx.env) :
-    ∀ {st : ESt} {e : Expr} {r : ESt × Nat}, ElabExpr cx st e r → st.Inv →
+    ∀ {st : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {r : ESt × Nat}, ElabExpr cx st e r → st.Inv →
       Step st r.1 ∧ r.2 < r.1.g.nodes.length
   | _, _, _, .ident hx, hi => ⟨⟨hi, ESt.Ext.refl _⟩, lookup_lt hi hx⟩
   | _, _, _, .paren h, hi => ElabExpr.inv hE h hi

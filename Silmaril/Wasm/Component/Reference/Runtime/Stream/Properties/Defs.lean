@@ -42,7 +42,7 @@ tying pending events to states, handle tables, or the Prog layer's element trans
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async
+open Engine AsyncRef
 
 variable {E : CoreEngine}
 

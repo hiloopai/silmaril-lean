@@ -24,12 +24,12 @@ open Silmaril.Wasm.Component.Runtime
 
 variable {α : Type}
 
-theorem freeOK_empty : FreeOK (Silmaril.Wasm.Component.Runtime.Table.empty : Silmaril.Wasm.Component.Runtime.Table α) :=
-  ⟨fun _ h => by simp [Silmaril.Wasm.Component.Runtime.Table.empty] at h, List.nodup_nil⟩
+theorem freeOK_empty : FreeOK (Table.empty : Silmaril.Wasm.Component.Runtime.Table α) :=
+  ⟨fun _ h => by simp [Table.empty] at h, List.nodup_nil⟩
 
-theorem tabRel_empty : TabRel [] (Silmaril.Wasm.Component.Runtime.Table.empty : Silmaril.Wasm.Component.Runtime.Table α) := by
+theorem tabRel_empty : TabRel [] (Table.empty : Silmaril.Wasm.Component.Runtime.Table α) := by
   refine ⟨List.nodup_nil, fun i => ?_⟩
-  cases i <;> simp [Silmaril.Wasm.Component.Runtime.Table.empty, Silmaril.Wasm.Component.Runtime.Table.get?]
+  cases i <;> simp [Table.empty, Table.get?]
 
 /-- What a successful `add?` does: index `i` was empty and now holds `e`, the other indices are
 unchanged, and `FreeOK` is kept. -/
@@ -55,14 +55,14 @@ theorem add?_fresh_cons {arr : Array (Option α)} {k : ℕ} {fr : List ℕ} {e :
   have hfr : ∀ j ∈ fr, (arr.setIfInBounds k (some e))[j]? = some none := fun j hj => by
     have hjk : k ≠ j := fun hkj => hnd.1 (hkj ▸ hj)
     simpa [Array.getElem?_setIfInBounds_ne hjk] using hf.1 j (by simp [hj])
-  refine ⟨by simp [Silmaril.Wasm.Component.Runtime.Table.get?, hk], by simp [Silmaril.Wasm.Component.Runtime.Table.get?, hlt], fun j hj => ?_, hfr, hnd.2⟩
-  simp [Silmaril.Wasm.Component.Runtime.Table.get?, Array.getElem?_setIfInBounds_ne (Ne.symm hj)]
+  refine ⟨by simp [Table.get?, hk], by simp [Table.get?, hlt], fun j hj => ?_, hfr, hnd.2⟩
+  simp [Table.get?, Array.getElem?_setIfInBounds_ne (Ne.symm hj)]
 
 theorem add?_fresh_push {arr : Array (Option α)} {e : α} :
     AddRes ⟨arr, []⟩ ⟨arr.push (some e), []⟩ e arr.size := by
-  refine ⟨by simp [Silmaril.Wasm.Component.Runtime.Table.get?], by simp [Silmaril.Wasm.Component.Runtime.Table.get?], fun j hj => ?_,
+  refine ⟨by simp [Table.get?], by simp [Table.get?], fun j hj => ?_,
     ⟨fun _ hj => by simp at hj, List.nodup_nil⟩⟩
-  simp [Silmaril.Wasm.Component.Runtime.Table.get?, Array.getElem?_push, hj]
+  simp [Table.get?, Array.getElem?_push, hj]
 
 /-- **`add?` returns a fresh index.** -/
 theorem add?_fresh {t t' : Silmaril.Wasm.Component.Runtime.Table α} {e : α} {i : ℕ} (hf : FreeOK t)
@@ -71,12 +71,12 @@ theorem add?_fresh {t t' : Silmaril.Wasm.Component.Runtime.Table α} {e : α} {i
   cases fr with
   | cons k fr =>
     have h' : k = i ∧ (⟨arr.setIfInBounds k (some e), fr⟩ : Silmaril.Wasm.Component.Runtime.Table α) = t' := by
-      simpa [Silmaril.Wasm.Component.Runtime.Table.add?] using h
+      simpa [Table.add?] using h
     obtain ⟨rfl, rfl⟩ := h'
     exact add?_fresh_cons hf
   | nil =>
     have h' : arr.size = i ∧ (⟨arr.push (some e), []⟩ : Silmaril.Wasm.Component.Runtime.Table α) = t' := by
-      simp only [Silmaril.Wasm.Component.Runtime.Table.add?] at h
+      simp only [Table.add?] at h
       split at h <;> simp_all
     obtain ⟨rfl, rfl⟩ := h'
     exact add?_fresh_push
@@ -90,7 +90,7 @@ theorem remove?_parts {t t' : Silmaril.Wasm.Component.Runtime.Table α} {e : α}
 
 theorem getElem?_of_get? {arr : Array (Option α)} {fr : List ℕ} {i : ℕ} {e : α}
     (h : (⟨arr, fr⟩ : Silmaril.Wasm.Component.Runtime.Table α).get? i = some e) : arr[i]? = some (some e) := by
-  simp only [Silmaril.Wasm.Component.Runtime.Table.get?] at h
+  simp only [Table.get?] at h
   cases hai : arr[i]? with
   | none => simp [hai] at h
   | some o => cases o <;> simp_all
@@ -108,8 +108,8 @@ theorem remove?_live {t t' : Silmaril.Wasm.Component.Runtime.Table α} {e : α} 
     · simp [hlt]
     · have hij : i ≠ j := fun hij => hni (hij ▸ hj)
       simpa [Array.getElem?_setIfInBounds_ne hij] using hf.1 j hj
-  refine ⟨he, by simp [Silmaril.Wasm.Component.Runtime.Table.get?, hlt], fun j hj => ?_, hfr, List.nodup_cons.2 ⟨hni, hf.2⟩⟩
-  simp [Silmaril.Wasm.Component.Runtime.Table.get?, Array.getElem?_setIfInBounds_ne (Ne.symm hj)]
+  refine ⟨he, by simp [Table.get?, hlt], fun j hj => ?_, hfr, List.nodup_cons.2 ⟨hni, hf.2⟩⟩
+  simp [Table.get?, Array.getElem?_setIfInBounds_ne (Ne.symm hj)]
 
 theorem tabRel_alloc {t t' : Silmaril.Wasm.Component.Runtime.Table α} {e : α} {i : ℕ} (hr : AddRes t t' e i) {L : List ℕ}
     (hL : TabRel L t) (r : Role) :
@@ -144,7 +144,7 @@ theorem tabRel_use {t : Silmaril.Wasm.Component.Runtime.Table α} {e : α} {i : 
 
 /-- **One successful table event is accepted** by the handle protocol in either orientation, and
 the relation to the table is kept. -/
-theorem tabRel_step {t t' : Silmaril.Wasm.Component.Runtime.Table α} {ev : Silmaril.Wasm.Component.Runtime.Table.Event α} (hs : t.step? ev.op = some (ev, t'))
+theorem tabRel_step {t t' : Silmaril.Wasm.Component.Runtime.Table α} {ev : Table.Event α} (hs : t.step? ev.op = some (ev, t'))
     (hf : FreeOK t) {L : List ℕ} (hL : TabRel L t) (r : Role) :
     ∃ L', handleStep r (some L) (tableEv ev) = some (some L') ∧ TabRel L' t' ∧ FreeOK t' := by
   cases ev with
@@ -152,7 +152,7 @@ theorem tabRel_step {t t' : Silmaril.Wasm.Component.Runtime.Table α} {ev : Silm
     obtain ⟨p, hp, hpe⟩ := Option.map_eq_some_iff.1 hs
     have hp' : t.add? e = some (i, t') := by
       obtain ⟨p1, p2⟩ := p
-      simp only [Prod.mk.injEq, Silmaril.Wasm.Component.Runtime.Table.Event.added.injEq] at hpe
+      simp only [Prod.mk.injEq, Table.Event.added.injEq] at hpe
       rw [hp, ← hpe.1.1, ← hpe.2]
     have hr : AddRes t t' e i := add?_fresh hf hp'
     exact ⟨i :: L, (tabRel_alloc hr hL r).1, (tabRel_alloc hr hL r).2, hr.2.2.2⟩
@@ -170,7 +170,7 @@ theorem tabRel_step {t t' : Silmaril.Wasm.Component.Runtime.Table α} {ev : Silm
 
 /-- **Every successful table history is accepted** from a related state, in either
 orientation. -/
-theorem table_steps_run {t t' : Silmaril.Wasm.Component.Runtime.Table α} {evs : List (Silmaril.Wasm.Component.Runtime.Table.Event α)} (h : Silmaril.Wasm.Component.Runtime.Table.Steps t evs t')
+theorem table_steps_run {t t' : Silmaril.Wasm.Component.Runtime.Table α} {evs : List (Table.Event α)} (h : Table.Steps t evs t')
     (r : Role) :
     ∀ {L : List ℕ}, FreeOK t → TabRel L t →
       ∃ L', (handleProto ℕ r).run (some L) (evs.map tableEv) = some (some L') ∧ TabRel L' t' ∧
@@ -189,8 +189,8 @@ theorem table_steps_run {t t' : Silmaril.Wasm.Component.Runtime.Table α} {evs :
 
 /-- **The reference machine's handle tables respect the handle protocol**: every successful
 history from the empty table is accepted by `handleProto ℕ r`, for both roles. -/
-theorem table_steps_accepts {t' : Silmaril.Wasm.Component.Runtime.Table α} {evs : List (Silmaril.Wasm.Component.Runtime.Table.Event α)}
-    (h : Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs t') (r : Role) :
+theorem table_steps_accepts {t' : Silmaril.Wasm.Component.Runtime.Table α} {evs : List (Table.Event α)}
+    (h : Table.Steps Table.empty evs t') (r : Role) :
     (handleProto ℕ r).Accepts (evs.map tableEv) := by
   obtain ⟨L, hL, -⟩ := table_steps_run h r freeOK_empty tabRel_empty
   show ((handleProto ℕ r).run (some []) _).isSome

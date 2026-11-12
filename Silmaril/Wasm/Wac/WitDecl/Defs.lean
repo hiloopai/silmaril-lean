@@ -63,7 +63,7 @@ namespace WitDecl
 /-- What a name of an interface or world scope denotes. -/
 inductive Den where
   /-- A value type (an alias is its definiens). -/
-  | val (t : Silmaril.Wasm.Wit.Binary.Ty)
+  | val (t : Ty)
   /-- A resource. -/
   | res (r : TyRef)
   deriving Repr, DecidableEq, Inhabited
@@ -72,7 +72,7 @@ inductive Den where
 abbrev Scope := List (String × Den)
 
 /-- The value type a name denotes. -/
-def Scope.ty (sc : Scope) (n : String) : Silmaril.Wasm.Wit.Binary.Ty :=
+def Scope.ty (sc : Scope) (n : String) : Ty :=
   match sc.lookup n with
   | some (.val t) => t
   | some (.res r) => .own r
@@ -87,7 +87,7 @@ def Scope.res (sc : Scope) (n : String) : TyRef :=
 
 mutual
 /-- A WIT type in a scope. -/
-def elabTy (sc : Scope) : Wit.Ty → Silmaril.Wasm.Wit.Binary.Ty
+def elabTy (sc : Scope) : Wit.Ty → Ty
   | .bool => .prim .bool
   | .s8 => .prim .s8
   | .s16 => .prim .s16
@@ -113,10 +113,10 @@ def elabTy (sc : Scope) : Wit.Ty → Silmaril.Wasm.Wit.Binary.Ty
   | .borrow r => .borrow (sc.res r)
   | .future t => .future (elabTyOpt sc t)
   | .stream t => .stream (elabTyOpt sc t)
-def elabTyOpt (sc : Scope) : Option Wit.Ty → Option Silmaril.Wasm.Wit.Binary.Ty
+def elabTyOpt (sc : Scope) : Option Wit.Ty → Option Ty
   | none => none
   | some t => some (elabTy sc t)
-def elabTys (sc : Scope) : List Wit.Ty → List Silmaril.Wasm.Wit.Binary.Ty
+def elabTys (sc : Scope) : List Wit.Ty → List Ty
   | [] => []
   | t :: ts => elabTy sc t :: elabTys sc ts
 end
@@ -215,7 +215,7 @@ def typeDecl (sc : Scope) (d : Wit.TypeDef) : (String × Den) × Externs :=
     let v := elabTy sc t
     ((d.name, .val v), [(d.name, .type (.value v))])
   | _ =>
-    let v : Silmaril.Wasm.Wit.Binary.Ty := .ref ⟨.local, d.name⟩
+    let v : Ty := .ref ⟨.local, d.name⟩
     ((d.name, .val v), [(d.name, .type (.value v))])
 
 /-- Declare a type, once. -/

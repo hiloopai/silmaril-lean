@@ -49,7 +49,7 @@ namespace B
 export Silmaril.Wasm.Component.Binary (CoreSort ItemSort CoreSortIdx SortIdx ExternName NameForm
   Attribute CoreInstanceExpr InstanceExpr Alias AliasTarget CoreValType CoreFuncType CoreType
   PrimValType ValType DefValType FuncType ValueBound TypeBound ExternDesc DefType InstanceDecl
-  ComponentDecl CanonOpt Canon Import Silmaril.Wasm.Component.Export Section Ast)
+  ComponentDecl CanonOpt Canon Import Export Section Ast)
 end B
 
 /-! ## The translation to the reference syntax -/

@@ -237,7 +237,7 @@ theorem take_append_drop' (r : List UInt8) (k : Nat) : r = r.take k ++ r.drop k 
 
 theorem blockInstr_sound {op : UInt8} {bt : BlockType} {is : List Instr} {i : Instr}
     {hdr body : Bytes} (h : blockInstr op bt is = some i) (ht : Core.BlockType Forms.all hdr bt)
-    (hb : Silmaril.Wasm.Binary.Core.Instrs Forms.all body is) : Binary.Core.Instr Forms.all ([op] ++ hdr ++ body ++ [0x0B]) i := by
+    (hb : Silmaril.Wasm.Binary.Core.Instrs Forms.all body is) : Silmaril.Wasm.Binary.Core.Instr Forms.all ([op] ++ hdr ++ body ++ [0x0B]) i := by
   unfold blockInstr at h
   split at h
   · rename_i e; cases h; subst e; exact Instr.block ht hb

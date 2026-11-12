@@ -158,7 +158,7 @@ theorem callbackLoopBody (H : LiftHyps I) (lim : Limits) (task : TaskId) (thread
     fun s => H.task.setTaskState task _ s
   refine bind ?_ fun ev => ?_
   · show P.Inv I (Task.deliverPendingCancel task >>= fun b =>
-      if b = true then Pure.pure Async.EventTuple.taskCancelled else _)
+      if b = true then Pure.pure AsyncRef.EventTuple.taskCancelled else _)
     refine bind (Task.deliverPendingCancel_inv task hc) fun b => ?_
     refine ite (pure _) ?_
     refine bind (modifyStore (H.release _ _)) fun _ => ?_

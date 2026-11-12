@@ -98,7 +98,7 @@ theorem pres_handle (o : Bool) (i : Nat) : Pres (handle o i) := by
   · exact pres_bind (pres_defTy rfl) fun _ => pres_bind (pres_modify fun _ h => h) fun _ => pres_pure _
 
 mutual
-theorem pres_valTy : ∀ t : Silmaril.Wasm.Wit.Binary.Ty, Pres (valTy t)
+theorem pres_valTy : ∀ t : Ty, Pres (valTy t)
   | .prim _ => pres_pure _
   | .ref r => by
     rw [valTy]
@@ -112,10 +112,10 @@ theorem pres_valTy : ∀ t : Silmaril.Wasm.Wit.Binary.Ty, Pres (valTy t)
   | .tuple ts => pres_bind (pres_valTys ts) fun _ => pres_defVal _
   | .own _ | .borrow _ => pres_bind (pres_namedTy _) fun _ => pres_handle _ _
   | .future a | .stream a => pres_bind (pres_valTyOpt a) fun _ => pres_defVal _
-theorem pres_valTyOpt : ∀ a : Option Silmaril.Wasm.Wit.Binary.Ty, Pres (valTyOpt a)
+theorem pres_valTyOpt : ∀ a : Option Ty, Pres (valTyOpt a)
   | none => pres_pure _
   | some t => pres_bind (pres_valTy t) fun _ => pres_pure _
-theorem pres_valTys : ∀ ts : List Silmaril.Wasm.Wit.Binary.Ty, Pres (valTys ts)
+theorem pres_valTys : ∀ ts : List Ty, Pres (valTys ts)
   | [] => pres_pure _
   | t :: ts => pres_bind (pres_valTy t) fun _ => pres_bind (pres_valTys ts) fun _ => pres_pure _
 end
@@ -129,14 +129,14 @@ theorem pres_mapM {α β : Type} {f : α → TM β} (hf : ∀ a, Pres (f a)) : �
 theorem pres_nominalTy (d : Nominal) : Pres (nominalTy d) := by
   cases d with
   | record fs =>
-    exact pres_bind (pres_mapM (fun (f : String × Silmaril.Wasm.Wit.Binary.Ty) => pres_bind (pres_valTy f.2) fun _ => pres_pure _) fs)
+    exact pres_bind (pres_mapM (fun (f : String × Ty) => pres_bind (pres_valTy f.2) fun _ => pres_pure _) fs)
       fun _ => pres_defTy rfl
   | variant cs =>
-    exact pres_bind (pres_mapM (fun (c : String × Option Silmaril.Wasm.Wit.Binary.Ty) => pres_bind (pres_valTyOpt c.2) fun _ =>
+    exact pres_bind (pres_mapM (fun (c : String × Option Ty) => pres_bind (pres_valTyOpt c.2) fun _ =>
       pres_pure _) cs) fun _ => pres_defTy rfl
   | enum _ | flags _ => exact pres_defTy rfl
 
-theorem pres_freshVal (t : Silmaril.Wasm.Wit.Binary.Ty) : Pres (freshVal t) := by
+theorem pres_freshVal (t : Ty) : Pres (freshVal t) := by
   have hd : ∀ d : DefValType, Pres (do pure (some (← defTy (.val d))) : TM (Option Nat)) :=
     fun _ => pres_bind (pres_defTy rfl) fun _ => pres_pure _
   cases t with
@@ -147,7 +147,7 @@ theorem pres_freshVal (t : Silmaril.Wasm.Wit.Binary.Ty) : Pres (freshVal t) := b
   | future a | stream a => exact pres_bind (pres_valTyOpt a) fun _ => hd _
   | prim _ | ref _ | own _ | borrow _ => exact pres_pure _
 
-theorem pres_paramTys : ∀ ps : List (String × Silmaril.Wasm.Wit.Binary.Ty), Pres (paramTys ps)
+theorem pres_paramTys : ∀ ps : List (String × Ty), Pres (paramTys ps)
   | [] => pres_pure _
   | (_, t) :: ps => pres_bind (pres_valTy t) fun _ => pres_bind (pres_paramTys ps) fun _ => pres_pure _
 

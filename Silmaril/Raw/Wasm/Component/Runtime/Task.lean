@@ -60,7 +60,7 @@ mutation (`Task.InvHyps` collects the obligations; `*_inv` lemmas discharge the 
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async Canon Value
+open Engine AsyncRef Canon Value
 
 /-! ## Pure parts -/
 

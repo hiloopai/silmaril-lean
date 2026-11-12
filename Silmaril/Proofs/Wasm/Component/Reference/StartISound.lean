@@ -29,7 +29,7 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Compon
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy Payload sigN)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
   {prof : ProfileKind}
   {c : SimpleI} {I : Silmaril.Wasm.Game.ScalarInstance}
 
@@ -148,7 +148,7 @@ theorem seq_tailIS (hc : c.Good) (hff : c.FloatFree) (har : c.Arity) (hg : c.Hos
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : c.TypedCalls calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    {rss : List (List Val)} {b : Silmaril.Wasm.Component.Reference.Outcome}
+    {rss : List (List Silmaril.Wasm.Component.Reference.Val)} {b : Silmaril.Wasm.Component.Reference.Outcome}
     {mₙ : Machine.Config (E3 P) σ}
     (hS : SeqCalls prof (answerHostS P g) (readyCfgI cs ι fs G ST s₀) 0 (callArgsIO c o calls)
       rss mₙ)
@@ -200,10 +200,10 @@ theorem seq_tailIS (hc : c.Good) (hff : c.FloatFree) (har : c.Arity) (hg : c.Hos
 function: IR results `wss` (none when no call resolved), component import calls `dss` answered by
 `g` from `s₀` to `s₁`, the play of the resolved calls and the last outcome. -/
 abbrev SeqStartConcl (P : Profile) (c : SimpleI) {σ : Type}
-    (g : σ → HostFuncId → List Val → Option (List Val × σ)) (s₀ : σ)
+    (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (s₀ : σ)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome) : Prop :=
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome) : Prop :=
   ∃ (wss : List (List Silmaril.Wasm.Component.Val))
     (dss : List (List (Σ _ : (sigN c.imports.length).Op, Option Payload))) (s₁ : σ),
     p.1 = wss.map (·.map toRefVal) ∧ (p.1 = [] → dss = []) ∧ HostRun g s₀ dss.flatten s₁ ∧
@@ -211,7 +211,7 @@ abbrev SeqStartConcl (P : Profile) (c : SimpleI) {σ : Type}
     SeqIRObsIS c (c.toComp.den (impSemS P)) calls dss wss j vs g s₁ p.2
 
 theorem dss_nil_of {c : SimpleI} {calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val)}
-    {rss : List (List Val)} {wss : List (List Silmaril.Wasm.Component.Val)}
+    {rss : List (List Silmaril.Wasm.Component.Reference.Val)} {wss : List (List Silmaril.Wasm.Component.Val)}
     {dss : List (List (Σ _ : (sigN c.imports.length).Op, Option Payload))}
     (h₀ : rss = wss.map (·.map toRefVal)) (h₁ : calls.length = dss.length)
     (h₂ : calls.length = wss.length) (h₄ : rss = []) : dss = [] := by
@@ -223,12 +223,12 @@ theorem dss_nil_of {c : SimpleI} {calls : List (Fin c.exports.length × List Sil
 (every profile and component choice profile), with no import-call lists when no call resolved. -/
 theorem simpleI_sound_seq_startS' (P : Profile) (prof : ProfileKind) (c : SimpleI)
     (hc : c.Good) (hi : c.InstS) (hn : c.mod.StartNoCall P) (hff : c.FloatFree)
-    (har : c.Arity) {σ : Type} (g : σ → HostFuncId → List Val → Option (List Val × σ))
+    (har : c.Arity) {σ : Type} (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (hg : c.HostOkS g) (s₀ : σ)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : c.TypedCalls calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehavioursI prof (answerHostS P g) s₀ c.toRef c.imports
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :
@@ -328,12 +328,12 @@ import calls `dss` answered by `g` with the host state threaded from `s₀` to `
 outcome as `SeqIRObsIS` prescribes from `s₁`. -/
 theorem simpleI_sound_seq_startS (P : Profile) (prof : ProfileKind) (c : SimpleI)
     (hc : c.Good) (hi : c.InstS) (hn : c.mod.StartNoCall P) (hff : c.FloatFree)
-    (har : c.Arity) {σ : Type} (g : σ → HostFuncId → List Val → Option (List Val × σ))
+    (har : c.Arity) {σ : Type} (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (hg : c.HostOkS g) (s₀ : σ)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : c.TypedCalls calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehavioursI prof (answerHostS P g) s₀ c.toRef c.imports
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :
@@ -349,10 +349,10 @@ theorem simpleI_sound_seq_startS (P : Profile) (prof : ProfileKind) (c : SimpleI
 /-- A behaviour of an export call is a behaviour of the sequence without earlier calls. -/
 theorem seqBehavioursI_of_export {E : CoreEngine}
     [∀ a b, Decidable (E.ExternSub a b)] {h : Silmaril.Wasm.Component.Reference.Host E σ} {s₀ : σ}
-    {d : CompAst E.Module} {ims : Silmaril.Wasm.Component.Iface} {name : String} {vals : List Val}
+    {d : CompAst E.Module} {ims : Silmaril.Wasm.Component.Iface} {name : String} {vals : List Silmaril.Wasm.Component.Reference.Val}
     {b : Silmaril.Wasm.Component.Reference.Outcome}
     (hb : b ∈ exportBehavioursI prof h s₀ d ims name vals) :
-    (([] : List (List Val)), b) ∈ seqBehavioursI prof h s₀ d ims [] name vals := by
+    (([] : List (List Silmaril.Wasm.Component.Reference.Val)), b) ∈ seqBehavioursI prof h s₀ d ims [] name vals := by
   rcases hb with ⟨m₁, inst, es, f, hr, hl, hb⟩ | ⟨rfl, hr⟩ | ⟨rfl, hr⟩
   · exact .inl ⟨m₁, inst, es, [], m₁, f, hr, rfl, .nil _ _, hl, hb⟩
   · exact .inr (.inl ⟨rfl, hr⟩)
@@ -376,7 +376,7 @@ on the reference images of well-typed IR values, over `core3P P` with `answerHos
 matched by the IR denotation over `impSemS P` (`IRObsIS`). -/
 theorem simpleI_sound_startS (P : Profile) (prof : ProfileKind) (c : SimpleI) (hc : c.Good)
     (hi : c.InstS) (hn : c.mod.StartNoCall P) (hff : c.FloatFree) (har : c.Arity) {σ : Type}
-    (g : σ → HostFuncId → List Val → Option (List Val × σ)) (hg : c.HostOkS g) (s₀ : σ)
+    (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (hg : c.HostOkS g) (s₀ : σ)
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) :
     ∀ b ∈ exportBehavioursI prof (answerHostS P g) s₀ c.toRef c.imports c.exports[j].name
@@ -405,7 +405,7 @@ theorem impSem_le_impSemS {m : ImpModule} (hI : m.IsInst I) :
 component choice profile). -/
 theorem simpleI_sound_start (P : Profile) (prof : ProfileKind) (c : SimpleI) (hc : c.Good)
     (hi : c.InstS) (hn : c.mod.StartNoCall P) (hff : c.FloatFree) (har : c.Arity)
-    (g : HostFuncId → List Val → Option (List Val)) (hg : c.HostOk g)
+    (g : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)) (hg : c.HostOk g)
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) :
     ∀ b ∈ exportBehavioursI prof (answerHost P g) () c.toRef c.imports c.exports[j].name
@@ -418,11 +418,11 @@ theorem simpleI_sound_start (P : Profile) (prof : ProfileKind) (c : SimpleI) (hc
 (every profile and component choice profile). -/
 theorem simpleI_sound_seq_start (P : Profile) (prof : ProfileKind) (c : SimpleI) (hc : c.Good)
     (hi : c.InstS) (hn : c.mod.StartNoCall P) (hff : c.FloatFree) (har : c.Arity)
-    (g : HostFuncId → List Val → Option (List Val)) (hg : c.HostOk g)
+    (g : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)) (hg : c.HostOk g)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : c.TypedCalls calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehavioursI prof (answerHost P g) () c.toRef c.imports
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :

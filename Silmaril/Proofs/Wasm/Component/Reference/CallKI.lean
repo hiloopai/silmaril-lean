@@ -24,7 +24,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
 
 /-! ## Configurations between calls with callout records -/
 
@@ -43,7 +43,7 @@ def readyCfgI (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
 def invokedAtI (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (h : σ) (k j : Nat)
-    (args : List Val) : Machine.Config (E3 P) σ :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config (E3 P) σ :=
   { readyCfgI cs ι fs G ST h with
     pending := G.pending ++ [(⟨k⟩, ⟨j⟩, args)]
     ctl := [.ofProg none (StepDefs.invokeProg ⟨k⟩ ⟨j⟩ args)] }
@@ -55,13 +55,13 @@ def storeS (S : CStore (E3 P)) (SS : List Subtask) : CStore (E3 P) :=
 /-- A store of call `k` with the subtasks `SS` and the caller records `CL` of callouts after its
 host caller record. -/
 def storeSC (S : CStore (E3 P)) (SS : List Subtask) (Gc CL : List (Caller (E3 P))) (k : Nat)
-    (args : List Val) : CStore (E3 P) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P) :=
   { S with subtasks := SS, callers := Gc ++ [.host ⟨k⟩ args 0] ++ CL }
 
 /-- The leftovers after call `k` of function `j` on `args` with results `rs`, whose callouts
 appended the caller records `CL`. -/
-def nextGarbA (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ)) (G : Garb P σ)
-    (x : SimpleExport) (k j : Nat) (a : (E3 P).FuncAddr) (args rs : List Val)
+def nextGarbA (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (G : Garb P σ)
+    (x : SimpleExport) (k j : Nat) (a : (E3 P).FuncAddr) (args rs : List Silmaril.Wasm.Component.Reference.Val)
     (CL : List (Caller (E3 P))) : Garb P σ :=
   { tasks := G.tasks ++ [task₂ x G.callers ⟨G.threads.length⟩]
     threads := G.threads ++ [{ (thread₁ G.tasks).withIndex 1 with status := .exited }]
@@ -74,7 +74,7 @@ def nextGarbA (P : Profile) (g : σ → HostFuncId → List Val → Option (List
       G.threads.length none }
 
 /-- From `mS` the call resolves at the configuration `mE`, under `answerHostS P g`. -/
-def ResolvesAtA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+def ResolvesAtA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (mS mE : Machine.Config (E3 P) σ) : Prop :=
   ∃ tr mE', LRun prof (answerHostS P g).hr (DA P g) mS tr mE' ∧ mE' = mE
 
@@ -90,7 +90,7 @@ theorem callers_get_mid {s : CStore (E3 P)} {Gc CL : List (Caller (E3 P))} {y : 
 variable {impl : HostImpl (E3 P) σ}
 
 theorem runs_onResolveSC {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
-    {Gc CL : List (Caller (E3 P))} {c : CallId} {args : List Val} (r : Option (List Val))
+    {Gc CL : List (Caller (E3 P))} {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (r : Option (List Silmaril.Wasm.Component.Reference.Val))
     (hc : m.store.callers = Gc ++ [.host c args 0] ++ CL) :
     RunsQ (DI P impl) th (DI P impl (.onResolve ⟨Gc.length⟩ r)) m [.tau, .obs (.resolved c r)]
       .unit (m.resolve c r) := by
@@ -102,7 +102,7 @@ theorem runs_onResolveSC {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
 /-- `Task.return_` with callout records after the host caller record. -/
 theorem runs_returnSC {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     {Gt : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc CL : List (Caller (E3 P))}
-    {c : CallId} {args : List Val} (vs : List Val) (ht : m.store.tasks = Gt ++ [y])
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.host c args 0] ++ CL) :
     RunsQ (DI P impl) th (Task.return_ ⟨Gt.length⟩ vs) m
@@ -127,7 +127,7 @@ the lowered values of `vs`; when it returns flat values of the result types, aft
 appended subtask and caller records, the call resolves at the next configuration between calls,
 or traps, as the IR lift prescribes. -/
 structure CallAtKA (prof : ProfileKind) (P : Profile)
-    (g : σ → HostFuncId → List Val → Option (List Val × σ)) (cs : (core3P P).Store (CanonHost (core3P P)))
+    (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (cs : (core3P P).Store (CanonHost (core3P P)))
     (ι' : InstState) (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST₀ : List Subtask)
     (k j : Nat) (x : SimpleExport) (a : (E3 P).FuncAddr) (vs : List Silmaril.Wasm.Component.Val)
     (M₀ : Machine.Config (E3 P) σ) (th : Option ThreadId)

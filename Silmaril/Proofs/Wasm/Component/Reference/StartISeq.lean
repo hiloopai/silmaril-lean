@@ -28,7 +28,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat checkLower Payload sigN)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
   {prof : ProfileKind}
   {c : SimpleI} {I : Silmaril.Wasm.Game.ScalarInstance}
 
@@ -45,7 +45,7 @@ def LiftsAt (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance) (fs : List (CF
 /-- Calls of exports (by index) on IR values, as reference function values at offset `o`. -/
 def callArgsIO (c : SimpleI) (o : Nat)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val)) :
-    List (FuncId × List Val) :=
+    List (FuncId × List Silmaril.Wasm.Component.Reference.Val) :=
   calls.map fun q => (⟨o + q.1⟩, q.2.map toRefVal)
 
 /-- The facts about the frame (any component functions with the host functions of the imports
@@ -169,7 +169,7 @@ theorem seqI_stepP (hc : c.Good) (hff : c.FloatFree) (har : c.Arity) (hI : c.mod
     {G : Garb P σ} {ST : List Subtask} {k : Nat} {s : σ} (R : ReadyAtI c I cs ι G k)
     (j : Fin c.exports.length)
     {vs : List Silmaril.Wasm.Component.Val} (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    {m₁ : Machine.Config (E3 P) σ} {rs : List Val}
+    {m₁ : Machine.Config (E3 P) σ} {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hcall : Calls prof (answerHostS P g).hr (DA P g) (readyCfgI cs ι fs G ST s) ⟨k⟩
       ⟨o + j⟩ (vs.map toRefVal) m₁ (.resolved (some rs))) :
     ∃ (r : CRound I.E I.F) (ds : List (Round (sigN c.imports.length)))
@@ -189,10 +189,10 @@ theorem seqI_stepP (hc : c.Good) (hff : c.FloatFree) (har : c.Arity) (hI : c.mod
 /-- What a sequence of resolved calls with imports between calls shows, from host state `s`. -/
 def SeqFactsIP (P : Profile) (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance)
     (fs : List (CFuncInst (core3P P)))
-    (g : σ → HostFuncId → List Val → Option (List Val × σ))
+    (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (cs : (core3P P).Store (CanonHost (core3P P))) (k : Nat) (s : σ)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
-    (rss : List (List Val)) (mₙ : Machine.Config (E3 P) σ) : Prop :=
+    (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P) σ) : Prop :=
   ∃ (lr : List (CRound I.E I.F)) (dss : List (List (Round (sigN c.imports.length))))
     (wss : List (List Silmaril.Wasm.Component.Val)) (cs' : (core3P P).Store (CanonHost (core3P P)))
     (ι' : InstState) (G' : Garb P σ) (ST' : List Subtask) (s' : σ),
@@ -207,7 +207,7 @@ theorem seqFactsI_consP {fs : List (CFuncInst (core3P P))} {cs cs₁ : (core3P P
     {j : Fin c.exports.length} {vs : List Silmaril.Wasm.Component.Val}
     {calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val)} {r : CRound I.E I.F}
     {ds : List (Round (sigN c.imports.length))} {ws : List Silmaril.Wasm.Component.Val}
-    {rss : List (List Val)} {mₙ : Machine.Config (E3 P) σ}
+    {rss : List (List Silmaril.Wasm.Component.Reference.Val)} {mₙ : Machine.Config (E3 P) σ}
     (hu : IRRoundI c I j vs r ⟨(⟨j, by simp [SimpleI.toComp]⟩, .vals vs), ds, some (.vals ws)⟩)
     (hds : HostRun g s ds s₁)
     (hact : I.Activation P (Store.mapH trampIdx cs) (cplay [r]) (Store.mapH trampIdx cs₁))
@@ -233,7 +233,7 @@ theorem seqI_invP (hc : c.Good) (hff : c.FloatFree) (har : c.Arity) (hI : c.mod.
     (hfo : LiftsAt c I fs o) :
     ∀ (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
       (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState) (G : Garb P σ)
-      (ST : List Subtask) (s : σ) (k : Nat) (rss : List (List Val))
+      (ST : List Subtask) (s : σ) (k : Nat) (rss : List (List Silmaril.Wasm.Component.Reference.Val))
       (mₙ : Machine.Config (E3 P) σ),
       ReadyAtI c I cs ι G k → c.TypedCalls calls →
       SeqCalls prof (answerHostS P g) (readyCfgI cs ι fs G ST s) k (callArgsIO c o calls)

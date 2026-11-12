@@ -68,7 +68,7 @@ structure CoreFactsI (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance)
   tramp : TrampOk c cs
   prepare : (core3R Pf V IR).prepare? (trampStore Pf V IR c.imports) c.mod.mod
     ((List.range c.imports.length).map ExternAddr.func) = some (cs, ci, none)
-  imports : ∀ f : Frame (core3R Pf V IR), f.coreInstance? 0 = some (envExports c.mod.imports) →
+  imports : ∀ f : Silmaril.Wasm.Execution.Core.Frame (core3R Pf V IR), f.coreInstance? 0 = some (envExports c.mod.imports) →
     coreImportsFor? (trampStore Pf V IR c.imports) c.mod.mod [("env", 0)] f =
       some ((List.range c.imports.length).map ExternAddr.func)
   lookup : ∀ x ∈ c.exports, lookupExport? ((core3R Pf V IR).exports ci) (coreNameI c x) =

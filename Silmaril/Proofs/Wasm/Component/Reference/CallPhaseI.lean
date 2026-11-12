@@ -27,7 +27,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat checkLower Payload sigN)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
   {prof : ProfileKind}
   {c : SimpleI} {I : Silmaril.Wasm.Game.ScalarInstance}
 
@@ -52,7 +52,7 @@ theorem holds_trapCfgA {m : Machine.Config (E3 P) σ} {out : CallOutcome}
     (ho : out.Holds (answerHostS P g).hr ⟨0⟩ (trapCfg m)) : out = .trap :=
   holds_trapCfg' (g := g) ho
 
-theorem out_of_resolvesA {m₁ m' : Machine.Config (E3 P) σ} {rs : List Val}
+theorem out_of_resolvesA {m₁ m' : Machine.Config (E3 P) σ} {rs : List Silmaril.Wasm.Component.Reference.Val}
     {tr : List (Label (E3 P) σ)} {out : CallOutcome} (hR : ResolvesA prof P g m₁ rs)
     (hs : Steps prof (answerHostS P g).hr (DA P g) m₁ tr m')
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨0⟩ ev)
@@ -85,7 +85,7 @@ theorem out_of_trapsNextA {m₁ m' : Machine.Config (E3 P) σ}
     exact holds_trapCfgA ho
 
 theorem invoke_invA {cs : (core3P P).Store (CanonHost (core3P P))} {fs : List (CFuncInst (core3P P))}
-    {h₀ : σ} {j : Nat} {args : List Val} {m : Machine.Config (E3 P) σ}
+    {h₀ : σ} {j : Nat} {args : List Silmaril.Wasm.Component.Reference.Val} {m : Machine.Config (E3 P) σ}
     (h : Step prof (answerHostS P g).hr (DA P g) (afterInstH P cs fs h₀)
       (.host (.invoke ⟨0⟩ ⟨j⟩ args)) m) :
     m = invokedCfgH P cs fs h₀ j args := by
@@ -391,7 +391,7 @@ def CallPhaseIS : Prop :=
     ∀ (I : Silmaril.Wasm.Game.ScalarInstance), c.mod.IsInst I →
     ∀ (cs : (core3P P).Store (CanonHost (core3P P))), Store.mapH trampIdx cs = I.store →
       c.TrampOk cs →
-    ∀ (σ : Type) (g : σ → HostFuncId → List Val → Option (List Val × σ)), c.HostOkS g →
+    ∀ (σ : Type) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)), c.HostOkS g →
     ∀ (s₀ : σ) (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val),
       ValTy.checkList c.exports[j].ty.params vs = true →
       ∀ b ∈ callBehaviours prof (answerHostS P g)
@@ -403,7 +403,7 @@ def CallPhaseIS : Prop :=
 theorem callPhaseIS_of (P : Profile) (prof : ProfileKind) (c : SimpleI) (hc : c.Good)
     (hff : c.FloatFree) (har : c.Arity) (I : Silmaril.Wasm.Game.ScalarInstance) (hI : c.mod.IsInst I)
     (cs : (core3P P).Store (CanonHost (core3P P))) (hcs : Store.mapH trampIdx cs = I.store)
-    (htr : c.TrampOk cs) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+    (htr : c.TrampOk cs) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (hg : c.HostOkS g) (s₀ : σ)
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) :
@@ -466,7 +466,7 @@ theorem callPhaseIS : CallPhaseIS :=
 /-! ## Stateless hosts -/
 
 /-- A component import call answered by the stateless `statelessG g₀` is answered by `g₀`. -/
-theorem hostAnswers_of_step {τ : Type} {g₀ : HostFuncId → List Val → Option (List Val)} {n : Nat}
+theorem hostAnswers_of_step {τ : Type} {g₀ : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)} {n : Nat}
     {s s' : τ} {d : Σ _ : (sigN n).Op, Option Payload}
     (hd : HostAnswersS (statelessG g₀) s d s') : HostAnswers g₀ d := by
   obtain ⟨k, ws, h1, h2⟩ := hd
@@ -481,7 +481,7 @@ theorem hostAnswers_of_step {τ : Type} {g₀ : HostFuncId → List Val → Opti
   | some (.flat _), h2 => exact h2.elim
 
 /-- Component import calls answered by the stateless `statelessG g₀` are answered by `g₀`. -/
-theorem hostAnswers_of_run {τ : Type} {g₀ : HostFuncId → List Val → Option (List Val)} {n : Nat}
+theorem hostAnswers_of_run {τ : Type} {g₀ : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)} {n : Nat}
     {s s' : τ} {ds : List (Σ _ : (sigN n).Op, Option Payload)}
     (h : HostRun (statelessG g₀) s ds s') : ∀ d ∈ ds, HostAnswers g₀ d := by
   induction h with
@@ -493,7 +493,7 @@ theorem hostAnswers_of_run {τ : Type} {g₀ : HostFuncId → List Val → Optio
     · exact ih d' hd'
 
 /-- A stateless host answering in the IR's types, as a stateful one. -/
-theorem hostOkS_stateless {τ : Type} {c : SimpleI} {g₀ : HostFuncId → List Val → Option (List Val)}
+theorem hostOkS_stateless {τ : Type} {c : SimpleI} {g₀ : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hg : c.HostOk g₀) : c.HostOkS (σ := τ) (statelessG g₀) := by
   intro s k hk ws rs s' h
   simp only [statelessG, Option.map_eq_some_iff, Prod.mk.injEq] at h
@@ -502,7 +502,7 @@ theorem hostOkS_stateless {τ : Type} {c : SimpleI} {g₀ : HostFuncId → List 
 
 /-- `IRObsIS` of the stateless `statelessG g₀` is `IRObsI` of `g₀`. -/
 theorem irObsI_of_S {n m : Nat} {σI : Silmaril.Games.Strategy (sigN n) (sigN m)} {j : Fin m}
-    {vs : List Silmaril.Wasm.Component.Val} {g₀ : HostFuncId → List Val → Option (List Val)}
+    {vs : List Silmaril.Wasm.Component.Val} {g₀ : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)}
     {b : Silmaril.Wasm.Component.Reference.Outcome} (h : IRObsIS σI j vs (statelessG g₀) () b) :
     IRObsI σI j vs g₀ b := by
   cases b with
@@ -526,7 +526,7 @@ def CallPhaseI : Prop :=
     ∀ (I : Silmaril.Wasm.Game.ScalarInstance), c.mod.IsInst I →
     ∀ (cs : (core3P P).Store (CanonHost (core3P P))), Store.mapH trampIdx cs = I.store →
       c.TrampOk cs →
-    ∀ (g : HostFuncId → List Val → Option (List Val)), c.HostOk g →
+    ∀ (g : HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val)), c.HostOk g →
     ∀ (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val),
       ValTy.checkList c.exports[j].ty.params vs = true →
       ∀ b ∈ callBehaviours prof (answerHost P g)

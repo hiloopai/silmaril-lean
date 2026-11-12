@@ -82,7 +82,7 @@ theorem decodePkg_world {N : NomTable} {is es : Externs} (his : EsOk N [] is)
 
 /-! ## The earlier fragments -/
 
-theorem tyOk_of_anon {Γ : Ctx} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : Anon t) : TyOk Γ t := by
+theorem tyOk_of_anon {Γ : Ctx} {t : Ty} (h : Anon t) : TyOk Γ t := by
   induction h with
   | prim p => exact .prim p
   | list _ ih => exact .list ih

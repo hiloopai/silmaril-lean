@@ -45,7 +45,7 @@ theorem seq_step (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.IsI
     {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState} {G : Garb P} {k : Nat}
     (R : ReadyAt I cs ι G k) (j : Fin c.exports.length) {vs : List Silmaril.Wasm.Component.Val}
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) {m₁ : Machine.Config (E3 P) Unit}
-    {rs : List Val}
+    {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hcall : Calls prof (refHost P).hr (D P)
       (readyCfg cs ι (liftedFuncs P (fun k => I.addrs.getD k 0) c) G) ⟨k⟩ ⟨j⟩
       (vs.map toRefVal) m₁ (.resolved (some rs))) :
@@ -68,7 +68,7 @@ specification. -/
 theorem seq_inv (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.IsInst I) :
     ∀ (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
       (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState) (G : Garb P) (k : Nat)
-      (rss : List (List Val)) (mₙ : Machine.Config (E3 P) Unit),
+      (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P) Unit),
       ReadyAt I cs ι G k → TypedCalls c calls →
       SeqCalls prof (refHost P) (readyCfg cs ι (liftedFuncs P (fun k => I.addrs.getD k 0) c) G) k
         (callArgs c calls) rss mₙ →
@@ -146,7 +146,7 @@ theorem seq_refToSpec (P : Profile) (prof : ProfileKind) (c : Simple) (hc : c.Go
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : TypedCalls c calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (refHost P) () c.toRef
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :

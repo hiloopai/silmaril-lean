@@ -62,7 +62,7 @@ structure ReadyAt (I : Silmaril.Wasm.Game.ScalarInstance)
 
 /-- The host invocation from a configuration between calls. -/
 theorem invoke_inv_k {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState}
-    {fs : List (CFuncInst (core3P P))} {G : Garb P} {k j : Nat} {args : List Val}
+    {fs : List (CFuncInst (core3P P))} {G : Garb P} {k j : Nat} {args : List Silmaril.Wasm.Component.Reference.Val}
     {m : Machine.Config (E3 P) Unit}
     (h : Step prof (refHost P).hr (D P) (readyCfg cs ι fs G) (.host (.invoke ⟨k⟩ ⟨j⟩ args)) m) :
     m = invokedAt cs ι fs G k j args := by
@@ -89,7 +89,7 @@ theorem find?_fresh {σ : Type} {G : Garb P σ} {k : Nat} (h : G.Fresh k) :
   exact absurd hlt (Nat.lt_irrefl _)
 
 theorem result?_next {G : Garb P} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j : Nat)
-    (a : (E3 P).FuncAddr) (args rs : List Val) (cs : (core3P P).Store (CanonHost (core3P P)))
+    (a : (E3 P).FuncAddr) (args rs : List Silmaril.Wasm.Component.Reference.Val) (cs : (core3P P).Store (CanonHost (core3P P)))
     (ι : InstState) (fs : List (CFuncInst (core3P P))) :
     (readyCfg cs ι fs (nextGarb G x k j a args rs)).result? ⟨k⟩ = some (some rs) := by
   unfold Machine.Config.result?
@@ -99,7 +99,7 @@ theorem result?_next {G : Garb P} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (
   simp
 
 theorem fresh_next {G : Garb P} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j : Nat)
-    (a : (E3 P).FuncAddr) (args rs : List Val) : (nextGarb G x k j a args rs).Fresh (k + 1) where
+    (a : (E3 P).FuncAddr) (args rs : List Silmaril.Wasm.Component.Reference.Val) : (nextGarb G x k j a args rs).Fresh (k + 1) where
   pending := by
     intro y hy
     rcases List.mem_append.mp hy with hy | hy
@@ -119,7 +119,7 @@ theorem fresh_next {G : Garb P} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j 
 configuration between calls. -/
 theorem out_of_resolvesK {m₁ m' : Machine.Config (E3 P) Unit}
     {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState}
-    {fs : List (CFuncInst (core3P P))} {G : Garb P} {k : Nat} {rs : List Val}
+    {fs : List (CFuncInst (core3P P))} {G : Garb P} {k : Nat} {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hR : ResolvesAt prof P m₁ (readyCfg cs ι fs G)) (hres : (readyCfg cs ι fs G).result? ⟨k⟩ =
       some (some rs)) {tr : List (Label (E3 P) Unit)} {out : CallOutcome}
     (hs : Steps prof (refHost P).hr (D P) m₁ tr m')
@@ -278,7 +278,7 @@ variable {ι : InstState} {fs : List (CFuncInst (core3P P))} {G : Garb P} {k j :
 /-- The configuration between calls after call `k` of function `j` resolved with `rs`. -/
 def nextCfg (cs' : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P) (x : SimpleExport) (k j : Nat)
-    (a : (E3 P).FuncAddr) (args rs : List Val) : Machine.Config (E3 P) Unit :=
+    (a : (E3 P).FuncAddr) (args rs : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config (E3 P) Unit :=
   readyCfg cs' (InstState.removeThread 1 (enterInst ι ⟨G.threads.length⟩)) fs
     (nextGarb G x k j a args rs)
 

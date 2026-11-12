@@ -60,7 +60,7 @@ theorem rel_inner_step (P : Nat → Comp M) {g₁ : Graph} {n' : Inst} {base i :
       rw [extV_ne W (Nat.ne_of_lt hj), extV_ne U (by omega)]
       exact hr (.out j q) ⟨n, hn, hj, hq⟩
     · have hnm : n = m := Option.some.inj (hn.symm.trans (hj ▸ hm))
-      have hq' : q ∈ (P m.pkg).exports.map Silmaril.Wasm.Component.Export.name := by
+      have hq' : q ∈ (P m.pkg).exports.map Export.name := by
         rw [← names_sigOf, ← hnm]
         exact hq
       show extV W i _ τ (.out j q) = extV U (base + i) _ τ (.out (base + j) q)

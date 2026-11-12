@@ -64,7 +64,7 @@ def intern (d : DefValType) : TyM Silmaril.Wasm.Component.Binary.ValType := do
 
 mutual
 /-- A resolved WIT type as a component value type. -/
-def valType : Silmaril.Wasm.Wit.Binary.Ty → TyM Silmaril.Wasm.Component.Binary.ValType
+def valType : Ty → TyM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .list t => do
     let a ← valType t
@@ -92,10 +92,10 @@ def valType : Silmaril.Wasm.Wit.Binary.Ty → TyM Silmaril.Wasm.Component.Binary
   | .fixedList _ _ => throw "fixed-size lists are not supported"
   | .own _ | .borrow _ => throw "resources are not supported by `wasm-jco new` yet"
   | .ref r => throw s!"named type `{r.name}` is not supported (anonymous types only)"
-def optType : Option Silmaril.Wasm.Wit.Binary.Ty → TyM (Option Silmaril.Wasm.Component.Binary.ValType)
+def optType : Option Ty → TyM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => some <$> valType t
-def valTypes : List Silmaril.Wasm.Wit.Binary.Ty → TyM (List Silmaril.Wasm.Component.Binary.ValType)
+def valTypes : List Ty → TyM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do
     let a ← valType t
@@ -437,8 +437,8 @@ def aliasCoreFunc (inst : Nat) (n : String) : EM Nat :=
 /-- The type index of stream or future `c` (already interned). -/
 def chanTy (ts : TS) (c : Chan) : Except String Nat := do
   let t := match c with
-    | .stream t => Silmaril.Wasm.Wit.Binary.Ty.stream t
-    | .future t => Silmaril.Wasm.Wit.Binary.Ty.future t
+    | .stream t => Ty.stream t
+    | .future t => Ty.future t
   match (valType t).run ts with
   | .ok (.idx i, _) => pure i
   | .ok _ => throw "internal: a stream type is not a defined type"

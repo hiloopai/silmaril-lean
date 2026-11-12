@@ -35,7 +35,7 @@ variable {E : CoreEngine} {σ : Type} {j : InstId}
 variable {prof : ProfileKind} {hr : HostReady σ} {dispatch : Call E → P E σ (Ret E)}
 
 theorem calls_tab (hd : TabDispatch j dispatch) {m m' : Config E σ} {c : CallId} {f : FuncId}
-    {args : List Val} {out : CallOutcome} (h : Calls prof hr dispatch m c f args m' out)
+    {args : List Silmaril.Wasm.Component.Reference.Val} {out : CallOutcome} (h : Calls prof hr dispatch m c f args m' out)
     (hm : CfgTab j m) : CfgTab j m' ∧ TabMove j m.store m'.store := by
   obtain ⟨tr, hs, hh, -, -⟩ := h
   refine steps_tab hd hs hm fun p hp => ?_
@@ -78,9 +78,9 @@ theorem refMulti_tables {h : Host E σ} (hd : TabDispatch j h.dispatch) {σ0 : �
     {m₀ : Config E σ} {inst : InstId} {es : List (String × FuncId)}
     (hi : InstResult.instance m₀ inst es ∈ instBehaviours prof h (initConfig σ0) p.comp p.args)
     {ds : List (DoneCall X)} {mₙ : Config E σ} (hr : RunCalls prof h p.names es m₀ 0 ds mₙ)
-    {c : CallId} {f : FuncId} {args : List Val} {m' : Config E σ} {out : CallOutcome}
+    {c : CallId} {f : FuncId} {args : List Silmaril.Wasm.Component.Reference.Val} {m' : Config E σ} {out : CallOutcome}
     (hc : Calls prof h.hr h.dispatch mₙ c f args m' out) :
-    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m'.store j) ∧
+    ∃ evs, Table.Steps Table.empty evs (vtab m'.store j) ∧
       ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) := by
   obtain ⟨hm₀, h₀⟩ := instantiates_tab hd hp hi (cfgTab_init CStore.empty σ0)
   obtain ⟨hmₙ, h₁⟩ := runCalls_tab hd hr hm₀
@@ -96,9 +96,9 @@ theorem refMulti_tables_host {h : Host E σ} (hh : TabHost j h.impl) {σ0 : σ} 
     {p : RefProg E X} {m₀ : Config E σ} {inst : InstId} {es : List (String × FuncId)}
     (hi : InstResult.instance m₀ inst es ∈ instBehaviours prof h (initConfig σ0) p.comp p.args)
     {ds : List (DoneCall X)} {mₙ : Config E σ} (hr : RunCalls prof h p.names es m₀ 0 ds mₙ)
-    {c : CallId} {f : FuncId} {args : List Val} {m' : Config E σ} {out : CallOutcome}
+    {c : CallId} {f : FuncId} {args : List Silmaril.Wasm.Component.Reference.Val} {m' : Config E σ} {out : CallOutcome}
     (hc : Calls prof h.hr h.dispatch mₙ c f args m' out) :
-    ∃ evs, Silmaril.Wasm.Component.Runtime.Table.Steps Silmaril.Wasm.Component.Runtime.Table.empty evs (vtab m'.store j) ∧
+    ∃ evs, Table.Steps Table.empty evs (vtab m'.store j) ∧
       ∀ r, (handleProto ℕ r).Accepts (evs.map tableEv) :=
   refMulti_tables (tabDispatch_canon hh h.lim h.q h.hr) (tabProg_instantiateProg _ _) hi hr hc
 

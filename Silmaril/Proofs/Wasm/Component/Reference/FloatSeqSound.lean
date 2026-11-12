@@ -40,7 +40,7 @@ theorem seq_stepF (hc : c.Good) (hf : SimpleFloatOk c) (ha : c.Arity) (hI : c.mo
     {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState} {G : Garb P} {k : Nat}
     (R : ReadyAt I cs ι G k) (j : Fin c.exports.length) {vs : List IVal}
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) {m₁ : Machine.Config (E3 P) Unit}
-    {rs : List Val}
+    {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hcall : Calls prof (refHost P).hr (D P)
       (readyCfg cs ι (liftedFuncs P (fun k => I.addrs.getD k 0) c) G) ⟨k⟩ ⟨j⟩
       (vs.map toRefVal) m₁ (.resolved (some rs))) :
@@ -66,7 +66,7 @@ of the specification on admissible lowerings. -/
 theorem seq_invF (hc : c.Good) (hf : SimpleFloatOk c) (ha : c.Arity) (hI : c.mod.IsInst I) :
     ∀ (calls : List (Fin c.exports.length × List IVal))
       (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState) (G : Garb P) (k : Nat)
-      (rss : List (List Val)) (mₙ : Machine.Config (E3 P) Unit),
+      (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P) Unit),
       ReadyAt I cs ι G k → TypedCalls c calls →
       SeqCalls prof (refHost P) (readyCfg cs ι (liftedFuncs P (fun k => I.addrs.getD k 0) c) G) k
         (callArgs c calls) rss mₙ →
@@ -128,7 +128,7 @@ theorem seq_refToSpecF (P : Profile) (prof : ProfileKind) (c : Simple) (hc : c.G
     (calls : List (Fin c.exports.length × List IVal))
     (j : Fin c.exports.length) (vs : List IVal) (ht : TypedCalls c calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (refHost P) () c.toRef
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :
@@ -188,7 +188,7 @@ theorem Simple.sound_seq_float (P : Profile) (prof : ProfileKind) (c : Simple) (
     (calls : List (Fin c.exports.length × List IVal))
     (j : Fin c.exports.length) (vs : List IVal) (ht : TypedCalls c calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (refHost P) () c.toRef
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :
@@ -230,7 +230,7 @@ theorem Simple.sound_seq_float_deterministic (P : Profile) (c : Simple) (hc : c.
     (calls : List (Fin c.exports.length × List IVal))
     (j : Fin c.exports.length) (vs : List IVal) (ht : TypedCalls c calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours .deterministic (refHost P) () c.toRef
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :

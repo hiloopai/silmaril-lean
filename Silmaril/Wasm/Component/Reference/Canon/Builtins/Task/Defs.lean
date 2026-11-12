@@ -35,8 +35,8 @@ mutate only through `Runtime.Task.return_`/`Runtime.Task.cancel` and the lifting
 
 * `backpressure.inc/dec`: REF first updates the counter and then traps
   (`trap_if(backpressure == 2**16)` / `trap_if(backpressure < 0)`); here the trap is evaluated
-  first, with the same conditions (`Async.backpressureInc?`/`Async.backpressureDec?`, bound
-  `Async.backpressureLimit = 2^16`), and the counter is only updated when no trap fires. A trap
+  first, with the same conditions (`AsyncRef.backpressureInc?`/`AsyncRef.backpressureDec?`, bound
+  `AsyncRef.backpressureLimit = 2^16`), and the counter is only updated when no trap fires. A trap
   locks the whole store down (head semantics), so the two orders are indistinguishable. Proved
   here only at the level of the pure update: if the counter is in `[0, 2^16)` before the call
   (the REF assert, not a hypothesis of the programs) and no trap fires, it is in `[0, 2^16)`
@@ -44,7 +44,7 @@ mutate only through `Runtime.Task.return_`/`Runtime.Task.cancel` and the lifting
   the counter is proved. Neither built-in wakes any thread: waiters on the K1 backpressure
   gate merely become ready (REF).
 * `context.get/set` (D-f): REF asserts `t ∈ {i32, i64}` (guaranteed by `AddrType`),
-  `i < len(thread.storage)` (validation guarantees `i < Async.contextSlotCount = 2`) and the
+  `i < len(thread.storage)` (validation guarantees `i < AsyncRef.contextSlotCount = 2`) and the
   value range `v < 2^(ptr_size(t)*8)`. The index assert is handled by trapping `contextIndex`
   (unreachable for validated components); the value range is a precondition: `contextSet`
   stores the given number unchanged and `contextGet` returns `result mod 2^width` as a flat
@@ -131,14 +131,14 @@ def contextSet (_t : AddrType) (i v : Nat) : P E σ (List FlatValue) := do
 /-! ## Backpressure built-ins -/
 
 /-- REF `canon_backpressure_inc()` (L2295-2300): trap `backpressureOverflow` when the counter
-would reach `Async.backpressureLimit = 2^16`, else `inst.backpressure += 1`
+would reach `AsyncRef.backpressureLimit = 2^16`, else `inst.backpressure += 1`
 (`incBackpressureSt`); returns `[]`. No `may_leave` check and no wakeup (REF). The trap is
 evaluated before the update (see the module docstring). Precondition (REF assert):
 `0 <= backpressure < 2^16`. -/
 def backpressureInc : P E σ (List FlatValue) := do
   let inst ← currentInst
   let st ← getInst inst
-  trapIf (Async.backpressureInc? st.backpressure).isNone .backpressureOverflow
+  trapIf (AsyncRef.backpressureInc? st.backpressure).isNone .backpressureOverflow
   modifyInst inst incBackpressureSt
   return []
 
@@ -149,7 +149,7 @@ is `0` (REF `trap_if(backpressure < 0)` after the decrement), else `inst.backpre
 def backpressureDec : P E σ (List FlatValue) := do
   let inst ← currentInst
   let st ← getInst inst
-  trapIf (Async.backpressureDec? st.backpressure).isNone .backpressureUnderflow
+  trapIf (AsyncRef.backpressureDec? st.backpressure).isNone .backpressureUnderflow
   modifyInst inst decBackpressureSt
   return []
 

@@ -74,9 +74,9 @@ namespace Limits
 
 theorem spec_maxStringBytes_eq : spec.maxStringBytes = ABI.maxStringByteLength := rfl
 theorem spec_maxListBytes_eq : spec.maxListBytes = 2 ^ 28 - 1 := rfl
-theorem spec_maxBufferLength_eq : spec.maxBufferLength = Async.bufferMaxLength := rfl
-theorem spec_maxBackpressure_eq : spec.maxBackpressure = Async.backpressureLimit := rfl
-theorem spec_maxContextSlots_eq : spec.maxContextSlots = Async.contextSlotCount := rfl
+theorem spec_maxBufferLength_eq : spec.maxBufferLength = AsyncRef.bufferMaxLength := rfl
+theorem spec_maxBackpressure_eq : spec.maxBackpressure = AsyncRef.backpressureLimit := rfl
+theorem spec_maxContextSlots_eq : spec.maxContextSlots = AsyncRef.contextSlotCount := rfl
 
 theorem spec_maxStringBytes : spec.maxStringBytes = 268435455 := rfl
 

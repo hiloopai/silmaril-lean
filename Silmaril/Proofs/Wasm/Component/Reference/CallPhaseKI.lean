@@ -31,7 +31,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat checkLower Payload sigN)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
   {prof : ProfileKind} {c : SimpleI} {I : Silmaril.Wasm.Game.ScalarInstance}
 
 /-! ## Configurations between calls -/
@@ -48,7 +48,7 @@ structure ReadyAtI (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance)
 
 theorem invoke_inv_kA {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState}
     {fs : List (CFuncInst (core3P P))} {G : Garb P σ} {ST : List Subtask} {h₀ : σ} {k j : Nat}
-    {args : List Val} {m : Machine.Config (E3 P) σ}
+    {args : List Silmaril.Wasm.Component.Reference.Val} {m : Machine.Config (E3 P) σ}
     (h : Step prof (answerHostS P g).hr (DA P g) (readyCfgI cs ι fs G ST h₀)
       (.host (.invoke ⟨k⟩ ⟨j⟩ args)) m) :
     m = invokedAtI cs ι fs G ST h₀ k j args := by
@@ -66,7 +66,7 @@ theorem ready_tickA (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstSta
   exact .refl _
 
 theorem result?_nextA {G : Garb P σ} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j : Nat)
-    (a : (E3 P).FuncAddr) (args rs : List Val) (CL : List (Caller (E3 P)))
+    (a : (E3 P).FuncAddr) (args rs : List Silmaril.Wasm.Component.Reference.Val) (CL : List (Caller (E3 P)))
     (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (ST : List Subtask) (h₀ : σ) :
     (readyCfgI cs ι fs (nextGarbA P g G x k j a args rs CL) ST h₀).result? ⟨k⟩ =
@@ -78,7 +78,7 @@ theorem result?_nextA {G : Garb P σ} {k : Nat} (h : G.Fresh k) (x : SimpleExpor
   simp
 
 theorem fresh_nextA {G : Garb P σ} {k : Nat} (h : G.Fresh k) (x : SimpleExport) (j : Nat)
-    (a : (E3 P).FuncAddr) (args rs : List Val) (CL : List (Caller (E3 P))) :
+    (a : (E3 P).FuncAddr) (args rs : List Silmaril.Wasm.Component.Reference.Val) (CL : List (Caller (E3 P))) :
     (nextGarbA P g G x k j a args rs CL).Fresh (k + 1) where
   pending := by
     intro y hy
@@ -98,7 +98,7 @@ configuration between calls. -/
 theorem out_of_resolvesKA {m₁ m' : Machine.Config (E3 P) σ}
     {cs : (core3P P).Store (CanonHost (core3P P))} {ι : InstState}
     {fs : List (CFuncInst (core3P P))} {G : Garb P σ} {ST : List Subtask} {h₀ : σ} {k : Nat}
-    {rs : List Val}
+    {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hR : ResolvesAtA prof P g m₁ (readyCfgI cs ι fs G ST h₀))
     (hres : (readyCfgI cs ι fs G ST h₀).result? ⟨k⟩ = some (some rs))
     {tr : List (Label (E3 P) σ)} {out : CallOutcome}
@@ -228,7 +228,7 @@ current store, its IR round with import calls answered by `g` from `s` to some `
 answer of the outcome; a resolution ends, with the instance idle, at the next configuration
 between calls, in host state `s'`. -/
 def CallFactsKI (P : Profile) (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance)
-    (g : σ → HostFuncId → List Val → Option (List Val × σ))
+    (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (cs : (core3P P).Store (CanonHost (core3P P)))
     (fs : List (CFuncInst (core3P P))) (k : Nat) (j : Fin c.exports.length)
     (vs : List Silmaril.Wasm.Component.Val) (s : σ) (m' : Machine.Config (E3 P) σ)

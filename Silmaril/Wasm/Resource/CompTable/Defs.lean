@@ -70,8 +70,8 @@ def handles? (s : CStore E) (j : InstId) : Option (Silmaril.Wasm.Component.Runti
   (s.inst? j).map (·.handles)
 
 /-- The table of instance `j` evolves from `s` to `s'` through the successful history `evs`. -/
-def TabSteps (s s' : CStore E) (j : InstId) (evs : List (Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry)) : Prop :=
-  ∀ t, handles? s j = some t → ∃ t', handles? s' j = some t' ∧ Silmaril.Wasm.Component.Runtime.Table.Steps t evs t'
+def TabSteps (s s' : CStore E) (j : InstId) (evs : List (Table.Event HandleEntry)) : Prop :=
+  ∀ t, handles? s j = some t → ∃ t', handles? s' j = some t' ∧ Table.Steps t evs t'
 
 /-- A call of a resource built-in core on instance `inst` at resource type `rt`. -/
 inductive ResCall where

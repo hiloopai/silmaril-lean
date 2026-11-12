@@ -33,7 +33,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)} {prof : ProfileKind}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)} {prof : ProfileKind}
 
 /-! ## Callout sites -/
 
@@ -57,7 +57,7 @@ arguments `ys` is answered by `g` as the IR adapter prescribes: the entry check 
 instance may leave, `L.f` is the host function `L.fn`, the types are float-free and within the
 flat arities of a synchronous lower, the arguments have the flat parameter types, and `g`
 answers images of well-typed values. -/
-structure _root_.Silmaril.Proofs.Wasm.Component.Reference.LowerSite.OkR (L : LowerSite P) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+structure _root_.Silmaril.Proofs.Wasm.Component.Reference.LowerSite.OkR (L : LowerSite P) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (B : CStore (E3 P V IR)) (th : Option ThreadId) (ys : List Flat) : Prop where
   entry : calloutEntry B th L.hostR = none
   inst : ArenaField.insts.get? B L.inst = some L.st
@@ -75,7 +75,7 @@ structure _root_.Silmaril.Proofs.Wasm.Component.Reference.LowerSite.OkR (L : Low
 
 /-- The callout `h ys` from thread `th` in store `B` is to a `canon lower` site that `g` answers
 as the IR prescribes. -/
-def LowerAt (g : σ → HostFuncId → List Val → Option (List Val × σ)) (Q : LowerSite P → Prop)
+def LowerAt (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (Q : LowerSite P → Prop)
     (B : CStore (E3 P V IR)) (th : Option ThreadId) (h : CanonHost (E3 P V IR)) (ys : List Flat) : Prop :=
   ∃ L : LowerSite P, Q L ∧ h = L.hostR ∧ L.OkR g B th ys
 
@@ -160,7 +160,7 @@ theorem coreSteps_internalP [hIR : Fact (Sub P IR)] {x y : CoreSt (E3 P V IR)}
 
 /-- The callouts reachable from `x` in host state `s` along runs answered by `g` are
 `canon lower` sites answered as the IR prescribes. -/
-def CalloutsOk (g : σ → HostFuncId → List Val → Option (List Val × σ)) (Q : LowerSite P → Prop)
+def CalloutsOk (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)) (Q : LowerSite P → Prop)
     (B : CStore (E3 P V IR)) (th : Option ThreadId) (s : σ) (x : CoreSt (E3 P V IR)) : Prop :=
   ∀ calls s' y h ys, ASeg g Q B th s x calls s' y → (E3 P V IR).status y.1 y.2 = .callout h ys →
     LowerAt g Q B th h ys

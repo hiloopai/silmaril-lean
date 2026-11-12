@@ -98,7 +98,7 @@ def defType (t : DefType) : EncM Nat := do
     set { e with outer := { e.outer with decls := e.outer.decls ++ [ComponentDecl.inst (.type t)], count := e.outer.count + 1 } }
     pure e.outer.count
 
-/-- Silmaril.Wasm.Component.Binary.Export (or, for world types, import) a type of the current space under
+/-- Export (or, for world types, import) a type of the current space under
 `n`; the index of the new type. -/
 def exportType (n : String) (b : TypeBound) : EncM Nat := do
   let e ← get
@@ -321,7 +321,7 @@ def funcKey (types : List TypeDef) (f : Func) : Nat :=
 def sortFuncs (types : List TypeDef) (fs : List Func) : List Func :=
   (List.range (types.length + 1)).flatMap fun i => fs.filter (funcKey types · = i)
 
-/-- Silmaril.Wasm.Component.Binary.Export the function `f` from the instance type being written. -/
+/-- Export the function `f` from the instance type being written. -/
 def exportFunc (f : Func) : EncM Unit := do
   let k ← funcType f
   modify fun e => match e.inner with

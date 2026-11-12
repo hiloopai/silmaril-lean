@@ -189,7 +189,7 @@ theorem er_refv (Δ : TypeCtx) (n : Bool) (h : Silmaril.Wasm.Validation.CHeapTyp
 
 /-- Checked reference subtyping is 2.0 subtyping after reading back. -/
 theorem checkRef_er {Δ : TypeCtx} (hΔ : Δ.Ok) (hr : Δ.recs = []) {n₁ n₂ : Bool}
-    {h₁ h₂ : Silmaril.Wasm.Validation.CHeapType} (hok : TyOk Δ (Silmaril.Wasm.Validation.Ty.refv (.ref n₁ h₁)))
+    {h₁ h₂ : Silmaril.Wasm.Validation.CHeapType} (hok : TyOk Δ (Ty.refv (.ref n₁ h₁)))
     (h : Δ.checkVal (.refv (.ref n₁ h₁)) (.refv (.ref n₂ h₂)) = true) :
     (er Δ (.refv (.ref n₁ h₁))).Sub (er Δ (.refv (.ref n₂ h₂))) := by
   have hh : Δ.checkHeap h₁ h₂ = true := by

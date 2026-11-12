@@ -216,7 +216,7 @@ theorem nstore_enter (S : CStore (E3 P)) (sub : Subtask) (cl : Caller (E3 P))
 
 /-- `on_start` dispatched to a `canon_lower` caller record, under `DI P impl`. -/
 theorem runs_onStartLowerD {th : Option ThreadId} {m m' : Machine.Config (E3 P) σ} {c : CallerId}
-    {x : Caller (E3 P)} {tr : List (Label (E3 P) σ)} {vs : List Val}
+    {x : Caller (E3 P)} {tr : List (Label (E3 P) σ)} {vs : List Silmaril.Wasm.Component.Reference.Val}
     (hc : ArenaField.callers.get? m.store c = some x)
     (hx : ∀ S cx ys pos ft mp mr, x = .lower S cx ys pos ft mp mr →
       RunsQ (DI P impl) th (lowerOnStart Limits.spec Quirks.none c) m tr vs m')
@@ -281,7 +281,7 @@ theorem lrun_lift_trapP {α : Type} {th : Option ThreadId} (p : Silmaril.Wasm.Co
     (hres : p.results.length ≤ 1) (hmaxr : (ValTy.flatList p.results).length ≤ 1)
     (hff : floatFreeList p.results = true) {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList p.results) (hnone : liftArgs p.results ys = none)
-    {cx : LiftLowerContext (E3 P)} {f : List Val × FlatCursor → Canon.P (E3 P) σ α}
+    {cx : LiftLowerContext (E3 P)} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) σ α}
     {g : α → Canon.P (E3 P) σ (Ret (E3 P))} {M : Machine.Config (E3 P) σ}
     {segs : List (Seg (E3 P) σ)} {rest : List (Activation (E3 P) σ)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
@@ -804,7 +804,7 @@ theorem traps_startL {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
       { m with store := CStore.setTaskState ⟨Gt.length⟩ .started m.store } (.tau :: tr)
       { m with store := LowerSt.startSt S (CStore.setTaskState ⟨Gt.length⟩ .started m.store) } :=
     TrapsQ.bind (RunsQ.getObj _ _ (by exact hc)) (TrapsQ.left h)
-  have hs : TrapsQ (DI P impl) th (callVals (.onStart y.caller) : Canon.P (E3 P) σ (List Val))
+  have hs : TrapsQ (DI P impl) th (callVals (.onStart y.caller) : Canon.P (E3 P) σ (List Silmaril.Wasm.Component.Reference.Val))
       { m with store := CStore.setTaskState ⟨Gt.length⟩ .started m.store } (.tau :: .tau :: tr)
       { m with store := LowerSt.startSt S (CStore.setTaskState ⟨Gt.length⟩ .started m.store) } := by
     rw [hy]

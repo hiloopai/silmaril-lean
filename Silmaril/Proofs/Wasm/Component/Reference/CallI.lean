@@ -23,18 +23,18 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)} {prof : ProfileKind}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)} {prof : ProfileKind}
 
 /-- From `mS`, the call resolves with `rs` under `answerHostS P g` (a stateful host; `answerHost P g` is its stateless instance). -/
-def ResolvesA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ))
-    (mS : Machine.Config (E3 P) σ) (rs : List Val) : Prop :=
+def ResolvesA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
+    (mS : Machine.Config (E3 P) σ) (rs : List Silmaril.Wasm.Component.Reference.Val) : Prop :=
   ∃ tr mE, LRun prof (answerHostS P g).hr (DA P g) mS tr mE ∧ mE.ctl = [] ∧
     mE.store.lockdown = false ∧ mE.result? ⟨0⟩ = some (some rs) ∧
     ∀ m₁, Step prof (answerHostS P g).hr (DA P g) mE (.host .tick) m₁ →
       ∃ trT, LRun prof (answerHostS P g).hr (DA P g) m₁ trT mE
 
 /-- From `mS`, the call traps after one live step under `answerHostS P g` (a stateful host; `answerHost P g` is its stateless instance). -/
-def TrapsNextA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+def TrapsNextA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (mS : Machine.Config (E3 P) σ) : Prop :=
   ∃ mT r, LRun prof (answerHostS P g).hr (DA P g) mS [.tau] mT ∧ Live mT ∧
     UniqueStep prof (answerHostS P g).hr (DA P g) mT (.trap r) (trapCfg mT)
@@ -43,7 +43,7 @@ def TrapsNextA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → Lis
 lowered values of `vs`; whenever it returns flat values of the result types, after callouts
 that appended subtask and caller records, the call resolves or traps as the IR lift
 prescribes. -/
-structure CallAtA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+structure CallAtA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (cs : (core3P P).Store (CanonHost (core3P P))) (fs : List (CFuncInst (core3P P)))
     (x : SimpleExport) (a : Nat)
     (vs : List Silmaril.Wasm.Component.Val) (M₀ : Machine.Config (E3 P) σ) (th : Option ThreadId)
@@ -70,7 +70,7 @@ theorem lrun_lift_trapA {α : Type} {th : Option ThreadId} (prof : ProfileKind) 
     (hff : floatFreeList x.ty.results = true) {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList x.ty.results)
     (hnone : liftArgs x.ty.results ys = none)
-    {cx : LiftLowerContext (E3 P)} {f : List Val × FlatCursor → Canon.P (E3 P) σ α}
+    {cx : LiftLowerContext (E3 P)} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) σ α}
     {k : α → Canon.P (E3 P) σ (Ret (E3 P))} {M : Machine.Config (E3 P) σ}
     {segs : List (Seg (E3 P) σ)} {rest : List (Activation (E3 P) σ)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults

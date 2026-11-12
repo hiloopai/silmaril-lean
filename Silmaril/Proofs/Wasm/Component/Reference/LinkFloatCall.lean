@@ -55,7 +55,7 @@ theorem lrun_lift_trapPV {α : Type} {th : Option ThreadId} (p : Silmaril.Wasm.C
     (hres : p.results.length ≤ 1) (hmaxr : (ValTy.flatList p.results).length ≤ 1)
     {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList p.results) (hnone : liftArgs p.results ys = none)
-    {cx : LiftLowerContext (E3 P)} {f : List Val × FlatCursor → Canon.P (E3 P) σ α}
+    {cx : LiftLowerContext (E3 P)} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) σ α}
     {g : α → Canon.P (E3 P) σ (Ret (E3 P))} {M : Machine.Config (E3 P) σ}
     {segs : List (Seg (E3 P) σ)} {rest : List (Activation (E3 P) σ)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults

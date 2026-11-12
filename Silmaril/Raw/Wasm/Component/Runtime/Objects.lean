@@ -47,7 +47,7 @@ REF's `Thread.cont` (the machine keeps continuations). -/
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async
+open Engine AsyncRef
 
 /-! ## Resources -/
 

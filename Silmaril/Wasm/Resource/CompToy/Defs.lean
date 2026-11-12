@@ -186,7 +186,7 @@ def toyCtr (m : Config E0 Unit) : ℕ :=
 /-- Run the export calls `cs` (export, arguments) as top-level calls `k, k + 1, …` from `m`,
 with the copied driver; `some` of the resolved calls and the final configuration when every
 call resolves. -/
-def callSeq (es : List (String × FuncId)) : ℕ → List (Xt.Exp × List Val) → Config E0 Unit →
+def callSeq (es : List (String × FuncId)) : ℕ → List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val) → Config E0 Unit →
     Option (List (DoneCall Xt) × Config E0 Unit)
   | _, [], m => some ([], m)
   | k, (j, a) :: cs, m =>
@@ -199,26 +199,26 @@ def callSeq (es : List (String × FuncId)) : ℕ → List (Xt.Exp × List Val) �
 
 /-- Instantiate `c` from the empty store, then run the export calls `cs`; the resolved calls
 as (export, arguments, resolution). -/
-def session (c : Core3Component) (cs : List (Xt.Exp × List Val)) :
-    Option (List (Xt.Exp × List Val × Option (List Val))) :=
+def session (c : Core3Component) (cs : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val)) :
+    Option (List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val × Option (List Silmaril.Wasm.Component.Reference.Val))) :=
   (emb.instantiateRun first 2000 c [] (initConfig ())).bind fun (r, _, es) =>
     (callSeq es 0 cs r.config).map fun (ds, _) => ds.map fun d => (d.exp, d.args, d.res)
 
 /-- Instantiate `c` from the empty store, then run the export calls `cs`; the counter after the
 instantiation and after each call. -/
-def sessionCtrs (c : Core3Component) (cs : List (Xt.Exp × List Val)) : Option (List ℕ) :=
+def sessionCtrs (c : Core3Component) (cs : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val)) : Option (List ℕ) :=
   (emb.instantiateRun first 2000 c [] (initConfig ())).bind fun (r, _, es) =>
-    let rec go : ℕ → List (Xt.Exp × List Val) → Config E0 Unit → Option (List ℕ)
+    let rec go : ℕ → List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val) → Config E0 Unit → Option (List ℕ)
       | _, [], _ => some []
       | k, (j, a) :: cs, m =>
         (callSeq es k [(j, a)] m).bind fun (_, m') => (go (k + 1) cs m').map (toyCtr m' :: ·)
     (go 0 cs r.config).map (toyCtr r.config :: ·)
 
 /-- Two calls of `make`. -/
-def twoMakes : List (Xt.Exp × List Val) := [(makeE, []), (makeE, [])]
+def twoMakes : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val) := [(makeE, []), (makeE, [])]
 
 /-- A session: `make`, `make`, `get(borrow 0)`, `drop(own 0)`, `make`. -/
-def toySession : List (Xt.Exp × List Val) :=
+def toySession : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val) :=
   [(makeE, []), (makeE, []), (getE, [.borrow 0]), (dropE, [.own 0]), (makeE, [])]
 
 /-! ## Over every profile: the reachable configurations between calls -/
@@ -276,8 +276,8 @@ structure ToyGarb where
   callers : List (Caller (core3P P))
   handles : List ResourceHandle
   conts : List (Option (Activation (core3P P) Unit))
-  pending : List (CallId × FuncId × List Val)
-  results : List (CallId × Option (List Val))
+  pending : List (CallId × FuncId × List Silmaril.Wasm.Component.Reference.Val)
+  results : List (CallId × Option (List Silmaril.Wasm.Component.Reference.Val))
   cancels : List (CallId × CancelRef)
 
 /-- No leftovers. -/
@@ -312,7 +312,7 @@ def ThreadsFree (t : Silmaril.Wasm.Component.Runtime.Table ThreadId) : Prop :=
 
 /-- A handle table with a well-formed free list (`FreeOK`) and at most `maxLength + 1` slots,
 so that every index it hands out is below `2^32`. -/
-def TabB (t : Silmaril.Wasm.Component.Runtime.Table HandleEntry) : Prop := FreeOK t ∧ t.array.size ≤ Silmaril.Wasm.Component.Runtime.Table.maxLength + 1
+def TabB (t : Silmaril.Wasm.Component.Runtime.Table HandleEntry) : Prop := FreeOK t ∧ t.array.size ≤ Table.maxLength + 1
 
 /-- **The reachability invariant of the toy** (the `R` of `CtrVCOn`): the exports are
 `toyEs`, and the configuration is `toyCfg P c ι G` for a counter `c < 2^32`, an instance with

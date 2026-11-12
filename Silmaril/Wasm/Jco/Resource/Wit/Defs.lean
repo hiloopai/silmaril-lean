@@ -58,7 +58,7 @@ def resEnv (w : World) : ResEnv :=
     | _ => []
 
 /-- A resolved WIT type with handles of the resources of interface `iname`. -/
-def RTy.ofWit (env : ResEnv) (iname : Option String) : Silmaril.Wasm.Wit.Binary.Ty → Option RTy
+def RTy.ofWit (env : ResEnv) (iname : Option String) : Ty → Option RTy
   | .own ⟨.local, r⟩ => do
     let i ← iname
     (env.find? (i, r)).map .own

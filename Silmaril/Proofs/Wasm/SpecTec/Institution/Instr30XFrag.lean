@@ -157,10 +157,10 @@ theorem instrsX_holds {is : List Instr} {it : InstrType} (hd : DomX (ISen.instrs
 /-! ## Non-vacuity -/
 
 /-- `i32` is bounded. -/
-theorem bnd_i32 : ∀ t ∈ [Silmaril.Wasm.Validation.Ty.i32], Round4.tyBnd t = true := fun _ ht => (List.mem_singleton.1 ht) ▸ rfl
+theorem bnd_i32 : ∀ t ∈ [Ty.i32], Round4.tyBnd t = true := fun _ ht => (List.mem_singleton.1 ht) ▸ rfl
 
 /-- `i32 i32` is bounded. -/
-theorem bnd_i32i32 : ∀ t ∈ [Silmaril.Wasm.Validation.Ty.i32, Silmaril.Wasm.Validation.Ty.i32], Round4.tyBnd t = true := by
+theorem bnd_i32i32 : ∀ t ∈ [Ty.i32, Ty.i32], Round4.tyBnd t = true := by
   intro t ht
   simp only [List.mem_cons, List.not_mem_nil, or_false, or_self] at ht
   exact ht ▸ rfl
@@ -172,12 +172,12 @@ theorem bnd_nil : ∀ t ∈ ([] : List CValType), Round4.tyBnd t = true :=
 /-- `i32.const a; i32.const b; i32.add` at `[] -> [i32]`: the second constant is framed under the
 first, and the add is sequenced after both. -/
 theorem fragOkX_constAdd (a b : BitVec 32) :
-    FragOkX [.intConst .i32 a, .intConst .i32 b, .intBinOp .i32 .add] (.plain [] [Silmaril.Wasm.Validation.Ty.i32]) := by
-  have hc (x : BitVec 32) : FragOkX [.intConst .i32 x] (.plain [] [Silmaril.Wasm.Validation.Ty.i32]) :=
+    FragOkX [.intConst .i32 a, .intConst .i32 b, .intBinOp .i32 .add] (.plain [] [Ty.i32]) := by
+  have hc (x : BitVec 32) : FragOkX [.intConst .i32 x] (.plain [] [Ty.i32]) :=
     .instr rfl ⟨bnd_nil, bnd_i32⟩ (.numeric (.intConst .i32 x))
-  have hcc : FragOkX [.intConst .i32 a, .intConst .i32 b] (.plain [] [Silmaril.Wasm.Validation.Ty.i32, Silmaril.Wasm.Validation.Ty.i32]) :=
+  have hcc : FragOkX [.intConst .i32 a, .intConst .i32 b] (.plain [] [Ty.i32, Ty.i32]) :=
     .seq (is₁ := [.intConst .i32 a]) (is₂ := [.intConst .i32 b]) bnd_i32 (hc a)
-      (.frame (ts := [Silmaril.Wasm.Validation.Ty.i32]) (t₁ := []) bnd_i32
+      (.frame (ts := [Ty.i32]) (t₁ := []) bnd_i32
         (fun _ ht => (List.mem_singleton.1 ht) ▸ TyOk.num _) (hc b))
   exact .seq (is₁ := [.intConst .i32 a, .intConst .i32 b]) (is₂ := [.intBinOp .i32 .add])
     bnd_i32i32 hcc (.instr rfl ⟨bnd_i32i32, bnd_i32⟩ (.numeric (.intBinOp .i32 .add)))
@@ -186,9 +186,9 @@ theorem fragOkX_constAdd (a b : BitVec 32) :
 fact of `stepModel BI` and Core-valid. -/
 theorem constAdd (a b : BitVec 32) :
     ((ISen.instrs [.intConst .i32 a, .intConst .i32 b, .intBinOp .i32 .add]
-        (.plain [] [Silmaril.Wasm.Validation.Ty.i32])).toSen).Sat backend (MB).env (MB).D ∧
+        (.plain [] [Ty.i32])).toSen).Sat backend (MB).env (MB).D ∧
       (ISen.instrs [.intConst .i32 a, .intConst .i32 b, .intBinOp .i32 .add]
-        (.plain [] [Silmaril.Wasm.Validation.Ty.i32])).Holds :=
+        (.plain [] [Ty.i32])).Holds :=
   ⟨instrsX_preserves P hn host (fragOkX_constAdd a b), instrsX_holds (fragOkX_constAdd a b)⟩
 
 end Silmaril.Wasm.SpecTec.Institution.Instr30X

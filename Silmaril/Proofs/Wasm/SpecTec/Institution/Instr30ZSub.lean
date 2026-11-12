@@ -48,11 +48,11 @@ theorem recsOk_empty : ({} : TypeCtx).RecsOk := fun _ _ h => by simp at h
 
 /-- **Core's `ResultSub {}` between valid result types is canonical.** -/
 theorem subB_results {ts ts' : List CValType} (hs : ResultSub {} ts ts') (h₁ : ResultOk {} ts)
-    (h₂ : ResultOk {} ts') : SubB {} (Silmaril.Wasm.Validation.Ty.ofList ts) (Silmaril.Wasm.Validation.Ty.ofList ts') := by
-  have hsub : Sub ({} : TypeCtx) (Silmaril.Wasm.Validation.Ty.func .nil (Silmaril.Wasm.Validation.Ty.ofList ts)) (Silmaril.Wasm.Validation.Ty.func .nil (Silmaril.Wasm.Validation.Ty.ofList ts')) :=
+    (h₂ : ResultOk {} ts') : SubB {} (Ty.ofList ts) (Ty.ofList ts') := by
+  have hsub : Sub ({} : TypeCtx) (Ty.func .nil (Ty.ofList ts)) (Ty.func .nil (Ty.ofList ts')) :=
     .func .nil ((ResultSub.iff_sub _ _ _).1 hs)
-  have hB : SubB (Round6.AgreeOk.ext {} []) (Silmaril.Wasm.Validation.Ty.func .nil (Silmaril.Wasm.Validation.Ty.ofList ts))
-      (Silmaril.Wasm.Validation.Ty.func .nil (Silmaril.Wasm.Validation.Ty.ofList ts')) :=
+  have hB : SubB (Round6.AgreeOk.ext {} []) (Ty.func .nil (Ty.ofList ts))
+      (Ty.func .nil (Ty.ofList ts')) :=
     subB_of_sub (Δ := {}) rfl recsGoodB_empty recsOk_empty hsub (.func .nil (TyOk.ofList _ h₁))
       (.func .nil (TyOk.ofList _ h₂)) []
   cases hB with
@@ -67,9 +67,9 @@ theorem resulttypeSub_of (O : ElseI) {ts ts' : List CValType}
     DDerivesB (simEnv (BI P hn host)) O "Resulttype_sub" "%|-%<:%" []
       (.tuple [Round6.RefOkV.ctxEmptyV, .case "%" (.tuple [.list (ts.map tyV)]),
         .case "%" (.tuple [.list (ts'.map tyV)])]) := by
-  have l₁ : Round4.tyBnd (Silmaril.Wasm.Validation.Ty.ofList ts) = true :=
+  have l₁ : Round4.tyBnd (Ty.ofList ts) = true :=
     (Round6.AgreeOk.tyBnd_list_iff _).2 (by simpa using hb₁)
-  have l₂ : Round4.tyBnd (Silmaril.Wasm.Validation.Ty.ofList ts') = true :=
+  have l₂ : Round4.tyBnd (Ty.ofList ts') = true :=
     (Round6.AgreeOk.tyBnd_list_iff _).2 (by simpa using hb₂)
   have h := resultSub_of ctxT_empty l₁ l₂
     (subD_of (P := P) (hn := hn) (host := host) O (subB_results hs h₁ h₂) recsBnd_empty l₁ l₂)

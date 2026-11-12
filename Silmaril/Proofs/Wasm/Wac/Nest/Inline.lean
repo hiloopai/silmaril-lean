@@ -50,7 +50,7 @@ theorem simV_new_k0 (P : Nat → Comp M) {k0 : Nat} {g₁ g₂ : Graph} (ok : Ne
     exact hq
   obtain ⟨s, hs₁⟩ := lookup_of_mem hq₁
   have hq' : q ∈ (g₁.mkExports (fun k => sigOf (P k)) (g₁.iface fun k => sigOf (P k))).map
-      Silmaril.Wasm.Component.Export.name := by
+      Export.name := by
     rw [names_mkExports]
     exact hq₁
   have hres₁ : g₁.Resolves (fun k => sigOf (P k)) (g₁.iface fun k => sigOf (P k))

@@ -44,10 +44,10 @@ check; `trap_if(resolve_delivered)`; `trap_if(cancellation_requested)`;
 `subtask.on_cancel()` as the late-bound `call (.onCancel r)` (resume site R2 when `r` is a
 task's `request_cancellation`), then for a sync cancel still unresolved
 `thread.wait_until(subtask.resolved)` at site K8 (`.syncSubtaskCancel`, choice C1), then
-`has_sync_waiter = False`, and `[BLOCKED]` if still unresolved (`Async.subtaskCancelResult
-none = Async.blocked = 0xFFFF_FFFF`); finally `get_pending_event()` (which consumes the
+`has_sync_waiter = False`, and `[BLOCKED]` if still unresolved (`AsyncRef.subtaskCancelResult
+none = AsyncRef.blocked = 0xFFFF_FFFF`); finally `get_pending_event()` (which consumes the
 `SUBTASK` event and runs `deliver_resolve`) and `[subtask.state]`
-(`Async.subtaskCancelResult (some state)`).
+(`AsyncRef.subtaskCancelResult (some state)`).
 
 **Trap reasons** (informative; the specification compares traps only as "some trap"):
 `may_leave` is `cannotLeave`; an unknown index `unknownHandle`; an entry of the wrong kind

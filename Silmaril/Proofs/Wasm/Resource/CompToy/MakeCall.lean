@@ -33,14 +33,14 @@ variable {P : Silmaril.Wasm.Numerics.Profile} {prof : ProfileKind} {c : ℕ} {ι
 abbrev callI (ι : InstState) (G : ToyGarb P) : InstState := callIn ι ⟨G.threads.length⟩
 
 theorem tStore₄_thread (ft : WIT.FuncType Empty RtId) (ι₄ : InstState) (H₄ : List ResourceHandle)
-    (args : List Val) :
+    (args : List Silmaril.Wasm.Component.Reference.Val) :
     ArenaField.threads.get? (tStore₄ P ft c ι (callI ι G) G k args ι₄ H₄) ⟨G.threads.length⟩ =
       some ((thread₁ G.tasks).withIndex 1) := by
   show (G.threads ++ [(thread₁ G.tasks).withIndex 1])[G.threads.length]? = _
   simp
 
 theorem tStore₄_task (ft : WIT.FuncType Empty RtId) (ι₄ : InstState) (H₄ : List ResourceHandle)
-    (args : List Val) :
+    (args : List Silmaril.Wasm.Component.Reference.Val) :
     ArenaField.tasks.get? (tStore₄ P ft c ι (callI ι G) G k args ι₄ H₄)
       ((thread₁ G.tasks).withIndex 1).task =
       some ((tTask₁ P ft G.callers ⟨G.threads.length⟩).withState .started) := by
@@ -67,7 +67,7 @@ theorem make_liftAt {cs' : (core3P P).Store (CanonHost (core3P P))} {T T₅ : Si
     ∀ m : Machine.Config (E3 P) Unit,
       m.store = { tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T } Hs with
         core := cs' } →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake)) m
         [.tau, .tau, .tau, .tau] ([.own c], ⟨[.int .i32 (BitVec.ofNat 32 j)], 1⟩)
@@ -83,20 +83,20 @@ theorem make_liftAt {cs' : (core3P P).Store (CanonHost (core3P P))} {T T₅ : Si
 next configuration between calls with counter `c + 1`. -/
 theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
     {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))} {segs : List (Seg (E3 P) Unit)}
-    {rest : List (Activation (E3 P) Unit)} {tr : List (Label (E3 P) Unit)} {r : Option (List Val)}
+    {rest : List (Activation (E3 P) Unit)} {tr : List (Label (E3 P) Unit)} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hc : c < 2 ^ 32) (hG : G.Ok) (hk : ∀ x ∈ G.pending, x.1 ≠ ⟨k⟩) (hleave : ι.mayLeave = true)
     (hTB : TabB ι.handles)
     (hst : M₀.store = tStore₄ P ftMake c ι (callI ι G) G k [] (callI ι G) G.handles)
-    (hK : ∀ ys, ∃ (β : Type) (f : List Val × FlatCursor → Canon.P (E3 P) Unit β)
-        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+    (hK : ∀ ys, ∃ (β : Type) (f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit β)
+        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ftMake) >>= f) >>= g)
     (hret : ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
-        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Val) (cur : FlatCursor)
+        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Silmaril.Wasm.Component.Reference.Val) (cur : FlatCursor)
         (trF : List (Label (E3 P) Unit)) (c' : ℕ),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = { tStore₄ P ftMake c ι (callI ι G) G k [] ιc Hc with core := cs' } →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ftMake)) m trF (ws, cur)
             { m with store := { tStore₄ P ftMake c ι (callI ι G) G k [] ι₅ H₅ with core := cs' } }) →
@@ -164,7 +164,7 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
     have hins : m₁.store.insts = [{ callI ι G with handles := T }] := by rw [hm₁']; rfl
     obtain ⟨trT, mT, hT⟩ := traps_lift_make (th := some ⟨G.threads.length⟩) ⟨G.tasks.length⟩ hj32
       hins (by simp [InstState.removeHandle?, hrm])
-    have hctl : m₁.ctl = ⟨some ⟨G.threads.length⟩, .prog ((liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+    have hctl : m₁.ctl = ⟨some ⟨G.threads.length⟩, .prog ((liftFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake) >>= f) >>= g),
         segs⟩ :: rest := by
@@ -187,7 +187,7 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
 leftovers `Ok`, the instance may leave, handle table `TabB`) was on `[]` and answered `own c`
 (`c` the counter); it ends at the next configuration between calls with counter `c + 1 < 2^32`
 and a `TabB` handle table. -/
-theorem toy_make {a : List Val} {m' : Machine.Config (E3 P) Unit} {r : Option (List Val)}
+theorem toy_make {a : List Silmaril.Wasm.Component.Reference.Val} {m' : Machine.Config (E3 P) Unit} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hc : c < 2 ^ 32) (hth : ThreadsFree ι.threads) (hG : G.Ok) (hleave : ι.mayLeave = true)
     (hTB : TabB ι.handles)
     (h : Calls prof (refHost P).hr (D P) (toyCfgX P c ι G) ⟨k⟩ ⟨0⟩ a m' (.resolved r)) :
@@ -225,7 +225,7 @@ theorem toy_make {a : List Val} {m' : Machine.Config (E3 P) Unit} {r : Option (L
 /-- **Resolved calls of `make` from `toyR`** keep `toyR`, increment the counter, and answer
 `own` of the counter before the call (`CtrVCOn.step`, `mono` and `fresh` at `make`). -/
 theorem toyR_make {es : List (String × FuncId)} {m m' : Machine.Config (E3 P) Unit}
-    {f : FuncId} {a : List Val} {r : Option (List Val)} (hR : toyR P es m)
+    {f : FuncId} {a : List Silmaril.Wasm.Component.Reference.Val} {r : Option (List Silmaril.Wasm.Component.Reference.Val)} (hR : toyR P es m)
     (hf : es.lookup (names makeE) = some f)
     (h : Calls prof (refHost P).hr (refHost P).dispatch m ⟨k⟩ f a m' (.resolved r)) :
     toyR P es m' ∧ toyCtrP P m' = toyCtrP P m + 1 ∧ r = some [.own (toyCtrP P m)] := by

@@ -93,7 +93,7 @@ open Silmaril.Wasm.Wit.Binary (Ty)
 
 /-- The result type and kind of a WIT result: `stream<T>` and `future<T>` with `T` memory-free,
 or a result of the fragment. -/
-def resultOfWit : Option Silmaril.Wasm.Wit.Binary.Ty → Option (Option PTy × RKind)
+def resultOfWit : Option Ty → Option (Option PTy × RKind)
   | none => some (none, .plain)
   | some (.stream (some t)) => (valOfWit t).map fun v => (some (.val v), .stream)
   | some (.future (some t)) => (valOfWit t).map fun v => (some (.val v), .future)

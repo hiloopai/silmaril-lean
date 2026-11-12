@@ -80,7 +80,7 @@ def SeqFactsL (P : Profile) (V : Silmaril.Wasm.Module → Prop)
     (s₀ u₀ : Store Nat) (F₀ : List (FuncInst (CanonHost (E3 P V IR))))
     (fs : List (CFuncInst (core3R P V IR))) (h₀ : σ) (u π : Store Nat) (k : Nat)
     (calls : List (Fin l.imp.exports.length × List Silmaril.Wasm.Component.Val))
-    (rss : List (List Val)) (mₙ : Machine.Config (E3 P V IR) σ) : Prop :=
+    (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P V IR) σ) : Prop :=
   ∃ (lr : List (CRound Ii.E Ii.F)) (dss : List (List (Round (sigN l.imp.imports.length))))
     (wss : List (List Silmaril.Wasm.Component.Val)) (cs' : (core3R P V IR).Store (CanonHost (core3R P V IR)))
     (ιe' ιi' : InstState) (G' : Garb P V IR σ) (ST' : List Subtask) (u' π' : Store Nat),
@@ -97,7 +97,7 @@ theorem seqL_inv [Fact (Sub P IR)] (S₀ : LStat P V IR l Ie Ii u₀ F₀ B₀ (
     (hfs : LiftedOk l Ii s₀ fs) (h₀ : σ) :
     ∀ (calls : List (Fin l.imp.exports.length × List Silmaril.Wasm.Component.Val))
       (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState) (G : Garb P V IR σ)
-      (ST : List Subtask) (u π : Store Nat) (k : Nat) (rss : List (List Val))
+      (ST : List Subtask) (u π : Store Nat) (k : Nat) (rss : List (List Silmaril.Wasm.Component.Reference.Val))
       (mₙ : Machine.Config (E3 P V IR) σ),
       ReadyL P V IR l Ie Ii s₀ u₀ F₀ cs ιe ιi G u π k → SimpleI.TypedCalls l.imp calls →
       SeqCalls prof (linkHost impl) (readyCfgL cs ιe ιi fs G ST h₀) k (callArgsL l calls) rss
@@ -173,7 +173,7 @@ theorem linked2_sound_seq (P : Profile) [Fact (Sub P IR)] (prof : ProfileKind) (
     (j : Fin l.imp.exports.length) (vs : List Silmaril.Wasm.Component.Val)
     (ht : SimpleI.TypedCalls l.imp calls)
     (hvs : ValTy.checkList l.imp.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (linkHost impl) h₀ l.toRef
       (calls.map fun q => (l.imp.exports[q.1].name, q.2.map toRefVal)) l.imp.exports[j].name
       (vs.map toRefVal)) :

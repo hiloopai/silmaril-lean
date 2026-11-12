@@ -65,7 +65,7 @@ variable {P : Profile} {σ : Type} {prof : ProfileKind} {impl : HostImpl (E3 P V
 
 /-! ## Outcomes under `DI P impl` -/
 
-theorem out_of_resolvesD {m₁ m' : Machine.Config (E3 P V IR) σ} {rs : List Val}
+theorem out_of_resolvesD {m₁ m' : Machine.Config (E3 P V IR) σ} {rs : List Silmaril.Wasm.Component.Reference.Val}
     {tr : List (Label (E3 P V IR) σ)} {out : CallOutcome} (hR : ResolvesD prof P impl m₁ rs)
     (hs : Steps prof (fun _ _ => false) (DI P impl) m₁ tr m')
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨0⟩ ev)

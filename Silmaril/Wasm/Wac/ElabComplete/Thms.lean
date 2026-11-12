@@ -100,7 +100,7 @@ theorem elabSpreads_complete {imps : List String} {st : ESt} {acc : List (String
 mutual
 /-- **Every derivation of an expression is computed.** -/
 theorem elabExpr_complete {cx : ECtx} :
-    ∀ {st : ESt} {e : Expr} {r : ESt × Nat}, ElabExpr cx st e r → elabExpr cx st e = .ok r
+    ∀ {st : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {r : ESt × Nat}, ElabExpr cx st e r → elabExpr cx st e = .ok r
   | _, _, _, .ident hx => by rw [elabExpr, ESt.lookup_of hx]; rfl
   | _, _, _, .paren h => by rw [elabExpr]; exact elabExpr_complete h
   | _, _, _, .access h he ht hk => by

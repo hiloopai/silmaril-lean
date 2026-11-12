@@ -37,7 +37,7 @@ theorem srun_drop_borrowed {lim : Limits} {j : InstId} {rt : RtId} {i : ℕ} {s 
   have hrm : st.removeHandle? i =
       some (.resource hid, { st with handles := ⟨st.handles.array.setIfInBounds i none,
         i :: st.handles.free⟩ }) := by
-    simp [InstState.removeHandle?, Silmaril.Wasm.Component.Runtime.Table.remove?, hg]
+    simp [InstState.removeHandle?, Table.remove?, hg]
   let s₁ := ArenaField.insts.modify s j (InstState.removeHandle i)
   have hr₁ : ArenaField.resHandles.get? s₁ hid = some r :=
     (resHandles_insts_modify s j _ hid).trans hr
@@ -75,13 +75,13 @@ theorem early_drop_rejected {lim lim' : Limits} {cx : LiftLowerContext E} {rt : 
     (hwf : ∀ st, s.inst? cx.inst = some st → FreeOK st.handles)
     (h : SRun (σ := σ) (lowerBorrow lim cx rt rep) s i s₁) :
     ∃ st e, s₁.inst? cx.inst = some st ∧ st.handles.get? i = some e ∧
-      ([Silmaril.Wasm.Component.Runtime.Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) = [.lend i, .free i] ∧
-      ¬ (obProto ℕ).Accepts ([Silmaril.Wasm.Component.Runtime.Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) ∧
+      ([Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) = [.lend i, .free i] ∧
+      ¬ (obProto ℕ).Accepts ([Table.Event.added i e, .removed i e].map (obEvOf (modeOf s₁))) ∧
       ∃ s₂, SRun (σ := σ) (resourceDropCore lim' cx.inst rt i) s₁ none s₂ := by
   obtain ⟨st, hid, hst, hg, hr⟩ := lowered_borrow_at hsc himpl hwf h
   have hm : modeOf s₁ (.resource hid) = .borrowed := by
     simp [modeOf, hr, borrowObj]
-  have he : ([Silmaril.Wasm.Component.Runtime.Table.Event.added i (HandleEntry.resource hid), .removed i (.resource hid)].map
+  have he : ([Table.Event.added i (HandleEntry.resource hid), .removed i (.resource hid)].map
       (obEvOf (modeOf s₁))) = [.lend i, .free i] := by
     simp [obEvOf, hm]
   exact ⟨st, .resource hid, hst, hg, he, he ▸ obProto_rejects_early_drop i,

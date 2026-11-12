@@ -579,7 +579,7 @@ def cbDef (d : DefType) : CBM Nat := do
 mutual
 /-- A WIT type in the shim component: a named type by its index there, or defined
 structurally (with the definitions it needs) when the shim has none for it yet. -/
-def cbTy (wf : WorldFull) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → CBM Silmaril.Wasm.Component.Binary.ValType
+def cbTy (wf : WorldFull) : Nat → Scope → Ty → CBM Silmaril.Wasm.Component.Binary.ValType
   | 0, _, _ => throw "type nesting too deep"
   | fuel + 1, sc, t => match t with
     | .prim p => pure (.prim p)
@@ -611,7 +611,7 @@ def cbTy (wf : WorldFull) : Nat → Scope → Silmaril.Wasm.Wit.Binary.Ty → CB
       let v' ← cbTy wf fuel sc v
       .idx <$> cbDef (.val (.map k' v'))
     | .fixedList t n => do .idx <$> cbDef (.val (.fixedList (← cbTy wf fuel sc t) n))
-def cbOpt (wf : WorldFull) : Nat → Scope → Option Silmaril.Wasm.Wit.Binary.Ty → CBM (Option Silmaril.Wasm.Component.Binary.ValType)
+def cbOpt (wf : WorldFull) : Nat → Scope → Option Ty → CBM (Option Silmaril.Wasm.Component.Binary.ValType)
   | _, _, none => pure none
   | fuel, sc, some t => some <$> cbTy wf fuel sc t
 /-- The structural definition of a named type's kind in the shim component. -/
@@ -755,7 +755,7 @@ def shimComp (wf : WorldFull) (sc : Scope) (ds : List InstanceDecl) :
 
 mutual
 /-- A resolved WIT type as a top-level value type: named types through `names`. -/
-def valType (names : List ((Scope × String) × Nat)) (sc : Scope) : Silmaril.Wasm.Wit.Binary.Ty → TyM Silmaril.Wasm.Component.Binary.ValType
+def valType (names : List ((Scope × String) × Nat)) (sc : Scope) : Ty → TyM Silmaril.Wasm.Component.Binary.ValType
   | .prim p => pure (.prim p)
   | .ref r => match lookupIdx (refKey sc r) names with
     | some i => pure (.idx i)
@@ -774,10 +774,10 @@ def valType (names : List ((Scope × String) × Nat)) (sc : Scope) : Silmaril.Wa
   | .future t => do intern (.future (← optType names sc t))
   | .map k v => do intern (.map (← valType names sc k) (← valType names sc v))
   | .fixedList t n => do intern (.fixedList (← valType names sc t) n)
-def optType (names : List ((Scope × String) × Nat)) (sc : Scope) : Option Silmaril.Wasm.Wit.Binary.Ty → TyM (Option Silmaril.Wasm.Component.Binary.ValType)
+def optType (names : List ((Scope × String) × Nat)) (sc : Scope) : Option Ty → TyM (Option Silmaril.Wasm.Component.Binary.ValType)
   | none => pure none
   | some t => some <$> valType names sc t
-def valTypes (names : List ((Scope × String) × Nat)) (sc : Scope) : List Silmaril.Wasm.Wit.Binary.Ty → TyM (List Silmaril.Wasm.Component.Binary.ValType)
+def valTypes (names : List ((Scope × String) × Nat)) (sc : Scope) : List Ty → TyM (List Silmaril.Wasm.Component.Binary.ValType)
   | [] => pure []
   | t :: ts => do
     let a ← valType names sc t
@@ -786,7 +786,7 @@ def valTypes (names : List ((Scope × String) × Nat)) (sc : Scope) : List Silma
 end
 
 /-- The type of a stream or future. -/
-def chanTy : Chan → Silmaril.Wasm.Wit.Binary.Ty
+def chanTy : Chan → Ty
   | .stream t => .stream t
   | .future t => .future t
 

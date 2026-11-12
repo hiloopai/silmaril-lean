@@ -90,7 +90,7 @@ theorem runs_enter {m : Machine.Config (E3 P) σ} {Gt : List (Runtime.Task (E3 P
 /-! ## Caller records of top-level calls -/
 
 theorem runs_onStart {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
-    {Gc : List (Caller (E3 P))} {c : CallId} {args : List Val}
+    {Gc : List (Caller (E3 P))} {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val}
     (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (DI P impl (.onStart ⟨Gc.length⟩)) m [.tau, .obs (.started c)] (.vals args) m := by
   show RunsQ _ _ (callerOnStart Limits.spec Quirks.none ⟨Gc.length⟩) _ _ _ _
@@ -99,7 +99,7 @@ theorem runs_onStart {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     (RunsQ.bind (tr₁ := [.obs (.started c)]) (.emit (.pure _ _)) (.pure _ _))
 
 theorem runs_onResolve {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
-    {Gc : List (Caller (E3 P))} {c : CallId} {args : List Val} (r : Option (List Val))
+    {Gc : List (Caller (E3 P))} {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (r : Option (List Silmaril.Wasm.Component.Reference.Val))
     (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (DI P impl (.onResolve ⟨Gc.length⟩ r)) m [.tau, .obs (.resolved c r)] .unit
       (m.resolve c r) := by
@@ -112,7 +112,7 @@ theorem runs_onResolve {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
 
 theorem runs_start {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     {Gt : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc : List (Caller (E3 P))}
-    {c : CallId} {args : List Val} (ht : m.store.tasks = Gt ++ [y])
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (Task.start ⟨Gt.length⟩) m [.tau, .tau, .tau, .tau, .obs (.started c), .tau] args
       { m with store := CStore.setTaskState ⟨Gt.length⟩ .started m.store } := by
@@ -132,7 +132,7 @@ theorem runs_trapIf {th : Option ThreadId} {b : Bool} (hb : b = false) (r : Trap
 
 theorem runs_return {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     {Gt : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc : List (Caller (E3 P))}
-    {c : CallId} {args : List Val} (vs : List Val) (ht : m.store.tasks = Gt ++ [y])
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (Task.return_ ⟨Gt.length⟩ vs) m

@@ -29,8 +29,8 @@ The pending-event closure is the defunctionalized `PendingEvent.streamEnd e prog
 `PendingEvent.futureEnd e progress` (`Runtime/Objects.lean`); `notify` overwrites it, and all
 state transitions happen when it is delivered (`deliver`). Stream delivery precedence is
 DROPPED > CANCELLED > COMPLETED with payload `result | progress << 4`
-(`Async.packStreamCopyResult`); future precedence is COMPLETED > DROPPED > CANCELLED with the
-bare result (`Async.futureCopyPayload`). The event index is the end's CURRENT `index`.
+(`AsyncRef.packStreamCopyResult`); future precedence is COMPLETED > DROPPED > CANCELLED with the
+bare result (`AsyncRef.futureCopyPayload`). The event index is the end's CURRENT `index`.
 
 ## Element copying is abstracted
 
@@ -73,7 +73,7 @@ waitable-set event selection, host buffers' behaviour (choice point E1).
 
 namespace Silmaril.Wasm.Component.Runtime
 
-open Engine Async
+open Engine AsyncRef
 
 /-- The peer class of an end class (`new_stream`/`new_future` pair a readable end with a
 writable end of the same kind). -/

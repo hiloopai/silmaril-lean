@@ -54,7 +54,7 @@ theorem runs_onStartS {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
   exact RunsQ.bind (tr₂ := []) (runs_getObj ArenaField.callers _ _ (callers_get_last hc)) (.pure _ _)
 
 theorem runs_onResolveS {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
-    {Gc : List (Caller (E3 P))} (r : Option (List Val))
+    {Gc : List (Caller (E3 P))} (r : Option (List Silmaril.Wasm.Component.Reference.Val))
     (hc : m.store.callers = Gc ++ [.sub .start]) :
     RunsQ (DI P impl) th (DI P impl (.onResolve ⟨Gc.length⟩ r)) m [.tau, .tau] .unit m := by
   show RunsQ _ _ (callerOnResolve Limits.spec Quirks.none ⟨Gc.length⟩ r) _ _ _ _
@@ -80,7 +80,7 @@ theorem runs_startS {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
 
 theorem runs_returnS {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     {Gt : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc : List (Caller (E3 P))}
-    (vs : List Val) (ht : m.store.tasks = Gt ++ [y])
+    (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.sub .start]) :
     RunsQ (DI P impl) th (Task.return_ ⟨Gt.length⟩ vs) m

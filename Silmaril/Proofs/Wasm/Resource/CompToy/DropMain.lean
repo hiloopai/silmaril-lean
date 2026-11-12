@@ -30,7 +30,7 @@ variable {P : Silmaril.Wasm.Numerics.Profile} {prof : ProfileKind} {c : ℕ} {ι
   {G : ToyGarb P} {k : ℕ}
 
 theorem tStoreX_nil (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState) (G : ToyGarb P)
-    (k : ℕ) (args : List Val) (ιx : InstState) (Hx : List ResourceHandle)
+    (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) (ιx : InstState) (Hx : List ResourceHandle)
     (cs : (core3P P).Store (CanonHost (core3P P))) :
     tStoreX P ft c ι ι' G k args ιx Hx cs [] [] [] =
       { tStore₄ P ft c ι ι' G k args ιx Hx with core := cs } := by
@@ -41,7 +41,7 @@ theorem tStoreX_nil (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState
 /-- The lift of `drop`'s (empty) result. -/
 theorem drop_liftAt (S : CStore (E3 P)) (t : TaskId) :
     ∀ m : Machine.Config (E3 P) Unit, m.store = S →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList []) (resultTypes ftDrop)) m [.tau] ([], .ofList [])
         { m with store := S } := by
@@ -72,20 +72,20 @@ def DropAfter (ι' : InstState) : Prop :=
 /-- **The core phase and return of a call of `drop`** on `own n`, lowered to entry `i`. -/
 theorem drop_from_core {M₀ m' : Machine.Config (E3 P) Unit} {n i : ℕ} {T₄ : Silmaril.Wasm.Component.Runtime.Table HandleEntry}
     {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))} {segs : List (Seg (E3 P) Unit)}
-    {rest : List (Activation (E3 P) Unit)} {tr : List (Label (E3 P) Unit)} {r : Option (List Val)}
+    {rest : List (Activation (E3 P) Unit)} {tr : List (Label (E3 P) Unit)} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hι : ι = { handles := ι.handles, threads := ι.threads })
     (hth : ThreadsFree ι.threads) (hG : G.Ok) (hk : ∀ x ∈ G.pending, x.1 ≠ ⟨k⟩)
     (hleave : ι.mayLeave = true) (hi32 : i < 2 ^ 32) (hTB₄ : TabB T₄)
     (hT₄ : T₄.get? i = some (.resource ⟨G.handles.length⟩))
     (hst : M₀.store = dS₀ c ι G k n T₄)
     (hret : ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
-        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Val) (cur : FlatCursor)
+        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Silmaril.Wasm.Component.Reference.Val) (cur : FlatCursor)
         (trF : List (Label (E3 P) Unit)) (c' : ℕ) (Xt : List (Runtime.Task (E3 P)))
         (Xth : List Runtime.Thread) (Xc : List (Caller (E3 P)))
         (C : List (Option (Activation (E3 P) Unit))),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = tStoreX P ftDrop c ι (callI ι G) G k [.own n] ιc Hc cs' Xt Xth Xc →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ftDrop)) m trF (ws, cur)
             { m with store := tStoreX P ftDrop c ι (callI ι G) G k [.own n] ι₅ H₅ cs' Xt Xth Xc }) →
@@ -102,7 +102,7 @@ theorem drop_from_core {M₀ m' : Machine.Config (E3 P) Unit} {n i : ℕ} {T₄ 
     (ho : (CallOutcome.resolved r).Holds (refHost P).hr ⟨k⟩ m') :
     r = some [] ∧ ∃ ι' G', m' = toyCfgX P c ι' G' ∧ DropAfter ι' ∧ G'.Ok := by
   obtain ⟨T₅, hrm⟩ : ∃ T₅, T₄.remove? i = some (.resource ⟨G.handles.length⟩, T₅) :=
-    ⟨⟨T₄.array.setIfInBounds i none, i :: T₄.free⟩, by simp [Silmaril.Wasm.Component.Runtime.Table.remove?, hT₄]⟩
+    ⟨⟨T₄.array.setIfInBounds i none, i :: T₄.free⟩, by simp [Table.remove?, hT₄]⟩
   obtain ⟨hTB₅, hRR⟩ := remove?_tabB hTB₄ hrm
   let w : BitVec 32 := BitVec.ofNat 32 i
   let ι₅ : InstState :=
@@ -195,14 +195,14 @@ theorem drop_lowerAt {n i : ℕ} {T₄ : Silmaril.Wasm.Component.Runtime.Table H
     (hL : ∀ (m : Machine.Config (E3 P) Unit) (ι₁ ι₂ : InstState) (i : ℕ),
       m.store.insts = [ι₁] →
       ι₁.addHandle? (.resource ⟨m.store.resHandles.length⟩) = some (i, ι₂) →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams [.own n] (paramTypes ftDrop) none) m trL ([i32Flat i] ++ [])
         { m with store := newSt m.store n ι₂ })
     (hadd : (callI ι G).addHandle? (.resource ⟨G.handles.length⟩) =
       some (i, { callI ι G with handles := T₄ })) :
     ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ftDrop c ι (callI ι G) G k [.own n] →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams [.own n] (paramTypes ftDrop) none) m trL [i32Flat i]
         { m with store := dS₀ c ι G k n T₄ } := by
@@ -214,7 +214,7 @@ theorem drop_lowerAt {n i : ℕ} {T₄ : Silmaril.Wasm.Component.Runtime.Table H
 
 /-- **A resolved call of `drop`** from a configuration between calls answered `[]` and ends at a
 configuration between calls with the same counter. -/
-theorem toy_drop {a : List Val} {m' : Machine.Config (E3 P) Unit} {r : Option (List Val)}
+theorem toy_drop {a : List Silmaril.Wasm.Component.Reference.Val} {m' : Machine.Config (E3 P) Unit} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hι : ι = { handles := ι.handles, threads := ι.threads })
     (hth : ThreadsFree ι.threads) (hG : G.Ok) (hleave : ι.mayLeave = true)
     (hTB : TabB ι.handles)
@@ -247,7 +247,7 @@ theorem toy_drop {a : List Val} {m' : Machine.Config (E3 P) Unit} {r : Option (L
         hret cs' ιc ι₅ Hc H₅ ys ws cur trF c' Xt Xth Xc C hl hcs hrem)
       (hcore ▸ eq_coreCfg hctl ▸ r') hev' ho
   · have hT : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ftDrop c ι (callI ι G) G k a →
-        ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+        ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatParams a (paramTypes ftDrop) none) m trT mT := by
       intro m hm
@@ -267,7 +267,7 @@ theorem toy_drop {a : List Val} {m' : Machine.Config (E3 P) Unit} {r : Option (L
 /-- **Resolved calls of `drop` from `toyR`** keep `toyR` and the counter (`CtrVCOn.step` and
 `CtrVCOn.mono` at `drop`). -/
 theorem toyR_drop {es : List (String × FuncId)} {m m' : Machine.Config (E3 P) Unit}
-    {f : FuncId} {a : List Val} {r : Option (List Val)} (hR : toyR P es m)
+    {f : FuncId} {a : List Silmaril.Wasm.Component.Reference.Val} {r : Option (List Silmaril.Wasm.Component.Reference.Val)} (hR : toyR P es m)
     (hf : es.lookup (names dropE) = some f)
     (h : Calls prof (refHost P).hr (refHost P).dispatch m ⟨k⟩ f a m' (.resolved r)) :
     toyR P es m' ∧ toyCtrP P m' = toyCtrP P m := by

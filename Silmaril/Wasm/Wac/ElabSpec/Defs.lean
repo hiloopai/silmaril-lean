@@ -68,15 +68,15 @@ inductive ElabSpreads (imps : List String) :
       ElabSpreads imps st acc (x :: xs) r
 mutual
 /-- Elaboration of expressions. -/
-inductive ElabExpr (cx : ECtx) : ESt → Expr → ESt × Nat → Prop
+inductive ElabExpr (cx : ECtx) : ESt → Silmaril.Wasm.Wac.Syntax.Expr → ESt × Nat → Prop
   | ident {st : ESt} {x : String} {i : Nat} :
       st.scope.lookup x = some i → ElabExpr cx st (.ident x) (st, i)
-  | paren {st : ESt} {e : Expr} {r : ESt × Nat} : ElabExpr cx st e r → ElabExpr cx st (.paren e) r
-  | access {st st1 : ESt} {e : Expr} {x n : String} {i : Nat} {es : Externs} {k : Kind} :
+  | paren {st : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {r : ESt × Nat} : ElabExpr cx st e r → ElabExpr cx st (.paren e) r
+  | access {st st1 : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {x n : String} {i : Nat} {es : Externs} {k : Kind} :
       ElabExpr cx st e (st1, i) → (st1.g.kindOf i).exports? = some es →
       TailOrSelf x es.names n → es.find n = some k →
       ElabExpr cx st (.access e x) (st1.aliasAt i n k)
-  | namedAccess {st st1 : ESt} {e : Expr} {n : String} {i : Nat} {es : Externs} {k : Kind} :
+  | namedAccess {st st1 : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {n : String} {i : Nat} {es : Externs} {k : Kind} :
       ElabExpr cx st e (st1, i) → (st1.g.kindOf i).exports? = some es → es.find n = some k →
       ElabExpr cx st (.namedAccess e n) (st1.aliasAt i n k)
   | new {st st1 st2 : ESt} {p : PkgName} {args : List Arg} {pk : PkgType}
@@ -95,7 +95,7 @@ inductive ElabArgs (cx : ECtx) :
       {r : ESt × List (String × Nat) × Bool} :
       st.scope.lookup x = some i → InferArg st.g imps x i n → n ∉ acc.map (·.1) →
       ElabArgs cx imps st (acc ++ [(n, i)]) rest r → ElabArgs cx imps st acc (.inferred x :: rest) r
-  | named {imps : List String} {st st1 : ESt} {acc : List (String × Nat)} {a : ArgName} {e : Expr} {n : String} {i : Nat}
+  | named {imps : List String} {st st1 : ESt} {acc : List (String × Nat)} {a : ArgName} {e : Silmaril.Wasm.Wac.Syntax.Expr} {n : String} {i : Nat}
       {rest : List Arg} {r : ESt × List (String × Nat) × Bool} :
       ElabExpr cx st e (st1, i) → NamedArg imps a n → n ∉ acc.map (·.1) →
       ElabArgs cx imps st1 (acc ++ [(n, i)]) rest r → ElabArgs cx imps st acc (.named a e :: rest) r
@@ -128,7 +128,7 @@ inductive Binds : ESt → String → Nat → ESt → Prop
 
 /-- Elaboration of statements. -/
 inductive ElabStmt (cx : ECtx) : ESt → Stmt → ESt → Prop
-  | import {st st2 : ESt} {i : Import} {k : Kind} :
+  | import {st st2 : ESt} {i : Silmaril.Wasm.Wac.Syntax.Import} {k : Kind} :
       importKind cx st i.ty = .ok k → importName i k ∉ st.g.importNames →
       Binds (st.add ⟨.imp (importName i k), k.promote⟩).1 i.id
         (st.add ⟨.imp (importName i k), k.promote⟩).2 st2 →
@@ -140,14 +140,14 @@ inductive ElabStmt (cx : ECtx) : ESt → Stmt → ESt → Prop
           exports := (st.add ⟨.defn n, k⟩).1.g.exports ++ [(n, (st.add ⟨.defn n, k⟩).2)] } }
         n (st.add ⟨.defn n, k⟩).2 st2 →
       ElabStmt cx st (.type t) st2
-  | «let» {st st1 st2 : ESt} {x : String} {e : Expr} {i : Nat} :
+  | «let» {st st1 st2 : ESt} {x : String} {e : Silmaril.Wasm.Wac.Syntax.Expr} {i : Nat} :
       ElabExpr cx st e (st1, i) → Binds st1 x i st2 → ElabStmt cx st (.let x e) st2
-  | exportNone {st st1 st2 : ESt} {e : Expr} {i : Nat} {n : String} :
+  | exportNone {st st1 st2 : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {i : Nat} {n : String} :
       ElabExpr cx st e (st1, i) → ExportName st1.g i n → ExportAs st1 i n st2 →
       ElabStmt cx st (.export e .none) st2
-  | exportRename {st st1 st2 : ESt} {e : Expr} {i : Nat} {n : String} :
+  | exportRename {st st1 st2 : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {i : Nat} {n : String} :
       ElabExpr cx st e (st1, i) → ExportAs st1 i n st2 → ElabStmt cx st (.export e (.rename n)) st2
-  | exportSpread {st st1 st2 : ESt} {e : Expr} {i : Nat} {es : Externs} :
+  | exportSpread {st st1 st2 : ESt} {e : Silmaril.Wasm.Wac.Syntax.Expr} {i : Nat} {es : Externs} :
       ElabExpr cx st e (st1, i) → (st1.g.kindOf i).exports? = some es →
       SpreadExports es i st1 es (st2, true) → ElabStmt cx st (.export e .spread) st2
 

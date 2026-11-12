@@ -37,7 +37,7 @@ abbrev D (E : Engine) [∀ a b, Decidable (E.ExternSub a b)] : Call E → Canon.
   (refHostE E).dispatch
 
 /-- The host caller record of top-level call `0`. -/
-def hostCaller (args : List Val) : Caller E := .host ⟨0⟩ args 0
+def hostCaller (args : List Silmaril.Wasm.Component.Reference.Val) : Caller E := .host ⟨0⟩ args 0
 
 omit [∀ a b, Decidable (E.ExternSub a b)] in
 theorem runs_allocObj {d : Call E → Canon.P E σ (Ret E)} {α Id : Type}
@@ -105,7 +105,7 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
     (hff : floatFreeList x.ty.results = true) {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList x.ty.results)
     (hnone : liftArgs x.ty.results ys = none)
-    {cx : LiftLowerContext E} {f : List Val × FlatCursor → Canon.P E Unit α}
+    {cx : LiftLowerContext E} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P E Unit α}
     {g : α → Canon.P E Unit (Ret E)} {M : Machine.Config E Unit}
     {segs : List (Seg E Unit)} {rest : List (Activation E Unit)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
@@ -139,7 +139,7 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
 
 /-- The configuration after the host invoked function `j` on `args` from `afterInstE`. -/
 noncomputable def invokedCfg (cs : E.Store (CanonHost E)) (fs : List (CFuncInst E)) (j : Nat)
-    (args : List Val) : Machine.Config E Unit :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config E Unit :=
   { afterInstE cs fs with
     pending := [] ++ [(⟨0⟩, ⟨j⟩, args)]
     ctl := [.ofProg none (StepDefs.invokeProg ⟨0⟩ ⟨j⟩ args)] }
@@ -147,7 +147,7 @@ noncomputable def invokedCfg (cs : E.Store (CanonHost E)) (fs : List (CFuncInst 
 /-- From `mS`, the call resolves with `rs`: a live run to a configuration with the host in
 control, results `rs`, from which a tick returns to itself. -/
 def Resolves (prof : ProfileKind) (mS : Machine.Config E Unit)
-    (rs : List Val) : Prop :=
+    (rs : List Silmaril.Wasm.Component.Reference.Val) : Prop :=
   ∃ tr mE, LRun prof (refHostE E).hr (D E) mS tr mE ∧ mE.ctl = [] ∧
     mE.store.lockdown = false ∧ mE.result? ⟨0⟩ = some (some rs) ∧
     ∀ m₁, Step prof (refHostE E).hr (D E) mE (.host .tick) m₁ →

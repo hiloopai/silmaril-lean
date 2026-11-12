@@ -92,8 +92,8 @@ theorem traps_dropCallout {th : ThreadId} {m : Machine.Config (E3 P) Unit} {thr 
     refine TrapsQ.bind (runs_getObj ArenaField.insts _ m hgi) ?_
     rw [hrem]
     exact TrapsQ.trap _ (isTrap_trap _)
-  have hb : TrapsQ (D P) (some th) (Builtins.resourceDrop Silmaril.Wasm.Component.Limits.spec Quirks.none
-      (destructorCall Silmaril.Wasm.Component.Limits.spec Quirks.none) ⟨0⟩ (flatNat a)) m (tr₁ ++ ([.tau] ++ [])) m := by
+  have hb : TrapsQ (D P) (some th) (Builtins.resourceDrop Limits.spec Quirks.none
+      (destructorCall Limits.spec Quirks.none) ⟨0⟩ (flatNat a)) m (tr₁ ++ ([.tau] ++ [])) m := by
     unfold Builtins.resourceDrop resourceDropCore
     exact TrapsQ.bind h₁ (TrapsQ.left (TrapsQ.left hT))
   refine ⟨_, m, TrapsQ.bind (RunsQ.currentThread (RunsQ.pure _ _))
@@ -231,7 +231,7 @@ theorem drop_calloutsAns {M₀ : Machine.Config (E3 P) Unit} {c : ℕ} {ι : Ins
         threads := dropT ⟨G.threads.length⟩ } : InstState).removeHandle?
         (flatNat (.int .i32 (BitVec.ofNat 32 i))) = none := by
       rw [hflat]
-      simp [InstState.removeHandle?, Silmaril.Wasm.Component.Runtime.Table.remove?, hT₅]
+      simp [InstState.removeHandle?, Table.remove?, hT₅]
     obtain ⟨trT, mT, hT⟩ := traps_dropCallout (P := P)
       (m := calloutCfg (dF1 M₀ (dS₀ c ι G k n T₄) n
         { callIn ι ⟨G.threads.length⟩ with handles := T₅, threads := dropT ⟨G.threads.length⟩ }

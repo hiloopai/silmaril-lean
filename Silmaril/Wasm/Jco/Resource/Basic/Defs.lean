@@ -161,11 +161,11 @@ open Silmaril.Wasm.Component.Runtime (Table) in
 /-- **The canonical handle tables**: the reference machine's `Table` of `definitions.py`. -/
 def refTab : HTab where
   T := Silmaril.Wasm.Component.Runtime.Table HEntry
-  add? := Silmaril.Wasm.Component.Runtime.Table.add?
-  get? := Silmaril.Wasm.Component.Runtime.Table.get?
-  remove? := Silmaril.Wasm.Component.Runtime.Table.remove?
-  cap t := some (t.free.length + (Silmaril.Wasm.Component.Runtime.Table.maxLength + 1 - t.array.size))
-  Inv t := Silmaril.Wasm.Resource.FreeOK t ∧ t.array.size ≤ Silmaril.Wasm.Component.Runtime.Table.maxLength + 1
+  add? := Table.add?
+  get? := Table.get?
+  remove? := Table.remove?
+  cap t := some (t.free.length + (Table.maxLength + 1 - t.array.size))
+  Inv t := Silmaril.Wasm.Resource.FreeOK t ∧ t.array.size ≤ Table.maxLength + 1
 
 /-! ## Component-instance states -/
 

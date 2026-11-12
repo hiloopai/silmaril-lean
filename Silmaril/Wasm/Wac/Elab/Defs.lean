@@ -51,7 +51,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig TyRef Owner)
 
 mutual
 /-- A WIT type; `res` are the witResources in scope. -/
-def witTy (res : List String) : Wit.Ty → Silmaril.Wasm.Wit.Binary.Ty
+def witTy (res : List String) : Wit.Ty → Ty
   | .bool => .prim .bool
   | .s8 => .prim .s8
   | .s16 => .prim .s16
@@ -77,10 +77,10 @@ def witTy (res : List String) : Wit.Ty → Silmaril.Wasm.Wit.Binary.Ty
   | .borrow r => .borrow ⟨.local, r⟩
   | .future t => .future (witTyOpt res t)
   | .stream t => .stream (witTyOpt res t)
-def witTyOpt (res : List String) : Option Wit.Ty → Option Silmaril.Wasm.Wit.Binary.Ty
+def witTyOpt (res : List String) : Option Wit.Ty → Option Ty
   | none => none
   | some t => some (witTy res t)
-def witTys (res : List String) : List Wit.Ty → List Silmaril.Wasm.Wit.Binary.Ty
+def witTys (res : List String) : List Wit.Ty → List Ty
   | [] => []
   | t :: ts => witTy res t :: witTys res ts
 end
@@ -278,7 +278,7 @@ def checkAll (pkg : String) (imps : Externs) (acc : List (String × Nat)) : Exce
 
 mutual
 /-- Elaborate an expression to a node. -/
-def elabExpr (cx : ECtx) : ESt → Expr → Except ElabError (ESt × Nat)
+def elabExpr (cx : ECtx) : ESt → Silmaril.Wasm.Wac.Syntax.Expr → Except ElabError (ESt × Nat)
   | st, .ident x => do let i ← st.lookup x; pure (st, i)
   | st, .paren e => elabExpr cx st e
   | st, .access e x => do
@@ -330,7 +330,7 @@ def importKind (cx : ECtx) (st : ESt) : ImportType → Except ElabError Kind
   | .ident x => do let i ← st.lookup x; pure (st.g.kindOf i)
 
 /-- The name of an import. -/
-def importName (i : Import) (k : Kind) : String :=
+def importName (i : Silmaril.Wasm.Wac.Syntax.Import) (k : Kind) : String :=
   match i.as with
   | some n => n
   | none => match i.ty with

@@ -37,7 +37,7 @@ open DecodeNamed (Ctx NS NomOk Plain)
 
 mutual
 /-- The value type the decoder reads back for `t` in the context `Γ`. -/
-def rdT (Γ : Ctx) : Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Binary.Ty
+def rdT (Γ : Ctx) : Ty → Ty
   | .prim p => .prim p
   | .ref r =>
     match Γ.lookup r.name with
@@ -57,17 +57,17 @@ def rdT (Γ : Ctx) : Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Binary.Ty
   | .future a => .future (rdTo Γ a)
   | .stream a => .stream (rdTo Γ a)
 /-- `rdT` on an optional type. -/
-def rdTo (Γ : Ctx) : Option Silmaril.Wasm.Wit.Binary.Ty → Option Silmaril.Wasm.Wit.Binary.Ty
+def rdTo (Γ : Ctx) : Option Ty → Option Ty
   | none => none
   | some t => some (rdT Γ t)
 /-- `rdT` on a list of types. -/
-def rdTs (Γ : Ctx) : List Silmaril.Wasm.Wit.Binary.Ty → List Silmaril.Wasm.Wit.Binary.Ty
+def rdTs (Γ : Ctx) : List Ty → List Ty
   | [] => []
   | t :: ts => rdT Γ t :: rdTs Γ ts
 end
 
 /-- `rdT` on named parameters. -/
-def rdPs (Γ : Ctx) : List (String × Silmaril.Wasm.Wit.Binary.Ty) → List (String × Silmaril.Wasm.Wit.Binary.Ty)
+def rdPs (Γ : Ctx) : List (String × Ty) → List (String × Ty)
   | [] => []
   | (n, t) :: ps => (n, rdT Γ t) :: rdPs Γ ps
 
@@ -76,14 +76,14 @@ def rdS (Γ : Ctx) (s : Sig) : Sig := { s with params := rdPs Γ s.params, resul
 
 /-- The definiens of a type item `type n = own<a>` or `type n = a` (`t`): the root
 resource when `a` is a resource or an alias of one. -/
-def rdAli (Γ : Ctx) (r : TyRef) (t : Silmaril.Wasm.Wit.Binary.Ty) : Kind :=
+def rdAli (Γ : Ctx) (r : TyRef) (t : Ty) : Kind :=
   match Γ.lookup r.name with
   | some .res => .value (.own r)
   | some (.ali a) => .value (.own ⟨.local, a⟩)
   | _ => .value t
 
 /-- The definiens of a value type item. -/
-def rdTV (Γ : Ctx) : Silmaril.Wasm.Wit.Binary.Ty → Kind
+def rdTV (Γ : Ctx) : Ty → Kind
   | .own r => rdAli Γ r (.own r)
   | .ref r => rdAli Γ r (.ref r)
   | t => .value (rdT Γ t)
@@ -137,7 +137,7 @@ end
 
 /-- **Value types of the fragment**: those of `DecodeNamed.TyOk`, and `ref a` of a
 resource and `own<a>` of a resource alias. -/
-inductive TyOkR (Γ : Ctx) : Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive TyOkR (Γ : Ctx) : Ty → Prop
   | prim (p : PrimValType) : TyOkR Γ (.prim p)
   | refVal {a : String} : Γ.lookup a = some .val → TyOkR Γ (.ref ⟨.local, a⟩)
   | refAlias {a r : String} : Γ.lookup a = some (.ali r) → TyOkR Γ (.ref ⟨.local, a⟩)
@@ -146,20 +146,20 @@ inductive TyOkR (Γ : Ctx) : Silmaril.Wasm.Wit.Binary.Ty → Prop
   | ownAlias {a r : String} : Γ.lookup a = some (.ali r) → TyOkR Γ (.own ⟨.local, a⟩)
   | borrowRes {a : String} : Γ.lookup a = some .res → TyOkR Γ (.borrow ⟨.local, a⟩)
   | borrowAlias {a r : String} : Γ.lookup a = some (.ali r) → TyOkR Γ (.borrow ⟨.local, a⟩)
-  | list {t : Silmaril.Wasm.Wit.Binary.Ty} : TyOkR Γ t → TyOkR Γ (.list t)
-  | fixedList {t : Silmaril.Wasm.Wit.Binary.Ty} (n : Nat) : TyOkR Γ t → TyOkR Γ (.fixedList t n)
-  | map {k v : Silmaril.Wasm.Wit.Binary.Ty} : TyOkR Γ k → TyOkR Γ v → TyOkR Γ (.map k v)
-  | option {t : Silmaril.Wasm.Wit.Binary.Ty} : TyOkR Γ t → TyOkR Γ (.option t)
-  | result {a b : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, TyOkR Γ t) → (∀ t ∈ b, TyOkR Γ t) → TyOkR Γ (.result a b)
-  | tuple {ts : List Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ ts, TyOkR Γ t) → TyOkR Γ (.tuple ts)
-  | future {a : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, TyOkR Γ t) → TyOkR Γ (.future a)
-  | stream {a : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, TyOkR Γ t) → TyOkR Γ (.stream a)
+  | list {t : Ty} : TyOkR Γ t → TyOkR Γ (.list t)
+  | fixedList {t : Ty} (n : Nat) : TyOkR Γ t → TyOkR Γ (.fixedList t n)
+  | map {k v : Ty} : TyOkR Γ k → TyOkR Γ v → TyOkR Γ (.map k v)
+  | option {t : Ty} : TyOkR Γ t → TyOkR Γ (.option t)
+  | result {a b : Option Ty} : (∀ t ∈ a, TyOkR Γ t) → (∀ t ∈ b, TyOkR Γ t) → TyOkR Γ (.result a b)
+  | tuple {ts : List Ty} : (∀ t ∈ ts, TyOkR Γ t) → TyOkR Γ (.tuple ts)
+  | future {a : Option Ty} : (∀ t ∈ a, TyOkR Γ t) → TyOkR Γ (.future a)
+  | stream {a : Option Ty} : (∀ t ∈ a, TyOkR Γ t) → TyOkR Γ (.stream a)
 
 /-- A function type over value types of the fragment. -/
 def SigOkR (Γ : Ctx) (s : Sig) : Prop := (∀ p ∈ s.params, TyOkR Γ p.2) ∧ ∀ t ∈ s.result, TyOkR Γ t
 
 /-- `own<a>` or `a`, the two ways to write an alias type item of a resource. -/
-def AliForm (a : String) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop := t = .own ⟨.local, a⟩ ∨ t = .ref ⟨.local, a⟩
+def AliForm (a : String) (t : Ty) : Prop := t = .own ⟨.local, a⟩ ∨ t = .ref ⟨.local, a⟩
 
 /-- **Items of the fragment** in the context `Γ`, with the nominal table `N`: those of
 `DecodeNamed.EsOk` over `TyOkR`, value items, and alias type items of resources and of
@@ -168,7 +168,7 @@ inductive EsOkR (N : NomTable) : Ctx → Externs → Prop
   | nil {Γ : Ctx} : EsOkR N Γ []
   | func {Γ : Ctx} {n : String} {s : Sig} {es : Externs} :
       SigOkR Γ s → EsOkR N Γ es → EsOkR N Γ ((n, .func s) :: es)
-  | value {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} :
+  | value {Γ : Ctx} {n : String} {t : Ty} {es : Externs} :
       TyOkR Γ t → EsOkR N Γ es → EsOkR N Γ ((n, .value t) :: es)
   | inst {Γ : Ctx} {n : String} {i : Option String} {fs es : Externs} :
       EsOkR N [] fs → EsOkR N Γ es → EsOkR N Γ ((n, .inst i fs) :: es)
@@ -176,16 +176,16 @@ inductive EsOkR (N : NomTable) : Ctx → Externs → Prop
       EsOkR N [] is → EsOkR N (extendR [] is) fs → EsOkR N Γ es → EsOkR N Γ ((n, .comp i is fs) :: es)
   | res {Γ : Ctx} {n : String} {es : Externs} :
       EsOkR N (Γ ++ [(n, .res)]) es → EsOkR N Γ ((n, .type (.resource n)) :: es)
-  | tyRes {Γ : Ctx} {n a : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} : AliForm a t → Γ.lookup a = some .res →
+  | tyRes {Γ : Ctx} {n a : String} {t : Ty} {es : Externs} : AliForm a t → Γ.lookup a = some .res →
       EsOkR N (Γ ++ [(n, .ali a)]) es → EsOkR N Γ ((n, .type (.value t)) :: es)
-  | tyAli {Γ : Ctx} {n a r : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} : AliForm a t → Γ.lookup a = some (.ali r) →
+  | tyAli {Γ : Ctx} {n a r : String} {t : Ty} {es : Externs} : AliForm a t → Γ.lookup a = some (.ali r) →
       EsOkR N (Γ ++ [(n, .ali r)]) es → EsOkR N Γ ((n, .type (.value t)) :: es)
   | tyRef {Γ : Ctx} {n a : String} {es : Externs} : Γ.lookup a = some .val →
       EsOkR N (Γ ++ [(n, .val)]) es → EsOkR N Γ ((n, .type (.value (.ref ⟨.local, a⟩))) :: es)
   | tyNom {Γ : Ctx} {n : String} {d : Nominal} {es : Externs} : Γ.lookup n = none →
       N.lookup n = some d → NomOk Γ d →
       EsOkR N (Γ ++ [(n, .val)]) es → EsOkR N Γ ((n, .type (.value (.ref ⟨.local, n⟩))) :: es)
-  | tyVal {Γ : Ctx} {n : String} {t : Silmaril.Wasm.Wit.Binary.Ty} {es : Externs} : Plain t → TyOkR Γ t →
+  | tyVal {Γ : Ctx} {n : String} {t : Ty} {es : Externs} : Plain t → TyOkR Γ t →
       EsOkR N (Γ ++ [(n, .val)]) es → EsOkR N Γ ((n, .type (.value t)) :: es)
   | tyFunc {Γ : Ctx} {n : String} {s : Sig} {es : Externs} : SigOkR Γ s →
       EsOkR N (Γ ++ [(n, .other)]) es → EsOkR N Γ ((n, .type (.func s)) :: es)

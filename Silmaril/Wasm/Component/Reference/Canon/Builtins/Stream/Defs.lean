@@ -47,12 +47,12 @@ NAMED update: `newEndsSt` (REF `new_stream`/`new_future`), `HandleSt.setEndIndex
 **Sync vs async.** For `stream/future.read/write` the choice is the `async` canonopt of the
 built-in's own options (`opts.async_`); for the cancels it is the built-in's `async_`
 immediate. Waiting is the guest-side `Waitable.waitForPendingEvent` at site K5 (`syncCopy`)
-for copies and K6 (`syncCancelCopy`) for cancels; the async form returns `Async.blocked`.
+for copies and K6 (`syncCancelCopy`) for cancels; the async form returns `AsyncRef.blocked`.
 
-**Results.** `stream.new`/`future.new` return one `i64` holding `Async.packEnds r w`
+**Results.** `stream.new`/`future.new` return one `i64` holding `AsyncRef.packEnds r w`
 (`r | w << 32`; readable added first). A copy or cancel returns the pending event's payload,
-which is already `Async.packStreamCopyResult r progress` for streams and
-`Async.futureCopyPayload r` for futures (computed by `Runtime.deliver`). The flat result type
+which is already `AsyncRef.packStreamCopyResult r progress` for streams and
+`AsyncRef.futureCopyPayload r` for futures (computed by `Runtime.deliver`). The flat result type
 follows `ResolvedBuiltin.coreType`: `stream.read/write` return a pointer-sized value (`i32`, or
 `i64` for a 64-bit memory; `ptrFlat` at the pointer width of the built-in's options, `.i32`
 without a memory, D-g); `future.read/write` and all cancels return an `i32`.

@@ -40,7 +40,7 @@ theorem seq_step (hIR : Sub P IR) (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity
     {cs : (core3R P V IR).Store (CanonHost (core3R P V IR))} {ι : InstState} {G : Garb P V IR} {k : Nat}
     (R : ReadyAt I cs ι G k) (j : Fin c.exports.length) {vs : List Silmaril.Wasm.Component.Val}
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true) {m₁ : Machine.Config (E3 P V IR) Unit}
-    {rs : List Val}
+    {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hcall : Calls prof (refHostR P V IR).hr (D P V IR)
       (readyCfg cs ι (liftedFuncs P V IR (fun k => I.addrs.getD k 0) c) G) ⟨k⟩ ⟨j⟩
       (vs.map toRefVal) m₁ (.resolved (some rs))) :
@@ -63,7 +63,7 @@ specification. -/
 theorem seq_inv (hIR : Sub P IR) (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.IsInst I) :
     ∀ (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
       (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState) (G : Garb P V IR) (k : Nat)
-      (rss : List (List Val)) (mₙ : Machine.Config (E3 P V IR) Unit),
+      (rss : List (List Silmaril.Wasm.Component.Reference.Val)) (mₙ : Machine.Config (E3 P V IR) Unit),
       ReadyAt I cs ι G k → TypedCalls c calls →
       SeqCalls prof (refHostR P V IR) (readyCfg cs ι (liftedFuncs P V IR (fun k => I.addrs.getD k 0) c) G) k
         (callArgs c calls) rss mₙ →
@@ -142,7 +142,7 @@ theorem seq_refToSpec (P : Profile) (V : Silmaril.Wasm.Module → Prop)
     (calls : List (Fin c.exports.length × List Silmaril.Wasm.Component.Val))
     (j : Fin c.exports.length) (vs : List Silmaril.Wasm.Component.Val) (ht : TypedCalls c calls)
     (hvs : ValTy.checkList c.exports[j].ty.params vs = true)
-    (p : List (List Val) × Silmaril.Wasm.Component.Reference.Outcome)
+    (p : List (List Silmaril.Wasm.Component.Reference.Val) × Silmaril.Wasm.Component.Reference.Outcome)
     (hp : p ∈ seqBehaviours prof (refHostR P V IR) () c.toRef
       (calls.map fun q => (c.exports[q.1].name, q.2.map toRefVal)) c.exports[j].name
       (vs.map toRefVal)) :

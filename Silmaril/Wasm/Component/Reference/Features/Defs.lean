@@ -144,9 +144,9 @@ namespace Limits
 def spec : Limits where
   maxStringBytes := ABI.maxStringByteLength
   maxListBytes := 2 ^ 28 - 1
-  maxBufferLength := Async.bufferMaxLength
-  maxBackpressure := Async.backpressureLimit
-  maxContextSlots := Async.contextSlotCount
+  maxBufferLength := AsyncRef.bufferMaxLength
+  maxBackpressure := AsyncRef.backpressureLimit
+  maxContextSlots := AsyncRef.contextSlotCount
 
 /-- wasmtime `a7b4f29`: strings up to `2^31-1` bytes, lists up to `2^32-1` bytes
 (`crates/environ/src/fact/trampoline.rs`); the rest as `spec`. Differential replay only. -/

@@ -45,7 +45,7 @@ open Silmaril.Wasm.JcoTool.Adapt (Plan MainReq AdReq Impl)
 inductive Src where
   /-- A lower, a resource built-in or an async built-in, read as in the certified layout. -/
   | core (c : CoreR)
-  /-- Silmaril.Wasm.Component.Binary.Export `name` of the instance of core module `m` (`0` main, `k + 1` adapter `k`). -/
+  /-- Export `name` of the instance of core module `m` (`0` main, `k + 1` adapter `k`). -/
   | modExport (m : Nat) (name : String)
   /-- The task-hook wrapper of export `name` of `inst` (`main`, `adapter<k>`). -/
   | hook (inst name : String)

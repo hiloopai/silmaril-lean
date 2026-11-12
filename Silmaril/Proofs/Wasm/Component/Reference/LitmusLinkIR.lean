@@ -135,12 +135,12 @@ theorem dbl_run {P : Profile} (x : BitVec 32) :
   have hf : dblStore.funcs[0]? = some fi := by rw [hfuncs]; rfl
   have he : Expand fi.type dblFn.toComp := FnType.expand_of_ofDefType? hty
   let F := Frame.forCall fi.module [Val.i32 x] code.locals
-  let n := (Silmaril.Wasm.Validation.Ty.ofList (dblFn.results.map ScalarType.toC)).length
+  let n := (Ty.ofList (dblFn.results.map ScalarType.toC)).length
   have hn : [Val.i32 (x + x)].length = n :=
-    (Silmaril.Wasm.Validation.Ty.length_ofList (dblFn.results.map ScalarType.toC)).symm
+    (Ty.length_ofList (dblFn.results.map ScalarType.toC)).symm
   have s₁ : Step P Silmaril.Wasm.SingleThreaded.Det.noHost (invoke dblStore 0 [Val.i32 x])
       ⟨dblStore, {}, [.frame n F [.label n [] (expression code.body)]]⟩ :=
-    .callRefFunc trivial hf he (Silmaril.Wasm.Validation.Ty.length_ofList (dblFn.params.map ScalarType.toC)).symm hcode
+    .callRefFunc trivial hf he (Ty.length_ofList (dblFn.params.map ScalarType.toC)).symm hcode
   have hl₀ : F.local? x₀ = some (some (Val.i32 x)) := by
     simp [F, Frame.local?, Frame.forCall, hloc, h₀]
   have hl₁ : F.local? x₁ = some (some (Val.i32 x)) := by

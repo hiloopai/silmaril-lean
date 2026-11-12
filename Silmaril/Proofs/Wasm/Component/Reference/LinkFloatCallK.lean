@@ -35,7 +35,7 @@ canonicalised in the next configuration between calls. -/
 structure CallAtLKV (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
     (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi' : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (h₀ : σ) (k j : Nat)
-    (x : SimpleExport) (a : Nat) (args : List Val) (xs : List Flat)
+    (x : SimpleExport) (a : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) (xs : List Flat)
     (M₀ : Machine.Config (E3 P) σ) (th : Option ThreadId)
     (K : List FlatValue → Canon.P (E3 P) σ (Ret (E3 P))) (segs : List (Seg (E3 P) σ))
     (rest : List (Activation (E3 P) σ)) : Prop where

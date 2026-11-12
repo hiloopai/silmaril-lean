@@ -26,7 +26,7 @@ open Silmaril.Wasm.Component.Machine.StepDefs
 open Silmaril.Wasm.Numerics (Profile)
 open Silmaril.Wasm.Component (ValTy liftArgs lowerArgs Flat)
 
-variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Val → Option (List Val × σ)}
+variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ)}
 
 /-! ## The start caller, at any host state type -/
 
@@ -40,7 +40,7 @@ theorem runs_onStartSA {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
   exact RunsQ.bind (tr₂ := []) (runs_getObj ArenaField.callers _ _ (callers_get_last hc)) (.pure _ _)
 
 theorem runs_onResolveSA {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
-    {Gc : List (Caller (E3 P))} (r : Option (List Val))
+    {Gc : List (Caller (E3 P))} (r : Option (List Silmaril.Wasm.Component.Reference.Val))
     (hc : m.store.callers = Gc ++ [.sub .start]) :
     RunsQ (DA P g) th (DA P g (.onResolve ⟨Gc.length⟩ r)) m [.tau, .tau] .unit m := by
   show RunsQ _ _ (callerOnResolve Limits.spec Quirks.none ⟨Gc.length⟩ r) _ _ _ _
@@ -66,7 +66,7 @@ theorem runs_startSA {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
 
 theorem runs_returnSA {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     {Gt : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc : List (Caller (E3 P))}
-    (vs : List Val) (ht : m.store.tasks = Gt ++ [y])
+    (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.sub .start]) :
     RunsQ (DA P g) th (Task.return_ ⟨Gt.length⟩ vs) m
@@ -87,7 +87,7 @@ theorem runs_returnSA {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
 
 /-- **The configuration after the start function**, back in the instantiation program, under the
 answering host. -/
-def startedCfgA (g : σ → HostFuncId → List Val → Option (List Val × σ))
+def startedCfgA (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (M : Machine.Config (E3 P) σ) (a : Nat) (ι' : InstState)
     (cs' : (core3P P).Store (CanonHost (core3P P))) : Machine.Config (E3 P) σ :=
   { M with
@@ -98,7 +98,7 @@ def startedCfgA (g : σ → HostFuncId → List Val → Option (List Val × σ))
 
 /-- The configuration `M₀` runs the core activation of the start function `a`; when it returns
 no values, the run goes back to the instantiation program `K ()` at `startedCfgA`. -/
-structure StartAtA (prof : ProfileKind) (g : σ → HostFuncId → List Val → Option (List Val × σ))
+structure StartAtA (prof : ProfileKind) (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Val → Option (List Silmaril.Wasm.Component.Reference.Val × σ))
     (M : Machine.Config (E3 P) σ) (a : Nat)
     (ι' : InstState) (th : Option ThreadId) (K : Unit → Canon.P (E3 P) σ (Ret (E3 P)))
     (segs : List (Seg (E3 P) σ)) (rest : List (Activation (E3 P) σ))

@@ -89,7 +89,7 @@ theorem lrun_lift_trap_float {α : Type} {th : Option ThreadId} (prof : ProfileK
     (hff : floatOkList x.ty.results = true) {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList x.ty.results)
     (hnone : liftArgs x.ty.results ys = none)
-    {cx : LiftLowerContext (E3 P)} {f : List Val × FlatCursor → Canon.P (E3 P) Unit α}
+    {cx : LiftLowerContext (E3 P)} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit α}
     {g : α → Canon.P (E3 P) Unit (Ret (E3 P))} {M : Machine.Config (E3 P) Unit}
     {segs : List (Seg (E3 P) Unit)} {rest : List (Activation (E3 P) Unit)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults

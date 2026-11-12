@@ -80,7 +80,7 @@ theorem unregisterThreadSt_midT {s : CStore (E3 P)} {Gt R : List (Runtime.Task (
 /-- `Task.return_` of a task with records on both sides, its caller a host record. -/
 theorem runs_returnMT {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     {Gt R : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc CL : List (Caller (E3 P))}
-    {c : CallId} {args : List Val} (vs : List Val) (ht : m.store.tasks = Gt ++ [y] ++ R)
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y] ++ R)
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.host c args 0] ++ CL) :
     RunsQ (D P) th (Task.return_ ⟨Gt.length⟩ vs) m
@@ -97,7 +97,7 @@ theorem runs_returnMT {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     exact getElem?_mid
   have hor : RunsQ (D P) th (D P (.onResolve ⟨Gc.length⟩ (some vs))) m
       [.tau, .obs (.resolved c (some vs))] .unit (m.resolve c (some vs)) := by
-    show RunsQ _ _ (callerOnResolve Silmaril.Wasm.Component.Limits.spec Quirks.none ⟨Gc.length⟩ (some vs)) _ _ _ _
+    show RunsQ _ _ (callerOnResolve Limits.spec Quirks.none ⟨Gc.length⟩ (some vs)) _ _ _ _
     unfold callerOnResolve
     exact RunsQ.bind (runs_getObj ArenaField.callers _ _ hgc)
       (RunsQ.bind (tr₁ := [.obs (.resolved c (some vs))]) (.emit (.pure _ _)) (.pure _ _))
@@ -183,7 +183,7 @@ theorem runs_ite_loopM {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
 variable (P) in
 /-- The store at the return of a call whose core phase appended the records `Xt`, `Xth`, `Xc`. -/
 noncomputable def tStoreX (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState)
-    (G : ToyGarb P) (k : ℕ) (args : List Val) (ιx : InstState) (Hx : List ResourceHandle)
+    (G : ToyGarb P) (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) (ιx : InstState) (Hx : List ResourceHandle)
     (cs : (core3P P).Store (CanonHost (core3P P))) (Xt : List (Runtime.Task (E3 P)))
     (Xth : List Runtime.Thread) (Xc : List (Caller (E3 P))) : CStore (E3 P) :=
   { tStore₄ P ft c ι ι' G k args ιx Hx with
@@ -196,7 +196,7 @@ variable (P) in
 /-- The leftovers after a call whose core phase appended `Xt`, `Xth`, `Xc`, with the
 saved-continuation slots `C`. -/
 noncomputable def nextGX (G : ToyGarb P) (ft : WIT.FuncType Empty RtId) (k j addr : ℕ)
-    (args rs : List Val) (H : List ResourceHandle) (Xt : List (Runtime.Task (E3 P)))
+    (args rs : List Silmaril.Wasm.Component.Reference.Val) (H : List ResourceHandle) (Xt : List (Runtime.Task (E3 P)))
     (Xth : List Runtime.Thread) (Xc : List (Caller (E3 P)))
     (C : List (Option (Activation (E3 P) Unit))) : ToyGarb P :=
   { nextG P G ft k j addr args rs H with
@@ -206,14 +206,14 @@ noncomputable def nextGX (G : ToyGarb P) (ft : WIT.FuncType Empty RtId) (k j add
     conts := C }
 
 theorem nextGX_ok {G : ToyGarb P} (hG : G.Ok) (ft : WIT.FuncType Empty RtId) (k j addr : ℕ)
-    (args rs : List Val) (H : List ResourceHandle) (Xt : List (Runtime.Task (E3 P)))
+    (args rs : List Silmaril.Wasm.Component.Reference.Val) (H : List ResourceHandle) (Xt : List (Runtime.Task (E3 P)))
     (Xth : List Runtime.Thread) (Xc : List (Caller (E3 P)))
     (C : List (Option (Activation (E3 P) Unit))) :
     (nextGX P G ft k j addr args rs H Xt Xth Xc C).Ok :=
   nextG_ok hG ft k j addr args rs H
 
 theorem result?_nextGX {G : ToyGarb P} (hG : G.Ok) {k : ℕ} (hk : ∀ x ∈ G.pending, x.1 ≠ ⟨k⟩)
-    (c : ℕ) (ι : InstState) (ft : WIT.FuncType Empty RtId) (j addr : ℕ) (args rs : List Val)
+    (c : ℕ) (ι : InstState) (ft : WIT.FuncType Empty RtId) (j addr : ℕ) (args rs : List Silmaril.Wasm.Component.Reference.Val)
     (H : List ResourceHandle) (Xt : List (Runtime.Task (E3 P))) (Xth : List Runtime.Thread)
     (Xc : List (Caller (E3 P))) (C : List (Option (Activation (E3 P) Unit))) :
     (toyCfgX P c ι (nextGX P G ft k j addr args rs H Xt Xth Xc C)).result? ⟨k⟩ =
@@ -225,13 +225,13 @@ theorem result?_nextGX {G : ToyGarb P} (hG : G.Ok) {k : ℕ} (hk : ∀ x ∈ G.p
 /-- `toy_callAt` whose return half allows records `Xt`, `Xth`, `Xc` appended to the task, thread
 and caller arenas during the core phase, and any saved-continuation slots `C`. -/
 theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr : ℕ)
-    (args : List Val) (xs : List FlatValue) (c : ℕ) (ι ι' ι₄ : InstState) (G : ToyGarb P) (k : ℕ)
+    (args : List Silmaril.Wasm.Component.Reference.Val) (xs : List FlatValue) (c : ℕ) (ι ι' ι₄ : InstState) (G : ToyGarb P) (k : ℕ)
     (H₄ : List ResourceHandle) (trL : List (Label (E3 P) Unit))
     (hf : (toyFuncs P)[j]? = some (.lifted (show (core3P P).FuncAddr from addr) ft {} ⟨0⟩))
     (hasync : ft.async_ = false)
     (hadd : ι.addThread? ⟨G.threads.length⟩ = some (1, ι'))
     (hlow : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ft c ι ι' G k args →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none) m trL xs
         { m with store := tStore₄ P ft c ι ι' G k args ι₄ H₄ }) :
@@ -239,18 +239,18 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
       th = some ⟨G.threads.length⟩ ∧ M₀.ctl =
         ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat addr xs) K, segs⟩ :: rest ∧
       M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧
-      (∀ ys, ∃ (β : Type) (f : List Val × FlatCursor → Canon.P (E3 P) Unit β)
-        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      (∀ ys, ∃ (β : Type) (f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit β)
+        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ft) >>= f) >>= g) ∧
       ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
-        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Val) (cur : FlatCursor)
+        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Silmaril.Wasm.Component.Reference.Val) (cur : FlatCursor)
         (trF : List (Label (E3 P) Unit)) (c' : ℕ) (Xt : List (Runtime.Task (E3 P)))
         (Xth : List Runtime.Thread) (Xc : List (Caller (E3 P)))
         (C : List (Option (Activation (E3 P) Unit))),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = tStoreX P ft c ι ι' G k args ιc Hc cs' Xt Xth Xc →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ft)) m trF (ws, cur)
             { m with store := tStoreX P ft c ι ι' G k args ι₅ H₅ cs' Xt Xth Xc }) →

@@ -134,7 +134,7 @@ theorem dts_get (i : Nat) (hi : i < 7) : (allocTypes types)[i]? = some (D i) := 
 def cbF (P : Prog) : Func := ⟨ix 2, [i32, i32, i32, i32, i64], sCode P.cb ++ [.unreachable]⟩
 def enF (P : Prog) : Func := ⟨ix 6, [i32, i32, i32, i32, i32, i32, i64], sCode P.entry ++ [.unreachable]⟩
 def reF : Func := ⟨ix 5, [], [c32 0x8000]⟩
-def gT : CGlobalType := ⟨.var, Silmaril.Wasm.Validation.Ty.substAll (liftVal i32) ((allocTypes types).map Silmaril.Wasm.Validation.Ty.dt)⟩
+def gT : CGlobalType := ⟨.var, Ty.substAll (liftVal i32) ((allocTypes types).map Ty.dt)⟩
 
 theorem ix_type_toNat (n : Nat) (hn : n < 2 ^ 32) : Idx.toNat (ix (k := .type_) n) = n :=
   Nat.mod_eq_of_lt hn

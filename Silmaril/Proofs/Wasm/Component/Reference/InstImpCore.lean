@@ -59,7 +59,7 @@ theorem mapH_keepIf {Q : H → Prop} {s : Store H} (hs : HostsSat Q s) :
 /-- **Instantiation adds no host code**: a property of every host function of the start store
 holds of every host function of the instantiated store. -/
 theorem hostsSat_instantiateOnce {Q : H → Prop} {s s' : Store H} {m : Module}
-    {xas : List ExternAddr} {f : Frame} {st : Option FuncIdx} (hs : HostsSat Q s)
+    {xas : List ExternAddr} {f : Silmaril.Wasm.Execution.Core.Frame} {st : Option FuncIdx} (hs : HostsSat Q s)
     (h : instantiateOnce? s m xas = some (s', f, st)) : HostsSat Q s' := by
   have e₁ : instantiateOnce? (Store.mapH (keepIf Q) s) m xas =
       some (Store.mapH (keepIf Q) s', f, st) := by
@@ -262,7 +262,7 @@ theorem lookup_mapIdx_val {α β : Type} (name : α → String) (val : Nat → �
 `addrs.getD k 0`**, for a module instantiated in any store. -/
 theorem lookup_funcExport_gen {H : Type} {m : Module} {exports : CoreIface}
     (hnames : Silmaril.Wasm.Component.Reference.funcExportNames m = exports.map (·.1))
-    {mt : Validation.CModuleType} {f' : Frame} {s cs : Store H} {xas : List ExternAddr}
+    {mt : Validation.CModuleType} {f' : Silmaril.Wasm.Execution.Core.Frame} {s cs : Store H} {xas : List ExternAddr}
     {st : Option FuncIdx} {addrs : List Nat} (hv : Validation.validate? m = some mt)
     (ho : instantiateOnce? s m xas = some (cs, f', st))
     (ha : Silmaril.Wasm.Game.exportFuncAddrs f'.module = addrs) {k : Nat} {n : String}
@@ -323,7 +323,7 @@ structure CoreFactsI (c : SimpleI) (I : Silmaril.Wasm.Game.ScalarInstance)
   tramp : c.TrampOk cs
   prepare : (core3P Pf).prepare? (trampStore Pf c.imports) c.mod.mod
     ((List.range c.imports.length).map ExternAddr.func) = some (cs, ci, none)
-  imports : ∀ f : Frame (core3P Pf), f.coreInstance? 0 = some (envExports c.mod.imports) →
+  imports : ∀ f : Silmaril.Wasm.Execution.Core.Frame (core3P Pf), f.coreInstance? 0 = some (envExports c.mod.imports) →
     coreImportsFor? (trampStore Pf c.imports) c.mod.mod [("env", 0)] f =
       some ((List.range c.imports.length).map ExternAddr.func)
   lookup : ∀ x ∈ c.exports, lookupExport? ((core3P Pf).exports ci) (coreNameI c x) =
@@ -429,7 +429,7 @@ theorem externTypeE_tramp {c : SimpleI} (hi : c.Inst) (i : Nat) (hi' : i < c.imp
 
 /-- **The import vector of the core instantiation** in the trampoline store: import `i` of the
 module is the trampoline `i`, exported by the inline core instance under its name. -/
-theorem coreImportsFor_tramp {c : SimpleI} (hc : c.Good) (hi : c.Inst) (fr : Frame (core3P Pf))
+theorem coreImportsFor_tramp {c : SimpleI} (hc : c.Good) (hi : c.Inst) (fr : Silmaril.Wasm.Execution.Core.Frame (core3P Pf))
     (hfr : fr.coreInstance? 0 = some (envExports c.mod.imports)) :
     coreImportsFor? (trampStore Pf c.imports) c.mod.mod [("env", 0)] fr =
       some ((List.range c.imports.length).map ExternAddr.func) := by

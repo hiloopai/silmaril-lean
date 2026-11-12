@@ -183,14 +183,14 @@ theorem forM_pure {β : Type} : ∀ xs : List β, xs.forM (fun _ => (pure () : T
     show ((pure () : TM Unit) >>= fun _ => xs.forM fun _ => (pure () : TM Unit)) = pure ()
     rw [pure_bind, forM_pure xs]
 
-theorem export_desc {e : Export} {d : ExternDesc} (h : e.desc = some d) :
+theorem export_desc {e : Silmaril.Wasm.Component.Binary.Export} {d : ExternDesc} (h : e.desc = some d) :
     export_ e = runDecl (.inst (.export e.name d)) := by
   obtain ⟨n, x, desc⟩ := e
   simp only at h
   subst h
   rfl
 
-theorem exports_eq : ∀ (xs : List Export) (l : List ComponentDecl),
+theorem exports_eq : ∀ (xs : List Silmaril.Wasm.Component.Binary.Export) (l : List ComponentDecl),
     xs.mapM (fun e => e.desc.map fun d => ComponentDecl.inst (.export e.name d)) = some l →
     xs.forM export_ = l.forM runDecl
   | [], l, h => by simp at h; subst h; rfl

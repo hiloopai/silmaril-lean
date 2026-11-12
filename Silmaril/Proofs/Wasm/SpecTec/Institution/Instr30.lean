@@ -297,8 +297,8 @@ theorem instrs_holds {is : List Instr} {it : InstrType} (hd : (ISen.instrs is it
 /-- `unreachable drop` at `[] -> []`, through the intermediate stack `[i32]`: a `FragOk`
 derivation that uses `Instrs_ok/seq`. -/
 theorem fragOk_unreachableDrop : FragOk [.unreachable, .drop] (.plain [] []) :=
-  have hb : ∀ t ∈ [Silmaril.Wasm.Validation.Ty.i32], Round4.tyBnd t = true := fun _ ht => (List.mem_singleton.1 ht) ▸ rfl
-  have hok : ResultOk {} [Silmaril.Wasm.Validation.Ty.i32] := fun _ ht => (List.mem_singleton.1 ht) ▸ TyOk.num _
+  have hb : ∀ t ∈ [Ty.i32], Round4.tyBnd t = true := fun _ ht => (List.mem_singleton.1 ht) ▸ rfl
+  have hok : ResultOk {} [Ty.i32] := fun _ ht => (List.mem_singleton.1 ht) ▸ TyOk.num _
   FragOk.seq (is₁ := [.unreachable]) (is₂ := [.drop]) hb
     (.instr rfl ⟨fun _ h => absurd h List.not_mem_nil, hb⟩
       (.parametric (.unreachable ⟨fun _ h => absurd h List.not_mem_nil, hok,
@@ -335,7 +335,7 @@ theorem not_dropNested : ¬ dropNested.Holds := by
   | reference h => nomatch h
 
 /-- `REF NULL D_out` is bounded, as a value type. -/
-theorem tyBnd_nestedV : Round4.tyBnd (Silmaril.Wasm.Validation.Ty.refv Round5.RefOk.nestedRT) = true :=
+theorem tyBnd_nestedV : Round4.tyBnd (Ty.refv Round5.RefOk.nestedRT) = true :=
   Round6.RefOkB.tyBnd_nested
 
 /-- `drop` at `REF NULL D_out` is in the domain. -/

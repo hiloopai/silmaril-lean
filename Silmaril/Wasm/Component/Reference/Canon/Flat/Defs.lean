@@ -34,7 +34,7 @@ as specification programs in `P E σ` over closed types `WIT.ClosedType RtId`:
 | `lowerFlatAt` (`flags`) | `lower_flat_flags` (L2034-2036) |
 | `liftFlatValues lim q cx max vi ts` | `lift_flat_values` (L2040-2049) |
 | `lowerFlatValues lim q cx max vs ts outParam` | `lower_flat_values` (L2051-2070) |
-| `unpackCallbackResult` (`Async.unpackCallbackResult`) | `unpack_callback_result` (L2153-2159) |
+| `unpackCallbackResult` (`AsyncRef.unpackCallbackResult`) | `unpack_callback_result` (L2153-2159) |
 | `ABI.maxFlatParams`/`maxFlatAsyncParams`/`maxFlatResults` (reused) | `MAX_FLAT_*` (L1765-1767) |
 
 Flat types are the `ABI.flatten p` (REF `flatten_type`, with `ABI.variantPayload` the
@@ -567,9 +567,9 @@ def lowerFlatValues (lim : Limits) (q : Quirks) (cx : LiftLowerContext E) (max :
 
 /-- REF `unpack_callback_result(packed)` (L2153-2159): `code = packed & 0xf`,
 `trap_if(code > CallbackCode.MAX)` (`unsupportedCallbackCode`),
-`waitable_set_index = packed >> 4` (`Async.unpackCallbackResult`). -/
-def unpackCallbackResult (packed : Nat) : P E σ (Async.CallbackCode × Nat) :=
-  orTrap .unsupportedCallbackCode (Async.unpackCallbackResult packed)
+`waitable_set_index = packed >> 4` (`AsyncRef.unpackCallbackResult`). -/
+def unpackCallbackResult (packed : Nat) : P E σ (AsyncRef.CallbackCode × Nat) :=
+  orTrap .unsupportedCallbackCode (AsyncRef.unpackCallbackResult packed)
 
 /-! ## Unfolding equations of the entry points -/
 

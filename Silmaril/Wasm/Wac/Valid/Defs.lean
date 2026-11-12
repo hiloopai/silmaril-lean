@@ -475,18 +475,18 @@ def checkNames (g : CGraph) : Except VError Unit :=
 /-! ## 4. Borrows in results -/
 
 /-- `borrow` occurs in a type. -/
-inductive BorrowIn : Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive BorrowIn : Ty → Prop
   | borrow (r : TyRef) : BorrowIn (.borrow r)
-  | list {t : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn t → BorrowIn (.list t)
-  | fixedList {t : Silmaril.Wasm.Wit.Binary.Ty} {n : Nat} : BorrowIn t → BorrowIn (.fixedList t n)
-  | mapK {k v : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn k → BorrowIn (.map k v)
-  | mapV {k v : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn v → BorrowIn (.map k v)
-  | option {t : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn t → BorrowIn (.option t)
-  | resultOk {t : Silmaril.Wasm.Wit.Binary.Ty} {e : Option Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn t → BorrowIn (.result (some t) e)
-  | resultErr {o : Option Silmaril.Wasm.Wit.Binary.Ty} {t : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn t → BorrowIn (.result o (some t))
-  | tuple {t : Silmaril.Wasm.Wit.Binary.Ty} {ts : List Silmaril.Wasm.Wit.Binary.Ty} : t ∈ ts → BorrowIn t → BorrowIn (.tuple ts)
-  | future {t : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn t → BorrowIn (.future (some t))
-  | stream {t : Silmaril.Wasm.Wit.Binary.Ty} : BorrowIn t → BorrowIn (.stream (some t))
+  | list {t : Ty} : BorrowIn t → BorrowIn (.list t)
+  | fixedList {t : Ty} {n : Nat} : BorrowIn t → BorrowIn (.fixedList t n)
+  | mapK {k v : Ty} : BorrowIn k → BorrowIn (.map k v)
+  | mapV {k v : Ty} : BorrowIn v → BorrowIn (.map k v)
+  | option {t : Ty} : BorrowIn t → BorrowIn (.option t)
+  | resultOk {t : Ty} {e : Option Ty} : BorrowIn t → BorrowIn (.result (some t) e)
+  | resultErr {o : Option Ty} {t : Ty} : BorrowIn t → BorrowIn (.result o (some t))
+  | tuple {t : Ty} {ts : List Ty} : t ∈ ts → BorrowIn t → BorrowIn (.tuple ts)
+  | future {t : Ty} : BorrowIn t → BorrowIn (.future (some t))
+  | stream {t : Ty} : BorrowIn t → BorrowIn (.stream (some t))
 
 /-- A function type occurs in a kind. -/
 inductive SigIn : Kind → Sig → Prop
@@ -505,7 +505,7 @@ def NoBorrowRes (g : CGraph) : Prop :=
 
 mutual
 /-- Whether `borrow` occurs in a type. -/
-def hasBorrow : Silmaril.Wasm.Wit.Binary.Ty → Bool
+def hasBorrow : Ty → Bool
   | .borrow _ => true
   | .list t | .fixedList t _ | .option t => hasBorrow t
   | .map k v => hasBorrow k || hasBorrow v
@@ -514,11 +514,11 @@ def hasBorrow : Silmaril.Wasm.Wit.Binary.Ty → Bool
   | .future t | .stream t => hasBorrowOpt t
   | _ => false
 /-- `hasBorrow` of an optional type. -/
-def hasBorrowOpt : Option Silmaril.Wasm.Wit.Binary.Ty → Bool
+def hasBorrowOpt : Option Ty → Bool
   | none => false
   | some t => hasBorrow t
 /-- `hasBorrow` of a list of types. -/
-def hasBorrowList : List Silmaril.Wasm.Wit.Binary.Ty → Bool
+def hasBorrowList : List Ty → Bool
   | [] => false
   | t :: ts => hasBorrow t || hasBorrowList ts
 end
@@ -554,51 +554,51 @@ def nomOf (A : NomTable) (r : TyRef) : Option Nominal :=
 mutual
 /-- **Structural equality of value types** under the tables `A` (left) and `B`
 (right). -/
-inductive TyEqS : NomTable → NomTable → Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive TyEqS : NomTable → NomTable → Ty → Ty → Prop
   | prim {A B : NomTable} (p : Silmaril.Wasm.Component.Binary.PrimValType) :
       TyEqS A B (.prim p) (.prim p)
   | refOpaque {A B : NomTable} {r : TyRef} : nomOf A r = none ∨ nomOf B r = none →
       TyEqS A B (.ref r) (.ref r)
   | refNom {A B : NomTable} {r r' : TyRef} {a b : Nominal} : nomOf A r = some a →
       nomOf B r' = some b → NomEqS A B a b → TyEqS A B (.ref r) (.ref r')
-  | list {A B : NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty} : TyEqS A B t u → TyEqS A B (.list t) (.list u)
-  | fixedList {A B : NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty} (n : Nat) : TyEqS A B t u →
+  | list {A B : NomTable} {t u : Ty} : TyEqS A B t u → TyEqS A B (.list t) (.list u)
+  | fixedList {A B : NomTable} {t u : Ty} (n : Nat) : TyEqS A B t u →
       TyEqS A B (.fixedList t n) (.fixedList u n)
-  | map {A B : NomTable} {k v k' v' : Silmaril.Wasm.Wit.Binary.Ty} : TyEqS A B k k' → TyEqS A B v v' →
+  | map {A B : NomTable} {k v k' v' : Ty} : TyEqS A B k k' → TyEqS A B v v' →
       TyEqS A B (.map k v) (.map k' v')
-  | option {A B : NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty} : TyEqS A B t u → TyEqS A B (.option t) (.option u)
-  | result {A B : NomTable} {a b a' b' : Option Silmaril.Wasm.Wit.Binary.Ty} : OptEqS A B a a' → OptEqS A B b b' →
+  | option {A B : NomTable} {t u : Ty} : TyEqS A B t u → TyEqS A B (.option t) (.option u)
+  | result {A B : NomTable} {a b a' b' : Option Ty} : OptEqS A B a a' → OptEqS A B b b' →
       TyEqS A B (.result a b) (.result a' b')
-  | tuple {A B : NomTable} {ts us : List Silmaril.Wasm.Wit.Binary.Ty} : TysEqS A B ts us → TyEqS A B (.tuple ts) (.tuple us)
+  | tuple {A B : NomTable} {ts us : List Ty} : TysEqS A B ts us → TyEqS A B (.tuple ts) (.tuple us)
   | own {A B : NomTable} (r : TyRef) : TyEqS A B (.own r) (.own r)
   | borrow {A B : NomTable} (r : TyRef) : TyEqS A B (.borrow r) (.borrow r)
-  | future {A B : NomTable} {a a' : Option Silmaril.Wasm.Wit.Binary.Ty} : OptEqS A B a a' → TyEqS A B (.future a) (.future a')
-  | stream {A B : NomTable} {a a' : Option Silmaril.Wasm.Wit.Binary.Ty} : OptEqS A B a a' → TyEqS A B (.stream a) (.stream a')
+  | future {A B : NomTable} {a a' : Option Ty} : OptEqS A B a a' → TyEqS A B (.future a) (.future a')
+  | stream {A B : NomTable} {a a' : Option Ty} : OptEqS A B a a' → TyEqS A B (.stream a) (.stream a')
 /-- `TyEqS` of optional types. -/
-inductive OptEqS : NomTable → NomTable → Option Silmaril.Wasm.Wit.Binary.Ty → Option Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive OptEqS : NomTable → NomTable → Option Ty → Option Ty → Prop
   | none {A B : NomTable} : OptEqS A B none none
-  | some {A B : NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty} : TyEqS A B t u → OptEqS A B (some t) (some u)
+  | some {A B : NomTable} {t u : Ty} : TyEqS A B t u → OptEqS A B (some t) (some u)
 /-- `TyEqS` of lists of types, pointwise. -/
-inductive TysEqS : NomTable → NomTable → List Silmaril.Wasm.Wit.Binary.Ty → List Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive TysEqS : NomTable → NomTable → List Ty → List Ty → Prop
   | nil {A B : NomTable} : TysEqS A B [] []
-  | cons {A B : NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty} {ts us : List Silmaril.Wasm.Wit.Binary.Ty} : TyEqS A B t u → TysEqS A B ts us →
+  | cons {A B : NomTable} {t u : Ty} {ts us : List Ty} : TyEqS A B t u → TysEqS A B ts us →
       TysEqS A B (t :: ts) (u :: us)
 /-- Named types (record fields, parameters), pointwise with equal names. -/
-inductive FieldsEqS : NomTable → NomTable → List (String × Silmaril.Wasm.Wit.Binary.Ty) → List (String × Silmaril.Wasm.Wit.Binary.Ty) → Prop
+inductive FieldsEqS : NomTable → NomTable → List (String × Ty) → List (String × Ty) → Prop
   | nil {A B : NomTable} : FieldsEqS A B [] []
-  | cons {A B : NomTable} {n : String} {t u : Silmaril.Wasm.Wit.Binary.Ty} {fs gs : List (String × Silmaril.Wasm.Wit.Binary.Ty)} :
+  | cons {A B : NomTable} {n : String} {t u : Ty} {fs gs : List (String × Ty)} :
       TyEqS A B t u → FieldsEqS A B fs gs → FieldsEqS A B ((n, t) :: fs) ((n, u) :: gs)
 /-- Variant cases, pointwise with equal names and the same payloads. -/
-inductive CasesEqS : NomTable → NomTable → List (String × Option Silmaril.Wasm.Wit.Binary.Ty) → List (String × Option Silmaril.Wasm.Wit.Binary.Ty) → Prop
+inductive CasesEqS : NomTable → NomTable → List (String × Option Ty) → List (String × Option Ty) → Prop
   | nil {A B : NomTable} : CasesEqS A B [] []
-  | cons {A B : NomTable} {n : String} {t u : Option Silmaril.Wasm.Wit.Binary.Ty} {cs ds : List (String × Option Silmaril.Wasm.Wit.Binary.Ty)} :
+  | cons {A B : NomTable} {n : String} {t u : Option Ty} {cs ds : List (String × Option Ty)} :
       OptEqS A B t u → CasesEqS A B cs ds → CasesEqS A B ((n, t) :: cs) ((n, u) :: ds)
 /-- **Structural equality of nominal definitions** (wac's checker: the same labels in
 the same order, structurally equal types). -/
 inductive NomEqS : NomTable → NomTable → Nominal → Nominal → Prop
-  | record {A B : NomTable} {fs gs : List (String × Silmaril.Wasm.Wit.Binary.Ty)} : FieldsEqS A B fs gs →
+  | record {A B : NomTable} {fs gs : List (String × Ty)} : FieldsEqS A B fs gs →
       NomEqS A B (.record fs) (.record gs)
-  | variant {A B : NomTable} {cs ds : List (String × Option Silmaril.Wasm.Wit.Binary.Ty)} : CasesEqS A B cs ds →
+  | variant {A B : NomTable} {cs ds : List (String × Option Ty)} : CasesEqS A B cs ds →
       NomEqS A B (.variant cs) (.variant ds)
   | enum {A B : NomTable} (ls : List String) : NomEqS A B (.enum ls) (.enum ls)
   | flags {A B : NomTable} (ls : List String) : NomEqS A B (.flags ls) (.flags ls)
@@ -614,7 +614,7 @@ compared structurally (`a` read in `A`, `b` in `B`; the tables swap for the
 contravariant imports of components). -/
 inductive SubS : NomTable → NomTable → Kind → Kind → Prop
   | func {A B : NomTable} {s s' : Sig} : SigEqS A B s s' → SubS A B (.func s) (.func s')
-  | value {A B : NomTable} {t u : Silmaril.Wasm.Wit.Binary.Ty} : TyEqS A B t u → SubS A B (.value t) (.value u)
+  | value {A B : NomTable} {t u : Ty} : TyEqS A B t u → SubS A B (.value t) (.value u)
   | resource {A B : NomTable} (r : String) : SubS A B (.resource r) (.resource r)
   | type {A B : NomTable} {a b : Kind} : SubS A B a b → SubS A B (.type a) (.type b)
   | inst {A B : NomTable} {i j : Option String} {as bs : Externs} : SubExS A B as bs →
@@ -632,7 +632,7 @@ end
 
 mutual
 /-- Decide (soundly) `TyEqS`. -/
-def tyEqS : Nat → NomTable → NomTable → Silmaril.Wasm.Wit.Binary.Ty → Silmaril.Wasm.Wit.Binary.Ty → Bool
+def tyEqS : Nat → NomTable → NomTable → Ty → Ty → Bool
   | 0, _, _, _, _ => false
   | n + 1, A, B, t, u => match t, u with
     | .prim p, .prim q => p == q
@@ -648,25 +648,25 @@ def tyEqS : Nat → NomTable → NomTable → Silmaril.Wasm.Wit.Binary.Ty → Si
     | .future a, .future a' | .stream a, .stream a' => optEqS n A B a a'
     | _, _ => false
 /-- Decide (soundly) `OptEqS`. -/
-def optEqS : Nat → NomTable → NomTable → Option Silmaril.Wasm.Wit.Binary.Ty → Option Silmaril.Wasm.Wit.Binary.Ty → Bool
+def optEqS : Nat → NomTable → NomTable → Option Ty → Option Ty → Bool
   | 0, _, _, _, _ => false
   | _ + 1, _, _, none, none => true
   | n + 1, A, B, some t, some u => tyEqS n A B t u
   | _ + 1, _, _, _, _ => false
 /-- Decide (soundly) `TysEqS`. -/
-def tysEqS : Nat → NomTable → NomTable → List Silmaril.Wasm.Wit.Binary.Ty → List Silmaril.Wasm.Wit.Binary.Ty → Bool
+def tysEqS : Nat → NomTable → NomTable → List Ty → List Ty → Bool
   | 0, _, _, _, _ => false
   | _ + 1, _, _, [], [] => true
   | n + 1, A, B, t :: ts, u :: us => tyEqS n A B t u && tysEqS n A B ts us
   | _ + 1, _, _, _, _ => false
 /-- Decide (soundly) `FieldsEqS`. -/
-def fieldsEqS : Nat → NomTable → NomTable → List (String × Silmaril.Wasm.Wit.Binary.Ty) → List (String × Silmaril.Wasm.Wit.Binary.Ty) → Bool
+def fieldsEqS : Nat → NomTable → NomTable → List (String × Ty) → List (String × Ty) → Bool
   | 0, _, _, _, _ => false
   | _ + 1, _, _, [], [] => true
   | n + 1, A, B, (k, t) :: fs, (k', u) :: gs => k == k' && tyEqS n A B t u && fieldsEqS n A B fs gs
   | _ + 1, _, _, _, _ => false
 /-- Decide (soundly) `CasesEqS`. -/
-def casesEqS : Nat → NomTable → NomTable → List (String × Option Silmaril.Wasm.Wit.Binary.Ty) → List (String × Option Silmaril.Wasm.Wit.Binary.Ty) → Bool
+def casesEqS : Nat → NomTable → NomTable → List (String × Option Ty) → List (String × Option Ty) → Bool
   | 0, _, _, _, _ => false
   | _ + 1, _, _, [], [] => true
   | n + 1, A, B, (k, t) :: cs, (k', u) :: ds => k == k' && optEqS n A B t u && casesEqS n A B cs ds

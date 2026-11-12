@@ -55,7 +55,7 @@ def readyCfgL (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstStat
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
 def invokedAtL (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (h : σ) (k j : Nat)
-    (args : List Val) : Machine.Config (E3 P) σ :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config (E3 P) σ :=
   { readyCfgL cs ιe ιi fs G ST h with
     pending := G.pending ++ [(⟨k⟩, ⟨j⟩, args)]
     ctl := [.ofProg none (StepDefs.invokeProg ⟨k⟩ ⟨j⟩ args)] }
@@ -68,13 +68,13 @@ theorem after3_ready (cs : (core3P P).Store (CanonHost (core3P P)))
     after3 P cs fs h = readyCfgL cs {} {} fs Garb.empty [] h := rfl
 
 theorem invoked3_eq (cs : (core3P P).Store (CanonHost (core3P P)))
-    (fs : List (CFuncInst (core3P P))) (h : σ) (j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3P P))) (h : σ) (j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     invoked3 P cs fs h j args = invokedAtL cs {} {} fs Garb.empty [] h 0 j args := rfl
 
 /-- The host invocation from a configuration between linked calls. -/
 theorem invoke_invL {cs : (core3P P).Store (CanonHost (core3P P))} {ιe ιi : InstState}
     {fs : List (CFuncInst (core3P P))} {G : Garb P σ} {ST : List Subtask} {h₀ : σ} {k j : Nat}
-    {args : List Val} {m : Machine.Config (E3 P) σ}
+    {args : List Silmaril.Wasm.Component.Reference.Val} {m : Machine.Config (E3 P) σ}
     (h : Step prof (fun _ _ => false) (DI P impl) (readyCfgL cs ιe ιi fs G ST h₀)
       (.host (.invoke ⟨k⟩ ⟨j⟩ args)) m) :
     m = invokedAtL cs ιe ιi fs G ST h₀ k j args := by
@@ -233,7 +233,7 @@ theorem runs_enter3 {th : ThreadId} {m : Machine.Config (E3 P) σ}
 /-- `Task.return_` of a task with records on both sides, its caller a host record. -/
 theorem runs_returnM {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     {Gt R : List (Runtime.Task (E3 P))} {y : Runtime.Task (E3 P)} {Gc CL : List (Caller (E3 P))}
-    {c : CallId} {args : List Val} (vs : List Val) (ht : m.store.tasks = Gt ++ [y] ++ R)
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y] ++ R)
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.host c args 0] ++ CL) :
     RunsQ (DI P impl) th (Task.return_ ⟨Gt.length⟩ vs) m
@@ -326,7 +326,7 @@ def taskK₂ (x : SimpleExport) (Gc : List (Caller (E3 P))) (t : ThreadId) : Run
 /-- The store when the importer's thread of call `k` starts running. -/
 def storeK₁ (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (x : SimpleExport)
-    (k : Nat) (args : List Val) : CStore (E3 P) :=
+    (k : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P) :=
   { readyStoreL cs ιe ιi fs G ST with
     tasks := G.tasks ++ [taskK₀ x G.callers]
     threads := G.threads ++ [thread₁ G.tasks]
@@ -336,7 +336,7 @@ def storeK₁ (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstStat
 /-- The store once the thread entered its task (instance state `ιi'`). -/
 def storeK₂ (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi ιi' : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (x : SimpleExport)
-    (k : Nat) (args : List Val) : CStore (E3 P) :=
+    (k : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P) :=
   { storeK₁ cs ιe ιi fs G ST x k args with
     tasks := G.tasks ++ [taskK₁ x G.callers ⟨G.threads.length⟩]
     insts := [{}, ιe, ιi']
@@ -345,13 +345,13 @@ def storeK₂ (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi ιi' : Ins
 /-- The store when the importer's core activation starts. -/
 def storeK₃ (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi ιi' : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (x : SimpleExport)
-    (k : Nat) (args : List Val) : CStore (E3 P) :=
+    (k : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P) :=
   { storeK₂ cs ιe ιi ιi' fs G ST x k args with
     tasks := G.tasks ++ [(taskK₁ x G.callers ⟨G.threads.length⟩).withState .started] }
 
 /-- The leftovers after call `k` of function `j` on `args` with results `rs`, whose nested calls
 left the records `N`, with the saved-continuation slots `C`. -/
-def nextGarbL (G : Garb P σ) (x : SimpleExport) (k j : Nat) (args rs : List Val)
+def nextGarbL (G : Garb P σ) (x : SimpleExport) (k j : Nat) (args rs : List Silmaril.Wasm.Component.Reference.Val)
     (N : List (NRec P)) (C : List (Option (Activation (E3 P) σ))) : Garb P σ where
   tasks := G.tasks ++ [taskK₂ x G.callers ⟨G.threads.length⟩] ++ N.map (·.task)
   threads := G.threads ++ [{ (thread₁ G.tasks).withIndex 1 with status := .exited }] ++

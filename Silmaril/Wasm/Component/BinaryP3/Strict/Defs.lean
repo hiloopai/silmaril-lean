@@ -129,7 +129,7 @@ def Items.toCollected (i : Items) : Collected := ⟨[], i.aliases, i.names⟩
 
 mutual
 /-- The core modules, aliases and names of a section (nested components included). -/
-def Silmaril.Wasm.Component.Binary.Section.collect : Silmaril.Wasm.Component.Binary.Section → Collected
+def Section.collect : Section → Collected
   | .coreModule b => ⟨[b], [], []⟩
   | .component c => c.collect
   | .aliases xs => ⟨[], xs, []⟩
@@ -140,31 +140,31 @@ def Silmaril.Wasm.Component.Binary.Section.collect : Silmaril.Wasm.Component.Bin
   | _ => {}
 
 /-- The core modules, aliases and names of sections. -/
-def Silmaril.Wasm.Component.Binary.Section.collectList : List Silmaril.Wasm.Component.Binary.Section → Collected
+def Section.collectList : List Section → Collected
   | [] => {}
-  | s :: ss => s.collect.app (Silmaril.Wasm.Component.Binary.Section.collectList ss)
+  | s :: ss => s.collect.app (Section.collectList ss)
 
 /-- The core modules, aliases and names of a component. -/
-def Silmaril.Wasm.Component.Binary.Ast.collect : Silmaril.Wasm.Component.Binary.Ast → Collected
-  | .mk ss => Silmaril.Wasm.Component.Binary.Section.collectList ss
+def Ast.collect : Ast → Collected
+  | .mk ss => Section.collectList ss
 end
 
 /-- **The three rules hold in `c`**: every core module decodes, every alias is not an `outer`
 alias of another sort, every name has attributes of different kinds. -/
-def StrictOk (c : Silmaril.Wasm.Component.Binary.Ast) : Prop :=
+def StrictOk (c : Ast) : Prop :=
   c.collect.modules.all moduleOk = true ∧ c.collect.aliases.all aliasOk = true ∧
     c.collect.names.all nameOk = true
 
-instance (c : Silmaril.Wasm.Component.Binary.Ast) : Decidable (StrictOk c) := by unfold StrictOk; infer_instance
+instance (c : Ast) : Decidable (StrictOk c) := by unfold StrictOk; infer_instance
 
 /-- The checks, as a boolean. -/
-def strictOk (c : Silmaril.Wasm.Component.Binary.Ast) : Bool := decide (StrictOk c)
+def strictOk (c : Ast) : Bool := decide (StrictOk c)
 
 /-- The error of a component that breaks one of the rules (at the end of the input). -/
 def strictError (b : ByteArray) : Error := ⟨b.size, .other "strict: core module, outer alias sort or attribute check failed"⟩
 
 /-- **Strict parsing**: `parse`, then the three rules. -/
-def parseStrict (b : ByteArray) : Except Error Silmaril.Wasm.Component.Binary.Ast :=
+def parseStrict (b : ByteArray) : Except Error Ast :=
   match parse b with
   | .ok c => if strictOk c then .ok c else .error (strictError b)
   | .error e => .error e

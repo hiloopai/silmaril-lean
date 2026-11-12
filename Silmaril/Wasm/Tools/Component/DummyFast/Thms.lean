@@ -156,7 +156,7 @@ def KAgree (fuel : Nat) : Prop :=
 variable {ρ}
 
 theorem flatOptB_of {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} :
-    ∀ (o : Option Silmaril.Wasm.Wit.Binary.Ty) {l : List NumType} (lim : Nat), flatOptR ρ fuel sc o = .ok l →
+    ∀ (o : Option Ty) {l : List NumType} (lim : Nat), flatOptR ρ fuel sc o = .ok l →
       flatOptB ρ fuel sc o lim = .ok (cut lim l)
   | none, l, lim, h => by
     have hl : l = [] := by
@@ -170,7 +170,7 @@ theorem flatOptB_of {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} :
     exact hR sc t _ lim h
 
 /-- The cons step of `flatListB_of`, given the claim for the tail. -/
-theorem flatListB_cons {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} (t : Silmaril.Wasm.Wit.Binary.Ty) (ts : List Silmaril.Wasm.Wit.Binary.Ty)
+theorem flatListB_cons {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} (t : Ty) (ts : List Ty)
     (ih : ∀ {l : List NumType} (lim : Nat), flatListR ρ fuel sc ts = .ok l →
       flatListB ρ fuel sc ts lim = .ok (cut lim l))
     {l : List NumType} (lim : Nat) (h : flatListR ρ fuel sc (t :: ts) = .ok l) :
@@ -195,7 +195,7 @@ theorem flatListB_cons {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} (t : Silm
     rfl
 
 theorem flatListB_of {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} :
-    ∀ (ts : List Silmaril.Wasm.Wit.Binary.Ty) {l : List NumType} (lim : Nat), flatListR ρ fuel sc ts = .ok l →
+    ∀ (ts : List Ty) {l : List NumType} (lim : Nat), flatListR ρ fuel sc ts = .ok l →
       flatListB ρ fuel sc ts lim = .ok (cut lim l)
   | [], l, lim, h => by
     have hl : l = [] := by
@@ -205,7 +205,7 @@ theorem flatListB_of {fuel : Nat} (hR : RAgree ρ fuel) {sc : Scope} :
     rfl
   | t :: ts, _, lim, h => flatListB_cons hR t ts (fun lim' h' => flatListB_of hR ts lim' h') lim h
 
-theorem flatB_option {fuel : Nat} (hR : RAgree ρ fuel) (sc : Scope) (t : Silmaril.Wasm.Wit.Binary.Ty) {l : List NumType}
+theorem flatB_option {fuel : Nat} (hR : RAgree ρ fuel) (sc : Scope) (t : Ty) {l : List NumType}
     (lim : Nat) (h : flatR ρ (fuel + 1) sc (.option t) = .ok l) :
     flatB ρ (fuel + 1) sc (.option t) lim = .ok (cut lim l) := by
   rw [flatR] at h
@@ -235,7 +235,7 @@ theorem cut_result_some {lim : Nat} (h0 : lim ≠ 0) {a b : List NumType} (ha : 
     rw [List.length_cons, length_joinList]
   rw [ite_eq_left (by rw [hj]; omega)]
 
-theorem flatB_result {fuel : Nat} (hR : RAgree ρ fuel) (sc : Scope) (ok err : Option Silmaril.Wasm.Wit.Binary.Ty)
+theorem flatB_result {fuel : Nat} (hR : RAgree ρ fuel) (sc : Scope) (ok err : Option Ty)
     {l : List NumType} (lim : Nat) (h : flatR ρ (fuel + 1) sc (.result ok err) = .ok l) :
     flatB ρ (fuel + 1) sc (.result ok err) lim = .ok (cut lim l) := by
   rw [flatR] at h
@@ -294,7 +294,7 @@ theorem flatB_succ {fuel : Nat} (hR : RAgree ρ fuel) (hK : KAgree ρ fuel) :
   | .ref r => exact flatB_ref hK sc r lim h
 
 theorem flatKindB_variant {fuel : Nat} (hR : RAgree ρ fuel) (sc : Scope)
-    (cs : List (Silmaril.Wasm.Wit.Binary.Labeled (Option Silmaril.Wasm.Wit.Binary.Ty))) {l : List NumType} (lim : Nat)
+    (cs : List (Silmaril.Wasm.Wit.Binary.Labeled (Option Ty))) {l : List NumType} (lim : Nat)
     (h : flatKindR ρ (fuel + 1) sc (.variant cs) = .ok l) :
     flatKindB ρ (fuel + 1) sc (.variant cs) lim = .ok (cut lim l) := by
   rw [flatKindR] at h
@@ -351,7 +351,7 @@ theorem agree_all : ∀ fuel, RAgree ρ fuel ∧ KAgree ρ fuel
     have ih : RAgree ρ fuel ∧ KAgree ρ fuel := agree_all fuel
     ⟨flatB_succ ih.1 ih.2, flatKindB_succ ih.1⟩
 
-theorem flatB_eq {fuel : Nat} {sc : Scope} {t : Silmaril.Wasm.Wit.Binary.Ty} {l : List NumType} (lim : Nat)
+theorem flatB_eq {fuel : Nat} {sc : Scope} {t : Ty} {l : List NumType} (lim : Nat)
     (h : flatR ρ fuel sc t = .ok l) : flatB ρ fuel sc t lim = .ok (cut lim l) :=
   (agree_all fuel).1 sc t l lim h
 
@@ -359,11 +359,11 @@ theorem flatKindB_eq {fuel : Nat} {sc : Scope} {k : TyDefKind} {l : List NumType
     (h : flatKindR ρ fuel sc k = .ok l) : flatKindB ρ fuel sc k lim = .ok (cut lim l) :=
   (agree_all fuel).2 sc k l lim h
 
-theorem flatListB_eq {fuel : Nat} {sc : Scope} {ts : List Silmaril.Wasm.Wit.Binary.Ty} {l : List NumType} (lim : Nat)
+theorem flatListB_eq {fuel : Nat} {sc : Scope} {ts : List Ty} {l : List NumType} (lim : Nat)
     (h : flatListR ρ fuel sc ts = .ok l) : flatListB ρ fuel sc ts lim = .ok (cut lim l) :=
   flatListB_of (agree_all fuel).1 ts lim h
 
-theorem flatOptB_eq {fuel : Nat} {sc : Scope} {o : Option Silmaril.Wasm.Wit.Binary.Ty} {l : List NumType} (lim : Nat)
+theorem flatOptB_eq {fuel : Nat} {sc : Scope} {o : Option Ty} {l : List NumType} (lim : Nat)
     (h : flatOptR ρ fuel sc o = .ok l) : flatOptB ρ fuel sc o lim = .ok (cut lim l) :=
   flatOptB_of (agree_all fuel).1 o lim h
 

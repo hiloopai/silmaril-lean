@@ -44,7 +44,7 @@ abbrev D (P : Profile) (V : Silmaril.Wasm.Module → Prop)
   (refHostR P V IR).dispatch
 
 /-- The host caller record of top-level call `0`. -/
-def hostCaller (args : List Val) : Caller (E3 P V IR) := .host ⟨0⟩ args 0
+def hostCaller (args : List Silmaril.Wasm.Component.Reference.Val) : Caller (E3 P V IR) := .host ⟨0⟩ args 0
 
 theorem runs_allocObj {d : Call (E3 P V IR) → Canon.P (E3 P V IR) σ (Ret (E3 P V IR))} {α Id : Type}
     {th : Option ThreadId} (F : ArenaField (E3 P V IR) Id α) (x : α)
@@ -110,7 +110,7 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
     (hff : floatFreeList x.ty.results = true) {ys : List Flat}
     (hys : ys.map (·.type) = ValTy.flatList x.ty.results)
     (hnone : liftArgs x.ty.results ys = none)
-    {cx : LiftLowerContext (E3 P V IR)} {f : List Val × FlatCursor → Canon.P (E3 P V IR) Unit α}
+    {cx : LiftLowerContext (E3 P V IR)} {f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P V IR) Unit α}
     {g : α → Canon.P (E3 P V IR) Unit (Ret (E3 P V IR))} {M : Machine.Config (E3 P V IR) Unit}
     {segs : List (Seg (E3 P V IR) Unit)} {rest : List (Activation (E3 P V IR) Unit)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
@@ -144,7 +144,7 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
 
 /-- The configuration after the host invoked function `j` on `args` from `afterInst`. -/
 def invokedCfgH (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V IR)))
-    (fs : List (CFuncInst (core3R P V IR))) (h : σ) (j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3R P V IR))) (h : σ) (j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P V IR) σ :=
   { afterInstH P V IR cs fs h with
     pending := [] ++ [(⟨0⟩, ⟨j⟩, args)]
@@ -152,13 +152,13 @@ def invokedCfgH (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V
 
 /-- The configuration after the host invoked function `j` on `args` from `afterInst`. -/
 abbrev invokedCfg (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V IR)))
-    (fs : List (CFuncInst (core3R P V IR))) (j : Nat) (args : List Val) : Machine.Config (E3 P V IR) Unit :=
+    (fs : List (CFuncInst (core3R P V IR))) (j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config (E3 P V IR) Unit :=
   invokedCfgH P cs fs () j args
 
 /-- From `mS`, the call resolves with `rs`: a live run to a configuration with the host in
 control, results `rs`, from which a tick returns to itself. -/
 def Resolves (prof : ProfileKind) (P : Profile) (mS : Machine.Config (E3 P V IR) Unit)
-    (rs : List Val) : Prop :=
+    (rs : List Silmaril.Wasm.Component.Reference.Val) : Prop :=
   ∃ tr mE, LRun prof (refHostR P V IR).hr (D P V IR) mS tr mE ∧ mE.ctl = [] ∧
     mE.store.lockdown = false ∧ mE.result? ⟨0⟩ = some (some rs) ∧
     ∀ m₁, Step prof (refHostR P V IR).hr (D P V IR) mE (.host .tick) m₁ →
@@ -405,7 +405,7 @@ theorem holds_trapCfg {m : Machine.Config (E3 P V IR) Unit} {out : CallOutcome}
   | deadlock => exact absurd ho.1.2.1 (by simp)
 
 /-- After a resolving suffix, the only outcome is the resolution. -/
-theorem out_of_resolves {m₁ m' : Machine.Config (E3 P V IR) Unit} {rs : List Val}
+theorem out_of_resolves {m₁ m' : Machine.Config (E3 P V IR) Unit} {rs : List Silmaril.Wasm.Component.Reference.Val}
     {tr : List (Label (E3 P V IR) Unit)} {out : CallOutcome} (hR : Resolves prof P m₁ rs)
     (hs : Steps prof (refHostR P V IR).hr (D P V IR) m₁ tr m')
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨0⟩ ev)
@@ -439,7 +439,7 @@ theorem out_of_trapsNext {m₁ m' : Machine.Config (E3 P V IR) Unit}
     exact holds_trapCfg ho
 
 /-- A resolving suffix does not diverge. -/
-theorem resolves_not_diverges {m₁ : Machine.Config (E3 P V IR) Unit} {rs : List Val}
+theorem resolves_not_diverges {m₁ : Machine.Config (E3 P V IR) Unit} {rs : List Silmaril.Wasm.Component.Reference.Val}
     (hR : Resolves prof P m₁ rs) : ¬ Diverges prof (refHostR P V IR).hr (D P V IR) m₁ := by
   obtain ⟨tr₃, mE, hlr, hctl, -⟩ := hR
   exact fun hd => not_diverges_of_ctl_nil hctl (hlr.diverges hd)
@@ -539,7 +539,7 @@ theorem exit_not_diverges (C : CallCtx P c I cs x vs) {M₀ : Machine.Config (E3
   · exact (no_callout C.sub C.inst C.store rfl hcore C.lowered hy hst).elim
 
 /-- The host invocation from `afterInst`. -/
-theorem invoke_inv {fs : List (CFuncInst (core3R P V IR))} {j : Nat} {args : List Val}
+theorem invoke_inv {fs : List (CFuncInst (core3R P V IR))} {j : Nat} {args : List Silmaril.Wasm.Component.Reference.Val}
     {m : Machine.Config (E3 P V IR) Unit}
     (h : Step prof (refHostR P V IR).hr (D P V IR) (afterInst P V IR cs fs) (.host (.invoke ⟨0⟩ ⟨j⟩ args)) m) :
     m = invokedCfg P cs fs j args := by

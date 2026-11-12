@@ -62,7 +62,7 @@ def joinList : List NumType → List NumType → List NumType
 
 mutual
 /-- The flattening of a resolved WIT value type, or why it is outside the fragment. -/
-def flat : Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
+def flat : Ty → Except String (List NumType)
   | .prim p => pure (primFlat p)
   | .list _ => pure [ti32, ti32]
   | .map _ _ => pure [ti32, ti32]
@@ -78,11 +78,11 @@ def flat : Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
   | .fixedList _ _ => throw "fixed-size lists are not supported"
   | .ref r => throw s!"named type `{r.name}` is not supported (anonymous types only)"
 /-- An optional payload. -/
-def flatOpt : Option Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
+def flatOpt : Option Ty → Except String (List NumType)
   | none => pure []
   | some t => flat t
 /-- The concatenated flattening of a list of types. -/
-def flatList : List Silmaril.Wasm.Wit.Binary.Ty → Except String (List NumType)
+def flatList : List Ty → Except String (List NumType)
   | [] => pure []
   | t :: ts => do
     let a ← flat t
@@ -92,7 +92,7 @@ end
 
 mutual
 /-- Whether lifting or lowering a value of the type touches linear memory. -/
-def usesMem : Silmaril.Wasm.Wit.Binary.Ty → Bool
+def usesMem : Ty → Bool
   | .prim .string => true
   | .prim _ => false
   | .list _ | .map _ _ => true
@@ -101,10 +101,10 @@ def usesMem : Silmaril.Wasm.Wit.Binary.Ty → Bool
   | .tuple ts => usesMemList ts
   | .fixedList t _ => usesMem t
   | .stream _ | .future _ | .own _ | .borrow _ | .ref _ => false
-def usesMemOpt : Option Silmaril.Wasm.Wit.Binary.Ty → Bool
+def usesMemOpt : Option Ty → Bool
   | none => false
   | some t => usesMem t
-def usesMemList : List Silmaril.Wasm.Wit.Binary.Ty → Bool
+def usesMemList : List Ty → Bool
   | [] => false
   | t :: ts => usesMem t || usesMemList ts
 end
@@ -188,14 +188,14 @@ def taskReturnUsesMemory (f : Silmaril.Wasm.Wit.Binary.Func) : Except String Boo
 
 /-- An occurrence of a stream or future type in a signature, with its payload. -/
 inductive Chan where
-  | stream (t : Option Silmaril.Wasm.Wit.Binary.Ty)
-  | future (t : Option Silmaril.Wasm.Wit.Binary.Ty)
+  | stream (t : Option Ty)
+  | future (t : Option Ty)
   deriving Repr, DecidableEq, Inhabited
 
 mutual
 /-- The streams and futures of a type, outermost first, left to right (wit-component's
 `TypeInfo` order of `[stream-new-N]` indices). -/
-def chans : Silmaril.Wasm.Wit.Binary.Ty → List Chan
+def chans : Ty → List Chan
   | .stream t => .stream t :: chansOpt t
   | .future t => .future t :: chansOpt t
   | .list t | .option t | .fixedList t _ => chans t
@@ -203,10 +203,10 @@ def chans : Silmaril.Wasm.Wit.Binary.Ty → List Chan
   | .result ok err => chansOpt ok ++ chansOpt err
   | .tuple ts => chansList ts
   | .prim _ | .own _ | .borrow _ | .ref _ => []
-def chansOpt : Option Silmaril.Wasm.Wit.Binary.Ty → List Chan
+def chansOpt : Option Ty → List Chan
   | none => []
   | some t => chans t
-def chansList : List Silmaril.Wasm.Wit.Binary.Ty → List Chan
+def chansList : List Ty → List Chan
   | [] => []
   | t :: ts => chans t ++ chansList ts
 end

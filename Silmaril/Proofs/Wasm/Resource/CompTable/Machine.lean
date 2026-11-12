@@ -324,7 +324,7 @@ theorem machine_resScript_accepts {lim : Silmaril.Wasm.Component.Limits} {cs : L
     {rest : List (Activation E σ)} {m m' : Config E σ} {tr : List (Label E σ)}
     (h : Steps prof hr dispatch
       { m with ctl := ⟨th, .prog (resScript lim cs >>= f), segs⟩ :: rest } tr m')
-    {j : InstId} (hj : handles? m.store j = some Silmaril.Wasm.Component.Runtime.Table.empty) :
+    {j : InstId} (hj : handles? m.store j = some Table.empty) :
     (∃ q s₁, (∀ a s₂, SRun q s₁ a s₂ → SRun (resScript (σ := σ) lim cs) m.store a s₂) ∧
         m' = { m with store := s₁, ctl := ⟨th, .prog (q >>= f), segs⟩ :: rest }) ∨
       (m'.ctl = [] ∧ m'.store.lockdown = true) ∨

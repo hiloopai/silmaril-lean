@@ -39,7 +39,7 @@ theorem bind_ok {ε α β : Type} {x : Except ε α} {f : α → Except ε β} {
   | error e => cases h
   | ok a => exact ⟨a, rfl, h⟩
 
-/-- Silmaril.Wasm.Component.Binary.Export `f` is implemented by the module at the canonical core type. -/
+/-- Export `f` is implemented by the module at the canonical core type. -/
 inductive LiftOk (m : CoreMod) (f : Silmaril.Wasm.Wit.Binary.Func) : Lift → Prop
   | sync (t : CoreFuncTy) (pr : Option String) :
       f.async = false → liftCore f = .ok t → coreExport? m f.name = some t →

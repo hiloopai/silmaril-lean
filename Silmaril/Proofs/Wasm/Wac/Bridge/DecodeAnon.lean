@@ -40,16 +40,16 @@ attribute [local simp] ok_bind pure_ok
 
 /-- **Anonymous value types**: built from primitives by the anonymous type constructors
 (no named types, handles, records, variants, enums or flags). -/
-inductive Anon : Silmaril.Wasm.Wit.Binary.Ty → Prop
+inductive Anon : Ty → Prop
   | prim (p : PrimValType) : Anon (.prim p)
-  | list {t : Silmaril.Wasm.Wit.Binary.Ty} : Anon t → Anon (.list t)
-  | fixedList {t : Silmaril.Wasm.Wit.Binary.Ty} (n : Nat) : Anon t → Anon (.fixedList t n)
-  | map {k v : Silmaril.Wasm.Wit.Binary.Ty} : Anon k → Anon v → Anon (.map k v)
-  | option {t : Silmaril.Wasm.Wit.Binary.Ty} : Anon t → Anon (.option t)
-  | result {a b : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, Anon t) → (∀ t ∈ b, Anon t) → Anon (.result a b)
-  | tuple {ts : List Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ ts, Anon t) → Anon (.tuple ts)
-  | future {a : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, Anon t) → Anon (.future a)
-  | stream {a : Option Silmaril.Wasm.Wit.Binary.Ty} : (∀ t ∈ a, Anon t) → Anon (.stream a)
+  | list {t : Ty} : Anon t → Anon (.list t)
+  | fixedList {t : Ty} (n : Nat) : Anon t → Anon (.fixedList t n)
+  | map {k v : Ty} : Anon k → Anon v → Anon (.map k v)
+  | option {t : Ty} : Anon t → Anon (.option t)
+  | result {a b : Option Ty} : (∀ t ∈ a, Anon t) → (∀ t ∈ b, Anon t) → Anon (.result a b)
+  | tuple {ts : List Ty} : (∀ t ∈ ts, Anon t) → Anon (.tuple ts)
+  | future {a : Option Ty} : (∀ t ∈ a, Anon t) → Anon (.future a)
+  | stream {a : Option Ty} : (∀ t ∈ a, Anon t) → Anon (.stream a)
 
 /-- A function type over anonymous value types. -/
 def AnonSig (s : Sig) : Prop := (∀ p ∈ s.params, Anon p.2) ∧ ∀ t ∈ s.result, Anon t
@@ -79,43 +79,43 @@ theorem push_self (δ : DScope) (t : TInfo) : (δ.types.push t)[δ.types.size]? 
   simp
 
 /-- The encoded value type `v` decodes to `t` in every extension of `δ`. -/
-def DecVal (δ : DScope) (v : Silmaril.Wasm.Component.Binary.ValType) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
+def DecVal (δ : DScope) (v : Silmaril.Wasm.Component.Binary.ValType) (t : Ty) : Prop :=
   ∀ δ', Ext δ δ' → (decVal v).run δ' = .ok (t, δ')
 
-def DecOpt (δ : DScope) (v : Option Silmaril.Wasm.Component.Binary.ValType) (t : Option Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
+def DecOpt (δ : DScope) (v : Option Silmaril.Wasm.Component.Binary.ValType) (t : Option Ty) : Prop :=
   ∀ δ', Ext δ δ' → (decValOpt v).run δ' = .ok (t, δ')
 
-def DecVals (δ : DScope) (vs : List Silmaril.Wasm.Component.Binary.ValType) (ts : List Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
+def DecVals (δ : DScope) (vs : List Silmaril.Wasm.Component.Binary.ValType) (ts : List Ty) : Prop :=
   ∀ δ', Ext δ δ' → (vs.mapM decVal).run δ' = .ok (ts, δ')
 
 /-- The decoding of named parameters, as `decFunc` reads them. -/
-def decParam (p : String × Silmaril.Wasm.Component.Binary.ValType) : DM (String × Silmaril.Wasm.Wit.Binary.Ty) := do
+def decParam (p : String × Silmaril.Wasm.Component.Binary.ValType) : DM (String × Ty) := do
   let x ← decVal p.2
   pure (p.1, x)
 
-def DecPs (δ : DScope) (vs : List (String × Silmaril.Wasm.Component.Binary.ValType)) (ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)) : Prop :=
+def DecPs (δ : DScope) (vs : List (String × Silmaril.Wasm.Component.Binary.ValType)) (ps : List (String × Ty)) : Prop :=
   ∀ δ', Ext δ δ' → (vs.mapM decParam).run δ' = .ok (ps, δ')
 
 /-- The anonymous type definition `d` decodes to the value type `t`. -/
-def DecDef (δ : DScope) (d : DefValType) (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
+def DecDef (δ : DScope) (d : DefValType) (t : Ty) : Prop :=
   ∀ δ', Ext δ δ' → (decDefVal d).run δ' = .ok (.val t, δ')
 
-theorem DecVal.mono {δ δ' : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecVal δ v t) (e : Ext δ δ') :
+theorem DecVal.mono {δ δ' : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Ty} (h : DecVal δ v t) (e : Ext δ δ') :
     DecVal δ' v t := fun δ'' e' => h δ'' (ext_trans e e')
 
-theorem DecOpt.mono {δ δ' : DScope} {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Silmaril.Wasm.Wit.Binary.Ty} (h : DecOpt δ v t)
+theorem DecOpt.mono {δ δ' : DScope} {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Ty} (h : DecOpt δ v t)
     (e : Ext δ δ') : DecOpt δ' v t := fun δ'' e' => h δ'' (ext_trans e e')
 
-theorem DecVals.mono {δ δ' : DScope} {vs : List Silmaril.Wasm.Component.Binary.ValType} {ts : List Silmaril.Wasm.Wit.Binary.Ty} (h : DecVals δ vs ts)
+theorem DecVals.mono {δ δ' : DScope} {vs : List Silmaril.Wasm.Component.Binary.ValType} {ts : List Ty} (h : DecVals δ vs ts)
     (e : Ext δ δ') : DecVals δ' vs ts := fun δ'' e' => h δ'' (ext_trans e e')
 
-theorem DecPs.mono {δ δ' : DScope} {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)} {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}
+theorem DecPs.mono {δ δ' : DScope} {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)} {ps : List (String × Ty)}
     (h : DecPs δ vs ps) (e : Ext δ δ') : DecPs δ' vs ps := fun δ'' e' => h δ'' (ext_trans e e')
 
-theorem DecDef.mono {δ δ' : DScope} {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecDef δ d t) (e : Ext δ δ') :
+theorem DecDef.mono {δ δ' : DScope} {d : DefValType} {t : Ty} (h : DecDef δ d t) (e : Ext δ δ') :
     DecDef δ' d t := fun δ'' e' => h δ'' (ext_trans e e')
 
-theorem DecDef.det {δ : DScope} {d : DefValType} {t t' : Silmaril.Wasm.Wit.Binary.Ty} (h : DecDef δ d t) (h' : DecDef δ d t') :
+theorem DecDef.det {δ : DScope} {d : DefValType} {t t' : Ty} (h : DecDef δ d t) (h' : DecDef δ d t') :
     t = t' := by
   have e := (h δ (ext_refl δ)).symm.trans (h' δ (ext_refl δ))
   simp only [Except.ok.injEq, Prod.mk.injEq, TInfo.val.injEq] at e
@@ -124,54 +124,54 @@ theorem DecDef.det {δ : DScope} {d : DefValType} {t t' : Silmaril.Wasm.Wit.Bina
 theorem decVal_prim (δ : DScope) (p : PrimValType) : DecVal δ (.prim p) (.prim p) :=
   fun _ _ => rfl
 
-theorem decVal_idx {δ : DScope} {j : Nat} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : δ.types[j]? = some (.val t)) :
+theorem decVal_idx {δ : DScope} {j : Nat} {t : Ty} (h : δ.types[j]? = some (.val t)) :
     DecVal δ (.idx j) t := fun δ' e => by
   simp [decVal, typeAt_run (e _ _ h)]
 
 theorem decOpt_none (δ : DScope) : DecOpt δ none none := fun _ _ => rfl
 
-theorem decOpt_some {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecVal δ v t) :
+theorem decOpt_some {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Ty} (h : DecVal δ v t) :
     DecOpt δ (some v) (some t) := fun δ' e => by
   simp [decValOpt, h δ' e]
 
 theorem decVals_nil (δ : DScope) : DecVals δ [] [] := fun _ _ => rfl
 
-theorem decVals_cons {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {vs : List Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {ts : List Silmaril.Wasm.Wit.Binary.Ty}
+theorem decVals_cons {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {vs : List Silmaril.Wasm.Component.Binary.ValType} {t : Ty} {ts : List Ty}
     (h : DecVal δ v t) (hs : DecVals δ vs ts) : DecVals δ (v :: vs) (t :: ts) := fun δ' e => by
   simp [List.mapM_cons, h δ' e, hs δ' e]
 
 theorem decPs_nil (δ : DScope) : DecPs δ [] [] := fun _ _ => rfl
 
-theorem decPs_cons {δ : DScope} (n : String) {v : Silmaril.Wasm.Component.Binary.ValType} {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)} {t : Silmaril.Wasm.Wit.Binary.Ty}
-    {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)} (h : DecVal δ v t) (hs : DecPs δ vs ps) :
+theorem decPs_cons {δ : DScope} (n : String) {v : Silmaril.Wasm.Component.Binary.ValType} {vs : List (String × Silmaril.Wasm.Component.Binary.ValType)} {t : Ty}
+    {ps : List (String × Ty)} (h : DecVal δ v t) (hs : DecPs δ vs ps) :
     DecPs δ ((n, v) :: vs) ((n, t) :: ps) := fun δ' e => by
   simp [List.mapM_cons, decParam, h δ' e, hs δ' e]
 
 /-! ## One anonymous type definition -/
 
-theorem decDef_list {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecVal δ v t) :
+theorem decDef_list {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Ty} (h : DecVal δ v t) :
     DecDef δ (.list v) (.list t) := fun δ' e => by simp [decDefVal, h δ' e]
 
-theorem decDef_fixedList {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (n : Nat) (h : DecVal δ v t) :
+theorem decDef_fixedList {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Ty} (n : Nat) (h : DecVal δ v t) :
     DecDef δ (.fixedList v n) (.fixedList t n) := fun δ' e => by simp [decDefVal, h δ' e]
 
-theorem decDef_map {δ : DScope} {v w : Silmaril.Wasm.Component.Binary.ValType} {t u : Silmaril.Wasm.Wit.Binary.Ty} (h : DecVal δ v t) (h' : DecVal δ w u) :
+theorem decDef_map {δ : DScope} {v w : Silmaril.Wasm.Component.Binary.ValType} {t u : Ty} (h : DecVal δ v t) (h' : DecVal δ w u) :
     DecDef δ (.map v w) (.map t u) := fun δ' e => by simp [decDefVal, h δ' e, h' δ' e]
 
-theorem decDef_option {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Silmaril.Wasm.Wit.Binary.Ty} (h : DecVal δ v t) :
+theorem decDef_option {δ : DScope} {v : Silmaril.Wasm.Component.Binary.ValType} {t : Ty} (h : DecVal δ v t) :
     DecDef δ (.option v) (.option t) := fun δ' e => by simp [decDefVal, h δ' e]
 
-theorem decDef_result {δ : DScope} {v w : Option Silmaril.Wasm.Component.Binary.ValType} {t u : Option Silmaril.Wasm.Wit.Binary.Ty} (h : DecOpt δ v t)
+theorem decDef_result {δ : DScope} {v w : Option Silmaril.Wasm.Component.Binary.ValType} {t u : Option Ty} (h : DecOpt δ v t)
     (h' : DecOpt δ w u) : DecDef δ (.result v w) (.result t u) := fun δ' e => by
   simp [decDefVal, h δ' e, h' δ' e]
 
-theorem decDef_tuple {δ : DScope} {vs : List Silmaril.Wasm.Component.Binary.ValType} {ts : List Silmaril.Wasm.Wit.Binary.Ty} (h : DecVals δ vs ts) :
+theorem decDef_tuple {δ : DScope} {vs : List Silmaril.Wasm.Component.Binary.ValType} {ts : List Ty} (h : DecVals δ vs ts) :
     DecDef δ (.tuple vs) (.tuple ts) := fun δ' e => by simp [decDefVal, h δ' e]
 
-theorem decDef_future {δ : DScope} {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Silmaril.Wasm.Wit.Binary.Ty} (h : DecOpt δ v t) :
+theorem decDef_future {δ : DScope} {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Ty} (h : DecOpt δ v t) :
     DecDef δ (.future v) (.future t) := fun δ' e => by simp [decDefVal, h δ' e]
 
-theorem decDef_stream {δ : DScope} {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Silmaril.Wasm.Wit.Binary.Ty} (h : DecOpt δ v t) :
+theorem decDef_stream {δ : DScope} {v : Option Silmaril.Wasm.Component.Binary.ValType} {t : Option Ty} (h : DecOpt δ v t) :
     DecDef δ (.stream v) (.stream t) := fun δ' e => by simp [decDefVal, h δ' e]
 
 
@@ -275,12 +275,12 @@ theorem defVal_miss {d : DefValType} {σ : Scope} (hl : σ.vcache.lookup d = non
   simp [defVal, hl, defTy]
   rfl
 
-theorem reads_defVal {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {δ : DScope} (hd : DecDef δ d t) :
+theorem reads_defVal {d : DefValType} {t : Ty} {δ : DScope} (hd : DecDef δ d t) :
     Reads [.inst (.type (.val d))] δ { δ with types := δ.types.push (.val t) } := by
   refine ⟨instOnly_single _, fun rest is es => ?_⟩
   simp [decCDecls, decIDecl, decDefType, pushTy, hd δ (ext_refl δ)]
 
-theorem matchA_defV {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {σ : Scope} {δ : DScope} (hm : MatchA σ δ)
+theorem matchA_defV {d : DefValType} {t : Ty} {σ : Scope} {δ : DScope} (hm : MatchA σ δ)
     (hd : DecDef δ d t) : MatchA (defV σ d) { δ with types := δ.types.push (.val t) } := by
   refine matchA_push hm (.val t) rfl (fun s j hj => Or.inl hj) (fun d' j hj => ?_)
   rcases List.mem_append.1 hj with h | h
@@ -290,7 +290,7 @@ theorem matchA_defV {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {σ : Sco
     exact Or.inr ⟨rfl, t, rfl, hd⟩
 
 /-- **An anonymous type definition**: shared, or defined at the next index. -/
-theorem vsim_defVal {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {σ : Scope} {δ : DScope} (hm : MatchA σ δ)
+theorem vsim_defVal {d : DefValType} {t : Ty} {σ : Scope} {δ : DScope} (hm : MatchA σ δ)
     (hd : DecDef δ d t) : VSim (defVal d) σ δ (fun v δ' => DecVal δ' v t) := by
   cases hl : σ.vcache.lookup d with
   | some j =>
@@ -308,10 +308,10 @@ theorem vsim_defVal {d : DefValType} {t : Silmaril.Wasm.Wit.Binary.Ty} {σ : Sco
 /-! ## Value types -/
 
 /-- What `valTy_sim` proves of a type. -/
-def ValOk (t : Silmaril.Wasm.Wit.Binary.Ty) : Prop :=
+def ValOk (t : Ty) : Prop :=
   ∀ σ δ, MatchA σ δ → VSim (valTy t) σ δ (fun v δ' => DecVal δ' v t)
 
-theorem valTyOpt_sim {a : Option Silmaril.Wasm.Wit.Binary.Ty} (ih : ∀ t ∈ a, ValOk t) {σ : Scope} {δ : DScope}
+theorem valTyOpt_sim {a : Option Ty} (ih : ∀ t ∈ a, ValOk t) {σ : Scope} {δ : DScope}
     (hm : MatchA σ δ) : VSim (valTyOpt a) σ δ (fun v δ' => DecOpt δ' v a) := by
   cases a with
   | none =>
@@ -321,7 +321,7 @@ theorem valTyOpt_sim {a : Option Silmaril.Wasm.Wit.Binary.Ty} (ih : ∀ t ∈ a,
     rw [valTyOpt]
     exact vsim_bind (ih t rfl σ δ hm) fun v σ1 δ1 hm1 _ hv => vsim_pure hm1 (decOpt_some hv)
 
-theorem valTys_sim : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts, ValOk t) → ∀ {σ : Scope} {δ : DScope},
+theorem valTys_sim : ∀ {ts : List Ty}, (∀ t ∈ ts, ValOk t) → ∀ {σ : Scope} {δ : DScope},
     MatchA σ δ → VSim (valTys ts) σ δ (fun vs δ' => DecVals δ' vs ts)
   | [], _, σ, δ, hm => by
     rw [valTys]
@@ -335,7 +335,7 @@ theorem valTys_sim : ∀ {ts : List Silmaril.Wasm.Wit.Binary.Ty}, (∀ t ∈ ts,
         vsim_pure hm2 (decVals_cons (hv.mono e2) hvs)
 
 /-- **Every anonymous value type is encoded as a value type that decodes back to it.** -/
-theorem valTy_sim {t : Silmaril.Wasm.Wit.Binary.Ty} (h : Anon t) : ValOk t := by
+theorem valTy_sim {t : Ty} (h : Anon t) : ValOk t := by
   induction h with
   | prim p =>
     intro σ δ hm
@@ -379,7 +379,7 @@ theorem valTy_sim {t : Silmaril.Wasm.Wit.Binary.Ty} (h : Anon t) : ValOk t := by
 
 /-! ## Function types -/
 
-theorem paramTys_sim : ∀ {ps : List (String × Silmaril.Wasm.Wit.Binary.Ty)}, (∀ p ∈ ps, Anon p.2) → ∀ {σ : Scope}
+theorem paramTys_sim : ∀ {ps : List (String × Ty)}, (∀ p ∈ ps, Anon p.2) → ∀ {σ : Scope}
     {δ : DScope}, MatchA σ δ → VSim (paramTys ps) σ δ (fun vs δ' => DecPs δ' vs ps)
   | [], _, σ, δ, hm => by
     rw [paramTys]

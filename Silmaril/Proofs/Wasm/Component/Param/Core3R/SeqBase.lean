@@ -48,9 +48,9 @@ structure Garb (P : Profile) (V : Silmaril.Wasm.Module → Prop)
   /-- Saved-continuation slots. -/
   conts : List (Option (Activation (E3 P V IR) σ))
   /-- Pending top-level calls. -/
-  pending : List (CallId × FuncId × List Val)
+  pending : List (CallId × FuncId × List Silmaril.Wasm.Component.Reference.Val)
   /-- Resolutions. -/
-  results : List (CallId × Option (List Val))
+  results : List (CallId × Option (List Silmaril.Wasm.Component.Reference.Val))
   /-- `on_cancel`s. -/
   cancels : List (CallId × CancelRef)
 
@@ -82,7 +82,7 @@ structure Garb.Fresh (G : Garb P V IR σ) (k : Nat) : Prop where
 
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
 def invokedAtH (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
-    (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (h : σ) (k j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (h : σ) (k j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P V IR) σ :=
   { readyCfgH cs ι fs G h with
     pending := G.pending ++ [(⟨k⟩, ⟨j⟩, args)]
@@ -90,7 +90,7 @@ def invokedAtH (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : In
 
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
 abbrev invokedAt (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
-    (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR) (k j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR) (k j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P V IR) Unit :=
   invokedAtH cs ι fs G () k j args
 
@@ -242,8 +242,8 @@ theorem unregisterThreadSt_eq {s : CStore (E3 P V IR)} {Gt : List (Runtime.Task 
   rfl
 
 /-- A host frame of call `k` returning its `on_cancel` at the bottom of the chain. -/
-theorem hostFinish_cancel (m : Machine.Config (E3 P V IR) σ) (Pd : List (CallId × FuncId × List Val))
-    (c : CallId) (f : FuncId) (args : List Val) (cr : CancelRef)
+theorem hostFinish_cancel (m : Machine.Config (E3 P V IR) σ) (Pd : List (CallId × FuncId × List Silmaril.Wasm.Component.Reference.Val))
+    (c : CallId) (f : FuncId) (args : List Silmaril.Wasm.Component.Reference.Val) (cr : CancelRef)
     (hp : m.pending = Pd ++ [(c, f, args)]) :
     hostFinish (.cancel cr) [] m = ({ m with ctl := [] } : Machine.Config (E3 P V IR) σ).setCancel c cr := by
   have hl : lastCall? m = some c := by
@@ -324,7 +324,7 @@ theorem runs_enter {m : Machine.Config (E3 P V IR) σ} {Gt : List (Runtime.Task 
 /-! ## Caller records of top-level calls -/
 
 theorem runs_onStart {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
-    {Gc : List (Caller (E3 P V IR))} {c : CallId} {args : List Val}
+    {Gc : List (Caller (E3 P V IR))} {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val}
     (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (DI P impl (.onStart ⟨Gc.length⟩)) m [.tau, .obs (.started c)] (.vals args) m := by
   show RunsQ _ _ (callerOnStart Limits.spec Quirks.none ⟨Gc.length⟩) _ _ _ _
@@ -333,7 +333,7 @@ theorem runs_onStart {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
     (RunsQ.bind (tr₁ := [.obs (.started c)]) (.emit (.pure _ _)) (.pure _ _))
 
 theorem runs_onResolve {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
-    {Gc : List (Caller (E3 P V IR))} {c : CallId} {args : List Val} (r : Option (List Val))
+    {Gc : List (Caller (E3 P V IR))} {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (r : Option (List Silmaril.Wasm.Component.Reference.Val))
     (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (DI P impl (.onResolve ⟨Gc.length⟩ r)) m [.tau, .obs (.resolved c r)] .unit
       (m.resolve c r) := by
@@ -346,7 +346,7 @@ theorem runs_onResolve {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ
 
 theorem runs_start {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
     {Gt : List (Runtime.Task (E3 P V IR))} {y : Runtime.Task (E3 P V IR)} {Gc : List (Caller (E3 P V IR))}
-    {c : CallId} {args : List Val} (ht : m.store.tasks = Gt ++ [y])
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (Task.start ⟨Gt.length⟩) m [.tau, .tau, .tau, .tau, .obs (.started c), .tau] args
       { m with store := CStore.setTaskState ⟨Gt.length⟩ .started m.store } := by
@@ -366,7 +366,7 @@ theorem runs_trapIf {th : Option ThreadId} {b : Bool} (hb : b = false) (r : Trap
 
 theorem runs_return {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
     {Gt : List (Runtime.Task (E3 P V IR))} {y : Runtime.Task (E3 P V IR)} {Gc : List (Caller (E3 P V IR))}
-    {c : CallId} {args : List Val} (vs : List Val) (ht : m.store.tasks = Gt ++ [y])
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = Gt ++ [y])
     (hy : y.caller = ⟨Gc.length⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = Gc ++ [.host c args 0]) :
     RunsQ (DI P impl) th (Task.return_ ⟨Gt.length⟩ vs) m

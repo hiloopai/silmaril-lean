@@ -83,7 +83,7 @@ theorem toyCfgX_lockdown (c : ℕ) (ι : InstState) (G : ToyGarb P) :
 
 /-- The configuration after the host invoked `f` on `args` as call `k`. -/
 noncomputable def toyInvoked (c : ℕ) (ι : InstState) (G : ToyGarb P) (k : ℕ) (f : FuncId)
-    (args : List Val) : Machine.Config (core3P P) Unit :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) : Machine.Config (core3P P) Unit :=
   { toyCfgX P c ι G with
     pending := G.pending ++ [(⟨k⟩, f, args)]
     ctl := [.ofProg none (StepDefs.invokeProg ⟨k⟩ f args)] }
@@ -100,7 +100,7 @@ def tTask₁ (ft : WIT.FuncType Empty RtId) (Gc : List (Caller (core3P P))) (t :
 
 /-- The store when the thread of call `k` starts running. -/
 noncomputable def tStore₁ (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι : InstState) (G : ToyGarb P)
-    (k : ℕ) (args : List Val) : CStore (core3P P) :=
+    (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (core3P P) :=
   { toyStoreX P c ι G with
     tasks := G.tasks ++ [tTask₀ P ft G.callers]
     threads := G.threads ++ [thread₁ G.tasks]
@@ -109,7 +109,7 @@ noncomputable def tStore₁ (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι : InstS
 
 /-- The store once the thread entered its task. -/
 noncomputable def tStore₂ (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState) (G : ToyGarb P)
-    (k : ℕ) (args : List Val) : CStore (core3P P) :=
+    (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (core3P P) :=
   { tStore₁ P ft c ι G k args with
     tasks := G.tasks ++ [tTask₁ P ft G.callers ⟨G.threads.length⟩]
     insts := [ι']
@@ -117,13 +117,13 @@ noncomputable def tStore₂ (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : I
 
 /-- The store when the core activation starts. -/
 noncomputable def tStore₃ (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState) (G : ToyGarb P)
-    (k : ℕ) (args : List Val) : CStore (core3P P) :=
+    (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (core3P P) :=
   { tStore₂ P ft c ι ι' G k args with
     tasks := G.tasks ++ [(tTask₁ P ft G.callers ⟨G.threads.length⟩).withState .started] }
 
 /-- The store after the lowering of the arguments (instance `ι₄`, handle objects `H₄`). -/
 noncomputable def tStore₄ (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState) (G : ToyGarb P)
-    (k : ℕ) (args : List Val) (ι₄ : InstState) (H₄ : List ResourceHandle) : CStore (core3P P) :=
+    (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) (ι₄ : InstState) (H₄ : List ResourceHandle) : CStore (core3P P) :=
   { tStore₃ P ft c ι ι' G k args with insts := [ι₄], resHandles := H₄ }
 
 /-- The task of a call once finished. -/
@@ -136,7 +136,7 @@ noncomputable def tTask₂ (ft : WIT.FuncType Empty RtId) (Gc : List (Caller (co
 /-- The leftovers after call `k` of function `j` (lift of type `ft` at `addr`) on `args` with
 results `rs`, the handle objects being `H`. -/
 noncomputable def nextG (G : ToyGarb P) (ft : WIT.FuncType Empty RtId) (k j addr : ℕ)
-    (args rs : List Val)
+    (args rs : List Silmaril.Wasm.Component.Reference.Val)
     (H : List ResourceHandle) : ToyGarb P where
   tasks := G.tasks ++ [tTask₂ P ft G.callers ⟨G.threads.length⟩]
   threads := G.threads ++ [{ (thread₁ G.tasks).withIndex 1 with status := .exited }]
@@ -164,7 +164,7 @@ theorem toy_tick (prof : ProfileKind) (c : ℕ) (ι : InstState) (G : ToyGarb P)
   exact .refl _
 
 theorem toy_invoke_inv {prof : ProfileKind} {c : ℕ} {ι : InstState} {G : ToyGarb P} {k : ℕ}
-    {f : FuncId} {args : List Val} {m : Machine.Config (E3 P) Unit}
+    {f : FuncId} {args : List Silmaril.Wasm.Component.Reference.Val} {m : Machine.Config (E3 P) Unit}
     (h : Step prof (refHost P).hr (D P) (toyCfgX P c ι G) (.host (invokeTop ⟨k⟩ f args)) m) :
     m = toyInvoked P c ι G k f args ∧ ∀ x ∈ G.pending, x.1 ≠ ⟨k⟩ := by
   cases h with
@@ -181,7 +181,7 @@ theorem ToyGarb.Ok.find?_none {G : ToyGarb P} (hG : G.Ok) {k : ℕ}
 
 /-- The next configuration between calls answers call `k` with `rs`. -/
 theorem result?_nextG {G : ToyGarb P} (hG : G.Ok) {k : ℕ} (hk : ∀ x ∈ G.pending, x.1 ≠ ⟨k⟩)
-    (c : ℕ) (ι : InstState) (ft : WIT.FuncType Empty RtId) (j addr : ℕ) (args rs : List Val)
+    (c : ℕ) (ι : InstState) (ft : WIT.FuncType Empty RtId) (j addr : ℕ) (args rs : List Silmaril.Wasm.Component.Reference.Val)
     (H : List ResourceHandle) :
     (toyCfgX P c ι (nextG P G ft k j addr args rs H)).result? ⟨k⟩ = some (some rs) := by
   unfold Machine.Config.result?
@@ -192,7 +192,7 @@ theorem result?_nextG {G : ToyGarb P} (hG : G.Ok) {k : ℕ} (hk : ∀ x ∈ G.pe
 
 /-- The leftovers after a call are `Ok`. -/
 theorem nextG_ok {G : ToyGarb P} (hG : G.Ok) (ft : WIT.FuncType Empty RtId) (k j addr : ℕ)
-    (args rs : List Val) (H : List ResourceHandle) : (nextG P G ft k j addr args rs H).Ok := by
+    (args rs : List Silmaril.Wasm.Component.Reference.Val) (H : List ResourceHandle) : (nextG P G ft k j addr args rs H).Ok := by
   have hnew : ((⟨k⟩ : CallId), (⟨j⟩ : FuncId), args) ∈ G.pending ++ [(⟨k⟩, ⟨j⟩, args)] :=
     List.mem_append_right _ (List.mem_singleton_self _)
   have hold : ∀ y ∈ G.pending, y ∈ G.pending ++ [(⟨k⟩, ⟨j⟩, args)] :=
@@ -219,7 +219,7 @@ def callIn (ι : InstState) (t : ThreadId) : InstState := { ι with threads := c
 theorem addThread?_free {ι : InstState} (h : ThreadsFree ι.threads) (t : ThreadId) :
     ι.addThread? t = some (1, callIn ι t) := by
   rcases h with h | h | h <;>
-    simp [InstState.addThread?, Silmaril.Wasm.Component.Runtime.Table.add?, callIn, callT, h, Silmaril.Wasm.Component.Runtime.Table.maxLength]
+    simp [InstState.addThread?, Table.add?, callIn, callT, h, Table.maxLength]
 
 theorem removeThread?_call (ι : InstState) (t : ThreadId) :
     (callIn ι t).removeThread? 1 = some (t, InstState.removeThread 1 (callIn ι t)) := by
@@ -236,18 +236,18 @@ theorem removeThread?_callH (ι : InstState) (t : ThreadId) (T : Silmaril.Wasm.C
 theorem removeThread_call {ι : InstState} (h : ThreadsFree ι.threads) (t : ThreadId) :
     ∃ tb, InstState.removeThread 1 (callIn ι t) = { ι with threads := tb } ∧ ThreadsFree tb := by
   rcases h with h | h | h
-  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Silmaril.Wasm.Component.Runtime.Table.remove?, Silmaril.Wasm.Component.Runtime.Table.get?,
+  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Table.remove?, Table.get?,
       callIn, callT, h], .inr (.inl rfl)⟩
-  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Silmaril.Wasm.Component.Runtime.Table.remove?, Silmaril.Wasm.Component.Runtime.Table.get?,
+  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Table.remove?, Table.get?,
       callIn, callT, h], .inr (.inl rfl)⟩
-  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Silmaril.Wasm.Component.Runtime.Table.remove?, Silmaril.Wasm.Component.Runtime.Table.get?,
+  · exact ⟨_, by simp [InstState.removeThread, InstState.removeThread?, Table.remove?, Table.get?,
       callIn, callT, h], .inr (.inr rfl)⟩
 
 /-- **`toyR` holds at the next configuration between calls.** -/
 theorem toyR_next {c : ℕ} {ι : InstState} {G : ToyGarb P} (hc : c < 2 ^ 32)
     (hι : ι = { handles := ι.handles, threads := ι.threads }) (hth : ThreadsFree ι.threads)
     (hTB : TabB ι.handles) (hG : G.Ok)
-    (t : ThreadId) (ft : WIT.FuncType Empty RtId) (k j addr : ℕ) (args rs : List Val)
+    (t : ThreadId) (ft : WIT.FuncType Empty RtId) (k j addr : ℕ) (args rs : List Silmaril.Wasm.Component.Reference.Val)
     (H : List ResourceHandle) :
     toyR P toyEs (toyCfgX P c (InstState.removeThread 1 (callIn ι t))
       (nextG P G ft k j addr args rs H)) := by
@@ -262,7 +262,7 @@ theorem toyR_next {c : ℕ} {ι : InstState} {G : ToyGarb P} (hc : c < 2 ^ 32)
 /-- **After a run to the next configuration between calls** where call `k` is resolved with
 `rs`, the only resolved outcome of call `k` is `rs`, at that configuration. -/
 theorem resolved_of_lrun {prof : ProfileKind} {mS mE m' : Machine.Config (E3 P) Unit}
-    {c : ℕ} {ι : InstState} {G : ToyGarb P} {k : ℕ} {rs : List Val} {r : Option (List Val)}
+    {c : ℕ} {ι : InstState} {G : ToyGarb P} {k : ℕ} {rs : List Silmaril.Wasm.Component.Reference.Val} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     {trR tr : List (Label (E3 P) Unit)} (hR : LRun prof (refHost P).hr (D P) mS trR mE)
     (hE : mE = toyCfgX P c ι G) (hres : mE.result? ⟨k⟩ = some (some rs))
     (hs : Steps prof (refHost P).hr (D P) mS tr m')
@@ -282,7 +282,7 @@ theorem resolved_of_lrun {prof : ProfileKind} {mS mE m' : Machine.Config (E3 P) 
 /-- After a live run to a configuration whose only step is a trap, call `k` has no resolved
 outcome. -/
 theorem not_resolved_of_trap {prof : ProfileKind} {M mT m' : Machine.Config (E3 P) Unit}
-    {trT tr : List (Label (E3 P) Unit)} {rT : TrapReason} {k : ℕ} {r : Option (List Val)}
+    {trT tr : List (Label (E3 P) Unit)} {rT : TrapReason} {k : ℕ} {r : Option (List Silmaril.Wasm.Component.Reference.Val)}
     (hrun : LRun prof (refHost P).hr (D P) M trT mT) (hlive : Live mT)
     (hu : UniqueStep prof (refHost P).hr (D P) mT (.trap rT) (trapCfg mT))
     (hs : Steps prof (refHost P).hr (D P) M tr m') :
@@ -310,13 +310,13 @@ theorem runs_ite_loop {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
 /-- **The deterministic parts of an export call** of the toy (function value `j`, the lift of
 `ft` at core address `addr`), given the run of the lowering of `args` to `xs`. -/
 theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr : ℕ)
-    (args : List Val) (xs : List FlatValue) (c : ℕ) (ι ι' ι₄ : InstState) (G : ToyGarb P) (k : ℕ)
+    (args : List Silmaril.Wasm.Component.Reference.Val) (xs : List FlatValue) (c : ℕ) (ι ι' ι₄ : InstState) (G : ToyGarb P) (k : ℕ)
     (H₄ : List ResourceHandle) (trL : List (Label (E3 P) Unit))
     (hf : (toyFuncs P)[j]? = some (.lifted (show (core3P P).FuncAddr from addr) ft {} ⟨0⟩))
     (hasync : ft.async_ = false)
     (hadd : ι.addThread? ⟨G.threads.length⟩ = some (1, ι'))
     (hlow : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ft c ι ι' G k args →
-      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      RunsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none) m trL xs
         { m with store := tStore₄ P ft c ι ι' G k args ι₄ H₄ }) :
@@ -324,16 +324,16 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
       th = some ⟨G.threads.length⟩ ∧ M₀.ctl =
         ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat addr xs) K, segs⟩ :: rest ∧
       M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧
-      (∀ ys, ∃ (β : Type) (f : List Val × FlatCursor → Canon.P (E3 P) Unit β)
-        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      (∀ ys, ∃ (β : Type) (f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit β)
+        (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ft) >>= f) >>= g) ∧
       ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιc ι₅ : InstState)
-        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Val) (cur : FlatCursor)
+        (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Silmaril.Wasm.Component.Reference.Val) (cur : FlatCursor)
         (trF : List (Label (E3 P) Unit)) (c' : ℕ),
         (∀ m : Machine.Config (E3 P) Unit,
           m.store = { tStore₄ P ft c ι ι' G k args ιc Hc with core := cs' } →
-          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+          RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ft)) m trF (ws, cur)
             { m with store := { tStore₄ P ft c ι ι' G k args ι₅ H₅ with core := cs' } }) →
@@ -440,12 +440,12 @@ theorem trapsQ_lrun_at {prof : ProfileKind} {α : Type} {th : Option ThreadId}
 /-- **An export call of the toy whose lowering traps** is a live deterministic run to a
 configuration whose only step is a trap. -/
 theorem toy_callAt_trap (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr : ℕ)
-    (args : List Val) (c : ℕ) (ι ι' : InstState) (G : ToyGarb P) (k : ℕ)
+    (args : List Silmaril.Wasm.Component.Reference.Val) (c : ℕ) (ι ι' : InstState) (G : ToyGarb P) (k : ℕ)
     (hf : (toyFuncs P)[j]? = some (.lifted (show (core3P P).FuncAddr from addr) ft {} ⟨0⟩))
     (hasync : ft.async_ = false)
     (hadd : ι.addThread? ⟨G.threads.length⟩ = some (1, ι'))
     (hT : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ft c ι ι' G k args →
-      ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none) m trT mT) :
     ∃ tr mT r, LRun prof (refHost P).hr (D P) (toyInvoked P c ι G k ⟨j⟩ args) tr mT ∧ Live mT ∧
@@ -455,7 +455,7 @@ theorem toy_callAt_trap (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j a
       (rest : List (Activation (E3 P) Unit))
       (tr : List (Label (E3 P) Unit)),
       LRun prof (refHost P).hr (D P) (toyInvoked P c ι G k ⟨j⟩ args) tr X ∧
-      X.ctl = ⟨some ⟨G.threads.length⟩, .prog (lowerFlatValues Silmaril.Wasm.Component.Limits.spec Quirks.none
+      X.ctl = ⟨some ⟨G.threads.length⟩, .prog (lowerFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatParams args (paramTypes ft) none >>= f), segs⟩ :: rest ∧
       X.store = tStore₃ P ft c ι ι' G k args := by

@@ -78,7 +78,7 @@ theorem prefixSub_eq (Δ : TypeCtx) (R t : List CValType) :
 
 theorem resSub_eq (Δ : TypeCtx) (a b : List CValType) :
     resSub Δ a b = forall2B Δ.checkVal a b := by
-  simp only [resSub, Sub.check, Sub.checkK, Silmaril.Wasm.Validation.Ty.toList_ofList]
+  simp only [resSub, Sub.check, Sub.checkK, Ty.toList_ofList]
 
 theorem checkResultSub_eq (Δ : TypeCtx) :
     ∀ a b : List CValType, checkResultSub Δ a b = forall2B Δ.checkVal a b
@@ -140,7 +140,7 @@ theorem brTableTs_eq (R : List CValType) (m : Nat) :
 
 /-! ## The atom oracle and the direct step -/
 
-theorem parametricTypeR_eq (tyOk : {k : TKind} → Silmaril.Wasm.Validation.Ty k → Bool) (C : Context)
+theorem parametricTypeR_eq (tyOk : {k : TKind} → Ty k → Bool) (C : Context)
     (R : List CValType) (i : Instr) :
     parametricTypeR tyOk C R i = parametricType? tyOk C R.reverse i := by
   cases i with

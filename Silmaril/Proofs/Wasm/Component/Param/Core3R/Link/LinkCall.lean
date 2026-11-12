@@ -64,7 +64,7 @@ variable {P : Profile} {σ : Type} {prof : ProfileKind} {impl : HostImpl (E3 P V
 
 /-- From `mS`, the call resolves with `rs` under `DI P impl`. -/
 def ResolvesD (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P V IR) σ)
-    (mS : Machine.Config (E3 P V IR) σ) (rs : List Val) : Prop :=
+    (mS : Machine.Config (E3 P V IR) σ) (rs : List Silmaril.Wasm.Component.Reference.Val) : Prop :=
   ∃ tr mE, LRun prof (fun _ _ => false) (DI P impl) mS tr mE ∧ mE.ctl = [] ∧
     mE.store.lockdown = false ∧ mE.result? ⟨0⟩ = some (some rs) ∧
     ∀ m₁, Step prof (fun _ _ => false) (DI P impl) mE (.host .tick) m₁ →
@@ -77,14 +77,14 @@ def after3 (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))
 
 /-- The configuration after the host invoked function `j` on `args` from `after3`. -/
 def invoked3 (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V IR)))
-    (fs : List (CFuncInst (core3R P V IR))) (h : σ) (j : Nat) (args : List Val) :
+    (fs : List (CFuncInst (core3R P V IR))) (h : σ) (j : Nat) (args : List Silmaril.Wasm.Component.Reference.Val) :
     Machine.Config (E3 P V IR) σ :=
   { after3 P cs fs h with
     pending := [] ++ [(⟨0⟩, ⟨j⟩, args)]
     ctl := [.ofProg none (StepDefs.invokeProg ⟨0⟩ ⟨j⟩ args)] }
 
 theorem invoke_inv3 {cs : (core3R P V IR).Store (CanonHost (core3R P V IR))} {fs : List (CFuncInst (core3R P V IR))}
-    {h₀ : σ} {j : Nat} {args : List Val} {m : Machine.Config (E3 P V IR) σ}
+    {h₀ : σ} {j : Nat} {args : List Silmaril.Wasm.Component.Reference.Val} {m : Machine.Config (E3 P V IR) σ}
     (h : Step prof (fun _ _ => false) (DI P impl) (after3 P cs fs h₀)
       (.host (.invoke ⟨0⟩ ⟨j⟩ args)) m) :
     m = invoked3 P cs fs h₀ j args := by
@@ -131,7 +131,7 @@ theorem threads_get_head {s : CStore (E3 P V IR)} {z : Runtime.Thread} {R : List
 /-- `Task.return_` of the first task, whose caller is the first, a host caller record. -/
 theorem runs_returnH {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
     {y : Runtime.Task (E3 P V IR)} {R : List (Runtime.Task (E3 P V IR))} {CL : List (Caller (E3 P V IR))}
-    {c : CallId} {args : List Val} (vs : List Val) (ht : m.store.tasks = y :: R)
+    {c : CallId} {args : List Silmaril.Wasm.Component.Reference.Val} (vs : List Silmaril.Wasm.Component.Reference.Val) (ht : m.store.tasks = y :: R)
     (hy : y.caller = ⟨0⟩) (hst : y.state = .started) (hb : y.numBorrows = 0)
     (hc : m.store.callers = .host c args 0 :: CL) :
     RunsQ (DI P impl) th (Task.return_ ⟨0⟩ vs) m
@@ -216,7 +216,7 @@ def taskRetL (x : SimpleExport) : Runtime.Task (E3 P V IR) :=
 the importer's `ιi`, the importer's task `tk` and thread `thr` first. -/
 def storeLN (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (tk : Runtime.Task (E3 P V IR)) (thr : Runtime.Thread)
-    (args : List Val) (N : List (NRec P V IR)) : CStore (E3 P V IR) :=
+    (args : List Silmaril.Wasm.Component.Reference.Val) (N : List (NRec P V IR)) : CStore (E3 P V IR) :=
   { core := cs, insts := [{}, ιe, ιi], funcs := fs, tasks := tk :: N.map (·.task),
     threads := thr :: N.map (·.thread), callers := .host ⟨0⟩ args 0 :: N.map (·.caller),
     subtasks := N.map (·.sub), nestingDepth := 1 }

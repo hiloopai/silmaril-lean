@@ -24,7 +24,7 @@ An **alias of an export of an instance the component creates** has no counterpar
 the world (the instance itself has none); `project` and `projectX` reject it,
 `projectI` records it like the created instance (`PState.inst false`).
 
-## Silmaril.Wasm.Component.Binary.Export tables and local type indices
+## Export tables and local type indices
 
 A descriptor inside a component or instance type refers to that type's own type
 index space. It is lifted to the enclosing component (`liftDesc`) only when the local

@@ -47,8 +47,8 @@ programs run ONE iteration and end with the tail call `callRet (.loop l')` (or r
   (`inst.handles.get(si)`, resolved anew each turn; trap `wrongHandleType` unless a waitable
   set; `WaitableSet.wait_from_callback`, wait site K3), then retake the lock and clear
   `cancellable` (ONE store update `LiftSt.retakeCallbackSt`); then call the `callback` core
-  function with `[event_code, p1, p2]` (`Async.EventTuple.callbackArgs`), unpack its single
-  result (`Async.unpackCallbackResult`, trap `unsupportedCallbackCode`) and re-enter the loop.
+  function with `[event_code, p1, p2]` (`AsyncRef.EventTuple.callbackArgs`), unpack its single
+  result (`AsyncRef.unpackCallbackResult`, trap `unsupportedCallbackCode`) and re-enter the loop.
 
 **`reallocate`: the direct lift path.** REF `reallocate` does
 `store.invoke(store.lift(opts.realloc, ft, CanonicalOptions(), inst), on_start, on_resolve)`.
@@ -84,7 +84,7 @@ goes through `Call.funcInst`, which the dispatcher resolves to the same `canonLi
   REF's `cannotLeave` trap at the window. So every opening write finds its instance allocated
   with the flag set (`Theorems.opensWhenSet`), and windows of one instance never nest. Not
   claimed: that the check never fires for hosts that issue no such call.
-* `LoopPoint.callbackLoop` stores the callback code as a `Nat` (`Async.CallbackCode.toNat`);
+* `LoopPoint.callbackLoop` stores the callback code as a `Nat` (`AsyncRef.CallbackCode.toNat`);
   the body decodes it with `CallbackCode.ofNat?` and traps `unsupportedCallbackCode` on any
   other value (REF `case _: trap()`, unreachable after `unpack_callback_result`).
 * REF `canon_lift` returns the bound method `task.request_cancellation`; here `Ret.cancel

@@ -54,10 +54,10 @@ theorem ctxOfX_withRecsA (ls gs : List Value) (Δ : TypeCtx) (sts : List CSubTyp
 
 /-- **`Deftype_ok`**, from `Rectype_ok2` read in the group's own context. -/
 theorem okD_defnX {O : ElseI} {ls gs : List Value} {Δ : TypeCtx} (hc : CtxT B (ctxOfX ls gs Δ))
-    {subs : Silmaril.Wasm.Validation.Ty (.list .sub)} {i : Nat} (hb : tyBnd (Silmaril.Wasm.Validation.Ty.defn (.group subs) i : DefType) = true)
+    {subs : Ty (.list .sub)} {i : Nat} (hb : tyBnd (Ty.defn (.group subs) i : DefType) = true)
     (hi : i < subs.length)
     (hg : DDerivesB (simEnv B) O "Rectype_ok2" "%|-%:%" []
-      (.tuple [ctxOfX ls gs (Round6.RefOkV.withRecsA Δ subs.toList), tyV (Silmaril.Wasm.Validation.Ty.group subs : CRecType),
+      (.tuple [ctxOfX ls gs (Round6.RefOkV.withRecsA Δ subs.toList), tyV (Ty.group subs : CRecType),
         .case "OK" (natV 0)])) :
     OkD B O (ctxOfX ls gs Δ) .def (.defn (.group subs) i) := by
   rw [ctxOfX_withRecsA] at hg
@@ -86,13 +86,13 @@ theorem applies_unrollhtX {ls gs : List Value} {Δ Δ' : TypeCtx} {u : CTypeUse}
 theorem subOk2D_oneX {O : ElseI} {ls gs : List Value}
     (hL : ∀ u ∈ ls, TypedV (simEnv (BI P hn host)) (.varT "localtype" []) u)
     (hG : ∀ u ∈ gs, TypedV (simEnv (BI P hn host)) (.varT "globaltype" []) u) {Δ : TypeCtx} (hR : RecsBnd Δ) {fin : Bool} {u : CTypeUse}
-    {ct ct' : CCompType} {i : Nat} {sups' : Silmaril.Wasm.Validation.Ty (.list .use)} (hok : TyOkB Δ u)
-    (hb : tyBnd (Silmaril.Wasm.Validation.Ty.sub fin (.cons u .nil) ct : CSubType) = true) (hbf : before u i = true)
+    {ct ct' : CCompType} {i : Nat} {sups' : Ty (.list .use)} (hok : TyOkB Δ u)
+    (hb : tyBnd (Ty.sub fin (.cons u .nil) ct : CSubType) = true) (hbf : before u i = true)
     (hun : Δ.unrollUse u = some (.sub false sups' ct'))
     (dU : OkD (BI P hn host) O (ctxOfX ls gs Δ) .use u) (dC : OkD (BI P hn host) O (ctxOfX ls gs Δ) .comp ct)
     (dS : SubD (BI P hn host) O (ctxOfX ls gs Δ) .comp ct ct') :
     DDerivesB (simEnv (BI P hn host)) O "Subtype_ok2" "%|-%:%" []
-      (.tuple [ctxOfX ls gs Δ, tyV (Silmaril.Wasm.Validation.Ty.sub fin (.cons u .nil) ct : CSubType), .case "OK" (natV i)]) :=
+      (.tuple [ctxOfX ls gs Δ, tyV (Ty.sub fin (.cons u .nil) ct : CSubType), .case "OK" (natV i)]) :=
   have hbu : tyBnd u = true := (tyBnd_cons_iff.1 (tyBnd_sub' hb).1).1
   have hb' := tyBnd_sub' (tyBnd_unrollUse hR hok hbu hun)
   dd_subtypeOk2One O (ctxT_ofX hL hG hR) fin i hbu (tyBnd_sub' hb).2 hb'.2 hb'.1 hbf
@@ -101,13 +101,13 @@ theorem subOk2D_oneX {O : ElseI} {ls gs : List Value}
 /-- **`Rectype_ok2/cons`**, from the readings of its premises. -/
 theorem groupD_consX {O : ElseI} {ls gs : List Value} (hL : ∀ u ∈ ls, TypedV (simEnv B) (.varT "localtype" []) u)
     (hG : ∀ u ∈ gs, TypedV (simEnv B) (.varT "globaltype" []) u) {Δ : TypeCtx} (hR : RecsBnd Δ) {st : CSubType}
-    {sts : Silmaril.Wasm.Validation.Ty (.list .sub)} {i : Nat} (hb : tyBnd (Silmaril.Wasm.Validation.Ty.group (.cons st sts) : CRecType) = true)
+    {sts : Ty (.list .sub)} {i : Nat} (hb : tyBnd (Ty.group (.cons st sts) : CRecType) = true)
     (h₁ : DDerivesB (simEnv B) O "Subtype_ok2" "%|-%:%" []
       (.tuple [ctxOfX ls gs Δ, tyV st, .case "OK" (natV i)]))
     (h₂ : DDerivesB (simEnv B) O "Rectype_ok2" "%|-%:%" []
-      (.tuple [ctxOfX ls gs Δ, tyV (Silmaril.Wasm.Validation.Ty.group sts : CRecType), .case "OK" (natV (i + 1))])) :
+      (.tuple [ctxOfX ls gs Δ, tyV (Ty.group sts : CRecType), .case "OK" (natV (i + 1))])) :
     DDerivesB (simEnv B) O "Rectype_ok2" "%|-%:%" []
-      (.tuple [ctxOfX ls gs Δ, tyV (Silmaril.Wasm.Validation.Ty.group (.cons st sts) : CRecType), .case "OK" (natV i)]) := by
+      (.tuple [ctxOfX ls gs Δ, tyV (Ty.group (.cons st sts) : CRecType), .case "OK" (natV i)]) := by
   have hb' := tyBnd_groupCons hb
   rw [tyV_group_eq] at h₂ ⊢
   exact Round6.RefOkB.dderivesB_rectypeOk2Cons O i (ctxT_ofX hL hG hR) (Round5.Pos.tyT_tyV st hb'.1)
@@ -120,7 +120,7 @@ mutual
 /-- **A canonical validity derivation is read by `DDerivesB`**, at every sort. -/
 theorem okDX_of (O : ElseI) {ls gs : List Value}
     (hL : ∀ u ∈ ls, TypedV (simEnv (BI P hn host)) (.varT "localtype" []) u)
-    (hG : ∀ u ∈ gs, TypedV (simEnv (BI P hn host)) (.varT "globaltype" []) u) : ∀ {Δ : TypeCtx} {k : TKind} {t : Silmaril.Wasm.Validation.Ty k}, TyOkB Δ t → RecsBnd Δ →
+    (hG : ∀ u ∈ gs, TypedV (simEnv (BI P hn host)) (.varT "globaltype" []) u) : ∀ {Δ : TypeCtx} {k : TKind} {t : Ty k}, TyOkB Δ t → RecsBnd Δ →
     tyBnd t = true → OkD (BI P hn host) O (ctxOfX ls gs Δ) k t
   | _, _, _, .recv h, hR, _ =>
     dd_typeuseOkRecX O (ctxT_ofX hL hG hR) (Round5.Pos.tyT_tyV _ (hR.get h)) (recs_map h)
@@ -187,7 +187,7 @@ theorem groupDX_of (O : ElseI) {ls gs : List Value}
 /-- **A canonical subtyping derivation is read by `DDerivesB`**, at every sort. -/
 theorem subDX_of (O : ElseI) {ls gs : List Value}
     (hL : ∀ u ∈ ls, TypedV (simEnv (BI P hn host)) (.varT "localtype" []) u)
-    (hG : ∀ u ∈ gs, TypedV (simEnv (BI P hn host)) (.varT "globaltype" []) u) : ∀ {Δ : TypeCtx} {k : TKind} {a b : Silmaril.Wasm.Validation.Ty k}, SubB Δ a b →
+    (hG : ∀ u ∈ gs, TypedV (simEnv (BI P hn host)) (.varT "globaltype" []) u) : ∀ {Δ : TypeCtx} {k : TKind} {a b : Ty k}, SubB Δ a b →
     RecsBnd Δ → tyBnd a = true → tyBnd b = true → SubD (BI P hn host) O (ctxOfX ls gs Δ) k a b
   | _, _, _, _, .heapRefl, hR, ha, _ => Round6.AgreeSub.dderivesB_refl O (ctxT_ofX hL hG hR) (typedV_heaptype ha)
   | _, _, _, _, .heapTrans hbnd hok h₁ h₂, hR, ha, hb =>

@@ -62,7 +62,7 @@ open Silmaril.Wasm.Wit.Binary (Ty Sig)
 /-- The kind of a WAC item. -/
 inductive Kind where
   | func (s : Sig)
-  | value (t : Silmaril.Wasm.Wit.Binary.Ty)
+  | value (t : Ty)
   | resource (name : String)
   | type (k : Kind)
   | inst (id : Option String) (exports : List (String × Kind))
@@ -159,7 +159,7 @@ mutual
 /-- `Sub a b`: `a` is a subtype of `b`. -/
 inductive Sub : Kind → Kind → Prop
   | func (s : Sig) : Sub (.func s) (.func s)
-  | value (t : Silmaril.Wasm.Wit.Binary.Ty) : Sub (.value t) (.value t)
+  | value (t : Ty) : Sub (.value t) (.value t)
   | resource (r : String) : Sub (.resource r) (.resource r)
   | type {a b : Kind} : Sub a b → Sub (.type a) (.type b)
   | inst {i j : Option String} {as bs : Externs} : SubEx as bs → Sub (.inst i as) (.inst j bs)

@@ -61,7 +61,7 @@ theorem checkInBounds (cx : LiftLowerContext E) (ptr size : Nat) :
     P.Inv I (Canon.checkInBounds cx ptr size : P E σ _) :=
   bind (memLen cx) fun _ => trapIf _ _
 
-theorem unpackEvent (cx : LiftLowerContext E) (ptr : Nat) (e : Async.EventTuple)
+theorem unpackEvent (cx : LiftLowerContext E) (ptr : Nat) (e : AsyncRef.EventTuple)
     (h : ∀ m p v s, I s → I (writeMemSt m p (u32Bytes v) s)) :
     P.Inv I (Canon.unpackEvent cx ptr e : P E σ Nat) :=
   bind (checkAligned _ _) fun _ => bind (checkInBounds _ _ _) fun _ =>

@@ -160,8 +160,8 @@ theorem removeHandle?_tab {i : ℕ} {st st' : InstState} {e : HandleEntry}
   exact hp
 
 /-- The table history of one table event, from the step function. -/
-theorem steps_single {t t' : Silmaril.Wasm.Component.Runtime.Table HandleEntry} {ev : Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry}
-    (h : t.step? ev.op = some (ev, t')) : Silmaril.Wasm.Component.Runtime.Table.Steps t [ev] t' :=
+theorem steps_single {t t' : Silmaril.Wasm.Component.Runtime.Table HandleEntry} {ev : Table.Event HandleEntry}
+    (h : t.step? ev.op = some (ev, t')) : Table.Steps t [ev] t' :=
   .cons h (.nil _)
 
 theorem handlesAdd_tab {inst : InstId} {e : HandleEntry} {s s' : CStore E} {i : ℕ}
@@ -173,7 +173,7 @@ theorem handlesAdd_tab {inst : InstId} {e : HandleEntry} {s s' : CStore E} {i : 
   · rw [handles?_modify_self, hst, Option.map_some, hst']
   · have ht' : st.handles = t := by simpa [handles?, hst] using ht
     subst ht'
-    simp [Silmaril.Wasm.Component.Runtime.Table.Event.op, Silmaril.Wasm.Component.Runtime.Table.step?, hadd]
+    simp [Table.Event.op, Table.step?, hadd]
 
 theorem handlesGet_tab {inst : InstId} {i : ℕ} {s s' : CStore E} {e : HandleEntry}
     (h : SRun (handlesGet (σ := σ) inst i) s e s') :
@@ -182,7 +182,7 @@ theorem handlesGet_tab {inst : InstId} {i : ℕ} {s s' : CStore E} {e : HandleEn
   refine ⟨fun t ht => ⟨t, ht, steps_single ?_⟩, rfl⟩
   have ht' : st.handles = t := by simpa [handles?, hst] using ht
   subst ht'
-  simp [Silmaril.Wasm.Component.Runtime.Table.Event.op, Silmaril.Wasm.Component.Runtime.Table.step?, hg]
+  simp [Table.Event.op, Table.step?, hg]
 
 theorem handlesRemove_tab {inst : InstId} {i : ℕ} {s s' : CStore E} {e : HandleEntry}
     (h : SRun (handlesRemove (σ := σ) inst i) s e s') :
@@ -193,13 +193,13 @@ theorem handlesRemove_tab {inst : InstId} {i : ℕ} {s s' : CStore E} {e : Handl
   · rw [handles?_modify_self, hst, Option.map_some, hst']
   · have ht' : st.handles = t := by simpa [handles?, hst] using ht
     subst ht'
-    simp [Silmaril.Wasm.Component.Runtime.Table.Event.op, Silmaril.Wasm.Component.Runtime.Table.step?, hrem]
+    simp [Table.Event.op, Table.step?, hrem]
 
-theorem TabSteps.of_left {s₀ s s' : CStore E} {j : InstId} {evs : List (Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry)}
+theorem TabSteps.of_left {s₀ s s' : CStore E} {j : InstId} {evs : List (Table.Event HandleEntry)}
     (he : handles? s₀ j = handles? s j) (h : TabSteps s s' j evs) : TabSteps s₀ s' j evs :=
   fun t ht => h t (he ▸ ht)
 
-theorem TabSteps.of_right {s s' s₂ : CStore E} {j : InstId} {evs : List (Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry)}
+theorem TabSteps.of_right {s s' s₂ : CStore E} {j : InstId} {evs : List (Table.Event HandleEntry)}
     (h : TabSteps s s' j evs) (he : handles? s₂ j = handles? s' j) : TabSteps s s₂ j evs :=
   fun t ht => (h t ht).imp fun _ h' => ⟨he.trans h'.1, h'.2⟩
 
@@ -297,13 +297,13 @@ theorem resourceDropCore_tab {lim : Silmaril.Wasm.Component.Limits} {inst : Inst
 
 /-! ## Scripts of built-in calls -/
 
-theorem steps_append {α : Type} {t₁ t₂ t₃ : Silmaril.Wasm.Component.Runtime.Table α} {e₁ e₂ : List (Silmaril.Wasm.Component.Runtime.Table.Event α)}
-    (h₁ : Silmaril.Wasm.Component.Runtime.Table.Steps t₁ e₁ t₂) (h₂ : Silmaril.Wasm.Component.Runtime.Table.Steps t₂ e₂ t₃) : Silmaril.Wasm.Component.Runtime.Table.Steps t₁ (e₁ ++ e₂) t₃ := by
+theorem steps_append {α : Type} {t₁ t₂ t₃ : Silmaril.Wasm.Component.Runtime.Table α} {e₁ e₂ : List (Table.Event α)}
+    (h₁ : Table.Steps t₁ e₁ t₂) (h₂ : Table.Steps t₂ e₂ t₃) : Table.Steps t₁ (e₁ ++ e₂) t₃ := by
   induction h₁ with
   | nil => exact h₂
   | cons hs _ ih => exact .cons hs (ih h₂)
 
-theorem TabSteps.trans {s₁ s₂ s₃ : CStore E} {j : InstId} {e₁ e₂ : List (Silmaril.Wasm.Component.Runtime.Table.Event HandleEntry)}
+theorem TabSteps.trans {s₁ s₂ s₃ : CStore E} {j : InstId} {e₁ e₂ : List (Table.Event HandleEntry)}
     (h₁ : TabSteps s₁ s₂ j e₁) (h₂ : TabSteps s₂ s₃ j e₂) : TabSteps s₁ s₃ j (e₁ ++ e₂) := by
   intro t ht
   obtain ⟨t₂, ht₂, hs₁⟩ := h₁ t ht
@@ -377,7 +377,7 @@ on an instance whose table was empty are accepted by `handleProto ℕ r`, in bot
 `resource.new` returns a fresh index, `rep` and `drop` only touch live indices. -/
 theorem resScript_accepts {lim : Silmaril.Wasm.Component.Limits} {cs : List ResCall} {s s' : CStore E} {ns : List ℕ}
     (h : SRun (σ := σ) (resScript lim cs) s ns s') {j : InstId}
-    (hj : handles? s j = some Silmaril.Wasm.Component.Runtime.Table.empty) (r : Role) :
+    (hj : handles? s j = some Table.empty) (r : Role) :
     (handleProto ℕ r).Accepts (instEvs j cs ns) := by
   obtain ⟨evs, hT, hE⟩ := resScript_tab h j
   obtain ⟨t', -, hs⟩ := hT _ hj

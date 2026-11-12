@@ -117,24 +117,24 @@ theorem extV_ne (V : Src → Impl) {j k : Nat} (h : j ≠ k) (xs : List Silmaril
   simp [extV, h]
 
 theorem extV_self (V : Src → Impl) (k : Nat) {xs : List Silmaril.Wasm.Component.Export} {q : String}
-    (h : q ∈ xs.map Silmaril.Wasm.Component.Export.name) (σ : List Impl) : extV V k xs σ (.out k q) = expImpl xs σ q := by
+    (h : q ∈ xs.map Export.name) (σ : List Impl) : extV V k xs σ (.out k q) = expImpl xs σ q := by
   simp [extV, h]
 
 theorem extV_not_mem (V : Src → Impl) (k : Nat) {xs : List Silmaril.Wasm.Component.Export} {q : String}
-    (h : q ∉ xs.map Silmaril.Wasm.Component.Export.name) (σ : List Impl) : extV V k xs σ (.out k q) = V (.out k q) := by
+    (h : q ∉ xs.map Export.name) (σ : List Impl) : extV V k xs σ (.out k q) = V (.out k q) := by
   simp [extV, h]
 
-theorem names_sigOf (c : Comp M) : names (sigOf c).exports = c.exports.map Silmaril.Wasm.Component.Export.name := by
+theorem names_sigOf (c : Comp M) : names (sigOf c).exports = c.exports.map Export.name := by
   simp [sigOf, names]
 
 /-- The export `q` of the flat environment extended by the exports `xs`. -/
 theorem subst_append_export {σ : List Impl} {xs : List Silmaril.Wasm.Component.Export} {q : String}
-    (h : q ∈ xs.map Silmaril.Wasm.Component.Export.name) (τ : List Impl) :
-    (Impl.fwd (σ.length + (xs.map Silmaril.Wasm.Component.Export.name).idxOf q)).subst
+    (h : q ∈ xs.map Export.name) (τ : List Impl) :
+    (Impl.fwd (σ.length + (xs.map Export.name).idxOf q)).subst
       (σ ++ xs.map fun x => x.impl.subst τ) = expImpl xs τ q := by
-  have hl : (xs.map Silmaril.Wasm.Component.Export.name).idxOf q < xs.length := by simpa using idxOf_lt h
-  have hg : (σ ++ xs.map fun x => x.impl.subst τ)[σ.length + (xs.map Silmaril.Wasm.Component.Export.name).idxOf q]? =
-      some ((xs.map fun x => x.impl.subst τ)[(xs.map Silmaril.Wasm.Component.Export.name).idxOf q]'(by simpa using hl)) := by
+  have hl : (xs.map Export.name).idxOf q < xs.length := by simpa using idxOf_lt h
+  have hg : (σ ++ xs.map fun x => x.impl.subst τ)[σ.length + (xs.map Export.name).idxOf q]? =
+      some ((xs.map fun x => x.impl.subst τ)[(xs.map Export.name).idxOf q]'(by simpa using hl)) := by
     rw [List.getElem?_append_right (by omega)]
     simp only [Nat.add_sub_cancel_left]
     exact List.getElem?_eq_getElem _
@@ -153,9 +153,9 @@ theorem rep_step (P : Nat → Comp M) (g : Graph) (I : Iface) {k : Nat} {n : Ins
   | .out j q => by
     by_cases hj : j = k
     · rw [hj]
-      by_cases hq : q ∈ (P n.pkg).exports.map Silmaril.Wasm.Component.Export.name
+      by_cases hq : q ∈ (P n.pkg).exports.map Export.name
       · have hr : g.resolve (fun k => sigOf (P k)) I (k + 1) (.out k q) =
-            .fwd (σ.length + ((P n.pkg).exports.map Silmaril.Wasm.Component.Export.name).idxOf q) := by
+            .fwd (σ.length + ((P n.pkg).exports.map Export.name).idxOf q) := by
           simp [Graph.resolve, hn, hlen, names_sigOf, hq, Nat.add_assoc]
         rw [hr, subst_append_export hq, extV_self _ _ hq]
       · have hr : g.resolve (fun k => sigOf (P k)) I (k + 1) (.out k q) = .trap := by

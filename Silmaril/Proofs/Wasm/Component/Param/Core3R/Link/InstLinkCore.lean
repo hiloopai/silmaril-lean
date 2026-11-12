@@ -155,7 +155,7 @@ of the module is the trampoline at `b + i`, exported by the inline core instance
 name. -/
 theorem coreImportsFor_trampL {c : SimpleI} (hc : c.Good) (hi : c.Inst)
     (cs₀ : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))) (inst : InstId) (fid : Nat → FuncId)
-    (fr : Frame (core3R Pf V IR))
+    (fr : Silmaril.Wasm.Execution.Core.Frame (core3R Pf V IR))
     (hfr : fr.coreInstance? 0 = some (envExportsAt (cs₀ : Store _).funcs.length c.mod.imports)) :
     coreImportsFor? (trampStoreL Pf cs₀ inst fid c.imports) c.mod.mod [("env", 0)] fr =
       some ((List.range' (cs₀ : Store _).funcs.length c.imports.length).map ExternAddr.func) := by

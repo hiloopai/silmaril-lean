@@ -39,7 +39,7 @@ namespace Silmaril.Wasm.Resource
 open Silmaril.Wasm.Component.Runtime
 
 /-- A successful table operation as a handle event. -/
-def tableEv {α : Type} : Silmaril.Wasm.Component.Runtime.Table.Event α → HEv ℕ
+def tableEv {α : Type} : Table.Event α → HEv ℕ
   | .added i _ => .alloc i
   | .got i _ => .use i
   | .removed i _ => .free i

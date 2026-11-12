@@ -44,7 +44,7 @@ the same named update as `inst.handles.add(subtask)` (`LowerSt.addSubtaskSt`, is
 `handlesAddSubtask`), i.e. AFTER the callee ran, as in REF, where `subtaski` is the value of
 `handles.add` itself (L2223): a subtask is never in a handle table without its index.
 
-**Async result.** The `i32` returned by an async lower is `Async.AsyncLowerResult.pack`:
+**Async result.** The `i32` returned by an async lower is `AsyncRef.AsyncLowerResult.pack`:
 `.returned` (REF `[Subtask.State.RETURNED]`) or `.pending state subtaski` (REF
 `[subtask.state | (subtaski << 4)]`).
 
@@ -55,7 +55,7 @@ the same named update as `inst.handles.add(subtask)` (`LowerSt.addSubtaskSt`, is
   RETURNED` after the callee returned; `STARTING` in `on_start`; `STARTED` (and, for `None`,
   `cancellation_requested`) in `on_resolve`; `flat_results == []` in the eager async branch;
   `0 < subtaski <= Table.MAX_LENGTH` and `state < 2^4` (facts about `handlesAdd` and
-  `SubtaskState`, see `Async.AsyncLowerResult.WellFormed`).
+  `SubtaskState`, see `AsyncRef.AsyncLowerResult.WellFormed`).
 * `Store.lower`'s `assert(inst is current_instance())` (L548) is checked, by the entry check
   `Canon.calloutEntry` of the only caller of `canonLower`, the dispatched callout program
   `Canon.hostCalloutProg`: a lowered callout from a thread of another instance, or from a host
@@ -135,10 +135,10 @@ end P.Inv
 /-! ## Examples -/
 
 /-- The eager async result is `RETURNED = 2`. -/
-example : Async.AsyncLowerResult.returned.pack = 2 := by decide
+example : AsyncRef.AsyncLowerResult.returned.pack = 2 := by decide
 
 /-- A pending async lower of subtask index 3 in state `STARTED` returns `1 | (3 << 4)`. -/
-example : (Async.AsyncLowerResult.pending .started 3).pack = 0x31 := by decide
+example : (AsyncRef.AsyncLowerResult.pending .started 3).pack = 0x31 := by decide
 
 /-- Setting the shared cursor position only touches `Caller.lower` records. -/
 example (x : CallId) :
