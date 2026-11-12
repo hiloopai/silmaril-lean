@@ -259,3 +259,8 @@ supportInterpreter = true
 [[lean_lib]]
 name = "WasmAutoTests"
 globs = ["tests.wasm.auto.+"]
+
+[[lean_exe]]
+name = "elf-staged"
+root = "ElfStaged"
+srcDir = "tools/elf-staged"
