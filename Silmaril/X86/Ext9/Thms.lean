@@ -154,4 +154,8 @@ example : imulWide (0xffffffff#32) 2 = (0xfffffffe, 0xffffffff) ∧
 example : imulWide (0x00010000#32) 0x00010000 = (0, 1) ∧
     (imul1Flags (0x00010000#32) 0x00010000).overflow = some true := by decide
 
+/-- The sign-extended 8-bit immediate parser (`pIb32`) has the prefix laws. -/
+theorem good_pIb32 : Silmaril.X86.Ext.ByteParser.Good pIb32 :=
+  Silmaril.Proofs.X86.Ext9.good_pIb32
+
 end Silmaril.X86.Ext9
