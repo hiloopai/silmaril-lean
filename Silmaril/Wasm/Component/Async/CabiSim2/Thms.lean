@@ -369,7 +369,7 @@ theorem op_recv_write_idle (hR : Rel2 c m st) (xs : List Val) (hev : m.ev 2 = no
   have hm' : mStep 1 2 c m (.write xs) =
       some (m.setChan 1 { m.chans 1 with pend := .write 2 xs }, Cabi.BLOCKED) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamWrite, hR.rel.tblW, hp, hR.rel.noDropR, resNat,
-      Silmaril.Wasm.Component.AsyncRef.blocked, Cabi.BLOCKED]
+      Silmaril.Wasm.Component.Async.blocked, Cabi.BLOCKED]
   rw [(Prod.mk.inj (Except.ok.inj (hc.symm.trans hcp))).1,
     (Prod.mk.inj (Option.some.inj (hm.symm.trans hm'))).1]
   refine ⟨?_, rfl⟩
@@ -393,7 +393,7 @@ theorem op_recv_read_idle (hR : Rel2 c m st) (hev : m.ev 1 = none)
   have hm' : mStep 1 2 c m .read =
       some (m.setChan 1 { m.chans 1 with pend := .read 1 c }, Cabi.BLOCKED) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamRead, hR.rel.tblR, hp, hR.rel.noDropW, resNat,
-      Silmaril.Wasm.Component.AsyncRef.blocked, Cabi.BLOCKED]
+      Silmaril.Wasm.Component.Async.blocked, Cabi.BLOCKED]
   rw [(Prod.mk.inj (Except.ok.inj (hc.symm.trans hcp))).1,
     (Prod.mk.inj (Option.some.inj (hm.symm.trans hm'))).1]
   refine ⟨?_, rfl⟩
@@ -421,7 +421,7 @@ theorem op_recv_write_read (hR : Rel2 c m st) (xs : List Val) (hlen : xs.length 
       (m.chans 1).wDropped, (m.chans 1).done, (m.chans 1).sent ++ xs.take c⟩).post 1
         ⟨.streamRead, 1, Silmaril.Wasm.Component.Async.packCopy .completed c, xs.take c⟩, 16 * c) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamWrite, hR.rel.tblW, hp, resNat, hlen,
-      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
+      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.Async.CopyResult.toNat]
   rw [(Prod.mk.inj (Option.some.inj (hm.symm.trans hm'))).1, hrecv]
   exact ⟨by simp [hxwk, Cabi.EndKind.isReadable, Cabi.upd, hR.recv,
     Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
@@ -450,7 +450,7 @@ theorem op_recv_read_write (hR : Rel2 c m st) (xs : List Val) (hev : m.ev 1 = no
       (m.chans 1).wDropped, (m.chans 1).done, (m.chans 1).sent ++ xs.take c⟩).post 2
         ⟨.streamWrite, 2, Silmaril.Wasm.Component.Async.packCopy .completed c, []⟩, 16 * c) := by
     simp [mStep, Silmaril.Wasm.Component.Async.streamRead, hR.rel.tblR, hp, resNat, hlen,
-      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.AsyncRef.CopyResult.toNat]
+      Silmaril.Wasm.Component.Async.packCopy, Silmaril.Wasm.Component.Async.CopyResult.toNat]
   rw [(Prod.mk.inj (Option.some.inj (hm.symm.trans hm'))).1, hrecv]
   exact ⟨by simp [hxrk, Cabi.EndKind.isReadable, Cabi.upd, hR.recv, hbws,
     Silmaril.Wasm.Component.Async.Store.post, Silmaril.Wasm.Component.Async.Store.setChan,
