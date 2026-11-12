@@ -62,10 +62,24 @@ Left out, and why:
 
 * The correspondence of the RV64 semantics with the generated Sail model
   (`RiscV.Ext.Sail`, `RiscV.Sail.Arithmetic`): it needs the third-party `riscv-zkvm` package.
-* The modules adapted from CompCert (`Machine.CSupport.CompCert`: Clight, Cminor, integers, the
-  Clight-to-Cminor translation) and the C-semantics modules that use them: they are marked
-  LGPL-2.1-or-later, and CompCert distributes only part of its sources under free licences;
-  which parts these adapt is not checked yet.
+* **CompCert-derived code is not in this repository, by decision.** The source development
+  adapts parts of CompCert v3.17 (`Machine.CSupport.CompCert`: Clight, Cminor, machine integers,
+  the Clight-to-Cminor translation, a register IR, assertion lowering, validation, 12 modules
+  with their headers) and builds 30 modules of the C semantics ladder on them (with their
+  headers); all of these stay out. So the following are **absent**, and nothing here states or
+  proves them:
+  * the signed C0 results through Cminor and x86: `C0SignedCondition`, `C0SignedSafety`,
+    `C0SignedToCminor`, `C0SignedX86Add` (and their `…Checks`);
+  * the owned-resource (RefinedC-style) results that go through the CompCert register IR to
+    Lir or RV64: `RefinedCMaxLir`, `RefinedCOwnedLir`, `RefinedCOwnedRV64`,
+    `RefinedCOwnedScalar*` (scalar reads, writes, read-back, RV64), `RefinedCOwnedSwapLir*`,
+    `RefinedCOwnedUint64Frontend*`, `RefinedCOwnedUint64WriterFrontend`,
+    `RefinedCProgramsLir`, `RefinedCProgramsSignedLir*`.
+
+  The rungs C0 to C7 themselves, their elaborations and ladder checks, and the owned-resource
+  specifications on C1 memory and on Lir that do not use CompCert code (`RefinedCPrograms`,
+  `RefinedCMax`, `RefinedCOwnedSwap`, `RefinedCOwnedLirFrontend`, `RefinedCOwnedByte`, …)
+  are here. No module in this repository carries CompCert's licence marker.
 
 ## Build
 
