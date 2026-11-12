@@ -1,0 +1,956 @@
+{
+ "description": "demangle, metadata, addr2line, dump, parse and print on small inputs and on stdin: everything but stderr compared exactly; stderr exact unless the exit status is 1.",
+ "fixtures": {
+  "m.wasm": "m.wasm",
+  "c.wasm": "c.wasm",
+  "bad.wasm": {
+   "text": "not wasm"
+  },
+  "pp.wat": "pp.wat",
+  "pp.wasm": "pp.wasm"
+ },
+ "stderr": "exact-unless-1",
+ "cases": [
+  {
+   "args": [
+    "demangle",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "\u0000asm\u0001\u0000\u0000\u0000\u0001\u0007\u0001`\u0002\u0001\u0003\u0002\u0001\u0000\u0007\u0007\u0001\u0003add\u0000\u0000\n\t\u0001\u0007\u0000 \u0000 \u0001j\u000b"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangle",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangle",
+    "--bogus",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unexpected argument '--bogus' found\n\n  tip: to pass '--bogus' as a value, use '-- --bogus'\n\nUsage: wasm-tools demangle [OPTIONS] [INPUT]\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangle",
+    "bad.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangle"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangle",
+    "-t",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (export \"add\" (func 0))\n  (func (;0;) (type 0) (param i32 i32) (result i32)\n    local.get 0\n    local.get 1\n    i32.add\n  )\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "╭────────┬────────────┬──────┬───────┬───────────┬────────╮\n│ KIND   ┆ NAME       ┆ SIZE ┆ SIZE% ┆ LANGUAGES ┆ PARENT │\n╞════════╪════════════╪══════╪═══════╪═══════════╪════════╡\n│ module ┆ unknown(0) ┆  41B ┆  100% ┆ -         ┆ <root> │\n╰────────┴────────────┴──────┴───────┴───────────┴────────╯\n╭───────┬───────────╮\n│ KIND  ┆ VALUE     │\n╞═══════╪═══════════╡\n│ name  ┆ <unknown> │\n├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤\n│ kind  ┆ module    │\n├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤\n│ range ┆ 0x0..0x29 │\n╰───────┴───────────╯\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show",
+    "--json",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "{\"module\":{\"name\":null,\"producers\":null,\"authors\":null,\"description\":null,\"licenses\":null,\"source\":null,\"homepage\":null,\"revision\":null,\"version\":null,\"range\":{\"start\":0,\"end\":41},\"dependencies\":null}}"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show",
+    "c.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "╭───────────┬────────────┬──────┬───────┬───────────┬────────╮\n│ KIND      ┆ NAME       ┆ SIZE ┆ SIZE% ┆ LANGUAGES ┆ PARENT │\n╞═══════════╪════════════╪══════╪═══════╪═══════════╪════════╡\n│ component ┆ unknown(0) ┆ 353B ┆  100% ┆ -         ┆ <root> │\n╰───────────┴────────────┴──────┴───────┴───────────┴────────╯\n╭──────────────┬─────────────────────────╮\n│ KIND         ┆ VALUE                   │\n╞══════════════╪═════════════════════════╡\n│ name         ┆ <unknown>               │\n├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n│ kind         ┆ component               │\n├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n│ range        ┆ 0x0..0x161              │\n├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n│ processed-by ┆ wit-component [0.263.0] │\n╰──────────────┴─────────────────────────╯\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show",
+    "--json",
+    "c.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "{\"component\":{\"metadata\":{\"name\":null,\"producers\":[[\"processed-by\",{\"wit-component\":\"0.263.0\"}]],\"authors\":null,\"description\":null,\"licenses\":null,\"source\":null,\"homepage\":null,\"revision\":null,\"version\":null,\"range\":{\"start\":0,\"end\":353},\"dependencies\":null},\"children\":[]}}"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show",
+    "bad.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--name",
+    "n",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "a1b846d6671db234583a0ab2ddca7cbac01c0911eabc29591815b0875eeca6c7"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--language",
+    "Lean=4",
+    "--processed-by",
+    "lean=1",
+    "--sdk",
+    "s=2",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "a06da4951658f4f42fbaa0aea01aab6bbd0fa9fa797bbe28db5c24a054023bd2"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--authors",
+    "a",
+    "--description",
+    "d",
+    "--version",
+    "1.0",
+    "--revision",
+    "r",
+    "--licenses",
+    "MIT",
+    "--homepage",
+    "https://example.com",
+    "--source",
+    "https://example.com/s",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "8d606c5e33f47acfaf4ddaeac33bf72beede9f0ecb5882e8825d967c5e49330d"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--clear-name",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--licenses",
+    "not a licence",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: invalid value 'not a licence' for '--licenses <NAME>': not a licence\n^^^ unknown term\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   },
+   "known": "SPDX expression errors: the caret line under the offending term is not printed"
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--bogus",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error: unexpected argument '--bogus' found\n\n  tip: to pass '--bogus' as a value, use '-- --bogus'\n\nUsage: wasm-tools metadata add [OPTIONS] [INPUT]\n\nFor more information, try '--help'.\n"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "-t",
+    "--name",
+    "n",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module $n\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (export \"add\" (func 0))\n  (func (;0;) (type 0) (param i32 i32) (result i32)\n    local.get 0\n    local.get 1\n    i32.add\n  )\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2line",
+    "m.wasm",
+    "0x0"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2line",
+    "bad.wasm",
+    "0x0"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2line",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2line",
+    "m.wasm",
+    "zz"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "  0x0 | 00 61 73 6d | version 1 (Module)\n      | 01 00 00 00\n  0x8 | 01 07       | type section\n  0xa | 01          | 1 count\n--- rec group 0 (implicit) ---\n  0xb | 60 02 7f 7f | [type 0] (func (param i32 i32) (result i32))\n      | 01 7f      \n 0x11 | 03 02       | func section\n 0x13 | 01          | 1 count\n 0x14 | 00          | [func 0] type 0\n 0x15 | 07 07       | export section\n 0x17 | 01          | 1 count\n 0x18 | 03 61 64 64 | export Export { name: \"add\", kind: Func, index: 0 }\n      | 00 00      \n 0x1e | 0a 09       | code section\n 0x20 | 01          | 1 count\n============== func 0 ====================\n 0x21 | 07          | size of function\n 0x22 | 00          | 0 local blocks\n 0x23 | 20 00       | local_get local_index:0\n 0x25 | 20 01       | local_get local_index:1\n 0x27 | 6a          | i32_add\n 0x28 | 0b          | end\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump",
+    "c.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "   0x0 | 00 61 73 6d | version 13 (Component)\n       | 0d 00 01 00\n   0x8 | 07 2e       | component type section\n   0xa | 01          | 1 count\n   0xb | 41 02 01 41 | [type 0] Component([Type(Component([Type(Func(ComponentFuncType { async_: false, params: [], result: Some(Primitive(U32)) })), Export { name: ComponentExternName { name: \"get\", implements: None, version_suffix: None, external_id: None }, ty: Func(0) }])), Export { name: ComponentExternName { name: \"local:get/getter@0.1.0\", implements: None, version_suffix: None, external_id: None }, ty: Component(0) }])\n       | 02 01 40 00\n       | 00 79 04 00\n       | 03 67 65 74\n       | 01 00 04 00\n       | 16 6c 6f 63\n       | 61 6c 3a 67\n       | 65 74 2f 67\n       | 65 74 74 65\n       | 72 40 30 2e\n       | 31 2e 30 04\n       | 00         \n  0x38 | 0b 0c       | component export section\n  0x3a | 01          | 1 count\n  0x3b | 00 06 67 65 | export ComponentExport { name: ComponentExternName { name: \"getter\", implements: None, version_suffix: None, external_id: None }, kind: Type, index: 0, ty: None }\n       | 74 74 65 72\n       | 03 00 00   \n  0x46 | 07 36       | component type section\n  0x48 | 01          | 1 count\n  0x49 | 41 02 01 41 | [type 1] Component([Type(Component([Type(Func(ComponentFuncType { async_: false, params: [], result: Some(Primitive(U32)) })), Import(ComponentImport { name: ComponentExternName { name: \"get\", implements: None, version_suffix: None, external_id: None }, ty: Func(0) }), Export { name: ComponentExternName { name: \"run\", implements: None, version_suffix: None, external_id: None }, ty: Func(0) }])), Export { name: ComponentExternName { name: \"local:get/runner@0.1.0\", implements: None, version_suffix: None, external_id: None }, ty: Component(0) }])\n       | 03 01 40 00\n       | 00 79 03 00\n       | 03 67 65 74\n       | 01 00 04 00\n       | 03 72 75 6e\n       | 01 00 04 00\n       | 16 6c 6f 63\n       | 61 6c 3a 67\n       | 65 74 2f 72\n       | 75 6e 6e 65\n       | 72 40 30 2e\n       | 31 2e 30 04\n       | 00         \n  0x7e | 0b 0c       | component export section\n  0x80 | 01          | 1 count\n  0x81 | 00 06 72 75 | export ComponentExport { name: ComponentExternName { name: \"runner\", implements: None, version_suffix: None, external_id: None }, kind: Type, index: 2, ty: None }\n       | 6e 6e 65 72\n       | 03 02 00   \n  0x8c | 00 a1 01    | custom section\n  0x8f | 0c 70 61 63 | name: \"package-docs\"\n       | 6b 61 67 65\n       | 2d 64 6f 63\n       | 73         \n  0x9c |-------------| ... 148 bytes of data\n 0x130 | 00 2f       | custom section\n 0x132 | 09 70 72 6f | name: \"producers\"\n       | 64 75 63 65\n       | 72 73      \n 0x13c | 01          | 1 count\n 0x13d | 0c 70 72 6f | field: processed-by\n       | 63 65 73 73\n       | 65 64 2d 62\n       | 79         \n 0x14a | 01          | 1 count\n 0x14b | 0d 77 69 74 | ProducersFieldValue { name: \"wit-component\", version: \"0.263.0\" }\n       | 2d 63 6f 6d\n       | 70 6f 6e 65\n       | 6e 74 07 30\n       | 2e 32 36 33\n       | 2e 30      \n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump",
+    "bad.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump",
+    "-o",
+    "out.txt",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.txt": "b0cae325db35268080b50d6504daee0facd9083e11d02970443e180c2419fcb2"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "parse"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "print"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2line",
+    "-",
+    "0x0"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show"
+   ],
+   "stdin": "m.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "╭────────┬────────────┬──────┬───────┬───────────┬────────╮\n│ KIND   ┆ NAME       ┆ SIZE ┆ SIZE% ┆ LANGUAGES ┆ PARENT │\n╞════════╪════════════╪══════╪═══════╪═══════════╪════════╡\n│ module ┆ unknown(0) ┆  41B ┆  100% ┆ -         ┆ <root> │\n╰────────┴────────────┴──────┴───────┴───────────┴────────╯\n╭───────┬───────────╮\n│ KIND  ┆ VALUE     │\n╞═══════╪═══════════╡\n│ name  ┆ <unknown> │\n├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤\n│ kind  ┆ module    │\n├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤\n│ range ┆ 0x0..0x29 │\n╰───────┴───────────╯\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "show",
+    "-"
+   ],
+   "stdin": "c.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "╭───────────┬────────────┬──────┬───────┬───────────┬────────╮\n│ KIND      ┆ NAME       ┆ SIZE ┆ SIZE% ┆ LANGUAGES ┆ PARENT │\n╞═══════════╪════════════╪══════╪═══════╪═══════════╪════════╡\n│ component ┆ unknown(0) ┆ 353B ┆  100% ┆ -         ┆ <root> │\n╰───────────┴────────────┴──────┴───────┴───────────┴────────╯\n╭──────────────┬─────────────────────────╮\n│ KIND         ┆ VALUE                   │\n╞══════════════╪═════════════════════════╡\n│ name         ┆ <unknown>               │\n├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n│ kind         ┆ component               │\n├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n│ range        ┆ 0x0..0x161              │\n├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤\n│ processed-by ┆ wit-component [0.263.0] │\n╰──────────────┴─────────────────────────╯\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "demangle"
+   ],
+   "stdin": "m.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "\u0000asm\u0001\u0000\u0000\u0000\u0001\u0007\u0001`\u0002\u0001\u0003\u0002\u0001\u0000\u0007\u0007\u0001\u0003add\u0000\u0000\n\t\u0001\u0007\u0000 \u0000 \u0001j\u000b"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate"
+   ],
+   "stdin": "m.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-"
+   ],
+   "stdin": "pp.wat",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "print"
+   ],
+   "stdin": "pp.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module $m\n  (type $t (;0;) (func (param i32) (result i32)))\n  (memory (;0;) 1)\n  (export \"f\" (func $f))\n  (func $f (;0;) (type $t) (param $x i32) (result i32)\n    (local $y i32)\n    block $b\n      local.get $x\n      br_if $b\n    end\n    local.get $x\n    i32.const 1\n    i32.add\n  )\n  (data (;0;) (i32.const 8) \"hi\")\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "parse"
+   ],
+   "stdin": "pp.wat",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "\u0000asm\u0001\u0000\u0000\u0000\u0001\u0006\u0001`\u0001\u0001\u0003\u0002\u0001\u0000\u0005\u0003\u0001\u0000\u0001\u0007\u0005\u0001\u0001f\u0000\u0000\n\u0012\u0001\u0010\u0001\u0001\u0002@ \u0000\r\u0000\u000b \u0000A\u0001j\u000b\u000b\b\u0001\u0000A\b\u000b\u0002hi\u0000(\u0004name\u0000\u0002\u0001m\u0001\u0004\u0001\u0000\u0001f\u0002\t\u0001\u0000\u0002\u0000\u0001x\u0001\u0001y\u0003\u0006\u0001\u0000\u0001\u0000\u0001b\u0004\u0004\u0001\u0000\u0001t"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "parse",
+    "-t",
+    "-"
+   ],
+   "stdin": "pp.wat",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module $m\n  (type $t (;0;) (func (param i32) (result i32)))\n  (memory (;0;) 1)\n  (export \"f\" (func $f))\n  (func $f (;0;) (type $t) (param $x i32) (result i32)\n    (local $y i32)\n    block $b\n      local.get $x\n      br_if $b\n    end\n    local.get $x\n    i32.const 1\n    i32.add\n  )\n  (data (;0;) (i32.const 8) \"hi\")\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump"
+   ],
+   "stdin": "c.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "  component types                        |        0xa -       0x38 |        46 bytes | 1 count\n  component exports                      |       0x3a -       0x46 |        12 bytes | 1 count\n  component types                        |       0x48 -       0x7e |        54 bytes | 1 count\n  component exports                      |       0x80 -       0x8c |        12 bytes | 1 count\n  custom \"package-docs\"                  |       0x9c -      0x130 |       148 bytes | 1 count\n  custom \"producers\"                     |      0x13c -      0x161 |        37 bytes | 1 count\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "dump"
+   ],
+   "stdin": "pp.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "  0x0 | 00 61 73 6d | version 1 (Module)\n      | 01 00 00 00\n  0x8 | 01 06       | type section\n  0xa | 01          | 1 count\n--- rec group 0 (implicit) ---\n  0xb | 60 01 7f 01 | [type 0] (func (param i32) (result i32))\n      | 7f         \n 0x10 | 03 02       | func section\n 0x12 | 01          | 1 count\n 0x13 | 00          | [func 0] type 0\n 0x14 | 05 03       | memory section\n 0x16 | 01          | 1 count\n 0x17 | 00 01       | [memory 0] MemoryType { memory64: false, shared: false, initial: 1, maximum: None, page_size_log2: None }\n 0x19 | 07 05       | export section\n 0x1b | 01          | 1 count\n 0x1c | 01 66 00 00 | export Export { name: \"f\", kind: Func, index: 0 }\n 0x20 | 0a 12       | code section\n 0x22 | 01          | 1 count\n============== func 0 ====================\n 0x23 | 10          | size of function\n 0x24 | 01          | 1 local blocks\n 0x25 | 01 7f       | 1 locals of type I32\n 0x27 | 02 40       | block blockty:Empty\n 0x29 | 20 00       | local_get local_index:0\n 0x2b | 0d 00       | br_if relative_depth:0\n 0x2d | 0b          | end\n 0x2e | 20 00       | local_get local_index:0\n 0x30 | 41 01       | i32_const value:1\n 0x32 | 6a          | i32_add\n 0x33 | 0b          | end\n 0x34 | 0b 08       | data section\n 0x36 | 01          | 1 count\n 0x37 | 00          | data memory[0]\n 0x38 | 41 08       | i32_const value:8\n 0x3a | 0b          | end\n 0x3b |-------------| ... 2 bytes of data\n 0x3e | 00 28       | custom section\n 0x40 | 04 6e 61 6d | name: \"name\"\n      | 65         \n 0x45 | 00 02       | module name\n 0x47 | 01 6d       | \"m\"\n 0x49 | 01 04       | function name section\n 0x4b | 01          | 1 count\n 0x4c | 00 01 66    | Naming { index: 0, name: \"f\" }\n 0x4f | 02 09       | local section\n 0x51 | 01          | 1 count\n 0x52 | 00          | function 0 local name section\n 0x53 | 02          | 2 count\n 0x54 | 00 01 78    | Naming { index: 0, name: \"x\" }\n 0x57 | 01 01 79    | Naming { index: 1, name: \"y\" }\n 0x5a | 03 06       | label section\n 0x5c | 01          | 1 count\n 0x5d | 00          | function 0 label name section\n 0x5e | 01          | 1 count\n 0x5f | 00 01 62    | Naming { index: 0, name: \"b\" }\n 0x62 | 04 04       | type name section\n 0x64 | 01          | 1 count\n 0x65 | 00 01 74    | Naming { index: 0, name: \"t\" }\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-a",
+    "-o",
+    "out.wasm"
+   ],
+   "stdin": "c.wasm",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "dfc474b9fd27e86b02087ed370e94cce48027be1b94062f202ac10cf96450339"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "addr2line",
+    "-",
+    "0x0"
+   ],
+   "stdin": "pp.wasm",
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "metadata",
+    "add",
+    "--name",
+    "x",
+    "-o",
+    "out.wasm",
+    "-"
+   ],
+   "stdin": "pp.wat",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "11b501489bac00c0ef6dd6dcd05695efb254d3c55202e8db0ca64c6c5373fb06"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "print"
+   ],
+   "stdin": "pp.wat",
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module $m\n  (type $t (;0;) (func (param i32) (result i32)))\n  (memory (;0;) 1)\n  (export \"f\" (func $f))\n  (func $f (;0;) (type $t) (param $x i32) (result i32)\n    (local $y i32)\n    block $b\n      local.get $x\n      br_if $b\n    end\n    local.get $x\n    i32.const 1\n    i32.add\n  )\n  (data (;0;) (i32.const 8) \"hi\")\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-"
+   ],
+   "stdin": "b.wast",
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  }
+ ]
+}

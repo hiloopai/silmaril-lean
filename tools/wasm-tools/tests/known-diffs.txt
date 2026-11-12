@@ -1,0 +1,26 @@
+# Known disagreements of tools/wasm-tools/tests/diff.sh with wasm-tools 1.262.0 (kind, file, invocation, verdict).
+# Components: core types of the GC proposal inside a component (`(core type (func (param (ref 0))))`)
+# are not read by the component decoder (Silmaril.Wasm.Component.BinaryP3); see tools/wasm-tools/README.md
+# (validate). Components under the default features go to WasmTools.CompVal's validator: it does
+# not gate `error-context` in a `task.return` result on the error-context feature (one of its 8
+# false accepts on compval/validate.sh).
+# Modules under -f all: proposals with no Core 3.0 model (stack-switching tags with results,
+# custom-descriptors casts, shared-everything threads); see tools/wasm-tools/README.md.
+component	mf/error-context.wast/x.5.wasm	validate	ours-accepts
+component	mf/error-context-values.wast/x.0.wasm	validate -f all	ours-rejects
+component	mf/shared-everything-threads-builtins.wast/x.2.wasm	validate -f all	ours-rejects
+component	mf/types.wast/x.1.wasm	validate -f all	ours-rejects
+component	mf/types.wast/x.2.wasm	validate -f all	ours-rejects
+module	mf/shared-any.wast/x.0.wasm	validate -f all	ours-rejects
+module	mf/shared-any.wast/x.1.wasm	validate -f all	ours-rejects
+module	mf/shared-everything-threads-arrays.wast/x.0.wasm	validate -f all	ours-rejects
+module	mf/shared-everything-threads-structs.wast/x.0.wasm	validate -f all	ours-rejects
+module	mf/shared-everything-threads-types.wast/x.0.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_exceptions_tag.wast/x.2.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_exceptions_tag.wast/x.3.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_gc_br_on_cast_fail.wast/x.4.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_gc_br_on_cast_fail.wast/x.6.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_gc_br_on_cast_fail.wast/x.7.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_gc_br_on_cast.wast/x.4.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_gc_br_on_cast.wast/x.6.wasm	validate -f all	ours-rejects
+module	spec/spec-608711107b7f1edb13efd57b7d79b49477462d36_test_core_gc_br_on_cast.wast/x.7.wasm	validate -f all	ours-rejects

@@ -1,0 +1,25 @@
+# input<TAB>subcommand<TAB>our median seconds (2026-11-10, bench.sh --runs 7, this machine under load ~13; with the validate fast paths)
+tiny-module	validate	0.050
+tiny-module	objdump	0.054
+tiny-module	strip	0.050
+adapter-module	validate	0.086
+adapter-module	objdump	0.073
+adapter-module	strip	0.068
+cat-core	validate	0.072
+cat-core	objdump	0.053
+cat-core	strip	0.051
+cat-debug-core	validate	0.164
+cat-debug-core	objdump	0.059
+cat-debug-core	strip	0.075
+cat-component	validate	0.087
+cat-component	objdump	0.070
+cat-component	strip	0.069
+cat-debug-component	validate	0.237
+cat-debug-component	objdump	0.078
+cat-debug-component	strip	0.074
+tiny-module	dump	0.069
+adapter-module	dump	0.098
+cat-core	dump	0.097
+cat-debug-core	dump	0.253
+cat-component	dump	0.080
+cat-debug-component	dump	0.227

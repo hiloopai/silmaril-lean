@@ -62,7 +62,7 @@ deps = ["Prelude", "Semantics", "Numeric", "Crypto", "Formats", "Machine"]
 [[region]]
 name = "Wasm"
 scope = "WebAssembly: core specifications, component model, text and binary formats, lowering."
-deps = ["Prelude", "Semantics", "Logic", "Numeric", "Crypto", "Formats", "SSA", "Machine"]
+deps = ["Prelude", "Semantics", "Logic", "Numeric", "Crypto", "Formats", "SSA", "Machine", "Cli", "Games"]
 
 [[region]]
 name = "GPU"
@@ -101,3 +101,23 @@ scope = "imbrem/thesis, one folder per chapter, following the text."
 [[view]]
 name = "Courses"
 scope = "Self-contained course developments, with inline proofs and numbered references; imported by no library region."
+
+[[region]]
+name = "Cli"
+scope = "Command-line interfaces as specifications: argument grammars as data with a derived parser (sound and complete), renderer (round trip), help, usage errors and exit codes, and grammar morphisms; a behaviour model of CLI programs (arguments, environment, stdin, stdout, stderr, files, exit code) with refinement and composition; Lean IO programs behind a derived front end, with a test harness."
+deps = []
+
+[[region]]
+name = "Games"
+scope = "Game semantics for components that call effects: effect signatures, plays, strategies with refinement, parallel composition with hiding, handlers, transition systems as strategies, divergence and infinite plays, and instantiation and linking of components with failure."
+deps = ["Prelude"]
+
+[[region]]
+name = "WasmSpec"
+scope = "Functional specifications of example WebAssembly programs (adder, max, sum, insertion sort, B-tree) used by the verification benchmarks."
+deps = ["Logic", "Wasm"]
+
+[[region]]
+name = "Parse"
+scope = "Byte-level parsing: a combinator core for binary formats, with its laws, shared by the Wasm binary codecs and other formats."
+deps = []

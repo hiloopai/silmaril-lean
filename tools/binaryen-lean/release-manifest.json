@@ -349,9 +349,256 @@
         "Binaryen-shaped external graph name/reaches/root/export fields; graph imports, unknown/duplicate/dangling/absent bindings reject.",
         "Ordinary full-export equivalence is not claimed for intentionally removed exports. Other decoded/validated module shapes retain exact original bytes and report skipped; graph parse/closure/binding errors still reject."
       ]
+    },
+    {
+      "command": "opt-verified-stages",
+      "status": "implemented",
+      "standalone": "wasm-opt",
+      "entrypoint": "tools/binaryen-lean/WasmOptCompatLean.lean",
+      "runtime_root": "Silmaril.Wasm.Binaryen.Driver.Defs",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Binaryen.Pipeline.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.Pipeline.extraSelectedCompatBytes_sound_exact",
+            "Silmaril.Wasm.Binaryen.Pipeline.extraSelectedCompatBytes_valid",
+            "Silmaril.Wasm.Binaryen.Pipeline.ssaOnlyCompatBytes_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Binaryen.SsaStage.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Binaryen.SsaStage.ssaRun_exportEquiv"
+          ]
+        }
+      ],
+      "contract": "With any of the verified-stage options (the five extra stages, --ssa, --verified-stages presets), every selection and number of rounds yields a valid module with exact export equivalence to the input at every numerical profile under the closed host. Without them the command line is the opt-select command unchanged.",
+      "scope": [
+        "Stages neutral-ops, eqz-pair, rse-line, drop-get, tee-form: restricted subrules of OptimizeInstructions, RedundantSetElimination, Vacuum and SimplifyLocals; also selectable inside --passes.",
+        "The ssa stage rewrites store-free integer functions of modules without imports through the lambda-SSA optimizer, each replacement export-certified at run time; other functions and modules with imports are unchanged.",
+        "Growth-policy options are rejected on this path. --stats uses an unverified replay for reporting only. IO/native compilation remain outside pure certificates."
+      ]
+    },
+    {
+      "command": "asyncify",
+      "status": "implemented",
+      "standalone": "wasm-asyncify",
+      "entrypoint": "tools/wasm-asyncify/WasmAsyncify.lean",
+      "runtime_root": "Silmaril.Wasm.FX.Asyncify.Tool.Spill.Defs",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Proofs.Wasm.FX.Asyncify.Tool.Spill.Bytes",
+          "theorems": [
+            "Silmaril.Wasm.FX.Asyncify.Tool.asyncifyBytesW_correct"
+          ]
+        },
+        {
+          "module": "Silmaril.Proofs.Wasm.FX.Asyncify.Tool.Bytes",
+          "theorems": [
+            "Silmaril.Wasm.FX.Asyncify.Tool.asyncifyBytes_correct"
+          ]
+        },
+        {
+          "module": "Silmaril.Proofs.Wasm.FX.Asyncify.Tool.Elide",
+          "theorems": [
+            "Silmaril.Wasm.FX.Asyncify.Tool.asyncifyBytesE_correct"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.FX.Asyncify.Tool.SelBytes.Thms",
+          "theorems": [
+            "Silmaril.Wasm.FX.Asyncify.Tool.asyncifyBytesSel_spec",
+            "Silmaril.Wasm.FX.Asyncify.Tool.asyncifyBytesSel_correct"
+          ]
+        }
+      ],
+      "contract": "A successful run decodes a well-formed source program on the i32 fragment and encodes its asyncified version with the same exports; for every host, export and arguments within the depth bound, source and target have equal behaviours on the tool's source and target machines.",
+      "scope": [
+        "Default: statement form, otherwise operands spilled to locals, redundant re-entry checks elided; --no-elide: the guarded statement form; --selective: only calls that may suspend are instrumented.",
+        "The link from the target machine to Core 3.0 execution is not part of this release (it depends on open statements). Inputs outside the fragment reject. IO/native compilation remain outside pure certificates."
+      ]
+    },
+    {
+      "command": "check",
+      "status": "implemented",
+      "standalone": "wasm-check",
+      "entrypoint": "tools/wasm-check/WasmCheck.lean",
+      "runtime_root": "Silmaril.Wasm.Auto.Front.Defs",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Auto.Front.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Auto.Front.checkRefines_proved",
+            "Silmaril.Wasm.Auto.Front.checkEquiv_proved",
+            "Silmaril.Wasm.Auto.Front.checkRefines_refuted",
+            "Silmaril.Wasm.Auto.Front.checkEquiv_refuted"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Auto.Bridge.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Auto.Bridge.modEquiv_of_checkAmong"
+          ]
+        }
+      ],
+      "contract": "A refuted verdict refutes refinement or equivalence of the export; a proved verdict proves ModEquiv of the export at every profile. With --lean the verdict is a Lean certificate checked by the kernel.",
+      "scope": [
+        "Start-free modules with scalar function imports and exports; one invocation of an export is observed (result or trap), not changes to globals or memory.",
+        "With --wat the certificate concerns the modules of the WAT texts; that they are the binaries' modules is not kernel-checked. IO, JSON reports and the compiled checker remain outside the certificates."
+      ]
     }
   ],
-  "additional_standalones": [],
+  "additional_standalones": [
+    {
+      "command": "wasm-tools",
+      "status": "implemented",
+      "binary": "wasm-tools",
+      "entrypoint": "tools/wasm-tools/WasmTools.lean",
+      "runtime_root": "Silmaril.Wasm.Tools.Validate.Defs",
+      "proof_roots": [
+        {
+          "module": "Silmaril.Wasm.Tools.Validate.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Validate.check_ok_iff"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Text.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Text.textToBinary_sound",
+            "Silmaril.Wasm.Tools.Text.print_parse_roundtrip"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Layout.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Layout.relayout_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Print.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Print.printModule_sound",
+            "Silmaril.Wasm.Tools.Print.print_parse_roundtrip"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.PrintCheck.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.PrintCheck.checkFast_eq",
+            "Silmaril.Wasm.Tools.PrintCheck.watToBinaryFast_eq",
+            "Silmaril.Wasm.Tools.PrintCheck.binaryToWatWithFast_eq"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.FastPaths.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.FastPaths.stripFast_eq",
+            "Silmaril.Wasm.Tools.FastPaths.objdumpFast_eq"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Strip.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Strip.strip_module"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Objdump.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Objdump.objdump_ranges"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Dump.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Dump.dump_tiles"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.DumpOps.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.DumpOps.dExpr_erase"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Meta.FastCmd.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Meta.parseBinaryB_spec"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Meta.FastCmd.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Meta.Metadata.payloadOfB_spec",
+            "Silmaril.Wasm.Tools.Meta.Metadata.addMetadataB_spec",
+            "Silmaril.Wasm.Tools.Meta.Demangle.demangleB_spec"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Meta.Demangle.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Meta.Demangle.demangle_ok"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Dwarf.Line.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Dwarf.specialRegs_spec",
+            "Silmaril.Wasm.Tools.Dwarf.binarySearch_spec"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Wast.Syntax.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Wast.Script.read_print"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Wast.Lex.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Wast.read_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Wast.Encode.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Wast.checkedCore_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Wast.Check.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Wast.checkDirective_spec",
+            "Silmaril.Wasm.Tools.Wast.checkScriptPure_spec"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Reencode.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Reencode.reencode_sound"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.CompValidate.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.CompValidate.check_core"
+          ]
+        },
+        {
+          "module": "Silmaril.Wasm.Tools.Suggest.Thms",
+          "theorems": [
+            "Silmaril.Wasm.Tools.Suggest.didYouMeanAll_mem"
+          ]
+        }
+      ],
+      "contract": "The core of each subcommand is a pure function with the listed theorem: validate on core modules equals the specification validator; parse and print are sound against the module they encode or print; every fast path equals its specification function. Byte agreement with wasm-tools 1.262.0 is tested (tools/wasm-tools/test-cli.py, tools/wasm-tools/tests/differential.sh), not proved.",
+      "scope": [
+        "Subcommands: parse, print, validate, strip, objdump, dump, metadata show/add, demangle, addr2line, completion, json-from-wast, wast, help. Component and generator subcommands report 'not implemented in this build' (exit 1).",
+        "Inputs outside the Wasm 3.0 model reject; component validation beyond its core-module parts, the demanglers, the DWARF reader and wasmparser's error texts are tested transcriptions. IO/native compilation and the argument dispatch remain outside pure certificates."
+      ]
+    }
+  ],
   "missing_tools": [],
   "standalone_isolation": {},
   "cli_compatibility": {

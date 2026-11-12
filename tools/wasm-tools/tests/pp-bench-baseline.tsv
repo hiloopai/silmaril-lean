@@ -1,0 +1,9 @@
+# input	cmd	ours_s (2026-11-10, pp-bench.sh --runs 1 --large, load average 5-9; upstream: 0.02/0.01, 0.08/0.02, 0.26/0.07, 3.35/0.75)
+adapter	print	0.16
+adapter	parse	0.17
+bz2	print	1.26
+bz2	parse	1.31
+pulldown-cmark	print	2.97
+pulldown-cmark	parse	3.82
+spidermonkey	print	35.4
+spidermonkey	parse	37.9

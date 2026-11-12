@@ -1,0 +1,314 @@
+(module
+ (type $0 (func (param i32) (result i32)))
+ (type $1 (func (param i32 i32) (result i32)))
+ (type $2 (func (param i64) (result i64)))
+ (type $3 (func (param i64 i64) (result i32)))
+ (type $4 (func (param i64) (result i32)))
+ (type $5 (func (param i32 i32 i32) (result i32)))
+ (type $6 (func (param i64 i64) (result i64)))
+ (type $7 (func (result i32)))
+ (type $8 (func (param i32 i64) (result i32 i64)))
+ (export "f0" (func $0))
+ (export "f1" (func $1))
+ (export "f2" (func $2))
+ (export "f3" (func $3))
+ (export "f4" (func $4))
+ (export "f5" (func $5))
+ (export "f6" (func $6))
+ (export "f7" (func $7))
+ (export "f8" (func $8))
+ (export "f9" (func $9))
+ (export "f10" (func $10))
+ (export "f11" (func $11))
+ (export "f12" (func $12))
+ (export "f13" (func $13))
+ (export "f14" (func $14))
+ (export "f15" (func $15))
+ (export "f16" (func $16))
+ (export "f17" (func $17))
+ (export "f18" (func $18))
+ (export "f19" (func $19))
+ (export "f20" (func $20))
+ (export "f21" (func $21))
+ (export "f22" (func $22))
+ (export "f23" (func $23))
+ (export "f24" (func $24))
+ (export "f25" (func $25))
+ (export "f26" (func $26))
+ (export "f27" (func $27))
+ (export "f28" (func $28))
+ (export "f29" (func $29))
+ (export "f30" (func $30))
+ (func $0 (type $1) (param $0 i32) (param $1 i32) (result i32)
+  (i32.mul
+   (local.get $1)
+   (i32.add
+    (local.get $0)
+    (i32.const 0)
+   )
+  )
+ )
+ (func $1 (type $0) (param $0 i32) (result i32)
+  (i32.eqz
+   (i32.sub
+    (local.get $0)
+    (i32.const 0)
+   )
+  )
+ )
+ (func $2 (type $3) (param $0 i64) (param $1 i64) (result i32)
+  (i64.eq
+   (local.get $0)
+   (i64.and
+    (local.get $1)
+    (i64.const -1)
+   )
+  )
+ )
+ (func $3 (type $0) (param $0 i32) (result i32)
+  (i32.clz
+   (i32.shl
+    (local.get $0)
+    (i32.const 0)
+   )
+  )
+ )
+ (func $4 (type $2) (param $0 i64) (result i64)
+  (i64.rotl
+   (local.get $0)
+   (i64.xor
+    (local.get $0)
+    (i64.const 0)
+   )
+  )
+ )
+ (func $5 (type $1) (param $0 i32) (param $1 i32) (result i32)
+  (i32.sub
+   (local.get $0)
+   (i32.rotr
+    (local.get $1)
+    (i32.const 0)
+   )
+  )
+ )
+ (func $6 (type $0) (param $0 i32) (result i32)
+  (i32.eqz
+   (i32.add
+    (i32.add
+     (local.get $0)
+     (i32.const 0)
+    )
+    (i32.const 0)
+   )
+  )
+ )
+ (func $7 (type $1) (param $0 i32) (param $1 i32) (result i32)
+  (i32.lt_u
+   (local.get $0)
+   (i32.shr_s
+    (local.get $1)
+    (i32.const 0)
+   )
+  )
+ )
+ (func $8 (type $6) (param $0 i64) (param $1 i64) (result i64)
+  (i64.sub
+   (local.get $0)
+   (i64.mul
+    (local.get $1)
+    (i64.const 1)
+   )
+  )
+ )
+ (func $9 (type $0) (param $0 i32) (result i32)
+  (i32.eqz
+   (i32.eqz
+    (i32.eqz
+     (local.get $0)
+    )
+   )
+  )
+ )
+ (func $10 (type $0) (param $0 i32) (result i32)
+  (i32.or
+   (local.get $0)
+   (i32.const 0)
+  )
+ )
+ (func $11 (type $0) (param $0 i32) (result i32)
+  (i32.eqz
+   (i32.shl
+    (local.get $0)
+    (i32.const 32)
+   )
+  )
+ )
+ (func $12 (type $0) (param $0 i32) (result i32)
+  (i32.add
+   (i32.add
+    (local.get $0)
+    (i32.const 1)
+   )
+   (i32.const 2)
+  )
+ )
+ (func $13 (type $0) (param $0 i32) (result i32)
+  (i32.sub
+   (local.get $0)
+   (i32.const -5)
+  )
+ )
+ (func $14 (type $2) (param $0 i64) (result i64)
+  (i64.mul
+   (local.get $0)
+   (i64.const 2)
+  )
+ )
+ (func $15 (type $0) (param $0 i32) (result i32)
+  (i32.add
+   (local.get $0)
+   (local.get $0)
+  )
+ )
+ (func $16 (type $4) (param $0 i64) (result i32)
+  (i64.eq
+   (local.get $0)
+   (i64.const 0)
+  )
+ )
+ (func $17 (type $4) (param $0 i64) (result i32)
+  (i32.eqz
+   (i64.eqz
+    (local.get $0)
+   )
+  )
+ )
+ (func $18 (type $5) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+  (i32.mul
+   (i32.add
+    (local.get $1)
+    (local.get $0)
+   )
+   (local.get $2)
+  )
+ )
+ (func $19 (type $5) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+  (i32.add
+   (i32.mul
+    (local.get $0)
+    (local.get $1)
+   )
+   (i32.mul
+    (local.get $0)
+    (local.get $2)
+   )
+  )
+ )
+ (func $20 (type $1) (param $0 i32) (param $1 i32) (result i32)
+  (i32.gt_s
+   (local.get $1)
+   (local.get $0)
+  )
+ )
+ (func $21 (type $7) (result i32)
+  (i32.add
+   (i32.mul
+    (i32.const 3)
+    (i32.const 4)
+   )
+   (i32.sub
+    (i32.const 10)
+    (i32.const 2)
+   )
+  )
+ )
+ (func $22 (type $8) (param $0 i32) (param $1 i64) (result i32 i64)
+  (tuple.make 2
+   (i32.xor
+    (local.get $0)
+    (i32.const 0)
+   )
+   (i64.mul
+    (local.get $1)
+    (i64.const 1)
+   )
+  )
+ )
+ (func $23 (type $2) (param $0 i64) (result i64)
+  (i64.sub
+   (i64.const 0)
+   (i64.sub
+    (i64.const 0)
+    (local.get $0)
+   )
+  )
+ )
+ (func $24 (type $0) (param $0 i32) (result i32)
+  (i32.mul
+   (local.get $0)
+   (i32.const -1)
+  )
+ )
+ (func $25 (type $0) (param $0 i32) (result i32)
+  (i32.shr_s
+   (local.get $0)
+   (i32.eqz
+    (i32.xor
+     (local.get $0)
+     (i32.xor
+      (local.get $0)
+      (i32.const 255)
+     )
+    )
+   )
+  )
+ )
+ (func $26 (type $3) (param $0 i64) (param $1 i64) (result i32)
+  (i32.add
+   (i64.lt_u
+    (i64.add
+     (local.get $0)
+     (local.get $1)
+    )
+    (i64.add
+     (local.get $1)
+     (local.get $0)
+    )
+   )
+   (i64.eq
+    (local.get $1)
+    (local.get $1)
+   )
+  )
+ )
+ (func $27 (type $1) (param $0 i32) (param $1 i32) (result i32)
+  (i32.add
+   (local.get $1)
+   (i32.mul
+    (i32.shl
+     (local.get $0)
+     (local.get $1)
+    )
+    (i32.const 0)
+   )
+  )
+ )
+ (func $28 (type $2) (param $0 i64) (result i64)
+  (i64.div_u
+   (local.get $0)
+   (i64.const 32)
+  )
+ )
+ (func $29 (type $0) (param $0 i32) (result i32)
+  (i32.rem_u
+   (local.get $0)
+   (i32.const 8)
+  )
+ )
+ (func $30 (type $0) (param $0 i32) (result i32)
+  (i32.rotl
+   (local.get $0)
+   (i32.const -2)
+  )
+ )
+)

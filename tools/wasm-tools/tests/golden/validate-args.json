@@ -1,0 +1,1111 @@
+{
+ "description": "validate, strip and objdump: help, option forms and errors, input and output (m.wasm a module, c.wasm a component). stderr: only whether it starts with error:.",
+ "fixtures": {
+  "m.wasm": "m.wasm",
+  "c.wasm": "c.wasm",
+  "bad.wasm": {
+   "text": "not wasm"
+  }
+ },
+ "stderr": "error-word",
+ "cases": [
+  {
+   "args": [
+    "validate",
+    "-h"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Validate a WebAssembly binary\n\nUsage: wasm-tools validate [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]  Input file to process\n\nOptions:\n      --generate-dwarf <lines|full>  Optionally generate DWARF debugging information from\n                                     WebAssembly text files\n  -g                                 Shorthand for `--generate-dwarf full`\n  -f, --features <FEATURES>          Comma-separated list of WebAssembly features to enable during\n                                     validation\n  -v, --verbose...                   Use verbose output (-v info, -vv debug, -vvv trace)\n      --color <COLOR>                Configuration over whether terminal colors are used in output\n                                     [default: auto]\n      --validate-custom              Opt-in to validating the contents of custom sections\n  -h, --help                         Print help (see more with '--help')\n\nExamples:\n\n    # Validate `foo.wasm` with the default Wasm feature proposals.\n    $ wasm-tools validate foo.wasm\n\n    # Validate `foo.wasm` with more verbose output\n    $ wasm-tools validate -vv foo.wasm\n\n    # Validate `fancy.wasm` with all Wasm feature proposals enabled.\n    $ wasm-tools validate --features all fancy.wasm\n\n    # Validate `mvp.wasm` with the original wasm feature set enabled.\n    $ wasm-tools validate --features=wasm1 mvp.wasm\n    $ wasm-tools validate --features=mvp mvp.wasm\n\nExit status:\n    0 if the binary is valid,\n    nonzero if the binary is not valid.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Validate a WebAssembly binary\n\nThis subcommand will validate a WebAssembly binary to determine if it's valid or not. This\nimplements the validation algorithm of the WebAssembly specification\n<https://webassembly.github.io/spec/core/valid/index.html>. No output is printed if the binary is\nvalid; an error message is printed to stderr if the binary is not valid. A WebAssembly text file can\nalso be used.\n\nExtra information will be included in the error message if the input WebAssembly binary contains\nDWARF debugging information.\n\nUsage: wasm-tools validate [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n      --generate-dwarf <lines|full>\n          Optionally generate DWARF debugging information from WebAssembly text files.\n          \n          When the input to this command is a WebAssembly text file, such as `*.wat`, then this\n          option will instruct the text parser to insert DWARF debugging information to map binary\n          locations back to the original source locations in the input `*.wat` file. This option has\n          no effect if the `INPUT` argument is already a WebAssembly binary or if the text format\n          uses `(module binary ...)`.\n\n  -g\n          Shorthand for `--generate-dwarf full`\n\n  -f, --features <FEATURES>\n          Comma-separated list of WebAssembly features to enable during validation.\n          \n          If a \"-\" character is present in front of a feature it will disable that feature. For\n          example \"-simd\" will disable the simd proposal.\n          \n          The placeholder \"all\" can be used to enable all wasm features and the term \"-all\" can be\n          used to disable all features.\n          \n          The default set of features enabled are all WebAssembly proposals that are at phase 4 or\n          after. This means that the default set of features accepted are relatively bleeding edge.\n          Versions of the WebAssembly specification can also be selected. The \"wasm1\" or \"mvp\"\n          feature can select the original WebAssembly specification and \"wasm2\" can be used to\n          select the 2.0 version.\n          \n          Available feature options can be found in the wasmparser crate:\n          <https://github.com/bytecodealliance/wasm-tools/blob/main/crates/wasmparser/src/features.rs>\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n      --validate-custom\n          Opt-in to validating the contents of custom sections\n\n  -h, --help\n          Print help (see a summary with '-h')\n\nExamples:\n\n    # Validate `foo.wasm` with the default Wasm feature proposals.\n    $ wasm-tools validate foo.wasm\n\n    # Validate `foo.wasm` with more verbose output\n    $ wasm-tools validate -vv foo.wasm\n\n    # Validate `fancy.wasm` with all Wasm feature proposals enabled.\n    $ wasm-tools validate --features all fancy.wasm\n\n    # Validate `mvp.wasm` with the original wasm feature set enabled.\n    $ wasm-tools validate --features=wasm1 mvp.wasm\n    $ wasm-tools validate --features=mvp mvp.wasm\n\nExit status:\n    0 if the binary is valid,\n    nonzero if the binary is not valid.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-h"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Removes custom sections from an input WebAssembly file\n\nUsage: wasm-tools strip [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]  Input file to process\n\nOptions:\n  -o, --output <OUTPUT>  Where to place output\n  -v, --verbose...       Use verbose output (-v info, -vv debug, -vvv trace)\n      --color <COLOR>    Configuration over whether terminal colors are used in output [default:\n                         auto]\n  -a, --all              Remove all custom sections, regardless of name\n  -d, --delete <REGEX>   Remove custom sections matching the specified regex\n  -t, --wat              Output the text format of WebAssembly instead of the binary format\n  -h, --help             Print help (see more with '--help')\n\nExamples:\n\nSuppose foo.wasm has the following textual representation:\n\n(module\n  (type (;0;) (func))\n  (func (;2;) (type 0)\n    (local i32)\n    global.get 0\n  )\n  (@custom \"linking\" (after code) \"\")\n  (@custom \"reloc.CODE\" (after code) \"\")\n  (@custom \"target_features\" (after code) \"\")\n)\n\n    # Remove all custom sections from foo.wasm and print the textual form of\n    # the output to stdout.\n    $ wasm-tools strip -a -t foo.wasm\n(module\n  (type (;0;) (func))\n  (func (;0;) (type 0)\n    (local i32)\n    global.get 0\n  )\n)\n    # Remove only the custom sections whose names match the regexp `linking`\n    # and print the textual form of the output to stdout.\n    $ wasm-tools strip -d linking foo.wasm -t\n(module\n  (type (;0;) (func))\n  (func (;0;) (type 0)\n    (local i32)\n    global.get 0\n  )\n  (@custom \"reloc.CODE\" (after code) \"\")\n  (@custom \"target_features\" (after code) \"\")\n)\n\n   # Remove all custom sections from foo.wasm and save the binary output to\n   # the file out.wasm.\n   $ wasm-tools strip -a foo.wasm -o out.wasm\n\nExit status:\n    0 on success,\n    nonzero if the input file fails to parse.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Removes custom sections from an input WebAssembly file.\n\nThis command will by default strip all custom sections such as DWARF debugging information from a\nwasm file. It will not strip the `name`, `component-type`, or `dylink.0` sections by default unless\nthe `--all` flag is passed.\n\nUsage: wasm-tools strip [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -a, --all\n          Remove all custom sections, regardless of name\n\n  -d, --delete <REGEX>\n          Remove custom sections matching the specified regex\n\n  -t, --wat\n          Output the text format of WebAssembly instead of the binary format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\nExamples:\n\nSuppose foo.wasm has the following textual representation:\n\n(module\n  (type (;0;) (func))\n  (func (;2;) (type 0)\n    (local i32)\n    global.get 0\n  )\n  (@custom \"linking\" (after code) \"\")\n  (@custom \"reloc.CODE\" (after code) \"\")\n  (@custom \"target_features\" (after code) \"\")\n)\n\n    # Remove all custom sections from foo.wasm and print the textual form of\n    # the output to stdout.\n    $ wasm-tools strip -a -t foo.wasm\n(module\n  (type (;0;) (func))\n  (func (;0;) (type 0)\n    (local i32)\n    global.get 0\n  )\n)\n    # Remove only the custom sections whose names match the regexp `linking`\n    # and print the textual form of the output to stdout.\n    $ wasm-tools strip -d linking foo.wasm -t\n(module\n  (type (;0;) (func))\n  (func (;0;) (type 0)\n    (local i32)\n    global.get 0\n  )\n  (@custom \"reloc.CODE\" (after code) \"\")\n  (@custom \"target_features\" (after code) \"\")\n)\n\n   # Remove all custom sections from foo.wasm and save the binary output to\n   # the file out.wasm.\n   $ wasm-tools strip -a foo.wasm -o out.wasm\n\nExit status:\n    0 on success,\n    nonzero if the input file fails to parse.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "-h"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Dumps information about sections in a WebAssembly file\n\nUsage: wasm-tools objdump [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]  Input file to process\n\nOptions:\n  -o, --output <OUTPUT>  Where to place output\n  -v, --verbose...       Use verbose output (-v info, -vv debug, -vvv trace)\n      --color <COLOR>    Configuration over whether terminal colors are used in output [default:\n                         auto]\n  -h, --help             Print help (see more with '--help')\n\n\nExamples:\n\n       # Dump the contents of the file `add.wasm`:\n       $ wasm-tools objdump add.wasm\n       types                                  |        0xa -       0x11 |         7 bytes | 1 count\n       functions                              |       0x13 -       0x15 |         2 bytes | 1 count\n       exports                                |       0x17 -       0x33 |        28 bytes | 1 count\n       code                                   |       0x35 -       0x3e |         9 bytes | 1 count\n       custom \"name\"                          |       0x45 -       0x5c |        23 bytes | 1 count\n\n   One line is printed per section. The columns indicate:\n       * The name of the section (for example, \"types\")\n       * The offsets within the file for the start and end of the section (for example, \"0xa -\n       0x11\")\n       * The size of the section (for example, \"7 bytes\")\n       * The number of items within the section (for example, \"1 count\")\n\n       # Dump the contents of the file `add.wasm` and store the text-based output in a file\n       # named `add.txt`:\n       $ wasm-tools objdump add.wasm -o add.txt\n\nExit status:\n    0 if OK,\n    nonzero to indicate a parse error.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "--help"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "Dumps information about sections in a WebAssembly file.\n\nThis is a relatively incomplete subcommand and is generally intended to just help poke around an\nobject file.\n\nUsage: wasm-tools objdump [OPTIONS] [INPUT]\n\nArguments:\n  [INPUT]\n          Input file to process.\n          \n          If not provided or if this is `-` then stdin is read entirely and processed. Note that for\n          most subcommands this input can either be a binary `*.wasm` file or a textual format\n          `*.wat` file.\n\nOptions:\n  -o, --output <OUTPUT>\n          Where to place output.\n          \n          Required when printing WebAssembly binary output.\n          \n          If not provided, then stdout is used.\n\n  -v, --verbose...\n          Use verbose output (-v info, -vv debug, -vvv trace)\n\n      --color <COLOR>\n          Configuration over whether terminal colors are used in output.\n          \n          Supports one of `auto|never|always|always-ansi`. The default is to detect what to do based\n          on the terminal environment, for example by using `isatty`.\n          \n          [default: auto]\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n\nExamples:\n\n       # Dump the contents of the file `add.wasm`:\n       $ wasm-tools objdump add.wasm\n       types                                  |        0xa -       0x11 |         7 bytes | 1 count\n       functions                              |       0x13 -       0x15 |         2 bytes | 1 count\n       exports                                |       0x17 -       0x33 |        28 bytes | 1 count\n       code                                   |       0x35 -       0x3e |         9 bytes | 1 count\n       custom \"name\"                          |       0x45 -       0x5c |        23 bytes | 1 count\n\n   One line is printed per section. The columns indicate:\n       * The name of the section (for example, \"types\")\n       * The offsets within the file for the start and end of the section (for example, \"0xa -\n       0x11\")\n       * The size of the section (for example, \"7 bytes\")\n       * The number of items within the section (for example, \"1 count\")\n\n       # Dump the contents of the file `add.wasm` and store the text-based output in a file\n       # named `add.txt`:\n       $ wasm-tools objdump add.wasm -o add.txt\n\nExit status:\n    0 if OK,\n    nonzero to indicate a parse error.\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-v",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-vv",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-v",
+    "-v",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--color",
+    "never",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--color=always",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--color",
+    "bad",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f",
+    "wasm1",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-fwasm1",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f=wasm1",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--features=wasm1,-simd",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--features",
+    "wasm2",
+    "--features=-simd",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f",
+    "foo",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f",
+    "-wasm1",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--features=-wasm1",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--features=",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f",
+    "all",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-f",
+    "-all",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-g",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--generate-dwarf",
+    "lines",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--generate-dwarf=full",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--generate-dwarf=foo",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-g",
+    "--generate-dwarf",
+    "lines",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--generate-full-dwarf",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--validate-custom",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--validate-custom",
+    "--validate-custom",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--bogus",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-x",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "m.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "--",
+    "-x"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "nonexistent.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "bad.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "validate",
+    "-gv",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "  types                                  |        0xa -       0x11 |         7 bytes | 1 count\n  functions                              |       0x13 -       0x15 |         2 bytes | 1 count\n  exports                                |       0x17 -       0x1e |         7 bytes | 1 count\n  code                                   |       0x20 -       0x29 |         9 bytes | 1 count\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "c.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "  component types                        |        0xa -       0x38 |        46 bytes | 1 count\n  component exports                      |       0x3a -       0x46 |        12 bytes | 1 count\n  component types                        |       0x48 -       0x7e |        54 bytes | 1 count\n  component exports                      |       0x80 -       0x8c |        12 bytes | 1 count\n  custom \"package-docs\"                  |       0x9c -      0x130 |       148 bytes | 1 count\n  custom \"producers\"                     |      0x13c -      0x161 |        37 bytes | 1 count\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "-o",
+    "out.txt",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.txt": "38ce89908a95121bc2ba5a5dd5c223aad709089f318b5a4b5e008bc274aff95f"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "--output=out.txt",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.txt": "38ce89908a95121bc2ba5a5dd5c223aad709089f318b5a4b5e008bc274aff95f"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "-o"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "bad.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "m.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "objdump",
+    "-v",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "  types                                  |        0xa -       0x11 |         7 bytes | 1 count\n  functions                              |       0x13 -       0x15 |         2 bytes | 1 count\n  exports                                |       0x17 -       0x1e |         7 bytes | 1 count\n  code                                   |       0x20 -       0x29 |         9 bytes | 1 count\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-a",
+    "-o",
+    "out.wasm",
+    "c.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "dfc474b9fd27e86b02087ed370e94cce48027be1b94062f202ac10cf96450339"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-d",
+    "name",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-d",
+    "pro.*",
+    "-o",
+    "out.wasm",
+    "c.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f77a0ef77e1a6f89f846e69df6d47d812f9c5e6115a620dc805cc4b33924995c"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "--delete=x",
+    "--delete",
+    "y",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-a",
+    "-a",
+    "-o",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 2,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-ao",
+    "out.wasm",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {
+     "out.wasm": "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
+    },
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-o",
+    "out.wasm",
+    "bad.wasm"
+   ],
+   "expect": {
+    "status": 1,
+    "stdout": {
+     "text": ""
+    },
+    "stderr": {
+     "text": "error:"
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "-t",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (export \"add\" (func 0))\n  (func (;0;) (type 0) (param i32 i32) (result i32)\n    local.get 0\n    local.get 1\n    i32.add\n  )\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  },
+  {
+   "args": [
+    "strip",
+    "--wat",
+    "m.wasm"
+   ],
+   "expect": {
+    "status": 0,
+    "stdout": {
+     "text": "(module\n  (type (;0;) (func (param i32 i32) (result i32)))\n  (export \"add\" (func 0))\n  (func (;0;) (type 0) (param i32 i32) (result i32)\n    local.get 0\n    local.get 1\n    i32.add\n  )\n)\n"
+    },
+    "stderr": {
+     "text": ""
+    },
+    "files": {},
+    "removed": []
+   }
+  }
+ ]
+}

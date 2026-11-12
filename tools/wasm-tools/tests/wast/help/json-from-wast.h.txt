@@ -1,0 +1,23 @@
+Convert a `*.wast` WebAssembly spec test into a `*.json` file and `*.wasm` files
+
+Usage: wasm-tools json-from-wast [OPTIONS] <WAST>
+
+Arguments:
+  <WAST>  Input `*.wast` file that will be parsed and converted to JSON
+
+Options:
+  -v, --verbose...
+          Use verbose output (-v info, -vv debug, -vvv trace)
+      --color <COLOR>
+          Configuration over whether terminal colors are used in output [default: auto]
+  -o, --output <OUTPUT>
+          Where to place output
+      --wasm-dir <WASM_DIR>
+          Where to place binary and text WebAssembly files referenced by tests
+      --pretty
+          Output pretty-printed JSON instead of compact json
+      --allow-confusing-unicode <true|false>
+          Controls the "allow confusing unicode" option which will reject parsing files that have
+          unusual characters [possible values: true, false]
+  -h, --help
+          Print help (see more with '--help')
