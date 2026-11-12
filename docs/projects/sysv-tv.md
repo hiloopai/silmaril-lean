@@ -38,7 +38,12 @@ structure Meaning.Refines (lo hi : Meaning sig) : Prop where   -- lo refines hi
 Meanings come from three places:
 
 - **C** (`C.CFn.meaning`): the Cerberus meaning. It runs the Core procedure that the Lean port of
-  Cerberus's elaborator gives for the function's typed Ail ([Cerberus guide](cerberus.md)).
+  Cerberus's elaborator gives for the function's typed Ail ([Cerberus guide](cerberus.md)),
+  as the whole program: the procedure frame sits on the empty caller continuation. Core runs on
+  in the caller's continuation after a return, so a meaning quantified over continuations would
+  be safe nowhere (some continuation goes wrong after the return,
+  `CFn.not_safe_of_final_mainNext`); with the empty one the run halts with the returned value
+  (`CFn.safe_of_final`).
 - **An IR** (`SysV.Ir`): functions, each with a signature and a meaning. `SysV.SmallStep`
   builds an IR from a small-step semantics and its System V reading of arguments (`init`) and
   results (`final`).
@@ -154,6 +159,11 @@ A row group is one source function and its builds:
 | `silmaril.sysv_tv.max2.o2.compiles_to` | `c.compiles_to.open9` | proved from the two rows above (`o2_compiles_to_of`), so open while they are |
 | `silmaril.sysv_tv.max2.builds` | `c.compiles_to.builds` | proved from the per-build rows (`builds_of`, `builds_of_tasks`), so open while they are |
 
+**Non-vacuity of the example.** Every row's companions are stated: both placements are
+enterable (proved, `o0_enterable`, `o2_enterable`); the C function's safety on some argument
+tuple from every entry memory (`Task.max2_safe`) and the `-O2` Bir9 block's (`Task.o2_block_safe`)
+are open.
+
 The group `silmaril.sysv_tv.max2` of `silmaril/selftest.toml` collects these rows, and
 `sil project lint`, `dump` and `check` accept them. The project self-test
 (`make project-check`) runs all three.
@@ -162,10 +172,10 @@ The group `silmaril.sysv_tv.max2` of `silmaril/selftest.toml` collects these row
 
 | | |
 | --- | --- |
-| **Proved** | `Meaning.Refines.{refl,trans}`, `sysvSpec_sub`, `strict_mono`, `Implements.of_refines`, `Lifts.implements_of_refines`, `C.CompilesTo.of_lift` (the composition), `C.CompilesToBuilds.of_lifts`, `Implements.abiFn`, `Implements.not_of_never_safe`, `ObjectFn.of_blob`, `Enterable.of_fits` (every placement that fits is enterable for signatures with up to six INTEGER arguments, by an explicit witness state); the generic cut-point simulation `Silmaril.Compiler.CompilesTo.Sim` with `Corr.whole_of_segments` |
+| **Proved** | `CFn.safe_of_final` and `CFn.not_safe_of_final_mainNext` (what follows a procedure's return, with the empty and with a failing continuation), `Meaning.Refines.{refl,trans}`, `sysvSpec_sub`, `strict_mono`, `Implements.of_refines`, `Lifts.implements_of_refines`, `C.CompilesTo.of_lift` (the composition), `C.CompilesToBuilds.of_lifts`, `Implements.abiFn`, `Implements.not_of_never_safe`, `ObjectFn.of_blob`, `Enterable.of_fits` (every placement that fits is enterable for signatures with up to six INTEGER arguments, by an explicit witness state); the generic cut-point simulation `Silmaril.Compiler.CompilesTo.Sim` with `Corr.whole_of_segments` |
 | **Trusted definitions** | The x86 model (`Open9.isa` and the others; see [x86](../x86.md)). The System V reading of arguments and results (`Silmaril.X86.SystemV`). The Cerberus port and its Core dynamics. The meaning of a construct the port does not support is "unsafe" (it permits anything). |
 | **Checked by compiled evaluation only** | C text to typed Ail (the frontend's typing pass is `partial`) |
-| **Open** | The example's `compiles_to`, `lifts` and `ir_refines` rows (their `Enterable` conjuncts are proved: `o0_enterable`, `o2_enterable`). `Enterable` for signatures with stack arguments (more than six). The relation of `C.CompilesTo` to segment-level simulations built on `Sim`. |
+| **Open** | The example's `compiles_to`, `lifts` and `ir_refines` rows (their `Enterable` conjuncts are proved: `o0_enterable`, `o2_enterable`). Each also needs `cfn.meaning.Inhabited`: `max2` is safe on some argument tuple from *every* entry memory that satisfies the invariant, which no proof here covers yet. `Enterable` for signatures with stack arguments (more than six). The relation of `C.CompilesTo` to segment-level simulations built on `Sim`. |
 
 **Profile:** INTEGER-class scalar arguments and results. The Core meaning additionally takes
 `int` parameters (the objects of the verified Core library). The function writes only its stack

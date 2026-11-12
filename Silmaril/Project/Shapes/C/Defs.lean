@@ -39,16 +39,24 @@ compiler configuration, the placed code and its frame). Each build has its own l
 
 ## The Cerberus meaning (`CFn.meaning`)
 
-* **Entry.** The Core procedure body in control with its procedure frame on a caller
-  continuation `k0`, the parameters bound to `int` objects holding the argument values, under
-  the invariant of the verified Core library (`Silmaril.Compile.Core.Verified.StateMem.Inv`), with
-  allocator room for the body's own objects (`AllocRoom`).
-* **Safe** on `a`: from every entry state, in every caller continuation, no Core run goes wrong
-  (`Control.halt` other than a defined end: undefined behaviour, an `error`, an `unsupported`
-  construct of the port, `abort`) and every run is finite (`Silmaril.Compiler.CompilesTo.Source.Safe`).
+* **Entry.** The Core procedure body in control with its procedure frame on the empty caller
+  continuation (the call is the whole program), the parameters bound to `int` objects holding
+  the argument values, under the invariant of the verified Core library
+  (`Silmaril.Compile.Core.Verified.StateMem.Inv`), with allocator room for the body's own
+  objects (`AllocRoom`).
+* **Safe** on `a`: from every entry state, no Core run goes wrong (`Control.halt` other than a
+  defined end: undefined behaviour, an `error`, an `unsupported` construct of the port, `abort`)
+  and every run is finite (`Silmaril.Compiler.CompilesTo.Source.Safe`).
 * **Returns** `r` on `a`: from some entry state some run returns, with only the procedure frame
-  above the caller continuation, the specified integer the signature's return scalar reads as
-  `r` (for a `void` result, any value).
+  left, the specified integer the signature's return scalar reads as `r` (for a `void` result,
+  any value).
+
+**Why the continuation is empty.** Core does not stop when the procedure returns: it pops the
+procedure frame and runs on in the caller's continuation. With the empty continuation the run
+then halts with the defined value (`CFn.safe_of_final` in `Thms`). Quantified over every
+continuation, `Safe` would hold of no argument tuple, since some continuation goes wrong after
+the return (`CFn.not_safe_of_final_mainNext`), and every `compiles_to` and `ir_refines` row
+would be refutable.
 
 So C undefined behaviour on `a` permits any machine behaviour on `a`; a construct the port does
 not support counts as undefined, which is the conservative reading for the row's *source*
@@ -146,9 +154,9 @@ def ValueIs : (kind : Option Scalar) → Val → ReturnValue kind → Prop
 
 /-- **The Cerberus meaning of a C function** (see the module docstring). -/
 def CFn.meaning {sig : Signature} (F : CFn sig) : Meaning sig where
-  Safe a := ∀ k0 s, F.CoreEntry k0 (argValues a) s → (F.source k0).Safe s
-  Returns a r := ∃ k0 s t v, F.CoreEntry k0 (argValues a) s ∧
-    Relation.ReflTransGen (F.source k0).step s t ∧ (F.source k0).final t v ∧
+  Safe a := ∀ s, F.CoreEntry [] (argValues a) s → (F.source []).Safe s
+  Returns a r := ∃ s t v, F.CoreEntry [] (argValues a) s ∧
+    Relation.ReflTransGen (F.source []).step s t ∧ (F.source []).final t v ∧
     ValueIs sig.result v r
 
 /-! ## C to Core -/
