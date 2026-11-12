@@ -105,10 +105,12 @@ theorem stosd_none {w : List Byte} (h : stosdNo w = true) (more : List Byte) :
     · rename_i heq; simp only [List.cons.injEq] at heq; exact absurd heq.1 h
     · rfl
 
-/-- **Where no layer reads the bytes, `Str9V` has no step.** -/
-theorem str9v_none {v : VState} {l : Nat} {w : List Byte}
+/-- **Where no layer reads the bytes, none of `Str9V`'s decoders claims them.** -/
+theorem str9v_rejects {v : VState} {l : Nat} {w : List Byte}
     (fetched : v.g.x.m.memory.fetchBytes v.g.x.m.core.rip.toNat l = some w)
-    (h15 : l ≤ maxInstrLength) (hb : lowerBad w = true) : Str9V.step v = none := by
+    (h15 : l ≤ maxInstrLength) (hb : lowerBad w = true) :
+    Str9V.lowerClaims v.g = false ∧
+      Str9V.fetchNew v.g.x.m.memory v.g.x.m.core.rip.toNat = none := by
   simp only [lowerBad, Bool.and_eq_true, decide_eq_true_eq] at hb
   obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨hnone, hbad⟩, hne⟩, hbad9⟩, hstr⟩, ha⟩, hf⟩, hs⟩, hst⟩, hgb⟩, hvb⟩ := hb
   obtain ⟨more, hmore, hf8⟩ :=
@@ -143,6 +145,13 @@ theorem str9v_none {v : VState} {l : Nat} {w : List Byte}
     unfold Str9V.fetchNew
     rw [hmore, vNew_none hvb more]
     rfl
+  exact ⟨hc, hv⟩
+
+/-- **Where no layer reads the bytes, `Str9V` has no step.** -/
+theorem str9v_none {v : VState} {l : Nat} {w : List Byte}
+    (fetched : v.g.x.m.memory.fetchBytes v.g.x.m.core.rip.toNat l = some w)
+    (h15 : l ≤ maxInstrLength) (hb : lowerBad w = true) : Str9V.step v = none := by
+  obtain ⟨hc, hv⟩ := str9v_rejects fetched h15 hb
   simp only [Str9V.step, hc, hv, Bool.false_eq_true, ite_false]
 
 /-! ## The laws of the layer's forms -/
