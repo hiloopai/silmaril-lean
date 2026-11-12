@@ -123,4 +123,6 @@ lake build --wfail Silmaril.Compiler.Target.Backends.Defs Silmaril.Compiler.Mir.
 
 Silmaril's own development, under this repository's MIT licence, except: the RV64 fragment
 adapts clauses of the Sail RISC-V model at `27224ccb` (BSD-2-Clause, `NOTICES/sail-riscv`); the
-frontend uses the Cerberus port (`NOTICES/Cerberus`).
+frontend uses the Cerberus port (`NOTICES/Cerberus`); `runtime/libc.ail` is the Cerberus
+elaboration of `tools/ccomp/runtime/libc.c` (in-house) against the Cerberus runtime headers
+(BSD-2-Clause, `NOTICES/Cerberus`).
