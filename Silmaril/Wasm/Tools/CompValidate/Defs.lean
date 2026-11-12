@@ -514,26 +514,72 @@ def resourceId (s : Scope) (i : Nat) : M Nat := do
   | .unknown => fresh
   | _ => throw s!"type index {i} is not a resource type"
 
+/-! ## Termination helpers -/
+
+theorem sizeOf_snd_lt_of_mem {α β : Type} [SizeOf α] [SizeOf β] {p : α × β}
+    {l : List (α × β)} (h : p ∈ l) : sizeOf p.2 < sizeOf l := by
+  have := List.sizeOf_lt_of_mem h
+  obtain ⟨a, b⟩ := p
+  simp at this ⊢
+  omega
+
+theorem sizeOf_zip_fst_lt {α β : Type} [SizeOf α] [SizeOf β] {p : α × β} {l₁ : List α}
+    {l₂ : List β} (h : p ∈ l₁.zip l₂) : sizeOf p.1 < sizeOf l₁ := by
+  obtain ⟨a, b⟩ := p
+  exact List.sizeOf_lt_of_mem (List.of_mem_zip h).1
+
+theorem sizeOf_zip_fst_snd_lt {α β γ : Type} [SizeOf α] [SizeOf β] [SizeOf γ]
+    {p : (α × β) × γ} {l₁ : List (α × β)} {l₂ : List γ} (h : p ∈ l₁.zip l₂) :
+    sizeOf p.1.2 < sizeOf l₁ := by
+  obtain ⟨⟨a, b⟩, c⟩ := p
+  have := List.sizeOf_lt_of_mem (List.of_mem_zip h).1
+  simp at this ⊢
+  omega
+
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 /-- Does a resolved type contain `borrow`? -/
-partial def RTy.hasBorrow : RTy → Bool
+def RTy.hasBorrow : RTy → Bool
   | .borrow _ => true
-  | .record _ fs => fs.any (·.2.hasBorrow)
-  | .variant _ cs => cs.any fun (_, t) => t.any RTy.hasBorrow
+  | .record _ fs => fs.attach.any fun ⟨(_, t), _⟩ => t.hasBorrow
+  | .variant _ cs => cs.attach.any fun ⟨(_, t), _⟩ => match t with
+    | some t => t.hasBorrow
+    | none => false
   | .list t | .option t | .fixedList t _ => t.hasBorrow
-  | .tuple ts => ts.any RTy.hasBorrow
-  | .result a b => a.any RTy.hasBorrow || b.any RTy.hasBorrow
+  | .tuple ts => ts.attach.any fun ⟨t, _⟩ => t.hasBorrow
+  | .result a b => (match a with | some t => t.hasBorrow | none => false) ||
+      (match b with | some t => t.hasBorrow | none => false)
   | .map k v => k.hasBorrow || v.hasBorrow
   | _ => false
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 /-- Does a resolved type contain a pointer (a string or list)? -/
-partial def RTy.hasPtr : RTy → Bool
+def RTy.hasPtr : RTy → Bool
   | .prim .string | .list _ | .map .. => true
-  | .record _ fs => fs.any (·.2.hasPtr)
-  | .variant _ cs => cs.any fun (_, t) => t.any RTy.hasPtr
+  | .record _ fs => fs.attach.any fun ⟨(_, t), _⟩ => t.hasPtr
+  | .variant _ cs => cs.attach.any fun ⟨(_, t), _⟩ => match t with
+    | some t => t.hasPtr
+    | none => false
   | .option t | .fixedList t _ => t.hasPtr
-  | .tuple ts => ts.any RTy.hasPtr
-  | .result a b => a.any RTy.hasPtr || b.any RTy.hasPtr
+  | .tuple ts => ts.attach.any fun ⟨t, _⟩ => t.hasPtr
+  | .result a b => (match a with | some t => t.hasPtr | none => false) ||
+      (match b with | some t => t.hasPtr | none => false)
   | _ => false
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- Resolve and check a defined value type. -/
 def checkDefVal (F : WFeatures) (s : Scope) : DefValType → M RTy
@@ -633,39 +679,51 @@ def joinList : List String → List String → List String
   | [], bs => bs
   | as, [] => as
 
-mutual
+/-- The flattening of a sequence of types, given the flattening of each (`none` when one
+does not fit). -/
+def flatAll (cap : Nat) (fs : List (Option (List String))) : Option (List String) :=
+  fs.foldlM (fun acc f => do
+    let f ← f
+    let r := acc ++ f
+    if r.length > cap then none else some r) []
+
+/-- The flattening of a variant, given the flattening of each case with a payload: the
+discriminant, then the joined cases. -/
+def flatVariant (cap : Nat) (fs : List (Option (List String))) : Option (List String) := do
+  let cases ← fs.mapM id
+  let r := "i32" :: cases.foldl joinList []
+  if r.length > cap then none else some r
+
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 /-- The flattened core types of a value type, `none` when longer than `cap`. -/
-partial def flat (ptr : String) (cap : Nat) : RTy → Option (List String)
+def flat (ptr : String) (cap : Nat) : RTy → Option (List String)
   | .prim p => some (match p with
     | .s64 | .u64 => ["i64"] | .f32 => ["f32"] | .f64 => ["f64"] | .string => [ptr, ptr]
     | _ => ["i32"])
-  | .record _ fs => flatAll ptr cap (fs.map (·.2))
-  | .tuple ts => flatAll ptr cap ts
+  | .record _ fs => flatAll cap (fs.attach.map fun ⟨(_, t), _⟩ => flat ptr cap t)
+  | .tuple ts => flatAll cap (ts.attach.map fun ⟨t, _⟩ => flat ptr cap t)
   | .list _ | .map .. => some [ptr, ptr]
   | .fixedList t n => do
     let e ← flat ptr cap t
     if e.length * n > cap then none else some ((List.replicate n e).flatten)
   | .flags _ n => some (List.replicate ((n.length + 31) / 32) "i32")
   | .enum .. | .own _ | .borrow _ | .stream _ | .future _ => some ["i32"]
-  | .variant _ cs => flatVariant ptr cap (cs.filterMap (·.2))
-  | .option t => flatVariant ptr cap [t]
-  | .result a b => flatVariant ptr cap (a.toList ++ b.toList)
+  | .variant _ cs => flatVariant cap (cs.attach.filterMap fun ⟨(_, t), _⟩ => match t with
+    | some t => some (flat ptr cap t)
+    | none => none)
+  | .option t => flatVariant cap [flat ptr cap t]
+  | .result a b => flatVariant cap
+    ((match a with | some t => [flat ptr cap t] | none => []) ++
+      (match b with | some t => [flat ptr cap t] | none => []))
   | .unknown => some ["?"]
-
-/-- The flattening of a sequence of types. -/
-partial def flatAll (ptr : String) (cap : Nat) (ts : List RTy) : Option (List String) :=
-  ts.foldlM (fun acc t => do
-    let f ← flat ptr cap t
-    let r := acc ++ f
-    if r.length > cap then none else some r) []
-
-/-- The flattening of a variant: the discriminant, then the joined cases. -/
-partial def flatVariant (ptr : String) (cap : Nat) (ts : List RTy) :
-    Option (List String) := do
-  let cases ← ts.mapM (flat ptr cap)
-  let r := "i32" :: cases.foldl joinList []
-  if r.length > cap then none else some r
-end
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- The flattening within `cap` entries. -/
 def flatC (ptr : String) (cap : Nat) (t : RTy) : Option (List String) :=
@@ -762,17 +820,27 @@ def cftShow (t : CFT) : String :=
 
 /-! ## The named-types rule of imports and exports (`validate_and_register_named_types`) -/
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 /-- `type_named_valtype`: records, variants, flags and enums must be named themselves, other
 types through their components, handles through their resources. -/
-partial def namedVal (set : List Nat) : RTy → Bool
+def namedVal (set : List Nat) : RTy → Bool
   | .record id _ | .variant id _ | .flags id _ | .enum id _ => set.contains id
-  | .tuple ts => ts.all (namedVal set)
-  | .result a b => a.all (namedVal set) && b.all (namedVal set)
+  | .tuple ts => ts.attach.all fun ⟨t, _⟩ => namedVal set t
+  | .result a b => (match a with | some t => namedVal set t | none => true) &&
+      (match b with | some t => namedVal set t | none => true)
   | .list t | .option t | .fixedList t _ => namedVal set t
   | .map k v => namedVal set k && namedVal set v
   | .own r | .borrow r => set.contains r
-  | .stream t | .future t => t.all (namedVal set)
+  | .stream t | .future t => match t with | some t => namedVal set t | none => true
   | _ => true
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- `all_valtypes_named_in_defined`. -/
 def namedDefined (set : List Nat) : RTy → Bool
@@ -799,16 +867,25 @@ def retag : TyInfo → M TyInfo
   | .val (.enum _ n) => do pure (.val (.enum (← fresh) n))
   | t => pure t
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 mutual
 /-- `all_valtypes_named` of a type. -/
-partial def namedTy (set : List Nat) : TyInfo → Bool
+def namedTy (set : List Nat) : TyInfo → Bool
   | .val t => namedDefined set t
   | .func f => namedFunc set f
   | .inst exps => namedInst set exps
   | _ => true
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- `all_valtypes_named_in_instance`: types exported by the instance are named within it. -/
-partial def namedInst (set : List Nat) : List (String × Ent) → Bool
+def namedInst (set : List Nat) : List (String × Ent) → Bool
   | [] => true
   | (_, e) :: rest =>
     match e with
@@ -818,10 +895,19 @@ partial def namedInst (set : List Nat) : List (String × Ent) → Bool
       ok && namedInst (match t.id? with | some i => i :: set | none => set) rest
     | .inst (some ex) => namedInst set ex && namedInst set rest
     | _ => namedInst set rest
+termination_by l => sizeOf l
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 end
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 /-- Register an import or export (the named-types rule), giving the entry it creates. -/
-partial def registerNamed (s : Scope) (isImport : Bool) (top : Bool) (e : Ent) : M (Scope × Ent) := do
+def registerNamed (s : Scope) (isImport : Bool) (top : Bool) (e : Ent) : M (Scope × Ent) := do
   if s.isInst then return (s, e)
   let what := if isImport then "import" else "export"
   let set := if isImport then s.impSet else s.expSet
@@ -839,11 +925,18 @@ partial def registerNamed (s : Scope) (isImport : Bool) (top : Bool) (e : Ent) :
     return (s, .ty t')
   | .inst (some exps) =>
     let mut s := s
-    for (_, x) in exps do
-      s := (← registerNamed s isImport false x).1
+    for _h : p in exps do
+      s := (← registerNamed s isImport false p.2).1
     return (s, e)
   | .func (some f) => if namedFunc set f then return (s, e) else bad
   | _ => return (s, e)
+termination_by sizeOf e
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-! ## Resource function names (`ComponentNameContext::validate`) -/
 
@@ -912,45 +1005,76 @@ def nameResources (s : Scope) (isImport : Bool) (n : String) (e : Ent) : M Scope
 
 /-! ## Substitution at instantiation -/
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 /-- Rename resources in a value type. -/
-partial def RTy.subst (m : List (Nat × Nat × Bool)) : RTy → RTy
+def RTy.subst (m : List (Nat × Nat × Bool)) : RTy → RTy
   | .own r => .own ((m.lookup r).map (·.1) |>.getD r)
   | .borrow r => .borrow ((m.lookup r).map (·.1) |>.getD r)
-  | .record i fs => .record ((m.lookup i).map (·.1) |>.getD i) (fs.map fun (n, t) => (n, t.subst m))
+  | .record i fs =>
+    .record ((m.lookup i).map (·.1) |>.getD i) (fs.attach.map fun ⟨(n, t), _⟩ => (n, t.subst m))
   | .variant i cs =>
-    .variant ((m.lookup i).map (·.1) |>.getD i) (cs.map fun (n, t) => (n, t.map (·.subst m)))
+    .variant ((m.lookup i).map (·.1) |>.getD i) (cs.attach.map fun ⟨(n, t), _⟩ => (n, match t with
+      | some t => some (t.subst m)
+      | none => none))
   | .flags i n => .flags ((m.lookup i).map (·.1) |>.getD i) n
   | .enum i n => .enum ((m.lookup i).map (·.1) |>.getD i) n
   | .list t => .list (t.subst m)
-  | .tuple ts => .tuple (ts.map (·.subst m))
+  | .tuple ts => .tuple (ts.attach.map fun ⟨t, _⟩ => t.subst m)
   | .option t => .option (t.subst m)
-  | .result a b => .result (a.map (·.subst m)) (b.map (·.subst m))
+  | .result a b => .result (match a with | some t => some (t.subst m) | none => none)
+      (match b with | some t => some (t.subst m) | none => none)
   | .fixedList t n => .fixedList (t.subst m) n
-  | .stream t => .stream (t.map (·.subst m))
-  | .future t => .future (t.map (·.subst m))
+  | .stream t => .stream (match t with | some t => some (t.subst m) | none => none)
+  | .future t => .future (match t with | some t => some (t.subst m) | none => none)
   | .map k v => .map (k.subst m) (v.subst m)
   | t => t
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 def FTy.subst (m : List (Nat × Nat × Bool)) (f : FTy) : FTy :=
   { f with params := f.params.map (fun (n, t) => (n, t.subst m)), result := f.result.map (·.subst m) }
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 mutual
 /-- Rename resources in a type; resources not renamed are no longer local. -/
-partial def TyInfo.subst (m : List (Nat × Nat × Bool)) : TyInfo → TyInfo
+def TyInfo.subst (m : List (Nat × Nat × Bool)) : TyInfo → TyInfo
   | .val t => .val (t.subst m)
   | .func f => .func (f.subst m)
   | .resource r _ => match m.lookup r with
     | some (r', l) => .resource r' l
     | none => .resource r false
-  | .inst ex => .inst (ex.map fun (n, e) => (n, e.subst m))
+  | .inst ex => .inst (ex.attach.map fun ⟨(n, e), _⟩ => (n, e.subst m))
   | t => t
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- Rename resources in an entry. -/
-partial def Ent.subst (m : List (Nat × Nat × Bool)) : Ent → Ent
+def Ent.subst (m : List (Nat × Nat × Bool)) : Ent → Ent
   | .func f => .func (f.map (·.subst m))
   | .ty t => .ty (t.subst m)
-  | .inst ex => .inst (ex.map (·.map fun (n, e) => (n, e.subst m)))
+  | .inst ex => .inst (match ex with
+    | some ex => some (ex.attach.map fun ⟨(n, e), _⟩ => (n, e.subst m))
+    | none => none)
   | e => e
+termination_by e => sizeOf e
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 end
 
 /-! ## Extern descriptors -/
@@ -1260,28 +1384,30 @@ abbrev RMap := List (Nat × Nat × Bool)
 /-- The argument's resource standing for `r`. -/
 def RMap.res (m : RMap) (r : Nat) : Nat := (m.lookup r).map (·.1) |>.getD r
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 mutual
 /-- `component_val_type`: is the argument's value type `a` the expected `x`? (Structure, labels,
 resources through `m`; unknown types match anything.) -/
-partial def valSub (m : RMap) (a x : RTy) : Except String Unit :=
+def valSub (m : RMap) (a x : RTy) : Except String Unit :=
   match a, x with
   | .unknown, _ | _, .unknown => .ok ()
   | .prim p, .prim q =>
     if p == q then .ok () else .error s!"expected primitive `{reprStr q}` found primitive `{reprStr p}`"
   | .record _ fs, .record _ gs => do
     if fs.length != gs.length then throw "expected a record with a different number of fields"
-    for ((n, t), (n', t')) in fs.zip gs do
-      if n != n' then throw s!"expected field name `{n'}`, found `{n}`"
-      valSub m t t'
+    for _h : p in fs.zip gs do
+      if p.1.1 != p.2.1 then throw s!"expected field name `{p.2.1}`, found `{p.1.1}`"
+      valSub m p.1.2 p.2.2
   | .variant _ cs, .variant _ ds => do
     if cs.length != ds.length then throw "expected a variant with a different number of cases"
-    for ((n, t), (n', t')) in cs.zip ds do
-      if n != n' then throw s!"expected case named `{n'}`, found `{n}`"
-      optSub m t t'
+    for _h : p in cs.zip ds do
+      if p.1.1 != p.2.1 then throw s!"expected case named `{p.2.1}`, found `{p.1.1}`"
+      optSub m p.1.2 p.2.2
   | .list t, .list t' | .option t, .option t' => valSub m t t'
   | .tuple ts, .tuple us => do
     if ts.length != us.length then throw "expected a tuple of a different size"
-    for (t, u) in ts.zip us do valSub m t u
+    for _h : p in ts.zip us do valSub m p.1 p.2
   | .flags _ n, .flags _ n' => if n == n' then .ok () else .error "mismatch in flags elements"
   | .enum _ n, .enum _ n' => if n == n' then .ok () else .error "mismatch in enum elements"
   | .result a b, .result a' b' => do optSub m a a'; optSub m b b'
@@ -1295,11 +1421,29 @@ partial def valSub (m : RMap) (a x : RTy) : Except String Unit :=
   | .own _, .borrow _ => .error "expected borrow, found own"
   | .borrow _, .own _ => .error "expected own, found borrow"
   | _, _ => .error "type mismatch"
+termination_by sizeOf a
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_snd_lt ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_lt ‹_ ∈ _›; simp_all; omega)
 
-partial def optSub (m : RMap) : Option RTy → Option RTy → Except String Unit
+def optSub (m : RMap) : Option RTy → Option RTy → Except String Unit
   | some a, some x => valSub m a x
   | none, none => .ok ()
   | _, _ => .error "type mismatch in optional payload"
+termination_by a => sizeOf a
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_snd_lt ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_lt ‹_ ∈ _›; simp_all; omega)
 end
 
 /-- Is the argument's function type the expected one? -/
@@ -1338,19 +1482,8 @@ def modSub (a x : List (String × String × CoreSort × Option CFT) ×
         throw s!"type mismatch in import `{mn}::{n}` expected {coreSortName srt}, found {coreSortName srt'}"
       unless tyOk srt t t' do throw s!"type mismatch in import `{mn}::{n}`"
 
-mutual
-/-- Is the argument's entry `a` a subtype of the expected `x`? Extends `m` with the abstract
-resources of `x` the argument fixes. -/
-partial def entSub (m : RMap) (a x : Ent) : Except String RMap :=
-  match a, x with
-  | .func (some f), .func (some g) => do funcSub m f g; pure m
-  | .module (some sa), .module (some sx) => do modSub sa sx; pure m
-  | .ty t, .ty u => tySub m t u
-  | .inst (some ea), .inst (some ex) => instSub m ea ex
-  | _, _ => .ok m
-
 /-- Types: abstract resources are fixed, others compared. -/
-partial def tySub (m : RMap) (t u : TyInfo) : Except String RMap :=
+def tySub (m : RMap) (t u : TyInfo) : Except String RMap :=
   match t, u with
   | .resource r l, .resource r' false =>
     match m.lookup r' with
@@ -1369,8 +1502,30 @@ partial def tySub (m : RMap) (t u : TyInfo) : Except String RMap :=
   | .resource .., .val _ | .val _, .resource .. => .error "expected resource, found defined type"
   | _, _ => .ok m
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
+mutual
+/-- Is the argument's entry `a` a subtype of the expected `x`? Extends `m` with the abstract
+resources of `x` the argument fixes. -/
+def entSub (m : RMap) (a x : Ent) : Except String RMap :=
+  match a, x with
+  | .func (some f), .func (some g) => do funcSub m f g; pure m
+  | .module (some sa), .module (some sx) => do modSub sa sx; pure m
+  | .ty t, .ty u => tySub m t u
+  | .inst (some ea), .inst (some ex) => instSub m ea ex
+  | _, _ => .ok m
+termination_by sizeOf x
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_snd_lt ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_lt ‹_ ∈ _›; simp_all; omega)
+
 /-- Instances: every expected export, in order, present and a subtype. -/
-partial def instSub (m : RMap) (ea : Items) : Items → Except String RMap
+def instSub (m : RMap) (ea : Items) : Items → Except String RMap
   | [] => .ok m
   | (n, x) :: rest =>
     match ea.find? (·.1 == n) with
@@ -1379,6 +1534,15 @@ partial def instSub (m : RMap) (ea : Items) : Items → Except String RMap
       if a.sort != x.sort then throw s!"expected {sortName x.sort}, found {sortName a.sort}"
       let m ← entSub m a x
       instSub m ea rest
+termination_by l => sizeOf l
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_snd_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_snd_lt ‹_ ∈ _›; simp_all; omega)
+    | (have := sizeOf_zip_fst_lt ‹_ ∈ _›; simp_all; omega)
 end
 
 /-! ## Instances -/
@@ -1511,10 +1675,12 @@ def checkCoreType (s : Scope) (outers : List Scope) : CoreType → M Scope
         exps := exps ++ [(n, descSort desc, descFT ms desc)]
     return { s with ctypes := s.ctypes.push (.module (imps, exps)) }
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 mutual
 
 /-- Check a type definition (`outers`: the enclosing scopes, innermost first). -/
-partial def checkDefType (F : WFeatures) (s : Scope) (outers : List Scope) : DefType → M Scope
+def checkDefType (F : WFeatures) (s : Scope) (outers : List Scope) : DefType → M Scope
   | .val d => do
     let t ← checkDefVal F s d
     pure { s with types := s.types.push (.val t) }
@@ -1536,8 +1702,8 @@ partial def checkDefType (F : WFeatures) (s : Scope) (outers : List Scope) : Def
                   rep64 := if rep == .i64 then r :: s.rep64 else s.rep64 }
   | .component decls => do
     let mut cs : Scope := { isType := true }
-    for d in decls do
-      match d with
+    for _h : d in decls do
+      match _hd : d with
       | .import n desc =>
         let k ← checkName F "import" cs.importKeys n (descItemSort desc)
         let e ← checkDesc F cs desc
@@ -1549,11 +1715,18 @@ partial def checkDefType (F : WFeatures) (s : Scope) (outers : List Scope) : Def
     pure { s with types := s.types.push (.comp cs.imports cs.exports) }
   | .instance decls => do
     let mut is : Scope := { isType := true, isInst := true }
-    for d in decls do is ← checkInstDecl F is (s :: outers) d
+    for _h : d in decls do is ← checkInstDecl F is (s :: outers) d
     pure { s with types := s.types.push (.inst is.exports) }
+termination_by t => sizeOf t
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
+    | (subst_vars; have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- One declaration of an instance (or component) type. -/
-partial def checkInstDecl (F : WFeatures) (s : Scope) (outers : List Scope) :
+def checkInstDecl (F : WFeatures) (s : Scope) (outers : List Scope) :
     InstanceDecl → M Scope
   | .coreType t => checkCoreType s outers t
   | .type t => checkDefType F s outers t
@@ -1570,15 +1743,23 @@ partial def checkInstDecl (F : WFeatures) (s : Scope) (outers : List Scope) :
     let (s, e) ← registerNamed s false true e
     let s := s.pushEnt e
     pure { s with exportKeys := k :: s.exportKeys, exports := s.exports ++ [(n.name, e)] }
+termination_by d => sizeOf d
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 end
 
 /-! ## Components -/
 
+set_option linter.unreachableTactic false in
+set_option linter.unusedTactic false in
 mutual
 
 /-- Check one section of a component. -/
-partial def checkSection (F : WFeatures) (outers : List Scope) (s : Scope) : Section → M Scope
+def checkSection (F : WFeatures) (outers : List Scope) (s : Scope) : Section → M Scope
   | .custom .. => pure s
   | .coreModule b => do
     let info ← coreModule F b
@@ -1621,10 +1802,23 @@ partial def checkSection (F : WFeatures) (outers : List Scope) (s : Scope) : Sec
   | .values _ =>
     if F.hasFlag "cm-values" then pure s
     else throw "support for component model `value`s is not enabled"
+termination_by sec => sizeOf sec
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 /-- Check a component; `outers` are the enclosing components, innermost first. -/
-partial def checkComponent (F : WFeatures) (outers : List Scope) (c : Ast) : M Scope :=
-  c.sections.foldlM (checkSection F outers) {}
+def checkComponent (F : WFeatures) (outers : List Scope) (c : Ast) : M Scope :=
+  match c with
+  | .mk ss => ss.attach.foldlM (fun s ⟨sec, _⟩ => checkSection F outers s sec) {}
+termination_by sizeOf c
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega)
 
 end
 

@@ -79,9 +79,9 @@ In short:
   `parse` and `print` are sound, but it is not proved that every binary upstream accepts is
   decoded. The component validation rules, the demanglers, the DWARF reader, and the text of
   each `dump` line.
-- **Not verified.** The `partial def`s are listed in the trust statement; they have no
-  termination proof, so no theorem can unfold them. The rest is glue under `tools/wasm-tools`:
-  argument dispatch, file and stream input/output, exit codes, and captured help texts.
+- **Not verified.** The glue under `tools/wasm-tools`: argument dispatch, file and stream
+  input/output, exit codes, and captured help texts. The executable has no `partial def`:
+  every function it runs is total, so theorems can unfold it.
 - **Trusted.** As for any Lean program: Lean's kernel, compiler and runtime, and the C
   toolchain that links the binary.
 

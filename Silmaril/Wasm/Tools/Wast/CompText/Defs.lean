@@ -52,35 +52,44 @@ def coreModuleDef : List PNode → Bool
        | _ => true)
   | _ => false
 
+/-- The replacement (start, stop, text) for the core module definition `kids` spanning
+`p`…`q`, if the transcription encodes it. -/
+def moduleReplacement (src : ByteArray) (p q : Nat) (kids : List PNode) :
+    List (Nat × Nat × String) :=
+  match kids with
+  | _ :: m :: rest =>
+    let text := "(" ++ String.fromUTF8! (src.extract m.pos (q + 1))
+    match encText text with
+    | .ok b =>
+      let idPart := match rest with
+        | .atom ip (.id _) :: r =>
+          let stopId := match r with
+            | y :: _ => y.pos
+            | [] => q
+          (String.fromUTF8! (src.extract ip stopId)).trimAsciiEnd.toString ++ " "
+        | _ => ""
+      [(p, q, "(core module " ++ idPart ++ "binary \"" ++ hexEscapes b ++ "\")")]
+    | .error _ => []
+  | _ => []
+
 /-- The replacements (start, stop, text) for the core module definitions among the items of
 the component lists in `xs` (`top`: `xs` are the items of a component). -/
-partial def replacements (src : ByteArray) (top : Bool) (xs : List PNode) :
+def replacements (src : ByteArray) (top : Bool) (xs : List PNode) :
     List (Nat × Nat × String) :=
-  xs.flatMap fun x =>
-    match x with
-    | .list p q kids =>
-      if top && coreModuleDef kids then
-        match kids with
-        | _ :: m :: rest =>
-          let text := "(" ++ String.fromUTF8! (src.extract m.pos (q + 1))
-          match encText text with
-          | .ok b =>
-            let idPart := match rest with
-              | .atom ip (.id _) :: r =>
-                let stopId := match r with
-                  | y :: _ => y.pos
-                  | [] => q
-                (String.fromUTF8! (src.extract ip stopId)).trimAsciiEnd.toString ++ " "
-              | _ => ""
-            [(p, q, "(core module " ++ idPart ++ "binary \"" ++ hexEscapes b ++ "\")")]
-          | .error _ => []
-        | _ => []
+  xs.attach.flatMap fun ⟨x, hx⟩ =>
+    match x, hx with
+    | .list p q kids, hx =>
+      if top && coreModuleDef kids then moduleReplacement src p q kids
       else
-        match kids with
-        | k :: _ => if isSymAt "component" k then replacements src true kids.tail
-          else []
-        | [] => []
-    | .atom .. => []
+        match kids, hx with
+        | k :: ks, _ => if isSymAt "component" k then replacements src true ks else []
+        | [], _ => []
+    | .atom .., _ => []
+termination_by sizeOf xs
+decreasing_by
+  have := List.sizeOf_lt_of_mem ‹PNode.list _ _ (_ :: _) ∈ xs›
+  simp only [PNode.list.sizeOf_spec, List.cons.sizeOf_spec] at this
+  omega
 
 /-- Apply sorted, non-overlapping replacements. -/
 def splice (src : ByteArray) (rs : List (Nat × Nat × String)) : String := Id.run do

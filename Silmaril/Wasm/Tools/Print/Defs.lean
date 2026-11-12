@@ -887,7 +887,7 @@ def foldSep (off : Option Nat) : PM Unit := do
   | .space => write " "
 
 /-- Print a folded instruction (`PrintOperatorFolded::print`). -/
-partial def printF : FInst → PM Unit
+def printF : FInst → PM Unit
   | .mk plain folded _ off hint => do
     if let some h := hint then
       foldSep off; write ("(" ++ h ++ ")")
@@ -895,13 +895,26 @@ partial def printF : FInst → PM Unit
     write ("(" ++ plain)
     if folded.isEmpty && (plain.splitOn ";;").length > 1 then newlineOpt off
     modify fun st => { st with nesting := st.nesting + 1 }
-    for fi in folded do printF fi
+    for _h : fi in folded do printF fi
     modify fun st => { st with nesting := st.nesting - 1 }
     write ")"
+termination_by f => sizeOf f
+decreasing_by
+  have := Array.sizeOf_lt_of_mem ‹_ ∈ folded›
+  simp_wf; omega
+
+/-- The `end` of the innermost block. -/
+def endF : PM Unit := do
+  -- (`endOp` runs `opHook` for the `end`)
+  let results := match ← labelBlock 0 with
+    | some (some (_, r), _) => r
+    | _ => 0
+  let _ ← capture endOp
+  handleEnd results
 
 mutual
 /-- The folded visit of one instruction (and its body). -/
-partial def instrF : Instr → PM Unit
+def instrF : Instr → PM Unit
   | .block bt body => do
     opHook
     let a ← blockArity bt
@@ -948,16 +961,7 @@ partial def instrF : Instr → PM Unit
     let (p, r) := a.getD (0, 0)
     handlePlain txt p r
 
-/-- The `end` of the innermost block. -/
-partial def endF : PM Unit := do
-  -- (`endOp` runs `opHook` for the `end`)
-  let results := match ← labelBlock 0 with
-    | some (some (_, r), _) => r
-    | _ => 0
-  let _ ← capture endOp
-  handleEnd results
-
-partial def instrsF : List Instr → PM Unit
+def instrsF : List Instr → PM Unit
   | [] => pure ()
   | i :: is => do instrF i; instrsF is
 end
