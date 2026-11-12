@@ -80,6 +80,16 @@ scope = "Units, physical constants and other scientific world models."
 deps = ["Prelude", "Numeric"]
 
 [[region]]
+name = "Elf"
+scope = "The ELF verification API: one parse of an ELF64 file into an AST, symbol lookup as ld.so does it (SysV and GNU hash, versions), a lookup index, facts about a file (kind, symbols, lookups, DT_NEEDED, relocations, placement, code) with their problem shapes, a checker for the parse of large files, and the x86-64 dynamic-loading models these facts relate to (ld.so's table readers, pages of included files, ElfBind, the loader relation ExeLoaded and its image). Also imports the x86 tree (`Silmaril.X86`: blobs, memory, symbolic execution), which is not a region, as `Project` does."
+deps = ["Prelude", "Formats", "Machine", "Process", "Project", "Cli"]
+
+[[region]]
+name = "Libc"
+scope = "C library contracts: the contract institution of C library signatures (signatures, contracts with reducts, invariants as a monoidal category, the institution, the allocator chain and stdio, the tensor), the abstract allocator heap and its signature hierarchy, and allocator contracts over ELF shared objects with their loading model (segments at a page-aligned base, imports bound to functions with named contracts) and problem shapes. Also imports the x86 tree (`Silmaril.X86`: relational machines, function contracts, the separation-logic allocator interface), which is not a region, as `Elf` does."
+deps = ["Prelude", "Semantics", "Logic", "Formats", "Machine", "Process", "Elf", "Project"]
+
+[[region]]
 name = "Project"
 scope = "Silmaril projects: artifact types, formats and values, problems over arguments, the problem DAG, records files, rooms, the standard shapes (formats and values, ELF executables, x86-64 functions, command-line programs) and format adapters over silmaril's parsers; the records `sil project` dumps and checks. Also imports the x86 tree (`Silmaril.X86`: function contracts, block certificates, the pinned ladder), `Silmaril.Problems` (core, model classes and shapes) and `Silmaril.Data` (the include-bytes helper); none of these is a region here, an existing exception to `deps`."
 deps = ["Formats", "Logic", "Process", "Wasm", "Machine", "Cli"]
