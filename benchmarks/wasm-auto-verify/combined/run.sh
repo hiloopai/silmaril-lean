@@ -23,19 +23,19 @@
 # are checked in chunks (`--chunk`, one kernel evaluation of checkAmong per chunk); pass-O3's
 # certificate is still not checked (decoding the modules in the kernel is too large). With --all, also
 # tools/wasm-egraph/tests/run.sh and benchmarks/wasm-auto-verify/vcgen/run.sh --quick.
-# Pass 3 (kernel track): every certificate links each binary to its WAT module: `--link` (`rfl`) for
+# Every certificate links each binary to its WAT module: `--link` (`rfl`) for
 # the Binaryen-written outputs, `--link-equiv` (kernel-checked equivalence at every proved export,
 # and the certificate transferred to the decoded modules) for the inputs and the wasm-opt
 # output; validation through `Silmaril.Wasm.Auto2.Valid2` (`validG?`).
-# Pass 2 (kernel track): chunks of 60 exports by default (CHUNK overrides): with the validation-free
+# Chunks of 60 exports by default (CHUNK overrides): with the validation-free
 # instance each chunk costs one instantiation, and larger chunks no longer raise the peak memory.
-# Round 2 (kernel track): every `pass` certificate gives its modules as WAT text (`wat3b!`, which
+# Every `pass` certificate gives its modules as WAT text (`wat3b!`, which
 # also reads Binaryen's `tuple.make` of the opt-in corpus), so none decodes a binary in the kernel.
 # With --mor, a certificate is checked by `lake build --scratch` (a copy as a fresh
 # scratch module with a new content hash, removed afterwards), under its memory cap, instead of
-# `lake env lean`; so are the lean-* rows. Pass 2 (kernel track): before `--scratch`, the copies had
-# the same content as an earlier run's, so Lake's artifact cache restored them and the reported
-# certificate times (about 3 s) were cache restores, not kernel checks.
+# `lake env lean`; so are the lean-* rows. The fresh content hash matters: a copy with the same
+# content as an earlier run's would be restored from Lake's artifact cache, and the reported
+# certificate time would be a cache restore, not a kernel check.
 #
 # Expected verdict counts: expected.tsv (set, proved, refuted, unknown). Output: a Markdown table
 # on stdout and in .lake/bench/wasm-auto-verify/combined/table.md. Needs the executable
@@ -108,10 +108,10 @@ pass() { # set in out tv cert|nocert [wat [link [link-equiv]]]
     (cd "$C" && sha256sum --quiet -c "$here/wat/SOURCES") ||
       { echo "FAIL $set: wat/SOURCES does not match the corpus"; fail=1; }
     watargs=(--wat "$here/wat/${in%.wasm}.wat" "$here/wat/${o%.wasm}.wat")
-    # Pass 2 (kernel track): the certificate proves by `rfl` that the WAT module of each named
+    # The certificate proves by `rfl` that the WAT module of each named
     # side is the module the tool decoded from its binary (`--link`; Binaryen-written binaries).
     [[ -n $link && $link != - ]] && watargs+=(--link "$link")
-    # Pass 3 (kernel track): for binaries Binaryen did not write (Binaryen's printer reorders and
+    # For binaries Binaryen did not write (Binaryen's printer reorders and
     # merges their type sections, so `--link`'s `rfl` fails), `--link-equiv` proves each proved
     # export of the decoded module equivalent to the WAT module's and transfers the certificate's
     # equivalences to the decoded modules (`decA_<j>`, `decB_<j>`, `decAB_<j>`).
@@ -182,7 +182,7 @@ if leancheck lean-frontx tests/wasm/auto/FrontBenchX/Proofs/Proved.lean \
 else
   echo "FAIL lean-frontx (see $out/lean-frontx.log)"; fail=1
 fi
-# Round 2 (kernel track): the memory cases adlersum8-O2 (proved) and adlersum8-mutant (refuted),
+# The memory cases adlersum8-O2 (proved) and adlersum8-mutant (refuted),
 # kernel-checked over Silmaril.Wasm.Auto2.Kernel.
 if leancheck lean-kernel tests/wasm/auto2/KernelBench/Proofs/Adler.lean; then
   row lean-kernel 2 1 1 0 "$out/lean-kernel.time" "\`$checker\` …/KernelBench/Proofs/Adler.lean"

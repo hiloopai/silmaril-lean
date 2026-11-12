@@ -8,7 +8,7 @@ public import Silmaril.Wasm.Auto2.Summ.Defs
 # Function summaries with calls: symbolic inlining
 
 The summaries of `Silmaril.Wasm.Auto2.Summ` stop at `call`. This module adds calls to the
-executor: `xsexecC` runs a body like track equiv's unrolling executor
+executor: `xsexecC` runs a body like the unrolling executor
 (`Silmaril.Wasm.Auto.EquivUnroll.xsexecU`) and, at `call x`, runs the **callee's body** symbolically
 (inlining) when the callee is a Wasm function of the same module instance (the same function,
 global and memory addresses) whose declared locals are integers:

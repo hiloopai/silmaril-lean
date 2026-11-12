@@ -21,7 +21,7 @@ between the bytes it consumed and its result. Grammars are the pinned
 silmaril-lean Wasm grammar where one exists (`UN`, `SN`, `Seq`, `Vec`, `Name`,
 `Section` from `Silmaril.Wasm.Binary.Basic`), so soundness statements read like
 `Silmaril.Wasm.Binary.Core.Decode.Sound`. The proof principles are in
-`Silmaril.Wasm.ByteParse.Thms`:
+`Silmaril.Parse.ByteParse.Thms`:
 
 * `Sound G p`: a successful run consumed a segment of its window that `G`
   relates to the result (position monotonicity and window bounds included);
@@ -35,7 +35,7 @@ they compile to loops; vectors accumulate in an `Array`.
 
 @[expose] public section
 
-namespace Silmaril.Wasm.ByteParse
+namespace Silmaril.Parse.ByteParse
 
 /-- What went wrong. Constant payloads only: building an error allocates
 nothing beyond the error itself, and only on failure. -/
@@ -418,8 +418,8 @@ def StartsWith {α : Type} (pred : UInt8 → Prop) (G : Bytes → α → Prop) :
 
 A `Grammar` pairs a parser with the relation it is meant to implement; the combinators below
 build both at once. `Grammar.Lawful g` states that `g.parse` is sound and complete for `g.G`.
-Its instances, one per combinator, are proved in `Silmaril/Proofs/Wasm/ByteParse/` and exported by
-`Silmaril.Wasm.ByteParse.Thms`, so a grammar built from the combinators is lawful by instance
+Its instances, one per combinator, are proved in `Silmaril/Proofs/Parse/ByteParse/` and exported by
+`Silmaril.Parse.ByteParse.Thms`, so a grammar built from the combinators is lawful by instance
 search (or, through `tagged`, by `Grammar.Lawful.tagged`). Executables import this module only:
 they run the parsers and carry no proofs. -/
 
@@ -648,7 +648,7 @@ end Grammar
 
 Specification-level encoders into byte lists. They fail (`none`) on values the
 format cannot represent (numbers or lengths of `2 ^ 32` or more). Their laws,
-`G (enc a) a`, are in `Silmaril.Wasm.ByteParse.Thms` and give round trips. -/
+`G (enc a) a`, are in `Silmaril.Parse.ByteParse.Thms` and give round trips. -/
 
 namespace Enc
 
@@ -700,4 +700,4 @@ def toBytes (b : Option Bytes) : Option ByteArray := b.map fun l => ⟨l.toArray
 
 end Enc
 
-end Silmaril.Wasm.ByteParse
+end Silmaril.Parse.ByteParse

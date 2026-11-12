@@ -4,7 +4,7 @@ public import Silmaril.Wasm.Auto2.VCSort.Defs
 public import Silmaril.Wasm.Auto2.VCGen.Thms
 
 /-!
-# Insertion sort through VC generator 4: the conditions
+# Insertion sort through the VC generator: the conditions
 
 The 15 conditions of `insertion_sort` against `sortSpecV` (outer loop entry and exit, the key's
 load, inner loop entry, the two inner exits with their stores, outer invariant and variant, the

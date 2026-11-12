@@ -12,12 +12,10 @@ public import Silmaril.Proofs.Wasm.Auto2.VCLib.Meets
   `wasm-check bench`);
 * **`sum_meets`**: `SumTo`'s program meets `sumRef` (the triangular numbers modulo `2^32`) at
   every profile and for both front-end relations: the `sum-ref` case of the front-end benchmark,
-  unknown in round 3 (a loop: the function summaries have no loops, and the VC generator then
-  proved partial correctness only);
+  which the summary stages leave unknown (a loop: the function summaries have no loops);
 * `max_meets'`, `add_meets'`, `div10Mulhi_meets'`: the same for `max-ref`, `add-ref`,
-  `div10-mulhi-ref` through the VC generator (round 2 of the front end proved them in Lean through
-  function summaries, `max_meets`, `add_meets`, `div10Mulhi_meets`, but the tool's reference
-  stage had no proving step).
+  `div10-mulhi-ref` through the VC generator (they are also proved through function summaries, `max_meets`,
+  `add_meets`, `div10Mulhi_meets`).
 -/
 
 @[expose] public section

@@ -6,7 +6,7 @@ public import Silmaril.Wasm.Auto2.VCBTree.Defs
 public import Silmaril.Wasm.Wat
 
 /-!
-# Contracts with memory and callees (VC library, pass 2): programs and specifications
+# Contracts with memory and callees (VC library): programs and specifications
 
 Programs and annotated specifications for the VC stage with memory and callees
 (`Silmaril.Wasm.Auto2.VCCheck`). The proved contracts and the kernel-checked checks are in
@@ -19,7 +19,7 @@ Programs and annotated specifications for the VC stage with memory and callees
   `load2Spec` (precondition `p + 8 ≤ size`, memory unchanged); `load2SwapProg` adds the words in
   the other order (accepted by normalisation: `add` is commutative).
 
-* globals (generator 4's `FnSpec.globals`): `bumpProg` (`global.set`/`global.get`),
+* globals (`Silmaril.Wasm.Auto2.VCGen.FnSpec.globals`): `bumpProg` (`global.set`/`global.get`),
   `addnProg` (a global written in a loop), `frameProg` (a stack pointer moved down and restored),
   with the mutants `bumpLostProg` and `frameLeakProg`.
 

@@ -4,7 +4,7 @@ public import Silmaril.Wasm.Auto2.VCEquiv.Thms
 public import Silmaril.Wasm.Auto2.VCLib.Thms
 
 /-!
-# Inferred contracts for `vcequiv` (round 2, summaries, pass 3)
+# Inferred contracts for `vcequiv`
 
 Stage `vcequiv` (`Silmaril.Wasm.Auto2.VCEquiv`) proves two exports equivalent when each passes a
 proved contract of one functional contract `EqFun`. Its library holds one hand-written contract

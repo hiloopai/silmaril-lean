@@ -7,11 +7,11 @@ public import Silmaril.Wasm.Auto2.VCSort.Thms
 public import Silmaril.Wasm.Auto2.VCBTree.Thms
 
 /-!
-# Contracts with memory and callees (VC library, pass 2): conditions and entries
+# Contracts with memory and callees (VC library): conditions and entries
 
 The conditions of `double` (with the callee `add`) and `load2` (memory), computed by `vcgen4` and
 closed; the proved contracts `doubleEntry`, `load2Entry`; the library `entriesM` that
-`wasm-check vc` searches (pass 1's contracts through `VcEntry.toM`, then these); and the
+`wasm-check vc` searches (the contracts of `VcEntry` through `VcEntry.toM`, then these); and the
 kernel-checked checks of the demonstration modules.
 
 New proofs.

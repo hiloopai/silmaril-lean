@@ -3,7 +3,7 @@ module
 public import Silmaril.Proofs.Wasm.Auto2.VCSort.Spec
 
 /-!
-# Insertion sort through VC generator 4: results
+# Insertion sort through the VC generator: results
 
 Proofs in `Silmaril.Proofs.Wasm.Auto2.VCSort.{Conds,Spec}`, for `Silmaril.Wasm.Auto2.VCSort.Defs`:
 

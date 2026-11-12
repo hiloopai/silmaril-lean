@@ -4,9 +4,9 @@ public import Silmaril.Wasm.Auto2.Summ2.Defs
 public import Silmaril.Wasm.Auto2.VCEquiv.Thms
 
 /-!
-# The front end, pass 2 of the summaries track
+# The front end with the third simplifier and shared loop contracts
 
-`checkEquivV`/`checkRefinesV`: `Silmaril.Wasm.Auto2.Calls.checkEquivC`/`checkRefinesC` (round 3's
+`checkEquivV`/`checkRefinesV`: `Silmaril.Wasm.Auto2.Calls.checkEquivC`/`checkRefinesC` (the basic
 stages, unrolled loops `equivu`, inlined calls `equivc`), then
 
 * stage `equivv`: the same summaries with the third simplifier
@@ -39,11 +39,11 @@ def laterStages (r : Report) (m₁ m₂ : Module) (j : Nat) : Report :=
       Silmaril.Wasm.Auto2.Summ2.fnCheckV Silmaril.Wasm.Auto2.Summ.defFuel m₁ m₂ j)
     "vcequiv" fun _ => Silmaril.Wasm.Auto2.VCEquiv.vcEquivAny Silmaril.Wasm.Auto2.VCEquiv.eqFuns m₁ m₂ j
 
-/-- **The front end for equivalence**, pass 2. -/
+/-- **The front end for equivalence**, with stages `equivv` and `vcequiv`. -/
 def checkEquivV (R : Rel) (m₁ m₂ : Module) (j : Nat) (nRand : Nat) (identical : Bool) : Report :=
   laterStages (Silmaril.Wasm.Auto2.Calls.checkEquivC R m₁ m₂ j nRand identical) m₁ m₂ j
 
-/-- **The front end for a refinement**, pass 2 (its later stages prove equivalence). -/
+/-- **The front end for a refinement**, with stages `equivv` and `vcequiv` (its later stages prove equivalence). -/
 def checkRefinesV (R : Rel) (impl spec : Module) (j : Nat) (nRand : Nat) (identical : Bool) :
     Report :=
   laterStages (Silmaril.Wasm.Auto2.Calls.checkRefinesC R impl spec j nRand identical) impl spec j

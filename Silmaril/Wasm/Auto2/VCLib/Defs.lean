@@ -6,9 +6,9 @@ public import tests.wasm.auto.FrontBench.Defs
 /-!
 # Contracts of the VC library: specifications
 
-Annotated total-correctness specifications for VC generator 4 (`Silmaril.Wasm.Auto2.VCGen`) of the
+Annotated total-correctness specifications for the VC generator (`Silmaril.Wasm.Auto2.VCGen`) of the
 front-end benchmark's reference functions (`Silmaril.Wasm.Auto.FrontBench`): `sum` (a loop: the
-`sum-ref` case, which round 3 of the front end left unknown), `max` and `add`. The proved
+`sum-ref` case, which the summary stages of the front end leave unknown), `max` and `add`. The proved
 contracts (`Silmaril.Wasm.Auto2.VCBridge.VcEntry`) and the `ModMeets` theorems are in
 `Silmaril.Wasm.Auto2.VCLib.Thms`.
 
