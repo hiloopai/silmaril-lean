@@ -66,11 +66,13 @@ bash examples/elf-ladder/pin.sh --check
 
 ## Provenance and licence
 
-All of it is Silmaril's own development, under this repository's MIT licence. The rung-01
+Silmaril's own development, under this repository's MIT licence, except the embedded object
+code listed below. The rung-01
 executable is built from `examples/elf-ladder/01-leaf-arith` and `common/` (MIT) by GCC
 13.3.0 and GNU ld 2.42, freestanding and statically linked, with no third-party code; the
 GCC `call_ms`/`ms_calls_sysv` byte sequences are short instruction sequences GCC emits, given as
-byte lists. The `right_rot` object bytes (`Bench.Objects.RightRotClangO0`) come from clang `-O0`
-builds of the same in-house SHA-256 cross-compilation corpus as `Silmaril.Crypto.X86.Sha256O2`. The calling conventions follow the System V AMD64 psABI (H. J. Lu et al., *System V
+byte lists. The `right_rot` object bytes (`Bench.Objects.RightRotClangO0`) are a clang `-O0`
+build of `sha-256.c` of amosnier/sha-2 at `565f6500` with an in-house wrapper (Unlicense or
+0BSD, `NOTICES/sha-2`). The calling conventions follow the System V AMD64 psABI (H. J. Lu et al., *System V
 Application Binary Interface, AMD64 Architecture Processor Supplement*) and Microsoft's x64
 calling convention documentation.
