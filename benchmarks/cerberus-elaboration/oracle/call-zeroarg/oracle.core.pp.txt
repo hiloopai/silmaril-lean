@@ -1,0 +1,26 @@
+proc f (): eff loaded integer :=
+  let strong a_514: loaded integer = bound(pure(Specified(42))) in
+  run ret_513(conv_loaded_int('signed int', a_514)) ;
+  pure(Unit) ;
+  save ret_513: loaded integer (a_515: loaded integer:= undef(<<UB088_reached_end_of_function>>)) in
+    pure(a_515)
+
+proc main (): eff loaded integer :=
+  let strong a_511: loaded integer =
+    bound(
+      let strong a_508: loaded pointer = pure(Specified(Cfunction(f))) in
+      let (a_509: ctype, a_510: [ctype], _: boolean, _: boolean) =
+        cfunction(a_508) in
+      if params_length(a_510) = 0 then
+        if are_compatible ('signed int', a_509) then
+          ccall('signed int (*) (void)', a_508)
+        else
+          pure(undef(<<UB041_function_not_compatible>>))
+      else
+        pure(undef(<<UB038_number_of_args>>))
+    ) in
+  run ret_507(conv_loaded_int('signed int', a_511)) ;
+  pure(Unit) ;
+  save ret_507: loaded integer (a_512: loaded integer:= Specified(0)) in
+    pure(a_512)
+
