@@ -64,12 +64,13 @@ open Silmaril.Wasm.SpecTec.Sim
         | (rintro _ ⟨k, rfl⟩; simp_all)
         | simp_all)
 
-@[simp] theorem efB_schemaInstrV (c : Silmaril.Wasm.SpecTec.Constructor) : efB (schemaInstrV c) = true := by
+@[simp] theorem efB_schemaInstrV (c : Silmaril.Wasm.SpecTecEnc.Constructor) : efB (schemaInstrV c) = true := by
   unfold schemaInstrV
   split
   · exact efB_schemaV _
   · simp [efBs_eq_all, efB_schemaV]
 
+set_option linter.unusedTactic false in
 theorem efB_vecInstrV? {i : Instr} {v : Value} (h : Vec.vecInstrV? i = some v) : efB v = true := by
   unfold Vec.vecInstrV? at h
   split at h <;> (try cases h) <;>

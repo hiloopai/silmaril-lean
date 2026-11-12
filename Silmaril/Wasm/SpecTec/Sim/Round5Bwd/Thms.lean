@@ -33,7 +33,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.famBwdV_of_hostSteps' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Bwd.famBwdV_of_hostSteps
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.famBwdV_of_hostRespects' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.famBwdV_of_hostRespects' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Bwd.famBwdV_of_hostRespects
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.not_parts_hyp' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -45,7 +49,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.read_doneR' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Bwd.read_doneR
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.wholeStepValid_of_partsR' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.wholeStepValid_of_partsR' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Bwd.wholeStepValid_of_partsR
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Bwd.partsR_of_parts' depends on axioms: [propext, Classical.choice, Quot.sound] -/

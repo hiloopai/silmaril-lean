@@ -47,7 +47,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMElse
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.fires_erase_else' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms fires_erase_else
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.wholeStepValidRM_of_restDPK' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.wholeStepValidRM_of_restDPK' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPK
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.pairReflectD_simple' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -56,7 +60,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMElse
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.pairReflectD_chain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms pairReflectD_chain
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.wholeStepValidRM_of_restDPL' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.wholeStepValidRM_of_restDPL' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPL
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.refOk_bwd' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -65,7 +73,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMElse
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.restMSHCJ_sim' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms restMSHCJ_sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.wholeStepValidRM_of_restDPM' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMElse.wholeStepValidRM_of_restDPM' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPM
 
 end Silmaril.Wasm.SpecTec.Sim.Round9.RMElse

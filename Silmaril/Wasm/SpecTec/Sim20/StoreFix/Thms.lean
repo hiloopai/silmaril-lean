@@ -36,13 +36,21 @@ agreement theorem between the two type tables).
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.stuck_storeFn20S' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.StoreFix.stuck_storeFn20S
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.stuck_configV_storeFn20S' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.stuck_configV_storeFn20S' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.StoreFix.stuck_configV_storeFn20S
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.stepRules20S_state' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.StoreFix.stepRules20S_state
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.not_typedV_state_storeFn20' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.not_typedV_state_storeFn20' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.StoreFix.not_typedV_state_storeFn20
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.applyErrata_store20' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -57,7 +65,11 @@ agreement theorem between the two type tables).
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.typedV_f32Store20T' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.StoreFix.typedV_f32Store20T
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.storeCaseFix_rejects_f32_8' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.storeCaseFix_rejects_f32_8' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.StoreFix.storeCaseFix_rejects_f32_8
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.StoreFix.typed20T_storeFnCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/

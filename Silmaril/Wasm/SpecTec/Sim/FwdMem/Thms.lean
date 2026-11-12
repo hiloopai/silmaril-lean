@@ -30,7 +30,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.FwdMem.forward3_concrete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms FwdMem.forward3_concrete
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.FwdMem.wholeStepBounded_of_concrete3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.FwdMem.wholeStepBounded_of_concrete3' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms FwdMem.wholeStepBounded_of_concrete3
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.FwdMem.bytesFuns_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/

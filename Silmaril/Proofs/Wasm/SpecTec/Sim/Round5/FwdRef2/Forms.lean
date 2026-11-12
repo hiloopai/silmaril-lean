@@ -24,7 +24,7 @@ open Silmaril.Wasm
 open Silmaril.SpecTec.Equiv.Execution (caseNilV pctV)
 open Silmaril.Wasm.SpecTec.Sim.IntNumeric (ntV iunopV ibinopV itestopV irelopV)
 open Silmaril.Wasm.SpecTec.Sim.Vec (fUnOpV fBinOpV)
-open Silmaril.Wasm.SpecTec (node nat encodeUnsigned)
+open Silmaril.Wasm.SpecTecEnc (node nat encodeUnsigned)
 
 /-! ## Small encoders -/
 
@@ -333,17 +333,17 @@ theorem iv_select (o : Option (List ValType)) :
 
 /-- Evaluate `schemaV` on the schema values of the memory SIMD immediates. -/
 macro "sch" : tactic => `(tactic| simp [schemaV, encodeUnsigned, node, nat,
-    Silmaril.Formats.TExpr.ofList, SpecTec.encodeMemArg, SpecTec.encodeVecType,
-    SpecTec.encodePackSize, SpecTec.encodeVecLoadOp, SpecTec.encodeSignedness, Fin.ext_iff,
+    Silmaril.Formats.TExpr.ofList, SpecTecEnc.encodeMemArg, SpecTecEnc.encodeVecType,
+    SpecTecEnc.encodePackSize, SpecTecEnc.encodeVecLoadOp, SpecTecEnc.encodeSignedness, Fin.ext_iff,
     Idx.toNat, PackSize.width] at *)
 
 /-- Unfold a memory SIMD image to its components. -/
 macro "unf_sch" : tactic => `(tactic| simp only [instrToV, schemaInstrV,
-    Silmaril.Wasm.SpecTec.encodeInstruction, List.map, SpecTec.field, Value.case.injEq,
+    Silmaril.Wasm.SpecTecEnc.encodeInstruction, List.map, SpecTecEnc.field, Value.case.injEq,
     Value.tuple.injEq, List.cons.injEq, true_and, and_true] at *)
 
 theorem schVlop_inj {a b : VecLoadOp}
-    (h : schemaV (SpecTec.encodeVecLoadOp a) = schemaV (SpecTec.encodeVecLoadOp b)) : a = b := by
+    (h : schemaV (SpecTecEnc.encodeVecLoadOp a) = schemaV (SpecTecEnc.encodeVecLoadOp b)) : a = b := by
   cases a <;> cases b <;> (try rename_i x y; cases x <;> cases y) <;> sch
 
 theorem schIdx_inj {k : IndexKind} {a b : Idx k}
@@ -354,14 +354,14 @@ theorem schIdx_inj {k : IndexKind} {a b : Idx k}
   simp_all
 
 theorem schMemArg_inj {a b : MemArg}
-    (h : schemaV (SpecTec.encodeMemArg a) = schemaV (SpecTec.encodeMemArg b)) : a = b := by
+    (h : schemaV (SpecTecEnc.encodeMemArg a) = schemaV (SpecTecEnc.encodeMemArg b)) : a = b := by
   sch
   obtain ⟨a₁, a₂⟩ := a
   obtain ⟨b₁, b₂⟩ := b
   simp_all [Fin.ext_iff]
 
 theorem schPackSize_inj {a b : PackSize}
-    (h : schemaV (SpecTec.encodePackSize a) = schemaV (SpecTec.encodePackSize b)) : a = b := by
+    (h : schemaV (SpecTecEnc.encodePackSize a) = schemaV (SpecTecEnc.encodePackSize b)) : a = b := by
   cases a <;> cases b <;> sch
 
 theorem schLane_inj {a b : LaneIdx}

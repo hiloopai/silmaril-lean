@@ -37,10 +37,18 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.biErase_BI'' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms biErase_BI'
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.callDef_withTableinst_state' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.callDef_withTableinst_state' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms callDef_withTableinst_state
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.callDef_withMeminst_state' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll.callDef_withMeminst_state' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms callDef_withMeminst_state
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.EraseAll

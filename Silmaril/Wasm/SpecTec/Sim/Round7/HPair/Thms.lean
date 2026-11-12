@@ -38,7 +38,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.HPair
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HPair.castsBwdD_p' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms castsBwdD_p
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HPair.wholeStepValidRM_of_restDP' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HPair.wholeStepValidRM_of_restDP' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDP
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HPair.easyP_cfgP' depends on axioms: [propext, Classical.choice, Quot.sound] -/

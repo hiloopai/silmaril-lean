@@ -22,22 +22,42 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round6.Int`; see `docs/projects/spectec/REA
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.openR_backend_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.openR_backend_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.openR_backend_of_refOkBB
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.wholeStepValidR_backend_of_refOkBB
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsR_backend_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsR_backend_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.runsR_backend_of_refOkBB
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.not_refOkBB_family' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.not_refOkBB_family
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidRNC_of_wholeStepValidR' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidRNC_of_wholeStepValidR' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.wholeStepValidRNC_of_wholeStepValidR
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidRNC_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidRNC_backend' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.wholeStepValidRNC_backend
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsRNC_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/

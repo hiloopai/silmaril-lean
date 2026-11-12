@@ -303,7 +303,11 @@ Round 2, pass 4:
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.wholeStepBwdW_growB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.wholeStepBwdW_growB
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_memGrowSucceed10_floatIntB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_memGrowSucceed10_floatIntB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_memGrowSucceed10_floatIntB
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.typedV_tableInst20' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -378,10 +382,18 @@ Round 2, pass 4:
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.fires_vstoreLaneOob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.fires_vstoreLaneOob
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_vstoreVal_growLike' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_vstoreVal_growLike' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_vstoreVal_growLike
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_vstoreLaneVal_growLike' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_vstoreLaneVal_growLike' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.not_fires_vstoreLaneVal_growLike
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.fwd_topVStep20' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -477,7 +489,11 @@ Round 2, pass 4:
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.typedV_admin_iff_instr20' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.typedV_admin_iff_instr20
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.typedV_admins_expression20_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.typedV_admins_expression20_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.Whole.typedV_admins_expression20_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.Whole.spure_of_pureFrag20B' depends on axioms: [propext, Classical.choice, Quot.sound] -/

@@ -58,10 +58,18 @@ open Silmaril.Wasm.SpecTec.Sim.Bwd
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Bwd.retDecode' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms retDecode
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Bwd.bwdUpTo_returnCallRefFrameAddr' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Bwd.bwdUpTo_returnCallRefFrameAddr' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms bwdUpTo_returnCallRefFrameAddr
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Bwd.fwdUpTo_returnCallRefFrameAddr' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Bwd.fwdUpTo_returnCallRefFrameAddr' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms fwdUpTo_returnCallRefFrameAddr
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Bwd.bwd_callRefFunc' depends on axioms: [propext, Classical.choice, Quot.sound] -/

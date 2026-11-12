@@ -152,7 +152,7 @@ def headOf : Value → Option MixopS
 def HeadOk (i : Instr) : Prop := headOf (instrToV i) = some (instrHead i) ∨ instrToV i = .tuple []
 
 /-- A schema constructor's image has the constructor's tag. -/
-theorem headOf_schemaInstrV (c : Silmaril.Wasm.SpecTec.Constructor) :
+theorem headOf_schemaInstrV (c : Silmaril.Wasm.SpecTecEnc.Constructor) :
     headOf (schemaInstrV c) = some c.tag := by
   unfold schemaInstrV
   split <;> rfl
@@ -180,9 +180,9 @@ theorem instrToV_head : ∀ i : Instr, HeadOk i := by
   all_goals
     refine Or.inl ?_
     first
-      | (show headOf (schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction _)) = _
+      | (show headOf (schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction _)) = _
          rw [headOf_schemaInstrV]
-         simp only [Silmaril.Wasm.SpecTec.encodeInstruction]
+         simp only [Silmaril.Wasm.SpecTecEnc.encodeInstruction]
          rfl)
 
 /-- A `case` image has the instruction's head. -/

@@ -26,7 +26,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMPure
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMPure.pure_struct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms pure_struct
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMPure.wholeStepValidRM_of_restDPI' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMPure.wholeStepValidRM_of_restDPI' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPI
 
 end Silmaril.Wasm.SpecTec.Sim.Round9.RMPure

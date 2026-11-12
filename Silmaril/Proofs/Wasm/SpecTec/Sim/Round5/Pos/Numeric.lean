@@ -306,6 +306,7 @@ theorem typedV_floatStore (t : FloatType) (m : MemIdx) (a : MemArg) :
 
 /-! ## The open classes, reduced to SIMD -/
 
+set_option linter.unusedTactic false in
 set_option maxRecDepth 100000 in
 /-- **`OpenTyping` from SIMD**: the numeric, conversion, load and store classes are typed. -/
 theorem openTyping_of_simd (hS : SimdTyping B) : OpenTyping B := by

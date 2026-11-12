@@ -25,22 +25,46 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round6.CastsV`; see `docs/projects/spectec/
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.castsInv_of_configOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.castsInv_of_configOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.CastsV.castsInv_of_configOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.casts_backend_of_refOkBV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.casts_backend_of_refOkBV' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.CastsV.casts_backend_of_refOkBV
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.casts_backend_spec_of_refOkBV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.casts_backend_spec_of_refOkBV' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.CastsV.casts_backend_spec_of_refOkBV
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.openR_backend_of_refOkBV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.openR_backend_of_refOkBV' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.CastsV.openR_backend_of_refOkBV
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.wholeStepValidR_backend_of_refOkBV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.wholeStepValidR_backend_of_refOkBV' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.CastsV.wholeStepValidR_backend_of_refOkBV
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.runsR_backend_of_refOkBV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.CastsV.runsR_backend_of_refOkBV' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.CastsV.runsR_backend_of_refOkBV
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.backwardG' depends on axioms: [propext, Classical.choice, Quot.sound] -/

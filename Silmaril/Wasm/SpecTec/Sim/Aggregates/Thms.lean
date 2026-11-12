@@ -36,5 +36,9 @@ open Silmaril.Wasm.SpecTec.Sim.Aggregates
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Aggregates.fwd_aggregate' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms fwd_aggregate
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Aggregates.rStoreFuns_of_instReftype' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Aggregates.rStoreFuns_of_instReftype' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms rStoreFuns_of_instReftype

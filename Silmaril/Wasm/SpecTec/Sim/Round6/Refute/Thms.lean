@@ -25,7 +25,11 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round6.Refute`; see `docs/projects/spectec/
 
 namespace Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Refute.not_wholeStepValidSel' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Refute.not_wholeStepValidSel' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round6.Refute.not_wholeStepValidSel
 
 /--

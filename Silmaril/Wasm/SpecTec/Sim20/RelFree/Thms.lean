@@ -56,7 +56,11 @@ Namespace `Silmaril.Wasm.SpecTec.Sim20.RelFree`; see `docs/projects/spectec/READ
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.RelFree.sread20S_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.RelFree.sread20S_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim20.RelFree.otherwiseAt_withRels_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim20.RelFree.otherwiseAt_withRels_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim20.RelFree.otherwiseAt_withRels_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim20.RelFree.fires_withRels_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/

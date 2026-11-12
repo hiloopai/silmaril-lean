@@ -32,10 +32,10 @@ theorem instrToV_block {i : Instr} {w : Value} (h : instrToV i = .case "BLOCK" w
   all_goals try first
     | exact ⟨_, _, rfl, (Value.case.inj h).2.symm⟩
     | exact absurd (Value.case.inj h).1 (by decide)
-    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction _) = _ := h
-       obtain ⟨w', hw'⟩ := Exn.schemaInstrV_case (Silmaril.Wasm.SpecTec.encodeInstruction _)
+    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction _) = _ := h
+       obtain ⟨w', hw'⟩ := Exn.schemaInstrV_case (Silmaril.Wasm.SpecTecEnc.encodeInstruction _)
        rw [hw'] at h'
-       exact absurd (Value.case.inj h').1 (by simp [Silmaril.Wasm.SpecTec.encodeInstruction]))
+       exact absurd (Value.case.inj h').1 (by simp [Silmaril.Wasm.SpecTecEnc.encodeInstruction]))
   iterate 4 (all_goals (try (rename_i x; cases x)))
   all_goals first
     | exact absurd (Value.case.inj h).1 (by decide)
@@ -49,10 +49,10 @@ theorem instrToV_loop {i : Instr} {w : Value} (h : instrToV i = .case "LOOP" w) 
   all_goals try first
     | exact ⟨_, _, rfl, (Value.case.inj h).2.symm⟩
     | exact absurd (Value.case.inj h).1 (by decide)
-    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction _) = _ := h
-       obtain ⟨w', hw'⟩ := Exn.schemaInstrV_case (Silmaril.Wasm.SpecTec.encodeInstruction _)
+    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction _) = _ := h
+       obtain ⟨w', hw'⟩ := Exn.schemaInstrV_case (Silmaril.Wasm.SpecTecEnc.encodeInstruction _)
        rw [hw'] at h'
-       exact absurd (Value.case.inj h').1 (by simp [Silmaril.Wasm.SpecTec.encodeInstruction]))
+       exact absurd (Value.case.inj h').1 (by simp [Silmaril.Wasm.SpecTecEnc.encodeInstruction]))
   iterate 4 (all_goals (try (rename_i x; cases x)))
   all_goals first
     | exact absurd (Value.case.inj h).1 (by decide)

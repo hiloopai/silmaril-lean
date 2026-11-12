@@ -39,7 +39,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.mapConfig_unstrip_strip' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.mapConfig_unstrip_strip
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.wholeStepValidREI_of_leaves' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.wholeStepValidREI_of_leaves' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.wholeStepValidREI_of_leaves
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.wholeStepValidREI_of_REH' depends on axioms: [propext, Classical.choice, Quot.sound] -/

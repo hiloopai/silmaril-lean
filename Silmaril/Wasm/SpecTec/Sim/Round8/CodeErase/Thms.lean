@@ -78,13 +78,25 @@ end Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.EraseAll.eraseAt' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms EraseAll.eraseAt
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.EraseAll.derives_erase_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.EraseAll.derives_erase_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms EraseAll.derives_erase_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.EraseAll.hyps_sim' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.EraseAll.hyps_sim' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms EraseAll.hyps_sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.stepRead_erase_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase.stepRead_erase_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms stepRead_erase_iff
 
 end Silmaril.Wasm.SpecTec.Sim.Round8.CodeErase

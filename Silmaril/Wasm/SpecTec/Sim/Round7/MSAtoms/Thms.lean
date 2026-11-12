@@ -26,16 +26,28 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms
 
 /-! ## Axiom audit (checked by `#guard_msgs`) -/
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.noAtoms_ms_configVD_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.noAtoms_ms_configVD_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms noAtoms_ms_configVD_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.noAtoms_h_configVD_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.noAtoms_h_configVD_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms noAtoms_h_configVD_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.easy_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms easy_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.noAtoms_ms_configV_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms.noAtoms_ms_configV_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms noAtoms_ms_configV_iff
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.MSAtoms

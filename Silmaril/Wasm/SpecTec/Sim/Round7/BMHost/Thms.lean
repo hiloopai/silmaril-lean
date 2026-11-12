@@ -45,10 +45,18 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.BMHost
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.BMHost.not_openRMRest_all' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms not_openRMRest_all
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.BMHost.not_openRMRestMS_all' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.BMHost.not_openRMRestMS_all' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms not_openRMRestMS_all
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.BMHost.not_forwardBM_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.BMHost.not_forwardBM_backend' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms not_forwardBM_backend
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.BMHost.bd_step_srcCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/

@@ -25,7 +25,7 @@ open Silmaril.SpecTec.IL hiding Id Prod
 open Silmaril.SpecTec.Sem
 open Silmaril.SpecTec.Equiv (natV intV bvV)
 open Silmaril.SpecTec.Equiv.Execution (pctV caseNilV)
-open Silmaril.Wasm.SpecTec (floatFraction floatExponent floatSign floatFractionWidth
+open Silmaril.Wasm.SpecTecEnc (floatFraction floatExponent floatSign floatFractionWidth
   floatExponentWidth)
 open Silmaril.Wasm.SpecTec.Sim.IntNumeric (instCases findCase hasTypCase_of_findCase premsOk_if
   evalExp_and defOf hasTypCase_nullary)

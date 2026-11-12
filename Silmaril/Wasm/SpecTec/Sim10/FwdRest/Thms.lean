@@ -66,7 +66,11 @@ In `Silmaril.Wasm.SpecTec.Sim10.Whole`.
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.wholeStepFwd10_of_restQ'' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.Whole.wholeStepFwd10_of_restQ'
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.fwdAt10_memGrowSucceed_bytesB10' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.fwdAt10_memGrowSucceed_bytesB10' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.Whole.fwdAt10_memGrowSucceed_bytesB10
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.wholeStepFwd10_bytesB10'' depends on axioms: [propext, Classical.choice, Quot.sound] -/

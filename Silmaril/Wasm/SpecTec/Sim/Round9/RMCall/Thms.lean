@@ -25,10 +25,18 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMCall
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMCall.bwd_callRefFuncD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms bwd_callRefFuncD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMCall.bwd_callRefFuncD_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMCall.bwd_callRefFuncD_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms bwd_callRefFuncD_builtins
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMCall.wholeStepValidRM_of_restDPG' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMCall.wholeStepValidRM_of_restDPG' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPG
 
 end Silmaril.Wasm.SpecTec.Sim.Round9.RMCall

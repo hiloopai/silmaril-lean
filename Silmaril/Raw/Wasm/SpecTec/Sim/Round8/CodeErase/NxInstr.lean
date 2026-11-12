@@ -68,12 +68,13 @@ open Silmaril.Wasm.SpecTec.Sim
         | (rintro _ ⟨k, rfl⟩; simp_all)
         | simp_all)
 
-@[simp] theorem ncB_schemaInstrV (c : Silmaril.Wasm.SpecTec.Constructor) : ncB (schemaInstrV c) = true := by
+@[simp] theorem ncB_schemaInstrV (c : Silmaril.Wasm.SpecTecEnc.Constructor) : ncB (schemaInstrV c) = true := by
   unfold schemaInstrV
   split
   · exact ncB_schemaV _
   · simp [ncBs_eq_all, ncB_schemaV]
 
+set_option linter.unusedTactic false in
 theorem ncB_vecInstrV? {i : Instr} {v : Value} (h : Vec.vecInstrV? i = some v) : ncB v = true := by
   unfold Vec.vecInstrV? at h
   split at h <;> (try cases h) <;>

@@ -42,16 +42,28 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.relQuantsOk_B' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms relQuantsOk_B
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.hasTyp_utf8Env_eq_A' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.hasTyp_utf8Env_eq_A' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms hasTyp_utf8Env_eq_A
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.hasTyp_utf8Env_eq_B' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.hasTyp_utf8Env_eq_B' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms hasTyp_utf8Env_eq_B
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.hasTyp_config_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms hasTyp_config_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.quantsOk_utf8Env_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree.quantsOk_utf8Env_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms quantsOk_utf8Env_iff
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.TypAgree

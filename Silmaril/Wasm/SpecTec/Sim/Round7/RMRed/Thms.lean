@@ -25,7 +25,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.RMRed
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.RMRed.openRMRestDC_of_R' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms openRMRestDC_of_R
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.RMRed.wholeStepValidRM_of_restDR' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.RMRed.wholeStepValidRM_of_restDR' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDR
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.RMRed

@@ -46,26 +46,26 @@ theorem head_vecStoreLane {a : Admin} (h : Typing.adminHead a = "VSTORE_LANE") :
 /-- The provisional image of `v128.store`. -/
 theorem adminToV_vecStore (m : MemIdx) (arg : MemArg) :
     adminToV (.plain (.vecStore m arg)) = .case "VSTORE" (.tuple
-      [schemaV (Silmaril.Wasm.SpecTec.encodeVecType .v128),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned m.toNat),
-      schemaV (Silmaril.Wasm.SpecTec.encodeMemArg arg)]) := by
-  simp [adminToV, instrToV, schemaInstrV, Silmaril.Wasm.SpecTec.encodeInstruction,
-    Silmaril.Wasm.SpecTec.field]
+      [schemaV (Silmaril.Wasm.SpecTecEnc.encodeVecType .v128),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned m.toNat),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg arg)]) := by
+  simp [adminToV, instrToV, schemaInstrV, Silmaril.Wasm.SpecTecEnc.encodeInstruction,
+    Silmaril.Wasm.SpecTecEnc.field]
 
 /-- The provisional image of `v128.store*_lane`. -/
 theorem adminToV_vecStoreLane (sz : PackSize) (m : MemIdx) (arg : MemArg) (l : LaneIdx) :
     adminToV (.plain (.vecStoreLane sz m arg l)) = .case "VSTORE_LANE" (.tuple
-      [schemaV (Silmaril.Wasm.SpecTec.encodeVecType .v128),
-      schemaV (Silmaril.Wasm.SpecTec.encodePackSize sz),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned m.toNat),
-      schemaV (Silmaril.Wasm.SpecTec.encodeMemArg arg),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned l.val)]) := by
-  simp [adminToV, instrToV, schemaInstrV, Silmaril.Wasm.SpecTec.encodeInstruction,
-    Silmaril.Wasm.SpecTec.field]
+      [schemaV (Silmaril.Wasm.SpecTecEnc.encodeVecType .v128),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodePackSize sz),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned m.toNat),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg arg),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned l.val)]) := by
+  simp [adminToV, instrToV, schemaInstrV, Silmaril.Wasm.SpecTecEnc.encodeInstruction,
+    Silmaril.Wasm.SpecTecEnc.field]
 
 /-- The provisional image of a memory argument is a case, with no `OFFSET` field. -/
 theorem schemaMemArg_field (arg : MemArg) :
-    (schemaV (Silmaril.Wasm.SpecTec.encodeMemArg arg)).field? "OFFSET" = none := rfl
+    (schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg arg)).field? "OFFSET" = none := rfl
 
 /-- `ao.OFFSET!%.0` has no value when `ao` is bound to a value without an `OFFSET` field. -/
 theorem not_offset {env : Env} {ρ : VarEnv} {u v : Value} (fao : ρ.findVal? "ao" = some u)
@@ -109,9 +109,9 @@ theorem ao_vstore {env : Env} {ρ : VarEnv} {a : Admin} {e₁ e₂ : Exp}
     ∃ u, ρ.findVal? "ao" = some u ∧ u.field? "OFFSET" = none := by
   obtain ⟨m, arg, rfl⟩ := head_vecStore (head_of_caseE h)
   obtain ⟨u, hu, he⟩ := payload_of_caseE h
-  have he' : Value.case "VSTORE" (.tuple [schemaV (Silmaril.Wasm.SpecTec.encodeVecType .v128),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned m.toNat),
-      schemaV (Silmaril.Wasm.SpecTec.encodeMemArg arg)]) = .case "VSTORE" u :=
+  have he' : Value.case "VSTORE" (.tuple [schemaV (Silmaril.Wasm.SpecTecEnc.encodeVecType .v128),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned m.toNat),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg arg)]) = .case "VSTORE" u :=
     (adminToV_vecStore m arg).symm.trans he
   have eu := (Value.case.inj he').2.symm
   subst eu
@@ -127,11 +127,11 @@ theorem ao_vstoreLane {env : Env} {ρ : VarEnv} {a : Admin} {e₁ e₂ e₃ e₅
   obtain ⟨sz, m, arg, l, rfl⟩ := head_vecStoreLane (head_of_caseE h)
   obtain ⟨u, hu, he⟩ := payload_of_caseE h
   have he' : Value.case "VSTORE_LANE" (.tuple
-      [schemaV (Silmaril.Wasm.SpecTec.encodeVecType .v128),
-      schemaV (Silmaril.Wasm.SpecTec.encodePackSize sz),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned m.toNat),
-      schemaV (Silmaril.Wasm.SpecTec.encodeMemArg arg),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned l.val)]) = .case "VSTORE_LANE" u :=
+      [schemaV (Silmaril.Wasm.SpecTecEnc.encodeVecType .v128),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodePackSize sz),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned m.toNat),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg arg),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned l.val)]) = .case "VSTORE_LANE" u :=
     (adminToV_vecStoreLane sz m arg l).symm.trans he
   have eu := (Value.case.inj he').2.symm
   subst eu

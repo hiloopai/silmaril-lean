@@ -26,7 +26,7 @@ open Silmaril.Wasm.Execution.Core
 
 
 /-- A schema constructor is encoded with its own tag. -/
-theorem schemaInstrV_case (c : Silmaril.Wasm.SpecTec.Constructor) :
+theorem schemaInstrV_case (c : Silmaril.Wasm.SpecTecEnc.Constructor) :
     ∃ w, schemaInstrV c = .case c.tag w := by
   unfold schemaInstrV
   split <;> exact ⟨_, rfl⟩
@@ -45,11 +45,11 @@ theorem instrToV_case {i : Instr} {op : MixopS} {w : Value} (h : instrToV i = .c
   cases i
   all_goals try first
     | (obtain ⟨rfl, rfl⟩ := Value.case.inj h; simp)
-    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction _) = _ := h
-       obtain ⟨w', hw'⟩ := schemaInstrV_case (Silmaril.Wasm.SpecTec.encodeInstruction _)
+    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction _) = _ := h
+       obtain ⟨w', hw'⟩ := schemaInstrV_case (Silmaril.Wasm.SpecTecEnc.encodeInstruction _)
        rw [hw'] at h'
        obtain ⟨rfl, rfl⟩ := Value.case.inj h'
-       simp [Silmaril.Wasm.SpecTec.encodeInstruction])
+       simp [Silmaril.Wasm.SpecTecEnc.encodeInstruction])
   iterate 4 (all_goals (try (rename_i x; cases x)))
   all_goals first
     | (obtain ⟨rfl, rfl⟩ := Value.case.inj h; simp)

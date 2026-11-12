@@ -58,7 +58,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Script.evalExp_utf8Env_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.Script.evalExp_utf8Env_eq
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Script.derives_step_utf8Env_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Script.derives_step_utf8Env_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.Script.derives_step_utf8Env_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Script.name_calls_utf8' depends on axioms: [propext, Classical.choice, Quot.sound] -/

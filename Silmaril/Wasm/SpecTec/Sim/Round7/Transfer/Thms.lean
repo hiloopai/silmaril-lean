@@ -29,10 +29,18 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.Transfer
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Transfer.relRulesOk_fixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms relRulesOk_fixed
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Transfer.dderivesB_simEnv_of_E' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Transfer.dderivesB_simEnv_of_E' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms dderivesB_simEnv_of_E
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Transfer.sStepB_simEnv_of_E' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Transfer.sStepB_simEnv_of_E' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms sStepB_simEnv_of_E
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.Transfer

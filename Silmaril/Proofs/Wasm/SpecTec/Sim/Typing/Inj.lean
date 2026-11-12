@@ -19,7 +19,7 @@ open Silmaril.SpecTec.Sem
 open Silmaril.Wasm
 open Silmaril.Wasm.Execution.Core
 open Silmaril.SpecTec.Equiv.RuntimeBridge (refToValue)
-open Silmaril.Wasm.SpecTec (floatFraction floatExponent floatSign floatFractionWidth
+open Silmaril.Wasm.SpecTecEnc (floatFraction floatExponent floatSign floatFractionWidth
   floatExponentWidth floatFields_reconstruct floatSign_le_one)
 
 /-- The fraction field is below `2^M`, the exponent field below `2^E`. -/

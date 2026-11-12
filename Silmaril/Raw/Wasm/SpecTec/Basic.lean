@@ -11,7 +11,7 @@ execution judgments. A schema records payload families and dependencies on
 earlier fields; its digest also covers the upstream binders and side conditions.
 -/
 
-namespace Silmaril.Wasm.SpecTec
+namespace Silmaril.Wasm.SpecTecEnc
 
 abbrev Value := Silmaril.Formats.TExpr String Int
 
@@ -59,4 +59,4 @@ theorem Constructor.hasShape_arity {c : Constructor} {s : ConstructorSchema}
     (h : c.hasShape s) : c.arguments.length = s.fields.length := by
   simpa using congrArg List.length h.2
 
-end Silmaril.Wasm.SpecTec
+end Silmaril.Wasm.SpecTecEnc

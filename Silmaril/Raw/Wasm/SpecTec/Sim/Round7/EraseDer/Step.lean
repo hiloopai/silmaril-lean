@@ -49,6 +49,7 @@ def rnS : Prem → Prem
   | .rulePr x args op e => .rulePr (if x == "Step" then "Step_read" else x) args op e
   | pr => pr
 
+set_option linter.unusedTactic false in
 theorem premStep_rnS (K : List IL.Id) (pr : Prem) : premStep K (rnS pr) = premStep K pr := by
   cases pr with
   | rulePr x args op e =>

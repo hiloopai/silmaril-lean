@@ -27,26 +27,46 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round6.Transfer`; see `docs/projects/specte
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.sstepB_iff_of_not_castRedex' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.sstepB_iff_of_not_castRedex' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.sstepB_iff_of_not_castRedex
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.transfer_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.transfer_backend
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.transfer_backend_BI' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.transfer_backend_BI' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.transfer_backend_BI
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.wholeStepValidR_backend_of_casts' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.wholeStepValidR_backend_of_casts' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.wholeStepValidR_backend_of_casts
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.sReadB_iff_noCast' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.sReadB_iff_noCast
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.castRedex_of_body_readK' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.castRedex_of_body_readK' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.castRedex_of_body_readK
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.firesB_iff_swap' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.firesB_iff_swap
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.plain_read_of_not_mem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Transfer.plain_read_of_not_mem' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Transfer.plain_read_of_not_mem

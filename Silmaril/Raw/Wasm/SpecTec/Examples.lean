@@ -7,7 +7,7 @@ public import Silmaril.Raw.Wasm.SpecTec.Encode
 /-! Concrete payload checks include asymmetric operands and nonzero indices, so
 schema-annotation agreement alone cannot establish these equations. -/
 
-namespace Silmaril.Wasm.SpecTec
+namespace Silmaril.Wasm.SpecTecEnc
 
 example : (encodeInstruction (.intLoad .i64 (some (.i16, .signed))
     ⟨⟨3, by decide⟩⟩ ⟨⟨1, by decide⟩, ⟨17, by decide⟩⟩)).toValue =
@@ -56,4 +56,4 @@ example : (encodeInstruction (.floatLoad .f32 ⟨⟨2, by decide⟩⟩
   simp only [encodeInstruction]
   rfl
 
-end Silmaril.Wasm.SpecTec
+end Silmaril.Wasm.SpecTecEnc

@@ -73,7 +73,7 @@ theorem instr_val_tag {i : Instr} {op : String} {w : Value} (h : instrToV i = .c
     | exact ⟨.vec _, rfl⟩
     | (injection h with h1; subst h1; exact absurd hop (by decide))
     | cases h
-    | (have h1 := vec_tag rfl h; rw [Silmaril.Wasm.SpecTec.encodeInstruction] at h1;
+    | (have h1 := vec_tag rfl h; rw [Silmaril.Wasm.SpecTecEnc.encodeInstruction] at h1;
        simp only at h1; subst h1; exact absurd hop (by decide))
 
 /-- **An admin typed `val` is a Core value.** -/

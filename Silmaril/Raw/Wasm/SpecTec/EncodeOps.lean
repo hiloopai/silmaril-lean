@@ -12,7 +12,7 @@ single-`%` wrappers. Encoding preserves payload structure; it does not discharge
 SpecTec side conditions or claim execution correspondence.
 -/
 
-namespace Silmaril.Wasm.SpecTec
+namespace Silmaril.Wasm.SpecTecEnc
 
 /-- SpecTec's named, length-bounded `list(X)` wraps its underlying sequence. -/
 def namedList (xs : List Value) : Value := node "%" [list xs]
@@ -256,4 +256,4 @@ def encodeVecLoadOp : VecLoadOp → Value
   | .zero32 => node "$some" [node "ZERO" [encodePackSize .i32]]
   | .zero64 => node "$some" [node "ZERO" [encodePackSize .i64]]
 
-end Silmaril.Wasm.SpecTec
+end Silmaril.Wasm.SpecTecEnc

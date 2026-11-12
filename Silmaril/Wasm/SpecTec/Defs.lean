@@ -33,7 +33,7 @@ The layers, and the names that matter:
   grammar (`Silmaril.Wasm.Binary`) and Core 3.0 step (`Silmaril.Wasm.Execution.Core`), through
   explicit value bridges (`Sem.Encode`, `Equiv.Execution.instrV?`, `Equiv.Execution.StepImage`,
   and the store/frame bridge `Equiv.RuntimeBridge`);
-* **the structural schema view** (`Silmaril.Wasm.SpecTec`): constructor tags and payload
+* **the structural schema view** (`Silmaril.Wasm.SpecTecEnc`): constructor tags and payload
   families of silmaril-lean's instructions checked against fingerprints generated from the
   pinned AST.
 

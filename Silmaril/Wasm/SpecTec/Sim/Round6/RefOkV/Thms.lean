@@ -59,7 +59,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkV.refOkBV_of_agreeTy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkV.refOkBV_of_agreeTy
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkV.dderivesB_refOk_of_refOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkV.dderivesB_refOk_of_refOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkV.dderivesB_refOk_of_refOk
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkV.refM_of_dderivesB' depends on axioms: [propext, Classical.choice, Quot.sound] -/

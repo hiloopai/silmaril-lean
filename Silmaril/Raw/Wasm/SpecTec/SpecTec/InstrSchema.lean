@@ -22,7 +22,7 @@ Lean can reproduce; `sil spectec --check` is what pins that.
 
 namespace Silmaril.SpecTec.IL
 
-open Silmaril.Wasm.SpecTec (FieldType)
+open Silmaril.Wasm.SpecTecEnc (FieldType)
 
 /-- `bound.iter().rposition(|name| name == id)` (`tools/sil/src/spectec.rs:135`):
 the index of the *last* earlier field named `id`. -/

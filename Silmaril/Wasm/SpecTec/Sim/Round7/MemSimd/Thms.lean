@@ -165,13 +165,25 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStoreVal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecStoreVal
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStoreLaneOob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStoreLaneOob' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecStoreLaneOob
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStoreLaneVal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStoreLaneVal' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecStoreLaneVal
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStore_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecStore_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecStore_builtins
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.bwdB_vstoreOob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -204,10 +216,18 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecLoadFull' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecLoadFull
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.configVD_eq_of_noMemSimd' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.configVD_eq_of_noMemSimd' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.configVD_eq_of_noMemSimd
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.configVD_eq_of_bounded' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.configVD_eq_of_bounded' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.configVD_eq_of_bounded
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.boundedSelM_of_boundedSel' depends on axioms: [propext, Classical.choice] -/
@@ -225,16 +245,32 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.bwdB_vecLoadZero' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.bwdB_vecLoadZero
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecLoadSplat_shape' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecLoadSplat_shape' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecLoadSplat_shape
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecLoadLane_shape' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.fwd_vecLoadLane_shape' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.fwd_vecLoadLane_shape
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.stepFwd_vecLoadLane' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.stepFwd_vecLoadLane' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.stepFwd_vecLoadLane
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.wholeStepValidRMNoMS_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.wholeStepValidRMNoMS_backend' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.wholeStepValidRMNoMS_backend
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.bwdB_vecLoadSplat' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -255,37 +291,65 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.backward_upToD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.backward_upToD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.structDecodeD_simEnv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.structDecodeD_simEnv' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.structDecodeD_simEnv
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.typingFactsD_simEnv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.typingFactsD_simEnv' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.typingFactsD_simEnv
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.readMSD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.readMSD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.backward_upToD_restD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.backward_upToD_restD' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.backward_upToD_restD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.sstepB_iff_of_not_castRedexD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.sstepB_iff_of_not_castRedexD' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.sstepB_iff_of_not_castRedexD
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.transferD_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.transferD_backend
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.wholeStepValidRM_of_open' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.wholeStepValidRM_of_open' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.wholeStepValidRM_of_open
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.stepMSD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.stepMSD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.backward_upToD_restS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.backward_upToD_restS' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.backward_upToD_restS
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.bwd_vstoreLaneValF' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.bwd_vstoreLaneValF
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.typedD_of_configOk_selM' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.typedD_of_configOk_selM' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.typedD_of_configOk_selM
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.noCastVM_closed' depends on axioms: [propext, Classical.choice] -/
@@ -294,5 +358,9 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.noCastVM_entry' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.noCastVM_entry
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.wholeStepValidRM_of_rest' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MemSimd.wholeStepValidRM_of_rest' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round7.MemSimd.wholeStepValidRM_of_rest

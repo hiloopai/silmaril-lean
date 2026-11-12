@@ -31,7 +31,7 @@ This header fixes the three things a simulation between SpecTec's `Step` and sil
    administrative instructions (`adminToV`), values with SpecTec's float representation (`valV`),
    frames and stores (`frameV`, `storeV`). Types and module instances reuse
    `Equiv.RuntimeBridge.closedTypes`. Clauses marked *provisional* follow the schema of
-   `Silmaril.Wasm.SpecTec.encodeInstruction` and are not yet checked against the IL type `instr`.
+   `Silmaril.Wasm.SpecTecEnc.encodeInstruction` and are not yet checked against the IL type `instr`.
 
 The script is `Scripts.Wasm30.fixed` (`baseEnv`). It differs from `Scripts.Wasm30.original` only in
 the binary and text grammars and in `$cont`/`$utf8`; no reduction rule or helper used by them
@@ -276,20 +276,20 @@ def memargV (a : MemArg) : Value :=
   .struct [("ALIGN", pctV a.align.val), ("OFFSET", pctV a.offset.val)]
 
 /-- `fN(N)`: `POS`/`NEG` of `NORM m exp`, `SUBNORM m`, `INF` or `NAN m` (`1.1-syntax.values`),
-from the IEEE bit pattern, following `Silmaril.Wasm.SpecTec.floatBits`. Every case but `POS`/`NEG`
+from the IEEE bit pattern, following `Silmaril.Wasm.SpecTecEnc.floatBits`. Every case but `POS`/`NEG`
 carries a tuple (`fNmag`'s cases are `tupT`s, and the script builds them with `CaseE op (TupE …)`),
 so `SUBNORM m` is `.case "SUBNORM" (.tuple [m])`, not `.case "SUBNORM" m`. -/
 def floatV (t : FloatType) (bits : BitVec t.width) : Value :=
-  let ew := Silmaril.Wasm.SpecTec.floatExponentWidth t
-  let m := Silmaril.Wasm.SpecTec.floatFraction t bits
-  let e := Silmaril.Wasm.SpecTec.floatExponent t bits
+  let ew := Silmaril.Wasm.SpecTecEnc.floatExponentWidth t
+  let m := Silmaril.Wasm.SpecTecEnc.floatFraction t bits
+  let e := Silmaril.Wasm.SpecTecEnc.floatExponent t bits
   let mag : Value :=
     if e = 0 then .case "SUBNORM" (.tuple [.num (.natN m)])
     else if e = 2 ^ ew - 1 then
       (if m = 0 then caseNilV "INF" else .case "NAN" (.tuple [.num (.natN m)]))
     else .case "NORM" (.tuple [.num (.natN m),
       .num (.intN ((e : Int) - ((2 ^ (ew - 1) - 1 : Nat) : Int)))])
-  .case (if Silmaril.Wasm.SpecTec.floatSign t bits = 0 then "POS" else "NEG") mag
+  .case (if Silmaril.Wasm.SpecTecEnc.floatSign t bits = 0 then "POS" else "NEG") mag
 
 /-- A numeral of `num_(nt)`: `%`-wrapped for integers, `fN` for floats. -/
 def numV : NumVal → Value
@@ -303,7 +303,7 @@ def valV : Val → Value
   | .vec b => .case "VCONST" (.tuple [caseNilV "V128", pctV b.toNat])
   | .ref r => refToValue r
 
-/-- A schema value of `Silmaril.Wasm.SpecTec`, read as an IL value: `$list`, `$none`, `$some` and
+/-- A schema value of `Silmaril.Wasm.SpecTecEnc`, read as an IL value: `$list`, `$none`, `$some` and
 `$record` are the list, option and record injections, and every other tag is a `case` with a
 tuple payload. Used only for the provisional SIMD clauses of `instrToV`. -/
 def schemaV : Silmaril.Formats.TExpr String Int → Value
@@ -315,7 +315,7 @@ def schemaV : Silmaril.Formats.TExpr String Int → Value
 
 /-- A schema constructor as an `instr` case: one payload is carried bare, as in the IL's
 single-field cases; several (or none) as a tuple. *Provisional.* -/
-def schemaInstrV (c : Silmaril.Wasm.SpecTec.Constructor) : Value :=
+def schemaInstrV (c : Silmaril.Wasm.SpecTecEnc.Constructor) : Value :=
   match c.arguments with
   | [a] => .case c.tag (schemaV a.value)
   | xs => .case c.tag (.tuple (xs.map fun a => schemaV a.value))
@@ -392,7 +392,7 @@ def instrToV : Instr → Value
   | .floatConst t b => valV (.num ⟨.float t, b⟩)
   | .vecConst b => valV (.vec b)
   | i@(.vecLoad ..) | i@(.vecLoadLane ..) | i@(.vecStore ..) | i@(.vecStoreLane ..) =>
-      schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction i)
+      schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction i)
   | i@(.vecUnOp _) | i@(.vecBinOp _) | i@(.vecTernOp _) | i@(.vecTestOp _)
   | i@(.vecIntUnOp ..) | i@(.vecFloatUnOp ..) | i@(.vecIntBinOp ..) | i@(.vecFloatBinOp ..)
   | i@(.vecIntTernOp ..) | i@(.vecFloatTernOp ..) | i@(.vecAllTrue _) | i@(.vecIntRelOp ..)
@@ -400,7 +400,7 @@ def instrToV : Instr → Value
   | i@(.vecShuffle _) | i@(.vecExtUnOp ..) | i@(.vecExtBinOp ..) | i@(.vecExtTernOp ..)
   | i@(.vecNarrow ..) | i@(.vecConvert ..) | i@(.vecSplat _) | i@(.vecExtractLane ..)
   | i@(.vecReplaceLane ..) =>
-      (Vec.vecInstrV? i).getD (schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction i))
+      (Vec.vecInstrV? i).getD (schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction i))
   | .convert op => Vec.convertInstrV op
   | i => instrV i
 

@@ -69,13 +69,21 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.Swap
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.beq_eraseV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms beq_eraseV
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.wholeStepValidREI_of_stepErase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.wholeStepValidREI_of_stepErase' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidREI_of_stepErase
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.host_mods_sub' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms host_mods_sub
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.hostcallCall_erase_typed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.hostcallCall_erase_typed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms hostcallCall_erase_typed
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Swap.memValue_eraseV' depends on axioms: [propext, Classical.choice, Quot.sound] -/

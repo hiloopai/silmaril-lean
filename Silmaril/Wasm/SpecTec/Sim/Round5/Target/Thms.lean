@@ -42,19 +42,31 @@ the `simd` leaf.
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.stepRules_lastGuarded' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.stepRules_lastGuarded' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Target.stepRules_lastGuarded
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.not_sstep_sqrtCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Target.not_sstep_sqrtCfg
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.not_wholeStepValidOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.not_wholeStepValidOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Target.not_wholeStepValidOk
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.posTypingSel' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Target.posTypingSel
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.typed_of_configOk_sel' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Target.typed_of_configOk_sel' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Target.typed_of_configOk_sel
 
 /--

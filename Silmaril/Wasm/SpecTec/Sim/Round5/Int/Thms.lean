@@ -33,5 +33,9 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Int.partsOkR_of_open' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Int.partsOkR_of_open
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Int.wholeStepValidOk_of_open' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Int.wholeStepValidOk_of_open' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Int.wholeStepValidOk_of_open

@@ -37,7 +37,11 @@ their relation, so (2) has to cover those rules too, as round 7's `otherwiseAtB_
 
 namespace Silmaril.Wasm.SpecTec.Sim.Round7.VBytes
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VBytes.vbytesOnlyStep_fixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VBytes.vbytesOnlyStep_fixed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms vbytesOnlyStep_fixed
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VBytes.read_noVBytes' depends on axioms: [propext, Classical.choice, Quot.sound] -/

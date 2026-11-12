@@ -17,8 +17,8 @@ command
 
 ```
 spectec_crosscheck "specs/spectec/wasm-3.0.ast"
-  with Silmaril.Wasm.SpecTec.instructionSchemas
-  and Silmaril.Wasm.SpecTec.administrativeSchemas
+  with Silmaril.Wasm.SpecTecEnc.instructionSchemas
+  and Silmaril.Wasm.SpecTecEnc.administrativeSchemas
 ```
 
 reads the same file with the Lean reader and decoder, recomputes the
@@ -43,15 +43,15 @@ public meta section
 namespace Silmaril.SpecTec.IL
 
 open Lean Elab Command Meta
-open Silmaril.Wasm.SpecTec (FieldType ConstructorSchema)
+open Silmaril.Wasm.SpecTecEnc (FieldType ConstructorSchema)
 
 /-- Read back a reflected `FieldType`. -/
 partial def evalFieldType (e : Expr) : MetaM FieldType := do
   match_expr ← whnf e with
-  | Silmaril.Wasm.SpecTec.FieldType.named n ps => return .named (← reduceEval n) (← reduceEval ps)
-  | Silmaril.Wasm.SpecTec.FieldType.optional t => return .optional (← evalFieldType t)
-  | Silmaril.Wasm.SpecTec.FieldType.sequence t => return .sequence (← evalFieldType t)
-  | Silmaril.Wasm.SpecTec.FieldType.namedList t => return .namedList (← evalFieldType t)
+  | Silmaril.Wasm.SpecTecEnc.FieldType.named n ps => return .named (← reduceEval n) (← reduceEval ps)
+  | Silmaril.Wasm.SpecTecEnc.FieldType.optional t => return .optional (← evalFieldType t)
+  | Silmaril.Wasm.SpecTecEnc.FieldType.sequence t => return .sequence (← evalFieldType t)
+  | Silmaril.Wasm.SpecTecEnc.FieldType.namedList t => return .namedList (← evalFieldType t)
   | _ => throwError "not a FieldType: {e}"
 
 instance : ReduceEval FieldType where
@@ -60,7 +60,7 @@ instance : ReduceEval FieldType where
 instance : ReduceEval ConstructorSchema where
   reduceEval e := do
     match_expr ← whnf e with
-    | Silmaril.Wasm.SpecTec.ConstructorSchema.mk tag fields digest =>
+    | Silmaril.Wasm.SpecTecEnc.ConstructorSchema.mk tag fields digest =>
         return ⟨← reduceEval tag, ← reduceEval fields, ← reduceEval digest⟩
     | _ => throwError "not a ConstructorSchema: {e}"
 

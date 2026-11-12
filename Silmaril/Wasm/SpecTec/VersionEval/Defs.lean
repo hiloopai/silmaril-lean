@@ -136,9 +136,9 @@ compares them (sorted by tag). -/
 def crosscheck (s : Script) : Except String Nat := do
   let some ours := instrSchemas? s
     | throw "no single plain `instr` variant declaration"
-  let expected := (Silmaril.Wasm.SpecTec.instructionSchemas ++
-    Silmaril.Wasm.SpecTec.administrativeSchemas).map fun c => (c.tag, c.fields)
-  let sort (xs : List (String × List Silmaril.Wasm.SpecTec.FieldType)) :=
+  let expected := (Silmaril.Wasm.SpecTecEnc.instructionSchemas ++
+    Silmaril.Wasm.SpecTecEnc.administrativeSchemas).map fun c => (c.tag, c.fields)
+  let sort (xs : List (String × List Silmaril.Wasm.SpecTecEnc.FieldType)) :=
     xs.toArray.qsort (fun a b => a.1 < b.1) |>.toList
   unless ours.length == expected.length do
     throw s!"{ours.length} instruction constructors, the schemas have {expected.length}"

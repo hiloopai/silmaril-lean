@@ -84,7 +84,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.dderivesB_bwd' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms dderivesB_bwd
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.otherwiseAtB_erase_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.otherwiseAtB_erase_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms otherwiseAtB_erase_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.typFwd_utf8Env' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -117,13 +121,25 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepBwd' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms stepBwd
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepErase_of_stepExc' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepErase_of_stepExc' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms stepErase_of_stepExc
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.swapEquiv_of_stepExc' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.swapEquiv_of_stepExc' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms swapEquiv_of_stepExc
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.wholeStepValidREI_of_stepExc' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.wholeStepValidREI_of_stepExc' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidREI_of_stepExc
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.state_inv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -138,16 +154,32 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.ruleBwd_grow' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms ruleBwd_grow
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepExc_of_stepHost' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepExc_of_stepHost' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms stepExc_of_stepHost
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepErase_of_stepHost' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.stepErase_of_stepHost' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms stepErase_of_stepHost
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.swapEquiv_of_stepHost' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.swapEquiv_of_stepHost' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms swapEquiv_of_stepHost
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.wholeStepValidREI_of_stepHost' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.wholeStepValidREI_of_stepHost' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidREI_of_stepHost
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.xHostOk_fixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -162,7 +194,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.storeV_unstrip' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms storeV_unstrip
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.evalExp_hostMem_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.evalExp_hostMem_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms evalExp_hostMem_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.ruleFwd_host' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -183,7 +219,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.swapEquiv_holds' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms swapEquiv_holds
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.wholeStepValidREI_holds' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer.wholeStepValidREI_holds' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidREI_holds
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.EraseDer

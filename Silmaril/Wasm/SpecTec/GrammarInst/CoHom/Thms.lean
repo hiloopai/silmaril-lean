@@ -33,7 +33,11 @@ open Silmaril.Wasm.SpecTec
 /-- info: 'Silmaril.Wasm.SpecTec.GrammarInst.fullCoHom_entails_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms GrammarInst.fullCoHom_entails_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.GrammarInst.surjective_of_prod_satisfaction' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.GrammarInst.surjective_of_prod_satisfaction' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms GrammarInst.surjective_of_prod_satisfaction
 
 /-- info: 'Silmaril.Wasm.SpecTec.GrammarInst.lebCoHom' depends on axioms: [propext, Classical.choice, Quot.sound] -/

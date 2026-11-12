@@ -63,5 +63,9 @@ In `Silmaril.Wasm.SpecTec.Sim10.Whole`.
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.wholeRunFwd10' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.Whole.wholeRunFwd10
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.not_wholeStepFwd10_unaligned' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim10.Whole.not_wholeStepFwd10_unaligned' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.Whole.not_wholeStepFwd10_unaligned

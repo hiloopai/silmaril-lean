@@ -23,7 +23,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.MSRest
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSRest.pure_val' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms pure_val
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSRest.wholeStepValidRM_of_restDPR' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSRest.wholeStepValidRM_of_restDPR' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPR
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.MSRest

@@ -37,7 +37,7 @@ spectec_check_stream Specs.mainWasm30 against "specs/spectec/e7a9df7c/wasm-3.0.a
 #eval Silmaril.SpecTec.Sem.checkStreamFile "specs/spectec/e7a9df7c/wasm-3.0.ast"
 
 spectec_crosscheck "specs/spectec/e7a9df7c/wasm-3.0.ast"
-  with Silmaril.Wasm.SpecTec.instructionSchemas
-  and Silmaril.Wasm.SpecTec.administrativeSchemas
+  with Silmaril.Wasm.SpecTecEnc.instructionSchemas
+  and Silmaril.Wasm.SpecTecEnc.administrativeSchemas
 
 end Silmaril.Wasm.SpecTec.Versions

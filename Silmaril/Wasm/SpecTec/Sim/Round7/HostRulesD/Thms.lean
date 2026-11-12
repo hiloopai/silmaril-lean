@@ -31,10 +31,18 @@ a declarative transfer for builtins that agree off `$hostcall`.
 
 namespace Silmaril.Wasm.SpecTec.Sim.Round7.HostRulesD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HostRulesD.fwd_callRefHostD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HostRulesD.fwd_callRefHostD' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms fwd_callRefHostD
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HostRulesD.fwd_callRefHostDivD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HostRulesD.fwd_callRefHostDivD' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms fwd_callRefHostDivD
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HostRulesD.hostStepsD' depends on axioms: [propext, Classical.choice, Quot.sound] -/

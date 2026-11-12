@@ -40,7 +40,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.RMD
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.RMD.restD_of_restMSH' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms restD_of_restMSH
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.RMD.wholeStepValidRM_of_restD' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.RMD.wholeStepValidRM_of_restD' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restD
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.RMD

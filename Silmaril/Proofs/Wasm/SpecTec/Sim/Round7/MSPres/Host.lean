@@ -64,7 +64,7 @@ theorem instrToVM_shape {i : Instr} (hi : memSimd i = true) :
   | _ => simp [memSimd] at hi
 
 /-- **A schema image is no `instrToVM` image of a memory SIMD instruction.** -/
-theorem schemaInstrV_ne_instrToVM (c : Silmaril.Wasm.SpecTec.Constructor) {i : Instr}
+theorem schemaInstrV_ne_instrToVM (c : Silmaril.Wasm.SpecTecEnc.Constructor) {i : Instr}
     (hi : memSimd i = true) : schemaInstrV c ≠ instrToVM i := by
   obtain ⟨op, L, a, hv, ha⟩ := instrToVM_shape hi
   rw [hv]
@@ -93,7 +93,7 @@ theorem head_memSimd {i : Instr} (h : memSimd i = true) :
   cases i <;> simp only [memSimd, Bool.false_eq_true] at h <;> simp [Typing.instrHead]
 
 theorem instrToV_memSimd {i : Instr} (h : memSimd i = true) :
-    instrToV i = schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction i) := by
+    instrToV i = schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction i) := by
   cases i <;> simp only [memSimd, Bool.false_eq_true] at h <;> rfl
 
 theorem block_of_head {i : Instr} (h : Typing.instrHead i = "BLOCK") :

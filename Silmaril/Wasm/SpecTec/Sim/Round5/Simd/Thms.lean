@@ -129,7 +129,11 @@ open Silmaril.Wasm.SpecTec.Sim
  Quot.sound] -/
 #guard_msgs in #print axioms Round5.Simd.not_vecAgreeOps_of_narrow
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Simd.vecAgreeLanes_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Simd.vecAgreeLanes_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Simd.vecAgreeLanes_builtins
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Simd.vecAgreeOps_of_lanes' depends on axioms: [propext, Classical.choice, Quot.sound] -/

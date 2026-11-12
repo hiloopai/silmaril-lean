@@ -128,7 +128,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Integrate.backward_concrete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Integrate.backward_concrete
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Integrate.wholeStepUpTo_of_concrete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Integrate.wholeStepUpTo_of_concrete' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Integrate.wholeStepUpTo_of_concrete
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Integrate.forward_wide' depends on axioms: [propext, Classical.choice, Quot.sound] -/

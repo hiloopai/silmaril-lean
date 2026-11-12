@@ -395,6 +395,7 @@ private theorem exists_char {n : Nat} (hv : n < 0xD800 ∨ (0xDFFF < n ∧ n < 0
     ∃ c : Char, [n] = [c.toNat] ∧ Utf8Char c bs :=
   ⟨Char.ofNat n, by rw [Unicode.charToNat_ofNat hv], hc _ (Unicode.charToNat_ofNat hv)⟩
 
+set_option linter.unusedTactic false in
 /-- Every derivation of the corrected grammar is a `Utf8Char` derivation: its
 attribute is a single scalar value, and it spells that value. -/
 theorem utf8Char_of_denote {bs : Bytes} {a : List Nat}

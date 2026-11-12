@@ -62,6 +62,7 @@ theorem instrsSel_append : ∀ {a b : List Instr},
 
 /-! ## Instructions -/
 
+set_option linter.unusedTactic false in
 set_option maxRecDepth 100000 in
 /-- **The open classes are typed off `FloatMissel`**: the SIMD instructions by its proof's
 `SimdTypingSel`, the numeric operators, conversions, loads and stores as in

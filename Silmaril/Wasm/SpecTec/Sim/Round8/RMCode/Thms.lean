@@ -38,7 +38,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round8.RMCode
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.RMCode.step_of_firesErase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms step_of_firesErase
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.RMCode.wholeStepValidRM_of_restDPQ' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round8.RMCode.wholeStepValidRM_of_restDPQ' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPQ
 
 end Silmaril.Wasm.SpecTec.Sim.Round8.RMCode

@@ -16,7 +16,7 @@ Floating-point constants decompose their IEEE bits into SpecTec's signed
 magnitude constructors; this does not implement floating-point execution.
 -/
 
-namespace Silmaril.Wasm.SpecTec
+namespace Silmaril.Wasm.SpecTecEnc
 
 def field (name : String) (value : Value) : Argument := ⟨.named name [], value⟩
 def dependentField (name : String) (parameters : List Nat) (value : Value) : Argument :=
@@ -210,4 +210,4 @@ theorem encodeInstruction_hasShape (i : Instr) :
     simp only [encodeInstruction, Constructor.hasShape, field, dependentField,
       optionalField, sequenceField, List.map_cons, List.map_nil]; decide
 
-end Silmaril.Wasm.SpecTec
+end Silmaril.Wasm.SpecTecEnc

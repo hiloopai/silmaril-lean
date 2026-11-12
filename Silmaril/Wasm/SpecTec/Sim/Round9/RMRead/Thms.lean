@@ -33,7 +33,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMRead
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMRead.read_struct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms read_struct
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMRead.wholeStepValidRM_of_restDPJ' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMRead.wholeStepValidRM_of_restDPJ' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPJ
 
 end Silmaril.Wasm.SpecTec.Sim.Round9.RMRead

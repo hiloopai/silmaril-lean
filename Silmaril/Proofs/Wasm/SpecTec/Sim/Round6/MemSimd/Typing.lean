@@ -239,16 +239,16 @@ theorem not_hasTyp_memarg_case {σ : VarEnv} (hσ : ValsOnly σ) (op : MixopS) (
 
 /-- The provisional memory argument is a case. -/
 theorem schemaV_memArg (a : MemArg) : ∃ op w,
-    schemaV (Silmaril.Wasm.SpecTec.encodeMemArg a) = .case op w := ⟨_, _, rfl⟩
+    schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg a) = .case op w := ⟨_, _, rfl⟩
 
 /-- The provisional image of `v128.store`. -/
 theorem instrToV_vecStore (m : MemIdx) (a : MemArg) :
     instrToV (.vecStore m a) = .case "VSTORE" (.tuple
-      [schemaV (Silmaril.Wasm.SpecTec.encodeVecType .v128),
-      schemaV (Silmaril.Wasm.SpecTec.encodeUnsigned m.toNat),
-      schemaV (Silmaril.Wasm.SpecTec.encodeMemArg a)]) := by
-  simp [instrToV, schemaInstrV, Silmaril.Wasm.SpecTec.encodeInstruction,
-    Silmaril.Wasm.SpecTec.field]
+      [schemaV (Silmaril.Wasm.SpecTecEnc.encodeVecType .v128),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeUnsigned m.toNat),
+      schemaV (Silmaril.Wasm.SpecTecEnc.encodeMemArg a)]) := by
+  simp [instrToV, schemaInstrV, Silmaril.Wasm.SpecTecEnc.encodeInstruction,
+    Silmaril.Wasm.SpecTecEnc.field]
 
 set_option maxRecDepth 100000 in
 /-- **The provisional image of `v128.store` is not a typed `instr`**, in any `simEnv B`: its

@@ -53,6 +53,7 @@ open Silmaril.Wasm.SpecTec.Sim
   cases a
   all_goals nxb_leaf
 
+set_option linter.unusedTactic false in
 @[simp] theorem ncB_vvunopV (a : VecUnOp) : ncB (Vec.vvunopV a) = true := by
   cases a
   all_goals nxb_leaf
@@ -61,10 +62,12 @@ open Silmaril.Wasm.SpecTec.Sim
   cases a
   all_goals nxb_leaf
 
+set_option linter.unusedTactic false in
 @[simp] theorem ncB_vvternopV (a : VecTernOp) : ncB (Vec.vvternopV a) = true := by
   cases a
   all_goals nxb_leaf
 
+set_option linter.unusedTactic false in
 @[simp] theorem ncB_vvtestopV (a : VecTestOp) : ncB (Vec.vvtestopV a) = true := by
   cases a
   all_goals nxb_leaf
@@ -85,6 +88,7 @@ open Silmaril.Wasm.SpecTec.Sim
   cases a
   all_goals nxb_leaf
 
+set_option linter.unusedTactic false in
 @[simp] theorem ncB_vIntTernOpV (a : VecIntTernOp) : ncB (Vec.vIntTernOpV a) = true := by
   cases a
   all_goals nxb_leaf
@@ -109,6 +113,7 @@ open Silmaril.Wasm.SpecTec.Sim
   cases a
   all_goals nxb_leaf
 
+set_option linter.unusedTactic false in
 @[simp] theorem ncB_vExtUnOpV (a : VecExtUnOp) : ncB (Vec.vExtUnOpV a) = true := by
   cases a
   all_goals nxb_leaf
@@ -117,6 +122,7 @@ open Silmaril.Wasm.SpecTec.Sim
   cases a
   all_goals nxb_leaf
 
+set_option linter.unusedTactic false in
 @[simp] theorem ncB_vExtTernOpV (a : VecExtTernOp) : ncB (Vec.vExtTernOpV a) = true := by
   cases a
   all_goals nxb_leaf

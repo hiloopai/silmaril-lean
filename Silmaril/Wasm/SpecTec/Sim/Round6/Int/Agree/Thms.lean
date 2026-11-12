@@ -22,17 +22,33 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.openR_backend_of_agree' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.openR_backend_of_agree
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend_of_agree' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend_of_agree' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.wholeStepValidR_backend_of_agree
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsR_backend_of_agree' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.runsR_backend_of_agree
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.openR_backend_of_agreeTy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.openR_backend_of_agreeTy' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.openR_backend_of_agreeTy
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend_of_agreeTy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend_of_agreeTy' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.wholeStepValidR_backend_of_agreeTy
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsR_backend_of_agreeTy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsR_backend_of_agreeTy' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.runsR_backend_of_agreeTy

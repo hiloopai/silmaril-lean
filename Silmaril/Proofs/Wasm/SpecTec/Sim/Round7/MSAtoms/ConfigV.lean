@@ -32,7 +32,7 @@ theorem instrToV_ms_head (i : Instr) (h : memSimd i = true) :
   cases i <;> simp only [memSimd, reduceCtorEq] at h
   all_goals
     unfold Sim.instrToV
-    simp only [Sim.schemaInstrV, Silmaril.Wasm.SpecTec.encodeInstruction]
+    simp only [Sim.schemaInstrV, Silmaril.Wasm.SpecTecEnc.encodeInstruction]
     exact ⟨_, _, by simp [msAtoms], rfl⟩
 
 theorem not_na_ms {A : List MixopS} (hA : ∀ a ∈ msAtoms, a ∈ A) {i : Instr}

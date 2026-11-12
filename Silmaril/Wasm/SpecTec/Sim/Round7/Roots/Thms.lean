@@ -36,13 +36,21 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.Roots
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Roots.allIn_pathSet' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms allIn_pathSet
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Roots.pathSet_modImg_dot_slice' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Roots.pathSet_modImg_dot_slice' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms pathSet_modImg_dot_slice
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Roots.not_allIn_QC_tables' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms not_allIn_QC_tables
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Roots.pathSet_modImg_tables' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.Roots.pathSet_modImg_tables' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms pathSet_modImg_tables
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.Roots

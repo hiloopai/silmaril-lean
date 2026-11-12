@@ -36,25 +36,49 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round6.Reading`; see `docs/projects/spectec
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_of_dderives' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_of_dderives' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_of_dderives
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_iff_of_closed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_iff_of_closed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_iff_of_closed
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.otherwiseAtB_iff_of_closed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.otherwiseAtB_iff_of_closed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.otherwiseAtB_iff_of_closed
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.firesB_iff_of_closed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.firesB_iff_of_closed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.firesB_iff_of_closed
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_otherwise_iff_of_closed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_otherwise_iff_of_closed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_otherwise_iff_of_closed
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.otherwiseAtB_iff_at' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.otherwiseAtB_iff_at' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.otherwiseAtB_iff_at
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.firesB_iff_at' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -84,40 +108,88 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.sReadB_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.sReadB_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_reftypeOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_reftypeOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.conclAlts_reftypeOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_reftypeSubNull' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_reftypeSubNull' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.conclAlts_reftypeSubNull
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_fieldtypeOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_fieldtypeOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.conclAlts_fieldtypeOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_subtypeOk2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.conclAlts_subtypeOk2' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.conclAlts_subtypeOk2
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_reftypeOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_reftypeOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_reftypeOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_reftypeSub_null' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_reftypeSub_null' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_reftypeSub_null
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_fieldtypeOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_fieldtypeOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_fieldtypeOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_heaptypeOk_abs' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_heaptypeOk_abs' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_heaptypeOk_abs
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_heaptypeSub_bot' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_heaptypeSub_bot' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_heaptypeSub_bot
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_refOk_null' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_refOk_null' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_refOk_null
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_refOk_nullAny' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.dderivesB_refOk_nullAny' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.dderivesB_refOk_nullAny
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.refOkAtB_nullAny_null' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.refOkAtB_nullAny_null' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.refOkAtB_nullAny_null
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.firesB_step_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -141,10 +213,18 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.sstepB_ctxtFrame' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.sstepB_ctxtFrame
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.firesB_iff_of_plain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.firesB_iff_of_plain' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.firesB_iff_of_plain
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.otherwiseB_of_ruleAt' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.otherwiseB_of_ruleAt' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Reading.otherwiseB_of_ruleAt
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Reading.castsFwdB_of' depends on axioms: [propext, Classical.choice, Quot.sound] -/

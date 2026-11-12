@@ -82,6 +82,7 @@ theorem textS_of_decodeText? {s : SExp} {v : String} (h : decodeText? s = some v
   · exact congrArg SExp.atom (Escape.quote_of_unquote? h)
   · exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeBool?` accepts only the atoms `boolS` produces (`print.ml:11`). -/
 theorem boolS_of_decodeBool? {s : SExp} {b : Bool} (h : decodeBool? s = some b) :
     boolS b = s := by
@@ -91,6 +92,7 @@ theorem boolS_of_decodeBool? {s : SExp} {b : Bool} (h : decodeBool? s = some b) 
   case h_2 => obtain rfl := Option.some.inj h; rfl
   all_goals exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeNum?` accepts only the nodes `numS` produces (`print.ml:16`).  In
 the `rat` branch the decoder rebuilds a `Rat` from the parsed numerator and
 denominator, whose `num` and `den` projections are that pair definitionally. -/
@@ -116,6 +118,7 @@ theorem numS_of_decodeNum? {s : SExp} {n : Num} (h : decodeNum? s = some n) :
   case h_4 d => obtain rfl := Option.some.inj h; rfl
   all_goals exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeUnOp?` accepts only the atoms `unOpS` produces (`print.ml:25`). -/
 theorem unOpS_of_decodeUnOp? {s : SExp} {op : UnOp} (h : decodeUnOp? s = some op) :
     unOpS op = s := by
@@ -126,6 +129,7 @@ theorem unOpS_of_decodeUnOp? {s : SExp} {op : UnOp} (h : decodeUnOp? s = some op
   case h_3 => obtain rfl := Option.some.inj h; rfl
   all_goals exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeBinOp?` accepts only the atoms `binOpS` produces (`print.ml:32`). -/
 theorem binOpS_of_decodeBinOp? {s : SExp} {op : BinOp} (h : decodeBinOp? s = some op) :
     binOpS op = s := by
@@ -143,6 +147,7 @@ theorem binOpS_of_decodeBinOp? {s : SExp} {op : BinOp} (h : decodeBinOp? s = som
   case h_10 => obtain rfl := Option.some.inj h; rfl
   all_goals exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeCmpOp?` accepts only the atoms `cmpOpS` produces (`print.ml:44`). -/
 theorem cmpOpS_of_decodeCmpOp? {s : SExp} {op : CmpOp} (h : decodeCmpOp? s = some op) :
     cmpOpS op = s := by
@@ -156,6 +161,7 @@ theorem cmpOpS_of_decodeCmpOp? {s : SExp} {op : CmpOp} (h : decodeCmpOp? s = som
   case h_6 => obtain rfl := Option.some.inj h; rfl
   all_goals exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeNumTyp?` accepts only the atoms `numTypS` produces
 (`print.ml:65`). -/
 theorem numTypS_of_decodeNumTyp? {s : SExp} {t : NumTyp} (h : decodeNumTyp? s = some t) :
@@ -168,6 +174,7 @@ theorem numTypS_of_decodeNumTyp? {s : SExp} {t : NumTyp} (h : decodeNumTyp? s = 
   case h_4 => obtain rfl := Option.some.inj h; rfl
   all_goals exact absurd h (by simp)
 
+set_option linter.unusedTactic false in
 /-- `decodeOpTyp?` accepts only the atoms `opTypS` produces (`print.ml:67`). -/
 theorem opTypS_of_decodeOpTyp? {s : SExp} {t : OpTyp} (h : decodeOpTyp? s = some t) :
     opTypS t = s := by
@@ -188,6 +195,7 @@ argument, mirroring the decoder it inverts. -/
 -- elaboration budget is shared by all 37 proofs; `expS_of_decodeExp?` alone has
 -- thirty cases.
 set_option maxHeartbeats 600000 in
+set_option linter.unusedTactic false in
 mutual
 
 /-- `decodeIter?` accepts only what `iterS` prints (`print.ml:55`). -/

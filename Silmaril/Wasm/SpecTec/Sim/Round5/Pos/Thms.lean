@@ -80,13 +80,21 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.not_wholeStepValid' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Pos.not_wholeStepValid
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.not_wholeStepValid_hostOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.not_wholeStepValid_hostOk' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Pos.not_wholeStepValid_hostOk
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.typed_of_configOk_ne' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Pos.typed_of_configOk_ne
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.wholeStepValidOk_of_parts' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.wholeStepValidOk_of_parts' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Pos.wholeStepValidOk_of_parts
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.tyT_tyV' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -95,7 +103,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.typedV_callRefType' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.Pos.typedV_callRefType
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.typedV_returnCallRefType' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.typedV_returnCallRefType' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Pos.typedV_returnCallRefType
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Pos.moduleinst_ne' depends on axioms: [propext, Classical.choice, Quot.sound] -/

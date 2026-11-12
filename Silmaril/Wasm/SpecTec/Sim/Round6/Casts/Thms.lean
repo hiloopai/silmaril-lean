@@ -29,20 +29,36 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round6.Casts`; see `docs/projects/spectec/R
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.casts_backend_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.casts_backend_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Casts.casts_backend_of_refOkBB
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.casts_backend_spec_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.casts_backend_spec_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Casts.casts_backend_spec_of_refOkBB
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.backwardB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Casts.backwardB
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.backwardR_backend_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.backwardR_backend_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Casts.backwardR_backend_of_refOkBB
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.fwdB_cast' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Casts.fwdB_cast
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.wholeStepValidR_backend_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Casts.wholeStepValidR_backend_of_refOkBB' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Casts.wholeStepValidR_backend_of_refOkBB

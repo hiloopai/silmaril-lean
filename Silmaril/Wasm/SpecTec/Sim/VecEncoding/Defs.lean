@@ -7,7 +7,7 @@ public import Silmaril.Raw.Wasm.SpecTec.Encode
 # SpecTec ↔ Core 3.0: the IL encoding of SIMD instructions (family V)
 
 The base encoding (`Sim.instrToV`) sent SIMD instructions through `schemaInstrV`, the schema of
-`Silmaril.Wasm.SpecTec.encodeInstruction` read as an IL value. That reading is wrong wherever an
+`Silmaril.Wasm.SpecTecEnc.encodeInstruction` read as an IL value. That reading is wrong wherever an
 operator case carries a single non-tuple payload: `ADD_SAT sx`, `SUB_SAT sx`, `MIN sx`, `MAX sx`
 (integer `vbinop_`), `SHR sx` (`vshiftop_`), `EXTADD_PAIRWISE sx` (`vextunop__`) and `DEMOTE zero`
 (`vcvtop__`) carry the payload bare in the IL (their `TypCase` type is `varT`, not `tupT`), while

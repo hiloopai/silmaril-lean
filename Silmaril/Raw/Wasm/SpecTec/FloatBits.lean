@@ -14,7 +14,7 @@ exponent. This encodes literals only; no host floating-point arithmetic is used.
 See the [pinned value grammar](https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/1.1-syntax.values.spectec).
 -/
 
-namespace Silmaril.Wasm.SpecTec
+namespace Silmaril.Wasm.SpecTecEnc
 
 def floatFractionWidth : FloatType → Nat
   | .f32 => 23 | .f64 => 52
@@ -71,4 +71,4 @@ example : floatBits .f64 (0x7fefffffffffffff#64) =
     node "POS" [node "NORM" [nat 4503599627370495, .atom 1023]] := rfl
 example : floatBits .f64 (0x7ff0000000000001#64) = node "POS" [node "NAN" [nat 1]] := rfl
 
-end Silmaril.Wasm.SpecTec
+end Silmaril.Wasm.SpecTecEnc

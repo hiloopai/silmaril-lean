@@ -29,7 +29,7 @@ open Silmaril.SpecTec
 open Silmaril.SpecTec.IL hiding Id Prod
 open Silmaril.SpecTec.Sem
 open Silmaril.SpecTec.Equiv (natV intV bvV)
-open Silmaril.Wasm.SpecTec (floatFraction floatExponent floatSign floatFractionWidth
+open Silmaril.Wasm.SpecTecEnc (floatFraction floatExponent floatSign floatFractionWidth
   floatExponentWidth)
 open Silmaril.Wasm.SpecTec.Scripts.Wasm20 (Original.d2 Original.d3 Original.d17 Original.d19
   Original.d29 Original.d30 Original.d31 Original.d32 Original.d33 Original.d34 Original.d35

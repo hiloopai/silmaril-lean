@@ -47,7 +47,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.VAgree
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VAgree.evalExp_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms evalExp_eq
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VAgree.derives_withVBytes_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VAgree.derives_withVBytes_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms derives_withVBytes_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VAgree.anyRule_goodRule_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/

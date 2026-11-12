@@ -30,7 +30,11 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round5.FwdRef`; see `docs/projects/spectec/
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.FwdRef.newDataNumB_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.FwdRef.newDataNumB_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.FwdRef.newDataNumB_builtins
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.FwdRef.tryClauses_concatn' depends on axioms: [propext, Classical.choice, Quot.sound] -/

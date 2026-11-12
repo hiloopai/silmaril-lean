@@ -457,6 +457,7 @@ theorem representable_of_bin {op : BinOp} {m₁ m₂ n : Num}
     cases op <;> cases m₁ <;> cases m₂ <;> simp only [bin] at h <;>
       (try split_ifs at h) <;> simp_all
 
+set_option linter.unusedTactic false in
 /-- `cvt` lands in the requested type (`spectec/src/xl/num.ml:79-96`). -/
 theorem toTyp_cvt {t : NumTyp} {m n : Num} (h : cvt t m = some n) : toTyp n = t := by
   cases t <;> cases m <;> simp only [cvt] at h <;> (try split_ifs at h) <;>

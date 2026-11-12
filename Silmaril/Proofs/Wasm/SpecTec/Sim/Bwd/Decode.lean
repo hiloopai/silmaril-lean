@@ -31,10 +31,10 @@ theorem instrToV_returnCallRef {i : Instr} {w : Value}
   all_goals try first
     | exact ⟨_, rfl⟩
     | exact absurd (Value.case.inj h).1 (by decide)
-    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction _) = _ := h
-       obtain ⟨w', hw'⟩ := Exn.schemaInstrV_case (Silmaril.Wasm.SpecTec.encodeInstruction _)
+    | (have h' : schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction _) = _ := h
+       obtain ⟨w', hw'⟩ := Exn.schemaInstrV_case (Silmaril.Wasm.SpecTecEnc.encodeInstruction _)
        rw [hw'] at h'
-       exact absurd (Value.case.inj h').1 (by simp [Silmaril.Wasm.SpecTec.encodeInstruction]))
+       exact absurd (Value.case.inj h').1 (by simp [Silmaril.Wasm.SpecTecEnc.encodeInstruction]))
   iterate 4 (all_goals (try (rename_i x; cases x)))
   all_goals first
     | exact absurd (Value.case.inj h).1 (by decide)

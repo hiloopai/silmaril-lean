@@ -87,6 +87,7 @@ theorem fires_cvtBad (hB : FloatB P B) (x : BitVec 64) :
     (T.num (.int .i32) (x.signExtend 32) "nt_2" _ ⟨rfl, rfl, rfl⟩ rfl) (applies_cvtBad hB x)
     (Pure.memValue_list_iff.2 (List.mem_singleton.2 rfl)))
 
+set_option linter.unusedTactic false in
 /-- **V2's only step from `i64.const x; cvtBad` is the trap.** -/
 theorem pureStep_cvtBad {x : BitVec 64} {code' : List Admin}
     (h : PureStep P [.plain (.intConst .i64 x), .plain cvtBad] code') : code' = [.trap] := by

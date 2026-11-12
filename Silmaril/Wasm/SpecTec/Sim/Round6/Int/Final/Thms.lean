@@ -30,7 +30,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.openR_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.openR_backend
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.wholeStepValidR_backend' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.Int.wholeStepValidR_backend
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.Int.runsR_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/

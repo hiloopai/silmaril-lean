@@ -65,19 +65,35 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.VDecl
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.read_elseAltsOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms read_elseAltsOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.typedD_withVBytes_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.typedD_withVBytes_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms typedD_withVBytes_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.dderivesB_otherwise' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms dderivesB_otherwise
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.fires_read_withVBytes_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.fires_read_withVBytes_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms fires_read_withVBytes_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.firesB_read_withVBytes_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.firesB_read_withVBytes_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms firesB_read_withVBytes_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.backwardUpToDRestS_withVBytes_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.backwardUpToDRestS_withVBytes_iff' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms backwardUpToDRestS_withVBytes_iff
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VDecl.sstep_withVBytes_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/

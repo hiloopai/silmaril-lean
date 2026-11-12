@@ -30,13 +30,25 @@ Namespace `Silmaril.Wasm.SpecTec.Sim.Round5.Convert`; see `docs/projects/spectec
 
 open Silmaril.Wasm.SpecTec.Sim
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.vecConvertR_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.vecConvertR_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Convert.vecConvertR_builtins
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.vectorFwdR_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.vectorFwdR_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Convert.vectorFwdR_builtins
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.vectorFwdDet_builtins' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.vectorFwdDet_builtins' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.Convert.vectorFwdDet_builtins
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.Convert.open5_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/

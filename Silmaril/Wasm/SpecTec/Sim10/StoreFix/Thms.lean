@@ -24,10 +24,18 @@ In `Silmaril.Wasm.SpecTec.Sim10.StoreFix` (definitions in `Sim10.StoreFix.Defs`)
 
 /-! ## Axiom audit (checked by `#guard_msgs`) -/
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeInstrErratum10_applies' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeInstrErratum10_applies' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeInstrErratum10_applies
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeAdminErratum10_applies' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeAdminErratum10_applies' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeAdminErratum10_applies
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.applyErrata_store10' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -42,13 +50,21 @@ In `Silmaril.Wasm.SpecTec.Sim10.StoreFix` (definitions in `Sim10.StoreFix.Defs`)
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.typedV_f32Store10T' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.StoreFix.typedV_f32Store10T
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeCaseFix10_rejects_f32_8' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeCaseFix10_rejects_f32_8' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.StoreFix.storeCaseFix10_rejects_f32_8
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.typed10T_storeFnCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.StoreFix.typed10T_storeFnCfg
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.not_typed10_memStoreCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.not_typed10_memStoreCfg' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Silmaril.Wasm.SpecTec.Sim10.StoreFix.not_typed10_memStoreCfg
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim10.StoreFix.typed10T_memStoreCfg' depends on axioms: [propext, Classical.choice, Quot.sound] -/

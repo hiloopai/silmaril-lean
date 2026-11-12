@@ -34,7 +34,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round9.RMAtom
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMAtom.restMSHCG_of_H' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms restMSHCG_of_H
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMAtom.wholeStepValidRM_of_restDPH' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round9.RMAtom.wholeStepValidRM_of_restDPH' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPH
 
 end Silmaril.Wasm.SpecTec.Sim.Round9.RMAtom

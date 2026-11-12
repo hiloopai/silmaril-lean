@@ -35,19 +35,39 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.not_refOkAtB_nested' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkB.not_refOkAtB_nested
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_reftypeOk_nested' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_reftypeOk_nested' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkB.dderivesB_reftypeOk_nested
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_refOk_nested' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_refOk_nested' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkB.dderivesB_refOk_nested
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_refOk_null_of' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_refOk_null_of' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkB.dderivesB_refOk_null_of
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_deftypeOk1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_deftypeOk1' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkB.dderivesB_deftypeOk1
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_subtypeOk2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.dderivesB_subtypeOk2' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.RefOkB.dderivesB_subtypeOk2
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.RefOkB.refOkBV_of_refOkBB' depends on axioms: [propext, Classical.choice, Quot.sound] -/

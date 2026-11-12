@@ -36,13 +36,21 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.VInv
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.ctx_lhsOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms ctx_lhsOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.backwardUpToDRestS_noMSDom_BM' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.backwardUpToDRestS_noMSDom_BM' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms backwardUpToDRestS_noMSDom_BM
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.rest_of_restMS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms rest_of_restMS
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.wholeStepValidRM_of_restMS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.wholeStepValidRM_of_restMS' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restMS
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.stepInv_noMS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -51,10 +59,18 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.VInv
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.stepInvB_noMS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms stepInvB_noMS
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.sstep_withVBytes_iff_noMS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.sstep_withVBytes_iff_noMS' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms sstep_withVBytes_iff_noMS
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.sstepB_withVBytes_iff_noMS' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.VInv.sstepB_withVBytes_iff_noMS' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms sstepB_withVBytes_iff_noMS
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.VInv

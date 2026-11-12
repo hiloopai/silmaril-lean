@@ -34,7 +34,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round8.RMHost
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.RMHost.pure_hostify' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms pure_hostify
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round8.RMHost.wholeStepValidRM_of_restDPP' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round8.RMHost.wholeStepValidRM_of_restDPP' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDPP
 
 end Silmaril.Wasm.SpecTec.Sim.Round8.RMHost

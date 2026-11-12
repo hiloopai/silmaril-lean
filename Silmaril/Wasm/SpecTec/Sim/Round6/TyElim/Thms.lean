@@ -43,13 +43,25 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.agreeTy_of_intro' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms Round6.TyElim.agreeTy_of_intro
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.openR_backend_of_intro' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.openR_backend_of_intro' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.TyElim.openR_backend_of_intro
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.wholeStepValidR_backend_of_intro' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.wholeStepValidR_backend_of_intro' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.TyElim.wholeStepValidR_backend_of_intro
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.runsR_backend_of_intro' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.runsR_backend_of_intro' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms Round6.TyElim.runsR_backend_of_intro
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round6.TyElim.coh_of_deftypeOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/

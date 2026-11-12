@@ -25,15 +25,15 @@ open Silmaril.Wasm
 open Silmaril.Wasm.Execution.Core
 
 /-- A schema constructor's image is a case with the constructor's tag. -/
-theorem schemaInstrV_case (c : Silmaril.Wasm.SpecTec.Constructor) :
+theorem schemaInstrV_case (c : Silmaril.Wasm.SpecTecEnc.Constructor) :
     ∃ w, schemaInstrV c = .case c.tag w := by
   unfold schemaInstrV; split <;> exact ⟨_, rfl⟩
 
 /-- A vector instruction's image carries its schema tag. -/
 theorem vec_tag {i : Instr} {op : String} {p : Value}
-    (h0 : instrToV i = schemaInstrV (Silmaril.Wasm.SpecTec.encodeInstruction i))
-    (h : instrToV i = .case op p) : (Silmaril.Wasm.SpecTec.encodeInstruction i).tag = op := by
-  obtain ⟨w, hw⟩ := schemaInstrV_case (Silmaril.Wasm.SpecTec.encodeInstruction i)
+    (h0 : instrToV i = schemaInstrV (Silmaril.Wasm.SpecTecEnc.encodeInstruction i))
+    (h : instrToV i = .case op p) : (Silmaril.Wasm.SpecTecEnc.encodeInstruction i).tag = op := by
+  obtain ⟨w, hw⟩ := schemaInstrV_case (Silmaril.Wasm.SpecTecEnc.encodeInstruction i)
   rw [h0, hw] at h
   injection h
 
@@ -49,7 +49,7 @@ macro "int_numeric_decode" i:ident h:ident pos:tactic : tactic => `(tactic| (
     | (injection $h:ident with h1; exact absurd h1 (by decide))
     | ($pos:tactic)
     | (cases $h:ident; done)
-    | (have h1 := vec_tag rfl $h:ident; rw [Silmaril.Wasm.SpecTec.encodeInstruction] at h1;
+    | (have h1 := vec_tag rfl $h:ident; rw [Silmaril.Wasm.SpecTecEnc.encodeInstruction] at h1;
        simp at h1)))
 
 set_option maxHeartbeats 1000000 in

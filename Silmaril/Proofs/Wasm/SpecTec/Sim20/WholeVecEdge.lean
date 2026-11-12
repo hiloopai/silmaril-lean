@@ -233,6 +233,7 @@ theorem lanes_ones_ne : ¬ ∃ l ∈ IntShape.i64x2.lanesOf ones128, l = 0 := by
   revert hl
   decide
 
+set_option linter.unusedTactic false in
 /-- **V2's only step from `v128.const ones; i64x2.all_true` gives `1`.** -/
 theorem pureStep_allTrue_ones {P : Profile} {code' : List Admin}
     (h : PureStep P (allTrueCode ones128) code') : code' = [constI32 1] := by

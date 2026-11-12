@@ -44,7 +44,7 @@ example : wasm20.length = 467 := by rfl
 example : wasm30.length = 976 := by rfl
 
 spectec_crosscheck "specs/spectec/wasm-3.0.ast"
-  with Silmaril.Wasm.SpecTec.instructionSchemas
-  and Silmaril.Wasm.SpecTec.administrativeSchemas
+  with Silmaril.Wasm.SpecTecEnc.instructionSchemas
+  and Silmaril.Wasm.SpecTecEnc.administrativeSchemas
 
 end Silmaril.SpecTec.Specs

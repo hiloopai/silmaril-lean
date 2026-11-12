@@ -28,7 +28,11 @@ open Silmaril.Wasm.SpecTec.Sim
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.RefOk.not_reftypeOk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Round5.RefOk.not_reftypeOk
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.RefOk.eq_bot_of_dderives_null' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round5.RefOk.eq_bot_of_dderives_null' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs in #print axioms Round5.RefOk.eq_bot_of_dderives_null
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round5.RefOk.not_refOkAt_nullAny' depends on axioms: [propext, Classical.choice, Quot.sound] -/

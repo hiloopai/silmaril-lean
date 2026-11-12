@@ -37,7 +37,11 @@ would need `Step` rules 8 and 9 kept silent as well as 43 and 23.
 
 namespace Silmaril.Wasm.SpecTec.Sim.Round7.HAgree
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HAgree.hostcallOnlyStep_fixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HAgree.hostcallOnlyStep_fixed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms hostcallOnlyStep_fixed
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HAgree.relFacts_fixed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -55,7 +59,11 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.HAgree
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HAgree.typedD_iff' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms typedD_iff
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HAgree.backwardUpToDRestSH_agree' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.HAgree.backwardUpToDRestSH_agree' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms backwardUpToDRestSH_agree
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.HAgree

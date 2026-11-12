@@ -229,27 +229,35 @@ theorem deep_vconst (a : BitVec 128) : deep (vconst a) = true := rfl
 
 @[simp] theorem deep_constI32 (b : BitVec 32) : deep (constI32 b) = true := deep_toAdmin _
 
+set_option linter.unusedTactic false in
 theorem parametric_deep {is is' : List Admin} (h : ParametricStep is is') : codeDeep is = true := by
   cases h <;> (simp only [codeDeep, deep_toAdmin, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem numeric_deep {is is' : List Admin} (h : NumericStep P is is') : codeDeep is = true := by
   cases h <;> (simp only [codeDeep, deep_toAdmin, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem vector_deep {is is' : List Admin} (h : VectorStep P is is') : codeDeep is = true := by
   cases h <;> (simp only [codeDeep, deep_toAdmin, deep_vconst, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem variable_deep {c c' : Config H} (h : VariableStep c c') : codeDeep c.code = true := by
   cases h <;> (simp only [codeDeep, deep_toAdmin, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem table_deep {c c' : Config H} (h : TableStep P c c') : codeDeep c.code = true := by
   cases h <;> (simp only [codeDeep, deep_toAdmin, deep_constI32, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem memory_deep {c c' : Config H} (h : MemoryStep P c c') : codeDeep c.code = true := by
   cases h <;> (simp only [codeDeep, deep_toAdmin, deep_constI32, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem reference_deep {c c' : Config H} (h : RefStep c c') : codeDeep c.code = true := by
   cases h <;> (simp only [codeDeep, deep_constI32, Bool.and_true, Bool.true_and]; try rfl)
 
+set_option linter.unusedTactic false in
 theorem aggregate_deep {c c' : Config H} (h : AggregateStep c c') : codeDeep c.code = true := by
   cases h <;> (simp only [codeDeep, codeDeep_append, codeDeep_vals, deep_toAdmin, deep_constI32, Bool.and_true, Bool.true_and]; try rfl)
 

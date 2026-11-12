@@ -82,13 +82,21 @@ theorem bm_hostcall_none (P : Profile) (hn : H → String) (host : HostSemantics
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.step_noMemSimd' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms step_noMemSimd
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.not_noMemSimd_preserved' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.not_noMemSimd_preserved' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms not_noMemSimd_preserved
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.restMS_iff_restMSC' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms restMS_iff_restMSC
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.wholeStepValidRMNoMSH_backend' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.wholeStepValidRMNoMSH_backend' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRMNoMSH_backend
 
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.MSPres.bm_hostcall_none' depends on axioms: [propext, Classical.choice, Quot.sound] -/

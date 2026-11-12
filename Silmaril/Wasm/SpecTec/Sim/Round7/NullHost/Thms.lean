@@ -31,10 +31,18 @@ namespace Silmaril.Wasm.SpecTec.Sim.Round7.NullHost
 /-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.NullHost.restSH_noMemSimd' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms restSH_noMemSimd
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.NullHost.restMSH_iff_restMSHC' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.NullHost.restMSH_iff_restMSHC' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms restMSH_iff_restMSHC
 
-/-- info: 'Silmaril.Wasm.SpecTec.Sim.Round7.NullHost.wholeStepValidRM_of_restDC' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'Silmaril.Wasm.SpecTec.Sim.Round7.NullHost.wholeStepValidRM_of_restDC' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
 #guard_msgs (whitespace := lax) in #print axioms wholeStepValidRM_of_restDC
 
 end Silmaril.Wasm.SpecTec.Sim.Round7.NullHost
