@@ -116,3 +116,8 @@ deps = ["Prelude"]
 name = "WasmSpec"
 scope = "Functional specifications of example WebAssembly programs (adder, max, sum, insertion sort, B-tree) used by the verification benchmarks."
 deps = ["Logic", "Wasm"]
+
+[[region]]
+name = "Parse"
+scope = "Byte-level parsing: a combinator core for binary formats, with its laws, shared by the Wasm binary codecs and other formats."
+deps = []
