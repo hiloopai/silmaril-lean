@@ -1,5 +1,5 @@
-summary: 60 problems (60 local), 4 groups, 163 records, 73 edges, 7 artifacts
-verdicts: 12 holds, 2 fails, 46 unknown (all 60 problems); 12 holds, 2 fails, 46 unknown (60 local)
+summary: 65 problems (65 local), 4 groups, 173 records, 83 edges, 7 artifacts
+verdicts: 12 holds, 2 fails, 51 unknown (all 65 problems); 12 holds, 2 fails, 51 unknown (65 local)
 root: silmaril.selftest.all
 predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails
 predicate silmaril.selftest.square (arity 1): status SAT [SAT], verdict unknown
@@ -40,8 +40,8 @@ predicate silmaril.shapes.x86.contract.str9 (arity 1): status OPN [], verdict un
 predicate silmaril.shapes.x86.contract_strict (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct_loose (arity 2): status OPN [], verdict unknown
-group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(4 holds, 0 fails, 43 unknown), silmaril.sysv_tv.max2=group(4 holds, 0 fails, 6 unknown)]
+group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(4 holds, 0 fails, 48 unknown), silmaril.sysv_tv.max2=group(4 holds, 0 fails, 11 unknown)]
 group silmaril.selftest.formats: [silmaril.selftest.module.parses=THM, silmaril.selftest.exit.parses=THM, silmaril.selftest.exit.entry=THM]
 group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN, silmaril.shapes.elf.object_fn=SAT, silmaril.shapes.sysv.implements=OPN, silmaril.shapes.sysv.lifts=OPN, silmaril.shapes.c.elaborates_to=OPN, silmaril.shapes.c.ir_refines=OPN, silmaril.shapes.c.compiles_to=OPN, silmaril.shapes.c.compiles_to.builds=OPN]
-group silmaril.sysv_tv.max2: [silmaril.sysv_tv.max2.o0_obj_value.parses=THM, silmaril.sysv_tv.max2.o2_obj_value.parses=THM, silmaril.sysv_tv.max2.o0.code=THM, silmaril.sysv_tv.max2.o2.code=THM, silmaril.sysv_tv.max2.elaborates=OPN, silmaril.sysv_tv.max2.o0.compiles_to=OPN, silmaril.sysv_tv.max2.o2.lifts=OPN, silmaril.sysv_tv.max2.o2.ir_refines=OPN, silmaril.sysv_tv.max2.o2.compiles_to=OPN, silmaril.sysv_tv.max2.builds=OPN]
+group silmaril.sysv_tv.max2: [silmaril.sysv_tv.max2.o0_obj_value.parses=THM, silmaril.sysv_tv.max2.o2_obj_value.parses=THM, silmaril.sysv_tv.max2.o0.code=THM, silmaril.sysv_tv.max2.o2.code=THM, silmaril.sysv_tv.max2.elaborates=OPN, silmaril.sysv_tv.max2.o0.compiles_to=OPN, silmaril.sysv_tv.max2.o2.lifts=OPN, silmaril.sysv_tv.max2.o2.ir_refines=OPN, silmaril.sysv_tv.max2.o2.compiles_to=OPN, silmaril.sysv_tv.max2.builds=OPN, silmaril.sysv_tv.max2.o0.lifts_rtl=OPN, silmaril.sysv_tv.max2.o2.lifts_rtl=OPN, silmaril.sysv_tv.max2.o2.lifts_ssa=OPN, silmaril.sysv_tv.max2.rtl.ir_refines=OPN, silmaril.sysv_tv.max2.ssa.ir_refines=OPN]
 provenance: 1 derivations; 1 of 7 local artifacts have one
