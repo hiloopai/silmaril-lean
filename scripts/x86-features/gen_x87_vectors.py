@@ -512,7 +512,7 @@ def write_vectors(vecs, chunk):
                  "checked by `Fpu.Checks.checkLine`. -/", "",
                  f"namespace Silmaril.X86.Features.Fpu.Vectors.{name}", "",
                  "open Silmaril.X86.Features.Fpu.Checks", "",
-                 "def vectors : String := \""]
+                 "public def vectors : String := \""]
         lines += [line(*v) for v in g]
         lines[-1] += "\""
         lines += ["", "#guard (vectorLines vectors).length = %d" % len(g), "",

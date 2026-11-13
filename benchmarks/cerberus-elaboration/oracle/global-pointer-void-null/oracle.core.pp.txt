@@ -1,0 +1,15 @@
+-- Globals
+glob g: pointer [ail_ctype = 'signed int*'] :=
+  let strong a_509: pointer = create(Ivalignof('signed int*'), 'signed int*') in
+  let strong a_510: loaded pointer = pure(Specified(NULL(signed int*))) in
+  store('signed int*', a_509, a_510) ;
+  pure(a_509)
+
+-- Fun map
+proc main (): eff loaded integer :=
+  let strong a_507: loaded integer = bound(pure(Specified(42))) in
+  run ret_506(conv_loaded_int('signed int', a_507)) ;
+  pure(Unit) ;
+  save ret_506: loaded integer (a_508: loaded integer:= Specified(0)) in
+    pure(a_508)
+

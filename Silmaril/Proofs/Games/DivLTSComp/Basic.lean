@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Games.DivLTSComp.Defs
+import Silmaril.Games.Zip.Thms
 
 /-!
 # Runs of composite transition systems

@@ -101,14 +101,14 @@ section
 variable (F : ∀ C, Ops C)
 
 theorem noAbort236 (h : ∀ C, Task.algo.noAbort C (F C)) :
-    ∀ l, LocalWF pin236.config l →
+    ∀ l, LocalWF pin236.config l → LocalSp pin236.config l →
       (∀ n, ∃ r, (F pin236.config).intMalloc l n = .ok r) ∧
       (∀ p u, (p, u) ∈ l.arenaLive pin236.config →
         ∃ l', (F pin236.config).intFree l (p - pin236.config.hdr) = .ok l') :=
   h _ pin236_ok
 
 theorem noAbort240 (h : ∀ C, Task.algo.noAbort C (F C)) :
-    ∀ l, LocalWF pin240.config l →
+    ∀ l, LocalWF pin240.config l → LocalSp pin240.config l →
       (∀ n, ∃ r, (F pin240.config).intMalloc l n = .ok r) ∧
       (∀ p u, (p, u) ∈ l.arenaLive pin240.config →
         ∃ l', (F pin240.config).intFree l (p - pin240.config.hdr) = .ok l') :=
