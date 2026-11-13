@@ -269,8 +269,8 @@ info: roundtrip ok: 5 procedures, 13 uses
 
 /-! ### A registered native tactic
 
-`decide +native` adds `<decl>._native.decide.ax_…`. Registered under the tag `decide`, such an
-axiom is classified as the procedure, but it counts as an audited use only if a framework
+`decide +native` adds `<decl>._native.decide.ax_…`. Registered under the tag `decide`, that
+one is classified as the procedure, but it counts as an audited use only if a framework
 recorded the run that produced exactly that axiom. Here nothing recorded it, so the audit
 flags it as unverified even where the procedure is allowed. -/
 
