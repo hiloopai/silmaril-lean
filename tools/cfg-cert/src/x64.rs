@@ -519,3 +519,29 @@ pub fn decode(w: &[u8]) -> Option<(Info, usize)> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn d(b: &[u8]) -> (Info, usize) {
+        decode(b).unwrap()
+    }
+
+    /// The spot checks of `Silmaril.X86.Flow.Thms`.
+    #[test]
+    fn spot_checks() {
+        assert_eq!(d(&[0x48, 0x89, 0xC7]), (Info { kind: Kind::Seq, rax: Rax::Keep }, 3));
+        assert_eq!(d(&[0x48, 0x89, 0xF8]), (Info { kind: Kind::Seq, rax: Rax::Clobber }, 3));
+        assert_eq!(d(&[0xB8, 0x3C, 0, 0, 0, 0x0F, 0x05]), (Info { kind: Kind::Seq, rax: Rax::Set(60) }, 5));
+        assert_eq!(d(&[0x0F, 0x05]), (Info { kind: Kind::Syscall, rax: Rax::Clobber }, 2));
+        assert_eq!(d(&[0xF3, 0x0F, 0x1E, 0xFA]), (Info { kind: Kind::Seq, rax: Rax::Keep }, 4));
+        assert_eq!(d(&[0xFF, 0x25, 0x10, 0, 0, 0]), (Info { kind: Kind::JmpInd(Opnd::RipMem(16)), rax: Rax::Keep }, 6));
+        assert_eq!(d(&[0xE8, 0xFB, 0xFF, 0xFF, 0xFF]), (Info { kind: Kind::Call(-5), rax: Rax::Keep }, 5));
+        assert_eq!(d(&[0xC5, 0xFD, 0x74, 0x0F]), (Info { kind: Kind::Seq, rax: Rax::Clobber }, 4));
+        assert_eq!(d(&[0x62, 0xB1, 0x7D, 0x48, 0x74, 0x0F]), (Info { kind: Kind::Seq, rax: Rax::Clobber }, 6));
+        assert_eq!(d(&[0x48, 0xC7, 0xC0, 0xFF, 0xFF, 0xFF, 0xFF]).0.rax, Rax::Set(u64::MAX));
+        assert_eq!(d(&[0x3E, 0xFF, 0xE0]).0.kind, Kind::JmpInd(Opnd::Reg(0)));
+        assert!(decode(&[0x06]).is_none());
+    }
+}
