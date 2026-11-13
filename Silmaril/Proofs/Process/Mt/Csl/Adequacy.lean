@@ -128,33 +128,37 @@ open HeapL
 
 section
 
-variable {U : TIsa S} {P : PrimTable U} {I : HProp A V} {Q : Nat → U.St → Heap A V → Prop}
+variable {U : TIsa S} {I : HProp A V} {Q : Nat → U.St → Heap A V → Prop}
+
+theorem atomicOk_mono {O : Type} {bad : M → Prop} {act : M → O → M → Prop}
+    {K K' : O → Heap A V → Prop} (hK : ∀ o h, K o h → K' o h) {h : Heap A V}
+    (ha : AtomicOk (S := S) I bad act K h) : AtomicOk (S := S) I bad act K' h := by
+  intro hI iI dj m ag
+  obtain ⟨h1, h2⟩ := ha hI iI dj m ag
+  refine ⟨h1, fun o m' st => ?_⟩
+  obtain ⟨k, h', hI', a, b, c, d, e⟩ := h2 o m' st
+  exact ⟨k, h', hI', a, b, c, d, hK _ _ e⟩
 
 theorem safeF_mono {R R' : Nat → U.St → Heap A V → Prop} (hR : ∀ t s h, R t s h → R' t s h)
-    {t : Nat} {s : U.St} {h : Heap A V} (hf : SafeF U P I Q R t s h) :
-    SafeF U P I Q R' t s h := by
+    {t : Nat} {s : U.St} {h : Heap A V} (hf : SafeF U I Q R t s h) :
+    SafeF U I Q R' t s h := by
   obtain ⟨hd, hl, hp, hsp⟩ := hf
-  refine ⟨hd, ?_, ?_, ?_⟩
+  refine ⟨hd, ?_, atomicOk_mono (fun _ _ r => hR _ _ _ r) hp,
+    fun u => atomicOk_mono ?_ (hsp u)⟩
   · intro m ag
     obtain ⟨h1, h2, h3⟩ := hl m ag
     exact ⟨h1, h2, fun s' m' st => let ⟨k, r⟩ := h3 s' m' st; ⟨k, hR _ _ _ r⟩⟩
-  · intro p args hc hI iI dj m ag
-    obtain ⟨h1, h2⟩ := hp p args hc hI iI dj m ag
-    refine ⟨h1, fun r m' st => ?_⟩
-    obtain ⟨k, h', hI', a, b, c, d, e⟩ := h2 r m' st
-    exact ⟨k, h', hI', a, b, c, d, hR _ _ _ e⟩
-  · intro m ag s₁ s₂ sp
-    obtain ⟨h₁, h₂, a, b, c, d⟩ := hsp m ag s₁ s₂ sp
-    exact ⟨h₁, h₂, a, b, hR _ _ _ c, fun u => hR _ _ _ (d u)⟩
+  · rintro o h' ⟨h₁, h₂, a, b, c, d⟩
+    exact ⟨h₁, h₂, a, b, hR _ _ _ c, hR _ _ _ d⟩
 
-theorem safe_unfold {t : Nat} {s : U.St} {h : Heap A V} (hs : Safe U P I Q t s h) :
-    SafeF U P I Q (Safe U P I Q) t s h := by
+theorem safe_unfold {t : Nat} {s : U.St} {h : Heap A V} (hs : Safe U I Q t s h) :
+    SafeF U I Q (Safe U I Q) t s h := by
   obtain ⟨R, hR, hpost⟩ := hs
   exact safeF_mono (fun t s h r => ⟨R, r, hpost⟩) (hpost t s h hR)
 
-theorem safe_fold {t : Nat} {s : U.St} {h : Heap A V} (hs : SafeF U P I Q (Safe U P I Q) t s h) :
-    Safe U P I Q t s h :=
-  ⟨fun t s h => SafeF U P I Q (Safe U P I Q) t s h, hs,
+theorem safe_fold {t : Nat} {s : U.St} {h : Heap A V} (hs : SafeF U I Q (Safe U I Q) t s h) :
+    Safe U I Q t s h :=
+  ⟨fun t s h => SafeF U I Q (Safe U I Q) t s h, hs,
     fun _ _ _ hf => safeF_mono (fun _ _ _ r => safe_unfold r) hf⟩
 
 /-! ## Preservation -/
@@ -165,147 +169,142 @@ theorem upd_eq {α : Type} (f : Nat → α) (t : Nat) (x : α) : Heap.upd f t x 
 theorem upd_ne {α : Type} (f : Nat → α) {t u : Nat} (x : α) (h : u ≠ t) : Heap.upd f t x u = f u := by
   simp [Heap.upd, h]
 
+/-- **Rebuilding the compatibility conditions** after a step of thread `t`: the threads in `ch`
+(including `t`) take new heaps `hs'`, and the invariant heap becomes `hI'`, all within the old
+domain of `hs t ∪ hI`; the memory changed only there. -/
+theorem ginv_rebuild {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U I Q C hs hI)
+    {t : Nat} {ch : Nat → Prop} {C' : Cfg U} {hs' : Nat → Heap A V} {hI' : Heap A V}
+    (cht : ch t) (same : ∀ w, ¬ ch w → hs' w = hs w)
+    (kp : S.Keeps (Heap.union (hs t) hI) C.mem C'.mem)
+    (dom : ∀ w, ch w → Heap.DomLe (hs' w) (Heap.union (hs t) hI))
+    (domI : Heap.DomLe hI' (Heap.union (hs t) hI))
+    (dj : ∀ w x, ch w → ch x → w ≠ x → Heap.Disjoint (hs' w) (hs' x))
+    (djI : ∀ w, ch w → Heap.Disjoint (hs' w) hI')
+    (ag : ∀ w, ch w → S.Agrees (hs' w) C'.mem) (agI : S.Agrees hI' C'.mem) (hI'p : I hI')
+    (habs' : ∀ w, C'.th w = none → hs' w = Heap.empty)
+    (hsafe' : ∀ w s, C'.th w = some s → Safe U I Q w s (hs' w)) :
+    GInv U I Q C' hs' hI' := by
+  obtain ⟨hdj, hdjI, hag, hagI, hIp, habs, hsafe⟩ := g
+  have hne : ∀ w, ¬ ch w → w ≠ t := fun w hw e => hw (e ▸ cht)
+  have hfree : ∀ w, w ≠ t → Heap.Disjoint (Heap.union (hs t) hI) (hs w) := fun w hw =>
+    disjoint_union (hdj _ _ (Ne.symm hw)) (disjoint_symm (hdjI w))
+  refine ⟨?_, ?_, ?_, agI, hI'p, habs', hsafe'⟩
+  · intro w x hwx
+    by_cases hw : ch w
+    · by_cases hx : ch x
+      · exact dj w x hw hx hwx
+      · rw [same x hx]; exact disjoint_of_domle (dom w hw) (hfree x (hne x hx))
+    · by_cases hx : ch x
+      · rw [same w hw]
+        exact disjoint_symm (disjoint_of_domle (dom x hx) (hfree w (hne w hw)))
+      · rw [same w hw, same x hx]; exact hdj w x hwx
+  · intro w
+    by_cases hw : ch w
+    · exact djI w hw
+    · rw [same w hw]; exact disjoint_symm (disjoint_of_domle domI (hfree w (hne w hw)))
+  · intro w
+    by_cases hw : ch w
+    · exact ag w hw
+    · rw [same w hw]; exact keeps_agrees kp (hfree w (hne w hw)) (hag w)
+
 theorem ginv_step {C C' : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V}
-    (g : GInv U P I Q C hs hI) (st : Step U P C C') :
-    ∃ hs' hI', GInv U P I Q C' hs' hI' := by
+    (g : GInv U I Q C hs hI) (st : Step U C C') :
+    ∃ hs' hI', GInv U I Q C' hs' hI' := by
+  have g0 := g
   obtain ⟨hdj, hdjI, hag, hagI, hIp, habs, hsafe⟩ := g
   cases st with
   | @loc t s s' m' hth hstep =>
     obtain ⟨-, hl, -, -⟩ := safe_unfold (hsafe t s hth)
     obtain ⟨-, -, h3⟩ := hl C.mem (hag t)
     obtain ⟨kp, sf⟩ := h3 s' m' hstep
-    refine ⟨Heap.upd hs t (S.cut (hs t) m'), hI, ?_, ?_, ?_, keeps_agrees kp (hdjI t) hagI, hIp,
-      ?_, ?_⟩
-    · intro u w huw
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq, upd_ne _ _ (Ne.symm huw)]
-        exact disjoint_of_domle cut_domle (hdj _ _ huw)
-      · by_cases hw : w = t
-        · subst hw; rw [upd_eq, upd_ne _ _ hu]
-          exact disjoint_symm (disjoint_of_domle cut_domle (hdj _ _ (Ne.symm huw)))
-        · rw [upd_ne _ _ hu, upd_ne _ _ hw]; exact hdj u w huw
-    · intro u
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq]; exact disjoint_of_domle cut_domle (hdjI _)
-      · rw [upd_ne _ _ hu]; exact hdjI u
-    · intro u
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq]; exact cut_agrees
-      · rw [upd_ne _ _ hu]; exact keeps_agrees kp (hdj _ _ (Ne.symm hu)) (hag u)
-    · intro u hn
-      dsimp only at hn
-      by_cases hu : u = t
-      · subst hu; simp [Heap.upd] at hn
-      · rw [upd_ne _ _ hu]; rw [upd_ne _ _ hu] at hn; exact habs u hn
-    · intro u s₀ hu₀
-      dsimp only at hu₀
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq]; rw [upd_eq] at hu₀; cases hu₀; exact sf
-      · rw [upd_ne _ _ hu]; rw [upd_ne _ _ hu] at hu₀; exact hsafe u s₀ hu₀
-  | @prim t s p args r m' hth hc hpst =>
+    have kp' : S.Keeps (Heap.union (hs t) hI) C.mem m' := by
+      intro a e
+      apply kp a
+      unfold Heap.union at e
+      cases e₁ : hs t a with
+      | none => rfl
+      | some v => rw [e₁] at e; cases e
+    refine ⟨Heap.upd hs t (S.cut (hs t) m'), hI, ginv_rebuild g0 (ch := (· = t)) rfl
+      (fun w hw => upd_ne _ _ hw) kp' ?_ domle_union_right ?_ ?_ ?_
+      (keeps_agrees kp (hdjI t) hagI) hIp ?_ ?_⟩
+    · rintro w rfl; rw [upd_eq]; exact domle_trans cut_domle domle_union_left
+    · rintro w x rfl rfl h; exact absurd rfl h
+    · rintro w rfl; rw [upd_eq]; exact disjoint_of_domle cut_domle (hdjI _)
+    · rintro w rfl; rw [upd_eq]; exact cut_agrees
+    · intro w hn
+      by_cases hw : w = t
+      · subst hw; simp [Heap.upd] at hn
+      · rw [upd_ne _ _ hw]; exact habs w (by simpa [Heap.upd, hw] using hn)
+    · intro w s₀ hw₀
+      by_cases hw : w = t
+      · subst hw; simp [Heap.upd] at hw₀; subst hw₀; rw [upd_eq]; exact sf
+      · rw [upd_ne _ _ hw]; exact hsafe w s₀ (by simpa [Heap.upd, hw] using hw₀)
+  | @atom t s s' m' hth hstep =>
     obtain ⟨-, -, hp, -⟩ := safe_unfold (hsafe t s hth)
-    obtain ⟨-, h2⟩ := hp p args hc hI hIp (hdjI t) C.mem (agrees_union (hag t) hagI)
-    obtain ⟨kp, h', hI', d', dom', ag', hI'p, sf⟩ := h2 r m' hpst
-    have hfree : ∀ u, u ≠ t → Heap.Disjoint (Heap.union (hs t) hI) (hs u) := fun u hu =>
-      disjoint_union (hdj _ _ (Ne.symm hu)) (disjoint_symm (hdjI u))
-    have dh' : Heap.DomLe h' (Heap.union (hs t) hI) := domle_trans domle_union_left dom'
-    have dI' : Heap.DomLe hI' (Heap.union (hs t) hI) := domle_trans domle_union_right dom'
-    refine ⟨Heap.upd hs t h', hI', ?_, ?_, ?_, agrees_right d' ag', hI'p, ?_, ?_⟩
-    · intro u w huw
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq, upd_ne _ _ (Ne.symm huw)]
-        exact disjoint_of_domle dh' (hfree _ (Ne.symm huw))
-      · by_cases hw : w = t
-        · subst hw; rw [upd_eq, upd_ne _ _ hu]
-          exact disjoint_symm (disjoint_of_domle dh' (hfree _ hu))
-        · rw [upd_ne _ _ hu, upd_ne _ _ hw]; exact hdj u w huw
-    · intro u
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq]; exact d'
-      · rw [upd_ne _ _ hu]; exact disjoint_symm (disjoint_of_domle dI' (hfree _ hu))
-    · intro u
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq]; exact agrees_left ag'
-      · rw [upd_ne _ _ hu]; exact keeps_agrees kp (hfree _ hu) (hag u)
-    · intro u hn
-      dsimp only at hn
-      by_cases hu : u = t
-      · subst hu; simp [Heap.upd] at hn
-      · rw [upd_ne _ _ hu]; rw [upd_ne _ _ hu] at hn; exact habs u hn
-    · intro u s₀ hu₀
-      dsimp only at hu₀
-      by_cases hu : u = t
-      · subst hu; rw [upd_eq]; rw [upd_eq] at hu₀; cases hu₀; exact sf
-      · rw [upd_ne _ _ hu]; rw [upd_ne _ _ hu] at hu₀; exact hsafe u s₀ hu₀
-  | @spawn t u s s₁ s₂ hth hsp hun =>
+    obtain ⟨-, h2⟩ := hp hI hIp (hdjI t) C.mem (agrees_union (hag t) hagI)
+    obtain ⟨kp, h', hI', d', dom', ag', hI'p, sf⟩ := h2 s' m' hstep
+    refine ⟨Heap.upd hs t h', hI', ginv_rebuild g0 (ch := (· = t)) rfl
+      (fun w hw => upd_ne _ _ hw) kp ?_ (domle_trans domle_union_right dom') ?_ ?_ ?_
+      (agrees_right d' ag') hI'p ?_ ?_⟩
+    · rintro w rfl; rw [upd_eq]; exact domle_trans domle_union_left dom'
+    · rintro w x rfl rfl h; exact absurd rfl h
+    · rintro w rfl; rw [upd_eq]; exact d'
+    · rintro w rfl; rw [upd_eq]; exact agrees_left ag'
+    · intro w hn
+      by_cases hw : w = t
+      · subst hw; simp [Heap.upd] at hn
+      · rw [upd_ne _ _ hw]; exact habs w (by simpa [Heap.upd, hw] using hn)
+    · intro w s₀ hw₀
+      by_cases hw : w = t
+      · subst hw; simp [Heap.upd] at hw₀; subst hw₀; rw [upd_eq]; exact sf
+      · rw [upd_ne _ _ hw]; exact hsafe w s₀ (by simpa [Heap.upd, hw] using hw₀)
+  | @spawn t u s s₁ s₂ m' hth hun hsp =>
     obtain ⟨-, -, -, hspf⟩ := safe_unfold (hsafe t s hth)
-    obtain ⟨h₁, h₂, d12, hun12, sf₁, sf₂⟩ := hspf C.mem (hag t) s₁ s₂ hsp
+    obtain ⟨-, h2⟩ := hspf u hI hIp (hdjI t) C.mem (agrees_union (hag t) hagI)
+    obtain ⟨kp, h', hI', d', dom', ag', hI'p, h₁, h₂, d12, hun12, sf₁, sf₂⟩ := h2 (s₁, s₂) m' hsp
     have hut : u ≠ t := by intro e; subst e; rw [hth] at hun; cases hun
-    have hsu : hs u = Heap.empty := habs u hun
-    have d1 : Heap.DomLe h₁ (hs t) := hun12 ▸ domle_union_left
-    have d2 : Heap.DomLe h₂ (hs t) := hun12 ▸ domle_union_right
-    have ag1 : S.Agrees h₁ C.mem := agrees_left (hun12 ▸ hag t)
-    have ag2 : S.Agrees h₂ C.mem := agrees_right d12 (hun12 ▸ hag t)
-    -- the new heaps: `u ↦ h₂`, `t ↦ h₁`, others unchanged
+    have dh' : Heap.DomLe h' (Heap.union (hs t) hI) := domle_trans domle_union_left dom'
+    have d1 : Heap.DomLe h₁ h' := hun12 ▸ domle_union_left
+    have d2 : Heap.DomLe h₂ h' := hun12 ▸ domle_union_right
+    have ag1 : S.Agrees h₁ m' := agrees_left (hun12 ▸ agrees_left ag')
+    have ag2 : S.Agrees h₂ m' := agrees_right d12 (hun12 ▸ agrees_left ag')
     let hs' := Heap.upd (Heap.upd hs t h₁) u h₂
     have hs'u : hs' u = h₂ := upd_eq _ _ _
     have hs't : hs' t = h₁ := by simp [hs', Heap.upd, Ne.symm hut]
     have hs'w : ∀ w, w ≠ t → w ≠ u → hs' w = hs w := fun w h1 h2 => by
       simp [hs', Heap.upd, h1, h2]
-    -- every new heap is within an old one, disjoint from the others
-    have dom' : ∀ w, Heap.DomLe (hs' w) (hs (if w = u then t else w)) := by
-      intro w
-      by_cases hwu : w = u
-      · subst hwu; rw [hs'u]; simpa using d2
-      · by_cases hwt : w = t
-        · subst hwt; rw [hs't]; simpa [hwu] using d1
-        · rw [hs'w w hwt hwu]; simpa [hwu] using domle_refl
-    refine ⟨hs', hI, ?_, ?_, ?_, hagI, hIp, ?_, ?_⟩
-    · intro w x hwx
-      by_cases hwu : w = u
-      · subst hwu
-        by_cases hxt : x = t
-        · subst hxt; rw [hs'u, hs't]; exact disjoint_symm d12
-        · have hxu : x ≠ w := Ne.symm hwx
-          rw [hs'u, hs'w x hxt hxu]; exact disjoint_of_domle d2 (hdj _ _ (Ne.symm hxt))
-      · by_cases hxu : x = u
-        · subst hxu
-          by_cases hwt : w = t
-          · subst hwt; rw [hs'u, hs't]; exact d12
-          · rw [hs'u, hs'w w hwt hwu]
-            exact disjoint_symm (disjoint_of_domle d2 (hdj _ _ (Ne.symm hwt)))
-        · have e1 := dom' w; have e2 := dom' x
-          simp only [hwu, hxu, ite_false] at e1 e2
-          by_cases hwt : w = t
-          · subst hwt; rw [hs't, hs'w x (Ne.symm hwx) hxu]
-            exact disjoint_of_domle d1 (hdj _ _ hwx)
-          · by_cases hxt : x = t
-            · subst hxt; rw [hs't, hs'w w hwt hwu]
-              exact disjoint_symm (disjoint_of_domle d1 (hdj _ _ (Ne.symm hwx)))
-            · rw [hs'w w hwt hwu, hs'w x hxt hxu]; exact hdj w x hwx
-    · intro w
-      exact disjoint_of_domle (dom' w) (hdjI _)
-    · intro w
-      by_cases hwu : w = u
-      · subst hwu; rw [hs'u]; exact ag2
-      · by_cases hwt : w = t
-        · subst hwt; rw [hs't]; exact ag1
-        · rw [hs'w w hwt hwu]; exact hag w
+    refine ⟨hs', hI', ginv_rebuild g0 (ch := fun w => w = t ∨ w = u) (Or.inl rfl)
+      (fun w hw => hs'w w (fun e => hw (Or.inl e)) (fun e => hw (Or.inr e))) kp ?_
+      (domle_trans domle_union_right dom') ?_ ?_ ?_ (agrees_right d' ag') hI'p ?_ ?_⟩
+    · rintro w (rfl | rfl)
+      · rw [hs't]; exact domle_trans d1 dh'
+      · rw [hs'u]; exact domle_trans d2 dh'
+    · rintro w x (rfl | rfl) (rfl | rfl) hwx
+      · exact absurd rfl hwx
+      · rw [hs't, hs'u]; exact d12
+      · rw [hs't, hs'u]; exact disjoint_symm d12
+      · exact absurd rfl hwx
+    · rintro w (rfl | rfl)
+      · rw [hs't]; exact disjoint_of_domle d1 d'
+      · rw [hs'u]; exact disjoint_of_domle d2 d'
+    · rintro w (rfl | rfl)
+      · rw [hs't]; exact ag1
+      · rw [hs'u]; exact ag2
     · intro w hn
       by_cases hwu : w = u
       · subst hwu; simp [Heap.upd] at hn
       · by_cases hwt : w = t
         · subst hwt; simp [Heap.upd, hwu] at hn
-        · rw [hs'w w hwt hwu]; simp [Heap.upd, hwu, hwt] at hn; exact habs w hn
+        · rw [hs'w w hwt hwu]; exact habs w (by simpa [Heap.upd, hwu, hwt] using hn)
     · intro w s₀ hw₀
       by_cases hwu : w = u
-      · subst hwu; rw [hs'u]; simp [Heap.upd] at hw₀; subst hw₀; exact sf₂ _
+      · subst hwu; rw [hs'u]; simp [Heap.upd] at hw₀; subst hw₀; exact sf₂
       · by_cases hwt : w = t
         · subst hwt; rw [hs't]; simp [Heap.upd, hwu] at hw₀; subst hw₀; exact sf₁
-        · rw [hs'w w hwt hwu]; simp [Heap.upd, hwu, hwt] at hw₀; exact hsafe w s₀ hw₀
+        · rw [hs'w w hwt hwu]; exact hsafe w s₀ (by simpa [Heap.upd, hwu, hwt] using hw₀)
 
 theorem ginv_reach {C C' : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V}
-    (g : GInv U P I Q C hs hI) (r : Reach U P C C') : ∃ hs' hI', GInv U P I Q C' hs' hI' := by
+    (g : GInv U I Q C hs hI) (r : Reach U C C') : ∃ hs' hI', GInv U I Q C' hs' hI' := by
   induction r generalizing hs hI with
   | refl => exact ⟨hs, hI, g⟩
   | step st _ ih =>
@@ -314,16 +313,16 @@ theorem ginv_reach {C C' : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V}
 
 /-! ## Consequences -/
 
-theorem no_fault {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U P I Q C hs hI) :
-    ¬ Fault U P C := by
+theorem no_fault {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U I Q C hs hI) :
+    ¬ Fault U C := by
   obtain ⟨-, hdjI, hag, hagI, hIp, -, hsafe⟩ := g
-  rintro ⟨t, s, hth, hf | ⟨p, args, hc, hpf⟩⟩
+  rintro ⟨t, s, hth, hf | hf⟩
   · obtain ⟨-, hl, -, -⟩ := safe_unfold (hsafe t s hth)
     exact (hl C.mem (hag t)).1 hf
   · obtain ⟨-, -, hp, -⟩ := safe_unfold (hsafe t s hth)
-    exact (hp p args hc hI hIp (hdjI t) C.mem (agrees_union (hag t) hagI)).1 hpf
+    exact (hp hI hIp (hdjI t) C.mem (agrees_union (hag t) hagI)).1 hf
 
-theorem no_race {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U P I Q C hs hI) :
+theorem no_race {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U I Q C hs hI) :
     ¬ Race U C := by
   obtain ⟨hdj, -, hag, -, -, -, hsafe⟩ := g
   rintro ⟨t, u, s, s', a, htu, ht, hu, ft, fu⟩
@@ -335,24 +334,24 @@ theorem no_race {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U 
   · rw [e] at e1; cases e1
   · rw [e] at e2; cases e2
 
-theorem post {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U P I Q C hs hI)
+theorem post {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U I Q C hs hI)
     {t : Nat} {s : U.St} (ht : C.th t = some s) (hd : U.done s) : Q t s (hs t) :=
   (safe_unfold (g.2.2.2.2.2.2 t s ht)).1 hd
 
 theorem good_of_ginv {C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V}
-    (g : GInv U P I Q C hs hI) : Good U P I Q C :=
+    (g : GInv U I Q C hs hI) : Good U I Q C :=
   ⟨no_fault g, no_race g, hs, hI, g.2.2.2.2.1, g.2.2.2.1, g.2.2.1, g.1, g.2.1,
     fun _ _ ht hd => post g ht hd⟩
 
 theorem adequacy {C₀ C : Cfg U} {hs : Nat → Heap A V} {hI : Heap A V}
-    (g : GInv U P I Q C₀ hs hI) (r : Reach U P C₀ C) : Good U P I Q C :=
+    (g : GInv U I Q C₀ hs hI) (r : Reach U C₀ C) : Good U I Q C :=
   let ⟨_, _, g'⟩ := ginv_reach g r
   good_of_ginv g'
 
 theorem ginv_single {t₀ : Nat} {s₀ : U.St} {m₀ : M} {h₀ hI : Heap A V}
-    (hs : Safe U P I Q t₀ s₀ h₀) (hIp : I hI) (d : Heap.Disjoint h₀ hI) (ag : S.Agrees h₀ m₀)
+    (hs : Safe U I Q t₀ s₀ h₀) (hIp : I hI) (d : Heap.Disjoint h₀ hI) (ag : S.Agrees h₀ m₀)
     (agI : S.Agrees hI m₀) :
-    GInv U P I Q (Cfg.single U t₀ s₀ m₀) (fun t => if t = t₀ then h₀ else Heap.empty) hI := by
+    GInv U I Q (Cfg.single U t₀ s₀ m₀) (fun t => if t = t₀ then h₀ else Heap.empty) hI := by
   refine ⟨?_, ?_, ?_, agI, hIp, ?_, ?_⟩
   · intro t u htu a
     by_cases ht : t = t₀
@@ -374,6 +373,22 @@ theorem ginv_single {t₀ : Nat} {s₀ : U.St} {m₀ : M} {h₀ hI : Heap A V}
     by_cases ht : t = t₀
     · subst ht; simp [Cfg.single] at e; subst e; simpa using hs
     · simp [Cfg.single, ht] at e
+
+/-! ## Primitive calls -/
+
+/-- The atomic obligations of a primitive call site follow from `PrimOk` of its spec. -/
+theorem atomOk_prims {σ : Type} {P : Prims σ M} {K : σ → Heap A V → Prop}
+    {t : Nat} {s : σ} {h : Heap A V}
+    (hc : ∀ p args, P.call s = some (p, args) →
+      AtomicOk (S := S) I ((P.spec p).fault t args) ((P.spec p).step t args)
+        (fun r h' => K (P.resume s r) h') h) :
+    AtomicOk (S := S) I (P.afault t s) (fun m s' m' => P.atom t s m s' m') K h := by
+  intro hI iI dj m ag
+  refine ⟨?_, ?_⟩
+  · rintro ⟨p, args, e, f⟩
+    exact (hc p args e hI iI dj m ag).1 f
+  · rintro s' m' ⟨p, args, r, e, st, rfl⟩
+    exact (hc p args e hI iI dj m ag).2 r m' st
 
 end
 

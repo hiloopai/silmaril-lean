@@ -20,20 +20,23 @@ has no data race, keeps `I`, and every finished thread meets its postcondition.
 * `Store M A V`: how a memory `M` is read cell by cell (`get : M → A → Option V`). `Agrees h m`
   (the heap is a fragment of `m`), `Keeps h m m'` (cells outside `h` unchanged), `cut h m'` (the
   values of `m'` on the domain of `h`). The x86 instance reads the bytes of
-  `Silmaril.Process.Memory`; a ghost component is a store over a sum of address types.
-* `TIsa S`: **one thread's machine** over memories of the store `S`: local steps `step t s m s' m'`
-  (thread id `t`), a fault predicate, the addresses its next local step accesses (`fp`), primitive
-  call sites (`call s = some (p, args)`, resumed by `resume s r`), `clone` (`spawn`), and finished
-  states (`done`). `TIsa.ofRel` builds one from any single-threaded step relation on
-  `(state, memory)` pairs, such as a `Silmaril.X86.RelIsa` machine whose memory view is the
-  shared memory.
-* `PrimSpec`: a primitive's **abstract, logically atomic specification**: when it faults, and its
-  one atomic step (memory before, result, memory after); `Mt/Prim/Defs` builds the standard ones
-  from an abstract state and an atomic update. `PrimTable U` maps primitive ids to specs.
-* `Cfg U`, `Step U P`, `Reach U P`: the **multi-threaded system**: a thread table and one memory;
-  a step is a local step of one thread, one atomic primitive step, or a `clone` to a fresh id.
-* `Fault`, `Race`: some thread can fault (locally or by a primitive's precondition); two threads'
-  next local steps access a common address.
+  `Silmaril.Process.Memory`; abstract primitive state (lock owners) and ghost state are further
+  cells of a sum of address types, so they can be owned and put in invariants like bytes.
+* `TIsa S`: **one thread's machine** over memories of the store `S`, with three kinds of steps:
+  *plain* steps (`step`, `fault`, footprint `fp`), *atomic* steps (`atom`, `afault`: a trusted
+  primitive, a system call, a library-contract step) and `clone` (`spawn`); `done` marks finished
+  states. `TIsa.ofRel` builds one from any single-threaded step relation on `(state, memory)`
+  pairs (such as a `Silmaril.X86.RelIsa` machine whose memory view is the shared memory) and
+  primitive call sites.
+* `PrimSpec`: a trusted primitive's **abstract, logically atomic specification**: when a call
+  faults, and its one atomic step (memory before, result, memory after: the linearization
+  point). `Prims σ M`: primitive call sites (`call s = some (p, args)`, resumed by `resume s r`)
+  and their specs; `Prims.atom` and `Prims.afault` are the atomic steps they contribute.
+* `Cfg U`, `Step U`, `Reach U`: the **multi-threaded system**: a thread table and one memory;
+  a step is a plain or atomic step of one thread, or a `clone` to a fresh thread id. This is
+  sequentially consistent interleaving with atomic primitives.
+* `Fault`, `Race`: some thread can fault (plainly or atomically); two threads' next plain steps
+  access a common address.
 
 ## The single-threaded problem
 
@@ -43,15 +46,15 @@ obligation of `SafeF` speaks about **one thread only**, quantifying over every m
 with what it owns (whatever the other threads did):
 
 * finished: `done s → Q t s h`;
-* local step (`LocOk`): from every memory `m ⊇ h`, no fault, the footprint is owned, the step
+* plain step (`LocOk`): from every memory `m ⊇ h`, no fault, the footprint is owned, the step
   changes nothing outside `h`, and the successor is safe on `cut h m'`;
-* primitive call (`PrimOk`): for every invariant heap `hI ⊨ I` disjoint from `h` and every memory
-  `m ⊇ h ∪ hI`, the primitive does not fault, its step changes nothing outside `h ∪ hI`, and its
-  result re-splits into a new owned heap and a new invariant heap (within the old domain) with
-  `I` holding again and the resumed thread safe (**lock acquire moves the protected region in,
-  release moves it out**);
-* clone: the owned heap splits into the parent's and the child's part, both safe (the child for
-  every fresh id).
+* atomic step (`AtomOk`, an instance of `AtomicOk`; `PrimOk` for one primitive spec): for every
+  invariant heap `hI ⊨ I` disjoint from `h` and every memory `m ⊇ h ∪ hI`, no fault, the step
+  changes nothing outside `h ∪ hI`, and the result re-splits into a new owned heap and a new
+  invariant heap (within the old domain) with `I` holding again and the successor safe
+  (**lock acquire moves the protected region in, release moves it out**);
+* `clone` (`SpawnOk`): as an atomic step, whose new owned heap splits into the parent's part and
+  the child's part, both safe (the child under its new id).
 
 `GInv I Q C hs hI`: the **compatibility conditions**: pairwise disjoint owned heaps, disjoint from
 the invariant heap `hI ⊨ I`, all fragments of memory, no heap for an absent thread, and every
@@ -117,80 +120,104 @@ end Store
 
 /-! ## One thread's machine -/
 
-/-- **One thread's machine** over the memories of a store. Thread ids are `Nat`; primitive
-arguments are lists of naturals and results naturals (machine words read as numbers). -/
+/-- **One thread's machine** over the memories of a store, as the multi-threaded system sees it.
+Thread ids are `Nat`. A thread takes three kinds of steps:
+
+* **plain** steps (`step`, faulting per `fault`): ordinary instructions, which must touch only
+  what the thread owns; `fp` is the set of addresses the next one accesses;
+* **atomic** steps (`atom`, faulting per `afault`): one indivisible action on the shared state,
+  such as a trusted primitive (`Prims.atom`), a system call or a library-contract step; they may
+  touch the invariant's state;
+* `clone` (`spawn t u s m s₁ s₂ m'`): thread `t` creates thread `u`; the parent continues as
+  `s₁`, the child starts as `s₂`, the memory becomes `m'` (as an atomic step).
+
+`done s`: the thread has finished (its postcondition is checked there). -/
 structure TIsa {M A V : Type} (S : Store M A V) where
   /-- Thread states (registers, `rip`, thread-local ghost state; not the shared memory). -/
   St : Type
-  /-- Primitive identifiers. -/
-  Prim : Type
-  /-- A local (non-primitive) step of thread `t`: `(s, m)` to `(s', m')`. -/
+  /-- A plain step of thread `t`: `(s, m)` to `(s', m')`. -/
   step : Nat → St → M → St → M → Prop
-  /-- A local step of thread `t` from `(s, m)` faults (undefined behaviour, unmodelled, stuck). -/
+  /-- A plain step of thread `t` from `(s, m)` faults (undefined behaviour, unmodelled). -/
   fault : Nat → St → M → Prop
-  /-- The addresses the next local step of thread `t` from `(s, m)` accesses. -/
+  /-- The addresses the next plain step of thread `t` from `(s, m)` accesses. -/
   fp : Nat → St → M → A → Prop
-  /-- The thread is at a call of primitive `p` with arguments `args`. -/
-  call : St → Option (Prim × List Nat)
-  /-- The state after a primitive call returned `r`. -/
-  resume : St → Nat → St
-  /-- `clone` by thread `t`: the parent continues as `s₁`, the new thread starts as `s₂`. -/
-  spawn : Nat → St → M → St → St → Prop
+  /-- An atomic step of thread `t`: `(s, m)` to `(s', m')`. -/
+  atom : Nat → St → M → St → M → Prop
+  /-- An atomic step of thread `t` from `(s, m)` faults (a primitive's precondition fails). -/
+  afault : Nat → St → M → Prop
+  /-- `clone` by thread `t` creating thread `u`. -/
+  spawn : Nat → Nat → St → M → St → St → M → Prop
   /-- A finished thread. -/
   done : St → Prop
 
-/-- **A primitive's abstract, logically atomic specification.** `step t args m r m'`: one
-atomic step by thread `t` from memory `m` returning `r` with memory `m'` (its linearization
+/-- **A trusted primitive's abstract, logically atomic specification.** `step t args m r m'`:
+one atomic step by thread `t` from memory `m` returning `r` with memory `m'` (its linearization
 point); no step means the call blocks. `fault t args m`: calling it here is an error. -/
 structure PrimSpec (M : Type) where
   fault : Nat → List Nat → M → Prop
   step : Nat → List Nat → M → Nat → M → Prop
 
-/-- The primitive table of a thread machine. -/
-abbrev PrimTable {M A V : Type} {S : Store M A V} (U : TIsa S) := U.Prim → PrimSpec M
+/-- **Primitive call sites** of thread states `σ`: `call s = some (p, args)` when `s` is at a
+call of primitive `p`, resumed with result `r` as `resume s r`; `spec p` is its specification. -/
+structure Prims (σ M : Type) where
+  Prim : Type
+  call : σ → Option (Prim × List Nat)
+  resume : σ → Nat → σ
+  spec : Prim → PrimSpec M
+
+namespace Prims
+
+variable {σ M : Type} (P : Prims σ M)
+
+/-- The atomic steps of the primitive calls. -/
+def atom (t : Nat) (s : σ) (m : M) (s' : σ) (m' : M) : Prop :=
+  ∃ p args r, P.call s = some (p, args) ∧ (P.spec p).step t args m r m' ∧ s' = P.resume s r
+
+/-- A primitive call that faults. -/
+def afault (t : Nat) (s : σ) (m : M) : Prop :=
+  ∃ p args, P.call s = some (p, args) ∧ (P.spec p).fault t args m
+
+end Prims
 
 namespace TIsa
 
 variable {M A V : Type} {S : Store M A V}
 
-/-- **A thread machine from a single-threaded step relation** on `(state, memory)` pairs:
-`step t (s, m) (some (s', m'))` is a local step, `step t (s, m) none` a fault (the
-`Silmaril.X86.RelIsa.Res.stop` outcome). Primitive call sites, footprints, `clone` and finished
-states are given separately. -/
-def ofRel {σ P : Type} (step : Nat → σ × M → Option (σ × M) → Prop)
-    (fp : Nat → σ → M → A → Prop) (call : σ → Option (P × List Nat)) (resume : σ → Nat → σ)
-    (spawn : Nat → σ → M → σ → σ → Prop) (done : σ → Prop) : TIsa S where
+/-- **A thread machine from a single-threaded step relation** on `(state, memory)` pairs and
+primitive call sites: `step t (s, m) (some (s', m'))` is a plain step and
+`step t (s, m) none` a fault (the `Silmaril.X86.RelIsa.Res.stop` outcome); the atomic steps are
+the primitive calls of `P`. -/
+def ofRel {σ : Type} (step : Nat → σ × M → Option (σ × M) → Prop)
+    (fp : Nat → σ → M → A → Prop) (P : Prims σ M)
+    (spawn : Nat → Nat → σ → M → σ → σ → M → Prop) (done : σ → Prop) : TIsa S where
   St := σ
-  Prim := P
   step t s m s' m' := step t (s, m) (some (s', m'))
   fault t s m := step t (s, m) none
   fp := fp
-  call := call
-  resume := resume
+  atom := P.atom
+  afault := P.afault
   spawn := spawn
   done := done
 
 end TIsa
 
-/-! ## The multi-threaded system (SC interleaving, atomic primitives) -/
+/-! ## The multi-threaded system (SC interleaving, atomic steps) -/
 
 /-- A configuration: the thread table (`none`: no thread with that id) and the memory. -/
 structure Cfg {M A V : Type} {S : Store M A V} (U : TIsa S) where
   th : Nat → Option U.St
   mem : M
 
-/-- **One step of the multi-threaded system**: a local step of one thread, one atomic step of a
-primitive, or a `clone` to a fresh thread id. -/
-inductive Step {M A V : Type} {S : Store M A V} (U : TIsa S) (P : PrimTable U) :
-    Cfg U → Cfg U → Prop
+/-- **One step of the multi-threaded system**: a plain or atomic step of one thread, or a
+`clone` to a fresh thread id. -/
+inductive Step {M A V : Type} {S : Store M A V} (U : TIsa S) : Cfg U → Cfg U → Prop
   | loc {C : Cfg U} {t : Nat} {s s' : U.St} {m' : M} (hs : C.th t = some s)
-      (h : U.step t s C.mem s' m') : Step U P C ⟨Heap.upd C.th t (some s'), m'⟩
-  | prim {C : Cfg U} {t : Nat} {s : U.St} {p : U.Prim} {args : List Nat} {r : Nat} {m' : M}
-      (hs : C.th t = some s) (hc : U.call s = some (p, args)) (h : (P p).step t args C.mem r m') :
-      Step U P C ⟨Heap.upd C.th t (some (U.resume s r)), m'⟩
-  | spawn {C : Cfg U} {t u : Nat} {s s₁ s₂ : U.St} (hs : C.th t = some s)
-      (h : U.spawn t s C.mem s₁ s₂) (hu : C.th u = none) :
-      Step U P C ⟨Heap.upd (Heap.upd C.th t (some s₁)) u (some s₂), C.mem⟩
+      (h : U.step t s C.mem s' m') : Step U C ⟨Heap.upd C.th t (some s'), m'⟩
+  | atom {C : Cfg U} {t : Nat} {s s' : U.St} {m' : M} (hs : C.th t = some s)
+      (h : U.atom t s C.mem s' m') : Step U C ⟨Heap.upd C.th t (some s'), m'⟩
+  | spawn {C : Cfg U} {t u : Nat} {s s₁ s₂ : U.St} {m' : M} (hs : C.th t = some s)
+      (hu : C.th u = none) (h : U.spawn t u s C.mem s₁ s₂ m') :
+      Step U C ⟨Heap.upd (Heap.upd C.th t (some s₁)) u (some s₂), m'⟩
 
 /-- Reflexive-transitive closure. -/
 inductive Star {α : Type} (r : α → α → Prop) : α → α → Prop
@@ -198,17 +225,15 @@ inductive Star {α : Type} (r : α → α → Prop) : α → α → Prop
   | step {a b c : α} (h : r a b) (h' : Star r b c) : Star r a c
 
 /-- Reachability of the multi-threaded system. -/
-abbrev Reach {M A V : Type} {S : Store M A V} (U : TIsa S) (P : PrimTable U) :
-    Cfg U → Cfg U → Prop :=
-  Star (Step U P)
+abbrev Reach {M A V : Type} {S : Store M A V} (U : TIsa S) : Cfg U → Cfg U → Prop :=
+  Star (Step U)
 
-/-- **Some thread can fault**: a local fault, or a primitive call whose precondition fails. -/
-def Fault {M A V : Type} {S : Store M A V} (U : TIsa S) (P : PrimTable U) (C : Cfg U) : Prop :=
-  ∃ t s, C.th t = some s ∧
-    (U.fault t s C.mem ∨ ∃ p args, U.call s = some (p, args) ∧ (P p).fault t args C.mem)
+/-- **Some thread can fault**: a plain step, or an atomic one (a primitive's precondition). -/
+def Fault {M A V : Type} {S : Store M A V} (U : TIsa S) (C : Cfg U) : Prop :=
+  ∃ t s, C.th t = some s ∧ (U.fault t s C.mem ∨ U.afault t s C.mem)
 
-/-- **A data race**: two different threads whose next local steps access a common address.
-(Primitive steps are atomic and never race.) -/
+/-- **A data race**: two different threads whose next plain steps access a common address.
+(Atomic steps never race.) -/
 def Race {M A V : Type} {S : Store M A V} (U : TIsa S) (C : Cfg U) : Prop :=
   ∃ t u s s' a, t ≠ u ∧ C.th t = some s ∧ C.th u = some s' ∧ U.fp t s C.mem a ∧
     U.fp u s' C.mem a
@@ -217,9 +242,9 @@ def Race {M A V : Type} {S : Store M A V} (U : TIsa S) (C : Cfg U) : Prop :=
 
 section Safe
 
-variable {M A V : Type} {S : Store M A V} (U : TIsa S) (P : PrimTable U)
+variable {M A V : Type} {S : Store M A V} (U : TIsa S)
 
-/-- **The obligations of a local step** of thread `t` in state `s` owning `h`, whose successors
+/-- **The obligations of a plain step** of thread `t` in state `s` owning `h`, whose successors
 must satisfy `K`: from every memory agreeing with `h`, no fault, the footprint is owned, nothing
 outside `h` changes, and `K` holds of the successor and the new values of the owned cells. -/
 def LocOk (K : U.St → Heap A V → Prop) (t : Nat) (s : U.St) (h : Heap A V) : Prop :=
@@ -227,32 +252,49 @@ def LocOk (K : U.St → Heap A V → Prop) (t : Nat) (s : U.St) (h : Heap A V) :
     ¬ U.fault t s m ∧ (∀ a, U.fp t s m a → (h a).isSome) ∧
     ∀ s' m', U.step t s m s' m' → S.Keeps h m m' ∧ K s' (S.cut h m')
 
-/-- **The obligations of a primitive call** `p args` by thread `t` owning `h`, whose results must
-satisfy `K r h'` (`r` the result, `h'` the new owned heap): for every invariant heap and every
-memory agreeing with both, no fault; every step keeps the cells outside `h ∪ hI` and re-splits
-`h ∪ hI` into a new owned heap and a new invariant heap. -/
-def PrimOk (I : HProp A V) (K : Nat → Heap A V → Prop) (t : Nat) (p : U.Prim) (args : List Nat)
-    (h : Heap A V) : Prop :=
+/-- **The obligations of an atomic action** `act` (with fault predicate `bad`) of a thread
+owning `h`, whose outcomes `o` must satisfy `K o h'` (`h'` the new owned heap): for every
+invariant heap `hI ⊨ I` disjoint from `h` and every memory agreeing with both, no fault; every
+outcome keeps the cells outside `h ∪ hI` and re-splits (part of) `h ∪ hI` into a new owned heap
+and a new invariant heap, with `I` holding again. -/
+def AtomicOk {O : Type} (I : HProp A V) (bad : M → Prop) (act : M → O → M → Prop)
+    (K : O → Heap A V → Prop) (h : Heap A V) : Prop :=
   ∀ hI, I hI → Heap.Disjoint h hI → ∀ m, S.Agrees (Heap.union h hI) m →
-    ¬ (P p).fault t args m ∧
-    ∀ r m', (P p).step t args m r m' → S.Keeps (Heap.union h hI) m m' ∧
+    ¬ bad m ∧
+    ∀ o m', act m o m' → S.Keeps (Heap.union h hI) m m' ∧
       ∃ h' hI', Heap.Disjoint h' hI' ∧ Heap.DomLe (Heap.union h' hI') (Heap.union h hI) ∧
-        S.Agrees (Heap.union h' hI') m' ∧ I hI' ∧ K r h'
+        S.Agrees (Heap.union h' hI') m' ∧ I hI' ∧ K o h'
+
+/-- **The obligations of an atomic step** of thread `t` in state `s` owning `h`. -/
+def AtomOk (I : HProp A V) (K : U.St → Heap A V → Prop) (t : Nat) (s : U.St) (h : Heap A V) :
+    Prop :=
+  AtomicOk (S := S) I (U.afault t s) (fun m s' m' => U.atom t s m s' m') K h
+
+/-- **The obligations of a primitive call** `p args` by thread `t` owning `h` (the atomic
+obligations of one primitive step, outcome the result `r`). -/
+def PrimOk (I : HProp A V) (sp : PrimSpec M) (K : Nat → Heap A V → Prop) (t : Nat)
+    (args : List Nat) (h : Heap A V) : Prop :=
+  AtomicOk (S := S) I (sp.fault t args) (sp.step t args) K h
+
+/-- **The obligations of a `clone`** by thread `t` in state `s` owning `h`: as an atomic step,
+whose new owned heap splits into the parent's part (satisfying `R t s₁`) and the child's
+(satisfying `R u s₂`). -/
+def SpawnOk (I : HProp A V) (R : Nat → U.St → Heap A V → Prop) (t : Nat) (s : U.St)
+    (h : Heap A V) : Prop :=
+  ∀ u, AtomicOk (S := S) I (fun _ => False)
+    (fun m (o : U.St × U.St) m' => U.spawn t u s m o.1 o.2 m')
+    (fun o h' => ∃ h₁ h₂, Heap.Disjoint h₁ h₂ ∧ Heap.union h₁ h₂ = h' ∧ R t o.1 h₁ ∧ R u o.2 h₂) h
 
 /-- **The safety functional** (see the module documentation); successors must satisfy `R`. -/
 def SafeF (I : HProp A V) (Q : Nat → U.St → Heap A V → Prop)
     (R : Nat → U.St → Heap A V → Prop) (t : Nat) (s : U.St) (h : Heap A V) : Prop :=
-  (U.done s → Q t s h) ∧
-  LocOk U (R t) t s h ∧
-  (∀ p args, U.call s = some (p, args) → PrimOk U P I (fun r h' => R t (U.resume s r) h') t p args h) ∧
-  (∀ m, S.Agrees h m → ∀ s₁ s₂, U.spawn t s m s₁ s₂ →
-    ∃ h₁ h₂, Heap.Disjoint h₁ h₂ ∧ Heap.union h₁ h₂ = h ∧ R t s₁ h₁ ∧ ∀ u, R u s₂ h₂)
+  (U.done s → Q t s h) ∧ LocOk U (R t) t s h ∧ AtomOk U I (R t) t s h ∧ SpawnOk U I R t s h
 
 /-- **Thread `t` in state `s` owning `h` is safe** under the invariant `I`, ending in `Q`: some
 relation `R` (the thread's invariant) contains it and is post-fixed for `SafeF`. -/
 def Safe (I : HProp A V) (Q : Nat → U.St → Heap A V → Prop) (t : Nat) (s : U.St)
     (h : Heap A V) : Prop :=
-  ∃ R : Nat → U.St → Heap A V → Prop, R t s h ∧ ∀ t s h, R t s h → SafeF U P I Q R t s h
+  ∃ R : Nat → U.St → Heap A V → Prop, R t s h ∧ ∀ t s h, R t s h → SafeF U I Q R t s h
 
 /-- **The compatibility conditions** of a configuration with owned heaps `hs` and invariant heap
 `hI`: pairwise disjoint owned heaps, disjoint from `hI ⊨ I`, all fragments of memory, no heap for
@@ -262,16 +304,16 @@ def GInv (I : HProp A V) (Q : Nat → U.St → Heap A V → Prop) (C : Cfg U) (h
   (∀ t u, t ≠ u → Heap.Disjoint (hs t) (hs u)) ∧ (∀ t, Heap.Disjoint (hs t) hI) ∧
   (∀ t, S.Agrees (hs t) C.mem) ∧ S.Agrees hI C.mem ∧ I hI ∧
   (∀ t, C.th t = none → hs t = Heap.empty) ∧
-  ∀ t s, C.th t = some s → Safe U P I Q t s (hs t)
+  ∀ t s, C.th t = some s → Safe U I Q t s (hs t)
 
 /-- **The global property**: no thread can fault, no data race, and for some owned heaps and
 invariant heap (fragments of memory, pairwise disjoint), `I` holds and every finished thread
 meets its postcondition. -/
 def Good (I : HProp A V) (Q : Nat → U.St → Heap A V → Prop) (C : Cfg U) : Prop :=
-  ¬ Fault U P C ∧ ¬ Race U C ∧
-  ∃ (hs : Nat → Heap A V) (hI : Heap A V), I hI ∧ S.Agrees hI C.mem ∧ (∀ t, S.Agrees (hs t) C.mem) ∧
-    (∀ t u, t ≠ u → Heap.Disjoint (hs t) (hs u)) ∧ (∀ t, Heap.Disjoint (hs t) hI) ∧
-    ∀ t s, C.th t = some s → U.done s → Q t s (hs t)
+  ¬ Fault U C ∧ ¬ Race U C ∧
+  ∃ (hs : Nat → Heap A V) (hI : Heap A V), I hI ∧ S.Agrees hI C.mem ∧
+    (∀ t, S.Agrees (hs t) C.mem) ∧ (∀ t u, t ≠ u → Heap.Disjoint (hs t) (hs u)) ∧
+    (∀ t, Heap.Disjoint (hs t) hI) ∧ ∀ t s, C.th t = some s → U.done s → Q t s (hs t)
 
 end Safe
 
