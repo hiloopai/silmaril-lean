@@ -140,14 +140,28 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
         Tables::default().push(&mut o.db);
         return Ok(());
     }
-    Ingest {
+    let mut ingest = Ingest {
         dir,
         at: &at,
         dump: &dump,
         strict,
+        coverage: "partial",
         o,
+    };
+    ingest.run(&mut t, Digests::of(&bytes).sha256);
+    let coverage = ingest.coverage;
+    if strict && o.errors.is_empty() {
+        // What a passing strict run establishes, and no more: the policy holds on the uses the
+        // dump records. It is not a full audit, and no mode is "paranoid" by passing.
+        o.lines.push(format!(
+            "trust result: policy valid on {coverage} coverage{}",
+            if coverage == "complete" {
+                " of the modules in the dump (the uses it records; not a proof the dump is complete)"
+            } else {
+                " (not a full audit: excluded, unsupported or undescribed modules are unaudited)"
+            }
+        ));
     }
-    .run(&mut t, Digests::of(&bytes).sha256);
     t.push(&mut o.db);
     Ok(())
 }
@@ -157,6 +171,8 @@ struct Ingest<'a> {
     at: &'a str,
     dump: &'a TrustDump,
     strict: bool,
+    /// `complete` or `partial`, set by [`Ingest::run`].
+    coverage: &'static str,
     o: &'a mut Outcome,
 }
 
@@ -206,7 +222,7 @@ impl Ingest<'_> {
         self.o.error(self.at, msg);
     }
 
-    fn run(mut self, t: &mut Tables, sha256: String) {
+    fn run(&mut self, t: &mut Tables, sha256: String) {
         let d = self.dump;
         // ---- provenance: the dump, the toolchain, the inputs
         let toolchain = fs::read_to_string(self.dir.join("lean-toolchain"))
@@ -930,12 +946,35 @@ impl Ingest<'_> {
             fresh("stale"),
             fresh("unknown")
         ));
+        // Coverage: complete only when every module in the dump or imported by one is
+        // described and covered. Explicit exclusions are allowed under --strict-trust, but
+        // they leave the audit partial, and the report says so.
+        let gaps: Vec<String> = ["excluded", "unsupported", "undescribed"]
+            .iter()
+            .filter(|c| count(c) > 0)
+            .map(|c| format!("{} {c}", count(c)))
+            .collect();
+        let coverage = if gaps.is_empty() {
+            "complete"
+        } else {
+            "partial"
+        };
+        self.o.lines.push(if gaps.is_empty() {
+            "trust coverage: complete (every module in the dump and every import is described and covered)".into()
+        } else {
+            format!(
+                "trust coverage: partial ({} module(s); their uses are not audited)",
+                gaps.join(", ")
+            )
+        });
         self.o.lines.push(enforcement_line(self.strict));
+        self.coverage = coverage;
         meta(
             self.o,
             &[
                 ("status", "present".into()),
                 ("enforcement", enforcement(self.strict).into()),
+                ("coverage", coverage.into()),
                 ("schema", d.schema.clone()),
                 ("sha256", sha256),
                 ("producer", d.producer.clone()),

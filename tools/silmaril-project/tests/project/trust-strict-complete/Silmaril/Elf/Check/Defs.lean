@@ -1,0 +1,1 @@
+-- Stand-in source of Silmaril.Elf.Check.Defs for the trust fixture; only its digest is recorded.

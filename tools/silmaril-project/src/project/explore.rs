@@ -70,6 +70,49 @@ mod tests {
         assert_eq!(r("/abs", "x"), None);
     }
 
+    /// The inline scripts of the page (not `src=` scripts, not JSON data blocks).
+    fn inline_scripts(page: &str) -> Vec<&str> {
+        let mut out = Vec::new();
+        let mut rest = page;
+        while let Some(i) = rest.find("<script") {
+            let tag_end = i + rest[i..].find('>').expect("script tag closes");
+            let tag = &rest[i..tag_end];
+            let body_end = tag_end + rest[tag_end..].find("</script>").expect("script ends");
+            if !tag.contains("src=") && !tag.contains("application/json") {
+                out.push(&rest[tag_end + 1..body_end]);
+            }
+            rest = &rest[body_end..];
+        }
+        out
+    }
+
+    /// The page's JavaScript parses (`node --check`): a quoting error once broke the whole page.
+    /// Without `node`, the test is skipped locally and fails under CI (`CI` set).
+    #[test]
+    fn page_javascript_parses() {
+        let p = page("t", &["project.sqlite".into()]);
+        let scripts = inline_scripts(&p);
+        assert_eq!(scripts.len(), 1, "expected one inline script");
+        let dir = tempfile::tempdir().unwrap();
+        let js = dir.path().join("explore.js");
+        std::fs::write(&js, scripts[0]).unwrap();
+        match std::process::Command::new("node")
+            .arg("--check")
+            .arg(&js)
+            .output()
+        {
+            Ok(out) => assert!(
+                out.status.success(),
+                "explore.html's script does not parse:\n{}",
+                String::from_utf8_lossy(&out.stderr)
+            ),
+            Err(e) if std::env::var_os("CI").is_none() => {
+                eprintln!("skipped: node not found ({e}); CI requires it");
+            }
+            Err(e) => panic!("node is required under CI to check explore.html: {e}"),
+        }
+    }
+
     #[test]
     fn page_escapes_title_and_urls() {
         let p = page(

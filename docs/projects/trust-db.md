@@ -119,7 +119,10 @@ Without `--strict-trust`, nothing is enforced. Violations are warnings and rows 
 `trust policy: NOT enforced (report only)` and records `meta.trust.enforcement = report-only`.
 **A passing run without `--strict-trust` is not a policy check.** For CI, use
 `--strict-trust` (or `make project-trust-check TRUST=…`). It exits non-zero, writes no
-database, and records `enforcement = strict` when it passes. The strict mode is not yet in
+database, and records `enforcement = strict` when it passes.
+
+The explorer's JavaScript is checked by `node --check` in `cargo test`
+(`explore::tests::page_javascript_parses`; it fails under CI if `node` is missing). The strict mode is not yet in
 `make check`, because the library does not emit a trust dump yet.
 
 ### `--strict-trust`
@@ -132,13 +135,29 @@ database, and records `enforcement = strict` when it passes. The strict mode is 
 - a dump without `decls`.
 
 Imports that the dump lists as `excluded` or `unsupported` (with a reason) are not errors.
-Without `--strict-trust`, these cases are reported but do not fail the run. Fixtures:
+Without `--strict-trust`, these cases are reported but do not fail the run. **Passing is policy validation, not an audit.** Every run with a trust dump prints `trust
+coverage: complete|partial` and records `meta.trust.coverage`:
 
-- `trust-strict-ok`: passes, with every import described or excluded with a reason;
+- `partial`: some module in the dump or some import is `excluded`, `unsupported` or
+  `undescribed`, and the uses of those modules are not audited. A passing strict run prints
+  `trust result: policy valid on partial coverage (not a full audit: …)`.
+- `complete`: every module in the dump and every import is described and covered. This still
+  covers only the uses the dump records.
+
+No result is labelled fully audited or paranoid. The explorer's Trust tab shows the enforcement
+mode and the coverage as banners.
+
+Fixtures:
+
+- `trust-strict-complete`: passes with `complete` coverage, because every dependency is
+  described (as leaves, which a real dump would not have);
+- `trust-strict-partial`: passes with `partial` coverage, because dependencies are excluded with
+  reasons;
 - `trust-strict-gaps`: fails on undescribed imports;
 - `trust-strict-violations`: fails, each violation an error.
 
-The test `strict_trust_fails_where_report_only_writes` runs the same input both ways.
+The tests `strict_trust_fails_where_report_only_writes` (the same input in both modes) and
+`strict_trust_reports_partial_coverage` cover these cases.
 
 ### Fail closed
 
@@ -219,7 +238,8 @@ The cases in `tools/silmaril-project/tests/project/` are:
   reported again through an importing module; an unattributed axiom; an edited source, which
   makes its module and that module's importer stale;
 - `trust-invalid`: the fail-closed errors;
-- `trust-strict-ok`, `trust-strict-gaps`, `trust-strict-violations`: `--strict-trust`.
+- `trust-strict-complete`, `trust-strict-partial`, `trust-strict-gaps`, `trust-strict-violations`:
+  `--strict-trust`.
 
 Their sources are placeholder files whose digests are recorded, and the uses are illustrative,
 not measured.

@@ -357,6 +357,7 @@ INSERT INTO meta(key, value) VALUES('modules', 'Lib');
 INSERT INTO meta(key, value) VALUES('roots', 'Lib');
 INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.2');
 INSERT INTO meta(key, value) VALUES('toolchain', '4.35.0-rc4');
+INSERT INTO meta(key, value) VALUES('trust.coverage', 'partial');
 INSERT INTO meta(key, value) VALUES('trust.decl_axioms', 'collected');
 INSERT INTO meta(key, value) VALUES('trust.enforcement', 'report-only');
 INSERT INTO meta(key, value) VALUES('trust.producer', 'fixture (hand-written; the core emitter is not available yet)');

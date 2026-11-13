@@ -516,6 +516,10 @@ async function trustPage() {
     return h + '<p class="err">No trust dump was given (<code>sil project sqlite --trust PATH</code>): decision-procedure and axiom use ' +
       "is <b>unaudited</b>. That is unknown, not clean; the default policy (the standard axioms) is not evidence about uses.</p>" + TCB;
   }
+  h += (m.enforcement === "strict" ? '<p>Policy <b>validated</b> (<code>--strict-trust</code>).</p>'
+      : '<p class="err">Policy <b>not enforced</b>: this database was built in report-only mode; violations below are findings, not failures.</p>') +
+    (m.coverage === "complete" ? '<p>Coverage <b>complete</b>: every module in the dump and every import is described (this covers the uses the dump records, not more).</p>'
+      : '<p class="err">Coverage <b>partial</b>: excluded, unsupported or undescribed modules below are not audited. A passing policy check here is not a full audit.</p>');
   h += await dl(m) + TCB;
   const viol = await q("SELECT reason, direct, count(*) AS n FROM trust_violations GROUP BY 1, 2 ORDER BY 1, 2");
   const cov = await q("SELECT coverage, freshness, count(*) AS n FROM trust_modules GROUP BY 1, 2 ORDER BY 1, 2");

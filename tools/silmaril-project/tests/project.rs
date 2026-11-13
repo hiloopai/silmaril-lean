@@ -499,3 +499,82 @@ fn strict_trust_fails_where_report_only_writes() {
     );
     assert_eq!(rows, None, "a failed strict run writes no database");
 }
+
+/// `--strict-trust` passes with explicit exclusions, but the result says the coverage is
+/// partial (stdout and `meta`); only fully described dependencies give `complete`. No result
+/// ever claims a full audit or a paranoid mode.
+#[test]
+fn strict_trust_reports_partial_coverage() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
+    for (case, coverage) in [
+        ("trust-strict-partial", "partial"),
+        ("trust-strict-complete", "complete"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("project.sqlite");
+        let out = Command::new(env!("CARGO_BIN_EXE_silmaril-project"))
+            .args([
+                "sqlite",
+                "--dump",
+                "dump.json",
+                "--trust",
+                "trust.json",
+                "--strict-trust",
+                "--sql",
+            ])
+            .arg(tmp.path().join("project.sql"))
+            .arg("--db")
+            .arg(&db)
+            .current_dir(base.join(case))
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        assert!(out.status.success(), "{case}: {stdout}");
+        let result = stdout
+            .lines()
+            .find(|l| l.starts_with("trust result: "))
+            .unwrap_or_else(|| panic!("{case}: no result line in {stdout}"));
+        assert!(
+            result.starts_with(&format!(
+                "trust result: policy valid on {coverage} coverage"
+            )),
+            "{case}: {result}"
+        );
+        assert!(
+            stdout.contains(&format!("trust coverage: {coverage} (")),
+            "{case}: {stdout}"
+        );
+        for l in stdout
+            .lines()
+            .filter(|l| l.starts_with("trust result") || l.starts_with("trust coverage"))
+        {
+            let l = l.to_lowercase();
+            assert!(
+                !l.contains("fully audited") && !l.contains("paranoid"),
+                "{case}: {l}"
+            );
+        }
+        if coverage == "partial" {
+            assert!(result.contains("not a full audit"), "{case}: {result}");
+        }
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        let meta = |k: &str| -> String {
+            conn.query_row("SELECT value FROM meta WHERE key = ?1", [k], |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(meta("trust.coverage"), coverage, "{case}");
+        assert_eq!(meta("trust.enforcement"), "strict", "{case}");
+        let gaps: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM trust_modules WHERE coverage <> 'covered'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            gaps > 0,
+            coverage == "partial",
+            "{case}: {gaps} uncovered modules"
+        );
+    }
+}

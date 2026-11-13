@@ -1,0 +1,1 @@
+-- Stand-in source of Mathlib.Data.Nat.Basic for the trust fixture; only its digest is recorded.

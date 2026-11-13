@@ -14,5 +14,6 @@ trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 plan
 trust modules: 5 covered, 1 excluded, 1 unsupported, 3 undescribed; 8 direct uses
 trust violations: 0 (0 direct, 0 transitive)
 trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 unknown (consistent digests are not proof of freshness)
+trust coverage: partial (1 excluded, 1 unsupported, 3 undescribed module(s); their uses are not audited)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 exit: failed
