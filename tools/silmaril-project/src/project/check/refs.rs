@@ -62,6 +62,9 @@ pub(super) fn follow<'a>(
                 .scoped
                 .iter()
                 .any(|e| e.record_kind == r.kind() && e.record_name == r.key()),
+            // Markings: about an in-scope problem (a local deprecation may name a spec).
+            Record::Finding(f) => in_scope.contains(f.name.as_str()),
+            Record::Deprecation(d) => cx.local(&d.module) || in_scope.contains(d.name.as_str()),
             // Answers are read by R5; artifacts are checked against the registries.
             Record::Answer(_) | Record::Artifact(_) => false,
             _ => cx.local(r.module()),

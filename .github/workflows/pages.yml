@@ -1,0 +1,102 @@
+name: Explorer on GitHub Pages
+
+# Publishes the `sil project` explorer of silmaril's own project (silmaril.toml): the static
+# page `sil project explore` writes and the database it opens (`sil project sqlite --httpvfs`),
+# at https://hiloopai.github.io/silmaril-lean/. Everything in it comes from this public
+# repository: record names, Lean module and declaration names, docs, CIDs and verdicts.
+#
+# It runs after CI succeeds on a push to main (so the shared Lake pool holds main's build), and
+# by hand. Repository settings: Pages, source "GitHub Actions".
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; a newer main waits for the running one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.repository == 'hiloopai/silmaril-lean' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      # GitHub OIDC for the read role of the shared Lean CAS (as in ci-lean.yml).
+      id-token: write
+    env:
+      LEAN_NUM_THREADS: 2
+      LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
+      AWS_REGION: us-east-1
+      LAKE_CACHE_DIR: ${{ github.workspace }}/.lake/cache
+      LAKE_ARTIFACT_CACHE: 'true'
+      # The libraries of the project's modules (silmaril.toml), restored from the pool.
+      CHECK_TARGETS: Silmaril ProjectSelfTest SysVTvExample CompilesToExamples
+      RUST_TOOLCHAIN: 1.98.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 65
+      - name: Keep the Lean toolchain in RAM
+        run: |
+          mkdir -p /dev/shm/elan
+          echo "ELAN_HOME=/dev/shm/elan" >> "$GITHUB_ENV"
+          ln -s /dev/shm/elan "$HOME/.elan"
+      - name: Install the shared Lake cache
+        uses: ./.github/actions/lake-cache-tool
+      - name: Assume the Lean CAS read role
+        id: credentials
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-read-lean-cas
+          aws-region: us-east-1
+          role-duration-seconds: 3600
+      - name: Restore from the shared Lake pool
+        if: steps.credentials.outcome == 'success'
+        run: make cache
+      - name: Install Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
+      - name: Build sil project
+        run: make project-tool
+      - name: Dump, check and write the database and the page
+        run: |
+          sil=build/bin/silmaril-project
+          "$sil" dump --lake lake
+          "$sil" check
+          "$sil" sqlite --httpvfs > /dev/null
+          mkdir -p _site
+          cp .lake/silmaril/project.sqlite _site/project.sqlite
+          "$sil" explore --db _site/project.sqlite --out _site/index.html
+          ls -l _site
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
