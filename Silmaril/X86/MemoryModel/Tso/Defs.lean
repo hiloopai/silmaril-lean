@@ -2,11 +2,18 @@ module
 
 public import Mathlib.Logic.Relation
 public import Mathlib.Logic.Function.Basic
+public import Silmaril.Raw.X86.MemoryModel.TSOFence
 
 /-!
 # x86-TSO store-buffer models: definitions
 
-A byte-granular, mixed-size store-buffer machine. `XState` has a partial byte memory `Nat → Option Byte`
+Two layers.
+
+* **Word-granular.** A FIFO store-buffer TSO over abstract addresses and values
+  (`Silmaril/Raw/X86/MemoryModel/{Execution,SC,TSO,TSOFence}.lean`, namespaces
+  `Silmaril.Memory{,.SC,.TSO}`). Each store writes one value at one abstract address. `State`,
+  `Step`, `WeakStep`, `Flush` and the SC heap step are re-exported here as abbreviations.
+* **Byte-granular, mixed-size.** `XState` has a partial byte memory `Nat → Option Byte`
   and a per-thread FIFO of `(address, bytes)` entries, oldest first. A load of `n` bytes reads
   each byte from the newest buffered entry of its own thread that covers it, falling back to
   memory (`viewMem`/`readView`). A store enqueues one entry. `XFlush` moves the oldest entry of
@@ -26,6 +33,41 @@ unbounded `Nat`s), and fairness.
 @[expose] public section
 
 namespace Silmaril.X86.MemoryModel.Tso
+
+universe u
+
+/-! ## The word-granular model -/
+
+/-- Observable memory events `load`/`store`/`fence` (with the loaded value). -/
+abbrev Event (Tid Addr Val : Type u) := Silmaril.Memory.Event Tid Addr Val
+
+/-- Finite labelled executions of a transition relation. -/
+abbrev Execution {S : Type u} {L : Type u} (step : S → L → S → Prop) : S → List L → S → Prop :=
+  Silmaril.Memory.Execution step
+
+/-- Program-order-preserving binary parallel composition. -/
+abbrev Concurrent {S : Type u} {L : Type u} (step : S → L → S → Prop) (initial : S)
+    (left right : List L) : Prop :=
+  Silmaril.Memory.Concurrent step initial left right
+
+/-- Word-granular TSO state: memory plus per-thread FIFO buffers. -/
+abbrev State (Tid Addr Val : Type u) := Silmaril.Memory.TSO.State Tid Addr Val
+
+section Word
+variable {Tid Addr Val : Type u} [DecidableEq Tid] [DecidableEq Addr]
+
+/-- Observable TSO step (no implicit commits). -/
+abbrev Step : State Tid Addr Val → Event Tid Addr Val → State Tid Addr Val → Prop :=
+  Silmaril.Memory.TSO.Step
+
+/-- Internal propagation of the oldest buffered store. -/
+abbrev Flush : State Tid Addr Val → State Tid Addr Val → Prop := Silmaril.Memory.TSO.Flush
+
+/-- Observable step surrounded by finite flushes. -/
+abbrev WeakStep : State Tid Addr Val → Event Tid Addr Val → State Tid Addr Val → Prop :=
+  Silmaril.Memory.TSO.WeakStep
+
+end Word
 
 /-! ## Byte-granular mixed-size x86-TSO -/
 

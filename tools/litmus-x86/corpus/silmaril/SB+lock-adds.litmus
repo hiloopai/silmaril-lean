@@ -1,0 +1,8 @@
+X86_64 SB+lock-adds
+"Hand-written: SB with a locked add to a private location as the fence (the gcc/SQLite lock-or idiom)"
+{ int x=0; int y=0; int s0=0; int s1=0; }
+ P0               | P1               ;
+ movl $1,(x)      | movl $1,(y)      ;
+ lock addl $0,(s0) | lock addl $0,(s1) ;
+ movl (y),%eax    | movl (x),%eax    ;
+exists (0:rax=0 /\ 1:rax=0)

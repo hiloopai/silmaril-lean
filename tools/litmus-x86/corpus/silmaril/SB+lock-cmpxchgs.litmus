@@ -1,0 +1,7 @@
+X86_64 SB+lock-cmpxchgs
+"Hand-written: SB where each store is a successful lock cmpxchg (expected 0, new 1)"
+{ int x=0; int y=0; 0:rcx=1; 1:rcx=1; }
+ P0                     | P1                     ;
+ lock cmpxchgl %ecx,(x) | lock cmpxchgl %ecx,(y) ;
+ movl (y),%ebx          | movl (x),%ebx          ;
+exists (0:rbx=0 /\ 1:rbx=0)

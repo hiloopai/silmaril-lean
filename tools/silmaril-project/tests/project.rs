@@ -359,3 +359,51 @@ fn sql_text_is_stable_across_runs() {
     };
     assert_eq!(run(), run());
 }
+
+/// The marking queries over the `markings` case's database, against `markings/queries.txt`.
+#[test]
+fn marking_queries() {
+    let bless = std::env::var_os("SIL_BLESS").is_some();
+    let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/markings");
+    let tmp = tempfile::tempdir().unwrap();
+    let db = tmp.path().join("project.sqlite");
+    let db_arg = db.to_str().unwrap();
+    let (ok, out) = sil(
+        &case,
+        &[
+            "sqlite",
+            "--dump",
+            "dump.json",
+            "--sql",
+            tmp.path().join("project.sql").to_str().unwrap(),
+            "--db",
+            db_arg,
+        ],
+    );
+    assert!(ok, "{out}");
+    let mut text = String::new();
+    for args in [
+        &["findings"][..],
+        &["findings", "--class", "spec_bug"],
+        &["findings", "--class", "unclassified"],
+        &["errors"],
+        &["gaps"],
+        &["deprecated"],
+        &["deprecated", "--problems"],
+    ] {
+        let mut a = args.to_vec();
+        a.extend(["--db", db_arg]);
+        let (ok, out) = sil(&case, &a);
+        assert!(ok, "{args:?}: {out}");
+        text += &format!("$ sil project {}\n{out}", args.join(" "));
+    }
+    let mut failures = Vec::new();
+    compare(&case.join("queries.txt"), &text, bless, &mut failures);
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    // a database without the marking tables is reported, not misread
+    let (ok, out) = sil(&case, &["errors", "--db", "no-such.sqlite"]);
+    assert!(
+        !ok && out.contains("run `sil project sqlite` first"),
+        "{out}"
+    );
+}

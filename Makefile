@@ -38,7 +38,7 @@ CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
 	'tools/process-release/**' 'tools/verification-projects/**' 'tools/silmaril-project/**' \
-	'tools/c-tv/**' 'tools/x86-lift/**' \
+	'tools/c-tv/**' 'tools/x86-lift/**' 'tools/litmus-x86/**' 'tools/litmus-run/**' 'examples/litmus-c/**' \
 	policy.toml regions.toml
 
 # Print CHECK_TARGETS, narrowed to what the change from BASE can affect when BASE is set.
