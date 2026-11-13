@@ -23,6 +23,9 @@ in order.
   `mpscPush head node off` links `node` in front (stores the old head at `node + off`, then
   `head := node`), `mpscTakeAll head` swaps the head with `0` and returns the old list.
 
+Footprints (`fp`): an atomic's bytes, the list's head word (and, for `mpscPush`, the link
+word of the pushed node); the locks have none, since their state is abstract.
+
 Locks keep their state **abstractly**, in `PrimSt.locks` (owner, depth): the lock word in
 memory is the implementation's business. Relating the two is the job of a primitive's
 correctness proof under a memory model (an explicit, separate assumption), which also needs
@@ -62,6 +65,7 @@ variable {γ : Type}
 arguments, the new value (`none`: no write) and the result. -/
 def rmw (n : Nat) (f : Nat → List Word → Option Nat × Nat) : PrimSpec γ where
   pre _ args sh := Aligned (arg args 0) n ∧ RW sh.mem (arg args 0) n
+  fp _ args a := arg args 0 ≤ a ∧ a < arg args 0 + n
   post _ args sh ret sh2 := ∃ o, rd sh.mem (arg args 0) n = some o ∧
     ret = BitVec.ofNat 64 (f o args).2 ∧ sh2.ps = sh.ps ∧ sh2.g = sh.g ∧
     match (f o args).1 with
@@ -86,6 +90,7 @@ def fadd (n : Nat) : PrimSpec γ := rmw n fun o args => (some ((o + arg args 1) 
 
 /-- `fence`: no effect (every primitive step is a full barrier). -/
 def fence : PrimSpec γ where
+  fp _ _ _ := False
   pre _ _ _ := True
   post _ _ sh ret sh2 := ret = 0 ∧ sh2 = sh
 
@@ -95,12 +100,14 @@ def SetLocks (sh sh2 : Sh γ) (f : Nat → Option (Nat × Nat)) : Prop :=
 
 /-- `mutexLock a`: acquire a free lock; a lock the caller holds is a fault. -/
 def mutexLock : PrimSpec γ where
+  fp _ _ _ := False
   pre t args sh := ∀ d, sh.ps.locks (arg args 0) ≠ some (t, d)
   post t args sh ret sh2 := sh.ps.locks (arg args 0) = none ∧ ret = 0 ∧
     SetLocks sh sh2 (upd sh.ps.locks (arg args 0) (some (t, 1)))
 
 /-- `mutexTrylock a`: acquire a free lock, or return `EBUSY`. -/
 def mutexTrylock : PrimSpec γ where
+  fp _ _ _ := False
   pre t args sh := ∀ d, sh.ps.locks (arg args 0) ≠ some (t, d)
   post t args sh ret sh2 :=
     (sh.ps.locks (arg args 0) = none ∧ ret = 0 ∧
@@ -109,11 +116,13 @@ def mutexTrylock : PrimSpec γ where
 
 /-- `mutexUnlock a`: release a lock the caller holds. -/
 def mutexUnlock : PrimSpec γ where
+  fp _ _ _ := False
   pre t args sh := sh.ps.locks (arg args 0) = some (t, 1)
   post _ args sh ret sh2 := ret = 0 ∧ SetLocks sh sh2 (upd sh.ps.locks (arg args 0) none)
 
 /-- `recLock a`: acquire a free lock, or increment the caller's depth. -/
 def recLock : PrimSpec γ where
+  fp _ _ _ := False
   pre _ _ _ := True
   post t args sh ret sh2 := ret = 0 ∧
     ((sh.ps.locks (arg args 0) = none ∧ SetLocks sh sh2 (upd sh.ps.locks (arg args 0) (some (t, 1)))) ∨
@@ -122,12 +131,15 @@ def recLock : PrimSpec γ where
 
 /-- `recUnlock a`: decrement the caller's depth, releasing at `0`. -/
 def recUnlock : PrimSpec γ where
+  fp _ _ _ := False
   pre t args sh := ∃ d, 0 < d ∧ sh.ps.locks (arg args 0) = some (t, d)
   post t args sh ret sh2 := ret = 0 ∧ ∃ d, sh.ps.locks (arg args 0) = some (t, d) ∧
     SetLocks sh sh2 (upd sh.ps.locks (arg args 0) (if d ≤ 1 then none else some (t, d - 1)))
 
 /-- `mpscPush head node off`: `[node + off] := [head]; [head] := node`, atomically. -/
 def mpscPush : PrimSpec γ where
+  fp _ args a := (arg args 0 ≤ a ∧ a < arg args 0 + 8) ∨
+    (arg args 1 + arg args 2 ≤ a ∧ a < arg args 1 + arg args 2 + 8)
   pre _ args sh := Aligned (arg args 0) 8 ∧ RW sh.mem (arg args 0) 8 ∧
     sh.mem.Permitted .write (arg args 1 + arg args 2) 8
   post _ args sh ret sh2 := ret = 0 ∧ sh2.ps = sh.ps ∧ sh2.g = sh.g ∧
@@ -136,6 +148,7 @@ def mpscPush : PrimSpec γ where
 
 /-- `mpscTakeAll head`: `[head] := 0`, returning the old head. -/
 def mpscTakeAll : PrimSpec γ where
+  fp _ args a := arg args 0 ≤ a ∧ a < arg args 0 + 8
   pre t args sh := (xchg (γ := γ) 8).pre t [args.getD 0 0, 0] sh
   post t args sh ret sh2 := (xchg (γ := γ) 8).post t [args.getD 0 0, 0] sh ret sh2
 
@@ -200,7 +213,8 @@ def execRmw (n : Nat) (f : Nat → List Word → Option Nat × Nat) (args : List
     | some o =>
       match (f o args).1 with
       | none => some (BitVec.ofNat 64 (f o args).2, sh)
-      | some v => (wr sh.mem (arg args 0) n v).map fun m => (BitVec.ofNat 64 (f o args).2, { sh with mem := m })
+      | some v =>
+        (wr sh.mem (arg args 0) n v).map fun m => (BitVec.ofNat 64 (f o args).2, { sh with mem := m })
     | none => none
   else none
 

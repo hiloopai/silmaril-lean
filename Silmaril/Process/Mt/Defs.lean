@@ -200,10 +200,24 @@ thread `tid` with arguments `args`. Outside `pre` the call is a fault (undefined
 under it, the call is one atomic step to any `post` outcome (a result and a new shared
 state); with no outcome the thread is blocked (a held lock). Implementations are not modelled
 here: that each implements its spec under a memory model is an explicit assumption,
-discharged separately. `post` must keep `mt` (the step rule ignores it). -/
+discharged separately. `post` must keep `mt` (the step rule ignores it). `fp` is the
+primitive's memory footprint; the step rule does not enforce it (`PrimSpec.FpOk` states it). -/
 structure PrimSpec (γ : Type) where
   pre : Nat → List Word → Sh γ → Prop
   post : Nat → List Word → Sh γ → Word → Sh γ → Prop
+  /-- The bytes of memory the primitive may read or write (for race freedom: a plain access of
+  another thread to them races with the call). Default: all of memory. -/
+  fp : Nat → List Word → Nat → Prop := fun _ _ _ => True
+
+/-- The specification respects its footprint: outside `fp` the call changes no byte (nor the
+mapping list), and its precondition depends on memory only through `fp`. Asked of primitives,
+not assumed by `MtStep`. -/
+def PrimSpec.FpOk {γ : Type} (sp : PrimSpec γ) : Prop :=
+  (∀ t args sh ret sh2, sp.post t args sh ret sh2 → sh2.mem.regions = sh.mem.regions ∧
+    ∀ a, ¬ sp.fp t args a → sh2.mem.bytes[a]? = sh.mem.bytes[a]?) ∧
+  ∀ t args (sh sh' : Sh γ), sh'.ps = sh.ps → sh'.g = sh.g → sh'.mt = sh.mt →
+    sh'.mem.regions = sh.mem.regions → (∀ a, sp.fp t args a → sh'.mem.bytes[a]? = sh.mem.bytes[a]?) →
+    (sp.pre t args sh ↔ sp.pre t args sh')
 
 /-- The primitives, by number. -/
 abbrev PrimTable (γ : Type) := Nat → Option (PrimSpec γ)
