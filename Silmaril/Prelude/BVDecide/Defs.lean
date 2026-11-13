@@ -9,12 +9,13 @@ public meta import Lean.Util.CollectAxioms
 
 `bv_decide` runs in two stages. First `bv_normalize` rewrites the goal with
 `simp` lemmas, which produces an ordinary proof term that the kernel checks.
-If that does not close the goal, the goal is bitblasted and sent to an external
-SAT solver. The solver's LRAT certificate is then checked by *compiled* code
-through `Lean.Meta.nativeEqTrue`, and the result is asserted as a fresh axiom
-named `<decl>._native.bv_decide.ax_<n>`. That axiom is outside the
-`propext`/`Classical.choice`/`Quot.sound` policy of this library
-(`policy.toml`). Nothing in the build fails when it appears.
+If that does not close the goal, an external SAT solver produces an LRAT
+certificate, and *compiled* code evaluates `verifyBVExpr` on the reflected goal
+and the certificate: bitblasting, conversion to CNF, certificate parsing and
+LRAT checking. Lean's native evaluator (`Lean/Meta/Native.lean`) asserts the
+result as a fresh axiom named `<decl>._native.bv_decide.ax_<n>`. That axiom is
+outside the `propext`/`Classical.choice`/`Quot.sound` policy of this library
+(`policy.toml`).
 
 `bv_decide_kernel` is fail-closed and restricted to the first stage:
 
@@ -53,9 +54,8 @@ def nonstandardAxioms (e : Expr) : MetaM (Array Name) := do
 
 /-! ## The native procedure behind `bv_decide`
 
-When `bv_normalize` does not close a goal, `bv_decide` asks
-`Lean.Meta.nativeEqTrue` to evaluate `verifyBVExpr e cert` in compiled code,
-where `verifyBVExpr e cert = verifyCert (AIG.toCNF e.bitblast.relabelNat) cert`.
+When `bv_normalize` does not close a goal, `bv_decide` asks Lean's native
+evaluator to run `verifyBVExpr e cert` in compiled code, where `verifyBVExpr e cert = verifyCert (AIG.toCNF e.bitblast.relabelNat) cert`.
 The natively evaluated surface is therefore **bitblasting** (hash-consed through
 the opaque `mixHash`), **AIG to CNF**, **relabeling**, the **LRAT parser**
 (`partial`) and the **LRAT checker**, together with the runtime implementations
@@ -71,7 +71,7 @@ def nativeEvaluatedConst : Name := ``Std.Tactic.BVDecide.Reflect.verifyBVExpr
 def nativeSoundnessConst : Name := ``Std.Tactic.BVDecide.Reflect.unsat_of_verifyBVExpr_eq_true
 
 /-- Whether `n` has the shape of an axiom that `bv_decide` adds for one native
-evaluation, `<decl>._native.bv_decide.ax_<n>` (`Lean.Meta.nativeEqTrue`).
+evaluation, `<decl>._native.bv_decide.ax_<n>` (added by Lean's native evaluator).
 
 This only recognizes names. It is **not** provenance: any declaration could have
 this name. A registry that admits native uses must also inspect the axiom's
