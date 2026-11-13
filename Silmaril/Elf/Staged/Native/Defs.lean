@@ -14,14 +14,14 @@ a `Silmaril.Trust.ProcDecl`) with **two backends** for **one proposition**:
 * **kernel**: `Kernel.<leaf> x c` runs the same leaf on core's kernel bytes `x`
   (`Silmaril.KBytes.readLE`), and is only ever checked by the kernel.
 
-`Native.<leaf>_sound` and `Kernel.<leaf>_sound x.wf x.toByteArray_eq` conclude the same
+`Native.<leaf>_sound` and `Kernel.<leaf>_sound x.wf_true x.toByteArray_eq` conclude the same
 `P (blobOf ⟨raw⟩) c`; the kernel bytes are tied to the raw bytes by `x.toByteArray = raw`
 (`kbytes_def … of_include`). A leaf theorem is
 
 ```
 theorem layout : LayoutIs F L := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := L))
-    (kernel := Kernel.layout_sound hello.wf hello.toByteArray_eq (L := L))
+    (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := L))
 ```
 
 The native backend runs when the policy allows `elf.layout` in the module; otherwise the kernel

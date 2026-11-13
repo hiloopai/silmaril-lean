@@ -40,7 +40,7 @@ the scope policy, `edge_decide`, the use records and the audit. Each ELF leaf
 | function | `Native.<leaf> b c` | `Kernel.<leaf> x c` |
 | bytes | the file's `ByteArray` (`fastRead`) | core's kernel bytes `x` (`KBytes.readLE`) |
 | declared | `Silmaril.Procedures.elf.<leaf>` (`ProcDecl`), native backend | the same declaration, kernel backend; only ever checked by the kernel |
-| soundness | `Native.<leaf>_sound` | `Kernel.<leaf>_sound x.wf x.toByteArray_eq` |
+| soundness | `Native.<leaf>_sound` | `Kernel.<leaf>_sound x.wf_true x.toByteArray_eq` |
 | conclusion | `P (blobOf ⟨raw⟩) c` | the same `P (blobOf ⟨raw⟩) c` |
 
 The kernel bytes and the raw bytes come from the same `include_bytes` literals
@@ -48,7 +48,7 @@ The kernel bytes and the raw bytes come from the same `include_bytes` literals
 `sub_kbytes` and `sub_fast` tie each source to the one file.
 
 A leaf theorem is `by sil_check elf.<leaf> (native := Native.<leaf>_sound …) (kernel :=
-Kernel.<leaf>_sound x.wf x.toByteArray_eq …)`. `sil_check` checks both sides against the
+Kernel.<leaf>_sound x.wf_true x.toByteArray_eq …)`. `sil_check` checks both sides against the
 declaration before running anything.
 
 * **Native allowed:** the `ByteArray` backend runs natively, and the use and its axiom
@@ -71,9 +71,6 @@ records:
 
 `Example.Thms` itself is checked in the default build and in the paranoid profile build. Only
 the profile-test module is excluded from the paranoid build.
-
-**Temporary.** A `kbytes_def` body is not yet exported to importing modules (reported to core).
-Until it is, each leaf module defines its own kernel bytes from the shared raw bytes.
 
 ## Supported now
 

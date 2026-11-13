@@ -29,42 +29,39 @@ namespace Silmaril.Elf.Staged.Example.Profiles
 
 open Silmaril.Elf Silmaril.Elf.Staged Silmaril.Elf.Staged.Example
 
--- Kernel bytes for this module's kernel runs (a `kbytes_def` body is not exported yet).
-kbytes_def kb of_include helloRaw
-
 /-- Default profile, in the `default` set: native. -/
 theorem layout_default : LayoutIs F L := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := L))
-    (kernel := Kernel.layout_sound kb.wf kb.toByteArray_eq (L := L))
+    (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := L))
 
 /-- Default profile, not in the `default` set: kernel. -/
 theorem loader_default : LoaderIs F L ld := by
   sil_check elf.loader (native := Native.loader_sound (raw := helloRaw) (c := (L, ld)))
-    (kernel := Kernel.loader_sound kb.wf kb.toByteArray_eq (c := (L, ld)))
+    (kernel := Kernel.loader_sound hello.wf_true hello.toByteArray_eq (c := (L, ld)))
 
 set_option silmaril.trust.profile "local" in
 /-- Local profile: native. -/
 theorem loader_local : LoaderIs F L ld := by
   sil_check elf.loader (native := Native.loader_sound (raw := helloRaw) (c := (L, ld)))
-    (kernel := Kernel.loader_sound kb.wf kb.toByteArray_eq (c := (L, ld)))
+    (kernel := Kernel.loader_sound hello.wf_true hello.toByteArray_eq (c := (L, ld)))
 
 set_option silmaril.trust.profile "local" in
 /-- Local profile: the code of `main`, natively decoded. -/
 theorem main_local : TilesAt F x86Ok 4192 mainTiles := by
   sil_check elf.tiles.x86 (native := Native.tilesX86_sound (raw := helloRaw) (c := (4192, mainTiles)))
-    (kernel := Kernel.tilesX86_sound kb.wf kb.toByteArray_eq (c := (4192, mainTiles)))
+    (kernel := Kernel.tilesX86_sound hello.wf_true hello.toByteArray_eq (c := (4192, mainTiles)))
 
 set_option silmaril.trust.profile "paranoid" in
 /-- Paranoid profile: the kernel, even for `elf.layout`. -/
 theorem layout_paranoid : LayoutIs F L := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := L))
-    (kernel := Kernel.layout_sound kb.wf kb.toByteArray_eq (L := L))
+    (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := L))
 
 set_option silmaril.trust.profile "local" in
 /-- Kernel-only: only the kernel backend is given, so the kernel checks it even under `local`,
 where `elf.layout` may run natively. -/
 theorem layout_kernelOnly : LayoutIs F L := by
-  sil_check elf.layout (kernel := Kernel.layout_sound kb.wf kb.toByteArray_eq (L := L))
+  sil_check elf.layout (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := L))
 
 /-- A layout with a wrong entry point. -/
 def badL : Layout := { L with header := { L.header with entry := 0 } }
@@ -73,7 +70,7 @@ def badL : Layout := { L with header := { L.header with entry := 0 } }
 /-- error: sil_check: no procedure elf.dwarf.line (declare `Silmaril.Procedures.elf.dwarf.line : ProcDecl`) -/
 #guard_msgs in
 example : LayoutIs F L := by
-  sil_check elf.dwarf.line (kernel := Kernel.layout_sound kb.wf kb.toByteArray_eq (L := L))
+  sil_check elf.dwarf.line (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := L))
 
 -- A false native check fails under `local`; it is not retried in the kernel.
 /-- error: sil_check elf.layout: the native check returned false -/
@@ -81,7 +78,7 @@ example : LayoutIs F L := by
 set_option silmaril.trust.profile "local" in
 example : LayoutIs F badL := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := badL))
-    (kernel := Kernel.layout_sound kb.wf kb.toByteArray_eq (L := badL))
+    (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := badL))
 
 -- The same false claim fails in the kernel under `paranoid`.
 /-- error: sil_check elf.layout: the kernel did not check it -/
@@ -89,35 +86,35 @@ example : LayoutIs F badL := by
 set_option silmaril.trust.profile "paranoid" in
 example : LayoutIs F badL := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := badL))
-    (kernel := Kernel.layout_sound kb.wf kb.toByteArray_eq (L := badL))
+    (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := badL))
 
 /-! ## Audits and recorded uses -/
 
 -- The default-profile layout ran natively: its own native procedure and axiom.
 /--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_default","dep_native":[],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.layout_default._native.edge.elf.layout.ax_1_1"],"own_native":["elf.layout"],"profile":"default","schema":"silmaril.trust.v1"}
+info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_default","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.layout_default._native.edge.elf.layout.ax_1_1"],"own_native":["elf.layout"],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
 -/
 #guard_msgs in
 trust_audit layout_default
 
 set_option silmaril.trust.profile "local" in
 /--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.loader_local","dep_native":[],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.loader_local._native.edge.elf.loader.ax_1_1"],"own_native":["elf.loader"],"profile":"local","schema":"silmaril.trust.v1"}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.main_local","dep_native":[],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.main_local._native.edge.elf.tiles.x86.ax_1_1"],"own_native":["elf.tiles.x86"],"profile":"local","schema":"silmaril.trust.v1"}
+info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.loader_local","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.loader_local._native.edge.elf.loader.ax_1_1"],"own_native":["elf.loader"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.main_local","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.main_local._native.edge.elf.tiles.x86.ax_1_1"],"own_native":["elf.tiles.x86"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
 -/
 #guard_msgs in
 trust_audit loader_local main_local
 
 /--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.loader_default","dep_native":[],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.loader_default","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
 -/
 #guard_msgs in
 trust_audit loader_default
 
 set_option silmaril.trust.profile "paranoid" in
 /--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_paranoid","dep_native":[],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"paranoid","schema":"silmaril.trust.v1"}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_kernelOnly","dep_native":[],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"paranoid","schema":"silmaril.trust.v1"}
+info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_paranoid","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"paranoid","schema":"silmaril.trust.v1","violations":[]}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_kernelOnly","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"paranoid","schema":"silmaril.trust.v1","violations":[]}
 -/
 #guard_msgs in
 trust_audit layout_paranoid layout_kernelOnly

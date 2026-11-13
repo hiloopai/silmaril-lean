@@ -414,7 +414,7 @@ def ld : Loader := {litLoader ld}
       | _, some c => ("c", c)
       | _, none => ("c", "_")
     let kn' := if fn == "byName" || fn == "byAddr" then "s" else cn
-    s!"by\n  sil_check {proc}\n    (native := Native.{fn}_sound (raw := {cname}) ({cn} := {ca}))\n    (kernel := Kernel.{fn}_sound {kn}.wf {kn}.toByteArray_eq ({kn'} := {ca}))"
+    s!"by\n  sil_check {proc}\n    (native := Native.{fn}_sound (raw := {cname}) ({cn} := {ca}))\n    (kernel := Kernel.{fn}_sound {kn}.wf_true {kn}.toByteArray_eq ({kn'} := {ca}))"
   let mut t := s!"module
 
 public import {defsMod}
@@ -439,10 +439,6 @@ open Silmaril.Elf Silmaril.Elf.Staged
 
 /-- The file. -/
 noncomputable abbrev F : Silmaril.X86.Link.Blob := blobOf ⟨{cname}⟩
-
--- The kernel bytes of the same literals (`{kn}.wf`, `{kn}.toByteArray_eq`). Defined here, not in
--- the bytes module: a `kbytes_def` body is not yet exported to importing modules.
-kbytes_def {kn} of_include {cname}
 
 /-- **Stage 1** (`elf.layout`). -/
 theorem layout : LayoutIs F L := {leaf "elf.layout" "layout" none}

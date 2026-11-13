@@ -25,207 +25,203 @@ open Silmaril.Elf Silmaril.Elf.Staged
 /-- The file. -/
 noncomputable abbrev F : Silmaril.X86.Link.Blob := blobOf ⟨helloRaw⟩
 
--- The kernel bytes of the same literals (`hello.wf`, `hello.toByteArray_eq`). Defined here, not in
--- the bytes module: a `kbytes_def` body is not yet exported to importing modules.
-kbytes_def hello of_include helloRaw
-
 /-- **Stage 1** (`elf.layout`). -/
 theorem layout : LayoutIs F L := by
   sil_check elf.layout
     (native := Native.layout_sound (raw := helloRaw) (L := L))
-    (kernel := Kernel.layout_sound hello.wf hello.toByteArray_eq (L := L))
+    (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := L))
 
 /-- **Stage 2'** (`elf.loader`). -/
 theorem loader : LoaderIs F L ld := by
   sil_check elf.loader
     (native := Native.loader_sound (raw := helloRaw) (c := (L, ld)))
-    (kernel := Kernel.loader_sound hello.wf hello.toByteArray_eq (c := (L, ld)))
+    (kernel := Kernel.loader_sound hello.wf_true hello.toByteArray_eq (c := (L, ld)))
 
 theorem body_0 : BodyIs F L ⟨0, 0, 0, 0, 0, 0, 0, 0, 0, 0⟩ b0 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨0, 0, 0, 0, 0, 0, 0, 0, 0, 0⟩, b0)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨0, 0, 0, 0, 0, 0, 0, 0, 0, 0⟩, b0)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨0, 0, 0, 0, 0, 0, 0, 0, 0, 0⟩, b0)))
 
 theorem body_1 : BodyIs F L ⟨27, 1, 2, 792, 792, 28, 0, 0, 1, 0⟩ b1 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨27, 1, 2, 792, 792, 28, 0, 0, 1, 0⟩, b1)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨27, 1, 2, 792, 792, 28, 0, 0, 1, 0⟩, b1)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨27, 1, 2, 792, 792, 28, 0, 0, 1, 0⟩, b1)))
 
 theorem body_2 : BodyIs F L ⟨35, 7, 2, 824, 824, 48, 0, 0, 8, 0⟩ b2 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨35, 7, 2, 824, 824, 48, 0, 0, 8, 0⟩, b2)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨35, 7, 2, 824, 824, 48, 0, 0, 8, 0⟩, b2)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨35, 7, 2, 824, 824, 48, 0, 0, 8, 0⟩, b2)))
 
 theorem body_3 : BodyIs F L ⟨54, 7, 2, 872, 872, 36, 0, 0, 4, 0⟩ b3 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨54, 7, 2, 872, 872, 36, 0, 0, 4, 0⟩, b3)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨54, 7, 2, 872, 872, 36, 0, 0, 4, 0⟩, b3)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨54, 7, 2, 872, 872, 36, 0, 0, 4, 0⟩, b3)))
 
 theorem body_4 : BodyIs F L ⟨73, 7, 2, 908, 908, 32, 0, 0, 4, 0⟩ b4 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨73, 7, 2, 908, 908, 32, 0, 0, 4, 0⟩, b4)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨73, 7, 2, 908, 908, 32, 0, 0, 4, 0⟩, b4)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨73, 7, 2, 908, 908, 32, 0, 0, 4, 0⟩, b4)))
 
 theorem body_5 : BodyIs F L ⟨87, 1879048182, 2, 944, 944, 36, 6, 0, 8, 0⟩ b5 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨87, 1879048182, 2, 944, 944, 36, 6, 0, 8, 0⟩, b5)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨87, 1879048182, 2, 944, 944, 36, 6, 0, 8, 0⟩, b5)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨87, 1879048182, 2, 944, 944, 36, 6, 0, 8, 0⟩, b5)))
 
 theorem body_6 : BodyIs F L ⟨97, 11, 2, 984, 984, 168, 7, 1, 8, 24⟩ b6 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨97, 11, 2, 984, 984, 168, 7, 1, 8, 24⟩, b6)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨97, 11, 2, 984, 984, 168, 7, 1, 8, 24⟩, b6)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨97, 11, 2, 984, 984, 168, 7, 1, 8, 24⟩, b6)))
 
 theorem body_7 : BodyIs F L ⟨105, 3, 2, 1152, 1152, 141, 0, 0, 1, 0⟩ b7 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨105, 3, 2, 1152, 1152, 141, 0, 0, 1, 0⟩, b7)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨105, 3, 2, 1152, 1152, 141, 0, 0, 1, 0⟩, b7)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨105, 3, 2, 1152, 1152, 141, 0, 0, 1, 0⟩, b7)))
 
 theorem body_8 : BodyIs F L ⟨113, 1879048191, 2, 1294, 1294, 14, 6, 0, 2, 2⟩ b8 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨113, 1879048191, 2, 1294, 1294, 14, 6, 0, 2, 2⟩, b8)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨113, 1879048191, 2, 1294, 1294, 14, 6, 0, 2, 2⟩, b8)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨113, 1879048191, 2, 1294, 1294, 14, 6, 0, 2, 2⟩, b8)))
 
 theorem body_9 : BodyIs F L ⟨126, 1879048190, 2, 1312, 1312, 48, 7, 1, 8, 0⟩ b9 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨126, 1879048190, 2, 1312, 1312, 48, 7, 1, 8, 0⟩, b9)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨126, 1879048190, 2, 1312, 1312, 48, 7, 1, 8, 0⟩, b9)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨126, 1879048190, 2, 1312, 1312, 48, 7, 1, 8, 0⟩, b9)))
 
 theorem body_10 : BodyIs F L ⟨141, 4, 2, 1360, 1360, 192, 6, 0, 8, 24⟩ b10 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨141, 4, 2, 1360, 1360, 192, 6, 0, 8, 24⟩, b10)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨141, 4, 2, 1360, 1360, 192, 6, 0, 8, 24⟩, b10)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨141, 4, 2, 1360, 1360, 192, 6, 0, 8, 24⟩, b10)))
 
 theorem body_11 : BodyIs F L ⟨151, 4, 66, 1552, 1552, 24, 6, 24, 8, 24⟩ b11 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨151, 4, 66, 1552, 1552, 24, 6, 24, 8, 24⟩, b11)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨151, 4, 66, 1552, 1552, 24, 6, 24, 8, 24⟩, b11)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨151, 4, 66, 1552, 1552, 24, 6, 24, 8, 24⟩, b11)))
 
 theorem body_12 : BodyIs F L ⟨161, 1, 6, 4096, 4096, 27, 0, 0, 4, 0⟩ b12 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨161, 1, 6, 4096, 4096, 27, 0, 0, 4, 0⟩, b12)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨161, 1, 6, 4096, 4096, 27, 0, 0, 4, 0⟩, b12)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨161, 1, 6, 4096, 4096, 27, 0, 0, 4, 0⟩, b12)))
 
 theorem body_13 : BodyIs F L ⟨156, 1, 6, 4128, 4128, 32, 0, 0, 16, 16⟩ b13 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨156, 1, 6, 4128, 4128, 32, 0, 0, 16, 16⟩, b13)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨156, 1, 6, 4128, 4128, 32, 0, 0, 16, 16⟩, b13)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨156, 1, 6, 4128, 4128, 32, 0, 0, 16, 16⟩, b13)))
 
 theorem body_14 : BodyIs F L ⟨167, 1, 6, 4160, 4160, 16, 0, 0, 16, 16⟩ b14 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨167, 1, 6, 4160, 4160, 16, 0, 0, 16, 16⟩, b14)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨167, 1, 6, 4160, 4160, 16, 0, 0, 16, 16⟩, b14)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨167, 1, 6, 4160, 4160, 16, 0, 0, 16, 16⟩, b14)))
 
 theorem body_15 : BodyIs F L ⟨176, 1, 6, 4176, 4176, 16, 0, 0, 16, 16⟩ b15 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨176, 1, 6, 4176, 4176, 16, 0, 0, 16, 16⟩, b15)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨176, 1, 6, 4176, 4176, 16, 0, 0, 16, 16⟩, b15)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨176, 1, 6, 4176, 4176, 16, 0, 0, 16, 16⟩, b15)))
 
 theorem body_16 : BodyIs F L ⟨185, 1, 6, 4192, 4192, 265, 0, 0, 16, 0⟩ b16 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨185, 1, 6, 4192, 4192, 265, 0, 0, 16, 0⟩, b16)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨185, 1, 6, 4192, 4192, 265, 0, 0, 16, 0⟩, b16)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨185, 1, 6, 4192, 4192, 265, 0, 0, 16, 0⟩, b16)))
 
 theorem body_17 : BodyIs F L ⟨191, 1, 6, 4460, 4460, 13, 0, 0, 4, 0⟩ b17 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨191, 1, 6, 4460, 4460, 13, 0, 0, 4, 0⟩, b17)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨191, 1, 6, 4460, 4460, 13, 0, 0, 4, 0⟩, b17)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨191, 1, 6, 4460, 4460, 13, 0, 0, 4, 0⟩, b17)))
 
 theorem body_18 : BodyIs F L ⟨197, 1, 2, 8192, 8192, 17, 0, 0, 4, 0⟩ b18 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨197, 1, 2, 8192, 8192, 17, 0, 0, 4, 0⟩, b18)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨197, 1, 2, 8192, 8192, 17, 0, 0, 4, 0⟩, b18)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨197, 1, 2, 8192, 8192, 17, 0, 0, 4, 0⟩, b18)))
 
 theorem body_19 : BodyIs F L ⟨205, 1, 2, 8212, 8212, 52, 0, 0, 4, 0⟩ b19 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨205, 1, 2, 8212, 8212, 52, 0, 0, 4, 0⟩, b19)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨205, 1, 2, 8212, 8212, 52, 0, 0, 4, 0⟩, b19)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨205, 1, 2, 8212, 8212, 52, 0, 0, 4, 0⟩, b19)))
 
 theorem body_20 : BodyIs F L ⟨219, 1, 2, 8264, 8264, 164, 0, 0, 8, 0⟩ b20 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨219, 1, 2, 8264, 8264, 164, 0, 0, 8, 0⟩, b20)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨219, 1, 2, 8264, 8264, 164, 0, 0, 8, 0⟩, b20)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨219, 1, 2, 8264, 8264, 164, 0, 0, 8, 0⟩, b20)))
 
 theorem body_21 : BodyIs F L ⟨229, 14, 3, 15800, 11704, 8, 0, 0, 8, 8⟩ b21 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨229, 14, 3, 15800, 11704, 8, 0, 0, 8, 8⟩, b21)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨229, 14, 3, 15800, 11704, 8, 0, 0, 8, 8⟩, b21)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨229, 14, 3, 15800, 11704, 8, 0, 0, 8, 8⟩, b21)))
 
 theorem body_22 : BodyIs F L ⟨241, 15, 3, 15808, 11712, 8, 0, 0, 8, 8⟩ b22 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨241, 15, 3, 15808, 11712, 8, 0, 0, 8, 8⟩, b22)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨241, 15, 3, 15808, 11712, 8, 0, 0, 8, 8⟩, b22)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨241, 15, 3, 15808, 11712, 8, 0, 0, 8, 8⟩, b22)))
 
 theorem body_23 : BodyIs F L ⟨253, 6, 3, 15816, 11720, 496, 7, 0, 8, 16⟩ b23 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨253, 6, 3, 15816, 11720, 496, 7, 0, 8, 16⟩, b23)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨253, 6, 3, 15816, 11720, 496, 7, 0, 8, 16⟩, b23)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨253, 6, 3, 15816, 11720, 496, 7, 0, 8, 16⟩, b23)))
 
 theorem body_24 : BodyIs F L ⟨171, 1, 3, 16312, 12216, 72, 0, 0, 8, 8⟩ b24 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨171, 1, 3, 16312, 12216, 72, 0, 0, 8, 8⟩, b24)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨171, 1, 3, 16312, 12216, 72, 0, 0, 8, 8⟩, b24)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨171, 1, 3, 16312, 12216, 72, 0, 0, 8, 8⟩, b24)))
 
 theorem body_25 : BodyIs F L ⟨262, 1, 3, 16384, 12288, 16, 0, 0, 8, 0⟩ b25 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨262, 1, 3, 16384, 12288, 16, 0, 0, 8, 0⟩, b25)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨262, 1, 3, 16384, 12288, 16, 0, 0, 8, 0⟩, b25)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨262, 1, 3, 16384, 12288, 16, 0, 0, 8, 0⟩, b25)))
 
 theorem body_26 : BodyIs F L ⟨268, 8, 3, 16400, 12304, 8, 0, 0, 1, 0⟩ b26 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨268, 8, 3, 16400, 12304, 8, 0, 0, 1, 0⟩, b26)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨268, 8, 3, 16400, 12304, 8, 0, 0, 1, 0⟩, b26)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨268, 8, 3, 16400, 12304, 8, 0, 0, 1, 0⟩, b26)))
 
 theorem body_27 : BodyIs F L ⟨273, 1, 48, 0, 12304, 45, 0, 0, 1, 1⟩ b27 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨273, 1, 48, 0, 12304, 45, 0, 0, 1, 1⟩, b27)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨273, 1, 48, 0, 12304, 45, 0, 0, 1, 1⟩, b27)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨273, 1, 48, 0, 12304, 45, 0, 0, 1, 1⟩, b27)))
 
 theorem body_28 : BodyIs F L ⟨1, 2, 0, 0, 12352, 864, 29, 18, 8, 24⟩ b28 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨1, 2, 0, 0, 12352, 864, 29, 18, 8, 24⟩, b28)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨1, 2, 0, 0, 12352, 864, 29, 18, 8, 24⟩, b28)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨1, 2, 0, 0, 12352, 864, 29, 18, 8, 24⟩, b28)))
 
 theorem body_29 : BodyIs F L ⟨9, 3, 0, 0, 13216, 475, 0, 0, 1, 0⟩ b29 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨9, 3, 0, 0, 13216, 475, 0, 0, 1, 0⟩, b29)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨9, 3, 0, 0, 13216, 475, 0, 0, 1, 0⟩, b29)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨9, 3, 0, 0, 13216, 475, 0, 0, 1, 0⟩, b29)))
 
 theorem body_30 : BodyIs F L ⟨17, 3, 0, 0, 13691, 282, 0, 0, 1, 0⟩ b30 :=
   by
   sil_check elf.body
     (native := Native.body_sound (raw := helloRaw) (c := (L, ⟨17, 3, 0, 0, 13691, 282, 0, 0, 1, 0⟩, b30)))
-    (kernel := Kernel.body_sound hello.wf hello.toByteArray_eq (c := (L, ⟨17, 3, 0, 0, 13691, 282, 0, 0, 1, 0⟩, b30)))
+    (kernel := Kernel.body_sound hello.wf_true hello.toByteArray_eq (c := (L, ⟨17, 3, 0, 0, 13691, 282, 0, 0, 1, 0⟩, b30)))
 
 /-- **The stages assemble to the whole parse** (`parses_assemble`; no further kernel run). -/
 theorem parses : Parses F (L.assemble bodies ld) :=
@@ -238,14 +234,14 @@ theorem byName_ok : byName.sorted = true ∧ byName.Sound F :=
   by
   sil_check elf.symbols.byName
     (native := Native.byName_sound (raw := helloRaw) (x := byName))
-    (kernel := Kernel.byName_sound hello.wf hello.toByteArray_eq (s := byName))
+    (kernel := Kernel.byName_sound hello.wf_true hello.toByteArray_eq (s := byName))
 
 /-- `elf.symbols.byAddr`. -/
 theorem byAddr_ok : byAddr.sorted = true ∧ byAddr.Sound F :=
   by
   sil_check elf.symbols.byAddr
     (native := Native.byAddr_sound (raw := helloRaw) (x := byAddr))
-    (kernel := Kernel.byAddr_sound hello.wf hello.toByteArray_eq (s := byAddr))
+    (kernel := Kernel.byAddr_sound hello.wf_true hello.toByteArray_eq (s := byAddr))
 
 /-- **`main` by name**: the forward index names entry 31, and it is `main`. -/
 theorem main_entry : ∃ s, Symbols.SymAt F symtab 31 s ∧ s.name = nameOf "main" :=
@@ -262,6 +258,6 @@ theorem main_code : L.offsetOf 4192 = some 4192 ∧ tilesCover ⟨4192, 27⟩ ma
   ⟨by decide, by decide, by
   sil_check elf.tiles.x86
     (native := Native.tilesX86_sound (raw := helloRaw) (c := (4192, mainTiles)))
-    (kernel := Kernel.tilesX86_sound hello.wf hello.toByteArray_eq (c := (4192, mainTiles)))⟩
+    (kernel := Kernel.tilesX86_sound hello.wf_true hello.toByteArray_eq (c := (4192, mainTiles)))⟩
 
 end Silmaril.Elf.Staged.Example
