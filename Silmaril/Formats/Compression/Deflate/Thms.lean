@@ -4,6 +4,7 @@ public import Silmaril.Formats.Compression.Deflate.Defs
 public import Silmaril.Formats.Compression.Thms
 public import Silmaril.Formats.Compression.Deflate.HuffmanLemmas
 import Silmaril.Proofs.Formats.Compression.Deflate
+import Silmaril.Proofs.Formats.Compression.DeflateLocal
 import Silmaril.Raw.Formats.Compression.Deflate.Stored
 import Silmaril.Raw.Formats.Compression.Deflate.RoundTrip
 import Silmaril.Raw.Formats.Compression.Deflate.WithHistory
@@ -16,6 +17,9 @@ import Silmaril.Raw.Formats.Compression.Deflate.HuffmanLemmas
 Proved (standard axioms):
 
 * `decoder_eq_some`, `consumes`: a member consumes a prefix of its input;
+* `deflateTake_append`, `deflateTakeWithHistory_append`, `local`, `task_local`:
+  bytes appended after a member never change how it decodes (the append law,
+  with or without a preset history);
 * `roundTrip`, `codec`: stored encodings decode back, whatever follows them;
   hence `exists_compresses` (every buffer is the decoding of some stream);
 * `compress_isSome`, `compress_compresses`: the LZ77/fixed-Huffman compressor
@@ -32,8 +36,6 @@ Proved (standard axioms):
   `HuffmanTable.ofLengths_symOK` (every symbol with a nonzero length has a decodable code);
 * known-answer vectors produced by zlib (an independent implementation), one per
   block type, and two rejections (distance code 30, `BTYPE = 11`).
-
-Open: `Task.local` (the append law), frozen.
 -/
 
 @[expose] public section
@@ -47,6 +49,22 @@ theorem decoder_eq_some {bytes out rest : List UInt8} :
 theorem consumes : decoder.Consumes := Proofs.Formats.Compression.Deflate.decoder_consumes
 
 theorem roundTrip : RoundTrip decoder encoder := Proofs.Formats.Compression.Deflate.roundTrip
+
+/-- Bytes after a DEFLATE stream are passed through untouched. -/
+theorem deflateTake_append {bs out rest : List UInt8} (h : deflateTake bs = .ok (out, rest))
+    (tail : List UInt8) : deflateTake (bs ++ tail) = .ok (out, rest ++ tail) :=
+  Proofs.Formats.Compression.DeflateLocal.deflateTake_append h tail
+
+/-- The same with a preset history (zlib dictionaries). -/
+theorem deflateTakeWithHistory_append {history bs out rest : List UInt8}
+    (h : deflateTakeWithHistory history bs = .ok (out, rest)) (tail : List UInt8) :
+    deflateTakeWithHistory history (bs ++ tail) = .ok (out, rest ++ tail) :=
+  Proofs.Formats.Compression.DeflateLocal.deflateTakeWithHistory_append h tail
+
+/-- **The append law**: DEFLATE members are self-delimiting. -/
+theorem «local» : decoder.Local := Proofs.Formats.Compression.DeflateLocal.decoder_local
+
+theorem task_local : Task.local := «local»
 
 /-- Raw DEFLATE with stored blocks, as a framework codec. -/
 def codec : Codec := ⟨decoder, encoder, roundTrip⟩

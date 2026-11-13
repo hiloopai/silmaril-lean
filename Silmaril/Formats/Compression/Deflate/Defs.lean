@@ -29,8 +29,8 @@ optimised implementation (an `Array`-accumulating mirror is registered with
   `isValidLengths` is the Kraft inequality; `fixedLitLenLengths`,
   `fixedDistLengths`: the RFC 1951 §3.2.6 fixed codes.
 
-`Task.local` (frozen, open) is the append law for DEFLATE members (see
-`Deflate.Thms`).
+`Task.local` is the append law for DEFLATE members; it is proved as
+`Deflate.local` (see `Deflate.Thms`).
 -/
 
 @[expose] public section
@@ -43,11 +43,10 @@ abbrev decoder : Decoder := Decoder.ofExcept deflateTake
 /-- The stored-block encoder: correct and linear-time, it does not shrink data. -/
 abbrev encoder : Encoder := storedBytes
 
-/-- **Open (frozen):** bytes after a DEFLATE member never change its decoding.
-Proved for stored encodings (`roundTrip`); the general law needs monotonicity of
-every decoder stage, whose fuel (`bitsLeft + 1`) grows with appended input.
-`Inflate.deflate_local_of_task` derives it from completeness of the streaming
-raw inflater. -/
+/-- Bytes after a DEFLATE member never change its decoding. **Proved** as
+`Deflate.local` (and `Deflate.task_local`): every decoder stage is monotone under
+appended input, and its fuel (`bitsLeft + 1`) only grows. The definition is kept
+for compatibility with statements that take it as a hypothesis. -/
 def Task.local : Prop := decoder.Local
 
 end Silmaril.Formats.Compression.Deflate

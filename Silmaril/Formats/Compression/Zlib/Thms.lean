@@ -21,8 +21,8 @@ Proved (standard axioms):
 * `roundTrip`, `codec`, `compress_eq`, `decompress_compress`: the stored
   encoder round-trips, as a member followed by anything and as a whole buffer;
 * `decompress_eq`: whole-buffer decoding is `decoder.whole`;
-* `local_of_deflate`: the append law for zlib members follows from the one for
-  DEFLATE (`Deflate.Task.local`);
+* `local`: the append law for zlib members, from the one for DEFLATE
+  (`Deflate.local`) through `local_of_deflate`;
 * known answers: CPython's `zlib.compress(b"hello")` at levels 6 and 0, our
   encoder agreeing with CPython byte for byte at level 0, and rejections of a
   corrupted Adler-32 and of `FDICT = 1` without a dictionary;
@@ -50,6 +50,9 @@ def codec : Codec := ⟨decoder, encoder, roundTrip⟩
 
 theorem local_of_deflate (h : Deflate.Task.local) : decoder.Local :=
   Proofs.Formats.Compression.Zlib.local_of_deflate h
+
+/-- Bytes after a zlib member never change how it decodes. -/
+theorem «local» : decoder.Local := local_of_deflate Deflate.task_local
 
 theorem decompress_eq (bytes : ByteArray) :
     decompress bytes = (decoder.whole bytes.data.toList).map (fun out => ⟨out.toArray⟩) :=

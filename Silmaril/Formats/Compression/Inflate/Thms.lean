@@ -42,7 +42,8 @@ Proved (standard axioms):
   `Packed.fixed_token_no_refill`: with 31 bits buffered the packed fixed-table
   token decoder agrees with the canonical token parser and pulls no input.
 
-Task-conditional: `zlib_local_of_task`, `deflate_local_of_task`.
+Task-conditional: `zlib_local_of_task`, `deflate_local_of_task`. Their
+conclusions are now proved unconditionally as `Zlib.local` and `Deflate.local`.
 -/
 
 @[expose] public section

@@ -93,4 +93,138 @@ theorem decompress_eq (bytes : ByteArray) :
 theorem encoder_ne_nil (data : List UInt8) : encoder data ≠ [] := by
   simp [Framing.encode, header, gzipMagic]
 
+/-! ### The header and trailer ignore appended bytes -/
+
+theorem gzipDropZeroTerminated_append (tail : List UInt8) : ∀ {bs r : List UInt8},
+    gzipDropZeroTerminated bs = some r → gzipDropZeroTerminated (bs ++ tail) = some (r ++ tail)
+  | [], r, h => by simp [gzipDropZeroTerminated] at h
+  | x :: xs, r, h => by
+    by_cases hx : x = 0
+    · subst hx
+      rw [gzipDropZeroTerminated.eq_2] at h
+      cases h
+      rw [List.cons_append, gzipDropZeroTerminated.eq_2]
+    · rw [gzipDropZeroTerminated.eq_3 x xs (fun he => hx he)] at h
+      rw [List.cons_append, gzipDropZeroTerminated.eq_3 x _ (fun he => hx he)]
+      exact gzipDropZeroTerminated_append tail h
+
+theorem gzipDropExact_append {n : Nat} {bs r : List UInt8} (h : gzipDropExact n bs = some r)
+    (tail : List UInt8) : gzipDropExact n (bs ++ tail) = some (r ++ tail) := by
+  unfold gzipDropExact at h ⊢
+  split at h
+  · next hn =>
+    cases h
+    rw [ite_eq_left_of_eq_true _ _ (eq_true (by simp only [List.length_append]; omega)),
+      List.drop_append_of_le_length hn]
+  · cases h
+
+theorem gzipSkipOptional_append {flg : UInt8} {bs r : List UInt8}
+    (h : gzipSkipOptional flg bs = some r) (tail : List UInt8) :
+    gzipSkipOptional flg (bs ++ tail) = some (r ++ tail) := by
+  unfold gzipSkipOptional at h ⊢
+  dsimp only at h ⊢
+  have hz : ∀ {x y : List UInt8}, some x = some y → some (x ++ tail) = some (y ++ tail) := by
+    intro x y hxy; cases hxy; rfl
+  by_cases hx : flg &&& gzipFEXTRA = 0 <;>
+  by_cases hn : flg &&& gzipFNAME = 0 <;>
+  by_cases hc : flg &&& gzipFCOMMENT = 0 <;>
+  simp only [hx, hn, hc, ne_eq, not_true_eq_false, not_false_eq_true, ↓reduceIte] at h ⊢ <;>
+  first
+  | (match bs, h with
+     | x0 :: x1 :: r', h =>
+       simp only [List.cons_append]
+       split at h
+       · cases h
+       next bs1 hbs1 =>
+       rw [gzipDropExact_append hbs1 tail]
+       dsimp only
+       first
+       | exact hz h
+       | exact gzipDropZeroTerminated_append tail h
+       | (split at h
+          · cases h
+          next bs2 hbs2 =>
+          rw [gzipDropZeroTerminated_append tail hbs2]
+          first
+          | exact hz h
+          | exact gzipDropZeroTerminated_append tail h))
+  | (first
+     | exact hz h
+     | exact gzipDropZeroTerminated_append tail h
+     | (split at h
+        · cases h
+        next bs2 hbs2 =>
+        rw [gzipDropZeroTerminated_append tail hbs2]
+        first
+        | exact hz h
+        | exact gzipDropZeroTerminated_append tail h))
+
+theorem gzipSkipHeaderFields_append {flg : UInt8} {member afterFixed r : List UInt8}
+    (h : gzipSkipHeaderFields flg member afterFixed = some r) (tail : List UInt8) :
+    gzipSkipHeaderFields flg (member ++ tail) (afterFixed ++ tail) = some (r ++ tail) := by
+  unfold gzipSkipHeaderFields at h ⊢
+  split at h
+  · cases h
+  next afterOpt hso =>
+  rw [gzipSkipOptional_append hso tail]
+  dsimp only
+  split at h
+  · next hc =>
+    rw [ite_eq_left_of_eq_true _ _ (eq_true hc)]
+    split at h
+    · next c0 c1 r' =>
+      dsimp only at h ⊢
+      have hlen : (member ++ tail).length - (c0 :: c1 :: r' ++ tail).length =
+          member.length - (c0 :: c1 :: r').length := by
+        simp only [List.length_append, List.length_cons]
+        omega
+      rw [List.cons_append, List.cons_append, ← List.cons_append, ← List.cons_append, hlen,
+        List.take_append_of_le_length (Nat.sub_le _ _)]
+      split at h
+      · next hcrc =>
+        cases h
+        simp only [List.cons_append, hcrc, ↓reduceIte]
+      · cases h
+    · cases h
+  · next hc =>
+    rw [ite_eq_right_of_eq_false _ _ (eq_false hc)]
+    cases h
+    rfl
+
+theorem gzipCheckTrailer_append {data afterData rest : List UInt8}
+    (h : gzipCheckTrailer data afterData = some rest) (tail : List UInt8) :
+    gzipCheckTrailer data (afterData ++ tail) = some (rest ++ tail) := by
+  unfold gzipCheckTrailer at h ⊢
+  split at h
+  · next c0 c1 c2 c3 i0 i1 i2 i3 r =>
+    simp only [List.cons_append]
+    split at h
+    · next hc =>
+      cases h
+      simp only [hc, and_self, ↓reduceIte]
+    · cases h
+  · cases h
+
+theorem framing_local : framing.Local := by
+  refine ⟨fun bytes h rest tail hh => ?_, fun h out bytes rest tail ht => ?_⟩
+  · simp only [framing, checkHeader] at hh ⊢
+    split at hh
+    · next cm flg m0 m1 m2 m3 xfl os body =>
+      simp only [List.cons_append]
+      split at hh
+      · cases hh
+      next hok =>
+      rw [ite_eq_right_of_eq_false _ _ (eq_false hok)]
+      obtain ⟨r, hr, he⟩ := Option.map_eq_some_iff.mp hh
+      cases he
+      have := gzipSkipHeaderFields_append hr tail
+      simp only [List.cons_append] at this
+      rw [this]
+      rfl
+    · cases hh
+  · exact gzipCheckTrailer_append ht tail
+
+theorem local_of_deflate (h : Deflate.decoder.Local) : decoder.Local :=
+  Framing.wrap_local framing_local h
+
 end Silmaril.Proofs.Formats.Compression.Gzip

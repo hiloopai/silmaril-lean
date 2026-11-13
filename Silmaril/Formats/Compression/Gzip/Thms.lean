@@ -17,6 +17,8 @@ Proved (standard axioms):
   container `framing.wrap Deflate.decoder`;
 * `consumes`, `decoder_trailer`: a member consumes a prefix ending in the
   CRC-32/ISIZE trailer of its output, followed by the untouched rest;
+* `framing_local`, `local`: header and trailer ignore appended bytes, so with
+  `Deflate.local` bytes after a member never change how it decodes;
 * `roundTrip`, `codec`, `compress_eq`, `decompress_compress`: the stored
   encoder round-trips;
 * `decompress_eq`: a gzip file is `decoder.members`, so `members_encoder` and
@@ -40,6 +42,11 @@ theorem decoder_trailer {bytes out rest : List UInt8} (h : decoder bytes = some 
   Proofs.Formats.Compression.Gzip.decoder_trailer h
 
 theorem roundTrip : RoundTrip decoder encoder := Proofs.Formats.Compression.Gzip.roundTrip
+
+theorem framing_local : framing.Local := Proofs.Formats.Compression.Gzip.framing_local
+
+/-- Bytes after a gzip member never change how it decodes. -/
+theorem «local» : decoder.Local := Proofs.Formats.Compression.Gzip.local_of_deflate Deflate.local
 
 /-- gzip members with stored blocks, as a framework codec. -/
 def codec : Codec := ⟨decoder, encoder, roundTrip⟩
