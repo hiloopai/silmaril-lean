@@ -1,0 +1,9 @@
+# C11 litmus programs: one directory per shape, each with litmus.txt.
+sb
+mp
+lb
+iriw
+2+2w
+corr
+counter
+sb+fences

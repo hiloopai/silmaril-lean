@@ -1,0 +1,15 @@
+recorded 2026-11-13
+Model name:                              Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz
+CPU family:                              6
+Model:                                   158
+Thread(s) per core:                      2
+Core(s) per socket:                      6
+Socket(s):                               1
+Stepping:                                10
+NUMA node(s):                            1
+microcode: 0xfa
+kernel: 6.8.0-139-generic
+gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+host glibc: 2.39-0ubuntu8.12, libc.so.6 sha256 755a371e86cc9f564ab54f66140747700fb0a103f698f659f2060f707897e09a
+pinned glibc: 2.39-0ubuntu8.9, libc.so.6 sha256 3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf, ld-linux-x86-64.so.2 sha256 c20a2dc8917c755f02b94049356320fe1f62ac7d9f8994731f807d9df39302da
+SMT siblings: CPU n and n+6 (lscpu -e)

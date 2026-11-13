@@ -1,0 +1,23 @@
+# WASI 0.3 command components written in Rust (see README.md).
+[workspace]
+resolver = "2"
+members = ["p3rt", "hello", "echo", "cat"]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "Apache-2.0 WITH LLVM-exception"
+publish = false
+
+[workspace.dependencies]
+p3rt = { path = "p3rt" }
+wasip3 = { version = "=0.9.0", default-features = false }
+futures = { version = "=0.3.34", default-features = false, features = ["async-await"] }
+
+[profile.release]
+opt-level = "s"
+debug = false
+strip = "debuginfo"
+codegen-units = 1
+lto = true
+panic = "abort"

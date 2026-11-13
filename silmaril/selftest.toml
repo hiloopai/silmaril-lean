@@ -69,7 +69,13 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.c.elaborates_to", "silmaril.shapes.c.ir_refines", "silmaril.shapes.c.compiles_to",
   "silmaril.shapes.c.compiles_to.builds", "silmaril.shapes.c.compiles_to.point",
   "silmaril.shapes.c.compiles_to.segment", "silmaril.shapes.c.compiles_to.segment_from_c",
-  "silmaril.shapes.c.compiles_to.canonical_entry"]
+  "silmaril.shapes.c.compiles_to.canonical_entry",
+  "silmaril.shapes.machine.reach", "silmaril.shapes.machine.reach_set",
+  "silmaril.shapes.machine.simulates", "silmaril.shapes.machine.bisimilar",
+  "silmaril.shapes.machine.sat", "silmaril.shapes.machine.json.reach",
+  "silmaril.shapes.machine.json.bisimilar", "silmaril.shapes.machine.json.simulates",
+  "silmaril.shapes.machine.accepts", "silmaril.shapes.machine.nonempty",
+  "silmaril.shapes.machine.json.accepts"]
 
 # The worked example of the System V translation-validation shapes (examples/sysv-tv,
 # docs/projects/sysv-tv.md): one C function, two builds.

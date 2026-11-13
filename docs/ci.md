@@ -51,9 +51,11 @@ outside this measurement. Reruns use the current attempt's start time.
 2. Lake checks the current input traces. Cache presence never counts as a
    passing test, and all native regression suites still run.
 3. After successful checks, every main push records its build of every
-   `make check` target and publishes what the pool lacks. Only main can assume the
-   writer role; every other run reads. Fork pull requests get no OIDC token: they
-   build without the pool, which does not fit the automatic limit.
+   `make check` target and publishes what the pool lacks, with a seed for hosts
+   that never installed silmaril-lean (`put --seed`). A pull request publishes the
+   outputs its Lake built (`put`). Every run assumes the one pool role,
+   `gha-lean-cas`. Fork pull requests get no OIDC token: they build without the
+   pool, which does not fit the automatic limit.
 
 After a toolchain or archive-tool change no published build matches. Run **CI**
 manually on **main** with **seed** checked: it builds cold with a 90-minute Lean
