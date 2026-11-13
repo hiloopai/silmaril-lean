@@ -192,4 +192,9 @@ def launch (_ : Cli.Input) (q : NetQueue) : Config isa := ⟨⟨.accept, 0, [], 
 def L : SockSem :=
   Sockets.sockSemNet launch [] serverSpec noFilter Sockets.genericAccept Sockets.genericClose
 
+/-- **The sent octets of every connection are a prefix of the hello responses its received
+octets call for**: the safety half of the loop's behaviour, in terms of octets only. -/
+def SentPrefix (L : SockSem) (inp : Cli.Input) : Prop :=
+  ∀ tr, L inp tr → ∀ c, sent c tr <+: helloOut (helloCount (received c tr))
+
 end Silmaril.Servers.LinuxHello
