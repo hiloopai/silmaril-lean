@@ -75,7 +75,6 @@ variable {V : Type u₁} {C : Type u₂}
       J.map (CartesianMonoidalCategory.toUnit _ ≫ M.unitIso.inv) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The pairing clause. -/
 @[simp] theorem denote_pair {a b : Tm ν Φ n} {A B : τ}
@@ -84,7 +83,6 @@ variable {V : Type u₁} {C : Type u₂}
       pair J (denote J M ha) (denote J M hb) ≫ J.map (M.tensorIso A B).inv := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The pair-elimination clause. -/
 @[simp] theorem denote_let₂ {a : Tm ν Φ n} {c : Tm ν Φ (n + 2)} {A B D : τ}
@@ -96,7 +94,6 @@ variable {V : Type u₁} {C : Type u₂}
           J.map (envPairHom M Γ β A B) ≫ denote J M hc) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The left-injection clause. -/
 @[simp] theorem denote_inl {a : Tm ν Φ n} {A B : τ}
@@ -105,7 +102,6 @@ variable {V : Type u₁} {C : Type u₂}
       denote J M ha ≫ J.map (coprod.inl ≫ (M.coprodIso A B).inv) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The right-injection clause. -/
 @[simp] theorem denote_inr {b : Tm ν Φ n} {A B : τ}
@@ -114,7 +110,6 @@ variable {V : Type u₁} {C : Type u₂}
       denote J M hb ≫ J.map (coprod.inr ≫ (M.coprodIso A B).inv) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The case clause. -/
 @[simp] theorem denote_case {e : Tm ν Φ n} {l r : Tm ν Φ (n + 1)} {A B D : τ}
@@ -126,7 +121,6 @@ variable {V : Type u₁} {C : Type u₂}
         (J.map (envSnocIso M Γ β B).hom ≫ denote J M hr) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The `abort` clause. -/
 @[simp] theorem denote_abort {a : Tm ν Φ n} {D : τ}
@@ -135,7 +129,6 @@ variable {V : Type u₁} {C : Type u₂}
       abort J M (A := D) (denote J M ha) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 /-- The iteration clause. -/
 @[simp] theorem denote_iter {a : Tm ν Φ n} {b : Tm ν Φ (n + 1)} {A B : τ}
@@ -147,6 +140,5 @@ variable {V : Type u₁} {C : Type u₂}
           J.map (M.coprodIso B A).hom)) := by
   simp only [denote, HasType.toGeneric,
     Silmaril.Thesis.LambdaIter.Subtyping.Semantics.Categorical.denote]
-  rfl
 
 end Silmaril.Thesis.LambdaIter.LocallyNameless.Categorical

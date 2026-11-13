@@ -62,7 +62,7 @@ deps = ["Prelude", "Semantics", "Numeric", "Crypto", "Formats", "Machine"]
 [[region]]
 name = "Wasm"
 scope = "WebAssembly: core specifications, component model, text and binary formats, lowering."
-deps = ["Prelude", "Semantics", "Logic", "Numeric", "Crypto", "Formats", "SSA", "Machine", "Cli", "Games"]
+deps = ["Prelude", "Semantics", "Logic", "Numeric", "Crypto", "Formats", "SSA", "Machine", "Cli", "Games", "Parse"]
 
 [[region]]
 name = "GPU"
@@ -92,7 +92,7 @@ deps = ["Prelude", "Semantics", "Logic", "Formats", "Machine", "Process", "Elf",
 [[region]]
 name = "Project"
 scope = "Silmaril projects: artifact types, formats and values, problems over arguments, the problem DAG, records files, rooms, the standard shapes (formats and values, ELF executables, x86-64 functions, command-line programs) and format adapters over silmaril's parsers; the records `sil project` dumps and checks. Also imports the x86 tree (`Silmaril.X86`: function contracts, block certificates, the pinned ladder), `Silmaril.Problems` (core, model classes and shapes) and `Silmaril.Data` (the include-bytes helper); none of these is a region here, an existing exception to `deps`."
-deps = ["Formats", "Logic", "Process", "Wasm", "Machine", "Cli"]
+deps = ["Formats", "Logic", "Process", "Wasm", "Machine", "Cli", "Cerberus", "Compiler"]
 
 # Views are leaves: no region imports them. Papers, Standards and Thesis
 # re-export and restate; Courses may include self-contained teaching proofs.
@@ -120,7 +120,7 @@ deps = ["Logic"]
 [[region]]
 name = "Games"
 scope = "Game semantics for components that call effects: effect signatures, plays, strategies with refinement, parallel composition with hiding, handlers, transition systems as strategies, divergence and infinite plays, and instantiation and linking of components with failure."
-deps = ["Prelude"]
+deps = ["Prelude", "Logic"]
 
 [[region]]
 name = "WasmSpec"
@@ -130,4 +130,14 @@ deps = ["Logic", "Wasm"]
 [[region]]
 name = "Parse"
 scope = "Byte-level parsing: a combinator core for binary formats, with its laws, shared by the Wasm binary codecs and other formats."
-deps = []
+deps = ["Wasm"]
+
+[[region]]
+name = "Cerberus"
+scope = "The Lean port of the Cerberus C semantics: Cabs, Ail and typed Ail with the C frontend, Core syntax and dynamics, the memory models, the Ail-to-Core elaboration, target types, codecs and the institution over Core executions. Its Raw modules also import the older `Silmaril.{Compile,Foundations}` trees, which are not regions."
+deps = ["Prelude", "Semantics", "Logic", "Numeric", "Formats"]
+
+[[region]]
+name = "Compiler"
+scope = "C compiler machinery over Cerberus Core: the Core elaboration correctness theorems, the compiler category and its Cerberus instance, the Clang JSON frontend, the Core reader and verified Core fragments. Also imports the x86 tree (`Silmaril.X86`) and the older `Silmaril.Compile` tree, which are not regions."
+deps = ["Prelude", "Semantics", "Logic", "Cerberus", "Machine"]

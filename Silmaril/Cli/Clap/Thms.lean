@@ -59,4 +59,54 @@ theorem read_early {t : Tool} {env : String → Option String} {argv : List Stri
     t.read env argv = .help p := by
   simp only [Tool.read, h]
 
+/-! ## The reading depends on the grammar and `helpSub` only
+
+The presentation (`present`, `after`, `long`, `choices`, `usageExit`) does not change what a
+command line reads to: two tools with the same grammar and the same `helpSub` read every
+argument vector alike (`Tool.read_congr`). A tool that differs from another only in how it
+prints its outcomes (`{ t with present := p }`) therefore inherits its reading. -/
+
+theorem step_congr {t u : Tool} (hs : t.helpSub = u.helpSub) (c : Command)
+    (path : List String) (tok : String) (rest : List String) :
+    step t c path tok rest = step u c path tok rest := by
+  simp only [step, hs]
+
+/-- The pre-pass depends on the tool only through `helpSub`. -/
+theorem pre_congr {t u : Tool} (hs : t.helpSub = u.helpSub) (n : Nat) :
+    ∀ (c : Command) (path argv : List String), argv.length ≤ n →
+      pre t c path argv = pre u c path argv := by
+  induction n with
+  | zero => intro c path argv h; cases argv <;> simp_all [pre]
+  | succ n ih =>
+    intro c path argv h; cases argv with
+    | nil => rfl
+    | cons tok rest =>
+      have hl : rest.length ≤ n := by simpa using h
+      rw [pre, pre, step_congr hs]
+      split
+      · rfl
+      · rfl
+      · exact ih c path rest hl
+      · exact ih _ _ rest hl
+      · split
+        · rfl
+        · split
+          · rfl
+          · exact ih c path _ (by simp only [List.length_cons] at hl; omega)
+
+/-- **The reading depends on the grammar and `helpSub` only.** -/
+theorem Tool.read_congr {t u : Tool} (hg : t.grammar = u.grammar) (hs : t.helpSub = u.helpSub)
+    (env : String → Option String) (argv : List String) : t.read env argv = u.read env argv := by
+  have hr : ∀ fs, t.readInv env fs = u.readInv env fs := by
+    intro fs; unfold Tool.readInv Tool.message nameOf; simp only [hg]
+  unfold Tool.read
+  rw [pre_congr hs argv.length t.grammar [t.grammar.name] argv (Nat.le_refl _), hg]
+  simp only [hr]
+
+/-- A tool with its own presentation reads as the tool it was built from. -/
+theorem Tool.read_present (t : Tool) (p : Option (List String → Outcome → String))
+    (env : String → Option String) (argv : List String) :
+    ({ t with present := p } : Tool).read env argv = t.read env argv :=
+  Tool.read_congr (t := { t with present := p }) (u := t) rfl rfl env argv
+
 end Silmaril.Cli.Clap

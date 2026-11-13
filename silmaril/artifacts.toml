@@ -3,6 +3,24 @@
 schema = "silmaril.artifacts.v0.2"
 
 [[artifact]]
+cid = "bafkr4iayh6sghvglya2f5njxpzh5g3mgpnk72jf5vq3pglvmurqcakavqu"
+type = "blob"
+name = "silmaril.sysv_tv.max2.o2_obj"
+paths = ["examples/sysv-tv/max2/O2/max2.o"]
+size = 736
+sha256 = "707f0a3662799f76ba7587663c87d64200acde6a33c1ecd53225fbdca30dc279"
+git_sha1 = "fb9a6bfd343d1dd715ee4e8bef9d720c26751b51"
+
+[[artifact]]
+cid = "bafkr4ibdgmy2hitv7stkkh3k4luhsonl3ugqpu5swz6tnxkhjr7fb5xuka"
+type = "blob"
+name = "silmaril.sysv_tv.max2.c"
+paths = ["examples/sysv-tv/max2/max2.c"]
+size = 209
+sha256 = "3719fe9008f66170e4a853b8bafdf4e61bc8beafb9c65038e427821191173476"
+git_sha1 = "6984f2d8085780cb8efb677ebf0c2e645437e440"
+
+[[artifact]]
 cid = "bafkr4ic6n6megvodyd2vunfrri6rltghpbtmmk7qwwbxotm4k5vpobhjqy"
 type = "blob"
 name = "silmaril.selftest.exec_elf"
@@ -38,6 +56,15 @@ paths = ["examples/project/data/hello.txt"]
 size = 6
 sha256 = "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
 git_sha1 = "ce013625030ba8dba906f756967f9e9ca394464a"
+
+[[artifact]]
+cid = "bafkr4iesl6k3e73cpg3ofc4r5gsd5xdxluxkmdj7ytuyysv4izugh3zulq"
+type = "blob"
+name = "silmaril.sysv_tv.max2.o0_obj"
+paths = ["examples/sysv-tv/max2/O0/max2.o"]
+size = 760
+sha256 = "23f2e8e0fe7f97665952687233e5a2465f00b0dd5bc6a8714bf533c1fbd8159e"
+git_sha1 = "207dbf73c7494d2cac2c6e3df2aa6fa94f9d0597"
 
 [[derivation]]
 name = "silmaril.selftest.build.exec_elf"

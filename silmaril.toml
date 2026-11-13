@@ -3,5 +3,7 @@ sid = "12161b92d478b3e6fe5b4a7f9e7020e2c47244cb2f5c15db4268ce11fdcb0861"
 name = "silmaril"
 description = "The silmaril library: formats, standard shapes, and the self-test of sil project"
 modules = ["ProjectSelfTest", "Silmaril.Project.Formats.Thms", "Silmaril.Project.Shapes.Format.Thms",
-  "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Project.Shapes.X86.Thms"]
-roots = ["Silmaril.Project", "ProjectSelfTest"]
+  "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Project.Shapes.X86.Thms",
+  "Silmaril.Project.Shapes.SysV.Thms", "Silmaril.Project.Shapes.C.Thms",
+  "Silmaril.Project.Shapes.SysV.Rtl.Defs", "SysVTvExample", "SysVTvRtl"]
+roots = ["Silmaril.Project", "ProjectSelfTest", "SysVTvExample", "SysVTvRtl"]

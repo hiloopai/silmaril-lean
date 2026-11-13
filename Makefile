@@ -23,11 +23,15 @@ stage:
 	chmod +x build/bin/sil
 
 library:
-	$(LAKE) build --wfail Silmaril SilmarilSpecTec
+	$(LAKE) build --wfail Silmaril SilmarilSpecTec SilmarilWasiWit
 
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
+# The Cerberus tests and executables (docs/projects/cerberus.md).
+CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront \
+	ci_cerberus_genuine_oracle ci_cerberus_elaboration_oracle ci_cerberus_integer_cast \
+	ci_cerberus_parameter_call
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
@@ -65,6 +69,7 @@ check:
 		$(LAKE) build --wfail $(CHECK_TARGETS); \
 	fi
 	$(MAKE) process-gates
+	$(if $(filter ci_cerberus_genuine_oracle,$(CHECK_TARGETS)),$(MAKE) cerberus-oracle)
 	$(if $(filter wasm-opt,$(CHECK_TARGETS)),$(LAKE) build --wfail $(RELEASE_BINARIES) && $(MAKE) release-check)
 
 release-check:
@@ -111,7 +116,11 @@ project-lean:
 		Silmaril.Project.Shapes.X86.Thms \
 		Silmaril.Project.Shapes.Cli.Thms \
 		Silmaril.Project.Room.Thms \
-		ProjectSelfTest
+		Silmaril.Project.Shapes.SysV.Thms \
+		Silmaril.Project.Shapes.C.Thms \
+		Silmaril.Project.Shapes.SysV.Rtl.Defs \
+		ProjectSelfTest \
+		SysVTvExample
 
 project-tool:
 	$(CARGO) build --release --locked --manifest-path tools/silmaril-project/Cargo.toml
@@ -145,3 +154,12 @@ help:
 	@echo 'make demo-sha256   Build the sha256-cli and GNU sha256sum-min end-to-end proofs'
 	@echo 'make process-check Run process facts, layout, catalogue and probe gates'
 	@echo 'make stage    Stage already-built tools without compiling'
+
+# The Cerberus oracle replays over benchmarks/cerberus-elaboration/oracle (docs/projects/cerberus.md).
+CERBERUS_ORACLE := benchmarks/cerberus-elaboration/oracle
+.PHONY: cerberus-oracle
+cerberus-oracle:
+	.lake/build/bin/ci_cerberus_genuine_oracle $(CERBERUS_ORACLE)
+	.lake/build/bin/ci_cerberus_elaboration_oracle $(CERBERUS_ORACLE)
+	.lake/build/bin/ci_cerberus_integer_cast $(CERBERUS_ORACLE)
+	.lake/build/bin/ci_cerberus_parameter_call $(CERBERUS_ORACLE)/call-id/core.sexp.gz

@@ -41,7 +41,7 @@ name = "silmaril.selftest.all"
 title = "The sil project self-test"
 children = ["silmaril.selftest.truth", "silmaril.selftest.small", "silmaril.selftest.open",
   "silmaril.selftest.hello.six", "silmaril.selftest.square", "silmaril.selftest.hello.six_row",
-  "silmaril.selftest.formats", "silmaril.shapes"]
+  "silmaril.selftest.formats", "silmaril.shapes", "silmaril.sysv_tv.max2"]
 
 [[group]]
 name = "silmaril.selftest.formats"
@@ -56,4 +56,21 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.value.satisfies", "silmaril.shapes.elf.loads", "silmaril.shapes.elf.entry",
   "silmaril.shapes.elf.fn_contract", "silmaril.shapes.x86.contract",
   "silmaril.shapes.x86.contract_strict", "silmaril.shapes.x86.abi_function",
-  "silmaril.shapes.x86.correct", "silmaril.shapes.x86.correct_loose"]
+  "silmaril.shapes.x86.correct", "silmaril.shapes.x86.correct_loose",
+  "silmaril.shapes.elf.object_fn", "silmaril.shapes.sysv.implements", "silmaril.shapes.sysv.lifts",
+  "silmaril.shapes.c.elaborates_to", "silmaril.shapes.c.ir_refines", "silmaril.shapes.c.compiles_to",
+  "silmaril.shapes.c.compiles_to.builds"]
+
+# The worked example of the System V translation-validation shapes (examples/sysv-tv,
+# docs/projects/sysv-tv.md): one C function, two builds.
+[[group]]
+name = "silmaril.sysv_tv.max2"
+title = "max2: one C function compiled at -O0 and -O2, checked function by function"
+children = ["silmaril.sysv_tv.max2.o0_obj_value.parses", "silmaril.sysv_tv.max2.o2_obj_value.parses",
+  "silmaril.sysv_tv.max2.o0.code", "silmaril.sysv_tv.max2.o2.code",
+  "silmaril.sysv_tv.max2.elaborates", "silmaril.sysv_tv.max2.o0.compiles_to",
+  "silmaril.sysv_tv.max2.o2.lifts", "silmaril.sysv_tv.max2.o2.ir_refines",
+  "silmaril.sysv_tv.max2.o2.compiles_to", "silmaril.sysv_tv.max2.builds",
+  "silmaril.sysv_tv.max2.o0.lifts_rtl", "silmaril.sysv_tv.max2.o2.lifts_rtl",
+  "silmaril.sysv_tv.max2.o2.lifts_ssa", "silmaril.sysv_tv.max2.rtl.ir_refines",
+  "silmaril.sysv_tv.max2.ssa.ir_refines"]

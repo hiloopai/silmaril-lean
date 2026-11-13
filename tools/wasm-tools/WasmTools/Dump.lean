@@ -21,15 +21,14 @@ def specs : List Spec := outputSpecs ++ generalSpecs
 
 def usage : String := "wasm-tools dump [OPTIONS] [INPUT]"
 
-def run (args : List String) : IO UInt32 := do
-  let p ← match ← parseOrExit specs 1 usage HelpV.dump_short HelpV.dump_long args with
-    | .error code => return code
-    | .ok p => pure p
-  let input ← match ← readInput p.pos.head? with
+/-- The body of `dump` on its record (`run`; the full build: from the specification's
+matches, `WasmTools.SpecCore`). -/
+def body (a : InOut) : IO UInt32 := do
+  let input ← match ← readInput a.input with
     | .error e => return ← fail e
     | .ok b => pure b
-  let colorArg := (p.value? "color").getD "auto"
-  let out := p.value? "output"
+  let colorArg := a.color
+  let out := a.output
   let color ← match out with
     | some _ => pure (colorArg == "always-ansi")
     | none =>
@@ -56,5 +55,12 @@ def run (args : List String) : IO UInt32 := do
   match err with
   | some e => fail e
   | none => return 0
+
+/-- Run `dump` on its arguments. -/
+def run (args : List String) : IO UInt32 := do
+  let p ← match ← parseOrExit specs 1 usage HelpV.dump_short HelpV.dump_long args with
+    | .error code => return code
+    | .ok p => pure p
+  body (InOut.ofParsed p)
 
 end WasmTools.Dump

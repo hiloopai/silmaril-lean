@@ -34,6 +34,8 @@ flowchart LR
   Iter <==>|"iterSSAIso (observational, single exit)"| LSSA
   Iter <==>|"Bridge: equiv_iff, semantic_iff_semantic"| TIter["thesis λiter"]
   TIter ==>|"Syn.isInitial (Alg S); uniqueHomCategorical"| Freyd["strong Elgot Freyd models"]
+  Freyd ==>|"kleisli_initial (Kleisli of a lawful Elgot monad)"| Kl["Kleisli model"]
+  Iter -->|"quantitative refinement (Raw)"| QRef["refinement calculus and models"]
 ```
 
 Double arrows are checked institution comorphisms, isomorphisms or checked
@@ -64,6 +66,8 @@ bridge relates the two.
 | Let-family institutions | `Silmaril.SSA.Isotope.Institution.Thms` | re-exports the Raw equational institutions of let-seq, let-case and let-iter, inclusion comorphisms with borrowing, syntactic initiality, refinement institutions and `eqToRef`, observational institutions and `iterSSAIso` |
 | Thesis initiality | `Silmaril.SSA.Thesis.Thms` | re-exports the Raw port of the thesis λiter and λcase (`Silmaril.Raw.SSA.Thesis`): `Syn.isInitial` in `Alg S`, equational completeness |
 | Thesis categorical models | `Silmaril.SSA.Thesis.Categorical.Thms` | λiter derivations denoted in strong Elgot Freyd categories, `Alg.ofCategorical`, initiality into those models, non-vacuity of `Alg S` |
+| Thesis Kleisli model | `Silmaril.SSA.Thesis.Kleisli.Thms` | the Kleisli category of a lawful Elgot monad as a λiter model: `TypingCoherent` and `LawfulModel` instances, initiality into it, and the instance at `Part` |
+| Quantitative refinement | `Silmaril.SSA.Isotope.Refinement.Thms` | re-exports the Raw quantitative refinement calculus (`Silmaril.Raw.SSA.Isotope.Refinement`): usage-annotated typing, refinement theories, initiality among algebraic and ordered models, completeness, categorical interpretation in seq/case/iter models |
 | Let-iter bridge | `Silmaril.SSA.Isotope.Bridge.{Defs,Thms}` | term and context translations between `Silmaril.Isotope.LetIter` and the thesis λiter, preservation of typing, axioms and equivalence, agreement of the two completeness theorems |
 | Dataflow | `Silmaril.Calculi.Dataflow.{Defs,Thms}` | round-robin (Gauss–Seidel) iteration over `Silmaril.Semantics.Dataflow` equation systems |
 
@@ -138,6 +142,20 @@ strong Elgot Freyd model computes the categorical denotation), conditional on th
 coherence classes `TypingCoherent` and `LawfulModel`; `Alg.const_not_terminal`,
 `Alg.constHom_ne_id`, `Alg.powReindex_ne_id`.
 
+Thesis Kleisli model (`Silmaril.SSA.Thesis.Kleisli.Thms`), for a lawful Elgot monad
+`m` with a monadic instruction model: `kleisli_typingCoherent` and
+`kleisli_lawfulModel` (the instances the categorical initiality assumed), and
+`uniqueHomKleisli`/`kleisli_initial` (exactly one algebra morphism from `Syn S`
+into the Kleisli model, computing the denotation); `uniqueHomKleisliPart` at `Part`.
+
+Quantitative refinement (`Silmaril.SSA.Isotope.Refinement.Thms`, namespace
+`Silmaril.Isotope.Refinement`): `Models.syntaxIsInitial`, `Models.fold_unique`,
+`Models.syntacticModelIsInitial`, `Models.orderedSyntacticModelIsInitial`,
+completeness `Models.{refinement,mutual_refinement,equation}_iff_all_models`,
+`RewriteSystem.generatedTheory_{renaming,substitution}`, the contextual categories
+`Theory.{refinement,equational}Functor`, and the categorical interpretation
+`Models.Denotation.denote{Seq,Case,Iter}` with `fold_unique`.
+
 Bridge (`Silmaril.SSA.Isotope.Bridge.Thms`), under the explicit compatibility
 hypotheses `TypeCompat`, `InstrCompat`, `EffCompat` (each discharged by `rfl` for
 the canonical instances): `hasType_iff`, `pure_iff`, `coreAxiom_iff` (the same 19
@@ -160,10 +178,13 @@ thesis algebra).
 | Let-family and λSSA Raw developments, Elgot instances, behaviour refinement | proved (Raw: valid, unrefined) |
 | Let-family equational, refinement and observational institutions; borrowing; `syntacticModelIsInitial`; `iterSSAIso` | proved (Raw) |
 | Thesis λiter/λcase initiality in `Alg S`, equational completeness | proved (Raw port); initiality among algebras of the presentation, not among Freyd or Elgot categories |
-| Thesis λiter initiality into strong Elgot Freyd models | proved (Raw port), assuming the coherence classes `TypingCoherent` and `LawfulModel` (hypotheses); no instance of them is included |
+| Thesis λiter initiality into strong Elgot Freyd models | proved (Raw port), assuming the coherence classes `TypingCoherent` and `LawfulModel` (hypotheses) |
+| Instances of `TypingCoherent` and `LawfulModel` for the Kleisli category of a lawful Elgot monad; initiality into the Kleisli model, and at `Part` | proved (Raw port) |
+| Quantitative refinement calculus: initiality among algebraic and ordered models, completeness, categorical interpretation | proved (Raw); initiality among algebras of the presentation, not among Freyd/Elgot categories |
+| Soundness and initiality of the categorical refinement models | open |
 | Bridge: typing, axioms, equivalence, completeness agreement | proved under `TypeCompat`, `InstrCompat`, `EffCompat` |
 | A translation of models between the Isotope equational models and `Alg S`; equivalence of the model categories; bridges for let-seq and let-case | open |
-| Instances of `TypingCoherent`/`LawfulModel` (the thesis's Kleisli category of a lawful Elgot monad); the paper's "syntax is the initial distributive Elgot category" | open |
+| The paper's "syntax is the initial distributive Elgot category" | open |
 | Mutually recursive `where` | open |
 | Syntactic round trip λSSA → λRTL → λSSA up to α; an equivalence of the SSA subinstitutions | open: erasing version tags is not a left inverse; register-renaming invariance is proved for global injective renamings only |
 | Typing (first-order types, effects) on λRTL and typed sentences | open |
@@ -181,7 +202,8 @@ declaration in this project. Every constant in its modules depends only on
 lake build --wfail Silmaril.SSA.LambdaRTL.Thms Silmaril.SSA.LambdaRTL.CFG.Thms \
   Silmaril.Machine.LambdaRTLLir.Thms Silmaril.Machine.OfLambdaSSA.Thms \
   Silmaril.SSA.Isotope.Thms Silmaril.SSA.Isotope.Institution.Thms \
-  Silmaril.SSA.Isotope.Bridge.Thms Silmaril.SSA.Thesis.Categorical.Thms
+  Silmaril.SSA.Isotope.Bridge.Thms Silmaril.SSA.Thesis.Categorical.Thms \
+  Silmaril.SSA.Thesis.Kleisli.Thms Silmaril.SSA.Isotope.Refinement.Thms
 ```
 
 The root target `lake build --wfail Silmaril` builds all of them.
@@ -221,7 +243,7 @@ The root target `lake build --wfail Silmaril` builds all of them.
 - Ghalayini, *Categorical Imperative Programming* (PhD thesis), and its
   formalisation, [imbrem/thesis](https://github.com/imbrem/thesis) at
   `69a8126f2d3eb6d32050e0bd9511251b33dbcea7` (CC0-1.0). `Silmaril/Raw/SSA/Thesis/`
-  (48 modules) is a port of its λiter and λcase formalisation; the module map and the
+  (71 modules) is a port of its λiter and λcase formalisation; the module map and the
   licence are in [`NOTICES/imbrem-thesis`](../../NOTICES/imbrem-thesis/README.md).
   The Elgot interfaces follow
   its Freyd–Elgot and monad-transformer chapters by content; the CFG flattening's

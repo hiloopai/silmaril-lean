@@ -1,0 +1,11 @@
+package test:ai;
+
+interface greet {
+  hello: func(s: string) -> string;
+  add: func(a: u32, b: u32) -> u32;
+}
+
+world cconvi {
+  export greet;
+  export count: func(b: list<u8>) -> u32;
+}

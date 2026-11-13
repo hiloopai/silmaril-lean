@@ -1,0 +1,17 @@
+hello||
+hello|one two three\nfour\n|a b c
+hello|please fail\n|x
+hello|\n\n\n|--flag=1 "q"
+files||
+files||10
+files||0
+reactor||invoke:add(2, 40)
+reactor||invoke:add(4294967295, 2)
+reactor||invoke:scale(1.5, -4)
+hello_c||
+hello_c|one\ntwo\n|x y
+hello_c|this is longer than ten bytes\n|
+textual||invoke:shout("hello world")
+textual||invoke:sum([1, -2, 2147483647, 2147483647])
+textual||invoke:split("  a bb  ccc d ")
+textual||invoke:split("")
