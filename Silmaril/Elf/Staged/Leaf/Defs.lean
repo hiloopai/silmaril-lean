@@ -3,6 +3,7 @@ module
 public import Silmaril.Elf.Staged.Defs
 public import Silmaril.Elf.Link.Dyn.Pages.Defs
 public import Silmaril.X86.Ext.Decode
+public import Silmaril.Prelude.Bytes.Defs
 
 /-! # Leaf checks: one checker, two byte sources (`Silmaril.Elf.Staged.Leaf`)
 
@@ -11,16 +12,17 @@ small certificate `c : σ` against the bytes of a file, with one soundness lemma
 `run r c` is written once, over an abstract byte source `r`, so the same definition runs
 
 * **natively** on the `ByteArray` of an included file (`Leaf.native`, `fastRead`), and
-* **in the kernel** on its 4 KiB page literals (`Leaf.kernel`, `pageRead`),
+* **in the kernel** on core's kernel bytes (`Leaf.kbytes`, `Silmaril.KBytes.readLE`) or on
+  4 KiB page literals (`Leaf.kernel`, `pageRead`),
 
 and both conclude the **same proposition** `P F c` about the **same file** `F = blobOf b`
-(`Leaf.of_native`, `Leaf.of_kernel`, in `Thms`): the source-byte binding is the `Sub` lemma of
-each source (`sub_fast`, `Check.sub_pages`), not a property of the certificate.
+(`Leaf.of_native`, `Leaf.of_kbytes`, `Leaf.of_kernel`, in `Thms`): the source-byte binding is
+the `Sub` lemma of each source (`sub_fast`, `sub_kbytes`, `Check.sub_pages`), not a property of
+the certificate.
 
-This record is a local adapter. The policy that picks a mode for a named leaf (native when the
-name is allowed, the kernel otherwise, or failure in a paranoid configuration) and the audit of
-which theorems used which mode belong to the acceleration framework; a leaf maps onto its
-registry entry field for field (`name`, the two Boolean runs, the two soundness lemmas).
+The policy that picks a mode for a named leaf belongs to the trust framework
+(`Silmaril.Prelude.Trust`); `Silmaril.Elf.Staged.Native` registers the native runs and provides
+the `elf_leaf` tactic that selects between the two runs.
 
 ## Leaves defined here (`Thms`)
 
@@ -65,6 +67,11 @@ def Leaf.native {σ : Type} (l : Leaf σ) (b : Silmaril.Formats.Bytes) (c : σ) 
 def Leaf.kernel {σ : Type} (l : Leaf σ) (pg : List Silmaril.Elf.Link.DynElf.Chunk) (c : σ) :
     Bool :=
   l.run (Silmaril.Elf.Link.DynElf.pageRead 4096 pg) c
+
+/-- The kernel run on core's kernel bytes (`Silmaril.KBytes`, `readLE`): a tree the kernel
+reads with a few big-number operations per read. -/
+def Leaf.kbytes {σ : Type} (l : Leaf σ) (x : Silmaril.KBytes) (c : σ) : Bool :=
+  l.run x.readLE c
 
 /-- The per-tile predicate of `elf.tiles.x86`: the local x86 model (`Silmaril.X86.Ext.decode`)
 reads exactly one instruction of `l` bytes from the little-endian bytes `v`. -/

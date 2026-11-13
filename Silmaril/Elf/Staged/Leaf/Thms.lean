@@ -28,6 +28,12 @@ theorem Leaf.of_kernel {σ : Type} (l : Leaf σ) {F : Blob} {pg : List Chunk} (h
     {c : σ} (h : l.kernel pg c = true) : l.P F c :=
   l.sound (Check.sub_pages hc) h
 
+/-- **A kernel-bytes run** establishes the same proposition about the file of those bytes. -/
+theorem Leaf.of_kbytes {σ : Type} (l : Leaf σ) {x : Silmaril.KBytes} (hx : x.wf = true)
+    {raw : ByteArray} (h : x.toByteArray = raw) {c : σ} (hk : l.kbytes x c = true) :
+    l.P (blobOf ⟨raw⟩) c :=
+  l.sound (sub_kbytes x hx h) hk
+
 /-- `elf.layout`. -/
 def Leaf.layout : Leaf Layout where
   name := "elf.layout"

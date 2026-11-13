@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Elf.Staged.Symbols.Defs
+import Silmaril.Elf.Staged.Leaf.Defs
 
 /-! # Shared objects for the staged checks of `examples/dyn/pinned/hello-gcc`
 
