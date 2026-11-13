@@ -85,9 +85,9 @@ globs = [
   "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+",
   # Project, except `Project.WasmComponents` and `Project.WasmP3Rust` (`SilmarilWasmProject` below).
-  "Silmaril.Project.Defs", "Silmaril.Project.CompilesTo.*", "Silmaril.Project.Components.*",
-  "Silmaril.Project.Core.*", "Silmaril.Project.Formats.*", "Silmaril.Project.Registry.*",
-  "Silmaril.Project.Room.*", "Silmaril.Project.Shapes.*",
+  "Silmaril.Project.Defs", "Silmaril.Project.CompilesTo.+", "Silmaril.Project.Components.+",
+  "Silmaril.Project.Core.+", "Silmaril.Project.Formats.+", "Silmaril.Project.Registry.+",
+  "Silmaril.Project.Room.+", "Silmaril.Project.Shapes.+",
   "Silmaril.Proofs.Calculi.+",
   "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Elf.+",
   "Silmaril.Proofs.Formats.+", "Silmaril.Proofs.Libc.+",
@@ -487,11 +487,6 @@ srcDir = "tools/wasm-tools"
 [[lean_exe]]
 name = "wasm-tools-core"
 root = "WasmToolsCore"
-srcDir = "tools/wasm-tools"
-
-[[lean_exe]]
-name = "wasm-tools-cv"
-root = "WasmToolsCv"
 srcDir = "tools/wasm-tools"
 
 [[lean_exe]]

@@ -1,0 +1,428 @@
+--- a/spectec/backend-lean4/print.ml
++++ b/spectec/backend-lean4/print.ml
+@@ -32,8 +32,10 @@
+   | "" -> "NO_NAME"
+   | _ -> s
+ 
++(* local port: IL binds became quants (= params) on rocq-backend *)
++type bind = param
+ let is_typ_bind b = match b.it with
+-  | TypB _ -> true
++  | TypP _ -> true
+   | _ -> false
+ 
+ let string_of_list_prefix prefix delim str_func ls = 
+@@ -125,7 +127,7 @@
+   | `SubOp   -> " - " 
+   | `MulOp   -> " * " 
+   | `DivOp   -> " / "
+-  | `ModOp   -> " mod "
++  | `ModOp   -> " % "
+   | `PowOp   -> " ^ " 
+ 
+ let render_cmpop cmpop =
+@@ -155,7 +157,7 @@
+   | _ -> a
+ 
+ let render_mixop (m : mixop) = 
+-  (match m with
++  (match Xl.Mixop.flatten m with
+     | [{it = Atom a; _}] :: tail when List.for_all ((=) []) tail -> a
+     | mixop -> String.concat "" (List.map (
+       fun atoms -> String.concat "" (List.filter is_atomid atoms |> List.map render_atom)) mixop
+@@ -164,18 +166,18 @@
+ 
+ let get_bind_id b = 
+   match b.it with
+-  | ExpB (id, _) | TypB id | DefB (id, _, _) | GramB (id, _, _) -> id.it
++  | ExpP (id, _) | TypP id | DefP (id, _, _) | GramP (id, _, _) -> id.it
+ 
+ let get_param_id b = 
+   match b.it with
+-  | ExpP (id, _) | TypP id | DefP (id, _, _) | GramP (id, _) -> id.it
++  | ExpP (id, _) | TypP id | DefP (id, _, _) | GramP (id, _, _) -> id.it
+ 
+ let render_numtyp nt = 
+   match nt with
+   | `NatT -> "Nat"
+-  | `IntT -> "Nat"
+-  | `RatT -> "Nat"
+-  | `RealT -> "Nat"
++  | `IntT -> "Int" (* local patch: was Nat *)
++  | `RatT -> "Int" (* local patch: was Nat; no rationals in core Lean *)
++  | `RealT -> "Int" (* local patch: was Nat *)
+ 
+ let transform_case_tup e = 
+   match e.it with
+@@ -189,7 +191,7 @@
+ 
+ let transform_case_args t =
+   match t.it with
+-  | TupT typs -> typs
++  | TupT typs -> List.map (fun (id, t) -> (VarE id $$ t.at % t, t)) typs
+   | _ -> [(VarE ("_" $ t.at) $$ t.at % t, t)]
+ 
+ let get_type_args t = 
+@@ -235,15 +237,18 @@
+   | TupE exps -> parens (String.concat ", " (List.map r_func exps))
+   | ProjE (e, i) -> 
+     let typs = transform_case_typ e.note in 
+-    let rec make_proj_chain idx len e = 
+-      match idx, len with
+-      | 0, 0 -> r_func e
+-      | i, n when i <= n -> parens ("snd " ^ r_func e)
+-      | _ -> parens ("fst " ^ (make_proj_chain idx (len - 1) e))
++    (* local patch: Lean tuples nest to the right, A × (B × C); component i of n *)
++    let rec make_proj_chain idx len e =
++      if len <= 1 then r_func e
++      else if idx = 0 then parens ("Prod.fst " ^ r_func e)
++      else make_proj_chain (idx - 1) (len - 1) (ProjE (e, -1) $$ e.at % e.note)
++    and r_func e = match e.it with
++      | ProjE (e', -1) -> parens ("Prod.snd " ^ r_func e')
++      | _ -> render_exp exp_type e
+     in
+     begin match typs with
+     | [_] -> r_func e
+-    | _ -> make_proj_chain i (List.length typs - 1) e 
++    | _ -> make_proj_chain i (List.length typs) e 
+     end
+   | CaseE (m, e) when exp_type = LHS -> 
+     let exps = transform_case_tup e in
+@@ -265,6 +270,9 @@
+   | DotE (e, a) -> parens (r_func e ^ "." ^ render_atom a)
+   | CompE (e1, e2) -> parens (r_func e1 ^ " ++ " ^ r_func e2)
+   | ListE [] -> "[]"
++  (* local patch: ascribe literal lists of constructors so `.C` notation elaborates *)
++  | ListE exps when exp_type <> LHS && List.exists (fun e -> match e.it with CaseE _ -> true | _ -> false) exps ->
++    parens (square_parens (String.concat ", " (List.map r_func exps)) ^ " : " ^ render_type exp_type exp.note)
+   | ListE exps -> square_parens (String.concat ", " (List.map r_func exps)) 
+   | LiftE e -> parens ("Option.toList " ^ r_func e)
+   (* | MemE (e1, e2) -> parens (r_func e1 ^ " ∈ " ^ r_func e2) *)
+@@ -272,8 +280,11 @@
+   | LenE e1 -> parens ("List.length " ^ r_func e1)
+   | CatE ({it = ListE [e1]; _}, e2) when exp_type = LHS -> parens (r_func e1 ^ " :: " ^ r_func e2) 
+   | CatE (e1, e2) -> parens (r_func e1 ^ " ++ " ^ r_func e2)
++  (* local patch: indexing a literal list needs no Inhabited instance *)
++  | IdxE ({it = ListE (h :: _); _} as e1, e2) -> parens ("List.getD " ^ r_func e1 ^ " " ^ r_func e2 ^ " " ^ r_func h)
+   | IdxE (e1, e2) -> parens (r_func e1 ^ "[" ^ r_func e2 ^ "]!")
+-  | SliceE (e1, e2, e3) -> parens ("List.extract " ^ r_func e1 ^ " " ^ r_func e2 ^ " " ^ r_func e3)
++  (* local patch: SpecTec slices are (start, length), not (start, stop) *)
++  | SliceE (e1, e2, e3) -> parens ("List.take " ^ r_func e3 ^ " (List.drop " ^ r_func e2 ^ " " ^ r_func e1 ^ ")")
+   | UpdE (e1, p, e2) -> render_path_start p e1 false e2
+   | ExtE (e1, p, e2) -> render_path_start p e1 true e2
+   | CallE (id, args) -> parens (render_id id.it ^ " " ^ String.concat " " (List.map (render_arg exp_type) args))
+@@ -292,6 +303,10 @@
+     in 
+     parens (pred_name ^ " " ^ render_lambda binds (r_func e) ^ " " ^ 
+     String.concat " " (List.map (render_exp exp_type) iter_exps))
++  (* local patch: explicit conversions now that int is Int *)
++  | CvtE (e1, nt1, nt2) when render_numtyp nt1 = render_numtyp nt2 -> r_func e1
++  | CvtE (e1, `NatT, _) -> parens ("Int.ofNat " ^ r_func e1)
++  | CvtE (e1, _, `NatT) -> parens ("Int.toNat " ^ r_func e1)
+   | CvtE (e1, _nt1, nt2) -> parens (r_func e1 ^ " : " ^ render_numtyp nt2)
+   | SubE _ -> error exp.at "Encountered subtype expression. Please run sub pass"
+   | IfE (cond, then_exp, else_exp) -> 
+@@ -306,18 +321,18 @@
+ 
+ and render_bind exp_type b =
+   match b.it with
+-  | ExpB (id, typ) -> parens (render_id id.it ^ " : " ^ render_type exp_type typ)
+-  | TypB id -> parens (render_id id.it ^ " : Type 0")
+-  | DefB (id, params, typ) -> 
++  | ExpP (id, typ) -> parens (render_id id.it ^ " : " ^ render_type exp_type typ)
++  | TypP id -> parens (render_id id.it ^ " : Type 0")
++  | DefP (id, params, typ) -> 
+     parens (render_id id.it ^ " : " ^ 
+     string_of_list_suffix " -> " " -> " (render_param_type exp_type) params ^
+     render_type exp_type typ)
+-  | GramB _ -> comment_parens ("Unsupported bind: " ^ Il.Print.string_of_bind b)
++  | GramP _ -> comment_parens ("Unsupported bind: " ^ Il.Print.string_of_param b)
+ 
+ and render_param exp_type param = 
+   let get_id p =
+     match p.it with
+-    | ExpP (id, _) | TypP id | DefP (id, _, _) | GramP (id, _) -> id.it
++    | ExpP (id, _) | TypP id | DefP (id, _, _) | GramP (id, _, _) -> id.it
+   in
+   parens (get_id param ^ " : " ^ render_param_type exp_type param)
+ 
+@@ -338,7 +353,7 @@
+ 
+ and render_path (paths : path list) typ at n name is_extend end_exp = 
+   let render_record_update t1 t2 t3 =
+-    parens (t1 ^ " <| " ^ t2 ^ " := " ^ t3 ^ " |>")
++    "{ " ^ t1 ^ " with " ^ t2 ^ " := " ^ t3 ^ " }"
+   in
+   let r_func_e = render_exp RHS in
+   let is_dot p = (match p.it with
+@@ -355,19 +370,19 @@
+   (* End logic for extend *)
+   | [{it = IdxP (_, e); _}] when is_extend -> 
+     let extend_term = parens (new_name ^ " ++ " ^ r_func_e end_exp) in
+-    let bind = render_bind RHS (ExpB (new_name $ no_region, new_name_typ) $ no_region) in
++    let bind = render_bind RHS (ExpP (new_name $ no_region, new_name_typ) $ no_region) in
+     parens ("List.modify " ^ r_func_e (list_name n) ^ " " ^ r_func_e e ^ render_lambda [bind] extend_term)
+   | [{it = DotP (_, a); _}] when is_extend -> 
+-    let projection_term = parens (render_atom a ^ " " ^ r_func_e (list_name n)) in
++    let projection_term = parens (r_func_e (list_name n) ^ "." ^ render_atom a) in
+     let extend_term = parens (projection_term ^ " ++ " ^ r_func_e end_exp) in
+     render_record_update (r_func_e (list_name n)) (render_atom a) extend_term
+   | [{it = SliceP (_, e1, e2); _}] when is_extend -> 
+     let extend_term = parens (new_name ^ " ++ " ^ r_func_e end_exp) in
+-    let bind = render_bind RHS (ExpB (new_name $ no_region, new_name_typ) $ no_region) in
++    let bind = render_bind RHS (ExpP (new_name $ no_region, new_name_typ) $ no_region) in
+     parens ("list_slice_update " ^ r_func_e (list_name n) ^ " " ^ r_func_e e1 ^ " " ^ r_func_e e2 ^ " " ^ render_lambda [bind] extend_term)
+   (* End logic for update *)
+   | [{it = IdxP (_, e); _}] -> 
+-    let bind = render_bind RHS (ExpB ("_" $ no_region, new_name_typ) $ no_region) in
++    let bind = render_bind RHS (ExpP ("_" $ no_region, new_name_typ) $ no_region) in
+     parens ("List.modify " ^ r_func_e (list_name n) ^ " " ^ r_func_e e ^ " " ^ render_lambda [bind] (r_func_e end_exp))
+   | [{it = DotP (_, a); _}] -> 
+     render_record_update (r_func_e (list_name n)) (render_atom a) (r_func_e end_exp)
+@@ -377,7 +392,7 @@
+   | {it = IdxP (_, e); note; _} :: ps -> 
+     let path_term = render_path ps note at (n + 1) None is_extend end_exp in
+     let new_name = var_prefix ^ string_of_int (n + 1) in 
+-    let bind = render_bind RHS (ExpB (new_name $ no_region, new_name_typ) $ no_region) in
++    let bind = render_bind RHS (ExpP (new_name $ no_region, new_name_typ) $ no_region) in
+     parens ("list_update_func " ^ r_func_e (list_name n) ^ " " ^ r_func_e e ^ " " ^ render_lambda [bind] path_term)
+   | ({it = DotP _; note; _} as p) :: ps -> 
+     let (dot_paths, ps') = list_split is_dot (p :: ps) in
+@@ -391,12 +406,12 @@
+         DotE (acc, a') $$ no_region % p.note
+       | _ -> error at "Should be a record access" (* Should not happen *)
+     )  dot_paths' (list_name n) in
+-    let update_fields = String.concat ", " (List.map (fun p -> 
++    let update_fields = String.concat "." (List.map (fun p -> 
+       match p.it with
+       | DotP (_, a) -> render_atom a
+       | _ -> error at "Should be a record access" 
+     ) dot_paths) in
+-    let new_term = parens (render_atom end_atom ^ " " ^ r_func_e projection_term) in
++    let new_term = parens (r_func_e projection_term ^ "." ^ render_atom end_atom) in
+     let new_exp = DotE (projection_term, end_atom) $$ no_region % note in 
+     if ps' = [] 
+       then (
+@@ -478,7 +493,7 @@
+   let r_func = render_prem in 
+   match prem.it with
+   | IfPr exp -> render_exp REL exp
+-  | RulePr (id, _m, exp) -> parens (id.it ^ string_of_list_prefix " " " " (render_exp REL) (transform_case_tup exp))
++  | RulePr (id, _args, _m, exp) -> parens (id.it ^ string_of_list_prefix " " " " (render_exp REL) (transform_case_tup exp))
+   | NegPr p -> parens ("¬" ^ r_func p)
+   | ElsePr -> "True " ^ comment_parens ("Unsupported premise: otherwise") (* Will be removed by an else pass *)
+   | IterPr (p, (_, [])) -> r_func p
+@@ -506,14 +521,14 @@
+ 
+   (* Standard Record definition *)
+   "structure " ^ id ^ inhabitance_binders ^ " where " ^ constructor_name ^ " ::\n  " ^ 
+-  String.concat "\n  " (List.map (fun (a, (_, typ, _), _) -> 
++  String.concat "\n  " (List.map (fun (a, (typ, _, _), _) -> 
+     render_atom a ^ " : " ^ render_type RHS typ) fields) ^ "\n" ^
+ 
+   "deriving Inhabited, BEq\n\n" ^
+ 
+   (* Append instance *)
+   "def _append_" ^ id ^ inhabitance_binders ^ " (arg1 arg2 : " ^ parens (id ^ binders) ^ ") : " ^ render_id id ^ " where" ^ 
+-  "\n  " ^ String.concat "\n  " ((List.map (fun (a, (_, t, _), _) ->
++  "\n  " ^ String.concat "\n  " ((List.map (fun (a, (t, _, _), _) ->
+     let record_id' = render_atom a in
+     if (check_trivial_append !env_ref t) 
+     then record_id' ^ " := " ^ "arg1." ^ record_id' ^ " ++ arg2." ^ record_id'
+@@ -530,7 +545,7 @@
+ 
+ let cant_do_equality binds cases = 
+   (List.exists is_typ_bind binds) ||
+-  (List.exists (fun (_, (binds', _, _), _) -> List.exists is_typ_bind binds') cases)
++  (List.exists (fun (_, (_, binds', _), _) -> List.exists is_typ_bind binds') cases)
+   
+ let render_case_typs t = 
+   let typs = transform_case_args t in
+@@ -539,7 +554,7 @@
+ 
+ let render_variant_typ id binds cases = 
+   "inductive " ^ render_id id ^ render_binders binds ^ " : Type where\n  " ^
+-  String.concat "\n  " (List.map (fun (m, (_, t, _), _) ->
++  String.concat "\n  " (List.map (fun (m, (t, _, _), _) ->
+     "| " ^ render_mixop m ^ render_case_typs t ^ " : " ^ render_id id ^ render_binders_ids binds   
+   )  cases) ^ 
+   "\nderiving Inhabited, BEq\n"
+@@ -547,7 +562,7 @@
+ let clauses_have_same_args c1 c2 =
+   match (c1.it, c2.it) with
+   | (DefD (binds1, args1, _, _), DefD (binds2, args2, _, _)) ->
+-    Il.Eq.eq_list Il.Eq.eq_bind binds1 binds2 &&
++    Il.Eq.eq_list Il.Eq.eq_param binds1 binds2 &&
+     Il.Eq.eq_list Il.Eq.eq_arg args1 args2
+ 
+ let group_clauses_by_same_args clauses =
+@@ -579,6 +594,12 @@
+         render_exp RHS exp ^ "\n    else"
+     ) group)
+   ) groups) ^
++  (* local patch: catch-all clause so that non-exhaustive SpecTec functions
++     elaborate; the clause is redundant (and ignored) when the match is total *)
++  (let is_typ_param = List.exists (fun p -> match p.it, r_typ.it with
++     | TypP pid, VarT (tid, []) -> pid.it = tid.it | _ -> false) params in
++   if is_typ_param || params = [] then "" else
++   "\n  |" ^ String.concat ", " (List.map (fun _ -> " _") params) ^ " => default") ^
+   "\n"
+ 
+ let render_relation id typ rules = 
+@@ -679,9 +700,15 @@
+     match def.it with
+     | TypD (id, _, _) -> List.mem id.it builtins
+     | DecD (id, _, _, _) -> List.mem id.it builtins
+-    | RelD (id, _, _, _) -> List.mem id.it builtins
++    | RelD (id, _, _, _, _) -> List.mem id.it builtins
+     | _ ->false
+ 
++let rec is_valid_def def =
++  match def.it with
++  | GramD _ | HintD _ -> false
++  | RecD defs -> List.exists is_valid_def defs
++  | _ -> true
++
+ let rec string_of_def def = 
+   comment_parens (comment_desc_def def ^ " at: " ^ Util.Source.string_of_region def.at) ^ "\n" ^
+   begin
+@@ -698,16 +725,25 @@
+   | DecD (id, params, typ, []) -> 
+     render_axiom id params typ
+   | DecD (id, params, typ, clauses) -> 
++    (* local patch: the rocq-backend Undep pass adds well-formedness premises
++       (wf_* RulePr) to function clauses; the printer cannot render Prop guards
++       in a def, so drop them (they only restrict results to well-formed values) *)
++    let is_wf_prem p = match p.it with
++      | RulePr (pid, _, _, _) -> String.length pid.it >= 3 && String.sub pid.it 0 3 = "wf_"
++      | _ -> false in
++    let clauses = List.map (fun c -> match c.it with
++      | DefD (qs, args, e, prems) -> { c with it = DefD (qs, args, e, List.filter (fun p -> not (is_wf_prem p)) prems) }) clauses in
+     if is_supported_function id params typ clauses then
+       render_function_def id.it params typ clauses
+     else
+       render_axiom id params typ
+-  | RelD (id, _, typ, []) -> 
++  | RelD (id, _, _, typ, []) -> 
+     render_rel_axiom id typ
+-  | RelD (id, _, typ, rules) -> 
++  | RelD (id, _, _, typ, rules) -> 
+     render_relation id.it typ rules
+   (* Mutual recursion *)
+   | RecD defs ->
++    let defs = List.filter is_valid_def defs in
+     begin match defs with
+     | [] -> ""
+     | [d] -> string_of_def d
+@@ -738,6 +774,20 @@
+ def Forall₃ (R : α → β → γ → Prop) (xs : List α) (ys : List β) (zs : List γ) : Prop :=
+   ∀ x y z, (x,y,z) ∈ List.zip xs (List.zip ys zs) → R x y z
+     
++/- local patch: helpers referenced by the printer but missing from the preamble -/
++def list_update_func (l : List α) (i : Nat) (f : α → α) : List α := l.modify i f
++def list_slice_update (l : List α) (i n : Nat) (v : List α) : List α :=
++  l.take i ++ v ++ l.drop (i + n)
++def list_map3 (f : α → β → γ → δ) : List α → List β → List γ → List δ
++  | a :: as, b :: bs, c :: cs => f a b c :: list_map3 f as bs cs
++  | _, _, _ => []
++def option_zipWith (f : α → β → γ) : Option α → Option β → Option γ
++  | some a, some b => some (f a b)
++  | _, _ => none
++def option_map3 (f : α → β → γ → δ) : Option α → Option β → Option γ → Option δ
++  | some a, some b, some c => some (f a b c)
++  | _, _, _ => none
++
+ macro "opaqueDef" : term => `(by first | exact Inhabited.default | intros; assumption)
+ 
+ /- written manually due to `BEq` constraint -/
+@@ -750,12 +800,6 @@
+   l1.filter (fun x => !(List.contains l2 x))
+ |}
+ 
+-
+-let rec is_valid_def def = 
+-  match def.it with
+-  | GramD _ | HintD _ -> false
+-  | RecD defs -> List.for_all is_valid_def defs
+-  | _ -> true
+   
+ let string_of_script (il : script) =
+   env_ref := Il.Env.env_of_script il;
+--- a/spectec/src/exe-spectec/main.ml
++++ b/spectec/src/exe-spectec/main.ml
+@@ -14,6 +14,7 @@
+  | Splice of Backend_splice.Config.t
+  | Interpreter of string list
+  | Rocq
++ | Lean4
+ 
+ type pass =
+   | Sub
+@@ -240,6 +241,7 @@
+   "--interpreter", Arg.Rest_all (fun args -> target := Interpreter args),
+     " Generate interpreter";
+   "--rocq", Arg.Unit (fun -> target := Rocq), " Generate Rocq Inductive Definitions (-o main.v [wf.v]: well-formedness lemmas go to wf.v, default main_wf.v)";
++  "--lean4", Arg.Unit (fun -> target := Lean4), " Generate Lean4 specification";
+   "--rocq-namespace", Arg.Set_string rocq_namespace, " Logical path used by the Rocq well-formedness lemma file to import the main file";
+   "--debug", Arg.Unit (fun -> Backend_interpreter.Debugger.debug := true),
+     " Debug interpreter";
+@@ -311,6 +313,20 @@
+       enable_pass ElseSimp;
+       enable_pass PatSimp;
+       enable_pass LetIntroMech
++    | Lean4 ->
++      enable_pass Sideconditions;
++      enable_pass Totalize;
++      enable_pass Else;
++      enable_pass TypeFamilyRemoval;
++      enable_pass Undep;
++      enable_pass Uncaseremoval;
++      enable_pass Sub;
++      enable_pass SubExpansion;
++      enable_pass ImproveIds;
++      enable_pass AliasDemut;
++      enable_pass DefToRel;
++      enable_pass Ite;
++      enable_pass ElseSimp
+     | _ when !print_al || !print_al_o <> "" ->
+       enable_pass Sideconditions;
+     | _ ->
+@@ -337,7 +353,7 @@
+     if !print_final_il && not !print_all_il then print_il il;
+ 
+     let al =
+-      if not !print_al && !print_al_o = "" && (!target = Check || !target = Ast || !target = Latex || !target = Rocq) then []
++      if not !print_al && !print_al_o = "" && (!target = Check || !target = Ast || !target = Latex || !target = Rocq || !target = Lean4) then []
+       else (
+         log "Translating to AL...";
+         let interp = match !target with
+@@ -447,6 +463,19 @@
+       Backend_interpreter.Ds.init al;
+       log "Interpreting...";
+       Backend_interpreter.Runner.run args
++    | Lean4 ->
++      log "Lean Generation...";
++      (match !odsts with
++      | [] -> print_endline (Backend_lean4.Print.string_of_script il)
++      | [odst] ->
++        let code = Backend_lean4.Print.string_of_script il in
++        let oc = Out_channel.open_text odst in
++        Fun.protect (fun -> Out_channel.output_string oc code)
++          ~finally:(fun -> Out_channel.close oc)
++      | _ ->
++        prerr_endline "too many output file names";
++        exit 2
++      )
+     | Rocq ->
+       log "Rocq Generation...";
+       (match !odsts with
+--- a/spectec/src/dune
++++ b/spectec/src/dune
+@@ -8,6 +8,7 @@
+     (re_export frontend)
+     (re_export middlend)
+     (re_export backend_ast)
++    (re_export backend_lean4)
+     (re_export backend_latex)
+     (re_export backend_prose)
+     (re_export backend_splice)
