@@ -1,0 +1,8 @@
+X86 iwp2.4/amd9
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{  }
+ P0          | P1          ;
+ MOV [x],$1  | MOV [y],$1  ;
+ MOV EAX,[x] | MOV ECX,[y] ;
+ MOV EBX,[y] | MOV EDX,[x] ;
+exists (0:EBX=0 /\ 1:EDX=0)

@@ -1,0 +1,8 @@
+X86 n4
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{  }
+ P0          | P1          ;
+ MOV EAX,[x] | MOV ECX,[x] ;
+ MOV [x],$1  | MOV [x],$2  ;
+ MOV EBX,[x] | MOV EDX,[x] ;
+exists (0:EAX=2 /\ 0:EBX=1 /\ 1:ECX=1 /\ 1:EDX=2)
