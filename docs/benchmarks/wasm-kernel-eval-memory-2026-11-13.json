@@ -1,5 +1,6 @@
 {
  "date": "2026-11-13",
+ "kbytes_source": "prelude/kernel-bytes-trust (#125) at 792e7ed6",
  "machine": "2-vCPU gVisor sandbox, Lean 4.37.0-nightly-2026-11-05",
  "kernel": {
   "command": "python3 -I benchmarks/wasm-kernel-eval/mem_bench.py",
@@ -12,7 +13,8 @@
     "error": null,
     "workload": "baseline (imports only)",
     "size": 0,
-    "rep": "-"
+    "rep": "-",
+    "session": 1
    },
    {
     "ok": true,
@@ -22,7 +24,8 @@
     "error": null,
     "workload": "fillSort 8",
     "size": 256,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": true,
@@ -32,37 +35,8 @@
     "error": null,
     "workload": "fillSort 8",
     "size": 256,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 226.0,
-    "wall_s": 2.83,
-    "max_rss_mb": 2228,
-    "error": null,
-    "workload": "fillSort 8",
-    "size": 256,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 475.0,
-    "wall_s": 3.04,
-    "max_rss_mb": 2257,
-    "error": null,
-    "workload": "fillSort 8",
-    "size": 256,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 252.0,
-    "wall_s": 2.89,
-    "max_rss_mb": 2223,
-    "error": null,
-    "workload": "fillSort 8",
-    "size": 256,
-    "rep": "PageMem 256B pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": true,
@@ -72,7 +46,8 @@
     "error": null,
     "workload": "fillSort 8",
     "size": 256,
-    "rep": "CoreMem (Memory.load/store)"
+    "rep": "CoreMem (Memory.load/store)",
+    "session": 1
    },
    {
     "ok": true,
@@ -82,7 +57,8 @@
     "error": null,
     "workload": "fillSort 16",
     "size": 65536,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": true,
@@ -92,37 +68,8 @@
     "error": null,
     "workload": "fillSort 16",
     "size": 65536,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 884.0,
-    "wall_s": 3.55,
-    "max_rss_mb": 2392,
-    "error": null,
-    "workload": "fillSort 16",
-    "size": 65536,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 5000.0,
-    "wall_s": 7.91,
-    "max_rss_mb": 2691,
-    "error": null,
-    "workload": "fillSort 16",
-    "size": 65536,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 1090.0,
-    "wall_s": 4.31,
-    "max_rss_mb": 2407,
-    "error": null,
-    "workload": "fillSort 16",
-    "size": 65536,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": false,
@@ -132,7 +79,8 @@
     "error": "\ttypeclass inference 1.51ms",
     "workload": "scatter 128",
     "size": 65536,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": false,
@@ -142,37 +90,8 @@
     "error": "\ttypeclass inference 1.36ms",
     "workload": "scatter 128",
     "size": 65536,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 1400.0,
-    "wall_s": 4.01,
-    "max_rss_mb": 2464,
-    "error": null,
-    "workload": "scatter 128",
-    "size": 65536,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 7520.0,
-    "wall_s": 9.88,
-    "max_rss_mb": 3598,
-    "error": null,
-    "workload": "scatter 128",
-    "size": 65536,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 1260.0,
-    "wall_s": 3.75,
-    "max_rss_mb": 2446,
-    "error": null,
-    "workload": "scatter 128",
-    "size": 65536,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": false,
@@ -182,7 +101,8 @@
     "error": "\ttypeclass inference 1.27ms",
     "workload": "scatter 128",
     "size": 1048576,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": false,
@@ -192,37 +112,8 @@
     "error": "\ttypeclass inference 1.26ms",
     "workload": "scatter 128",
     "size": 1048576,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 1970.0,
-    "wall_s": 4.72,
-    "max_rss_mb": 2866,
-    "error": null,
-    "workload": "scatter 128",
-    "size": 1048576,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 8410.0,
-    "wall_s": 11.35,
-    "max_rss_mb": 3596,
-    "error": null,
-    "workload": "scatter 128",
-    "size": 1048576,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 1370.0,
-    "wall_s": 4.11,
-    "max_rss_mb": 2451,
-    "error": null,
-    "workload": "scatter 128",
-    "size": 1048576,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": false,
@@ -232,7 +123,8 @@
     "error": "\ttypeclass inference 2.44ms",
     "workload": "updates 200",
     "size": 65536,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": false,
@@ -242,37 +134,8 @@
     "error": "\ttypeclass inference 2.58ms",
     "workload": "updates 200",
     "size": 65536,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 137.0,
-    "wall_s": 2.58,
-    "max_rss_mb": 2186,
-    "error": null,
-    "workload": "updates 200",
-    "size": 65536,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 16.1,
-    "wall_s": 2.63,
-    "max_rss_mb": 2155,
-    "error": null,
-    "workload": "updates 200",
-    "size": 65536,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 46.0,
-    "wall_s": 2.49,
-    "max_rss_mb": 2158,
-    "error": null,
-    "workload": "updates 200",
-    "size": 65536,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": false,
@@ -282,7 +145,8 @@
     "error": "\ttypeclass inference 2.19ms",
     "workload": "updates 200",
     "size": 1048576,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": false,
@@ -292,37 +156,8 @@
     "error": "\ttypeclass inference 2.8ms",
     "workload": "updates 200",
     "size": 1048576,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 971.0,
-    "wall_s": 3.45,
-    "max_rss_mb": 2756,
-    "error": null,
-    "workload": "updates 200",
-    "size": 1048576,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 17.7,
-    "wall_s": 2.38,
-    "max_rss_mb": 2159,
-    "error": null,
-    "workload": "updates 200",
-    "size": 1048576,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 48.3,
-    "wall_s": 2.58,
-    "max_rss_mb": 2164,
-    "error": null,
-    "workload": "updates 200",
-    "size": 1048576,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": false,
@@ -332,7 +167,8 @@
     "error": "\ttypeclass inference 2.21ms",
     "workload": "sharing 64",
     "size": 65536,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": true,
@@ -342,37 +178,8 @@
     "error": null,
     "workload": "sharing 64",
     "size": 65536,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 53.2,
-    "wall_s": 2.53,
-    "max_rss_mb": 2167,
-    "error": null,
-    "workload": "sharing 64",
-    "size": 65536,
-    "rep": "NatMem"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 359.0,
-    "wall_s": 2.89,
-    "max_rss_mb": 2195,
-    "error": null,
-    "workload": "sharing 64",
-    "size": 65536,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 81.8,
-    "wall_s": 2.53,
-    "max_rss_mb": 2176,
-    "error": null,
-    "workload": "sharing 64",
-    "size": 65536,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": false,
@@ -382,7 +189,8 @@
     "error": "\ttypeclass inference 2.06ms",
     "workload": "sharing 64",
     "size": 1048576,
-    "rep": "ListMem"
+    "rep": "ListMem",
+    "session": 1
    },
    {
     "ok": false,
@@ -392,37 +200,624 @@
     "error": "\ttypeclass inference 1.71ms",
     "workload": "sharing 64",
     "size": 1048576,
-    "rep": "KMem (Verify.Kernel fload/fstore)"
+    "rep": "KMem (Verify.Kernel fload/fstore)",
+    "session": 1
    },
    {
     "ok": true,
-    "kernel_ms": 248.0,
-    "wall_s": 2.73,
-    "max_rss_mb": 2316,
+    "kernel_ms": 234.0,
+    "wall_s": 2.43,
+    "max_rss_mb": 2230,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 203.0,
+    "wall_s": 2.43,
+    "max_rss_mb": 2223,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1620.0,
+    "wall_s": 3.79,
+    "max_rss_mb": 2475,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 848.0,
+    "wall_s": 3.13,
+    "max_rss_mb": 2407,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 3880.0,
+    "wall_s": 6.18,
+    "max_rss_mb": 2951,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1070.0,
+    "wall_s": 3.35,
+    "max_rss_mb": 2446,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 5920.0,
+    "wall_s": 8.05,
+    "max_rss_mb": 3305,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1320.0,
+    "wall_s": 3.54,
+    "max_rss_mb": 2493,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 91.3,
+    "wall_s": 2.23,
+    "max_rss_mb": 2182,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 37.0,
+    "wall_s": 2.19,
+    "max_rss_mb": 2165,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 285.0,
+    "wall_s": 2.38,
+    "max_rss_mb": 2229,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 138.0,
+    "wall_s": 2.28,
+    "max_rss_mb": 2198,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 260.0,
+    "wall_s": 2.38,
+    "max_rss_mb": 2222,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 71.7,
+    "wall_s": 2.23,
+    "max_rss_mb": 2175,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 472.0,
+    "wall_s": 2.68,
+    "max_rss_mb": 2281,
     "error": null,
     "workload": "sharing 64",
     "size": 1048576,
-    "rep": "NatMem"
+    "rep": "KBytes rope stores (KRope)",
+    "session": 2
    },
    {
     "ok": true,
-    "kernel_ms": 348.0,
-    "wall_s": 2.99,
-    "max_rss_mb": 2192,
-    "error": null,
-    "workload": "sharing 64",
-    "size": 1048576,
-    "rep": "Overlay(NatMem)"
-   },
-   {
-    "ok": true,
-    "kernel_ms": 118.0,
+    "kernel_ms": 203.0,
     "wall_s": 2.58,
-    "max_rss_mb": 2187,
+    "max_rss_mb": 2214,
     "error": null,
     "workload": "sharing 64",
     "size": 1048576,
-    "rep": "PageMem 4KiB pages"
+    "rep": "KBytes path stores (KPath)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 186.0,
+    "wall_s": 2.23,
+    "max_rss_mb": 2222,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 384.0,
+    "wall_s": 2.48,
+    "max_rss_mb": 2263,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 739.0,
+    "wall_s": 2.79,
+    "max_rss_mb": 2393,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 2130.0,
+    "wall_s": 4.2,
+    "max_rss_mb": 2701,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1040.0,
+    "wall_s": 3.19,
+    "max_rss_mb": 2456,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 6670.0,
+    "wall_s": 8.81,
+    "max_rss_mb": 3600,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1570.0,
+    "wall_s": 3.75,
+    "max_rss_mb": 2873,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 6470.0,
+    "wall_s": 8.6,
+    "max_rss_mb": 3597,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 97.1,
+    "wall_s": 2.23,
+    "max_rss_mb": 2199,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 14.6,
+    "wall_s": 2.13,
+    "max_rss_mb": 2162,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 785.0,
+    "wall_s": 2.94,
+    "max_rss_mb": 2767,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 14.4,
+    "wall_s": 2.18,
+    "max_rss_mb": 2158,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 52.4,
+    "wall_s": 2.24,
+    "max_rss_mb": 2170,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 309.0,
+    "wall_s": 2.43,
+    "max_rss_mb": 2200,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 219.0,
+    "wall_s": 2.37,
+    "max_rss_mb": 2317,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 1048576,
+    "rep": "NatMem",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 321.0,
+    "wall_s": 2.48,
+    "max_rss_mb": 2195,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 1048576,
+    "rep": "Overlay(NatMem)",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 193.0,
+    "wall_s": 2.33,
+    "max_rss_mb": 2228,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "PageMem 256B pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1040.0,
+    "wall_s": 3.24,
+    "max_rss_mb": 2443,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1300.0,
+    "wall_s": 3.49,
+    "max_rss_mb": 2457,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 38.3,
+    "wall_s": 2.28,
+    "max_rss_mb": 2165,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 39.1,
+    "wall_s": 2.24,
+    "max_rss_mb": 2164,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 76.6,
+    "wall_s": 2.22,
+    "max_rss_mb": 2174,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 104.0,
+    "wall_s": 2.18,
+    "max_rss_mb": 2182,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 1048576,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 846.0,
+    "wall_s": 2.99,
+    "max_rss_mb": 2410,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "PageMem 4KiB pages",
+    "session": 2
+   },
+   {
+    "ok": true,
+    "kernel_ms": 241.0,
+    "wall_s": 2.38,
+    "max_rss_mb": 2234,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 193.0,
+    "wall_s": 2.33,
+    "max_rss_mb": 2231,
+    "error": null,
+    "workload": "fillSort 8",
+    "size": 256,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1110.0,
+    "wall_s": 3.19,
+    "max_rss_mb": 2469,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 739.0,
+    "wall_s": 2.73,
+    "max_rss_mb": 2394,
+    "error": null,
+    "workload": "fillSort 16",
+    "size": 65536,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 3730.0,
+    "wall_s": 5.77,
+    "max_rss_mb": 2904,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1110.0,
+    "wall_s": 3.23,
+    "max_rss_mb": 2461,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 65536,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 3560.0,
+    "wall_s": 5.72,
+    "max_rss_mb": 2906,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 1580.0,
+    "wall_s": 3.75,
+    "max_rss_mb": 2877,
+    "error": null,
+    "workload": "scatter 128",
+    "size": 1048576,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 48.5,
+    "wall_s": 2.13,
+    "max_rss_mb": 2172,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 682.0,
+    "wall_s": 2.78,
+    "max_rss_mb": 2215,
+    "error": null,
+    "workload": "updates 200",
+    "size": 65536,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 45.7,
+    "wall_s": 2.08,
+    "max_rss_mb": 2168,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 15600.0,
+    "wall_s": 17.62,
+    "max_rss_mb": 3063,
+    "error": null,
+    "workload": "updates 200",
+    "size": 1048576,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 205.0,
+    "wall_s": 2.28,
+    "max_rss_mb": 2210,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 64.5,
+    "wall_s": 2.32,
+    "max_rss_mb": 2170,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 65536,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 238.0,
+    "wall_s": 2.28,
+    "max_rss_mb": 2207,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 1048576,
+    "rep": "KBytes rope stores, one-leaf zero",
+    "session": 3
+   },
+   {
+    "ok": true,
+    "kernel_ms": 283.0,
+    "wall_s": 2.38,
+    "max_rss_mb": 2349,
+    "error": null,
+    "workload": "sharing 64",
+    "size": 1048576,
+    "rep": "KBytes path stores, one-leaf zero",
+    "session": 3
    }
   ]
  },
@@ -433,259 +828,483 @@
     "workload": "fillSort 16",
     "rep": "NatMem",
     "size": 65536,
-    "ms": 0.489374,
+    "ms": 0.450772,
     "result": "(some 17)"
    },
    {
     "workload": "fillSort 16",
     "rep": "Overlay(NatMem)",
     "size": 65536,
-    "ms": 0.440535,
+    "ms": 0.407338,
     "result": "(some 17)"
    },
    {
     "workload": "fillSort 16",
     "rep": "PageMem 4KiB",
     "size": 65536,
-    "ms": 0.690269,
+    "ms": 0.65623,
+    "result": "(some 17)"
+   },
+   {
+    "workload": "fillSort 16",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 65536,
+    "ms": 1.9502,
+    "result": "(some 17)"
+   },
+   {
+    "workload": "fillSort 16",
+    "rep": "KBytes path stores (KPath)",
+    "size": 65536,
+    "ms": 0.512808,
+    "result": "(some 17)"
+   },
+   {
+    "workload": "fillSort 16",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 65536,
+    "ms": 1.630796,
+    "result": "(some 17)"
+   },
+   {
+    "workload": "fillSort 16",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 65536,
+    "ms": 0.509355,
     "result": "(some 17)"
    },
    {
     "workload": "fillSort 16",
     "rep": "ByteMem (Core algorithm)",
     "size": 65536,
-    "ms": 0.349471,
+    "ms": 0.319939,
     "result": "(some 17)"
    },
    {
     "workload": "fillSort 16",
     "rep": "ListMem",
     "size": 65536,
-    "ms": 35.213442,
+    "ms": 26.921087,
     "result": "(some 17)"
    },
    {
     "workload": "fillSort 32",
     "rep": "NatMem",
     "size": 65536,
-    "ms": 1.922109,
+    "ms": 1.737932,
     "result": "(some 33)"
    },
    {
     "workload": "fillSort 32",
     "rep": "Overlay(NatMem)",
     "size": 65536,
-    "ms": 2.146593,
+    "ms": 1.943095,
     "result": "(some 33)"
    },
    {
     "workload": "fillSort 32",
     "rep": "PageMem 4KiB",
     "size": 65536,
-    "ms": 2.684464,
+    "ms": 2.489811,
+    "result": "(some 33)"
+   },
+   {
+    "workload": "fillSort 32",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 65536,
+    "ms": 8.119658,
+    "result": "(some 33)"
+   },
+   {
+    "workload": "fillSort 32",
+    "rep": "KBytes path stores (KPath)",
+    "size": 65536,
+    "ms": 2.092751,
+    "result": "(some 33)"
+   },
+   {
+    "workload": "fillSort 32",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 65536,
+    "ms": 6.889543,
+    "result": "(some 33)"
+   },
+   {
+    "workload": "fillSort 32",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 65536,
+    "ms": 2.066402,
     "result": "(some 33)"
    },
    {
     "workload": "fillSort 32",
     "rep": "ByteMem (Core algorithm)",
     "size": 65536,
-    "ms": 1.293616,
+    "ms": 1.208693,
     "result": "(some 33)"
    },
    {
     "workload": "fillSort 32",
     "rep": "ListMem",
     "size": 65536,
-    "ms": 141.282319,
+    "ms": 110.820557,
     "result": "(some 33)"
    },
    {
     "workload": "scatter 128",
     "rep": "NatMem",
     "size": 65536,
-    "ms": 12.203406,
+    "ms": 10.421462,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "Overlay(NatMem)",
     "size": 65536,
-    "ms": 0.871675,
+    "ms": 0.75135,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "PageMem 4KiB",
     "size": 65536,
-    "ms": 1.065347,
+    "ms": 0.957514,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 65536,
+    "ms": 3.871084,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes path stores (KPath)",
+    "size": 65536,
+    "ms": 0.994151,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 65536,
+    "ms": 4.247437,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 65536,
+    "ms": 11.123034,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "ByteMem (Core algorithm)",
     "size": 65536,
-    "ms": 0.373423,
+    "ms": 0.323104,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "ListMem",
     "size": 65536,
-    "ms": 140.15948,
+    "ms": 116.46147,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "NatMem",
     "size": 1048576,
-    "ms": 305.448695,
+    "ms": 275.094536,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "Overlay(NatMem)",
     "size": 1048576,
-    "ms": 1.139831,
+    "ms": 1.099655,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "PageMem 4KiB",
     "size": 1048576,
-    "ms": 0.926423,
+    "ms": 0.853238,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 1048576,
+    "ms": 23.418164,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes path stores (KPath)",
+    "size": 1048576,
+    "ms": 0.690983,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 1048576,
+    "ms": 19.013024,
+    "result": "(some 8128)"
+   },
+   {
+    "workload": "scatter 128",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 1048576,
+    "ms": 186.259806,
     "result": "(some 8128)"
    },
    {
     "workload": "scatter 128",
     "rep": "ByteMem (Core algorithm)",
     "size": 1048576,
-    "ms": 0.604779,
+    "ms": 0.547345,
     "result": "(some 8128)"
    },
    {
     "workload": "updates 200",
     "rep": "NatMem",
     "size": 65536,
-    "ms": 7.927189,
+    "ms": 7.474889,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "Overlay(NatMem)",
     "size": 65536,
-    "ms": 0.09669,
+    "ms": 0.093686,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "PageMem 4KiB",
     "size": 65536,
-    "ms": 0.828966,
+    "ms": 0.795518,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 65536,
+    "ms": 7.041481,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes path stores (KPath)",
+    "size": 65536,
+    "ms": 9.647839,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 65536,
+    "ms": 6.465667,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 65536,
+    "ms": 546.398117,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "ByteMem (Core algorithm)",
     "size": 65536,
-    "ms": 0.353387,
+    "ms": 0.369502,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "ListMem",
     "size": 65536,
-    "ms": 167.221358,
+    "ms": 149.418046,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "NatMem",
     "size": 1048576,
-    "ms": 189.154107,
+    "ms": 151.02601,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "Overlay(NatMem)",
     "size": 1048576,
-    "ms": 0.80154,
+    "ms": 0.087612,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "PageMem 4KiB",
     "size": 1048576,
-    "ms": 0.657173,
+    "ms": 0.541903,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 1048576,
+    "ms": 41.20964,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes path stores (KPath)",
+    "size": 1048576,
+    "ms": 0.518255,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 1048576,
+    "ms": 30.279803,
+    "result": "(some 0)"
+   },
+   {
+    "workload": "updates 200",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 1048576,
+    "ms": 14170.671729,
     "result": "(some 0)"
    },
    {
     "workload": "updates 200",
     "rep": "ByteMem (Core algorithm)",
     "size": 1048576,
-    "ms": 7.254222,
+    "ms": 6.427097,
     "result": "(some 0)"
    },
    {
     "workload": "sharing 64",
     "rep": "NatMem",
     "size": 65536,
-    "ms": 4.632622,
+    "ms": 2.238857,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "Overlay(NatMem)",
     "size": 65536,
-    "ms": 0.278364,
+    "ms": 0.251199,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "PageMem 4KiB",
     "size": 65536,
-    "ms": 0.4299,
+    "ms": 0.361116,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 65536,
+    "ms": 2.0698,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes path stores (KPath)",
+    "size": 65536,
+    "ms": 0.296697,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 65536,
+    "ms": 1.724775,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 65536,
+    "ms": 2.467492,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "ByteMem (Core algorithm)",
     "size": 65536,
-    "ms": 0.590201,
+    "ms": 0.628238,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "ListMem",
     "size": 65536,
-    "ms": 91.062226,
+    "ms": 74.782484,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "NatMem",
     "size": 1048576,
-    "ms": 66.087807,
+    "ms": 53.157626,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "Overlay(NatMem)",
     "size": 1048576,
-    "ms": 0.210929,
+    "ms": 0.205574,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "PageMem 4KiB",
     "size": 1048576,
-    "ms": 0.517734,
+    "ms": 0.470458,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes rope stores (KRope)",
+    "size": 1048576,
+    "ms": 20.858005,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes path stores (KPath)",
+    "size": 1048576,
+    "ms": 0.35207,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes rope stores, one-leaf zero",
+    "size": 1048576,
+    "ms": 16.513655,
+    "result": "true"
+   },
+   {
+    "workload": "sharing 64",
+    "rep": "KBytes path stores, one-leaf zero",
+    "size": 1048576,
+    "ms": 50.287738,
     "result": "true"
    },
    {
     "workload": "sharing 64",
     "rep": "ByteMem (Core algorithm)",
     "size": 1048576,
-    "ms": 5.562161,
+    "ms": 4.973037,
     "result": "true"
    }
   ]

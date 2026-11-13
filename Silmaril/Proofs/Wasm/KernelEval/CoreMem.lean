@@ -71,16 +71,6 @@ theorem encodeLE_list : ∀ (k n : Nat),
     rw [ByteArray.data_append, Array.toList_append, List.map_append, encodeLE_list k (n / 256)]
     simp [UInt8.toBitVec_ofNat']
 
-theorem encode_mod : ∀ (k v : Nat), ListMem.encode k (v % 256 ^ k) = ListMem.encode k v
-  | 0, _ => rfl
-  | k + 1, v => by
-    simp only [ListMem.encode]
-    rw [show 256 ^ (k + 1) = 256 * 256 ^ k by rw [Nat.pow_succ, Nat.mul_comm],
-      Nat.mod_mul_right_div_self, encode_mod k (v / 256)]
-    congr 1
-    apply BitVec.eq_of_toNat_eq
-    simp
-
 theorem memSim_kMem : MemSim (fun m : KMem => toListMem m.bytes) where
   load m a k := by
     rcases m with ⟨⟨⟨L⟩⟩⟩
