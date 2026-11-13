@@ -3,6 +3,7 @@ module
 public import Silmaril.Servers.Live.Defs
 public import Silmaril.Servers.Core.Thms
 import Silmaril.Proofs.Servers.Live.Basic
+import Silmaril.Proofs.Servers.Live.Pipe
 
 /-!
 # Liveness: theorems
@@ -16,6 +17,12 @@ PROVED (standard axioms).
   atomic-handler server, so the run satisfies every safety sentence of the server at every
   prefix (`Machine.IRun.always_of_sat`), in particular linearizability
   (`Machine.IRun.always_lin`);
+* **`Machine.PRun.answered`**: in a weakly fair run of the pipelining server of a total machine
+  (a sendable response is not postponed forever), every request is eventually answered,
+  although a response may wait for the earlier requests of its connection
+  (`Machine.pipeFairObs_answered`); every prefix of a run is a trace of the pipelining server
+  (`Machine.PRun.prefix_tr`), so it answers in order at every prefix
+  (`Machine.PRun.always_inOrder`);
 * `Machine.ofRel_total`, `Machine.ofFun_total`: a relation that answers every request, and a
   function, are total machines.
 
@@ -50,6 +57,25 @@ theorem Machine.IRun.always_of_sat (ρ : M.IRun q₀) {φ : Sen A} (h : (M.serve
 
 theorem Machine.IRun.always_lin (ρ : M.IRun q₀) : ISen.always (Sen.lin (M.Hist q₀)) ρ.obs :=
   ρ.always_of_sat (M.server_sat_lin q₀)
+
+/-! ## The pipelining server -/
+
+/-- **Fair runs of the pipelining server of a total machine answer every request.** -/
+theorem Machine.PRun.answered (hM : M.Total) (ρ : M.PRun q₀) (hF : ρ.Fair) :
+    ISen.answered ρ.obs :=
+  Proofs.Servers.Live.pipe_answered hM ρ hF
+
+theorem Machine.pipeFairObs_answered (hM : M.Total) {u : ITrace A} (hu : M.pipeFairObs q₀ u) :
+    ISen.answered u := by
+  obtain ⟨ρ, hF, rfl⟩ := hu; exact ρ.answered hM hF
+
+/-- Every prefix of a run of the pipelining server is one of its traces. -/
+theorem Machine.PRun.prefix_tr (ρ : M.PRun q₀) (n : Nat) :
+    (M.pipeServer q₀).Tr (ρ.obs.prefix n) :=
+  Proofs.Servers.Live.pipe_prefix_tr ρ n
+
+theorem Machine.PRun.always_inOrder (ρ : M.PRun q₀) : ISen.always Sen.inOrder ρ.obs :=
+  fun n => M.pipeServer_sat_inOrder q₀ _ (ρ.prefix_tr n)
 
 theorem Machine.ofRel_total {R : A.Req → A.Resp → Prop} (h : ∀ r, ∃ s, R r s) :
     (Machine.ofRel R).Total :=

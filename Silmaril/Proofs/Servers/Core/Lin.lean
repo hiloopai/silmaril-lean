@@ -98,9 +98,7 @@ def toW (m : LMon A) : WMon A :=
     | none, none => none⟩
 
 /-- The invariant of the linearization monitor. -/
-def LInv (m : LMon A) : Prop :=
-  (∀ i r, m.pending i = some r → m.req i = some r ∧ m.ready i = none) ∧
-  (∀ i s, m.ready i = some s → ∃ r, m.req i = some r)
+abbrev LInv (m : LMon A) : Prop := m.Inv
 
 theorem lInv_init : LInv (LMon.init A) :=
   ⟨fun _ _ h => (nomatch h), fun _ _ h => (nomatch h)⟩

@@ -178,6 +178,12 @@ inductive LMon.Step {A : Sig} : LMon A → LEvent A → LMon A → Prop where
   | send {m : LMon A} {i : ReqId} {s : A.Resp} : m.ready i = some s →
       LMon.Step m (.ev (.send i s)) ⟨m.req, m.pending, Function.update m.ready i none⟩
 
+/-- **The invariant of the linearization monitor**: a pending request has been received and has
+no response ready; a ready response answers a received request. -/
+def LMon.Inv {A : Sig} (m : LMon A) : Prop :=
+  (∀ i r, m.pending i = some r → m.req i = some r ∧ m.ready i = none) ∧
+  (∀ i s, m.ready i = some s → ∃ r, m.req i = some r)
+
 /-- The annotated trace is a run of the linearization monitor. -/
 def LEvent.Valid {A : Sig} (t : List (LEvent A)) : Prop := ∃ m, Steps LMon.Step (LMon.init A) t m
 

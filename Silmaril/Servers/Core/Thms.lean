@@ -9,6 +9,7 @@ import Silmaril.Proofs.Servers.Core.Unmap
 /-!
 # The server institution: theorems
 
+* **The linearization monitor keeps its invariant** (`LMon.inv_init`, `LMon.Inv.step`).
 * **Refinement is trace inclusion** and transfers satisfaction (`Model.sat_of_refines`), and is a
   preorder (`Model.Refines.refl`, `Model.Refines.trans`).
 * **The atomic-handler server is linearizable**, and its traces are exactly the linearizable
@@ -43,6 +44,15 @@ import Silmaril.Proofs.Servers.Core.Unmap
 namespace Silmaril.Servers
 
 variable {A : Sig}
+
+/-! ## The linearization monitor -/
+
+theorem LMon.inv_init : (LMon.init A).Inv := Proofs.Servers.Core.lInv_init
+
+/-- Every step of the linearization monitor keeps its invariant. -/
+theorem LMon.Inv.step {m m' : LMon A} {e : LEvent A} (hI : m.Inv) (hs : LMon.Step m e m') :
+    m'.Inv :=
+  Proofs.Servers.Core.lInv_step hI hs
 
 /-! ## Refinement -/
 
