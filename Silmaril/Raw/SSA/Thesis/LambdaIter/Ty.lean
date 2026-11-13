@@ -2,6 +2,10 @@ module
 
 public import Mathlib.Data.Fin.Basic
 public import Mathlib.Data.List.Basic
+public import Mathlib.Data.Prod.Basic
+public import Mathlib.Logic.Equiv.Basic
+public import Mathlib.Control.Monad.Basic
+public import Mathlib.CategoryTheory.Limits.Types.Coproducts
 
 /-!
 # Types for lambda-iter
@@ -31,16 +35,16 @@ class TypeFormers (τ : Type u) where
   empty : τ
 
 /-- Tensor in a type universe. -/
-def tensor [TypeFormers τ] (A B : τ) : τ := TypeFormers.tensor A B
+@[reducible] def tensor [TypeFormers τ] (A B : τ) : τ := TypeFormers.tensor A B
 
 /-- Unit in a type universe. -/
-def unit [TypeFormers τ] : τ := TypeFormers.unit
+@[reducible] def unit [TypeFormers τ] : τ := TypeFormers.unit
 
 /-- Coproduct in a type universe. -/
-def coprod [TypeFormers τ] (A B : τ) : τ := TypeFormers.coprod A B
+@[reducible] def coprod [TypeFormers τ] (A B : τ) : τ := TypeFormers.coprod A B
 
 /-- Empty type in a type universe. -/
-def empty [TypeFormers τ] : τ := TypeFormers.empty
+@[reducible] def empty [TypeFormers τ] : τ := TypeFormers.empty
 
 /-- Simple types freely generated from the base types `α`. -/
 inductive Ty (α : Type u) : Type u where
