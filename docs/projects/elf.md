@@ -100,11 +100,12 @@ layout keeps no payloads. Sections and segments are `Span`s into the file (`Layo
 `segmentOf`, `vaddrOf`, `offsetOf`, `boundsOk`), read through whichever source checks them.
 Each fact comes from running its reader on a source that answers as the file (`Check.Sub`):
 
-* **paranoid**: `pageRead` on 4 KiB literals, `decide +kernel` (`layoutIs_of_pages`, …);
-* **fast**: `fastRead` on a `ByteArray` (`sub_fast`). A compiled run is trusted computation.
-  A theorem from it uses compiled evaluation, which on the current toolchain adds one
-  auxiliary axiom per computation (`thm._native.….ax_…`); the policy decides
-  which named computations may do so.
+* **kernel**: core's kernel bytes (`KBytes.readLE`, `sub_kbytes`) or `pageRead` on 4 KiB
+  literals (`layoutIs_of_pages`, …), evaluated by the kernel;
+* **native**: `fastRead` on a `ByteArray` (`sub_fast`). A compiled run is trusted computation.
+  It adds one auxiliary axiom per computation (`thm._native.edge.<procedure>.ax_…`), and
+  the trust policy decides which named procedures may run (`elf_leaf`,
+  [elf-staged-api.md](elf-staged-api.md)).
 
 **Disassembly certificates.** A tile list is a claim of instruction boundaries. Any
 disassembler can supply one (objdump, iced-x86, llvm-objdump, Capstone, XED, ddisasm). They

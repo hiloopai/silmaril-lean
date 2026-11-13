@@ -190,16 +190,18 @@ namespace Silmaril.Elf.Staged.Trust
 
 open Lean Elab Tactic Meta
 
-/-- `elf_leaf proc [(native := hN)] (kernel := hK)`: prove a leaf's proposition by the native
+/-- `elf_leaf proc (native := hN) (kernel := hK)`: prove a leaf's proposition by the native
 checker when the policy allows `proc` here, else by the kernel checker (module doc). -/
-syntax (name := elfLeaf) "elf_leaf " ident (" (" &"native" " := " term ")")?
+syntax (name := elfLeaf) "elf_leaf " ident " (" &"native" " := " term ")"
   " (" &"kernel" " := " term ")" : tactic
 
-@[tactic elfLeaf] def evalElfLeaf : Tactic := fun stx => withMainContext do
-  let procId := stx[1]
+/-- `elf_leaf proc (kernel := hK)`: a kernel-only leaf, checked by the kernel in every profile. -/
+syntax (name := elfLeafKernel) "elf_leaf " ident " (" &"kernel" " := " term ")" : tactic
+
+/-- The leaf proof: `hN?` is the native soundness lemma, if the leaf has a native checker. -/
+def runElfLeaf (procId : Syntax) (hN? : Option Syntax) (hK : Syntax) : TacticM Unit :=
+    withMainContext do
   let proc := procId.getId
-  let hN? : Option Syntax := if stx[2].isNone then none else some stx[2][3]
-  let hK : Syntax := stx[6]
   let env ← getEnv
   let some p := (Silmaril.Trust.procExt.getState env).find? proc
     | throwError "elf_leaf: {proc} is not a registered ELF procedure (unsupported leaf)"
@@ -238,5 +240,11 @@ syntax (name := elfLeaf) "elf_leaf " ident (" (" &"native" " := " term ")")?
                              profile := ← Silmaril.Trust.profileTag }
   goal.assign (← mkExpectedTypeHint (mkConst aux) ty)
   replaceMainGoal []
+
+@[tactic elfLeaf] def evalElfLeaf : Tactic := fun stx =>
+  runElfLeaf stx[1] (some stx[5]) stx[10]
+
+@[tactic elfLeafKernel] def evalElfLeafKernel : Tactic := fun stx =>
+  runElfLeaf stx[1] none stx[5]
 
 end Silmaril.Elf.Staged.Trust
