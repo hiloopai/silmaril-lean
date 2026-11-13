@@ -15,8 +15,8 @@ the recorded outputs are in [results/](results/).
 | `Silmaril/Proofs/Process/Mt/Explore.lean` | (in the library) Every schedule of four small raw-byte x86-64 programs under the multithreaded process model's executable SC scheduler (`Silmaril.Process.Mt.X86.exec1`). `#guard` checks the outcome sets. |
 | `mtproc_hw.c` | The same bytes run natively, with two pinned threads, many times. |
 
-The 68-test corpus uses `tools/litmus-run` from PR #143 (`oss-mm/models-litmus`) unchanged. It
-is not duplicated here; its reports are in `results/corpus-*.md`.
+The 68-test corpus runs with `tools/litmus-run` unchanged; its reports are in
+`results/corpus-*.md`.
 
 ```sh
 # lattice witnesses: 50M iterations per test, physical cores 0-3, then SMT siblings 0,6,1,7
@@ -25,7 +25,7 @@ cc -O2 -Wall -pthread tools/litmus-hw/lattice_hw.c -o /tmp/lattice_hw
 /tmp/lattice_hw 50000000 0,6,1,7 64 > smt-d64.txt
 python3 -I tools/litmus-hw/lattice.py cores-d64.txt smt-d64.txt          # --markdown for a table
 
-# the 68-test corpus (in a checkout of PR #143)
+# the 68-test corpus
 cd tools/litmus-run && cargo run --release -- --iters 30000000 --time 600 --report hw.md
 cargo run --release -- --model sc --test SB --test R --test n6           # negative control: must FAIL
 

@@ -63,7 +63,7 @@ def model_output(prog, text):
 def predicted(prog, param):
     n = FULL[prog] if param is None else param
     if param is not None or prog in EXPLORE_FULL:
-        spec = prog if (param is None) else f"{prog}:{param}"
+        spec = f"{prog}:{n}" if n is not None else prog
         r = simple_model.run(spec)
         return set(r["outcomes"]), f"explored ({r['configs']} configurations)"
     if prog in ("p1", "p6"):
@@ -148,13 +148,19 @@ def main():
                 report["ok"] = False
         v["observed"] = dict(union)
         v["unexpected"] = sorted(o for o in union if o not in allowed)
-        v["unseen"] = sorted(o for o in allowed if o not in union)
+        unseen = sorted(o for o in allowed if o not in union)
+        v["unseen"] = unseen
+        if len(allowed) > 100:  # keep the report small: summarise large sets
+            v["allowed"] = f"{len(allowed)} values ({how})"
+            v["unseen"] = f"{len(unseen)} values"
         report["variants"][key] = v
+        with open(os.path.join(out, "diff.json"), "w") as f:
+            json.dump(report, f, indent=1, sort_keys=True)
         shown = (f"{len(union)} distinct, min {min(map(int, union))}, max {max(map(int, union))}"
                  if prog == "p5" and all(o.isdigit() for o in union) else dict(union))
         print(f"{key}: {sum(union.values())} runs, model {how}: {len(allowed)} outcomes; "
-              f"observed {shown}; unexpected {v['unexpected']}; unseen {len(v['unseen'])}"
-              + (f" {v['unseen']}" if len(v["unseen"]) <= 8 else ""), flush=True)
+              f"observed {shown}; unexpected {v['unexpected']}; unseen {len(unseen)}"
+              + (f" {unseen}" if len(unseen) <= 8 else ""), flush=True)
     with open(os.path.join(out, "diff.json"), "w") as f:
         json.dump(report, f, indent=1, sort_keys=True)
     print("OK: every observed output is a model outcome" if report["ok"] else "FAIL: unexpected outputs")

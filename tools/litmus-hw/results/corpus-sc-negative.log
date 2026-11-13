@@ -1,0 +1,8 @@
+SB                       tso iters= 2000000 distinct=  4 witness=   74309 weak=1/1 FAIL
+    OUTSIDE ALLOWED SET: 0:rax=0x0 1:rax=0x0 x=0x1 y=0x1 x74309
+R                        tso iters= 2000000 distinct=  4 witness=   39374 weak=1/1 FAIL
+    OUTSIDE ALLOWED SET: 1:rax=0x0 x=0x1 y=0x2 x39374
+n6                       tso iters= 2000000 distinct=  5 witness=    4645 weak=1/1 FAIL
+    OUTSIDE ALLOWED SET: 0:rax=0x1 0:rbx=0x0 x=0x1 y=0x2 x4645
+3 tests; TSO-only outcomes observed in: SB, R, n6
+litmus-run: some checks FAILED (see above)
