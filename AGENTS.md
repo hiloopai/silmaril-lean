@@ -52,7 +52,9 @@ Working rules for agents in silmaril-lean. The design is in [docs/design.md](doc
   (CI builds with `--wfail`).
 - **Axioms:** only `propext`, `Classical.choice` and `Quot.sound`, unless
   [policy.toml](policy.toml) lists an exception with a reason. `native_decide` is
-  not allowed.
+  not allowed. Native evaluation runs only through `edge_decide`, on procedures registered
+  with `native_decider` and allowed by the `[native]` policy; such proofs are not
+  kernel-only ([docs/trust.md](docs/trust.md)).
 - **Open goals on branches:** use `sorry`'d theorems in a `Task` namespace. Before
   merging, prove them, or turn them into `def Task.x : Prop := …` with the
   theorem stated conditionally (`theorem foo_of (h : Task.x) : …`).

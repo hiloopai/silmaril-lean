@@ -11,6 +11,30 @@ fi
 if grep -rnw 'native_decide' Silmaril --include='*.lean'; then
   echo "error: native_decide is not allowed" >&2; status=1
 fi
+# Native runs go through `edge_decide` (Silmaril/Prelude/Trust), which consults the trust policy
+# and records the procedure. Nothing else calls the native evaluator (backquoted mentions in
+# comments are fine). The trust ceiling belongs to the build (scripts/trust-profile.sh).
+if grep -rnE 'nativeEqTrue|(^|[^`])decide \+native|decide \(config := \{[^}]*native' Silmaril --include='*.lean' \
+    | grep -v '^Silmaril/Prelude/Trust/'; then
+  echo "error: native evaluation must go through edge_decide (Silmaril.Prelude.Trust)" >&2; status=1
+fi
+if grep -rn 'silmaril\.trust\.ceiling' Silmaril --include='*.lean' | grep -v '^Silmaril/Prelude/Trust/'; then
+  echo "error: only scripts/trust-profile.sh sets silmaril.trust.ceiling" >&2; status=1
+fi
+# The trust policy in policy.toml is pinned by Silmaril/Prelude/Trust/Policy/Defs.lean (FNV-1a 64).
+python3 -I - <<'PY' || status=1
+import re
+data = open("policy.toml", "rb").read()
+h = 0xcbf29ce484222325
+for b in data:
+    h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+pin = re.search(r'trust_policy "[^"]*" pin "([0-9a-f]{16})"',
+                open("Silmaril/Prelude/Trust/Policy/Defs.lean").read())
+if not pin or pin.group(1) != f"{h:016x}":
+    print(f"error: policy.toml changed; update the pin in Silmaril/Prelude/Trust/Policy/Defs.lean to {h:016x}",
+          file=__import__("sys").stderr)
+    raise SystemExit(1)
+PY
 # Proofs/Raw of topic Silmaril.{Proofs,Raw}.<Region>.<Topic> may be imported only
 # from the same region and topic, in the header, Proofs or Raw trees. One awk
 # pass over every module: a per-file shell loop took 15 s on CI.
