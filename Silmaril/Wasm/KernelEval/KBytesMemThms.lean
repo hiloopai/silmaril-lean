@@ -16,7 +16,8 @@ Proofs in `Silmaril.Proofs.Wasm.KernelEval.KBytesMem`, from the `KBytes` interfa
   list reference under `kToListMem`, for trees with correct cached lengths (`wf`), which
   stores preserve;
 * `kwrite_spec`: the path-copying write keeps `wf` and splices the written bytes in;
-* `wf_kzeros`, `kzeros_toListMem`: the zero memory.
+* `wf_kzeros`, `kzeros_toListMem`, `wf_kzero1`, `kzero1_toListMem`: the zero memories (a
+  canonical tree of 4 KiB leaves; one leaf).
 -/
 
 namespace Silmaril.Wasm.KernelEval
@@ -38,5 +39,10 @@ theorem wf_kzeros (n : Nat) : (kzeros n).wf = true := Proofs.Wasm.KernelEval.wf_
 
 theorem kzeros_toListMem (n : Nat) : kToListMem (kzeros n) = ⟨List.replicate n 0⟩ :=
   Proofs.Wasm.KernelEval.kzeros_toListMem n
+
+theorem wf_kzero1 (n : Nat) : (kzero1 n).wf = true := rfl
+
+theorem kzero1_toListMem (n : Nat) : kToListMem (kzero1 n) = ⟨List.replicate n 0⟩ :=
+  Proofs.Wasm.KernelEval.kzero1_toListMem n
 
 end Silmaril.Wasm.KernelEval

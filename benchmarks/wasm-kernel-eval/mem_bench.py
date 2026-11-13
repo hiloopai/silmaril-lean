@@ -27,6 +27,8 @@ def reps(size):
         "NatMem": f"(NatMem.zeros {size})",
         "KBytes rope stores (KRope)": f"(KRope.mk (kzeros {size}))",
         "KBytes path stores (KPath)": f"(KPath.mk (kzeros {size}))",
+        "KBytes rope stores, one-leaf zero": f"(KRope.mk (kzero1 {size}))",
+        "KBytes path stores, one-leaf zero": f"(KPath.mk (kzero1 {size}))",
         "Overlay(NatMem)": f"(Overlay.ofBase (NatMem.zeros {size}))",
         f"PageMem {2 ** pb // 1024 or 2 ** pb}{'KiB' if pb >= 10 else 'B'} pages": f"(PageMem.zeros {pb} {d})",
     }

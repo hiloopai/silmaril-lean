@@ -58,4 +58,18 @@ example : returns 100 [const 4094, const 0x11223344, store 0, const 4093, load 0
 example : returns 100 [const 4094, const 0x11223344, store 0, const 4093, load 0] []
     (KRope.mk (kzeros 8192)) 0x22334400 = true := by decide +kernel
 
+/-- Rope stores on a one-leaf zero memory, transported to the reference run. -/
+theorem fillSort8_returns_rope_leaf :
+    ∃ s ls m, run 100000 (Config.init fillSort (fillSortLocals 8)
+      (⟨List.replicate 65536 0⟩ : ListMem)) = .done (9 :: s) ls m := by
+  apply run_of_returns
+  rw [show (⟨List.replicate 65536 0⟩ : ListMem) = kToListMem (KRope.mk (kzero1 65536)).t from
+    (kzero1_toListMem 65536).symm,
+    returns_mapMem_on memSimOn_kRope _ _ _ (KRope.mk (kzero1 65536)) (wf_kzero1 65536)]
+  decide +kernel
+
+/-- An out-of-bounds rope store traps. -/
+example : (run 10 (Config.init [const 65533, const 1, store 0] [] (KRope.mk (kzero1 65536)))
+    matches .trap) := by decide +kernel
+
 end Silmaril.Wasm.KernelEval.MemTests

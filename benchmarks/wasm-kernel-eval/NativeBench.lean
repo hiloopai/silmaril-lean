@@ -46,6 +46,8 @@ def allReps (work : String) (size reps : Nat)
   emit work "PageMem 4KiB" size reps (f (PageMem.zeros pb d))
   emit work "KBytes rope stores (KRope)" size reps (f (KRope.mk (kzeros size)))
   emit work "KBytes path stores (KPath)" size reps (f (KPath.mk (kzeros size)))
+  emit work "KBytes rope stores, one-leaf zero" size reps (f (KRope.mk (kzero1 size)))
+  emit work "KBytes path stores, one-leaf zero" size reps (f (KPath.mk (kzero1 size)))
   emit work "ByteMem (Core algorithm)" size reps (f (ByteMem.zeros size))
   if size ≤ 65536 then emit work "ListMem" size (max 1 (reps / 10)) (f (⟨List.replicate size 0⟩ : ListMem))
 

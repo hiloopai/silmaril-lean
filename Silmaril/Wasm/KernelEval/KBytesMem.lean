@@ -20,9 +20,12 @@ interface reads (`readLE`), slices (`slice`) and concatenates (`++`). As Wasm me
   shape. A leaf is rewritten digit-wise (`%`, `/`, `*`, `+` on its number), so no condition on
   leaves is needed.
 
-Both simulate the list reference under `toListMem` with the validity condition `wf`
-(`Silmaril.Wasm.KernelEval.KBytesMemThms`). The zero memory is the canonical tree of
-`4096`-byte zero leaves (`kzeros`).
+Both simulate the list reference under `kToListMem` with the validity condition `wf`
+(`Silmaril.Wasm.KernelEval.KBytesMemThms`). Two zero memories are measured: the canonical
+tree of `4096`-byte zero leaves (`kzeros`) and one leaf `leaf n 0` (`kzero1`).
+
+`KRope` stores check the bounds (`a + k ≤ len`; otherwise the store fails, a Wasm trap) and
+take the value modulo `256 ^ k` for a `k`-byte store.
 
 A Silmaril addition.
 -/
@@ -63,6 +66,9 @@ instance : MemOps KPath where
 
 /-- `n` zero bytes, as the canonical tree of `4096`-byte leaves. -/
 def kzeros (n : Nat) : KBytes := KBytes.ofChunks 4096 n (List.replicate ((n + 4095) / 4096) 0)
+
+/-- `n` zero bytes as one leaf (`leaf n 0`): the zero memory with no tree at all. -/
+def kzero1 (n : Nat) : KBytes := .leaf n 0
 
 /-- The list memory of kernel bytes. -/
 def kToListMem (t : KBytes) : ListMem := ⟨t.toList.map UInt8.toBitVec⟩
