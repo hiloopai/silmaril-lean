@@ -46,9 +46,13 @@ PY
 # strings and code spans are not invocations.
 python3 -I - <<'PY' || status=1
 import pathlib, re, sys
-call = re.compile(r"\bbv_decide(?![\w?'])")
+call = re.compile(r"(?<![\w.])bv_decide(?![\w?'.])")
+# The one framework module that invokes bv_decide under the trust policy (sil_bv_decide).
+exempt = {"Silmaril/Prelude/BVDecide/Edge.lean"}
 bad = 0
 for p in sorted(pathlib.Path("Silmaril").rglob("*.lean")):
+    if str(p) in exempt:
+        continue
     source = p.read_text()
     if "bv_decide" not in source:
         continue
