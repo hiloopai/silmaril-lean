@@ -1,6 +1,6 @@
 # trust-core-profile-tests: real producer output (profile-negative and forgery tests)
 
-This is the same build as `trust-core-bytes` (#125 at `d5d8f78c`), exported with
+This is the same build as `trust-core-bytes` (#125 at `cbcd896c`), exported with
 `sil project trust-dump --module Silmaril.Prelude.Trust.Examples`, and audited at `default`.
 
 The export lists **9 violations**, and the recomputed audit agrees:

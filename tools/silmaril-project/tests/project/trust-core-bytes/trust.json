@@ -67,7 +67,7 @@
   "main_module": "«.lake».silmaril.TrustExport",
   "ceiling": "local"},
  "procedures":
- [{"sound": null,
+ [{"sound": "Silmaril.KBytes.toList_eq_of_sameBytes",
    "name": "bytes.sameBytes",
    "module": "Silmaril.Prelude.Bytes.Native.Defs",
    "kind": "decider",
@@ -80,7 +80,7 @@
      "function": "Silmaril.KBytes.sameBytes",
      "axiom_pattern": "<decl>._native.edge.bytes.sameBytes.ax_<n>"},
     {"role": "kernel", "function": "Silmaril.KBytes.sameBytes"}]},
-  {"sound": null,
+  {"sound": "Silmaril.KBytes.toList_eq_of_beq",
    "name": "bytes.beq",
    "module": "Silmaril.Prelude.Bytes.Native.Defs",
    "kind": "decider",
@@ -99,13 +99,14 @@
    "kind": "decider",
    "implemented": true,
    "format": null,
-   "doc": "Cached lengths are correct (`KBytes.wf`). Cheap in the kernel.",
+   "doc":
+   "Cached lengths are correct (`KBytes.wf`). Cheap in the kernel. No soundness theorem is\nregistered: `wf` is a hypothesis of the specification theorems, not a fact they conclude.",
    "backends":
    [{"role": "native",
      "function": "Silmaril.KBytes.wf",
      "axiom_pattern": "<decl>._native.edge.bytes.wf.ax_<n>"},
     {"role": "kernel", "function": "Silmaril.KBytes.wf"}]},
-  {"sound": null,
+  {"sound": "Silmaril.KBytes.toByteArray_eq_of_eqByteArray",
    "name": "bytes.eqByteArray",
    "module": "Silmaril.Prelude.Bytes.Native.Defs",
    "kind": "decider",
@@ -246,7 +247,7 @@
    "name": "Silmaril.Prelude.Trust.Decl.Defs",
    "imports": ["Init", "Init.Prelude"]},
   {"source_sha256":
-   "9cbe11d39d84267bc4b0f3b32790db91ff6163b64d048a44df16f0e1db882e55",
+   "9f264df7971627c566078205831947899c8dad880df5ec0d219f8a4ad3994116",
    "source": "Silmaril/Prelude/Trust/Elab/Defs.lean",
    "region": "Prelude",
    "name": "Silmaril.Prelude.Trust.Elab.Defs",
@@ -256,7 +257,7 @@
     "Silmaril.Prelude.Trust.Decl.Defs",
     "Lean.Meta.Native"]},
   {"source_sha256":
-   "57f68b48c63d8831d09d7fa1b8e35d0f9ab981230c78e6e87377d71e0146308f",
+   "6b7161972fe379c0ea579b6c955ede8c008456211609f6c5023dd44f74040728",
    "source": "Silmaril/Prelude/Bytes/Native/Defs.lean",
    "region": "Prelude",
    "name": "Silmaril.Prelude.Bytes.Native.Defs",

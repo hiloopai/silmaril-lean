@@ -5,9 +5,9 @@
 
 Provenance:
 
-- Core: PR #125 (`prelude/kernel-bytes-trust`) at `d5d8f78c`. Its trust code is that of
-  `34ec436e`, which includes the exact-head audit `0b2a82e0`.
-- Build: the import closure (23 modules, no Mathlib) was copied into a standalone Lake package
+- Core: PR #125 (`prelude/kernel-bytes-trust`) at its head `cbcd896c`. That head includes the
+  frozen export `792e7ed6` and the exact-head audit `0b2a82e0`.
+- Build: the import closure (24 modules, no Mathlib) was copied into a standalone Lake package
   (`globs = ["Silmaril.+"]`), together with `policy.toml`, `regions.toml`, `lean-toolchain`,
   `scripts/trust-profile-exclude.txt` and the export module.
 - Command: `sil project trust-dump --module Silmaril.Prelude.Bytes.Examples --module

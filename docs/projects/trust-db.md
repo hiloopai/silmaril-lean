@@ -15,8 +15,8 @@ does not define a policy of its own. It does three things:
   violations, and fails when they differ from the core's;
 - it reports coverage, digests and enforcement honestly.
 
-Refs used: core #125 at `d5d8f78c` (its trust code is that of `34ec436e`, which includes the
-exact-head audit `0b2a82e0` and the frozen export `792e7ed6`), and ELF #127 at its head
+Refs used: core #125 at its head `cbcd896c` (which includes the frozen export `792e7ed6` and the
+exact-head audit `0b2a82e0`), and ELF #127 at its head
 `67503c32` (which merges `34ec436e`).
 
 ## What a result means, and does not
@@ -208,7 +208,7 @@ modules read `stale` in this repository. `policy.toml` is vendored, so the conve
 
 | case | ref | result |
 |---|---|---|
-| `trust-core-bytes` | #125 `d5d8f78c` | 556 declarations, **0 violations**; partial (3 modules declare nothing) |
+| `trust-core-bytes` | #125 `cbcd896c` | 556 declarations, **0 violations**; partial (3 modules declare nothing) |
 | `trust-core-profile-tests` | same | **9 violations** (6 native outside `default`, 3 unverified); 2 flagged forged use records |
 | `trust-elf-staged` | #127 `67503c32` | 299 declarations, **0 violations**; partial (only `Silmaril.Elf.Staged` listed) |
 | `trust-elf-profile-tests` | same | **2 violations** |
