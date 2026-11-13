@@ -1,0 +1,8 @@
+package test:calc;
+
+world calc {
+  export add: func(a: u32, b: u32) -> u32;
+  export sub: func(a: s32, b: s32) -> s32;
+  export pick: func(c: bool, x: option<u32>) -> u32;
+  export scale: func(x: u64, k: f64) -> f64;
+}

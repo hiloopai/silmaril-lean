@@ -1,0 +1,30 @@
+package corpus:kitchen@0.1.0;
+
+interface types {
+  record point { x: s32, y: s32 }
+  variant shape { circle(u32), rect(point), none }
+  enum color { red, green, blue }
+  flags perms { read, write, exec }
+}
+
+interface geo {
+  use types.{point, shape, color, perms};
+  area: func(s: shape) -> u64;
+  shift: func(p: point, dx: s32) -> point;
+  names: func(c: list<color>) -> list<string>;
+  check: func(p: perms) -> perms;
+  parse: func(s: string) -> result<u32, string>;
+  first: func(xs: list<u32>) -> option<u32>;
+  pair: func(a: string, b: list<u8>) -> tuple<u32, string>;
+}
+
+world kitchen {
+  export geo;
+  export greet: func(name: string) -> string;
+  export sum: func(xs: list<f64>) -> f64;
+}
+
+world kdriver {
+  import geo;
+  export go: func(n: u32) -> string;
+}

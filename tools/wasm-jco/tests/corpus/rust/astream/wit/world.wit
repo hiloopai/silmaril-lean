@@ -1,0 +1,19 @@
+package corpus:astream@0.1.0;
+
+interface bytes {
+  count: async func(s: stream<u8>) -> u32;
+  gen: async func(n: u32) -> stream<u8>;
+  delay: async func(x: u32) -> u32;
+  total: async func(xs: list<u32>) -> u64;
+}
+
+world astream {
+  export bytes;
+  export twice: async func(x: u32) -> u32;
+}
+
+world adriver {
+  import bytes;
+  export check: async func(n: u32) -> u32;
+  export both: async func(x: u32) -> u64;
+}

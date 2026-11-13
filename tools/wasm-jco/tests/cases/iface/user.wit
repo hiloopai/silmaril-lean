@@ -1,0 +1,36 @@
+package test:iface;
+
+interface types {
+  record point { x: u32, y: u32 }
+  enum color { red, green, blue }
+  variant shape { circle(u32), square(point), none }
+  flags perms { read, write, exec }
+}
+
+interface math {
+  use types.{point, color};
+  add: func(a: u32, b: u32) -> u32;
+  norm: func(p: point) -> u32;
+  hue: func(c: color) -> color;
+}
+
+interface counter {
+  resource cnt {
+    constructor(start: u32);
+    get: func() -> u32;
+    bump: func(by: u32);
+  }
+}
+
+world user {
+  import math;
+  export counter;
+  export calc: interface {
+    use types.{point, shape, perms};
+    twice: func(p: point) -> point;
+    area: func(s: shape) -> u32;
+    can: func(p: perms) -> bool;
+  }
+  export run: func(a: u32, b: u32) -> u32;
+  export drops: func() -> u32;
+}
