@@ -156,6 +156,7 @@ def hello : Spec := Spec.prints fun _ => helloOut
 
 /-- The response of the hello script. -/
 def helloResponse : Response :=
-  ⟨Status.ok, [⟨Method.ascii "Content-Type", Method.ascii "text/plain"⟩], Method.ascii "hello\n", []⟩
+  ⟨Status.ok, [⟨Method.ascii "Content-Type", Method.ascii "text/plain"⟩],
+    Method.ascii "hello\n", []⟩
 
 end Silmaril.Servers.Cgi
