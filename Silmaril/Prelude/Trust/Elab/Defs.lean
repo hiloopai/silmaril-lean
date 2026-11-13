@@ -1,0 +1,861 @@
+module
+
+public import Silmaril.Prelude.Trust.Defs
+public import Silmaril.Prelude.Trust.Decl.Defs
+public meta import Silmaril.Prelude.Trust.Decl.Defs
+public meta import Lean.Meta.Native
+
+/-! # Trust commands and the `edge_decide` tactic
+
+```
+/-- Same bytes, by windows. Trusts the compiled `KBytes.read` (GMP shifts). -/
+native_decider bytes.sameBytes := Silmaril.KBytes.sameBytes with_kernel_fallback
+
+trust_set bytes := {bytes.sameBytes, bytes.eqByteArray}
+trust_set default := {} includes bytes
+
+trust_policy "policy.toml" pin "0123456789abcdef"
+
+example : KBytes.sameBytes 65536 a b = true := by edge_decide
+```
+
+`edge_decide` closes a goal `f a₁ … aₙ = true` whose head `f` is a registered procedure's
+function (or the procedure named after it). It asks the policy for the native procedures the
+current module may run in the current profile (`Silmaril.Trust.allowed`). Then:
+
+1. **allowed:** `Lean.Meta.nativeEqTrue` compiles and runs the whole closed term (the function
+   *and* its arguments), and on `true` adds `axiom d._native.edge.<procedure>.ax_i_j`.
+2. **not allowed, with a kernel fallback:** the kernel checks `Eq.refl true : f a₁ … aₙ = true`
+   in an auxiliary lemma (as `decide +kernel` does). No axiom is added.
+3. **not allowed, no fallback:** it fails and names the profile, scope and procedure.
+
+Each use is recorded (`#trust_uses`). The proposition is the goal in every profile; only the
+proof term differs. A native proof is not a kernel-only proof: it trusts the compiler, the
+runtime and the code the term reaches.
+-/
+
+@[expose] public meta section
+
+namespace Silmaril.Trust
+
+open Lean Elab Command Term Meta
+
+/-- `native_decider name := fn [with_kernel_fallback]` registers `fn` (a closed function
+returning `Bool`) as the native procedure `name`. The docstring should say what it trusts. -/
+syntax (name := nativeDecider) (docComment)? "native_decider " ident " := " ident
+  (&" with_kernel_fallback")? (&" native " ident &" via " ident)? (&" format " ident)?
+  (&" sound " ident)? : command
+
+/-- `trust_set name := {a, b} [includes s t]`, or `trust_set name := all`. -/
+syntax (name := trustSetCmd) (docComment)? "trust_set " ident " := " (&"all" <|> ("{" ident,* "}"
+  (&" includes" (ppSpace ident)+)?)) : command
+
+/-- `trust_policy "../policy.toml" pin "<fnv1a64 hex>"` loads the `[native]` scopes of the file
+(relative to the directory of the current source file) and fails if its pin is stale. -/
+syntax (name := trustPolicyCmd) "trust_policy " str &" pin " str : command
+
+/-- Close `f a₁ … aₙ = true` with the registered procedure for `f`, as the policy allows. -/
+syntax (name := edgeDecide) "edge_decide" (ppSpace ident)? : tactic
+
+/-- Print every registered procedure and recorded use as JSON lines. -/
+syntax (name := trustUses) "#trust_uses" : command
+
+/-- Check the axioms of the named declarations against the policy (see `auditDecl`). -/
+syntax (name := trustAudit) "trust_audit " (ppSpace ident)+ : command
+
+/-- The head function of a closed `Bool` term. -/
+def headConst? (e : Expr) : Option Name := e.getAppFn.constName?
+
+def returnsBool (ty : Expr) : MetaM Bool :=
+  forallTelescopeReducing ty fun _ b => do
+    return (← whnfR b).isConstOf ``Bool
+
+@[command_elab nativeDecider] def elabNativeDecider : CommandElab := fun stx => do
+  let doc ← match stx[0].getOptional? with
+    | some d => pure (← getDocStringText ⟨d⟩).trimAscii.toString
+    | none => pure ""
+  let name := stx[2].getId
+  let fn ← liftTermElabM <| realizeGlobalConstNoOverloadWithInfo stx[4]
+  let kernel := !stx[5].isNone
+  let native ← if stx[6].isNone then pure none else do
+    let nfn ← liftTermElabM (realizeGlobalConstNoOverloadWithInfo stx[6][1])
+    let thm ← liftTermElabM (realizeGlobalConstNoOverloadWithInfo stx[6][3])
+    let some info := (← getEnv).find? thm | throwError "unknown theorem {thm}"
+    match info.type.eq? with
+    | some (_, l, r) =>
+      unless l.getAppFn.isConstOf nfn && r.getAppFn.isConstOf fn && l.getAppNumArgs == 0 do
+        throwError "native_decider {name}: {thm} must state `@{nfn} = @{fn}`"
+    | none => throwError "native_decider {name}: {thm} must state `@{nfn} = @{fn}`"
+    pure (some (nfn, thm))
+  let format := if stx[7].isNone then none else some stx[7][1].getId
+  let sound ← if stx[8].isNone then pure none else
+    some <$> liftTermElabM (realizeGlobalConstNoOverloadWithInfo stx[8][1])
+  let env ← getEnv
+  if (procExt.getState env).contains name then
+    throwError "native procedure {name} is already registered"
+  let some info := env.find? fn | throwError "unknown constant {fn}"
+  unless ← liftTermElabM (returnsBool info.type) do
+    throwError "native procedure {name}: {fn} does not return Bool"
+  if info.isUnsafe || info.isPartial then
+    throwError "native procedure {name}: {fn} is unsafe or partial"
+  if let some thm := sound then
+    let some info := env.find? thm | throwError "unknown theorem {thm}"
+    unless info.type.find? (fun e => e.isConstOf fn) |>.isSome do
+      throwError "native procedure {name}: the soundness theorem {thm} does not mention {fn}"
+  modifyEnv (procExt.addEntry · { name, fn, kernel, doc, module := env.mainModule, format, sound, native })
+
+@[command_elab trustSetCmd] def elabTrustSet : CommandElab := fun stx => do
+  let name := stx[2].getId
+  let body := stx[4]
+  let doc ← match stx[0].getOptional? with
+    | some d => pure (← getDocStringText ⟨d⟩).trimAscii.toString
+    | none => pure ""
+  let set : TrustSet ←
+    if body.isToken "all" then pure { name, all := true, doc }
+    else
+      let members := body[1].getSepArgs.map (·.getId)
+      let includes := if body[3].isNone then #[] else body[3][1].getArgs.map (·.getId)
+      pure { name, members, includes, doc }
+  if (setExt.getState (← getEnv)).contains name then
+    throwError "trust set {name} is already declared"
+  modifyEnv (setExt.addEntry · set)
+
+@[command_elab trustPolicyCmd] def elabTrustPolicy : CommandElab := fun stx => do
+  let file := stx[1].isStrLit?.getD ""
+  let pin := stx[3].isStrLit?.getD ""
+  let some dir := (System.FilePath.mk (← getFileName)).parent
+    | throwError "trust_policy: cannot locate the current source file"
+  let bytes ← IO.FS.readBinFile (dir / file)
+  let p ← parsePolicy file bytes
+  if hex64 p.hash != pin then
+    throwError "trust_policy: {file} has pin {hex64 p.hash}, not {pin}; review the change and \
+      update the pin"
+  if !p.scopes.any (·.module == `Silmaril) then
+    throwError "trust_policy: {file} has no root [[native.scope]] with module = \"Silmaril\""
+  modifyEnv (policyExt.addEntry · p)
+  -- Check every scope resolves and respects its parent's bound.
+  for s in p.scopes do
+    match effective (← getEnv) s.module with
+    | .ok _ => pure ()
+    | .error e => throwError "trust_policy: {e}"
+
+/-- The profile in force. -/
+def profile : CoreM String := do
+  return (← getOptions).get `silmaril.trust.profile "default"
+
+/-- The build's ceiling. -/
+def ceiling : CoreM String := do
+  return (← getOptions).get `silmaril.trust.ceiling "local"
+
+/-- The profile and ceiling, as recorded (`default`, or `default≤paranoid` under a ceiling). -/
+def profileTag : CoreM String := do
+  let c ← ceiling
+  let p ← profile
+  return if c == "local" then p else s!"{p}≤{c}"
+
+/-- The procedures for a goal's head function. -/
+def procsFor (env : Environment) (fn : Name) : Array Procedure :=
+  (procExt.getState env).foldl (init := #[]) fun acc _ p => if p.fn == fn then acc.push p else acc
+
+def recordUse (u : Use) : CoreM Unit := modifyEnv (useExt.addEntry · u)
+
+/-- A checker used through a structure (`C.check b a`, as with `KBytes.FormatChecker`) is
+exposed as the registered function the structure stores, without evaluating the arguments. -/
+def exposeHead (env : Environment) (e : Expr) : MetaM Expr := do
+  let some h := headConst? e | return e
+  unless (procsFor env h).isEmpty do return e
+  let args := e.getAppArgs
+  -- Try each prefix `h a₁ … aₖ`, unfolding one definition or projection at a time and stopping
+  -- at the first registered head, so the registered function itself is never unfolded.
+  for k in [1:args.size] do
+    let mut f := mkAppN e.getAppFn (args.extract 0 k)
+    for _ in [0:16] do
+      if let some h' := f.getAppFn.constName? then
+        unless (procsFor env h').isEmpty do
+          return mkAppN f (args.extract k args.size)
+      let f' ← whnfCore f
+      if f' != f then f := f'; continue
+      let next ← match f with
+        | .proj n i s => pure ((← unfoldDefinition? s).map (Expr.proj n i ·))
+        | _ => unfoldDefinition? f
+      match next with
+      | some f' => f := f'
+      | none => break
+  return e
+
+/-- **The backend hook.** A proof of `e = true` for a closed `Bool` term `e` whose head is a
+registered procedure (or the procedure `proc?`), as the policy allows (or by the kernel
+only, with `kernelOnly`) in the current module,
+profile and ceiling: a native run (of the paired native implementation, if registered, with its
+result transferred by the pairing theorem), the kernel fallback, or an error. Records the use.
+Tactics and adapters for other formats call this instead of the registry internals. -/
+def decideEdge (e : Expr) (proc? : Option Name := none) (ref : Syntax := .missing)
+    (kernelOnly : Bool := false) : TermElabM Expr := do
+  let e ← instantiateMVars e
+  if e.hasFVar || e.hasMVar then
+    throwError "edge_decide: the term must be closed{indentExpr e}"
+  let env ← getEnv
+  let e ← exposeHead env e
+  let some fn := headConst? e | throwError "edge_decide: no head function{indentExpr e}"
+  let proc ← match proc? with
+    | some n =>
+      let some p := (procExt.getState env).find? n
+        | throwError "edge_decide: unknown native procedure {n}"
+      unless p.fn == fn do
+        throwError "edge_decide: procedure {p.name} runs {p.fn}, but the goal's head is {fn}"
+      pure p
+    | none =>
+      match procsFor env fn with
+      | #[p] => pure p
+      | #[] => throwError "edge_decide: {fn} is not a registered native procedure (native_decider)"
+      | ps => throwError "edge_decide: {fn} is registered as {ps.map (·.name)}; name one"
+  let prof ← profileTag
+  let mod := env.mainModule
+  let allow ← match allowed env mod (← profile) (← ceiling) with
+    | .ok a => pure a
+    | .error msg => throwError "edge_decide: {msg}"
+  let decl := (← Term.getDeclName?).getD .anonymous
+  let eqTrue (x : Expr) := mkApp3 (mkConst ``Eq [1]) (mkConst ``Bool) x (mkConst ``Bool.true)
+  if allow.contains proc.name && !kernelOnly then
+    let us := e.getAppFn.constLevels!
+    let args := e.getAppArgs
+    let (run, transfer) := match proc.native with
+      | some (nfn, thm) => (mkAppN (.const nfn us) args, some thm)
+      | none => (e, none)
+    match ← nativeEqTrue (`edge ++ proc.name) run (axiomDeclRange? := ref) with
+    | .notTrue => throwError "edge_decide: {proc.name} evaluated to false{indentExpr run}"
+    | .success ax =>
+      recordUse { decl, module := mod, proc := proc.name, mode := .native, profile := prof,
+                  ax := ax.constName? }
+      match transfer with
+      | none => mkExpectedTypeHint ax (eqTrue e)
+      | some thm =>
+        -- `thm : @nfn = @fn` turns `nfn args = true` into `fn args = true`.
+        let fty ← inferType (.const fn us)
+        let motive := Expr.lam `g fty (eqTrue (mkAppN (.bvar 0) args)) .default
+        let p ← mkCongrArg motive (.const thm us)
+        mkExpectedTypeHint (← mkEqMP p ax) (eqTrue e)
+  else if proc.kernel then
+    let pf := mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``Bool.true)
+    let lemma ← try
+        withOptions (Elab.async.set · false) do mkAuxLemma [] (eqTrue e) pf
+      catch ex =>
+        throwError "edge_decide: the kernel did not check {proc.name} (profile {prof}): \
+          {ex.toMessageData}"
+    recordUse { decl, module := mod, proc := proc.name, mode := .kernel, profile := prof }
+    return mkConst lemma
+  else if kernelOnly then
+    throwError "edge_pair: the kernel side {proc.name} has no kernel fallback"
+  else
+    throwError "edge_decide: {proc.name} may not run natively in {mod} under profile {prof}, \
+      and it has no kernel fallback"
+
+@[tactic edgeDecide] def evalEdgeDecide : Tactic.Tactic := fun stx => Tactic.withMainContext do
+  let goal ← Tactic.getMainGoal
+  let ty ← instantiateMVars (← goal.getType)
+  let some (_, e, rhs) := (← whnfR ty).eq?
+    | throwError "edge_decide: the goal must be `f a₁ … aₙ = true`{indentExpr ty}"
+  unless (← whnfR rhs).isConstOf ``Bool.true do
+    throwError "edge_decide: the right-hand side must be `true`{indentExpr ty}"
+  let prf ← decideEdge e (stx[1].getOptional?.map (·.getId)) stx
+  goal.assign (← mkExpectedTypeHint prf ty)
+  Tactic.replaceMainGoal []
+
+/-- A `ProcDecl`, read from its definition without running any code. -/
+structure DeclView where
+  name : Name
+  const : Name
+  doc : String
+  native : Option (Name × Name)
+  kernel : Option (Name × Name)
+  format : Option Name
+  bound : Option Name := none
+
+def readName (e : Expr) : MetaM Name := do
+  let e ← instantiateMVars e
+  unsafe evalExpr Name (mkConst ``Name) e
+
+def readOpt {α} (e : Expr) (f : Expr → MetaM α) : MetaM (Option α) := do
+  let e ← whnfR e
+  if e.isAppOfArity ``Option.none 1 then return none
+  if e.isAppOfArity ``Option.some 2 then return some (← f e.appArg!)
+  throwError "expected `some` or `none`:{indentExpr e}"
+
+def readBackend (e : Expr) : MetaM (Name × Name) := do
+  let e ← whnfR e
+  unless e.isAppOfArity ``Backend.mk 2 do throwError "expected a Backend:{indentExpr e}"
+  return (← readName e.appFn!.appArg!, ← readName e.appArg!)
+
+/-- The procedure `name`, declared as `Silmaril.Procedures.<name> : ProcDecl`. -/
+def findDecl? (name : Name) : MetaM (Option DeclView) := do
+  let c := proceduresNamespace ++ name
+  let some info := (← getEnv).find? c | return none
+  unless info.type.isConstOf ``ProcDecl do return none
+  let some v := info.value? (allowOpaque := true) | return none
+  let v ← whnfR v
+  unless v.isAppOfArity ``ProcDecl.mk 5 do throwError "{c} is not a `ProcDecl` literal"
+  let args := v.getAppArgs
+  let doc ← unsafe evalExpr String (mkConst ``String) args[0]!
+  return some { name, const := c, doc, native := ← readOpt args[1]! readBackend,
+                kernel := ← readOpt args[2]! readBackend, format := ← readOpt args[3]! readName,
+                bound := ← readOpt args[4]! readName }
+
+/-- Every declared procedure in the environment. -/
+def allDecls : MetaM (Array DeclView) := do
+  let env ← getEnv
+  let mut out := #[]
+  for (c, info) in env.constants.toList do
+    if info.type.isConstOf ``ProcDecl && proceduresNamespace.isPrefixOf c then
+      if let some d ← findDecl? (c.replacePrefix proceduresNamespace .anonymous) then
+        out := out.push d
+  return out
+
+/-! ## Provenance and audit -/
+
+def nameJson : Option Name → Json
+  | some n => toJson (toString n)
+  | none => Json.null
+
+def useJson (u : Use) : Json :=
+  Json.mkObj [("schema", schemaVersion), ("kind", "use"), ("decl", toString u.decl), ("module", toString u.module),
+    ("procedure", toString u.proc),
+    ("mode", match u.mode with | .native => "native" | .kernel => "kernel"),
+    ("profile", u.profile), ("axiom", match u.ax with | some a => toJson (toString a) | none => Json.null)]
+
+def procJson (p : Procedure) : Json :=
+  Json.mkObj [("schema", schemaVersion), ("kind", "procedure"), ("name", toString p.name),
+    ("function", toString p.fn), ("kernel_fallback", p.kernel), ("module", toString p.module),
+    ("format", nameJson p.format), ("sound", nameJson p.sound),
+    ("native_function", nameJson (p.native.map (·.1))), ("native_eq", nameJson (p.native.map (·.2))),
+    ("axiom_pattern", match p.axiomTag with
+      | some t => toJson s!"<decl>._native.{t}.ax_<n>" | none => Json.null),
+    ("components", toJson p.components), ("toolchain", p.toolchain),
+    ("fallback_coverage", p.fallbackCoverage), ("doc", p.doc)]
+
+def setJson (env : Environment) (s : TrustSet) : Json :=
+  let resolved : Json := match resolve env s.name with
+    | .ok .all => toJson "all"
+    | .ok (.some ns) => toJson (ns.toList.map toString)
+    | .error e => toJson s!"error: {e}"
+  Json.mkObj [("schema", schemaVersion), ("kind", "set"), ("name", toString s.name),
+    ("all", s.all), ("members", toJson (s.members.map toString)),
+    ("includes", toJson (s.includes.map toString)), ("resolved", resolved)]
+
+def scopeJson (p : Policy) (s : Scope) : Json :=
+  Json.mkObj [("schema", schemaVersion), ("kind", "scope"), ("module", toString s.module),
+    ("max", nameJson s.max), ("default", nameJson s.dflt), ("deps", nameJson s.deps),
+    ("axioms", nameJson s.axiomSet), ("policy_file", p.file), ("policy_pin", hex64 p.hash)]
+
+@[command_elab trustUses] def elabTrustUses : CommandElab := fun _ => do
+  let env ← getEnv
+  let mut lines : Array String := #[]
+  for p in allEntries procExt env do lines := lines.push (procJson p).compress
+  for u in allEntries useExt env do lines := lines.push (useJson u).compress
+  logInfo (String.intercalate "\n" lines.toList)
+
+/-- Print the trust sets and the policy scopes as JSON lines. -/
+syntax (name := trustRegistry) "#trust_registry" : command
+
+@[command_elab trustRegistry] def elabTrustRegistry : CommandElab := fun _ => do
+  let env ← getEnv
+  let mut lines : Array String := #[]
+  for s in allEntries setExt env do lines := lines.push (setJson env s).compress
+  if let some p := policyExt.getState env then
+    for s in p.scopes do lines := lines.push (scopeJson p s).compress
+  logInfo (String.intercalate "\n" lines.toList)
+
+/-- The axioms of `decl`, split into standard, own native, inherited native and other. -/
+structure AxiomReport where
+  decl : Name
+  ownNative : Array Name := #[]
+  depNative : Array Name := #[]
+  plainNative : Array Name := #[]
+  other : Array Name := #[]
+  /-- Every native axiom, by name. -/
+  nativeAxioms : Array Name := #[]
+  /-- Native axioms whose name matches a procedure, without a recorded use producing exactly
+  that axiom (or whose statement does not mention the procedure's function). -/
+  unverified : Array (Name × Name) := #[]
+
+/-- The exact shape of a native run's axiom: `@Eq Bool (f a₁ … aₙ) true`, closed, with `f` one
+of `fns` at the head (not merely somewhere inside). -/
+def nativeShapeOk (env : Environment) (ax : Name) (fns : List Name) (bound : Option Name := none) :
+    Bool :=
+  match env.find? ax with
+  | some (.axiomInfo info) =>
+    match info.type.eq? with
+    | some (ty, lhs, rhs) =>
+      ty.isConstOf ``Bool && rhs.isConstOf ``Bool.true && !lhs.hasFVar && !lhs.hasMVar &&
+        info.levelParams.isEmpty && fns.any lhs.getAppFn.isConstOf &&
+        (bound.map fun b => lhs.getAppArgs.any (·.isConstOf b)).getD true
+    | none => false
+  | _ => false
+
+/-- A native axiom is **verified** for procedure `p` when a recorded use of `p` names exactly
+this axiom **and** the axiom has the exact shape `f a₁ … aₙ = true` with `f` the procedure's
+evaluated function (or its paired native function). `recordUse` is trusted elaborator
+instrumentation: it is called by `edge_decide`, `sil_check` and reviewed framework wrappers, and
+any meta code could call it. Verification is auditing under reviewed elaborator code, not a
+sandbox against malicious metaprograms; the shape check stops a recorded use from vouching
+for an axiom that states something else. -/
+def verifiedNative (env : Environment) (uses : Array Use) (p : Procedure) (ax : Name) : Bool :=
+  let recorded := uses.any fun u => u.proc == p.name && u.mode == .native && u.ax == some ax
+  recorded && nativeShapeOk env ax (p.fn :: (p.native.map (·.1)).toList) p.bound
+
+def axiomReport (decl : Name) : CoreM AxiomReport := do
+  -- Declared two-backend procedures: their native check function, for the shape check.
+  let declared : NameMap (Name × Option Name) ← Prod.fst <$> (MetaM.run (ctx := {}) (s := {}) do
+    let ds ← allDecls
+    return ds.foldl (init := ({} : NameMap (Name × Option Name))) fun m d =>
+      match d.native with
+      | some (check, _) => m.insert d.name (check, d.bound)
+      | none => m)
+  let axs ← collectAxioms decl
+  let env ← getEnv
+  let uses := allEntries useExt env
+  let mut r : AxiomReport := { decl }
+  for a in axs do
+    if (nativeAxiom? a).isSome then r := { r with nativeAxioms := r.nativeAxioms.push a }
+    let proc? : Option (Name × Procedure) := match nativeAxiom? a with
+      | some (owner, n, true) =>
+        -- `edge_decide`/`sil_check` axioms: the procedure or declared procedure name.
+        match (procExt.getState env).find? n, declared.find? n with
+        | some p, _ => some (owner, p)
+        | none, some (check, bnd) =>
+          let p : Procedure :=
+            { name := n, fn := check, kernel := false, doc := "", module := .anonymous, bound := bnd }
+          some (owner, p)
+        | none, none => none
+      | some (owner, tag, false) => (procForTag? env tag).map (owner, ·)
+      | none => none
+    match nativeAxiom? a, proc? with
+    | none, _ => r := { r with other := r.other.push a }
+    | some (_, t, isEdge), none =>
+      r := { r with plainNative := r.plainNative.push (if isEdge then `edge ++ t else t) }
+    | some _, some (owner, p) =>
+      let own := decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl
+      -- Declared procedures are checked against their declared native check function.
+      let ok := verifiedNative env uses p a
+      if !ok then r := { r with unverified := r.unverified.push (p.name, a) }
+      else if own then r := { r with ownNative := r.ownNative.push p.name }
+      else r := { r with depNative := r.depNative.push p.name }
+  return r
+
+/-- **Stable hook.** The audit of `decl` under the current profile and ceiling, never failing:
+own native procedures against the module's allowed set, inherited ones against `deps`, other
+axioms against `axioms`, and unregistered native runs. `violations` lists what is outside the
+policy; `elaborated_profiles` lists the profiles its own `edge_decide`/`sil_check` uses ran
+under (recorded when they elaborated). -/
+def auditLine (decl : Name) : CoreM (Json × Array String) := do
+  let env ← getEnv
+  let r ← axiomReport decl
+  let mod := (env.getModuleIdxFor? decl).map (env.header.moduleNames[·.toNat]!) |>.getD env.mainModule
+  let mut bad : Array String := #[]
+  match effective env mod, allowed env mod (← profile) (← ceiling) with
+  | .ok eff, .ok allow =>
+    for p in r.ownNative do
+      unless allow.contains p do bad := bad.push s!"own native {p} is not allowed"
+    for p in r.depNative do
+      unless eff.deps.contains p do bad := bad.push s!"inherited native {p} is outside deps"
+    for a in r.other do
+      unless eff.axiomSet.contains a do bad := bad.push s!"axiom {a} is outside the axiom set"
+  | .error m, _ | _, .error m => bad := bad.push s!"policy: {m}"
+  for t in r.plainNative do bad := bad.push s!"unregistered native run ({t})"
+  for (p, a) in r.unverified do
+    bad := bad.push s!"unverified native axiom {a}: matches {p} by name, but no recorded use of {p} names it with the exact shape `f … = true`"
+  let names (xs : Array Name) : Json := toJson (xs.map toString)
+  let elaborated := ((allEntries useExt env).filter (·.decl == decl)).map (·.profile)
+  let json := Json.mkObj [("schema", schemaVersion), ("kind", "audit"),
+    ("profile", ← profileTag), ("decl", toString decl), ("module", toString mod),
+    ("own_native", names r.ownNative), ("dep_native", names r.depNative),
+    ("axioms", names r.other), ("native_axioms", names r.nativeAxioms),
+    ("unverified_native", toJson (r.unverified.map fun (p, a) =>
+      Json.mkObj [("procedure", toString p), ("axiom", toString a)])),
+    ("elaborated_profiles", toJson elaborated.toList.eraseDups), ("violations", toJson bad)]
+  return (json, bad)
+
+/-- Audit `decl`, failing on any violation (`auditLine`). -/
+def auditDecl (decl : Name) : CommandElabM Json := do
+  let (json, bad) ← liftCoreM (auditLine decl)
+  unless bad.isEmpty do
+    throwError "trust_audit {decl}: {String.intercalate "; " bad.toList}"
+  return json
+
+/-- **Stable hook.** One line per module: its imports, the profile and ceiling in force, and its
+effective sets under the policy. -/
+def moduleLine (mod : Name) : CoreM Json := do
+  let env ← getEnv
+  let imports : Array Name := match env.getModuleIdx? mod with
+    | some idx => (env.header.moduleData[idx.toNat]!.imports.map (·.module))
+    | none => if mod == env.mainModule then env.header.imports.map (·.module) else #[]
+  let mem (m : Members) : Json := match m with
+    | .all => toJson "all"
+    | .some ns => toJson (ns.toList.map toString)
+  let sets : List (String × Json) := match effective env mod, allowed env mod (← profile) (← ceiling) with
+    | .ok eff, .ok allow =>
+      [("max", mem eff.max), ("default", mem eff.dflt), ("deps", mem eff.deps),
+       ("axioms", mem eff.axiomSet), ("allowed", mem allow), ("scopes", toJson eff.trace)]
+    | .error m, _ | _, .error m => [("policy_error", toJson m)]
+  let prof ← profile
+  let ceil ← ceiling
+  let head : List (String × Json) := [("schema", toJson schemaVersion), ("kind", toJson "module"),
+    ("module", toJson (toString mod)), ("imports", toJson (imports.map toString)),
+    ("profile", toJson prof), ("ceiling", toJson ceil)]
+  return Json.mkObj (head ++ sets)
+
+/-- The theorems and definitions a module declares (no auxiliary or internal names). -/
+def declsOf (mod : Name) : CoreM (Array Name) := do
+  let env ← getEnv
+  let some idx := env.getModuleIdx? mod | return #[]
+  let mut out := #[]
+  for c in env.header.moduleData[idx.toNat]!.constNames do
+    if c.isInternalDetail then continue
+    match env.find? c with
+    | some (.thmInfo _) | some (.defnInfo _) => out := out.push c
+    | _ => pure ()
+  return out
+
+@[command_elab trustAudit] def elabTrustAudit : CommandElab := fun stx => do
+  let mut lines : Array String := #[]
+  for id in stx[1].getArgs do
+    let decl ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo id
+    lines := lines.push (← auditDecl decl).compress
+  logInfo (String.intercalate "\n" lines.toList)
+
+end Silmaril.Trust
+
+namespace Silmaril.Trust
+
+open Lean Elab Command
+
+/-! ## Reading the dump back
+
+`ofJson?` inverts the emitters; `#trust_roundtrip` checks it on everything in the
+environment, and `#trust_dump "path"` writes the dump that the project database ingests. -/
+
+def nameOfJson? (j : Json) : Option (Option Name) :=
+  match j with
+  | .null => some none
+  | .str s => some (some s.toName)
+  | _ => none
+
+def procOfJson? (j : Json) : Except String Procedure := do
+  let str (k : String) : Except String String := j.getObjValAs? String k
+  let opt (k : String) : Except String (Option Name) := do
+    match nameOfJson? (← j.getObjVal? k) with
+    | some v => pure v
+    | none => throw s!"{k}: expected a string or null"
+  unless (← str "schema") == schemaVersion && (← str "kind") == "procedure" do
+    throw "not a v1 procedure"
+  let native ← match ← opt "native_function", ← opt "native_eq" with
+    | some f, some t => pure (some (f, t))
+    | none, none => pure none
+    | _, _ => throw "native_function and native_eq go together"
+  let axiomTag ← match ← j.getObjVal? "axiom_pattern" with
+    | .null => pure none
+    | .str pat =>
+      match (pat.dropPrefix? "<decl>._native.").bind (·.dropSuffix? ".ax_<n>") with
+      | some t => pure (some t.toString.toName)
+      | none => throw s!"axiom_pattern {pat}"
+    | _ => throw "axiom_pattern: expected a string or null"
+  return { name := (← str "name").toName, fn := (← str "function").toName,
+           kernel := ← j.getObjValAs? Bool "kernel_fallback", doc := ← str "doc",
+           module := (← str "module").toName, format := ← opt "format", sound := ← opt "sound",
+           native, axiomTag, components := ← j.getObjValAs? (Array String) "components",
+           toolchain := ← str "toolchain", fallbackCoverage := ← str "fallback_coverage" }
+
+def useOfJson? (j : Json) : Except String Use := do
+  let str (k : String) : Except String String := j.getObjValAs? String k
+  unless (← str "schema") == schemaVersion && (← str "kind") == "use" do throw "not a v1 use"
+  let mode ← match ← str "mode" with
+    | "native" => pure Mode.native
+    | "kernel" => pure Mode.kernel
+    | m => throw s!"mode {m}"
+  let ax ← match nameOfJson? (← j.getObjVal? "axiom") with
+    | some a => pure a
+    | none => throw "axiom: expected a string or null"
+  return { decl := (← str "decl").toName, module := (← str "module").toName,
+           proc := (← str "procedure").toName, mode, profile := ← str "profile", ax }
+
+def procBEq (a b : Procedure) : Bool :=
+  a.name == b.name && a.fn == b.fn && a.kernel == b.kernel && a.doc == b.doc &&
+    a.module == b.module && a.format == b.format && a.sound == b.sound && a.native == b.native &&
+    a.axiomTag == b.axiomTag && a.components == b.components && a.toolchain == b.toolchain &&
+    a.fallbackCoverage == b.fallbackCoverage
+
+/-- Every line of the dump: procedures, uses, sets and scopes. -/
+def dumpLines (env : Environment) : Array Json := Id.run do
+  let mut out := #[]
+  for p in allEntries procExt env do out := out.push (procJson p)
+  for u in allEntries useExt env do out := out.push (useJson u)
+  for s in allEntries setExt env do out := out.push (setJson env s)
+  if let some p := policyExt.getState env then
+    for s in p.scopes do out := out.push (scopeJson p s)
+  return out
+
+/-- Re-read every procedure and use from its printed line and compare. -/
+syntax (name := trustRoundtrip) "#trust_roundtrip" : command
+
+@[command_elab trustRoundtrip] def elabTrustRoundtrip : CommandElab := fun _ => do
+  let env ← getEnv
+  let procs := allEntries procExt env
+  let uses := allEntries useExt env
+  for p in procs do
+    let line := (procJson p).compress
+    match Json.parse line >>= procOfJson? with
+    | .ok q => unless procBEq p q do throwError "roundtrip changed procedure {p.name}"
+    | .error e => throwError "roundtrip of procedure {p.name}: {e}"
+  for u in uses do
+    let line := (useJson u).compress
+    match Json.parse line >>= useOfJson? with
+    | .ok v => unless u == v do throwError "roundtrip changed the use of {u.proc} in {u.decl}"
+    | .error e => throwError "roundtrip of a use of {u.proc}: {e}"
+  logInfo m!"roundtrip ok: {procs.size} procedures, {uses.size} uses"
+
+end Silmaril.Trust
+
+/-! ## Same-target pairs
+
+When the native and kernel checkers take different arguments (a `ByteArray` read at run time
+against kernel bytes, say), a function equality cannot pair them. Instead each checker proves
+the same proposition through its own soundness theorem:
+
+```
+example : Parses F A :=
+  by edge_pair (native := fun h => fastSound bytes A h) (kernel := fun h => kernelSound kb A h)
+```
+
+`native` and `kernel` have types `f a₁ … aₙ = true → P` and `g b₁ … bₘ = true → P` for the
+goal `P`, with `f` and `g` registered procedures. If the policy lets `f` run natively here,
+`f a₁ … aₙ` runs natively. Otherwise the kernel checks `g b₁ … bₘ`: the kernel side never runs
+natively, even where the policy would allow `g`, and fails if `g` has no kernel fallback. The
+proposition is `P` either way.
+-/
+
+namespace Silmaril.Trust
+
+open Lean Elab Tactic Meta
+
+syntax (name := edgePair) "edge_pair " "(" &"native" " := " term ")" "(" &"kernel" " := " term ")" :
+  tactic
+
+/-- Whether procedure `name` may run natively here. -/
+def nativeAllowed (name : Name) : CoreM Bool := do
+  let env ← getEnv
+  match allowed env env.mainModule (← profile) (← ceiling) with
+  | .ok a => return a.contains name
+  | .error _ => return false
+
+@[tactic edgePair] def evalEdgePair : Tactic := fun stx => withMainContext do
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  let side (t : Syntax) : TacticM (Expr × Expr) := do
+    let h ← Term.elabTerm t none
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let h ← instantiateMVars h
+    let ty ← whnfR (← inferType h)
+    let .forallE _ hyp body _ := ty
+      | throwError "edge_pair: {t} must have type `f … = true → P`"
+    unless ← isDefEq body target do
+      throwError "edge_pair: {t} proves{indentExpr body}\nnot the goal{indentExpr target}"
+    let some (_, e, _) := hyp.eq? | throwError "edge_pair: {t}'s hypothesis is not `f … = true`"
+    return (h, e)
+  let (hn, en) ← side stx[4]
+  let (hk, ek) ← side stx[9]
+  let env ← getEnv
+  let nativeOk ← do
+    let e' ← exposeHead env en
+    match headConst? e' with
+    | some f =>
+      match procsFor env f with
+      | #[p] => nativeAllowed p.name
+      | _ => pure false
+    | none => pure false
+  let prf ← if nativeOk then
+      pure (mkApp hn (← decideEdge en none stx))
+    else
+      -- The kernel side never runs natively, whatever the policy allows.
+      pure (mkApp hk (← decideEdge ek none stx (kernelOnly := true)))
+  goal.assign prf
+  replaceMainGoal []
+
+end Silmaril.Trust
+
+/-! ## Declared procedures with two backends (`ProcDecl`, `sil_check`) -/
+
+namespace Silmaril.Trust
+
+open Lean Elab Tactic Meta
+
+def declJson (d : DeclView) : Json :=
+  let pair : Option (Name × Name) → Json
+    | some (c, s) => Json.mkObj [("check", toString c), ("sound", toString s)]
+    | none => Json.null
+  Json.mkObj [("schema", schemaVersion), ("kind", "declared_procedure"), ("name", toString d.name),
+    ("constant", toString d.const), ("native", pair d.native), ("kernel", pair d.kernel),
+    ("format", nameJson d.format), ("bound", nameJson d.bound), ("doc", d.doc)]
+
+/-- `sil_check elf.layout (native := t) (kernel := u)`: `t` and `u` have types
+`check … = true → P` for the goal `P`, with heads the declared soundness theorems and
+hypotheses headed by the declared checkers. The native backend runs if `elf.layout` is allowed
+natively here; otherwise the kernel backend is checked by the kernel (never natively). The
+native axiom is `<decl>._native.edge.elf.layout.ax_i_j`, and the use is recorded under
+`elf.layout`. Either side may be omitted. -/
+syntax (name := silCheck) "sil_check " ident (" (" ident " := " term ")")* : tactic
+
+@[tactic silCheck] def evalSilCheck : Tactic := fun stx => withMainContext do
+  let name := stx[1].getId
+  let some d ← findDecl? name
+    | throwError "sil_check: no procedure {name} (declare `{proceduresNamespace ++ name} : ProcDecl`)"
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  -- Elaborate one side and check it against the declared backend.
+  let side (t : Syntax) (b : Name × Name) (which : String) : TacticM (Expr × Expr) := do
+    let h ← Term.elabTerm t none
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let h ← instantiateMVars h
+    unless h.getAppFn.isConstOf b.2 do
+      throwError "sil_check {name}: the {which} side must apply {b.2}{indentExpr h}"
+    let .forallE _ hyp body _ ← whnfR (← inferType h)
+      | throwError "sil_check {name}: {b.2} applied this far is not `check … = true → P`"
+    unless ← isDefEq body target do
+      throwError "sil_check {name}: the {which} side proves{indentExpr body}\nnot the goal{indentExpr target}"
+    let some (_, e, _) := hyp.eq? | throwError "sil_check {name}: hypothesis is not `… = true`"
+    let e ← instantiateMVars e
+    unless e.getAppFn.isConstOf b.1 do
+      throwError "sil_check {name}: the {which} side checks with {e.getAppFn}, not {b.1}"
+    if let some bnd := d.bound then
+      unless e.getAppArgs.any (·.isConstOf bnd) do
+        throwError "sil_check {name}: the {which} check is not bound to {bnd}{indentExpr e}"
+    if e.hasFVar || e.hasMVar then throwError "sil_check {name}: the check must be closed{indentExpr e}"
+    return (h, e)
+  let mut nativeStx : Option Syntax := none
+  let mut kernelStx : Option Syntax := none
+  for arg in stx[2].getArgs do
+    match arg[1].getId with
+    | `native => nativeStx := some arg[3]
+    | `kernel => kernelStx := some arg[3]
+    | other => throwError "sil_check: unknown side {other} (use `native` or `kernel`)"
+  let env ← getEnv
+  let prof ← profileTag
+  let mod := env.mainModule
+  let allow ← match allowed env mod (← profile) (← ceiling) with
+    | .ok a => pure a
+    | .error msg => throwError "sil_check: {msg}"
+  let decl := (← Term.getDeclName?).getD .anonymous
+  let eqTrue (x : Expr) := mkApp3 (mkConst ``Eq [1]) (mkConst ``Bool) x (mkConst ``Bool.true)
+  let kernelSide (u : Syntax) (kb : Name × Name) : TacticM Expr := do
+    let (h, e) ← side u kb "kernel"
+    let pf := mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``Bool.true)
+    let lemma ← try withOptions (Elab.async.set · false) do mkAuxLemma [] (eqTrue e) pf
+      catch ex => throwError "sil_check {name}: the kernel did not check it: {ex.toMessageData}"
+    recordUse { decl, module := mod, proc := name, mode := .kernel, profile := prof }
+    return mkApp h (mkConst lemma)
+  let prf ← match nativeStx, d.native, kernelStx, d.kernel with
+    | some t, some b, _, _ =>
+      if allow.contains name then
+        let (h, e) ← side t b "native"
+        match ← nativeEqTrue (`edge ++ name) e (axiomDeclRange? := stx) with
+        | .notTrue => throwError "sil_check {name}: the native check returned false{indentExpr e}"
+        | .success ax =>
+          recordUse { decl, module := mod, proc := name, mode := .native, profile := prof,
+                      ax := ax.constName? }
+          pure (mkApp h (← mkExpectedTypeHint ax (eqTrue e)))
+      else
+        match kernelStx, d.kernel with
+        | some u, some kb => kernelSide u kb
+        | _, _ => throwError "sil_check: {name} may not run natively in {mod} under profile \
+            {prof}, and no kernel side is given"
+    | _, _, some u, some kb => kernelSide u kb
+    | _, _, _, _ => throwError "sil_check {name}: give a side the declaration has a backend for"
+  goal.assign prf
+  replaceMainGoal []
+
+def allDecls' : MetaM (Array Json) := return (← allDecls).map declJson
+
+/-- `#trust_dump "path" M₁ M₂ …` writes the dump (JSON lines) to `path`, relative to the working
+directory: procedures, uses, sets, scopes and declared procedures, and for each listed module a
+`module` line and an `audit` line per theorem and definition it declares. Used by tools; nothing
+in the library calls it. -/
+syntax (name := trustDump) "#trust_dump " str (ppSpace ident)* : command
+
+open Lean.Elab.Command in
+@[command_elab trustDump] def elabTrustDump : CommandElab := fun stx => do
+  let decls ← liftTermElabM allDecls'
+  let mut extra : Array Json := #[]
+  for m in stx[2].getArgs do
+    let mod := m.getId
+    extra := extra.push (← liftCoreM (moduleLine mod))
+    for d in ← liftCoreM (declsOf mod) do
+      extra := extra.push (← liftCoreM (auditLine d)).1
+  let lines := (dumpLines (← getEnv) ++ decls ++ extra).map (·.compress)
+  IO.FS.writeFile (stx[1].isStrLit?.getD "trust.jsonl") (String.intercalate "\n" lines.toList ++ "\n")
+
+/-- Print the declared two-backend procedures as JSON lines. -/
+syntax (name := trustDecls) "#trust_decls" : command
+
+open Lean.Elab.Command in
+@[command_elab trustDecls] def elabTrustDecls : CommandElab := fun _ => do
+  let ls ← liftTermElabM allDecls'
+  logInfo (String.intercalate "\n" (ls.map (·.compress)).toList)
+
+end Silmaril.Trust
+
+/-! ## Native tactics (`native_tactic`)
+
+Some native runs happen inside a tactic rather than through `edge_decide`: `bv_decide` compiles
+and runs `verifyBVExpr` (bit-blasting, AIG to CNF, the LRAT checker) and adds
+`<decl>._native.bv_decide.ax_<n>`. Registering the tactic names that computation, so audits
+count its axioms as the procedure (`own_native`/`dep_native`) and the policy can allow or deny
+it like any other. Registration is a description for review and audit; it does not by itself
+let anything run. The framework that invokes the tactic must ask `nativeAllowed` first, record
+the use (`recordUse`), and otherwise run its kernel fallback or fail.
+
+```
+/-- … -/
+native_tactic lean.std.bv_decide.verifyBVExpr
+  evaluates Std.Tactic.BVDecide.Reflect.verifyBVExpr
+  axiom_tag bv_decide
+  components ["bit-blasting with hash-consing", "AIG to CNF", "relabeling", "LRAT parser and checker"]
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+  fallback "bv_normalize only: closes goals that normalization decides"
+```
+-/
+
+namespace Silmaril.Trust
+
+open Lean Elab Command
+
+syntax (name := nativeTactic) (docComment)? "native_tactic " ident &" evaluates " ident
+  &" axiom_tag " ident (&" components " "[" str,* "]")? &" toolchain " str
+  (&" fallback " str)? : command
+
+@[command_elab nativeTactic] def elabNativeTactic : CommandElab := fun stx => do
+  let doc ← match stx[0].getOptional? with
+    | some d => pure (← getDocStringText ⟨d⟩).trimAscii.toString
+    | none => pure ""
+  let name := stx[2].getId
+  let evaluated := stx[4].getId
+  let tag := stx[6].getId
+  let components := if stx[7].isNone then #[] else
+    stx[7][2].getSepArgs.filterMap (·.isStrLit?)
+  let toolchain := stx[9].isStrLit?.getD ""
+  let fallback := if stx[10].isNone then "" else stx[10][1].isStrLit?.getD ""
+  let env ← getEnv
+  if (procExt.getState env).contains name then
+    throwError "native procedure {name} is already registered"
+  if let some p := procForTag? env tag then
+    throwError "axiom tag {tag} already belongs to {p.name}"
+  if tag == `edge then throwError "axiom tag `edge` is reserved for edge_decide"
+  unless env.contains evaluated do
+    throwError "native_tactic {name}: the evaluated constant {evaluated} does not exist"
+  if toolchain != Lean.toolchain then
+    throwError "native_tactic {name}: described for toolchain {toolchain.quote}, but this is \
+      {Lean.toolchain.quote}; review the description and update it"
+  -- The fallback text describes; it is not evidence that a general kernel fallback exists.
+  let p : Procedure :=
+    { name, fn := evaluated, kernel := false, doc, module := env.mainModule,
+      axiomTag := some tag, components, toolchain, fallbackCoverage := fallback }
+  modifyEnv (procExt.addEntry · p)
+
+end Silmaril.Trust
