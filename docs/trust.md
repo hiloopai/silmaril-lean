@@ -218,10 +218,10 @@ The export keeps the audit's evidence as it is. Recorded uses that fail the prov
 stay in `uses` with `verified: false` and in each declaration's `unverified_native`. A native
 result that a theorem inherits from another theorem stays in that theorem's `dep_native`; it is
 not turned into a use of its own. Kernel-backend uses involve no native code, and their presence
-authorizes nothing native. **Not integrated with the project database.** The database
-reads the `silmaril.trust.v1` lines instead (#124's producer over `#trust_dump`, `moduleLine`
-and `auditLine`), so nothing converts this export, and no round-trip through the database has
-been tested.
+authorizes nothing native. The project database reads this export: #124 (`1e71206c`) converts
+`silmaril.trust-core.v1` into its strict schema. It takes the policy sets only from the
+hash-matched `policy.toml` and keeps the export's violations. It has been round-tripped
+strictly on the bytes and ELF examples, with partial coverage.
 
 ## Provenance schema (`silmaril.trust.v1`)
 
