@@ -1,9 +1,9 @@
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust: 14 procedures (3 registered only), 15 implementations (8 native, 9 planned), 5 sets, 3 policies
+trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 planned), 5 sets, 3 policies
 trust modules: 5 covered, 1 excluded, 1 unsupported, 3 undescribed; 8 direct uses
 trust violations: 0 (0 direct, 0 transitive)
 trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 unknown (consistent digests are not proof of freshness)
-sql sha256: 1dc84625187790f4bafbed573051eef2907a35f16e060ff33ca4b188160e4aa7
+sql sha256: 664db1a0a38e5492da1be0a141f9548a29ab115c88c70d9d6497d12886f820da
 exit: ok

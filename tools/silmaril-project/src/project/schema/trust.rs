@@ -71,8 +71,11 @@ pub struct ProcedureDecl {
     pub name: String,
     /// `axiom` | `decision`.
     pub kind: String,
-    /// The proposition decided, as text (decision procedures).
+    /// The proposition decided, as text: descriptive only (equal text is not proof of the
+    /// same statement).
     pub proposition: Option<String>,
+    /// A Lean declaration that fixes the statement (for ELF, the `Leaf` whose `P` it is).
+    pub statement: Option<String>,
     pub doc: Option<String>,
 }
 
@@ -195,6 +198,7 @@ table! {
         name: String = "TEXT NOT NULL",
         kind: String = "TEXT NOT NULL CHECK(kind IN ('axiom','decision'))",
         proposition: Option<String> = "TEXT",
+        statement: Option<String> = "TEXT",
         builtin: bool = "INTEGER NOT NULL",
         doc: Option<String> = "TEXT",
     }

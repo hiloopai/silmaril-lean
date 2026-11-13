@@ -18,60 +18,76 @@
   {
    "name": "elf.layout",
    "kind": "decision",
-   "proposition": "Silmaril.Elf.Staged.LayoutIs F L",
-   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
+   "proposition": "LayoutIs F L",
+   "statement": "Silmaril.Elf.Staged.Leaf.layout",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
    "name": "elf.body",
    "kind": "decision",
-   "proposition": "Silmaril.Elf.Staged.BodyIs F L sh b",
-   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
+   "proposition": "BodyIs F L sh b",
+   "statement": "Silmaril.Elf.Staged.Leaf.body",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
    "name": "elf.loader",
    "kind": "decision",
-   "proposition": "Silmaril.Elf.Staged.LoaderIs F L ld",
-   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
+   "proposition": "LoaderIs F L ld",
+   "statement": "Silmaril.Elf.Staged.Leaf.loader",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
-   "name": "elf.entries",
+   "name": "elf.rela",
    "kind": "decision",
-   "proposition": "Silmaril.Elf.Staged.EntriesAt F p o w i es",
-   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
+   "proposition": "EntriesAt F Parse.rela o 24 i es",
+   "statement": "Silmaril.Elf.Staged.Leaf.rela",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
    "name": "elf.tiles",
    "kind": "decision",
-   "proposition": "Silmaril.Elf.Staged.TilesAt F ok o lens",
-   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
+   "proposition": "TilesAt F (fun _ _ => true) o lens",
+   "statement": "Silmaril.Elf.Staged.Leaf.tiles",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
-   "name": "elf.symtrie",
+   "name": "elf.tiles.x86",
    "kind": "decision",
-   "doc": "Future: symbol lookup. Registered capability only."
+   "proposition": "TilesAt F x86Ok o lens",
+   "statement": "Silmaril.Elf.Staged.Leaf.tilesX86",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
-   "name": "dwarf.line",
+   "name": "elf.symbols.byName",
    "kind": "decision",
-   "doc": "Future: DWARF line tables. Registered capability only."
+   "proposition": "x.sorted = true \u2227 x.Sound F",
+   "statement": "Silmaril.Elf.Staged.Leaf.byName",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
+  },
+  {
+   "name": "elf.symbols.byAddr",
+   "kind": "decision",
+   "proposition": "x.sorted = true \u2227 x.Sound F",
+   "statement": "Silmaril.Elf.Staged.Leaf.byAddr",
+   "doc": "An ELF leaf check (#110, #123): one statement (Leaf.P), two checker/soundness pairs."
   },
   {
    "name": "wasm.parse",
    "kind": "decision",
    "proposition": "a Wasm module parses to m",
-   "doc": "Registered capability only."
+   "doc": "Planned."
   },
   {
    "name": "wasm.interp",
    "kind": "decision",
    "proposition": "a Wasm invocation evaluates to r",
-   "doc": "Registered capability only."
+   "doc": "Registered capability only: no implementation."
   },
   {
    "name": "lean.std.bv_decide.verifyBVExpr",
    "kind": "decision",
    "proposition": "a bit-vector goal is valid (an LRAT certificate of UNSAT checks)",
-   "doc": "Lean's bv_decide certificate check."
+   "doc": "Lean's bv_decide certificate check (upstream backend)."
   }
  ],
  "implementations": [
@@ -94,96 +110,153 @@
    "procedure": "elf.layout",
    "backend": "kernel",
    "profile": "paranoid",
-   "checker": "Silmaril.Elf.Staged.readLayout over pageRead (4 KiB page literals)",
-   "soundness": "Silmaril.Elf.Staged.layoutIs_of_sub",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.layout",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
    "status": "supported",
-   "doc": "decide +kernel; Sub from pages_of_bytes."
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
   },
   {
    "procedure": "elf.layout",
    "backend": "native",
    "profile": "fast",
-   "checker": "Silmaril.Elf.Staged.readLayout over fastRead (ByteArray)",
-   "soundness": "Silmaril.Elf.Staged.layoutIs_of_sub with Silmaril.Elf.Staged.sub_fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.layout",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
    "status": "planned",
-   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
-   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
   },
   {
    "procedure": "elf.body",
    "backend": "kernel",
    "profile": "paranoid",
-   "checker": "Silmaril.Elf.Staged.readBody over pageRead (4 KiB page literals)",
-   "soundness": "Silmaril.Elf.Staged.bodyIs_of_sub",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.body",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
    "status": "supported",
-   "doc": "decide +kernel; Sub from pages_of_bytes."
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
   },
   {
    "procedure": "elf.body",
    "backend": "native",
    "profile": "fast",
-   "checker": "Silmaril.Elf.Staged.readBody over fastRead (ByteArray)",
-   "soundness": "Silmaril.Elf.Staged.bodyIs_of_sub with Silmaril.Elf.Staged.sub_fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.body",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
    "status": "planned",
-   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
-   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
   },
   {
    "procedure": "elf.loader",
    "backend": "kernel",
    "profile": "paranoid",
-   "checker": "Silmaril.Elf.Staged.readLoader over pageRead (4 KiB page literals)",
-   "soundness": "Silmaril.Elf.Staged.loaderIs_of_sub",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.loader",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
    "status": "supported",
-   "doc": "decide +kernel; Sub from pages_of_bytes."
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
   },
   {
    "procedure": "elf.loader",
    "backend": "native",
    "profile": "fast",
-   "checker": "Silmaril.Elf.Staged.readLoader over fastRead (ByteArray)",
-   "soundness": "Silmaril.Elf.Staged.loaderIs_of_sub with Silmaril.Elf.Staged.sub_fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.loader",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
    "status": "planned",
-   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
-   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
   },
   {
-   "procedure": "elf.entries",
+   "procedure": "elf.rela",
    "backend": "kernel",
    "profile": "paranoid",
-   "checker": "Silmaril.Elf.Staged.readEntries over pageRead (4 KiB page literals)",
-   "soundness": "Silmaril.Elf.Staged.entriesAt_of_ok",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.rela",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
    "status": "supported",
-   "doc": "decide +kernel; Sub from pages_of_bytes."
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
   },
   {
-   "procedure": "elf.entries",
+   "procedure": "elf.rela",
    "backend": "native",
    "profile": "fast",
-   "checker": "Silmaril.Elf.Staged.readEntries over fastRead (ByteArray)",
-   "soundness": "Silmaril.Elf.Staged.entriesAt_of_ok with Silmaril.Elf.Staged.sub_fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.rela",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
    "status": "planned",
-   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
-   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
   },
   {
    "procedure": "elf.tiles",
    "backend": "kernel",
    "profile": "paranoid",
-   "checker": "Silmaril.Elf.Staged.checkTiles over pageRead (4 KiB page literals)",
-   "soundness": "Silmaril.Elf.Staged.tilesAt_of_ok",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.tiles",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
    "status": "supported",
-   "doc": "decide +kernel; Sub from pages_of_bytes."
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
   },
   {
    "procedure": "elf.tiles",
    "backend": "native",
    "profile": "fast",
-   "checker": "Silmaril.Elf.Staged.checkTiles over fastRead (ByteArray)",
-   "soundness": "Silmaril.Elf.Staged.tilesAt_of_ok with Silmaril.Elf.Staged.sub_fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.tiles",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
    "status": "planned",
-   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
-   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
+  },
+  {
+   "procedure": "elf.tiles.x86",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.tilesX86",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
+   "status": "supported",
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
+  },
+  {
+   "procedure": "elf.tiles.x86",
+   "backend": "native",
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.tilesX86",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
+   "status": "planned",
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
+  },
+  {
+   "procedure": "elf.symbols.byName",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.byName",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
+   "status": "supported",
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
+  },
+  {
+   "procedure": "elf.symbols.byName",
+   "backend": "native",
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.byName",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
+   "status": "planned",
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
+  },
+  {
+   "procedure": "elf.symbols.byAddr",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "checker": "Silmaril.Elf.Staged.Leaf.kernel Silmaril.Elf.Staged.Leaf.byAddr",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_kernel",
+   "status": "supported",
+   "doc": "pageRead on 4 KiB page literals, decide +kernel."
+  },
+  {
+   "procedure": "elf.symbols.byAddr",
+   "backend": "native",
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.Leaf.native Silmaril.Elf.Staged.Leaf.byAddr",
+   "soundness": "Silmaril.Elf.Staged.Leaf.of_native",
+   "status": "planned",
+   "surface": "compiled fastRead and the leaf checker: the Lean compiler and runtime",
+   "doc": "The checker and soundness lemma exist (#123); turning a compiled run into a theorem awaits the core trust API."
   },
   {
    "procedure": "wasm.parse",
@@ -237,11 +310,23 @@
      "profile": "paranoid"
     },
     {
-     "procedure": "elf.entries",
+     "procedure": "elf.rela",
      "profile": "paranoid"
     },
     {
      "procedure": "elf.tiles",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "elf.tiles.x86",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "elf.symbols.byName",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "elf.symbols.byAddr",
      "profile": "paranoid"
     }
    ]
@@ -271,12 +356,27 @@
      "profile": "fast"
     },
     {
-     "procedure": "elf.entries",
+     "procedure": "elf.rela",
      "backend": "native",
      "profile": "fast"
     },
     {
      "procedure": "elf.tiles",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.tiles.x86",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.symbols.byName",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.symbols.byAddr",
      "backend": "native",
      "profile": "fast"
     }

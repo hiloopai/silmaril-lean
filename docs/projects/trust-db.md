@@ -13,8 +13,9 @@ hand-written fixtures (`tools/silmaril-project/tests/project/trust-*`).
   `trust.status = absent`, and `check` prints that use is *unaudited*. That is not a clean
   result. The default policy (the standard axioms) is a default, not evidence.
 - **A registered capability is not a supported implementation.** A procedure with no
-  implementation (`elf.symtrie`, `dwarf.line` in the fixtures) is *registered only*: no set
-  can grant it and no use can name it. An implementation with `status = planned` (the native
+  implementation (`wasm.interp` in the fixtures) is *registered only*: no set can grant it and
+  no use can name it. Capabilities that are not even registered (a symbol trie, DWARF line and
+  DIE tables, `.eh_frame` bounds; see `Silmaril.Elf.Staged.Leaf`) do not appear at all. An implementation with `status = planned` (the native
   fast mode of the ELF stages, `bytes.eq` on `ByteArray`, LRAT) is not supported either: a set
   may grant it ahead of time, but a use of it is an `unsupported` violation.
 - **Native means trusted computation.** A native implementation trusts the compiled code path
@@ -36,7 +37,8 @@ This is the contract proposed to the core work. Fields not listed here are rejec
   "toolchain": "leanprover/lean4:…",          // compared with ./lean-toolchain
   "producer": "tool/version",
   "inputs": [{ "path": "policy/trust.toml", "sha256": "…" }],    // policy files etc.
-  "procedures": [{ "name": "elf.layout", "kind": "decision", "proposition": "…", "doc": "…" }],
+  "procedures": [{ "name": "elf.layout", "kind": "decision", "proposition": "LayoutIs F L",
+                   "statement": "Silmaril.Elf.Staged.Leaf.layout", "doc": "…" }],
   "implementations": [{ "procedure": "elf.layout", "backend": "kernel" | "native",
                         "profile": "paranoid", "checker": "…", "soundness": "…",
                         "status": "supported" | "planned",
@@ -57,10 +59,13 @@ This is the contract proposed to the core work. Fields not listed here are rejec
 
 - A procedure's identity does not depend on its backend. Its implementations are
   `(procedure, backend, profile)`, and each one is a **checker/soundness pair** targeting the
-  procedure's one proposition `P c`. For example, `elf.layout` has a kernel pair (the reader over
-  `pageRead` on 4 KiB literals with `layoutIs_of_sub`) and a native pair (the reader over
-  `fastRead` on a `ByteArray` with `layoutIs_of_sub` and `sub_fast`). A `supported`
-  implementation must name both `checker` and `soundness`.
+  procedure's one proposition `P c`. For example, each ELF leaf (`Silmaril.Elf.Staged.Leaf`,
+  #123) has a kernel pair (`Leaf.kernel`, the checker over `pageRead` on 4 KiB literals, with
+  `Leaf.of_kernel`) and a native pair (`Leaf.native`, over `fastRead` on a `ByteArray`, with
+  `Leaf.of_native`). A `supported` implementation must name both `checker` and `soundness`.
+- `proposition` is descriptive text. `statement` (optional) names the Lean declaration that
+  fixes the statement (for an ELF leaf, the `Leaf` whose `P` it is). The tool never compares
+  proposition text, and equal text is not taken as proof of the same statement.
 - A use records the backend and profile **actually** used and the axioms Lean reported for that
   proof (`axioms`), so a native use carries its per-computation native axioms, whatever the
   toolchain names them. Until the core API exists, the ELF side emits a temporary
@@ -83,6 +88,20 @@ same scope are an error. In this first slice, the effective `allow` bounds a mod
 `trust_module_policy` keeps the resolved sets and the scope that declared each one, so a
 dependency role can be added there later.
 
+### `--strict-trust`
+
+`sil project check|sqlite --strict-trust` turns violations into errors. It also fails on:
+
+- a missing trust dump;
+- a covered module whose digests are not all `consistent`;
+- a covered module with an *undescribed* transitive import;
+- a dump without `decls`.
+
+Imports that the dump lists as `excluded` or `unsupported` (with a reason) are not errors.
+Without `--strict-trust`, these cases are reported but do not fail the run. Fixture:
+`trust-strict`, which is the clean fixture failing on its undescribed imports (Mathlib,
+`Silmaril.Elf.Parse.Defs`, …).
+
 ### Fail closed
 
 These are errors, and no database is written: a wrong schema, a duplicate, an unknown
@@ -97,11 +116,15 @@ the view and the warnings agree.
 
 ### Stability
 
-The field names and meanings above are the v0.1 contract. Within v0.1, only optional fields are
-added, and readers reject unknown fields, so a producer and the tool are upgraded together. A
-change of meaning or a removal is `v0.2`. The procedure names in use are `bytes.eq`,
-`elf.layout`, `elf.body`, `elf.loader`, `elf.entries` and `elf.tiles`. `elf.symtrie` and
-`dwarf.line` are registered for the future.
+The field names and meanings above are the v0.1 contract. A change of meaning or a removal is
+`v0.2`. Within v0.1, only optional fields are added. Readers reject unknown fields, so even
+such an addition needs the tool upgraded **in lockstep** with the producer. There is no promise
+of forward compatibility.
+
+The project procedures have bare names: `bytes.eq` and the ELF leaves `elf.layout`,
+`elf.body`, `elf.loader`, `elf.rela`, `elf.tiles`, `elf.tiles.x86`, `elf.symbols.byName` and
+`elf.symbols.byAddr`. Upstream backends keep their qualified names
+(`lean.std.bv_decide.verifyBVExpr`).
 
 ## Tables and views (in `silmaril.project-db.v0.2`)
 
@@ -142,7 +165,7 @@ Trust tab's data. Rebuild with `sil project sqlite` to get v0.2.
 ```
 sil project sqlite --dump dump.json --trust trust.json
 …
-trust: 14 procedures (3 registered only), 15 implementations (8 native, 9 planned), 5 sets, 3 policies
+trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 planned), 5 sets, 3 policies
 trust modules: 5 covered, 1 excluded, 1 unsupported, 3 undescribed; 8 direct uses
 trust violations: 0 (0 direct, 0 transitive)
 trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 unknown (consistent digests are not proof of freshness)
@@ -150,12 +173,14 @@ trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 u
 
 The cases in `tools/silmaril-project/tests/project/` are:
 
-- `trust-bytes-elf`: `bytes.eq` and the five ELF stages of #110, each with a supported kernel
-  pair (paranoid mode) and a planned native pair (fast mode), with no violations;
+- `trust-bytes-elf`: `bytes.eq` and the eight ELF leaves of #110 and #123, each with a
+  supported kernel pair (paranoid mode) and a planned native pair (fast mode), with no
+  violations;
 - `trust-violations`: a native fast-mode use, which is not allowed, not supported, and
   reported again through an importing module; an unattributed axiom; an edited source, which
   makes its module and that module's importer stale;
-- `trust-invalid`: the fail-closed errors.
+- `trust-invalid`: the fail-closed errors;
+- `trust-strict`: `--strict-trust`.
 
 Their sources are placeholder files whose digests are recorded, and the uses are illustrative,
 not measured.

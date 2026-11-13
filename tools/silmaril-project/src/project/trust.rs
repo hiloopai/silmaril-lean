@@ -89,9 +89,15 @@ impl Tables {
 
 /// Check the trust dump at `path` (relative to `dir`), if any, and append the trust tables to
 /// `o.db` (which `check` has filled up to the summary table).
-pub fn run(dir: &Path, path: Option<&Path>, o: &mut Outcome) -> Result<()> {
+pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Result<()> {
     let Some(path) = path else {
         meta(o, &[("status", "absent".into())]);
+        if strict {
+            o.error(
+                "--strict-trust",
+                "no trust dump (--trust): use is unaudited",
+            );
+        }
         o.lines.push(
             "trust: no trust dump (--trust): decision-procedure and axiom use is unaudited \
              (unknown, not clean)"
@@ -120,6 +126,7 @@ pub fn run(dir: &Path, path: Option<&Path>, o: &mut Outcome) -> Result<()> {
         dir,
         at: &at,
         dump: &dump,
+        strict,
         o,
     }
     .run(&mut t, Digests::of(&bytes).sha256);
@@ -131,10 +138,52 @@ struct Ingest<'a> {
     dir: &'a Path,
     at: &'a str,
     dump: &'a TrustDump,
+    strict: bool,
     o: &'a mut Outcome,
 }
 
 impl Ingest<'_> {
+    /// `--strict-trust`: besides violations (errors instead of warnings), fail on what keeps the
+    /// result from being an audit: a covered module whose digests are not all consistent, an
+    /// undescribed transitive import of a covered module, and uncollected axioms per
+    /// declaration. Explicitly excluded or unsupported imports are listed, not errors.
+    fn strict_checks(
+        &mut self,
+        t: &Tables,
+        deps: &BTreeMap<String, BTreeSet<String>>,
+        decls: bool,
+    ) {
+        let coverage: BTreeMap<&str, &str> = t
+            .modules
+            .iter()
+            .map(|m| (m.name.as_str(), m.coverage.as_str()))
+            .collect();
+        for m in t.modules.iter().filter(|m| m.coverage == "covered") {
+            if m.freshness != "consistent" {
+                self.o.error(
+                    format!("trust {}", m.name),
+                    format!(
+                        "--strict-trust: digests are {} (source {})",
+                        m.freshness, m.source_status
+                    ),
+                );
+            }
+            for dep in deps.get(&m.name).into_iter().flatten() {
+                if coverage.get(dep.as_str()) == Some(&"undescribed") {
+                    self.o.error(
+                        format!("trust {}", m.name),
+                        format!(
+                            "--strict-trust: imports {dep}, which the trust dump does not describe"
+                        ),
+                    );
+                }
+            }
+        }
+        if !decls {
+            self.err("--strict-trust: axioms per declaration (decls) were not collected");
+        }
+    }
+
     fn err(&mut self, msg: impl AsRef<str>) {
         self.o.error(self.at, msg);
     }
@@ -183,6 +232,7 @@ impl Ingest<'_> {
                 name: p.name.clone(),
                 kind: p.kind.clone(),
                 proposition: p.proposition.clone(),
+                statement: p.statement.clone(),
                 builtin: false,
                 doc: p.doc.clone(),
             });
@@ -199,6 +249,7 @@ impl Ingest<'_> {
                         name: a.into(),
                         kind: "axiom".into(),
                         proposition: None,
+                        statement: Some(a.into()),
                         builtin: true,
                         doc: Some("standard axiom".into()),
                     });
@@ -799,10 +850,18 @@ impl Ingest<'_> {
             } else {
                 format!(" (through {via})")
             };
-            self.o.warn(
+            let (at, msg) = (
                 format!("trust {m}"),
                 format!("{why}: {decl} uses {g}{route}"),
             );
+            if self.strict {
+                self.o.error(at, msg);
+            } else {
+                self.o.warn(at, msg);
+            }
+        }
+        if self.strict {
+            self.strict_checks(t, &deps, d.decls.is_some());
         }
 
         // ---- report

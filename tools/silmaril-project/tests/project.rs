@@ -1,7 +1,8 @@
 //! Golden tests for `sil project`.
 //!
 //! Each directory under `tests/project/` is a case: a project directory with a hand-written
-//! `dump.json` and optional `silmaril.toml`, `silmaril/artifacts.toml`, `lakefile.toml`,
+//! `dump.json`, an optional `trust.json` (passed as `--trust`, with `--strict-trust` when a file
+//! `strict-trust` exists) and optional `silmaril.toml`, `silmaril/artifacts.toml`, `lakefile.toml`,
 //! `lake-manifest.json` and files. The test runs `sil project sqlite` and compares its stdout
 //! with `check.txt` and, when the check passes, its SQL text with `project.sql`. `SIL_BLESS=1`
 //! rewrites the expected files (`tests/project/regen.sh`); review is `git diff`. The end-to-end
@@ -110,6 +111,9 @@ fn golden_cases() {
             .arg(tmp.path().join("project.sqlite"));
         if trust {
             cmd.args(["--trust", "trust.json"]);
+        }
+        if dir.join("strict-trust").is_file() {
+            cmd.arg("--strict-trust");
         }
         let out = cmd.current_dir(&dir).output().unwrap();
         let stdout = String::from_utf8(out.stdout).unwrap();

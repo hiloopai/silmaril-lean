@@ -1,0 +1,17 @@
+error: trust Silmaril.Elf.Staged.Defs: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
+error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: imports Mathlib.Data.Nat.Basic, which the trust dump does not describe
+error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
+error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: imports Silmaril.X86.Link.Blob.Thms, which the trust dump does not describe
+error: trust Silmaril.Elf.Staged.Thms: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
+error: trust Silmaril.Elf.Staged.Thms: --strict-trust: imports Silmaril.X86.Link.Blob.Thms, which the trust dump does not describe
+error: trust Silmaril.Formats.Bytes: --strict-trust: imports Mathlib.Data.Nat.Basic, which the trust dump does not describe
+error: trust Silmaril.Proofs.Elf.Staged.Fast: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
+error: trust Silmaril.Proofs.Elf.Staged.Fast: --strict-trust: imports Silmaril.X86.Link.Blob.Thms, which the trust dump does not describe
+summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
+root: (none)
+trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 planned), 5 sets, 3 policies
+trust modules: 5 covered, 1 excluded, 1 unsupported, 3 undescribed; 8 direct uses
+trust violations: 0 (0 direct, 0 transitive)
+trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 unknown (consistent digests are not proof of freshness)
+exit: failed

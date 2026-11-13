@@ -3,7 +3,7 @@ error: trust.json: policy module "Silmaril.Formats.Bytes": allow grants ("wasm.p
 error: trust.json: policy prefix "Silmaril.Elf.*.Thms": a scope is root (name ""), region NAME, prefix A.B.* or module NAME
 error: trust.json: policy region "Formats": declared twice (overlapping policies are rejected)
 error: trust.json: set bad: no implementation of elf.layout with backend "native" and profile "turbo"
-error: trust.json: set bad: no implementation of elf.symtrie with backend "kernel" and profile ""
+error: trust.json: set bad: no implementation of wasm.interp with backend "kernel" and profile ""
 error: trust.json: set bad: unknown set nope
 error: trust.json: set cycle loop.a -> loop.b -> loop.a
 error: trust.json: use x bytes.eq native "turbo" in Silmaril.Formats.Bytes: no such implementation
@@ -11,7 +11,7 @@ error: trust.json: use y propext axiom "" in Silmaril.Elf.Check.Defs: the module
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust: 14 procedures (3 registered only), 15 implementations (8 native, 9 planned), 9 sets, 5 policies
+trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 planned), 9 sets, 5 policies
 trust modules: 5 covered, 1 excluded, 1 unsupported, 3 undescribed; 8 direct uses
 trust violations: 0 (0 direct, 0 transitive)
 trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 unknown (consistent digests are not proof of freshness)

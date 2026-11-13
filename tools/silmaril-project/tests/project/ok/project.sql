@@ -234,6 +234,7 @@ CREATE TABLE trust_procedures(
   name TEXT NOT NULL PRIMARY KEY,
   kind TEXT NOT NULL CHECK(kind IN ('axiom','decision')),
   proposition TEXT,
+  statement TEXT,
   builtin INTEGER NOT NULL,
   doc TEXT
 );

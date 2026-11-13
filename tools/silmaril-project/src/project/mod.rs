@@ -83,6 +83,10 @@ pub enum Command {
         /// without it, decision-procedure and axiom use is reported as unaudited
         #[arg(long)]
         trust: Option<PathBuf>,
+        /// Fail on trust violations, on a missing trust dump, on covered modules whose digests
+        /// are not consistent or that import undescribed modules, and on uncollected axioms
+        #[arg(long)]
+        strict_trust: bool,
     },
     /// Check, then write the canonical SQL text and build the SQLite database from it
     Sqlite {
@@ -95,6 +99,9 @@ pub enum Command {
         /// without it, the trust tables are empty and `meta` says `trust.status = absent`
         #[arg(long)]
         trust: Option<PathBuf>,
+        /// Fail on trust violations and incomplete trust evidence (see `check --strict-trust`)
+        #[arg(long)]
+        strict_trust: bool,
         /// The canonical SQL text
         #[arg(long, default_value = ".lake/silmaril/project.sql")]
         sql: PathBuf,
@@ -1163,7 +1170,12 @@ fn read_dump(path: &Path) -> Result<Dump> {
 
 /// Load project and dump and run the checks. Modules default to the dump's when neither the
 /// manifest nor `lakefile.toml` names any.
-fn checked(dir: &Path, dump: &Path, trust: Option<&Path>) -> Result<check::Outcome> {
+fn checked(
+    dir: &Path,
+    dump: &Path,
+    trust: Option<&Path>,
+    strict_trust: bool,
+) -> Result<check::Outcome> {
     let mut p = Project::load(dir)?;
     let dump = read_dump(&dir.join(dump))?;
     if p.modules.is_empty() {
@@ -1171,7 +1183,7 @@ fn checked(dir: &Path, dump: &Path, trust: Option<&Path>) -> Result<check::Outco
         p.set_roots();
     }
     let mut o = check::run(&p, &dump);
-    trust::run(dir, trust, &mut o)?;
+    trust::run(dir, trust, strict_trust, &mut o)?;
     Ok(o)
 }
 
@@ -1414,17 +1426,19 @@ pub fn run(command: Command) -> Result<()> {
             dir: DirArg { dir },
             dump,
             trust,
-        } => report(&checked(&dir, &dump, trust.as_deref())?).map(|_| ()),
+            strict_trust,
+        } => report(&checked(&dir, &dump, trust.as_deref(), strict_trust)?).map(|_| ()),
         Command::Sqlite {
             dir: DirArg { dir },
             dump,
             trust,
+            strict_trust,
             sql: sql_path,
             db,
             httpvfs,
             page_size,
         } => {
-            let text = report(&checked(&dir, &dump, trust.as_deref())?)?;
+            let text = report(&checked(&dir, &dump, trust.as_deref(), strict_trust)?)?;
             let sql_path = dir.join(sql_path);
             if let Some(parent) = sql_path.parent() {
                 fs::create_dir_all(parent).into_diagnostic()?;

@@ -582,7 +582,8 @@ async function trustSetPage(name) {
 async function trustProcedurePage(name) {
   const p = (await tq("trust_procedures", "SELECT * FROM trust_procedures WHERE name = ?", [name]))[0];
   if (!p) return `<p class="err">no trust procedure ${esc(name)}</p>`;
-  let h = `<h2>${p.kind === "axiom" ? "Axiom" : "Decision procedure"} <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS);
+  let h = `<h2>${p.kind === "axiom" ? "Axiom" : "Decision procedure"} <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS) +
+    '<p class="muted">proposition is descriptive text; statement names the Lean declaration that fixes it. Equal text is not proof of the same statement.</p>';
   h += "<h2>Implementations</h2>" + ttable(await q("SELECT backend, profile, status, checker, soundness, surface, doc FROM trust_implementations WHERE procedure = ? ORDER BY 1, 2", [name]));
   h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name, backend, profile FROM trust_set_closure WHERE procedure = ? ORDER BY 1, 2, 3 LIMIT " + DETAIL, [name]), null, { set_name: tset });
   h += "<h2>Direct uses</h2>" + ttable(await q("SELECT module, decl, backend, profile FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
