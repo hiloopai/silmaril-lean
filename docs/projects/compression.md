@@ -44,6 +44,21 @@ Assumptions and scope:
 - The inflater is a mathematical machine, not a refinement of zlib's C code.
 - The append laws and the completeness of the inflater are open; see Open goals.
 
+## Building blocks
+
+[`Formats/Compression/Bwt`](../../Silmaril/Formats/Compression/Bwt/Thms.lean)
+holds the reversible transforms that bzip2 applies before its Huffman stage, as
+total list functions: the Burrows–Wheeler transform (Burrows and Wheeler, SRC
+Research Report 124, 1994) over any linearly ordered alphabet, specified by
+sorting all rotations, with its inverse by the LF mapping (`ibwt_bwt`, for every
+string, periodic ones included; the last column is a permutation of the input);
+move-to-front over bytes (`mtfDecode_mtfEncode`, symbols below 256); and bzip2's
+RUNA/RUNB zero-run coding (`zrleDecode_zrleEncode`). `banana`, `abracadabra` and
+small move-to-front and run codes are checked by `decide`. This is not bzip2: there
+is no `Decoder`, block format, Huffman stage, CRC or stream container, and the
+initial run-length stage (RLE1) is missing. The `Defs.lean` docstring lists the
+remaining steps to a bzip2 decoder.
+
 ## Open goals
 
 Frozen as `def Task.… : Prop`, not proved; the theorems that need them take them as
