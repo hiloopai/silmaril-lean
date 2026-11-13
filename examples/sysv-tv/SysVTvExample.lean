@@ -246,13 +246,13 @@ public theorem o2_enterable : Silmaril.Project.Shapes.SysV.Enterable Silmaril.X8
 
 /-- Open: C to Core (checked by compiled evaluation above; a kernel proof evaluates the
 elaborator, as `cbv` can). -/
-public def Task.elaborates : Prop := silmaril.sysv_tv.max2.elaborates
+@[expose] public def Task.elaborates : Prop := silmaril.sysv_tv.max2.elaborates
 /-- Open: the `-O0` code implements `max2`. -/
-public def Task.o0_compiles_to : Prop := silmaril.sysv_tv.max2.o0.compiles_to
+@[expose] public def Task.o0_compiles_to : Prop := silmaril.sysv_tv.max2.o0.compiles_to
 /-- Open: the Bir9 block is a lift of the `-O2` code. -/
-public def Task.o2_lifts : Prop := silmaril.sysv_tv.max2.o2.lifts
+@[expose] public def Task.o2_lifts : Prop := silmaril.sysv_tv.max2.o2.lifts
 /-- Open: the Bir9 block corresponds to `max2`. -/
-public def Task.o2_ir_refines : Prop := silmaril.sysv_tv.max2.o2.ir_refines
+@[expose] public def Task.o2_ir_refines : Prop := silmaril.sysv_tv.max2.o2.ir_refines
 
 /-! ### Non-vacuity companions
 

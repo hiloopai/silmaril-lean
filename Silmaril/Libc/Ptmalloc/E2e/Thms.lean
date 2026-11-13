@@ -9,6 +9,8 @@ public import Silmaril.Proofs.Libc.Ptmalloc.E2e.V239
 public import Silmaril.Proofs.Libc.Ptmalloc.E2e.V239Sys
 public import Silmaril.Proofs.Libc.Ptmalloc.E2e.V240
 public import Silmaril.Proofs.Libc.Ptmalloc.E2e.V236
+public import Silmaril.Proofs.Libc.Ptmalloc.E2e.CallocRealloc
+public import Silmaril.Proofs.Libc.Ptmalloc.E2e.PinsSys
 
 /-!
 # ptmalloc: end to end
@@ -37,6 +39,15 @@ The top of the development: the four layers composed (guide: `docs/projects/ptma
 * glibc 2.36 (`…E2e.V236`): **`E2e.mallocTcache236`** (gcc 12: 2.36's own non-heap runs
   `Versions.V236.MallocRun`, the register-parametric `tcache_get` with the bin in `rbp`),
   `E2e.freeTcache236_of`.
+
+* glibc 2.36 and 2.40, **unconditional** (`…E2e.PinsSys`): **`E2e.mallocTcache236_refInv`**,
+  **`E2e.mallocTcache240_refInv`**: the tcache hit of `__libc_malloc` from any world with `RefInv`
+  (`E2e.safeMF_refInv`: `SafeMF` for `RefInv` at every configuration, all body obligations proved);
+* `calloc`/`realloc`, algorithm level (`…E2e.CallocRealloc`): **`E2e.calloc239`**,
+  **`E2e.realloc239`** (and the 2.36/2.40 data-only instances `calloc236`, `realloc236`,
+  `calloc240`, `realloc240`): with `RefInv`, the model's `calloc (k, m)` and `realloc (p, n)` of a
+  token meet the institution's `calloc`/`realloc` and keep `RefInv` (`Algo.calloc_refines`,
+  `Algo.realloc_refines`); no x86 simulation of `__libc_calloc`/`__libc_realloc` yet.
 
 This header also gathers the variant's other tops: the x86 block simulations
 (`Silmaril.Libc.Ptmalloc.X86sim.Thms`), glibc 2.40's `tcache_get` and `tcache_put` blocks

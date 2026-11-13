@@ -1,0 +1,59 @@
+# Targets of tools/wasm-perf/tests/bench.sh: the Lean tool's minimum CPU time (user+system,
+# seconds, over the runs) and maximum resident memory (MB) per case and input. Set on
+# 2026-11-09 (i7-8700, 12 threads, load 5-8 from concurrent builds) at about 3x the measured
+# value after the round's optimisations, so that load does not trip them while a regression to
+# the previous behaviour (e.g. jco-new 5 s on xf400, wit-print 3 s and 420 MB, wit-parse a
+# stack overflow on xf1200, wac-compose 690 MB on xf1200) does. The smallest inputs are
+# dominated by start-up (about 75 MB, 0.05 s: the executables are 145 MB).
+# an earlier step (perf): the jco-new and jco-validate rows lowered to about 3x the values after
+# Perf.JcoMain/ValidateF/XEncodeB and the decoder leaves (jco-new xf400 0.71 s 168 MB, xf1200
+# 1.96 s 322 MB; jco-validate xf400 0.62 s, xf1200 1.62 s); the callsN rows guard against a
+# validator quadratic in the number of functions (calls20k took 31.6 s to validate before).
+# an earlier step (perf): jco rows lowered after Perf.ValidateR (reversed-stack validator) and the
+# single input decode of wasm-jco new (jco-new xf400 1.09 s 163 MB, xf1200 1.93 s 312 MB under
+# load 25); wit-parse RSS rows lowered after Perf.WatReadB (byte lexer: xf1200 438 MB, was 675).
+# case	input	max CPU s	max RSS MB
+jco-new	xf2	0.5	200
+jco-new	xf25	0.5	250
+jco-new	xf100	1	300
+jco-new	xf400	2	400
+jco-new	xf1200	5	700
+jco-validate	xf2	0.5	200
+jco-validate	xf25	0.5	250
+jco-validate	xf100	1	300
+jco-validate	xf400	1.5	400
+jco-validate	xf1200	4	700
+jco-validate	rustR	1	250
+jco-validate	rustD	1	300
+wit-print	xf2	1	200
+wit-print	xf25	1	250
+wit-print	xf100	1	300
+wit-print	xf400	1.5	600
+wit-print	xf1200	4	1200
+wit-print	rustR	1	250
+wit-print	rustD	1.5	600
+wit-parse	xf2	1	200
+wit-parse	xf25	1	250
+wit-parse	xf100	1.5	400
+wit-parse	xf400	3	500
+wit-parse	xf1200	8	900
+wit-parse	rustR	1	250
+wit-parse	rustD	3	500
+wac-compose	xf2	1	200
+wac-compose	xf25	1	250
+wac-compose	xf100	1	250
+wac-compose	xf400	1	300
+wac-compose	xf1200	1.5	400
+wac-plug	xf2	1	200
+wac-plug	xf25	1	250
+wac-plug	xf100	1	250
+wac-plug	xf400	1	300
+wac-plug	xf1200	1.5	400
+jco-new	calls5k	1	300
+jco-new	calls20k	3	600
+jco-validate	calls5k	1	250
+jco-validate	calls20k	2	400
+wit-print	calls5k	1	250
+wit-print	calls20k	1	450
+wit-parse	calls5k	1	350
+wit-parse	calls20k	2	450

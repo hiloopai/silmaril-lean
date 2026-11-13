@@ -1,0 +1,5 @@
+# Vectors (tool, outcome class of the surface's reading, vector) on which a binary does not meet
+# Tool.frontSpec (`surface`) or Clap.Tool.frontSpec (`front:TOOL`); see
+# tools/cli-harness/tests/surfaces.sh and docs/projects/wasm-binaryen-tooling.md, track apply (none; the four
+# earlier ones, wasm-opt's help and wasm-asyncify without arguments, are gone since the
+# tools take their help and usage errors from their grammars).

@@ -1,0 +1,57 @@
+;; A stream transformer: ASCII lower case to upper case, chunk by chunk (stackful ABI).
+(module
+  (import "[export]$root" "[task-return]upper" (func $task_return (param i32)))
+  (import "[export]$root" "[stream-new-0]upper" (func $stream_new (result i64)))
+  (import "[export]$root" "[async-lower][stream-read-0]upper" (func $read (param i32 i32 i32) (result i32)))
+  (import "[export]$root" "[async-lower][stream-write-0]upper" (func $write (param i32 i32 i32) (result i32)))
+  (import "[export]$root" "[stream-drop-readable-0]upper" (func $drop_r (param i32)))
+  (import "[export]$root" "[stream-drop-writable-0]upper" (func $drop_w (param i32)))
+  (import "$root" "[waitable-set-new]" (func $ws_new (result i32)))
+  (import "$root" "[waitable-join]" (func $join (param i32 i32)))
+  (import "$root" "[waitable-set-wait]" (func $wait (param i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (func (export "cabi_realloc") (param i32 i32 i32 i32) (result i32) i32.const 8192)
+  ;; an async copy: the result word, after waiting if it blocked
+  (func $settle (param $res i32) (param $ws i32) (result i32)
+    (if (result i32) (i32.eq (local.get $res) (i32.const -1))
+      (then (drop (call $wait (local.get $ws) (i32.const 200))) (i32.load (i32.const 204)))
+      (else (local.get $res))))
+  (func (export "[async-lift-stackful]upper") (param $s i32)
+    (local $p i64) (local $w i32) (local $ws i32) (local $wsw i32) (local $res i32) (local $n i32) (local $i i32)
+    (local $off i32) (local $c i32)
+    (local.set $p (call $stream_new))
+    (call $task_return (i32.wrap_i64 (local.get $p)))
+    (local.set $w (i32.wrap_i64 (i64.shr_u (local.get $p) (i64.const 32))))
+    ;; one waitable set per end, so that each wait is for the one pending copy
+    (local.set $ws (call $ws_new))
+    (local.set $wsw (call $ws_new))
+    (call $join (local.get $s) (local.get $ws))
+    (call $join (local.get $w) (local.get $wsw))
+    (block $end (loop $l
+      (local.set $res (call $settle (call $read (local.get $s) (i32.const 1000) (i32.const 64)) (local.get $ws)))
+      (local.set $n (i32.shr_u (local.get $res) (i32.const 4)))
+      ;; upper-case the chunk
+      (local.set $i (i32.const 0))
+      (block $d (loop $u
+        (br_if $d (i32.ge_u (local.get $i) (local.get $n)))
+        (local.set $c (i32.load8_u (i32.add (i32.const 1000) (local.get $i))))
+        (if (i32.and (i32.ge_u (local.get $c) (i32.const 97)) (i32.le_u (local.get $c) (i32.const 122)))
+          (then (i32.store8 (i32.add (i32.const 1000) (local.get $i)) (i32.sub (local.get $c) (i32.const 32)))))
+        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+        (br $u)))
+      ;; write all of it
+      (local.set $off (i32.const 0))
+      (block $wd (loop $wl
+        (br_if $wd (i32.ge_u (local.get $off) (local.get $n)))
+        (local.set $off (i32.add (local.get $off) (i32.shr_u
+          (call $settle (call $write (local.get $w) (i32.add (i32.const 1000) (local.get $off))
+                                     (i32.sub (local.get $n) (local.get $off))) (local.get $wsw))
+          (i32.const 4))))
+        (br $wl)))
+      (br_if $end (i32.eq (i32.and (local.get $res) (i32.const 15)) (i32.const 1)))
+      (br $l)))
+    (call $join (local.get $s) (i32.const 0))
+    (call $join (local.get $w) (i32.const 0))
+    (call $drop_r (local.get $s))
+    (call $drop_w (local.get $w)))
+)

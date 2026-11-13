@@ -1,0 +1,27 @@
+proc main (): eff loaded integer :=
+  let strong a_517: loaded integer =
+    bound(
+      let weak a_506: loaded integer =
+        let weak (a_508: loaded integer, a_509: loaded integer) =
+          unseq(
+            pure(Specified(255))
+          ,
+            let weak a_513: loaded integer = pure(Specified(3)) in
+            pure(conv_loaded_int('unsigned char', a_513))
+          ) in
+        pure(
+          case (a_508, a_509) of
+            | (Specified(a_510: integer), Specified(a_511: integer)) =>
+                Specified(catch_exceptional_condition_add('signed int', __conv_int__('signed int', a_510), __conv_int__('signed int', a_511)))
+            | _: (loaded integer,loaded integer) =>
+                undef(<<UB036_exceptional_condition>>)
+          end
+        ) in
+      pure(conv_loaded_int('unsigned char', a_506))
+    ) in
+  run ret_505(conv_loaded_int('signed int', a_517)) ;
+  pure(Unit) ;
+  save ret_505: loaded integer (a_518: loaded integer:= Specified(0)) in
+    pure(a_518)
+
+

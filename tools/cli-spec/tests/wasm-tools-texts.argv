@@ -1,0 +1,81 @@
+# Argument vectors (split at spaces) whose front-end texts tools/cli-spec/tests/wasm-tools-surface.sh
+# compares with wasm-tools 1.262.0 byte for byte, beyond the derived corpus: suggestions, conflicts,
+# requirements, help paths, value parser reasons.
+parse --outpt x
+parse -t --colr x
+parse -t --foo
+parse x -t --foo
+parse -tx
+parse -x
+parse --verbose=1 -t
+parse -t --verbose=1
+parse -o a --output b
+parse a b
+parse --wat=1
+metadata add --nme x
+metadata add --name a --clear-name x
+metadata sho
+metadata
+component
+component wat
+component embed --dummy --dummy-names legacy w
+component embed --async-callback x
+component unbundle
+completion bas
+completion zz
+wast -a bogus
+help pars x
+help foo
+help
+help parse
+help metadata show
+metadata help add
+parse --help -x
+parse -h --bogus
+pars
+validate --features simd,bogus x
+validate --features=-bogus
+smith --fuel abc
+smith --fuel 99999999999
+smith --fuel +x
+smith --fuel=-1
+smith --fuel=-0
+smith --fuel=+
+smith --fuel=-
+smith --fuel=-9223372036854775808
+smith --fuel=-9223372036854775809
+smith --max-memory32-bytes=-1
+smith --max-memory32-bytes=+
+smith --memory-offset-choices=+,1,1
+smith --memory-offset-choices=-0,1,1
+smith --memory-offset-choices=,1,1
+json-from-wast --allow-confusing-unicode=x a
+strip -d
+dump --foo
+objdump -x
+demangle --outpt
+addr2line
+wit-smith --max-types x
+demangle --outptu=3
+demangle -t --output --foo
+demangle -t --output --outpt
+demangle -t -o --wt
+demangle -t --color=never --verbos=3
+metadata add -o x in.wasm --clear-name --name a
+metadata add -v -v --clear-name --name a
+metadata --x=3
+metadata add --clear-name --name a
+metadata add -g --generate-dwarf lines
+print --indent -1 m.wasm
+help metadata show x
+help metadata help show
+metadata help help
+metadata help help show
+help wat2wasm
+wat2wasm --help
+wast -a defaul x.wast
+wast -a default,bogus x.wast
+compose --version
+component semver-check
+component embed --dummy --async-stackful w
+component wit --wasm --wat x
