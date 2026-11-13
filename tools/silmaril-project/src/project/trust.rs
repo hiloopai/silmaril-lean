@@ -3,7 +3,7 @@
 //! The check fails closed: an unsupported schema, a duplicate, an unknown procedure, set,
 //! implementation or module, a set cycle, an overlapping or contradictory policy, or a child
 //! policy beyond its parent's `max` is an error, and no database is written. Uses outside a
-//! module's effective `allow` set, uses of an unimplemented implementation and axioms no use
+//! module's effective `allow` set, uses of a `planned` implementation and axioms no use
 //! accounts for are **violations**: warnings, rows of the `trust_violations` view, and lines of
 //! the report. Without `--trust`, the tables are empty and `meta` says `trust.status = absent`:
 //! nothing is known about decision-procedure use, which is not the same as a clean result.
@@ -205,7 +205,7 @@ impl Ingest<'_> {
                 }
             }
         }
-        // (procedure, backend) -> profiles, and each implementation's `implemented`.
+        // Each implementation and whether it is supported.
         let mut impls: BTreeMap<Grant, bool> = BTreeMap::new();
         for i in &d.implementations {
             let profile = i.profile.clone().unwrap_or_default();
@@ -225,8 +225,25 @@ impl Ingest<'_> {
                 self.err(format!("{what}: backend is not kernel or native"));
                 continue;
             }
+            let supported = match i.status.as_str() {
+                "supported" => {
+                    if i.checker.is_none() || i.soundness.is_none() {
+                        self.err(format!("{what}: a supported implementation names its checker and soundness theorem"));
+                        continue;
+                    }
+                    true
+                }
+                "planned" => false,
+                _ => {
+                    self.err(format!(
+                        "{what}: status {:?} is not supported or planned",
+                        i.status
+                    ));
+                    continue;
+                }
+            };
             let key = (i.procedure.clone(), i.backend.clone(), profile.clone());
-            if impls.insert(key, i.implemented).is_some() {
+            if impls.insert(key, supported).is_some() {
                 self.err(format!("{what}: declared twice"));
                 continue;
             }
@@ -234,8 +251,9 @@ impl Ingest<'_> {
                 procedure: i.procedure.clone(),
                 backend: i.backend.clone(),
                 profile,
-                decl: i.decl.clone(),
-                implemented: i.implemented,
+                checker: i.checker.clone(),
+                soundness: i.soundness.clone(),
+                status: i.status.clone(),
                 surface: i.surface.clone(),
                 doc: i.doc.clone(),
             });
@@ -749,7 +767,7 @@ impl Ingest<'_> {
                             via.clone(),
                             decl.clone(),
                             shown,
-                            "unimplemented",
+                            "unsupported",
                         ));
                     }
                 }
@@ -796,10 +814,15 @@ impl Ingest<'_> {
                 .count()
         };
         let native = t.impls.iter().filter(|i| i.backend == "native").count();
-        let unimpl = t.impls.iter().filter(|i| !i.implemented).count();
+        let planned = t.impls.iter().filter(|i| i.status == "planned").count();
+        let registered = t
+            .procedures
+            .iter()
+            .filter(|p| p.kind == "decision" && !t.impls.iter().any(|i| i.procedure == p.name))
+            .count();
         let direct = violations.iter().filter(|v| v.0 == v.1).count();
         self.o.lines.push(format!(
-            "trust: {} procedures ({} implementations, {native} native, {unimpl} not implemented), {} sets, {} policies",
+            "trust: {} procedures ({registered} registered only), {} implementations ({native} native, {planned} planned), {} sets, {} policies",
             t.procedures.len(),
             t.impls.len(),
             t.sets.len(),

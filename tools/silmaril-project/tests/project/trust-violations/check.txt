@@ -1,14 +1,14 @@
-warning: trust Silmaril.Elf.Staged.Example.Client: not-allowed: Silmaril.Elf.Staged.Example.Fast.layout uses silmaril.elf.staged.layout native "fast" (through Silmaril.Elf.Staged.Example.Fast)
+warning: trust Silmaril.Elf.Staged.Example.Client: not-allowed: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast" (through Silmaril.Elf.Staged.Example.Fast)
 warning: trust Silmaril.Elf.Staged.Example.Client: unattributed-axiom: Silmaril.Elf.Staged.Example.Client.uses_fast uses Silmaril.Elf.Staged.Example.Client.extra
-warning: trust Silmaril.Elf.Staged.Example.Client: unimplemented: Silmaril.Elf.Staged.Example.Fast.layout uses silmaril.elf.staged.layout native "fast" (through Silmaril.Elf.Staged.Example.Fast)
-warning: trust Silmaril.Elf.Staged.Example.Fast: not-allowed: Silmaril.Elf.Staged.Example.Fast.layout uses silmaril.elf.staged.layout native "fast"
-warning: trust Silmaril.Elf.Staged.Example.Fast: unimplemented: Silmaril.Elf.Staged.Example.Fast.layout uses silmaril.elf.staged.layout native "fast"
+warning: trust Silmaril.Elf.Staged.Example.Client: unsupported: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast" (through Silmaril.Elf.Staged.Example.Fast)
+warning: trust Silmaril.Elf.Staged.Example.Fast: not-allowed: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast"
+warning: trust Silmaril.Elf.Staged.Example.Fast: unsupported: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast"
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust: 11 procedures (11 implementations, 6 native, 7 not implemented), 5 sets, 3 policies
+trust: 14 procedures (3 registered only), 15 implementations (8 native, 9 planned), 5 sets, 3 policies
 trust modules: 7 covered, 1 excluded, 1 unsupported, 3 undescribed; 10 direct uses
 trust violations: 5 (3 direct, 2 transitive)
 trust digests: toolchain match, inputs match, modules 5 consistent, 2 stale, 2 unknown (consistent digests are not proof of freshness)
-sql sha256: 9b3fca72cb622466ed54266280bb480b376303e455bc173f65963652c683e208
+sql sha256: 413c3554c56dd03df2b18eed222e90421edf85c2cefff082b27dcffe2db686db
 exit: ok

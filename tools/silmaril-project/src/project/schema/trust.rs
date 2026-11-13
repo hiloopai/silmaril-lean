@@ -6,9 +6,9 @@
 //!
 //! - **procedures**: backend-independent identities of what may be trusted (an axiom, or a
 //!   decision procedure for a proposition);
-//! - **implementations**: how a decision procedure is checked (`kernel` or `native`, with a
-//!   profile), and whether that implementation exists (`implemented = false` is a registry
-//!   entry, not a claim);
+//! - **implementations**: checker/soundness pairs for a decision procedure (`kernel` or
+//!   `native`, with a profile), all targeting the procedure's one proposition; `planned` is a
+//!   registered capability, not a claim. A procedure with no implementation is registered only;
 //! - **sets**: named, hierarchical sets of `(procedure, backend, profile)` grants;
 //! - **policies**: `allow` and `max` sets per scope (root, region, module prefix, module);
 //! - **modules**: source digests and direct import edges;
@@ -84,9 +84,13 @@ pub struct ImplementationDecl {
     pub backend: String,
     /// `None`: the backend's default profile.
     pub profile: Option<String>,
-    /// The Lean declaration that realizes it.
-    pub decl: Option<String>,
-    pub implemented: bool,
+    /// The checker (a computation, for example a reader over `pageRead` or `fastRead`).
+    pub checker: Option<String>,
+    /// The theorem that turns a successful check into the procedure's proposition.
+    pub soundness: Option<String>,
+    /// `supported`: the checker and soundness theorem exist and the backend can run it;
+    /// `planned`: a registered capability, not a supported implementation.
+    pub status: String,
     /// What is trusted beyond the kernel (native: the compiled code path and runtime).
     pub surface: Option<String>,
     pub doc: Option<String>,
@@ -202,8 +206,9 @@ table! {
         procedure: String = "TEXT NOT NULL",
         backend: String = "TEXT NOT NULL CHECK(backend IN ('kernel','native'))",
         profile: String = "TEXT NOT NULL",
-        decl: Option<String> = "TEXT",
-        implemented: bool = "INTEGER NOT NULL",
+        checker: Option<String> = "TEXT",
+        soundness: Option<String> = "TEXT",
+        status: String = "TEXT NOT NULL CHECK(status IN ('supported','planned'))",
         surface: Option<String> = "TEXT",
         doc: Option<String> = "TEXT",
     }
@@ -340,10 +345,10 @@ SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'no
 FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' \
 WHERE NOT EXISTS (SELECT 1 FROM trust_module_allowed a WHERE a.module = t.module AND a.procedure = t.procedure \
 AND a.backend = t.backend AND (a.profile = '' OR a.profile = t.profile)) \
-UNION SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'unimplemented' \
+UNION SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'unsupported' \
 FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' \
 JOIN trust_implementations i ON i.procedure = t.procedure AND i.backend = t.backend AND i.profile = t.profile \
-WHERE i.implemented = 0 \
+WHERE i.status <> 'supported' \
 UNION SELECT x.module, x.module, x.decl, x.axiom, 'axiom', '', 1, 'unattributed-axiom' FROM trust_decl_axioms x \
 WHERE NOT EXISTS (SELECT 1 FROM trust_uses u WHERE u.module = x.module AND u.decl = x.decl \
 AND u.procedure = x.axiom AND u.backend = 'axiom') \

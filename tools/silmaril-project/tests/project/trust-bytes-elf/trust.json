@@ -10,124 +10,192 @@
  ],
  "procedures": [
   {
-   "name": "silmaril.bytes.eq",
+   "name": "bytes.eq",
    "kind": "decision",
    "proposition": "a = b for a b : Silmaril.Formats.Bytes",
    "doc": "The bytes relation: equality of byte strings."
   },
   {
-   "name": "silmaril.elf.staged.layout",
+   "name": "elf.layout",
    "kind": "decision",
    "proposition": "Silmaril.Elf.Staged.LayoutIs F L",
-   "doc": "Stage 1 of staged ELF parsing (#110)."
+   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
   },
   {
-   "name": "silmaril.elf.staged.body",
+   "name": "elf.body",
    "kind": "decision",
    "proposition": "Silmaril.Elf.Staged.BodyIs F L sh b",
-   "doc": "Stage 2: one section body."
+   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
   },
   {
-   "name": "silmaril.elf.staged.loader",
+   "name": "elf.loader",
    "kind": "decision",
    "proposition": "Silmaril.Elf.Staged.LoaderIs F L ld",
-   "doc": "Stage 2': PT_DYNAMIC, PT_INTERP and DT_STRTAB names."
+   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
   },
   {
-   "name": "silmaril.elf.parse",
+   "name": "elf.entries",
    "kind": "decision",
-   "proposition": "Silmaril.Elf.read F = some A",
-   "doc": "Whole-file ELF parsing. Registry entry only."
+   "proposition": "Silmaril.Elf.Staged.EntriesAt F p o w i es",
+   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
   },
   {
-   "name": "silmaril.wasm.parse",
+   "name": "elf.tiles",
+   "kind": "decision",
+   "proposition": "Silmaril.Elf.Staged.TilesAt F ok o lens",
+   "doc": "Staged ELF parsing (#110); one proposition, two checker/soundness pairs."
+  },
+  {
+   "name": "elf.symtrie",
+   "kind": "decision",
+   "doc": "Future: symbol lookup. Registered capability only."
+  },
+  {
+   "name": "dwarf.line",
+   "kind": "decision",
+   "doc": "Future: DWARF line tables. Registered capability only."
+  },
+  {
+   "name": "wasm.parse",
    "kind": "decision",
    "proposition": "a Wasm module parses to m",
-   "doc": "Wasm binary parsing. Registry entry only."
+   "doc": "Registered capability only."
   },
   {
-   "name": "silmaril.wasm.interp",
+   "name": "wasm.interp",
    "kind": "decision",
    "proposition": "a Wasm invocation evaluates to r",
-   "doc": "The Wasm interpreter. Registry entry only."
+   "doc": "Registered capability only."
   },
   {
    "name": "lean.std.bv_decide.verifyBVExpr",
    "kind": "decision",
    "proposition": "a bit-vector goal is valid (an LRAT certificate of UNSAT checks)",
-   "doc": "Lean's bv_decide certificate check. Registry entry only."
+   "doc": "Lean's bv_decide certificate check."
   }
  ],
  "implementations": [
   {
-   "procedure": "silmaril.bytes.eq",
+   "procedure": "bytes.eq",
    "backend": "kernel",
-   "decl": "Silmaril.Formats.Bytes.instDecidableEq",
-   "implemented": true,
+   "checker": "Silmaril.Formats.Bytes.instDecidableEq",
+   "soundness": "decide",
+   "status": "supported",
    "doc": "decide +kernel on byte literals."
   },
   {
-   "procedure": "silmaril.bytes.eq",
+   "procedure": "bytes.eq",
    "backend": "native",
    "profile": "bytearray",
-   "implemented": false,
-   "surface": "compiled ByteArray comparison: the Lean compiler and runtime",
-   "doc": "Planned by the core trust-policy work; not available."
+   "status": "planned",
+   "surface": "compiled ByteArray comparison: the Lean compiler and runtime"
   },
   {
-   "procedure": "silmaril.elf.staged.layout",
+   "procedure": "elf.layout",
    "backend": "kernel",
    "profile": "paranoid",
-   "decl": "Silmaril.Elf.Staged.layoutIs_of_pages",
-   "implemented": true,
-   "doc": "decide +kernel on 4 KiB page literals."
+   "checker": "Silmaril.Elf.Staged.readLayout over pageRead (4 KiB page literals)",
+   "soundness": "Silmaril.Elf.Staged.layoutIs_of_sub",
+   "status": "supported",
+   "doc": "decide +kernel; Sub from pages_of_bytes."
   },
   {
-   "procedure": "silmaril.elf.staged.layout",
+   "procedure": "elf.layout",
    "backend": "native",
    "profile": "fast",
-   "decl": "Silmaril.Elf.Staged.sub_fast",
-   "implemented": false,
-   "surface": "compiled fastRead on a ByteArray: the Lean compiler and runtime",
-   "doc": "#110 proves sub_fast; turning a fast run into a theorem is not available."
+   "checker": "Silmaril.Elf.Staged.readLayout over fastRead (ByteArray)",
+   "soundness": "Silmaril.Elf.Staged.layoutIs_of_sub with Silmaril.Elf.Staged.sub_fast",
+   "status": "planned",
+   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
+   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
   },
   {
-   "procedure": "silmaril.elf.staged.body",
+   "procedure": "elf.body",
    "backend": "kernel",
    "profile": "paranoid",
-   "decl": "Silmaril.Elf.Staged.bodyIs_of_pages",
-   "implemented": true
+   "checker": "Silmaril.Elf.Staged.readBody over pageRead (4 KiB page literals)",
+   "soundness": "Silmaril.Elf.Staged.bodyIs_of_sub",
+   "status": "supported",
+   "doc": "decide +kernel; Sub from pages_of_bytes."
   },
   {
-   "procedure": "silmaril.elf.staged.loader",
+   "procedure": "elf.body",
+   "backend": "native",
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.readBody over fastRead (ByteArray)",
+   "soundness": "Silmaril.Elf.Staged.bodyIs_of_sub with Silmaril.Elf.Staged.sub_fast",
+   "status": "planned",
+   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
+   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+  },
+  {
+   "procedure": "elf.loader",
    "backend": "kernel",
    "profile": "paranoid",
-   "decl": "Silmaril.Elf.Staged.loaderIs_of_pages",
-   "implemented": true
+   "checker": "Silmaril.Elf.Staged.readLoader over pageRead (4 KiB page literals)",
+   "soundness": "Silmaril.Elf.Staged.loaderIs_of_sub",
+   "status": "supported",
+   "doc": "decide +kernel; Sub from pages_of_bytes."
   },
   {
-   "procedure": "silmaril.elf.parse",
+   "procedure": "elf.loader",
    "backend": "native",
-   "implemented": false,
-   "surface": "compiled ELF reader and runtime"
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.readLoader over fastRead (ByteArray)",
+   "soundness": "Silmaril.Elf.Staged.loaderIs_of_sub with Silmaril.Elf.Staged.sub_fast",
+   "status": "planned",
+   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
+   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
   },
   {
-   "procedure": "silmaril.wasm.parse",
+   "procedure": "elf.entries",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "checker": "Silmaril.Elf.Staged.readEntries over pageRead (4 KiB page literals)",
+   "soundness": "Silmaril.Elf.Staged.entriesAt_of_ok",
+   "status": "supported",
+   "doc": "decide +kernel; Sub from pages_of_bytes."
+  },
+  {
+   "procedure": "elf.entries",
    "backend": "native",
-   "implemented": false,
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.readEntries over fastRead (ByteArray)",
+   "soundness": "Silmaril.Elf.Staged.entriesAt_of_ok with Silmaril.Elf.Staged.sub_fast",
+   "status": "planned",
+   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
+   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+  },
+  {
+   "procedure": "elf.tiles",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "checker": "Silmaril.Elf.Staged.checkTiles over pageRead (4 KiB page literals)",
+   "soundness": "Silmaril.Elf.Staged.tilesAt_of_ok",
+   "status": "supported",
+   "doc": "decide +kernel; Sub from pages_of_bytes."
+  },
+  {
+   "procedure": "elf.tiles",
+   "backend": "native",
+   "profile": "fast",
+   "checker": "Silmaril.Elf.Staged.checkTiles over fastRead (ByteArray)",
+   "soundness": "Silmaril.Elf.Staged.tilesAt_of_ok with Silmaril.Elf.Staged.sub_fast",
+   "status": "planned",
+   "surface": "compiled fastRead and the stage reader: the Lean compiler and runtime",
+   "doc": "The soundness lemmas exist (#110); running the compiled check as a theorem awaits the core trust API."
+  },
+  {
+   "procedure": "wasm.parse",
+   "backend": "native",
+   "status": "planned",
    "surface": "compiled Wasm decoder and runtime"
-  },
-  {
-   "procedure": "silmaril.wasm.interp",
-   "backend": "native",
-   "implemented": false,
-   "surface": "compiled Wasm interpreter and runtime"
   },
   {
    "procedure": "lean.std.bv_decide.verifyBVExpr",
    "backend": "native",
    "profile": "lrat",
-   "implemented": false,
+   "status": "planned",
    "surface": "bitblasting, hash-consed AIG to CNF, relabelling, the LRAT parser and checker, the runtime",
    "doc": "Not wired into silmaril's policy."
   },
@@ -135,7 +203,7 @@
    "procedure": "lean.std.bv_decide.verifyBVExpr",
    "backend": "kernel",
    "profile": "normalization",
-   "implemented": false,
+   "status": "planned",
    "doc": "Normalization only: fails on goals that need SAT solving."
   }
  ],
@@ -145,7 +213,7 @@
    "doc": "Kernel-checked byte relations.",
    "members": [
     {
-     "procedure": "silmaril.bytes.eq"
+     "procedure": "bytes.eq"
     }
    ]
   },
@@ -157,15 +225,23 @@
      "set": "kernel.bytes"
     },
     {
-     "procedure": "silmaril.elf.staged.layout",
+     "procedure": "elf.layout",
      "profile": "paranoid"
     },
     {
-     "procedure": "silmaril.elf.staged.body",
+     "procedure": "elf.body",
      "profile": "paranoid"
     },
     {
-     "procedure": "silmaril.elf.staged.loader",
+     "procedure": "elf.loader",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "elf.entries",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "elf.tiles",
      "profile": "paranoid"
     }
    ]
@@ -175,12 +251,32 @@
    "doc": "Compiled byte and ELF checks (fast mode).",
    "members": [
     {
-     "procedure": "silmaril.bytes.eq",
+     "procedure": "bytes.eq",
      "backend": "native",
      "profile": "bytearray"
     },
     {
-     "procedure": "silmaril.elf.staged.layout",
+     "procedure": "elf.layout",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.body",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.loader",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.entries",
+     "backend": "native",
+     "profile": "fast"
+    },
+    {
+     "procedure": "elf.tiles",
      "backend": "native",
      "profile": "fast"
     }
@@ -309,21 +405,21 @@
   {
    "module": "Silmaril.Elf.Staged.Example.Thms",
    "decl": "Silmaril.Elf.Staged.Example.layout",
-   "procedure": "silmaril.elf.staged.layout",
+   "procedure": "elf.layout",
    "backend": "kernel",
    "profile": "paranoid"
   },
   {
    "module": "Silmaril.Elf.Staged.Example.Thms",
    "decl": "Silmaril.Elf.Staged.Example.loader",
-   "procedure": "silmaril.elf.staged.loader",
+   "procedure": "elf.loader",
    "backend": "kernel",
    "profile": "paranoid"
   },
   {
    "module": "Silmaril.Elf.Staged.Example.Thms",
    "decl": "Silmaril.Elf.Staged.Example.b0_body",
-   "procedure": "silmaril.elf.staged.body",
+   "procedure": "elf.body",
    "backend": "kernel",
    "profile": "paranoid"
   },

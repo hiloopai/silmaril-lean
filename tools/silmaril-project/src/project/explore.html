@@ -506,7 +506,7 @@ async function trustMeta() {
 }
 const TCB = '<p class="muted">Trust base: every theorem trusts the Lean kernel and the axioms it depends on. A <b>native</b> ' +
   'implementation additionally trusts the compiled code path it runs (the Lean compiler, the runtime and any native code), however ' +
-  'narrow its envelope; a <b>kernel</b> implementation is checked by the kernel. <i>Not implemented</i> means a registry entry, not a claim. ' +
+  'narrow its envelope; a <b>kernel</b> implementation is checked by the kernel. Implementations are checker/soundness pairs targeting the procedure\'s one proposition; <i>planned</i> and <i>registered only</i> are capabilities, not supported implementations. ' +
   'Allow sets apply to a module\'s own uses and to its imports\' uses, transitively.</p>';
 async function trustPage() {
   if (!tables.has("trust_modules")) return '<h2>Trust</h2><p class="muted">This database predates the trust tables (schema v0.2).</p>';
@@ -524,7 +524,7 @@ async function trustPage() {
     "undescribed = imported but not in the trust dump, so its uses are unknown.</p></div></div>";
   h += "<h2>Violations (first rows)</h2>" + ttable(await q("SELECT module, via, decl, procedure, backend, profile, direct, reason FROM trust_violations " +
     `ORDER BY direct DESC, module, via, decl LIMIT ${DETAIL}`), null, { module: tmod, via: tmod, procedure: tproc });
-  h += "<h2>Procedures and implementations</h2>" + ttable(await q("SELECT p.name, p.kind, i.backend, i.profile, i.implemented, i.decl, i.surface, " +
+  h += "<h2>Procedures and implementations</h2>" + ttable(await q("SELECT p.name, p.kind, coalesce(i.status, CASE p.kind WHEN 'axiom' THEN 'axiom' ELSE 'registered only' END) AS status, i.backend, i.profile, i.checker, i.soundness, i.surface, " +
     "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND (i.backend IS NULL OR (u.backend = i.backend AND u.profile = i.profile))) AS direct_uses " +
     `FROM trust_procedures p LEFT JOIN trust_implementations i ON i.procedure = p.name ORDER BY p.kind DESC, p.name, i.backend, i.profile LIMIT ${DETAIL}`),
     null, { name: tproc });
@@ -583,7 +583,7 @@ async function trustProcedurePage(name) {
   const p = (await tq("trust_procedures", "SELECT * FROM trust_procedures WHERE name = ?", [name]))[0];
   if (!p) return `<p class="err">no trust procedure ${esc(name)}</p>`;
   let h = `<h2>${p.kind === "axiom" ? "Axiom" : "Decision procedure"} <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS);
-  h += "<h2>Implementations</h2>" + ttable(await q("SELECT backend, profile, implemented, decl, surface, doc FROM trust_implementations WHERE procedure = ? ORDER BY 1, 2", [name]));
+  h += "<h2>Implementations</h2>" + ttable(await q("SELECT backend, profile, status, checker, soundness, surface, doc FROM trust_implementations WHERE procedure = ? ORDER BY 1, 2", [name]));
   h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name, backend, profile FROM trust_set_closure WHERE procedure = ? ORDER BY 1, 2, 3 LIMIT " + DETAIL, [name]), null, { set_name: tset });
   h += "<h2>Direct uses</h2>" + ttable(await q("SELECT module, decl, backend, profile FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
   h += "<h2>Modules using it transitively</h2>" + ttable(await q("SELECT module, backend, profile, count(*) AS uses FROM trust_transitive_uses WHERE procedure = ? AND direct = 0 GROUP BY 1, 2, 3 ORDER BY 1 LIMIT " + DETAIL, [name]),

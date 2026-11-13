@@ -241,8 +241,9 @@ CREATE TABLE trust_implementations(
   procedure TEXT NOT NULL,
   backend TEXT NOT NULL CHECK(backend IN ('kernel','native')),
   profile TEXT NOT NULL,
-  decl TEXT,
-  implemented INTEGER NOT NULL,
+  checker TEXT,
+  soundness TEXT,
+  status TEXT NOT NULL CHECK(status IN ('supported','planned')),
   surface TEXT,
   doc TEXT,
   PRIMARY KEY(procedure, backend, profile)
@@ -326,7 +327,7 @@ CREATE VIEW trust_module_allowed AS SELECT DISTINCT p.module, c.procedure, c.bac
 CREATE VIEW trust_module_deps AS WITH RECURSIVE d(module, dep) AS (SELECT module, import FROM trust_imports UNION SELECT d.module, i.import FROM d JOIN trust_imports i ON i.module = d.dep) SELECT module, dep FROM d;
 CREATE VIEW trust_transitive_uses AS SELECT u.module, u.module AS via, u.decl, u.procedure, u.backend, u.profile, 1 AS direct FROM trust_uses u UNION SELECT d.module, u.module, u.decl, u.procedure, u.backend, u.profile, 0 FROM trust_module_deps d JOIN trust_uses u ON u.module = d.dep WHERE d.dep <> d.module;
 CREATE VIEW trust_coverage_gaps AS SELECT d.module, d.dep, m.coverage, m.reason FROM trust_module_deps d JOIN trust_modules m ON m.name = d.dep WHERE m.coverage <> 'covered';
-CREATE VIEW trust_violations AS SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'not-allowed' AS reason FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' WHERE NOT EXISTS (SELECT 1 FROM trust_module_allowed a WHERE a.module = t.module AND a.procedure = t.procedure AND a.backend = t.backend AND (a.profile = '' OR a.profile = t.profile)) UNION SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'unimplemented' FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' JOIN trust_implementations i ON i.procedure = t.procedure AND i.backend = t.backend AND i.profile = t.profile WHERE i.implemented = 0 UNION SELECT x.module, x.module, x.decl, x.axiom, 'axiom', '', 1, 'unattributed-axiom' FROM trust_decl_axioms x WHERE NOT EXISTS (SELECT 1 FROM trust_uses u WHERE u.module = x.module AND u.decl = x.decl AND u.procedure = x.axiom AND u.backend = 'axiom') AND NOT EXISTS (SELECT 1 FROM trust_use_axioms a WHERE a.module = x.module AND a.decl = x.decl AND a.axiom = x.axiom);
+CREATE VIEW trust_violations AS SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'not-allowed' AS reason FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' WHERE NOT EXISTS (SELECT 1 FROM trust_module_allowed a WHERE a.module = t.module AND a.procedure = t.procedure AND a.backend = t.backend AND (a.profile = '' OR a.profile = t.profile)) UNION SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'unsupported' FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' JOIN trust_implementations i ON i.procedure = t.procedure AND i.backend = t.backend AND i.profile = t.profile WHERE i.status <> 'supported' UNION SELECT x.module, x.module, x.decl, x.axiom, 'axiom', '', 1, 'unattributed-axiom' FROM trust_decl_axioms x WHERE NOT EXISTS (SELECT 1 FROM trust_uses u WHERE u.module = x.module AND u.decl = x.decl AND u.procedure = x.axiom AND u.backend = 'axiom') AND NOT EXISTS (SELECT 1 FROM trust_use_axioms a WHERE a.module = x.module AND a.decl = x.decl AND a.axiom = x.axiom);
 CREATE INDEX edges_parent ON edges(parent, child, kind, via);
 CREATE INDEX edges_child ON edges(child, parent);
 CREATE INDEX edges_kind ON edges(kind);
