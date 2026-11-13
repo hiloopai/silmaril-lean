@@ -140,6 +140,7 @@ cases, is planned.
 
 | Module | Content |
 | --- | --- |
+| `Silmaril.Net.Http1.Fields` | the shared field API: case-insensitive lookup, `#rule` list elements, `fieldHasToken` (used by the WebSocket/CONNECT track, #157) |
 | `Silmaril.Net.Http1.Codings` | transfer-coding check, `TE`, decoders as a parameter |
 | `Silmaril.Net.Http1.Connection` | connection options, persistence, forced closure, hop-by-hop fields |
 | `Silmaril.Net.Http1.Profile` | recipient profiles, reference framing, smuggling theorems and witnesses |
@@ -150,5 +151,6 @@ cases, is planned.
 ```sh
 lake build --wfail Silmaril.Net.Http1.Pipeline.Thms Silmaril.Net.Http1.Profile.Thms \
   Silmaril.Net.Http1.Request.Thms Silmaril.Net.Http1.Connection.Thms \
-  Silmaril.Net.Http1.Codings.Thms Silmaril.Net.Http1.ComplianceExamples.Defs
+  Silmaril.Net.Http1.Codings.Thms Silmaril.Net.Http1.ComplianceExamples.Defs \
+  Silmaril.Net.Http1.Fields.Thms
 ```
