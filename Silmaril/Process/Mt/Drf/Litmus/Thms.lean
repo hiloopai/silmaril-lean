@@ -14,8 +14,8 @@ Everything here is proved (standard axioms only); proofs are in
   machine (drained). `mp_xl`: racy `MP` (non-temporal data store, plain flag store) reaches
   "flag seen, data not seen" on the XL machine. Neither outcome is SC (`sb_sc`, `mp_sc`), so
   neither program has an ownership certificate (`sbRacy_not_cert`, `mpRacy_not_cert`).
-* **Locked versions are fine.** With the stores (`SB`) or the flag store (`MP`) done by
-  `xchg`, the programs are race free modulo synchronisation (`sbLocked_cert`,
+* **Locked versions are fine.** With `xchg` for the stores (`SB`) or for the flag store
+  (`MP`), the programs are race free modulo synchronisation (`sbLocked_cert`,
   `mpLocked_cert`; in `MP` the data cell's ownership moves from the writer to the reader
   through the flag), and the bridge rules the weak outcomes out under TSO and XL
   (`sbLocked_buffered`, `mpLocked_buffered`).

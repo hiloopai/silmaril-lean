@@ -34,8 +34,8 @@ variable {S : Sys} {N : Nat} {R : Cfg S → Own → Prop}
 /-- **DRF modulo synchronisation ⇒ SC, under x86-TSO and XL.** If an ownership certificate
 `R` holds at the start `C0`, every configuration `C` that the store-buffer machine reaches from
 `C0` (empty buffers) abstracts to a configuration the SC machine with atomic synchronisation
-reaches from `C0`. The certificate holds of the abstraction, and every buffered cell is owned by
-its thread. -/
+reaches from `C0`. The certificate holds of the abstraction, and every buffered cell is owned
+by its thread. -/
 theorem drf_sc (hc : Cert S N R) {M : Model} {C0 : Cfg S} {o : Own} (h0 : R C0 o)
     {C : BCfg S} (h : BReach M S N C0.toB C) :
     ScReach S N C0 (C.abs N) ∧ ∃ o', R (C.abs N) o' ∧ BufOwned N C o' :=
@@ -48,9 +48,8 @@ theorem abs_drained {C : BCfg S} (hd : C.Drained) : C.abs N = ⟨C.ts, C.mem⟩ 
 /-- **Drained TSO/XL configurations are SC configurations.** -/
 theorem drf_sc_drained (hc : Cert S N R) {M : Model} {C0 : Cfg S} {o : Own} (h0 : R C0 o)
     {C : BCfg S} (h : BReach M S N C0.toB C) (hd : C.Drained) :
-    ScReach S N C0 ⟨C.ts, C.mem⟩ := by
-  have := (drf_sc hc h0 h).1
-  rwa [abs_drained hd] at this
+    ScReach S N C0 ⟨C.ts, C.mem⟩ :=
+  abs_drained (N := N) hd ▸ (drf_sc hc h0 h).1
 
 /-- **Safety transfers.** A property of every SC-reachable configuration (with atomic
 primitives) holds of every drained TSO or XL configuration. -/

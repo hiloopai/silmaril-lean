@@ -143,8 +143,8 @@ def Client.Avoids (cl : Client) (cells : Nat → Prop) : Prop :=
   ∀ t ts rs ws ts', cl.sync t ts rs ws ts' → ∀ p ∈ rs ++ ws, ¬ cells p.1
 
 /-- The client calls primitives only when their preconditions hold, in every configuration the
-specification reaches under `M` from `C0` (primitive-internal cells are touched only by
-synchronising steps, so they are never buffered and memory is what every thread sees). -/
+specification reaches under `M` from `C0` (only synchronising steps touch the
+primitive-internal cells, so they are never buffered and memory is what every thread sees). -/
 def Client.CallsOk (cl : Client) (P : Nat → PrimSpec) (M : Model) (N : Nat)
     (C0 : Cfg (cl.withSpec P)) : Prop :=
   ∀ C, BReach M (cl.withSpec P) N C0.toB C → ∀ t < N, ∀ p args k,
