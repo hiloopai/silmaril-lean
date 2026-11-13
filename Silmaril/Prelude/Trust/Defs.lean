@@ -87,6 +87,8 @@ structure Procedure where
   toolchain : String := ""
   /-- What the kernel fallback covers, when it does not cover everything. -/
   fallbackCoverage : String := ""
+  /-- A constant every counted check must take as a direct argument (`ProcDecl.bound`). -/
+  bound : Option Name := none
   deriving Inhabited, Repr
 
 /-- The version of the JSON lines `#trust_uses` and `trust_audit` print
@@ -101,6 +103,7 @@ structure TrustSet where
   members : Array Name := #[]
   /-- Sets whose members are included. -/
   includes : Array Name := #[]
+  doc : String := ""
   deriving Inhabited, Repr
 
 /-- One scope of the policy: a module prefix and its sets (`none` inherits from the parent). -/

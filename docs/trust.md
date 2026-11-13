@@ -109,11 +109,23 @@ Audits **classify** an axiom `<decl>._native.<axiom_tag>.ax_<n>` as the procedur
 count it as a procedure-backed use (`own_native`/`dep_native`) only when it is **verified**:
 
 * a recorded use of that procedure names exactly this axiom; and
-* the axiom's statement mentions the evaluated constant (or the paired native function).
+* the axiom states exactly `@Eq Bool (f a₁ … aₙ) true`, closed, with `f` at the head being the
+  procedure's evaluated constant, its paired native function, or (for a declared `ProcDecl`) its
+  declared native check. Merely mentioning `f` somewhere is not enough.
 
 The same rule applies to `edge_decide` and `sil_check` axioms. Anything else is listed in
 `unverified_native` and is a violation, whatever the policy allows. Registration describes
-and classifies; it does not authorize a run. The framework module that invokes the tactic must:
+and classifies; it does not authorize a run.
+
+**Scope of this check.** `recordUse` is trusted elaborator instrumentation. `edge_decide`,
+`sil_check` and reviewed framework wrappers call it, but any metaprogram could. The audit is
+therefore accounting under reviewed elaborator code, not a sandbox against malicious
+metaprograms. What it does guarantee: a recorded use cannot vouch for an axiom whose statement
+has a different head, and an axiom with no matching record is never counted. Wrappers for native
+tactics should validate the exact closed statement before recording. For `bv_decide` that
+means `verifyBVExpr … = true` with the expected certificate and expression; LRAT owns that
+check. Tests: `forgedShape` and `forgedDecl` in `Silmaril.Prelude.Trust.Examples` forge
+records for wrongly shaped axioms, and the audit rejects both. The framework module that invokes the tactic must:
 
 1. call `Silmaril.Trust.nativeAllowed name : CoreM Bool` (policy, profile and ceiling);
 2. if allowed, run the tactic, then call `Silmaril.Trust.recordUse` with `mode := .native` and
@@ -176,6 +188,27 @@ theorem doc : jsonChecker.Parses bytes value := FormatChecker.parses_of jsonChec
 `edge_decide` sees through `C.check` to the registered function. The reference instance is
 `KBytes.cstring` (NUL-terminated strings, `bytes.cstring`). Only it is implemented here; JSON,
 CBOR, S-expression and WAT checkers are future instances of the same structure.
+
+## Core trust export (`silmaril.trust-core.v1`)
+
+`scripts/trust-export.sh [-o PATH] [MODULE …]` writes `.lake/silmaril/trust-core.json` through
+`#trust_export` (`Silmaril.Prelude.Trust.Export`, whose docstring lists every field). It is the
+core's format, distinct from the project database's `silmaril.trust-dump.v0.1`; the database
+task owns the converter and its compatibility. It holds:
+
+* toolchain, producer (profile, ceiling) and input hashes (policy, regions, toolchain,
+  exclusions, policy pin);
+* procedures, with backends;
+* sets;
+* policies from `policy.toml`;
+* modules (region, source, SHA-256, imports);
+* uses, with `verified` provenance;
+* per-declaration axioms, native procedures and violations for the listed modules;
+* unresolved set members (never treated as implemented);
+* exclusions.
+
+Coverage is only what the driver imports: a missing export or module means unknown, not
+clean.
 
 ## Provenance schema (`silmaril.trust.v1`)
 
