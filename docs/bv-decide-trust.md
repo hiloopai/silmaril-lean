@@ -148,12 +148,12 @@ fail). `bv_decide` goes through it as follows.
   | axiom tag | `bv_decide`: `<decl>._native.bv_decide.ax_<n>` |
   | components | bitblasting (hash-consed through `mixHash`), AIG to CNF, relabeling, LRAT parser (`partial`), LRAT checker, runtime externs |
   | toolchain | `leanprover/lean4:nightly-2026-11-05`, commit `67dafde4` (`registeredToolchain`, `registeredGithash`) |
-  | fallback | **none registered**: the kernel route (`bv_decide_kernel`) covers only goals `bv_normalize` closes, so the registration does not claim a kernel fallback |
+  | fallback | description only, `partial: bv_normalize only …`; `native_tactic` never sets `kernel` from it, and `bv_decide_policy` requires the description to say `partial:` |
   | untrusted | the external SAT solver |
 
 * `bv_decide_policy` checks the registration on every use (`registrationProblem`):
   the evaluated constant exists and is `nativeEvaluatedConst`, the tag is
-  `bv_decide`, no kernel fallback is claimed, and the registered toolchain and the
+  `bv_decide`, no kernel fallback is claimed (and the description says `partial:`), and the registered toolchain and the
   running Lean's commit are the reviewed ones. Then it:
   1. tries `kernelFallback` and, if that proves the goal, records a `kernel` use;
   2. otherwise runs `bv_decide` only if `Silmaril.Trust.nativeAllowed` admits the
@@ -166,19 +166,24 @@ fail). `bv_decide` goes through it as follows.
   change. Until then, goals that need SAT fail in the default and paranoid profiles,
   and run natively only where a build or module opts into `local`.
 
-Checked outside the library on this branch (a scratch module, so the library holds no
-native axiom): in profile `local`, `x * y = y * x` on `BitVec 8` is proved with
-`sat._native.bv_decide.ax_1_5`. It is recorded as a `native` use with that axiom, and
-`trust_audit` passes under `local` and fails under `default`. The library tests cover
-the registration check, the kernel route, and the failure of SAT goals in the default
-and paranoid profiles.
+**Audit binding.** `trust_audit` (core) counts a `_native.bv_decide` axiom as the
+procedure only when a recorded `native` use produced exactly that axiom and its statement
+mentions `verifyBVExpr`. A plain `bv_decide`, or an axiom with the right name and the wrong
+statement, is reported as an unverified native axiom. `bv_decide_policy` checks more strictly
+when it records a use: the axiom is new in this invocation and states exactly one closed
+`verifyBVExpr e cert = true`.
 
-**Known gap in the audit (core).** `trust_audit` classifies a `_native.bv_decide`
-axiom as the registered procedure by its tag alone. A plain `bv_decide` outside the
-framework, which records no use, passes `trust_audit` under `local` with no violation
-(checked in a scratch module). Today only the textual gate prevents this. The audit
-should require each native-tactic axiom to match a recorded `native` use with that
-axiom (`Use.ax`) and the registered toolchain, and report a violation otherwise.
+**Tests.**
+* `Silmaril/Prelude/BVDecide/Native/Tests.lean` (library, no native axiom): the
+  registration check, the kernel route, and SAT goals failing in the default and paranoid
+  profiles.
+* `tests/trust/BVDecideNative.lean` (Lake library `TrustNativeTests`, in `make check`,
+  outside `Silmaril`): it loads the test policy `tests/trust/policy.toml`, whose
+  `tests.trust` scope allows the procedure in `local` only. It checks the kernel route, a
+  SAT goal under `local` (one native axiom, recorded with that axiom, statement checked,
+  `trust_audit` passes), SAT goals failing under `default` and `paranoid`, and
+  `trust_audit` rejecting a plain `bv_decide` and an axiom with the native name shape but
+  the wrong statement.
 
 `Silmaril/Prelude/BVDecide/Defs.lean` exports the hooks used here:
 

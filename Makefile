@@ -27,7 +27,7 @@ library:
 
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec ProjectSelfTest TrustNativeTests $(WASM_TOOLS) wasm-shell-lean
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \

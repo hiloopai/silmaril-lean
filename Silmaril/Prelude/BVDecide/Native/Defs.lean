@@ -37,14 +37,14 @@ The registration is a description for audits; it authorizes nothing by itself.
 running bitblasting (hash-consed through the opaque `mixHash`), AIG to CNF, relabeling, the
 `partial` LRAT parser and the LRAT checker. Untrusted: the external SAT solver. Kernel-checked:
 `bv_normalize`, reification and `unsat_of_verifyBVExpr_eq_true`. Kernel fallback: partial
-(`bv_decide_kernel`, normalization only); goals that need SAT have none, so no `fallback`
-is registered. -/
+(`bv_decide_kernel`, normalization only); goals that need SAT have none. -/
 native_tactic lean.std.bv_decide.verifyBVExpr
   evaluates Std.Tactic.BVDecide.Reflect.verifyBVExpr
   axiom_tag bv_decide
   components ["bitblasting (AIG, hash-consed through mixHash)", "AIG to CNF", "relabeling",
     "LRAT parser (partial)", "LRAT checker", "runtime externs (GMP, ByteArray, String)"]
   toolchain "leanprover/lean4:nightly-2026-11-05"
+  fallback "partial: bv_normalize only (bv_decide_kernel); goals that need SAT have no kernel route"
 
 public meta section
 
@@ -74,6 +74,8 @@ def registrationProblem : CoreM (Option String) := do
     return some s!"evaluated constant is {p.fn}, expected {nativeEvaluatedConst}"
   unless p.axiomTag == some `bv_decide do return some s!"axiom tag is {p.axiomTag}"
   if p.kernel then return some "registration claims a complete kernel fallback"
+  unless p.fallbackCoverage.startsWith "partial:" do
+    return some s!"fallback coverage {p.fallbackCoverage.quote} does not say it is partial"
   unless p.toolchain == registeredToolchain do
     return some s!"registered toolchain {p.toolchain}, reviewed {registeredToolchain}"
   unless Lean.githash == registeredGithash do

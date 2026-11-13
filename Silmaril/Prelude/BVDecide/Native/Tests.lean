@@ -9,8 +9,9 @@ meta import Silmaril.Prelude.BVDecide.Native.Defs
 The registration matches the reviewed procedure. Goals that `bv_normalize` closes are proved
 by the kernel route in every profile. Goals that need SAT fail in the default and paranoid
 profiles: `lean.std.bv_decide.verifyBVExpr` is not in the `default` set, and there is no kernel
-route. The native path (profile `local`) is not exercised here, so that the library holds no
-native axiom; docs/bv-decide-trust.md records how it was checked.
+route. The native path (profile `local`), and the rejection of unrecorded or wrong native
+axioms, are tested in `tests/trust/BVDecideNative.lean`, outside the library, so that the
+library holds no native axiom.
 -/
 
 public section

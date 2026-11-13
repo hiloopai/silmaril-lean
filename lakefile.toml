@@ -256,6 +256,12 @@ root = "WasmCheck"
 srcDir = "tools/wasm-check"
 supportInterpreter = true
 
+# Regression tests of native runs under the trust policy (tests/trust): they hold native
+# axioms, so they stay outside the `Silmaril` library.
+[[lean_lib]]
+name = "TrustNativeTests"
+globs = ["tests.trust.+"]
+
 [[lean_lib]]
 name = "WasmAutoTests"
 globs = ["tests.wasm.auto.+"]
