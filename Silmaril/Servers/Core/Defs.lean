@@ -103,6 +103,10 @@ abbrev Trace (A : Sig) : Type := List (Event A)
 /-- The events of a trace on the connection `c`. -/
 def Trace.onConn {A : Sig} (c : Nat) (t : Trace A) : Trace A := t.filter (·.id.conn == c)
 
+/-- The trace of a sequential use: each request answered before the next arrives. -/
+def Trace.seq {A : Sig} (h : List (ReqId × A.Req × A.Resp)) : Trace A :=
+  h.flatMap fun p => [Event.recv p.1 p.2.1, Event.send p.1 p.2.2]
+
 /-! ## Runs of monitors -/
 
 /-- The runs of a step relation over a list of events, from a state to a state. -/
@@ -247,8 +251,7 @@ def inOrder : Sen A :=
 
 /-- **Sequential use**: the trace answers each request before the next arrives. -/
 def Sequential : Sen A :=
-  fun t => ∃ h : List (ReqId × A.Req × A.Resp), (h.map (·.1)).Nodup ∧
-    t = h.flatMap fun p => [Event.recv p.1 p.2.1, Event.send p.1 p.2.2]
+  fun t => ∃ h : List (ReqId × A.Req × A.Resp), (h.map (·.1)).Nodup ∧ t = Trace.seq h
 
 end Sen
 

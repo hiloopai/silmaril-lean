@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Servers.Core.Defs
 import Silmaril.Proofs.Servers.Core.Lin
+import Silmaril.Proofs.Servers.Core.Seq
 
 /-!
 # The server institution: theorems
@@ -18,6 +19,9 @@ import Silmaril.Proofs.Servers.Core.Lin
   atomic-handler server of a relation has exactly the well-formed atomic traces
   (`Machine.server_ofRel_tr_iff`), and the function server is that of its function
   (`Model.ofFun_eq_server`).
+* **Sequential use**: a trace that answers each request before the next arrives is
+  linearizable exactly when its history is allowed (`Sen.lin_seq_iff`): the linearization points
+  are forced. So for sequential clients the trace sentence is the sequential specification.
 * **Linearizable implies sequentially consistent** (`Sen.sc_of_lin`).
 * **Refinement is preserved by the lifts**: weaker relations, specifications and machines give
   weaker sentences and larger servers (`Sen.atomic_mono`, `Sen.lin_mono`, `Sen.sc_mono`,
@@ -95,6 +99,13 @@ theorem Model.ofFun_eq_server (f : A.Req → A.Resp) :
 /-- A function server satisfies its functional sentence. -/
 theorem Model.ofFun_sat (f : A.Req → A.Resp) : (Model.ofFun f).Sat (Sen.ofFun f) :=
   fun _ ht => ht.2
+
+/-! ## Sequential use -/
+
+/-- **A sequential use is linearizable exactly when its history is allowed.** -/
+theorem Sen.lin_seq_iff {S : SeqSpec A} (h : List (ReqId × A.Req × A.Resp))
+    (hn : (h.map (·.1)).Nodup) : Sen.lin S (Trace.seq h) ↔ S (h.map (·.2)) :=
+  ⟨Proofs.Servers.Core.seq_of_lin h, Proofs.Servers.Core.lin_of_seq h hn⟩
 
 /-! ## Sequential consistency -/
 
