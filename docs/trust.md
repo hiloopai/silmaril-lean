@@ -52,7 +52,7 @@ name itself carries the procedure: `<decl>._native.edge.<procedure>.ax_i_j`.
 **Bytes** (`import Silmaril.Prelude.Bytes.Thms`; `Silmaril.KBytes`):
 
 * `kbytes_def x from_file "path" [computable]` defines `x`, `x.chunks`, `x.eq_ofChunks`,
-  `x.wf : x.wf = true` and `x.len_eq` (`Silmaril.Prelude.Bytes.Elab.Defs`).
+  `x.wf_true : x.wf = true` and `x.len_eq` (`Silmaril.Prelude.Bytes.Elab.Defs`).
   `kbytes_def x of_include raw` does the same from an `include_bytes` definition and adds
   `x.toByteArray_eq : x.toByteArray = raw` (`Silmaril.Data.IncludeBytes.Kernel`).
 * Reader: `x.readLE : Nat → Nat → Option Nat` (offset, width ↦ little-endian value). This is
@@ -155,9 +155,20 @@ renaming or removing a field bumps the version.
 | `use` | `#trust_uses` | `decl`, `module`, `procedure`, `mode` (`native` or `kernel`), `profile` (e.g. `default`, `local≤paranoid` under a ceiling), `axiom` (string or null) |
 | `set` | `#trust_registry` | `name`, `all` (bool), `members`, `includes`, `resolved` (`"all"` or list of names) |
 | `scope` | `#trust_registry` | `module` (prefix), `max`, `default`, `deps`, `axioms` (set names or null when inherited), `policy_file`, `policy_pin` |
-| `audit` | `trust_audit` | `decl`, `module`, `profile`, `own_native`, `dep_native` (procedure names), `native_axioms`, `axioms` (non-native axioms) |
+| `audit` | `trust_audit`, `#trust_dump` | `decl`, `module`, `profile` (the audit's), `elaborated_profiles` (recorded when the declaration's own uses elaborated), `own_native`, `dep_native` (procedure names), `native_axioms`, `axioms` (non-native axioms), `violations` (strings; empty when within policy) |
+| `module` | `#trust_dump … M₁ M₂` | `module`, `imports`, `profile`, `ceiling`, `max`, `default`, `deps`, `axioms`, `allowed` (`"all"` or names), `scopes` (the scope chain); or `policy_error` |
+| `declared_procedure` | `#trust_decls`, `#trust_dump` | `name`, `constant`, `native` and `kernel` (`{check, sound}` or null), `format`, `doc` |
 
-`#trust_dump "path"` writes all four kinds for everything the environment imports, and
+`#trust_dump "path" M₁ M₂ …` writes every kind: the registry and uses for everything the
+environment imports, plus a `module` line and an `audit` line per theorem and definition for
+each listed module. `audit` lines never fail; they list `violations` against the policy under
+the profile and ceiling of the dumping run, next to the profiles the uses were elaborated in.
+Axioms are collected transitively with Lean's `collectAxioms`. It reads each imported
+declaration's axioms as its defining module computed them from the full (private) bodies, so a
+definition exported without its body (opaque to importers under the module system) never shows
+up as an axiom, and native axioms reached through other theorems appear as `dep_native`. The
+stable Lean hooks behind it are `Silmaril.Trust.dumpLines`, `moduleLine`, `auditLine`,
+`declsOf` and `allDecls`; `trust_audit` is `auditLine` failing on violations. And
 `#trust_roundtrip` re-reads every `procedure` and `use` line with `procOfJson?` and
 `useOfJson?` and fails on any difference. This is a low-level emitter format; a database
 schema should map it explicitly and check `schema` before reading a line.

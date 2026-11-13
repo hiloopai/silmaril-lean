@@ -23,10 +23,11 @@ This module makes that trust explicit, named and bounded:
 * A **trust set** (`trust_set`) is a named set of procedure or axiom names, built from members,
   other sets and `all`.
 * The **scope policy** (`[native]` in `policy.toml`, loaded and pinned by `trust_policy`) gives
-  each module prefix three sets. `max` bounds the native procedures the scope may use; a child
-  scope's `max` must lie within its parent's. `default` is used in the default profile.
-  `deps` lists the native procedures the scope accepts through imported theorems.
-  A scope inherits each key it does not set from its parent.
+  each module prefix four sets. `max` bounds the native procedures the scope may run; `default`
+  is what it runs in the default profile (cut down to `max`); `deps` lists the native
+  procedures it accepts through imported theorems; `axioms` lists its other allowed axioms. A
+  scope inherits each key it does not set from its parent, and a child's `max`, `deps` and
+  `axioms` must each lie within its parent's: no scope can grant more than its parent.
 * The **profile** is the option `silmaril.trust.profile`: `default` uses each scope's `default`,
   `local` its `max`, `paranoid` nothing (kernel fallbacks or failure). Any other value names a
   trust set, intersected with the scope's `max`. The statement proved never depends on the
@@ -236,9 +237,8 @@ structure Effective where
   trace : List String
   deriving Inhabited
 
-def effective (env : Environment) (mod : Name) : Except String Effective := do
-  let some p := policyExt.getState env
-    | throw "no trust policy is loaded: import Silmaril.Prelude.Trust.Policy"
+/-- The effective sets of `mod` under the policy `p` (sets resolved in `env`). -/
+def effectiveIn (env : Environment) (p : Policy) (mod : Name) : Except String Effective := do
   let none' : Members := .some {}
   let mut eff : Effective :=
     { max := none', dflt := none', deps := none', axiomSet := none', trace := [] }
@@ -258,9 +258,20 @@ def effective (env : Environment) (mod : Name) : Except String Effective := do
     let axiomSet ← match s.axiomSet with
       | some n => resolve env n
       | none => pure eff.axiomSet
+    -- No silent escalation: what a scope accepts through dependencies, and the axioms it
+    -- allows, stay within its parent's, as `max` does.
+    unless first || deps.subset eff.deps do
+      throw s!"policy scope {s.module}: deps exceeds its parent's deps"
+    unless first || axiomSet.subset eff.axiomSet do
+      throw s!"policy scope {s.module}: axioms exceeds its parent's axioms"
     eff := { max, dflt := dflt.inter max, deps, axiomSet, trace := eff.trace ++ [s.module.toString] }
     first := false
   return eff
+
+def effective (env : Environment) (mod : Name) : Except String Effective := do
+  let some p := policyExt.getState env
+    | throw "no trust policy is loaded: import Silmaril.Prelude.Trust.Policy"
+  effectiveIn env p mod
 
 /-- The native procedures `mod` may run in `profile`. -/
 def allowedIn (env : Environment) (mod : Name) (profile : String) : Except String Members := do

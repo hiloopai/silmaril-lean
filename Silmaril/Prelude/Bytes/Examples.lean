@@ -57,7 +57,7 @@ theorem interpHeader :
 
 /-- The slice reads what the file reads at the same place. -/
 theorem phdrs_toList : phdrs.toList = (hello.toList.drop 64).take (13 * 56) :=
-  toList_slice hello 64 _ hello.wf (by rw [hello.len_eq]; decide)
+  toList_slice hello 64 _ hello.wf_true (by rw [hello.len_eq]; decide)
 
 /-! ## Stage 3: the interpreter path, as one wide read -/
 
@@ -91,9 +91,9 @@ theorem rope_same_kernel : rope.sameBytes 65536 hello = true := by edge_decide
 
 theorem rope_toList : rope.toList = hello.toList :=
   toList_eq_of_sameBytes 65536 rope hello
-    (wf_append (wf_slice _ _ _ hello.wf (by rw [hello.len_eq]; decide))
-      (wf_slice _ _ _ hello.wf (by rw [hello.len_eq]; decide)))
-    hello.wf rope_same_kernel
+    (wf_append (wf_slice _ _ _ hello.wf_true (by rw [hello.len_eq]; decide))
+      (wf_slice _ _ _ hello.wf_true (by rw [hello.len_eq]; decide)))
+    hello.wf_true rope_same_kernel
 
 /-- A canonicalised rope is the canonical tree itself: the kernel checks it by evaluation and
 one structural comparison. -/
@@ -117,16 +117,16 @@ example : hello.eqByteArray hello.toByteArray = true := by edge_decide
 /-- The native comparison, used through a soundness theorem: the native axiom is inherited. -/
 theorem rope_toList_native : rope.toList = hello.toList :=
   toList_eq_of_sameBytes 65536 rope hello
-    (wf_append (wf_slice _ _ _ hello.wf (by rw [hello.len_eq]; decide))
-      (wf_slice _ _ _ hello.wf (by rw [hello.len_eq]; decide)))
-    hello.wf rope_same_native
+    (wf_append (wf_slice _ _ _ hello.wf_true (by rw [hello.len_eq]; decide))
+      (wf_slice _ _ _ hello.wf_true (by rw [hello.len_eq]; decide)))
+    hello.wf_true rope_same_native
 
 /--
-info: {"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_native","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":["bytes.sameBytes"],"profile":"default","schema":"silmaril.trust.v1"}
-{"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_kernel","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList_native","dep_native":["bytes.sameBytes"],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
-{"axioms":[],"decl":"Silmaril.KBytes.Examples.magic","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+info: {"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_native","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":["bytes.sameBytes"],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+{"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_kernel","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList_native","dep_native":["bytes.sameBytes"],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList","dep_native":[],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+{"axioms":[],"decl":"Silmaril.KBytes.Examples.magic","dep_native":[],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
 -/
 #guard_msgs in
 trust_audit rope_same_native rope_same_kernel rope_toList_native rope_toList magic

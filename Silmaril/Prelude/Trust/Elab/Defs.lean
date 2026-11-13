@@ -333,32 +333,75 @@ def axiomReport (decl : Name) : CoreM AxiomReport := do
     | none => r := { r with other := r.other.push a }
   return r
 
-/-- Audit `decl`: own native procedures in the module's allowed set for the current profile,
-inherited ones in `deps`, other axioms in `axioms`, and no unregistered native runs. -/
-def auditDecl (decl : Name) : CommandElabM Json := do
+/-- **Stable hook.** The audit of `decl` under the current profile and ceiling, never failing:
+own native procedures against the module's allowed set, inherited ones against `deps`, other
+axioms against `axioms`, and unregistered native runs. `violations` lists what is outside the
+policy; `elaborated_profiles` lists the profiles its own `edge_decide`/`sil_check` uses ran
+under (recorded when they elaborated). -/
+def auditLine (decl : Name) : CoreM (Json × Array String) := do
   let env ← getEnv
-  let r ← liftCoreM (axiomReport decl)
+  let r ← axiomReport decl
   let mod := (env.getModuleIdxFor? decl).map (env.header.moduleNames[·.toNat]!) |>.getD env.mainModule
-  let eff ← match effective env mod with
-    | .ok e => pure e
-    | .error m => throwError "trust_audit: {m}"
-  let allow ← match allowed env mod (← liftCoreM profile) (← liftCoreM ceiling) with
-    | .ok a => pure a
-    | .error m => throwError "trust_audit: {m}"
   let mut bad : Array String := #[]
-  for p in r.ownNative do
-    unless allow.contains p do bad := bad.push s!"own native {p} is not allowed"
-  for p in r.depNative do
-    unless eff.deps.contains p do bad := bad.push s!"inherited native {p} is outside deps"
+  match effective env mod, allowed env mod (← profile) (← ceiling) with
+  | .ok eff, .ok allow =>
+    for p in r.ownNative do
+      unless allow.contains p do bad := bad.push s!"own native {p} is not allowed"
+    for p in r.depNative do
+      unless eff.deps.contains p do bad := bad.push s!"inherited native {p} is outside deps"
+    for a in r.other do
+      unless eff.axiomSet.contains a do bad := bad.push s!"axiom {a} is outside the axiom set"
+  | .error m, _ | _, .error m => bad := bad.push s!"policy: {m}"
   for t in r.plainNative do bad := bad.push s!"unregistered native run ({t})"
-  for a in r.other do
-    unless eff.axiomSet.contains a do bad := bad.push s!"axiom {a} is outside the axiom set"
+  let names (xs : Array Name) : Json := toJson (xs.map toString)
+  let elaborated := ((allEntries useExt env).filter (·.decl == decl)).map (·.profile)
+  let json := Json.mkObj [("schema", schemaVersion), ("kind", "audit"),
+    ("profile", ← profileTag), ("decl", toString decl), ("module", toString mod),
+    ("own_native", names r.ownNative), ("dep_native", names r.depNative),
+    ("axioms", names r.other), ("native_axioms", names r.nativeAxioms),
+    ("elaborated_profiles", toJson elaborated.toList.eraseDups), ("violations", toJson bad)]
+  return (json, bad)
+
+/-- Audit `decl`, failing on any violation (`auditLine`). -/
+def auditDecl (decl : Name) : CommandElabM Json := do
+  let (json, bad) ← liftCoreM (auditLine decl)
   unless bad.isEmpty do
     throwError "trust_audit {decl}: {String.intercalate "; " bad.toList}"
-  let names (xs : Array Name) : Json := toJson (xs.map toString)
-  return Json.mkObj [("schema", schemaVersion), ("kind", "audit"), ("profile", ← liftCoreM profileTag), ("decl", toString decl), ("module", toString mod),
-    ("own_native", names r.ownNative), ("dep_native", names r.depNative),
-    ("axioms", names r.other), ("native_axioms", names r.nativeAxioms)]
+  return json
+
+/-- **Stable hook.** One line per module: its imports, the profile and ceiling in force, and its
+effective sets under the policy. -/
+def moduleLine (mod : Name) : CoreM Json := do
+  let env ← getEnv
+  let imports : Array Name := match env.getModuleIdx? mod with
+    | some idx => (env.header.moduleData[idx.toNat]!.imports.map (·.module))
+    | none => if mod == env.mainModule then env.header.imports.map (·.module) else #[]
+  let mem (m : Members) : Json := match m with
+    | .all => toJson "all"
+    | .some ns => toJson (ns.toList.map toString)
+  let sets : List (String × Json) := match effective env mod, allowed env mod (← profile) (← ceiling) with
+    | .ok eff, .ok allow =>
+      [("max", mem eff.max), ("default", mem eff.dflt), ("deps", mem eff.deps),
+       ("axioms", mem eff.axiomSet), ("allowed", mem allow), ("scopes", toJson eff.trace)]
+    | .error m, _ | _, .error m => [("policy_error", toJson m)]
+  let prof ← profile
+  let ceil ← ceiling
+  let head : List (String × Json) := [("schema", toJson schemaVersion), ("kind", toJson "module"),
+    ("module", toJson (toString mod)), ("imports", toJson (imports.map toString)),
+    ("profile", toJson prof), ("ceiling", toJson ceil)]
+  return Json.mkObj (head ++ sets)
+
+/-- The theorems and definitions a module declares (no auxiliary or internal names). -/
+def declsOf (mod : Name) : CoreM (Array Name) := do
+  let env ← getEnv
+  let some idx := env.getModuleIdx? mod | return #[]
+  let mut out := #[]
+  for c in env.header.moduleData[idx.toNat]!.constNames do
+    if c.isInternalDetail then continue
+    match env.find? c with
+    | some (.thmInfo _) | some (.defnInfo _) => out := out.push c
+    | _ => pure ()
+  return out
 
 @[command_elab trustAudit] def elabTrustAudit : CommandElab := fun stx => do
   let mut lines : Array String := #[]
@@ -652,14 +695,22 @@ syntax (name := silCheck) "sil_check " ident (" (" ident " := " term ")")* : tac
 
 def allDecls' : MetaM (Array Json) := return (← allDecls).map declJson
 
-/-- `#trust_dump "path"` writes the dump (JSON lines) to `path`, relative to the working
-directory. Used by tools; nothing in the library calls it. -/
-syntax (name := trustDump) "#trust_dump " str : command
+/-- `#trust_dump "path" M₁ M₂ …` writes the dump (JSON lines) to `path`, relative to the working
+directory: procedures, uses, sets, scopes and declared procedures, and for each listed module a
+`module` line and an `audit` line per theorem and definition it declares. Used by tools; nothing
+in the library calls it. -/
+syntax (name := trustDump) "#trust_dump " str (ppSpace ident)* : command
 
 open Lean.Elab.Command in
 @[command_elab trustDump] def elabTrustDump : CommandElab := fun stx => do
   let decls ← liftTermElabM allDecls'
-  let lines := (dumpLines (← getEnv) ++ decls).map (·.compress)
+  let mut extra : Array Json := #[]
+  for m in stx[2].getArgs do
+    let mod := m.getId
+    extra := extra.push (← liftCoreM (moduleLine mod))
+    for d in ← liftCoreM (declsOf mod) do
+      extra := extra.push (← liftCoreM (auditLine d)).1
+  let lines := (dumpLines (← getEnv) ++ decls ++ extra).map (·.compress)
   IO.FS.writeFile (stx[1].isStrLit?.getD "trust.jsonl") (String.intercalate "\n" lines.toList ++ "\n")
 
 /-- Print the declared two-backend procedures as JSON lines. -/
