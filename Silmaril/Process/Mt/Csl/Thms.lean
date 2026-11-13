@@ -21,14 +21,16 @@ All statements are PROVED with no axioms beyond Lean's core (proofs in
   postconditions);
 * `ginv_single`: a process starting as one safe thread owning `h₀`, with the rest of memory
   `hI ⊨ I`, satisfies `GInv`; with `adequacy`, `adequacy_single`;
+* `adequacy_model`: the same through any concrete model `X` (store buffers, primitives run by
+  their code) that refines SC with atomic steps on certified programs (`Model.Sound`);
 * `atomOk_prims`: the atomic obligations of a primitive call site follow from the obligations of
   each primitive it may call (`PrimOk`).
 
-The memory model here is sequential consistency with atomic primitives. The bridge to x86-TSO
-and the loose model XL is separate: a race-free (here: `¬ Race` everywhere) program whose
-synchronisation is by atomic steps has only sequentially consistent behaviours
-(`Silmaril.Process.Mt.Drf`), and each primitive implementation is proved against its spec per
-memory model.
+The memory model of `Step` is sequential consistency with atomic primitives. Weaker models enter
+through `Model.Sound`, an explicit hypothesis of `adequacy_model`: for x86-TSO or the loose
+model XL it is a DRF theorem (programs that are race-free modulo atomic steps, which `no_race`
+gives, have only SC behaviours), and for a model running a primitive's implementation code it is
+that primitive's correctness under the memory model. Neither is proved here.
 -/
 
 @[expose] public section
@@ -83,6 +85,14 @@ theorem adequacy_single {t₀ : Nat} {s₀ : U.St} {m₀ : M} {h₀ hI : Heap A 
     (hs : Safe U I Q t₀ s₀ h₀) (hIp : I hI) (d : Heap.Disjoint h₀ hI) (ag : S.Agrees h₀ m₀)
     (agI : S.Agrees hI m₀) (r : Reach U (Cfg.single U t₀ s₀ m₀) C) : Good U I Q C :=
   adequacy (ginv_single hs hIp d ag agI) r
+
+/-- **Adequacy under a concrete model** (store buffers, primitive implementations) that refines
+SC with atomic steps on certified programs (`Model.Sound`): no concrete fault, and every
+reachable concrete configuration stands for a `Good` abstract one. -/
+theorem adequacy_model {X : Model U} (hX : X.Sound I Q) {c₀ c : X.Conf} {C₀ : Cfg U}
+    {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U I Q C₀ hs hI) (ha : X.abs c₀ C₀)
+    (r : Star X.step c₀ c) : ¬ X.fault c ∧ ∃ C, X.abs c C ∧ Good U I Q C :=
+  Silmaril.Proofs.Process.Mt.Csl.adequacy_model hX g ha r
 
 /-- The atomic obligations of a primitive call site follow from those of each primitive it may
 call. -/

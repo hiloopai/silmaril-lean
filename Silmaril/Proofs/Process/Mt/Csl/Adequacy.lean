@@ -374,6 +374,15 @@ theorem ginv_single {t₀ : Nat} {s₀ : U.St} {m₀ : M} {h₀ hI : Heap A V}
     · subst ht; simp [Cfg.single] at e; subst e; simpa using hs
     · simp [Cfg.single, ht] at e
 
+/-- **Adequacy under a concrete model** that refines SC with atomic steps on certified
+programs. -/
+theorem adequacy_model {X : Model U} (hX : X.Sound I Q) {c₀ c : X.Conf} {C₀ : Cfg U}
+    {hs : Nat → Heap A V} {hI : Heap A V} (g : GInv U I Q C₀ hs hI) (ha : X.abs c₀ C₀)
+    (r : Star X.step c₀ c) : ¬ X.fault c ∧ ∃ C, X.abs c C ∧ Good U I Q C := by
+  obtain ⟨C, rC, hac, hf⟩ := hX c₀ c C₀ ha ⟨hs, hI, g⟩ r
+  have gd := adequacy g rC
+  exact ⟨fun f => gd.1 (hf f), C, hac, gd⟩
+
 /-! ## Primitive calls -/
 
 /-- The atomic obligations of a primitive call site follow from `PrimOk` of its spec. -/

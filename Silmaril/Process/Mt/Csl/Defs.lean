@@ -317,6 +317,44 @@ def Good (I : HProp A V) (Q : Nat → U.St → Heap A V → Prop) (C : Cfg U) : 
 
 end Safe
 
+/-! ## Concrete execution models -/
+
+/-- **A concrete execution model** of the threads `U`: configurations (for example with store
+buffers, or with primitives run by their implementation code), steps, faults, and the abstract
+configurations a concrete one stands for (`abs c C`). -/
+structure Model {M A V : Type} {S : Store M A V} (U : TIsa S) where
+  Conf : Type
+  step : Conf → Conf → Prop
+  fault : Conf → Prop
+  abs : Conf → Cfg U → Prop
+
+/-- **The model refines sequential consistency with atomic primitives on certified programs**:
+from a concrete start standing for an abstract start that satisfies the compatibility
+conditions (`I`, `Q`), every concrete run ends in a configuration standing for an abstract
+configuration reachable in `Step U`, and a concrete fault stands for an abstract one. For a
+memory model `X` this is the DRF theorem (race-free modulo atomic steps ⇒ SC behaviours); for
+a model running a primitive's implementation code, it says the implementation meets the
+primitive's spec under that memory model. -/
+def Model.Sound {M A V : Type} {S : Store M A V} {U : TIsa S} (X : Model U) (I : HProp A V)
+    (Q : Nat → U.St → Heap A V → Prop) : Prop :=
+  ∀ c₀ c C₀, X.abs c₀ C₀ → (∃ hs hI, GInv U I Q C₀ hs hI) → Star X.step c₀ c →
+    ∃ C, Reach U C₀ C ∧ X.abs c C ∧ (X.fault c → Fault U C)
+
+/-- **The most general client** of a primitive `sp`: each thread runs a script of argument
+lists, calling `sp` once per entry (results are dropped; no plain steps, no `clone`); it has
+finished at the empty script. A concrete model of it running the primitive's implementation
+code is how a primitive's correctness under a memory model is stated
+(`silmaril.shapes.mt.primitive`). -/
+def TIsa.mgc {M A V : Type} {S : Store M A V} (sp : PrimSpec M) : TIsa S where
+  St := List (List Nat)
+  step _ _ _ _ _ := False
+  fault _ _ _ := False
+  fp _ _ _ _ := False
+  atom t s m s' m' := ∃ args r, s = args :: s' ∧ sp.step t args m r m'
+  afault t s m := ∃ args rest, s = args :: rest ∧ sp.fault t args m
+  spawn _ _ _ _ _ _ _ := False
+  done s := s = []
+
 /-- The configuration of one thread `t₀` in state `s₀` with memory `m₀`. -/
 def Cfg.single {M A V : Type} {S : Store M A V} (U : TIsa S) (t₀ : Nat) (s₀ : U.St) (m₀ : M) :
     Cfg U :=
