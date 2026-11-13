@@ -10,13 +10,26 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
 manifest = json.loads((Path(__file__).with_name("release-manifest.json")).read_text())
-executables = {item["name"]: item for item in tomllib.loads(
-    (root / "lakefile.toml").read_text())["lean_exe"]}
+lakefile = tomllib.loads((root / "lakefile.toml").read_text())
+executables = {item["name"]: item for item in lakefile["lean_exe"]}
+# Modules resolve against the repository root and every `srcDir` the lakefile declares (tool
+# libraries such as `WasmToolsCli` keep their modules under `tools/`).
+source_dirs = [root] + sorted({root / item["srcDir"]
+                               for kind in ("lean_lib", "lean_exe")
+                               for item in lakefile.get(kind, []) if "srcDir" in item})
+
+
+def find_module(module):
+    for base in source_dirs:
+        path = base.joinpath(*module.split(".")).with_suffix(".lean")
+        if path.is_file():
+            return path
+    return None
 
 
 def module_path(module):
-    path = root.joinpath(*module.split(".")).with_suffix(".lean")
-    assert path.is_file(), f"Missing module {module}"
+    path = find_module(module)
+    assert path is not None, f"Missing module {module}"
     return path
 
 
@@ -50,10 +63,12 @@ def closure(module):
     if module in closures:
         return closures[module]
     modules = {module}
-    imports = re.findall(r"^(?:(?:public|private) )?import\s+(?:all\s+)?(Silmaril\.[\w.]+)",
+    imports = re.findall(r"^(?:(?:public|private) )?import\s+(?:all\s+)?([\w.]+)",
                          code(module_path(module).read_text()), re.M)
+    # Follow repository modules (`Silmaril.*` and tool-local ones); skip Lean core and packages.
     for imported in imports:
-        modules.update(closure(imported))
+        if imported.startswith("Silmaril.") or find_module(imported) is not None:
+            modules.update(closure(imported))
     closures[module] = modules
     return modules
 

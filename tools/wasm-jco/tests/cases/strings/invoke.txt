@@ -1,0 +1,7 @@
+strings	greet("there")	"hi there"
+strings	greet("")	"hi "
+strings	greet("héllo")	"hi héllo"
+strings	len([1, 2, 3])	3
+strings	rev([1, 2, 3, 4])	[4, 3, 2, 1]
+strings	rev([])	[]
+strings	pair(41)	(42, "ok")

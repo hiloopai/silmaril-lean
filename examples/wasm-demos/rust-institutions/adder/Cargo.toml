@@ -1,0 +1,13 @@
+[package]
+name = "adder"
+description = "Smallest demo: the adder as a Wasm module."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+adder-core = { path = "../adder-core" }

@@ -1,0 +1,5 @@
+package test:refs;
+
+world float {
+  export scale: func(x: f64) -> f64;
+}

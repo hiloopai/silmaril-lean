@@ -1,0 +1,322 @@
+{
+  "O0": [
+    {
+      "frame": 136,
+      "function_unsupported": null,
+      "granularity": "statement",
+      "name": "add3",
+      "off": 0,
+      "points": [
+        {
+          "index": 0,
+          "kind": "Entry",
+          "line": 3,
+          "off": 0
+        },
+        {
+          "index": 1,
+          "kind": {
+            "Slots": [
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "a",
+                "off": -36,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "b",
+                "off": -40,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "c",
+                "off": -44,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 4,
+                "defined": false,
+                "name": "s",
+                "off": -20,
+                "param": false,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 5,
+                "defined": false,
+                "name": "t",
+                "off": -24,
+                "param": false,
+                "signed": true,
+                "size": 4
+              }
+            ]
+          },
+          "line": 4,
+          "off": 13
+        },
+        {
+          "index": 2,
+          "kind": {
+            "Slots": [
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "a",
+                "off": -36,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "b",
+                "off": -40,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "c",
+                "off": -44,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 4,
+                "defined": true,
+                "name": "s",
+                "off": -20,
+                "param": false,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 5,
+                "defined": false,
+                "name": "t",
+                "off": -24,
+                "param": false,
+                "signed": true,
+                "size": 4
+              }
+            ]
+          },
+          "line": 5,
+          "off": 24
+        },
+        {
+          "index": 3,
+          "kind": {
+            "Slots": [
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "a",
+                "off": -36,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "b",
+                "off": -40,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "c",
+                "off": -44,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 4,
+                "defined": true,
+                "name": "s",
+                "off": -20,
+                "param": false,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 5,
+                "defined": true,
+                "name": "t",
+                "off": -24,
+                "param": false,
+                "signed": true,
+                "size": 4
+              }
+            ]
+          },
+          "line": 6,
+          "off": 35
+        },
+        {
+          "index": 4,
+          "kind": "Ret",
+          "line": 7,
+          "off": 38
+        }
+      ],
+      "ranges": [
+        {
+          "asm": [
+            "push %rbp",
+            "mov %rsp,%rbp",
+            "mov %edi,-0x14(%rbp)",
+            "mov %esi,-0x18(%rbp)",
+            "mov %edx,-0x1C(%rbp)"
+          ],
+          "end": 13,
+          "line": 3,
+          "start": 0
+        },
+        {
+          "asm": [
+            "mov -0x14(%rbp),%edx",
+            "mov -0x18(%rbp),%eax",
+            "add %edx,%eax",
+            "mov %eax,-4(%rbp)"
+          ],
+          "end": 24,
+          "line": 4,
+          "start": 13
+        },
+        {
+          "asm": [
+            "mov -4(%rbp),%edx",
+            "mov -0x1C(%rbp),%eax",
+            "add %edx,%eax",
+            "mov %eax,-8(%rbp)"
+          ],
+          "end": 35,
+          "line": 5,
+          "start": 24
+        },
+        {
+          "asm": [
+            "mov -8(%rbp),%eax"
+          ],
+          "end": 38,
+          "line": 6,
+          "start": 35
+        },
+        {
+          "asm": [
+            "pop %rbp",
+            "ret"
+          ],
+          "end": 40,
+          "line": 7,
+          "start": 38
+        }
+      ],
+      "sig": [
+        [
+          "int32",
+          "int32",
+          "int32"
+        ],
+        "int32"
+      ],
+      "size": 40,
+      "unsupported": []
+    }
+  ],
+  "O2": [
+    {
+      "frame": 136,
+      "function_unsupported": null,
+      "granularity": "function",
+      "name": "add3",
+      "off": 0,
+      "points": [
+        {
+          "index": 0,
+          "kind": "Entry",
+          "line": 2,
+          "off": 0
+        }
+      ],
+      "ranges": [
+        {
+          "asm": [
+            "add %esi,%edi"
+          ],
+          "end": 2,
+          "line": 4,
+          "start": 0
+        },
+        {
+          "asm": [
+            "lea (%rdi,%rdx),%eax"
+          ],
+          "end": 5,
+          "line": 5,
+          "start": 2
+        },
+        {
+          "asm": [
+            "ret"
+          ],
+          "end": 6,
+          "line": 7,
+          "start": 5
+        }
+      ],
+      "sig": [
+        [
+          "int32",
+          "int32",
+          "int32"
+        ],
+        "int32"
+      ],
+      "size": 6,
+      "unsupported": [
+        {
+          "end": 2,
+          "line": 4,
+          "reason": "the first range is not a frame-pointer prologue (push %rbp; mov %rsp,%rbp)",
+          "start": 0
+        },
+        {
+          "end": 5,
+          "line": 5,
+          "reason": "the first range is not a frame-pointer prologue (push %rbp; mov %rsp,%rbp)",
+          "start": 2
+        },
+        {
+          "end": 6,
+          "line": 7,
+          "reason": "the first range is not a frame-pointer prologue (push %rbp; mov %rsp,%rbp)",
+          "start": 5
+        }
+      ]
+    }
+  ]
+}
