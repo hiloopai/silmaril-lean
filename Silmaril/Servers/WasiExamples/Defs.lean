@@ -21,6 +21,10 @@ written directly as programs over the imports, not compiled from Wasm modules.
 * `hello`: every request is answered `200` with the content `hello` (`helloResp`).
 * `route`: the response depends on the path-with-query (`routeResp`): `/` gives `200 home`,
   `/hello` gives `200 hello`, any other path (or none) gives `404 not found`.
+* `echo`: consumes the request body, reads its stream with `blocking-read` until `closed`,
+  at most `echoFuel` times, and answers `200` with the bytes read; it answers `500` when an
+  answer has an unexpected shape or the reads run out. Its specification
+  (`Silmaril.Servers.WasiExamples.Task.echo_sat`, over `wasiServerB`) is open.
 
 A Silmaril addition.
 -/
@@ -71,5 +75,37 @@ def routeResp (p : Option (List UInt8)) : Response :=
 /-- **Routing**: read the path-with-query of the request and answer from the route table. -/
 def route : Body proxyImports proxyWorld.exports := fun q =>
   .call (pop reqPath (a := [.u32 (reqOf q.2)])) fun n => answer (outOf q.2) (routeResp (pathOf n))
+
+/-! ## Echo -/
+
+/-- `500` with no content. -/
+def failResp : Response := Response.simple 500 []
+
+/-- The length asked of each read. -/
+def readLen : BitVec 64 := 65536
+
+/-- Read the stream `s` at most `n` times, after the bytes `acc`, and answer with what was read. -/
+def echoLoop (o s : BitVec 32) : Nat → List UInt8 → BProg proxyImports
+  | 0, _ => answer o failResp
+  | n + 1, acc => .call (pop inRead (a := [.u32 s, .u64 readLen])) fun
+    | some [.variant 0 (some bs)] => echoLoop o s n (acc ++ (bytesOf bs).map UInt8.ofBitVec)
+    | some [.variant 1 (some (.variant 1 none))] => answer o (Response.simple 200 acc)
+    | _ => answer o failResp
+
+/-- The number of reads of `echo`. -/
+def echoFuel : Nat := 16
+
+/-- **Echo**: answer `200` with the request's content. -/
+def echo : Body proxyImports proxyWorld.exports := fun q =>
+  .call (pop reqConsume (a := [.u32 (reqOf q.2)])) fun
+  | some [.variant 0 (some (.u32 b))] => .call (pop inStream (a := [.u32 b])) fun
+    | some [.variant 0 (some (.u32 s))] => echoLoop (outOf q.2) s echoFuel []
+    | _ => answer (outOf q.2) failResp
+  | _ => answer (outOf q.2) failResp
+
+/-- **The specification of echo** (open): over the reading with request bodies, every exchange
+of `echo` answers `200` with the request's content, or `500`. -/
+def Task.echo_sat : Prop :=
+  Sat (wasiServerB (ofBody echo)) (each fun q resp => resp = Response.simple 200 q.content ∨ resp = failResp)
 
 end Silmaril.Servers.WasiExamples

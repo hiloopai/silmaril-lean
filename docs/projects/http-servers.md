@@ -43,11 +43,13 @@ request. The slice in `Silmaril.Servers.WasiHttp` was checked by hand against th
 | --- | --- |
 | `incoming-handler.handle` (export) | `handleF` |
 | `[method]incoming-request.method`, `[method]incoming-request.path-with-query` | `reqMethod`, `reqPath` |
+| `[method]incoming-request.consume`, `[method]incoming-body.stream` | `reqConsume`, `inStream` |
 | `[constructor]fields`, `[constructor]outgoing-response` | `newFields`, `newResp` |
 | `[method]outgoing-response.set-status-code`, `[method]outgoing-response.body` | `setStatus`, `respBody` |
 | `[method]outgoing-body.write`, `[static]outgoing-body.finish` | `bodyWrite`, `bodyFinish` |
 | `[static]response-outparam.set` | `outSet` |
 | `wasi:io/streams` `[method]output-stream.blocking-write-and-flush`, `[resource-drop]output-stream` | `streamWrite`, `streamDrop` (`Silmaril.Wasi.Theory`) |
+| `wasi:io/streams` `[method]input-stream.blocking-read` | `inRead` |
 
 The names and value encodings follow the existing WASI theories (`Silmaril.Wasi.Theory`,
 `Silmaril.Wasi.Versions.Net`): unversioned 0.2 interface names, handles as `u32`, `result` and
@@ -77,6 +79,11 @@ statement about all plays holds for every host.
   request consistent with the answers.
 - `wasiServer σ : Model httpIface` is the component `σ` read as a server of
   `Silmaril.Net.Http` requests and responses (RFC 9110 §6). **Defined.**
+- `wasiServerB σ` also reads request bodies (`BodyOk`). After every prefix of a call, the bytes
+  delivered by `blocking-read` on the streams of the bodies consumed from the request are a
+  prefix of the request's content, and they are all of it once a read answers `closed`. It
+  refines `wasiServer σ` (`wasiServerB_refines`), so the specifications proved for
+  `wasiServer` carry over (`hello_satB`). **Proved.**
 
 ### Example servers
 
@@ -85,7 +92,8 @@ statement about all plays holds for every host.
 | `answer o resp`, the shared response code (fields, outgoing response, status, body, `set`, write, drop, finish) | For every host, no response or exactly `resp` (`answer_run`). Over a host whose answers succeed, exactly `resp` (`answer_ok`, in the proofs). | Proved |
 | `hello` | Every exchange is `200 hello` (`hello_sat`), so `hello` refines the server of the constant function (`hello_refines`). Every request answered `200 hello` is a trace (`hello_answers`). | Proved |
 | `route` | Every exchange is answered from the route table on the path-with-query: `/` gives `200 home`, `/hello` gives `200 hello` and anything else gives `404 not found` (`route_sat`, `route_refines`). Every request answered from the table is a trace (`route_answers`). | Proved |
-| `hello`, `route` over the reference host `refHost` (`serveRef`) | `hello` on `/`, and `route` on `/`, `/hello` and `/missing` | Checked |
+| `echo` (consume the body, read until `closed` at most `echoFuel` times, answer `200` with the bytes read, else `500`) | Every exchange of `wasiServerB (ofBody echo)` is `200` with the request's content, or `500` (`Task.echo_sat`) | Defined (specification open) |
+| `hello`, `route`, `echo` over the reference host `refHost` (`serveRef`) | `hello` on `/`, `route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc` | Checked |
 | A server as a web of the outgoing theories (`webOf`): the client theories `Net.httpTh`/`httpTh3 (webOf f)` see the status of `f`'s answer to a `GET` (`webOf_pathV`, `route_web_missing`) | | Proved |
 
 The examples are Lean programs over the imports, in the shape of a component after lifting,
@@ -101,9 +109,9 @@ missing. No component binaries exist yet, so the harness has not been run agains
 
 ### Not modelled yet
 
-- Request and response headers, request bodies (`consume`, `incoming-body.stream`, reads),
-  trailers and `send-informational`. An `echo` server, which sends the request body back,
-  needs the request body and is **Planned**.
+- Request and response headers, trailers and `send-informational`. The proof of
+  `Task.echo_sat` is still open. It needs an induction over the read loop that carries
+  `BodyOk` along the prefixes of the call.
 - The once-only rule of `response-outparam.set`, and resource drops other than the output
   stream's.
 - Concurrent export calls. A body runs one call at a time. The host may also run several

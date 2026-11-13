@@ -21,6 +21,8 @@ This slice imports, from `wasi:http/types`:
 
 * `[method]incoming-request.method() -> method` and `path-with-query() -> option<string>`
   (`reqMethod`, `reqPath`);
+* `[method]incoming-request.consume() -> result<incoming-body>` and
+  `[method]incoming-body.stream() -> result<input-stream>` (`reqConsume`, `inStream`);
 * `[constructor]fields()` and `[constructor]outgoing-response(headers: headers)` (`newFields`,
   `newResp`);
 * `[method]outgoing-response.set-status-code(status-code: u16) -> result` and
@@ -31,8 +33,10 @@ This slice imports, from `wasi:http/types`:
 * `[static]response-outparam.set(param: response-outparam, response: result<outgoing-response,
   error-code>)` (`outSet`);
 
-and from `wasi:io/streams` `[method]output-stream.blocking-write-and-flush` and
-`[resource-drop]output-stream` (`Silmaril.Wasi.streamWrite`, `streamDrop`). The names follow
+and from `wasi:io/streams` `[method]output-stream.blocking-write-and-flush`,
+`[resource-drop]output-stream` (`Silmaril.Wasi.streamWrite`, `streamDrop`) and
+`[method]input-stream.blocking-read(len: u64) -> result<list<u8>, stream-error>` (`inRead`;
+`stream-error` has the cases `last-operation-failed` (`0`) and `closed` (`1`)). The names follow
 the unversioned 0.2 convention of `Silmaril.Wasi.Versions.Net`. Values are encoded as in
 `Silmaril.Wasi.Theory`: handles as `u32`, `result` and `option` as variants (`ok`/`none` case
 `0`), strings as records of `char`s, `method` by its WIT case number.
@@ -53,11 +57,16 @@ completed call of `handle(r, o)` is read as one atomic exchange (`Silmaril.Serve
   (`ReqOk`): the `method` and `path-with-query` answers on `r` encode the request's method and
   path. The rest of the request (headers, authority, content) is left open.
 
+**With request bodies** (`wasiServerB`): the bytes the host delivers by `blocking-read` on the
+input streams of the bodies consumed from `r` (`ISt`, `istep`) are, after every prefix of the
+call, a prefix of the request's content, and all of it once a read answers `closed`
+(`BodyOk`). `wasiServerB σ` refines `wasiServer σ`.
+
 `wasiServer σ` is the server read from the component `σ` (`Calls.model`, with no theory of
 the host). Its traces include every interaction with every host, since the imports of `σ` are
 uninterpreted. A host whose request answers are not those of any request explains no trace.
 
-**Not modelled**: request and response headers, request bodies (`consume`), trailers,
+**Not modelled**: request and response headers, trailers,
 `send-informational`, the rule that `set` may be called once, resource drops other than the
 output stream's, and concurrent export calls (a component body runs one call at a time).
 
@@ -93,10 +102,17 @@ def bodyFinish : FnName := ⟨"wasi:http/types", "[static]outgoing-body.finish"�
 /-- `wasi:http/types.[static]response-outparam.set`. -/
 def outSet : FnName := ⟨"wasi:http/types", "[static]response-outparam.set"⟩
 
+/-- `wasi:http/types.[method]incoming-request.consume`. -/
+def reqConsume : FnName := ⟨"wasi:http/types", "[method]incoming-request.consume"⟩
+/-- `wasi:http/types.[method]incoming-body.stream` (the WIT name is `%stream`). -/
+def inStream : FnName := ⟨"wasi:http/types", "[method]incoming-body.stream"⟩
+/-- `wasi:io/streams.[method]input-stream.blocking-read`. -/
+def inRead : FnName := ⟨"wasi:io/streams", "[method]input-stream.blocking-read"⟩
+
 /-- The imports of this slice, as a list. -/
 def proxyList : List FnName :=
   [reqMethod, reqPath, newFields, newResp, setStatus, respBody, bodyWrite, bodyFinish, outSet,
-    streamWrite, streamDrop]
+    streamWrite, streamDrop, reqConsume, inStream, inRead]
 
 /-- The imports of this slice. -/
 def proxyImports : Set FnName := {f | f ∈ proxyList}
@@ -268,13 +284,78 @@ def Obs (c : Call) (x : Exch httpIface) : Prop :=
 def wasiServer {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) : Model httpIface :=
   model (fun _ => True) answered Obs σ
 
+/-! ## Request bodies -/
+
+/-- What the answers of a call say about its request's content. -/
+structure ISt where
+  /-- The incoming bodies consumed from the request. -/
+  bodies : List (BitVec 32) := []
+  /-- The input streams of those bodies. -/
+  streams : List (BitVec 32) := []
+  /-- The bytes delivered on those streams. -/
+  got : List (BitVec 8) := []
+  /-- A read answered `closed`. -/
+  closed : Bool := false
+
+/-- An answer of `consume` on the request handle `r`. -/
+def iConsume (r : BitVec 32) (st : ISt) : List Val → Option (List Val) → ISt
+  | [.u32 r'], some [.variant 0 (some (.u32 b))] =>
+    if r' = r then { st with bodies := b :: st.bodies } else st
+  | _, _ => st
+
+/-- An answer of `incoming-body.stream`. -/
+def iStream (st : ISt) : List Val → Option (List Val) → ISt
+  | [.u32 b], some [.variant 0 (some (.u32 s))] =>
+    if st.bodies.contains b then { st with streams := s :: st.streams } else st
+  | _, _ => st
+
+/-- An answer of `blocking-read`. -/
+def iRead (st : ISt) : List Val → Option (List Val) → ISt
+  | .u32 s :: _, some [.variant 0 (some bs)] =>
+    if st.streams.contains s then { st with got := st.got ++ bytesOf bs } else st
+  | .u32 s :: _, some [.variant 1 (some (.variant 1 none))] =>
+    if st.streams.contains s then { st with closed := true } else st
+  | _, _ => st
+
+/-- One answer of a call on the request handle `r`. -/
+def istep (r : BitVec 32) (st : ISt) : WEv → ISt
+  | .imp f a res =>
+    if f = reqConsume then iConsume r st a res
+    else if f = inStream then iStream st a res
+    else if f = inRead then iRead st a res
+    else st
+  | .req _ _ => st
+  | .call _ _ => st
+  | .ret _ _ _ => st
+
+/-- The delivered bytes are a prefix of `c`, and all of `c` once the body is closed. -/
+def ISt.Ok (c : List (BitVec 8)) (st : ISt) : Prop := st.got <+: c ∧ (st.closed = true → st.got = c)
+
+/-- The body reads of a call are consistent with the content of the request `q`. -/
+def BodyOk (q : Request) (r : BitVec 32) (u : List WEv) : Prop :=
+  ∀ v, v <+: u → (v.foldl (istep r) {}).Ok (q.content.map UInt8.toBitVec)
+
+/-- The exchange of a call, reading request bodies. -/
+def ObsB (c : Call) (x : Exch httpIface) : Prop := Obs c x ∧ BodyOk x.1 (reqOf c.args) c.inner
+
+/-- **A proxy component read as an HTTP server, with request bodies.** -/
+def wasiServerB {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) : Model httpIface :=
+  model (fun _ => True) answered ObsB σ
+
 /-! ## A reference host -/
+
+/-- An answer of `blocking-read`. -/
+def isReadAns : WEv → Bool
+  | .imp f _ _ => decide (f = inRead)
+  | _ => false
 
 /-- The call `handle(0, 1)`. -/
 def handleQ : (nsig proxyWorld.exports).Op := (⟨handleF, rfl⟩, [.u32 0, .u32 1])
 
 /-- **A reference host** serving the request `q` on the request handle `0`: the getters answer
-from `q`, constructors and `body`/`write` answer fresh handles, the other operations succeed. -/
+from `q`, constructors, `consume`, `stream`, `body` and `write` answer fresh handles, the first
+`blocking-read` delivers the whole content and later ones answer `closed`, and the other
+operations succeed. -/
 def refHost (q : Request) : Impl := fun past f _ =>
   if f = reqMethod then some [methodV q.method]
   else if f = reqPath then some [pathV q.target.pathWithQuery]
@@ -282,6 +363,11 @@ def refHost (q : Request) : Impl := fun past f _ =>
   else if f = respBody ∨ f = bodyWrite then some [okV (some (.u32 (BitVec.ofNat 32 (past.length + 2))))]
   else if f = setStatus ∨ f = streamWrite ∨ f = bodyFinish then some [okV none]
   else if f = streamDrop ∨ f = outSet then some []
+  else if f = reqConsume ∨ f = inStream then
+    some [okV (some (.u32 (BitVec.ofNat 32 (past.length + 2))))]
+  else if f = inRead then
+    if past.any isReadAns then some [errV (some (.variant 1 none))]
+    else some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]
   else none
 
 /-- The response of the body `h` to the request `q` over the reference host. -/

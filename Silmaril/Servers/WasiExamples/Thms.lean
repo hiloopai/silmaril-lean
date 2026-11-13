@@ -29,8 +29,10 @@ response unobservable (by failing an operation), never wrong.
 
 Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 
-**Checked** over the reference host (`serveRef`, evaluated by `decide`): `hello` on `/`, and
-`route` on `/`, `/hello` and `/missing`. `route_web_missing`: the web of the route table, as
+**Checked** over the reference host (`serveRef`, evaluated by `decide`): `hello` on `/`,
+`route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc`.
+`hello_satB`: hello's specification over the reading with request bodies, by refinement.
+**Open**: `Task.echo_sat`, the specification of `echo` for every host. `route_web_missing`: the web of the route table, as
 the outgoing `wasi:http` theories read it, answers `404` for `/missing`.
 -/
 
@@ -82,6 +84,14 @@ theorem route_answers (q : Request) :
 /-! ## Checked over the reference host -/
 
 theorem hello_ref : serveRef hello (getAt none (some (ascii "/"))) = some helloResp := by decide
+
+theorem echo_ref : serveRef echo (⟨⟨.post, ⟨none, none, some (ascii "/")⟩⟩, [], ascii "abc", []⟩) =
+    some (Response.simple 200 (ascii "abc")) := by
+  decide
+
+/-- Hello over the reading with request bodies. -/
+theorem hello_satB : Sat (wasiServerB (ofBody hello)) (each fun _ resp => resp = helloResp) :=
+  (wasiServerB_refines _).sat hello_sat
 
 theorem route_ref_root :
     serveRef route (getAt none (some (ascii "/"))) = some (Response.simple 200 (ascii "home")) := by
