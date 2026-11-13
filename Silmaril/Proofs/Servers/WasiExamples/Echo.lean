@@ -29,7 +29,7 @@ theorem respOf_skip {o : BitVec 32} {f : FnName}
   have h : ostep o {} (.imp f a n) = some {} := by
     rcases hf with rfl | rfl | rfl | rfl <;>
       simp [ostep, reqPath, reqConsume, inStream, inRead, setStatus, respBody, bodyWrite,
-        streamWrite, bodyFinish, outSet]
+        streamWrite, bodyFinish, outSet, newResp, fieldsAppend]
   have h0 : ostep o {} (.req g b) = some {} := rfl
   simp [respOf, List.foldlM_cons, h0, h]
 
@@ -39,11 +39,6 @@ theorem map_toBitVec_ofBitVec (bs : List (BitVec 8)) :
   induction bs with
   | nil => rfl
   | cons b bs ih => simp only [List.map_cons] at ih ⊢; rw [ih]
-
-theorem map_ofBitVec_toBitVec (c : List UInt8) : (c.map UInt8.toBitVec).map UInt8.ofBitVec = c := by
-  induction c with
-  | nil => rfl
-  | cons b c ih => simp only [List.map_cons] at ih ⊢; rw [ih]
 
 theorem istep_req (r : BitVec 32) (st : ISt) (g : FnName) (b : List Val) :
     istep r st (.req g b) = st := rfl
@@ -133,7 +128,7 @@ theorem echo_sat : Sat (wasiServerB (ofBody echo))
   clear hT hans
   rcases c with ⟨fn, args, u, res⟩
   obtain ⟨-, rfl, hl⟩ := hd
-  obtain ⟨⟨-, -, hx⟩, hB⟩ := hx
+  obtain ⟨⟨-, -, -, hx⟩, hB⟩ := hx
   have key : EchoResp (x.1.content.map UInt8.toBitVec) (respOf (outOf q.2) u) := by
     obtain ⟨n1, u1, rfl, h1⟩ := leads_call_pure hl
     show EchoResp _ (respOf _ (.req reqConsume [.u32 (reqOf q.2)] ::

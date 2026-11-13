@@ -257,14 +257,30 @@ statement about all plays holds for every host.
   program over a concrete host (`leads_runP`). **Proved.**
 - **The response of a call** (`respOf o`) is the response passed to
   `response-outparam.set(o, ok(rh))`. Its status is the last accepted `set-status-code` on
-  `rh`, which defaults to `200` as the WIT says. Its content is the bytes written to the
-  output streams of `rh`'s body, and that body must be finished. Only the host's answers are
-  read. A failed or ill-typed answer to an operation of the response makes the response
-  unobservable. Header fields are not observed.
+  `rh`, which defaults to `200` as the WIT says. Its header section is the lines accepted by
+  `fields.append` on the fields that `rh` was constructed from, in order. Its content is the
+  bytes written to the output streams of `rh`'s body, and that body must be finished. Only the
+  host's answers are read. A failed or ill-typed answer to an operation of the response, or to
+  any `fields.append` of the call, makes the response unobservable.
+- **`set` may be called once.** It consumes the outparam, so a second `set` of the same
+  outparam makes the response unobservable (`oSet_twice`).
 - **The request of a call** is any request (`Silmaril.Net.Http.Request`) consistent with what
-  the host answered on the request handle (`ReqOk`): the `method` and `path-with-query`
-  answers. The rest of the request is left open, so a specification must hold for every
-  request consistent with the answers.
+  the host answered on the request handle: the `method` and `path-with-query` answers
+  (`ReqOk`), and the `fields.get` and `fields.entries` answers on the headers resources taken
+  from the request with `incoming-request.headers` (`HdrOk`): the request's values for that
+  field name, compared case-insensitively, and its whole header section. The rest of the
+  request (authority, content) is left open, so a specification must hold for every request
+  consistent with the answers.
+- **Linked systems.** `linkServer η σ` is the server read from `Silmaril.Wasi.link η σ`, the
+  component over a host `η` with any lower interface: the exchanges of the component's calls
+  in the plays behind the link. It refines `wasiServer σ` (`linkServer_refines`,
+  `linkServerB_refines`), so every specification of the component holds over every host
+  (`link_sat_of`, `link_satB_of`). An answered run over a concrete implementation is a trace of
+  the body linked over that concrete host (`mem_linkServer`), so the linked servers are not
+  vacuous. **Proved.**
+- **Binaries.** `Runs σ h`: every play of the strategy `σ` is a play of the body `h`. A
+  strategy that runs `h` refines `h` as a server, alone and linked over any host
+  (`runs_refines`, `runs_refinesB`, `runs_link`). **Proved.**
 - `wasiServer σ : Exchange.Model httpIface` is the component `σ` read as a server of
   `Silmaril.Net.Http` requests and responses (RFC 9110 §6). `httpIface` is the core's `Http.sig` (`httpIface_eq`). **Defined.**
 - `wasiServerB σ` also reads request bodies (`BodyOk`). After every prefix of a call, the bytes
@@ -277,38 +293,71 @@ statement about all plays holds for every host.
 
 | Server | Specification | Status |
 | --- | --- | --- |
-| `answer o resp`, the shared response code (fields, outgoing response, status, body, `set`, write, drop, finish) | For every host, no response or exactly `resp` (`answer_run`). Over a host whose answers succeed, exactly `resp` (`answer_ok`, in the proofs). | Proved |
-| `hello` | Every exchange is `200 hello` (`hello_sat`), so `hello` refines the server of the constant function (`hello_refines`). Every request answered `200 hello` is a trace (`hello_answers`). | Proved |
+| `answer o resp`, the shared response code (fields, `fields.append` of each header line of `resp`, outgoing response, status, body, `set`, write, drop, finish) | For every host, no response or exactly `resp`, header lines included (`answer_run`, through `addFields_run` for the appends). Over a host whose answers succeed, exactly `resp` (`answer_ok`, in the proofs). | Proved |
+| `hello` | Every exchange is `200 hello` with the header `content-type: text/plain` (`hello_sat`), so `hello` refines the server of the constant function (`hello_refines`). Every request answered `200 hello` is a trace (`hello_answers`). | Proved |
 | `route` | Every exchange is answered from the route table on the path-with-query: `/` gives `200 home`, `/hello` gives `200 hello` and anything else gives `404 not found` (`route_sat`, `route_refines`). Every request answered from the table is a trace (`route_answers`). | Proved |
 | `echo` (consume the body, read until `closed` at most `echoFuel` times, answer `200` with the bytes read, else `500`) | Every exchange of `wasiServerB (ofBody echo)` is `200` with the request's content, or `500` (`echo_sat`). The proof is an induction over the read loop that carries `BodyOk` along the prefixes of the call. | Proved |
 | `hello`, `route`, `echo` over the reference host `refHost` (`serveRef`) | `hello` on `/`, `route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc` | Checked |
 | `hello`, `route` with a fresh instance per request, in the concurrent core: they refine the core's function servers (`hello_fresh`, `route_fresh`); `echo` is linearizable for its specification (`echo_fresh_lin`); `hello` used sequentially is linearizable (`hello_seq_lin`) | | Proved |
+| `hello`, `route`, `echo` linked over every host (`hello_link`, `route_link`, `echo_link`); a response over the reference host is a trace of the example linked over the concrete reference host (`serve_link`, `hello_link_answers`) | | Proved |
+| The WAT binaries run the bodies: `Task.wasmRuns σh σr σe`, with `wasm_sat` giving the three specifications for the binaries' denotations, alone and linked over every host, under that task | | Open (conditional results proved) |
 | A server as a web of the outgoing theories (`webOf`): the client theories `Net.httpTh`/`httpTh3 (webOf f)` see the status of `f`'s answer to a `GET` (`webOf_pathV`, `route_web_missing`) | | Proved |
 
-The examples are Lean programs over the imports, in the shape of a component after lifting,
-not Wasm binaries. The order of `answer` (`set` before the body is written) is the one the
-`wasi:http` documentation recommends, so that a host can stream the body.
+The examples are Lean programs over the imports, in the shape of a component after lifting.
+The order of `answer` (`set` before the body is written) is the one the `wasi:http`
+documentation recommends, so that a host can stream the body.
+
+### The components
+
+`tests/servers/wasi-http/{common,hello,route,echo}.wat` are the same three servers as core Wasm
+modules: `common.wat` holds the imports, the memory, a bump allocator (`cabi_realloc`) and
+`answer`, and each server file holds its export
+`wasi:http/incoming-handler@0.2.12#handle`. Every export makes the import calls of its Lean
+body, in the same order and with the same arguments, and takes the same branches on the
+answers (`hOf`: the handle of an `ok`, else `0`). `tests/servers/wasi-http/build.sh` wraps each
+in a module, gives it the component type of `tests/servers/wasi-http/world.wit` (which imports
+`wasi:http/types@0.2.12` and `wasi:io/streams@0.2.12` and exports
+`wasi:http/incoming-handler@0.2.12`, over the WIT in `specs/wasi/0.2.12`) with
+`wasm-tools component embed` and makes the component with `wasm-tools component new`. The
+flake's `http-test` shell pins the tools (`nix develop .#http-test`: wasmtime 49.0.2,
+wasm-tools 1.261.0, curl).
+
+The binaries differ from the bodies in two places, neither of which changes the import calls:
+`route` compares the UTF-8 bytes of the path, where the Lean reading maps each `char` to an
+octet (`octet`, which maps a `char` above `U+00FF` to `0xFF` so that no non-ASCII path reads as
+an ASCII one); and `blocking-write-and-flush` accepts at most 4096 bytes, so for a longer
+`echo` body the host fails the write, which the reading counts as no response.
+
+That the components' denotations run the bodies is open (`Task.wasmRuns`). Stating it needs a
+denotation of these binaries as strategies over the proxy imports (for example through
+`Silmaril.Wasi.compModel` of a decoded component and a core semantics), which is not defined
+here yet.
 
 ### Conformance against a runtime
 
-`tests/servers/wasi-http-conformance.sh` serves components with `wasmtime serve` and compares
-their responses to the specifications (`HELLO_WASM`, `ROUTE_WASM`, and an optional
-`WASMTIME_VERSION` pin). It skips cleanly when `wasmtime`, `curl` or the components are
-missing. No component binaries exist yet, so the harness has not been run against a runtime.
+`tests/servers/wasi-http-conformance.sh` builds the three components (or takes `HELLO_WASM`,
+`ROUTE_WASM`, `ECHO_WASM`), serves each with `wasmtime serve` and compares the responses to the
+specifications: `hello` on `/` and `/anything` (status, content and `content-type`), `route` on
+`/`, `/hello` and `/missing`, and `echo` on a `GET` and on `POST`s of 3 and 3000 bytes. The
+runtime is pinned (`WASMTIME_VERSION`, default `49.0.2`; `any` accepts every version). It
+skips cleanly when `wasmtime`, `curl`, or both the components and `wasm-tools`, are missing.
+Run as `nix develop .#http-test -c tests/servers/wasi-http-conformance.sh`, all 9 checks pass on
+wasmtime 49.0.2.
 
 ### Not modelled yet
 
-- Request and response headers, trailers and `send-informational`. Liveness is not covered:
+- Headers added to a response after its construction (`outgoing-response.headers`),
+  `fields.set`, `delete` and `from-list`, trailers and `send-informational`. Liveness is not
+  covered:
   `echo` may answer `500` when the host delivers the body in more than `echoFuel` reads, and
   only `hello` and `route` have non-vacuity theorems (`echo` is checked on one request).
-- The once-only rule of `response-outparam.set`, and resource drops other than the output
-  stream's.
+- Resource drops other than the output stream's.
 - Concurrent export calls. A body runs one call at a time. The host may also run several
   instances, which gives concurrency across instances.
-- Statements over linked systems (`Silmaril.Wasi.link η σ` for a host `η`). They follow from
-  the statements over all plays, as in `Silmaril.Wasi.Examples`, but are not written out.
-- Compiling the examples to Wasm components (in WAT or through the component tools of this
-  repository) and running the conformance harness on them.
+- A host-side theory of `wasi:http` (which answers a host may give, e.g. that a second `set`
+  traps) to strengthen the linked statements beyond "every host".
+- A denotation of the WAT components, so that `Task.wasmRuns` can be stated about them and
+  proved.
 - The equality of `Silmaril.Wasi.ofBody` with `Silmaril.Games.Strategy.ofHandler` is still
   open (see [More Wasm](wasm-wasi.md)).
 
@@ -654,9 +703,10 @@ lake build Silmaril.Servers.Core.Thms Silmaril.Servers.Http.Thms \
   Silmaril.Servers.Cgi.Thms Silmaril.Servers.Platform.Thms
 ```
 
-Every module builds in under 2 s. The conformance harness
-`tests/servers/wasi-http-conformance.sh` needs `wasmtime`, `curl` and component binaries, and
-skips cleanly without them.
+Every module builds in under 2 s except `Silmaril.Servers.WasiExamples.Thms`, whose checks
+over the reference host are evaluated by `decide`. The conformance harness runs with
+`nix develop .#http-test -c tests/servers/wasi-http-conformance.sh`, and skips cleanly without
+`wasmtime`, `curl`, or both the components and `wasm-tools`.
 
 ## References for the core
 
