@@ -4,48 +4,30 @@ public import Silmaril.Elf.Staged.Leaf.Thms
 public import Silmaril.Prelude.Trust.Policy.Defs
 -- Native runs interpret these functions while elaborating, so their code is loaded as `meta`.
 public meta import Silmaril.Elf.Staged.Leaf.Thms
-public meta import Silmaril.Prelude.Trust.Elab.Defs
-public meta import Lean.Elab.Tactic
 
-/-! # ELF leaves under the trust policy (`elf_leaf`)
+/-! # ELF leaves under the trust policy
 
 Each leaf (`Silmaril.Elf.Staged.Leaf`) has **two checkers** for **one proposition**:
 
-* the **native** checker `Native.<leaf> b c` runs the leaf on the `ByteArray` of a file
-  (`fastRead`). It is registered as the native procedure `elf.<leaf>` with **no kernel
-  fallback**, because the kernel would have to decode the `ByteArray` one byte at a time;
-* the **kernel** checker `Kernel.<leaf> x c` runs the same leaf on core's kernel bytes `x`
-  (`Silmaril.KBytes.readLE`). It is **never** run natively: it is not registered, and nothing
-  here passes it to the native evaluator.
+* the **native side** `Native.<leaf> b c` runs the leaf on the `ByteArray` of a file
+  (`fastRead`), registered as `elf.<leaf>` with no kernel fallback (the kernel would decode the
+  `ByteArray` one byte at a time);
+* the **kernel side** `Kernel.<leaf> x c` runs the same leaf on core's kernel bytes `x`
+  (`Silmaril.KBytes.readLE`), registered as `elf.<leaf>.kernel` with a kernel fallback.
 
-`Native.<leaf>_sound` and `Kernel.<leaf>_sound` conclude the same `P (blobOf ⟨raw⟩) c`, where
-the kernel bytes are tied to the raw bytes by `x.toByteArray = raw` (from `kbytes_def … of_include`).
-
-## `elf_leaf`
+`Native.<leaf>_sound` and `Kernel.<leaf>_sound x.wf x.toByteArray_eq` conclude the same
+`P (blobOf ⟨raw⟩) c`; the kernel bytes are tied to the raw bytes by `x.toByteArray = raw`
+(`kbytes_def … of_include`). A leaf theorem pairs them with the trust framework's `edge_pair`:
 
 ```
 theorem layout : LayoutIs F L := by
-  elf_leaf elf.layout (native := Native.layout_sound) (kernel := Kernel.layout_sound x.wf x.toByteArray_eq)
+  edge_pair (native := Native.layout_sound (raw := helloRaw) (L := L))
+    (kernel := Kernel.layout_sound hello.wf hello.toByteArray_eq (L := L))
 ```
 
-1. It asks the trust policy (`Silmaril.Trust.allowed`) whether the procedure may run natively
-   in this module under the current profile, **before** running anything.
-2. **Allowed:** it applies the native soundness lemma and closes `Native.<leaf> b c = true` with
-   `edge_decide`, which runs it natively and records the use. If the run fails or returns
-   `false`, the error propagates; there is no fallback to the kernel.
-3. **Not allowed:** it applies the kernel soundness lemma and has the kernel check
-   `Kernel.<leaf> x c = true` by `Eq.refl` in an auxiliary lemma, then records a kernel use
-   under the same procedure name.
-4. Without `(native := …)` the leaf is kernel-only: the kernel path is taken in every profile.
-5. A procedure name that is not registered (an unsupported leaf such as `elf.dwarf.line`) is an
-   error.
-
-**Temporary.** This tactic stands in for a paired-procedure hook of the trust framework (one
-procedure, a native and a kernel checker, two soundness lemmas, policy selection before
-either runs). It reads the framework's internals (`procExt`, `allowed`, `recordUse`) and is to
-be replaced by that hook when it exists. A recorded use is provenance, not authorization: each
-path's proof is checked as usual (the native axiom by `edge_decide`, the kernel lemma by the
-kernel).
+The native side runs when the policy allows `elf.<leaf>` in the module; otherwise the kernel
+checks the kernel side, which never runs natively. Errors and `false` propagate. The `default`
+set holds `elf.layout`; the other leaves run natively under `local`.
 -/
 
 @[expose] public section
@@ -157,7 +139,7 @@ end Silmaril.Elf.Staged
 
 /-- The stage-1 layout of an ELF file, read natively from its `ByteArray` (`fastRead`). Trusts
 the compiled reader and `Nat` arithmetic. No kernel fallback: the kernel checker reads
-`Silmaril.KBytes` instead (`elf_leaf`). -/
+`Silmaril.KBytes` instead (`elf.layout.kernel`, paired by `edge_pair`). -/
 native_decider elf.layout := Silmaril.Elf.Staged.Native.layout
 
 /-- One section body, read natively. Trusts the compiled reader. No kernel fallback. -/
@@ -182,69 +164,24 @@ native_decider elf.symbols.byName := Silmaril.Elf.Staged.Native.byName
 /-- A reverse symbol map, checked natively. No kernel fallback. -/
 native_decider elf.symbols.byAddr := Silmaril.Elf.Staged.Native.byAddr
 
-/-! ## The tactic -/
+/-! ## Kernel sides
 
-public meta section
+Registered so that `edge_pair` can check them and record their uses. `edge_pair` runs a kernel
+side only in the kernel (`decideEdge … (kernelOnly := true)`), whatever the policy allows. -/
 
-namespace Silmaril.Elf.Staged.Trust
-
-open Lean Elab Tactic Meta
-
-/-- `elf_leaf proc (native := hN) (kernel := hK)`: prove a leaf's proposition by the native
-checker when the policy allows `proc` here, else by the kernel checker (module doc). -/
-syntax (name := elfLeaf) "elf_leaf " ident " (" &"native" " := " term ")"
-  " (" &"kernel" " := " term ")" : tactic
-
-/-- `elf_leaf proc (kernel := hK)`: a kernel-only leaf, checked by the kernel in every profile. -/
-syntax (name := elfLeafKernel) "elf_leaf " ident " (" &"kernel" " := " term ")" : tactic
-
-/-- The leaf proof: `hN?` is the native soundness lemma, if the leaf has a native checker. -/
-def runElfLeaf (procId : Syntax) (hN? : Option Syntax) (hK : Syntax) : TacticM Unit :=
-    withMainContext do
-  let proc := procId.getId
-  let env ← getEnv
-  let some p := (Silmaril.Trust.procExt.getState env).find? proc
-    | throwError "elf_leaf: {proc} is not a registered ELF procedure (unsupported leaf)"
-  let mod := env.mainModule
-  let allow ← match Silmaril.Trust.allowed env mod (← Silmaril.Trust.profile)
-      (← Silmaril.Trust.ceiling) with
-    | .ok a => pure a
-    | .error msg => throwError "elf_leaf: {msg}"
-  match hN? with
-  | some hN =>
-    if allow.contains p.name then
-      -- Native: `edge_decide` runs the registered `ByteArray` checker and records the use.
-      evalTactic (← `(tactic| refine $(⟨hN⟩) ?_))
-      evalTactic (← `(tactic| edge_decide $(⟨procId⟩):ident))
-      return
-  | none => pure ()
-  -- Kernel: the `KBytes` checker, by `Eq.refl` in an auxiliary lemma; never native.
-  evalTactic (← `(tactic| refine $(⟨hK⟩) ?_))
-  let goal ← getMainGoal
-  let ty ← instantiateMVars (← goal.getType)
-  let some (_, e, rhs) := (← whnfR ty).eq?
-    | throwError "elf_leaf: the kernel goal must be `f a₁ … aₙ = true`{indentExpr ty}"
-  unless (← whnfR rhs).isConstOf ``Bool.true do
-    throwError "elf_leaf: the kernel goal must be `… = true`{indentExpr ty}"
-  let e ← instantiateMVars e
-  if e.hasFVar || e.hasMVar then
-    throwError "elf_leaf: the kernel goal must be closed{indentExpr e}"
-  let eq := mkApp3 (mkConst ``Eq [1]) (mkConst ``Bool) e (mkConst ``Bool.true)
-  let pf := mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``Bool.true)
-  let aux ← try
-      withOptions (Elab.async.set · false) do mkAuxLemma [] eq pf
-    catch ex =>
-      throwError "elf_leaf: the kernel did not check {proc}: {ex.toMessageData}"
-  let decl := (← Term.getDeclName?).getD .anonymous
-  Silmaril.Trust.recordUse { decl, module := mod, proc := p.name, mode := .kernel,
-                             profile := ← Silmaril.Trust.profileTag }
-  goal.assign (← mkExpectedTypeHint (mkConst aux) ty)
-  replaceMainGoal []
-
-@[tactic elfLeaf] def evalElfLeaf : Tactic := fun stx =>
-  runElfLeaf stx[1] (some stx[5]) stx[10]
-
-@[tactic elfLeafKernel] def evalElfLeafKernel : Tactic := fun stx =>
-  runElfLeaf stx[1] none stx[5]
-
-end Silmaril.Elf.Staged.Trust
+/-- The stage-1 layout on kernel bytes (`KBytes.readLE`): a few big-number operations per read. -/
+native_decider elf.layout.kernel := Silmaril.Elf.Staged.Kernel.layout with_kernel_fallback
+/-- One section body on kernel bytes. -/
+native_decider elf.body.kernel := Silmaril.Elf.Staged.Kernel.body with_kernel_fallback
+/-- The loader view on kernel bytes. -/
+native_decider elf.loader.kernel := Silmaril.Elf.Staged.Kernel.loader with_kernel_fallback
+/-- A window of `RELA` entries on kernel bytes. -/
+native_decider elf.rela.kernel := Silmaril.Elf.Staged.Kernel.rela with_kernel_fallback
+/-- Instruction tiles in the file, on kernel bytes. -/
+native_decider elf.tiles.kernel := Silmaril.Elf.Staged.Kernel.tiles with_kernel_fallback
+/-- Instruction tiles through the local x86 model, on kernel bytes. -/
+native_decider elf.tiles.x86.kernel := Silmaril.Elf.Staged.Kernel.tilesX86 with_kernel_fallback
+/-- A forward symbol index on kernel bytes. -/
+native_decider elf.symbols.byName.kernel := Silmaril.Elf.Staged.Kernel.byName with_kernel_fallback
+/-- A reverse symbol map on kernel bytes. -/
+native_decider elf.symbols.byAddr.kernel := Silmaril.Elf.Staged.Kernel.byAddr with_kernel_fallback

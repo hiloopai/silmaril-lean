@@ -39,7 +39,7 @@ the scope policy, `edge_decide`, the use records and the audit. Each ELF leaf
 |---|---|---|
 | function | `Native.<leaf> b c` | `Kernel.<leaf> x c` |
 | bytes | the file's `ByteArray` (`fastRead`) | core's kernel bytes `x` (`KBytes.readLE`) |
-| registered | `native_decider elf.<leaf>`, no kernel fallback | never; never run natively |
+| registered | `native_decider elf.<leaf>`, no kernel fallback | `elf.<leaf>.kernel`, with kernel fallback; never run natively by `edge_pair` |
 | soundness | `Native.<leaf>_sound` | `Kernel.<leaf>_sound x.wf x.toByteArray_eq` |
 | conclusion | `P (blobOf ⟨raw⟩) c` | the same `P (blobOf ⟨raw⟩) c` |
 
@@ -47,27 +47,31 @@ The kernel bytes and the raw bytes come from the same `include_bytes` literals
 (`kbytes_def x of_include raw` proves `x.toByteArray = raw` without decoding a byte).
 `sub_kbytes` and `sub_fast` tie each source to the one file.
 
-`elf_leaf elf.<leaf> (native := …) (kernel := …)` asks the policy (`Silmaril.Trust.allowed`)
-before running anything:
+A leaf theorem is `by edge_pair (native := Native.<leaf>_sound …) (kernel :=
+Kernel.<leaf>_sound x.wf x.toByteArray_eq …)`, the framework's same-target pair.
 
-* **Native allowed:** `edge_decide` runs the `ByteArray` checker and records the use and its
-  axiom. Errors and `false` propagate.
-* **Not allowed:** the kernel checks the kernel-bytes term by `Eq.refl`, and a kernel use is
-  recorded under the same procedure name.
+* **Native allowed:** `elf.<leaf>` runs natively on the `ByteArray`, and the use and its axiom
+  are recorded. Errors and `false` propagate, with no fallback.
+* **Native denied:** the kernel checks the kernel-bytes term (`decideEdge … (kernelOnly :=
+  true)`), even where the policy would let `elf.<leaf>.kernel` run natively, and the kernel use
+  is recorded.
 
-Without `native :=`, a leaf is kernel-only in every profile. The default set holds
-`elf.layout` only; the other `elf.*` procedures run natively under `local`.
-`Silmaril.Elf.Staged.Example.Profiles` checks every case with audits and use records: default,
-local, paranoid, kernel-only, an unsupported leaf, and a false claim under native and kernel.
+The `default` set holds `elf.layout` (core's policy); the other `elf.*` procedures run natively
+under `local`. `Silmaril.Elf.Staged.Example.Profiles` checks every case with audits and use
+records:
 
-**Temporary parts.**
+* default: native layout, kernel loader;
+* local: native;
+* paranoid: kernel;
+* a profile that allows only the kernel side's procedure: still kernel;
+* an unsupported leaf;
+* a false claim, under native and under kernel.
 
-* `elf_leaf` stands in for a paired-procedure hook in the framework: one name, two checkers,
-  two soundness lemmas. It reads framework internals (`procExt`, `allowed`, `recordUse`) and
-  should be replaced by that hook. `edge_decide` on its own runs one term both ways, so it
-  cannot express two checkers.
-* A `kbytes_def` body is not yet exported to importing modules, so each leaf module defines
-  its own kernel bytes from the shared raw bytes.
+`Example.Thms` itself is checked in the default build and in the paranoid profile build. Only
+the profile-test module is excluded from the paranoid build.
+
+**Temporary.** A `kbytes_def` body is not yet exported to importing modules (reported to core).
+Until it is, each leaf module defines its own kernel bytes from the shared raw bytes.
 
 ## Supported now
 
@@ -81,7 +85,7 @@ local, paranoid, kernel-only, an unsupported leaf, and a false claim under nativ
 | symbols | `SymAt`; name → entry (`ByName`), address → entry (`ByAddr`), sound lookups | `elf.symbols.byName`, `elf.symbols.byAddr` | `Staged.Symbols` |
 | code | instruction tiles: bounds, and per-tile acceptance by `Silmaril.X86.Ext.decode` | `elf.tiles`, `elf.tiles.x86` | `Staged.Leaf` |
 | whole parse | `Parses` assembled from stages | `parses_assemble` | `Staged` |
-| policy | native (`ByteArray`) or kernel (`KBytes`) per leaf | `elf_leaf` | `Staged.Native` |
+| policy | native (`ByteArray`) or kernel (`KBytes`) per leaf | `edge_pair` | `Staged.Native` |
 
 Worked examples:
 
