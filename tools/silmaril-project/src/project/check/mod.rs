@@ -1,4 +1,4 @@
-//! `sil project check`: scope, rules R1–R11, W1–W3 and P1–P6, the artifact registry, sids, the DAG
+//! `sil project check`: scope, rules R1–R11, M1–M3, W1–W4 and P1–P6, the artifact registry, sids, the DAG
 //! and status propagation.
 //!
 //! Every cross-reference rule lives here (Lean checks only what needs elaboration). The result
@@ -13,10 +13,12 @@
 //!    files (lint, R11);
 //! 3. [`refs`]: the in-scope records and R4 ([`refs::Kept`]);
 //! 4. [`status`]: R5 (answers from [`super::sources::ANSWER_SOURCES`]), propagation to a
-//!    fixpoint, the summaries, R10 and W1, W3;
+//!    fixpoint, the summaries, R10 and W1, W3; [`markings`]: deprecations and findings
+//!    (M1–M3, W4);
 //! 5. [`rows`]: R8, sids and R9, the database and the summary lines.
 
 mod blobs;
+mod markings;
 mod provenance;
 mod records;
 mod refs;
@@ -186,8 +188,9 @@ pub fn run(p: &Project, dump: &Dump) -> Outcome {
     let kept = refs::follow(&cx, &g, &sc, &reg, &mut o); // in-scope records, R4
     let files = blobs::hash(&cx, &reg, &kept, &mut o); // R3
     let st = status::run(&cx, &g, &sc, &kept, &mut o); // R5, propagation, W1
+    let marks = markings::run(&cx, &g, &sc, &kept, &st, &mut o); // M1–M3, W4
     blobs::inputs(&cx, &reg, &kept, &mut o); // W2
-    rows::run(&cx, &g, &sc, &reg, &kept, &files, &st, &mut o); // R8, R9, the database
+    rows::run(&cx, &g, &sc, &reg, &kept, &files, &st, &marks, &mut o); // R8, R9, the database
     o.lines.extend(provenance); // P6
     o
 }

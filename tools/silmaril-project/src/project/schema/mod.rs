@@ -1,8 +1,9 @@
 //! Every `sil project` format, one module per layer:
 //! [`dag`] (layer 0: manifest, dump, DAG records, core tables), [`relational`] (predicates,
 //! answers, instances), [`artifacts`] (the registry and blobs), [`values`] (formats and
-//! values), [`rooms`] and [`models`] (models and specs), [`trust`] (decision-procedure and
-//! axiom trust, from a separate trust dump). This module holds what the layers
+//! values), [`rooms`] and [`models`] (models and specs), [`markings`] (deprecations and
+//! findings), [`trust`] (native-procedure and axiom trust, from a separate trust dump). This
+//! module holds what the layers
 //! share: the schema strings, the closed [`Record`] enum (one line per kind, so an unknown kind
 //! is rejected), the [`table!`] macro and the DDL order ([`tables`]).
 //!
@@ -95,6 +96,8 @@ pub enum Record {
     RefutationRoute(RefutationRoute),
     Root(Root),
     Detached(Detached),
+    Deprecation(Deprecation),
+    Finding(Finding),
 }
 
 /// Per kind: the field that identifies a record within its kind, and the sid kind of the
@@ -131,6 +134,8 @@ record_kinds! {
     RefutationRoute = "refutation_route", key name, object None;
     Root = "root", key name, object None;
     Detached = "detached", key name, object None;
+    Deprecation = "deprecation", key name, object None;
+    Finding = "finding", key name, object None;
 }
 
 /// The sid kind of a record kind's object (`None`: the record declares no object, or a
@@ -224,6 +229,7 @@ macro_rules! table {
 // Each layer declares its record structs and tables; [`tables`] fixes the DDL order.
 pub mod artifacts;
 pub mod dag;
+pub mod markings;
 pub mod models;
 pub mod records;
 pub mod relational;
@@ -233,18 +239,25 @@ pub mod values;
 
 pub use artifacts::*;
 pub use dag::*;
+pub use markings::*;
 pub use models::*;
 pub use relational::*;
 pub use rooms::*;
 pub use trust::*;
 pub use values::*;
 
-/// Views written after the tables (then [`TRUST_VIEWS`]).
+/// Views written after the tables: the group vectors, then the marking views
+/// ([`markings::MARKING_VIEWS`]), then the trust views ([`TRUST_VIEWS`]).
 pub const VIEWS: &[&str] = &[
     "CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, \
 e.record_name, e.pos, e.child, s.summary, s.verdict \
 FROM edges e JOIN problems p ON p.name = e.parent AND p.kind = 'group' \
 LEFT JOIN summary s ON s.problem = e.child;",
+    markings::MARKING_VIEWS[0],
+    markings::MARKING_VIEWS[1],
+    markings::MARKING_VIEWS[2],
+    markings::MARKING_VIEWS[3],
+    markings::MARKING_VIEWS[4],
 ];
 
 /// Indexes written after the views, as `(name, table, columns)`: lookups that primary keys and
@@ -273,6 +286,18 @@ pub const INDEXES: &[(&str, &str, &[&str])] = &[
     ("format_laws_format", "format_laws", &["format"]),
     ("format_defaults_format", "format_defaults", &["format"]),
     ("artifact_paths_artifact", "artifact_paths", &["artifact"]),
+    (
+        "findings_classification",
+        "findings",
+        &["classification", "problem"],
+    ),
+    ("findings_pointer", "findings", &["pointer"]),
+    ("deprecated_problems_via", "deprecated_problems", &["via"]),
+    (
+        "deprecation_replacements_replacement",
+        "deprecation_replacements",
+        &["replacement"],
+    ),
     ("trust_uses_procedure", "trust_uses", &["procedure", "mode"]),
     ("trust_imports_import", "trust_imports", &["import"]),
     (
@@ -352,6 +377,11 @@ pub fn tables() -> Vec<TableInfo> {
         info::<Szs>(),
         info::<StatusRow>(),
         info::<SummaryRow>(),
+        info::<DeprecationRow>(),
+        info::<Replacement>(),
+        info::<DeprecatedProblem>(),
+        info::<FindingRow>(),
+        info::<FindingVersion>(),
         info::<TrustInput>(),
         info::<TrustProcedure>(),
         info::<TrustSet>(),
@@ -365,4 +395,17 @@ pub fn tables() -> Vec<TableInfo> {
         info::<TrustDeclAxiom>(),
         info::<TrustAuditMessage>(),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn views_end_with_the_marking_views() {
+        assert_eq!(
+            &VIEWS[VIEWS.len() - markings::MARKING_VIEWS.len()..],
+            markings::MARKING_VIEWS
+        );
+    }
 }

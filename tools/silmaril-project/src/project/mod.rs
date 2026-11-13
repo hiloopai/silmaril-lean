@@ -6,7 +6,8 @@
 //! elaborates a small driver that runs `#silmaril_dump` (the only subcommand that runs Lean);
 //! `check` reads the manifest, the registries, `lake-manifest.json` and the dump, hashes files
 //! and applies the rules of [`check`]; `sqlite` writes the canonical SQL text and builds the
-//! database from it; `explore` writes a static HTML page over that database ([`explore`]).
+//! database from it; `explore` writes a static HTML page over that database ([`explore`]);
+//! `findings`, `errors`, `gaps` and `deprecated` query its markings ([`query`]).
 //! Works in any Lake project.
 //!
 //! Formats are defined once, in [`schema`].
@@ -15,6 +16,7 @@ mod check;
 mod edges;
 mod explore;
 mod hash;
+mod query;
 pub mod schema;
 mod sid;
 mod sources;
@@ -151,6 +153,34 @@ pub enum Command {
         #[arg(long, default_value = ".lake/silmaril/explore.html")]
         out: PathBuf,
     },
+    /// List the findings (classified refutations) of the database `sqlite` wrote
+    Findings {
+        #[command(flatten)]
+        db: DbArg,
+        /// Only this classification; `unclassified` lists the failing problems that are
+        /// neither deprecated nor classified
+        #[arg(long = "class", value_parser = ["error", "spec_bug", "model_gap", "unclear", "unclassified"])]
+        class: Option<String>,
+    },
+    /// List the genuine errors: `error` findings, with versions, fix and disclosure
+    Errors {
+        #[command(flatten)]
+        db: DbArg,
+    },
+    /// List the model gaps, one line per missing instruction or feature, most problems first
+    Gaps {
+        #[command(flatten)]
+        db: DbArg,
+    },
+    /// List the deprecated problems, groups and specs with their replacements
+    Deprecated {
+        #[command(flatten)]
+        db: DbArg,
+        /// List every deprecated problem instead, with why (its own deprecation, its spec's,
+        /// or its general problem's)
+        #[arg(long)]
+        problems: bool,
+    },
     /// Print the records-file schema as JSON Schema
     Schema {
         /// Write it to this file instead of stdout
@@ -191,6 +221,25 @@ pub struct DirArg {
     /// The project directory (the Lake package root)
     #[arg(long, default_value = ".")]
     dir: PathBuf,
+}
+
+/// The database a query reads.
+#[derive(ClapArgs)]
+pub struct DbArg {
+    /// The project directory (the Lake package root)
+    #[arg(long, default_value = ".")]
+    dir: PathBuf,
+    /// The database (`sil project sqlite`), relative to the project directory
+    #[arg(long, default_value = ".lake/silmaril/project.sqlite")]
+    db: PathBuf,
+}
+
+/// Print a query's lines.
+fn print_query(db: &DbArg, q: query::Query) -> Result<()> {
+    for l in query::run(&db.dir.join(&db.db), q)? {
+        println!("{l}");
+    }
+    Ok(())
 }
 
 /// A Lake package the project can see.
@@ -1376,6 +1425,14 @@ pub fn run(command: Command) -> Result<()> {
             dir: DirArg { dir },
             paths,
         } => lint_project(&dir, &paths),
+        Command::Findings { db, class } => {
+            print_query(&db, query::Query::Findings(class.as_deref()))
+        }
+        Command::Errors { db } => print_query(&db, query::Query::Errors),
+        Command::Gaps { db } => print_query(&db, query::Query::Gaps),
+        Command::Deprecated { db, problems } => {
+            print_query(&db, query::Query::Deprecated(problems))
+        }
         Command::Schema { out } => {
             let text = format!(
                 "{}\n",

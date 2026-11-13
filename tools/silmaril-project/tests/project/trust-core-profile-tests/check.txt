@@ -19,5 +19,5 @@ trust violations: 9 (6 own native not allowed, 0 inherited native outside deps, 
 trust digests: inputs changed, covered modules 0 consistent, 6 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: complete (every described module is audited; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: 5f0a642513d3636e76c9a6e071704b579e6d25c5e17e1f6cf0b17277c4d398bf
+sql sha256: a171782c94f573431fc061697a15091f99ba31fce8b4b75d9442f86ceb51f2ab
 exit: ok

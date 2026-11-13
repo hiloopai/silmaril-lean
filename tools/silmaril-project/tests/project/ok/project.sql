@@ -224,6 +224,41 @@ CREATE TABLE summary(
   verdict TEXT NOT NULL CHECK(verdict IN ('holds','fails','unknown')),
   tier TEXT NOT NULL
 );
+CREATE TABLE deprecations(
+  name TEXT NOT NULL PRIMARY KEY,
+  kind TEXT NOT NULL CHECK(kind IN ('problem','group','spec')),
+  reason TEXT NOT NULL,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK(origin IN ('local','imported'))
+);
+CREATE TABLE deprecation_replacements(
+  name TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  replacement TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('problem','group','spec')),
+  PRIMARY KEY(name, pos)
+);
+CREATE TABLE deprecated_problems(
+  problem TEXT NOT NULL PRIMARY KEY,
+  via_kind TEXT NOT NULL CHECK(via_kind IN ('self','spec','instance')),
+  via TEXT NOT NULL
+);
+CREATE TABLE findings(
+  problem TEXT NOT NULL PRIMARY KEY,
+  classification TEXT NOT NULL CHECK(classification IN ('error','spec_bug','model_gap','unclear')),
+  note TEXT,
+  pointer TEXT,
+  fixed_in TEXT,
+  disclosure_status TEXT CHECK(disclosure_status IN ('private','reported','public')),
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK(origin IN ('local','imported'))
+);
+CREATE TABLE finding_versions(
+  problem TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  version TEXT NOT NULL,
+  PRIMARY KEY(problem, pos)
+);
 CREATE TABLE trust_inputs(
   path TEXT NOT NULL PRIMARY KEY,
   sha256 TEXT NOT NULL,
@@ -327,6 +362,11 @@ CREATE TABLE trust_audit_messages(
   PRIMARY KEY(decl, pos)
 );
 CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, e.record_name, e.pos, e.child, s.summary, s.verdict FROM edges e JOIN problems p ON p.name = e.parent AND p.kind = 'group' LEFT JOIN summary s ON s.problem = e.child;
+CREATE VIEW genuine_errors AS SELECT f.problem, p.title, s.summary, f.note, f.pointer, (SELECT group_concat(v.version, ',') FROM (SELECT version FROM finding_versions WHERE problem = f.problem ORDER BY pos) v) AS affected_versions, f.fixed_in, f.disclosure_status, f.module, f.origin FROM findings f JOIN problems p ON p.name = f.problem LEFT JOIN summary s ON s.problem = f.problem WHERE f.classification = 'error';
+CREATE VIEW model_gaps AS SELECT f.pointer, f.problem, p.title, f.note FROM findings f JOIN problems p ON p.name = f.problem WHERE f.classification = 'model_gap';
+CREATE VIEW spec_bugs AS SELECT f.problem, d.via_kind, d.via, f.note, f.pointer FROM findings f LEFT JOIN deprecated_problems d ON d.problem = f.problem WHERE f.classification = 'spec_bug';
+CREATE VIEW deprecated_with_replacements AS SELECT d.name, d.kind, d.reason, (SELECT group_concat(r.replacement, ',') FROM (SELECT replacement FROM deprecation_replacements WHERE name = d.name ORDER BY pos) r) AS superseded_by, d.module, d.origin FROM deprecations d;
+CREATE VIEW unclassified_failures AS SELECT s.problem, s.summary FROM summary s WHERE s.verdict = 'fails' AND s.problem NOT IN (SELECT problem FROM findings) AND s.problem NOT IN (SELECT problem FROM deprecated_problems);
 CREATE VIEW trust_set_closure AS WITH RECURSIVE c(set_name, member_kind, member) AS (SELECT set_name, member_kind, member FROM trust_set_members UNION SELECT c.set_name, m.member_kind, m.member FROM c JOIN trust_set_members m ON c.member_kind = 'set' AND m.set_name = c.member) SELECT set_name, member AS name FROM c WHERE member_kind = 'name' UNION SELECT name, '*' FROM trust_sets WHERE is_all = 1 UNION SELECT c.set_name, '*' FROM c JOIN trust_sets s ON c.member_kind = 'set' AND s.name = c.member AND s.is_all = 1;
 CREATE VIEW trust_module_deps AS WITH RECURSIVE d(module, dep) AS (SELECT module, import FROM trust_imports UNION SELECT d.module, i.import FROM d JOIN trust_imports i ON i.module = d.dep) SELECT module, dep FROM d;
 CREATE VIEW trust_coverage_gaps AS SELECT d.module, d.dep, m.coverage, m.reason FROM trust_module_deps d JOIN trust_modules m ON m.name = d.dep WHERE m.coverage NOT IN ('covered','external');
@@ -351,6 +391,10 @@ CREATE INDEX formats_base ON formats(base);
 CREATE INDEX format_laws_format ON format_laws(format);
 CREATE INDEX format_defaults_format ON format_defaults(format);
 CREATE INDEX artifact_paths_artifact ON artifact_paths(artifact);
+CREATE INDEX findings_classification ON findings(classification, problem);
+CREATE INDEX findings_pointer ON findings(pointer);
+CREATE INDEX deprecated_problems_via ON deprecated_problems(via);
+CREATE INDEX deprecation_replacements_replacement ON deprecation_replacements(replacement);
 CREATE INDEX trust_uses_procedure ON trust_uses(procedure, mode);
 CREATE INDEX trust_imports_import ON trust_imports(import);
 CREATE INDEX trust_set_members_member ON trust_set_members(member_kind, member);
