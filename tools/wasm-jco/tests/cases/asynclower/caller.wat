@@ -1,0 +1,41 @@
+;; `[async-lower]` of an async import (the subtask is awaited when it has not returned at
+;; once) and the error-context built-ins.
+(module
+  (import "$root" "[async-lower]add" (func $add (param i32 i32 i32) (result i32)))
+  (import "$root" "[waitable-set-new]" (func $ws_new (result i32)))
+  (import "$root" "[waitable-join]" (func $join (param i32 i32)))
+  (import "$root" "[waitable-set-wait]" (func $wait (param i32 i32) (result i32)))
+  (import "$root" "[waitable-set-drop]" (func $ws_drop (param i32)))
+  (import "$root" "[subtask-drop]" (func $st_drop (param i32)))
+  (import "$root" "[error-context-new-utf8]" (func $ec_new (param i32 i32) (result i32)))
+  (import "$root" "[error-context-debug-message-utf8]" (func $ec_msg (param i32 i32)))
+  (import "$root" "[error-context-drop]" (func $ec_drop (param i32)))
+  (memory (export "memory") 1)
+  (data (i32.const 64) "hello")
+  (func (export "cabi_realloc") (param i32 i32 i32 i32) (result i32) i32.const 2048)
+  (func (export "run") (param $a i32) (param $b i32) (result i32)
+    (local $st i32) (local $ws i32)
+    (local.set $st (call $add (local.get $a) (local.get $b) (i32.const 16)))
+    ;; status RETURNED (2) in the low four bits: the result is at 16; else wait for the subtask
+    (if (i32.ne (i32.and (local.get $st) (i32.const 15)) (i32.const 2))
+      (then
+        (local.set $ws (call $ws_new))
+        (call $join (i32.shr_u (local.get $st) (i32.const 4)) (local.get $ws))
+        (block $done (loop $l
+          (drop (call $wait (local.get $ws) (i32.const 32)))
+          ;; event SUBTASK (1) with state RETURNED (2)
+          (br_if $done (i32.and (i32.eq (i32.load (i32.const 32)) (i32.const 1))
+                                (i32.eq (i32.load (i32.const 36)) (i32.const 2))))
+          (br $l)))
+        (call $join (i32.shr_u (local.get $st) (i32.const 4)) (i32.const 0))
+        (call $st_drop (i32.shr_u (local.get $st) (i32.const 4)))
+        (call $ws_drop (local.get $ws))))
+    (i32.load (i32.const 16)))
+  (func (export "ec") (result i32)
+    (local $e i32)
+    (local.set $e (call $ec_new (i32.const 64) (i32.const 5)))
+    (call $ec_msg (local.get $e) (i32.const 8))
+    (call $ec_drop (local.get $e))
+    ;; the debug message's length
+    (i32.load (i32.const 12)))
+)

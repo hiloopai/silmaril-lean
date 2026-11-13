@@ -1,0 +1,5 @@
+package test:lines;
+
+world lines {
+  export lines: async func(s: stream<u8>) -> stream<list<u8>>;
+}

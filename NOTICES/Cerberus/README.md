@@ -29,5 +29,11 @@ and adds executable checks and correctness proofs. Copyright (c) 2026 Silmaril c
 for modifications and original contributions. MIT applies to original contributions and does
 not replace the upstream rights and notices attached to Cerberus-derived material.
 
-The Cerberus OCaml implementation, its runtime libraries (`std.core`, `.impl` files, libc)
-and its test corpus are not bundled.
+The Cerberus OCaml implementation, its runtime library sources (`std.core`, `.impl` files,
+libc) and its test corpus are not bundled.
+
+`benchmarks/cerberus-elaboration/oracle` holds output of Cerberus at the same revision on 18
+small C programs: Core documents (which carry Cerberus's Core runtime maps, derived from its
+`std.core` and `.impl` files, in serialized form), typed Ail, listings and execution
+observations. They are Cerberus output under the same licence; the only change is the
+normalization of one installation prefix, described in that directory's README.

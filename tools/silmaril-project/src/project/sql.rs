@@ -151,7 +151,11 @@ pub fn write_db(sql: &str, db: &Path, httpvfs: Option<u32>) -> Result<()> {
         }
         tail += &format!("PRAGMA journal_mode = DELETE;\nPRAGMA page_size = {page_size};\n");
     }
-    conn.execute_batch(&format!("BEGIN;\n{sql}COMMIT;\n{tail}VACUUM;"))
+    // NUL-terminated: rusqlite prepares the batch statement by statement, handing SQLite the rest
+    // of the text by length, and SQLite copies that rest before parsing each statement unless it
+    // ends in a NUL. For a project's ~100k INSERTs that copying was quadratic, ~100 s of 110; with
+    // the NUL the load takes ~1.5 s. The NUL ends the batch as an empty statement.
+    conn.execute_batch(&format!("BEGIN;\n{sql}COMMIT;\n{tail}VACUUM;\0"))
         .into_diagnostic()
         .wrap_err("could not load the SQL text")?;
     let back = logical_dump(&conn)?;

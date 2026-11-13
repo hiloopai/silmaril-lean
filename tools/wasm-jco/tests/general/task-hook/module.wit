@@ -1,0 +1,7 @@
+package silmaril:hook;
+
+world module {
+  export greet: func(s: string) -> u64;
+  export add: func(a: u32, b: u32) -> u32;
+  export events: func() -> u64;
+}
