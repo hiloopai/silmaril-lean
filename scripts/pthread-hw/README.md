@@ -10,7 +10,9 @@ python3 -I scripts/pthread-hw/run.py OUT 300 2000000
 ```
 
 `build.sh` uses fixed flags, so the pins can be reproduced with the same gcc and glibc. Two
-builds on the recording machine gave identical hashes.
+builds on the recording machine gave identical hashes. The loop bounds can be overridden
+(`-DN=…`, `-DK=…` in `p4`, `-DR=…` in `p7`) for the small-bound differential runs of
+`tools/litmus-hw/pthread_diff.py`; the default build is byte-identical to the pins.
 
 | program | what it does | predicted outcome set |
 |---|---|---|

@@ -2,7 +2,9 @@
    (PTHREAD_MUTEX_NORMAL) mutex. Prints the final counter: always 2N. */
 #include <pthread.h>
 #include <stdio.h>
+#ifndef N
 #define N 100000
+#endif
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 static long counter;
 static void *worker(void *arg) {
