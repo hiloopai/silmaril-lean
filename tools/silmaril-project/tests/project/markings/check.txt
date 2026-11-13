@@ -1,0 +1,19 @@
+summary: 12 problems (12 local), 1 groups, 19 records, 12 edges, 0 artifacts
+verdicts: 2 holds, 9 fails, 1 unknown (all 12 problems); 2 holds, 9 fails, 1 unknown (12 local)
+markings: 3 deprecations (2 problems, 0 groups, 1 specs), 4 problems deprecated; findings: 1 error, 3 spec_bug, 2 model_gap, 1 unclear; 1 failing problems not deprecated and unclassified
+verdicts without the deprecated: 2 holds, 5 fails, 1 unknown (8 problems)
+root: mk.all
+predicate mk.gen (arity 1): status CSA [CSA], verdict fails, deprecated
+group mk.all: [mk.parse.v1=UNS, mk.parse.v2=THM, mk.old_bound=UNS[deprecated], mk.new_bound=THM, mk.fn.old=UNS[deprecated], mk.fn.new=OPN, mk.vec.add=UNS, mk.vec.shift=UNS, mk.vec.mul=UNS, mk.other=UNS, mk.gen=CSA[deprecated]]
+deprecated problem mk.old_bound: off by one: the bound is 255, not 256 (superseded by mk.new_bound)
+deprecated spec mk.specs.old: ignores the length prefix (superseded by mk.specs.new; deprecates 1 problems)
+deprecated problem mk.gen: quantifies over the wrong domain (superseded by mk.fn.new)
+finding error mk.parse.v1 [UNS]: reads one byte past the buffer (affects 1.0, 1.1; fixed in 1.2; disclosure reported; see https://example.org/bugs/1)
+finding spec_bug mk.fn.old [UNS] (deprecated through its spec mk.specs.old)
+finding spec_bug mk.gen.five [UNS] (deprecated as an instance of mk.gen)
+finding spec_bug mk.old_bound [UNS]: the statement is off by one (deprecated by its own deprecation)
+finding model_gap mk.vec.add [UNS]: missing pxor xmm0, xmm0; Str9 does not decode SSE2 pxor
+finding model_gap mk.vec.shift [UNS]: missing shl r/m16, imm8; 16-bit shifts do not retire
+finding unclear mk.vec.mul [UNS]: the counterexample needs review
+sql sha256: 3649312b47a39dac6bc59ea0dc545cc76131432db5b0a2d2b43a794bfafdc27b
+exit: ok

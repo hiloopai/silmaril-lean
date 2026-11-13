@@ -1,0 +1,58 @@
+schema = "silmaril.records.v0.2"
+
+# a wrong problem: kept, deprecated, with its replacement
+[[deprecation]]
+name = "mk.old_bound"
+reason = "off by one: the bound is 255, not 256"
+superseded_by = ["mk.new_bound"]
+
+# a wrong spec: every problem whose judgement names it is deprecated
+[[deprecation]]
+name = "mk.specs.old"
+reason = "ignores the length prefix"
+superseded_by = ["mk.specs.new"]
+
+# a wrong general problem: its instances are deprecated
+[[deprecation]]
+name = "mk.gen"
+reason = "quantifies over the wrong domain"
+superseded_by = ["mk.fn.new"]
+
+[[finding]]
+name = "mk.parse.v1"
+classification = "error"
+note = "reads one byte past the buffer"
+pointer = "https://example.org/bugs/1"
+affected_versions = ["1.0", "1.1"]
+fixed_in = "1.2"
+disclosure_status = "reported"
+
+[[finding]]
+name = "mk.old_bound"
+classification = "spec_bug"
+note = "the statement is off by one"
+
+[[finding]]
+name = "mk.fn.old"
+classification = "spec_bug"
+
+[[finding]]
+name = "mk.gen.five"
+classification = "spec_bug"
+
+[[finding]]
+name = "mk.vec.add"
+classification = "model_gap"
+pointer = "pxor xmm0, xmm0"
+note = "Str9 does not decode SSE2 pxor"
+
+[[finding]]
+name = "mk.vec.shift"
+classification = "model_gap"
+pointer = "shl r/m16, imm8"
+note = "16-bit shifts do not retire"
+
+[[finding]]
+name = "mk.vec.mul"
+classification = "unclear"
+note = "the counterexample needs review"

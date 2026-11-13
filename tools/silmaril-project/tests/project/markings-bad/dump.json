@@ -1,0 +1,170 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "Mk"
+ ],
+ "records": [
+  {
+   "kind": "group",
+   "name": "mk.all",
+   "module": "Mk"
+  },
+  {
+   "kind": "children",
+   "name": "mk.all",
+   "module": "Mk",
+   "children": [
+    "mk.a",
+    "mk.b",
+    "mk.c",
+    "mk.d",
+    "mk.e",
+    "mk.f"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "mk.all",
+   "module": "Mk"
+  },
+  {
+   "kind": "deprecation",
+   "name": "mk.a",
+   "module": "Mk",
+   "reason": "wrong",
+   "superseded_by": [
+    "mk.nowhere",
+    "mk.a"
+   ]
+  },
+  {
+   "kind": "deprecation",
+   "name": "mk.ghost",
+   "module": "Mk",
+   "reason": "wrong",
+   "superseded_by": [
+    "mk.b"
+   ]
+  },
+  {
+   "kind": "deprecation",
+   "name": "mk.c",
+   "module": "Mk"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.a",
+   "module": "Mk",
+   "classification": "error"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.b",
+   "module": "Mk",
+   "classification": "spec_bug"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.d",
+   "module": "Mk",
+   "classification": "model_gap",
+   "fixed_in": "2.0"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.e",
+   "module": "Mk",
+   "classification": "error",
+   "disclosure_status": "leaked"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.all",
+   "module": "Mk",
+   "classification": "unclear"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.f",
+   "module": "Mk",
+   "classification": "bogus"
+  }
+ ],
+ "problems": [
+  {
+   "name": "mk.a",
+   "decl": "Mk.a",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.b",
+   "decl": "Mk.b",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.c",
+   "decl": "Mk.c",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.d",
+   "decl": "Mk.d",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.e",
+   "decl": "Mk.e",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.f",
+   "decl": "Mk.f",
+   "module": "Mk"
+  }
+ ],
+ "solutions": [
+  {
+   "problem": "mk.a",
+   "decl": "mk.a_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.b",
+   "decl": "mk.b_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.c",
+   "decl": "mk.c_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.d",
+   "decl": "mk.d_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.f",
+   "decl": "mk.f_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.e",
+   "decl": "mk.e_sol",
+   "module": "Mk",
+   "kind": "solves",
+   "axioms": []
+  }
+ ]
+}
