@@ -1,0 +1,5 @@
+package test:aprov;
+
+world prov {
+  export add: async func(a: u32, b: u32) -> u32;
+}

@@ -287,11 +287,11 @@ public theorem o2_enterable : Silmaril.Project.Shapes.SysV.Enterable Silmaril.X8
 /-! ### Open rows, frozen as `Task` statements -/
 
 /-- Open: the `-O0` code implements `max2`. -/
-public def Task.o0_compiles_to : Prop := silmaril.sysv_tv.max2.o0.compiles_to
+@[expose] public def Task.o0_compiles_to : Prop := silmaril.sysv_tv.max2.o0.compiles_to
 /-- Open: the Bir9 block is a lift of the `-O2` code. -/
-public def Task.o2_lifts : Prop := silmaril.sysv_tv.max2.o2.lifts
+@[expose] public def Task.o2_lifts : Prop := silmaril.sysv_tv.max2.o2.lifts
 /-- Open: the Bir9 block corresponds to `max2`. -/
-public def Task.o2_ir_refines : Prop := silmaril.sysv_tv.max2.o2.ir_refines
+@[expose] public def Task.o2_ir_refines : Prop := silmaril.sysv_tv.max2.o2.ir_refines
 
 /-! ### Non-vacuity companions
 

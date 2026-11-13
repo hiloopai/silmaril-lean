@@ -1,0 +1,5 @@
+package test:rechunk;
+
+world rechunk {
+  export rechunk: async func(s: stream<u8>, n: u32) -> stream<list<u8>>;
+}

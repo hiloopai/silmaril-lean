@@ -132,9 +132,16 @@ A row group is one source function and its builds:
   x86 code) as leaf functions of one block. `Silmaril.X86.Bir9.liftBlock` lifts a listing, and
   `liftBlock_sound` proves the lift.
 - `SysV.SmallStep.toIr`: any IR with a small-step semantics.
-- **Planned:** RTL and SSA (λSSA) instances, from the RTL, SSA and let-calculi port that is under
-  way separately. The shapes are parametric in `Ir`, so these instances add nothing to the
-  shapes themselves.
+- `SysV.rtl R` and `SysV.rtlSSA R` (`Silmaril.Project.Shapes.SysV.Rtl`): functions of the machine RTL
+  (`Silmaril.Machine.RTL.Prog`) and of its SSA form (`Silmaril.Machine.RTL.SSA.Prog`, with block
+  arguments and decided well-formedness), each run by its own small-step semantics. The System V
+  reading: arguments as zero-extended 64-bit words (`argWords`), the result as the one returned
+  word (`ResultIs`). Safe means the run returns from every initial memory; a result is what
+  some run returns.
+- **Not yet:** the flat λRTL CFG (`Silmaril.SSA.LambdaRTL.CFG`) is stated over abstract operator
+  models, and its lowering to `Lir` functions with a simulation against `Lir` execution is still
+  open, so it has no System V reading yet. λSSA is reached from SSA-form RTL through
+  `toLambdaSSA` once a word model of λSSA is fixed.
 
 ## Worked example
 
@@ -158,6 +165,13 @@ A row group is one source function and its builds:
 | `silmaril.sysv_tv.max2.o2.ir_refines` | `c.ir_refines` | open (`Task.o2_ir_refines`) |
 | `silmaril.sysv_tv.max2.o2.compiles_to` | `c.compiles_to.open9` | proved from the two rows above (`o2_compiles_to_of`), so open while they are |
 | `silmaril.sysv_tv.max2.builds` | `c.compiles_to.builds` | proved from the per-build rows (`builds_of`, `builds_of_tasks`), so open while they are |
+
+`SysVTvRtl.lean` adds the RTL and SSA-form RTL lifts of `max2` (written by hand and run on sample
+arguments by `#guard`): the rows `….{o0,o2}.lifts_rtl` and `….o2.lifts_ssa` (`sysv.lifts.open9`)
+and `….rtl.ir_refines`, `….ssa.ir_refines` (`c.ir_refines`) are open (`Task`); one RTL
+correspondence serves both builds (`builds_of_rtl`), and the `-O2` row also follows from the SSA
+route (`o2_compiles_to_of_ssa`). Both IR functions are safe on `(3, 5)` from every memory
+(`rtl_inhabited`, `ssa_inhabited`, proved).
 
 **Non-vacuity of the example.** Every row's companions are stated: both placements are
 enterable (proved, `o0_enterable`, `o2_enterable`); the C function's safety on some argument

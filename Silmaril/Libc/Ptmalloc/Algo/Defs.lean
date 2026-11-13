@@ -12,7 +12,7 @@ refinement of the allocator institution) are proved once here, for every `C` wit
 ## Structure
 
 * `Abort`: glibc's `malloc_printerr` diagnostics (and an `internal` catch-all for states the
-  model rules out). A well-formed state never aborts on a valid call (`Task.algo.noAbort`).
+  model rules out). A well-formed view never aborts on a valid call (`Task.algo.noAbort`).
 * **Leaf operations, defined here** from the component operations (`Tcache`, `Fastbins`, `Bins`,
   `Unsorted`, `Top`), each one glibc macro/inline helper, so that an x86 block that gcc inlined
   is matched against it by an outlining lemma: `tcacheGet`, `tcachePut`, `fastPush`, `fastPop`,
@@ -328,12 +328,13 @@ def Task.algo.leafTcachePut : Prop :=
     l.tcachePut c i = some l' →
     LocalWF C l' ∧ Footprint.Within { arena := false, shared := false, kernel := false } l l'
 
-/-- **`Task.algo.noAbort`**: on a well-formed view the bodies never abort on a valid call
-(`_int_free` of a lent-out arena chunk not parked in this thread's tcache, any `_int_malloc`).
-(Stated over `Local.arenaLive`: an `mmap`ed payload never reaches `_int_free`, and `_int_free`
-of one would abort with `free(): invalid pointer`.) -/
+/-- **`Task.algo.noAbort`**: on a well-formed view with its spatial facts the bodies never abort
+on a valid call (`_int_free` of a lent-out arena chunk not parked in this thread's tcache, any
+`_int_malloc`). (Stated over `Local.arenaLive`: an `mmap`ed payload never reaches `_int_free`,
+and `_int_free` of one would abort with `free(): invalid pointer`. `LocalSp`, the view's spatial
+facts, holds for every view of a well-formed world, `Algo.localSp`.) -/
 def Task.algo.noAbort (C : Config) (A : Ops C) : Prop :=
-  C.Ok → ∀ l, LocalWF C l →
+  C.Ok → ∀ l, LocalWF C l → LocalSp C l →
     (∀ n, ∃ r, A.intMalloc l n = .ok r) ∧
     (∀ p u, (p, u) ∈ l.arenaLive C → ∃ l', A.intFree l (p - C.hdr) = .ok l')
 
