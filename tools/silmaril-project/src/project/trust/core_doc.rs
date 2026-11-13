@@ -466,6 +466,7 @@ pub fn convert(doc: Doc, dir: &Path) -> Result<Vec<TrustLine>, String> {
             return Err(format!("policy {}: scope {:?}", p.name, p.scope));
         }
         out.push(TrustLine::Scope(LineScope {
+            scope_kind: Some(p.scope.clone()),
             module: p.name.clone(),
             max: one("max", &p.name, &p.max)?,
             default: one("allow", &p.name, &p.allow)?,

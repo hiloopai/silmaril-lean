@@ -550,7 +550,7 @@ async function trustPage() {
   h += "<h2>Sets</h2>" + ttable(await q("SELECT s.name, s.origin, s.is_all, (SELECT group_concat(CASE m.member_kind WHEN 'set' THEN 'set ' || m.member " +
     "ELSE m.member END, ', ') FROM trust_set_members m WHERE m.set_name = s.name) AS members " +
     `FROM trust_sets s ORDER BY s.origin, s.name LIMIT ${DETAIL}`), null, { name: tset });
-  h += "<h2>Scopes (policy.toml [[native.scope]])</h2>" + ttable(await q("SELECT module, max, default_set AS \"default\", deps, axioms FROM trust_scopes ORDER BY module LIMIT " + DETAIL),
+  h += "<h2>Scopes (policy.toml [[native.scope]])</h2>" + ttable(await q("SELECT module, scope_kind, max, default_set AS \"default\", deps, axioms FROM trust_scopes ORDER BY module LIMIT " + DETAIL),
     null, { max: tset, default: tset, deps: tset, axioms: tset }) +
     '<p class="muted">A scope applies to a module and everything under it, outermost first; NULL inherits. A child max must lie within its parent\'s; default is cut to max.</p>';
   h += "<h2>Modules</h2>" + ttable(await q("SELECT m.name, m.coverage, m.freshness, m.source_status, m.policy_trace, " +
@@ -580,7 +580,7 @@ async function trustModulePage(name) {
     '<p class="muted">verbatim from the core\'s <code>auditLine</code> at the dump\'s profile; the violations above are recomputed and must agree in number.</p>';
   h += "<h2>Native runs in its theorems (own and inherited)</h2>" + ttable(await q("SELECT procedure, class, decls FROM trust_module_native WHERE module = ? ORDER BY class, procedure LIMIT " + DETAIL, [name]),
     null, { procedure: tprocIf });
-  h += "<h2>Recorded uses (edge_decide)</h2>" + ttable(await q("SELECT decl, procedure, mode, kernel_side, profile, axiom FROM trust_uses WHERE module = ? ORDER BY decl, procedure LIMIT " + DETAIL, [name]),
+  h += "<h2>Recorded uses (edge_decide)</h2>" + ttable(await q("SELECT decl, procedure, mode, kernel_side, profile, ceiling, axiom FROM trust_uses WHERE module = ? ORDER BY decl, procedure LIMIT " + DETAIL, [name]),
     null, { procedure: tproc });
   h += "<h2>Coverage gaps (transitive imports whose theorems are not audited)</h2>" + ttable(await q("SELECT dep, coverage, reason FROM trust_coverage_gaps WHERE module = ? ORDER BY dep LIMIT " + DETAIL, [name]),
     null, { dep: tmod });
@@ -621,7 +621,7 @@ async function trustProcedurePage(name) {
         (p.native_function ? ` and runs <code>${esc(p.native_function)}</code>, transferred by <code>${esc(p.native_eq)}</code>` : "") + "; " +
         (p.kernel_fallback ? "a kernel fallback exists (the kernel evaluates the same term, no axiom)." : "there is no kernel fallback: a kernel run recorded under it used a checker the registry does not name.") + "</p>");
   h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name FROM trust_set_closure WHERE name IN (?, '*') ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
-  h += "<h2>Recorded uses</h2>" + ttable(await q("SELECT module, decl, mode, kernel_side, profile, axiom FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
+  h += "<h2>Recorded uses</h2>" + ttable(await q("SELECT module, decl, mode, kernel_side, profile, ceiling, axiom FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
   h += "<h2>Theorems whose axioms include a native run of it</h2>" + ttable(await q("SELECT module, decl, class FROM trust_decl_axioms WHERE procedure = ? AND class IN ('own_native','dep_native') ORDER BY 1, 2 LIMIT " + DETAIL, [name]),
     null, { module: tmod });
   return h;

@@ -15,5 +15,5 @@ trust violations: 5 (1 own native not allowed, 1 inherited native outside deps, 
 trust digests: inputs match, covered modules 0 consistent, 5 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: complete (every described module is audited; modules outside `Silmaril` are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: c3df5dbd4050e79ada48fa60e3c1244c00a47f800d88779237b0012a3593ef88
+sql sha256: d16a3a75bc10b455ab1fc08c88791d31bd24931720d387d81f417a99d043d1f2
 exit: ok

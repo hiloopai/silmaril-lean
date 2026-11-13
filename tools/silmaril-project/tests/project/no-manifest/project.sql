@@ -266,6 +266,7 @@ CREATE TABLE trust_set_members(
 );
 CREATE TABLE trust_scopes(
   module TEXT NOT NULL PRIMARY KEY,
+  scope_kind TEXT CHECK(scope_kind IN ('root','region','module-prefix')),
   max TEXT,
   default_set TEXT,
   deps TEXT,
@@ -299,10 +300,11 @@ CREATE TABLE trust_uses(
   procedure TEXT NOT NULL,
   mode TEXT NOT NULL CHECK(mode IN ('native','kernel')),
   profile TEXT NOT NULL,
+  ceiling TEXT NOT NULL,
   axiom TEXT NOT NULL,
   kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
   axiom_matches INTEGER NOT NULL,
-  PRIMARY KEY(module, decl, procedure, mode, profile, axiom)
+  PRIMARY KEY(module, decl, procedure, mode, profile, ceiling, axiom)
 );
 CREATE TABLE trust_decls(
   decl TEXT NOT NULL PRIMARY KEY,

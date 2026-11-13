@@ -3,5 +3,5 @@ verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unkn
 root: (none)
 trust: no trust dump (--trust): native-procedure and axiom use is unaudited (unknown, not clean)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: ceee128a8e0366ee19a244bf657f1c59edab3d39878b555fdba21c7b11d93d77
+sql sha256: a2ccef925c910139f44b421d76c610cbded4e8d679439f6d8449d6275e527520
 exit: ok

@@ -9,5 +9,5 @@ trust digests: inputs match, covered modules 3 consistent, 0 stale, 0 unknown (c
 trust coverage: complete (every described module is audited; modules outside `Silmaril` are external)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 trust result: policy valid on complete coverage of the described modules (the declarations it audits; not a proof the dump is complete)
-sql sha256: 9dd09b2a1296c7bce544ffa81ec277a38f929b7e3543261f81fe237b55b70e43
+sql sha256: 0848f6e845ef07bdb568670623ed066981e4e3ecc4be959c33af5763ffe1f3ba
 exit: ok

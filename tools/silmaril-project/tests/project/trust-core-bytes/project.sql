@@ -266,6 +266,7 @@ CREATE TABLE trust_set_members(
 );
 CREATE TABLE trust_scopes(
   module TEXT NOT NULL PRIMARY KEY,
+  scope_kind TEXT CHECK(scope_kind IN ('root','region','module-prefix')),
   max TEXT,
   default_set TEXT,
   deps TEXT,
@@ -299,10 +300,11 @@ CREATE TABLE trust_uses(
   procedure TEXT NOT NULL,
   mode TEXT NOT NULL CHECK(mode IN ('native','kernel')),
   profile TEXT NOT NULL,
+  ceiling TEXT NOT NULL,
   axiom TEXT NOT NULL,
   kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
   axiom_matches INTEGER NOT NULL,
-  PRIMARY KEY(module, decl, procedure, mode, profile, axiom)
+  PRIMARY KEY(module, decl, procedure, mode, profile, ceiling, axiom)
 );
 CREATE TABLE trust_decls(
   decl TEXT NOT NULL PRIMARY KEY,
@@ -412,11 +414,11 @@ INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'Classical.choice');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'Quot.sound');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'propext');
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril', 'all', 'default', 'all', 'standard');
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Courses', 'none', NULL, 'none', NULL);
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Papers', 'none', NULL, 'none', NULL);
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Standards', 'none', NULL, 'none', NULL);
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Thesis', 'none', NULL, 'none', NULL);
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril', 'root', 'all', 'default', 'all', 'standard');
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril.Courses', 'region', 'none', NULL, 'none', NULL);
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril.Papers', 'region', 'none', NULL, 'none', NULL);
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril.Standards', 'region', 'none', NULL, 'none', NULL);
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril.Thesis', 'region', 'none', NULL, 'none', NULL);
 INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
 INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Data.ByteArray.Basic', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
 INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Data.List.Basic', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
@@ -899,11 +901,11 @@ INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Proofs.Pr
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Proofs.Prelude.Bytes.Digits', 'default', 'elf.layout');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Proofs.Prelude.Bytes.Digits', 'deps', '*');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Proofs.Prelude.Bytes.Digits', 'max', '*');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Data.IncludeBytes.KernelExamples', 'Silmaril.IncludeBytes.KernelExamples.helloC_extract', 'bytes.eqByteArray', 'native', 'default', '_private.Silmaril.Data.IncludeBytes.KernelExamples.0.Silmaril.IncludeBytes.KernelExamples.helloC_extract._native.edge.bytes.eqByteArray.ax_1_1', '', 1);
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.interpCString', 'bytes.cstring', 'native', 'default', '_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.interpCString._native.edge.bytes.cstring.ax_1_1', '', 1);
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.interpCString_kernel', 'bytes.cstring', 'kernel', 'paranoid', '', 'fallback', 1);
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.rope_same_kernel', 'bytes.sameBytes', 'kernel', 'paranoid', '', 'fallback', 1);
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.rope_same_native', 'bytes.sameBytes', 'native', 'default', '_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Data.IncludeBytes.KernelExamples', 'Silmaril.IncludeBytes.KernelExamples.helloC_extract', 'bytes.eqByteArray', 'native', 'default', 'local', '_private.Silmaril.Data.IncludeBytes.KernelExamples.0.Silmaril.IncludeBytes.KernelExamples.helloC_extract._native.edge.bytes.eqByteArray.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.interpCString', 'bytes.cstring', 'native', 'default', 'local', '_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.interpCString._native.edge.bytes.cstring.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.interpCString_kernel', 'bytes.cstring', 'kernel', 'paranoid', 'local', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.rope_same_kernel', 'bytes.sameBytes', 'kernel', 'paranoid', 'local', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril.KBytes.Examples.rope_same_native', 'bytes.sameBytes', 'native', 'default', 'local', '_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1', '', 1);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.Kernel.decodeArgs?', 'Silmaril.Data.IncludeBytes.Kernel', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.Kernel.decodeArgs?.listLits?', 'Silmaril.Data.IncludeBytes.Kernel', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.Kernel.elabOfInclude', 'Silmaril.Data.IncludeBytes.Kernel', 'default', NULL);

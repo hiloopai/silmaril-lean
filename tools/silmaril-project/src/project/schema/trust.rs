@@ -90,6 +90,8 @@ pub struct LinePolicy {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LineScope {
+    /// `root` | `region` | `module-prefix` (the export's classification).
+    pub scope_kind: Option<String>,
     pub module: String,
     pub max: Option<String>,
     pub default: Option<String>,
@@ -331,6 +333,7 @@ table! {
     /// `[[native.scope]]`: a module and everything under it. `NULL` inherits.
     TrustScope = "trust_scopes", key("module") {
         module: String = "TEXT NOT NULL",
+        scope_kind: Option<String> = "TEXT CHECK(scope_kind IN ('root','region','module-prefix'))",
         max: Option<String> = "TEXT",
         default_set: Option<String> = "TEXT",
         deps: Option<String> = "TEXT",
@@ -374,12 +377,15 @@ table! {
 
 table! {
     /// Recorded `edge_decide` runs. `axiom = ''` for a kernel run.
-    TrustUse = "trust_uses", key("module", "decl", "procedure", "mode", "profile", "axiom") {
+    TrustUse = "trust_uses", key("module", "decl", "procedure", "mode", "profile", "ceiling", "axiom") {
         module: String = "TEXT NOT NULL",
         decl: String = "TEXT NOT NULL",
         procedure: String = "TEXT NOT NULL",
         mode: String = "TEXT NOT NULL CHECK(mode IN ('native','kernel'))",
+        /// The profile the run elaborated under, and the build's ceiling then (`local`: none).
+        /// The core records them as one tag, `profile` or `profile≤ceiling`; split here.
         profile: String = "TEXT NOT NULL",
+        ceiling: String = "TEXT NOT NULL",
         axiom: String = "TEXT NOT NULL",
         /// For a kernel run: `fallback` (the kernel evaluates the native function), `declared`
         /// (the declared kernel checker), or `unregistered` (a kernel checker the registry does

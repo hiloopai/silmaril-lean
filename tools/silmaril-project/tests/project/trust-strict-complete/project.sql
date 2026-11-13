@@ -266,6 +266,7 @@ CREATE TABLE trust_set_members(
 );
 CREATE TABLE trust_scopes(
   module TEXT NOT NULL PRIMARY KEY,
+  scope_kind TEXT CHECK(scope_kind IN ('root','region','module-prefix')),
   max TEXT,
   default_set TEXT,
   deps TEXT,
@@ -299,10 +300,11 @@ CREATE TABLE trust_uses(
   procedure TEXT NOT NULL,
   mode TEXT NOT NULL CHECK(mode IN ('native','kernel')),
   profile TEXT NOT NULL,
+  ceiling TEXT NOT NULL,
   axiom TEXT NOT NULL,
   kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
   axiom_matches INTEGER NOT NULL,
-  PRIMARY KEY(module, decl, procedure, mode, profile, axiom)
+  PRIMARY KEY(module, decl, procedure, mode, profile, ceiling, axiom)
 );
 CREATE TABLE trust_decls(
   decl TEXT NOT NULL PRIMARY KEY,
@@ -405,9 +407,9 @@ INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf_and_byt
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'Classical.choice');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'Quot.sound');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'propext');
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril', 'all', 'default', 'all', 'standard');
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Elf', 'elf_and_bytes', NULL, NULL, NULL);
-INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Papers', 'none', NULL, 'none', NULL);
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril', 'root', 'all', 'default', 'all', 'standard');
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril.Elf', 'module-prefix', 'elf_and_bytes', NULL, NULL, NULL);
+INSERT INTO trust_scopes(module, scope_kind, max, default_set, deps, axioms) VALUES('Silmaril.Papers', 'module-prefix', 'none', NULL, 'none', NULL);
 INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
 INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Thms', NULL, 'Silmaril/Elf/Staged/Example/Thms.lean', 'd33900e59a84ec6d1964149e03a3a5f0717f3c35451caf54d591fa2be7a44caf', 'match', 'consistent', 'covered', 'Silmaril > Silmaril.Elf', NULL);
 INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Leaf.Native', NULL, 'Silmaril/Elf/Staged/Leaf/Native.lean', '138290fff7c5bdcb14e1e73b116d0e86fce4827ef3909594c8482f8acbd6c4d1', 'match', 'consistent', 'covered', 'Silmaril > Silmaril.Elf', NULL);
@@ -454,8 +456,8 @@ INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.B
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'default', 'bytes.sameBytes');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'deps', '*');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'max', '*');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.layout', 'elf.layout', 'kernel', 'default', '', 'fallback', 1);
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.loader', 'elf.loader', 'kernel', 'default', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.layout', 'elf.layout', 'kernel', 'default', 'local', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, ceiling, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.loader', 'elf.loader', 'kernel', 'default', 'local', '', 'fallback', 1);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Example.layout', 'Silmaril.Elf.Staged.Example.Thms', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Example.loader', 'Silmaril.Elf.Staged.Example.Thms', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Leaf.Native.stub', 'Silmaril.Elf.Staged.Leaf.Native', 'default', NULL);

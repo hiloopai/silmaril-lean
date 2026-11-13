@@ -83,6 +83,29 @@ The export omits two things, and the converter handles each explicitly:
   parent's, `default` cut to `max`, and so on). They are checked through the per-declaration
   violation counts above.
 
+**Policy model, unchanged from the core.** The four policy roles stay distinct. `allowed` (the
+profile's set within `max`) bounds a declaration's own native runs; `deps` bounds the native
+runs it inherits; `axioms` bounds its other axioms; `max` bounds children. Nothing is collapsed
+into one "allow" applied transitively, and no equivalence to such a policy is claimed. Scopes
+keep the export's kind (`root`, `region`, `module-prefix`). Their order is deterministic: a
+scope applies to its module and everything under it, scopes are applied outermost first by
+name depth, and two scopes for one module are an error.
+
+**Uses.** The core records a use's profile as one tag: `profile`, or `profile≤ceiling` when a
+ceiling other than `local` was in force. The converter splits it into `trust_uses.profile` and
+`trust_uses.ceiling`. The audit's own profile and ceiling are `meta.trust.profile` and
+`meta.trust.ceiling`.
+
+**Soundness references** are the export's: a decider's or tactic's `sound`, and a declared
+procedure's `{check, sound}` pairs. None is invented. A procedure without a registered
+soundness theorem (`bytes.wf`, or a native tactic without one in its wrapper's registration) has
+none.
+
+**Future optional fields.** The shape is frozen, and unknown fields are an error. If the core
+adds provenance fields (for example per-use provenance, or inherited axioms as
+`{axiom, procedure, from_decl}`), the converter will read them in a new, explicitly versioned
+mapping. They will not be accepted silently.
+
 **Coverage.** A module that has no declaration in the export is `unaudited`: either it was not
 listed for audit (`trust-dump --root`/`--exclude`), or it declares no theorem or definition. The
 export does not record which modules were listed, so this is conservative and makes coverage
@@ -165,7 +188,7 @@ audited, and coverage becomes `partial`.
 | `trust_inputs` | recorded and current digests |
 | `trust_procedures` | `native_decider`, `native_tactic`, `declared` and `named` (`implemented = 0`) procedures with their checkers, soundness theorems, native function and equation, axiom pattern, components, toolchain and fallback coverage |
 | `trust_sets`, `trust_set_members` | sets (`builtin` `all`/`none`, `policy`, `trust_set`), member names and includes |
-| `trust_scopes` | `[[native.scope]]` rows (`NULL` inherits) |
+| `trust_scopes` | `[[native.scope]]` rows with the export's scope kind (`NULL` inherits) |
 | `trust_modules` | source digest and status, freshness, region, coverage (`covered`, `unaudited`, `excluded`, `unsupported`, `undescribed`, `external`), scope chain |
 | `trust_imports` | direct import edges |
 | `trust_module_policy` | effective `max`, `default`, `deps`, `axioms`, `allowed` (`*` = all) |

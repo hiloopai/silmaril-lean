@@ -653,12 +653,19 @@ impl Ingest<'_> {
                     continue;
                 }
             };
+            // The core's profile tag: `profile`, or `profile≤ceiling` when a ceiling other than
+            // `local` was in force (`profileTag`).
+            let (use_profile, use_ceiling) = u
+                .profile
+                .split_once('≤')
+                .unwrap_or((u.profile.as_str(), "local"));
             let row = TrustUse {
                 module: u.module.clone(),
                 decl: u.decl.clone(),
                 procedure: u.procedure.clone(),
                 mode: u.mode.clone(),
-                profile: u.profile.clone(),
+                profile: use_profile.to_string(),
+                ceiling: use_ceiling.to_string(),
                 axiom: u.axiom.clone().unwrap_or_default(),
                 kernel_side: kernel_side.into(),
                 axiom_matches: matches,
@@ -702,6 +709,7 @@ impl Ingest<'_> {
             }
             t.scopes.push(TrustScope {
                 module: s.module.clone(),
+                scope_kind: s.scope_kind.clone(),
                 max: s.max.clone(),
                 default_set: s.default.clone(),
                 deps: s.deps.clone(),
