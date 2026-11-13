@@ -1,0 +1,18 @@
+# MP: message passing.
+name MP
+source mp.c
+loc x
+loc y
+result r0
+result r1
+thread P0
+st x 1
+st y 1
+thread P1
+ld y r0
+ld x r1
+exists r0=1 /\ r1=0
+c11 na racy data race on x and y
+c11 rlx allowed RC11 (Lahav et al., PLDI 2017), recorded from memory
+c11 ra forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory: the release store of y synchronises with the acquire load
+c11 sc forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory

@@ -1,0 +1,6 @@
+X86_64 RMW+lock-inc+W
+"Hand-written: no store can fall between the read and the write of a lock inc"
+{ int x=0; }
+ P0           | P1          ;
+ lock incl (x) | movl $5,(x) ;
+exists (x=1)
