@@ -1,0 +1,4 @@
+schema = "silmaril.project.v0.1"
+name = "mkbad"
+sid = "6666666666666666666666666666666666666666666666666666666666666666"
+modules = ["Mk"]

@@ -225,7 +225,8 @@ def proofNameKinds : List String := ["format_law", "decomposition", "refutation_
 
 /-- Kinds whose name is a problem (or group) name, so a legacy `/` id is accepted. -/
 def problemNameKinds : List String :=
-  ["judgement", "children", "root", "detached", "predicate", "answer", "instance"]
+  ["judgement", "children", "root", "detached", "deprecation", "finding", "predicate", "answer",
+    "instance"]
 
 /-- Add a record, checking its name, its sid override and that `(kind, name)` is new. -/
 def addRecord (r : Record) : CoreM Unit := do

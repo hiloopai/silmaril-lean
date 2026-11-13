@@ -1,0 +1,59 @@
+name: sil project registry
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  registry:
+    # `make project-check`'s steps that need no Lean (init, lock, lint): a stale registry lock
+    # (#104) fails here. The Lean half of the self-test (dump, check) stays manual.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RUST_TOOLCHAIN: 1.98.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The `project` filter must cover every file the registry names, or an edit to one would
+      # skip this job.
+      - name: Check that the path filter covers the registry
+        run: |
+          python3 - <<'PY'
+          import fnmatch, re, sys, tomllib
+          text = open(".github/paths-filter.yml").read()
+          block = re.search(r"^project:\n((?:  .*\n|\s*\n)+)", text, re.M)[1]
+          globs = re.findall(r"- '([^']+)'", block)
+          paths = set()
+          def walk(x):
+              if isinstance(x, dict):
+                  for k, v in x.items():
+                      if k == "paths": paths.update(v)
+                      if k == "path" and isinstance(v, str): paths.add(v)
+                      walk(v)
+              elif isinstance(x, list):
+                  for v in x: walk(v)
+          walk(tomllib.load(open("silmaril/artifacts.toml", "rb")))
+          missed = sorted(p for p in paths if not any(fnmatch.fnmatch(p, g) for g in globs))
+          if missed:
+              sys.exit("the `project` paths filter misses registry paths: " + ", ".join(missed))
+          print(f"{len(paths)} registry paths covered by {len(globs)} globs")
+          PY
+      - name: Install Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
+      - name: Restore the Cargo cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            tools/silmaril-project/target
+          key: cargo-release-v1-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('tools/silmaril-project/Cargo.lock', 'tools/silmaril-project/src/**') }}
+          restore-keys: cargo-release-v1-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-
+      - name: Lock and lint the registry without Lean (make project-registry)
+        run: make project-registry

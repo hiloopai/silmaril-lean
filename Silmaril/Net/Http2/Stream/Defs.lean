@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Net.Http2.Frame.Defs
+public import Silmaril.Automata.Named.Derive
+public import Silmaril.Automata.Machine.Defs
 
 @[expose] public section
 
@@ -69,6 +71,12 @@ sent on another stream, §6.6). PUSH_PROMISE is only legal on an idle promised s
   END_STREAM flag set can cause two state transitions", §5.1): `headers true` moves idle to
   half-closed directly.
 
+**As a finite machine.** `StreamState`, `Signal`, `Dir` and `Event` are finite named types
+(`silmaril_finite`, `Silmaril.Automata.FinNamed`): an event is named `(send,headers(true))`.
+`machine` is `step` as a `Silmaril.Automata.DMachine`, with the marks `marks` (initial idle,
+accepting closed); its JSON document is `silmaril/machines/http2-stream.toml`, and the
+binding in the project self-test proves that the document is exactly this machine.
+
 Stream identifiers (§5.1.1): client-initiated streams are odd, server-initiated even, and a new
 stream's identifier is larger than every identifier its initiator opened before
 (`openRemote`).
@@ -80,6 +88,8 @@ namespace Silmaril.Net.Http2
 inductive StreamState where
   | idle | reservedLocal | reservedRemote | «open» | halfClosedLocal | halfClosedRemote | closed
   deriving DecidableEq, Repr, Inhabited
+
+silmaril_finite StreamState
 
 /-- The frames that drive the state machine. -/
 inductive Signal where
@@ -94,16 +104,22 @@ inductive Signal where
   | windowUpdate
   deriving DecidableEq, Repr, Inhabited
 
+silmaril_finite Signal
+
 /-- Sent by this endpoint, or received from the peer. -/
 inductive Dir where
   | send | recv
   deriving DecidableEq, Repr, Inhabited
+
+silmaril_finite Dir
 
 /-- An event on a stream. -/
 structure Event where
   dir : Dir
   signal : Signal
   deriving DecidableEq, Repr, Inhabited
+
+silmaril_finite Event
 
 /-- What goes wrong (§5.4). -/
 inductive StreamError where
@@ -174,6 +190,16 @@ def step : StreamState → Event → Except StreamError StreamState
   | halfClosedRemote, ⟨send, windowUpdate⟩ => .ok halfClosedRemote
   | halfClosedRemote, ⟨recv, windowUpdate⟩ => .ok halfClosedRemote
   | halfClosedRemote, ⟨recv, _⟩ => .error (.stream .streamClosed)
+
+/-- **The stream machine** (`Silmaril.Automata`): the step function as a deterministic
+machine over the finite types of states and events; an error rejects. Its document is
+`silmaril/machines/http2-stream.toml`, bound by `ProjectSelfTest.Machines`. -/
+def machine : Silmaril.Automata.DMachine StreamState Event := .ofExcept step
+
+/-- The marking layer: streams start idle and end closed. -/
+def marks : Silmaril.Automata.Marks StreamState where
+  initial s := s == .idle
+  accepting s := s == .closed
 
 /-- Run a sequence of events. -/
 def run (s : StreamState) : List Event → Except StreamError StreamState
