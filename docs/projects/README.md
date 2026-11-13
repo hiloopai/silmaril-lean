@@ -9,6 +9,7 @@
 | Logics and institutions | HOL, Metamath, ZF/ZFC, arithmetic, proof translations and Hets-style development graphs | [Logic](logic.md) |
 | Lambda calculi | Eight cube corners, STLC categorical semantics, System F/Fω parametricity and institution graphs | [Lambda cube](lambda-cube.md) |
 | HTTP | RFC 9110 semantics and RFC 9112 HTTP/1.1 parsing and framing; RFC 9113 HTTP/2 frames, settings, flow control, stream states and field validity; RFC 7541 HPACK; the roadmap to full HTTP (HTTP/3, caching, cross-version and security properties) | [HTTP](http.md) |
+| HTTP servers | One framework for HTTP servers on any platform: the server institution over request/response traces (overlapping requests, connections), atomic, linearizable, sequentially consistent and in-order readings with the lifts between them, refinement as trace inclusion, the HTTP instance and examples | [HTTP servers](http-servers.md) |
 | Lossless compression | A decoder/codec/container/streaming framework; DEFLATE, zlib, gzip and a zlib 1.3.1 streaming inflater model | [Compression](compression.md) |
 | Silmaril projects | Records for artifacts, values, problems and the problem DAG; format adapters and shapes; the `sil project` CLI (check, SQLite, explorer) | [Silmaril projects](silmaril-projects.md) |
 | Cambridge courses | L1/L2 semantics, domains and PCF, optimising compilers and exercises | [Courses](../courses/cambridge.md) |
