@@ -417,6 +417,7 @@ root = "tests.cerberus.IntegerCastRuntime"
 [[lean_lib]]
 name = "SysVTvExample"
 srcDir = "examples/sysv-tv"
+roots = ["SysVTvExample", "SysVTvRtl"]
 needs = ["projectRecords", "sysvTvData"]
 
 [[input_dir]]

@@ -70,4 +70,7 @@ children = ["silmaril.sysv_tv.max2.o0_obj_value.parses", "silmaril.sysv_tv.max2.
   "silmaril.sysv_tv.max2.o0.code", "silmaril.sysv_tv.max2.o2.code",
   "silmaril.sysv_tv.max2.elaborates", "silmaril.sysv_tv.max2.o0.compiles_to",
   "silmaril.sysv_tv.max2.o2.lifts", "silmaril.sysv_tv.max2.o2.ir_refines",
-  "silmaril.sysv_tv.max2.o2.compiles_to", "silmaril.sysv_tv.max2.builds"]
+  "silmaril.sysv_tv.max2.o2.compiles_to", "silmaril.sysv_tv.max2.builds",
+  "silmaril.sysv_tv.max2.o0.lifts_rtl", "silmaril.sysv_tv.max2.o2.lifts_rtl",
+  "silmaril.sysv_tv.max2.o2.lifts_ssa", "silmaril.sysv_tv.max2.rtl.ir_refines",
+  "silmaril.sysv_tv.max2.ssa.ir_refines"]
