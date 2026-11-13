@@ -22,6 +22,7 @@
         in {
           default = shell [ ];
           cross-test = shell (with pkgs; [ binaryen wasmtime ]);
+          http-test = shell (with pkgs; [ wasmtime wasm-tools curl ]);
         });
     };
 }
