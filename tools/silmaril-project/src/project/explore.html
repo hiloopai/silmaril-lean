@@ -617,7 +617,10 @@ async function trustProcedurePage(name) {
     (p.kind === "declared"
       ? `<p class="muted">Two backends for one proposition: the native checker <code>${esc(p.native_check || "—")}</code> (sound by <code>${esc(p.native_sound || "—")}</code>) ` +
         `and the kernel checker <code>${esc(p.kernel_check || "—")}</code> (sound by <code>${esc(p.kernel_sound || "—")}</code>). A native run trusts the compiler and runtime; the kernel side never runs natively.</p>`
-      : `<p class="muted">It decides <code>${esc(p.function)} a₁ … aₙ = true</code>. A native run trusts the compiler and runtime` +
+      : (p.sound ? `<p class="muted">Registered soundness theorem: <code>${esc(p.sound)}</code> (from the export).</p>`
+          : '<p class="err">No soundness theorem is registered: a run establishes only the decided predicate <code>f a₁ … aₙ = true</code>, ' +
+            "not any further (semantic) property. Nothing is inferred in its place.</p>") +
+        `<p class="muted">It decides <code>${esc(p.function)} a₁ … aₙ = true</code>. A native run trusts the compiler and runtime` +
         (p.native_function ? ` and runs <code>${esc(p.native_function)}</code>, transferred by <code>${esc(p.native_eq)}</code>` : "") + "; " +
         (p.kernel_fallback ? "a kernel fallback exists (the kernel evaluates the same term, no axiom)." : "there is no kernel fallback: a kernel run recorded under it used a checker the registry does not name.") + "</p>");
   h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name FROM trust_set_closure WHERE name IN (?, '*') ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
