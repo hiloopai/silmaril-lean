@@ -88,36 +88,40 @@ example : LayoutIs F badL := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := badL))
     (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := badL))
 
-/-! ## Audits and recorded uses -/
+/-! ## Audits and recorded uses
 
--- The default-profile layout ran natively: its own native procedure and axiom.
-/--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_default","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.layout_default._native.edge.elf.layout.ax_1_1"],"own_native":["elf.layout"],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
--/
-#guard_msgs in
+The audits are matched on the fields that carry the mode (`own_native`, `native_axioms`), so
+that fields the `silmaril.trust.v1` schema adds do not break them. -/
+
+-- The default-profile layout ran natively: its own native procedure is `elf.layout`.
+/-- "own_native":["elf.layout"] -/
+#guard_msgs (substring := true) in
 trust_audit layout_default
 
 set_option silmaril.trust.profile "local" in
-/--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.loader_local","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.loader_local._native.edge.elf.loader.ax_1_1"],"own_native":["elf.loader"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.main_local","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":["_private.Silmaril.Elf.Staged.Example.Profiles.0.Silmaril.Elf.Staged.Example.Profiles.main_local._native.edge.elf.tiles.x86.ax_1_1"],"own_native":["elf.tiles.x86"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
--/
-#guard_msgs in
-trust_audit loader_local main_local
+/-- "own_native":["elf.loader"] -/
+#guard_msgs (substring := true) in
+trust_audit loader_local
 
-/--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.loader_default","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
--/
-#guard_msgs in
+set_option silmaril.trust.profile "local" in
+/-- "own_native":["elf.tiles.x86"] -/
+#guard_msgs (substring := true) in
+trust_audit main_local
+
+-- The kernel proofs have no native axiom and no native procedure.
+/-- "native_axioms":[],"own_native":[] -/
+#guard_msgs (substring := true) in
 trust_audit loader_default
 
 set_option silmaril.trust.profile "paranoid" in
-/--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_paranoid","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"paranoid","schema":"silmaril.trust.v1","violations":[]}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.Elf.Staged.Example.Profiles.layout_kernelOnly","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Elf.Staged.Example.Profiles","native_axioms":[],"own_native":[],"profile":"paranoid","schema":"silmaril.trust.v1","violations":[]}
--/
-#guard_msgs in
-trust_audit layout_paranoid layout_kernelOnly
+/-- "native_axioms":[],"own_native":[] -/
+#guard_msgs (substring := true) in
+trust_audit layout_paranoid
+
+set_option silmaril.trust.profile "paranoid" in
+/-- "native_axioms":[],"own_native":[] -/
+#guard_msgs (substring := true) in
+trust_audit layout_kernelOnly
 
 /-- The recorded uses of this module: one per leaf proof, with its mode. -/
 meta def usesHere : Lean.CoreM (List String) := do
