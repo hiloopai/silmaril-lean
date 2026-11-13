@@ -15,31 +15,60 @@ ci_time = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ci_time)
 
 
+def job(name, started, completed, conclusion="success"):
+    return {"name": name, "started_at": started, "completed_at": completed,
+            "conclusion": conclusion}
+
+
+def quiet(call, *args):
+    with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}), \
+            contextlib.redirect_stdout(io.StringIO()) as out:
+        return call(*args), out.getvalue()
+
+
 class TimeBudgetTests(unittest.TestCase):
-    def setUp(self):
-        self.now = datetime(2026, 1, 2, tzinfo=timezone.utc)
+    attempt = {"run_started_at": "2026-01-01T00:00:00Z"}
+    now = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
 
-    def check_at(self, seconds):
-        run = {"run_started_at": (self.now - timedelta(seconds=seconds)).isoformat()}
-        with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}), contextlib.redirect_stdout(io.StringIO()):
-            return ci_time.check(run, self.now)
+    def check(self, *jobs):
+        return quiet(ci_time.check, self.attempt, list(jobs), self.now)
 
-    def test_four_minutes_passes_but_exceeding_it_fails(self):
-        self.assertEqual(self.check_at(240), 0)
-        self.assertEqual(self.check_at(240.1), 1)
+    def test_four_minutes_of_running_jobs_passes_but_exceeding_it_fails(self):
+        self.assertEqual(self.check(job("a", "2026-01-01T00:00:00Z", "2026-01-01T00:04:00Z"))[0], 0)
+        self.assertEqual(self.check(job("a", "2026-01-01T00:00:00Z", "2026-01-01T00:04:01Z"))[0], 1)
 
-    def test_rerun_does_not_count_time_since_original_run(self):
-        run = {"created_at": "2025-01-01T00:00:00Z",
-               "run_started_at": "2026-01-01T23:59:00Z"}
-        self.assertEqual(ci_time.elapsed_seconds(run, self.now), 60)
+    def test_waiting_for_a_runner_does_not_count(self):
+        # main after #93 (run 43357817902): `lean / check` waited 213 s for a 16-vCPU runner.
+        run = {"run_started_at": "2026-11-13T03:16:11Z"}
+        jobs = [job("changes", "2026-11-13T03:16:13Z", "2026-11-13T03:16:23Z"),
+                job("helpers / helpers", "2026-11-13T03:16:14Z", "2026-11-13T03:16:25Z"),
+                job("rust", "2026-11-13T03:16:23Z", "2026-11-13T03:16:23Z", "skipped"),
+                job("lean / check", "2026-11-13T03:19:56Z", "2026-11-13T03:25:24Z"),
+                job("CI", "2026-11-13T03:25:26Z", "2026-11-13T03:25:28Z"),
+                {"name": "CI time budget / budget", "started_at": "2026-11-13T03:25:30Z",
+                 "completed_at": None, "conclusion": None}]
+        now = datetime(2026, 11, 13, 3, 25, 40, tzinfo=timezone.utc)
+        status, out = quiet(ci_time.check, run, jobs, now)
+        self.assertIn("352.0s with a job running (215.0s with none", out)
+        self.assertEqual(status, 1)
 
-    def test_queue_and_setup_time_within_attempt_are_included(self):
-        self.assertEqual(self.check_at(300), 1)
+    def test_parallel_jobs_count_once(self):
+        self.assertEqual(ci_time.union_seconds(ci_time.running_intervals(self.attempt, [
+            job("a", "2026-01-01T00:00:00Z", "2026-01-01T00:02:00Z"),
+            job("b", "2026-01-01T00:01:00Z", "2026-01-01T00:03:00Z"),
+            job("c", "2026-01-01T00:05:00Z", "2026-01-01T00:06:00Z"),
+        ], self.now)), 240)
+
+    def test_a_rerun_leaves_out_jobs_from_earlier_attempts(self):
+        retained = job("old", "2025-12-31T23:00:00Z", "2025-12-31T23:30:00Z")
+        self.assertEqual(ci_time.running_intervals(self.attempt, [retained], self.now), [])
+        with self.assertRaises(ValueError):
+            self.check(retained)
 
     def test_invalid_timestamps_fail_instead_of_passing(self):
-        for started in ["invalid", "2026-01-02T00:00:01Z", "2026-01-01T23:59:00"]:
+        for started in ["invalid", "2026-01-01T00:11:00Z", "2026-01-01T00:01:00"]:
             with self.subTest(started=started), self.assertRaises(ValueError):
-                ci_time.elapsed_seconds({"run_started_at": started}, self.now)
+                ci_time.running_intervals(self.attempt, [job("a", started, None)], self.now)
 
 
 class CompileTimeTests(unittest.TestCase):
@@ -61,14 +90,13 @@ class CompileTimeTests(unittest.TestCase):
     def test_compile_time_is_reported_but_not_counted(self):
         line = "2026-01-01T00:04:00.0000000Z ✔ [1/1] Built Big (3m)"
         run = {"run_started_at": "2026-01-01T00:00:00Z"}
+        jobs = [job("lean", "2026-01-01T00:00:00Z", "2026-01-01T00:06:00Z")]
         now = datetime(2026, 1, 1, 0, 6, tzinfo=timezone.utc)
-        with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}), \
-                contextlib.redirect_stdout(io.StringIO()) as out:
-            self.assertEqual(ci_time.check(run, now, [line]), 0)
-        self.assertIn("360.0s elapsed, of which 180.0s compiled", out.getvalue())
-        with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}), \
-                contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(ci_time.check(run, now), 1)
+        status, out = quiet(ci_time.check, run, jobs, now, [line])
+        self.assertEqual(status, 0)
+        self.assertIn("360.0s with a job running", out)
+        self.assertIn("of which 180.0s compiled", out)
+        self.assertEqual(quiet(ci_time.check, run, jobs, now)[0], 1)
 
     def test_an_unknown_duration_fails_instead_of_counting_nothing(self):
         with self.assertRaises(ValueError):

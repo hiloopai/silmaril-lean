@@ -1,0 +1,7 @@
+X86 iwp2.8.b
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{ 0:EAX=1; }
+ P0           | P1           ;
+ XCHG [x],EAX | MOV EBX,[y]  ;
+ MOV [y],$1   | MOV ECX,[x]  ;
+exists (1:EBX=1 /\ 1:ECX=0)
