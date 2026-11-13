@@ -357,6 +357,7 @@ INSERT INTO meta(key, value) VALUES('modules', 'Ok');
 INSERT INTO meta(key, value) VALUES('roots', 'Ok');
 INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.2');
 INSERT INTO meta(key, value) VALUES('toolchain', '4.35.0-rc4');
+INSERT INTO meta(key, value) VALUES('trust.enforcement', 'report-only');
 INSERT INTO meta(key, value) VALUES('trust.status', 'absent');
 INSERT INTO projects(sid, name, origin, version, description, root, url, rev) VALUES('1111111111111111111111111111111111111111111111111111111111111111', 'ok', 'local', '0.1.0', 'Golden case: every record kind, statuses, instances, an imported package', 'ok.verify', NULL, NULL);
 INSERT INTO projects(sid, name, origin, version, description, root, url, rev) VALUES('2222222222222222222222222222222222222222222222222222222222222222', 'dep', 'imported', NULL, 'an imported project', NULL, NULL, NULL);

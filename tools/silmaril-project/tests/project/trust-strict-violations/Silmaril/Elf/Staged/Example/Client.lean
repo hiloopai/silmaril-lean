@@ -1,0 +1,1 @@
+-- Stand-in source of Silmaril.Elf.Staged.Example.Client for the trust fixture; only its digest is recorded.

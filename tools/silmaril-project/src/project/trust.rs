@@ -87,6 +87,22 @@ impl Tables {
     }
 }
 
+fn enforcement(strict: bool) -> &'static str {
+    if strict { "strict" } else { "report-only" }
+}
+
+/// Said on every run, so that a report is never mistaken for enforcement.
+fn enforcement_line(strict: bool) -> String {
+    if strict {
+        "trust policy: enforced (--strict-trust): violations and incomplete evidence are errors"
+            .into()
+    } else {
+        "trust policy: NOT enforced (report only): violations are warnings and rows of \
+         trust_violations; validate with --strict-trust"
+            .into()
+    }
+}
+
 /// Check the trust dump at `path` (relative to `dir`), if any, and append the trust tables to
 /// `o.db` (which `check` has filled up to the summary table).
 pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Result<()> {
@@ -103,6 +119,8 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
              (unknown, not clean)"
                 .into(),
         );
+        o.lines.push(enforcement_line(strict));
+        meta(o, &[("enforcement", enforcement(strict).into())]);
         Tables::default().push(&mut o.db);
         return Ok(());
     };
@@ -912,10 +930,12 @@ impl Ingest<'_> {
             fresh("stale"),
             fresh("unknown")
         ));
+        self.o.lines.push(enforcement_line(self.strict));
         meta(
             self.o,
             &[
                 ("status", "present".into()),
+                ("enforcement", enforcement(self.strict).into()),
                 ("schema", d.schema.clone()),
                 ("sha256", sha256),
                 ("producer", d.producer.clone()),

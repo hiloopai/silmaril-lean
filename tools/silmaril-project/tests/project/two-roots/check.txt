@@ -5,4 +5,5 @@ root: (none)
 group t.x: []
 group t.y: []
 trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
 exit: failed

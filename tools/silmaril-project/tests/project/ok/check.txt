@@ -12,5 +12,6 @@ group ok.preds: [ok.small.two=THM, ok.small.five=UNS, ok.cnf.holds=SAT, ok.cnf.e
 group ok.values: [ok.pair.parses=THM, ok.pair.agrees.1=OPN, ok.hello.port=THM, ok.trivial.hello=THM]
 group ok.verify: [ok.top=THM, ok.bad_top=UNS, ok.open_top=OPN, ok.values=group(3 holds, 0 fails, 1 unknown), ok.preds=group(1 holds, 1 fails, 4 unknown)]
 trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
-sql sha256: a0e63f4639112aa71e2a0bc3da8ab6291a0fb27208d143e932e48dffb3bdecc8
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: 8f3a52abf8574c97cedc6e0b8daf5e93662c74c05897d1f040ee903ffafe062c
 exit: ok

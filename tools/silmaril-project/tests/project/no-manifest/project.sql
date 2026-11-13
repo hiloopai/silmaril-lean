@@ -357,6 +357,7 @@ INSERT INTO meta(key, value) VALUES('modules', 'Lib');
 INSERT INTO meta(key, value) VALUES('roots', 'Lib');
 INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.2');
 INSERT INTO meta(key, value) VALUES('toolchain', '4.35.0-rc4');
+INSERT INTO meta(key, value) VALUES('trust.enforcement', 'report-only');
 INSERT INTO meta(key, value) VALUES('trust.status', 'absent');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
 INSERT INTO szs(code, name, verdict) VALUES('OPN', 'Open', 'unknown');

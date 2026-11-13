@@ -1,0 +1,1 @@
+-- Stand-in source of Silmaril.Proofs.Elf.Staged.Fast for the trust fixture; only its digest is recorded.

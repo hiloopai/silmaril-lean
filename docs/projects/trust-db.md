@@ -112,6 +112,16 @@ same scope are an error. In this first slice, the effective `allow` bounds a mod
 `trust_module_policy` keeps the resolved sets and the scope that declared each one, so a
 dependency role can be added there later.
 
+### Report-only vs enforcement
+
+Without `--strict-trust`, nothing is enforced. Violations are warnings and rows of
+`trust_violations`, the database is written so they can be inspected, and every run prints
+`trust policy: NOT enforced (report only)` and records `meta.trust.enforcement = report-only`.
+**A passing run without `--strict-trust` is not a policy check.** For CI, use
+`--strict-trust` (or `make project-trust-check TRUST=…`). It exits non-zero, writes no
+database, and records `enforcement = strict` when it passes. The strict mode is not yet in
+`make check`, because the library does not emit a trust dump yet.
+
 ### `--strict-trust`
 
 `sil project check|sqlite --strict-trust` turns violations into errors. It also fails on:
@@ -122,9 +132,13 @@ dependency role can be added there later.
 - a dump without `decls`.
 
 Imports that the dump lists as `excluded` or `unsupported` (with a reason) are not errors.
-Without `--strict-trust`, these cases are reported but do not fail the run. Fixture:
-`trust-strict`, which is the clean fixture failing on its undescribed imports (Mathlib,
-`Silmaril.Elf.Parse.Defs`, …).
+Without `--strict-trust`, these cases are reported but do not fail the run. Fixtures:
+
+- `trust-strict-ok`: passes, with every import described or excluded with a reason;
+- `trust-strict-gaps`: fails on undescribed imports;
+- `trust-strict-violations`: fails, each violation an error.
+
+The test `strict_trust_fails_where_report_only_writes` runs the same input both ways.
 
 ### Fail closed
 
@@ -205,7 +219,7 @@ The cases in `tools/silmaril-project/tests/project/` are:
   reported again through an importing module; an unattributed axiom; an edited source, which
   makes its module and that module's importer stale;
 - `trust-invalid`: the fail-closed errors;
-- `trust-strict`: `--strict-trust`.
+- `trust-strict-ok`, `trust-strict-gaps`, `trust-strict-violations`: `--strict-trust`.
 
 Their sources are placeholder files whose digests are recorded, and the uses are illustrative,
 not measured.

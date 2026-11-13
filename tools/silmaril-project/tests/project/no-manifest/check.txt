@@ -2,5 +2,6 @@ summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
 trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
-sql sha256: ec784ec6f06fe7f6288571cc5eecc5c368f17d69f2bb66ed7dc14fbcdd56a06a
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: 28b4781024b668e9a0c73aaa12620f1965ae6b6ad6a2dda4b60f0b8aa534266e
 exit: ok

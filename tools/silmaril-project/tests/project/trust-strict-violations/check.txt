@@ -1,0 +1,20 @@
+error: trust Silmaril.Elf.Staged.Example.Client: not-allowed: Silmaril.Elf.Staged.Example.Fast.bv uses lean.std.bv_decide.verifyBVExpr native "" (through Silmaril.Elf.Staged.Example.Fast)
+error: trust Silmaril.Elf.Staged.Example.Client: not-allowed: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast" (through Silmaril.Elf.Staged.Example.Fast)
+error: trust Silmaril.Elf.Staged.Example.Client: unattributed-axiom: Silmaril.Elf.Staged.Example.Client.uses_fast uses Silmaril.Elf.Staged.Example.Client.extra
+error: trust Silmaril.Elf.Staged.Example.Client: unsupported: Silmaril.Elf.Staged.Example.Fast.bv uses lean.std.bv_decide.verifyBVExpr native "" (through Silmaril.Elf.Staged.Example.Fast)
+error: trust Silmaril.Elf.Staged.Example.Client: unsupported: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast" (through Silmaril.Elf.Staged.Example.Fast)
+error: trust Silmaril.Elf.Staged.Example.Fast: not-allowed: Silmaril.Elf.Staged.Example.Fast.bv uses lean.std.bv_decide.verifyBVExpr native ""
+error: trust Silmaril.Elf.Staged.Example.Fast: not-allowed: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast"
+error: trust Silmaril.Elf.Staged.Example.Fast: unsupported: Silmaril.Elf.Staged.Example.Fast.bv uses lean.std.bv_decide.verifyBVExpr native ""
+error: trust Silmaril.Elf.Staged.Example.Fast: unsupported: Silmaril.Elf.Staged.Example.Fast.layout uses elf.layout native "fast"
+error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: digests are stale (source match)
+error: trust Silmaril.Formats.Bytes: --strict-trust: digests are stale (source changed)
+summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
+root: (none)
+trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 planned), 5 sets, 3 policies
+trust modules: 7 covered, 4 excluded, 1 unsupported, 0 undescribed; 11 direct uses
+trust violations: 9 (5 direct, 4 transitive)
+trust digests: toolchain match, inputs match, modules 5 consistent, 2 stale, 5 unknown (consistent digests are not proof of freshness)
+trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
+exit: failed

@@ -427,3 +427,75 @@ fn sql_text_is_stable_across_runs() {
     };
     assert_eq!(run(), run());
 }
+
+/// Report-only mode writes the database with its violation rows for inspection, and says it is
+/// not enforcing; `--strict-trust` on the same input fails and writes no database.
+#[test]
+fn strict_trust_fails_where_report_only_writes() {
+    let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/trust-violations");
+    let run = |strict: bool| {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("project.sqlite");
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_silmaril-project"));
+        cmd.args([
+            "sqlite",
+            "--dump",
+            "dump.json",
+            "--trust",
+            "trust.json",
+            "--sql",
+        ])
+        .arg(tmp.path().join("project.sql"))
+        .arg("--db")
+        .arg(&db);
+        if strict {
+            cmd.arg("--strict-trust");
+        }
+        let out = cmd.current_dir(&case).output().unwrap();
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        let rows = db.exists().then(|| {
+            let conn = rusqlite::Connection::open(&db).unwrap();
+            let n: i64 = conn
+                .query_row("SELECT count(*) FROM trust_violations", [], |r| r.get(0))
+                .unwrap();
+            let mode: String = conn
+                .query_row(
+                    "SELECT value FROM meta WHERE key = 'trust.enforcement'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            (n, mode)
+        });
+        (out.status.success(), stdout, rows)
+    };
+    let (ok, stdout, rows) = run(false);
+    assert!(ok, "{stdout}");
+    assert!(
+        stdout.contains("trust policy: NOT enforced (report only)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.lines().any(|l| l.starts_with("warning: trust ")),
+        "{stdout}"
+    );
+    assert_eq!(rows, Some((9, "report-only".to_string())));
+
+    let (ok, stdout, rows) = run(true);
+    assert!(!ok, "{stdout}");
+    assert!(
+        stdout.contains("trust policy: enforced (--strict-trust)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout
+            .lines()
+            .any(|l| l.starts_with("error: trust ") && l.contains("not-allowed")),
+        "{stdout}"
+    );
+    assert!(
+        !stdout.lines().any(|l| l.starts_with("warning: trust ")),
+        "{stdout}"
+    );
+    assert_eq!(rows, None, "a failed strict run writes no database");
+}

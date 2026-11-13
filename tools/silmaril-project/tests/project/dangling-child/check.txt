@@ -4,4 +4,5 @@ verdicts: 0 holds, 0 fails, 1 unknown (all 1 problems); 0 holds, 0 fails, 1 unkn
 root: dc.all
 group dc.all: [dc.a=OPN]
 trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
 exit: failed

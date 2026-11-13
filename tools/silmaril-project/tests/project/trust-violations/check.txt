@@ -14,5 +14,6 @@ trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 plan
 trust modules: 7 covered, 1 excluded, 1 unsupported, 3 undescribed; 11 direct uses
 trust violations: 9 (5 direct, 4 transitive)
 trust digests: toolchain match, inputs match, modules 5 consistent, 2 stale, 2 unknown (consistent digests are not proof of freshness)
-sql sha256: 6dbf0039b713133c1af853ce110b495837bdddfafe94ba3bbd97c88e276b96cd
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: 3f34f0e931418df109af9bb651f252746b08c9147a5f0e6f0aeb6a29e887db59
 exit: ok
