@@ -414,7 +414,7 @@ INSERT INTO meta(key, value) VALUES('trust.policy_pin', '0000000000000000');
 INSERT INTO meta(key, value) VALUES('trust.producer', 'hand-written fixture (not producer output) (main module Fixture)');
 INSERT INTO meta(key, value) VALUES('trust.profile', 'default');
 INSERT INTO meta(key, value) VALUES('trust.roots', 'Silmaril');
-INSERT INTO meta(key, value) VALUES('trust.sha256', '0a312cf1dfec83b730784dd63e332b01dcd2618b2b1476ac5c55388e29ad70e4');
+INSERT INTO meta(key, value) VALUES('trust.sha256', 'af819280180be54467aec036767667d839bf405afc1b08dd9aa048801156e296');
 INSERT INTO meta(key, value) VALUES('trust.status', 'present');
 INSERT INTO meta(key, value) VALUES('trust.toolchain', 'leanprover/lean4:nightly-2026-11-05');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
@@ -565,7 +565,7 @@ INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Sil
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril.Prelude.Bytes.Native.Defs.stub', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril.Prelude.Bytes.Native.Defs.stub', 'propext', 'other', '');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Elf.Staged.Fast.bv', 0, 'unregistered native run (bv_decide)');
-INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Elf.Staged.Fast.forged', 0, 'unverified native axiom: matches elf.body by name, but no recorded use produced it');
+INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Elf.Staged.Fast.forged', 0, 'unverified native axiom Silmaril.Elf.Staged.Fast.forged._native.edge.elf.layout.ax_1_1: matches elf.body by name, but no recorded use of elf.body names it with the exact shape `f … = true`');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Elf.Staged.Fast.layout', 0, 'own native elf.layout is not allowed');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Elf.Staged.Fast.sorry', 0, 'axiom sorryAx is outside the axiom set');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Papers.Elf.cites', 0, 'inherited native elf.layout is outside deps');

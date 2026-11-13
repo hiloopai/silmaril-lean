@@ -372,7 +372,7 @@
    "dep_native": [],
    "unverified_native": [],
    "violations": [
-    "a violation the recomputed audit does not find"
+    "own native elf.layout is not allowed"
    ]
   },
   {

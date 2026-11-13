@@ -1,0 +1,10 @@
+{
+  "schema": "silmaril.trust-exclusions.v0.1",
+  "export_sha256": "9ea5dcf83c4f4bf94d01c3075ce2ef5a0725d62ff52975d3d9004b688883b51f",
+  "exclusions": [
+    {
+      "module": "Silmaril.Elf.Staged.Example.Profiles",
+      "reason": "profile-negative tests: local-profile native runs and cross-leaf identity forgeries, deliberately flagged at default"
+    }
+  ]
+}

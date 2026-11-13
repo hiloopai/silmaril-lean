@@ -72,7 +72,7 @@ explicit:
 | `policies` (`scope` `root` / `region` / `module-prefix`, `name`, `allow` = the `default` set, `max`, `deps`, `axioms`, each `[set]` or null, `origin`) | `trust_scopes`; a list of more than one set is an error |
 | `modules` (`name`, `region`, `source`, `source_sha256`, `imports`) | `trust_modules`, `trust_imports` |
 | `uses` (`backend`, `profile`, `axiom`, `verified`) | `trust_uses`; a native use with `verified = false`, or whose axiom is not a native run of its procedure, is kept with `axiom_matches = 0`, flagged, never authorizing |
-| `declarations` (`axioms`, `native_axioms`, `own_native`, `dep_native`, `unverified_native`, `violations`) | `trust_decls`, `trust_decl_axioms`, `trust_audit_messages`; the recomputed violation count must equal the export's for every declaration |
+| `declarations` (`axioms`, `native_axioms`, `own_native`, `dep_native`, `unverified_native`, `violations`) | `trust_decls`, `trust_decl_axioms`, `trust_audit_messages`; for every declaration, the recomputed violations must be the export's, as normalized (category, subject) identities with multiplicity |
 | `excluded` (`module`, `coverage`, `profile`, `reason`) | `excluded` coverage with its reason |
 
 The export omits two things, and the converter handles each explicitly:
@@ -81,7 +81,7 @@ The export omits two things, and the converter handles each explicitly:
   SHA-256 equals `inputs.policy_toml_sha256`; otherwise the run fails.
 - **Effective sets per module.** They are recomputed with the core's rules (`max` within the
   parent's, `default` cut to `max`, and so on). They are checked through the per-declaration
-  violation counts above.
+  violation identities above.
 
 **Policy model, unchanged from the core.** The four policy roles stay distinct. `allowed` (the
 profile's set within `max`) bounds a declaration's own native runs; `deps` bounds the native
@@ -137,7 +137,11 @@ These are errors, and no database is written:
   - a scope above its parent's `max`.
 - **Producer agreement:**
   - an `own_native`/`dep_native` split that differs from the native axiom names;
-  - a core violation count that differs from the recomputed one for some declaration.
+  - a declaration whose recomputed violations differ from the core's, compared as normalized
+    (category, subject) identities with multiplicity (`own-native-not-allowed` and the procedure,
+    `axiom-outside-set` and the axiom, and so on); a core message of no known form is itself an
+    error. This compares what the two audits conclude, not that they reason alike: agreement is
+    not a proof of semantic equivalence.
 
 A native use the core did not verify (`verified = false`), or whose axiom is not a native run of
 its procedure, is not an error of the document. It is kept with `axiom_matches = 0`, reported,
@@ -210,7 +214,7 @@ The views are:
 ## The producer (`sil project trust-dump`)
 
 ```
-sil project trust-dump --module M [--module …] [--root R] [--exclude M] [--no-build]
+sil project trust-dump --module M [--module …] [--root R] [--exclude M=REASON] [--no-build]
 sil project sqlite --dump … --trust .lake/silmaril/trust-core.json [--strict-trust]
 ```
 
@@ -222,6 +226,20 @@ The command works in two stages:
 
 The export is written unchanged. The command needs #125 at `792e7ed6` or later.
 `scripts/trust-export.sh` writes the same document for the modules it is given.
+
+### Exclusions sidecar
+
+The export has no field for why a module is not audited. `trust-dump --exclude M=REASON` writes
+the reasons next to the export, in `<export>.exclusions.json` (`silmaril.trust-exclusions.v0.1`:
+`export_sha256`, `exclusions` `[{module, reason}]`). This is database-owned metadata and needs no
+core API. `--trust` reads it when it is present. It is refused if:
+
+- its `export_sha256` is not the SHA-256 of the export being read;
+- a reason is empty or a module is listed twice;
+- the export audits a module it excludes.
+
+Each listed module gets `excluded` coverage, and its reason is stored in `trust_modules.reason`.
+The sidecar itself is recorded in `trust_inputs` with its digest.
 
 ### Real producer output
 
@@ -235,7 +253,7 @@ modules read `stale` in this repository. `policy.toml` is vendored, so the conve
 | `trust-core-profile-tests` | same | **9 violations** (6 native outside `default`, 3 unverified); 2 flagged forged use records |
 | `trust-elf-staged` | #127 `67503c32` | 299 declarations, **0 violations**; partial (only `Silmaril.Elf.Staged` listed) |
 | `trust-elf-profile-tests` | same | **2 violations** |
-| `trust-elf-excluded` | same | `Example.Profiles` not listed (`--exclude`): unaudited, partial |
+| `trust-elf-excluded` | same | `Example.Profiles` excluded with a reason (digest-bound sidecar): `excluded` coverage, reason in the DB, partial |
 | `trust-lines-rejected` | #125 `d5d8f78c` | the retired JSON-lines input, refused by name |
 
 ### Strict validation (in the build checkouts, sources present)

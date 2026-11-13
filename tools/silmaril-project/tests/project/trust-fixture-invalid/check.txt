@@ -1,4 +1,4 @@
-error: trust.json: decl Silmaril.Elf.Staged.Example.layout: the core's audit lists 1 violation(s), the recomputed audit 0
+error: trust.json: decl Silmaril.Elf.Staged.Example.layout: the core's audit lists [("own-native-not-allowed", "elf.layout")], the recomputed audit []
 error: trust.json: decl Silmaril.Elf.Staged.Example.v: own_native ["elf.loader"] does not match its native axioms that a recorded use produced ([])
 error: trust.json: module Silmaril.Elf.Staged.Example.Thms: policy does not resolve: policy scope Silmaril.Elf.Staged: max exceeds its parent's max
 error: trust.json: module Silmaril.Elf.Staged.Leaf.Native: policy does not resolve: policy scope Silmaril.Elf.Staged: max exceeds its parent's max

@@ -110,6 +110,97 @@ pub fn native_axiom(n: &str) -> Option<(String, String, bool)> {
     })
 }
 
+/// The (category, subject) of one of the core's violation messages (`auditLine`), in the
+/// categories of `trust_violations`; `None` for a message of no known form.
+pub fn violation_identity(m: &str) -> Option<(String, String)> {
+    let id = |c: &str, s: &str| Some((c.to_string(), s.to_string()));
+    if let Some(r) = m.strip_prefix("own native ") {
+        return id("own-native-not-allowed", r.strip_suffix(" is not allowed")?);
+    }
+    if let Some(r) = m.strip_prefix("inherited native ") {
+        return id(
+            "dep-native-outside-deps",
+            r.strip_suffix(" is outside deps")?,
+        );
+    }
+    if let Some(r) = m.strip_prefix("axiom ") {
+        return id(
+            "axiom-outside-set",
+            r.strip_suffix(" is outside the axiom set")?,
+        );
+    }
+    if let Some(r) = m.strip_prefix("unregistered native run (") {
+        return id("unregistered-native", r.strip_suffix(')')?);
+    }
+    if let Some(r) = m.strip_prefix("unverified native axiom ") {
+        let p = r.split_once(": matches ")?.1.split_once(" by name")?.0;
+        return id("unverified-native", p);
+    }
+    if let Some(r) = m.strip_prefix("policy: ") {
+        return id("policy", r);
+    }
+    None
+}
+
+/// The exclusions sidecar of an export: `<export>.exclusions.json`.
+pub fn exclusions_path(export: &Path) -> std::path::PathBuf {
+    let mut name = export.file_name().unwrap_or_default().to_os_string();
+    name.push(".exclusions.json");
+    export.with_file_name(name)
+}
+
+pub const EXCLUSIONS_SCHEMA: &str = "silmaril.trust-exclusions.v0.1";
+
+/// The sidecar's text: the export's SHA-256 and `(module, reason)` pairs.
+pub fn exclusions_text(export_sha256: &str, ex: &[(String, String)]) -> String {
+    let v = serde_json::json!({
+        "schema": EXCLUSIONS_SCHEMA,
+        "export_sha256": export_sha256,
+        "exclusions": ex.iter().map(|(m, r)| serde_json::json!({"module": m, "reason": r})).collect::<Vec<_>>(),
+    });
+    serde_json::to_string_pretty(&v).expect("json") + "\n"
+}
+
+/// Read a sidecar: `(export_sha256, [(module, reason)])`; every field is required.
+pub fn read_exclusions(text: &str) -> std::result::Result<(String, Vec<(String, String)>), String> {
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Side {
+        schema: String,
+        export_sha256: String,
+        exclusions: Vec<Ex>,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Ex {
+        module: String,
+        reason: String,
+    }
+    let s: Side = serde_json::from_str(text).map_err(|e| format!("exclusions sidecar: {e}"))?;
+    if s.schema != EXCLUSIONS_SCHEMA {
+        return Err(format!(
+            "exclusions sidecar: schema {:?} is not {EXCLUSIONS_SCHEMA}",
+            s.schema
+        ));
+    }
+    let mut seen = BTreeSet::new();
+    for e in &s.exclusions {
+        if e.reason.trim().is_empty() || !seen.insert(e.module.clone()) {
+            return Err(format!(
+                "exclusions sidecar: {} has no reason or is listed twice",
+                e.module
+            ));
+        }
+    }
+    Ok((
+        s.export_sha256,
+        s.exclusions
+            .into_iter()
+            .map(|e| (e.module, e.reason))
+            .collect(),
+    ))
+}
+
 fn meta(o: &mut Outcome, rows: &[(&str, String)]) {
     if let Some((_, table)) = o.db.tables.iter_mut().find(|(t, _)| t.name == "meta") {
         for (k, v) in rows {
@@ -237,7 +328,54 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
     let text = String::from_utf8_lossy(&bytes);
     // One canonical input: the core's frozen export (`silmaril.trust-core.v1`), converted
     // explicitly ([`core_doc`]). Anything else is refused by name, never reinterpreted.
-    let lines = match parse_document(&text).and_then(|d| core_doc::convert(d, dir)) {
+    let converted = parse_document(&text)
+        .and_then(|d| core_doc::convert(d, dir))
+        .and_then(|mut l| {
+            // Exclusion reasons: the sidecar `<export>.exclusions.json`, if any, bound to this
+            // export's SHA-256.
+            let sidecar = exclusions_path(&dir.join(path));
+            if let Ok(side) = fs::read_to_string(&sidecar) {
+                let want = Digests::of(&bytes).sha256;
+                let (digest, ex) = read_exclusions(&side)?;
+                if digest != want {
+                    return Err(format!(
+                        "{}: bound to export SHA-256 {digest}, but {} has {want}",
+                        sidecar.display(),
+                        path.display()
+                    ));
+                }
+                // The sidecar is an input of the database: its digest is recorded and compared.
+                let rel = sidecar
+                    .strip_prefix(dir)
+                    .unwrap_or(&sidecar)
+                    .display()
+                    .to_string();
+                l.push(TrustLine::Input(LineInput {
+                    path: rel,
+                    sha256: Digests::of(side.as_bytes()).sha256,
+                }));
+                for (m, reason) in ex {
+                    let audited = l
+                        .iter()
+                        .any(|x| matches!(x, TrustLine::Decl(d) if d.module == m));
+                    if audited {
+                        return Err(format!(
+                            "{}: {m} is excluded but the export audits it",
+                            sidecar.display()
+                        ));
+                    }
+                    l.push(TrustLine::Excluded(LineExcluded {
+                        module: m,
+                        coverage: "excluded".into(),
+                        reason: format!("{reason} (exclusions sidecar, digest-bound)"),
+                    }));
+                }
+                Ok(l)
+            } else {
+                Ok(l)
+            }
+        });
+    let lines = match converted {
         Ok(l) => l,
         Err(e) => {
             o.error(&at, e);
@@ -1008,7 +1146,8 @@ impl Ingest<'_> {
             .collect();
         let mut seen_decls: BTreeMap<String, &LineDecl> = BTreeMap::new();
         let mut repeated = 0usize;
-        let mut core_counts: BTreeMap<String, usize> = BTreeMap::new();
+        // Per declaration, the core's violations as normalized (category, subject) identities.
+        let mut core_ids: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
         for d in &l.decls {
             if !described.contains_key(&d.module) {
                 self.err(format!(
@@ -1059,7 +1198,18 @@ impl Ingest<'_> {
                     message: m.clone(),
                 });
             }
-            core_counts.insert(d.decl.clone(), d.violations.len());
+            let mut ids = Vec::new();
+            for m in &d.violations {
+                match violation_identity(m) {
+                    Some(id) => ids.push(id),
+                    None => self.err(format!(
+                        "decl {}: the core's violation message {m:?} has no known form; it cannot be compared",
+                        d.decl
+                    )),
+                }
+            }
+            ids.sort();
+            core_ids.insert(d.decl.clone(), ids);
             let unverified: BTreeMap<&str, &str> = d
                 .unverified
                 .iter()
@@ -1146,7 +1296,7 @@ impl Ingest<'_> {
             described.contains_key(m) && !excluded.contains_key(m) && audited_modules.contains(m)
         };
         let mut violations: BTreeSet<(String, String, String, &'static str)> = BTreeSet::new();
-        let mut per_decl: BTreeMap<String, usize> = BTreeMap::new();
+        let mut per_decl: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
         for x in &t.decl_axioms {
             if !covered(&x.module) {
                 continue;
@@ -1167,18 +1317,22 @@ impl Ingest<'_> {
             } else {
                 x.procedure.clone()
             };
-            *per_decl.entry(x.decl.clone()).or_default() += 1;
+            per_decl
+                .entry(x.decl.clone())
+                .or_default()
+                .push((why.to_string(), subject.clone()));
             violations.insert((x.module.clone(), x.decl.clone(), subject, why));
         }
-        // The core's audit is authoritative; the recomputed violations must agree with it.
+        // The core's audit is authoritative; the recomputed violations must be the same
+        // (category, subject) identities, with multiplicity. This compares what the two audits
+        // say, not that they reason alike.
         for d in t.decls.iter().filter(|d| covered(&d.module)) {
-            let (mine, theirs) = (
-                per_decl.get(&d.decl).copied().unwrap_or(0),
-                core_counts.get(&d.decl).copied().unwrap_or(0),
-            );
+            let mut mine = per_decl.get(&d.decl).cloned().unwrap_or_default();
+            mine.sort();
+            let theirs = core_ids.get(&d.decl).cloned().unwrap_or_default();
             if mine != theirs {
                 self.err(format!(
-                    "decl {}: the core's audit lists {theirs} violation(s), the recomputed audit {mine}",
+                    "decl {}: the core's audit lists {theirs:?}, the recomputed audit {mine:?}",
                     d.decl
                 ));
             }
@@ -1386,6 +1540,68 @@ pub fn export_driver(modules: &[String], audited: &[String], out: &Path) -> Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exclusions_sidecar() {
+        let ex = vec![("M.A".to_string(), "tests".to_string())];
+        let t = exclusions_text("abc", &ex);
+        assert_eq!(
+            read_exclusions(&t).unwrap(),
+            ("abc".to_string(), ex.clone())
+        );
+        assert!(read_exclusions(&t.replace("tests", " ")).is_err());
+        assert!(read_exclusions(&t.replace(EXCLUSIONS_SCHEMA, "x")).is_err());
+        assert_eq!(
+            exclusions_path(Path::new("a/b.json")),
+            Path::new("a/b.json.exclusions.json")
+        );
+        // A sidecar bound to another export is refused.
+        let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/trust-elf-excluded");
+        let dir = tempfile::tempdir().unwrap();
+        for f in ["dump.json", "lakefile.toml", "policy.toml", "trust.json"] {
+            fs::copy(case.join(f), dir.path().join(f)).unwrap();
+        }
+        fs::write(
+            dir.path().join("trust.json.exclusions.json"),
+            exclusions_text("0000", &ex),
+        )
+        .unwrap();
+        let mut o = Outcome::default();
+        run(dir.path(), Some(Path::new("trust.json")), false, &mut o).unwrap();
+        assert!(
+            o.errors
+                .iter()
+                .any(|e| e.contains("bound to export SHA-256 0000")),
+            "{:?}",
+            o.errors
+        );
+    }
+
+    #[test]
+    fn violation_identities() {
+        let v = |m: &str| violation_identity(m).map(|(c, s)| format!("{c}:{s}"));
+        assert_eq!(
+            v("own native test.evenSum is not allowed").as_deref(),
+            Some("own-native-not-allowed:test.evenSum")
+        );
+        assert_eq!(
+            v("inherited native elf.layout is outside deps").as_deref(),
+            Some("dep-native-outside-deps:elf.layout")
+        );
+        assert_eq!(
+            v("axiom sorryAx is outside the axiom set").as_deref(),
+            Some("axiom-outside-set:sorryAx")
+        );
+        assert_eq!(
+            v("unregistered native run (bv_decide)").as_deref(),
+            Some("unregistered-native:bv_decide")
+        );
+        assert_eq!(
+            v("unverified native axiom A._native.edge.p.ax_1_1: matches test.sumEven by name, but no recorded use").as_deref(),
+            Some("unverified-native:test.sumEven")
+        );
+        assert_eq!(v("something new"), None);
+    }
 
     #[test]
     fn native_axiom_names() {

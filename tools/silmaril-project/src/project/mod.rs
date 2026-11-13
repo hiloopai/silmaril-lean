@@ -86,7 +86,8 @@ pub enum Command {
         /// `Silmaril` module); the others are described but not audited (partial coverage)
         #[arg(long = "root")]
         roots: Vec<String>,
-        /// A reached module not to audit (described, not audited: partial coverage)
+        /// `MODULE=REASON`: a reached module not to audit (described, not audited: partial
+        /// coverage). The reasons go to `<out>.exclusions.json`, bound to the export's SHA-256
         #[arg(long)]
         exclude: Vec<String>,
         /// Output, relative to the project directory (generated: not committed)
@@ -1557,11 +1558,21 @@ pub fn run(command: Command) -> Result<()> {
                 .filter(|l| !l.trim().is_empty())
                 .map(String::from)
                 .collect();
-            for e in &exclude {
+            let exclusions: Vec<(String, String)> = exclude
+                .iter()
+                .map(|e| {
+                    e.split_once('=')
+                        .map(|(m, r)| (m.trim().to_string(), r.trim().to_string()))
+                        .filter(|(m, r)| !m.is_empty() && !r.is_empty())
+                        .ok_or_else(|| miette!("--exclude {e:?}: give MODULE=REASON"))
+                })
+                .collect::<Result<_>>()?;
+            for (e, _) in &exclusions {
                 if !reached.contains(e) {
                     bail!("--exclude {e}: not a module the imports reach");
                 }
             }
+            let exclude: Vec<String> = exclusions.iter().map(|(m, _)| m.clone()).collect();
             let audited: Vec<String> = reached
                 .iter()
                 .filter(|m| {
@@ -1595,6 +1606,20 @@ pub fn run(command: Command) -> Result<()> {
                 &lake,
                 &["env", "lean", &export_driver.display().to_string()],
             )?;
+            // The exclusions' reasons: a sidecar bound to the export's digest (the export has no
+            // field for them).
+            let sidecar = trust::exclusions_path(&out);
+            let _ = fs::remove_file(&sidecar);
+            if !exclusions.is_empty() {
+                let digest = hash::Digests::of(&fs::read(&out).into_diagnostic()?).sha256;
+                fs::write(&sidecar, trust::exclusions_text(&digest, &exclusions))
+                    .into_diagnostic()?;
+                eprintln!(
+                    "wrote {} ({} exclusion(s))",
+                    sidecar.display(),
+                    exclusions.len()
+                );
+            }
             eprintln!("wrote {shown}");
             Ok(())
         }
