@@ -814,7 +814,7 @@ the use (`recordUse`), and otherwise run its kernel fallback or fail.
 ```
 /-- … -/
 native_tactic lean.std.bv_decide.verifyBVExpr
-  evaluates Lean.Elab.Tactic.BVDecide.Frontend.verifyBVExpr
+  evaluates Std.Tactic.BVDecide.Reflect.verifyBVExpr
   axiom_tag bv_decide
   components ["bit-blasting with hash-consing", "AIG to CNF", "relabeling", "LRAT parser and checker"]
   toolchain "leanprover/lean4:nightly-2026-11-05"
