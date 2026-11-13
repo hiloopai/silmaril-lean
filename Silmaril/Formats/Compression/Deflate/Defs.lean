@@ -19,7 +19,8 @@ optimised implementation (an `Array`-accumulating mirror is registered with
   reserved `BTYPE = 11` and distance codes 30/31 rejected) and return the output
   and the unread, byte-aligned remainder;
 * `decoder`: `deflateTake` as a framework `Decoder`; `encoder`: the stored-block
-  (`BTYPE = 00`) writer `storedBytes`;
+  (`BTYPE = 00`) writer `storedBytes`; `encoderFixed`: the compressing encoder
+  (`compress`, as a list function);
 * `decompress`, `Compresses data c`: the whole-buffer `ByteArray` decoder and its
   relation (`decompress c = some data`);
 * `compress`: a greedy LZ77 matcher with one fixed-Huffman block;
@@ -42,6 +43,14 @@ abbrev decoder : Decoder := Decoder.ofExcept deflateTake
 
 /-- The stored-block encoder: correct and linear-time, it does not shrink data. -/
 abbrev encoder : Encoder := storedBytes
+
+/-- The **compressing** encoder: greedy LZ77 matching and one fixed-Huffman block
+(`compress`). `compress` never fails (`compress_isSome`), so the stored fallback
+is unreachable; it only makes the encoder total by definition. -/
+def encoderFixed : Encoder := fun data =>
+  match compress ⟨data.toArray⟩ with
+  | some c => c.data.toList
+  | none => storedBytes data
 
 /-- Bytes after a DEFLATE member never change its decoding. **Proved** as
 `Deflate.local` (and `Deflate.task_local`): every decoder stage is monotone under

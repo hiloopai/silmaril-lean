@@ -17,6 +17,8 @@ DEFLATE stream, and a trailer of the output's CRC-32 and its length modulo
 * `checkHeader`, `framing`, `decoder`: the container and its member decoder;
   `member` is the same decoder written out directly;
 * `trailer out`: `le32 (crc32.digest out) ++ le32Bytes out.length`;
+* `encoderFixed`: one member with the compressing fixed-Huffman stream
+  `Deflate.encoderFixed`;
 * `header`, `encoder`: the header we emit (no optional fields, `OS = 255`),
   stored DEFLATE blocks, the trailer;
 * `decompress`, `compress`: the `ByteArray` multi-member decoder and the
@@ -55,6 +57,10 @@ def header : List UInt8 := gzipMagic ++ [0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0
 
 /-- One member: header, stored DEFLATE blocks, trailer. -/
 abbrev encoder : Encoder := Framing.encode header Deflate.encoder trailer
+
+/-- One compressing member: header, a fixed-Huffman DEFLATE stream
+(`Deflate.encoderFixed`), the trailer. -/
+abbrev encoderFixed : Encoder := Framing.encode header Deflate.encoderFixed trailer
 
 /-- A whole gzip file: one or more members, every trailer verified. -/
 abbrev decompress : ByteArray → Option ByteArray := gzipDecompress

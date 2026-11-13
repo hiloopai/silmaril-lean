@@ -29,11 +29,11 @@ and LZ4 fit; none of them is implemented.
 
 | Topic | Decoder | Main results |
 | --- | --- | --- |
-| [Deflate](../../Silmaril/Formats/Compression/Deflate/Thms.lean) | `Deflate.decoder` (`deflateTake`): stored, fixed and dynamic Huffman blocks | consumes, stored round trip, LZ77 compressor soundness, zlib-produced vectors for each block type, two rejections |
-| [Zlib](../../Silmaril/Formats/Compression/Zlib/Thms.lean) | `Zlib.decoder = framing.wrap Deflate.decoder` | consumes, Adler-32 trailer, round trip, CPython vectors, dictionaries |
-| [Gzip](../../Silmaril/Formats/Compression/Gzip/Thms.lean) | `Gzip.decoder = framing.wrap Deflate.decoder`; files are `decoder.members` | consumes, CRC-32/ISIZE trailer, round trip, multi-member files, GNU and CPython vectors |
+| [Deflate](../../Silmaril/Formats/Compression/Deflate/Thms.lean) | `Deflate.decoder` (`deflateTake`): stored, fixed and dynamic Huffman blocks | consumes, append law, stored round trip, compressing round trip (`roundTripFixed`: greedy LZ77, one fixed-Huffman block), output bound `output_le`, zlib-produced vectors for each block type, two rejections |
+| [Zlib](../../Silmaril/Formats/Compression/Zlib/Thms.lean) | `Zlib.decoder = framing.wrap Deflate.decoder` | consumes, append law, Adler-32 trailer, stored and compressing (`encoderFixed`) round trips, output bound, CPython vectors, dictionaries |
+| [Gzip](../../Silmaril/Formats/Compression/Gzip/Thms.lean) | `Gzip.decoder = framing.wrap Deflate.decoder`; files are `decoder.members` | consumes, append law, CRC-32/ISIZE trailer, stored and compressing (`encoderFixed`) round trips, output bounds for members and whole files, multi-member files, GNU and CPython vectors |
 | [Checksum](../../Silmaril/Formats/Compression/Checksum/Thms.lean) | `Checksum.adler32`, `Checksum.crc32` | published check values; CRC-32 equals `crc32Spec`, the GF(2) polynomial definition of ISO 3309 / ITU-T V.42 (`crc32_eq_spec`, over the polynomial model `GF2Poly`), and detects every single-bit error |
-| [Inflate](../../Silmaril/Formats/Compression/Inflate/Thms.lean) | `Inflate.member version kind`, `Inflate.raw version`: zlib 1.3.1's resumable inflater as `Incremental` machines | sound and rejection-sound for every call schedule, schedules agree, packed fixed tables agree with the canonical decoder |
+| [Inflate](../../Silmaril/Formats/Compression/Inflate/Thms.lean) | `Inflate.member version kind`, `Inflate.raw version`: zlib 1.3.1's resumable inflater as `Incremental` machines | sound, rejection-sound and complete, schedules agree, each call emits at most its output capacity, packed fixed tables agree with the canonical decoder |
 
 Assumptions and scope:
 
@@ -45,6 +45,16 @@ Assumptions and scope:
 - The append laws (`Deflate.local`, `Zlib.local`, `Gzip.local`) and the
   completeness of the inflater (`Inflate.member_complete`, `Inflate.raw_complete`)
   are proved.
+- Resource bounds are intrinsic: a DEFLATE member produces at most 2064 output
+  bytes per input byte it consumes (a Huffman token consumes at least one bit
+  and emits at most 258 bytes; a stored byte consumes eight bits), so
+  `Deflate.output_le`, `Zlib.output_le`, `Gzip.output_le` and, for whole files,
+  `Gzip.members_output_le` and the `decompress_output_le` theorems bound the
+  output linearly in the input. Operationally, every streaming call appends at
+  most its output capacity (`Inflate.raw_call_output`, `Inflate.member_call_output`).
+- Encoders: the stored encoders (`encoder`) are linear-time and do not shrink
+  data; `encoderFixed` (all three formats) compresses with greedy LZ77 and one
+  fixed-Huffman block, whose match search is quadratic in the worst case.
 
 ## Open goals
 
@@ -62,6 +72,11 @@ are proved:
 - `Silmaril.Formats.Compression.Inflate.Task.raw_complete`: the same for the raw-DEFLATE
   machine (`Inflate.raw .v131`) against `Deflate.decoder`; proved as
   `Inflate.task_raw_complete` (`Inflate.raw_complete` for both versions).
+
+## Requirement-by-requirement evidence
+
+[deflate-zlib-gzip.md](deflate-zlib-gzip.md) lists, for RFC 1951, RFC 1950 and RFC 1952, each
+requirement with its theorem, check or documented policy, and the contract erebor-lean relies on.
 
 ## Layout
 

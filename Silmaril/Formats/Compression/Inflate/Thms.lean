@@ -5,6 +5,7 @@ public import Silmaril.Formats.Compression.Zlib.Thms
 public import Silmaril.Formats.Compression.Gzip.Thms
 import Silmaril.Proofs.Formats.Compression.Inflate
 import Silmaril.Proofs.Formats.Compression.InflateComplete
+import Silmaril.Proofs.Formats.Compression.InflateOutput
 import Silmaril.Raw.Formats.Compression.Inflate.Stream.MemberSpec
 import Silmaril.Raw.Formats.Compression.Inflate.Stream.MemberExamples
 import Silmaril.Raw.Formats.Compression.Inflate.Packed.PackedTables
@@ -27,6 +28,9 @@ Proved (standard axioms):
   versions, every member the decoder accepts is finished by a schedule offering
   no further input (each call with a large enough scheduler budget and output
   capacity); hence `task_member_complete` and `task_raw_complete`;
+* `raw_call_output`, `raw_run_output`, `member_call_output`, `member_run_output`:
+  every call only appends to the output, and appends at most the call's output
+  capacity (a schedule, at most the sum of its capacities), whatever the input;
 * `member_calls_invariant`: after **any** schedule, finished or not, the saved
   machine denotes the member specification of all input offered so far and any
   future input;
@@ -103,6 +107,29 @@ theorem member_runs_agree (v₁ v₂ : Stream.Version) (kind : MemberSemantics.K
   obtain ⟨_, _, _, _, h, _⟩ :=
     MemberMachine.completed_schedules_agree v₁ v₂ kind i₁ i₂ c₁ c₂ σ₁ σ₂ h₁ h₂ same
   exact h
+
+/-- One raw call appends at most its output capacity. -/
+theorem raw_call_output (version : Stream.Version) (m : RawMachine) (call : RawMachine.Call) :
+    ∃ emitted, (RawMachine.applyCall version m call).output = m.output ++ emitted ∧
+      emitted.length ≤ call.capacity :=
+  ⟨_, RawEmission.call_output version m call, RawEmission.call_emitted_capacity version m call⟩
+
+theorem raw_run_output (version : Stream.Version) (m : RawMachine) (calls : List RawMachine.Call) :
+    ∃ emitted, (RawMachine.runCalls version m calls).output = m.output ++ emitted ∧
+      emitted.length ≤ (calls.map RawMachine.Call.capacity).sum :=
+  RawEmission.run_extension version m calls
+
+/-- One member call appends at most its output capacity. -/
+theorem member_call_output (version : Stream.Version) (m : MemberMachine) (call : RawMachine.Call) :
+    ∃ emitted, (MemberMachine.applyCall version m call).output = m.output ++ emitted ∧
+      emitted.length ≤ call.capacity :=
+  Proofs.Formats.Compression.InflateOutput.member_call_extension version m call
+
+theorem member_run_output (version : Stream.Version) (m : MemberMachine)
+    (calls : List RawMachine.Call) :
+    ∃ emitted, (MemberMachine.runCalls version m calls).output = m.output ++ emitted ∧
+      emitted.length ≤ (calls.map RawMachine.Call.capacity).sum :=
+  Proofs.Formats.Compression.InflateOutput.member_run_extension version m calls
 
 /-- **Completeness**: every member the shared specification accepts is finished
 by the member machine, with calls that offer no further input. -/

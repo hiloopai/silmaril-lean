@@ -5,6 +5,8 @@ public import Silmaril.Formats.Compression.Thms
 public import Silmaril.Formats.Compression.Deflate.HuffmanLemmas
 import Silmaril.Proofs.Formats.Compression.Deflate
 import Silmaril.Proofs.Formats.Compression.DeflateLocal
+import Silmaril.Proofs.Formats.Compression.Bounds
+import Silmaril.Proofs.Formats.Compression.FixedEncoder
 import Silmaril.Raw.Formats.Compression.Deflate.Stored
 import Silmaril.Raw.Formats.Compression.Deflate.RoundTrip
 import Silmaril.Raw.Formats.Compression.Deflate.WithHistory
@@ -22,6 +24,12 @@ Proved (standard axioms):
   with or without a preset history);
 * `roundTrip`, `codec`: stored encodings decode back, whatever follows them;
   hence `exists_compresses` (every buffer is the decoding of some stream);
+* `compress_take`, `roundTripFixed`, `codecFixed`: the compressing encoder
+  (`compress`, greedy LZ77 with one fixed-Huffman block) emits one complete
+  member, which the list decoder reads back whatever follows it;
+* `output_le`, `withHistory_output_le`, `decoder_output_le`, `decompress_output_le`:
+  intrinsic output bounds; a member produces at most 2064 bytes (258 per bit)
+  for each input byte it consumes;
 * `compress_isSome`, `compress_compresses`: the LZ77/fixed-Huffman compressor
   is total and sound;
 * `fixedLitLen_valid`, `fixedDist_valid`: the fixed codes satisfy the Kraft inequality;
@@ -68,6 +76,38 @@ theorem task_local : Task.local := «local»
 
 /-- Raw DEFLATE with stored blocks, as a framework codec. -/
 def codec : Codec := ⟨decoder, encoder, roundTrip⟩
+
+/-- The output of `compress` is one complete member, decoded exactly to its end. -/
+theorem compress_take {data c : ByteArray} (h : compress data = some c) :
+    deflateTake c.data.toList = .ok (data.data.toList, []) :=
+  Proofs.Formats.Compression.FixedEncoder.compress_take h
+
+/-- The compressing encoder round-trips, whatever follows the member. -/
+theorem roundTripFixed : RoundTrip decoder encoderFixed :=
+  Proofs.Formats.Compression.FixedEncoder.roundTripFixed
+
+/-- Raw DEFLATE with the compressing fixed-Huffman encoder, as a framework codec. -/
+def codecFixed : Codec := ⟨decoder, encoderFixed, roundTripFixed⟩
+
+/-- **Output bound**: each consumed input byte yields at most 2064 output bytes
+(a token consumes at least one bit and emits at most 258 bytes). -/
+theorem output_le {bs out rest : List UInt8} (h : deflateTake bs = .ok (out, rest)) :
+    out.length ≤ 2064 * (bs.length - rest.length) :=
+  Proofs.Formats.Compression.Bounds.deflateTake_output_le h
+
+/-- With a preset history, the newly produced output obeys the same bound. -/
+theorem withHistory_output_le {history bs out rest : List UInt8}
+    (h : deflateTakeWithHistory history bs = .ok (out, rest)) :
+    out.length ≤ 2064 * (bs.length - rest.length) :=
+  Proofs.Formats.Compression.Bounds.deflateTakeWithHistory_output_le h
+
+theorem decoder_output_le {bytes out rest : List UInt8} (h : decoder bytes = some (out, rest)) :
+    out.length ≤ 2064 * (bytes.length - rest.length) :=
+  Proofs.Formats.Compression.Bounds.decoder_outputLe h
+
+theorem decompress_output_le {c d : ByteArray} (h : decompress c = some d) :
+    d.size ≤ 2064 * c.size :=
+  Proofs.Formats.Compression.Bounds.decompress_output_le h
 
 theorem exists_compresses (data : ByteArray) : ∃ c, Compresses data c :=
   decompress_surjective data

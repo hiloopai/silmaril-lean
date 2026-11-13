@@ -17,7 +17,8 @@ big-endian Adler-32 of the output.
 * `framing`, `decoder`: the container and its member decoder; `take` is the
   same decoder written out directly (`take_eq_decoder` in `Zlib.Thms`);
 * `trailer out`: the trailer of output `out`, `be32 (adler32.digest out)`;
-* `encoder`: header `78 01`, stored DEFLATE blocks, trailer;
+* `encoder`: header `78 01`, stored DEFLATE blocks, trailer; `encoderFixed`: the
+  same with the compressing fixed-Huffman stream `Deflate.encoderFixed`;
 * `decompress`, `compress`: the `ByteArray` whole-buffer decoder (exactly one
   member) and the stored-block encoder;
 * `takeWithDictionary dictionary`: the `FDICT = 1` variant, which checks the
@@ -45,6 +46,10 @@ def trailer (out : List UInt8) : List UInt8 := be32 (Checksum.adler32.digest out
 
 /-- Header `78 01`, then stored DEFLATE blocks, then the trailer. -/
 abbrev encoder : Encoder := Framing.encode zlibHeader Deflate.encoder trailer
+
+/-- One compressing member: header, a fixed-Huffman DEFLATE stream
+(`Deflate.encoderFixed`), the Adler-32 trailer. -/
+abbrev encoderFixed : Encoder := Framing.encode zlibHeader Deflate.encoderFixed trailer
 
 /-- A whole buffer holding exactly one member. -/
 abbrev decompress : ByteArray → Option ByteArray := zlibDecompress

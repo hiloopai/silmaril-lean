@@ -4,6 +4,7 @@ public import Silmaril.Formats.Compression.Gzip.Defs
 public import Silmaril.Formats.Compression.Checksum.Thms
 public import Silmaril.Formats.Compression.Deflate.Thms
 public import Silmaril.Raw.Formats.Compression.Gzip.Basic
+public import Silmaril.Proofs.Formats.Compression.Bounds
 
 /-! Proofs for `Silmaril.Formats.Compression.Gzip.Thms`. -/
 
@@ -226,5 +227,55 @@ theorem framing_local : framing.Local := by
 
 theorem local_of_deflate (h : Deflate.decoder.Local) : decoder.Local :=
   Framing.wrap_local framing_local h
+
+/-! ### The emitted header and trailer -/
+
+theorem checkHeader_header (rest : List UInt8) : checkHeader (header ++ rest) = some ((), rest) := by
+  simp only [checkHeader, header, gzipMagic, List.cons_append, List.nil_append,
+    gzipSkipHeaderFields, gzipSkipOptional, gzipFEXTRA, gzipFNAME, gzipFCOMMENT, gzipFHCRC,
+    gzipFRESERVED]
+  simp only [show ((0 : UInt8) &&& 224) = 0 from rfl, show ((0 : UInt8) &&& 4) = 0 from rfl,
+    show ((0 : UInt8) &&& 8) = 0 from rfl, show ((0 : UInt8) &&& 16) = 0 from rfl,
+    show ((0 : UInt8) &&& 2) = 0 from rfl, ne_eq, not_true_eq_false, false_or, reduceIte]
+  rfl
+
+theorem checkTrailer_trailer (out tail : List UInt8) :
+    gzipCheckTrailer out (trailer out ++ tail) = some tail := by
+  rw [← gzipTrailer_toList]
+  simp only [gzipTrailer, le32Bytes, List.cons_append, List.nil_append, gzipCheckTrailer]
+  rw [le32Val_le32Bytes, le32Val_le32Bytes]
+  have h1 : (crc32 ⟨out.toArray⟩).toNat % 4294967296 = (crc32 ⟨out.toArray⟩).toNat := by
+    have h := (crc32 ⟨out.toArray⟩).toNat_lt_size
+    simp only [UInt32.size] at h
+    omega
+  have h2 : (⟨out.toArray⟩ : ByteArray).size = out.length := by simp [ByteArray.size]
+  rw [h1, h2]
+  simp
+
+theorem writes : framing.Writes header trailer :=
+  fun rest => ⟨(), checkHeader_header rest, fun out tail => checkTrailer_trailer out tail⟩
+
+/-! ### Output bounds -/
+
+theorem outputLe : Bounds.OutputLe decoder 2064 :=
+  Bounds.wrap_outputLe framing_consumes Bounds.decoder_outputLe
+
+theorem members_output_le {bytes out : List UInt8} (h : decoder.members bytes = some out) :
+    out.length ≤ 2064 * bytes.length :=
+  Bounds.members_le consumes outputLe h
+
+theorem decompress_output_le {bytes out : ByteArray} (h : decompress bytes = some out) :
+    out.size ≤ 2064 * bytes.size := by
+  rw [decompress_eq] at h
+  cases hm : decoder.members bytes.data.toList with
+  | none => rw [hm] at h; cases h
+  | some o =>
+    rw [hm] at h
+    simp only [Option.map_some, Option.some.injEq] at h
+    subst h
+    have := members_output_le hm
+    have h1 : (⟨o.toArray⟩ : ByteArray).size = o.length := by simp [ByteArray.size]
+    have h2 : bytes.data.toList.length = bytes.size := Array.length_toList
+    omega
 
 end Silmaril.Proofs.Formats.Compression.Gzip
