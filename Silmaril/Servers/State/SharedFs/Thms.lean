@@ -27,6 +27,14 @@ Functional correctness for files nobody else touches:
 * **`store_refines`**: if the environment never touches a key's file (it may change every
   other file in the preopen), the store refines the component-state store holding
   `view enc fs₀`, and is linearizable with respect to `storeStep` (`store_linearizable`).
+
+Linearizability on the untouched keys, when the environment changes the files of other keys:
+
+* **`store_linearizable_on`**: if the environment never touches the file of a key of `K` (it
+  may change the files of every other key, and every other file), the store is linearizable
+  with respect to `kvOn K` from the initial store on `K`, and refines its closed server
+  (`store_refines_on`);
+* `kvOn_true`: on all keys, `kvOn` is the component-state store `kv`.
 -/
 
 namespace Silmaril.Servers.State.SharedFs
@@ -71,5 +79,21 @@ theorem store_linearizable {enc : Target → FPath} (hinj : Function.Injective e
     {E : Fs → Fs → Prop} (hE : Untouched E fun p => ∃ t, enc t = p) :
     (sharedStore enc fs₀ E).Sat (Linearizable kv (view enc fs₀)) :=
   (Proofs.Servers.State.SharedFs.storeKeysAbs hinj fs₀ hE).sat_linearizable
+
+theorem store_linearizable_on {enc : Target → FPath} (hinj : Function.Injective enc) (fs₀ : Fs)
+    (K : Target → Prop) [DecidablePred K] {E : Fs → Fs → Prop}
+    (hE : Untouched E fun p => ∃ t, K t ∧ enc t = p) :
+    (sharedStore enc fs₀ E).Sat (Linearizable (kvOn K) (restrictKeys K (view enc fs₀))) :=
+  (Proofs.Servers.State.SharedFs.storeOnAbs hinj fs₀ K hE).sat_linearizable
+
+theorem store_refines_on {enc : Target → FPath} (hinj : Function.Injective enc) (fs₀ : Fs)
+    (K : Target → Prop) [DecidablePred K] {E : Fs → Fs → Prop}
+    (hE : Untouched E fun p => ∃ t, K t ∧ enc t = p) :
+    (sharedStore enc fs₀ E).Refines (Server.closed (kvOn K) (restrictKeys K (view enc fs₀))) :=
+  (Proofs.Servers.State.SharedFs.storeOnAbs hinj fs₀ K hE).refines
+
+theorem kvOn_true (S : Store) (r : Request) (resp : Response) (S' : Store) :
+    kvOn (fun _ => True) S r resp S' ↔ kv S r resp S' :=
+  ⟨fun h => h.1 trivial, fun h => ⟨fun _ => h, fun h' => (h' trivial).elim⟩⟩
 
 end Silmaril.Servers.State.SharedFs
