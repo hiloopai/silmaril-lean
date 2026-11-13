@@ -21,7 +21,7 @@ All statements are PROVED with no axioms beyond Lean's core (proofs in
   postconditions);
 * `ginv_single`: a process starting as one safe thread owning `h₀`, with the rest of memory
   `hI ⊨ I`, satisfies `GInv`; with `adequacy`, `adequacy_single`;
-* `adequacy_model`: the same through any concrete model `X` (store buffers, primitives run by
+* `adequacy_model`: the same through any concrete model `X` (store buffers, primitives executed as
   their code) that refines SC with atomic steps on certified programs (`Model.Sound`);
 * `atomOk_prims`: the atomic obligations of a primitive call site follow from the obligations of
   each primitive it may call (`PrimOk`).
