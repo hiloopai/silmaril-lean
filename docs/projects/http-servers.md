@@ -474,21 +474,23 @@ canonical-ABI soundness results of the reference machine are the parts such a pr
 
 ### Conformance against a runtime
 
-`tests/servers/wasi-http-conformance.sh` builds the four components (or takes `HELLO_WASM`,
-`ROUTE_WASM`, `ECHO_WASM`, `GREET_WASM`), serves each with `wasmtime serve` and compares the
+`tests/servers/wasi-http-conformance.sh` builds the six components (or takes `HELLO_WASM`,
+`ROUTE_WASM`, `ECHO_WASM`, `GREET_WASM`, `STORE_WASM`, `STATIC_WASM`, checking only those
+given), serves each with `wasmtime serve` and compares the
 responses to the specifications: `hello` on `/` and `/anything` (status, content and
 `content-type`), `route` on `/`, `/hello` and `/missing`, `echo` on a `GET` and on `POST`s of 3
 and 3000 bytes, and `greet` without `x-name`, with one and with two values. The
 runtime is pinned (`WASMTIME_VERSION`, default `49.0.2`; `any` accepts every version). It
 skips cleanly when `wasmtime`, `curl`, or both the components and `wasm-tools`, are missing.
-Run as `nix develop .#http-test -c tests/servers/wasi-http-conformance.sh`, all 12 checks pass
-on wasmtime 49.0.2.
+Run as `nix develop .#http-test -c tests/servers/wasi-http-conformance.sh`, the 12 checks of
+these four pass on wasmtime 49.0.2.
 
 The same harness serves the filesystem servers of the state models (section "State models"),
 `tests/servers/wasi-http/{store,static}.wat` (with `fs-imports.wat` and `fs.wat`, world
 `fs-server` of `world.wit`, which also imports `wasi:filesystem/{types,preopens}@0.2.12`), with
-`wasmtime serve -S cli --dir DIR::data` over a fresh directory. All 51 checks of the run
-(hello, route, echo, store and static) pass on wasmtime 49.0.2:
+`wasmtime serve -S cli --dir DIR::data` over a fresh directory. All 54 checks of the whole run
+(hello, route, echo, greet, store and static) pass on wasmtime 49.0.2, with the one known gap
+below printed and not counted:
 
 - **store** (`storeBody`, state model (b)): `GET`, `HEAD`, `PUT` (`201`, then `204`), `DELETE`
   (`204`, then `404`), `OPTIONS`, `405` for `POST` and `PATCH`, `501` for an unknown method; the
