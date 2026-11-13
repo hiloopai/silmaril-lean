@@ -228,6 +228,16 @@ theorem memSimOn_overlay : MemSimOn (fun _ : Overlay => True) Overlay.toList := 
     · rw [iteF hi, iteF hi]; rfl
   · intro r _ a k v h; simp [MemOps.store, h]
 
+theorem encode_mod : ∀ (k v : Nat), ListMem.encode k (v % 256 ^ k) = ListMem.encode k v
+  | 0, _ => rfl
+  | k + 1, v => by
+    simp only [ListMem.encode]
+    rw [show 256 ^ (k + 1) = 256 * 256 ^ k by rw [Nat.pow_succ, Nat.mul_comm],
+      Nat.mod_mul_right_div_self, encode_mod k (v / 256)]
+    congr 1
+    apply BitVec.eq_of_toNat_eq
+    simp
+
 /-! ## Packed pages -/
 
 theorem encByte_pack : ∀ (L : List (BitVec 8)) (x : Nat) (h : x < L.length),

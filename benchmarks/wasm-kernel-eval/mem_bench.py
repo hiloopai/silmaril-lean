@@ -11,6 +11,7 @@ import argparse, json, os, re, subprocess, tempfile, time
 HEAD = """import Silmaril.Wasm.KernelEval.Examples
 import Silmaril.Wasm.KernelEval.Memories
 import Silmaril.Wasm.KernelEval.CoreMem
+import Silmaril.Wasm.KernelEval.KBytesMem
 open Silmaril.Wasm.KernelEval Examples
 set_option profiler true
 set_option profiler.threshold 0
@@ -24,6 +25,8 @@ def reps(size):
         "ListMem": f"(⟨List.replicate {size} 0⟩ : ListMem)",
         "KMem (Verify.Kernel fload/fstore)": f"(KMem.zeros {size})",
         "NatMem": f"(NatMem.zeros {size})",
+        "KBytes rope stores (KRope)": f"(KRope.mk (kzeros {size}))",
+        "KBytes path stores (KPath)": f"(KPath.mk (kzeros {size}))",
         "Overlay(NatMem)": f"(Overlay.ofBase (NatMem.zeros {size}))",
         f"PageMem {2 ** pb // 1024 or 2 ** pb}{'KiB' if pb >= 10 else 'B'} pages": f"(PageMem.zeros {pb} {d})",
     }
