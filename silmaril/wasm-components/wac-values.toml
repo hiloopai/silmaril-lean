@@ -1,0 +1,13 @@
+schema = "silmaril.records.v0.2"
+
+[[value]]
+name = "silmaril.wasm_components.wac.pilot"
+format = "wac.text"
+source = "silmaril.wasm_components.wac.pilot.blob"
+doc = "The WAC source of the pilot composition: provider plugged into comp-b"
+
+[[value]]
+name = "silmaril.wasm_components.wac.pilot.composed"
+format = "wac.composition"
+source = "silmaril.wasm_components.wac.pilot.composed.blob"
+doc = "The composition of silmaril.wasm_components.wac.pilot (wac compose, examples/wasm-components/wac/pilot.wasm)"
