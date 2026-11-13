@@ -73,7 +73,7 @@ Checked is open work. The modules are listed in the last section.
 | 7.1.1 | Chunk extensions: grammar; unknown extensions ignored | Proved | `isChunkExt_iff_abnf` |
 | 7.1.2 | Trailer fields: not merged when their definition forbids it (RFC 9110 §6.5.1) | Proved | `fieldValues_mergeTrailers`, `requestBodyLength_mergeTrailers` |
 | 7.1.3 | Decoding `chunked` gives the concatenated chunk data | Proved | `parseChunked_rechunk` |
-| 7.2 | `compress`, `deflate`, `gzip`; `x-compress`/`x-gzip` equivalent | Proved for `gzip`, `deflate`; Gap for `compress` | `Decoders` parameter, `decodeTransfer_encodeTransfer`; instantiated by `Silmaril.Net.Http1.CodingLib` (`lib_roundTrip`). No LZW decoder |
+| 7.2 | `compress`, `deflate`, `gzip`; `x-compress`/`x-gzip` equivalent | `gzip`, `deflate`: round trip proved for the library's stored-block encoders only; general decoder correctness (arbitrary compressed input) not established. `compress`: Gap | `Decoders` parameter, `decodeTransfer_encodeTransfer`; instantiated by `Silmaril.Net.Http1.CodingLib` (`lib_roundTrip`, which uses only `Gzip.roundTrip` and `Zlib.roundTrip` and no `Task` hypothesis). No LZW decoder |
 | 7.3 | Transfer coding registry | Defined | `registeredCodings` |
 | 7.4, 10.1 | `TE`: `trailers`, codings with weights; `chunked` always acceptable | Defined, Checked | `teOffers`, `teTrailers`, `teAccepts` |
 | 7.4 | The sender of `TE` also sends the `TE` connection option | Defined | `declaresHopByHop` (no theorem) |

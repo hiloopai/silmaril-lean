@@ -49,7 +49,7 @@ methods explicitly.
 The `Decoders` parameter of `Silmaril.Net.Http1.Codings` is instantiated with the codecs of
 `Silmaril.Formats.Compression`: `gzip` (RFC 1952) and `deflate` (the zlib format,
 RFC 1950). `libDecoders_inverts` discharges the assumption `Decoders.Inverts`, so
-`lib_roundTrip` proves the round trip for any list of these codings (Proved). Its only
+`lib_roundTrip` proves the round trip for any list of these codings, **for the library's stored-block encoders only** (Proved; general decoder correctness not established). Its only
 dependencies are `Gzip.roundTrip` and `Zlib.roundTrip`, which are unconditional but are about
 the library's **stored-block encoders**. It does not depend on `Deflate.Task.local` or the
 `Inflate.Task.*` completeness tasks. It is **not** a proof that gzip or DEFLATE decoding is
