@@ -30,11 +30,12 @@ This module reads a raw history as the socket events of `Silmaril.Servers.Platfo
 The theorems (`Thms`) show that the octets received and sent on each connection, hence the
 exchanges any framing reads (`connLog`), depend only on the byte trace (`byteTrace`).
 
-Not read: `close` (a descriptor is closed, but the record does not name the connection),
-`recvfrom`/`recvmsg`, which LPS leaves unmodelled on sockets, and connection-level errors.
-That the `k`-th successful accept is the connection of channel `k + 3` is how LPS numbers
-channels (`connChannel`, `accept4Spec`); it is assumed here, not proved from the process
-semantics.
+`ofRecordsC` also reads `close`, through the descriptors that accepts returned, and
+`sockSemNet` lets the environment choose the network (the queue of incoming connections).
+That the `k`-th successful accept is the connection of channel `k + 3` is proved in `Thms`
+(`kth_accept_channel`) for every table that counts connections (`CountsConns`); for LPS's
+whole table that is the frozen `Task.specTableCountsConns`. `recvfrom`/`recvmsg` deliver no
+bytes in LPS (`Thms.recvfromSpec_ok`); connection-level errors are not read.
 
 A Silmaril addition.
 -/

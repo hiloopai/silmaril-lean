@@ -37,6 +37,9 @@ vocabularies and are related to the core as follows.
 | Platforms (`Reuse`, `Cgi`, `Platform`, `Wire1`, `Sockets`, `Compare`) | `Platform T` with `view`, `Refines`, sequential `Log`s and per-connection `ConnLog`s | a `Log` is a core `History` (`log_eq_history`); `Platform.model` reads a platform's logs as a core `Model` and `Refines` is exactly core refinement (`refines_iff_model`); `Platform.connModel` reads per-connection traces as core traces with identities ⟨connection, index⟩, and `Refines` gives core refinement (`connModel_refines`) | Proved |
 | Fresh instance per request (`PerRequest`) | the core | one model, `Machine.perRequest M q₀`; `Exchange.fresh`, `State.Server.perRequest` and `Reuse.Fresh` are instances of it (`Exchange.fresh_eq_perRequest`, `State.perRequest_model_tr_iff`, `Reuse.fresh_eq_hist`) | Proved |
 | Liveness (`Live`) | infinite observations `ITrace`, sentences `ISen` | a separate kind of sentence over infinite runs of `Machine.server`; every finite prefix of a run is a core trace (`Machine.IRun.prefix_tr`) | Proved |
+| A Linux server loop (`LinuxHello`) | a `UserIsa` whose instruction steps are the loop's transitions, run by LPS with its own `accept`, `read`, `sendto` and `close` | its socket traces are a `SockSem` (`Sockets.sockSemNet`), so it is an implementation of `Platform.linux`; it serves hello (`serves`), so the hello component refines it (`wasi_refines_loop`) | Proved; the converse is conditional on `Task.loopSentPrefix` |
+| Timed socket traces (`Timed`) | socket traces read as core traces by the event that completes each request and exchange | `timedModel` is a core `Model`; for a monotone framing each connection's receptions and sendings are its per-connection log (`recvsOn_timed`, `sendsOn_timed`), with the cross-connection order of the socket events | Proved; `Wire1.framing` monotone is `Task.wire1Mono` |
+| HTTP/1.1 exchanges (`WireExch`) | interim responses and close-delimited final responses on the wire | values of `Http.exchSig` (interim responses, final); `framingC` is a `Platform.Framing` | Proved |
 
 `Platform.fresh` (platforms) is not yet stated as an instance of `Machine.perRequest`; it is
 the next one. A platform's logs are already a core `Model` (`Platform.model`, `refines_iff_model`).
@@ -671,7 +674,7 @@ under a change of observation.
 | … a fresh instance per request (CGI, Spin, Fastly, `wasmtime serve` 0.2) | `Platform.fresh σ` | same | each exchange a run from the initial state (`Reuse.Fresh`) | defined |
 | … under a host that pools instances (`wasi:http`'s contract) | `Platform.host σ` | same | runs of a pool of instances, any request to any idle or new instance (`Reuse.HostRuns`) | defined |
 | CGI or WAGI script | `Platform.cgi g` | a `Silmaril.Cli.Spec` and the initial files | one run per request on the files the previous run left (`Cgi.origin`) | defined |
-| Linux process over sockets | `Platform.linux fr` | a socket semantics `Input → List SockEv → Prop` and the launch invocation | the connections accepted and, per connection, requests framed from the octets received paired in order with responses framed from the octets sent (`connLog`, RFC 9112 §9.3) | defined; HTTP/1.1 framing `Wire1.framing` with round trips proved; socket semantics of a process-model program `Sockets.sockSem` |
+| Linux process over sockets | `Platform.linux fr` | a socket semantics `Input → List SockEv → Prop` and the launch invocation | the connections accepted and, per connection, requests framed from the octets received paired in order with responses framed from the octets sent (`connLog`, RFC 9112 §9.3) | defined; HTTP/1.1 framing `Wire1.framing` with round trips proved (interim responses and close-delimited bodies in `WireExch`); socket semantics of a process-model program `Sockets.sockSem`, over every network `Sockets.sockSemNet`; a hello loop `LinuxHello.L` proved to serve hello |
 | `wasi:http` component, fresh instance per request | `Compare.wasi` | a component body over the proxy imports | each exchange a one-exchange trace of the component (`wasiServer`) | defined; hello compared with Linux (below) |
 | Container | `Platform.container fr` | a socket semantics and a `Container` (image of layers with whiteouts, entry point, arguments, environment, roots) | the process platform at `Container.launch`, whose files are the image's (`container_view`, by definition) | defined |
 
@@ -703,8 +706,8 @@ as path-with-query, content the body's payload, the framing fields `Content-Leng
 one response per request, each read with its request's method. Round trips:
 `requests_encode` (requests with valid heads and fitting bodies, sent back to back, are read
 back exactly), `responses_encode`, and `connLog_encode` (the exchanges of such a connection
-are the pairs). Not covered: interim responses (read as the response), close-delimited
-response bodies, `CONNECT` tunnels, absolute-form targets.
+are the pairs). Not covered here: interim responses (read as the response) and close-delimited
+response bodies, which `WireExch` below reads; `CONNECT` tunnels; absolute-form targets.
 
 **Socket events of a process** (`Silmaril.Servers.Sockets`, proved). The Linux process model
 (`Silmaril.Process.LPS`) records runs as raw system-call histories whose byte events carry a
@@ -712,9 +715,75 @@ trace channel, `connChannel ix = ix + 3` for the `ix`-th accepted connection. `o
 reads bytes read and written on connection channels as `recv`/`send` and successful
 `accept`/`accept4` calls as `accept`s in order; `sockSem` is the socket semantics of a
 launched program (its finite runs, `HStar`). `connLog_byteTrace`: the exchanges of every
-connection, under any framing, are framed from the bytes on its channel. Assumed, not
-proved: that the `k`-th accept is channel `k + 3` (it is how LPS numbers them). Not read:
-`close`, and `recvfrom`/`recvmsg`, which LPS leaves unmodelled on sockets.
+connection, under any framing, are framed from the bytes on its channel.
+
+- **The `k`-th accept is channel `k + 3`.** `accept4Spec_ok`: a successful LPS `accept`
+  advances the connection counter by one, takes the head of the network queue, emits nothing
+  and installs a connected socket on channel `connIx + 3`. `connIx_hstar`: along every run of
+  a table that counts connections (`CountsConns`: only successful accepts move the counter),
+  the counter is the number of accepts so far, so `kth_accept_channel`: the `k`-th accept of a
+  run started at counter `0` is the connection of channel `k + 3`. That LPS's whole table
+  counts connections is the frozen `Task.specTableCountsConns` (a pass over its arms).
+- **`close` and `recvfrom`.** `ofRecordsC` also reads `close`: the descriptors that accepts
+  returned map to their connections, and a successful `close` of one is a `close` event; the
+  octets, hence the exchanges, are unchanged (`connLog_ofRecordsC`). `closeSpec_ok`,
+  `recvfromSpec_ok`, `recvmsgSpec_ok`: a `close` emits no byte event, and a `recvfrom` or
+  `recvmsg` that returns emits nothing and changes nothing (LPS declines both on a socket), so
+  reading their records as nothing is exact; bytes are read from the events of whatever call
+  delivers them.
+- **The network is the environment's choice.** `sockSem` fixes the connection queue with the
+  invocation, so it cannot satisfy a hypothesis such as `ServesHello` that asks for every
+  sequence of requests. `sockSemNet` ranges over every queue (LPS's `ProcInput.net`) and reads
+  `close`; over the constant queue it has the exchanges of `sockSem`
+  (`sockSemNet_const_connLog`).
+
+**A Linux hello server loop** (`Silmaril.Servers.LinuxHello`, proved, one direction
+conditional). A loop that accepts on a listening socket handed over at start (descriptor 3,
+as with socket activation), reads until the client's `FIN`, frames what it read as HTTP/1.1
+requests, answers each leading request whose method is neither `HEAD` nor `CONNECT` with
+`helloWire`, sends with `sendto(…, MSG_NOSIGNAL)` until done and closes. The loop is a
+`UserIsa` whose instruction steps are its transitions in Lean and whose memory is a 4 KiB
+input buffer and a 4 KiB window on the pending output: it is a program of the process model,
+not a compiled binary. The system calls are LPS's own: `serverTable` holds the four arms of
+LPS's generic table, and since the loop traps only with their numbers its runs are the same
+under the whole table (`L_eq_full`).
+
+- **`serves`**: `ServesHello L inp` for every invocation, through `sockSemNet` and LPS's
+  `accept4Spec`, `readSpec` (chunks of at most 4096 octets, then `FIN`) and `sendtoSpec`
+  (chunks of at most 4096). With `Compare.wasi_refines_linux`: **`wasi_refines_loop`**, the
+  hello component refines this process on logs on the wire. This discharges, for this loop,
+  the hypothesis the previous comparison left open.
+- **`hello_prefix_err`**: no strict prefix of `helloWire`'s octets frames as a response, after
+  any octets (a head read inside such a prefix is `helloWire`'s whole head, by soundness and
+  completeness of the head grammar, and the 5 body octets are missing). Hence
+  **`onlyHello_of_sentPrefix`**: any socket semantics whose connections each send a prefix of
+  the hello responses their received octets call for (`SentPrefix`) only says hello, short
+  sends included.
+- Open: `Task.loopSentPrefix`, that the loop satisfies `SentPrefix`. It is an invariant over
+  every run LPS allows (failed accepts, short reads and sends, resets, `EPIPE`), the descriptor
+  table and the channel of each connection. Under it, `only_of_task` and `hello_equiv_loop`:
+  the loop and the hello component are equivalent on logs on the wire.
+
+**Core traces from socket timing** (`Silmaril.Servers.Timed`, proved for monotone framings).
+`connModel` fixes only the order on each connection. `timed fr tr` reads the order the socket
+events give: a request is received at the event that completes its octets, a response sent
+at the event that completes its exchange (or its request, if the server answered early), each
+with identity ⟨connection, index⟩. For a framing that never takes back what it has read
+(`Mono`), the receptions of each connection are its requests in order (`recvsOn_timed`) and its
+sendings are its exchanges' responses in order (`sendsOn_timed`): the timed trace holds
+exactly the per-connection logs, plus the cross-connection order. `timedModel` is the core
+model of a socket semantics read this way, monotone in the socket semantics
+(`timedModel_mono`). That `Wire1.framing` is monotone is the frozen `Task.wire1Mono`.
+
+**Interim responses and close-delimited bodies** (`Silmaril.Servers.WireExch`, proved).
+`parseExch` reads, after a request, any `1xx` responses other than `101` as interim and then
+the final response (RFC 9110 §15.2); a final response delimited by closing the connection
+(RFC 9112 §6.3 rule 8) counts only once the server has closed it. `exchanges` gives
+`Http.exchSig` values (interim responses, final response), `framingC` the final responses as a
+`Platform.Framing`, and `connLogX` the exchanges of a connection of a socket trace, closed when
+the trace has the server's `close`. Round trips: `exchanges_encode` (interim responses and
+fitting finals, back to back), `exchanges_encode_close` (a last close-delimited response is
+read once the connection is closed) and `exchanges_encode_open` (and not before).
 
 **Hello, Wasm against Linux, end to end** (`Silmaril.Servers.Compare`, proved, conditional on the
 Linux side). `wasi_hello_iff`: the logs of the hello component are those answering every
@@ -729,8 +798,9 @@ them, `wasi_refines_linux_model` states the first in the server institution, and
 reference hello server at the socket level, satisfies both hypotheses
 (`hello_equiv_helloSock`). Two findings: HTTP/1.1 cannot carry every request a component may be
 given, and the hello component answers `HEAD` with content, which an HTTP/1.1 client reads as
-no body (RFC 9112 §6.3), so the comparison is restricted to `wireLog`. No Linux binary is proved
-to satisfy `ServesHello`; that would go through `Sockets.sockSem` and the process model.
+no body (RFC 9112 §6.3), so the comparison is restricted to `wireLog`. The loop of
+`Silmaril.Servers.LinuxHello` satisfies `ServesHello` under LPS's semantics (above); no
+compiled binary is proved to.
 
 How refinement between the other instances is stated:
 
@@ -752,18 +822,19 @@ How refinement between the other instances is stated:
 
 Planned, in order of cost:
 
-1. A Linux binary that satisfies `ServesHello` and `OnlyHello` through `Sockets.sockSem`,
-   which needs the process model to run a server loop over `accept`, `read` and `write`.
-   Netsem [21] is the reference for what the kernel may do (partial reads and writes,
-   `EAGAIN`). Reading `close` needs the descriptor-to-connection map of the process state.
-2. Core traces read directly from socket timing (a request received when its last octet
-   arrives), instead of the per-connection logs, which fix only the order on each connection.
+1. `Task.loopSentPrefix`: the run invariant of the hello loop (every LPS outcome of its four
+   calls), which completes the equivalence of the loop and the hello component. Then the
+   same for a compiled binary, through an ISA of the process model instead of the loop's own
+   `UserIsa`. Netsem [21] is the reference for what the kernel may do.
+2. `Task.wire1Mono` (HTTP/1.1 framing never takes back what it read), which makes the timed
+   reading of HTTP/1.1 socket traces exact; and `Task.specTableCountsConns`.
 3. Concurrent instance reuse (the 0.3 `service` world). An exchange is then no longer atomic
    at the instance. The linearizability reading of the core is the specification, with the
    component's `backpressure` as the opt-out.
-4. Finer observations than whole exchanges: interim responses, streaming bodies (the 0.2
-   `response-outparam` sends the response before `handle` returns), and connection-level
-   errors and timeouts.
+4. Finer observations than whole exchanges: streaming bodies (the 0.2 `response-outparam`
+   sends the response before `handle` returns), and connection-level errors and timeouts.
+   Interim responses and close-delimited bodies are read (`WireExch`), but not yet from the
+   component side.
 
 ### References for the survey
 
@@ -849,7 +920,8 @@ lake build Silmaril.Servers.Core.Thms Silmaril.Servers.Http.Thms \
   Silmaril.Servers.Cgi.Thms Silmaril.Servers.Platform.Thms \
   Silmaril.Servers.Conn.Thms Silmaril.Servers.WasiFs.Thms \
   Silmaril.Servers.Wire1.Thms Silmaril.Servers.Sockets.Thms Silmaril.Servers.Compare.Thms \
-  Silmaril.Servers.State.Traces.Thms Silmaril.Servers.PerRequest.Thms Silmaril.Servers.Live.Thms
+  Silmaril.Servers.State.Traces.Thms Silmaril.Servers.PerRequest.Thms Silmaril.Servers.Live.Thms \
+  Silmaril.Servers.LinuxHello.Thms Silmaril.Servers.Timed.Thms Silmaril.Servers.WireExch.Thms
 ```
 
 Every module builds in under 8 s; the slowest are the run proofs of `WasiFs` and
