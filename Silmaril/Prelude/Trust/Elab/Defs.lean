@@ -179,12 +179,13 @@ def exposeHead (env : Environment) (e : Expr) : MetaM Expr := do
   return e
 
 /-- **The backend hook.** A proof of `e = true` for a closed `Bool` term `e` whose head is a
-registered procedure (or the procedure `proc?`), as the policy allows in the current module,
+registered procedure (or the procedure `proc?`), as the policy allows (or by the kernel
+only, with `kernelOnly`) in the current module,
 profile and ceiling: a native run (of the paired native implementation, if registered, with its
 result transferred by the pairing theorem), the kernel fallback, or an error. Records the use.
 Tactics and adapters for other formats call this instead of the registry internals. -/
-def decideEdge (e : Expr) (proc? : Option Name := none) (ref : Syntax := .missing) :
-    TermElabM Expr := do
+def decideEdge (e : Expr) (proc? : Option Name := none) (ref : Syntax := .missing)
+    (kernelOnly : Bool := false) : TermElabM Expr := do
   let e ← instantiateMVars e
   if e.hasFVar || e.hasMVar then
     throwError "edge_decide: the term must be closed{indentExpr e}"
@@ -210,7 +211,7 @@ def decideEdge (e : Expr) (proc? : Option Name := none) (ref : Syntax := .missin
     | .error msg => throwError "edge_decide: {msg}"
   let decl := (← Term.getDeclName?).getD .anonymous
   let eqTrue (x : Expr) := mkApp3 (mkConst ``Eq [1]) (mkConst ``Bool) x (mkConst ``Bool.true)
-  if allow.contains proc.name then
+  if allow.contains proc.name && !kernelOnly then
     let us := e.getAppFn.constLevels!
     let args := e.getAppArgs
     let (run, transfer) := match proc.native with
@@ -238,6 +239,8 @@ def decideEdge (e : Expr) (proc? : Option Name := none) (ref : Syntax := .missin
           {ex.toMessageData}"
     recordUse { decl, module := mod, proc := proc.name, mode := .kernel, profile := prof }
     return mkConst lemma
+  else if kernelOnly then
+    throwError "edge_pair: the kernel side {proc.name} has no kernel fallback"
   else
     throwError "edge_decide: {proc.name} may not run natively in {mod} under profile {prof}, \
       and it has no kernel fallback"
@@ -465,9 +468,9 @@ example : Parses F A :=
 
 `native` and `kernel` have types `f a₁ … aₙ = true → P` and `g b₁ … bₘ = true → P` for the
 goal `P`, with `f` and `g` registered procedures. If the policy lets `f` run natively here,
-`f a₁ … aₙ` runs natively. Otherwise `g b₁ … bₘ` goes through `decideEdge`: the kernel if `g`
-has a fallback, natively if `g` itself is allowed, or failure. The proposition is `P` either
-way.
+`f a₁ … aₙ` runs natively. Otherwise the kernel checks `g b₁ … bₘ`: the kernel side never runs
+natively, even where the policy would allow `g`, and fails if `g` has no kernel fallback. The
+proposition is `P` either way.
 -/
 
 namespace Silmaril.Trust
@@ -512,7 +515,8 @@ def nativeAllowed (name : Name) : CoreM Bool := do
   let prf ← if nativeOk then
       pure (mkApp hn (← decideEdge en none stx))
     else
-      pure (mkApp hk (← decideEdge ek none stx))
+      -- The kernel side never runs natively, whatever the policy allows.
+      pure (mkApp hk (← decideEdge ek none stx (kernelOnly := true)))
   goal.assign prf
   replaceMainGoal []
 

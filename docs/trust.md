@@ -89,7 +89,8 @@ native_decider elf.layoutOk := Silmaril.Elf.Staged.layoutOk with_kernel_fallback
   theorems instead of a function equality: `by edge_pair (native := fastSound b A) (kernel :=
   kernelSound kb A)`. Here `fastSound b A : fast b A = true → P` and `kernelSound kb A :
   check kb A = true → P`. The native side runs when its procedure is allowed; otherwise the
-  kernel side goes through `decideEdge`. The source binding stays in the proposition `P`.
+  kernel checks the kernel side. The kernel side never runs natively, even where the policy
+  would allow its procedure (`decideEdge … (kernelOnly := true)`). The source binding stays in the proposition `P`.
 * **Backend hook for adapters.** `Silmaril.Trust.decideEdge (e : Expr) (proc? : Option Name)
   : TermElabM Expr` returns a proof of `e = true` under the policy, records the use, and is
   what `edge_decide` calls. Adapters and format-specific tactics call it instead of reading
