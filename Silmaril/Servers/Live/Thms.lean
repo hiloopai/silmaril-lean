@@ -4,6 +4,7 @@ public import Silmaril.Servers.Live.Defs
 public import Silmaril.Servers.Core.Thms
 import Silmaril.Proofs.Servers.Live.Basic
 import Silmaril.Proofs.Servers.Live.Pipe
+import Silmaril.Proofs.Servers.Live.Exists
 
 /-!
 # Liveness: theorems
@@ -23,6 +24,12 @@ PROVED (standard axioms).
   (`Machine.pipeFairObs_answered`); every prefix of a run is a trace of the pipelining server
   (`Machine.PRun.prefix_tr`), so it answers in order at every prefix
   (`Machine.PRun.always_inOrder`);
+* **`Machine.exists_fair`**: fair runs exist. For a total machine and every stream of
+  requests `reqs` on a connection `c`, some run of the pipelining server receives the `k`-th
+  request with identity `⟨c, k⟩` at instant `3 k`, and is weakly fair both as a run of the
+  pipelining server and as a run of the atomic-handler server; so the fair observations are
+  not empty (`Machine.fairObs_nonempty`, `Machine.pipeFairObs_nonempty`), and the liveness
+  theorems are not vacuous;
 * `Machine.ofRel_total`, `Machine.ofFun_total`: a relation that answers every request, and a
   function, are total machines.
 
@@ -76,6 +83,26 @@ theorem Machine.PRun.prefix_tr (ρ : M.PRun q₀) (n : Nat) :
 
 theorem Machine.PRun.always_inOrder (ρ : M.PRun q₀) : ISen.always Sen.inOrder ρ.obs :=
   fun n => M.pipeServer_sat_inOrder q₀ _ (ρ.prefix_tr n)
+
+/-! ## Fair runs exist -/
+
+/-- **Fair runs exist**: a total machine has a fair run that receives any stream of requests on a
+connection. -/
+theorem Machine.exists_fair (hM : M.Total) (q₀ : σ) (c : Nat) (reqs : Nat → A.Req) :
+    ∃ ρ : M.PRun q₀, ρ.Fair ∧ ρ.toIRun.Fair ∧
+      ∀ k, ρ.obs (3 * k) = some (.recv ⟨c, k⟩ (reqs k)) :=
+  ⟨Proofs.Servers.Live.run hM q₀ c reqs, Proofs.Servers.Live.run_fair hM q₀ c reqs,
+    Proofs.Servers.Live.run_fair_irun hM q₀ c reqs, Proofs.Servers.Live.run_obs_recv hM q₀ c reqs⟩
+
+theorem Machine.fairObs_nonempty (hM : M.Total) (q₀ : σ) (c : Nat) (reqs : Nat → A.Req) :
+    ∃ u, M.fairObs q₀ u ∧ ∀ k, u (3 * k) = some (.recv ⟨c, k⟩ (reqs k)) :=
+  let ⟨ρ, _, hF, h⟩ := Machine.exists_fair hM q₀ c reqs
+  ⟨ρ.obs, ⟨ρ.toIRun, hF, rfl⟩, h⟩
+
+theorem Machine.pipeFairObs_nonempty (hM : M.Total) (q₀ : σ) (c : Nat) (reqs : Nat → A.Req) :
+    ∃ u, M.pipeFairObs q₀ u ∧ ∀ k, u (3 * k) = some (.recv ⟨c, k⟩ (reqs k)) :=
+  let ⟨ρ, hF, _, h⟩ := Machine.exists_fair hM q₀ c reqs
+  ⟨ρ.obs, ⟨ρ, hF, rfl⟩, h⟩
 
 theorem Machine.ofRel_total {R : A.Req → A.Resp → Prop} (h : ∀ r, ∃ s, R r s) :
     (Machine.ofRel R).Total :=
