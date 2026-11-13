@@ -4,6 +4,7 @@ public import Silmaril.Servers.Core.Defs
 import Silmaril.Proofs.Servers.Core.Lin
 import Silmaril.Proofs.Servers.Core.Seq
 import Silmaril.Proofs.Servers.Core.Pipe
+import Silmaril.Proofs.Servers.Core.Unmap
 
 /-!
 # The server institution: theorems
@@ -170,5 +171,23 @@ theorem Hom.lin_trace {B : Sig} (h : Hom A B) {S : SeqSpec A} {t : Trace B}
 theorem Hom.mod_sat_lin {B : Sig} (h : Hom A B) {M : Model B} {S : SeqSpec A}
     (hM : M.Sat (Sen.lin (h.seq S))) : (h.mod M).Sat (Sen.lin S) :=
   (h.sat_sen_iff M _).1 fun t ht => h.lin_trace (hM t ht)
+
+/-- **The converse of `Hom.lin_trace`**, for a morphism that sees every response. -/
+theorem Hom.lin_of_trace {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    {S : SeqSpec A} {t : Trace B} (hl : Sen.lin S (h.trace t)) : Sen.lin (h.seq S) t :=
+  Proofs.Servers.Core.lin_of_trace h hsur hl
+
+theorem Hom.lin_trace_iff {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    {S : SeqSpec A} {t : Trace B} : Sen.lin (h.seq S) t ↔ Sen.lin S (h.trace t) :=
+  ⟨h.lin_trace, h.lin_of_trace hsur⟩
+
+/-- **Linearizability translates along a morphism that sees every response.** -/
+theorem Hom.sen_lin {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    (S : SeqSpec A) : h.sen (Sen.lin S) = Sen.lin (h.seq S) := by
+  funext t; exact propext (h.lin_trace_iff hsur).symm
+
+theorem Hom.sat_lin_iff {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    {M : Model B} {S : SeqSpec A} : M.Sat (Sen.lin (h.seq S)) ↔ (h.mod M).Sat (Sen.lin S) := by
+  rw [← h.sen_lin hsur]; exact h.sat_sen_iff M _
 
 end Silmaril.Servers
