@@ -1,5 +1,6 @@
 import Silmaril.Wasm.KernelEval.Examples
 import Silmaril.Wasm.KernelEval.Memories
+import Silmaril.Wasm.KernelEval.KBytesMem
 /-! Native (compiled) timings of the memory representations of `Silmaril.Wasm.KernelEval`.
 `ByteMem` is a copy of the algorithm of Core's `Memory.load`/`Memory.store`
 (`ByteArray.extract`, `copySlice`; `Silmaril.Wasm.Execution.Memory`) on the core-only side,
@@ -43,6 +44,8 @@ def allReps (work : String) (size reps : Nat)
   emit work "Overlay(NatMem)" size reps (f (Overlay.ofBase (NatMem.zeros size)))
   let pb := 12; let d := Nat.log2 (size / 4096)
   emit work "PageMem 4KiB" size reps (f (PageMem.zeros pb d))
+  emit work "KBytes rope stores (KRope)" size reps (f (KRope.mk (kzeros size)))
+  emit work "KBytes path stores (KPath)" size reps (f (KPath.mk (kzeros size)))
   emit work "ByteMem (Core algorithm)" size reps (f (ByteMem.zeros size))
   if size ≤ 65536 then emit work "ListMem" size (max 1 (reps / 10)) (f (⟨List.replicate size 0⟩ : ListMem))
 
