@@ -12,7 +12,7 @@ kbytes_def hello from_file "../../examples/dyn/pinned/hello-gcc"
 -- def hello.chunks : List Nat := [c₀, c₁, …]         -- 4 KiB little-endian literals
 -- def hello : Silmaril.KBytes := node 15960 (node …) …  -- the canonical tree, written out
 -- theorem hello.eq_ofChunks : hello = KBytes.ofChunks 4096 15960 hello.chunks
--- theorem hello.wf : hello.wf = true
+-- theorem hello.wf_true : hello.wf = true
 -- theorem hello.len_eq : hello.len = 15960
 ```
 
@@ -72,13 +72,13 @@ def listExpr (lits : Array Expr) : Expr :=
 def addDefn (name : Name) (type value : Expr) (computable : Bool) : CoreM Unit := do
   let decl := Declaration.defnDecl
     { name, levelParams := [], type, value, hints := .abbrev, safety := .safe }
-  if computable then addAndCompile decl
+  if computable then withExporting (addAndCompile decl)
   else
-    addDecl decl
+    withExporting (addDecl decl)
     modifyEnv (addNoncomputable · name)
 
 def addThm (name : Name) (type value : Expr) : CoreM Unit :=
-  withOptions (Elab.async.set · false) do
+  withExporting <| withOptions (Elab.async.set · false) do
     addDecl (.thmDecl { name, levelParams := [], type, value })
 
 def eqExpr (ty a b : Expr) : Expr := mkApp3 (mkConst ``Eq [1]) ty a b
@@ -86,7 +86,9 @@ def eqExpr (ty a b : Expr) : Expr := mkApp3 (mkConst ``Eq [1]) ty a b
 /-- Define `name`, `name.chunks`, `name.eq_ofChunks`, `name.wf` and `name.len_eq` for `n`
 bytes in the chunk literals `lits` (chunk size `c`). -/
 def defineKBytes (name : Name) (c n : Nat) (lits : Array Nat) (computable : Bool) :
-    CoreM Unit := do
+    CoreM Unit := withExporting do
+  -- Under the module system, a declaration added outside an exporting scope is exported as an
+  -- opaque axiom; importers could then neither unfold the tree nor reduce reads of it.
   if c == 0 then throwError "kbytes_def: chunk size 0"
   unless (n + c - 1) / c == lits.size do
     throwError "kbytes_def: {lits.size} chunks cannot hold exactly {n} bytes of {c}"
@@ -101,7 +103,7 @@ def defineKBytes (name : Name) (c n : Nat) (lits : Array Nat) (computable : Bool
   let hEq := name ++ `eq_ofChunks
   addThm hEq (eqExpr kb (mkConst name) ofC) (mkApp2 (mkConst ``Eq.refl [1]) kb (mkConst name))
   let boolT := mkConst ``Bool
-  addThm (name ++ `wf) (eqExpr boolT (mkApp (mkConst ``KBytes.wf) (mkConst name)) (mkConst ``Bool.true))
+  addThm (name ++ `wf_true) (eqExpr boolT (mkApp (mkConst ``KBytes.wf) (mkConst name)) (mkConst ``Bool.true))
     (mkApp4 (mkConst ``KBytes.wf_of_eq_ofChunks) (mkConst name) (mkNatLit c) (mkNatLit n)
       (mkConst (name ++ `chunks)) |>.app (mkConst hEq))
   addThm (name ++ `len_eq) (eqExpr (mkConst ``Nat) (mkApp (mkConst ``KBytes.len) (mkConst name)) (mkNatLit n))

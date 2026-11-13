@@ -37,7 +37,7 @@ theorem helloFile_raw : helloFile.toByteArray = helloRaw := by kbytes_rel
 theorem raw_magic : helloRaw.data.toList.take 4 = [0x7f, 0x45, 0x4c, 0x46] := by
   rw [← hello.toByteArray_eq]
   have h1 : hello.read 0 4 = 0x464c457f := by decide +kernel
-  have h2 := unpack_read hello hello.wf (off := 0) (w := 4) (by rw [hello.len_eq]; decide)
+  have h2 := unpack_read hello hello.wf_true (off := 0) (w := 4) (by rw [hello.len_eq]; decide)
   rw [h1, List.drop_zero] at h2
   show hello.toList.take 4 = _
   rw [← h2]
@@ -63,9 +63,9 @@ example : helloC.toByteArray = helloRawC.extract 0 helloRawC.size := by kbytes_r
 
 -- The structural bridge has no native axiom; the fallback has one.
 /--
-info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.IncludeBytes.KernelExamples.helloFile_raw","dep_native":[],"kind":"audit","module":"Silmaril.Data.IncludeBytes.KernelExamples","native_axioms":[],"own_native":[]}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.IncludeBytes.KernelExamples.raw_magic","dep_native":[],"kind":"audit","module":"Silmaril.Data.IncludeBytes.KernelExamples","native_axioms":[],"own_native":[]}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.IncludeBytes.KernelExamples.helloC_extract","dep_native":[],"kind":"audit","module":"Silmaril.Data.IncludeBytes.KernelExamples","native_axioms":["_private.Silmaril.Data.IncludeBytes.KernelExamples.0.Silmaril.IncludeBytes.KernelExamples.helloC_extract._native.edge.bytes.eqByteArray.ax_1_1"],"own_native":["bytes.eqByteArray"]}
+info: {"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.IncludeBytes.KernelExamples.helloFile_raw","dep_native":[],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Data.IncludeBytes.KernelExamples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.IncludeBytes.KernelExamples.raw_magic","dep_native":[],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Data.IncludeBytes.KernelExamples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.IncludeBytes.KernelExamples.helloC_extract","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Data.IncludeBytes.KernelExamples","native_axioms":["_private.Silmaril.Data.IncludeBytes.KernelExamples.0.Silmaril.IncludeBytes.KernelExamples.helloC_extract._native.edge.bytes.eqByteArray.ax_1_1"],"own_native":["bytes.eqByteArray"],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit helloFile_raw raw_magic helloC_extract
