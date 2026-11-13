@@ -137,7 +137,7 @@ Remaining follow-ups with the other tracks:
 
 | Need | Plan | Owner |
 | --- | --- | --- |
-| Big-endian `k`-octet integers | `Net.Wire.beBytes`/`beValue` with general lemmas, extracted from `Http2.Frame` in a separate pull request (WIRE_PR); this pull request switches to them once that lands | `Net.Wire`; see also moria-lean#2033 |
+| Big-endian `k`-octet integers | `Net.Wire.beBytes`/`beValue` with general lemmas, extracted from `Http2.Frame` in a separate pull request (#162); this pull request switches to them once that lands | `Net.Wire`; see also moria-lean#2033 |
 | HTTP/3 field sections | Already `List Hpack.Entry` in #159, so `Tunnel.Connect` applies to RFC 9220 unchanged | done |
 | `SETTINGS_ENABLE_CONNECT_PROTOCOL` | `Http3.settingEnableConnectProtocol` (#159) and `Tunnel.settingEnableConnectProtocol` are both 0x08. Whichever lands second defines its constant as the other's | QUIC/H3 track and this track |
 | Two `validExtendedConnect`s | `Tunnel` (this PR) and `Http3.ExtendedConnect` (#159) differ: this one needs exactly one `:authority` and a non-empty `:path` for every scheme. After both merge, prove `Tunnel.validExtendedConnect → Http3.validExtendedConnect` or make one canonical | both tracks |
