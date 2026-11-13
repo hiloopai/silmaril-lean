@@ -1,1 +1,1 @@
--- Stand-in source of Silmaril.Elf.Staged.Example.Thms for the trust fixture; only its digest is recorded.
+-- Stand-in source of Silmaril.Elf.Staged.Example.Thms (trust fixture).

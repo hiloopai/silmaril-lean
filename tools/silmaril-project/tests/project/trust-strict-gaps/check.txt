@@ -1,19 +1,12 @@
-error: trust Silmaril.Elf.Staged.Defs: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
-error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: imports Mathlib.Data.Nat.Basic, which the trust dump does not describe
 error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
-error: trust Silmaril.Elf.Staged.Example.Thms: --strict-trust: imports Silmaril.X86.Link.Blob.Thms, which the trust dump does not describe
-error: trust Silmaril.Elf.Staged.Thms: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
-error: trust Silmaril.Elf.Staged.Thms: --strict-trust: imports Silmaril.X86.Link.Blob.Thms, which the trust dump does not describe
-error: trust Silmaril.Formats.Bytes: --strict-trust: imports Mathlib.Data.Nat.Basic, which the trust dump does not describe
-error: trust Silmaril.Proofs.Elf.Staged.Fast: --strict-trust: imports Silmaril.Elf.Parse.Defs, which the trust dump does not describe
-error: trust Silmaril.Proofs.Elf.Staged.Fast: --strict-trust: imports Silmaril.X86.Link.Blob.Thms, which the trust dump does not describe
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust: 15 procedures (1 registered only), 21 implementations (11 native, 12 planned), 5 sets, 3 policies
-trust modules: 5 covered, 1 excluded, 1 unsupported, 3 undescribed; 8 direct uses
-trust violations: 0 (0 direct, 0 transitive)
-trust digests: toolchain match, inputs match, modules 5 consistent, 0 stale, 2 unknown (consistent digests are not proof of freshness)
-trust coverage: partial (1 excluded, 1 unsupported, 3 undescribed module(s); their uses are not audited)
+trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
+trust: 12 procedures (11 with a kernel fallback), 7 sets, 3 scopes; 2 uses (0 native)
+trust modules: 4 covered, 0 excluded, 0 unsupported, 1 undescribed, 2 external; 2 theorems audited
+trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 axioms outside the set)
+trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: partial (1 undescribed module(s); their uses are not audited)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 exit: failed

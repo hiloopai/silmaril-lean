@@ -1,0 +1,1 @@
+-- Stand-in source of Silmaril.Prelude.Trust.Policy.Defs (trust fixture).

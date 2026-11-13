@@ -1,0 +1,16 @@
+warning: trust Silmaril.Elf.Staged.Fast: axiom-outside-set: Silmaril.Elf.Staged.Fast.sorry: sorryAx
+warning: trust Silmaril.Elf.Staged.Fast: own-native-not-allowed: Silmaril.Elf.Staged.Fast.layout: elf.layout
+warning: trust Silmaril.Elf.Staged.Fast: unregistered-native: Silmaril.Elf.Staged.Fast.bv: bv_decide
+warning: trust Silmaril.Papers.Elf: dep-native-outside-deps: Silmaril.Papers.Elf.cites: elf.layout
+summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
+root: (none)
+trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
+trust: 12 procedures (11 with a kernel fallback), 7 sets, 3 scopes; 3 uses (1 native)
+trust modules: 6 covered, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 6 theorems audited
+trust violations: 4 (1 own native not allowed, 1 inherited native outside deps, 1 unregistered native, 1 axioms outside the set)
+trust digests: inputs match, covered modules 1 consistent, 5 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: complete (every module under the roots is described and covered; external modules are the toolchain's and dependencies')
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: 7d7e13fc157d3e96a024f9e928e7ce7ffce205bcb2234cab603d46cce6fa5675
+exit: ok

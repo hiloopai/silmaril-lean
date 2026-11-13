@@ -72,6 +72,27 @@ pub enum Command {
         #[arg(long)]
         no_build: bool,
     },
+    /// Elaborate the trust driver over the core trust API and write the trust lines
+    /// (`silmaril.trust-lines.v0.1`) that `check` and `sqlite` read with `--trust`
+    TrustDump {
+        #[command(flatten)]
+        dir: DirArg,
+        /// Modules to import (their imports are described too); default: the project's modules
+        #[arg(long = "module")]
+        modules: Vec<String>,
+        /// Module prefixes to describe and audit (default: `Silmaril`)
+        #[arg(long = "root")]
+        roots: Vec<String>,
+        /// Output, relative to the project directory (generated: not committed)
+        #[arg(long, default_value = ".lake/silmaril/trust.jsonl")]
+        out: PathBuf,
+        /// The Lake command (default: `$SIL_LAKE`, else `lake`); split on whitespace
+        #[arg(long)]
+        lake: Option<String>,
+        /// Skip `lake build --wfail <modules>` before elaborating the driver
+        #[arg(long)]
+        no_build: bool,
+    },
     /// Check the manifest, the registries, the dump and the files; print statuses and groups
     Check {
         #[command(flatten)]
@@ -79,7 +100,7 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
-        /// The trust dump (`silmaril.trust-dump.v0.1`), relative to the project directory;
+        /// The trust dump (trust lines, `silmaril.trust-lines.v0.1`, from `trust-dump`), relative to the project directory;
         /// without it, decision-procedure and axiom use is reported as unaudited
         #[arg(long)]
         trust: Option<PathBuf>,
@@ -95,7 +116,7 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
-        /// The trust dump (`silmaril.trust-dump.v0.1`), relative to the project directory;
+        /// The trust dump (trust lines, `silmaril.trust-lines.v0.1`, from `trust-dump`), relative to the project directory;
         /// without it, the trust tables are empty and `meta` says `trust.status = absent`
         #[arg(long)]
         trust: Option<PathBuf>,
@@ -1420,6 +1441,73 @@ pub fn run(command: Command) -> Result<()> {
                 d.problems.len(),
                 d.solutions.len()
             );
+            Ok(())
+        }
+        Command::TrustDump {
+            dir: DirArg { dir },
+            modules,
+            roots,
+            out,
+            lake,
+            no_build,
+        } => {
+            let modules = if modules.is_empty() {
+                Project::load(&dir)?.modules
+            } else {
+                modules
+            };
+            if modules.is_empty() {
+                bail!("no modules: pass --module or set `modules` in silmaril.toml");
+            }
+            let roots = if roots.is_empty() {
+                vec!["Silmaril".to_string()]
+            } else {
+                roots
+            };
+            let lake: Vec<String> = lake
+                .or_else(|| std::env::var("SIL_LAKE").ok())
+                .unwrap_or_else(|| "lake".into())
+                .split_whitespace()
+                .map(String::from)
+                .collect();
+            let abs_dir = fs::canonicalize(&dir).into_diagnostic()?;
+            let gen_dir = abs_dir.join(".lake/silmaril");
+            fs::create_dir_all(&gen_dir).into_diagnostic()?;
+            let raw = gen_dir.join("trust.raw.jsonl");
+            let driver_path = gen_dir.join("TrustDump.lean");
+            fs::write(&driver_path, trust::driver(&modules, &roots, &raw)).into_diagnostic()?;
+            if !no_build {
+                let mut args = vec!["build", "--wfail"];
+                args.extend(modules.iter().map(String::as_str));
+                eprintln!("building {} …", modules.join(", "));
+                run_lake(&abs_dir, &lake, &args)?;
+            }
+            eprintln!("elaborating the trust driver…");
+            run_lake(
+                &abs_dir,
+                &lake,
+                &["env", "lean", &driver_path.display().to_string()],
+            )?;
+            let text = fs::read_to_string(&raw).into_diagnostic()?;
+            let producer = format!(
+                "silmaril-project {} trust driver (Silmaril.Prelude.Trust)",
+                env!("CARGO_PKG_VERSION")
+            );
+            let lines = trust::complete(
+                &text,
+                &abs_dir,
+                &roots,
+                &producer,
+                &["lean-toolchain", "lake-manifest.json", "policy.toml"],
+            )
+            .map_err(|e| miette!("{e}"))?;
+            let shown = shown(&dir, &out);
+            let out = abs_dir.join(out);
+            if let Some(p) = out.parent() {
+                fs::create_dir_all(p).into_diagnostic()?;
+            }
+            fs::write(&out, &lines).into_diagnostic()?;
+            eprintln!("wrote {shown} ({} lines)", lines.lines().count());
             Ok(())
         }
         Command::Check {

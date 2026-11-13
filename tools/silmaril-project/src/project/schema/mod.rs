@@ -273,11 +273,7 @@ pub const INDEXES: &[(&str, &str, &[&str])] = &[
     ("format_laws_format", "format_laws", &["format"]),
     ("format_defaults_format", "format_defaults", &["format"]),
     ("artifact_paths_artifact", "artifact_paths", &["artifact"]),
-    (
-        "trust_uses_procedure",
-        "trust_uses",
-        &["procedure", "backend", "profile"],
-    ),
+    ("trust_uses_procedure", "trust_uses", &["procedure", "mode"]),
     ("trust_imports_import", "trust_imports", &["import"]),
     (
         "trust_set_members_member",
@@ -285,9 +281,9 @@ pub const INDEXES: &[(&str, &str, &[&str])] = &[
         &["member_kind", "member"],
     ),
     (
-        "trust_module_policy_set",
-        "trust_module_policy",
-        &["set_name"],
+        "trust_decl_axioms_class",
+        "trust_decl_axioms",
+        &["class", "procedure"],
     ),
 ];
 
@@ -358,16 +354,14 @@ pub fn tables() -> Vec<TableInfo> {
         info::<SummaryRow>(),
         info::<TrustInput>(),
         info::<TrustProcedure>(),
-        info::<TrustImplementation>(),
         info::<TrustSet>(),
         info::<TrustSetMember>(),
-        info::<TrustPolicy>(),
-        info::<TrustPolicySet>(),
+        info::<TrustScope>(),
         info::<TrustModule>(),
         info::<TrustImport>(),
-        info::<TrustUse>(),
-        info::<TrustUseAxiom>(),
-        info::<TrustDeclAxiom>(),
         info::<TrustModulePolicy>(),
+        info::<TrustUse>(),
+        info::<TrustDecl>(),
+        info::<TrustDeclAxiom>(),
     ]
 }

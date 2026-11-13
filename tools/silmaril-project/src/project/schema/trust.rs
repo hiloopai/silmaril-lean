@@ -1,180 +1,184 @@
-//! Decision-procedure and axiom trust: the trust dump (`silmaril.trust-dump.v0.1`) and its
+//! Native decision procedures and axioms: the trust lines (`silmaril.trust-lines.v0.1`) and their
 //! tables.
 //!
-//! The trust dump is a separate input (`sil project sqlite --trust PATH`), written by the
-//! library's trust-policy tooling, not by `#silmaril_dump`. It describes:
+//! The model is the core trust framework's (`Silmaril.Prelude.Trust`, `docs/trust.md`):
 //!
-//! - **procedures**: backend-independent identities of what may be trusted (an axiom, or a
-//!   decision procedure for a proposition);
-//! - **implementations**: checker/soundness pairs for a decision procedure (`kernel` or
-//!   `native`, with a profile), all targeting the procedure's one proposition; `planned` is a
-//!   registered capability, not a claim. A procedure with no implementation is registered only;
-//! - **sets**: named, hierarchical sets of `(procedure, backend, profile)` grants;
-//! - **policies**: `allow` and `max` sets per scope (root, region, module prefix, module);
-//! - **modules**: source digests and direct import edges;
-//! - **uses**: direct uses, per declaration, with the backend and profile actually used and the
-//!   axioms Lean reported for that use;
-//! - **decls**: optionally, every axiom of a declaration, to find axioms no use accounts for;
-//! - **excluded**: modules whose uses are not recorded (`excluded`, `unsupported`).
+//! - a **procedure** (`native_decider`) is a named closed `Bool` function; `edge_decide` proves
+//!   `f a₁ … aₙ = true` with it, natively (adding the axiom
+//!   `<decl>._native.edge.<procedure>.ax_i_j`) or, when it has a kernel fallback, in the kernel;
+//! - a **trust set** (`trust_set`, or `standard` in `policy.toml`) names procedures or axioms,
+//!   includes other sets, or is `all`; `all` and `none` are built in;
+//! - a **scope** (`[[native.scope]]` in `policy.toml`) applies to a module and everything under
+//!   it and sets `max`, `default`, `deps` and `axioms`, inheriting what it omits;
+//! - a **use** is one `edge_decide`: declaration, module, procedure, native or kernel, profile,
+//!   and the native axiom;
+//! - per theorem, its axioms (`collectAxioms`, which is transitive), split as the core's
+//!   `trust_audit` splits them.
 //!
-//! Transitive uses are not stored: the views in [`super::VIEWS`] compute them with
-//! `WITH RECURSIVE` over `trust_imports` and `trust_set_members`.
+//! The lines are written by `sil project trust-dump` (a driver over the core API) or by hand
+//! (fixtures, whose header says so). Every line is one JSON object with a `kind`.
 use super::*;
 use serde::Deserialize;
 
-pub const TRUST_SCHEMA: &str = "silmaril.trust-dump.v0.1";
+pub const TRUST_LINES_SCHEMA: &str = "silmaril.trust-lines.v0.1";
 
-/// The axioms every root policy allows unless the trust dump says otherwise: the procedures
-/// of the built-in set [`STANDARD_SET`]. A policy default, not evidence about uses.
-pub const STANDARD_SET: &str = "standard";
-
+/// One line of a trust dump.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TrustDump {
-    pub schema: String,
-    /// The Lean toolchain the uses were collected with (the `lean-toolchain` line).
-    pub toolchain: String,
-    /// The tool that wrote the dump, with its version.
-    pub producer: String,
-    /// Files the dump depends on besides module sources (policy files, manifests), by digest.
-    #[serde(default)]
-    pub inputs: Vec<TrustInputDecl>,
-    #[serde(default)]
-    pub procedures: Vec<ProcedureDecl>,
-    #[serde(default)]
-    pub implementations: Vec<ImplementationDecl>,
-    #[serde(default)]
-    pub sets: Vec<SetDecl>,
-    #[serde(default)]
-    pub policies: Vec<PolicyDecl>,
-    #[serde(default)]
-    pub modules: Vec<ModuleDecl>,
-    #[serde(default)]
-    pub uses: Vec<UseDecl>,
-    /// `None`: axioms per declaration were not collected (unattributed axioms are unchecked).
-    pub decls: Option<Vec<DeclDecl>>,
-    #[serde(default)]
-    pub excluded: Vec<ExcludedDecl>,
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TrustLine {
+    Header(LineHeader),
+    Input(LineInput),
+    Policy(LinePolicy),
+    Scope(LineScope),
+    Set(LineSet),
+    Procedure(LineProcedure),
+    Use(LineUse),
+    Module(LineModule),
+    Effective(LineEffective),
+    Decl(LineDecl),
+    Excluded(LineExcluded),
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct TrustInputDecl {
-    /// Relative to the project directory.
+pub struct LineHeader {
+    pub schema: String,
+    /// `Lean.versionString` of the producer.
+    pub toolchain: String,
+    /// The profile and ceiling the effective sets were computed for.
+    pub profile: String,
+    pub ceiling: String,
+    /// What wrote the lines (`sil project trust-dump` adds itself; a fixture says so).
+    pub producer: Option<String>,
+    /// `lean` (a producer run) or `fixture` (hand-written). Self-declared.
+    pub origin: Option<String>,
+    /// Module prefixes the dump describes; imports outside them are `external`.
+    #[serde(default)]
+    pub roots: Vec<String>,
+}
+
+/// A file the dump depends on, by digest at dump time (`lean-toolchain`, `policy.toml`, …).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineInput {
     pub path: String,
     pub sha256: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ProcedureDecl {
-    pub name: String,
-    /// `axiom` | `decision`.
-    pub kind: String,
-    /// The proposition decided, as text: descriptive only (equal text is not proof of the
-    /// same statement).
-    pub proposition: Option<String>,
-    /// A Lean declaration that fixes the statement (for ELF, the `Leaf` whose `P` it is).
-    pub statement: Option<String>,
-    pub doc: Option<String>,
+pub struct LinePolicy {
+    /// As given to `trust_policy` (relative to the loading module).
+    pub file: String,
+    /// The core's FNV-1a pin of the file.
+    pub pin: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ImplementationDecl {
-    pub procedure: String,
-    /// `kernel` | `native`.
-    pub backend: String,
-    /// `None`: the backend's default profile.
-    pub profile: Option<String>,
-    /// The checker (a computation, for example a reader over `pageRead` or `fastRead`).
-    pub checker: Option<String>,
-    /// The theorem that turns a successful check into the procedure's proposition.
-    pub soundness: Option<String>,
-    /// `supported`: the checker and soundness theorem exist and the backend can run it;
-    /// `planned`: a registered capability, not a supported implementation.
-    pub status: String,
-    /// What is trusted beyond the kernel (native: the compiled code path and runtime).
-    pub surface: Option<String>,
-    pub doc: Option<String>,
+pub struct LineScope {
+    pub module: String,
+    pub max: Option<String>,
+    pub default: Option<String>,
+    pub deps: Option<String>,
+    pub axioms: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SetDecl {
+pub struct LineSet {
     pub name: String,
-    pub doc: Option<String>,
     #[serde(default)]
-    pub members: Vec<MemberDecl>,
-}
-
-/// `{ procedure, backend?, profile? }` or `{ set }`. A procedure member grants one backend:
-/// by default `axiom` for an axiom and `kernel` for a decision procedure; no profile grants
-/// every profile of that backend.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct MemberDecl {
-    pub procedure: Option<String>,
-    pub backend: Option<String>,
-    pub profile: Option<String>,
-    pub set: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct PolicyDecl {
-    /// `root` | `region` | `prefix` | `module`.
-    pub scope: String,
-    /// `""` for the root, a region, `A.B.*`, or a module.
-    #[serde(default)]
-    pub name: String,
-    /// `None`: inherited.
-    pub allow: Option<Vec<String>>,
-    /// `None`: inherited.
-    pub max: Option<Vec<String>>,
-    /// Where the policy was written (`path:line`).
+    pub all: bool,
+    /// `trust_set` or `policy`.
     pub origin: Option<String>,
+    #[serde(default)]
+    pub members: Vec<String>,
+    #[serde(default)]
+    pub includes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ModuleDecl {
+pub struct LineProcedure {
     pub name: String,
-    pub region: Option<String>,
-    /// Relative to the project directory.
-    pub source: Option<String>,
-    pub source_sha256: Option<String>,
+    pub function: String,
+    pub kernel_fallback: bool,
+    pub module: String,
+    #[serde(default)]
+    pub doc: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineUse {
+    pub decl: String,
+    pub module: String,
+    pub procedure: String,
+    /// `native` | `kernel`.
+    pub mode: String,
+    pub profile: String,
+    pub axiom: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineModule {
+    pub name: String,
     #[serde(default)]
     pub imports: Vec<String>,
+    pub source: Option<String>,
+    pub source_sha256: Option<String>,
 }
 
+/// A resolved set: `{"all": true}` or `{"all": false, "names": […]}`.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct LineMembers {
+    pub all: bool,
+    #[serde(default)]
+    pub names: Vec<String>,
+}
+
+/// The core's `effective` sets of a module and `allowed` for the header's profile and ceiling.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct UseDecl {
+pub struct LineEffective {
     pub module: String,
+    pub max: Option<LineMembers>,
+    pub default: Option<LineMembers>,
+    pub deps: Option<LineMembers>,
+    pub axioms: Option<LineMembers>,
+    pub allowed: Option<LineMembers>,
+    #[serde(default)]
+    pub trace: Vec<String>,
+    /// The core could not resolve the policy for this module.
+    pub error: Option<String>,
+}
+
+/// The core's `axiomReport` of a theorem.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineDecl {
     pub decl: String,
-    pub procedure: String,
-    /// `axiom` | `kernel` | `native`.
-    pub backend: String,
-    pub profile: Option<String>,
-    /// The axioms Lean reported for this use (for a native use, the axioms of that
-    /// computation, whatever the toolchain names them).
+    pub module: String,
+    #[serde(default)]
+    pub own_native: Vec<String>,
+    #[serde(default)]
+    pub dep_native: Vec<String>,
+    /// Tactics of native runs outside `edge_decide` (`decide +native`, `bv_decide`).
+    #[serde(default)]
+    pub plain_native: Vec<String>,
+    /// Axioms that are not native runs.
     #[serde(default)]
     pub axioms: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct DeclDecl {
-    pub module: String,
-    pub decl: String,
     #[serde(default)]
-    pub axioms: Vec<String>,
+    pub native_axioms: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ExcludedDecl {
+pub struct LineExcluded {
     pub module: String,
     /// `excluded` | `unsupported`.
     pub coverage: String,
@@ -184,7 +188,7 @@ pub struct ExcludedDecl {
 // ---------------------------------------------------------------- tables
 
 table! {
-    /// Files the trust dump depends on, with the recorded and the current digest.
+    /// Files the dump depends on, with the recorded and the current digest.
     TrustInput = "trust_inputs", key("path") {
         path: String = "TEXT NOT NULL",
         sha256: String = "TEXT NOT NULL",
@@ -194,83 +198,57 @@ table! {
 }
 
 table! {
+    /// Registered native procedures (`native_decider`).
     TrustProcedure = "trust_procedures", key("name") {
         name: String = "TEXT NOT NULL",
-        kind: String = "TEXT NOT NULL CHECK(kind IN ('axiom','decision'))",
-        proposition: Option<String> = "TEXT",
-        statement: Option<String> = "TEXT",
-        builtin: bool = "INTEGER NOT NULL",
-        doc: Option<String> = "TEXT",
+        function: String = "TEXT NOT NULL",
+        module: String = "TEXT NOT NULL",
+        kernel_fallback: bool = "INTEGER NOT NULL",
+        doc: String = "TEXT NOT NULL",
     }
 }
 
 table! {
-    /// `profile` is `''` for the backend's default profile.
-    TrustImplementation = "trust_implementations", key("procedure", "backend", "profile") {
-        procedure: String = "TEXT NOT NULL",
-        backend: String = "TEXT NOT NULL CHECK(backend IN ('kernel','native'))",
-        profile: String = "TEXT NOT NULL",
-        checker: Option<String> = "TEXT",
-        soundness: Option<String> = "TEXT",
-        status: String = "TEXT NOT NULL CHECK(status IN ('supported','planned'))",
-        surface: Option<String> = "TEXT",
-        doc: Option<String> = "TEXT",
-    }
-}
-
-table! {
+    /// `origin`: `builtin` (`all`, `none`), `policy` or `trust_set`.
     TrustSet = "trust_sets", key("name") {
         name: String = "TEXT NOT NULL",
-        builtin: bool = "INTEGER NOT NULL",
-        doc: Option<String> = "TEXT",
+        origin: String = "TEXT NOT NULL",
+        is_all: bool = "INTEGER NOT NULL",
     }
 }
 
 table! {
-    /// A `set` member has `backend = profile = ''`; a procedure member with `profile = ''`
-    /// grants every profile of its backend.
-    TrustSetMember = "trust_set_members", key("set_name", "member_kind", "member", "backend", "profile") {
+    /// `member_kind = 'name'`: a procedure or axiom name; `'set'`: an included set.
+    TrustSetMember = "trust_set_members", key("set_name", "member_kind", "member") {
         set_name: String = "TEXT NOT NULL",
-        member_kind: String = "TEXT NOT NULL CHECK(member_kind IN ('procedure','set'))",
+        member_kind: String = "TEXT NOT NULL CHECK(member_kind IN ('name','set'))",
         member: String = "TEXT NOT NULL",
-        backend: String = "TEXT NOT NULL CHECK(backend IN ('','axiom','kernel','native'))",
-        profile: String = "TEXT NOT NULL",
     }
 }
 
 table! {
-    TrustPolicy = "trust_policies", key("scope_kind", "scope") {
-        scope_kind: String = "TEXT NOT NULL CHECK(scope_kind IN ('root','region','prefix','module'))",
-        scope: String = "TEXT NOT NULL",
-        builtin: bool = "INTEGER NOT NULL",
-        origin: Option<String> = "TEXT",
-    }
-}
-
-table! {
-    /// The sets a policy declares (inherited ones are in `trust_module_policy`).
-    TrustPolicySet = "trust_policy_sets", key("scope_kind", "scope", "role", "set_name") {
-        scope_kind: String = "TEXT NOT NULL",
-        scope: String = "TEXT NOT NULL",
-        role: String = "TEXT NOT NULL CHECK(role IN ('allow','max'))",
-        set_name: String = "TEXT NOT NULL",
+    /// `[[native.scope]]`: a module and everything under it. `NULL` inherits.
+    TrustScope = "trust_scopes", key("module") {
+        module: String = "TEXT NOT NULL",
+        max: Option<String> = "TEXT",
+        default_set: Option<String> = "TEXT",
+        deps: Option<String> = "TEXT",
+        axioms: Option<String> = "TEXT",
     }
 }
 
 table! {
     /// Every module the dump describes or that a described module imports.
-    /// `source_status` compares the recorded source digest with the file now on disk;
-    /// `freshness` is `consistent` when every recorded digest this module's uses depend on
-    /// (its source, its described imports' sources, the inputs, the toolchain) still matches,
-    /// which is evidence of nothing more than that.
+    /// `freshness = consistent` when the recorded digests this module's facts depend on (its
+    /// source, its described imports' sources, the inputs) still match: evidence of nothing more.
     TrustModule = "trust_modules", key("name") {
         name: String = "TEXT NOT NULL",
-        region: Option<String> = "TEXT",
         source: Option<String> = "TEXT",
         source_sha256: Option<String> = "TEXT",
         source_status: String = "TEXT NOT NULL CHECK(source_status IN ('match','changed','missing','unrecorded'))",
         freshness: String = "TEXT NOT NULL CHECK(freshness IN ('consistent','stale','unknown'))",
-        coverage: String = "TEXT NOT NULL CHECK(coverage IN ('covered','excluded','unsupported','undescribed'))",
+        coverage: String = "TEXT NOT NULL CHECK(coverage IN ('covered','excluded','unsupported','undescribed','external'))",
+        policy_trace: Option<String> = "TEXT",
         reason: Option<String> = "TEXT",
     }
 }
@@ -283,78 +261,77 @@ table! {
 }
 
 table! {
-    /// Direct uses. Axioms use `backend = 'axiom'`, `profile = ''`.
-    TrustUse = "trust_uses", key("module", "decl", "procedure", "backend", "profile") {
+    /// The effective sets of a module (`max`, `default`, `deps`, `axioms`, and `allowed` for
+    /// the dump's profile and ceiling). `member = '*'` is `all`.
+    TrustModulePolicy = "trust_module_policy", key("module", "role", "member") {
         module: String = "TEXT NOT NULL",
-        decl: String = "TEXT NOT NULL",
-        procedure: String = "TEXT NOT NULL",
-        backend: String = "TEXT NOT NULL CHECK(backend IN ('axiom','kernel','native'))",
-        profile: String = "TEXT NOT NULL",
+        role: String = "TEXT NOT NULL CHECK(role IN ('max','default','deps','axioms','allowed'))",
+        member: String = "TEXT NOT NULL",
     }
 }
 
 table! {
-    TrustUseAxiom = "trust_use_axioms", key("module", "decl", "procedure", "backend", "profile", "axiom") {
+    /// Recorded `edge_decide` runs. `axiom = ''` for a kernel run.
+    TrustUse = "trust_uses", key("module", "decl", "procedure", "mode", "profile", "axiom") {
         module: String = "TEXT NOT NULL",
         decl: String = "TEXT NOT NULL",
         procedure: String = "TEXT NOT NULL",
-        backend: String = "TEXT NOT NULL",
+        mode: String = "TEXT NOT NULL CHECK(mode IN ('native','kernel'))",
         profile: String = "TEXT NOT NULL",
         axiom: String = "TEXT NOT NULL",
     }
 }
 
 table! {
+    /// Theorems the dump audited (also those without axioms).
+    TrustDecl = "trust_decls", key("decl") {
+        decl: String = "TEXT NOT NULL",
+        module: String = "TEXT NOT NULL",
+    }
+}
+
+table! {
+    /// The axioms of a theorem (transitive), split as the core's audit splits them:
+    /// `own_native` and `dep_native` (an `edge_decide` run in the declaration, or inherited),
+    /// `plain_native` (a native run outside `edge_decide`) and `other`. `procedure` is the
+    /// native procedure or tactic (`''` for `other`).
     TrustDeclAxiom = "trust_decl_axioms", key("module", "decl", "axiom") {
         module: String = "TEXT NOT NULL",
         decl: String = "TEXT NOT NULL",
         axiom: String = "TEXT NOT NULL",
+        class: String = "TEXT NOT NULL CHECK(class IN ('own_native','dep_native','plain_native','other'))",
+        procedure: String = "TEXT NOT NULL",
     }
 }
 
-table! {
-    /// The effective `allow` and `max` sets of each described module after inheritance, with
-    /// the scope that declared them.
-    TrustModulePolicy = "trust_module_policy", key("module", "role", "set_name") {
-        module: String = "TEXT NOT NULL",
-        role: String = "TEXT NOT NULL CHECK(role IN ('allow','max'))",
-        set_name: String = "TEXT NOT NULL",
-        scope_kind: String = "TEXT NOT NULL",
-        scope: String = "TEXT NOT NULL",
-    }
-}
-
-/// The trust views, written after the core views. Every transitive relation is a recursive
-/// query; `UNION` (not `UNION ALL`) keeps them finite even on cyclic data.
+/// The trust views, written after the core views. Transitive relations are recursive queries;
+/// `UNION` keeps them finite on cyclic data.
 pub const TRUST_VIEWS: &[&str] = &[
-    "CREATE VIEW trust_set_closure AS WITH RECURSIVE c(set_name, member_kind, member, backend, profile) AS (\
-SELECT set_name, member_kind, member, backend, profile FROM trust_set_members \
-UNION SELECT c.set_name, m.member_kind, m.member, m.backend, m.profile FROM c \
+    "CREATE VIEW trust_set_closure AS WITH RECURSIVE c(set_name, member_kind, member) AS (\
+SELECT set_name, member_kind, member FROM trust_set_members \
+UNION SELECT c.set_name, m.member_kind, m.member FROM c \
 JOIN trust_set_members m ON c.member_kind = 'set' AND m.set_name = c.member) \
-SELECT set_name, member AS procedure, backend, profile FROM c WHERE member_kind = 'procedure';",
-    "CREATE VIEW trust_module_allowed AS SELECT DISTINCT p.module, c.procedure, c.backend, c.profile \
-FROM trust_module_policy p JOIN trust_set_closure c ON c.set_name = p.set_name WHERE p.role = 'allow';",
+SELECT set_name, member AS name FROM c WHERE member_kind = 'name' \
+UNION SELECT name, '*' FROM trust_sets WHERE is_all = 1 \
+UNION SELECT c.set_name, '*' FROM c JOIN trust_sets s ON c.member_kind = 'set' AND s.name = c.member AND s.is_all = 1;",
     "CREATE VIEW trust_module_deps AS WITH RECURSIVE d(module, dep) AS (\
 SELECT module, import FROM trust_imports \
 UNION SELECT d.module, i.import FROM d JOIN trust_imports i ON i.module = d.dep) \
 SELECT module, dep FROM d;",
-    "CREATE VIEW trust_transitive_uses AS \
-SELECT u.module, u.module AS via, u.decl, u.procedure, u.backend, u.profile, 1 AS direct FROM trust_uses u \
-UNION SELECT d.module, u.module, u.decl, u.procedure, u.backend, u.profile, 0 FROM trust_module_deps d \
-JOIN trust_uses u ON u.module = d.dep WHERE d.dep <> d.module;",
     "CREATE VIEW trust_coverage_gaps AS SELECT d.module, d.dep, m.coverage, m.reason FROM trust_module_deps d \
-JOIN trust_modules m ON m.name = d.dep WHERE m.coverage <> 'covered';",
+JOIN trust_modules m ON m.name = d.dep WHERE m.coverage NOT IN ('covered','external');",
+    "CREATE VIEW trust_module_native AS SELECT module, procedure, class, count(DISTINCT decl) AS decls \
+FROM trust_decl_axioms WHERE class IN ('own_native','dep_native','plain_native') GROUP BY module, procedure, class;",
     "CREATE VIEW trust_violations AS \
-SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'not-allowed' AS reason \
-FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' \
-WHERE NOT EXISTS (SELECT 1 FROM trust_module_allowed a WHERE a.module = t.module AND a.procedure = t.procedure \
-AND a.backend = t.backend AND (a.profile = '' OR a.profile = t.profile)) \
-UNION SELECT t.module, t.via, t.decl, t.procedure, t.backend, t.profile, t.direct, 'unsupported' \
-FROM trust_transitive_uses t JOIN trust_modules m ON m.name = t.module AND m.coverage = 'covered' \
-JOIN trust_implementations i ON i.procedure = t.procedure AND i.backend = t.backend AND i.profile = t.profile \
-WHERE i.status <> 'supported' \
-UNION SELECT x.module, x.module, x.decl, x.axiom, 'axiom', '', 1, 'unattributed-axiom' FROM trust_decl_axioms x \
-WHERE NOT EXISTS (SELECT 1 FROM trust_uses u WHERE u.module = x.module AND u.decl = x.decl \
-AND u.procedure = x.axiom AND u.backend = 'axiom') \
-AND NOT EXISTS (SELECT 1 FROM trust_use_axioms a WHERE a.module = x.module AND a.decl = x.decl AND a.axiom = x.axiom);",
+SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'own-native-not-allowed' AS reason FROM trust_decl_axioms x \
+JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'own_native' \
+AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'allowed' AND p.member IN (x.procedure, '*')) \
+UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'dep-native-outside-deps' FROM trust_decl_axioms x \
+JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'dep_native' \
+AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'deps' AND p.member IN (x.procedure, '*')) \
+UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unregistered-native' FROM trust_decl_axioms x \
+JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'plain_native' \
+UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'axiom-outside-set' FROM trust_decl_axioms x \
+JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'other' \
+AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'axioms' AND p.member IN (x.axiom, '*'));",
 ];

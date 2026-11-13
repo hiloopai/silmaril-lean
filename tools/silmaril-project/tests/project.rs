@@ -1,7 +1,7 @@
 //! Golden tests for `sil project`.
 //!
 //! Each directory under `tests/project/` is a case: a project directory with a hand-written
-//! `dump.json`, an optional `trust.json` (passed as `--trust`, with `--strict-trust` when a file
+//! `dump.json`, an optional `trust.jsonl` (passed as `--trust`, with `--strict-trust` when a file
 //! `strict-trust` exists) and optional `silmaril.toml`, `silmaril/artifacts.toml`, `lakefile.toml`,
 //! `lake-manifest.json` and files. The test runs `sil project sqlite` and compares its stdout
 //! with `check.txt` and, when the check passes, its SQL text with `project.sql`. `SIL_BLESS=1`
@@ -29,38 +29,25 @@ fn compare(path: &Path, got: &str, bless: bool, failures: &mut Vec<String>) {
 fn check_trust_views(db: &Path, stdout: &str, failures: &mut Vec<String>) {
     let conn = rusqlite::Connection::open(db).unwrap();
     let mut stmt = conn
-        .prepare(
-            "SELECT DISTINCT module, via, decl, reason FROM trust_violations ORDER BY 1, 2, 3, 4",
-        )
+        .prepare("SELECT DISTINCT module, decl, reason, CASE class WHEN 'other' THEN axiom ELSE procedure END FROM trust_violations")
         .unwrap();
     let mut from_view: Vec<String> = stmt
         .query_map([], |r| {
-            let (m, via, decl, why): (String, String, String, String) =
+            let (m, decl, why, subject): (String, String, String, String) =
                 (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?);
-            let route = if m == via {
-                String::new()
-            } else {
-                format!(" (through {via})")
-            };
-            Ok(format!("trust {m}: {why}: {decl} uses{route}"))
+            Ok(format!("trust {m}: {why}: {decl}: {subject}"))
         })
         .unwrap()
         .collect::<rusqlite::Result<_>>()
         .unwrap();
     from_view.sort();
-    // The warning is `trust M: WHY: DECL uses GRANT[ (through VIA)]`; drop the grant.
     let mut from_tool: Vec<String> = stdout
         .lines()
         .filter_map(|l| l.strip_prefix("warning: "))
         .filter(|l| l.starts_with("trust "))
-        .map(|l| {
-            let (head, rest) = l.split_once(" uses ").unwrap();
-            let route = rest.find(" (through ").map_or("", |i| &rest[i..]);
-            format!("{head} uses{route}")
-        })
+        .map(String::from)
         .collect();
     from_tool.sort();
-    from_tool.dedup();
     if from_view != from_tool {
         failures.push(format!(
             "{}: trust_violations {from_view:?} != reported {from_tool:?}",
@@ -103,14 +90,14 @@ fn golden_cases() {
         let dir = case.clone();
         let tmp = tempfile::tempdir().unwrap();
         let sql = tmp.path().join("project.sql");
-        let trust = dir.join("trust.json").is_file();
+        let trust = dir.join("trust.jsonl").is_file();
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_silmaril-project"));
         cmd.args(["sqlite", "--dump", "dump.json", "--sql"])
             .arg(&sql)
             .arg("--db")
             .arg(tmp.path().join("project.sqlite"));
         if trust {
-            cmd.args(["--trust", "trust.json"]);
+            cmd.args(["--trust", "trust.jsonl"]);
         }
         if dir.join("strict-trust").is_file() {
             cmd.arg("--strict-trust");
@@ -432,7 +419,7 @@ fn sql_text_is_stable_across_runs() {
 /// not enforcing; `--strict-trust` on the same input fails and writes no database.
 #[test]
 fn strict_trust_fails_where_report_only_writes() {
-    let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/trust-violations");
+    let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/trust-fixture-violations");
     let run = |strict: bool| {
         let tmp = tempfile::tempdir().unwrap();
         let db = tmp.path().join("project.sqlite");
@@ -442,7 +429,7 @@ fn strict_trust_fails_where_report_only_writes() {
             "--dump",
             "dump.json",
             "--trust",
-            "trust.json",
+            "trust.jsonl",
             "--sql",
         ])
         .arg(tmp.path().join("project.sql"))
@@ -479,7 +466,7 @@ fn strict_trust_fails_where_report_only_writes() {
         stdout.lines().any(|l| l.starts_with("warning: trust ")),
         "{stdout}"
     );
-    assert_eq!(rows, Some((9, "report-only".to_string())));
+    assert_eq!(rows, Some((4, "report-only".to_string())));
 
     let (ok, stdout, rows) = run(true);
     assert!(!ok, "{stdout}");
@@ -518,7 +505,7 @@ fn strict_trust_reports_partial_coverage() {
                 "--dump",
                 "dump.json",
                 "--trust",
-                "trust.json",
+                "trust.jsonl",
                 "--strict-trust",
                 "--sql",
             ])
@@ -566,7 +553,7 @@ fn strict_trust_reports_partial_coverage() {
         assert_eq!(meta("trust.enforcement"), "strict", "{case}");
         let gaps: i64 = conn
             .query_row(
-                "SELECT count(*) FROM trust_modules WHERE coverage <> 'covered'",
+                "SELECT count(*) FROM trust_modules WHERE coverage NOT IN ('covered', 'external')",
                 [],
                 |r| r.get(0),
             )

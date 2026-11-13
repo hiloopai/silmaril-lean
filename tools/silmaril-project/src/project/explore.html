@@ -480,13 +480,15 @@ function formats() {
 }
 
 // ---------- trust ----------
-// Decision procedures and axioms (`sil project sqlite --trust`). Transitive uses and set closures
-// are the recursive views `trust_transitive_uses`, `trust_module_deps` and `trust_set_closure`.
-const TRUST_HINTS = { module: "", via: "", dep: "", decl: "", procedure: "", set_name: "", member: "", name: "", import: "" };
+// Native procedures and axioms (`sil project sqlite --trust`), in the core trust model
+// (`Silmaril.Prelude.Trust`). Set closures and transitive imports are the recursive views
+// `trust_set_closure` and `trust_module_deps`; a theorem's axioms are already transitive.
+const TRUST_HINTS = { module: "", decl: "", procedure: "", set_name: "", member: "", name: "", import: "", dep: "" };
 const tmod = (m) => link("trustmodule", m);
 const tset = (n) => link("trustset", n);
 const tproc = (n) => link("trustprocedure", n);
 // Render `rows` with some columns linked to trust pages (and everything else escaped).
+// `links[c](value, row)` returns HTML, or null for plain text.
 function ttable(rows, cols, links) {
   if (!rows.length) return '<p class="muted">(none)</p>';
   cols = cols || Object.keys(rows[0]);
@@ -495,52 +497,58 @@ function ttable(rows, cols, links) {
   for (const r of rows) h += "<tr>" + cols.map((c) => {
     const v = r[c];
     if (v === null || v === undefined) return '<td><span class="muted">NULL</span></td>';
-    if (links[c] && v !== "" && !(c === "procedure" && r.reason === "unattributed-axiom")) return `<td>${links[c](String(v))}</td>`;
+    const html = links[c] && v !== "" ? links[c](String(v), r) : null;
+    if (html) return `<td>${html}</td>`;
     return `<td${typeof v === "number" ? ' class="num"' : ""}>${esc(v)}</td>`;
   }).join("") + "</tr>";
   return h + "</tbody></table></div>" + (rows.length >= DETAIL ? `<p class="muted">the first ${DETAIL} rows (use the SQL tab)</p>` : "");
 }
+// A procedure link for native classes; axioms and plain tactics are not procedures.
+const tprocIf = (v, r) => (r.class === "other" || r.class === "plain_native") ? null : tproc(v);
 async function trustMeta() {
   const rows = await tq("meta", "SELECT key, value FROM meta WHERE key LIKE 'trust.%' ORDER BY key LIMIT 50");
   return Object.fromEntries(rows.map((r) => [r.key.slice(6), r.value]));
 }
-const TCB = '<p class="muted">Trust base: every theorem trusts the Lean kernel and the axioms it depends on. A <b>native</b> ' +
-  'implementation additionally trusts the compiled code path it runs (the Lean compiler, the runtime and any native code), however ' +
-  'narrow its envelope; a <b>kernel</b> implementation is checked by the kernel. Implementations are checker/soundness pairs targeting the procedure\'s one proposition; <i>planned</i> and <i>registered only</i> are capabilities, not supported implementations. ' +
-  'Allow sets apply to a module\'s own uses and to its imports\' uses, transitively.</p>';
+const TCB = '<p class="muted">Trust base: a theorem whose axioms include a native run (<code>…._native.edge.&lt;procedure&gt;.ax_i_j</code>) ' +
+  "is not kernel-checked: it trusts the Lean compiler, the runtime and the compiled code the run reaches, however narrow the registered procedure. " +
+  "A kernel run of the same procedure adds no axiom. The audit follows the core's <code>trust_audit</code>: own native runs must be allowed for the dump's " +
+  "profile and ceiling, inherited ones must be in <code>deps</code>, native runs outside <code>edge_decide</code> are never allowed, other axioms must be in <code>axioms</code>.</p>";
 async function trustPage() {
-  if (!tables.has("trust_modules")) return '<h2>Trust</h2><p class="muted">This database predates the trust tables (schema v0.2).</p>';
+  if (!tables.has("trust_decl_axioms")) return '<h2>Trust</h2><p class="muted">This database predates the trust tables of this page.</p>';
   const m = await trustMeta();
   let h = "<h2>Trust</h2>";
   if (m.status !== "present") {
-    return h + '<p class="err">No trust dump was given (<code>sil project sqlite --trust PATH</code>): decision-procedure and axiom use ' +
-      "is <b>unaudited</b>. That is unknown, not clean; the default policy (the standard axioms) is not evidence about uses.</p>" + TCB;
+    return h + '<p class="err">No trust dump was given (<code>sil project sqlite --trust PATH</code>): native-procedure and axiom use ' +
+      "is <b>unaudited</b>. That is unknown, not clean.</p>" + TCB;
   }
+  if (m.origin !== "lean") h += `<p class="err">Origin <b>${esc(m.origin || "unspecified")}</b>: these lines were not written by a producer run (a hand-written fixture, or unknown).</p>`;
   h += (m.enforcement === "strict" ? '<p>Policy <b>validated</b> (<code>--strict-trust</code>).</p>'
       : '<p class="err">Policy <b>not enforced</b>: this database was built in report-only mode; violations below are findings, not failures.</p>') +
-    (m.coverage === "complete" ? '<p>Coverage <b>complete</b>: every module in the dump and every import is described (this covers the uses the dump records, not more).</p>'
-      : '<p class="err">Coverage <b>partial</b>: excluded, unsupported or undescribed modules below are not audited. A passing policy check here is not a full audit.</p>');
+    (m.coverage === "complete" ? "<p>Coverage <b>complete</b> under the dump's roots (the theorems it audits, not more).</p>"
+      : '<p class="err">Coverage <b>partial</b>: excluded, unsupported or undescribed modules are not audited. A passing policy check here is not a full audit.</p>');
   h += await dl(m) + TCB;
-  const viol = await q("SELECT reason, direct, count(*) AS n FROM trust_violations GROUP BY 1, 2 ORDER BY 1, 2");
+  const viol = await q("SELECT reason, count(*) AS n FROM trust_violations GROUP BY 1 ORDER BY 1");
   const cov = await q("SELECT coverage, freshness, count(*) AS n FROM trust_modules GROUP BY 1, 2 ORDER BY 1, 2");
   h += '<div class="grid"><div><h2>Violations</h2>' + ttable(viol) + '</div><div><h2>Modules by coverage and digest freshness</h2>' + ttable(cov) +
-    '<p class="muted">consistent = every recorded digest (source, described imports, inputs, toolchain) still matches; that is not proof of freshness. ' +
-    "undescribed = imported but not in the trust dump, so its uses are unknown.</p></div></div>";
-  h += "<h2>Violations (first rows)</h2>" + ttable(await q("SELECT module, via, decl, procedure, backend, profile, direct, reason FROM trust_violations " +
-    `ORDER BY direct DESC, module, via, decl LIMIT ${DETAIL}`), null, { module: tmod, via: tmod, procedure: tproc });
-  h += "<h2>Procedures and implementations</h2>" + ttable(await q("SELECT p.name, p.kind, coalesce(i.status, CASE p.kind WHEN 'axiom' THEN 'axiom' ELSE 'registered only' END) AS status, i.backend, i.profile, i.checker, i.soundness, i.surface, " +
-    "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND (i.backend IS NULL OR (u.backend = i.backend AND u.profile = i.profile))) AS direct_uses " +
-    `FROM trust_procedures p LEFT JOIN trust_implementations i ON i.procedure = p.name ORDER BY p.kind DESC, p.name, i.backend, i.profile LIMIT ${DETAIL}`),
-    null, { name: tproc });
-  h += "<h2>Sets</h2>" + ttable(await q("SELECT s.name, s.builtin, (SELECT group_concat(CASE m.member_kind WHEN 'set' THEN 'set ' || m.member " +
-    "ELSE m.member || ' ' || m.backend || CASE m.profile WHEN '' THEN '' ELSE ':' || m.profile END END, ', ') FROM trust_set_members m WHERE m.set_name = s.name) AS members, " +
-    `s.doc FROM trust_sets s ORDER BY s.name LIMIT ${DETAIL}`), null, { name: tset });
-  h += "<h2>Policies</h2>" + ttable(await q("SELECT p.scope_kind, p.scope, p.builtin, (SELECT group_concat(set_name, ', ') FROM trust_policy_sets s WHERE s.scope_kind = p.scope_kind " +
-    "AND s.scope = p.scope AND s.role = 'allow') AS allow, (SELECT group_concat(set_name, ', ') FROM trust_policy_sets s WHERE s.scope_kind = p.scope_kind AND s.scope = p.scope " +
-    "AND s.role = 'max') AS max, p.origin FROM trust_policies p ORDER BY CASE p.scope_kind WHEN 'root' THEN 0 WHEN 'region' THEN 1 WHEN 'prefix' THEN 2 ELSE 3 END, p.scope LIMIT " + DETAIL)) +
-    '<p class="muted">root, then region, then module prefixes (shortest first), then the module; an omitted allow or max is inherited, and each must lie within the parent max.</p>';
-  h += "<h2>Modules</h2>" + ttable(await q("SELECT m.name, m.coverage, m.freshness, m.source_status, m.region, " +
-    "(SELECT count(*) FROM trust_uses u WHERE u.module = m.name) AS direct_uses, m.reason FROM trust_modules m ORDER BY m.coverage, m.name LIMIT " + DETAIL), null, { name: tmod });
+    '<p class="muted">consistent = every recorded digest (source, described imports, inputs) still matches; that is not proof of freshness. ' +
+    "external = outside the dump's roots (toolchain, dependencies).</p></div></div>";
+  h += "<h2>Violations (first rows)</h2>" + ttable(await q("SELECT module, decl, reason, class, procedure, axiom FROM trust_violations " +
+    `ORDER BY reason, module, decl LIMIT ${DETAIL}`), null, { module: tmod, procedure: tprocIf });
+  h += "<h2>Procedures</h2>" + ttable(await q("SELECT p.name, p.function, p.kernel_fallback, p.module, " +
+    "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.mode = 'native') AS native_uses, " +
+    "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.mode = 'kernel') AS kernel_uses, " +
+    "(SELECT count(DISTINCT decl) FROM trust_decl_axioms x WHERE x.procedure = p.name AND x.class IN ('own_native','dep_native')) AS theorems " +
+    `FROM trust_procedures p ORDER BY p.name LIMIT ${DETAIL}`), null, { name: tproc });
+  h += "<h2>Sets</h2>" + ttable(await q("SELECT s.name, s.origin, s.is_all, (SELECT group_concat(CASE m.member_kind WHEN 'set' THEN 'set ' || m.member " +
+    "ELSE m.member END, ', ') FROM trust_set_members m WHERE m.set_name = s.name) AS members " +
+    `FROM trust_sets s ORDER BY s.origin, s.name LIMIT ${DETAIL}`), null, { name: tset });
+  h += "<h2>Scopes (policy.toml [[native.scope]])</h2>" + ttable(await q("SELECT module, max, default_set AS \"default\", deps, axioms FROM trust_scopes ORDER BY module LIMIT " + DETAIL),
+    null, { max: tset, default: tset, deps: tset, axioms: tset }) +
+    '<p class="muted">A scope applies to a module and everything under it, outermost first; NULL inherits. A child max must lie within its parent\'s; default is cut to max.</p>';
+  h += "<h2>Modules</h2>" + ttable(await q("SELECT m.name, m.coverage, m.freshness, m.source_status, m.policy_trace, " +
+    "(SELECT count(*) FROM trust_decls d WHERE d.module = m.name) AS theorems, " +
+    "(SELECT count(*) FROM trust_violations v WHERE v.module = m.name) AS violations, m.reason FROM trust_modules m " +
+    "ORDER BY m.coverage = 'external', m.coverage, m.name LIMIT " + DETAIL), null, { name: tmod });
   h += "<h2>Inputs</h2>" + ttable(await q("SELECT path, status, sha256, disk_sha256 FROM trust_inputs ORDER BY path LIMIT 100"));
   return h;
 }
@@ -549,49 +557,51 @@ async function trustModulePage(name) {
   if (!m) return `<p class="err">no trust module ${esc(name)}</p>`;
   const nv = (await q("SELECT count(*) AS n FROM trust_violations WHERE module = ?", [name]))[0].n;
   const gaps = (await q("SELECT count(*) AS n FROM trust_coverage_gaps WHERE module = ?", [name]))[0].n;
+  const nn = (await q("SELECT count(DISTINCT decl) AS n FROM trust_decl_axioms WHERE module = ? AND class <> 'other'", [name]))[0].n;
   const tone = nv || m.freshness === "stale" ? "fails" : m.coverage !== "covered" || gaps || m.freshness !== "consistent" ? "unknown" : "holds";
-  let h = `<h2>Module <code>${esc(name)}</code> ${badge(tone, `${m.coverage} · ${m.freshness} · ${nv} violations · ${gaps} coverage gaps`)}</h2>` +
+  let h = `<h2>Module <code>${esc(name)}</code> ${badge(tone, `${m.coverage} · ${m.freshness} · ${nv} violations · ${gaps} coverage gaps`)}` +
+    ` <span class="muted">${nn} theorem(s) with native runs (not kernel-only)</span></h2>` +
     await dl(m, TRUST_HINTS);
-  h += "<h2>Effective policy</h2>" + ttable(await q("SELECT role, set_name, scope_kind, scope FROM trust_module_policy WHERE module = ? ORDER BY role, set_name LIMIT 100", [name]),
-    null, { set_name: tset });
-  h += "<h2>Violations</h2>" + ttable(await q("SELECT via, decl, procedure, backend, profile, direct, reason FROM trust_violations WHERE module = ? ORDER BY direct DESC, via, decl LIMIT " + DETAIL, [name]),
-    null, { via: tmod, procedure: tproc });
-  h += "<h2>Direct uses</h2>" + ttable(await q("SELECT u.decl, u.procedure, u.backend, u.profile, (SELECT group_concat(axiom, ', ') FROM trust_use_axioms a WHERE a.module = u.module " +
-    "AND a.decl = u.decl AND a.procedure = u.procedure AND a.backend = u.backend AND a.profile = u.profile) AS axioms FROM trust_uses u WHERE u.module = ? ORDER BY u.decl, u.procedure LIMIT " + DETAIL, [name]),
+  h += "<h2>Effective policy</h2>" + ttable(await q("SELECT role, group_concat(CASE member WHEN '*' THEN 'all' ELSE member END, ', ') AS members " +
+    "FROM trust_module_policy WHERE module = ? GROUP BY role ORDER BY CASE role WHEN 'allowed' THEN 0 WHEN 'max' THEN 1 WHEN 'default' THEN 2 WHEN 'deps' THEN 3 ELSE 4 END", [name])) +
+    '<p class="muted">allowed = what this module may run natively under the dump\'s profile and ceiling.</p>';
+  h += "<h2>Violations</h2>" + ttable(await q("SELECT decl, reason, class, procedure, axiom FROM trust_violations WHERE module = ? ORDER BY decl LIMIT " + DETAIL, [name]),
+    null, { procedure: tprocIf });
+  h += "<h2>Native runs in its theorems (own and inherited)</h2>" + ttable(await q("SELECT procedure, class, decls FROM trust_module_native WHERE module = ? ORDER BY class, procedure LIMIT " + DETAIL, [name]),
+    null, { procedure: tprocIf });
+  h += "<h2>Recorded uses (edge_decide)</h2>" + ttable(await q("SELECT decl, procedure, mode, profile, axiom FROM trust_uses WHERE module = ? ORDER BY decl, procedure LIMIT " + DETAIL, [name]),
     null, { procedure: tproc });
-  h += "<h2>Transitive uses (through imports)</h2>" + ttable(await q("SELECT procedure, backend, profile, count(*) AS uses, count(DISTINCT via) AS modules, min(via) AS example_via " +
-    "FROM trust_transitive_uses WHERE module = ? AND direct = 0 GROUP BY 1, 2, 3 ORDER BY 1, 2, 3 LIMIT " + DETAIL, [name]), null, { procedure: tproc, example_via: tmod });
-  h += "<h2>Coverage gaps (imports whose uses are not recorded)</h2>" + ttable(await q("SELECT dep, coverage, reason FROM trust_coverage_gaps WHERE module = ? ORDER BY dep LIMIT " + DETAIL, [name]),
+  h += "<h2>Coverage gaps (transitive imports whose theorems are not audited)</h2>" + ttable(await q("SELECT dep, coverage, reason FROM trust_coverage_gaps WHERE module = ? ORDER BY dep LIMIT " + DETAIL, [name]),
     null, { dep: tmod });
   h += "<h2>Imports</h2>" + ttable(await q("SELECT i.import, m.coverage, m.freshness FROM trust_imports i LEFT JOIN trust_modules m ON m.name = i.import WHERE i.module = ? ORDER BY 1 LIMIT " + DETAIL, [name]),
     null, { import: tmod });
   h += "<h2>Imported by</h2>" + ttable(await q("SELECT module FROM trust_imports WHERE import = ? ORDER BY 1 LIMIT " + DETAIL, [name]), null, { module: tmod });
-  const ax = await q("SELECT decl, axiom FROM trust_decl_axioms WHERE module = ? ORDER BY decl, axiom LIMIT " + DETAIL, [name]);
-  if (ax.length) h += "<h2>Axioms per declaration</h2>" + ttable(ax);
+  h += "<h2>Axioms of its theorems</h2>" + ttable(await q("SELECT decl, group_concat(CASE class WHEN 'other' THEN axiom ELSE class || ':' || procedure END, ', ') AS axioms " +
+    "FROM trust_decl_axioms WHERE module = ? GROUP BY decl ORDER BY decl LIMIT " + DETAIL, [name]));
   return h;
 }
 async function trustSetPage(name) {
   const s = (await tq("trust_sets", "SELECT * FROM trust_sets WHERE name = ?", [name]))[0];
   if (!s) return `<p class="err">no trust set ${esc(name)}</p>`;
   let h = `<h2>Set <code>${esc(name)}</code></h2>` + await dl(s, TRUST_HINTS);
-  h += "<h2>Members</h2>" + ttable(await q("SELECT member_kind, member, backend, profile FROM trust_set_members WHERE set_name = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]),
-    null, { member: (v) => v });
-  h += "<h2>Grants (closure)</h2>" + ttable(await q("SELECT DISTINCT procedure, backend, profile FROM trust_set_closure WHERE set_name = ? ORDER BY 1, 2, 3 LIMIT " + DETAIL, [name]),
-    null, { procedure: tproc });
-  h += '<p class="muted">profile empty = every profile of that backend</p>';
-  h += "<h2>Contained in</h2>" + ttable(await q("SELECT set_name FROM trust_set_members WHERE member_kind = 'set' AND member = ? ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
-  h += "<h2>Policies naming it</h2>" + ttable(await q("SELECT scope_kind, scope, role FROM trust_policy_sets WHERE set_name = ? ORDER BY 1, 2, 3 LIMIT " + DETAIL, [name]));
+  h += "<h2>Members</h2>" + ttable(await q("SELECT member_kind, member FROM trust_set_members WHERE set_name = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]),
+    null, { member: (v, r) => r.member_kind === "set" ? tset(v) : null });
+  h += "<h2>Closure</h2>" + ttable(await q("SELECT DISTINCT CASE name WHEN '*' THEN 'all' ELSE name END AS name FROM trust_set_closure WHERE set_name = ? ORDER BY 1 LIMIT " + DETAIL, [name]));
+  h += "<h2>Included by</h2>" + ttable(await q("SELECT set_name FROM trust_set_members WHERE member_kind = 'set' AND member = ? ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
+  h += "<h2>Scopes naming it</h2>" + ttable(await q("SELECT module, CASE ? WHEN max THEN 'max' ELSE '' END || ' ' || CASE ? WHEN default_set THEN 'default' ELSE '' END || ' ' || " +
+    "CASE ? WHEN deps THEN 'deps' ELSE '' END || ' ' || CASE ? WHEN axioms THEN 'axioms' ELSE '' END AS roles FROM trust_scopes " +
+    "WHERE ? IN (max, default_set, deps, axioms) ORDER BY 1 LIMIT " + DETAIL, [name, name, name, name, name]));
   return h;
 }
 async function trustProcedurePage(name) {
   const p = (await tq("trust_procedures", "SELECT * FROM trust_procedures WHERE name = ?", [name]))[0];
-  if (!p) return `<p class="err">no trust procedure ${esc(name)}</p>`;
-  let h = `<h2>${p.kind === "axiom" ? "Axiom" : "Decision procedure"} <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS) +
-    '<p class="muted">proposition is descriptive text; statement names the Lean declaration that fixes it. Equal text is not proof of the same statement.</p>';
-  h += "<h2>Implementations</h2>" + ttable(await q("SELECT backend, profile, status, checker, soundness, surface, doc FROM trust_implementations WHERE procedure = ? ORDER BY 1, 2", [name]));
-  h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name, backend, profile FROM trust_set_closure WHERE procedure = ? ORDER BY 1, 2, 3 LIMIT " + DETAIL, [name]), null, { set_name: tset });
-  h += "<h2>Direct uses</h2>" + ttable(await q("SELECT module, decl, backend, profile FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
-  h += "<h2>Modules using it transitively</h2>" + ttable(await q("SELECT module, backend, profile, count(*) AS uses FROM trust_transitive_uses WHERE procedure = ? AND direct = 0 GROUP BY 1, 2, 3 ORDER BY 1 LIMIT " + DETAIL, [name]),
+  if (!p) return `<p class="err">no registered procedure ${esc(name)}</p>`;
+  let h = `<h2>Native procedure <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS) +
+    `<p class="muted">It decides <code>${esc(p.function)} a₁ … aₙ = true</code>. A native run trusts the compiler and runtime; ` +
+    (p.kernel_fallback ? "a kernel fallback exists (the kernel evaluates the same term, no axiom)." : "there is no kernel fallback: without native permission it fails closed.") + "</p>";
+  h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name FROM trust_set_closure WHERE name IN (?, '*') ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
+  h += "<h2>Recorded uses</h2>" + ttable(await q("SELECT module, decl, mode, profile, axiom FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
+  h += "<h2>Theorems whose axioms include a native run of it</h2>" + ttable(await q("SELECT module, decl, class FROM trust_decl_axioms WHERE procedure = ? AND class IN ('own_native','dep_native') ORDER BY 1, 2 LIMIT " + DETAIL, [name]),
     null, { module: tmod });
   return h;
 }

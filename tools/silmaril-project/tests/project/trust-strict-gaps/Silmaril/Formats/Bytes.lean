@@ -1,1 +1,0 @@
--- Stand-in source of Silmaril.Formats.Bytes for the trust fixture; only its digest is recorded.

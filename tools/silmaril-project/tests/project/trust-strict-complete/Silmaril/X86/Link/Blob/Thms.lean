@@ -1,1 +1,0 @@
--- Stand-in source of Silmaril.X86.Link.Blob.Thms for the trust fixture; only its digest is recorded.
