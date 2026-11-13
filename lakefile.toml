@@ -391,3 +391,23 @@ srcDir = "tools/core-elab"
 name = "cfront"
 root = "Cfront"
 srcDir = "tools/cfront"
+
+# The Cerberus oracle replays (docs/projects/cerberus.md): each reads the genuine Cerberus
+# fixtures under benchmarks/cerberus-elaboration/oracle at run time.
+[[lean_exe]]
+name = "ci_cerberus_genuine_oracle"
+root = "tests.cerberus.GenuineOracle"
+leanOptions = { autoImplicit = true }
+
+[[lean_exe]]
+name = "ci_cerberus_elaboration_oracle"
+root = "tests.cerberus.ElaborationOracle"
+leanOptions = { autoImplicit = true }
+
+[[lean_exe]]
+name = "ci_cerberus_parameter_call"
+root = "tests.cerberus.ParameterCallRuntime"
+
+[[lean_exe]]
+name = "ci_cerberus_integer_cast"
+root = "tests.cerberus.IntegerCastRuntime"
