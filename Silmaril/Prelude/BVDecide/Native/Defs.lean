@@ -6,11 +6,11 @@ public meta import Silmaril.Prelude.BVDecide.Defs
 public meta import Silmaril.Prelude.Trust.Elab.Defs
 
 /-!
-# `bv_decide_policy`: `bv_decide` under the trust policy
+# `sil_bv_decide`: `bv_decide` under the trust policy
 
 This is the only module allowed to invoke `bv_decide` (`scripts/check-layout.sh`).
 It registers the native procedure `lean.std.bv_decide.verifyBVExpr` and defines
-`bv_decide_policy`, which proves a goal as follows.
+`sil_bv_decide`, which proves a goal as follows.
 
 1. **Kernel first.** `kernelFallback` (`bv_normalize`, standard axioms only). If it
    closes the goal, the use is recorded with `mode := .kernel` and nothing native runs.
@@ -109,14 +109,14 @@ def usesSoundness (proof : Expr) (e c ax : Name) : Bool :=
     t.getAppArgs == #[.const e [], .const c [], .const ax []]).isSome
 
 /--
-`bv_decide_policy` proves a goal by `bv_normalize` alone when it can (recorded as a kernel
+`sil_bv_decide` proves a goal by `bv_normalize` alone when it can (recorded as a kernel
 use), and otherwise by native `bv_decide` only where the trust policy allows
 `lean.std.bv_decide.verifyBVExpr`, binding each native axiom to this invocation. Goals that
 need SAT fail when the procedure is not allowed: there is no kernel route for them.
 -/
-syntax (name := bvDecidePolicy) "bv_decide_policy" Lean.Parser.Tactic.optConfig : tactic
+syntax (name := silBvDecide) "sil_bv_decide" Lean.Parser.Tactic.optConfig : tactic
 
-@[tactic bvDecidePolicy] def evalBvDecidePolicy : Tactic := fun stx => do
+@[tactic silBvDecide] def evalSilBvDecide : Tactic := fun stx => withMainContext do
   let cfg : TSyntax ``Lean.Parser.Tactic.optConfig := ⟨stx[1]⟩
   let goal ← getMainGoal
   let decl := (← Term.getDeclName?).getD .anonymous
@@ -124,32 +124,38 @@ syntax (name := bvDecidePolicy) "bv_decide_policy" Lean.Parser.Tactic.optConfig 
     recordUse { decl, module := (← getEnv).mainModule, proc := procName, mode,
                 profile := ← profileTag, ax }
   if let some why ← registrationProblem then
-    throwError "bv_decide_policy: {why}"
+    throwError "sil_bv_decide: {why}"
   match ← kernelFallback goal cfg with
   | .proved =>
     use .kernel none
     replaceMainGoal []
   | .needsSat =>
     unless ← nativeAllowed procName do
-      throwError "bv_decide_policy: the goal needs SAT, which has no kernel-checked route, and \
+      throwError "sil_bv_decide: the goal needs SAT, which has no kernel-checked route, and \
         {procName} is not allowed natively here (profile {← profileTag})"
     let before ← getEnv
+    let saved ← saveState
+    -- On any failure after the native run, restore the state (environment included, so the
+    -- run's axiom and auxiliary definitions are dropped) and leave the goal as it was.
+    let fail {α} (msg : MessageData) : TacticM α := do
+      saved.restore (restoreInfo := true)
+      throwError msg
     let rest ← Term.withoutErrToSorry <| Tactic.run goal do
       evalTactic (← `(tactic| bv_decide $cfg:optConfig))
-    unless rest.isEmpty do throwError "bv_decide_policy: bv_decide left goals"
+    unless rest.isEmpty do fail "sil_bv_decide: bv_decide left goals"
     let proof ← instantiateMVars (mkMVar goal)
-    if proof.hasSorry then throwError "bv_decide_policy: the proof contains `sorry`"
+    if proof.hasSorry then fail "sil_bv_decide: the proof contains `sorry`"
     let axs ← nonstandardAxioms proof
-    if axs.isEmpty then throwError "bv_decide_policy: expected a native axiom, found none"
+    if axs.isEmpty then fail "sil_bv_decide: expected a native axiom, found none"
     -- Every check happens before any use is recorded.
     for ax in axs do
       unless isBvDecideNativeAxiom ax && !before.contains ax do
-        throwError "bv_decide_policy: axiom {ax} is not a native axiom added by this invocation"
+        fail m!"sil_bv_decide: axiom {ax} is not a native axiom added by this invocation"
       let some (e, c) ← invocationArgs? before ax
-        | throwError "bv_decide_policy: axiom {ax} does not state `{nativeEvaluatedConst} e c = true` \
+        | fail m!"sil_bv_decide: axiom {ax} does not state `{nativeEvaluatedConst} e c = true` \
             for the expression and certificate this invocation created"
       unless usesSoundness proof e c ax do
-        throwError "bv_decide_policy: the proof does not use {ax} through {nativeSoundnessConst}"
+        fail m!"sil_bv_decide: the proof does not use {ax} through {nativeSoundnessConst}"
     for ax in axs do use .native (some ax)
     replaceMainGoal []
 

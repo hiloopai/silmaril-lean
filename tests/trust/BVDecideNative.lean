@@ -6,7 +6,7 @@ public meta import Silmaril.Prelude.BVDecide.Native.Defs
 public meta import Lean
 
 /-!
-# Regression tests for `bv_decide_policy`, including native runs
+# Regression tests for `sil_bv_decide`, including native runs
 
 This module is outside the `Silmaril` library on purpose: it holds native axioms, a plain
 `bv_decide` and a test axiom, none of which may appear in the library
@@ -42,7 +42,7 @@ meta def nativeBound (decl : Lean.Name) : Lean.CoreM (Nat × Bool) := do
 
 /-! ## The kernel route, in every profile -/
 
-theorem kern (x y : BitVec 64) : x + y - y = x := by bv_decide_policy
+theorem kern (x y : BitVec 64) : x + y - y = x := by sil_bv_decide
 
 /-- info: ["kernel"] -/
 #guard_msgs in
@@ -55,7 +55,7 @@ theorem kern (x y : BitVec 64) : x + y - y = x := by bv_decide_policy
 /-! ## A goal that needs SAT, in the local profile: native, bound to this invocation -/
 
 set_option silmaril.trust.profile "local" in
-theorem sat (x y : BitVec 8) : x * y = y * x := by bv_decide_policy
+theorem sat (x y : BitVec 8) : x * y = y * x := by sil_bv_decide
 
 /-- info: ["native"] -/
 #guard_msgs in
@@ -69,20 +69,34 @@ set_option silmaril.trust.profile "local" in
 #guard_msgs (drop info) in
 trust_audit sat
 
+/-- The combined audit of `kern` and `sat` under `local` (after #129's `EdgeExamples`): per
+declaration, its violations, own native procedures and number of native axioms, read from
+the audit line rather than matching core's full output. -/
+meta def auditSummary (decl : Lean.Name) : Lean.CoreM (List String × List String × Nat) := do
+  let (j, violations) ← auditLine decl
+  let names (k : String) : List String :=
+    match j.getObjValAs? (Array String) k with | .ok a => a.toList | .error _ => []
+  return (violations.toList, names "own_native", (names "native_axioms").length)
+
+/-- info: [([], [], 0), ([], ["lean.std.bv_decide.verifyBVExpr"], 1)] -/
+#guard_msgs in
+set_option silmaril.trust.profile "local" in
+#eval [``kern, ``sat].mapM auditSummary
+
 /-! ## Default and paranoid: SAT goals fail, there is no kernel route -/
 
 /--
-error: bv_decide_policy: the goal needs SAT, which has no kernel-checked route, and lean.std.bv_decide.verifyBVExpr is not allowed natively here (profile default)
+error: sil_bv_decide: the goal needs SAT, which has no kernel-checked route, and lean.std.bv_decide.verifyBVExpr is not allowed natively here (profile default)
 -/
 #guard_msgs in
-example (x y : BitVec 8) : x * y = y * x := by bv_decide_policy
+example (x y : BitVec 8) : x * y = y * x := by sil_bv_decide
 
 /--
-error: bv_decide_policy: the goal needs SAT, which has no kernel-checked route, and lean.std.bv_decide.verifyBVExpr is not allowed natively here (profile paranoid)
+error: sil_bv_decide: the goal needs SAT, which has no kernel-checked route, and lean.std.bv_decide.verifyBVExpr is not allowed natively here (profile paranoid)
 -/
 #guard_msgs in
 set_option silmaril.trust.profile "paranoid" in
-example (x y : BitVec 8) : x * y = y * x := by bv_decide_policy
+example (x y : BitVec 8) : x * y = y * x := by sil_bv_decide
 
 /-! ## Unrecorded and wrong axioms are rejected -/
 
@@ -107,7 +121,7 @@ meta def unverified (decl : Lean.Name) : Lean.CoreM Bool := do
   return violations.any (·.startsWith "unverified native axiom")
 
 /-- For `decl`'s native axioms: the expression and certificate they evaluate, checked as
-`bv_decide_policy` checks them (against an empty "before" environment, so only the shape
+`sil_bv_decide` checks them (against an empty "before" environment, so only the shape
 and types are tested here), and whether the proof uses each through the soundness lemma. -/
 meta def argsOk (decl : Lean.Name) : Lean.MetaM (List Bool) := do
   let some info := (← Lean.getEnv).find? decl | return []

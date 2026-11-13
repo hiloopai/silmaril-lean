@@ -137,7 +137,7 @@ fail). `bv_decide` goes through it as follows.
 
 * `Silmaril/Prelude/BVDecide/Native/Defs.lean` is the **only** module that invokes
   `bv_decide`, and it does so exactly once (`scripts/check-layout.sh`). Every other
-  module uses `bv_decide_kernel` or `bv_decide_policy`. The gate has no per-site
+  module uses `bv_decide_kernel` or `sil_bv_decide`. The gate has no per-site
   exceptions.
 * It registers the procedure with `native_tactic`:
 
@@ -148,10 +148,10 @@ fail). `bv_decide` goes through it as follows.
   | axiom tag | `bv_decide`: `<decl>._native.bv_decide.ax_<n>` |
   | components | bitblasting (hash-consed through `mixHash`), AIG to CNF, relabeling, LRAT parser (`partial`), LRAT checker, runtime externs |
   | toolchain | `leanprover/lean4:nightly-2026-11-05`, commit `67dafde4` (`registeredToolchain`, `registeredGithash`) |
-  | fallback | description only, `partial: bv_normalize only …`; `native_tactic` never sets `kernel` from it, and `bv_decide_policy` requires the description to say `partial:` |
+  | fallback | description only, `partial: bv_normalize only …`; `native_tactic` never sets `kernel` from it, and `sil_bv_decide` requires the description to say `partial:` |
   | untrusted | the external SAT solver |
 
-* `bv_decide_policy` checks the registration on every use (`registrationProblem`):
+* `sil_bv_decide` checks the registration on every use (`registrationProblem`):
   the evaluated constant exists and is `nativeEvaluatedConst`, the tag is
   `bv_decide`, no kernel fallback is claimed (and the description says `partial:`), and the registered toolchain and the
   running Lean's commit are the reviewed ones. Then it:
@@ -169,7 +169,7 @@ fail). `bv_decide` goes through it as follows.
 **Audit binding.** `trust_audit` (core) counts a `_native.bv_decide` axiom as the
 procedure only when a recorded `native` use produced exactly that axiom and its statement
 mentions `verifyBVExpr`. A plain `bv_decide`, or an axiom with the right name and the wrong
-statement, is reported as an unverified native axiom. `bv_decide_policy` checks more strictly
+statement, is reported as an unverified native axiom. `sil_bv_decide` checks more strictly
 when it records a use: the axiom is new in this invocation and states exactly one closed
 `verifyBVExpr e cert = true`.
 

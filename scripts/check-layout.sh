@@ -41,7 +41,7 @@ if not pin or pin.group(1) != f"{h:016x}":
     raise SystemExit(1)
 PY
 # `bv_decide` proves goals that need SAT through a native-evaluation axiom
-# (`…._native.bv_decide.ax_…`). Use `bv_decide_kernel` (kernel only) or `bv_decide_policy`
+# (`…._native.bv_decide.ax_…`). Use `bv_decide_kernel` (kernel only) or `sil_bv_decide`
 # (native only where the trust policy allows it); only the framework module below invokes
 # `bv_decide` (docs/bv-decide-trust.md). Comments, strings, code spans, dotted names and
 # `axiom_tag` registrations are not invocations.
@@ -72,7 +72,7 @@ for p in sorted(pathlib.Path("Silmaril").rglob("*.lean")):
             bad = 1
         continue
     for n in calls:
-        print(f"{p}:{n}: bv_decide is not allowed; use bv_decide_kernel or bv_decide_policy", file=sys.stderr)
+        print(f"{p}:{n}: bv_decide is not allowed; use bv_decide_kernel or sil_bv_decide", file=sys.stderr)
         bad = 1
 raise SystemExit(bad)
 PY
