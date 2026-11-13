@@ -17,7 +17,12 @@ the pin on every run.
 /-- Kernel bytes: comparisons and the raw-bytes bridge (`Silmaril.Prelude.Bytes.Native`). -/
 trust_set bytes := {bytes.sameBytes, bytes.beq, bytes.wf, bytes.eqByteArray}
 
+/-- ELF: the stage-1 layout (`Silmaril.Elf.Staged.Native`). Its native run reads the file's
+`ByteArray` with the compiled reader; the kernel path (`elf_leaf`) reads kernel bytes. The other
+`elf.*` leaves stay opt-in (`local`). -/
+trust_set elf := {elf.layout}
+
 /-- What the default profile runs natively. -/
-trust_set default := {} includes bytes
+trust_set default := {} includes bytes elf
 
 trust_policy "../../../../policy.toml" pin "0294950de3d882b2"
