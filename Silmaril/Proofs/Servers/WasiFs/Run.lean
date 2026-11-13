@@ -220,11 +220,67 @@ theorem take_bits {c : List UInt8} (hc : c.length < maxRead) :
     (List.map UInt8.toBitVec c).take maxRead = List.map UInt8.toBitVec c :=
   List.take_of_length_le (by simp; omega)
 
+/-- **Reading the request body over the store's host**: the first read delivers the whole
+content, the second answers `closed`. -/
+theorem runP_readBody (root : String) (q : Request) (fs : Fs) (past : List WEv) (o s : BitVec 32)
+    (k : List UInt8 → BProg storeImports) (n : Nat) (acc : List UInt8)
+    (hp : past.any isReadAns = false) :
+    runP (storeHost root q fs) past (readBody o s k (n + 2) acc) =
+      (.req inRead [.u32 s, .u64 readLen] ::
+        .imp inRead [.u32 s, .u64 readLen] (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]) ::
+        .req inRead [.u32 s, .u64 readLen] ::
+        .imp inRead [.u32 s, .u64 readLen] (some [errV (some (.variant 1 none))]) ::
+        (runP (storeHost root q fs)
+          (past ++ [.imp inRead [.u32 s, .u64 readLen]
+              (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]),
+            .imp inRead [.u32 s, .u64 readLen] (some [errV (some (.variant 1 none))])])
+          (k (acc ++ q.content))).1,
+        (runP (storeHost root q fs)
+          (past ++ [.imp inRead [.u32 s, .u64 readLen]
+              (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]),
+            .imp inRead [.u32 s, .u64 readLen] (some [errV (some (.variant 1 none))])])
+          (k (acc ++ q.content))).2) := by
+  have h1 : storeHost root q fs past inRead [.u32 s, .u64 readLen] =
+      some [okV (some (bytesV (q.content.map UInt8.toBitVec)))] := by
+    simp [storeHost, refHost, hp, fsList, inRead, getDirs, openAt, fdRead, fdWrite, unlinkAt,
+      reqMethod, reqPath, newFields, newResp, respBody, bodyWrite, setStatus, streamWrite,
+      bodyFinish, streamDrop, outSet, reqConsume, inStream]
+  have h2 : storeHost root q fs (past ++ [.imp inRead [.u32 s, .u64 readLen]
+      (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))])]) inRead [.u32 s, .u64 readLen] =
+      some [errV (some (.variant 1 none))] := by
+    simp [storeHost, refHost, fsList, inRead, getDirs, openAt, fdRead, fdWrite, unlinkAt,
+      reqMethod, reqPath, newFields, newResp, respBody, bodyWrite, setStatus, streamWrite,
+      bodyFinish, streamDrop, outSet, reqConsume, inStream, isReadAns]
+  simp only [okV, errV] at h1 h2
+  simp only [readBody, runP, sop, h1, h2, bytesOf_bytesV,
+    Silmaril.Proofs.Servers.WasiExamples.map_ofBitVec_toBitVec]
+  simp [okV, errV, List.append_assoc]
+
+theorem runP_readBody_fuel (root : String) (q : Request) (fs : Fs) (past : List WEv)
+    (o s : BitVec 32) (k : List UInt8 → BProg storeImports) (acc : List UInt8)
+    (hp : past.any isReadAns = false) :
+    runP (storeHost root q fs) past (readBody o s k echoFuel acc) =
+      (.req inRead [.u32 s, .u64 readLen] ::
+        .imp inRead [.u32 s, .u64 readLen] (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]) ::
+        .req inRead [.u32 s, .u64 readLen] ::
+        .imp inRead [.u32 s, .u64 readLen] (some [errV (some (.variant 1 none))]) ::
+        (runP (storeHost root q fs)
+          (past ++ [.imp inRead [.u32 s, .u64 readLen]
+              (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]),
+            .imp inRead [.u32 s, .u64 readLen] (some [errV (some (.variant 1 none))])])
+          (k (acc ++ q.content))).1,
+        (runP (storeHost root q fs)
+          (past ++ [.imp inRead [.u32 s, .u64 readLen]
+              (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))]),
+            .imp inRead [.u32 s, .u64 readLen] (some [errV (some (.variant 1 none))])])
+          (k (acc ++ q.content))).2) :=
+  runP_readBody root q fs past o s k 14 acc hp
+
 /-- The computation of a run of the store. -/
 macro "store_run" : tactic => `(tactic|
   simp [runStore, runP, storeBody, handleQ, storeHost, refHost, sop, reqOf, outOf,
     reqMethod, reqPath, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt, methodV, kindAns,
-    getPath, putPath, delPath, putFile, readBody, pathOf_pathV, mutating, fsEvents, isFsEv,
+    getPath, putPath, delPath, putFile, pathOf_pathV, newFields, newResp, streamDrop, runP_readBody_fuel, mutating, fsEvents, isFsEv,
     atPath_openArgs, maxRead_mod,
     replay, fstep, Versions.FsMore.fsImplV, Versions.FsMore.fsState,
     fsNext_dirs, fsNext_open_ok, fsNext_open_err, fsNext_read, fsNext_create, fsNext_unlink,
@@ -245,10 +301,10 @@ macro "store_run" : tactic => `(tactic|
 macro "store_run_mut" : tactic => `(tactic|
   simp [runStore, runP, storeBody, handleQ, storeHost, refHost, sop, reqOf, outOf,
     reqMethod, reqPath, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt, methodV, kindAns,
-    getPath, putPath, delPath, putFile, readBody, pathOf_pathV, mutating, fsEvents, isFsEv,
+    getPath, putPath, delPath, putFile, pathOf_pathV, newFields, newResp, streamDrop, runP_readBody_fuel, mutating, fsEvents, isFsEv,
     atPath_openArgs, maxRead_mod, mutAns, mutUpd, FSt.at2, FSt.self, FSt.atOpen, ofPath,
     bufArgs, writeAtU, fsNext_write, inRead, reqConsume, inStream, isReadAns, okV, errV,
-    bytesOf_bytesV, readLen, echoFuel, bitsOf,
+    bytesOf_bytesV, bitsOf,
     replay, fstep, Versions.FsMore.fsImplV, Versions.FsMore.fsState,
     fsNext_dirs, fsNext_open_ok, fsNext_open_err, fsNext_read, fsNext_create, fsNext_unlink,
     Versions.FsMore.dirsA, Versions.FsMore.numbered, treeOf, preOf, Versions.Net.lookup, Versions.FsMore.charsV_strC, relPath_keyName,
