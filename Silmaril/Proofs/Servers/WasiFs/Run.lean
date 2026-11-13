@@ -2,10 +2,22 @@ module
 
 public import Silmaril.Servers.WasiFs.Defs
 public import Silmaril.Wasi.Versions.FsMore.Thms
-public import Silmaril.Proofs.Servers.WasiExamples.Answer
-public import Silmaril.Proofs.Servers.WasiExamples.Echo
+public import Silmaril.Servers.WasiExamples.Thms
 
 @[expose] public section
+
+/-!
+# Proofs: runs of the file-backed store, and `GET` and `HEAD`
+
+* `relPath_keyName`: a key's file name is one relative path component;
+* `fsNext_*`: the `FsMore` state on the filesystem calls of the store;
+* `respOf_answerS`, `fsEvents_answerS`, `respOf_req`, `respOf_imp`: the response code over the
+  store's host makes its response and no filesystem call, and the other calls do not move the
+  reading of the response; `runP_readBody`: reading the request body over the store's host;
+* the tactics `store_run`, `store_run_mut` that compute a run of the store;
+* `run_get`: for `GET` and `HEAD`, the complete run of `handle` makes the response of
+  `specStep` and leaves the files unchanged.
+-/
 
 namespace Silmaril.Proofs.Servers.WasiFs
 
@@ -111,8 +123,8 @@ end
 
 /-! ## The response code, over the store's host -/
 
-open Silmaril.Proofs.Servers.WasiExamples (leads_call_pure leads_pure OkAns answer_ok refHost_ok
-  bytesOf_bytesV)
+theorem ofBitVec_comp : UInt8.ofBitVec ∘ UInt8.toBitVec = id := rfl
+
 
 theorem leads_widen : ∀ {p : BProg proxyImports} {u : List WEv} {r : Option (List Val)},
     Leads (widen p) u (.pure r) → Leads p u (.pure r)
@@ -253,7 +265,7 @@ theorem runP_readBody (root : String) (q : Request) (fs : Fs) (past : List WEv) 
       bodyFinish, streamDrop, outSet, reqConsume, inStream, isReadAns]
   simp only [okV, errV] at h1 h2
   simp only [readBody, runP, sop, h1, h2, bytesOf_bytesV,
-    Silmaril.Proofs.Servers.WasiExamples.map_ofBitVec_toBitVec]
+    Silmaril.Servers.WasiExamples.map_ofBitVec_toBitVec]
   simp [okV, errV, List.append_assoc]
 
 theorem runP_readBody_fuel (root : String) (q : Request) (fs : Fs) (past : List WEv)
@@ -293,8 +305,8 @@ macro "store_run" : tactic => `(tactic|
     Silmaril.Net.Http.Status.notFound, Silmaril.Net.Http.Status.noContent,
     Silmaril.Net.Http.Status.created, Silmaril.Net.Http.Status.methodNotAllowed,
     Silmaril.Net.Http.Status.notImplemented,
-    Silmaril.Proofs.Servers.WasiExamples.map_ofBitVec_toBitVec, specStep, Response.status,
-    Silmaril.Proofs.Servers.WasiExamples.ofBitVec_comp, List.map_id, kindOf,
+    Silmaril.Servers.WasiExamples.map_ofBitVec_toBitVec, specStep, Response.status,
+    Silmaril.Proofs.Servers.WasiFs.ofBitVec_comp, List.map_id, kindOf,
     fileStoreStep, getAnswer, noFields, keyFile, Silmaril.Net.Http.Message.stripContent, *])
 
 /-- The computation of a run of the store that changes the files. -/
@@ -316,8 +328,8 @@ macro "store_run_mut" : tactic => `(tactic|
     Silmaril.Net.Http.Status.notFound, Silmaril.Net.Http.Status.noContent,
     Silmaril.Net.Http.Status.created, Silmaril.Net.Http.Status.methodNotAllowed,
     Silmaril.Net.Http.Status.notImplemented,
-    Silmaril.Proofs.Servers.WasiExamples.map_ofBitVec_toBitVec, specStep, Response.status,
-    Silmaril.Proofs.Servers.WasiExamples.ofBitVec_comp, List.map_id, kindOf,
+    Silmaril.Servers.WasiExamples.map_ofBitVec_toBitVec, specStep, Response.status,
+    Silmaril.Proofs.Servers.WasiFs.ofBitVec_comp, List.map_id, kindOf,
     fileStoreStep, getAnswer, noFields, keyFile, Silmaril.Net.Http.Message.stripContent, *])
 
 /-! ## `GET` and `HEAD` -/

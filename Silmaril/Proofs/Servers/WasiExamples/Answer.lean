@@ -303,12 +303,6 @@ theorem hello_answers (q : Request) : [(q, helloResp)] ∈ wasiServer (ofBody he
 
 /-! ## Answers over well-behaved hosts -/
 
-/-- The answer `n` of `f` is the successful one. -/
-def OkAns (f : FnName) (n : Option (List Val)) : Prop :=
-  ((f = setStatus ∨ f = streamWrite ∨ f = bodyFinish) → n = some [okV none]) ∧
-    ((f = respBody ∨ f = bodyWrite) → ∃ h, n = some [okV (some (.u32 h))]) ∧
-    (f = outSet → n = some [])
-
 theorem resp_of_fold {x : Option OSt} {st : OSt} {y : Option Response} (hx : x = some st)
     (hy : st.resp = y) : x.bind OSt.resp = y := by
   rw [hx]

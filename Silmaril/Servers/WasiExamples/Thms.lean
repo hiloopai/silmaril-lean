@@ -32,6 +32,9 @@ response unobservable (by failing an operation), never wrong.
   reads run out).
 * `serve_mem`: a response of a component over the reference host (`serveRef`) is a trace of
   the component read as a server.
+* `answer_ok`: over a host whose answers to the response code succeed (`OkAns`), a complete
+  run of `answer o resp` makes the response `resp`; `refHost_ok`: the reference host is such a
+  host. `bytesOf_bytesV`, `map_ofBitVec_toBitVec`: byte lists back and forth.
 
 Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 
@@ -61,6 +64,25 @@ theorem answer_run {o : BitVec 32} {resp : Response} {u : List WEv} {r : Option 
     (hr : Response.simple resp.status resp.content = resp) (hs : resp.status < 2 ^ 16)
     (hl : Leads (answer o resp) u (.pure r)) : respOf o u = none ∨ respOf o u = some resp :=
   Proofs.Servers.WasiExamples.answer_run hr hs hl
+
+/-- **Over a host whose answers succeed**, the response code makes its response. -/
+theorem answer_ok {o : BitVec 32} {resp : Response} {u : List WEv} {r : Option (List Val)}
+    (hr : Response.simple resp.status resp.content = resp) (hs : resp.status < 2 ^ 16)
+    (hl : Leads (answer o resp) u (.pure r)) (hok : ∀ f a n, WEv.imp f a n ∈ u → OkAns f n) :
+    respOf o u = some resp :=
+  Proofs.Servers.WasiExamples.answer_ok hr hs hl hok
+
+/-- The reference host's answers succeed. -/
+theorem refHost_ok (q : Request) (past : List WEv) (f : FnName) (a : List Val) :
+    OkAns f (refHost q past f a) :=
+  Proofs.Servers.WasiExamples.refHost_ok q past f a
+
+theorem bytesOf_bytesV (bs : List (BitVec 8)) : bytesOf (bytesV bs) = bs :=
+  Proofs.Servers.WasiExamples.bytesOf_bytesV bs
+
+theorem map_ofBitVec_toBitVec (c : List UInt8) :
+    (c.map UInt8.toBitVec).map UInt8.ofBitVec = c :=
+  Proofs.Servers.WasiExamples.map_ofBitVec_toBitVec c
 
 /-- **Hello answers `200 hello`**, for every host. -/
 theorem hello_sat : Sat (wasiServer (ofBody hello)) (each fun _ resp => resp = helloResp) :=
