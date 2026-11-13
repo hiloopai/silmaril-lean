@@ -1,6 +1,6 @@
 name = "silmaril"
 version = "0.1.0"
-defaultTargets = ["Silmaril", "SilmarilSpecTec", "SilmarilWasiWit"]
+defaultTargets = ["Silmaril", "SilmarilSpecTec", "SilmarilWasiWit", "SilmarilWasmProject"]
 restoreAllArtifacts = true
 [leanOptions]
 autoImplicit = false
@@ -59,6 +59,14 @@ name = "Cli"
 git = "https://github.com/leanprover/lean4-cli"
 rev = "13567aed1ac4f12aea9484178e07e51f8c9f7658"
 
+# Iris separation logic, for the Iris program logics of Wasm (`Silmaril.Wasm.Logic.Iris`,
+# `Silmaril.Wasm.FX.Logic.Iris`). Its batteries and Qq pins are overridden by the ones above.
+[[require]]
+name = "iris"
+git = "https://github.com/hiloopai/iris-lean"
+rev = "8b7e85ded4d5a9c560c042362cefdc2f1fb6d18d"
+subDir = "Iris"
+
 
 [[lean_lib]]
 name = "Silmaril"
@@ -75,7 +83,12 @@ globs = [
   "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Libc.+", "Silmaril.Logic.*",
   "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+",
   "Silmaril.Raw.Libc.+",
-  "Silmaril.Problems.+", "Silmaril.Process.+", "Silmaril.Project.+", "Silmaril.Proofs.Calculi.+",
+  "Silmaril.Problems.+", "Silmaril.Process.+",
+  # Project, except `Project.WasmComponents` and `Project.WasmP3Rust` (`SilmarilWasmProject` below).
+  "Silmaril.Project.Defs", "Silmaril.Project.CompilesTo.*", "Silmaril.Project.Components.*",
+  "Silmaril.Project.Core.*", "Silmaril.Project.Formats.*", "Silmaril.Project.Registry.*",
+  "Silmaril.Project.Room.*", "Silmaril.Project.Shapes.*",
+  "Silmaril.Proofs.Calculi.+",
   "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Elf.+",
   "Silmaril.Proofs.Formats.+", "Silmaril.Proofs.Libc.+",
   "Silmaril.Proofs.Games.+", "Silmaril.Proofs.Logic.+", "Silmaril.Proofs.Problems.+",
@@ -116,6 +129,25 @@ globs = [
   # SSA calculi, λRTL and the machine RTL (docs/projects/ssa.md).
   "Silmaril.Proofs.Machine.+", "Silmaril.Proofs.Semantics.+", "Silmaril.Raw.Calculi.+",
   "Silmaril.Raw.Machine.+", "Silmaril.Raw.SSA.+",
+  # SpecTec meta-theory and Lean 4 backend model, WASI over the process models, more Wasm
+  # (docs/projects/wasm-extras.md).
+  "Silmaril.Proofs.Wasm.SpecTecLean.+", "Silmaril.Raw.Project.+", "Silmaril.Raw.Wasi.+",
+  "Silmaril.Raw.Wasm.SpecTecLean.+", "Silmaril.Wasi.Os.+", "Silmaril.Wasi.Runtime.+",
+  "Silmaril.Wasi.Spec.+", "Silmaril.Wasi.Versions.Accept3.+",
+  "Silmaril.Wasi.Versions.Accept3Over.+", "Silmaril.Wasi.Versions.Cli3Rest.+",
+  "Silmaril.Wasi.Versions.FsDir3.+", "Silmaril.Wasi.Versions.HttpAttr.+",
+  "Silmaril.Wasi.Versions.HttpAttrOver.+", "Silmaril.Wasi.Versions.HttpBody2Over.+",
+  "Silmaril.Wasi.Versions.HttpBody3.+", "Silmaril.Wasi.Versions.HttpBodyOver.+",
+  "Silmaril.Wasi.Versions.HttpFields.+", "Silmaril.Wasi.Versions.HttpFieldsOver.+",
+  "Silmaril.Wasi.Versions.HttpHdr.+", "Silmaril.Wasi.Versions.HttpHdrOver.+",
+  "Silmaril.Wasi.Versions.HttpOnce.+", "Silmaril.Wasi.Versions.HttpOs.+",
+  "Silmaril.Wasi.Versions.HttpOsTr.+", "Silmaril.Wasi.Versions.HttpReqBody.+",
+  "Silmaril.Wasi.Versions.HttpReqBody2Over.+", "Silmaril.Wasi.Versions.HttpReqBodyOver.+",
+  "Silmaril.Wasi.Versions.HttpRfc.+", "Silmaril.Wasi.Versions.P2OverP3.+",
+  "Silmaril.Wasi.Versions.P3.+", "Silmaril.Wasi.Versions.P3OverP2.+",
+  "Silmaril.Wasi.Versions.Random.+", "Silmaril.Wasi.Versions.SockOs.+",
+  "Silmaril.Wasi.Versions.SockOsMore.+", "Silmaril.Wasi.Versions.Tcp3Addr.+",
+  "Silmaril.Wasi.Versions.Tcp3Stream.+", "Silmaril.Wasm.SpecTecLean.+",
   # More Wasm: semantics, WASI and networking (docs/projects/wasm-wasi.md). The WIT readers
   # `Silmaril.Wasi.Versions.WitImport.*` are `SilmarilWasiWit` below.
   "Silmaril.ML.+", "Silmaril.Net.+", "Silmaril.Proofs.Net.+", "Silmaril.Proofs.Wasi.+",
@@ -160,7 +192,13 @@ needs = [
   "spectecWasm10", "spectecWasm20", "spectecWasm30",
   "spectecMainWasm10", "spectecMainWasm20", "spectecMainWasm30",
   "spectecSurfaceVars", "spectecSurfaceNum", "spectecSurfaceBinary",
+  "spectecMetaTheory",
 ]
+
+[[input_file]]
+name = "spectecMetaTheory"
+path = "specs/spectec/meta-theory-3a10283c5b/meta-il.ast"
+text = false
 
 [[input_file]]
 name = "spectecWasm10"
@@ -211,6 +249,30 @@ text = false
 # read the vendored WIT files of specs/wasi while they elaborate. Lake mixes a library's `needs`
 # into the trace of every module of that library, so they have a library of their own and the
 # `Silmaril` library's traces stay as they are.
+# The Wasm components registry and the WASI 0.3 Rust example components
+# (docs/projects/wasm-extras.md): these modules read the records under `silmaril/` (`silmaril load`),
+# the registered binaries and the example components (`include_chunks`) while they elaborate, so
+# they are a library of their own and the `Silmaril` library's traces stay as they are.
+[[lean_lib]]
+name = "SilmarilWasmProject"
+globs = ["Silmaril.Project.WasmComponents.+", "Silmaril.Project.WasmP3Rust.+"]
+needs = ["projectRecords", "projectFormatExamples", "wasmComponentsBlobs", "wasip3RustBlobs", "wasiIoFixture"]
+
+[[input_dir]]
+name = "wasmComponentsBlobs"
+path = "examples/wasm-components"
+text = false
+
+[[input_dir]]
+name = "wasip3RustBlobs"
+path = "examples/wasip3-rust/dist"
+text = false
+
+[[input_file]]
+name = "wasiIoFixture"
+path = "tests/wat/fixtures/wasi-io-0.2.12.wasm"
+text = false
+
 [[lean_lib]]
 name = "SilmarilWasiWit"
 globs = ["Silmaril.Wasi.Versions.WitImport.+"]
@@ -359,6 +421,118 @@ srcDir = "tools/cli-harness"
 name = "cli-demo"
 root = "CliDemo"
 srcDir = "tools/cli-demo"
+
+# More Wasm, WASI and CLI tools (docs/projects/wasm-extras.md).
+[[lean_exe]]
+name = "wasm-conformance-lean"
+root = "WasmConformanceLean"
+srcDir = "tools/wasm-conformance/lean"
+
+[[lean_exe]]
+name = "component-wast"
+root = "ComponentWast"
+srcDir = "tools/component-wast"
+
+[[lean_exe]]
+name = "wasm-wac-spec"
+root = "WasmWacSpec"
+srcDir = "tools/wasm-wac-spec"
+
+[[lean_exe]]
+name = "wasm-streams"
+root = "WasmStreams"
+srcDir = "tools/wasm-streams"
+
+[[lean_exe]]
+name = "wasm-streams-gen"
+root = "WasmStreamsGen"
+srcDir = "tools/wasm-streams"
+
+[[lean_exe]]
+name = "wasm-cm-p3"
+root = "WasmCmP3"
+srcDir = "tools/wasm-cm-p3"
+
+[[lean_exe]]
+name = "wasm-kdrop"
+root = "WasmKDrop"
+srcDir = "tools/wasm-jco"
+
+[[lean_exe]]
+name = "wasm-wac-kbytes"
+root = "WasmWacKBytes"
+srcDir = "tools/wasm-wac"
+
+[[lean_exe]]
+name = "wasm-kappa"
+root = "WasmKappa"
+srcDir = "tools/wasm-wac"
+
+[[lean_exe]]
+name = "wasm-verify"
+root = "WasmVerify"
+srcDir = "tools/wasm-verify"
+supportInterpreter = true
+
+[[lean_exe]]
+name = "wasip3-trace"
+root = "Wasip3Trace"
+srcDir = "tools/wasip3-trace"
+
+[[lean_exe]]
+name = "wasm-tools-gen-diag"
+root = "WasmToolsGenDiag"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-core"
+root = "WasmToolsCore"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-cv"
+root = "WasmToolsCv"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-witbench"
+root = "WasmToolsWitBench"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-vt"
+root = "WasmToolsVt"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-meta"
+root = "WasmToolsMeta"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-wast"
+root = "WasmToolsWast"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-wast-bench"
+root = "WasmToolsWastBench"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "wasm-tools-wastenc"
+root = "WasmToolsWastEnc"
+srcDir = "tools/wasm-tools"
+
+[[lean_exe]]
+name = "cli-io-demo"
+root = "CliIoDemo"
+srcDir = "tools/cli-harness"
+
+[[lean_exe]]
+name = "cli-core-trace"
+root = "CliCoreTrace"
+srcDir = "tools/cli-core-trace"
 
 # Cerberus C semantics (docs/projects/cerberus.md): the compile-time tests and the
 # executables (C text to Cabs, typed Ail and Core; Core run and elaboration; the Clang
