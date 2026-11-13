@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Elf.Staged.Defs
 public import Silmaril.Elf.Check.Thms
+public import Silmaril.Prelude.Bytes.Defs
 import Silmaril.Proofs.Elf.Staged.Stages
 import Silmaril.Proofs.Elf.Staged.Fast
 
@@ -75,6 +76,11 @@ theorem loaderIs_of_pages {pg : List Chunk} (hc : ChunksOf F pg) {L : Layout} {l
 /-- Fast mode: `fastRead` on the bytes of `b` answers as the file `blobOf b`. -/
 theorem sub_fast (b : Silmaril.Formats.Bytes) : Sub (fastRead b.data) (blobOf b) :=
   Proofs.Elf.Staged.sub_fast b
+
+/-- Kernel bytes (`Silmaril.KBytes`) answer as the file of their bytes. -/
+theorem sub_kbytes (x : Silmaril.KBytes) (hx : x.wf = true) {raw : ByteArray}
+    (h : x.toByteArray = raw) : Sub x.readLE (blobOf ⟨raw⟩) :=
+  Proofs.Elf.Staged.sub_kbytes x hx h
 
 /-! ## Windows -/
 

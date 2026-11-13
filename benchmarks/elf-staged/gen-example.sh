@@ -12,5 +12,5 @@ exe=examples/dyn/pinned/hello-gcc
 "$ROOT/benchmarks/elf-staged/boundaries-objdump.sh" "$exe" .text > build/elf-staged/hello.tiles
 .lake/build/bin/elf-staged emit-example "$exe" Silmaril.Elf.Staged.Example.Defs \
   Silmaril/Elf/Staged/Example/Defs.lean Silmaril/Elf/Staged/Example/Thms.lean \
-  --bytes-const Silmaril.Elf.Link.Dyn.PinBytes.helloGcc --import Silmaril.Elf.Link.Dyn.Pin.Bytes \
+  --bytes-const helloRaw --kbytes hello --import Silmaril.Elf.Staged.Example.Bytes \
   --namespace Silmaril.Elf.Staged.Example --tiles build/elf-staged/hello.tiles --function main

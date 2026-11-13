@@ -231,6 +231,8 @@ structure EmitOpts where
   bytesConst : Option String := none
   imports : List String := []
   ns : String := "ElfStagedBench"
+  /-- The `kbytes_def` constant of the file (`emit-example`). -/
+  kbytes : Option String := none
   /-- First tile: the entry point by default. -/
   tileFrom : Option Nat := none
 
@@ -402,38 +404,47 @@ def L : Layout :=
 def ld : Loader := {litLoader ld}
 
 "
+  let kn := o.kbytes.getD "kbytes"
+  -- one leaf proof: the native run when the policy allows `proc`, else the kernel run
+  let leaf (proc fn : String) (c : Option String) : String :=
+    let (cn, ca) := match fn, c with
+      | "layout", _ => ("L", "L")
+      | "byName", _ => ("x", "byName")
+      | "byAddr", _ => ("x", "byAddr")
+      | _, some c => ("c", c)
+      | _, none => ("c", "_")
+    let kn' := if fn == "byName" || fn == "byAddr" then "s" else cn
+    s!"by\n  sil_check {proc}\n    (native := Native.{fn}_sound (raw := {cname}) ({cn} := {ca}))\n    (kernel := Kernel.{fn}_sound {kn}.wf_true {kn}.toByteArray_eq ({kn'} := {ca}))"
   let mut t := s!"module
 
 public import {defsMod}
-public import Silmaril.Elf.Staged.Leaf.Thms
-public import Silmaril.Elf.Shapes.Thms
-{o.imports.foldl (fun acc m => acc ++ s!"public import {m}\n") ""}
+public import Silmaril.Elf.Staged.Native.Defs
+{o.imports.foldl (fun acc m => acc ++ s!"public import {m}\n") ""}-- Native runs interpret the objects, the bytes and the checkers while elaborating.
+public meta import {defsMod}
+public meta import Silmaril.Elf.Staged.Native.Defs
+{o.imports.foldl (fun acc m => acc ++ s!"public meta import {m}\n") ""}
 /-! # Staged checks of `{path}`
 
-Every theorem is one leaf (`Silmaril.Elf.Staged.Leaf`) run in the kernel on the 4 KiB pages
-of the file (`Leaf.of_kernel`, `decide +kernel`) {hdr}. Under an acceleration
-policy the same leaves run natively (`Leaf.of_native`) and conclude the same propositions. -/
+Every theorem is one leaf (`Silmaril.Elf.Staged.Leaf`) proved by `sil_check` {hdr}: natively on
+the file's `ByteArray` when the trust policy allows the leaf's procedure in this module, and
+otherwise by the kernel on the same file's kernel bytes `{kn}`. The propositions are the same
+in every profile; `Silmaril.Elf.Staged.Example.Profiles` checks them under `local` and
+`paranoid`. -/
 
 @[expose] public section
 
 namespace {ns}
 
 open Silmaril.Elf Silmaril.Elf.Staged
-open Silmaril.Elf.Link.DynElf (pagesFrom ChunksOf)
 
 /-- The file. -/
-noncomputable abbrev F : Silmaril.X86.Link.Blob := blobOf {cname}
-
-/-- Its 4 KiB pages. -/
-noncomputable def pg := pagesFrom 4096 0 {a.size} (chunks_of% {cname})
-
-theorem hc : ChunksOf F pg := Rows.pages_of_bytes rfl
+noncomputable abbrev F : Silmaril.X86.Link.Blob := blobOf ⟨{cname}⟩
 
 /-- **Stage 1** (`elf.layout`). -/
-theorem layout : LayoutIs F L := Leaf.layout.of_kernel hc (c := L) (by decide +kernel)
+theorem layout : LayoutIs F L := {leaf "elf.layout" "layout" none}
 
 /-- **Stage 2'** (`elf.loader`). -/
-theorem loader : LoaderIs F L ld := Leaf.loader.of_kernel hc (c := (L, ld)) (by decide +kernel)
+theorem loader : LoaderIs F L ld := {leaf "elf.loader" "loader" (some "(L, ld)")}
 
 "
   let mut names : Array String := #[]
@@ -448,7 +459,7 @@ def b{k} : Body :=
 
 "
     t := t ++ s!"theorem body_{k} : BodyIs F L {litSh sec.header} b{k} :=
-  Leaf.body.of_kernel hc (c := (L, {litSh sec.header}, b{k})) (by decide +kernel)
+  {leaf "elf.body" "body" (some s!"(L, {litSh sec.header}, b{k})")}
 
 "
   let forall2 := names.foldr (fun n acc => s!"(.cons {n} {acc})") ".nil"
@@ -489,11 +500,11 @@ def byAddr : Symbols.ByAddr := ⟨symtab, #[{", ".intercalate (rev.map fun (i, s
 "
     t := t ++ s!"/-- `elf.symbols.byName`. -/
 theorem byName_ok : byName.sorted = true ∧ byName.Sound F :=
-  Leaf.byName.of_kernel hc (c := byName) (by decide +kernel)
+  {leaf "elf.symbols.byName" "byName" none}
 
 /-- `elf.symbols.byAddr`. -/
 theorem byAddr_ok : byAddr.sorted = true ∧ byAddr.Sound F :=
-  Leaf.byAddr.of_kernel hc (c := byAddr) (by decide +kernel)
+  {leaf "elf.symbols.byAddr" "byAddr" none}
 
 "
     -- one function, grounded in the file
@@ -519,7 +530,7 @@ theorem {f}_extent : ∃ s, Symbols.SymAt F symtab {i} s ∧ s.raw.value ≤ {v}
 each tile is one instruction of the local x86 model (`elf.tiles.x86`). -/
 theorem {f}_code : L.offsetOf {v} = some {off} ∧ tilesCover ⟨{off}, {s.raw.size}⟩ {f}Tiles = true ∧
     TilesAt F x86Ok {off} {f}Tiles :=
-  ⟨by decide, by decide, Leaf.tilesX86.of_kernel hc (c := ({off}, {f}Tiles)) (by decide +kernel)⟩
+  ⟨by decide, by decide, {leaf "elf.tiles.x86" "tilesX86" (some s!"({off}, {f}Tiles)")}⟩
 
 "
   d := d ++ s!"end {ns}\n"
@@ -529,7 +540,7 @@ theorem {f}_code : L.offsetOf {v} = some {off} ∧ tilesCover ⟨{off}, {s.raw.s
   IO.println s!"wrote {defsOut} and {thmsOut}"
 
 def usage : String :=
-  "usage: elf-staged layout FILE | bench FILE [TILES] | emit-example FILE DEFS_MODULE DEFS.lean THMS.lean --bytes-const NAME [--import M] [--namespace NS] [--tiles TILES --function F] | emit FILE OUT.lean [--rela-windows N] [--rela-window N] [--tiles TILES] [--tile-count N] [--tile-from OFFSET] [--whole] [--bodies] [--bytes-const NAME] [--import MODULE] [--namespace NS]"
+  "usage: elf-staged layout FILE | bench FILE [TILES] | emit-example FILE DEFS_MODULE DEFS.lean THMS.lean --bytes-const RAW --kbytes K [--import M] [--namespace NS] [--tiles TILES --function F] | emit FILE OUT.lean [--rela-windows N] [--rela-window N] [--tiles TILES] [--tile-count N] [--tile-from OFFSET] [--whole] [--bodies] [--bytes-const NAME] [--import MODULE] [--namespace NS]"
 
 partial def parseOpts : List String → EmitOpts → EmitOpts
   | "--rela-windows" :: n :: rest, o => parseOpts rest { o with relaWindows := n.toNat! }
@@ -538,6 +549,7 @@ partial def parseOpts : List String → EmitOpts → EmitOpts
   | "--bodies" :: rest, o => parseOpts rest { o with bodies := true }
   | "--bytes-const" :: c :: rest, o => parseOpts rest { o with bytesConst := some c }
   | "--import" :: m :: rest, o => parseOpts rest { o with imports := o.imports ++ [m] }
+  | "--kbytes" :: n :: rest, o => parseOpts rest { o with kbytes := some n }
   | "--namespace" :: n :: rest, o => parseOpts rest { o with ns := n }
   | "--whole" :: rest, o => parseOpts rest { o with whole := true }
   | "--tile-count" :: n :: rest, o => parseOpts rest { o with tileCount := n.toNat! }
