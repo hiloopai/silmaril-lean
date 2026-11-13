@@ -32,13 +32,13 @@ python3 -I benchmarks/wasm-kernel-eval/mem_bench.py -o out.json           # kern
 
 **`KBytes`.** `Silmaril.KBytes` is the shared kernel byte string of the core work
 (`Silmaril/Prelude/Bytes`, Init-only). This branch merges it from `prelude/kernel-bytes-trust`
-(#125) at `28418c290ba266a30dee05d4e327e918433a2f74`. It is a length-cached binary tree of
+(#125) at `792e7ed6` (the frozen interface; its `Defs`/`Thms` are unchanged since `28418c29`). It is a length-cached binary tree of
 packed 4 KiB leaves with `read`, `readLE`, `get?`, `slice`, `++` and `canon`. Its interface
 has no write, so it is measured two ways:
 
 - `KRope` uses the interface only;
 - `KPath` adds a path-copying write, `kwrite`. `kwrite` is defined and proved in this topic,
-  not in `KBytes`, and is proposed for the `KBytes` interface.
+  not in `KBytes`, whose interface is frozen.
 
 The other baselines are the memory paths that the existing evaluators use, named by their
 exact declarations.
@@ -155,6 +155,56 @@ Memory sizes are 256 B, 64 KiB (one Wasm page) and 1 MiB (16 pages).
 
 Times are the mean of 5–20 repetitions (ListMem: 1–2) in one compiled process.
 
+## The store through the published interface
+
+The `KBytes` interface is frozen without a write primitive (#125 at `792e7ed6`). The core
+work's proposed store is the rope `slice t 0 off ++ leaf w v ++ slice t (off + w) (len - off - w)`
+on a zero memory `leaf n 0`.
+
+- **This is `KRope` on `kzero1`.** A store checks `off + w ≤ len`; an out-of-range store
+  fails, which is a Wasm trap (tested). The value is taken modulo `256 ^ w`.
+- **Semantics.** `memSimOn_kRope` proves it equal to the list reference, from
+  `toList_slice`, `toList_append` and `readLE_eq`. `kzero1_toListMem` proves the zero
+  memory, and `fillSort8_returns_rope_leaf` checks a whole run end to end.
+- **Comparison.** The table compares it with the canonical 4 KiB-leaf zero and with this
+  topic's path-copying write `kwrite` on both zeros. All numbers are measured, not assumed.
+
+**Kernel (`decide +kernel`):**
+
+| Store, zero memory | fillSort 16 64 KiB | scatter 128 64 KiB | scatter 128 1 MiB | updates 200 64 KiB | updates 200 1 MiB | sharing 64 64 KiB | sharing 64 1 MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Rope stores, `leaf n 0` zero (`KRope`, `kzero1`) | 1.11 s | 3.73 s | 3.56 s | 48 ms | 46 ms | 205 ms | 238 ms |
+| Rope stores, 4 KiB-leaf zero (`KRope`, `kzeros`) | 1.62 s | 3.88 s | 5.92 s | 91 ms | 285 ms | 260 ms | 472 ms |
+| Path stores, 4 KiB-leaf zero (`KPath`, `kzeros`) | 848 ms | 1.07 s | 1.32 s | 37 ms | 138 ms | 72 ms | 203 ms |
+| Path stores, `leaf n 0` zero (`KPath`, `kzero1`) | 739 ms | 1.11 s | 1.58 s | 682 ms | 15.60 s | 64 ms | 283 ms |
+
+**Native (compiled):**
+
+| Store, zero memory | fillSort 16 64 KiB | scatter 128 64 KiB | scatter 128 1 MiB | updates 200 64 KiB | updates 200 1 MiB | sharing 64 64 KiB | sharing 64 1 MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Rope stores, `leaf n 0` zero (`KRope`, `kzero1`) | 1.6 ms | 4.2 ms | 19.0 ms | 6.5 ms | 30.3 ms | 1.7 ms | 16.5 ms |
+| Rope stores, 4 KiB-leaf zero (`KRope`, `kzeros`) | 2.0 ms | 3.9 ms | 23.4 ms | 7.0 ms | 41.2 ms | 2.1 ms | 20.9 ms |
+| Path stores, 4 KiB-leaf zero (`KPath`, `kzeros`) | 513 µs | 994 µs | 691 µs | 9.6 ms | 518 µs | 297 µs | 352 µs |
+| Path stores, `leaf n 0` zero (`KPath`, `kzero1`) | 509 µs | 11.1 ms | 186 ms | 546 ms | 14.2 s | 2.5 ms | 50.3 ms |
+
+**What the measurements show:**
+
+- **Rope stores on `leaf n 0` work at every size without a timeout.**
+  - Writes and sharing are cheap and do not depend on size: `updates` 46–49 ms, `sharing`
+    205–238 ms in the kernel. Each store adds a few nodes and copies nothing.
+  - Read-heavy loops pay for the depth the ropes accumulate: `scatter` takes 3.6–3.7 s
+    against 1.1–1.3 s for path stores on 4 KiB leaves.
+  - In the kernel the one-leaf zero is as fast as or faster than the 4 KiB-leaf zero under
+    rope stores on every workload here, since slicing a single leaf is one shift.
+- **Path stores need the 4 KiB leaves.** On `leaf n 0` the path-copying write rewrites the
+  whole memory's number on every store: `updates` at 1 MiB takes 15.6 s in the kernel and
+  14 s natively.
+- **Choosing.**
+  - Rope stores through the frozen interface suit the default.
+  - For read-heavy loops after many stores, the measured options are a path write on 4 KiB
+    leaves (`kwrite`, kept local to this topic) or `canon 4096` every few hundred stores.
+    The `canon` option has not been measured here.
+
 ## Reading the numbers
 
 - **The `ByteArray` paths do not scale in the kernel.**
@@ -188,7 +238,7 @@ Times are the mean of 5–20 repetitions (ListMem: 1–2) in one compiled proces
   - Every store adds slice nodes, so reads descend deeper over time: `scatter` takes
     3.9–5.9 s in the kernel and 24 ms natively at 1 MiB.
   - Periodic `canon` would restore the shape, but that is a full rebuild.
-  - A write operation in the `KBytes` interface (`kwrite` here) is the cheaper fix.
+  - The path-copying write `kwrite` on 4 KiB leaves, local to this topic, is the cheaper fix.
 - **`Overlay` is the cheapest to update, and the worst to read after many writes.**
   - Kernel `updates` take 14–15 ms, independent of size.
   - Each load scans the log byte by byte, so read-heavy loops with hundreds of earlier
@@ -207,17 +257,18 @@ Times are the mean of 5–20 repetitions (ListMem: 1–2) in one compiled proces
   load reads costs little, except for `NatMem`, whose single number has to be computed in
   full. The native rows have no such effect.
 
-**Recommendation.** Use `Silmaril.KBytes` as the kernel evaluator's memory, with a
-path-copying write.
+**Recommendation.** Use `Silmaril.KBytes` as the kernel evaluator's memory.
 
-- Upstream `kwrite` (with `kwrite_spec`) into the `KBytes` interface. A store is then one
-  `KBytes` operation.
-- Memories, files and data segments then share one type, one canonical form and one
-  equality check (`canon`/`rfl`).
-- Its simulation is `memSimOn_kPath`, and `memSim_coreMem` ties every representation to
-  Core's `Memory.load`/`Memory.store`.
-- Keep `Overlay` (over a `KBytes` base) for sharing-heavy checks of one image.
-- `PageMem` can be retired in favour of `KPath`: the two perform the same.
+- With the interface frozen, the default store is the rope through `slice`/`++` on a
+  `leaf n 0` zero memory (`KRope`, `kzero1`). It is proved, has no timeouts, and has the
+  cheapest writes and sharing.
+- Where read-heavy loops follow many stores, use the path-copying write on 4 KiB leaves
+  (`KPath`, `kwrite` with `kwrite_spec`). It is about 3× faster on `scatter` and lives in
+  this topic.
+- Memories, files and data segments share one type and one equality check (`canon`,
+  `sameBytes`).
+- `memSimOn_kRope`/`memSimOn_kPath` and `memSim_coreMem` tie both stores to Core's
+  `Memory.load`/`Memory.store`.
 
 Using it inside `runInvokeK` itself needs Core's `Store` to take the memory type as a
 parameter. That is a change to Core's runtime types and is not attempted here.
@@ -228,7 +279,7 @@ parameter. That is a change to Core's runtime types and is not attempted here.
   sessions (see the kernel table). Kernel times under the Mathlib-closure imports read about
   1.5–2× slower than the same cases in the first note, which imported only core Lean.
 - **`KBytes` is not on `main`.** This branch merges #125 at
-  `28418c290ba266a30dee05d4e327e918433a2f74`, so it lands after #125.
+  `792e7ed6`, so it lands after #125.
 - **RSS includes imports.** Peak memory includes about 2.2 GB of imported `.olean` files
   (the baseline row).
 - **Coverage.** `Overlay`, `PageMem`, `KRope` and `KPath` cover only the subset's accesses: 1- and 4-byte loads

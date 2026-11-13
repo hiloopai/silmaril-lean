@@ -185,4 +185,8 @@ theorem kzeros_toListMem (n : Nat) : kToListMem (kzeros n) = ⟨List.replicate n
   rw [chunksBytes_zeros _ _ _ (by omega)]
   simp
 
+theorem kzero1_toListMem (n : Nat) : kToListMem (kzero1 n) = ⟨List.replicate n 0⟩ := by
+  simp only [kToListMem, kzero1, KBytes.toList, unpack_zero, ListMem.mk.injEq]
+  simp
+
 end Silmaril.Proofs.Wasm.KernelEval
