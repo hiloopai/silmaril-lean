@@ -31,11 +31,12 @@ library:
 CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront \
 	ci_cerberus_genuine_oracle ci_cerberus_elaboration_oracle ci_cerberus_integer_cast \
 	ci_cerberus_parameter_call
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
 	'tools/process-release/**' 'tools/verification-projects/**' 'tools/silmaril-project/**' \
+	'tools/c-tv/**' 'tools/x86-lift/**' \
 	policy.toml regions.toml
 
 # Print CHECK_TARGETS, narrowed to what the change from BASE can affect when BASE is set.
@@ -119,8 +120,10 @@ project-lean:
 		Silmaril.Project.Shapes.SysV.Thms \
 		Silmaril.Project.Shapes.C.Thms \
 		Silmaril.Project.Shapes.SysV.Rtl.Defs \
+		Silmaril.Project.Shapes.CompilesTo.Thms \
 		ProjectSelfTest \
-		SysVTvExample
+		SysVTvExample \
+		CompilesToExamples
 
 project-tool:
 	$(CARGO) build --release --locked --manifest-path tools/silmaril-project/Cargo.toml
