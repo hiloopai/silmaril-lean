@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Prelude.Trust.Policy.Defs
+meta import Silmaril.Prelude.Trust.Defs
 
 /-! # Trust profiles: examples
 
@@ -265,5 +266,29 @@ info: roundtrip ok: 5 procedures, 13 uses
 -/
 #guard_msgs in
 #trust_roundtrip
+
+/-! ### No escalation: a child scope cannot grant more than its parent. -/
+
+/-- info: policy scope Silmaril.X: deps exceeds its parent's deps -/
+#guard_msgs in
+open Lean in
+#eval show CoreM Unit from do
+  let root : Scope := { module := `Silmaril, max := some `all, dflt := some `none,
+                        deps := some `none, axiomSet := some `none }
+  let child : Scope := { module := `Silmaril.X, deps := some `all }
+  match effectiveIn (← getEnv) { scopes := #[root, child] } `Silmaril.X.Y with
+  | .ok _ => logInfo "accepted"
+  | .error e => logInfo m!"{e}"
+
+/-- info: policy scope Silmaril.X: axioms exceeds its parent's axioms -/
+#guard_msgs in
+open Lean in
+#eval show CoreM Unit from do
+  let root : Scope := { module := `Silmaril, max := some `all, dflt := some `none,
+                        deps := some `none, axiomSet := some `none }
+  let child : Scope := { module := `Silmaril.X, axiomSet := some `all }
+  match effectiveIn (← getEnv) { scopes := #[root, child] } `Silmaril.X.Y with
+  | .ok _ => logInfo "accepted"
+  | .error e => logInfo m!"{e}"
 
 end Silmaril.Trust.Examples
