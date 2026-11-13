@@ -8,8 +8,8 @@ error: trust.jsonl: trust set loop.a: an include cycle
 error: trust.jsonl: trust set loop.a: the producer resolves it to [], the core's rules to nothing
 error: trust.jsonl: trust set loop.b: an include cycle
 error: trust.jsonl: trust set loop.b: the producer resolves it to [], the core's rules to nothing
-error: trust.jsonl: use of elf.body in Silmaril.Elf.Staged.Example.z (Silmaril.Elf.Staged.Example.Thms): axiom Silmaril.Elf.Staged.Example.z._native.edge.elf.layout.ax_1_1 is not a native run of elf.body
 error: trust.jsonl: use of elf.nope in Silmaril.Elf.Staged.Example.y (Silmaril.Elf.Staged.Example.Thms): unknown procedure
+warning: trust Silmaril.Elf.Staged.Example.Thms: mismatched use record: use of elf.body in Silmaril.Elf.Staged.Example.z (Silmaril.Elf.Staged.Example.Thms): axiom Silmaril.Elf.Staged.Example.z._native.edge.elf.layout.ax_1_1 is not a native run of elf.body
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)

@@ -9,11 +9,11 @@ kinds of line:
 
 Provenance:
 
-- Core: PR #125, branch `prelude/kernel-bytes-trust`, commit `3c731fc1`.
+- Core: PR #125, branch `prelude/kernel-bytes-trust`, commit `d5d8f78c` (its trust code is that of `34ec436e`, which includes the exact-head audit `0b2a82e0`).
 - Targets (normal examples; the profile tests are in `trust-core-profile-tests`):
   `Silmaril.Prelude.Bytes.Examples`, `Silmaril.Data.IncludeBytes.KernelExamples`,
   `Silmaril.Data.IncludeBytes.KernelImportExamples` and `Silmaril.Prelude.Bytes.Checker.Thms`.
-- Build: the import closure of those modules and of `Silmaril.Prelude.Trust.Examples` (22
+- Build: the import closure of those modules and of `Silmaril.Prelude.Trust.Examples` (23
   modules, no Mathlib) was copied into a standalone Lake package (`[[lean_lib]] name =
   "Silmaril"`, `globs = ["Silmaril.+"]`), together with `policy.toml`, `lean-toolchain` and
   `examples/dyn/pinned/hello-gcc`.
@@ -21,7 +21,7 @@ Provenance:
 
 Result:
 
-- 21 modules and 551 declarations audited, with **0 violations**.
+- 21 modules and 556 declarations audited, with **0 violations**.
 - The core's per-declaration violation counts agree with the recomputed audit.
 - `--strict-trust` passes in that package.
 

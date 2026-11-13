@@ -9,5 +9,5 @@ trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (c
 trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 trust result: policy valid on complete coverage of the modules under the dump's roots (the theorems it audits; not a proof the dump is complete)
-sql sha256: c5d96f76e88c4950e9615221d4107c7eab0feefd215517ca5229f53421c08bee
+sql sha256: a464c2206f0aec0bf883f476a05376db068e9142893418bcd388bf2dc998d0b9
 exit: ok

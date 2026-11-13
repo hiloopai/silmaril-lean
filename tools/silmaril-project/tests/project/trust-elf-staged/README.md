@@ -5,9 +5,9 @@ hooks.
 
 Provenance:
 
-- Branch: #127 (`elf/staged-trust`) at `449a063e`, which merges core #125 at `3c731fc1` (the same core as the bytes cases). The ELF
+- Branch: #127 (`elf/staged-trust`) at `67503c32` (head), which merges core #125 at `34ec436e`; its trust code equals the bytes cases' `d5d8f78c`. The ELF
   leaves are declared with `ProcDecl`/`sil_check`.
-- Build: a checkout of `449a063e`, with dependencies (Mathlib) restored read-only from the
+- Build: a checkout of `67503c32`, with dependencies (Mathlib) restored read-only from the
   repository's shared Lake cache.
 - Command: `sil project trust-dump --module Silmaril.Elf.Staged.Example.Thms --root Silmaril.Elf.Staged`.
 - Roots: only `Silmaril.Elf.Staged.*` is described and audited. Other modules are `external`, but
@@ -21,5 +21,3 @@ Result:
   of a declared kernel side.
 
 The sources are not copied here, so the modules read `stale`.
-
-`449a063e` only merges `main` into `91edfc6b`. `git diff 91edfc6b 449a063e` is empty for `Silmaril/Elf`, `Silmaril/Prelude`, `Silmaril/Data/IncludeBytes`, `policy.toml`, `lean-toolchain` and `lake-manifest.json`, so this dump is the dump of `91edfc6b` (core #125 `3c731fc1`).

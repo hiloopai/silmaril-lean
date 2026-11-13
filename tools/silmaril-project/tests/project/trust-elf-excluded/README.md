@@ -1,12 +1,12 @@
 # trust-elf-excluded: real producer output with an explicit exclusion (#127)
 
-This is the same checkout as `trust-elf-staged` (#127 at `449a063e`, core #125 at `3c731fc1`).
+This is the same checkout as `trust-elf-staged` (#127 at `67503c32`, core #125 at `34ec436e`).
 It was dumped with both example modules and one recorded exclusion:
 
 ```
 sil project trust-dump --module Silmaril.Elf.Staged.Example.Thms --module Silmaril.Elf.Staged.Example.Profiles \
   --root Silmaril.Elf.Staged \
-  --exclude "Silmaril.Elf.Staged.Example.Profiles=profile-negative tests: local-profile native runs, deliberately flagged at default"
+  --exclude "Silmaril.Elf.Staged.Example.Profiles=profile-negative tests: local-profile native runs and cross-leaf identity forgeries, deliberately flagged at default"
 ```
 
 The profile-test module is described (its imports and digest) but not audited. Its 2 violations
@@ -15,5 +15,3 @@ are not counted, and coverage is **partial**.
 In the checkout, with the sources present, `--strict-trust` passes and prints `policy valid on
 partial coverage (not a full audit …)`. The same dump without the exclusion
 (`trust-elf-profile-tests`) fails strict validation.
-
-`449a063e` only merges `main` into `91edfc6b`. `git diff 91edfc6b 449a063e` is empty for `Silmaril/Elf`, `Silmaril/Prelude`, `Silmaril/Data/IncludeBytes`, `policy.toml`, `lean-toolchain` and `lake-manifest.json`, so this dump is the dump of `91edfc6b` (core #125 `3c731fc1`).

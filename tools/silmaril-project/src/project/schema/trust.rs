@@ -65,7 +65,9 @@ pub const CORE_FIELDS: &[(&str, &[&str])] = &[
     ),
     (
         "declared_procedure",
-        &["name", "constant", "native", "kernel", "format", "doc"],
+        &[
+            "name", "constant", "native", "kernel", "format", "bound", "doc",
+        ],
     ),
     (
         "module",
@@ -244,6 +246,8 @@ pub struct LineDeclaredProcedure {
     pub native: Option<LinePair>,
     pub kernel: Option<LinePair>,
     pub format: Option<String>,
+    /// The one instance of a shared checker this procedure is tied to (`ProcDecl.bound`).
+    pub bound: Option<String>,
     #[serde(default)]
     pub doc: String,
 }
@@ -421,6 +425,7 @@ table! {
         kernel_sound: Option<String> = "TEXT",
         format: Option<String> = "TEXT",
         sound: Option<String> = "TEXT",
+        bound: Option<String> = "TEXT",
         axiom_pattern: Option<String> = "TEXT",
         components: Option<String> = "TEXT",
         toolchain: Option<String> = "TEXT",
@@ -504,6 +509,9 @@ table! {
         /// (the declared kernel checker), or `unregistered` (a kernel checker the registry does
         /// not name: the run adds no axiom, but its identity is not auditable).
         kernel_side: String = "TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered'))",
+        /// For a native run: whether the axiom is a native run of this procedure. A record
+        /// that is not (a forged or mistaken `recordUse`) is kept, flagged, and authorizes nothing.
+        axiom_matches: bool = "INTEGER NOT NULL",
     }
 }
 

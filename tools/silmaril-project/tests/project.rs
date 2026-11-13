@@ -44,7 +44,7 @@ fn check_trust_views(db: &Path, stdout: &str, failures: &mut Vec<String>) {
     let mut from_tool: Vec<String> = stdout
         .lines()
         .filter_map(|l| l.strip_prefix("warning: "))
-        .filter(|l| l.starts_with("trust "))
+        .filter(|l| l.starts_with("trust ") && !l.contains(": mismatched use record: "))
         .map(String::from)
         .collect();
     from_tool.sort();

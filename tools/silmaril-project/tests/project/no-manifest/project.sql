@@ -244,6 +244,7 @@ CREATE TABLE trust_procedures(
   kernel_sound TEXT,
   format TEXT,
   sound TEXT,
+  bound TEXT,
   axiom_pattern TEXT,
   components TEXT,
   toolchain TEXT,
@@ -297,6 +298,7 @@ CREATE TABLE trust_uses(
   profile TEXT NOT NULL,
   axiom TEXT NOT NULL,
   kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
+  axiom_matches INTEGER NOT NULL,
   PRIMARY KEY(module, decl, procedure, mode, profile, axiom)
 );
 CREATE TABLE trust_decls(

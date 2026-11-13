@@ -3,10 +3,10 @@ verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unkn
 root: (none)
 trust dump: silmaril-project 0.1.0 trust-dump (core stable hooks) (origin lean); profile default, ceiling local
 trust: 5 procedures (4 with a kernel side), 6 sets, 5 scopes; 5 uses (3 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 21 covered, 0 excluded, 0 unsupported, 0 undescribed, 12 external; 551 declarations audited (6 repeated audit lines of realized constants merged)
+trust modules: 21 covered, 0 excluded, 0 unsupported, 0 undescribed, 12 external; 556 declarations audited (6 repeated audit lines of realized constants merged)
 trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
 trust digests: inputs changed, covered modules 0 consistent, 21 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: 81e3da566b2c55baf0c9c425532ea1a8c6a7890508c0cf382747d7d26ebf378e
+sql sha256: cf53b9260d9cf2ae25840e5b11a051430b8329f06819367121cd81d2e03d2f17
 exit: ok

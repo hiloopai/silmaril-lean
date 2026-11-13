@@ -668,18 +668,21 @@ impl Ingest<'_> {
                 native_sound: d.native.as_ref().map(|x| x.sound.clone()),
                 kernel_check: d.kernel.as_ref().map(|x| x.check.clone()),
                 kernel_sound: d.kernel.as_ref().map(|x| x.sound.clone()),
+                bound: d.bound.clone(),
                 format: d.format.clone(),
                 doc: d.doc.clone(),
                 ..Default::default()
             });
         }
         let mut use_keys = BTreeSet::new();
+        let mut mismatched: Vec<(String, String)> = Vec::new();
         for u in &l.uses {
             let what = format!("use of {} in {} ({})", u.procedure, u.decl, u.module);
             let Some(&(native_ok, kernel)) = procs.get(&u.procedure) else {
                 self.err(format!("{what}: unknown procedure"));
                 continue;
             };
+            let mut matches = true;
             let kernel_side = match (u.mode.as_str(), &u.axiom) {
                 ("native", Some(a)) => {
                     if !native_ok {
@@ -687,12 +690,16 @@ impl Ingest<'_> {
                             "{what}: a native run of a procedure without a native side"
                         ));
                     }
+                    // A record whose axiom is not a native run of its procedure is kept and
+                    // flagged (the core's audit treats the axiom as unverified); it never
+                    // authorizes anything.
                     if native_axiom(a).map(|(_, q, e)| (q, e)) != Some((u.procedure.clone(), true))
                     {
-                        self.err(format!(
-                            "{what}: axiom {a} is not a native run of {}",
-                            u.procedure
+                        mismatched.push((
+                            u.module.clone(),
+                            format!("{what}: axiom {a} is not a native run of {}", u.procedure),
                         ));
+                        matches = false;
                     }
                     ""
                 }
@@ -715,10 +722,30 @@ impl Ingest<'_> {
                 profile: u.profile.clone(),
                 axiom: u.axiom.clone().unwrap_or_default(),
                 kernel_side: kernel_side.into(),
+                axiom_matches: matches,
             };
             // The core records a use per elaboration; identical rows are one use.
             if use_keys.insert(row.row()) {
                 t.uses.push(row);
+            }
+        }
+
+        for (m, msg) in &mismatched {
+            // In an excluded module the record is listed, not audited: a warning even when strict.
+            let skipped = l.excluded.iter().any(|e| &e.module == m);
+            let note = if skipped {
+                " (excluded module: not audited)"
+            } else {
+                ""
+            };
+            let (at, msg) = (
+                format!("trust {m}"),
+                format!("mismatched use record: {msg}{note}"),
+            );
+            if self.strict && !skipped {
+                self.o.error(at, msg);
+            } else {
+                self.o.warn(at, msg);
             }
         }
 

@@ -1,3 +1,4 @@
+warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.lengthNative in Silmaril.Trust.Examples.forgedShape (Silmaril.Prelude.Trust.Examples): axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1 is not a native run of test.lengthNative
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byLocal: test.evenSum
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byName: test.evenSum
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byPaired: test.evenSumPaired
@@ -5,15 +6,17 @@ warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.pairNative: test.sumEvenN
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.silNative: test.sumEven
 warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trust.Examples.byDecideNative: test.decideNative
+warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trust.Examples.forgedDecl: test.sumEven
+warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trust.Examples.forgedShape: test.lengthNative
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
 trust dump: silmaril-project 0.1.0 trust-dump (core stable hooks) (origin lean); profile default, ceiling local
-trust: 7 procedures (4 with a kernel side), 9 sets, 5 scopes; 13 uses (6 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 5 covered, 0 excluded, 0 unsupported, 0 undescribed, 5 external; 309 declarations audited
-trust violations: 7 (6 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 1 unverified native, 0 axioms outside the set)
-trust digests: inputs changed, covered modules 0 consistent, 5 stale, 0 unknown (consistent digests are not proof of freshness)
+trust: 9 procedures (5 with a kernel side), 9 sets, 5 scopes; 16 uses (8 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 6 covered, 0 excluded, 0 unsupported, 0 undescribed, 5 external; 324 declarations audited
+trust violations: 9 (6 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 3 unverified native, 0 axioms outside the set)
+trust digests: inputs changed, covered modules 0 consistent, 6 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: 3274910946fd7660481a61fd5588a8cbbc6a5844f6ebde0fab0278606137cbfd
+sql sha256: 7ee3a73c541af7ab43f34f7daab99721afd092e9029f99967d8ce57ee3e1d404
 exit: ok

@@ -15,7 +15,8 @@ does not define a policy of its own. It does three things:
   violations, and fails when they differ from the core's;
 - it reports coverage, digests and enforcement honestly.
 
-Refs used: core #125 at `3c731fc1`, ELF #127 at `449a063e`: `91edfc6b` (which merges #125 at `3c731fc1`) plus a merge of `main` that changes none of the trust-relevant sources.
+Refs used: core #125 at `d5d8f78c` (its trust code is that of `34ec436e`, which includes the
+exact-head audit `0b2a82e0`), and ELF #127 at its head `67503c32` (which merges `34ec436e`).
 
 ## What a result means, and does not
 
@@ -196,10 +197,10 @@ digests read `missing` and the modules `stale`.
 
 | case | ref | targets | result |
 |---|---|---|---|
-| `trust-core-bytes` | #125 `3c731fc1` | `Prelude.Bytes.Examples`, `Data.IncludeBytes.KernelExamples`, `Data.IncludeBytes.KernelImportExamples`, `Prelude.Bytes.Checker.Thms` | 21 modules, 551 declarations, 5 uses (3 native), **0 violations**; strict passes in the build package |
-| `trust-core-profile-tests` | #125 `3c731fc1` | `Prelude.Trust.Examples` | **7 violations** (6 native runs outside `default`, 1 unverified native axiom), as the core's audit lists them |
-| `trust-elf-staged` | #127 `449a063e` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
-| `trust-elf-profile-tests` | #127 `449a063e` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
+| `trust-core-bytes` | #125 `d5d8f78c` | `Prelude.Bytes.Examples`, `Data.IncludeBytes.KernelExamples`, `Data.IncludeBytes.KernelImportExamples`, `Prelude.Bytes.Checker.Thms` | 21 modules, 556 declarations, **0 violations**; strict passes in the build package |
+| `trust-core-profile-tests` | #125 `d5d8f78c` | `Prelude.Trust.Examples` | **9 violations** (6 native runs outside `default`, 3 unverified native axioms including the core's forgery tests) and 1 mismatched use record, as the core's audit lists them |
+| `trust-elf-staged` | #127 `67503c32` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
+| `trust-elf-profile-tests` | #127 `67503c32` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
 
 `trust-elf-excluded` is the same #127 checkout, dumped with both example modules and
 `--exclude Silmaril.Elf.Staged.Example.Profiles=…`. It has 299 declarations audited, 8 listed
@@ -209,10 +210,10 @@ but not audited, 0 violations, and **partial** coverage.
 
 | dump | `--strict-trust` |
 |---|---|
-| bytes normal targets (#125 `3c731fc1`) | **passes**; complete coverage, 21 modules with consistent digests |
+| bytes normal targets (#125 `d5d8f78c`) | **passes**; complete coverage, 21 modules with consistent digests |
 | bytes and `Prelude.Trust.Examples` with `--exclude` | **passes**; partial coverage, "not a full audit" |
-| `Prelude.Trust.Examples` | **fails**: 7 violations |
-| ELF `Example.Thms` (#127 `449a063e`) | **passes**; complete coverage, 10 modules with consistent digests |
+| `Prelude.Trust.Examples` | **fails**: 9 violations and 1 mismatched use record |
+| ELF `Example.Thms` (#127 `67503c32`) | **passes**; complete coverage, 10 modules with consistent digests |
 | ELF and `Example.Profiles` with `--exclude` | **passes**; partial coverage, "not a full audit" |
 | ELF `Example.Profiles` | **fails**: 2 violations |
 

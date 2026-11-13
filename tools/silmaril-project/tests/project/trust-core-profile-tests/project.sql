@@ -244,6 +244,7 @@ CREATE TABLE trust_procedures(
   kernel_sound TEXT,
   format TEXT,
   sound TEXT,
+  bound TEXT,
   axiom_pattern TEXT,
   components TEXT,
   toolchain TEXT,
@@ -297,6 +298,7 @@ CREATE TABLE trust_uses(
   profile TEXT NOT NULL,
   axiom TEXT NOT NULL,
   kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
+  axiom_matches INTEGER NOT NULL,
   PRIMARY KEY(module, decl, procedure, mode, profile, axiom)
 );
 CREATE TABLE trust_decls(
@@ -363,7 +365,7 @@ INSERT INTO meta(key, value) VALUES('trust.policy_pin', '0294950de3d882b2');
 INSERT INTO meta(key, value) VALUES('trust.producer', 'silmaril-project 0.1.0 trust-dump (core stable hooks)');
 INSERT INTO meta(key, value) VALUES('trust.profile', 'default');
 INSERT INTO meta(key, value) VALUES('trust.roots', 'Silmaril');
-INSERT INTO meta(key, value) VALUES('trust.sha256', '29cfe84851bcd5cefb4166ad4d3a1dbd3112487a1fd9487259e42f5cdede08c4');
+INSERT INTO meta(key, value) VALUES('trust.sha256', 'b0d1723d0833cad5ea8ae132bba043867b64b3b82211048c4040bb8387399059');
 INSERT INTO meta(key, value) VALUES('trust.status', 'present');
 INSERT INTO meta(key, value) VALUES('trust.toolchain', '4.37.0-nightly-2026-11-05');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
@@ -376,13 +378,15 @@ INSERT INTO szs(code, name, verdict) VALUES('contingent', 'Contingent (SAT and C
 INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('lake-manifest.json', '43fc103a78c1fd2d05257c0f5bb96f491f85d659e4bfc5cafada85809445c3f8', NULL, 'missing');
 INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('lean-toolchain', 'c8dac2fde85cb3ae79513dc425bb759258a3d5278bbdc29ff68450b45e81bcb9', NULL, 'missing');
 INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('policy.toml', 'f6564a0881e4dd379c84e89e8fd8299b0cfc3183bb7bdda3faec2d2e55f1a013', NULL, 'missing');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.decideNative', 'native_tactic', 'Decidable.decide', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '<decl>._native.decide.ax_<n>', 'compiled Decidable instance', 'leanprover/lean4:nightly-2026-11-05', '', 'Test registration of the native-evaluating `decide`.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.evenSum', 'native_decider', 'Silmaril.Trust.Examples.evenSum', 'Silmaril.Prelude.Trust.Examples', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.evenSumNoKernel', 'native_decider', 'Silmaril.Trust.Examples.evenSum''', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'A procedure with no kernel fallback.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.evenSumPaired', 'native_decider', 'Silmaril.Trust.Examples.evenSum', 'Silmaril.Prelude.Trust.Examples', 1, 'Silmaril.Trust.Examples.evenSumRec', 'Silmaril.Trust.Examples.evenSumRec_eq', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', '`evenSum`, run natively as `evenSumRec`.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.sumEven', 'declared', 'Silmaril.Procedures.test.sumEven', NULL, 0, NULL, NULL, 'Silmaril.Trust.Examples.sumEvenN', 'Silmaril.Trust.Examples.sumEvenN_sound', 'Silmaril.Trust.Examples.sumEvenK', 'Silmaril.Trust.Examples.sumEvenK_sound', NULL, NULL, NULL, NULL, NULL, NULL, 'Even sums. Native: compiled List.foldl over List.range.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.sumEvenK', 'native_decider', 'Silmaril.Trust.Examples.sumEvenK', 'Silmaril.Prelude.Trust.Examples', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Kernel side of the pair.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.sumEvenN', 'native_decider', 'Silmaril.Trust.Examples.sumEvenN', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Native side of the pair (no kernel fallback of its own).');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.decideNative', 'native_tactic', 'Decidable.decide', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '<decl>._native.decide.ax_<n>', 'compiled Decidable instance', 'leanprover/lean4:nightly-2026-11-05', '', 'Test registration of the native-evaluating `decide`.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.evenSum', 'native_decider', 'Silmaril.Trust.Examples.evenSum', 'Silmaril.Prelude.Trust.Examples', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.evenSumNoKernel', 'native_decider', 'Silmaril.Trust.Examples.evenSum''', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'A procedure with no kernel fallback.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.evenSumPaired', 'native_decider', 'Silmaril.Trust.Examples.evenSum', 'Silmaril.Prelude.Trust.Examples', 1, 'Silmaril.Trust.Examples.evenSumRec', 'Silmaril.Trust.Examples.evenSumRec_eq', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', '`evenSum`, run natively as `evenSumRec`.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.leafA', 'declared', 'Silmaril.Procedures.test.leafA', NULL, 0, NULL, NULL, 'Silmaril.Trust.Examples.genericCheck', 'Silmaril.Trust.Examples.genericSound', 'Silmaril.Trust.Examples.genericCheck', 'Silmaril.Trust.Examples.genericSound', NULL, NULL, 'Silmaril.Trust.Examples.leafA', NULL, NULL, NULL, NULL, 'genericCheck on leafA');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.lengthNative', 'native_tactic', 'List.length', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '<decl>._native.lengthNative.ax_<n>', NULL, 'leanprover/lean4:nightly-2026-11-05', '', 'A procedure whose evaluated constant is `List.length`.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.sumEven', 'declared', 'Silmaril.Procedures.test.sumEven', NULL, 0, NULL, NULL, 'Silmaril.Trust.Examples.sumEvenN', 'Silmaril.Trust.Examples.sumEvenN_sound', 'Silmaril.Trust.Examples.sumEvenK', 'Silmaril.Trust.Examples.sumEvenK_sound', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Even sums. Native: compiled List.foldl over List.range.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.sumEvenK', 'native_decider', 'Silmaril.Trust.Examples.sumEvenK', 'Silmaril.Prelude.Trust.Examples', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Kernel side of the pair.');
+INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('test.sumEvenN', 'native_decider', 'Silmaril.Trust.Examples.sumEvenN', 'Silmaril.Prelude.Trust.Examples', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Native side of the pair (no kernel fallback of its own).');
 INSERT INTO trust_sets(name, origin, is_all) VALUES('all', 'builtin', 1);
 INSERT INTO trust_sets(name, origin, is_all) VALUES('bytes', 'trust_set', 0);
 INSERT INTO trust_sets(name, origin, is_all) VALUES('default', 'trust_set', 0);
@@ -416,11 +420,12 @@ INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness,
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lake.Toml', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Meta.Native', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'Silmaril/Prelude/Trust/Decl/Defs.lean', '7e90c49965f56e65798b56392fbd4313b5a5c3fa07920488621ff393faf1c060', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Defs', 'Silmaril/Prelude/Trust/Defs.lean', 'a3547cbc983305e8da06840a969e7b44713ae94088772cbcc5d1978c20c53248', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril/Prelude/Trust/Elab/Defs.lean', '6e5890b4d807d951e54d4a4c78a20122e9235145e751fdf956f372ccaf1a3bfb', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril/Prelude/Trust/Examples.lean', 'a8b361f8632c137150130b44c32fcdb4e7a6c69eff98f3d42f2b6074dfd1b6e7', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'Silmaril/Prelude/Trust/Decl/Defs.lean', '69102c4e5af982d5a0302561cc67e5cfe0463ffa4ee3603ad3eb1c5318d83c00', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Defs', 'Silmaril/Prelude/Trust/Defs.lean', '5f6b9a9fea64dde3f2887a51a971f4d9ba6e84932369f184be0376f33b0c1035', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril/Prelude/Trust/Elab/Defs.lean', '9cbe11d39d84267bc4b0f3b32790db91ff6163b64d048a44df16f0e1db882e55', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril/Prelude/Trust/Examples.lean', '0a73c6c17eca1c9b52bf36c815f74ad42e2a63395110032a148e5267388533b3', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Silmaril/Prelude/Trust/Policy/Defs.lean', '36143ac452881ef6a46901823df6825f6fa02c72e846936ad18b46c61a77db72', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.TestForge', 'Silmaril/Prelude/Trust/TestForge.lean', '5b4b978c7ef56829db0b83dc5df470f3092c62c7c9dcbab6c4c996a7bf2dcfcb', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'Init.Prelude');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Defs', 'Init');
@@ -432,9 +437,13 @@ INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Elab.De
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Prelude.Trust.Defs');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Examples', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Prelude.Trust.Defs');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Prelude.Trust.Elab.Defs');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Prelude.Trust.Policy.Defs');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Prelude.Trust.TestForge');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Silmaril.Prelude.Trust.Elab.Defs');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.TestForge', 'Init');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.TestForge', 'Silmaril.Prelude.Trust.Elab.Defs');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'allowed', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'allowed', 'bytes.cstring');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'allowed', 'bytes.eqByteArray');
@@ -520,19 +529,40 @@ INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.T
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'default', 'elf.layout');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'deps', '*');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'max', '*');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byDefault', 'test.evenSum', 'kernel', 'default', '', 'fallback');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byLocal', 'test.evenSum', 'native', 'local', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1', '');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byName', 'test.evenSum', 'native', 'toys', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byName._native.edge.test.evenSum.ax_1_1', '');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byPaired', 'test.evenSumPaired', 'native', 'local', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1', '');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byPairedKernel', 'test.evenSumPaired', 'kernel', 'paranoid', '', 'fallback');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byToys', 'test.evenSum', 'native', 'toys', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1', '');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernel', 'test.sumEvenK', 'kernel', 'paranoid', '', 'fallback');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernelAllowed', 'test.sumEvenK', 'kernel', 'kernelSideOnly', '', 'fallback');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairNative', 'test.sumEvenN', 'native', 'local', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1', '');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.silKernel', 'test.sumEven', 'kernel', 'default', '', 'declared');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.silKernelOnly', 'test.sumEven', 'kernel', 'default', '', 'declared');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.silNative', 'test.sumEven', 'native', 'sumEvenSet', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1', '');
-INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.underCeiling', 'test.evenSum', 'kernel', 'local≤paranoid', '', 'fallback');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'allowed', 'bytes.beq');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'allowed', 'bytes.cstring');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'allowed', 'bytes.eqByteArray');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'allowed', 'bytes.sameBytes');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'allowed', 'bytes.wf');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'allowed', 'elf.layout');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'axioms', 'Classical.choice');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'axioms', 'Quot.sound');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'axioms', 'propext');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'default', 'bytes.beq');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'default', 'bytes.cstring');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'default', 'bytes.eqByteArray');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'default', 'bytes.sameBytes');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'default', 'bytes.wf');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'default', 'elf.layout');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'deps', '*');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.TestForge', 'max', '*');
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byDefault', 'test.evenSum', 'kernel', 'default', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byLocal', 'test.evenSum', 'native', 'local', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byName', 'test.evenSum', 'native', 'toys', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byName._native.edge.test.evenSum.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byPaired', 'test.evenSumPaired', 'native', 'local', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byPairedKernel', 'test.evenSumPaired', 'kernel', 'paranoid', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.byToys', 'test.evenSum', 'native', 'toys', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.forgedDecl', 'test.sumEven', 'native', 'forged', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.forgedShape', 'test.lengthNative', 'native', 'forged', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1', '', 0);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.leafAOk', 'test.leafA', 'kernel', 'default', '', 'declared', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernel', 'test.sumEvenK', 'kernel', 'paranoid', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernelAllowed', 'test.sumEvenK', 'kernel', 'kernelSideOnly', '', 'fallback', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairNative', 'test.sumEvenN', 'native', 'local', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.silKernel', 'test.sumEven', 'kernel', 'default', '', 'declared', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.silKernelOnly', 'test.sumEven', 'kernel', 'default', '', 'declared', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.silNative', 'test.sumEven', 'native', 'sumEvenSet', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1', '', 1);
+INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.underCeiling', 'test.evenSum', 'kernel', 'local≤paranoid', '', 'fallback', 1);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Procedures.test.leafA', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Procedures.test.sumEven', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.AxiomReport.casesOn', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.AxiomReport.ctorIdx', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
@@ -561,6 +591,7 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Backend.noConfusionType', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Backend.recOn', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Backend.sound', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.DeclView.bound', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.DeclView.casesOn', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.DeclView.const', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.DeclView.ctorIdx', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
@@ -603,6 +634,13 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.evenSumRec', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.evenSumRec_eq', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.foldl_add_range', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.forgedDecl', 'Silmaril.Prelude.Trust.Examples', 'default', 'forged');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.forgedShape', 'Silmaril.Prelude.Trust.Examples', 'default', 'forged');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.genericCheck', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.genericSound', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.leafA', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.leafAOk', 'Silmaril.Prelude.Trust.Examples', 'default', 'default');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.leafB', 'Silmaril.Prelude.Trust.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.pairKernel', 'Silmaril.Prelude.Trust.Examples', 'default', 'paranoid');
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.pairKernelAllowed', 'Silmaril.Prelude.Trust.Examples', 'default', 'kernelSideOnly');
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Examples.pairNative', 'Silmaril.Prelude.Trust.Examples', 'default', 'local');
@@ -658,6 +696,7 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Policy.recOn', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Policy.scopes', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Policy.sets', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.ProcDecl.bound', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.ProcDecl.casesOn', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.ProcDecl.ctorIdx', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.ProcDecl.doc', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
@@ -672,6 +711,7 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.ProcDecl.noConfusionType', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.ProcDecl.recOn', 'Silmaril.Prelude.Trust.Decl.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Procedure.axiomTag', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Procedure.bound', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Procedure.casesOn', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Procedure.components', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Procedure.ctorIdx', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
@@ -706,9 +746,12 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Scope.noConfusion', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Scope.noConfusionType', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.Scope.recOn', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TestForge.elabForge', 'Silmaril.Prelude.Trust.TestForge', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TestForge.forgeNative', 'Silmaril.Prelude.Trust.TestForge', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.all', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.casesOn', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.ctorIdx', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.doc', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.includes', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.members', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.TrustSet.mk.inj', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
@@ -810,6 +853,7 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.nativeAllowed', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.nativeAxiom?', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.nativeDecider', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.nativeShapeOk', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.nativeTactic', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.parsePolicy', 'Silmaril.Prelude.Trust.Defs', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Trust.procBEq', 'Silmaril.Prelude.Trust.Elab.Defs', 'default', NULL);
@@ -1068,6 +1112,9 @@ INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Sil
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.nativeAllowed', 'Classical.choice', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.nativeAllowed', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.nativeAllowed', 'propext', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.nativeShapeOk', 'Classical.choice', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.nativeShapeOk', 'Quot.sound', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.nativeShapeOk', 'propext', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.procBEq', 'Classical.choice', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.procBEq', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Trust.procBEq', 'propext', 'other', '');
@@ -1130,6 +1177,12 @@ INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Sil
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.evenSumRec_eq', 'propext', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.foldl_add_range', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.foldl_add_range', 'propext', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.forgedDecl', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1', 'unverified_native', 'test.sumEven');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.forgedShape', '_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1', 'unverified_native', 'test.lengthNative');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.genericSound', 'Quot.sound', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.genericSound', 'propext', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.leafAOk', 'Quot.sound', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.leafAOk', 'propext', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernel', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernel', 'propext', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.pairKernelAllowed', 'Quot.sound', 'other', '');
@@ -1148,10 +1201,15 @@ INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Sil
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.sumEvenK_sound', 'propext', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.sumEvenN_sound', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.Examples', 'Silmaril.Trust.Examples.sumEvenN_sound', 'propext', 'other', '');
-INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.byDecideNative', 0, 'unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.TestForge', 'Silmaril.Trust.TestForge.elabForge', 'Classical.choice', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.TestForge', 'Silmaril.Trust.TestForge.elabForge', 'Quot.sound', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Trust.TestForge', 'Silmaril.Trust.TestForge.elabForge', 'propext', 'other', '');
+INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.byDecideNative', 0, 'unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use of test.decideNative names it with the exact shape `f … = true`');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.byLocal', 0, 'own native test.evenSum is not allowed');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.byName', 0, 'own native test.evenSum is not allowed');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.byPaired', 0, 'own native test.evenSumPaired is not allowed');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.byToys', 0, 'own native test.evenSum is not allowed');
+INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.forgedDecl', 0, 'unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1: matches test.sumEven by name, but no recorded use of test.sumEven names it with the exact shape `f … = true`');
+INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.forgedShape', 0, 'unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1: matches test.lengthNative by name, but no recorded use of test.lengthNative names it with the exact shape `f … = true`');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.pairNative', 0, 'own native test.sumEvenN is not allowed');
 INSERT INTO trust_audit_messages(decl, pos, message) VALUES('Silmaril.Trust.Examples.silNative', 0, 'own native test.sumEven is not allowed');
