@@ -50,6 +50,23 @@ exact-head audit `0b2a82e0`), and ELF #127 at its head `67503c32` (which merges 
   lines. The value is self-declared. The explorer flags anything that is not `lean`, and a test
   checks every case's origin.
 
+## Canonical format
+
+The project database has **one** input format: **JSON lines** in which every line is either a
+`silmaril.trust.v1` line (the core's provenance schema, emitted by its stable hooks) or a
+`silmaril.trust-adapter.v0.2` line (added by `sil project trust-dump`). `sil project
+trust-dump` is the only producer.
+
+Other formats are refused by name and never reinterpreted:
+
+- `silmaril.trust-core.v1`, the core's `#trust_export` document (`scripts/trust-export.sh`), is a
+  separate export. It does not carry the policy file's own sets (`standard`) or each module's
+  effective and allowed sets, which the database checks. The test case
+  `trust-core-export-rejected` is a real export refused with that message.
+- `silmaril.trust-dump.v0.1` was an early proposal that no producer wrote. It is retired, and a
+  document that claims it is refused. The core's export docstring should not name it as the
+  database's format.
+
 ## The trust lines
 
 The file has one JSON object per line, each with a `schema` and a `kind`. Each schema may carry

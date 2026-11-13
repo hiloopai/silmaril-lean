@@ -579,6 +579,13 @@ fn trust_cases_declare_their_origin() {
             continue;
         };
         let name = dir.file_name().unwrap().to_string_lossy().to_string();
+        if name.ends_with("-rejected") {
+            // A whole document in a format the tool refuses by name (see its README).
+            let v: serde_json::Value = serde_json::from_str(&text).unwrap();
+            assert_eq!(v["schema"], "silmaril.trust-core.v1", "{name}");
+            seen += 1;
+            continue;
+        }
         let header: serde_json::Value = text
             .lines()
             .map(|l| serde_json::from_str::<serde_json::Value>(l).unwrap())

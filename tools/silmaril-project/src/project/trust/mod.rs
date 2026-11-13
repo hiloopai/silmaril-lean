@@ -256,6 +256,29 @@ pub fn read_lines(text: &str) -> std::result::Result<(Vec<TrustLine>, BTreeSet<S
     Ok((out, ignored))
 }
 
+/// A whole JSON document (not JSON lines) with a `schema` this tool does not read: the core's
+/// `#trust_export` (`silmaril.trust-core.v1`), the retired `silmaril.trust-dump.v0.1`, or any
+/// other. `None` when `text` is not such a document.
+pub fn foreign_document(text: &str) -> Option<String> {
+    if text.lines().filter(|l| !l.trim().is_empty()).count() < 2 {
+        return None;
+    }
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    let schema = v.get("schema")?.as_str()?.to_string();
+    let canonical = "this tool reads JSON lines of silmaril.trust.v1 and silmaril.trust-adapter.v0.2, \
+                     written by `sil project trust-dump` (docs/projects/trust-db.md)";
+    Some(match schema.as_str() {
+        "silmaril.trust-core.v1" => format!(
+            "a silmaril.trust-core.v1 document (the core's #trust_export) is not an input of the \
+             project database: {canonical}"
+        ),
+        "silmaril.trust-dump.v0.1" => format!(
+            "silmaril.trust-dump.v0.1 is retired (a proposal no producer wrote): {canonical}"
+        ),
+        other => format!("unsupported trust document schema {other:?}: {canonical}"),
+    })
+}
+
 /// A core set value: `"all"` or a list of names.
 fn core_members(v: &Option<serde_json::Value>) -> std::result::Result<Option<LineMembers>, String> {
     match v {
@@ -321,6 +344,14 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
         .wrap_err_with(|| format!("could not read the trust dump {}", path.display()))?;
     let at = path.display().to_string();
     let text = String::from_utf8_lossy(&bytes);
+    // One canonical input: JSON lines of `silmaril.trust.v1` (the core's stable hooks) and
+    // `silmaril.trust-adapter.v0.2`, as `sil project trust-dump` writes them. Whole-document
+    // formats are refused by name, never reinterpreted.
+    if let Some(e) = foreign_document(&text) {
+        o.error(&at, e);
+        Tables::default().push(&mut o.db);
+        return Ok(());
+    }
     let (lines, ignored) = match read_lines(&text) {
         Ok(l) => l,
         Err(e) => {
@@ -1507,6 +1538,24 @@ mod tests {
         assert_eq!(native_axiom("propext"), None);
         assert!(name_prefix("Silmaril", "Silmaril.X") && name_prefix("Silmaril", "Silmaril"));
         assert!(!name_prefix("Silmaril", "SilmarilX"));
+    }
+
+    #[test]
+    fn foreign_documents_are_refused_by_name() {
+        let doc = |schema: &str| format!("{{\n  \"schema\": \"{schema}\",\n  \"uses\": []\n}}\n");
+        assert!(
+            foreign_document(&doc("silmaril.trust-core.v1"))
+                .unwrap()
+                .contains("#trust_export")
+        );
+        assert!(
+            foreign_document(&doc("silmaril.trust-dump.v0.1"))
+                .unwrap()
+                .contains("retired")
+        );
+        assert!(foreign_document(&doc("x")).unwrap().contains("unsupported"));
+        // JSON lines are not a document.
+        assert!(foreign_document("{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"s\"}\n{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"t\"}\n").is_none());
     }
 
     #[test]
