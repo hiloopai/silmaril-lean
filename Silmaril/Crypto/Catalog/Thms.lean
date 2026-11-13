@@ -7,24 +7,29 @@ public import Silmaril.Crypto.Catalog.Defs
 /-!
 # The algorithm catalogue: theorems
 
-* `implemented_iff`: a hash is at least `implemented` exactly when `hashImpl` has a function
-  for it, so the level cannot claim an implementation that does not exist;
-* `proved_iff`: only SHA-256 is at level `proved`;
+* `implemented_iff`: an algorithm is `implemented` exactly when it is a hash for which `hashImpl`
+  has a function, so the catalogue cannot claim an implementation that does not exist;
+* `refinement_iff`: only SHA-256 has a machine-code refinement;
+* `refinement_implies_implemented`: refinement evidence is only recorded for implemented
+  algorithms (but not conversely, and neither implies security);
 * `vectors_ok`: every catalogued vector is reproduced by `hashImpl` (checked by the kernel);
 * `hashImpl_length`: the implementations return digests of the catalogued length.
 -/
 
 namespace Silmaril.Crypto.Catalog
 
-theorem implemented_iff (h : HashAlg) :
-    ((Algorithm.hash h).level = .implemented ∨ (Algorithm.hash h).level = .proved) ↔
-      (hashImpl h).isSome = true := by
-  cases h <;> simp [Algorithm.level, hasFunctionalProof, hashImpl]
+theorem implemented_iff (a : Algorithm) :
+    a.evidence.implemented = true ↔ ∃ h, a = .hash h ∧ (hashImpl h).isSome = true := by
+  cases a <;> simp [Algorithm.evidence]
 
-theorem proved_iff (a : Algorithm) : a.level = .proved ↔ a = .hash .sha256 := by
+theorem refinement_iff (a : Algorithm) : a.evidence.refinement = true ↔ a = .hash .sha256 := by
   cases a with
-  | hash h => cases h <;> simp [Algorithm.level, hasFunctionalProof, hashImpl]
-  | _ => simp [Algorithm.level]
+  | hash h => cases h <;> simp [Algorithm.evidence, hasRefinement]
+  | _ => simp [Algorithm.evidence]
+
+theorem refinement_implies_implemented (a : Algorithm) (h : a.evidence.refinement = true) :
+    a.evidence.implemented = true := by
+  rw [refinement_iff] at h; subst h; rfl
 
 theorem hashImpl_length {h : HashAlg} {f : List UInt8 → List UInt8} (hf : hashImpl h = some f)
     (msg : List UInt8) : some (f msg).length = h.digestLen := by

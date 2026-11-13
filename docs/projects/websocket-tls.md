@@ -30,7 +30,7 @@ No module here uses `sorry`, `native_decide` or `axiom`.
 | `Silmaril.Net.Tls.Record` | the RFC 8446 §5.1 record header, and telling TLS apart from cleartext HTTP by the first octet |
 | `Silmaril.Net.Tls.Registry` | cipher suites, named groups, signature schemes and ALPN IDs mapped to `Silmaril.Crypto.Catalog` algorithms and assumptions, plus the RFC 9113 §9.2 rules |
 | `Silmaril.Crypto.SHA1` | FIPS 180-4 SHA-1, which `Sec-WebSocket-Accept` needs |
-| `Silmaril.Crypto.Catalog` | algorithms, parameters, levels (advertised, recognized, implemented, proved) and named assumptions |
+| `Silmaril.Crypto.Catalog` | algorithms, parameters, separate evidence fields (recognized, implemented, vectors, functional, refinement) and named assumptions |
 
 ## RFC coverage checklist
 

@@ -26,7 +26,7 @@ three kinds of results that should never be conflated:
 | MD5 | `Raw/Semantics/CPort/Crypto/MD5.lean` | 7 RFC 1321 vectors | Raw, so not an API. The interface is `Semantics/CPort/Crypto/MD5/Defs.lean` |
 | CRC32C, CRC-32, Adler-32, IP checksum | `Crypto/CRC32C.lean`, `Formats/Compression/Checksum`, `Net/Ip/Checksum` | Check values; x86 refinements of zlib's checksums (`X86/Ladder/ZlibChecksums`) | **Not cryptographic**. Listed in the catalogue so that they are never mistaken for MACs |
 | **SHA-1 (new)** | `Crypto/SHA1/{Defs,Thms}.lean` | 3 FIPS vectors and the RFC 6455 §1.3 vector (`decide +kernel`); `hash_block_length` | Needed for `Sec-WebSocket-Accept`. Explicitly not a security function |
-| **Catalogue (new)** | `Crypto/Catalog/{Defs,Thms}.lean` | Levels tied to executable functions (`implemented_iff`, `proved_iff`); vectors re-checked through the catalogue (`vectors_ok`) | |
+| **Catalogue (new)** | `Crypto/Catalog/{Defs,Thms}.lean` | Separate evidence fields (recognized, implemented, vectors, functional theorem, machine-code refinement) tied to the artefacts (`implemented_iff`, `refinement_iff`); vectors re-checked through the catalogue (`vectors_ok`) | |
 
 There is no HMAC, HKDF, AES, ChaCha20, Poly1305, GCM, X25519/X448, NIST curves, ECDSA, EdDSA,
 RSA, ML-KEM, ML-DSA, SHA-384/512 or SHA-3 implementation. `Crypto/SHA256.lean`'s docstring names
@@ -34,25 +34,27 @@ RSA, ML-KEM, ML-DSA, SHA-384/512 or SHA-3 implementation. `Crypto/SHA256.lean`'s
 the docstring is stale and should be corrected by the owner of that file. No crypto file uses
 `sorry`, `native_decide` or `axiom`.
 
-## Registry identifiers mapped to algorithms and levels
+## Registry identifiers mapped to algorithms and evidence
 
 `Silmaril.Net.Tls.Registry` maps code points to `Silmaril.Crypto.Catalog` algorithms.
-`Algorithm.level` computes the level from the catalogue's data (*advertised*, then
-*recognized*, *implemented*, *proved*). The theorems `implemented_iff` and `proved_iff` keep
-these levels tied to the functions that actually exist.
+`Algorithm.evidence` records separate kinds of evidence. These are *recognized* (a registry maps
+an identifier to it), *implemented*, published *vectors*, a *functional* theorem over all inputs,
+and a machine-code *refinement*. They are not a ladder. A refinement proof says nothing about
+security, and the absence of one says nothing about the specification. `implemented_iff` and
+`refinement_iff` tie the fields to the functions and proofs that actually exist.
 
-| Identifier | Algorithms and parameters | Level today |
+| Identifier | Algorithms and parameters | Evidence today |
 | --- | --- | --- |
-| TLS 1.3 `0x1301` `TLS_AES_128_GCM_SHA256` | AEAD AES-128-GCM (16-octet tag, 12-octet nonce); HKDF-SHA-256 | recognized; SHA-256 **proved** |
+| TLS 1.3 `0x1301` `TLS_AES_128_GCM_SHA256` | AEAD AES-128-GCM (16-octet tag, 12-octet nonce); HKDF-SHA-256 | recognized; SHA-256 implemented, vectors, functional, x86 refinement |
 | TLS 1.3 `0x1302` `TLS_AES_256_GCM_SHA384` | AES-256-GCM; HKDF-SHA-384 | recognized |
-| TLS 1.3 `0x1303` `TLS_CHACHA20_POLY1305_SHA256` | ChaCha20-Poly1305 (RFC 8439); HKDF-SHA-256 | recognized; SHA-256 **proved** |
+| TLS 1.3 `0x1303` `TLS_CHACHA20_POLY1305_SHA256` | ChaCha20-Poly1305 (RFC 8439); HKDF-SHA-256 | recognized; SHA-256 implemented, vectors, functional, x86 refinement |
 | TLS 1.3 `0x1304`/`0x1305` | AES-128-CCM with 16/8-octet tags; HKDF-SHA-256 | recognized |
 | TLS 1.2 `0xC02B`/`0xC02F`/`0xC02C`/`0xC030`/`0xCCA8`/`0xCCA9` | ECDHE + ECDSA/RSA; AES-GCM or ChaCha20-Poly1305; PRF with HMAC-SHA-256/384 | recognized |
 | TLS 1.2 `0x002F`/`0x0035`/`0x009C` | static RSA; AES-CBC + HMAC-SHA-1 or AES-GCM | recognized; on the RFC 9113 App. A block list (`h2_rsa_blocked`) |
 | Groups `0x0017`–`0x0019`, `0x001D`, `0x001E`, `0x0100`–`0x0102`, `0x11EC` | P-256/384/521, X25519, X448, ffdhe2048/3072/4096, X25519MLKEM768 | recognized |
 | Signature schemes `0x0401`…`0x0808`, `0x0201`, `0x0203` | RSA PKCS#1 v1.5, RSA-PSS (rsae), ECDSA with P-curves, Ed25519, Ed448, and the SHA-1 legacy schemes | recognized; SHA-1 schemes excluded from TLS 1.3 (`sha1_not_tls13`) |
 | ALPN `http/1.1`, `h2`, `h3`, `h2c` | no algorithm; `h2c` never over TLS | proved selection rules (`selectAlpn_sound`) |
-| WebSocket `Sec-WebSocket-Accept` | SHA-1 + base64 (RFC 4648) | SHA-1 **implemented** (vectors), base64 **proved** (round trip, `Silmaril.Base64`) |
+| WebSocket `Sec-WebSocket-Accept` | SHA-1 + base64 (RFC 4648) | SHA-1 implemented with vectors; base64 round trip proved (`Silmaril.Base64`) |
 | HTTP `Repr-Digest`/`Content-Digest` (RFC 9530) `sha-256`, `sha-512` | SHA-256, SHA-512 | not yet mapped (C2) |
 
 **Composition assumptions.** `CipherSuite.assumptions suite group sig` lists, for a session, the

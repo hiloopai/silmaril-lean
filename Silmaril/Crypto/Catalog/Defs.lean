@@ -10,19 +10,20 @@ public import Silmaril.Crypto.SHA1.Defs
 
 Protocol registries (TLS cipher suites, named groups, signature schemes; WebSocket's accept
 hash; HTTP digest fields) name cryptographic algorithms. This module lists those algorithms,
-with their parameters, and records **how much of each this library has**, on four levels:
+with their parameters, and records **what this library knows about each**, as separate kinds of
+evidence (`Evidence`). They are not a ladder, and none of them is security:
 
-| Level | Meaning |
+| Field | Meaning |
 | --- | --- |
-| `advertised` | A registry this library models names it (it can appear on the wire). |
-| `recognized` | This library parses its identifier and knows its parameters. |
+| `recognized` | A modelled registry maps an identifier to it, with its parameters (true for every catalogue entry). |
 | `implemented` | An executable specification exists in Silmaril (`hashImpl` returns it). |
-| `proved` | Beyond test vectors, a functional theorem relates it to another artefact (for SHA-256: the x86-64 `-O2` compression refines the reference, `Silmaril.Crypto.X86.Sha256O2`). |
+| `vectors` | Published known-answer vectors are reproduced by the kernel (`vectors_ok`). |
+| `functional` | A theorem over all inputs relates it to a second specification (for SHA-256: the list and `BitVec` forms agree on every block). |
+| `refinement` | Machine code is proved to compute it (for SHA-256: the x86-64 `-O2` compression, `Silmaril.Crypto.X86.Sha256O2`). |
 
-The level is a function of the data in this module (`Algorithm.level`), and the
-`implemented` level is tied to actual functions: `Catalog.Thms.implemented_iff` proves that an
-algorithm is at least `implemented` exactly when `hashImpl` returns a function, and
-`Catalog.Thms.vectors_ok` re-checks published vectors through `hashImpl` in the kernel.
+The fields are computed from the data here, and `Catalog.Thms` ties them to the artefacts:
+`implemented_iff` says `implemented` holds exactly when `hashImpl` returns a function, and
+`vectors_ok` re-checks the catalogued vectors through `hashImpl` in the kernel.
 
 **Security properties are assumptions, never theorems here.** `Assumption` names the standard
 computational assumptions (collision resistance, PRF security, AEAD security, Diffie–Hellman
@@ -80,10 +81,14 @@ inductive Algorithm where
   | crc32c | crc32 | adler32
   deriving DecidableEq, Repr
 
-/-- How much of an algorithm this library has. -/
-inductive Level where
-  | advertised | recognized | implemented | proved
-  deriving DecidableEq, Repr, Ord
+/-- What the library has for an algorithm: separate kinds of evidence, none of them security. -/
+structure Evidence where
+  recognized : Bool
+  implemented : Bool
+  vectors : Bool
+  functional : Bool
+  refinement : Bool
+  deriving DecidableEq, Repr
 
 /-- The executable hash specifications in Silmaril (the reference digests). MD5 exists only
 in a `Raw` tree (`Silmaril.Raw.Semantics.CPort.Crypto.MD5`), which is not an API, so it is not
@@ -99,21 +104,25 @@ def HashAlg.digestLen : HashAlg → Option Nat
   | .sha384 => some 48 | .sha512 => some 64 | .sha3_256 => some 32
   | .shake128 | .shake256 => none
 
-/-- Algorithms with a functional theorem beyond vectors: SHA-256 (the BitVec kernel
-compression equals the reference, `SHA256.processBlock_eq_compressBlock`, and the x86-64 `-O2`
-compression refines it, `Crypto.X86.Sha256O2`). -/
-def hasFunctionalProof : Algorithm → Bool
+/-- Algorithms with a functional theorem over all inputs beyond vectors: SHA-256 (the list and
+`BitVec 32` compressions agree, `SHA256.processBlock_eq_compressBlock`). -/
+def hasFunctionalTheorem : Algorithm → Bool
   | .hash .sha256 => true
   | _ => false
 
-/-- The level of an algorithm in this library. Every algorithm in the catalogue is at least
-`recognized` when a modelled registry maps a code point to it; algorithms are `advertised`
-only through a registry entry this library does not parse (none yet). -/
-def Algorithm.level : Algorithm → Level
+/-- Algorithms with a machine-code refinement proof: SHA-256's compression (x86-64, clang `-O2`,
+`Crypto.X86.Sha256O2`). The padding and driver are not covered. -/
+def hasRefinement : Algorithm → Bool
+  | .hash .sha256 => true
+  | _ => false
+
+/-- The evidence for an algorithm. Vectors are those of `vectors` below (and the per-module
+test-vector theorems). -/
+def Algorithm.evidence : Algorithm → Evidence
   | .hash h =>
-    if hasFunctionalProof (.hash h) then .proved
-    else if (hashImpl h).isSome then .implemented else .recognized
-  | _ => .recognized
+    ⟨true, (hashImpl h).isSome, (hashImpl h).isSome, hasFunctionalTheorem (.hash h),
+      hasRefinement (.hash h)⟩
+  | _ => ⟨true, false, false, false, false⟩
 
 /-! ## Assumptions -/
 
