@@ -60,6 +60,7 @@ theorem solo_must {Q : SoloCfg U.St γ → Prop} {x : SoloCfg U.St γ} {C : MtCf
 /-- The initial one-thread process is related to its single-threaded process. -/
 theorem soloRel_init {s : U.St} {m : Memory} {g : γ} :
     SoloRel tid ⟨s, m, {}, g, none⟩ (MtCfg.init (S := sc.S) tid s m g) :=
-  ⟨rfl, rfl, rfl, rfl, rfl, fun t h => by simp [MtCfg.init, h], ⟨{ st := .run s }, by simp [MtCfg.init], .inl rfl⟩⟩
+  ⟨rfl, rfl, rfl, rfl, rfl, fun t h => by simp [MtCfg.init, h],
+    ⟨{ st := .run s }, by simp [MtCfg.init], .inl rfl⟩⟩
 
 end Silmaril.Process.Mt
