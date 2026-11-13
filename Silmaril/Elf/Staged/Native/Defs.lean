@@ -7,27 +7,26 @@ public meta import Silmaril.Elf.Staged.Leaf.Thms
 
 /-! # ELF leaves under the trust policy
 
-Each leaf (`Silmaril.Elf.Staged.Leaf`) has **two checkers** for **one proposition**:
+Each leaf (`Silmaril.Elf.Staged.Leaf`) is one declared procedure (`Silmaril.Procedures.elf.*`,
+a `Silmaril.Trust.ProcDecl`) with **two backends** for **one proposition**:
 
-* the **native side** `Native.<leaf> b c` runs the leaf on the `ByteArray` of a file
-  (`fastRead`), registered as `elf.<leaf>` with no kernel fallback (the kernel would decode the
-  `ByteArray` one byte at a time);
-* the **kernel side** `Kernel.<leaf> x c` runs the same leaf on core's kernel bytes `x`
-  (`Silmaril.KBytes.readLE`), registered as `elf.<leaf>.kernel` with a kernel fallback.
+* **native**: `Native.<leaf> b c` runs the leaf on the `ByteArray` of a file (`fastRead`);
+* **kernel**: `Kernel.<leaf> x c` runs the same leaf on core's kernel bytes `x`
+  (`Silmaril.KBytes.readLE`), and is only ever checked by the kernel.
 
 `Native.<leaf>_sound` and `Kernel.<leaf>_sound x.wf x.toByteArray_eq` conclude the same
 `P (blobOf ⟨raw⟩) c`; the kernel bytes are tied to the raw bytes by `x.toByteArray = raw`
-(`kbytes_def … of_include`). A leaf theorem pairs them with the trust framework's `edge_pair`:
+(`kbytes_def … of_include`). A leaf theorem is
 
 ```
 theorem layout : LayoutIs F L := by
-  edge_pair (native := Native.layout_sound (raw := helloRaw) (L := L))
+  sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := L))
     (kernel := Kernel.layout_sound hello.wf hello.toByteArray_eq (L := L))
 ```
 
-The native side runs when the policy allows `elf.<leaf>` in the module; otherwise the kernel
-checks the kernel side, which never runs natively. Errors and `false` propagate. The `default`
-set holds `elf.layout`; the other leaves run natively under `local`.
+The native backend runs when the policy allows `elf.layout` in the module; otherwise the kernel
+checks the kernel backend. Errors and `false` propagate. Both modes record their use under the
+one name. The `default` set holds `elf.layout`; the other leaves run natively under `local`.
 -/
 
 @[expose] public section
@@ -135,53 +134,72 @@ end Kernel
 
 end Silmaril.Elf.Staged
 
-/-! ## Registrations -/
+/-! ## Procedure declarations
 
-/-- The stage-1 layout of an ELF file, read natively from its `ByteArray` (`fastRead`). Trusts
-the compiled reader and `Nat` arithmetic. No kernel fallback: the kernel checker reads
-`Silmaril.KBytes` instead (`elf.layout.kernel`, paired by `edge_pair`). -/
-native_decider elf.layout := Silmaril.Elf.Staged.Native.layout
+One semantic name per leaf (`Silmaril.Trust.ProcDecl`): the native backend reads the
+`ByteArray` (compiled `fastRead`; trusts the Lean compiler and runtime), the kernel backend reads
+kernel bytes and is only ever checked by the kernel. `sil_check` picks one by the policy. -/
 
-/-- One section body, read natively. Trusts the compiled reader. No kernel fallback. -/
-native_decider elf.body := Silmaril.Elf.Staged.Native.body
+/-- The stage-1 layout (`LayoutIs`): `elf.layout`. -/
+def Silmaril.Procedures.elf.layout : Silmaril.Trust.ProcDecl where
+  doc := "The stage-1 layout (LayoutIs). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.layout, ``Silmaril.Elf.Staged.Native.layout_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.layout, ``Silmaril.Elf.Staged.Kernel.layout_sound⟩
+  format := some `elf
 
-/-- The loader view, read natively. Trusts the compiled reader. No kernel fallback. -/
-native_decider elf.loader := Silmaril.Elf.Staged.Native.loader
+/-- One section body (`BodyIs`): `elf.body`. -/
+def Silmaril.Procedures.elf.body : Silmaril.Trust.ProcDecl where
+  doc := "One section body (BodyIs). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.body, ``Silmaril.Elf.Staged.Native.body_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.body, ``Silmaril.Elf.Staged.Kernel.body_sound⟩
+  format := some `elf
 
-/-- A window of `RELA` entries, read natively. Trusts the compiled reader. No kernel fallback. -/
-native_decider elf.rela := Silmaril.Elf.Staged.Native.rela
+/-- The loader view (`LoaderIs`): `elf.loader`. -/
+def Silmaril.Procedures.elf.loader : Silmaril.Trust.ProcDecl where
+  doc := "The loader view (LoaderIs). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.loader, ``Silmaril.Elf.Staged.Native.loader_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.loader, ``Silmaril.Elf.Staged.Kernel.loader_sound⟩
+  format := some `elf
 
-/-- Instruction tiles lie in the file, read natively. No kernel fallback. -/
-native_decider elf.tiles := Silmaril.Elf.Staged.Native.tiles
+/-- A window of `RELA` entries (`EntriesAt`): `elf.rela`. -/
+def Silmaril.Procedures.elf.rela : Silmaril.Trust.ProcDecl where
+  doc := "A window of RELA entries (EntriesAt). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.rela, ``Silmaril.Elf.Staged.Native.rela_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.rela, ``Silmaril.Elf.Staged.Kernel.rela_sound⟩
+  format := some `elf
 
-/-- Instruction tiles each decode as one instruction of the local x86 model, natively. Trusts
-the compiled decoder. No kernel fallback. -/
-native_decider elf.tiles.x86 := Silmaril.Elf.Staged.Native.tilesX86
+/-- Instruction tiles lie in the file (`TilesAt`): `elf.tiles`. -/
+def Silmaril.Procedures.elf.tiles : Silmaril.Trust.ProcDecl where
+  doc := "Instruction tiles lie in the file (TilesAt). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.tiles, ``Silmaril.Elf.Staged.Native.tiles_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.tiles, ``Silmaril.Elf.Staged.Kernel.tiles_sound⟩
+  format := some `elf
 
-/-- A forward symbol index, checked natively. No kernel fallback. -/
-native_decider elf.symbols.byName := Silmaril.Elf.Staged.Native.byName
+/-- Instruction tiles each decode as one instruction of the local x86 model (`TilesAt … x86Ok`): `elf.tiles.x86`. -/
+def Silmaril.Procedures.elf.tiles.x86 : Silmaril.Trust.ProcDecl where
+  doc := "Instruction tiles each decode as one instruction of the local x86 model (TilesAt … x86Ok). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.tilesX86, ``Silmaril.Elf.Staged.Native.tilesX86_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.tilesX86, ``Silmaril.Elf.Staged.Kernel.tilesX86_sound⟩
+  format := some `elf
 
-/-- A reverse symbol map, checked natively. No kernel fallback. -/
-native_decider elf.symbols.byAddr := Silmaril.Elf.Staged.Native.byAddr
+/-- A forward symbol index (`ByName.Sound`): `elf.symbols.byName`. -/
+def Silmaril.Procedures.elf.symbols.byName : Silmaril.Trust.ProcDecl where
+  doc := "A forward symbol index (ByName.Sound). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.byName, ``Silmaril.Elf.Staged.Native.byName_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.byName, ``Silmaril.Elf.Staged.Kernel.byName_sound⟩
+  format := some `elf
 
-/-! ## Kernel sides
-
-Registered so that `edge_pair` can check them and record their uses. `edge_pair` runs a kernel
-side only in the kernel (`decideEdge … (kernelOnly := true)`), whatever the policy allows. -/
-
-/-- The stage-1 layout on kernel bytes (`KBytes.readLE`): a few big-number operations per read. -/
-native_decider elf.layout.kernel := Silmaril.Elf.Staged.Kernel.layout with_kernel_fallback
-/-- One section body on kernel bytes. -/
-native_decider elf.body.kernel := Silmaril.Elf.Staged.Kernel.body with_kernel_fallback
-/-- The loader view on kernel bytes. -/
-native_decider elf.loader.kernel := Silmaril.Elf.Staged.Kernel.loader with_kernel_fallback
-/-- A window of `RELA` entries on kernel bytes. -/
-native_decider elf.rela.kernel := Silmaril.Elf.Staged.Kernel.rela with_kernel_fallback
-/-- Instruction tiles in the file, on kernel bytes. -/
-native_decider elf.tiles.kernel := Silmaril.Elf.Staged.Kernel.tiles with_kernel_fallback
-/-- Instruction tiles through the local x86 model, on kernel bytes. -/
-native_decider elf.tiles.x86.kernel := Silmaril.Elf.Staged.Kernel.tilesX86 with_kernel_fallback
-/-- A forward symbol index on kernel bytes. -/
-native_decider elf.symbols.byName.kernel := Silmaril.Elf.Staged.Kernel.byName with_kernel_fallback
-/-- A reverse symbol map on kernel bytes. -/
-native_decider elf.symbols.byAddr.kernel := Silmaril.Elf.Staged.Kernel.byAddr with_kernel_fallback
+/-- A reverse symbol map (`ByAddr.Sound`): `elf.symbols.byAddr`. -/
+def Silmaril.Procedures.elf.symbols.byAddr : Silmaril.Trust.ProcDecl where
+  doc := "A reverse symbol map (ByAddr.Sound). Native: compiled fastRead over the file's ByteArray (trusts the \
+    compiler and runtime). Kernel: KBytes.readLE, checked by the kernel."
+  native := some ⟨``Silmaril.Elf.Staged.Native.byAddr, ``Silmaril.Elf.Staged.Native.byAddr_sound⟩
+  kernel := some ⟨``Silmaril.Elf.Staged.Kernel.byAddr, ``Silmaril.Elf.Staged.Kernel.byAddr_sound⟩
+  format := some `elf

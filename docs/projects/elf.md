@@ -104,7 +104,7 @@ Each fact comes from running its reader on a source that answers as the file (`C
   literals (`layoutIs_of_pages`, …), evaluated by the kernel;
 * **native**: `fastRead` on a `ByteArray` (`sub_fast`). A compiled run is trusted computation.
   It adds one auxiliary axiom per computation (`thm._native.edge.<procedure>.ax_…`), and
-  the trust policy decides which named procedures may run (`edge_pair`,
+  the trust policy decides which named procedures may run (`sil_check`,
   [elf-staged-api.md](elf-staged-api.md)).
 
 **Disassembly certificates.** A tile list is a claim of instruction boundaries. Any

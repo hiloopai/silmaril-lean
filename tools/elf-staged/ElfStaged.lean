@@ -406,7 +406,7 @@ def ld : Loader := {litLoader ld}
 "
   let kn := o.kbytes.getD "kbytes"
   -- one leaf proof: the native run when the policy allows `proc`, else the kernel run
-  let leaf (_proc fn : String) (c : Option String) : String :=
+  let leaf (proc fn : String) (c : Option String) : String :=
     let (cn, ca) := match fn, c with
       | "layout", _ => ("L", "L")
       | "byName", _ => ("x", "byName")
@@ -414,7 +414,7 @@ def ld : Loader := {litLoader ld}
       | _, some c => ("c", c)
       | _, none => ("c", "_")
     let kn' := if fn == "byName" || fn == "byAddr" then "s" else cn
-    s!"by\n  edge_pair\n    (native := Native.{fn}_sound (raw := {cname}) ({cn} := {ca}))\n    (kernel := Kernel.{fn}_sound {kn}.wf {kn}.toByteArray_eq ({kn'} := {ca}))"
+    s!"by\n  sil_check {proc}\n    (native := Native.{fn}_sound (raw := {cname}) ({cn} := {ca}))\n    (kernel := Kernel.{fn}_sound {kn}.wf {kn}.toByteArray_eq ({kn'} := {ca}))"
   let mut t := s!"module
 
 public import {defsMod}
@@ -425,7 +425,7 @@ public meta import Silmaril.Elf.Staged.Native.Defs
 {o.imports.foldl (fun acc m => acc ++ s!"public meta import {m}\n") ""}
 /-! # Staged checks of `{path}`
 
-Every theorem is one leaf (`Silmaril.Elf.Staged.Leaf`) proved by `edge_pair` {hdr}: natively on
+Every theorem is one leaf (`Silmaril.Elf.Staged.Leaf`) proved by `sil_check` {hdr}: natively on
 the file's `ByteArray` when the trust policy allows the leaf's procedure in this module, and
 otherwise by the kernel on the same file's kernel bytes `{kn}`. The propositions are the same
 in every profile; `Silmaril.Elf.Staged.Example.Profiles` checks them under `local` and

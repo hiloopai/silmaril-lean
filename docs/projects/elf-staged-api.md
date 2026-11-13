@@ -39,7 +39,7 @@ the scope policy, `edge_decide`, the use records and the audit. Each ELF leaf
 |---|---|---|
 | function | `Native.<leaf> b c` | `Kernel.<leaf> x c` |
 | bytes | the file's `ByteArray` (`fastRead`) | core's kernel bytes `x` (`KBytes.readLE`) |
-| registered | `native_decider elf.<leaf>`, no kernel fallback | `elf.<leaf>.kernel`, with kernel fallback; never run natively by `edge_pair` |
+| declared | `Silmaril.Procedures.elf.<leaf>` (`ProcDecl`), native backend | the same declaration, kernel backend; only ever checked by the kernel |
 | soundness | `Native.<leaf>_sound` | `Kernel.<leaf>_sound x.wf x.toByteArray_eq` |
 | conclusion | `P (blobOf ⟨raw⟩) c` | the same `P (blobOf ⟨raw⟩) c` |
 
@@ -47,14 +47,16 @@ The kernel bytes and the raw bytes come from the same `include_bytes` literals
 (`kbytes_def x of_include raw` proves `x.toByteArray = raw` without decoding a byte).
 `sub_kbytes` and `sub_fast` tie each source to the one file.
 
-A leaf theorem is `by edge_pair (native := Native.<leaf>_sound …) (kernel :=
-Kernel.<leaf>_sound x.wf x.toByteArray_eq …)`, the framework's same-target pair.
+A leaf theorem is `by sil_check elf.<leaf> (native := Native.<leaf>_sound …) (kernel :=
+Kernel.<leaf>_sound x.wf x.toByteArray_eq …)`. `sil_check` checks both sides against the
+declaration before running anything.
 
-* **Native allowed:** `elf.<leaf>` runs natively on the `ByteArray`, and the use and its axiom
-  are recorded. Errors and `false` propagate, with no fallback.
-* **Native denied:** the kernel checks the kernel-bytes term (`decideEdge … (kernelOnly :=
-  true)`), even where the policy would let `elf.<leaf>.kernel` run natively, and the kernel use
-  is recorded.
+* **Native allowed:** the `ByteArray` backend runs natively, and the use and its axiom
+  `<decl>._native.edge.elf.<leaf>.ax_i_j` are recorded under `elf.<leaf>`. Errors and `false`
+  propagate, with no fallback.
+* **Otherwise:** the kernel checks the kernel-bytes backend, and the kernel use is recorded
+  under the same name.
+* A check that gives only the kernel side is kernel-only in every profile.
 
 The `default` set holds `elf.layout` (core's policy); the other `elf.*` procedures run natively
 under `local`. `Silmaril.Elf.Staged.Example.Profiles` checks every case with audits and use
@@ -63,7 +65,7 @@ records:
 * default: native layout, kernel loader;
 * local: native;
 * paranoid: kernel;
-* a profile that allows only the kernel side's procedure: still kernel;
+* kernel-only under local: kernel;
 * an unsupported leaf;
 * a false claim, under native and under kernel.
 
@@ -85,7 +87,7 @@ Until it is, each leaf module defines its own kernel bytes from the shared raw b
 | symbols | `SymAt`; name → entry (`ByName`), address → entry (`ByAddr`), sound lookups | `elf.symbols.byName`, `elf.symbols.byAddr` | `Staged.Symbols` |
 | code | instruction tiles: bounds, and per-tile acceptance by `Silmaril.X86.Ext.decode` | `elf.tiles`, `elf.tiles.x86` | `Staged.Leaf` |
 | whole parse | `Parses` assembled from stages | `parses_assemble` | `Staged` |
-| policy | native (`ByteArray`) or kernel (`KBytes`) per leaf | `edge_pair` | `Staged.Native` |
+| policy | native (`ByteArray`) or kernel (`KBytes`) per leaf | `sil_check` | `Staged.Native` |
 
 Worked examples:
 

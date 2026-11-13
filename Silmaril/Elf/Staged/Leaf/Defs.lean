@@ -21,8 +21,8 @@ the `Sub` lemma of each source (`sub_fast`, `sub_kbytes`, `Check.sub_pages`), no
 the certificate.
 
 The policy that picks a mode for a named leaf belongs to the trust framework
-(`Silmaril.Prelude.Trust`); `Silmaril.Elf.Staged.Native` registers both runs, and a leaf
-theorem pairs them with the framework's `edge_pair`.
+(`Silmaril.Prelude.Trust`); `Silmaril.Elf.Staged.Native` declares both runs as one procedure
+(`ProcDecl`), and a leaf theorem selects one with the framework's `sil_check`.
 
 ## Leaves defined here (`Thms`)
 
