@@ -108,16 +108,19 @@ def tgtNode : Target Ref → List Node
   | .ext r => [.ext r]
   | .blk _ => []
 
-/-- The call-graph edges of one function's CFG: calls, tail jumps, imports, system calls, and
+/-- The call-graph targets of a terminator: calls, tail jumps, imports, system calls, and
 `unresolved` for an indirect transfer without listed targets. -/
+def termNodes : Term Ref → List Node
+  | .jmp t | .call t _ => tgtNode t
+  | .jmpInd (some ts) _ | .callInd (some ts) _ _ => ts.flatMap tgtNode
+  | .jmpInd none _ | .callInd none _ _ => [.unresolved]
+  | .sys (some n) _ => [.sys n]
+  | .sys none _ | .sysOther _ => [.sysAny]
+  | _ => []
+
+/-- The call-graph edges of one function's CFG. -/
 def edgesOf (f : Nat) (C : Graph Ref) : List (Node × Node) :=
-  C.blocks.flatMap fun b => (match b.term with
-    | .jmp t | .call t _ => tgtNode t
-    | .jmpInd (some ts) _ | .callInd (some ts) _ _ => ts.flatMap tgtNode
-    | .jmpInd none _ | .callInd none _ _ => [.unresolved]
-    | .sys (some n) _ => [.sys n]
-    | .sys none _ | .sysOther _ => [.sysAny]
-    | _ => []).map fun n => (.fn f, n)
+  C.blocks.flatMap fun b => (termNodes b.term).map fun n => (.fn f, n)
 
 /-! ## Program certificates -/
 

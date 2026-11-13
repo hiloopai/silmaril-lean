@@ -28,6 +28,11 @@ theorem at_unique {D : FlowDec} (hD : D.Stable) {m : Memory} {a n l l' : Nat} {s
     (hw : m.fetchBytes a l = some w) (hdw : D.decode w = some (i, l)) : i = i' ∧ l = l' :=
   Silmaril.Proofs.X86.Flow.at_unique hD hs hds hw hdw
 
+/-- A fetch of `l ≤ n` bytes is the prefix of a fetch of `n`. -/
+theorem fetch_prefix {m : Memory} {a n l : Nat} {s : List Byte} (h : m.fetchBytes a n = some s)
+    (hl : l ≤ n) : m.fetchBytes a l = some (s.take l) :=
+  Silmaril.Proofs.X86.Flow.fetch_prefix h hl
+
 /-- **`X64.dec` reads a prefix.** -/
 theorem X64.stable : X64.dec.Stable := Silmaril.Proofs.X86.Flow.X64.stable
 
