@@ -52,8 +52,13 @@ Refs used: core #125 at `3c731fc1`, ELF #127 at `60bf9e14` (which merges #125 at
 ## The trust lines
 
 The file has one JSON object per line, each with a `schema` and a `kind`. Each schema may carry
-only its own kinds, and each line is converted explicitly. Unknown schemas, kinds and fields are
-rejected, so producer and tool upgrade **in lockstep**, with no forward compatibility.
+only its own kinds, and each line is converted explicitly into the strict database schema:
+
+- **Unknown schemas and kinds** are rejected.
+- **Core fields:** the core may add fields within `silmaril.trust.v1`. A field outside
+  `CORE_FIELDS` is dropped and recorded in `meta.trust.ignored_core_fields`, never given a
+  meaning. It is a warning in report-only mode and an **error** under `--strict-trust`.
+- **Adapter fields:** they must all be known, so `trust-dump` and the reader upgrade together.
 
 **`silmaril.trust.v1`** (the core's; `docs/trust.md`):
 

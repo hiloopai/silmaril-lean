@@ -177,13 +177,14 @@ impl Tables {
     }
 }
 
-/// Read trust lines: one JSON object per non-empty line.
 /// Read trust lines: one JSON object per non-empty line, each with a `schema` of
 /// [`LINE_KINDS`] and a `kind` that schema carries. The conversion is explicit: a core line and
-/// an adapter line of the same kind map to the same [`TrustLine`] variant, and every field of
-/// either must be known.
-pub fn read_lines(text: &str) -> std::result::Result<Vec<TrustLine>, String> {
+/// an adapter line of the same kind map to the same [`TrustLine`] variant. Adapter fields must
+/// all be known; core fields outside [`CORE_FIELDS`] (the core may add fields within v1) are
+/// dropped and returned as `kind.field`.
+pub fn read_lines(text: &str) -> std::result::Result<(Vec<TrustLine>, BTreeSet<String>), String> {
     let mut out = Vec::new();
+    let mut ignored = BTreeSet::new();
     for (i, l) in text
         .lines()
         .enumerate()
@@ -208,6 +209,19 @@ pub fn read_lines(text: &str) -> std::result::Result<Vec<TrustLine>, String> {
         };
         if !kinds.contains(&kind.as_str()) {
             return Err(at(format!("kind {kind:?} is not a {schema} kind")));
+        }
+        if schema == CORE_SCHEMA
+            && let Some((_, known)) = CORE_FIELDS.iter().find(|(k, _)| *k == kind)
+        {
+            let extra: Vec<String> = obj
+                .keys()
+                .filter(|f| *f != "kind" && !known.contains(&f.as_str()))
+                .cloned()
+                .collect();
+            for f in extra {
+                obj.remove(&f);
+                ignored.insert(format!("{kind}.{f}"));
+            }
         }
         let bad = |e: serde_json::Error| at(format!("{schema} {kind}: {e}"));
         match (schema.as_str(), kind.as_str()) {
@@ -239,7 +253,7 @@ pub fn read_lines(text: &str) -> std::result::Result<Vec<TrustLine>, String> {
             _ => out.push(serde_json::from_value(v).map_err(bad)?),
         }
     }
-    Ok(out)
+    Ok((out, ignored))
 }
 
 /// A core set value: `"all"` or a list of names.
@@ -307,7 +321,7 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
         .wrap_err_with(|| format!("could not read the trust dump {}", path.display()))?;
     let at = path.display().to_string();
     let text = String::from_utf8_lossy(&bytes);
-    let lines = match read_lines(&text) {
+    let (lines, ignored) = match read_lines(&text) {
         Ok(l) => l,
         Err(e) => {
             o.error(&at, e);
@@ -315,6 +329,27 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
             return Ok(());
         }
     };
+    for f in &ignored {
+        let msg =
+            format!("core field {f} is not read by this tool (added within silmaril.trust.v1?)");
+        if strict {
+            o.error(
+                &at,
+                format!("{msg}; --strict-trust refuses fields it cannot interpret"),
+            );
+        } else {
+            o.warn(&at, msg);
+        }
+    }
+    if !ignored.is_empty() {
+        meta(
+            o,
+            &[(
+                "ignored_core_fields",
+                ignored.iter().cloned().collect::<Vec<_>>().join(","),
+            )],
+        );
+    }
     let mut t = Tables::default();
     let mut ingest = Ingest {
         dir,
@@ -1467,7 +1502,8 @@ mod tests {
         assert_eq!(ls[3]["kind"], "excluded");
         assert_eq!(ls[4]["schema"], CORE_SCHEMA);
         assert!(complete(adapter, "{\"kind\":\"set\"}", dir.path(), &c).is_err());
-        let lines = read_lines(&out).unwrap();
+        let (lines, ignored) = read_lines(&out).unwrap();
+        assert!(ignored.is_empty());
         assert_eq!(
             lines.len(),
             6,
@@ -1475,5 +1511,12 @@ mod tests {
         );
         assert!(read_lines("{\"schema\":\"silmaril.trust.v1\",\"kind\":\"header\"}").is_err());
         assert!(read_lines("{\"schema\":\"nope\",\"kind\":\"set\",\"name\":\"s\"}").is_err());
+        // A field the core added within v1 is dropped and reported; an adapter field is an error.
+        let (_, ignored) = read_lines(
+            "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"s\",\"new_field\":1}",
+        )
+        .unwrap();
+        assert_eq!(ignored.into_iter().collect::<Vec<_>>(), ["set.new_field"]);
+        assert!(read_lines("{\"schema\":\"silmaril.trust-adapter.v0.2\",\"kind\":\"input\",\"path\":\"p\",\"sha256\":\"h\",\"x\":1}").is_err());
     }
 }

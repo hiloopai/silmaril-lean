@@ -24,6 +24,81 @@ use serde::Deserialize;
 
 /// The core's provenance schema (`docs/trust.md`, `#trust_dump`).
 pub const CORE_SCHEMA: &str = "silmaril.trust.v1";
+/// The fields this tool reads, per core kind. The core may add fields within v1
+/// (`docs/trust.md`); others are dropped explicitly and reported (an error under
+/// `--strict-trust`), so that a new field is never silently given a meaning.
+pub const CORE_FIELDS: &[(&str, &[&str])] = &[
+    (
+        "procedure",
+        &[
+            "name",
+            "function",
+            "kernel_fallback",
+            "module",
+            "format",
+            "sound",
+            "native_function",
+            "native_eq",
+            "axiom_pattern",
+            "components",
+            "toolchain",
+            "fallback_coverage",
+            "doc",
+        ],
+    ),
+    (
+        "use",
+        &["decl", "module", "procedure", "mode", "profile", "axiom"],
+    ),
+    ("set", &["name", "all", "members", "includes", "resolved"]),
+    (
+        "scope",
+        &[
+            "module",
+            "max",
+            "default",
+            "deps",
+            "axioms",
+            "policy_file",
+            "policy_pin",
+        ],
+    ),
+    (
+        "declared_procedure",
+        &["name", "constant", "native", "kernel", "format", "doc"],
+    ),
+    (
+        "module",
+        &[
+            "module",
+            "imports",
+            "profile",
+            "ceiling",
+            "max",
+            "default",
+            "deps",
+            "axioms",
+            "allowed",
+            "scopes",
+            "policy_error",
+        ],
+    ),
+    (
+        "audit",
+        &[
+            "decl",
+            "module",
+            "profile",
+            "own_native",
+            "dep_native",
+            "unverified_native",
+            "native_axioms",
+            "axioms",
+            "elaborated_profiles",
+            "violations",
+        ],
+    ),
+];
 /// Lines `sil project trust-dump` adds to the core's.
 pub const ADAPTER_SCHEMA: &str = "silmaril.trust-adapter.v0.2";
 /// `(schema, kinds)`: which kinds each line schema may carry.
