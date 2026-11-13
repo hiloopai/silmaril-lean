@@ -107,12 +107,15 @@ def returnsBool (ty : Expr) : MetaM Bool :=
 @[command_elab trustSetCmd] def elabTrustSet : CommandElab := fun stx => do
   let name := stx[2].getId
   let body := stx[4]
+  let doc ← match stx[0].getOptional? with
+    | some d => pure (← getDocStringText ⟨d⟩).trimAscii.toString
+    | none => pure ""
   let set : TrustSet ←
-    if body.isToken "all" then pure { name, all := true }
+    if body.isToken "all" then pure { name, all := true, doc }
     else
       let members := body[1].getSepArgs.map (·.getId)
       let includes := if body[3].isNone then #[] else body[3][1].getArgs.map (·.getId)
-      pure { name, members, includes }
+      pure { name, members, includes, doc }
   if (setExt.getState (← getEnv)).contains name then
     throwError "trust set {name} is already declared"
   modifyEnv (setExt.addEntry · set)

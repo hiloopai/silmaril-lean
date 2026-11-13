@@ -101,6 +101,7 @@ structure TrustSet where
   members : Array Name := #[]
   /-- Sets whose members are included. -/
   includes : Array Name := #[]
+  doc : String := ""
   deriving Inhabited, Repr
 
 /-- One scope of the policy: a module prefix and its sets (`none` inherits from the parent). -/
