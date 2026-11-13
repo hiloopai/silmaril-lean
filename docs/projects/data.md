@@ -30,6 +30,11 @@ fragments, a decidable holds relation and a one-lemma frame rule. On top of it:
 * `BoundaryTag`: heaps tiled by blocks with size headers and boundary tags
   (dlmalloc/ptmalloc style), with split and merge steps.
 
+## Finite maps and sets
+
+Kernel-friendly byte tries, range maps and bit-mask sets (`BytesTrie`, `NatRangeMap`,
+`NatBitSet`) are documented in [finmaps.md](finmaps.md).
+
 ## Build
 
 ```sh
