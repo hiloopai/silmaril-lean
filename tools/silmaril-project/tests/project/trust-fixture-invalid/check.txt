@@ -3,17 +3,20 @@ error: trust.jsonl: module Silmaril.Elf.Staged.Example.Thms: policy does not res
 error: trust.jsonl: module Silmaril.Elf.Staged.Leaf.Native: policy does not resolve: policy scope Silmaril.Elf.Staged: max exceeds its parent's max (producer: the producer resolved it)
 error: trust.jsonl: scope Silmaril.Papers: declared twice
 error: trust.jsonl: trust set bad: includes unknown set nope
+error: trust.jsonl: trust set bad: the producer resolves it to [], the core's rules to nothing
 error: trust.jsonl: trust set loop.a: an include cycle
+error: trust.jsonl: trust set loop.a: the producer resolves it to [], the core's rules to nothing
 error: trust.jsonl: trust set loop.b: an include cycle
+error: trust.jsonl: trust set loop.b: the producer resolves it to [], the core's rules to nothing
 error: trust.jsonl: use of elf.body in Silmaril.Elf.Staged.Example.z (Silmaril.Elf.Staged.Example.Thms): axiom Silmaril.Elf.Staged.Example.z._native.edge.elf.layout.ax_1_1 is not a native run of elf.body
 error: trust.jsonl: use of elf.nope in Silmaril.Elf.Staged.Example.y (Silmaril.Elf.Staged.Example.Thms): unknown procedure
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
 trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
-trust: 12 procedures (11 with a kernel fallback), 10 sets, 5 scopes; 4 uses (1 native, 1 kernel runs of a checker the registry does not name)
-trust modules: 4 covered, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 3 theorems audited
-trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 axioms outside the set)
+trust: 12 procedures (11 with a kernel side), 10 sets, 5 scopes; 3 uses (1 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 4 covered, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 3 declarations audited
+trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
 trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust

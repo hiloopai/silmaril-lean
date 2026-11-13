@@ -2,12 +2,12 @@ summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
 trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
-trust: 12 procedures (11 with a kernel fallback), 7 sets, 3 scopes; 2 uses (0 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 4 covered, 1 excluded, 0 unsupported, 0 undescribed, 2 external; 2 theorems audited
-trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 axioms outside the set)
+trust: 12 procedures (11 with a kernel side), 7 sets, 3 scopes; 2 uses (0 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 4 covered, 1 excluded, 0 unsupported, 0 undescribed, 2 external; 2 declarations audited
+trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
 trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: partial (1 excluded module(s); their uses are not audited)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 trust result: policy valid on partial coverage (not a full audit: excluded, unsupported or undescribed modules are unaudited)
-sql sha256: 13448e3070e6677bc88ba4b14d9052933fbd137244d1f9a615dbf550de437714
+sql sha256: 099e9389984e84b811be96157b89811eb8c10e3b343bae32f522aedc99bbec44
 exit: ok

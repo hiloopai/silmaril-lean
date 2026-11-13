@@ -92,9 +92,6 @@ pub enum Command {
         /// Skip `lake build --wfail <modules>` before elaborating the driver
         #[arg(long)]
         no_build: bool,
-        /// The core trust API: `v1` (`#trust_dump`) or `legacy`; default: detected
-        #[arg(long)]
-        core_api: Option<String>,
         /// `MODULE=REASON`: a module whose theorems are not audited (coverage becomes partial)
         #[arg(long)]
         exclude: Vec<String>,
@@ -1456,7 +1453,6 @@ pub fn run(command: Command) -> Result<()> {
             out,
             lake,
             no_build,
-            core_api,
             exclude,
         } => {
             let modules = if modules.is_empty() {
@@ -1483,14 +1479,12 @@ pub fn run(command: Command) -> Result<()> {
             fs::create_dir_all(&gen_dir).into_diagnostic()?;
             let raw = gen_dir.join("trust.raw.jsonl");
             let core_raw = gen_dir.join("trust.core.jsonl");
-            let api = match core_api.as_deref() {
-                Some("v1") => trust::CoreApi::V1,
-                Some("legacy") => trust::CoreApi::Legacy,
-                Some(other) => return Err(miette!("--core-api {other}: give v1 or legacy")),
-                None => trust::detect_core_api(&abs_dir).ok_or_else(|| {
-                    miette!("no Silmaril/Prelude/Trust/Elab/Defs.lean here or in .lake/packages/silmaril; pass --core-api")
-                })?,
-            };
+            if trust::core_has_hooks(&abs_dir) == Some(false) {
+                bail!(
+                    "the core trust framework here has no stable dump hooks (moduleLine, auditLine): \
+                     trust-dump needs #125 at ba1b5f84 or later"
+                );
+            }
             let excluded: Vec<(String, String)> = exclude
                 .iter()
                 .map(|e| {
@@ -1504,7 +1498,7 @@ pub fn run(command: Command) -> Result<()> {
             let driver_path = gen_dir.join("TrustDump.lean");
             fs::write(
                 &driver_path,
-                trust::driver(api, &modules, &roots, &raw, &core_raw),
+                trust::driver(&modules, &roots, &raw, &core_raw),
             )
             .into_diagnostic()?;
             if !no_build {
@@ -1513,24 +1507,21 @@ pub fn run(command: Command) -> Result<()> {
                 eprintln!("building {} …", modules.join(", "));
                 run_lake(&abs_dir, &lake, &args)?;
             }
-            eprintln!("elaborating the trust driver ({api:?} core API)…");
+            eprintln!("elaborating the trust driver…");
             run_lake(
                 &abs_dir,
                 &lake,
                 &["env", "lean", &driver_path.display().to_string()],
             )?;
             let text = fs::read_to_string(&raw).into_diagnostic()?;
-            let core = match api {
-                trust::CoreApi::V1 => Some(fs::read_to_string(&core_raw).into_diagnostic()?),
-                trust::CoreApi::Legacy => None,
-            };
+            let core = fs::read_to_string(&core_raw).into_diagnostic()?;
             let producer = format!(
-                "silmaril-project {} trust-dump ({api:?} core API)",
+                "silmaril-project {} trust-dump (core stable hooks)",
                 env!("CARGO_PKG_VERSION")
             );
             let lines = trust::complete(
                 &text,
-                core.as_deref(),
+                &core,
                 &abs_dir,
                 &trust::Completion {
                     roots: &roots,

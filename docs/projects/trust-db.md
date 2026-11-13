@@ -1,24 +1,36 @@
 # Native-procedure and axiom trust in the project database
 
-`sil project trust-dump` writes **trust lines** for a set of modules: the core trust framework's
-policy, procedures, uses and per-theorem axioms. `sil project check|sqlite --trust PATH` checks
-them and adds the trust tables to the project database. The explorer shows them in the
-**Trust** tab.
+`sil project trust-dump` writes **trust lines** for a set of modules. They hold the core trust
+framework's registry, policy, uses and per-declaration audits. `sil project check|sqlite
+--trust PATH` checks the lines and adds the trust tables to the project database. The explorer
+shows them in the **Trust** tab.
 
 The core framework is `Silmaril.Prelude.Trust` (#125, `docs/trust.md`). It owns the policy, the
-procedures (`native_decider`), the trust sets, the profiles, `edge_decide`, `#trust_uses` and
-`trust_audit`. This tool does not define a policy of its own. It stores the core's facts,
-**recomputes** each module's effective sets with the core's rules (and fails when the producer's
-differ), and applies the core's audit to every theorem.
+procedures (`native_decider`, `native_tactic`, `ProcDecl`), the trust sets, the profiles,
+`edge_decide`/`edge_pair`/`sil_check`, and the audit (`auditLine`, `trust_audit`). This tool
+does not define a policy of its own. It does three things:
+
+- it stores the core's lines;
+- it **recomputes** each module's effective sets, each set's resolution and each declaration's
+  violations, and fails when they differ from the core's;
+- it reports coverage, digests and enforcement honestly.
+
+Refs used: core #125 at `3c731fc1`, ELF #127 at `60bf9e14` (which merges #125 at `6d5b5254`).
 
 ## What a result means, and does not
 
-- **No trust dump → unknown.** Without `--trust`, `meta.trust.status = absent` and use is
-  *unaudited*. That is not a clean result.
-- **Native means not kernel-only.** A theorem whose axioms include
-  `<decl>._native.edge.<procedure>.ax_i_j` trusts the Lean compiler, the runtime and the compiled
-  code the run reaches. A kernel run of the same procedure adds no axiom. The explorer shows,
-  per module, how many theorems have native runs.
+- **No trust dump → unknown.** Without `--trust`, `meta.trust.status = absent`: unaudited, not
+  clean.
+- **Native means not kernel-only.** A declaration whose axioms include a native run
+  (`<decl>._native.edge.<procedure>.ax_i_j`, or a registered native tactic's
+  `<decl>._native.<tag>.ax_n`) trusts the Lean compiler, the runtime and the code the run
+  reaches. The registered checker's own dependencies are part of that code: a review of the
+  checker covers its closure. Registration names the procedure. It does **not** by itself
+  prevent arbitrary nested computation, and it is not proof against a malicious metaprogram.
+  Uses are recorded by instrumentation (`recordUse`) that is itself trusted and reviewed. The
+  core verifies a native axiom only if a recorded use produced exactly that axiom and the axiom
+  mentions the procedure's evaluated function; otherwise the axiom is `unverified_native`. An
+  LRAT/`bv_decide` registration needs the exact statement.
 - **Report-only is not enforcement.** Without `--strict-trust`, violations are warnings and rows
   of `trust_violations`, and each run says `trust policy: NOT enforced (report only)`.
   `--strict-trust` (or `make project-trust-check TRUST=…`) fails, and writes no database, on:
@@ -26,204 +38,176 @@ differ), and applies the core's audit to every theorem.
   - a covered module whose recorded digests are not all `consistent`;
   - an undescribed import under the roots;
   - a missing dump.
-- **Passing is policy validation, not an audit of everything.** Every run prints
-  `trust coverage: complete|partial` (also `meta.trust.coverage`). Explicit `excluded` or
-  `unsupported` modules make it `partial`, and a strict pass then says `not a full audit`.
-  Nothing is labelled fully audited or paranoid.
-- **Digest consistency ≠ freshness.** `consistent` means that the recorded digests still match
-  (module sources, described imports, inputs: `lean-toolchain`, `lake-manifest.json`,
-  `policy.toml`), and nothing more.
+- **Passing is policy validation, not an audit of everything.** Every run prints `trust
+  coverage: complete|partial` (also in `meta.trust.coverage`). `excluded` or `unsupported`
+  modules make it `partial`, and a strict pass then says `not a full audit`. Nothing is labelled
+  fully audited or paranoid.
+- **Digest consistency ≠ freshness.** `consistent` means only that the recorded digests still
+  match (module sources, described imports, `lean-toolchain`, `lake-manifest.json`,
+  `policy.toml`).
 - **Origin.** The header says `origin = lean` for a producer run and `fixture` for hand-written
-  lines. The value is self-declared. The explorer flags anything that is not `lean`.
+  lines. The value is self-declared. The explorer flags anything that is not `lean`, and a test
+  checks every case's origin.
 
 ## The trust lines
 
-The file has one JSON object per line. Every line carries a `schema` and a `kind`, and each
-schema carries only certain kinds. The conversion to the database is explicit, per schema.
-Unknown schemas, kinds and fields are rejected, so producer and tool upgrade **in lockstep**:
-there is no forward compatibility.
+The file has one JSON object per line, each with a `schema` and a `kind`. Each schema may carry
+only its own kinds, and each line is converted explicitly. Unknown schemas, kinds and fields are
+rejected, so producer and tool upgrade **in lockstep**, with no forward compatibility.
 
-- **`silmaril.trust.v1`** (the core's provenance schema, written by `#trust_dump`; see
-  `docs/trust.md` in #125): `procedure`, `use`, `set` (with the core's `resolved`, checked against
-  ours), `scope` (with `policy_file`, `policy_pin`), `declared_procedure` and `audit` (checked
-  against the adapter's `decl` line).
-- **`silmaril.trust-adapter.v0.1`** (what `sil project trust-dump` adds; also every line of a
-  core before v1): `header`, `input`, `policy`, `set` (the policy file's sets, such as `standard`,
-  which `#trust_dump` omits), `module`, `effective`, `decl`, `excluded`. With the legacy API it
-  also carries `procedure`, `use`, `set` and `scope`.
+**`silmaril.trust.v1`** (the core's; `docs/trust.md`):
 
-| kind | from | fields |
+| kind | fields | stored as |
 |---|---|---|
-| `header` | adapter | `core_api` (`v1`, `legacy`), `toolchain`, `profile`, `ceiling` (the audit's), `producer`, `origin`, `roots` |
-| `input` | `trust-dump` | `path`, `sha256` (`lean-toolchain`, `lake-manifest.json`, `policy.toml`) |
-| `policy` | adapter (`policyExt`) | `file`, `pin` (FNV-1a) |
-| `scope` | core | `module`, `max`, `default`, `deps`, `axioms` (null inherits), `policy_file`, `policy_pin` |
-| `set` | core / adapter | `name`, `all`, `members`, `includes`, `resolved` / `origin` |
-| `procedure` | core | `name`, `function`, `kernel_fallback`, `module`, `format`, `sound`, `native_function`, `native_eq`, `doc` |
-| `declared_procedure` | core | `name`, `constant`, `native` / `kernel` (`{check, sound}` or null), `format`, `doc` |
-| `use` | core | `decl`, `module`, `procedure`, `mode`, `profile` (the elaboration's), `axiom` |
-| `module` | adapter (`env.header`), `trust-dump` | `name`, `imports`, `source`, `source_sha256` |
-| `effective` | adapter (`effective`, `allowed`) | `module`, `max`, `default`, `deps`, `axioms`, `allowed`, `trace` (or `error`) |
-| `decl` | adapter (`axiomReport`) | `decl`, `module`, `own_native`, `dep_native`, `plain_native`, `axioms`, `native_axioms` |
-| `audit` | core (`trust_audit`) | `decl`, `module`, `profile`, `own_native`, `dep_native`, `native_axioms`, `axioms` |
-| `excluded` | `trust-dump --exclude M=REASON` | `module`, `coverage` (`excluded`, `unsupported`), `reason` |
+| `procedure` | `name`, `function`, `kernel_fallback`, `module`, `format`, `sound`, `native_function`, `native_eq`, `axiom_pattern`, `components`, `toolchain`, `fallback_coverage`, `doc` | `trust_procedures` (`native_decider`, or `native_tactic` when `axiom_pattern` is set) |
+| `declared_procedure` | `name`, `constant`, `native`, `kernel` (`{check, sound}` or null), `format`, `doc` | `trust_procedures` (`declared`) |
+| `use` | `decl`, `module`, `procedure`, `mode`, `profile` (the elaboration's), `axiom` | `trust_uses` (with `kernel_side`) |
+| `set` | `name`, `all`, `members`, `includes`, `resolved` | `trust_sets`, `trust_set_members`; `resolved` is checked |
+| `scope` | `module`, `max`, `default`, `deps`, `axioms`, `policy_file`, `policy_pin` | `trust_scopes`; one file and pin is required |
+| `module` | `module`, `imports`, `profile`, `ceiling`, `max`, `default`, `deps`, `axioms`, `allowed`, `scopes` (or `policy_error`) | `trust_modules`, `trust_imports`, `trust_module_policy`; the sets are checked |
+| `audit` | `decl`, `module`, `profile`, `own_native`, `dep_native`, `unverified_native`, `native_axioms`, `axioms`, `elaborated_profiles`, `violations` | `trust_decls`, `trust_decl_axioms`, `trust_audit_messages`; the split and the count of violations are checked |
+
+**`silmaril.trust-adapter.v0.2`** (added by `trust-dump`):
+
+| kind | fields |
+|---|---|
+| `header` | `core_api` (`v1-hooks`), `toolchain`, `producer`, `origin`, `roots` (and optionally `profile`, `ceiling`) |
+| `input` | `path`, `sha256` |
+| `source` | `module`, `path`, `sha256` |
+| `set` | the policy file's own sets (`standard`), which the core's lines omit; `origin = policy` |
+| `excluded` | `module`, `coverage` (`excluded`, `unsupported`), `reason` (from `--exclude M=REASON`) |
 
 ### Checks (fail closed)
 
 These are errors, and no database is written:
 
-- **Lines:** a malformed line, a missing or extra header, a wrong schema, or a duplicate.
-- **Uses:**
+- **Lines:** a malformed line, a missing or extra header, an unsupported schema or kind, a
+  duplicate, or more than one policy file or pin.
+- **Uses and audits:**
   - a use of an unknown procedure;
   - a native use of a procedure without a native side, or whose axiom is not a native run of
-    that procedure.
-
-A kernel run is never an error: it adds no axiom. Each kernel run records which kernel checker
-it used (`kernel_side`):
-
-- `fallback`: the kernel evaluates the native function;
-- `declared`: the declared kernel checker of a `ProcDecl`;
-- `unregistered`: a kernel checker that the registry does not name. This is the legacy
-  `elf_leaf` of #127. The run is kernel-checked, but its identity cannot be audited.
+    that procedure;
+  - an audit outside a described module, or two different audits of one declaration (identical
+    repeats of realized constants are merged and counted).
 - **Sets and scopes:**
   - an unknown or cyclic set include, or `all`/`none` redeclared;
   - an unknown set in a scope, or a duplicate scope;
-  - a scope whose `max` exceeds its parent's.
+  - a scope above its parent's `max`.
 - **Producer agreement:**
-  - a set whose core `resolved` differs from ours, or a core `audit` line that differs from the
-    adapter's `decl` line;
-  - more than one policy file or pin;
-  - a module without an `effective` line, or with sets that differ from the recomputed ones
-    (`max`, `default` cut to `max`, `deps`, `axioms`, and `allowed` for the profile and ceiling);
-  - a theorem whose `own_native`, `dep_native` or `plain_native` split differs from its native
-    axiom names.
+  - effective sets (`max`, `default` cut to `max`, `deps`, `axioms`, and `allowed` for the
+    profile and ceiling) that differ from the recomputed ones;
+  - a set `resolved` that differs;
+  - an `own_native`/`dep_native` split that differs from the native axiom names;
+  - a core violation count that differs from the recomputed one for some declaration.
 
-### The audit (as `trust_audit`)
+A kernel run is never an error, because it adds no axiom. Its `kernel_side` records which kernel
+checker ran:
 
-Per theorem, in a covered module:
+- `fallback`: the kernel evaluates the native function;
+- `declared`: the `ProcDecl`'s kernel checker;
+- `unregistered`: a checker the registry does not name. None occur at the refs above.
+
+### The audit (as the core's `auditLine`)
+
+Every declaration is judged at the dump's profile and ceiling, that is, the artifact's. A
+declaration elaborated under `local` that ran a procedure outside `default` is a violation in a
+`default` dump. Its `elaborated_profiles` still show `local`.
 
 | class | rule | violation |
 |---|---|---|
-| `own_native` (`edge` axiom owned by the theorem) | procedure ∈ `allowed` | `own-native-not-allowed` |
-| `dep_native` (inherited through another theorem) | procedure ∈ `deps` | `dep-native-outside-deps` |
-| `plain_native` (`decide +native`, `bv_decide`) | never allowed | `unregistered-native` |
+| `own_native` (verified, owned by the declaration) | procedure ∈ `allowed` | `own-native-not-allowed` |
+| `dep_native` (verified, inherited) | procedure ∈ `deps` | `dep-native-outside-deps` |
+| `unverified_native` (name match only) | never | `unverified-native` |
+| `plain_native` (unregistered `decide +native`, `bv_decide`, …) | never | `unregistered-native` |
 | `other` axiom | axiom ∈ `axioms` | `axiom-outside-set` |
 
-Axioms come from `collectAxioms`, so they are already transitive: an inherited native run
-appears as `dep_native` in every theorem that uses it. A theorem is audited against the
-header's profile and ceiling (the artifact's), not against the profile it was elaborated under.
-A theorem built under `local` that runs a procedure outside `default` is therefore a violation
-in a `default` dump, and its `use` line still shows `local`.
-
-**Dependency coverage.** Every theorem in a covered module is audited, with all its axioms,
-including those inherited from modules outside the roots. A module outside the roots
-(`external`) has no theorems or uses listed. An `excluded` module is described (imports,
-digests) but its theorems are not audited, and coverage becomes `partial`.
+**Dependency audit coverage.** Every theorem and definition of a covered module is audited with
+all its axioms (`collectAxioms`, transitive). Native runs inherited from modules outside the
+roots are therefore audited too, as `dep_native`. A definition exported without its body is
+opaque to importers and contributes no axioms. Modules outside the roots (`external`) have no
+uses or declarations listed. An `excluded` module is described (imports, digests) but its
+declarations are not audited, and coverage becomes `partial`.
 
 ## Tables and views (`silmaril.project-db.v0.2`)
 
 | table | content |
 |---|---|
-| `trust_inputs` | recorded and current digests (`match`, `changed`, `missing`) |
-| `trust_procedures` | `native_decider`s (function, `kernel_fallback`, separate native function and its equation, format checker) and declared procedures (native and kernel checker, each with its soundness theorem) |
-| `trust_sets`, `trust_set_members` | sets (`builtin` `all`/`none`, `policy`, `trust_set`), members (`name`) and includes (`set`) |
+| `trust_inputs` | recorded and current digests |
+| `trust_procedures` | `native_decider`, `native_tactic` and `declared` procedures with their checkers, soundness theorems, native function and equation, axiom pattern, components, toolchain and fallback coverage |
+| `trust_sets`, `trust_set_members` | sets (`builtin` `all`/`none`, `policy`, `trust_set`), member names and includes |
 | `trust_scopes` | `[[native.scope]]` rows (`NULL` inherits) |
-| `trust_modules` | source digest and status, freshness, coverage (`covered`, `excluded`, `unsupported`, `undescribed`, `external`), policy trace |
+| `trust_modules` | source digest and status, freshness, coverage (`covered`, `excluded`, `unsupported`, `undescribed`, `external`), scope chain |
 | `trust_imports` | direct import edges |
-| `trust_module_policy` | effective `max`, `default`, `deps`, `axioms`, `allowed` per module (`*` = all) |
-| `trust_uses` | recorded runs (`edge_decide`, `edge_pair`, `sil_check`): mode, `kernel_side`, elaboration profile, native axiom |
-| `trust_decls`, `trust_decl_axioms` | audited theorems and their axioms by class and procedure |
+| `trust_module_policy` | effective `max`, `default`, `deps`, `axioms`, `allowed` (`*` = all) |
+| `trust_uses` | recorded runs: mode, `kernel_side`, elaboration profile, native axiom |
+| `trust_decls`, `trust_decl_axioms`, `trust_audit_messages` | audited declarations (audit profile, elaboration profiles), axioms by class and procedure, the core's messages verbatim |
 
 The views are:
 
-- `trust_set_closure` (recursive) and `trust_module_deps` (recursive);
-- `trust_coverage_gaps` (transitive imports that are not covered or external);
-- `trust_module_native` (per module and procedure, theorems with own or inherited native runs);
+- `trust_set_closure` and `trust_module_deps` (both recursive);
+- `trust_coverage_gaps`;
+- `trust_module_native` (own, inherited, unverified and plain native runs per module and
+  procedure);
 - `trust_violations`.
 
-`meta` gains these `trust.*` keys: `status`, `enforcement`, `coverage`, `schema`, `sha256`,
+`meta` gains these `trust.*` keys: `status`, `enforcement`, `coverage`, `core_api`, `sha256`,
 `producer`, `origin`, `toolchain`, `profile`, `ceiling`, `roots`, `policy_file` and
 `policy_pin`. The database is regenerated, never migrated in place.
 
 ## The producer (`sil project trust-dump`)
 
 ```
-sil project trust-dump --module M [--module …] [--root Silmaril] [--exclude M=REASON] [--core-api v1|legacy] [--no-build]
+sil project trust-dump --module M [--module …] [--root Silmaril] [--exclude M=REASON] [--no-build]
 sil project sqlite --dump … --trust .lake/silmaril/trust.jsonl [--strict-trust]
 ```
 
 The command works in four steps:
 
-1. It writes `.lake/silmaril/TrustDump.lean`, which imports the modules.
-2. It runs `lake build --wfail` and `lake env lean` on that file.
-3. It completes the lines: the producer, the inputs, each module's source digest and the
-   exclusions.
-4. It appends the core's lines unchanged.
+1. It writes `.lake/silmaril/TrustDump.lean` (`tools/silmaril-project/src/project/trust/Driver.lean`).
+   The driver calls the core's stable hooks (`dumpLines`, `allDecls'`, and `moduleLine` and
+   `auditLine` over `declsOf`) for every module under the roots. That is what `#trust_dump path
+   M₁ …` does, but with the module list computed.
+2. It runs `lake build --wfail` and `lake env lean` on the driver.
+3. It adds the adapter lines: the header, inputs, sources, exclusions and the policy file's
+   sets. Only the policy file's sets need a non-stable read (`policyExt`).
+4. It appends the core lines unchanged.
 
-The driver for the core API is detected (`--core-api` overrides it):
-
-- **v1** (#125 from `4ec6aa13`): the core's `#trust_dump`, plus an adapter. The adapter reads
-  `policyExt`, `effective`, `allowed`, `axiomReport`, `hex64`, `profile`, `ceiling` and
-  `Members`, which are not part of the core's declared stable interface.
-- **legacy** (#125 at `28418c29`, which #127 merges): the driver also reads `procExt`, `setExt`,
-  `useExt`, `allEntries`, `procJson` and `useJson`.
+It requires #125 at `ba1b5f84` or later (`moduleLine`, `auditLine`).
 
 ### Real producer output (origin `lean`)
 
-Each case's README says how it was produced. The cases do not vendor the sources, so their
+Each case's README gives its commit and command. The cases do not vendor the sources, so their
 digests read `missing` and the modules `stale`.
 
-| case | core / branch | targets | result |
+| case | ref | targets | result |
 |---|---|---|---|
-| `trust-core-bytes` | #125 `91f7e0de` (v1) | `Prelude.Bytes.Examples`, `Data.IncludeBytes.KernelExamples`, `Prelude.Bytes.Checker.Thms` | 20 modules, 205 theorems, 5 uses (3 native), **0 violations**; `--strict-trust` passes in the build directory |
-| `trust-core-profile-tests` | #125 `91f7e0de` (v1) | `Prelude.Trust.Examples` (profile tests) | **6 violations**: native runs under `local`, a named set, the paired and the declared forms, audited at `default` |
-| `trust-elf-staged` | #127 `9ad00a40` (legacy) | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 10 modules, 102 theorems, 36 uses (1 native `elf.layout`, 35 kernel runs with an `unregistered` kernel side), **0 violations** |
-
-#127's profile tests (`Elf.Staged.Example.Profiles`) give 2 violations (`loader_local`,
-`main_local`) when they are dumped on their own. They are not committed.
+| `trust-core-bytes` | #125 `3c731fc1` | `Prelude.Bytes.Examples`, `Data.IncludeBytes.KernelExamples`, `Data.IncludeBytes.KernelImportExamples`, `Prelude.Bytes.Checker.Thms` | 21 modules, 551 declarations, 5 uses (3 native), **0 violations**; strict passes in the build package |
+| `trust-core-profile-tests` | #125 `3c731fc1` | `Prelude.Trust.Examples` | **7 violations** (6 native runs outside `default`, 1 unverified native axiom), as the core's audit lists them |
+| `trust-elf-staged` | #127 `60bf9e14` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
+| `trust-elf-profile-tests` | #127 `60bf9e14` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
 
 ### Fixtures (hand-written, origin `fixture`)
 
-- `trust-fixture-elf`: ELF leaves with registered kernel fallbacks, a shape that neither #127
-  nor #125 has. The real ELF data is `trust-elf-staged`.
+- `trust-fixture-elf`: ELF leaves with kernel fallbacks, a shape the real #127 does not have
+  (it declares its kernel sides).
 - `trust-fixture-violations`: one violation of each class, and a stale source.
 - `trust-fixture-invalid`: the fail-closed errors.
 - `trust-strict-complete`, `trust-strict-partial`, `trust-strict-gaps`, `trust-strict-violations`:
   `--strict-trust`.
 
-## Mapping from the earlier contract, and gaps
+## Remaining gaps
 
-The earlier proposal (`silmaril.trust-dump.v0.1`, never produced by any tool) is replaced.
-
-| earlier | core (#125) | here |
-|---|---|---|
-| procedure + implementations (backend, profile, checker, soundness, planned) | `native_decider name := fn [with_kernel_fallback]`: one function; native run or kernel fallback | `trust_procedures` with `kernel_fallback`. There is no `planned` status: an unregistered capability is absent. The soundness lemma is the caller's. |
-| sets of `(procedure, backend, profile)` grants | sets of names (procedures or axioms), `includes`, `all`/`none` | `trust_sets`, `trust_set_members` |
-| root / region / prefix / module scopes with `allow`, `max` | module-prefix scopes with `max`, `default`, `deps`, `axioms` | `trust_scopes`. There are no regions: `regions.toml` is not consulted. |
-| `allow` bounds own and transitive uses | `allowed` (profile ∩ ceiling) bounds own native runs; `deps` bounds inherited ones (not bounded by `max`); `axioms` bounds other axioms | `trust_module_policy`, audit as above |
-| uses with backend and axioms | `edge_decide` uses (mode, profile, axiom); axioms per theorem from `collectAxioms` | `trust_uses`, `trust_decl_axioms` |
-| `decls` optional | `axiomReport` per theorem | always present from the driver |
-
-These gaps and hooks were reported to the core:
-
-1. **A richer stable dump.** `#trust_dump` covers procedures, declared procedures, uses,
-   `trust_set`s and scopes. The adapter still reads internals for the header (toolchain,
-   profile, ceiling), the policy file's own sets (`standard`, which `#trust_dump` omits), module
-   imports, effective sets and per-theorem axiom reports. A stable hook for these would remove
-   the adapter.
-2. **Audit profile vs elaboration profile.** Both are recorded: the use's `profile` and the
-   header's audit `profile`/`ceiling`. Violations are judged at the audit profile, deliberately.
-3. **Procedure identity.** `edge_decide` binds a procedure by the goal's head function. Each
-   leaf needs its own named closed wrapper. Head identity alone must not grant arbitrary nested
-   native computation inside the arguments.
-4. **Legacy ELF kernel runs.** The legacy `elf_leaf` records kernel runs under procedures without
-   a registered kernel side (`kernel_side = unregistered`). Moving #127 to `ProcDecl`/`sil_check`
-   on the v1 core would register them.
-5. **`deps` is not bounded by `max`.** At the root, `deps = all`, so a module may inherit any
-   native procedure through imported theorems, even one outside its own `max`. This is a
-   **potential design hole**, relayed to the core: bound `deps` by an inherited dependency
-   maximum, or document a separate dependency ceiling. The database reproduces the current rule
-   and does not call it intended.
-6. **Exclusions.** The core's `scripts/trust-profile-exclude.txt` covers profile builds, not
-   audits. Audit exclusions are given explicitly (`--exclude M=REASON`) and make coverage
-   partial.
+1. **The policy file's sets** (`standard`) are not in the core's lines. The adapter reads them
+   from `policyExt`.
+2. **`declsOf` repeats realized constants** (`eq_def`, `match_1.congr_eq_*`) in every module that
+   realizes them. The repeats are merged here when identical.
+3. **Root `deps = all`.** Child scopes cannot escalate `deps` or `axioms` (#125 `ba1b5f84`). The
+   root still accepts any inherited native procedure: a broad dependency envelope, separate from
+   `max`. The database shows the actual `deps` of every module. It does not present the envelope
+   as bounded.
+4. **Trust in the instrumentation.** Recorded uses and a constant occurring in an axiom's
+   statement do not defend against a malicious metaprogram. The guarantee rests on reviewed
+   instrumentation and reviewed checker closures, and an LRAT registration needs the exact
+   statement.
+5. **No CI producer run.** The Rust CI job has no Lean, so the real cases are regenerated by
+   hand (see their READMEs) and checked as goldens.

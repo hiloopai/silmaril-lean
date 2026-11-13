@@ -363,5 +363,6 @@ pub fn tables() -> Vec<TableInfo> {
         info::<TrustUse>(),
         info::<TrustDecl>(),
         info::<TrustDeclAxiom>(),
+        info::<TrustAuditMessage>(),
     ]
 }

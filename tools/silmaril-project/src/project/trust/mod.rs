@@ -157,6 +157,7 @@ struct Tables {
     uses: Vec<TrustUse>,
     decls: Vec<TrustDecl>,
     decl_axioms: Vec<TrustDeclAxiom>,
+    audit_messages: Vec<TrustAuditMessage>,
 }
 
 impl Tables {
@@ -172,6 +173,7 @@ impl Tables {
         db.push(&self.uses);
         db.push(&self.decls);
         db.push(&self.decl_axioms);
+        db.push(&self.audit_messages);
     }
 }
 
@@ -207,9 +209,76 @@ pub fn read_lines(text: &str) -> std::result::Result<Vec<TrustLine>, String> {
         if !kinds.contains(&kind.as_str()) {
             return Err(at(format!("kind {kind:?} is not a {schema} kind")));
         }
-        out.push(serde_json::from_value(v).map_err(|e| at(format!("{schema} {kind}: {e}")))?);
+        let bad = |e: serde_json::Error| at(format!("{schema} {kind}: {e}"));
+        match (schema.as_str(), kind.as_str()) {
+            (CORE_SCHEMA, "module") => {
+                obj.remove("kind");
+                let m: CoreModule = serde_json::from_value(v).map_err(bad)?;
+                out.extend(core_module(m).map_err(at)?);
+            }
+            (CORE_SCHEMA, "audit") => {
+                obj.remove("kind");
+                let a: CoreAudit = serde_json::from_value(v).map_err(bad)?;
+                out.push(TrustLine::Decl(LineDecl {
+                    decl: a.decl,
+                    module: a.module,
+                    own_native: a.own_native,
+                    dep_native: a.dep_native,
+                    unverified: a
+                        .unverified_native
+                        .into_iter()
+                        .map(|u| (u.procedure, u.axiom))
+                        .collect(),
+                    axioms: a.axioms,
+                    native_axioms: a.native_axioms,
+                    profile: Some(a.profile),
+                    elaborated_profiles: a.elaborated_profiles,
+                    violations: a.violations,
+                }));
+            }
+            _ => out.push(serde_json::from_value(v).map_err(bad)?),
+        }
     }
     Ok(out)
+}
+
+/// A core set value: `"all"` or a list of names.
+fn core_members(v: &Option<serde_json::Value>) -> std::result::Result<Option<LineMembers>, String> {
+    match v {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::String(a)) if a == "all" => Ok(Some(LineMembers {
+            all: true,
+            names: vec![],
+        })),
+        Some(serde_json::Value::Array(xs)) => xs
+            .iter()
+            .map(|x| x.as_str().map(String::from))
+            .collect::<Option<Vec<_>>>()
+            .map(|names| Some(LineMembers { all: false, names }))
+            .ok_or_else(|| "a set is \"all\" or a list of names".into()),
+        Some(other) => Err(format!("a set is \"all\" or a list of names, not {other}")),
+    }
+}
+
+/// The core's `module` line is a module (imports) and its effective sets.
+fn core_module(m: CoreModule) -> std::result::Result<Vec<TrustLine>, String> {
+    let module = TrustLine::Module(LineModule {
+        name: m.module.clone(),
+        imports: m.imports,
+    });
+    let eff = LineEffective {
+        module: m.module,
+        max: core_members(&m.max)?,
+        default: core_members(&m.default)?,
+        deps: core_members(&m.deps)?,
+        axioms: core_members(&m.axioms)?,
+        allowed: core_members(&m.allowed)?,
+        trace: m.scopes,
+        error: m.policy_error,
+        profile: Some(m.profile),
+        ceiling: Some(m.ceiling),
+    };
+    Ok(vec![module, TrustLine::Effective(eff)])
 }
 
 /// Check the trust lines at `path` (relative to `dir`), if any, and append the trust tables to
@@ -296,7 +365,7 @@ struct Lines<'a> {
     decls: Vec<&'a LineDecl>,
     excluded: Vec<&'a LineExcluded>,
     declared: Vec<&'a LineDeclaredProcedure>,
-    audits: Vec<&'a LineAudit>,
+    sources: Vec<&'a LineSource>,
 }
 
 impl Ingest<'_> {
@@ -352,7 +421,7 @@ impl Ingest<'_> {
                 TrustLine::Decl(d) => l.decls.push(d),
                 TrustLine::Excluded(e) => l.excluded.push(e),
                 TrustLine::DeclaredProcedure(d) => l.declared.push(d),
-                TrustLine::Audit(a) => l.audits.push(a),
+                TrustLine::Source(x) => l.sources.push(x),
             }
         }
         let [h] = l.header[..] else {
@@ -362,10 +431,27 @@ impl Ingest<'_> {
             ));
             return;
         };
-        if !matches!(h.core_api.as_str(), "v1" | "legacy") {
-            self.err(format!("core_api {:?} is not v1 or legacy", h.core_api));
+        if h.core_api != "v1-hooks" {
+            self.err(format!("core_api {:?} is not v1-hooks", h.core_api));
             return;
         }
+        // The profile and ceiling of the dumping run: the header's, else the module lines'.
+        let runs: BTreeSet<(String, String)> = l
+            .effective
+            .iter()
+            .filter_map(|e| Some((e.profile.clone()?, e.ceiling.clone()?)))
+            .collect();
+        let (profile, ceiling) = match (&h.profile, &h.ceiling, runs.len()) {
+            (Some(p), Some(c), _) if runs.iter().all(|(q, d)| q == p && d == c) => {
+                (p.clone(), c.clone())
+            }
+            (None, None, 1) => runs.iter().next().cloned().expect("one"),
+            (None, None, 0) => ("default".into(), "local".into()),
+            _ => {
+                self.err(format!("the lines disagree on the profile and ceiling: header {:?}/{:?}, modules {runs:?}", h.profile, h.ceiling));
+                return;
+            }
+        };
         if l.policy.len() > 1 {
             self.err("more than one policy line");
         }
@@ -501,7 +587,16 @@ impl Ingest<'_> {
             }
             t.procedures.push(TrustProcedure {
                 name: p.name.clone(),
-                kind: "native_decider".into(),
+                kind: (if p.axiom_pattern.is_some() {
+                    "native_tactic"
+                } else {
+                    "native_decider"
+                })
+                .into(),
+                axiom_pattern: p.axiom_pattern.clone(),
+                components: (!p.components.is_empty()).then(|| p.components.join(", ")),
+                toolchain: p.toolchain.clone(),
+                fallback_coverage: p.fallback_coverage.clone(),
                 function: p.function.clone(),
                 module: Some(p.module.clone()),
                 kernel_fallback: p.kernel_fallback,
@@ -695,11 +790,20 @@ impl Ingest<'_> {
                     .collect(),
             );
         }
+        let mut sources: BTreeMap<String, &LineSource> = BTreeMap::new();
+        for x in &l.sources {
+            if !described.contains_key(&x.module) {
+                self.err(format!("source {}: the module is not described", x.module));
+            }
+            if sources.insert(x.module.clone(), x).is_some() {
+                self.err(format!("source {}: listed twice", x.module));
+            }
+        }
         let mut src_status: BTreeMap<String, &'static str> = BTreeMap::new();
         for m in described.values() {
-            let st = match (&m.source, &m.source_sha256) {
-                (Some(s), Some(h)) => status(h, &sha256_of(self.dir, s)),
-                _ => "unrecorded",
+            let st = match sources.get(&m.name) {
+                Some(x) => status(&x.sha256, &sha256_of(self.dir, &x.path)),
+                None => "unrecorded",
             };
             src_status.insert(m.name.clone(), st);
         }
@@ -727,7 +831,7 @@ impl Ingest<'_> {
         let mut traces: BTreeMap<String, String> = BTreeMap::new();
         for n in described.keys() {
             let mine = effective(n).and_then(|(e, tr)| {
-                let a = allowed_in(&e, &h.profile)?.inter(&allowed_in(&e, &h.ceiling)?);
+                let a = allowed_in(&e, &profile)?.inter(&allowed_in(&e, &ceiling)?);
                 let [a0, a1, a2, a3] = e;
                 Ok(([a0, a1, a2, a3, a], tr))
             });
@@ -827,8 +931,8 @@ impl Ingest<'_> {
             };
             t.modules.push(TrustModule {
                 name: n.clone(),
-                source: m.and_then(|m| m.source.clone()),
-                source_sha256: m.and_then(|m| m.source_sha256.clone()),
+                source: sources.get(n).map(|x| x.path.clone()),
+                source_sha256: sources.get(n).map(|x| x.sha256.clone()),
                 source_status: ss.into(),
                 freshness: freshness.into(),
                 coverage,
@@ -845,9 +949,25 @@ impl Ingest<'_> {
             }
         }
 
-        // ---- theorems and their axioms
-        let mut seen_decls = BTreeSet::new();
-        let mut derived: BTreeMap<String, [Vec<String>; 3]> = BTreeMap::new();
+        // ---- declarations and their axioms (the core's audit lines)
+        // A native tactic's axiom `<decl>._native.<tag>.ax_<n>` names its procedure by tag.
+        let tags: BTreeMap<String, String> = l
+            .procedures
+            .iter()
+            .filter_map(|p| {
+                let pat = p.axiom_pattern.as_deref()?;
+                let tag = pat.split("._native.").nth(1)?.rsplit_once(".ax_")?.0;
+                Some((tag.to_string(), p.name.clone()))
+            })
+            .collect();
+        let sorted = |v: &[String]| {
+            let mut v = v.to_vec();
+            v.sort();
+            v
+        };
+        let mut seen_decls: BTreeMap<String, &LineDecl> = BTreeMap::new();
+        let mut repeated = 0usize;
+        let mut core_counts: BTreeMap<String, usize> = BTreeMap::new();
         for d in &l.decls {
             if !described.contains_key(&d.module) {
                 self.err(format!(
@@ -856,25 +976,70 @@ impl Ingest<'_> {
                 ));
                 continue;
             }
-            if !seen_decls.insert(d.decl.clone()) {
-                self.err(format!("decl {}: listed twice", d.decl));
+            if let Some(first) = seen_decls.get(&d.decl) {
+                // Realized constants (`eq_def`, …) are listed by every module that realizes
+                // them (`declsOf`); identical audits of one declaration are one.
+                if *first == *d {
+                    repeated += 1;
+                } else {
+                    self.err(format!(
+                        "decl {}: listed twice with different audits",
+                        d.decl
+                    ));
+                }
                 continue;
+            }
+            seen_decls.insert(d.decl.clone(), *d);
+            if let Some(p) = &d.profile
+                && *p != profile
+                && !p.starts_with(&format!("{profile}≤"))
+            {
+                self.err(format!(
+                    "decl {}: audited under {p}, not the dump's {profile}",
+                    d.decl
+                ));
             }
             t.decls.push(TrustDecl {
                 decl: d.decl.clone(),
                 module: d.module.clone(),
+                profile: d.profile.clone(),
+                elaborated_profiles: (!d.elaborated_profiles.is_empty())
+                    .then(|| d.elaborated_profiles.join(",")),
             });
-            let (mut own, mut dep, mut plain) = (Vec::new(), Vec::new(), Vec::new());
+            for (i, m) in d.violations.iter().enumerate() {
+                t.audit_messages.push(TrustAuditMessage {
+                    decl: d.decl.clone(),
+                    pos: i as i64,
+                    message: m.clone(),
+                });
+            }
+            core_counts.insert(d.decl.clone(), d.violations.len());
+            let unverified: BTreeMap<&str, &str> = d
+                .unverified
+                .iter()
+                .map(|(p, a)| (a.as_str(), p.as_str()))
+                .collect();
+            let (mut own, mut dep) = (Vec::new(), Vec::new());
             let mut rows = BTreeMap::new();
             for a in &d.native_axioms {
-                let Some((owner, p, edge)) = native_axiom(a) else {
+                let Some((owner, name, edge)) = native_axiom(a) else {
                     self.err(format!("decl {}: {a} is not a native axiom", d.decl));
                     continue;
                 };
-                let class = if !edge {
-                    plain.push(p.clone());
-                    "plain_native"
-                } else if name_prefix(&d.decl, &owner) || name_prefix(&owner, &d.decl) {
+                if let Some(p) = unverified.get(a.as_str()) {
+                    rows.insert(a.clone(), ("unverified_native", p.to_string()));
+                    continue;
+                }
+                let proc = if edge {
+                    Some(name.clone())
+                } else {
+                    tags.get(&name).cloned()
+                };
+                let Some(p) = proc else {
+                    rows.insert(a.clone(), ("plain_native", name));
+                    continue;
+                };
+                let class = if name_prefix(&d.decl, &owner) || name_prefix(&owner, &d.decl) {
                     own.push(p.clone());
                     "own_native"
                 } else {
@@ -882,6 +1047,14 @@ impl Ingest<'_> {
                     "dep_native"
                 };
                 rows.insert(a.clone(), (class, p));
+            }
+            for (p, a) in &d.unverified {
+                if !d.native_axioms.contains(a) {
+                    self.err(format!(
+                        "decl {}: unverified {a} ({p}) is not among its native axioms",
+                        d.decl
+                    ));
+                }
             }
             for a in &d.axioms {
                 if native_axiom(a).is_some() {
@@ -892,27 +1065,17 @@ impl Ingest<'_> {
                 }
                 rows.insert(a.clone(), ("other", String::new()));
             }
-            let sorted = |v: &[String]| {
-                let mut v = v.to_vec();
-                v.sort();
-                v
-            };
             for (what, mine, theirs) in [
                 ("own_native", &own, &d.own_native),
                 ("dep_native", &dep, &d.dep_native),
-                ("plain_native", &plain, &d.plain_native),
             ] {
                 if sorted(mine) != sorted(theirs) {
                     self.err(format!(
-                        "decl {}: {what} {:?} does not match its native axioms ({:?})",
-                        d.decl, theirs, mine
+                        "decl {}: {what} {theirs:?} does not match its native axioms ({mine:?})",
+                        d.decl
                     ));
                 }
             }
-            derived.insert(
-                d.decl.clone(),
-                [sorted(&own), sorted(&dep), sorted(&d.axioms)],
-            );
             for (a, (class, p)) in rows {
                 t.decl_axioms.push(TrustDeclAxiom {
                     module: d.module.clone(),
@@ -924,54 +1087,10 @@ impl Ingest<'_> {
             }
         }
 
-        // The core's own audit lines, when present, must agree with the adapter's split.
-        for a in &l.audits {
-            let sorted = |v: &[String]| {
-                let mut v = v.to_vec();
-                v.sort();
-                v
-            };
-            if !described.contains_key(&a.module) {
-                self.err(format!(
-                    "audit {} in {}: the module is not described",
-                    a.decl, a.module
-                ));
-            }
-            let mut natives: Vec<String> = t
-                .decl_axioms
-                .iter()
-                .filter(|x| x.decl == a.decl && x.class != "other")
-                .map(|x| x.axiom.clone())
-                .collect();
-            natives.sort();
-            if natives != sorted(&a.native_axioms) {
-                self.err(format!(
-                    "audit {} (profile {}): native axioms differ from the decl line",
-                    a.decl, a.profile
-                ));
-            }
-            match derived.get(&a.decl) {
-                None => self.err(format!("audit {}: no decl line for it", a.decl)),
-                Some(d)
-                    if *d
-                        != [
-                            sorted(&a.own_native),
-                            sorted(&a.dep_native),
-                            sorted(&a.axioms),
-                        ] =>
-                {
-                    self.err(format!(
-                        "audit {}: the core's audit differs from the decl line",
-                        a.decl
-                    ))
-                }
-                Some(_) => {}
-            }
-        }
-
         // ---- violations (the `trust_violations` view computes the same rows)
-        let covered = |m: &str| described.contains_key(m);
+        let covered = |m: &str| described.contains_key(m) && !excluded.contains_key(m);
         let mut violations: BTreeSet<(String, String, String, &'static str)> = BTreeSet::new();
+        let mut per_decl: BTreeMap<String, usize> = BTreeMap::new();
         for x in &t.decl_axioms {
             if !covered(&x.module) {
                 continue;
@@ -983,6 +1102,7 @@ impl Ingest<'_> {
                 "own_native" if !sets5[4].contains(&x.procedure) => "own-native-not-allowed",
                 "dep_native" if !sets5[2].contains(&x.procedure) => "dep-native-outside-deps",
                 "plain_native" => "unregistered-native",
+                "unverified_native" => "unverified-native",
                 "other" if !sets5[3].contains(&x.axiom) => "axiom-outside-set",
                 _ => continue,
             };
@@ -991,7 +1111,21 @@ impl Ingest<'_> {
             } else {
                 x.procedure.clone()
             };
+            *per_decl.entry(x.decl.clone()).or_default() += 1;
             violations.insert((x.module.clone(), x.decl.clone(), subject, why));
+        }
+        // The core's audit is authoritative; the recomputed violations must agree with it.
+        for d in t.decls.iter().filter(|d| covered(&d.module)) {
+            let (mine, theirs) = (
+                per_decl.get(&d.decl).copied().unwrap_or(0),
+                core_counts.get(&d.decl).copied().unwrap_or(0),
+            );
+            if mine != theirs {
+                self.err(format!(
+                    "decl {}: the core's audit lists {theirs} violation(s), the recomputed audit {mine}",
+                    d.decl
+                ));
+            }
         }
         for (m, decl, subject, why) in &violations {
             let (at, msg) = (format!("trust {m}"), format!("{why}: {decl}: {subject}"));
@@ -1044,33 +1178,35 @@ impl Ingest<'_> {
         self.o.lines.push(format!(
             "trust dump: {} (origin {origin}); profile {}, ceiling {}",
             h.producer.as_deref().unwrap_or("unknown producer"),
-            h.profile,
-            h.ceiling
+            profile,
+            ceiling
         ));
         self.o.lines.push(format!(
-            "trust: {} procedures ({} with a kernel fallback), {} sets, {} scopes; {} uses ({native_uses} native, {unregistered} kernel runs of a checker the registry does not name)",
+            "trust: {} procedures ({} with a kernel side), {} sets, {} scopes; {} uses ({native_uses} native, {unregistered} kernel runs of a checker the registry does not name)",
             t.procedures.len(),
-            t.procedures.iter().filter(|p| p.kernel_fallback).count(),
+            t.procedures.iter().filter(|p| p.kernel_fallback || p.kernel_check.is_some()).count(),
             t.sets.len(),
             t.scopes.len(),
             t.uses.len()
         ));
         self.o.lines.push(format!(
-            "trust modules: {} covered, {} excluded, {} unsupported, {} undescribed, {} external; {} theorems audited",
+            "trust modules: {} covered, {} excluded, {} unsupported, {} undescribed, {} external; {} declarations audited{}",
             count("covered"),
             count("excluded"),
             count("unsupported"),
             count("undescribed"),
             count("external"),
-            t.decls.len()
+            t.decls.len(),
+            if repeated > 0 { format!(" ({repeated} repeated audit lines of realized constants merged)") } else { String::new() }
         ));
         let by = |w: &str| violations.iter().filter(|v| v.3 == w).count();
         self.o.lines.push(format!(
-            "trust violations: {} ({} own native not allowed, {} inherited native outside deps, {} unregistered native, {} axioms outside the set)",
+            "trust violations: {} ({} own native not allowed, {} inherited native outside deps, {} unregistered native, {} unverified native, {} axioms outside the set)",
             violations.len(),
             by("own-native-not-allowed"),
             by("dep-native-outside-deps"),
             by("unregistered-native"),
+            by("unverified-native"),
             by("axiom-outside-set")
         ));
         self.o.lines.push(format!(
@@ -1106,8 +1242,8 @@ impl Ingest<'_> {
             ("producer", h.producer.clone().unwrap_or_default()),
             ("origin", origin),
             ("toolchain", h.toolchain.clone()),
-            ("profile", h.profile.clone()),
-            ("ceiling", h.ceiling.clone()),
+            ("profile", profile.clone()),
+            ("ceiling", ceiling.clone()),
             ("roots", roots.join(" ")),
         ];
         let mut pins: BTreeSet<(String, String)> = l
@@ -1140,31 +1276,16 @@ impl Ingest<'_> {
 
 // ---------------------------------------------------------------- the producer
 
-const DRIVER_V1: &str = include_str!("DriverV1.lean");
-const DRIVER_LEGACY: &str = include_str!("DriverLegacy.lean");
+const DRIVER: &str = include_str!("Driver.lean");
 
-/// Which core trust API a driver reads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CoreApi {
-    /// `#trust_dump` (schema `silmaril.trust.v1`), #125 from `4ec6aa13`.
-    V1,
-    /// Before `#trust_dump`: the driver reads the extensions itself.
-    Legacy,
-}
-
-/// The core API of the checkout under `dir` (the package itself or `.lake/packages/silmaril`).
-pub fn detect_core_api(dir: &Path) -> Option<CoreApi> {
+/// Whether the core under `dir` (the package itself or `.lake/packages/silmaril`) has the stable
+/// dump hooks (`moduleLine`, `auditLine`, #125 from `ba1b5f84`).
+pub fn core_has_hooks(dir: &Path) -> Option<bool> {
     let rel = "Silmaril/Prelude/Trust/Elab/Defs.lean";
     [dir.join(rel), dir.join(".lake/packages/silmaril").join(rel)]
         .iter()
         .find_map(|p| fs::read_to_string(p).ok())
-        .map(|t| {
-            if t.contains("#trust_dump") {
-                CoreApi::V1
-            } else {
-                CoreApi::Legacy
-            }
-        })
+        .map(|t| t.contains("def moduleLine") && t.contains("def auditLine"))
 }
 
 fn lean_name_list(names: &[String]) -> String {
@@ -1187,20 +1308,10 @@ fn lean_str(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
-/// The trust driver: imports `modules`, describes the modules under `roots`, writes adapter
-/// lines to `out` and (v1) the core's `#trust_dump` to `core_out`.
-pub fn driver(
-    api: CoreApi,
-    modules: &[String],
-    roots: &[String],
-    out: &Path,
-    core_out: &Path,
-) -> String {
-    let template = match api {
-        CoreApi::V1 => DRIVER_V1,
-        CoreApi::Legacy => DRIVER_LEGACY,
-    };
-    template
+/// The trust driver: imports `modules`, writes the core's lines (stable hooks) for the modules
+/// under `roots` to `core_out`, and the adapter's to `out`.
+pub fn driver(modules: &[String], roots: &[String], out: &Path, core_out: &Path) -> String {
+    DRIVER
         .replace(
             "__IMPORTS__",
             &modules
@@ -1224,74 +1335,25 @@ pub struct Completion<'a> {
     pub excluded: &'a [(String, String)],
 }
 
-/// Complete the driver's lines: the adapter schema on lines without one (a legacy driver's),
-/// the producer and roots in the header, the inputs, each module's source path and digest (when
-/// `<dir>/<A/B/C>.lean` exists), imports without duplicates, the exclusions, then the core's
-/// lines (`core`, from `#trust_dump`) as they are. Line order is kept.
+/// Complete the lines: the adapter's (producer, origin and roots in the header; the inputs; a
+/// `source` line, with its digest, for every core `module` line whose `<dir>/<A/B/C>.lean`
+/// exists; the exclusions), then the core's lines as they are, each checked to be
+/// `silmaril.trust.v1`. Line order is kept.
 pub fn complete(
-    raw: &str,
-    core: Option<&str>,
+    adapter: &str,
+    core: &str,
     dir: &Path,
     c: &Completion,
 ) -> std::result::Result<String, String> {
-    let mut out = Vec::new();
-    let adapter = |v: serde_json::Value| -> String {
-        let mut v = v;
+    let tag = |mut v: serde_json::Value| -> String {
         if let Some(o) = v.as_object_mut() {
-            o.entry("schema").or_insert_with(|| ADAPTER_SCHEMA.into());
+            o.insert("schema".into(), ADAPTER_SCHEMA.into());
         }
         serde_json::to_string(&v).expect("json")
     };
-    for (i, l) in raw
-        .lines()
-        .enumerate()
-        .filter(|(_, l)| !l.trim().is_empty())
-    {
-        let mut v: serde_json::Value =
-            serde_json::from_str(l).map_err(|e| format!("driver line {}: {e}", i + 1))?;
-        let obj = v
-            .as_object_mut()
-            .ok_or_else(|| format!("driver line {}: not an object", i + 1))?;
-        match obj.get("kind").and_then(|k| k.as_str()) {
-            Some("header") => {
-                obj.insert("producer".into(), c.producer.into());
-                obj.insert("origin".into(), "lean".into());
-                obj.insert("roots".into(), serde_json::json!(c.roots));
-                out.push(adapter(v));
-                for p in c.inputs {
-                    if let Some(h) = sha256_of(dir, p) {
-                        out.push(adapter(
-                            serde_json::json!({"kind": "input", "path": p, "sha256": h}),
-                        ));
-                    }
-                }
-                continue;
-            }
-            Some("module") => {
-                let name = obj
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or_default()
-                    .to_string();
-                let path = format!("{}.lean", name.replace('.', "/"));
-                if let Some(h) = sha256_of(dir, &path) {
-                    obj.insert("source".into(), path.into());
-                    obj.insert("source_sha256".into(), h.into());
-                }
-                if let Some(serde_json::Value::Array(is)) = obj.get_mut("imports") {
-                    let mut seen = BTreeSet::new();
-                    is.retain(|x| seen.insert(x.to_string()));
-                }
-            }
-            _ => {}
-        }
-        out.push(adapter(v));
-    }
-    for (m, why) in c.excluded {
-        out.push(adapter(serde_json::json!({"kind": "excluded", "module": m, "coverage": "excluded", "reason": why})));
-    }
+    let mut core_lines = Vec::new();
+    let mut modules = Vec::new();
     for (i, l) in core
-        .unwrap_or_default()
         .lines()
         .enumerate()
         .filter(|(_, l)| !l.trim().is_empty())
@@ -1301,8 +1363,50 @@ pub fn complete(
         if v.get("schema").and_then(|s| s.as_str()) != Some(CORE_SCHEMA) {
             return Err(format!("core line {}: schema is not {CORE_SCHEMA}", i + 1));
         }
-        out.push(serde_json::to_string(&v).expect("json"));
+        if v.get("kind").and_then(|k| k.as_str()) == Some("module")
+            && let Some(m) = v.get("module").and_then(|m| m.as_str())
+        {
+            modules.push(m.to_string());
+        }
+        core_lines.push(serde_json::to_string(&v).expect("json"));
     }
+    let mut out = Vec::new();
+    for (i, l) in adapter
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+    {
+        let mut v: serde_json::Value =
+            serde_json::from_str(l).map_err(|e| format!("adapter line {}: {e}", i + 1))?;
+        let obj = v
+            .as_object_mut()
+            .ok_or_else(|| format!("adapter line {}: not an object", i + 1))?;
+        if obj.get("kind").and_then(|k| k.as_str()) == Some("header") {
+            obj.insert("producer".into(), c.producer.into());
+            obj.insert("origin".into(), "lean".into());
+            obj.insert("roots".into(), serde_json::json!(c.roots));
+            out.push(tag(v));
+            for p in c.inputs {
+                if let Some(h) = sha256_of(dir, p) {
+                    out.push(tag(
+                        serde_json::json!({"kind": "input", "path": p, "sha256": h}),
+                    ));
+                }
+            }
+            for m in &modules {
+                let path = format!("{}.lean", m.replace('.', "/"));
+                if let Some(h) = sha256_of(dir, &path) {
+                    out.push(tag(serde_json::json!({"kind": "source", "module": m, "path": path, "sha256": h})));
+                }
+            }
+            continue;
+        }
+        out.push(tag(v));
+    }
+    for (m, why) in c.excluded {
+        out.push(tag(serde_json::json!({"kind": "excluded", "module": m, "coverage": "excluded", "reason": why})));
+    }
+    out.extend(core_lines);
     Ok(out.join("\n") + "\n")
 }
 
@@ -1329,29 +1433,20 @@ mod tests {
     fn driver_and_completion() {
         let p = Path::new("/tmp/x \"q\".jsonl");
         let d = driver(
-            CoreApi::V1,
             &["A.B".into()],
             &["Silmaril".into()],
             p,
             Path::new("/c.jsonl"),
         );
         assert!(d.contains("import A.B\n") && d.contains("[`«Silmaril»]"));
-        assert!(d.contains(r#""/tmp/x \"q\".jsonl""#) && d.contains("#trust_dump \"/c.jsonl\""));
-        assert!(!d.contains("__"));
-        let d = driver(
-            CoreApi::Legacy,
-            &["A.B".into()],
-            &["Silmaril".into()],
-            p,
-            Path::new("/c"),
-        );
-        assert!(!d.contains("\n#trust_dump") && !d.contains("__"));
+        assert!(d.contains(r#""/tmp/x \"q\".jsonl""#) && d.contains(r#""/c.jsonl""#));
+        assert!(d.contains("moduleLine") && d.contains("auditLine") && !d.contains("__"));
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir_all(dir.path().join("A")).unwrap();
         fs::write(dir.path().join("A/B.lean"), "x").unwrap();
         fs::write(dir.path().join("lean-toolchain"), "t").unwrap();
-        let raw = "{\"kind\":\"header\",\"core_api\":\"legacy\",\"toolchain\":\"t\",\"profile\":\"default\",\"ceiling\":\"local\"}\n{\"kind\":\"module\",\"name\":\"A.B\",\"imports\":[\"Init\",\"Init\"]}\n";
-        let core = "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"s\"}\n";
+        let adapter = "{\"schema\":\"x\",\"kind\":\"header\",\"core_api\":\"v1-hooks\",\"toolchain\":\"t\"}\n";
+        let core = "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"module\",\"module\":\"A.B\",\"imports\":[],\"profile\":\"default\",\"ceiling\":\"local\",\"max\":\"all\",\"default\":[],\"deps\":\"all\",\"axioms\":[],\"allowed\":[],\"scopes\":[\"A\"]}\n";
         let ex = [("A.B".to_string(), "tests".to_string())];
         let c = Completion {
             roots: &["A".into()],
@@ -1359,7 +1454,7 @@ mod tests {
             inputs: &["lean-toolchain", "absent"],
             excluded: &ex,
         };
-        let out = complete(raw, Some(core), dir.path(), &c).unwrap();
+        let out = complete(adapter, core, dir.path(), &c).unwrap();
         let ls: Vec<serde_json::Value> = out
             .lines()
             .map(|l| serde_json::from_str(l).unwrap())
@@ -1368,13 +1463,16 @@ mod tests {
         assert_eq!(ls[0]["origin"], "lean");
         assert_eq!(ls[0]["schema"], ADAPTER_SCHEMA);
         assert_eq!(ls[1]["path"], "lean-toolchain");
-        assert_eq!(ls[2]["source"], "A/B.lean");
-        assert_eq!(ls[2]["imports"], serde_json::json!(["Init"]));
+        assert_eq!(ls[2]["kind"], "source");
         assert_eq!(ls[3]["kind"], "excluded");
         assert_eq!(ls[4]["schema"], CORE_SCHEMA);
-        assert!(complete(raw, Some("{\"kind\":\"set\"}"), dir.path(), &c).is_err());
+        assert!(complete(adapter, "{\"kind\":\"set\"}", dir.path(), &c).is_err());
         let lines = read_lines(&out).unwrap();
-        assert_eq!(lines.len(), 5);
+        assert_eq!(
+            lines.len(),
+            6,
+            "a core module line is a module and its effective sets"
+        );
         assert!(read_lines("{\"schema\":\"silmaril.trust.v1\",\"kind\":\"header\"}").is_err());
         assert!(read_lines("{\"schema\":\"nope\",\"kind\":\"set\",\"name\":\"s\"}").is_err());
     }

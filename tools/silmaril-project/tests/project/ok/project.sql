@@ -232,7 +232,7 @@ CREATE TABLE trust_inputs(
 );
 CREATE TABLE trust_procedures(
   name TEXT NOT NULL PRIMARY KEY,
-  kind TEXT NOT NULL CHECK(kind IN ('native_decider','declared')),
+  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared')),
   function TEXT NOT NULL,
   module TEXT,
   kernel_fallback INTEGER NOT NULL,
@@ -244,6 +244,10 @@ CREATE TABLE trust_procedures(
   kernel_sound TEXT,
   format TEXT,
   sound TEXT,
+  axiom_pattern TEXT,
+  components TEXT,
+  toolchain TEXT,
+  fallback_coverage TEXT,
   doc TEXT NOT NULL
 );
 CREATE TABLE trust_sets(
@@ -297,22 +301,30 @@ CREATE TABLE trust_uses(
 );
 CREATE TABLE trust_decls(
   decl TEXT NOT NULL PRIMARY KEY,
-  module TEXT NOT NULL
+  module TEXT NOT NULL,
+  profile TEXT,
+  elaborated_profiles TEXT
 );
 CREATE TABLE trust_decl_axioms(
   module TEXT NOT NULL,
   decl TEXT NOT NULL,
   axiom TEXT NOT NULL,
-  class TEXT NOT NULL CHECK(class IN ('own_native','dep_native','plain_native','other')),
+  class TEXT NOT NULL CHECK(class IN ('own_native','dep_native','unverified_native','plain_native','other')),
   procedure TEXT NOT NULL,
   PRIMARY KEY(module, decl, axiom)
+);
+CREATE TABLE trust_audit_messages(
+  decl TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  PRIMARY KEY(decl, pos)
 );
 CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, e.record_name, e.pos, e.child, s.summary, s.verdict FROM edges e JOIN problems p ON p.name = e.parent AND p.kind = 'group' LEFT JOIN summary s ON s.problem = e.child;
 CREATE VIEW trust_set_closure AS WITH RECURSIVE c(set_name, member_kind, member) AS (SELECT set_name, member_kind, member FROM trust_set_members UNION SELECT c.set_name, m.member_kind, m.member FROM c JOIN trust_set_members m ON c.member_kind = 'set' AND m.set_name = c.member) SELECT set_name, member AS name FROM c WHERE member_kind = 'name' UNION SELECT name, '*' FROM trust_sets WHERE is_all = 1 UNION SELECT c.set_name, '*' FROM c JOIN trust_sets s ON c.member_kind = 'set' AND s.name = c.member AND s.is_all = 1;
 CREATE VIEW trust_module_deps AS WITH RECURSIVE d(module, dep) AS (SELECT module, import FROM trust_imports UNION SELECT d.module, i.import FROM d JOIN trust_imports i ON i.module = d.dep) SELECT module, dep FROM d;
 CREATE VIEW trust_coverage_gaps AS SELECT d.module, d.dep, m.coverage, m.reason FROM trust_module_deps d JOIN trust_modules m ON m.name = d.dep WHERE m.coverage NOT IN ('covered','external');
-CREATE VIEW trust_module_native AS SELECT module, procedure, class, count(DISTINCT decl) AS decls FROM trust_decl_axioms WHERE class IN ('own_native','dep_native','plain_native') GROUP BY module, procedure, class;
-CREATE VIEW trust_violations AS SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'own-native-not-allowed' AS reason FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'own_native' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'allowed' AND p.member IN (x.procedure, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'dep-native-outside-deps' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'dep_native' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'deps' AND p.member IN (x.procedure, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unregistered-native' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'plain_native' UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'axiom-outside-set' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'other' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'axioms' AND p.member IN (x.axiom, '*'));
+CREATE VIEW trust_module_native AS SELECT module, procedure, class, count(DISTINCT decl) AS decls FROM trust_decl_axioms WHERE class <> 'other' GROUP BY module, procedure, class;
+CREATE VIEW trust_violations AS SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'own-native-not-allowed' AS reason FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'own_native' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'allowed' AND p.member IN (x.procedure, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'dep-native-outside-deps' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'dep_native' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'deps' AND p.member IN (x.procedure, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unregistered-native' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'plain_native' UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'axiom-outside-set' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'other' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'axioms' AND p.member IN (x.axiom, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unverified-native' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'unverified_native';
 CREATE INDEX edges_parent ON edges(parent, child, kind, via);
 CREATE INDEX edges_child ON edges(child, parent);
 CREATE INDEX edges_kind ON edges(kind);

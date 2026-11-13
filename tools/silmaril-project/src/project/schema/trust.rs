@@ -24,8 +24,8 @@ use serde::Deserialize;
 
 /// The core's provenance schema (`docs/trust.md`, `#trust_dump`).
 pub const CORE_SCHEMA: &str = "silmaril.trust.v1";
-/// Lines the adapter (`sil project trust-dump`) adds, and lines of a core before v1.
-pub const ADAPTER_SCHEMA: &str = "silmaril.trust-adapter.v0.1";
+/// Lines `sil project trust-dump` adds to the core's.
+pub const ADAPTER_SCHEMA: &str = "silmaril.trust-adapter.v0.2";
 /// `(schema, kinds)`: which kinds each line schema may carry.
 pub const LINE_KINDS: &[(&str, &[&str])] = &[
     (
@@ -36,24 +36,13 @@ pub const LINE_KINDS: &[(&str, &[&str])] = &[
             "set",
             "scope",
             "declared_procedure",
+            "module",
             "audit",
         ],
     ),
     (
         ADAPTER_SCHEMA,
-        &[
-            "header",
-            "input",
-            "policy",
-            "scope",
-            "set",
-            "procedure",
-            "use",
-            "module",
-            "effective",
-            "decl",
-            "excluded",
-        ],
+        &["header", "input", "set", "source", "excluded"],
     ),
 ];
 
@@ -73,19 +62,20 @@ pub enum TrustLine {
     Decl(LineDecl),
     Excluded(LineExcluded),
     DeclaredProcedure(LineDeclaredProcedure),
-    Audit(LineAudit),
+    Source(LineSource),
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LineHeader {
-    /// The core API the driver read: `v1` (`#trust_dump`) or `legacy` (core before v1).
+    /// The core hooks the driver called (`v1-hooks`: `dumpLines`, `allDecls`, `moduleLine`,
+    /// `declsOf`, `auditLine`).
     pub core_api: String,
     /// `Lean.versionString` of the producer.
     pub toolchain: String,
-    /// The profile and ceiling the effective sets were computed for.
-    pub profile: String,
-    pub ceiling: String,
+    /// The profile and ceiling of the dumping run (also on every core `module` line).
+    pub profile: Option<String>,
+    pub ceiling: Option<String>,
     /// What wrote the lines (`sil project trust-dump` adds itself; a fixture says so).
     pub producer: Option<String>,
     /// `lean` (a producer run) or `fixture` (hand-written). Self-declared.
@@ -152,6 +142,12 @@ pub struct LineProcedure {
     pub sound: Option<String>,
     pub native_function: Option<String>,
     pub native_eq: Option<String>,
+    /// Native tactics (`native_tactic`): `<decl>._native.<tag>.ax_<n>`.
+    pub axiom_pattern: Option<String>,
+    #[serde(default)]
+    pub components: Vec<String>,
+    pub toolchain: Option<String>,
+    pub fallback_coverage: Option<String>,
     #[serde(default)]
     pub doc: String,
 }
@@ -177,23 +173,6 @@ pub struct LineDeclaredProcedure {
     pub doc: String,
 }
 
-/// A `trust_audit` result (the core's; checked against the adapter's `decl` line).
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct LineAudit {
-    pub decl: String,
-    pub module: String,
-    pub profile: String,
-    #[serde(default)]
-    pub own_native: Vec<String>,
-    #[serde(default)]
-    pub dep_native: Vec<String>,
-    #[serde(default)]
-    pub native_axioms: Vec<String>,
-    #[serde(default)]
-    pub axioms: Vec<String>,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LineUse {
@@ -212,8 +191,65 @@ pub struct LineModule {
     pub name: String,
     #[serde(default)]
     pub imports: Vec<String>,
-    pub source: Option<String>,
-    pub source_sha256: Option<String>,
+}
+
+/// A module's source file and its digest at dump time (adapter).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineSource {
+    pub module: String,
+    pub path: String,
+    pub sha256: String,
+}
+
+/// The core's `module` line (`moduleLine`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreModule {
+    pub module: String,
+    #[serde(default)]
+    pub imports: Vec<String>,
+    pub profile: String,
+    pub ceiling: String,
+    pub max: Option<serde_json::Value>,
+    pub default: Option<serde_json::Value>,
+    pub deps: Option<serde_json::Value>,
+    pub axioms: Option<serde_json::Value>,
+    pub allowed: Option<serde_json::Value>,
+    #[serde(default)]
+    pub scopes: Vec<String>,
+    pub policy_error: Option<String>,
+}
+
+/// One `unverified_native` entry of an audit.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreUnverified {
+    pub procedure: String,
+    pub axiom: String,
+}
+
+/// The core's `audit` line (`auditLine`): never failing, with its `violations`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreAudit {
+    pub decl: String,
+    pub module: String,
+    pub profile: String,
+    #[serde(default)]
+    pub own_native: Vec<String>,
+    #[serde(default)]
+    pub dep_native: Vec<String>,
+    #[serde(default)]
+    pub unverified_native: Vec<CoreUnverified>,
+    #[serde(default)]
+    pub native_axioms: Vec<String>,
+    #[serde(default)]
+    pub axioms: Vec<String>,
+    #[serde(default)]
+    pub elaborated_profiles: Vec<String>,
+    #[serde(default)]
+    pub violations: Vec<String>,
 }
 
 /// A resolved set: `{"all": true}` or `{"all": false, "names": […]}`.
@@ -239,26 +275,36 @@ pub struct LineEffective {
     pub trace: Vec<String>,
     /// The core could not resolve the policy for this module.
     pub error: Option<String>,
+    /// The dumping run's profile and ceiling (core `module` lines).
+    pub profile: Option<String>,
+    pub ceiling: Option<String>,
 }
 
 /// The core's `axiomReport` of a theorem.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct LineDecl {
     pub decl: String,
     pub module: String,
+    /// Verified native procedures run by the declaration itself, and inherited.
     #[serde(default)]
     pub own_native: Vec<String>,
     #[serde(default)]
     pub dep_native: Vec<String>,
-    /// Tactics of native runs outside `edge_decide` (`decide +native`, `bv_decide`).
+    /// `(procedure, axiom)`: native axioms that match a procedure by name only.
     #[serde(default)]
-    pub plain_native: Vec<String>,
+    pub unverified: Vec<(String, String)>,
     /// Axioms that are not native runs.
     #[serde(default)]
     pub axioms: Vec<String>,
     #[serde(default)]
     pub native_axioms: Vec<String>,
+    /// The audit's profile, the profiles its own uses elaborated in, and its violations.
+    pub profile: Option<String>,
+    #[serde(default)]
+    pub elaborated_profiles: Vec<String>,
+    #[serde(default)]
+    pub violations: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -288,7 +334,7 @@ table! {
     /// native and a kernel checker, each with a soundness theorem, for the same proposition).
     TrustProcedure = "trust_procedures", key("name") {
         name: String = "TEXT NOT NULL",
-        kind: String = "TEXT NOT NULL CHECK(kind IN ('native_decider','declared'))",
+        kind: String = "TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared'))",
         function: String = "TEXT NOT NULL",
         module: Option<String> = "TEXT",
         kernel_fallback: bool = "INTEGER NOT NULL",
@@ -300,6 +346,10 @@ table! {
         kernel_sound: Option<String> = "TEXT",
         format: Option<String> = "TEXT",
         sound: Option<String> = "TEXT",
+        axiom_pattern: Option<String> = "TEXT",
+        components: Option<String> = "TEXT",
+        toolchain: Option<String> = "TEXT",
+        fallback_coverage: Option<String> = "TEXT",
         doc: String = "TEXT NOT NULL",
     }
 }
@@ -387,6 +437,19 @@ table! {
     TrustDecl = "trust_decls", key("decl") {
         decl: String = "TEXT NOT NULL",
         module: String = "TEXT NOT NULL",
+        /// The audit's profile (the dumping run's).
+        profile: Option<String> = "TEXT",
+        /// The profiles its own uses elaborated in (`,`-separated).
+        elaborated_profiles: Option<String> = "TEXT",
+    }
+}
+
+table! {
+    /// The core's audit messages, verbatim (`auditLine`'s `violations`).
+    TrustAuditMessage = "trust_audit_messages", key("decl", "pos") {
+        decl: String = "TEXT NOT NULL",
+        pos: i64 = "INTEGER NOT NULL",
+        message: String = "TEXT NOT NULL",
     }
 }
 
@@ -399,7 +462,7 @@ table! {
         module: String = "TEXT NOT NULL",
         decl: String = "TEXT NOT NULL",
         axiom: String = "TEXT NOT NULL",
-        class: String = "TEXT NOT NULL CHECK(class IN ('own_native','dep_native','plain_native','other'))",
+        class: String = "TEXT NOT NULL CHECK(class IN ('own_native','dep_native','unverified_native','plain_native','other'))",
         procedure: String = "TEXT NOT NULL",
     }
 }
@@ -421,7 +484,7 @@ SELECT module, dep FROM d;",
     "CREATE VIEW trust_coverage_gaps AS SELECT d.module, d.dep, m.coverage, m.reason FROM trust_module_deps d \
 JOIN trust_modules m ON m.name = d.dep WHERE m.coverage NOT IN ('covered','external');",
     "CREATE VIEW trust_module_native AS SELECT module, procedure, class, count(DISTINCT decl) AS decls \
-FROM trust_decl_axioms WHERE class IN ('own_native','dep_native','plain_native') GROUP BY module, procedure, class;",
+FROM trust_decl_axioms WHERE class <> 'other' GROUP BY module, procedure, class;",
     "CREATE VIEW trust_violations AS \
 SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'own-native-not-allowed' AS reason FROM trust_decl_axioms x \
 JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'own_native' \
@@ -433,5 +496,7 @@ UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unregistered-nati
 JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'plain_native' \
 UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'axiom-outside-set' FROM trust_decl_axioms x \
 JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'other' \
-AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'axioms' AND p.member IN (x.axiom, '*'));",
+AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'axioms' AND p.member IN (x.axiom, '*')) \
+UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unverified-native' FROM trust_decl_axioms x \
+JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'unverified_native';",
 ];
