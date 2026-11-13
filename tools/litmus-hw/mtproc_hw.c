@@ -1,5 +1,5 @@
 /* mtproc_hw: run the raw x86-64 bytes of the multithreaded-process-model experiments
-   (tools/litmus-hw/mtproc/Explore.lean) natively, many times, and count the final
+   (Silmaril/Proofs/Process/Mt/Explore.lean) natively, many times, and count the final
    observations, for comparison with the model's exhaustive schedule exploration.
 
    Usage: mtproc_hw ITERS [CPU0,CPU1] [TEST...]     tests: SB MP INC2 LOCKINC2

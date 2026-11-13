@@ -11,8 +11,20 @@ public meta import Silmaril.X86.Basic
 Small two-thread x86-64 programs (raw bytes, position independent: every address comes in a
 register), explored over **every schedule** with the executable SC scheduler `Mt.X86.exec1`
 (each of its runs is an `MtProc X sc Prim.table (Base.none Unit)` run, `Mt.X86.run_sound`).
-`#eval` prints the set of final observations, to compare with the same bytes run natively
-(silmaril-lean `tools/litmus-hw/mtproc_hw.c`).
+`#guard` checks the set of final observations (compiled evaluation, as in `Examples`), to
+compare with the same bytes run natively (`tools/litmus-hw/mtproc_hw.c`;
+`docs/mt-validation.md` has the comparison).
+
+| program | observation | every schedule of the model (SC) | hardware (i7-8700) |
+|---|---|---|---|
+| SB | `[r1, r2, status]` | `{[0,1,0], [1,0,0], [1,1,0]}` (924 schedules) | also `r1 = r2 = 0` |
+| MP | `[flag, data, status]` | `{[0,0,0], [0,1,0], [1,1,0]}` | the same set |
+| INC2 | `[x, status]` | `{[1,0], [2,0]}` | the same set |
+| LOCKINC2 | `[x, status]` | `{[2,0]}` | the same set |
+
+SB is racy: its weak outcome is outside every SC run, and the model's `tso` memory system
+reaches it only through buffered plain steps, which need the instructions' access lists
+(`Task.x86Acc`); `mtX` emits none today.
 
 Thread `t` runs at `0x1000 + 0x100 t` with `rdi`, `rsi`, `rdx` set as below; data at `0x3000`.
 -/
@@ -84,21 +96,28 @@ def mp : XCfg Unit :=
 def incCode : List Byte := [0x48, 0x8B, 0x07, 0x48, 0x83, 0xC0, 0x01, 0x48, 0x89, 0x07] ++ exit0
 
 def inc2 : XCfg Unit :=
-  cfg [(1, core 0x1100 [(.rsp, 0x5ff8), (.rdi, 0x3000)]), (2, core 0x1200 [(.rsp, 0x6ff8), (.rdi, 0x3000)])]
+  cfg [(1, core 0x1100 [(.rsp, 0x5ff8), (.rdi, 0x3000)]),
+       (2, core 0x1200 [(.rsp, 0x6ff8), (.rdi, 0x3000)])]
     (mem [(0x1100, incCode), (0x1200, incCode)])
 
 /-- **LOCKINC2**: `lock add qword [rdi], 1; exit(0)` in both threads. -/
 def lockIncCode : List Byte := [0xF0, 0x48, 0x83, 0x07, 0x01] ++ exit0
 
 def lockInc2 : XCfg Unit :=
-  cfg [(1, core 0x1100 [(.rsp, 0x5ff8), (.rdi, 0x3000)]), (2, core 0x1200 [(.rsp, 0x6ff8), (.rdi, 0x3000)])]
+  cfg [(1, core 0x1100 [(.rsp, 0x5ff8), (.rdi, 0x3000)]),
+       (2, core 0x1200 [(.rsp, 0x6ff8), (.rdi, 0x3000)])]
     (mem [(0x1100, lockIncCode), (0x1200, lockIncCode)])
 
--- observations: [r1, r2, exit status]; [flag, data, status]; [x, status]
-#eval observe sb [1, 2] fun C => [word C 0x3010, word C 0x3018, (C.status.getD 999)]
-#eval observe mp [1, 2] fun C => [word C 0x3010, word C 0x3018, (C.status.getD 999)]
-#eval observe inc2 [1, 2] fun C => [word C 0x3000, (C.status.getD 999)]
-#eval observe lockInc2 [1, 2] fun C => [word C 0x3000, (C.status.getD 999)]
-#eval (finals sb [1, 2] 64).length
+/-- The same elements. -/
+def sameSet (a b : List (List Nat)) : Bool := a.all b.contains && b.all a.contains
+
+-- observations: `[r1, r2, status]`, `[flag, data, status]`, `[x, status]`
+#guard sameSet (observe sb [1, 2] fun C => [word C 0x3010, word C 0x3018, C.status.getD 999])
+  [[0, 1, 0], [1, 0, 0], [1, 1, 0]]
+#guard (finals sb [1, 2] 64).length == 924
+#guard sameSet (observe mp [1, 2] fun C => [word C 0x3010, word C 0x3018, C.status.getD 999])
+  [[0, 0, 0], [0, 1, 0], [1, 1, 0]]
+#guard sameSet (observe inc2 [1, 2] fun C => [word C 0x3000, C.status.getD 999]) [[1, 0], [2, 0]]
+#guard sameSet (observe lockInc2 [1, 2] fun C => [word C 0x3000, C.status.getD 999]) [[2, 0]]
 
 end Silmaril.Proofs.Process.Mt.Explore

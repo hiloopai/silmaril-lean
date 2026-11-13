@@ -12,7 +12,7 @@ the recorded outputs are in [results/](results/).
 | `simple_model.py` | Exhaustive explorer of the simple pthread model (`Silmaril.Process.Mt.Pthread.Simple`), with `p1`…`p8` transcribed from `scripts/pthread-hw/src`. It reports outcome sets, undefined behaviour, races (`Csl.Race`, read/read included, and write races) and deadlocks. |
 | `perturb.c` | `LD_PRELOAD` shim that perturbs schedules around every pthread call and at thread start (random `sched_yield`, spins and migrations). The binary's bytes are unchanged. |
 | `pthread_diff.py` | Differential test: runs the pthread binaries (pinned full-size binaries and small-bound rebuilds) under 16 configurations (host or pinned glibc, 4 placements, with or without perturbation) and checks every observed output against the model's outcome set. |
-| `mtproc/Explore.lean` | Every schedule of four small raw-byte x86-64 programs under the multithreaded process model's executable SC scheduler (`Silmaril.Process.Mt.X86.exec1`, PR #142). It needs a tree with `Silmaril.Process.Mt.X86`, so it is not part of this library build. |
+| `Silmaril/Proofs/Process/Mt/Explore.lean` | (in the library) Every schedule of four small raw-byte x86-64 programs under the multithreaded process model's executable SC scheduler (`Silmaril.Process.Mt.X86.exec1`). `#guard` checks the outcome sets. |
 | `mtproc_hw.c` | The same bytes run natively, with two pinned threads, many times. |
 
 The 68-test corpus uses `tools/litmus-run` from PR #143 (`oss-mm/models-litmus`) unchanged. It
