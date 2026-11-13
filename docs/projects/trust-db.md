@@ -112,6 +112,16 @@ checker ran:
 - `declared`: the `ProcDecl`'s kernel checker;
 - `unregistered`: a checker the registry does not name. None occur at the refs above.
 
+### Verified native runs
+
+A native axiom's name (`._native.edge.<p>.`) or a native tactic's tag (`axiom_pattern`) only
+**classifies** the axiom. The tool counts it as a run of `p` only if a recorded native `use` of
+`p` produced exactly that axiom. Otherwise the axiom is `unverified_native`, and if the core's
+audit called it verified, the dump is refused. The tool cannot see axiom statements. It relies
+on the core for the other half of verification: that the statement mentions the evaluated
+function (`verifiedNative`). It never trusts a regex, a tag or registry metadata alone. Binding
+`bv_decide` to the real checked `verifyBVExpr` statement is the core's and the LRAT work's job.
+
 ### The audit (as the core's `auditLine`)
 
 Every declaration is judged at the dump's profile and ceiling, that is, the artifact's. A
@@ -122,7 +132,7 @@ declaration elaborated under `local` that ran a procedure outside `default` is a
 |---|---|---|
 | `own_native` (verified, owned by the declaration) | procedure ∈ `allowed` | `own-native-not-allowed` |
 | `dep_native` (verified, inherited) | procedure ∈ `deps` | `dep-native-outside-deps` |
-| `unverified_native` (name match only) | never | `unverified-native` |
+| `unverified_native` (name or tag match only) | never | `unverified-native` |
 | `plain_native` (unregistered `decide +native`, `bv_decide`, …) | never | `unregistered-native` |
 | `other` axiom | axiom ∈ `axioms` | `axiom-outside-set` |
 

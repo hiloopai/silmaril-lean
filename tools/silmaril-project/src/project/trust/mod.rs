@@ -1000,6 +1000,12 @@ impl Ingest<'_> {
             v.sort();
             v
         };
+        let native_uses: BTreeSet<(&str, &str)> = l
+            .uses
+            .iter()
+            .filter(|u| u.mode == "native")
+            .filter_map(|u| Some((u.procedure.as_str(), u.axiom.as_deref()?)))
+            .collect();
         let mut seen_decls: BTreeMap<String, &LineDecl> = BTreeMap::new();
         let mut repeated = 0usize;
         let mut core_counts: BTreeMap<String, usize> = BTreeMap::new();
@@ -1074,6 +1080,14 @@ impl Ingest<'_> {
                     rows.insert(a.clone(), ("plain_native", name));
                     continue;
                 };
+                // A name or tag match only classifies. The axiom counts as a run of `p` only
+                // if a recorded native use of `p` produced exactly this axiom (the core also
+                // checks that its statement mentions the evaluated function). Otherwise it is
+                // unverified, and if the core called it verified, the counts below disagree.
+                if !native_uses.contains(&(p.as_str(), a.as_str())) {
+                    rows.insert(a.clone(), ("unverified_native", p));
+                    continue;
+                }
                 let class = if name_prefix(&d.decl, &owner) || name_prefix(&owner, &d.decl) {
                     own.push(p.clone());
                     "own_native"
@@ -1106,7 +1120,7 @@ impl Ingest<'_> {
             ] {
                 if sorted(mine) != sorted(theirs) {
                     self.err(format!(
-                        "decl {}: {what} {theirs:?} does not match its native axioms ({mine:?})",
+                        "decl {}: {what} {theirs:?} does not match its native axioms that a recorded use produced ({mine:?})",
                         d.decl
                     ));
                 }

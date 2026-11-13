@@ -1,4 +1,4 @@
-error: trust.jsonl: decl Silmaril.Elf.Staged.Example.w: own_native [] does not match its native axioms (["elf.body"])
+error: trust.jsonl: decl Silmaril.Elf.Staged.Example.v: own_native ["elf.loader"] does not match its native axioms that a recorded use produced ([])
 error: trust.jsonl: module Silmaril.Elf.Staged.Example.Thms: policy does not resolve: policy scope Silmaril.Elf.Staged: max exceeds its parent's max (producer: the producer resolved it)
 error: trust.jsonl: module Silmaril.Elf.Staged.Leaf.Native: policy does not resolve: policy scope Silmaril.Elf.Staged: max exceeds its parent's max (producer: the producer resolved it)
 error: trust.jsonl: scope Silmaril.Papers: declared twice
@@ -15,7 +15,7 @@ verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unkn
 root: (none)
 trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
 trust: 12 procedures (11 with a kernel side), 10 sets, 5 scopes; 3 uses (1 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 4 covered, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 3 declarations audited
+trust modules: 4 covered, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 4 declarations audited
 trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
 trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
 trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
