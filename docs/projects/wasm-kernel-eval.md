@@ -165,7 +165,7 @@ The design: one executable `check : Input → Bool`, one soundness theorem
 | --- | --- | --- |
 | Tactic | `native_decide`, or compiled `#eval`/tool output | `decide +kernel`, `kernel_rfl` |
 | Trust | Lean compiler and runtime, `Lean.ofReduceBool` | the kernel and the standard axioms |
-| Where | Outside `Silmaril/`: a separate edge library, CI pre-screening, tools, or a `policy.toml` exception with a reason | `Silmaril/` on main |
+| Where | A small allow-set of named checks in the default mode, everything in a local mode; the registry and modes are owned by separate core work, not by this topic | Every check, and the only mode with an empty allow-set |
 | Speed here | about 0.4 µs per step (interpreter); faster when precompiled | about 200 µs per step |
 | Implementation | `run` (tail recursive); `@[csimp]` routes kernel definitions to it | `runRec` and `NatMem` (kernel-shaped), proved equal |
 
@@ -222,6 +222,12 @@ it:
    checked per function.
 
 This is a proposal. No code for it is in this change.
+
+## Memory representations
+
+[wasm-kernel-eval-memory.md](wasm-kernel-eval-memory.md) compares Core's `ByteArray` memory
+(specification and `Verify/Kernel` accesses) with packed, overlay and page-tree memories,
+in the kernel and natively, with simulation proofs for each.
 
 ## Scope of this change
 
