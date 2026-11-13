@@ -534,9 +534,10 @@ async function trustPage() {
     "external = outside the dump's roots (toolchain, dependencies).</p></div></div>";
   h += "<h2>Violations (first rows)</h2>" + ttable(await q("SELECT module, decl, reason, class, procedure, axiom FROM trust_violations " +
     `ORDER BY reason, module, decl LIMIT ${DETAIL}`), null, { module: tmod, procedure: tprocIf });
-  h += "<h2>Procedures</h2>" + ttable(await q("SELECT p.name, p.function, p.kernel_fallback, p.module, " +
+  h += "<h2>Procedures</h2>" + ttable(await q("SELECT p.name, p.kind, p.function, p.kernel_fallback, p.native_function, p.native_check, p.kernel_check, p.format, p.module, " +
     "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.mode = 'native') AS native_uses, " +
     "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.mode = 'kernel') AS kernel_uses, " +
+    "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.kernel_side = 'unregistered') AS unregistered_kernel, " +
     "(SELECT count(DISTINCT decl) FROM trust_decl_axioms x WHERE x.procedure = p.name AND x.class IN ('own_native','dep_native')) AS theorems " +
     `FROM trust_procedures p ORDER BY p.name LIMIT ${DETAIL}`), null, { name: tproc });
   h += "<h2>Sets</h2>" + ttable(await q("SELECT s.name, s.origin, s.is_all, (SELECT group_concat(CASE m.member_kind WHEN 'set' THEN 'set ' || m.member " +
@@ -569,7 +570,7 @@ async function trustModulePage(name) {
     null, { procedure: tprocIf });
   h += "<h2>Native runs in its theorems (own and inherited)</h2>" + ttable(await q("SELECT procedure, class, decls FROM trust_module_native WHERE module = ? ORDER BY class, procedure LIMIT " + DETAIL, [name]),
     null, { procedure: tprocIf });
-  h += "<h2>Recorded uses (edge_decide)</h2>" + ttable(await q("SELECT decl, procedure, mode, profile, axiom FROM trust_uses WHERE module = ? ORDER BY decl, procedure LIMIT " + DETAIL, [name]),
+  h += "<h2>Recorded uses (edge_decide)</h2>" + ttable(await q("SELECT decl, procedure, mode, kernel_side, profile, axiom FROM trust_uses WHERE module = ? ORDER BY decl, procedure LIMIT " + DETAIL, [name]),
     null, { procedure: tproc });
   h += "<h2>Coverage gaps (transitive imports whose theorems are not audited)</h2>" + ttable(await q("SELECT dep, coverage, reason FROM trust_coverage_gaps WHERE module = ? ORDER BY dep LIMIT " + DETAIL, [name]),
     null, { dep: tmod });
@@ -596,11 +597,15 @@ async function trustSetPage(name) {
 async function trustProcedurePage(name) {
   const p = (await tq("trust_procedures", "SELECT * FROM trust_procedures WHERE name = ?", [name]))[0];
   if (!p) return `<p class="err">no registered procedure ${esc(name)}</p>`;
-  let h = `<h2>Native procedure <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS) +
-    `<p class="muted">It decides <code>${esc(p.function)} a₁ … aₙ = true</code>. A native run trusts the compiler and runtime; ` +
-    (p.kernel_fallback ? "a kernel fallback exists (the kernel evaluates the same term, no axiom)." : "there is no kernel fallback: without native permission it fails closed.") + "</p>";
+  let h = `<h2>${p.kind === "declared" ? "Declared procedure" : "Native procedure"} <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS) +
+    (p.kind === "declared"
+      ? `<p class="muted">Two backends for one proposition: the native checker <code>${esc(p.native_check || "—")}</code> (sound by <code>${esc(p.native_sound || "—")}</code>) ` +
+        `and the kernel checker <code>${esc(p.kernel_check || "—")}</code> (sound by <code>${esc(p.kernel_sound || "—")}</code>). A native run trusts the compiler and runtime; the kernel side never runs natively.</p>`
+      : `<p class="muted">It decides <code>${esc(p.function)} a₁ … aₙ = true</code>. A native run trusts the compiler and runtime` +
+        (p.native_function ? ` and runs <code>${esc(p.native_function)}</code>, transferred by <code>${esc(p.native_eq)}</code>` : "") + "; " +
+        (p.kernel_fallback ? "a kernel fallback exists (the kernel evaluates the same term, no axiom)." : "there is no kernel fallback: a kernel run recorded under it used a checker the registry does not name.") + "</p>");
   h += "<h2>In sets (closure)</h2>" + ttable(await q("SELECT DISTINCT set_name FROM trust_set_closure WHERE name IN (?, '*') ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
-  h += "<h2>Recorded uses</h2>" + ttable(await q("SELECT module, decl, mode, profile, axiom FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
+  h += "<h2>Recorded uses</h2>" + ttable(await q("SELECT module, decl, mode, kernel_side, profile, axiom FROM trust_uses WHERE procedure = ? ORDER BY 1, 2 LIMIT " + DETAIL, [name]), null, { module: tmod });
   h += "<h2>Theorems whose axioms include a native run of it</h2>" + ttable(await q("SELECT module, decl, class FROM trust_decl_axioms WHERE procedure = ? AND class IN ('own_native','dep_native') ORDER BY 1, 2 LIMIT " + DETAIL, [name]),
     null, { module: tmod });
   return h;

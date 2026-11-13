@@ -565,3 +565,36 @@ fn strict_trust_reports_partial_coverage() {
         );
     }
 }
+
+/// Real producer output and hand-written fixtures are told apart: the `trust-core-*` and
+/// `trust-elf-*` cases say `origin = lean` and have a README naming their source commit;
+/// every other trust case says `origin = fixture`.
+#[test]
+fn trust_cases_declare_their_origin() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
+    let mut seen = 0;
+    for e in fs::read_dir(&base).unwrap() {
+        let dir = e.unwrap().path();
+        let Some(text) = fs::read_to_string(dir.join("trust.jsonl")).ok() else {
+            continue;
+        };
+        let name = dir.file_name().unwrap().to_string_lossy().to_string();
+        let header: serde_json::Value = text
+            .lines()
+            .map(|l| serde_json::from_str::<serde_json::Value>(l).unwrap())
+            .find(|v| v["kind"] == "header")
+            .unwrap_or_else(|| panic!("{name}: no header"));
+        let real = name.starts_with("trust-core-") || name.starts_with("trust-elf-");
+        assert_eq!(
+            header["origin"],
+            if real { "lean" } else { "fixture" },
+            "{name}"
+        );
+        if real {
+            let readme = fs::read_to_string(dir.join("README.md")).unwrap_or_default();
+            assert!(readme.contains("real producer output"), "{name}: README");
+        }
+        seen += 1;
+    }
+    assert!(seen >= 10, "{seen} trust cases");
+}

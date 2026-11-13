@@ -232,9 +232,18 @@ CREATE TABLE trust_inputs(
 );
 CREATE TABLE trust_procedures(
   name TEXT NOT NULL PRIMARY KEY,
+  kind TEXT NOT NULL CHECK(kind IN ('native_decider','declared')),
   function TEXT NOT NULL,
-  module TEXT NOT NULL,
+  module TEXT,
   kernel_fallback INTEGER NOT NULL,
+  native_function TEXT,
+  native_eq TEXT,
+  native_check TEXT,
+  native_sound TEXT,
+  kernel_check TEXT,
+  kernel_sound TEXT,
+  format TEXT,
+  sound TEXT,
   doc TEXT NOT NULL
 );
 CREATE TABLE trust_sets(
@@ -283,6 +292,7 @@ CREATE TABLE trust_uses(
   mode TEXT NOT NULL CHECK(mode IN ('native','kernel')),
   profile TEXT NOT NULL,
   axiom TEXT NOT NULL,
+  kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
   PRIMARY KEY(module, decl, procedure, mode, profile, axiom)
 );
 CREATE TABLE trust_decls(

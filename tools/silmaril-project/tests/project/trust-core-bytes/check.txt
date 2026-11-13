@@ -1,15 +1,12 @@
-warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byLocal: test.evenSum
-warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byName: test.evenSum
-warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byToys: test.evenSum
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust dump: silmaril-project 0.1.0 trust driver (Silmaril.Prelude.Trust) (origin lean); profile default, ceiling local
-trust: 6 procedures (4 with a kernel fallback), 6 sets, 5 scopes; 8 uses (5 native)
-trust modules: 17 covered, 0 excluded, 0 unsupported, 0 undescribed, 11 external; 192 theorems audited
-trust violations: 3 (3 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 axioms outside the set)
-trust digests: inputs changed, covered modules 0 consistent, 17 stale, 0 unknown (consistent digests are not proof of freshness)
-trust coverage: complete (every module under the roots is described and covered; external modules are the toolchain's and dependencies')
+trust dump: silmaril-project 0.1.0 trust-dump (V1 core API) (origin lean); profile default, ceiling local
+trust: 5 procedures (4 with a kernel fallback), 6 sets, 5 scopes; 5 uses (3 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 20 covered, 0 excluded, 0 unsupported, 0 undescribed, 12 external; 205 theorems audited
+trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 axioms outside the set)
+trust digests: inputs changed, covered modules 0 consistent, 20 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: 92dfcfe0876163b02022ef785c83ce645dd35d83ab165fdd3dd693f1738082cb
+sql sha256: 1d8b96eccdc8da8a4b1e788d15fe836b1bc2841706372c48e2eed05034356c5e
 exit: ok

@@ -1,6 +1,7 @@
-/- The trust driver of `sil project trust-dump` (generated: do not commit).
+/- The trust driver of `sil project trust-dump` for a core before `#trust_dump` (generated: do not
+commit). Its lines carry no `schema`; `trust-dump` marks them `silmaril.trust-adapter.v0.1`.
 
-It imports the modules to audit and writes `silmaril.trust-lines.v0.1` over the core trust API
+It imports the modules to audit and writes adapter lines over the core trust API
 (`Silmaril.Prelude.Trust`): the policy, its scopes and sets, the registered procedures and
 recorded uses, per module its imports and effective sets, and per theorem its axioms as
 `trust_audit` splits them. `sil project trust-dump` then adds the producer, the inputs and the
@@ -24,7 +25,7 @@ open Lean Elab Command Silmaril.Trust
         ("names", toJson ((s.toList.map toString).toArray.qsort (· < ·)))]
   let prof ← liftCoreM profile
   let ceil ← liftCoreM ceiling
-  line <| Json.mkObj [("kind", "header"), ("schema", "silmaril.trust-lines.v0.1"),
+  line <| Json.mkObj [("kind", "header"), ("core_api", "legacy"),
     ("toolchain", Lean.versionString), ("profile", prof), ("ceiling", ceil)]
   if let some p := policyExt.getState env then
     line <| Json.mkObj [("kind", "policy"), ("file", p.file), ("pin", hex64 p.hash)]

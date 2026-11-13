@@ -1,5 +1,5 @@
-//! Native decision procedures and axioms: the trust lines (`silmaril.trust-lines.v0.1`) and their
-//! tables.
+//! Native decision procedures and axioms: the trust lines (`silmaril.trust.v1` and
+//! `silmaril.trust-adapter.v0.1`) and their tables.
 //!
 //! The model is the core trust framework's (`Silmaril.Prelude.Trust`, `docs/trust.md`):
 //!
@@ -15,12 +15,47 @@
 //! - per theorem, its axioms (`collectAxioms`, which is transitive), split as the core's
 //!   `trust_audit` splits them.
 //!
-//! The lines are written by `sil project trust-dump` (a driver over the core API) or by hand
-//! (fixtures, whose header says so). Every line is one JSON object with a `kind`.
+//! The lines are written by `sil project trust-dump` (the core's `#trust_dump`, schema
+//! [`CORE_SCHEMA`], plus adapter lines, schema [`ADAPTER_SCHEMA`]) or by hand (fixtures, whose
+//! header says so). Every line is one JSON object with a `schema` and a `kind`; each schema may
+//! carry only the kinds of [`LINE_KINDS`], and each is converted explicitly.
 use super::*;
 use serde::Deserialize;
 
-pub const TRUST_LINES_SCHEMA: &str = "silmaril.trust-lines.v0.1";
+/// The core's provenance schema (`docs/trust.md`, `#trust_dump`).
+pub const CORE_SCHEMA: &str = "silmaril.trust.v1";
+/// Lines the adapter (`sil project trust-dump`) adds, and lines of a core before v1.
+pub const ADAPTER_SCHEMA: &str = "silmaril.trust-adapter.v0.1";
+/// `(schema, kinds)`: which kinds each line schema may carry.
+pub const LINE_KINDS: &[(&str, &[&str])] = &[
+    (
+        CORE_SCHEMA,
+        &[
+            "procedure",
+            "use",
+            "set",
+            "scope",
+            "declared_procedure",
+            "audit",
+        ],
+    ),
+    (
+        ADAPTER_SCHEMA,
+        &[
+            "header",
+            "input",
+            "policy",
+            "scope",
+            "set",
+            "procedure",
+            "use",
+            "module",
+            "effective",
+            "decl",
+            "excluded",
+        ],
+    ),
+];
 
 /// One line of a trust dump.
 #[derive(Debug, Clone, Deserialize)]
@@ -37,12 +72,15 @@ pub enum TrustLine {
     Effective(LineEffective),
     Decl(LineDecl),
     Excluded(LineExcluded),
+    DeclaredProcedure(LineDeclaredProcedure),
+    Audit(LineAudit),
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LineHeader {
-    pub schema: String,
+    /// The core API the driver read: `v1` (`#trust_dump`) or `legacy` (core before v1).
+    pub core_api: String,
     /// `Lean.versionString` of the producer.
     pub toolchain: String,
     /// The profile and ceiling the effective sets were computed for.
@@ -82,6 +120,8 @@ pub struct LineScope {
     pub default: Option<String>,
     pub deps: Option<String>,
     pub axioms: Option<String>,
+    pub policy_file: Option<String>,
+    pub policy_pin: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -96,8 +136,11 @@ pub struct LineSet {
     pub members: Vec<String>,
     #[serde(default)]
     pub includes: Vec<String>,
+    /// The core's resolution (`"all"` or names); checked against ours.
+    pub resolved: Option<serde_json::Value>,
 }
 
+/// `native_decider name := function [with_kernel_fallback] [native f via eq] [format … sound …]`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LineProcedure {
@@ -105,8 +148,50 @@ pub struct LineProcedure {
     pub function: String,
     pub kernel_fallback: bool,
     pub module: String,
+    pub format: Option<String>,
+    pub sound: Option<String>,
+    pub native_function: Option<String>,
+    pub native_eq: Option<String>,
     #[serde(default)]
     pub doc: String,
+}
+
+/// A checker and its soundness theorem.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LinePair {
+    pub check: String,
+    pub sound: String,
+}
+
+/// A declared two-backend procedure (`ProcDecl`, run by `sil_check`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineDeclaredProcedure {
+    pub name: String,
+    pub constant: String,
+    pub native: Option<LinePair>,
+    pub kernel: Option<LinePair>,
+    pub format: Option<String>,
+    #[serde(default)]
+    pub doc: String,
+}
+
+/// A `trust_audit` result (the core's; checked against the adapter's `decl` line).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineAudit {
+    pub decl: String,
+    pub module: String,
+    pub profile: String,
+    #[serde(default)]
+    pub own_native: Vec<String>,
+    #[serde(default)]
+    pub dep_native: Vec<String>,
+    #[serde(default)]
+    pub native_axioms: Vec<String>,
+    #[serde(default)]
+    pub axioms: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -198,12 +283,23 @@ table! {
 }
 
 table! {
-    /// Registered native procedures (`native_decider`).
+    /// Registered procedures: `native_decider`s (`function`, a kernel fallback, an optional
+    /// separate native implementation) and declared two-backend procedures (`ProcDecl`: a
+    /// native and a kernel checker, each with a soundness theorem, for the same proposition).
     TrustProcedure = "trust_procedures", key("name") {
         name: String = "TEXT NOT NULL",
+        kind: String = "TEXT NOT NULL CHECK(kind IN ('native_decider','declared'))",
         function: String = "TEXT NOT NULL",
-        module: String = "TEXT NOT NULL",
+        module: Option<String> = "TEXT",
         kernel_fallback: bool = "INTEGER NOT NULL",
+        native_function: Option<String> = "TEXT",
+        native_eq: Option<String> = "TEXT",
+        native_check: Option<String> = "TEXT",
+        native_sound: Option<String> = "TEXT",
+        kernel_check: Option<String> = "TEXT",
+        kernel_sound: Option<String> = "TEXT",
+        format: Option<String> = "TEXT",
+        sound: Option<String> = "TEXT",
         doc: String = "TEXT NOT NULL",
     }
 }
@@ -279,6 +375,10 @@ table! {
         mode: String = "TEXT NOT NULL CHECK(mode IN ('native','kernel'))",
         profile: String = "TEXT NOT NULL",
         axiom: String = "TEXT NOT NULL",
+        /// For a kernel run: `fallback` (the kernel evaluates the native function), `declared`
+        /// (the declared kernel checker), or `unregistered` (a kernel checker the registry does
+        /// not name: the run adds no axiom, but its identity is not auditable).
+        kernel_side: String = "TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered'))",
     }
 }
 

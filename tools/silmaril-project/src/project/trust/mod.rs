@@ -176,12 +176,40 @@ impl Tables {
 }
 
 /// Read trust lines: one JSON object per non-empty line.
+/// Read trust lines: one JSON object per non-empty line, each with a `schema` of
+/// [`LINE_KINDS`] and a `kind` that schema carries. The conversion is explicit: a core line and
+/// an adapter line of the same kind map to the same [`TrustLine`] variant, and every field of
+/// either must be known.
 pub fn read_lines(text: &str) -> std::result::Result<Vec<TrustLine>, String> {
-    text.lines()
+    let mut out = Vec::new();
+    for (i, l) in text
+        .lines()
         .enumerate()
         .filter(|(_, l)| !l.trim().is_empty())
-        .map(|(i, l)| serde_json::from_str(l).map_err(|e| format!("line {}: {e}", i + 1)))
-        .collect()
+    {
+        let at = |e: String| format!("line {}: {e}", i + 1);
+        let mut v: serde_json::Value = serde_json::from_str(l).map_err(|e| at(e.to_string()))?;
+        let obj = v
+            .as_object_mut()
+            .ok_or_else(|| at("not a JSON object".into()))?;
+        let schema = match obj.remove("schema") {
+            Some(serde_json::Value::String(s)) => s,
+            _ => return Err(at("no `schema`".into())),
+        };
+        let kind = obj
+            .get("kind")
+            .and_then(|k| k.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let Some((_, kinds)) = LINE_KINDS.iter().find(|(s, _)| *s == schema) else {
+            return Err(at(format!("unsupported schema {schema:?}")));
+        };
+        if !kinds.contains(&kind.as_str()) {
+            return Err(at(format!("kind {kind:?} is not a {schema} kind")));
+        }
+        out.push(serde_json::from_value(v).map_err(|e| at(format!("{schema} {kind}: {e}")))?);
+    }
+    Ok(out)
 }
 
 /// Check the trust lines at `path` (relative to `dir`), if any, and append the trust tables to
@@ -267,6 +295,8 @@ struct Lines<'a> {
     effective: Vec<&'a LineEffective>,
     decls: Vec<&'a LineDecl>,
     excluded: Vec<&'a LineExcluded>,
+    declared: Vec<&'a LineDeclaredProcedure>,
+    audits: Vec<&'a LineAudit>,
 }
 
 impl Ingest<'_> {
@@ -321,6 +351,8 @@ impl Ingest<'_> {
                 TrustLine::Effective(e) => l.effective.push(e),
                 TrustLine::Decl(d) => l.decls.push(d),
                 TrustLine::Excluded(e) => l.excluded.push(e),
+                TrustLine::DeclaredProcedure(d) => l.declared.push(d),
+                TrustLine::Audit(a) => l.audits.push(a),
             }
         }
         let [h] = l.header[..] else {
@@ -330,11 +362,8 @@ impl Ingest<'_> {
             ));
             return;
         };
-        if h.schema != TRUST_LINES_SCHEMA {
-            self.err(format!(
-                "schema {:?} is not {TRUST_LINES_SCHEMA:?}",
-                h.schema
-            ));
+        if !matches!(h.core_api.as_str(), "v1" | "legacy") {
+            self.err(format!("core_api {:?} is not v1 or legacy", h.core_api));
             return;
         }
         if l.policy.len() > 1 {
@@ -393,6 +422,27 @@ impl Ingest<'_> {
                 Err(_) => {} // unknown includes are reported above
             }
         }
+        for s in &l.sets {
+            let Some(r) = &s.resolved else { continue };
+            let theirs = match r {
+                serde_json::Value::String(a) if a == "all" => Some(Members::All),
+                serde_json::Value::Array(xs) => xs
+                    .iter()
+                    .map(|x| x.as_str().map(String::from))
+                    .collect::<Option<BTreeSet<_>>>()
+                    .map(Members::Some),
+                _ => None,
+            };
+            if theirs.is_none() || resolved.get(&s.name) != theirs.as_ref() {
+                self.err(format!(
+                    "trust set {}: the producer resolves it to {r}, the core's rules to {}",
+                    s.name,
+                    resolved
+                        .get(&s.name)
+                        .map_or("nothing".into(), Members::show)
+                ));
+            }
+        }
         for (n, origin) in [("all", "builtin"), ("none", "builtin")] {
             t.sets.push(TrustSet {
                 name: n.into(),
@@ -430,29 +480,83 @@ impl Ingest<'_> {
         };
 
         // ---- procedures and uses
-        let mut procs: BTreeMap<String, &LineProcedure> = BTreeMap::new();
+        // name -> (native side exists, kernel side: `fallback` | `declared` | none)
+        let mut procs: BTreeMap<String, (bool, Option<&'static str>)> = BTreeMap::new();
         for p in &l.procedures {
-            if procs.insert(p.name.clone(), p).is_some() {
+            if procs
+                .insert(
+                    p.name.clone(),
+                    (true, p.kernel_fallback.then_some("fallback")),
+                )
+                .is_some()
+            {
                 self.err(format!("procedure {}: registered twice", p.name));
+                continue;
+            }
+            if p.native_function.is_some() != p.native_eq.is_some() {
+                self.err(format!(
+                    "procedure {}: native_function and native_eq come together",
+                    p.name
+                ));
             }
             t.procedures.push(TrustProcedure {
                 name: p.name.clone(),
+                kind: "native_decider".into(),
                 function: p.function.clone(),
-                module: p.module.clone(),
+                module: Some(p.module.clone()),
                 kernel_fallback: p.kernel_fallback,
+                native_function: p.native_function.clone(),
+                native_eq: p.native_eq.clone(),
+                format: p.format.clone(),
+                sound: p.sound.clone(),
                 doc: p.doc.clone(),
+                ..Default::default()
             });
         }
-        t.procedures.dedup_by(|a, b| a.name == b.name);
+        for d in &l.declared {
+            if d.native.is_none() && d.kernel.is_none() {
+                self.err(format!("declared procedure {}: no backend", d.name));
+            }
+            if procs
+                .insert(
+                    d.name.clone(),
+                    (d.native.is_some(), d.kernel.as_ref().map(|_| "declared")),
+                )
+                .is_some()
+            {
+                self.err(format!(
+                    "procedure {}: registered twice (native_decider and declared, or declared twice)",
+                    d.name
+                ));
+                continue;
+            }
+            t.procedures.push(TrustProcedure {
+                name: d.name.clone(),
+                kind: "declared".into(),
+                function: d.constant.clone(),
+                native_check: d.native.as_ref().map(|x| x.check.clone()),
+                native_sound: d.native.as_ref().map(|x| x.sound.clone()),
+                kernel_check: d.kernel.as_ref().map(|x| x.check.clone()),
+                kernel_sound: d.kernel.as_ref().map(|x| x.sound.clone()),
+                format: d.format.clone(),
+                doc: d.doc.clone(),
+                ..Default::default()
+            });
+        }
         let mut use_keys = BTreeSet::new();
         for u in &l.uses {
             let what = format!("use of {} in {} ({})", u.procedure, u.decl, u.module);
-            let Some(p) = procs.get(&u.procedure) else {
+            let Some(&(native_ok, kernel)) = procs.get(&u.procedure) else {
                 self.err(format!("{what}: unknown procedure"));
                 continue;
             };
-            match (u.mode.as_str(), &u.axiom) {
+            let kernel_side = match (u.mode.as_str(), &u.axiom) {
                 ("native", Some(a)) => {
+                    if !native_ok {
+                        self.err(format!(
+                            "{what}: a native run of a procedure without a native side"
+                        ));
+                    }
                     if native_axiom(a).map(|(_, q, e)| (q, e)) != Some((u.procedure.clone(), true))
                     {
                         self.err(format!(
@@ -460,11 +564,11 @@ impl Ingest<'_> {
                             u.procedure
                         ));
                     }
+                    ""
                 }
-                ("kernel", None) if p.kernel_fallback => {}
-                ("kernel", None) => self.err(format!(
-                    "{what}: a kernel run of a procedure without a kernel fallback"
-                )),
+                // A kernel run adds no axiom. Without a registered kernel side, the checker it
+                // ran is not named by the registry (legacy `elf_leaf`): recorded, not an error.
+                ("kernel", None) => kernel.unwrap_or("unregistered"),
                 _ => {
                     self.err(format!(
                         "{what}: mode {:?} with axiom {:?}",
@@ -472,7 +576,7 @@ impl Ingest<'_> {
                     ));
                     continue;
                 }
-            }
+            };
             let row = TrustUse {
                 module: u.module.clone(),
                 decl: u.decl.clone(),
@@ -480,6 +584,7 @@ impl Ingest<'_> {
                 mode: u.mode.clone(),
                 profile: u.profile.clone(),
                 axiom: u.axiom.clone().unwrap_or_default(),
+                kernel_side: kernel_side.into(),
             };
             // The core records a use per elaboration; identical rows are one use.
             if use_keys.insert(row.row()) {
@@ -573,12 +678,6 @@ impl Ingest<'_> {
                 self.err(format!(
                     "excluded {}: coverage {:?} is not excluded or unsupported",
                     e.module, e.coverage
-                ));
-            }
-            if described.contains_key(&e.module) {
-                self.err(format!(
-                    "excluded {}: the module is also described",
-                    e.module
                 ));
             }
             if excluded.insert(e.module.clone(), e).is_some() {
@@ -719,7 +818,7 @@ impl Ingest<'_> {
                 (None, Some(_)) => ("covered".into(), None),
                 (None, None) if !under(n) => (
                     "external".into(),
-                    Some("outside the dump's roots (toolchain or dependency); its axioms still appear in the axioms of covered theorems".into()),
+                    Some("outside the dump's roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems".into()),
                 ),
                 (None, None) => (
                     "undescribed".into(),
@@ -748,6 +847,7 @@ impl Ingest<'_> {
 
         // ---- theorems and their axioms
         let mut seen_decls = BTreeSet::new();
+        let mut derived: BTreeMap<String, [Vec<String>; 3]> = BTreeMap::new();
         for d in &l.decls {
             if !described.contains_key(&d.module) {
                 self.err(format!(
@@ -809,6 +909,10 @@ impl Ingest<'_> {
                     ));
                 }
             }
+            derived.insert(
+                d.decl.clone(),
+                [sorted(&own), sorted(&dep), sorted(&d.axioms)],
+            );
             for (a, (class, p)) in rows {
                 t.decl_axioms.push(TrustDeclAxiom {
                     module: d.module.clone(),
@@ -817,6 +921,51 @@ impl Ingest<'_> {
                     class: class.into(),
                     procedure: p,
                 });
+            }
+        }
+
+        // The core's own audit lines, when present, must agree with the adapter's split.
+        for a in &l.audits {
+            let sorted = |v: &[String]| {
+                let mut v = v.to_vec();
+                v.sort();
+                v
+            };
+            if !described.contains_key(&a.module) {
+                self.err(format!(
+                    "audit {} in {}: the module is not described",
+                    a.decl, a.module
+                ));
+            }
+            let mut natives: Vec<String> = t
+                .decl_axioms
+                .iter()
+                .filter(|x| x.decl == a.decl && x.class != "other")
+                .map(|x| x.axiom.clone())
+                .collect();
+            natives.sort();
+            if natives != sorted(&a.native_axioms) {
+                self.err(format!(
+                    "audit {} (profile {}): native axioms differ from the decl line",
+                    a.decl, a.profile
+                ));
+            }
+            match derived.get(&a.decl) {
+                None => self.err(format!("audit {}: no decl line for it", a.decl)),
+                Some(d)
+                    if *d
+                        != [
+                            sorted(&a.own_native),
+                            sorted(&a.dep_native),
+                            sorted(&a.axioms),
+                        ] =>
+                {
+                    self.err(format!(
+                        "audit {}: the core's audit differs from the decl line",
+                        a.decl
+                    ))
+                }
+                Some(_) => {}
             }
         }
 
@@ -886,6 +1035,11 @@ impl Ingest<'_> {
                 .count()
         };
         let native_uses = t.uses.iter().filter(|u| u.mode == "native").count();
+        let unregistered = t
+            .uses
+            .iter()
+            .filter(|u| u.kernel_side == "unregistered")
+            .count();
         let origin = h.origin.clone().unwrap_or_else(|| "unspecified".into());
         self.o.lines.push(format!(
             "trust dump: {} (origin {origin}); profile {}, ceiling {}",
@@ -894,7 +1048,7 @@ impl Ingest<'_> {
             h.ceiling
         ));
         self.o.lines.push(format!(
-            "trust: {} procedures ({} with a kernel fallback), {} sets, {} scopes; {} uses ({native_uses} native)",
+            "trust: {} procedures ({} with a kernel fallback), {} sets, {} scopes; {} uses ({native_uses} native, {unregistered} kernel runs of a checker the registry does not name)",
             t.procedures.len(),
             t.procedures.iter().filter(|p| p.kernel_fallback).count(),
             t.sets.len(),
@@ -937,7 +1091,7 @@ impl Ingest<'_> {
             "partial"
         };
         self.o.lines.push(if gaps.is_empty() {
-            "trust coverage: complete (every module under the roots is described and covered; external modules are the toolchain's and dependencies')".into()
+            "trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)".into()
         } else {
             format!("trust coverage: partial ({} module(s); their uses are not audited)", gaps.join(", "))
         });
@@ -947,7 +1101,7 @@ impl Ingest<'_> {
             ("status", "present".to_string()),
             ("enforcement", enforcement(self.strict).into()),
             ("coverage", coverage.into()),
-            ("schema", h.schema.clone()),
+            ("core_api", h.core_api.clone()),
             ("sha256", sha256),
             ("producer", h.producer.clone().unwrap_or_default()),
             ("origin", origin),
@@ -956,9 +1110,26 @@ impl Ingest<'_> {
             ("ceiling", h.ceiling.clone()),
             ("roots", roots.join(" ")),
         ];
-        if let [p] = l.policy[..] {
-            m.push(("policy_file", p.file.clone()));
-            m.push(("policy_pin", p.pin.clone()));
+        let mut pins: BTreeSet<(String, String)> = l
+            .policy
+            .iter()
+            .map(|p| (p.file.clone(), p.pin.clone()))
+            .collect();
+        for sc in &l.scopes {
+            if let (Some(f), Some(p)) = (&sc.policy_file, &sc.policy_pin) {
+                pins.insert((f.clone(), p.clone()));
+            }
+        }
+        match pins.len() {
+            0 => {}
+            1 => {
+                let (f, p) = pins.into_iter().next().expect("one");
+                m.push(("policy_file", f));
+                m.push(("policy_pin", p));
+            }
+            _ => self.err(format!(
+                "the lines name more than one policy file or pin: {pins:?}"
+            )),
         }
         meta(
             self.o,
@@ -969,7 +1140,32 @@ impl Ingest<'_> {
 
 // ---------------------------------------------------------------- the producer
 
-const DRIVER: &str = include_str!("Driver.lean");
+const DRIVER_V1: &str = include_str!("DriverV1.lean");
+const DRIVER_LEGACY: &str = include_str!("DriverLegacy.lean");
+
+/// Which core trust API a driver reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CoreApi {
+    /// `#trust_dump` (schema `silmaril.trust.v1`), #125 from `4ec6aa13`.
+    V1,
+    /// Before `#trust_dump`: the driver reads the extensions itself.
+    Legacy,
+}
+
+/// The core API of the checkout under `dir` (the package itself or `.lake/packages/silmaril`).
+pub fn detect_core_api(dir: &Path) -> Option<CoreApi> {
+    let rel = "Silmaril/Prelude/Trust/Elab/Defs.lean";
+    [dir.join(rel), dir.join(".lake/packages/silmaril").join(rel)]
+        .iter()
+        .find_map(|p| fs::read_to_string(p).ok())
+        .map(|t| {
+            if t.contains("#trust_dump") {
+                CoreApi::V1
+            } else {
+                CoreApi::Legacy
+            }
+        })
+}
 
 fn lean_name_list(names: &[String]) -> String {
     let quoted: Vec<String> = names
@@ -987,11 +1183,24 @@ fn lean_name_list(names: &[String]) -> String {
     format!("[{}]", quoted.join(", "))
 }
 
-/// The trust driver: imports `modules`, describes the modules under `roots` and writes raw
-/// trust lines to `out`.
-pub fn driver(modules: &[String], roots: &[String], out: &Path) -> String {
-    let lean_str = |s: &str| format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""));
-    DRIVER
+fn lean_str(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// The trust driver: imports `modules`, describes the modules under `roots`, writes adapter
+/// lines to `out` and (v1) the core's `#trust_dump` to `core_out`.
+pub fn driver(
+    api: CoreApi,
+    modules: &[String],
+    roots: &[String],
+    out: &Path,
+    core_out: &Path,
+) -> String {
+    let template = match api {
+        CoreApi::V1 => DRIVER_V1,
+        CoreApi::Legacy => DRIVER_LEGACY,
+    };
+    template
         .replace(
             "__IMPORTS__",
             &modules
@@ -1002,19 +1211,37 @@ pub fn driver(modules: &[String], roots: &[String], out: &Path) -> String {
         )
         .replace("__ROOTS__", &lean_name_list(roots))
         .replace("__OUT__", &lean_str(&out.display().to_string()))
+        .replace("__CORE_OUT__", &lean_str(&core_out.display().to_string()))
 }
 
-/// Complete the driver's raw lines: the producer and roots in the header, the inputs (files
-/// that exist among `inputs`, by digest), each module's source path and digest (when
-/// `<dir>/<A/B/C>.lean` exists), and imports without duplicates. Line order is kept.
+/// What `complete` adds besides the driver's lines.
+pub struct Completion<'a> {
+    pub roots: &'a [String],
+    pub producer: &'a str,
+    /// Files to record by digest, when they exist.
+    pub inputs: &'a [&'a str],
+    /// `(module, reason)`: modules whose theorems are not audited (`excluded`).
+    pub excluded: &'a [(String, String)],
+}
+
+/// Complete the driver's lines: the adapter schema on lines without one (a legacy driver's),
+/// the producer and roots in the header, the inputs, each module's source path and digest (when
+/// `<dir>/<A/B/C>.lean` exists), imports without duplicates, the exclusions, then the core's
+/// lines (`core`, from `#trust_dump`) as they are. Line order is kept.
 pub fn complete(
     raw: &str,
+    core: Option<&str>,
     dir: &Path,
-    roots: &[String],
-    producer: &str,
-    inputs: &[&str],
+    c: &Completion,
 ) -> std::result::Result<String, String> {
     let mut out = Vec::new();
+    let adapter = |v: serde_json::Value| -> String {
+        let mut v = v;
+        if let Some(o) = v.as_object_mut() {
+            o.entry("schema").or_insert_with(|| ADAPTER_SCHEMA.into());
+        }
+        serde_json::to_string(&v).expect("json")
+    };
     for (i, l) in raw
         .lines()
         .enumerate()
@@ -1027,16 +1254,15 @@ pub fn complete(
             .ok_or_else(|| format!("driver line {}: not an object", i + 1))?;
         match obj.get("kind").and_then(|k| k.as_str()) {
             Some("header") => {
-                obj.insert("producer".into(), producer.into());
+                obj.insert("producer".into(), c.producer.into());
                 obj.insert("origin".into(), "lean".into());
-                obj.insert("roots".into(), serde_json::json!(roots));
-                out.push(serde_json::to_string(&v).expect("json"));
-                for p in inputs {
+                obj.insert("roots".into(), serde_json::json!(c.roots));
+                out.push(adapter(v));
+                for p in c.inputs {
                     if let Some(h) = sha256_of(dir, p) {
-                        out.push(
-                            serde_json::json!({"kind": "input", "path": p, "sha256": h})
-                                .to_string(),
-                        );
+                        out.push(adapter(
+                            serde_json::json!({"kind": "input", "path": p, "sha256": h}),
+                        ));
                     }
                 }
                 continue;
@@ -1058,6 +1284,22 @@ pub fn complete(
                 }
             }
             _ => {}
+        }
+        out.push(adapter(v));
+    }
+    for (m, why) in c.excluded {
+        out.push(adapter(serde_json::json!({"kind": "excluded", "module": m, "coverage": "excluded", "reason": why})));
+    }
+    for (i, l) in core
+        .unwrap_or_default()
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+    {
+        let v: serde_json::Value =
+            serde_json::from_str(l).map_err(|e| format!("core line {}: {e}", i + 1))?;
+        if v.get("schema").and_then(|s| s.as_str()) != Some(CORE_SCHEMA) {
+            return Err(format!("core line {}: schema is not {CORE_SCHEMA}", i + 1));
         }
         out.push(serde_json::to_string(&v).expect("json"));
     }
@@ -1085,35 +1327,55 @@ mod tests {
 
     #[test]
     fn driver_and_completion() {
+        let p = Path::new("/tmp/x \"q\".jsonl");
         let d = driver(
+            CoreApi::V1,
             &["A.B".into()],
             &["Silmaril".into()],
-            Path::new("/tmp/x \"q\".jsonl"),
+            p,
+            Path::new("/c.jsonl"),
         );
         assert!(d.contains("import A.B\n") && d.contains("[`«Silmaril»]"));
-        assert!(d.contains(r#""/tmp/x \"q\".jsonl""#));
+        assert!(d.contains(r#""/tmp/x \"q\".jsonl""#) && d.contains("#trust_dump \"/c.jsonl\""));
         assert!(!d.contains("__"));
+        let d = driver(
+            CoreApi::Legacy,
+            &["A.B".into()],
+            &["Silmaril".into()],
+            p,
+            Path::new("/c"),
+        );
+        assert!(!d.contains("\n#trust_dump") && !d.contains("__"));
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir_all(dir.path().join("A")).unwrap();
         fs::write(dir.path().join("A/B.lean"), "x").unwrap();
         fs::write(dir.path().join("lean-toolchain"), "t").unwrap();
-        let raw = "{\"kind\":\"header\",\"schema\":\"s\"}\n{\"kind\":\"module\",\"name\":\"A.B\",\"imports\":[\"Init\",\"Init\"]}\n";
-        let out = complete(
-            raw,
-            dir.path(),
-            &["A".into()],
-            "p",
-            &["lean-toolchain", "absent"],
-        )
-        .unwrap();
+        let raw = "{\"kind\":\"header\",\"core_api\":\"legacy\",\"toolchain\":\"t\",\"profile\":\"default\",\"ceiling\":\"local\"}\n{\"kind\":\"module\",\"name\":\"A.B\",\"imports\":[\"Init\",\"Init\"]}\n";
+        let core = "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"s\"}\n";
+        let ex = [("A.B".to_string(), "tests".to_string())];
+        let c = Completion {
+            roots: &["A".into()],
+            producer: "p",
+            inputs: &["lean-toolchain", "absent"],
+            excluded: &ex,
+        };
+        let out = complete(raw, Some(core), dir.path(), &c).unwrap();
         let ls: Vec<serde_json::Value> = out
             .lines()
             .map(|l| serde_json::from_str(l).unwrap())
             .collect();
-        assert_eq!(ls.len(), 3);
+        assert_eq!(ls.len(), 5);
         assert_eq!(ls[0]["origin"], "lean");
+        assert_eq!(ls[0]["schema"], ADAPTER_SCHEMA);
         assert_eq!(ls[1]["path"], "lean-toolchain");
         assert_eq!(ls[2]["source"], "A/B.lean");
         assert_eq!(ls[2]["imports"], serde_json::json!(["Init"]));
+        assert_eq!(ls[3]["kind"], "excluded");
+        assert_eq!(ls[4]["schema"], CORE_SCHEMA);
+        assert!(complete(raw, Some("{\"kind\":\"set\"}"), dir.path(), &c).is_err());
+        let lines = read_lines(&out).unwrap();
+        assert_eq!(lines.len(), 5);
+        assert!(read_lines("{\"schema\":\"silmaril.trust.v1\",\"kind\":\"header\"}").is_err());
+        assert!(read_lines("{\"schema\":\"nope\",\"kind\":\"set\",\"name\":\"s\"}").is_err());
     }
 }

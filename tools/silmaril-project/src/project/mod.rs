@@ -73,7 +73,7 @@ pub enum Command {
         no_build: bool,
     },
     /// Elaborate the trust driver over the core trust API and write the trust lines
-    /// (`silmaril.trust-lines.v0.1`) that `check` and `sqlite` read with `--trust`
+    /// (`silmaril.trust.v1` and `silmaril.trust-adapter.v0.1` lines) that `check` and `sqlite` read with `--trust`
     TrustDump {
         #[command(flatten)]
         dir: DirArg,
@@ -92,6 +92,12 @@ pub enum Command {
         /// Skip `lake build --wfail <modules>` before elaborating the driver
         #[arg(long)]
         no_build: bool,
+        /// The core trust API: `v1` (`#trust_dump`) or `legacy`; default: detected
+        #[arg(long)]
+        core_api: Option<String>,
+        /// `MODULE=REASON`: a module whose theorems are not audited (coverage becomes partial)
+        #[arg(long)]
+        exclude: Vec<String>,
     },
     /// Check the manifest, the registries, the dump and the files; print statuses and groups
     Check {
@@ -100,7 +106,7 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
-        /// The trust dump (trust lines, `silmaril.trust-lines.v0.1`, from `trust-dump`), relative to the project directory;
+        /// The trust dump (trust lines from `trust-dump`), relative to the project directory;
         /// without it, decision-procedure and axiom use is reported as unaudited
         #[arg(long)]
         trust: Option<PathBuf>,
@@ -116,7 +122,7 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
-        /// The trust dump (trust lines, `silmaril.trust-lines.v0.1`, from `trust-dump`), relative to the project directory;
+        /// The trust dump (trust lines from `trust-dump`), relative to the project directory;
         /// without it, the trust tables are empty and `meta` says `trust.status = absent`
         #[arg(long)]
         trust: Option<PathBuf>,
@@ -1450,6 +1456,8 @@ pub fn run(command: Command) -> Result<()> {
             out,
             lake,
             no_build,
+            core_api,
+            exclude,
         } => {
             let modules = if modules.is_empty() {
                 Project::load(&dir)?.modules
@@ -1474,31 +1482,62 @@ pub fn run(command: Command) -> Result<()> {
             let gen_dir = abs_dir.join(".lake/silmaril");
             fs::create_dir_all(&gen_dir).into_diagnostic()?;
             let raw = gen_dir.join("trust.raw.jsonl");
+            let core_raw = gen_dir.join("trust.core.jsonl");
+            let api = match core_api.as_deref() {
+                Some("v1") => trust::CoreApi::V1,
+                Some("legacy") => trust::CoreApi::Legacy,
+                Some(other) => return Err(miette!("--core-api {other}: give v1 or legacy")),
+                None => trust::detect_core_api(&abs_dir).ok_or_else(|| {
+                    miette!("no Silmaril/Prelude/Trust/Elab/Defs.lean here or in .lake/packages/silmaril; pass --core-api")
+                })?,
+            };
+            let excluded: Vec<(String, String)> = exclude
+                .iter()
+                .map(|e| {
+                    e.split_once('=')
+                        .map(|(m, r)| (m.trim().to_string(), r.trim().to_string()))
+                        .filter(|(m, r)| !m.is_empty() && !r.is_empty())
+                        .ok_or_else(|| miette!("--exclude {e:?}: give MODULE=REASON"))
+                })
+                .collect::<Result<_>>()?;
+            let _ = fs::remove_file(&core_raw);
             let driver_path = gen_dir.join("TrustDump.lean");
-            fs::write(&driver_path, trust::driver(&modules, &roots, &raw)).into_diagnostic()?;
+            fs::write(
+                &driver_path,
+                trust::driver(api, &modules, &roots, &raw, &core_raw),
+            )
+            .into_diagnostic()?;
             if !no_build {
                 let mut args = vec!["build", "--wfail"];
                 args.extend(modules.iter().map(String::as_str));
                 eprintln!("building {} …", modules.join(", "));
                 run_lake(&abs_dir, &lake, &args)?;
             }
-            eprintln!("elaborating the trust driver…");
+            eprintln!("elaborating the trust driver ({api:?} core API)…");
             run_lake(
                 &abs_dir,
                 &lake,
                 &["env", "lean", &driver_path.display().to_string()],
             )?;
             let text = fs::read_to_string(&raw).into_diagnostic()?;
+            let core = match api {
+                trust::CoreApi::V1 => Some(fs::read_to_string(&core_raw).into_diagnostic()?),
+                trust::CoreApi::Legacy => None,
+            };
             let producer = format!(
-                "silmaril-project {} trust driver (Silmaril.Prelude.Trust)",
+                "silmaril-project {} trust-dump ({api:?} core API)",
                 env!("CARGO_PKG_VERSION")
             );
             let lines = trust::complete(
                 &text,
+                core.as_deref(),
                 &abs_dir,
-                &roots,
-                &producer,
-                &["lean-toolchain", "lake-manifest.json", "policy.toml"],
+                &trust::Completion {
+                    roots: &roots,
+                    producer: &producer,
+                    inputs: &["lean-toolchain", "lake-manifest.json", "policy.toml"],
+                    excluded: &excluded,
+                },
             )
             .map_err(|e| miette!("{e}"))?;
             let shown = shown(&dir, &out);
