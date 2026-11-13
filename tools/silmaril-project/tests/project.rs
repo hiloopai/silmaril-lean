@@ -603,3 +603,117 @@ fn trust_cases_declare_their_origin() {
     }
     assert!(seen >= 12, "{seen} trust cases");
 }
+
+/// The evidence of the real exports survives conversion exactly: an inherited native result
+/// stays inherited (no invented direct use), standard axioms are not uses, unverified and forged
+/// evidence is kept and flagged, and only `policy.toml`'s scopes exist.
+#[test]
+fn real_export_evidence_is_kept_exactly() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
+    let db = |case: &str| {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("p.sqlite");
+        let out = Command::new(env!("CARGO_BIN_EXE_silmaril-project"))
+            .args([
+                "sqlite",
+                "--dump",
+                "dump.json",
+                "--trust",
+                "trust.json",
+                "--sql",
+            ])
+            .arg(tmp.path().join("p.sql"))
+            .arg("--db")
+            .arg(&db)
+            .current_dir(base.join(case))
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{case}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        (tmp, rusqlite::Connection::open(&db).unwrap())
+    };
+    let q = |c: &rusqlite::Connection, sql: &str| -> Vec<String> {
+        let mut st = c.prepare(sql).unwrap();
+        st.query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    let (_t, b) = db("trust-core-bytes");
+    assert!(
+        q(
+            &b,
+            "SELECT decl FROM trust_uses WHERE decl LIKE '%rope_toList_native'"
+        )
+        .is_empty()
+    );
+    assert_eq!(
+        q(
+            &b,
+            "SELECT class || ':' || procedure FROM trust_decl_axioms WHERE decl LIKE '%rope_toList_native' AND class <> 'other'"
+        ),
+        ["dep_native:bytes.sameBytes"]
+    );
+    assert!(q(&b, "SELECT procedure FROM trust_uses WHERE procedure IN ('propext', 'Classical.choice', 'Quot.sound')").is_empty());
+    assert_eq!(
+        q(&b, "SELECT module FROM trust_scopes ORDER BY module"),
+        [
+            "Silmaril",
+            "Silmaril.Courses",
+            "Silmaril.Papers",
+            "Silmaril.Standards",
+            "Silmaril.Thesis"
+        ]
+    );
+    assert_eq!(
+        q(
+            &b,
+            "SELECT name FROM trust_procedures WHERE kind = 'named' AND implemented = 0"
+        ),
+        ["elf.layout"]
+    );
+    let (_t, p) = db("trust-core-profile-tests");
+    assert_eq!(
+        q(
+            &p,
+            "SELECT decl FROM trust_uses WHERE axiom_matches = 0 ORDER BY decl"
+        ),
+        [
+            "Silmaril.Trust.Examples.forgedDecl",
+            "Silmaril.Trust.Examples.forgedShape"
+        ]
+    );
+    assert_eq!(
+        q(
+            &p,
+            "SELECT decl FROM trust_decl_axioms WHERE class = 'unverified_native' ORDER BY decl"
+        ),
+        [
+            "Silmaril.Trust.Examples.byDecideNative",
+            "Silmaril.Trust.Examples.forgedDecl",
+            "Silmaril.Trust.Examples.forgedShape"
+        ]
+    );
+    assert_eq!(
+        q(
+            &p,
+            "SELECT reason || ':' || count(*) FROM trust_violations GROUP BY reason ORDER BY reason"
+        ),
+        ["own-native-not-allowed:6", "unverified-native:3"]
+    );
+    // The core's own messages for the three unverified axioms, verbatim.
+    assert_eq!(
+        q(
+            &p,
+            "SELECT decl FROM trust_audit_messages WHERE message LIKE 'unverified native axiom %' ORDER BY decl"
+        ),
+        [
+            "Silmaril.Trust.Examples.byDecideNative",
+            "Silmaril.Trust.Examples.forgedDecl",
+            "Silmaril.Trust.Examples.forgedShape"
+        ]
+    );
+}
