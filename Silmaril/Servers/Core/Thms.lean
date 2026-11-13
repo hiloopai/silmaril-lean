@@ -4,10 +4,12 @@ public import Silmaril.Servers.Core.Defs
 import Silmaril.Proofs.Servers.Core.Lin
 import Silmaril.Proofs.Servers.Core.Seq
 import Silmaril.Proofs.Servers.Core.Pipe
+import Silmaril.Proofs.Servers.Core.Unmap
 
 /-!
 # The server institution: theorems
 
+* **The linearization monitor keeps its invariant** (`LMon.inv_init`, `LMon.Inv.step`).
 * **Refinement is trace inclusion** and transfers satisfaction (`Model.sat_of_refines`), and is a
   preorder (`Model.Refines.refl`, `Model.Refines.trans`).
 * **The atomic-handler server is linearizable**, and its traces are exactly the linearizable
@@ -42,6 +44,15 @@ import Silmaril.Proofs.Servers.Core.Pipe
 namespace Silmaril.Servers
 
 variable {A : Sig}
+
+/-! ## The linearization monitor -/
+
+theorem LMon.inv_init : (LMon.init A).Inv := Proofs.Servers.Core.lInv_init
+
+/-- Every step of the linearization monitor keeps its invariant. -/
+theorem LMon.Inv.step {m m' : LMon A} {e : LEvent A} (hI : m.Inv) (hs : LMon.Step m e m') :
+    m'.Inv :=
+  Proofs.Servers.Core.lInv_step hI hs
 
 /-! ## Refinement -/
 
@@ -170,5 +181,23 @@ theorem Hom.lin_trace {B : Sig} (h : Hom A B) {S : SeqSpec A} {t : Trace B}
 theorem Hom.mod_sat_lin {B : Sig} (h : Hom A B) {M : Model B} {S : SeqSpec A}
     (hM : M.Sat (Sen.lin (h.seq S))) : (h.mod M).Sat (Sen.lin S) :=
   (h.sat_sen_iff M _).1 fun t ht => h.lin_trace (hM t ht)
+
+/-- **The converse of `Hom.lin_trace`**, for a morphism that sees every response. -/
+theorem Hom.lin_of_trace {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    {S : SeqSpec A} {t : Trace B} (hl : Sen.lin S (h.trace t)) : Sen.lin (h.seq S) t :=
+  Proofs.Servers.Core.lin_of_trace h hsur hl
+
+theorem Hom.lin_trace_iff {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    {S : SeqSpec A} {t : Trace B} : Sen.lin (h.seq S) t ↔ Sen.lin S (h.trace t) :=
+  ⟨h.lin_trace, h.lin_of_trace hsur⟩
+
+/-- **Linearizability translates along a morphism that sees every response.** -/
+theorem Hom.sen_lin {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    (S : SeqSpec A) : h.sen (Sen.lin S) = Sen.lin (h.seq S) := by
+  funext t; exact propext (h.lin_trace_iff hsur).symm
+
+theorem Hom.sat_lin_iff {B : Sig} (h : Hom A B) (hsur : Function.Surjective h.resp)
+    {M : Model B} {S : SeqSpec A} : M.Sat (Sen.lin (h.seq S)) ↔ (h.mod M).Sat (Sen.lin S) := by
+  rw [← h.sen_lin hsur]; exact h.sat_sen_iff M _
 
 end Silmaril.Servers

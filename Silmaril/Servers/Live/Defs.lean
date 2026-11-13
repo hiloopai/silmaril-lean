@@ -23,9 +23,15 @@ observations, so it is a separate kind of sentence:
   taken, and a computed response that stays ready is eventually sent;
 * `Machine.Total`: in every state, the handler can answer every request.
 
-The theorem (`Silmaril.Servers.Live.Thms`): the fair runs of the atomic-handler server of a
-total machine answer every request, and every prefix of every run is a trace of the server, so
-it satisfies the server's safety sentences too.
+The pipelining server (`Machine.pipeServer`: responses in request order on each connection)
+has its own runs (`Machine.PRun`) and fairness (`PRun.Fair`): a response is *sendable* when it
+is ready and every earlier request on its connection has been answered (`PRun.SendEnabled`),
+and weak fairness asks that a response that stays sendable is eventually sent.
+
+The theorems (`Silmaril.Servers.Live.Thms`): the fair runs of the atomic-handler server, and of
+the pipelining server, of a total machine answer every request; every prefix of every run is a
+trace of the server, so it satisfies the server's safety sentences too; and fair runs exist:
+for every stream of requests on a connection there is a fair run that receives them all.
 
 A Silmaril addition.
 -/
@@ -89,5 +95,52 @@ end Machine.IRun
 /-- The fair observations of the atomic-handler server of `M`. -/
 def Machine.fairObs (M : Machine A σ) (q₀ : σ) : ISen A :=
   fun u => ∃ ρ : M.IRun q₀, ρ.Fair ∧ ρ.obs = u
+
+/-! ## The pipelining server -/
+
+/-- **An infinite run of the pipelining server** (`Machine.pipeServer`): at each instant it
+idles or takes a step of `Machine.pipeStep`. -/
+structure Machine.PRun (M : Machine A σ) (q₀ : σ) where
+  /-- The state at each instant. -/
+  st : Nat → σ × LMon A
+  /-- The step taken at each instant, if any. -/
+  ev : Nat → Option (LEvent A)
+  init : st 0 = (q₀, LMon.init A)
+  step : ∀ n, (ev n = none ∧ st (n + 1) = st n) ∨
+    ∃ e, ev n = some e ∧ M.pipeStep (st n) e (st (n + 1))
+
+namespace Machine.PRun
+
+variable {M : Machine A σ} {q₀ : σ}
+
+/-- A run of the pipelining server is a run of the atomic-handler server. -/
+def toIRun (ρ : M.PRun q₀) : M.IRun q₀ where
+  st := ρ.st
+  ev := ρ.ev
+  init := ρ.init
+  step n := (ρ.step n).imp id fun ⟨e, he, hs⟩ => ⟨e, he, hs.1⟩
+
+/-- What an environment observes of a run. -/
+def obs (ρ : M.PRun q₀) : ITrace A := ρ.toIRun.obs
+
+/-- The response to `i` may be sent at instant `n`: it is ready, and every earlier request on
+its connection has been answered. -/
+def SendEnabled (ρ : M.PRun q₀) (i : ReqId) (n : Nat) : Prop :=
+  (ρ.st n).2.ready i ≠ none ∧ (ρ.st n).2.EarlierAnswered i
+
+/-- **Weak fairness of the pipelining server**: a handler run that stays enabled is eventually
+taken, and a response that stays sendable (ready, every earlier request on its connection
+answered) is eventually sent. -/
+def Fair (ρ : M.PRun q₀) : Prop :=
+  (∀ i n, (∀ m, n ≤ m → ρ.toIRun.LinEnabled i m) →
+    ∃ m, n ≤ m ∧ ∃ r s, ρ.ev m = some (.lin i r s)) ∧
+  (∀ i n, (∀ m, n ≤ m → ρ.SendEnabled i m) →
+    ∃ m, n ≤ m ∧ ∃ s, ρ.ev m = some (.ev (.send i s)))
+
+end Machine.PRun
+
+/-- The fair observations of the pipelining server of `M`. -/
+def Machine.pipeFairObs (M : Machine A σ) (q₀ : σ) : ISen A :=
+  fun u => ∃ ρ : M.PRun q₀, ρ.Fair ∧ ρ.obs = u
 
 end Silmaril.Servers

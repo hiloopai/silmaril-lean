@@ -5,6 +5,7 @@ public import Silmaril.Servers.Exchange.Thms
 public import Silmaril.Servers.State.Traces.Thms
 public import Silmaril.Servers.Reuse.Defs
 public import Silmaril.Servers.Live.Thms
+public import Silmaril.Servers.Platform.Thms
 import Silmaril.Proofs.Servers.PerRequest.Basic
 
 /-!
@@ -37,6 +38,14 @@ PROVED (standard axioms).
   histories of `Machine.fresh`, so they are the sequential uses of the fresh-instance model
   (`Reuse.fresh_seq_iff`); the logs of one reused instance are the histories of the origin
   read as a machine (`Reuse.seq_iff`).
+* **`Platform.fresh_model_tr_iff`**: the core model of the platform `Platform.fresh σ` (a
+  handler run on a fresh instance per request, read as sequential logs) has exactly the
+  sequential uses of the fresh-instance model `Machine.perRequest`, so it refines it
+  (`Platform.fresh_model_refines`) and satisfies its sentences (`Platform.fresh_model_sat_lin`);
+  `Platform.fresh_view_iff`: its logs are the histories of `Machine.fresh`. Likewise the
+  platform `Platform.seq σ` (one reused instance) has exactly the sequential uses of the
+  atomic-handler server of the origin (`Platform.seq_model_tr_iff`,
+  `Platform.seq_model_refines`).
 -/
 
 @[expose] public section
@@ -141,5 +150,57 @@ theorem seq_iff {s : σ} {l : Log} : Seq O s l ↔ (Http.machine O).Hist s l :=
   Proofs.Servers.PerRequest.seq_iff
 
 end Reuse
+
+/-! ## The platforms of a handler with instance state -/
+
+namespace Platform
+
+open Silmaril.Net.Http Reuse
+
+theorem fresh_view_iff (O : Origin σ) (s₀ : σ) (l : Log) :
+    (fresh σ).view (O, s₀) l ↔ ((Http.machine O).fresh s₀).Hist () l := by
+  rw [← fresh_eq_hist]
+  exact ⟨fun ⟨_, ho, hr⟩ => hr ▸ ho, fun h => ⟨l, h, rfl⟩⟩
+
+theorem seq_view_iff (O : Origin σ) (s₀ : σ) (l : Log) :
+    (seq σ).view (O, s₀) l ↔ (Http.machine O).Hist s₀ l := by
+  rw [← Reuse.seq_iff]
+  exact ⟨fun ⟨_, ho, hr⟩ => hr ▸ ho, fun h => ⟨l, h, rfl⟩⟩
+
+/-- **`Platform.fresh` is the fresh-instance model, used sequentially.** -/
+theorem fresh_model_tr_iff (O : Origin σ) (s₀ : σ) (t : Trace Http.sig) :
+    (model (fresh σ) (O, s₀)).Tr t ↔
+      ((Http.machine O).perRequest s₀).Tr t ∧ Sen.Sequential t := by
+  constructor
+  · rintro ⟨h, hn, hv, rfl⟩
+    obtain ⟨_, ho, hr⟩ := hv
+    exact ⟨(Machine.perRequest_seq_iff _ s₀ h hn).2 (hr ▸ ho), h, hn, rfl⟩
+  · rintro ⟨ht, h, hn, rfl⟩
+    exact ⟨h, hn, ⟨_, (Machine.perRequest_seq_iff _ s₀ h hn).1 ht, rfl⟩, rfl⟩
+
+theorem fresh_model_refines (O : Origin σ) (s₀ : σ) :
+    (model (fresh σ) (O, s₀)).Refines ((Http.machine O).perRequest s₀) :=
+  fun t ht => ((fresh_model_tr_iff O s₀ t).1 ht).1
+
+theorem fresh_model_sat_lin (O : Origin σ) (s₀ : σ) :
+    (model (fresh σ) (O, s₀)).Sat (Sen.lin (((Http.machine O).fresh s₀).Hist ())) :=
+  Model.sat_of_refines (fresh_model_refines O s₀) (Machine.perRequest_sat_lin _ s₀)
+
+/-- **`Platform.seq` is the atomic-handler server of the origin, used sequentially.** -/
+theorem seq_model_tr_iff (O : Origin σ) (s₀ : σ) (t : Trace Http.sig) :
+    (model (seq σ) (O, s₀)).Tr t ↔ ((Http.machine O).server s₀).Tr t ∧ Sen.Sequential t := by
+  constructor
+  · rintro ⟨h, hn, hv, rfl⟩
+    exact ⟨(Machine.server_tr_iff _ s₀ _).2 ((Sen.lin_seq_iff h hn).2
+      ((seq_view_iff O s₀ _).1 hv)), h, hn, rfl⟩
+  · rintro ⟨ht, h, hn, rfl⟩
+    exact ⟨h, hn, (seq_view_iff O s₀ _).2
+      ((Sen.lin_seq_iff h hn).1 ((Machine.server_tr_iff _ s₀ _).1 ht)), rfl⟩
+
+theorem seq_model_refines (O : Origin σ) (s₀ : σ) :
+    (model (seq σ) (O, s₀)).Refines ((Http.machine O).server s₀) :=
+  fun t ht => ((seq_model_tr_iff O s₀ t).1 ht).1
+
+end Platform
 
 end Silmaril.Servers
