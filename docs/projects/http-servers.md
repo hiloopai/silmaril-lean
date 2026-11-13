@@ -34,12 +34,12 @@ vocabularies and are related to the core as follows.
 | State models (`State`, `State.{Component,OwnedFs,SharedFs}`, `State.Traces`) | histories `Ev.call`/`Ev.ret`, `Atomic σ`, Herlihy–Wing `Linearizable`, `Abstraction` | identified with the core by `State.Traces`: a history is a core trace with one connection per request (`toTrace`), `Atomic σ` is `Machine (sig Req Resp) σ` by definition, Herlihy–Wing linearizability is `Sen.lin` (`linearizable_iff_lin`), the closed host is `Machine.server` (`closed_model_tr_iff`), and an abstraction gives refinement of `Machine.server` (`Abstraction.model_refines`) | Proved |
 | File-backed store component (`WasiFs`) | a `wasi:http` component over `wasi:filesystem`, read as a state-model server | refines the file store of state model (b) (`wasiStoreSmall_refines`); its read-only filesystem answers satisfy the `Silmaril.Wasi` filesystem theory (`storeHost_fsOk`) | Proved |
 | Connections (`Conn`) | the core | per-connection sentences and models over the core's traces, sequential consistency (`Sen.sc`) | Proved |
-| Platforms (`Reuse`, `Cgi`, `Platform`) | `Platform T` with `view`, `Refines`, sequential `Log`s and per-connection `ConnLog`s | `Platform.view` is to become a core `Model`; `Log` is a `History`, `ConnLog` a trace with identities (connection, index) | Open |
+| Platforms (`Reuse`, `Cgi`, `Platform`, `Wire1`, `Sockets`, `Compare`) | `Platform T` with `view`, `Refines`, sequential `Log`s and per-connection `ConnLog`s | a `Log` is a core `History` (`log_eq_history`); `Platform.model` reads a platform's logs as a core `Model` and `Refines` is exactly core refinement (`refines_iff_model`); `Platform.connModel` reads per-connection traces as core traces with identities ⟨connection, index⟩, and `Refines` gives core refinement (`connModel_refines`) | Proved |
 | Fresh instance per request (`PerRequest`) | the core | one model, `Machine.perRequest M q₀`; `Exchange.fresh`, `State.Server.perRequest` and `Reuse.Fresh` are instances of it (`Exchange.fresh_eq_perRequest`, `State.perRequest_model_tr_iff`, `Reuse.fresh_eq_hist`) | Proved |
 | Liveness (`Live`) | infinite observations `ITrace`, sentences `ISen` | a separate kind of sentence over infinite runs of `Machine.server`; every finite prefix of a run is a core trace (`Machine.IRun.prefix_tr`) | Proved |
 
 `Platform.fresh` (platforms) is not yet stated as an instance of `Machine.perRequest`; it is
-the next one, together with `Platform.view` as a core `Model`.
+the next one. A platform's logs are already a core `Model` (`Platform.model`, `refines_iff_model`).
 
 ## Traces: the platform-neutral core
 
@@ -570,14 +570,26 @@ key-value store kept in a file and one kept in a component's memory have the sam
 | --- | --- | --- | --- |
 | `wasi:http` 0.2, world `proxy` [1] | export `incoming-handler.handle(request: incoming-request, response-out: response-outparam)`; bodies are `wasi:io` streams | "A host may arbitrarily reuse or not reuse component instance … a component must be able to handle 0..N calls to `handle`" (`specs/wasi/0.2.12/http/proxy.wit`) | The response is sent by `response-outparam.set` and "execution [may] continue after the response has been sent" (`handler.wit`). The response is issued before `handle` returns. |
 | `wasi:http` 0.3, world `service` [1] | export `handler.handle: async func(request) -> result<response, error-code>`; bodies are component-model `stream<u8>` | as 0.2. In addition, "Hosts may concurrently invoke this `handler` interface multiple times, even when previous requests have yet to finish processing", unless the guest applies backpressure (`specs/wasi/0.3.2/http/worlds.wit`) | `middleware` world: a service that also imports `handler`, so components chain |
-| `wasmtime serve` [2] | either world | instantiates the component for each request. Reuse is off by default for 0.2 components and on by default for 0.3 ones [2] | For development: no TLS and no limits [2]. The intended pinned conformance runtime. |
-| Spin [3] | its HTTP trigger, or a plain `wasi:http` incoming handler (since Spin 2.6) | a new instance per request. Persistent state goes through host key-value or SQL interfaces [3] | Routes by path to components (manifest `spin.toml`) |
-| wasmCloud [4] | `wasi:http/incoming-handler` | per host policy | An HTTP server *provider* (a host-side plugin) calls `handle` on the component |
-| Fastly Compute [5] | Compute host calls (`witx`) and component SDKs | a new instance per request by default. Viceroy 0.14.0 (2025-08-08) added experimental host calls for reusable sessions [5] | Viceroy is the local test runtime |
-| NGINX Unit [6] | application type `wasm-wasi-component`: `wasi:http/proxy` (Unit 1.32 and later) | per Unit's configuration | Production web server hosting components |
-| WAGI [7] | a WASI *command*: CGI 1.1 meta-variables in the environment, query parameters as arguments, the body on stdin, the CGI response on stdout | one run per request | Executed in-process, not as an OS process. It rewrites CGI variables that would reveal the host file system and adds `X_*` variables [7] |
+| `wasmtime serve` [2] | either world | at most `--max-instance-reuse-count` requests per instance: 1 by default for 0.2 components (a fresh instance per request), 128 for 0.3 ones, with at most `--max-instance-concurrent-reuse-count` (16 by default) at once for 0.3 [2] | No TLS option. The intended pinned conformance runtime. |
+| Spin [3] | its HTTP trigger, whose entry point is the `wasi:http` incoming handler (Spin 2.0, 2023-11-03, "standardized on wasi-http"); also a WAGI executor | a new instance per request for 0.2 handlers; 0.3 handlers are reused, by default up to 128 requests per instance and 16 at once (`crates/trigger-http`) [3]. Persistent state goes through host key-value or SQL interfaces | Routes by path to components (manifest `spin.toml`) |
+| wasmCloud [4] | the exported `wasi:http` handler | per host policy | In wasmCloud 2, "the host matches the request's hostname to a workload, takes an instance of its component, and calls the exported `wasi:http` handler" (`ARCHITECTURE.md`); in wasmCloud 1 an HTTP server *provider* (a host-side plugin) made that call |
+| Fastly Compute [5] | Compute host calls (`witx`) and component SDKs | a new instance per request by default. Viceroy 0.14.0 (2025-08-08) added "experimental support for reusable sessions", renamed sandboxes in 0.18.0 (2026-05-21) [5] | Viceroy is the local test runtime |
+| NGINX Unit [6] | application type `wasm-wasi-component`: `wasi:http/proxy@0.2.0` (Unit 1.32.0, 27 Feb 2024, `CHANGES`) | per Unit's configuration | A web server hosting components; the repository was archived in October 2025, last release 1.35.0 (3 Sep 2025) |
+| WAGI [7] (repository archived) | a WASI *command*: CGI 1.1 meta-variables in the environment, query parameters as arguments, the body on stdin, the CGI response on stdout | one run per request | Executed in-process, not as an OS process. It rewrites CGI variables that would reveal the host file system and adds `X_*` variables [7] |
 | CGI/1.1 (RFC 3875) [8] | a program: meta-variables (§4.1), body on stdin (§4.2), response on stdout (§6) | one run per request | The ancestor of WAGI. The same shape as `Silmaril.Cli` behaviours. |
 | Others | Envoy's proxy-wasm ABI [9] (HTTP filters inside a proxy); WasmEdge's socket extension and Wasmer's WASIX [10] (POSIX-style sockets inside Wasm, so the *Linux-process* shape below); `wasi:sockets` (also vendored here); containerd's runwasi [11] (Wasm workloads behind the container interface); Cloudflare Workers (Wasm inside V8 isolates driven by a JavaScript `fetch` handler) | varies | Most fit one of the three shapes below |
+
+**Checked against pinned releases** (on 2026-11-13, from the release sources): Wasmtime v50.0.1
+(`src/commands/serve.rs`: `DEFAULT_WASIP2_MAX_INSTANCE_REUSE_COUNT = 1`,
+`DEFAULT_WASIP3_MAX_INSTANCE_REUSE_COUNT = 128`,
+`DEFAULT_WASIP3_MAX_INSTANCE_CONCURRENT_REUSE_COUNT = 16`); Spin v4.3.0
+(`crates/trigger-http/src/{lib,server}.rs`: the same defaults, applied to 0.3 handlers only)
+and the Spin v2.0.0 release notes; wasmCloud v2.12.1 (`ARCHITECTURE.md`); Viceroy v0.22.0
+(`CHANGELOG.md`); NGINX Unit `CHANGES` at its archived head; the vendored `wasi:http` WIT
+(`specs/wasi/0.2.12/http/proxy.wit`, `specs/wasi/0.3.2/http/worlds.wit`) for the two quotes
+in the first rows. Earlier text said that Spin accepted plain `wasi:http` handlers only from
+2.6, that `wasmtime serve` has "no limits", and that wasmCloud 2 uses an HTTP provider; these
+were corrected. The Fastly default and the WAGI rows were not rechecked.
 
 The three shapes are as follows. In the first, **a handler per request** is called by the host
 with a request and gives back a response: `wasi:http`, Spin, wasmCloud, Fastly, Unit, proxy-wasm.
@@ -633,8 +645,14 @@ is the target of this page.
 **Platforms** (`Silmaril.Servers.Platform`, defined). A platform `P : Platform T` gives three
 things: its implementations (`Impl`), what is observed of their runs (`Obs`, `runs`), and how
 an observation is read as HTTP traces of type `T` (`reads`, a relation). `P.view i` is the set
-of traces of `i`. That set is meant as a model of the core server institution once `T` is the
-core's trace type; this identification is not yet made. `Refines P Q i j` is trace inclusion across platforms. `Refines.sat` (proved)
+of traces of `i`. For sequential logs (`T = Log`, a core `History` of `Http.sig`) it is the core
+model `Platform.model P i` (the logs used one request at a time on fresh identities,
+`Exchange.seqUse`), and `refines_iff_model` (proved) says that `Refines` is exactly refinement
+of these models; `Exchange.seqUse_refines_iff` is the underlying fact. For per-connection
+traces, `Platform.connModel P i` is the set of well-formed core traces that answer in request
+order on each connection and whose events are the exchanges, the `k`-th on connection `c`
+with identity `⟨c, k⟩` (`Explains`); `connModel_refines` (proved) carries refinement over.
+`Refines P Q i j` is trace inclusion across platforms. `Refines.sat` (proved)
 transports every trace specification from `j` to `i`. `Refines.map` (proved) keeps refinement
 under a change of observation.
 
@@ -644,7 +662,8 @@ under a change of observation.
 | … a fresh instance per request (CGI, Spin, Fastly, `wasmtime serve` 0.2) | `Platform.fresh σ` | same | each exchange a run from the initial state (`Reuse.Fresh`) | defined |
 | … under a host that pools instances (`wasi:http`'s contract) | `Platform.host σ` | same | runs of a pool of instances, any request to any idle or new instance (`Reuse.HostRuns`) | defined |
 | CGI or WAGI script | `Platform.cgi g` | a `Silmaril.Cli.Spec` and the initial files | one run per request on the files the previous run left (`Cgi.origin`) | defined |
-| Linux process over sockets | `Platform.linux fr` | a socket semantics `Input → List SockEv → Prop` and the launch invocation | the connections accepted and, per connection, requests framed from the octets received paired in order with responses framed from the octets sent (`connLog`, RFC 9112 §9.3) | defined; the framing `fr` is a parameter |
+| Linux process over sockets | `Platform.linux fr` | a socket semantics `Input → List SockEv → Prop` and the launch invocation | the connections accepted and, per connection, requests framed from the octets received paired in order with responses framed from the octets sent (`connLog`, RFC 9112 §9.3) | defined; HTTP/1.1 framing `Wire1.framing` with round trips proved; socket semantics of a process-model program `Sockets.sockSem` |
+| `wasi:http` component, fresh instance per request | `Compare.wasi` | a component body over the proxy imports | each exchange a one-exchange trace of the component (`wasiServer`) | defined; hello compared with Linux (below) |
 | Container | `Platform.container fr` | a socket semantics and a `Container` (image of layers with whiteouts, entry point, arguments, environment, roots) | the process platform at `Container.launch`, whose files are the image's (`container_view`, by definition) | defined |
 
 The theorems proved in `Servers.Reuse`, `Servers.Cgi` and `Servers.Platform` (each `Thms`
@@ -668,6 +687,42 @@ header lists them):
   host. Each refines the other. Both have exactly the logs in which every exchange answers
   `helloResponse`, with `HEAD` answered without content (`cgi_hello_iff`, `web_host_iff`).
 
+**HTTP/1.1 on the wire** (`Silmaril.Servers.Wire1`, proved). `toRequest` and `toResponse` read
+an `Http1` head and framed body as RFC 9110 messages (method by `Method.ofToken`, the target
+as path-with-query, content the body's payload, the framing fields `Content-Length` and
+`Transfer-Encoding` dropped). `framing` reads a connection's octets as consecutive requests and
+one response per request, each read with its request's method. Round trips:
+`requests_encode` (requests with valid heads and fitting bodies, sent back to back, are read
+back exactly), `responses_encode`, and `connLog_encode` (the exchanges of such a connection
+are the pairs). Not covered: interim responses (read as the response), close-delimited
+response bodies, `CONNECT` tunnels, absolute-form targets.
+
+**Socket events of a process** (`Silmaril.Servers.Sockets`, proved). The Linux process model
+(`Silmaril.Process.LPS`) records runs as raw system-call histories whose byte events carry a
+trace channel, `connChannel ix = ix + 3` for the `ix`-th accepted connection. `ofRecords`
+reads bytes read and written on connection channels as `recv`/`send` and successful
+`accept`/`accept4` calls as `accept`s in order; `sockSem` is the socket semantics of a
+launched program (its finite runs, `HStar`). `connLog_byteTrace`: the exchanges of every
+connection, under any framing, are framed from the bytes on its channel. Assumed, not
+proved: that the `k`-th accept is channel `k + 3` (it is how LPS numbers them). Not read:
+`close`, and `recvfrom`/`recvmsg`, which LPS leaves unmodelled on sockets.
+
+**Hello, Wasm against Linux, end to end** (`Silmaril.Servers.Compare`, proved, conditional on the
+Linux side). `wasi_hello_iff`: the logs of the hello component are those answering every
+request `200 hello`. `wasi_refines_linux`: on logs whose requests are on the wire (`wireLog`:
+readings of wire requests that read back, methods other than `HEAD` and `CONNECT`), the hello
+component refines every Linux process that, for any such requests received back to back on
+one connection, sends `helloWire` (`200 OK`, `content-length: 5`, `hello`) for each in some run
+(`ServesHello`). The proof goes through the component's `wasi:http` calls, the HTTP/1.1 round
+trips and the merge of connection logs. `linux_refines_wasi`: a process whose every exchange
+answers `200 hello` (`OnlyHello`) refines the component on all logs. `hello_equiv` combines
+them, `wasi_refines_linux_model` states the first in the server institution, and `helloSock`, a
+reference hello server at the socket level, satisfies both hypotheses
+(`hello_equiv_helloSock`). Two findings: HTTP/1.1 cannot carry every request a component may be
+given, and the hello component answers `HEAD` with content, which an HTTP/1.1 client reads as
+no body (RFC 9112 §6.3), so the comparison is restricted to `wireLog`. No Linux binary is proved
+to satisfy `ServesHello`; that would go through `Sockets.sockSem` and the process model.
+
 How refinement between the other instances is stated:
 
 - **A Wasm server refines a Linux server's specification.** Both are read into one trace type.
@@ -688,14 +743,12 @@ How refinement between the other instances is stated:
 
 Planned, in order of cost:
 
-1. The HTTP/1.1 instance of `Framing`, from `Silmaril.Net.Http1.Framing`. It is blocked on
-   mapping its request and response heads to `Silmaril.Net.Http.Request` and `Response` (a
-   planned row of [HTTP](http.md)). With it, a theorem that
-   `connLog` of the encodings of a log gives back that log (framing round trip per
-   connection).
-2. The socket semantics of a Linux binary: `SockEv` read off the `accept`, `read`, `write` and
-   `close` system calls of `Silmaril.Process` traces. Netsem [21] is the reference for what the
-   kernel may do (partial reads and writes, `EAGAIN`).
+1. A Linux binary that satisfies `ServesHello` and `OnlyHello` through `Sockets.sockSem`,
+   which needs the process model to run a server loop over `accept`, `read` and `write`.
+   Netsem [21] is the reference for what the kernel may do (partial reads and writes,
+   `EAGAIN`). Reading `close` needs the descriptor-to-connection map of the process state.
+2. Core traces read directly from socket timing (a request received when its last octet
+   arrives), instead of the per-connection logs, which fix only the order on each connection.
 3. Concurrent instance reuse (the 0.3 `service` world). An exchange is then no longer atomic
    at the instance. The linearizability reading of the core is the specification, with the
    component's `backpressure` as the opt-out.
@@ -707,12 +760,18 @@ Planned, in order of cost:
 
 1. WebAssembly/wasi-http, the `wasi:http` proposal. https://github.com/WebAssembly/wasi-http.
    The vendored WIT is `specs/wasi/0.2.12/http` and `specs/wasi/0.3.2/http`.
-2. Wasmtime CLI options, `wasmtime serve`. https://docs.wasmtime.dev/cli-options.html
-3. Spin documentation. https://spinframework.dev
-4. wasmCloud documentation, HTTP server provider. https://wasmcloud.com/docs
+2. Wasmtime CLI options, `wasmtime serve`. https://docs.wasmtime.dev/cli-options.html;
+   source `src/commands/serve.rs` at release v50.0.1,
+   https://github.com/bytecodealliance/wasmtime/blob/v50.0.1/src/commands/serve.rs
+3. Spin documentation, https://spinframework.dev/v3/http-trigger; release v4.3.0,
+   https://github.com/spinframework/spin/tree/v4.3.0/crates/trigger-http; v2.0.0 release
+   notes, https://github.com/spinframework/spin/releases/tag/v2.0.0
+4. wasmCloud documentation, https://wasmcloud.com/docs; `ARCHITECTURE.md` at v2.12.1,
+   https://github.com/wasmCloud/wasmCloud/blob/v2.12.1/ARCHITECTURE.md
 5. Fastly Compute, https://docs.fastly.com/products/compute; Viceroy and its changelog,
    https://github.com/fastly/Viceroy
-6. NGINX Unit configuration, `wasm-wasi-component`. https://unit.nginx.org/configuration/
+6. NGINX Unit configuration, `wasm-wasi-component`, https://unit.nginx.org/configuration/;
+   `CHANGES`, https://github.com/nginx/unit/blob/master/CHANGES
 7. WAGI, the WebAssembly Gateway Interface. https://github.com/deislabs/wagi (see
    `docs/architecture.md`, `docs/writing_modules.md`)
 8. D. Robinson, K. Coar. *The Common Gateway Interface (CGI) Version 1.1*. RFC 3875, 2004.
@@ -772,7 +831,9 @@ lake build Silmaril.Servers.Core.Thms Silmaril.Servers.Http.Thms \
   Silmaril.Servers.State.Component.Thms Silmaril.Servers.State.OwnedFs.Thms \
   Silmaril.Servers.State.SharedFs.Thms Silmaril.Servers.Reuse.Thms \
   Silmaril.Servers.Cgi.Thms Silmaril.Servers.Platform.Thms \
-  Silmaril.Servers.Conn.Thms Silmaril.Servers.WasiFs.Thms
+  Silmaril.Servers.Conn.Thms Silmaril.Servers.WasiFs.Thms \
+  Silmaril.Servers.Wire1.Thms Silmaril.Servers.Sockets.Thms Silmaril.Servers.Compare.Thms \
+  Silmaril.Servers.State.Traces.Thms Silmaril.Servers.PerRequest.Thms Silmaril.Servers.Live.Thms
 ```
 
 Every module builds in under 8 s; the slowest are the run proofs of `WasiFs` and

@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Servers.Platform.Defs
 import Silmaril.Servers.Reuse.Thms
+public import Silmaril.Servers.Exchange.Thms
 import Silmaril.Proofs.Servers.Platform.Basic
 
 /-!
@@ -23,6 +24,13 @@ PROVED (standard axioms):
 * `cgi_view`, `container_view`: a CGI script is the sequential handler of its origin; a
   container is its entry point's process at the launch invocation (by definition).
 * `merge_single`: one connection's log is a sequential log.
+* In the server institution: `log_eq_history` (a `Log` is a history of `Http.sig`);
+  **`refines_iff_model`**: refinement across platforms with sequential logs is exactly
+  refinement of their core models; **`connModel_refines`**: refinement across platforms with
+  per-connection traces gives refinement of their core models, whose traces are well formed
+  and answer in request order on each connection (`connModel_sat_wf`,
+  `connModel_sat_inOrder`); `merged_refines`: refinement survives reading per-connection
+  traces as merged logs.
 -/
 
 @[expose] public section
@@ -99,5 +107,31 @@ theorem cgi_hello_equiv_host (g : Cgi.Gateway) (fs : Fs) :
 
 theorem merge_single (l : Log) : Merge [l] l :=
   .cons .nil (Proofs.Servers.Platform.interleave_nil_right l)
+
+/-! ## In the server institution -/
+
+/-- A `Log` is a history of the HTTP interface. -/
+theorem log_eq_history : Log = History Http.sig := rfl
+
+/-- **Refinement across platforms is refinement of core models.** -/
+theorem refines_iff_model {P Q : Platform Log} (i : P.Impl) (j : Q.Impl) :
+    Refines P Q i j ↔ (model P i).Refines (model Q j) :=
+  (Exchange.seqUse_refines_iff (I := Http.sig) {l | P.view i l} {l | Q.view j l}).symm
+
+/-- Refinement across platforms with per-connection traces gives refinement of core models. -/
+theorem connModel_refines {P Q : Platform (List ConnId × ConnLog)} {i : P.Impl} {j : Q.Impl}
+    (h : Refines P Q i j) : (connModel P i).Refines (connModel Q j) :=
+  fun _ ⟨x, hx, he⟩ => ⟨x, h x hx, he⟩
+
+theorem connModel_sat_wf (P : Platform (List ConnId × ConnLog)) (i : P.Impl) :
+    (connModel P i).Sat Sen.WF := fun _ ⟨_, _, he⟩ => he.1
+
+/-- The core traces of a per-connection platform answer in request order on each
+connection. -/
+theorem connModel_sat_inOrder (P : Platform (List ConnId × ConnLog)) (i : P.Impl) :
+    (connModel P i).Sat Sen.inOrder := fun _ ⟨_, _, he⟩ => he.2.1
+
+theorem merged_refines {P Q : Platform (List ConnId × ConnLog)} {i : P.Impl} {j : Q.Impl}
+    (h : Refines P Q i j) : Refines (merged P) (merged Q) i j := Refines.map toLogs h
 
 end Silmaril.Servers.Platform

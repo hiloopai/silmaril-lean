@@ -2,6 +2,8 @@ module
 
 public import Silmaril.Servers.Reuse.Defs
 public import Silmaril.Servers.Cgi.Defs
+public import Silmaril.Servers.Exchange.Defs
+public import Silmaril.Servers.Http.Defs
 
 @[expose] public section
 
@@ -41,11 +43,29 @@ Instances:
 component refines the Linux server" reads: every `Log` of the component under every host is a
 merge of a `ConnLog` of the Linux server (`Refines` after `toLogs`).
 
-Not modelled here: the socket semantics of a Linux process (which `SockEv` traces a binary
-produces, to be read off `Silmaril.Process` system-call traces), the HTTP/1.1 framing instance
-of `Framing` (from `Silmaril.Net.Http1.Framing` once its heads map to
-`Silmaril.Net.Http.Request`), interleavings finer than whole exchanges, and the network
-between client and server.
+## In the server institution
+
+A platform's traces are models of the core (`Silmaril.Servers.Core`) at the HTTP interface
+`Http.sig`, and refinement across platforms is refinement there:
+
+* a `Log` is a history of `Http.sig` (`Thms.log_eq_history`); a platform with `Log` traces
+  gives the core model `model P i`: its logs used sequentially, each request on a fresh
+  identity and answered before the next arrives (`Exchange.seqUse`). `Refines` is exactly
+  refinement of these models (`Thms.refines_iff_model`);
+* a per-connection trace `(cs, cl)` explains (`Explains`) the well-formed core traces with
+  responses in request order on each connection whose events are its exchanges, the `k`-th
+  exchange of connection `c` received and answered with the identity `⟨c, k⟩` (`ReqId`);
+  `connModel P i` is the model of all of them, and `Refines` gives refinement of these
+  models (`Thms.connModel_refines`). The order of events across connections, and of a
+  request against earlier responses on its own connection, is not fixed by the per-connection
+  trace: every order allowed by well-formedness and `Sen.inOrder` is a trace of the model.
+
+The HTTP/1.1 instance of `Framing` is `Silmaril.Servers.Wire1.framing`; socket traces read off
+the system-call histories of the Linux process model are in `Silmaril.Servers.Sockets`.
+
+Not modelled here: which `SockEv` traces a given binary produces (that is the process
+semantics), interleavings finer than whole exchanges, and the network between client and
+server.
 
 A Silmaril addition.
 -/
@@ -219,6 +239,33 @@ inductive Merge : List Log → Log → Prop where
 
 /-- The sequential logs of a per-connection trace: the merges of its connections' logs. -/
 def toLogs (t : List ConnId × ConnLog) (l : Log) : Prop := Merge (t.1.map t.2) l
+
+/-! ## Models of the server institution -/
+
+/-- **The core model of a platform with sequential logs**: its logs, used one request at a
+time on fresh identities. -/
+def model (P : Platform Log) (i : P.Impl) : Servers.Model Http.sig :=
+  Exchange.seqUse (I := Http.sig) {l | P.view i l}
+
+/-- **A per-connection trace explains a core trace** `t`: `t` is well formed, answers in
+request order on each connection, every event of `t` belongs to an exchange of an accepted
+connection (the `k`-th exchange of connection `c` has the identity `⟨c, k⟩`), and every such
+exchange is received and answered in `t`. -/
+def Explains (x : List ConnId × ConnLog) (t : Trace Http.sig) : Prop :=
+  Sen.WF t ∧ Sen.inOrder t ∧
+    (∀ e ∈ t, e.id.conn ∈ x.1 ∧ ∃ p : Request × Response, (x.2 e.id.conn)[e.id.seq]? = some p ∧
+      (e = .recv e.id p.1 ∨ e = .send e.id p.2)) ∧
+    (∀ c ∈ x.1, ∀ (k : Nat) (p : Request × Response), (x.2 c)[k]? = some p →
+      Event.recv (A := Http.sig) ⟨c, k⟩ p.1 ∈ t ∧ Event.send (A := Http.sig) ⟨c, k⟩ p.2 ∈ t)
+
+/-- **The core model of a platform with per-connection traces**: the core traces its
+per-connection traces explain. -/
+def connModel (P : Platform (List ConnId × ConnLog)) (i : P.Impl) : Servers.Model Http.sig :=
+  ⟨fun t => ∃ x, P.view i x ∧ Explains x t⟩
+
+/-- A platform with per-connection traces read as sequential logs: the merges of the
+connections' logs (`toLogs`). -/
+def merged (P : Platform (List ConnId × ConnLog)) : Platform Log := P.map toLogs
 
 end Platform
 
