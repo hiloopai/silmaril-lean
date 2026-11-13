@@ -14,7 +14,8 @@ For `Silmaril.Servers.Platform.Thms`.
 
 namespace Silmaril.Proofs.Servers.Platform
 
-open Silmaril.Net.Http Silmaril.Cli Silmaril.Servers Silmaril.Servers.Reuse Silmaril.Servers.Platform
+open Silmaril.Net.Http Silmaril.Cli Silmaril.Servers Silmaril.Servers.Reuse
+open Silmaril.Servers.Platform
 
 variable {σ : Type}
 
