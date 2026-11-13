@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Servers.Exchange.Defs
 public import Silmaril.Servers.Core.Thms
+import Silmaril.Proofs.Servers.Exchange.Seq
 
 @[expose] public section
 
@@ -17,7 +18,9 @@ public import Silmaril.Servers.Core.Thms
   specification (`seqUse_sat_lin`); a server with a fresh instance per request that satisfies
   `each R` refines the atomic-handler server of `R` (`fresh_refines_server`), so it is
   linearizable (`fresh_sat_lin`); `ofFun f` with fresh instances refines the core's function
-  server (`fresh_ofFun_refines`); both lifts preserve refinement (`seqUse_mono`, `fresh_mono`).
+  server (`fresh_ofFun_refines`); both lifts preserve refinement (`seqUse_mono`, `fresh_mono`),
+  and the sequential use also reflects it (`seqUse_refines_iff`): an exchange server is
+  determined by its sequential uses.
 -/
 
 namespace Silmaril.Servers.Exchange
@@ -68,6 +71,11 @@ theorem Hom.lift_mono (h : Hom I J) (hMN : Refines M N) : Refines (h.lift M) (h.
 /-- Refinement of exchange servers lifts to refinement of their sequential uses. -/
 theorem seqUse_mono (h : Refines M N) : (seqUse M).Refines (seqUse N) :=
   fun _ ⟨l, hn, hm, ht⟩ => ⟨l, hn, h hm, ht⟩
+
+/-- **The sequential use reflects refinement**: one server's sequential uses refine
+another's exactly when the first refines the second. -/
+theorem seqUse_refines_iff (M N : Model I) : (seqUse M).Refines (seqUse N) ↔ Refines M N :=
+  Proofs.Servers.Exchange.seqUse_refines_iff M N
 
 /-- Refinement of exchange servers lifts to refinement with fresh instances. -/
 theorem fresh_mono (h : Refines M N) : (fresh M).Refines (fresh N) :=
