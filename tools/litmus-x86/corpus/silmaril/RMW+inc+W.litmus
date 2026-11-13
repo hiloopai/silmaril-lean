@@ -1,0 +1,6 @@
+X86_64 RMW+inc+W
+"Hand-written: the unlocked inc is a separate load and store, so a store may fall between them"
+{ int x=0; }
+ P0       | P1          ;
+ incl (x) | movl $5,(x) ;
+exists (x=1)

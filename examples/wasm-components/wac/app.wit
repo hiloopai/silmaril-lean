@@ -1,0 +1,12 @@
+package silmaril:pilot;
+
+/// The world the pilot composition targets: it exports `run` and imports nothing.
+world app {
+  export run: func() -> u32;
+}
+
+/// A world the composition does not fit: it also requires the export `stop`.
+world app-and-stop {
+  export run: func() -> u32;
+  export stop: func();
+}

@@ -1,0 +1,7 @@
+X86_64 MS+halves
+"Hand-written loose corner (mixed-size): an aligned 8-byte store observed through two 4-byte loads in program order. Not covered by x86-TSO; XL verdict only."
+{ uint64_t x=0; }
+ P0             | P1              ;
+ movq $-1,(x)   | movl (x),%eax   ;
+                | movl (x+4),%ebx ;
+exists (1:rax=0xffffffff /\ 1:rbx=0)

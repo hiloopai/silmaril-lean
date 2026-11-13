@@ -146,7 +146,7 @@ theorem candidates_complete (t : Test) {evs : List Ev} {exps : List (List Byte)}
   obtain ⟨x', hx', h⟩ := Silmaril.Proofs.X86.MemoryModel.Litmus.cand_complete t hc hx hrmw hwf hro hn
   exact ⟨x', hx', ⟨h.evs, h.rmw, h.rf, h.co⟩⟩
 
-/-- Agreeing executions are consistent under the same stage-1 models, equally well formed, read
+/-- Agreeing executions are consistent under the same models, equally well formed, read
 the same bytes and end in the same final state. -/
 theorem Agrees.models {x x' : Exec} (h : Agrees x x') :
     (x.Sc ↔ x'.Sc) ∧ (x.Tso ↔ x'.Tso) ∧ (x.Xl ↔ x'.Xl) ∧ x.Wf = x'.Wf ∧
