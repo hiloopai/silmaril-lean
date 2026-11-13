@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["kitchen", "kitchen-ns", "kdriver", "astream", "adriver", "res", "rdriver"]
+
+[workspace.dependencies]
+wit-bindgen = { version = "=0.62.0", default-features = false, features = ["realloc", "bitflags"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false
+strip = "debuginfo"
+codegen-units = 1
+panic = "abort"

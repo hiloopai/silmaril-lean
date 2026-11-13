@@ -1,0 +1,8 @@
+package test:cconv;
+
+world cconv {
+  export add: func(a: u32, b: u32) -> u32;
+  export greet: func(s: string) -> string;
+  export rev: func(b: list<u8>) -> list<u8>;
+  export count: func(b: list<u8>) -> u32;
+}

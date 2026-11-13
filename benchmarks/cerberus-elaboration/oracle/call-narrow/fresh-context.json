@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "snapshots": [
+    {
+      "phase": "before_load_core_stdlib",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": -1,
+      "next": 0,
+      "digestHex": ""
+    },
+    {
+      "phase": "after_load_core_stdlib",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 469,
+      "next": 470,
+      "digestHex": ""
+    },
+    {
+      "phase": "after_runtime_alias_serialization",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 469,
+      "next": 470,
+      "digestHex": ""
+    },
+    {
+      "phase": "after_load_core_impl",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 482,
+      "next": 483,
+      "digestHex": ""
+    },
+    {
+      "phase": "after_c_frontend",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 507,
+      "next": 508,
+      "digestHex": "0f3df2abc710de84f2b750d418513e8b"
+    },
+    {
+      "phase": "after_tail_serialization",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 507,
+      "next": 508,
+      "digestHex": "0f3df2abc710de84f2b750d418513e8b"
+    },
+    {
+      "phase": "before_Translation_translate",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 507,
+      "next": 508,
+      "digestHex": "0f3df2abc710de84f2b750d418513e8b"
+    },
+    {
+      "phase": "after_Translation_translate",
+      "maximum": 4611686018427387903,
+      "intSize": 63,
+      "lastAllocated": 526,
+      "next": 527,
+      "digestHex": "0f3df2abc710de84f2b750d418513e8b"
+    }
+  ]
+}

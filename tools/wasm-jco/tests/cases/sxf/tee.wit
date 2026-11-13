@@ -1,0 +1,5 @@
+package test:tee;
+
+world tee {
+  export tee: async func(s: stream<u8>) -> tuple<stream<u8>, stream<u8>>;
+}

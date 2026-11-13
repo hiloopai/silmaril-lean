@@ -120,7 +120,7 @@ Names are relative to `Silmaril.Cerberus` unless they are written in full.
 | Category | What it covers |
 | --- | --- |
 | **Proved** (kernel-checked) | The institution laws and runner soundness above. Successor completeness and `Spec.check_sound`. Codec round-trip and reader-equality laws. Schema agreement. Concrete and typed memory laws. Target and generalized-type lemmas. The elaboration equations in `Silmaril.Proofs.Cerberus.*`. The restricted end-to-end elaboration results in `Silmaril.Compiler.Core.*`. The tree contains no `sorry`, `axiom` or `native_decide`; the test audits print the axioms of the main theorems. |
-| **Tested** (compile-time) | `tests/cerberus/*.lean` other than the runtime tests listed under "Not in this release". They are `rfl`, `decide` and `cbv` checks on actual elaborator output (constants, arithmetic, comparisons, control flow, objects, parameters, calls, scheduling, helpers, global objects), target types and the institution, plus `#check`/`#print axioms` audits of the public theorems. |
+| **Tested** (compile-time) | `tests/cerberus/*.lean` other than the four runtime replays (see "Oracle fixtures and replays"). They are `rfl`, `decide` and `cbv` checks on actual elaborator output (constants, arithmetic, comparisons, control flow, objects, parameters, calls, scheduling, helpers, global objects), target types and the institution, plus `#check`/`#print axioms` audits of the public theorems. |
 | **Assumed / trusted** | The port is a hand transcription of upstream Cerberus. Only the syntax schema is checked against upstream mechanically, so faithfulness of the semantics rests on review and the cited source lines. The target configuration (`Target.pinnedApple` keeps upstream's Apple default, including its eight-byte floating-layout shortcuts; it is not a System V model). Runtime (`std.core`) bindings and freshness contexts are explicit inputs to the elaborator. The Clang JSON model and the command-line drivers, which are trusted glue. |
 | **Open / not ported** | `Elab.Translate.elaborate` rejects every program, so `core-elab` exits 1 on every decoded input. Upstream's whole `translation.lem` is not yet ported; only the selected cases in `Elaboration.*` exist, and they reject explicitly outside their domain (CHERI, pointer arithmetic, floating constants, compound literals, nonempty global dependencies, indirect calls, among others). Unsupported Core operations and `printf` flags and widths halt with `unsupported`. Ambiguous provenance (iota) states are unsupported. No ISO C refinement theorem, Ail semantics or native compiler certificate is claimed. See each module docstring for its exact domain. |
 
@@ -223,12 +223,18 @@ Upstream Cerberus is described in:
   Chisnall, Robert N. M. Watson and Peter Sewell. "Into the depths of C:
   elaborating the de facto standards". PLDI 2016.
 
+## Oracle fixtures and replays
+
+[`benchmarks/cerberus-elaboration/oracle`](../../benchmarks/cerberus-elaboration/oracle/README.md)
+holds genuine Cerberus output on 18 small C programs. Four replay tests run against it (`make
+cerberus-oracle`, part of `make check`): every Core document runs through the Core LTS to the
+observation of the `cerberus` CLI (`ci_cerberus_genuine_oracle`); the Lean elaborator on each
+typed Ail gives the genuine Core file byte for byte (`ci_cerberus_elaboration_oracle`); the
+captured loaded-integer conversions (`ci_cerberus_integer_cast`); a parameter call
+(`ci_cerberus_parameter_call`). These are **tested against an oracle**, not proved.
+
 ## Not in this release
 
-- The genuine Cerberus oracle fixtures and the four runtime oracle-replay tests
-  `GenuineOracle`, `ElaborationOracle`, `ParameterCallRuntime` and
-  `IntegerCastRuntime`. The captured fixtures embed build-machine paths and must
-  be re-exported first.
 - The kernel tests `IntegerCastKernel` and `PointerGlobalKernel`. They need a
   vendored RISC-V package that is not in this release.
 - The System V / x86 translation-validation machinery and the native C compiler.
