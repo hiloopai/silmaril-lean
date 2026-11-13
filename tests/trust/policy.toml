@@ -1,0 +1,20 @@
+# Test-only trust policy for tests/trust (loaded by tests/trust/BVDecideNative.lean with
+# `trust_policy`). It is not the library policy: it only gives the test modules a scope,
+# `tests.trust`, whose local profile may run the registered bv_decide procedure.
+standard = ["propext", "Classical.choice", "Quot.sound"]
+
+[native]
+
+[[native.scope]]
+module = "Silmaril"
+max = "none"
+default = "none"
+deps = "none"
+axioms = "standard"
+
+[[native.scope]]
+module = "tests.trust"
+max = "all"
+default = "none"
+deps = "all"
+axioms = "standard"

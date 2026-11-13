@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cheap textual layout checks until `sil` takes them over (docs/design.md):
-# no `axiom` declarations, no `native_decide`, and no module importing another
+# no `axiom` declarations, no `native_decide` or `bv_decide`, and no module importing another
 # topic's Proofs/Raw tree from outside it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -39,6 +39,42 @@ if not pin or pin.group(1) != f"{h:016x}":
     print(f"error: policy.toml changed; update the pin in Silmaril/Prelude/Trust/Policy/Defs.lean to {h:016x}",
           file=__import__("sys").stderr)
     raise SystemExit(1)
+PY
+# `bv_decide` proves goals that need SAT through a native-evaluation axiom
+# (`…._native.bv_decide.ax_…`). Use `bv_decide_kernel` (kernel only) or `sil_bv_decide`
+# (native only where the trust policy allows it); only the framework module below invokes
+# `bv_decide` (docs/bv-decide-trust.md). Comments, strings, code spans, dotted names and
+# `axiom_tag` registrations are not invocations.
+python3 -I - <<'PY' || status=1
+import pathlib, re, sys
+call = re.compile(r"(?<![\w.`])bv_decide(?![\w?'.])")
+bad = 0
+# The one framework module that invokes `bv_decide` under the trust policy, exactly once.
+framework = pathlib.Path("Silmaril/Prelude/BVDecide/Native/Defs.lean")
+for p in sorted(pathlib.Path("Silmaril").rglob("*.lean")):
+    source = p.read_text()
+    if "bv_decide" not in source:
+        continue
+    depth, calls = 0, []
+    for n, line in enumerate(source.splitlines(), 1):
+        code, i = [], 0
+        while i < len(line):
+            if depth == 0 and line.startswith("--", i): break
+            if line.startswith("/-", i): depth += 1; i += 2; continue
+            if depth and line.startswith("-/", i): depth -= 1; i += 2; continue
+            if depth == 0: code.append(line[i])
+            i += 1
+        text = re.sub(r'"(\\.|[^"\\])*"|`[^`]*`|axiom_tag\s+\w+', "", "".join(code))
+        calls += [n] * len(call.findall(text))
+    if p == framework:
+        if len(calls) != 1:
+            print(f"{p}: the framework module must invoke bv_decide exactly once, found lines {calls}", file=sys.stderr)
+            bad = 1
+        continue
+    for n in calls:
+        print(f"{p}:{n}: bv_decide is not allowed; use bv_decide_kernel or sil_bv_decide", file=sys.stderr)
+        bad = 1
+raise SystemExit(bad)
 PY
 # Proofs/Raw of topic Silmaril.{Proofs,Raw}.<Region>.<Topic> may be imported only
 # from the same region and topic, in the header, Proofs or Raw trees. One awk
