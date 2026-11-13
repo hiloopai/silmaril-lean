@@ -3,6 +3,7 @@ module
 public import Silmaril.Servers.Core.Defs
 import Silmaril.Proofs.Servers.Core.Lin
 import Silmaril.Proofs.Servers.Core.Seq
+import Silmaril.Proofs.Servers.Core.Pipe
 
 /-!
 # The server institution: theorems
@@ -22,6 +23,9 @@ import Silmaril.Proofs.Servers.Core.Seq
 * **Sequential use**: a trace that answers each request before the next arrives is
   linearizable exactly when its history is allowed (`Sen.lin_seq_iff`): the linearization points
   are forced. So for sequential clients the trace sentence is the sequential specification.
+* **Pipelining**: the pipelining server of a machine (responses in request order on each
+  connection) refines its atomic-handler server, so it is linearizable, and it answers in order
+  (`Machine.pipeServer_refines`, `Machine.pipeServer_sat_lin`, `Machine.pipeServer_sat_inOrder`).
 * **Linearizable implies sequentially consistent** (`Sen.sc_of_lin`).
 * **Refinement is preserved by the lifts**: weaker relations, specifications and machines give
   weaker sentences and larger servers (`Sen.atomic_mono`, `Sen.lin_mono`, `Sen.sc_mono`,
@@ -99,6 +103,22 @@ theorem Model.ofFun_eq_server (f : A.Req → A.Resp) :
 /-- A function server satisfies its functional sentence. -/
 theorem Model.ofFun_sat (f : A.Req → A.Resp) : (Model.ofFun f).Sat (Sen.ofFun f) :=
   fun _ ht => ht.2
+
+/-! ## Pipelining -/
+
+/-- The pipelining server refines the atomic-handler server. -/
+theorem Machine.pipeServer_refines {σ : Type} (M : Machine A σ) (q₀ : σ) :
+    (M.pipeServer q₀).Refines (M.server q₀) :=
+  Proofs.Servers.Core.pipeServer_le M q₀
+
+/-- **The pipelining server answers each connection in request order.** -/
+theorem Machine.pipeServer_sat_inOrder {σ : Type} (M : Machine A σ) (q₀ : σ) :
+    (M.pipeServer q₀).Sat Sen.inOrder :=
+  Proofs.Servers.Core.pipeServer_inOrder M q₀
+
+theorem Machine.pipeServer_sat_lin {σ : Type} (M : Machine A σ) (q₀ : σ) :
+    (M.pipeServer q₀).Sat (Sen.lin (M.Hist q₀)) :=
+  fun t ht => (M.server_sat_lin q₀) t (M.pipeServer_refines q₀ t ht)
 
 /-! ## Sequential use -/
 

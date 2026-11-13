@@ -286,6 +286,24 @@ def Machine.server {A : Sig} {σ : Type} (M : Machine A σ) (q₀ : σ) : Model 
   ⟨fun t => ∃ (t' : List (LEvent A)) (fin : σ × LMon A),
     Steps (Machine.serverStep M) (q₀, LMon.init A) t' fin ∧ LEvent.erase t' = t⟩
 
+/-- Every request received earlier on the connection of `i`, at a smaller position, has been
+answered. -/
+def LMon.EarlierAnswered {A : Sig} (m : LMon A) (i : ReqId) : Prop :=
+  ∀ j, j.conn = i.conn → j.seq < i.seq → m.req j ≠ none → m.pending j = none ∧ m.ready j = none
+
+/-- A step of the pipelining server: a step of the atomic-handler server that sends a response
+only when every earlier request on its connection has been answered. -/
+def Machine.pipeStep {A : Sig} {σ : Type} (M : Machine A σ) (x : σ × LMon A) (e : LEvent A)
+    (y : σ × LMon A) : Prop :=
+  Machine.serverStep M x e y ∧ ∀ i s, e = .ev (.send i s) → x.2.EarlierAnswered i
+
+/-- **The pipelining server of a machine** (HTTP/1.1, RFC 9112 §9.3.2): as the atomic-handler
+server, with the responses on each connection in request order. Handler runs may still happen
+in any order. -/
+def Machine.pipeServer {A : Sig} {σ : Type} (M : Machine A σ) (q₀ : σ) : Model A :=
+  ⟨fun t => ∃ (t' : List (LEvent A)) (fin : σ × LMon A),
+    Steps (Machine.pipeStep M) (q₀, LMon.init A) t' fin ∧ LEvent.erase t' = t⟩
+
 /-- The model of a function server: every well-formed trace whose responses are `f` of their
 requests. -/
 def Model.ofFun {A : Sig} (f : A.Req → A.Resp) : Model A := ⟨fun t => Sen.WF t ∧ Sen.ofFun f t⟩
