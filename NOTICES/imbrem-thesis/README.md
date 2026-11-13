@@ -1,6 +1,6 @@
 # imbrem/thesis
 
-The Raw modules under `Silmaril/Raw/SSA/Thesis/` are ports of the Lean formalisation in
+The Raw modules under `Silmaril/Raw/SSA/Thesis/` (71 modules) are ports of the Lean formalisation in
 [imbrem/thesis](https://github.com/imbrem/thesis) by Jad Ghalayini, at commit
 `69a8126f2d3eb6d32050e0bd9511251b33dbcea7`, subdirectory `formalization/thesis` (source
 namespace `Isotope`, here `Silmaril.Thesis`). The thesis repository is dedicated to the public
@@ -16,6 +16,7 @@ were repaired where the newer Mathlib required it. Each file reproduces the sour
 
 | Source file (`formalization/thesis/…`) | Module |
 | --- | --- |
+| `Isotope/CategoryTheory/Monad/Elgot.lean` | `Silmaril.Raw.SSA.Thesis.CategoryTheory.Monad.Elgot` (reduced: the Elgot-specific declarations only) |
 | `Isotope/Elgot/Basic.lean` | `Silmaril.Raw.SSA.Thesis.Elgot.Basic` |
 | `Isotope/LambdaCase/Equiv.lean` | `Silmaril.Raw.SSA.Thesis.LambdaCase.Equiv` |
 | `Isotope/LambdaCase/Metatheory.lean` | `Silmaril.Raw.SSA.Thesis.LambdaCase.Metatheory` |
@@ -44,6 +45,12 @@ were repaired where the newer Mathlib required it. Each file reproduces the sour
 | `Isotope/LambdaIter/Models/Examples.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Examples` |
 | `Isotope/LambdaIter/Models/Initial.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Initial` |
 | `Isotope/LambdaIter/Models/Limits.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Limits` |
+| `Isotope/LambdaIter/Models/Monadic/Alg.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Monadic.Alg` |
+| `Isotope/LambdaIter/Models/Monadic/Coherence.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Monadic.Coherence` |
+| `Isotope/LambdaIter/Models/Monadic/Coupling.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Monadic.Coupling` |
+| `Isotope/LambdaIter/Models/Monadic/Denotation.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Monadic.Denotation` |
+| `Isotope/LambdaIter/Models/Monadic/Model.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Monadic.Model` |
+| `Isotope/LambdaIter/Models/Monadic/Soundness.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Monadic.Soundness` |
 | `Isotope/LambdaIter/Models/Setoid.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Setoid` |
 | `Isotope/LambdaIter/Models/Syntax.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Models.Syntax` |
 | `Isotope/LambdaIter/Named/Alpha.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Named.Alpha` |
@@ -51,16 +58,32 @@ were repaired where the newer Mathlib required it. Each file reproduces the sour
 | `Isotope/LambdaIter/Named/Subst.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Named.Subst` |
 | `Isotope/LambdaIter/Semantics/Categorical.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Categorical` |
 | `Isotope/LambdaIter/Semantics/Denotation.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Denotation` |
+| `Isotope/LambdaIter/Semantics/Kleisli/Coherence.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Kleisli.Coherence` |
+| `Isotope/LambdaIter/Semantics/Kleisli/Coupling.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Kleisli.Coupling` |
+| `Isotope/LambdaIter/Semantics/Kleisli/Generic.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Kleisli.Generic` |
+| `Isotope/LambdaIter/Semantics/Kleisli/Model.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Kleisli.Model` |
+| `Isotope/LambdaIter/Semantics/Kleisli/Soundness.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Kleisli.Soundness` |
+| `Isotope/LambdaIter/Semantics/Kleisli/Surjective.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Kleisli.Surjective` |
 | `Isotope/LambdaIter/Semantics/Soundness.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Semantics.Soundness` |
 | `Isotope/LambdaIter/Signature.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Signature` |
 | `Isotope/LambdaIter/Signature/Category.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Signature.Category` |
 | `Isotope/LambdaIter/Subtyping.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping` |
+| `Isotope/LambdaIter/Subtyping/LocallyNameless/Equiv.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.LocallyNameless.Equiv` |
+| `Isotope/LambdaIter/Subtyping/LocallyNameless/TypedEquiv.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.LocallyNameless.TypedEquiv` |
 | `Isotope/LambdaIter/Subtyping/LocallyNameless/Typing.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.LocallyNameless.Typing` |
+| `Isotope/LambdaIter/Subtyping/LocallyNameless/TypingSubst.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.LocallyNameless.TypingSubst` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Agreement.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Agreement` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Agreement/Combinators.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Agreement.Combinators` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Agreement/Full.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Agreement.Full` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Agreement/Iteration.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Agreement.Iteration` |
 | `Isotope/LambdaIter/Subtyping/Semantics/Categorical.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Categorical` |
 | `Isotope/LambdaIter/Subtyping/Semantics/Denotation.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Denotation` |
 | `Isotope/LambdaIter/Subtyping/Semantics/Instruction.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Instruction` |
 | `Isotope/LambdaIter/Subtyping/Semantics/IterationDiagrams.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.IterationDiagrams` |
 | `Isotope/LambdaIter/Subtyping/Semantics/Model.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Model` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Purity.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Purity` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Soundness.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Soundness` |
+| `Isotope/LambdaIter/Subtyping/Semantics/Substitution.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Subtyping.Semantics.Substitution` |
 | `Isotope/LambdaIter/Ty.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Ty` |
 | `Isotope/LambdaIter/Typing.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Typing` |
 | `Isotope/LambdaIter/Weakening.lean` | `Silmaril.Raw.SSA.Thesis.LambdaIter.Weakening` |
