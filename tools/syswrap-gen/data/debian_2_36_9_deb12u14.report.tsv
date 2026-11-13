@@ -1,0 +1,522 @@
+# id	address	status	nr	syscall	expected	conv	single	detail
+accept@GLIBC_2.2.5	0x10a6e0	ok	43	accept	accept4+	errnoInt	cancel	
+accept4@GLIBC_2.10	0x10af50	ok	288	accept4	accept4+	errnoInt	cancel	
+access@GLIBC_2.2.5	0xf8410	ok	21	access	faccessat+	errnoInt		
+acct@GLIBC_2.2.5	0xfebb0	ok	163	acct	acct	errno64		
+adjtime@GLIBC_2.2.5	0xc4330	nomatch			adjtime			pre:534889f3@0x0
+__adjtimex@GLIBC_2.2.5	0x108b00	nomatch			__adjtimex			pre:e9f60900@0x5
+adjtimex@GLIBC_2.2.5	0x108b00	nomatch			adjtimex			pre:e9f60900@0x5
+aio_cancel@GLIBC_2.2.5	0x91ca0	nomatch			aio_cancel			pre:415531c0@0x0
+aio_cancel@GLIBC_2.34	0x91ca0	nomatch			aio_cancel			pre:415531c0@0x0
+aio_error@GLIBC_2.2.5	0x91e50	nomatch			aio_error			pre:55488d2d@0x0
+aio_error@GLIBC_2.34	0x91e50	nomatch			aio_error			pre:55488d2d@0x0
+aio_fsync@GLIBC_2.2.5	0x91e80	nomatch			aio_fsync			pre:5589f853@0x0
+aio_fsync@GLIBC_2.34	0x91e80	nomatch			aio_fsync			pre:5589f853@0x0
+aio_read@GLIBC_2.2.5	0x92d90	nomatch			aio_read			pre:4883ec08@0x0
+aio_read@GLIBC_2.34	0x92d90	nomatch			aio_read			pre:4883ec08@0x0
+aio_return@GLIBC_2.2.5	0x92db0	nomatch			aio_return			pre:488b4778@0x0
+aio_return@GLIBC_2.34	0x92db0	nomatch			aio_return			pre:488b4778@0x0
+aio_suspend@GLIBC_2.2.5	0x93020	nomatch			aio_suspend			pre:554889e5@0x0
+aio_suspend@GLIBC_2.34	0x93020	nomatch			aio_suspend			pre:554889e5@0x0
+aio_write@GLIBC_2.2.5	0x93420	nomatch			aio_write			pre:4883ec08@0x0
+aio_write@GLIBC_2.34	0x93420	nomatch			aio_write			pre:4883ec08@0x0
+__arch_prctl@GLIBC_2.2.5	0x109a80	ok	158	arch_prctl	__arch_prctl	errno64		
+arch_prctl@GLIBC_2.2.5	0x109a80	ok	158	arch_prctl	arch_prctl	errno64		
+bind@GLIBC_2.2.5	0x10a780	ok	49	bind	bind+	errno64		
+brk@GLIBC_2.2.5	0xfdc40	nomatch			brk+			tail:488b15e2510d0048
+capget@GLIBC_2.2.5	0x109af0	ok	125	capget	capget	errno64		
+capset@GLIBC_2.2.5	0x109b20	ok	126	capset	capset	errno64		
+cfgetispeed@GLIBC_2.2.5	0xfd1a0	nomatch			cfgetispeed			pre:8b1731c0@0x0
+cfgetospeed@GLIBC_2.2.5	0xfd190	nomatch			cfgetospeed			pre:8b470825@0x0
+cfsetispeed@GLIBC_2.2.5	0xfd200	nomatch			cfsetispeed			pre:f7c6f0ef@0x0
+cfsetospeed@GLIBC_2.2.5	0xfd1c0	nomatch			cfsetospeed			pre:f7c6f0ef@0x0
+chdir@GLIBC_2.2.5	0xf8bf0	ok	80	chdir	chdir	errno64		
+chmod@GLIBC_2.2.5	0xf7d50	ok	90	chmod	chmod	errno64		
+chown@GLIBC_2.2.5	0xf9510	ok	92	chown	chown	errno64		
+chroot@GLIBC_2.2.5	0xfebe0	ok	161	chroot	chroot	errno64		
+clock@GLIBC_2.2.5	0xc3600	nomatch			clock			pre:4883ec28@0x0
+clock_adjtime@GLIBC_2.14	0x109500	ok	305	clock_adjtime	clock_adjtime	errnoInt		
+clock_getcpuclockid@GLIBC_2.17	0xcf370	nomatch			clock_getcpuclockid			pre:f7d74989@0x0
+clock_getcpuclockid@GLIBC_2.2.5	0xcf370	nomatch			clock_getcpuclockid			pre:f7d74989@0x0
+clock_getres@GLIBC_2.17	0xcf3b0	nomatch			clock_getres			pre:554889f5@0x0
+clock_getres@GLIBC_2.2.5	0xcf3b0	nomatch			clock_getres			pre:554889f5@0x0
+__clock_gettime@GLIBC_PRIVATE	0xcf420	nomatch			__clock_gettime			pre:488b0571@0x0
+clock_gettime@GLIBC_2.17	0xcf420	nomatch			clock_gettime+			pre:488b0571@0x0
+clock_gettime@GLIBC_2.2.5	0xcf420	nomatch			clock_gettime+			pre:488b0571@0x0
+clock_nanosleep@GLIBC_2.17	0xcf4e0	nomatch			clock_nanosleep			pre:83ff0374@0x0
+clock_nanosleep@GLIBC_2.2.5	0xcf4e0	nomatch			clock_nanosleep			pre:83ff0374@0x0
+clock_settime@GLIBC_2.17	0xcf490	nomatch			clock_settime			pre:48817e08@0x0
+clock_settime@GLIBC_2.2.5	0xcf490	nomatch			clock_settime			pre:48817e08@0x0
+__close@GLIBC_2.2.5	0xf89e0	ok	3	close	__close	errnoInt	cancel	
+close@GLIBC_2.2.5	0xf89e0	ok	3	close	close+	errnoInt	cancel	
+closefrom@GLIBC_2.34	0xfcc10	nomatch			closefrom			pre:85ff53be@0x2
+closelog@GLIBC_2.2.5	0x101710	nomatch			closelog			pre:5331c0ba@0x0
+close_range@GLIBC_2.34	0xfcc50	ok	436	close_range	close_range	errno64		
+__connect@GLIBC_2.2.5	0x10a7b0	ok	42	connect	__connect	errnoInt	cancel	
+connect@GLIBC_2.2.5	0x10a7b0	ok	42	connect	connect+	errnoInt	cancel	
+copy_file_range@GLIBC_2.27	0xfc830	ok	326	copy_file_range	copy_file_range	errnoLong	cancel	
+creat@GLIBC_2.2.5	0xf8b60	ok	85	creat	openat+	errnoInt	cancel	
+creat64@GLIBC_2.2.5	0xf8b60	ok	85	creat	openat+	errnoInt	cancel	
+create_module@GLIBC_2.2.5	0x109b50	ok	174	create_module	create_module	errno64		
+delete_module@GLIBC_2.2.5	0x109b80	ok	176	delete_module	delete_module	errno64		
+dup@GLIBC_2.2.5	0xf8a70	ok	32	dup	dup+	errno64		
+__dup2@GLIBC_2.2.5	0xf8aa0	ok	33	dup2	__dup2	errno64		
+dup2@GLIBC_2.2.5	0xf8aa0	ok	33	dup2	dup3+	errno64		
+dup3@GLIBC_2.9	0xf8ad0	ok	292	dup3	dup3+	errno64		
+epoll_create@GLIBC_2.3.2	0x109bb0	ok	213	epoll_create	epoll_create1+	errno64		
+epoll_create1@GLIBC_2.9	0x109be0	ok	291	epoll_create1	epoll_create1+	errno64		
+epoll_ctl@GLIBC_2.3.2	0x109c10	ok	233	epoll_ctl	epoll_ctl+	errno64		
+epoll_pwait@GLIBC_2.6	0x108c40	ok	281	epoll_pwait	epoll_pwait+	errnoInt	cancel	
+epoll_pwait2@GLIBC_2.35	0x108d00	ok	441	epoll_pwait2	epoll_pwait2	errnoInt	cancel	
+epoll_wait@GLIBC_2.3.2	0x108ee0	ok	232	epoll_wait	epoll_pwait+	errnoInt	cancel	
+eventfd@GLIBC_2.7	0x108e00	ok	290	eventfd2	eventfd2+	errno64		
+eventfd_read@GLIBC_2.7	0x108e30	nomatch			eventfd_read			pre:4883ec08@0x0
+eventfd_write@GLIBC_2.7	0x108e50	nomatch			eventfd_write			pre:4883ec18@0x0
+faccessat@GLIBC_2.4	0xf8580	nomatch			faccessat2+			pre:41554189@0x0
+fallocate@GLIBC_2.10	0xfcdb0	ok	285	fallocate	fallocate	errnoInt	cancel	
+fallocate64@GLIBC_2.10	0xfcdb0	ok	285	fallocate	fallocate64	errnoInt	cancel	
+fanotify_init@GLIBC_2.13	0x10a180	ok	300	fanotify_init	fanotify_init	errno64		
+fanotify_mark@GLIBC_2.13	0x1099a0	ok	301	fanotify_mark	fanotify_mark	errnoInt		
+fattach@GLIBC_2.2.5	0x151bd0	nomatch			fattach			pre:488b0509@0x0
+fchdir@GLIBC_2.2.5	0xf8c20	ok	81	fchdir	fchdir	errno64		
+fchmod@GLIBC_2.2.5	0xf7d80	ok	91	fchmod	fchmod	errno64		
+fchmodat@GLIBC_2.4	0xf7dd0	nomatch			fchmodat			pre:5589d553@0x0
+fchown@GLIBC_2.2.5	0xf9540	ok	93	fchown	fchown	errno64		
+fchownat@GLIBC_2.4	0xf95a0	ok	260	fchownat	fchownat	errno64		
+__fcntl@GLIBC_2.2.5	0xf87a0	nomatch			__fcntl			pre:4883ec68@0x0
+fcntl@GLIBC_2.2.5	0xf87a0	nomatch			fcntl+			pre:4883ec68@0x0
+fcntl64@GLIBC_2.28	0xf87a0	nomatch			fcntl+			pre:4883ec68@0x0
+fdatasync@GLIBC_2.2.5	0xfecd0	ok	75	fdatasync	fdatasync+	errnoInt	cancel	
+fdetach@GLIBC_2.2.5	0x151bf0	nomatch			fdetach			pre:488b05e9@0x0
+flistxattr@GLIBC_2.3	0x1046c0	ok	196	flistxattr	flistxattr	errno64		
+flock@GLIBC_2.2.5	0xf8890	ok	73	flock	flock+	errno64		
+fpathconf@GLIBC_2.2.5	0xd68c0	nomatch			fpathconf			pre:41545553@0x0
+fremovexattr@GLIBC_2.3	0x1046f0	ok	199	fremovexattr	fremovexattr	errno64		
+fsconfig@GLIBC_2.36	0x109c40	ok	431	fsconfig	fsconfig	errno64		
+fsetxattr@GLIBC_2.3	0x104720	ok	190	fsetxattr	fsetxattr	errno64		
+fsmount@GLIBC_2.36	0x109c70	ok	432	fsmount	fsmount	errno64		
+fsopen@GLIBC_2.36	0x109ca0	ok	430	fsopen	fsopen	errno64		
+fspick@GLIBC_2.36	0x109cd0	ok	433	fspick	fspick	errno64		
+fstat@GLIBC_2.33	0xf7800	nomatch			fstat+			pre:85ff7819@0x3
+__fstat64@GLIBC_PRIVATE	0xf7800	nomatch			__fstat64			pre:85ff7819@0x3
+fstat64@GLIBC_2.33	0xf7800	nomatch			fstat+			pre:85ff7819@0x3
+fstatat@GLIBC_2.33	0xf7860	ok	262	newfstatat	newfstatat+	errnoZero		
+fstatat64@GLIBC_2.33	0xf7860	ok	262	newfstatat	newfstatat+	errnoZero		
+fstatfs@GLIBC_2.2.5	0xf7c30	ok	138	fstatfs	fstatfs	errnoInt		
+fstatfs64@GLIBC_2.2.5	0xf7c30	ok	138	fstatfs	fstatfs64	errnoInt		
+fstatvfs@GLIBC_2.2.5	0xf7cd0	nomatch			fstatvfs			pre:55534889@0x0
+fstatvfs64@GLIBC_2.2.5	0xf7cd0	nomatch			fstatvfs64			pre:55534889@0x0
+fsync@GLIBC_2.2.5	0xfec10	ok	74	fsync	fsync+	errnoInt	cancel	
+ftime@GLIBC_2.2.5	0xc6a40	nomatch			ftime			pre:534889fb@0x0
+ftok@GLIBC_2.2.5	0x10b2a0	nomatch			ftok			pre:5389f348@0x0
+ftruncate@GLIBC_2.2.5	0x100050	ok	77	ftruncate	ftruncate+	errnoInt		
+ftruncate64@GLIBC_2.2.5	0x100050	ok	77	ftruncate	ftruncate+	errnoInt		
+ftw@GLIBC_2.2.5	0xfaaa0	nomatch			ftw			pre:e931fbff@0xa
+futimens@GLIBC_2.6	0xfc970	nomatch			futimens			pre:85ff7809@0x3
+get_avphys_pages@GLIBC_2.2.5	0x104450	nomatch			get_avphys_pages			pre:55534881@0x0
+get_current_dir_name@GLIBC_2.2.5	0xf9460	nomatch			get_current_dir_name			pre:53488d3d@0x0
+getcwd@GLIBC_2.2.5	0xf8c50	nomatch			getcwd+			pre:41574156@0x0
+__getcwd_chk@GLIBC_2.4	0x1171e0	nomatch			__getcwd_chk			pre:4839f272@0x0
+getdents64@GLIBC_2.30	0xd0030	nomatch			getdents64+			pre:4839c248@0x5
+getdirentries@GLIBC_2.2.5	0xd06e0	nomatch			getdirentries			pre:41564989@0x0
+getdirentries64@GLIBC_2.2.5	0xd06e0	nomatch			getdirentries64			pre:41564989@0x0
+getdtablesize@GLIBC_2.2.5	0xfe5d0	nomatch			getdtablesize			pre:4883ec28@0x0
+getegid@GLIBC_2.2.5	0xd5530	ok	108	getegid	getegid+	raw		
+getentropy@GLIBC_2.25	0x3f020	nomatch			getentropy			pre:4881fe00@0x0
+geteuid@GLIBC_2.2.5	0xd5510	ok	107	geteuid	geteuid+	raw		
+getgid@GLIBC_2.2.5	0xd5520	ok	104	getgid	getgid+	raw		
+getgroups@GLIBC_2.2.5	0xd5540	ok	115	getgroups	getgroups+	errno64		
+__getgroups_chk@GLIBC_2.4	0x117c00	nomatch			__getgroups_chk			pre:85ff7814@0x0
+gethostid@GLIBC_2.2.5	0xfedd0	nomatch			gethostid			pre:415731d2@0x0
+gethostname@GLIBC_2.2.5	0xfe620	nomatch			gethostname			pre:41554154@0x0
+__gethostname_chk@GLIBC_2.4	0x117c50	nomatch			__gethostname_chk			pre:4839f272@0x0
+getitimer@GLIBC_2.2.5	0xc6970	ok	36	getitimer	getitimer	errnoInt		
+get_kernel_syms@GLIBC_2.2.5	0x109d00	ok	177	get_kernel_syms	get_kernel_syms	errno64		
+getloadavg@GLIBC_2.2.5	0x1045b0	nomatch			getloadavg			pre:41545589@0x0
+getmsg@GLIBC_2.2.5	0x151c10	nomatch			getmsg			pre:488b05c9@0x0
+getpeername@GLIBC_2.2.5	0x10a850	ok	52	getpeername	getpeername+	errno64		
+__getpgid@GLIBC_2.2.5	0xd5710	ok	121	getpgid	__getpgid	errno64		
+getpgid@GLIBC_2.2.5	0xd5710	ok	121	getpgid	getpgid	errno64		
+getpgrp@GLIBC_2.2.5	0xd5770	ok	111	getpgrp	getpgrp	raw		
+get_phys_pages@GLIBC_2.2.5	0x1043c0	nomatch			get_phys_pages			pre:55534881@0x0
+__getpid@GLIBC_2.2.5	0xd54e0	ok	39	getpid	__getpid	raw		
+getpid@GLIBC_2.2.5	0xd54e0	ok	39	getpid	getpid+	raw		
+getpmsg@GLIBC_2.2.5	0x151c30	nomatch			getpmsg			pre:488b05a9@0x0
+getppid@GLIBC_2.2.5	0xd54f0	ok	110	getppid	getppid	raw		
+getpriority@GLIBC_2.2.5	0xfdb60	nomatch			getpriority			tail:483d00f0ffff7711
+getpt@GLIBC_2.2.5	0x14e130	nomatch			getpt			pre:488d3d28@0x5
+getrandom@GLIBC_2.25	0x3f180	ok	318	getrandom	getrandom+	errnoLong	cancel	
+getresgid@GLIBC_2.2.5	0xd5830	ok	120	getresgid	getresgid	errno64		
+getresuid@GLIBC_2.2.5	0xd5800	ok	118	getresuid	getresuid	errno64		
+__getrlimit@GLIBC_PRIVATE	0xfd7e0	ok	302	prlimit64	__getrlimit	errnoInt		
+getrlimit@GLIBC_2.2.5	0xfd7e0	ok	302	prlimit64	prlimit64+	errnoInt		
+getrlimit64@GLIBC_2.2.5	0xfd7e0	ok	302	prlimit64	prlimit64+	errnoInt		
+getrusage@GLIBC_2.2.5	0xfd860	ok	98	getrusage	getrusage	errnoInt		
+getsid@GLIBC_2.2.5	0xd57a0	ok	124	getsid	getsid	errno64		
+getsockname@GLIBC_2.2.5	0x10a880	ok	51	getsockname	getsockname+	errno64		
+getsockopt@GLIBC_2.2.5	0x10a8b0	ok	55	getsockopt	getsockopt+	errnoInt		
+gettid@GLIBC_2.30	0x10a2a0	ok	186	gettid	gettid+	raw		
+__gettimeofday@GLIBC_2.2.5	0xc4190	ifunc			__gettimeofday			
+gettimeofday@GLIBC_2.2.5	0xc4190	ifunc			gettimeofday+			
+getuid@GLIBC_2.2.5	0xd5500	ok	102	getuid	getuid+	raw		
+getwd@GLIBC_2.2.5	0xf93c0	nomatch			getwd			pre:55534881@0x0
+__getwd_chk@GLIBC_2.4	0x1171b0	nomatch			__getwd_chk			pre:4883ec08@0x0
+getxattr@GLIBC_2.3	0x104750	ok	191	getxattr	getxattr	errno64		
+glob@GLIBC_2.2.5	0x1501f0	nomatch			glob			pre:554889e5@0x0
+glob@GLIBC_2.27	0xd7640	nomatch			glob			pre:554889e5@0x0
+globfree@GLIBC_2.2.5	0xd8f60	nomatch			globfree			pre:554889fd@0x0
+grantpt@GLIBC_2.2.5	0x14e150	nomatch			grantpt			pre:4883ec18@0x0
+group_member@GLIBC_2.2.5	0xd5670	nomatch			group_member			pre:554889e5@0x0
+init_module@GLIBC_2.2.5	0x109d30	ok	175	init_module	init_module	errno64		
+inotify_add_watch@GLIBC_2.4	0x109d60	ok	254	inotify_add_watch	inotify_add_watch	errno64		
+inotify_init@GLIBC_2.4	0x109d90	ok	253	inotify_init	inotify_init	errno64		
+inotify_init1@GLIBC_2.9	0x109dc0	ok	294	inotify_init1	inotify_init1	errno64		
+inotify_rm_watch@GLIBC_2.4	0x109df0	ok	255	inotify_rm_watch	inotify_rm_watch	errno64		
+ioctl@GLIBC_2.2.5	0xfdd30	nomatch			ioctl+			pre:4883ec58@0x0
+ioperm@GLIBC_2.2.5	0x108aa0	ok	173	ioperm	ioperm	errno64		
+iopl@GLIBC_2.2.5	0x108ad0	ok	172	iopl	iopl	errno64		
+isastream@GLIBC_2.2.5	0x151c50	nomatch			isastream			pre:4883ec08@0x0
+isatty@GLIBC_2.2.5	0xf99b0	nomatch			isatty			pre:4883ec58@0x0
+klogctl@GLIBC_2.2.5	0x109e20	ok	103	syslog	klogctl	errno64		
+lchmod@GLIBC_2.3.2	0xf7db0	nomatch			lchmod			pre:e90c0000@0xf
+lchown@GLIBC_2.2.5	0xf9570	ok	94	lchown	lchown	errno64		
+lgetxattr@GLIBC_2.3	0x1047b0	ok	192	lgetxattr	lgetxattr	errno64		
+__libc_fcntl64@GLIBC_PRIVATE	0xf87a0	nomatch			__libc_fcntl64			pre:4883ec68@0x0
+__libc_msgrcv@GLIBC_PRIVATE	0x10b3c0	ok	70	msgrcv	__libc_msgrcv	errnoLong	cancel	
+__libc_msgsnd@GLIBC_PRIVATE	0x10b310	ok	69	msgsnd	__libc_msgsnd	errnoInt	cancel	
+__libc_pread@GLIBC_PRIVATE	0xf63c0	ok	17	pread64	__libc_pread	errnoLong	cancel	
+__libc_pwrite@GLIBC_PRIVATE	0xf6470	ok	18	pwrite64	__libc_pwrite	errnoLong	cancel	
+link@GLIBC_2.2.5	0xf99f0	ok	86	link	link	errno64		
+linkat@GLIBC_2.4	0xf9a20	ok	265	linkat	linkat	errno64		
+lio_listio@GLIBC_2.2.5	0x150160	nomatch			lio_listio			pre:83ff0177@0x0
+lio_listio@GLIBC_2.34	0x938c0	nomatch			lio_listio			pre:83ff0177@0x0
+lio_listio@GLIBC_2.4	0x938c0	nomatch			lio_listio			pre:83ff0177@0x0
+listen@GLIBC_2.2.5	0x10a8e0	ok	50	listen	listen+	errno64		
+listxattr@GLIBC_2.3	0x104780	ok	194	listxattr	listxattr	errno64		
+llistxattr@GLIBC_2.3	0x1047e0	ok	195	llistxattr	llistxattr	errno64		
+llseek@GLIBC_2.2.5	0xf83e0	ok	8	lseek	llseek	errnoLong		
+lockf@GLIBC_2.2.5	0xf88c0	nomatch			lockf			pre:53660fef@0x0
+lockf64@GLIBC_2.2.5	0xf88c0	nomatch			lockf64			pre:53660fef@0x0
+lremovexattr@GLIBC_2.3	0x104810	ok	198	lremovexattr	lremovexattr	errno64		
+__lseek@GLIBC_2.2.5	0xf83e0	ok	8	lseek	__lseek	errnoLong		
+lseek@GLIBC_2.2.5	0xf83e0	ok	8	lseek	lseek+	errnoLong		
+lseek64@GLIBC_2.2.5	0xf83e0	ok	8	lseek	lseek+	errnoLong		
+lsetxattr@GLIBC_2.3	0x104840	ok	189	lsetxattr	lsetxattr	errno64		
+lstat@GLIBC_2.33	0xf7840	nomatch			newfstatat+			pre:e90b0000@0x10
+lstat64@GLIBC_2.33	0xf7840	nomatch			newfstatat+			pre:e90b0000@0x10
+__madvise@GLIBC_PRIVATE	0x101b00	ok	28	madvise	__madvise	errno64		
+madvise@GLIBC_2.2.5	0x101b00	ok	28	madvise	madvise+	errno64		
+mincore@GLIBC_2.2.5	0x101b30	ok	27	mincore	mincore	errno64		
+mkdir@GLIBC_2.2.5	0xf7f30	ok	83	mkdir	mkdir	errno64		
+mkdirat@GLIBC_2.4	0xf7f60	ok	258	mkdirat	mkdirat	errno64		
+mkdtemp@GLIBC_2.2.5	0xff130	nomatch			mkdtemp			pre:5331d231@0x0
+mkfifo@GLIBC_2.2.5	0xf77c0	nomatch			mkfifo			pre:81ce0010@0x0
+mkfifoat@GLIBC_2.4	0xf77d0	nomatch			mkfifoat			pre:80ce1031@0x0
+mknod@GLIBC_2.33	0xf7b90	nomatch			mknod			pre:e90e0000@0xd
+mknodat@GLIBC_2.33	0xf7bb0	nomatch			mknodat			pre:48c1e820@0x3
+mkostemp@GLIBC_2.7	0xff160	nomatch			mkostemp			pre:e965a0f5@0x6
+mkstemp@GLIBC_2.2.5	0xff120	nomatch			mkstemp			pre:e9a5a0f5@0x6
+mlock@GLIBC_2.2.5	0x101b90	ok	149	mlock	mlock	errno64		
+mlock2@GLIBC_2.27	0x109250	nomatch			mlock2			pre:85d2742c@0x0
+mlockall@GLIBC_2.2.5	0x101bf0	ok	151	mlockall	mlockall	errno64		
+__mmap@GLIBC_PRIVATE	0x1019a0	nomatch			__mmap			pre:41f7c1ff@0x3
+mmap@GLIBC_2.2.5	0x1019a0	nomatch			mmap+			pre:41f7c1ff@0x3
+mmap64@GLIBC_2.2.5	0x1019a0	nomatch			mmap+			pre:41f7c1ff@0x3
+modify_ldt@GLIBC_2.2.5	0x109ab0	ok	154	modify_ldt	modify_ldt	errno64		
+mount@GLIBC_2.2.5	0x109e50	ok	165	mount	mount	errno64		
+mount_setattr@GLIBC_2.36	0x109e80	ok	442	mount_setattr	mount_setattr	errno64		
+move_mount@GLIBC_2.36	0x109eb0	ok	429	move_mount	move_mount	errno64		
+__mprotect@GLIBC_PRIVATE	0x101a30	ok	10	mprotect	__mprotect	errno64		
+mprotect@GLIBC_2.2.5	0x101a30	ok	10	mprotect	mprotect+	errno64		
+mq_close@GLIBC_2.3.4	0x938f0	ok	3	close	mq_close	errnoInt		
+mq_close@GLIBC_2.34	0x938f0	ok	3	close	mq_close	errnoInt		
+mq_getattr@GLIBC_2.3.4	0x93920	nomatch			mq_getattr			pre:e9660500@0x5
+mq_getattr@GLIBC_2.34	0x93920	nomatch			mq_getattr			pre:e9660500@0x5
+mq_notify@GLIBC_2.3.4	0x93bd0	nomatch			mq_notify			pre:5589fd53@0x0
+mq_notify@GLIBC_2.34	0x93bd0	nomatch			mq_notify			pre:5589fd53@0x0
+mq_open@GLIBC_2.3.4	0x93d90	nomatch			mq_open			pre:4883ec58@0x0
+mq_open@GLIBC_2.34	0x93d90	nomatch			mq_open			pre:4883ec58@0x0
+mq_receive@GLIBC_2.3.4	0x93e70	nomatch			mq_receive			pre:e9480000@0x3
+mq_receive@GLIBC_2.34	0x93e70	nomatch			mq_receive			pre:e9480000@0x3
+mq_send@GLIBC_2.3.4	0x93e80	nomatch			mq_send			pre:e9f80000@0x3
+mq_send@GLIBC_2.34	0x93e80	nomatch			mq_send			pre:e9f80000@0x3
+mq_setattr@GLIBC_2.3.4	0x93e90	ok	245	mq_getsetattr	mq_setattr	errnoInt		
+mq_setattr@GLIBC_2.34	0x93e90	ok	245	mq_getsetattr	mq_setattr	errnoInt		
+mq_timedreceive@GLIBC_2.3.4	0x93ec0	ok	243	mq_timedreceive	mq_timedreceive	errnoLong	cancel	
+mq_timedreceive@GLIBC_2.34	0x93ec0	ok	243	mq_timedreceive	mq_timedreceive	errnoLong	cancel	
+mq_timedsend@GLIBC_2.3.4	0x93f80	ok	242	mq_timedsend	mq_timedsend	errnoInt	cancel	
+mq_timedsend@GLIBC_2.34	0x93f80	ok	242	mq_timedsend	mq_timedsend	errnoInt	cancel	
+mq_unlink@GLIBC_2.3.4	0x94030	nomatch			mq_unlink			pre:803f2f75@0x0
+mq_unlink@GLIBC_2.34	0x94030	nomatch			mq_unlink			pre:803f2f75@0x0
+mremap@GLIBC_2.2.5	0x1099d0	nomatch			mremap+			pre:4883ec58@0x0
+msgctl@GLIBC_2.2.5	0x10b4b0	ok	71	msgctl	msgctl	errnoInt		
+msgget@GLIBC_2.2.5	0x10b480	ok	68	msgget	msgget	errnoInt		
+msgrcv@GLIBC_2.2.5	0x10b3c0	ok	70	msgrcv	msgrcv	errnoLong	cancel	
+msgsnd@GLIBC_2.2.5	0x10b310	ok	69	msgsnd	msgsnd	errnoInt	cancel	
+msync@GLIBC_2.2.5	0x101a60	ok	26	msync	msync	errnoInt	cancel	
+munlock@GLIBC_2.2.5	0x101bc0	ok	150	munlock	munlock	errno64		
+munlockall@GLIBC_2.2.5	0x101c20	ok	152	munlockall	munlockall	errno64		
+__munmap@GLIBC_PRIVATE	0x101a00	ok	11	munmap	__munmap	errno64		
+munmap@GLIBC_2.2.5	0x101a00	ok	11	munmap	munmap+	errno64		
+name_to_handle_at@GLIBC_2.14	0x10a1b0	ok	303	name_to_handle_at	name_to_handle_at	errno64		
+__nanosleep@GLIBC_2.2.6	0xd3e40	nomatch			__nanosleep			pre:4883ec08@0x0
+nanosleep@GLIBC_2.2.5	0xd3e40	nomatch			nanosleep+			pre:4883ec08@0x0
+nfsservctl@GLIBC_2.2.5	0x109ee0	ok	180	nfsservctl	nfsservctl	errno64		
+nftw@GLIBC_2.2.5	0x151ea0	nomatch			nftw			pre:83e10f41@0x0
+nftw@GLIBC_2.3.3	0xfaab0	nomatch			nftw			pre:83f91f77@0x3
+nice@GLIBC_2.2.5	0xfdbd0	nomatch			nice			pre:415431f6@0x0
+ntp_adjtime@GLIBC_2.2.5	0x108b00	nomatch			ntp_adjtime			pre:e9f60900@0x5
+ntp_gettime@GLIBC_2.2.5	0xcfc00	nomatch			ntp_gettime			pre:534889fb@0x0
+ntp_gettimex@GLIBC_2.12	0xcfc70	nomatch			ntp_gettimex			pre:534889fb@0x0
+__open@GLIBC_2.2.5	0xf7fc0	nomatch			__open			pre:554189f2@0x0
+open@GLIBC_2.2.5	0xf7fc0	nomatch			openat+			pre:554189f2@0x0
+__open64@GLIBC_2.2.5	0xf7fc0	nomatch			__open64			pre:554189f2@0x0
+open64@GLIBC_2.2.5	0xf7fc0	nomatch			openat+			pre:554189f2@0x0
+openat@GLIBC_2.4	0xf8150	nomatch			openat+			pre:4883ec78@0x0
+openat64@GLIBC_2.4	0xf8150	nomatch			openat+			pre:4883ec78@0x0
+open_by_handle_at@GLIBC_2.14	0x1091b0	ok	304	open_by_handle_at	open_by_handle_at	errnoInt	cancel	
+openlog@GLIBC_2.2.5	0x1016a0	nomatch			openlog			pre:415431c0@0x0
+open_tree@GLIBC_2.36	0x109f10	ok	428	open_tree	open_tree	errno64		
+pathconf@GLIBC_2.2.5	0xd5f30	nomatch			pathconf			pre:41545553@0x0
+personality@GLIBC_2.2.5	0x108eb0	ok	135	personality	personality	errno64		
+pidfd_getfd@GLIBC_2.36	0x109f70	ok	438	pidfd_getfd	pidfd_getfd	errno64		
+pidfd_open@GLIBC_2.36	0x109f40	ok	434	pidfd_open	pidfd_open	errno64		
+pidfd_send_signal@GLIBC_2.36	0x109fd0	ok	424	pidfd_send_signal	pidfd_send_signal	errno64		
+__pipe@GLIBC_2.2.5	0xf8b00	ok	293	pipe2	__pipe	errnoInt		
+pipe@GLIBC_2.2.5	0xf8b00	ok	293	pipe2	pipe2+	errnoInt		
+pipe2@GLIBC_2.9	0xf8b30	ok	293	pipe2	pipe2+	errno64		
+pivot_root@GLIBC_2.2.5	0x109fa0	ok	155	pivot_root	pivot_root	errno64		
+pkey_alloc@GLIBC_2.27	0x10a240	ok	330	pkey_alloc	pkey_alloc	errno64		
+pkey_free@GLIBC_2.27	0x10a270	ok	331	pkey_free	pkey_free	errno64		
+pkey_mprotect@GLIBC_2.27	0x1092e0	nomatch			pkey_mprotect			pre:83f9ff74@0x3
+__poll@GLIBC_2.2.5	0xfc220	ok	7	poll	__poll	errnoInt	cancel	
+poll@GLIBC_2.2.5	0xfc220	ok	7	poll	ppoll+	errnoInt	cancel	
+__poll_chk@GLIBC_2.16	0x118170	nomatch			__poll_chk			pre:48c1e903@0x0
+posix_fadvise@GLIBC_2.2.5	0xfc3c0	nomatch			posix_fadvise			tail:89c2f7da3d00f0ff
+posix_fadvise64@GLIBC_2.2.5	0xfc3c0	nomatch			posix_fadvise64			tail:89c2f7da3d00f0ff
+posix_fallocate@GLIBC_2.2.5	0xfc5b0	nomatch			posix_fallocate			tail:3d00f0ffff761f83
+posix_fallocate64@GLIBC_2.2.5	0xfc7c0	nomatch			posix_fallocate64			tail:3d00f0ffff761f83
+posix_madvise@GLIBC_2.2.5	0xf7430	nomatch			posix_madvise			pre:83fa0474@0x2
+posix_openpt@GLIBC_2.2.5	0x14e120	nomatch			posix_openpt			pre:488d3d39@0x4
+posix_spawnattr_getschedparam@GLIBC_2.2.5	0xf7380	nomatch			posix_spawnattr_getschedparam			pre:8b870801@0x0
+posix_spawnattr_getschedpolicy@GLIBC_2.2.5	0xf7370	nomatch			posix_spawnattr_getschedpolicy			pre:8b870c01@0x0
+posix_spawnattr_setschedparam@GLIBC_2.2.5	0xf7420	nomatch			posix_spawnattr_setschedparam			pre:8b068987@0x0
+posix_spawnattr_setschedpolicy@GLIBC_2.2.5	0xf7400	nomatch			posix_spawnattr_setschedpolicy			pre:83fe0277@0x5
+ppoll@GLIBC_2.4	0xfc2c0	nomatch			ppoll+			pre:41544989@0x0
+__ppoll_chk@GLIBC_2.16	0x118190	nomatch			__ppoll_chk			pre:49c1e803@0x0
+prctl@GLIBC_2.2.5	0x109410	nomatch			prctl+			pre:4883ec58@0x0
+pread@GLIBC_2.2.5	0xf63c0	ok	17	pread64	pread64+	errnoLong	cancel	
+__pread64@GLIBC_2.2.5	0xf63c0	ok	17	pread64	__pread64	errnoLong	cancel	
+pread64@GLIBC_2.2.5	0xf63c0	ok	17	pread64	pread64+	errnoLong	cancel	
+__pread64_chk@GLIBC_2.4	0x117130	nomatch			__pread64_chk			pre:4939d072@0x0
+__pread_chk@GLIBC_2.4	0x117120	nomatch			__pread_chk			pre:4939d072@0x0
+preadv@GLIBC_2.10	0xfdef0	ok	295	preadv	preadv	errnoLong	cancel	
+preadv2@GLIBC_2.26	0xfe050	nomatch			preadv2			pre:41574189@0x0
+preadv64@GLIBC_2.10	0xfdef0	ok	295	preadv	preadv64	errnoLong	cancel	
+preadv64v2@GLIBC_2.26	0xfe050	nomatch			preadv64v2			pre:41574189@0x0
+prlimit@GLIBC_2.13	0x108e80	ok	302	prlimit64	prlimit64+	errnoInt		
+prlimit64@GLIBC_2.13	0x108e80	ok	302	prlimit64	prlimit64+	errnoInt		
+process_madvise@GLIBC_2.36	0x10a000	ok	440	process_madvise	process_madvise	errno64		
+process_mrelease@GLIBC_2.36	0x10a030	ok	448	process_mrelease	process_mrelease	errno64		
+process_vm_readv@GLIBC_2.15	0x1094a0	ok	310	process_vm_readv	process_vm_readv	errnoLong		
+process_vm_writev@GLIBC_2.15	0x1094d0	ok	311	process_vm_writev	process_vm_writev	errnoLong		
+pselect@GLIBC_2.2.5	0xfea90	nomatch			pselect6+			pre:41554c89@0x0
+ptrace@GLIBC_2.2.5	0xff2f0	nomatch			ptrace			pre:4883ec68@0x0
+ptsname@GLIBC_2.2.5	0x14e300	nomatch			ptsname			pre:53488d1d@0x0
+ptsname_r@GLIBC_2.2.5	0x14e220	nomatch			ptsname_r			pre:41564989@0x0
+__ptsname_r_chk@GLIBC_2.4	0x14e330	nomatch			__ptsname_r_chk			pre:4839d172@0x0
+putmsg@GLIBC_2.2.5	0x151c70	nomatch			putmsg			pre:488b0569@0x0
+putpmsg@GLIBC_2.2.5	0x151c90	nomatch			putpmsg			pre:488b0549@0x0
+pwrite@GLIBC_2.2.5	0xf6470	ok	18	pwrite64	pwrite64+	errnoLong	cancel	
+__pwrite64@GLIBC_2.2.5	0xf6470	ok	18	pwrite64	__pwrite64	errnoLong	cancel	
+pwrite64@GLIBC_2.2.5	0xf6470	ok	18	pwrite64	pwrite64+	errnoLong	cancel	
+pwritev@GLIBC_2.10	0xfdfa0	ok	296	pwritev	pwritev	errnoLong	cancel	
+pwritev2@GLIBC_2.26	0xfe1a0	nomatch			pwritev2			pre:41574189@0x0
+pwritev64@GLIBC_2.10	0xfdfa0	ok	296	pwritev	pwritev64	errnoLong	cancel	
+pwritev64v2@GLIBC_2.26	0xfe1a0	nomatch			pwritev64v2			pre:41574189@0x0
+query_module@GLIBC_2.2.5	0x10a060	ok	178	query_module	query_module	errno64		
+quotactl@GLIBC_2.2.5	0x10a090	ok	179	quotactl	quotactl	errno64		
+__read@GLIBC_2.2.5	0xf82a0	ok	0	read	__read	errnoLong	cancel	
+read@GLIBC_2.2.5	0xf82a0	ok	0	read	read+	errnoLong	cancel	
+readahead@GLIBC_2.3	0x108bb0	ok	187	readahead	readahead	errnoLong		
+__read_chk@GLIBC_2.4	0x117110	nomatch			__read_chk			pre:4839d172@0x0
+readdir64@GLIBC_2.2.5	0xd0080	nomatch			readdir64			pre:415631c0@0x0
+readdir64_r@GLIBC_2.2.5	0xd0170	nomatch			readdir64_r			pre:41574156@0x0
+readlink@GLIBC_2.2.5	0xf9ab0	ok	89	readlink	readlinkat+	errno64		
+readlinkat@GLIBC_2.4	0xf9ae0	ok	267	readlinkat	readlinkat+	errno64		
+__readlinkat_chk@GLIBC_2.5	0x1171a0	nomatch			__readlinkat_chk			pre:4939c872@0x0
+__readlink_chk@GLIBC_2.4	0x117190	nomatch			__readlink_chk			pre:4839d172@0x0
+readv@GLIBC_2.2.5	0xfddb0	ok	19	readv	readv+	errnoLong	cancel	
+realpath@GLIBC_2.2.5	0x150070	nomatch			realpath			pre:4885f674@0x0
+realpath@GLIBC_2.3	0x3d560	nomatch			realpath			pre:41574156@0x0
+__realpath_chk@GLIBC_2.4	0x1171f0	nomatch			__realpath_chk			pre:4881faff@0x0
+reboot@GLIBC_2.2.5	0xfed90	ok	169	reboot	reboot	errnoInt		
+__recv@GLIBC_PRIVATE	0x10a910	ok	45	recvfrom	__recv	errnoLong	cancel	
+recv@GLIBC_2.2.5	0x10a910	ok	45	recvfrom	recvfrom+	errnoLong	cancel	
+__recv_chk@GLIBC_2.4	0x117140	nomatch			__recv_chk			pre:4839d172@0x0
+recvfrom@GLIBC_2.2.5	0x10a9d0	ok	45	recvfrom	recvfrom+	errnoLong	cancel	
+__recvfrom_chk@GLIBC_2.4	0x117160	nomatch			__recvfrom_chk			pre:4883ec08@0x0
+recvmmsg@GLIBC_2.12	0x10b000	ok	299	recvmmsg	recvmmsg	errnoInt	cancel	
+recvmsg@GLIBC_2.2.5	0x10aa90	nomatch			recvmsg+			pre:534883ec@0x0
+remap_file_pages@GLIBC_2.3.3	0x101b60	ok	216	remap_file_pages	remap_file_pages	errno64		
+remove@GLIBC_2.2.5	0x58a40	nomatch			remove			pre:534889fb@0x0
+removexattr@GLIBC_2.3	0x104870	ok	197	removexattr	removexattr	errno64		
+rename@GLIBC_2.2.5	0x58a80	ok	82	rename	rename	errnoInt		
+renameat@GLIBC_2.4	0x58ab0	ok	264	renameat	renameat	errnoInt		
+renameat2@GLIBC_2.28	0x58ae0	nomatch			renameat2			pre:4585c074@0x3
+rmdir@GLIBC_2.2.5	0xf9b70	ok	84	rmdir	unlinkat+	errno64		
+__sbrk@GLIBC_2.2.5	0xfdc80	nomatch			__sbrk			pre:41544c8b@0x0
+sbrk@GLIBC_2.2.5	0xfdc80	nomatch			brk+			pre:41544c8b@0x0
+sched_getaffinity@GLIBC_2.3.3	0x151b10	nomatch			sched_getaffinity+			tail:483d00f0ffff7726
+sched_getaffinity@GLIBC_2.3.4	0xee0d0	nomatch			sched_getaffinity+			pre:4939f049@0xd
+sched_getcpu@GLIBC_2.6	0xf7620	nomatch			sched_getcpu			pre:534883ec@0x0
+__sched_getparam@GLIBC_2.2.5	0xedf80	ok	143	sched_getparam	__sched_getparam	errno64		
+sched_getparam@GLIBC_2.2.5	0xedf80	ok	143	sched_getparam	sched_getparam	errno64		
+__sched_get_priority_max@GLIBC_2.2.5	0xee040	ok	146	sched_get_priority_max	__sched_get_priority_max	errno64		
+sched_get_priority_max@GLIBC_2.2.5	0xee040	ok	146	sched_get_priority_max	sched_get_priority_max	errno64		
+__sched_get_priority_min@GLIBC_2.2.5	0xee070	ok	147	sched_get_priority_min	__sched_get_priority_min	errno64		
+sched_get_priority_min@GLIBC_2.2.5	0xee070	ok	147	sched_get_priority_min	sched_get_priority_min	errno64		
+__sched_getscheduler@GLIBC_2.2.5	0xedfe0	ok	145	sched_getscheduler	__sched_getscheduler	errno64		
+sched_getscheduler@GLIBC_2.2.5	0xedfe0	ok	145	sched_getscheduler	sched_getscheduler	errno64		
+sched_rr_get_interval@GLIBC_2.2.5	0xee0a0	ok	148	sched_rr_get_interval	sched_rr_get_interval	errnoInt		
+sched_setaffinity@GLIBC_2.3.3	0x151b70	ok	203	sched_setaffinity	sched_setaffinity	errnoInt		
+sched_setaffinity@GLIBC_2.3.4	0xee130	ok	203	sched_setaffinity	sched_setaffinity	errnoInt		
+sched_setparam@GLIBC_2.2.5	0xedf50	ok	142	sched_setparam	sched_setparam	errno64		
+__sched_setscheduler@GLIBC_2.2.5	0xedfb0	ok	144	sched_setscheduler	__sched_setscheduler	errno64		
+sched_setscheduler@GLIBC_2.2.5	0xedfb0	ok	144	sched_setscheduler	sched_setscheduler+	errno64		
+__sched_yield@GLIBC_2.2.5	0xee010	ok	24	sched_yield	__sched_yield	errno64		
+sched_yield@GLIBC_2.2.5	0xee010	ok	24	sched_yield	sched_yield+	errno64		
+__select@GLIBC_2.2.5	0xfe8a0	nomatch			__select			pre:41574989@0x0
+select@GLIBC_2.2.5	0xfe8a0	nomatch			pselect6+			pre:41574989@0x0
+semctl@GLIBC_2.2.5	0x10b520	nomatch			semctl			pre:4883ec58@0x0
+semget@GLIBC_2.2.5	0x10b4f0	ok	64	semget	semget	errnoInt		
+semop@GLIBC_2.2.5	0x10b4e0	nomatch			semop			pre:e9e90000@0x2
+semtimedop@GLIBC_2.3.3	0x10b5d0	ok	220	semtimedop	semtimedop	errnoInt		
+__send@GLIBC_2.2.5	0x10ab40	ok	44	sendto	__send	errnoLong	cancel	
+send@GLIBC_2.2.5	0x10ab40	ok	44	sendto	sendto+	errnoLong	cancel	
+sendfile@GLIBC_2.2.5	0xfc800	ok	40	sendfile	sendfile	errno64		
+sendfile64@GLIBC_2.3	0xfc800	ok	40	sendfile	sendfile64	errno64		
+__sendmmsg@GLIBC_PRIVATE	0x10b0b0	ok	307	sendmmsg	__sendmmsg	errnoInt	cancel	
+sendmmsg@GLIBC_2.14	0x10b0b0	ok	307	sendmmsg	sendmmsg	errnoInt	cancel	
+sendmsg@GLIBC_2.2.5	0x10ac00	ok	46	sendmsg	sendmsg+	errnoLong	cancel	
+sendto@GLIBC_2.2.5	0x10aca0	ok	44	sendto	sendto+	errnoLong	cancel	
+setegid@GLIBC_2.2.5	0xfe4d0	nomatch			setegid			pre:4883ec38@0x0
+seteuid@GLIBC_2.2.5	0xfe410	nomatch			seteuid			pre:4883ec38@0x0
+setfsgid@GLIBC_2.2.5	0x108c10	ok	123	setfsgid	setfsgid	errno64		
+setfsuid@GLIBC_2.2.5	0x108be0	ok	122	setfsuid	setfsuid	errno64		
+setgid@GLIBC_2.2.5	0xd55f0	nomatch			setgid+			pre:4883ec38@0x0
+sethostid@GLIBC_2.2.5	0xfef90	nomatch			sethostid			pre:55534883@0x0
+sethostname@GLIBC_2.2.5	0xfe730	ok	170	sethostname	sethostname	errno64		
+setitimer@GLIBC_2.2.5	0xc69a0	ok	38	setitimer	setitimer	errnoInt		
+setlogmask@GLIBC_2.2.5	0x1017a0	nomatch			setlogmask			pre:5531c0ba@0x0
+setns@GLIBC_2.14	0x10a1e0	ok	308	setns	setns	errno64		
+__setpgid@GLIBC_2.2.5	0xd5740	ok	109	setpgid	__setpgid	errno64		
+setpgid@GLIBC_2.2.5	0xd5740	ok	109	setpgid	setpgid	errno64		
+setpgrp@GLIBC_2.2.5	0xd5790	nomatch			setpgrp			pre:e9a7ffff@0x4
+setpriority@GLIBC_2.2.5	0xfdba0	ok	141	setpriority	setpriority	errno64		
+setregid@GLIBC_2.2.5	0xfe380	nomatch			setregid			pre:4883ec38@0x0
+setresgid@GLIBC_2.2.5	0xd58f0	nomatch			setresgid+			pre:4883ec38@0x0
+setresuid@GLIBC_2.2.5	0xd5860	nomatch			setresuid+			pre:4883ec38@0x0
+setreuid@GLIBC_2.2.5	0xfe2f0	nomatch			setreuid			pre:4883ec38@0x0
+setrlimit@GLIBC_2.2.5	0xfd820	ok	302	prlimit64	prlimit64+	errnoInt		
+setrlimit64@GLIBC_2.2.5	0xfd820	ok	302	prlimit64	prlimit64+	errnoInt		
+setsid@GLIBC_2.2.5	0xd57d0	ok	112	setsid	setsid+	errno64		
+setsockopt@GLIBC_2.2.5	0x10ad60	ok	54	setsockopt	setsockopt+	errnoInt		
+settimeofday@GLIBC_2.2.5	0xc4260	nomatch			settimeofday			pre:4883ec28@0x0
+setuid@GLIBC_2.2.5	0xd5570	nomatch			setuid+			pre:4883ec38@0x0
+setxattr@GLIBC_2.3	0x1048a0	ok	188	setxattr	setxattr	errno64		
+shmat@GLIBC_2.2.5	0x10b600	ok	30	shmat	shmat	errnoLong		
+shmctl@GLIBC_2.2.5	0x10b690	ok	31	shmctl	shmctl	errnoInt		
+shmdt@GLIBC_2.2.5	0x10b630	ok	67	shmdt	shmdt	errnoInt		
+shmget@GLIBC_2.2.5	0x10b660	ok	29	shmget	shmget	errnoInt		
+shm_open@GLIBC_2.2.5	0x91b60	nomatch			shm_open			pre:41544189@0x0
+shm_open@GLIBC_2.34	0x91b60	nomatch			shm_open			pre:41544189@0x0
+shm_unlink@GLIBC_2.2.5	0x91c00	nomatch			shm_unlink			pre:534889fe@0x0
+shm_unlink@GLIBC_2.34	0x91c00	nomatch			shm_unlink			pre:534889fe@0x0
+shutdown@GLIBC_2.2.5	0x10ad90	ok	48	shutdown	shutdown+	errno64		
+sleep@GLIBC_2.2.5	0xd3d50	nomatch			nanosleep+			pre:55534883@0x0
+sockatmark@GLIBC_2.2.5	0x10af00	nomatch			sockatmark			pre:4883ec18@0x0
+__socket@GLIBC_PRIVATE	0x10adc0	ok	41	socket	__socket	errno64		
+socket@GLIBC_2.2.5	0x10adc0	ok	41	socket	socket+	errno64		
+socketpair@GLIBC_2.2.5	0x10adf0	ok	53	socketpair	socketpair+	errno64		
+splice@GLIBC_2.5	0x1090f0	ok	275	splice	splice	errnoLong	cancel	
+stat@GLIBC_2.33	0xf77e0	nomatch			newfstatat+			pre:e96e0000@0xd
+stat64@GLIBC_2.33	0xf77e0	nomatch			newfstatat+			pre:e96e0000@0xd
+__statfs@GLIBC_2.2.5	0xf7c00	ok	137	statfs	__statfs	errnoInt		
+statfs@GLIBC_2.2.5	0xf7c00	ok	137	statfs	statfs	errnoInt		
+statfs64@GLIBC_2.2.5	0xf7c00	ok	137	statfs	statfs64	errnoInt		
+statvfs@GLIBC_2.2.5	0xf7c60	nomatch			statvfs			pre:55534889@0x0
+statvfs64@GLIBC_2.2.5	0xf7c60	nomatch			statvfs64			pre:55534889@0x0
+statx@GLIBC_2.28	0xf7b30	nomatch			statx			tail:483d00f0ffff772e
+stime@GLIBC_2.2.5	0x150190	nomatch			stime			pre:4883ec28@0x0
+swapoff@GLIBC_2.2.5	0xff0d0	ok	168	swapoff	swapoff	errno64		
+swapon@GLIBC_2.2.5	0xff0a0	ok	167	swapon	swapon	errno64		
+symlink@GLIBC_2.2.5	0xf9a50	ok	88	symlink	symlink	errno64		
+symlinkat@GLIBC_2.4	0xf9a80	ok	266	symlinkat	symlinkat	errno64		
+sync@GLIBC_2.2.5	0xfeca0	ok	162	sync	sync	errno64		
+sync_file_range@GLIBC_2.6	0xfcd00	ok	277	sync_file_range	sync_file_range	errnoInt	cancel	
+syncfs@GLIBC_2.14	0xfed60	ok	306	syncfs	syncfs	errno64		
+syscall@GLIBC_2.2.5	0x101810	nomatch			syscall			pre:4c8b4c24@0x12
+__sysconf@GLIBC_2.2.5	0xd62a0	nomatch			__sysconf			pre:41554154@0x0
+sysconf@GLIBC_2.2.5	0xd62a0	nomatch			sysconf			pre:41554154@0x0
+sysinfo@GLIBC_2.2.5	0x10a0c0	ok	99	sysinfo	sysinfo	errno64		
+syslog@GLIBC_2.2.5	0x1014f0	nomatch			syslog			pre:4881ecd8@0x0
+__syslog_chk@GLIBC_2.4	0x1015c0	nomatch			__syslog_chk			pre:4881ecd8@0x0
+tcdrain@GLIBC_2.2.5	0xfd5d0	ok	16	ioctl	tcdrain	errnoInt	cancel	
+tcflow@GLIBC_2.2.5	0xfd670	nomatch			tcflow			pre:e9b20600@0x9
+tcflush@GLIBC_2.2.5	0xfd680	nomatch			tcflush			pre:e9a20600@0x9
+tcgetattr@GLIBC_2.2.5	0xfd4a0	nomatch			tcgetattr			pre:4883ec38@0x0
+tcgetpgrp@GLIBC_2.2.5	0xfd560	nomatch			tcgetpgrp			pre:4883ec18@0x0
+tcgetsid@GLIBC_2.2.5	0xfd710	nomatch			tcgetsid			pre:41545553@0x0
+tcsendbreak@GLIBC_2.2.5	0xfd690	nomatch			tcsendbreak			pre:85f67e1c@0x0
+tcsetattr@GLIBC_2.2.5	0xfd2f0	nomatch			tcsetattr			pre:554189f1@0x0
+tcsetpgrp@GLIBC_2.2.5	0xfd5b0	nomatch			tcsetpgrp			pre:4883ec18@0x0
+tee@GLIBC_2.5	0x108f90	ok	276	tee	tee	errnoLong	cancel	
+tgkill@GLIBC_2.30	0x10a2b0	ok	234	tgkill	tgkill+	errno64		
+time@GLIBC_2.2.5	0xc4080	ifunc			clock_gettime+			
+timer_create@GLIBC_2.2.5	0x94280	nomatch			timer_create			pre:534889d3@0x0
+timer_create@GLIBC_2.3.3	0x94080	nomatch			timer_create			pre:41564155@0x0
+timer_create@GLIBC_2.34	0x94080	nomatch			timer_create			pre:41564155@0x0
+timer_delete@GLIBC_2.2.5	0x943e0	nomatch			timer_delete			pre:55534863@0x0
+timer_delete@GLIBC_2.3.3	0x94320	nomatch			timer_delete			pre:41544889@0x0
+timer_delete@GLIBC_2.34	0x94320	nomatch			timer_delete			pre:41544889@0x0
+timerfd_create@GLIBC_2.8	0x10a150	ok	283	timerfd_create	timerfd_create+	errno64		
+timerfd_gettime@GLIBC_2.8	0x1093b0	ok	287	timerfd_gettime	timerfd_gettime	errnoInt		
+timerfd_settime@GLIBC_2.8	0x1093e0	ok	286	timerfd_settime	timerfd_settime	errnoInt		
+timer_getoverrun@GLIBC_2.2.5	0x94450	nomatch			timer_getoverrun			pre:488d0589@0x0
+timer_getoverrun@GLIBC_2.3.3	0x94410	nomatch			timer_getoverrun			pre:4885ff79@0x2
+timer_getoverrun@GLIBC_2.34	0x94410	nomatch			timer_getoverrun			pre:4885ff79@0x2
+timer_gettime@GLIBC_2.2.5	0x944a0	nomatch			timer_gettime			pre:488d0539@0x0
+timer_gettime@GLIBC_2.3.3	0x94460	nomatch			timer_gettime			pre:4885ff79@0x2
+timer_gettime@GLIBC_2.34	0x94460	nomatch			timer_gettime			pre:4885ff79@0x2
+timer_settime@GLIBC_2.2.5	0x944f0	nomatch			timer_settime			pre:488d05e9@0x0
+timer_settime@GLIBC_2.3.3	0x944b0	nomatch			timer_settime			pre:4885ff79@0x5
+timer_settime@GLIBC_2.34	0x944b0	nomatch			timer_settime			pre:4885ff79@0x5
+times@GLIBC_2.2.5	0xd3b30	nomatch			times			tail:483d00f0ffff7606
+timespec_get@GLIBC_2.16	0xcf310	nomatch			timespec_get			pre:83fe0174@0x0
+timespec_getres@GLIBC_2.34	0xcf340	nomatch			timespec_getres			pre:83fe0174@0x0
+truncate@GLIBC_2.2.5	0x100020	ok	76	truncate	truncate	errnoInt		
+truncate64@GLIBC_2.2.5	0x100020	ok	76	truncate	truncate64	errnoInt		
+ttyname@GLIBC_2.2.5	0xf95d0	nomatch			ttyname			pre:5389fb48@0x0
+ttyname_r@GLIBC_2.2.5	0xf9670	nomatch			ttyname_r			pre:41574156@0x0
+__ttyname_r_chk@GLIBC_2.4	0x117c40	nomatch			__ttyname_r_chk			pre:4839d172@0x0
+ualarm@GLIBC_2.2.5	0xff1d0	nomatch			ualarm			pre:4883ec58@0x0
+ulimit@GLIBC_2.2.5	0xfd890	nomatch			ulimit			pre:534883ec@0x0
+umask@GLIBC_2.2.5	0xf7d40	ok	95	umask	umask	raw		
+umount@GLIBC_2.2.5	0x108b70	nomatch			umount			pre:e9090000@0x2
+umount2@GLIBC_2.2.5	0x108b80	ok	166	umount2	umount2	errnoInt		
+uname@GLIBC_2.2.5	0xd3b00	ok	63	uname	uname+	errno64		
+unlink@GLIBC_2.2.5	0xf9b10	ok	87	unlink	unlinkat+	errno64		
+unlinkat@GLIBC_2.4	0xf9b40	ok	263	unlinkat	unlinkat+	errno64		
+unlockpt@GLIBC_2.2.5	0x14e1b0	nomatch			unlockpt			pre:4883ec18@0x0
+unshare@GLIBC_2.4	0x10a0f0	ok	272	unshare	unshare	errno64		
+uselib@GLIBC_2.2.5	0x10a120	ok	134	uselib	uselib	errno64		
+ustat@GLIBC_2.2.5	0x103eb0	nomatch			ustat			pre:48c1e820@0x3
+utime@GLIBC_2.2.5	0xf7750	nomatch			utime			pre:4883ec38@0x0
+utimensat@GLIBC_2.6	0xfc920	nomatch			utimensat			pre:4885f674@0x3
+utimes@GLIBC_2.2.5	0xffe40	nomatch			utimes			pre:4883ec38@0x0
+vhangup@GLIBC_2.2.5	0xff070	ok	153	vhangup	vhangup	errno64		
+vmsplice@GLIBC_2.5	0x109040	ok	278	vmsplice	vmsplice	errnoLong	cancel	
+__write@GLIBC_2.2.5	0xf8340	ok	1	write	__write	errnoLong	cancel	
+write@GLIBC_2.2.5	0xf8340	ok	1	write	write+	errnoLong	cancel	
+writev@GLIBC_2.2.5	0xfde50	ok	20	writev	writev+	errnoLong	cancel	

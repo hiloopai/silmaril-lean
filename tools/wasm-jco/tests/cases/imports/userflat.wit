@@ -1,0 +1,6 @@
+package test:userflat;
+
+world userflat {
+  import double: func(x: u32) -> u32;
+  export run: func(x: u32) -> u32;
+}

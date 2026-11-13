@@ -1,0 +1,12 @@
+[package]
+name = "adder-harness"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+adder = { path = "../adder" }
+wasmi = "=0.40.0"
+
+[dev-dependencies]
+proptest = "=1.6.0"

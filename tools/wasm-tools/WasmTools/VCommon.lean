@@ -14,6 +14,26 @@ namespace WasmTools.VCommon
 
 open Silmaril.Wasm.Tools.OptGrammar
 
+/-- What `strip`, `objdump` and `dump` read besides their own options (upstream's
+`InputOutput`, `GeneralOpts`). `ofParsed` reads it from the occurrences of the core build's
+reader (`OptGrammar.parse`); the full build reads it from the matches of the CLI
+specification (`WasmTools.SpecCore`). -/
+structure InOut where
+  /-- `[INPUT]` (none or `-`: stdin) -/
+  input : Option String
+  /-- `-o, --output <OUTPUT>` -/
+  output : Option String
+  verbose : Nat
+  /-- `--color <COLOR>` (default `auto`) -/
+  color : String
+  deriving Repr, DecidableEq
+
+def InOut.ofParsed (p : Parsed) : InOut where
+  input := p.pos.head?
+  output := p.value? "output"
+  verbose := p.count "verbose"
+  color := (p.value? "color").getD "auto"
+
 /-- A failed run: the message for `error: …`, exit status 1. -/
 def fail (msg : String) : IO UInt32 := do
   IO.eprintln s!"error: {msg}"

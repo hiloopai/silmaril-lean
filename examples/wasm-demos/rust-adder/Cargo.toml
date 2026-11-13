@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["adder", "harness"]
+
+# The profile used for the committed `wasm/adder.wasm` (see README).
+[profile.wasm]
+inherits = "release"
+opt-level = "s"
+panic = "abort"
+lto = true
+codegen-units = 1
+debug = false
+strip = true

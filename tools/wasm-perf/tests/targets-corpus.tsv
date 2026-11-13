@@ -1,0 +1,14 @@
+# Targets of tools/wasm-perf/tests/bench-corpus.sh: the Lean tool's minimum CPU time
+# (user+system, seconds) and maximum resident memory (MB) per case and input (`*`: every input);
+# for the wac suites, the maximum over the suite's invocations (`wac-corpus`, `wac-rust`) and the
+# total CPU of all of them (`…-total`; the RSS column is unused). Set on 2026-11-09 (i7-8700, 12
+# threads, load 5-8 from concurrent builds) at about 3x the measured values (at least 0.5 s):
+# every input of these corpora is a few hundred KB except the 3.4 MB debug build, and start-up
+# (about 0.04 s and 80 MB, 70 MB of it pages of the 104 MB executable) dominates.
+# case	input	max CPU s	max RSS MB
+jco-new	*	0.6	400
+jco-validate	*	0.5	300
+wac-corpus	*	0.5	300
+wac-corpus-total	*	30	0
+wac-rust	*	0.5	350
+wac-rust-total	*	1.5	0

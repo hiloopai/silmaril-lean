@@ -19,20 +19,25 @@ def specs : List Spec := outputSpecs ++ generalSpecs
 
 def usage : String := "wasm-tools objdump [OPTIONS] [INPUT]"
 
-/-- Run `objdump` on its arguments. -/
-def run (args : List String) : IO UInt32 := do
-  let p ← match ← parseOrExit specs 1 usage HelpV.objdump_short HelpV.objdump_long args with
-    | .error code => return code
-    | .ok p => pure p
-  let input ← match ← readInput p.pos.head? with
+/-- The body of `objdump` on its record (`run`; the full build: from the specification's
+matches, `WasmTools.SpecCore`). -/
+def body (a : InOut) : IO UInt32 := do
+  let input ← match ← readInput a.input with
     | .error e => return ← fail e
     | .ok b => pure b
   -- `objdumpFast` = `Objdump.objdump` on the bytes (`FastPaths.objdumpFast_eq`)
   match Silmaril.Wasm.Tools.FastPaths.objdumpFast input with
   | .error e => fail e
   | .ok ls =>
-    match ← writeText (p.value? "output") (String.join (ls.map (· ++ "\n"))) with
+    match ← writeText a.output (String.join (ls.map (· ++ "\n"))) with
     | .ok () => return 0
     | .error e => fail e
+
+/-- Run `objdump` on its arguments. -/
+def run (args : List String) : IO UInt32 := do
+  let p ← match ← parseOrExit specs 1 usage HelpV.objdump_short HelpV.objdump_long args with
+    | .error code => return code
+    | .ok p => pure p
+  body (InOut.ofParsed p)
 
 end WasmTools.Objdump
