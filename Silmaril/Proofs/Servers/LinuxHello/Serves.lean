@@ -220,4 +220,214 @@ theorem sendLoop (q : NetQueue) : ∀ (n : Nat) (out : List LPS.Byte), out.lengt
       · rfl
       · exact hacc' r hr
 
+
+/-! ## Reading the trace -/
+
+theorem accepted_append (a b : List SockEv) : accepted (a ++ b) = accepted a ++ accepted b := by
+  induction a with
+  | nil => rfl
+  | cons e a ih => cases e <;> simp [accepted, ih]
+
+theorem accepted_ofEvents (evs : List Event) : accepted (ofEvents evs) = [] := by
+  induction evs with
+  | nil => rfl
+  | cons e evs ih =>
+    rw [Silmaril.Proofs.Servers.Sockets.ofEvents_cons, accepted_append, ih, List.append_nil]
+    cases e with
+    | readEv ch b => cases h : connOf ch <;> simp [ofEvent, h, accepted]
+    | writeEv ch b => cases h : connOf ch <;> simp [ofEvent, h, accepted]
+    | exitEv => rfl
+    | killEv => rfl
+
+theorem accepted_ofRecordsC (isAccept isClose : Word → Bool) :
+    ∀ (n : Nat) (fds : List (Word × ConnId)) (h : List StepRecord),
+      accepted (ofRecordsC isAccept isClose n fds h) = List.range' n (acceptCount isAccept h)
+  | _, _, [] => rfl
+  | n, fds, r :: rs => by
+    rw [Silmaril.Proofs.Servers.Sockets.acceptCount_cons]
+    unfold ofRecordsC
+    split
+    · next ha =>
+      show n :: accepted (ofEvents r.events ++ _) = _
+      rw [accepted_append, accepted_ofEvents, List.nil_append,
+        accepted_ofRecordsC isAccept isClose (n + 1) _ rs, Nat.add_comm 1, List.range'_succ]
+    · next ha =>
+      rw [Nat.zero_add]
+      split
+      · rw [accepted_append, accepted_ofEvents, List.nil_append]
+        exact accepted_ofRecordsC isAccept isClose n _ rs
+      · rw [accepted_append, accepted_ofEvents, List.nil_append]
+        exact accepted_ofRecordsC isAccept isClose n _ rs
+
+theorem acceptCount_zero {isAccept : Word → Bool} {h : List StepRecord}
+    (hh : ∀ r ∈ h, accepts isAccept r = false) : acceptCount isAccept h = 0 := by
+  simp only [acceptCount, List.length_eq_zero_iff, List.filter_eq_nil_iff]
+  intro r hr
+  simp [hh r hr]
+
+theorem recvBytes_append (c : ConnId) (a b : List Event) :
+    recvBytes c (a ++ b) = recvBytes c a ++ recvBytes c b := List.flatMap_append
+
+theorem sentBytes_append (c : ConnId) (a b : List Event) :
+    sentBytes c (a ++ b) = sentBytes c a ++ sentBytes c b := List.flatMap_append
+
+theorem connOf_three : connOf 3 = some 0 := by decide
+
+theorem recvBytes_readEv (l : List LPS.Byte) :
+    recvBytes 0 (l.map (.readEv 3)) = l.map Silmaril.Servers.Sockets.byte := by
+  induction l with
+  | nil => rfl
+  | cons b l ih =>
+    simp only [List.map_cons]
+    rw [show (Event.readEv 3 b :: l.map (.readEv 3)) = [.readEv 3 b] ++ l.map (.readEv 3) from rfl,
+      recvBytes_append, ih]
+    simp [recvBytes, connOf]
+
+theorem recvBytes_writeEv (l : List LPS.Byte) : recvBytes 0 (l.map (.writeEv 3)) = [] := by
+  induction l with
+  | nil => rfl
+  | cons b l ih =>
+    simp only [List.map_cons]
+    rw [show (Event.writeEv 3 b :: l.map (.writeEv 3)) = [.writeEv 3 b] ++ l.map (.writeEv 3)
+      from rfl, recvBytes_append, ih]
+    rfl
+
+theorem sentBytes_writeEv (l : List LPS.Byte) :
+    sentBytes 0 (l.map (.writeEv 3)) = l.map Silmaril.Servers.Sockets.byte := by
+  induction l with
+  | nil => rfl
+  | cons b l ih =>
+    simp only [List.map_cons]
+    rw [show (Event.writeEv 3 b :: l.map (.writeEv 3)) = [.writeEv 3 b] ++ l.map (.writeEv 3)
+      from rfl, sentBytes_append, ih]
+    simp [sentBytes, connOf]
+
+theorem sentBytes_readEv (l : List LPS.Byte) : sentBytes 0 (l.map (.readEv 3)) = [] := by
+  induction l with
+  | nil => rfl
+  | cons b l ih =>
+    simp only [List.map_cons]
+    rw [show (Event.readEv 3 b :: l.map (.readEv 3)) = [.readEv 3 b] ++ l.map (.readEv 3) from rfl,
+      sentBytes_append, ih]
+    rfl
+
+theorem ofBitVec_toBitVec_map (l : List UInt8) : (l.map UInt8.toBitVec).map UInt8.ofBitVec = l := by
+  simp [List.map_map, Function.comp_def]
+
+theorem byte_toBitVec (l : List UInt8) :
+    (l.map UInt8.toBitVec).map Silmaril.Servers.Sockets.byte = l :=
+  ofBitVec_toBitVec_map l
+
+/-! ## The requests on the wire are all answered -/
+
+theorem takeWhile_all {α : Type} {p : α → Bool} : ∀ {l : List α}, (∀ x ∈ l, p x = true) →
+    l.takeWhile p = l
+  | [], _ => rfl
+  | x :: l, h => by
+    rw [List.takeWhile_cons, ite_eq_left (h x List.mem_cons_self),
+      takeWhile_all fun y hy => h y (List.mem_cons_of_mem _ hy)]
+
+theorem helloCount_encode (ms : List WireReq) (hms : ∀ m ∈ ms, WireOk m) :
+    helloCount (encRequests ms) = ms.length := by
+  unfold helloCount
+  rw [requests_encode ms (fun m hm => (hms m hm).1)]
+  rw [takeWhile_all]
+  · simp
+  · intro r hr
+    obtain ⟨m, hm, rfl⟩ := List.mem_map.1 hr
+    obtain ⟨-, h1, h2⟩ := hms m hm
+    simp [answerable, method_toRequest, h1, h2]
+
+/-! ## The run -/
+
+/-- The connection queue whose first client sends `bs` and then `FIN`. -/
+def queue (bs : List LPS.Byte) : NetQueue := fun _ => (⟨0, 0⟩, ofListFin bs)
+
+theorem serves (inp : Cli.Input) : ServesHello L inp := by
+  intro ms hms
+  set bytes := (encRequests ms).map UInt8.toBitVec with hbytes
+  set q := queue bytes with hq
+  -- accept
+  have hA : serverSpec ⟨202, args ⟨.accept, 0, [], [], 0, []⟩, readByte ⟨.accept, 0, [], [], 0, []⟩,
+      writableByte⟩ (model0 q) (.ok (mkEffect 4 [] []) (mConn q (ofListFin bytes)) []) := by
+    show accept4Spec (fd32 3) 0 0 0 _ _ _
+    rw [fd32_three]
+    exact accept_ok _ (model0 q) rfl rfl rfl 4 rfl rfl
+  have s1 := sys_step ⟨.accept, 0, [], [], 0, []⟩ 202 rfl _ _ _ _ hA rfl rfl rfl
+  obtain ⟨st1, hst1⟩ : ∃ s : St, s = advance (setRet ⟨.accept, 0, [], [], 0, []⟩ 4 []) :=
+    ⟨_, rfl⟩
+  have s1' : LStep (isa := isa) [] serverSpec noFilter ⟨⟨.accept, 0, [], [], 0, []⟩, model0 q⟩
+      (.syscall 202 (args ⟨.accept, 0, [], [], 0, []⟩) (mkEffect 4 [] []) [])
+      ⟨st1, mConn q (ofListFin bytes)⟩ := by
+    rw [hst1]; exact s1
+  have s2 := instr_step st1 (by simp [hst1, pending, advance, setRet])
+    (mConn q (ofListFin bytes)) rfl rfl
+  have hn1 : (next st1).pc = .read ∧ (next st1).conn = 4 ∧ (next st1).out = [] ∧
+      (next st1).acc = [] := by
+    have hr : (0 : Int) ≤ st1.ret.toInt := by simp [hst1, advance, setRet]
+    simp [next, hst1, advance, setRet]
+  -- read everything
+  obtain ⟨hR, stR, sR, hpR, hcR, haR, hoR, hbR, haccR⟩ :=
+    readLoop q bytes.length bytes le_rfl (next st1) hn1.1 hn1.2.1 hn1.2.2.1
+  -- read FIN
+  have haR' : args stR = [4, BUF, BitVec.ofNat 64 4096, 0, 0, 0] := by simp [args, hpR, hcR]
+  have hF : serverSpec ⟨63, args stR, readByte stR, writableByte⟩ (mConn q (ofListFin []))
+      (.ok (mkEffect 0 [] []) (mConn q (ofListFin [])) []) := by
+    rw [haR']
+    show readSpec (fd32 4) BUF (BitVec.ofNat 64 4096) _ _ _
+    rw [fd32_four]
+    exact read_fin _ _ _ _ (fdLookup_connFds q _)
+  obtain ⟨st3, hst3⟩ : ∃ s : St, s = advance (setRet stR 0 []) := ⟨_, rfl⟩
+  have s3 : LStep (isa := isa) [] serverSpec noFilter ⟨stR, mConn q (ofListFin [])⟩
+      (.syscall 63 (args stR) (mkEffect 0 [] []) []) ⟨st3, mConn q (ofListFin [])⟩ := by
+    rw [hst3]; exact sys_step stR 63 (by simp [pending, hpR]) _ _ _ _ hF rfl rfl rfl
+  have hp3 : st3.pc = .readDone := by simp [hst3, advance, setRet, hpR]
+  have s4 := instr_step st3 (by simp [pending, hp3]) (mConn q (ofListFin [])) rfl rfl
+  set out := (helloOut (helloCount (stR.acc.map UInt8.ofBitVec))).map UInt8.toBitVec with hout
+  have hn4 : (next st3).pc = (if out = [] then .close else .send) ∧ (next st3).conn = 4 ∧
+      (next st3).out = out := by
+    have h0 : st3.ret = 0 := by simp [hst3, advance, setRet, hpR]
+    have h0' : ¬ (0 : Int) < st3.ret.toInt := by rw [h0]; decide
+    simp only [next, hp3, h0, ↓reduceIte]
+    have ha3 : st3.acc = stR.acc := by simp [hst3, advance, setRet, hpR]
+    have hc3 : st3.conn = 4 := by simp [hst3, advance, setRet, hpR, hcR]
+    rw [ha3, hc3]
+    exact ⟨rfl, rfl, rfl⟩
+  -- send everything
+  obtain ⟨hS, stS, sS, -, hbS, haccS⟩ :=
+    sendLoop q out.length out le_rfl (next st3) hn4.1 hn4.2.1 hn4.2.2
+  -- the trace
+  let h := (.syscall 202 (args ⟨.accept, 0, [], [], 0, []⟩) (mkEffect 4 [] []) [] :: .instr ::
+    hR) ++ (.syscall 63 (args stR) (mkEffect 0 [] []) [] :: .instr :: hS)
+  have hrun : HStar (isa := isa) [] serverSpec noFilter (launch inp q) h ⟨stS, mConn q (ofListFin [])⟩ :=
+    hstar_append (.step s1' (.step s2 sR)) (.step s3 (.step s4 sS))
+  have hbt : byteTrace h = bytes.map (.readEv 3) ++ out.map (.writeEv 3) := by
+    simp only [h, byteTrace, List.flatMap_append, List.flatMap_cons, StepRecord.events,
+      List.nil_append] at hbR hbS ⊢
+    rw [hbR, hbS]
+  have hacc : stR.acc.map UInt8.ofBitVec = encRequests ms := by
+    rw [haR, hn1.2.2.2, List.nil_append, hbytes]
+    exact ofBitVec_toBitVec_map (encRequests ms)
+  refine ⟨ofRecordsC genericAccept genericClose 0 [] h, ⟨q, h, _, hrun, rfl⟩, ?_, ?_, ?_⟩
+  · rw [accepted_ofRecordsC]
+    have : acceptCount genericAccept h = 1 := by
+      simp only [h, List.cons_append]
+      rw [Silmaril.Proofs.Servers.Sockets.acceptCount_cons, acceptCount_zero]
+      · simp [accepts, genericAccept, mkEffect]
+      · intro r hr
+        simp only [List.mem_cons, List.mem_append] at hr
+        rcases hr with rfl | hr | rfl | rfl | hr
+        · rfl
+        · exact haccR r hr
+        · simp [accepts, genericAccept]
+        · rfl
+        · exact haccS r hr
+    rw [this]
+    rfl
+  · rw [Silmaril.Servers.Sockets.received_ofRecordsC, hbt, recvBytes_append, recvBytes_readEv,
+      recvBytes_writeEv, List.append_nil, hbytes, byte_toBitVec]
+  · rw [Silmaril.Servers.Sockets.sent_ofRecordsC, hbt, sentBytes_append, sentBytes_readEv,
+      sentBytes_writeEv, List.nil_append, hout, byte_toBitVec, hacc, helloCount_encode ms hms,
+      helloOut, List.map_const']
+
 end Silmaril.Proofs.Servers.LinuxHello
