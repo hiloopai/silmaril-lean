@@ -86,8 +86,9 @@
   {
    "name": "lean.std.bv_decide.verifyBVExpr",
    "kind": "decision",
-   "proposition": "a bit-vector goal is valid (an LRAT certificate of UNSAT checks)",
-   "doc": "Lean's bv_decide certificate check (upstream backend)."
+   "proposition": "verifyBVExpr e cert = true, for closed e and cert",
+   "statement": "Std.Tactic.BVDecide.Reflect.verifyBVExpr",
+   "doc": "The procedure bv_decide evaluates natively (upstream, #107 @ c7a65e9c)."
   }
  ],
  "implementations": [
@@ -267,17 +268,19 @@
   {
    "procedure": "lean.std.bv_decide.verifyBVExpr",
    "backend": "native",
-   "profile": "lrat",
+   "checker": "Std.Tactic.BVDecide.Reflect.verifyBVExpr",
+   "soundness": "Std.Tactic.BVDecide.Reflect.unsat_of_verifyBVExpr_eq_true",
    "status": "planned",
-   "surface": "bitblasting, hash-consed AIG to CNF, relabelling, the LRAT parser and checker, the runtime",
-   "doc": "Not wired into silmaril's policy."
+   "surface": "all of verifyBVExpr in compiled code: bitblasting (hash-consed), AIG to CNF, relabelling, the LRAT parser and checker; the Lean compiler and runtime",
+   "doc": "Each evaluation adds an axiom <decl>._native.bv_decide.ax_<n> (Lean.Meta.nativeEqTrue). The #107 gate stays strict until the core framework binds such axioms to this entry."
   },
   {
    "procedure": "lean.std.bv_decide.verifyBVExpr",
    "backend": "kernel",
    "profile": "normalization",
+   "checker": "Silmaril.Prelude.BVDecide.kernelFallback",
    "status": "planned",
-   "doc": "Normalization only: fails on goals that need SAT solving."
+   "doc": "#107: normalization only, standard axioms; a goal that needs SAT returns .needsSat and is unsupported. There is no kernel-checked SAT route."
   }
  ],
  "sets": [
@@ -383,12 +386,12 @@
    ]
   },
   {
-   "name": "native.lrat",
+   "name": "native.bv_decide",
+   "doc": "Natively evaluated verifyBVExpr.",
    "members": [
     {
      "procedure": "lean.std.bv_decide.verifyBVExpr",
-     "backend": "native",
-     "profile": "lrat"
+     "backend": "native"
     }
    ]
   }
@@ -403,7 +406,7 @@
     "standard",
     "kernel.elf.staged",
     "native.fast",
-    "native.lrat"
+    "native.bv_decide"
    ],
    "origin": "policy/trust.toml:1"
   },
@@ -558,6 +561,15 @@
    ]
   },
   {
+   "module": "Silmaril.Elf.Staged.Example.Fast",
+   "decl": "Silmaril.Elf.Staged.Example.Fast.bv",
+   "procedure": "lean.std.bv_decide.verifyBVExpr",
+   "backend": "native",
+   "axioms": [
+    "Silmaril.Elf.Staged.Example.Fast.bv._native.bv_decide.ax_1"
+   ]
+  },
+  {
    "module": "Silmaril.Elf.Staged.Example.Client",
    "decl": "Silmaril.Elf.Staged.Example.Client.uses_fast",
    "procedure": "propext",
@@ -593,6 +605,13 @@
    "decl": "Silmaril.Elf.Staged.Example.Fast.layout",
    "axioms": [
     "Silmaril.Elf.Staged.Example.Fast.layout._native"
+   ]
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Fast",
+   "decl": "Silmaril.Elf.Staged.Example.Fast.bv",
+   "axioms": [
+    "Silmaril.Elf.Staged.Example.Fast.bv._native.bv_decide.ax_1"
    ]
   },
   {

@@ -16,7 +16,8 @@ hand-written fixtures (`tools/silmaril-project/tests/project/trust-*`).
   implementation (`wasm.interp` in the fixtures) is *registered only*: no set can grant it and
   no use can name it. Capabilities that are not even registered (a symbol trie, DWARF line and
   DIE tables, `.eh_frame` bounds; see `Silmaril.Elf.Staged.Leaf`) do not appear at all. An implementation with `status = planned` (the native
-  fast mode of the ELF stages, `bytes.eq` on `ByteArray`, LRAT) is not supported either: a set
+  fast mode of the ELF leaves, `bytes.eq` on `ByteArray`, `bv_decide`'s native evaluation and its
+  normalization-only kernel fallback) is not supported either: a set
   may grant it ahead of time, but a use of it is an `unsupported` violation.
 - **Native means trusted computation.** A native implementation trusts the compiled code path
   (the Lean compiler, the runtime and any native code), however narrow its envelope. The trust
@@ -26,6 +27,29 @@ hand-written fixtures (`tools/silmaril-project/tests/project/trust-*`).
   digest still matches: the module source, the sources of its described imports (transitively),
   the listed inputs (policy files) and `lean-toolchain`. It does not prove that the dump is
   current: elaboration options and undescribed imports are not covered.
+
+### Native axioms: recorded, not authorized
+
+A native evaluation adds a fresh axiom. For `bv_decide` this axiom is
+`<decl>._native.bv_decide.ax_<n>`, stating one closed `verifyBVExpr e cert = true` (#107). This
+tool **records** that axiom on the use that produced it (`trust_use_axioms`). It **does not
+authorize anything by the axiom's name or shape.** Authorization comes only from the policy
+granting the use's `(procedure, backend, profile)`. The producer binds each axiom to its use
+and registry entry: it checks the statement (#107's `isBvDecideNativeStatement`, not the
+name-only `isBvDecideNativeAxiom`), the evaluated constant and the toolchain. That binding is
+the core framework's job. With `decls`, any axiom that no use accounts for is reported as
+`unattributed-axiom`.
+
+The `lean.std.bv_decide.verifyBVExpr` entry in the fixtures follows #107 (`c7a65e9c`):
+
+- **native, `planned`:** the checker `Std.Tactic.BVDecide.Reflect.verifyBVExpr` with
+  `unsat_of_verifyBVExpr_eq_true`. The natively evaluated surface is all of `verifyBVExpr`:
+  bitblasting, AIG to CNF, relabelling, and the LRAT parser and checker.
+- **kernel `normalization`, `planned`:** `kernelFallback` covers normalization only. A goal
+  that needs SAT returns `.needsSat`, which is unsupported. There is no kernel-checked SAT
+  route.
+
+Both entries stay `planned` until #107 and the core framework land.
 
 ## The trust dump (`silmaril.trust-dump.v0.1`)
 
@@ -176,7 +200,8 @@ The cases in `tools/silmaril-project/tests/project/` are:
 - `trust-bytes-elf`: `bytes.eq` and the eight ELF leaves of #110 and #123, each with a
   supported kernel pair (paranoid mode) and a planned native pair (fast mode), with no
   violations;
-- `trust-violations`: a native fast-mode use, which is not allowed, not supported, and
+- `trust-violations`: a native ELF fast-mode use and a native `bv_decide` use (with its
+  per-evaluation axiom recorded), each not allowed, not supported, and
   reported again through an importing module; an unattributed axiom; an edited source, which
   makes its module and that module's importer stale;
 - `trust-invalid`: the fail-closed errors;
