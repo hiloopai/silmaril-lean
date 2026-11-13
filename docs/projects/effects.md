@@ -98,7 +98,7 @@ large ones; `sha256sum` takes about 45 s).
 | --- | --- | --- |
 | glibc 2.39 `strlen` (`libc.so.6`, Ubuntu 2.39-0ubuntu8.9) | the IFUNC resolver `0xb4dc0` and the four implementations `0xc1a10` (SSE2), `0x18bac0` (AVX2), `0x194580` (AVX2+RTM), `0x19bc40` (EVEX): 5 functions, 87 blocks, 1497 bytes | every CFG is exact (`cfg_is`); no calls, no imports, no system calls: `sse2_syscalls : SyscallSet … [] []`, `sse2_foreign : ForeignCalls … []` |
 | coreutils 9.4 `true`, from `main` (`0x1490`) | 19 functions, 155 blocks, 3202 bytes | no direct system call; the reachable imports are 17: `__cxa_atexit`, `__fprintf_chk`, `__printf_chk`, `__stack_chk_fail`, `abort`, `bindtextdomain`, `dcgettext`, `exit`, `fputc_unlocked`, `fputs_unlocked`, `fwrite`, `nl_langinfo`, `setlocale`, `strcmp`, `strncmp`, `strrchr`, `textdomain` (`foreign`); `syscalls` for any summaries of them |
-| coreutils 9.4 `sha256sum`, from `main` (`0x2750`) | 72 functions, 1133 blocks, 17524 bytes, four jump tables (`.table`, under `IndOk`) | no direct system call; 54 reachable imports, among them `SHA256_Init`/`_Update`/`_Final` of `libcrypto.so.3`; `syscalls`: the system-call set is the union of the import summaries |
+| coreutils 9.4 `sha256sum`, from `main` (`0x2750`) | 72 functions, 1133 blocks, 17524 bytes, six jump tables (`.table`, under `IndOk`) | no direct system call; 54 reachable imports, among them `SHA256_Init`/`_Update`/`_Final` of `libcrypto.so.3`; `syscalls`: the system-call set is the union of the import summaries |
 
 **`true` does not call only exit-family imports.** With one argument (`--help`, `--version`) its
 `main` sets up the locale and prints usage or the version, so the honest result is the import set
