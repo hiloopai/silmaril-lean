@@ -79,7 +79,7 @@ theorem answer_run {o : BitVec 32} {resp : Response} {u : List WEv} {r : Option 
 
 /-- **Over a host whose answers succeed**, the response code makes its response. -/
 theorem answer_ok {o : BitVec 32} {resp : Response} {u : List WEv} {r : Option (List Val)}
-    (hr : Response.simple resp.status resp.content = resp) (hs : resp.status < 2 ^ 16)
+    (hr : resp.trailers = []) (hs : resp.status < 2 ^ 16)
     (hl : Leads (answer o resp) u (.pure r)) (hok : ∀ f a n, WEv.imp f a n ∈ u → OkAns f n) :
     respOf o u = some resp :=
   Proofs.Servers.WasiExamples.answer_ok hr hs hl hok

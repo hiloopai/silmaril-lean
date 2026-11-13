@@ -73,9 +73,12 @@ def OnWire (q : Request) : Prop := ∃ m : WireReq, WireOk m ∧ toRequest m = q
 def wireLog (l : Log) : Prop := ∀ p ∈ l, OnWire p.1
 
 /-- The header section of the hello response on the wire. -/
-def helloFields : List Net.Http1.FieldLine := [⟨Net.Http1.contentLengthName, Net.Http1.ascii "5"⟩]
+def helloFields : List Net.Http1.FieldLine :=
+  [⟨Net.Http1.ascii "content-type", Net.Http1.ascii "text/plain"⟩,
+    ⟨Net.Http1.contentLengthName, Net.Http1.ascii "5"⟩]
 
-/-- **The hello response on the wire**: `HTTP/1.1 200 OK`, `content-length: 5`, `hello`. -/
+/-- **The hello response on the wire**: `HTTP/1.1 200 OK`, `content-type: text/plain`,
+`content-length: 5`, `hello`. -/
 def helloWire : WireResp :=
   (⟨⟨⟨1, 1⟩, 200, Net.Http1.ascii "OK"⟩, helloFields⟩, .content helloResp.content)
 

@@ -712,7 +712,7 @@ Linux side). `wasi_hello_iff`: the logs of the hello component are those answeri
 request `200 hello`. `wasi_refines_linux`: on logs whose requests are on the wire (`wireLog`:
 readings of wire requests that read back, methods other than `HEAD` and `CONNECT`), the hello
 component refines every Linux process that, for any such requests received back to back on
-one connection, sends `helloWire` (`200 OK`, `content-length: 5`, `hello`) for each in some run
+one connection, sends `helloWire` (`200 OK`, `content-type: text/plain`, `content-length: 5`, `hello`) for each in some run
 (`ServesHello`). The proof goes through the component's `wasi:http` calls, the HTTP/1.1 round
 trips and the merge of connection logs. `linux_refines_wasi`: a process whose every exchange
 answers `200 hello` (`OnlyHello`) refines the component on all logs. `hello_equiv` combines

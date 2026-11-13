@@ -249,12 +249,6 @@ theorem x_set (o : BitVec 32) (st : OSt) (rh : BitVec 32) (hs : st.set = none) :
 /-! ## The shared response code -/
 
 
-/-- The answer `n` of `f` is the successful one. -/
-def OkAns (f : FnName) (n : Option (List Val)) : Prop :=
-  ((f = setStatus ∨ f = streamWrite ∨ f = bodyFinish ∨ f = fieldsAppend) → n = some [okV none]) ∧
-    ((f = respBody ∨ f = bodyWrite) → ∃ h, n = some [okV (some (.u32 h))]) ∧
-    (f = outSet → n = some []) ∧ (f = newResp → ∃ h, n = some [.u32 h])
-
 /-- **Appending header lines**, for every host: the run splits into the appends and the rest,
 and the appends add the lines to the fields `fh` (or fail the reading). -/
 theorem addFields_run (o fh : BitVec 32) (k : BProg proxyImports) (r : Option (List Val)) :

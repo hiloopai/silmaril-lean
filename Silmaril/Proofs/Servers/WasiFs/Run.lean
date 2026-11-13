@@ -154,15 +154,16 @@ theorem storeHost_ok (root : String) (q : Request) (fs : Fs) (past : List WEv) (
     (a : List Val) : OkAns f (storeHost root q fs past f a) := by
   by_cases hf : f ∈ fsList
   · have hn : f ≠ setStatus ∧ f ≠ streamWrite ∧ f ≠ bodyFinish ∧ f ≠ respBody ∧
-        f ≠ bodyWrite ∧ f ≠ outSet := by
+        f ≠ bodyWrite ∧ f ≠ outSet ∧ f ≠ fieldsAppend ∧ f ≠ newResp := by
       simp only [fsList, List.mem_cons, List.not_mem_nil, or_false] at hf
       rcases hf with rfl | rfl | rfl | rfl | rfl <;>
         simp [getDirs, openAt, fdRead, fdWrite, unlinkAt, setStatus, streamWrite, bodyFinish,
-          respBody, bodyWrite, outSet]
-    obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hn
-    refine ⟨?_, ?_, ?_⟩
-    · rintro (h | h | h) <;> contradiction
+          respBody, bodyWrite, outSet, fieldsAppend, newResp]
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hn
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · rintro (h | h | h | h) <;> contradiction
     · rintro (h | h) <;> contradiction
+    · intro h; contradiction
     · intro h; contradiction
   · simp only [storeHost, hf, ite_false]
     exact refHost_ok q past f a
@@ -172,14 +173,28 @@ theorem respOf_answerS (root : String) (q : Request) (fs : Fs) (past : List WEv)
     {resp : Response} (hr : Response.simple resp.status resp.content = resp)
     (hs : resp.status < 2 ^ 16) :
     respOf o (runP (storeHost root q fs) past (answerS o resp)).1 = some resp :=
-  answer_ok hr hs (leads_widen (leads_runP _ _ _))
+  answer_ok (by rw [← hr]; rfl) hs (leads_widen (leads_runP _ _ _))
     fun f a _ hm => (imp_runP' hm).elim fun _ e => e ▸ storeHost_ok root q fs _ f a
+
+/-- Appending header lines makes no filesystem call. -/
+theorem fsEvents_addFields (impl : Impl) (fh : BitVec 32) (k : BProg proxyImports)
+    (hk : ∀ p, List.filter isFsEv (runP impl p (widen k)).1 = []) :
+    ∀ (s : Silmaril.Net.Http.Field.Section) (past : List WEv),
+      List.filter isFsEv (runP impl past (widen (addFields fh s k))).1 = []
+  | [], past => hk past
+  | _ :: s, past => by
+    simp [addFields, widen, runP, pop, isFsEv, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt,
+      fieldsAppend, fsEvents_addFields impl fh k hk s]
 
 /-- The response code makes no filesystem call. -/
 theorem fsEvents_answerS (impl : Impl) (past : List WEv) (o : BitVec 32) (resp : Response) :
     List.filter isFsEv (runP impl past (answerS o resp)).1 = [] := by
-  simp [answerS, answer, widen, runP, pop, isFsEv, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt,
-    newFields, newResp, setStatus, respBody, outSet, bodyWrite, streamWrite, streamDrop, bodyFinish]
+  simp only [answerS, answer, widen, runP, List.filter_cons]
+  simp only [pop, isFsEv, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt, newFields]
+  simp only [List.mem_cons, List.not_mem_nil, or_false, decide_eq_true_eq]
+  refine (ite_eq_right (by decide)).trans <| (ite_eq_right (by decide)).trans <| fsEvents_addFields _ _ _ ?_ _ _
+  intro p
+  simp [widen, runP, isFsEv, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt, newResp, setStatus, respBody, outSet, bodyWrite, streamWrite, streamDrop, bodyFinish]
 
 theorem respOf_req (o : BitVec 32) (g : FnName) (b : List Val) (u : List WEv) :
     respOf o (.req g b :: u) = respOf o u := rfl
@@ -187,10 +202,10 @@ theorem respOf_req (o : BitVec 32) (g : FnName) (b : List Val) (u : List WEv) :
 /-- The calls other than the response's do not move the reading of the response. -/
 theorem respOf_imp (o : BitVec 32) {f : FnName} (a : List Val) (n : Option (List Val))
     (u : List WEv) (hf : f ≠ setStatus ∧ f ≠ respBody ∧ f ≠ bodyWrite ∧ f ≠ streamWrite ∧
-      f ≠ bodyFinish ∧ f ≠ outSet) :
+      f ≠ bodyFinish ∧ f ≠ outSet ∧ f ≠ newResp ∧ f ≠ fieldsAppend) :
     respOf o (.imp f a n :: u) = respOf o u := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hf
-  have h : ostep o {} (.imp f a n) = some {} := by simp [ostep, h1, h2, h3, h4, h5, h6]
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hf
+  have h : ostep o {} (.imp f a n) = some {} := by simp [ostep, h1, h2, h3, h4, h5, h6, h7, h8]
   simp [respOf, List.foldlM_cons, h]
 
 theorem maxRead_mod : maxRead % 18446744073709551616 = maxRead := by decide
@@ -256,13 +271,15 @@ theorem runP_readBody (root : String) (q : Request) (fs : Fs) (past : List WEv) 
       some [okV (some (bytesV (q.content.map UInt8.toBitVec)))] := by
     simp [storeHost, refHost, hp, fsList, inRead, getDirs, openAt, fdRead, fdWrite, unlinkAt,
       reqMethod, reqPath, newFields, newResp, respBody, bodyWrite, setStatus, streamWrite,
-      bodyFinish, streamDrop, outSet, reqConsume, inStream]
+      bodyFinish, streamDrop, outSet, reqConsume, inStream, fieldsGet, fieldsEntries, fieldsAppend,
+      reqHeaders]
   have h2 : storeHost root q fs (past ++ [.imp inRead [.u32 s, .u64 readLen]
       (some [okV (some (bytesV (q.content.map UInt8.toBitVec)))])]) inRead [.u32 s, .u64 readLen] =
       some [errV (some (.variant 1 none))] := by
     simp [storeHost, refHost, fsList, inRead, getDirs, openAt, fdRead, fdWrite, unlinkAt,
       reqMethod, reqPath, newFields, newResp, respBody, bodyWrite, setStatus, streamWrite,
-      bodyFinish, streamDrop, outSet, reqConsume, inStream, isReadAns]
+      bodyFinish, streamDrop, outSet, reqConsume, inStream, isReadAns, fieldsGet, fieldsEntries,
+      fieldsAppend, reqHeaders]
   simp only [okV, errV] at h1 h2
   simp only [readBody, runP, sop, h1, h2, bytesOf_bytesV,
     Silmaril.Servers.WasiExamples.map_ofBitVec_toBitVec]
@@ -301,6 +318,7 @@ macro "store_run" : tactic => `(tactic|
     Versions.FsMore.lenOff, Versions.FsMore.u8sV_u8sC, Versions.FsMore.isDir, Versions.FsMore.preopensOf,
     Versions.FsMore.selfPath, Versions.FsMore.okA, Versions.FsMore.errA, isNoEntry,
     respOf_req, respOf_imp, respOf_answerS, fsEvents_answerS, setStatus, respBody, bodyWrite,
+    fieldsAppend, fieldsGet, fieldsEntries, reqHeaders,
     streamWrite, bodyFinish, outSet, maxRead_toNat, Silmaril.Net.Http.Status.ok,
     Silmaril.Net.Http.Status.notFound, Silmaril.Net.Http.Status.noContent,
     Silmaril.Net.Http.Status.created, Silmaril.Net.Http.Status.methodNotAllowed,
@@ -324,6 +342,7 @@ macro "store_run_mut" : tactic => `(tactic|
     Versions.FsMore.lenOff, Versions.FsMore.u8sV_u8sC, Versions.FsMore.isDir, Versions.FsMore.preopensOf,
     Versions.FsMore.selfPath, Versions.FsMore.okA, Versions.FsMore.errA, isNoEntry,
     respOf_req, respOf_imp, respOf_answerS, fsEvents_answerS, setStatus, respBody, bodyWrite,
+    fieldsAppend, fieldsGet, fieldsEntries, reqHeaders,
     streamWrite, bodyFinish, outSet, maxRead_toNat, Silmaril.Net.Http.Status.ok,
     Silmaril.Net.Http.Status.notFound, Silmaril.Net.Http.Status.noContent,
     Silmaril.Net.Http.Status.created, Silmaril.Net.Http.Status.methodNotAllowed,
