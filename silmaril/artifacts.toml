@@ -3,6 +3,51 @@
 schema = "silmaril.artifacts.v0.2"
 
 [[artifact]]
+cid = "bafkr4ia6ni4xr6hzdf2dxgsxx5dgcnsbxwqej6jol2xevz7eoamjbxpe4e"
+type = "blob"
+name = "silmaril.compiles_to.straight.source"
+paths = ["examples/compiles-to/straight/straight.c"]
+size = 155
+sha256 = "8b49538da88e3926f7c457e54fff82234e5ef0efb3c81372537b8f690f38b4b6"
+git_sha1 = "7c5be30070c4b48dd17e810e5fb461d5cc810612"
+
+[[artifact]]
+cid = "bafkr4iayh6sghvglya2f5njxpzh5g3mgpnk72jf5vq3pglvmurqcakavqu"
+type = "blob"
+name = "silmaril.sysv_tv.max2.o2_obj"
+paths = ["examples/sysv-tv/max2/O2/max2.o"]
+size = 736
+sha256 = "707f0a3662799f76ba7587663c87d64200acde6a33c1ecd53225fbdca30dc279"
+git_sha1 = "fb9a6bfd343d1dd715ee4e8bef9d720c26751b51"
+
+[[artifact]]
+cid = "bafkr4ib7gmlq4gu32xkzthiyt2t6dic47bkzw3xng6cekpjsbuyup3a4mm"
+type = "blob"
+name = "silmaril.compiles_to.straight.o2.object"
+paths = ["examples/compiles-to/straight/O2/straight.o"]
+size = 3176
+sha256 = "d1a77167a5a6957f6f42b5944ff5d28cb36c5b8901b8f564c4e73825cbf038a6"
+git_sha1 = "c1dbf53484ed8fbc80493c05d0902ebaa0695e9d"
+
+[[artifact]]
+cid = "bafkr4ibahvakl3iotlqggh5fy5645ytlcupxdxwansos7xccprmmm7f5vq"
+type = "blob"
+name = "silmaril.compiles_to.branch.o2.object"
+paths = ["examples/compiles-to/branch/O2/branch.o"]
+size = 2728
+sha256 = "9eee3bb05a8704841b354fafd443acb0f1f6f0a2ae7399e9bbf41e6d9b8269f4"
+git_sha1 = "0723f4d15ee948786d13e4fe62817312bc363037"
+
+[[artifact]]
+cid = "bafkr4ibdgmy2hitv7stkkh3k4luhsonl3ugqpu5swz6tnxkhjr7fb5xuka"
+type = "blob"
+name = "silmaril.sysv_tv.max2.c"
+paths = ["examples/sysv-tv/max2/max2.c"]
+size = 209
+sha256 = "3719fe9008f66170e4a853b8bafdf4e61bc8beafb9c65038e427821191173476"
+git_sha1 = "6984f2d8085780cb8efb677ebf0c2e645437e440"
+
+[[artifact]]
 cid = "bafkr4ic6n6megvodyd2vunfrri6rltghpbtmmk7qwwbxotm4k5vpobhjqy"
 type = "blob"
 name = "silmaril.selftest.exec_elf"
@@ -22,6 +67,15 @@ sha256 = "20f405d1d1acd3a6d3653b2960d386aba6f3e820c41007f21d552563f122177f"
 git_sha1 = "5204a0088e4abf687a483025c2143d5ce4eb8f64"
 
 [[artifact]]
+cid = "bafkr4icnlrdyw4h55eu5dzskxp2tianb3hf2vuiflhdf3kbzt3trmc2aei"
+type = "blob"
+name = "silmaril.compiles_to.straight.o0.object"
+paths = ["examples/compiles-to/straight/O0/straight.o"]
+size = 2848
+sha256 = "482026b8561dfbb3b2d13e49aba4d78354d6bee097524a97d5bdf662a48b26f4"
+git_sha1 = "1e6a36ba79198219bec280074e61c7a8f1fd7418"
+
+[[artifact]]
 cid = "bafkr4ieadls55ojjaudf67ylv3ol5ra6x4oe6iqgsbhx3iyzu7s7etrjuq"
 type = "blob"
 name = "silmaril.selftest.example_wasm"
@@ -39,6 +93,33 @@ size = 6
 sha256 = "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
 git_sha1 = "ce013625030ba8dba906f756967f9e9ca394464a"
 
+[[artifact]]
+cid = "bafkr4iesl6k3e73cpg3ofc4r5gsd5xdxluxkmdj7ytuyysv4izugh3zulq"
+type = "blob"
+name = "silmaril.sysv_tv.max2.o0_obj"
+paths = ["examples/sysv-tv/max2/O0/max2.o"]
+size = 760
+sha256 = "23f2e8e0fe7f97665952687233e5a2465f00b0dd5bc6a8714bf533c1fbd8159e"
+git_sha1 = "207dbf73c7494d2cac2c6e3df2aa6fa94f9d0597"
+
+[[artifact]]
+cid = "bafkr4ihqbonquru6xcz27telzewjvmfmhwu4rs7xzqmny7jm5oc2yofwi4"
+type = "blob"
+name = "silmaril.compiles_to.branch.o0.object"
+paths = ["examples/compiles-to/branch/O0/branch.o"]
+size = 2768
+sha256 = "aa197ae40627c1e9b8e406993ac637210d7eb33d5c3d1f7213f5867040c840b6"
+git_sha1 = "a971203fb9c2ab64af57c738031875a0082dc251"
+
+[[artifact]]
+cid = "bafkr4ihwmp4ceondl4bymky4ojjepe23h4aiz63gh75fxyqzrx77k7htma"
+type = "blob"
+name = "silmaril.compiles_to.branch.source"
+paths = ["examples/compiles-to/branch/branch.c"]
+size = 103
+sha256 = "6f463ede96e59be1e54fe54abc0b74d9609b7742772b5f7f14f995027fa7bcf6"
+git_sha1 = "30df5e372e0035083be3e774863bc03e18dbf110"
+
 [[derivation]]
 name = "silmaril.selftest.build.exec_elf"
 op = "link"
@@ -47,7 +128,7 @@ recipe = { path = "examples/project-formats/build.sh", cid = "bafkr4ihoh3kokxcw5
 toolchain = [{ name = "gcc", version = "13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1)" }, { name = "binutils", version = "2.42" }]
 flags = ["-O1", "-static", "-nostdlib", "-fno-pic", "-no-pie", "-fno-asynchronous-unwind-tables", "-fno-ident", "-Wl,--build-id=none", "-Wl,-z,max-page-size=4096", "-Wl,-z,noseparate-code", "-Wl,-z,norelro", "-s"]
 environment = { os = "ubuntu-24.04", arch = "x86_64" }
-receipt = { path = "examples/project-formats/RECEIPTS.sha256", cid = "bafkr4iadhv2n7jn2ooameubgzlstvwtd7zovkuyc674knbphwhx2pclj4i" }
+receipt = { path = "examples/project-formats/RECEIPTS.sha256", cid = "bafkr4igk5vxempz2xuxbt6yx7nqxwgtq3k2najjbhz5hkmen3enjjw5tj4" }
 doc = "example-exec.elf, a static x86-64 executable whose _start calls exit (examples/project-formats/build.sh rebuilds it bit for bit)"
 
 [[derivation.input]]
