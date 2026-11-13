@@ -1,0 +1,4 @@
+greet("hello")
+greet("")
+add(2, 40)
+events()

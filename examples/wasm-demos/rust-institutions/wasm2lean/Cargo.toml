@@ -1,0 +1,10 @@
+[package]
+name = "wasm2lean"
+description = "Print .wasm binaries as WAT (wasmprinter) and quote them into a Lean module with wat3!."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+wasmprinter = "=0.240.0"

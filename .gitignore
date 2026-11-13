@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 *~
 /tools/silmaril-project/target/
+/tools/syswrap-gen/target/

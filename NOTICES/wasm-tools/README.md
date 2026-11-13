@@ -52,6 +52,27 @@ rewritten in Lean.
 | `Dwarf/*`, `Meta/Addr2line` | `gimli` 0.34 and `addr2line` 0.27 (MIT OR Apache-2.0) |
 | `Suggest` | clap 4.6's suggestions (`clap_builder`, MIT OR Apache-2.0) over `strsim` 0.11.1's Jaro similarity (MIT) |
 
+## Component tools
+
+The component half of the release follows the same wasm-tools 1.262.0 crates, under the same
+**MIT** option:
+
+| Included Lean files | Upstream crate |
+| --- | --- |
+| `Silmaril/Cli/Spec/WasmTools/**` (help texts, usage errors, the generated reference) | `wasm-tools` 1.262.0 command line (clap 4.6 output of its argument definitions) |
+| `Silmaril/Wasm/Component/**`, `Silmaril/Wasm/Tools/Component/**` | `wasmparser` (component validation and binary format), `wasm-encoder`, `wit-component` |
+| `Silmaril/Wasm/Wit/**` | `wit-parser`, `wit-component`, `wit-smith` |
+| `Silmaril/Wasm/Tools/Gen/**` | `wasm-smith`, `wasm-mutate`, `wasm-shrink`, `wit-smith` (behaviour and flags only) |
+| `tools/wasm-tools/tests/{component,compval,gen}/**` | recorded outputs and known-difference lists of the pinned binary |
+
+`wasm-jco` and `wasm-wac` reproduce the command lines and output formats of
+[bytecodealliance/jco](https://github.com/bytecodealliance/jco) 1.39.0 and
+[bytecodealliance/wac](https://github.com/bytecodealliance/wac) 0.12.0
+(`Silmaril/Cli/Spec/{Jco,Wac}`, `Silmaril/Wasm/{Jco,JcoTool,Wac}`, `tools/wasm-jco/tests/**`).
+Both are licensed `Apache-2.0 WITH LLVM-exception`; the text is
+[LICENSE-Apache-2.0_WITH_LLVM-exception](LICENSE-Apache-2.0_WITH_LLVM-exception). No source of
+either is bundled; the test scripts use the pinned releases as optional oracles.
+
 ## Third-party data
 
 | Included file | Source | Terms |

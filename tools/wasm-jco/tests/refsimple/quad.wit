@@ -1,0 +1,8 @@
+package test:refs;
+
+world quad {
+  import double: func(x: u32) -> u32;
+  import is-odd: func(x: u32) -> bool;
+  export quad: func(x: u32) -> u32;
+  export odd-double: func(x: u32) -> bool;
+}

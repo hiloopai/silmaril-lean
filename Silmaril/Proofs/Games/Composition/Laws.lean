@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Games.Composition.Defs
+public import Silmaril.Games.Zip.Thms
 public import Silmaril.Games.Strategy.Thms
 import Silmaril.Proofs.Games.Composition.Unit
 

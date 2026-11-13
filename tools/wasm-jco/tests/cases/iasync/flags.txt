@@ -1,0 +1,1 @@
+component-model-async=y,component-model-async-stackful=y
