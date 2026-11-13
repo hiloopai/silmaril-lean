@@ -8,3 +8,44 @@ standard = ["propext", "Classical.choice", "Quot.sound"]
 # name = "Silmaril.Region.decl"      # or a name prefix ending in ".*"
 # axioms = ["Lean.ofReduceBool"]
 # reason = "Why the extra trust is acceptable."
+
+# Native decision procedures (`Silmaril.Prelude.Trust`). A procedure is registered with
+# `native_decider` and runs only through `edge_decide`. Each run adds its own axiom
+# `<decl>._native.edge.<procedure>.ax_i_j` and trusts the Lean compiler and runtime.
+# Each scope applies to a module prefix and inherits the keys it omits from its parent:
+#   max     the procedures the scope may run natively (within the parent's max)
+#   default the procedures run natively in the default profile (cut down to max)
+#   deps    the native procedures accepted through imported theorems
+#   axioms  the other axioms a declaration may depend on
+# Set names are `trust_set`s (Silmaril.Prelude.Trust.Policy), `all`, `none`, or `standard`
+# above. Profiles (`silmaril.trust.profile`): default, local (= max) and paranoid (= none).
+# Silmaril/Prelude/Trust/Policy/Defs.lean pins this file; update its pin when this file changes.
+[native]
+
+[[native.scope]]
+module = "Silmaril"
+max = "all"
+default = "default"
+deps = "all"
+axioms = "standard"
+
+# Views and courses restate or teach; their proofs stay kernel-checked.
+[[native.scope]]
+module = "Silmaril.Papers"
+max = "none"
+deps = "none"
+
+[[native.scope]]
+module = "Silmaril.Standards"
+max = "none"
+deps = "none"
+
+[[native.scope]]
+module = "Silmaril.Thesis"
+max = "none"
+deps = "none"
+
+[[native.scope]]
+module = "Silmaril.Courses"
+max = "none"
+deps = "none"
