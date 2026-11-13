@@ -291,7 +291,7 @@ structure Add where
   homepage : Field := .keep
   revision : Field := .keep
   version : Field := .keep
-  deriving Inhabited
+  deriving Inhabited, DecidableEq, Repr
 
 /-- `Producers::from_meta`. -/
 def Add.producers (a : Add) : Producers :=

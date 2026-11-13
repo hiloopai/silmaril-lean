@@ -1,0 +1,12 @@
+package test:ai;
+
+interface greet {
+  hello: func(s: string) -> string;
+  add: func(a: u32, b: u32) -> u32;
+}
+
+world user {
+  import greet;
+  export run: func(a: u32, b: u32) -> u32;
+  export hi: func(s: string) -> string;
+}

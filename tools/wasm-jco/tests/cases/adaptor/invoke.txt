@@ -1,0 +1,5 @@
+cconv	add(2, 40)	42
+cconv	greet("world")	"hello, world"
+cconv	greet("")	"hello, "
+cconv	rev([1, 2, 3])	[3, 2, 1]
+cconv	count([9, 9, 9, 9])	4

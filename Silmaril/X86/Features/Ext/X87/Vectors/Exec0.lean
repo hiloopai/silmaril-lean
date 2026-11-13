@@ -12,7 +12,7 @@ namespace Silmaril.X86.Features.Fpu.Vectors.Exec0
 
 open Silmaril.X86.Features.Fpu.Checks
 
-def vectors : String := "
+public def vectors : String := "
 d8c0 f7f 3926 23c3 0 c00afb128e7b2a26f6a5 c03cb32694b14da3770c 0 0 40089740000000000000 7fff0000000000000000 c0018000000000000095 0 0 43ff37f35fec49f0 d7 1 . . . . . . . . . . c0028000000000000095 . . 2d7
 d8c0 b7f 2e26 f330 c01cef8167e41d5bd000 40158000000000000000 0 3fefdbcfcfc71847f000 0 c03ae5689cf1e791ec64 0 0 0 0 7ab12bf2fc9fbe4c 887 1 . 2c26 . . . . . . c03be5689cf1e791ec64 . . . . a87
 d8c0 b7f 3218 cef3 0 3fdfad6be8703d89b6fa 0 0 adbb5219ab2629348569 0 441de277e244497420e3 0 0 0 d6d9ba6099b4a80 883 1 . 3018 . . . . . . . 441ee277e244497420e3 . . . a83

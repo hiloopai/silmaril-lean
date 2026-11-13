@@ -20,7 +20,12 @@ jobs:
       ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) &&
           'blacksmith-16vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
-    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.seed && 90 || 15 }}
+    # The main publisher may build cold after a large merge (about 23 min after
+    # #69), so it gets the seed run's limit; pull requests keep 15 minutes.
+    timeout-minutes: >-
+      ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) &&
+          90 || 15 }}
     permissions:
       contents: read
       # GitHub OIDC for the shared Lean CAS roles (hiloop live/aws-foundation/lean-cas.tf).

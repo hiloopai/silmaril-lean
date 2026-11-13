@@ -1,0 +1,12 @@
+package test:refs;
+
+world refs {
+  export add: func(a: u32, b: u32) -> u32;
+  export sub: func(a: s32, b: s32) -> s32;
+  export neg: func(x: s64) -> s64;
+  export is-zero: func(x: u8) -> bool;
+  export next: func(c: char) -> char;
+  export count: func() -> u32;
+  export tick: func();
+  export boom: func(x: u32) -> u32;
+}

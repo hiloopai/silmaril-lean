@@ -1,0 +1,2 @@
+# Vectors (tool, then argv, tab-separated) on which the tool and its surface differ; see
+# tools/cli-spec/tests/pinned-tools.sh and docs/projects/wasm-binaryen-tooling.md, "Apply". Regenerate with --update.

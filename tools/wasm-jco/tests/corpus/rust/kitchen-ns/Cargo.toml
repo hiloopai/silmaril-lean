@@ -1,0 +1,13 @@
+[package]
+name = "kitchen-ns"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+wit-bindgen = { workspace = true }
+dlmalloc = { version = "=0.2.14", features = ["global"] }

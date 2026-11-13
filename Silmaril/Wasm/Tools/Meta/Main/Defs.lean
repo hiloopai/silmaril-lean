@@ -138,27 +138,90 @@ def withArgs (c : Cmd) (helpShort helpLong : String) (args : List String)
 open Silmaril.Wasm.Tools.Meta.Help
 open Silmaril.Wasm.Tools.Meta (Producers)
 
+/-! ## The records of the command lines
+
+One record per subcommand: what its body reads. `…Args.ofSeen` reads it from the occurrences of
+this module's reader (`Cli.parseArgs`, the core build); the full build reads it from the
+matches of the CLI specification (`WasmTools.SpecCore`). The bodies are functions of the
+record (`demangleWith`, `showWith`, `addWith`, `addr2lineWith`). -/
+
+/-- The number of occurrences of a flag. -/
+def Parsed.count (seen : List (String × Option String)) (k : String) : Nat :=
+  (seen.filter (·.1 == k)).length
+
+/-- `wasm-tools demangle`. -/
+structure DemangleArgs where
+  /-- `[INPUT]` (none or `-`: stdin) -/
+  input : Option String
+  /-- `-o, --output <OUTPUT>` -/
+  output : Option String
+  /-- `-t, --wat` -/
+  wat : Bool
+  verbose : Nat
+  /-- `--color <COLOR>` (default `auto`) -/
+  color : String
+  deriving Repr, DecidableEq
+
+def DemangleArgs.ofSeen (seen : List (String × Option String)) (input : Option String) :
+    DemangleArgs where
+  input := input
+  output := Parsed.get? seen "output"
+  wat := Parsed.has seen "wat"
+  verbose := Parsed.count seen "verbose"
+  color := (Parsed.get? seen "color").getD "auto"
+
+/-- `wasm-tools metadata show`. -/
+structure ShowArgs where
+  input : Option String
+  output : Option String
+  /-- `--json` -/
+  json : Bool
+  verbose : Nat
+  color : String
+  deriving Repr, DecidableEq
+
+def ShowArgs.ofSeen (seen : List (String × Option String)) (input : Option String) :
+    ShowArgs where
+  input := input
+  output := Parsed.get? seen "output"
+  json := Parsed.has seen "json"
+  verbose := Parsed.count seen "verbose"
+  color := (Parsed.get? seen "color").getD "auto"
+
+/-- The body of `wasm-tools demangle` on its record. -/
+def demangleWith (h : Hooks) (a : DemangleArgs) : IO UInt32 := runM do
+    let b ← readInput h a.input
+    match Demangle.demangleB b with
+    | .ok out => writeWasm h a.output a.wat out
+    | .error e => throw { msg := e }
+
+/-- The body of `wasm-tools demangle` on the occurrences of `Cli.parseArgs` (`demangleMain`). -/
+def demangleBody (h : Hooks) (seen : List (String × Option String)) (input : Option String) :
+    IO UInt32 := demangleWith h (DemangleArgs.ofSeen seen input)
+
 /-- `wasm-tools demangle`. -/
 def demangleMain (h : Hooks) (args : List String) : IO UInt32 :=
-  withArgs demangleCmd helpDemangleH helpDemangleHelp args fun seen input => runM do
-    let b ← readInput h input
-    match Demangle.demangleB b with
-    | .ok out => writeWasm h (Parsed.get? seen "output") (Parsed.has seen "wat") out
-    | .error e => throw { msg := e }
+  withArgs demangleCmd helpDemangleH helpDemangleHelp args (demangleBody h)
 
 /-- Write text to `-o` or stdout. -/
 def writeText (output : Option String) (s : String) : M Unit :=
   writeWasm.writeStr output s
 
-/-- `wasm-tools metadata show`. -/
-def showMain (h : Hooks) (args : List String) : IO UInt32 :=
-  withArgs showCmd helpMetadataShowH helpMetadataShowHelp args fun seen input => runM do
-    let b ← readInput h input
+/-- The body of `wasm-tools metadata show` on its record. -/
+def showWith (h : Hooks) (a : ShowArgs) : IO UInt32 := runM do
+    let b ← readInput h a.input
     match Metadata.payloadOfB b with
     | .error e => throw { msg := e }
     | .ok p =>
-      writeText (Parsed.get? seen "output")
-        (if Parsed.has seen "json" then Metadata.showJson p else Metadata.showText p)
+      writeText a.output (if a.json then Metadata.showJson p else Metadata.showText p)
+
+/-- The body of `wasm-tools metadata show` on the occurrences of `Cli.parseArgs` (`showMain`). -/
+def showBody (h : Hooks) (seen : List (String × Option String)) (input : Option String) :
+    IO UInt32 := showWith h (ShowArgs.ofSeen seen input)
+
+/-- `wasm-tools metadata show`. -/
+def showMain (h : Hooks) (args : List String) : IO UInt32 :=
+  withArgs showCmd helpMetadataShowH helpMetadataShowHelp args (showBody h)
 
 /-- A `--x`/`--clear-x` pair as an `AddMetadataField`. -/
 def fieldOf (seen : List (String × Option String)) (x : String) : Metadata.Field :=
@@ -196,12 +259,41 @@ def addCmdFull : Cmd :=
       if o.long == "source" || o.long == "homepage" then { o with check := urlCheck } else o }
 
 /-- `wasm-tools metadata add`. -/
-def addMain (h : Hooks) (args : List String) : IO UInt32 :=
-  withArgs addCmdFull helpMetadataAddH helpMetadataAddHelp args fun seen input => runM do
-    let b ← readInput h input
-    match Metadata.addMetadataB (addOf seen) b with
+structure AddArgs where
+  input : Option String
+  output : Option String
+  wat : Bool
+  /-- `--generate-dwarf` or `-g` given (no effect: the input is read as is) -/
+  dwarf : Bool
+  /-- the fields to set, clear or keep, and the producers to add -/
+  add : Metadata.Add
+  verbose : Nat
+  color : String
+  deriving Repr, DecidableEq
+
+def AddArgs.ofSeen (seen : List (String × Option String)) (input : Option String) : AddArgs where
+  input := input
+  output := Parsed.get? seen "output"
+  wat := Parsed.has seen "wat"
+  dwarf := Parsed.has seen "generate-dwarf" || Parsed.has seen "-g"
+  add := addOf seen
+  verbose := Parsed.count seen "verbose"
+  color := (Parsed.get? seen "color").getD "auto"
+
+/-- The body of `wasm-tools metadata add` on its record. -/
+def addWith (h : Hooks) (a : AddArgs) : IO UInt32 := runM do
+    let b ← readInput h a.input
+    match Metadata.addMetadataB a.add b with
     | .error e => throw { msg := e }
-    | .ok out => writeWasm h (Parsed.get? seen "output") (Parsed.has seen "wat") out
+    | .ok out => writeWasm h a.output a.wat out
+
+/-- The body of `wasm-tools metadata add` on the occurrences of `Cli.parseArgs` (`addMain`). -/
+def addBody (h : Hooks) (seen : List (String × Option String)) (input : Option String) :
+    IO UInt32 := addWith h (AddArgs.ofSeen seen input)
+
+/-- `wasm-tools metadata add`. -/
+def addMain (h : Hooks) (args : List String) : IO UInt32 :=
+  withArgs addCmdFull helpMetadataAddH helpMetadataAddHelp args (addBody h)
 
 /-- `wasm-tools metadata`: `show`, `add`, `help`. -/
 def metadataMain (h : Hooks) (args : List String) : IO UInt32 := do
@@ -252,11 +344,33 @@ def metadataMain (h : Hooks) (args : List String) : IO UInt32 := do
   | [] => (← IO.getStderr).putStr helpMetadataH; pure 2
 
 /-- `wasm-tools addr2line`. -/
-def addr2lineMain (h : Hooks) (args : List String) : IO UInt32 :=
-  withArgs addr2lineCmd helpAddr2lineH helpAddr2lineHelp args fun seen input => runM do
-    let dwarf := Parsed.has seen "generate-dwarf" || Parsed.has seen "-g"
+structure Addr2lineArgs where
+  input : Option String
+  /-- `[ADDRESSES]...`, in order -/
+  addresses : List String
+  output : Option String
+  /-- `--generate-dwarf` or `-g` given -/
+  dwarf : Bool
+  codeSectionRelative : Bool
+  verbose : Nat
+  color : String
+  deriving Repr, DecidableEq
+
+def Addr2lineArgs.ofSeen (seen : List (String × Option String)) (input : Option String) :
+    Addr2lineArgs where
+  input := input
+  addresses := Parsed.getAll seen "ADDRESSES"
+  output := Parsed.get? seen "output"
+  dwarf := Parsed.has seen "generate-dwarf" || Parsed.has seen "-g"
+  codeSectionRelative := Parsed.has seen "code-section-relative"
+  verbose := Parsed.count seen "verbose"
+  color := (Parsed.get? seen "color").getD "auto"
+
+/-- The body of `wasm-tools addr2line` on its record. -/
+def addr2lineWith (h : Hooks) (r : Addr2lineArgs) : IO UInt32 := runM do
+    let dwarf := r.dwarf
     -- read once: stdin cannot be read a second time
-    let (raw, nm) ← readRaw input
+    let (raw, nm) ← readRaw r.input
     let isBin := raw.size ≥ 4 && raw.extract 0 4 == ByteArray.mk #[0, 0x61, 0x73, 0x6d]
     if dwarf && !isBin then
       throw { msg := "`--generate-dwarf` needs DWARF generation by the WAT parser, which this build does not include" }
@@ -264,15 +378,15 @@ def addr2lineMain (h : Hooks) (args : List String) : IO UInt32 :=
     let mods ← match Addr2line.modulesOf ba with
       | .ok m => pure m
       | .error (m, c) => throw { msg := m, causes := [c] }
-    let csr := Parsed.has seen "code-section-relative"
+    let csr := r.codeSectionRelative
     let mut out := ""
     let mut ctxs : Array (Option Silmaril.Wasm.Tools.Dwarf.Context) := Array.replicate mods.size none
     let mut caches : Array Silmaril.Wasm.Tools.Dwarf.Cache := Array.replicate mods.size {}
-    let output := Parsed.get? seen "output"
+    let output := r.output
     let fail (out : String) (a : String) (causes : List String) : M Unit := do
       writeText output out
       throw { msg := "failed to find frames for `" ++ a ++ "`", causes }
-    for a in Parsed.getAll seen "ADDRESSES" do
+    for a in r.addresses do
       let n ← match Addr2line.parseAddr a with
         | .ok n => pure n
         | .error e => fail out a [e]; pure 0
@@ -294,6 +408,14 @@ def addr2lineMain (h : Hooks) (args : List String) : IO UInt32 :=
       | .ok fs => out := out ++ Addr2line.render a fs
       | .error e => fail out a [e]
     writeText output out
+
+/-- The body of `wasm-tools addr2line` on the occurrences of `Cli.parseArgs` (`addr2lineMain`). -/
+def addr2lineBody (h : Hooks) (seen : List (String × Option String)) (input : Option String) :
+    IO UInt32 := addr2lineWith h (Addr2lineArgs.ofSeen seen input)
+
+/-- `wasm-tools addr2line`. -/
+def addr2lineMain (h : Hooks) (args : List String) : IO UInt32 :=
+  withArgs addr2lineCmd helpAddr2lineH helpAddr2lineHelp args (addr2lineBody h)
 
 /-- The subcommands of this track: name and entry point (arguments after the name). -/
 def subcommands (h : Hooks) : List (String × (List String → IO UInt32)) :=

@@ -8,13 +8,13 @@ development-environment checks, but defer the full Lean build until ready.
 
 | Check | Work | Automatic timeout |
 | --- | --- | --- |
-| Lean and native | `make check` on what the diff can change, staged CLI smoke | 15 minutes |
+| Lean and native | `make check` on what the diff can change, staged CLI smoke | 15 minutes; 90 on the main publisher |
 | Nightly | The full `make check` on main | 15 minutes |
 | LPS reality probes | Offline fixtures, 49 native probes, mutation/live tests | 5 minutes |
 | Development environments | Docker and Nix cross-tool smoke, in parallel | 10 minutes each |
 | CI helpers | Cache credential/path tests and timing tests | 2 minutes |
 | CI | Require every selected check to pass | 1 minute |
-| CI time budget | Fail separately when the attempt exceeds four minutes | 2 minutes |
+| CI time budget | Fail separately when the attempt exceeds four minutes, not counting module compilation | 2 minutes |
 
 `make check` builds the full Lean library and native tools with `--wfail`. It runs
 the layout, process facts, header, SHA artifact, x86 catalogue and offline LPS
@@ -35,7 +35,10 @@ changed. These changes check everything:
 With no Lake target, the job restores nothing and runs only the source checks.
 The timing check waits for all selected correctness jobs. It includes their
 setup, cache transfer, tests and publication, plus waits after the attempt
-starts. GitHub's wait before `run_started_at` and final workflow teardown are
+starts. Time Lake spends compiling modules the run had to build does not count:
+the check reads Lake's `Built … (duration)` lines from the job logs and reports
+both the elapsed time and the compile time. Restores and no-op Lake walks
+still count. GitHub's wait before `run_started_at` and final workflow teardown are
 outside this measurement. Reruns use the current attempt's start time.
 
 ## Cache and first run
@@ -62,7 +65,7 @@ limits Lake's worker pool; the native release suites run one per core.
 Logs record available disk and memory, build-tree size and `time -v` results.
 The latter reports the largest process RSS, not total concurrent memory.
 Changed-main S3 publication remains inside the time budget and can cause it
-to fail even when correctness passes.
+to fail even when correctness passes; a cold build's compilation does not.
 
 Thomas owns the manual seed and timing helper. Remove the seed when the standard
 Lean action supports main-only publication without it; remove the timing helper when
