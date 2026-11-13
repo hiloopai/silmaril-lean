@@ -141,3 +141,8 @@ deps = ["Prelude", "Semantics", "Logic", "Numeric", "Formats"]
 name = "Compiler"
 scope = "C compiler machinery over Cerberus Core: the Core elaboration correctness theorems, the compiler category and its Cerberus instance, the Clang JSON frontend, the Core reader and verified Core fragments. Also imports the x86 tree (`Silmaril.X86`) and the older `Silmaril.Compile` tree, which are not regions."
 deps = ["Prelude", "Semantics", "Logic", "Cerberus", "Machine"]
+
+[[region]]
+name = "Http"
+scope = "HTTP servers as specifications, platform-neutral: request/response histories with request identities, atomic handlers, hosts that run pending requests in any order, linearizability and serializability, abstractions between state models (component state, a file system the server alone edits, a shared file system with an invariant), and their instances over `Silmaril.Net.Http` messages and the CLI file model. Also imports `Silmaril.Net` (HTTP messages and origins), which is not a region."
+deps = ["Prelude", "Semantics", "Logic", "Formats", "Cli", "Games", "Wasm"]
