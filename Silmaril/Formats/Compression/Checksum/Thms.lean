@@ -7,6 +7,8 @@ import Silmaril.Proofs.Formats.Compression.Checksum
 import Silmaril.Proofs.Formats.Compression.Checksum.CRC32Spec
 import Silmaril.Proofs.Formats.Compression.Checksum.GF2Poly
 import Silmaril.Raw.Formats.Compression.Checksum.Adler32
+import Silmaril.Raw.Formats.Compression.Checksum.Adler32Spec
+public import Silmaril.Formats.Compression.Checksum.Adler32Spec
 import Silmaril.Raw.Formats.Compression.Checksum.CRC32
 
 /-!
@@ -19,6 +21,8 @@ Proved (standard axioms):
 * the published check values: Adler-32 of `"Wikipedia"` is `0x11E60398`
   (RFC 1950 §9's example) and of `"123456789"` is `0x091E01DE`; CRC-32 of
   `"123456789"` is `0xCBF43926`;
+* Adler-32 meets its closed form (RFC 1950 §8.2: `A = 1 + ΣDᵢ`, `B = Σ(n-i)·Dᵢ + n`,
+  both mod 65521): `Checksum.adler32OfList_eq_symbolic`, `Checksum.adler32_toNat_eq_symbolic`;
 * `adler32_lt`, `crc32Byte_lt`, `crc32List_lt`, `crc32List_append`: range and
   incremental laws;
 * GF(2) polynomials (`GF2Poly`): `mod a g` is the unique remainder of degree
@@ -80,6 +84,15 @@ theorem crc32List_lt (data : List Nat) (h : ∀ b ∈ data, b < 256) : crc32List
 /-- The framework CRC-32 computes the declarative specification. -/
 theorem crc32_digest_eq_spec (bytes : List UInt8) : crc32.digest bytes = crc32Spec bytes :=
   Proofs.Formats.Compression.CRC32.digest_eq_spec bytes
+
+/-- Adler-32 equals its closed form (`adler32Symbolic`, RFC 1950 §8.2). -/
+theorem adler32OfList_eq_symbolic (data : List Nat) :
+    adler32OfList data = adler32Symbolic data :=
+  Silmaril.Formats.Compression.adler32OfList_eq_symbolic data
+
+theorem adler32_toNat_eq_symbolic (data : ByteArray) :
+    (Compression.adler32 data).toNat = adler32Symbolic (data.data.toList.map UInt8.toNat) :=
+  Silmaril.Formats.Compression.adler32_toNat_eq_symbolic data
 
 end Silmaril.Formats.Compression.Checksum
 
