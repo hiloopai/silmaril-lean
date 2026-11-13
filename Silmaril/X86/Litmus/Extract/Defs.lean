@@ -32,7 +32,7 @@ How a step is computed (`stepSym`):
 * anything else (another memory form, a fault, code that runs out of the image, or fuel
   exhausted) makes the whole extraction `none`: a trace set is never silently truncated.
 
-The soundness statement (`Replay`; its proof is not part of this library): at every
+The soundness statement (`Replay`, proved as `extract_sound` in `Extract/Thms.lean`): at every
 step, on **every** memory with the thread's regions and code that answers the step's reads with
 the trace's bytes (`Answers`), `Atomic9.step` goes to the trace's next core and writes exactly
 the trace's bytes (`applyWrites`). Other threads may change memory between steps; the

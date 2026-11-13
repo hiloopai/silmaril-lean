@@ -1,0 +1,6 @@
+# The spawn/join C litmus programs, one directory each.
+mp+spawn
+mp+join
+counters
+mp+spawn-late
+mp+nojoin

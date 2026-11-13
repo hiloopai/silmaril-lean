@@ -1,0 +1,16 @@
+# 2+2W: two writes per thread; the condition is on the final values.
+name 2+2W
+source 2+2w.c
+loc x
+loc y
+thread P0
+st x 1
+st y 2
+thread P1
+st y 1
+st x 2
+exists x=1 /\ y=1
+c11 na racy data race on x and y
+c11 rlx allowed RC11 (Lahav et al., PLDI 2017), recorded from memory
+c11 ra allowed RC11 (Lahav et al., PLDI 2017), recorded from memory: no reads, so no synchronisation
+c11 sc forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory
