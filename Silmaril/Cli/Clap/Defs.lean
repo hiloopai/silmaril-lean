@@ -41,6 +41,36 @@ open Silmaril.Cli
 /-- The value checks of clap (now part of the args grammar, `Silmaril.Cli.ValueCheck`). -/
 abbrev Check := ValueCheck
 
+/-- What a command line asks for, in the clap dialect. -/
+inductive Outcome where
+  /-- run with this invocation and these matches -/
+  | run (fs : Invocation) (m : Matches)
+  /-- run, unless a value the specification leaves undecided is rejected (a usage error) -/
+  | undecided (fs : Invocation) (m : Matches) (why : String)
+  /-- the help of the command at this path, on stdout, exit 0 -/
+  | help (path : List String)
+  /-- the version, on stdout, exit 0 -/
+  | version
+  /-- a group without a subcommand: its help on stderr, a usage error -/
+  | needCommand (path : List String)
+  /-- a usage error -/
+  | error (msg : String)
+  deriving Repr, DecidableEq
+
+/-- The long texts of one command (clap's `long_about`, `long_help`, `after_long_help`),
+shown by `--help` (`Silmaril.Cli.Clap.Help`). -/
+structure Long where
+  /-- the long about (`none`: the about) -/
+  about : Option String := none
+  /-- the long text after the options (`none`: the short one) -/
+  after : Option String := none
+  /-- long helps, by option or positional `id` -/
+  args : List (String × String) := []
+  deriving Inhabited
+
+/-- Whether `--help` differs from `-h` (clap's `long_help_exists`). -/
+def Long.exists (l : Long) : Bool := l.about.isSome || l.after.isSome || !l.args.isEmpty
+
 /-- **A tool in the clap dialect**: an args grammar and clap's presentation. -/
 structure Tool where
   grammar : Command
@@ -50,6 +80,16 @@ structure Tool where
   helpSub : Bool := true
   /-- the exit code of a usage error -/
   usageExit : Nat := 2
+  /-- the long texts (`--help`), by command path (below the root) -/
+  long : List (List String × Long) := []
+  /-- the possible values of delimited options (clap's `value_delimiter` with possible
+  values: the grammar checks every part, `ValueCheck.listOf`; help and messages list them), by
+  command path and option id -/
+  choices : List (List String × String × List String) := []
+  /-- the texts of the outcomes that do not run, when the tool fixes them itself (`Tool.text`
+  of `Silmaril.Cli.Clap.Main`, which fixes the channel; clap's exact texts: `Tool.exact` of
+  `Silmaril.Cli.Clap.Exact`), by argument vector; `none`: the derived default texts -/
+  present : Option (List String → Outcome → String) := none
   deriving Inhabited
 
 /-! ## The clap view (derived) -/
@@ -76,6 +116,15 @@ def surfaceOpt (o : Opt) : Surface.Opt :=
     multiple := o.repeated
     tokens := multi.map ("-" ++ ·) }
 
+/-- The clap view of an option of the command at `path`, with the possible values the tool
+lists for a delimited option (`Tool.choices`). -/
+def surfaceOptAt (t : Tool) (path : List String) (o : Opt) : Surface.Opt :=
+  let s := surfaceOpt o
+  if !s.choices.isEmpty then s else
+  match t.choices.find? fun (q, i, _) => q == path && i == o.id with
+  | some (_, _, cs) => { s with choices := cs }
+  | none => s
+
 /-- The clap view of a positional. -/
 def surfacePos (p : Pos) : Surface.Pos :=
   { metavar := p.metavarOr
@@ -90,7 +139,7 @@ mutual
 /-- The clap view of the command at `path` (below the root). -/
 def surfaceCmd (t : Tool) (path : List String) : Command → Surface.Command
   | ⟨n, _, ab, os, ps, subs, _, _, _, _, _⟩ =>
-    { name := n, about := ab, pos := ps.map surfacePos, opts := os.map surfaceOpt,
+    { name := n, about := ab, pos := ps.map surfacePos, opts := os.map (surfaceOptAt t path),
       subs := surfaceCmds t path subs, after := (t.after.lookup path).getD "",
       helpSub := t.helpSub }
 /-- `surfaceCmd` of the subcommands of the command at `path`. -/
@@ -146,6 +195,21 @@ def displayPos (p : Pos) : String := (surfacePos p).spec
 def valueRequired (o : Opt) : String :=
   "a value is required for '" ++ display o ++ "' but none was supplied"
 
+/-- clap's error when the token `x` after an option `o` that needs a value looks like an option:
+an option of the command leaves the value missing; anything else is an unexpected argument (of
+a short cluster, its first letter; of `--name=v`, `--name`). -/
+def valueLike (c : Command) (o : Opt) (x : String) : String :=
+  match classify x with
+  | .long n _ =>
+    if (findLong c.opts n).isSome then valueRequired o
+    else "unexpected argument '--" ++ n ++ "' found"
+  | .short n =>
+    let first := String.ofList (n.toList.take 1)
+    if (findShort c.opts n).isSome || (findShort (clusterOpts c.opts) first).isSome then
+      valueRequired o
+    else "unexpected argument '-" ++ first ++ "' found"
+  | _ => valueRequired o
+
 /-- What one token does in the pre-pass. -/
 inductive Step where
   /-- go on with the next token -/
@@ -159,11 +223,27 @@ inductive Step where
   /-- stop early -/
   | early (e : Early)
 
-/-- `help NAME…` in a group. -/
+/-- The words of `help NAME…` from the group `c`, as clap walks them: each names a subcommand
+(by name or alias; the result has the names), or, in a group, clap's implicit `help`
+subcommand itself, which has no subcommands. The error is the first word that names none. -/
+def helpWalk : Command → List String → List String → Except String (List String)
+  | _, acc, [] => .ok acc
+  | c, acc, w :: ws =>
+    match findSub c.subs w with
+    | some s => helpWalk (c.child s) (acc ++ [s.name]) ws
+    | none =>
+      if w == "help" && !c.subs.isEmpty then
+        match ws with
+        | [] => .ok (acc ++ ["help"])
+        | x :: _ => .error x
+      else .error w
+
+/-- `help NAME…` in a group: the help of the command named, else clap's error for the first
+word that names no subcommand. -/
 def helpOf (c : Command) (path rest : List String) : Early :=
-  match c.walk rest with
-  | some _ => .help (path ++ rest)
-  | none => .error ("unrecognized subcommand '" ++ " ".intercalate rest ++ "'")
+  match helpWalk c [] rest with
+  | .ok p => .help (path ++ p)
+  | .error w => .error ("unrecognized subcommand '" ++ w ++ "'")
 
 /-- One option occurrence, with an attached value `v` (after `=`). -/
 def optStep (path : List String) (o : Opt) (v : Option String) : Step :=
@@ -200,7 +280,7 @@ def step (t : Tool) (c : Command) (path : List String) (tok : String) (rest : Li
   | .dashdash => .stop
   | .long n v =>
     match findLong c.opts n with
-    | none => .early (.error ("unexpected argument '" ++ tok ++ "' found"))
+    | none => .early (.error ("unexpected argument '--" ++ n ++ "' found"))
     | some o => optStep path o v
   | .short n =>
     match findShort c.opts n with
@@ -230,25 +310,9 @@ def pre (t : Tool) : Command → List String → List String → Option Early
     | .value o =>
       match rest with
       | [] => some (.error (valueRequired o))
-      | x :: rest' => if optionLike x then some (.error (valueRequired o)) else pre t c path rest'
+      | x :: rest' => if optionLike x then some (.error (valueLike c o x)) else pre t c path rest'
 
 /-! ## The reading -/
-
-/-- What a command line asks for, in the clap dialect. -/
-inductive Outcome where
-  /-- run with this invocation and these matches -/
-  | run (fs : Invocation) (m : Matches)
-  /-- run, unless a value the specification leaves undecided is rejected (a usage error) -/
-  | undecided (fs : Invocation) (m : Matches) (why : String)
-  /-- the help of the command at this path, on stdout, exit 0 -/
-  | help (path : List String)
-  /-- the version, on stdout, exit 0 -/
-  | version
-  /-- a group without a subcommand: its help on stderr, a usage error -/
-  | needCommand (path : List String)
-  /-- a usage error -/
-  | error (msg : String)
-  deriving Repr, DecidableEq
 
 /-- The exit code the reading fixes (`none`: the program decides). -/
 def Outcome.exit (t : Tool) : Outcome → Option Nat

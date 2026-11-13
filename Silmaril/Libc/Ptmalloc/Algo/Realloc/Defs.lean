@@ -12,7 +12,7 @@ glibc 2.39 `_int_realloc (av, oldp, oldsize, nb)` for a lent-out arena chunk:
 3. next is free and `oldsize + nextsize ≥ nb`: unlink it, fuse, split below;
 4. else `_int_malloc (av, nb - MALLOC_ALIGN_MASK)` (0: fail), and if the new chunk is the next
    chunk (top was grown and carved in place) fuse and split below, else copy and
-   `_int_free (av, oldp, 1)`;
+   `_int_free (av, oldp, 1)` (`reallocCopy`);
 5. split below: a remainder of at least `MINSIZE` is cut off in use and `_int_free`d (it may go
    to the tcache or a fastbin, or be coalesced).
 
@@ -33,29 +33,47 @@ def reallocSplit (l : Local) (p size nb : Nat) : Res (Nat × Local) := do
   let l ← intFree C l (p + nb)
   return (p + C.hdr, l)
 
-/-- **`_int_realloc (av, oldp, oldsize, nb)`**: the new payload (0: refused). -/
-def intRealloc (l : Local) (oldp oldsize nb : Nat) : Res (Nat × Local) := do
-  let some loc := l.av.tiles.locate oldp | .error .reallocInvalid
-  if loc.self.use ≠ .client ∨ oldsize ≠ loc.self.size then .error .reallocInvalid
-  if nb ≤ oldsize then return ← reallocSplit C l oldp oldsize nb
-  match loc.next with
-  | .top =>
-    let ts := l.av.tiles
-    if nb + C.minSize ≤ oldsize + ts.topSize then
-      return (oldp + C.hdr, withTiles l (ts.mergeTop.useTop nb .client))
-  | .chunk n =>
-    if n.use.tagFree ∧ nb ≤ oldsize + n.size then
-      let l ← unlink l n.addr .internal
-      return ← reallocSplit C (fuse l oldp .client) oldp (oldsize + n.size) nb
-  | .fence => pure ()
-  -- allocate, copy, free
-  let (p, l) ← intMalloc C l (nb - C.alignMask)
-  if p = 0 then return (0, l)
+/-- **Allocate, copy, free** (`_int_realloc`'s fallback): `_int_malloc (av, nb - MALLOC_ALIGN_MASK)`
+(0: fail); if the new chunk is glibc's `next` (the chunk after the old one: the top chunk grown by
+`sysmalloc` and carved in place, or a fastbin chunk), fuse it and split below, else copy and
+`_int_free (av, oldp, 1)`.
+
+`next` is computed before `_int_malloc` from the old chunk's address and size, so it is never a
+chunk lent out before the call; and a chunk at `oldp + oldsize` is the old chunk's neighbour in the
+tiling. States where either fails are ones the model's invariants exclude (`internal`): glibc's
+`next` there is a fence post or a lent-out chunk, which `_int_malloc` never returns. -/
+def reallocCopy (l : Local) (oldp oldsize nb : Nat) : Res (Nat × Local) := do
+  let (p, l₁) ← intMalloc C l (nb - C.alignMask)
+  if p = 0 then return (0, l₁)
   let newp := p - C.hdr
   if newp = oldp + oldsize then
-    let size := oldsize + l.av.tiles.sizeAt newp
-    return ← reallocSplit C (fuse l oldp .client) oldp size nb
-  let l ← intFree C l oldp
-  return (p, l)
+    if l.av.chunks.any (fun c => c.addr = newp ∧ c.use = .client) then .error .internal
+    else match l₁.av.tiles.locate oldp with
+      | some ⟨_, _, .chunk n, _⟩ =>
+        if n.addr = newp then reallocSplit C (fuse l₁ oldp .client) oldp (oldsize + n.size) nb
+        else .error .internal
+      | _ => .error .internal
+  else
+    let l₂ ← intFree C l₁ oldp
+    return (p, l₂)
+
+/-- **`_int_realloc (av, oldp, oldsize, nb)`**: the new payload (0: refused). -/
+def intRealloc (l : Local) (oldp oldsize nb : Nat) : Res (Nat × Local) :=
+  match l.av.tiles.locate oldp with
+  | none => .error .reallocInvalid
+  | some loc =>
+    if loc.self.use ≠ .client ∨ oldsize ≠ loc.self.size then .error .reallocInvalid
+    else if nb ≤ oldsize then reallocSplit C l oldp oldsize nb
+    else match loc.next with
+      | .top =>
+        if nb + C.minSize ≤ oldsize + l.av.tiles.topSize then
+          .ok (oldp + C.hdr, withTiles l (l.av.tiles.mergeTop.useTop nb .client))
+        else reallocCopy C l oldp oldsize nb
+      | .chunk n =>
+        if n.use.tagFree ∧ nb ≤ oldsize + n.size then do
+          let l₁ ← unlink l n.addr .internal
+          reallocSplit C (fuse l₁ oldp .client) oldp (oldsize + n.size) nb
+        else reallocCopy C l oldp oldsize nb
+      | .fence => reallocCopy C l oldp oldsize nb
 
 end Silmaril.Libc.Ptmalloc.Algo
