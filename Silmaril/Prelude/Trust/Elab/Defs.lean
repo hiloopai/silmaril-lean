@@ -451,3 +451,69 @@ syntax (name := trustDump) "#trust_dump " str : command
   IO.FS.writeFile (stx[1].isStrLit?.getD "trust.jsonl") (String.intercalate "\n" lines.toList ++ "\n")
 
 end Silmaril.Trust
+
+/-! ## Same-target pairs
+
+When the native and kernel checkers take different arguments (a `ByteArray` read at run time
+against kernel bytes, say), a function equality cannot pair them. Instead each checker proves
+the same proposition through its own soundness theorem:
+
+```
+example : Parses F A :=
+  by edge_pair (native := fun h => fastSound bytes A h) (kernel := fun h => kernelSound kb A h)
+```
+
+`native` and `kernel` have types `f a₁ … aₙ = true → P` and `g b₁ … bₘ = true → P` for the
+goal `P`, with `f` and `g` registered procedures. If the policy lets `f` run natively here,
+`f a₁ … aₙ` runs natively. Otherwise `g b₁ … bₘ` goes through `decideEdge`: the kernel if `g`
+has a fallback, natively if `g` itself is allowed, or failure. The proposition is `P` either
+way.
+-/
+
+namespace Silmaril.Trust
+
+open Lean Elab Tactic Meta
+
+syntax (name := edgePair) "edge_pair " "(" &"native" " := " term ")" "(" &"kernel" " := " term ")" :
+  tactic
+
+/-- Whether procedure `name` may run natively here. -/
+def nativeAllowed (name : Name) : CoreM Bool := do
+  let env ← getEnv
+  match allowed env env.mainModule (← profile) (← ceiling) with
+  | .ok a => return a.contains name
+  | .error _ => return false
+
+@[tactic edgePair] def evalEdgePair : Tactic := fun stx => withMainContext do
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  let side (t : Syntax) : TacticM (Expr × Expr) := do
+    let h ← Term.elabTerm t none
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let h ← instantiateMVars h
+    let ty ← whnfR (← inferType h)
+    let .forallE _ hyp body _ := ty
+      | throwError "edge_pair: {t} must have type `f … = true → P`"
+    unless ← isDefEq body target do
+      throwError "edge_pair: {t} proves{indentExpr body}\nnot the goal{indentExpr target}"
+    let some (_, e, _) := hyp.eq? | throwError "edge_pair: {t}'s hypothesis is not `f … = true`"
+    return (h, e)
+  let (hn, en) ← side stx[4]
+  let (hk, ek) ← side stx[9]
+  let env ← getEnv
+  let nativeOk ← do
+    let e' ← exposeHead env en
+    match headConst? e' with
+    | some f =>
+      match procsFor env f with
+      | #[p] => nativeAllowed p.name
+      | _ => pure false
+    | none => pure false
+  let prf ← if nativeOk then
+      pure (mkApp hn (← decideEdge en none stx))
+    else
+      pure (mkApp hk (← decideEdge ek none stx))
+  goal.assign prf
+  replaceMainGoal []
+
+end Silmaril.Trust

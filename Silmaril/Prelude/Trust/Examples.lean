@@ -64,6 +64,42 @@ info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.byPaire
 #guard_msgs in
 trust_audit byPaired byPairedKernel
 
+/-! ### A same-target pair: two checkers with different arguments, one proposition. -/
+
+/-- The proposition both checkers establish. -/
+def SumEven (n : Nat) : Prop := sumTo n % 2 = 0
+
+/-- Kernel-side checker: on `n`. -/
+def sumEvenK (n : Nat) : Bool := sumTo n % 2 == 0
+/-- Native-side checker: on a different argument, `n` as a list of its predecessors. -/
+def sumEvenN (l : List Nat) : Bool := l.foldl (· + ·) 0 % 2 == 0
+
+theorem sumEvenK_sound (n : Nat) (h : sumEvenK n = true) : SumEven n := by
+  simpa [sumEvenK, SumEven] using h
+theorem sumEvenN_sound (n : Nat) (h : sumEvenN (List.range n) = true) : SumEven n := by
+  simpa [sumEvenN, SumEven, foldl_add_range] using h
+
+/-- Kernel side of the pair. -/
+native_decider test.sumEvenK := Silmaril.Trust.Examples.sumEvenK with_kernel_fallback
+/-- Native side of the pair (no kernel fallback of its own). -/
+native_decider test.sumEvenN := Silmaril.Trust.Examples.sumEvenN
+
+set_option silmaril.trust.profile "local" in
+theorem pairNative : SumEven 100 :=
+  by edge_pair (native := sumEvenN_sound 100) (kernel := sumEvenK_sound 100)
+
+set_option silmaril.trust.profile "paranoid" in
+theorem pairKernel : SumEven 100 :=
+  by edge_pair (native := sumEvenN_sound 100) (kernel := sumEvenK_sound 100)
+
+set_option silmaril.trust.profile "local" in
+/--
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairNative","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1"],"own_native":["test.sumEvenN"],"profile":"local","schema":"silmaril.trust.v1"}
+{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernel","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1"}
+-/
+#guard_msgs in
+trust_audit pairNative pairKernel
+
 /-- A set naming the toy procedure, usable as a profile. -/
 trust_set toys := {test.evenSum}
 
@@ -138,8 +174,12 @@ trust_audit byLocal
 info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSum","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
 {"doc":"A procedure with no kernel fallback.","format":null,"function":"Silmaril.Trust.Examples.evenSum'","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumNoKernel","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
 {"doc":"`evenSum`, run natively as `evenSumRec`.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumPaired","native_eq":"Silmaril.Trust.Examples.evenSumRec_eq","native_function":"Silmaril.Trust.Examples.evenSumRec","schema":"silmaril.trust.v1","sound":null}
+{"doc":"Kernel side of the pair.","format":null,"function":"Silmaril.Trust.Examples.sumEvenK","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.sumEvenK","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
+{"doc":"Native side of the pair (no kernel fallback of its own).","format":null,"function":"Silmaril.Trust.Examples.sumEvenN","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.sumEvenN","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1","decl":"Silmaril.Trust.Examples.byPaired","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSumPaired","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byPairedKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSumPaired","profile":"paranoid","schema":"silmaril.trust.v1"}
+{"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1","decl":"Silmaril.Trust.Examples.pairNative","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEvenN","profile":"local","schema":"silmaril.trust.v1"}
+{"axiom":null,"decl":"Silmaril.Trust.Examples.pairKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEvenK","profile":"paranoid","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byDefault","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byLocal","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byToys","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"toys","schema":"silmaril.trust.v1"}
@@ -150,7 +190,7 @@ info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.rang
 #trust_uses
 
 /--
-info: roundtrip ok: 3 procedures, 7 uses
+info: roundtrip ok: 5 procedures, 9 uses
 -/
 #guard_msgs in
 #trust_roundtrip
