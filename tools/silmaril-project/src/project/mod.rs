@@ -19,6 +19,7 @@ pub mod schema;
 mod sid;
 mod sources;
 mod sql;
+mod trust;
 
 use clap::{Args as ClapArgs, Subcommand};
 use miette::{IntoDiagnostic, Result, WrapErr, bail, miette};
@@ -78,6 +79,10 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
+        /// The trust dump (`silmaril.trust-dump.v0.1`), relative to the project directory;
+        /// without it, decision-procedure and axiom use is reported as unaudited
+        #[arg(long)]
+        trust: Option<PathBuf>,
     },
     /// Check, then write the canonical SQL text and build the SQLite database from it
     Sqlite {
@@ -86,6 +91,10 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
+        /// The trust dump (`silmaril.trust-dump.v0.1`), relative to the project directory;
+        /// without it, the trust tables are empty and `meta` says `trust.status = absent`
+        #[arg(long)]
+        trust: Option<PathBuf>,
         /// The canonical SQL text
         #[arg(long, default_value = ".lake/silmaril/project.sql")]
         sql: PathBuf,
@@ -1154,14 +1163,16 @@ fn read_dump(path: &Path) -> Result<Dump> {
 
 /// Load project and dump and run the checks. Modules default to the dump's when neither the
 /// manifest nor `lakefile.toml` names any.
-fn checked(dir: &Path, dump: &Path) -> Result<check::Outcome> {
+fn checked(dir: &Path, dump: &Path, trust: Option<&Path>) -> Result<check::Outcome> {
     let mut p = Project::load(dir)?;
     let dump = read_dump(&dir.join(dump))?;
     if p.modules.is_empty() {
         p.modules = dump.modules.clone();
         p.set_roots();
     }
-    Ok(check::run(&p, &dump))
+    let mut o = check::run(&p, &dump);
+    trust::run(dir, trust, &mut o)?;
+    Ok(o)
 }
 
 /// Print the outcome; fail on errors. Returns the SQL text when there are none.
@@ -1402,16 +1413,18 @@ pub fn run(command: Command) -> Result<()> {
         Command::Check {
             dir: DirArg { dir },
             dump,
-        } => report(&checked(&dir, &dump)?).map(|_| ()),
+            trust,
+        } => report(&checked(&dir, &dump, trust.as_deref())?).map(|_| ()),
         Command::Sqlite {
             dir: DirArg { dir },
             dump,
+            trust,
             sql: sql_path,
             db,
             httpvfs,
             page_size,
         } => {
-            let text = report(&checked(&dir, &dump)?)?;
+            let text = report(&checked(&dir, &dump, trust.as_deref())?)?;
             let sql_path = dir.join(sql_path);
             if let Some(parent) = sql_path.parent() {
                 fs::create_dir_all(parent).into_diagnostic()?;

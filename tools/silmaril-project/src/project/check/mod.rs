@@ -37,11 +37,11 @@ pub struct Outcome {
 }
 
 impl Outcome {
-    fn error(&mut self, at: impl AsRef<str>, msg: impl AsRef<str>) {
+    pub fn error(&mut self, at: impl AsRef<str>, msg: impl AsRef<str>) {
         self.errors
             .insert(format!("{}: {}", at.as_ref(), msg.as_ref()));
     }
-    fn warn(&mut self, at: impl AsRef<str>, msg: impl AsRef<str>) {
+    pub fn warn(&mut self, at: impl AsRef<str>, msg: impl AsRef<str>) {
         self.warnings
             .insert(format!("{}: {}", at.as_ref(), msg.as_ref()));
     }

@@ -23,6 +23,65 @@ fn compare(path: &Path, got: &str, bless: bool, failures: &mut Vec<String>) {
     }
 }
 
+/// The `trust_violations` view (a recursive query) finds exactly the violations `sil project`
+/// reported as warnings, and the transitive views agree with the import edges.
+fn check_trust_views(db: &Path, stdout: &str, failures: &mut Vec<String>) {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT module, via, decl, reason FROM trust_violations ORDER BY 1, 2, 3, 4",
+        )
+        .unwrap();
+    let mut from_view: Vec<String> = stmt
+        .query_map([], |r| {
+            let (m, via, decl, why): (String, String, String, String) =
+                (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?);
+            let route = if m == via {
+                String::new()
+            } else {
+                format!(" (through {via})")
+            };
+            Ok(format!("trust {m}: {why}: {decl} uses{route}"))
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+    from_view.sort();
+    // The warning is `trust M: WHY: DECL uses GRANT[ (through VIA)]`; drop the grant.
+    let mut from_tool: Vec<String> = stdout
+        .lines()
+        .filter_map(|l| l.strip_prefix("warning: "))
+        .filter(|l| l.starts_with("trust "))
+        .map(|l| {
+            let (head, rest) = l.split_once(" uses ").unwrap();
+            let route = rest.find(" (through ").map_or("", |i| &rest[i..]);
+            format!("{head} uses{route}")
+        })
+        .collect();
+    from_tool.sort();
+    from_tool.dedup();
+    if from_view != from_tool {
+        failures.push(format!(
+            "{}: trust_violations {from_view:?} != reported {from_tool:?}",
+            db.display()
+        ));
+    }
+    let closure: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM trust_module_deps d WHERE NOT EXISTS (SELECT 1 FROM trust_imports i WHERE i.module = d.module AND i.import = d.dep) \
+             AND NOT EXISTS (SELECT 1 FROM trust_module_deps e JOIN trust_imports i ON i.module = e.dep AND i.import = d.dep WHERE e.module = d.module)",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    if closure != 0 {
+        failures.push(format!(
+            "{}: trust_module_deps has {closure} rows not derived from imports",
+            db.display()
+        ));
+    }
+}
+
 #[test]
 fn golden_cases() {
     let bless = std::env::var_os("SIL_BLESS").is_some();
@@ -43,14 +102,16 @@ fn golden_cases() {
         let dir = case.clone();
         let tmp = tempfile::tempdir().unwrap();
         let sql = tmp.path().join("project.sql");
-        let out = Command::new(env!("CARGO_BIN_EXE_silmaril-project"))
-            .args(["sqlite", "--dump", "dump.json", "--sql"])
+        let trust = dir.join("trust.json").is_file();
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_silmaril-project"));
+        cmd.args(["sqlite", "--dump", "dump.json", "--sql"])
             .arg(&sql)
             .arg("--db")
-            .arg(tmp.path().join("project.sqlite"))
-            .current_dir(&dir)
-            .output()
-            .unwrap();
+            .arg(tmp.path().join("project.sqlite"));
+        if trust {
+            cmd.args(["--trust", "trust.json"]);
+        }
+        let out = cmd.current_dir(&dir).output().unwrap();
         let stdout = String::from_utf8(out.stdout).unwrap();
         let text = format!(
             "{stdout}exit: {}\n",
@@ -58,6 +119,9 @@ fn golden_cases() {
         );
         compare(&case.join("check.txt"), &text, bless, &mut failures);
         let expected_sql = case.join("project.sql");
+        if out.status.success() && trust {
+            check_trust_views(&tmp.path().join("project.sqlite"), &stdout, &mut failures);
+        }
         if out.status.success() {
             compare(
                 &expected_sql,

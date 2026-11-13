@@ -1,0 +1,455 @@
+{
+ "schema": "silmaril.trust-dump.v0.1",
+ "toolchain": "leanprover/lean4:nightly-2026-11-05",
+ "producer": "fixture (hand-written; the core emitter is not available yet)",
+ "inputs": [
+  {
+   "path": "policy/trust.toml",
+   "sha256": "8e99649408a94168cac5bdddf9aba096ab394f5143a34fc6b314b52dc325a1e0"
+  }
+ ],
+ "procedures": [
+  {
+   "name": "silmaril.bytes.eq",
+   "kind": "decision",
+   "proposition": "a = b for a b : Silmaril.Formats.Bytes",
+   "doc": "The bytes relation: equality of byte strings."
+  },
+  {
+   "name": "silmaril.elf.staged.layout",
+   "kind": "decision",
+   "proposition": "Silmaril.Elf.Staged.LayoutIs F L",
+   "doc": "Stage 1 of staged ELF parsing (#110)."
+  },
+  {
+   "name": "silmaril.elf.staged.body",
+   "kind": "decision",
+   "proposition": "Silmaril.Elf.Staged.BodyIs F L sh b",
+   "doc": "Stage 2: one section body."
+  },
+  {
+   "name": "silmaril.elf.staged.loader",
+   "kind": "decision",
+   "proposition": "Silmaril.Elf.Staged.LoaderIs F L ld",
+   "doc": "Stage 2': PT_DYNAMIC, PT_INTERP and DT_STRTAB names."
+  },
+  {
+   "name": "silmaril.elf.parse",
+   "kind": "decision",
+   "proposition": "Silmaril.Elf.read F = some A",
+   "doc": "Whole-file ELF parsing. Registry entry only."
+  },
+  {
+   "name": "silmaril.wasm.parse",
+   "kind": "decision",
+   "proposition": "a Wasm module parses to m",
+   "doc": "Wasm binary parsing. Registry entry only."
+  },
+  {
+   "name": "silmaril.wasm.interp",
+   "kind": "decision",
+   "proposition": "a Wasm invocation evaluates to r",
+   "doc": "The Wasm interpreter. Registry entry only."
+  },
+  {
+   "name": "lean.std.bv_decide.verifyBVExpr",
+   "kind": "decision",
+   "proposition": "a bit-vector goal is valid (an LRAT certificate of UNSAT checks)",
+   "doc": "Lean's bv_decide certificate check. Registry entry only."
+  }
+ ],
+ "implementations": [
+  {
+   "procedure": "silmaril.bytes.eq",
+   "backend": "kernel",
+   "decl": "Silmaril.Formats.Bytes.instDecidableEq",
+   "implemented": true,
+   "doc": "decide +kernel on byte literals."
+  },
+  {
+   "procedure": "silmaril.bytes.eq",
+   "backend": "native",
+   "profile": "bytearray",
+   "implemented": false,
+   "surface": "compiled ByteArray comparison: the Lean compiler and runtime",
+   "doc": "Planned by the core trust-policy work; not available."
+  },
+  {
+   "procedure": "silmaril.elf.staged.layout",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "decl": "Silmaril.Elf.Staged.layoutIs_of_pages",
+   "implemented": true,
+   "doc": "decide +kernel on 4 KiB page literals."
+  },
+  {
+   "procedure": "silmaril.elf.staged.layout",
+   "backend": "native",
+   "profile": "fast",
+   "decl": "Silmaril.Elf.Staged.sub_fast",
+   "implemented": false,
+   "surface": "compiled fastRead on a ByteArray: the Lean compiler and runtime",
+   "doc": "#110 proves sub_fast; turning a fast run into a theorem is not available."
+  },
+  {
+   "procedure": "silmaril.elf.staged.body",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "decl": "Silmaril.Elf.Staged.bodyIs_of_pages",
+   "implemented": true
+  },
+  {
+   "procedure": "silmaril.elf.staged.loader",
+   "backend": "kernel",
+   "profile": "paranoid",
+   "decl": "Silmaril.Elf.Staged.loaderIs_of_pages",
+   "implemented": true
+  },
+  {
+   "procedure": "silmaril.elf.parse",
+   "backend": "native",
+   "implemented": false,
+   "surface": "compiled ELF reader and runtime"
+  },
+  {
+   "procedure": "silmaril.wasm.parse",
+   "backend": "native",
+   "implemented": false,
+   "surface": "compiled Wasm decoder and runtime"
+  },
+  {
+   "procedure": "silmaril.wasm.interp",
+   "backend": "native",
+   "implemented": false,
+   "surface": "compiled Wasm interpreter and runtime"
+  },
+  {
+   "procedure": "lean.std.bv_decide.verifyBVExpr",
+   "backend": "native",
+   "profile": "lrat",
+   "implemented": false,
+   "surface": "bitblasting, hash-consed AIG to CNF, relabelling, the LRAT parser and checker, the runtime",
+   "doc": "Not wired into silmaril's policy."
+  },
+  {
+   "procedure": "lean.std.bv_decide.verifyBVExpr",
+   "backend": "kernel",
+   "profile": "normalization",
+   "implemented": false,
+   "doc": "Normalization only: fails on goals that need SAT solving."
+  }
+ ],
+ "sets": [
+  {
+   "name": "kernel.bytes",
+   "doc": "Kernel-checked byte relations.",
+   "members": [
+    {
+     "procedure": "silmaril.bytes.eq"
+    }
+   ]
+  },
+  {
+   "name": "kernel.elf.staged",
+   "doc": "Kernel-checked staged ELF parsing (paranoid mode).",
+   "members": [
+    {
+     "set": "kernel.bytes"
+    },
+    {
+     "procedure": "silmaril.elf.staged.layout",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "silmaril.elf.staged.body",
+     "profile": "paranoid"
+    },
+    {
+     "procedure": "silmaril.elf.staged.loader",
+     "profile": "paranoid"
+    }
+   ]
+  },
+  {
+   "name": "native.fast",
+   "doc": "Compiled byte and ELF checks (fast mode).",
+   "members": [
+    {
+     "procedure": "silmaril.bytes.eq",
+     "backend": "native",
+     "profile": "bytearray"
+    },
+    {
+     "procedure": "silmaril.elf.staged.layout",
+     "backend": "native",
+     "profile": "fast"
+    }
+   ]
+  },
+  {
+   "name": "native.lrat",
+   "members": [
+    {
+     "procedure": "lean.std.bv_decide.verifyBVExpr",
+     "backend": "native",
+     "profile": "lrat"
+    }
+   ]
+  },
+  {
+   "name": "native.wasm",
+   "members": [
+    {
+     "procedure": "silmaril.wasm.interp",
+     "backend": "native"
+    }
+   ]
+  },
+  {
+   "name": "loop.a",
+   "members": [
+    {
+     "set": "loop.b"
+    }
+   ]
+  },
+  {
+   "name": "loop.b",
+   "members": [
+    {
+     "set": "loop.a"
+    }
+   ]
+  },
+  {
+   "name": "bad",
+   "members": [
+    {
+     "set": "nope"
+    },
+    {
+     "procedure": "silmaril.elf.staged.layout",
+     "backend": "native",
+     "profile": "turbo"
+    }
+   ]
+  }
+ ],
+ "policies": [
+  {
+   "scope": "root",
+   "allow": [
+    "standard"
+   ],
+   "max": [
+    "standard",
+    "kernel.elf.staged",
+    "native.fast",
+    "native.lrat"
+   ],
+   "origin": "policy/trust.toml:1"
+  },
+  {
+   "scope": "region",
+   "name": "Formats",
+   "allow": [
+    "standard",
+    "kernel.bytes"
+   ],
+   "origin": "policy/trust.toml:5"
+  },
+  {
+   "scope": "prefix",
+   "name": "Silmaril.Elf.Staged.*",
+   "allow": [
+    "standard",
+    "kernel.elf.staged"
+   ],
+   "origin": "policy/trust.toml:9"
+  },
+  {
+   "scope": "module",
+   "name": "Silmaril.Formats.Bytes",
+   "allow": [
+    "standard",
+    "native.wasm"
+   ],
+   "origin": "policy/trust.toml:20"
+  },
+  {
+   "scope": "region",
+   "name": "Formats",
+   "allow": [
+    "standard"
+   ],
+   "origin": "policy/trust.toml:24"
+  },
+  {
+   "scope": "module",
+   "name": "Silmaril.Elf.Staged.Example.Thms",
+   "max": [
+    "standard"
+   ],
+   "origin": "policy/trust.toml:28"
+  },
+  {
+   "scope": "prefix",
+   "name": "Silmaril.Elf.*.Thms",
+   "origin": "policy/trust.toml:32"
+  }
+ ],
+ "modules": [
+  {
+   "name": "Silmaril.Formats.Bytes",
+   "region": "Formats",
+   "source": "Silmaril/Formats/Bytes.lean",
+   "source_sha256": "8b6d6d3cab5d778e983c3e368f2ad323886759105166c225cc05263237393db1",
+   "imports": [
+    "Mathlib.Data.Nat.Basic"
+   ]
+  },
+  {
+   "name": "Silmaril.Elf.Staged.Defs",
+   "region": null,
+   "source": "Silmaril/Elf/Staged/Defs.lean",
+   "source_sha256": "2a8423081420cb0247e9b47a0b6598b7f9c1d65c61ddc4c6841bcb4871a375fc",
+   "imports": [
+    "Silmaril.Elf.Check.Defs",
+    "Silmaril.Elf.Parse.Defs"
+   ]
+  },
+  {
+   "name": "Silmaril.Proofs.Elf.Staged.Fast",
+   "region": null,
+   "source": "Silmaril/Proofs/Elf/Staged/Fast.lean",
+   "source_sha256": "92859f73909e0d33a291c063b22e004397eb83f9f29ead35fc801bf47cde08bc",
+   "imports": [
+    "Silmaril.Elf.Staged.Defs",
+    "Silmaril.X86.Link.Blob.Thms"
+   ]
+  },
+  {
+   "name": "Silmaril.Elf.Staged.Thms",
+   "region": null,
+   "source": "Silmaril/Elf/Staged/Thms.lean",
+   "source_sha256": "3ff7bd725f16ec07d70b6f1a7fde081da97a897524b972c83231ccba070f61d4",
+   "imports": [
+    "Silmaril.Elf.Staged.Defs",
+    "Silmaril.Proofs.Elf.Staged.Fast"
+   ]
+  },
+  {
+   "name": "Silmaril.Elf.Staged.Example.Thms",
+   "region": null,
+   "source": "Silmaril/Elf/Staged/Example/Thms.lean",
+   "source_sha256": "f272034bbff3bdee518640d4e48a83bbbc6eb432a8ec3a3450c8dfb89f37f6f3",
+   "imports": [
+    "Silmaril.Elf.Staged.Thms",
+    "Silmaril.Formats.Bytes"
+   ]
+  }
+ ],
+ "uses": [
+  {
+   "module": "Silmaril.Proofs.Elf.Staged.Fast",
+   "decl": "Silmaril.Elf.Staged.sub_fast",
+   "procedure": "propext",
+   "backend": "axiom"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Thms",
+   "decl": "Silmaril.Elf.Staged.parses_iff",
+   "procedure": "Classical.choice",
+   "backend": "axiom"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Thms",
+   "decl": "Silmaril.Elf.Staged.parses_iff",
+   "procedure": "Quot.sound",
+   "backend": "axiom"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Thms",
+   "decl": "Silmaril.Elf.Staged.parses_iff",
+   "procedure": "propext",
+   "backend": "axiom"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.layout",
+   "procedure": "silmaril.elf.staged.layout",
+   "backend": "kernel",
+   "profile": "paranoid"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.loader",
+   "procedure": "silmaril.elf.staged.loader",
+   "backend": "kernel",
+   "profile": "paranoid"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.b0_body",
+   "procedure": "silmaril.elf.staged.body",
+   "backend": "kernel",
+   "profile": "paranoid"
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.parses",
+   "procedure": "propext",
+   "backend": "axiom"
+  },
+  {
+   "module": "Silmaril.Formats.Bytes",
+   "decl": "x",
+   "procedure": "silmaril.bytes.eq",
+   "backend": "native",
+   "profile": "turbo"
+  },
+  {
+   "module": "Silmaril.Elf.Check.Defs",
+   "decl": "y",
+   "procedure": "propext",
+   "backend": "axiom"
+  }
+ ],
+ "decls": [
+  {
+   "module": "Silmaril.Proofs.Elf.Staged.Fast",
+   "decl": "Silmaril.Elf.Staged.sub_fast",
+   "axioms": [
+    "propext"
+   ]
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Thms",
+   "decl": "Silmaril.Elf.Staged.parses_iff",
+   "axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+   ]
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.parses",
+   "axioms": [
+    "propext"
+   ]
+  }
+ ],
+ "excluded": [
+  {
+   "module": "Silmaril.Elf.Check.Defs",
+   "coverage": "excluded",
+   "reason": "outside the first trust slice (bytes and staged ELF)"
+  },
+  {
+   "module": "ElfStaged",
+   "coverage": "unsupported",
+   "reason": "executable (tools/elf-staged): native fastRead runs are trusted computation, not theorems"
+  }
+ ]
+}

@@ -3,4 +3,5 @@ summary: 0 problems (0 local), 1 groups, 2 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: s.root
 group s.root: []
+trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
 exit: failed

@@ -1,7 +1,8 @@
 //! Every `sil project` format, one module per layer:
 //! [`dag`] (layer 0: manifest, dump, DAG records, core tables), [`relational`] (predicates,
 //! answers, instances), [`artifacts`] (the registry and blobs), [`values`] (formats and
-//! values), [`rooms`] and [`models`] (models and specs). This module holds what the layers
+//! values), [`rooms`] and [`models`] (models and specs), [`trust`] (decision-procedure and
+//! axiom trust, from a separate trust dump). This module holds what the layers
 //! share: the schema strings, the closed [`Record`] enum (one line per kind, so an unknown kind
 //! is rejected), the [`table!`] macro and the DDL order ([`tables`]).
 //!
@@ -32,7 +33,7 @@ use serde::Deserialize;
 pub const MANIFEST_SCHEMA: &str = "silmaril.project.v0.1";
 pub const ARTIFACTS_SCHEMA: &str = "silmaril.artifacts.v0.2";
 pub const DUMP_SCHEMA: &str = "silmaril.project-dump.v0.1";
-pub const DB_SCHEMA: &str = "silmaril.project-db.v0.1";
+pub const DB_SCHEMA: &str = "silmaril.project-db.v0.2";
 /// The default registry path, relative to the package root.
 pub const ARTIFACTS_PATH: &str = "silmaril/artifacts.toml";
 /// The `checker` of the tool-tier facts `sil project check` records.
@@ -227,6 +228,7 @@ pub mod models;
 pub mod records;
 pub mod relational;
 pub mod rooms;
+pub mod trust;
 pub mod values;
 
 pub use artifacts::*;
@@ -234,9 +236,10 @@ pub use dag::*;
 pub use models::*;
 pub use relational::*;
 pub use rooms::*;
+pub use trust::*;
 pub use values::*;
 
-/// Views written after the tables.
+/// Views written after the tables (then [`TRUST_VIEWS`]).
 pub const VIEWS: &[&str] = &[
     "CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, \
 e.record_name, e.pos, e.child, s.summary, s.verdict \
@@ -270,6 +273,22 @@ pub const INDEXES: &[(&str, &str, &[&str])] = &[
     ("format_laws_format", "format_laws", &["format"]),
     ("format_defaults_format", "format_defaults", &["format"]),
     ("artifact_paths_artifact", "artifact_paths", &["artifact"]),
+    (
+        "trust_uses_procedure",
+        "trust_uses",
+        &["procedure", "backend", "profile"],
+    ),
+    ("trust_imports_import", "trust_imports", &["import"]),
+    (
+        "trust_set_members_member",
+        "trust_set_members",
+        &["member_kind", "member"],
+    ),
+    (
+        "trust_module_policy_set",
+        "trust_module_policy",
+        &["set_name"],
+    ),
 ];
 
 /// A table's shape without its row type.
@@ -337,5 +356,18 @@ pub fn tables() -> Vec<TableInfo> {
         info::<Szs>(),
         info::<StatusRow>(),
         info::<SummaryRow>(),
+        info::<TrustInput>(),
+        info::<TrustProcedure>(),
+        info::<TrustImplementation>(),
+        info::<TrustSet>(),
+        info::<TrustSetMember>(),
+        info::<TrustPolicy>(),
+        info::<TrustPolicySet>(),
+        info::<TrustModule>(),
+        info::<TrustImport>(),
+        info::<TrustUse>(),
+        info::<TrustUseAxiom>(),
+        info::<TrustDeclAxiom>(),
+        info::<TrustModulePolicy>(),
     ]
 }

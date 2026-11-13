@@ -11,5 +11,6 @@ predicate ok.trivial.hello (arity 1): status THM [THM], verdict holds
 group ok.preds: [ok.small.two=THM, ok.small.five=UNS, ok.cnf.holds=SAT, ok.cnf.empty=OPN, ok.conj.mul_zero=OPN, ok/legacy=OPN]
 group ok.values: [ok.pair.parses=THM, ok.pair.agrees.1=OPN, ok.hello.port=THM, ok.trivial.hello=THM]
 group ok.verify: [ok.top=THM, ok.bad_top=UNS, ok.open_top=OPN, ok.values=group(3 holds, 0 fails, 1 unknown), ok.preds=group(1 holds, 1 fails, 4 unknown)]
-sql sha256: 3230314689bb59b3545771e99daea00d472de8de8b42cbb46b8481db4ec62415
+trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
+sql sha256: d19ab7e9784adeebab6c5dfe456425d24b63c91fe973a9f0f71de6c24c1bee8f
 exit: ok

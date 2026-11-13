@@ -12,4 +12,5 @@ summary: 3 problems (3 local), 1 groups, 12 records, 2 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 3 unknown (all 3 problems); 0 holds, 0 fails, 3 unknown (3 local)
 root: n.root
 group n.root: [n/legacy=OPN, n.Bad=OPN]
+trust: no trust dump (--trust): decision-procedure and axiom use is unaudited (unknown, not clean)
 exit: failed
