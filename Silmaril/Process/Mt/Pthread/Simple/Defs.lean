@@ -30,8 +30,9 @@ thread except register `0`, the start routine's argument) and one shared memory 
 | `halt` | plain, no access | `main` returns (after its last output): the thread has finished |
 
 A program reaches **undefined behaviour** (`Csl.Fault`) when a primitive's precondition fails
-or a thread runs off its function. A data race (`Csl.Race`) is two threads whose next plain
-steps access a common cell; the semantics below interleaves racing accesses (sequential
+or a thread runs off its function. A data race (`WRace`) is two threads whose next plain
+steps access a common cell, at least one of them writing it (`Csl.Race` also counts two reads,
+so programs whose threads read a shared cell are not `Csl.Race`-free); the semantics below interleaves racing accesses (sequential
 consistency), which is a statement about the program's x86 code only under the memory model's
 DRF theorem (`Mt/Drf`) or, for racy programs, an explicit assumption.
 
@@ -222,8 +223,19 @@ finishes outputs `o`. -/
 def Deterministic (P : Prog) (o : List Nat) : Prop :=
   NoUB P ∧ ∀ C, Reach (tisa P) (start P) C → MainDone C → C.mem.out = o
 
-/-- No reachable configuration has a data race. -/
-def RaceFree (P : Prog) : Prop := ∀ C, Reach (tisa P) (start P) C → ¬ Race (tisa P) C
+/-- The cell the next plain step **writes** (a `st`), if any. -/
+def wr (P : Prog) (s : TSt) (a : Nat) : Prop :=
+  match fetch P s with
+  | some (.st b i _) => a = addr s.regs b i
+  | _ => False
+
+/-- **A data race**: two different threads whose next plain steps access a common cell, the
+first one writing it. Two reads of one cell are not a race (`Csl.Race` counts them too). -/
+def WRace (P : Prog) (C : Cfg (tisa P)) : Prop :=
+  ∃ t u s s' a, t ≠ u ∧ C.th t = some s ∧ C.th u = some s' ∧ wr P s a ∧ fp P s' C.mem a
+
+/-- No reachable configuration has a data race (a write racing with a read or a write). -/
+def RaceFree (P : Prog) : Prop := ∀ C, Reach (tisa P) (start P) C → ¬ WRace P C
 
 /-- **A concrete model refines the simple model** (from a concrete start standing for
 `start P`): every concrete run stands for a run of the simple model, and a concrete fault for

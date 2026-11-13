@@ -158,4 +158,15 @@ theorem refines (hl : I.Lin) : Refines (Impl.model P I) := by
   rw [← show start P = absC P I c₀ from h₀] at this
   exact this
 
+theorem fp_of_wr {s : TSt} {m : SM} {a : Nat} (h : wr P s a) : Simple.fp P s m a := by
+  unfold wr at h; unfold Simple.fp
+  split at h
+  · rename_i e; rw [e]; exact h
+  · exact h.elim
+
+theorem raceFree_of_csl (h : ∀ C, Reach (tisa P) (start P) C → ¬ Race (tisa P) C) :
+    RaceFree P := by
+  rintro C r ⟨t, u, s, s', a, hne, ht, hu, hw, hf⟩
+  exact h C r ⟨t, u, s, s', a, hne, ht, hu, fp_of_wr (m := C.mem) hw, hf⟩
+
 end Silmaril.Proofs.Process.Mt.Pthread.Simple
