@@ -115,6 +115,58 @@ info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairNat
 #guard_msgs in
 trust_audit pairNative pairKernel pairKernelAllowed
 
+/-! ### A declared two-backend procedure (`ProcDecl`, `sil_check`)
+
+The declaration needs only `Silmaril.Prelude.Trust.Decl.Defs`. -/
+
+/-- Even sums: natively over the list, by the kernel over `n`. -/
+def _root_.Silmaril.Procedures.test.sumEven : ProcDecl where
+  doc := "Even sums. Native: compiled List.foldl over List.range."
+  native := some ⟨``sumEvenN, ``sumEvenN_sound⟩
+  kernel := some ⟨``sumEvenK, ``sumEvenK_sound⟩
+
+/-- Allows the declared procedure natively. -/
+trust_set sumEvenSet := {test.sumEven}
+
+set_option silmaril.trust.profile "sumEvenSet" in
+theorem silNative : SumEven 100 := by
+  sil_check test.sumEven (native := sumEvenN_sound 100) (kernel := sumEvenK_sound 100)
+
+-- Default profile: `test.sumEven` is not in `default`, so the kernel backend is used.
+theorem silKernel : SumEven 100 := by
+  sil_check test.sumEven (native := sumEvenN_sound 100) (kernel := sumEvenK_sound 100)
+
+-- Kernel side alone.
+theorem silKernelOnly : SumEven 100 := by sil_check test.sumEven (kernel := sumEvenK_sound 100)
+
+/--
+error: sil_check test.sumEven: the native side must apply Silmaril.Trust.Examples.sumEvenN_sound
+  sumEvenK_sound 100
+-/
+#guard_msgs in
+set_option silmaril.trust.profile "sumEvenSet" in
+example : SumEven 100 := by sil_check test.sumEven (native := sumEvenK_sound 100)
+
+/--
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernel","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernelOnly","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+-/
+#guard_msgs in
+trust_audit silKernel silKernelOnly
+
+set_option silmaril.trust.profile "sumEvenSet" in
+/--
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silNative","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1"],"own_native":["test.sumEven"],"profile":"sumEvenSet","schema":"silmaril.trust.v1"}
+-/
+#guard_msgs in
+trust_audit silNative
+
+/--
+info: {"constant":"Silmaril.Procedures.test.sumEven","doc":"Even sums. Native: compiled List.foldl over List.range.","format":null,"kernel":{"check":"Silmaril.Trust.Examples.sumEvenK","sound":"Silmaril.Trust.Examples.sumEvenK_sound"},"kind":"declared_procedure","name":"test.sumEven","native":{"check":"Silmaril.Trust.Examples.sumEvenN","sound":"Silmaril.Trust.Examples.sumEvenN_sound"},"schema":"silmaril.trust.v1"}
+-/
+#guard_msgs in
+#trust_decls
+
 /-- A set naming the toy procedure, usable as a profile. -/
 trust_set toys := {test.evenSum}
 
@@ -196,6 +248,9 @@ info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.rang
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1","decl":"Silmaril.Trust.Examples.pairNative","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEvenN","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.pairKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEvenK","profile":"paranoid","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.pairKernelAllowed","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEvenK","profile":"kernelSideOnly","schema":"silmaril.trust.v1"}
+{"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1","decl":"Silmaril.Trust.Examples.silNative","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"sumEvenSet","schema":"silmaril.trust.v1"}
+{"axiom":null,"decl":"Silmaril.Trust.Examples.silKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"default","schema":"silmaril.trust.v1"}
+{"axiom":null,"decl":"Silmaril.Trust.Examples.silKernelOnly","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byDefault","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byLocal","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byToys","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"toys","schema":"silmaril.trust.v1"}
@@ -206,7 +261,7 @@ info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.rang
 #trust_uses
 
 /--
-info: roundtrip ok: 5 procedures, 10 uses
+info: roundtrip ok: 5 procedures, 13 uses
 -/
 #guard_msgs in
 #trust_roundtrip

@@ -62,6 +62,33 @@ name itself carries the procedure: `<decl>._native.edge.<procedure>.ax_i_j`.
   trees, else `sameBytes` (`toList_eq_of_sameBytes`), or `canon` and then `beq`.
 * Raw bytes: `kbytes_rel` proves `x.toByteArray = raw`.
 
+**Declared two-backend procedures** (the API for ELF and other formats whose native and
+kernel checkers take different sources). The declaring module imports only
+`Silmaril.Prelude.Trust.Decl.Defs` (Init-only):
+
+```
+def Silmaril.Procedures.elf.layout : Silmaril.Trust.ProcDecl where
+  doc := "…what the native run trusts…"
+  native := some ⟨``layoutOk, ``layoutOk_sound_fast⟩     -- ByteArray / fastRead
+  kernel := some ⟨``layoutOkK, ``layoutOkK_sound_pages⟩  -- 4 KiB page literals
+```
+
+Each soundness theorem has the form `∀ xs, check … = true → P …`, with the same `P` for both.
+Leaf modules (importing `Silmaril.Prelude.Trust.Policy.Defs`) prove
+
+```
+theorem layout : LayoutIs F L := by
+  sil_check elf.layout (native := layoutOk_sound_fast b L hb) (kernel := layoutOkK_sound_pages pg L hpg)
+```
+
+`sil_check` checks each side against the declaration (soundness head, checker head, goal). It
+runs the native side if `elf.layout` is allowed natively here. That adds the axiom
+`<decl>._native.edge.elf.layout.ax_i_j` and records the use under `elf.layout`. Otherwise
+it checks the kernel side with the kernel only. Either side may be omitted. `#trust_decls`
+and `#trust_dump` list declarations as `declared_procedure` lines (`name`, `constant`,
+`native` and `kernel` as `{check, sound}` or null, `format`, `doc`). Declare only implemented
+procedures.
+
 **Native procedures** (`import Silmaril.Prelude.Trust.Elab.Defs`):
 
 ```
