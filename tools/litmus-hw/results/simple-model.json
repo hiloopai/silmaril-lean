@@ -1,0 +1,185 @@
+{
+ "p1:2": {
+  "configs": 275,
+  "outcomes": {
+   "4": 4
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p1:3": {
+  "configs": 613,
+  "outcomes": {
+   "6": 6
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p2:2": {
+  "configs": 177,
+  "outcomes": {
+   "3": 1
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p2:3": {
+  "configs": 251,
+  "outcomes": {
+   "6": 1
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p3": {
+  "configs": 54251,
+  "outcomes": {
+   "1 4": 4
+  },
+  "faults": 0,
+  "races": 7200,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p4:1": {
+  "configs": 444951,
+  "outcomes": {
+   "4 4 0": 24
+  },
+  "faults": 0,
+  "races": 11890,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p4:2": {
+  "configs": 695080,
+  "outcomes": {
+   "4 4 0": 24
+  },
+  "faults": 0,
+  "races": 15472,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p5:1": {
+  "configs": 114,
+  "outcomes": {
+   "1": 1,
+   "2": 2
+  },
+  "faults": 0,
+  "races": 4,
+  "write_races": 3,
+  "stuck": 0
+ },
+ "p5:2": {
+  "configs": 526,
+  "outcomes": {
+   "2": 3,
+   "3": 3,
+   "4": 4
+  },
+  "faults": 0,
+  "races": 31,
+  "write_races": 25,
+  "stuck": 0
+ },
+ "p5:3": {
+  "configs": 1852,
+  "outcomes": {
+   "2": 2,
+   "3": 7,
+   "4": 7,
+   "5": 5,
+   "6": 6
+  },
+  "faults": 0,
+  "races": 152,
+  "write_races": 122,
+  "stuck": 0
+ },
+ "p5:4": {
+  "configs": 5079,
+  "outcomes": {
+   "2": 2,
+   "3": 7,
+   "4": 11,
+   "5": 11,
+   "6": 9,
+   "7": 7,
+   "8": 8
+  },
+  "faults": 0,
+  "races": 536,
+  "write_races": 423,
+  "stuck": 0
+ },
+ "p6:2": {
+  "configs": 276,
+  "outcomes": {
+   "4": 4
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p6:3": {
+  "configs": 614,
+  "outcomes": {
+   "6": 6
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p7:1": {
+  "configs": 1143555,
+  "outcomes": {
+   "97 98 4 1": 4
+  },
+  "faults": 0,
+  "races": 183620,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p7:2": {
+  "configs": 1143611,
+  "outcomes": {
+   "97 98 97 98 4 1": 4
+  },
+  "faults": 0,
+  "races": 183620,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p7:10": {
+  "configs": 1144091,
+  "outcomes": {
+   "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 4
+  },
+  "faults": 0,
+  "races": 183620,
+  "write_races": 0,
+  "stuck": 0
+ },
+ "p8": {
+  "configs": 67,
+  "outcomes": {
+   "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 1
+  },
+  "faults": 0,
+  "races": 0,
+  "write_races": 0,
+  "stuck": 0
+ }
+}

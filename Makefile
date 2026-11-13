@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -23,7 +23,7 @@ stage:
 	chmod +x build/bin/sil
 
 library:
-	$(LAKE) build --wfail Silmaril SilmarilSpecTec SilmarilWasiWit
+	$(LAKE) build --wfail Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject
 
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
@@ -33,12 +33,12 @@ CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront 
 	ci_cerberus_parameter_call
 # The C compiler's executables (docs/projects/ccomp.md).
 CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
 	'tools/process-release/**' 'tools/verification-projects/**' 'tools/silmaril-project/**' \
-	'tools/c-tv/**' 'tools/x86-lift/**' \
+	'tools/c-tv/**' 'tools/x86-lift/**' 'tools/litmus-x86/**' 'tools/litmus-run/**' 'examples/litmus-c/**' \
 	policy.toml regions.toml
 
 # Print CHECK_TARGETS, narrowed to what the change from BASE can affect when BASE is set.
@@ -134,6 +134,10 @@ project-tool:
 	cp scripts/sil build/bin/sil
 	chmod +x build/bin/sil
 
+# The registry and records checks, without Lean (what CI runs when their inputs change).
+project-registry: project-tool
+	SIL=build/bin/silmaril-project examples/project/registry-check.sh
+
 project-check: project-tool
 	LAKE="$(LAKE)" SIL=build/bin/silmaril-project examples/project/selftest.sh
 
@@ -153,6 +157,7 @@ help:
 	@echo 'make cache    Restore dependencies; with LAKE_CI_BUCKET, the seed of main and the check targets'
 	@echo 'make check    Build library, tools and proof roots; run native regressions'
 	@echo 'make project-tool   Build sil project (Cargo) and stage it in build/bin'
+	@echo 'make project-registry  Run the sil project checks that need no Lean: init, lock, lint'
 	@echo 'make project-check  Run the sil project self-test: init, lock, lint, dump, check, explore'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
 	@echo 'make demo-process  Build the public process headers and theorem slice'

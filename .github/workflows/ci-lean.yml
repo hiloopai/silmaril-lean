@@ -29,7 +29,7 @@ jobs:
             github.event_name == 'push')) && 90 || 15 }}
     permissions:
       contents: read
-      # GitHub OIDC for the shared Lean CAS roles (hiloop live/aws-foundation/lean-cas.tf).
+      # GitHub OIDC for the shared Lean CAS role (hiloop live/aws-foundation/lean-cas.tf).
       id-token: write
     env:
       # Public Linux runners have four cores and 16 GB RAM; the publisher has more.
@@ -39,7 +39,8 @@ jobs:
       # Every Lake run reads and fills the one artifact cache the pool restores into.
       LAKE_CACHE_DIR: ${{ github.workspace }}/.lake/cache
       LAKE_ARTIFACT_CACHE: 'true'
-      # Main pushes and main seeds publish; every other run reads.
+      # Main pushes and main seeds publish a recorded build with its seed; other runs with
+      # credentials publish what their Lake built.
       CACHE_PUBLISH: >-
         ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
             (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) }}
@@ -99,7 +100,7 @@ jobs:
           (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-${{ env.CACHE_PUBLISH == 'true' && 'write' || 'read' }}-lean-cas
+          role-to-assume: arn:aws:iam::607856468300:role/gha-lean-cas
           aws-region: us-east-1
           role-duration-seconds: 7200
       - name: Restore from the shared Lake pool
@@ -114,6 +115,11 @@ jobs:
           /usr/bin/time -v make check
       - name: Publish successful main artifacts to S3
         if: env.CACHE_PUBLISH == 'true'
+        run: cov-lake-cache put --seed --repository hiloopai/silmaril-lean
+      # A pull request shares the outputs its Lake built, for the next pull request and for main
+      # (about 0.2 s when it built nothing).
+      - name: Publish what this run built
+        if: env.CACHE_PUBLISH != 'true' && steps.credentials.outcome == 'success'
         run: cov-lake-cache put --repository hiloopai/silmaril-lean
       - name: Retain native check results
         if: always()
