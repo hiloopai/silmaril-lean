@@ -512,7 +512,14 @@ async function trustMeta() {
 const TCB = '<p class="muted">Trust base: a theorem whose axioms include a native run (<code>…._native.edge.&lt;procedure&gt;.ax_i_j</code>) ' +
   "is not kernel-checked: it trusts the Lean compiler, the runtime and the compiled code the run reaches, however narrow the registered procedure. " +
   "A kernel run of the same procedure adds no axiom. The audit follows the core's <code>trust_audit</code>: own native runs must be allowed for the dump's " +
-  "profile and ceiling, inherited ones must be in <code>deps</code>, native runs outside <code>edge_decide</code> are never allowed, other axioms must be in <code>axioms</code>.</p>";
+  "profile and ceiling, inherited ones must be in <code>deps</code>, native runs that no registered procedure accounts for are never allowed, " +
+  "an <b>unverified</b> native axiom (it matches a procedure by name or tag, but no recorded use produced it) is a violation, other axioms must be in <code>axioms</code>.</p>" +
+  '<p class="muted"><b>What this does not establish.</b> "Verified" means: a recorded use produced exactly this axiom, and the core found the evaluated ' +
+  "function in its statement. Uses are recorded by trusted instrumentation (<code>recordUse</code>); the record is not cryptographically or semantically " +
+  "authenticated, and a malicious macro or metaprogram could forge one. The guarantee rests on reviewing that instrumentation and each registered checker " +
+  "and its closure. A registration names the code; it does not prevent nested computation. A native tactic such as <code>bv_decide</code> is bound to its exact " +
+  "checked statement only in its reviewed wrapper. A procedure's <code>fallback_coverage</code> is a description; only <code>kernel_fallback</code> or a declared " +
+  "kernel checker counts as a kernel side.</p>";
 async function trustPage() {
   if (!tables.has("trust_decl_axioms")) return '<h2>Trust</h2><p class="muted">This database predates the trust tables of this page.</p>';
   const m = await trustMeta();
