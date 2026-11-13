@@ -22,6 +22,7 @@ specified. `float`, `long double`, `erf`/`erfc`, the Bessel functions, `fma`,
 | `Silmaril.Numeric.Libm.Glibc.{Defs,Thms}` | glibc 2.40's documented error bounds |
 | `Silmaril.Numeric.Libm.Catalogue.{Defs,Thms}` | the catalogue, profiles and whole-libm problems |
 | `Silmaril.Numeric.Libm.Musl.{Defs,Thms,Tests}` | a fixed implementation: musl's `sin` and `cos` |
+| `Silmaril.Numeric.Libm.Wasm.{Defs,Thms}` | "this Wasm module exports a valid `f` at node N", and proofs for single-instruction exports |
 
 ## The model
 
@@ -143,11 +144,53 @@ is assumed (`Musl.Task.sin_faithful`), and `sin_errorOn_of_bitExactWhere`
 derives the bound for any implementation bit-exact with musl on that range.
 wasi-libc's `sin` is musl's; Rust's `libm` crate ports the same algorithms.
 
+## WebAssembly modules (`Wasm`)
+
+`Silmaril.Numeric.Libm.Wasm.Defs` states the nodes for a Wasm module. The module is instantiated
+against no imports (`exportFunc?`, silmaril-lean's executable instantiation) and its export is
+called with `$invoke` under the Core 3.0 small-step semantics at a profile `P`, with no host
+functions; a `double` is an `f64` with the same bits, a C `int` an `i32`.
+
+| Definition | Meaning |
+| --- | --- |
+| `FuncImplements P s a N` | every input returns one `double` on some run; every run that stops has returned one `double`; every resolution `impl` of the runs (a value some run returns, per input) satisfies `N (Outcome.pure impl)` |
+| `Exports P m name N` | the export `name` of module `m` implements `N` |
+| `ExportsSpecialValues`, `ExportsErrorOn`, `ExportsErrorGlobal`, `ExportsCorrectlyRounded`, `ExportsCRWithin`, `ExportsExact`, `ExportsBitExact`, `ExportsBitExactWhere` | the lattice nodes (a)–(e) for an export |
+| `ExportsValid P m S a` | "`m` exports a valid `f`": `Spec.ValidValues` at accuracy `a` (Wasm has no flags or `errno`) |
+| `ExportsValidLibm P m p` | "`m` exports a valid libm at profile `p`": one `ExportsValid` per entry of `wasmCatalogue` |
+| `BuildExports b name N`, `BuildValidLibm b p` | the same for the bytes `b` of a binary (decoded by silmaril-lean's decoder), at every deterministic profile |
+
+`wasmCatalogue` is `Double.catalogue` without `frexp` and `modf` (they return through a pointer
+into linear memory); `ldexp` and `scalbn` take a C `int` and are specified on `F64 × BitVec 32`
+(`Spec.comap`).
+
+Proved (`Wasm.Thms`, proofs in `Silmaril.Proofs.Numeric.Libm.Wasm`), at every deterministic
+profile (`Profile.deterministic o`, canonical NaNs):
+
+- `Exports.mono`, `BuildExports.mono`: every lattice edge transfers to exports.
+- `funcImplements_unop`: a function `local.get 0; f64.op` is `BitExact` with `floatUnOp64 op`
+  (`F64.abs`, `F64.floor`, `F64.ceil`, `F64.trunc`, `F64.nearest`, `F64.sqrt`), hence, with
+  `Exact.Thms`, `Exact` for `floor`/`ceil`/`trunc`/`rint`/`nearbyint` and `CorrectlyRounded`
+  for `sqrt`.
+- `funcImplements_call_binop`: a function forwarding to `local.get 0; local.get 1; f64.op`
+  (Rust's `#[no_mangle]` wrapper shape) is `BitExact` with `floatBinOp64 op` (`copysign`).
+- `buildExports_unop`, `buildExports_call_binop`: the same for a binary, from the executable
+  recognisers `checkUnopBytes` and `checkCallBinopBytes` run in the kernel (`kernel_rfl`; a
+  547-byte module checks in seconds; decoding a 45 KB module in the kernel hit the default
+  heartbeat limit after about 200 s, and without a limit had not finished after 25 minutes).
+
+The runs are built with the existential calculus (`WasmSpec.Computes`, `FuncSpec.of_body`,
+`wp_call`) and every other run is ruled out by uniqueness of normal forms at the deterministic
+profile (`Silmaril.Wasm.Binaryen.steps_det_nf`). Not covered: `Profile.spec`, where NaN results
+are nondeterministic, and every function compiled to more than one instruction.
+The problems for concrete binaries (Rust's `libm` crate compiled to Wasm) are in erebor-lean.
+
 ## Building
 
 ```
 lake build Silmaril.Numeric.Libm.Catalogue.Thms Silmaril.Numeric.Libm.Exact.Tests \
-  Silmaril.Numeric.Libm.Musl.Thms Silmaril.Numeric.Libm.Musl.Tests
+  Silmaril.Numeric.Libm.Musl.Thms Silmaril.Numeric.Libm.Musl.Tests \
+  Silmaril.Numeric.Libm.Wasm.Thms
 ```
 
 ## References
