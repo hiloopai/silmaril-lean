@@ -35,6 +35,23 @@ waves; each section below says which.
 Each fragment proves `SoundSpec` for the programs it accepts and rejects the rest; which C
 programs that covers is stated in each module.
 
+## The C semantics ladder (third wave)
+
+`csem`: semantics of typed-Ail programs (one translation unit with `main`), observed as a
+process is (its standard output and how it ended), in rungs ordered by refinement on fragments:
+C0 integers, C1 flat memory, …, C7 the full Cerberus semantics.
+
+| Area | Modules | What |
+| --- | --- | --- |
+| The rungs | `Silmaril.Compiler.C.Sem.{C0,…,C7}`, `…Mono`, `…CoreProofs` | each rung's semantics, its monotonicity in fuel, and the proofs relating it to Cerberus Core |
+| Elaboration | `Silmaril.Compiler.C.Sem.ElabC0` … `ElabC5` | each rung's elaboration to Core, with its witnesses |
+| Ladder checks | `LadderCheck*`, `LadderGap`, `Targets` | the refinement checks between rungs, the known gaps, and the statement registry of the semantics (`Targets`, frozen) |
+| Back to the compiler | `Mir*`, `C1Lir*`, `LirFast`, `CoreComp*`, `CoreX86`, `RefinedC*` | adequacy of `ccomp`'s Mir and Lir against the rungs, owned-resource (RefinedC-style) specifications checked on Lir; the signed-C0 and register-IR results built on CompCert code are not here (see Status) |
+| Runtime | `Runtime` (`runtime/libc.ail`, from `tools/ccomp/runtime/libc.c`) | `ccomp`'s C library as embedded typed Ail, so the semantics link a program with it |
+
+`Targets` states each claim of the semantics as a `Prop`; a claim is proved when a theorem of
+exactly that type exists. Which are proved, and which stay open, is listed in `Targets`.
+
 ## Status
 
 Proved where a theorem is stated (no `sorry`, no new `axiom`, no `native_decide`); open goals are
@@ -68,11 +85,15 @@ Left out, and why:
 
 ```sh
 lake build --wfail Silmaril.Compiler.Target.Backends.Defs Silmaril.Compiler.Mir.Interp.Defs \
-  Silmaril.Machine.RiscV.Lir.Defs Silmaril.Compiler.Registry.Defs Silmaril.Compiler.Core.Main.Defs
+  Silmaril.Machine.RiscV.Lir.Defs Silmaril.Compiler.Registry.Defs Silmaril.Compiler.Core.Main.Defs \
+  Silmaril.Compiler.C.Sem.Main.Defs
 ```
 
 ## Provenance and licence
 
 Silmaril's own development, under this repository's MIT licence, except: the RV64 fragment
 adapts clauses of the Sail RISC-V model at `27224ccb` (BSD-2-Clause, `NOTICES/sail-riscv`); the
-frontend uses the Cerberus port (`NOTICES/Cerberus`).
+frontend uses the Cerberus port (`NOTICES/Cerberus`); `runtime/libc.ail` is the Cerberus
+elaboration of `tools/ccomp/runtime/libc.c` against the Cerberus runtime headers
+(BSD-2-Clause, `NOTICES/Cerberus`); `libc.c` is in-house except `pow`, adapted from Sun's
+fdlibm through OpenLibm (`NOTICES/fdlibm`).
