@@ -33,8 +33,9 @@ written directly as programs over the imports, not compiled from Wasm modules.
 
 The WAT sources of the same servers, built into `wasi:http/proxy` components and checked
 against `wasmtime serve`, are in `tests/servers/wasi-http`; each export function follows its
-body's import calls one for one. That the components' denotations run these bodies
-(`WasiHttp.Runs`) is the open goal `Task.wasmRuns`.
+body's import calls one for one. `Silmaril.Servers.WasiBinaries` reads their core modules by a
+denotation (`Silmaril.Servers.WasiCore.coreBody`) and proves that the module of `hello` runs
+`hello` over typed hosts; for the others this is open (`WasiBinaries.Task.binRuns`).
 
 A Silmaril addition.
 -/

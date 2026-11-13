@@ -57,12 +57,12 @@ Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 example linked over every host (`WasiHttp.linkServer`); `serve_link`: a response over the
 reference host is a trace of the example linked over the concrete reference host.
 
-**Binaries**: `Task.wasmRuns σh σr σe` (open) says that `σh`, `σr`, `σe`, the denotations of
-the components built from `tests/servers/wasi-http/{hello,route,echo}.wat`, run the bodies
-`hello`, `route`, `echo` (`WasiHttp.Runs`). No denotation of those binaries is defined here
-yet; the evidence so far is the one-for-one correspondence of the WAT export functions to the
-bodies and the conformance check against `wasmtime serve`. `wasm_sat`: given the task, the
-components satisfy the specifications, alone and linked over every host.
+**Binaries**: `Task.wasmRuns σh σr σe` (open) says that the strategies `σh`, `σr`, `σe` run
+the bodies `hello`, `route`, `echo` over every host (`WasiHttp.Runs`); `wasm_sat`: given the
+task, they satisfy the specifications, alone and linked over every host. For the denotations
+of the components' core modules (`Silmaril.Servers.WasiCore.coreBody`), the module of `hello`
+is proved to run `hello` over typed hosts (`Silmaril.Servers.WasiBinaries.hello_runsTy`), and
+the others are the open `Silmaril.Servers.WasiBinaries.Task.binRuns`.
 `route_web_missing`: the web of the route table, as the outgoing `wasi:http` theories read it,
 answers `404` for `/missing`.
 
@@ -332,8 +332,9 @@ end Link
 
 /-! ## Binaries -/
 
-/-- **Open**: the denotations `σh`, `σr`, `σe` of the components built from
-`tests/servers/wasi-http` run the bodies `hello`, `route` and `echo`. -/
+/-- **Open**: the strategies `σh`, `σr`, `σe` (denotations of the components built from
+`tests/servers/wasi-http`) run the bodies `hello`, `route` and `echo` over every host. For the
+core-module denotation over typed hosts see `Silmaril.Servers.WasiBinaries`. -/
 def Task.wasmRuns (σh σr σe : Strategy (nsig proxyImports) (nsig proxyWorld.exports)) : Prop :=
   Runs σh hello ∧ Runs σr route ∧ Runs σe echo
 
