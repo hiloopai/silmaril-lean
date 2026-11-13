@@ -1,0 +1,48 @@
+proc main (): eff loaded integer :=
+  let strong a_521: loaded integer =
+    bound(
+      let weak (a_516: loaded integer, a_517: loaded integer) =
+        unseq(
+          let weak (a_511: loaded integer, a_512: loaded integer) =
+            unseq(
+              let weak (a_506: loaded integer, a_507: loaded integer) =
+                unseq(pure(Specified(6)), pure(Specified(7))) in
+              pure(
+                case (a_506, a_507) of
+                  | (Specified(a_508: integer), Specified(a_509: integer)) =>
+                      Specified(catch_exceptional_condition_add('signed int', __conv_int__('signed int', a_508), __conv_int__('signed int', a_509)))
+                  | _: (loaded integer,loaded integer) =>
+                      undef(<<UB036_exceptional_condition>>)
+                end
+              )
+            ,
+              pure(Specified(3))
+            ) in
+          pure(
+            case (a_511, a_512) of
+              | (Specified(a_513: integer), Specified(a_514: integer)) =>
+                  Specified(catch_exceptional_condition_mul('signed int', conv_int('signed int',
+                  a_513), conv_int('signed int', a_514)))
+              | _: (loaded integer,loaded integer) =>
+                  undef(<<UB036_exceptional_condition>>)
+            end
+          )
+        ,
+          pure(Specified(2))
+        ) in
+      pure(
+        case (a_516, a_517) of
+          | (Specified(a_518: integer), Specified(a_519: integer)) =>
+              Specified(catch_exceptional_condition_sub('signed int', conv_int('signed int',
+              a_518), conv_int('signed int', a_519)))
+          | _: (loaded integer,loaded integer) =>
+              undef(<<UB036_exceptional_condition>>)
+        end
+      )
+    ) in
+  run ret_505(conv_loaded_int('signed int', a_521)) ;
+  pure(Unit) ;
+  save ret_505: loaded integer (a_522: loaded integer:= Specified(0)) in
+    pure(a_522)
+
+

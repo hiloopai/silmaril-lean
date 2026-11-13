@@ -1,0 +1,6 @@
+// declare main as function () returning signed int
+signed int main()
+{
+  enum E x = 7;
+  return rvalue(x);
+}

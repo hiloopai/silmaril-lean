@@ -1,0 +1,14 @@
+proc main (): eff loaded integer :=
+  let strong a_513: loaded integer = bound(pure(Specified(42))) in
+  run ret_512(conv_loaded_int('signed int', a_513)) ;
+  pure(Unit) ;
+  save ret_512: loaded integer (a_514: loaded integer:= Specified(0)) in
+    pure(a_514)
+
+proc f (x: pointer): eff loaded integer :=
+  let strong a_510: loaded integer = bound(pure(Specified(42))) in
+  run ret_509(conv_loaded_int('signed int', a_510)) ;
+  pure(Unit) ;
+  save ret_509: loaded integer (a_511: loaded integer:= undef(<<UB088_reached_end_of_function>>)) in
+    pure(a_511)
+
