@@ -573,11 +573,11 @@ key-value store kept in a file and one kept in a component's memory have the sam
 | `wasmtime serve` [2] | either world | at most `--max-instance-reuse-count` requests per instance: 1 by default for 0.2 components (a fresh instance per request), 128 for 0.3 ones, with at most `--max-instance-concurrent-reuse-count` (16 by default) at once for 0.3 [2] | No TLS option. The intended pinned conformance runtime. |
 | Spin [3] | its HTTP trigger, whose entry point is the `wasi:http` incoming handler (Spin 2.0, 2023-11-03, "standardized on wasi-http"); also a WAGI executor | a new instance per request for 0.2 handlers; 0.3 handlers are reused, by default up to 128 requests per instance and 16 at once (`crates/trigger-http`) [3]. Persistent state goes through host key-value or SQL interfaces | Routes by path to components (manifest `spin.toml`) |
 | wasmCloud [4] | the exported `wasi:http` handler | per host policy | In wasmCloud 2, "the host matches the request's hostname to a workload, takes an instance of its component, and calls the exported `wasi:http` handler" (`ARCHITECTURE.md`); in wasmCloud 1 an HTTP server *provider* (a host-side plugin) made that call |
-| Fastly Compute [5] | Compute host calls (`witx`) and component SDKs | a new instance per request by default. Viceroy 0.14.0 (2025-08-08) added "experimental support for reusable sessions", renamed sandboxes in 0.18.0 (2026-05-21) [5] | Viceroy is the local test runtime |
+| Fastly Compute [5] | Compute host calls (`witx`) and component SDKs | a new instance per request by default: "The default behavior for Viceroy (and Fastly Compute) is to launch a new WASM instance for each inbound HTTP request" (Viceroy 0.14.0, 2025-08-08). Reuse is opt-in *by the guest*: an instance that calls the `http_downstream` `next_request` host call is handed further requests (`reuse_or_spawn_guest`, at most `NEXT_REQ_PENDING_MAX = 5` waiting instances in Viceroy v0.22.0). "Sessions" were renamed "sandboxes" in 0.18.0 (2026-05-21) [5] | Viceroy is the local test runtime. Guest-driven reuse is a *pull* shape: the instance runs its own request loop, like the Linux shape below |
 | NGINX Unit [6] | application type `wasm-wasi-component`: `wasi:http/proxy@0.2.0` (Unit 1.32.0, 27 Feb 2024, `CHANGES`) | per Unit's configuration | A web server hosting components; the repository was archived in October 2025, last release 1.35.0 (3 Sep 2025) |
-| WAGI [7] (repository archived) | a WASI *command*: CGI 1.1 meta-variables in the environment, query parameters as arguments, the body on stdin, the CGI response on stdout | one run per request | Executed in-process, not as an OS process. It rewrites CGI variables that would reveal the host file system and adds `X_*` variables [7] |
+| WAGI [7] (repository archived; last release v0.8.1, 2022-06-15) | a WASI *command* (a core module, entry point `_start` by default): CGI 1.1 meta-variables in the environment, the path and then each `&`-separated query item as arguments (`build_argv`), the whole body buffered on stdin, the CGI response on stdout | one run per request: `handle_request` builds a fresh WASI context, store and instance for every request; modules are compiled once at start-up | "WAGIs are not handled as 'processes', they are executed internally with multi-threading"; "some CGI env vars are rewritten to remove local FS information"; extra `X_*` variables (`X_MATCHED_ROUTE`, `X_FULL_URL`, ...); a `location` header must be a full URL; no NPH mode (`docs/architecture.md`) [7] |
 | CGI/1.1 (RFC 3875) [8] | a program: meta-variables (§4.1), body on stdin (§4.2), response on stdout (§6) | one run per request | The ancestor of WAGI. The same shape as `Silmaril.Cli` behaviours. |
-| Others | Envoy's proxy-wasm ABI [9] (HTTP filters inside a proxy); WasmEdge's socket extension and Wasmer's WASIX [10] (POSIX-style sockets inside Wasm, so the *Linux-process* shape below); `wasi:sockets` (also vendored here); containerd's runwasi [11] (Wasm workloads behind the container interface); Cloudflare Workers (Wasm inside V8 isolates driven by a JavaScript `fetch` handler) | varies | Most fit one of the three shapes below |
+| Others | Envoy's proxy-wasm ABI [9]: HTTP filters inside a proxy, called per stream (`proxy_on_request_headers`, `proxy_on_response_headers`, ..., ABI v0.2.1); WasmEdge's socket extension (`wasmedge_wasi_socket::TcpListener`, `bind` then `accept` in a loop) and Wasmer's WASIX ("sockets (socket, bind, connect)", threads, `fork`) [10], POSIX-style sockets inside Wasm, so the *Linux-process* shape below; `wasi:sockets` (also vendored here); containerd's runwasi [11]: its Wasmtime shim (`containerd-shim-wasmtime` v0.6.1) serves a `wasi:http/proxy` component behind the container interface, "heavily inspired by wasmtime serve", with a fresh store and instance per request (`http_proxy.rs`); Cloudflare Workers [33]: Wasm instantiated from JavaScript (`WebAssembly.instantiate()`) inside the Workers runtime, whose `fetch` handler is JavaScript; "WASI support is experimental ... with only some syscalls implemented" | varies; fresh per request for runwasi's `wasi:http` path | Most fit one of the three shapes below |
 
 **Checked against pinned releases** (on 2026-11-13, from the release sources): Wasmtime v50.0.1
 (`src/commands/serve.rs`: `DEFAULT_WASIP2_MAX_INSTANCE_REUSE_COUNT = 1`,
@@ -589,7 +589,16 @@ and the Spin v2.0.0 release notes; wasmCloud v2.12.1 (`ARCHITECTURE.md`); Vicero
 (`specs/wasi/0.2.12/http/proxy.wit`, `specs/wasi/0.3.2/http/worlds.wit`) for the two quotes
 in the first rows. Earlier text said that Spin accepted plain `wasi:http` handlers only from
 2.6, that `wasmtime serve` has "no limits", and that wasmCloud 2 uses an HTTP provider; these
-were corrected. The Fastly default and the WAGI rows were not rechecked.
+were corrected. Rechecked later the same day: the Fastly row against Viceroy v0.22.0
+(`CHANGELOG.md`, entry 0.14.0, and `src/execute.rs`, tag commit `cbc9c978`), which corrected
+"reusable sessions" to guest-driven reuse through `next_request`; the WAGI row against WAGI
+v0.8.1 (`docs/architecture.md`, `src/handlers.rs`: per-request store and instance,
+`build_argv`); and the Others row against proxy-wasm `spec` (`abi-versions/v0.2.1`, commit
+`bf6919b`), runwasi `containerd-shim-wasmtime/v0.6.1`
+(`crates/containerd-shim-wasmtime/src/{instance,http_proxy}.rs`), and the WasmEdge, WASIX and
+Cloudflare Workers documentation pages (not versioned; read on 2026-11-13). Earlier text did
+not say that Fastly reuse is requested by the guest, nor that runwasi serves `wasi:http`
+components itself.
 
 The three shapes are as follows. In the first, **a handler per request** is called by the host
 with a request and gives back a response: `wasi:http`, Spin, wasmCloud, Fastly, Unit, proxy-wasm.
@@ -768,16 +777,21 @@ Planned, in order of cost:
    notes, https://github.com/spinframework/spin/releases/tag/v2.0.0
 4. wasmCloud documentation, https://wasmcloud.com/docs; `ARCHITECTURE.md` at v2.12.1,
    https://github.com/wasmCloud/wasmCloud/blob/v2.12.1/ARCHITECTURE.md
-5. Fastly Compute, https://docs.fastly.com/products/compute; Viceroy and its changelog,
-   https://github.com/fastly/Viceroy
+5. Fastly Compute, https://docs.fastly.com/products/compute; Viceroy release v0.22.0,
+   https://github.com/fastly/Viceroy/tree/v0.22.0 (`CHANGELOG.md`, `src/execute.rs`)
 6. NGINX Unit configuration, `wasm-wasi-component`, https://unit.nginx.org/configuration/;
    `CHANGES`, https://github.com/nginx/unit/blob/master/CHANGES
-7. WAGI, the WebAssembly Gateway Interface. https://github.com/deislabs/wagi (see
-   `docs/architecture.md`, `docs/writing_modules.md`)
+7. WAGI, the WebAssembly Gateway Interface, release v0.8.1.
+   https://github.com/deislabs/wagi/tree/v0.8.1 (`docs/architecture.md`,
+   `docs/writing_modules.md`, `src/handlers.rs`)
 8. D. Robinson, K. Coar. *The Common Gateway Interface (CGI) Version 1.1*. RFC 3875, 2004.
-9. proxy-wasm ABI specification. https://github.com/proxy-wasm/spec
-10. WasmEdge sockets, https://wasmedge.org/docs/; WASIX, https://wasix.org
-11. containerd runwasi. https://github.com/containerd/runwasi
+9. proxy-wasm ABI specification, `abi-versions/v0.2.1`.
+   https://github.com/proxy-wasm/spec/tree/bf6919b/abi-versions/v0.2.1
+10. WasmEdge, "Socket networking: server",
+    https://wasmedge.org/docs/develop/rust/socket_networking/server/; WASIX,
+    https://wasix.org/docs
+11. containerd runwasi, release `containerd-shim-wasmtime/v0.6.1`.
+    https://github.com/containerd/runwasi/tree/containerd-shim-wasmtime/v0.6.1
 12. N. Koh, Y. Li, Y. Li, L. Xia, L. Beringer, W. Honoré, W. Mansky, B. C. Pierce,
     S. Zdancewic. *From C to Interaction Trees: Specifying, Verifying, and Testing a Networked
     Server*. CPP 2019. https://arxiv.org/abs/1811.11911
@@ -820,6 +834,8 @@ Planned, in order of cost:
     WebAssembly 1.0*. FM 2021.
 32. X. Rao, A. L. Georges, M. Legoupil, C. Watt, J. Pichon-Pharabod, P. Gardner, L. Birkedal.
     *Iris-Wasm: Robust and Modular Verification of WebAssembly Programs*. PLDI 2023.
+33. Cloudflare Workers, "WebAssembly (Wasm)",
+    https://developers.cloudflare.com/workers/runtime-apis/webassembly/
 
 ## Building
 
