@@ -147,7 +147,7 @@ globs = [
   "Silmaril.Proofs.Compiler.+", "Silmaril.Raw.Cerberus.+", "Silmaril.Raw.Compiler.+",
   # Servers as specifications: traces, the server institution and its instances
   # (docs/projects/http-servers.md).
-  "Silmaril.Servers.+", "Silmaril.Proofs.Servers.+", "Silmaril.Raw.Servers.+"
+  "Silmaril.Servers.+", "Silmaril.Proofs.Servers.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
