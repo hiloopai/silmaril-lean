@@ -68,7 +68,19 @@ structure Procedure where
   doc : String
   /-- The module that registered it. -/
   module : Name
+  /-- The data format it checks (`elf`, `json`, `cbor`, `sexpr`, `wat`, …), if it is a format
+  checker (`Silmaril.KBytes.FormatChecker`). -/
+  format : Option Name := none
+  /-- The theorem turning `fn … = true` into the fact it decides, if registered. -/
+  sound : Option Name := none
+  /-- A separate implementation for native runs and the theorem `@native = @fn` that transfers
+  its result (the paired backend: `fn` is what the kernel and the statement see). -/
+  native : Option (Name × Name) := none
   deriving Inhabited, Repr
+
+/-- The version of the JSON lines `#trust_uses` and `trust_audit` print
+(docs/trust.md, "Provenance schema"). -/
+def schemaVersion : String := "silmaril.trust.v1"
 
 /-- A named set of procedure (or axiom) names. -/
 structure TrustSet where

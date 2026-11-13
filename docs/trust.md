@@ -78,3 +78,66 @@ native_decider elf.layoutOk := Silmaril.Elf.Staged.layoutOk with_kernel_fallback
 * To run in the default profile, a procedure must be in the `default` trust set
   (`Silmaril/Prelude/Trust/Policy/Defs.lean`). Adding it is a reviewed change.
 * Modules whose functions a native run executes must be imported with `meta import`.
+* **Paired backends.** When the function the statement uses is slow to compile or run, register
+  a separate native implementation and a theorem `@nativeFn = @fn`:
+  `native_decider elf.layout := layoutOk with_kernel_fallback native layoutOkFast via
+  layoutOkFast_eq`. The statement and the kernel fallback use `fn`. A native run executes
+  `nativeFn` and transfers the result with the theorem. The axiom then states
+  `nativeFn … = true`.
+* **Same-target pairs.** When the native and kernel checkers take *different* arguments (a
+  run-time `ByteArray` reader against kernel bytes), pair them through their soundness
+  theorems instead of a function equality: `by edge_pair (native := fastSound b A) (kernel :=
+  kernelSound kb A)`. Here `fastSound b A : fast b A = true → P` and `kernelSound kb A :
+  check kb A = true → P`. The native side runs when its procedure is allowed; otherwise the
+  kernel checks the kernel side. The kernel side never runs natively, even where the policy
+  would allow its procedure (`decideEdge … (kernelOnly := true)`). The source binding stays in the proposition `P`.
+* **Backend hook for adapters.** `Silmaril.Trust.decideEdge (e : Expr) (proc? : Option Name)
+  : TermElabM Expr` returns a proof of `e = true` under the policy, records the use, and is
+  what `edge_decide` calls. Adapters and format-specific tactics call it instead of reading
+  `procExt`, `allowed` or `recordUse` themselves.
+
+**Format checkers** (`import Silmaril.Prelude.Bytes.Checker.Thms`): one interface for every
+data format (ELF, JSON, CBOR, S-expressions, WAT, …).
+
+```
+structure KBytes.FormatChecker (α : Type) where
+  format : String
+  Parses : KBytes → α → Prop          -- the bytes encode the value
+  check  : KBytes → α → Bool          -- checks a claimed value; never has to parse
+  sound  : ∀ b a, check b a = true → Parses b a
+
+native_decider json.check := Silmaril.Formats.Json.checkBytes with_kernel_fallback
+  format json sound Silmaril.Formats.Json.checkBytes_sound
+
+theorem doc : jsonChecker.Parses bytes value := FormatChecker.parses_of jsonChecker (by edge_decide)
+```
+
+`edge_decide` sees through `C.check` to the registered function. The reference instance is
+`KBytes.cstring` (NUL-terminated strings, `bytes.cstring`). Only it is implemented here; JSON,
+CBOR, S-expression and WAT checkers are future instances of the same structure.
+
+## Provenance schema (`silmaril.trust.v1`)
+
+`#trust_uses`, `#trust_registry` and `trust_audit` print one JSON object per line. Every
+object has `"schema": "silmaril.trust.v1"` and a `"kind"`. Fields may be added within v1;
+renaming or removing a field bumps the version.
+
+| kind | printed by | fields |
+|---|---|---|
+| `procedure` | `#trust_uses` | `name`, `function`, `kernel_fallback` (bool), `module`, `format` (string or null), `sound` (theorem or null), `native_function` and `native_eq` (both strings, or both null), `doc` |
+| `use` | `#trust_uses` | `decl`, `module`, `procedure`, `mode` (`native` or `kernel`), `profile` (e.g. `default`, `local≤paranoid` under a ceiling), `axiom` (string or null) |
+| `set` | `#trust_registry` | `name`, `all` (bool), `members`, `includes`, `resolved` (`"all"` or list of names) |
+| `scope` | `#trust_registry` | `module` (prefix), `max`, `default`, `deps`, `axioms` (set names or null when inherited), `policy_file`, `policy_pin` |
+| `audit` | `trust_audit` | `decl`, `module`, `profile`, `own_native`, `dep_native` (procedure names), `native_axioms`, `axioms` (non-native axioms) |
+
+`#trust_dump "path"` writes all four kinds for everything the environment imports, and
+`#trust_roundtrip` re-reads every `procedure` and `use` line with `procOfJson?` and
+`useOfJson?` and fails on any difference. This is a low-level emitter format; a database
+schema should map it explicitly and check `schema` before reading a line.
+
+Native axiom names have the form `<decl>._native.edge.<procedure>.ax_i_j`, with `<decl>`
+possibly `_private.<module>.0.<decl>`. Native runs outside `edge_decide` (plain
+`bv_decide`, `decide +native`) appear as `_native.<tactic>.ax_i_j`, and `trust_audit` rejects
+them as unregistered. The registry, uses and policy are persistent environment extensions
+(`Silmaril.Trust.procExt`, `useExt`, `setExt`, `policyExt`), so a tool that loads `.olean`
+files can read them directly instead of parsing output.

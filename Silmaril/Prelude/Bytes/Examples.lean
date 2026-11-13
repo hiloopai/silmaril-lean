@@ -3,6 +3,7 @@ module
 public import Silmaril.Prelude.Bytes.Elab.Defs
 public import Silmaril.Prelude.Bytes.Native.Defs
 public import Silmaril.Prelude.Trust.Policy.Defs
+public import Silmaril.Prelude.Bytes.Checker.Thms
 
 /-! # Kernel bytes and native edges: examples
 
@@ -64,6 +65,18 @@ theorem interp :
     hello.readLE 792 28 = some (leVal "/lib64/ld-linux-x86-64.so.2\x00".toUTF8.data.toList) := by
   decide +kernel
 
+/-- The same string through the format-checker interface: a slice parses as a C string. The
+checker runs natively in the default profile (`bytes.cstring`). -/
+theorem interpCString :
+    cstring.Parses (hello.slice 792 28) "/lib64/ld-linux-x86-64.so.2".toUTF8.data.toList :=
+  FormatChecker.parses_of cstring (by edge_decide)
+
+-- Paranoid: the same statement by the kernel fallback.
+set_option silmaril.trust.profile "paranoid" in
+theorem interpCString_kernel :
+    cstring.Parses (hello.slice 792 28) "/lib64/ld-linux-x86-64.so.2".toUTF8.data.toList :=
+  FormatChecker.parses_of cstring (by edge_decide)
+
 /-! ## Ropes and canonical forms -/
 
 /-- Cut at an unaligned offset and glued back: a rope with the file's bytes. -/
@@ -109,11 +122,11 @@ theorem rope_toList_native : rope.toList = hello.toList :=
     hello.wf rope_same_native
 
 /--
-info: {"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_native","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":["bytes.sameBytes"]}
-{"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_kernel","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[]}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList_native","dep_native":["bytes.sameBytes"],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":[]}
-{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[]}
-{"axioms":[],"decl":"Silmaril.KBytes.Examples.magic","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[]}
+info: {"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_native","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":["bytes.sameBytes"],"profile":"default","schema":"silmaril.trust.v1"}
+{"axioms":[],"decl":"Silmaril.KBytes.Examples.rope_same_kernel","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList_native","dep_native":["bytes.sameBytes"],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":["_private.Silmaril.Prelude.Bytes.Examples.0.Silmaril.KBytes.Examples.rope_same_native._native.edge.bytes.sameBytes.ax_1_1"],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+{"axioms":["propext","Classical.choice","Quot.sound"],"decl":"Silmaril.KBytes.Examples.rope_toList","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
+{"axioms":[],"decl":"Silmaril.KBytes.Examples.magic","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Bytes.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
 -/
 #guard_msgs in
 trust_audit rope_same_native rope_same_kernel rope_toList_native rope_toList magic
