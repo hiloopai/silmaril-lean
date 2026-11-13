@@ -1,0 +1,301 @@
+{
+ "schema": "silmaril.project-dump.v0.1",
+ "toolchain": "4.35.0-rc4",
+ "modules": [
+  "Mk"
+ ],
+ "records": [
+  {
+   "kind": "spec",
+   "name": "mk.specs.old",
+   "module": "Mk",
+   "decl": "Mk.oldSpec"
+  },
+  {
+   "kind": "spec",
+   "name": "mk.specs.new",
+   "module": "Mk",
+   "decl": "Mk.newSpec"
+  },
+  {
+   "kind": "judgement",
+   "name": "mk.fn.old",
+   "module": "Mk",
+   "spec": "mk.specs.old"
+  },
+  {
+   "kind": "judgement",
+   "name": "mk.fn.new",
+   "module": "Mk",
+   "spec": "mk.specs.new"
+  },
+  {
+   "kind": "predicate",
+   "name": "mk.gen",
+   "module": "Mk",
+   "decl": "Mk.gen",
+   "arity": 1,
+   "args": [
+    {
+     "pos": 0,
+     "name": "n",
+     "type": "Nat"
+    }
+   ]
+  },
+  {
+   "kind": "instance",
+   "name": "mk.gen.five",
+   "module": "Mk",
+   "of": "mk.gen",
+   "decl": "mk.gen.five",
+   "args": [
+    {
+     "pos": 0,
+     "term": "5"
+    }
+   ]
+  },
+  {
+   "kind": "group",
+   "name": "mk.all",
+   "module": "Mk",
+   "title": "All"
+  },
+  {
+   "kind": "children",
+   "name": "mk.all",
+   "module": "Mk",
+   "children": [
+    "mk.parse.v1",
+    "mk.parse.v2",
+    "mk.old_bound",
+    "mk.new_bound",
+    "mk.fn.old",
+    "mk.fn.new",
+    "mk.vec.add",
+    "mk.vec.shift",
+    "mk.vec.mul",
+    "mk.other",
+    "mk.gen"
+   ]
+  },
+  {
+   "kind": "root",
+   "name": "mk.all",
+   "module": "Mk"
+  },
+  {
+   "kind": "deprecation",
+   "name": "mk.old_bound",
+   "module": "Mk",
+   "reason": "off by one: the bound is 255, not 256",
+   "superseded_by": [
+    "mk.new_bound"
+   ]
+  },
+  {
+   "kind": "deprecation",
+   "name": "mk.specs.old",
+   "module": "Mk",
+   "reason": "ignores the length prefix",
+   "superseded_by": [
+    "mk.specs.new"
+   ]
+  },
+  {
+   "kind": "deprecation",
+   "name": "mk.gen",
+   "module": "Mk",
+   "reason": "quantifies over the wrong domain",
+   "superseded_by": [
+    "mk.fn.new"
+   ]
+  },
+  {
+   "kind": "finding",
+   "name": "mk.parse.v1",
+   "module": "Mk",
+   "classification": "error",
+   "note": "reads one byte past the buffer",
+   "pointer": "https://example.org/bugs/1",
+   "affected_versions": [
+    "1.0",
+    "1.1"
+   ],
+   "fixed_in": "1.2",
+   "disclosure_status": "reported"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.old_bound",
+   "module": "Mk",
+   "classification": "spec_bug",
+   "note": "the statement is off by one"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.fn.old",
+   "module": "Mk",
+   "classification": "spec_bug"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.gen.five",
+   "module": "Mk",
+   "classification": "spec_bug"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.vec.add",
+   "module": "Mk",
+   "classification": "model_gap",
+   "pointer": "pxor xmm0, xmm0",
+   "note": "Str9 does not decode SSE2 pxor"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.vec.shift",
+   "module": "Mk",
+   "classification": "model_gap",
+   "pointer": "shl r/m16, imm8",
+   "note": "16-bit shifts do not retire"
+  },
+  {
+   "kind": "finding",
+   "name": "mk.vec.mul",
+   "module": "Mk",
+   "classification": "unclear",
+   "note": "the counterexample needs review"
+  }
+ ],
+ "problems": [
+  {
+   "name": "mk.parse.v1",
+   "decl": "Mk.v1",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.parse.v2",
+   "decl": "Mk.v2",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.old_bound",
+   "decl": "Mk.old_bound",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.new_bound",
+   "decl": "Mk.new_bound",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.fn.old",
+   "decl": "Mk.old",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.fn.new",
+   "decl": "Mk.new",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.vec.add",
+   "decl": "Mk.add",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.vec.shift",
+   "decl": "Mk.shift",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.vec.mul",
+   "decl": "Mk.mul",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.other",
+   "decl": "Mk.other",
+   "module": "Mk"
+  },
+  {
+   "name": "mk.gen.five",
+   "decl": "Mk.five",
+   "module": "Mk"
+  }
+ ],
+ "solutions": [
+  {
+   "problem": "mk.parse.v1",
+   "decl": "mk.parse.v1_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.old_bound",
+   "decl": "mk.old_bound_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.fn.old",
+   "decl": "mk.fn.old_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.vec.add",
+   "decl": "mk.vec.add_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.vec.shift",
+   "decl": "mk.vec.shift_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.vec.mul",
+   "decl": "mk.vec.mul_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.other",
+   "decl": "mk.other_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.gen.five",
+   "decl": "mk.gen.five_ref",
+   "module": "Mk",
+   "kind": "refutes",
+   "axioms": []
+  },
+  {
+   "problem": "mk.parse.v2",
+   "decl": "mk.parse.v2_sol",
+   "module": "Mk",
+   "kind": "solves",
+   "axioms": []
+  },
+  {
+   "problem": "mk.new_bound",
+   "decl": "mk.new_bound_sol",
+   "module": "Mk",
+   "kind": "solves",
+   "axioms": []
+  }
+ ]
+}
