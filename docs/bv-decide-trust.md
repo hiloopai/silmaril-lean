@@ -20,12 +20,26 @@ Status as of 2026-11-12, toolchain `leanprover/lean4:nightly-2026-11-05`
    `unsat_of_verifyBVExpr_eq_true`.
 
 So the external solver is **not** trusted: a bad certificate makes the check
-return `false` and the tactic fails. What is trusted in stage 2 is the compiler
-and runtime that evaluate `verifyBVExpr` (code generation, `@[extern]`/
-`@[implemented_by]` implementations such as `mixHash`, GMP, `ByteArray`), the
-same base as `native_decide`. `#print axioms` shows it as the `_native` axiom.
-This library's policy (`policy.toml`, AGENTS.md) admits only the three standard
-axioms. It forbids `native_decide`, and for the same reason the SAT stage.
+return `false` and the tactic fails. The natively evaluated procedure is the
+whole of `verifyBVExpr e cert = verifyCert (AIG.toCNF e.bitblast.relabelNat) cert`,
+not only an LRAT check:
+
+| Part | How it is checked |
+| --- | --- |
+| `bv_normalize` (rewriting) | kernel |
+| reification to `BVLogicalExpr` | kernel (the proof that the reflected expression denotes the goal is kernel-checked) |
+| bitblasting to an AIG (hash-consed through the opaque `mixHash`) | **native** |
+| AIG to CNF, relabeling to `Nat` variables | **native** |
+| LRAT parsing (`partial` parser over the certificate `String`) | **native** |
+| LRAT checking (`LRAT.check`) | **native** |
+| `unsat_of_verifyBVExpr_eq_true` (soundness of all the above) | kernel (proved in `Std`) |
+| producing the certificate (CaDiCaL) | untrusted |
+
+The native rows run on the compiler and runtime (code generation,
+`@[extern]`/`@[implemented_by]` implementations, GMP, `ByteArray`, `String`), the
+same base as `native_decide`. `#print axioms` shows the result as the `_native`
+axiom. This library's policy (`policy.toml`, AGENTS.md) admits only the three
+standard axioms.
 
 ## `bv_decide_kernel`
 
@@ -114,32 +128,70 @@ produce kernel-checkable proofs for any goal here that needs SAT. Exhaustive
 `decide +kernel` is the only kernel route measured for those goals. It is about
 6× slower than native at 16 input bits (mulcomm8) and grows as 2^bits.
 
-## Proposed CI and modes (not implemented here)
+## Registered native procedure and modes
 
-Mode selection belongs to the separate mode-mechanism work. This proposal is for
-that work and for review.
+The revised policy has three modes. **Default** permits a small, named set of
+registered native procedures; **local** permits all; **paranoid** permits none and
+either uses a kernel fallback or fails. The registry and modes belong to the core
+framework, which is not on `main` yet. Until it is, `scripts/check-layout.sh`
+rejects every plain `bv_decide` under `Silmaril/`, with no allowlist. Native
+`bv_decide` reaches `main` only through the framework, never by a bare call.
+Once the framework exists, the gate will exempt exactly the one framework module
+that invokes the registered backend, and per-site exceptions will stay forbidden.
 
-* **One statement, two proofs.** A fast mode may prove a goal with `bv_decide`
-  (native) only where the paranoid mode proves *the same declaration* by a
-  kernel-only route. Both modes should elaborate the same source and
-  compare the declaration's type hash, never two copies of a statement. A mode
-  switch should be a tactic that reads an option, not two theorem names.
-* **Per pull request (fast).** Build with the fast mode; run the layout gate;
-  report, per changed module, the declarations whose axioms include `_native`.
-* **Daily on main (paranoid).** `nightly.yml` already runs the full
-  `make check` on main. Add a paranoid build in which every fast-mode site is
-  kernel-only, and fail on any `_native`, `sorryAx` or other non-standard axiom
-  of any declaration (a transitive `collectAxioms` over the environment; the
-  "transitive automated checking" that `policy.toml` lists as missing).
-* **Caching.** Lake traces must include the mode: the option belongs in the
-  module's Lake configuration (or a separate Lake library/package), so the
-  paranoid build never replays fast-mode artifacts. Its cache keys should differ,
-  and its publication should be separate. A cache hit on a paranoid artifact is fine; a fast artifact
-  must never count as a paranoid build.
-* **Allowlist.** Any native use is an explicit `[[exception]]` in
-  `policy.toml` (declaration name, `_native.bv_decide` axioms, reason, and the
-  paranoid route that discharges it). The gate fails on native uses not listed.
-* **Reproducibility.** Pin the toolchain (already exact) and record the solver
-  (`sat.solver` defaults to the bundled CaDiCaL). The certificate is not part of
-  the proof term's trust, but an LRAT file (`bv_check`) makes re-runs
-  independent of solver nondeterminism and timeouts.
+The proposed registry entry (the schema is the framework's; these are the facts
+it needs):
+
+| Field | Value |
+| --- | --- |
+| name | `lean.std.bv_decide.verifyBVExpr`, not "LRAT": the surface includes bitblasting and the parser |
+| evaluated constant | `Std.Tactic.BVDecide.Reflect.verifyBVExpr` (`nativeEvaluatedConst`) |
+| soundness lemma | `Std.Tactic.BVDecide.Reflect.unsat_of_verifyBVExpr_eq_true` (`nativeSoundnessConst`) |
+| native components | bitblast, AIG to CNF, relabel, LRAT parser, LRAT checker, runtime externs |
+| axiom shape | name `<decl>._native.bv_decide.ax_<n>`; statement `verifyBVExpr e cert = true` with closed `e`, `cert` |
+| toolchain | the exact `lean-toolchain` (today `nightly-2026-11-05`, commit `67dafde4`) |
+| untrusted input | the external solver (`sat.solver`, bundled CaDiCaL) |
+| kernel fallback | `kernelFallback` (normalization only) |
+| fallback coverage | goals `bv_normalize` closes; **unsupported** when SAT is needed (`needsSat`) |
+
+`Silmaril/Prelude/BVDecide/Defs.lean` exports the hooks the framework consumes:
+
+* `kernelFallback : MVarId → (cfg := …) → TermElabM KernelResult`: `.proved`, or
+  `.needsSat` with the goal restored unassigned. It throws on `sorry` or
+  non-standard axioms. Paranoid mode calls it and fails on `.needsSat`.
+* `nonstandardAxioms : Expr → MetaM (Array Name)`: the transitive axioms of a
+  proof outside the standard three.
+* `isBvDecideNativeAxiom : Name → Bool`: name-shape recognition only, never
+  authorization.
+* `isBvDecideNativeStatement : Name → MetaM Bool`: checks that an axiom's statement
+  is one closed `verifyBVExpr e cert = true`. Admitting a native use still needs
+  the framework to bind the axiom to a registered entry point and toolchain from
+  the actual proof dependencies, and to reject any other native axiom.
+* `nativeEvaluatedConst`, `nativeSoundnessConst`: resolved at compile time, so a
+  toolchain that renames them fails the build.
+
+There is **no kernel-checked SAT route**: paranoid mode cannot prove a goal that
+needs SAT, except by a different, goal-specific proof (for example `decide +kernel`
+over a small domain, measured above). Such goals are reported as unsupported,
+not silently degraded.
+
+## CI
+
+* **Per pull request (default mode).** Build; run the layout gate; report each
+  declaration whose transitive axioms include a registered native procedure, and
+  fail on any native axiom not bound to a registered entry.
+* **Occasionally on main (paranoid, timed).** Every site uses its kernel fallback.
+  Record wall time (the nightly already runs `/usr/bin/time -v make check`).
+  Fail on any non-standard axiom anywhere, and list the `needsSat` sites as
+  unsupported. Today `main` has no native uses at all, so every build is already
+  the paranoid build. On #107, `lean / check` took 2 min 14 s, scoped and cached.
+* **Same statements.** Both modes elaborate the same source, and a mode is an
+  option read by the tactic, so the declaration names and types are identical by
+  construction. A paranoid run should still compare each declaration's type hash
+  with the default run.
+* **Caching.** The mode must be part of Lake's trace (a Lake option or a separate
+  library), so a default-mode artifact never satisfies a paranoid build. Paranoid
+  artifacts may be cached and reused, but only as paranoid artifacts.
+* **Reproducibility.** Pin the toolchain (already exact) and record the solver.
+  An LRAT file (`bv_check`) removes solver nondeterminism and timeouts from
+  re-runs, but it is still checked natively.

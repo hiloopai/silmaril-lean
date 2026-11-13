@@ -65,4 +65,26 @@ open Lean in
 #eval do
   nonstandardAxioms (.const ``setLane32 [])
 
+/-! `kernelFallback` reports `needsSat` and leaves the goal as it was, so a
+caller can choose another route (here exhaustive `decide`). -/
+
+open Lean Elab Tactic in
+example : ∀ x y : BitVec 4, x * y = y * x := by
+  run_tac do
+    let r ← kernelFallback (← getMainGoal)
+    unless r matches .needsSat do throwError "expected needsSat"
+  decide
+
+/-! Names of the axioms `bv_decide` adds are recognized (recognition only). -/
+
+#guard isBvDecideNativeAxiom ((`Foo.bar).str "_native" |>.str "bv_decide" |>.str "ax_1_5")
+#guard !isBvDecideNativeAxiom ((`Foo.bar).str "_native" |>.str "other" |>.str "ax_1")
+#guard !isBvDecideNativeAxiom `propext
+open Lean in
+/-- info: false -/
+#guard_msgs in
+#eval isBvDecideNativeStatement ``propext
+
+#guard nativeEvaluatedConst == `Std.Tactic.BVDecide.Reflect.verifyBVExpr
+
 end Silmaril.Prelude.BVDecide.Tests

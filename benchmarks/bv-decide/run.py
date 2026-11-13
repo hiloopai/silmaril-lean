@@ -41,6 +41,20 @@ TACTICS = {
     "native": "bv_decide",
     "cbv": "bv_decide -native",
 }
+def status(tactic, ok, native, error):
+    """Classify a run; kernel routes that cannot handle the goal are explicit."""
+    if ok:
+        return "proved_native" if native else "proved_kernel"
+    e = error or ""
+    if "timed out" in e or e == "timeout":
+        return "timeout"
+    if tactic == "bv_normalize" and "unsolved goals" in e:
+        return "unsupported_needs_sat"
+    if "kernel" in e:
+        return "kernel_rejected"
+    return "error"
+
+
 HEADER = "import Std.Tactic.BVDecide\nset_option maxHeartbeats 20000000\nset_option maxRecDepth 1000000\n"
 
 
@@ -78,7 +92,7 @@ def main():
                     p = subprocess.run(lean + [str(f)], capture_output=True, text=True, timeout=a.timeout)
                     out, rc = p.stdout + p.stderr, p.returncode
                 except subprocess.TimeoutExpired:
-                    out, rc = "timeout", -1
+                    out, rc = "error: timeout", -1
                 times.append(round(time.monotonic() - start, 3))
             m = re.search(r"depends on axioms: \[([^\]]*)\]", out)
             axioms = [x.strip() for x in m.group(1).split(",")] if m else []
@@ -90,9 +104,10 @@ def main():
                 "axioms": [re.sub(r"^T\._native\.bv_decide\.ax_.*", "T._native.bv_decide.ax_…", x) for x in axioms],
                 "error": err.group(1)[:160] if err and rc != 0 else None,
             }
+            row["status"] = status(tactic, row["ok"], row["native_axiom"], row["error"])
             rows.append(row)
             print(f"{goal:11s} {tactic:13s} ok={row['ok']!s:5s} {row['seconds_min']:7.2f}s"
-                  f" native_axiom={row['native_axiom']!s:5s} {row['error'] or ''}", file=sys.stderr)
+                  f" {row['status']:22s} {row['error'] or ''}", file=sys.stderr)
     json.dump({"lean": version, "lean_command": a.lean, "reps": a.reps, "rows": rows},
               open(a.out, "w"), indent=1, ensure_ascii=False)
 

@@ -24,7 +24,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "setLane32",
@@ -42,7 +43,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "zeroLane64",
@@ -60,7 +62,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "zeroLane64",
@@ -78,7 +81,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le32",
@@ -96,7 +100,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le32",
@@ -114,7 +119,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le64",
@@ -132,7 +138,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le64",
@@ -150,7 +157,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "addsub64",
@@ -168,7 +176,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "addsub64",
@@ -186,7 +195,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "xorswap32",
@@ -205,7 +215,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "xorswap32",
@@ -224,7 +235,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "lowbit8",
@@ -243,7 +255,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "lowbit8",
@@ -262,7 +275,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "lowbit8",
@@ -280,7 +294,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "lowbit32",
@@ -299,7 +314,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "lowbit32",
@@ -318,7 +334,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "avg32",
@@ -337,7 +354,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "avg32",
@@ -356,7 +374,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "mulcomm8",
@@ -375,7 +394,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "mulcomm8",
@@ -394,7 +414,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "mulcomm8",
@@ -412,7 +433,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "mulcomm16",
@@ -431,7 +453,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "The SAT solver timed out while solving the problem."
+     "error": "The SAT solver timed out while solving the problem.",
+     "status": "timeout"
     },
     {
      "goal": "mulcomm16",
@@ -450,7 +473,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "muldist8",
@@ -469,7 +493,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "The SAT solver timed out while solving the problem."
+     "error": "The SAT solver timed out while solving the problem.",
+     "status": "timeout"
     },
     {
      "goal": "muldist8",
@@ -488,7 +513,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": "unsolved goals"
+     "error": "unsolved goals",
+     "status": "unsupported_needs_sat"
     },
     {
      "goal": "muldist4",
@@ -506,7 +532,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     }
    ]
   },
@@ -529,7 +556,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "setLane32",
@@ -545,7 +573,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "zeroLane64",
@@ -561,7 +590,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "zeroLane64",
@@ -577,7 +607,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le32",
@@ -593,7 +624,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le32",
@@ -609,7 +641,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le64",
@@ -625,7 +658,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "le64",
@@ -641,7 +675,8 @@
       "propext",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "addsub64",
@@ -658,7 +693,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "addsub64",
@@ -675,7 +711,8 @@
       "Classical.choice",
       "Quot.sound"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_kernel"
     },
     {
      "goal": "xorswap32",
@@ -693,7 +730,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "xorswap32",
@@ -710,7 +748,8 @@
       "sorryAx",
       "Quot.sound"
      ],
-     "error": "unexpected kernel projection term during structural definitional equality"
+     "error": "unexpected kernel projection term during structural definitional equality",
+     "status": "kernel_rejected"
     },
     {
      "goal": "lowbit8",
@@ -728,7 +767,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "lowbit8",
@@ -745,7 +785,8 @@
       "sorryAx",
       "Quot.sound"
      ],
-     "error": "unexpected kernel projection term during structural definitional equality"
+     "error": "unexpected kernel projection term during structural definitional equality",
+     "status": "kernel_rejected"
     },
     {
      "goal": "lowbit32",
@@ -763,7 +804,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "lowbit32",
@@ -780,7 +822,8 @@
       "sorryAx",
       "Quot.sound"
      ],
-     "error": "unexpected kernel projection term during structural definitional equality"
+     "error": "unexpected kernel projection term during structural definitional equality",
+     "status": "kernel_rejected"
     },
     {
      "goal": "avg32",
@@ -798,7 +841,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "avg32",
@@ -815,7 +859,8 @@
       "sorryAx",
       "Quot.sound"
      ],
-     "error": "unexpected kernel projection term during structural definitional equality"
+     "error": "unexpected kernel projection term during structural definitional equality",
+     "status": "kernel_rejected"
     },
     {
      "goal": "mulcomm8",
@@ -833,7 +878,8 @@
       "Quot.sound",
       "T._native.bv_decide.ax_…"
      ],
-     "error": null
+     "error": null,
+     "status": "proved_native"
     },
     {
      "goal": "mulcomm8",
@@ -848,7 +894,8 @@
      "axioms": [
       "sorryAx"
      ],
-     "error": "unexpected kernel projection term during structural definitional equality"
+     "error": "unexpected kernel projection term during structural definitional equality",
+     "status": "kernel_rejected"
     },
     {
      "goal": "mulcomm16",
@@ -863,7 +910,8 @@
      "axioms": [
       "sorryAx"
      ],
-     "error": "The SAT solver timed out while solving the problem."
+     "error": "The SAT solver timed out while solving the problem.",
+     "status": "timeout"
     },
     {
      "goal": "mulcomm16",
@@ -878,7 +926,8 @@
      "axioms": [
       "sorryAx"
      ],
-     "error": "The SAT solver timed out while solving the problem."
+     "error": "The SAT solver timed out while solving the problem.",
+     "status": "timeout"
     },
     {
      "goal": "muldist8",
@@ -893,7 +942,8 @@
      "axioms": [
       "sorryAx"
      ],
-     "error": "The SAT solver timed out while solving the problem."
+     "error": "The SAT solver timed out while solving the problem.",
+     "status": "timeout"
     },
     {
      "goal": "muldist8",
@@ -908,7 +958,8 @@
      "axioms": [
       "sorryAx"
      ],
-     "error": "The SAT solver timed out while solving the problem."
+     "error": "The SAT solver timed out while solving the problem.",
+     "status": "timeout"
     }
    ]
   }
