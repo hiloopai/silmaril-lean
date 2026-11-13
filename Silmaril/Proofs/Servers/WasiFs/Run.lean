@@ -111,7 +111,8 @@ end
 
 /-! ## The response code, over the store's host -/
 
-open Silmaril.Proofs.Servers.WasiExamples (leads_call_pure leads_pure OkAns answer_ok refHost_ok)
+open Silmaril.Proofs.Servers.WasiExamples (leads_call_pure leads_pure OkAns answer_ok refHost_ok
+  bytesOf_bytesV)
 
 theorem leads_widen : ∀ {p : BProg proxyImports} {u : List WEv} {r : Option (List Val)},
     Leads (widen p) u (.pure r) → Leads p u (.pure r)
@@ -225,6 +226,29 @@ macro "store_run" : tactic => `(tactic|
     reqMethod, reqPath, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt, methodV, kindAns,
     getPath, putPath, delPath, putFile, readBody, pathOf_pathV, mutating, fsEvents, isFsEv,
     atPath_openArgs, maxRead_mod,
+    replay, fstep, Versions.FsMore.fsImplV, Versions.FsMore.fsState,
+    fsNext_dirs, fsNext_open_ok, fsNext_open_err, fsNext_read, fsNext_create, fsNext_unlink,
+    Versions.FsMore.dirsA, Versions.FsMore.numbered, treeOf, preOf, Versions.Net.lookup, Versions.FsMore.charsV_strC, relPath_keyName,
+    Versions.FsMore.nodeAt, Versions.FsMore.openA, openFd, Versions.FsMore.readA, readData,
+    Versions.FsMore.lenOff, Versions.FsMore.u8sV_u8sC, Versions.FsMore.isDir, Versions.FsMore.preopensOf,
+    Versions.FsMore.selfPath, Versions.FsMore.okA, Versions.FsMore.errA, isNoEntry,
+    respOf_req, respOf_imp, respOf_answerS, fsEvents_answerS, setStatus, respBody, bodyWrite,
+    streamWrite, bodyFinish, outSet, maxRead_toNat, Silmaril.Net.Http.Status.ok,
+    Silmaril.Net.Http.Status.notFound, Silmaril.Net.Http.Status.noContent,
+    Silmaril.Net.Http.Status.created, Silmaril.Net.Http.Status.methodNotAllowed,
+    Silmaril.Net.Http.Status.notImplemented,
+    Silmaril.Proofs.Servers.WasiExamples.map_ofBitVec_toBitVec, specStep, Response.status,
+    Silmaril.Proofs.Servers.WasiExamples.ofBitVec_comp, List.map_id, kindOf,
+    fileStoreStep, getAnswer, noFields, keyFile, Silmaril.Net.Http.Message.stripContent, *])
+
+/-- The computation of a run of the store that changes the files. -/
+macro "store_run_mut" : tactic => `(tactic|
+  simp [runStore, runP, storeBody, handleQ, storeHost, refHost, sop, reqOf, outOf,
+    reqMethod, reqPath, fsList, getDirs, openAt, fdRead, fdWrite, unlinkAt, methodV, kindAns,
+    getPath, putPath, delPath, putFile, readBody, pathOf_pathV, mutating, fsEvents, isFsEv,
+    atPath_openArgs, maxRead_mod, mutAns, mutUpd, FSt.at2, FSt.self, FSt.atOpen, ofPath,
+    bufArgs, writeAtU, fsNext_write, inRead, reqConsume, inStream, isReadAns, okV, errV,
+    bytesOf_bytesV, readLen, echoFuel, bitsOf,
     replay, fstep, Versions.FsMore.fsImplV, Versions.FsMore.fsState,
     fsNext_dirs, fsNext_open_ok, fsNext_open_err, fsNext_read, fsNext_create, fsNext_unlink,
     Versions.FsMore.dirsA, Versions.FsMore.numbered, treeOf, preOf, Versions.Net.lookup, Versions.FsMore.charsV_strC, relPath_keyName,
