@@ -153,6 +153,13 @@ globs = [
 # see specs/spectec/README.md. Lake mixes a library's `needs` into the trace of every module of
 # that library, so they live here and not on `Silmaril`, whose traces (and published cache) stay
 # as on main. Declared after `Silmaril` so that imports resolve to this library.
+# Native timings of the kernel-evaluation memory representations
+# (docs/projects/wasm-kernel-eval.md); not part of `make check`.
+[[lean_exe]]
+name = "kernel-eval-bench"
+srcDir = "benchmarks/wasm-kernel-eval"
+root = "NativeBench"
+
 [[lean_lib]]
 name = "SilmarilSpecTec"
 globs = ["Silmaril.Wasm.SpecTec.+", "Silmaril.Proofs.Wasm.SpecTec.+", "Silmaril.Raw.Wasm.SpecTec.+"]
