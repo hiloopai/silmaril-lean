@@ -115,20 +115,21 @@ inductive ILoc (cl : Client) (I : Nat → PrimImpl) : Nat → IState cl I → La
   | ret {t p s c k r} (h : (I p).ret s = some r) :
       ILoc cl I t (.inPrim p s c k) (.plain [] [] false) (.cl (k r))
 
-/-- The client states of the implemented client's threads: `ts u = .cl (cts u)` for threads in
-client code. -/
-def IState.merge {cl : Client} {I : Nat → PrimImpl} (ts : Nat → IState cl I)
-    (cts : Nat → cl.St) : Nat → IState cl I :=
-  fun u => if (ts u).isCl then .cl (cts u) else ts u
+/-- Fill the threads inside primitives with arbitrary client states `fill`: `ts u = .cl (cts u)`
+gives `cts u`, a thread inside a primitive gives `fill u`. -/
+def IState.fill {cl : Client} {I : Nat → PrimImpl} (ts : Nat → IState cl I)
+    (cts fill : Nat → cl.St) : Nat → cl.St :=
+  fun u => if (ts u).isCl then cts u else fill u
 
-/-- Synchronising steps of the implemented client. A client synchronising step may change only
-threads in client code. -/
+/-- Synchronising steps of the implemented client. A client synchronising step is taken by a
+thread in client code, changes only threads in client code, and may not depend on the states of
+threads inside primitives: it must be a client step whatever client states they are given. -/
 inductive ISync (cl : Client) (I : Nat → PrimImpl) :
     Nat → (Nat → IState cl I) → List (Nat × Nat) → List (Nat × Nat) → (Nat → IState cl I) → Prop
-  | cl {t ts rs ws cts cts'} (h : cl.sync t cts rs ws cts')
+  | cl {t ts rs ws cts cts'} (ht : (ts t).isCl = true)
       (hcl : ∀ u, (ts u).isCl = true → ts u = .cl (cts u))
-      (hfix : ∀ u, (ts u).isCl = false → cts' u = cts u) :
-      ISync cl I t ts rs ws (IState.merge ts cts')
+      (h : ∀ fill, cl.sync t (IState.fill ts cts fill) rs ws (IState.fill ts cts' fill)) :
+      ISync cl I t ts rs ws (fun u => if (ts u).isCl then .cl (cts' u) else ts u)
   | prim {t ts p s c k rs ws s'} (hts : ts t = .inPrim p s c k) (h : (I p).sync t s rs ws s') :
       ISync cl I t ts rs ws (upd ts t (.inPrim p s' c k))
 
@@ -185,25 +186,49 @@ def LocksDisjoint (locks : Nat → Bool) : Prop :=
 `2`, "held, maybe with waiters"). -/
 def absMem (locks : Nat → Bool) (m : Mem) : Mem := fun a => if locks a then min (m a) 1 else m a
 
-/-- **The abstract specifications.** Mutex: lock takes a free word to `1`; unlock frees a held
-word. Recursive lock: the owner increments the count; anyone else takes the free word, becomes
-owner and increments the count. Recursive unlock (by the owner, count positive) decrements the
-count, and at zero clears the owner and frees the word. -/
+/-- No step: calls of an unused primitive number block. -/
+def blocked : PrimSpec := ⟨fun _ _ _ => False, fun _ _ _ _ _ => False⟩
+
+/-- **Mutex lock**: takes a free word to `1`. -/
+def lockSpec (locks : Nat → Bool) : PrimSpec :=
+  ⟨fun _ args _ => ∃ l, args = [l] ∧ locks l = true,
+    fun _ args rs ws r => ∃ l, args = [l] ∧ rs = [(l, 0)] ∧ ws = [(l, 1)] ∧ r = 0⟩
+
+/-- **Mutex unlock**: frees a held word (the caller's obligation: the word is held). -/
+def unlockSpec (locks : Nat → Bool) : PrimSpec :=
+  ⟨fun _ args m => ∃ l, args = [l] ∧ locks l = true ∧ m l ≠ 0,
+    fun _ args rs ws r => ∃ l v, args = [l] ∧ v ≠ 0 ∧ rs = [(l, v)] ∧ ws = [(l, 0)] ∧ r = 0⟩
+
+/-- **Recursive lock**: the owner increments the count; any other thread takes the free word,
+becomes owner and increments the count. -/
+def recLockSpec (self : Nat → Nat) (locks : Nat → Bool) : PrimSpec :=
+  ⟨fun _ args _ => ∃ l, args = [l] ∧ locks l = true,
+    fun t args rs ws r => r = 0 ∧ ∃ l c, args = [l] ∧
+      ((rs = [(l + 2, self t), (l + 1, c)] ∧ ws = [(l + 1, c + 1)]) ∨
+       (∃ o, o ≠ self t ∧ rs = [(l + 2, o), (l, 0), (l + 1, c)] ∧
+         ws = [(l, 1), (l + 2, self t), (l + 1, c + 1)]))⟩
+
+/-- **Recursive unlock** (by the owner, count positive): decrements the count; at zero clears
+the owner and frees the word. -/
+def recUnlockSpec (self : Nat → Nat) (locks : Nat → Bool) : PrimSpec :=
+  ⟨fun t args m => ∃ l, args = [l] ∧ locks l = true ∧ m (l + 2) = self t ∧ 1 ≤ m (l + 1),
+    fun t args rs ws r => r = 0 ∧ ∃ l c, args = [l] ∧ 1 ≤ c ∧
+      rs = [(l + 2, self t), (l + 1, c)] ∧
+      ws = (if c = 1 then [(l + 1, 0), (l + 2, 0), (l, 0)] else [(l + 1, c - 1)])⟩
+
+/-- The mutex alone: primitives `0` (lock) and `1` (unlock). -/
+def mutexSpec (locks : Nat → Bool) : Nat → PrimSpec
+  | 0 => lockSpec locks
+  | 1 => unlockSpec locks
+  | _ => blocked
+
+/-- **The abstract specifications**: mutex lock and unlock, recursive lock and unlock. -/
 def spec (self : Nat → Nat) (locks : Nat → Bool) : Nat → PrimSpec
-  | 0 => ⟨fun _ args _ => ∃ l, args = [l] ∧ locks l = true,
-      fun _ args rs ws r => ∃ l, args = [l] ∧ rs = [(l, 0)] ∧ ws = [(l, 1)] ∧ r = 0⟩
-  | 1 => ⟨fun _ args m => ∃ l, args = [l] ∧ locks l = true ∧ m l ≠ 0,
-      fun _ args rs ws r => ∃ l v, args = [l] ∧ v ≠ 0 ∧ rs = [(l, v)] ∧ ws = [(l, 0)] ∧ r = 0⟩
-  | 2 => ⟨fun _ args _ => ∃ l, args = [l] ∧ locks l = true,
-      fun t args rs ws r => r = 0 ∧ ∃ l c, args = [l] ∧
-        ((rs = [(l + 2, self t), (l + 1, c)] ∧ ws = [(l + 1, c + 1)]) ∨
-         (∃ o, o ≠ self t ∧ rs = [(l + 2, o), (l, 0), (l + 1, c)] ∧
-           ws = [(l, 1), (l + 2, self t), (l + 1, c + 1)]))⟩
-  | 3 => ⟨fun t args m => ∃ l, args = [l] ∧ locks l = true ∧ m (l + 2) = self t ∧ 1 ≤ m (l + 1),
-      fun t args rs ws r => r = 0 ∧ ∃ l c, args = [l] ∧ 1 ≤ c ∧
-        rs = [(l + 2, self t), (l + 1, c)] ∧
-        ws = (if c = 1 then [(l + 1, 0), (l + 2, 0), (l, 0)] else [(l + 1, c - 1)])⟩
-  | _ => ⟨fun _ _ _ => False, fun _ _ _ _ _ => False⟩
+  | 0 => lockSpec locks
+  | 1 => unlockSpec locks
+  | 2 => recLockSpec self locks
+  | 3 => recUnlockSpec self locks
+  | _ => blocked
 
 /-- Implementation state: program counter and lock address. -/
 structure PSt where
@@ -251,17 +276,43 @@ inductive IoUnlockLoc : Nat → PSt → Lab → PSt → Prop
         ⟨if c - 1 = 0 then 1 else 4, s.l⟩
   | clrOwn {t} {s : PSt} (h : s.pc = 1) : IoUnlockLoc t s (.plain [] [(s.l + 2, 0)] false) ⟨2, s.l⟩
 
+/-- `lll_lock`. -/
+def lllLockImpl : PrimImpl :=
+  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => LllLock 0 3,
+    fun s => if s.pc = 3 then some 0 else none⟩
+
+/-- `lll_unlock`. -/
+def lllUnlockImpl : PrimImpl :=
+  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => LllUnlock 0 2,
+    fun s => if s.pc = 2 then some 0 else none⟩
+
+/-- `_IO_lock_lock`. -/
+def ioLockImpl (self : Nat → Nat) : PrimImpl :=
+  ⟨PSt, fun _ => pstart, IoLockLoc self, fun _ => LllLock 1 4,
+    fun s => if s.pc = 6 then some 0 else none⟩
+
+/-- `_IO_lock_unlock`. -/
+def ioUnlockImpl : PrimImpl :=
+  ⟨PSt, fun _ => pstart, IoUnlockLoc, fun _ => LllUnlock 2 4,
+    fun s => if s.pc = 4 then some 0 else none⟩
+
+/-- No steps. -/
+def blockedImpl : PrimImpl :=
+  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ _ _ _ _ => False, fun _ => none⟩
+
+/-- The mutex's implementations. -/
+def mutexImpl : Nat → PrimImpl
+  | 0 => lllLockImpl
+  | 1 => lllUnlockImpl
+  | _ => blockedImpl
+
 /-- **The implementations.** -/
 def impl (self : Nat → Nat) : Nat → PrimImpl
-  | 0 => ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => LllLock 0 3,
-      fun s => if s.pc = 3 then some 0 else none⟩
-  | 1 => ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => LllUnlock 0 2,
-      fun s => if s.pc = 2 then some 0 else none⟩
-  | 2 => ⟨PSt, fun _ => pstart, IoLockLoc self, fun _ => LllLock 1 4,
-      fun s => if s.pc = 6 then some 0 else none⟩
-  | 3 => ⟨PSt, fun _ => pstart, IoUnlockLoc, fun _ => LllUnlock 2 4,
-      fun s => if s.pc = 4 then some 0 else none⟩
-  | _ => ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ _ _ _ _ => False, fun _ => none⟩
+  | 0 => lllLockImpl
+  | 1 => lllUnlockImpl
+  | 2 => ioLockImpl self
+  | 3 => ioUnlockImpl
+  | _ => blockedImpl
 
 end Glibc
 
@@ -289,5 +340,13 @@ def Task.glibcLocks (M : Model) : Prop :=
     (∀ t, self t ≠ 0) → Glibc.LocksDisjoint locks →
     PrimsCorrect M (Glibc.spec self locks) (Glibc.impl self) (Glibc.lockCells locks)
       (Glibc.absMem locks)
+
+
+/-- **glibc's `lll_lock` mutex is correct under `M`** (a statement): `lll_lock`/`lll_unlock`
+meet the atomic mutex specification. All their memory accesses are locked instructions, so no
+reasoning about buffers is needed beyond the client's. -/
+def Task.lllMutex (M : Model) : Prop :=
+  ∀ locks : Nat → Bool, PrimsCorrect M (Glibc.mutexSpec locks) Glibc.mutexImpl
+    (fun a => locks a = true) (Glibc.absMem locks)
 
 end Silmaril.Process.Mt.Drf
