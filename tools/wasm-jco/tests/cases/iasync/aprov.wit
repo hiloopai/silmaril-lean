@@ -1,0 +1,11 @@
+package test:ia;
+
+interface svc {
+  record point { x: u32, y: u32 }
+  get: async func(k: u32) -> u32;
+  pt: async func(k: u32) -> point;
+}
+
+world aprov {
+  export svc;
+}

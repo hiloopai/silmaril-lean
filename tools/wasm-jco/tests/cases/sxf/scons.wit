@@ -1,0 +1,12 @@
+package test:scons;
+
+world scons {
+  import gentext: async func(n: u32) -> stream<u8>;
+  import lines: async func(s: stream<u8>) -> stream<list<u8>>;
+  import rechunk: async func(s: stream<u8>, n: u32) -> stream<list<u8>>;
+  import tee: async func(s: stream<u8>) -> tuple<stream<u8>, stream<u8>>;
+  export raw: async func(n: u32) -> string;
+  export runlines: async func(n: u32) -> string;
+  export runchunks: async func(n: u32, k: u32) -> string;
+  export runtee: async func(n: u32) -> string;
+}

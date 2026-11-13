@@ -1,0 +1,7 @@
+package test:acaller;
+
+world caller {
+  import add: async func(a: u32, b: u32) -> u32;
+  export run: func(a: u32, b: u32) -> u32;
+  export ec: func() -> u32;
+}

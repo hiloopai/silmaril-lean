@@ -1,0 +1,8 @@
+package test:user;
+
+world user {
+  import double: func(x: u32) -> u32;
+  import shout: func(s: string) -> string;
+  export run: func(x: u32) -> u32;
+  export loud: func(s: string) -> string;
+}

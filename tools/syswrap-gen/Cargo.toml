@@ -1,0 +1,17 @@
+[package]
+name = "syswrap-gen"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+license = "MIT"
+description = "Find the system call wrappers of a C library (x86-64 ELF) and write their Silmaril.Libc.SysWrap contracts as Lean."
+
+[[bin]]
+name = "syswrap-gen"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"

@@ -36,4 +36,57 @@ inductive Zip {α : Type u} {β : Type v} {γ : Type w} :
   /-- Both traces perform the shared event `b`, which is hidden. -/
   | sync {s t p} (b : β) : Zip s t p → Zip (.inr b :: s) (.inl b :: t) p
 
+/-! ## Facts the strategy definitions need
+
+`Silmaril.Games.Strategy.comp` (`Silmaril.Games.Composition.Defs`) needs these in its
+proof fields; the other facts about `Zip` are in `Silmaril.Games.Zip.Thms`.
+-/
+
+namespace Zip
+
+variable {α : Type u} {β : Type v} {γ : Type w}
+
+/-- Append a visible move of the left trace. -/
+theorem append_left {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p : List (α ⊕ γ)}
+    (h : Zip s t p) (a : α) : Zip (s ++ [.inl a]) t (p ++ [.inl a]) := by
+  induction h with
+  | nil => exact .left a .nil
+  | left a' _ ih => exact .left a' ih
+  | right c _ ih => exact .right c ih
+  | sync b _ ih => exact .sync b ih
+
+/-- Append a visible move of the right trace. -/
+theorem append_right {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p : List (α ⊕ γ)}
+    (h : Zip s t p) (c : γ) : Zip s (t ++ [.inr c]) (p ++ [.inr c]) := by
+  induction h with
+  | nil => exact .right c .nil
+  | left a _ ih => exact .left a ih
+  | right c' _ ih => exact .right c' ih
+  | sync b _ ih => exact .sync b ih
+
+/-- Every prefix of the visible trace comes from prefixes of the two traces. -/
+theorem of_prefix {s : List (α ⊕ β)} {t : List (β ⊕ γ)} {p q : List (α ⊕ γ)}
+    (h : Zip s t p) (hq : q <+: p) : ∃ s' t', s' <+: s ∧ t' <+: t ∧ Zip s' t' q := by
+  induction h generalizing q with
+  | nil =>
+    rw [List.prefix_nil] at hq
+    subst hq
+    exact ⟨[], [], List.nil_prefix, List.nil_prefix, .nil⟩
+  | left a _ ih =>
+    rcases List.prefix_cons_iff.1 hq with rfl | ⟨q', rfl, hq'⟩
+    · exact ⟨[], [], List.nil_prefix, List.nil_prefix, .nil⟩
+    · obtain ⟨s', t', hs, ht, h⟩ := ih hq'
+      exact ⟨_, t', List.cons_prefix_cons.2 ⟨rfl, hs⟩, ht, .left a h⟩
+  | right c _ ih =>
+    rcases List.prefix_cons_iff.1 hq with rfl | ⟨q', rfl, hq'⟩
+    · exact ⟨[], [], List.nil_prefix, List.nil_prefix, .nil⟩
+    · obtain ⟨s', t', hs, ht, h⟩ := ih hq'
+      exact ⟨s', _, hs, List.cons_prefix_cons.2 ⟨rfl, ht⟩, .right c h⟩
+  | sync b _ ih =>
+    obtain ⟨s', t', hs, ht, h⟩ := ih hq
+    exact ⟨_, _, List.cons_prefix_cons.2 ⟨rfl, hs⟩, List.cons_prefix_cons.2 ⟨rfl, ht⟩,
+      .sync b h⟩
+
+end Zip
+
 end Silmaril.Games
