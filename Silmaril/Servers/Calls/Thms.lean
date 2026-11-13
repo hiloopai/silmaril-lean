@@ -10,6 +10,9 @@ import Silmaril.Proofs.Servers.Calls.Shape
 
 * `calls_of_mem`: the completed calls of a play of `ofBody h` are complete runs of `h`
   (`Done`), whose events occur in the play.
+* `mem_model_single`: a complete run of one export call, on which the host satisfies `T`, that
+  `ans` counts as answered and `obs` reads as the exchange `x`, makes `[x]` a trace of the
+  component read as a server (so that specifications proved with `sat_each` are not vacuous).
 * `sat_each`: to show that a component read as a server (`model`) satisfies `each R`, it is
   enough to show `R` of the exchanges of every complete run of one export call on which the
   host satisfies `T`. Proofs in `Silmaril.Proofs.Servers.Calls.Shape`.
@@ -33,5 +36,14 @@ theorem sat_each {J : Iface} {T : WEv → Prop} {ans : Call → Bool} {obs : Cal
     (hR : ∀ q c, Done h q c → (∀ e ∈ c.inner, T e) → ans c = true → ∀ x, obs c x → R x.1 x.2) :
     Sat (model T ans obs (ofBody h)) (each R) :=
   Proofs.Servers.Calls.sat_each hR
+
+/-- **A single answered call is a trace** of the component read as a server. -/
+theorem mem_model_single {J : Iface} {T : WEv → Prop} {ans : Call → Bool}
+    {obs : Call → Exch J → Prop} {q : (nsig X).Op} {u : List WEv}
+    {r : Option (List Silmaril.Wasm.Component.Val)}
+    (hl : Leads (h q) u (.pure r)) (hT : ∀ e ∈ Call.events ⟨q.1.1, q.2, u, r⟩, T e)
+    (ha : ans ⟨q.1.1, q.2, u, r⟩ = true) {x : Exch J} (hx : obs ⟨q.1.1, q.2, u, r⟩ x) :
+    [x] ∈ model T ans obs (ofBody h) :=
+  Proofs.Servers.Calls.mem_model_single hl hT ha hx
 
 end Silmaril.Servers.Calls

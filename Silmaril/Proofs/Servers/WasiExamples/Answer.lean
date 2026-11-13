@@ -181,4 +181,85 @@ theorem answer_run {o : BitVec 32} {resp : Response} {u : List WEv} {r : Option 
       exact Nat.mod_eq_of_lt hs
     simp [OSt.resp, look, bytesOf_bytesV, ofBitVec_comp, h16, hr]
 
+/-! ## The example servers -/
+
+/-- The response of an answered call of a body whose runs answer `resp`. -/
+theorem obs_of_run {c : Call} {x : Exch httpIface} {resp : Response}
+    (hrun : NoneOr (respOf (outOf c.args) c.inner) (some resp)) (hx : Obs c x) : x.2 = resp := by
+  obtain ⟨-, -, hx⟩ := hx
+  rcases hrun with h | h <;> rw [h] at hx
+  · cases hx
+  · exact (Option.some.inj hx).symm
+
+/-- **Hello** answers every request `200 hello`, for every host. -/
+theorem hello_sat : Sat (wasiServer (ofBody hello)) (each fun _ resp => resp = helloResp) := by
+  refine sat_each fun q c ⟨_, ha, hl⟩ _ _ x hx => obs_of_run ?_ hx
+  rw [ha]
+  exact answer_run rfl (by decide) hl
+
+/-- A path read back. -/
+theorem pathOf_pathV (p : Option (List UInt8)) : pathOf (some [pathV p]) = p := by
+  cases p with
+  | none => rfl
+  | some p =>
+    have h : ∀ b : UInt8, (Char.ofNat b.toNat).toNat.toUInt8 = b := by decide
+    simp [pathOf, pathV, octetsOf, List.filterMap_map, h]
+
+/-- The route table answers with a 16-bit status and no fields. -/
+theorem routeResp_ok (p : Option (List UInt8)) :
+    Response.simple (routeResp p).status (routeResp p).content = routeResp p ∧
+      (routeResp p).status < 2 ^ 16 := by
+  unfold routeResp
+  split_ifs <;> exact ⟨rfl, by decide⟩
+
+/-- Reading the path does not change the response. -/
+theorem respOf_path (o r : BitVec 32) (n : Option (List Val)) (u : List WEv) :
+    respOf o (.req reqPath [.u32 r] :: .imp reqPath [.u32 r] n :: u) = respOf o u := by
+  have h : ostep o {} (.imp reqPath [.u32 r] n) = some {} := by
+    simp [ostep, reqPath, setStatus, respBody, bodyWrite, streamWrite, bodyFinish, outSet]
+  have h0 : ostep o {} (.req reqPath [.u32 r]) = some {} := rfl
+  simp [respOf, List.foldlM_cons, h0, h]
+
+/-- **Routing** answers every request from the route table on its path, for every host. -/
+theorem route_sat :
+    Sat (wasiServer (ofBody route)) (each fun q resp => resp = routeResp q.target.pathWithQuery) := by
+  refine sat_each fun q c ⟨_, ha, hl⟩ _ _ x hx => ?_
+  obtain ⟨n, u, hu, hl⟩ := leads_call_pure hl
+  have hn : n = some [pathV x.1.target.pathWithQuery] := by
+    have h := hx.2.1 (.imp reqPath [.u32 (reqOf q.2)] n) (by rw [hu]; simp [pop])
+    rw [ha] at h
+    exact (h rfl).2 rfl
+  subst hn
+  rw [pathOf_pathV] at hl
+  refine obs_of_run ?_ hx
+  rw [hu, ha]
+  exact (respOf_path _ _ _ _).symm ▸
+    answer_run (routeResp_ok _).1 (routeResp_ok _).2 hl
+
+/-! ## Hello answers -/
+
+/-- An answer of another function than the request getters is consistent with every request. -/
+theorem reqOk_other {q : Request} {r : BitVec 32} {f : FnName} {a : List Val}
+    {res : Option (List Val)} (h1 : f ≠ reqMethod) (h2 : f ≠ reqPath) :
+    ReqOk q r (.imp f a res) := by
+  unfold ReqOk
+  split <;> simp_all
+
+/-- The call `handle(0, 1)`. -/
+def handleQ : (nsig proxyWorld.exports).Op := (⟨handleF, rfl⟩, [.u32 0, .u32 1])
+
+/-- **Hello is not vacuous**: every request answered `200 hello` is a trace of hello, over a
+host whose answers are well formed. -/
+theorem hello_answers (q : Request) : [(q, helloResp)] ∈ wasiServer (ofBody hello) := by
+  refine mem_model_single (q := handleQ)
+    (.call _ _ (some [.u32 1]) <| .call _ _ (some [.u32 2]) <| .call _ _ (some [okV none]) <|
+      .call _ _ (some [okV (some (.u32 3))]) <| .call _ _ (some []) <|
+      .call _ _ (some [okV (some (.u32 4))]) <| .call _ _ (some [okV none]) <|
+      .call _ _ (some []) <| .call _ _ (some [okV none]) <| .refl _)
+    (fun _ _ => trivial) rfl ⟨rfl, ?_, rfl⟩
+  simp only [List.forall_mem_cons]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
+    fun _ h => by simp at h⟩ <;>
+    first | trivial | (apply reqOk_other <;> decide)
+
 end Silmaril.Proofs.Servers.WasiExamples

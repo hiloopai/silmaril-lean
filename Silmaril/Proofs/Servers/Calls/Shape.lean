@@ -202,4 +202,46 @@ theorem sat_each {J : Iface} {T : WEv → Prop} {ans : Call → Bool} {obs : Cal
   obtain ⟨x, hx, rfl⟩ := List.mem_map.1 hc
   exact hR x.1 x.2 (hd x hx) (fun e' he' => hT e' (hin x hx e' he')) hans e hce
 
+/-! ## Plays of runs -/
+
+/-- A run of the program of a call extends a play. -/
+theorem reach_of_leads {q : (nsig X).Op} {p p' : BProg I} {u : List WEv} (hl : Leads p u p')
+    {s : List (Move (nsig I) (nsig X))} (hs : Reach h s (.run q p)) :
+    ∃ s', Reach h s' (.run q p') ∧ wtrace s' = wtrace s ++ u := by
+  induction hl generalizing s with
+  | refl => exact ⟨s, hs, by simp⟩
+  | call m k n _ ih =>
+    have hs' := (hs.snoc (.call q m k)).snoc (.reply q m k n)
+    obtain ⟨s', hr, ht⟩ := ih hs'
+    refine ⟨s', hr, ?_⟩
+    rw [ht]
+    simp [wtrace, wev]
+
+/-- **A complete run is a play**: its only completed call is the run. -/
+theorem exists_play {q : (nsig X).Op} {u : List WEv} {r : Option (List Val)}
+    (hl : Leads (h q) u (.pure r)) :
+    ∃ s ∈ ofBody h, calls (wtrace s) = [⟨q.1.1, q.2, u, r⟩] ∧
+      wtrace s = Call.events ⟨q.1.1, q.2, u, r⟩ := by
+  obtain ⟨s, hs, ht⟩ := reach_of_leads hl (Reach.nil.snoc (.ask q))
+  have hs' := hs.snoc (.ret q r)
+  have ht' : wtrace (s ++ [.inr (.ans q r)]) = Call.events ⟨q.1.1, q.2, u, r⟩ := by
+    have hc : wtrace (s ++ [.inr (.ans q r)]) = wtrace s ++ [wev (.inr (.ans q r))] :=
+      List.map_append
+    rw [hc, ht]
+    simp [wtrace, wev, Call.events]
+  refine ⟨_, ⟨_, hs'⟩, ?_, ht'⟩
+  rw [ht', calls, ← List.append_nil (Call.events _), callsAux_events _ _ hl.not_exp]
+  rfl
+
+/-- **A single answered call is a trace** of the component read as a server. -/
+theorem mem_model_single {J : Iface} {T : WEv → Prop} {ans : Call → Bool}
+    {obs : Call → Exch J → Prop} {q : (nsig X).Op} {u : List WEv} {r : Option (List Val)}
+    (hl : Leads (h q) u (.pure r)) (hT : ∀ e ∈ Call.events ⟨q.1.1, q.2, u, r⟩, T e)
+    (ha : ans ⟨q.1.1, q.2, u, r⟩ = true) {x : Exch J} (hx : obs ⟨q.1.1, q.2, u, r⟩ x) :
+    [x] ∈ model T ans obs (ofBody h) := by
+  obtain ⟨s, hs, hc, ht⟩ := exists_play hl
+  refine ⟨s, hs, ht ▸ hT, ?_⟩
+  rw [hc, List.filter_cons_of_pos ha, List.filter_nil]
+  exact .cons hx .nil
+
 end Silmaril.Proofs.Servers.Calls
