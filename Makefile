@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check pages demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -134,6 +134,16 @@ project-tool:
 	cp scripts/sil build/bin/sil
 	chmod +x build/bin/sil
 
+# The explorer page and its database in _site (.github/workflows/pages.yml), from the built
+# libraries of the project's modules (silmaril.toml).
+pages: project-tool
+	build/bin/silmaril-project dump --lake lake
+	build/bin/silmaril-project check
+	build/bin/silmaril-project sqlite --httpvfs > /dev/null
+	mkdir -p _site
+	cp .lake/silmaril/project.sqlite _site/project.sqlite
+	build/bin/silmaril-project explore --db _site/project.sqlite --out _site/index.html
+
 # The registry and records checks, without Lean (what CI runs when their inputs change).
 project-registry: project-tool
 	SIL=build/bin/silmaril-project examples/project/registry-check.sh
@@ -159,6 +169,7 @@ help:
 	@echo 'make project-tool   Build sil project (Cargo) and stage it in build/bin'
 	@echo 'make project-registry  Run the sil project checks that need no Lean: init, lock, lint'
 	@echo 'make project-check  Run the sil project self-test: init, lock, lint, dump, check, explore'
+	@echo 'make pages    Write the explorer page and its database to _site (needs the project libraries built)'
 	@echo 'make demo     Build tools; run the assemble/optimize/link/execute example'
 	@echo 'make demo-process  Build the public process headers and theorem slice'
 	@echo 'make demo-sha256   Build the sha256-cli and GNU sha256sum-min end-to-end proofs'
