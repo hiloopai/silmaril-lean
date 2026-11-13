@@ -1,0 +1,10 @@
+schema = "silmaril.records.v0.2"
+
+[[finding]]
+name = "mk.d"
+classification = "model_gap"
+fixed_in = "2.0"
+
+[[finding]]
+name = "mk.f"
+classification = "bogus"
