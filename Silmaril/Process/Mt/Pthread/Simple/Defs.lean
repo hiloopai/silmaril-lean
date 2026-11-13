@@ -22,7 +22,7 @@ thread except register `0`, the start routine's argument) and one shared memory 
 |---|---|---|
 | `movi d v`, `add d a b`, `addi d a v` | plain, no access | register arithmetic (naturals) |
 | `ld d base idx`, `st base idx s` | plain, one cell | `d := [base + idx]`, `[base + idx] := s` (`idx`: an optional register) |
-| `beq r v l`, `bne r v l`, `jmp l` | plain, no access | branches |
+| `beq r v l`, `bne r v l`, `beqr a b l`, `bner a b l`, `jmp l` | plain, no access | branches (on a register and an immediate, or two registers) |
 | `call o args d` | atomic | the pthread primitive `o` (`Pthread.Op`) with `args`; `d` gets the result |
 | `create f a d` | spawn | `pthread_create`: a fresh thread runs function `f` with register `0 = a`; `d` gets its id |
 | `out r` | atomic | appends register `r` to the output (one `write(2)` of the program's output) |
@@ -79,6 +79,8 @@ inductive Ins where
   | st (base : Nat) (idx : Option Reg) (s : Reg)
   | beq (r : Reg) (v : Nat) (l : Nat)
   | bne (r : Reg) (v : Nat) (l : Nat)
+  | beqr (a b : Reg) (l : Nat)
+  | bner (a b : Reg) (l : Nat)
   | jmp (l : Nat)
   | call (o : Op) (args : List Arg) (d : Reg)
   | create (f : Nat) (a : Arg) (d : Reg)
@@ -139,6 +141,8 @@ def plain (P : Prog) (s : TSt) (m : SM) (s' : TSt) (m' : SM) : Prop :=
       m' = { m with cells := fun x => if x = addr s.regs b i then s.regs r else m.cells x }
   | some (.beq r v l) => s' = (if s.regs r = v then { s with pc := l } else s.next s.regs) ∧ m' = m
   | some (.bne r v l) => s' = (if s.regs r = v then s.next s.regs else { s with pc := l }) ∧ m' = m
+  | some (.beqr a b l) => s' = (if s.regs a = s.regs b then { s with pc := l } else s.next s.regs) ∧ m' = m
+  | some (.bner a b l) => s' = (if s.regs a = s.regs b then s.next s.regs else { s with pc := l }) ∧ m' = m
   | some (.jmp l) => s' = { s with pc := l } ∧ m' = m
   | some .halt => s' = { s with fin := true } ∧ m' = m
   | _ => False

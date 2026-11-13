@@ -92,7 +92,7 @@ theorem sim (hl : I.Lin) {c c' : CCfg I.St ι} (hf : ¬ Fault (tisa P) (absC P I
         have h2 : (absC P I c).th t = some s := by rw [absC_th c h]; simp [absT, hq] <;> rfl
         refine step_of_eq (Step.atom (U := tisa P) (C := absC P I c) (t := t) (s := s)
           (s' := resume P s r) (m' := { absM I c with ps := I.β x' }) h2
-          (Or.inl ⟨o, args, r, hc, ⟨I.β x', hsp, rfl⟩, rfl⟩)) (cfg_eq ?_ (by simp [absC, absM, lens]))
+          (Or.inl ⟨o, args, r, hc, ⟨I.β x', hsp, rfl⟩, rfl⟩)) (cfg_eq ?_ (by simp [absC, absM]))
         rw [absC_upd (P := P) c ⟨c.set I t ⟨s, some q'⟩, c.cells, x', c.out⟩ t ⟨s, some q'⟩ rfl]
         simp [absT, hq']
     | some r =>
