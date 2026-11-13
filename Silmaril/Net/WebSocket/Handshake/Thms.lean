@@ -29,11 +29,15 @@ namespace Silmaril.Net.WebSocket.Handshake
 
 open Silmaril.Net.Http1
 
+theorem fieldValues_ascii (fs : List FieldLine) (n : String) :
+    fieldValues fs (ascii n) = values fs n := rfl
+
 theorem tok_websocket :
-    (listElems (ascii "websocket")).any (fun e => ieq e (ascii "websocket")) = true := by
+    (listElements (ascii "websocket")).any
+      (fun e => lower e == lower (ascii "websocket")) = true := by
   decide +kernel
 theorem tok_upgrade :
-    (listElems (ascii "Upgrade")).any (fun e => ieq e (ascii "Upgrade")) = true := by
+    (listElements (ascii "Upgrade")).any (fun e => lower e == lower (ascii "Upgrade")) = true := by
   decide +kernel
 
 section respond
@@ -48,9 +52,11 @@ theorem values_respond_connection :
 theorem values_respond_accept :
     values (respond o sel).fields "Sec-WebSocket-Accept" = [acceptOf o.key] := by
   cases sel <;> rfl
-theorem values_respond_extensions : values (respond o sel).fields "Sec-WebSocket-Extensions" = [] := by
+theorem values_respond_extensions :
+    values (respond o sel).fields "Sec-WebSocket-Extensions" = [] := by
   cases sel <;> rfl
-theorem values_respond_protocol : values (respond o sel).fields "Sec-WebSocket-Protocol" = sel.toList := by
+theorem values_respond_protocol :
+    values (respond o sel).fields "Sec-WebSocket-Protocol" = sel.toList := by
   cases sel <;> rfl
 
 end respond
@@ -59,10 +65,11 @@ theorem checkResponse_respond (o : Offer) (sel : Option (List UInt8))
     (hs : ∀ p, sel = some p → o.protocols.contains p = true) :
     checkResponse o.key o.protocols (respond o sel) = .ok sel := by
   have hcode : (respond o sel).line.code = 101 := rfl
-  simp only [checkResponse, hasToken, hcode, values_respond_upgrade, values_respond_connection,
-    values_respond_accept, values_respond_extensions, values_respond_protocol, List.any_cons,
-    List.any_nil, Bool.or_false, tok_websocket, tok_upgrade, bne_self_eq_false, Bool.not_true,
-    Bool.false_eq_true, ↓reduceIte, List.isEmpty_nil]
+  simp only [checkResponse, hasToken, fieldElements, fieldValues_ascii, List.flatMap_cons,
+    List.flatMap_nil, List.append_nil, hcode, values_respond_upgrade, values_respond_connection,
+    values_respond_accept, values_respond_extensions, values_respond_protocol,
+    tok_websocket, tok_upgrade,
+    bne_self_eq_false, Bool.not_true, Bool.false_eq_true, ↓reduceIte, List.isEmpty_nil]
   cases sel with
   | none => rfl
   | some p =>
@@ -122,7 +129,7 @@ theorem readOffer_sound {h : RequestHead} {o : Offer} (hr : readOffer h = .ok o)
     · cases hr
 
 /-- Subprotocols that read back as themselves: one list element each. -/
-def SingleElems (ps : List (List UInt8)) : Prop := ∀ p ∈ ps, listElems p = [p]
+def SingleElems (ps : List (List UInt8)) : Prop := ∀ p ∈ ps, listElements p = [p]
 
 /-- The fixed fields of `clientRequest`. -/
 def fixedFields (o : Offer) : List FieldLine :=
@@ -131,30 +138,28 @@ def fixedFields (o : Offer) : List FieldLine :=
    ⟨ascii "Sec-WebSocket-Version", ascii "13"⟩]
 
 theorem values_clientRequest (o : Offer) (n : String)
-    (hn : ieq (ascii "Sec-WebSocket-Protocol") (ascii n) = false) :
+    (hn : lower (ascii "Sec-WebSocket-Protocol") ≠ lower (ascii n)) :
     values (clientRequest o).fields n = values (fixedFields o) n := by
-  simp only [clientRequest, values, List.filter_append, List.map_append, fixedFields]
-  have h2 : ((fun f : FieldLine => ieq f.name (ascii n)) ∘
-      fun p => (⟨ascii "Sec-WebSocket-Protocol", p⟩ : FieldLine)) = fun _ => false := by
-    funext p; exact hn
-  rw [List.filter_map, h2, List.filter_false]
-  simp
+  simp only [clientRequest, values, fieldValues, List.filterMap_append, List.filterMap_map,
+    fixedFields]
+  have : (List.filterMap ((fun f : FieldLine => if lower f.name = lower (ascii n) then
+      some f.value else none) ∘ fun p => (⟨ascii "Sec-WebSocket-Protocol", p⟩ : FieldLine))
+      o.protocols) = [] := by
+    simp [hn]
+  rw [this, List.append_nil]
 
 theorem values_clientRequest_protocol (o : Offer) :
     values (clientRequest o).fields "Sec-WebSocket-Protocol" = o.protocols := by
-  simp only [clientRequest, values, List.filter_append, List.map_append]
-  have h1 : (List.filter (fun f => ieq f.name (ascii "Sec-WebSocket-Protocol"))
-      (fixedFields o)) = [] := rfl
-  have h2 : ((fun f : FieldLine => ieq f.name (ascii "Sec-WebSocket-Protocol")) ∘
-      fun p => (⟨ascii "Sec-WebSocket-Protocol", p⟩ : FieldLine)) = fun _ => true := by
-    funext p; rfl
-  rw [List.filter_map, h2, List.filter_true]
+  simp only [clientRequest, values, fieldValues, List.filterMap_append, List.filterMap_map]
+  have h1 : List.filterMap (fun f : FieldLine =>
+      if lower f.name = lower (ascii "Sec-WebSocket-Protocol") then some f.value else none)
+      (fixedFields o) = [] := rfl
   simp only [fixedFields] at h1
   rw [h1]
-  simp [Function.comp_def]
+  simp
 
-theorem flatMap_listElems {ps : List (List UInt8)} (h : SingleElems ps) :
-    ps.flatMap listElems = ps := by
+theorem flatMap_listElements {ps : List (List UInt8)} (h : SingleElems ps) :
+    ps.flatMap listElements = ps := by
   induction ps with
   | nil => rfl
   | cons p ps ih =>
@@ -165,19 +170,20 @@ theorem flatMap_listElems {ps : List (List UInt8)} (h : SingleElems ps) :
 theorem readOffer_clientRequest (o : Offer) (hk : validKey o.key = true)
     (hp : SingleElems o.protocols) : readOffer (clientRequest o) = .ok o := by
   have eH : values (clientRequest o).fields "Host" = [o.host] :=
-    (values_clientRequest o "Host" rfl).trans rfl
+    (values_clientRequest o "Host" (by decide)).trans rfl
   have eU : values (clientRequest o).fields "Upgrade" = [ascii "websocket"] :=
-    (values_clientRequest o "Upgrade" rfl).trans rfl
+    (values_clientRequest o "Upgrade" (by decide)).trans rfl
   have eC : values (clientRequest o).fields "Connection" = [ascii "Upgrade"] :=
-    (values_clientRequest o "Connection" rfl).trans rfl
+    (values_clientRequest o "Connection" (by decide)).trans rfl
   have eK : values (clientRequest o).fields "Sec-WebSocket-Key" = [o.key] :=
-    (values_clientRequest o "Sec-WebSocket-Key" rfl).trans rfl
+    (values_clientRequest o "Sec-WebSocket-Key" (by decide)).trans rfl
   have eV : values (clientRequest o).fields "Sec-WebSocket-Version" = [ascii "13"] :=
-    (values_clientRequest o "Sec-WebSocket-Version" rfl).trans rfl
+    (values_clientRequest o "Sec-WebSocket-Version" (by decide)).trans rfl
   have hv : (clientRequest o).line.version = Version.http11 := rfl
   have hm : (clientRequest o).line.method = ascii "GET" := rfl
-  simp only [readOffer, hasToken, eH, eU, eC, eK, eV, values_clientRequest_protocol,
-    flatMap_listElems hp, hk, hv, hm, List.any_cons, List.any_nil, Bool.or_false, tok_websocket,
+  simp only [readOffer, hasToken, fieldElements, fieldValues_ascii, List.flatMap_cons,
+    List.flatMap_nil, List.append_nil, eH, eU, eC, eK, eV, values_clientRequest_protocol,
+    flatMap_listElements hp, hk, hv, hm, tok_websocket,
     tok_upgrade, bne_self_eq_false, Bool.not_true, Bool.false_eq_true, ↓reduceIte,
     show (decide (Version.http11.major > 1) || Version.http11.major == 1 &&
       decide (1 ≤ Version.http11.minor)) = true by decide]

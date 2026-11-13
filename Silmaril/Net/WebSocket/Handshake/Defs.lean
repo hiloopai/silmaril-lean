@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Net.Http1.Message.Defs
+public import Silmaril.Net.Http1.Framing.Defs
 public import Silmaril.Crypto.SHA1.Defs
 public import Silmaril.Encoding.Base64
 
@@ -39,9 +39,8 @@ input and states no property of its randomness. Origin checks (`Origin`, §10.2)
 authentication are application policy, outside this model. Confidentiality and integrity need
 `wss` (TLS, `Silmaril.Net.Tunnel.Transport`), whose guarantees are assumed, not proved.
 
-The list syntax (`#rule`, RFC 9110 §5.6.1) is read by the small local `listElems`. It is a
-stand-in until the HTTP semantics track provides the shared `#rule` parser
-(docs/projects/websocket-tls.md, "Shared APIs").
+Field lookup and the list syntax (`#rule`, RFC 9110 §5.6.1) are the HTTP/1.1 track's
+`Http1.fieldValues`, `Http1.listElements` and `Http1.fieldElements`.
 -/
 
 namespace Silmaril.Net.WebSocket.Handshake
@@ -54,36 +53,14 @@ def ascii (s : String) : List UInt8 := s.toList.map fun c => c.toNat.toUInt8
 /-- The GUID of §1.3 and §4.2.2. -/
 def guid : List UInt8 := ascii "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-/-- ASCII lower case. -/
-def lower (b : UInt8) : UInt8 := if 0x41 ≤ b && b ≤ 0x5a then b + 0x20 else b
+/-- The values of the fields named `n`, case-insensitively: `Http1.fieldValues` with the name
+given as a string. -/
+def values (fs : List FieldLine) (n : String) : List (List UInt8) := fieldValues fs (ascii n)
 
-/-- ASCII case-insensitive equality. -/
-def ieq (x y : List UInt8) : Bool := x.map lower == y.map lower
-
-/-- The values of the fields named `n` (case-insensitive, RFC 9110 §5.1), in order. -/
-def values (fs : List FieldLine) (n : String) : List (List UInt8) :=
-  (fs.filter fun f => ieq f.name (ascii n)).map (·.value)
-
-/-- Drop optional whitespace at both ends. -/
-def trim (v : List UInt8) : List UInt8 :=
-  let ows (b : UInt8) : Bool := b == 0x20 || b == 0x09
-  ((v.dropWhile ows).reverse.dropWhile ows).reverse
-
-/-- Split at every comma (structural, so that the kernel evaluates it). -/
-def splitComma : List UInt8 → List (List UInt8)
-  | [] => [[]]
-  | b :: bs =>
-    match splitComma bs with
-    | [] => [[b]]
-    | x :: xs => if b == 0x2c then [] :: x :: xs else (b :: x) :: xs
-
-/-- The non-empty elements of a comma-separated list (RFC 9110 §5.6.1), trimmed. -/
-def listElems (v : List UInt8) : List (List UInt8) :=
-  ((splitComma v).map trim).filter (!·.isEmpty)
-
-/-- Some list element of some field named `n` is `tok`, case-insensitively. -/
+/-- Some list element (`Http1.fieldElements`, RFC 9110 §5.6.1) of the fields named `n` is
+`tok`, case-insensitively. To be replaced by `Http1.fieldHasToken` (#156). -/
 def hasToken (fs : List FieldLine) (n tok : String) : Bool :=
-  (values fs n).any fun v => (listElems v).any fun e => ieq e (ascii tok)
+  (fieldElements fs (ascii n)).any fun e => lower e == lower (ascii tok)
 
 /-- The octets of an ASCII character list. -/
 def charBytes (cs : List Char) : List UInt8 := cs.map fun c => c.toNat.toUInt8
@@ -137,7 +114,7 @@ def readOffer (h : RequestHead) : Except HandshakeError Offer :=
           if !validKey key then .error .key
           else if values fs "Sec-WebSocket-Version" != [ascii "13"] then .error .wsVersion
           else .ok ⟨host, h.line.target, key,
-            (values fs "Sec-WebSocket-Protocol").flatMap listElems⟩
+            fieldElements fs (ascii "Sec-WebSocket-Protocol")⟩
         | _ => .error .key
     | _ => .error .host
 

@@ -76,16 +76,18 @@ def applyEnableConnect (enabled : Bool) (value : Nat) : Except ErrorCode Bool :=
 /-- The request pseudo-header fields with `:protocol`. -/
 def extendedPseudo : List (List UInt8) := requestPseudo ++ [ascii ":protocol"]
 
-/-- An extended CONNECT request header section, given whether the peer enabled it. -/
+/-- An extended CONNECT request header section, given whether the peer enabled it. The
+`:protocol` value is non-empty (an upgrade token, RFC 9110 §7.8). -/
 def validExtendedConnect (enabled : Bool) (fs : List Entry) : Bool :=
   enabled && validSection extendedPseudo fs &&
     pseudoValues fs ":method" == [ascii "CONNECT"] &&
     (pseudoValues fs ":protocol").length == 1 &&
     (pseudoValues fs ":authority").length == 1 &&
     (pseudoValues fs ":scheme").length == 1 &&
-    match pseudoValues fs ":path" with
+    (match pseudoValues fs ":path" with
     | [p] => !p.isEmpty
-    | _ => false
+    | _ => false) &&
+    (pseudoValues fs ":protocol").all (!·.isEmpty)
 
 /-- The values of the regular field `n` (lower case, as HTTP/2 requires, RFC 9113 §8.2.1). -/
 def fieldValues (fs : List Entry) (n : String) : List (List UInt8) :=

@@ -46,7 +46,7 @@ theorem mem_of_pseudoValues {fs : List Entry} {n : String} {v : List UInt8}
 theorem extended_not_classic {b : Bool} {fs : List Entry} (h : validExtendedConnect b fs = true) :
     validRequest fs = false := by
   simp only [validExtendedConnect, Bool.and_eq_true, beq_iff_eq] at h
-  have hp : (pseudoValues fs ":protocol").length = 1 := h.1.1.1.2
+  have hp : (pseudoValues fs ":protocol").length = 1 := h.1.1.1.1.2
   obtain ⟨v, hv⟩ : ∃ v, v ∈ pseudoValues fs ":protocol" := by
     match hq : pseudoValues fs ":protocol" with
     | [v] => exact ⟨v, by simp⟩
@@ -70,6 +70,11 @@ example : validWebSocketRequest true rfc8441Request = true := by decide
 example : validWebSocketRequest false rfc8441Request = false := by decide
 example : validRequest rfc8441Request = false := by decide
 example : tunnelAccepted rfc8441Response = true := by decide
+/-- An empty `:protocol` is not an upgrade token. -/
+example : validExtendedConnect true [⟨ascii ":method", ascii "CONNECT"⟩, ⟨ascii ":protocol", []⟩,
+    ⟨ascii ":scheme", ascii "https"⟩, ⟨ascii ":path", ascii "/"⟩,
+    ⟨ascii ":authority", ascii "a"⟩] = false := by
+  decide
 
 /-- A classic HTTP/2 CONNECT (RFC 9113 §8.5) is valid there and is not extended. -/
 example : validRequest [⟨ascii ":method", ascii "CONNECT"⟩,

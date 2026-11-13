@@ -51,7 +51,7 @@ No module here uses `sorry`, `native_decide` or `axiom`.
 | §5.5.1, §7.4 | Close body: empty, or a 2-octet code plus a UTF-8 reason; codes that may be sent (1000–1003, 1007–1014, 3000–4999) | **Proved**: the body codec is a bijection on valid bodies (`decodeClose_encodeClose`, `decodeClose_sound`). **Checked**: 1000 accepted, 1005 rejected |
 | §5.5.1, §7.1 | Closing handshake: no data after sending Close; Close in response; clean close needs both Close frames | **Proved** by the verified decision procedures: `no_data_after_close_sent`, `clean_close_needs_both`, `conn_closed_final`, `conn_all_reachable` |
 | §5.6, §8.1 | Text is UTF-8 (checked on the whole message, so a code point may span fragments); failure code 1007 | Defined (`complete`, `Failure.code`). **Checked**: a code point split across fragments is accepted; a lone continuation octet is rejected |
-| §4.1 | The client's request: `GET`, HTTP/1.1, `Host`, `Upgrade: websocket`, `Connection: Upgrade`, a 16-octet base64 key, version 13 | **Proved**: `readOffer_clientRequest` (the server reads back what the client sent) and `readOffer_sound` |
+| §4.1 | The client's request (fields read with `Http1.fieldValues`/`fieldElements`): `GET`, HTTP/1.1, `Host`, `Upgrade: websocket`, `Connection: Upgrade`, a 16-octet base64 key, version 13 | **Proved**: `readOffer_clientRequest` (the server reads back what the client sent) and `readOffer_sound` |
 | §4.2.2 | `Sec-WebSocket-Accept = base64(SHA-1(key ++ GUID))` and the 101 response | **Checked** by the kernel: the RFC example key and accept (`accept_rfc6455`), and the SHA-1 vector of §1.3 (`digest_rfc6455`) |
 | §4.1 | The client validates the response: 101, tokens, accept, no unoffered extension, subprotocol among those offered | **Proved**: the server's response passes for every offer and selection (`checkResponse_respond`). Soundness: `checkResponse_sound` |
 | §4.4 | Unsupported version → 426 with `Sec-WebSocket-Version: 13` | Defined (`versionRejection`). **Checked** |
@@ -127,16 +127,21 @@ This track only *reads* the other tracks' public definitions:
 - From encodings: `Base64` (`encodeChars`, `decodeChars`).
 - From cryptography: `Crypto.Padding`, `Crypto.Word`.
 
-It asks the owning tracks for these narrow, stable definitions:
+Field lookup and the list syntax now come from the HTTP/1.1 track (on `main`):
+`Http1.fieldValues`, `listElements` and `fieldElements`. `Handshake.values` is only
+`fieldValues` with a string name.
 
-| Need | Proposed definition | Owner |
+Remaining follow-ups with the other tracks:
+
+| Need | Plan | Owner |
 | --- | --- | --- |
-| The RFC 9110 §5.6.1 `#rule` list parser | `Http.Field.listElements : List UInt8 → List (List UInt8)`, plus a theorem that a token is its own single element. `Handshake.listElems` is a local stand-in | HTTP semantics / HTTP/1.1 track |
-| Case-insensitive field lookup on HTTP/1.1 heads | `Http1.fieldValues (fs : List FieldLine) (name : String) : List Bytes`. `Handshake.values` is a local stand-in | HTTP/1.1 track |
-| Big-endian `k`-octet integers with general round-trip lemmas | Move `beBytes`/`beValue` from `Http2` to `Net.Wire`, with `beValue_beBytes` and `beBytes_beValue` (proved here in `WebSocket.Frame.Thms` for any `k`) | whoever owns `Net.Wire`; the bytes-standards proposal (moria-lean#2033) |
-| Decoded HTTP/3 field sections | `List Hpack.Entry` (or an alias) as QPACK's output, so that `Tunnel.Connect` applies to RFC 9220 unchanged | QUIC/H3 track |
-| HTTP/3 `SETTINGS_ENABLE_CONNECT_PROTOCOL` | A setting identifier constant equal to `Tunnel.settingEnableConnectProtocol` | QUIC/H3 track |
-| permessage-deflate | A raw-DEFLATE member decoder with the "sync flush" tail of RFC 7692 §7.2.1 | compression track |
+| Token membership in a field list | Replace `Handshake.hasToken` with `Http1.fieldHasToken`, and `SingleElems` with `Http1.listElements_token`, once #156 lands | HTTP/1.1 track |
+| Big-endian `k`-octet integers | A separate small pull request that moves `beBytes`/`beValue` from `Http2` to `Net.Wire`, re-exports them from `Http2`, and carries `beValue_beBytes`, `beBytes_beValue` and `beValue_lt` (proved here for any `k`) | `Net.Wire`; see also moria-lean#2033 |
+| HTTP/3 field sections | Already `List Hpack.Entry` in #159, so `Tunnel.Connect` applies to RFC 9220 unchanged | done |
+| `SETTINGS_ENABLE_CONNECT_PROTOCOL` | `Http3.settingEnableConnectProtocol` (#159) and `Tunnel.settingEnableConnectProtocol` are both 0x08. Whichever lands second defines its constant as the other's | QUIC/H3 track and this track |
+| Two `validExtendedConnect`s | `Tunnel` (this PR) and `Http3.ExtendedConnect` (#159) differ: this one needs exactly one `:authority` and a non-empty `:path` for every scheme. After both merge, prove `Tunnel.validExtendedConnect → Http3.validExtendedConnect` or make one canonical | both tracks |
+| permessage-deflate (RFC 7692) | Call `Formats.Compression.SyncFlush.inflateMessage` (#160) on messages with RSV1, once the extension is negotiated | compression track (#160), then this track |
+| Taking over the connection after 101 | #156's `keepOpen`/`switches` hand the connection to `Tunnel.Upgrade`; `stripHopByHop` removes `Upgrade`/`Connection` before forwarding | HTTP/1.1 track |
 
 ## Architecture gaps found
 
