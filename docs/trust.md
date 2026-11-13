@@ -101,9 +101,19 @@ native_tactic lean.std.bv_decide.verifyBVExpr
   fallback "bv_normalize only"
 ```
 
-Audits count axioms `<decl>._native.<axiom_tag>.ax_<n>` as that procedure (`own_native` or
-`dep_native`) and check them against the policy like any other. Registration describes and
-classifies; it does not authorize a run. The framework module that invokes the tactic must:
+Registration requires that the evaluated constant exists and that `toolchain` is the running
+toolchain (`Lean.toolchain`). An axiom tag can belong to only one procedure, and `edge` is
+reserved. The `fallback` text is a description: it does not make `kernel_fallback` true.
+
+Audits **classify** an axiom `<decl>._native.<axiom_tag>.ax_<n>` as the procedure by name, but
+count it as a procedure-backed use (`own_native`/`dep_native`) only when it is **verified**:
+
+* a recorded use of that procedure names exactly this axiom; and
+* the axiom's statement mentions the evaluated constant (or the paired native function).
+
+The same rule applies to `edge_decide` and `sil_check` axioms. Anything else is listed in
+`unverified_native` and is a violation, whatever the policy allows. Registration describes
+and classifies; it does not authorize a run. The framework module that invokes the tactic must:
 
 1. call `Silmaril.Trust.nativeAllowed name : CoreM Bool` (policy, profile and ceiling);
 2. if allowed, run the tactic, then call `Silmaril.Trust.recordUse` with `mode := .native` and
@@ -179,7 +189,7 @@ renaming or removing a field bumps the version.
 | `use` | `#trust_uses` | `decl`, `module`, `procedure`, `mode` (`native` or `kernel`), `profile` (e.g. `default`, `local≤paranoid` under a ceiling), `axiom` (string or null) |
 | `set` | `#trust_registry` | `name`, `all` (bool), `members`, `includes`, `resolved` (`"all"` or list of names) |
 | `scope` | `#trust_registry` | `module` (prefix), `max`, `default`, `deps`, `axioms` (set names or null when inherited), `policy_file`, `policy_pin` |
-| `audit` | `trust_audit`, `#trust_dump` | `decl`, `module`, `profile` (the audit's), `elaborated_profiles` (recorded when the declaration's own uses elaborated), `own_native`, `dep_native` (procedure names), `native_axioms`, `axioms` (non-native axioms), `violations` (strings; empty when within policy) |
+| `audit` | `trust_audit`, `#trust_dump` | `decl`, `module`, `profile` (the audit's), `elaborated_profiles` (recorded when the declaration's own uses elaborated), `own_native`, `dep_native` (verified procedure names), `unverified_native` (`{procedure, axiom}` matched by name only), `native_axioms`, `axioms` (non-native axioms), `violations` (strings; empty when within policy) |
 | `module` | `#trust_dump … M₁ M₂` | `module`, `imports`, `profile`, `ceiling`, `max`, `default`, `deps`, `axioms`, `allowed` (`"all"` or names), `scopes` (the scope chain); or `policy_error` |
 | `declared_procedure` | `#trust_decls`, `#trust_dump` | `name`, `constant`, `native` and `kernel` (`{check, sound}` or null), `format`, `doc` |
 

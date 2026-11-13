@@ -59,8 +59,8 @@ theorem byPairedKernel : evenSum 100 = true := by edge_decide test.evenSumPaired
 
 set_option silmaril.trust.profile "local" in
 /--
-info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.byPaired","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1"],"own_native":["test.evenSumPaired"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
-{"axioms":[],"decl":"Silmaril.Trust.Examples.byPairedKernel","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.byPaired","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1"],"own_native":["test.evenSumPaired"],"profile":"local","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+{"axioms":[],"decl":"Silmaril.Trust.Examples.byPairedKernel","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit byPaired byPairedKernel
@@ -102,16 +102,16 @@ theorem pairKernelAllowed : SumEven 100 :=
   by edge_pair (native := sumEvenN_sound 100) (kernel := sumEvenK_sound 100)
 
 /--
-info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernelAllowed","dep_native":[],"elaborated_profiles":["kernelSideOnly"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernelAllowed","dep_native":[],"elaborated_profiles":["kernelSideOnly"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit pairKernelAllowed
 
 set_option silmaril.trust.profile "local" in
 /--
-info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairNative","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1"],"own_native":["test.sumEvenN"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
-{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernel","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
-{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernelAllowed","dep_native":[],"elaborated_profiles":["kernelSideOnly"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairNative","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1"],"own_native":["test.sumEvenN"],"profile":"local","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernel","dep_native":[],"elaborated_profiles":["paranoid"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.pairKernelAllowed","dep_native":[],"elaborated_profiles":["kernelSideOnly"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit pairNative pairKernel pairKernelAllowed
@@ -149,15 +149,15 @@ set_option silmaril.trust.profile "sumEvenSet" in
 example : SumEven 100 := by sil_check test.sumEven (native := sumEvenK_sound 100)
 
 /--
-info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernel","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
-{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernelOnly","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernel","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+{"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernelOnly","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit silKernel silKernelOnly
 
 set_option silmaril.trust.profile "sumEvenSet" in
 /--
-info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silNative","dep_native":[],"elaborated_profiles":["sumEvenSet"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1"],"own_native":["test.sumEven"],"profile":"sumEvenSet","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silNative","dep_native":[],"elaborated_profiles":["sumEvenSet"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1"],"own_native":["test.sumEven"],"profile":"sumEvenSet","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit silNative
@@ -193,7 +193,7 @@ set_option silmaril.trust.profile "local" in
 theorem underCeiling : evenSum 100 = true := by edge_decide test.evenSum
 
 /--
-info: {"axioms":[],"decl":"Silmaril.Trust.Examples.underCeiling","dep_native":[],"elaborated_profiles":["local≤paranoid"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":[],"decl":"Silmaril.Trust.Examples.underCeiling","dep_native":[],"elaborated_profiles":["local≤paranoid"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit underCeiling
@@ -218,7 +218,7 @@ set_option silmaril.trust.profile "nosuchset" in
 example : evenSum 100 = true := by edge_decide test.evenSum
 
 /--
-info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byDefault","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byDefault","dep_native":[],"elaborated_profiles":["default"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit byDefault
@@ -233,7 +233,7 @@ trust_audit byLocal
 
 set_option silmaril.trust.profile "local" in
 /--
-info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byLocal","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1"],"own_native":["test.evenSum"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
+info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byLocal","dep_native":[],"elaborated_profiles":["local"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1"],"own_native":["test.evenSum"],"profile":"local","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
 -/
 #guard_msgs in
 trust_audit byLocal
@@ -269,25 +269,43 @@ info: roundtrip ok: 5 procedures, 13 uses
 
 /-! ### A registered native tactic
 
-`decide +native` adds `<decl>._native.decide.ax_…`. Registered under the tag `decide`, those
-axioms count as the procedure in audits. (A real framework would ask `nativeAllowed` before
-running the tactic; this only tests the audit side.) -/
+`decide +native` adds `<decl>._native.decide.ax_…`. Registered under the tag `decide`, that
+one is classified as the procedure, but it counts as an audited use only if a framework
+recorded the run that produced exactly that axiom. Here nothing recorded it, so the audit
+flags it as unverified even where the procedure is allowed. -/
 
 /-- Test registration of the native-evaluating `decide`. -/
 native_tactic test.decideNative evaluates Decidable.decide axiom_tag decide
   components ["compiled Decidable instance"] toolchain "leanprover/lean4:nightly-2026-11-05"
 
+/-- error: axiom tag decide already belongs to test.decideNative -/
+#guard_msgs in
+native_tactic test.other evaluates Decidable.decide axiom_tag decide
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+
+/-- error: native_tactic test.missing: the evaluated constant No.Such.fn does not exist -/
+#guard_msgs in
+native_tactic test.missing evaluates No.Such.fn axiom_tag missing
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+
+/--
+error: native_tactic test.oldToolchain: described for toolchain "leanprover/lean4:v4.0.0", but this is "leanprover/lean4:nightly-2026-11-05"; review the description and update it
+-/
+#guard_msgs in
+native_tactic test.oldToolchain evaluates Decidable.decide axiom_tag old
+  toolchain "leanprover/lean4:v4.0.0"
+
 theorem byDecideNative : (List.range 50).length = 50 := by decide +native
 
 set_option silmaril.trust.profile "local" in
 /--
-info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byDecideNative","dep_native":[],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1"],"own_native":["test.decideNative"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it
 -/
 #guard_msgs in
 trust_audit byDecideNative
 
 /--
-error: trust_audit Silmaril.Trust.Examples.byDecideNative: own native test.decideNative is not allowed
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it
 -/
 #guard_msgs in
 trust_audit byDecideNative
