@@ -23,7 +23,7 @@ stage:
 	chmod +x build/bin/sil
 
 library:
-	$(LAKE) build --wfail Silmaril SilmarilSpecTec SilmarilWasiWit SilmarilWasmProject
+	$(LAKE) build --wfail Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject
 
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
@@ -33,7 +33,7 @@ CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront 
 	ci_cerberus_parameter_call
 # The C compiler's executables (docs/projects/ccomp.md).
 CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit SilmarilWasmProject ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \

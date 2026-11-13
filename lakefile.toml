@@ -1,6 +1,6 @@
 name = "silmaril"
 version = "0.1.0"
-defaultTargets = ["Silmaril", "SilmarilSpecTec", "SilmarilWasiWit", "SilmarilWasmProject"]
+defaultTargets = ["Silmaril", "SilmarilSpecTec", "SilmarilSpecTecMeta", "SilmarilWasiWit", "SilmarilWasmProject"]
 restoreAllArtifacts = true
 [leanOptions]
 autoImplicit = false
@@ -187,13 +187,67 @@ globs = [
 # as on main. Declared after `Silmaril` so that imports resolve to this library.
 [[lean_lib]]
 name = "SilmarilSpecTec"
-globs = ["Silmaril.Wasm.SpecTec.+", "Silmaril.Proofs.Wasm.SpecTec.+", "Silmaril.Raw.Wasm.SpecTec.+"]
+globs = [
+  "Silmaril.Wasm.SpecTec.AstText.+",
+  "Silmaril.Wasm.SpecTec.BinaryAgree.+",
+  "Silmaril.Wasm.SpecTec.Broken.+",
+  "Silmaril.Wasm.SpecTec.Defs",
+  "Silmaril.Wasm.SpecTec.GrammarInst.+",
+  "Silmaril.Wasm.SpecTec.Institution.+",
+  "Silmaril.Wasm.SpecTec.Lime1Gram.+",
+  "Silmaril.Wasm.SpecTec.Scripts.+",
+  "Silmaril.Wasm.SpecTec.Sim.+",
+  "Silmaril.Wasm.SpecTec.Sim10.+",
+  "Silmaril.Wasm.SpecTec.Sim20.+",
+  "Silmaril.Wasm.SpecTec.SimLime1.+",
+  "Silmaril.Wasm.SpecTec.SimLime1Div.+",
+  "Silmaril.Wasm.SpecTec.SimLime1Div20.+",
+  "Silmaril.Wasm.SpecTec.Surface.+",
+  "Silmaril.Wasm.SpecTec.Thms",
+  "Silmaril.Wasm.SpecTec.VersionEval.+",
+  "Silmaril.Wasm.SpecTec.Versions.+",
+  "Silmaril.Proofs.Wasm.SpecTec.AstText.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Broken.+",
+  "Silmaril.Proofs.Wasm.SpecTec.GrammarInst.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Institution.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Lime1Gram.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Scripts.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Sim.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Sim10.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Sim20.+",
+  "Silmaril.Proofs.Wasm.SpecTec.SimLime1.+",
+  "Silmaril.Proofs.Wasm.SpecTec.SimLime1Div.+",
+  "Silmaril.Proofs.Wasm.SpecTec.SimLime1Div20.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Surface.+",
+  "Silmaril.Proofs.Wasm.SpecTec.Versions.+",
+  "Silmaril.Raw.Wasm.SpecTec.Basic",
+  "Silmaril.Raw.Wasm.SpecTec.Encode",
+  "Silmaril.Raw.Wasm.SpecTec.EncodeOps",
+  "Silmaril.Raw.Wasm.SpecTec.Examples",
+  "Silmaril.Raw.Wasm.SpecTec.FloatBits",
+  "Silmaril.Raw.Wasm.SpecTec.Generated",
+  "Silmaril.Raw.Wasm.SpecTec.Scripts",
+  "Silmaril.Raw.Wasm.SpecTec.Scripts.+",
+  "Silmaril.Raw.Wasm.SpecTec.Sim.+",
+  "Silmaril.Raw.Wasm.SpecTec.Sim10.+",
+  "Silmaril.Raw.Wasm.SpecTec.Sim20.+",
+  "Silmaril.Raw.Wasm.SpecTec.SpecTec",
+  "Silmaril.Raw.Wasm.SpecTec.SpecTec.+",
+  "Silmaril.Raw.Wasm.SpecTec.Wasm.+",
+]
 needs = [
   "spectecWasm10", "spectecWasm20", "spectecWasm30",
   "spectecMainWasm10", "spectecMainWasm20", "spectecMainWasm30",
   "spectecSurfaceVars", "spectecSurfaceNum", "spectecSurfaceBinary",
-  "spectecMetaTheory",
 ]
+
+
+# The SpecTec meta-theory reads its IL stream while elaborating; its own library carries that
+# input, so the other SpecTec modules keep their traces.
+[[lean_lib]]
+name = "SilmarilSpecTecMeta"
+globs = ["Silmaril.Wasm.SpecTec.Meta.+", "Silmaril.Proofs.Wasm.SpecTec.Meta.+"]
+needs = ["spectecMetaTheory"]
 
 [[input_file]]
 name = "spectecMetaTheory"
