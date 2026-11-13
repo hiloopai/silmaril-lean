@@ -30,6 +30,8 @@ fn text_field<'a>(r: &'a Record, key: &str) -> Option<&'a str> {
         (Record::Model(x), "doc") => &x.doc,
         (Record::Spec(x), "doc") => &x.doc,
         (Record::Room(x), "doc") => &x.doc,
+        (Record::Machine(x), "doc") => &x.doc,
+        (Record::MachineBinding(x), "doc") => &x.doc,
         _ => return None,
     };
     f.as_deref()
@@ -42,8 +44,8 @@ fn compare(cx: &Ctx, at: &str, t: &RecordTable, o: &mut Outcome) {
     let (kind, fields_kind) = match t.kind.as_str() {
         "instance" => ("instance", "judgement"),
         k @ ("artifact_type" | "format" | "format_default" | "value" | "model" | "spec"
-        | "room" | "judgement" | "detached" | "deprecation" | "finding" | "group"
-        | "children") => (k, k),
+        | "room" | "machine" | "machine_binding" | "judgement" | "detached"
+        | "deprecation" | "finding" | "group" | "children") => (k, k),
         _ => return,
     };
     if cx.get(kind, name).is_none() {

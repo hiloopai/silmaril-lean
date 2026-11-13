@@ -1,0 +1,7 @@
+X86_64 SB+lock-xadds
+"Hand-written: SB where each store is a lock xadd"
+{ int x=0; int y=0; 0:rax=1; 1:rax=1; }
+ P0                  | P1                  ;
+ lock xaddl %eax,(x) | lock xaddl %eax,(y) ;
+ movl (y),%ebx       | movl (x),%ebx       ;
+exists (0:rbx=0 /\ 1:rbx=0)

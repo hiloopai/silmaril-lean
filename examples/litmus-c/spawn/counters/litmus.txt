@@ -1,0 +1,14 @@
+# Two children increment separate counters; the parent reads both after joining both.
+name Counters
+source counters.c
+loc c1 0x10000 4 0
+loc c2 0x10040 4 0
+loc r0 0x10080 4 0
+loc r1 0x100c0 4 0
+thread P0
+thread P1 spawned
+thread P2 spawned
+quant forall
+cond r0=1 /\ r1=1 /\ c1=1 /\ c2=1
+verdict forbidden forbidden forbidden
+dom 0 1
