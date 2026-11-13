@@ -1,0 +1,6 @@
+package test:refs;
+
+world missing {
+  export add: func(a: u32, b: u32) -> u32;
+  export mul: func(a: u32, b: u32) -> u32;
+}

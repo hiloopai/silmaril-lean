@@ -1,0 +1,13 @@
+[package]
+name = "door-lock"
+description = "A PIN door lock state machine over the `spec` and `door` institutions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+institution = { path = "../institution" }
+
+[dev-dependencies]
+proptest = "=1.7.0"

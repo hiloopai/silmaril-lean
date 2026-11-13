@@ -1,0 +1,1800 @@
+andn %ebx, %r8d, %r13d
+andn %r8, %r13, %r10
+xaddl %ebx, %r8d
+rorx $121, %edx, %r8d
+testq $558426495, %rbx
+movbel -29(%r8), %r12d
+rorx $186, 14(%r12), %r14
+xaddl %ebp, %r8d
+imull $-102, %r9d, %r13d
+blsr %r12, %rsi
+andn -14(%r9), %rsi, %r14
+testl $128, %esi
+imulq -14(%rbp)
+adcx %rax, %r8
+rorx $103, %ebx, %r14d
+bzhi %r10d, -23(%r14), %ecx
+bzhi %rcx, %rbx, %r14
+pdep 12(%r11), %rsi, %rdi
+imulq $599661124, %r10, %rsi
+blsmsk %r15, %r13
+blsi %r11, %rax
+testl $1439428496, %edx
+imulq -7(%rsi)
+bsfl %eax, %ebx
+mulx -29(%r15), %rbp, %rax
+imull $32768, -32(%rbx), %edx
+rorx $232, %r15d, %ebp
+imull 15(%rsi)
+rorx $22, 22(%r15), %rax
+mulx %ecx, %ebx, %edi
+blsmsk 1(%rsi), %r12
+testq $-1691596787, -10(%r13)
+blsi 27(%r13), %r9d
+imulq $-2147483648, -1(%rdi), %r8
+sarx %r11d, %ebp, %ebx
+andn %ecx, %r12d, %r14d
+testq $183, %r14
+imulq $17, %r12, %r11
+rorx $233, %r11, %r10
+testq $4099, %rbp
+imull %r15d
+movbeq %rdi, (%r11)
+movbeq -13(%r12), %rbx
+bzhi %rcx, %r12, %r11
+sarx %r14d, 1(%r8), %r13d
+mulx %r13d, %r12d, %ebp
+blsi %r14d, %eax
+blsi 6(%r8), %eax
+sarx %r15d, %edi, %r11d
+rorx $4, 3(%r12), %eax
+rorx $242, 20(%r9), %rax
+bextr %r13d, -6(%rdi), %edx
+rorx $209, -24(%r13), %r10d
+pdep -16(%r15), %r14, %rcx
+mulx -32(%rbp), %r11, %rbx
+imull 14(%r10)
+xaddl %r14d, %edx
+imull 13(%r14)
+rorx $195, %r14, %rdx
+shrx %eax, 18(%r12), %ebx
+rorx $120, -13(%rbp), %r12
+blsmsk 13(%r12), %r9
+shlx %eax, 24(%rsi), %r14d
+cmpxchgq %rbp, %r10
+blsr -10(%r11), %rdi
+adcx 5(%rsi), %rbp
+cmpxchgq %r9, %rdi
+rorx $202, %edi, %edx
+movbeq 2(%r10), %r13
+xaddq %r10, %rcx
+shlx %rax, %r10, %rbx
+blsi 12(%rbx), %r9
+xaddl %r15d, %r8d
+rorx $29, %r12, %rax
+mulx %ebx, %ecx, %eax
+blsr 4(%rdi), %r9
+adox -25(%r11), %rdi
+movbel %r15d, -16(%rdi)
+mulx %ebx, %ecx, %r8d
+rorx $170, %r11d, %edi
+imull %edi
+rorx $136, %r14, %r10
+mulx 3(%r8), %r15, %rdx
+rorx $80, %r12, %rcx
+movbel -8(%rbp), %r13d
+adcx %rdi, %rbp
+imulq %r15
+bsrq 17(%r14), %rax
+imulq $-5, 16(%r13), %rdx
+testl $32767, -3(%r11)
+rorx $208, %esi, %r9d
+blsmsk %r10, %rbx
+bzhi %rsi, %r13, %rdi
+rorx $202, -3(%r12), %edx
+xaddl %ebx, %r14d
+rorx $236, -24(%r14), %rbx
+adox %r14d, %ebp
+shrx %r13, %rsi, %rcx
+blsr %r12d, %r8d
+testl $228, %ebx
+movbeq %r11, -8(%r14)
+mulx %r15d, %ecx, %edx
+pdep %r12, %r10, %rbp
+rorx $153, 27(%r15), %ebx
+rorx $183, (%r12), %rbp
+cmpxchgl %ebx, %edx
+blsr 11(%r11), %r15d
+imulq %rdi
+blsi %rsi, %rbp
+mulx -23(%r9), %rsi, %rcx
+sarx %rcx, -9(%r13), %r10
+imull $0, 9(%r10), %r8d
+mulx %rdi, %rbp, %rax
+adcx %r11d, %r13d
+shrx %rdx, %r8, %r13
+rorx $172, 6(%r11), %rdi
+testl $128, %r13d
+blsmsk %r8d, %ebp
+bzhi %r10d, 2(%r15), %ecx
+blsi -9(%r11), %r13d
+testq $2036834262, -25(%r15)
+rorx $85, 6(%r8), %r11d
+rorx $40, %rax, %r11
+pdep %rbx, %r11, %r12
+bsfq -18(%r10), %r8
+imull %esi
+blsr 22(%r9), %edx
+movbel 7(%r15), %ecx
+bextr %r10d, -1(%r8), %r9d
+testq $218, 8(%r8)
+bextr %r12, %rax, %rbx
+imulq %r8
+movbel -14(%rbx), %r13d
+bsrq %r11, %rbx
+adox 15(%r14), %r12d
+rorx $164, -13(%r8), %r10
+pext -20(%r13), %r9, %r10
+rorx $83, %r10d, %ebp
+bsrl 19(%r8), %edi
+blsr %ecx, %r12d
+shlx %r12d, %r9d, %ecx
+movbel 25(%r11), %ebp
+adox -21(%r15), %rbx
+blsmsk %esi, %eax
+adox 8(%r11), %r10
+mulx %r13d, %r14d, %ebp
+bsrq %rax, %r14
+imull $10, -4(%r13), %ecx
+adcx 13(%rbx), %rdi
+testq $159, %rsi
+bextr %r10d, %r9d, %ebp
+blsi %ecx, %ebp
+rorx $98, 9(%r11), %eax
+blsr -8(%r14), %r10d
+bsfl 7(%r12), %edx
+adcx -16(%rbp), %rsi
+xaddq %rdi, %r10
+andn -4(%r10), %r9d, %r14d
+rorx $117, -8(%r12), %rax
+rorx $42, 18(%rbp), %r13d
+adox 20(%r9), %r15
+mulx %rcx, %r11, %r12
+blsr %r8d, %r10d
+blsmsk %rbp, %r9
+blsmsk -15(%r14), %rbx
+imull %r10d
+imulq $-2027996701, -25(%rbx), %r11
+testq $4097, 1(%rdi)
+shrx %r9, -22(%rbx), %rsi
+testq $-876637189, %rdx
+bsrq %r10, %r13
+movbel %r13d, -18(%r8)
+xaddq %rdi, %rsi
+xaddl %r10d, %ebp
+bzhi %r13d, -7(%r10), %edx
+adcx -14(%r14), %r9d
+bzhi %rdx, -31(%rbp), %rdi
+blsi -15(%r9), %r14d
+bsrq %r11, %r15
+imulq -2(%r14)
+bsrl 19(%r15), %r11d
+blsr %r8, %rbx
+rorx $27, -32(%r9), %rax
+blsmsk %edx, %ecx
+blsi %edi, %r14d
+pext -6(%rdi), %rbp, %r15
+movbeq -27(%r8), %r10
+testq $909268781, 22(%r8)
+xaddq %r12, %rdx
+rorx $77, -31(%r12), %r11
+movbel -4(%r8), %ecx
+shlx %r8, %r11, %rsi
+cmpxchgl %r12d, %ebx
+blsr 18(%r9), %rdi
+adcx %edi, %r14d
+pext %ecx, %r13d, %r11d
+movbel 24(%rsi), %r11d
+bextr %rdx, %rcx, %rdi
+rorx $219, %ebx, %r14d
+xaddl %r15d, %edx
+bzhi %r10d, %r13d, %r14d
+blsmsk %ecx, %r12d
+rorx $189, 22(%r12), %ebp
+adcx %edx, %r9d
+blsmsk 18(%rbp), %rdx
+cmpxchgl %esi, %ecx
+blsmsk 12(%rbp), %edx
+movbel -30(%r8), %r9d
+blsr %rbx, %r13
+adcx %r8d, %ebx
+blsr %rax, %r11
+shlx %rdi, 19(%rbp), %r8
+testl $4098, %ebp
+imull %esi
+rorx $86, %edx, %eax
+imull $-426612356, %r8d, %ebp
+bsrq -7(%rbp), %r9
+imulq -10(%r8)
+xaddl %edx, %r10d
+blsmsk %rbp, %rdi
+rorx $95, %r8d, %r15d
+adox 24(%rdi), %r14
+bsfl -7(%r13), %r14d
+rorx $53, %edx, %r10d
+adox 16(%rsi), %r10d
+testl $-2147483648, %esi
+testq $65535, -23(%r10)
+imulq $-114, %rbx, %r11
+pdep %r13d, %r12d, %edi
+bsrl %r12d, %ebp
+adcx %eax, %ecx
+shrx %eax, 11(%r8), %ecx
+blsmsk %r14d, %ebp
+bsrq 23(%r9), %r13
+rorx $65, %rbp, %r12
+blsmsk %rcx, %rdi
+rorx $64, %ebx, %esi
+cmpxchgq %r9, %rdx
+testq $116491198, %rcx
+cmpxchgl %esi, %r9d
+bsfl -1(%r9), %r11d
+blsmsk 15(%r9), %r15d
+imulq $-2093739643, %rdx, %r10
+pdep -26(%r9), %rdx, %r13
+xaddq %rsi, %r9
+rorx $119, (%rdi), %r14
+blsr %r9, %r14
+imull $-128, %r14d, %r13d
+adox %esi, %ebp
+adox %edx, %r13d
+andn %r11, %rbp, %r15
+shlx %edi, %r11d, %ebp
+imulq $-68, -17(%rdi), %rax
+rorx $91, -12(%rdi), %rbp
+rorx $118, 7(%r10), %ebx
+pdep 15(%rdi), %rdx, %rsi
+shrx %r14, -20(%r10), %rbp
+testl $656908825, -12(%rbp)
+imull -20(%r13)
+movbeq -29(%rbx), %rax
+adcx %rax, %r13
+movbel %esi, -28(%r14)
+bzhi %eax, %r14d, %r9d
+rorx $145, %rcx, %r12
+imull $-13, %r15d, %r10d
+movbel -5(%rbp), %r8d
+rorx $253, -27(%r12), %r13
+blsr %r10d, %r8d
+imull %ebx
+pdep 18(%r13), %r10d, %r8d
+imulq %rbp
+shlx %r12, %r15, %r13
+blsr -30(%r9), %r8
+shlx %ebp, %esi, %r10d
+blsmsk %r11d, %edx
+rorx $65, -32(%r12), %eax
+adcx %rbx, %r12
+cmpxchgq %rbp, %rdi
+imull $-91, %r15d, %edx
+bzhi %r11d, -17(%r15), %r13d
+blsi %rbp, %rsi
+movbeq %r12, 18(%r14)
+imulq $86, -24(%r8), %rbx
+blsmsk -19(%r15), %rsi
+blsi 17(%rbp), %r15
+rorx $198, 10(%r15), %r14
+imulq 4(%rbx)
+blsmsk -8(%rbx), %esi
+blsr -24(%rbp), %edi
+imull %r14d
+mulx %r13, %r9, %r11
+blsmsk 6(%r8), %r14d
+bextr %ebp, %edx, %r8d
+blsi -3(%rbx), %esi
+imull $1154549220, -12(%rdi), %r13d
+bsfl -1(%r9), %ebx
+imull -5(%r9)
+bsrq 4(%r10), %rdi
+blsi %r10, %rsi
+sarx %r8, 10(%r14), %rdx
+rorx $16, 7(%r11), %rax
+shlx %rdi, %rbx, %rdx
+movbeq -4(%r10), %rdi
+imulq %rbp
+testl $-288220159, %edi
+imulq $-119, 4(%r14), %r10
+rorx $157, -21(%r11), %rdx
+imulq $2, %rbp, %r12
+imull 27(%r9)
+andn 1(%rbx), %rsi, %rbp
+rorx $226, %r14d, %esi
+xaddq %rbx, %r10
+testq $4134, 11(%rsi)
+pext -2(%rbx), %r11, %r13
+imulq %r13
+adcx -2(%r13), %r12
+movbeq -1(%r15), %rbp
+mulx -16(%r9), %ebp, %ebx
+rorx $101, 3(%r9), %ebx
+movbel %r10d, -19(%r9)
+shrx %edi, %edx, %r14d
+blsi %eax, %r9d
+bsfq -26(%r15), %r14
+movbel %r11d, 2(%rsi)
+xaddq %rbx, %rcx
+cmpxchgl %r13d, %ecx
+blsmsk 21(%r12), %r11d
+blsr -8(%r12), %rbx
+pdep %rbx, %rax, %rcx
+adcx %rcx, %r14
+xaddq %rdx, %r14
+shrx %r14d, -6(%rbx), %r11d
+imull $25, %ebx, %r8d
+pext %r14d, %r9d, %r10d
+shrx %r8, %rcx, %rbp
+pdep %eax, %r11d, %r9d
+blsr 11(%r10), %r14d
+blsr -17(%r14), %r8
+bsfq %rax, %rsi
+shlx %rax, %rdi, %rsi
+bsfq %r14, %rbx
+shlx %r13, -28(%rbp), %r8
+rorx $20, -30(%r13), %ebx
+bsrq %rdx, %rbx
+adox 21(%rbx), %r15d
+blsr -5(%rsi), %edi
+sarx %r11d, -19(%r8), %edi
+imulq %r9
+movbel -1(%r8), %ecx
+imull $-110, 16(%r14), %ecx
+movbel %ecx, -25(%rdi)
+bzhi %r14d, -2(%rsi), %ebx
+andn %r8d, %r12d, %edx
+testl $4161, -7(%r8)
+imulq $84, %rdi, %rax
+testq $4097, %r15
+cmpxchgl %r14d, %edx
+movbel -1(%r12), %eax
+blsr %r13d, %esi
+cmpxchgq %rdx, %r15
+movbel %r9d, -23(%r12)
+shlx %rbp, %rax, %r15
+imulq $611230121, %r15, %rax
+blsmsk 8(%r11), %r9d
+rorx $79, %rdi, %rax
+sarx %r13d, -5(%rbp), %r15d
+imulq 22(%rsi)
+sarx %rdx, -10(%r9), %rbp
+bsfq %r14, %r9
+xaddl %ebp, %r9d
+imulq -7(%rbp)
+bsrq %rdx, %r12
+rorx $199, %esi, %r8d
+imulq $0, 7(%r11), %r10
+testl $32767, -17(%r15)
+blsmsk 16(%r15), %r13
+pdep %r13, %rax, %r15
+blsi %r14, %rdx
+bsfl (%rsi), %r12d
+rorx $150, %r11, %rdi
+blsi %r9d, %r13d
+imull %esi
+xaddq %r12, %r11
+pdep -11(%rsi), %r15, %r11
+xaddl %edi, %ecx
+rorx $135, -17(%rdi), %r9d
+blsmsk %r14d, %r9d
+blsr %r9, %r13
+blsi 1(%r10), %ebp
+rorx $243, %r8d, %r15d
+blsmsk %ebx, %r13d
+blsmsk %rdx, %rsi
+imull %ebp
+shrx %r11, -26(%r9), %r10
+movbel -32(%r14), %ebp
+adox 24(%r11), %rbp
+xaddl %r9d, %r15d
+testq $4096, %r14
+rorx $70, %ebp, %r9d
+imulq $0, %rax, %rbp
+shrx %r8, %r12, %r11
+imull $29374664, %r14d, %r15d
+andn %esi, %eax, %edi
+imulq -18(%r8)
+blsr %r11d, %r10d
+bsfl %edx, %esi
+imulq $1, 12(%rdi), %r8
+mulx 12(%rbx), %rbp, %r11
+imull $104, %r14d, %r9d
+imull $1653823356, %eax, %r15d
+adox -14(%r12), %ebp
+adox %r12d, %r14d
+adcx %r10, %rsi
+blsmsk -24(%r9), %r10d
+blsmsk -32(%r12), %rsi
+blsi 10(%rbp), %r10d
+bzhi %esi, %ebp, %edx
+testq $-406186051, -8(%r15)
+blsmsk -12(%rbp), %r15
+testl $-468683106, -13(%r13)
+testl $4096, -19(%r12)
+testl $128, %r13d
+pext 11(%r8), %edx, %ecx
+imulq -24(%r15)
+rorx $123, 14(%r9), %r8d
+shrx %ecx, -7(%r14), %r11d
+mulx %rbx, %r13, %r10
+blsi %r15d, %r8d
+blsi %rbp, %r14
+bsfq %rax, %r9
+blsi -30(%r9), %r11d
+bsrl %ebp, %eax
+rorx $124, 28(%rbp), %edi
+testq $2065189332, -7(%r11)
+bsrq 9(%rdi), %r14
+testl $4184, -5(%rdi)
+xaddl %eax, %ebp
+blsmsk %r11, %rax
+mulx %rbp, %rsi, %r10
+blsi -27(%rsi), %r9d
+shlx %r15, 15(%r13), %rdx
+bzhi %rax, -32(%r8), %r10
+cmpxchgq %rsi, %r12
+shrx %r10, 17(%r15), %r13
+rorx $139, -25(%r13), %r8d
+imull 6(%r8)
+adcx %rsi, %r11
+rorx $223, %r8d, %r9d
+testl $-1902505294, 2(%r11)
+bsfl -5(%r13), %r10d
+bsfl %r10d, %r9d
+bsrl %r9d, %ebx
+rorx $165, %r15, %rcx
+pext 9(%rbp), %r8, %rdx
+rorx $242, %r10, %r14
+andn %r15, %r9, %rdi
+movbeq %r13, -29(%r10)
+blsi -27(%r11), %rax
+rorx $224, -14(%r15), %edx
+xaddq %rsi, %rdi
+bzhi %r13d, %r8d, %ebp
+blsi 15(%r12), %r10d
+adcx %r11d, %r8d
+bsfl 4(%r12), %r10d
+adox 1(%r14), %r10
+pdep %rdi, %rbp, %r14
+testl $274779507, 10(%rdi)
+imull -31(%rbx)
+bextr %edx, -22(%r9), %ecx
+sarx %r12, %r15, %r9
+rorx $203, -12(%r11), %rsi
+rorx $172, %rcx, %rbx
+pext %ebx, %r10d, %r13d
+rorx $168, %ebx, %r9d
+blsi %r10d, %esi
+blsr %ebp, %esi
+rorx $143, 7(%rdi), %r10d
+blsmsk 10(%r11), %r12d
+blsr 3(%rdi), %r14d
+movbeq %rdi, 16(%rbp)
+imulq $-79, %rsi, %r11
+adox %r10, %r15
+imull $-1093399337, %ebx, %r11d
+imulq $501208754, %r8, %r14
+adox %r12d, %ebx
+adcx -20(%r8), %r12d
+bzhi %rcx, -32(%r12), %rbx
+bsrq 21(%r9), %r15
+testq $-1145596185, %r9
+rorx $170, %rdi, %rcx
+imulq $2, -23(%r8), %rbx
+imull %r15d
+imull 26(%r12)
+andn 5(%r11), %ebx, %r13d
+rorx $233, -18(%rdi), %r10d
+pext -26(%rdi), %r14, %r13
+blsr %r15d, %edi
+xaddl %esi, %ebp
+movbeq 6(%r8), %r13
+andn 10(%rdi), %r9, %r11
+cmpxchgq %r11, %rdx
+testl $1847073591, %r15d
+bzhi %r10, %rdi, %rdx
+blsr -10(%r14), %esi
+testl $752484658, -13(%r11)
+cmpxchgl %esi, %r13d
+bsfl -21(%r13), %ebx
+pdep -13(%r11), %r12, %r10
+xaddl %r15d, %ecx
+testl $1359802355, -11(%r13)
+adcx %r13, %rdx
+imull -23(%rbx)
+pext %rdi, %r9, %rbx
+rorx $228, %ebp, %esi
+adcx %r12, %rbx
+shrx %ecx, -5(%r15), %ebp
+rorx $180, (%rsi), %r9d
+sarx %rdi, %rsi, %r10
+xaddq %r8, %rsi
+rorx $248, 2(%r15), %rbx
+rorx $8, %rbx, %r9
+bsrq -23(%r11), %r12
+cmpxchgq %r12, %r10
+bsfq %r15, %r12
+testq $255, %r12
+andn %r10, %r11, %rbp
+imulq $92316290, 17(%rsi), %r12
+blsmsk -1(%r9), %r11
+imulq $2, %r14, %rdx
+blsr %rdx, %r9
+blsr -18(%r9), %esi
+imulq $-1, 3(%rbp), %rdi
+bsfl %r8d, %esi
+imull %r15d
+movbel -18(%r10), %edx
+movbeq 21(%r11), %r15
+imull $0, (%rbx), %edx
+testq $696828060, %rcx
+imulq $1695866632, %rcx, %rsi
+rorx $199, -12(%rbx), %r11d
+imull %r11d
+bzhi %r15d, %esi, %edi
+imulq %rcx
+rorx $51, -14(%r11), %eax
+movbel %r10d, 11(%r9)
+rorx $160, 8(%r14), %rsi
+cmpxchgl %r10d, %ebx
+rorx $7, -7(%r11), %esi
+adox %r15d, %r9d
+adcx %r11d, %ebp
+mulx -8(%r11), %rdi, %r9
+bsfq %r13, %rax
+rorx $214, -6(%r11), %ebp
+shlx %r10d, -5(%r13), %r15d
+rorx $223, -31(%r12), %edi
+rorx $110, %edi, %r10d
+blsmsk %edx, %r9d
+testq $248, -2(%r10)
+blsi 1(%r13), %r15d
+testq $4134, %r14
+blsr %r9, %rcx
+shlx %r12, 17(%r13), %rbx
+cmpxchgl %r8d, %edi
+xaddl %ecx, %r11d
+adcx 21(%rbp), %rdi
+bextr %edx, (%r13), %edi
+shrx %r12, %r15, %r11
+rorx $43, -20(%rsi), %r13d
+bsrl -8(%r15), %ebp
+imulq -19(%rdi)
+blsi %rcx, %r12
+bzhi %r11d, %r10d, %edi
+blsi 10(%rbp), %r8
+shrx %ebx, 8(%r11), %r8d
+testq $-850110829, -17(%r14)
+bzhi %r15, 14(%r14), %rbp
+imull %r12d
+testl $243640022, 15(%r14)
+rorx $29, %r9d, %r13d
+rorx $217, %rdi, %r13
+bsrq %r12, %r13
+adox %rsi, %r8
+imulq -22(%r12)
+testq $4096, %r10
+blsr %r11, %rcx
+rorx $219, %r14, %rcx
+andn %r11, %rbp, %r14
+movbeq %r11, 1(%r10)
+testq $1707415951, -18(%rdi)
+testl $32767, -30(%r14)
+adcx -23(%r9), %r14d
+testq $4095, -12(%rsi)
+rorx $199, %r8d, %r9d
+imulq %r14
+imull 19(%r10)
+imull %r8d
+rorx $129, 22(%r11), %r15d
+rorx $206, -13(%r14), %r15
+rorx $80, -1(%r11), %r14d
+bzhi %edx, %ecx, %r10d
+shrdl $35, %r12d, 6(%rdi)
+pushq $4121
+pushq $4223
+btq $170, -24(%r8)
+btcl %r14d, (%r12)
+shrdq $13, %r15, %r10
+shldl %cl, %r8d, 4(%r11)
+shldl %cl, %ebp, -29(%r9)
+sbbq $4223, %r11
+pushq $2009481140
+shrdl %cl, %r8d, -14(%r15)
+sbbl $0, -24(%rbx)
+adcq $-46, -15(%rsi)
+shrdl %cl, %edx, %r15d
+pushq $-4139
+sbbl $-82, %r14d
+adcq %rbx, %r8
+btsq $242, %r9
+btsq %rbx, %r14
+adcq %r15, -14(%rsi)
+btcl $8, -3(%rsi)
+pushq $1427193482
+sbbq $4096, %rax
+btq %rbp, %rbx
+shrdl %cl, %r12d, -29(%rbx)
+pushq $-420606317
+sbbl $153, %ecx
+btsq %r13, %r12
+pushq $-291026774
+sbbq %r11, %r12
+shldl $163, %r15d, %r8d
+adcl $11, %r15d
+pushq $4195
+pushq $-4144
+btq $77, %r10
+pushq $-2147483648
+shrdq $75, %r10, %r15
+pushq $1457697211
+pushq $0
+adcl $4096, %ebp
+pushq $-127
+btl $167, %esi
+adcq $-65, -13(%rdi)
+adcl $-125, %esi
+shldl $82, %ebp, 12(%r15)
+btl $243, %ebp
+pushq $104
+btrl %r11d, %eax
+btrl %r12d, %ebp
+btrl %r8d, (%rbp)
+pushq $0
+btsl %r12d, %r8d
+btcq $149, 8(%r12)
+btrq %rdx, %r10
+adcl %r13d, -17(%rbp)
+pushq $-4203
+adcl $-1096366956, %r14d
+btl $130, -25(%r15)
+sbbq $35, %r13
+shrdl $228, %edi, %r8d
+btrl $199, 11(%r13)
+shldq %cl, %r13, -12(%rbp)
+shrdq $119, %r11, %r9
+btsl $22, %r15d
+btcq $156, -30(%r8)
+shrdq %cl, %r12, 7(%r9)
+adcq %r9, %rdx
+btsl %r14d, (%rsi)
+pushq $0
+btq $65, -21(%rbp)
+adcl $84, %r14d
+pushq $-85
+shldl $4, %r12d, 12(%r8)
+sbbq %rdx, %r8
+shldq $213, %r14, %rax
+shrdq %cl, %rsi, 8(%r8)
+adcq %rbx, %r15
+btcl $234, (%rbx)
+pushq $-4203
+sbbl $311020980, (%rsi)
+btcq $236, 14(%rbp)
+shrdl %cl, %r10d, %r12d
+shrdq $228, %r15, -19(%r14)
+btsl %ebx, (%r9)
+shrdq %cl, %rdx, 21(%r12)
+adcl $32768, %eax
+sbbq -6(%r13), %r12
+shrdl $47, %r14d, -3(%r12)
+pushq $4121
+shrdl $8, %r14d, %r8d
+shldq %cl, %rsi, -21(%r13)
+pushq $-1
+shldl $65, %r9d, 14(%rbx)
+pushq $255
+shrdq $253, %rax, -23(%rbp)
+shrdq %cl, %r11, 3(%r8)
+sbbl $-1965112874, -24(%rbp)
+sbbl 4(%rsi), %r12d
+adcl %r8d, %ebp
+pushq $-4178
+btq %rdi, %rbx
+pushq $19
+shrdq %cl, %rdx, %r10
+shldl $187, %r12d, 10(%r15)
+sbbl 14(%rdi), %edx
+shldl %cl, %r15d, %eax
+shldq $193, %r12, 21(%r9)
+shrdl $242, %r10d, %r13d
+shldq %cl, %rax, -14(%r10)
+shrdq %cl, %r13, %rdx
+shldl %cl, %eax, %r12d
+shrdq %cl, %rdx, %rbx
+pushq $-98
+adcq %rdx, %rax
+shrdl %cl, %r15d, 21(%r8)
+pushq $15
+pushq $4223
+adcl 10(%r8), %edi
+btl %edi, %r10d
+adcl %eax, 14(%r10)
+shrdq %cl, %r14, %r12
+shldq $101, %rsi, -12(%rbp)
+shrdq %cl, %rdx, %r13
+shldl $136, %r12d, 21(%r15)
+adcl $-1, %r8d
+btq %rdx, %rdi
+sbbl $-1460505980, %eax
+sbbl -27(%rsi), %eax
+adcl $-34, %edx
+sbbq %r9, %rsi
+pushq $-1
+shrdq $19, %r12, -17(%r14)
+shldq $117, %r9, %rax
+pushq $-1758625363
+btq $184, %rbx
+btl $175, -23(%r14)
+pushq $70924549
+btcq $186, %rdi
+pushq $-74
+shrdq $110, %rdx, -14(%r15)
+btq $234, %r11
+sbbq $27, 14(%rsi)
+pushq $4221
+btsl $112, 4(%rbp)
+shrdl $41, %r11d, %edx
+btl %ebp, (%r14)
+sbbl $128, %r13d
+btcl $39, %ebx
+btsl $163, %r12d
+adcl %r10d, %ebp
+shrdl %cl, %r15d, 4(%r8)
+btl $33, %r10d
+btsq $187, %rdx
+sbbq $0, %rsi
+pushq $4098
+pushq $-194028683
+pushq $1743711123
+btrq %rcx, (%r15)
+shrdq $189, %rbx, %rdi
+btrl $245, %r12d
+pushq $456648279
+adcq -31(%rdi), %rax
+adcl %r15d, %ebp
+sbbl $4096, %eax
+shrdl %cl, %ebx, %r12d
+btrl $50, %ebp
+sbbq $6, -25(%r15)
+sbbl %r13d, %r14d
+btcl %r12d, (%r10)
+pushq $0
+btrq %rbx, (%r12)
+sbbl $44457255, %eax
+pushq $-4180
+pushq $-618892011
+pushq $4110
+shrdl $58, %edi, %edx
+shrdq %cl, %r9, %r15
+pushq $4156
+sbbq $32767, %rax
+shrdl %cl, %r14d, -8(%r11)
+shrdq %cl, %r15, %r9
+pushq $128
+pushq $-4127
+btl %ebp, %r12d
+adcl $39, -21(%r10)
+sbbl %edx, %r13d
+btcq $231, -9(%r11)
+btrl %ebp, %r15d
+shldl $13, %eax, -14(%rbx)
+btl $193, -3(%rbx)
+shrdl %cl, %ebx, %r15d
+btsl $18, -30(%r13)
+pushq $1203679240
+sbbl $-26, -25(%r14)
+pushq $4174
+shldl %cl, %edx, -18(%r10)
+sbbl $1271442522, %edi
+shrdl $236, %r12d, -32(%r10)
+sbbl $-1977031300, %eax
+btl %r9d, (%rsi)
+adcq %r12, 18(%rbp)
+btl %r14d, %r15d
+shldl $24, %r15d, %edx
+shldl %cl, %r12d, -1(%r8)
+shldl %cl, %r14d, %r11d
+pushq $33
+shldq $170, %r9, 22(%rbp)
+adcl %ebx, 6(%r9)
+sbbl $-4097, %ebp
+pushq $22750608
+pushq $-443602006
+btl $125, -5(%r13)
+sbbq %r8, -7(%r14)
+shrdq %cl, %r15, -11(%rsi)
+adcq $35, -23(%r12)
+shrdl $13, %r11d, 3(%r9)
+adcl $92, %r11d
+btcq $219, %rdi
+shrdq $208, %r13, %r12
+adcq %rdi, %r14
+btcl %ebp, %ebx
+btcq %rdi, %rcx
+shldl $201, %r9d, 25(%rbp)
+btsl %r13d, %esi
+pushq $-4217
+shldq %cl, %rbp, 21(%r10)
+shrdl $161, %r12d, %r14d
+shldl %cl, %ebp, -7(%rsi)
+btl %r13d, (%r15)
+shrdl $237, %r12d, %r11d
+pushq $-4097
+adcq $-1794254405, %rdx
+btcl $224, %r10d
+sbbq $-91, %r12
+pushq $1872330302
+pushq $-1694044221
+btsl %r14d, %edx
+adcq $84, %r12
+shldq %cl, %rdx, 7(%r14)
+shldq %cl, %rbp, -7(%r10)
+btsl %eax, (%r14)
+adcl $4096, %r9d
+sbbq $-4097, %r12
+btq %rbx, %rcx
+adcq $-2019138121, %rbp
+pushq $4219
+shrdq %cl, %r9, %r8
+btq $186, -30(%rbp)
+sbbl $2074185856, %eax
+pushq $252
+shrdq %cl, %rax, %rdi
+sbbq $213, %rax
+sbbl %edi, -4(%r9)
+btq $238, %r10
+pushq $-256989563
+pushq $-97
+btq %rbp, %r14
+shldq $180, %rdi, -4(%r8)
+pushq $-526341116
+adcl %r12d, 5(%rdi)
+btcq %r8, %r11
+adcq $0, %r15
+shrdl $191, %r14d, 18(%r8)
+adcl $1615198332, %r9d
+shldl $173, %edi, 21(%rsi)
+btcq %rdi, %rbp
+shldq $21, %rbp, %r9
+btrq $88, -9(%r8)
+pushq $65535
+pushq $-1186195265
+btcq $223, %r11
+shldl %cl, %r10d, %r9d
+btq %r15, %rsi
+btrl $250, 10(%r15)
+btrl $189, %r11d
+btrl $19, %eax
+btrq %r8, %r12
+shrdl $110, %r9d, %edx
+sbbq $-528041456, %rax
+pushq $-56804862
+btsq $170, %rdx
+shrdl %cl, %esi, %r9d
+shldl $248, %r11d, %eax
+pushq $-1
+pushq $128395089
+btrl %r13d, (%rbp)
+pushq $-1009584825
+pushq $8413424
+btrl %r12d, (%rsi)
+shrdl %cl, %ebx, %r11d
+shldq $200, %r9, %rax
+shldl $149, %r10d, %ebp
+sbbl $-96, %r9d
+pushq $-4201
+btrl %ebx, (%rsi)
+shldq $189, %rbp, %r14
+pushq $-1188157932
+adcl %r15d, -24(%r9)
+sbbq $-2143830266, -7(%r14)
+adcl %r8d, %eax
+shldq %cl, %rdi, %r10
+btrl %edi, %r15d
+pushq $-887185547
+pushq $-4097
+shrdl $236, %r14d, -7(%rsi)
+btsl %eax, %r10d
+pushq $123
+btcl $99, %r14d
+sbbq $1309932634, %rax
+adcq $118186545, %rax
+btl %r12d, %r10d
+adcq $4096, %rax
+pushq $1783340101
+sbbl $-48, %ebp
+pushq $255
+adcq $4097, %rax
+adcq %rcx, %r10
+sbbq $0, %r14
+pushq $1120141375
+btrl %esi, (%rbx)
+btrl %ebp, %r10d
+shldl $134, %r13d, %r9d
+adcq $-626795252, %rax
+adcl $128, %eax
+shrdl $189, %ebx, 17(%rdi)
+btsq %r11, %r12
+sbbl $435253709, %eax
+pushq $4113
+adcq $-99, 15(%r8)
+btrl $129, 20(%r9)
+pushq $4129
+adcl $97, 9(%r15)
+sbbl %r15d, %r10d
+shldl %cl, %edx, 17(%rdi)
+pushq $-26
+shldl $174, %r12d, -9(%r8)
+adcl $1106140433, %eax
+pushq $-993102688
+shrdl $107, %r9d, -31(%r15)
+sbbq $0, %rsi
+pushq $-4139
+btq $112, -24(%rbx)
+btsl %r9d, (%rbx)
+sbbq $-84, %r14
+sbbl 3(%rsi), %ecx
+shldq $155, %rbx, %r10
+shldq $162, %r14, 24(%rsi)
+btsq %rcx, %rbx
+sbbl %eax, %r12d
+shrdl %cl, %r12d, %ebp
+btsl %eax, (%r13)
+btcl %r12d, (%r15)
+shrdl %cl, %ebx, 6(%r9)
+btrq %r13, %r14
+shrdq $158, %r10, %r13
+btcq $57, 6(%rbx)
+shrdq $90, %r12, 5(%rdi)
+shldl %cl, %eax, 2(%rdi)
+pushq $0
+pushq $-1601440883
+pushq $112
+adcq $157, %rax
+pushq $-1835128531
+btsl $170, 7(%rdi)
+shldl $138, %r15d, %ebp
+btcq $101, -11(%r10)
+btcq %r12, (%r15)
+btsq $56, 17(%r13)
+shrdl %cl, %r15d, %r11d
+pushq $-53
+shldq $48, %rax, %rbx
+shldq $54, %r14, %r8
+adcl 25(%rbp), %r10d
+sbbq %r10, %r15
+pushq $-112
+btcl %r13d, %ebx
+pushq $-4118
+shrdq %cl, %r14, %r15
+btq $87, %r15
+btcq %rax, %r11
+adcl $-376257169, %eax
+shldq $216, %r11, -11(%r15)
+shrdq %cl, %r15, %r14
+pushq $61
+shldq $96, %rbx, %rax
+shldl $140, %edi, %r8d
+pushq $-41
+pushq $-87
+sbbl %r9d, -5(%rdi)
+btrl $148, -16(%r12)
+adcq $-52, %r11
+shldl $43, %r15d, %edx
+btsl $0, 5(%r13)
+btrl $168, 26(%r14)
+pushq $-1
+btrq %rax, (%rbp)
+btrq %r10, %rbp
+pushq $159
+pushq $-122
+shrdl $162, %r14d, -21(%rbp)
+shldq $9, %rbx, -9(%r8)
+pushq $4099
+shldq $253, %rax, %rdi
+sbbl $-26, -24(%rbp)
+pushq $99
+pushq $-105
+adcl $-1247771816, %eax
+adcq $-4097, -32(%rbp)
+sbbq %r11, 22(%rsi)
+adcq $34, 4(%r13)
+btsl $178, 18(%r13)
+adcl 17(%r8), %r13d
+pushq $2112014203
+sbbl $376019731, 21(%r15)
+shldl $32, %edi, -14(%r13)
+sbbl $-2112088515, %eax
+btsl %r15d, (%r10)
+sbbl $220, %r10d
+btl $77, 6(%r10)
+sbbq $-631742658, %rax
+adcl $-980314085, %eax
+pushq $4159
+shrdq %cl, %rdx, -13(%r11)
+pushq $158
+pushq $-4129
+pushq $217
+pushq $-17
+btcq $82, %r11
+btsl %eax, %edx
+btrq %r14, (%r15)
+btrl %ebx, %r13d
+btq $67, %rbx
+btcq %r15, %r12
+shrdq %cl, %r11, 18(%rbp)
+pushq $4106
+sbbq %rdi, -4(%rbp)
+shrdl $206, %esi, -11(%rbx)
+sbbq $-4097, 12(%r8)
+pushq $-55
+shldl %cl, %r11d, %esi
+pushq $4163
+btrl $16, %eax
+adcl %r13d, %r14d
+btsq $67, -28(%r9)
+shrdq %cl, %rsi, %r12
+sbbl $2098301512, %eax
+shldl $217, %r15d, 12(%r12)
+shldl $43, %r10d, 1(%r14)
+sbbq $255, -30(%r15)
+pushq $-1732485660
+shrdq $64, %r12, %rsi
+shrdl %cl, %r8d, 17(%r12)
+sbbq $-1, %rbx
+shldl %cl, %r13d, %edx
+btsq %rbx, (%r15)
+btrq $228, (%r13)
+btsl $170, 4(%r14)
+shrdq %cl, %r10, -14(%rsi)
+adcl %r8d, %ebx
+shldq $81, %r13, 11(%rbx)
+btq %rax, (%r14)
+shldl $236, %r11d, %esi
+pushq $6
+pushq $1726726167
+pushq $4209
+btsl %ebx, (%rbp)
+pushq $2
+sbbq %rax, 21(%r14)
+shrdl $17, %r14d, %eax
+btcl $14, 22(%rsi)
+shldl %cl, %r12d, 27(%r10)
+btcl %edi, (%rbx)
+shrdl %cl, %r9d, %r8d
+btrl %ecx, (%rsi)
+sbbl 6(%rbp), %edx
+btq %rax, (%r10)
+btrq $242, (%r9)
+shldq %cl, %r13, %r10
+pushq $-104
+pushq $-53
+shldl $247, %eax, -7(%r9)
+adcq $88, %rcx
+btrl %r14d, %r13d
+pushq $-110
+sbbl %r14d, -11(%r15)
+shldl $20, %r10d, %esi
+pushq $4098
+shldq %cl, %r9, -10(%r8)
+btsq %rbp, (%r15)
+btsq $46, %rsi
+shrdq %cl, %r10, -8(%rbp)
+btq %r10, (%r11)
+shrdl %cl, %r13d, %ebx
+shrdl %cl, %r11d, 7(%r9)
+shldq $53, %r12, %rdi
+shrdl %cl, %ebx, -23(%rsi)
+btrq $202, %rdx
+btrq %r13, %r12
+sbbl $0, -4(%rsi)
+adcl 12(%r12), %ebp
+shrdl $127, %r14d, 10(%rsi)
+pushq $-74
+adcl %r10d, -8(%rbx)
+pushq $-4182
+btl %edi, (%r15)
+pushq $-614723734
+btl %r10d, (%r8)
+pushq $-1
+shrdl %cl, %r8d, 25(%r12)
+pushq $-4135
+sbbq %r15, -17(%rsi)
+shrdl $219, %r11d, 18(%r12)
+shrdl $223, %r9d, %r13d
+pushq $78
+pushq $-29
+btcl %r11d, %edi
+btsl $216, %r12d
+pushq $-747761243
+pushq $-4097
+btsq $244, %rax
+adcl $32767, %r8d
+pushq $-76
+adcq $-23, 15(%r8)
+btcl %r11d, (%rsi)
+btq $111, %rdx
+btrq %r10, (%r12)
+shrdl $87, %ebx, %r11d
+adcq -30(%r8), %r11
+btl $93, -4(%rsi)
+pushq $-2147483648
+btq %rax, (%r14)
+btrl $78, -14(%rbx)
+shldq %cl, %r8, 20(%r9)
+pushq $-4176
+shrdl $28, %r15d, -17(%r10)
+pushq $-1
+sbbq $245968591, %rax
+pushq $-4154
+pushq $-1386312313
+btcl %edx, (%r8)
+shldl $139, %r14d, %r9d
+pushq $-4158
+btq $44, %r11
+btcq %rbx, (%r9)
+adcl $237, 10(%rsi)
+pushq $-1236554757
+pushq $350403263
+adcq %r15, %rcx
+pushq $-12
+shldq %cl, %rsi, 7(%r11)
+btsl $200, %r11d
+pushq $-1193545967
+shldl $36, %esi, -9(%r12)
+sbbl $99, -4(%rdi)
+pushq $-1
+pushq $-52
+sbbl %esi, -23(%r14)
+sbbq -21(%r10), %r9
+btl $241, 10(%r9)
+sbbq %rdx, -23(%r10)
+shldl $240, %r9d, -17(%r8)
+shrdl %cl, %r13d, %ebx
+shrdl %cl, %ebp, %r9d
+pushq $-4140
+adcl $-2147483648, %eax
+adcl $1357646196, %ebx
+btcl $27, -26(%rbp)
+shrdq %cl, %r8, %r10
+adcq %rsi, %r9
+pushq $668445427
+sbbq $1476830215, 6(%r11)
+adcl $-86, -15(%r11)
+sbbl 12(%rbx), %ecx
+btrl $8, %r8d
+shldq %cl, %rsi, %rax
+shrdq %cl, %r15, 2(%r13)
+sbbq %r11, %r9
+sbbl $-4097, %eax
+pushq $-1856583776
+adcl $209, %eax
+shrdl $150, %r15d, %ebx
+btsq %r9, (%r11)
+sbbl $4208, %edi
+pushq $434761455
+sbbl $0, %r15d
+adcq 21(%rsi), %rbp
+shrdq $151, %r14, %rdi
+pushq $119
+pushq $1346125523
+btsq %r15, (%r10)
+btcl %r9d, %r15d
+btrl $231, 19(%r10)
+pushq $-1134176537
+shrdq $66, %r8, (%rbx)
+adcl $4096, -27(%r14)
+sbbq %r9, %r13
+shldq %cl, %r12, 12(%r13)
+btcq %rbp, %rax
+pushq $36
+pushq $4189
+subw $12, 25(%rsi)
+btsw $38, 12(%rbx)
+xorw $-103, %bx
+shrdw %cl, %bp, 17(%rsi)
+btsw $75, -12(%r15)
+xorw $3581, %ax
+shldw $239, %di, -1(%rbp)
+shldw $138, %di, -2(%r12)
+btrw $183, -5(%r12)
+btcw $2, -24(%rbp)
+shrdw %cl, %r12w, 12(%r8)
+shldw %cl, %r15w, 28(%r9)
+addw $-50, %di
+shrdw $98, %r8w, %r12w
+shldw %cl, %bx, 7(%r12)
+shrdw $2, %si, (%r8)
+shldw %cl, %bx, -6(%r8)
+xorw %r15w, %r10w
+xorw %si, %r10w
+shrdw %cl, %bx, -21(%r11)
+addw $-32768, %ax
+adcw $-11363, %ax
+shldw %cl, %r14w, %di
+shldw $181, %r14w, -21(%r10)
+btcw $29, %r11w
+orw $31614, %dx
+shldw $214, %r13w, %r8w
+btw $22, -26(%rsi)
+btsw $249, %si
+shrdw $111, %di, 4(%r9)
+btcw %bx, %r8w
+btsw $216, %r15w
+subw $101, %r10w
+btw %r9w, (%r10)
+andw %si, %ax
+btsw $150, %si
+shrdw %cl, %bp, -28(%r10)
+andw -23(%r10), %ax
+btcw $152, -13(%r11)
+subw $29206, %ax
+adcw $-4097, %r15w
+btcw $120, -11(%r15)
+btsw %r8w, (%r13)
+sbbw %r11w, %r8w
+adcw $-86, 11(%rsi)
+shrdw $104, %r14w, %bx
+btrw $45, %cx
+btsw %r9w, (%r12)
+cmpw $-5593, %si
+btrw %ax, %r12w
+xorw $212, 27(%r8)
+xorw $25249, %r10w
+andw -5(%r14), %dx
+btsw %di, %cx
+shldw $172, %bx, -26(%r9)
+shrdw $102, %r12w, %r13w
+shldw %cl, %r8w, %r14w
+btcw %r11w, %r13w
+btw %si, %bx
+shrdw %cl, %r11w, -16(%r13)
+shldw $134, %r12w, -32(%r15)
+btrw $247, %r9w
+addw $-87, -18(%r15)
+subw $12174, %r12w
+btcw $96, %cx
+orw %r10w, 21(%rdi)
+cmpw $255, 14(%rbp)
+xorw $-128, 19(%rdi)
+shldw %cl, %r13w, 9(%rdi)
+addw $4129, 27(%rsi)
+shldw %cl, %dx, %r14w
+shrdw %cl, %r13w, 14(%rbx)
+sbbw %bx, -15(%r15)
+shrdw %cl, %r10w, %r11w
+btw %bx, %di
+adcw $924, %ax
+adcw $-18285, %r11w
+btcw %si, (%r13)
+btw %si, (%r12)
+subw $32767, %ax
+shrdw $20, %r10w, %di
+shrdw %cl, %r14w, %di
+subw $4098, %ax
+xorw $-17602, 10(%rdi)
+btw $63, -23(%r10)
+btsw $55, %r15w
+sbbw $-4097, 21(%r15)
+shrdw %cl, %bx, %di
+sbbw $-23491, 25(%r10)
+shrdw $220, %r8w, %r15w
+andw $255, %ax
+btcw %r15w, %r12w
+btsw %r9w, %r15w
+adcw $32767, 20(%r11)
+btw %cx, (%r11)
+btcw %dx, %cx
+cmpw $113, (%rbp)
+btsw %dx, (%r10)
+shrdw %cl, %r9w, %r10w
+subw %r12w, %r11w
+shrdw %cl, %si, -7(%r12)
+btw %cx, %dx
+orw $128, %ax
+btw $241, -4(%r8)
+shrdw $117, %r11w, %di
+andw -5(%r12), %r9w
+xorw $4098, 15(%r9)
+btcw $33, -2(%rbp)
+btsw $75, %bx
+btrw $254, -28(%rsi)
+shldw $177, %r12w, -6(%rdi)
+btw %dx, %di
+cmpw $-1, %dx
+btcw $185, %cx
+sbbw $4096, %ax
+btrw $205, %r15w
+shrdw %cl, %r8w, -27(%rsi)
+btcw $165, -3(%r12)
+shrdw %cl, %r9w, %r11w
+shldw %cl, %si, %r12w
+btrw %ax, %bx
+btcw %r12w, %bx
+subw %r9w, -5(%r15)
+btrw %r15w, (%rsi)
+cmpw %di, %r12w
+btsw $35, -6(%r8)
+subw $12, %dx
+btw %di, %bx
+shrdw %cl, %r11w, -15(%rbp)
+adcw %si, %di
+shldw $0, %bx, -24(%r12)
+btw $154, -20(%r13)
+btsw %di, (%r11)
+shrdw $100, %si, 4(%r15)
+subw %r9w, 9(%r10)
+shldw $77, %r12w, -32(%r10)
+btsw $87, 2(%rdi)
+btw %r11w, (%rsi)
+shldw $139, %ax, %bx
+shrdw %cl, %r9w, %r11w
+btw %r11w, %r14w
+shrdw $155, %r15w, -3(%rdi)
+shldw %cl, %ax, %r11w
+xorw 2(%r9), %r13w
+shrdw $66, %r14w, %r8w
+shldw %cl, %r12w, %r13w
+addw $-35, %bx
+btcw $149, -20(%r13)
+subw $-1, 10(%rbx)
+btw $122, -8(%r10)
+shldw $43, %r8w, %di
+btw %ax, %r8w
+subw %bp, -2(%r10)
+sbbw $-27815, %ax
+btsw $209, %r13w
+btcw $155, %r10w
+sbbw $-28, -19(%rbx)
+btw $109, %r10w
+btrw %bp, %bx
+btrw %r11w, (%r13)
+orw %ax, %r13w
+btw $37, 14(%r14)
+shrdw $191, %ax, 16(%rdi)
+subw %cx, 3(%r8)
+adcw $0, 26(%rdi)
+subw $-57, 3(%rsi)
+shldw $179, %r10w, %si
+orw %bp, %cx
+shrdw %cl, %r9w, %si
+shldw $201, %si, %ax
+xorw $106, %r10w
+andw $48, %bp
+btcw $196, %si
+btsw %r14w, (%r15)
+shldw $202, %r13w, -29(%r12)
+btsw $205, -18(%r9)
+shldw $106, %r8w, -27(%r13)
+shrdw $252, %si, %r15w
+shldw $233, %dx, %r11w
+cmpw 3(%r15), %r8w
+shrdw %cl, %ax, %r10w
+shrdw %cl, %r15w, -11(%r14)
+addw $-41, -12(%rbx)
+shrdw $255, %dx, -4(%rsi)
+shrdw %cl, %bp, %r12w
+btrw %r9w, %bx
+addw %bx, 29(%r14)
+btw $0, %r9w
+shrdw $200, %r13w, -23(%rbx)
+orw $-28930, %ax
+andw $-4097, %ax
+btw $72, %bx
+subw %r13w, %r14w
+btrw %r10w, %bx
+orw -6(%rdi), %r15w
+shldw %cl, %di, 22(%r11)
+shrdw $23, %r8w, %r11w
+shrdw $132, %r15w, -3(%r10)
+xorw %bp, %r8w
+orw $186, -27(%rdi)
+subw %r13w, -25(%rsi)
+btcw %bx, %di
+orw $-25688, %ax
+btw $163, -29(%r9)
+btrw $93, 28(%r12)
+sbbw $241, %ax
+addw 29(%rsi), %r15w
+subw $0, -22(%rdi)
+cmpw %si, -18(%r8)
+btcw %cx, %r10w
+btsw %r10w, (%r11)
+xorw %r8w, %r10w
+cmpw 4(%r8), %di
+orw %ax, %r15w
+btrw $7, -4(%rbp)
+cmpw %di, 13(%r9)
+btw %si, %bx
+shrdw %cl, %r10w, -11(%r9)
+subw $27512, %ax
+addw $-40, 13(%r11)
+btw $189, %dx
+xorw $-1, 14(%r11)
+btcw %dx, %si
+shrdw $87, %r11w, %bx
+btsw %r14w, (%r10)
+btw $153, -13(%rdi)
+btcw %bx, (%rdi)
+shldw %cl, %r14w, %r13w
+btrw $167, %di
+andw $23897, 19(%r10)
+btcw $21, -27(%rdi)
+btrw $92, %r13w
+shrdw %cl, %bp, 9(%rbx)
+shrdw %cl, %r9w, %r11w
+btsw $45, %r10w
+btsw %r13w, (%rsi)
+btrw %r10w, (%rdi)
+btsw %dx, (%r12)
+shrdw $125, %ax, -24(%r15)
+btrw %r9w, (%rbp)
+shrdw %cl, %r8w, 28(%r9)
+shrdw %cl, %r12w, %r9w
+shldw $173, %ax, -17(%r14)
+shldw %cl, %r14w, -30(%rbx)
+shrdw %cl, %r14w, %r11w
+orw $-1, %si
+btw %r15w, (%r13)
+btcw %r12w, %r9w
+btw %di, (%r11)
+shldw %cl, %r8w, %r9w
+btw %bp, (%rdi)
+shldw $203, %r8w, %dx
+shrdw %cl, %r14w, -4(%r15)
+shrdw %cl, %r13w, 21(%r14)
+cmpw $4096, %ax
+orw $12449, 16(%rsi)
+btw %bp, %di
+shrdw %cl, %ax, %r14w
+btrw $85, %di
+btsw $46, -21(%r11)
+shrdw $107, %bp, %r8w
+shldw $185, %r14w, %di
+btcw $211, %bx
+sbbw %dx, %r12w
+shldw %cl, %r9w, %r13w
+btw %r10w, %dx
+shldw $25, %bx, %r8w
+shrdw $198, %di, -19(%rsi)
+shldw $243, %si, -5(%r8)
+addw %r13w, %r8w
+btrw $16, %r15w
+shrdw $98, %r10w, %r12w
+btrw $71, 22(%r10)
+shldw %cl, %ax, %r10w
+btcw $17, -21(%r14)
+btcw $216, %r8w
+btcw $133, %cx
+shrdw $18, %si, 1(%r12)
+shldw %cl, %bp, 21(%r8)
+addw $29, %r11w
+btw %bp, (%rsi)
+shldw $29, %bx, %r14w
+sbbw $-27235, %ax
+btw %r10w, (%r15)
+shldw $155, %bx, %r14w
+btw $132, %ax
+subw $60, 20(%r15)
+orw $232, %ax
+shrdw %cl, %di, %si
+btcw $215, -2(%r14)
+btrw $82, -26(%r13)
+sbbw $4163, %ax
+addw %si, %r9w
+shldw %cl, %r14w, -7(%r11)
+shldw %cl, %bp, %dx
+btsw $136, -14(%r12)
+btw %cx, (%r12)
+orw $-1246, %ax
+shrdw %cl, %ax, %dx
+shldw $35, %dx, %ax
+shldw $197, %di, %r13w
+shrdw %cl, %r15w, 21(%r11)
+shldw $73, %bp, 14(%r8)
+andw %cx, %r13w
+andw $92, %dx
+btw %r9w, (%r11)
+btcw $29, %r13w
+shrdw %cl, %di, %bx
+btrw $42, %ax
+cmpw %r13w, 5(%rsi)
+orw 28(%r15), %si
+btcw $214, %r13w
+subw %r8w, %bx
+btcw $63, %cx
+shrdw $179, %di, 26(%rbx)
+cmpw $-1, -9(%rsi)
+btrw $192, %di
+btw $239, -10(%r14)
+adcw %r11w, %r15w
+shrdw $82, %r9w, -12(%rbx)
+sbbw $100, -10(%r13)
+btw %r13w, (%r9)
+shldw $230, %di, %bx
+shldw %cl, %r14w, -13(%r13)
+btrw $43, -15(%r15)
+shldw %cl, %r14w, %di
+btw $135, 18(%rdi)
+btcw $130, -30(%r13)
+orw $4098, %ax
+andw $163, %ax
+xorw $4118, %r11w
+btrw %ax, (%r11)
+shrdw $42, %r11w, %r8w
+shldw %cl, %r12w, %r15w
+cmpw $-14262, %ax
+addw 22(%r15), %r14w
+shldw $214, %r8w, -22(%r13)
+adcw $4159, %ax
+shldw %cl, %si, %ax
+shldw $144, %bx, %ax
+xorw %r12w, %r11w
+xorw %r11w, %di
+addw $4157, %ax
+btsw $196, 28(%rbx)
+andw 14(%r9), %r12w
+btcw $222, -31(%r12)
+btw $193, 20(%rbx)
+shrdw %cl, %di, -3(%r11)
+btcw $72, %r11w
+shldw $121, %r14w, -27(%rbp)
+shrdw %cl, %dx, %r8w
+shrdw %cl, %r9w, 10(%r11)
+btrw $104, -26(%rdi)
+adcw $-4097, -20(%r9)
+shldw $43, %r13w, %r11w
+btrw %di, (%r15)
+shrdw %cl, %si, -27(%r10)
+shrdw %cl, %bp, 15(%rbx)
+shldw %cl, %r12w, %r9w
+adcw $-1035, %ax
+xorw $-28577, -15(%r11)
+orw $216, %cx
+shldw $103, %r12w, 4(%r14)
+cmpw $30674, %r10w
+subw $4207, %cx
+btrw %r12w, %r11w
+shldw $1, %r11w, -25(%rbp)
+orw $12587, 13(%rsi)
+sbbw %si, %r15w
+shldw %cl, %ax, %r11w
+shrdw $4, %bx, 1(%rbp)
+xorw 20(%r15), %r13w
+btcw %si, %cx
+btcw $36, -16(%r12)
+btcw %r12w, %r15w
+shrdw $87, %di, 7(%r11)
+shldw $171, %r15w, %bx
+btsw $251, %dx
+shldw %cl, %bp, -29(%rsi)
+btrw $42, 15(%r9)
+shrdw $229, %r13w, %di
+andw $-2912, 30(%r13)
+subw $57, %si
+xorw -20(%rbp), %si
+shrdw $103, %di, %r8w
+cmpw $-90, %si
+btw $84, 30(%r13)
+shldw $184, %bp, -1(%r13)
+btw %cx, %r8w
+shrdw $2, %r13w, -4(%r11)
+shrdw $185, %r11w, %r8w
+andw %r12w, %r15w
+btcw $123, -13(%rbx)
+shrdw $60, %r11w, %r9w
+orw $32767, %ax
+addw $-32768, %ax
+btsw %r12w, (%rsi)
+subw $20, %di
+btcw %r8w, %si
+shldw $201, %r12w, %di
+shrdw $172, %bx, -4(%rdi)
+btrw %r10w, (%rdi)
+shldw %cl, %di, %r9w
+adcw %ax, -24(%r14)
+btsw $141, -21(%r10)
+cmpw $12, -26(%r15)
+shrdw %cl, %r15w, %r9w
+orw $-109, 3(%rbp)
+sbbw %cx, %r13w
+shldw $131, %r15w, %r10w
+sbbw $13, -22(%rsi)
+btw $3, %r8w
+btsw %bp, %bx
+addw %r8w, -23(%rbp)
+shldw %cl, %r13w, %r14w
+shrdw %cl, %dx, -18(%r9)
+cmpw %r14w, -29(%r15)
+shldw %cl, %r14w, 23(%r15)
+btcw $165, %bp
+shldw $32, %r13w, %bp
+btcw %si, %r10w
+shrdw %cl, %r9w, %si
+btrw %si, (%r10)
+shldw %cl, %bp, %dx
+shldw %cl, %dx, %r14w
+btw $180, %r11w
+adcw $-10, -7(%r15)
+cmpw $4097, %ax
+btcw $45, 20(%r13)
+subw $25465, 19(%rbp)
+btsw $91, -10(%rbx)
+btsw %r12w, %si
+shldw $70, %bp, -28(%r10)
+shldw $202, %r15w, %bx
+btw $207, %r10w
+subw %bx, %r8w
+btcw $21, -6(%r15)
+shldw $149, %si, %r14w
+adcw $8989, %r15w
+xorw $5988, 11(%rsi)
+andw $84, %bp
+shldw $155, %r10w, -29(%rdi)
+btcw %cx, (%rsi)
+shrdw $128, %si, -12(%r13)
+shldw $188, %r9w, -27(%r13)
+btcw $219, %di
+btcw %r11w, %si
+shldw $45, %r13w, -14(%rsi)
+shldw $143, %bp, %r13w
+shrdw $240, %r8w, %bx
+btcw $145, -25(%r13)
+btcw $180, -26(%r11)
+cmpw %r12w, %r8w
+andw $14609, %ax
+shrdw $95, %r8w, -4(%rbp)
+shrdw %cl, %r12w, -12(%r9)
+shrdw %cl, %r13w, %r8w
+shrdw %cl, %si, %ax
+shldw %cl, %bx, 4(%rsi)
+btw %r14w, %bp
+btw %di, (%r9)
+btcw $175, 18(%rdi)
+btcw %r12w, %r9w
+shrdw %cl, %r15w, %r8w
+btw $144, 8(%r12)
+shldw %cl, %bx, -8(%r14)
+adcw $4096, 28(%rbx)
+btw %r15w, (%rbp)
+adcw %dx, 24(%r10)
+shldw $24, %r8w, %r13w
+shldw %cl, %r15w, 15(%rsi)
+btcw $150, %bx
+addw %bx, %r11w
+btcw $130, %r12w
+btsw %r9w, %r12w
+btcw $23, 13(%r8)
+shldw %cl, %r14w, %r13w
+addw $-2, %bp
+adcw $-3043, 3(%r9)
+xorw $-70, -29(%r10)
+subw %bp, %si
+btsw $139, 27(%rsi)
+shrdw $106, %bp, 13(%r15)
+xorw 25(%r12), %bp
+addw $70, %r14w
+shldw %cl, %r8w, %r13w
+shrdw $171, %r13w, 19(%rdi)
+btcw %bx, (%r8)
+btrw $107, %r14w
+shrdw $179, %r8w, %r12w
+shrdw %cl, %ax, -31(%r14)
+shrdw %cl, %r14w, %si
+shldw $210, %si, 10(%rdi)
+orw %bp, -19(%r10)
+btsw %r13w, %dx
+btrw %r8w, %dx
+shrdw $29, %r10w, %si
+btcw %r12w, (%r10)
+btw %r10w, (%r11)
+xorw $-17, %ax
+btcw $101, %r8w
+shrdw $248, %ax, %di
+sbbw %r11w, %r9w
+btw %di, %r11w
+shrdw %cl, %dx, -7(%r11)
+andw $117, %r8w
+btcw %bp, %r10w
+btw %ax, %si
+btcw %ax, (%rdi)
+shldw $137, %r13w, %r9w
+btrw %bp, (%r10)
+shrdw $205, %r9w, %r14w
+adcw $11088, %ax
+btcw $153, %r15w
+addw %bx, -8(%r15)
+addw %r10w, -16(%r9)
+shldw %cl, %si, %bp
+btsw %r8w, (%rdi)
+btcw %r10w, (%r9)
+subw $8115, %cx
+shldw %cl, %r12w, -31(%r11)
+btw $217, %r13w
+shldw %cl, %r10w, %r15w
+shldw %cl, %r15w, %r9w
+adcw %r8w, %di
+btw %di, %r8w
+btw %cx, %r10w
+sbbw %dx, %si
+shrdw %cl, %r8w, 3(%r10)
+cmpw $-3529, -25(%r8)
+addw %r8w, %r13w
+adcw %r13w, %r12w
+btsw %r11w, %bx
+xorw $4097, %ax
+cmpw $-19843, %si
+btcw $160, -10(%r8)
+sbbw %dx, 3(%r12)
+shldw %cl, %r13w, -2(%r15)
+btcw $82, 4(%r12)
+shrdw $161, %r14w, %di
+btcw $111, 10(%r12)
+btsw $200, -19(%rdi)
+addw $13014, %ax
+shldw $174, %r9w, -18(%rsi)
+shrdw %cl, %r11w, %r8w
+btw %r8w, %di
+sbbw $0, 29(%r14)
+orw $4096, %ax
+btw $83, 27(%r14)
+adcw $-70, 8(%rbx)
+shldw %cl, %r9w, 24(%rsi)
+orw %r14w, %r11w
+andw %cx, %dx
+btw %r14w, (%r11)
+btw %dx, (%rbp)
+btw %bx, (%rsi)
+shldw $197, %bx, 19(%rbp)
+btw $103, -2(%r14)
+btw %dx, (%rbx)
+shrdw $228, %r12w, %r11w
+btcw %cx, %bp
+shrdw $151, %r13w, %r15w
+shldw %cl, %bp, -9(%r11)
+btcw %bp, %dx
+shldw $210, %bp, 22(%r13)
+orw -24(%r10), %r13w
+shrdw $227, %r11w, %r10w
+addw %r8w, %r11w
+addw %r8w, -8(%r10)
+andw -4(%r13), %si
+subw $-17, %r11w
+btw %ax, %cx
+btcw %r11w, %dx
+btcw $214, %r11w
+cmpw $4164, %r15w
+shldw $126, %r12w, %si
+btcw $209, %ax
+adcw %r13w, %r12w
+btrw %r13w, (%r15)
+andw $-1, 12(%rsi)
+btcw %di, (%rsi)
+btw $219, 17(%r12)
+shldw $72, %di, 30(%rbp)
+xorw %di, %r12w
+shrdw %cl, %si, %r13w
+btrw %di, (%r10)
+shrdw %cl, %di, 3(%r13)
+addw $4097, %ax
+shrdw $168, %r13w, 12(%r9)
+btcw $134, -14(%r14)
+adcw $-13047, %ax
+btcw $166, %di
+shrdw $66, %di, %r13w
+addw $-94, 11(%r15)
+shrdw $58, %si, 9(%rbx)
+adcw $94, %r14w
+shldw $81, %r10w, 10(%r12)
+shrdw $252, %r10w, %r9w
+xorw $-2455, %ax
+shldw $131, %di, %r8w
