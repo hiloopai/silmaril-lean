@@ -22,7 +22,10 @@ response unobservable (by failing an operation), never wrong.
   refines the server of the constant function. `hello_answers`: every request answered
   `200 hello` is a trace of `hello` (the specification is not vacuous).
 * **`route_sat`**: every exchange of `route` is answered from the route table on the request's
-  path-with-query; `route_refines`: `route` refines the server of that function.
+  path-with-query; `route_refines`: `route` refines the server of that function;
+  `route_answers`: every request answered from the route table is a trace of `route`.
+* `serve_mem`: a response of a component over the reference host (`serveRef`) is a trace of
+  the component read as a server.
 
 Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 
@@ -56,6 +59,11 @@ theorem hello_refines : Refines (wasiServer (ofBody hello)) (ofFun fun _ => hell
 theorem hello_answers (q : Request) : [(q, helloResp)] ∈ wasiServer (ofBody hello) :=
   Proofs.Servers.WasiExamples.hello_answers q
 
+/-- **A response over the reference host is a trace** of the component read as a server. -/
+theorem serve_mem {h : Body proxyImports proxyWorld.exports} {q : Request} {x : Response}
+    (hx : serveRef h q = some x) : [(q, x)] ∈ wasiServer (ofBody h) :=
+  Proofs.Servers.WasiExamples.serve_mem hx
+
 /-- **Routing answers from the route table** on the request's path, for every host. -/
 theorem route_sat :
     Sat (wasiServer (ofBody route)) (each fun q resp => resp = routeResp q.target.pathWithQuery) :=
@@ -65,6 +73,11 @@ theorem route_sat :
 theorem route_refines :
     Refines (wasiServer (ofBody route)) (ofFun fun q => routeResp q.target.pathWithQuery) :=
   fun t ht => route_sat t ht
+
+/-- **Routing is not vacuous**: every request answered from the route table is a trace. -/
+theorem route_answers (q : Request) :
+    [(q, routeResp q.target.pathWithQuery)] ∈ wasiServer (ofBody route) :=
+  Proofs.Servers.WasiExamples.route_answers q
 
 /-! ## Checked over the reference host -/
 
