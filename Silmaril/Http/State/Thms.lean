@@ -16,6 +16,8 @@ PROVED (standard axioms), namespace `Silmaril.Http.State`. Proofs in
   explained by a sequential run of `B` that respects real time, whatever order the host runs
   and answers pending requests in, and whatever the environment does (invisibly to the
   abstraction). The linearization is the order of the handler runs.
+* **`Abstraction.refines`**: such a server **refines** the closed server of `B` from `t₀`:
+  every history of its host is a history of the host of `B` (a forward simulation of hosts).
 * `closed_linearizable`: a server with component state is linearizable with respect to its
   own handler.
 * `Server.sat_wellFormed`: every history is well formed.
@@ -35,6 +37,10 @@ variable {σ τ Req Resp : Type}
 theorem Abstraction.sat_linearizable {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
     (F : Abstraction M B t₀) : M.Sat (Linearizable B t₀) :=
   Proofs.Http.State.sat_linearizable F
+
+theorem Abstraction.refines {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
+    (F : Abstraction M B t₀) : M.Refines (Server.closed B t₀) :=
+  Proofs.Http.State.refines_closed F
 
 theorem closed_linearizable (A : Atomic σ Req Resp) (s₀ : σ) :
     (Server.closed A s₀).Sat (Linearizable A s₀) :=

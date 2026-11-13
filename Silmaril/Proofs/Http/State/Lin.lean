@@ -14,7 +14,9 @@ public import Silmaril.Http.State.Defs
 * `LinInv`, **`linInv_of_reach`**: the invariant of reachable configurations of a host with an
   abstraction: the log of runs is a legal run of the abstract specification ending in the
   abstraction of the current state, and it explains the history in real-time order;
-* `wellFormed_of_reach`: reachable histories are well formed.
+* `wellFormed_of_reach`: reachable histories are well formed;
+* `refines_closed`: a server with an abstraction refines the closed server of the abstract
+  specification (history inclusion, by a forward simulation of hosts).
 -/
 
 namespace Silmaril.Proofs.Http.State
@@ -210,5 +212,25 @@ theorem perRequest_answer {A : Atomic σ Req Resp} {s₀ : σ} {H : Hist Req Res
     (hc : Ev.call i r ∈ H) (hr : Ev.ret i s ∈ H) : ∃ s', A s₀ r s s' := by
   obtain ⟨_, _, h⟩ := sat_answer (Abstraction.closed (A.fresh s₀) ()) hH hc hr
   exact h
+
+theorem refines_closed {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
+    (F : Abstraction M B t₀) : M.Refines (Server.closed B t₀) := by
+  have key : ∀ c, M.Reach c →
+      F.inv c.st ∧ (Server.closed B t₀).Reach ⟨F.α c.st, c.log, c.hist⟩ := by
+    intro c hc
+    induction hc with
+    | init => refine ⟨F.inv_init, ?_⟩; rw [F.α_init]; exact .init
+    | step _ hs ih =>
+      obtain ⟨hi, hr⟩ := ih
+      cases hs with
+      | arrive h => exact ⟨hi, .step hr (Step.arrive h)⟩
+      | run h1 h2 h3 =>
+        exact ⟨F.inv_handler _ _ _ _ hi h3, .step hr (Step.run h1 h2 (F.sim _ _ _ _ hi h3))⟩
+      | respond h1 h2 => exact ⟨hi, .step hr (Step.respond h1 h2)⟩
+      | env h =>
+        refine ⟨F.inv_env _ _ hi h, ?_⟩
+        dsimp only; rw [F.env_hidden _ _ hi h]; exact hr
+  rintro H ⟨c, hc, rfl⟩
+  exact ⟨_, (key c hc).2, rfl⟩
 
 end Silmaril.Proofs.Http.State
