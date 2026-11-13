@@ -1,0 +1,9 @@
+[package]
+name = "iced-boundaries"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Second, independent disassembler for the tile certificates (untrusted tooling).
+[dependencies]
+iced-x86 = { version = "=1.21.0", default-features = false, features = ["std", "decoder"] }

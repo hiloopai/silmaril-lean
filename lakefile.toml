@@ -437,3 +437,8 @@ needs = ["projectRecords", "compilesToData"]
 name = "compilesToData"
 path = "examples/compiles-to"
 filter = { extension = ["c", "o"] }
+
+[[lean_exe]]
+name = "elf-staged"
+root = "ElfStaged"
+srcDir = "tools/elf-staged"
