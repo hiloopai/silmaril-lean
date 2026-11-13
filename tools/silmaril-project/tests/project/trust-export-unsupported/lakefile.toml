@@ -1,4 +1,0 @@
-name = "lib"
-
-[[lean_lib]]
-name = "Lib"

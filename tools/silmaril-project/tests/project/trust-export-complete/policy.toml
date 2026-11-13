@@ -1,2 +1,0 @@
-standard = ["propext", "Classical.choice", "Quot.sound"]
-# Fixture policy: only `standard` and its digest are read.

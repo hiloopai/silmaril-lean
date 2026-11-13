@@ -1,7 +1,5 @@
-//! Native decision procedures and axioms: the trust lines (`silmaril.trust.v1` from the core's
-//! stable hooks and `silmaril.trust-adapter.v0.2`, the primary input), the internal lines both
-//! they and the optional converter from the core's export (`trust::core_doc`) produce, and the
-//! trust tables.
+//! Native decision procedures and axioms: the internal lines the converter from the core's export
+//! (`silmaril.trust-core.v1`, `trust::core_doc`) produces, and the trust tables.
 //!
 //! The model is the core trust framework's (`Silmaril.Prelude.Trust`, `docs/trust.md`):
 //!
@@ -21,107 +19,6 @@
 //! it into these internal lines, which the ingest checks and stores.
 use super::*;
 use serde::Deserialize;
-
-/// The core's provenance schema (`docs/trust.md`, `#trust_dump`).
-pub const CORE_SCHEMA: &str = "silmaril.trust.v1";
-/// The fields this tool reads, per core kind. The core may add fields within v1
-/// (`docs/trust.md`); others are dropped explicitly and reported (an error under
-/// `--strict-trust`), so that a new field is never silently given a meaning.
-pub const CORE_FIELDS: &[(&str, &[&str])] = &[
-    (
-        "procedure",
-        &[
-            "name",
-            "function",
-            "kernel_fallback",
-            "module",
-            "format",
-            "sound",
-            "native_function",
-            "native_eq",
-            "axiom_pattern",
-            "components",
-            "toolchain",
-            "fallback_coverage",
-            "doc",
-        ],
-    ),
-    (
-        "use",
-        &["decl", "module", "procedure", "mode", "profile", "axiom"],
-    ),
-    ("set", &["name", "all", "members", "includes", "resolved"]),
-    (
-        "scope",
-        &[
-            "module",
-            "max",
-            "default",
-            "deps",
-            "axioms",
-            "policy_file",
-            "policy_pin",
-        ],
-    ),
-    (
-        "declared_procedure",
-        &[
-            "name", "constant", "native", "kernel", "format", "bound", "doc",
-        ],
-    ),
-    (
-        "module",
-        &[
-            "module",
-            "imports",
-            "profile",
-            "ceiling",
-            "max",
-            "default",
-            "deps",
-            "axioms",
-            "allowed",
-            "scopes",
-            "policy_error",
-        ],
-    ),
-    (
-        "audit",
-        &[
-            "decl",
-            "module",
-            "profile",
-            "own_native",
-            "dep_native",
-            "unverified_native",
-            "native_axioms",
-            "axioms",
-            "elaborated_profiles",
-            "violations",
-        ],
-    ),
-];
-/// Lines `sil project trust-dump` adds to the core's.
-pub const ADAPTER_SCHEMA: &str = "silmaril.trust-adapter.v0.2";
-/// `(schema, kinds)`: which kinds each line schema may carry.
-pub const LINE_KINDS: &[(&str, &[&str])] = &[
-    (
-        CORE_SCHEMA,
-        &[
-            "procedure",
-            "use",
-            "set",
-            "scope",
-            "declared_procedure",
-            "module",
-            "audit",
-        ],
-    ),
-    (
-        ADAPTER_SCHEMA,
-        &["header", "input", "set", "source", "excluded"],
-    ),
-];
 
 /// One line of a trust dump.
 #[derive(Debug, Clone, Deserialize)]
@@ -300,54 +197,12 @@ pub struct LineSource {
     pub sha256: String,
 }
 
-/// The core's `module` line (`moduleLine`).
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CoreModule {
-    pub module: String,
-    #[serde(default)]
-    pub imports: Vec<String>,
-    pub profile: String,
-    pub ceiling: String,
-    pub max: Option<serde_json::Value>,
-    pub default: Option<serde_json::Value>,
-    pub deps: Option<serde_json::Value>,
-    pub axioms: Option<serde_json::Value>,
-    pub allowed: Option<serde_json::Value>,
-    #[serde(default)]
-    pub scopes: Vec<String>,
-    pub policy_error: Option<String>,
-}
-
 /// One `unverified_native` entry of an audit.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CoreUnverified {
     pub procedure: String,
     pub axiom: String,
-}
-
-/// The core's `audit` line (`auditLine`): never failing, with its `violations`.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CoreAudit {
-    pub decl: String,
-    pub module: String,
-    pub profile: String,
-    #[serde(default)]
-    pub own_native: Vec<String>,
-    #[serde(default)]
-    pub dep_native: Vec<String>,
-    #[serde(default)]
-    pub unverified_native: Vec<CoreUnverified>,
-    #[serde(default)]
-    pub native_axioms: Vec<String>,
-    #[serde(default)]
-    pub axioms: Vec<String>,
-    #[serde(default)]
-    pub elaborated_profiles: Vec<String>,
-    #[serde(default)]
-    pub violations: Vec<String>,
 }
 
 /// A resolved set: `{"all": true}` or `{"all": false, "names": […]}`.

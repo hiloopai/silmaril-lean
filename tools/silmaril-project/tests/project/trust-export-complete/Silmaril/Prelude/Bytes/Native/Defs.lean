@@ -1,1 +1,0 @@
--- Stand-in source of Silmaril.Prelude.Bytes.Native.Defs (trust fixture).
