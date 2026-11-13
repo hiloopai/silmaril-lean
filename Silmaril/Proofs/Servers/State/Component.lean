@@ -13,7 +13,9 @@ public import Silmaril.Servers.State.Thms
 * `pairwise_mem_ne`: a pairwise relation holds between distinct members (when symmetric);
 * **`counter_distinct`**: in every history of a counter server whose `f` is injective,
   distinct requests get distinct answers (however the requests overlap);
-* `perRequest_counter`, `perRequest_kv_get`: with a fresh instance per request.
+* `perRequest_counter`, `perRequest_kv_get`: with a fresh instance per request;
+* `decimal_chars`, **`decimal_injective`**: the decimal digits of `n`, read back as characters,
+  are `Nat.toDigits 10 n`, so `decimal` is injective (`Nat.ofDigitChars_ten_toDigits`).
 -/
 
 namespace Silmaril.Proofs.Servers.State.Component
@@ -82,5 +84,29 @@ theorem perRequest_kv_get {S₀ : Store} {H : Hist Request Response}
   obtain ⟨S', h⟩ := perRequest_answer hH hc hr
   simp only [kv, Atomic.ofFun, storeStep, hm] at h
   exact (Prod.mk.inj h).1.symm
+
+/-! ## Decimal digits -/
+
+theorem ofNat_digit {c : Char} (hc : c.isDigit = true) : Char.ofNat c.toNat.toUInt8.toNat = c := by
+  have h : c.toNat < 256 := by
+    simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq] at hc
+    have h2 : c.val ≤ '9'.val := hc.2
+    have : c.val.toNat ≤ 57 := by
+      rw [UInt32.le_iff_toNat_le] at h2; simpa using h2
+    simp only [Char.toNat]; omega
+  rw [Nat.toUInt8, UInt8.toNat_ofNat', Nat.mod_eq_of_lt h, Char.ofNat_toNat]
+
+theorem decimal_chars (n : Nat) :
+    (decimal n).map (fun b => Char.ofNat b.toNat) = Nat.toDigits 10 n := by
+  have hl : (toString n).toList = Nat.toDigits 10 n := by
+    rw [Nat.toString_eq_repr, Nat.toList_repr]
+  simp only [decimal, Method.ascii, List.map_map, hl]
+  refine (List.map_congr_left fun c hc => ?_).trans (List.map_id _)
+  exact ofNat_digit (Nat.isDigit_of_mem_toDigits (by decide) (by decide) hc)
+
+theorem decimal_injective : Function.Injective decimal := by
+  intro m n h
+  have := congrArg (fun l => Nat.ofDigitChars 10 (l.map fun b => Char.ofNat b.toNat) 0) h
+  simpa only [decimal_chars, Nat.ofDigitChars_ten_toDigits] using this
 
 end Silmaril.Proofs.Servers.State.Component
