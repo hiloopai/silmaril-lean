@@ -276,43 +276,45 @@ inductive IoUnlockLoc : Nat → PSt → Lab → PSt → Prop
         ⟨if c - 1 = 0 then 1 else 4, s.l⟩
   | clrOwn {t} {s : PSt} (h : s.pc = 1) : IoUnlockLoc t s (.plain [] [(s.l + 2, 0)] false) ⟨2, s.l⟩
 
-/-- `lll_lock`. -/
-def lllLockImpl : PrimImpl :=
-  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => LllLock 0 3,
-    fun s => if s.pc = 3 then some 0 else none⟩
+/-- The mutex's synchronising steps: `lll_lock` (primitive `0`), `lll_unlock` (primitive `1`). -/
+inductive MutexSync : Nat → PSt → List (Nat × Nat) → List (Nat × Nat) → PSt → Prop
+  | lock {s rs ws s'} (h : LllLock 0 3 s rs ws s') : MutexSync 0 s rs ws s'
+  | unlock {s rs ws s'} (h : LllUnlock 0 2 s rs ws s') : MutexSync 1 s rs ws s'
 
-/-- `lll_unlock`. -/
-def lllUnlockImpl : PrimImpl :=
-  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => LllUnlock 0 2,
-    fun s => if s.pc = 2 then some 0 else none⟩
+/-- The mutex's return: `lll_lock` at pc `3`, `lll_unlock` at pc `2`. -/
+def mutexRet : Nat → PSt → Option Nat
+  | 0, s => if s.pc = 3 then some 0 else none
+  | 1, s => if s.pc = 2 then some 0 else none
+  | _, _ => none
 
-/-- `_IO_lock_lock`. -/
-def ioLockImpl (self : Nat → Nat) : PrimImpl :=
-  ⟨PSt, fun _ => pstart, IoLockLoc self, fun _ => LllLock 1 4,
-    fun s => if s.pc = 6 then some 0 else none⟩
+/-- The mutex's implementations (other primitive numbers have no steps). -/
+def mutexImpl (p : Nat) : PrimImpl :=
+  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ => MutexSync p, mutexRet p⟩
 
-/-- `_IO_lock_unlock`. -/
-def ioUnlockImpl : PrimImpl :=
-  ⟨PSt, fun _ => pstart, IoUnlockLoc, fun _ => LllUnlock 2 4,
-    fun s => if s.pc = 4 then some 0 else none⟩
+/-- All four locks' thread-local steps: `_IO_lock_lock` (`2`) and `_IO_lock_unlock` (`3`). -/
+inductive LockLoc (self : Nat → Nat) : Nat → Nat → PSt → Lab → PSt → Prop
+  | ioLock {t s l s'} (h : IoLockLoc self t s l s') : LockLoc self 2 t s l s'
+  | ioUnlock {t s l s'} (h : IoUnlockLoc t s l s') : LockLoc self 3 t s l s'
 
-/-- No steps. -/
-def blockedImpl : PrimImpl :=
-  ⟨PSt, fun _ => pstart, fun _ _ _ _ => False, fun _ _ _ _ _ => False, fun _ => none⟩
+/-- All four locks' synchronising steps: `lll_lock` (`0`), `lll_unlock` (`1`), and the
+`lll_lock`/`lll_unlock` inside `_IO_lock_lock` (`2`) and `_IO_lock_unlock` (`3`). -/
+inductive LockSync : Nat → PSt → List (Nat × Nat) → List (Nat × Nat) → PSt → Prop
+  | lock {s rs ws s'} (h : LllLock 0 3 s rs ws s') : LockSync 0 s rs ws s'
+  | unlock {s rs ws s'} (h : LllUnlock 0 2 s rs ws s') : LockSync 1 s rs ws s'
+  | ioLock {s rs ws s'} (h : LllLock 1 4 s rs ws s') : LockSync 2 s rs ws s'
+  | ioUnlock {s rs ws s'} (h : LllUnlock 2 4 s rs ws s') : LockSync 3 s rs ws s'
 
-/-- The mutex's implementations. -/
-def mutexImpl : Nat → PrimImpl
-  | 0 => lllLockImpl
-  | 1 => lllUnlockImpl
-  | _ => blockedImpl
+/-- All four locks' returns. -/
+def lockRet : Nat → PSt → Option Nat
+  | 0, s => if s.pc = 3 then some 0 else none
+  | 1, s => if s.pc = 2 then some 0 else none
+  | 2, s => if s.pc = 6 then some 0 else none
+  | 3, s => if s.pc = 4 then some 0 else none
+  | _, _ => none
 
-/-- **The implementations.** -/
-def impl (self : Nat → Nat) : Nat → PrimImpl
-  | 0 => lllLockImpl
-  | 1 => lllUnlockImpl
-  | 2 => ioLockImpl self
-  | 3 => ioUnlockImpl
-  | _ => blockedImpl
+/-- **The implementations**: `lll_lock`, `lll_unlock`, `_IO_lock_lock`, `_IO_lock_unlock`. -/
+def impl (self : Nat → Nat) (p : Nat) : PrimImpl :=
+  ⟨PSt, fun _ => pstart, fun t => LockLoc self p t, fun _ => LockSync p, lockRet p⟩
 
 end Glibc
 
@@ -342,9 +344,10 @@ def Task.glibcLocks (M : Model) : Prop :=
       (Glibc.absMem locks)
 
 
-/-- **glibc's `lll_lock` mutex is correct under `M`** (a statement): `lll_lock`/`lll_unlock`
-meet the atomic mutex specification. All their memory accesses are locked instructions, so no
-reasoning about buffers is needed beyond the client's. -/
+/-- **glibc's `lll_lock` mutex is correct under `M`**: `lll_lock`/`lll_unlock` meet the atomic
+mutex specification. All their memory accesses are locked instructions, so no reasoning about
+buffers is needed beyond the client's. Proved for every `M`:
+`Silmaril.Process.Mt.Drf.lllMutex_holds`. -/
 def Task.lllMutex (M : Model) : Prop :=
   ∀ locks : Nat → Bool, PrimsCorrect M (Glibc.mutexSpec locks) Glibc.mutexImpl
     (fun a => locks a = true) (Glibc.absMem locks)

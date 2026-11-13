@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Process.Mt.Drf.Prim.Defs
 public import Silmaril.Process.Mt.Drf.Thms
+import Silmaril.Proofs.Process.Mt.Drf.Lll
 
 /-!
 # The bridge with implemented primitives
@@ -13,7 +14,15 @@ public import Silmaril.Process.Mt.Drf.Thms
   code is, seen through `β`, reached by the SC semantics with atomic primitives. Safety proved of
   that semantics (by decomposing it into single-threaded problems) therefore holds of the real
   process under x86-TSO and XL.
-* `drf_glibc`: the instance for glibc's locks, conditional on `Task.glibcLocks M`.
+* **`lllMutex_holds`** (proved): glibc's `lll_lock`/`lll_unlock` meet the atomic mutex
+  specification under TSO and XL (`Task.lllMutex M` for every `M`). Proof: a stuttering forward
+  simulation (`Silmaril/Proofs/Process/Mt/Drf/Lll.lean`), linearised at the `cmpxchg`/`xchg` that
+  reads `0` and at the `xchg 0`; all other implementation steps stutter.
+* **`drf_lll`** (proved): so a client of the `lll_lock` mutex that is race free modulo the mutex
+  has, under TSO and XL, only the drained quiescent configurations of its SC semantics with an
+  atomic mutex. No assumption remains.
+* `drf_glibc`: the instance for all of glibc's locks (with the recursive `_IO_lock_t`),
+  conditional on `Task.glibcLocks M`.
 -/
 
 @[expose] public section
@@ -31,6 +40,26 @@ theorem drf_prims {M : Model} {P : Nat → PrimSpec} {I : Nat → PrimImpl} {cel
     (hd : C.Drained) (hq : ∀ u, C.ts u = .cl (cts u)) :
     ScReach (cl.withSpec P) N ⟨cts0, β m0⟩ ⟨cts, β C.mem⟩ :=
   drf_sc_drained hc h0 (hP cl N cts0 m0 hav hok C cts h hd hq) (fun _ => rfl)
+
+/-- **glibc's `lll_lock` mutex is correct under TSO and XL.** -/
+theorem lllMutex_holds (M : Model) : Task.lllMutex M :=
+  Silmaril.Proofs.Process.Mt.Drf.Lll.lllMutex M
+
+/-- **DRF modulo the `lll_lock` mutex ⇒ SC with an atomic mutex, under TSO and XL** (no
+assumption on the primitives remains). -/
+theorem drf_lll {M : Model} {locks : Nat → Bool} {cl : Client} {N : Nat} {cts0 : Nat → cl.St}
+    {m0 : Mem} (hav : cl.Avoids (fun a => locks a = true))
+    (hok : cl.CallsOk (Glibc.mutexSpec locks) M N ⟨cts0, Glibc.absMem locks m0⟩)
+    {R : Cfg (cl.withSpec (Glibc.mutexSpec locks)) → Own → Prop}
+    (hc : Cert (cl.withSpec (Glibc.mutexSpec locks)) N R) {o : Own}
+    (h0 : R ⟨cts0, Glibc.absMem locks m0⟩ o) {C : BCfg (cl.withImpl Glibc.mutexImpl)}
+    {cts : Nat → cl.St}
+    (h : BReach M (cl.withImpl Glibc.mutexImpl) N
+      (⟨fun u => .cl (cts0 u), m0⟩ : Cfg (cl.withImpl Glibc.mutexImpl)).toB C)
+    (hd : C.Drained) (hq : ∀ u, C.ts u = .cl (cts u)) :
+    ScReach (cl.withSpec (Glibc.mutexSpec locks)) N ⟨cts0, Glibc.absMem locks m0⟩
+      ⟨cts, Glibc.absMem locks C.mem⟩ :=
+  drf_prims (lllMutex_holds M locks) hav hok hc h0 h hd hq
 
 /-- **glibc's locks**: with `Task.glibcLocks M`, a client of glibc's mutex and recursive stream
 lock that is race free modulo those locks has, under TSO and XL, only the drained quiescent
