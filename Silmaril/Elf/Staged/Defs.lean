@@ -43,7 +43,7 @@ A stage fact is closed by running its reader on a source `r` with `Check.Sub r F
 * **fast** (compiled): `r = fastRead a` on a `ByteArray` (`sub_fast`, `Thms`). Running a stage
   this way in a compiled tool is trusted computation (the Lean compiler and runtime). Turning
   such a run into a theorem uses compiled evaluation: on the current toolchain each such
-  computation adds its own auxiliary axiom (`thm._native.…​.ax_…`, one per
+  computation adds its own auxiliary axiom (`thm._native.….ax_…`, one per
   computation, not a shared `Lean.ofReduceBool`), which the policy must allow by name. The
   lemmas are stated so that the Boolean run on `fastRead` is the only gap.
 

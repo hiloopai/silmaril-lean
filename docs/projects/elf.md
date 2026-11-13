@@ -103,7 +103,7 @@ Each fact comes from running its reader on a source that answers as the file (`C
 * **paranoid**: `pageRead` on 4 KiB literals, `decide +kernel` (`layoutIs_of_pages`, …);
 * **fast**: `fastRead` on a `ByteArray` (`sub_fast`). A compiled run is trusted computation.
   A theorem from it uses compiled evaluation, which on the current toolchain adds one
-  auxiliary axiom per computation (`thm._native.…​.ax_…`); the policy decides
+  auxiliary axiom per computation (`thm._native.….ax_…`); the policy decides
   which named computations may do so.
 
 **Disassembly certificates.** A tile list is a claim of instruction boundaries. Any
