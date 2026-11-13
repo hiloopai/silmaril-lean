@@ -142,6 +142,33 @@ theorem silKernel : SumEven 100 := by
 -- Kernel side alone.
 theorem silKernelOnly : SumEven 100 := by sil_check test.sumEven (kernel := sumEvenK_sound 100)
 
+-- Same proposition from either source: `silNative` (native list checker) and `silKernel`
+-- (kernel `Nat` checker) both state `SumEven 100`.
+example : SumEven 100 := silNative
+example : SumEven 100 := silKernel
+
+-- The kernel side never runs natively, even where the procedure is allowed natively.
+set_option silmaril.trust.profile "sumEvenSet" in
+theorem silKernelWhereNativeAllowed : SumEven 100 := by
+  sil_check test.sumEven (kernel := sumEvenK_sound 100)
+
+/--
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernelWhereNativeAllowed","dep_native":[],"elaborated_profiles":["sumEvenSet"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+-/
+#guard_msgs in
+trust_audit silKernelWhereNativeAllowed
+
+-- No silent fallback: when the native side is selected and its check is false, `sil_check`
+-- fails; it does not retry with the kernel side.
+/--
+error: sil_check test.sumEven: the native check returned false
+  sumEvenN (List.range 3)
+-/
+#guard_msgs in
+set_option silmaril.trust.profile "sumEvenSet" in
+example : SumEven 3 := by
+  sil_check test.sumEven (native := sumEvenN_sound 3) (kernel := sumEvenK_sound 3)
+
 /--
 error: sil_check test.sumEven: the native side must apply Silmaril.Trust.Examples.sumEvenN_sound
   sumEvenK_sound 100
@@ -254,6 +281,7 @@ info: {"axiom_pattern":null,"components":[],"doc":"Test procedure: a fold over a
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1","decl":"Silmaril.Trust.Examples.silNative","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"sumEvenSet","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.silKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.silKernelOnly","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"default","schema":"silmaril.trust.v1"}
+{"axiom":null,"decl":"Silmaril.Trust.Examples.silKernelWhereNativeAllowed","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"sumEvenSet","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byDefault","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byLocal","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byToys","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"toys","schema":"silmaril.trust.v1"}
@@ -264,7 +292,7 @@ info: {"axiom_pattern":null,"components":[],"doc":"Test procedure: a fold over a
 #trust_uses
 
 /--
-info: roundtrip ok: 5 procedures, 13 uses
+info: roundtrip ok: 5 procedures, 14 uses
 -/
 #guard_msgs in
 #trust_roundtrip
@@ -313,7 +341,7 @@ error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axi
 trust_audit byDecideNative
 
 /--
-info: roundtrip ok: 6 procedures, 13 uses
+info: roundtrip ok: 6 procedures, 14 uses
 -/
 #guard_msgs in
 #trust_roundtrip
