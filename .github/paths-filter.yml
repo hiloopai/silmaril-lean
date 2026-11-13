@@ -46,6 +46,10 @@ rust:
 # manifests `sil project` loads, the files the registry names, and the tool itself.
 project:
   - 'silmaril.toml'
+  - 'examples/wasm-components/**'
+  - 'Silmaril/Project/WasmComponents/**'
+  - 'Silmaril/Wasm/Component/Binary/Example/**'
+  - 'tests/wat/fixtures/**'
   - 'silmaril/**'
   - 'lakefile.toml'
   - 'lake-manifest.json'

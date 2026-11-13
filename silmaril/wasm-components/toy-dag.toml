@@ -1,0 +1,73 @@
+# The verdict DAG of the resource-provider toy of the Wasm components pilot (loaded last by
+# Silmaril.Project.WasmComponents.Toy.Thms). Detached node by node, as the rest of the pilot
+# (Silmaril's single root is the self-test `silmaril_example.all`).
+schema = "silmaril.records.v0.2"
+
+[[group]]
+name = "silmaril.wasm_components.toy"
+title = "The resource-provider toy: two releases, a correct provider over every host, an upgrade"
+children = ["silmaril.wasm_components.gen.toy.is", "silmaril.wasm_components.gen.toy.parses", "silmaril.wasm_components.gen.toy.valid", "silmaril.wasm_components.gen.toy.has_world", "silmaril.wasm_components.gen.toy.world.is", "silmaril.wasm_components.gen.toy.world.parses", "silmaril.wasm_components.gen.toy.provider", "silmaril.wasm_components.gen.toy.provider_every_host", "silmaril.wasm_components.gen.toy_split.is", "silmaril.wasm_components.gen.toy_split.parses", "silmaril.wasm_components.gen.toy_split.valid", "silmaril.wasm_components.gen.toy_split.has_world", "silmaril.wasm_components.gen.toy_split.distinct", "silmaril.wasm_components.gen.toy_split.behaviour_eq", "silmaril.wasm_components.gen.toy_split.upgrade"]
+
+[[detached]]
+name = "silmaril.wasm_components.toy"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.valid"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.has_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.world.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.world.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.provider"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy.provider_every_host"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.valid"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.has_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.distinct"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.behaviour_eq"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.toy_split.upgrade"
+reason = "a case study"

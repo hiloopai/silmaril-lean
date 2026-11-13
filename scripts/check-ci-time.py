@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Fail a separate timing check after the correctness jobs finish.
 
-Only the time some job of this attempt is running counts, each job measured from
+Only the time some job is running counts, each job's latest attempt measured from
 its `started_at`: a job waiting for a runner is not CI work, so a gap with no job
-running (such as main's wait for a 16-vCPU publisher) does not count.
+running (such as main's wait for a 16-vCPU publisher, or the time between a run and
+its rerun) does not count.
 
 Time Lake spends compiling modules the run had to build does not count either: a pull
 request that adds a lot of new proof is not slow CI. Restores, no-op Lake walks,
@@ -35,22 +36,20 @@ def timestamp(text):
     return stamp
 
 
-def running_intervals(run, jobs, now):
-    """[started_at, completed_at or now] of every job this attempt ran.
+def running_intervals(jobs, now):
+    """[started_at, completed_at or now] of every job in the attempt's list.
 
-    A rerun keeps its earlier attempts' passing jobs in the list; they ran before
-    this attempt's `run_started_at` and are left out.
+    The list holds each job's latest attempt: a rerun keeps its earlier attempts'
+    passing jobs, and they count, so rerunning only this check measures the real
+    CI again. The gap between attempts has no job running and does not count.
     """
     if now.tzinfo is None:
         raise ValueError("CI timestamps must include a timezone")
-    attempt = timestamp(run["run_started_at"])
     intervals = []
     for job in jobs:
         if job["conclusion"] == "skipped" or not job.get("started_at"):
             continue
         began = timestamp(job["started_at"])
-        if began < attempt:
-            continue
         finished = timestamp(job["completed_at"]) if job.get("completed_at") else now
         if finished < began or began > now:
             raise ValueError(f"job {job['name']!r} has inconsistent timestamps")
@@ -96,12 +95,14 @@ def compile_seconds(lines, start, end):
 
 
 def check(run, jobs, now, lines=()):
-    intervals = running_intervals(run, jobs, now)
+    timestamp(run["run_started_at"])
+    intervals = running_intervals(jobs, now)
     if not intervals:
         raise ValueError("no job of this CI attempt has started")
     running = union_seconds(intervals)
-    waited = (now - min(began for began, _ in intervals)).total_seconds() - running
-    compiled = compile_seconds(lines, timestamp(run["run_started_at"]), now)
+    first = min(began for began, _ in intervals)
+    waited = (now - first).total_seconds() - running
+    compiled = compile_seconds(lines, first, now)
     counted = running - compiled
     message = (f"CI attempt: {running:.1f}s with a job running ({waited:.1f}s with none, "
                f"waiting for runners, not counted), of which {compiled:.1f}s compiled "

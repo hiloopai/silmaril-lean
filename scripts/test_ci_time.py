@@ -53,22 +53,28 @@ class TimeBudgetTests(unittest.TestCase):
         self.assertEqual(status, 1)
 
     def test_parallel_jobs_count_once(self):
-        self.assertEqual(ci_time.union_seconds(ci_time.running_intervals(self.attempt, [
+        self.assertEqual(ci_time.union_seconds(ci_time.running_intervals([
             job("a", "2026-01-01T00:00:00Z", "2026-01-01T00:02:00Z"),
             job("b", "2026-01-01T00:01:00Z", "2026-01-01T00:03:00Z"),
             job("c", "2026-01-01T00:05:00Z", "2026-01-01T00:06:00Z"),
         ], self.now)), 240)
 
-    def test_a_rerun_leaves_out_jobs_from_earlier_attempts(self):
-        retained = job("old", "2025-12-31T23:00:00Z", "2025-12-31T23:30:00Z")
-        self.assertEqual(ci_time.running_intervals(self.attempt, [retained], self.now), [])
-        with self.assertRaises(ValueError):
-            self.check(retained)
+    def test_rerunning_only_the_budget_still_counts_the_correctness_jobs(self):
+        # Attempt 1 ran `lean` for 300 s and failed the budget; attempt 2, an hour later,
+        # reruns only this check, whose list keeps attempt 1's `lean`.
+        rerun = {"run_started_at": "2026-01-01T01:00:00Z"}
+        jobs = [job("lean", "2026-01-01T00:00:00Z", "2026-01-01T00:05:00Z"),
+                {"name": "CI time budget / budget", "started_at": "2026-01-01T01:00:05Z",
+                 "completed_at": None, "conclusion": None}]
+        now = datetime(2026, 1, 1, 1, 0, 15, tzinfo=timezone.utc)
+        status, out = quiet(ci_time.check, rerun, jobs, now)
+        self.assertEqual(status, 1)
+        self.assertIn("310.0s with a job running (3305.0s with none", out)
 
     def test_invalid_timestamps_fail_instead_of_passing(self):
         for started in ["invalid", "2026-01-01T00:11:00Z", "2026-01-01T00:01:00"]:
             with self.subTest(started=started), self.assertRaises(ValueError):
-                ci_time.running_intervals(self.attempt, [job("a", started, None)], self.now)
+                ci_time.running_intervals([job("a", started, None)], self.now)
 
 
 class CompileTimeTests(unittest.TestCase):

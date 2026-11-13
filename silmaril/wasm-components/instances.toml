@@ -1,0 +1,87 @@
+# The rows of the Wasm components pilot (Silmaril.Project.WasmComponents.Thms loads this file
+# after the values and certificates, before the answers). Open rows carry no `expect`.
+schema = "silmaril.records.v0.2"
+
+# silmaril.shapes.component.valid: index scoping of the certified ASTs
+
+[[instance]]
+name = "silmaril.wasm_components.gen.comp_b.valid"
+of = "silmaril.shapes.component.valid"
+args = { c = "Silmaril.Project.WasmComponents.compBCert" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.gen.linked.valid"
+of = "silmaril.shapes.component.valid"
+args = { c = "Silmaril.Project.WasmComponents.linkedCert" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.gen.run.valid"
+of = "silmaril.shapes.component.valid"
+args = { c = "Silmaril.Project.WasmComponents.runCert" }
+expect = "THM"
+
+# silmaril.shapes.component.has_world: the WIT projection; the world files are the certificates
+# gen.{comp_b,linked}.world (Wit.Tool.worldAst of these worlds)
+
+[[instance]]
+name = "silmaril.wasm_components.gen.comp_b.has_world"
+of = "silmaril.shapes.component.has_world"
+args = { c = "Silmaril.Project.WasmComponents.compBCert", W = "Silmaril.Project.Shapes.Component.Example.compBWorld" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.gen.linked.has_world"
+of = "silmaril.shapes.component.has_world"
+args = { c = "Silmaril.Project.WasmComponents.linkedCert", W = "Silmaril.Project.WasmComponents.linkedWorld" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.gen.run.has_world"
+of = "silmaril.shapes.component.has_world"
+args = { c = "Silmaril.Project.WasmComponents.runCert", W = "Silmaril.Project.Shapes.Component.Example.compBWorld" }
+expect = "THM"
+
+# silmaril.shapes.component.digest_behaviour_eq: two digests, one behaviour
+
+[[instance]]
+name = "silmaril.wasm_components.gen.comp_b_run.behaviour_eq"
+of = "silmaril.shapes.component.digest_behaviour_eq"
+args = { den = "Silmaril.Project.WasmComponents.getRunDen", X = "silmaril.wasm_components.gen.comp_b", Y = "silmaril.wasm_components.gen.run" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.behaviour_eq"
+of = "silmaril.shapes.component.digest_behaviour_eq"
+args = { den = "Silmaril.Project.WasmComponents.typesDen", X = "silmaril.wasm_components.wasi.io.v0_2_12.oci", Y = "silmaril.wasm_components.wasi.io.v0_2_12.fixture" }
+
+# the pilot's problems about files
+
+[[instance]]
+name = "silmaril.wasm_components.gen.comp_b_run.distinct"
+of = "silmaril.wasm_components.distinct"
+args = { X = "silmaril.wasm_components.gen.comp_b", Y = "silmaril.wasm_components.gen.run" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.same_code"
+of = "silmaril.wasm_components.same_code"
+args = { X = "silmaril.wasm_components.wasi.io.v0_2_12.oci", Y = "silmaril.wasm_components.wasi.io.v0_2_12.fixture" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.distinct"
+of = "silmaril.wasm_components.distinct"
+args = { X = "silmaril.wasm_components.wasi.io.v0_2_12.oci", Y = "silmaril.wasm_components.wasi.io.v0_2_12.fixture" }
+expect = "THM"
+
+[[instance]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.same_world"
+of = "silmaril.wasm_components.same_world"
+args = { X = "silmaril.wasm_components.wasi.io.v0_2_12.oci", Y = "silmaril.wasm_components.wasi.io.v0_2_12.fixture" }
+
+[[instance]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.reencodes"
+of = "silmaril.wasm_components.reencodes_to"
+args = { X = "silmaril.wasm_components.wasi.io.v0_2_12.oci", Y = "silmaril.wasm_components.wasi.io.v0_2_12.fixture" }

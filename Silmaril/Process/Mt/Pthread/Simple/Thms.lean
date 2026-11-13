@@ -13,6 +13,8 @@ import Silmaril.Proofs.Process.Mt.Pthread.Simple
   refines the simple model: every run stands for a run of `tisa P`.
 * `noUB_full`, `deterministic_full` (proved): so absence of undefined behaviour and a
   deterministic output, proved on the simple model, hold of the full model.
+* `raceFree_of_csl` (proved): a program with no `Csl.Race` (the decomposition's `no_race`) is
+  `RaceFree`; the converse fails for programs whose threads read a shared cell.
 
 Under x86-TSO and XL the full model also has store buffers; for programs that are race free in
 the simple model (`RaceFree`), the memory-model bridge of `Silmaril.Process.Mt.Drf` (`drf_sc`)
@@ -48,5 +50,10 @@ theorem deterministic_full (hl : I.Lin) {o : List Nat} (h : Deterministic P o) {
     (h₀ : absC P I c₀ = start P) (r : Star (Impl.model P I).step c₀ c) (hd : MainDone (absC P I c)) :
     c.out = o :=
   h.2 _ (h₀ ▸ Impl.reach hl r) hd
+
+/-- No `Csl.Race` (no two threads' next plain steps share a cell) implies `RaceFree`. -/
+theorem raceFree_of_csl {P : Prog} (h : ∀ C, Reach (tisa P) (start P) C → ¬ Race (tisa P) C) :
+    RaceFree P :=
+  Silmaril.Proofs.Process.Mt.Pthread.Simple.raceFree_of_csl h
 
 end Silmaril.Process.Mt.Pthread.Simple

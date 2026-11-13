@@ -1,0 +1,89 @@
+{
+  "astWidth": 80,
+  "branch": "meta-theory",
+  "command": "cd spectec && ./_build/default/src/exe-spectec/main.exe doc/semantics/il/*.spectec --ast-width 80 --ast -o meta-il.ast (frontend built by dune at the same revision; see README.md)",
+  "references": [
+    {
+      "path": "spectec/doc/semantics/il/README.md",
+      "sha256": "57d02345d28be639503fa57d73887a4c5c8187992a34d130ad2158329ef6a353"
+    },
+    {
+      "path": "spectec/metatheory/dune-project",
+      "sha256": "abc35620f3de6a94fd7c1909c6120addea7425dda0b7dd6ac83981f825da86b9"
+    },
+    {
+      "path": "spectec/metatheory/theories/dune",
+      "sha256": "20f31450b0ed7f9ae64f44ca8c2896190f2e0779b4dded4c39f281d6d20f1c9e"
+    },
+    {
+      "path": "spectec/metatheory/theories/env.v",
+      "sha256": "5c5ec5b5788821136aba336b76fed110c62feff9803d87f09363cfe17f12b9c3"
+    },
+    {
+      "path": "spectec/metatheory/theories/numerics.v",
+      "sha256": "9950c78d77821562b6ab746c883d1521319f805b283a7659f5f3b3b97313d870"
+    },
+    {
+      "path": "spectec/metatheory/theories/reduction.v",
+      "sha256": "283bdb40e6484218afff321997d5973366fc3eb6a031915033415ae835f585fc"
+    },
+    {
+      "path": "spectec/metatheory/theories/subst.v",
+      "sha256": "4cee99c2f799c57eb86cf87fbd9aaa7e74abd514793adfde0b4cbb0b563a43b0"
+    },
+    {
+      "path": "spectec/metatheory/theories/syntax.v",
+      "sha256": "55b5bfe43577a4c0652636b81b7188adbe123ed1b7fc9f79e6aaea3518e199d7"
+    },
+    {
+      "path": "spectec/metatheory/theories/typing.v",
+      "sha256": "9764ff3d899a43a75b6891ffd477208a2e117d3dada6fd57157e4b1025abb5fb"
+    },
+    {
+      "path": "spectec/metatheory/theories/utils.v",
+      "sha256": "4955d339120bffafcc8d23abd12b6adb506534a4899a88d93364d0bb33d7989e"
+    }
+  ],
+  "repository": "Wasm-DSL/spectec",
+  "revision": "3a10283c5b56989689ca4d36a6cc559e3783246f",
+  "specs": [
+    {
+      "definitions": 89,
+      "module": "MetaIL",
+      "name": "meta-il",
+      "path": "specs/spectec/meta-theory-3a10283c5b/meta-il.ast",
+      "sha256": "1ccd9243fe1bf385722975cfc5678021e26e5748128b707c610165c89db91ae2",
+      "sources": [
+        {
+          "path": "spectec/doc/semantics/il/0-aux.spectec",
+          "sha256": "17a31fdbd9082280d61c392d5e449ebf54429324d238e6f708eee8166347070e"
+        },
+        {
+          "path": "spectec/doc/semantics/il/1-syntax.spectec",
+          "sha256": "fe7fc1d9381264e9db1c2f25b3b6994382dbc58f5f7f4277dcc7263469883c12"
+        },
+        {
+          "path": "spectec/doc/semantics/il/2-env.spectec",
+          "sha256": "e27d4c1861794bf56d0078060d5d6f15967820b9e78030e1dc00c8201873e149"
+        },
+        {
+          "path": "spectec/doc/semantics/il/3-primitives.spectec",
+          "sha256": "ac7422dc68500417c26078c4920bffd6f716f319157d231b472b64f3b2dc8636"
+        },
+        {
+          "path": "spectec/doc/semantics/il/4-subst.spectec",
+          "sha256": "aea60dfd8ffdd8beb09729972bc3841f2e1009f8603199760b2041b73bee40bd"
+        },
+        {
+          "path": "spectec/doc/semantics/il/5-reduction.spectec",
+          "sha256": "f641463c48bd9395480b905b1c2925d2bb721cbd5f08f609889d0ab3710f1ae6"
+        },
+        {
+          "path": "spectec/doc/semantics/il/6-typing.spectec",
+          "sha256": "16e63c6ede0a258f040a54a4722f5476217ffd848f930223dee524e68ebbd3ae"
+        }
+      ]
+    }
+  ],
+  "srcRoot": "specs/spectec/meta-theory-3a10283c5b/src"
+}
