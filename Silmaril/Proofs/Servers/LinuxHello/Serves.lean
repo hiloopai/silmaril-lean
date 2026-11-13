@@ -145,4 +145,79 @@ theorem readLoop (q : NetQueue) : ∀ (n : Nat) (rest : List LPS.Byte),
       · rfl
       · exact hacc' r hr
 
+
+/-! ## Sending everything -/
+
+theorem sendLoop (q : NetQueue) : ∀ (n : Nat) (out : List LPS.Byte), out.length ≤ n →
+    ∀ st : St, st.pc = (if out = [] then .close else .send) → st.conn = 4 → st.out = out →
+    ∃ h st', HStar (isa := isa) [] serverSpec noFilter ⟨st, mConn q (ofListFin [])⟩ h
+        ⟨st', mConn q (ofListFin [])⟩ ∧
+      st'.pc = .close ∧ byteTrace h = out.map (.writeEv 3) ∧
+      (∀ r ∈ h, accepts genericAccept r = false)
+  | n, [], _, st, hp, _, _ => ⟨[], st, .refl _, by simpa using hp, rfl, by simp⟩
+  | 0, _ :: _, hn, _, _, _, _ => absurd hn (by simp)
+  | n + 1, b :: rest, hn, st, hp, hc, ho => by
+    have hne : b :: rest ≠ [] := List.cons_ne_nil _ _
+    have hp0 : st.pc = .send := by simpa using hp
+    obtain ⟨bs, hbs⟩ : ∃ bs, (b :: rest).take 4096 = bs := ⟨_, rfl⟩
+    obtain ⟨rest', hrest⟩ : ∃ r, (b :: rest).drop bs.length = r := ⟨_, rfl⟩
+    have hlen : bs.length ≤ 4096 := hbs ▸ List.length_take_le _ _
+    have hpos : 0 < bs.length := by rw [← hbs]; simp
+    have hpre : bs = (b :: rest).take bs.length :=
+      List.prefix_iff_eq_take.1 (hbs ▸ List.take_prefix _ _)
+    have hsplit : bs ++ rest' = b :: rest := by
+      rw [← hrest]
+      calc bs ++ (b :: rest).drop bs.length
+          = (b :: rest).take bs.length ++ (b :: rest).drop bs.length := by rw [← hpre]
+        _ = b :: rest := List.take_append_drop _ _
+    have hlt : rest'.length ≤ n := by
+      have := congrArg List.length hsplit
+      simp only [List.length_append, List.length_cons] at this hn
+      omega
+    obtain ⟨eff, hs, hr, hw⟩ := sendto_ok (fd := 4) ⟨206, args st, readByte st, writableByte⟩
+      (mConn q (ofListFin [])) (nqPeer q) 3 st rfl (by rw [ho]; exact hne) bs (by rw [ho, hbs])
+      (fdLookup_connFds q _)
+    have ha : args st = [4, OUT, BitVec.ofNat 64 (min st.out.length 4096), NOSIG, 0, 0] := by
+      simp [args, hp0, hc]
+    have hs' : serverSpec ⟨206, args st, readByte st, writableByte⟩ (mConn q (ofListFin []))
+        (.ok eff (mConn q (ofListFin [])) (bs.map (.writeEv 3))) := by
+      rw [ha] at hs ⊢
+      show sendtoSpec (fd32 4) OUT (BitVec.ofNat 64 (min st.out.length 4096)) NOSIG 0 0 _ _ _
+      rw [fd32_four]
+      exact hs
+    obtain ⟨st1, hst1⟩ : ∃ s : St,
+        s = advance (setRet st (lenWord bs) ([] : List LPS.Byte)) := ⟨_, rfl⟩
+    have s1 : LStep (isa := isa) [] serverSpec noFilter ⟨st, mConn q (ofListFin [])⟩
+        (.syscall 206 (args st) eff (bs.map (.writeEv 3))) ⟨st1, mConn q (ofListFin [])⟩ := by
+      have := sys_step st 206 (by simp [pending, hp0]) _ _ _ _ hs' rfl rfl rfl
+      rw [hr, hw] at this
+      rw [hst1]
+      exact this
+    have hp1 : st1.pc = .sent := by simp [hst1, advance, setRet, hp0]
+    have s2 := instr_step st1 (by simp [pending, hp1]) (mConn q (ofListFin [])) rfl rfl
+    have hret1 : st1.ret = lenWord bs := by simp [hst1, advance, setRet, hp0]
+    have hret : 0 < st1.ret.toInt := by
+      rw [hret1, lenWord_toInt _ hlen]
+      omega
+    have hrn : st1.ret.toNat = bs.length := by
+      rw [hret1, lenWord_toNat _ (by omega)]
+    have hn2 : (next st1).pc = (if rest' = [] then .close else .send) ∧ (next st1).conn = 4 ∧
+        (next st1).out = rest' := by
+      simp only [next, hp1, hret, ↓reduceIte]
+      have ho1 : st1.out = b :: rest := by simp [hst1, advance, setRet, hp0, ho]
+      have hc1 : st1.conn = 4 := by simp [hst1, advance, setRet, hp0, hc]
+      rw [ho1, hrn, hrest, hc1]
+      exact ⟨rfl, rfl, rfl⟩
+    obtain ⟨h', st', hs3, hp', hb', hacc'⟩ :=
+      sendLoop q n rest' hlt (next st1) hn2.1 hn2.2.1 hn2.2.2
+    refine ⟨_ :: .instr :: h', st', .step s1 (.step s2 hs3), hp', ?_, ?_⟩
+    · simp only [byteTrace, List.flatMap_cons, StepRecord.events, List.nil_append] at hb' ⊢
+      rw [hb', ← List.map_append, hsplit]
+    · intro r hr
+      simp only [List.mem_cons] at hr
+      rcases hr with rfl | rfl | hr
+      · simp [accepts, genericAccept]
+      · rfl
+      · exact hacc' r hr
+
 end Silmaril.Proofs.Servers.LinuxHello
