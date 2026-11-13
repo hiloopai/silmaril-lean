@@ -21,7 +21,7 @@ experiment. A run that never shows an outcome does not prove it impossible.
 | the same, checked against SC (negative control) | SB, R, n6 at 2 M | fails as it must: SC is not a model of this CPU |
 | lattice witnesses (`lattice_hw.c`), 15 tests, 6 models | 50 M per test in each of 4 placement/delay configurations (3 G total) | **sound** for TSO and XL; hardware crosses `sc ⊏ tso` (SB) and, only with non-temporal or misaligned accesses, `tso ⊏ xl` and `cfPlain ⊏ top`; on TSO-covered tests it never shows the outcomes that separate `tso` from `ra` and `cf` |
 | multithreaded process model, every schedule of 4 raw-byte programs vs. 1 M native runs each, two placements | 924 schedules for SB | MP, INC2, LOCKINC2: **the same outcome sets**. SB: hardware shows `r1 = r2 = 0` (6 568 and 662 times), which the model's SC runs never reach. That is expected, because SB is racy; see below |
-| simple pthread model, exhaustive, 17 program instances | up to 1.14 M configurations | outcome sets equal the expected outputs; **`Csl.Race` finds read/read races in `p3`, `p4` and `p7`**, so `Simple.RaceFree` is false for them |
+| simple pthread model, exhaustive, 17 program instances | up to 1.14 M configurations | outcome sets equal the expected outputs; **`Csl.Race` finds read/read races in `p3`, `p4` and `p7`** and no write race; `Simple.RaceFree` (restated over write races in #151) holds of them on these runs |
 | pthread binaries vs. the simple model, 22 binaries × 16 configurations (host and pinned glibc, 4 placements, with or without perturbation) | 400 runs per configuration (small bounds), 30 (full size) | **no output outside the model's set**; the racy counter's rare outcomes need perturbation or larger bounds to appear |
 
 **No model bug was found:** nothing the models claim to cover was contradicted. The findings
@@ -194,10 +194,12 @@ every expected output and with the hardware.
   small bounds.
 * **`Csl.Race` counts two reads of one cell by two threads as a race.** p3 (all threads read
   `value` after `pthread_once`), p4 (all workers read the key cell) and p7 (all threads read
-  the barrier slots) have such read/read races and no write race. So `Simple.RaceFree p3`,
-  `p4` and `p7` are **false**; race freedom holds for them only with races restricted to
-  pairs with a write. The read-only sharing layer of #149 (`Csl.Ro`) addresses
-  the same point for the decomposition.
+  the barrier slots) have such read/read races and no write race. With `Simple.RaceFree`
+  stated over `Csl.Race`, `p3`, `p4` and `p7` were **not** race free. #151 restates
+  `Simple.RaceFree` over write races (`Simple.WRace`: one of the two steps writes the cell;
+  `raceFree_of_csl` proves that `Csl.Race`-freedom implies it), and the explored runs above
+  have no write race. The read-only sharing layer of #149 (`Csl.Ro`) addresses the same point
+  for the decomposition.
 * No reachable configuration faults (no undefined pthread use) or deadlocks, including p2 with
   spurious wake-ups.
 
@@ -249,8 +251,9 @@ and the pinned glibc, each race-free program printed the same single output.
 2. **The x86 process model is SC for racy code** (§2): it forbids SB's weak outcome, which
    this CPU shows in 0.07 % to 0.7 % of native runs. That is a known coverage gap (`Task.x86Acc`,
    `Task.drfSc`), and it now has a concrete witness.
-3. **`Csl.Race` includes read/read pairs** (§3). `Simple.RaceFree` is false for three of the
-   eight pthread programs, which only share read-only data.
+3. **`Csl.Race` includes read/read pairs** (§3). Three of the eight pthread programs, which
+   only share read-only data, are not `Csl.Race`-free; `Simple.RaceFree` now counts write
+   races only (#151), and the decomposition has read-only sharing (`Csl.Ro`, #149).
 4. **XL over-approximates** this CPU on misaligned accesses inside a cache line (never torn)
    and on `rep stosb` (never reordered). RA and the catch-fire models over-approximate it
    on IRIW, 2+2W, fenced SB and lost locked updates. These are allowances that were never
