@@ -5,14 +5,31 @@ public import Silmaril.X86.Ext.SymExec
 /-!
 # Control-flow kinds of decoded instructions, and the flow law of a machine
 
-DESIGN SKELETON (effects design, `/tmp/elfwork/effects/DESIGN.md`): the signatures are the
-proposal; nothing here is proved yet.
-
-A **flow decoder** (`FlowDec`) is a machine's listing decoder together with a syntactic
+A **flow decoder** (`FlowDec`) is a decoder of x86-64 instructions together with a syntactic
 classification of every instruction it reads (`Kind`): where control may go after it, and what
-it does to `rax` (for the number of a direct `syscall`). The **flow law** (`FlowLaw M D`) is the
-one per-machine obligation that ties the classification to the semantics: every step of `M` from
-an instruction that `D` reads in loaded code lands where the kind says.
+it does to `rax` (the number of a direct `syscall` is read off `rax`). The **flow law**
+(`FlowLaw M D`) is the one per-machine obligation that ties the classification to a semantics:
+every step of the machine `M` from an instruction that `D` reads lands where the kind says, and
+respects the `rax` transfer.
+
+Nothing here is specific to one decoder. `Silmaril.X86.Flow.X64` is a length decoder of the
+x86-64 encoding with its classification (the decoder of the worked examples); the decoders of
+the `Str9` tower are other instances. The flow law of a tower machine for a decoder is a
+per-machine theorem (`Thms`: the open goals).
+
+## Choices
+
+* `syscall`, `int 0x80`/`sysenter` (`sysOther`) and the traps (`ud2`, `hlt`, `int3`) admit **no
+  user step**: system calls are the kernel arm of the process (`Silmaril.Elf.Effects.Step.sys`),
+  and a trap on hardware raises a signal.
+* An indirect branch through `disp(%rip)` (the GOT form of a PLT stub) lands on the 8 bytes read
+  at `next + disp`; through a register, on the register. Other memory forms are unconstrained:
+  their targets are a certificate's business (`Cfg.Why`).
+* `other` (far transfers, `iret`, `xbegin`, `sysret`, …) admits anything; the CFG checker
+  rejects it in a block.
+* `Stable`: a decoder's answer on a slice does not change when bytes are appended. It makes the
+  instruction at an address unique (`Thms.decode_unique`), so the step of a machine and the
+  block of a certificate read the same instruction.
 -/
 
 @[expose] public section
@@ -40,6 +57,7 @@ inductive Kind where
   | seq
   /-- A `rep` string form: one element per step, `rip` stays or moves to the next instruction. -/
   | rep
+  /-- A conditional branch (also `loop`, `jrcxz`): the next instruction or `next + rel`. -/
   | jcc (rel : Int)
   | jmp (rel : Int)
   | jmpInd (op : Opnd)
@@ -47,14 +65,13 @@ inductive Kind where
   | callInd (op : Opnd)
   /-- `syscall` (`0F 05`): a direct system call. -/
   | syscall
-  /-- `int 0x80`, `sysenter`, `int n`: a system-call path with another table; never a known
+  /-- `int 0x80`, `int n`, `sysenter`: a system-call path through another table; never a known
   number. -/
   | sysOther
   | ret
-  /-- `ud2`, `hlt`, `int3`: no retiring step (on hardware: a signal that ends the process). -/
+  /-- `ud2`, `hlt`, `int3`, `int1`: no retiring step (on hardware: a signal). -/
   | trap
-  /-- Any other transfer (`iret`, far forms, `xbegin`, `loop`, `jrcxz`, ...): the checker rejects
-  it in reachable code. -/
+  /-- Any other transfer (far forms, `iret`, `xbegin`, `sysret`, …): rejected in a block. -/
   | other
   deriving DecidableEq, Repr
 
@@ -65,7 +82,8 @@ inductive RaxT where
   | clobber
   deriving DecidableEq, Repr
 
-/-- **A flow decoder**: a listing decoder and its classification. -/
+/-- **A flow decoder**: a decoder (bytes to an instruction and its length) and its
+classification. -/
 structure FlowDec where
   Instr : Type
   [deq : DecidableEq Instr]
@@ -75,14 +93,18 @@ structure FlowDec where
 
 attribute [instance] FlowDec.deq
 
+/-- **The decoder reads a prefix**: its answer on a slice holding the instruction is unchanged
+by appending bytes. -/
+def FlowDec.Stable (D : FlowDec) : Prop :=
+  ∀ (w x : List Byte) i l, D.decode w = some (i, l) → l ≤ w.length → D.decode (w ++ x) = some (i, l)
+
 /-- A machine seen through its core and memory: a step relation (a functional machine embeds as
-`fun s t => step s = some t`; a process machine with a kernel arm is a `UMach` whose `syscall`
-steps are not user steps). -/
+`fun s t => step s = some t`). System calls and library code are not user steps: they are the
+kernel and library arms of the process (`Silmaril.Elf.Effects.World`). -/
 structure UMach (σ : Type) where
   step : σ → σ → Prop
   core : σ → State
   mem : σ → Memory
-  live : σ → Prop := fun _ => True
 
 /-- The address after an instruction of length `l` at `s.rip`. -/
 def next (s : State) (l : Nat) : Word := s.rip + BitVec.ofNat 64 l
@@ -94,18 +116,23 @@ def rel (s : State) (l : Nat) (r : Int) : Word := next s l + BitVec.ofInt 64 r
 def Pushed (s : State) (l : Nat) (t : State) (m : Memory) : Prop :=
   t.read .rsp = s.read .rsp - 8#64 ∧ loadN m (t.read .rsp) 8 = some (next s l)
 
-/-- **Where a step from an instruction of kind `k` and length `l` may go.** Indirect targets are
-not constrained here (their resolution is a certificate's business, `Cfg.Why`), but a
-`callInd` still pushes. `syscall`, `sysOther`, `trap` and `other` admit no user step: the
-system-call arms belong to the process layer (`Elf.Effects.Gen`). -/
+/-- Where an indirect branch through `op` may go from `s` (memory `m`, length `l`). -/
+def Opnd.Lands (op : Opnd) (s : State) (m : Memory) (l : Nat) (dst : Word) : Prop :=
+  match op with
+  | .reg r => dst = s.read r
+  | .ripMem d => loadN m (next s l + BitVec.ofInt 64 d) 8 = some dst
+  | .mem => True
+
+/-- **Where a step from an instruction of kind `k` and length `l` may go** (`s`, `m`: before;
+`t`, `m'`: after). `syscall`, `sysOther` and `trap` admit no user step. -/
 def Admits : Kind → State → Memory → Nat → State → Memory → Prop
   | .seq, s, _, l, t, _ => t.rip = next s l
   | .rep, s, _, l, t, _ => t.rip = s.rip ∨ t.rip = next s l
   | .jcc r, s, _, l, t, _ => t.rip = next s l ∨ t.rip = rel s l r
   | .jmp r, s, _, l, t, _ => t.rip = rel s l r
-  | .jmpInd _, _, _, _, _, _ => True
+  | .jmpInd op, s, m, l, t, _ => op.Lands s m l t.rip
   | .call r, s, _, l, t, m' => t.rip = rel s l r ∧ Pushed s l t m'
-  | .callInd _, s, _, l, t, m' => Pushed s l t m'
+  | .callInd op, s, m, l, t, m' => op.Lands s m l t.rip ∧ Pushed s l t m'
   | .ret, s, m, _, t, _ => loadN m (s.read .rsp) 8 = some t.rip ∧ t.read .rsp = s.read .rsp + 8#64
   | .syscall, _, _, _, _, _ => False
   | .sysOther, _, _, _, _, _ => False
@@ -118,13 +145,12 @@ def RaxOk : RaxT → State → State → Prop
   | .set n, _, t => t.read .rax = BitVec.ofNat 64 n
   | .clobber, _, _ => True
 
-/-- **The flow law of `M` for `D`.** From a live state whose `rip` is offset `o` of code loaded at
+/-- **The flow law of `M` for `D`.** From a state whose `rip` is offset `o` of code loaded at
 `base`, where `D` reads `i` of length `l`, every step of `M` is admitted by `D.kind i` and
-respects `D.rax i`. Proved once per machine, layer by layer up the `Str9` tower (see the
-design: a layer that adds only `seq`/`rep` forms keeps the law). -/
+respects `D.rax i`. One theorem per machine and decoder. -/
 def FlowLaw {σ : Type} (M : UMach σ) (D : FlowDec) : Prop :=
   ∀ s t (base : Word) (code : List Byte) (o l : Nat) (i : D.Instr),
-    M.live s → Loaded (M.mem s) base code → (M.core s).rip = base + BitVec.ofNat 64 o →
+    Loaded (M.mem s) base code → (M.core s).rip = base + BitVec.ofNat 64 o →
     o + l ≤ code.length → D.decode ((code.drop o).take l) = some (i, l) →
     M.step s t →
     Admits (D.kind i) (M.core s) (M.mem s) l (M.core t) (M.mem t) ∧ RaxOk (D.rax i) (M.core s) (M.core t)
