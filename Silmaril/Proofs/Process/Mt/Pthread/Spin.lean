@@ -246,4 +246,11 @@ theorem sound (pol : Pol) (I : HProp Unit Unit) (Q : Nat → U.St → Heap Unit 
   intro c₀ c C₀ ha _ r
   exact reach r ha
 
+/-- `Star` is monotone in its relation. -/
+theorem star_mono {α : Type} {r s : α → α → Prop} (h : ∀ a b, r a b → s a b) {a b : α}
+    (hr : Silmaril.Process.Mt.Csl.Star r a b) : Silmaril.Process.Mt.Csl.Star s a b := by
+  induction hr with
+  | refl => exact .refl
+  | step h₁ _ ih => exact .step (h _ _ h₁) ih
+
 end Silmaril.Proofs.Process.Mt.Pthread.Spin

@@ -504,8 +504,8 @@ joinable, with every thread-specific value `0`. -/
 def createRel (u : Nat) (m m' : PSt) : Prop :=
   m.thr u = none ∧ m' = { m with thr := set m.thr u (some {}), tls := set m.tls u (fun _ => 0) }
 
-/-- `pthread_join(u, &v)`: once `u` has exited, collect its value into `jret` (read by
-`joined`) and free its entry; blocks while `u` runs. Joining oneself: `EDEADLK`. Joining a
+/-- `pthread_join(u, &v)`: once `u` has exited, collect its value into `jret` (which
+`joined` reads) and free its entry; blocks while `u` runs. Joining oneself: `EDEADLK`. Joining a
 thread that does not exist (or was joined) or is detached is undefined. -/
 def join : PrimSpec PSt where
   fault t args m := arg args 0 ≠ t ∧ ∀ e, m.thr (arg args 0) = some e → e.detached = true

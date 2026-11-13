@@ -39,18 +39,14 @@ theorem Impl.reach (hl : I.Lin) {c₀ c : CCfg I.St ι} (r : Star (Impl.model P 
 
 /-- **No undefined behaviour transfers** to the full model. -/
 theorem noUB_full (hl : I.Lin) (h : NoUB P) {c₀ c : CCfg I.St ι} (h₀ : absC P I c₀ = start P)
-    (r : Star (Impl.model P I).step c₀ c) : ¬ (Impl.model P I).fault c := by
-  have := Impl.reach hl r
-  rw [h₀] at this
-  exact h _ this
+    (r : Star (Impl.model P I).step c₀ c) : ¬ (Impl.model P I).fault c :=
+  h _ (h₀ ▸ Impl.reach hl r)
 
 /-- **A deterministic output transfers** to the full model: once `main` has finished, the
 full model has printed `o`. -/
 theorem deterministic_full (hl : I.Lin) {o : List Nat} (h : Deterministic P o) {c₀ c : CCfg I.St ι}
     (h₀ : absC P I c₀ = start P) (r : Star (Impl.model P I).step c₀ c) (hd : MainDone (absC P I c)) :
-    c.out = o := by
-  have := Impl.reach hl r
-  rw [h₀] at this
-  exact h.2 _ this hd
+    c.out = o :=
+  h.2 _ (h₀ ▸ Impl.reach hl r) hd
 
 end Silmaril.Process.Mt.Pthread.Simple

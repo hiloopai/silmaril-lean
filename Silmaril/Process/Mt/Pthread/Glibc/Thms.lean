@@ -40,10 +40,8 @@ theorem spin_reach {pol : Pol} {c₀ c : SConf} (r : Star (model pol).step c₀ 
   Silmaril.Proofs.Process.Mt.Pthread.Spin.reach r ha
 
 theorem star_mono {α : Type} {r s : α → α → Prop} (h : ∀ a b, r a b → s a b) {a b : α}
-    (hr : Star r a b) : Star s a b := by
-  induction hr with
-  | refl => exact Star.refl
-  | step h₁ _ ih => exact Star.step (h _ _ h₁) ih
+    (hr : Star r a b) : Star s a b :=
+  Silmaril.Proofs.Process.Mt.Pthread.Spin.star_mono h hr
 
 /-- **Obligations move down the lattice**: a code model sound at `b` is sound at every `a`
 below `b`, when its runs grow with the model. -/
