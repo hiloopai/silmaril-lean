@@ -96,6 +96,14 @@ theorem connLog_ofRecords (fr : Framing) (isAccept : LPS.Word → Bool) (n : Nat
 
 /-! ## Accepts and channels -/
 
+theorem ofEvents_cons (e : LPS.Event) (evs : List LPS.Event) :
+    ofEvents (e :: evs) = ofEvent e ++ ofEvents evs := List.flatMap_cons
+
+theorem acceptCount_cons (isAccept : LPS.Word → Bool) (r : LPS.StepRecord)
+    (h : List LPS.StepRecord) :
+    acceptCount isAccept (r :: h) = (if accepts isAccept r then 1 else 0) + acceptCount isAccept h :=
+  Proofs.Servers.Sockets.acceptCount_cons isAccept r h
+
 /-- **A successful accept installs the connection of channel `connIx + 3`.** -/
 theorem accept4Spec_ok {fd addrp addrlenp flags : LPS.Word} {i : LPS.SyscallInput} {m : LPS.Model}
     {eff : LPS.SyscallEffect} {m' : LPS.Model} {evs : List LPS.Event}

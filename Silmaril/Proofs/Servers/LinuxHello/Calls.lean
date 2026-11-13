@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Servers.LinuxHello.Defs
-public import Silmaril.Proofs.Servers.Sockets.Run
+public import Silmaril.Servers.Sockets.Thms
 
 /-!
 # A Linux hello server loop: the system calls it makes succeed as it expects

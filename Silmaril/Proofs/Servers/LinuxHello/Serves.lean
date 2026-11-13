@@ -232,7 +232,7 @@ theorem accepted_ofEvents (evs : List Event) : accepted (ofEvents evs) = [] := b
   induction evs with
   | nil => rfl
   | cons e evs ih =>
-    rw [Silmaril.Proofs.Servers.Sockets.ofEvents_cons, accepted_append, ih, List.append_nil]
+    rw [Silmaril.Servers.Sockets.ofEvents_cons, accepted_append, ih, List.append_nil]
     cases e with
     | readEv ch b => cases h : connOf ch <;> simp [ofEvent, h, accepted]
     | writeEv ch b => cases h : connOf ch <;> simp [ofEvent, h, accepted]
@@ -244,7 +244,7 @@ theorem accepted_ofRecordsC (isAccept isClose : Word → Bool) :
       accepted (ofRecordsC isAccept isClose n fds h) = List.range' n (acceptCount isAccept h)
   | _, _, [] => rfl
   | n, fds, r :: rs => by
-    rw [Silmaril.Proofs.Servers.Sockets.acceptCount_cons]
+    rw [Silmaril.Servers.Sockets.acceptCount_cons]
     unfold ofRecordsC
     split
     · next ha =>
@@ -412,7 +412,7 @@ theorem serves (inp : Cli.Input) : ServesHello L inp := by
   · rw [accepted_ofRecordsC]
     have : acceptCount genericAccept h = 1 := by
       simp only [h, List.cons_append]
-      rw [Silmaril.Proofs.Servers.Sockets.acceptCount_cons, acceptCount_zero]
+      rw [Silmaril.Servers.Sockets.acceptCount_cons, acceptCount_zero]
       · simp [accepts, genericAccept, mkEffect]
       · intro r hr
         simp only [List.mem_cons, List.mem_append] at hr
