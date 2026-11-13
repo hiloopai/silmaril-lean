@@ -5,6 +5,7 @@ public import Silmaril.Servers.Basic.Thms
 public import Silmaril.Servers.Calls.Thms
 public import Silmaril.Servers.WasiHttp.Thms
 import Silmaril.Proofs.Servers.WasiExamples.Answer
+import Silmaril.Proofs.Servers.WasiExamples.Echo
 
 @[expose] public section
 
@@ -24,6 +25,9 @@ response unobservable (by failing an operation), never wrong.
 * **`route_sat`**: every exchange of `route` is answered from the route table on the request's
   path-with-query; `route_refines`: `route` refines the server of that function;
   `route_answers`: every request answered from the route table is a trace of `route`.
+* **`echo_sat`**: over the reading with request bodies (`wasiServerB`), every exchange of `echo`
+  answers `200` with the request's content, or `500` (when the host fails an operation or the
+  reads run out).
 * `serve_mem`: a response of a component over the reference host (`serveRef`) is a trace of
   the component read as a server.
 
@@ -31,8 +35,7 @@ Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 
 **Checked** over the reference host (`serveRef`, evaluated by `decide`): `hello` on `/`,
 `route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc`.
-`hello_satB`: hello's specification over the reading with request bodies, by refinement.
-**Open**: `Task.echo_sat`, the specification of `echo` for every host. `route_web_missing`: the web of the route table, as
+`hello_satB`: hello's specification over the reading with request bodies, by refinement. `route_web_missing`: the web of the route table, as
 the outgoing `wasi:http` theories read it, answers `404` for `/missing`.
 -/
 
@@ -75,6 +78,11 @@ theorem route_sat :
 theorem route_refines :
     Refines (wasiServer (ofBody route)) (ofFun fun q => routeResp q.target.pathWithQuery) :=
   fun t ht => route_sat t ht
+
+/-- **Echo answers `200` with the request's content, or `500`**, for every host. -/
+theorem echo_sat : Sat (wasiServerB (ofBody echo))
+    (each fun q resp => resp = Response.simple 200 q.content ∨ resp = failResp) :=
+  Proofs.Servers.WasiExamples.echo_sat
 
 /-- **Routing is not vacuous**: every request answered from the route table is a trace. -/
 theorem route_answers (q : Request) :

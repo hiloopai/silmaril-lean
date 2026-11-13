@@ -92,7 +92,7 @@ statement about all plays holds for every host.
 | `answer o resp`, the shared response code (fields, outgoing response, status, body, `set`, write, drop, finish) | For every host, no response or exactly `resp` (`answer_run`). Over a host whose answers succeed, exactly `resp` (`answer_ok`, in the proofs). | Proved |
 | `hello` | Every exchange is `200 hello` (`hello_sat`), so `hello` refines the server of the constant function (`hello_refines`). Every request answered `200 hello` is a trace (`hello_answers`). | Proved |
 | `route` | Every exchange is answered from the route table on the path-with-query: `/` gives `200 home`, `/hello` gives `200 hello` and anything else gives `404 not found` (`route_sat`, `route_refines`). Every request answered from the table is a trace (`route_answers`). | Proved |
-| `echo` (consume the body, read until `closed` at most `echoFuel` times, answer `200` with the bytes read, else `500`) | Every exchange of `wasiServerB (ofBody echo)` is `200` with the request's content, or `500` (`Task.echo_sat`) | Defined (specification open) |
+| `echo` (consume the body, read until `closed` at most `echoFuel` times, answer `200` with the bytes read, else `500`) | Every exchange of `wasiServerB (ofBody echo)` is `200` with the request's content, or `500` (`echo_sat`). The proof is an induction over the read loop that carries `BodyOk` along the prefixes of the call. | Proved |
 | `hello`, `route`, `echo` over the reference host `refHost` (`serveRef`) | `hello` on `/`, `route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc` | Checked |
 | A server as a web of the outgoing theories (`webOf`): the client theories `Net.httpTh`/`httpTh3 (webOf f)` see the status of `f`'s answer to a `GET` (`webOf_pathV`, `route_web_missing`) | | Proved |
 
@@ -109,9 +109,9 @@ missing. No component binaries exist yet, so the harness has not been run agains
 
 ### Not modelled yet
 
-- Request and response headers, trailers and `send-informational`. The proof of
-  `Task.echo_sat` is still open. It needs an induction over the read loop that carries
-  `BodyOk` along the prefixes of the call.
+- Request and response headers, trailers and `send-informational`. Liveness is not covered:
+  `echo` may answer `500` when the host delivers the body in more than `echoFuel` reads, and
+  only `hello` and `route` have non-vacuity theorems (`echo` is checked on one request).
 - The once-only rule of `response-outparam.set`, and resource drops other than the output
   stream's.
 - Concurrent export calls. A body runs one call at a time. The host may also run several

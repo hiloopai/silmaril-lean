@@ -23,8 +23,7 @@ written directly as programs over the imports, not compiled from Wasm modules.
   `/hello` gives `200 hello`, any other path (or none) gives `404 not found`.
 * `echo`: consumes the request body, reads its stream with `blocking-read` until `closed`,
   at most `echoFuel` times, and answers `200` with the bytes read; it answers `500` when an
-  answer has an unexpected shape or the reads run out. Its specification
-  (`Silmaril.Servers.WasiExamples.Task.echo_sat`, over `wasiServerB`) is open.
+  answer has an unexpected shape or the reads run out.
 
 A Silmaril addition.
 -/
@@ -102,10 +101,5 @@ def echo : Body proxyImports proxyWorld.exports := fun q =>
     | some [.variant 0 (some (.u32 s))] => echoLoop (outOf q.2) s echoFuel []
     | _ => answer (outOf q.2) failResp
   | _ => answer (outOf q.2) failResp
-
-/-- **The specification of echo** (open): over the reading with request bodies, every exchange
-of `echo` answers `200` with the request's content, or `500`. -/
-def Task.echo_sat : Prop :=
-  Sat (wasiServerB (ofBody echo)) (each fun q resp => resp = Response.simple 200 q.content ∨ resp = failResp)
 
 end Silmaril.Servers.WasiExamples
