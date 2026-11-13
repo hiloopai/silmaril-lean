@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Prelude.Trust.Defs
+public import Silmaril.Prelude.Trust.Decl.Defs
+public meta import Silmaril.Prelude.Trust.Decl.Defs
 public meta import Lean.Meta.Native
 
 /-! # Trust commands and the `edge_decide` tactic
@@ -445,14 +447,6 @@ syntax (name := trustRoundtrip) "#trust_roundtrip" : command
     | .error e => throwError "roundtrip of a use of {u.proc}: {e}"
   logInfo m!"roundtrip ok: {procs.size} procedures, {uses.size} uses"
 
-/-- `#trust_dump "path"` writes the dump (JSON lines) to `path`, relative to the working
-directory. Used by tools; nothing in the library calls it. -/
-syntax (name := trustDump) "#trust_dump " str : command
-
-@[command_elab trustDump] def elabTrustDump : CommandElab := fun stx => do
-  let lines := (dumpLines (← getEnv)).map (·.compress)
-  IO.FS.writeFile (stx[1].isStrLit?.getD "trust.jsonl") (String.intercalate "\n" lines.toList ++ "\n")
-
 end Silmaril.Trust
 
 /-! ## Same-target pairs
@@ -519,5 +513,161 @@ def nativeAllowed (name : Name) : CoreM Bool := do
       pure (mkApp hk (← decideEdge ek none stx (kernelOnly := true)))
   goal.assign prf
   replaceMainGoal []
+
+end Silmaril.Trust
+
+/-! ## Declared procedures with two backends (`ProcDecl`, `sil_check`) -/
+
+namespace Silmaril.Trust
+
+open Lean Elab Tactic Meta
+
+/-- A `ProcDecl`, read from its definition without running any code. -/
+structure DeclView where
+  name : Name
+  const : Name
+  doc : String
+  native : Option (Name × Name)
+  kernel : Option (Name × Name)
+  format : Option Name
+
+def readName (e : Expr) : MetaM Name := do
+  let e ← instantiateMVars e
+  unsafe evalExpr Name (mkConst ``Name) e
+
+def readOpt {α} (e : Expr) (f : Expr → MetaM α) : MetaM (Option α) := do
+  let e ← whnfR e
+  if e.isAppOfArity ``Option.none 1 then return none
+  if e.isAppOfArity ``Option.some 2 then return some (← f e.appArg!)
+  throwError "expected `some` or `none`:{indentExpr e}"
+
+def readBackend (e : Expr) : MetaM (Name × Name) := do
+  let e ← whnfR e
+  unless e.isAppOfArity ``Backend.mk 2 do throwError "expected a Backend:{indentExpr e}"
+  return (← readName e.appFn!.appArg!, ← readName e.appArg!)
+
+/-- The procedure `name`, declared as `Silmaril.Procedures.<name> : ProcDecl`. -/
+def findDecl? (name : Name) : MetaM (Option DeclView) := do
+  let c := proceduresNamespace ++ name
+  let some info := (← getEnv).find? c | return none
+  unless info.type.isConstOf ``ProcDecl do return none
+  let some v := info.value? (allowOpaque := true) | return none
+  let v ← whnfR v
+  unless v.isAppOfArity ``ProcDecl.mk 4 do throwError "{c} is not a `ProcDecl` literal"
+  let args := v.getAppArgs
+  let doc ← unsafe evalExpr String (mkConst ``String) args[0]!
+  return some { name, const := c, doc, native := ← readOpt args[1]! readBackend,
+                kernel := ← readOpt args[2]! readBackend, format := ← readOpt args[3]! readName }
+
+/-- Every declared procedure in the environment. -/
+def allDecls : MetaM (Array DeclView) := do
+  let env ← getEnv
+  let mut out := #[]
+  for (c, info) in env.constants.toList do
+    if info.type.isConstOf ``ProcDecl && proceduresNamespace.isPrefixOf c then
+      if let some d ← findDecl? (c.replacePrefix proceduresNamespace .anonymous) then
+        out := out.push d
+  return out
+
+def declJson (d : DeclView) : Json :=
+  let pair : Option (Name × Name) → Json
+    | some (c, s) => Json.mkObj [("check", toString c), ("sound", toString s)]
+    | none => Json.null
+  Json.mkObj [("schema", schemaVersion), ("kind", "declared_procedure"), ("name", toString d.name),
+    ("constant", toString d.const), ("native", pair d.native), ("kernel", pair d.kernel),
+    ("format", nameJson d.format), ("doc", d.doc)]
+
+/-- `sil_check elf.layout (native := t) (kernel := u)`: `t` and `u` have types
+`check … = true → P` for the goal `P`, with heads the declared soundness theorems and
+hypotheses headed by the declared checkers. The native backend runs if `elf.layout` is allowed
+natively here; otherwise the kernel backend is checked by the kernel (never natively). The
+native axiom is `<decl>._native.edge.elf.layout.ax_i_j`, and the use is recorded under
+`elf.layout`. Either side may be omitted. -/
+syntax (name := silCheck) "sil_check " ident (" (" ident " := " term ")")* : tactic
+
+@[tactic silCheck] def evalSilCheck : Tactic := fun stx => withMainContext do
+  let name := stx[1].getId
+  let some d ← findDecl? name
+    | throwError "sil_check: no procedure {name} (declare `{proceduresNamespace ++ name} : ProcDecl`)"
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  -- Elaborate one side and check it against the declared backend.
+  let side (t : Syntax) (b : Name × Name) (which : String) : TacticM (Expr × Expr) := do
+    let h ← Term.elabTerm t none
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let h ← instantiateMVars h
+    unless h.getAppFn.isConstOf b.2 do
+      throwError "sil_check {name}: the {which} side must apply {b.2}{indentExpr h}"
+    let .forallE _ hyp body _ ← whnfR (← inferType h)
+      | throwError "sil_check {name}: {b.2} applied this far is not `check … = true → P`"
+    unless ← isDefEq body target do
+      throwError "sil_check {name}: the {which} side proves{indentExpr body}\nnot the goal{indentExpr target}"
+    let some (_, e, _) := hyp.eq? | throwError "sil_check {name}: hypothesis is not `… = true`"
+    let e ← instantiateMVars e
+    unless e.getAppFn.isConstOf b.1 do
+      throwError "sil_check {name}: the {which} side checks with {e.getAppFn}, not {b.1}"
+    if e.hasFVar || e.hasMVar then throwError "sil_check {name}: the check must be closed{indentExpr e}"
+    return (h, e)
+  let mut nativeStx : Option Syntax := none
+  let mut kernelStx : Option Syntax := none
+  for arg in stx[2].getArgs do
+    match arg[1].getId with
+    | `native => nativeStx := some arg[3]
+    | `kernel => kernelStx := some arg[3]
+    | other => throwError "sil_check: unknown side {other} (use `native` or `kernel`)"
+  let env ← getEnv
+  let prof ← profileTag
+  let mod := env.mainModule
+  let allow ← match allowed env mod (← profile) (← ceiling) with
+    | .ok a => pure a
+    | .error msg => throwError "sil_check: {msg}"
+  let decl := (← Term.getDeclName?).getD .anonymous
+  let eqTrue (x : Expr) := mkApp3 (mkConst ``Eq [1]) (mkConst ``Bool) x (mkConst ``Bool.true)
+  let kernelSide (u : Syntax) (kb : Name × Name) : TacticM Expr := do
+    let (h, e) ← side u kb "kernel"
+    let pf := mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``Bool.true)
+    let lemma ← try withOptions (Elab.async.set · false) do mkAuxLemma [] (eqTrue e) pf
+      catch ex => throwError "sil_check {name}: the kernel did not check it: {ex.toMessageData}"
+    recordUse { decl, module := mod, proc := name, mode := .kernel, profile := prof }
+    return mkApp h (mkConst lemma)
+  let prf ← match nativeStx, d.native, kernelStx, d.kernel with
+    | some t, some b, _, _ =>
+      if allow.contains name then
+        let (h, e) ← side t b "native"
+        match ← nativeEqTrue (`edge ++ name) e (axiomDeclRange? := stx) with
+        | .notTrue => throwError "sil_check {name}: the native check returned false{indentExpr e}"
+        | .success ax =>
+          recordUse { decl, module := mod, proc := name, mode := .native, profile := prof,
+                      ax := ax.constName? }
+          pure (mkApp h (← mkExpectedTypeHint ax (eqTrue e)))
+      else
+        match kernelStx, d.kernel with
+        | some u, some kb => kernelSide u kb
+        | _, _ => throwError "sil_check: {name} may not run natively in {mod} under profile \
+            {prof}, and no kernel side is given"
+    | _, _, some u, some kb => kernelSide u kb
+    | _, _, _, _ => throwError "sil_check {name}: give a side the declaration has a backend for"
+  goal.assign prf
+  replaceMainGoal []
+
+def allDecls' : MetaM (Array Json) := return (← allDecls).map declJson
+
+/-- `#trust_dump "path"` writes the dump (JSON lines) to `path`, relative to the working
+directory. Used by tools; nothing in the library calls it. -/
+syntax (name := trustDump) "#trust_dump " str : command
+
+open Lean.Elab.Command in
+@[command_elab trustDump] def elabTrustDump : CommandElab := fun stx => do
+  let decls ← liftTermElabM allDecls'
+  let lines := (dumpLines (← getEnv) ++ decls).map (·.compress)
+  IO.FS.writeFile (stx[1].isStrLit?.getD "trust.jsonl") (String.intercalate "\n" lines.toList ++ "\n")
+
+/-- Print the declared two-backend procedures as JSON lines. -/
+syntax (name := trustDecls) "#trust_decls" : command
+
+open Lean.Elab.Command in
+@[command_elab trustDecls] def elabTrustDecls : CommandElab := fun _ => do
+  let ls ← liftTermElabM allDecls'
+  logInfo (String.intercalate "\n" (ls.map (·.compress)).toList)
 
 end Silmaril.Trust
