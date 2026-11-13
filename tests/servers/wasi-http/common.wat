@@ -21,6 +21,10 @@
     (func $req_consume (param i32 i32)))
   (import "wasi:http/types@0.2.12" "[method]incoming-body.stream"
     (func $in_stream (param i32 i32)))
+  (import "wasi:http/types@0.2.12" "[method]incoming-request.headers"
+    (func $req_headers (param i32) (result i32)))
+  (import "wasi:http/types@0.2.12" "[method]fields.get"
+    (func $fields_get (param i32 i32 i32 i32)))
   (import "wasi:io/streams@0.2.12" "[method]output-stream.blocking-write-and-flush"
     (func $stream_write (param i32 i32 i32 i32)))
   (import "wasi:io/streams@0.2.12" "[resource-drop]output-stream"

@@ -7,7 +7,7 @@ public import Silmaril.Servers.WasiHttp.Defs
 /-!
 # Example `wasi:http` servers
 
-Two components of the proxy world slice (`Silmaril.Servers.WasiHttp`), given by their bodies
+Components of the proxy world slice (`Silmaril.Servers.WasiHttp`), given by their bodies
 (`Silmaril.Wasi.Comp`): programs over the imports for each call of `handle(r, o)`. They are
 written directly as programs over the imports, not compiled from Wasm modules.
 
@@ -23,14 +23,19 @@ written directly as programs over the imports, not compiled from Wasm modules.
   content `hello` (`helloResp`).
 * `route`: the response depends on the path-with-query (`routeResp`): `/` gives `200 home`,
   `/hello` gives `200 hello`, any other path (or none) gives `404 not found`.
+* `greet`: takes the request's headers (`headers()`), reads the values of `x-name` with
+  `fields.get` and answers `200 hello <first value>` (`200 hello world` without one), or `500`
+  when the host does not answer `headers()` with a handle (`greetResp`). It is the example whose
+  specification rests on the header answers of the reading (`HdrOk`).
 * `echo`: consumes the request body, reads its stream with `blocking-read` until `closed`,
   at most `echoFuel` times, and answers `200` with the bytes read; it answers `500` when an
   answer has an unexpected shape or the reads run out.
 
 The WAT sources of the same servers, built into `wasi:http/proxy` components and checked
 against `wasmtime serve`, are in `tests/servers/wasi-http`; each export function follows its
-body's import calls one for one. That the components' denotations run these bodies
-(`WasiHttp.Runs`) is the open goal `Task.wasmRuns`.
+body's import calls one for one. `Silmaril.Servers.WasiBinaries` reads their core modules by a
+denotation (`Silmaril.Servers.WasiCore.coreBody`) and proves that the module of `hello` runs
+`hello` over typed hosts; for the others this is open (`WasiBinaries.Task.binRuns`).
 
 A Silmaril addition.
 -/
@@ -116,6 +121,29 @@ def echo : Body proxyImports proxyWorld.exports := fun q =>
   | some [.variant 0 (some (.u32 b))] => .call (pop inStream (a := [.u32 b])) fun
     | some [.variant 0 (some (.u32 s))] => echoLoop (outOf q.2) s echoFuel []
     | _ => answer (outOf q.2) failResp
+  | _ => answer (outOf q.2) failResp
+
+/-! ## Reading a request header -/
+
+/-- The name of the header `greet` reads. -/
+def nameHdr : List UInt8 := ascii "x-name"
+
+/-- The first value of a `list<field-value>` answer (`none` when it is empty or not a list). -/
+def firstValue : Option (List Val) → Option (List UInt8)
+  | some [.record (v :: _)] => some ((bytesOf v).map UInt8.ofBitVec)
+  | _ => none
+
+/-- `200 hello <name>`, for the first value of `x-name` (`world` when there is none). -/
+def greetResp (vs : List (List UInt8)) : Response :=
+  Response.simple 200 (ascii "hello " ++ vs.head?.getD (ascii "world"))
+
+/-- **Greeting**: take the request's headers, read the values of `x-name` with `fields.get`,
+and answer `200 hello <first value>` (`200 hello world` without one); `500` when the host does
+not answer `headers()` with a handle. -/
+def greet : Body proxyImports proxyWorld.exports := fun q =>
+  .call (pop reqHeaders (a := [.u32 (reqOf q.2)])) fun
+  | some [.u32 h] => .call (pop fieldsGet (a := [.u32 h, strV nameHdr])) fun v =>
+      answer (outOf q.2) (Response.simple 200 (ascii "hello " ++ (firstValue v).getD (ascii "world")))
   | _ => answer (outOf q.2) failResp
 
 /-! ## Hosts whose answers succeed -/

@@ -4,13 +4,13 @@
 # For each example server of Silmaril.Servers.WasiExamples, serve its wasi:http/proxy component
 # (built from tests/servers/wasi-http/*.wat by tests/servers/wasi-http/build.sh) with
 # `wasmtime serve` and compare the responses to the specification (`helloResp`, `routeResp`,
-# echo's `200` with the request's content), whose expected status and content are listed below.
+# echo's `200` with the request's content, `greetResp` of the `x-name` header), whose expected status and content are listed below.
 #
 # Usage: nix develop .#http-test -c tests/servers/wasi-http-conformance.sh
-#    or: HELLO_WASM=hello.wasm ROUTE_WASM=route.wasm ECHO_WASM=echo.wasm \
+#    or: HELLO_WASM=hello.wasm ROUTE_WASM=route.wasm ECHO_WASM=echo.wasm GREET_WASM=greet.wasm \
 #          tests/servers/wasi-http-conformance.sh
 #
-# Without HELLO_WASM, ROUTE_WASM and ECHO_WASM the components are built (with wasm-tools) into
+# Without HELLO_WASM, ROUTE_WASM, ECHO_WASM and GREET_WASM the components are built (with wasm-tools) into
 # a temporary directory. The runtime is pinned to WASMTIME_VERSION (default: 49.0.2, the
 # wasmtime of the flake's `http-test` shell). The check is skipped (exit 0, with a message)
 # when `wasmtime` or `curl` is missing, when the components can be neither found nor built, or
@@ -24,11 +24,12 @@ command -v curl >/dev/null 2>&1 || skip "curl not found"
 pin=${WASMTIME_VERSION:-49.0.2}
 have=$(wasmtime --version | awk '{print $2}')
 [[ "$pin" == any || "$have" == "$pin" ]] || skip "wasmtime $have, pinned $pin"
-if [[ -z "${HELLO_WASM:-}${ROUTE_WASM:-}${ECHO_WASM:-}" ]]; then
+if [[ -z "${HELLO_WASM:-}${ROUTE_WASM:-}${ECHO_WASM:-}${GREET_WASM:-}" ]]; then
   command -v wasm-tools >/dev/null 2>&1 || skip "no component given and wasm-tools not found"
   built=$(mktemp -d)
   "$here/wasi-http/build.sh" "$built" >/dev/null
   HELLO_WASM=$built/hello.wasm ROUTE_WASM=$built/route.wasm ECHO_WASM=$built/echo.wasm
+  GREET_WASM=$built/greet.wasm
 fi
 echo "wasmtime $have"
 
@@ -90,6 +91,13 @@ if [[ -n "${ECHO_WASM:-}" ]]; then
   expect /e 200 abc --data-binary abc
   big=$(head -c 3000 /dev/zero | tr '\0' x)
   expect /e 200 "$big" --data-binary "$big"
+  stop
+fi
+if [[ -n "${GREET_WASM:-}" ]]; then
+  serve "$GREET_WASM"
+  expect / 200 "hello world"  # greetResp []
+  expect / 200 "hello ada" -H "x-name: ada"
+  expect / 200 "hello ada" -H "x-name: ada" -H "x-name: bob"
   stop
 fi
 exit $status
