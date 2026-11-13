@@ -19,15 +19,19 @@ runs their code while the proof elaborates).
 /-- Same bytes, by windows (`KBytes.toList_eq_of_sameBytes`). Kernel fallback measured at
 about 55 ms per MiB with 64 KiB windows (benchmarks/kernel-bytes). -/
 native_decider bytes.sameBytes := Silmaril.KBytes.sameBytes with_kernel_fallback
+  sound Silmaril.KBytes.toList_eq_of_sameBytes
 
 /-- Structural equality (`KBytes.toList_eq_of_beq`). The kernel fallback is cheap; `rfl` is
 cheaper still on canonical trees. -/
 native_decider bytes.beq := Silmaril.KBytes.beq with_kernel_fallback
+  sound Silmaril.KBytes.toList_eq_of_beq
 
-/-- Cached lengths are correct (`KBytes.wf`). Cheap in the kernel. -/
+/-- Cached lengths are correct (`KBytes.wf`). Cheap in the kernel. No soundness theorem is
+registered: `wf` is a hypothesis of the specification theorems, not a fact they conclude. -/
 native_decider bytes.wf := Silmaril.KBytes.wf with_kernel_fallback
 
 /-- Kernel bytes equal a `ByteArray` (`KBytes.toByteArray_eq_of_eqByteArray`). There is no
 kernel fallback: the kernel would build both byte lists one cell per byte. For bytes from
 `include_bytes`, use the structural bridge (`kbytes_rel`) instead, which needs no evaluation. -/
 native_decider bytes.eqByteArray := Silmaril.KBytes.eqByteArray
+  sound Silmaril.KBytes.toByteArray_eq_of_eqByteArray
