@@ -19,7 +19,7 @@ components the body touches. Every statement is for all `C` with `C.Ok`.
 | `wfIntFree` (design) | `_int_free` | Tcache, Fastbins, … |
 | `wfSysmalloc` | `sysmalloc` | Top, Mmap, Kernel, (free of the old top) |
 | `wfIntMalloc` (design) | `_int_malloc` | all |
-| `wfIntRealloc` | `_int_realloc` | Top, Bins, Unsorted (+ `_int_malloc`, `_int_free`) |
+| `wfIntRealloc`, `bodyRealloc` | `_int_realloc` | Top, Bins, Unsorted (+ `_int_malloc`, `_int_free`) |
 | `wfMmapped` | `munmap_chunk`, `mremap_chunk`, `sysmalloc_mmap` | Mmap, Kernel |
 | `initWF` | `initWorld` | — |
 | `wfCallocRealloc` | `__libc_calloc`, `__libc_realloc` | world |
@@ -61,12 +61,19 @@ def Task.algo.wfSysmalloc (C : Config) : Prop :=
     topSz l.av.tiles < nb + C.minSize → sysmalloc C l nb = .ok (p, l') →
     LocalWF C l' ∧ Footprint.Within {} l l' ∧ MallocLive C (nb - C.sizeSz) p (l.live C) (l'.live C)
 
-/-- **`Task.algo.wfIntRealloc`**: `_int_realloc` of a live payload keeps `LocalWF`; on success the
-old payload is replaced by a new one of at least `nb - SIZE_SZ` bytes, on failure nothing
-changes in the live set. -/
+/-- **`Task.algo.wfIntRealloc`**: `_int_realloc` of a live payload of the arena (lent out, not
+parked), after `ptmalloc_init`, on a view with its spatial facts, for a checked chunk size `nb`,
+keeps `LocalWF`; on success the old payload is replaced by a new one of at least `nb - SIZE_SZ`
+bytes, on failure nothing changes in the live set.
+
+(The view's spatial facts `LocalSp` and `__malloc_initialized` are what `_int_malloc`, which
+`_int_realloc` calls, needs: `Task.algo.bodyMalloc`. The payload is the arena's: `__libc_realloc`
+sends `mmap`ed chunks to `mremap_chunk`. `nb` is `checked_request2size`'s: aligned, at least
+`MINSIZE`.) -/
 def Task.algo.wfIntRealloc (C : Config) : Prop :=
-  C.Ok → ∀ l l' oldp oldsize nb q u, LocalWF C l → (oldp + C.hdr, u) ∈ l.live C →
-    l.av.tiles.sizeAt oldp = oldsize → intRealloc C l oldp oldsize nb = .ok (q, l') →
+  C.Ok → ∀ l l' oldp oldsize nb q u, LocalWF C l → LocalSp C l → l.shared.init = true →
+    (oldp + C.hdr, u) ∈ l.arenaLive C → l.av.tiles.sizeAt oldp = oldsize →
+    nb % C.align = 0 → C.minSize ≤ nb → intRealloc C l oldp oldsize nb = .ok (q, l') →
     LocalWF C l' ∧ Footprint.Within {} l l' ∧
       MallocLive C (nb - C.sizeSz) q ((l.live C).erase (oldp + C.hdr, u))
         (if q = 0 then (l'.live C).erase (oldp + C.hdr, u) else l'.live C)
@@ -200,5 +207,19 @@ view with its spatial facts (`LocalSp.heaps`: `heap_trim` needs the arena's heap
 def Task.algo.totalFree (C : Config) : Prop :=
   C.Ok → ∀ l, LocalWF C l → LocalSp C l → ∀ p u, (p, u) ∈ l.arenaLive C →
     ∃ l', intFree C l (p - C.hdr) = .ok l'
+
+/-- **`Task.algo.bodyRealloc`**: `_int_realloc` of a live payload `(p, u)` of the arena for a
+checked chunk size `nb`: well formed after, the tcache entries apart from the view kept, and
+either a `Frame` freeing nothing with the live set unchanged (0: refused), or the view unchanged
+(the old chunk kept as it is, big enough), or a `Frame` freeing the old payload with it replaced by
+a different one of at least `nb - SIZE_SZ` bytes. -/
+def Task.algo.bodyRealloc (C : Config) : Prop :=
+  C.Ok → ∀ l l' p u nb q, LocalWF C l → LocalSp C l → l.shared.init = true →
+    (p, u) ∈ l.arenaLive C → nb % C.align = 0 → C.minSize ≤ nb →
+    intRealloc C l (p - C.hdr) (l.av.tiles.sizeAt (p - C.hdr)) nb = .ok (q, l') →
+    LocalWF C l' ∧ KeptAway l l' ∧
+      ((q = 0 ∧ Frame C l l' [] ∧ (l'.live C).Perm (l.live C)) ∨ (q = p ∧ l' = l ∧ nb - C.sizeSz ≤ u) ∨
+       (q ≠ 0 ∧ Frame C l l' [(p, u)] ∧ ∃ u', nb - C.sizeSz ≤ u' ∧ (q, u') ≠ (p, u) ∧
+         (l'.live C).Perm ((q, u') :: (l.live C).erase (p, u))))
 
 end Silmaril.Libc.Ptmalloc.Algo

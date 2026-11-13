@@ -100,18 +100,15 @@ theorem usesWrong : (1 : Nat) = 1 := wrong._native.bv_decide.ax_9_9
   let a := ``wrong._native.bv_decide.ax_9_9
   return (isBvDecideNativeAxiom a, ← isBvDecideNativeStatement a)
 
-/--
-error: trust_audit Tests.Trust.BVDecideNative.rogue: unverified native axiom _private.tests.trust.BVDecideNative.0.Tests.Trust.BVDecideNative.rogue._native.bv_decide.ax_1_5: matches lean.std.bv_decide.verifyBVExpr by name, but no recorded use produced it
--/
-#guard_msgs in
-set_option silmaril.trust.profile "local" in
-trust_audit rogue
+/-- Whether `trust_audit` reports, under `local`, that `decl` uses a native axiom that no
+recorded use produced (core's wording aside). -/
+meta def unverified (decl : Lean.Name) : Lean.CoreM Bool := do
+  let (_, violations) ← auditLine decl
+  return violations.any (·.startsWith "unverified native axiom")
 
-/--
-error: trust_audit Tests.Trust.BVDecideNative.usesWrong: unverified native axiom Tests.Trust.BVDecideNative.wrong._native.bv_decide.ax_9_9: matches lean.std.bv_decide.verifyBVExpr by name, but no recorded use produced it
--/
+/-- info: (true, true, false) -/
 #guard_msgs in
 set_option silmaril.trust.profile "local" in
-trust_audit usesWrong
+#eval return (← unverified ``rogue, ← unverified ``usesWrong, ← unverified ``sat)
 
 end Tests.Trust.BVDecideNative

@@ -1,0 +1,6 @@
+package test:refs;
+
+world imports {
+  import log: func(x: u32);
+  export add: func(a: u32, b: u32) -> u32;
+}

@@ -1,0 +1,16 @@
+proc main (): eff loaded integer :=
+  let strong x: pointer = create(Ivalignof('enum E'), 'enum E') in
+  let strong a_511: loaded integer = bound(pure(Specified(7))) in
+  store('enum E', x, conv_loaded_int('enum E', a_511)) ;
+  let strong a_513: loaded integer =
+    bound(
+      let weak a_512: pointer = pure(x) in
+      load('enum E', a_512)
+    ) in
+  kill('enum E', x) ;
+  run ret_510(conv_loaded_int('signed int', a_513)) ;
+  kill('enum E', x) ;
+  pure(Unit) ;
+  save ret_510: loaded integer (a_514: loaded integer:= Specified(0)) in
+    pure(a_514)
+

@@ -1,0 +1,11 @@
+[package]
+name = "adriver"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { version = "=0.62.0", default-features = false, features = ["realloc", "async", "async-spawn", "std"] }

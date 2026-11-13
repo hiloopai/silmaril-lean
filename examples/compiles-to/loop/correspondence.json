@@ -1,0 +1,380 @@
+{
+  "O0": [
+    {
+      "frame": 136,
+      "function_unsupported": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+      "granularity": "function",
+      "name": "sum_to",
+      "off": 0,
+      "points": [
+        {
+          "index": 0,
+          "kind": "Entry",
+          "line": 2,
+          "off": 0
+        }
+      ],
+      "ranges": [
+        {
+          "asm": [
+            "push %rbp",
+            "mov %rsp,%rbp",
+            "mov %edi,-0x14(%rbp)"
+          ],
+          "end": 7,
+          "line": 3,
+          "start": 0
+        },
+        {
+          "asm": [
+            "movl $0,-4(%rbp)"
+          ],
+          "end": 14,
+          "line": 4,
+          "start": 7
+        },
+        {
+          "asm": [
+            "movl $0,-8(%rbp)"
+          ],
+          "end": 21,
+          "line": 5,
+          "start": 14
+        },
+        {
+          "asm": [
+            "jmp 0x0000000000000021"
+          ],
+          "end": 23,
+          "line": 6,
+          "start": 21
+        },
+        {
+          "asm": [
+            "addl $1,-8(%rbp)"
+          ],
+          "end": 27,
+          "line": 7,
+          "start": 23
+        },
+        {
+          "asm": [
+            "mov -8(%rbp),%eax",
+            "add %eax,-4(%rbp)"
+          ],
+          "end": 33,
+          "line": 8,
+          "start": 27
+        },
+        {
+          "asm": [
+            "mov -8(%rbp),%eax",
+            "cmp -0x14(%rbp),%eax",
+            "jl 0x0000000000000017"
+          ],
+          "end": 41,
+          "line": 6,
+          "start": 33
+        },
+        {
+          "asm": [
+            "mov -4(%rbp),%eax"
+          ],
+          "end": 44,
+          "line": 10,
+          "start": 41
+        },
+        {
+          "asm": [
+            "pop %rbp",
+            "ret"
+          ],
+          "end": 46,
+          "line": 11,
+          "start": 44
+        }
+      ],
+      "sig": [
+        [
+          "int32"
+        ],
+        "int32"
+      ],
+      "size": 46,
+      "unsupported": [
+        {
+          "end": 7,
+          "line": 3,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 0
+        },
+        {
+          "end": 14,
+          "line": 4,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 7
+        },
+        {
+          "end": 21,
+          "line": 5,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 14
+        },
+        {
+          "end": 23,
+          "line": 6,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 21
+        },
+        {
+          "end": 27,
+          "line": 7,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 23
+        },
+        {
+          "end": 33,
+          "line": 8,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 27
+        },
+        {
+          "end": 41,
+          "line": 6,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 33
+        },
+        {
+          "end": 44,
+          "line": 10,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 41
+        },
+        {
+          "end": 46,
+          "line": 11,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 44
+        }
+      ]
+    }
+  ],
+  "O2": [
+    {
+      "frame": 136,
+      "function_unsupported": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+      "granularity": "function",
+      "name": "sum_to",
+      "off": 0,
+      "points": [
+        {
+          "index": 0,
+          "kind": "Entry",
+          "line": 2,
+          "off": 0
+        }
+      ],
+      "ranges": [
+        {
+          "asm": [
+            "test %edi,%edi",
+            "jle 0x0000000000000030"
+          ],
+          "end": 4,
+          "line": 6,
+          "start": 0
+        },
+        {
+          "asm": [
+            "xor %eax,%eax"
+          ],
+          "end": 6,
+          "line": 5,
+          "start": 4
+        },
+        {
+          "asm": [
+            "xor %edx,%edx",
+            "test $1,%dil",
+            "je 0x0000000000000020"
+          ],
+          "end": 14,
+          "line": 4,
+          "start": 6
+        },
+        {
+          "asm": [
+            "mov $1,%eax"
+          ],
+          "end": 19,
+          "line": 7,
+          "start": 14
+        },
+        {
+          "asm": [
+            "mov $1,%edx"
+          ],
+          "end": 24,
+          "line": 8,
+          "start": 19
+        },
+        {
+          "asm": [
+            "cmp $1,%edi",
+            "je 0x000000000000002D",
+            "nopl (%rax)"
+          ],
+          "end": 32,
+          "line": 6,
+          "start": 24
+        },
+        {
+          "asm": [
+            "lea 1(%rax,%rdx),%edx"
+          ],
+          "end": 36,
+          "line": 8,
+          "start": 32
+        },
+        {
+          "asm": [
+            "add $2,%eax"
+          ],
+          "end": 39,
+          "line": 7,
+          "start": 36
+        },
+        {
+          "asm": [
+            "add %eax,%edx"
+          ],
+          "end": 41,
+          "line": 8,
+          "start": 39
+        },
+        {
+          "asm": [
+            "cmp %eax,%edi",
+            "jne 0x0000000000000020"
+          ],
+          "end": 45,
+          "line": 6,
+          "start": 41
+        },
+        {
+          "asm": [
+            "mov %edx,%eax",
+            "ret"
+          ],
+          "end": 48,
+          "line": 11,
+          "start": 45
+        },
+        {
+          "asm": [
+            "xor %edx,%edx"
+          ],
+          "end": 50,
+          "line": 4,
+          "start": 48
+        },
+        {
+          "asm": [
+            "mov %edx,%eax",
+            "ret"
+          ],
+          "end": 53,
+          "line": 11,
+          "start": 50
+        }
+      ],
+      "sig": [
+        [
+          "int32"
+        ],
+        "int32"
+      ],
+      "size": 53,
+      "unsupported": [
+        {
+          "end": 4,
+          "line": 6,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 0
+        },
+        {
+          "end": 6,
+          "line": 5,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 4
+        },
+        {
+          "end": 14,
+          "line": 4,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 6
+        },
+        {
+          "end": 19,
+          "line": 7,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 14
+        },
+        {
+          "end": 24,
+          "line": 8,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 19
+        },
+        {
+          "end": 32,
+          "line": 6,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 24
+        },
+        {
+          "end": 36,
+          "line": 8,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 32
+        },
+        {
+          "end": 39,
+          "line": 7,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 36
+        },
+        {
+          "end": 41,
+          "line": 8,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 39
+        },
+        {
+          "end": 45,
+          "line": 6,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 41
+        },
+        {
+          "end": 48,
+          "line": 11,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 45
+        },
+        {
+          "end": 50,
+          "line": 4,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 48
+        },
+        {
+          "end": 53,
+          "line": 11,
+          "reason": "C -> Core: the Lean Cerberus elaborator rejects the file: Silmaril.Cerberus.Elaboration.State.Error.message \"statement form is not ported by the actual elaborator\"",
+          "start": 50
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+{
+  "O0": [
+    {
+      "frame": 136,
+      "function_unsupported": null,
+      "granularity": "statement",
+      "name": "max2",
+      "off": 0,
+      "points": [
+        {
+          "index": 0,
+          "kind": "Entry",
+          "line": 3,
+          "off": 0
+        },
+        {
+          "index": 1,
+          "kind": {
+            "Slots": [
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "a",
+                "off": -20,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "b",
+                "off": -24,
+                "param": true,
+                "signed": true,
+                "size": 4
+              }
+            ]
+          },
+          "line": 4,
+          "off": 10
+        },
+        {
+          "index": 2,
+          "kind": {
+            "Slots": [
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "a",
+                "off": -20,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "b",
+                "off": -24,
+                "param": true,
+                "signed": true,
+                "size": 4
+              }
+            ]
+          },
+          "line": 5,
+          "off": 18
+        },
+        {
+          "index": 3,
+          "kind": {
+            "Slots": [
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "a",
+                "off": -20,
+                "param": true,
+                "signed": true,
+                "size": 4
+              },
+              {
+                "decl_line": 2,
+                "defined": true,
+                "name": "b",
+                "off": -24,
+                "param": true,
+                "signed": true,
+                "size": 4
+              }
+            ]
+          },
+          "line": 7,
+          "off": 23
+        },
+        {
+          "index": 4,
+          "kind": "Ret",
+          "line": 8,
+          "off": 26
+        }
+      ],
+      "ranges": [
+        {
+          "asm": [
+            "push %rbp",
+            "mov %rsp,%rbp",
+            "mov %edi,-4(%rbp)",
+            "mov %esi,-8(%rbp)"
+          ],
+          "end": 10,
+          "line": 3,
+          "start": 0
+        },
+        {
+          "asm": [
+            "mov -8(%rbp),%eax",
+            "cmp -4(%rbp),%eax",
+            "jle 0x0000000000000017"
+          ],
+          "end": 18,
+          "line": 4,
+          "start": 10
+        },
+        {
+          "asm": [
+            "mov -8(%rbp),%eax",
+            "jmp 0x000000000000001A"
+          ],
+          "end": 23,
+          "line": 5,
+          "start": 18
+        },
+        {
+          "asm": [
+            "mov -4(%rbp),%eax"
+          ],
+          "end": 26,
+          "line": 7,
+          "start": 23
+        },
+        {
+          "asm": [
+            "pop %rbp",
+            "ret"
+          ],
+          "end": 28,
+          "line": 8,
+          "start": 26
+        }
+      ],
+      "sig": [
+        [
+          "int32",
+          "int32"
+        ],
+        "int32"
+      ],
+      "size": 28,
+      "unsupported": []
+    }
+  ],
+  "O2": [
+    {
+      "frame": 136,
+      "function_unsupported": null,
+      "granularity": "function",
+      "name": "max2",
+      "off": 0,
+      "points": [
+        {
+          "index": 0,
+          "kind": "Entry",
+          "line": 2,
+          "off": 0
+        }
+      ],
+      "ranges": [
+        {
+          "asm": [
+            "cmp %edi,%esi",
+            "mov %edi,%eax",
+            "cmovge %esi,%eax"
+          ],
+          "end": 7,
+          "line": 4,
+          "start": 0
+        },
+        {
+          "asm": [
+            "ret"
+          ],
+          "end": 8,
+          "line": 8,
+          "start": 7
+        }
+      ],
+      "sig": [
+        [
+          "int32",
+          "int32"
+        ],
+        "int32"
+      ],
+      "size": 8,
+      "unsupported": [
+        {
+          "end": 7,
+          "line": 4,
+          "reason": "fewer than three line ranges (no prologue / statement / epilogue)",
+          "start": 0
+        },
+        {
+          "end": 8,
+          "line": 8,
+          "reason": "fewer than three line ranges (no prologue / statement / epilogue)",
+          "start": 7
+        }
+      ]
+    }
+  ]
+}

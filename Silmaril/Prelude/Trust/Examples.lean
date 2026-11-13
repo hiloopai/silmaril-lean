@@ -2,6 +2,8 @@ module
 
 public import Silmaril.Prelude.Trust.Policy.Defs
 meta import Silmaril.Prelude.Trust.Defs
+meta import Silmaril.Prelude.Trust.Elab.Defs
+import Silmaril.Prelude.Trust.TestForge
 
 /-! # Trust profiles: examples
 
@@ -140,6 +142,33 @@ theorem silKernel : SumEven 100 := by
 -- Kernel side alone.
 theorem silKernelOnly : SumEven 100 := by sil_check test.sumEven (kernel := sumEvenK_sound 100)
 
+-- Same proposition from either source: `silNative` (native list checker) and `silKernel`
+-- (kernel `Nat` checker) both state `SumEven 100`.
+example : SumEven 100 := silNative
+example : SumEven 100 := silKernel
+
+-- The kernel side never runs natively, even where the procedure is allowed natively.
+set_option silmaril.trust.profile "sumEvenSet" in
+theorem silKernelWhereNativeAllowed : SumEven 100 := by
+  sil_check test.sumEven (kernel := sumEvenK_sound 100)
+
+/--
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silKernelWhereNativeAllowed","dep_native":[],"elaborated_profiles":["sumEvenSet"],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1","unverified_native":[],"violations":[]}
+-/
+#guard_msgs in
+trust_audit silKernelWhereNativeAllowed
+
+-- No silent fallback: when the native side is selected and its check is false, `sil_check`
+-- fails; it does not retry with the kernel side.
+/--
+error: sil_check test.sumEven: the native check returned false
+  sumEvenN (List.range 3)
+-/
+#guard_msgs in
+set_option silmaril.trust.profile "sumEvenSet" in
+example : SumEven 3 := by
+  sil_check test.sumEven (native := sumEvenN_sound 3) (kernel := sumEvenK_sound 3)
+
 /--
 error: sil_check test.sumEven: the native side must apply Silmaril.Trust.Examples.sumEvenN_sound
   sumEvenK_sound 100
@@ -163,7 +192,7 @@ info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silNati
 trust_audit silNative
 
 /--
-info: {"constant":"Silmaril.Procedures.test.sumEven","doc":"Even sums. Native: compiled List.foldl over List.range.","format":null,"kernel":{"check":"Silmaril.Trust.Examples.sumEvenK","sound":"Silmaril.Trust.Examples.sumEvenK_sound"},"kind":"declared_procedure","name":"test.sumEven","native":{"check":"Silmaril.Trust.Examples.sumEvenN","sound":"Silmaril.Trust.Examples.sumEvenN_sound"},"schema":"silmaril.trust.v1"}
+info: {"bound":null,"constant":"Silmaril.Procedures.test.sumEven","doc":"Even sums. Native: compiled List.foldl over List.range.","format":null,"kernel":{"check":"Silmaril.Trust.Examples.sumEvenK","sound":"Silmaril.Trust.Examples.sumEvenK_sound"},"kind":"declared_procedure","name":"test.sumEven","native":{"check":"Silmaril.Trust.Examples.sumEvenN","sound":"Silmaril.Trust.Examples.sumEvenN_sound"},"schema":"silmaril.trust.v1"}
 -/
 #guard_msgs in
 #trust_decls
@@ -252,6 +281,7 @@ info: {"axiom_pattern":null,"components":[],"doc":"Test procedure: a fold over a
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.silNative._native.edge.test.sumEven.ax_1_1","decl":"Silmaril.Trust.Examples.silNative","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"sumEvenSet","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.silKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.silKernelOnly","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"default","schema":"silmaril.trust.v1"}
+{"axiom":null,"decl":"Silmaril.Trust.Examples.silKernelWhereNativeAllowed","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEven","profile":"sumEvenSet","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byDefault","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byLocal","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byToys","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"toys","schema":"silmaril.trust.v1"}
@@ -262,7 +292,7 @@ info: {"axiom_pattern":null,"components":[],"doc":"Test procedure: a fold over a
 #trust_uses
 
 /--
-info: roundtrip ok: 5 procedures, 13 uses
+info: roundtrip ok: 5 procedures, 14 uses
 -/
 #guard_msgs in
 #trust_roundtrip
@@ -299,22 +329,81 @@ theorem byDecideNative : (List.range 50).length = 50 := by decide +native
 
 set_option silmaril.trust.profile "local" in
 /--
-error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use of test.decideNative names it with the exact shape `f … = true`
 -/
 #guard_msgs in
 trust_audit byDecideNative
 
 /--
-error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use of test.decideNative names it with the exact shape `f … = true`
 -/
 #guard_msgs in
 trust_audit byDecideNative
 
 /--
-info: roundtrip ok: 6 procedures, 13 uses
+info: roundtrip ok: 6 procedures, 14 uses
 -/
 #guard_msgs in
 #trust_roundtrip
+
+/-! ### A generic checker bound to one instance (`ProcDecl.bound`) -/
+
+def leafA : Nat := 2
+def leafB : Nat := 3
+/-- One checker for every "leaf". -/
+def genericCheck (l n : Nat) : Bool := n % l == 0
+theorem genericSound (l n : Nat) (h : genericCheck l n = true) : n % l = 0 := by
+  simpa [genericCheck] using h
+
+/-- The procedure for `leafA` only. -/
+def _root_.Silmaril.Procedures.test.leafA : ProcDecl where
+  doc := "genericCheck on leafA"
+  native := some ⟨``genericCheck, ``genericSound⟩
+  kernel := some ⟨``genericCheck, ``genericSound⟩
+  bound := some ``leafA
+
+theorem leafAOk : 100 % leafA = 0 := by sil_check test.leafA (kernel := genericSound leafA 100)
+
+/--
+error: sil_check test.leafA: the kernel check is not bound to Silmaril.Trust.Examples.leafA
+  genericCheck leafB 99
+-/
+#guard_msgs in
+example : 99 % leafB = 0 := by sil_check test.leafA (kernel := genericSound leafB 99)
+
+/-! ### Forged records do not verify
+
+`recordUse` is trusted instrumentation, so a test can forge one (`TestForge`). Verification also
+needs the axiom to have the exact shape `f … = true` with the procedure's function at the head.
+Each axiom below states `decide p = true`, whatever its tag claims. -/
+
+/-- A procedure whose evaluated constant is `List.length`. -/
+native_tactic test.lengthNative evaluates List.length axiom_tag lengthNative
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+
+/-- Tagged `lengthNative` and recorded as `test.lengthNative`; `List.length` occurs in the
+statement, but `Decidable.decide` is its head. -/
+theorem forgedShape : (List.range 7).length = 7 :=
+  forge_native% lengthNative test.lengthNative ((List.range 7).length = 7)
+
+/-- Tagged as an `edge` run of the declared procedure `test.sumEven` and recorded as it; its
+head is not the declared native check `sumEvenN`. -/
+theorem forgedDecl : SumEven 4 :=
+  forge_native% edge.test.sumEven test.sumEven (sumTo 4 % 2 = 0)
+
+set_option silmaril.trust.profile "local" in
+/--
+error: trust_audit Silmaril.Trust.Examples.forgedShape: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1: matches test.lengthNative by name, but no recorded use of test.lengthNative names it with the exact shape `f … = true`
+-/
+#guard_msgs in
+trust_audit forgedShape
+
+set_option silmaril.trust.profile "local" in
+/--
+error: trust_audit Silmaril.Trust.Examples.forgedDecl: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1: matches test.sumEven by name, but no recorded use of test.sumEven names it with the exact shape `f … = true`
+-/
+#guard_msgs in
+trust_audit forgedDecl
 
 /-! ### No escalation: a child scope cannot grant more than its parent. -/
 
