@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Http.State.OwnedFs.Defs
+public import Silmaril.Servers.State.OwnedFs.Defs
 
 @[expose] public section
 
@@ -8,7 +8,7 @@ public import Silmaril.Http.State.OwnedFs.Defs
 # State model (c): WASI over a file system that others may change
 
 See `docs/projects/http-servers.md` (section "State models"). The servers of
-`Silmaril.Http.State.OwnedFs`, but the files are shared: between handler runs, the
+`Silmaril.Servers.State.OwnedFs`, but the files are shared: between handler runs, the
 environment `E : Fs → Fs → Prop` may change them (another process, an operator, a deploy).
 The handler runs stay atomic with respect to the environment: a run reads and writes the files
 as one step, as when each request reads or writes whole files that are replaced atomically
@@ -31,9 +31,9 @@ What is claimed (`SharedFs/Thms.lean`):
 A Silmaril addition.
 -/
 
-namespace Silmaril.Http.State.SharedFs
+namespace Silmaril.Servers.State.SharedFs
 
-open Silmaril.Net.Http Silmaril.Cli Silmaril.Http.State.OwnedFs
+open Silmaril.Net.Http Silmaril.Cli Silmaril.Servers.State.OwnedFs
 
 /-- **The static file server over shared files**. -/
 def sharedStatic (loc : Target → Option FPath) (fs₀ : Fs) (E : Fs → Fs → Prop) :
@@ -61,4 +61,4 @@ def staticSafe (loc : Target → Option FPath) (I : Fs → Prop) : Atomic Unit R
 def storeSafe : Atomic Unit Request Response :=
   Atomic.ofRel fun r resp => ∃ S S', storeStep S r = (resp, S')
 
-end Silmaril.Http.State.SharedFs
+end Silmaril.Servers.State.SharedFs

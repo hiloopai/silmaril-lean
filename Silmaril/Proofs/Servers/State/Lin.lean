@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Http.State.Defs
+public import Silmaril.Servers.State.Defs
 
 @[expose] public section
 
@@ -19,10 +19,10 @@ public import Silmaril.Http.State.Defs
   specification (history inclusion, by a forward simulation of hosts).
 -/
 
-namespace Silmaril.Proofs.Http.State
+namespace Silmaril.Proofs.Servers.State
 
 open scoped List
-open Silmaril.Http.State
+open Silmaril.Servers.State
 
 variable {σ τ Req Resp : Type}
 
@@ -233,4 +233,4 @@ theorem refines_closed {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ
   rintro H ⟨c, hc, rfl⟩
   exact ⟨_, (key c hc).2, rfl⟩
 
-end Silmaril.Proofs.Http.State
+end Silmaril.Proofs.Servers.State

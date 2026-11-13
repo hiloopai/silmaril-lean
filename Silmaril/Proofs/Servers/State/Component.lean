@@ -1,7 +1,7 @@
 module
 
-public import Silmaril.Http.State.Component.Defs
-public import Silmaril.Http.State.Thms
+public import Silmaril.Servers.State.Component.Defs
+public import Silmaril.Servers.State.Thms
 
 @[expose] public section
 
@@ -16,9 +16,9 @@ public import Silmaril.Http.State.Thms
 * `perRequest_counter`, `perRequest_kv_get`: with a fresh instance per request.
 -/
 
-namespace Silmaril.Proofs.Http.State.Component
+namespace Silmaril.Proofs.Servers.State.Component
 
-open Silmaril.Http.State Silmaril.Http.State.Component Silmaril.Net.Http
+open Silmaril.Servers.State Silmaril.Servers.State.Component Silmaril.Net.Http
 
 variable {Req Resp : Type}
 
@@ -83,4 +83,4 @@ theorem perRequest_kv_get {S₀ : Store} {H : Hist Request Response}
   simp only [kv, Atomic.ofFun, storeStep, hm] at h
   exact (Prod.mk.inj h).1.symm
 
-end Silmaril.Proofs.Http.State.Component
+end Silmaril.Proofs.Servers.State.Component

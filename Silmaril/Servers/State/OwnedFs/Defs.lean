@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Http.State.Component.Defs
+public import Silmaril.Servers.State.Component.Defs
 public import Silmaril.Cli.Files.Defs
 
 @[expose] public section
@@ -36,7 +36,7 @@ that answers from `fs₀`.
 A Silmaril addition.
 -/
 
-namespace Silmaril.Http.State.OwnedFs
+namespace Silmaril.Servers.State.OwnedFs
 
 open Silmaril.Net.Http Silmaril.Net.Http.Field Silmaril.Cli
 
@@ -110,4 +110,4 @@ def fileStore (enc : Target → FPath) (fs₀ : Fs) : Server Request Response :=
 def Frame (enc : Target → FPath) (fs₀ fs : Fs) : Prop :=
   ∀ p, (∀ t, enc t ≠ p) → fs p = fs₀ p
 
-end Silmaril.Http.State.OwnedFs
+end Silmaril.Servers.State.OwnedFs

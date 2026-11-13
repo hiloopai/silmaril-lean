@@ -1,7 +1,7 @@
 module
 
-public import Silmaril.Http.State.SharedFs.Defs
-public import Silmaril.Http.State.OwnedFs.Thms
+public import Silmaril.Servers.State.SharedFs.Defs
+public import Silmaril.Servers.State.OwnedFs.Thms
 
 @[expose] public section
 
@@ -13,10 +13,10 @@ public import Silmaril.Http.State.OwnedFs.Thms
 * `storeKeysAbs`: with key files untouched, the abstraction onto the component-state store.
 -/
 
-namespace Silmaril.Proofs.Http.State.SharedFs
+namespace Silmaril.Proofs.Servers.State.SharedFs
 
-open Silmaril.Http.State Silmaril.Http.State.OwnedFs Silmaril.Http.State.SharedFs
-open Silmaril.Http.State.Component Silmaril.Net.Http Silmaril.Cli
+open Silmaril.Servers.State Silmaril.Servers.State.OwnedFs Silmaril.Servers.State.SharedFs
+open Silmaril.Servers.State.Component Silmaril.Net.Http Silmaril.Cli
 
 /-- The static server over shared files as its safety specification. -/
 def staticSafeAbs (loc : Target → Option FPath) {fs₀ : Fs} {E : Fs → Fs → Prop}
@@ -73,4 +73,4 @@ def storeKeysAbs {enc : Target → FPath} (hinj : Function.Injective enc) (fs₀
   env_hidden (s : Fs) (s' : Fs) _ h := by
     funext t; exact hE s s' h (enc t) ⟨t, rfl⟩
 
-end Silmaril.Proofs.Http.State.SharedFs
+end Silmaril.Proofs.Servers.State.SharedFs

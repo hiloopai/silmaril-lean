@@ -1,7 +1,7 @@
 module
 
-public import Silmaril.Http.State.OwnedFs.Defs
-public import Silmaril.Http.State.Thms
+public import Silmaril.Servers.State.OwnedFs.Defs
+public import Silmaril.Servers.State.Thms
 
 @[expose] public section
 
@@ -16,9 +16,9 @@ public import Silmaril.Http.State.Thms
 * `docRoot_safe`: a document root names files under its preopen, without `..`.
 -/
 
-namespace Silmaril.Proofs.Http.State.OwnedFs
+namespace Silmaril.Proofs.Servers.State.OwnedFs
 
-open Silmaril.Http.State Silmaril.Http.State.OwnedFs Silmaril.Http.State.Component
+open Silmaril.Servers.State Silmaril.Servers.State.OwnedFs Silmaril.Servers.State.Component
 open Silmaril.Net.Http Silmaril.Cli
 
 theorem view_set {enc : Target → FPath} (hinj : Function.Injective enc) (fs : Fs) (t : Target)
@@ -91,4 +91,4 @@ theorem docRoot_safe {root : String} {t : Target} {p : FPath} (h : docRoot root 
       · cases h
       · cases h; exact ⟨rfl, by assumption⟩
 
-end Silmaril.Proofs.Http.State.OwnedFs
+end Silmaril.Proofs.Servers.State.OwnedFs

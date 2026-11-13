@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Http.State.Defs
+public import Silmaril.Servers.State.Defs
 public import Silmaril.Net.Http.Exchange.Defs
 
 @[expose] public section
@@ -28,7 +28,7 @@ every `GET` from `S₀` (`perRequest_counter`, `perRequest_kv_get`).
 A Silmaril addition.
 -/
 
-namespace Silmaril.Http.State.Component
+namespace Silmaril.Servers.State.Component
 
 open Silmaril.Net.Http
 
@@ -57,4 +57,4 @@ def kv : Atomic Store Request Response := Atomic.ofFun storeStep
 /-- The key-value server with component state, from the store `S₀`. -/
 def kvServer (S₀ : Store) : Server Request Response := Server.closed kv S₀
 
-end Silmaril.Http.State.Component
+end Silmaril.Servers.State.Component

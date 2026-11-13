@@ -1,15 +1,15 @@
 module
 
-public import Silmaril.Http.State.Defs
-import Silmaril.Proofs.Http.State.Lin
+public import Silmaril.Servers.State.Defs
+import Silmaril.Proofs.Servers.State.Lin
 
 @[expose] public section
 
 /-!
 # HTTP servers with state: theorems (header)
 
-PROVED (standard axioms), namespace `Silmaril.Http.State`. Proofs in
-`Silmaril.Proofs.Http.State.Lin`.
+PROVED (standard axioms), namespace `Silmaril.Servers.State`. Proofs in
+`Silmaril.Proofs.Servers.State.Lin`.
 
 * **`Abstraction.sat_linearizable`**: a server with an abstraction onto the atomic
   specification `B` from `t₀` satisfies `Linearizable B t₀`: every history of its host is
@@ -30,28 +30,28 @@ PROVED (standard axioms), namespace `Silmaril.Http.State`. Proofs in
 * `Refines.sat`: refinement (history inclusion) preserves satisfaction.
 -/
 
-namespace Silmaril.Http.State
+namespace Silmaril.Servers.State
 
 variable {σ τ Req Resp : Type}
 
 theorem Abstraction.sat_linearizable {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
     (F : Abstraction M B t₀) : M.Sat (Linearizable B t₀) :=
-  Proofs.Http.State.sat_linearizable F
+  Proofs.Servers.State.sat_linearizable F
 
 theorem Abstraction.refines {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
     (F : Abstraction M B t₀) : M.Refines (Server.closed B t₀) :=
-  Proofs.Http.State.refines_closed F
+  Proofs.Servers.State.refines_closed F
 
 theorem closed_linearizable (A : Atomic σ Req Resp) (s₀ : σ) :
     (Server.closed A s₀).Sat (Linearizable A s₀) :=
   (Abstraction.closed A s₀).sat_linearizable
 
 theorem Server.sat_wellFormed (M : Server Req Resp) : M.Sat WellFormed :=
-  Proofs.Http.State.sat_wellFormed M
+  Proofs.Servers.State.sat_wellFormed M
 
 theorem Abstraction.reach_inv {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
     (F : Abstraction M B t₀) {c : Conf M.σ Req Resp} (hc : M.Reach c) : F.inv c.st :=
-  Proofs.Http.State.reach_inv F hc
+  Proofs.Servers.State.reach_inv F hc
 
 theorem Linearizable.serializable {A : Atomic σ Req Resp} {s₀ : σ} {H : Hist Req Resp}
     (h : Linearizable A s₀ H) : Serializable A s₀ H :=
@@ -60,25 +60,25 @@ theorem Linearizable.serializable {A : Atomic σ Req Resp} {s₀ : σ} {H : Hist
 theorem Linearizable.answer {B : Atomic τ Req Resp} {t₀ : τ} {H : Hist Req Resp}
     (hw : WellFormed H) (h : Linearizable B t₀ H) {i : Nat} {r : Req} {s : Resp}
     (hc : Ev.call i r ∈ H) (hr : Ev.ret i s ∈ H) : ∃ t t', B t r s t' :=
-  Proofs.Http.State.linearizable_answer hw h hc hr
+  Proofs.Servers.State.linearizable_answer hw h hc hr
 
 theorem Linearizable.map {A : Atomic σ Req Resp} {B : Atomic τ Req Resp} (α : σ → τ)
     (hsim : ∀ s r resp s', A s r resp s' → B (α s) r resp (α s')) {s₀ : σ} {H : Hist Req Resp}
     (h : Linearizable A s₀ H) : Linearizable B (α s₀) H :=
-  Proofs.Http.State.linearizable_map α hsim h
+  Proofs.Servers.State.linearizable_map α hsim h
 
 theorem Abstraction.sat_answer {M : Server Req Resp} {B : Atomic τ Req Resp} {t₀ : τ}
     (F : Abstraction M B t₀) {H : Hist Req Resp} (hH : M.Hists H) {i : Nat} {r : Req}
     {s : Resp} (hc : Ev.call i r ∈ H) (hr : Ev.ret i s ∈ H) : ∃ t t', B t r s t' :=
-  Proofs.Http.State.sat_answer F hH hc hr
+  Proofs.Servers.State.sat_answer F hH hc hr
 
 theorem perRequest_answer {A : Atomic σ Req Resp} {s₀ : σ} {H : Hist Req Resp}
     (hH : (Server.perRequest A s₀).Hists H) {i : Nat} {r : Req} {s : Resp}
     (hc : Ev.call i r ∈ H) (hr : Ev.ret i s ∈ H) : ∃ s', A s₀ r s s' :=
-  Proofs.Http.State.perRequest_answer hH hc hr
+  Proofs.Servers.State.perRequest_answer hH hc hr
 
 theorem Server.Refines.sat {M N : Server Req Resp} (h : M.Refines N) {φ : Sen Req Resp}
     (hN : N.Sat φ) : M.Sat φ :=
   fun H hH => hN H (h H hH)
 
-end Silmaril.Http.State
+end Silmaril.Servers.State

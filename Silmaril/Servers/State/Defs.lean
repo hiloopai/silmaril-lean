@@ -6,7 +6,7 @@ module
 # HTTP servers with state: atomic handlers, hosts, histories and linearizability
 
 See `docs/projects/http-servers.md` (section "State models"). This module is the trace
-vocabulary that the state models of `Silmaril.Http.State.{Component, OwnedFs, SharedFs}` share.
+vocabulary that the state models of `Silmaril.Servers.State.{Component, OwnedFs, SharedFs}` share.
 It depends on Lean core only and is generic in the request and response types; the HTTP
 instances take `Silmaril.Net.Http.Request` and `Response`.
 
@@ -76,7 +76,7 @@ handled by `A` from `s₀` (`Atomic.fresh`), and there is no persistent state.
 A Silmaril addition.
 -/
 
-namespace Silmaril.Http.State
+namespace Silmaril.Servers.State
 
 open scoped List
 
@@ -268,4 +268,4 @@ def Abstraction.closed (A : Atomic σ Req Resp) (s₀ : σ) :
   sim _ _ _ _ _ h := h
   env_hidden _ _ _ h := h.elim
 
-end Silmaril.Http.State
+end Silmaril.Servers.State
