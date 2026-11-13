@@ -49,8 +49,12 @@ methods explicitly.
 The `Decoders` parameter of `Silmaril.Net.Http1.Codings` is instantiated with the codecs of
 `Silmaril.Formats.Compression`: `gzip` (RFC 1952) and `deflate` (the zlib format,
 RFC 1950). `libDecoders_inverts` discharges the assumption `Decoders.Inverts`, so
-`lib_roundTrip` proves the round trip for any list of these codings (Proved). The library's
-encoders write stored blocks. `compress` (LZW) is not implemented, so a server configured with
+`lib_roundTrip` proves the round trip for any list of these codings (Proved). Its only
+dependencies are `Gzip.roundTrip` and `Zlib.roundTrip`, which are unconditional but are about
+the library's **stored-block encoders**. It does not depend on `Deflate.Task.local` or the
+`Inflate.Task.*` completeness tasks. It is **not** a proof that gzip or DEFLATE decoding is
+correct on arbitrary compressed input (that rests on the compression track's own results and
+known-answer vectors). `compress` (LZW) is not implemented, so a server configured with
 `libImplements` answers it with `501`.
 
 ## REST services: an OpenAPI 3.1.0 subset (`Silmaril.Net.Http.OpenApi`)

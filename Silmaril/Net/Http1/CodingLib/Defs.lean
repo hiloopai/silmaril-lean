@@ -18,8 +18,16 @@ parameter (`Decoders`) and proves the transfer-coding round trip from one assump
 | `deflate` | the zlib format (RFC 1950) | `Silmaril.Formats.Compression.Zlib.codec` |
 | `compress` | LZW | not implemented (`none`): a recipient answers `501` |
 
-Each decoder reads one whole member (`Decoder.whole`, no trailing octets). The encoders write
-stored blocks, so they do not compress; the decoders accept every DEFLATE block type.
+Each decoder reads one whole member (`Decoder.whole`, no trailing octets).
+
+**What the round trip does and does not establish.** `libDecoders_inverts` uses exactly
+`Gzip.roundTrip` and `Zlib.roundTrip` (`Silmaril.Formats.Compression`), which are unconditional
+(standard axioms only) and are about the library's **stored-block encoders**: decoding inverts
+*those* encoders. It does not use `Deflate.Task.local`, `Inflate.Task.member_complete` or
+`Inflate.Task.raw_complete`, and it says nothing about decoding octets produced by other
+(Huffman-compressing) encoders. Those are covered only by the library's known-answer vectors.
+It is not a correctness proof of gzip or DEFLATE decoding. Multi-member gzip
+(`decompress_append`) and the append law are not used here.
 -/
 
 @[expose] public section
