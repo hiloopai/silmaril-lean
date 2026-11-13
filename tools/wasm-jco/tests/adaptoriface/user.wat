@@ -1,0 +1,16 @@
+;; A canonical-ABI module importing the interface `test:ai/greet` (thin wrapper).
+(module
+  (import "test:ai/greet" "add" (func $add (param i32 i32) (result i32)))
+  (import "test:ai/greet" "hello" (func $hello (param i32 i32 i32)))
+  (memory (export "memory") 1)
+  (global $bump (mut i32) (i32.const 4096))
+  (func (export "cabi_realloc") (param $old i32) (param $osz i32) (param $align i32) (param $size i32) (result i32)
+    (local $p i32)
+    (local.set $p (i32.and (i32.add (global.get $bump) (i32.const 7)) (i32.const -8)))
+    (global.set $bump (i32.add (local.get $p) (local.get $size)))
+    (local.get $p))
+  (func (export "run") (param i32 i32) (result i32) (call $add (local.get 0) (local.get 1)))
+  (func (export "hi") (param $p i32) (param $n i32) (result i32)
+    (call $hello (local.get $p) (local.get $n) (i32.const 256))
+    (i32.const 256))
+)

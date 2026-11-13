@@ -1,0 +1,5 @@
+package silmaril:hookinit;
+
+world module {
+  export events: func() -> u64;
+}

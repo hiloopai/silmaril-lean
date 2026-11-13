@@ -1,0 +1,5 @@
+package test:gentext;
+
+world gentext {
+  export gentext: async func(n: u32) -> stream<u8>;
+}

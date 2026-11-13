@@ -1,0 +1,5 @@
+package test:gencb;
+
+world gencb {
+  export gen: async func(n: u32) -> stream<u8>;
+}

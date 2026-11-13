@@ -50,6 +50,39 @@ def readScript (path text : String) : Except String (Script × List PNode) := do
 def joinPath (dir name : String) : String :=
   if dir.endsWith "/" then dir ++ name else dir ++ "/" ++ name
 
+/-- The body of `wasm-tools json-from-wast` on its options (`jsonFromWast`; the full build: from the
+specification's matches). -/
+def jsonBody (o : JsonOpts) : IO UInt32 := do
+  let text ← match ← (IO.FS.readFile o.wast).toBaseIO with
+    | .ok t => pure t
+    | .error e => return ← fail s!"failed to read input wast file: {repr o.wast}\n\nCaused by:\n    0: {e}"
+  let (script, ps) ← match readScript o.wast text with
+    | .ok r => pure r
+    | .error e => return ← fail e
+  let stem := match o.output with
+    | some out => fileStem out
+    | none => fileStem o.wast
+  let c : LowerCtx := { stem, source := text.toUTF8, lines := lineStarts text.toUTF8, enc := parseEncoder }
+  let (json, files) ← match scriptJson c o.wast script ps with
+    | .ok r => pure r
+    | .error e => return ← fail e
+  for (name, bytes) in files do
+    let dst := match o.wasmDir with | some d => joinPath d name | none => name
+    match ← (IO.FS.writeBinFile dst bytes).toBaseIO with
+    | .ok () => pure ()
+    | .error e => return ← fail s!"failed to write {repr dst}\n\nCaused by:\n    0: {e}"
+  let out := if o.pretty then json.prettyFast else json.compactFast
+  match o.output with
+  | some path =>
+    match ← (IO.FS.writeFile path out).toBaseIO with
+    | .ok () => pure ()
+    | .error e => return ← fail s!"failed to write `{path}`\n\nCaused by:\n    0: {e}"
+  | none =>
+    let h ← IO.getStdout
+    h.putStr out
+    h.flush
+  return 0
+
 /-- `wasm-tools json-from-wast`. -/
 def jsonFromWast (args : List String) : IO UInt32 := do
   match jsonOpts? args with
@@ -57,36 +90,7 @@ def jsonFromWast (args : List String) : IO UInt32 := do
     IO.print (if long then WastHelp.jsonLong else WastHelp.jsonShort)
     return 0
   | .error e => usageError "wasm-tools json-from-wast [OPTIONS] <WAST>" e
-  | .run o =>
-    let text ← match ← (IO.FS.readFile o.wast).toBaseIO with
-      | .ok t => pure t
-      | .error e => return ← fail s!"failed to read input wast file: {repr o.wast}\n\nCaused by:\n    0: {e}"
-    let (script, ps) ← match readScript o.wast text with
-      | .ok r => pure r
-      | .error e => return ← fail e
-    let stem := match o.output with
-      | some out => fileStem out
-      | none => fileStem o.wast
-    let c : LowerCtx := { stem, source := text.toUTF8, lines := lineStarts text.toUTF8, enc := parseEncoder }
-    let (json, files) ← match scriptJson c o.wast script ps with
-      | .ok r => pure r
-      | .error e => return ← fail e
-    for (name, bytes) in files do
-      let dst := match o.wasmDir with | some d => joinPath d name | none => name
-      match ← (IO.FS.writeBinFile dst bytes).toBaseIO with
-      | .ok () => pure ()
-      | .error e => return ← fail s!"failed to write {repr dst}\n\nCaused by:\n    0: {e}"
-    let out := if o.pretty then json.prettyFast else json.compactFast
-    match o.output with
-    | some path =>
-      match ← (IO.FS.writeFile path out).toBaseIO with
-      | .ok () => pure ()
-      | .error e => return ← fail s!"failed to write `{path}`\n\nCaused by:\n    0: {e}"
-    | none =>
-      let h ← IO.getStdout
-      h.putStr out
-      h.flush
-    return 0
+  | .run o => jsonBody o
 
 /-- The parent directory of a path (`""` for none). -/
 def parentDir (path : String) : String :=
@@ -136,6 +140,43 @@ def jsonSnapshot (snap : Snap IO) (path text : String) : IO (Except String Unit)
       | .ok () => return .ok ()
       | .error e => return .error s!"failed to validate the `json-from-wast` snapshot\n{e}"
 
+/-- The body of `wasm-tools wast` on its options (`wast`; the full build: from the
+specification's matches). -/
+def wastBody (o : WastOpts) : IO UInt32 := do
+  let (path, text) ← match o.input with
+    | some p =>
+      if p == "-" then pure ("<stdin>", ← (← IO.getStdin).readToEnd)
+      else match ← (IO.FS.readFile p).toBaseIO with
+        | .ok t => pure (p, t)
+        | .error e => return ← fail s!"failed to read {repr p}\n\nCaused by:\n    0: {e}"
+    | none => pure ("<stdin>", ← (← IO.getStdin).readToEnd)
+  let (script, ps) ← match readScript path text with
+    | .ok r => pure r
+    | .error e => return ← fail e
+  let opts : CheckOpts :=
+    { ignoreErrorMessages := o.ignoreErrorMessages,
+      asserts := o.asserts.filterMap Assert.ofString? }
+  let bless := (← IO.getEnv "BLESS").isSome
+  let snap := snapIO o.snapshot bless
+  if let some p := o.input then
+    if p != "-" && opts.on .snapshotJson then
+      match ← jsonSnapshot snap p text with
+      | .ok () => pure ()
+      | .error e =>
+        return ← fail (renderChain "failed to run `json-from-wast` cli subcommand" [e])
+  let lines := lineStarts text.toUTF8
+  let backend := fullBackend o.featureSet
+  match ← checkScript backend opts snap path text.toUTF8 script ps with
+  | [] => return 0
+  | errs =>
+    let mut s := s!"{errs.length} test failures in {path}:"
+    for (pos, e) in errs do
+      let l := lineOf lines pos
+      let col := pos - lines[l - 1]! + 1
+      s := s ++ "\n\n--------------------------------\n\n" ++
+        renderChain s!"failed directive on {path}:{l}:{col}" e
+    fail s
+
 /-- `wasm-tools wast`. -/
 def wast (args : List String) : IO UInt32 := do
   match wastOpts? args with
@@ -143,40 +184,7 @@ def wast (args : List String) : IO UInt32 := do
     IO.print (if long then WastHelp.wastLong else WastHelp.wastShort)
     return 0
   | .error e => usageError "wasm-tools wast [OPTIONS] [INPUT]" e
-  | .run o =>
-    let (path, text) ← match o.input with
-      | some p =>
-        if p == "-" then pure ("<stdin>", ← (← IO.getStdin).readToEnd)
-        else match ← (IO.FS.readFile p).toBaseIO with
-          | .ok t => pure (p, t)
-          | .error e => return ← fail s!"failed to read {repr p}\n\nCaused by:\n    0: {e}"
-      | none => pure ("<stdin>", ← (← IO.getStdin).readToEnd)
-    let (script, ps) ← match readScript path text with
-      | .ok r => pure r
-      | .error e => return ← fail e
-    let opts : CheckOpts :=
-      { ignoreErrorMessages := o.ignoreErrorMessages,
-        asserts := o.asserts.filterMap Assert.ofString? }
-    let bless := (← IO.getEnv "BLESS").isSome
-    let snap := snapIO o.snapshot bless
-    if let some p := o.input then
-      if p != "-" && opts.on .snapshotJson then
-        match ← jsonSnapshot snap p text with
-        | .ok () => pure ()
-        | .error e =>
-          return ← fail (renderChain "failed to run `json-from-wast` cli subcommand" [e])
-    let lines := lineStarts text.toUTF8
-    let backend := fullBackend o.featureSet
-    match ← checkScript backend opts snap path text.toUTF8 script ps with
-    | [] => return 0
-    | errs =>
-      let mut s := s!"{errs.length} test failures in {path}:"
-      for (pos, e) in errs do
-        let l := lineOf lines pos
-        let col := pos - lines[l - 1]! + 1
-        s := s ++ "\n\n--------------------------------\n\n" ++
-          renderChain s!"failed directive on {path}:{l}:{col}" e
-      fail s
+  | .run o => wastBody o
 
 /-- The subcommands of this module, for the `wasm-tools` dispatcher. -/
 def subcommands : List (String × (List String → IO UInt32)) :=
