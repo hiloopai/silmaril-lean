@@ -1,0 +1,87 @@
+# The HTTP/2 stream state machine (RFC 9113 §5.1) as a machine document.
+# Generated with `#silmaril_machine_toml` from `Silmaril.Net.Http2.machine` and `marks`;
+# `ProjectSelfTest.Machines` proves (machine_binding) that it is exactly that typed machine.
+schema = "silmaril.records.v0.2"
+
+[[machine]]
+name = "silmaril.net.http2.stream"
+doc = "HTTP/2 stream states (RFC 9113 §5.1): events are (direction, frame) pairs; a missing edge is a protocol or stream error."
+states = ["idle", "reservedLocal", "reservedRemote", "open", "halfClosedLocal", "halfClosedRemote", "closed"]
+labels = ["(send,headers(false))", "(send,headers(true))", "(send,pushPromise)", "(send,data(false))", "(send,data(true))", "(send,rstStream)", "(send,priority)", "(send,windowUpdate)", "(recv,headers(false))", "(recv,headers(true))", "(recv,pushPromise)", "(recv,data(false))", "(recv,data(true))", "(recv,rstStream)", "(recv,priority)", "(recv,windowUpdate)"]
+edges = [
+  ["idle", "(send,headers(false))", "open"],
+  ["idle", "(send,headers(true))", "halfClosedLocal"],
+  ["idle", "(send,pushPromise)", "reservedLocal"],
+  ["idle", "(send,priority)", "idle"],
+  ["idle", "(recv,headers(false))", "open"],
+  ["idle", "(recv,headers(true))", "halfClosedRemote"],
+  ["idle", "(recv,pushPromise)", "reservedRemote"],
+  ["idle", "(recv,priority)", "idle"],
+  ["reservedLocal", "(send,headers(false))", "halfClosedRemote"],
+  ["reservedLocal", "(send,headers(true))", "closed"],
+  ["reservedLocal", "(send,rstStream)", "closed"],
+  ["reservedLocal", "(send,priority)", "reservedLocal"],
+  ["reservedLocal", "(recv,rstStream)", "closed"],
+  ["reservedLocal", "(recv,priority)", "reservedLocal"],
+  ["reservedLocal", "(recv,windowUpdate)", "reservedLocal"],
+  ["reservedRemote", "(send,rstStream)", "closed"],
+  ["reservedRemote", "(send,priority)", "reservedRemote"],
+  ["reservedRemote", "(send,windowUpdate)", "reservedRemote"],
+  ["reservedRemote", "(recv,headers(false))", "halfClosedLocal"],
+  ["reservedRemote", "(recv,headers(true))", "closed"],
+  ["reservedRemote", "(recv,rstStream)", "closed"],
+  ["reservedRemote", "(recv,priority)", "reservedRemote"],
+  ["open", "(send,headers(false))", "open"],
+  ["open", "(send,headers(true))", "halfClosedLocal"],
+  ["open", "(send,data(false))", "open"],
+  ["open", "(send,data(true))", "halfClosedLocal"],
+  ["open", "(send,rstStream)", "closed"],
+  ["open", "(send,priority)", "open"],
+  ["open", "(send,windowUpdate)", "open"],
+  ["open", "(recv,headers(false))", "open"],
+  ["open", "(recv,headers(true))", "halfClosedRemote"],
+  ["open", "(recv,data(false))", "open"],
+  ["open", "(recv,data(true))", "halfClosedRemote"],
+  ["open", "(recv,rstStream)", "closed"],
+  ["open", "(recv,priority)", "open"],
+  ["open", "(recv,windowUpdate)", "open"],
+  ["halfClosedLocal", "(send,rstStream)", "closed"],
+  ["halfClosedLocal", "(send,priority)", "halfClosedLocal"],
+  ["halfClosedLocal", "(send,windowUpdate)", "halfClosedLocal"],
+  ["halfClosedLocal", "(recv,headers(false))", "halfClosedLocal"],
+  ["halfClosedLocal", "(recv,headers(true))", "closed"],
+  ["halfClosedLocal", "(recv,data(false))", "halfClosedLocal"],
+  ["halfClosedLocal", "(recv,data(true))", "closed"],
+  ["halfClosedLocal", "(recv,rstStream)", "closed"],
+  ["halfClosedLocal", "(recv,priority)", "halfClosedLocal"],
+  ["halfClosedLocal", "(recv,windowUpdate)", "halfClosedLocal"],
+  ["halfClosedRemote", "(send,headers(false))", "halfClosedRemote"],
+  ["halfClosedRemote", "(send,headers(true))", "closed"],
+  ["halfClosedRemote", "(send,data(false))", "halfClosedRemote"],
+  ["halfClosedRemote", "(send,data(true))", "closed"],
+  ["halfClosedRemote", "(send,rstStream)", "closed"],
+  ["halfClosedRemote", "(send,priority)", "halfClosedRemote"],
+  ["halfClosedRemote", "(send,windowUpdate)", "halfClosedRemote"],
+  ["halfClosedRemote", "(recv,rstStream)", "closed"],
+  ["halfClosedRemote", "(recv,priority)", "halfClosedRemote"],
+  ["halfClosedRemote", "(recv,windowUpdate)", "halfClosedRemote"],
+  ["closed", "(send,priority)", "closed"],
+  ["closed", "(recv,headers(false))", "closed"],
+  ["closed", "(recv,headers(true))", "closed"],
+  ["closed", "(recv,data(false))", "closed"],
+  ["closed", "(recv,data(true))", "closed"],
+  ["closed", "(recv,rstStream)", "closed"],
+  ["closed", "(recv,priority)", "closed"],
+  ["closed", "(recv,windowUpdate)", "closed"],
+]
+initial = ["idle"]
+accepting = ["closed"]
+rejecting = []
+error = []
+
+# The typed machine and its marks, proved equal to the document (`<name>.bound`, `<name>.layers`).
+[[machine_binding]]
+name = "silmaril.net.http2.stream.typed"
+machine = "silmaril.net.http2.stream"
+decl = "Silmaril.Net.Http2.machine"
+marks = "Silmaril.Net.Http2.marks"
