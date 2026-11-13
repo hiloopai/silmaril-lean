@@ -18,6 +18,11 @@ if grep -rnE 'nativeEqTrue|(^|[^`])decide \+native|decide \(config := \{[^}]*nat
     | grep -v '^Silmaril/Prelude/Trust/'; then
   echo "error: native evaluation must go through edge_decide (Silmaril.Prelude.Trust)" >&2; status=1
 fi
+# Forged test axioms stay in the trust examples, a leaf that nothing imports.
+if grep -rnE '^(public )?(meta )?import (all )?Silmaril\.Prelude\.Trust\.(TestForge|Examples)\b' Silmaril --include='*.lean' \
+    | grep -v '^Silmaril/Prelude/Trust/Examples.lean:'; then
+  echo "error: only Silmaril/Prelude/Trust/Examples.lean may import TestForge, and nothing imports it" >&2; status=1
+fi
 if grep -rn 'silmaril\.trust\.ceiling' Silmaril --include='*.lean' | grep -v '^Silmaril/Prelude/Trust/'; then
   echo "error: only scripts/trust-profile.sh sets silmaril.trust.ceiling" >&2; status=1
 fi
