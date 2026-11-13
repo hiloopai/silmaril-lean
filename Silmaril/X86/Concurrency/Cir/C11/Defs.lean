@@ -189,6 +189,35 @@ def C11Test.check (c : C11Test) : Bool :=
         bitVerdict S 3 == c.tv.test.xl && some (bitVerdict S 7) == c.tv.test.tso &&
         c.stronger == (S.testBit 2 && !S.testBit 3)
 
+/-! ## The check in slices
+
+One `decide +kernel` of `C11Test.check` keeps every intermediate term of the enumeration until
+it ends: about 15 GB for `SB+fences+sc@gcc` (144 candidates). The generated corpus checks the
+larger tests in slices instead: the parts `preOk` and `flagsOk` of the check, and the flags of
+consecutive slices of the choices of runs (`flagsSlice`), each its own kernel check.
+`Silmaril.Proofs.X86.Concurrency.Cir.C11Slice` joins them into `check = true`. -/
+
+/-- The choices of runs, one trace per thread, that the flags range over. -/
+def C11Test.combos (c : C11Test) : List (List XTrace) := seqL (c.prog.traces c.tv.test.domain)
+
+/-- The flags of the choices of runs from the `i`-th on. -/
+def C11Test.flagsFrom (c : C11Test) (i : Nat) : Nat :=
+  (c.combos.drop i).foldl (fun acc trs => acc ||| comboFlags c.prog c.tv.test trs) 0
+
+/-- The flags of the `k` choices of runs from the `i`-th on. -/
+def C11Test.flagsSlice (c : C11Test) (i k : Nat) : Nat :=
+  ((c.combos.drop i).take k).foldl (fun acc trs => acc ||| comboFlags c.prog c.tv.test trs) 0
+
+/-- The part of `check` that does not read the flags. -/
+def C11Test.preOk (c : C11Test) : Bool :=
+  c.tv.tvOk && c.tv.domOk && c.tv.test.traces.isSome && c.modesOk && c.fragOk
+
+/-- The part of `check` that reads the flags `S`. -/
+def C11Test.flagsOk (c : C11Test) (S : Nat) : Bool :=
+  !S.testBit 6 && !S.testBit 0 && S.testBit 4 && rcVerdict S == c.expected &&
+    bitVerdict S 3 == c.tv.test.xl && some (bitVerdict S 7) == c.tv.test.tso &&
+    c.stronger == (S.testBit 2 && !S.testBit 3)
+
 /-! ## What a checked test gives -/
 
 open Silmaril.X86.MemoryModel.Litmus (AxReach ReadsOk Final)
