@@ -1,0 +1,23 @@
+[package]
+name = "c-tv"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+license = "MIT"
+description = "Compile a C file with a pinned compiler, read its compiler-explorer correspondences (DWARF line table and frame slots) and emit Lean goals relating the C code, its Cerberus Core and the x86-64 bytes"
+
+[dependencies]
+anyhow = "1.0.95"
+gimli = { version = "0.32.3", default-features = false, features = ["read", "std"] }
+object = { version = "0.37.3", default-features = false, features = ["read", "std", "elf"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10.8"
+lift-x86 = { path = "../x86-lift" }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+debug = false

@@ -18,6 +18,7 @@ MODE=${1:-write}
 
 # rung-directory executable Lean-module-suffix
 RUNGS=(
+  "01-leaf-arith leaf-arith LeafArith"
   "02-mem-loops mem-loops MemLoops"
   "03-zlib-checksums zlib-checksums ZlibChecksums"
 )

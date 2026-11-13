@@ -130,20 +130,20 @@ theorem _root_.Silmaril.Cli.Command.modelMain_help {c : Command} {v : HelpVarian
 every help variant without required substrings, pinned texts or a usage-error claim, at paths
 its words select (a `help` word needs clap's `help` subcommand and subcommands). -/
 theorem _root_.Silmaril.Cli.Clap.Tool.spec_le_help {t : Clap.Tool} {c : Command}
-    (hc : t.grammar = c.helpEverywhere) (hwf : t.grammar.WF) {v : HelpVariant}
+    (hpres : t.present = none) (hc : t.grammar = c.helpEverywhere) (hwf : t.grammar.WF)
+    {v : HelpVariant}
     (hm : v.reply.mentions = []) (ht : v.texts = []) (hx : v.extra ≠ .error)
     (hw : v.word = true → t.helpSub = true ∧ t.grammar.subs.isEmpty = false)
     (hp : ∀ p ∈ v.roots, (Clap.pathLevel t t.grammar p).isSome = true)
     (S : Matches → Spec) : t.spec S ≤ v.sen :=
-  Clap.spec_help (Clap.helpTriggers_everywhere hc hwf hx hw hp)
-    (fun p _ => HelpVariant.fits_line hm ht p _) (fun _ p _ => HelpVariant.fits_line hm ht p _) S
+  Clap.spec_help hpres (Clap.helpTriggers_everywhere hc hwf hx hw hp)
+    (fun p _ => HelpVariant.fits_line hm ht p _) S
 
 /-- `Tool.main`, read in the behaviour model, meets every variant its front end answers. -/
 theorem _root_.Silmaril.Cli.Clap.Tool.modelMain_help {t : Clap.Tool} {v : HelpVariant}
-    (h : Clap.helpTriggers t v = true)
+    (hpres : t.present = none) (h : Clap.helpTriggers t v = true)
     (hfit : ∀ p ∈ v.roots, v.Fits p (Clap.helpBytes t (t.grammar.pathNames p)))
-    (hword : v.word = true → ∀ p ∈ v.roots, v.Fits p (Clap.helpBytes t (t.grammar.name :: p)))
     (run : Matches → Beh UInt32) : (ofSpec (Beh.toSpec (t.modelMain run))).Sat v.sen :=
-  (ofSpec_sat_iff _ _).mpr ((t.main_refines_front run).trans (Clap.spec_help h hfit hword _))
+  (ofSpec_sat_iff _ _).mpr ((t.main_refines_front run).trans (Clap.spec_help hpres h hfit _))
 
 end Silmaril.Cli.Info

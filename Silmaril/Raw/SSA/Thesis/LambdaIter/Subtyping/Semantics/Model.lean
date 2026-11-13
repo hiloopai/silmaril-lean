@@ -79,13 +79,13 @@ def coeSub [TypeFormers τ] [Subtyping τ] [TypeModel.{u, v} τ]
 
 /-- Environments retain every context slot, including anonymous and shadowed
 ones. The newest slot is the right component. -/
-def CtxDen [TypeFormers τ] [Subtyping τ] [TypeModel.{u, v} τ] :
+@[reducible] def CtxDen [TypeFormers τ] [Subtyping τ] [TypeModel.{u, v} τ] :
     Ctx ν τ → Type (max u v)
   | .nil => PUnit
   | .snoc Γ _ A => CtxDen Γ × TyDen A
 
 /-- Environments for a length-indexed bound context. -/
-def BoundDen [TypeFormers τ] [Subtyping τ] [TypeModel.{u, v} τ] :
+@[reducible] def BoundDen [TypeFormers τ] [Subtyping τ] [TypeModel.{u, v} τ] :
     LocallyNameless.BoundCtx τ n → Type (max u v)
   | .nil => PUnit
   | .snoc β A => BoundDen β × TyDen A

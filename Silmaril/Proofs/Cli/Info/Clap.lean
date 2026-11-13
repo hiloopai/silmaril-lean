@@ -93,13 +93,30 @@ theorem pre_help {t : Tool} {tok : String} {rest : List String} :
     simp only [List.cons_append, pre, hstep, ih, Command.subNames, hf]
     simp
 
+/-- clap's walk of `help NAME…` names the commands `walk` finds, by their names. -/
+theorem helpWalk_of_walk : ∀ {c : Command} {acc p : List String} {d : Command},
+    c.walk p = some d → helpWalk c acc p = .ok (acc ++ c.subNames p)
+  | c, acc, [], _, _ => by simp [helpWalk, Command.subNames]
+  | c, acc, w :: ws, d, h => by
+    simp only [Command.walk] at h
+    cases hf : findSub c.subs w with
+    | none => rw [hf] at h; cases h
+    | some s =>
+      rw [hf] at h
+      have ih := helpWalk_of_walk (acc := acc ++ [s.name])
+        (show (c.child s).walk ws = some d from h)
+      have hn : (c.child s).name = s.name := rfl
+      simp only [helpWalk, hf, Command.subNames, ih, hn, List.append_assoc,
+        List.singleton_append]
+
 /-- **The `help` subcommand word** of a group names the help of the command its words name. -/
 theorem pre_word {t : Tool} (hs : t.helpSub = true) (hg : t.grammar.subs.isEmpty = false)
     {p : List String} (hw : (t.grammar.walk p).isSome = true) :
-    pre t t.grammar [t.grammar.name] ("help" :: p) = some (.help (t.grammar.name :: p)) := by
+    pre t t.grammar [t.grammar.name] ("help" :: p) =
+      some (.help (t.grammar.name :: t.grammar.subNames p)) := by
   obtain ⟨d, hd⟩ := Option.isSome_iff_exists.mp hw
   have hc : classify "help" = .word "help" := by decide +kernel
-  simp [pre, step, hc, hg, hs, helpOf, hd]
+  simp [pre, step, hc, hg, hs, helpOf, helpWalk_of_walk (acc := []) hd]
 
 theorem spec_front {t : Tool} {S : Matches → Spec} {i : Input} {o : Obs} (hs : t.spec S i o)
     {out : Silmaril.Cli.Clap.Outcome} (h : t.outcome i = out) (hr : out.runs = false) :
@@ -114,11 +131,15 @@ theorem spec_front {t : Tool} {S : Matches → Spec} {i : Input} {o : Obs} (hs :
   | needCommand => exact hs
   | error => exact hs
 
-theorem frontObs_help (t : Tool) (i : Input) (q : List String) :
-    t.frontObs i (.help q) = { stdout := helpBytes t q, exit := 0, fs := i.fs } := rfl
+theorem frontObs_help (t : Tool) (i : Input) (q : List String) (hp : t.present = none) :
+    t.frontObs i (.help q) = { stdout := helpBytes t q, exit := 0, fs := i.fs } := by
+  simp only [Tool.frontObs, Tool.text, Tool.body, hp]
+  rfl
 
-theorem frontObs_version (t : Tool) (i : Input) :
-    t.frontObs i .version = { stdout := versionBytes t, exit := 0, fs := i.fs } := rfl
+theorem frontObs_version (t : Tool) (i : Input) (hp : t.present = none) :
+    t.frontObs i .version = { stdout := versionBytes t, exit := 0, fs := i.fs } := by
+  simp only [Tool.frontObs, Tool.text, Tool.body, hp]
+  rfl
 
 theorem quiet_help (t : Tool) (i : Input) (q : List String) : Quiet i (t.frontObs i (.help q)) :=
   ⟨rfl, rfl, rfl, rfl⟩
@@ -149,9 +170,9 @@ theorem helpTriggers_key {t : Tool} {v : HelpVariant} (h : helpTriggers t v = tr
 /-- **A clap front end meets a help variant** whose requests it answers
 (`Clap.helpTriggers`) with texts that fit: `Tool.spec t S` refines the sentence, for every
 `S`. -/
-theorem spec_help {t : Tool} {v : HelpVariant} (h : helpTriggers t v = true)
+theorem spec_help {t : Tool} {v : HelpVariant} (hpres : t.present = none)
+    (h : helpTriggers t v = true)
     (hfit : ∀ p ∈ v.roots, v.Fits p (helpBytes t (t.grammar.pathNames p)))
-    (hword : v.word = true → ∀ p ∈ v.roots, v.Fits p (helpBytes t (t.grammar.name :: p)))
     (S : Matches → Spec) : t.spec S ≤ v.sen := by
   obtain ⟨hx, hw, key⟩ := helpTriggers_key h
   intro i o hs
@@ -165,23 +186,21 @@ theorem spec_help {t : Tool} {v : HelpVariant} (h : helpTriggers t v = true)
       rfl
     exact spec_front hs hout rfl
   have hword' : v.word = true → ∀ p ∈ v.roots, i.args = "help" :: p →
-      o = t.frontObs i (.help (t.grammar.name :: p)) := by
+      o = t.frontObs i (.help (t.grammar.pathNames p)) := by
     intro hw' p hp ha
     obtain ⟨hsub, hg⟩ := hw hw'
     have hpre := pre_word hsub hg ((key p hp).2 hw')
-    have hout : t.outcome i = .help (t.grammar.name :: p) := by
+    have hout : t.outcome i = .help (t.grammar.pathNames p) := by
       simp only [Tool.outcome, Tool.read, ha, hpre]
+      rfl
     exact spec_front hs hout rfl
   refine ⟨fun p hp => ⟨fun tok htok ha => ?_, fun hw' ha => ?_, fun tok htok rest _ ha => ?_⟩,
     fun _ ha => ?_⟩
-  · have ho := hspell p hp tok htok [] ha
-    subst ho
+  · rw [hspell p hp tok htok [] ha, frontObs_help t i _ hpres]
     exact HelpVariant.shows_line (hfit p hp)
-  · have ho := hword' hw' p hp ha
-    subst ho
-    exact HelpVariant.shows_line (hword hw' p hp)
-  · have ho := hspell p hp tok htok rest ha
-    subst ho
+  · rw [hword' hw' p hp ha, frontObs_help t i _ hpres]
+    exact HelpVariant.shows_line (hfit p hp)
+  · rw [hspell p hp tok htok rest ha, frontObs_help t i _ hpres]
     have hsh := HelpVariant.shows_line (hfit p hp)
     cases hxe : v.extra with
     | ignore => trivial
@@ -195,7 +214,8 @@ theorem spec_help {t : Tool} {v : HelpVariant} (h : helpTriggers t v = true)
     · rw [hword' hw' p hp ha]; exact quiet_help _ _ _
 
 /-- **A clap front end meets a version variant** whose requests it answers. -/
-theorem spec_version {t : Tool} {v : VersionVariant} (h : versionTriggers t v = true)
+theorem spec_version {t : Tool} {v : VersionVariant} (hpres : t.present = none)
+    (h : versionTriggers t v = true)
     (hfit : v.Fits (versionBytes t)) (S : Matches → Spec) : t.spec S ≤ v.sen := by
   simp only [versionTriggers, List.all_eq_true] at h
   intro i o hs
@@ -206,7 +226,7 @@ theorem spec_version {t : Tool} {v : VersionVariant} (h : versionTriggers t v = 
       simp [pre, step_version (h tok htok)]
     exact spec_front hs hout rfl
   refine ⟨fun tok htok ha => ?_, fun _ tok htok ha => ?_⟩
-  · rw [key tok htok ha]; exact VersionVariant.shows_line hfit
+  · rw [key tok htok ha, frontObs_version t i hpres]; exact VersionVariant.shows_line hfit
   · rw [key tok htok ha]; exact ⟨rfl, rfl, rfl, rfl⟩
 
 /-! ## Grammars with help on every command -/

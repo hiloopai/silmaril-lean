@@ -57,12 +57,13 @@ find Silmaril -name '*.lean' -print0 | xargs -0 awk '
     }
   }
   END { exit bad }' || status=1
-# Each Silmaril module is matched by the globs of exactly one of `Silmaril` and `SilmarilSpecTec`
+# Each Silmaril module is matched by the globs of exactly one of `Silmaril`, `SilmarilSpecTec`
+# and `SilmarilWasiWit`
 # (lakefile.toml lists `Silmaril`'s globs because Lake globs cannot exclude).
 python3 -I - <<'PY' || status=1
 import pathlib, tomllib
 libs = {l["name"]: l["globs"] for l in tomllib.load(open("lakefile.toml", "rb"))["lean_lib"]
-        if l["name"] in ("Silmaril", "SilmarilSpecTec")}
+        if l["name"] in ("Silmaril", "SilmarilSpecTec", "SilmarilWasiWit")}
 def hit(g, m):
     if g.endswith(".*"): return m == g[:-2] or m.startswith(g[:-1])
     if g.endswith(".+"): return m.startswith(g[:-1])

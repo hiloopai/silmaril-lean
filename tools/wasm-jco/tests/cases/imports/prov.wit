@@ -1,0 +1,6 @@
+package test:prov;
+
+world prov {
+  export double: func(x: u32) -> u32;
+  export shout: func(s: string) -> string;
+}

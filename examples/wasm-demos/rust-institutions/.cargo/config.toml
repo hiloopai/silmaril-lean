@@ -1,0 +1,4 @@
+# Small, kernel-friendly layout for the Wasm builds: a 1 KiB shadow stack below the static data
+# (so the machine's state lives at a small address) and one 64 KiB page of memory.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=-zstack-size=1024", "-C", "link-arg=--initial-memory=65536"]
