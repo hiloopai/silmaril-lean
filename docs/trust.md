@@ -28,7 +28,9 @@ registered `with_kernel_fallback` is checked by the kernel when it may not run n
 without a fallback fails closed. `scripts/trust-profile.sh <profile>` builds under a profile
 in its own build directory (`.lake/build-trust-<profile>`), and sets the ceiling, which source
 files cannot raise. Run with no targets, it builds every module except those listed in
-`scripts/trust-profile-exclude.txt`, each with a reason.
+`scripts/trust-profile-exclude.txt`, each with a reason. It then says so before and after the
+build (`trust coverage: PARTIAL`): a passing build covers the modules built, and is not a full
+audit under that profile.
 
 ## Policy
 

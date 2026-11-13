@@ -46,5 +46,14 @@ for p in sorted(pathlib.Path("Silmaril").rglob("*.lean")):
 PY
 )
   set -- "${targets[@]}"
+  excluded=$(grep -cE "^($profile|\*) " scripts/trust-profile-exclude.txt || true)
+  if [ "$excluded" -gt 0 ]; then
+    echo "trust coverage: PARTIAL. $excluded module(s) excluded under profile $profile" \
+      "(scripts/trust-profile-exclude.txt); this build is not a full $profile audit." >&2
+    grep -E "^($profile|\*) " scripts/trust-profile-exclude.txt | sed 's/^/  excluded: /' >&2
+  fi
 fi
 ${LAKE:-lake} -f "$config" build --wfail "$@"
+if [ "${excluded:-0}" -gt 0 ]; then
+  echo "trust coverage: PARTIAL ($excluded excluded); passed for the modules built, not a full $profile audit." >&2
+fi
