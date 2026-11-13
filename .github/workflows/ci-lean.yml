@@ -13,16 +13,21 @@ permissions:
 
 jobs:
   check:
-    # Pull requests use free public runners. The main publisher records and
-    # uploads the whole build, so it runs on a larger Blacksmith runner; it is
-    # main-only, so forks never reach it. Same condition as CACHE_PUBLISH.
+    # Fork pull requests use free public runners without the pool: they get no OIDC token. The main
+    # publisher records and uploads the whole build, so it runs on a larger Blacksmith runner; it
+    # is main-only, so forks never reach it. Same condition as CACHE_PUBLISH. Every other run
+    # checks on hiloop's prove service (the `prove` job).
+    if: >-
+      github.repository != 'hiloopai/silmaril-lean' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) ||
+      (github.ref == 'refs/heads/main' &&
+       (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)))
     runs-on: >-
       ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) &&
           'blacksmith-16vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
-    # A seed dispatch on any ref may build cold, and so may the main publisher
-    # after a large merge (about 23 min after #69): both get 90 minutes.
-    # Other runs keep 15.
+    # The main publisher after a large merge needs about 23 min (after #69), and a seed dispatch
+    # may build cold: both get 90 minutes. A fork pull request keeps 15.
     timeout-minutes: >-
       ${{ ((github.event_name == 'workflow_dispatch' && inputs.seed) ||
            (github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
@@ -39,8 +44,7 @@ jobs:
       # Every Lake run reads and fills the one artifact cache the pool restores into.
       LAKE_CACHE_DIR: ${{ github.workspace }}/.lake/cache
       LAKE_ARTIFACT_CACHE: 'true'
-      # Main pushes and main seeds publish a recorded build with its seed; other runs with
-      # credentials publish what their Lake built.
+      # Main pushes and main seeds publish a recorded build with its seed.
       CACHE_PUBLISH: >-
         ${{ github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main' &&
             (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) }}
@@ -66,10 +70,10 @@ jobs:
           echo "ELAN_HOME=/dev/shm/elan" >> "$GITHUB_ENV"
           # lean-action ignores ELAN_HOME and installs into ~/.elan.
           ln -s /dev/shm/elan "$HOME/.elan"
-      # The pool restore installs the toolchain and puts it on PATH. Fork pull
-      # requests get no pool credentials, so they install Lean with elan.
+      # The pool restore installs the toolchain and puts it on PATH. A run without the pool
+      # installs Lean with elan.
       - name: Install Lean
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        if: env.CACHE_PUBLISH != 'true'
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           auto-config: "false"
@@ -82,7 +86,7 @@ jobs:
         uses: ./.github/actions/lake-cache-tool
       - name: Choose the Lake targets
         # A pull request checks what its diff can change (HEAD^1 is the base of the
-        # merge commit); main and the nightly run check everything.
+        # merge commit); main checks everything.
         run: |
           targets=$(make -s scope BASE=${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }})
           echo "CHECK_TARGETS=$targets" >> "$GITHUB_ENV"
@@ -93,19 +97,14 @@ jobs:
         with:
           node-version: '24'
       - name: Assume the Lean CAS role
-        id: credentials
-        # Fork pull requests receive no OIDC token; they build without the pool.
-        if: >-
-          env.CHECK_TARGETS != '' &&
-          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: env.CACHE_PUBLISH == 'true'
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::607856468300:role/gha-lean-cas
           aws-region: us-east-1
           role-duration-seconds: 7200
       - name: Restore from the shared Lake pool
-        # The pool needs credentials; fork pull requests build instead.
-        if: steps.credentials.outcome == 'success'
+        if: env.CACHE_PUBLISH == 'true'
         run: make cache
       - name: Build the Lake targets and run the checks they select
         env:
@@ -116,11 +115,87 @@ jobs:
       - name: Publish successful main artifacts to S3
         if: env.CACHE_PUBLISH == 'true'
         run: cov-lake-cache put --seed --repository hiloopai/silmaril-lean
-      # A pull request shares the outputs its Lake built, for the next pull request and for main
-      # (about 0.2 s when it built nothing).
-      - name: Publish what this run built
-        if: env.CACHE_PUBLISH != 'true' && steps.credentials.outcome == 'success'
-        run: cov-lake-cache put --repository hiloopai/silmaril-lean
+      - name: Retain native check results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: wasm-release-checks
+          path: build/wasm-checks.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  prove:
+    # Same-repository pull requests, manual checks and the nightly check build and check on
+    # hiloop's prove service (hiloop devops/deploy/hosted/prove.md): the worker restores from the
+    # pool main publishes, builds the targets with --wfail and runs `make check` in that checkout,
+    # so this runner downloads no toolchain and no build. It keeps the target choice, which reads
+    # Git history, and runs the source gates itself when no Lake target is in scope.
+    if: >-
+      github.repository == 'hiloopai/silmaril-lean' &&
+      !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) &&
+      !(github.ref == 'refs/heads/main' &&
+        (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)))
+    name: check on prove
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # GitHub OIDC for the prove api and for the Lean CAS role, which reads the client.
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      CLIENT: s3://hiloop-lean-cas-607856468300-us-east-1/clients/8a938a675a99/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The client diffs against the nearest commit main's CI published, and `make scope`
+          # against HEAD^1.
+          fetch-depth: 65
+      - name: Install the shared Lake cache
+        uses: ./.github/actions/lake-cache-tool
+      - name: Choose the Lake targets
+        # A pull request checks what its diff can change (HEAD^1 is the base of the
+        # merge commit); a manual or nightly check covers everything.
+        run: |
+          targets=$(make -s scope BASE=${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }})
+          echo "CHECK_TARGETS=$targets" >> "$GITHUB_ENV"
+          echo "Lake targets: ${targets:-none, so only the source gates run}"
+      - name: Run the source gates
+        if: env.CHECK_TARGETS == ''
+        run: make check
+      - name: Assume the Lean CAS role
+        if: env.CHECK_TARGETS != ''
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::607856468300:role/gha-lean-cas
+          aws-region: us-east-1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: env.CHECK_TARGETS != ''
+        with:
+          python-version: "3.14"
+      - name: Install hiloop-prove
+        if: env.CHECK_TARGETS != ''
+        run: |
+          aws s3 cp --only-show-errors --recursive "$CLIENT" "$RUNNER_TEMP/client/"
+          cd "$RUNNER_TEMP/client"
+          sha256sum -c - <<'SUMS'
+          fa7a02e1a0948d5c005b6bbe60000b8ba98c677456fadac14fabb85d71e30914  hiloop_prove-0.0.0-py3-none-any.whl
+          3cc1c1bc5c3f1311ab05d40f808499138e78c03f635c0d001fb52a2996b7203a  hiloop_common-0.0.0-py3-none-any.whl
+          8c82f9b2efb1de32c904b3b97bc49809b31a5f639e9cb4c6c59a732e4804ee4c  requirements.txt
+          SUMS
+          uv venv -q "$RUNNER_TEMP/prove"
+          VIRTUAL_ENV="$RUNNER_TEMP/prove" uv pip install -q --require-hashes -r requirements.txt
+          VIRTUAL_ENV="$RUNNER_TEMP/prove" uv pip install -q --no-deps ./*.whl
+          echo "$RUNNER_TEMP/prove/bin" >> "$GITHUB_PATH"
+      # The release suites write build/wasm-checks.json, which comes back for the artifact.
+      - name: Build the Lake targets and run the checks they select, on prove
+        if: env.CHECK_TARGETS != ''
+        run: |
+          args=()
+          for target in $CHECK_TARGETS; do args+=(--build "$target"); done
+          case " $CHECK_TARGETS " in *" wasm-opt "*) args+=(--out build/wasm-checks.json) ;; esac
+          hiloop-prove run "${args[@]}" -- make check CHECK_TARGETS="$CHECK_TARGETS"
       - name: Retain native check results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

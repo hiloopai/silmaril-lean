@@ -43,27 +43,30 @@ outside this measurement. Reruns use the current attempt's start time.
 
 ## Cache and first run
 
-1. `make cache` restores the dependencies and this repository's packages from the
-   shared Lake pool: main's build at `HEAD`, else at its nearest published
-   first-parent ancestor. The pool is shared with every repository on the same
-   platform, Lean version and archive tool. Lake keeps the artifacts in one
-   artifact cache, so the build compiles only what changed since that commit.
+1. A same-repository pull request, a manual run and the nightly run check on hiloop's
+   prove service: the job's small runner chooses the targets, and the worker restores
+   from the shared Lake pool (main's build at the nearest published first-parent
+   ancestor), builds them with `--wfail` and runs `make check` in the same checkout.
+   The runner downloads no toolchain and no build; what the worker built goes to the
+   pool. The pool is shared with every repository on the same platform, Lean version
+   and archive tool, so the build compiles only what changed since that commit.
 2. Lake checks the current input traces. Cache presence never counts as a
    passing test, and all native regression suites still run.
-3. After successful checks, every main push records its build of every
-   `make check` target and publishes what the pool lacks, with a seed for hosts
-   that never installed silmaril-lean (`put --seed`). A pull request publishes the
-   outputs its Lake built (`put`). Every run assumes the one pool role,
-   `gha-lean-cas`. Fork pull requests get no OIDC token: they build without the
-   pool, which does not fit the automatic limit.
+3. Every main push restores with `make cache` on a Blacksmith runner, records its
+   build of every `make check` target after successful checks and publishes what the
+   pool lacks, with a seed for hosts that never installed silmaril-lean
+   (`put --seed`). It assumes the one pool role, `gha-lean-cas`. Fork pull requests
+   get no OIDC token: they build on a free runner without the pool, which does not
+   fit the automatic limit.
 
 After a toolchain or archive-tool change no published build matches. Run **CI**
 manually on **main** with **seed** checked: it builds cold with a 90-minute Lean
 limit, runs all correctness checks, and publishes. Only this explicit manual mode
 skips the four-minute timing check.
 
-The public Linux runner has four CPUs and 16 GB RAM. `LEAN_NUM_THREADS=2`
-limits Lake's worker pool; the native release suites run one per core.
+A fork pull request's public Linux runner has four CPUs and 16 GB RAM.
+`LEAN_NUM_THREADS=2` limits Lake's worker pool; the native release suites run one
+per core.
 Logs record available disk and memory, build-tree size and `time -v` results.
 The latter reports the largest process RSS, not total concurrent memory.
 Changed-main S3 publication remains inside the time budget and can cause it
