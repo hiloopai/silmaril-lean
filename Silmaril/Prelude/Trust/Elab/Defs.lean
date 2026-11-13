@@ -321,27 +321,53 @@ structure AxiomReport where
   other : Array Name := #[]
   /-- Every native axiom, by name. -/
   nativeAxioms : Array Name := #[]
+  /-- Native axioms whose name matches a procedure, without a recorded use producing exactly
+  that axiom (or whose statement does not mention the procedure's function). -/
+  unverified : Array (Name × Name) := #[]
+
+/-- A native axiom is **verified** for procedure `p` when a recorded use of `p` (from
+`edge_decide`, `sil_check` or a framework calling `recordUse`) names exactly this axiom, and
+the axiom's statement mentions the procedure's evaluated function. A name match alone is only
+a classification. -/
+def verifiedNative (env : Environment) (uses : Array Use) (p : Procedure) (ax : Name) : Bool :=
+  let recorded := uses.any fun u => u.proc == p.name && u.mode == .native && u.ax == some ax
+  let mentions := match env.find? ax with
+    | some info =>
+      let fns := p.fn :: (p.native.map (·.1)).toList
+      (info.type.find? fun e => fns.any e.isConstOf).isSome
+    | none => false
+  recorded && mentions
 
 def axiomReport (decl : Name) : CoreM AxiomReport := do
   let axs ← collectAxioms decl
+  let env ← getEnv
+  let uses := allEntries useExt env
   let mut r : AxiomReport := { decl }
   for a in axs do
     if (nativeAxiom? a).isSome then r := { r with nativeAxioms := r.nativeAxioms.push a }
-    match nativeAxiom? a with
-    | some (owner, proc, true) =>
-      if decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl then
-        r := { r with ownNative := r.ownNative.push proc }
-      else r := { r with depNative := r.depNative.push proc }
-    | some (owner, tac, false) =>
-      -- A native tactic registered with `native_tactic` (its axiom tag) counts as that
-      -- procedure; any other plain native run is unregistered.
-      match procForTag? (← getEnv) tac with
-      | some p =>
-        if decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl then
-          r := { r with ownNative := r.ownNative.push p.name }
-        else r := { r with depNative := r.depNative.push p.name }
-      | none => r := { r with plainNative := r.plainNative.push tac }
-    | none => r := { r with other := r.other.push a }
+    let proc? : Option (Name × Procedure) := match nativeAxiom? a with
+      | some (owner, n, true) =>
+        -- `edge_decide`/`sil_check` axioms: the procedure or declared procedure name.
+        match (procExt.getState env).find? n with
+        | some p => some (owner, p)
+        | none => some (owner, { name := n, fn := .anonymous, kernel := false, doc := "",
+                                  module := .anonymous })
+      | some (owner, tag, false) => (procForTag? env tag).map (owner, ·)
+      | none => none
+    match nativeAxiom? a, proc? with
+    | none, _ => r := { r with other := r.other.push a }
+    | some (_, t, isEdge), none =>
+      r := { r with plainNative := r.plainNative.push (if isEdge then `edge ++ t else t) }
+    | some _, some (owner, p) =>
+      let own := decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl
+      -- Declared two-backend procedures have no `procExt` entry; their uses are verified by
+      -- the recorded use alone (the native check is the declared native backend).
+      let ok := if p.fn.isAnonymous then
+          uses.any fun u => u.proc == p.name && u.mode == .native && u.ax == some a
+        else verifiedNative env uses p a
+      if !ok then r := { r with unverified := r.unverified.push (p.name, a) }
+      else if own then r := { r with ownNative := r.ownNative.push p.name }
+      else r := { r with depNative := r.depNative.push p.name }
   return r
 
 /-- **Stable hook.** The audit of `decl` under the current profile and ceiling, never failing:
@@ -364,12 +390,16 @@ def auditLine (decl : Name) : CoreM (Json × Array String) := do
       unless eff.axiomSet.contains a do bad := bad.push s!"axiom {a} is outside the axiom set"
   | .error m, _ | _, .error m => bad := bad.push s!"policy: {m}"
   for t in r.plainNative do bad := bad.push s!"unregistered native run ({t})"
+  for (p, a) in r.unverified do
+    bad := bad.push s!"unverified native axiom {a}: matches {p} by name, but no recorded use produced it"
   let names (xs : Array Name) : Json := toJson (xs.map toString)
   let elaborated := ((allEntries useExt env).filter (·.decl == decl)).map (·.profile)
   let json := Json.mkObj [("schema", schemaVersion), ("kind", "audit"),
     ("profile", ← profileTag), ("decl", toString decl), ("module", toString mod),
     ("own_native", names r.ownNative), ("dep_native", names r.depNative),
     ("axioms", names r.other), ("native_axioms", names r.nativeAxioms),
+    ("unverified_native", toJson (r.unverified.map fun (p, a) =>
+      Json.mkObj [("procedure", toString p), ("axiom", toString a)])),
     ("elaborated_profiles", toJson elaborated.toList.eraseDups), ("violations", toJson bad)]
   return (json, bad)
 
@@ -770,7 +800,7 @@ namespace Silmaril.Trust
 open Lean Elab Command
 
 syntax (name := nativeTactic) (docComment)? "native_tactic " ident &" evaluates " ident
-  &" axiom_tag " ident (&" components " "[" str,* "]")? (&" toolchain " str)?
+  &" axiom_tag " ident (&" components " "[" str,* "]")? &" toolchain " str
   (&" fallback " str)? : command
 
 @[command_elab nativeTactic] def elabNativeTactic : CommandElab := fun stx => do
@@ -782,15 +812,22 @@ syntax (name := nativeTactic) (docComment)? "native_tactic " ident &" evaluates 
   let tag := stx[6].getId
   let components := if stx[7].isNone then #[] else
     stx[7][2].getSepArgs.filterMap (·.isStrLit?)
-  let toolchain := if stx[8].isNone then "" else stx[8][1].isStrLit?.getD ""
-  let fallback := if stx[9].isNone then "" else stx[9][1].isStrLit?.getD ""
+  let toolchain := stx[9].isStrLit?.getD ""
+  let fallback := if stx[10].isNone then "" else stx[10][1].isStrLit?.getD ""
   let env ← getEnv
   if (procExt.getState env).contains name then
     throwError "native procedure {name} is already registered"
   if let some p := procForTag? env tag then
     throwError "axiom tag {tag} already belongs to {p.name}"
+  if tag == `edge then throwError "axiom tag `edge` is reserved for edge_decide"
+  unless env.contains evaluated do
+    throwError "native_tactic {name}: the evaluated constant {evaluated} does not exist"
+  if toolchain != Lean.toolchain then
+    throwError "native_tactic {name}: described for toolchain {toolchain.quote}, but this is \
+      {Lean.toolchain.quote}; review the description and update it"
+  -- The fallback text describes; it is not evidence that a general kernel fallback exists.
   let p : Procedure :=
-    { name, fn := evaluated, kernel := !fallback.isEmpty, doc, module := env.mainModule,
+    { name, fn := evaluated, kernel := false, doc, module := env.mainModule,
       axiomTag := some tag, components, toolchain, fallbackCoverage := fallback }
   modifyEnv (procExt.addEntry · p)
 
