@@ -165,7 +165,7 @@ info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.silNati
 trust_audit silNative
 
 /--
-info: {"constant":"Silmaril.Procedures.test.sumEven","doc":"Even sums. Native: compiled List.foldl over List.range.","format":null,"kernel":{"check":"Silmaril.Trust.Examples.sumEvenK","sound":"Silmaril.Trust.Examples.sumEvenK_sound"},"kind":"declared_procedure","name":"test.sumEven","native":{"check":"Silmaril.Trust.Examples.sumEvenN","sound":"Silmaril.Trust.Examples.sumEvenN_sound"},"schema":"silmaril.trust.v1"}
+info: {"bound":null,"constant":"Silmaril.Procedures.test.sumEven","doc":"Even sums. Native: compiled List.foldl over List.range.","format":null,"kernel":{"check":"Silmaril.Trust.Examples.sumEvenK","sound":"Silmaril.Trust.Examples.sumEvenK_sound"},"kind":"declared_procedure","name":"test.sumEven","native":{"check":"Silmaril.Trust.Examples.sumEvenN","sound":"Silmaril.Trust.Examples.sumEvenN_sound"},"schema":"silmaril.trust.v1"}
 -/
 #guard_msgs in
 #trust_decls
@@ -317,6 +317,31 @@ info: roundtrip ok: 6 procedures, 13 uses
 -/
 #guard_msgs in
 #trust_roundtrip
+
+/-! ### A generic checker bound to one instance (`ProcDecl.bound`) -/
+
+def leafA : Nat := 2
+def leafB : Nat := 3
+/-- One checker for every "leaf". -/
+def genericCheck (l n : Nat) : Bool := n % l == 0
+theorem genericSound (l n : Nat) (h : genericCheck l n = true) : n % l = 0 := by
+  simpa [genericCheck] using h
+
+/-- The procedure for `leafA` only. -/
+def _root_.Silmaril.Procedures.test.leafA : ProcDecl where
+  doc := "genericCheck on leafA"
+  native := some ⟨``genericCheck, ``genericSound⟩
+  kernel := some ⟨``genericCheck, ``genericSound⟩
+  bound := some ``leafA
+
+theorem leafAOk : 100 % leafA = 0 := by sil_check test.leafA (kernel := genericSound leafA 100)
+
+/--
+error: sil_check test.leafA: the kernel check is not bound to Silmaril.Trust.Examples.leafA
+  genericCheck leafB 99
+-/
+#guard_msgs in
+example : 99 % leafB = 0 := by sil_check test.leafA (kernel := genericSound leafB 99)
 
 /-! ### Forged records do not verify
 

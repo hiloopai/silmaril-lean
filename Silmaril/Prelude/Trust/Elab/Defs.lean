@@ -269,6 +269,7 @@ structure DeclView where
   native : Option (Name × Name)
   kernel : Option (Name × Name)
   format : Option Name
+  bound : Option Name := none
 
 def readName (e : Expr) : MetaM Name := do
   let e ← instantiateMVars e
@@ -292,11 +293,12 @@ def findDecl? (name : Name) : MetaM (Option DeclView) := do
   unless info.type.isConstOf ``ProcDecl do return none
   let some v := info.value? (allowOpaque := true) | return none
   let v ← whnfR v
-  unless v.isAppOfArity ``ProcDecl.mk 4 do throwError "{c} is not a `ProcDecl` literal"
+  unless v.isAppOfArity ``ProcDecl.mk 5 do throwError "{c} is not a `ProcDecl` literal"
   let args := v.getAppArgs
   let doc ← unsafe evalExpr String (mkConst ``String) args[0]!
   return some { name, const := c, doc, native := ← readOpt args[1]! readBackend,
-                kernel := ← readOpt args[2]! readBackend, format := ← readOpt args[3]! readName }
+                kernel := ← readOpt args[2]! readBackend, format := ← readOpt args[3]! readName,
+                bound := ← readOpt args[4]! readName }
 
 /-- Every declared procedure in the environment. -/
 def allDecls : MetaM (Array DeclView) := do
@@ -377,13 +379,15 @@ structure AxiomReport where
 
 /-- The exact shape of a native run's axiom: `@Eq Bool (f a₁ … aₙ) true`, closed, with `f` one
 of `fns` at the head (not merely somewhere inside). -/
-def nativeShapeOk (env : Environment) (ax : Name) (fns : List Name) : Bool :=
+def nativeShapeOk (env : Environment) (ax : Name) (fns : List Name) (bound : Option Name := none) :
+    Bool :=
   match env.find? ax with
   | some (.axiomInfo info) =>
     match info.type.eq? with
     | some (ty, lhs, rhs) =>
       ty.isConstOf ``Bool && rhs.isConstOf ``Bool.true && !lhs.hasFVar && !lhs.hasMVar &&
-        info.levelParams.isEmpty && fns.any lhs.getAppFn.isConstOf
+        info.levelParams.isEmpty && fns.any lhs.getAppFn.isConstOf &&
+        (bound.map fun b => lhs.getAppArgs.any (·.isConstOf b)).getD true
     | none => false
   | _ => false
 
@@ -396,15 +400,15 @@ sandbox against malicious metaprograms; the shape check stops a recorded use fro
 for an axiom that states something else. -/
 def verifiedNative (env : Environment) (uses : Array Use) (p : Procedure) (ax : Name) : Bool :=
   let recorded := uses.any fun u => u.proc == p.name && u.mode == .native && u.ax == some ax
-  recorded && nativeShapeOk env ax (p.fn :: (p.native.map (·.1)).toList)
+  recorded && nativeShapeOk env ax (p.fn :: (p.native.map (·.1)).toList) p.bound
 
 def axiomReport (decl : Name) : CoreM AxiomReport := do
   -- Declared two-backend procedures: their native check function, for the shape check.
-  let declared : NameMap Name ← Prod.fst <$> (MetaM.run (ctx := {}) (s := {}) do
+  let declared : NameMap (Name × Option Name) ← Prod.fst <$> (MetaM.run (ctx := {}) (s := {}) do
     let ds ← allDecls
-    return ds.foldl (init := ({} : NameMap Name)) fun m d =>
+    return ds.foldl (init := ({} : NameMap (Name × Option Name))) fun m d =>
       match d.native with
-      | some (check, _) => m.insert d.name check
+      | some (check, _) => m.insert d.name (check, d.bound)
       | none => m)
   let axs ← collectAxioms decl
   let env ← getEnv
@@ -417,8 +421,10 @@ def axiomReport (decl : Name) : CoreM AxiomReport := do
         -- `edge_decide`/`sil_check` axioms: the procedure or declared procedure name.
         match (procExt.getState env).find? n, declared.find? n with
         | some p, _ => some (owner, p)
-        | none, some check => some (owner, { name := n, fn := check, kernel := false, doc := "",
-                                              module := .anonymous })
+        | none, some (check, bnd) =>
+          let p : Procedure :=
+            { name := n, fn := check, kernel := false, doc := "", module := .anonymous, bound := bnd }
+          some (owner, p)
         | none, none => none
       | some (owner, tag, false) => (procForTag? env tag).map (owner, ·)
       | none => none
@@ -687,7 +693,7 @@ def declJson (d : DeclView) : Json :=
     | none => Json.null
   Json.mkObj [("schema", schemaVersion), ("kind", "declared_procedure"), ("name", toString d.name),
     ("constant", toString d.const), ("native", pair d.native), ("kernel", pair d.kernel),
-    ("format", nameJson d.format), ("doc", d.doc)]
+    ("format", nameJson d.format), ("bound", nameJson d.bound), ("doc", d.doc)]
 
 /-- `sil_check elf.layout (native := t) (kernel := u)`: `t` and `u` have types
 `check … = true → P` for the goal `P`, with heads the declared soundness theorems and
@@ -718,6 +724,9 @@ syntax (name := silCheck) "sil_check " ident (" (" ident " := " term ")")* : tac
     let e ← instantiateMVars e
     unless e.getAppFn.isConstOf b.1 do
       throwError "sil_check {name}: the {which} side checks with {e.getAppFn}, not {b.1}"
+    if let some bnd := d.bound then
+      unless e.getAppArgs.any (·.isConstOf bnd) do
+        throwError "sil_check {name}: the {which} check is not bound to {bnd}{indentExpr e}"
     if e.hasFVar || e.hasMVar then throwError "sil_check {name}: the check must be closed{indentExpr e}"
     return (h, e)
   let mut nativeStx : Option Syntax := none

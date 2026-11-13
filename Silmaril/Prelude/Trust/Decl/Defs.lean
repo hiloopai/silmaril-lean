@@ -17,6 +17,10 @@ def Silmaril.Procedures.elf.layout : Silmaril.Trust.ProcDecl where
   kernel := some ⟨``Silmaril.Elf.Staged.layoutOkK, ``Silmaril.Elf.Staged.layoutOkK_sound_pages⟩
 ```
 
+When several procedures share one generic checker (`Leaf.native l b c` for every leaf `l`), set
+`bound := some ``Leaf.layout``: every accepted check, and every native axiom counted for the
+procedure, must then have that constant as a direct argument.
+
 The procedure's name is the constant's name after `Silmaril.Procedures.` (`elf.layout`). Each
 soundness theorem has the form `∀ xs, check as = true → P bs`, and both backends prove the
 **same** `P`; their arguments may differ (a `ByteArray` against 4 KiB page literals). The
@@ -43,6 +47,10 @@ structure ProcDecl where
   kernel : Option Backend := none
   /-- The data format, for format checkers (`elf`, `json`, …). -/
   format : Option Lean.Name := none
+  /-- For checkers shared by many procedures (a generic runner applied to a leaf, as in
+  `Leaf.native Leaf.layout b c`): a constant that must be a direct argument of every check this
+  procedure accepts, so `elf.layout` cannot vouch for a run of another leaf. -/
+  bound : Option Lean.Name := none
 
 /-- The namespace that names procedures: `Silmaril.Procedures.elf.layout` is `elf.layout`. -/
 def proceduresNamespace : Lean.Name := `Silmaril.Procedures
