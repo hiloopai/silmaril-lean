@@ -95,7 +95,7 @@ theorem greet_serveRef (q : Request) :
           .imp fieldsGet [.u32 2, strV nameHdr] (some [valuesV (q.headers.values nameHdr)])]
           (answer 1 (greetResp (q.headers.values nameHdr)))).1 := by
     simp [runP, greet, handleQ, refHost, pop, reqOf, outOf, reqMethod, reqPath, reqHeaders,
-      fieldsGet, fieldsEntries, fieldsAppend, newFields, newResp, WasiHttp.strV, octetsOf_map,
+      fieldsGet, fieldsEntries, fieldsAppend, newFields, newResp, WasiHttp.strV, octetsOf_map, nameArg,
       firstValue_valuesV, greetResp]
   unfold serveRef
   rw [hrun, respOf_skipH _ (.inl rfl), respOf_skipH _ (.inr rfl)]

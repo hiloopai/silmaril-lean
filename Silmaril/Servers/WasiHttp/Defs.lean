@@ -441,6 +441,11 @@ def isReadAns : WEv → Bool
 /-- The call `handle(0, 1)`. -/
 def handleQ : (nsig proxyWorld.exports).Op := (⟨handleF, rfl⟩, [.u32 0, .u32 1])
 
+/-- The field name argument of `fields.get` (none: the empty name). -/
+def nameArg : List Val → List UInt8
+  | [_, .record cs] => octetsOf cs
+  | _ => []
+
 /-- **A reference host** serving the request `q` on the request handle `0`: the getters answer
 from `q` (`get` and `entries` from its header section, on any fields), constructors,
 `headers`, `consume`, `stream`, `body` and `write` answer fresh handles, the first
@@ -449,10 +454,7 @@ operations succeed. -/
 def refHost (q : Request) : Impl := fun past f a =>
   if f = reqMethod then some [methodV q.method]
   else if f = reqPath then some [pathV q.target.pathWithQuery]
-  else if f = fieldsGet then
-    match a with
-    | [_, .record cs] => some [valuesV (q.headers.values (octetsOf cs))]
-    | _ => none
+  else if f = fieldsGet then some [valuesV (q.headers.values (nameArg a))]
   else if f = fieldsEntries then some [sectionV q.headers]
   else if f = fieldsAppend then some [okV none]
   else if f = newFields ∨ f = newResp ∨ f = reqHeaders then

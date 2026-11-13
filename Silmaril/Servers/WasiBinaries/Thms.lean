@@ -16,6 +16,10 @@ import Silmaril.Proofs.Servers.WasiBinaries.Hello
 (`Silmaril.Proofs.Servers.WasiBinaries.Hello`). Hence `helloBin_sat`: every exchange of the
 module, read as a server over typed hosts, is `200 hello` with `content-type: text/plain`;
 `helloBin_fresh`: with a fresh instance per request it refines the core's function server.
+`helloBin_serveRef`, `helloBin_answers`: over the reference host it answers every request
+`200 hello` (kernel evaluation with the request as a variable), so the specification is not
+vacuous; `helloBin_live`: through `Machine.fresh_total`, every fair run of a host serving the
+module answers every request, and its prefixes are traces of the function server.
 
 **Checked over the reference host** (kernel evaluation of the denotations): `hello` on `/`,
 `route` on `/`, `/hello` and `/missing`, `echo` on a `POST` of `abc`. These run the modules'
@@ -56,6 +60,30 @@ server** of `200 hello`, however requests overlap. -/
 theorem helloBin_fresh : (Exchange.fresh (wasiServerTy (den helloCore))).Refines
     (Servers.Model.ofFun fun _ => helloResp) :=
   Exchange.fresh_ofFun_refines helloBin_refines
+
+/-! ## Liveness -/
+
+/-- The module of `hello` over the reference host answers every request `200 hello`. -/
+theorem helloBin_serveRef (q : Request) :
+    serveRef (coreBody helloCore binFuel) q = some helloResp := by
+  kernel_rfl
+
+/-- **The module of `hello` is not vacuous**: every request answered `200 hello` is a trace over
+typed hosts. -/
+theorem helloBin_answers (q : Request) : [(q, helloResp)] ∈ wasiServerTy (den helloCore) :=
+  serve_memTy (helloBin_serveRef q)
+
+theorem helloBin_total : (freshM (wasiServerTy (den helloCore))).Total :=
+  Machine.fresh_total fun r => ⟨helloResp, (), helloBin_answers r⟩
+
+/-- **The module of `hello` is live**: a fair run of a host serving it with a fresh instance per
+request answers every request it receives, and every prefix of the run is a trace of the
+function server `200 hello`. -/
+theorem helloBin_live (ρ : (freshM (wasiServerTy (den helloCore))).IRun ()) (hF : ρ.Fair) :
+    ISen.answered ρ.obs ∧
+      ∀ n, (Servers.Model.ofFun fun _ => helloResp).Tr (ρ.obs.prefix n) :=
+  ⟨ρ.answered helloBin_total hF, fun n =>
+    helloBin_fresh _ (by rw [Exchange.fresh_eq_perRequest]; exact ρ.prefix_tr n)⟩
 
 /-! ## Checked over the reference host -/
 

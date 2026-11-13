@@ -6,9 +6,11 @@ public import Silmaril.Servers.Calls.Thms
 public import Silmaril.Servers.WasiHttp.Thms
 public import Silmaril.Servers.Http.Defs
 public import Silmaril.Servers.PerRequest.Thms
+public import Silmaril.Servers.WasiCore.Defs
 import Silmaril.Proofs.Servers.WasiExamples.Answer
 import Silmaril.Proofs.Servers.WasiExamples.Echo
 import Silmaril.Proofs.Servers.WasiExamples.Greet
+import Silmaril.Proofs.Servers.WasiExamples.RefTy
 
 @[expose] public section
 
@@ -39,6 +41,8 @@ response unobservable (by failing an operation), never wrong.
   request (`HdrOk`). `greet_answers`: every request answered with its greeting is a trace.
 * `serve_mem`: a response of a component over the reference host (`serveRef`) is a trace of
   the component read as a server.
+* `refHost_ty`, `serve_memTy`: the reference host's answers have the WIT result types
+  (`Silmaril.Servers.WasiCore.AnsTy`), so a response over it is also a trace over typed hosts.
 * `answer_ok`: over a host whose answers to the response code succeed (`OkAns`), a complete
   run of `answer o resp` makes the response `resp`; `refHost_ok`: the reference host is such a
   host. `bytesOf_bytesV`, `map_ofBitVec_toBitVec`: byte lists back and forth.
@@ -126,6 +130,17 @@ theorem hello_answers (q : Request) : [(q, helloResp)] ∈ wasiServer (ofBody he
 theorem serve_mem {h : Body proxyImports proxyWorld.exports} {q : Request} {x : Response}
     (hx : serveRef h q = some x) : [(q, x)] ∈ wasiServer (ofBody h) :=
   Proofs.Servers.WasiExamples.serve_mem hx
+
+/-- **The reference host's answers are typed** (`Silmaril.Servers.WasiCore.AnsTy`). -/
+theorem refHost_ty (q : Request) (past : List WEv) (f : FnName) (a : List Val) :
+    WasiCore.AnsTy f (refHost q past f a) :=
+  Proofs.Servers.WasiExamples.refHost_ty q past f a
+
+/-- **A response over the reference host is a trace** of the component read as a server over
+typed hosts. -/
+theorem serve_memTy {h : Body proxyImports proxyWorld.exports} {q : Request} {x : Response}
+    (hx : serveRef h q = some x) : [(q, x)] ∈ WasiCore.wasiServerTy (ofBody h) :=
+  Proofs.Servers.WasiExamples.serve_memTy hx
 
 /-- **Routing answers from the route table** on the request's path, for every host. -/
 theorem route_sat :

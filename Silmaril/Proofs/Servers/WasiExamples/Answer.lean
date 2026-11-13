@@ -498,7 +498,7 @@ theorem hdrAns_refHost (q : Request) (hs : List (BitVec 32)) (past : List WEv) (
     obtain ⟨rfl, rfl, rfl⟩ := WEv.imp.inj hm
     refine fun _ => ⟨?_, ?_⟩
     · rintro rfl cs rfl
-      simp [refHost, reqMethod, reqPath, fieldsGet]
+      simp [refHost, reqMethod, reqPath, fieldsGet, nameArg]
     · rintro rfl rfl
       simp [refHost, reqMethod, reqPath, fieldsGet, fieldsEntries]
   · trivial
