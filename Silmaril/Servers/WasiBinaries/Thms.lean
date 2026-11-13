@@ -22,13 +22,14 @@ vacuous; `helloBin_live`: through `Machine.fresh_total`, every fair run of a hos
 module answers every request, and its prefixes are traces of the function server.
 
 **Checked over the reference host** (kernel evaluation of the denotations): `hello` on `/`,
-`route` on `/`, `/hello` and `/missing`, `echo` on a `POST` of `abc`. These run the modules'
-code, including `cabi_realloc` for the strings and lists the host answers.
+`route` on `/`, `/hello` and `/missing`, `echo` on a `POST` of `abc`, `greet` with and without
+an `x-name` header. These run the modules' code, including `cabi_realloc` for the strings and
+lists the host answers.
 
-**Open**: `Task.binRuns`, that the modules of `route` and `echo` run their bodies over typed
-hosts; `binRuns_sat` gives their specifications under it. Unlike `hello`, their code branches on
-host data of unbounded size (the bytes of the path, the chunks of the body), so the kernel
-evaluation used for `hello` does not cover them.
+**Open**: `Task.binRuns`, that the modules of `route`, `echo` and `greet` run their bodies over
+typed hosts; `binRuns_sat` gives their specifications under it. Unlike `hello`, their code
+depends on host data of unbounded size (the bytes of the path, the chunks of the body, the
+list of header values), so the kernel evaluation used for `hello` does not cover them.
 -/
 
 namespace Silmaril.Servers.WasiBinaries
@@ -110,17 +111,31 @@ theorem echoBin_ref : serveRef (coreBody echoCore binFuel)
       some (Response.simple 200 (ascii "abc")) := by
   decide +kernel
 
-/-! ## Route and echo -/
+theorem greetBin_ref_named : serveRef (coreBody greetCore binFuel)
+    ⟨⟨.get, ⟨none, none, some (ascii "/")⟩⟩, [⟨ascii "x-name", ascii "ada"⟩], [], []⟩ =
+      some (Response.simple 200 (ascii "hello ada")) := by
+  decide +kernel
 
-/-- **Open**: the core modules of `route` and `echo` run their bodies over typed hosts. -/
-def Task.binRuns : Prop := RunsTy (den routeCore) route ∧ RunsTy (den echoCore) echo
+theorem greetBin_ref_anon : serveRef (coreBody greetCore binFuel) (getAt none (some (ascii "/"))) =
+    some (Response.simple 200 (ascii "hello world")) := by
+  decide +kernel
 
-/-- **Given `Task.binRuns`**, the modules of `route` and `echo` satisfy the examples'
+/-! ## Route, echo and greet -/
+
+/-- **Open**: the core modules of `route`, `echo` and `greet` run their bodies over typed
+hosts. -/
+def Task.binRuns : Prop :=
+  RunsTy (den routeCore) route ∧ RunsTy (den echoCore) echo ∧ RunsTy (den greetCore) greet
+
+/-- **Given `Task.binRuns`**, the modules of `route`, `echo` and `greet` satisfy the examples'
 specifications over typed hosts. -/
 theorem binRuns_sat (ht : Task.binRuns) :
     Sat (wasiServerTy (den routeCore)) (each fun q resp => resp = routeResp q.target.pathWithQuery) ∧
       Sat (wasiServerTyB (den echoCore))
-        (each fun q resp => resp = Response.simple 200 q.content ∨ resp = failResp) :=
-  ⟨(runsTy_refines ht.1).sat route_sat, (runsTy_refinesB ht.2).sat echo_sat⟩
+        (each fun q resp => resp = Response.simple 200 q.content ∨ resp = failResp) ∧
+      Sat (wasiServerTy (den greetCore))
+        (each fun q resp => resp = greetResp (q.headers.values nameHdr) ∨ resp = failResp) :=
+  ⟨(runsTy_refines ht.1).sat route_sat, (runsTy_refinesB ht.2.1).sat echo_sat,
+    (runsTy_refines ht.2.2).sat greet_sat⟩
 
 end Silmaril.Servers.WasiBinaries

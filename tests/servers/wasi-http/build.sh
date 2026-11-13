@@ -17,7 +17,7 @@ cp "$here/world.wit" "$wit/"
 for p in http io clocks random cli filesystem sockets; do
   cp -r "$root/specs/wasi/0.2.12/$p" "$wit/deps/"
 done
-for s in hello route echo; do
+for s in hello route echo greet; do
   { echo "(module"; cat "$here/common.wat" "$here/$s.wat"; echo ")"; } > "$out/$s.core.wat"
   wasm-tools parse "$out/$s.core.wat" -o "$out/$s.core.wasm"
   wasm-tools component embed "$wit" -w server "$out/$s.core.wasm" -o "$out/$s.embed.wasm"

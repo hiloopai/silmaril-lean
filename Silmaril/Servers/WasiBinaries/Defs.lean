@@ -19,7 +19,8 @@ the Core 3 WAT frontend of `wat3!` (`Silmaril.Wasm.Wat`): the Lean terms below a
 frontend's output on the very sources the conformance test builds. (Lake does not track the
 `.wat` files: a change to them needs a rebuild of this module.)
 
-* `helloCore`, `routeCore`, `echoCore`: the core modules of `hello`, `route` and `echo`;
+* `helloCore`, `routeCore`, `echoCore`, `greetCore`: the core modules of `hello`, `route`,
+  `echo` and `greet`;
 * `binFuel`: the step bound of their denotations `coreBody m binFuel`
   (`Silmaril.Servers.WasiCore`).
 
@@ -61,6 +62,11 @@ def routeCore : Silmaril.Wasm.Module :=
 def echoCore : Silmaril.Wasm.Module :=
   wat3_files! "../../../tests/servers/wasi-http/common.wat"
     "../../../tests/servers/wasi-http/echo.wat"
+
+/-- The core module of `greet`. -/
+def greetCore : Silmaril.Wasm.Module :=
+  wat3_files! "../../../tests/servers/wasi-http/common.wat"
+    "../../../tests/servers/wasi-http/greet.wat"
 
 /-- The step bound of the denotations of the example modules. -/
 def binFuel : Nat := 100000
