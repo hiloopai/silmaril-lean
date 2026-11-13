@@ -210,6 +210,13 @@ task owns the converter and its compatibility. It holds:
 Coverage is only what the driver imports: a missing export or module means unknown, not
 clean.
 
+The export keeps the audit's evidence as it is. Recorded uses that fail the provenance check
+stay in `uses` with `verified: false` and in each declaration's `unverified_native`. A native
+result that a theorem inherits from another theorem stays in that theorem's `dep_native`; it is
+not turned into a use of its own. Kernel-backend uses involve no native code, and their presence
+authorizes nothing native. The project database converts this format to its own; that mapping
+belongs to the database work.
+
 ## Provenance schema (`silmaril.trust.v1`)
 
 `#trust_uses`, `#trust_registry` and `trust_audit` print one JSON object per line. Every
