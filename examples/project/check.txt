@@ -1,5 +1,5 @@
-summary: 34 problems (34 local), 3 groups, 102 records, 38 edges, 4 artifacts
-verdicts: 8 holds, 2 fails, 24 unknown (all 34 problems); 8 holds, 2 fails, 24 unknown (34 local)
+summary: 44 problems (44 local), 3 groups, 130 records, 48 edges, 4 artifacts
+verdicts: 9 holds, 6 fails, 29 unknown (all 44 problems); 9 holds, 6 fails, 29 unknown (44 local)
 root: silmaril.selftest.all
 predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails
 predicate silmaril.selftest.square (arity 1): status SAT [SAT], verdict unknown
@@ -12,6 +12,13 @@ predicate silmaril.shapes.elf.loads (arity 6): status OPN [], verdict unknown
 predicate silmaril.shapes.elf.loads.x86 (arity 5): status OPN [], verdict unknown
 predicate silmaril.shapes.format.agree (arity 5): status OPN [], verdict unknown
 predicate silmaril.shapes.format.parses (arity 3): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.bisimilar (arity 7): status CSA [CSA], verdict fails
+predicate silmaril.shapes.machine.json.bisimilar (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.json.reach (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.reach (arity 6): status contingent [CSA SAT], verdict fails
+predicate silmaril.shapes.machine.reach_set (arity 6): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.sat (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.simulates (arity 7): status OPN [], verdict unknown
 predicate silmaril.shapes.value.satisfies (arity 3): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.x86.abi_function (arity 3): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.abi_function.open (arity 2): status OPN [], verdict unknown
@@ -24,7 +31,7 @@ predicate silmaril.shapes.x86.contract.str9 (arity 1): status OPN [], verdict un
 predicate silmaril.shapes.x86.contract_strict (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct_loose (arity 2): status OPN [], verdict unknown
-group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(2 holds, 0 fails, 21 unknown)]
+group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(3 holds, 4 fails, 26 unknown)]
 group silmaril.selftest.formats: [silmaril.selftest.module.parses=THM, silmaril.selftest.exit.parses=THM, silmaril.selftest.exit.entry=THM]
-group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN]
+group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN, silmaril.shapes.machine.reach=contingent, silmaril.shapes.machine.reach_set=OPN, silmaril.shapes.machine.simulates=OPN, silmaril.shapes.machine.bisimilar=CSA, silmaril.shapes.machine.sat=OPN, silmaril.shapes.machine.json.reach=OPN, silmaril.shapes.machine.json.bisimilar=OPN]
 provenance: 1 derivations; 1 of 4 local artifacts have one

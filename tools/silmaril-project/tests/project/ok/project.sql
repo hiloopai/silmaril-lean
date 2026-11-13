@@ -141,6 +141,30 @@ CREATE TABLE rooms(
   doc TEXT,
   UNIQUE(name)
 );
+CREATE TABLE machines(
+  sid TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  decl TEXT NOT NULL,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  doc TEXT,
+  deterministic INTEGER NOT NULL,
+  n_states INTEGER NOT NULL,
+  n_labels INTEGER NOT NULL,
+  n_edges INTEGER NOT NULL,
+  canonical TEXT NOT NULL,
+  UNIQUE(name)
+);
+CREATE TABLE machine_bindings(
+  name TEXT NOT NULL PRIMARY KEY,
+  machine TEXT NOT NULL,
+  decl TEXT NOT NULL,
+  marks TEXT,
+  theorem TEXT NOT NULL,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  doc TEXT
+);
 CREATE TABLE problems(
   sid TEXT NOT NULL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -244,6 +268,7 @@ CREATE INDEX formats_base ON formats(base);
 CREATE INDEX format_laws_format ON format_laws(format);
 CREATE INDEX format_defaults_format ON format_defaults(format);
 CREATE INDEX artifact_paths_artifact ON artifact_paths(artifact);
+CREATE INDEX machine_bindings_machine ON machine_bindings(machine);
 INSERT INTO meta(key, value) VALUES('dump_schema', 'silmaril.project-dump.v0.1');
 INSERT INTO meta(key, value) VALUES('modules', 'Ok');
 INSERT INTO meta(key, value) VALUES('roots', 'Ok');

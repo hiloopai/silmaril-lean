@@ -56,4 +56,8 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.value.satisfies", "silmaril.shapes.elf.loads", "silmaril.shapes.elf.entry",
   "silmaril.shapes.elf.fn_contract", "silmaril.shapes.x86.contract",
   "silmaril.shapes.x86.contract_strict", "silmaril.shapes.x86.abi_function",
-  "silmaril.shapes.x86.correct", "silmaril.shapes.x86.correct_loose"]
+  "silmaril.shapes.x86.correct", "silmaril.shapes.x86.correct_loose",
+  "silmaril.shapes.machine.reach", "silmaril.shapes.machine.reach_set",
+  "silmaril.shapes.machine.simulates", "silmaril.shapes.machine.bisimilar",
+  "silmaril.shapes.machine.sat", "silmaril.shapes.machine.json.reach",
+  "silmaril.shapes.machine.json.bisimilar"]

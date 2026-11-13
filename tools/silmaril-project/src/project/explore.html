@@ -61,7 +61,7 @@ dt { color:var(--muted); } dd { margin:0; font-family:ui-monospace, monospace; f
   <h1 id="title">__TITLE__</h1>
   <nav id="nav">
     <a href="#/summary">Summary</a><a href="#/graph">Graph</a><a href="#/problems">Problems</a>
-    <a href="#/artifacts">Artifacts</a><a href="#/values">Values</a><a href="#/formats">Formats</a><a href="#/sql">SQL</a>
+    <a href="#/artifacts">Artifacts</a><a href="#/values">Values</a><a href="#/formats">Formats</a><a href="#/machines">Machines</a><a href="#/sql">SQL</a>
   </nav>
   <span id="source">loading…</span>
   <span id="stats"></span>
@@ -89,7 +89,7 @@ let be = null, cy = null;   // the open database (a backend, see below) and the 
 let tables = new Set();     // tables and views of the open database
 let indexes = new Set();    // its indexes (`schema::INDEXES` in the checker)
 // Caches filled by bounded lookups: name -> whether it names an object of that kind; verdicts.
-const KINDS = ["problem", "value", "format", "artifact"];
+const KINDS = ["problem", "value", "format", "artifact", "machine"];
 let known = {}, verdictOf = new Map(), summaryOf = new Map();
 // For tests and the curious: the state of the page.
 window.explore = { ready: false, busy: false, mode: null, source: null };
@@ -125,7 +125,7 @@ function verdictBadge(p) { const v = verdictOf.get(p); return v ? " " + badge(v,
 // scan of a whole table); the SQL page looks up every string cell it shows.
 const HINTS = { problem:"problem", parent:"problem", child:"problem", obligation:"problem", parses:"problem",
   root:"problem", group_name:"problem", record_name:"problem", focus:"problem", value:"value", format:"format",
-  base:"format", cid:"artifact", artifact:"artifact", subject:"artifact" };
+  base:"format", cid:"artifact", artifact:"artifact", subject:"artifact", machine:"machine" };
 const BADGE_COLS = new Set(["problem", "child", "name", "parent", "obligation", "parses"]);
 const LOOKUP = {
   problem: ["problems", () => tables.has("summary")
@@ -134,6 +134,7 @@ const LOOKUP = {
   value: ["value_defs", () => "SELECT name AS n FROM value_defs WHERE name IN ($)"],
   format: ["formats", () => "SELECT name AS n FROM formats WHERE name IN ($)"],
   artifact: ["artifacts", () => "SELECT cid AS n FROM artifacts WHERE cid IN ($) UNION SELECT sid FROM artifacts WHERE sid IN ($)"],
+  machine: ["machines", () => "SELECT name AS n FROM machines WHERE name IN ($)"],
 };
 async function resolve(rows, cols, hints, all) {
   const want = Object.fromEntries(KINDS.map((k) => [k, new Set()]));
@@ -330,8 +331,8 @@ document.addEventListener("drop", (e) => {
 
 // ---------- routing ----------
 // A page returns its HTML, or {html, init} when it wires up controls after rendering.
-const PAGES = { summary, graph, problems, artifacts, values, formats, sql: sqlPage,
-  problem: problemPage, value: valuePage, format: formatPage, artifact: artifactPage };
+const PAGES = { summary, graph, problems, artifacts, values, formats, machines, sql: sqlPage,
+  problem: problemPage, value: valuePage, format: formatPage, artifact: artifactPage, machine: machinePage };
 let routeTok = 0;
 async function route() {
   if (!be) return;
@@ -339,9 +340,10 @@ async function route() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
   const page = PAGES[parts[0]] ? parts[0] : "summary";
   const arg = decodeURIComponent(parts.slice(1).join("/"));
-  const tab = { problem: "problems", value: "values", format: "formats", artifact: "artifacts" }[page] || page;
+  const tab = { problem: "problems", value: "values", format: "formats", artifact: "artifacts", machine: "machines" }[page] || page;
   for (const a of document.querySelectorAll("#nav a")) a.classList.toggle("on", a.getAttribute("href") === "#/" + tab);
   if (page !== "graph" && cy) { cy.destroy(); cy = null; }
+  if (page !== "machine" && mcy) { mcy.destroy(); mcy = null; }
   window.explore.busy = true;
   try {
     let r = await PAGES[page](arg);
@@ -475,6 +477,13 @@ function formats() {
     cols: ["name", "input", "value_type", "base", "printer", "laws", "sources", "module"] });
 }
 
+function machines() {
+  return listPage({ title: "Machines", table: "machines", order: "m.name", filter: ["m.name", "m.doc", "m.module"], hints: { name: "machine" },
+    select: "m.name, m.n_states AS states, m.n_labels AS labels, m.n_edges AS edges, m.deterministic, " +
+      "(SELECT count(*) FROM machine_bindings b WHERE b.machine = m.name) AS bindings, m.doc, m.module FROM machines m",
+    cols: ["name", "states", "labels", "edges", "deterministic", "bindings", "doc", "module"] });
+}
+
 // ---------- details ----------
 // Lists on detail pages are cut at `DETAIL` rows.
 const DETAIL = 300;
@@ -525,6 +534,52 @@ async function formatPage(name) {
   h += "<h2>Values in this format</h2>" + await tableOf(await first(DETAIL, "SELECT name AS value, decl, parses FROM value_defs WHERE format = ? ORDER BY name", [name]));
   h += "<h2>Value sources read with it</h2>" + await tableOf(await first(DETAIL, "SELECT value, pos, cid, obligation FROM value_sources WHERE format = ? ORDER BY value, pos", [name]));
   return h;
+}
+// A machine document drawn from its canonical JSON (states, labels, edges, layers): states are
+// nodes (initial: thick border; accepting: double border; rejecting: orange; error: red), edges
+// are labelled, and parallel edges between two states are merged into one multi-label edge.
+let mcy = null;
+async function machinePage(name) {
+  const m = (await q("SELECT * FROM machines WHERE name = ?", [name]))[0];
+  if (!m) return `<p class="err">no machine ${esc(name)}</p>`;
+  let doc;
+  try { doc = JSON.parse(m.canonical); } catch (e) { return `<p class="err">machine ${esc(name)}: canonical JSON does not parse</p>`; }
+  const ly = doc.layers || {};
+  const has = (k, s) => (ly[k] || []).includes(s);
+  let h = `<h2>Machine <code>${esc(name)}</code></h2>`;
+  if (m.doc) h += `<p>${esc(m.doc)}</p>`;
+  h += `<p class="legend muted"><span>${doc.states.length} states</span><span>${doc.labels.length} labels</span><span>${doc.edges.length} edges</span>` +
+    `<span>deterministic: ${m.deterministic ? "yes" : "no"}</span> — initial: thick border; accepting: double border; rejecting: orange; error: red</p>`;
+  h += '<div id="mcy" style="height:62vh;min-height:380px;border:1px solid var(--line);background:var(--panel)"></div>';
+  h += "<h2>Bindings (typed machines proved equal to this document)</h2>" + await tableOf(await first(DETAIL,
+    "SELECT name, decl, marks, theorem, module FROM machine_bindings WHERE machine = ? ORDER BY name", [name]), null, { hints: { name: "" } });
+  h += "<h2>Record</h2>" + await dl(Object.fromEntries(Object.entries(m).filter(([k]) => k !== "canonical")), { name: "" });
+  h += "<h2>Canonical JSON</h2><textarea readonly>" + esc(m.canonical) + "</textarea>";
+  const init = async () => {
+    if (typeof cytoscape === "undefined") { $("#mcy").innerHTML = '<p class="err">cytoscape did not load</p>'; return; }
+    const merged = new Map();
+    for (const [a, l, b] of doc.edges) {
+      const k = a + "\u0000" + b;
+      if (!merged.has(k)) merged.set(k, { source: a, target: b, labels: [] });
+      merged.get(k).labels.push(l);
+    }
+    const els = doc.states.map((s) => ({ data: { id: "s:" + s, label: s,
+      color: has("error", s) ? "#d64545" : has("rejecting", s) ? "#e8963a" : has("accepting", s) ? "#2e9d4f" : "#2f5d9e",
+      bw: has("initial", s) ? 4 : 1.5, bs: has("accepting", s) ? "double" : "solid" } }));
+    let i = 0;
+    for (const e of merged.values()) els.push({ data: { id: "e" + (i++), source: "s:" + e.source, target: "s:" + e.target,
+      label: e.labels.length > 3 ? `${e.labels.slice(0, 3).join("\n")}\n… (${e.labels.length})` : e.labels.join("\n") } });
+    mcy = cytoscape({ container: $("#mcy"), elements: els, wheelSensitivity: 0.2,
+      layout: { name: "dagre", rankDir: "LR", nodeSep: 40, rankSep: 90 },
+      style: [
+        { selector: "node", style: { label: "data(label)", "background-color": "#fff", "border-color": "data(color)", "border-width": "data(bw)",
+          "border-style": "data(bs)", color: "#1d2329", "font-size": 11, "text-valign": "center", "text-halign": "center", shape: "round-rectangle",
+          width: "label", height: 26, padding: 8 } },
+        { selector: "edge", style: { label: "data(label)", "curve-style": "bezier", "target-arrow-shape": "triangle", width: 1.2,
+          "line-color": "#9aa0a6", "target-arrow-color": "#9aa0a6", "font-size": 9, "text-wrap": "wrap", "text-background-color": "#fbfbfa",
+          "text-background-opacity": 0.85, "loop-direction": "-45deg", "loop-sweep": "40deg" } }] });
+  };
+  return { html: h, init };
 }
 async function artifactPage(key) {
   const a = (await q("SELECT * FROM artifacts WHERE cid = ? OR sid = ? LIMIT 1", [key, key]))[0];

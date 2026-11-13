@@ -58,6 +58,8 @@ pub enum Ty {
     /// Instance arguments: `{ <binder name or position> = <reference> }`; a reference is a name,
     /// an integer, a boolean, `{ str = "…" }` or an application `["f", <reference>, …]`.
     Args,
+    /// Machine edges: an array of `[src, label, dst]` string triples.
+    Edges,
     /// Tool-only data (`meta = { … }`): any table. Lean ignores it, and so does R11; it is for
     /// other tools (provenance, the source a record was converted from).
     Meta,
@@ -219,6 +221,48 @@ pub const RECORD_KINDS: &[KindSpec] = &[
             req("decl", Ty::Const, "The room"),
             DOC,
             SID,
+        ],
+    },
+    KindSpec {
+        kind: "machine",
+        doc: "A machine document (`Silmaril.Automata.Document`): states, labels, edges and \
+              marking layers; Lean defines the constant `<name>` and fills `decl`, \
+              `deterministic` and `canonical`",
+        keys: &[
+            req("name", Ty::Name, "The machine's name (its identifier)"),
+            opt("states", Ty::Texts, "The state names, distinct"),
+            opt("labels", Ty::Texts, "The label names, distinct"),
+            opt(
+                "edges",
+                Ty::Edges,
+                "The edges `[src, label, dst]`, between declared names",
+            ),
+            opt("initial", Ty::Texts, "Initial states"),
+            opt("accepting", Ty::Texts, "Accepting states"),
+            opt("rejecting", Ty::Texts, "Rejecting states"),
+            opt("error", Ty::Texts, "Error states"),
+            DOC,
+            SID,
+        ],
+    },
+    KindSpec {
+        kind: "machine_binding",
+        doc: "A typed machine (`decl : DMachine S L` over `FinNamed` types) attached to a \
+              machine document; Lean proves `<name>.bound` (and `<name>.layers` for `marks`)",
+        keys: &[
+            req("name", Ty::Name, "The binding's name"),
+            req(
+                "machine",
+                Ty::Name,
+                "The machine document (a `machine` record)",
+            ),
+            req("decl", Ty::Const, "The typed machine"),
+            opt(
+                "marks",
+                Ty::Const,
+                "Its marks (`Marks S`), checked against the layers",
+            ),
+            DOC,
         ],
     },
     KindSpec {
@@ -494,6 +538,17 @@ fn type_error(ty: Ty, v: &Json) -> Option<String> {
         Ty::Texts => match v {
             Json::Array(xs) if xs.iter().all(Json::is_string) => None,
             _ => Some("must be an array of strings".into()),
+        },
+        Ty::Edges => match v {
+            Json::Array(xs)
+                if xs.iter().all(|e| {
+                    e.as_array()
+                        .is_some_and(|t| t.len() == 3 && t.iter().all(Json::is_string))
+                }) =>
+            {
+                None
+            }
+            _ => Some("must be an array of `[src, label, dst]` string triples".into()),
         },
         Ty::Expect => match v {
             Json::String(s) if super::expect_code(s).is_some() => None,
@@ -802,6 +857,8 @@ fn ty_schema(ty: Ty) -> Json {
         Ty::Text | Ty::Source | Ty::Const | Ty::Module | Ty::Problem => json!({"type": "string"}),
         Ty::Name => name,
         Ty::Problems | Ty::Texts => json!({"type": "array", "items": {"type": "string"}}),
+        Ty::Edges => json!({"type": "array", "items": {"type": "array", "minItems": 3,
+            "maxItems": 3, "items": {"type": "string"}}}),
         Ty::Names => json!({"type": "array", "items": name}),
         Ty::Expect => {
             let any_case: Vec<String> = EXPECT_CODES

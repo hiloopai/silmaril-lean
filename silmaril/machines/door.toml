@@ -1,0 +1,28 @@
+# A small machine document with two typed attachments over different inductive types
+# (`ProjectSelfTest.Machines`): one document, several bindings.
+schema = "silmaril.records.v0.2"
+
+[[machine]]
+name = "silmaril.selftest.door"
+doc = "A lockable door."
+states = ["closed", "locked", "open"]
+labels = ["close", "lock", "open", "unlock"]
+edges = [
+  ["closed", "lock", "locked"],
+  ["closed", "open", "open"],
+  ["locked", "unlock", "closed"],
+  ["open", "close", "closed"],
+]
+initial = ["closed"]
+accepting = ["closed", "locked"]
+
+[[machine_binding]]
+name = "silmaril.selftest.door.typed"
+machine = "silmaril.selftest.door"
+decl = "ProjectSelfTest.Machines.Door.machine"
+marks = "ProjectSelfTest.Machines.Door.marks"
+
+[[machine_binding]]
+name = "silmaril.selftest.door.typed_alt"
+machine = "silmaril.selftest.door"
+decl = "ProjectSelfTest.Machines.DoorAlt.machine"

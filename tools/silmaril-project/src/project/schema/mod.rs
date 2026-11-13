@@ -84,6 +84,8 @@ pub enum Record {
     Spec(Spec),
     Model(Model),
     Room(Room),
+    Machine(Machine),
+    MachineBinding(MachineBinding),
     Predicate(Predicate),
     Answer(Answer),
     Instance(Instance),
@@ -120,6 +122,8 @@ record_kinds! {
     Spec = "spec", key name, object Some("spec");
     Model = "model", key name, object Some("model");
     Room = "room", key name, object Some("room");
+    Machine = "machine", key name, object Some("machine");
+    MachineBinding = "machine_binding", key name, object None;
     Predicate = "predicate", key name, object None;
     Answer = "answer", key decl, object None;
     Instance = "instance", key name, object None;
@@ -223,6 +227,7 @@ macro_rules! table {
 // Each layer declares its record structs and tables; [`tables`] fixes the DDL order.
 pub mod artifacts;
 pub mod dag;
+pub mod machines;
 pub mod models;
 pub mod records;
 pub mod relational;
@@ -231,6 +236,7 @@ pub mod values;
 
 pub use artifacts::*;
 pub use dag::*;
+pub use machines::*;
 pub use models::*;
 pub use relational::*;
 pub use rooms::*;
@@ -270,6 +276,7 @@ pub const INDEXES: &[(&str, &str, &[&str])] = &[
     ("format_laws_format", "format_laws", &["format"]),
     ("format_defaults_format", "format_defaults", &["format"]),
     ("artifact_paths_artifact", "artifact_paths", &["artifact"]),
+    ("machine_bindings_machine", "machine_bindings", &["machine"]),
 ];
 
 /// A table's shape without its row type.
@@ -327,6 +334,8 @@ pub fn tables() -> Vec<TableInfo> {
         info::<Spec>(),
         info::<Model>(),
         info::<Room>(),
+        info::<Machine>(),
+        info::<MachineBinding>(),
         info::<ProblemRow>(),
         info::<ProblemArg>(),
         info::<ProblemInput>(),

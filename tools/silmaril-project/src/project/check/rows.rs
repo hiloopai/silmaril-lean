@@ -91,6 +91,8 @@ struct RecordRows {
     specs: Vec<Spec>,
     models: Vec<Model>,
     rooms: Vec<Room>,
+    machines: Vec<Machine>,
+    bindings: Vec<MachineBinding>,
 }
 
 fn record_rows(
@@ -183,6 +185,24 @@ fn record_rows(
                 let sid = obj(o, &x.name, &x.sid_override);
                 rows.rooms.push(Room {
                     sid,
+                    origin: org,
+                    ..x.clone()
+                });
+            }
+            Record::Machine(x) => {
+                let sid = obj(o, &x.name, &x.sid_override);
+                let n = |v: usize| i64::try_from(v).unwrap_or(i64::MAX);
+                rows.machines.push(Machine {
+                    sid,
+                    origin: org,
+                    n_states: n(x.states.len()),
+                    n_labels: n(x.labels.len()),
+                    n_edges: n(x.edges.len()),
+                    ..x.clone()
+                });
+            }
+            Record::MachineBinding(x) => {
+                rows.bindings.push(MachineBinding {
                     origin: org,
                     ..x.clone()
                 });
@@ -433,6 +453,8 @@ pub(super) fn run(
     db.push(&recs.specs);
     db.push(&recs.models);
     db.push(&recs.rooms);
+    db.push(&recs.machines);
+    db.push(&recs.bindings);
     db.push(&nodes.problems);
     db.push(&nodes.args);
     db.push(&nodes.inputs);
