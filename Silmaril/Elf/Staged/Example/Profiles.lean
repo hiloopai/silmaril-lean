@@ -16,7 +16,8 @@ their audits:
 * **paranoid**: every leaf is checked by the kernel, no native axiom;
 * a **kernel-only** check (no native backend given) is checked by the kernel even under
   `local`;
-* an **unsupported** leaf (`elf.dwarf.line`, not registered) is an error;
+* an **unsupported** leaf (`elf.dwarf.line`, not registered) is an error, and so is a
+  procedure applied to another leaf's checker (`elf.layout` on the loader check);
 * a **false** native check is an error under `local`: it does not fall back to the kernel.
 -/
 
@@ -87,6 +88,20 @@ set_option silmaril.trust.profile "paranoid" in
 example : LayoutIs F badL := by
   sil_check elf.layout (native := Native.layout_sound (raw := helloRaw) (L := badL))
     (kernel := Kernel.layout_sound hello.wf_true hello.toByteArray_eq (L := badL))
+
+-- Procedure identity: each leaf has its own checker and soundness theorem, so `elf.layout`
+-- cannot vouch for another leaf's check (no `ProcDecl.bound` needed).
+/-- error: sil_check elf.layout: the kernel side must apply Silmaril.Elf.Staged.Kernel.layout_sound -/
+#guard_msgs (substring := true) in
+example : LoaderIs F L ld := by
+  sil_check elf.layout
+    (kernel := Kernel.loader_sound hello.wf_true hello.toByteArray_eq (c := (L, ld)))
+
+/-- error: sil_check elf.layout: the native side must apply Silmaril.Elf.Staged.Native.layout_sound -/
+#guard_msgs (substring := true) in
+set_option silmaril.trust.profile "local" in
+example : LoaderIs F L ld := by
+  sil_check elf.layout (native := Native.loader_sound (raw := helloRaw) (c := (L, ld)))
 
 /-! ## Audits and recorded uses
 
