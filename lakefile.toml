@@ -141,7 +141,10 @@ globs = [
   "Silmaril.Wasm.ClosureCex.+", "Silmaril.Wasm.Dataflow.+", "Silmaril.Wasm.Det.+",
   "Silmaril.Wasm.LambdaRTL.+", "Silmaril.Wasm.Lime1ToV1.+", "Silmaril.Wasm.OCaml.+",
   "Silmaril.Wasm.Outcome.+", "Silmaril.Wasm.Replace.+", "Silmaril.Wasm.RuntimeMap.+",
-  "Silmaril.Wasm.Unified.+", "Silmaril.Wasm.Wasmi.+", "Silmaril.Wasm.WatSpec.+"
+  "Silmaril.Wasm.Unified.+", "Silmaril.Wasm.Wasmi.+", "Silmaril.Wasm.WatSpec.+",
+  # The Cerberus C semantics and the compiler machinery over it (docs/projects/cerberus.md).
+  "Silmaril.Cerberus.+", "Silmaril.Compiler.+", "Silmaril.Proofs.Cerberus.+",
+  "Silmaril.Proofs.Compiler.+", "Silmaril.Raw.Cerberus.+", "Silmaril.Raw.Compiler.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
@@ -356,3 +359,35 @@ srcDir = "tools/cli-harness"
 name = "cli-demo"
 root = "CliDemo"
 srcDir = "tools/cli-demo"
+
+# Cerberus C semantics (docs/projects/cerberus.md): the compile-time tests and the
+# executables (C text to Cabs, typed Ail and Core; Core run and elaboration; the Clang
+# JSON frontend).
+[[lean_lib]]
+name = "CerberusTests"
+globs = ["tests.cerberus.+"]
+
+[[lean_exe]]
+name = "cerb-lean"
+root = "CerbLean"
+srcDir = "tools/cerb-lean"
+
+[[lean_exe]]
+name = "ail-lean"
+root = "AilLean"
+srcDir = "tools/ail-lean"
+
+[[lean_exe]]
+name = "core-lean"
+root = "CoreLean"
+srcDir = "tools/core-lean"
+
+[[lean_exe]]
+name = "core-elab"
+root = "CoreElab"
+srcDir = "tools/core-elab"
+
+[[lean_exe]]
+name = "cfront"
+root = "Cfront"
+srcDir = "tools/cfront"
