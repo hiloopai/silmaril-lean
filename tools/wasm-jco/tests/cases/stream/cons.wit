@@ -1,0 +1,8 @@
+package test:cons;
+
+world cons {
+  import gen: async func(n: u32) -> stream<u8>;
+  import upper: async func(s: stream<u8>) -> stream<u8>;
+  export run: async func(n: u32) -> string;
+  export raw: async func(n: u32) -> string;
+}

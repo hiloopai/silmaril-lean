@@ -1,0 +1,20 @@
+{
+  "as": "GNU assembler (GNU Binutils for Debian) 2.40",
+  "command": "gcc -O2 -g -c -fdebug-prefix-map=/src=. -std=c11 -ffreestanding -fno-builtin -fno-stack-protector -fcf-protection=none -mgeneral-regs-only -fno-pic -fno-pie -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-ident straight.c -o O2/straight.o",
+  "gcc": "gcc (GCC) 13.3.0",
+  "image": "gcc:13.3.0@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818",
+  "object": {
+    "path": "O2/straight.o",
+    "sha256": "d1a77167a5a6957f6f42b5944ff5d28cb36c5b8901b8f564c4e73825cbf038a6",
+    "size": 3176
+  },
+  "source": {
+    "path": "straight.c",
+    "sha256": "8b49538da88e3926f7c457e54fff82234e5ef0efb3c81372537b8f690f38b4b6"
+  },
+  "tools_sha256": [
+    "1bcc6b6b6dcffb1fd541a60ff35c8b29e4c9759c848c271f2b4dff388b9d2c1c  /usr/local/libexec/gcc/x86_64-linux-gnu/13.3.0/cc1",
+    "41fe4f5a03389ea5cf7c92d6753fa1ecc69b45b12534fd8713c53bba0e2d7e17  /usr/bin/as"
+  ],
+  "workdir": "/src"
+}

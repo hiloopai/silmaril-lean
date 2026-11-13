@@ -20,6 +20,9 @@ public import Silmaril.Proofs.Libc.Ptmalloc.Algo.FreeBody
 public import Silmaril.Proofs.Libc.Ptmalloc.Algo.MallocCons
 public import Silmaril.Proofs.Libc.Ptmalloc.Algo.MallocHeap
 public import Silmaril.Proofs.Libc.Ptmalloc.Algo.MallocSysMain
+public import Silmaril.Proofs.Libc.Ptmalloc.Algo.ReallocBody
+public import Silmaril.Proofs.Libc.Ptmalloc.Algo.WorldRealloc
+public import Silmaril.Proofs.Libc.Ptmalloc.Algo.CallocReallocInst
 
 /-!
 # ptmalloc algorithm: theorems
@@ -52,8 +55,17 @@ Wave 4 (`Proofs/Libc/Ptmalloc/Algo/FreeBody`): **`Algo.bodyFree`**, **`Algo.tota
 (`_int_free`'s three paths with a `Frame`: `ArenaStep`/`ConsStep` gain a byte cover, `systrim`
 gives back only top bytes, `coalesce`/`malloc_consolidate`/`heap_trim` do not abort), hence
 `Algo.ptmalloc_safeMF_mallocBodies` (conditional only on `Task.algo.{bodyMalloc, totalMalloc}`).
-Open: the other per-body obligations of `Silmaril.Libc.Ptmalloc.Algo.Tasks.Defs` and the design's
-`Task.algo.*` (`wfIntMalloc`, `noAbort`, `wfWorld`, `mallocTotal`, …).
+Wave 5 (`Proofs/Libc/Ptmalloc/Algo/{ReallocSteps,ReallocBody,Mremap,WorldRealloc,CallocReallocInst}`):
+**`Algo.bodyRealloc`** (= `Task.algo.bodyRealloc`) and **`Algo.wfIntRealloc`**
+(= `Task.algo.wfIntRealloc`): `_int_realloc`'s paths (keep, shrink with the remainder freed, grow
+into top, grow into a free next chunk, and `_int_malloc`-copy-`_int_free` with glibc's in-place
+`newp == next` fusion); `Algo.mremap_body` (`mremap_chunk` moving an `mmap`ed chunk);
+**`Algo.wfCallocRealloc`** (= `Task.algo.wfCallocRealloc C (ptmalloc C)`): `__libc_calloc` and
+`__libc_realloc` keep `WorldWF` and change the live set as `allocLoose` allows;
+**`Algo.calloc_refines`**, **`Algo.realloc_refines`**: with ghost tokens (`RefInv`) their steps
+meet the institution's `calloc`/`realloc`; **`Algo.noAbort`** (= `Task.algo.noAbort C (ptmalloc C)`).
+Open: the design's `Task.algo.wfIntMalloc` (stated without the view's spatial facts and
+`ptmalloc_init`; its proved form is `Task.algo.bodyMalloc`).
 -/
 
 @[expose] public section

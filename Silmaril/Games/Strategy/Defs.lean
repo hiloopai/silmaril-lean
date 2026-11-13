@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Games.Play.Thms
+public import Silmaril.Games.Play.Defs
 public import Mathlib.Basic.SetLike.Basic
 public import Mathlib.Order.CompleteLattice.Defs
 

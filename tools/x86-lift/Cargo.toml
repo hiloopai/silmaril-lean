@@ -1,0 +1,16 @@
+[package]
+name = "lift-x86"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+license = "MIT"
+description = "Decode x86-64 bytes into the instructions of Silmaril's Lean model (Silmaril.X86.Ext.Instr), refusing any non-canonical encoding"
+
+[dependencies]
+anyhow = "1.0.95"
+iced-x86 = { version = "1.21.0", default-features = false, features = ["std", "decoder", "gas", "instr_info"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"

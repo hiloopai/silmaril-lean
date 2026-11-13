@@ -1,0 +1,5 @@
+package test:upper;
+
+world upper {
+  export upper: async func(s: stream<u8>) -> stream<u8>;
+}

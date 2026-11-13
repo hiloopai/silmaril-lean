@@ -1,0 +1,2 @@
+# Upper bound on comp-diff.sh disagreements (ours-rejects + ours-accepts); lower it as the component validator improves.
+23

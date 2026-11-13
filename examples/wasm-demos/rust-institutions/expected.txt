@@ -1,0 +1,18 @@
+# crate  property            import       [export]     expected verdict
+adder    never-call-from     spec.alarm   add          proved
+adder    never-call-from     spec.alarm   add_comm     proved
+adder    never-call-from     spec.alarm   checked_add  unknown
+adder    assert-never-false  spec.assert  -            proved
+adder    never-call          spec.assert  -            refuted
+door        assert-never-false  spec.assert  -       proved
+door        never-call-from     door.unlock  status  proved
+door        never-call-from     spec.attest  status  proved
+door        never-call-from     door.unlock  lock    proved
+door        never-call-from     door.alarm   lock    proved
+door        never-call-from     door.unlock  enter   unknown
+door        never-call          spec.attest  -       unknown
+door_buggy  assert-never-false  spec.assert  -       refuted
+door_buggy  never-call-from     door.unlock  status  proved
+door_buggy  never-call-from     door.unlock  lock    proved
+leaf_door_opens  never-call  env.attest  -  refuted
+leaf_overflow    never-call  env.attest  -  refuted
