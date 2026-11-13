@@ -53,14 +53,80 @@ def printSpec : Spec where
       { key := "indent", long := some "indent", takes := .value "INDENT" [] } ]
   pos := [{ key := "INPUT", name := "INPUT" }]
 
+/-! ## The records of the command lines
+
+What the bodies of `parse` and `print` read. `…ofParsed` reads a record from the occurrences of
+the core build's reader (`Silmaril.Wasm.Tools.Cli`, through `Io.runCli`); the full build reads it
+from the matches of the CLI specification (`WasmTools.SpecCore`). -/
+
+/-- What `parse` and `print` share (upstream's `InputOutput`, `GeneralOpts`,
+`GenerateDwarfArg`). -/
+structure IoArgs where
+  /-- `[INPUT]` (none or `-`: stdin) -/
+  input : Option String
+  /-- `-o, --output <OUTPUT>` -/
+  output : Option String
+  /-- `--generate-dwarf <lines|full>` -/
+  generateDwarf : Option String
+  /-- `-g` -/
+  g : Bool
+  verbose : Nat
+  /-- `--color <COLOR>` (default `auto`) -/
+  color : String
+  deriving Repr, DecidableEq
+
+def IoArgs.ofParsed (p : Parsed) : IoArgs where
+  input := p.positionals.head?
+  output := p.value? "output"
+  generateDwarf := (p.values "generate-dwarf").getLast?
+  g := p.flag "g"
+  verbose := p.count "verbose"
+  color := ((p.values "color").getLast?).getD "auto"
+
+/-- `wasm-tools parse`. -/
+structure ParseArgs where
+  io : IoArgs
+  /-- `-t, --wat` -/
+  wat : Bool
+  deriving Repr, DecidableEq
+
+def ParseArgs.ofParsed (p : Parsed) : ParseArgs where
+  io := IoArgs.ofParsed p
+  wat := p.flag "wat"
+
+/-- `wasm-tools print`. -/
+structure PrintArgs where
+  io : IoArgs
+  printOffsets : Bool
+  skeleton : Bool
+  nameUnnamed : Bool
+  foldInstructions : Bool
+  printOperandStack : Bool
+  /-- `--indent-text <INDENT_TEXT>` -/
+  indentText : Option String
+  /-- `--indent <INDENT>` (the word given; the body reads the number) -/
+  indent : Option String
+  deriving Repr, DecidableEq
+
+def PrintArgs.ofParsed (p : Parsed) : PrintArgs where
+  io := IoArgs.ofParsed p
+  printOffsets := p.flag "print-offsets"
+  skeleton := p.flag "skeleton"
+  nameUnnamed := p.flag "name-unnamed"
+  foldInstructions := p.flag "fold-instructions"
+  printOperandStack := p.flag "print-operand-stack"
+  indentText := (p.values "indent-text").getLast?
+  indent := (p.values "indent").getLast?
+
 def liftE {α} : Except String α → ExceptT String IO α
   | .ok a => pure a
   | .error e => throw e
 
-/-- Options that would change the output and are not implemented. -/
-def refuse (p : Parsed) (keys : List String) : ExceptT String IO Unit := do
-  for k in keys do
-    if p.flag k then throw s!"option `{k}` is not implemented by this wasm-tools (see tools/wasm-tools/README.md)"
+/-- Options that would change the output and are not implemented: the options by name, whether
+each was given. -/
+def refuse (asked : List (String × Bool)) : ExceptT String IO Unit := do
+  for (k, b) in asked do
+    if b then throw s!"option `{k}` is not implemented by this wasm-tools (see tools/wasm-tools/README.md)"
 
 /-- The chunk size of the parallel field passes (`PrintCheck.parMapM`): `WASM_TOOLS_LEAN_CHUNK`, or
 `PrintCheck.defaultChunk`. Every value gives the same output (`PrintCheck.Thms`). -/
@@ -72,9 +138,9 @@ def chunk : IO Nat := do
 `ColorChoice`): to a file only with `--color always-ansi`; to stdout with `always` or
 `always-ansi`, and with `auto` (the default) when stdout is a terminal, `TERM` is set and not
 `dumb`, and `NO_COLOR` is unset. -/
-def useColor (p : Parsed) : IO Bool := do
-  let c := ((p.values "color").getLast?).getD "auto"
-  match p.value? "output" with
+def useColor (io : IoArgs) : IO Bool := do
+  let c := io.color
+  match io.output with
   | some _ => pure (c == "always-ansi")
   | none =>
     if c == "always" || c == "always-ansi" then return true
@@ -86,9 +152,9 @@ def useColor (p : Parsed) : IO Bool := do
 
 /-- The certified text `plain` of `bin`, coloured when `useColor` (`PrintCheck.colorText`:
 kept only when its escapes removed give `plain`). -/
-def colored (p : Parsed) (cfg : Silmaril.Wasm.Tools.Print.Config) (bin : ByteArray) (plain : String) :
+def colored (io : IoArgs) (cfg : Silmaril.Wasm.Tools.Print.Config) (bin : ByteArray) (plain : String) :
     IO String := do
-  if ← useColor p then pure (PrintCheck.colorText cfg bin plain) else pure plain
+  if ← useColor io then pure (PrintCheck.colorText cfg bin plain) else pure plain
 
 /-- In the full build (`WasmTools.CompHook.hooks` set), a component input
 (`CompVal.isComponentInput`: a component binary, or text starting with `(component`) goes to the
@@ -104,36 +170,42 @@ def component (input : ByteArray)
     return true
   return false
 
-def parseBody (p : Parsed) : ExceptT String IO Unit := do
-  let input ← Io.readInput p
-  if ← component input (fun h => h.parseOn (p.flag "wat") (p.value? "output")) then return
-  refuse p ["generate-dwarf", "g"]
+/-- The body of `parse` on its record. -/
+def parseWith (a : ParseArgs) : ExceptT String IO Unit := do
+  let input ← Io.readInput a.io.input
+  if ← component input (fun h => h.parseOn a.wat a.io.output) then return
+  refuse [("generate-dwarf", a.io.generateDwarf.isSome), ("g", a.io.g)]
   -- the fast paths are equal to `Text.watToWat` / `Text.watToBinary` (`PrintCheck.Thms`)
   let k ← chunk
   let bin ← liftE (PrintCheck.watToBinaryFast k input)
-  if p.flag "wat" then
+  if a.wat then
     -- `watToWatFast` (= `Text.watToWat`), with colours when asked
     let plain ← liftE (PrintCheck.binaryToWatWithFast k {} bin)
-    Io.writeText p (← colored p {} bin plain)
-  else Io.writeBinary p bin
+    Io.writeText a.io.output (← colored a.io {} bin plain)
+  else Io.writeBinary a.io.output bin
 
-def printBody (p : Parsed) : ExceptT String IO Unit := do
-  -- `--indent-text` wins over `--indent N` (N spaces); clap takes the last occurrence
-  let indent ← match (p.values "indent").getLast? with
+/-- The body of `parse` on the occurrences of the core build's reader. -/
+def parseBody (p : Parsed) : ExceptT String IO Unit := parseWith (ParseArgs.ofParsed p)
+
+/-- The body of `print` on its record. -/
+def printWith (a : PrintArgs) : ExceptT String IO Unit := do
+  -- `--indent-text` wins over `--indent N` (N spaces)
+  let indent ← match a.indent with
     | none => pure none
     | some v => match v.toNat? with
       | some n => pure (some (String.ofList (List.replicate n ' ')))
       | none => throw (Io.usageMark ++
           s!"error: invalid value '{v}' for '--indent <INDENT>': invalid digit found in string\n\nFor more information, try '--help'.\n")
-  let indentText := ((p.values "indent-text").getLast? <|> indent).getD "  "
-  let input ← Io.readInput p
-  if ← component input (fun h => h.printOn (p.value? "output")) then return
-  refuse p ["generate-dwarf", "g", "print-operand-stack"]
+  let indentText := (a.indentText <|> indent).getD "  "
+  let input ← Io.readInput a.io.input
+  if ← component input (fun h => h.printOn a.io.output) then return
+  refuse [("generate-dwarf", a.io.generateDwarf.isSome), ("g", a.io.g),
+    ("print-operand-stack", a.printOperandStack)]
   let k ← chunk
   let bin ← liftE (PrintCheck.watToBinaryFast k input)
   let cfg : Silmaril.Wasm.Tools.Print.Config :=
-    { skeleton := p.flag "skeleton", nameUnnamed := p.flag "name-unnamed", indentText,
-      printOffsets := p.flag "print-offsets", fold := p.flag "fold-instructions" }
+    { skeleton := a.skeleton, nameUnnamed := a.nameUnnamed, indentText,
+      printOffsets := a.printOffsets, fold := a.foldInstructions }
   if (← IO.getEnv "WASM_TOOLS_LEAN_PRINT_CHECK").isSome then
     match PrintCheck.printModuleFast k cfg bin with
     | .ok r =>
@@ -143,12 +215,15 @@ def printBody (p : Parsed) : ExceptT String IO Unit := do
   if cfg.skeleton || !wsIndent then
     -- `--skeleton` elides bodies, and an indentation that is not whitespace is not WAT, so
     -- these texts are not module texts and are not checked (tools/wasm-tools/README.md).
-    match PrintCheck.printModuleFast k { cfg with color := ← useColor p } bin with
-    | .ok r => Io.writeText p r.text
+    match PrintCheck.printModuleFast k { cfg with color := ← useColor a.io } bin with
+    | .ok r => Io.writeText a.io.output r.text
     | .error e => throw e.message
   else
     let plain ← liftE (PrintCheck.binaryToWatWithFast k cfg bin)
-    Io.writeText p (← colored p cfg bin plain)
+    Io.writeText a.io.output (← colored a.io cfg bin plain)
+
+/-- The body of `print` on the occurrences of the core build's reader. -/
+def printBody (p : Parsed) : ExceptT String IO Unit := printWith (PrintArgs.ofParsed p)
 
 def table : List Subcommand :=
   [ ⟨"parse", Io.runCli parseSpec Help.parse_short Help.parse_long parseBody⟩,

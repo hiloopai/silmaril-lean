@@ -1,0 +1,4 @@
+package test:gen;
+world gen {
+  export gen: async func(n: u32) -> stream<u8>;
+}

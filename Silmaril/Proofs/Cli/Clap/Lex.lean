@@ -416,7 +416,7 @@ theorem readOpt_step_long {t : Tool} {c : Command} {path : List String} {tok n :
   cases hf : findLong c.opts n with
   | none =>
     exact absurd (show step t c path tok rest =
-      .early (.error ("unexpected argument '" ++ tok ++ "' found")) by
+      .early (.error ("unexpected argument '--" ++ n ++ "' found")) by
         simp only [step, hcl, hf]) (hne _)
   | some o =>
     have hst : step t c path tok rest = optStep path o v := by simp only [step, hcl, hf]

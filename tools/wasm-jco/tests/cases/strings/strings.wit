@@ -1,0 +1,8 @@
+package test:strings;
+
+world strings {
+  export greet: func(s: string) -> string;
+  export len: func(b: list<u8>) -> u32;
+  export rev: func(b: list<u8>) -> list<u8>;
+  export pair: func(a: u32) -> tuple<u32, string>;
+}

@@ -1,0 +1,7 @@
+proc main (): eff loaded integer :=
+  let strong a_506: loaded integer = bound(pure(Specified(42))) in
+  run ret_505(conv_loaded_int('signed int', a_506)) ;
+  pure(Unit) ;
+  save ret_505: loaded integer (a_507: loaded integer:= Specified(0)) in
+    pure(a_507)
+

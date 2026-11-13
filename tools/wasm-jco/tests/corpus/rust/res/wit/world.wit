@@ -1,0 +1,23 @@
+package corpus:res@0.1.0;
+
+interface store {
+  resource counter {
+    constructor(start: u32);
+    incr: func(by: u32) -> u32;
+    get: func() -> u32;
+    merge: static func(a: borrow<counter>, b: borrow<counter>) -> counter;
+  }
+  record snapshot { name: string, value: u32 }
+  snap: func(c: borrow<counter>, name: string) -> snapshot;
+  consume: func(c: counter) -> u32;
+}
+
+world res {
+  export store;
+}
+
+world rdriver {
+  import store;
+  export run: func(n: u32) -> u32;
+  export label: func(n: u32) -> string;
+}
