@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Wasi.Comp.Defs
+public import Silmaril.Wasi.Host.Defs
 public import Silmaril.Servers.Basic.Defs
 
 @[expose] public section
@@ -17,6 +18,7 @@ a sequential component be read as a server of atomic exchanges (`Silmaril.Server
   request and its answer) reaches the program `p'`.
 * `Call`: a completed export call: the function, its arguments, the events in between and the
   result. `Done h q c`: `c` is a complete run of the body `h` on the export call `q`.
+* `runP impl past p`: the run of the program `p` over a concrete host.
 * `calls t`: the completed export calls of an event list, in order (an unfinished last call is
   dropped).
 * `model T ans obs σ`: the **reading of a component as a server**. Its traces are those
@@ -76,6 +78,15 @@ def callsAux : Option (FnName × List Val × List WEv) → List WEv → List Cal
 
 /-- **The completed export calls** of an event list. -/
 def calls (t : List WEv) : List Call := callsAux none t
+
+/-- **Running a program over a concrete host** `impl` (`Silmaril.Wasi.Impl`), after the answers
+`past`: the events of the run and its result. -/
+def runP (impl : Impl) (past : List WEv) : BProg I → List WEv × Option (List Val)
+  | .pure r => ([], r)
+  | .call m k =>
+    let n := impl past m.1.1 m.2
+    let t := runP impl (past ++ [.imp m.1.1 m.2 n]) (k n)
+    (.req m.1.1 m.2 :: .imp m.1.1 m.2 n :: t.1, t.2)
 
 /-- **A component read as a server**: the exchange traces explained by its plays. -/
 def model {J : Iface} (T : WEv → Prop) (ans : Call → Bool) (obs : Call → Exch J → Prop)

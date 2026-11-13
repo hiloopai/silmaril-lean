@@ -13,6 +13,7 @@ import Silmaril.Proofs.Servers.Calls.Shape
 * `mem_model_single`: a complete run of one export call, on which the host satisfies `T`, that
   `ans` counts as answered and `obs` reads as the exchange `x`, makes `[x]` a trace of the
   component read as a server (so that specifications proved with `sat_each` are not vacuous).
+* `leads_runP`: a run over a concrete host is a run.
 * `sat_each`: to show that a component read as a server (`model`) satisfies `each R`, it is
   enough to show `R` of the exchanges of every complete run of one export call on which the
   host satisfies `T`. Proofs in `Silmaril.Proofs.Servers.Calls.Shape`.
@@ -45,5 +46,12 @@ theorem mem_model_single {J : Iface} {T : WEv → Prop} {ans : Call → Bool}
     (ha : ans ⟨q.1.1, q.2, u, r⟩ = true) {x : Exch J} (hx : obs ⟨q.1.1, q.2, u, r⟩ x) :
     [x] ∈ model T ans obs (ofBody h) :=
   Proofs.Servers.Calls.mem_model_single hl hT ha hx
+
+/-- A run over a concrete host is a run. -/
+theorem leads_runP (impl : Impl) (past : List WEv) (p : BProg I) :
+    Leads p (runP impl past p).1 (.pure (runP impl past p).2) := by
+  induction p generalizing past with
+  | pure r => exact .refl _
+  | call m k ih => exact .call m k _ (ih _ _)
 
 end Silmaril.Servers.Calls

@@ -3,6 +3,7 @@ module
 public import Silmaril.Servers.WasiExamples.Defs
 public import Silmaril.Servers.Basic.Thms
 public import Silmaril.Servers.Calls.Thms
+public import Silmaril.Servers.WasiHttp.Thms
 import Silmaril.Proofs.Servers.WasiExamples.Answer
 
 @[expose] public section
@@ -24,6 +25,10 @@ response unobservable (by failing an operation), never wrong.
   path-with-query; `route_refines`: `route` refines the server of that function.
 
 Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
+
+**Checked** over the reference host (`serveRef`, evaluated by `decide`): `hello` on `/`, and
+`route` on `/`, `/hello` and `/missing`. `route_web_missing`: the web of the route table, as
+the outgoing `wasi:http` theories read it, answers `404` for `/missing`.
 -/
 
 namespace Silmaril.Servers.WasiExamples
@@ -60,5 +65,28 @@ theorem route_sat :
 theorem route_refines :
     Refines (wasiServer (ofBody route)) (ofFun fun q => routeResp q.target.pathWithQuery) :=
   fun t ht => route_sat t ht
+
+/-! ## Checked over the reference host -/
+
+theorem hello_ref : serveRef hello (getAt none (some (ascii "/"))) = some helloResp := by decide
+
+theorem route_ref_root :
+    serveRef route (getAt none (some (ascii "/"))) = some (Response.simple 200 (ascii "home")) := by
+  decide
+
+theorem route_ref_hello : serveRef route (getAt none (some (ascii "/hello"))) =
+    some (Response.simple 200 (ascii "hello")) := by
+  decide
+
+theorem route_ref_missing : serveRef route (getAt none (some (ascii "/missing"))) =
+    some (Response.simple 404 (ascii "not found")) := by
+  decide
+
+/-- The web of the route table answers `404` for `/missing`. -/
+theorem route_web_missing :
+    webOf (fun q => routeResp q.target.pathWithQuery) (pathV none) (pathV (some (ascii "/missing"))) =
+      .status 404 := by
+  rw [webOf_pathV]
+  rfl
 
 end Silmaril.Servers.WasiExamples

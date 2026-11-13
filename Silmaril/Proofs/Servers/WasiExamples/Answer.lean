@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Servers.WasiExamples.Defs
 public import Silmaril.Servers.Calls.Thms
+public import Silmaril.Servers.WasiHttp.Thms
 
 /-!
 # The example `wasi:http` servers: the response of a call, for every host
@@ -197,14 +198,6 @@ theorem hello_sat : Sat (wasiServer (ofBody hello)) (each fun _ resp => resp = h
   rw [ha]
   exact answer_run rfl (by decide) hl
 
-/-- A path read back. -/
-theorem pathOf_pathV (p : Option (List UInt8)) : pathOf (some [pathV p]) = p := by
-  cases p with
-  | none => rfl
-  | some p =>
-    have h : ∀ b : UInt8, (Char.ofNat b.toNat).toNat.toUInt8 = b := by decide
-    simp [pathOf, pathV, octetsOf, List.filterMap_map, h]
-
 /-- The route table answers with a 16-bit status and no fields. -/
 theorem routeResp_ok (p : Option (List UInt8)) :
     Response.simple (routeResp p).status (routeResp p).content = routeResp p ∧
@@ -244,9 +237,6 @@ theorem reqOk_other {q : Request} {r : BitVec 32} {f : FnName} {a : List Val}
     ReqOk q r (.imp f a res) := by
   unfold ReqOk
   split <;> simp_all
-
-/-- The call `handle(0, 1)`. -/
-def handleQ : (nsig proxyWorld.exports).Op := (⟨handleF, rfl⟩, [.u32 0, .u32 1])
 
 /-- **Hello is not vacuous**: every request answered `200 hello` is a trace of hello, over a
 host whose answers are well formed. -/

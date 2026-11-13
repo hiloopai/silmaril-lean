@@ -3,6 +3,7 @@ module
 public import Silmaril.Servers.Calls.Defs
 public import Silmaril.Wasi.Theory.Defs
 public import Silmaril.Net.Http.Message.Defs
+public import Silmaril.Wasi.Versions.Net.Defs
 
 @[expose] public section
 
@@ -266,5 +267,37 @@ def Obs (c : Call) (x : Exch httpIface) : Prop :=
 /-- **A proxy component read as an HTTP server.** -/
 def wasiServer {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) : Model httpIface :=
   model (fun _ => True) answered Obs σ
+
+/-! ## A reference host -/
+
+/-- The call `handle(0, 1)`. -/
+def handleQ : (nsig proxyWorld.exports).Op := (⟨handleF, rfl⟩, [.u32 0, .u32 1])
+
+/-- **A reference host** serving the request `q` on the request handle `0`: the getters answer
+from `q`, constructors and `body`/`write` answer fresh handles, the other operations succeed. -/
+def refHost (q : Request) : Impl := fun past f _ =>
+  if f = reqMethod then some [methodV q.method]
+  else if f = reqPath then some [pathV q.target.pathWithQuery]
+  else if f = newFields ∨ f = newResp then some [.u32 (BitVec.ofNat 32 (past.length + 2))]
+  else if f = respBody ∨ f = bodyWrite then some [okV (some (.u32 (BitVec.ofNat 32 (past.length + 2))))]
+  else if f = setStatus ∨ f = streamWrite ∨ f = bodyFinish then some [okV none]
+  else if f = streamDrop ∨ f = outSet then some []
+  else none
+
+/-- The response of the body `h` to the request `q` over the reference host. -/
+def serveRef (h : Body proxyImports proxyWorld.exports) (q : Request) : Option Response :=
+  respOf 1 (runP (refHost q) [] (h handleQ)).1
+
+/-- A `GET` request for an authority and a path-with-query, with no fields or content. -/
+def getAt (authority path : Option (List UInt8)) : Request :=
+  ⟨⟨.get, ⟨none, authority, path⟩⟩, [], [], []⟩
+
+/-! ## Servers as webs of the outgoing theories -/
+
+/-- **The web of a server** `f`, as the outgoing `wasi:http` theories see it
+(`Silmaril.Wasi.Versions.Net.httpTh`, `httpTh3`): the status of `f`'s answer to a `GET` for the
+authority and path-with-query of the outgoing request. -/
+def webOf (f : Request → Response) : Silmaril.Wasi.Versions.Net.Web := fun a p =>
+  .status (BitVec.ofNat 16 (f (getAt (pathOf (some [a])) (pathOf (some [p])))).status)
 
 end Silmaril.Servers.WasiHttp
