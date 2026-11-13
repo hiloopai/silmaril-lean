@@ -191,6 +191,24 @@ digests read `missing` and the modules `stale`.
 | `trust-elf-staged` | #127 `449a063e` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
 | `trust-elf-profile-tests` | #127 `449a063e` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
 
+`trust-elf-excluded` is the same #127 checkout, dumped with both example modules and
+`--exclude Silmaril.Elf.Staged.Example.Profiles=…`. It has 299 declarations audited, 8 listed
+but not audited, 0 violations, and **partial** coverage.
+
+### Strict validation (in the build checkouts, with sources and inputs present)
+
+| dump | `--strict-trust` |
+|---|---|
+| bytes normal targets (#125 `3c731fc1`) | **passes**; complete coverage, 21 modules with consistent digests |
+| bytes and `Prelude.Trust.Examples` with `--exclude` | **passes**; partial coverage, "not a full audit" |
+| `Prelude.Trust.Examples` | **fails**: 7 violations |
+| ELF `Example.Thms` (#127 `449a063e`) | **passes**; complete coverage, 10 modules with consistent digests |
+| ELF and `Example.Profiles` with `--exclude` | **passes**; partial coverage, "not a full audit" |
+| ELF `Example.Profiles` | **fails**: 2 violations |
+
+In this repository the committed cases do not vendor their sources, so a strict run on them
+fails on digests. That is the intended behaviour.
+
 ### Fixtures (hand-written, origin `fixture`)
 
 - `trust-fixture-elf`: ELF leaves with kernel fallbacks, a shape the real #127 does not have

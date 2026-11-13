@@ -1225,13 +1225,17 @@ impl Ingest<'_> {
             t.uses.len()
         ));
         self.o.lines.push(format!(
-            "trust modules: {} covered, {} excluded, {} unsupported, {} undescribed, {} external; {} declarations audited{}",
+            "trust modules: {} covered, {} excluded, {} unsupported, {} undescribed, {} external; {} declarations audited{}{}",
             count("covered"),
             count("excluded"),
             count("unsupported"),
             count("undescribed"),
             count("external"),
-            t.decls.len(),
+            t.decls.iter().filter(|d| covered(&d.module)).count(),
+            {
+                let skipped = t.decls.iter().filter(|d| !covered(&d.module)).count();
+                if skipped > 0 { format!(" ({skipped} more in excluded modules, listed but not audited)") } else { String::new() }
+            },
             if repeated > 0 { format!(" ({repeated} repeated audit lines of realized constants merged)") } else { String::new() }
         ));
         let by = |w: &str| violations.iter().filter(|v| v.3 == w).count();
