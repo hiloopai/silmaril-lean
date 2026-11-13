@@ -47,7 +47,7 @@ recipe = { path = "examples/project-formats/build.sh", cid = "bafkr4ihoh3kokxcw5
 toolchain = [{ name = "gcc", version = "13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1)" }, { name = "binutils", version = "2.42" }]
 flags = ["-O1", "-static", "-nostdlib", "-fno-pic", "-no-pie", "-fno-asynchronous-unwind-tables", "-fno-ident", "-Wl,--build-id=none", "-Wl,-z,max-page-size=4096", "-Wl,-z,noseparate-code", "-Wl,-z,norelro", "-s"]
 environment = { os = "ubuntu-24.04", arch = "x86_64" }
-receipt = { path = "examples/project-formats/RECEIPTS.sha256", cid = "bafkr4iadhv2n7jn2ooameubgzlstvwtd7zovkuyc674knbphwhx2pclj4i" }
+receipt = { path = "examples/project-formats/RECEIPTS.sha256", cid = "bafkr4igk5vxempz2xuxbt6yx7nqxwgtq3k2najjbhz5hkmen3enjjw5tj4" }
 doc = "example-exec.elf, a static x86-64 executable whose _start calls exit (examples/project-formats/build.sh rebuilds it bit for bit)"
 
 [[derivation.input]]
