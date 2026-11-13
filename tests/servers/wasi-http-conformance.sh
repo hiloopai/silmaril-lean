@@ -68,6 +68,13 @@ if [[ -n "${HELLO_WASM:-}" ]]; then
   serve "$HELLO_WASM"
   expect / 200 hello          # helloResp
   expect /anything 200 hello
+  ctype=$(curl -s -o /dev/null -w '%{content_type}' "http://127.0.0.1:$port/")
+  if [[ "$ctype" == text/plain ]]; then
+    echo "ok   / -> content-type $ctype"
+  else
+    echo "FAIL / -> content-type $ctype (expected text/plain)"
+    status=1
+  fi
   stop
 fi
 if [[ -n "${ROUTE_WASM:-}" ]]; then

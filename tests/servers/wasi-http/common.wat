@@ -1,6 +1,8 @@
   ;; Shared part of the example servers (Silmaril.Servers.WasiExamples): imports, memory,
   ;; allocator and `answer`. build.sh wraps it with one server's part in a module.
   (import "wasi:http/types@0.2.12" "[constructor]fields" (func $fields (result i32)))
+  (import "wasi:http/types@0.2.12" "[method]fields.append"
+    (func $fields_append (param i32 i32 i32 i32 i32 i32)))
   (import "wasi:http/types@0.2.12" "[constructor]outgoing-response"
     (func $new_resp (param i32) (result i32)))
   (import "wasi:http/types@0.2.12" "[method]outgoing-response.set-status-code"
@@ -52,10 +54,24 @@
     (if (result i32) (i32.load8_u (global.get $ret))
       (then (i32.const 0)) (else (i32.load (i32.add (global.get $ret) (i32.const 4))))))
 
-  ;; `answer o resp` with status `status` and content at `ptr`, `len`.
-  (func $answer (param $o i32) (param $status i32) (param $ptr i32) (param $len i32)
-    (local $n2 i32) (local $n4 i32) (local $n6 i32)
-    (local.set $n2 (call $new_resp (call $fields)))
+  ;; `answer o resp` with status `status`, the `nh` header lines at `hdrs` (each four i32s:
+  ;; name pointer and length, value pointer and length; `addFields`) and content at `ptr`,
+  ;; `len`.
+  (func $answer (param $o i32) (param $status i32) (param $hdrs i32) (param $nh i32)
+      (param $ptr i32) (param $len i32)
+    (local $n1 i32) (local $n2 i32) (local $n4 i32) (local $n6 i32)
+    (local.set $n1 (call $fields))
+    (block $done
+      (loop $l
+        (br_if $done (i32.eqz (local.get $nh)))
+        (call $fields_append (local.get $n1)
+          (i32.load (local.get $hdrs)) (i32.load offset=4 (local.get $hdrs))
+          (i32.load offset=8 (local.get $hdrs)) (i32.load offset=12 (local.get $hdrs))
+          (global.get $ret))
+        (local.set $hdrs (i32.add (local.get $hdrs) (i32.const 16)))
+        (local.set $nh (i32.sub (local.get $nh) (i32.const 1)))
+        (br $l)))
+    (local.set $n2 (call $new_resp (local.get $n1)))
     (drop (call $set_status (local.get $n2) (local.get $status)))
     (call $resp_body (local.get $n2) (global.get $ret))
     (local.set $n4 (call $ok_handle))
