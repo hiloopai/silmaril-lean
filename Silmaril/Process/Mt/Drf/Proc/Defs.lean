@@ -9,6 +9,12 @@ The multithreaded process model `MtStep` is parametric in its memory system. Thi
 as **open goals** (`Task` definitions, not assumed anywhere), the first two facts the bridge from
 x86-TSO to SC needs; nothing here is proved.
 
+It lives under `Process/Mt/Drf/Proc` beside the generic bridge `Silmaril.Process.Mt.Drf`
+(store-buffer machines over an abstract thread system `Drf.Sys`, with ownership certificates);
+its declarations stay in `Silmaril.Process.Mt` because they extend the process model's types
+(`MtCfg.toTso`, `UOut.Buffered`). Race freedom here is `RaceFree`, so that `Silmaril.Process.Mt.Drf`
+names only the bridge's namespace.
+
 * `EvLocal U`: the access lists of `U`'s plain steps are exact (`MemEvent`'s locality): the
   outcome depends only on the read set, and the step changes exactly the write set. This is
   what lets `tso` run a plain step on the thread's buffered view.
@@ -16,7 +22,7 @@ x86-TSO to SC needs; nothing here is proved.
   has them today for `Open9`, `Atomic9` and `Sse9`, not for the string, FS and narrow forms).
   The instruction fetch must be among the loads: under TSO a thread could otherwise see code
   bytes another thread has not yet flushed.
-* `Race`, `Drf`: in some SC-reachable configuration, two different threads have possible next
+* `Race`, `RaceFree`: in some SC-reachable configuration, two different threads have possible next
   actions that conflict on a byte (one may write it, the other may read or write it), and at
   least one of them is a **buffered** plain step (known access list, not locked or fencing).
   Two synchronising actions (primitive calls, library steps, system calls, locked or fencing
@@ -105,7 +111,7 @@ def Race (U : UIsa γ) (P : PrimTable γ) (C : MtCfg U.St γ sc.S) : Prop :=
     U.step t s C.ms C.g o ∧ U.step u s' C.ms C.g o' ∧ Conflict P r r' o o'
 
 /-- **Data-race freedom** of the process from `C0`, under SC. -/
-def Drf (U : UIsa γ) (P : PrimTable γ) (base : Base γ) (C0 : MtCfg U.St γ sc.S) : Prop :=
+def RaceFree (U : UIsa γ) (P : PrimTable γ) (base : Base γ) (C0 : MtCfg U.St γ sc.S) : Prop :=
   ∀ C, MtReach U sc P base C0 C → ¬ Race U P C
 
 /-- An SC configuration as a TSO one, with empty store buffers. -/
@@ -122,7 +128,7 @@ def MtCfg.ofTso {σ : Type} (C : MtCfg σ γ tso.S) : MtCfg σ γ sc.S := { C wi
 def Task.drfSc : Prop :=
   ∀ {γ : Type} (U : UIsa γ) (P : PrimTable γ) (base : Base γ) (C0 : MtCfg U.St γ sc.S)
     (C : MtCfg U.St γ tso.S),
-    EvLocal U → Drf U P base C0 → MtReach U tso P base C0.toTso C → C.Drained →
+    EvLocal U → RaceFree U P base C0 → MtReach U tso P base C0.toTso C → C.Drained →
       MtReach U sc P base C0 C.ofTso
 
 end Silmaril.Process.Mt
