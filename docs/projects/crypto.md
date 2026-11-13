@@ -75,7 +75,7 @@ dependency. *Done* means kernel-checked published vectors plus the stated theore
 
 | Milestone | Scope | Done when | Depends on |
 | --- | --- | --- | --- |
-| **C1. Hash family** | SHA-224/384/512 (sharing `paddingSHA512`), SHA-3/SHAKE (FIPS 202) | NIST CAVP short/long vectors by `decide +kernel`; `hash_block_length` analogues; level `implemented` in the catalogue | `Word`, `Padding` |
+| **C1. Hash family** | SHA-224/384/512 (sharing `paddingSHA512`), SHA-3/SHAKE (FIPS 202) | NIST CAVP short/long vectors by `decide +kernel`; `hash_block_length` analogues; `implemented` and `vectors` in the catalogue | `Word`, `Padding` |
 | **C2. MACs and KDFs** | HMAC (RFC 2104) generic over a hash, HKDF (RFC 5869), the TLS 1.3 `HKDF-Expand-Label` and `Derive-Secret` (RFC 8446 §7.1), the TLS 1.2 PRF (RFC 5246 §5) | RFC 4231 HMAC vectors, RFC 5869 HKDF vectors, RFC 8448 key-schedule traces; theorem: HMAC block-size padding and key hashing as in RFC 2104 | C1 |
 | **C3. AEAD** | ChaCha20, Poly1305 and the AEAD (RFC 8439), AES-128/256 (FIPS 197), GCM (SP 800-38D), CCM (SP 800-38C), the RFC 5116 interface | RFC 8439 §2 vectors, FIPS 197 App. C, the GCM spec vectors; theorem: `open (seal m) = some m` for every key, nonce and AD (functional round trip), and tag mismatch is rejected | `Word` |
 | **C4. Key exchange** | X25519/X448 (RFC 7748) over Mathlib's `ZMod p`, P-256/384 ECDH (SP 800-56A), ffdhe (RFC 7919), ML-KEM-768 (FIPS 203), the X25519MLKEM768 combiner | RFC 7748 §5.2/§6.1 vectors, CAVP ECDH vectors, FIPS 203 KATs; theorems: the Montgomery ladder computes scalar multiplication on the curve (Mathlib `WeierstrassCurve`/Montgomery form), and ML-KEM decapsulation inverts encapsulation for valid keys (correctness, not security) | Mathlib number theory |
