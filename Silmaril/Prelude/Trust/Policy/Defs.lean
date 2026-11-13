@@ -17,7 +17,11 @@ the pin on every run.
 /-- Kernel bytes: comparisons and the raw-bytes bridge (`Silmaril.Prelude.Bytes.Native`). -/
 trust_set bytes := {bytes.sameBytes, bytes.beq, bytes.wf, bytes.eqByteArray, bytes.cstring}
 
+/-- ELF: the staged layout checker (`Silmaril.Elf`, registered there as `elf.layout`). Naming a
+procedure here before it is registered is harmless: sets hold names. -/
+trust_set elf := {elf.layout}
+
 /-- What the default profile runs natively. -/
-trust_set default := {} includes bytes
+trust_set default := {} includes bytes elf
 
 trust_policy "../../../../policy.toml" pin "0294950de3d882b2"

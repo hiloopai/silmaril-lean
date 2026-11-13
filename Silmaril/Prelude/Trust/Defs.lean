@@ -73,6 +73,9 @@ structure Procedure where
   format : Option Name := none
   /-- The theorem turning `fn … = true` into the fact it decides, if registered. -/
   sound : Option Name := none
+  /-- A separate implementation for native runs and the theorem `@native = @fn` that transfers
+  its result (the paired backend: `fn` is what the kernel and the statement see). -/
+  native : Option (Name × Name) := none
   deriving Inhabited, Repr
 
 /-- The version of the JSON lines `#trust_uses` and `trust_audit` print

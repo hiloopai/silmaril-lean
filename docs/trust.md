@@ -78,6 +78,16 @@ native_decider elf.layoutOk := Silmaril.Elf.Staged.layoutOk with_kernel_fallback
 * To run in the default profile, a procedure must be in the `default` trust set
   (`Silmaril/Prelude/Trust/Policy/Defs.lean`). Adding it is a reviewed change.
 * Modules whose functions a native run executes must be imported with `meta import`.
+* **Paired backends.** When the function the statement uses is slow to compile or run, register
+  a separate native implementation and a theorem `@nativeFn = @fn`:
+  `native_decider elf.layout := layoutOk with_kernel_fallback native layoutOkFast via
+  layoutOkFast_eq`. The statement and the kernel fallback use `fn`. A native run executes
+  `nativeFn` and transfers the result with the theorem. The axiom then states
+  `nativeFn … = true`.
+* **Backend hook for adapters.** `Silmaril.Trust.decideEdge (e : Expr) (proc? : Option Name)
+  : TermElabM Expr` returns a proof of `e = true` under the policy, records the use, and is
+  what `edge_decide` calls. Adapters and format-specific tactics call it instead of reading
+  `procExt`, `allowed` or `recordUse` themselves.
 
 **Format checkers** (`import Silmaril.Prelude.Bytes.Checker.Thms`): one interface for every
 data format (ELF, JSON, CBOR, S-expressions, WAT, …).
@@ -107,11 +117,16 @@ renaming or removing a field bumps the version.
 
 | kind | printed by | fields |
 |---|---|---|
-| `procedure` | `#trust_uses` | `name`, `function`, `kernel_fallback` (bool), `module`, `format` (string or null), `sound` (theorem or null), `doc` |
+| `procedure` | `#trust_uses` | `name`, `function`, `kernel_fallback` (bool), `module`, `format` (string or null), `sound` (theorem or null), `native_function` and `native_eq` (both strings, or both null), `doc` |
 | `use` | `#trust_uses` | `decl`, `module`, `procedure`, `mode` (`native` or `kernel`), `profile` (e.g. `default`, `local≤paranoid` under a ceiling), `axiom` (string or null) |
 | `set` | `#trust_registry` | `name`, `all` (bool), `members`, `includes`, `resolved` (`"all"` or list of names) |
 | `scope` | `#trust_registry` | `module` (prefix), `max`, `default`, `deps`, `axioms` (set names or null when inherited), `policy_file`, `policy_pin` |
 | `audit` | `trust_audit` | `decl`, `module`, `profile`, `own_native`, `dep_native` (procedure names), `native_axioms`, `axioms` (non-native axioms) |
+
+`#trust_dump "path"` writes all four kinds for everything the environment imports, and
+`#trust_roundtrip` re-reads every `procedure` and `use` line with `procOfJson?` and
+`useOfJson?` and fails on any difference. This is a low-level emitter format; a database
+schema should map it explicitly and check `schema` before reading a line.
 
 Native axiom names have the form `<decl>._native.edge.<procedure>.ax_i_j`, with `<decl>`
 possibly `_private.<module>.0.<decl>`. Native runs outside `edge_decide` (plain

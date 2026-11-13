@@ -27,19 +27,56 @@ def evenSum' (n : Nat) : Bool := evenSum n
 /-- A procedure with no kernel fallback. -/
 native_decider test.evenSumNoKernel := Silmaril.Trust.Examples.evenSum'
 
+/-! ### A paired backend: the statement and the kernel see `evenSum`; native runs execute
+`evenSumRec`, and `evenSumRec_eq` transfers the result. -/
+
+/-- `0 + 1 + … + (n - 1)`, by structural recursion. -/
+def sumTo : Nat → Nat
+  | 0 => 0
+  | k + 1 => sumTo k + k
+
+def evenSumRec (n : Nat) : Bool := sumTo n % 2 == 0
+
+theorem foldl_add_range (n : Nat) : (List.range n).foldl (· + ·) 0 = sumTo n := by
+  induction n with
+  | zero => rfl
+  | succ k ih => rw [List.range_succ, List.foldl_append, ih]; rfl
+
+theorem evenSumRec_eq : @evenSumRec = @evenSum := by
+  funext n; simp only [evenSumRec, evenSum, foldl_add_range]
+
+/-- `evenSum`, run natively as `evenSumRec`. -/
+native_decider test.evenSumPaired := Silmaril.Trust.Examples.evenSum with_kernel_fallback
+  native Silmaril.Trust.Examples.evenSumRec via Silmaril.Trust.Examples.evenSumRec_eq
+
+set_option silmaril.trust.profile "local" in
+theorem byPaired : evenSum 100 = true := by edge_decide test.evenSumPaired
+
+-- The paranoid profile checks the same statement with `evenSum` itself in the kernel.
+set_option silmaril.trust.profile "paranoid" in
+theorem byPairedKernel : evenSum 100 = true := by edge_decide test.evenSumPaired
+
+set_option silmaril.trust.profile "local" in
+/--
+info: {"axioms":["propext","Quot.sound"],"decl":"Silmaril.Trust.Examples.byPaired","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1"],"own_native":["test.evenSumPaired"],"profile":"local","schema":"silmaril.trust.v1"}
+{"axioms":[],"decl":"Silmaril.Trust.Examples.byPairedKernel","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"local","schema":"silmaril.trust.v1"}
+-/
+#guard_msgs in
+trust_audit byPaired byPairedKernel
+
 /-- A set naming the toy procedure, usable as a profile. -/
 trust_set toys := {test.evenSum}
 
 -- Default profile: `test.evenSum` is not in `default`, so the kernel checks it.
-theorem byDefault : evenSum 100 = true := by edge_decide
+theorem byDefault : evenSum 100 = true := by edge_decide test.evenSum
 
 -- Local profile: everything in the scope's `max` (here `all`) runs natively.
 set_option silmaril.trust.profile "local" in
-theorem byLocal : evenSum 100 = true := by edge_decide
+theorem byLocal : evenSum 100 = true := by edge_decide test.evenSum
 
 -- A named set as the profile.
 set_option silmaril.trust.profile "toys" in
-theorem byToys : evenSum 100 = true := by edge_decide
+theorem byToys : evenSum 100 = true := by edge_decide test.evenSum
 
 -- A procedure can be named explicitly; it must match the goal's head.
 set_option silmaril.trust.profile "toys" in
@@ -49,7 +86,7 @@ theorem byName : evenSum 100 = true := by edge_decide test.evenSum
 -- in source; scripts/check-layout.sh rejects it anywhere else.)
 set_option silmaril.trust.ceiling "paranoid" in
 set_option silmaril.trust.profile "local" in
-theorem underCeiling : evenSum 100 = true := by edge_decide
+theorem underCeiling : evenSum 100 = true := by edge_decide test.evenSum
 
 /--
 info: {"axioms":[],"decl":"Silmaril.Trust.Examples.underCeiling","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
@@ -69,12 +106,12 @@ error: edge_decide: test.evenSum evaluated to false
 -/
 #guard_msgs in
 set_option silmaril.trust.profile "local" in
-example : evenSum 3 = true := by edge_decide
+example : evenSum 3 = true := by edge_decide test.evenSum
 
 /-- error: edge_decide: unknown trust set nosuchset -/
 #guard_msgs in
 set_option silmaril.trust.profile "nosuchset" in
-example : evenSum 100 = true := by edge_decide
+example : evenSum 100 = true := by edge_decide test.evenSum
 
 /--
 info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byDefault","dep_native":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":[],"own_native":[],"profile":"default","schema":"silmaril.trust.v1"}
@@ -98,8 +135,11 @@ info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byLocal","dep_native":[],"kin
 trust_audit byLocal
 
 /--
-info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSum","schema":"silmaril.trust.v1","sound":null}
-{"doc":"A procedure with no kernel fallback.","format":null,"function":"Silmaril.Trust.Examples.evenSum'","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumNoKernel","schema":"silmaril.trust.v1","sound":null}
+info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSum","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
+{"doc":"A procedure with no kernel fallback.","format":null,"function":"Silmaril.Trust.Examples.evenSum'","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumNoKernel","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
+{"doc":"`evenSum`, run natively as `evenSumRec`.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumPaired","native_eq":"Silmaril.Trust.Examples.evenSumRec_eq","native_function":"Silmaril.Trust.Examples.evenSumRec","schema":"silmaril.trust.v1","sound":null}
+{"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1","decl":"Silmaril.Trust.Examples.byPaired","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSumPaired","profile":"local","schema":"silmaril.trust.v1"}
+{"axiom":null,"decl":"Silmaril.Trust.Examples.byPairedKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSumPaired","profile":"paranoid","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byDefault","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"default","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byLocal._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byLocal","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byToys._native.edge.test.evenSum.ax_1_1","decl":"Silmaril.Trust.Examples.byToys","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSum","profile":"toys","schema":"silmaril.trust.v1"}
@@ -108,5 +148,11 @@ info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.rang
 -/
 #guard_msgs in
 #trust_uses
+
+/--
+info: roundtrip ok: 3 procedures, 7 uses
+-/
+#guard_msgs in
+#trust_roundtrip
 
 end Silmaril.Trust.Examples
