@@ -8,7 +8,7 @@ development-environment checks, but defer the full Lean build until ready.
 
 | Check | Work | Automatic timeout |
 | --- | --- | --- |
-| Lean and native | `make check` on what the diff can change, staged CLI smoke | 15 minutes; 90 on the main publisher |
+| Lean and native | `make check` on what the diff can change, staged CLI smoke | 15 minutes; 90 on the main publisher and on seed dispatches |
 | Nightly | The full `make check` on main | 15 minutes |
 | LPS reality probes | Offline fixtures, 49 native probes, mutation/live tests | 5 minutes |
 | Development environments | Docker and Nix cross-tool smoke, in parallel | 10 minutes each |
