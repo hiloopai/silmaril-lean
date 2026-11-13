@@ -219,8 +219,9 @@ on a zero memory `leaf n 0`.
   number.** Its kernel cost grows with memory size when writes dominate: `updates 200` takes
   97 ms at 64 KiB and 785 ms at 1 MiB. Natively it is the slowest representation apart from
   lists and ropes (279 ms for `scatter 128` at 1 MiB): each store allocates a 1 MiB number.
-- **`KBytes` with path-copying stores (`KPath`) and `PageMem` are the best all-round
-  representations, and perform about the same.** Both are trees of packed 4 KiB pages.
+- **`KBytes` with path-copying stores (`KPath`) and `PageMem` are the strongest
+  all-round representations here, but they are not at parity.** Both are trees of packed
+  4 KiB pages.
   - **Kernel.** Within 15 % of `NatMem` on the dense sort (848 and 846 ms against
     739 ms). At least as fast on scattered access at 1 MiB (1.32 and 1.30 s against
     1.57 s). Much faster on writes at 1 MiB (138 and 39 ms against 785 ms).
@@ -232,7 +233,12 @@ on a zero memory `leaf n 0`.
     canonical-sized, so a fresh memory compares by `canon`/`rfl` like any other `KBytes`.
     `PageMem` needs a power-of-two page count and `PageMem.Wf`.
   - **Write cost.** A `KPath` write costs more where many writes fall in one leaf
-    (`updates` at 64 KiB natively: 9.7 ms), because each one rewrites a 4 KiB number.
+    (`updates` at 64 KiB natively: 9.7 ms against 0.79 ms for `PageMem`), because each one
+    rewrites a 4 KiB number digit by digit.
+  - **Where `PageMem` is ahead.** Kernel `updates` at 1 MiB take 39 ms against 138 ms, and
+    kernel `sharing` at 1 MiB 104 ms against 203 ms.
+  - **Caveat.** These rows come from one run per case, across sessions (see the kernel
+    table). Both remain benchmark baselines.
 - **`KBytes` through its published interface (`KRope`) works, at 2–5× the cost of
   `KPath`.**
   - Every store adds slice nodes, so reads descend deeper over time: `scatter` takes
@@ -257,21 +263,22 @@ on a zero memory `leaf n 0`.
   load reads costs little, except for `NatMem`, whose single number has to be computed in
   full. The native rows have no such effect.
 
-**Recommendation.** Use `Silmaril.KBytes` as the kernel evaluator's memory.
+**Status and recommendation.**
 
-- With the interface frozen, the default store is the rope through `slice`/`++` on a
-  `leaf n 0` zero memory (`KRope`, `kzero1`). It is proved, has no timeouts, and has the
-  cheapest writes and sharing.
-- Where read-heavy loops follow many stores, use the path-copying write on 4 KiB leaves
-  (`KPath`, `kwrite` with `kwrite_spec`). It is about 3× faster on `scatter` and lives in
-  this topic.
-- Memories, files and data segments share one type and one equality check (`canon`,
-  `sameBytes`).
-- `memSimOn_kRope`/`memSimOn_kPath` and `memSim_coreMem` tie both stores to Core's
-  `Memory.load`/`Memory.store`.
-
-Using it inside `runInvokeK` itself needs Core's `Store` to take the memory type as a
-parameter. That is a change to Core's runtime types and is not attempted here.
+- **`KBytes` as the shared memory type.** `memSimOn_kRope`/`memSimOn_kPath` and
+  `memSim_coreMem` tie its stores to Core's `Memory.load`/`Memory.store`. Memories, files
+  and data segments then share one type and one equality check (`canon`, `sameBytes`).
+- **Through the frozen interface.** The store is the rope through `slice`/`++`, on a
+  `leaf n 0` zero memory (`KRope`, `kzero1`). It is proved, did not time out on any
+  workload here, and its write and sharing costs do not grow with memory size. It is not
+  the cheapest on any of them: `Overlay` has cheaper writes and `PageMem` cheaper sharing.
+- **Path-copying write.** `kwrite` with `kwrite_spec` stays in this topic for review. Moving
+  it into `KBytes` is a possible later, small change, after compatibility with the latest
+  core and CI.
+- **Baselines.** `PageMem` stays as a benchmark baseline beside `KPath`, since the
+  measurements do not show parity.
+- **Not in this slice.** Using any of these inside `runInvokeK` needs Core's `Store` to take
+  the memory type as a parameter. That refactor is not part of this change.
 
 ## Limitations
 
