@@ -23,8 +23,12 @@ This slice imports, from `wasi:http/types`:
   (`reqMethod`, `reqPath`);
 * `[method]incoming-request.consume() -> result<incoming-body>` and
   `[method]incoming-body.stream() -> result<input-stream>` (`reqConsume`, `inStream`);
-* `[constructor]fields()` and `[constructor]outgoing-response(headers: headers)` (`newFields`,
-  `newResp`);
+* `[method]incoming-request.headers() -> headers` (`reqHeaders`), and on header fields
+  `[method]fields.get(name: field-name) -> list<field-value>` and `[method]fields.entries() ->
+  list<tuple<field-name, field-value>>` (`fieldsGet`, `fieldsEntries`);
+* `[constructor]fields()`, `[method]fields.append(name: field-name, value: field-value) ->
+  result<_, header-error>` and `[constructor]outgoing-response(headers: headers)` (`newFields`,
+  `fieldsAppend`, `newResp`);
 * `[method]outgoing-response.set-status-code(status-code: u16) -> result` and
   `body() -> result<outgoing-body>` (`setStatus`, `respBody`);
 * `[method]outgoing-body.write() -> result<output-stream>` and `[static]outgoing-body.finish(
@@ -39,7 +43,9 @@ and from `wasi:io/streams` `[method]output-stream.blocking-write-and-flush`,
 `stream-error` has the cases `last-operation-failed` (`0`) and `closed` (`1`)). The names follow
 the unversioned 0.2 convention of `Silmaril.Wasi.Versions.Net`. Values are encoded as in
 `Silmaril.Wasi.Theory`: handles as `u32`, `result` and `option` as variants (`ok`/`none` case
-`0`), strings as records of `char`s, `method` by its WIT case number.
+`0`), strings as records of `char`s (read back as octets by `octet`: a `char` beyond `U+00FF`
+reads as `0xFF`, never as an ASCII octet), `method` by its WIT case number, a `field-value` as
+the record of its `u8`s, a field line as the record of its name and value (`lineV`).
 
 ## Reading a component as an HTTP server
 
@@ -48,14 +54,18 @@ completed call of `handle(r, o)` is read as one atomic exchange (`Silmaril.Serve
 
 * **its response** (`respOf o`): the response passed to `response-outparam.set(o, ok(rh))`,
   with the status of the last accepted `set-status-code` on `rh` (default `200`, as the WIT
-  says) and as content the bytes written through the output streams of the body of `rh`, which
-  must be finished. Only the host's answers are read (`OSt`, `ostep`): a failed or ill-typed
-  answer to one of the response's operations makes the response unobservable (`none`), as does
-  a missing `set` or `finish`. Writes to other streams (stdout, say) are ignored. Header fields
-  are not observed (the response's field section is empty).
-* **its request**: any request consistent with what the host answered on `r`
-  (`ReqOk`): the `method` and `path-with-query` answers on `r` encode the request's method and
-  path. The rest of the request (headers, authority, content) is left open.
+  says), as header section the lines accepted by `fields.append` on the fields `rh` was
+  constructed from, in order, and as content the bytes written through the output streams of
+  the body of `rh`, which must be finished. Only the host's answers are read (`OSt`, `ostep`): a
+  failed or ill-typed answer to one of the response's operations (or to any `fields.append` of
+  the call) makes the response unobservable (`none`), as does a missing `set` or `finish`.
+  **`set` may be called once** (it consumes the outparam): a second `set` of the outparam makes
+  the response unobservable. Writes to other streams (stdout, say) are ignored.
+* **its request**: any request consistent with what the host answered on `r`: the `method`
+  and `path-with-query` answers on `r` encode the request's method and path (`ReqOk`), and the
+  `get` and `entries` answers on the headers taken from `r` are the request's field values for
+  that name (case-insensitively) and its whole header section (`HdrOk`). The rest of the
+  request (authority, content) is left open.
 
 **With request bodies** (`wasiServerB`): the bytes the host delivers by `blocking-read` on the
 input streams of the bodies consumed from `r` (`ISt`, `istep`) are, after every prefix of the
@@ -66,9 +76,17 @@ call, a prefix of the request's content, and all of it once a read answers `clos
 the host). Its traces include every interaction with every host, since the imports of `σ` are
 uninterpreted. A host whose request answers are not those of any request explains no trace.
 
-**Not modelled**: request and response headers, trailers,
-`send-informational`, the rule that `set` may be called once, resource drops other than the
-output stream's, and concurrent export calls (a component body runs one call at a time).
+**Not modelled**: headers added to a response after its construction
+(`outgoing-response.headers`), `fields.set`/`delete`/`from-list`, trailers, `send-informational`,
+resource drops other than the output stream's, and concurrent export calls (a component body
+runs one call at a time).
+
+## Linked systems
+
+`linkServer η σ` is the server read from the system `Silmaril.Wasi.link η σ` of the component
+`σ` over a host `η`: the exchanges of the component's calls in the plays that take part in the
+link. It refines `wasiServer σ` (`Silmaril.Servers.WasiHttp.Thms`), so every specification
+proved of `wasiServer σ` holds over every host.
 
 A Silmaril addition.
 -/
@@ -103,6 +121,15 @@ def bodyFinish : FnName := ⟨"wasi:http/types", "[static]outgoing-body.finish"�
 /-- `wasi:http/types.[static]response-outparam.set`. -/
 def outSet : FnName := ⟨"wasi:http/types", "[static]response-outparam.set"⟩
 
+/-- `wasi:http/types.[method]incoming-request.headers`. -/
+def reqHeaders : FnName := ⟨"wasi:http/types", "[method]incoming-request.headers"⟩
+/-- `wasi:http/types.[method]fields.get`. -/
+def fieldsGet : FnName := ⟨"wasi:http/types", "[method]fields.get"⟩
+/-- `wasi:http/types.[method]fields.entries`. -/
+def fieldsEntries : FnName := ⟨"wasi:http/types", "[method]fields.entries"⟩
+/-- `wasi:http/types.[method]fields.append`. -/
+def fieldsAppend : FnName := ⟨"wasi:http/types", "[method]fields.append"⟩
+
 /-- `wasi:http/types.[method]incoming-request.consume`. -/
 def reqConsume : FnName := ⟨"wasi:http/types", "[method]incoming-request.consume"⟩
 /-- `wasi:http/types.[method]incoming-body.stream` (the WIT name is `%stream`). -/
@@ -113,7 +140,8 @@ def inRead : FnName := ⟨"wasi:io/streams", "[method]input-stream.blocking-read
 /-- The imports of this slice, as a list. -/
 def proxyList : List FnName :=
   [reqMethod, reqPath, newFields, newResp, setStatus, respBody, bodyWrite, bodyFinish, outSet,
-    streamWrite, streamDrop, reqConsume, inStream, inRead]
+    streamWrite, streamDrop, reqConsume, inStream, inRead, reqHeaders, fieldsGet, fieldsEntries,
+    fieldsAppend]
 
 /-- The imports of this slice. -/
 def proxyImports : Set FnName := {f | f ∈ proxyList}
@@ -136,14 +164,32 @@ def methodV : Method → Val
   | .patch => .variant 8 none
   | .other t => .variant 9 (some (.record (t.map fun b => .char (Char.ofNat b.toNat))))
 
-/-- An `option<string>` of octets (each octet a `char`). -/
+/-- A `string` of octets (each octet a `char`). -/
+def strV (p : List UInt8) : Val := .record (p.map fun b => .char (Char.ofNat b.toNat))
+
+/-- An `option<string>` of octets. -/
 def pathV : Option (List UInt8) → Val
   | none => .variant 0 none
-  | some p => .variant 1 (some (.record (p.map fun b => .char (Char.ofNat b.toNat))))
+  | some p => .variant 1 (some (strV p))
+
+/-- The octet of a `char`: itself up to `U+00FF`, else `0xFF` (not an ASCII octet). -/
+def octet (c : Char) : UInt8 := if c.toNat < 256 then c.toNat.toUInt8 else 255
 
 /-- The octets of the `char`s of a string (other values are skipped). -/
 def octetsOf (cs : List Val) : List UInt8 :=
-  cs.filterMap fun | .char c => some c.toNat.toUInt8 | _ => none
+  cs.filterMap fun | .char c => some (octet c) | _ => none
+
+/-- A `field-value` (or any `list<u8>`) of octets. -/
+def octV (v : List UInt8) : Val := bytesV (v.map UInt8.toBitVec)
+
+/-- A field line: the tuple of its name and value. -/
+def lineV (l : Silmaril.Net.Http.Field.Line) : Val := .record [strV l.name, octV l.value]
+
+/-- A header section: the list of its lines. -/
+def sectionV (s : Silmaril.Net.Http.Field.Section) : Val := .record (s.map lineV)
+
+/-- A `list<field-value>`. -/
+def valuesV (vs : List (List UInt8)) : Val := .record (vs.map octV)
 
 /-- The path read from an answer of `path-with-query`. -/
 def pathOf : Option (List Val) → Option (List UInt8)
@@ -187,10 +233,26 @@ structure OSt where
   fin : List (BitVec 32) := []
   /-- The outgoing response set for the call's outparam. -/
   set : Option (BitVec 32) := none
+  /-- The lines appended to each fields resource. -/
+  fields : List (BitVec 32 × Silmaril.Net.Http.Field.Section) := []
+  /-- The fields each outgoing response was constructed from. -/
+  hdr : List (BitVec 32 × BitVec 32) := []
 
 /-- An answer of `set-status-code`. -/
 def oStatus (st : OSt) : List Val → Option (List Val) → Option OSt
   | [.u32 rh, .u16 s], some [.variant 0 none] => some { st with status := (rh, s) :: st.status }
+  | _, _ => none
+
+/-- An answer of `[constructor]outgoing-response`. -/
+def oNew (st : OSt) : List Val → Option (List Val) → Option OSt
+  | [.u32 fh], some [.u32 rh] => some { st with hdr := (rh, fh) :: st.hdr }
+  | _, _ => none
+
+/-- An answer of `fields.append`. -/
+def oAppend (st : OSt) : List Val → Option (List Val) → Option OSt
+  | [.u32 fh, .record cs, v], some [.variant 0 none] =>
+    some { st with fields := (fh, ((look fh st.fields).getD []).append (octetsOf cs)
+      ((bytesOf v).map UInt8.ofBitVec)) :: st.fields }
   | _, _ => none
 
 /-- An answer of `outgoing-response.body`. -/
@@ -222,10 +284,11 @@ def oFinish (st : OSt) : List Val → Option (List Val) → Option OSt
   | [.u32 b, _], some [.variant 0 none] => some { st with fin := b :: st.fin }
   | _, _ => none
 
-/-- An answer of `response-outparam.set`, for the outparam `o`. -/
+/-- An answer of `response-outparam.set`, for the outparam `o`: the outparam is consumed, so a
+second `set` of it fails. -/
 def oSet (o : BitVec 32) (st : OSt) : List Val → Option (List Val) → Option OSt
   | [.u32 o', .variant 0 (some (.u32 rh))], some [] =>
-    if o' = o then some { st with set := some rh } else some st
+    if o' = o then (if st.set.isSome then none else some { st with set := some rh }) else some st
   | _, _ => none
 
 /-- One answer of a call whose outparam is `o` (`none`: the response failed). -/
@@ -237,6 +300,8 @@ def ostep (o : BitVec 32) (st : OSt) : WEv → Option OSt
     else if f = streamWrite then oStream st a r
     else if f = bodyFinish then oFinish st a r
     else if f = outSet then oSet o st a r
+    else if f = newResp then oNew st a r
+    else if f = fieldsAppend then oAppend st a r
     else some st
   | .req _ _ => some st
   | .call _ _ => some st
@@ -251,8 +316,9 @@ def OSt.resp (st : OSt) : Option Response :=
     | none => none
     | some b =>
       if st.fin.contains b then
-        some (Response.simple ((look rh st.status).getD 200).toNat
-          (((look b st.bytes).getD []).map UInt8.ofBitVec))
+        some ⟨((look rh st.status).getD 200).toNat,
+          ((look rh st.hdr).bind fun fh => look fh st.fields).getD [],
+          ((look b st.bytes).getD []).map UInt8.ofBitVec, []⟩
       else none
 
 /-- **The response of a call** whose outparam is `o`, from the events of the call. -/
@@ -268,6 +334,26 @@ def ReqOk (q : Request) (r : BitVec 32) : WEv → Prop
       (f = reqPath → res = some [pathV q.target.pathWithQuery])
   | _ => True
 
+/-- The headers resources answered by `headers()` on the request handle `r`. -/
+def reqHs (r : BitVec 32) (v : List WEv) : List (BitVec 32) :=
+  v.filterMap fun
+    | .imp f [.u32 r'] (some [.u32 h]) => if f = reqHeaders ∧ r' = r then some h else none
+    | _ => none
+
+/-- An answer consistent with the header section of the request `q`, on the headers
+resources `hs` of the request. -/
+def HdrAns (q : Request) (hs : List (BitVec 32)) : WEv → Prop
+  | .imp f (.u32 h :: a) res =>
+    h ∈ hs → (f = fieldsGet → ∀ cs, a = [.record cs] →
+        res = some [valuesV (q.headers.values (octetsOf cs))]) ∧
+      (f = fieldsEntries → a = [] → res = some [sectionV q.headers])
+  | _ => True
+
+/-- The header answers of a call on the request handle `r` are consistent with the request
+`q`: each answer, given the headers resources taken from `r` before it. -/
+def HdrOk (q : Request) (r : BitVec 32) (u : List WEv) : Prop :=
+  ∀ v e w, u = v ++ e :: w → HdrAns q (reqHs r v) e
+
 /-! ## Components as HTTP servers -/
 
 /-- HTTP requests and responses (`Silmaril.Net.Http`). -/
@@ -279,7 +365,7 @@ def answered (c : Call) : Bool := c.fn == handleF && (respOf (outOf c.args) c.in
 /-- The exchange of a call of `handle(r, o)`. -/
 def Obs (c : Call) (x : Exch httpIface) : Prop :=
   c.fn = handleF ∧ (∀ e ∈ c.inner, ReqOk x.1 (reqOf c.args) e) ∧
-    respOf (outOf c.args) c.inner = some x.2
+    HdrOk x.1 (reqOf c.args) c.inner ∧ respOf (outOf c.args) c.inner = some x.2
 
 /-- **A proxy component read as an HTTP server.** -/
 def wasiServer {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) :
@@ -356,13 +442,21 @@ def isReadAns : WEv → Bool
 def handleQ : (nsig proxyWorld.exports).Op := (⟨handleF, rfl⟩, [.u32 0, .u32 1])
 
 /-- **A reference host** serving the request `q` on the request handle `0`: the getters answer
-from `q`, constructors, `consume`, `stream`, `body` and `write` answer fresh handles, the first
+from `q` (`get` and `entries` from its header section, on any fields), constructors,
+`headers`, `consume`, `stream`, `body` and `write` answer fresh handles, the first
 `blocking-read` delivers the whole content and later ones answer `closed`, and the other
 operations succeed. -/
-def refHost (q : Request) : Impl := fun past f _ =>
+def refHost (q : Request) : Impl := fun past f a =>
   if f = reqMethod then some [methodV q.method]
   else if f = reqPath then some [pathV q.target.pathWithQuery]
-  else if f = newFields ∨ f = newResp then some [.u32 (BitVec.ofNat 32 (past.length + 2))]
+  else if f = fieldsGet then
+    match a with
+    | [_, .record cs] => some [valuesV (q.headers.values (octetsOf cs))]
+    | _ => none
+  else if f = fieldsEntries then some [sectionV q.headers]
+  else if f = fieldsAppend then some [okV none]
+  else if f = newFields ∨ f = newResp ∨ f = reqHeaders then
+    some [.u32 (BitVec.ofNat 32 (past.length + 2))]
   else if f = respBody ∨ f = bodyWrite then some [okV (some (.u32 (BitVec.ofNat 32 (past.length + 2))))]
   else if f = setStatus ∨ f = streamWrite ∨ f = bodyFinish then some [okV none]
   else if f = streamDrop ∨ f = outSet then some []
@@ -376,6 +470,30 @@ def refHost (q : Request) : Impl := fun past f _ =>
 /-- The response of the body `h` to the request `q` over the reference host. -/
 def serveRef (h : Body proxyImports proxyWorld.exports) (q : Request) : Option Response :=
   respOf 1 (runP (refHost q) [] (h handleQ)).1
+
+/-! ## Linked systems -/
+
+/-- **The server of a linked system**: the exchanges of the component's calls in the plays of
+`σ` that interact with a play of the host `η` (the plays behind `link η σ`). -/
+def linkServer {Y : Silmaril.Games.Sig.{0}} {X : Set FnName} (η : Host Y proxyImports)
+    (σ : Strategy (nsig proxyImports) (nsig X)) : Exchange.Model httpIface :=
+  {t | ∃ s ∈ η, ∃ u ∈ σ, ∃ p, Zip s u p ∧
+    List.Forall₂ Obs ((calls (wtrace u)).filter answered) t}
+
+/-- The server of a linked system, reading request bodies. -/
+def linkServerB {Y : Silmaril.Games.Sig.{0}} {X : Set FnName} (η : Host Y proxyImports)
+    (σ : Strategy (nsig proxyImports) (nsig X)) : Exchange.Model httpIface :=
+  {t | ∃ s ∈ η, ∃ u ∈ σ, ∃ p, Zip s u p ∧
+    List.Forall₂ ObsB ((calls (wtrace u)).filter answered) t}
+
+/-! ## Binaries -/
+
+/-- **The strategy `σ` runs the body `h`**: every play of `σ` is a play of `ofBody h`. A
+component binary whose denotation `σ` runs `h` inherits every specification proved of `h`
+(`Silmaril.Servers.WasiHttp.Thms`). -/
+def Runs {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X))
+    (h : Body proxyImports X) : Prop :=
+  ∀ s ∈ σ, s ∈ ofBody h
 
 /-- A `GET` request for an authority and a path-with-query, with no fields or content. -/
 def getAt (authority path : Option (List UInt8)) : Request :=

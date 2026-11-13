@@ -48,11 +48,43 @@ theorem mem_model_single {J : Iface} {T : WEv → Prop} {ans : Call → Bool}
     [x] ∈ model T ans obs (ofBody h) :=
   Proofs.Servers.Calls.mem_model_single hl hT ha hx
 
+/-- **A complete run is a play** of `ofBody h`, whose only completed call is the run. -/
+theorem exists_play {q : (nsig X).Op} {u : List WEv} {r : Option (List Silmaril.Wasm.Component.Val)}
+    (hl : Leads (h q) u (.pure r)) :
+    ∃ s ∈ ofBody h, calls (wtrace s) = [⟨q.1.1, q.2, u, r⟩] ∧
+      wtrace s = Call.events ⟨q.1.1, q.2, u, r⟩ :=
+  Proofs.Servers.Calls.exists_play hl
+
 /-- A run over a concrete host is a run. -/
 theorem leads_runP (impl : Impl) (past : List WEv) (p : BProg I) :
     Leads p (runP impl past p).1 (.pure (runP impl past p).2) := by
   induction p generalizing past with
   | pure r => exact .refl _
   | call m k ih => exact .call m k _ (ih _ _)
+
+/-- Answering one more call by the implementation keeps following it. -/
+theorem follows_snoc {impl : Impl} {past : List WEv} (hp : Follows impl past) (f : FnName)
+    (a : List Silmaril.Wasm.Component.Val) :
+    Follows impl (past ++ [.imp f a (impl past f a)]) := by
+  intro p g b r hpr
+  rcases List.prefix_concat_iff.1 hpr with he | hp'
+  · obtain ⟨rfl, he⟩ := List.append_inj' he rfl
+    obtain ⟨rfl, rfl, rfl⟩ := WEv.imp.inj (List.cons.inj he).1
+    rfl
+  · exact hp p g b r hp'
+
+/-- **The answers of a run over a concrete host follow its implementation.** -/
+theorem follows_runP (impl : Impl) (p : BProg I) :
+    ∀ past, Follows impl past → Follows impl (past ++ hostView (runP impl past p).1) := by
+  induction p with
+  | pure r => intro past hp; simpa [runP, hostView] using hp
+  | call m k ih =>
+    intro past hp
+    have h := ih (impl past m.1.1 m.2) _ (follows_snoc hp m.1.1 m.2)
+    simpa [runP, hostView, WEv.isImp, List.filter_cons] using h
+
+/-- The host view of a completed call is that of its inner events. -/
+theorem hostView_events (c : Call) : hostView c.events = hostView c.inner := by
+  simp [hostView, Call.events, List.filter_append, WEv.isImp]
 
 end Silmaril.Servers.Calls
