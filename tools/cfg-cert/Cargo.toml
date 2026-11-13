@@ -1,0 +1,17 @@
+[package]
+name = "cfg-cert"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+license = "MIT"
+description = "Emit a CFG and call-graph certificate (Silmaril.Elf.Effects.Cert) of the code reached from an entry of an x86-64 ELF file, as Lean data."
+
+[[bin]]
+name = "cfg-cert"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"

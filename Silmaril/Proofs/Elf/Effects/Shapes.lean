@@ -81,4 +81,21 @@ theorem foreignCalls {J : UMach σ} {D : FlowDec} {X : Value V} {loc : Loc} {P :
     simp only [importsOf, List.mem_filterMap]
     exact ⟨_, reach_sub h hr, rfl⟩
 
+theorem syscallSet_of_imports {J : UMach σ} {D : FlowDec} {X : Value V} {loc : Loc} {P : Cert}
+    {esc : List Nat} {v : Nat} {L : List Node} (h : CertOk D X loc P esc v L) {summ : Summ}
+    {S : List Nat} (hnodes : L.all (directOk S) = true)
+    (himp : ∀ r ∈ importsOf L, ∃ ns, summ.lookup r = some ns ∧ ∀ n ∈ ns, n ∈ S) :
+    SyscallSet J D X loc P esc summ S := by
+  refine syscalls (callGraphSub h) fun w hw n hn => ?_
+  obtain rfl := h.at_ w hw
+  have hm := reach_sub h hn
+  simp only [List.all_eq_true] at hnodes
+  have hd := hnodes n hm
+  cases n with
+  | fn => trivial
+  | ext r => exact himp r (by simp only [importsOf, List.mem_filterMap]; exact ⟨_, hm, rfl⟩)
+  | sys k => show k ∈ S; simpa [directOk] using hd
+  | sysAny => simp [directOk] at hd
+  | unresolved => simp [directOk] at hd
+
 end Silmaril.Proofs.Elf.Effects.Shapes

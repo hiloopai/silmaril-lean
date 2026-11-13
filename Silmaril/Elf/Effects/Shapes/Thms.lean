@@ -17,6 +17,8 @@ A row proves `CertOk D X loc P esc v L` (by `decide`, plus a `CodeAt` row per bl
   (`Node.okB` with the import summaries `summ`);
 * `noSpawn_of_callGraph`, `syscallSet_of_callGraph`: the same from `CallGraphSub` and a
   statement on the reachable nodes;
+* `syscallSet_of_imports`: a system-call set from the reachable direct system calls and the
+  summaries of the reachable imports;
 * `syscallSet_mono`: a larger set.
 
 Every shape is over every admissible world (`Admissible`), whose flow law, kernel, library,
@@ -84,6 +86,15 @@ theorem foreignCalls_of_cert {J : UMach σ} {D : FlowDec} {X : Value V} {loc : L
     {esc : List Nat} {v : Nat} {L : List Node} (h : CertOk D X loc P esc v L) :
     ForeignCalls J D X loc P esc (importsOf L) :=
   Silmaril.Proofs.Elf.Effects.Shapes.foreignCalls h
+
+/-- **A system-call set from the graph and the import summaries**: the direct system calls of
+the reachable nodes are in `S`, and every reachable import has a summary within `S`. -/
+theorem syscallSet_of_imports {J : UMach σ} {D : FlowDec} {X : Value V} {loc : Loc} {P : Cert}
+    {esc : List Nat} {v : Nat} {L : List Node} (h : CertOk D X loc P esc v L) {summ : Summ}
+    {S : List Nat} (hnodes : L.all (directOk S) = true)
+    (himp : ∀ r ∈ importsOf L, ∃ ns, summ.lookup r = some ns ∧ ∀ n ∈ ns, n ∈ S) :
+    SyscallSet J D X loc P esc summ S :=
+  Silmaril.Proofs.Elf.Effects.Shapes.syscallSet_of_imports h hnodes himp
 
 /-- **A larger set.** -/
 theorem syscallSet_mono {J : UMach σ} {D : FlowDec} {X : Value V} {loc : Loc} {P : Cert}

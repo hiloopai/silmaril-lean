@@ -149,4 +149,11 @@ structure CertOk {V : Type} (D : FlowDec) (X : Value V) (loc : Loc) (P : Cert) (
 /-- The imports of a listed node set. -/
 def importsOf (L : List Node) : List Ref := L.filterMap fun | .ext r => some r | _ => none
 
+/-- A node's own system calls are in `S`: a known number in `S`; never `sysAny` or `unresolved`
+(imports are judged by their summaries). -/
+def directOk (S : List Nat) : Node → Bool
+  | .sys k => S.contains k
+  | .sysAny | .unresolved => false
+  | _ => true
+
 end Silmaril.Elf.Effects.Shapes
