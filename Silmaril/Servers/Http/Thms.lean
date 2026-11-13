@@ -6,6 +6,11 @@ public import Silmaril.Servers.Core.Thms
 /-!
 # HTTP interfaces: theorems
 
+* The views `status`, `path` and `final` see every response (`status_resp_surjective`,
+  `path_resp_surjective`, `final_resp_surjective`), so linearizability translates along them;
+  for example, a server's status codes are linearizable exactly when the server is
+  linearizable for the specification read on status codes (`sat_lin_status`).
+
 * The stateless origin of a web is the stateless machine of its answer
   (`Http.machine_ofTargets`), so on well-formed traces its trace sentence is the web's atomic
   sentence (`Http.originSen_ofTargets_iff`), and its atomic-handler server has exactly the
@@ -53,5 +58,23 @@ theorem store_sat (S₀ : Store) : ((machine storeOrigin).server S₀).Sat (orig
 theorem sen_allStatus (c : Status) :
     status.sen (allStatus c) = Sen.atomic fun (_ : Request) (s : Response) => s.status = c :=
   Hom.sen_atomic (A := statusSig) (B := sig) status _
+
+/-- The coarser HTTP views see every response, so linearizability translates along them
+(`Hom.sen_lin`). -/
+theorem status_resp_surjective : Function.Surjective (status : Hom statusSig sig).resp :=
+  fun c => ⟨Response.simple c [], rfl⟩
+
+theorem path_resp_surjective : Function.Surjective (path : Hom pathSig sig).resp :=
+  fun s => ⟨s, rfl⟩
+
+theorem final_resp_surjective : Function.Surjective (final : Hom sig exchSig).resp :=
+  fun s => ⟨([], s), rfl⟩
+
+/-- **A server's status codes are linearizable for `S` exactly when the server is linearizable
+for `S` read on status codes.** -/
+theorem sat_lin_status {M : Model sig} {S : SeqSpec statusSig} :
+    M.Sat (Sen.lin (Hom.seq (A := statusSig) (B := sig) status S)) ↔
+      (Hom.mod (A := statusSig) (B := sig) status M).Sat (Sen.lin S) :=
+  Hom.sat_lin_iff (A := statusSig) (B := sig) status status_resp_surjective
 
 end Silmaril.Servers.Http
