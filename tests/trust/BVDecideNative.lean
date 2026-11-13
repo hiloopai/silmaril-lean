@@ -106,6 +106,26 @@ meta def unverified (decl : Lean.Name) : Lean.CoreM Bool := do
   let (_, violations) ← auditLine decl
   return violations.any (·.startsWith "unverified native axiom")
 
+/-- For `decl`'s native axioms: the expression and certificate they evaluate, checked as
+`bv_decide_policy` checks them (against an empty "before" environment, so only the shape
+and types are tested here), and whether the proof uses each through the soundness lemma. -/
+meta def argsOk (decl : Lean.Name) : Lean.MetaM (List Bool) := do
+  let some info := (← Lean.getEnv).find? decl | return []
+  let some proof := info.value? (allowOpaque := true) | return []
+  let axs := (← Lean.collectAxioms decl).filter isBvDecideNativeAxiom
+  axs.toList.mapM fun a => do
+    match ← invocationArgs? (← Lean.mkEmptyEnvironment) a with
+    | some (e, c) => return usesSoundness proof e c a
+    | none => return false
+
+/-- info: [true] -/
+#guard_msgs in
+#eval argsOk ``sat
+
+/-- info: [false] -/
+#guard_msgs in
+#eval argsOk ``usesWrong
+
 /-- info: (true, true, false) -/
 #guard_msgs in
 set_option silmaril.trust.profile "local" in

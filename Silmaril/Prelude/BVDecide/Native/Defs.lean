@@ -23,8 +23,10 @@ It registers the native procedure `lean.std.bv_decide.verifyBVExpr` and defines
    not in the `default` set) fail on them.
 3. **Provenance.** After a native run, every axiom of the proof outside the standard
    three must be new (absent before this invocation), have the `bv_decide` native name
-   shape, and state exactly one closed `verifyBVExpr e cert = true`
-   (`isBvDecideNativeStatement`). Each one is recorded with `mode := .native`.
+   shape, and state exactly `verifyBVExpr e cert = true` where `e : BVLogicalExpr` and
+   `cert : String` are definitions this invocation created (`invocationArgs?`), and the proof
+   must use it through `unsat_of_verifyBVExpr_eq_true e cert` (`usesSoundness`). Only then is
+   each recorded with `mode := .native`.
    Anything else fails the tactic.
 
 The registration is a description for audits; it authorizes nothing by itself.
@@ -82,6 +84,30 @@ def registrationProblem : CoreM (Option String) := do
     return some s!"running Lean {Lean.githash}, reviewed {registeredGithash}"
   return none
 
+/-- For a native axiom `ax` added by one `bv_decide` run: its statement must be exactly
+`verifyBVExpr e c = true` where `e : BVLogicalExpr` and `c : String` are definitions that
+did not exist in `before` (the reflected goal and the certificate this run created). Returns
+`(e, c)`. -/
+def invocationArgs? (before : Environment) (ax : Name) : MetaM (Option (Name × Name)) := do
+  unless (← isBvDecideNativeStatement ax) do return none
+  let some (.axiomInfo info) := (← getEnv).find? ax | return none
+  let_expr Eq _ lhs _ := info.type | return none
+  let #[.const e [], .const c []] := lhs.getAppArgs | return none
+  if before.contains e || before.contains c then return none
+  let env ← getEnv
+  let some (.defnInfo de) := env.find? e | return none
+  let some (.defnInfo dc) := env.find? c | return none
+  unless de.type.isConstOf ``Std.Tactic.BVDecide.BVLogicalExpr && dc.type.isConstOf ``String do
+    return none
+  return some (e, c)
+
+/-- Whether `proof` applies `nativeSoundnessConst` to exactly `e`, `c` and the axiom `ax`, so
+the axiom is used for the goal this run reflected. -/
+def usesSoundness (proof : Expr) (e c ax : Name) : Bool :=
+  (proof.find? fun t =>
+    t.isAppOfArity nativeSoundnessConst 3 &&
+    t.getAppArgs == #[.const e [], .const c [], .const ax []]).isSome
+
 /--
 `bv_decide_policy` proves a goal by `bv_normalize` alone when it can (recorded as a kernel
 use), and otherwise by native `bv_decide` only where the trust policy allows
@@ -115,10 +141,15 @@ syntax (name := bvDecidePolicy) "bv_decide_policy" Lean.Parser.Tactic.optConfig 
     if proof.hasSorry then throwError "bv_decide_policy: the proof contains `sorry`"
     let axs ← nonstandardAxioms proof
     if axs.isEmpty then throwError "bv_decide_policy: expected a native axiom, found none"
+    -- Every check happens before any use is recorded.
     for ax in axs do
-      unless isBvDecideNativeAxiom ax && !before.contains ax && (← isBvDecideNativeStatement ax) do
-        throwError "bv_decide_policy: axiom {ax} is not a native evaluation of \
-          {nativeEvaluatedConst} added by this invocation"
+      unless isBvDecideNativeAxiom ax && !before.contains ax do
+        throwError "bv_decide_policy: axiom {ax} is not a native axiom added by this invocation"
+      let some (e, c) ← invocationArgs? before ax
+        | throwError "bv_decide_policy: axiom {ax} does not state `{nativeEvaluatedConst} e c = true` \
+            for the expression and certificate this invocation created"
+      unless usesSoundness proof e c ax do
+        throwError "bv_decide_policy: the proof does not use {ax} through {nativeSoundnessConst}"
     for ax in axs do use .native (some ax)
     replaceMainGoal []
 
