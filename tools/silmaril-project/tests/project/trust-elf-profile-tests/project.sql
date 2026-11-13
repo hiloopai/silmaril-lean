@@ -363,7 +363,7 @@ INSERT INTO meta(key, value) VALUES('trust.policy_pin', '0294950de3d882b2');
 INSERT INTO meta(key, value) VALUES('trust.producer', 'silmaril-project 0.1.0 trust-dump (core stable hooks)');
 INSERT INTO meta(key, value) VALUES('trust.profile', 'default');
 INSERT INTO meta(key, value) VALUES('trust.roots', 'Silmaril.Elf.Staged');
-INSERT INTO meta(key, value) VALUES('trust.sha256', 'efe2198fa695e0611df45d9636962f410b58acc4b1e36e2275ebd9299d5038a7');
+INSERT INTO meta(key, value) VALUES('trust.sha256', '21a9cdbccefec87ef108e32fbca6f7c018b404a48782fc2dd89d0b53833c72fa');
 INSERT INTO meta(key, value) VALUES('trust.status', 'present');
 INSERT INTO meta(key, value) VALUES('trust.toolchain', '4.37.0-nightly-2026-11-05');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
@@ -425,7 +425,7 @@ INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness,
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Defs', 'Silmaril/Elf/Staged/Defs.lean', '8dffcb2284d96980b29808c0caca5adb5f32acf707d1217c532fe854f8b6c0df', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Bytes', 'Silmaril/Elf/Staged/Example/Bytes.lean', '3049c37fe01fa3febe36370a378d3c3ac811f52efd8ad138eea613ec335a47d0', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Defs', 'Silmaril/Elf/Staged/Example/Defs.lean', '610921955c44d76c965c8a52405b5616dc23e35c375b778647e9c7e794b860e7', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Profiles', 'Silmaril/Elf/Staged/Example/Profiles.lean', '085b6ac79e01320a64d404ea1e2c40d6c8917c40f0ad09e0f71ab8433a7ae533', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Profiles', 'Silmaril/Elf/Staged/Example/Profiles.lean', '6fca0d810af71eefbbf9557140afc0267edf0cf13c3ee8287b7729f52072318f', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril/Elf/Staged/Example/Thms.lean', 'e4ebbd3fe65a850587300d15e5c32661cd036c5495816e2c4fce6fc96f0f7eac', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Leaf.Defs', 'Silmaril/Elf/Staged/Leaf/Defs.lean', '0ce35c06d423e0288a46fa60cacae74cd4d473c900b4e8497351668b2f33d6b2', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Leaf.Thms', 'Silmaril/Elf/Staged/Leaf/Thms.lean', 'bf257974c0c2a25bf085426665f841fd05e4bec4b1cf98c02eeb32fa3939dfdb', 'missing', 'stale', 'covered', 'Silmaril', NULL);

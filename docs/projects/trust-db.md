@@ -15,7 +15,7 @@ does not define a policy of its own. It does three things:
   violations, and fails when they differ from the core's;
 - it reports coverage, digests and enforcement honestly.
 
-Refs used: core #125 at `3c731fc1`, ELF #127 at `60bf9e14` (which merges #125 at `6d5b5254`).
+Refs used: core #125 at `3c731fc1`, ELF #127 at `449a063e` (which merges #125 at `3c731fc1`).
 
 ## What a result means, and does not
 
@@ -188,8 +188,8 @@ digests read `missing` and the modules `stale`.
 |---|---|---|---|
 | `trust-core-bytes` | #125 `3c731fc1` | `Prelude.Bytes.Examples`, `Data.IncludeBytes.KernelExamples`, `Data.IncludeBytes.KernelImportExamples`, `Prelude.Bytes.Checker.Thms` | 21 modules, 551 declarations, 5 uses (3 native), **0 violations**; strict passes in the build package |
 | `trust-core-profile-tests` | #125 `3c731fc1` | `Prelude.Trust.Examples` | **7 violations** (6 native runs outside `default`, 1 unverified native axiom), as the core's audit lists them |
-| `trust-elf-staged` | #127 `60bf9e14` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
-| `trust-elf-profile-tests` | #127 `60bf9e14` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
+| `trust-elf-staged` | #127 `449a063e` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
+| `trust-elf-profile-tests` | #127 `449a063e` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
 
 ### Fixtures (hand-written, origin `fixture`)
 

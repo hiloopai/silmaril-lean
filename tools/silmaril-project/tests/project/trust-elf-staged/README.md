@@ -5,9 +5,9 @@ hooks.
 
 Provenance:
 
-- Branch: #127 (`elf/staged-trust`) at `60bf9e14`, which merges core #125 at `6d5b5254`. The ELF
+- Branch: #127 (`elf/staged-trust`) at `449a063e`, which merges core #125 at `3c731fc1` (the same core as the bytes cases). The ELF
   leaves are declared with `ProcDecl`/`sil_check`.
-- Build: a checkout of `60bf9e14`, with dependencies (Mathlib) restored read-only from the
+- Build: a checkout of `449a063e`, with dependencies (Mathlib) restored read-only from the
   repository's shared Lake cache.
 - Command: `sil project trust-dump --module Silmaril.Elf.Staged.Example.Thms --root Silmaril.Elf.Staged`.
 - Roots: only `Silmaril.Elf.Staged.*` is described and audited. Other modules are `external`, but

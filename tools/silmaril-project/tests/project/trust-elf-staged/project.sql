@@ -363,7 +363,7 @@ INSERT INTO meta(key, value) VALUES('trust.policy_pin', '0294950de3d882b2');
 INSERT INTO meta(key, value) VALUES('trust.producer', 'silmaril-project 0.1.0 trust-dump (core stable hooks)');
 INSERT INTO meta(key, value) VALUES('trust.profile', 'default');
 INSERT INTO meta(key, value) VALUES('trust.roots', 'Silmaril.Elf.Staged');
-INSERT INTO meta(key, value) VALUES('trust.sha256', 'ab9d1bd815efdd6238d8f16184303c6b6f6194c901f5c60884df64b19c58b1cd');
+INSERT INTO meta(key, value) VALUES('trust.sha256', '16c09c563a5b806732b00836459f57f728a30ca7eeca685634174b0df7010447');
 INSERT INTO meta(key, value) VALUES('trust.status', 'present');
 INSERT INTO meta(key, value) VALUES('trust.toolchain', '4.37.0-nightly-2026-11-05');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
