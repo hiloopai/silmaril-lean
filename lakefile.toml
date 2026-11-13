@@ -144,7 +144,9 @@ globs = [
   "Silmaril.Wasm.Unified.+", "Silmaril.Wasm.Wasmi.+", "Silmaril.Wasm.WatSpec.+",
   # The Cerberus C semantics and the compiler machinery over it (docs/projects/cerberus.md).
   "Silmaril.Cerberus.+", "Silmaril.Compiler.+", "Silmaril.Proofs.Cerberus.+",
-  "Silmaril.Proofs.Compiler.+", "Silmaril.Raw.Cerberus.+", "Silmaril.Raw.Compiler.+"
+  "Silmaril.Proofs.Compiler.+", "Silmaril.Raw.Cerberus.+", "Silmaril.Raw.Compiler.+",
+  # HTTP servers: state models (docs/projects/http-servers.md).
+  "Silmaril.Http.State.+", "Silmaril.Proofs.Http.State.+"
 ]
 
 # The SpecTec trees. Their reading modules (`spectec_import`, `spectec_check_stream`,
