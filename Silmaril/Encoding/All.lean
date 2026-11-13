@@ -12,6 +12,8 @@ public import Silmaril.Encoding.Unicode
 public import Silmaril.Encoding.Base64
 public import Silmaril.Encoding.Base32
 public import Silmaril.Encoding.Base16
+public import Silmaril.Encoding.Ascii
+public import Silmaril.Encoding.Punycode
 public import Silmaril.Encoding.Syntax
 public import Silmaril.Encoding.FunctionalCat
 public import Silmaril.Encoding.SyntaxCarriers
