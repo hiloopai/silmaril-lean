@@ -1,0 +1,6 @@
+package silmaril:p1;
+
+world reactor {
+  export add: func(a: u32, b: u32) -> u32;
+  export scale: func(x: f64, k: s32) -> f64;
+}

@@ -1,0 +1,19 @@
+AilSigma
+|-AilTypedefAttributes EMPTY
+|-AilDeclarations
+| `-Decl_function main 'function () returning signed int' EMPTY
+|-AilTagDefinitions EMPTY
+|-AilObjectDefinitions EMPTY
+|-AilFunctionDefinitions
+| `-FunctionDecl <enum-return.c:1:18, col:60> col:22 - col:26 main
+|   `-AilSblock
+|     |-Bindings
+|     | `-x automatic 'enum E'
+|     |-AilSdeclaration
+|     | `-Symbol x
+|     |   `- AilEconst <col:46 - 47> 7
+|     `-AilSreturn
+|       `-[§6.5.16.1#1, bullet 1] AilErvalue <col:56 - 57>
+|         `-[§6.5.16.1#1, bullet 1] AilEident <col:56 - 57> x
+|-AilStaticAssertions EMPTY
+`-AilCNpredicates EMPTY
