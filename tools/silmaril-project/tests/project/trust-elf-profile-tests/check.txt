@@ -1,0 +1,14 @@
+warning: trust Silmaril.Elf.Staged.Example.Profiles: own-native-not-allowed: Silmaril.Elf.Staged.Example.Profiles.loader_local: elf.loader
+warning: trust Silmaril.Elf.Staged.Example.Profiles: own-native-not-allowed: Silmaril.Elf.Staged.Example.Profiles.main_local: elf.tiles.x86
+summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
+root: (none)
+trust dump: Silmaril.Prelude.Trust.Export (#trust_export) (main module «.lake».silmaril.TrustExport) (origin lean); profile default, ceiling local
+trust: 13 procedures (11 with a kernel side), 6 sets, 5 scopes; 42 uses (4 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 11 covered, 130 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 17 external; 307 declarations audited
+trust violations: 2 (2 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
+trust digests: inputs changed, covered modules 0 consistent, 11 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: partial (130 unaudited module(s); their declarations are not audited)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: b4c47e5e115250211825573b1be129e52158bd2e5ab4f99f2f86294577a8a4fe
+exit: ok

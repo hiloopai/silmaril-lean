@@ -1,7 +1,8 @@
 //! Golden tests for `sil project`.
 //!
 //! Each directory under `tests/project/` is a case: a project directory with a hand-written
-//! `dump.json` and optional `silmaril.toml`, `silmaril/artifacts.toml`, `lakefile.toml`,
+//! `dump.json`, an optional `trust.json` (passed as `--trust`, with `--strict-trust` when a file
+//! `strict-trust` exists) and optional `silmaril.toml`, `silmaril/artifacts.toml`, `lakefile.toml`,
 //! `lake-manifest.json` and files. The test runs `sil project sqlite` and compares its stdout
 //! with `check.txt` and, when the check passes, its SQL text with `project.sql`. `SIL_BLESS=1`
 //! rewrites the expected files (`tests/project/regen.sh`); review is `git diff`. The end-to-end
@@ -19,6 +20,52 @@ fn compare(path: &Path, got: &str, bless: bool, failures: &mut Vec<String>) {
         failures.push(format!(
             "{} differs; run tests/project/regen.sh\n--- want\n{want}--- got\n{got}",
             path.display()
+        ));
+    }
+}
+
+/// The `trust_violations` view (a recursive query) finds exactly the violations `sil project`
+/// reported as warnings, and the transitive views agree with the import edges.
+fn check_trust_views(db: &Path, stdout: &str, failures: &mut Vec<String>) {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT module, decl, reason, CASE class WHEN 'other' THEN axiom ELSE procedure END FROM trust_violations")
+        .unwrap();
+    let mut from_view: Vec<String> = stmt
+        .query_map([], |r| {
+            let (m, decl, why, subject): (String, String, String, String) =
+                (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?);
+            Ok(format!("trust {m}: {why}: {decl}: {subject}"))
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+    from_view.sort();
+    let mut from_tool: Vec<String> = stdout
+        .lines()
+        .filter_map(|l| l.strip_prefix("warning: "))
+        .filter(|l| l.starts_with("trust ") && !l.contains(": mismatched use record: "))
+        .map(String::from)
+        .collect();
+    from_tool.sort();
+    if from_view != from_tool {
+        failures.push(format!(
+            "{}: trust_violations {from_view:?} != reported {from_tool:?}",
+            db.display()
+        ));
+    }
+    let closure: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM trust_module_deps d WHERE NOT EXISTS (SELECT 1 FROM trust_imports i WHERE i.module = d.module AND i.import = d.dep) \
+             AND NOT EXISTS (SELECT 1 FROM trust_module_deps e JOIN trust_imports i ON i.module = e.dep AND i.import = d.dep WHERE e.module = d.module)",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    if closure != 0 {
+        failures.push(format!(
+            "{}: trust_module_deps has {closure} rows not derived from imports",
+            db.display()
         ));
     }
 }
@@ -43,14 +90,19 @@ fn golden_cases() {
         let dir = case.clone();
         let tmp = tempfile::tempdir().unwrap();
         let sql = tmp.path().join("project.sql");
-        let out = Command::new(env!("CARGO_BIN_EXE_silmaril-project"))
-            .args(["sqlite", "--dump", "dump.json", "--sql"])
+        let trust = dir.join("trust.json").is_file();
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_silmaril-project"));
+        cmd.args(["sqlite", "--dump", "dump.json", "--sql"])
             .arg(&sql)
             .arg("--db")
-            .arg(tmp.path().join("project.sqlite"))
-            .current_dir(&dir)
-            .output()
-            .unwrap();
+            .arg(tmp.path().join("project.sqlite"));
+        if trust {
+            cmd.args(["--trust", "trust.json"]);
+        }
+        if dir.join("strict-trust").is_file() {
+            cmd.arg("--strict-trust");
+        }
+        let out = cmd.current_dir(&dir).output().unwrap();
         let stdout = String::from_utf8(out.stdout).unwrap();
         let text = format!(
             "{stdout}exit: {}\n",
@@ -58,6 +110,9 @@ fn golden_cases() {
         );
         compare(&case.join("check.txt"), &text, bless, &mut failures);
         let expected_sql = case.join("project.sql");
+        if out.status.success() && trust {
+            check_trust_views(&tmp.path().join("project.sqlite"), &stdout, &mut failures);
+        }
         if out.status.success() {
             compare(
                 &expected_sql,
@@ -358,6 +413,309 @@ fn sql_text_is_stable_across_runs() {
         fs::read(&sql).unwrap()
     };
     assert_eq!(run(), run());
+}
+
+/// Report-only mode writes the database with its violation rows for inspection, and says it is
+/// not enforcing; `--strict-trust` on the same input fails and writes no database.
+#[test]
+fn strict_trust_fails_where_report_only_writes() {
+    let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/trust-fixture-violations");
+    let run = |strict: bool| {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("project.sqlite");
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_silmaril-project"));
+        cmd.args([
+            "sqlite",
+            "--dump",
+            "dump.json",
+            "--trust",
+            "trust.json",
+            "--sql",
+        ])
+        .arg(tmp.path().join("project.sql"))
+        .arg("--db")
+        .arg(&db);
+        if strict {
+            cmd.arg("--strict-trust");
+        }
+        let out = cmd.current_dir(&case).output().unwrap();
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        let rows = db.exists().then(|| {
+            let conn = rusqlite::Connection::open(&db).unwrap();
+            let n: i64 = conn
+                .query_row("SELECT count(*) FROM trust_violations", [], |r| r.get(0))
+                .unwrap();
+            let mode: String = conn
+                .query_row(
+                    "SELECT value FROM meta WHERE key = 'trust.enforcement'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            (n, mode)
+        });
+        (out.status.success(), stdout, rows)
+    };
+    let (ok, stdout, rows) = run(false);
+    assert!(ok, "{stdout}");
+    assert!(
+        stdout.contains("trust policy: NOT enforced (report only)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.lines().any(|l| l.starts_with("warning: trust ")),
+        "{stdout}"
+    );
+    assert_eq!(rows, Some((5, "report-only".to_string())));
+
+    let (ok, stdout, rows) = run(true);
+    assert!(!ok, "{stdout}");
+    assert!(
+        stdout.contains("trust policy: enforced (--strict-trust)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout
+            .lines()
+            .any(|l| l.starts_with("error: trust ") && l.contains("not-allowed")),
+        "{stdout}"
+    );
+    assert!(
+        !stdout.lines().any(|l| l.starts_with("warning: trust ")),
+        "{stdout}"
+    );
+    assert_eq!(rows, None, "a failed strict run writes no database");
+}
+
+/// `--strict-trust` passes with explicit exclusions, but the result says the coverage is
+/// partial (stdout and `meta`); only fully described dependencies give `complete`. No result
+/// ever claims a full audit or a paranoid mode.
+#[test]
+fn strict_trust_reports_partial_coverage() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
+    for (case, coverage) in [
+        ("trust-strict-partial", "partial"),
+        ("trust-strict-complete", "complete"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("project.sqlite");
+        let out = Command::new(env!("CARGO_BIN_EXE_silmaril-project"))
+            .args([
+                "sqlite",
+                "--dump",
+                "dump.json",
+                "--trust",
+                "trust.json",
+                "--strict-trust",
+                "--sql",
+            ])
+            .arg(tmp.path().join("project.sql"))
+            .arg("--db")
+            .arg(&db)
+            .current_dir(base.join(case))
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        assert!(out.status.success(), "{case}: {stdout}");
+        let result = stdout
+            .lines()
+            .find(|l| l.starts_with("trust result: "))
+            .unwrap_or_else(|| panic!("{case}: no result line in {stdout}"));
+        assert!(
+            result.starts_with(&format!(
+                "trust result: policy valid on {coverage} coverage"
+            )),
+            "{case}: {result}"
+        );
+        assert!(
+            stdout.contains(&format!("trust coverage: {coverage} (")),
+            "{case}: {stdout}"
+        );
+        for l in stdout
+            .lines()
+            .filter(|l| l.starts_with("trust result") || l.starts_with("trust coverage"))
+        {
+            let l = l.to_lowercase();
+            assert!(
+                !l.contains("fully audited") && !l.contains("paranoid"),
+                "{case}: {l}"
+            );
+        }
+        if coverage == "partial" {
+            assert!(result.contains("not a full audit"), "{case}: {result}");
+        }
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        let meta = |k: &str| -> String {
+            conn.query_row("SELECT value FROM meta WHERE key = ?1", [k], |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(meta("trust.coverage"), coverage, "{case}");
+        assert_eq!(meta("trust.enforcement"), "strict", "{case}");
+        let gaps: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM trust_modules WHERE coverage NOT IN ('covered', 'external')",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            gaps > 0,
+            coverage == "partial",
+            "{case}: {gaps} uncovered modules"
+        );
+    }
+}
+
+/// Real producer output and hand-written fixtures are told apart: the `trust-core-*` and
+/// `trust-elf-*` cases are documents of the core's exporter, with a README naming their source
+/// commit; every other trust case says it is a fixture; `*-rejected` cases are not documents.
+#[test]
+fn trust_cases_declare_their_origin() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
+    let mut seen = 0;
+    for e in fs::read_dir(&base).unwrap() {
+        let dir = e.unwrap().path();
+        let Some(text) = fs::read_to_string(dir.join("trust.json")).ok() else {
+            continue;
+        };
+        let name = dir.file_name().unwrap().to_string_lossy().to_string();
+        seen += 1;
+        if name.ends_with("-rejected") {
+            assert!(
+                serde_json::from_str::<serde_json::Value>(&text).is_err(),
+                "{name}"
+            );
+            continue;
+        }
+        let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(doc["schema"], "silmaril.trust-core.v1", "{name}");
+        let tool = doc["producer"]["tool"].as_str().unwrap();
+        if name.starts_with("trust-core-") || name.starts_with("trust-elf-") {
+            assert_eq!(
+                tool, "Silmaril.Prelude.Trust.Export (#trust_export)",
+                "{name}"
+            );
+            let readme = fs::read_to_string(dir.join("README.md")).unwrap_or_default();
+            assert!(readme.contains("real producer output"), "{name}: README");
+        } else {
+            assert!(tool.contains("fixture"), "{name}: {tool}");
+        }
+    }
+    assert!(seen >= 12, "{seen} trust cases");
+}
+
+/// The evidence of the real exports survives conversion exactly: an inherited native result
+/// stays inherited (no invented direct use), standard axioms are not uses, unverified and forged
+/// evidence is kept and flagged, and only `policy.toml`'s scopes exist.
+#[test]
+fn real_export_evidence_is_kept_exactly() {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
+    let db = |case: &str| {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("p.sqlite");
+        let out = Command::new(env!("CARGO_BIN_EXE_silmaril-project"))
+            .args([
+                "sqlite",
+                "--dump",
+                "dump.json",
+                "--trust",
+                "trust.json",
+                "--sql",
+            ])
+            .arg(tmp.path().join("p.sql"))
+            .arg("--db")
+            .arg(&db)
+            .current_dir(base.join(case))
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{case}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        (tmp, rusqlite::Connection::open(&db).unwrap())
+    };
+    let q = |c: &rusqlite::Connection, sql: &str| -> Vec<String> {
+        let mut st = c.prepare(sql).unwrap();
+        st.query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    let (_t, b) = db("trust-core-bytes");
+    assert!(
+        q(
+            &b,
+            "SELECT decl FROM trust_uses WHERE decl LIKE '%rope_toList_native'"
+        )
+        .is_empty()
+    );
+    assert_eq!(
+        q(
+            &b,
+            "SELECT class || ':' || procedure FROM trust_decl_axioms WHERE decl LIKE '%rope_toList_native' AND class <> 'other'"
+        ),
+        ["dep_native:bytes.sameBytes"]
+    );
+    assert!(q(&b, "SELECT procedure FROM trust_uses WHERE procedure IN ('propext', 'Classical.choice', 'Quot.sound')").is_empty());
+    assert_eq!(
+        q(&b, "SELECT module FROM trust_scopes ORDER BY module"),
+        [
+            "Silmaril",
+            "Silmaril.Courses",
+            "Silmaril.Papers",
+            "Silmaril.Standards",
+            "Silmaril.Thesis"
+        ]
+    );
+    assert_eq!(
+        q(
+            &b,
+            "SELECT name FROM trust_procedures WHERE kind = 'named' AND implemented = 0"
+        ),
+        ["elf.layout"]
+    );
+    let (_t, p) = db("trust-core-profile-tests");
+    assert_eq!(
+        q(
+            &p,
+            "SELECT decl FROM trust_uses WHERE axiom_matches = 0 ORDER BY decl"
+        ),
+        [
+            "Silmaril.Trust.Examples.forgedDecl",
+            "Silmaril.Trust.Examples.forgedShape"
+        ]
+    );
+    assert_eq!(
+        q(
+            &p,
+            "SELECT decl FROM trust_decl_axioms WHERE class = 'unverified_native' ORDER BY decl"
+        ),
+        [
+            "Silmaril.Trust.Examples.byDecideNative",
+            "Silmaril.Trust.Examples.forgedDecl",
+            "Silmaril.Trust.Examples.forgedShape"
+        ]
+    );
+    assert_eq!(
+        q(
+            &p,
+            "SELECT reason || ':' || count(*) FROM trust_violations GROUP BY reason ORDER BY reason"
+        ),
+        ["own-native-not-allowed:6", "unverified-native:3"]
+    );
+    // The core's own messages for the three unverified axioms, verbatim.
+    assert_eq!(
+        q(
+            &p,
+            "SELECT decl FROM trust_audit_messages WHERE message LIKE 'unverified native axiom %' ORDER BY decl"
+        ),
+        [
+            "Silmaril.Trust.Examples.byDecideNative",
+            "Silmaril.Trust.Examples.forgedDecl",
+            "Silmaril.Trust.Examples.forgedShape"
+        ]
+    );
 }
 
 /// The marking queries over the `markings` case's database, against `markings/queries.txt`.

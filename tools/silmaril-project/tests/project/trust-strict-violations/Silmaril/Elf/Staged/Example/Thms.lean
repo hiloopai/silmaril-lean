@@ -1,0 +1,1 @@
+-- Stand-in source of Silmaril.Elf.Staged.Example.Thms (trust fixture).

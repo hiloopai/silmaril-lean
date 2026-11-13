@@ -2,7 +2,8 @@
 //! [`dag`] (layer 0: manifest, dump, DAG records, core tables), [`relational`] (predicates,
 //! answers, instances), [`artifacts`] (the registry and blobs), [`values`] (formats and
 //! values), [`rooms`] and [`models`] (models and specs), [`markings`] (deprecations and
-//! findings). This module holds what the layers
+//! findings), [`trust`] (native-procedure and axiom trust, from a separate trust dump). This
+//! module holds what the layers
 //! share: the schema strings, the closed [`Record`] enum (one line per kind, so an unknown kind
 //! is rejected), the [`table!`] macro and the DDL order ([`tables`]).
 //!
@@ -33,7 +34,7 @@ use serde::Deserialize;
 pub const MANIFEST_SCHEMA: &str = "silmaril.project.v0.1";
 pub const ARTIFACTS_SCHEMA: &str = "silmaril.artifacts.v0.2";
 pub const DUMP_SCHEMA: &str = "silmaril.project-dump.v0.1";
-pub const DB_SCHEMA: &str = "silmaril.project-db.v0.1";
+pub const DB_SCHEMA: &str = "silmaril.project-db.v0.2";
 /// The default registry path, relative to the package root.
 pub const ARTIFACTS_PATH: &str = "silmaril/artifacts.toml";
 /// The `checker` of the tool-tier facts `sil project check` records.
@@ -233,6 +234,7 @@ pub mod models;
 pub mod records;
 pub mod relational;
 pub mod rooms;
+pub mod trust;
 pub mod values;
 
 pub use artifacts::*;
@@ -241,10 +243,11 @@ pub use markings::*;
 pub use models::*;
 pub use relational::*;
 pub use rooms::*;
+pub use trust::*;
 pub use values::*;
 
 /// Views written after the tables: the group vectors, then the marking views
-/// ([`markings::MARKING_VIEWS`]).
+/// ([`markings::MARKING_VIEWS`]), then the trust views ([`TRUST_VIEWS`]).
 pub const VIEWS: &[&str] = &[
     "CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, \
 e.record_name, e.pos, e.child, s.summary, s.verdict \
@@ -294,6 +297,18 @@ pub const INDEXES: &[(&str, &str, &[&str])] = &[
         "deprecation_replacements_replacement",
         "deprecation_replacements",
         &["replacement"],
+    ),
+    ("trust_uses_procedure", "trust_uses", &["procedure", "mode"]),
+    ("trust_imports_import", "trust_imports", &["import"]),
+    (
+        "trust_set_members_member",
+        "trust_set_members",
+        &["member_kind", "member"],
+    ),
+    (
+        "trust_decl_axioms_class",
+        "trust_decl_axioms",
+        &["class", "procedure"],
     ),
 ];
 
@@ -367,6 +382,18 @@ pub fn tables() -> Vec<TableInfo> {
         info::<DeprecatedProblem>(),
         info::<FindingRow>(),
         info::<FindingVersion>(),
+        info::<TrustInput>(),
+        info::<TrustProcedure>(),
+        info::<TrustSet>(),
+        info::<TrustSetMember>(),
+        info::<TrustScope>(),
+        info::<TrustModule>(),
+        info::<TrustImport>(),
+        info::<TrustModulePolicy>(),
+        info::<TrustUse>(),
+        info::<TrustDecl>(),
+        info::<TrustDeclAxiom>(),
+        info::<TrustAuditMessage>(),
     ]
 }
 

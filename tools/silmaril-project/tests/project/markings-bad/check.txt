@@ -26,4 +26,6 @@ finding error mk.a [UNS] (deprecated by its own deprecation)
 finding error mk.e [THM] (disclosure leaked)
 finding spec_bug mk.b [UNS]
 finding model_gap mk.d [UNS] (fixed in 2.0)
+trust: no trust dump (--trust): native-procedure and axiom use is unaudited (unknown, not clean)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
 exit: failed

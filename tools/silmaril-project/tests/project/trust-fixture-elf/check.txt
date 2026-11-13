@@ -1,0 +1,12 @@
+summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
+root: (none)
+trust dump: hand-written fixture (not producer output) (main module Fixture) (origin fixture); profile default, ceiling local
+trust: 6 procedures (4 with a kernel side), 7 sets, 3 scopes; 2 uses (0 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 3 covered, 0 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 1 external; 4 declarations audited
+trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
+trust digests: inputs match, covered modules 3 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: complete (every described module is audited; modules outside `Silmaril` are external)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: db8e9fef21d9c3ae64b12f111785bb4b8e034f3b4a61cce815a86f59ab3cd52f
+exit: ok

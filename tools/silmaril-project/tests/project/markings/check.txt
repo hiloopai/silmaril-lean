@@ -15,5 +15,7 @@ finding spec_bug mk.old_bound [UNS]: the statement is off by one (deprecated by 
 finding model_gap mk.vec.add [UNS]: missing pxor xmm0, xmm0; Str9 does not decode SSE2 pxor
 finding model_gap mk.vec.shift [UNS]: missing shl r/m16, imm8; 16-bit shifts do not retire
 finding unclear mk.vec.mul [UNS]: the counterexample needs review
-sql sha256: 3649312b47a39dac6bc59ea0dc545cc76131432db5b0a2d2b43a794bfafdc27b
+trust: no trust dump (--trust): native-procedure and axiom use is unaudited (unknown, not clean)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: a4dee31e47e6b3a90b80947f358010fd33ca2e2474c94ffc24235aedd72baa15
 exit: ok

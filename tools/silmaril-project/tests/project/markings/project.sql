@@ -1,4 +1,4 @@
--- silmaril.project-db.v0.1
+-- silmaril.project-db.v0.2
 CREATE TABLE meta(
   key TEXT NOT NULL PRIMARY KEY,
   value TEXT NOT NULL
@@ -259,12 +259,119 @@ CREATE TABLE finding_versions(
   version TEXT NOT NULL,
   PRIMARY KEY(problem, pos)
 );
+CREATE TABLE trust_inputs(
+  path TEXT NOT NULL PRIMARY KEY,
+  sha256 TEXT NOT NULL,
+  disk_sha256 TEXT,
+  status TEXT NOT NULL CHECK(status IN ('match','changed','missing'))
+);
+CREATE TABLE trust_procedures(
+  name TEXT NOT NULL PRIMARY KEY,
+  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared','named')),
+  implemented INTEGER NOT NULL,
+  function TEXT NOT NULL,
+  module TEXT,
+  kernel_fallback INTEGER NOT NULL,
+  native_function TEXT,
+  native_eq TEXT,
+  native_check TEXT,
+  native_sound TEXT,
+  kernel_check TEXT,
+  kernel_sound TEXT,
+  format TEXT,
+  sound TEXT,
+  bound TEXT,
+  axiom_pattern TEXT,
+  components TEXT,
+  toolchain TEXT,
+  fallback_coverage TEXT,
+  doc TEXT NOT NULL
+);
+CREATE TABLE trust_sets(
+  name TEXT NOT NULL PRIMARY KEY,
+  origin TEXT NOT NULL,
+  is_all INTEGER NOT NULL,
+  doc TEXT
+);
+CREATE TABLE trust_set_members(
+  set_name TEXT NOT NULL,
+  member_kind TEXT NOT NULL CHECK(member_kind IN ('name','set')),
+  member TEXT NOT NULL,
+  PRIMARY KEY(set_name, member_kind, member)
+);
+CREATE TABLE trust_scopes(
+  module TEXT NOT NULL PRIMARY KEY,
+  scope_kind TEXT CHECK(scope_kind IN ('root','region','module-prefix')),
+  max TEXT,
+  default_set TEXT,
+  deps TEXT,
+  axioms TEXT
+);
+CREATE TABLE trust_modules(
+  name TEXT NOT NULL PRIMARY KEY,
+  region TEXT,
+  source TEXT,
+  source_sha256 TEXT,
+  source_status TEXT NOT NULL CHECK(source_status IN ('match','changed','missing','unrecorded')),
+  freshness TEXT NOT NULL CHECK(freshness IN ('consistent','stale','unknown')),
+  coverage TEXT NOT NULL CHECK(coverage IN ('covered','unaudited','excluded','unsupported','undescribed','external')),
+  policy_trace TEXT,
+  reason TEXT
+);
+CREATE TABLE trust_imports(
+  module TEXT NOT NULL,
+  import TEXT NOT NULL,
+  PRIMARY KEY(module, import)
+);
+CREATE TABLE trust_module_policy(
+  module TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('max','default','deps','axioms','allowed')),
+  member TEXT NOT NULL,
+  PRIMARY KEY(module, role, member)
+);
+CREATE TABLE trust_uses(
+  module TEXT NOT NULL,
+  decl TEXT NOT NULL,
+  procedure TEXT NOT NULL,
+  mode TEXT NOT NULL CHECK(mode IN ('native','kernel')),
+  profile TEXT NOT NULL,
+  ceiling TEXT NOT NULL,
+  axiom TEXT NOT NULL,
+  kernel_side TEXT NOT NULL CHECK(kernel_side IN ('','fallback','declared','unregistered')),
+  axiom_matches INTEGER NOT NULL,
+  PRIMARY KEY(module, decl, procedure, mode, profile, ceiling, axiom)
+);
+CREATE TABLE trust_decls(
+  decl TEXT NOT NULL PRIMARY KEY,
+  module TEXT NOT NULL,
+  profile TEXT,
+  elaborated_profiles TEXT
+);
+CREATE TABLE trust_decl_axioms(
+  module TEXT NOT NULL,
+  decl TEXT NOT NULL,
+  axiom TEXT NOT NULL,
+  class TEXT NOT NULL CHECK(class IN ('own_native','dep_native','unverified_native','plain_native','other')),
+  procedure TEXT NOT NULL,
+  PRIMARY KEY(module, decl, axiom)
+);
+CREATE TABLE trust_audit_messages(
+  decl TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  PRIMARY KEY(decl, pos)
+);
 CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, e.record_name, e.pos, e.child, s.summary, s.verdict FROM edges e JOIN problems p ON p.name = e.parent AND p.kind = 'group' LEFT JOIN summary s ON s.problem = e.child;
 CREATE VIEW genuine_errors AS SELECT f.problem, p.title, s.summary, f.note, f.pointer, (SELECT group_concat(v.version, ',') FROM (SELECT version FROM finding_versions WHERE problem = f.problem ORDER BY pos) v) AS affected_versions, f.fixed_in, f.disclosure_status, f.module, f.origin FROM findings f JOIN problems p ON p.name = f.problem LEFT JOIN summary s ON s.problem = f.problem WHERE f.classification = 'error';
 CREATE VIEW model_gaps AS SELECT f.pointer, f.problem, p.title, f.note FROM findings f JOIN problems p ON p.name = f.problem WHERE f.classification = 'model_gap';
 CREATE VIEW spec_bugs AS SELECT f.problem, d.via_kind, d.via, f.note, f.pointer FROM findings f LEFT JOIN deprecated_problems d ON d.problem = f.problem WHERE f.classification = 'spec_bug';
 CREATE VIEW deprecated_with_replacements AS SELECT d.name, d.kind, d.reason, (SELECT group_concat(r.replacement, ',') FROM (SELECT replacement FROM deprecation_replacements WHERE name = d.name ORDER BY pos) r) AS superseded_by, d.module, d.origin FROM deprecations d;
 CREATE VIEW unclassified_failures AS SELECT s.problem, s.summary FROM summary s WHERE s.verdict = 'fails' AND s.problem NOT IN (SELECT problem FROM findings) AND s.problem NOT IN (SELECT problem FROM deprecated_problems);
+CREATE VIEW trust_set_closure AS WITH RECURSIVE c(set_name, member_kind, member) AS (SELECT set_name, member_kind, member FROM trust_set_members UNION SELECT c.set_name, m.member_kind, m.member FROM c JOIN trust_set_members m ON c.member_kind = 'set' AND m.set_name = c.member) SELECT set_name, member AS name FROM c WHERE member_kind = 'name' UNION SELECT name, '*' FROM trust_sets WHERE is_all = 1 UNION SELECT c.set_name, '*' FROM c JOIN trust_sets s ON c.member_kind = 'set' AND s.name = c.member AND s.is_all = 1;
+CREATE VIEW trust_module_deps AS WITH RECURSIVE d(module, dep) AS (SELECT module, import FROM trust_imports UNION SELECT d.module, i.import FROM d JOIN trust_imports i ON i.module = d.dep) SELECT module, dep FROM d;
+CREATE VIEW trust_coverage_gaps AS SELECT d.module, d.dep, m.coverage, m.reason FROM trust_module_deps d JOIN trust_modules m ON m.name = d.dep WHERE m.coverage NOT IN ('covered','external');
+CREATE VIEW trust_module_native AS SELECT module, procedure, class, count(DISTINCT decl) AS decls FROM trust_decl_axioms WHERE class <> 'other' GROUP BY module, procedure, class;
+CREATE VIEW trust_violations AS SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'own-native-not-allowed' AS reason FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'own_native' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'allowed' AND p.member IN (x.procedure, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'dep-native-outside-deps' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'dep_native' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'deps' AND p.member IN (x.procedure, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unregistered-native' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'plain_native' UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'axiom-outside-set' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'other' AND NOT EXISTS (SELECT 1 FROM trust_module_policy p WHERE p.module = x.module AND p.role = 'axioms' AND p.member IN (x.axiom, '*')) UNION SELECT x.module, x.decl, x.class, x.procedure, x.axiom, 'unverified-native' FROM trust_decl_axioms x JOIN trust_modules m ON m.name = x.module AND m.coverage = 'covered' WHERE x.class = 'unverified_native';
 CREATE INDEX edges_parent ON edges(parent, child, kind, via);
 CREATE INDEX edges_child ON edges(child, parent);
 CREATE INDEX edges_kind ON edges(kind);
@@ -288,11 +395,17 @@ CREATE INDEX findings_classification ON findings(classification, problem);
 CREATE INDEX findings_pointer ON findings(pointer);
 CREATE INDEX deprecated_problems_via ON deprecated_problems(via);
 CREATE INDEX deprecation_replacements_replacement ON deprecation_replacements(replacement);
+CREATE INDEX trust_uses_procedure ON trust_uses(procedure, mode);
+CREATE INDEX trust_imports_import ON trust_imports(import);
+CREATE INDEX trust_set_members_member ON trust_set_members(member_kind, member);
+CREATE INDEX trust_decl_axioms_class ON trust_decl_axioms(class, procedure);
 INSERT INTO meta(key, value) VALUES('dump_schema', 'silmaril.project-dump.v0.1');
 INSERT INTO meta(key, value) VALUES('modules', 'Mk');
 INSERT INTO meta(key, value) VALUES('roots', 'Mk');
-INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.1');
+INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.2');
 INSERT INTO meta(key, value) VALUES('toolchain', '4.35.0-rc4');
+INSERT INTO meta(key, value) VALUES('trust.enforcement', 'report-only');
+INSERT INTO meta(key, value) VALUES('trust.status', 'absent');
 INSERT INTO projects(sid, name, origin, version, description, root, url, rev) VALUES('5555555555555555555555555555555555555555555555555555555555555555', 'mk', 'local', NULL, NULL, 'mk.all', NULL, NULL);
 INSERT INTO objects(sid, kind, name, project, module, origin, sid_source) VALUES('1c46cf1151f204b6e6f2a925d5c9d1980c0b203b7c837d5165a43fe4181cda91', 'group', 'mk.all', 'mk', 'Mk', 'local', 'derived');
 INSERT INTO objects(sid, kind, name, project, module, origin, sid_source) VALUES('2b5f1766a59d76082cdc5f3247e48c2b47c9a3d540a5a3e349468a8ee1b8a90e', 'problem', 'mk.parse.v1', 'mk', 'Mk', 'local', 'derived');

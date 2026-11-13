@@ -21,6 +21,7 @@ pub mod schema;
 mod sid;
 mod sources;
 mod sql;
+mod trust;
 
 use clap::{Args as ClapArgs, Subcommand};
 use miette::{IntoDiagnostic, Result, WrapErr, bail, miette};
@@ -73,6 +74,32 @@ pub enum Command {
         #[arg(long)]
         no_build: bool,
     },
+    /// Write the core's trust export (`silmaril.trust-core.v1`, `#trust_export`) for the
+    /// `Silmaril` modules the given modules reach, which `check` and `sqlite` read with `--trust`
+    TrustDump {
+        #[command(flatten)]
+        dir: DirArg,
+        /// Modules to import; default: the project's modules
+        #[arg(long = "module")]
+        modules: Vec<String>,
+        /// Audit only the reached modules under these prefixes (default: every reached
+        /// `Silmaril` module); the others are described but not audited (partial coverage)
+        #[arg(long = "root")]
+        roots: Vec<String>,
+        /// `MODULE=REASON`: a reached module not to audit (described, not audited: partial
+        /// coverage). The reasons go to `<out>.exclusions.json`, bound to the export's SHA-256
+        #[arg(long)]
+        exclude: Vec<String>,
+        /// Output, relative to the project directory (generated: not committed)
+        #[arg(long, default_value = ".lake/silmaril/trust-core.json")]
+        out: PathBuf,
+        /// The Lake command (default: `$SIL_LAKE`, else `lake`); split on whitespace
+        #[arg(long)]
+        lake: Option<String>,
+        /// Skip `lake build --wfail <modules>` before elaborating the drivers
+        #[arg(long)]
+        no_build: bool,
+    },
     /// Check the manifest, the registries, the dump and the files; print statuses and groups
     Check {
         #[command(flatten)]
@@ -80,6 +107,14 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
+        /// The core's trust export (`silmaril.trust-core.v1`, from `trust-dump`), relative to the project directory;
+        /// without it, decision-procedure and axiom use is reported as unaudited
+        #[arg(long)]
+        trust: Option<PathBuf>,
+        /// Fail on trust violations, on a missing trust dump, on covered modules whose digests
+        /// are not consistent or that import undescribed modules, and on uncollected axioms
+        #[arg(long)]
+        strict_trust: bool,
     },
     /// Check, then write the canonical SQL text and build the SQLite database from it
     Sqlite {
@@ -88,6 +123,13 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
+        /// The core's trust export (`silmaril.trust-core.v1`, from `trust-dump`), relative to the project directory;
+        /// without it, the trust tables are empty and `meta` says `trust.status = absent`
+        #[arg(long)]
+        trust: Option<PathBuf>,
+        /// Fail on trust violations and incomplete trust evidence (see `check --strict-trust`)
+        #[arg(long)]
+        strict_trust: bool,
         /// The canonical SQL text
         #[arg(long, default_value = ".lake/silmaril/project.sql")]
         sql: PathBuf,
@@ -1203,14 +1245,21 @@ fn read_dump(path: &Path) -> Result<Dump> {
 
 /// Load project and dump and run the checks. Modules default to the dump's when neither the
 /// manifest nor `lakefile.toml` names any.
-fn checked(dir: &Path, dump: &Path) -> Result<check::Outcome> {
+fn checked(
+    dir: &Path,
+    dump: &Path,
+    trust: Option<&Path>,
+    strict_trust: bool,
+) -> Result<check::Outcome> {
     let mut p = Project::load(dir)?;
     let dump = read_dump(&dir.join(dump))?;
     if p.modules.is_empty() {
         p.modules = dump.modules.clone();
         p.set_roots();
     }
-    Ok(check::run(&p, &dump))
+    let mut o = check::run(&p, &dump);
+    trust::run(dir, trust, strict_trust, &mut o)?;
+    Ok(o)
 }
 
 /// Print the outcome; fail on errors. Returns the SQL text when there are none.
@@ -1456,19 +1505,141 @@ pub fn run(command: Command) -> Result<()> {
             );
             Ok(())
         }
+        Command::TrustDump {
+            dir: DirArg { dir },
+            modules,
+            roots,
+            exclude,
+            out,
+            lake,
+            no_build,
+        } => {
+            let modules = if modules.is_empty() {
+                Project::load(&dir)?.modules
+            } else {
+                modules
+            };
+            if modules.is_empty() {
+                bail!("no modules: pass --module or set `modules` in silmaril.toml");
+            }
+            let lake: Vec<String> = lake
+                .or_else(|| std::env::var("SIL_LAKE").ok())
+                .unwrap_or_else(|| "lake".into())
+                .split_whitespace()
+                .map(String::from)
+                .collect();
+            let abs_dir = fs::canonicalize(&dir).into_diagnostic()?;
+            if trust::core_has_export(&abs_dir) != Some(true) {
+                bail!(
+                    "no core trust export here (Silmaril/Prelude/Trust/Export/Defs.lean with \
+                     silmaril.trust-core.v1): trust-dump needs #125 at 792e7ed6 or later"
+                );
+            }
+            let gen_dir = abs_dir.join(".lake/silmaril");
+            fs::create_dir_all(&gen_dir).into_diagnostic()?;
+            if !no_build {
+                let mut args = vec!["build", "--wfail", "Silmaril.Prelude.Trust.Export.Defs"];
+                args.extend(modules.iter().map(String::as_str));
+                eprintln!("building {} …", modules.join(", "));
+                run_lake(&abs_dir, &lake, &args)?;
+            }
+            // Stage 1: the Silmaril modules the imports reach.
+            let list = gen_dir.join("trust-modules.txt");
+            let list_driver = gen_dir.join("TrustModules.lean");
+            fs::write(&list_driver, trust::list_driver(&modules, &list)).into_diagnostic()?;
+            run_lake(
+                &abs_dir,
+                &lake,
+                &["env", "lean", &list_driver.display().to_string()],
+            )?;
+            let reached: Vec<String> = fs::read_to_string(&list)
+                .into_diagnostic()?
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(String::from)
+                .collect();
+            let exclusions: Vec<(String, String)> = exclude
+                .iter()
+                .map(|e| {
+                    e.split_once('=')
+                        .map(|(m, r)| (m.trim().to_string(), r.trim().to_string()))
+                        .filter(|(m, r)| !m.is_empty() && !r.is_empty())
+                        .ok_or_else(|| miette!("--exclude {e:?}: give MODULE=REASON"))
+                })
+                .collect::<Result<_>>()?;
+            for (e, _) in &exclusions {
+                if !reached.contains(e) {
+                    bail!("--exclude {e}: not a module the imports reach");
+                }
+            }
+            let exclude: Vec<String> = exclusions.iter().map(|(m, _)| m.clone()).collect();
+            let audited: Vec<String> = reached
+                .iter()
+                .filter(|m| {
+                    roots.is_empty()
+                        || roots
+                            .iter()
+                            .any(|r| *m == r || m.starts_with(&format!("{r}.")))
+                })
+                .filter(|m| !exclude.contains(m))
+                .cloned()
+                .collect();
+            // Stage 2: the core's export, unchanged.
+            let shown = shown(&dir, &out);
+            let out = abs_dir.join(out);
+            if let Some(p) = out.parent() {
+                fs::create_dir_all(p).into_diagnostic()?;
+            }
+            let export_driver = gen_dir.join("TrustExport.lean");
+            fs::write(
+                &export_driver,
+                trust::export_driver(&modules, &audited, &out),
+            )
+            .into_diagnostic()?;
+            eprintln!(
+                "exporting ({} of {} reached modules audited)…",
+                audited.len(),
+                reached.len()
+            );
+            run_lake(
+                &abs_dir,
+                &lake,
+                &["env", "lean", &export_driver.display().to_string()],
+            )?;
+            // The exclusions' reasons: a sidecar bound to the export's digest (the export has no
+            // field for them).
+            let sidecar = trust::exclusions_path(&out);
+            let _ = fs::remove_file(&sidecar);
+            if !exclusions.is_empty() {
+                let digest = hash::Digests::of(&fs::read(&out).into_diagnostic()?).sha256;
+                fs::write(&sidecar, trust::exclusions_text(&digest, &exclusions))
+                    .into_diagnostic()?;
+                eprintln!(
+                    "wrote {} ({} exclusion(s))",
+                    sidecar.display(),
+                    exclusions.len()
+                );
+            }
+            eprintln!("wrote {shown}");
+            Ok(())
+        }
         Command::Check {
             dir: DirArg { dir },
             dump,
-        } => report(&checked(&dir, &dump)?).map(|_| ()),
+            trust,
+            strict_trust,
+        } => report(&checked(&dir, &dump, trust.as_deref(), strict_trust)?).map(|_| ()),
         Command::Sqlite {
             dir: DirArg { dir },
             dump,
+            trust,
+            strict_trust,
             sql: sql_path,
             db,
             httpvfs,
             page_size,
         } => {
-            let text = report(&checked(&dir, &dump)?)?;
+            let text = report(&checked(&dir, &dump, trust.as_deref(), strict_trust)?)?;
             let sql_path = dir.join(sql_path);
             if let Some(parent) = sql_path.parent() {
                 fs::create_dir_all(parent).into_diagnostic()?;

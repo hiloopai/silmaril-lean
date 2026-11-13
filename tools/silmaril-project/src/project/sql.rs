@@ -57,7 +57,7 @@ fn render(tables: &[(TableInfo, Vec<Vec<Sql>>)]) -> String {
         out += &ddl(t);
         out.push('\n');
     }
-    for v in schema::VIEWS {
+    for v in schema::VIEWS.iter().chain(schema::TRUST_VIEWS) {
         out += v;
         out.push('\n');
     }

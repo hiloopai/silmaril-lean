@@ -1,0 +1,354 @@
+{
+ "schema": "silmaril.trust-core.v1",
+ "toolchain": "leanprover/lean4:nightly-2026-11-05",
+ "producer": {
+  "tool": "hand-written fixture (not producer output)",
+  "profile": "default",
+  "ceiling": "local",
+  "main_module": "Fixture"
+ },
+ "inputs": {
+  "policy_toml_sha256": "d0620cae0fc698c9189fd2de093143d5023b358a41c7bca8b493228bc210d55b",
+  "regions_toml_sha256": null,
+  "lean_toolchain_sha256": "c8dac2fde85cb3ae79513dc425bb759258a3d5278bbdc29ff68450b45e81bcb9",
+  "exclusions_sha256": null,
+  "policy_pin": "0000000000000000"
+ },
+ "procedures": [
+  {
+   "name": "bytes.sameBytes",
+   "kind": "decider",
+   "implemented": true,
+   "doc": "fixture",
+   "module": "Silmaril.Prelude.Bytes.Native.Defs",
+   "format": null,
+   "sound": null,
+   "backends": [
+    {
+     "role": "native",
+     "function": "Silmaril.KBytes.sameBytes",
+     "axiom_pattern": "<decl>._native.edge.bytes.sameBytes.ax_<n>"
+    },
+    {
+     "role": "kernel",
+     "function": "Silmaril.KBytes.sameBytes"
+    }
+   ]
+  },
+  {
+   "name": "bytes.eqByteArray",
+   "kind": "decider",
+   "implemented": true,
+   "doc": "fixture",
+   "module": "Silmaril.Prelude.Bytes.Native.Defs",
+   "format": null,
+   "sound": null,
+   "backends": [
+    {
+     "role": "native",
+     "function": "Silmaril.KBytes.eqByteArray",
+     "axiom_pattern": "<decl>._native.edge.bytes.eqByteArray.ax_<n>"
+    }
+   ]
+  },
+  {
+   "name": "elf.layout",
+   "kind": "decider",
+   "implemented": true,
+   "doc": "fixture",
+   "module": "Silmaril.Elf.Staged.Leaf.Native",
+   "format": null,
+   "sound": null,
+   "backends": [
+    {
+     "role": "native",
+     "function": "Silmaril.Elf.Staged.Leaf.layoutOk",
+     "axiom_pattern": "<decl>._native.edge.elf.layout.ax_<n>"
+    },
+    {
+     "role": "kernel",
+     "function": "Silmaril.Elf.Staged.Leaf.layoutOk"
+    }
+   ]
+  },
+  {
+   "name": "elf.body",
+   "kind": "decider",
+   "implemented": true,
+   "doc": "fixture",
+   "module": "Silmaril.Elf.Staged.Leaf.Native",
+   "format": null,
+   "sound": null,
+   "backends": [
+    {
+     "role": "native",
+     "function": "Silmaril.Elf.Staged.Leaf.bodyOk",
+     "axiom_pattern": "<decl>._native.edge.elf.body.ax_<n>"
+    },
+    {
+     "role": "kernel",
+     "function": "Silmaril.Elf.Staged.Leaf.bodyOk"
+    }
+   ]
+  },
+  {
+   "name": "elf.loader",
+   "kind": "decider",
+   "implemented": true,
+   "doc": "fixture",
+   "module": "Silmaril.Elf.Staged.Leaf.Native",
+   "format": null,
+   "sound": null,
+   "backends": [
+    {
+     "role": "native",
+     "function": "Silmaril.Elf.Staged.Leaf.loaderOk",
+     "axiom_pattern": "<decl>._native.edge.elf.loader.ax_<n>"
+    },
+    {
+     "role": "kernel",
+     "function": "Silmaril.Elf.Staged.Leaf.loaderOk"
+    }
+   ]
+  },
+  {
+   "name": "elf.symtrie",
+   "kind": "named",
+   "implemented": false,
+   "doc": "",
+   "backends": []
+  }
+ ],
+ "sets": [
+  {
+   "name": "bytes",
+   "doc": "",
+   "all": false,
+   "members": [
+    {
+     "kind": "procedure",
+     "name": "bytes.sameBytes"
+    },
+    {
+     "kind": "procedure",
+     "name": "bytes.eqByteArray"
+    }
+   ]
+  },
+  {
+   "name": "elf",
+   "doc": "",
+   "all": false,
+   "members": [
+    {
+     "kind": "procedure",
+     "name": "elf.layout"
+    },
+    {
+     "kind": "procedure",
+     "name": "elf.body"
+    },
+    {
+     "kind": "procedure",
+     "name": "elf.loader"
+    },
+    {
+     "kind": "procedure",
+     "name": "elf.symtrie"
+    }
+   ]
+  },
+  {
+   "name": "elf_and_bytes",
+   "doc": "",
+   "all": false,
+   "members": [
+    {
+     "kind": "set",
+     "name": "elf"
+    },
+    {
+     "kind": "set",
+     "name": "bytes"
+    }
+   ]
+  },
+  {
+   "name": "default",
+   "doc": "",
+   "all": false,
+   "members": [
+    {
+     "kind": "set",
+     "name": "bytes"
+    }
+   ]
+  }
+ ],
+ "policies": [
+  {
+   "scope": "root",
+   "name": "Silmaril",
+   "allow": [
+    "default"
+   ],
+   "max": [
+    "all"
+   ],
+   "deps": [
+    "all"
+   ],
+   "axioms": [
+    "standard"
+   ],
+   "origin": {
+    "file": "../../../../policy.toml",
+    "pin": "0000000000000000"
+   }
+  },
+  {
+   "scope": "module-prefix",
+   "name": "Silmaril.Elf",
+   "allow": null,
+   "max": [
+    "elf_and_bytes"
+   ],
+   "deps": null,
+   "axioms": null,
+   "origin": {
+    "file": "../../../../policy.toml",
+    "pin": "0000000000000000"
+   }
+  },
+  {
+   "scope": "module-prefix",
+   "name": "Silmaril.Papers",
+   "allow": null,
+   "max": [
+    "none"
+   ],
+   "deps": [
+    "none"
+   ],
+   "axioms": null,
+   "origin": {
+    "file": "../../../../policy.toml",
+    "pin": "0000000000000000"
+   }
+  }
+ ],
+ "modules": [
+  {
+   "name": "Silmaril.Prelude.Bytes.Native.Defs",
+   "region": null,
+   "source": "Silmaril/Prelude/Bytes/Native/Defs.lean",
+   "source_sha256": "942ef1635501e91e471f5beafb731abc407a3890e74f8fb43536fd3f03f0326c",
+   "imports": [
+    "Init"
+   ]
+  },
+  {
+   "name": "Silmaril.Elf.Staged.Leaf.Native",
+   "region": null,
+   "source": "Silmaril/Elf/Staged/Leaf/Native.lean",
+   "source_sha256": "138290fff7c5bdcb14e1e73b116d0e86fce4827ef3909594c8482f8acbd6c4d1",
+   "imports": [
+    "Init",
+    "Silmaril.Prelude.Bytes.Native.Defs"
+   ]
+  },
+  {
+   "name": "Silmaril.Elf.Staged.Example.Thms",
+   "region": null,
+   "source": "Silmaril/Elf/Staged/Example/Thms.lean",
+   "source_sha256": "d33900e59a84ec6d1964149e03a3a5f0717f3c35451caf54d591fa2be7a44caf",
+   "imports": [
+    "Init",
+    "Silmaril.Elf.Staged.Leaf.Native"
+   ]
+  }
+ ],
+ "uses": [
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.layout",
+   "procedure": "elf.layout",
+   "backend": "kernel",
+   "profile": "default",
+   "axiom": null,
+   "verified": null
+  },
+  {
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "decl": "Silmaril.Elf.Staged.Example.loader",
+   "procedure": "elf.loader",
+   "backend": "kernel",
+   "profile": "default",
+   "axiom": null,
+   "verified": null
+  }
+ ],
+ "declarations": [
+  {
+   "decl": "Silmaril.Elf.Staged.Example.layout",
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "axioms": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound"
+   ],
+   "native_axioms": [],
+   "own_native": [],
+   "dep_native": [],
+   "unverified_native": [],
+   "violations": []
+  },
+  {
+   "decl": "Silmaril.Elf.Staged.Example.loader",
+   "module": "Silmaril.Elf.Staged.Example.Thms",
+   "axioms": [
+    "propext"
+   ],
+   "native_axioms": [],
+   "own_native": [],
+   "dep_native": [],
+   "unverified_native": [],
+   "violations": []
+  },
+  {
+   "decl": "Silmaril.Prelude.Bytes.Native.Defs.stub",
+   "module": "Silmaril.Prelude.Bytes.Native.Defs",
+   "axioms": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound"
+   ],
+   "native_axioms": [],
+   "own_native": [],
+   "dep_native": [],
+   "unverified_native": [],
+   "violations": []
+  },
+  {
+   "decl": "Silmaril.Elf.Staged.Leaf.Native.stub",
+   "module": "Silmaril.Elf.Staged.Leaf.Native",
+   "axioms": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound"
+   ],
+   "native_axioms": [],
+   "own_native": [],
+   "dep_native": [],
+   "unverified_native": [],
+   "violations": []
+  }
+ ],
+ "unresolved": [
+  {
+   "set": "elf",
+   "name": "elf.symtrie"
+  }
+ ],
+ "excluded": []
+}

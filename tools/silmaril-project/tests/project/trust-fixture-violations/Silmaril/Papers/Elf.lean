@@ -1,0 +1,1 @@
+-- Stand-in source of Silmaril.Papers.Elf (trust fixture).

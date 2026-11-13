@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-check demo demo-process demo-sha256 help
+.PHONY: tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-check project-trust-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -136,6 +136,13 @@ project-tool:
 
 project-check: project-tool
 	LAKE="$(LAKE)" SIL=build/bin/silmaril-project examples/project/selftest.sh
+
+# Enforce the decision-procedure trust policy on a trust dump: fails on any violation or
+# incomplete evidence (`--strict-trust`). Not part of `check` until the library emits a dump.
+PROJECT_DUMP ?= .lake/silmaril/dump.json
+project-trust-check: project-tool
+	@test -n "$(TRUST)" || { echo "usage: make project-trust-check TRUST=.lake/silmaril/trust-core.json [PROJECT_DUMP=...]"; exit 2; }
+	build/bin/silmaril-project check --dump "$(PROJECT_DUMP)" --trust "$(TRUST)" --strict-trust
 
 demo: tools
 	$(PYTHON) tools/binaryen-lean/test-release-demo.py --bin-dir build/bin

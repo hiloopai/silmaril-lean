@@ -1,0 +1,24 @@
+warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.lengthNative in Silmaril.Trust.Examples.forgedShape (Silmaril.Prelude.Trust.Examples): axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1 is not a native run of test.lengthNative
+warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.lengthNative in Silmaril.Trust.Examples.forgedShape (Silmaril.Prelude.Trust.Examples): the core did not verify axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1 (verified = false)
+warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.sumEven in Silmaril.Trust.Examples.forgedDecl (Silmaril.Prelude.Trust.Examples): the core did not verify axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1 (verified = false)
+warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byLocal: test.evenSum
+warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byName: test.evenSum
+warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byPaired: test.evenSumPaired
+warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byToys: test.evenSum
+warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.pairNative: test.sumEvenN
+warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.silNative: test.sumEven
+warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trust.Examples.byDecideNative: test.decideNative
+warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trust.Examples.forgedDecl: test.sumEven
+warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trust.Examples.forgedShape: test.lengthNative
+summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
+verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
+root: (none)
+trust dump: Silmaril.Prelude.Trust.Export (#trust_export) (main module «.lake».silmaril.TrustExport) (origin lean); profile default, ceiling local
+trust: 15 procedures (5 with a kernel side), 9 sets, 5 scopes; 17 uses (8 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 5 covered, 2 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 5 external; 325 declarations audited
+trust violations: 9 (6 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 3 unverified native, 0 axioms outside the set)
+trust digests: inputs changed, covered modules 0 consistent, 5 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: partial (2 unaudited module(s); their declarations are not audited)
+trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
+sql sha256: c2ae9ee3ed830c87972307c3ae78a281a844e2d5c90cbcfe71345b38ac92f25e
+exit: ok

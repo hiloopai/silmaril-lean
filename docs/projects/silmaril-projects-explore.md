@@ -197,5 +197,7 @@ database URLs.
   only a neighbourhood. A wide level, such as 3,400 problems at one depth, is cut off.
 - A child that belongs to several groups is drawn once, with an edge from each group. Groups
   are drawn as box nodes, not as enclosing compound boxes.
-- The page targets schema `silmaril.project-db.v0.1` and warns about any other schema. Queries
-  against missing tables may fail.
+- The page targets schema `silmaril.project-db.v0.2`. It reads v0.1 databases (without the
+  **Trust** tab's tables) and warns about any other schema. Queries against missing tables may
+  fail.
+- The **Trust** tab is described in [trust-db.md](trust-db.md).
