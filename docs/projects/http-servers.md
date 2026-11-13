@@ -31,12 +31,13 @@ vocabularies and are related to the core as follows.
 | --- | --- | --- | --- |
 | Traces (`Core`, `Http`, `Examples.Counter`) | the core | it is the core | Proved |
 | WASI (`Exchange`, `Calls`, `WasiHttp`, `WasiExamples`) | exchange servers: sets of core `History`s over the core `Sig` | lifted into core models by `Exchange.seqUse` and `Exchange.fresh`, with linearizability and refinement of `Machine.server` proved (`fresh_refines_server`, `hello_fresh`, `echo_fresh_lin`) | Proved |
-| State models (`State`, `State.{Component,OwnedFs,SharedFs}`) | histories `Ev.call`/`Ev.ret`, `Atomic σ`, Herlihy–Wing `Linearizable`, `Abstraction` | the same notions, not yet identified with the core's (see its Open list) | Open |
+| State models (`State`, `State.{Component,OwnedFs,SharedFs}`, `State.Traces`) | histories `Ev.call`/`Ev.ret`, `Atomic σ`, Herlihy–Wing `Linearizable`, `Abstraction` | identified with the core by `State.Traces`: a history is a core trace with one connection per request (`toTrace`), `Atomic σ` is `Machine (sig Req Resp) σ` by definition, Herlihy–Wing linearizability is `Sen.lin` (`linearizable_iff_lin`), the closed host is `Machine.server` (`closed_model_tr_iff`), and an abstraction gives refinement of `Machine.server` (`Abstraction.model_refines`) | Proved |
 | Platforms (`Reuse`, `Cgi`, `Platform`) | `Platform T` with `view`, `Refines`, sequential `Log`s and per-connection `ConnLog`s | `Platform.view` is to become a core `Model`; `Log` is a `History`, `ConnLog` a trace with identities (connection, index) | Open |
+| Fresh instance per request (`PerRequest`) | the core | one model, `Machine.perRequest M q₀`; `Exchange.fresh`, `State.Server.perRequest` and `Reuse.Fresh` are instances of it (`Exchange.fresh_eq_perRequest`, `State.perRequest_model_tr_iff`, `Reuse.fresh_eq_hist`) | Proved |
+| Liveness (`Live`) | infinite observations `ITrace`, sentences `ISen` | a separate kind of sentence over infinite runs of `Machine.server`; every finite prefix of a run is a core trace (`Machine.IRun.prefix_tr`) | Proved |
 
-The two fresh-instance readings agree in what they say: `Exchange.fresh` (WASI),
-`Server.perRequest` (state models) and `Reuse.Fresh` / `Platform.fresh` (platforms) all run each
-request on a fresh instance. Merging them into one definition over the core is open.
+`Platform.fresh` (platforms) is not yet stated as an instance of `Machine.perRequest`; it is
+the next one, together with `Platform.view` as a core `Model`.
 
 ## Traces: the platform-neutral core
 
@@ -132,6 +133,51 @@ the web's answer (`Http.originSen_ofTargets_iff`, `Http.server_ofTargets_tr_iff`
 resource store of `Silmaril.Net.Http` has a linearizable atomic-handler server
 (`Http.store_sat`). Status sentences read at the full interface (`Http.sen_allStatus`).
 
+### A fresh instance per request (Proved, `Silmaril/Servers/PerRequest`)
+
+A host that handles every request with a fresh instance (CGI, `wasmtime serve` for a 0.2
+proxy component, Spin, Fastly Compute) has one model over the core:
+`Machine.perRequest M q₀`, the atomic-handler server of the stateless machine
+`Machine.fresh M q₀`, which answers every request as `M` answers it from `q₀`.
+
+- Its traces are the well-formed traces in which every response is an answer of `M` from `q₀`,
+  however the requests overlap (`Machine.perRequest_tr_iff`). It is linearizable
+  (`Machine.perRequest_sat_lin`), a sequential use is a trace exactly when every exchange is an
+  answer from `q₀` (`Machine.perRequest_seq_iff`), and it is monotone in the answers
+  (`Machine.perRequest_mono`). For a stateless machine it is the atomic-handler server
+  (`Machine.perRequest_ofRel`).
+- **Instances.** The `wasi:http` reading `Exchange.fresh M` is `(Exchange.machine M).perRequest ()`
+  (`Exchange.fresh_eq_perRequest`, an equality of models). The core traces of the state models'
+  host `State.Server.perRequest A s₀` are the traces of `A.machine.perRequest s₀` with one
+  connection per request (`State.perRequest_model_tr_iff`). The sequential logs of fresh
+  instances `Reuse.Fresh O s₀` are the histories of `Machine.fresh` (`Reuse.fresh_eq_hist`), so
+  they are the sequential uses of the model (`Reuse.fresh_seq_iff`); the logs of one reused
+  instance `Reuse.Seq` are the histories of the origin read as a machine (`Reuse.seq_iff`).
+
+### Liveness (Proved, `Silmaril/Servers/Live`)
+
+The core's sentences are about finite traces and say only what a server may do. Liveness is a
+separate kind of sentence, over infinite observations (`ITrace A`: at each instant an event or
+nothing; `ISen A`).
+
+- `ISen.answered`: every request received is eventually answered.
+- `Machine.IRun M q₀`: an infinite run of the atomic-handler server (it idles or takes a step
+  at each instant). `IRun.Fair` is weak fairness per request: a handler run that stays enabled
+  is eventually taken, and a ready response that stays ready is eventually sent.
+  `Machine.Total M`: the handler can answer every request in every state.
+- **`Machine.IRun.answered`**: fair runs of a total machine answer every request
+  (`Machine.fairObs_answered` for the fair observations). The proof is that a pending request
+  stays pending until its handler run, and a ready response stays ready until it is sent.
+- Safety and liveness together: every prefix of a run's observation is a trace of the server
+  (`Machine.IRun.prefix_tr`), so a run satisfies every sentence the server satisfies at every
+  prefix (`Machine.IRun.always_of_sat`), in particular linearizability
+  (`Machine.IRun.always_lin`).
+- Function servers and relations that answer every request are total (`Machine.ofFun_total`,
+  `Machine.ofRel_total`), and so is a fresh instance per request of a machine that can answer
+  every request from its initial state (`Machine.fresh_total`).
+
+Liveness is relative to the host: the theorem assumes a weakly fair scheduler.
+
 ### Example (Proved, `Silmaril/Servers/Examples/Counter`)
 
 The counter machine answers with the number of requests it has already handled. Two of its
@@ -144,14 +190,15 @@ traces are proved:
 
 ### Open
 
-- Liveness: every request is eventually answered, under fairness.
 - Interim responses and streamed bodies as events in their own right. Today a response is one
   atomic event, and `Http.exchSig` only groups interim responses with the final one.
 - Connection events (open, close, half close) and their effect on pending requests.
 - The converse of `Hom.lin_trace` (reflection of linearizability along morphisms) and a
   comorphism between the CLI institution and this one (one CLI run per request, as in CGI).
-- Proving that the declarative linearizability used here (`Sen.lin`, linearization points) is
-  equivalent to the Herlihy–Wing definition (a real-time-order-respecting permutation).
+- Liveness beyond the atomic-handler server: fair runs of the pipelining server, and liveness
+  of the `wasi:http` example components (their machines are total, so `Machine.fresh_total`
+  applies once a component's per-request runs are read as a fair host). That fair runs exist
+  for every machine is not proved.
 
 ## WASI: `wasi:http` components as servers (`Silmaril.Servers.{Exchange,Calls,WasiHttp,WasiExamples}`)
 
@@ -293,6 +340,36 @@ the case for a synchronous `wasi:http` handler on one instance. The host may sti
 which pending request to run next, so overlapping requests, out-of-order responses and
 requests that are never answered are all covered.
 
+### The state models in the core (`Silmaril.Servers.State.Traces`, Proved)
+
+The state models' vocabulary is read in the core, so that the core is the one vocabulary:
+
+- A history is a core trace with **one connection per request**: `Ev.call i r` is
+  `Event.recv ⟨i, 0⟩ r` and `Ev.ret i s` is `Event.send ⟨i, 0⟩ s` (`toTrace`, injective,
+  `toTrace_injective`). The state histories do not model connections, so this reading adds no
+  order. `Server.model M` is the core model of a state server.
+- `Atomic σ Req Resp` is `Machine (sig Req Resp) σ` by definition (`atomic_eq_machine`); at HTTP
+  it is `Machine Http.sig σ` and `Origin σ` (`atomic_eq_http`, `atomic_eq_origin`).
+- **Herlihy–Wing linearizability is the linearization-point sentence**: for a history whose core
+  trace is well formed, `Linearizable A s₀ H ↔ Sen.lin (A.machine.Hist s₀) (toTrace H)`
+  (`linearizable_iff_lin`; the direction from the core needs no hypothesis,
+  `linearizable_of_lin`). One direction replays the history on the host, running the
+  operations of the sequential run up to the one of each response just before it (each has
+  arrived, by the real-time order); the other goes through the host's own linearizability.
+- **The closed host is the core's atomic-handler server**, on traces with one connection per
+  request (`closed_model_tr_iff`), by a forward and a backward simulation (arrive is `recv`,
+  run is a linearization point, respond is `send`).
+- **An abstraction gives core refinement**: a state server with an abstraction onto `B` refines
+  `B.machine.server t₀` (`Abstraction.model_refines`), so it is linearizable in the core
+  (`Abstraction.model_sat_lin`) and, at HTTP, satisfies the origin's trace sentence
+  `Http.originSen` (`Abstraction.model_sat_originSen`). Refinement of state servers is
+  refinement of their core models (`Server.Refines.model`).
+
+So the results of (a), (b) and (c) below carry over to the core through `Server.Refines.model`
+and `closed_model_tr_iff` (for example, the file-backed store's refinement of the
+component-state store becomes refinement of the core's atomic-handler server of `storeStep`);
+they are not restated one by one.
+
 ### (a) State inside the component (`Silmaril.Servers.State.Component`)
 
 The state lives in the instance's memory and globals, and nobody else changes it
@@ -355,15 +432,12 @@ key-value store kept in a file and one kept in a component's memory have the sam
 
 ### Open
 
-* Identifying this vocabulary with the core: `Ev.call`/`Ev.ret` histories with the core's
-  `Event.recv`/`Event.send` traces (without connections), `Atomic σ` with `Machine Http.sig σ`,
-  `Linearizable` (Herlihy–Wing, a permutation that respects real time) with `Sen.lin`
-  (linearization points), and `Abstraction` with refinement of `Machine.server`.
 * Asynchronous handlers (`wasi:http` 0.3, where handler runs of one instance can interleave at
   `await` points): runs are no longer atomic, and linearizability needs linearization points
   inside runs.
 * Connections and pipelining (HTTP/1.1 answers requests on one connection in order) are not part
-  of these histories. Per-connection order would make a sequential-consistency variant possible.
+  of these histories: read in the core (`State.Traces`), every request is alone on its
+  connection. Per-connection order would make a sequential-consistency variant possible.
 * Connecting the handler runs to component executions (the `wasi:http` incoming handler and its
   bodies as streams), and the file model to the `wasi:filesystem` theories in `Silmaril.Wasi`.
 * Partially shared key files (see the planned row above).
