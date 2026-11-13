@@ -4,6 +4,7 @@ public import Silmaril.Project.Defs
 public import Silmaril.Project.Formats.Defs
 public import Silmaril.Project.Shapes.Format.Defs
 public import Silmaril.Project.Shapes.Elf.Thms
+public import ProjectSelfTest.Machines
 
 /-!
 # The `sil project` self-test
