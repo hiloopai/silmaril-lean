@@ -63,6 +63,11 @@ is the lack of forward secrecy), EUF-CMA signatures, and good randomness.
 
 ## Roadmap to full formalization of the common algorithms
 
+**Current priority** (after gzip, which another task owns): DER and X.509, then Diffie–Hellman
+foundations, ordered by what TLS 1.3 needs. The detailed plan is in #163
+(`docs/projects/asn1-x509-dh.md`): milestones X0–X3, D1–D4, S1–S2 and K1. It refines C4–C5
+below. Milestone X0, the DER core with its distinguished-encoding proofs, is that pull request.
+
 Each milestone is a separate pull request with its own vectors. The milestones are ordered by
 dependency. *Done* means kernel-checked published vectors plus the stated theorems.
 
