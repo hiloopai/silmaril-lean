@@ -13,7 +13,8 @@ import Silmaril.Proofs.Servers.Calls.Shape
 * `mem_model_single`: a complete run of one export call, on which the host satisfies `T`, that
   `ans` counts as answered and `obs` reads as the exchange `x`, makes `[x]` a trace of the
   component read as a server (so that specifications proved with `sat_each` are not vacuous).
-* `leads_runP`: a run over a concrete host is a run.
+* `leads_runP`: a run over a concrete host is a run; `leads_call_pure`, `leads_pure`: the
+  shape of a complete run.
 * `sat_each`: to show that a component read as a server (`model`) satisfies `each R`, it is
   enough to show `R` of the exchanges of every complete run of one export call on which the
   host satisfies `T`. Proofs in `Silmaril.Proofs.Servers.Calls.Shape`.
@@ -54,6 +55,20 @@ theorem exists_play {q : (nsig X).Op} {u : List WEv} {r : Option (List Silmaril.
     ∃ s ∈ ofBody h, calls (wtrace s) = [⟨q.1.1, q.2, u, r⟩] ∧
       wtrace s = Call.events ⟨q.1.1, q.2, u, r⟩ :=
   Proofs.Servers.Calls.exists_play hl
+
+/-- A complete run of a call starts with the call and its answer. -/
+theorem leads_call_pure {m : (nsig I).Op} {k : Option (List Silmaril.Wasm.Component.Val) → BProg I}
+    {u : List WEv} {r : Option (List Silmaril.Wasm.Component.Val)}
+    (hl : Leads (.call m k) u (.pure r)) :
+    ∃ n u', u = .req m.1.1 m.2 :: .imp m.1.1 m.2 n :: u' ∧ Leads (k n) u' (.pure r) := by
+  cases hl with
+  | call _ _ n h => exact ⟨n, _, rfl, h⟩
+
+/-- A run of a returning program is empty. -/
+theorem leads_pure {a : Option (List Silmaril.Wasm.Component.Val)} {u : List WEv} {p : BProg I}
+    (hl : Leads (.pure a) u p) : u = [] := by
+  cases hl
+  rfl
 
 /-- A run over a concrete host is a run. -/
 theorem leads_runP (impl : Impl) (past : List WEv) (p : BProg I) :

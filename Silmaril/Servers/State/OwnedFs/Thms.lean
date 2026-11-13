@@ -24,6 +24,7 @@ PROVED (standard axioms), namespace `Silmaril.Servers.State.OwnedFs`. Proofs in
 * **`static_refines`**, **`static_answer`**: the static file server refines the stateless
   server of its files, and answers each request `r` with `staticAnswer loc fs₀ r`;
 * `docRoot_safe`: `docRoot root` names only files under the preopen `root`, without `..`.
+* `fileStoreStep_frame`: a step of the file-backed store writes only the files of keys.
 * Checked by `#guard`: `docRoot` on a path with a query, an empty component and `.`; a
   `..` path names nothing.
 -/
@@ -36,6 +37,10 @@ theorem fileStoreStep_view {enc : Target → FPath} (hinj : Function.Injective e
     (r : Request) :
     storeStep (view enc fs) r = ((fileStoreStep enc fs r).1, view enc (fileStoreStep enc fs r).2) :=
   Proofs.Servers.State.OwnedFs.fileStoreStep_view hinj fs r
+
+theorem fileStoreStep_frame (enc : Target → FPath) (fs : Fs) (r : Request) (p : FPath)
+    (hp : ∀ t, enc t ≠ p) : (fileStoreStep enc fs r).2 p = fs p :=
+  Proofs.Servers.State.OwnedFs.fileStoreStep_frame enc fs r p hp
 
 theorem fileStore_refines {enc : Target → FPath} (hinj : Function.Injective enc) (fs₀ : Fs) :
     (fileStore enc fs₀).Refines (kvServer (view enc fs₀)) :=

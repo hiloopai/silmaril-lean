@@ -26,7 +26,12 @@ What is claimed (`SharedFs/Thms.lean`):
   store is a `storeStep` answer from some store;
 * **functional correctness for untouched files**: a request whose file the environment never
   touches is answered as with the initial files; a store whose key files the environment never
-  touches refines the component-state store, as in state model (b).
+  touches refines the component-state store, as in state model (b);
+* **linearizability on the untouched keys**: when the environment may change the files of some
+  keys (those outside `K`), the store is still linearizable with respect to `kvOn K`, the
+  key-value store on the keys of `K` (`restrictKeys K`): requests on keys of `K` are atomic
+  `storeStep`s of one store, and requests on other keys are answered as `storeStep` answers from
+  some store and leave the keys of `K` alone.
 
 A Silmaril addition.
 -/
@@ -60,5 +65,16 @@ def staticSafe (loc : Target → Option FPath) (I : Fs → Prop) : Atomic Unit R
 /-- The safety specification of the store: some store gives the answer. -/
 def storeSafe : Atomic Unit Request Response :=
   Atomic.ofRel fun r resp => ∃ S S', storeStep S r = (resp, S')
+
+/-- The store on the keys `K`: the other keys hold nothing. -/
+def restrictKeys (K : Target → Prop) [DecidablePred K] (S : Store) : Store :=
+  fun t => if K t then S t else none
+
+/-- **The key-value store on the keys `K`**: a request on a key of `K` is a `storeStep`; a
+request on another key is answered as `storeStep` answers it from some store, and leaves the
+state alone. -/
+def kvOn (K : Target → Prop) : Atomic Store Request Response := fun S r resp S' =>
+  (K r.target → storeStep S r = (resp, S')) ∧
+    (¬ K r.target → (∃ S₁ S₁', storeStep S₁ r = (resp, S₁')) ∧ S' = S)
 
 end Silmaril.Servers.State.SharedFs

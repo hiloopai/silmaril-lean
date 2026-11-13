@@ -118,4 +118,12 @@ def echo : Body proxyImports proxyWorld.exports := fun q =>
     | _ => answer (outOf q.2) failResp
   | _ => answer (outOf q.2) failResp
 
+/-! ## Hosts whose answers succeed -/
+
+/-- The answer `n` of `f` is the successful one (for the functions of the response code). -/
+def OkAns (f : FnName) (n : Option (List Val)) : Prop :=
+  ((f = setStatus ∨ f = streamWrite ∨ f = bodyFinish) → n = some [okV none]) ∧
+    ((f = respBody ∨ f = bodyWrite) → ∃ h, n = some [okV (some (.u32 h))]) ∧
+    (f = outSet → n = some [])
+
 end Silmaril.Servers.WasiExamples

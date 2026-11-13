@@ -18,6 +18,9 @@ PROVED (standard axioms), namespace `Silmaril.Servers.State.Component`. Proofs i
 * **`counter_distinct`**: when `f` is injective, two different requests to a counter server
   are never answered the same, however they overlap and in whatever order the host runs them;
 * `httpCounter_distinct`: the same for the HTTP counter with an injective rendering;
+* **`decimal_injective`**: the decimal rendering is injective, so **`decimalCounter_distinct`**:
+  the HTTP counter that answers its count in decimal never answers two requests the same
+  (no hypothesis left);
 * **`perRequest_counter`**, **`perRequest_kv_get`**: with a fresh instance per request (as
   `wasmtime serve` runs a component) the counter always answers `f 0` and the store answers
   every `GET` from its initial contents: component state does not persist.
@@ -47,6 +50,14 @@ theorem httpCounter_distinct {render : Nat → List UInt8} (hf : Function.Inject
     a ≠ b :=
   counter_distinct (f := fun n => Response.simple Status.ok (render n))
     (fun _ _ e => hf (congrArg Message.content e)) hH hi hj hij
+
+theorem decimal_injective : Function.Injective decimal :=
+  Proofs.Servers.State.Component.decimal_injective
+
+theorem decimalCounter_distinct {H : Hist Request Response}
+    (hH : (Server.closed (httpCounter decimal) 0).Hists H) {i j : Nat} {a b : Response}
+    (hi : Ev.ret i a ∈ H) (hj : Ev.ret j b ∈ H) (hij : i ≠ j) : a ≠ b :=
+  httpCounter_distinct decimal_injective hH hi hj hij
 
 theorem perRequest_counter {f : Nat → Resp} {H : Hist Req Resp}
     (hH : (Server.perRequest (counterBy f) 0).Hists H) {i : Nat} {r : Req} {s : Resp}
