@@ -27,8 +27,8 @@ per-machine theorem (`Thms`: the open goals).
   their targets are a certificate's business (`Cfg.Why`).
 * `other` (far transfers, `iret`, `xbegin`, `sysret`, …) admits anything; the CFG checker
   rejects it in a block.
-* `Stable`: a decoder's answer on a slice does not change when bytes are appended. It makes the
-  instruction at an address unique (`Thms.decode_unique`), so the step of a machine and the
+* `Stable`: a decoder's answer depends only on the bytes of the instruction. It makes the
+  instruction at an address unique (`Thms.at_unique`), so the step of a machine and the
   block of a certificate read the same instruction.
 -/
 
@@ -93,10 +93,11 @@ structure FlowDec where
 
 attribute [instance] FlowDec.deq
 
-/-- **The decoder reads a prefix**: its answer on a slice holding the instruction is unchanged
-by appending bytes. -/
+/-- **The decoder reads a prefix**: an instruction read from a slice lies inside it, and its first
+`l` bytes followed by anything read the same instruction. -/
 def FlowDec.Stable (D : FlowDec) : Prop :=
-  ∀ (w x : List Byte) i l, D.decode w = some (i, l) → l ≤ w.length → D.decode (w ++ x) = some (i, l)
+  ∀ (w : List Byte) i l, D.decode w = some (i, l) →
+    l ≤ w.length ∧ ∀ x, D.decode (w.take l ++ x) = some (i, l)
 
 /-- A machine seen through its core and memory: a step relation (a functional machine embeds as
 `fun s t => step s = some t`). System calls and library code are not user steps: they are the
