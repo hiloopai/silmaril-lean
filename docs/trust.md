@@ -89,6 +89,30 @@ and `#trust_dump` list declarations as `declared_procedure` lines (`name`, `cons
 `native` and `kernel` as `{check, sound}` or null, `format`, `doc`). Declare only implemented
 procedures.
 
+**Native tactics** (for `bv_decide` and other tactics that run compiled code themselves):
+
+```
+/-- What the native run trusts. -/
+native_tactic lean.std.bv_decide.verifyBVExpr
+  evaluates Lean.Elab.Tactic.BVDecide.Frontend.verifyBVExpr
+  axiom_tag bv_decide
+  components ["bit-blasting with hash-consing", "AIG to CNF", "relabeling", "LRAT parser and checker"]
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+  fallback "bv_normalize only"
+```
+
+Audits count axioms `<decl>._native.<axiom_tag>.ax_<n>` as that procedure (`own_native` or
+`dep_native`) and check them against the policy like any other. Registration describes and
+classifies; it does not authorize a run. The framework module that invokes the tactic must:
+
+1. call `Silmaril.Trust.nativeAllowed name : CoreM Bool` (policy, profile and ceiling);
+2. if allowed, run the tactic, then call `Silmaril.Trust.recordUse` with `mode := .native` and
+   the axiom it added (`profileTag` gives the `profile` field);
+3. otherwise run its kernel fallback and record `mode := .kernel`, or fail closed.
+
+Procedure lines carry `evaluated_constant` as `function`, plus `axiom_pattern`, `components`,
+`toolchain`, `kernel_fallback` (true when a fallback is described) and `fallback_coverage`.
+
 **Native procedures** (`import Silmaril.Prelude.Trust.Elab.Defs`):
 
 ```
@@ -151,7 +175,7 @@ renaming or removing a field bumps the version.
 
 | kind | printed by | fields |
 |---|---|---|
-| `procedure` | `#trust_uses` | `name`, `function`, `kernel_fallback` (bool), `module`, `format` (string or null), `sound` (theorem or null), `native_function` and `native_eq` (both strings, or both null), `doc` |
+| `procedure` | `#trust_uses` | `name`, `function` (the evaluated constant), `kernel_fallback` (bool), `module`, `format` (string or null), `sound` (theorem or null), `native_function` and `native_eq` (both strings, or both null), `axiom_pattern` (`"<decl>._native.<tag>.ax_<n>"` for native tactics, else null), `components` (strings), `toolchain`, `fallback_coverage`, `doc` |
 | `use` | `#trust_uses` | `decl`, `module`, `procedure`, `mode` (`native` or `kernel`), `profile` (e.g. `default`, `local≤paranoid` under a ceiling), `axiom` (string or null) |
 | `set` | `#trust_registry` | `name`, `all` (bool), `members`, `includes`, `resolved` (`"all"` or list of names) |
 | `scope` | `#trust_registry` | `module` (prefix), `max`, `default`, `deps`, `axioms` (set names or null when inherited), `policy_file`, `policy_pin` |
