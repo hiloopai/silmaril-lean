@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Net.Http1.Framing.Defs
+public import Silmaril.Net.Http1.Fields.Defs
 public import Silmaril.Crypto.SHA1.Defs
 public import Silmaril.Encoding.Base64
 
@@ -39,28 +39,17 @@ input and states no property of its randomness. Origin checks (`Origin`, §10.2)
 authentication are application policy, outside this model. Confidentiality and integrity need
 `wss` (TLS, `Silmaril.Net.Tunnel.Transport`), whose guarantees are assumed, not proved.
 
-Field lookup and the list syntax (`#rule`, RFC 9110 §5.6.1) are the HTTP/1.1 track's
-`Http1.fieldValues`, `Http1.listElements` and `Http1.fieldElements`.
+Field lookup, the list syntax (`#rule`, RFC 9110 §5.6.1) and token tests are the shared API of
+the HTTP/1.1 track (`Silmaril.Net.Http1.Fields`: `fieldValues`, `fieldElements`,
+`fieldHasToken`, all case-insensitive on names); names and literals are `Http1.ascii`.
 -/
 
 namespace Silmaril.Net.WebSocket.Handshake
 
 open Silmaril.Net.Http1
 
-/-- The octets of an ASCII string. -/
-def ascii (s : String) : List UInt8 := s.toList.map fun c => c.toNat.toUInt8
-
 /-- The GUID of §1.3 and §4.2.2. -/
 def guid : List UInt8 := ascii "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
-/-- The values of the fields named `n`, case-insensitively: `Http1.fieldValues` with the name
-given as a string. -/
-def values (fs : List FieldLine) (n : String) : List (List UInt8) := fieldValues fs (ascii n)
-
-/-- Some list element (`Http1.fieldElements`, RFC 9110 §5.6.1) of the fields named `n` is
-`tok`, case-insensitively. To be replaced by `Http1.fieldHasToken` (#156). -/
-def hasToken (fs : List FieldLine) (n tok : String) : Bool :=
-  (fieldElements fs (ascii n)).any fun e => lower e == lower (ascii tok)
 
 /-- The octets of an ASCII character list. -/
 def charBytes (cs : List Char) : List UInt8 := cs.map fun c => c.toNat.toUInt8
@@ -105,14 +94,15 @@ def readOffer (h : RequestHead) : Except HandshakeError Offer :=
   if h.line.method != ascii "GET" then .error .notGet
   else if !(h.line.version.major > 1 || (h.line.version.major == 1 && 1 ≤ h.line.version.minor))
     then .error .oldVersion
-  else match values fs "Host" with
+  else match fieldValues fs (ascii "Host") with
     | [host] =>
-      if !hasToken fs "Upgrade" "websocket" then .error .upgrade
-      else if !hasToken fs "Connection" "Upgrade" then .error .connection
-      else match values fs "Sec-WebSocket-Key" with
+      if !fieldHasToken fs (ascii "Upgrade") (ascii "websocket") then .error .upgrade
+      else if !fieldHasToken fs (ascii "Connection") (ascii "Upgrade") then .error .connection
+      else match fieldValues fs (ascii "Sec-WebSocket-Key") with
         | [key] =>
           if !validKey key then .error .key
-          else if values fs "Sec-WebSocket-Version" != [ascii "13"] then .error .wsVersion
+          else if fieldValues fs (ascii "Sec-WebSocket-Version") != [ascii "13"] then
+            .error .wsVersion
           else .ok ⟨host, h.line.target, key,
             fieldElements fs (ascii "Sec-WebSocket-Protocol")⟩
         | _ => .error .key
@@ -144,11 +134,11 @@ def checkResponse (key : List UInt8) (offered : List (List UInt8)) (r : Response
     Except HandshakeError (Option (List UInt8)) :=
   let fs := r.fields
   if r.line.code != 101 then .error (.status r.line.code)
-  else if !hasToken fs "Upgrade" "websocket" then .error .upgrade
-  else if !hasToken fs "Connection" "Upgrade" then .error .connection
-  else if values fs "Sec-WebSocket-Accept" != [acceptOf key] then .error .accept
-  else if !(values fs "Sec-WebSocket-Extensions").isEmpty then .error .extension
-  else match values fs "Sec-WebSocket-Protocol" with
+  else if !fieldHasToken fs (ascii "Upgrade") (ascii "websocket") then .error .upgrade
+  else if !fieldHasToken fs (ascii "Connection") (ascii "Upgrade") then .error .connection
+  else if fieldValues fs (ascii "Sec-WebSocket-Accept") != [acceptOf key] then .error .accept
+  else if !(fieldValues fs (ascii "Sec-WebSocket-Extensions")).isEmpty then .error .extension
+  else match fieldValues fs (ascii "Sec-WebSocket-Protocol") with
     | [] => .ok none
     | [p] => if offered.contains p then .ok (some p) else .error .protocol
     | _ => .error .protocol

@@ -127,16 +127,17 @@ This track only *reads* the other tracks' public definitions:
 - From encodings: `Base64` (`encodeChars`, `decodeChars`).
 - From cryptography: `Crypto.Padding`, `Crypto.Word`.
 
-Field lookup and the list syntax now come from the HTTP/1.1 track (on `main`):
-`Http1.fieldValues`, `listElements` and `fieldElements`. `Handshake.values` is only
-`fieldValues` with a string name.
+Field lookup, the list syntax and token tests are the HTTP/1.1 track's shared API
+`Silmaril.Net.Http1.Fields` (#156; this pull request is stacked on it): `fieldValues`,
+`fieldElements`, `fieldHasToken`, `flatMap_listElements_tokens`, with `Http1.ascii` for names.
+The handshake defines no lookup of its own. HTTP/2 and HTTP/3 lookup in `Tunnel.Connect` stays
+separate: it matches exact lower-case names (RFC 9113 §8.2.1).
 
 Remaining follow-ups with the other tracks:
 
 | Need | Plan | Owner |
 | --- | --- | --- |
-| Token membership in a field list | Replace `Handshake.hasToken` with `Http1.fieldHasToken`, and `SingleElems` with `Http1.listElements_token`, once #156 lands | HTTP/1.1 track |
-| Big-endian `k`-octet integers | A separate small pull request that moves `beBytes`/`beValue` from `Http2` to `Net.Wire`, re-exports them from `Http2`, and carries `beValue_beBytes`, `beBytes_beValue` and `beValue_lt` (proved here for any `k`) | `Net.Wire`; see also moria-lean#2033 |
+| Big-endian `k`-octet integers | `Net.Wire.beBytes`/`beValue` with general lemmas, extracted from `Http2.Frame` in a separate pull request (WIRE_PR); this pull request switches to them once that lands | `Net.Wire`; see also moria-lean#2033 |
 | HTTP/3 field sections | Already `List Hpack.Entry` in #159, so `Tunnel.Connect` applies to RFC 9220 unchanged | done |
 | `SETTINGS_ENABLE_CONNECT_PROTOCOL` | `Http3.settingEnableConnectProtocol` (#159) and `Tunnel.settingEnableConnectProtocol` are both 0x08. Whichever lands second defines its constant as the other's | QUIC/H3 track and this track |
 | Two `validExtendedConnect`s | `Tunnel` (this PR) and `Http3.ExtendedConnect` (#159) differ: this one needs exactly one `:authority` and a non-empty `:path` for every scheme. After both merge, prove `Tunnel.validExtendedConnect → Http3.validExtendedConnect` or make one canonical | both tracks |

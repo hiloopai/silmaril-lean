@@ -28,7 +28,7 @@ These are tests, not proofs: the kernel-checked facts are in the `Thms` modules
 namespace Silmaril.Net.WebSocket.Examples
 
 open Silmaril.Net.WebSocket Silmaril.Net.WebSocket.Handshake
-open Silmaril.Net.Http1 (parseRequestHead parseResponseHead encResponseHead Version)
+open Silmaril.Net.Http1 (parseRequestHead parseResponseHead encResponseHead Version ascii)
 open Silmaril.Parse.ByteParse
 
 /-- The client handshake of RFC 6455 §1.2. -/
