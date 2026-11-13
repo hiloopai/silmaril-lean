@@ -4,6 +4,7 @@ public import Silmaril.Servers.PerRequest.Defs
 public import Silmaril.Servers.Exchange.Thms
 public import Silmaril.Servers.State.Traces.Thms
 public import Silmaril.Servers.Reuse.Defs
+public import Silmaril.Servers.Live.Thms
 import Silmaril.Proofs.Servers.PerRequest.Basic
 
 /-!
@@ -21,7 +22,9 @@ PROVED (standard axioms).
 * `Machine.perRequest_seq_iff`: a sequential use is a trace exactly when every exchange is an
   answer from `q₀`;
 * `Machine.perRequest_mono`: a machine with fewer answers from `q₀` has fewer traces;
-* `Machine.perRequest_ofRel`: for a stateless machine, the host is the atomic-handler server.
+* `Machine.perRequest_ofRel`: for a stateless machine, the host is the atomic-handler server;
+* `Machine.fresh_total`: if `M` can answer every request from `q₀`, then a fair host with a
+  fresh instance per request answers every request (`Machine.IRun.answered`).
 
 **The instances.**
 
@@ -76,6 +79,10 @@ theorem Machine.perRequest_ofRel (R : A.Req → A.Resp → Prop) :
   rw [Machine.perRequest_tr_iff, Machine.server_ofRel_tr_iff]
   exact ⟨fun ⟨hw, h⟩ => ⟨hw, fun i r s a b => (h i r s a b).elim fun _ h' => h'⟩,
     fun ⟨hw, h⟩ => ⟨hw, fun i r s a b => ⟨(), h i r s a b⟩⟩⟩
+
+theorem Machine.fresh_total {M : Machine A σ} {q₀ : σ} (h : ∀ r, ∃ s q', M q₀ r s q') :
+    (M.fresh q₀).Total :=
+  Machine.ofRel_total h
 
 /-! ## Exchange servers -/
 
