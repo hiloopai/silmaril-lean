@@ -75,6 +75,7 @@ A Silmaril addition.
 
 namespace Silmaril.Servers.WasiHttp
 
+open Silmaril.Servers.Exchange
 open Silmaril.Games Silmaril.Wasi Silmaril.Servers.Calls
 open Silmaril.Wasm.Component (Val)
 open Silmaril.Net.Http (Request Response Method)
@@ -281,7 +282,8 @@ def Obs (c : Call) (x : Exch httpIface) : Prop :=
     respOf (outOf c.args) c.inner = some x.2
 
 /-- **A proxy component read as an HTTP server.** -/
-def wasiServer {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) : Model httpIface :=
+def wasiServer {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) :
+    Exchange.Model httpIface :=
   model (fun _ => True) answered Obs σ
 
 /-! ## Request bodies -/
@@ -339,7 +341,8 @@ def BodyOk (q : Request) (r : BitVec 32) (u : List WEv) : Prop :=
 def ObsB (c : Call) (x : Exch httpIface) : Prop := Obs c x ∧ BodyOk x.1 (reqOf c.args) c.inner
 
 /-- **A proxy component read as an HTTP server, with request bodies.** -/
-def wasiServerB {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) : Model httpIface :=
+def wasiServerB {X : Set FnName} (σ : Strategy (nsig proxyImports) (nsig X)) :
+    Exchange.Model httpIface :=
   model (fun _ => True) answered ObsB σ
 
 /-! ## A reference host -/

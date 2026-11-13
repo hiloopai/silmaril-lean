@@ -15,7 +15,8 @@ far (`istep`) and `BodyOk` along the prefixes of the call.
 
 namespace Silmaril.Proofs.Servers.WasiExamples
 
-open Silmaril.Games Silmaril.Wasi Silmaril.Servers Silmaril.Servers.Calls
+open Silmaril.Games Silmaril.Wasi Silmaril.Servers Silmaril.Servers.Exchange
+open Silmaril.Servers.Calls
 open Silmaril.Servers.WasiHttp Silmaril.Servers.WasiExamples
 open Silmaril.Wasm.Component (Val)
 open Silmaril.Net.Http (Request Response Method)

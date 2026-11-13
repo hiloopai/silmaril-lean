@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Wasi.Comp.Defs
 public import Silmaril.Wasi.Host.Defs
-public import Silmaril.Servers.Basic.Defs
+public import Silmaril.Servers.Exchange.Defs
 
 @[expose] public section
 
@@ -12,7 +12,7 @@ public import Silmaril.Servers.Basic.Defs
 A component given by its body (`Silmaril.Wasi.Comp`) runs one export call at a time: between
 the call and its return, the play holds only the component's import calls and the host's
 answers. Each export call is therefore an **atomic segment** of the trace, which is what lets
-a sequential component be read as a server of atomic exchanges (`Silmaril.Servers.Basic`).
+a sequential component be read as a server of atomic exchanges (`Silmaril.Servers.Exchange`).
 
 * `Leads p t p'`: running the program `p` on the import answers recorded in `t` (pairs of a
   request and its answer) reaches the program `p'`.
@@ -35,6 +35,7 @@ A Silmaril addition.
 
 namespace Silmaril.Servers.Calls
 
+open Silmaril.Servers.Exchange
 open Silmaril.Games Silmaril.Wasi
 open Silmaril.Wasm.Component (Val)
 
@@ -90,7 +91,7 @@ def runP (impl : Impl) (past : List WEv) : BProg I → List WEv × Option (List 
 
 /-- **A component read as a server**: the exchange traces explained by its plays. -/
 def model {J : Iface} (T : WEv → Prop) (ans : Call → Bool) (obs : Call → Exch J → Prop)
-    (σ : Strategy (nsig I) (nsig X)) : Model J :=
+    (σ : Strategy (nsig I) (nsig X)) : Exchange.Model J :=
   {t | ∃ s ∈ σ, (∀ e ∈ wtrace s, T e) ∧ List.Forall₂ obs ((calls (wtrace s)).filter ans) t}
 
 end Silmaril.Servers.Calls

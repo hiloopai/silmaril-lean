@@ -1,23 +1,27 @@
 module
 
+public import Silmaril.Servers.Core.Defs
 public import Mathlib.Data.Set.Basic
 public import Mathlib.Data.List.Forall2
 
 @[expose] public section
 
 /-!
-# Atomic servers: interfaces, exchange traces, specifications and refinement
+# Exchange servers: atomic exchanges, specifications and refinement
 
-The smallest platform-neutral reading of a server, used by the `wasi:http` instance
+The sequential reading of a server, used by the `wasi:http` instance
 (`Silmaril.Servers.WasiHttp`). Each request and its response form one **atomic exchange**; a
-server is observed through the sequences of exchanges it can take part in. This is the
-simplification people reason with when a request is handled as one indivisible step. Concurrent
-traces, where a second request arrives before the first response, are not part of this module.
+server is observed through the sequences of exchanges it can take part in, that is through its
+histories (`Silmaril.Servers.History`). This is the simplification people reason with when a
+request is handled as one indivisible step. The concurrent traces of the server core
+(`Silmaril.Servers.Core`), where a second request may arrive before the first response, are
+reached by two lifts: `seqUse M` (one instance used one request at a time) and `fresh M` (a
+fresh instance per request, any number running at once), proved linearizable in `Thms`.
 
-* `Iface`: a signature: what requests and responses are.
+* `Iface`: the interface, the core's `Sig`; an exchange trace is a core `History`.
 * `Model I`: a set of exchange traces (a server, as what it can do).
-* `Sen I`: a specification, a predicate on exchange traces; `Sat M φ`: every trace of `M`
-  satisfies `φ`. `each R`: every exchange is related by `R`.
+* `Sen I`: a specification, a predicate on exchange traces (a core `SeqSpec`);
+  `Sat M φ`: every trace of `M` satisfies `φ`. `each R`: every exchange is related by `R`.
 * `Refines M N`: trace inclusion. Refinement preserves satisfaction (`Refines.sat`).
 * `ofFun f`: the server of a response function; `ofRel R`: the loosest server of `each R`.
 * `Hom I J`: an interface morphism: `J`'s requests are read as `I`'s and `I`'s responses
@@ -27,14 +31,10 @@ traces, where a second request arrives before the first response, are not part o
 A Silmaril addition.
 -/
 
-namespace Silmaril.Servers
+namespace Silmaril.Servers.Exchange
 
-/-- A server interface: the requests and the responses. -/
-structure Iface where
-  /-- The requests. -/
-  Req : Type
-  /-- The responses. -/
-  Resp : Type
+/-- A server interface: the core's signature, the requests and the responses. -/
+abbrev Iface : Type 1 := Sig
 
 variable {I J : Iface}
 
@@ -42,10 +42,10 @@ variable {I J : Iface}
 abbrev Exch (I : Iface) : Type := I.Req × I.Resp
 
 /-- A server, as the exchange traces it can take part in. -/
-abbrev Model (I : Iface) : Type := Set (List (Exch I))
+abbrev Model (I : Iface) : Type := Set (History I)
 
 /-- A specification: a predicate on exchange traces. -/
-abbrev Sen (I : Iface) : Type := List (Exch I) → Prop
+abbrev Sen (I : Iface) : Type := SeqSpec I
 
 /-- **Satisfaction**: every trace of the server satisfies the specification. -/
 def Sat (M : Model I) (φ : Sen I) : Prop := ∀ t ∈ M, φ t
@@ -81,4 +81,18 @@ def Hom.lift (h : Hom I J) (M : Model I) : Model J :=
 def Hom.pull (h : Hom I J) (φ : Sen J) : Sen I :=
   fun t => ∀ t', List.Forall₂ h.Serves t t' → φ t'
 
-end Silmaril.Servers
+/-! ## Lifts to the concurrent traces of the core -/
+
+/-- **One instance, used sequentially**: the core traces in which each request is answered
+before the next arrives, on fresh identities, with the history a trace of `M`. -/
+def seqUse (M : Model I) : Servers.Model I :=
+  ⟨fun t => ∃ h : List (ReqId × I.Req × I.Resp),
+    (h.map (·.1)).Nodup ∧ h.map (·.2) ∈ M ∧ t = Trace.seq h⟩
+
+/-- **A fresh instance per request** (the `wasi:http` proxy world as `wasmtime serve` runs it):
+the well-formed core traces, with any overlap of requests, in which every request and its
+response form a one-exchange trace of `M`. -/
+def fresh (M : Model I) : Servers.Model I :=
+  ⟨fun t => Sen.WF t ∧ ∀ i r s, Event.recv i r ∈ t → Event.send i s ∈ t → [(r, s)] ∈ M⟩
+
+end Silmaril.Servers.Exchange

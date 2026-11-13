@@ -21,6 +21,7 @@ import Silmaril.Proofs.Servers.Calls.Shape
 
 namespace Silmaril.Servers.Calls
 
+open Silmaril.Servers.Exchange
 open Silmaril.Games Silmaril.Wasi
 
 variable {I X : Set FnName} {h : Body I X}

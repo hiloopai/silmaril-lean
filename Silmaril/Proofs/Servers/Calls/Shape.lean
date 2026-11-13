@@ -15,7 +15,8 @@ are those runs (`calls_of_mem`).
 
 namespace Silmaril.Proofs.Servers.Calls
 
-open Silmaril.Games Silmaril.Wasi Silmaril.Servers Silmaril.Servers.Calls
+open Silmaril.Games Silmaril.Wasi Silmaril.Servers Silmaril.Servers.Exchange
+open Silmaril.Servers.Calls
 open Silmaril.Wasm.Component (Val)
 
 variable {I X : Set FnName} {h : Body I X}

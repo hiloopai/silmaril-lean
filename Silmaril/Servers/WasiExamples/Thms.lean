@@ -1,9 +1,10 @@
 module
 
 public import Silmaril.Servers.WasiExamples.Defs
-public import Silmaril.Servers.Basic.Thms
+public import Silmaril.Servers.Exchange.Thms
 public import Silmaril.Servers.Calls.Thms
 public import Silmaril.Servers.WasiHttp.Thms
+public import Silmaril.Servers.Http.Defs
 import Silmaril.Proofs.Servers.WasiExamples.Answer
 import Silmaril.Proofs.Servers.WasiExamples.Echo
 
@@ -12,8 +13,9 @@ import Silmaril.Proofs.Servers.WasiExamples.Echo
 /-!
 # Example `wasi:http` servers: correctness for every host
 
-The specifications are sentences of the atomic server interface (`Silmaril.Servers.Basic`) over
-`httpIface`, satisfied by the components read as servers (`wasiServer`). The imports of the
+The specifications are sentences of the exchange servers (`Silmaril.Servers.Exchange`) over
+`httpIface`, the core's HTTP interface `Http.sig` (`httpIface_eq`), satisfied by the components
+read as servers (`wasiServer`). The imports of the
 components are uninterpreted, so the statements hold for every host: a host can only make a
 response unobservable (by failing an operation), never wrong.
 
@@ -35,13 +37,21 @@ Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 
 **Checked** over the reference host (`serveRef`, evaluated by `decide`): `hello` on `/`,
 `route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc`.
-`hello_satB`: hello's specification over the reading with request bodies, by refinement. `route_web_missing`: the web of the route table, as
-the outgoing `wasi:http` theories read it, answers `404` for `/missing`.
+`hello_satB`: hello's specification over the reading with request bodies, by refinement.
+`route_web_missing`: the web of the route table, as the outgoing `wasi:http` theories read it,
+answers `404` for `/missing`.
+
+**In the concurrent core** (`Silmaril.Servers.Core`), with a fresh instance per request
+(`Exchange.fresh`, as `wasmtime serve` runs a 0.2 proxy component) and any overlap of requests:
+`hello_fresh` and `route_fresh`: hello and route refine the core's function servers
+(`Model.ofFun`); `echo_fresh_lin`: echo is linearizable for its specification. With one
+instance used sequentially (`Exchange.seqUse`): `hello_seq_lin`.
 -/
 
 namespace Silmaril.Servers.WasiExamples
 
-open Silmaril.Games Silmaril.Wasi Silmaril.Servers Silmaril.Servers.Calls Silmaril.Servers.WasiHttp
+open Silmaril.Games Silmaril.Wasi Silmaril.Servers Silmaril.Servers.Exchange
+open Silmaril.Servers.Calls Silmaril.Servers.WasiHttp
 open Silmaril.Wasm.Component (Val)
 open Silmaril.Net.Http (Request Response)
 
@@ -119,5 +129,33 @@ theorem route_web_missing :
       .status 404 := by
   rw [webOf_pathV]
   rfl
+
+/-! ## In the concurrent core -/
+
+/-- The interface of the `wasi:http` reading is the core's HTTP interface. -/
+theorem httpIface_eq : httpIface = Http.sig := rfl
+
+/-- **Hello, with a fresh instance per request, refines the core's function server** of the
+constant `200 hello`, however requests overlap. -/
+theorem hello_fresh : (Exchange.fresh (wasiServer (ofBody hello))).Refines
+    (Servers.Model.ofFun fun _ => helloResp) :=
+  Exchange.fresh_ofFun_refines hello_refines
+
+/-- **Routing, with a fresh instance per request, refines the core's function server** of the
+route table. -/
+theorem route_fresh : (Exchange.fresh (wasiServer (ofBody route))).Refines
+    (Servers.Model.ofFun fun q => routeResp q.target.pathWithQuery) :=
+  Exchange.fresh_ofFun_refines route_refines
+
+/-- **Echo, with a fresh instance per request, is linearizable** for its specification. -/
+theorem echo_fresh_lin : (Exchange.fresh (wasiServerB (ofBody echo))).Sat
+    (Servers.Sen.lin (SeqSpec.pointwise fun q resp =>
+      resp = Response.simple 200 q.content ∨ resp = failResp)) :=
+  Exchange.fresh_sat_lin echo_sat
+
+/-- Hello, one instance used sequentially, is linearizable for its specification. -/
+theorem hello_seq_lin : (Exchange.seqUse (wasiServer (ofBody hello))).Sat
+    (Servers.Sen.lin (each fun _ resp => resp = helloResp)) :=
+  Exchange.seqUse_sat_lin hello_sat
 
 end Silmaril.Servers.WasiExamples

@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Servers.WasiHttp.Defs
-public import Silmaril.Servers.Basic.Thms
+public import Silmaril.Servers.Exchange.Thms
 import Silmaril.Proofs.Servers.WasiHttp.Codec
 
 @[expose] public section
@@ -20,6 +20,7 @@ import Silmaril.Proofs.Servers.WasiHttp.Codec
 
 namespace Silmaril.Servers.WasiHttp
 
+open Silmaril.Servers.Exchange
 open Silmaril.Wasi
 open Silmaril.Net.Http (Request Response)
 
