@@ -64,7 +64,9 @@ A Lean project can declare its artifacts (files, by content hash), the values re
 under formats, the problems about them, their proofs and the DAG that groups them, in TOML
 records and Lean attributes (`Silmaril.Project`). `sil project` (`make project-tool`) checks
 them, writes a canonical SQLite database and a static page that explores it. The
-[projects guide](docs/projects/silmaril-projects.md) starts with a quick start.
+[projects guide](docs/projects/silmaril-projects.md) starts with a quick start. The explorer of
+silmaril's own project is published from `main` at
+<https://hiloopai.github.io/silmaril-lean/> (`.github/workflows/pages.yml`).
 
 ## Check and explore
 
