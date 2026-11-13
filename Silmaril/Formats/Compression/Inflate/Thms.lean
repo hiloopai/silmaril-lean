@@ -4,6 +4,7 @@ public import Silmaril.Formats.Compression.Inflate.Defs
 public import Silmaril.Formats.Compression.Zlib.Thms
 public import Silmaril.Formats.Compression.Gzip.Thms
 import Silmaril.Proofs.Formats.Compression.Inflate
+import Silmaril.Proofs.Formats.Compression.InflateComplete
 import Silmaril.Raw.Formats.Compression.Inflate.Stream.MemberSpec
 import Silmaril.Raw.Formats.Compression.Inflate.Stream.MemberExamples
 import Silmaril.Raw.Formats.Compression.Inflate.Packed.PackedTables
@@ -22,13 +23,17 @@ Proved (standard axioms):
   means the decoder rejects every extension. `zlib_sound` and `gzip_sound` state
   this against `Zlib.decoder` and `Gzip.decoder`;
 * `raw_sound`: the same for the raw DEFLATE machine against `Deflate.decoder`;
+* `member_complete`, `zlib_complete`, `gzip_complete`, `raw_complete`: for both
+  versions, every member the decoder accepts is finished by a schedule offering
+  no further input (each call with a large enough scheduler budget and output
+  capacity); hence `task_member_complete` and `task_raw_complete`;
 * `member_calls_invariant`: after **any** schedule, finished or not, the saved
   machine denotes the member specification of all input offered so far and any
   future input;
 * `member_runs_agree`: finished schedules on the same input agree, across
   versions and chunkings;
 * `zlib_local_of_task`, `deflate_local_of_task`: completeness of the machine
-  gives the append law of its decoder;
+  gives the append law of its decoder (both tasks are now proved);
 * non-vacuity: `hello_chunked_done` runs the zlib 1.3.1 member machine on
   `Zlib.sampleHello` split over four calls with one- or two-byte output
   capacity and a trailing caller byte, and `hello_member_complete` is the
@@ -42,8 +47,9 @@ Proved (standard axioms):
   `Packed.fixed_token_no_refill`: with 31 bits buffered the packed fixed-table
   token decoder agrees with the canonical token parser and pulls no input.
 
-Task-conditional: `zlib_local_of_task`, `deflate_local_of_task`. Their
-conclusions are now proved unconditionally as `Zlib.local` and `Deflate.local`.
+`zlib_local_of_task` and `deflate_local_of_task` take the (now proved) tasks as
+hypotheses; their conclusions are also proved directly as `Zlib.local` and
+`Deflate.local`.
 -/
 
 @[expose] public section
@@ -97,6 +103,25 @@ theorem member_runs_agree (v₁ v₂ : Stream.Version) (kind : MemberSemantics.K
   obtain ⟨_, _, _, _, h, _⟩ :=
     MemberMachine.completed_schedules_agree v₁ v₂ kind i₁ i₂ c₁ c₂ σ₁ σ₂ h₁ h₂ same
   exact h
+
+/-- **Completeness**: every member the shared specification accepts is finished
+by the member machine, with calls that offer no further input. -/
+theorem member_complete (version : Stream.Version) (kind : MemberSemantics.Kind) :
+    (member version kind).Complete (shared kind) :=
+  Proofs.Formats.Compression.InflateComplete.member_complete version kind
+
+theorem zlib_complete (version : Stream.Version) : (member version .zlib).Complete Zlib.decoder :=
+  Proofs.Formats.Compression.InflateComplete.zlib_complete version
+
+theorem gzip_complete (version : Stream.Version) : (member version .gzip).Complete Gzip.decoder :=
+  Proofs.Formats.Compression.InflateComplete.gzip_complete version
+
+theorem raw_complete (version : Stream.Version) : (raw version).Complete Deflate.decoder :=
+  Proofs.Formats.Compression.InflateComplete.raw_complete version
+
+theorem task_member_complete : Task.member_complete := zlib_complete .v131
+
+theorem task_raw_complete : Task.raw_complete := raw_complete .v131
 
 theorem zlib_local_of_task (h : Task.member_complete) : Zlib.decoder.Local :=
   Incremental.local_of_sound_complete (zlib_sound .v131) h

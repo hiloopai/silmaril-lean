@@ -42,26 +42,26 @@ Assumptions and scope:
   produced by zlib, CPython and GNU gzip check them against independent
   implementations.
 - The inflater is a mathematical machine, not a refinement of zlib's C code.
-- The append laws are proved (`Deflate.local`, `Zlib.local`, `Gzip.local`); the
-  completeness of the inflater is open; see Open goals.
+- The append laws (`Deflate.local`, `Zlib.local`, `Gzip.local`) and the
+  completeness of the inflater (`Inflate.member_complete`, `Inflate.raw_complete`)
+  are proved.
 
 ## Open goals
 
-Frozen as `def Task.… : Prop`, not proved; the theorems that need them take them as
-hypotheses.
+None. The former open goals are kept as `def Task.… : Prop` for compatibility and
+are proved:
 
+- `Silmaril.Formats.Compression.Deflate.Task.local`: bytes appended after a DEFLATE
+  member never change how it decodes; proved as `Deflate.local` (`Deflate.task_local`),
+  hence `Zlib.local` and `Gzip.local`.
 - `Silmaril.Formats.Compression.Inflate.Task.member_complete`: zlib 1.3.1's member
   machine (`Inflate.member .v131 .zlib`) finishes every member `Zlib.decoder` accepts,
-  when the whole input is given at the start. Conditional: `Inflate.zlib_local_of_task`
-  (the zlib append law, through `Incremental.local_of_sound_complete`).
+  when the whole input is given at the start; proved as `Inflate.task_member_complete`
+  (`Inflate.member_complete`, `zlib_complete` and `gzip_complete` cover both versions
+  and both containers).
 - `Silmaril.Formats.Compression.Inflate.Task.raw_complete`: the same for the raw-DEFLATE
-  machine (`Inflate.raw .v131`) against `Deflate.decoder`. Conditional:
-  `Inflate.deflate_local_of_task`, which proves `Deflate.Task.local`.
-
-Closed: `Silmaril.Formats.Compression.Deflate.Task.local` (bytes appended after a
-DEFLATE member never change how it decodes) is proved as `Deflate.local`
-(`Deflate.task_local`); hence `Zlib.local` and `Gzip.local`. The definition is kept
-for compatibility.
+  machine (`Inflate.raw .v131`) against `Deflate.decoder`; proved as
+  `Inflate.task_raw_complete` (`Inflate.raw_complete` for both versions).
 
 ## Layout
 
