@@ -8,7 +8,7 @@ public import Silmaril.X86.Sep.BI.Defs
 
 This module reasons about concurrency on a **small, CIR-native** semantics, not on the
 byte-level candidate executions of `Silmaril.X86.MemoryModel`, and connects the two by one
-bridge statement, `Task.cirXlOpAx`. The bridge is stated here, not proved in this library.
+bridge statement, `Task.cirXlOpAx`, proved as `Csl.cirXlOpAx_holds` (`Cir/Csl/Thms.lean`).
 
 ## The CIR-native semantics
 
@@ -410,7 +410,7 @@ def progInit (P : Prog) : Cfg :=
 
 /-! ## The bridge from axiomatic XL -/
 
-/-- **The bridge** (a statement; it is not proved in this library): every axiomatic XL
+/-- **The bridge** (proved as `Csl.cirXlOpAx_holds` in `Cir/Csl/Thms.lean`): every axiomatic XL
 behaviour (hence every TSO and SC behaviour,
 `Cir.sc_le_xl`) of a uniform, spawn-free CIR program with positive access sizes **whose
 CIR-native start is CSL-certified** is a final state of the CIR-native store-buffer XL machine:
