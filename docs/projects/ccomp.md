@@ -74,6 +74,27 @@ claims: a `Certificate` needs both and a domain with an accepted program. The mo
 `Correctness.{Literal*,Addition*,Arithmetic*}` discharge them, or parts of them, for literal
 programs, additions and bounded arithmetic; each says which. The general obligation is open.
 
+## Tools
+
+| Command | Root | What |
+| --- | --- | --- |
+| `ccomp` | `tools/ccomp-native` | the native compiler (`Compiler.Native.Driver`): gcc-style options; C to x86-64 assembly, objects and static executables through the system assembler and linker |
+| `ccomp-legacy` | `tools/ccomp` | the Mir/Lir compiler (`Compiler.C.Main`) |
+| `ccomp-verified` | `tools/ccomp-verified` | the verified Core compiler (`Compiler.Core.Main`): a Cerberus Core document to a linked x86-64 artifact |
+| `csem` | `tools/csem` | the C semantics ladder on typed-Ail documents: `run`, `c0` … `c7`, the ladder checks |
+| `decompile` | `tools/decompile` | the decompiler over relocatable x86-64 objects (`X86.Decompile`); input through `SIL_DECOMPILE_FILE`. Its examples are object code of third-party sources: the RFC 1321 MD5 reference code, derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`), and amosnier/sha-2 (`NOTICES/sha-2`) |
+
+```sh
+lake build ccomp ccomp-legacy ccomp-verified csem decompile
+printf 'int main(void) { return 40 + 2; }\n' > t.c
+.lake/build/bin/ccomp t.c -o t && ./t; echo $?   # 42
+```
+
+`ccomp` needs the system's C preprocessor, assembler and linker; programs that include the
+system's `<stdio.h>` are rejected where its headers use features the frontend does not support
+yet (bit-fields, for example). The usage texts name the source's design documents, which are
+not part of this repository.
+
 ## Status
 
 Proved where a theorem is stated (no `sorry`, no new `axiom`, no `native_decide`); open goals are
@@ -119,4 +140,7 @@ adapts clauses of the Sail RISC-V model at `27224ccb` (BSD-2-Clause, `NOTICES/sa
 frontend uses the Cerberus port (`NOTICES/Cerberus`); `runtime/libc.ail` is the Cerberus
 elaboration of `tools/ccomp/runtime/libc.c` against the Cerberus runtime headers
 (BSD-2-Clause, `NOTICES/Cerberus`); `libc.c` is in-house except `pow`, adapted from Sun's
-fdlibm through OpenLibm (`NOTICES/fdlibm`).
+fdlibm through OpenLibm (`NOTICES/fdlibm`). The decompiler's examples and its `sha256.o` object
+(`Machine.CSupport.Crypto.X86.Objects.Sha256ClangO0`) are object code of amosnier/sha-2 (Unlicense
+or 0BSD, `NOTICES/sha-2`) and of the RFC 1321 MD5 reference code, derived from the RSA Data
+Security, Inc. MD5 Message-Digest Algorithm (`NOTICES/rfc1321-md5`).
