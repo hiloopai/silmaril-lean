@@ -38,7 +38,7 @@ namespace Silmaril.X86.Flow
 
 open Silmaril.X86 (State Word Byte Reg)
 open Silmaril.Process (Memory)
-open Silmaril.X86.Ext (Loaded loadN)
+open Silmaril.X86.Ext (loadN)
 
 /-- The operand of an indirect branch. -/
 inductive Opnd where
@@ -145,14 +145,15 @@ def RaxOk : RaxT → State → State → Prop
   | .set n, _, t => t.read .rax = BitVec.ofNat 64 n
   | .clobber, _, _ => True
 
-/-- **The flow law of `M` for `D`.** From a state whose `rip` is offset `o` of code loaded at
-`base`, where `D` reads `i` of length `l`, every step of `M` is admitted by `D.kind i` and
-respects `D.rax i`. One theorem per machine and decoder. -/
+/-- **`D` reads `i` of length `l` at `rip`**: the `l` bytes fetched there decode to `i`. -/
+def At {σ : Type} (M : UMach σ) (D : FlowDec) (s : σ) (i : D.Instr) (l : Nat) : Prop :=
+  ∃ w, (M.mem s).fetchBytes (M.core s).rip.toNat l = some w ∧ D.decode w = some (i, l)
+
+/-- **The flow law of `M` for `D`.** From a state where `D` reads `i` of length `l` at `rip`,
+every step of `M` is admitted by `D.kind i` and respects `D.rax i`. One theorem per machine and
+decoder. -/
 def FlowLaw {σ : Type} (M : UMach σ) (D : FlowDec) : Prop :=
-  ∀ s t (base : Word) (code : List Byte) (o l : Nat) (i : D.Instr),
-    Loaded (M.mem s) base code → (M.core s).rip = base + BitVec.ofNat 64 o →
-    o + l ≤ code.length → D.decode ((code.drop o).take l) = some (i, l) →
-    M.step s t →
+  ∀ s t (i : D.Instr) (l : Nat), At M D s i l → M.step s t →
     Admits (D.kind i) (M.core s) (M.mem s) l (M.core t) (M.mem t) ∧ RaxOk (D.rax i) (M.core s) (M.core t)
 
 end Silmaril.X86.Flow

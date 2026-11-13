@@ -7,8 +7,22 @@ public import Silmaril.Elf.Link.ElfBind.Defs
 /-!
 # Effects of x86 code: call graphs, the most general process, and effect predicates
 
-DESIGN SKELETON (effects design, `/tmp/elfwork/effects/DESIGN.md`). The open theorems are the
-`Task.*` propositions at the end.
+Layers: a flow decoder and its flow law (`Silmaril.X86.Flow`), CFG certificates
+(`Silmaril.X86.Cfg`), then here **call graphs**, a **most general process** around the image (any
+kernel, any library), and **effect predicates** read off the reachable call-graph nodes.
+
+* A `Cert` is one CFG per internal function and a call graph. `Cert.check` (by `decide`) checks
+  each CFG (`Graph.sub`) and that every call, tail jump, import and system-call edge of each CFG
+  is an edge of the graph.
+* The process (`World`, `Step`, `Run`) runs the image's machine `J` on image code, any kernel `K`
+  at a `syscall` (`int 0x80`/`sysenter`: an unknown system call), and any library `L` on foreign
+  code. A step from image bytes the decoder does not read is an `unknown` event.
+* `ReachIn N`: every executed call target, import entered, system call and unknown step is a node
+  of `N` (a known system call is also covered by `sysAny ∈ N`).
+* **Soundness** (`Thms.sound`): under the `Setting` (the flow law, the certificate checked, `N`
+  closed under the graph's edges and without `unresolved`, the code loaded, and the world's frame
+  conditions `KOk`, `LibOk`, `IndOk`, `RetOk`, `ImageOk`), `ReachIn N` holds for every run from
+  the entry.
 -/
 
 @[expose] public section
@@ -19,7 +33,7 @@ open Silmaril.X86 (Word Byte State)
 open Silmaril.X86.Link (Blob)
 open Silmaril.Process (Memory)
 open Silmaril.X86.Flow (FlowDec UMach FlowLaw)
-open Silmaril.X86.Cfg (Image Graph Target Term Why)
+open Silmaril.X86.Cfg (Graph Target Term Why Block walk)
 open Silmaril.X86.Ext (loadN)
 open Silmaril.Formats.ELF (NameBytes)
 
@@ -60,120 +74,116 @@ inductive Node where
   | sys (nr : Nat)
   /-- A system call whose number is not determined (or `int 0x80`/`sysenter`). -/
   | sysAny
-  /-- An indirect transfer whose targets are not resolved. -/
+  /-- A transfer whose target is not resolved, or an instruction the decoder does not read. -/
   | unresolved
   deriving DecidableEq, Repr
 
-/-- **A call graph**: nodes and directed edges, cycles allowed. -/
+/-- **A call graph**: directed edges, cycles allowed. -/
 structure CallGraph where
-  nodes : List Node
   edges : List (Node × Node)
   deriving DecidableEq, Repr
 
 namespace CallGraph
 
-/-- The nodes reachable from `roots` (`k` rounds). -/
-def reachK (G : CallGraph) (roots : List Node) : Nat → List Node
-  | 0 => roots
-  | k + 1 =>
-    let r := G.reachK roots k
-    r ++ (G.edges.filter fun e => r.contains e.1 && !r.contains e.2).map (·.2)
+/-- **`N` is closed under the edges** (decidable form, for a listed `N`). -/
+def closedB (G : CallGraph) (N : List Node) : Bool :=
+  G.edges.all fun e => !N.contains e.1 || N.contains e.2
 
-/-- The nodes reachable from `roots`. -/
-def reach (G : CallGraph) (roots : List Node) : List Node := G.reachK roots G.nodes.length
+/-- **Reachability** from `roots`. -/
+inductive Reaches (G : CallGraph) (roots : List Node) : Node → Prop
+  | root {n} : n ∈ roots → Reaches G roots n
+  | edge {m n} : Reaches G roots m → (m, n) ∈ G.edges → Reaches G roots n
 
 /-- `G` is a subgraph of `H`. -/
-def Le (G H : CallGraph) : Prop := (∀ n ∈ G.nodes, n ∈ H.nodes) ∧ (∀ e ∈ G.edges, e ∈ H.edges)
+def Le (G H : CallGraph) : Prop := ∀ e ∈ G.edges, e ∈ H.edges
 
 /-- The union. -/
-def union (G H : CallGraph) : CallGraph := ⟨G.nodes ++ H.nodes, G.edges ++ H.edges⟩
+def union (G H : CallGraph) : CallGraph := ⟨G.edges ++ H.edges⟩
 
 end CallGraph
 
-/-- The call-graph edges of one function's CFG: calls, tail jumps, imports, system calls. -/
-def edgesOf {D : FlowDec} (f : Nat) (C : Graph D Ref) : List (Node × Node) :=
-  let tgt : Target Ref → List Node
-    | .fn a => [.fn a]
-    | .ext r => [.ext r]
-    | .blk _ => []
-  let tgts : Option (List (Target Ref)) → List Node
-    | some ts => ts.flatMap tgt
-    | none => [.unresolved]
+/-- The call-graph targets of a transfer. -/
+def tgtNode : Target Ref → List Node
+  | .fn a => [.fn a]
+  | .ext r => [.ext r]
+  | .blk _ => []
+
+/-- The call-graph edges of one function's CFG: calls, tail jumps, imports, system calls, and
+`unresolved` for an indirect transfer without listed targets. -/
+def edgesOf (f : Nat) (C : Graph Ref) : List (Node × Node) :=
   C.blocks.flatMap fun b => (match b.term with
-    | .jmp t | .call t _ => tgt t
-    | .jmpInd ts _ | .callInd ts _ _ => tgts ts
+    | .jmp t | .call t _ => tgtNode t
+    | .jmpInd (some ts) _ | .callInd (some ts) _ _ => ts.flatMap tgtNode
+    | .jmpInd none _ | .callInd none _ _ => [.unresolved]
     | .sys (some n) _ => [.sys n]
     | .sys none _ | .sysOther _ => [.sysAny]
     | _ => []).map fun n => (.fn f, n)
 
 /-! ## Program certificates -/
 
-/-- **A certificate** for the code of one file reached from `roots`: code windows, one CFG per
-internal function, the address-taken entries (callbacks), and the call graph. -/
-structure Cert (D : FlowDec) where
-  img : Image
-  fns : List (Nat × Graph D Ref)
-  /-- Entries a library may call back (`main`, `DT_INIT_ARRAY`/`DT_FINI_ARRAY`, address-taken
-  functions, exports). -/
-  escapes : List Nat
+/-- **A certificate**: one CFG per internal function (keyed by its entry), and a call graph. -/
+structure Cert where
+  fns : List (Nat × Graph Ref)
   graph : CallGraph
+  deriving DecidableEq, Repr
 
-/-- **The kernel check** (by `decide`): each CFG is closed (`cfg_sub`) with its key as entry;
-every function target has a CFG; the escapes have CFGs; every derived edge is in the graph; every
-import calls back to every escape. -/
-def Cert.check {D : FlowDec} (P : Cert D) : Bool :=
-  let has (a : Nat) := P.fns.any (·.1 = a)
-  P.fns.all (fun (a, C) => C.entry = a && C.sub P.img &&
+/-- `a` has a CFG. -/
+def Cert.has (P : Cert) (a : Nat) : Bool := P.fns.any (·.1 == a)
+
+/-- **One function's part of the check**: its CFG is closed (`Graph.sub`) with its key as entry,
+and each of its edges is in the graph, a function target having a CFG. -/
+def Cert.fnOk (D : FlowDec) (P : Cert) (a : Nat) (C : Graph Ref) : Bool :=
+  C.entry == a && decide (a < 2 ^ 64) && C.sub D &&
     (edgesOf a C).all fun e => P.graph.edges.contains e && (match e.2 with
-      | .fn b => has b
-      | _ => true)) &&
-  P.escapes.all has &&
-  P.graph.nodes.all fun n => match n with
-    | .ext _ => P.escapes.all fun a => P.graph.edges.contains (n, .fn a)
-    | _ => true
+      | .fn b => P.has b
+      | _ => true)
 
-/-- The windows are code of `F`, and every address `F` exposes is listed in `escapes`
-(`Escapes`: `e_entry`, `DT_INIT_ARRAY`/`DT_FINI_ARRAY` entries, `R_X86_64_RELATIVE` targets in
-code, exported functions, `lea`/`mov` immediates into code; decidable from the parse and the
-CFGs, design §5). -/
-structure Cert.Faithful {D : FlowDec} (P : Cert D) (F : Blob) (Escapes : Nat → Prop) : Prop where
-  code : ∀ w ∈ P.img, CodeAt F w.1 w.2
-  escapes : ∀ a, Escapes a → a ∈ P.escapes
+/-- **The kernel check** (by `decide`): every function's part, and the roots have CFGs. -/
+def Cert.check (D : FlowDec) (P : Cert) (roots : List Nat) : Bool :=
+  P.fns.all (fun x => P.fnOk D x.1 x.2) && roots.all P.has
+
+/-- The nodes of `P`'s graph reachable from the entry `v` and the escapes. -/
+def Cert.reach (P : Cert) (v : Nat) (esc : List Nat) : Node → Prop :=
+  P.graph.Reaches (.fn v :: esc.map .fn)
 
 /-! ## The most general process -/
+
+/-- Where an address is: image code, the bound entry of an import, or other foreign code
+(library code, the vDSO, unmapped). -/
+inductive Cls where
+  | image
+  | entry (r : Ref)
+  | foreign
+  deriving DecidableEq, Repr
+
+/-- **A world**: the image machine, where the loader put things (`cls`), any kernel (`K nr s t`;
+`t = none`: the process ended) and any library (`L s t`, one step of foreign code). -/
+structure World (σ : Type) where
+  J : UMach σ
+  cls : Word → Cls
+  K : Nat → σ → Option σ → Prop
+  L : σ → Option σ → Prop
 
 /-- An observable event of a step. -/
 inductive Ev where
   /-- Any other step. -/
   | step
-  /-- A `call`/`callInd` retired to `dst`, pushing the return address `ret`. -/
+  /-- A `call` retired to `dst`, pushing `ret`. -/
   | call (dst ret : Word)
-  /-- A `jmp`/`jmpInd`/`jcc` retired to `dst`. -/
+  /-- A `jmp`/`jcc` retired to `dst`. -/
   | jump (dst : Word)
   | ret (dst : Word)
-  /-- A direct system call with `rax = nr`. -/
+  /-- A `syscall` with `rax = nr`. -/
   | sys (nr : Nat)
-  /-- A library step of import `r`: returned (`none`) or called back to `dst`. -/
-  | lib (r : Ref) (dst : Option Word)
-  /-- A step from bytes the decoder does not read. -/
+  /-- `int n`/`sysenter`. -/
+  | sysAny
+  /-- A library step, to `dst`. -/
+  | lib (dst : Option Word)
+  /-- A step from image bytes the decoder does not read. -/
   | unknown
   deriving DecidableEq
 
-/-- **A world**: the image machine and its decoder, where imports are bound (`lib`, from the
-loader), the kernel (`K nr s t`, `t = none`: the process ended), and the library (`L r s t`,
-from the bound address of `r` to a return or a callback, `t = none`: the process ended). -/
-structure World (σ : Type) where
-  J : UMach σ
-  D : FlowDec
-  lib : Word → Option Ref
-  K : Nat → σ → Option σ → Prop
-  L : Ref → σ → Option σ → Prop
-
 variable {σ : Type}
-
-/-- The bytes at `rip` that `D` reads as `i` of length `l`. -/
-def World.At (W : World σ) (s : σ) (i : W.D.Instr) (l : Nat) : Prop :=
-  ∃ w, (W.J.mem s).fetchBytes (W.J.core s).rip.toNat l = some w ∧ W.D.decode w = some (i, l)
 
 /-- The event of a user step of kind `k`. -/
 def evOf (k : Silmaril.X86.Flow.Kind) (s : State) (l : Nat) (t : State) : Ev :=
@@ -183,137 +193,150 @@ def evOf (k : Silmaril.X86.Flow.Kind) (s : State) (l : Nat) (t : State) : Ev :=
   | .ret => .ret t.rip
   | _ => .step
 
-/-- **One step of the most general process** with its event. -/
-inductive Step (W : World σ) : Option σ → Ev → Option σ → Prop
-  | user {s t i l} : W.lib (W.J.core s).rip = none → W.At s i l → W.D.kind i ≠ .syscall →
-      W.J.step s t → Step W (some s) (evOf (W.D.kind i) (W.J.core s) l (W.J.core t)) (some t)
-  | unknown {s t} : W.lib (W.J.core s).rip = none → (∀ i l, ¬ W.At s i l) → W.J.step s t →
-      Step W (some s) .unknown (some t)
-  | sys {s t i l} : W.lib (W.J.core s).rip = none → W.At s i l → W.D.kind i = .syscall →
-      W.K ((W.J.core s).read .rax).toNat s t → Step W (some s) (.sys ((W.J.core s).read .rax).toNat) t
-  | lib {s t r} : W.lib (W.J.core s).rip = some r → W.L r s t →
-      Step W (some s) (.lib r (t.map fun u => (W.J.core u).rip)) t
+/-- `rip` of a state. -/
+abbrev World.rip (W : World σ) (s : σ) : Word := (W.J.core s).rip
 
-/-- **Runs with their events**, while every state satisfies `keep` (a function's activation:
-`rsp ≤ rsp₀`; a program: `True`). -/
-inductive Run (W : World σ) (keep : σ → Prop) : Option σ → List Ev → Option σ → Prop
-  | refl (x) : Run W keep x [] x
-  | step {s e y es z} : keep s → Step W (some s) e y → Run W keep y es z →
-      Run W keep (some s) (e :: es) z
+/-- **One step of the most general process** with its event. -/
+inductive Step (W : World σ) (D : FlowDec) : Option σ → Ev → Option σ → Prop
+  | user {s t i l} : W.cls (W.rip s) = .image → Silmaril.X86.Flow.At W.J D s i l → D.kind i ≠ .syscall →
+      D.kind i ≠ .sysOther → W.J.step s t →
+      Step W D (some s) (evOf (D.kind i) (W.J.core s) l (W.J.core t)) (some t)
+  | unknown {s t} : W.cls (W.rip s) = .image → (∀ i l, ¬ Silmaril.X86.Flow.At W.J D s i l) → W.J.step s t →
+      Step W D (some s) .unknown (some t)
+  | sys {s t i l} : W.cls (W.rip s) = .image → Silmaril.X86.Flow.At W.J D s i l → D.kind i = .syscall →
+      W.K ((W.J.core s).read .rax).toNat s t → Step W D (some s) (.sys ((W.J.core s).read .rax).toNat) t
+  | sysOther {s t i l n} : W.cls (W.rip s) = .image → Silmaril.X86.Flow.At W.J D s i l → D.kind i = .sysOther →
+      W.K n s t → Step W D (some s) .sysAny t
+  | lib {s t} : W.cls (W.rip s) ≠ .image → W.L s t → Step W D (some s) (.lib (t.map W.rip)) t
+
+/-- **Runs with their events**, while every state stepped from satisfies `keep` (a function's
+activation: `rsp ≤ rsp₀`; a program: `True`). -/
+inductive Run (W : World σ) (D : FlowDec) (keep : σ → Prop) : Option σ → List Ev → Option σ → Prop
+  | refl (x) : Run W D keep x [] x
+  | step {s e y es z} : keep s → Step W D (some s) e y → Run W D keep y es z →
+      Run W D keep (some s) (e :: es) z
 
 /-- The activation of a function entered at `s₀`. -/
 def Within (W : World σ) (s₀ s : σ) : Prop :=
   ((W.J.core s).read .rsp).toNat ≤ ((W.J.core s₀).read .rsp).toNat
 
-/-- The call-graph node of a runtime address (an import's bound address, or an image function). -/
-def nodeAt (W : World σ) (base a : Word) : Node :=
-  match W.lib a with
-  | some r => .ext r
-  | none => .fn (a - base).toNat
-
-/-- **The node of an event**, for the events a call graph constrains. -/
+/-- **The node of an event**, for the events a call graph constrains: a call into the image is
+its target function; entering an import (by a call or a jump) is the import; entering other
+foreign code, or an unknown step, is `unresolved`. -/
 def Ev.node (W : World σ) (base : Word) : Ev → Option Node
-  | .call a _ => some (nodeAt W base a)
+  | .call a _ => some (match W.cls a with
+    | .image => .fn (a - base).toNat
+    | .entry r => .ext r
+    | .foreign => .unresolved)
+  | .jump a => match W.cls a with
+    | .image => none
+    | .entry r => some (.ext r)
+    | .foreign => some .unresolved
   | .sys n => some (.sys n)
-  | .lib _ (some a) => some (.fn (a - base).toNat)
+  | .sysAny => some .sysAny
   | .unknown => some .unresolved
   | _ => none
 
-/-! ## The edge-respecting reading: a shadow stack of frames -/
+/-- `n` is in `N`, a known system call also through `sysAny`. -/
+def Covered (N : Node → Prop) (n : Node) : Prop :=
+  N n ∨ (∃ k, n = .sys k) ∧ N .sysAny
 
-/-- A frame: the node running, whether it is opaque (a frontier node of an open graph, or called
-from one), and the return address its caller pushed. -/
-abbrev Frame := Node × Bool × Option Word
+/-- **Every executed call, import, system call and unknown step from `s₀` is covered by `N`.** -/
+def ReachIn (W : World σ) (D : FlowDec) (base : Word) (keep : σ → Prop) (s₀ : σ)
+    (N : Node → Prop) : Prop :=
+  ∀ es y, Run W D keep (some s₀) es y → ∀ e ∈ es, ∀ n, e.node W base = some n → Covered N n
 
-/-- **One event on the shadow stack**; `none` when the event leaves `G` (an edge not in `G`, a
-return to another address than the pushed one, an unknown instruction). Inside an opaque frame
-nothing is checked but the nesting. A `jump` to the entry of a function node of `G` is a tail
-call; any other jump is intraprocedural. -/
-def walk (W : World σ) (base : Word) (G : CallGraph) (H : List Node) :
-    List Frame → Ev → Option (List Frame)
-  | [], _ => some []
-  | f :: fs, e =>
-    let edge (n : Node) : Bool := f.2.1 || G.edges.contains (f.1, n)
-    let push (n : Node) (r : Option Word) : Option (List Frame) :=
-      if edge n then some ((n, f.2.1 || H.contains n, r) :: f :: fs) else none
-    match e with
-    | .call a r => push (nodeAt W base a) (some r)
-    | .jump a =>
-      let n := nodeAt W base a
-      if (G.nodes.contains n || (match n with | .ext _ => true | _ => false)) && n != f.1 then
-        (if edge n then some ((n, f.2.1 || H.contains n, f.2.2) :: fs) else none)
-      else some (f :: fs)
-    | .ret a => if f.2.2 == some a || f.2.2 == none then some fs else none
-    | .lib _ none => some fs
-    | .lib _ (some a) => push (.fn (a - base).toNat) none
-    | .sys n => if edge (.sys n) || edge .sysAny then some (f :: fs) else none
-    | .unknown => if f.2.1 then some (f :: fs) else none
-    | .step => some (f :: fs)
+/-! ## The frame conditions of a world -/
 
-/-- **Every run from `s₀`, entered as `root`, respects `G`** (the open form: frames of `H` are
-opaque). -/
-def CallSubIn (W : World σ) (base : Word) (keep : σ → Prop) (s₀ : σ) (G : CallGraph)
-    (H : List Node) (root : Node) : Prop :=
-  ∀ es y, Run W keep (some s₀) es y → (es.foldlM (walk W base G H) [(root, H.contains root, none)]).isSome
+/-- `a` is the return-to address of a call of a function of `N`. -/
+def RetSite (P : Cert) (N : Node → Prop) (a : Nat) : Prop :=
+  ∃ f C b, (f, C) ∈ P.fns ∧ N (.fn f) ∧ b ∈ C.blocks ∧ b.term.retTo = some a
 
-/-! ## Admissible worlds: the side conditions -/
+/-- **Where control may come back into the image**: foreign code, a return site of a function of
+`N`, or an escaped entry (`esc`: the entries a library may call back). -/
+def Landing (W : World σ) (base : Word) (P : Cert) (N : Node → Prop) (esc : List Nat) (t : σ) :
+    Prop :=
+  W.cls (W.rip t) ≠ .image ∨ (∃ a, RetSite P N a ∧ W.rip t = base + BitVec.ofNat 64 a) ∨
+    ∃ e ∈ esc, W.rip t = base + BitVec.ofNat 64 e
 
-/-- **The kernel frame.** A system call resumes after the `syscall` (`rcx = rip`) and, unless it
-is one of `codeNrs` (`mmap`, `mprotect`, `munmap`, `mremap`, `pkey_mprotect`, `shmat`,
-`remap_file_pages`), keeps the image's read-only segments. -/
-def codeNrs : List Nat := [9, 10, 11, 25, 31, 216, 329]
+/-- **The code stays loaded** at every state of a run: each block's bytes are fetchable at
+`base + start`. Derived from `CodeStable` (the read-only segments stay loaded), `CodeAt` rows and
+the placement (`Thms.codeLoaded_of`). -/
+def CodeLoaded (W : World σ) (D : FlowDec) (base : Word) (P : Cert) (keep : σ → Prop) (s₀ : σ) :
+    Prop :=
+  ∀ es u, Run W D keep (some s₀) es (some u) → ∀ f C, (f, C) ∈ P.fns → ∀ b ∈ C.blocks,
+    Silmaril.X86.Ext.Loaded (W.J.mem u) (base + BitVec.ofNat 64 b.start) b.bytes
 
-/-- **The library frame** (the most general library): from the bound address, it returns to the
-popped return address, calls back to an escaped entry, or ends the process; it keeps the image's
-read-only segments. -/
-structure LibOk (W : World σ) (F : Blob) (base : Word) (escapes : List Nat) : Prop where
-  ro : ∀ r s t, W.L r s (some t) → Link.ElfBind.RoLoaded F base (W.J.mem s) →
-    Link.ElfBind.RoLoaded F base (W.J.mem t)
-  dest : ∀ r s t, W.L r s (some t) →
-    loadN (W.J.mem s) ((W.J.core s).read .rsp) 8 = some (W.J.core t).rip ∨
-      ((W.J.core t).rip - base).toNat ∈ escapes
+/-- **Code stability** (W^X along the run): the read-only segments of `F` stay loaded at `base`.
+A hypothesis until derived from the machine's write discipline, `LibOk` and the kernel. -/
+def CodeStable (W : World σ) (D : FlowDec) (F : Blob) (base : Word) (keep : σ → Prop) (s₀ : σ) :
+    Prop :=
+  ∀ es u, Run W D keep (some s₀) es (some u) → Link.ElfBind.RoLoaded F base (W.J.mem u)
 
-/-- The kernel keeps the read-only segments outside `codeNrs`. -/
-def KOk (W : World σ) (F : Blob) (base : Word) : Prop :=
-  ∀ n s t, W.K n s (some t) → n ∉ codeNrs → Link.ElfBind.RoLoaded F base (W.J.mem s) →
-    Link.ElfBind.RoLoaded F base (W.J.mem t)
+/-- **The certified code is image code**: no import is bound inside a block. -/
+def ImageOk (W : World σ) (base : Word) (P : Cert) : Prop :=
+  ∀ f C, (f, C) ∈ P.fns → ∀ b ∈ C.blocks, ∀ o < b.bytes.length,
+    W.cls (base + BitVec.ofNat 64 (b.start + o)) = .image
 
-/-- **Code stability** along a run (W^X): the read-only segments stay loaded. Derived
-(`Task.codeStable`) from the machine's write-permission discipline, the segments' flags, `LibOk`,
-`KOk` and no `codeNrs` call touching them; a hypothesis until then. -/
-def CodeStable (W : World σ) (F : Blob) (base : Word) (keep : σ → Prop) (s₀ : σ) : Prop :=
-  ∀ es u, Run W keep (some s₀) es (some u) → Link.ElfBind.RoLoaded F base (W.J.mem u)
+/-- **The kernel resumes after the system-call instruction** (or ends the process). -/
+def KOk (W : World σ) (D : FlowDec) : Prop :=
+  ∀ n s t i l, Silmaril.X86.Flow.At W.J D s i l → (D.kind i = .syscall ∨ D.kind i = .sysOther) →
+    W.K n s (some t) → W.rip t = Silmaril.X86.Flow.next (W.J.core s) l
 
-/-- **Indirect transfers stay in their resolved sets**: for every block whose terminator lists
-targets (`got`, `table`, `assumed`), every step from it lands on a listed target; for `got`, the
-slot holds the bound address of the import. `got` and `table` are discharged from RELRO and
-read-only data (`Task.indirect_got`, `Task.indirect_table`); `assumed` stays a hypothesis. -/
-def IndOk {D : FlowDec} (W : World σ) (base : Word) (P : Cert D) (keep : σ → Prop) (s₀ : σ) : Prop :=
-  ∀ es u t, Run W keep (some s₀) es (some u) → W.J.step u t →
-    ∀ a C, (a, C) ∈ P.fns → ∀ b ∈ C.blocks, ∀ ts why ret,
-      (b.term = .jmpInd (some ts) why ∨ b.term = .callInd (some ts) why ret) →
-      (W.J.core u).rip = base + BitVec.ofNat 64 (b.stop - (b.body.getLast?.map (·.2)).getD 0) →
-      ∃ x ∈ ts, match x with
-        | .blk c | .fn c => (W.J.core t).rip = base + BitVec.ofNat 64 c
-        | .ext r => W.lib (W.J.core t).rip = some r
+/-- **The library frame**: a library step either stays in foreign code, returns to a return site
+of a function of `N`, calls back an escaped entry, or leaves `keep`. -/
+def LibOk (W : World σ) (D : FlowDec) (base : Word) (P : Cert) (N : Node → Prop) (esc : List Nat)
+    (keep : σ → Prop) (s₀ : σ) : Prop :=
+  ∀ es u t, Run W D keep (some s₀) es (some u) → keep u → W.cls (W.rip u) ≠ .image →
+    W.L u (some t) → keep t → Landing W base P N esc t
 
-/-- **Returns go to a return site**: every `ret` lands on the return address of a call site of
-the certificate, or leaves the activation. (The strong form, `RetDiscipline`, is the matching
-call's address; it is what `CallSub` needs.) -/
-def RetOk {D : FlowDec} (W : World σ) (base : Word) (P : Cert D) (keep : σ → Prop) (s₀ : σ) : Prop :=
-  ∀ es a y, Run W keep (some s₀) (es ++ [.ret a]) y → (∀ u, y = some u → keep u) →
-    ∃ f C, (f, C) ∈ P.fns ∧ ∃ b ∈ C.blocks, ∃ r,
-      (b.term.succs.contains (r, false)) ∧ a = base + BitVec.ofNat 64 r
+/-- Where a listed target sends `t`. -/
+def Lands (W : World σ) (base : Word) (t : σ) : Target Ref → Prop
+  | .blk c | .fn c => W.rip t = base + BitVec.ofNat 64 c
+  | .ext r => W.cls (W.rip t) = .entry r
 
-/-! ## Semantic statements -/
+/-- **Indirect transfers stay in their listed sets**: a step from the last instruction of a block
+whose terminator lists targets lands on one of them. Discharged for `got` from RELRO and
+`BIND_NOW`, for `table` from read-only data (later); for `assumed` it stays a hypothesis. -/
+def IndOk (W : World σ) (D : FlowDec) (base : Word) (P : Cert) (keep : σ → Prop) (s₀ : σ) :
+    Prop :=
+  ∀ es u t i l, Run W D keep (some s₀) es (some u) → keep u → Silmaril.X86.Flow.At W.J D u i l → W.J.step u t →
+    ∀ f C, (f, C) ∈ P.fns → ∀ b ∈ C.blocks, ∀ o, W.rip u = base + BitVec.ofNat 64 (b.start + o) →
+      o + l = b.bytes.length → ∀ ts, b.term.listed = some ts → ∃ x ∈ ts, Lands W base t x
 
-/-- **Every executed call, system call, import and callback from `s₀` is a node of `N`.** -/
-def ReachIn (W : World σ) (base : Word) (keep : σ → Prop) (s₀ : σ) (N : List Node) : Prop :=
-  ∀ es y, Run W keep (some s₀) es y → ∀ e ∈ es, ∀ n, e.node W base = some n → n ∈ N
+/-- **Returns land on return sites**: a `ret` in the image lands where control may come back
+(`Landing`), or leaves `keep`. The tolerant form of return discipline: from the stack safety of
+the code, or a function contract. -/
+def RetOk (W : World σ) (D : FlowDec) (base : Word) (P : Cert) (N : Node → Prop) (esc : List Nat)
+    (keep : σ → Prop) (s₀ : σ) : Prop :=
+  ∀ es u t i l, Run W D keep (some s₀) es (some u) → keep u → W.cls (W.rip u) = .image →
+    Silmaril.X86.Flow.At W.J D u i l → D.kind i = .ret → W.J.step u t → keep t → Landing W base P N esc t
 
-/-- **Syscall summaries of imports**: `(r, ns)` says the import `r` makes at most the system
-calls `ns` (and calls back only to escapes); an import without an entry is unknown. Proved per import from `SysWrap` or a
-followed call graph of the library (`Effects.Libc`), or assumed. -/
+/-- **The setting of the soundness theorem**: the flow law and a stable decoder; the certificate
+checked with the entry and the escapes as roots; `N` holding the roots, closed under the graph's
+edges and without `unresolved`; the state at `entry`; and the world's frame conditions. -/
+structure Setting (W : World σ) (D : FlowDec) (base : Word) (P : Cert) (esc : List Nat)
+    (entry : Nat) (keep : σ → Prop) (s₀ : σ) (N : Node → Prop) : Prop where
+  law : FlowLaw W.J D
+  stable : D.Stable
+  check : P.check D (entry :: esc) = true
+  root : N (.fn entry)
+  escapes : ∀ e ∈ esc, N (.fn e)
+  closed : ∀ e ∈ P.graph.edges, N e.1 → N e.2
+  noUnres : ¬ N .unresolved
+  start : W.rip s₀ = base + BitVec.ofNat 64 entry
+  code : CodeLoaded W D base P keep s₀
+  image : ImageOk W base P
+  kernel : KOk W D
+  lib : LibOk W D base P N esc keep s₀
+  ind : IndOk W D base P keep s₀
+  ret : RetOk W D base P N esc keep s₀
+
+/-! ## Effects -/
+
+/-- **Syscall summaries of imports**: `(r, ns)` says the import `r` makes at most the system calls
+`ns`; an import without an entry is unknown. Proved per import (`Libc.SysWrap`, a followed call
+graph of the library), or assumed. -/
 abbrev Summ := List (Ref × List Nat)
 
 /-- A node makes only system calls satisfying `ok`. -/
@@ -324,18 +347,21 @@ def Node.SysOk (summ : Summ) (ok : Nat → Prop) : Node → Prop
   | .sysAny | .unresolved => False
 
 /-- **Every system call of every run satisfies `ok`** (an import counts as its summary). -/
-def SyscallsOk (W : World σ) (base : Word) (keep : σ → Prop) (s₀ : σ) (summ : Summ)
+def SyscallsOk (W : World σ) (D : FlowDec) (base : Word) (keep : σ → Prop) (s₀ : σ) (summ : Summ)
     (ok : Nat → Prop) : Prop :=
-  ∀ es y, Run W keep (some s₀) es y → ∀ e ∈ es, ∀ n, e.node W base = some n → n.SysOk summ ok
+  ∀ es y, Run W D keep (some s₀) es y → ∀ e ∈ es, ∀ n, e.node W base = some n → n.SysOk summ ok
 
-/-- **Every import called is in `I`.** -/
-def ForeignIn (W : World σ) (base : Word) (keep : σ → Prop) (s₀ : σ) (I : Ref → Prop) : Prop :=
-  ∀ es y, Run W keep (some s₀) es y → ∀ e ∈ es, ∀ r, e.node W base = some (.ext r) → I r
+/-- **Every import entered is in `I`.** -/
+def ForeignIn (W : World σ) (D : FlowDec) (base : Word) (keep : σ → Prop) (s₀ : σ)
+    (I : Ref → Prop) : Prop :=
+  ∀ es y, Run W D keep (some s₀) es y → ∀ e ∈ es, ∀ r, e.node W base = some (.ext r) → I r
 
 /-- Process creation: `clone`, `fork`, `vfork`, `clone3`. -/
 def spawnNrs : List Nat := [56, 57, 58, 435]
+
 /-- `execve`, `execveat`. -/
 def execNrs : List Nat := [59, 322]
+
 /-- Sockets and `io_uring` (which can do network operations without them). -/
 def netNrs : List Nat := (List.range 15).map (· + 41) ++ [288, 299, 307, 425, 426, 427]
 
@@ -347,47 +373,30 @@ def spawnNames : List String :=
 /-- `n` is not in `ns`. -/
 def notIn (ns : List Nat) (n : Nat) : Prop := n ∉ ns
 
-/-! ## The open theorems -/
+/-- The system calls of a set of nodes: the numbers, and every summary of an import. -/
+def sysOf (summ : Summ) : List Node → List Nat
+  | [] => []
+  | .sys n :: ns => n :: sysOf summ ns
+  | .ext r :: ns => (summ.lookup r).getD [] ++ sysOf summ ns
+  | _ :: ns => sysOf summ ns
 
-/-- The setting of a statement: an admissible world, a placement, the certificate checked and
-faithful, an entry state at `entry` with the image loaded, and the side conditions. -/
-structure Setting {D : FlowDec} (W : World σ) (F : Blob) (base : Word) (P : Cert D)
-    (Escapes : Nat → Prop) (entry : Nat) (keep : σ → Prop) (s₀ : σ) : Prop where
-  law : FlowLaw W.J W.D
-  dec : W.D = D
-  check : P.check = true
-  faithful : P.Faithful F Escapes
-  placement : Placement F base.toNat
-  lib : LibOk W F base P.escapes
-  kernel : KOk W F base
-  entry : (W.J.core s₀).rip = base + BitVec.ofNat 64 entry
-  loaded : Link.ElfBind.RoLoaded F base (W.J.mem s₀)
-  stable : CodeStable W F base keep s₀
-  ind : IndOk W base P keep s₀
-  ret : RetOk W base P keep s₀
+/-- Every node of `N` has a known system-call set (no `sysAny`, `unresolved`, unsummarised
+import). -/
+def known (summ : Summ) (N : List Node) : Bool :=
+  N.all fun
+    | .ext r => (summ.lookup r).isSome
+    | .sysAny | .unresolved => false
+    | _ => true
 
-/-- **Soundness of a certificate.** In every admissible world, every run from the entry of
-`P`'s function `entry` (or from a callback) executes only calls, system calls, imports and
-callbacks that are nodes reachable in `P.graph` from `entry` and the escapes. -/
+/-! ## Open goals -/
+
+/-- **Soundness** (proved: `Thms.sound`). -/
 def Task.sound : Prop :=
-  ∀ {σ : Type} {D : FlowDec} (W : World σ) (F : Blob) (base : Word) (P : Cert D) Escapes entry keep s₀,
-    Setting W F base P Escapes entry keep s₀ →
-    ReachIn W base keep s₀ (P.graph.reach (.fn entry :: P.escapes.map .fn))
+  ∀ {σ : Type} (W : World σ) (D : FlowDec) base (P : Cert) esc entry keep (s₀ : σ) N,
+    Setting W D base P esc entry keep s₀ N → ReachIn W D base keep s₀ N
 
-/-- **`no_spawn` from a call graph**: no reachable node spawns. -/
-def Task.noSpawn_of_reach : Prop :=
-  ∀ {σ : Type} (W : World σ) base keep s₀ (N : List Node) (summ : Summ),
-    ReachIn W base keep s₀ N → (∀ n ∈ N, n.SysOk summ (notIn spawnNrs)) →
-    SyscallsOk W base keep s₀ summ (notIn spawnNrs)
-
-/-- **Monotone in the graph.** -/
-def Task.reach_mono : Prop :=
-  ∀ {σ : Type} (W : World σ) base keep s₀ (N N' : List Node),
-    ReachIn W base keep s₀ N → (∀ n ∈ N, n ∈ N') → ReachIn W base keep s₀ N'
-
-/-- **The strong reading implies the node reading.** -/
-def Task.reach_of_callSub : Prop :=
-  ∀ {σ : Type} (W : World σ) base keep s₀ G root,
-    CallSubIn W base keep s₀ G [] root → ReachIn W base keep s₀ (G.reach [root])
+/-- **`CodeStable` from the machine**: the `Str9` tower's stores need write permission, the code
+segments lack `PF_W`, and the kernel and library keep them (`codeNrs` excluded). Open. -/
+def codeNrs : List Nat := [9, 10, 11, 25, 31, 216, 329]
 
 end Silmaril.Elf.Effects
