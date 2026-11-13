@@ -1,0 +1,80 @@
+# Kernel bytes and native edges
+
+This note covers two things: the byte representation the kernel reads quickly
+(`Silmaril.KBytes`), and the mechanism that lets a small, named set of compiled procedures
+decide facts at designated edges (`Silmaril.Prelude.Trust`). Benchmarks are in
+[benchmarks/kernel-bytes](../benchmarks/kernel-bytes/README.md).
+
+## Trust, stated plainly
+
+A native run (`Lean.Meta.nativeEqTrue`, the primitive behind `decide +native` and `bv_decide`)
+compiles a closed `Bool` term, runs it, and adds its own axiom `d._native.<tactic>.ax_i_j :
+e = true`. This toolchain has no `Lean.ofReduceBool`. A theorem that depends on such an axiom
+is **not kernel-checked**. It trusts the Lean compiler, the runtime (GMP for `Nat`), and every
+`@[extern]`, `@[implemented_by]` and `@[csimp]` the compiled code reaches. Registering a
+procedure narrows that trust to named code; it does not remove it.
+
+## Profiles
+
+| profile | native procedures | use |
+|---|---|---|
+| `default` | each scope's `default` set (`policy.toml`) | normal builds and CI |
+| `local` | each scope's `max` | fast local iteration |
+| `paranoid` | none | periodic all-kernel builds |
+| any trust set name | that set, cut to the scope's `max` | experiments |
+
+The proposition is the same in every profile; only the proof term changes. A procedure
+registered `with_kernel_fallback` is checked by the kernel when it may not run natively. One
+without a fallback fails closed. `scripts/trust-profile.sh <profile>` builds under a profile
+in its own build directory (`.lake/build-trust-<profile>`), and sets the ceiling, which source
+files cannot raise. Run with no targets, it builds every module except those listed in
+`scripts/trust-profile-exclude.txt`, each with a reason.
+
+## Policy
+
+`policy.toml` `[native]` lists scopes by module prefix. Each scope sets `max`, `default`,
+`deps` and `axioms`, inheriting the keys it omits. A child's `max` must lie within its
+parent's (checked when the policy loads). `Silmaril/Prelude/Trust/Policy/Defs.lean` loads the
+file, pins its hash and declares the trust sets (`default` currently holds the four `bytes.*`
+procedures). `scripts/check-layout.sh` fails if the pin is stale, if anything outside
+`Silmaril/Prelude/Trust` calls the native evaluator, or if a source file sets the ceiling.
+
+## Provenance
+
+`edge_decide` records every use (declaration, module, procedure, native or kernel, profile,
+axiom). `#trust_uses` prints procedures and uses as JSON lines. `trust_audit d₁ d₂ …` prints,
+per declaration, its own native procedures, those it inherits through other theorems, its
+native axioms and its other axioms, and fails if any of them is outside the policy. The axiom
+name itself carries the procedure: `<decl>._native.edge.<procedure>.ax_i_j`.
+
+## Interface for other workflows (stable)
+
+**Bytes** (`import Silmaril.Prelude.Bytes.Thms`; `Silmaril.KBytes`):
+
+* `kbytes_def x from_file "path" [computable]` defines `x`, `x.chunks`, `x.eq_ofChunks`,
+  `x.wf : x.wf = true` and `x.len_eq` (`Silmaril.Prelude.Bytes.Elab.Defs`).
+  `kbytes_def x of_include raw` does the same from an `include_bytes` definition and adds
+  `x.toByteArray_eq : x.toByteArray = raw` (`Silmaril.Data.IncludeBytes.Kernel`).
+* Reader: `x.readLE : Nat → Nat → Option Nat` (offset, width ↦ little-endian value). This is
+  the shape of `Silmaril.Elf.Check.Src`. Spec: `KBytes.readLE_eq`.
+  Single bytes: `get?` (`get?_eq`). Wide reads: `read` (`read_eq`).
+* Ropes: `slice`, `++`, with `toList_slice` and `toList_append`. Equality: `rfl` on canonical
+  trees, else `sameBytes` (`toList_eq_of_sameBytes`), or `canon` and then `beq`.
+* Raw bytes: `kbytes_rel` proves `x.toByteArray = raw`.
+
+**Native procedures** (`import Silmaril.Prelude.Trust.Elab.Defs`):
+
+```
+/-- What it decides, and what a native run trusts. -/
+native_decider elf.layoutOk := Silmaril.Elf.Staged.layoutOk with_kernel_fallback
+```
+
+* Prove `f a₁ … aₙ = true` with `by edge_decide` (or `edge_decide elf.layoutOk`), then apply
+  your soundness theorem. Keep `f` a plain `Bool` function with a proved soundness lemma. Put
+  expensive edges in leaf modules that import the bytes and the shared bounded-width objects,
+  so that a profile change rebuilds only those leaves.
+* Register `with_kernel_fallback` only if the kernel can actually evaluate the term at the
+  sizes you use. Otherwise leave it off; the paranoid profile will then fail closed.
+* To run in the default profile, a procedure must be in the `default` trust set
+  (`Silmaril/Prelude/Trust/Policy/Defs.lean`). Adding it is a reviewed change.
+* Modules whose functions a native run executes must be imported with `meta import`.
