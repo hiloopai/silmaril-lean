@@ -163,7 +163,11 @@ renaming or removing a field bumps the version.
 environment imports, plus a `module` line and an `audit` line per theorem and definition for
 each listed module. `audit` lines never fail; they list `violations` against the policy under
 the profile and ceiling of the dumping run, next to the profiles the uses were elaborated in.
-The stable Lean hooks behind it are `Silmaril.Trust.dumpLines`, `moduleLine`, `auditLine`,
+Axioms are collected transitively with Lean's `collectAxioms`. It reads each imported
+declaration's axioms as its defining module computed them from the full (private) bodies, so a
+definition exported without its body (opaque to importers under the module system) never shows
+up as an axiom, and native axioms reached through other theorems appear as `dep_native`. The
+stable Lean hooks behind it are `Silmaril.Trust.dumpLines`, `moduleLine`, `auditLine`,
 `declsOf` and `allDecls`; `trust_audit` is `auditLine` failing on violations. And
 `#trust_roundtrip` re-reads every `procedure` and `use` line with `procOfJson?` and
 `useOfJson?` and fails on any difference. This is a low-level emitter format; a database
