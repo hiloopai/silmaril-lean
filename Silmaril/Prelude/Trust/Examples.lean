@@ -2,6 +2,8 @@ module
 
 public import Silmaril.Prelude.Trust.Policy.Defs
 meta import Silmaril.Prelude.Trust.Defs
+meta import Silmaril.Prelude.Trust.Elab.Defs
+import Silmaril.Prelude.Trust.TestForge
 
 /-! # Trust profiles: examples
 
@@ -299,13 +301,13 @@ theorem byDecideNative : (List.range 50).length = 50 := by decide +native
 
 set_option silmaril.trust.profile "local" in
 /--
-error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use of test.decideNative names it with the exact shape `f … = true`
 -/
 #guard_msgs in
 trust_audit byDecideNative
 
 /--
-error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use produced it
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1: matches test.decideNative by name, but no recorded use of test.decideNative names it with the exact shape `f … = true`
 -/
 #guard_msgs in
 trust_audit byDecideNative
@@ -315,6 +317,40 @@ info: roundtrip ok: 6 procedures, 13 uses
 -/
 #guard_msgs in
 #trust_roundtrip
+
+/-! ### Forged records do not verify
+
+`recordUse` is trusted instrumentation, so a test can forge one (`TestForge`). Verification also
+needs the axiom to have the exact shape `f … = true` with the procedure's function at the head.
+Each axiom below states `decide p = true`, whatever its tag claims. -/
+
+/-- A procedure whose evaluated constant is `List.length`. -/
+native_tactic test.lengthNative evaluates List.length axiom_tag lengthNative
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+
+/-- Tagged `lengthNative` and recorded as `test.lengthNative`; `List.length` occurs in the
+statement, but `Decidable.decide` is its head. -/
+theorem forgedShape : (List.range 7).length = 7 :=
+  forge_native% lengthNative test.lengthNative ((List.range 7).length = 7)
+
+/-- Tagged as an `edge` run of the declared procedure `test.sumEven` and recorded as it; its
+head is not the declared native check `sumEvenN`. -/
+theorem forgedDecl : SumEven 4 :=
+  forge_native% edge.test.sumEven test.sumEven (sumTo 4 % 2 = 0)
+
+set_option silmaril.trust.profile "local" in
+/--
+error: trust_audit Silmaril.Trust.Examples.forgedShape: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1: matches test.lengthNative by name, but no recorded use of test.lengthNative names it with the exact shape `f … = true`
+-/
+#guard_msgs in
+trust_audit forgedShape
+
+set_option silmaril.trust.profile "local" in
+/--
+error: trust_audit Silmaril.Trust.Examples.forgedDecl: unverified native axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1: matches test.sumEven by name, but no recorded use of test.sumEven names it with the exact shape `f … = true`
+-/
+#guard_msgs in
+trust_audit forgedDecl
 
 /-! ### No escalation: a child scope cannot grant more than its parent. -/
 

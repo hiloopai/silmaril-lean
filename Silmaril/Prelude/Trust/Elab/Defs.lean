@@ -258,6 +258,53 @@ def decideEdge (e : Expr) (proc? : Option Name := none) (ref : Syntax := .missin
   goal.assign (← mkExpectedTypeHint prf ty)
   Tactic.replaceMainGoal []
 
+/-- A `ProcDecl`, read from its definition without running any code. -/
+structure DeclView where
+  name : Name
+  const : Name
+  doc : String
+  native : Option (Name × Name)
+  kernel : Option (Name × Name)
+  format : Option Name
+
+def readName (e : Expr) : MetaM Name := do
+  let e ← instantiateMVars e
+  unsafe evalExpr Name (mkConst ``Name) e
+
+def readOpt {α} (e : Expr) (f : Expr → MetaM α) : MetaM (Option α) := do
+  let e ← whnfR e
+  if e.isAppOfArity ``Option.none 1 then return none
+  if e.isAppOfArity ``Option.some 2 then return some (← f e.appArg!)
+  throwError "expected `some` or `none`:{indentExpr e}"
+
+def readBackend (e : Expr) : MetaM (Name × Name) := do
+  let e ← whnfR e
+  unless e.isAppOfArity ``Backend.mk 2 do throwError "expected a Backend:{indentExpr e}"
+  return (← readName e.appFn!.appArg!, ← readName e.appArg!)
+
+/-- The procedure `name`, declared as `Silmaril.Procedures.<name> : ProcDecl`. -/
+def findDecl? (name : Name) : MetaM (Option DeclView) := do
+  let c := proceduresNamespace ++ name
+  let some info := (← getEnv).find? c | return none
+  unless info.type.isConstOf ``ProcDecl do return none
+  let some v := info.value? (allowOpaque := true) | return none
+  let v ← whnfR v
+  unless v.isAppOfArity ``ProcDecl.mk 4 do throwError "{c} is not a `ProcDecl` literal"
+  let args := v.getAppArgs
+  let doc ← unsafe evalExpr String (mkConst ``String) args[0]!
+  return some { name, const := c, doc, native := ← readOpt args[1]! readBackend,
+                kernel := ← readOpt args[2]! readBackend, format := ← readOpt args[3]! readName }
+
+/-- Every declared procedure in the environment. -/
+def allDecls : MetaM (Array DeclView) := do
+  let env ← getEnv
+  let mut out := #[]
+  for (c, info) in env.constants.toList do
+    if info.type.isConstOf ``ProcDecl && proceduresNamespace.isPrefixOf c then
+      if let some d ← findDecl? (c.replacePrefix proceduresNamespace .anonymous) then
+        out := out.push d
+  return out
+
 /-! ## Provenance and audit -/
 
 def nameJson : Option Name → Json
@@ -325,20 +372,37 @@ structure AxiomReport where
   that axiom (or whose statement does not mention the procedure's function). -/
   unverified : Array (Name × Name) := #[]
 
-/-- A native axiom is **verified** for procedure `p` when a recorded use of `p` (from
-`edge_decide`, `sil_check` or a framework calling `recordUse`) names exactly this axiom, and
-the axiom's statement mentions the procedure's evaluated function. A name match alone is only
-a classification. -/
+/-- The exact shape of a native run's axiom: `@Eq Bool (f a₁ … aₙ) true`, closed, with `f` one
+of `fns` at the head (not merely somewhere inside). -/
+def nativeShapeOk (env : Environment) (ax : Name) (fns : List Name) : Bool :=
+  match env.find? ax with
+  | some (.axiomInfo info) =>
+    match info.type.eq? with
+    | some (ty, lhs, rhs) =>
+      ty.isConstOf ``Bool && rhs.isConstOf ``Bool.true && !lhs.hasFVar && !lhs.hasMVar &&
+        info.levelParams.isEmpty && fns.any lhs.getAppFn.isConstOf
+    | none => false
+  | _ => false
+
+/-- A native axiom is **verified** for procedure `p` when a recorded use of `p` names exactly
+this axiom **and** the axiom has the exact shape `f a₁ … aₙ = true` with `f` the procedure's
+evaluated function (or its paired native function). `recordUse` is trusted elaborator
+instrumentation: it is called by `edge_decide`, `sil_check` and reviewed framework wrappers, and
+any meta code could call it. Verification is auditing under reviewed elaborator code, not a
+sandbox against malicious metaprograms; the shape check stops a recorded use from vouching
+for an axiom that states something else. -/
 def verifiedNative (env : Environment) (uses : Array Use) (p : Procedure) (ax : Name) : Bool :=
   let recorded := uses.any fun u => u.proc == p.name && u.mode == .native && u.ax == some ax
-  let mentions := match env.find? ax with
-    | some info =>
-      let fns := p.fn :: (p.native.map (·.1)).toList
-      (info.type.find? fun e => fns.any e.isConstOf).isSome
-    | none => false
-  recorded && mentions
+  recorded && nativeShapeOk env ax (p.fn :: (p.native.map (·.1)).toList)
 
 def axiomReport (decl : Name) : CoreM AxiomReport := do
+  -- Declared two-backend procedures: their native check function, for the shape check.
+  let declared : NameMap Name ← Prod.fst <$> (MetaM.run (ctx := {}) (s := {}) do
+    let ds ← allDecls
+    return ds.foldl (init := ({} : NameMap Name)) fun m d =>
+      match d.native with
+      | some (check, _) => m.insert d.name check
+      | none => m)
   let axs ← collectAxioms decl
   let env ← getEnv
   let uses := allEntries useExt env
@@ -348,10 +412,11 @@ def axiomReport (decl : Name) : CoreM AxiomReport := do
     let proc? : Option (Name × Procedure) := match nativeAxiom? a with
       | some (owner, n, true) =>
         -- `edge_decide`/`sil_check` axioms: the procedure or declared procedure name.
-        match (procExt.getState env).find? n with
-        | some p => some (owner, p)
-        | none => some (owner, { name := n, fn := .anonymous, kernel := false, doc := "",
-                                  module := .anonymous })
+        match (procExt.getState env).find? n, declared.find? n with
+        | some p, _ => some (owner, p)
+        | none, some check => some (owner, { name := n, fn := check, kernel := false, doc := "",
+                                              module := .anonymous })
+        | none, none => none
       | some (owner, tag, false) => (procForTag? env tag).map (owner, ·)
       | none => none
     match nativeAxiom? a, proc? with
@@ -360,11 +425,8 @@ def axiomReport (decl : Name) : CoreM AxiomReport := do
       r := { r with plainNative := r.plainNative.push (if isEdge then `edge ++ t else t) }
     | some _, some (owner, p) =>
       let own := decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl
-      -- Declared two-backend procedures have no `procExt` entry; their uses are verified by
-      -- the recorded use alone (the native check is the declared native backend).
-      let ok := if p.fn.isAnonymous then
-          uses.any fun u => u.proc == p.name && u.mode == .native && u.ax == some a
-        else verifiedNative env uses p a
+      -- Declared procedures are checked against their declared native check function.
+      let ok := verifiedNative env uses p a
       if !ok then r := { r with unverified := r.unverified.push (p.name, a) }
       else if own then r := { r with ownNative := r.ownNative.push p.name }
       else r := { r with depNative := r.depNative.push p.name }
@@ -391,7 +453,7 @@ def auditLine (decl : Name) : CoreM (Json × Array String) := do
   | .error m, _ | _, .error m => bad := bad.push s!"policy: {m}"
   for t in r.plainNative do bad := bad.push s!"unregistered native run ({t})"
   for (p, a) in r.unverified do
-    bad := bad.push s!"unverified native axiom {a}: matches {p} by name, but no recorded use produced it"
+    bad := bad.push s!"unverified native axiom {a}: matches {p} by name, but no recorded use of {p} names it with the exact shape `f … = true`"
   let names (xs : Array Name) : Json := toJson (xs.map toString)
   let elaborated := ((allEntries useExt env).filter (·.decl == decl)).map (·.profile)
   let json := Json.mkObj [("schema", schemaVersion), ("kind", "audit"),
@@ -615,53 +677,6 @@ end Silmaril.Trust
 namespace Silmaril.Trust
 
 open Lean Elab Tactic Meta
-
-/-- A `ProcDecl`, read from its definition without running any code. -/
-structure DeclView where
-  name : Name
-  const : Name
-  doc : String
-  native : Option (Name × Name)
-  kernel : Option (Name × Name)
-  format : Option Name
-
-def readName (e : Expr) : MetaM Name := do
-  let e ← instantiateMVars e
-  unsafe evalExpr Name (mkConst ``Name) e
-
-def readOpt {α} (e : Expr) (f : Expr → MetaM α) : MetaM (Option α) := do
-  let e ← whnfR e
-  if e.isAppOfArity ``Option.none 1 then return none
-  if e.isAppOfArity ``Option.some 2 then return some (← f e.appArg!)
-  throwError "expected `some` or `none`:{indentExpr e}"
-
-def readBackend (e : Expr) : MetaM (Name × Name) := do
-  let e ← whnfR e
-  unless e.isAppOfArity ``Backend.mk 2 do throwError "expected a Backend:{indentExpr e}"
-  return (← readName e.appFn!.appArg!, ← readName e.appArg!)
-
-/-- The procedure `name`, declared as `Silmaril.Procedures.<name> : ProcDecl`. -/
-def findDecl? (name : Name) : MetaM (Option DeclView) := do
-  let c := proceduresNamespace ++ name
-  let some info := (← getEnv).find? c | return none
-  unless info.type.isConstOf ``ProcDecl do return none
-  let some v := info.value? (allowOpaque := true) | return none
-  let v ← whnfR v
-  unless v.isAppOfArity ``ProcDecl.mk 4 do throwError "{c} is not a `ProcDecl` literal"
-  let args := v.getAppArgs
-  let doc ← unsafe evalExpr String (mkConst ``String) args[0]!
-  return some { name, const := c, doc, native := ← readOpt args[1]! readBackend,
-                kernel := ← readOpt args[2]! readBackend, format := ← readOpt args[3]! readName }
-
-/-- Every declared procedure in the environment. -/
-def allDecls : MetaM (Array DeclView) := do
-  let env ← getEnv
-  let mut out := #[]
-  for (c, info) in env.constants.toList do
-    if info.type.isConstOf ``ProcDecl && proceduresNamespace.isPrefixOf c then
-      if let some d ← findDecl? (c.replacePrefix proceduresNamespace .anonymous) then
-        out := out.push d
-  return out
 
 def declJson (d : DeclView) : Json :=
   let pair : Option (Name × Name) → Json
