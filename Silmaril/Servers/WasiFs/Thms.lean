@@ -28,7 +28,8 @@ read-only calls; whole-file effects for `open-at` with `create`, `write`, `unlin
 * **`wasiStoreSmall_refines`**: on requests shorter than `2^64 - 1` octets, it refines
   `fileStoreNF`, the file-backed store `fileStore (keyFile root)` of state model (b)
   (`Silmaril.Servers.State.OwnedFs`) read without header fields.
-* `wasiStore_frame`: the files that are not key files never change.
+* `wasiStore_frame`: the files that are not key files never change; `specStep_small`: a step
+  keeps the files shorter than `2^64 - 1` octets.
 * **`storeHost_fsOk`**: every read-only filesystem answer of the host passes the check of the
   `wasi:filesystem` 0.2 theory `Silmaril.Wasi.Versions.FsMore.fsThV v2` over `treeOf [root]`
   of the files at that point (the files of `Silmaril.Cli.Fs` as a `wasi:filesystem` tree).
@@ -52,6 +53,10 @@ theorem run_spec (root : String) {fs : Fs} (hs : Small fs) (q : Request) :
     respOf 1 (runStore root fs q) = some (specStep root fs q).1 ∧
       (replay root fs (runStore root fs q)).files = (specStep root fs q).2 :=
   Proofs.Servers.WasiFs.run_spec root hs q
+
+theorem specStep_small (root : String) {fs : Fs} (hs : Small fs) (q : Request) :
+    Small (specStep root fs q).2 :=
+  Proofs.Servers.WasiFs.specStep_small root hs q
 
 theorem wasiStore_refines (root : String) {fs₀ : Fs} (h₀ : Small fs₀) :
     (wasiStore root fs₀).Refines (specStore root fs₀) :=
