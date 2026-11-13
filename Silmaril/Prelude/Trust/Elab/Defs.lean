@@ -275,7 +275,10 @@ def procJson (p : Procedure) : Json :=
     ("function", toString p.fn), ("kernel_fallback", p.kernel), ("module", toString p.module),
     ("format", nameJson p.format), ("sound", nameJson p.sound),
     ("native_function", nameJson (p.native.map (·.1))), ("native_eq", nameJson (p.native.map (·.2))),
-    ("doc", p.doc)]
+    ("axiom_pattern", match p.axiomTag with
+      | some t => toJson s!"<decl>._native.{t}.ax_<n>" | none => Json.null),
+    ("components", toJson p.components), ("toolchain", p.toolchain),
+    ("fallback_coverage", p.fallbackCoverage), ("doc", p.doc)]
 
 def setJson (env : Environment) (s : TrustSet) : Json :=
   let resolved : Json := match resolve env s.name with
@@ -329,7 +332,15 @@ def axiomReport (decl : Name) : CoreM AxiomReport := do
       if decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl then
         r := { r with ownNative := r.ownNative.push proc }
       else r := { r with depNative := r.depNative.push proc }
-    | some (_, tac, false) => r := { r with plainNative := r.plainNative.push tac }
+    | some (owner, tac, false) =>
+      -- A native tactic registered with `native_tactic` (its axiom tag) counts as that
+      -- procedure; any other plain native run is unregistered.
+      match procForTag? (← getEnv) tac with
+      | some p =>
+        if decl.isPrefixOf owner || owner.isPrefixOf decl || owner == decl then
+          r := { r with ownNative := r.ownNative.push p.name }
+        else r := { r with depNative := r.depNative.push p.name }
+      | none => r := { r with plainNative := r.plainNative.push tac }
     | none => r := { r with other := r.other.push a }
   return r
 
@@ -439,10 +450,18 @@ def procOfJson? (j : Json) : Except String Procedure := do
     | some f, some t => pure (some (f, t))
     | none, none => pure none
     | _, _ => throw "native_function and native_eq go together"
+  let axiomTag ← match ← j.getObjVal? "axiom_pattern" with
+    | .null => pure none
+    | .str pat =>
+      match (pat.dropPrefix? "<decl>._native.").bind (·.dropSuffix? ".ax_<n>") with
+      | some t => pure (some t.toString.toName)
+      | none => throw s!"axiom_pattern {pat}"
+    | _ => throw "axiom_pattern: expected a string or null"
   return { name := (← str "name").toName, fn := (← str "function").toName,
            kernel := ← j.getObjValAs? Bool "kernel_fallback", doc := ← str "doc",
            module := (← str "module").toName, format := ← opt "format", sound := ← opt "sound",
-           native }
+           native, axiomTag, components := ← j.getObjValAs? (Array String) "components",
+           toolchain := ← str "toolchain", fallbackCoverage := ← str "fallback_coverage" }
 
 def useOfJson? (j : Json) : Except String Use := do
   let str (k : String) : Except String String := j.getObjValAs? String k
@@ -459,7 +478,9 @@ def useOfJson? (j : Json) : Except String Use := do
 
 def procBEq (a b : Procedure) : Bool :=
   a.name == b.name && a.fn == b.fn && a.kernel == b.kernel && a.doc == b.doc &&
-    a.module == b.module && a.format == b.format && a.sound == b.sound && a.native == b.native
+    a.module == b.module && a.format == b.format && a.sound == b.sound && a.native == b.native &&
+    a.axiomTag == b.axiomTag && a.components == b.components && a.toolchain == b.toolchain &&
+    a.fallbackCoverage == b.fallbackCoverage
 
 /-- Every line of the dump: procedures, uses, sets and scopes. -/
 def dumpLines (env : Environment) : Array Json := Id.run do
@@ -720,5 +741,57 @@ open Lean.Elab.Command in
 @[command_elab trustDecls] def elabTrustDecls : CommandElab := fun _ => do
   let ls ← liftTermElabM allDecls'
   logInfo (String.intercalate "\n" (ls.map (·.compress)).toList)
+
+end Silmaril.Trust
+
+/-! ## Native tactics (`native_tactic`)
+
+Some native runs happen inside a tactic rather than through `edge_decide`: `bv_decide` compiles
+and runs `verifyBVExpr` (bit-blasting, AIG to CNF, the LRAT checker) and adds
+`<decl>._native.bv_decide.ax_<n>`. Registering the tactic names that computation, so audits
+count its axioms as the procedure (`own_native`/`dep_native`) and the policy can allow or deny
+it like any other. Registration is a description for review and audit; it does not by itself
+let anything run. The framework that invokes the tactic must ask `nativeAllowed` first, record
+the use (`recordUse`), and otherwise run its kernel fallback or fail.
+
+```
+/-- … -/
+native_tactic lean.std.bv_decide.verifyBVExpr
+  evaluates Lean.Elab.Tactic.BVDecide.Frontend.verifyBVExpr
+  axiom_tag bv_decide
+  components ["bit-blasting with hash-consing", "AIG to CNF", "relabeling", "LRAT parser and checker"]
+  toolchain "leanprover/lean4:nightly-2026-11-05"
+  fallback "bv_normalize only: closes goals that normalization decides"
+```
+-/
+
+namespace Silmaril.Trust
+
+open Lean Elab Command
+
+syntax (name := nativeTactic) (docComment)? "native_tactic " ident &" evaluates " ident
+  &" axiom_tag " ident (&" components " "[" str,* "]")? (&" toolchain " str)?
+  (&" fallback " str)? : command
+
+@[command_elab nativeTactic] def elabNativeTactic : CommandElab := fun stx => do
+  let doc ← match stx[0].getOptional? with
+    | some d => pure (← getDocStringText ⟨d⟩).trimAscii.toString
+    | none => pure ""
+  let name := stx[2].getId
+  let evaluated := stx[4].getId
+  let tag := stx[6].getId
+  let components := if stx[7].isNone then #[] else
+    stx[7][2].getSepArgs.filterMap (·.isStrLit?)
+  let toolchain := if stx[8].isNone then "" else stx[8][1].isStrLit?.getD ""
+  let fallback := if stx[9].isNone then "" else stx[9][1].isStrLit?.getD ""
+  let env ← getEnv
+  if (procExt.getState env).contains name then
+    throwError "native procedure {name} is already registered"
+  if let some p := procForTag? env tag then
+    throwError "axiom tag {tag} already belongs to {p.name}"
+  let p : Procedure :=
+    { name, fn := evaluated, kernel := !fallback.isEmpty, doc, module := env.mainModule,
+      axiomTag := some tag, components, toolchain, fallbackCoverage := fallback }
+  modifyEnv (procExt.addEntry · p)
 
 end Silmaril.Trust

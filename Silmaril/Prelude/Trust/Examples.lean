@@ -239,11 +239,11 @@ info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byLocal","dep_native":[],"ela
 trust_audit byLocal
 
 /--
-info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSum","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
-{"doc":"A procedure with no kernel fallback.","format":null,"function":"Silmaril.Trust.Examples.evenSum'","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumNoKernel","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
-{"doc":"`evenSum`, run natively as `evenSumRec`.","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumPaired","native_eq":"Silmaril.Trust.Examples.evenSumRec_eq","native_function":"Silmaril.Trust.Examples.evenSumRec","schema":"silmaril.trust.v1","sound":null}
-{"doc":"Kernel side of the pair.","format":null,"function":"Silmaril.Trust.Examples.sumEvenK","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.sumEvenK","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
-{"doc":"Native side of the pair (no kernel fallback of its own).","format":null,"function":"Silmaril.Trust.Examples.sumEvenN","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.sumEvenN","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null}
+info: {"axiom_pattern":null,"components":[],"doc":"Test procedure: a fold over a list. Trusts the compiled `List.range` and `Nat` arithmetic.","fallback_coverage":"","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSum","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null,"toolchain":""}
+{"axiom_pattern":null,"components":[],"doc":"A procedure with no kernel fallback.","fallback_coverage":"","format":null,"function":"Silmaril.Trust.Examples.evenSum'","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumNoKernel","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null,"toolchain":""}
+{"axiom_pattern":null,"components":[],"doc":"`evenSum`, run natively as `evenSumRec`.","fallback_coverage":"","format":null,"function":"Silmaril.Trust.Examples.evenSum","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.evenSumPaired","native_eq":"Silmaril.Trust.Examples.evenSumRec_eq","native_function":"Silmaril.Trust.Examples.evenSumRec","schema":"silmaril.trust.v1","sound":null,"toolchain":""}
+{"axiom_pattern":null,"components":[],"doc":"Kernel side of the pair.","fallback_coverage":"","format":null,"function":"Silmaril.Trust.Examples.sumEvenK","kernel_fallback":true,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.sumEvenK","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null,"toolchain":""}
+{"axiom_pattern":null,"components":[],"doc":"Native side of the pair (no kernel fallback of its own).","fallback_coverage":"","format":null,"function":"Silmaril.Trust.Examples.sumEvenN","kernel_fallback":false,"kind":"procedure","module":"Silmaril.Prelude.Trust.Examples","name":"test.sumEvenN","native_eq":null,"native_function":null,"schema":"silmaril.trust.v1","sound":null,"toolchain":""}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byPaired._native.edge.test.evenSumPaired.ax_1_1","decl":"Silmaril.Trust.Examples.byPaired","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSumPaired","profile":"local","schema":"silmaril.trust.v1"}
 {"axiom":null,"decl":"Silmaril.Trust.Examples.byPairedKernel","kind":"use","mode":"kernel","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.evenSumPaired","profile":"paranoid","schema":"silmaril.trust.v1"}
 {"axiom":"_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.pairNative._native.edge.test.sumEvenN.ax_1_1","decl":"Silmaril.Trust.Examples.pairNative","kind":"use","mode":"native","module":"Silmaril.Prelude.Trust.Examples","procedure":"test.sumEvenN","profile":"local","schema":"silmaril.trust.v1"}
@@ -263,6 +263,37 @@ info: {"doc":"Test procedure: a fold over a list. Trusts the compiled `List.rang
 
 /--
 info: roundtrip ok: 5 procedures, 13 uses
+-/
+#guard_msgs in
+#trust_roundtrip
+
+/-! ### A registered native tactic
+
+`decide +native` adds `<decl>._native.decide.ax_…`. Registered under the tag `decide`, those
+axioms count as the procedure in audits. (A real framework would ask `nativeAllowed` before
+running the tactic; this only tests the audit side.) -/
+
+/-- Test registration of the native-evaluating `decide`. -/
+native_tactic test.decideNative evaluates Decidable.decide axiom_tag decide
+  components ["compiled Decidable instance"] toolchain "leanprover/lean4:nightly-2026-11-05"
+
+theorem byDecideNative : (List.range 50).length = 50 := by decide +native
+
+set_option silmaril.trust.profile "local" in
+/--
+info: {"axioms":[],"decl":"Silmaril.Trust.Examples.byDecideNative","dep_native":[],"elaborated_profiles":[],"kind":"audit","module":"Silmaril.Prelude.Trust.Examples","native_axioms":["_private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.byDecideNative._native.decide.ax_1_1"],"own_native":["test.decideNative"],"profile":"local","schema":"silmaril.trust.v1","violations":[]}
+-/
+#guard_msgs in
+trust_audit byDecideNative
+
+/--
+error: trust_audit Silmaril.Trust.Examples.byDecideNative: own native test.decideNative is not allowed
+-/
+#guard_msgs in
+trust_audit byDecideNative
+
+/--
+info: roundtrip ok: 6 procedures, 13 uses
 -/
 #guard_msgs in
 #trust_roundtrip

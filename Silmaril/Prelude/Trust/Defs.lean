@@ -77,6 +77,16 @@ structure Procedure where
   /-- A separate implementation for native runs and the theorem `@native = @fn` that transfers
   its result (the paired backend: `fn` is what the kernel and the statement see). -/
   native : Option (Name × Name) := none
+  /-- For a native **tactic** (`native_tactic`, e.g. `bv_decide`): the tag in its axiom names
+  `<decl>._native.<tag>.ax_…`. Such a procedure has no single `fn`; `fn` is its
+  `evaluated_constant`. -/
+  axiomTag : Option Name := none
+  /-- What the native run includes, for review (bit-blasting, CNF, the LRAT checker, …). -/
+  components : Array String := #[]
+  /-- The toolchain the description was checked against. -/
+  toolchain : String := ""
+  /-- What the kernel fallback covers, when it does not cover everything. -/
+  fallbackCoverage : String := ""
   deriving Inhabited, Repr
 
 /-- The version of the JSON lines `#trust_uses` and `trust_audit` print
@@ -333,6 +343,11 @@ def parsePolicy (file : String) (bytes : ByteArray) : IO Policy := do
   return { scopes, sets, file, hash := fnv1a64 bytes }
 
 /-! ## Native-axiom provenance -/
+
+/-- The registered native tactic whose axioms carry `tag` (`_native.<tag>.ax_…`). -/
+def procForTag? (env : Environment) (tag : Name) : Option Procedure :=
+  (procExt.getState env).foldl (init := none) fun acc _ p =>
+    if p.axiomTag == some tag then some p else acc
 
 /-- The procedure behind a native axiom `d._native.edge.<proc>.ax_i_j`, and `d`. Axioms from
 plain `decide +native` or `bv_decide` (`d._native.<tactic>.ax_i_j`) come back as
