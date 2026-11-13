@@ -1,0 +1,11 @@
+# Control for MP+spawn: P0 spawns P1 before writing x, so r0=0 is allowed.
+name MP+spawn-late
+source mp+spawn-late.c
+loc x 0x10000 4 0
+loc r0 0x10080 4 0
+thread P0
+thread P1 spawned
+quant exists
+cond r0=0
+verdict allowed allowed allowed
+dom 0 1

@@ -1,0 +1,11 @@
+# MP via join: P0 spawns P1, which writes x; P0 joins P1, then reads x into r0.
+name MP+join
+source mp+join.c
+loc x 0x10000 4 0
+loc r0 0x10080 4 0
+thread P0
+thread P1 spawned
+quant exists
+cond r0=0
+verdict forbidden forbidden forbidden
+dom 0 1

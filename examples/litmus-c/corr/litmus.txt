@@ -1,0 +1,16 @@
+# CoRR: two reads of one location see its writes in coherence order.
+name CoRR
+source corr.c
+loc x
+result r0
+result r1
+thread P0
+st x 1
+thread P1
+ld x r0
+ld x r1
+exists r0=1 /\ r1=0
+c11 na racy data race on x
+c11 rlx forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory: coherence (read-read)
+c11 ra forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory
+c11 sc forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory

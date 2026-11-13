@@ -100,7 +100,7 @@ modulo the staleness the response directives allow.
 | Frame header, frame size limit, frame type and error registries, client preface | 9113 §3.4, §4, §6, §7 | Proved: header and frame round trips, read frames respect `SETTINGS_MAX_FRAME_SIZE` (`Http2.Frame.Thms`) |
 | SETTINGS parameters, payload, validation | 9113 §6.5 | Proved: accepted settings stay within the §6.5.2 constraints (`Http2.Settings.Thms`) |
 | Flow-control windows, WINDOW_UPDATE, initial window changes | 9113 §5.2, §6.9 | Proved: conservation, window bounds, a sender never exceeds its credit (`Http2.Settings.Thms`) |
-| Stream state machine, stream identifiers | 9113 §5.1, §5.1.1 | Proved: sender/receiver duality, monotone progress, closed is terminal, RST_STREAM, DATA only in the allowed states (`Http2.Stream.Thms`) |
+| Stream state machine, stream identifiers | 9113 §5.1, §5.1.1 | Proved: sender/receiver duality, monotone progress, closed is terminal, RST_STREAM, DATA only in the allowed states (`Http2.Stream.Thms`); as a finite machine ([automata.md](automata.md)): every state reachable, closed final, no close without END_STREAM/RST_STREAM (decided); its document `silmaril/machines/http2-stream.toml` is bound to the typed machine |
 | Field validity, connection-specific fields, pseudo-header fields, CONNECT, `content-length` | 9113 §8.1–§8.3, §8.5 | Proved: valid regular fields translate to HTTP/1.1 lines without CR/LF/NUL, colon-unambiguous, no framing fields (`Http2.Fields.Thms`); checked: examples |
 | Octets → frame → HPACK → validated request | 9113 §4, §6.2, §8.3 | Checked (`Http2.Examples`) |
 | Per-frame payload layouts (padding, priority, PUSH_PROMISE, GOAWAY, PING, RST_STREAM) | 9113 §6.1–§6.10 | Planned |

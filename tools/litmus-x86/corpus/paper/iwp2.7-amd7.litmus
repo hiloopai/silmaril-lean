@@ -1,0 +1,7 @@
+X86 iwp2.7/amd7
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{ 0:EAX=1; 1:EBX=1; }
+ P0          | P1          | P2          | P3          ;
+ XCHG [x],EAX | XCHG [y],EBX | MOV ECX,[x] | MOV ESI,[y] ;
+             |             | MOV EDX,[y] | MOV EDI,[x] ;
+exists (2:ECX=1 /\ 2:EDX=0 /\ 3:ESI=1 /\ 3:EDI=0)

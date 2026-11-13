@@ -1,0 +1,5 @@
+# The futex C litmus programs, one directory each.
+flag
+flag-late
+mutex
+mutex-racy
