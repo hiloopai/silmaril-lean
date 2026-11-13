@@ -130,50 +130,72 @@ produce kernel-checkable proofs for any goal here that needs SAT. Exhaustive
 
 ## Registered native procedure and modes
 
-The revised policy has three modes. **Default** permits a small, named set of
-registered native procedures; **local** permits all; **paranoid** permits none and
-either uses a kernel fallback or fails. The registry and modes belong to the core
-framework, which is not on `main` yet. Until it is, `scripts/check-layout.sh`
-rejects every plain `bv_decide` under `Silmaril/`, with no allowlist. Native
-`bv_decide` reaches `main` only through the framework, never by a bare call.
-Once the framework exists, the gate will exempt exactly the one framework module
-that invokes the registered backend, and per-site exceptions will stay forbidden.
+The trust framework (`Silmaril.Prelude.Trust`, docs/trust.md) has three profiles.
+**default** runs the procedures in the `default` trust set, **local** runs every
+procedure a scope's `max` allows, and **paranoid** runs none (kernel fallback or
+fail). `bv_decide` goes through it as follows.
 
-The proposed registry entry (the schema is the framework's; these are the facts
-it needs):
+* `Silmaril/Prelude/BVDecide/Native/Defs.lean` is the **only** module that invokes
+  `bv_decide`, and it does so exactly once (`scripts/check-layout.sh`). Every other
+  module uses `bv_decide_kernel` or `bv_decide_policy`. The gate has no per-site
+  exceptions.
+* It registers the procedure with `native_tactic`:
 
-| Field | Value |
-| --- | --- |
-| name | `lean.std.bv_decide.verifyBVExpr`, not "LRAT": the surface includes bitblasting and the parser |
-| evaluated constant | `Std.Tactic.BVDecide.Reflect.verifyBVExpr` (`nativeEvaluatedConst`) |
-| soundness lemma | `Std.Tactic.BVDecide.Reflect.unsat_of_verifyBVExpr_eq_true` (`nativeSoundnessConst`) |
-| native components | bitblast, AIG to CNF, relabel, LRAT parser, LRAT checker, runtime externs |
-| axiom shape | name `<decl>._native.bv_decide.ax_<n>`; statement `verifyBVExpr e cert = true` with closed `e`, `cert` |
-| toolchain | the exact `lean-toolchain` (today `nightly-2026-11-05`, commit `67dafde4`) |
-| untrusted input | the external solver (`sat.solver`, bundled CaDiCaL) |
-| kernel fallback | `kernelFallback` (normalization only) |
-| fallback coverage | goals `bv_normalize` closes; **unsupported** when SAT is needed (`needsSat`) |
+  | Field | Value |
+  | --- | --- |
+  | name | `lean.std.bv_decide.verifyBVExpr` (the surface includes bitblasting and the parser, so not "LRAT") |
+  | evaluates | `Std.Tactic.BVDecide.Reflect.verifyBVExpr` (`nativeEvaluatedConst`) |
+  | axiom tag | `bv_decide`: `<decl>._native.bv_decide.ax_<n>` |
+  | components | bitblasting (hash-consed through `mixHash`), AIG to CNF, relabeling, LRAT parser (`partial`), LRAT checker, runtime externs |
+  | toolchain | `leanprover/lean4:nightly-2026-11-05`, commit `67dafde4` (`registeredToolchain`, `registeredGithash`) |
+  | fallback | **none registered**: the kernel route (`bv_decide_kernel`) covers only goals `bv_normalize` closes, so the registration does not claim a kernel fallback |
+  | untrusted | the external SAT solver |
 
-`Silmaril/Prelude/BVDecide/Defs.lean` exports the hooks the framework consumes:
+* `bv_decide_policy` checks the registration on every use (`registrationProblem`):
+  the evaluated constant exists and is `nativeEvaluatedConst`, the tag is
+  `bv_decide`, no kernel fallback is claimed, and the registered toolchain and the
+  running Lean's commit are the reviewed ones. Then it:
+  1. tries `kernelFallback` and, if that proves the goal, records a `kernel` use;
+  2. otherwise runs `bv_decide` only if `Silmaril.Trust.nativeAllowed` admits the
+     procedure, and fails if not. No kernel route exists for goals that need SAT.
+  3. after a native run, requires every axiom of the proof outside the standard three
+     to be absent before this invocation, to have the `bv_decide` name shape, and to
+     state one closed `verifyBVExpr e cert = true`. It records each as a `native` use
+     with its axiom.
+* The procedure is **not** in the `default` set. Adding it needs its own reviewed
+  change. Until then, goals that need SAT fail in the default and paranoid profiles,
+  and run natively only where a build or module opts into `local`.
+
+Checked outside the library on this branch (a scratch module, so the library holds no
+native axiom): in profile `local`, `x * y = y * x` on `BitVec 8` is proved with
+`sat._native.bv_decide.ax_1_5`. It is recorded as a `native` use with that axiom, and
+`trust_audit` passes under `local` and fails under `default`. The library tests cover
+the registration check, the kernel route, and the failure of SAT goals in the default
+and paranoid profiles.
+
+**Known gap in the audit (core).** `trust_audit` classifies a `_native.bv_decide`
+axiom as the registered procedure by its tag alone. A plain `bv_decide` outside the
+framework, which records no use, passes `trust_audit` under `local` with no violation
+(checked in a scratch module). Today only the textual gate prevents this. The audit
+should require each native-tactic axiom to match a recorded `native` use with that
+axiom (`Use.ax`) and the registered toolchain, and report a violation otherwise.
+
+`Silmaril/Prelude/BVDecide/Defs.lean` exports the hooks used here:
 
 * `kernelFallback : MVarId → (cfg := …) → TermElabM KernelResult`: `.proved`, or
   `.needsSat` with the goal restored unassigned. It throws on `sorry` or
-  non-standard axioms. Paranoid mode calls it and fails on `.needsSat`.
+  non-standard axioms.
 * `nonstandardAxioms : Expr → MetaM (Array Name)`: the transitive axioms of a
   proof outside the standard three.
 * `isBvDecideNativeAxiom : Name → Bool`: name-shape recognition only, never
   authorization.
-* `isBvDecideNativeStatement : Name → MetaM Bool`: checks that an axiom's statement
-  is one closed `verifyBVExpr e cert = true`. Admitting a native use still needs
-  the framework to bind the axiom to a registered entry point and toolchain from
-  the actual proof dependencies, and to reject any other native axiom.
-* `nativeEvaluatedConst`, `nativeSoundnessConst`: resolved at compile time, so a
-  toolchain that renames them fails the build.
+* `isBvDecideNativeStatement : Name → MetaM Bool`: an axiom's statement is one closed
+  `verifyBVExpr e cert = true`.
+* `nativeEvaluatedConst`, `nativeSoundnessConst`: resolved at compile time.
 
-There is **no kernel-checked SAT route**: paranoid mode cannot prove a goal that
-needs SAT, except by a different, goal-specific proof (for example `decide +kernel`
-over a small domain, measured above). Such goals are reported as unsupported,
-not silently degraded.
+There is **no kernel-checked SAT route**. Paranoid mode cannot prove a goal that
+needs SAT except by a different, goal-specific proof (for example `decide +kernel`
+over a small domain, measured above).
 
 ## CI
 
