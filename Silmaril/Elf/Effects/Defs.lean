@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.X86.Cfg.Defs
+public import Silmaril.X86.Flow.Str9.Defs
 public import Silmaril.Elf.Defs
 public import Silmaril.Elf.Link.ElfBind.Defs
 
@@ -148,6 +149,9 @@ def Cert.check (D : FlowDec) (P : Cert) (roots : List Nat) : Bool :=
 /-- The nodes of `P`'s graph reachable from the entry `v` and the escapes. -/
 def Cert.reach (P : Cert) (v : Nat) (esc : List Nat) : Node → Prop :=
   P.graph.Reaches (.fn v :: esc.map .fn)
+
+/-- **The union of two certificates** (composition: the functions and edges of both). -/
+def Cert.union (P Q : Cert) : Cert := ⟨P.fns ++ Q.fns, P.graph.union Q.graph⟩
 
 /-! ## The most general process -/
 
@@ -391,15 +395,20 @@ def known (summ : Summ) (N : List Node) : Bool :=
     | .sysAny | .unresolved => false
     | _ => true
 
+/-- Decidable form of `Node.SysOk` for a decidable `ok`. -/
+def Node.okB (summ : Summ) (ok : Nat → Bool) : Node → Bool
+  | .fn _ => true
+  | .ext r => match summ.lookup r with
+    | some ns => ns.all ok
+    | none => false
+  | .sys n => ok n
+  | .sysAny | .unresolved => false
+
 /-! ## Open goals -/
 
 /-- **Soundness** (proved: `Thms.sound`). -/
 def Task.sound : Prop :=
   ∀ {σ : Type} (W : World σ) (D : FlowDec) base (P : Cert) esc entry keep (s₀ : σ) N,
     Setting W D base P esc entry keep s₀ N → ReachIn W D base keep s₀ N
-
-/-- **`CodeStable` from the machine**: the `Str9` tower's stores need write permission, the code
-segments lack `PF_W`, and the kernel and library keep them (`codeNrs` excluded). Open. -/
-def codeNrs : List Nat := [9, 10, 11, 25, 31, 216, 329]
 
 end Silmaril.Elf.Effects

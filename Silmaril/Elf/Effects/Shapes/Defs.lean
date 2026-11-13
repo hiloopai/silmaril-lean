@@ -133,4 +133,20 @@ def ProgSyscallSet {V : Type} (J : UMach σ) (D : FlowDec) (X : Value V) (P : Ce
     (esc : List Nat) (summ : Summ) (S : List Nat) : Prop :=
   ForProg J D X P esc fun W base keep s₀ _ => SyscallsOk W D base keep s₀ summ (· ∈ S)
 
+/-- **The certificate facts a row proves** (by `decide`, and a `CodeAt` row per block): the
+decoder is stable, `loc` is at `v`, `P` is checked with `v` and the escapes as roots, and `L` is
+a listed node set closed under `P`'s edges, holding the roots and not `unresolved`. -/
+structure CertOk {V : Type} (D : FlowDec) (X : Value V) (loc : Loc) (P : Cert) (esc : List Nat) (v : Nat)
+    (L : List Node) : Prop where
+  stable : D.Stable
+  at_ : ∀ w, Func.At ⟨file X, loc⟩ w → w = v
+  check : P.check D (v :: esc) = true
+  code : ∀ f C, (f, C) ∈ P.fns → ∀ b ∈ C.blocks, Link.ElfBind.CodeAt (file X) b.start b.bytes
+  closed : P.graph.closedB L = true
+  roots : (Node.fn v :: esc.map .fn).all L.contains = true
+  noUnres : L.contains .unresolved = false
+
+/-- The imports of a listed node set. -/
+def importsOf (L : List Node) : List Ref := L.filterMap fun | .ext r => some r | _ => none
+
 end Silmaril.Elf.Effects.Shapes
