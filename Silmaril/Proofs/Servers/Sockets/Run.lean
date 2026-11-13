@@ -71,13 +71,13 @@ theorem accept4Spec_ok {fd addrp addrlenp flags : Word} {i : SyscallInput} {m : 
   split at h
   · exact (unmodeled_ok h).elim
   cases e
-  all_goals try dsimp only at h
+  all_goals dsimp only at h
   all_goals try exact absurd hr (errRet_ok_neg h (by decide) (by decide))
   rename_i sk
   split at h
   · exact (unmodeled_ok h).elim
   cases sk
-  all_goals try dsimp only at h
+  all_goals dsimp only at h
   all_goals try exact absurd hr (errRet_ok_neg h (by decide) (by decide))
   rcases h with h | h
   · obtain ⟨x, m₁, e₁, e₂, hx, hk, -⟩ := h
