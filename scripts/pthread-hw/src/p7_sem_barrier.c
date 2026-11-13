@@ -6,7 +6,9 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
+#ifndef R
 #define R 10
+#endif
 #define T 4
 static sem_t ping, pong;
 static char logbuf[2 * R + 1];

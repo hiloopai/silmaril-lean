@@ -2,7 +2,9 @@
    unlock). Prints 2N. */
 #include <pthread.h>
 #include <stdio.h>
+#ifndef N
 #define N 100000
+#endif
 static pthread_spinlock_t s;
 static long counter;
 static void *worker(void *arg) {

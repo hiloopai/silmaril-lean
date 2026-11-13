@@ -3,7 +3,9 @@
    while loops, so spurious wake-ups are harmless. Prints the sum: N(N+1)/2. */
 #include <pthread.h>
 #include <stdio.h>
+#ifndef N
 #define N 20000
+#endif
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t not_full = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t not_empty = PTHREAD_COND_INITIALIZER;

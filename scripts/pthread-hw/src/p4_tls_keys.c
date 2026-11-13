@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #define T 4
+#ifndef K
+#define K 1000
+#endif
 static pthread_key_t key;
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 static int dtors;
@@ -19,7 +22,7 @@ static void dtor(void *v) {
 static void *worker(void *arg) {
   intptr_t i = (intptr_t)arg;
   pthread_setspecific(key, (void *)(i + 1));
-  for (int k = 0; k < 1000; k++) {
+  for (int k = 0; k < K; k++) {
     if ((intptr_t)pthread_getspecific(key) != i + 1) return NULL;
   }
   own[i] = 1;

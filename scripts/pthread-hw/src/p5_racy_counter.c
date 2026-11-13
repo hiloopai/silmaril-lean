@@ -4,7 +4,9 @@
    Any value in [2, 2N] is a possible outcome. */
 #include <pthread.h>
 #include <stdio.h>
+#ifndef N
 #define N 100000
+#endif
 static volatile long counter;
 static void *worker(void *arg) {
   (void)arg;
