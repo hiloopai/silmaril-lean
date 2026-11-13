@@ -609,7 +609,7 @@ dependency.
 Every file carries its schema version: `silmaril.project.v0.1`, `silmaril.artifacts.v0.2`
 (v0.1 is still read), `silmaril.records.v0.2`, `silmaril.project-dump.v0.1` and
 `silmaril.project-db.v0.2` (v0.1 plus the trust tables), and
-the trust lines (`silmaril.trust.v1` and `silmaril.trust-adapter.v0.1`, [trust-db.md](trust-db.md)). All are defined in
+the core's trust export `silmaril.trust-core.v1` ([trust-db.md](trust-db.md)). All are defined in
 `tools/silmaril-project/src/project/schema/`.
 
 ## The Lean commands

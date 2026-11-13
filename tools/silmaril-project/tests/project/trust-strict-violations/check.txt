@@ -2,11 +2,11 @@ error: trust Silmaril.Elf.Staged.Fast: own-native-not-allowed: Silmaril.Elf.Stag
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
-trust: 12 procedures (11 with a kernel side), 7 sets, 3 scopes; 3 uses (1 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 5 covered, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 3 declarations audited
+trust dump: hand-written fixture (not producer output) (main module Fixture) (origin fixture); profile default, ceiling local
+trust: 6 procedures (4 with a kernel side), 7 sets, 3 scopes; 3 uses (1 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 4 covered, 0 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 1 external; 5 declarations audited
 trust violations: 1 (1 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
-trust digests: inputs match, covered modules 5 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
-trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)
+trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: complete (every described module is audited; modules outside `Silmaril` are external)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 exit: failed

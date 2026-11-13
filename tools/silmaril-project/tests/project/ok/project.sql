@@ -232,7 +232,8 @@ CREATE TABLE trust_inputs(
 );
 CREATE TABLE trust_procedures(
   name TEXT NOT NULL PRIMARY KEY,
-  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared')),
+  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared','named')),
+  implemented INTEGER NOT NULL,
   function TEXT NOT NULL,
   module TEXT,
   kernel_fallback INTEGER NOT NULL,
@@ -254,7 +255,8 @@ CREATE TABLE trust_procedures(
 CREATE TABLE trust_sets(
   name TEXT NOT NULL PRIMARY KEY,
   origin TEXT NOT NULL,
-  is_all INTEGER NOT NULL
+  is_all INTEGER NOT NULL,
+  doc TEXT
 );
 CREATE TABLE trust_set_members(
   set_name TEXT NOT NULL,
@@ -271,11 +273,12 @@ CREATE TABLE trust_scopes(
 );
 CREATE TABLE trust_modules(
   name TEXT NOT NULL PRIMARY KEY,
+  region TEXT,
   source TEXT,
   source_sha256 TEXT,
   source_status TEXT NOT NULL CHECK(source_status IN ('match','changed','missing','unrecorded')),
   freshness TEXT NOT NULL CHECK(freshness IN ('consistent','stale','unknown')),
-  coverage TEXT NOT NULL CHECK(coverage IN ('covered','excluded','unsupported','undescribed','external')),
+  coverage TEXT NOT NULL CHECK(coverage IN ('covered','unaudited','excluded','unsupported','undescribed','external')),
   policy_trace TEXT,
   reason TEXT
 );

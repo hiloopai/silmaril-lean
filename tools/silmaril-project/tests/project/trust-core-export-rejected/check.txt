@@ -1,5 +1,0 @@
-error: trust.jsonl: a silmaril.trust-core.v1 document (the core's #trust_export) is not an input of the project database: this tool reads JSON lines of silmaril.trust.v1 and silmaril.trust-adapter.v0.2, written by `sil project trust-dump` (docs/projects/trust-db.md)
-summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
-verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
-root: (none)
-exit: failed

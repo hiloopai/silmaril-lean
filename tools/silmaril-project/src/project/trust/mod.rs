@@ -20,6 +20,8 @@
 //! they are errors, as are inconsistent digests, undescribed imports and a missing dump. Without
 //! `--trust`, `meta` says `trust.status = absent`: unaudited, not clean.
 
+pub mod core_doc;
+
 use super::check::Outcome;
 use super::hash::Digests;
 use super::schema::*;
@@ -177,145 +179,34 @@ impl Tables {
     }
 }
 
-/// Read trust lines: one JSON object per non-empty line, each with a `schema` of
-/// [`LINE_KINDS`] and a `kind` that schema carries. The conversion is explicit: a core line and
-/// an adapter line of the same kind map to the same [`TrustLine`] variant. Adapter fields must
-/// all be known; core fields outside [`CORE_FIELDS`] (the core may add fields within v1) are
-/// dropped and returned as `kind.field`.
-pub fn read_lines(text: &str) -> std::result::Result<(Vec<TrustLine>, BTreeSet<String>), String> {
-    let mut out = Vec::new();
-    let mut ignored = BTreeSet::new();
-    for (i, l) in text
-        .lines()
-        .enumerate()
-        .filter(|(_, l)| !l.trim().is_empty())
-    {
-        let at = |e: String| format!("line {}: {e}", i + 1);
-        let mut v: serde_json::Value = serde_json::from_str(l).map_err(|e| at(e.to_string()))?;
-        let obj = v
-            .as_object_mut()
-            .ok_or_else(|| at("not a JSON object".into()))?;
-        let schema = match obj.remove("schema") {
-            Some(serde_json::Value::String(s)) => s,
-            _ => return Err(at("no `schema`".into())),
-        };
-        let kind = obj
-            .get("kind")
-            .and_then(|k| k.as_str())
-            .unwrap_or_default()
-            .to_string();
-        let Some((_, kinds)) = LINE_KINDS.iter().find(|(s, _)| *s == schema) else {
-            return Err(at(format!("unsupported schema {schema:?}")));
-        };
-        if !kinds.contains(&kind.as_str()) {
-            return Err(at(format!("kind {kind:?} is not a {schema} kind")));
+/// The canonical input, or a message naming what the text is instead.
+pub fn parse_document(text: &str) -> std::result::Result<core_doc::Doc, String> {
+    let canonical = "the project database reads the core's trust export (silmaril.trust-core.v1, \
+                     `#trust_export`, written by `sil project trust-dump` or scripts/trust-export.sh)";
+    let v: serde_json::Value = match serde_json::from_str(text) {
+        Ok(v) => v,
+        Err(_) => {
+            let lines = text.lines().filter(|l| l.trim().starts_with('{')).count();
+            return Err(if lines > 1 {
+                format!(
+                    "JSON lines (silmaril.trust.v1 with silmaril.trust-adapter.v0.2) are retired as an input: {canonical}"
+                )
+            } else {
+                format!("not a JSON document: {canonical}")
+            });
         }
-        if schema == CORE_SCHEMA
-            && let Some((_, known)) = CORE_FIELDS.iter().find(|(k, _)| *k == kind)
-        {
-            let extra: Vec<String> = obj
-                .keys()
-                .filter(|f| *f != "kind" && !known.contains(&f.as_str()))
-                .cloned()
-                .collect();
-            for f in extra {
-                obj.remove(&f);
-                ignored.insert(format!("{kind}.{f}"));
-            }
-        }
-        let bad = |e: serde_json::Error| at(format!("{schema} {kind}: {e}"));
-        match (schema.as_str(), kind.as_str()) {
-            (CORE_SCHEMA, "module") => {
-                obj.remove("kind");
-                let m: CoreModule = serde_json::from_value(v).map_err(bad)?;
-                out.extend(core_module(m).map_err(at)?);
-            }
-            (CORE_SCHEMA, "audit") => {
-                obj.remove("kind");
-                let a: CoreAudit = serde_json::from_value(v).map_err(bad)?;
-                out.push(TrustLine::Decl(LineDecl {
-                    decl: a.decl,
-                    module: a.module,
-                    own_native: a.own_native,
-                    dep_native: a.dep_native,
-                    unverified: a
-                        .unverified_native
-                        .into_iter()
-                        .map(|u| (u.procedure, u.axiom))
-                        .collect(),
-                    axioms: a.axioms,
-                    native_axioms: a.native_axioms,
-                    profile: Some(a.profile),
-                    elaborated_profiles: a.elaborated_profiles,
-                    violations: a.violations,
-                }));
-            }
-            _ => out.push(serde_json::from_value(v).map_err(bad)?),
-        }
-    }
-    Ok((out, ignored))
-}
-
-/// A whole JSON document (not JSON lines) with a `schema` this tool does not read: the core's
-/// `#trust_export` (`silmaril.trust-core.v1`), the retired `silmaril.trust-dump.v0.1`, or any
-/// other. `None` when `text` is not such a document.
-pub fn foreign_document(text: &str) -> Option<String> {
-    if text.lines().filter(|l| !l.trim().is_empty()).count() < 2 {
-        return None;
-    }
-    let v: serde_json::Value = serde_json::from_str(text).ok()?;
-    let schema = v.get("schema")?.as_str()?.to_string();
-    let canonical = "this tool reads JSON lines of silmaril.trust.v1 and silmaril.trust-adapter.v0.2, \
-                     written by `sil project trust-dump` (docs/projects/trust-db.md)";
-    Some(match schema.as_str() {
-        "silmaril.trust-core.v1" => format!(
-            "a silmaril.trust-core.v1 document (the core's #trust_export) is not an input of the \
-             project database: {canonical}"
-        ),
-        "silmaril.trust-dump.v0.1" => format!(
-            "silmaril.trust-dump.v0.1 is retired (a proposal no producer wrote): {canonical}"
-        ),
-        other => format!("unsupported trust document schema {other:?}: {canonical}"),
-    })
-}
-
-/// A core set value: `"all"` or a list of names.
-fn core_members(v: &Option<serde_json::Value>) -> std::result::Result<Option<LineMembers>, String> {
-    match v {
-        None | Some(serde_json::Value::Null) => Ok(None),
-        Some(serde_json::Value::String(a)) if a == "all" => Ok(Some(LineMembers {
-            all: true,
-            names: vec![],
-        })),
-        Some(serde_json::Value::Array(xs)) => xs
-            .iter()
-            .map(|x| x.as_str().map(String::from))
-            .collect::<Option<Vec<_>>>()
-            .map(|names| Some(LineMembers { all: false, names }))
-            .ok_or_else(|| "a set is \"all\" or a list of names".into()),
-        Some(other) => Err(format!("a set is \"all\" or a list of names, not {other}")),
-    }
-}
-
-/// The core's `module` line is a module (imports) and its effective sets.
-fn core_module(m: CoreModule) -> std::result::Result<Vec<TrustLine>, String> {
-    let module = TrustLine::Module(LineModule {
-        name: m.module.clone(),
-        imports: m.imports,
-    });
-    let eff = LineEffective {
-        module: m.module,
-        max: core_members(&m.max)?,
-        default: core_members(&m.default)?,
-        deps: core_members(&m.deps)?,
-        axioms: core_members(&m.axioms)?,
-        allowed: core_members(&m.allowed)?,
-        trace: m.scopes,
-        error: m.policy_error,
-        profile: Some(m.profile),
-        ceiling: Some(m.ceiling),
     };
-    Ok(vec![module, TrustLine::Effective(eff)])
+    match v.get("schema").and_then(|s| s.as_str()) {
+        Some(core_doc::CORE_DOC_SCHEMA) => serde_json::from_value(v)
+            .map_err(|e| format!("{}: {e} (the shape is frozen)", core_doc::CORE_DOC_SCHEMA)),
+        Some("silmaril.trust-dump.v0.1") => Err(format!(
+            "silmaril.trust-dump.v0.1 is retired (a proposal no producer wrote): {canonical}"
+        )),
+        Some(other) => Err(format!(
+            "unsupported trust document schema {other:?}: {canonical}"
+        )),
+        None => Err(format!("no `schema`: {canonical}")),
+    }
 }
 
 /// Check the trust lines at `path` (relative to `dir`), if any, and append the trust tables to
@@ -344,15 +235,9 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
         .wrap_err_with(|| format!("could not read the trust dump {}", path.display()))?;
     let at = path.display().to_string();
     let text = String::from_utf8_lossy(&bytes);
-    // One canonical input: JSON lines of `silmaril.trust.v1` (the core's stable hooks) and
-    // `silmaril.trust-adapter.v0.2`, as `sil project trust-dump` writes them. Whole-document
-    // formats are refused by name, never reinterpreted.
-    if let Some(e) = foreign_document(&text) {
-        o.error(&at, e);
-        Tables::default().push(&mut o.db);
-        return Ok(());
-    }
-    let (lines, ignored) = match read_lines(&text) {
+    // One canonical input: the core's frozen export (`silmaril.trust-core.v1`), converted
+    // explicitly ([`core_doc`]). Anything else is refused by name, never reinterpreted.
+    let lines = match parse_document(&text).and_then(|d| core_doc::convert(d, dir)) {
         Ok(l) => l,
         Err(e) => {
             o.error(&at, e);
@@ -360,27 +245,6 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
             return Ok(());
         }
     };
-    for f in &ignored {
-        let msg =
-            format!("core field {f} is not read by this tool (added within silmaril.trust.v1?)");
-        if strict {
-            o.error(
-                &at,
-                format!("{msg}; --strict-trust refuses fields it cannot interpret"),
-            );
-        } else {
-            o.warn(&at, msg);
-        }
-    }
-    if !ignored.is_empty() {
-        meta(
-            o,
-            &[(
-                "ignored_core_fields",
-                ignored.iter().cloned().collect::<Vec<_>>().join(","),
-            )],
-        );
-    }
     let mut t = Tables::default();
     let mut ingest = Ingest {
         dir,
@@ -397,10 +261,10 @@ pub fn run(dir: &Path, path: Option<&Path>, strict: bool, o: &mut Outcome) -> Re
         o.lines.push(format!(
             "trust result: policy valid on {coverage} coverage{}",
             if coverage == "complete" {
-                " of the modules under the dump's roots (the theorems it audits; not a proof \
+                " of the described modules (the declarations it audits; not a proof \
                  the dump is complete)"
             } else {
-                " (not a full audit: excluded, unsupported or undescribed modules are unaudited)"
+                " (not a full audit: unaudited, excluded, unsupported or undescribed modules are not audited)"
             }
         ));
     }
@@ -432,6 +296,7 @@ struct Lines<'a> {
     excluded: Vec<&'a LineExcluded>,
     declared: Vec<&'a LineDeclaredProcedure>,
     sources: Vec<&'a LineSource>,
+    named: Vec<&'a LineNamed>,
 }
 
 impl Ingest<'_> {
@@ -488,6 +353,7 @@ impl Ingest<'_> {
                 TrustLine::Excluded(e) => l.excluded.push(e),
                 TrustLine::DeclaredProcedure(d) => l.declared.push(d),
                 TrustLine::Source(x) => l.sources.push(x),
+                TrustLine::Named(x) => l.named.push(x),
             }
         }
         let [h] = l.header[..] else {
@@ -497,8 +363,12 @@ impl Ingest<'_> {
             ));
             return;
         };
-        if h.core_api != "v1-hooks" {
-            self.err(format!("core_api {:?} is not v1-hooks", h.core_api));
+        if h.core_api != core_doc::CORE_DOC_SCHEMA {
+            self.err(format!(
+                "core_api {:?} is not {}",
+                h.core_api,
+                core_doc::CORE_DOC_SCHEMA
+            ));
             return;
         }
         // The profile and ceiling of the dumping run: the header's, else the module lines'.
@@ -600,6 +470,7 @@ impl Ingest<'_> {
                 name: n.into(),
                 origin: origin.into(),
                 is_all: n == "all",
+                doc: Some("built in".into()),
             });
         }
         for (n, s) in &sets {
@@ -607,6 +478,7 @@ impl Ingest<'_> {
                 name: n.clone(),
                 origin: s.origin.clone().unwrap_or_else(|| "trust_set".into()),
                 is_all: s.all,
+                doc: s.doc.clone().filter(|d| !d.is_empty()),
             });
             for m in s.members.iter().collect::<BTreeSet<_>>() {
                 t.members.push(TrustSetMember {
@@ -705,10 +577,39 @@ impl Ingest<'_> {
                 ..Default::default()
             });
         }
+        let mut named: BTreeSet<String> = BTreeSet::new();
+        for x in &l.named {
+            if procs.contains_key(&x.name) || !named.insert(x.name.clone()) {
+                self.err(format!(
+                    "procedure {}: named (unimplemented) and also registered, or named twice",
+                    x.name
+                ));
+                continue;
+            }
+            t.procedures.push(TrustProcedure {
+                name: x.name.clone(),
+                kind: "named".into(),
+                implemented: false,
+                function: String::new(),
+                doc: x.doc.clone(),
+                ..Default::default()
+            });
+        }
+        for p in &mut t.procedures {
+            if p.kind != "named" {
+                p.implemented = true;
+            }
+        }
         let mut use_keys = BTreeSet::new();
         let mut mismatched: Vec<(String, String)> = Vec::new();
         for u in &l.uses {
             let what = format!("use of {} in {} ({})", u.procedure, u.decl, u.module);
+            if named.contains(&u.procedure) {
+                self.err(format!(
+                    "{what}: the procedure is named by a set but implemented nowhere"
+                ));
+                continue;
+            }
             let Some(&(native_ok, kernel)) = procs.get(&u.procedure) else {
                 self.err(format!("{what}: unknown procedure"));
                 continue;
@@ -720,6 +621,13 @@ impl Ingest<'_> {
                         self.err(format!(
                             "{what}: a native run of a procedure without a native side"
                         ));
+                    }
+                    if u.verified == Some(false) {
+                        mismatched.push((
+                            u.module.clone(),
+                            format!("{what}: the core did not verify axiom {a} (verified = false)"),
+                        ));
+                        matches = false;
                     }
                     // A record whose axiom is not a native run of its procedure is kept and
                     // flagged (the core's audit treats the axiom as unverified); it never
@@ -762,13 +670,11 @@ impl Ingest<'_> {
         }
 
         for (m, msg) in &mismatched {
-            // In an excluded module the record is listed, not audited: a warning even when strict.
-            let skipped = l.excluded.iter().any(|e| &e.module == m);
-            let note = if skipped {
-                " (excluded module: not audited)"
-            } else {
-                ""
-            };
+            // In a module that is not audited (excluded, or without declarations in the export)
+            // the record is listed, not judged: a warning even when strict.
+            let skipped = l.excluded.iter().any(|e| &e.module == m)
+                || !l.decls.iter().any(|d| &d.module == m);
+            let note = if skipped { " (module not audited)" } else { "" };
             let (at, msg) = (
                 format!("trust {m}"),
                 format!("mismatched use record: {msg}{note}"),
@@ -920,6 +826,7 @@ impl Ingest<'_> {
                 self.err(format!("effective {}: listed twice", e.module));
             }
         }
+        let recompute = l.effective.is_empty();
         let mut allowed: BTreeMap<String, [Members; 5]> = BTreeMap::new();
         let mut traces: BTreeMap<String, String> = BTreeMap::new();
         for n in described.keys() {
@@ -930,6 +837,27 @@ impl Ingest<'_> {
             });
             let theirs = eff_lines.get(n);
             match (mine, theirs) {
+                // The export carries no effective sets: they are recomputed here, and the
+                // per-declaration violation counts below must equal the export's.
+                (Ok((sets5, tr)), None) if recompute => {
+                    for (role, m) in ["max", "default", "deps", "axioms", "allowed"]
+                        .iter()
+                        .zip(sets5.iter())
+                    {
+                        for member in m.names() {
+                            t.module_policy.push(TrustModulePolicy {
+                                module: n.clone(),
+                                role: role.to_string(),
+                                member,
+                            });
+                        }
+                    }
+                    traces.insert(n.clone(), tr.join(" > "));
+                    allowed.insert(n.clone(), sets5);
+                }
+                (Err(e), None) if recompute => {
+                    self.err(format!("module {n}: policy does not resolve: {e}"))
+                }
                 (_, None) => self.err(format!("module {n}: no effective line")),
                 (Err(e), Some(x)) => {
                     let why = x
@@ -989,6 +917,7 @@ impl Ingest<'_> {
         }
 
         // Coverage and freshness.
+        let audited_modules: BTreeSet<&str> = l.decls.iter().map(|d| d.module.as_str()).collect();
         let mut all_mods: BTreeSet<String> = described.keys().cloned().collect();
         all_mods.extend(excluded.keys().cloned());
         all_mods.extend(imports.values().flatten().cloned());
@@ -1012,6 +941,10 @@ impl Ingest<'_> {
             };
             let (coverage, reason): (String, Option<String>) = match (excluded.get(n), m) {
                 (Some(e), _) => (e.coverage.clone(), Some(e.reason.clone())),
+                (None, Some(_)) if !audited_modules.contains(n.as_str()) => (
+                    "unaudited".into(),
+                    Some("no declaration of it in the export: either not listed for audit (trust-dump --root/--exclude) or without theorems and definitions; the export does not say which".into()),
+                ),
                 (None, Some(_)) => ("covered".into(), None),
                 (None, None) if !under(n) => (
                     "external".into(),
@@ -1024,6 +957,7 @@ impl Ingest<'_> {
             };
             t.modules.push(TrustModule {
                 name: n.clone(),
+                region: m.and_then(|m| m.region.clone()),
                 source: sources.get(n).map(|x| x.path.clone()),
                 source_sha256: sources.get(n).map(|x| x.sha256.clone()),
                 source_status: ss.into(),
@@ -1077,8 +1011,13 @@ impl Ingest<'_> {
             }
             if let Some(first) = seen_decls.get(&d.decl) {
                 // Realized constants (`eq_def`, …) are listed by every module that realizes
-                // them (`declsOf`); identical audits of one declaration are one.
-                if *first == *d {
+                // them (`declsOf`), each under the listing module; audits identical but for
+                // that module are one (the first listing is kept).
+                let same = LineDecl {
+                    module: d.module.clone(),
+                    ..(*first).clone()
+                } == **d;
+                if same {
                     repeated += 1;
                 } else {
                     self.err(format!(
@@ -1195,7 +1134,9 @@ impl Ingest<'_> {
         }
 
         // ---- violations (the `trust_violations` view computes the same rows)
-        let covered = |m: &str| described.contains_key(m) && !excluded.contains_key(m);
+        let covered = |m: &str| {
+            described.contains_key(m) && !excluded.contains_key(m) && audited_modules.contains(m)
+        };
         let mut violations: BTreeSet<(String, String, String, &'static str)> = BTreeSet::new();
         let mut per_decl: BTreeMap<String, usize> = BTreeMap::new();
         for x in &t.decl_axioms {
@@ -1297,8 +1238,9 @@ impl Ingest<'_> {
             t.uses.len()
         ));
         self.o.lines.push(format!(
-            "trust modules: {} covered, {} excluded, {} unsupported, {} undescribed, {} external; {} declarations audited{}{}",
+            "trust modules: {} covered, {} unaudited, {} excluded, {} unsupported, {} undescribed, {} external; {} declarations audited{}{}",
             count("covered"),
+            count("unaudited"),
             count("excluded"),
             count("unsupported"),
             count("undescribed"),
@@ -1327,7 +1269,7 @@ impl Ingest<'_> {
             fresh("stale"),
             fresh("unknown")
         ));
-        let gaps: Vec<String> = ["excluded", "unsupported", "undescribed"]
+        let gaps: Vec<String> = ["unaudited", "excluded", "unsupported", "undescribed"]
             .iter()
             .filter(|c| count(c) > 0)
             .map(|c| format!("{} {c}", count(c)))
@@ -1338,9 +1280,9 @@ impl Ingest<'_> {
             "partial"
         };
         self.o.lines.push(if gaps.is_empty() {
-            "trust coverage: complete (every module under the roots is described and covered; modules outside the roots are external)".into()
+            "trust coverage: complete (every described module is audited; modules outside `Silmaril` are external)".into()
         } else {
-            format!("trust coverage: partial ({} module(s); their uses are not audited)", gaps.join(", "))
+            format!("trust coverage: partial ({} module(s); their declarations are not audited)", gaps.join(", "))
         });
         self.o.lines.push(enforcement_line(self.strict));
         self.coverage = coverage;
@@ -1387,138 +1329,50 @@ impl Ingest<'_> {
 
 // ---------------------------------------------------------------- the producer
 
-const DRIVER: &str = include_str!("Driver.lean");
-
-/// Whether the core under `dir` (the package itself or `.lake/packages/silmaril`) has the stable
-/// dump hooks (`moduleLine`, `auditLine`, #125 from `ba1b5f84`).
-pub fn core_has_hooks(dir: &Path) -> Option<bool> {
-    let rel = "Silmaril/Prelude/Trust/Elab/Defs.lean";
-    [dir.join(rel), dir.join(".lake/packages/silmaril").join(rel)]
-        .iter()
-        .find_map(|p| fs::read_to_string(p).ok())
-        .map(|t| t.contains("def moduleLine") && t.contains("def auditLine"))
-}
-
-fn lean_name_list(names: &[String]) -> String {
-    let quoted: Vec<String> = names
-        .iter()
-        .map(|n| {
-            format!(
-                "`{}",
-                n.split('.')
-                    .map(|c| format!("«{c}»"))
-                    .collect::<Vec<_>>()
-                    .join(".")
-            )
-        })
-        .collect();
-    format!("[{}]", quoted.join(", "))
+/// Whether the core under `dir` (the package itself or `.lake/packages/silmaril`) has the frozen
+/// export (`#trust_export`, #125 from `792e7ed6`).
+pub fn core_has_export(dir: &Path) -> Option<bool> {
+    let rel = "Silmaril/Prelude/Trust/Export/Defs.lean";
+    let elab = "Silmaril/Prelude/Trust/Elab/Defs.lean";
+    for base in [dir.to_path_buf(), dir.join(".lake/packages/silmaril")] {
+        if let Ok(t) = fs::read_to_string(base.join(rel)) {
+            return Some(t.contains("silmaril.trust-core.v1"));
+        }
+        if base.join(elab).exists() {
+            return Some(false);
+        }
+    }
+    None
 }
 
 fn lean_str(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
-/// The trust driver: imports `modules`, writes the core's lines (stable hooks) for the modules
-/// under `roots` to `core_out`, and the adapter's to `out`.
-pub fn driver(modules: &[String], roots: &[String], out: &Path, core_out: &Path) -> String {
-    DRIVER
-        .replace(
-            "__IMPORTS__",
-            &modules
-                .iter()
-                .map(|m| format!("import {m}"))
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
-        .replace("__ROOTS__", &lean_name_list(roots))
-        .replace("__OUT__", &lean_str(&out.display().to_string()))
-        .replace("__CORE_OUT__", &lean_str(&core_out.display().to_string()))
+/// Stage 1: import `modules` and write the names of the `Silmaril` modules they reach to `out`,
+/// one per line (`#trust_export` takes its audited modules as literal arguments).
+pub fn list_driver(modules: &[String], out: &Path) -> String {
+    let mut s: String = modules.iter().map(|m| format!("import {m}\n")).collect();
+    s += &format!(
+        "\nopen Lean in\n#eval show Elab.Command.CommandElabM Unit from do\n  \
+         let env ← getEnv\n  \
+         let ms := env.header.moduleNames.filter (`Silmaril).isPrefixOf\n  \
+         IO.FS.writeFile {} (String.intercalate \"\\n\" (ms.map toString).toList ++ \"\\n\")\n",
+        lean_str(&out.display().to_string())
+    );
+    s
 }
 
-/// What `complete` adds besides the driver's lines.
-pub struct Completion<'a> {
-    pub roots: &'a [String],
-    pub producer: &'a str,
-    /// Files to record by digest, when they exist.
-    pub inputs: &'a [&'a str],
-    /// `(module, reason)`: modules whose theorems are not audited (`excluded`).
-    pub excluded: &'a [(String, String)],
-}
-
-/// Complete the lines: the adapter's (producer, origin and roots in the header; the inputs; a
-/// `source` line, with its digest, for every core `module` line whose `<dir>/<A/B/C>.lean`
-/// exists; the exclusions), then the core's lines as they are, each checked to be
-/// `silmaril.trust.v1`. Line order is kept.
-pub fn complete(
-    adapter: &str,
-    core: &str,
-    dir: &Path,
-    c: &Completion,
-) -> std::result::Result<String, String> {
-    let tag = |mut v: serde_json::Value| -> String {
-        if let Some(o) = v.as_object_mut() {
-            o.insert("schema".into(), ADAPTER_SCHEMA.into());
-        }
-        serde_json::to_string(&v).expect("json")
-    };
-    let mut core_lines = Vec::new();
-    let mut modules = Vec::new();
-    for (i, l) in core
-        .lines()
-        .enumerate()
-        .filter(|(_, l)| !l.trim().is_empty())
-    {
-        let v: serde_json::Value =
-            serde_json::from_str(l).map_err(|e| format!("core line {}: {e}", i + 1))?;
-        if v.get("schema").and_then(|s| s.as_str()) != Some(CORE_SCHEMA) {
-            return Err(format!("core line {}: schema is not {CORE_SCHEMA}", i + 1));
-        }
-        if v.get("kind").and_then(|k| k.as_str()) == Some("module")
-            && let Some(m) = v.get("module").and_then(|m| m.as_str())
-        {
-            modules.push(m.to_string());
-        }
-        core_lines.push(serde_json::to_string(&v).expect("json"));
+/// Stage 2: import `modules` and the export, and write the core's document for `audited`.
+pub fn export_driver(modules: &[String], audited: &[String], out: &Path) -> String {
+    let mut s: String = modules.iter().map(|m| format!("import {m}\n")).collect();
+    s += "import Silmaril.Prelude.Trust.Export.Defs\n\n";
+    s += &format!("#trust_export {}", lean_str(&out.display().to_string()));
+    for m in audited {
+        s += &format!(" {m}");
     }
-    let mut out = Vec::new();
-    for (i, l) in adapter
-        .lines()
-        .enumerate()
-        .filter(|(_, l)| !l.trim().is_empty())
-    {
-        let mut v: serde_json::Value =
-            serde_json::from_str(l).map_err(|e| format!("adapter line {}: {e}", i + 1))?;
-        let obj = v
-            .as_object_mut()
-            .ok_or_else(|| format!("adapter line {}: not an object", i + 1))?;
-        if obj.get("kind").and_then(|k| k.as_str()) == Some("header") {
-            obj.insert("producer".into(), c.producer.into());
-            obj.insert("origin".into(), "lean".into());
-            obj.insert("roots".into(), serde_json::json!(c.roots));
-            out.push(tag(v));
-            for p in c.inputs {
-                if let Some(h) = sha256_of(dir, p) {
-                    out.push(tag(
-                        serde_json::json!({"kind": "input", "path": p, "sha256": h}),
-                    ));
-                }
-            }
-            for m in &modules {
-                let path = format!("{}.lean", m.replace('.', "/"));
-                if let Some(h) = sha256_of(dir, &path) {
-                    out.push(tag(serde_json::json!({"kind": "source", "module": m, "path": path, "sha256": h})));
-                }
-            }
-            continue;
-        }
-        out.push(tag(v));
-    }
-    for (m, why) in c.excluded {
-        out.push(tag(serde_json::json!({"kind": "excluded", "module": m, "coverage": "excluded", "reason": why})));
-    }
-    out.extend(core_lines);
-    Ok(out.join("\n") + "\n")
+    s.push('\n');
+    s
 }
 
 #[cfg(test)]
@@ -1541,76 +1395,61 @@ mod tests {
     }
 
     #[test]
-    fn foreign_documents_are_refused_by_name() {
-        let doc = |schema: &str| format!("{{\n  \"schema\": \"{schema}\",\n  \"uses\": []\n}}\n");
+    fn converter_reads_standard_only_from_the_exported_policy_file() {
+        let case = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/trust-fixture-elf");
+        let text = fs::read_to_string(case.join("trust.json")).unwrap();
+        assert!(core_doc::convert(parse_document(&text).unwrap(), &case).is_ok());
+        let other = tempfile::tempdir().unwrap();
+        fs::write(
+            other.path().join("policy.toml"),
+            "standard = [\"propext\", \"sorryAx\"]\n",
+        )
+        .unwrap();
+        let e = core_doc::convert(parse_document(&text).unwrap(), other.path()).unwrap_err();
+        assert!(e.contains("not the export's"), "{e}");
+        let none = tempfile::tempdir().unwrap();
         assert!(
-            foreign_document(&doc("silmaril.trust-core.v1"))
-                .unwrap()
-                .contains("#trust_export")
+            core_doc::convert(parse_document(&text).unwrap(), none.path())
+                .unwrap_err()
+                .contains("missing")
         );
-        assert!(
-            foreign_document(&doc("silmaril.trust-dump.v0.1"))
-                .unwrap()
-                .contains("retired")
-        );
-        assert!(foreign_document(&doc("x")).unwrap().contains("unsupported"));
-        // JSON lines are not a document.
-        assert!(foreign_document("{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"s\"}\n{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"t\"}\n").is_none());
+        // `unresolved` must list exactly the members naming unimplemented procedures.
+        let mut v: serde_json::Value = serde_json::from_str(&text).unwrap();
+        v["unresolved"] = serde_json::json!([]);
+        let e = core_doc::convert(serde_json::from_value(v).unwrap(), &case).unwrap_err();
+        assert!(e.contains("unresolved"), "{e}");
     }
 
     #[test]
-    fn driver_and_completion() {
-        let p = Path::new("/tmp/x \"q\".jsonl");
-        let d = driver(
+    fn drivers() {
+        let l = list_driver(&["A.B".into()], Path::new("/x \"q\".txt"));
+        assert!(l.starts_with("import A.B\n") && l.contains(r#""/x \"q\".txt""#));
+        let e = export_driver(
             &["A.B".into()],
-            &["Silmaril".into()],
-            p,
-            Path::new("/c.jsonl"),
+            &["Silmaril.X".into(), "Silmaril.Y".into()],
+            Path::new("/o.json"),
         );
-        assert!(d.contains("import A.B\n") && d.contains("[`«Silmaril»]"));
-        assert!(d.contains(r#""/tmp/x \"q\".jsonl""#) && d.contains(r#""/c.jsonl""#));
-        assert!(d.contains("moduleLine") && d.contains("auditLine") && !d.contains("__"));
-        let dir = tempfile::tempdir().unwrap();
-        fs::create_dir_all(dir.path().join("A")).unwrap();
-        fs::write(dir.path().join("A/B.lean"), "x").unwrap();
-        fs::write(dir.path().join("lean-toolchain"), "t").unwrap();
-        let adapter = "{\"schema\":\"x\",\"kind\":\"header\",\"core_api\":\"v1-hooks\",\"toolchain\":\"t\"}\n";
-        let core = "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"module\",\"module\":\"A.B\",\"imports\":[],\"profile\":\"default\",\"ceiling\":\"local\",\"max\":\"all\",\"default\":[],\"deps\":\"all\",\"axioms\":[],\"allowed\":[],\"scopes\":[\"A\"]}\n";
-        let ex = [("A.B".to_string(), "tests".to_string())];
-        let c = Completion {
-            roots: &["A".into()],
-            producer: "p",
-            inputs: &["lean-toolchain", "absent"],
-            excluded: &ex,
-        };
-        let out = complete(adapter, core, dir.path(), &c).unwrap();
-        let ls: Vec<serde_json::Value> = out
-            .lines()
-            .map(|l| serde_json::from_str(l).unwrap())
-            .collect();
-        assert_eq!(ls.len(), 5);
-        assert_eq!(ls[0]["origin"], "lean");
-        assert_eq!(ls[0]["schema"], ADAPTER_SCHEMA);
-        assert_eq!(ls[1]["path"], "lean-toolchain");
-        assert_eq!(ls[2]["kind"], "source");
-        assert_eq!(ls[3]["kind"], "excluded");
-        assert_eq!(ls[4]["schema"], CORE_SCHEMA);
-        assert!(complete(adapter, "{\"kind\":\"set\"}", dir.path(), &c).is_err());
-        let (lines, ignored) = read_lines(&out).unwrap();
-        assert!(ignored.is_empty());
-        assert_eq!(
-            lines.len(),
-            6,
-            "a core module line is a module and its effective sets"
+        assert!(e.contains("import Silmaril.Prelude.Trust.Export.Defs"));
+        assert!(e.contains("#trust_export \"/o.json\" Silmaril.X Silmaril.Y\n"));
+    }
+
+    #[test]
+    fn documents_other_than_the_export_are_refused_by_name() {
+        let doc = |schema: &str| format!("{{\n  \"schema\": \"{schema}\"\n}}\n");
+        assert!(
+            parse_document(&doc("silmaril.trust-dump.v0.1"))
+                .unwrap_err()
+                .contains("retired")
         );
-        assert!(read_lines("{\"schema\":\"silmaril.trust.v1\",\"kind\":\"header\"}").is_err());
-        assert!(read_lines("{\"schema\":\"nope\",\"kind\":\"set\",\"name\":\"s\"}").is_err());
-        // A field the core added within v1 is dropped and reported; an adapter field is an error.
-        let (_, ignored) = read_lines(
-            "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\",\"name\":\"s\",\"new_field\":1}",
-        )
-        .unwrap();
-        assert_eq!(ignored.into_iter().collect::<Vec<_>>(), ["set.new_field"]);
-        assert!(read_lines("{\"schema\":\"silmaril.trust-adapter.v0.2\",\"kind\":\"input\",\"path\":\"p\",\"sha256\":\"h\",\"x\":1}").is_err());
+        assert!(
+            parse_document(&doc("x"))
+                .unwrap_err()
+                .contains("unsupported")
+        );
+        let lines = "{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\"}\n{\"schema\":\"silmaril.trust.v1\",\"kind\":\"set\"}\n";
+        assert!(parse_document(lines).unwrap_err().contains("JSON lines"));
+        // The frozen shape: an unknown field is an error.
+        let bad = "{\"schema\":\"silmaril.trust-core.v1\",\"new\":1}";
+        assert!(parse_document(bad).unwrap_err().contains("frozen"));
     }
 }

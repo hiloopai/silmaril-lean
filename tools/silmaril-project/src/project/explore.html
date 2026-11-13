@@ -532,7 +532,7 @@ async function trustPage() {
   h += (m.enforcement === "strict" ? '<p>Policy <b>validated</b> (<code>--strict-trust</code>).</p>'
       : '<p class="err">Policy <b>not enforced</b>: this database was built in report-only mode; violations below are findings, not failures.</p>') +
     (m.coverage === "complete" ? "<p>Coverage <b>complete</b> under the dump's roots (the theorems it audits, not more).</p>"
-      : '<p class="err">Coverage <b>partial</b>: excluded, unsupported or undescribed modules are not audited. A passing policy check here is not a full audit.</p>');
+      : '<p class="err">Coverage <b>partial</b>: unaudited (no declarations in the export), excluded, unsupported or undescribed modules are not audited. A passing policy check here is not a full audit.</p>');
   h += await dl(m) + TCB;
   const viol = await q("SELECT reason, count(*) AS n FROM trust_violations GROUP BY 1 ORDER BY 1");
   const cov = await q("SELECT coverage, freshness, count(*) AS n FROM trust_modules GROUP BY 1, 2 ORDER BY 1, 2");
@@ -541,7 +541,7 @@ async function trustPage() {
     "external = outside the dump's roots (toolchain, dependencies).</p></div></div>";
   h += "<h2>Violations (first rows)</h2>" + ttable(await q("SELECT module, decl, reason, class, procedure, axiom FROM trust_violations " +
     `ORDER BY reason, module, decl LIMIT ${DETAIL}`), null, { module: tmod, procedure: tprocIf });
-  h += "<h2>Procedures</h2>" + ttable(await q("SELECT p.name, p.kind, p.function, p.kernel_fallback, p.native_function, p.native_check, p.kernel_check, p.format, p.module, " +
+  h += "<h2>Procedures</h2>" + ttable(await q("SELECT p.name, p.kind, p.implemented, p.function, p.kernel_fallback, p.native_function, p.native_check, p.kernel_check, p.format, p.module, " +
     "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.mode = 'native') AS native_uses, " +
     "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.mode = 'kernel') AS kernel_uses, " +
     "(SELECT count(*) FROM trust_uses u WHERE u.procedure = p.name AND u.kernel_side = 'unregistered') AS unregistered_kernel, " +
@@ -607,6 +607,12 @@ async function trustSetPage(name) {
 async function trustProcedurePage(name) {
   const p = (await tq("trust_procedures", "SELECT * FROM trust_procedures WHERE name = ?", [name]))[0];
   if (!p) return `<p class="err">no registered procedure ${esc(name)}</p>`;
+  if (p.kind === "named") {
+    return `<h2>Named, not implemented: <code>${esc(name)}</code></h2>` +
+      '<p class="err">A trust set names this procedure, but nothing in the exported environment implements it (the export lists it as <code>unresolved</code>). ' +
+      "It is never granted and cannot run; a use of it is refused.</p>" + await dl(p, TRUST_HINTS) +
+      "<h2>Sets naming it</h2>" + ttable(await q("SELECT set_name FROM trust_set_members WHERE member_kind = 'name' AND member = ? ORDER BY 1 LIMIT " + DETAIL, [name]), null, { set_name: tset });
+  }
   let h = `<h2>${p.kind === "declared" ? "Declared procedure" : p.kind === "native_tactic" ? "Native tactic" : "Native procedure"} <code>${esc(name)}</code></h2>` + await dl(p, TRUST_HINTS) +
     (p.kind === "declared"
       ? `<p class="muted">Two backends for one proposition: the native checker <code>${esc(p.native_check || "—")}</code> (sound by <code>${esc(p.native_sound || "—")}</code>) ` +

@@ -136,7 +136,7 @@ project-check: project-tool
 # incomplete evidence (`--strict-trust`). Not part of `check` until the library emits a dump.
 PROJECT_DUMP ?= .lake/silmaril/dump.json
 project-trust-check: project-tool
-	@test -n "$(TRUST)" || { echo "usage: make project-trust-check TRUST=.lake/silmaril/trust.jsonl [PROJECT_DUMP=...]"; exit 2; }
+	@test -n "$(TRUST)" || { echo "usage: make project-trust-check TRUST=.lake/silmaril/trust-core.json [PROJECT_DUMP=...]"; exit 2; }
 	build/bin/silmaril-project check --dump "$(PROJECT_DUMP)" --trust "$(TRUST)" --strict-trust
 
 demo: tools

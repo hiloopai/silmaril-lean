@@ -232,7 +232,8 @@ CREATE TABLE trust_inputs(
 );
 CREATE TABLE trust_procedures(
   name TEXT NOT NULL PRIMARY KEY,
-  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared')),
+  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared','named')),
+  implemented INTEGER NOT NULL,
   function TEXT NOT NULL,
   module TEXT,
   kernel_fallback INTEGER NOT NULL,
@@ -254,7 +255,8 @@ CREATE TABLE trust_procedures(
 CREATE TABLE trust_sets(
   name TEXT NOT NULL PRIMARY KEY,
   origin TEXT NOT NULL,
-  is_all INTEGER NOT NULL
+  is_all INTEGER NOT NULL,
+  doc TEXT
 );
 CREATE TABLE trust_set_members(
   set_name TEXT NOT NULL,
@@ -271,11 +273,12 @@ CREATE TABLE trust_scopes(
 );
 CREATE TABLE trust_modules(
   name TEXT NOT NULL PRIMARY KEY,
+  region TEXT,
   source TEXT,
   source_sha256 TEXT,
   source_status TEXT NOT NULL CHECK(source_status IN ('match','changed','missing','unrecorded')),
   freshness TEXT NOT NULL CHECK(freshness IN ('consistent','stale','unknown')),
-  coverage TEXT NOT NULL CHECK(coverage IN ('covered','excluded','unsupported','undescribed','external')),
+  coverage TEXT NOT NULL CHECK(coverage IN ('covered','unaudited','excluded','unsupported','undescribed','external')),
   policy_trace TEXT,
   reason TEXT
 );
@@ -356,18 +359,18 @@ INSERT INTO meta(key, value) VALUES('roots', 'Lib');
 INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.2');
 INSERT INTO meta(key, value) VALUES('toolchain', '4.35.0-rc4');
 INSERT INTO meta(key, value) VALUES('trust.ceiling', 'local');
-INSERT INTO meta(key, value) VALUES('trust.core_api', 'v1-hooks');
+INSERT INTO meta(key, value) VALUES('trust.core_api', 'silmaril.trust-core.v1');
 INSERT INTO meta(key, value) VALUES('trust.coverage', 'complete');
 INSERT INTO meta(key, value) VALUES('trust.enforcement', 'report-only');
 INSERT INTO meta(key, value) VALUES('trust.origin', 'fixture');
 INSERT INTO meta(key, value) VALUES('trust.policy_file', '../../../../policy.toml');
 INSERT INTO meta(key, value) VALUES('trust.policy_pin', '0000000000000000');
-INSERT INTO meta(key, value) VALUES('trust.producer', 'hand-written fixture (not producer output)');
+INSERT INTO meta(key, value) VALUES('trust.producer', 'hand-written fixture (not producer output) (main module Fixture)');
 INSERT INTO meta(key, value) VALUES('trust.profile', 'default');
 INSERT INTO meta(key, value) VALUES('trust.roots', 'Silmaril');
-INSERT INTO meta(key, value) VALUES('trust.sha256', '9c373010f25f89706ae1fe80e92d173a1924881f6a8c80fdc621d061572db358');
+INSERT INTO meta(key, value) VALUES('trust.sha256', 'f736c151211453fad7abc4f1a8396a77b0624cf5f56e7babe682eda3cc057e6b');
 INSERT INTO meta(key, value) VALUES('trust.status', 'present');
-INSERT INTO meta(key, value) VALUES('trust.toolchain', '4.37.0-nightly-2026-11-05');
+INSERT INTO meta(key, value) VALUES('trust.toolchain', 'leanprover/lean4:nightly-2026-11-05');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
 INSERT INTO szs(code, name, verdict) VALUES('OPN', 'Open', 'unknown');
 INSERT INTO szs(code, name, verdict) VALUES('SAT', 'Satisfiable', 'unknown');
@@ -376,39 +379,27 @@ INSERT INTO szs(code, name, verdict) VALUES('UNK', 'Unknown', 'unknown');
 INSERT INTO szs(code, name, verdict) VALUES('UNS', 'Unsatisfiable', 'unknown');
 INSERT INTO szs(code, name, verdict) VALUES('contingent', 'Contingent (SAT and CSA)', 'fails');
 INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('lean-toolchain', 'c8dac2fde85cb3ae79513dc425bb759258a3d5278bbdc29ff68450b45e81bcb9', 'c8dac2fde85cb3ae79513dc425bb759258a3d5278bbdc29ff68450b45e81bcb9', 'match');
-INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('policy.toml', 'cefd9d145a9a25a4a93a0dec5a73b12e0c7908f377f6fcf74b7cc5ebd5b2fd64', 'cefd9d145a9a25a4a93a0dec5a73b12e0c7908f377f6fcf74b7cc5ebd5b2fd64', 'match');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.beq', 'native_decider', 'Silmaril.KBytes.beq', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.eqByteArray', 'native_decider', 'Silmaril.KBytes.eqByteArray', 'Silmaril.Prelude.Bytes.Native.Defs', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.sameBytes', 'native_decider', 'Silmaril.KBytes.sameBytes', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.wf', 'native_decider', 'Silmaril.KBytes.wf', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.body', 'native_decider', 'Silmaril.Elf.Staged.Leaf.bodyOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.layout', 'native_decider', 'Silmaril.Elf.Staged.Leaf.layoutOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.loader', 'native_decider', 'Silmaril.Elf.Staged.Leaf.loaderOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.rela', 'native_decider', 'Silmaril.Elf.Staged.Leaf.relaOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.symbols.byAddr', 'native_decider', 'Silmaril.Elf.Staged.Leaf.byAddrOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.symbols.byName', 'native_decider', 'Silmaril.Elf.Staged.Leaf.byNameOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.tiles', 'native_decider', 'Silmaril.Elf.Staged.Leaf.tilesOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.tiles.x86', 'native_decider', 'Silmaril.Elf.Staged.Leaf.tilesX86Ok', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
-INSERT INTO trust_sets(name, origin, is_all) VALUES('all', 'builtin', 1);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('bytes', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('default', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('elf', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('elf_and_bytes', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('none', 'builtin', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('standard', 'policy', 0);
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.beq');
+INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('policy.toml', 'd0620cae0fc698c9189fd2de093143d5023b358a41c7bca8b493228bc210d55b', 'd0620cae0fc698c9189fd2de093143d5023b358a41c7bca8b493228bc210d55b', 'match');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.eqByteArray', 'native_decider', 1, 'Silmaril.KBytes.eqByteArray', 'Silmaril.Prelude.Bytes.Native.Defs', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.sameBytes', 'native_decider', 1, 'Silmaril.KBytes.sameBytes', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.body', 'native_decider', 1, 'Silmaril.Elf.Staged.Leaf.bodyOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.layout', 'native_decider', 1, 'Silmaril.Elf.Staged.Leaf.layoutOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.loader', 'native_decider', 1, 'Silmaril.Elf.Staged.Leaf.loaderOk', 'Silmaril.Elf.Staged.Leaf.Native', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'fixture');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.symtrie', 'named', 0, '', NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('all', 'builtin', 1, 'built in');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('bytes', 'trust_set', 0, NULL);
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('default', 'trust_set', 0, NULL);
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('elf', 'trust_set', 0, NULL);
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('elf_and_bytes', 'trust_set', 0, NULL);
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('none', 'builtin', 0, 'built in');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('standard', 'policy', 0, 'the policy file''s own set, read from policy.toml (digest checked)');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.eqByteArray');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.sameBytes');
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.wf');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('default', 'set', 'bytes');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.body');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.layout');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.loader');
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.rela');
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.symbols.byAddr');
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.symbols.byName');
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.tiles');
-INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.tiles.x86');
+INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf', 'name', 'elf.symtrie');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf_and_bytes', 'set', 'bytes');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('elf_and_bytes', 'set', 'elf');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 'name', 'Classical.choice');
@@ -417,99 +408,65 @@ INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('standard', 
 INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril', 'all', 'default', 'all', 'standard');
 INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Elf', 'elf_and_bytes', NULL, NULL, NULL);
 INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Papers', 'none', NULL, 'none', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril/Elf/Staged/Example/Thms.lean', 'd33900e59a84ec6d1964149e03a3a5f0717f3c35451caf54d591fa2be7a44caf', 'match', 'consistent', 'covered', 'Silmaril > Silmaril.Elf', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'Silmaril/Elf/Staged/Leaf/Native.lean', '138290fff7c5bdcb14e1e73b116d0e86fce4827ef3909594c8482f8acbd6c4d1', 'match', 'consistent', 'covered', 'Silmaril > Silmaril.Elf', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril/Prelude/Bytes/Native/Defs.lean', '942ef1635501e91e471f5beafb731abc407a3890e74f8fb43536fd3f03f0326c', 'match', 'consistent', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Silmaril/Prelude/Trust/Policy/Defs.lean', 'f6bb5dc4006823aad2ae76ee61d121db21851dfacc89d143ca3db02c3974a368', 'match', 'consistent', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Example.Thms', NULL, 'Silmaril/Elf/Staged/Example/Thms.lean', 'd33900e59a84ec6d1964149e03a3a5f0717f3c35451caf54d591fa2be7a44caf', 'match', 'consistent', 'covered', 'Silmaril > Silmaril.Elf', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Elf.Staged.Leaf.Native', NULL, 'Silmaril/Elf/Staged/Leaf/Native.lean', '138290fff7c5bdcb14e1e73b116d0e86fce4827ef3909594c8482f8acbd6c4d1', 'match', 'consistent', 'covered', 'Silmaril > Silmaril.Elf', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Native.Defs', NULL, 'Silmaril/Prelude/Bytes/Native/Defs.lean', '942ef1635501e91e471f5beafb731abc407a3890e74f8fb43536fd3f03f0326c', 'match', 'consistent', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Leaf.Native');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'Silmaril.Prelude.Bytes.Native.Defs');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Init');
-INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril.Prelude.Trust.Policy.Defs');
-INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Init');
-INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Lean');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'allowed', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'allowed', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'allowed', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'allowed', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'axioms', 'Classical.choice');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'axioms', 'Quot.sound');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'axioms', 'propext');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'default', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'default', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'default', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'default', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'deps', '*');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.body');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.layout');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.loader');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.rela');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.symbols.byAddr');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.symbols.byName');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.tiles');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.tiles.x86');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'allowed', 'bytes.beq');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Example.Thms', 'max', 'elf.symtrie');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'allowed', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'allowed', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'allowed', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'axioms', 'Classical.choice');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'axioms', 'Quot.sound');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'axioms', 'propext');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'default', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'default', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'default', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'default', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'deps', '*');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.body');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.layout');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.loader');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.rela');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.symbols.byAddr');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.symbols.byName');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.tiles');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.tiles.x86');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'allowed', 'bytes.beq');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'max', 'elf.symtrie');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'allowed', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'allowed', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'allowed', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'axioms', 'Classical.choice');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'axioms', 'Quot.sound');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'axioms', 'propext');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'default', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'default', 'bytes.eqByteArray');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'default', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'default', 'bytes.wf');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'deps', '*');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'max', '*');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.beq');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.eqByteArray');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.wf');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'axioms', 'Classical.choice');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'axioms', 'Quot.sound');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'axioms', 'propext');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'default', 'bytes.beq');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'default', 'bytes.eqByteArray');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'default', 'bytes.sameBytes');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'default', 'bytes.wf');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'deps', '*');
-INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'max', '*');
 INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.layout', 'elf.layout', 'kernel', 'default', '', 'fallback', 1);
 INSERT INTO trust_uses(module, decl, procedure, mode, profile, axiom, kernel_side, axiom_matches) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.loader', 'elf.loader', 'kernel', 'default', '', 'fallback', 1);
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Example.layout', 'Silmaril.Elf.Staged.Example.Thms', 'default', 'default');
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Example.loader', 'Silmaril.Elf.Staged.Example.Thms', 'default', 'default');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Example.layout', 'Silmaril.Elf.Staged.Example.Thms', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Example.loader', 'Silmaril.Elf.Staged.Example.Thms', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Elf.Staged.Leaf.Native.stub', 'Silmaril.Elf.Staged.Leaf.Native', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.Prelude.Bytes.Native.Defs.stub', 'Silmaril.Prelude.Bytes.Native.Defs', 'default', NULL);
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.layout', 'Classical.choice', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.layout', 'Quot.sound', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.layout', 'propext', 'other', '');
 INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Example.Thms', 'Silmaril.Elf.Staged.Example.loader', 'propext', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'Silmaril.Elf.Staged.Leaf.Native.stub', 'Classical.choice', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'Silmaril.Elf.Staged.Leaf.Native.stub', 'Quot.sound', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Elf.Staged.Leaf.Native', 'Silmaril.Elf.Staged.Leaf.Native.stub', 'propext', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril.Prelude.Bytes.Native.Defs.stub', 'Classical.choice', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril.Prelude.Bytes.Native.Defs.stub', 'Quot.sound', 'other', '');
+INSERT INTO trust_decl_axioms(module, decl, axiom, class, procedure) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril.Prelude.Bytes.Native.Defs.stub', 'propext', 'other', '');

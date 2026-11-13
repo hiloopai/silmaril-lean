@@ -16,7 +16,8 @@ does not define a policy of its own. It does three things:
 - it reports coverage, digests and enforcement honestly.
 
 Refs used: core #125 at `d5d8f78c` (its trust code is that of `34ec436e`, which includes the
-exact-head audit `0b2a82e0`), and ELF #127 at its head `67503c32` (which merges `34ec436e`).
+exact-head audit `0b2a82e0` and the frozen export `792e7ed6`), and ELF #127 at its head
+`67503c32` (which merges `34ec436e`).
 
 ## What a result means, and does not
 
@@ -52,76 +53,72 @@ exact-head audit `0b2a82e0`), and ELF #127 at its head `67503c32` (which merges 
 
 ## Canonical format
 
-The project database has **one** input format: **JSON lines** in which every line is either a
-`silmaril.trust.v1` line (the core's provenance schema, emitted by its stable hooks) or a
-`silmaril.trust-adapter.v0.2` line (added by `sil project trust-dump`). `sil project
-trust-dump` is the only producer.
+The project database has **one** input: the core's frozen trust export,
+**`silmaril.trust-core.v1`**. It is one JSON document, written by `#trust_export`
+(`Silmaril.Prelude.Trust.Export`), either through `sil project trust-dump` or through the core's
+`scripts/trust-export.sh`. The database owns the converter (`trust::core_doc`), which is
+explicit:
 
-Other formats are refused by name and never reinterpreted:
+- **Unknown fields are an error**, because the shape is frozen.
+- **Every field is mapped:**
 
-- `silmaril.trust-core.v1`, the core's `#trust_export` document (`scripts/trust-export.sh`), is a
-  separate export. It does not carry the policy file's own sets (`standard`) or each module's
-  effective and allowed sets, which the database checks. The test case
-  `trust-core-export-rejected` is a real export refused with that message.
-- `silmaril.trust-dump.v0.1` was an early proposal that no producer wrote. It is retired, and a
-  document that claims it is refused. The core's export docstring should not name it as the
-  database's format.
-
-## The trust lines
-
-The file has one JSON object per line, each with a `schema` and a `kind`. Each schema may carry
-only its own kinds, and each line is converted explicitly into the strict database schema:
-
-- **Unknown schemas and kinds** are rejected.
-- **Core fields:** the core may add fields within `silmaril.trust.v1`. A field outside
-  `CORE_FIELDS` is dropped and recorded in `meta.trust.ignored_core_fields`, never given a
-  meaning. It is a warning in report-only mode and an **error** under `--strict-trust`.
-- **Adapter fields:** they must all be known, so `trust-dump` and the reader upgrade together.
-
-**`silmaril.trust.v1`** (the core's; `docs/trust.md`):
-
-| kind | fields | stored as |
-|---|---|---|
-| `procedure` | `name`, `function`, `kernel_fallback`, `module`, `format`, `sound`, `native_function`, `native_eq`, `axiom_pattern`, `components`, `toolchain`, `fallback_coverage`, `doc` | `trust_procedures` (`native_decider`, or `native_tactic` when `axiom_pattern` is set) |
-| `declared_procedure` | `name`, `constant`, `native`, `kernel` (`{check, sound}` or null), `format`, `doc` | `trust_procedures` (`declared`) |
-| `use` | `decl`, `module`, `procedure`, `mode`, `profile` (the elaboration's), `axiom` | `trust_uses` (with `kernel_side`) |
-| `set` | `name`, `all`, `members`, `includes`, `resolved` | `trust_sets`, `trust_set_members`; `resolved` is checked |
-| `scope` | `module`, `max`, `default`, `deps`, `axioms`, `policy_file`, `policy_pin` | `trust_scopes`; one file and pin is required |
-| `module` | `module`, `imports`, `profile`, `ceiling`, `max`, `default`, `deps`, `axioms`, `allowed`, `scopes` (or `policy_error`) | `trust_modules`, `trust_imports`, `trust_module_policy`; the sets are checked |
-| `audit` | `decl`, `module`, `profile`, `own_native`, `dep_native`, `unverified_native`, `native_axioms`, `axioms`, `elaborated_profiles`, `violations` | `trust_decls`, `trust_decl_axioms`, `trust_audit_messages`; the split and the count of violations are checked |
-
-**`silmaril.trust-adapter.v0.2`** (added by `trust-dump`):
-
-| kind | fields |
+| export | database |
 |---|---|
-| `header` | `core_api` (`v1-hooks`), `toolchain`, `producer`, `origin`, `roots` (and optionally `profile`, `ceiling`) |
-| `input` | `path`, `sha256` |
-| `source` | `module`, `path`, `sha256` |
-| `set` | the policy file's own sets (`standard`), which the core's lines omit; `origin = policy` |
-| `excluded` | `module`, `coverage` (`excluded`, `unsupported`), `reason` (from `--exclude M=REASON`) |
+| `toolchain`, `producer` (`tool`, `profile`, `ceiling`, `main_module`) | `meta.trust.*`; the audit's profile and ceiling. The origin is `lean` when `tool` is the core's exporter, else `fixture`. |
+| `inputs` (`policy`, `regions`, `lean-toolchain`, exclusions SHA-256, `policy_pin`) | `trust_inputs`, compared with the files present; every policy's `origin.pin` must equal `policy_pin` |
+| `procedures`: `decider` (native backend, optional paired `function`/`equation`, kernel backend iff fallback), `tactic` (`evaluated_constant`, `axiom_pattern`, `components`, `toolchain`, `fallback_coverage`), `declared` (`constant`, native/kernel `{check, sound}`), `named` (`implemented: false`) | `trust_procedures` (`native_decider`, `native_tactic`, `declared`, `named` with `implemented = 0`) |
+| `sets` (`all`, `members` `{kind: procedure \| set, name}`, `doc`) | `trust_sets`, `trust_set_members` |
+| `unresolved` (`{set, name}`) | must equal exactly the set members that name a `named` procedure; such members are never granted |
+| `policies` (`scope` `root` / `region` / `module-prefix`, `name`, `allow` = the `default` set, `max`, `deps`, `axioms`, each `[set]` or null, `origin`) | `trust_scopes`; a list of more than one set is an error |
+| `modules` (`name`, `region`, `source`, `source_sha256`, `imports`) | `trust_modules`, `trust_imports` |
+| `uses` (`backend`, `profile`, `axiom`, `verified`) | `trust_uses`; a native use with `verified = false`, or whose axiom is not a native run of its procedure, is kept with `axiom_matches = 0`, flagged, never authorizing |
+| `declarations` (`axioms`, `native_axioms`, `own_native`, `dep_native`, `unverified_native`, `violations`) | `trust_decls`, `trust_decl_axioms`, `trust_audit_messages`; the recomputed violation count must equal the export's for every declaration |
+| `excluded` (`module`, `coverage`, `profile`, `reason`) | `excluded` coverage with its reason |
+
+The export omits two things, and the converter handles each explicitly:
+
+- **The policy file's own sets** (`standard`). They are read from `policy.toml` **only if** its
+  SHA-256 equals `inputs.policy_toml_sha256`; otherwise the run fails.
+- **Effective sets per module.** They are recomputed with the core's rules (`max` within the
+  parent's, `default` cut to `max`, and so on). They are checked through the per-declaration
+  violation counts above.
+
+**Coverage.** A module that has no declaration in the export is `unaudited`: either it was not
+listed for audit (`trust-dump --root`/`--exclude`), or it declares no theorem or definition. The
+export does not record which modules were listed, so this is conservative and makes coverage
+partial.
+
+**Refused by name, never reinterpreted:**
+
+- the earlier JSON-lines input (`silmaril.trust.v1` lines with `silmaril.trust-adapter.v0.2`),
+  now retired. The test case `trust-lines-rejected` holds real lines that are refused;
+- `silmaril.trust-dump.v0.1`, a proposal no producer wrote;
+- any other schema.
 
 ### Checks (fail closed)
 
 These are errors, and no database is written:
 
-- **Lines:** a malformed line, a missing or extra header, an unsupported schema or kind, a
-  duplicate, or more than one policy file or pin.
+- **Document:** anything but a `silmaril.trust-core.v1` document of the frozen shape, a
+  duplicate, a policy pin other than `inputs.policy_pin`, an unreadable `policy.toml` or one
+  whose digest differs, or `unresolved` members other than those of `named` procedures.
 - **Uses and audits:**
-  - a use of an unknown procedure;
-  - a native use of a procedure without a native side, or whose axiom is not a native run of
-    that procedure;
-  - an audit outside a described module, or two different audits of one declaration (identical
-    repeats of realized constants are merged and counted).
+  - a use of an unknown procedure, or of a `named` (unimplemented) procedure;
+  - a native use of a procedure without a native side;
+  - a declaration outside a described module, or two different audits of one declaration
+    (repeats of realized constants that differ only in the listing module are merged and
+    counted).
 - **Sets and scopes:**
   - an unknown or cyclic set include, or `all`/`none` redeclared;
   - an unknown set in a scope, or a duplicate scope;
   - a scope above its parent's `max`.
 - **Producer agreement:**
-  - effective sets (`max`, `default` cut to `max`, `deps`, `axioms`, and `allowed` for the
-    profile and ceiling) that differ from the recomputed ones;
-  - a set `resolved` that differs;
   - an `own_native`/`dep_native` split that differs from the native axiom names;
   - a core violation count that differs from the recomputed one for some declaration.
+
+A native use the core did not verify (`verified = false`), or whose axiom is not a native run of
+its procedure, is not an error of the document. It is kept with `axiom_matches = 0`, reported,
+and authorizes nothing. It is an error under `--strict-trust` unless its module is not audited.
 
 A kernel run is never an error, because it adds no axiom. Its `kernel_side` records which kernel
 checker ran:
@@ -144,7 +141,7 @@ function (`verifiedNative`). It never trusts a regex, a tag or registry metadata
 
 Every declaration is judged at the dump's profile and ceiling, that is, the artifact's. A
 declaration elaborated under `local` that ran a procedure outside `default` is a violation in a
-`default` dump. Its `elaborated_profiles` still show `local`.
+`default` dump. The use's `profile` still shows `local`.
 
 | class | rule | violation |
 |---|---|---|
@@ -156,20 +153,20 @@ declaration elaborated under `local` that ran a procedure outside `default` is a
 
 **Dependency audit coverage.** Every theorem and definition of a covered module is audited with
 all its axioms (`collectAxioms`, transitive). Native runs inherited from modules outside the
-roots are therefore audited too, as `dep_native`. A definition exported without its body is
-opaque to importers and contributes no axioms. Modules outside the roots (`external`) have no
-uses or declarations listed. An `excluded` module is described (imports, digests) but its
-declarations are not audited, and coverage becomes `partial`.
+audit are therefore audited too, as `dep_native`. A definition exported without its body is
+opaque to importers and contributes no axioms. Modules outside `Silmaril` are `external`. An
+`unaudited` or `excluded` module is described (imports, digests) but its declarations are not
+audited, and coverage becomes `partial`.
 
 ## Tables and views (`silmaril.project-db.v0.2`)
 
 | table | content |
 |---|---|
 | `trust_inputs` | recorded and current digests |
-| `trust_procedures` | `native_decider`, `native_tactic` and `declared` procedures with their checkers, soundness theorems, native function and equation, axiom pattern, components, toolchain and fallback coverage |
+| `trust_procedures` | `native_decider`, `native_tactic`, `declared` and `named` (`implemented = 0`) procedures with their checkers, soundness theorems, native function and equation, axiom pattern, components, toolchain and fallback coverage |
 | `trust_sets`, `trust_set_members` | sets (`builtin` `all`/`none`, `policy`, `trust_set`), member names and includes |
 | `trust_scopes` | `[[native.scope]]` rows (`NULL` inherits) |
-| `trust_modules` | source digest and status, freshness, coverage (`covered`, `excluded`, `unsupported`, `undescribed`, `external`), scope chain |
+| `trust_modules` | source digest and status, freshness, region, coverage (`covered`, `unaudited`, `excluded`, `unsupported`, `undescribed`, `external`), scope chain |
 | `trust_imports` | direct import edges |
 | `trust_module_policy` | effective `max`, `default`, `deps`, `axioms`, `allowed` (`*` = all) |
 | `trust_uses` | recorded runs: mode, `kernel_side`, elaboration profile, native axiom |
@@ -183,82 +180,78 @@ The views are:
   procedure);
 - `trust_violations`.
 
-`meta` gains these `trust.*` keys: `status`, `enforcement`, `coverage`, `core_api`, `sha256`,
+`meta` gains these `trust.*` keys: `status`, `enforcement`, `coverage`, `core_api` (`silmaril.trust-core.v1`), `sha256`,
 `producer`, `origin`, `toolchain`, `profile`, `ceiling`, `roots`, `policy_file` and
 `policy_pin`. The database is regenerated, never migrated in place.
 
 ## The producer (`sil project trust-dump`)
 
 ```
-sil project trust-dump --module M [--module …] [--root Silmaril] [--exclude M=REASON] [--no-build]
-sil project sqlite --dump … --trust .lake/silmaril/trust.jsonl [--strict-trust]
+sil project trust-dump --module M [--module …] [--root R] [--exclude M] [--no-build]
+sil project sqlite --dump … --trust .lake/silmaril/trust-core.json [--strict-trust]
 ```
 
-The command works in four steps:
+The command works in two stages:
 
-1. It writes `.lake/silmaril/TrustDump.lean` (`tools/silmaril-project/src/project/trust/Driver.lean`).
-   The driver calls the core's stable hooks (`dumpLines`, `allDecls'`, and `moduleLine` and
-   `auditLine` over `declsOf`) for every module under the roots. That is what `#trust_dump path
-   M₁ …` does, but with the module list computed.
-2. It runs `lake build --wfail` and `lake env lean` on the driver.
-3. It adds the adapter lines: the header, inputs, sources, exclusions and the policy file's
-   sets. Only the policy file's sets need a non-stable read (`policyExt`).
-4. It appends the core lines unchanged.
+1. It imports the modules and lists every `Silmaril` module they reach.
+2. It writes and elaborates `#trust_export "<out>" M₁ …` for the reached modules under the roots
+   (default: all), except the excluded ones.
 
-It requires #125 at `ba1b5f84` or later (`moduleLine`, `auditLine`).
+The export is written unchanged. The command needs #125 at `792e7ed6` or later.
+`scripts/trust-export.sh` writes the same document for the modules it is given.
 
-### Real producer output (origin `lean`)
+### Real producer output
 
-Each case's README gives its commit and command. The cases do not vendor the sources, so their
-digests read `missing` and the modules `stale`.
+Each case's README gives the commit and command. The sources are not vendored, so a case's
+modules read `stale` in this repository. `policy.toml` is vendored, so the converter can read
+`standard`.
 
-| case | ref | targets | result |
-|---|---|---|---|
-| `trust-core-bytes` | #125 `d5d8f78c` | `Prelude.Bytes.Examples`, `Data.IncludeBytes.KernelExamples`, `Data.IncludeBytes.KernelImportExamples`, `Prelude.Bytes.Checker.Thms` | 21 modules, 556 declarations, **0 violations**; strict passes in the build package |
-| `trust-core-profile-tests` | #125 `d5d8f78c` | `Prelude.Trust.Examples` | **9 violations** (6 native runs outside `default`, 3 unverified native axioms including the core's forgery tests) and 1 mismatched use record, as the core's audit lists them |
-| `trust-elf-staged` | #127 `67503c32` | `Elf.Staged.Example.Thms`, roots `Silmaril.Elf.Staged` | 12 procedures, 299 declarations, 36 uses (1 native `elf.layout`, 35 kernel runs of declared kernel sides), **0 violations** |
-| `trust-elf-profile-tests` | #127 `67503c32` | `Elf.Staged.Example.Profiles` | **2 violations** (`loader_local`, `main_local`), as expected |
+| case | ref | result |
+|---|---|---|
+| `trust-core-bytes` | #125 `d5d8f78c` | 556 declarations, **0 violations**; partial (3 modules declare nothing) |
+| `trust-core-profile-tests` | same | **9 violations** (6 native outside `default`, 3 unverified); 2 flagged forged use records |
+| `trust-elf-staged` | #127 `67503c32` | 299 declarations, **0 violations**; partial (only `Silmaril.Elf.Staged` listed) |
+| `trust-elf-profile-tests` | same | **2 violations** |
+| `trust-elf-excluded` | same | `Example.Profiles` not listed (`--exclude`): unaudited, partial |
+| `trust-lines-rejected` | #125 `d5d8f78c` | the retired JSON-lines input, refused by name |
 
-`trust-elf-excluded` is the same #127 checkout, dumped with both example modules and
-`--exclude Silmaril.Elf.Staged.Example.Profiles=…`. It has 299 declarations audited, 8 listed
-but not audited, 0 violations, and **partial** coverage.
+### Strict validation (in the build checkouts, sources present)
 
-### Strict validation (in the build checkouts, with sources and inputs present)
-
-| dump | `--strict-trust` |
+| export | `--strict-trust` |
 |---|---|
-| bytes normal targets (#125 `d5d8f78c`) | **passes**; complete coverage, 21 modules with consistent digests |
-| bytes and `Prelude.Trust.Examples` with `--exclude` | **passes**; partial coverage, "not a full audit" |
-| `Prelude.Trust.Examples` | **fails**: 9 violations and 1 mismatched use record |
-| ELF `Example.Thms` (#127 `67503c32`) | **passes**; complete coverage, 10 modules with consistent digests |
-| ELF and `Example.Profiles` with `--exclude` | **passes**; partial coverage, "not a full audit" |
+| bytes normal targets | **passes** on partial coverage ("not a full audit") |
+| bytes and `Prelude.Trust.Examples`, the latter excluded | **passes** on partial coverage |
+| `Prelude.Trust.Examples` | **fails**: 9 violations and 3 flagged use records |
+| ELF `Example.Thms` | **passes** on partial coverage |
+| ELF and `Example.Profiles`, the latter excluded | **passes** on partial coverage |
 | ELF `Example.Profiles` | **fails**: 2 violations |
 
-In this repository the committed cases do not vendor their sources, so a strict run on them
-fails on digests. That is the intended behaviour.
+### Fixtures (hand-written `silmaril.trust-core.v1` documents; `producer.tool` says fixture)
 
-### Fixtures (hand-written, origin `fixture`)
-
-- `trust-fixture-elf`: ELF leaves with kernel fallbacks, a shape the real #127 does not have
-  (it declares its kernel sides).
-- `trust-fixture-violations`: one violation of each class, and a stale source.
+- `trust-fixture-elf`: a clean export.
+- `trust-fixture-violations`: one violation of each class, a forged use record, and a stale
+  source.
 - `trust-fixture-invalid`: the fail-closed errors.
-- `trust-strict-complete`, `trust-strict-partial`, `trust-strict-gaps`, `trust-strict-violations`:
-  `--strict-trust`.
+- `trust-strict-complete`, `-partial`, `-gaps`, `-violations`: `--strict-trust`.
 
 ## Remaining gaps
 
-1. **The policy file's sets** (`standard`) are not in the core's lines. The adapter reads them
-   from `policyExt`.
-2. **`declsOf` repeats realized constants** (`eq_def`, `match_1.congr_eq_*`) in every module that
-   realizes them. The repeats are merged here when identical.
-3. **Root `deps = all`.** Child scopes cannot escalate `deps` or `axioms` (#125 `ba1b5f84`). The
+1. **The export omits the policy file's own sets** (`standard`) **and the effective sets.** The
+   converter reads `standard` from a digest-checked `policy.toml` and recomputes the effective
+   sets.
+2. **Realized constants** (`eq_def`, `match_1.congr_eq_*`) appear once per module that lists them,
+   each under the listing module and not the defining one. Repeats that are identical apart from
+   the module are merged.
+3. **The export does not record which modules were listed for audit.** A module with no
+   declarations is therefore reported `unaudited`, and coverage is partial even when every
+   module was listed.
+4. **Root `deps = all`.** Child scopes cannot escalate `deps` or `axioms` (#125 `ba1b5f84`). The
    root still accepts any inherited native procedure: a broad dependency envelope, separate from
    `max`. The database shows the actual `deps` of every module. It does not present the envelope
    as bounded.
-4. **Trust in the instrumentation.** Recorded uses and a constant occurring in an axiom's
+5. **Trust in the instrumentation.** Recorded uses and a constant occurring in an axiom's
    statement do not defend against a malicious metaprogram. The guarantee rests on reviewed
    instrumentation and reviewed checker closures, and an LRAT registration needs the exact
    statement.
-5. **No CI producer run.** The Rust CI job has no Lean, so the real cases are regenerated by
+6. **No CI producer run.** The Rust CI job has no Lean, so the real cases are regenerated by
    hand (see their READMEs) and checked as goldens.

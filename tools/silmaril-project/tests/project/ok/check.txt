@@ -13,5 +13,5 @@ group ok.values: [ok.pair.parses=THM, ok.pair.agrees.1=OPN, ok.hello.port=THM, o
 group ok.verify: [ok.top=THM, ok.bad_top=UNS, ok.open_top=OPN, ok.values=group(3 holds, 0 fails, 1 unknown), ok.preds=group(1 holds, 1 fails, 4 unknown)]
 trust: no trust dump (--trust): native-procedure and axiom use is unaudited (unknown, not clean)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: 15a95302d7cd43f14d6d61c37c0b3eb581f5b5bedb1c2d9b810711147996fb04
+sql sha256: c39c8d5dfa6e3a310f1fd6a134a42e6444c5ab58539eda42968427abe83f651f
 exit: ok

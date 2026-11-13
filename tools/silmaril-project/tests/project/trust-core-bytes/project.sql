@@ -232,7 +232,8 @@ CREATE TABLE trust_inputs(
 );
 CREATE TABLE trust_procedures(
   name TEXT NOT NULL PRIMARY KEY,
-  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared')),
+  kind TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared','named')),
+  implemented INTEGER NOT NULL,
   function TEXT NOT NULL,
   module TEXT,
   kernel_fallback INTEGER NOT NULL,
@@ -254,7 +255,8 @@ CREATE TABLE trust_procedures(
 CREATE TABLE trust_sets(
   name TEXT NOT NULL PRIMARY KEY,
   origin TEXT NOT NULL,
-  is_all INTEGER NOT NULL
+  is_all INTEGER NOT NULL,
+  doc TEXT
 );
 CREATE TABLE trust_set_members(
   set_name TEXT NOT NULL,
@@ -271,11 +273,12 @@ CREATE TABLE trust_scopes(
 );
 CREATE TABLE trust_modules(
   name TEXT NOT NULL PRIMARY KEY,
+  region TEXT,
   source TEXT,
   source_sha256 TEXT,
   source_status TEXT NOT NULL CHECK(source_status IN ('match','changed','missing','unrecorded')),
   freshness TEXT NOT NULL CHECK(freshness IN ('consistent','stale','unknown')),
-  coverage TEXT NOT NULL CHECK(coverage IN ('covered','excluded','unsupported','undescribed','external')),
+  coverage TEXT NOT NULL CHECK(coverage IN ('covered','unaudited','excluded','unsupported','undescribed','external')),
   policy_trace TEXT,
   reason TEXT
 );
@@ -356,18 +359,18 @@ INSERT INTO meta(key, value) VALUES('roots', 'Lib');
 INSERT INTO meta(key, value) VALUES('schema', 'silmaril.project-db.v0.2');
 INSERT INTO meta(key, value) VALUES('toolchain', '4.35.0-rc4');
 INSERT INTO meta(key, value) VALUES('trust.ceiling', 'local');
-INSERT INTO meta(key, value) VALUES('trust.core_api', 'v1-hooks');
-INSERT INTO meta(key, value) VALUES('trust.coverage', 'complete');
+INSERT INTO meta(key, value) VALUES('trust.core_api', 'silmaril.trust-core.v1');
+INSERT INTO meta(key, value) VALUES('trust.coverage', 'partial');
 INSERT INTO meta(key, value) VALUES('trust.enforcement', 'report-only');
 INSERT INTO meta(key, value) VALUES('trust.origin', 'lean');
 INSERT INTO meta(key, value) VALUES('trust.policy_file', '../../../../policy.toml');
 INSERT INTO meta(key, value) VALUES('trust.policy_pin', '0294950de3d882b2');
-INSERT INTO meta(key, value) VALUES('trust.producer', 'silmaril-project 0.1.0 trust-dump (core stable hooks)');
+INSERT INTO meta(key, value) VALUES('trust.producer', 'Silmaril.Prelude.Trust.Export (#trust_export) (main module «.lake».silmaril.TrustExport)');
 INSERT INTO meta(key, value) VALUES('trust.profile', 'default');
 INSERT INTO meta(key, value) VALUES('trust.roots', 'Silmaril');
-INSERT INTO meta(key, value) VALUES('trust.sha256', '54b2ceb2f30712eeea3cbf405c1d968567308c6356da16c412a5bca62bb2c15a');
+INSERT INTO meta(key, value) VALUES('trust.sha256', 'e10ce3867272d8d6e6ae20ccc5f891f9bd2d77c2f7eba1b2081b9899de46b4b9');
 INSERT INTO meta(key, value) VALUES('trust.status', 'present');
-INSERT INTO meta(key, value) VALUES('trust.toolchain', '4.37.0-nightly-2026-11-05');
+INSERT INTO meta(key, value) VALUES('trust.toolchain', 'leanprover/lean4:nightly-2026-11-05');
 INSERT INTO szs(code, name, verdict) VALUES('CSA', 'CounterSatisfiable', 'fails');
 INSERT INTO szs(code, name, verdict) VALUES('OPN', 'Open', 'unknown');
 INSERT INTO szs(code, name, verdict) VALUES('SAT', 'Satisfiable', 'unknown');
@@ -375,25 +378,28 @@ INSERT INTO szs(code, name, verdict) VALUES('THM', 'Theorem', 'holds');
 INSERT INTO szs(code, name, verdict) VALUES('UNK', 'Unknown', 'unknown');
 INSERT INTO szs(code, name, verdict) VALUES('UNS', 'Unsatisfiable', 'unknown');
 INSERT INTO szs(code, name, verdict) VALUES('contingent', 'Contingent (SAT and CSA)', 'fails');
-INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('lake-manifest.json', '43fc103a78c1fd2d05257c0f5bb96f491f85d659e4bfc5cafada85809445c3f8', NULL, 'missing');
 INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('lean-toolchain', 'c8dac2fde85cb3ae79513dc425bb759258a3d5278bbdc29ff68450b45e81bcb9', NULL, 'missing');
-INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('policy.toml', 'f6564a0881e4dd379c84e89e8fd8299b0cfc3183bb7bdda3faec2d2e55f1a013', NULL, 'missing');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.beq', 'native_decider', 'Silmaril.KBytes.beq', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Structural equality (`KBytes.toList_eq_of_beq`). The kernel fallback is cheap; `rfl` is
+INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('policy.toml', 'f6564a0881e4dd379c84e89e8fd8299b0cfc3183bb7bdda3faec2d2e55f1a013', 'f6564a0881e4dd379c84e89e8fd8299b0cfc3183bb7bdda3faec2d2e55f1a013', 'match');
+INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('regions.toml', 'f764fd480060d48ca03412cdb4c8d1bdc1e28c42da35a8da8f4d566724561819', NULL, 'missing');
+INSERT INTO trust_inputs(path, sha256, disk_sha256, status) VALUES('scripts/trust-profile-exclude.txt', 'ad3602dd19cbd855a513c33748d84c59d9385c3c04493a422df2d14540e2e2a0', NULL, 'missing');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.beq', 'native_decider', 1, 'Silmaril.KBytes.beq', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Structural equality (`KBytes.toList_eq_of_beq`). The kernel fallback is cheap; `rfl` is
 cheaper still on canonical trees.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.cstring', 'native_decider', 'Silmaril.KBytes.cstringCheck', 'Silmaril.Prelude.Bytes.Checker.Thms', 1, NULL, NULL, NULL, NULL, NULL, NULL, 'cstring', 'Silmaril.KBytes.cstringCheck_sound', NULL, NULL, NULL, '', '', 'NUL-terminated strings, by one wide read. Kernel fallback: one tree descent and one literal
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.cstring', 'native_decider', 1, 'Silmaril.KBytes.cstringCheck', 'Silmaril.Prelude.Bytes.Checker.Thms', 1, NULL, NULL, NULL, NULL, NULL, NULL, 'cstring', 'Silmaril.KBytes.cstringCheck_sound', NULL, NULL, NULL, NULL, NULL, 'NUL-terminated strings, by one wide read. Kernel fallback: one tree descent and one literal
 comparison.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.eqByteArray', 'native_decider', 'Silmaril.KBytes.eqByteArray', 'Silmaril.Prelude.Bytes.Native.Defs', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Kernel bytes equal a `ByteArray` (`KBytes.toByteArray_eq_of_eqByteArray`). There is no
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.eqByteArray', 'native_decider', 1, 'Silmaril.KBytes.eqByteArray', 'Silmaril.Prelude.Bytes.Native.Defs', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Kernel bytes equal a `ByteArray` (`KBytes.toByteArray_eq_of_eqByteArray`). There is no
 kernel fallback: the kernel would build both byte lists one cell per byte. For bytes from
 `include_bytes`, use the structural bridge (`kbytes_rel`) instead, which needs no evaluation.');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.sameBytes', 'native_decider', 'Silmaril.KBytes.sameBytes', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Same bytes, by windows (`KBytes.toList_eq_of_sameBytes`). Kernel fallback measured at
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.sameBytes', 'native_decider', 1, 'Silmaril.KBytes.sameBytes', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Same bytes, by windows (`KBytes.toList_eq_of_sameBytes`). Kernel fallback measured at
 about 55 ms per MiB with 64 KiB windows (benchmarks/kernel-bytes).');
-INSERT INTO trust_procedures(name, kind, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.wf', 'native_decider', 'Silmaril.KBytes.wf', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '', 'Cached lengths are correct (`KBytes.wf`). Cheap in the kernel.');
-INSERT INTO trust_sets(name, origin, is_all) VALUES('all', 'builtin', 1);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('bytes', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('default', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('elf', 'trust_set', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('none', 'builtin', 0);
-INSERT INTO trust_sets(name, origin, is_all) VALUES('standard', 'policy', 0);
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('bytes.wf', 'native_decider', 1, 'Silmaril.KBytes.wf', 'Silmaril.Prelude.Bytes.Native.Defs', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Cached lengths are correct (`KBytes.wf`). Cheap in the kernel.');
+INSERT INTO trust_procedures(name, kind, implemented, function, module, kernel_fallback, native_function, native_eq, native_check, native_sound, kernel_check, kernel_sound, format, sound, bound, axiom_pattern, components, toolchain, fallback_coverage, doc) VALUES('elf.layout', 'named', 0, '', NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('all', 'builtin', 1, 'built in');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('bytes', 'trust_set', 0, 'Kernel bytes: comparisons and the raw-bytes bridge (`Silmaril.Prelude.Bytes.Native`).');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('default', 'trust_set', 0, 'What the default profile runs natively.');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('elf', 'trust_set', 0, 'ELF: the staged layout checker (`Silmaril.Elf`, registered there as `elf.layout`). Naming a
+procedure here before it is registered is harmless: sets hold names.');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('none', 'builtin', 0, 'built in');
+INSERT INTO trust_sets(name, origin, is_all, doc) VALUES('standard', 'policy', 0, 'the policy file''s own set, read from policy.toml (digest checked)');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.beq');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.cstring');
 INSERT INTO trust_set_members(set_name, member_kind, member) VALUES('bytes', 'name', 'bytes.eqByteArray');
@@ -410,39 +416,40 @@ INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmari
 INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Papers', 'none', NULL, 'none', NULL);
 INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Standards', 'none', NULL, 'none', NULL);
 INSERT INTO trust_scopes(module, max, default_set, deps, axioms) VALUES('Silmaril.Thesis', 'none', NULL, 'none', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Data.ByteArray.Basic', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Data.List.Basic', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Omega', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Prelude', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lake.Toml', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Compiler.NoncomputableAttr', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Elab.Command', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Elab.Tactic', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Elab.Term', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Meta.Native', NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes', 'Silmaril/Data/IncludeBytes.lean', '899e7c5348c29855ddbd5a4d4ef2c3d4cfb6c94e4ddda3f28b28b30e7f1b0691', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.Kernel', 'Silmaril/Data/IncludeBytes/Kernel.lean', '159fb30e625db859d2ee1b99e1490f1a2b1625fe5c193556276bf757abcc84e0', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.KernelExamples', 'Silmaril/Data/IncludeBytes/KernelExamples.lean', 'e4ffa609f603d1a7af932fa9226510347b186fe94325ef92548cf8f45b5f9c35', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.KernelImportExamples', 'Silmaril/Data/IncludeBytes/KernelImportExamples.lean', '4e1b42d6b072cfb736711a9f5a312ac9f169a1f43dddcc57c4468b9b9e142980', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.Types', 'Silmaril/Data/IncludeBytes/Types.lean', 'd68fbf6e34383f94e47060e33f9d5215023fc4c301f535ef77a8df8114185093', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Checker.Defs', 'Silmaril/Prelude/Bytes/Checker/Defs.lean', 'dd830c85f87c73db7b21944193a1f1ba9efc90fc649ad4d39203935e27f3f9bf', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Checker.Thms', 'Silmaril/Prelude/Bytes/Checker/Thms.lean', '334ea161f09ebcf3b7d07869701d5f9f855e553a2a5684f1cb99a420e23c551a', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Defs', 'Silmaril/Prelude/Bytes/Defs.lean', 'a6ccdf3d6599bce2289f743f92687e4d3e052830d27494cc0abcbb454ac622d2', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Digits.Defs', 'Silmaril/Prelude/Bytes/Digits/Defs.lean', '23c609cdc75a28e6fdca74ef6e96e66b0934560b569dd6723c55f18c0870f8d1', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Digits.Thms', 'Silmaril/Prelude/Bytes/Digits/Thms.lean', '09fb2ff34df5c775e461a8b7d80088f0c05887bbf6d9ae9303eef593b7338143', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Elab.Defs', 'Silmaril/Prelude/Bytes/Elab/Defs.lean', '4798a1013b03d3e97edb20f23f965be1ef5eb32607733f7dddd38dfb1b298090', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Examples', 'Silmaril/Prelude/Bytes/Examples.lean', '477b35914ce4fb520cc2fac57ae52d1463b1f3278571c01eca6d8748de24ae0e', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Silmaril/Prelude/Bytes/Native/Defs.lean', '57f68b48c63d8831d09d7fa1b8e35d0f9ab981230c78e6e87377d71e0146308f', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Thms', 'Silmaril/Prelude/Bytes/Thms.lean', '223e696225496e77434756c45eb60ef3c105b43bd391db22ade615413118ae9c', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'Silmaril/Prelude/Trust/Decl/Defs.lean', '69102c4e5af982d5a0302561cc67e5cfe0463ffa4ee3603ad3eb1c5318d83c00', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Defs', 'Silmaril/Prelude/Trust/Defs.lean', '5f6b9a9fea64dde3f2887a51a971f4d9ba6e84932369f184be0376f33b0c1035', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril/Prelude/Trust/Elab/Defs.lean', '9cbe11d39d84267bc4b0f3b32790db91ff6163b64d048a44df16f0e1db882e55', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Silmaril/Prelude/Trust/Policy/Defs.lean', '36143ac452881ef6a46901823df6825f6fa02c72e846936ad18b46c61a77db72', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Proofs.Prelude.Bytes.Basic', 'Silmaril/Proofs/Prelude/Bytes/Basic.lean', '560a6cf5b52565e636895e6fdede3ba94a9ab26c977c8ff5663cf6c22d8a5dd2', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Proofs.Prelude.Bytes.Checker', 'Silmaril/Proofs/Prelude/Bytes/Checker.lean', 'db0df534c04bdf0b6503037410d1d4610100c73155e0342b39e2e03a2960fb41', 'missing', 'stale', 'covered', 'Silmaril', NULL);
-INSERT INTO trust_modules(name, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Proofs.Prelude.Bytes.Digits', 'Silmaril/Proofs/Prelude/Bytes/Digits.lean', '2c395aa476d86fb91db0271add6aa397fd6af3f0f9708c122e380500f0e5b180', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Data.ByteArray.Basic', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Data.List.Basic', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Omega', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Init.Prelude', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lake.Toml', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Compiler.NoncomputableAttr', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Elab.Command', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Elab.Tactic', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Elab.Term', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Lean.Meta.Native', NULL, NULL, NULL, 'unrecorded', 'unknown', 'external', NULL, 'outside the dump''s roots (another part of the library, a dependency or the toolchain): its uses are not listed, but its axioms still appear in the axioms of covered theorems');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes', NULL, 'Silmaril/Data/IncludeBytes.lean', '899e7c5348c29855ddbd5a4d4ef2c3d4cfb6c94e4ddda3f28b28b30e7f1b0691', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.Kernel', NULL, 'Silmaril/Data/IncludeBytes/Kernel.lean', '159fb30e625db859d2ee1b99e1490f1a2b1625fe5c193556276bf757abcc84e0', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.KernelExamples', NULL, 'Silmaril/Data/IncludeBytes/KernelExamples.lean', 'e4ffa609f603d1a7af932fa9226510347b186fe94325ef92548cf8f45b5f9c35', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.KernelImportExamples', NULL, 'Silmaril/Data/IncludeBytes/KernelImportExamples.lean', '4e1b42d6b072cfb736711a9f5a312ac9f169a1f43dddcc57c4468b9b9e142980', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Data.IncludeBytes.Types', NULL, 'Silmaril/Data/IncludeBytes/Types.lean', 'd68fbf6e34383f94e47060e33f9d5215023fc4c301f535ef77a8df8114185093', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Checker.Defs', 'Prelude', 'Silmaril/Prelude/Bytes/Checker/Defs.lean', 'dd830c85f87c73db7b21944193a1f1ba9efc90fc649ad4d39203935e27f3f9bf', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Checker.Thms', 'Prelude', 'Silmaril/Prelude/Bytes/Checker/Thms.lean', '334ea161f09ebcf3b7d07869701d5f9f855e553a2a5684f1cb99a420e23c551a', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Defs', 'Prelude', 'Silmaril/Prelude/Bytes/Defs.lean', 'a6ccdf3d6599bce2289f743f92687e4d3e052830d27494cc0abcbb454ac622d2', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Digits.Defs', 'Prelude', 'Silmaril/Prelude/Bytes/Digits/Defs.lean', '23c609cdc75a28e6fdca74ef6e96e66b0934560b569dd6723c55f18c0870f8d1', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Digits.Thms', 'Prelude', 'Silmaril/Prelude/Bytes/Digits/Thms.lean', '09fb2ff34df5c775e461a8b7d80088f0c05887bbf6d9ae9303eef593b7338143', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Elab.Defs', 'Prelude', 'Silmaril/Prelude/Bytes/Elab/Defs.lean', '4798a1013b03d3e97edb20f23f965be1ef5eb32607733f7dddd38dfb1b298090', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Examples', 'Prelude', 'Silmaril/Prelude/Bytes/Examples.lean', '477b35914ce4fb520cc2fac57ae52d1463b1f3278571c01eca6d8748de24ae0e', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Native.Defs', 'Prelude', 'Silmaril/Prelude/Bytes/Native/Defs.lean', '57f68b48c63d8831d09d7fa1b8e35d0f9ab981230c78e6e87377d71e0146308f', 'missing', 'stale', 'unaudited', 'Silmaril', 'no declaration of it in the export: either not listed for audit (trust-dump --root/--exclude) or without theorems and definitions; the export does not say which');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Bytes.Thms', 'Prelude', 'Silmaril/Prelude/Bytes/Thms.lean', '223e696225496e77434756c45eb60ef3c105b43bd391db22ade615413118ae9c', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Decl.Defs', 'Prelude', 'Silmaril/Prelude/Trust/Decl/Defs.lean', '69102c4e5af982d5a0302561cc67e5cfe0463ffa4ee3603ad3eb1c5318d83c00', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Defs', 'Prelude', 'Silmaril/Prelude/Trust/Defs.lean', '5f6b9a9fea64dde3f2887a51a971f4d9ba6e84932369f184be0376f33b0c1035', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Prelude', 'Silmaril/Prelude/Trust/Elab/Defs.lean', '9cbe11d39d84267bc4b0f3b32790db91ff6163b64d048a44df16f0e1db882e55', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'Prelude', 'Silmaril/Prelude/Trust/Export/Defs.lean', '857f04ab6f6d98319317882c99ef9a6cf20e9355b828c0cb276845d10fdb14b0', 'missing', 'stale', 'unaudited', 'Silmaril', 'no declaration of it in the export: either not listed for audit (trust-dump --root/--exclude) or without theorems and definitions; the export does not say which');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Prelude', 'Silmaril/Prelude/Trust/Policy/Defs.lean', '36143ac452881ef6a46901823df6825f6fa02c72e846936ad18b46c61a77db72', 'missing', 'stale', 'unaudited', 'Silmaril', 'no declaration of it in the export: either not listed for audit (trust-dump --root/--exclude) or without theorems and definitions; the export does not say which');
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Proofs.Prelude.Bytes.Basic', 'Prelude', 'Silmaril/Proofs/Prelude/Bytes/Basic.lean', '560a6cf5b52565e636895e6fdede3ba94a9ab26c977c8ff5663cf6c22d8a5dd2', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Proofs.Prelude.Bytes.Checker', 'Prelude', 'Silmaril/Proofs/Prelude/Bytes/Checker.lean', 'db0df534c04bdf0b6503037410d1d4610100c73155e0342b39e2e03a2960fb41', 'missing', 'stale', 'covered', 'Silmaril', NULL);
+INSERT INTO trust_modules(name, region, source, source_sha256, source_status, freshness, coverage, policy_trace, reason) VALUES('Silmaril.Proofs.Prelude.Bytes.Digits', 'Prelude', 'Silmaril/Proofs/Prelude/Bytes/Digits.lean', '2c395aa476d86fb91db0271add6aa397fd6af3f0f9708c122e380500f0e5b180', 'missing', 'stale', 'covered', 'Silmaril', NULL);
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Data.IncludeBytes', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Data.IncludeBytes', 'Lean.Elab.Term');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Data.IncludeBytes', 'Silmaril.Data.IncludeBytes.Types');
@@ -501,6 +508,9 @@ INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Elab.De
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Lean.Meta.Native');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Prelude.Trust.Decl.Defs');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'Silmaril.Prelude.Trust.Defs');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'Init');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'Lake.Toml');
+INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'Silmaril.Prelude.Trust.Elab.Defs');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Init');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'Silmaril.Prelude.Trust.Elab.Defs');
 INSERT INTO trust_imports(module, import) VALUES('Silmaril.Proofs.Prelude.Bytes.Basic', 'Init');
@@ -803,6 +813,23 @@ INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.T
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'default', 'elf.layout');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'deps', '*');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Elab.Defs', 'max', '*');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'allowed', 'bytes.beq');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'allowed', 'bytes.cstring');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'allowed', 'bytes.eqByteArray');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'allowed', 'bytes.sameBytes');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'allowed', 'bytes.wf');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'allowed', 'elf.layout');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'axioms', 'Classical.choice');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'axioms', 'Quot.sound');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'axioms', 'propext');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'default', 'bytes.beq');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'default', 'bytes.cstring');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'default', 'bytes.eqByteArray');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'default', 'bytes.sameBytes');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'default', 'bytes.wf');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'default', 'elf.layout');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'deps', '*');
+INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Export.Defs', 'max', '*');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.beq');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.cstring');
 INSERT INTO trust_module_policy(module, role, member) VALUES('Silmaril.Prelude.Trust.Policy.Defs', 'allowed', 'bytes.eqByteArray');
@@ -893,7 +920,7 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloC.eq_ofChunks', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloC.len_eq', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloC.wf_true', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloC_extract', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', 'default');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloC_extract', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloFile', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloFile.chunks', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.IncludeBytes.KernelExamples.helloFile.eq_ofChunks', 'Silmaril.Data.IncludeBytes.KernelExamples', 'default', NULL);
@@ -963,8 +990,8 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.hello.len_eq', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.hello.wf_true', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.interp', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.interpCString', 'Silmaril.Prelude.Bytes.Examples', 'default', 'default');
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.interpCString_kernel', 'Silmaril.Prelude.Bytes.Examples', 'default', 'paranoid');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.interpCString', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.interpCString_kernel', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.interpHeader', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.machineX86_64', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.magic', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
@@ -973,8 +1000,8 @@ INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silm
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.phentsize_phnum', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.phoff', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope_same_kernel', 'Silmaril.Prelude.Bytes.Examples', 'default', 'paranoid');
-INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope_same_native', 'Silmaril.Prelude.Bytes.Examples', 'default', 'default');
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope_same_kernel', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
+INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope_same_native', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope_toList', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.rope_toList_native', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);
 INSERT INTO trust_decls(decl, module, profile, elaborated_profiles) VALUES('Silmaril.KBytes.Examples.shoff', 'Silmaril.Prelude.Bytes.Examples', 'default', NULL);

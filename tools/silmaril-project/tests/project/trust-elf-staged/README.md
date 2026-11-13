@@ -1,23 +1,17 @@
 # trust-elf-staged: real producer output for ELF (#127)
 
-`trust.jsonl` was written by `sil project trust-dump` (origin `lean`), over the core's stable
-hooks.
+`trust.json` is the core's frozen export (`silmaril.trust-core.v1`), unchanged, written by
+`#trust_export` through `sil project trust-dump`.
 
-Provenance:
-
-- Branch: #127 (`elf/staged-trust`) at `67503c32` (head), which merges core #125 at `34ec436e`; its trust code equals the bytes cases' `d5d8f78c`. The ELF
-  leaves are declared with `ProcDecl`/`sil_check`.
+- Branch: #127 (`elf/staged-trust`) at its head `67503c32`, which merges core #125 at `34ec436e`.
+  The ELF leaves are declared with `ProcDecl` and checked with `sil_check`.
 - Build: a checkout of `67503c32`, with dependencies (Mathlib) restored read-only from the
   repository's shared Lake cache.
-- Command: `sil project trust-dump --module Silmaril.Elf.Staged.Example.Thms --root Silmaril.Elf.Staged`.
-- Roots: only `Silmaril.Elf.Staged.*` is described and audited. Other modules are `external`, but
-  their axioms appear in the axioms of the audited declarations.
+- Command: `sil project trust-dump --module Silmaril.Elf.Staged.Example.Thms --root
+  Silmaril.Elf.Staged`. Of the 139 `Silmaril` modules reached, the 10 under `Silmaril.Elf.Staged`
+  are listed for audit. The other 130 are described but `unaudited`, so coverage is partial.
+- `policy.toml` is a copy of the checkout's, and its digest matches the export.
 
-Result:
-
-- 12 procedures (eight `elf.*` leaves and four `bytes.*`), 299 declarations audited and **0
-  violations**.
-- 36 uses: 1 native (`elf.layout`, which is in #127's `default` set), and 35 kernel runs, each
-  of a declared kernel side.
-
-The sources are not copied here, so the modules read `stale`.
+Result: 299 declarations audited and **0 violations**. `elf.layout` runs natively once; every
+other run is a kernel run of a declared kernel side. In the checkout, `--strict-trust` passes on
+partial coverage.

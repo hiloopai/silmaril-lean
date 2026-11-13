@@ -1,5 +1,5 @@
-//! Native decision procedures and axioms: the trust lines (`silmaril.trust.v1` and
-//! `silmaril.trust-adapter.v0.1`) and their tables.
+//! Native decision procedures and axioms: the internal lines the converter from the core's export
+//! (`silmaril.trust-core.v1`, `trust::core_doc`) produces, and the trust tables.
 //!
 //! The model is the core trust framework's (`Silmaril.Prelude.Trust`, `docs/trust.md`):
 //!
@@ -15,113 +15,10 @@
 //! - per theorem, its axioms (`collectAxioms`, which is transitive), split as the core's
 //!   `trust_audit` splits them.
 //!
-//! The lines are written by `sil project trust-dump` (the core's `#trust_dump`, schema
-//! [`CORE_SCHEMA`], plus adapter lines, schema [`ADAPTER_SCHEMA`]) or by hand (fixtures, whose
-//! header says so). Every line is one JSON object with a `schema` and a `kind`; each schema may
-//! carry only the kinds of [`LINE_KINDS`], and each is converted explicitly.
+//! The input is the core's frozen export (`silmaril.trust-core.v1`); `trust::core_doc` converts
+//! it into these internal lines, which the ingest checks and stores.
 use super::*;
 use serde::Deserialize;
-
-/// The core's provenance schema (`docs/trust.md`, `#trust_dump`).
-pub const CORE_SCHEMA: &str = "silmaril.trust.v1";
-/// The fields this tool reads, per core kind. The core may add fields within v1
-/// (`docs/trust.md`); others are dropped explicitly and reported (an error under
-/// `--strict-trust`), so that a new field is never silently given a meaning.
-pub const CORE_FIELDS: &[(&str, &[&str])] = &[
-    (
-        "procedure",
-        &[
-            "name",
-            "function",
-            "kernel_fallback",
-            "module",
-            "format",
-            "sound",
-            "native_function",
-            "native_eq",
-            "axiom_pattern",
-            "components",
-            "toolchain",
-            "fallback_coverage",
-            "doc",
-        ],
-    ),
-    (
-        "use",
-        &["decl", "module", "procedure", "mode", "profile", "axiom"],
-    ),
-    ("set", &["name", "all", "members", "includes", "resolved"]),
-    (
-        "scope",
-        &[
-            "module",
-            "max",
-            "default",
-            "deps",
-            "axioms",
-            "policy_file",
-            "policy_pin",
-        ],
-    ),
-    (
-        "declared_procedure",
-        &[
-            "name", "constant", "native", "kernel", "format", "bound", "doc",
-        ],
-    ),
-    (
-        "module",
-        &[
-            "module",
-            "imports",
-            "profile",
-            "ceiling",
-            "max",
-            "default",
-            "deps",
-            "axioms",
-            "allowed",
-            "scopes",
-            "policy_error",
-        ],
-    ),
-    (
-        "audit",
-        &[
-            "decl",
-            "module",
-            "profile",
-            "own_native",
-            "dep_native",
-            "unverified_native",
-            "native_axioms",
-            "axioms",
-            "elaborated_profiles",
-            "violations",
-        ],
-    ),
-];
-/// Lines `sil project trust-dump` adds to the core's.
-pub const ADAPTER_SCHEMA: &str = "silmaril.trust-adapter.v0.2";
-/// `(schema, kinds)`: which kinds each line schema may carry.
-pub const LINE_KINDS: &[(&str, &[&str])] = &[
-    (
-        CORE_SCHEMA,
-        &[
-            "procedure",
-            "use",
-            "set",
-            "scope",
-            "declared_procedure",
-            "module",
-            "audit",
-        ],
-    ),
-    (
-        ADAPTER_SCHEMA,
-        &["header", "input", "set", "source", "excluded"],
-    ),
-];
 
 /// One line of a trust dump.
 #[derive(Debug, Clone, Deserialize)]
@@ -140,6 +37,17 @@ pub enum TrustLine {
     Excluded(LineExcluded),
     DeclaredProcedure(LineDeclaredProcedure),
     Source(LineSource),
+    Named(LineNamed),
+}
+
+/// A procedure named by a trust set but not implemented in the environment (the export's
+/// `kind = "named"`, `implemented = false`): never granted, never run.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineNamed {
+    pub name: String,
+    #[serde(default)]
+    pub doc: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -205,6 +113,7 @@ pub struct LineSet {
     pub includes: Vec<String>,
     /// The core's resolution (`"all"` or names); checked against ours.
     pub resolved: Option<serde_json::Value>,
+    pub doc: Option<String>,
 }
 
 /// `native_decider name := function [with_kernel_fallback] [native f via eq] [format … sound …]`.
@@ -262,6 +171,9 @@ pub struct LineUse {
     pub mode: String,
     pub profile: String,
     pub axiom: Option<String>,
+    /// The core's provenance verdict for a native use (`verifiedNative`), if it gave one.
+    #[serde(default)]
+    pub verified: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -270,9 +182,11 @@ pub struct LineModule {
     pub name: String,
     #[serde(default)]
     pub imports: Vec<String>,
+    /// The region of `regions.toml` it belongs to, if any.
+    pub region: Option<String>,
 }
 
-/// A module's source file and its digest at dump time (adapter).
+/// A module's source file and its digest at dump time (from the export's `modules`).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LineSource {
@@ -281,54 +195,12 @@ pub struct LineSource {
     pub sha256: String,
 }
 
-/// The core's `module` line (`moduleLine`).
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CoreModule {
-    pub module: String,
-    #[serde(default)]
-    pub imports: Vec<String>,
-    pub profile: String,
-    pub ceiling: String,
-    pub max: Option<serde_json::Value>,
-    pub default: Option<serde_json::Value>,
-    pub deps: Option<serde_json::Value>,
-    pub axioms: Option<serde_json::Value>,
-    pub allowed: Option<serde_json::Value>,
-    #[serde(default)]
-    pub scopes: Vec<String>,
-    pub policy_error: Option<String>,
-}
-
 /// One `unverified_native` entry of an audit.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CoreUnverified {
     pub procedure: String,
     pub axiom: String,
-}
-
-/// The core's `audit` line (`auditLine`): never failing, with its `violations`.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CoreAudit {
-    pub decl: String,
-    pub module: String,
-    pub profile: String,
-    #[serde(default)]
-    pub own_native: Vec<String>,
-    #[serde(default)]
-    pub dep_native: Vec<String>,
-    #[serde(default)]
-    pub unverified_native: Vec<CoreUnverified>,
-    #[serde(default)]
-    pub native_axioms: Vec<String>,
-    #[serde(default)]
-    pub axioms: Vec<String>,
-    #[serde(default)]
-    pub elaborated_profiles: Vec<String>,
-    #[serde(default)]
-    pub violations: Vec<String>,
 }
 
 /// A resolved set: `{"all": true}` or `{"all": false, "names": […]}`.
@@ -413,7 +285,9 @@ table! {
     /// native and a kernel checker, each with a soundness theorem, for the same proposition).
     TrustProcedure = "trust_procedures", key("name") {
         name: String = "TEXT NOT NULL",
-        kind: String = "TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared'))",
+        kind: String = "TEXT NOT NULL CHECK(kind IN ('native_decider','native_tactic','declared','named'))",
+        /// `0` for a `named` procedure: named by a set, implemented nowhere, never granted.
+        implemented: bool = "INTEGER NOT NULL",
         function: String = "TEXT NOT NULL",
         module: Option<String> = "TEXT",
         kernel_fallback: bool = "INTEGER NOT NULL",
@@ -440,6 +314,7 @@ table! {
         name: String = "TEXT NOT NULL",
         origin: String = "TEXT NOT NULL",
         is_all: bool = "INTEGER NOT NULL",
+        doc: Option<String> = "TEXT",
     }
 }
 
@@ -469,11 +344,12 @@ table! {
     /// source, its described imports' sources, the inputs) still match: evidence of nothing more.
     TrustModule = "trust_modules", key("name") {
         name: String = "TEXT NOT NULL",
+        region: Option<String> = "TEXT",
         source: Option<String> = "TEXT",
         source_sha256: Option<String> = "TEXT",
         source_status: String = "TEXT NOT NULL CHECK(source_status IN ('match','changed','missing','unrecorded'))",
         freshness: String = "TEXT NOT NULL CHECK(freshness IN ('consistent','stale','unknown'))",
-        coverage: String = "TEXT NOT NULL CHECK(coverage IN ('covered','excluded','unsupported','undescribed','external'))",
+        coverage: String = "TEXT NOT NULL CHECK(coverage IN ('covered','unaudited','excluded','unsupported','undescribed','external'))",
         policy_trace: Option<String> = "TEXT",
         reason: Option<String> = "TEXT",
     }
