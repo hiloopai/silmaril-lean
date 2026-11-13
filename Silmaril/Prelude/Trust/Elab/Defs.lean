@@ -41,7 +41,7 @@ open Lean Elab Command Term Meta
 /-- `native_decider name := fn [with_kernel_fallback]` registers `fn` (a closed function
 returning `Bool`) as the native procedure `name`. The docstring should say what it trusts. -/
 syntax (name := nativeDecider) (docComment)? "native_decider " ident " := " ident
-  (&" with_kernel_fallback")? : command
+  (&" with_kernel_fallback")? (&" format " ident)? (&" sound " ident)? : command
 
 /-- `trust_set name := {a, b} [includes s t]`, or `trust_set name := all`. -/
 syntax (name := trustSetCmd) (docComment)? "trust_set " ident " := " (&"all" <|> ("{" ident,* "}"
@@ -74,6 +74,9 @@ def returnsBool (ty : Expr) : MetaM Bool :=
   let name := stx[2].getId
   let fn ← liftTermElabM <| realizeGlobalConstNoOverloadWithInfo stx[4]
   let kernel := !stx[5].isNone
+  let format := if stx[6].isNone then none else some stx[6][1].getId
+  let sound ← if stx[7].isNone then pure none else
+    some <$> liftTermElabM (realizeGlobalConstNoOverloadWithInfo stx[7][1])
   let env ← getEnv
   if (procExt.getState env).contains name then
     throwError "native procedure {name} is already registered"
@@ -82,7 +85,11 @@ def returnsBool (ty : Expr) : MetaM Bool :=
     throwError "native procedure {name}: {fn} does not return Bool"
   if info.isUnsafe || info.isPartial then
     throwError "native procedure {name}: {fn} is unsafe or partial"
-  modifyEnv (procExt.addEntry · { name, fn, kernel, doc, module := env.mainModule })
+  if let some thm := sound then
+    let some info := env.find? thm | throwError "unknown theorem {thm}"
+    unless info.type.find? (fun e => e.isConstOf fn) |>.isSome do
+      throwError "native procedure {name}: the soundness theorem {thm} does not mention {fn}"
+  modifyEnv (procExt.addEntry · { name, fn, kernel, doc, module := env.mainModule, format, sound })
 
 @[command_elab trustSetCmd] def elabTrustSet : CommandElab := fun stx => do
   let name := stx[2].getId
@@ -136,6 +143,30 @@ def procsFor (env : Environment) (fn : Name) : Array Procedure :=
 
 def recordUse (u : Use) : CoreM Unit := modifyEnv (useExt.addEntry · u)
 
+/-- A checker used through a structure (`C.check b a`, as with `KBytes.FormatChecker`) is
+exposed as the registered function the structure stores, without evaluating the arguments. -/
+def exposeHead (env : Environment) (e : Expr) : MetaM Expr := do
+  let some h := headConst? e | return e
+  unless (procsFor env h).isEmpty do return e
+  let args := e.getAppArgs
+  -- Try each prefix `h a₁ … aₖ`, unfolding one definition or projection at a time and stopping
+  -- at the first registered head, so the registered function itself is never unfolded.
+  for k in [1:args.size] do
+    let mut f := mkAppN e.getAppFn (args.extract 0 k)
+    for _ in [0:16] do
+      if let some h' := f.getAppFn.constName? then
+        unless (procsFor env h').isEmpty do
+          return mkAppN f (args.extract k args.size)
+      let f' ← whnfCore f
+      if f' != f then f := f'; continue
+      let next ← match f with
+        | .proj n i s => pure ((← unfoldDefinition? s).map (Expr.proj n i ·))
+        | _ => unfoldDefinition? f
+      match next with
+      | some f' => f := f'
+      | none => break
+  return e
+
 @[tactic edgeDecide] def evalEdgeDecide : Tactic.Tactic := fun stx => Tactic.withMainContext do
   let goal ← Tactic.getMainGoal
   let ty ← instantiateMVars (← goal.getType)
@@ -147,6 +178,7 @@ def recordUse (u : Use) : CoreM Unit := modifyEnv (useExt.addEntry · u)
   if e.hasFVar || e.hasMVar then
     throwError "edge_decide: the term must be closed{indentExpr e}"
   let env ← getEnv
+  let e ← exposeHead env e
   let some fn := headConst? e | throwError "edge_decide: no head function{indentExpr e}"
   let proc ← match stx[1].getOptional? with
     | some id =>
@@ -190,21 +222,51 @@ def recordUse (u : Use) : CoreM Unit := modifyEnv (useExt.addEntry · u)
 
 /-! ## Provenance and audit -/
 
+def nameJson : Option Name → Json
+  | some n => toJson (toString n)
+  | none => Json.null
+
 def useJson (u : Use) : Json :=
-  Json.mkObj [("kind", "use"), ("decl", toString u.decl), ("module", toString u.module),
+  Json.mkObj [("schema", schemaVersion), ("kind", "use"), ("decl", toString u.decl), ("module", toString u.module),
     ("procedure", toString u.proc),
     ("mode", match u.mode with | .native => "native" | .kernel => "kernel"),
     ("profile", u.profile), ("axiom", match u.ax with | some a => toJson (toString a) | none => Json.null)]
 
 def procJson (p : Procedure) : Json :=
-  Json.mkObj [("kind", "procedure"), ("name", toString p.name), ("function", toString p.fn),
-    ("kernel_fallback", p.kernel), ("module", toString p.module), ("doc", p.doc)]
+  Json.mkObj [("schema", schemaVersion), ("kind", "procedure"), ("name", toString p.name),
+    ("function", toString p.fn), ("kernel_fallback", p.kernel), ("module", toString p.module),
+    ("format", nameJson p.format), ("sound", nameJson p.sound), ("doc", p.doc)]
+
+def setJson (env : Environment) (s : TrustSet) : Json :=
+  let resolved : Json := match resolve env s.name with
+    | .ok .all => toJson "all"
+    | .ok (.some ns) => toJson (ns.toList.map toString)
+    | .error e => toJson s!"error: {e}"
+  Json.mkObj [("schema", schemaVersion), ("kind", "set"), ("name", toString s.name),
+    ("all", s.all), ("members", toJson (s.members.map toString)),
+    ("includes", toJson (s.includes.map toString)), ("resolved", resolved)]
+
+def scopeJson (p : Policy) (s : Scope) : Json :=
+  Json.mkObj [("schema", schemaVersion), ("kind", "scope"), ("module", toString s.module),
+    ("max", nameJson s.max), ("default", nameJson s.dflt), ("deps", nameJson s.deps),
+    ("axioms", nameJson s.axiomSet), ("policy_file", p.file), ("policy_pin", hex64 p.hash)]
 
 @[command_elab trustUses] def elabTrustUses : CommandElab := fun _ => do
   let env ← getEnv
   let mut lines : Array String := #[]
   for p in allEntries procExt env do lines := lines.push (procJson p).compress
   for u in allEntries useExt env do lines := lines.push (useJson u).compress
+  logInfo (String.intercalate "\n" lines.toList)
+
+/-- Print the trust sets and the policy scopes as JSON lines. -/
+syntax (name := trustRegistry) "#trust_registry" : command
+
+@[command_elab trustRegistry] def elabTrustRegistry : CommandElab := fun _ => do
+  let env ← getEnv
+  let mut lines : Array String := #[]
+  for s in allEntries setExt env do lines := lines.push (setJson env s).compress
+  if let some p := policyExt.getState env then
+    for s in p.scopes do lines := lines.push (scopeJson p s).compress
   logInfo (String.intercalate "\n" lines.toList)
 
 /-- The axioms of `decl`, split into standard, own native, inherited native and other. -/
@@ -254,7 +316,7 @@ def auditDecl (decl : Name) : CommandElabM Json := do
   unless bad.isEmpty do
     throwError "trust_audit {decl}: {String.intercalate "; " bad.toList}"
   let names (xs : Array Name) : Json := toJson (xs.map toString)
-  return Json.mkObj [("kind", "audit"), ("decl", toString decl), ("module", toString mod),
+  return Json.mkObj [("schema", schemaVersion), ("kind", "audit"), ("profile", ← liftCoreM profileTag), ("decl", toString decl), ("module", toString mod),
     ("own_native", names r.ownNative), ("dep_native", names r.depNative),
     ("axioms", names r.other), ("native_axioms", names r.nativeAxioms)]
 

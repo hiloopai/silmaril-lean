@@ -78,3 +78,44 @@ native_decider elf.layoutOk := Silmaril.Elf.Staged.layoutOk with_kernel_fallback
 * To run in the default profile, a procedure must be in the `default` trust set
   (`Silmaril/Prelude/Trust/Policy/Defs.lean`). Adding it is a reviewed change.
 * Modules whose functions a native run executes must be imported with `meta import`.
+
+**Format checkers** (`import Silmaril.Prelude.Bytes.Checker.Thms`): one interface for every
+data format (ELF, JSON, CBOR, S-expressions, WAT, …).
+
+```
+structure KBytes.FormatChecker (α : Type) where
+  format : String
+  Parses : KBytes → α → Prop          -- the bytes encode the value
+  check  : KBytes → α → Bool          -- checks a claimed value; never has to parse
+  sound  : ∀ b a, check b a = true → Parses b a
+
+native_decider json.check := Silmaril.Formats.Json.checkBytes with_kernel_fallback
+  format json sound Silmaril.Formats.Json.checkBytes_sound
+
+theorem doc : jsonChecker.Parses bytes value := FormatChecker.parses_of jsonChecker (by edge_decide)
+```
+
+`edge_decide` sees through `C.check` to the registered function. The reference instance is
+`KBytes.cstring` (NUL-terminated strings, `bytes.cstring`). Only it is implemented here; JSON,
+CBOR, S-expression and WAT checkers are future instances of the same structure.
+
+## Provenance schema (`silmaril.trust.v1`)
+
+`#trust_uses`, `#trust_registry` and `trust_audit` print one JSON object per line. Every
+object has `"schema": "silmaril.trust.v1"` and a `"kind"`. Fields may be added within v1;
+renaming or removing a field bumps the version.
+
+| kind | printed by | fields |
+|---|---|---|
+| `procedure` | `#trust_uses` | `name`, `function`, `kernel_fallback` (bool), `module`, `format` (string or null), `sound` (theorem or null), `doc` |
+| `use` | `#trust_uses` | `decl`, `module`, `procedure`, `mode` (`native` or `kernel`), `profile` (e.g. `default`, `local≤paranoid` under a ceiling), `axiom` (string or null) |
+| `set` | `#trust_registry` | `name`, `all` (bool), `members`, `includes`, `resolved` (`"all"` or list of names) |
+| `scope` | `#trust_registry` | `module` (prefix), `max`, `default`, `deps`, `axioms` (set names or null when inherited), `policy_file`, `policy_pin` |
+| `audit` | `trust_audit` | `decl`, `module`, `profile`, `own_native`, `dep_native` (procedure names), `native_axioms`, `axioms` (non-native axioms) |
+
+Native axiom names have the form `<decl>._native.edge.<procedure>.ax_i_j`, with `<decl>`
+possibly `_private.<module>.0.<decl>`. Native runs outside `edge_decide` (plain
+`bv_decide`, `decide +native`) appear as `_native.<tactic>.ax_i_j`, and `trust_audit` rejects
+them as unregistered. The registry, uses and policy are persistent environment extensions
+(`Silmaril.Trust.procExt`, `useExt`, `setExt`, `policyExt`), so a tool that loads `.olean`
+files can read them directly instead of parsing output.

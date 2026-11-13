@@ -15,7 +15,7 @@ the pin on every run.
 -/
 
 /-- Kernel bytes: comparisons and the raw-bytes bridge (`Silmaril.Prelude.Bytes.Native`). -/
-trust_set bytes := {bytes.sameBytes, bytes.beq, bytes.wf, bytes.eqByteArray}
+trust_set bytes := {bytes.sameBytes, bytes.beq, bytes.wf, bytes.eqByteArray, bytes.cstring}
 
 /-- What the default profile runs natively. -/
 trust_set default := {} includes bytes
