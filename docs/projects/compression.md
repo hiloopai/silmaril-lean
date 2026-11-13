@@ -32,7 +32,7 @@ and LZ4 fit; none of them is implemented.
 | [Deflate](../../Silmaril/Formats/Compression/Deflate/Thms.lean) | `Deflate.decoder` (`deflateTake`): stored, fixed and dynamic Huffman blocks | consumes, stored round trip, LZ77 compressor soundness, zlib-produced vectors for each block type, two rejections |
 | [Zlib](../../Silmaril/Formats/Compression/Zlib/Thms.lean) | `Zlib.decoder = framing.wrap Deflate.decoder` | consumes, Adler-32 trailer, round trip, CPython vectors, dictionaries |
 | [Gzip](../../Silmaril/Formats/Compression/Gzip/Thms.lean) | `Gzip.decoder = framing.wrap Deflate.decoder`; files are `decoder.members` | consumes, CRC-32/ISIZE trailer, round trip, multi-member files, GNU and CPython vectors |
-| [Checksum](../../Silmaril/Formats/Compression/Checksum/Thms.lean) | `Checksum.adler32`, `Checksum.crc32` | published check values |
+| [Checksum](../../Silmaril/Formats/Compression/Checksum/Thms.lean) | `Checksum.adler32`, `Checksum.crc32` | published check values; CRC-32 equals `crc32Spec`, the GF(2) polynomial definition of ISO 3309 / ITU-T V.42 (`crc32_eq_spec`, over the polynomial model `GF2Poly`), and detects every single-bit error |
 | [Inflate](../../Silmaril/Formats/Compression/Inflate/Thms.lean) | `Inflate.member version kind`, `Inflate.raw version`: zlib 1.3.1's resumable inflater as `Incremental` machines | sound and rejection-sound for every call schedule, schedules agree, packed fixed tables agree with the canonical decoder |
 
 Assumptions and scope:
