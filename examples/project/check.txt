@@ -1,7 +1,10 @@
-summary: 34 problems (34 local), 3 groups, 102 records, 38 edges, 4 artifacts
-verdicts: 8 holds, 2 fails, 24 unknown (all 34 problems); 8 holds, 2 fails, 24 unknown (34 local)
+summary: 35 problems (35 local), 3 groups, 105 records, 39 edges, 4 artifacts
+verdicts: 9 holds, 2 fails, 24 unknown (all 35 problems); 9 holds, 2 fails, 24 unknown (35 local)
+markings: 1 deprecations (1 problems, 0 groups, 0 specs), 2 problems deprecated; findings: 0 error, 1 spec_bug, 0 model_gap, 0 unclear; 0 failing problems not deprecated and unclassified
+verdicts without the deprecated: 9 holds, 0 fails, 24 unknown (33 problems)
 root: silmaril.selftest.all
-predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails
+predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails, deprecated
+predicate silmaril.selftest.small_le (arity 1): status THM [THM], verdict holds
 predicate silmaril.selftest.square (arity 1): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.elf.entry (arity 4): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.elf.entry.x86 (arity 3): status SAT [SAT], verdict unknown
@@ -24,7 +27,9 @@ predicate silmaril.shapes.x86.contract.str9 (arity 1): status OPN [], verdict un
 predicate silmaril.shapes.x86.contract_strict (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct_loose (arity 2): status OPN [], verdict unknown
-group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(2 holds, 0 fails, 21 unknown)]
+group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent[deprecated], silmaril.selftest.small_le=THM, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(2 holds, 0 fails, 21 unknown)]
 group silmaril.selftest.formats: [silmaril.selftest.module.parses=THM, silmaril.selftest.exit.parses=THM, silmaril.selftest.exit.entry=THM]
 group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN]
+deprecated problem silmaril.selftest.small: claims that every n is below 3 (superseded by silmaril.selftest.small_le)
+finding spec_bug silmaril.selftest.small [contingent]: 5 is not below 3 (small_csa): the statement, not the code, is wrong (deprecated by its own deprecation)
 provenance: 1 derivations; 1 of 4 local artifacts have one
