@@ -103,8 +103,8 @@ theorem sim {pol : Pol} {c c' : SConf} {C : Cfg U} (hf : ¬ c.Fault) (hs : SStep
         · simpa [Heap.upd, e] using hk x (by simpa [Heap.upd, e] using hx)
       · funext u
         by_cases e : u = t
-        · subst e; simp [absTh, setTh, Heap.upd, hb] <;> rfl
-        · simp [absTh, setTh, Heap.upd, hth, e] <;> rfl
+        · subst e; simp [absTh, setTh, Heap.upd, hb]; rfl
+        · simp [absTh, setTh, Heap.upd, hth, e]; rfl
       · simp [hsp, upd_eq_set]
   | @decFail t a rest h hb hv =>
     refine ⟨C, Or.inl rfl, ⟨⟨?_, inv_th ⟨hk, hnb, hsc⟩ _, hsc⟩, ?_, hsp⟩⟩
@@ -139,8 +139,8 @@ theorem sim {pol : Pol} {c c' : SConf} {C : Cfg U} (hf : ¬ c.Fault) (hs : SStep
           · simpa [hv, Heap.upd, e] using hk x (by simpa [hv, Heap.upd, e] using hx)
         · funext u
           by_cases e : u = t
-          · subst e; simp [absTh, setTh, Heap.upd, hb] <;> rfl
-          · simp [absTh, setTh, Heap.upd, hth, e] <;> rfl
+          · subst e; simp [absTh, setTh, Heap.upd, hb]; rfl
+          · simp [absTh, setTh, Heap.upd, hth, e]; rfl
         · simp [hsp, hv, upd_eq_set]
     · have hnf : c.gh a ≠ .free := fun e => hv (((hk a hu).2).mpr e)
       obtain ⟨u, hu'⟩ : ∃ u, c.gh a = .held u := by
@@ -158,8 +158,8 @@ theorem sim {pol : Pol} {c c' : SConf} {C : Cfg U} (hf : ¬ c.Fault) (hs : SStep
           · simpa [hv, Heap.upd, e] using hk x (by simpa [hv] using hx)
         · funext u
           by_cases e : u = t
-          · subst e; simp [absTh, setTh, Heap.upd, hb] <;> rfl
-          · simp [absTh, setTh, Heap.upd, hth, e] <;> rfl
+          · subst e; simp [absTh, setTh, Heap.upd, hb]; rfl
+          · simp [absTh, setTh, Heap.upd, hth, e]; rfl
         · simp [hsp, hv]
   | @storeSc t a rest hp h =>
     have hb : c.buf t = [] := hsc hp t
@@ -175,8 +175,8 @@ theorem sim {pol : Pol} {c c' : SConf} {C : Cfg U} (hf : ¬ c.Fault) (hs : SStep
         · simpa [Heap.upd, e] using hk x (by simpa [Heap.upd, e] using hx)
       · funext u
         by_cases e : u = t
-        · subst e; simp [absTh, setTh, Heap.upd, hb] <;> rfl
-        · simp [absTh, setTh, Heap.upd, hth, e] <;> rfl
+        · subst e; simp [absTh, setTh, Heap.upd, hb]; rfl
+        · simp [absTh, setTh, Heap.upd, hth, e]; rfl
       · simp [hsp, upd_eq_set]
   | @storeBuf t a rest hp h =>
     refine ⟨C, Or.inl rfl, ⟨⟨hk, ?_, fun e => by rw [hp] at e; cases e⟩, ?_, hsp⟩⟩
@@ -214,8 +214,8 @@ theorem sim {pol : Pol} {c c' : SConf} {C : Cfg U} (hf : ¬ c.Fault) (hs : SStep
       · rw [hth]
         funext u
         by_cases e : u = t
-        · subst e; simp [absTh, Heap.upd, hp'] <;> rfl
-        · simp [absTh, Heap.upd, e] <;> rfl
+        · subst e; simp [absTh, Heap.upd, hp']; rfl
+        · simp [absTh, Heap.upd, e]; rfl
       · simp [hsp, upd_eq_set]
 
 /-- A faulting machine configuration stands for a faulting abstract one. -/
