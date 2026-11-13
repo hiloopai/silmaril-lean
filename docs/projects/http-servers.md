@@ -8,6 +8,35 @@ the `Servers` region (`Silmaril/Servers/…`, see [regions.toml](../../regions.t
 on the HTTP semantics of `Silmaril.Net.Http` ([HTTP](http.md)) and follows the style of the CLI
 institution `Silmaril.Cli.Institution` ([CLI](cli.md)).
 
+## Summary and status
+
+A platform-neutral core gives HTTP servers an institution: interfaces, specifications as
+sentences over request/response traces (a second request may arrive before the first is
+answered), servers as trace sets, refinement as trace inclusion. Atomic, functional,
+linearizable and sequentially consistent readings are proved to lift into it. `wasi:http`
+components, state models (component state, a filesystem the server alone edits, a shared
+filesystem) and Linux, container and CGI platforms are all read as models of the core.
+
+- **Proved:** the core institution and its morphisms; linearizability equal to Herlihy–Wing;
+  per-connection and sequentially consistent readings, with serializability from sequential
+  consistency; one fresh-instance-per-request model that the WASI, state and platform readings
+  are instances of; liveness under weak fairness; HTTP/1.1 framing round trips; platform logs
+  as core models, with platform refinement equal to core refinement; socket events of the Linux
+  process model; the `hello` module and the `hello`, `route`, `echo` and `greet` specifications
+  for every host; the file-backed store component refines state models (b) and (a); the
+  shared-file store is linearizable on keys nobody else touches; the `hello` component refines a
+  Linux server loop.
+- **Tested:** six components (`hello`, `route`, `echo`, `greet`, `store`, `static`) pass 54
+  conformance checks against `wasmtime serve` 49.0.2 (`tests/servers`); the script skips when
+  no runtime is present.
+- **Open** (frozen tasks, results stated conditionally): `Task.wasmRuns`, `Task.binRuns` and
+  `Task.staticRuns` (the binaries run the Lean bodies), `Task.loopSentPrefix` (the converse
+  refinement for the Linux loop), `Task.wire1Mono`, `Task.specTableCountsConns`,
+  `Task.serializable_sc`. Also open: bodies longer than 4096 octets (the components write in one
+  `blocking-write-and-flush`, which wasmtime limits to 4096 octets), a comorphism to the CLI
+  institution, concurrent wasi:http 0.3 handlers, and comparing the runtime with the Lean
+  components rather than with the specifications.
+
 The page has one section per part: the platform-neutral core (traces), the WASI instance, the
 state models and a survey with the design of the other instances. Statuses follow
 [HTTP](http.md):
