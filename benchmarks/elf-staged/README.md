@@ -57,18 +57,20 @@ Fast mode (compiled reader on a `ByteArray`, `fastRead`; trusted computation):
 
 Paranoid mode (`decide +kernel` on the 1,611 page literals; each stage in its own file, the
 time is `lake env lean` of that file; the shared prefix (imports, the 6.6 MB `include_bytes`,
-the layout literal) costs about 7 s of each):
+the layout literal) is paid by each; every theorem is one leaf, `Leaf.of_kernel`):
 
-| stage | wall time | over prefix |
+| stage (leaf) | wall time | over prefix |
 |---|---|---|
-| prefix only | ≈ 6.9 s | — |
-| stage 1 `layout` | ≈ 9.1 s | ≈ 2.2 s |
-| `bounds` | ≈ 6.7 s | ≈ 0 |
-| stage 2' `loader` | ≈ 7.2 s | ≈ 0.2 s |
-| stage 3 one RELA window of 1,024 (separate run) | ≈ 8.7 s | ≈ 1.8 s |
-| stage 3 all 22 RELA windows (the whole table) | ≈ 49 s | ≈ 42 s |
-| 1,024 tiles from the entry point, bounds | ≈ 7.9 s | ≈ 1.0 s |
-| first 98 of them through the x86 decoder | ≈ 7.5 s | ≈ 0.6 s |
+| prefix only | ≈ 5.4 s | — |
+| stage 1 `layout` (`elf.layout`) | ≈ 6.8 s | ≈ 1.3 s |
+| `bounds` | ≈ 5.3 s | ≈ 0 |
+| stage 2' `loader` (`elf.loader`) | ≈ 5.6 s | ≈ 0.2 s |
+| stage 3 all 22 RELA windows, the whole table (`elf.rela`) | ≈ 43.6 s | ≈ 38 s |
+| 1,024 tiles from the entry point, bounds (`elf.tiles`) | ≈ 5.7 s | ≈ 0.3 s |
+| first 98 of them through the x86 decoder (`elf.tiles.x86`) | ≈ 5.7 s | ≈ 0.3 s |
+
+(An earlier run on the same sandbox, under heavier load, measured a ≈ 7 s prefix, ≈ 2.2 s for
+the layout and ≈ 42 s for the RELA table; one window of 1,024 entries alone took ≈ 1.8 s.)
 
 The monolithic alternative, one `decide +kernel` on `Parses F A` with the whole AST `A` as a
 literal, did not get as far as the kernel: elaborating the 2.5 MB literal for `A` hit
