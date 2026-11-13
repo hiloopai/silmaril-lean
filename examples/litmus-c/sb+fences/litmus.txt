@@ -1,0 +1,20 @@
+# SB with a seq_cst fence between the store and the load; the accesses follow the variant.
+name SB+fences
+source sb+fences.c
+loc x
+loc y
+result r0
+result r1
+thread P0
+st x 1
+fence
+ld y r0
+thread P1
+st y 1
+fence
+ld x r1
+exists r0=0 /\ r1=0
+c11 na racy data race on x and y
+c11 rlx forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory: two seq_cst fences order the store before the load
+c11 ra forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory
+c11 sc forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory

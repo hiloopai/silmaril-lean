@@ -6,5 +6,6 @@ modules = ["ProjectSelfTest", "Silmaril.Project.Formats.Thms", "Silmaril.Project
   "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Project.Shapes.X86.Thms",
   "Silmaril.Project.Shapes.SysV.Thms", "Silmaril.Project.Shapes.C.Thms",
   "Silmaril.Project.Shapes.SysV.Rtl.Defs", "SysVTvExample", "SysVTvRtl",
-  "Silmaril.Project.Shapes.CompilesTo.Thms", "CompilesToExamples"]
-roots = ["Silmaril.Project", "ProjectSelfTest", "SysVTvExample", "SysVTvRtl", "CompilesToExamples"]
+  "Silmaril.Project.Shapes.CompilesTo.Thms", "CompilesToExamples",
+  "Silmaril.Automata.Shapes.Thms"]
+roots = ["Silmaril.Project", "Silmaril.Automata", "ProjectSelfTest", "SysVTvExample", "SysVTvRtl", "CompilesToExamples"]

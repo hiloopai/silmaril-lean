@@ -1,0 +1,18 @@
+# LB: load buffering.
+name LB
+source lb.c
+loc x
+loc y
+result r0
+result r1
+thread P0
+ld x r0
+st y 1
+thread P1
+ld y r1
+st x 1
+exists r0=1 /\ r1=1
+c11 na racy data race on x and y
+c11 rlx forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory: RC11 requires acyclic(po | rf); the original C11 model allows it
+c11 ra forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory
+c11 sc forbidden RC11 (Lahav et al., PLDI 2017), recorded from memory

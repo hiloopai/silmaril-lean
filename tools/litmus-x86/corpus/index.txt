@@ -1,0 +1,78 @@
+# litmus-x86 corpus index. One test per line, columns separated by `|`:
+#   path | coverage | expected | basis
+# coverage: `tso`  = aligned write-back accesses of at most 8 bytes, locked RMWs and fences;
+#                    x86-TSO applies and XL is defined to coincide with it.
+#           `xl`   = not covered by x86-TSO; XL verdict only.
+# expected: the expected verdict of the test's witness (some final state satisfies the
+#           `exists`/`~exists` body, or violates the `forall` body): `allowed`/`forbidden`.
+#           For `tso` rows this is the x86-TSO verdict; the tool's checker must agree.
+#           For `xl` rows it is the XL verdict stated from the XL design (not machine-checked).
+# basis:    where the expected verdict comes from (see README.md, "Verdict provenance").
+herdtools7/catalogue/x86/tests/SB.litmus | tso | allowed | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin; same shape as paper iwp2.3.a/amd4 Allow
+herdtools7/catalogue/x86/tests/SB+mfence+po.litmus | tso | allowed | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/SB+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin; same shape as paper amd5 Forbid
+herdtools7/catalogue/x86/tests/SB+rfi-pos.litmus | tso | allowed | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin; same shape as paper iwp2.4/amd9 Allow
+herdtools7/catalogue/x86/tests/MP.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin; same shape as paper iwp2.1/amd1 Forbid
+herdtools7/catalogue/x86/tests/MP+mfence+po.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/MP+po+mfence.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/MP+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/LB.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin; same shape as paper iwp2.2/amd2 Forbid
+herdtools7/catalogue/x86/tests/LB+mfence+po.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/LB+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/R.litmus | tso | allowed | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/R+mfence+po.litmus | tso | allowed | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/R+po+mfence.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/R+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/R+mfence+rfi-po.litmus | tso | allowed | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/S.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/S+mfence+po.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/S+po+mfence.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/S+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/2+2W.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/2+2W+mfence+po.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/catalogue/x86/tests/2+2W+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription); herdtools7 records no verdict at the pin
+herdtools7/herd/tests/instructions/X86_64/A011.litmus | tso | forbidden | herd7 A011.litmus.expected (Observation Never)
+herdtools7/herd/tests/instructions/X86_64/A013.litmus | tso | forbidden | herd7 A013.litmus.expected (Observation Never)
+herdtools7/herd/tests/instructions/X86_64/A014.litmus | tso | forbidden | herd7 A014.litmus.expected (Observation Never)
+paper/iwp2.1-amd1.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/iwp2.2-amd2.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/iwp2.3.a-amd4.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/iwp2.3.b.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Require
+paper/iwp2.4-amd9.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/iwp2.5-amd8.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/amd3.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/iwp2.6.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/amd6.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: tso : Forbid
+paper/iwp2.7-amd7.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/iwp2.8.a.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/iwp2.8.b.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/n8.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/n3.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: tso : Forbid
+paper/amd10.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: tso : Forbid
+paper/amd5.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: tso : Forbid
+paper/n6.litmus | tso | allowed | paper x86tso-paper.pdf App. A: tso : Allow
+paper/n5.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/n4.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/n7.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/n1.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/n2.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: Forbid
+paper/rwc-unfenced.litmus | tso | allowed | paper x86tso-paper.pdf App. A: Allow
+paper/rwc-fenced.litmus | tso | forbidden | paper x86tso-paper.pdf App. A: tso : Forbid
+silmaril/IRIW+mfences.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/SB+lock-adds.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/SB+lock-xadds.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/SB+lock-cmpxchgs.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/RMW+lock-xadds.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/RMW+lock-xadds-final.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/RMW+lock-cmpxchgs.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/RMW+xchgs.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/RMW+lock-inc+W.litmus | tso | forbidden | checker (x86tso.cat transcription)
+silmaril/RMW+inc+W.litmus | tso | allowed | checker (x86tso.cat transcription)
+silmaril/MS+halves.litmus | xl | allowed | XL design: mixed-size accesses may tear per byte
+silmaril/MIS+straddle.litmus | xl | allowed | XL design: misaligned accesses may tear per byte
+silmaril/MP+movnti.litmus | xl | allowed | XL design: non-temporal stores are ordered only by sfence/mfence/locked ops
+silmaril/MP+movnti+sfence.litmus | xl | forbidden | XL design: sfence orders the non-temporal store before the later store
+silmaril/MP+movnti+lock.litmus | xl | forbidden | XL design: a locked op orders the non-temporal store before the later store
+silmaril/MP+stosb.litmus | xl | allowed | XL design: string-op stores are ordered only by sfence/mfence/locked ops
+silmaril/MP+stosb+sfence.litmus | xl | forbidden | XL design: sfence orders the string-op stores before the later store
+silmaril/STOS+internal.litmus | xl | allowed | XL design: the stores of one string op are unordered among themselves

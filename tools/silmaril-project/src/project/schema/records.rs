@@ -14,7 +14,7 @@
 //! record field of the same name, except the three spellings that Lean resolves (constants,
 //! value sources and instance arguments, see [`Ty`]).
 
-use super::{EXPECT_CODES, Manifest};
+use super::{CLASSIFICATIONS, DISCLOSURE_STATES, EXPECT_CODES, Manifest};
 use crate::project::check::{name_error, problem_name_error};
 use serde_json::{Value as Json, json};
 use std::collections::BTreeMap;
@@ -58,9 +58,15 @@ pub enum Ty {
     /// Instance arguments: `{ <binder name or position> = <reference> }`; a reference is a name,
     /// an integer, a boolean, `{ str = "…" }` or an application `["f", <reference>, …]`.
     Args,
+    /// Machine edges: an array of `[src, label, dst]` string triples.
+    Edges,
     /// Tool-only data (`meta = { … }`): any table. Lean ignores it, and so does R11; it is for
     /// other tools (provenance, the source a record was converted from).
     Meta,
+    /// One of [`CLASSIFICATIONS`] (a finding's classification).
+    Classification,
+    /// One of [`DISCLOSURE_STATES`].
+    Disclosure,
 }
 
 /// One key of a kind.
@@ -222,6 +228,48 @@ pub const RECORD_KINDS: &[KindSpec] = &[
         ],
     },
     KindSpec {
+        kind: "machine",
+        doc: "A machine document (`Silmaril.Automata.Document`): states, labels, edges and \
+              marking layers; Lean defines the constant `<name>` and fills `decl`, \
+              `deterministic` and `canonical`",
+        keys: &[
+            req("name", Ty::Name, "The machine's name (its identifier)"),
+            opt("states", Ty::Texts, "The state names, distinct"),
+            opt("labels", Ty::Texts, "The label names, distinct"),
+            opt(
+                "edges",
+                Ty::Edges,
+                "The edges `[src, label, dst]`, between declared names",
+            ),
+            opt("initial", Ty::Texts, "Initial states"),
+            opt("accepting", Ty::Texts, "Accepting states"),
+            opt("rejecting", Ty::Texts, "Rejecting states"),
+            opt("error", Ty::Texts, "Error states"),
+            DOC,
+            SID,
+        ],
+    },
+    KindSpec {
+        kind: "machine_binding",
+        doc: "A typed machine (`decl : DMachine S L` over `FinNamed` types) attached to a \
+              machine document; Lean proves `<name>.bound` (and `<name>.layers` for `marks`)",
+        keys: &[
+            req("name", Ty::Name, "The binding's name"),
+            req(
+                "machine",
+                Ty::Name,
+                "The machine document (a `machine` record)",
+            ),
+            req("decl", Ty::Const, "The typed machine"),
+            opt(
+                "marks",
+                Ty::Const,
+                "Its marks (`Marks S`), checked against the layers",
+            ),
+            DOC,
+        ],
+    },
+    KindSpec {
         kind: "instance",
         doc: "An instance of a problem over arguments: fix some of its arguments. The other \
               keys go to the instance's judgement",
@@ -279,6 +327,58 @@ pub const RECORD_KINDS: &[KindSpec] = &[
         keys: &[
             req("name", Ty::Problem, "The problem"),
             opt("reason", Ty::Text, "Why"),
+        ],
+    },
+    KindSpec {
+        kind: "deprecation",
+        doc: "A wrong problem, group or spec, kept for the record: why it is wrong and what \
+              replaces it. A `spec_bug` finding needs its problem (or the problem's spec, or the \
+              general problem it is an instance of) to be deprecated",
+        keys: &[
+            req("name", Ty::Problem, "The deprecated problem, group or spec"),
+            req("reason", Ty::Text, "Why it is wrong"),
+            opt(
+                "superseded_by",
+                Ty::Problems,
+                "The corrected problems, groups or specs that replace it",
+            ),
+        ],
+    },
+    KindSpec {
+        kind: "finding",
+        doc: "The classification of a failing problem's refutation: a genuine defect of the \
+              code under test (`error`, on a problem that is not deprecated), a wrong \
+              statement (`spec_bug`, on a deprecated one), a gap of the machine model \
+              (`model_gap`, with a `pointer` to the missing instruction or feature) or `unclear`",
+        keys: &[
+            req("name", Ty::Problem, "The refuted problem"),
+            req(
+                "classification",
+                Ty::Classification,
+                "`error`, `spec_bug`, `model_gap` or `unclear`",
+            ),
+            opt("note", Ty::Text, "What the refutation shows"),
+            opt(
+                "pointer",
+                Ty::Text,
+                "What it points at: the missing instruction or feature (required for \
+                 `model_gap`), a bug report, a commit",
+            ),
+            opt(
+                "affected_versions",
+                Ty::Texts,
+                "`error` only: the versions the defect affects",
+            ),
+            opt(
+                "fixed_in",
+                Ty::Text,
+                "`error` only: the first fixed version",
+            ),
+            opt(
+                "disclosure_status",
+                Ty::Disclosure,
+                "`error` only: `private`, `reported` or `public`",
+            ),
         ],
     },
     KindSpec {
@@ -495,6 +595,17 @@ fn type_error(ty: Ty, v: &Json) -> Option<String> {
             Json::Array(xs) if xs.iter().all(Json::is_string) => None,
             _ => Some("must be an array of strings".into()),
         },
+        Ty::Edges => match v {
+            Json::Array(xs)
+                if xs.iter().all(|e| {
+                    e.as_array()
+                        .is_some_and(|t| t.len() == 3 && t.iter().all(Json::is_string))
+                }) =>
+            {
+                None
+            }
+            _ => Some("must be an array of `[src, label, dst]` string triples".into()),
+        },
         Ty::Expect => match v {
             Json::String(s) if super::expect_code(s).is_some() => None,
             _ => Some(format!(
@@ -525,6 +636,14 @@ fn type_error(ty: Ty, v: &Json) -> Option<String> {
             }
         }
         Ty::Meta => (!v.is_object()).then(|| "must be a table".into()),
+        Ty::Classification => match v {
+            Json::String(s) if CLASSIFICATIONS.contains(&s.as_str()) => None,
+            _ => Some(format!("must be one of {}", CLASSIFICATIONS.join(", "))),
+        },
+        Ty::Disclosure => match v {
+            Json::String(s) if DISCLOSURE_STATES.contains(&s.as_str()) => None,
+            _ => Some(format!("must be one of {}", DISCLOSURE_STATES.join(", "))),
+        },
         Ty::Args => match v {
             Json::Object(m) if !m.is_empty() => m
                 .iter()
@@ -740,6 +859,12 @@ pub fn lint(text: &str, extra_kinds: &[String]) -> Linted {
                             );
                             ok = false;
                         }
+                        if key == "finding" {
+                            for why in super::markings::finding_key_errors(&keys) {
+                                diag(&mut out, x.span(), format!("{label}: {why}"));
+                                ok = false;
+                            }
+                        }
                         if key == "format_law"
                             && keys.get("law").and_then(Json::as_str) == Some("sound")
                             && !keys.contains_key("rel")
@@ -802,6 +927,8 @@ fn ty_schema(ty: Ty) -> Json {
         Ty::Text | Ty::Source | Ty::Const | Ty::Module | Ty::Problem => json!({"type": "string"}),
         Ty::Name => name,
         Ty::Problems | Ty::Texts => json!({"type": "array", "items": {"type": "string"}}),
+        Ty::Edges => json!({"type": "array", "items": {"type": "array", "minItems": 3,
+            "maxItems": 3, "items": {"type": "string"}}}),
         Ty::Names => json!({"type": "array", "items": name}),
         Ty::Expect => {
             let any_case: Vec<String> = EXPECT_CODES
@@ -821,6 +948,8 @@ fn ty_schema(ty: Ty) -> Json {
             json!({"type": "object", "minProperties": 1, "additionalProperties": reference})
         }
         Ty::Meta => json!({"type": "object"}),
+        Ty::Classification => json!({"enum": CLASSIFICATIONS}),
+        Ty::Disclosure => json!({"enum": DISCLOSURE_STATES}),
     }
 }
 
@@ -1016,6 +1145,58 @@ args = { n = ["f"] }
             assert!(l.diags.is_empty(), "{e}: {:?}", l.diags);
         }
         assert_eq!(super::super::expect_code("proved"), None);
+    }
+
+    #[test]
+    fn markings_lint() {
+        let good = r#"schema = "silmaril.records.v0.2"
+[[deprecation]]
+name = "demo.old"
+reason = "off by one"
+superseded_by = ["demo.new", "zlib/1.3.1/x"]
+[[finding]]
+name = "demo.bug"
+classification = "error"
+affected_versions = ["1.0"]
+fixed_in = "1.1"
+disclosure_status = "private"
+[[finding]]
+name = "demo.gap"
+classification = "model_gap"
+pointer = "pxor xmm0, xmm0"
+"#;
+        let l = lint(good, &[]);
+        assert!(l.diags.is_empty(), "{:?}", l.diags);
+        assert_eq!(l.tables.len(), 3);
+        let bad = r#"schema = "silmaril.records.v0.2"
+[[deprecation]]
+name = "demo.old"
+[[finding]]
+name = "demo.gap"
+classification = "gap"
+[[finding]]
+name = "demo.x"
+classification = "unclear"
+fixed_in = "2"
+disclosure_status = "secret"
+[[finding]]
+name = "demo.y"
+classification = "model_gap"
+"#;
+        let msgs: Vec<String> = lint(bad, &[])
+            .diags
+            .iter()
+            .map(|d| format!("{}:{}: {}", d.line, d.col, d.msg))
+            .collect();
+        for want in [
+            "2:1: deprecation demo.old: `reason` is required",
+            "6:18: finding.classification must be one of error, spec_bug, model_gap, unclear",
+            "7:1: finding demo.x: `fixed_in` is for `error` findings only",
+            "11:21: finding.disclosure_status must be one of private, reported, public",
+            "12:1: finding demo.y: a `model_gap` needs a `pointer` (the missing instruction or feature)",
+        ] {
+            assert!(msgs.iter().any(|m| m == want), "{want}: {msgs:?}");
+        }
     }
 
     #[test]

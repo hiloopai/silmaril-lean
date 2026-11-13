@@ -1,0 +1,19 @@
+[package]
+name = "litmus-run"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+license = "MIT"
+description = "Hardware litmus harness for silmaril-lean: run the x86 litmus corpus's assembled bytes natively and check observed outcomes against the model-allowed sets"
+
+[dependencies]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"
+
+[profile.release]
+debug = false
