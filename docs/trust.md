@@ -37,9 +37,11 @@ audit under that profile.
 `policy.toml` `[native]` lists scopes by module prefix. Each scope sets `max`, `default`,
 `deps` and `axioms`, inheriting the keys it omits. A child's `max` must lie within its
 parent's (checked when the policy loads). `Silmaril/Prelude/Trust/Policy/Defs.lean` loads the
-file, pins its hash and declares the trust sets (`default` currently holds the four `bytes.*`
-procedures). `scripts/check-layout.sh` fails if the pin is stale, if anything outside
-`Silmaril/Prelude/Trust` calls the native evaluator, or if a source file sets the ceiling.
+file, pins its hash and declares the trust sets. `default` currently holds exactly six names:
+`bytes.sameBytes`, `bytes.beq`, `bytes.wf`, `bytes.eqByteArray`, `bytes.cstring` and
+`elf.layout`. `elf.layout` is implemented in ELF's own work, not here. `scripts/check-layout.sh`
+fails if the pin is stale, if anything outside `Silmaril/Prelude/Trust` calls the native
+evaluator, or if a source file sets the ceiling.
 
 ## Provenance
 
