@@ -15,3 +15,5 @@ are not counted, and coverage is **partial**.
 In the checkout, with the sources present, `--strict-trust` passes and prints `policy valid on
 partial coverage (not a full audit …)`. The same dump without the exclusion
 (`trust-elf-profile-tests`) fails strict validation.
+
+`449a063e` only merges `main` into `91edfc6b`. `git diff 91edfc6b 449a063e` is empty for `Silmaril/Elf`, `Silmaril/Prelude`, `Silmaril/Data/IncludeBytes`, `policy.toml`, `lean-toolchain` and `lake-manifest.json`, so this dump is the dump of `91edfc6b` (core #125 `3c731fc1`).

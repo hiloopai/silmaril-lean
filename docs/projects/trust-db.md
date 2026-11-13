@@ -15,7 +15,7 @@ does not define a policy of its own. It does three things:
   violations, and fails when they differ from the core's;
 - it reports coverage, digests and enforcement honestly.
 
-Refs used: core #125 at `3c731fc1`, ELF #127 at `449a063e` (which merges #125 at `3c731fc1`).
+Refs used: core #125 at `3c731fc1`, ELF #127 at `449a063e`: `91edfc6b` (which merges #125 at `3c731fc1`) plus a merge of `main` that changes none of the trust-relevant sources.
 
 ## What a result means, and does not
 
