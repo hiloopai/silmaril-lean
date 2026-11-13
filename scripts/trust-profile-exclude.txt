@@ -1,0 +1,6 @@
+# Modules that scripts/trust-profile.sh skips when it builds everything under a profile.
+# Format: <profile or *> <module>  # reason. Keep this list short and every reason specific.
+paranoid Silmaril.Prelude.Bytes.Examples  # demonstrates bytes.eqByteArray natively (no kernel fallback)
+paranoid Silmaril.Data.IncludeBytes.KernelExamples  # demonstrates bytes.eqByteArray natively (no kernel fallback)
+paranoid Silmaril.Prelude.Trust.Examples  # tests the messages and axioms of the native profiles
+paranoid Silmaril.Prelude.BVDecide.EdgeExamples  # demonstrates the native SAT stage of bv_decide (no kernel route on this toolchain)
