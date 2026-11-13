@@ -1,0 +1,70 @@
+# Known differences of `wasm-jco component wit` / `embed` from wasm-tools 1.262.0
+# (tools/wasm-jco/tests/wit-cmd.sh). Format: CASE KIND<TAB>reason. KIND: embed, wit-comp, wit-pkg.
+async-builtins embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-builtins wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+async-builtins wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-export embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-export wit-comp	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-export wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-export-with-callback embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-export-with-callback wit-comp	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-export-with-callback wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-forward-builtins embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-forward-builtins wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+async-forward-builtins wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-import embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-import wit-comp	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-import wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-import-only-intrinsic wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+async-import-tricky wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+async-streams-and-futures embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-streams-and-futures wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+async-streams-and-futures wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-task-return-param-string embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-task-return-param-string wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+async-task-return-param-string wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+async-unit-builtins wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+cm32-names wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+export-interface-using-import wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+export-name-shuffling wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+exports wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+export-type-name-conflict wit-comp	inference: an exported interface re-exporting another interface type under a new name (use a.{x as y}) is printed as a new type
+fallible-constructor embed	the WIT elaborator rejects the package
+fallible-constructor wit-comp	the WIT decoder: an imported instance that is not a named interface
+implements embed	WIT implements (import b: a:b/i) is not in the WIT model
+implements wit-comp	WIT implements (import b: a:b/i) is not in the WIT model
+implements wit-pkg	WIT implements (import b: a:b/i) is not in the WIT model
+import-and-export-resource wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+import-memory-async-builtins embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+import-memory-async-builtins wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+import-memory-async-builtins wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+import-partial-export-full wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+import-resource-in-interface wit-comp	the WIT decoder: an imported instance that is not a named interface
+many-same-names wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+realloc-task-hook-async embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+realloc-task-hook-async wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+realloc-task-hook-async wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+resource-intrinsics-with-just-import wit-comp	the WIT decoder: an imported instance that is not a named interface
+resource-used-through-import wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+resource-using-export wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+return-call-ref-async embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+return-call-ref-async wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+return-call-ref-async wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+return-call-ref-payloads embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+return-call-ref-payloads wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+return-call-ref-payloads wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+threading embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+threading wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+threading wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+threading-wasm-ld-symbols wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+threading-wasm-ld-symbols64 wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+threading-wasm-ld-symbols-coop wit-comp	async: the component parser (Component.Binary.parse) has no async function types
+tricky-order wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+tricky-resources wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+tricky-resources2 wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+tricky-resources3 wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+tricky-resources4 wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)
+wasm-init-task embed	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+wasm-init-task wit-comp	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+wasm-init-task wit-pkg	async: the WIT model mangles async functions as [async] names (wasm-tools 1.262.0 marks the type only)
+worlds-with-type-renamings wit-comp	outside the projection; inference refused (a type shared between interfaces, or a name clash)

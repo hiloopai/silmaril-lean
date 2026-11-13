@@ -13,8 +13,10 @@ the **clap dialect** (`Silmaril.Cli.Clap`: `Tool.read`, the reading the pinned t
 with), so that a real tool can parse its arguments with the very reading its specification
 uses:
 
-* `Tool.text t argv out`: what the front end prints on an outcome that does not run, derived
-  from the grammar: the `-h` help of the command (`Surface.Command.help`, clap's layout) on
+* `Tool.text t argv out`: what the front end prints on an outcome that does not run, on the
+  channel the outcome fixes; the text is the tool's own presentation when it fixes one
+  (`Tool.present`; clap's exact texts are `Tool.exact` of `Silmaril.Cli.Clap.Exact`), else
+  derived from the grammar: the `-h` help of the command (`Surface.Command.help`, clap's layout) on
   stdout; the version line on stdout; a group without a subcommand: its help on stderr; a usage
   error: `error: MSG`, a blank line, the usage line of the command the error is located at
   (`Tool.errorPath`), and, when the grammar has a help flag, `For more information, try
@@ -109,14 +111,24 @@ def Tool.errorText (t : Tool) (argv : List String) (msg : String) : String :=
   "error: " ++ msg ++ "\n\n" ++ t.usageText (t.errorPath argv) ++
     (if t.hasHelp then "\n\nFor more information, try '--help'." else "")
 
+/-- The text of an outcome that does not run: the tool's own (`Tool.present`), else the
+default `dflt`. -/
+def Tool.body (t : Tool) (argv : List String) (out : Outcome) (dflt : String) : String :=
+  match t.present with
+  | some f => f argv out
+  | none => dflt
+
 /-- **What the front end prints** on an outcome of the reading of `argv` (nothing when the
-program runs). -/
+program runs): help and the version on stdout, a missing subcommand and usage errors on stderr;
+the text is the tool's own presentation (`Tool.present`, e.g. clap's exact texts) when it has
+one, else derived from the grammar (the `-h` help, `name version`, `Tool.errorText`). -/
 def Tool.text (t : Tool) (argv : List String) : Outcome → Option (Channel × String)
   | .run _ _ | .undecided _ _ _ => none
-  | .help p => some (.stdout, t.helpText p)
-  | .version => some (.stdout, t.grammar.name ++ " " ++ t.grammar.version.getD "")
-  | .needCommand p => some (.stderr, t.helpText p)
-  | .error msg => some (.stderr, t.errorText argv msg)
+  | .help p => some (.stdout, t.body argv (.help p) (t.helpText p))
+  | .version =>
+    some (.stdout, t.body argv .version (t.grammar.name ++ " " ++ t.grammar.version.getD ""))
+  | .needCommand p => some (.stderr, t.body argv (.needCommand p) (t.helpText p))
+  | .error msg => some (.stderr, t.body argv (.error msg) (t.errorText argv msg))
 
 /-- What the program does with an outcome: run with the matches, or print the text and exit
 with the outcome's code. -/
