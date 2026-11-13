@@ -1,5 +1,0 @@
-{"core_api":"v1-hooks","kind":"header","schema":"silmaril.trust-adapter.v0.2","toolchain":"4.37.0-nightly-2026-11-05","producer":"silmaril-project 0.1.0 trust-dump (core stable hooks)","origin":"lean","roots":["Silmaril"]}
-{"kind":"input","path":"lean-toolchain","sha256":"c8dac2fde85cb3ae79513dc425bb759258a3d5278bbdc29ff68450b45e81bcb9","schema":"silmaril.trust-adapter.v0.2"}
-{"kind":"input","path":"lake-manifest.json","sha256":"43fc103a78c1fd2d05257c0f5bb96f491f85d659e4bfc5cafada85809445c3f8","schema":"silmaril.trust-adapter.v0.2"}
-{"kind":"input","path":"policy.toml","sha256":"f6564a0881e4dd379c84e89e8fd8299b0cfc3183bb7bdda3faec2d2e55f1a013","schema":"silmaril.trust-adapter.v0.2"}
-{"kind":"source","module":"Silmaril.Prelude.Bytes.Digits.Defs","path":"Silmaril/Prelude/Bytes/Digits/Defs.lean","sha256":"23c609cdc75a28e6fdca74ef6e96e66b0934560b569dd6723c55f18c0870f8d1","schema":"silmaril.trust-adapter.v0.2"}

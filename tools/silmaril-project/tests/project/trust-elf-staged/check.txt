@@ -1,12 +1,12 @@
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust dump: Silmaril.Prelude.Trust.Export (#trust_export) (main module «.lake».silmaril.TrustExport) (origin lean); profile default, ceiling local
-trust: 13 procedures (11 with a kernel side), 6 sets, 5 scopes; 36 uses (1 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 10 covered, 130 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 17 external; 299 declarations audited
+trust dump: silmaril-project 0.1.0 trust-dump (core stable hooks) (origin lean); profile default, ceiling local
+trust: 12 procedures (11 with a kernel side), 6 sets, 5 scopes; 36 uses (1 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 10 covered, 0 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 14 external; 299 declarations audited
 trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
 trust digests: inputs changed, covered modules 0 consistent, 10 stale, 0 unknown (consistent digests are not proof of freshness)
-trust coverage: partial (130 unaudited module(s); their declarations are not audited)
+trust coverage: complete (every described module is audited; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: f063442d70e13bbbf3740e43cf747077c56a6f000d8b3ef0e18504558dc30701
+sql sha256: 237abba15996cfa204c670a4a403c95391602cfdf093d27000a6503571ede7b9
 exit: ok

@@ -1,2 +1,1 @@
-standard = ["propext", "Classical.choice", "Quot.sound"]
-# Fixture policy: only `standard` and its digest are read.
+# Stand-in for policy.toml (fixture); only its digest is recorded.

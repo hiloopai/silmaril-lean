@@ -90,14 +90,18 @@ fn golden_cases() {
         let dir = case.clone();
         let tmp = tempfile::tempdir().unwrap();
         let sql = tmp.path().join("project.sql");
-        let trust = dir.join("trust.json").is_file();
+        // Trust lines (`trust.jsonl`, the primary input) or an export (`trust.json`, optional).
+        let trust_file = ["trust.jsonl", "trust.json"]
+            .into_iter()
+            .find(|f| dir.join(f).is_file());
+        let trust = trust_file.is_some();
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_silmaril-project"));
         cmd.args(["sqlite", "--dump", "dump.json", "--sql"])
             .arg(&sql)
             .arg("--db")
             .arg(tmp.path().join("project.sqlite"));
         if trust {
-            cmd.args(["--trust", "trust.json"]);
+            cmd.args(["--trust", trust_file.unwrap()]);
         }
         if dir.join("strict-trust").is_file() {
             cmd.arg("--strict-trust");
@@ -429,7 +433,7 @@ fn strict_trust_fails_where_report_only_writes() {
             "--dump",
             "dump.json",
             "--trust",
-            "trust.json",
+            "trust.jsonl",
             "--sql",
         ])
         .arg(tmp.path().join("project.sql"))
@@ -466,7 +470,7 @@ fn strict_trust_fails_where_report_only_writes() {
         stdout.lines().any(|l| l.starts_with("warning: trust ")),
         "{stdout}"
     );
-    assert_eq!(rows, Some((5, "report-only".to_string())));
+    assert_eq!(rows, Some((4, "report-only".to_string())));
 
     let (ok, stdout, rows) = run(true);
     assert!(!ok, "{stdout}");
@@ -505,7 +509,7 @@ fn strict_trust_reports_partial_coverage() {
                 "--dump",
                 "dump.json",
                 "--trust",
-                "trust.json",
+                "trust.jsonl",
                 "--strict-trust",
                 "--sql",
             ])
@@ -566,42 +570,50 @@ fn strict_trust_reports_partial_coverage() {
     }
 }
 
-/// Real producer output and hand-written fixtures are told apart: the `trust-core-*` and
-/// `trust-elf-*` cases are documents of the core's exporter, with a README naming their source
-/// commit; every other trust case says it is a fixture; `*-rejected` cases are not documents.
+/// Real producer output and hand-written fixtures are told apart. Trust lines (`trust.jsonl`):
+/// the `trust-core-*` and `trust-elf-*` cases say `origin = lean` and have a README naming their
+/// source commit; the rest say `origin = fixture`. Exports (`trust.json`, the optional input): the
+/// real one comes from the core's exporter, the fixture says so in `producer.tool`.
 #[test]
 fn trust_cases_declare_their_origin() {
     let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project");
     let mut seen = 0;
     for e in fs::read_dir(&base).unwrap() {
         let dir = e.unwrap().path();
-        let Some(text) = fs::read_to_string(dir.join("trust.json")).ok() else {
-            continue;
-        };
         let name = dir.file_name().unwrap().to_string_lossy().to_string();
-        seen += 1;
-        if name.ends_with("-rejected") {
-            assert!(
-                serde_json::from_str::<serde_json::Value>(&text).is_err(),
-                "{name}"
-            );
-            continue;
-        }
-        let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(doc["schema"], "silmaril.trust-core.v1", "{name}");
-        let tool = doc["producer"]["tool"].as_str().unwrap();
-        if name.starts_with("trust-core-") || name.starts_with("trust-elf-") {
+        let readme = fs::read_to_string(dir.join("README.md")).unwrap_or_default();
+        if let Ok(text) = fs::read_to_string(dir.join("trust.jsonl")) {
+            let header: serde_json::Value = text
+                .lines()
+                .map(|l| serde_json::from_str::<serde_json::Value>(l).unwrap())
+                .find(|v| v["kind"] == "header")
+                .unwrap_or_else(|| panic!("{name}: no header"));
+            let real = name.starts_with("trust-core-") || name.starts_with("trust-elf-");
             assert_eq!(
-                tool, "Silmaril.Prelude.Trust.Export (#trust_export)",
+                header["origin"],
+                if real { "lean" } else { "fixture" },
                 "{name}"
             );
-            let readme = fs::read_to_string(dir.join("README.md")).unwrap_or_default();
-            assert!(readme.contains("real producer output"), "{name}: README");
-        } else {
-            assert!(tool.contains("fixture"), "{name}: {tool}");
+            if real {
+                assert!(readme.contains("real producer output"), "{name}: README");
+            }
+            seen += 1;
+        } else if let Ok(text) = fs::read_to_string(dir.join("trust.json")) {
+            let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
+            assert_eq!(doc["schema"], "silmaril.trust-core.v1", "{name}");
+            let tool = doc["producer"]["tool"].as_str().unwrap();
+            if readme.contains("real producer output") {
+                assert_eq!(
+                    tool, "Silmaril.Prelude.Trust.Export (#trust_export)",
+                    "{name}"
+                );
+            } else {
+                assert!(tool.contains("fixture"), "{name}: {tool}");
+            }
+            seen += 1;
         }
     }
-    assert!(seen >= 12, "{seen} trust cases");
+    assert!(seen >= 13, "{seen} trust cases");
 }
 
 /// The evidence of the real exports survives conversion exactly: an inherited native result
@@ -619,7 +631,7 @@ fn real_export_evidence_is_kept_exactly() {
                 "--dump",
                 "dump.json",
                 "--trust",
-                "trust.json",
+                "trust.jsonl",
                 "--sql",
             ])
             .arg(tmp.path().join("p.sql"))
@@ -668,13 +680,23 @@ fn real_export_evidence_is_kept_exactly() {
             "Silmaril.Thesis"
         ]
     );
+    // `elf.layout` is named by the set `elf` but implemented nowhere in this environment: a set
+    // member, never a procedure, so nothing can run under it.
+    assert!(
+        q(
+            &b,
+            "SELECT name FROM trust_procedures WHERE name = 'elf.layout'"
+        )
+        .is_empty()
+    );
     assert_eq!(
         q(
             &b,
-            "SELECT name FROM trust_procedures WHERE kind = 'named' AND implemented = 0"
+            "SELECT set_name FROM trust_set_members WHERE member = 'elf.layout'"
         ),
-        ["elf.layout"]
+        ["elf"]
     );
+
     let (_t, p) = db("trust-core-profile-tests");
     assert_eq!(
         q(

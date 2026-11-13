@@ -1,13 +1,13 @@
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust dump: hand-written fixture (not producer output) (main module Fixture) (origin fixture); profile default, ceiling local
-trust: 6 procedures (4 with a kernel side), 7 sets, 3 scopes; 2 uses (0 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 3 covered, 0 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 1 external; 4 declarations audited
+trust dump: hand-written fixture (not producer output) (origin fixture); profile default, ceiling local
+trust: 12 procedures (11 with a kernel side), 7 sets, 3 scopes; 2 uses (0 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 4 covered, 0 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 2 external; 2 declarations audited
 trust violations: 0 (0 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 0 unverified native, 0 axioms outside the set)
-trust digests: inputs match, covered modules 3 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
-trust coverage: complete (every described module is audited; modules outside `Silmaril` are external)
+trust digests: inputs match, covered modules 4 consistent, 0 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: complete (every described module is audited; modules outside the roots are external)
 trust policy: enforced (--strict-trust): violations and incomplete evidence are errors
 trust result: policy valid on complete coverage of the described modules (the declarations it audits; not a proof the dump is complete)
-sql sha256: 0848f6e845ef07bdb568670623ed066981e4e3ecc4be959c33af5763ffe1f3ba
+sql sha256: ce4054ccfd2d0e310acc44797b88222d44fc1d1a33200a505edc1c434df98b6f
 exit: ok

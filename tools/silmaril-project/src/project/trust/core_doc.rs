@@ -6,8 +6,8 @@
 //! and each is mapped explicitly. What the export does not carry is either taken from a file whose
 //! digest the export records, or recomputed and cross-checked, never assumed:
 //!
-//! - the sets of the policy file itself (`standard`) are read from `policy.toml` only if its
-//!   SHA-256 equals the export's `inputs.policy_toml_sha256`;
+//! - every set a policy names must be in the export; the policy file's own sets (`standard`) are
+//!   not, so such an export is refused as missing metadata (nothing is read from elsewhere);
 //! - effective sets per module are recomputed with the core's rules by the ingest, whose
 //!   per-declaration violation counts must equal the export's `violations`;
 //! - a module with no declaration in the export is described but not audited.
@@ -16,11 +16,9 @@
 //! granted; `unresolved` must list exactly the set members they account for; a native use with
 //! `verified = false` is kept and flagged.
 
-use super::sha256_of;
 use crate::project::schema::*;
 use serde::Deserialize;
 use std::collections::BTreeSet;
-use std::path::Path;
 
 pub const CORE_DOC_SCHEMA: &str = "silmaril.trust-core.v1";
 /// The producer string of the real exporter.
@@ -199,60 +197,8 @@ fn one(field: &str, scope: &str, v: &Option<Vec<String>>) -> Result<Option<Strin
     }
 }
 
-/// The top-level `standard = [...]` list of `policy.toml` (the core's `parsePolicy` reads that key
-/// only), if the file's digest is `want`.
-fn policy_sets(dir: &Path, want: &Option<String>) -> Result<Vec<LineSet>, String> {
-    let Some(want) = want else {
-        return Err(
-            "inputs.policy_toml_sha256 is null: the policy file's own sets (`standard`) \
-                    cannot be read"
-                .into(),
-        );
-    };
-    match sha256_of(dir, "policy.toml") {
-        None => {
-            return Err(
-                "policy.toml is missing here, so its own sets (`standard`) cannot be \
-                        read; the export does not carry them"
-                    .into(),
-            );
-        }
-        Some(h) if h != *want => {
-            return Err(format!(
-                "policy.toml here has SHA-256 {h}, not the export's {want}: its own sets \
-                 (`standard`) are not the exported policy's"
-            ));
-        }
-        Some(_) => {}
-    }
-    let text = std::fs::read_to_string(dir.join("policy.toml")).map_err(|e| e.to_string())?;
-    let table: toml::Table = text.parse().map_err(|e| format!("policy.toml: {e}"))?;
-    let mut out = Vec::new();
-    if let Some(v) = table.get("standard") {
-        let members = v
-            .as_array()
-            .and_then(|xs| {
-                xs.iter()
-                    .map(|x| x.as_str().map(String::from))
-                    .collect::<Option<Vec<_>>>()
-            })
-            .ok_or("policy.toml: `standard` is not a list of names")?;
-        out.push(LineSet {
-            name: "standard".into(),
-            all: false,
-            origin: Some("policy".into()),
-            members,
-            includes: vec![],
-            resolved: None,
-            doc: Some("the policy file's own set, read from policy.toml (digest checked)".into()),
-        });
-    }
-    Ok(out)
-}
-
-/// Convert an export into internal lines. `dir` is where `policy.toml` is read (see the module
-/// docs). Errors name the field.
-pub fn convert(doc: Doc, dir: &Path) -> Result<Vec<TrustLine>, String> {
+/// Convert an export into internal lines (see the module docs). Errors name the field.
+pub fn convert(doc: Doc) -> Result<Vec<TrustLine>, String> {
     if doc.schema != CORE_DOC_SCHEMA {
         return Err(format!("schema {:?} is not {CORE_DOC_SCHEMA}", doc.schema));
     }
@@ -290,11 +236,6 @@ pub fn convert(doc: Doc, dir: &Path) -> Result<Vec<TrustLine>, String> {
             }));
         }
     }
-    out.extend(
-        policy_sets(dir, &doc.inputs.policy_toml_sha256)?
-            .into_iter()
-            .map(TrustLine::Set),
-    );
 
     // Procedures.
     let mut named = BTreeSet::new();
@@ -475,6 +416,38 @@ pub fn convert(doc: Doc, dir: &Path) -> Result<Vec<TrustLine>, String> {
             policy_file: Some(p.origin.file),
             policy_pin: Some(p.origin.pin),
         }));
+    }
+
+    // Every set a policy names must be supplied (or be `all`/`none`). The export does not carry
+    // the policy file's own sets (`standard`); a policy naming one is missing metadata, and the
+    // export is unsupported until it carries them. Nothing is read from elsewhere or assumed.
+    let supplied: BTreeSet<String> = out
+        .iter()
+        .filter_map(|l| match l {
+            TrustLine::Set(s) => Some(s.name.clone()),
+            _ => None,
+        })
+        .collect();
+    let mut missing = BTreeSet::new();
+    for l in &out {
+        if let TrustLine::Scope(sc) = l {
+            for n in [&sc.max, &sc.default, &sc.deps, &sc.axioms]
+                .into_iter()
+                .flatten()
+            {
+                if n != "all" && n != "none" && !supplied.contains(n) {
+                    missing.insert(format!("{n} (named by policy {})", sc.module));
+                }
+            }
+        }
+    }
+    if !missing.is_empty() {
+        return Err(format!(
+            "missing metadata: the export does not supply the set(s) {}; {CORE_DOC_SCHEMA} is \
+             unsupported as an input until it carries every set its policies name \
+             (use the trust lines of `sil project trust-dump`)",
+            missing.into_iter().collect::<Vec<_>>().join(", ")
+        ));
     }
 
     // Modules and their sources.

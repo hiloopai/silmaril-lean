@@ -1,1 +1,0 @@
--- Stand-in source of Silmaril.Elf.Parse.Defs (trust fixture).

@@ -72,30 +72,29 @@ pub enum Command {
         #[arg(long)]
         no_build: bool,
     },
-    /// Write the core's trust export (`silmaril.trust-core.v1`, `#trust_export`) for the
-    /// `Silmaril` modules the given modules reach, which `check` and `sqlite` read with `--trust`
+    /// Elaborate the trust driver over the core trust API and write the trust lines
+    /// (`silmaril.trust.v1` and `silmaril.trust-adapter.v0.1` lines) that `check` and `sqlite` read with `--trust`
     TrustDump {
         #[command(flatten)]
         dir: DirArg,
-        /// Modules to import; default: the project's modules
+        /// Modules to import (their imports are described too); default: the project's modules
         #[arg(long = "module")]
         modules: Vec<String>,
-        /// Audit only the reached modules under these prefixes (default: every reached
-        /// `Silmaril` module); the others are described but not audited (partial coverage)
+        /// Module prefixes to describe and audit (default: `Silmaril`)
         #[arg(long = "root")]
         roots: Vec<String>,
-        /// A reached module not to audit (described, not audited: partial coverage)
-        #[arg(long)]
-        exclude: Vec<String>,
         /// Output, relative to the project directory (generated: not committed)
-        #[arg(long, default_value = ".lake/silmaril/trust-core.json")]
+        #[arg(long, default_value = ".lake/silmaril/trust.jsonl")]
         out: PathBuf,
         /// The Lake command (default: `$SIL_LAKE`, else `lake`); split on whitespace
         #[arg(long)]
         lake: Option<String>,
-        /// Skip `lake build --wfail <modules>` before elaborating the drivers
+        /// Skip `lake build --wfail <modules>` before elaborating the driver
         #[arg(long)]
         no_build: bool,
+        /// `MODULE=REASON`: a module whose theorems are not audited (coverage becomes partial)
+        #[arg(long)]
+        exclude: Vec<String>,
     },
     /// Check the manifest, the registries, the dump and the files; print statuses and groups
     Check {
@@ -104,7 +103,7 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
-        /// The core's trust export (`silmaril.trust-core.v1`, from `trust-dump`), relative to the project directory;
+        /// The trust lines from `trust-dump` (or, optionally, a `silmaril.trust-core.v1` export), relative to the project directory;
         /// without it, decision-procedure and axiom use is reported as unaudited
         #[arg(long)]
         trust: Option<PathBuf>,
@@ -120,7 +119,7 @@ pub enum Command {
         /// The dump (`sil project dump`), relative to the project directory
         #[arg(long, default_value = ".lake/silmaril/dump.json")]
         dump: PathBuf,
-        /// The core's trust export (`silmaril.trust-core.v1`, from `trust-dump`), relative to the project directory;
+        /// The trust lines from `trust-dump` (or, optionally, a `silmaril.trust-core.v1` export), relative to the project directory;
         /// without it, the trust tables are empty and `meta` says `trust.status = absent`
         #[arg(long)]
         trust: Option<PathBuf>,
@@ -1451,10 +1450,10 @@ pub fn run(command: Command) -> Result<()> {
             dir: DirArg { dir },
             modules,
             roots,
-            exclude,
             out,
             lake,
             no_build,
+            exclude,
         } => {
             let modules = if modules.is_empty() {
                 Project::load(&dir)?.modules
@@ -1464,6 +1463,11 @@ pub fn run(command: Command) -> Result<()> {
             if modules.is_empty() {
                 bail!("no modules: pass --module or set `modules` in silmaril.toml");
             }
+            let roots = if roots.is_empty() {
+                vec!["Silmaril".to_string()]
+            } else {
+                roots
+            };
             let lake: Vec<String> = lake
                 .or_else(|| std::env::var("SIL_LAKE").ok())
                 .unwrap_or_else(|| "lake".into())
@@ -1471,74 +1475,69 @@ pub fn run(command: Command) -> Result<()> {
                 .map(String::from)
                 .collect();
             let abs_dir = fs::canonicalize(&dir).into_diagnostic()?;
-            if trust::core_has_export(&abs_dir) != Some(true) {
-                bail!(
-                    "no core trust export here (Silmaril/Prelude/Trust/Export/Defs.lean with \
-                     silmaril.trust-core.v1): trust-dump needs #125 at 792e7ed6 or later"
-                );
-            }
             let gen_dir = abs_dir.join(".lake/silmaril");
             fs::create_dir_all(&gen_dir).into_diagnostic()?;
+            let raw = gen_dir.join("trust.raw.jsonl");
+            let core_raw = gen_dir.join("trust.core.jsonl");
+            if trust::core_has_hooks(&abs_dir) == Some(false) {
+                bail!(
+                    "the core trust framework here has no stable dump hooks (moduleLine, auditLine): \
+                     trust-dump needs #125 at ba1b5f84 or later"
+                );
+            }
+            let excluded: Vec<(String, String)> = exclude
+                .iter()
+                .map(|e| {
+                    e.split_once('=')
+                        .map(|(m, r)| (m.trim().to_string(), r.trim().to_string()))
+                        .filter(|(m, r)| !m.is_empty() && !r.is_empty())
+                        .ok_or_else(|| miette!("--exclude {e:?}: give MODULE=REASON"))
+                })
+                .collect::<Result<_>>()?;
+            let _ = fs::remove_file(&core_raw);
+            let driver_path = gen_dir.join("TrustDump.lean");
+            fs::write(
+                &driver_path,
+                trust::driver(&modules, &roots, &raw, &core_raw),
+            )
+            .into_diagnostic()?;
             if !no_build {
-                let mut args = vec!["build", "--wfail", "Silmaril.Prelude.Trust.Export.Defs"];
+                let mut args = vec!["build", "--wfail"];
                 args.extend(modules.iter().map(String::as_str));
                 eprintln!("building {} …", modules.join(", "));
                 run_lake(&abs_dir, &lake, &args)?;
             }
-            // Stage 1: the Silmaril modules the imports reach.
-            let list = gen_dir.join("trust-modules.txt");
-            let list_driver = gen_dir.join("TrustModules.lean");
-            fs::write(&list_driver, trust::list_driver(&modules, &list)).into_diagnostic()?;
+            eprintln!("elaborating the trust driver…");
             run_lake(
                 &abs_dir,
                 &lake,
-                &["env", "lean", &list_driver.display().to_string()],
+                &["env", "lean", &driver_path.display().to_string()],
             )?;
-            let reached: Vec<String> = fs::read_to_string(&list)
-                .into_diagnostic()?
-                .lines()
-                .filter(|l| !l.trim().is_empty())
-                .map(String::from)
-                .collect();
-            for e in &exclude {
-                if !reached.contains(e) {
-                    bail!("--exclude {e}: not a module the imports reach");
-                }
-            }
-            let audited: Vec<String> = reached
-                .iter()
-                .filter(|m| {
-                    roots.is_empty()
-                        || roots
-                            .iter()
-                            .any(|r| *m == r || m.starts_with(&format!("{r}.")))
-                })
-                .filter(|m| !exclude.contains(m))
-                .cloned()
-                .collect();
-            // Stage 2: the core's export, unchanged.
+            let text = fs::read_to_string(&raw).into_diagnostic()?;
+            let core = fs::read_to_string(&core_raw).into_diagnostic()?;
+            let producer = format!(
+                "silmaril-project {} trust-dump (core stable hooks)",
+                env!("CARGO_PKG_VERSION")
+            );
+            let lines = trust::complete(
+                &text,
+                &core,
+                &abs_dir,
+                &trust::Completion {
+                    roots: &roots,
+                    producer: &producer,
+                    inputs: &["lean-toolchain", "lake-manifest.json", "policy.toml"],
+                    excluded: &excluded,
+                },
+            )
+            .map_err(|e| miette!("{e}"))?;
             let shown = shown(&dir, &out);
             let out = abs_dir.join(out);
             if let Some(p) = out.parent() {
                 fs::create_dir_all(p).into_diagnostic()?;
             }
-            let export_driver = gen_dir.join("TrustExport.lean");
-            fs::write(
-                &export_driver,
-                trust::export_driver(&modules, &audited, &out),
-            )
-            .into_diagnostic()?;
-            eprintln!(
-                "exporting ({} of {} reached modules audited)…",
-                audited.len(),
-                reached.len()
-            );
-            run_lake(
-                &abs_dir,
-                &lake,
-                &["env", "lean", &export_driver.display().to_string()],
-            )?;
-            eprintln!("wrote {shown}");
+            fs::write(&out, &lines).into_diagnostic()?;
+            eprintln!("wrote {shown} ({} lines)", lines.lines().count());
             Ok(())
         }
         Command::Check {

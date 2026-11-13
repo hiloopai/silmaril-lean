@@ -1,6 +1,5 @@
 warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.lengthNative in Silmaril.Trust.Examples.forgedShape (Silmaril.Prelude.Trust.Examples): axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1 is not a native run of test.lengthNative
-warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.lengthNative in Silmaril.Trust.Examples.forgedShape (Silmaril.Prelude.Trust.Examples): the core did not verify axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedShape._native.lengthNative.ax_1_1 (verified = false)
-warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.sumEven in Silmaril.Trust.Examples.forgedDecl (Silmaril.Prelude.Trust.Examples): the core did not verify axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1 (verified = false)
+warning: trust Silmaril.Prelude.Trust.Examples: mismatched use record: use of test.sumEven in Silmaril.Trust.Examples.forgedDecl: the core's audit lists axiom _private.Silmaril.Prelude.Trust.Examples.0.Silmaril.Trust.Examples.forgedDecl._native.edge.test.sumEven.ax_1_1 as unverified
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byLocal: test.evenSum
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byName: test.evenSum
 warning: trust Silmaril.Prelude.Trust.Examples: own-native-not-allowed: Silmaril.Trust.Examples.byPaired: test.evenSumPaired
@@ -13,12 +12,12 @@ warning: trust Silmaril.Prelude.Trust.Examples: unverified-native: Silmaril.Trus
 summary: 0 problems (0 local), 0 groups, 0 records, 0 edges, 0 artifacts
 verdicts: 0 holds, 0 fails, 0 unknown (all 0 problems); 0 holds, 0 fails, 0 unknown (0 local)
 root: (none)
-trust dump: Silmaril.Prelude.Trust.Export (#trust_export) (main module «.lake».silmaril.TrustExport) (origin lean); profile default, ceiling local
-trust: 15 procedures (5 with a kernel side), 9 sets, 5 scopes; 17 uses (8 native, 0 kernel runs of a checker the registry does not name)
-trust modules: 5 covered, 2 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 5 external; 325 declarations audited
+trust dump: silmaril-project 0.1.0 trust-dump (core stable hooks) (origin lean); profile default, ceiling local
+trust: 9 procedures (5 with a kernel side), 9 sets, 5 scopes; 17 uses (8 native, 0 kernel runs of a checker the registry does not name)
+trust modules: 6 covered, 0 unaudited, 0 excluded, 0 unsupported, 0 undescribed, 5 external; 325 declarations audited
 trust violations: 9 (6 own native not allowed, 0 inherited native outside deps, 0 unregistered native, 3 unverified native, 0 axioms outside the set)
-trust digests: inputs changed, covered modules 0 consistent, 5 stale, 0 unknown (consistent digests are not proof of freshness)
-trust coverage: partial (2 unaudited module(s); their declarations are not audited)
+trust digests: inputs changed, covered modules 0 consistent, 6 stale, 0 unknown (consistent digests are not proof of freshness)
+trust coverage: complete (every described module is audited; modules outside the roots are external)
 trust policy: NOT enforced (report only): violations are warnings and rows of trust_violations; validate with --strict-trust
-sql sha256: b815c6a173cd1cfa437c2a38947b01fae01692c6508d7d1905641a007bf06dac
+sql sha256: 5f0a642513d3636e76c9a6e071704b579e6d25c5e17e1f6cf0b17277c4d398bf
 exit: ok
