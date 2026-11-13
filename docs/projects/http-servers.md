@@ -32,7 +32,10 @@ vocabularies and are related to the core as follows.
 | Traces (`Core`, `Http`, `Examples.Counter`) | the core | it is the core | Proved |
 | WASI (`Exchange`, `Calls`, `WasiHttp`, `WasiExamples`) | exchange servers: sets of core `History`s over the core `Sig` | lifted into core models by `Exchange.seqUse` and `Exchange.fresh`, with linearizability and refinement of `Machine.server` proved (`fresh_refines_server`, `hello_fresh`, `echo_fresh_lin`) | Proved |
 | State models (`State`, `State.{Component,OwnedFs,SharedFs}`, `State.Traces`) | histories `Ev.call`/`Ev.ret`, `Atomic σ`, Herlihy–Wing `Linearizable`, `Abstraction` | identified with the core by `State.Traces`: a history is a core trace with one connection per request (`toTrace`), `Atomic σ` is `Machine (sig Req Resp) σ` by definition, Herlihy–Wing linearizability is `Sen.lin` (`linearizable_iff_lin`), the closed host is `Machine.server` (`closed_model_tr_iff`), and an abstraction gives refinement of `Machine.server` (`Abstraction.model_refines`) | Proved |
-| File-backed store component (`WasiFs`) | a `wasi:http` component over `wasi:filesystem`, read as a state-model server | refines the file store of state model (b) (`wasiStoreSmall_refines`); its read-only filesystem answers satisfy the `Silmaril.Wasi` filesystem theory (`storeHost_fsOk`) | Proved |
+| File-backed store component (`WasiFs`, `WasiFs.Kv`) | a `wasi:http` component over `wasi:filesystem`, read as a state-model server | refines the file store of state model (b) (`wasiStoreSmall_refines`) and, through it, the component-state key-value store of (a) on targets in origin form (`wasiStoreSmall_kv`); its read-only filesystem answers satisfy the `Silmaril.Wasi` filesystem theory (`storeHost_fsOk`) | Proved |
+| Shared files and the static server as components (`WasiFs.Shared`, `WasiFs.Static`) | the same component over files others change; a static file server component | the store is linearizable on the keys nobody else touches (`wasiShared_linearizable_on`); the static server refines (b)'s static server, given the open `Task.staticRuns` | Proved (static: conditional) |
+| Reducts (`State.Reduct`) | servers read through maps of requests and responses | the histories of `M.mapResp g` are those of `M` with responses mapped (`Server.hists_mapResp`) | Proved |
+| Connections on state histories (`State.Conn`) | `Sen.perConn`, `Model.perConn`, `Sen.sc` on `toTrace` | `Sen.sc` gives serializability (`sc_serializable`); a fresh instance per request is an instance per connection on one request per connection (`perRequest_model_iff`) | Proved |
 | Connections (`Conn`) | the core | per-connection sentences and models over the core's traces, sequential consistency (`Sen.sc`) | Proved |
 | Platforms (`Reuse`, `Cgi`, `Platform`, `Wire1`, `Sockets`, `Compare`) | `Platform T` with `view`, `Refines`, sequential `Log`s and per-connection `ConnLog`s | a `Log` is a core `History` (`log_eq_history`); `Platform.model` reads a platform's logs as a core `Model` and `Refines` is exactly core refinement (`refines_iff_model`); `Platform.connModel` reads per-connection traces as core traces with identities ⟨connection, index⟩, and `Refines` gives core refinement (`connModel_refines`) | Proved |
 | Fresh instance per request (`PerRequest`) | the core | one model, `Machine.perRequest M q₀`; `Exchange.fresh`, `State.Server.perRequest` and `Reuse.Fresh` are instances of it (`Exchange.fresh_eq_perRequest`, `State.perRequest_model_tr_iff`, `Reuse.fresh_eq_hist`) | Proved |
@@ -370,6 +373,31 @@ skips cleanly when `wasmtime`, `curl`, or both the components and `wasm-tools`, 
 Run as `nix develop .#http-test -c tests/servers/wasi-http-conformance.sh`, all 9 checks pass on
 wasmtime 49.0.2.
 
+The same harness serves the filesystem servers of the state models (section "State models"),
+`tests/servers/wasi-http/{store,static}.wat` (with `fs-imports.wat` and `fs.wat`, world
+`fs-server` of `world.wit`, which also imports `wasi:filesystem/{types,preopens}@0.2.12`), with
+`wasmtime serve -S cli --dir DIR::data` over a fresh directory. All 51 checks of the run
+(hello, route, echo, store and static) pass on wasmtime 49.0.2:
+
+- **store** (`storeBody`, state model (b)): `GET`, `HEAD`, `PUT` (`201`, then `204`), `DELETE`
+  (`204`, then `404`), `OPTIONS`, `405` for `POST` and `PATCH`, `501` for an unknown method; the
+  query is part of the key; the files it writes are named `keyName` (`/a` is `k2f61`); a
+  200000-octet `PUT` (several reads of the request body) lands in its file;
+- **store over shared files** (state model (c)): the harness writes and removes key files
+  between requests; an untouched key keeps its value, a changed key is read as it was left,
+  and a file of no key is never written;
+- **static** (`staticAnswer (docRoot "data")`): nested files, `.` and empty components and a
+  query, `..` (sent with `--path-as-is`) and the preopen itself and a directory answered `404`,
+  `HEAD`, `405` with `Allow: GET, HEAD`; then a file changed and one removed by another writer.
+
+One known gap is printed and not counted: a `GET` of the 200000-octet file returns no content,
+because `answer` writes the whole content with one `blocking-write-and-flush`, which `wasi:io`
+0.2 limits to 4096 octets (wasmtime traps: "Buffer too large for blocking-write-and-flush").
+The reference host of the Lean reading (`refHost`) accepts any length, so the Lean results
+(`run_spec` and the others) say nothing about this limit; a `GET` of 4096 octets passes. The
+same limit applies to `echo`. Fixing it means writing in chunks of at most 4096 octets, in the
+WAT and in the Lean `answer` (and its proofs), and giving the reference host the limit.
+
 ### Not modelled yet
 
 - Headers added to a response after its construction (`outgoing-response.headers`),
@@ -515,15 +543,76 @@ request keeps them.
 | Every read-only filesystem answer of the host passes the 0.2 theory `FsMore.fsThV v2` over the tree of the files at that point | `storeHost_fsOk` | proved |
 | A `GET` of a file and of a missing file, a `PUT` that creates a file (and the file after it), a `DELETE` | `get_ref`, `get_missing_ref`, `put_ref`, `put_files_ref`, `delete_ref` (by `decide`) | checked |
 
-Header fields are not observed by the `wasi:http` reading, so the comparison is with
-`fileStore` through `noFields` (`Atomic.mapResp`). It differs from `fileStore` only in the
-`Allow` field of the `OPTIONS` and `405` answers. `keyFile root` depends on the
-path-with-query only, so targets that differ only in their scheme or authority share a file.
-Its injectivity on paths, which `fileStore_refines` would need to continue to the
-component-state store, is not proved. Also not proved: that the
-host's mutating calls satisfy a `wasi:filesystem` theory (`FsMut` checks the tree's shape, not
-contents), and that `storeBody` is the reading of a Wasm binary (it is written as a program
-over the imports, like the other examples).
+The component sends no header fields, so the comparison is with `fileStore` through `noFields`
+(`Atomic.mapResp`). It differs from `fileStore` only in the `Allow` field of the `OPTIONS` and
+`405` answers. `tests/servers/wasi-http/store.wat` is the same program in WAT (it makes the same
+import calls in the same order); it passes the conformance harness (section "Conformance
+against a runtime"), except for contents longer than 4096 octets. Not proved: that the host's
+mutating calls satisfy a `wasi:filesystem` theory (`FsMut` checks the tree's shape, not
+contents), and that `storeBody` is the reading of `store.wasm` (as `Task.wasmRuns` for the
+proxy examples).
+
+### The store component as the key-value store (`Silmaril.Servers.WasiFs.Kv`, Proved)
+
+`keyFile root` depends on the path-with-query only, so targets that differ only in their scheme
+or authority share a file: the store is the key-value store of (a) on targets **in origin
+form** (`originForm t`: the path-with-query alone; `normReq r`: the request with its target in
+origin form; `viewN root fs`: the store the files hold on such targets).
+
+| Claim | Lean | Status |
+| --- | --- | --- |
+| The file names are injective (`k` and two hexadecimal digits per octet, or `n`); two targets share a file exactly when they have the same path-with-query; on targets in origin form the layout is injective | `keyName_injective`, `keyFile_eq_iff`, `keyFile_injOn` | proved |
+| A step of the file store, seen through `viewN`, is a `storeStep` of the request in origin form | `fileStoreStep_viewN` | proved |
+| **History lemma for the `noFields` reduct**: the histories of `fileStoreNF` are those of the file store on short requests with responses read through `noFields` (an instance of `Server.hists_mapResp`) | `fileStoreNF_hists` | proved |
+| On short requests the component refines the closed server of `kvNF` (`kv` on short requests, read through `normReq` and `noFields`) from `viewN root fs₀`, and is linearizable with respect to it | `wasiStoreSmall_refines_kv`, `wasiStoreSmall_linearizable_kv` | proved |
+| **Every history of the component, its targets in origin form, is a history of the component-state store `kvServer (viewN root fs₀)` of state model (a) with responses read without header fields** | `wasiStoreSmall_kv` | proved |
+
+### Reducts (`Silmaril.Servers.State.Reduct`, Proved)
+
+`Server.comap f g M` reads a server through a map of requests `f` and a map of responses `g`
+(`Atomic.comap`); `Server.mapResp g` maps only the responses. `Server.hists_comap`: every
+history of the reduct, its requests mapped by `f`, is a history of `M` with its responses mapped
+by `g` (a forward simulation of hosts with the same states and runs). `Server.hists_mapResp`:
+the histories of `M.mapResp g` are exactly those of `M` with responses mapped by `g`, so
+refinement is preserved (`Server.Refines.mapResp`).
+
+### (c) as a WASI component (`Silmaril.Servers.WasiFs.Shared`, Proved)
+
+`wasiShared root fs₀ E` is the store component, on short requests, over files that an
+environment `E` changes between handler runs (as the harness does). For an `E` that keeps the
+files short:
+
+| Claim | Lean | Status |
+| --- | --- | --- |
+| Whatever the other writers do, each response is `specStep`'s answer to its request from some files; the histories are linearizable with respect to that safety specification | `wasiShared_safe`, `wasiShared_linearizable_safe` | proved |
+| When the other writers never touch the files of the keys of `K` (`keyOn root K`; any other file, including other keys' files, may change), the component is linearizable with respect to `kvOnNF K`, the store on the keys of `K` (`SharedFs.kvOn`), read on targets in origin form and without header fields, and refines its closed server; on all keys `kvOnNF` is `kvNF` | `wasiShared_linearizable_on`, `wasiShared_refines_on`, `kvOnNF_true` | proved |
+
+### The static file server as a component (`Silmaril.Servers.WasiFs.Static`)
+
+`staticBody` is the static file server written over the store's world and host, the program of
+`tests/servers/wasi-http/static.wat`: `method()`; for `GET`/`HEAD`, `path-with-query()`, the
+name `staticName` (the components of `docRoot`, joined by `/`), `get-directories`, `open-at` and
+one `read`: `200` with the contents (none for `HEAD`), `404` for no name or any error; other
+methods `405` with `Allow: GET, HEAD` (observed: the `wasi:http` reading keeps header fields).
+
+| Claim | Lean | Status |
+| --- | --- | --- |
+| The run of `handle` answers `staticAnswer (docRoot root) fs q` and leaves the files, for short files with no file at the preopen itself | `Task.staticRuns root` | open |
+| Given that task, the component refines the static file server `staticServer (docRoot root) fs₀` of (b); over files that others change keeping an invariant `I`, each response is the answer of some files satisfying `I`, and the histories are linearizable with respect to `staticSafe` of (c) | `wasiStatic_refines_of`, `wasiStaticShared_safe_of`, `wasiStaticShared_linearizable_of` | proved (conditional) |
+| A nested file through `.` and empty components with a query, `..`, the preopen, a directory, a missing file, `HEAD`, a `DELETE` answered `405` with its `Allow` field; on six requests the run answers `staticAnswer` and leaves the files | `#guard`s in `Static/Thms.lean` | checked |
+
+### State histories read per connection (`Silmaril.Servers.State.Conn`, Proved)
+
+Read through `toTrace`, every request of a state history is alone on its connection, so the
+core's per-connection readings (`Silmaril.Servers.Conn`) say:
+
+| Claim | Lean | Status |
+| --- | --- | --- |
+| Connection `i` of `toTrace H` is the trace of request `i`'s events; a per-connection sentence holds when it holds for every request | `onConn_toTrace`, `perConn_toTrace` | proved |
+| **Sequential consistency of the trace gives serializability of the history**: `Sen.sc` may reorder connections freely, and each request is its own connection | `sc_serializable` | proved |
+| Linearizability gives sequential consistency (for a well-formed trace) | `linearizable_sc` | proved |
+| The converse of `sc_serializable` | `Task.serializable_sc` | open |
+| **A fresh instance per request is an instance per connection** of the component-state server, and on traces with one request per connection the two models are equal | `perRequest_perConn`, `perConn_perRequest`, `perRequest_model_iff` | proved |
 
 ### State models as signatures and morphisms
 
@@ -544,7 +633,14 @@ consequences, linearizability and refinement, are how the models are compared:
 * fresh instance per request → stateless server `Atomic.fresh` (`perRequest_answer`);
 * the `wasi:http` store component over `wasi:filesystem` → the file store (b) without header
   fields: the identity on files, invariant "files shorter than `2^64 - 1` octets, non-key files
-  as initially" (`wasiStoreSmall_refines`, below).
+  as initially" (`wasiStoreSmall_refines`, above);
+* that file store without header fields → the component-state store (a) on targets in origin
+  form: `viewN root` (`wasiStoreSmall_refines_kv`); with the reduct lemma, its histories are
+  `kvServer`'s (`wasiStoreSmall_kv`);
+* the store component over shared files whose keys of `K` are untouched (c) → the store on `K`:
+  `restrictKeys K ∘ viewN root` (`wasiShared_refines_on`);
+* the static component → the static server (b): the identity on files, invariant `fs = fs₀`
+  (`wasiStatic_refines_of`, given `Task.staticRuns`).
 
 In each case a client cannot tell the concrete server from the abstract one. For example, a
 key-value store kept in a file and one kept in a component's memory have the same histories.
@@ -555,12 +651,16 @@ key-value store kept in a file and one kept in a component's memory have the sam
   `await` points): runs are no longer atomic, and linearizability needs linearization points
   inside runs.
 * Connections and pipelining: read in the core (`State.Traces`), every request of these
-  histories is alone on its connection. The per-connection and sequential-consistency readings
-  exist in the core (`Silmaril.Servers.Conn`), but they are not yet connected to these histories.
-* Done for the file-backed store (`Silmaril.Servers.WasiFs`): connecting handler runs to
-  component executions and the file model to the `wasi:filesystem` theories. Not done: the
-  static file server, the shared-file models (c) as components, and a theory of the mutating
-  filesystem calls with contents.
+  histories is alone on its connection, and the per-connection readings are connected
+  (`State.Conn`); the converse `Task.serializable_sc` is open, and histories with several
+  requests per connection (pipelining) are not modelled in the state vocabulary.
+* `Task.staticRuns`: the run proof of the static component (the store's `run_spec` analogue);
+  it needs the `FsMore` reading of `open-at` on a path of several components.
+* That `store.wasm` and `static.wasm` run `storeBody` and `staticBody` (as `Task.wasmRuns`).
+* Contents longer than 4096 octets (one `blocking-write-and-flush`, see "Conformance against a
+  runtime"), and reads shorter than the file (a host may return fewer octets than asked; the
+  components read once).
+* A theory of the mutating filesystem calls with contents.
 
 ## Survey: frameworks, formalizations and the other instances
 
@@ -833,7 +933,10 @@ lake build Silmaril.Servers.Core.Thms Silmaril.Servers.Http.Thms \
   Silmaril.Servers.Cgi.Thms Silmaril.Servers.Platform.Thms \
   Silmaril.Servers.Conn.Thms Silmaril.Servers.WasiFs.Thms \
   Silmaril.Servers.Wire1.Thms Silmaril.Servers.Sockets.Thms Silmaril.Servers.Compare.Thms \
-  Silmaril.Servers.State.Traces.Thms Silmaril.Servers.PerRequest.Thms Silmaril.Servers.Live.Thms
+  Silmaril.Servers.State.Traces.Thms Silmaril.Servers.PerRequest.Thms Silmaril.Servers.Live.Thms \
+  Silmaril.Servers.State.Reduct.Thms Silmaril.Servers.State.Conn.Thms \
+  Silmaril.Servers.WasiFs.Kv.Thms Silmaril.Servers.WasiFs.Shared.Thms \
+  Silmaril.Servers.WasiFs.Static.Thms
 ```
 
 Every module builds in under 8 s; the slowest are the run proofs of `WasiFs` and
