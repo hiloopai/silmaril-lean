@@ -3,23 +3,34 @@ module
 public import Silmaril.Prelude.Trust.Elab.Defs
 public meta import Lake.Toml
 
-/-! # The trust dump for the project database (`silmaril.trust-dump.v0.1`)
+/-! # The core trust export (`silmaril.trust-core.v1`)
 
-`#trust_export "path"` writes one JSON document that `sil project sqlite --trust PATH` reads
-(default path `.lake/silmaril/trust.json`; `scripts/trust-export.sh` drives it). It is built
+`#trust_export "path" M₁ M₂ …` writes one JSON document (default path
+`.lake/silmaril/trust-core.json`; `scripts/trust-export.sh` drives it). This is the core's own
+format. It is **not** the project database's `silmaril.trust-dump.v0.1`: the database task
+owns the converter from this format to its contract and the compatibility of the result. It is built
 from the registry, the recorded uses and the loaded policy. Nothing in it is hard-coded about
 native-evaluation axioms: their names come from the proofs.
 
 ```
-{ "schema": "silmaril.trust-dump.v0.1", "toolchain": …, "producer": …,
+{ "schema": "silmaril.trust-core.v1", "toolchain": …, "producer": …, "inputs": …,
   "procedures": [{ "name", "kind", "implemented", "doc", "backends": [{ "role", … }] }],
   "sets":       [{ "name", "doc", "all", "members": [{ "kind": "procedure" | "set", "name" }] }],
   "policies":   [{ "scope": "root" | "region" | "module-prefix", "name", "allow", "max",
                    "deps", "axioms", "origin" }],
   "modules":    [{ "name", "region", "source", "source_sha256", "imports" }],
   "uses":       [{ "module", "decl", "procedure", "backend", "profile", "axiom", "verified" }],
-  "excluded":   [{ "module", "coverage": "excluded" | "unsupported", "reason" }] }
+  "declarations": [{ "decl", "module", "axioms", "native_axioms", "own_native",
+                     "dep_native", "unverified_native", "violations" }],
+  "unresolved": [{ "set", "name" }],
+  "excluded":   [{ "module", "coverage": "excluded", "profile", "reason" }] }
 ```
+
+`inputs` holds the SHA-256 of `policy.toml`, `regions.toml`, `lean-toolchain` and
+`scripts/trust-profile-exclude.txt`, and the policy pin. `declarations` covers every theorem and
+definition of the modules listed in the command, as `trust_audit` sees them under the current
+profile and ceiling (`auditLine`). `unresolved` lists set members that no procedure in this
+environment implements; they are never treated as implemented.
 
 A procedure's identity is its name, independent of its backends. `kind` is `decider`
 (`native_decider`), `declared` (`ProcDecl`, two backends), `tactic` (`native_tactic`), or
@@ -96,7 +107,7 @@ def hex (b : ByteArray) : String :=
     let d := Nat.toDigits 16 x.toNat
     s ++ (if d.length == 1 then "0" else "") ++ String.ofList d
 
-def schema : String := "silmaril.trust-dump.v0.1"
+def schema : String := "silmaril.trust-core.v1"
 
 def nameJ (n : Name) : Json := toJson (toString n)
 
@@ -169,10 +180,10 @@ def policyJ (regs : Array String) (p : Policy) (s : Scope) : Json :=
     ("origin", Json.mkObj [("file", toJson p.file), ("pin", toJson (hex64 p.hash))])]
 
 /-- `#trust_export ["path"]`: write the `silmaril.trust-dump.v0.1` document. -/
-syntax (name := trustExport) "#trust_export" (ppSpace str)? : command
+syntax (name := trustExport) "#trust_export" (ppSpace str)? (ppSpace ident)* : command
 
 @[command_elab trustExport] def elabTrustExport : CommandElab := fun stx => do
-  let path := (stx[1].getOptional?.bind (·.isStrLit?)).getD ".lake/silmaril/trust.json"
+  let path := (stx[1].getOptional?.bind (·.isStrLit?)).getD ".lake/silmaril/trust-core.json"
   let env ← getEnv
   let root : System.FilePath := "."
   let regs ← regions root
@@ -238,7 +249,35 @@ syntax (name := trustExport) "#trust_export" (ppSpace str)? : command
     Json.mkObj [("module", nameJ u.module), ("decl", nameJ u.decl), ("procedure", nameJ u.proc),
       ("backend", toJson (match u.mode with | .native => "native" | .kernel => "kernel")),
       ("profile", toJson u.profile), ("axiom", nameJson u.ax), ("verified", verified)]
+  -- Inputs.
+  let fileSha (f : String) : IO Json := do
+    match ← (IO.FS.readBinFile f).toBaseIO with
+    | .ok b => return toJson (hex (sha256 b))
+    | .error _ => return Json.null
+  let inputs := Json.mkObj [("policy_toml_sha256", ← fileSha "policy.toml"),
+    ("regions_toml_sha256", ← fileSha "regions.toml"),
+    ("lean_toolchain_sha256", ← fileSha "lean-toolchain"),
+    ("exclusions_sha256", ← fileSha "scripts/trust-profile-exclude.txt"),
+    ("policy_pin", match policyExt.getState env with
+      | some p => toJson (hex64 p.hash) | none => Json.null)]
+  -- Declarations of the listed modules.
+  let mut declsJ : Array Json := #[]
+  for m in stx[2].getArgs do
+    for d in ← liftCoreM (declsOf m.getId) do
+      let r ← liftCoreM (axiomReport d)
+      let (_, bad) ← liftCoreM (auditLine d)
+      let names (xs : Array Name) : Json := toJson (xs.map toString)
+      declsJ := declsJ.push (Json.mkObj [("decl", nameJ d), ("module", nameJ m.getId),
+        ("axioms", names r.other), ("native_axioms", names r.nativeAxioms),
+        ("own_native", names r.ownNative), ("dep_native", names r.depNative),
+        ("unverified_native", toJson (r.unverified.map fun (p, a) =>
+          Json.mkObj [("procedure", nameJ p), ("axiom", nameJ a)])),
+        ("violations", toJson bad)])
+  let unresolved := sets.foldl (init := #[]) fun acc st =>
+    st.members.foldl (fun acc n => if known.contains n then acc
+      else acc.push (Json.mkObj [("set", nameJ st.name), ("name", nameJ n)])) acc
   let doc := Json.mkObj [("schema", toJson schema), ("toolchain", toJson Lean.toolchain),
+    ("inputs", inputs), ("declarations", toJson declsJ), ("unresolved", toJson unresolved),
     ("producer", Json.mkObj [("tool", toJson "Silmaril.Prelude.Trust.Export (#trust_export)"),
       ("profile", toJson prof), ("ceiling", toJson ceil),
       ("main_module", nameJ env.mainModule)]),
@@ -248,6 +287,7 @@ syntax (name := trustExport) "#trust_export" (ppSpace str)? : command
   if let some dir := (System.FilePath.mk path).parent then IO.FS.createDirAll dir
   IO.FS.writeFile path (doc.pretty ++ "\n")
   logInfo m!"wrote {path}: {procedures.size} procedures, {sets.size} sets, {policies.size} \
-    policies, {modules.size} modules, {usesJ.size} uses, {excluded.size} excluded"
+    policies, {modules.size} modules, {usesJ.size} uses, {declsJ.size} declarations, \
+    {excluded.size} excluded"
 
 end Silmaril.Trust.Export

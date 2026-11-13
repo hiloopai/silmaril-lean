@@ -189,27 +189,26 @@ theorem doc : jsonChecker.Parses bytes value := FormatChecker.parses_of jsonChec
 `KBytes.cstring` (NUL-terminated strings, `bytes.cstring`). Only it is implemented here; JSON,
 CBOR, S-expression and WAT checkers are future instances of the same structure.
 
-## Project database dump (`silmaril.trust-dump.v0.1`)
+## Core trust export (`silmaril.trust-core.v1`)
 
-`scripts/trust-export.sh [-o PATH] [MODULE …]` writes `.lake/silmaril/trust.json` for
-`sil project sqlite --trust PATH`, through `#trust_export` (`Silmaril.Prelude.Trust.Export`). The
-top level is `{schema, toolchain, producer, procedures, sets, policies, modules, uses,
-excluded}`; the module docstring lists every field. Notes on the mapping:
+`scripts/trust-export.sh [-o PATH] [MODULE …]` writes `.lake/silmaril/trust-core.json` through
+`#trust_export` (`Silmaril.Prelude.Trust.Export`, whose docstring lists every field). It is the
+core's format, distinct from the project database's `silmaril.trust-dump.v0.1`; the database
+task owns the converter and its compatibility. It holds:
 
-* A procedure's identity is its name. `kind` is `decider`, `declared`, `tactic`, or `named`
-  (named by a set, not registered here: `implemented: false`). Backends are listed under it
-  with their `role`.
-* Sets list `members` as `{kind: procedure | set, name}`, plus `all` for the universal set.
-  Include cycles are rejected before writing.
-* Policies come from `policy.toml` scopes. `allow` is the scope's `default` set and `max` its
-  `max`; `deps` and `axioms` are included too. `origin` is the file and its pin; a null
-  field is inherited.
-* Modules are the `Silmaril` modules the driver imports, with `region` (from `regions.toml`),
-  `source`, `source_sha256` and `imports`. Coverage is only what is imported: no dump, or a
-  missing module, means unknown, not clean.
-* `uses.verified` applies the audit's provenance rule; it is null for kernel uses.
-* `excluded` lists the exclusions in `scripts/trust-profile-exclude.txt` for the build's
-  ceiling profile.
+* toolchain, producer (profile, ceiling) and input hashes (policy, regions, toolchain,
+  exclusions, policy pin);
+* procedures, with backends;
+* sets;
+* policies from `policy.toml`;
+* modules (region, source, SHA-256, imports);
+* uses, with `verified` provenance;
+* per-declaration axioms, native procedures and violations for the listed modules;
+* unresolved set members (never treated as implemented);
+* exclusions.
+
+Coverage is only what the driver imports: a missing export or module means unknown, not
+clean.
 
 ## Provenance schema (`silmaril.trust.v1`)
 
