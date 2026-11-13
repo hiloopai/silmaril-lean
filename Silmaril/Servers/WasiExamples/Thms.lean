@@ -5,8 +5,10 @@ public import Silmaril.Servers.Exchange.Thms
 public import Silmaril.Servers.Calls.Thms
 public import Silmaril.Servers.WasiHttp.Thms
 public import Silmaril.Servers.Http.Defs
+public import Silmaril.Servers.PerRequest.Thms
 import Silmaril.Proofs.Servers.WasiExamples.Answer
 import Silmaril.Proofs.Servers.WasiExamples.Echo
+import Silmaril.Proofs.Servers.WasiExamples.Greet
 
 @[expose] public section
 
@@ -31,6 +33,10 @@ response unobservable (by failing an operation), never wrong.
 * **`echo_sat`**: over the reading with request bodies (`wasiServerB`), every exchange of `echo`
   answers `200` with the request's content, or `500` (when the host fails an operation or the
   reads run out).
+* **`greet_sat`**: every exchange of `greet` answers `200 hello <name>` for the first value
+  `name` of the request's `x-name` header (`200 hello world` without one), or `500`; the value
+  is the host's answer to `fields.get` on the request's headers, which the reading ties to the
+  request (`HdrOk`). `greet_answers`: every request answered with its greeting is a trace.
 * `serve_mem`: a response of a component over the reference host (`serveRef`) is a trace of
   the component read as a server.
 * `answer_ok`: over a host whose answers to the response code succeed (`OkAns`), a complete
@@ -40,10 +46,10 @@ response unobservable (by failing an operation), never wrong.
 Proofs in `Silmaril.Proofs.Servers.WasiExamples.Answer`.
 
 **Checked** over the reference host (`serveRef`, evaluated by `decide`): `hello` on `/`,
-`route` on `/`, `/hello` and `/missing`, and `echo` on a `POST` with content `abc`.
+`route` on `/`, `/hello` and `/missing`, `greet` with and without `x-name`, and `echo` on a `POST` with content `abc`.
 `hello_satB`: hello's specification over the reading with request bodies, by refinement.
 
-**Linked systems**: `hello_link`, `route_link`, `echo_link`: the specifications hold of each
+**Linked systems**: `hello_link`, `route_link`, `greet_link`, `echo_link`: the specifications hold of each
 example linked over every host (`WasiHttp.linkServer`); `serve_link`: a response over the
 reference host is a trace of the example linked over the concrete reference host.
 
@@ -61,6 +67,14 @@ answers `404` for `/missing`.
 `hello_fresh` and `route_fresh`: hello and route refine the core's function servers
 (`Model.ofFun`); `echo_fresh_lin`: echo is linearizable for its specification. With one
 instance used sequentially (`Exchange.seqUse`): `hello_seq_lin`.
+
+**Liveness**, through `Machine.fresh_total`: read with a fresh instance per request
+(`freshM`, the machine of `Exchange.fresh`), hello, route and greet can answer every request
+(`hello_total`, `route_total`, `greet_total`, from the non-vacuity theorems), so every fair run
+of a host serving them answers every request it receives (`hello_live`, `route_live`,
+`greet_live`), and each finite prefix of the run satisfies the safety specification
+(the function server for hello and route, linearizability of the pointwise specification for
+greet).
 -/
 
 namespace Silmaril.Servers.WasiExamples
@@ -133,6 +147,16 @@ theorem route_answers (q : Request) :
     [(q, routeResp q.target.pathWithQuery)] ∈ wasiServer (ofBody route) :=
   Proofs.Servers.WasiExamples.route_answers q
 
+/-- **Greeting answers from the request's `x-name` header**, or `500`, for every host. -/
+theorem greet_sat : Sat (wasiServer (ofBody greet))
+    (each fun q resp => resp = greetResp (q.headers.values nameHdr) ∨ resp = failResp) :=
+  Proofs.Servers.WasiExamples.greet_sat
+
+/-- **Greeting is not vacuous**: every request answered with its greeting is a trace. -/
+theorem greet_answers (q : Request) :
+    [(q, greetResp (q.headers.values nameHdr))] ∈ wasiServer (ofBody greet) :=
+  Proofs.Servers.WasiExamples.greet_answers q
+
 /-! ## Checked over the reference host -/
 
 theorem hello_ref : serveRef hello (getAt none (some (ascii "/"))) = some helloResp :=
@@ -159,6 +183,17 @@ theorem route_ref_hello : serveRef route (getAt none (some (ascii "/hello"))) =
 theorem route_ref_missing : serveRef route (getAt none (some (ascii "/missing"))) =
     some (Response.simple 404 (ascii "not found")) := by
   rw [Proofs.Servers.WasiExamples.route_serveRef]
+  decide
+
+theorem greet_ref_named : serveRef greet
+    ⟨⟨.get, ⟨none, none, some (ascii "/")⟩⟩, [⟨ascii "x-name", ascii "ada"⟩], [], []⟩ =
+      some (Response.simple 200 (ascii "hello ada")) := by
+  rw [Proofs.Servers.WasiExamples.greet_serveRef]
+  decide
+
+theorem greet_ref_anon : serveRef greet (getAt none (some (ascii "/"))) =
+    some (Response.simple 200 (ascii "hello world")) := by
+  rw [Proofs.Servers.WasiExamples.greet_serveRef]
   decide
 
 /-- The web of the route table answers `404` for `/missing`. -/
@@ -196,6 +231,49 @@ theorem hello_seq_lin : (Exchange.seqUse (wasiServer (ofBody hello))).Sat
     (Servers.Sen.lin (each fun _ resp => resp = helloResp)) :=
   Exchange.seqUse_sat_lin hello_sat
 
+/-! ## Liveness -/
+
+/-- The machine of a server read with a fresh instance per request (`Exchange.fresh M` is its
+atomic-handler server, `Exchange.fresh_eq_perRequest`). -/
+abbrev freshM (M : Exchange.Model httpIface) : Servers.Machine httpIface Unit :=
+  (Exchange.machine M).fresh ()
+
+theorem hello_total : (freshM (wasiServer (ofBody hello))).Total :=
+  Machine.fresh_total fun r => ⟨helloResp, (), hello_answers r⟩
+
+theorem route_total : (freshM (wasiServer (ofBody route))).Total :=
+  Machine.fresh_total fun r => ⟨_, (), route_answers r⟩
+
+theorem greet_total : (freshM (wasiServer (ofBody greet))).Total :=
+  Machine.fresh_total fun r => ⟨_, (), greet_answers r⟩
+
+/-- **Hello is live**: a fair run of a host serving hello with a fresh instance per request
+answers every request it receives, and every prefix of the run is a trace of the function
+server `200 hello`. -/
+theorem hello_live (ρ : (freshM (wasiServer (ofBody hello))).IRun ()) (hF : ρ.Fair) :
+    ISen.answered ρ.obs ∧
+      ∀ n, (Servers.Model.ofFun fun _ => helloResp).Tr (ρ.obs.prefix n) :=
+  ⟨ρ.answered hello_total hF, fun n =>
+    hello_fresh _ (by rw [Exchange.fresh_eq_perRequest]; exact ρ.prefix_tr n)⟩
+
+/-- **Routing is live**, and every prefix of a fair run is a trace of the route table's
+function server. -/
+theorem route_live (ρ : (freshM (wasiServer (ofBody route))).IRun ()) (hF : ρ.Fair) :
+    ISen.answered ρ.obs ∧
+      ∀ n, (Servers.Model.ofFun (A := httpIface) fun q => routeResp q.target.pathWithQuery).Tr (ρ.obs.prefix n) :=
+  ⟨ρ.answered route_total hF, fun n =>
+    route_fresh _ (by rw [Exchange.fresh_eq_perRequest]; exact ρ.prefix_tr n)⟩
+
+/-- **Greeting is live**, and every prefix of a fair run is linearizable for its
+specification. -/
+theorem greet_live (ρ : (freshM (wasiServer (ofBody greet))).IRun ()) (hF : ρ.Fair) :
+    ISen.answered ρ.obs ∧
+      ISen.always (Servers.Sen.lin (SeqSpec.pointwise (A := httpIface) fun q resp =>
+        resp = greetResp (q.headers.values nameHdr) ∨ resp = failResp)) ρ.obs := by
+  refine ⟨ρ.answered greet_total hF, ρ.always_of_sat ?_⟩
+  have h := Exchange.fresh_sat_lin greet_sat
+  rwa [Exchange.fresh_eq_perRequest] at h
+
 /-! ## Linked systems -/
 
 section Link
@@ -211,6 +289,12 @@ theorem hello_link (η : Host Y proxyImports) :
 theorem route_link (η : Host Y proxyImports) :
     Sat (linkServer η (ofBody route)) (each fun q resp => resp = routeResp q.target.pathWithQuery) :=
   link_sat_of route_sat η
+
+/-- **Greeting, linked over every host**, answers from the `x-name` header, or `500`. -/
+theorem greet_link (η : Host Y proxyImports) :
+    Sat (linkServer η (ofBody greet))
+      (each fun q resp => resp = greetResp (q.headers.values nameHdr) ∨ resp = failResp) :=
+  link_sat_of greet_sat η
 
 /-- **Echo, linked over every host**, answers `200` with the request's content, or `500`. -/
 theorem echo_link (η : Host Y proxyImports) :
