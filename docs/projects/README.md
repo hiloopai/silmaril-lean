@@ -27,6 +27,7 @@
 | System V AMD64 ABI | Argument classification and call planning for C types, native layouts of the Cerberus types, typed FFI contracts, real compiled examples | [System V ABI](systemv-abi.md) |
 | C to x86, segment by segment | Program points between a C function's Cerberus Core and its machine code (DWARF line table and frame slots), segment goals with generic `-O0`/`-O2` segment theorems, the bridge to `c.compiles_to`, the `c-tv` generator and three examples at `-O0` and `-O2` | [Compiles-to](compiles-to.md) |
 | Calling conventions | Calling conventions as institution comorphisms (System V AMD64, Microsoft x64), cross-ABI thunks and link compatibility, and x86 function contracts as System V and FFI certificates | [ABI](abi.md) |
+| C compiler | `ccomp`'s IRs (Mir, RTL, Lir), behaviours and refinement, passes and validators, x86-64 and RV64 back ends, stage contracts, verified Core fragments, the C semantics ladder and the native x86-64 compiler, arriving in waves | [C compiler](ccomp.md) |
 
 All projects share the root `Silmaril` library. The `sil` command groups available
 tools by project; `sil --help` lists only implemented families. A project guide

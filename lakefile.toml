@@ -439,3 +439,32 @@ needs = ["projectRecords", "compilesToData"]
 name = "compilesToData"
 path = "examples/compiles-to"
 filter = { extension = ["c", "o"] }
+
+# The C compiler's executables (docs/projects/ccomp.md): the native compiler, the
+# Mir/Lir compiler, the verified Core compiler, the C semantics interpreter, and the
+# decompiler.
+[[lean_exe]]
+name = "ccomp"
+root = "NativeCcomp"
+srcDir = "tools/ccomp-native"
+
+[[lean_exe]]
+name = "ccomp-legacy"
+root = "Ccomp"
+srcDir = "tools/ccomp"
+
+[[lean_exe]]
+name = "ccomp-verified"
+root = "CcompVerified"
+srcDir = "tools/ccomp-verified"
+
+[[lean_exe]]
+name = "csem"
+root = "Csem"
+srcDir = "tools/csem"
+
+[[lean_exe]]
+name = "decompile"
+root = "Decompile"
+srcDir = "tools/decompile"
+supportInterpreter = true

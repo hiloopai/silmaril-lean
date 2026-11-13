@@ -164,6 +164,16 @@ def DMachine.toSpec {S L : Type} [FinNamed S] [FinNamed L] (M : DMachine S L) : 
   edges := (FinNamed.elems (α := S)).flatMap fun s => (FinNamed.elems (α := L)).filterMap fun l =>
     (M.step s l).map fun s' => ⟨FinNamed.name s, FinNamed.name l, FinNamed.name s'⟩
 
+/-- The spec of a nondeterministic machine over `FinNamed` states and labels (successors in
+`elems` order). -/
+def NMachine.toSpec {S L : Type} [FinNamed S] [FinNamed L] [DecidableEq S] (M : NMachine S L) :
+    Spec where
+  states := FinNamed.names S
+  labels := FinNamed.names L
+  edges := (FinNamed.elems (α := S)).flatMap fun s => (FinNamed.elems (α := L)).flatMap fun l =>
+    ((FinNamed.elems (α := S)).filter fun s' => decide (s' ∈ M.step s l)).map fun s' =>
+      ⟨FinNamed.name s, FinNamed.name l, FinNamed.name s'⟩
+
 /-- The layers of marks. -/
 def Marks.toLayers {S : Type} [FinNamed S] (m : Marks S) : Layers where
   initial := ((FinNamed.elems (α := S)).filter m.initial).map FinNamed.name
@@ -176,48 +186,104 @@ def Marked.toDocument {S L : Type} [FinNamed S] [FinNamed L] (id : String) (M : 
     Document :=
   ⟨id, M.machine.toSpec, M.marks.toLayers⟩
 
-/-! ## JSON -/
+/-! ## JSON
+
+The codec is written with structural recursion only (lists of strings, `[src, label, dst]`
+triples, objects with fixed keys), so its round trip is a theorem (`Document.ofJson?_toJson` in
+`Thms`): decoding the JSON value of a document gives the document back. -/
 
 open Lean in
-instance : ToJson Edge := ⟨fun e => Json.arr #[e.src, e.label, e.dst]⟩
+/-- A list of strings as a JSON array. -/
+def strsToJson (xs : List String) : Json := .arr (xs.map Json.str).toArray
 
 open Lean in
-instance : FromJson Edge := ⟨fun j => do
-  let #[a, b, c] ← j.getArr? | throw "an edge is [src, label, dst]"
-  return ⟨← a.getStr?, ← b.getStr?, ← c.getStr?⟩⟩
+/-- A JSON array of strings. -/
+def strsOfJson? (j : Json) : Except String (List String) := do
+  let a ← j.getArr?
+  a.toList.mapM Json.getStr?
 
 open Lean in
-instance : ToJson Spec := ⟨fun sp => Json.mkObj
-  [("states", toJson sp.states), ("labels", toJson sp.labels), ("edges", toJson sp.edges)]⟩
+/-- An edge as `[src, label, dst]`. -/
+def Edge.toJson (e : Edge) : Json := strsToJson [e.src, e.label, e.dst]
 
 open Lean in
-instance : FromJson Spec := ⟨fun j => do
-  return ⟨← j.getObjValAs? _ "states", ← j.getObjValAs? _ "labels", ← j.getObjValAs? _ "edges"⟩⟩
+/-- An edge from `[src, label, dst]`. -/
+def Edge.ofJson? (j : Json) : Except String Edge := do
+  match ← strsOfJson? j with
+  | [a, b, c] => return ⟨a, b, c⟩
+  | _ => throw "an edge is [src, label, dst]"
 
 open Lean in
-instance : ToJson Layers := ⟨fun ly => Json.mkObj
-  [("initial", toJson ly.initial), ("accepting", toJson ly.accepting),
-   ("rejecting", toJson ly.rejecting), ("error", toJson ly.error)]⟩
+/-- Edges as a JSON array. -/
+def edgesToJson (es : List Edge) : Json := .arr (es.map Edge.toJson).toArray
 
 open Lean in
-instance : FromJson Layers := ⟨fun j => do
-  let get (k : String) : Except String (List String) :=
-    match j.getObjVal? k with
-    | .ok v => fromJson? v
-    | .error _ => .ok []
-  return ⟨← get "initial", ← get "accepting", ← get "rejecting", ← get "error"⟩⟩
+/-- A JSON array of edges. -/
+def edgesOfJson? (j : Json) : Except String (List Edge) := do
+  let a ← j.getArr?
+  a.toList.mapM Edge.ofJson?
 
 open Lean in
-instance : ToJson Document := ⟨fun d => Json.mkObj
-  [("id", d.id), ("states", toJson d.spec.states), ("labels", toJson d.spec.labels),
-   ("edges", toJson d.spec.edges), ("layers", toJson d.layers)]⟩
+/-- The JSON object of a spec. -/
+def Spec.toJson (sp : Spec) : Json := Json.mkObj
+  [("states", strsToJson sp.states), ("labels", strsToJson sp.labels),
+   ("edges", edgesToJson sp.edges)]
 
 open Lean in
-instance : FromJson Document := ⟨fun j => do
+/-- A spec from the keys `states`, `labels`, `edges` of an object. -/
+def Spec.ofJson? (j : Json) : Except String Spec := do
+  return ⟨← strsOfJson? (← j.getObjVal? "states"), ← strsOfJson? (← j.getObjVal? "labels"),
+    ← edgesOfJson? (← j.getObjVal? "edges")⟩
+
+open Lean in
+/-- The JSON object of layers. -/
+def Layers.toJson (ly : Layers) : Json := Json.mkObj
+  [("initial", strsToJson ly.initial), ("accepting", strsToJson ly.accepting),
+   ("rejecting", strsToJson ly.rejecting), ("error", strsToJson ly.error)]
+
+open Lean in
+/-- A layer list: absent is empty. -/
+def layerOfJson? (j : Json) (k : String) : Except String (List String) :=
+  match j.getObjVal? k with
+  | .ok v => strsOfJson? v
+  | .error _ => .ok []
+
+open Lean in
+/-- Layers from an object (absent layers are empty). -/
+def Layers.ofJson? (j : Json) : Except String Layers := do
+  return ⟨← layerOfJson? j "initial", ← layerOfJson? j "accepting",
+    ← layerOfJson? j "rejecting", ← layerOfJson? j "error"⟩
+
+open Lean in
+/-- The JSON object of a document. -/
+def Document.toJson (d : Document) : Json := Json.mkObj
+  [("id", .str d.id), ("states", strsToJson d.spec.states), ("labels", strsToJson d.spec.labels),
+   ("edges", edgesToJson d.spec.edges), ("layers", d.layers.toJson)]
+
+open Lean in
+/-- A document from its JSON object (absent `layers` is empty). -/
+def Document.ofJson? (j : Json) : Except String Document := do
   let layers ← match j.getObjVal? "layers" with
-    | .ok v => fromJson? v
+    | .ok v => Layers.ofJson? v
     | .error _ => pure {}
-  return ⟨← j.getObjValAs? _ "id", ← fromJson? j, layers⟩⟩
+  return ⟨← (← j.getObjVal? "id").getStr?, ← Spec.ofJson? j, layers⟩
+
+open Lean in
+instance : ToJson Edge := ⟨Edge.toJson⟩
+open Lean in
+instance : FromJson Edge := ⟨Edge.ofJson?⟩
+open Lean in
+instance : ToJson Spec := ⟨Spec.toJson⟩
+open Lean in
+instance : FromJson Spec := ⟨Spec.ofJson?⟩
+open Lean in
+instance : ToJson Layers := ⟨Layers.toJson⟩
+open Lean in
+instance : FromJson Layers := ⟨Layers.ofJson?⟩
+open Lean in
+instance : ToJson Document := ⟨Document.toJson⟩
+open Lean in
+instance : FromJson Document := ⟨Document.ofJson?⟩
 
 /-- The canonical layers: sorted and deduplicated. -/
 def Layers.canon (ly : Layers) : Layers where

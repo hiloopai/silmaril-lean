@@ -100,4 +100,77 @@ instance typedFunctor_essSurj : JMach.typedFunctor.EssSurj :=
 
 instance typedFunctor_isEquivalence : JMach.typedFunctor.IsEquivalence where
 
+/-! ## Marked machines -/
+
+theorem mem_toLayers {S : Type} [FinNamed S] (p : S → Bool) (n : String) :
+    n ∈ ((FinNamed.elems (α := S)).filter p).map FinNamed.name ↔
+      ∃ a : S, p a = true ∧ FinNamed.name a = n := by
+  simp [FinNamed.complete]
+
+theorem toLayers_wf (A : MarkedMach) : (A.marks.toLayers).wf A.base.M.toSpec.states = true := by
+  simp only [Layers.wf, Marks.toLayers, List.all_eq_true, List.contains_iff_mem, List.mem_append]
+  intro n hn
+  show n ∈ FinNamed.names A.base.S
+  rcases hn with ((h | h) | h) | h <;>
+    · obtain ⟨a, -, rfl⟩ := (mem_toLayers _ n).mp h
+      exact (FinNamed.mem_names_iff _).mpr ⟨a, rfl⟩
+
+/-- The marked JSON machine of a marked typed machine. -/
+def ofMarked (A : MarkedMach) : JMarked := ⟨ofTyped A.base, A.marks.toLayers, toLayers_wf A⟩
+
+/-- The isomorphism between a marked typed machine and the marked machine its document
+denotes. -/
+def isoMarked (A : MarkedMach) : (ofMarked A).typed ≅ A where
+  hom := {
+    h := (isoTyped A.base).hom
+    initial := fun n hn => by
+      have : n.1 ∈ ((FinNamed.elems (α := A.base.S)).filter A.marks.initial).map FinNamed.name :=
+        of_decide_eq_true hn
+      obtain ⟨a, ha, hn'⟩ := (mem_toLayers _ _).mp this
+      show A.marks.initial (ofNameMem n.1 n.2) = true
+      have e : ofNameMem n.1 n.2 = a := by
+        rw [← ofNameMem_name a ((FinNamed.mem_names_iff _).mpr ⟨a, rfl⟩)]; congr 1; exact hn'.symm
+      rw [e]; exact ha
+    accepting := fun n hn => by
+      have : n.1 ∈ ((FinNamed.elems (α := A.base.S)).filter A.marks.accepting).map FinNamed.name :=
+        of_decide_eq_true hn
+      obtain ⟨a, ha, hn'⟩ := (mem_toLayers _ _).mp this
+      show A.marks.accepting (ofNameMem n.1 n.2) = true
+      have e : ofNameMem n.1 n.2 = a := by
+        rw [← ofNameMem_name a ((FinNamed.mem_names_iff _).mpr ⟨a, rfl⟩)]; congr 1; exact hn'.symm
+      rw [e]; exact ha
+    rejecting := fun n hn => by
+      have : n.1 ∈ ((FinNamed.elems (α := A.base.S)).filter A.marks.rejecting).map FinNamed.name :=
+        of_decide_eq_true hn
+      obtain ⟨a, ha, hn'⟩ := (mem_toLayers _ _).mp this
+      show A.marks.rejecting (ofNameMem n.1 n.2) = true
+      have e : ofNameMem n.1 n.2 = a := by
+        rw [← ofNameMem_name a ((FinNamed.mem_names_iff _).mpr ⟨a, rfl⟩)]; congr 1; exact hn'.symm
+      rw [e]; exact ha
+    error := fun n hn => by
+      have : n.1 ∈ ((FinNamed.elems (α := A.base.S)).filter A.marks.error).map FinNamed.name :=
+        of_decide_eq_true hn
+      obtain ⟨a, ha, hn'⟩ := (mem_toLayers _ _).mp this
+      show A.marks.error (ofNameMem n.1 n.2) = true
+      have e : ofNameMem n.1 n.2 = a := by
+        rw [← ofNameMem_name a ((FinNamed.mem_names_iff _).mpr ⟨a, rfl⟩)]; congr 1; exact hn'.symm
+      rw [e]; exact ha }
+  inv := {
+    h := (isoTyped A.base).inv
+    initial := fun s hs => decide_eq_true ((mem_toLayers _ _).mpr ⟨s, hs, rfl⟩)
+    accepting := fun s hs => decide_eq_true ((mem_toLayers _ _).mpr ⟨s, hs, rfl⟩)
+    rejecting := fun s hs => decide_eq_true ((mem_toLayers _ _).mpr ⟨s, hs, rfl⟩)
+    error := fun s hs => decide_eq_true ((mem_toLayers _ _).mpr ⟨s, hs, rfl⟩) }
+  hom_inv_id := MarkedMach.Hom.ext (isoTyped A.base).hom_inv_id
+  inv_hom_id := MarkedMach.Hom.ext (isoTyped A.base).inv_hom_id
+
+instance markedFunctor_full : JMarked.typedFunctor.Full := ⟨fun h => ⟨h, rfl⟩⟩
+
+instance markedFunctor_faithful : JMarked.typedFunctor.Faithful := ⟨fun h => h⟩
+
+instance markedFunctor_essSurj : JMarked.typedFunctor.EssSurj :=
+  ⟨fun A => ⟨ofMarked A, ⟨isoMarked A⟩⟩⟩
+
+instance markedFunctor_isEquivalence : JMarked.typedFunctor.IsEquivalence where
+
 end Silmaril.Proofs.Automata

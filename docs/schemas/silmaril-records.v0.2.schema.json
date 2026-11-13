@@ -727,6 +727,97 @@
         ]
       }
     },
+    "deprecation": {
+      "description": "A wrong problem, group or spec, kept for the record: why it is wrong and what replaces it. A `spec_bug` finding needs its problem (or the problem's spec, or the general problem it is an instance of) to be deprecated",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The deprecated problem, group or spec"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it is wrong"
+          },
+          "superseded_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The corrected problems, groups or specs that replace it"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "reason"
+        ]
+      }
+    },
+    "finding": {
+      "description": "The classification of a failing problem's refutation: a genuine defect of the code under test (`error`, on a problem that is not deprecated), a wrong statement (`spec_bug`, on a deprecated one), a gap of the machine model (`model_gap`, with a `pointer` to the missing instruction or feature) or `unclear`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The refuted problem"
+          },
+          "classification": {
+            "enum": [
+              "error",
+              "spec_bug",
+              "model_gap",
+              "unclear"
+            ],
+            "description": "`error`, `spec_bug`, `model_gap` or `unclear`"
+          },
+          "note": {
+            "type": "string",
+            "description": "What the refutation shows"
+          },
+          "pointer": {
+            "type": "string",
+            "description": "What it points at: the missing instruction or feature (required for `model_gap`), a bug report, a commit"
+          },
+          "affected_versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`error` only: the versions the defect affects"
+          },
+          "fixed_in": {
+            "type": "string",
+            "description": "`error` only: the first fixed version"
+          },
+          "disclosure_status": {
+            "enum": [
+              "private",
+              "reported",
+              "public"
+            ],
+            "description": "`error` only: `private`, `reported` or `public`"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "classification"
+        ]
+      }
+    },
     "decomposition": {
       "description": "A proved edge `c₁ → … → cₙ → p`: one theorem (`proof`) or every such theorem of a module (`module`)",
       "type": "array",
@@ -1389,6 +1480,73 @@
             "reason": {
               "type": "string",
               "description": "Why"
+            }
+          }
+        },
+        "deprecation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Why it is wrong"
+            },
+            "superseded_by": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The corrected problems, groups or specs that replace it"
+            }
+          }
+        },
+        "finding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "classification": {
+              "enum": [
+                "error",
+                "spec_bug",
+                "model_gap",
+                "unclear"
+              ],
+              "description": "`error`, `spec_bug`, `model_gap` or `unclear`"
+            },
+            "note": {
+              "type": "string",
+              "description": "What the refutation shows"
+            },
+            "pointer": {
+              "type": "string",
+              "description": "What it points at: the missing instruction or feature (required for `model_gap`), a bug report, a commit"
+            },
+            "affected_versions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "`error` only: the versions the defect affects"
+            },
+            "fixed_in": {
+              "type": "string",
+              "description": "`error` only: the first fixed version"
+            },
+            "disclosure_status": {
+              "enum": [
+                "private",
+                "reported",
+                "public"
+              ],
+              "description": "`error` only: `private`, `reported` or `public`"
             }
           }
         },

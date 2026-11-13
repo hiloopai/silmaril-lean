@@ -15,6 +15,8 @@ dump`, `check`, `sqlite`, `explore`):
 * records and the DAG: a closed problem with a solution, a conjecture, groups and the root;
 * problems over arguments: a predicate with SAT and CSA answers and a refuted instance, and a
   problem in the attribute form with fields and a proved instance from TOML;
+* markings: the refuted predicate is deprecated (`silmaril deprecation`) in favour of a
+  corrected one, and its refutation is a `spec_bug` (`[[finding]]` in TOML);
 * artifacts: the registry `silmaril/artifacts.toml`, with one derivation;
 * values: a value with a problem about it, and values read with silmaril's format adapters
   (`wasm.binary.core`, `elf.exec-x86`);
@@ -30,6 +32,9 @@ namespace ProjectSelfTest
 @[solves "silmaril.selftest.truth"] theorem truth_sol : truth := trivial
 
 def Small (n : Nat) : Prop := n < 3
+
+/-- What `silmaril.selftest.small` should have said: a small number is at most 2. -/
+def SmallLe (n : Nat) : Prop := Small n → n ≤ 2
 
 /-- The attribute form, with fields: a problem over one argument. -/
 @[problem "silmaril.selftest.square" (title := "A perfect square")]
@@ -52,6 +57,15 @@ silmaril instance silmaril.selftest.small.five := silmaril.selftest.small (n := 
 @[answers "silmaril.selftest.small.five" uns] public theorem five_uns :
     ¬ silmaril.selftest.small.five := by
   show ¬ (5 : Nat) < 3; decide
+
+-- A marking: `silmaril.selftest.small` (every `n` is small) is a wrong statement. It stays, with
+-- its refutation, deprecated in favour of the corrected `silmaril.selftest.small_le`; its
+-- refutation is classified as a spec bug in `silmaril/selftest.toml` (`[[finding]]`).
+silmaril problem silmaril.selftest.small_le := ProjectSelfTest.SmallLe
+@[answers "silmaril.selftest.small_le" thm] public theorem small_le_thm : ∀ n, SmallLe n :=
+  fun n (h : n < 3) => by omega
+silmaril deprecation silmaril.selftest.small (reason := "claims that every n is below 3")
+  (superseded_by := [silmaril.selftest.small_le])
 
 silmaril conjecture silmaril.selftest.open : ∀ n : Nat, n + 0 = n
 

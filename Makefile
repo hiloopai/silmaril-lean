@@ -31,7 +31,9 @@ library:
 CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront \
 	ci_cerberus_genuine_oracle ci_cerberus_elaboration_oracle ci_cerberus_integer_cast \
 	ci_cerberus_parameter_call
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples
+# The C compiler's executables (docs/projects/ccomp.md).
+CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilWasiWit ProjectSelfTest $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \

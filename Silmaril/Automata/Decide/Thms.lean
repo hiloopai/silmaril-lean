@@ -12,6 +12,8 @@ PROVED (standard axioms; proofs in `Silmaril/Proofs/Automata/Decide.lean`):
 
 * `iterate_fix_of_inflationary`, `iterate_fix_of_deflationary`: a monotone iteration on the
   finsets of a finite type reaches its fixpoint within `Fintype.card` steps;
+* the same for nondeterministic machines (`NMachine.mem_reachSet`, `NMachine.mem_simSet`,
+  `NMachine.mem_bisimSet`), with their `Decidable` instances;
 * `mem_reachSet`: `reachSet` is exactly the label-restricted reachable set (`ReachVia`);
 * `mem_simSet`: `simSet` is exactly CSLib's `Similarity` (the greatest simulation);
 * `mem_bisimSet`: `bisimSet` is exactly CSLib's `Bisimilarity`.
@@ -46,6 +48,30 @@ theorem mem_simSet (M : DMachine S L) (N : DMachine T L) (s : S) (t : T) :
 theorem mem_bisimSet (M : DMachine S L) (N : DMachine T L) (s : S) (t : T) :
     (s, t) ∈ bisimSet M N ↔ Cslib.LTS.Bisimilarity M.toLTS N.toLTS s t :=
   Silmaril.Proofs.Automata.mem_bisimSet M N s t
+
+theorem NMachine.mem_reachSet (M : NMachine S L) (P : L → Bool) (a b : S) :
+    b ∈ M.reachSet P a ↔ ReachVia M.toLTS (fun l => P l = true) a b :=
+  Silmaril.Proofs.Automata.mem_reachSetN M P a b
+
+theorem NMachine.mem_simSet (M : NMachine S L) (N : NMachine T L) (s : S) (t : T) :
+    (s, t) ∈ M.simSet N ↔ Cslib.LTS.Similarity M.toLTS N.toLTS s t :=
+  Silmaril.Proofs.Automata.mem_simSetN M N s t
+
+theorem NMachine.mem_bisimSet (M : NMachine S L) (N : NMachine T L) (s : S) (t : T) :
+    (s, t) ∈ M.bisimSet N ↔ Cslib.LTS.Bisimilarity M.toLTS N.toLTS s t :=
+  Silmaril.Proofs.Automata.mem_bisimSetN M N s t
+
+instance NMachine.decReachVia (M : NMachine S L) (P : L → Bool) (a b : S) :
+    Decidable (ReachVia M.toLTS (fun l => P l = true) a b) :=
+  decidable_of_iff _ (M.mem_reachSet P a b)
+
+instance NMachine.decSimilarity (M : NMachine S L) (N : NMachine T L) (s : S) (t : T) :
+    Decidable (Cslib.LTS.Similarity M.toLTS N.toLTS s t) :=
+  decidable_of_iff _ (M.mem_simSet N s t)
+
+instance NMachine.decBisimilarity (M : NMachine S L) (N : NMachine T L) (s : S) (t : T) :
+    Decidable (Cslib.LTS.Bisimilarity M.toLTS N.toLTS s t) :=
+  decidable_of_iff _ (M.mem_bisimSet N s t)
 
 instance decReachVia (M : DMachine S L) (P : L → Bool) (a b : S) :
     Decidable (ReachVia M.toLTS (fun l => P l = true) a b) :=

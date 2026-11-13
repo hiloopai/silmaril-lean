@@ -536,8 +536,19 @@ async function formatPage(name) {
   return h;
 }
 // A machine document drawn from its canonical JSON (states, labels, edges, layers): states are
-// nodes (initial: thick border; accepting: double border; rejecting: orange; error: red), edges
-// are labelled, and parallel edges between two states are merged into one multi-label edge.
+// nodes (initial: thick border; accepting: double border; rejecting: orange; error: red).
+// Parallel edges between two states are merged into one edge, and self-loops are folded into
+// their state (a "↺ n" badge), so large machines stay readable. Labels written as pairs
+// "(a,b)" are grouped by their second component ("send|recv priority"). Clicking a state or an
+// edge lists its transitions in full below the graph.
+function compactLabels(ls) {
+  const groups = new Map(), rest = [];
+  for (const l of ls) {
+    const m = /^\(([^,()]*),(.*)\)$/.exec(l);
+    if (m) { if (!groups.has(m[2])) groups.set(m[2], []); groups.get(m[2]).push(m[1]); } else rest.push(l);
+  }
+  return [...[...groups].map(([b, as]) => `${as.join("|")} ${b}`), ...rest];
+}
 let mcy = null;
 async function machinePage(name) {
   const m = (await q("SELECT * FROM machines WHERE name = ?", [name]))[0];
@@ -549,35 +560,60 @@ async function machinePage(name) {
   let h = `<h2>Machine <code>${esc(name)}</code></h2>`;
   if (m.doc) h += `<p>${esc(m.doc)}</p>`;
   h += `<p class="legend muted"><span>${doc.states.length} states</span><span>${doc.labels.length} labels</span><span>${doc.edges.length} edges</span>` +
-    `<span>deterministic: ${m.deterministic ? "yes" : "no"}</span> — initial: thick border; accepting: double border; rejecting: orange; error: red</p>`;
-  h += '<div id="mcy" style="height:62vh;min-height:380px;border:1px solid var(--line);background:var(--panel)"></div>';
+    `<span>deterministic: ${m.deterministic ? "yes" : "no"}</span> — initial: thick border; accepting: double border; rejecting: orange; error: red; ` +
+    "↺ n: n self-loops. Click a state or an edge for its transitions.</p>";
+  const big = doc.states.length > 12 || doc.edges.length > 40;
+  h += `<div id="mcy" style="height:${big ? 78 : 62}vh;min-height:420px;border:1px solid var(--line);background:var(--panel)"></div>`;
+  h += '<div id="mdetail" class="muted" style="margin:8px 0;min-height:1.5em">Click a state or an edge.</div>';
   h += "<h2>Bindings (typed machines proved equal to this document)</h2>" + await tableOf(await first(DETAIL,
     "SELECT name, decl, marks, theorem, module FROM machine_bindings WHERE machine = ? ORDER BY name", [name]), null, { hints: { name: "" } });
   h += "<h2>Record</h2>" + await dl(Object.fromEntries(Object.entries(m).filter(([k]) => k !== "canonical")), { name: "" });
   h += "<h2>Canonical JSON</h2><textarea readonly>" + esc(m.canonical) + "</textarea>";
   const init = async () => {
     if (typeof cytoscape === "undefined") { $("#mcy").innerHTML = '<p class="err">cytoscape did not load</p>'; return; }
-    const merged = new Map();
+    const merged = new Map(), loops = new Map();
     for (const [a, l, b] of doc.edges) {
+      if (a === b) { if (!loops.has(a)) loops.set(a, []); loops.get(a).push(l); continue; }
       const k = a + "\u0000" + b;
       if (!merged.has(k)) merged.set(k, { source: a, target: b, labels: [] });
       merged.get(k).labels.push(l);
     }
-    const els = doc.states.map((s) => ({ data: { id: "s:" + s, label: s,
-      color: has("error", s) ? "#d64545" : has("rejecting", s) ? "#e8963a" : has("accepting", s) ? "#2e9d4f" : "#2f5d9e",
-      bw: has("initial", s) ? 4 : 1.5, bs: has("accepting", s) ? "double" : "solid" } }));
+    const els = doc.states.map((s) => {
+      const n = (loops.get(s) || []).length;
+      return { data: { id: "s:" + s, name: s, label: n ? `${s}\n↺ ${n}` : s,
+        color: has("error", s) ? "#d64545" : has("rejecting", s) ? "#e8963a" : has("accepting", s) ? "#2e9d4f" : "#2f5d9e",
+        bw: has("initial", s) ? 4 : 1.5, bs: has("accepting", s) ? "double" : "solid" } };
+    });
     let i = 0;
-    for (const e of merged.values()) els.push({ data: { id: "e" + (i++), source: "s:" + e.source, target: "s:" + e.target,
-      label: e.labels.length > 3 ? `${e.labels.slice(0, 3).join("\n")}\n… (${e.labels.length})` : e.labels.join("\n") } });
+    for (const e of merged.values()) {
+      const c = compactLabels(e.labels);
+      els.push({ data: { id: "e" + (i++), source: "s:" + e.source, target: "s:" + e.target, all: e.labels,
+        label: c.length > 3 ? `${c.slice(0, 3).join("\n")}\n+${c.length - 3} more` : c.join("\n") } });
+    }
     mcy = cytoscape({ container: $("#mcy"), elements: els, wheelSensitivity: 0.2,
-      layout: { name: "dagre", rankDir: "LR", nodeSep: 40, rankSep: 90 },
+      layout: big ? { name: "dagre", rankDir: "LR", nodeSep: 70, rankSep: 220, edgeSep: 30 }
+        : { name: "dagre", rankDir: "LR", nodeSep: 40, rankSep: 90 },
       style: [
         { selector: "node", style: { label: "data(label)", "background-color": "#fff", "border-color": "data(color)", "border-width": "data(bw)",
-          "border-style": "data(bs)", color: "#1d2329", "font-size": 11, "text-valign": "center", "text-halign": "center", shape: "round-rectangle",
-          width: "label", height: 26, padding: 8 } },
+          "border-style": "data(bs)", color: "#1d2329", "font-size": big ? 12 : 11, "text-valign": "center", "text-halign": "center", shape: "round-rectangle",
+          "text-wrap": "wrap", width: "label", height: big ? "label" : 26, padding: big ? 10 : 8 } },
         { selector: "edge", style: { label: "data(label)", "curve-style": "bezier", "target-arrow-shape": "triangle", width: 1.2,
-          "line-color": "#9aa0a6", "target-arrow-color": "#9aa0a6", "font-size": 9, "text-wrap": "wrap", "text-background-color": "#fbfbfa",
-          "text-background-opacity": 0.85, "loop-direction": "-45deg", "loop-sweep": "40deg" } }] });
+          "line-color": "#9aa0a6", "target-arrow-color": "#9aa0a6", "font-size": big ? 9 : 9, "text-wrap": "wrap",
+          "text-background-color": "#fbfbfa", "text-background-opacity": big ? 0.9 : 0.85, "text-background-padding": big ? 2 : 0,
+          "text-rotation": big ? "autorotate" : "none", "control-point-step-size": big ? 60 : 40 } },
+        { selector: ":selected", style: { "line-color": "#2f5d9e", "target-arrow-color": "#2f5d9e", "border-color": "#2f5d9e" } }] });
+    const show = (html) => { $("#mdetail").classList.remove("muted"); $("#mdetail").innerHTML = html; };
+    const list = (ls) => "<ul style=\"margin:4px 0\">" + ls.map((l) => `<li><code>${esc(l)}</code></li>`).join("") + "</ul>";
+    mcy.on("tap", "edge", (ev) => {
+      const d = ev.target.data();
+      show(`<b>${esc(d.source.slice(2))} → ${esc(d.target.slice(2))}</b> (${d.all.length} labels)` + list(d.all));
+    });
+    mcy.on("tap", "node", (ev) => {
+      const s = ev.target.data("name");
+      const out = doc.edges.filter(([a, , b]) => a === s && b !== s).map(([, l, b]) => `${l} → ${b}`);
+      show(`<b>${esc(s)}</b>` + ((loops.get(s) || []).length ? `<br>self-loops: ${list(loops.get(s))}` : "") +
+        (out.length ? `outgoing: ${list(out)}` : "<br>no outgoing transitions to other states"));
+    });
   };
   return { html: h, init };
 }

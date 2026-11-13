@@ -81,6 +81,33 @@ theorem toSpec_deterministic (M : DMachine S L) : M.toSpec.Deterministic := by
   rw [← name_inj h1, ← name_inj h2, h] at h'
   cases h'; rfl
 
+theorem mem_toSpecN_edges [DecidableEq S] (M : NMachine S L) (e : Edge) :
+    e ∈ M.toSpec.edges ↔ ∃ s l s', s' ∈ M.step s l ∧
+      e = ⟨FinNamed.name s, FinNamed.name l, FinNamed.name s'⟩ := by
+  simp only [NMachine.toSpec, List.mem_flatMap, List.mem_map, List.mem_filter,
+    decide_eq_true_eq]
+  constructor
+  · rintro ⟨s, -, l, -, s', ⟨-, h⟩, rfl⟩; exact ⟨s, l, s', h, rfl⟩
+  · rintro ⟨s, l, s', h, rfl⟩
+    exact ⟨s, FinNamed.complete s, l, FinNamed.complete l, s', ⟨FinNamed.complete s', h⟩, rfl⟩
+
+theorem toSpecN_step_iff [DecidableEq S] (M : NMachine S L) (s : S) (l : L) (s' : S) :
+    M.toSpec.Step (FinNamed.name s) (FinNamed.name l) (FinNamed.name s') ↔ s' ∈ M.step s l := by
+  unfold Spec.Step
+  rw [mem_toSpecN_edges]
+  constructor
+  · rintro ⟨a, b, c, h, he⟩
+    obtain ⟨h1, h2, h3⟩ := Edge.mk.inj he
+    rw [name_inj h1, name_inj h2, name_inj h3]; exact h
+  · intro h; exact ⟨s, l, s', h, rfl⟩
+
+theorem toSpecN_wf [DecidableEq S] (M : NMachine S L) : M.toSpec.wf = true := by
+  simp only [Spec.wf, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true,
+    List.contains_iff_mem]
+  refine ⟨⟨FinNamed.nodup, FinNamed.nodup⟩, fun e he => ?_⟩
+  obtain ⟨s, l, s', -, rfl⟩ := (mem_toSpecN_edges M e).mp he
+  exact ⟨⟨mem_names s, mem_names l⟩, mem_names s'⟩
+
 end ToSpec
 
 section StepFn

@@ -1,0 +1,35 @@
+$ sil project findings
+classification	problem	summary	pointer	note
+error	mk.parse.v1	UNS	https://example.org/bugs/1	reads one byte past the buffer
+spec_bug	mk.fn.old	UNS	-	-
+spec_bug	mk.gen.five	UNS	-	-
+spec_bug	mk.old_bound	UNS	-	the statement is off by one
+model_gap	mk.vec.add	UNS	pxor xmm0, xmm0	Str9 does not decode SSE2 pxor
+model_gap	mk.vec.shift	UNS	shl r/m16, imm8	16-bit shifts do not retire
+unclear	mk.vec.mul	UNS	-	the counterexample needs review
+$ sil project findings --class spec_bug
+classification	problem	summary	pointer	note
+spec_bug	mk.fn.old	UNS	-	-
+spec_bug	mk.gen.five	UNS	-	-
+spec_bug	mk.old_bound	UNS	-	the statement is off by one
+$ sil project findings --class unclassified
+problem	summary
+mk.other	UNS
+$ sil project errors
+problem	summary	affected_versions	fixed_in	disclosure_status	pointer	note
+mk.parse.v1	UNS	1.0,1.1	1.2	reported	https://example.org/bugs/1	reads one byte past the buffer
+$ sil project gaps
+pointer	problems	names
+pxor xmm0, xmm0	1	mk.vec.add
+shl r/m16, imm8	1	mk.vec.shift
+$ sil project deprecated
+kind	name	superseded_by	reason
+problem	mk.gen	mk.fn.new	quantifies over the wrong domain
+problem	mk.old_bound	mk.new_bound	off by one: the bound is 255, not 256
+spec	mk.specs.old	mk.specs.new	ignores the length prefix
+$ sil project deprecated --problems
+problem	via_kind	via
+mk.fn.old	spec	mk.specs.old
+mk.gen	self	mk.gen
+mk.gen.five	instance	mk.gen
+mk.old_bound	self	mk.old_bound

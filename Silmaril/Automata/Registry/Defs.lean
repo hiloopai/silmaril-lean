@@ -32,7 +32,7 @@ identity).
 [[machine_binding]]
 name = "silmaril.example.door.typed"
 machine = "silmaril.example.door"
-decl = "Door.machine"          # : DMachine S L, with FinNamed S and FinNamed L
+decl = "Door.machine"          # : DMachine S L or NMachine S L, over FinNamed S and L
 marks = "Door.marks"           # optional : Marks S
 ```
 
@@ -114,7 +114,7 @@ def docTerm (d : Document) : CommandElabM Term := do
     let c ← liftCoreM (fs.const kind "decl")
     let base ← fullName name
     let thm := base ++ `bound
-    let ty ← `(Silmaril.Automata.Spec.canon (Silmaril.Automata.DMachine.toSpec $(mkIdent c)) =
+    let ty ← `(Silmaril.Automata.Spec.canon ($(mkIdent c)).toSpec =
       Silmaril.Automata.Spec.canon ($docId).spec)
     let pf ← `(Silmaril.Automata.Spec.canon_eq_of_equivB (by decide +kernel))
     try elabDef true thm #[] (some ty) pf

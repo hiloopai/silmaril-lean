@@ -11,5 +11,5 @@ predicate ok.trivial.hello (arity 1): status THM [THM], verdict holds
 group ok.preds: [ok.small.two=THM, ok.small.five=UNS, ok.cnf.holds=SAT, ok.cnf.empty=OPN, ok.conj.mul_zero=OPN, ok/legacy=OPN]
 group ok.values: [ok.pair.parses=THM, ok.pair.agrees.1=OPN, ok.hello.port=THM, ok.trivial.hello=THM]
 group ok.verify: [ok.top=THM, ok.bad_top=UNS, ok.open_top=OPN, ok.values=group(3 holds, 0 fails, 1 unknown), ok.preds=group(1 holds, 1 fails, 4 unknown)]
-sql sha256: a36358d1a5a4a8d54d8a3cf0dc1ff5ab8863c2d0967df75fa178febf0a5c0c5e
+sql sha256: 69fa30176a3d89cb3143cb2b534909441730651a3fec25c05507631c1e4e42d1
 exit: ok

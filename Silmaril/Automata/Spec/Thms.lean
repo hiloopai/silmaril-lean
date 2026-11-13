@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Automata.Spec.Defs
 import Silmaril.Proofs.Automata.Spec
+import Silmaril.Proofs.Automata.Spec.Json
 
 @[expose] public section
 
@@ -14,6 +15,7 @@ PROVED (standard axioms; proofs in `Silmaril/Proofs/Automata/Spec.lean`):
 * **typed ↔ JSON**: `toSpec_step_iff` (the spec of a typed machine has exactly its steps, on
   names), `mem_toSpec_edges`, `toSpec_wf`, `toSpec_deterministic`, and `stepFn_toSpec` (the
   step function a document denotes is the typed step function, mapped to names);
+* nondeterministic machines: `NMachine.toSpec_step_iff`, `NMachine.toSpec_wf`;
 * `deterministic_of_B`: the edge-by-edge check `deterministicB` is sound;
 * `stepFn_eq_some_iff`: on a deterministic spec, the step function and the relation agree;
 * **canonical identity**: `canon_eq_iff`, `equivB_iff`, `canon_eq_of_equivB` (the
@@ -22,6 +24,11 @@ PROVED (standard axioms; proofs in `Silmaril/Proofs/Automata/Spec.lean`):
 * **attachments**: `step_iff_of_canon_eq`: two typed machines (possibly over different
   inductive types) bound to the same canonical spec have the same steps on corresponding
   names, so facts about one transfer to the other;
+* **the JSON codec round-trips** (on `Lean.Json` values): `strsOfJson?_strsToJson`,
+  `Edge.ofJson?_toJson`, `Spec.ofJson?_toJson`, `Layers.ofJson?_toJson`,
+  `Document.ofJson?_toJson`; the `FromJson`/`ToJson` instances are these functions, so
+  `fromJson? (toJson d) = .ok d` for every document. (Printing to text and parsing text back
+  are Lean core's `Json.compress` and `Json.parse`, outside this development.)
 * `typed_step_iff`: on a deterministic spec, `Spec.Typed` has exactly the spec's steps.
 -/
 
@@ -62,6 +69,13 @@ theorem stepFn_toSpec (M : DMachine S L) (s : S) (l : L) :
     M.toSpec.stepFn (FinNamed.name s) (FinNamed.name l) = (M.step s l).map FinNamed.name :=
   Silmaril.Proofs.Automata.stepFn_toSpec M s l
 
+theorem NMachine.toSpec_step_iff [DecidableEq S] (M : NMachine S L) (s : S) (l : L) (s' : S) :
+    M.toSpec.Step (FinNamed.name s) (FinNamed.name l) (FinNamed.name s') ↔ s' ∈ M.step s l :=
+  Silmaril.Proofs.Automata.toSpecN_step_iff M s l s'
+
+theorem NMachine.toSpec_wf [DecidableEq S] (M : NMachine S L) : M.toSpec.wf = true :=
+  Silmaril.Proofs.Automata.toSpecN_wf M
+
 end ToSpec
 
 namespace Spec
@@ -98,6 +112,26 @@ end Spec
 theorem Layers.canon_eq_of_equivB {ly ly' : Layers} (h : ly.equivB ly' = true) :
     ly.canon = ly'.canon :=
   Silmaril.Proofs.Automata.layers_canon_eq_of_equivB h
+
+theorem strsOfJson?_strsToJson (xs : List String) : strsOfJson? (strsToJson xs) = .ok xs :=
+  Silmaril.Proofs.Automata.strsOfJson?_strsToJson xs
+
+theorem Edge.ofJson?_toJson (e : Edge) : Edge.ofJson? e.toJson = .ok e :=
+  Silmaril.Proofs.Automata.edge_ofJson?_toJson e
+
+theorem Spec.ofJson?_toJson (sp : Spec) : Spec.ofJson? sp.toJson = .ok sp :=
+  Silmaril.Proofs.Automata.spec_ofJson?_toJson sp
+
+theorem Layers.ofJson?_toJson (ly : Layers) : Layers.ofJson? ly.toJson = .ok ly :=
+  Silmaril.Proofs.Automata.layers_ofJson?_toJson ly
+
+theorem Document.ofJson?_toJson (d : Document) : Document.ofJson? d.toJson = .ok d :=
+  Silmaril.Proofs.Automata.document_ofJson?_toJson d
+
+/-- The codec as Lean's `FromJson`/`ToJson`: `fromJson? (toJson d) = .ok d`. -/
+theorem Document.fromJson?_toJson (d : Document) :
+    (Lean.fromJson? (Lean.toJson d) : Except String Document) = .ok d :=
+  Document.ofJson?_toJson d
 
 theorem step_iff_of_canon_eq {S₁ L₁ S₂ L₂ : Type} [FinNamed S₁] [FinNamed L₁] [FinNamed S₂]
     [FinNamed L₂] (M₁ : DMachine S₁ L₁) (M₂ : DMachine S₂ L₂)

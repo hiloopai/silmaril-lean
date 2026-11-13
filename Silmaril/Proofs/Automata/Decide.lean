@@ -82,17 +82,17 @@ section Reach
 variable {S L : Type} [Fintype S] [Fintype L] [DecidableEq S]
 
 omit [Fintype S] in
-theorem mem_reachStep {M : DMachine S L} {P : L → Bool} {X : Finset S} {b : S} :
-    b ∈ reachStep M P X ↔ b ∈ X ∨ ∃ s ∈ X, ∃ l, P l = true ∧ M.step s l = some b := by
-  simp [reachStep, Option.mem_toFinset]
+theorem mem_reachStep {M : NMachine S L} {P : L → Bool} {X : Finset S} {b : S} :
+    b ∈ M.reachStep P X ↔ b ∈ X ∨ ∃ s ∈ X, ∃ l, P l = true ∧ b ∈ M.step s l := by
+  simp [NMachine.reachStep]
 
 omit [Fintype S] in
-theorem reachStep_inflationary (M : DMachine S L) (P : L → Bool) (X : Finset S) :
-    X ⊆ reachStep M P X := Finset.subset_union_left
+theorem reachStep_inflationary (M : NMachine S L) (P : L → Bool) (X : Finset S) :
+    X ⊆ M.reachStep P X := Finset.subset_union_left
 
 omit [Fintype S] in
-theorem reach_sound (M : DMachine S L) (P : L → Bool) (a : S) (n : Nat) (b : S)
-    (hb : b ∈ (reachStep M P)^[n] {a}) : ReachVia M.toLTS (fun l => P l = true) a b := by
+theorem reach_sound (M : NMachine S L) (P : L → Bool) (a : S) (n : Nat) (b : S)
+    (hb : b ∈ (M.reachStep P)^[n] {a}) : ReachVia M.toLTS (fun l => P l = true) a b := by
   induction n generalizing b with
   | zero => simp at hb; subst hb; exact Relation.ReflTransGen.refl
   | succ n ih =>
@@ -101,21 +101,25 @@ theorem reach_sound (M : DMachine S L) (P : L → Bool) (a : S) (n : Nat) (b : S
     · exact ih b hb
     · exact Relation.ReflTransGen.tail (ih s hs) ⟨l, hl, hst⟩
 
-theorem mem_reachSet (M : DMachine S L) (P : L → Bool) (a b : S) :
-    b ∈ reachSet M P a ↔ ReachVia M.toLTS (fun l => P l = true) a b := by
+theorem mem_reachSetN (M : NMachine S L) (P : L → Bool) (a b : S) :
+    b ∈ M.reachSet P a ↔ ReachVia M.toLTS (fun l => P l = true) a b := by
   constructor
   · exact reach_sound M P a _ b
   · intro h
-    have hfix := iterate_fix_of_inflationary (reachStep M P) (reachStep_inflationary M P) {a}
+    have hfix := iterate_fix_of_inflationary (M.reachStep P) (reachStep_inflationary M P) {a}
     induction h with
     | refl =>
       exact subset_iterate_of_inflationary (reachStep_inflationary M P) {a} _
         (Finset.mem_singleton_self a)
     | tail _ hst ih =>
       obtain ⟨l, hl, hst⟩ := hst
-      unfold reachSet
+      unfold NMachine.reachSet
       rw [← hfix, mem_reachStep]
       exact Or.inr ⟨_, ih, l, hl, hst⟩
+
+theorem mem_reachSet (M : DMachine S L) (P : L → Bool) (a b : S) :
+    b ∈ reachSet M P a ↔ ReachVia M.toLTS (fun l => P l = true) a b := by
+  rw [← M.toN_toLTS]; exact mem_reachSetN M.toN P a b
 
 end Reach
 
@@ -124,68 +128,76 @@ section Sim
 variable {S T L : Type} [Fintype S] [Fintype T] [Fintype L] [DecidableEq S] [DecidableEq T]
 
 omit [Fintype T] in
-theorem simStep_deflationary (M : DMachine S L) (N : DMachine T L) (R : Finset (S × T)) :
-    simStep M N R ⊆ R := Finset.filter_subset _ _
+theorem simStep_deflationary (M : NMachine S L) (N : NMachine T L) (R : Finset (S × T)) :
+    M.simStep N R ⊆ R := Finset.filter_subset _ _
 
-theorem simSet_fix (M : DMachine S L) (N : DMachine T L) :
-    simStep M N (simSet M N) = simSet M N :=
+theorem simSet_fix (M : NMachine S L) (N : NMachine T L) :
+    M.simStep N (M.simSet N) = M.simSet N :=
   iterate_fix_of_deflationary _ (simStep_deflationary M N) _
 
-theorem mem_simSet (M : DMachine S L) (N : DMachine T L) (s : S) (t : T) :
-    (s, t) ∈ simSet M N ↔ Cslib.LTS.Similarity M.toLTS N.toLTS s t := by
+theorem mem_simSetN (M : NMachine S L) (N : NMachine T L) (s : S) (t : T) :
+    (s, t) ∈ M.simSet N ↔ Cslib.LTS.Similarity M.toLTS N.toLTS s t := by
   constructor
   · intro h
-    refine ⟨fun s t => (s, t) ∈ simSet M N, h, ?_⟩
+    refine ⟨fun s t => (s, t) ∈ M.simSet N, h, ?_⟩
     intro s₁ s₂ hr μ s₁' htr
     rw [← simSet_fix] at hr
-    simp only [simStep, simOK, Finset.mem_filter, decide_eq_true_eq] at hr
+    simp only [NMachine.simStep, NMachine.simOK, Finset.mem_filter, decide_eq_true_eq] at hr
     obtain ⟨t', ht', hm⟩ := hr.2 μ s₁' htr
     exact ⟨t', ht', hm⟩
   · rintro ⟨r, hr, hsim⟩
-    have key : ∀ n, ∀ p : S × T, r p.1 p.2 → p ∈ (simStep M N)^[n] Finset.univ := by
+    have key : ∀ n, ∀ p : S × T, r p.1 p.2 → p ∈ (M.simStep N)^[n] Finset.univ := by
       intro n
       induction n with
       | zero => intro p _; exact Finset.mem_univ p
       | succ n ih =>
         intro p hp
         rw [Function.iterate_succ_apply']
-        simp only [simStep, simOK, Finset.mem_filter, decide_eq_true_eq]
+        simp only [NMachine.simStep, NMachine.simOK, Finset.mem_filter, decide_eq_true_eq]
         refine ⟨ih p hp, fun l s' hs' => ?_⟩
         obtain ⟨t', ht', hr'⟩ := hsim hp l s' hs'
         exact ⟨t', ht', ih (s', t') hr'⟩
     exact key _ (s, t) hr
 
-theorem bisimStep_deflationary (M : DMachine S L) (N : DMachine T L) (R : Finset (S × T)) :
-    bisimStep M N R ⊆ R := Finset.filter_subset _ _
+theorem mem_simSet (M : DMachine S L) (N : DMachine T L) (s : S) (t : T) :
+    (s, t) ∈ simSet M N ↔ Cslib.LTS.Similarity M.toLTS N.toLTS s t := by
+  rw [← M.toN_toLTS, ← N.toN_toLTS]; exact mem_simSetN M.toN N.toN s t
 
-theorem bisimSet_fix (M : DMachine S L) (N : DMachine T L) :
-    bisimStep M N (bisimSet M N) = bisimSet M N :=
+theorem bisimStep_deflationary (M : NMachine S L) (N : NMachine T L) (R : Finset (S × T)) :
+    M.bisimStep N R ⊆ R := Finset.filter_subset _ _
+
+theorem bisimSet_fix (M : NMachine S L) (N : NMachine T L) :
+    M.bisimStep N (M.bisimSet N) = M.bisimSet N :=
   iterate_fix_of_deflationary _ (bisimStep_deflationary M N) _
 
-theorem mem_bisimSet (M : DMachine S L) (N : DMachine T L) (s : S) (t : T) :
-    (s, t) ∈ bisimSet M N ↔ Cslib.LTS.Bisimilarity M.toLTS N.toLTS s t := by
+theorem mem_bisimSetN (M : NMachine S L) (N : NMachine T L) (s : S) (t : T) :
+    (s, t) ∈ M.bisimSet N ↔ Cslib.LTS.Bisimilarity M.toLTS N.toLTS s t := by
   constructor
   · intro h
-    refine ⟨fun s t => (s, t) ∈ bisimSet M N, h, ?_⟩
+    refine ⟨fun s t => (s, t) ∈ M.bisimSet N, h, ?_⟩
     intro s₁ s₂ hr μ
     rw [← bisimSet_fix] at hr
-    simp only [bisimStep, bisimOK, Finset.mem_filter, decide_eq_true_eq] at hr
+    simp only [NMachine.bisimStep, NMachine.bisimOK, Finset.mem_filter, decide_eq_true_eq] at hr
     exact ⟨fun s₁' htr => hr.2 μ |>.1 s₁' htr, fun s₂' htr => hr.2 μ |>.2 s₂' htr⟩
   · rintro ⟨r, hr, hsim⟩
-    have key : ∀ n, ∀ p : S × T, r p.1 p.2 → p ∈ (bisimStep M N)^[n] Finset.univ := by
+    have key : ∀ n, ∀ p : S × T, r p.1 p.2 → p ∈ (M.bisimStep N)^[n] Finset.univ := by
       intro n
       induction n with
       | zero => intro p _; exact Finset.mem_univ p
       | succ n ih =>
         intro p hp
         rw [Function.iterate_succ_apply']
-        simp only [bisimStep, bisimOK, Finset.mem_filter, decide_eq_true_eq]
+        simp only [NMachine.bisimStep, NMachine.bisimOK, Finset.mem_filter, decide_eq_true_eq]
         refine ⟨ih p hp, fun l => ⟨fun s' hs' => ?_, fun t' ht' => ?_⟩⟩
         · obtain ⟨t', ht', hr'⟩ := (hsim hp l).1 s' hs'
           exact ⟨t', ht', ih (s', t') hr'⟩
         · obtain ⟨s', hs', hr'⟩ := (hsim hp l).2 t' ht'
           exact ⟨s', hs', ih (s', t') hr'⟩
     exact key _ (s, t) hr
+
+theorem mem_bisimSet (M : DMachine S L) (N : DMachine T L) (s : S) (t : T) :
+    (s, t) ∈ bisimSet M N ↔ Cslib.LTS.Bisimilarity M.toLTS N.toLTS s t := by
+  rw [← M.toN_toLTS, ← N.toN_toLTS]; exact mem_bisimSetN M.toN N.toN s t
 
 end Sim
 

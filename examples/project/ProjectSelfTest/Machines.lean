@@ -11,6 +11,7 @@ The machine documents of `silmaril/machines/` and their bindings:
 
 * `silmaril.net.http2.stream`: the HTTP/2 stream machine (RFC 9113 §5.1), bound to
   `Silmaril.Net.Http2.machine` and its marks;
+* `silmaril.selftest.coin`: a nondeterministic document bound to a typed `NMachine`;
 * `silmaril.selftest.door`: a small document bound to **two** typed machines over different
   inductive types (`Door` and `DoorAlt`, whose constructors are declared in other orders), so
   one document carries several attachments and `step_iff_of_canon_eq` relates them.
@@ -63,6 +64,32 @@ def machine : DMachine St Lb := ⟨fun s l => match s, l with
 
 end DoorAlt
 
+namespace Door
+
+/-- The door with its marks. -/
+def marked : Marked St Lb := ⟨machine, marks⟩
+
+/-- Open, close, lock. -/
+def word : List Lb := [.open, .close, .lock]
+
+/-- The same word, by name. -/
+def wordNames : List String := ["open", "close", "lock"]
+
+end Door
+
+namespace Coin
+
+inductive Side where | heads | tails deriving DecidableEq, Repr
+silmaril_finite Side
+
+inductive Act where | toss deriving DecidableEq, Repr
+silmaril_finite Act
+
+/-- Tossing lands on either side: a nondeterministic machine. -/
+def machine : NMachine Side Act := ⟨fun _ _ => {.heads, .tails}⟩
+
+end Coin
+
 end
 
 end ProjectSelfTest.Machines
@@ -95,6 +122,12 @@ end ProjectSelfTest.Machines
 
 namespace ProjectSelfTest.Machines
 
+/-- The name `heads`. -/
+public def headsName : String := "heads"
+
+/-- The name `tails`. -/
+public def tailsName : String := "tails"
+
 /-- Every event. -/
 public def anyEvent : Silmaril.Net.Http2.Event → Bool := fun _ => true
 
@@ -111,20 +144,51 @@ silmaril instance silmaril.net.http2.stream.closes
     silmaril.net.http2.stream.closes := by
   unfold silmaril.net.http2.stream.closes; decide
 
-silmaril instance silmaril.net.http2.stream.quiet_closes
-    (title := "Without END_STREAM or RST_STREAM an HTTP/2 stream closes") :=
-  silmaril.shapes.machine.reach (M := Silmaril.Net.Http2.machine)
-    (P := Silmaril.Net.Http2.quiet) (a := Silmaril.Net.Http2.StreamState.idle)
-    (b := Silmaril.Net.Http2.StreamState.closed)
-@[answers "silmaril.net.http2.stream.quiet_closes" uns] public theorem http2_quiet :
-    ¬ silmaril.net.http2.stream.quiet_closes := by
-  unfold silmaril.net.http2.stream.quiet_closes; decide
-
-silmaril instance silmaril.selftest.door.closed_locked_bisimilar
-    (title := "A closed and a locked door are bisimilar") :=
+silmaril instance silmaril.selftest.door.closed_bisimilar
+    (title := "A closed door is bisimilar to itself (the greatest bisimulation, decided)") :=
   silmaril.shapes.machine.bisimilar (M := ProjectSelfTest.Machines.Door.machine)
     (N := ProjectSelfTest.Machines.Door.machine)
-    (s := ProjectSelfTest.Machines.Door.St.closed) (t := ProjectSelfTest.Machines.Door.St.locked)
-@[answers "silmaril.selftest.door.closed_locked_bisimilar" uns] public theorem door_nb :
-    ¬ silmaril.selftest.door.closed_locked_bisimilar := by
-  unfold silmaril.selftest.door.closed_locked_bisimilar; decide
+    (s := ProjectSelfTest.Machines.Door.St.closed) (t := ProjectSelfTest.Machines.Door.St.closed)
+@[answers "silmaril.selftest.door.closed_bisimilar" thm] public theorem door_bisim :
+    silmaril.selftest.door.closed_bisimilar := by
+  unfold silmaril.selftest.door.closed_bisimilar; decide
+
+/-- Negative facts stay theorems, not failing rows: a quiet HTTP/2 stream never closes, and a
+closed and a locked door are not bisimilar. -/
+public theorem ProjectSelfTest.Machines.http2_quiet : ¬ Silmaril.Automata.Shapes.Reach Silmaril.Net.Http2.machine
+    Silmaril.Net.Http2.quiet .idle .closed := by decide
+
+public theorem ProjectSelfTest.Machines.door_not_bisim : ¬ Silmaril.Automata.Shapes.Bisimilar ProjectSelfTest.Machines.Door.machine
+    ProjectSelfTest.Machines.Door.machine
+    .closed .locked := by decide
+
+silmaril instance silmaril.selftest.door.accepts_word
+    (title := "The door accepts open, close, lock") :=
+  silmaril.shapes.machine.accepts (M := ProjectSelfTest.Machines.Door.marked)
+    (w := ProjectSelfTest.Machines.Door.word)
+@[answers "silmaril.selftest.door.accepts_word" thm] public theorem door_accepts :
+    silmaril.selftest.door.accepts_word := by
+  unfold silmaril.selftest.door.accepts_word; decide
+
+silmaril instance silmaril.selftest.door.nonempty
+    (title := "The door accepts some word") :=
+  silmaril.shapes.machine.nonempty (M := ProjectSelfTest.Machines.Door.marked)
+@[answers "silmaril.selftest.door.nonempty" thm] public theorem door_nonempty :
+    silmaril.selftest.door.nonempty := by
+  unfold silmaril.selftest.door.nonempty; decide
+
+silmaril instance silmaril.selftest.door.json_accepts
+    (title := "The door document accepts open, close, lock (on names, without a typed machine)") :=
+  silmaril.shapes.machine.json.accepts (d := silmaril.selftest.door)
+    (w := ProjectSelfTest.Machines.Door.wordNames)
+@[answers "silmaril.selftest.door.json_accepts" thm] public theorem door_json_accepts :
+    silmaril.selftest.door.json_accepts := by
+  unfold silmaril.selftest.door.json_accepts; decide +kernel
+
+silmaril instance silmaril.selftest.coin.json_simulates
+    (title := "In the coin document, tails simulates heads (on names)") :=
+  silmaril.shapes.machine.json.simulates (d := silmaril.selftest.coin) (e := silmaril.selftest.coin)
+    (a := ProjectSelfTest.Machines.headsName) (b := ProjectSelfTest.Machines.tailsName)
+@[answers "silmaril.selftest.coin.json_simulates" thm] public theorem coin_sim :
+    silmaril.selftest.coin.json_simulates := by
+  unfold silmaril.selftest.coin.json_simulates; decide +kernel

@@ -30,6 +30,9 @@ forget│  ╲ toLTSCat
   fully faithful by construction;
   `Thms` proves it essentially surjective (every typed machine is isomorphic to the typed
   machine of its spec), hence an **equivalence of categories**.
+* `JMarked`: valid deterministic JSON machines with layers, whose morphisms are those of the
+  marked machines they denote; `JMarked.typedFunctor : JMarked ⥤ MarkedMach` is again an
+  **equivalence** (`Thms`), and `JMarked.forget`, `MarkedMach.forget` forget the layers.
 * `MarkedMach`: typed machines with marks (`Marks`), morphisms preserving each mark;
   `MarkedMach.forget : MarkedMach ⥤ TMach` forgets the layer.
 * `toLTSCat : TMach ⥤ Cslib.LTSCat`: into CSLib's category of LTSs (Winskel–Nielsen
@@ -137,6 +140,43 @@ instance : Category MarkedMach where
 
 /-- Forget the marking layer. -/
 def MarkedMach.forget : MarkedMach ⥤ TMach where
+  obj A := A.base
+  map h := h.h
+
+/-! ## Marked JSON machines -/
+
+/-- A valid deterministic JSON machine with layers on its declared states. -/
+structure JMarked where
+  base : JMach
+  layers : Layers
+  wf : layers.wf base.sp.states = true
+
+/-- The marks the layers of a JSON machine denote. -/
+def JMarked.marks (A : JMarked) : Marks A.base.typed.S where
+  initial s := decide (s.1 ∈ A.layers.initial)
+  accepting s := decide (s.1 ∈ A.layers.accepting)
+  rejecting s := decide (s.1 ∈ A.layers.rejecting)
+  error s := decide (s.1 ∈ A.layers.error)
+
+/-- The marked typed machine a marked JSON machine denotes. -/
+def JMarked.typed (A : JMarked) : MarkedMach := ⟨A.base.typed, A.marks⟩
+
+/-- Marked JSON machines with the homomorphisms of the marked machines they denote. -/
+instance : Category JMarked where
+  Hom A B := A.typed ⟶ B.typed
+  id A := 𝟙 A.typed
+  comp h k := h ≫ k
+  id_comp h := Category.id_comp (obj := MarkedMach) h
+  comp_id h := Category.comp_id (obj := MarkedMach) h
+  assoc h k m := Category.assoc (obj := MarkedMach) h k m
+
+/-- The fully faithful functor from marked JSON machines to marked typed machines. -/
+def JMarked.typedFunctor : JMarked ⥤ MarkedMach where
+  obj := JMarked.typed
+  map h := h
+
+/-- Forget the layers of a JSON machine. -/
+def JMarked.forget : JMarked ⥤ JMach where
   obj A := A.base
   map h := h.h
 

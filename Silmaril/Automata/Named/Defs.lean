@@ -17,8 +17,9 @@ is written out by naming its states and labels, and read back by `ofName?`.
 * `FinNamed.ofName?`: the element of a name; `ofName?_name` in `Thms`;
 * `FinNamed.toFintype`: the Mathlib `Fintype` of a `FinNamed` type (the standard notion of
   finiteness; `FinNamed` adds only the names and their order);
-* instances for `Bool` and `Unit` (generic `Option`/`Prod`/`Sum` instances need injectivity of
-  name concatenation and are deferred; derived instances check distinctness by evaluation);
+* instances for `Bool` and `Unit` here, and for `Option`, `Sum` and `Prod` in `Thms` (names
+  `none`/`some(a)`, `inl(a)`/`inr(b)` and `(a,b)` with `,` and `\` escaped inside the
+  components, so distinctness is a theorem for every component type);
 * the command `silmaril_finite T` (in `Silmaril.Automata.Named.Derive`) derives the instance
   for an inductive type whose constructor arguments are `FinNamed`.
 
@@ -78,5 +79,23 @@ instance : FinNamed Unit where
   name _ := "()"
   complete _ := by simp
   nodup := by simp
+
+/-- Escape `,` and `\` with a backslash (the components of a pair name). -/
+def escChar (c : Char) : List Char := if c = ',' ∨ c = '\\' then ['\\', c] else [c]
+
+/-- A name with `,` and `\` escaped. -/
+def escapeName (s : String) : String := String.ofList (s.toList.flatMap escChar)
+
+/-- The name of `some a`. -/
+def someName (a : String) : String := "some(" ++ a ++ ")"
+
+/-- The name of `inl a`. -/
+def inlName (a : String) : String := "inl(" ++ a ++ ")"
+
+/-- The name of `inr b`. -/
+def inrName (b : String) : String := "inr(" ++ b ++ ")"
+
+/-- The name of a pair. -/
+def pairName (a b : String) : String := "(" ++ escapeName a ++ "," ++ escapeName b ++ ")"
 
 end Silmaril.Automata

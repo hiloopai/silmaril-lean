@@ -14,7 +14,7 @@
 //! record field of the same name, except the three spellings that Lean resolves (constants,
 //! value sources and instance arguments, see [`Ty`]).
 
-use super::{EXPECT_CODES, Manifest};
+use super::{CLASSIFICATIONS, DISCLOSURE_STATES, EXPECT_CODES, Manifest};
 use crate::project::check::{name_error, problem_name_error};
 use serde_json::{Value as Json, json};
 use std::collections::BTreeMap;
@@ -63,6 +63,10 @@ pub enum Ty {
     /// Tool-only data (`meta = { … }`): any table. Lean ignores it, and so does R11; it is for
     /// other tools (provenance, the source a record was converted from).
     Meta,
+    /// One of [`CLASSIFICATIONS`] (a finding's classification).
+    Classification,
+    /// One of [`DISCLOSURE_STATES`].
+    Disclosure,
 }
 
 /// One key of a kind.
@@ -326,6 +330,58 @@ pub const RECORD_KINDS: &[KindSpec] = &[
         ],
     },
     KindSpec {
+        kind: "deprecation",
+        doc: "A wrong problem, group or spec, kept for the record: why it is wrong and what \
+              replaces it. A `spec_bug` finding needs its problem (or the problem's spec, or the \
+              general problem it is an instance of) to be deprecated",
+        keys: &[
+            req("name", Ty::Problem, "The deprecated problem, group or spec"),
+            req("reason", Ty::Text, "Why it is wrong"),
+            opt(
+                "superseded_by",
+                Ty::Problems,
+                "The corrected problems, groups or specs that replace it",
+            ),
+        ],
+    },
+    KindSpec {
+        kind: "finding",
+        doc: "The classification of a failing problem's refutation: a genuine defect of the \
+              code under test (`error`, on a problem that is not deprecated), a wrong \
+              statement (`spec_bug`, on a deprecated one), a gap of the machine model \
+              (`model_gap`, with a `pointer` to the missing instruction or feature) or `unclear`",
+        keys: &[
+            req("name", Ty::Problem, "The refuted problem"),
+            req(
+                "classification",
+                Ty::Classification,
+                "`error`, `spec_bug`, `model_gap` or `unclear`",
+            ),
+            opt("note", Ty::Text, "What the refutation shows"),
+            opt(
+                "pointer",
+                Ty::Text,
+                "What it points at: the missing instruction or feature (required for \
+                 `model_gap`), a bug report, a commit",
+            ),
+            opt(
+                "affected_versions",
+                Ty::Texts,
+                "`error` only: the versions the defect affects",
+            ),
+            opt(
+                "fixed_in",
+                Ty::Text,
+                "`error` only: the first fixed version",
+            ),
+            opt(
+                "disclosure_status",
+                Ty::Disclosure,
+                "`error` only: `private`, `reported` or `public`",
+            ),
+        ],
+    },
+    KindSpec {
         kind: "decomposition",
         doc: "A proved edge `c₁ → … → cₙ → p`: one theorem (`proof`) or every such theorem of a \
               module (`module`)",
@@ -580,6 +636,14 @@ fn type_error(ty: Ty, v: &Json) -> Option<String> {
             }
         }
         Ty::Meta => (!v.is_object()).then(|| "must be a table".into()),
+        Ty::Classification => match v {
+            Json::String(s) if CLASSIFICATIONS.contains(&s.as_str()) => None,
+            _ => Some(format!("must be one of {}", CLASSIFICATIONS.join(", "))),
+        },
+        Ty::Disclosure => match v {
+            Json::String(s) if DISCLOSURE_STATES.contains(&s.as_str()) => None,
+            _ => Some(format!("must be one of {}", DISCLOSURE_STATES.join(", "))),
+        },
         Ty::Args => match v {
             Json::Object(m) if !m.is_empty() => m
                 .iter()
@@ -795,6 +859,12 @@ pub fn lint(text: &str, extra_kinds: &[String]) -> Linted {
                             );
                             ok = false;
                         }
+                        if key == "finding" {
+                            for why in super::markings::finding_key_errors(&keys) {
+                                diag(&mut out, x.span(), format!("{label}: {why}"));
+                                ok = false;
+                            }
+                        }
                         if key == "format_law"
                             && keys.get("law").and_then(Json::as_str) == Some("sound")
                             && !keys.contains_key("rel")
@@ -878,6 +948,8 @@ fn ty_schema(ty: Ty) -> Json {
             json!({"type": "object", "minProperties": 1, "additionalProperties": reference})
         }
         Ty::Meta => json!({"type": "object"}),
+        Ty::Classification => json!({"enum": CLASSIFICATIONS}),
+        Ty::Disclosure => json!({"enum": DISCLOSURE_STATES}),
     }
 }
 
@@ -1073,6 +1145,58 @@ args = { n = ["f"] }
             assert!(l.diags.is_empty(), "{e}: {:?}", l.diags);
         }
         assert_eq!(super::super::expect_code("proved"), None);
+    }
+
+    #[test]
+    fn markings_lint() {
+        let good = r#"schema = "silmaril.records.v0.2"
+[[deprecation]]
+name = "demo.old"
+reason = "off by one"
+superseded_by = ["demo.new", "zlib/1.3.1/x"]
+[[finding]]
+name = "demo.bug"
+classification = "error"
+affected_versions = ["1.0"]
+fixed_in = "1.1"
+disclosure_status = "private"
+[[finding]]
+name = "demo.gap"
+classification = "model_gap"
+pointer = "pxor xmm0, xmm0"
+"#;
+        let l = lint(good, &[]);
+        assert!(l.diags.is_empty(), "{:?}", l.diags);
+        assert_eq!(l.tables.len(), 3);
+        let bad = r#"schema = "silmaril.records.v0.2"
+[[deprecation]]
+name = "demo.old"
+[[finding]]
+name = "demo.gap"
+classification = "gap"
+[[finding]]
+name = "demo.x"
+classification = "unclear"
+fixed_in = "2"
+disclosure_status = "secret"
+[[finding]]
+name = "demo.y"
+classification = "model_gap"
+"#;
+        let msgs: Vec<String> = lint(bad, &[])
+            .diags
+            .iter()
+            .map(|d| format!("{}:{}: {}", d.line, d.col, d.msg))
+            .collect();
+        for want in [
+            "2:1: deprecation demo.old: `reason` is required",
+            "6:18: finding.classification must be one of error, spec_bug, model_gap, unclear",
+            "7:1: finding demo.x: `fixed_in` is for `error` findings only",
+            "11:21: finding.disclosure_status must be one of private, reported, public",
+            "12:1: finding demo.y: a `model_gap` needs a `pointer` (the missing instruction or feature)",
+        ] {
+            assert!(msgs.iter().any(|m| m == want), "{want}: {msgs:?}");
+        }
     }
 
     #[test]

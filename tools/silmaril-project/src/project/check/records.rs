@@ -1,7 +1,7 @@
 //! Records files (`silmaril.records.v0.2`, [`records`]): every `*.toml` records file under the
 //! local package's `silmaril/` is linted (the schema checks, with `path:line:col`), and then
 //! R11: every named record of a records file is in the dump with the same `title`, `doc`,
-//! `expect`, `reason` and `children`. A file that no module loads, or a module not rebuilt
+//! `expect`, `reason` and `children` (and a marking's other keys). A file that no module loads, or a module not rebuilt
 //! after the file changed, fails R11.
 
 use super::{Ctx, Outcome};
@@ -18,6 +18,12 @@ fn text_field<'a>(r: &'a Record, key: &str) -> Option<&'a str> {
         (Record::Group(g), "title") => &g.title,
         (Record::Group(g), "doc") => &g.doc,
         (Record::Detached(d), "reason") => &d.reason,
+        (Record::Deprecation(d), "reason") => &d.reason,
+        (Record::Finding(f), "classification") => return Some(&f.classification),
+        (Record::Finding(f), "note") => &f.note,
+        (Record::Finding(f), "pointer") => &f.pointer,
+        (Record::Finding(f), "fixed_in") => &f.fixed_in,
+        (Record::Finding(f), "disclosure_status") => &f.disclosure_status,
         (Record::ArtifactType(x), "doc") => &x.doc,
         (Record::Format(x), "doc") => &x.doc,
         (Record::Value(x), "doc") => &x.doc,
@@ -38,8 +44,8 @@ fn compare(cx: &Ctx, at: &str, t: &RecordTable, o: &mut Outcome) {
     let (kind, fields_kind) = match t.kind.as_str() {
         "instance" => ("instance", "judgement"),
         k @ ("artifact_type" | "format" | "format_default" | "value" | "model" | "spec"
-        | "room" | "machine" | "machine_binding" | "judgement" | "detached" | "group"
-        | "children") => (k, k),
+        | "room" | "machine" | "machine_binding" | "judgement" | "detached"
+        | "deprecation" | "finding" | "group" | "children") => (k, k),
         _ => return,
     };
     if cx.get(kind, name).is_none() {
@@ -62,7 +68,17 @@ fn compare(cx: &Ctx, at: &str, t: &RecordTable, o: &mut Outcome) {
             ),
         )
     };
-    for key in ["title", "doc", "expect", "reason"] {
+    for key in [
+        "title",
+        "doc",
+        "expect",
+        "reason",
+        "classification",
+        "note",
+        "pointer",
+        "fixed_in",
+        "disclosure_status",
+    ] {
         let Some(Json::String(here)) = t.keys.get(key) else {
             continue;
         };
@@ -78,6 +94,30 @@ fn compare(cx: &Ctx, at: &str, t: &RecordTable, o: &mut Outcome) {
                 key,
                 &format!("{here:?}"),
                 &there.map_or("absent".into(), |s| format!("{s:?}")),
+            );
+        }
+    }
+    // the name lists of the markings
+    for key in ["superseded_by", "affected_versions"] {
+        let Some(Json::Array(xs)) = t.keys.get(key) else {
+            continue;
+        };
+        let here: Vec<&str> = xs.iter().filter_map(Json::as_str).collect();
+        let there: Option<Vec<&str>> = match (cx.get(fields_kind, name), key) {
+            (Some(Record::Deprecation(d)), "superseded_by") => {
+                Some(d.superseded_by.iter().map(String::as_str).collect())
+            }
+            (Some(Record::Finding(f)), "affected_versions") => {
+                Some(f.affected_versions.iter().map(String::as_str).collect())
+            }
+            _ => None,
+        };
+        if there.as_deref() != Some(here.as_slice()) {
+            stale(
+                o,
+                key,
+                &format!("{here:?}"),
+                &there.map_or("absent".into(), |c| format!("{c:?}")),
             );
         }
     }

@@ -241,6 +241,8 @@ first and the DAG after the statements, as in the quick start.
 | `tasks` | **module**, **prefix**, and the judgement keys except `expect` | every `Task.x : Prop` of the module as the open problem `prefix.x` |
 | `judgement` | **name**, model, spec, values, artifacts, expect, title, doc, sid | the problem exists, the values are registered |
 | `detached` | **name**, reason | |
+| `deprecation` | **name** (a problem, group or spec), **reason**, superseded_by | (stored as written) |
+| `finding` | **name** (a problem), **classification**, note, pointer, affected_versions, fixed_in, disclosure_status | (stored as written) |
 | `decomposition`, `refutation_route` | name, and exactly one of proof, module | the theorem is `c₁ → … → p` / `¬c → ¬p` |
 | `group` | **name**, children, title, doc, sid | |
 | `children` | **name**, **children** | |
@@ -285,7 +287,7 @@ modules that read files a library of their own, and keep statements and proofs t
 file in another: editing a title or a doc then rebuilds only the loading modules (silmaril-lean
 does this with its `ProjectSelfTest` library). `sil project check` still catches a stale build:
 every named record of every records file must be in the dump with the same `title`, `doc`,
-`expect`, `reason` and `children` (rule R11), which also catches a file nobody loads, and it
+`expect`, `reason` and `children`, and a marking's other keys (rule R11), which also catches a file nobody loads, and it
 warns about a file Lean reads that Lake does not track (W2).
 
 ## Values
@@ -534,6 +536,119 @@ outputs when run by hand.
 - Solutions and answers may depend only on `propext`, `Classical.choice` and `Quot.sound`
   (R5); the database lists each answer's axioms (`answer_axioms`).
 
+## Markings: deprecated specs and classified refutations
+
+A refutation is either news about the code or about the statement. **Markings** record which,
+so that a project can be queried for its genuine errors. They never delete anything: a wrong
+problem keeps its records and its refutation, and the database says why it is wrong and what
+replaced it.
+
+- A **`deprecation`** marks a **wrong** problem, group or spec, with the `reason` and the
+  corrected replacement(s) `superseded_by` (problems, groups or specs). Add the corrected
+  statement next to it; never delete the wrong one. A problem is *deprecated* when its own
+  deprecation, its judgement's `spec`'s, or (along instance edges) its general problem's says
+  so: deprecating a spec deprecates every problem whose judgement names it, and deprecating a
+  general problem deprecates its instances.
+- A **`finding`** classifies the refutation of a failing problem (verdict `fails`):
+
+  | `classification` | meaning | needs |
+  |---|---|---|
+  | `error` | a genuine defect of the code under test, against a correct statement | the problem is **not** deprecated; optional `affected_versions`, `fixed_in`, `disclosure_status` (`private`, `reported`, `public`) |
+  | `spec_bug` | the statement is wrong, not the code | the problem is deprecated |
+  | `model_gap` | the machine model cannot run the code (e.g. Str9 cannot decode `pxor xmm0, xmm0` or retire a 16-bit shift); re-run it when the model grows | a `pointer` to the missing instruction or feature |
+  | `unclear` | not triaged yet | |
+
+  `note` says what the refutation shows; `pointer` may name a bug report or commit for the
+  other classifications.
+
+In TOML:
+
+```toml
+[[deprecation]]
+name = "demo.zlib.adler32.null_literal"          # a problem, group or spec
+reason = "assumes adler32(0, NULL, 0) returns 0; zlib documents 1"
+superseded_by = ["demo.zlib.adler32.null_one"]   # the corrected problem(s) or spec(s)
+
+[[finding]]
+name = "demo.zlib.adler32.null_literal"
+classification = "spec_bug"
+note = "the refutation shows the statement, not zlib, is wrong"
+
+[[finding]]
+name = "demo.lib.v1_2.parse_bounds"
+classification = "error"
+note = "reads one byte past the input on a truncated header"
+affected_versions = ["1.2.0", "1.2.1"]
+fixed_in = "1.2.2"
+disclosure_status = "reported"
+pointer = "https://example.org/bugs/1"
+
+[[finding]]
+name = "demo.x86.fe51_mul.str9"
+classification = "model_gap"
+pointer = "pxor xmm0, xmm0"                       # the missing instruction or feature
+note = "Str9 stops at the first SSE2 instruction"
+```
+
+In Lean, the same records are commands (no attribute is needed: a marking names a problem, it
+does not sit on a declaration):
+
+```lean
+silmaril deprecation demo.zlib.adler32.null_literal (reason := "assumes … returns 0")
+  (superseded_by := [demo.zlib.adler32.null_one])
+silmaril finding demo.x86.fe51_mul.str9 (classification := model_gap) (pointer := "pxor xmm0, xmm0")
+```
+
+`sil project check` enforces (M1–M3, W4):
+
+- M1: a deprecation names a problem, group or spec, has a `reason`, and each `superseded_by`
+  is a problem, group or spec other than itself; W4 warns about one without a replacement;
+- M2: a finding names an in-scope problem whose verdict is `fails` (a finding on a problem that
+  holds, or is open, is an error: remove it when a fix or a grown model turns the verdict); the
+  `error`-only keys appear only on an `error`, and a `model_gap` has a `pointer`;
+- M3: a `spec_bug`'s problem is deprecated, and an `error`'s problem is not.
+
+Markings change no status or verdict. When a project has any, the report gains two lines after
+the verdicts (the counts, then the verdicts without the deprecated problems), marks deprecated
+predicates (`…, deprecated`) and group entries (`name=CSA[deprecated]`), and ends with one line
+per deprecation and per finding (errors first, model gaps sorted by what is missing). A project
+without markings gets the same report as before.
+
+The database (always present, empty without markings):
+
+| table / view | rows |
+|---|---|
+| `deprecations` | `name`, `kind` (`problem`, `group`, `spec`), `reason`, `module`, `origin` |
+| `deprecation_replacements` | `name`, `pos`, `replacement`, `kind` |
+| `deprecated_problems` | every deprecated problem or group and `via_kind` (`self`, `spec`, `instance`), `via` |
+| `findings` | `problem`, `classification`, `note`, `pointer`, `fixed_in`, `disclosure_status`, `module`, `origin` |
+| `finding_versions` | `problem`, `pos`, `version` (an `error`'s `affected_versions`) |
+| view `genuine_errors` | the `error` findings with title, summary, versions, fix and disclosure |
+| view `model_gaps` | `pointer`, `problem`, `title`, `note` of the `model_gap` findings |
+| view `spec_bugs` | the `spec_bug` findings with how their problem is deprecated |
+| view `deprecated_with_replacements` | each deprecation with its replacements (comma-separated) |
+| view `unclassified_failures` | failing problems that are neither deprecated nor classified |
+
+Queries (tab-separated, one row per line, `-` for an empty field; `--db` defaults to
+`.lake/silmaril/project.sqlite`):
+
+```
+sil project errors                         # the genuine errors
+sil project gaps                           # model gaps per missing instruction or feature, most problems first
+sil project deprecated [--problems]        # deprecations and replacements; --problems: every deprecated problem and why
+sil project findings [--class error|spec_bug|model_gap|unclear|unclassified]
+```
+
+The same in SQL:
+
+```sql
+SELECT * FROM genuine_errors;                                         -- all genuine errors
+SELECT pointer, count(*), group_concat(problem) FROM model_gaps GROUP BY pointer;   -- gaps by feature
+SELECT name, kind, superseded_by, reason FROM deprecated_with_replacements;        -- wrong specs
+SELECT f.classification, count(*) FROM findings f GROUP BY 1;         -- the triage summary
+SELECT * FROM unclassified_failures;                                  -- what is left to triage
+```
+
 ## Names and sids
 
 - Names are dotted: segments `[a-z][a-z0-9_-]*` or all digits, at most 200 bytes, with a leading
@@ -577,6 +692,10 @@ sil project check     [--dir .] [--dump .lake/silmaril/dump.json]
 sil project sqlite    [--dir .] [--dump …] [--sql .lake/silmaril/project.sql] [--db .lake/silmaril/project.sqlite] [--httpvfs [--page-size 4096]]
 sil project explore   [--dir .] [--db .lake/silmaril/project.sqlite] [--out .lake/silmaril/explore.html]
 sil project schema    [--out FILE]
+sil project findings  [--dir .] [--db .lake/silmaril/project.sqlite] [--class C]
+sil project errors    [--dir .] [--db …]
+sil project gaps      [--dir .] [--db …]
+sil project deprecated [--dir .] [--db …] [--problems]
 ```
 
 `sil project --help` and `sil project <command> --help` describe every argument.
@@ -592,13 +711,16 @@ sil project schema    [--out FILE]
 - **`dump`** builds the modules with `lake build --wfail` and runs `#silmaril_dump`. It is the
   only subcommand that runs Lean (`--lake`, else `$SIL_LAKE`, else `lake`).
 - **`check`** checks the manifest, the registries and their provenance, the records files
-  (lint and R11), names, references, sids, the DAG and the statuses. It prints errors,
-  warnings, a summary, the root, each group's verdict vector and the SHA-256 of the SQL text.
+  (lint and R11), names, references, sids, the DAG, the statuses and the markings (M1–M3). It
+  prints errors, warnings, a summary, the root, each group's verdict vector, the markings and
+  the SHA-256 of the SQL text.
   Facts the tool checks (digests, sizes) are the `tool` tier, and Lean proofs the `kernel` tier.
 - **`sqlite`** writes the canonical SQL text (sorted, with no timestamps or host paths, and the
   lookup indexes of `schema::INDEXES`) and builds the database from it. `--httpvfs` tunes it for
   lazy reads over HTTP ([silmaril-projects-explore.md](silmaril-projects-explore.md)).
 - **`explore`** writes the static page over the database.
+- **`findings`**, **`errors`**, **`gaps`**, **`deprecated`** query the markings of the database
+  (see [Markings](#markings-deprecated-specs-and-classified-refutations)).
 
 The generated files (`dump.json`, `project.sql`, `project.sqlite`, `explore.html`) go to
 `.lake/silmaril/` by default, which the `.gitignore` of `lake new` already ignores; pass `--out`,
