@@ -129,7 +129,7 @@ def storeOnAbs {enc : Target → FPath} (hinj : Function.Injective enc) (fs₀ :
   env_hidden (s : Fs) (s' : Fs) _ h := by
     funext t
     by_cases hK : K t
-    · simp only [restrictKeys, hK, if_true]
+    · simp only [restrictKeys, hK, ite_true]
       exact hE s s' h (enc t) ⟨t, hK, rfl⟩
     · simp [restrictKeys, hK]
 

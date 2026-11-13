@@ -66,7 +66,7 @@ theorem Sen.inOrder_of_perConn {t : Trace A} (h : Sen.perConn Sen.inOrder t) : S
       Trace.onConn j.conn pre ++ Event.send j s :: Trace.onConn j.conn post := by
     subst ht
     simp only [Trace.onConn, List.filter_append, List.filter_cons, Event.id, beq_self_eq_true,
-      if_true]
+      ite_true]
   have hi' : Event.recv i r ∈ Trace.onConn j.conn pre :=
     List.mem_filter.2 ⟨hi, by simp [Event.id, hc]⟩
   obtain ⟨s', hs'⟩ := h j.conn _ _ j s hsplit i r hi' hc hs

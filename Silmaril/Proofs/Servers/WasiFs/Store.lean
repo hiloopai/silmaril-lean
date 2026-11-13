@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Proofs.Servers.WasiFs.Mut
 public import Silmaril.Proofs.Servers.WasiFs.Put
-public import Silmaril.Proofs.Servers.State.OwnedFs
+public import Silmaril.Servers.State.OwnedFs.Thms
 
 @[expose] public section
 
@@ -71,7 +71,7 @@ theorem specStep_frame (root : String) (fs : Fs) (q : Request) (p : FPath)
   unfold specStep
   split
   · rfl
-  · exact Proofs.Servers.State.OwnedFs.fileStoreStep_frame _ fs q p hp
+  · exact fileStoreStep_frame _ fs q p hp
 
 /-- The component's handler, from short files, is `specStep`. -/
 theorem handler_spec (root : String) {fs : Fs} (hs : Small fs) {q : Request} {resp : Response}
