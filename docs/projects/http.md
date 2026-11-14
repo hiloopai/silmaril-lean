@@ -33,7 +33,8 @@ protocols:
 
 - TLS (RFC 8446) and ALPN (RFC 7301). The `https` scheme is assumed to provide a
   confidential, authenticated, reliable and ordered byte stream. Cryptographic content
-  belongs to the `Crypto` region.
+  belongs to the `Crypto` region. What HTTP sees of TLS (record header, ALPN, registries),
+  upgrades, CONNECT, extended CONNECT and WebSockets are in [websocket-tls.md](websocket-tls.md).
 - The QUIC loss recovery, congestion control and cryptographic handshake (RFC 9001, RFC 9002).
   HTTP/3 is to be modelled over an abstract QUIC stream service.
 - Specific content codings (gzip, brotli) and media types. Content coding may later reuse
@@ -116,12 +117,19 @@ the OpenAPI 3.1.0 service model are in [http1-institution.md](http1-institution.
 | Prioritization | RFC 9218 | Planned |
 | Extended CONNECT | RFC 8441 | Planned |
 
-### E. HTTP/3 (RFC 9114, RFC 9204, RFC 9000)
+### E. HTTP/3 (RFC 9114, RFC 9204, RFC 9000): `Silmaril.Net.{Quic,Http3,Qpack,WebTransport}`
 
-Planned. The work covers QUIC variable-length integers (RFC 9000 §16), HTTP/3 frames and
-stream types (RFC 9114 §6, §7), the QPACK static table, encoder/decoder streams and blocked
-streams (RFC 9204), and the mapping to the version-independent messages. QUIC is to be
-modelled as an abstract multiplexed stream service, as a parameter and not as an axiom.
+See [http3.md](http3.md) for the RFC checklist and the boundary between the concrete QUIC
+stream layer and the abstract parts. In summary:
+- QUIC variable-length integers, stream ids, frame codecs, stream states, final size, flow
+  control and reassembly are proved.
+- The stream service HTTP/3 uses is a structure with a proved reference instance.
+- Packets, TLS and loss recovery are not modelled.
+- For HTTP/3, the frames, settings, control-stream invariants, request-stream grammar and
+  the mapping to `Http.Request`/`Response` are proved.
+- QPACK's tables, instructions, sections, blocked streams and acknowledgments are proved.
+- RFC 9297 capsules and datagrams, RFC 9220 extended CONNECT and WebTransport over HTTP/3
+  (draft-ietf-webtrans-http3-17, not yet an RFC) are proved.
 
 ### F. Cross-version and security properties
 
