@@ -91,8 +91,8 @@ uniqueness) and that the executable extractors realize it.
    - **Proved:** the one-pass builder `blockCfg` realizes `Edge` (`blockCfg_eq`, `edge_iff`), and
      each block has exactly one successor list (`existsUnique_succ`). Kernel-checked examples:
      `sum_blockCfg`, `dispatch_br_table_edges` (`decide +kernel`, a few seconds).
-   - Still to do: benchmark kernel against runtime evaluation, and serve the block CFG on the
-     explorer in place of the instruction-level prototype.
+   - Kernel against runtime evaluation: measured, see *Benchmark* below. Still to do: serve the
+     block CFG on the explorer in place of the instruction-level prototype.
 3. **Node interfaces.**
    - Each block will carry its operand-stack input and output arity.
    - Branch arguments are the label arity from the block type.
@@ -118,3 +118,36 @@ uniqueness) and that the executable extractors realize it.
    - Behavioral equivalence (function to CFG injective up to equivalence: semantics preserved and
      reflected) needs the abstract environment and trace semantics owned by the Wasm games/traces
      work. This development reuses that, and does not port a second semantics.
+
+## Benchmark: kernel against runtime evaluation of `blockCfg`
+
+Method:
+- Each case is one file importing `Silmaril.Wasm.Cfg.BlockCfg.Thms`, run with `lake env lean`.
+- *Runtime* is `#eval (blockCfg body).length`; *kernel* is
+  `theorem : (blockCfg body).length = n := by decide +kernel`.
+- Wall time minus the 3.0 s import-only baseline. Single runs on a 2-core CI-class container,
+  toolchain `nightly-2026-11-05`. Differences under about 0.3 s are noise.
+
+Bodies:
+- `synth d` nests `d` loops, each level `local.get 0; br_if 1; loop … br 0 end; nop`
+  (`3d + 1` blocks, nesting depth `d`).
+- `flat w` is `w` copies of `local.get 0; br_if 0` at the top level (`w` blocks, depth 0).
+
+| body | blocks | runtime | kernel |
+|------|-------:|--------:|-------:|
+| `synth 10` | 31 | < 0.3 s | < 0.3 s |
+| `synth 50` | 151 | < 0.3 s | < 0.3 s |
+| `synth 200` | 601 | < 0.3 s | 2.3 s |
+| `synth 400` | 1201 | < 0.3 s | 9.7 s |
+| `synth 800` | 2401 | < 0.3 s | 57 s |
+| `flat 1000` | 1000 | < 0.3 s | 0.4 s |
+| `flat 4000` | 4000 | < 0.3 s | 1.7 s |
+
+Reading:
+- Runtime evaluation is below measurement resolution at every size tried.
+- The kernel is close to linear in the number of blocks for shallow bodies.
+- It grows faster than quadratically with nesting depth. Each nested block's identity carries its
+  full path, so the kernel rebuilds and compares paths of length up to the depth.
+- Real function bodies are shallow, so kernel checking per function is practical. Deeply nested
+  generated code would want path sharing or a de Bruijn-style relative identity.
+
