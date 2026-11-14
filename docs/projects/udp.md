@@ -48,6 +48,26 @@ Packet protection is a parameter (`QuicCarrier.Protection`), and both cryptograp
 are named hypotheses: `Correct` (functional) and `Hon` (per-run integrity, the idealized reading
 of INT-CTXT). No axiom is added, and no computational claim is made.
 
+## The server-side reading (`Servers.UdpTransport`)
+
+`Servers.UdpTransport.read a` reads the observations at the socket bound at `a` as a
+`Servers.Transport` trace over `TEv Net.Ip.Endpoint`. Each peer gets one flow, numbered in order
+of first appearance and introduced by `open_`. Each datagram becomes one `recv`/`send`, and
+errors become `TEv.err` with the reading's code table (Linux errno: 90, 105, 111). The theorems:
+
+* datagram boundaries are kept in `unitsIn` (`unitsIn_flow`); `streamIn` forgets them
+  (`stream_forgets`);
+* port isolation carries over (`read_own`);
+* without off-path packets, every unit on a peer's flow is a datagram that peer sent
+  (`flow_authentic`);
+* the reading is total (`reading_total`), and transport models are monotone in the host
+  configuration (`model_mono`).
+
+The reading drops one thing: an asynchronous error that arrives before any send, which names
+no flow. A QUIC/HTTP/3 reading over these flows would be a further `PMap`, with
+`Transport.Select` for ALPN `h3` and the `Servers.Tcp.AtMost`/`AtLeast`/`Exactly` vocabulary.
+It is not attempted.
+
 ## Evidence
 
 `Udp.Examples` keeps three kinds of evidence apart: kernel proofs about concrete traces and
@@ -58,5 +78,6 @@ injects garbage; and no evidence from real sockets.
 
 ```sh
 lake build --wfail Silmaril.Net.Udp.Network.Thms Silmaril.Net.Udp.Institution.Thms \
-  Silmaril.Net.Udp.QuicCarrier.Thms Silmaril.Net.Udp.Examples.Defs
+  Silmaril.Net.Udp.QuicCarrier.Thms Silmaril.Net.Udp.Examples.Defs \
+  Silmaril.Servers.UdpTransport.Thms
 ```
