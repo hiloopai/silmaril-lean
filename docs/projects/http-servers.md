@@ -49,6 +49,14 @@ state models and a survey with the design of the other instances. Statuses follo
 
 No module uses `sorry`, `native_decide` or extra axioms.
 
+**Follow-up: observation, hosts, contexts and independent endpoints.** Behaviours with
+initialization failure and stopping, refinement oriented implementation-first with its
+antisymmetric quotient, host interpretations (pure, nondeterministic, stateful) with must and
+may quantifiers, contextual equivalence lifted to HTTP observational equivalence for
+`wasi:http` components under exact assumptions, the tensor of independent endpoints, a dice
+example over a random host, problem shapes and evidence kinds:
+[HTTP servers: observation](http-servers-observation.md).
+
 ## How the parts fit together
 
 The core (`Silmaril.Servers.Core`) is the shared interface: interfaces `Sig`, traces with
