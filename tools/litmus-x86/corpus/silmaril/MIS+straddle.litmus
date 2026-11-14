@@ -1,0 +1,6 @@
+X86_64 MIS+straddle
+"Hand-written loose corner (misaligned): an 8-byte store and an 8-byte load that straddle a 64-byte line. Not covered by x86-TSO; XL verdict only."
+{ uint8_t b[128]; 0:rax=-1; }
+ P0               | P1               ;
+ movq %rax,(b+60) | movq (b+60),%rbx ;
+exists (1:rbx=0xffffffff)

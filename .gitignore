@@ -7,3 +7,4 @@ __pycache__/
 *~
 /tools/silmaril-project/target/
 /tools/syswrap-gen/target/
+/tools/cfg-cert/target/

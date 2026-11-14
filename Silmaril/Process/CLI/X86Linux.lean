@@ -31,7 +31,9 @@ existential over everything the program cannot choose (stack address, string
 placement, auxiliary vector contents beyond `AT_NULL`, other mappings, the
 other registers and the flags), so a proof covers every Linux launch.
 `LoadedZeroed` adds Linux's zeroed registers (`ELF_PLAT_INIT`); it is a lower
-model point.
+model point. `LoadedStatic` (`X86Linux.Static`) adds what a statically linked libc's
+startup relies on: the auxiliary vector names the image's own program headers and the
+only executable mappings are the image's segments; it is a lower point too.
 
 Not modeled, and therefore excluded by `Covered`: every other system call
 (in particular `arch_prctl`, `brk`, `mmap`, so a statically linked glibc or
