@@ -42,6 +42,18 @@ theorem Run.of_append {x z : M.State} {s t : List G.Move} (h : M.Run x (s ++ t) 
     ∃ y, M.Run x s y ∧ M.Run y t z :=
   Silmaril.Proofs.Games.Abstract.Machine.Run.of_append h
 
+/-- A run through a nonempty list: silent steps, the first move, the rest. -/
+theorem Run.cons_inv {x z : M.State} {o : G.Move} {s : List G.Move} (h : M.Run x (o :: s) z) :
+    ∃ x₁ y₁, M.Run x [] x₁ ∧ M.step x₁ (some o) y₁ ∧ M.Run y₁ s z :=
+  Silmaril.Proofs.Games.Abstract.Machine.Run.cons_inv h
+
+/-- A step with an optional label, then a run. -/
+theorem Run.step_opt {x y z : M.State} {o : Option G.Move} {s : List G.Move}
+    (h : M.step x o y) (r : M.Run y s z) : M.Run x (o.toList ++ s) z := by
+  cases o with
+  | none => exact .tau h r
+  | some m => exact .vis h r
+
 /-- The empty play is a trace. -/
 theorem nil_mem_tracesFrom (x : M.State) : [] ∈ M.tracesFrom x := ⟨x, .nil x⟩
 
