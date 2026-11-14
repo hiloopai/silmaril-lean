@@ -17,6 +17,7 @@ host policies, is in [`tests/servers/policies`](../../tests/servers/policies/REA
 | Independent endpoints (tensor, routing, state isolation) | `Silmaril.Servers.Tensor` | Proved |
 | Example: dice over a random host | `Silmaril.Servers.Examples.Dice` | Proved |
 | Problem shapes, evidence kinds, registered problems | `Silmaril.Servers.Problems` | Proved; one problem open |
+| HTTP/1.1 implementations (#158) as servers | `Silmaril.Servers.Http1Bridge` | Proved |
 
 No module uses `sorry`, `native_decide` or a new axiom. `#print axioms` on the registered
 solutions shows `propext`, `Classical.choice` and `Quot.sound` at most.
@@ -231,6 +232,29 @@ Observed with these pins:
     under per-request instantiation an initialization failure is observed per request;
   * a handler that loops hits the bound (recorded as `timeout`).
 
+## HTTP/1.1 implementations as servers (`Http1Bridge`, Proved)
+
+This section connects the HTTP/1.1 institution of #158 (`Silmaril.Net.Http1.Inst`) to the
+server core.
+
+* **The reading.** Over the interface `wireSig` of framed HTTP/1.1 messages (heads and
+  bodies, as octets), `implServer I` is the atomic-handler server of an implementation's
+  response relation.
+* **Response obligations.** `respRel` translates the obligations about responses: `status`,
+  `notStatus`, `respField`, `noRespField`, `unknownMethods`, `headNoContent`, `wellFramed`,
+  and conjunctions of these. For each of them, the model satisfies the obligation iff its
+  server satisfies the atomic trace sentence (`sat_iff_server_sat`).
+* **The reference server.** For a compliant profile and a well-framed handler, the reference
+  server of `Http1.Pipeline` has this as core sentences: no content after `HEAD`, and only
+  well-framed responses (`refServer_headNoContent`, `refServer_wellFramed`).
+* **Refinement.** A server of any platform that refines `implServer` inherits these
+  sentences (`sat_of_refines`).
+* **What the reading forgets.** Framing, connection and capability obligations
+  (`framesSafely`, `closesOnClTe`, `implements`) have no exchange relation. The exchange
+  reading is a projection that forgets them: the reference implementation and its
+  keep-alive-always variant have the same server, but only one satisfies `closesOnClTe`
+  (`closesOnClTe_not_observable`).
+
 ## Open
 
 * Relating the runtime traces to the Lean model of a component: the dice component's core
@@ -240,8 +264,9 @@ Observed with these pins:
 * A trace-level independence law for servers:
   `Machine.server (M₁.tensor M₂) = (M₁.server).tensor (M₂.server)` up to disjoint request
   identities. Only the history-level law is proved.
-* Comorphisms to the HTTP/1.1 institution of #158 beyond the response obligations (see
-  the stacked bridge pull request).
+* Beyond the response obligations of #158: relating `wireSig` exchanges to the RFC 9110
+  messages of `Servers.Http.sig` (through `Servers.Wire1` decoding), and connection-level
+  traces for `closesOnClTe`.
 
 ## Provenance
 
