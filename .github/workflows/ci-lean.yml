@@ -101,7 +101,7 @@ jobs:
       id-token: write
     env:
       AWS_REGION: us-east-1
-      CLIENT: s3://hiloop-lean-cas-607856468300-us-east-1/clients/ffc9af147582/
+      CLIENT: s3://hiloop-lean-cas-607856468300-us-east-1/clients/7a977e3af86c/
       # Main pushes and main seed dispatches publish main's build with its seed.
       PUBLISH: >-
         ${{ github.ref == 'refs/heads/main' &&
@@ -142,9 +142,9 @@ jobs:
           aws s3 cp --only-show-errors --recursive "$CLIENT" "$RUNNER_TEMP/client/"
           cd "$RUNNER_TEMP/client"
           sha256sum -c - <<'SUMS'
-          0b143f43ce1bad2625d5a282bd67dea7686f0b867453dbbbaa4f87894cb44fbf  hiloop_prove-0.0.0-py3-none-any.whl
+          4979817ee6745fa6eaba8d6b1718e802445170f1f4cdb2f1ee585665a43bbcde  hiloop_prove-0.0.0-py3-none-any.whl
           0ede2941632076f25f7c4e8f717bbdaa9d5be2cacac7648dc4cea0ee05e2ad30  hiloop_common-0.0.0-py3-none-any.whl
-          48dc40a7b41163484003b00a9f69e2044bd83c49db50d50be299d2219569ad63  requirements.txt
+          446b51555965b40af2db8a3c4285b14315da0ae9d17e96b7364053112133220d  requirements.txt
           SUMS
           uv venv -q "$RUNNER_TEMP/prove"
           VIRTUAL_ENV="$RUNNER_TEMP/prove" uv pip install -q --require-hashes -r requirements.txt
