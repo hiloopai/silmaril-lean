@@ -1,0 +1,69 @@
+# The verdict DAG of the WAC part of the Wasm components pilot (loaded last by
+# Silmaril.Project.WasmComponents.Wac.Verdicts.Thms). Detached node by node, as the rest of the pilot
+# (Silmaril's single root is the self-test `silmaril_example.all`).
+schema = "silmaril.records.v0.2"
+
+[[group]]
+name = "silmaril.wasm_components.wac"
+title = "A WAC composition of Silmaril's components: provider plugged into comp-b"
+children = ["silmaril.wasm_components.gen.provider.parses", "silmaril.wasm_components.gen.provider.is", "silmaril.wasm_components.gen.provider.valid", "silmaril.wasm_components.wac.pilot.parses", "silmaril.wasm_components.wac.pilot.composed.parses", "silmaril.wasm_components.wac.pilot.composed.has_world", "silmaril.wasm_components.wac.pilot.composed.app_and_stop", "silmaril.wasm_components.wac.pilot.composed.has_ir_world", "silmaril.wasm_components.wac.pilot.composes", "silmaril.wasm_components.wac.pilot.composed.typed_app", "silmaril.wasm_components.wac.pilot.composed.typed_app_with_log", "silmaril.wasm_components.wac.pilot.composed.typed_app_u64", "silmaril.wasm_components.wac.pilot.composed.typed_app_and_stop", "silmaril.wasm_components.wac.pilot_linked.behaviour_eq"]
+
+[[detached]]
+name = "silmaril.wasm_components.wac"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.provider.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.provider.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.provider.valid"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.has_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.app_and_stop"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.has_ir_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composes"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.typed_app"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.typed_app_with_log"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.typed_app_u64"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot.composed.typed_app_and_stop"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wac.pilot_linked.behaviour_eq"
+reason = "a case study"

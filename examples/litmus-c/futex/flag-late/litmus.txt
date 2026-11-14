@@ -1,0 +1,20 @@
+# Lost wake-up: P0 wakes before it sets the flag; P1 can block for ever with no wake after
+# its enqueue (queue byte 1).
+name Flag-late
+source flag-late.c
+loc data 0x10000 4 0
+loc flag 0x10040 4 0
+loc r0 0x10080 4 0
+loc done 0x100c0 4 0
+loc q 0x1010040 1 0
+thread P0
+thread P1
+quant exists
+cond done=0 /\ q=1
+verdict allowed allowed allowed
+dom 0 1
+cir flagLate 1
+fuel 60
+waits 1
+blk true
+check all

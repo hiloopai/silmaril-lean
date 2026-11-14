@@ -1,0 +1,3426 @@
+{
+ "ok": true,
+ "variants": {
+  "p1": {
+   "allowed": [
+    "200000"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "predicted {2N}",
+   "observed": {
+    "200000": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p1:2": {
+   "allowed": [
+    "4"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (275 configurations)",
+   "observed": {
+    "4": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p1:3": {
+   "allowed": [
+    "6"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (613 configurations)",
+   "observed": {
+    "6": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p2": {
+   "allowed": [
+    "200010000"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "200010000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "predicted {N(N+1)/2}",
+   "observed": {
+    "200010000": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p2:2": {
+   "allowed": [
+    "3"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "3": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (177 configurations)",
+   "observed": {
+    "3": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p2:3": {
+   "allowed": [
+    "6"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (251 configurations)",
+   "observed": {
+    "6": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p3": {
+   "allowed": [
+    "1 4"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "1 4": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "explored (54251 configurations)",
+   "observed": {
+    "1 4": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p4": {
+   "allowed": [
+    "4 4 0"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "4 4 0": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "predicted",
+   "observed": {
+    "4 4 0": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p4:1": {
+   "allowed": [
+    "4 4 0"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (444951 configurations)",
+   "observed": {
+    "4 4 0": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p4:2": {
+   "allowed": [
+    "4 4 0"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "4 4 0": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (695080 configurations)",
+   "observed": {
+    "4 4 0": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p5": {
+   "allowed": "199999 values (predicted [2, 2N])",
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "100000": 2,
+      "100021": 1,
+      "100210": 1,
+      "103252": 1,
+      "106046": 1,
+      "106305": 1,
+      "106440": 1,
+      "107043": 1,
+      "107246": 1,
+      "108289": 1,
+      "108457": 1,
+      "109197": 1,
+      "109451": 1,
+      "110510": 1,
+      "110658": 1,
+      "110714": 1,
+      "111608": 1,
+      "111665": 1,
+      "111895": 1,
+      "112757": 1,
+      "113395": 1,
+      "114539": 1,
+      "115625": 1,
+      "115791": 1,
+      "116888": 1,
+      "123453": 1,
+      "124465": 1,
+      "128249": 1,
+      "132560": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "100000": 5,
+      "101688": 1,
+      "102131": 1,
+      "102147": 1,
+      "102755": 1,
+      "103053": 1,
+      "103260": 1,
+      "103309": 1,
+      "103378": 1,
+      "103499": 1,
+      "103513": 1,
+      "103539": 1,
+      "104857": 1,
+      "106010": 1,
+      "106137": 1,
+      "106157": 1,
+      "107310": 1,
+      "108029": 1,
+      "108041": 1,
+      "110319": 1,
+      "114131": 1,
+      "115794": 1,
+      "118190": 1,
+      "123140": 1,
+      "126142": 1,
+      "127142": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "100000": 7,
+      "100080": 1,
+      "100674": 1,
+      "102268": 1,
+      "102442": 1,
+      "102597": 1,
+      "103123": 1,
+      "103488": 1,
+      "103632": 1,
+      "103640": 1,
+      "103645": 1,
+      "103825": 1,
+      "103848": 1,
+      "104215": 1,
+      "104318": 1,
+      "104437": 1,
+      "104537": 1,
+      "104737": 1,
+      "105543": 1,
+      "106170": 1,
+      "108006": 1,
+      "108510": 1,
+      "109964": 1,
+      "113883": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "100000": 4,
+      "100251": 1,
+      "100274": 1,
+      "100710": 1,
+      "103062": 1,
+      "103326": 1,
+      "103506": 1,
+      "103565": 1,
+      "103568": 1,
+      "103665": 1,
+      "104518": 1,
+      "104562": 1,
+      "104659": 1,
+      "104800": 1,
+      "105090": 1,
+      "105578": 1,
+      "105690": 1,
+      "105848": 1,
+      "107644": 1,
+      "107801": 1,
+      "109307": 1,
+      "111405": 1,
+      "111509": 1,
+      "111787": 1,
+      "124274": 1,
+      "127284": 1,
+      "99502": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "100000": 1,
+      "200000": 29
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "122026": 1,
+      "128417": 1,
+      "134725": 1,
+      "135716": 1,
+      "135744": 1,
+      "138411": 1,
+      "138434": 1,
+      "138617": 1,
+      "138696": 1,
+      "138702": 1,
+      "138728": 1,
+      "138736": 1,
+      "138751": 1,
+      "138752": 1,
+      "138790": 1,
+      "138830": 1,
+      "138856": 1,
+      "138908": 1,
+      "138928": 1,
+      "139333": 1,
+      "139440": 1,
+      "139476": 1,
+      "139500": 1,
+      "140409": 1,
+      "140464": 1,
+      "141834": 1,
+      "143531": 1,
+      "144452": 1,
+      "145964": 1,
+      "150970": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "121966": 1,
+      "127743": 1,
+      "129060": 1,
+      "130542": 1,
+      "130612": 1,
+      "130980": 1,
+      "131679": 1,
+      "131959": 1,
+      "132499": 1,
+      "134270": 1,
+      "134419": 1,
+      "134537": 1,
+      "134934": 1,
+      "135283": 1,
+      "135360": 1,
+      "135380": 1,
+      "135520": 1,
+      "135615": 1,
+      "135682": 1,
+      "135697": 1,
+      "135733": 1,
+      "135828": 1,
+      "136151": 1,
+      "136455": 1,
+      "138466": 1,
+      "138710": 1,
+      "142749": 1,
+      "143362": 1,
+      "144548": 1,
+      "147528": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "100000": 7,
+      "100295": 1,
+      "102122": 1,
+      "102255": 1,
+      "103091": 1,
+      "103961": 1,
+      "105258": 1,
+      "106072": 1,
+      "106868": 1,
+      "108103": 1,
+      "110519": 1,
+      "112962": 1,
+      "112983": 1,
+      "112988": 1,
+      "113403": 1,
+      "121753": 1,
+      "123070": 1,
+      "124255": 1,
+      "126437": 1,
+      "127181": 1,
+      "127489": 1,
+      "131935": 1,
+      "132183": 1,
+      "86178": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "100000": 4,
+      "100028": 1,
+      "101803": 1,
+      "101834": 1,
+      "102328": 1,
+      "102804": 1,
+      "103156": 1,
+      "103236": 1,
+      "103319": 1,
+      "104570": 1,
+      "105705": 1,
+      "106131": 1,
+      "106916": 1,
+      "107970": 1,
+      "108859": 1,
+      "110877": 1,
+      "111559": 1,
+      "115344": 1,
+      "116588": 1,
+      "120067": 1,
+      "120705": 1,
+      "120779": 1,
+      "121818": 1,
+      "123369": 1,
+      "124512": 1,
+      "154908": 1,
+      "99572": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "100000": 6,
+      "100867": 1,
+      "101016": 1,
+      "101067": 1,
+      "101672": 1,
+      "101911": 1,
+      "102067": 1,
+      "102161": 1,
+      "102366": 1,
+      "102697": 1,
+      "102882": 1,
+      "103168": 1,
+      "103184": 1,
+      "103301": 1,
+      "103534": 1,
+      "103596": 1,
+      "103998": 1,
+      "104012": 1,
+      "104282": 1,
+      "104429": 1,
+      "104759": 1,
+      "104915": 1,
+      "106393": 1,
+      "108459": 1,
+      "112293": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "100000": 5,
+      "100299": 1,
+      "100320": 1,
+      "100559": 1,
+      "100627": 1,
+      "101201": 1,
+      "101271": 1,
+      "101800": 1,
+      "101990": 1,
+      "102003": 1,
+      "102066": 1,
+      "102286": 1,
+      "102361": 1,
+      "102438": 1,
+      "102757": 1,
+      "102769": 1,
+      "103479": 1,
+      "103791": 1,
+      "103868": 1,
+      "104303": 1,
+      "104542": 1,
+      "105136": 1,
+      "105220": 1,
+      "106680": 1,
+      "107797": 1,
+      "110195": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "124065": 1,
+      "131326": 1,
+      "135772": 1,
+      "135866": 1,
+      "136547": 1,
+      "136567": 1,
+      "136690": 1,
+      "136721": 1,
+      "136917": 1,
+      "136971": 1,
+      "137016": 1,
+      "137041": 1,
+      "137388": 1,
+      "137400": 1,
+      "137447": 1,
+      "137508": 1,
+      "137574": 1,
+      "137741": 1,
+      "137880": 1,
+      "138004": 1,
+      "138064": 1,
+      "138223": 1,
+      "138248": 1,
+      "138282": 1,
+      "138469": 1,
+      "140597": 1,
+      "140978": 1,
+      "141598": 1,
+      "146165": 1,
+      "156516": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "126993": 1,
+      "129177": 1,
+      "131150": 1,
+      "134014": 1,
+      "134096": 1,
+      "134226": 1,
+      "134457": 1,
+      "134462": 1,
+      "134685": 1,
+      "134828": 1,
+      "134849": 1,
+      "134860": 1,
+      "135097": 1,
+      "135203": 1,
+      "135386": 1,
+      "135392": 1,
+      "135463": 1,
+      "135480": 1,
+      "135487": 1,
+      "135714": 1,
+      "135757": 1,
+      "137111": 1,
+      "137148": 1,
+      "137650": 1,
+      "138565": 1,
+      "139706": 1,
+      "140197": 1,
+      "143604": 1,
+      "144029": 1,
+      "147962": 1
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "predicted [2, 2N]",
+   "observed": {
+    "100000": 41,
+    "100021": 1,
+    "100028": 1,
+    "100080": 1,
+    "100210": 1,
+    "100251": 1,
+    "100274": 1,
+    "100295": 1,
+    "100299": 1,
+    "100320": 1,
+    "100559": 1,
+    "100627": 1,
+    "100674": 1,
+    "100710": 1,
+    "100867": 1,
+    "101016": 1,
+    "101067": 1,
+    "101201": 1,
+    "101271": 1,
+    "101672": 1,
+    "101688": 1,
+    "101800": 1,
+    "101803": 1,
+    "101834": 1,
+    "101911": 1,
+    "101990": 1,
+    "102003": 1,
+    "102066": 1,
+    "102067": 1,
+    "102122": 1,
+    "102131": 1,
+    "102147": 1,
+    "102161": 1,
+    "102255": 1,
+    "102268": 1,
+    "102286": 1,
+    "102328": 1,
+    "102361": 1,
+    "102366": 1,
+    "102438": 1,
+    "102442": 1,
+    "102597": 1,
+    "102697": 1,
+    "102755": 1,
+    "102757": 1,
+    "102769": 1,
+    "102804": 1,
+    "102882": 1,
+    "103053": 1,
+    "103062": 1,
+    "103091": 1,
+    "103123": 1,
+    "103156": 1,
+    "103168": 1,
+    "103184": 1,
+    "103236": 1,
+    "103252": 1,
+    "103260": 1,
+    "103301": 1,
+    "103309": 1,
+    "103319": 1,
+    "103326": 1,
+    "103378": 1,
+    "103479": 1,
+    "103488": 1,
+    "103499": 1,
+    "103506": 1,
+    "103513": 1,
+    "103534": 1,
+    "103539": 1,
+    "103565": 1,
+    "103568": 1,
+    "103596": 1,
+    "103632": 1,
+    "103640": 1,
+    "103645": 1,
+    "103665": 1,
+    "103791": 1,
+    "103825": 1,
+    "103848": 1,
+    "103868": 1,
+    "103961": 1,
+    "103998": 1,
+    "104012": 1,
+    "104215": 1,
+    "104282": 1,
+    "104303": 1,
+    "104318": 1,
+    "104429": 1,
+    "104437": 1,
+    "104518": 1,
+    "104537": 1,
+    "104542": 1,
+    "104562": 1,
+    "104570": 1,
+    "104659": 1,
+    "104737": 1,
+    "104759": 1,
+    "104800": 1,
+    "104857": 1,
+    "104915": 1,
+    "105090": 1,
+    "105136": 1,
+    "105220": 1,
+    "105258": 1,
+    "105543": 1,
+    "105578": 1,
+    "105690": 1,
+    "105705": 1,
+    "105848": 1,
+    "106010": 1,
+    "106046": 1,
+    "106072": 1,
+    "106131": 1,
+    "106137": 1,
+    "106157": 1,
+    "106170": 1,
+    "106305": 1,
+    "106393": 1,
+    "106440": 1,
+    "106680": 1,
+    "106868": 1,
+    "106916": 1,
+    "107043": 1,
+    "107246": 1,
+    "107310": 1,
+    "107644": 1,
+    "107797": 1,
+    "107801": 1,
+    "107970": 1,
+    "108006": 1,
+    "108029": 1,
+    "108041": 1,
+    "108103": 1,
+    "108289": 1,
+    "108457": 1,
+    "108459": 1,
+    "108510": 1,
+    "108859": 1,
+    "109197": 1,
+    "109307": 1,
+    "109451": 1,
+    "109964": 1,
+    "110195": 1,
+    "110319": 1,
+    "110510": 1,
+    "110519": 1,
+    "110658": 1,
+    "110714": 1,
+    "110877": 1,
+    "111405": 1,
+    "111509": 1,
+    "111559": 1,
+    "111608": 1,
+    "111665": 1,
+    "111787": 1,
+    "111895": 1,
+    "112293": 1,
+    "112757": 1,
+    "112962": 1,
+    "112983": 1,
+    "112988": 1,
+    "113395": 1,
+    "113403": 1,
+    "113883": 1,
+    "114131": 1,
+    "114539": 1,
+    "115344": 1,
+    "115625": 1,
+    "115791": 1,
+    "115794": 1,
+    "116588": 1,
+    "116888": 1,
+    "118190": 1,
+    "120067": 1,
+    "120705": 1,
+    "120779": 1,
+    "121753": 1,
+    "121818": 1,
+    "121966": 1,
+    "122026": 1,
+    "123070": 1,
+    "123140": 1,
+    "123369": 1,
+    "123453": 1,
+    "124065": 1,
+    "124255": 1,
+    "124274": 1,
+    "124465": 1,
+    "124512": 1,
+    "126142": 1,
+    "126437": 1,
+    "126993": 1,
+    "127142": 1,
+    "127181": 1,
+    "127284": 1,
+    "127489": 1,
+    "127743": 1,
+    "128249": 1,
+    "128417": 1,
+    "129060": 1,
+    "129177": 1,
+    "130542": 1,
+    "130612": 1,
+    "130980": 1,
+    "131150": 1,
+    "131326": 1,
+    "131679": 1,
+    "131935": 1,
+    "131959": 1,
+    "132183": 1,
+    "132499": 1,
+    "132560": 1,
+    "134014": 1,
+    "134096": 1,
+    "134226": 1,
+    "134270": 1,
+    "134419": 1,
+    "134457": 1,
+    "134462": 1,
+    "134537": 1,
+    "134685": 1,
+    "134725": 1,
+    "134828": 1,
+    "134849": 1,
+    "134860": 1,
+    "134934": 1,
+    "135097": 1,
+    "135203": 1,
+    "135283": 1,
+    "135360": 1,
+    "135380": 1,
+    "135386": 1,
+    "135392": 1,
+    "135463": 1,
+    "135480": 1,
+    "135487": 1,
+    "135520": 1,
+    "135615": 1,
+    "135682": 1,
+    "135697": 1,
+    "135714": 1,
+    "135716": 1,
+    "135733": 1,
+    "135744": 1,
+    "135757": 1,
+    "135772": 1,
+    "135828": 1,
+    "135866": 1,
+    "136151": 1,
+    "136455": 1,
+    "136547": 1,
+    "136567": 1,
+    "136690": 1,
+    "136721": 1,
+    "136917": 1,
+    "136971": 1,
+    "137016": 1,
+    "137041": 1,
+    "137111": 1,
+    "137148": 1,
+    "137388": 1,
+    "137400": 1,
+    "137447": 1,
+    "137508": 1,
+    "137574": 1,
+    "137650": 1,
+    "137741": 1,
+    "137880": 1,
+    "138004": 1,
+    "138064": 1,
+    "138223": 1,
+    "138248": 1,
+    "138282": 1,
+    "138411": 1,
+    "138434": 1,
+    "138466": 1,
+    "138469": 1,
+    "138565": 1,
+    "138617": 1,
+    "138696": 1,
+    "138702": 1,
+    "138710": 1,
+    "138728": 1,
+    "138736": 1,
+    "138751": 1,
+    "138752": 1,
+    "138790": 1,
+    "138830": 1,
+    "138856": 1,
+    "138908": 1,
+    "138928": 1,
+    "139333": 1,
+    "139440": 1,
+    "139476": 1,
+    "139500": 1,
+    "139706": 1,
+    "140197": 1,
+    "140409": 1,
+    "140464": 1,
+    "140597": 1,
+    "140978": 1,
+    "141598": 1,
+    "141834": 1,
+    "142749": 1,
+    "143362": 1,
+    "143531": 1,
+    "143604": 1,
+    "144029": 1,
+    "144452": 1,
+    "144548": 1,
+    "145964": 1,
+    "146165": 1,
+    "147528": 1,
+    "147962": 1,
+    "150970": 1,
+    "154908": 1,
+    "156516": 1,
+    "200000": 119,
+    "86178": 1,
+    "99502": 1,
+    "99572": 1
+   },
+   "unexpected": [],
+   "unseen": "199677 values"
+  },
+  "p5:1": {
+   "allowed": [
+    "1",
+    "2"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "1": 1,
+      "2": 399
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "2": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "1": 2,
+      "2": 398
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (114 configurations)",
+   "observed": {
+    "1": 3,
+    "2": 6397
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p5:2": {
+   "allowed": [
+    "2",
+    "3",
+    "4"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "2": 2,
+      "4": 398
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (526 configurations)",
+   "observed": {
+    "2": 2,
+    "4": 6398
+   },
+   "unexpected": [],
+   "unseen": [
+    "3"
+   ]
+  },
+  "p5:3": {
+   "allowed": [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "3": 1,
+      "6": 399
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "4": 1,
+      "6": 399
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (1852 configurations)",
+   "observed": {
+    "3": 1,
+    "4": 1,
+    "6": 6398
+   },
+   "unexpected": [],
+   "unseen": [
+    "2",
+    "5"
+   ]
+  },
+  "p5:4": {
+   "allowed": [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "8": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "7": 1,
+      "8": 399
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (5079 configurations)",
+   "observed": {
+    "7": 1,
+    "8": 6399
+   },
+   "unexpected": [],
+   "unseen": [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+   ]
+  },
+  "p6": {
+   "allowed": [
+    "200000"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "200000": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "predicted {2N}",
+   "observed": {
+    "200000": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p6:2": {
+   "allowed": [
+    "4"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "4": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (276 configurations)",
+   "observed": {
+    "4": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p6:3": {
+   "allowed": [
+    "6"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "6": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (614 configurations)",
+   "observed": {
+    "6": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p7": {
+   "allowed": [
+    "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "explored (1144091 configurations)",
+   "observed": {
+    "97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 97 98 4 1": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p7:1": {
+   "allowed": [
+    "97 98 4 1"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (1143555 configurations)",
+   "observed": {
+    "97 98 4 1": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p7:2": {
+   "allowed": [
+    "97 98 97 98 4 1"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "97 98 97 98 4 1": 400
+     },
+     "runs": 400,
+     "unexpected": []
+    }
+   },
+   "how": "explored (1143611 configurations)",
+   "observed": {
+    "97 98 97 98 4 1": 6400
+   },
+   "unexpected": [],
+   "unseen": []
+  },
+  "p8": {
+   "allowed": [
+    "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35"
+   ],
+   "configs": {
+    "host/any/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/any/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/cores/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/one/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "host/smt/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/any/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/cores/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/one/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/off": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    },
+    "pinned/smt/on": {
+     "observed": {
+      "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 30
+     },
+     "runs": 30,
+     "unexpected": []
+    }
+   },
+   "how": "explored (67 configurations)",
+   "observed": {
+    "0 35 1 0 0 0 0 0 1 16 0 16 4294967295 11 0 0 16 0 35 35": 480
+   },
+   "unexpected": [],
+   "unseen": []
+  }
+ }
+}

@@ -1,0 +1,8 @@
+X86_64 MP+stosb+sfence
+"Hand-written loose corner (string store): MP+stosb with an sfence after the rep stosb. Not covered by x86-TSO; XL verdict only."
+{ int x=0; int y=0; 0:rax=1; 0:rcx=4; 0:rdi=x; }
+ P0            | P1            ;
+ rep stosb     | movl (y),%eax ;
+ sfence        | movb (x),%bl  ;
+ movl $1,(y)   |               ;
+exists (1:rax=1 /\ 1:rbx=0)

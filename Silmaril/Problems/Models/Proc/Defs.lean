@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Process.CLI.X86Linux
+public import Silmaril.Process.CLI.X86Linux.Static
 public import Silmaril.Process.CLI.Observation
 public import Silmaril.X86.Str9.Defs
 
@@ -27,8 +28,21 @@ every `Agrees` statement over it would hold vacuously.
   emit no event. Any other `arch_prctl` code has no outcome (the process blocks).
 * **Everything else is `X86Linux`'s**: the request decoding and resume (`X86Linux.request`,
   `X86Linux.Resume`: `read`, `write`, `exit`, `exit_group`), the environment `Env.linux`
-  (with its refusals and short transfers) and `linuxInit`. The loader is `X86Linux.Loaded`
-  plus one condition (`Load`): the stack room below `rsp` does not alias the image.
+  (with its refusals and short transfers) and `linuxInit`.
+* **The loader** (`Load`) is `X86Linux.Loaded` plus two conditions: the stack room below
+  `rsp` does not alias the image, and the launch is static (`X86Linux.Static`): the
+  auxiliary vector names the image's own program-header table (`AT_PHDR`, `AT_PHENT`,
+  `AT_PHNUM`, each once), `AT_PAGESZ` is `4096`, there is no vDSO (`AT_SYSINFO_EHDR`),
+  the table and any `PT_TLS` initializer come from the file's bytes, and the only
+  executable mappings are the image's segments. Without the static condition a launch
+  could point musl's `static_init_tls` at a forged table and run code of its choice
+  before `main` (erebor-lean #70).
+
+**The loader before #70** is kept as `LoadLoose` and `modelLoose`. `model ≼ modelLoose`
+(`Thms.le_loose`), so every `Agrees`, `Covered`, `Halts` or `Bounded` statement proved over
+`modelLoose` holds over `model`. Existential statements (`ExitsOn`, nonvacuity companions)
+go the other way (`Thms.exitsOn_loose`): a witness over `modelLoose` must be re-proved with
+a static launch.
 
 **Trust.** A model, not a theorem: the handwritten `Ext`/`Ext8`/`Ext9`/`Str9` semantics
 and the two startup arms above. `Agrees` ignores faults, so a gap on some path can make a
@@ -84,14 +98,20 @@ def isa : Isa where
   request := X86Linux.request
   resume := X86Linux.Resume
 
-/-- **The loader**: `X86Linux.Loaded`, and the writable stack room below the initial `rsp`
-(`X86Linux.stackRoom` bytes) is disjoint from every image segment. `X86Linux.Loaded` alone
-lets the stack alias the image's `.bss`, and a run whose frames overwrite the program's state
-could then violate a spec on a correct build. -/
-def Load (image : Image) (input : ProcInput) (core : State) (memory : Memory) : Prop :=
+/-- **The loader before erebor-lean #70**: `X86Linux.Loaded`, and the writable stack room
+below the initial `rsp` (`X86Linux.stackRoom` bytes) is disjoint from every image segment.
+`X86Linux.Loaded` alone lets the stack alias the image's `.bss`, and a run whose frames
+overwrite the program's state could then violate a spec on a correct build. -/
+def LoadLoose (image : Image) (input : ProcInput) (core : State) (memory : Memory) : Prop :=
   X86Linux.Loaded image input core memory ∧
   ∀ seg ∈ image.segments, Silmaril.Process.Region.Disjoint seg.region
     ⟨(core.read .rsp).toNat - X86Linux.stackRoom, X86Linux.stackRoom, ⟨true, true, false⟩⟩
+
+/-- **The loader**: `LoadLoose`, and the launch is static (`X86Linux.Static`): musl's startup
+reads the image's own program headers, and the only executable mappings are the image's
+segments. -/
+def Load (image : Image) (input : ProcInput) (core : State) (memory : Memory) : Prop :=
+  LoadLoose image input core memory ∧ X86Linux.Static image input core memory
 
 /-- **`musl-str9`**: `isa` in the Linux environment `Env.linux`, loaded by `Load`. -/
 def model : Model where
@@ -99,6 +119,10 @@ def model : Model where
   env := Env.linux
   envInit := linuxInit
   load := Load
+
+/-- `musl-str9` with the loader before erebor-lean #70 (`LoadLoose`). Kept so that results
+proved over it transfer (`Thms.le_loose`); new statements use `model`. -/
+def modelLoose : Model := { model with load := LoadLoose }
 
 /-- **Process nonvacuity**: some valid launch of `image` whose stdin is `stdin` has a run
 that exits with status `0`. -/

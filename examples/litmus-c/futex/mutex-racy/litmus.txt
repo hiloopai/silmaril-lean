@@ -1,0 +1,19 @@
+# A racy lock (test, then plain store): both threads enter and an increment is lost.
+name Mutex-racy
+source mutex-racy.c
+loc m 0x10000 4 0
+loc c 0x10040 4 0
+loc d0 0x10080 4 0
+loc d1 0x100c0 4 0
+loc q 0x1010000 1 0
+thread P0
+thread P1
+quant exists
+cond c=1
+verdict allowed allowed allowed
+dom 0 1 2
+cir mutexRacy 1
+fuel 60
+waits 1
+blk false
+check sched 0 0 ; 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1

@@ -1,0 +1,190 @@
+# The verdict DAG of the Wasm components pilot (loaded last by
+# Silmaril.Project.WasmComponents.Thms). Silmaril's single root is the self-test
+# `silmaril_example.all`, so the pilot is detached, node by node (except the `wasm.returns` row and its
+# value, which the root reaches through `silmaril.shapes`).
+schema = "silmaril.records.v0.2"
+
+[[group]]
+name = "silmaril.wasm_components.pilot"
+title = "Wasm components by hash: the pilot"
+children = ["silmaril.wasm_components.problems", "silmaril.wasm_components.generated", "silmaril.wasm_components.wasi_io", "silmaril.wasm_components.adapter"]
+
+[[group]]
+name = "silmaril.wasm_components.problems"
+title = "The pilot's problems about registered files"
+children = ["silmaril.wasm_components.same_world", "silmaril.wasm_components.same_code", "silmaril.wasm_components.reencodes_to", "silmaril.wasm_components.distinct"]
+
+[[group]]
+name = "silmaril.wasm_components.generated"
+title = "Components Silmaril generates: certificates, validity, worlds and two digests with one behaviour"
+children = ["silmaril.wasm_components.gen.producer.parses", "silmaril.wasm_components.gen.producer.returns_42", "silmaril.wasm_components.gen.comp_b.is", "silmaril.wasm_components.gen.comp_b.parses", "silmaril.wasm_components.gen.comp_b.valid", "silmaril.wasm_components.gen.comp_b.has_world", "silmaril.wasm_components.gen.comp_b.world.is", "silmaril.wasm_components.gen.comp_b.world.parses", "silmaril.wasm_components.gen.linked.is", "silmaril.wasm_components.gen.linked.parses", "silmaril.wasm_components.gen.linked.valid", "silmaril.wasm_components.gen.linked.has_world", "silmaril.wasm_components.gen.linked.world.is", "silmaril.wasm_components.gen.linked.world.parses", "silmaril.wasm_components.gen.run.is", "silmaril.wasm_components.gen.run.parses", "silmaril.wasm_components.gen.run.valid", "silmaril.wasm_components.gen.run.has_world", "silmaril.wasm_components.gen.comp_b_run.distinct", "silmaril.wasm_components.gen.comp_b_run.behaviour_eq"]
+
+[[group]]
+name = "silmaril.wasm_components.wasi_io"
+title = "wasi:io@0.2.12: the published package and Silmaril's fixture"
+children = ["silmaril.wasm_components.wasi.io.v0_2_12.oci.parses", "silmaril.wasm_components.wasi.io.v0_2_12.oci.package.parses", "silmaril.wasm_components.wasi.io.v0_2_12.fixture.parses", "silmaril.wasm_components.wasi.io.v0_2_12.fixture.package.parses", "silmaril.wasm_components.wasi.io.v0_2_12.distinct", "silmaril.wasm_components.wasi.io.v0_2_12.same_code", "silmaril.wasm_components.wasi.io.v0_2_12.same_world", "silmaril.wasm_components.wasi.io.v0_2_12.behaviour_eq", "silmaril.wasm_components.wasi.io.v0_2_12.reencodes"]
+
+[[group]]
+name = "silmaril.wasm_components.adapter"
+title = "The wasi_snapshot_preview1 adapters of wasmtime v50.0.1"
+children = ["silmaril.wasm_components.adapter.reactor.parses", "silmaril.wasm_components.adapter.reactor.world.parses", "silmaril.wasm_components.adapter.command.parses", "silmaril.wasm_components.adapter.command.world.parses"]
+
+[[detached]]
+name = "silmaril.wasm_components.pilot"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.problems"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.generated"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi_io"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.adapter"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.same_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.same_code"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.reencodes_to"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.distinct"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b.valid"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b.has_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b.world.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b.world.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.linked.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.linked.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.linked.valid"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.linked.has_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.linked.world.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.linked.world.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.run.is"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.run.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.run.valid"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.run.has_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b_run.distinct"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.gen.comp_b_run.behaviour_eq"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.oci.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.oci.package.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.fixture.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.fixture.package.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.distinct"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.same_code"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.same_world"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.behaviour_eq"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.reencodes"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.adapter.reactor.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.adapter.reactor.world.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.adapter.command.parses"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.adapter.command.world.parses"
+reason = "a case study"

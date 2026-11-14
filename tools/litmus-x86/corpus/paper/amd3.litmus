@@ -1,0 +1,8 @@
+X86 amd3
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{  }
+ P0          | P1          ;
+ MOV [x],$1  | MOV [y],$1  ;
+ MOV [x],$2  | MOV [y],$2  ;
+ MOV EAX,[y] | MOV EBX,[x] ;
+exists (0:EAX=1 /\ 1:EBX=1)

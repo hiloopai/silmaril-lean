@@ -1,0 +1,7 @@
+X86 iwp2.3.b
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{  }
+ P0          | P1          ;
+ MOV [x],$1  | MOV [y],$1  ;
+ MOV EAX,[x] | MOV EBX,[y] ;
+forall (0:EAX=1 /\ 1:EBX=1)

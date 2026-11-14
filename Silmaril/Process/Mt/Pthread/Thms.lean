@@ -1,0 +1,93 @@
+module
+
+public import Silmaril.Process.Mt.Pthread.Defs
+import Silmaril.Proofs.Process.Mt.Pthread.Sanity
+
+/-!
+# POSIX thread specifications: sanity checks
+
+Small consequences of the specifications of `Pthread/Defs` that pin down POSIX's wording (all
+proved, by unfolding; the proofs are in `Silmaril.Proofs.Process.Mt.Pthread.Sanity`):
+
+* a normal mutex its owner relocks deadlocks (no step), an error-checking one returns `EDEADLK`,
+  a recursive one deepens; `trylock` of a held normal mutex is `EBUSY`;
+* a successful lock makes the caller the owner; unlocking a normal mutex one does not hold is
+  undefined, an error-checking one returns `EPERM`;
+* the first half of `pthread_cond_wait` releases the mutex and enqueues the caller; the second
+  needs the mutex free;
+* `sem_wait` blocks at `0`; `sem_trywait` returns `EAGAIN` there;
+* `pthread_once`'s claim (`onceBegin` returning `1`) happens only on a control not started, and
+  marks it running;
+* a barrier's last arrival returns `PTHREAD_BARRIER_SERIAL_THREAD` and releases every waiter;
+* `pthread_join` of oneself is `EDEADLK`; of a running thread it blocks.
+-/
+
+@[expose] public section
+
+namespace Silmaril.Process.Mt.Pthread
+
+theorem normal_relock_deadlocks {t a r : Nat} {m m' : PSt} (hk : (m.mtx a).kind = .normal)
+    (ho : (m.mtx a).owner = some t) : ¬ mutexLock.step t [a] m r m' :=
+  Proofs.Sanity.normal_relock_deadlocks hk ho
+
+theorem errorcheck_relock {t a r : Nat} {m m' : PSt} (hk : (m.mtx a).kind = .errorcheck)
+    (ho : (m.mtx a).owner = some t) : mutexLock.step t [a] m r m' ↔ r = EDEADLK ∧ m' = m :=
+  Proofs.Sanity.errorcheck_relock hk ho
+
+theorem recursive_relock {t a : Nat} {m : PSt} (hk : (m.mtx a).kind = .recursive)
+    (ho : (m.mtx a).owner = some t) (hd : (m.mtx a).depth < depthMax) :
+    mutexLock.step t [a] m 0
+      { m with mtx := set m.mtx a { m.mtx a with depth := (m.mtx a).depth + 1 } } :=
+  Proofs.Sanity.recursive_relock hk ho hd
+
+theorem trylock_busy {t u a : Nat} {m : PSt} (hk : (m.mtx a).kind = .normal)
+    (ho : (m.mtx a).owner = some u) : mutexTrylock.step t [a] m EBUSY m :=
+  Proofs.Sanity.trylock_busy hk ho
+
+theorem lock_owner {t a r : Nat} {m m' : PSt} (h : mutexLock.step t [a] m r m') (hr : r = 0) :
+    (m'.mtx a).owner = some t :=
+  Proofs.Sanity.lock_owner h hr
+
+theorem unlock_normal_ub {t a : Nat} {m : PSt} (hk : (m.mtx a).kind = .normal)
+    (ho : (m.mtx a).owner ≠ some t) : mutexUnlock.fault t [a] m :=
+  Proofs.Sanity.unlock_normal_ub hk ho
+
+theorem unlock_errorcheck_eperm {t a : Nat} {m : PSt} (hk : (m.mtx a).kind = .errorcheck)
+    (ho : (m.mtx a).owner ≠ some t) : mutexUnlock.step t [a] m EPERM m :=
+  Proofs.Sanity.unlock_errorcheck_eperm hk ho
+
+theorem condWait_releases {t c a : Nat} {m m' : PSt} (h : condWait.step t [c, a] m 0 m') :
+    (m'.mtx a).owner = none ∧ t ∈ m'.cnd c :=
+  Proofs.Sanity.condWait_releases h
+
+theorem condResume_needs_free {t c a r : Nat} {m m' : PSt}
+    (h : condResume.step t [c, a] m r m') :
+    (m.mtx a).owner = none ∧ (m'.mtx a).owner = some t :=
+  Proofs.Sanity.condResume_needs_free h
+
+theorem semWait_blocks {t s r : Nat} {m m' : PSt} (h0 : m.sem s = some 0) :
+    ¬ semWait.step t [s] m r m' :=
+  Proofs.Sanity.semWait_blocks h0
+
+theorem semTrywait_eagain {t s : Nat} {m : PSt} (h0 : m.sem s = some 0) :
+    semTrywait.step t [s] m EAGAIN m :=
+  Proofs.Sanity.semTrywait_eagain h0
+
+theorem once_claim {t o : Nat} {m m' : PSt} (h : onceBegin.step t [o] m 1 m') :
+    m.once o = .init ∧ m'.once o = .running t :=
+  Proofs.Sanity.once_claim h
+
+theorem barrier_last {t b : Nat} {m : PSt}
+    (hc : ((m.bar b).waiting.length + 1 = (m.bar b).count)) :
+    barArrive.step t [b] m serialThread
+      { m with bar := set m.bar b { m.bar b with waiting := [] } } :=
+  Proofs.Sanity.barrier_last hc
+
+theorem join_self {t : Nat} {m : PSt} : join.step t [t] m EDEADLK m :=
+  Proofs.Sanity.join_self
+
+theorem join_running_blocks {t u r : Nat} {m m' : PSt} (hu : u ≠ t)
+    (hr : ∀ e, m.thr u = some e → e.life = .running) : ¬ join.step t [u] m r m' :=
+  Proofs.Sanity.join_running_blocks hu hr
+
+end Silmaril.Process.Mt.Pthread
