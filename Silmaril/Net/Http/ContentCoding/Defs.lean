@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Net.Http.Field.Defs
+public import Silmaril.Net.Http.Qvalue.Defs
 public import Silmaril.Formats.Compression.Registry.Defs
 
 /-!
@@ -19,7 +20,8 @@ The HTTP side of the content-coding registry (`Formats.Compression.Registry`):
   application, with every stage bounded;
 * **quality values** (§12.4.2): `weight = OWS ";" OWS "q=" qvalue`,
   `qvalue = ( "0" [ "." 0*3DIGIT ] ) / ( "1" [ "." 0*3("0") ] )`, as thousandths
-  (`parseQvalue`: `"0.5"` is `500`, `"1"` is `1000`); the parameter name `q` is
+  (`Qvalue.parseQvalue`, shared with HTTP/1.1's `TE`: `"0.5"` is `500`, `"1"` is `1000`);
+  the parameter name `q` is
   case-insensitive;
 * **Accept-Encoding** (§12.5.3: `Accept-Encoding = #( codings [ weight ] )`,
   `codings = content-coding / "identity" / "*"`): `parseAcceptEncoding`;
@@ -50,6 +52,7 @@ namespace Silmaril.Net.Http.ContentCoding
 open Silmaril.Net.Http.Abnf Silmaril.Net.Http.Field
 open Silmaril.Formats.Compression (Encoder)
 open Silmaril.Formats.Compression.Registry
+open Silmaril.Net.Http.Qvalue (parseQvalue)
 
 /-! ## Lists (§5.6.1) -/
 
@@ -124,27 +127,7 @@ def decodeContent (p : Profile) (ext : Externals) (field : Option (List UInt8))
 def renderContentEncoding (cs : List Coding) : List UInt8 :=
   commaSp.intercalate (cs.map Coding.name)
 
-/-! ## Quality values (§12.4.2) -/
-
-/-- The value of an ASCII digit. -/
-def digit? (b : UInt8) : Option Nat := if isDigit b then some (b.toNat - 0x30) else none
-
-/-- Up to three decimals after the point, as thousandths. -/
-def thousandths : List UInt8 → Option Nat
-  | [] => some 0
-  | [a] => (digit? a).map (· * 100)
-  | [a, b] => (digit? a).bind fun x => (digit? b).map fun y => x * 100 + y * 10
-  | [a, b, c] =>
-    (digit? a).bind fun x => (digit? b).bind fun y => (digit? c).map fun z => x * 100 + y * 10 + z
-  | _ => none
-
-/-- `qvalue = ( "0" [ "." 0*3DIGIT ] ) / ( "1" [ "." 0*3("0") ] )`, in thousandths. -/
-def parseQvalue : List UInt8 → Option Nat
-  | [0x30] => some 0
-  | [0x31] => some 1000
-  | 0x30 :: 0x2E :: ds => thousandths ds
-  | 0x31 :: 0x2E :: ds => if ds.length ≤ 3 ∧ ds.all (· == 0x30) then some 1000 else none
-  | _ => none
+/-! ## Weights (§12.4.2) -/
 
 /-- The text of `weight` after its `";"`: `OWS "q=" qvalue` (the trailing `OWS` of
 the list element is already trimmed). -/

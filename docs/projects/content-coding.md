@@ -13,7 +13,7 @@ fields that name them (Content-Encoding, Accept-Encoding).
 | [`Formats/Compression/Registry/Thms.lean`](../../Silmaril/Formats/Compression/Registry/Thms.lean) | registry, decoder, round-trip, chain and bound theorems (proofs in `Proofs/Formats/Compression/Registry.lean`) |
 | [`Formats/Compression/Zstd/{Defs,Thms}.lean`](../../Silmaril/Formats/Compression/Zstd/Defs.lean) | **partial** zstd: XXH64, frame header, raw and RLE blocks, skippable frames; known answers only |
 | [`Formats/Compression/SyncFlush/{Defs,Thms}.lean`](../../Silmaril/Formats/Compression/SyncFlush/Defs.lean) | raw DEFLATE ending at a sync flush (an empty non-final stored block) or at `BFINAL`, with an installed LZ77 window; `inflateMessage`/`inflateMessages`: RFC 7692 §7.2.2 permessage-deflate decompression with context takeover and `max_window_bits`. This is the interface for the WebSocket track (the WebSocket framing and negotiation are not here). All RFC 7692 §7.2.3 examples are checked. The round trip with a sync-flushing encoder is planned |
-| [`Net/Http/ContentCoding/Defs.lean`](../../Silmaril/Net/Http/ContentCoding/Defs.lean) | list elements, `parseContentEncoding`, `resolve`, `decodeContent`, `parseQvalue`, `parseAcceptEncoding`, `qOf`, `select`, `selectFor` |
+| [`Net/Http/ContentCoding/Defs.lean`](../../Silmaril/Net/Http/ContentCoding/Defs.lean) | list elements, `parseContentEncoding`, `resolve`, `decodeContent`, `parseAcceptEncoding`, `qOf`, `select`, `selectFor` |
 | [`Net/Http/ContentCoding/Thms.lean`](../../Silmaril/Net/Http/ContentCoding/Thms.lean) | selection and identity rules, Content-Encoding decoding, RFC 9110 examples (proofs in `Proofs/Net/Http/ContentCoding.lean`) |
 
 ## The registry
@@ -67,7 +67,7 @@ Proved (standard axioms only):
   `selectFor_supported` (selected ⇒ `identity` or `Profile.supports`),
   `qOf_identity_eq_zero_iff` and `acceptable_identity_iff` (rule 2),
   `select_empty` (empty field ⇒ `identity`), `select_noField` (rule 1),
-  `parseQvalue_le`, `parseAcceptEncoding_le`, `qOf_le`;
+  `Qvalue.parseQvalue_le` (shared with HTTP/1.1's `TE`), `parseAcceptEncoding_le`, `qOf_le`;
 - Content-Encoding: `decodeContent_sound`, `decodeContent_le`,
   `decodeContent_none`, `decodeContent_gzip`, `decodeContent_deflate`.
 
@@ -91,7 +91,9 @@ with no theorem beyond `limit_le`), `Profile.maxChain` (enforced by
   (`Inflate.member`, `Inflate.raw`) takes an output capacity in every call;
   `sound_bounded` turns a finished run whose output fits the limit into the
   bounded decoder's answer. That a capacity-limited run *stops* by the limit is
-  not stated, and completeness of the inflater is open (`Inflate.Task.member_complete`).
+  not stated. Completeness of the inflater is proved (`Inflate.gzip_complete`,
+  `Inflate.zlib_complete`), and each streaming call appends at most its output
+  capacity (`Inflate.member_call_output`).
 - `Profile.within` bounds every stage of a chain, not only the last, so nested
   codings (`gzip, gzip`) cannot expand past `maxDecoded` at any stage.
 - Accept-Encoding weights the RFC leaves open: an unlisted, non-excluded
@@ -129,24 +131,25 @@ Read from `Gzip/Basic.lean`, `Gzip/Defs.lean`, `Deflate/*`, `Checksum/*` and
 | --- | --- |
 | magic `1f 8b`, `CM = 8` | checked; other `CM` rejected |
 | reserved `FLG` bits 5–7 | must be zero (rejected otherwise) |
-| `FTEXT`, `MTIME`, `XFL`, `OS` | read and ignored; not exposed (`Framing Unit`) |
-| `FEXTRA` | `XLEN` and that many bytes skipped; subfield structure (`SI1 SI2 LEN`) **not** parsed or validated, not exposed |
-| `FNAME`, `FCOMMENT` | skipped up to the zero byte; ISO 8859-1 content **not** validated, not exposed |
+| `FTEXT`, `MTIME`, `XFL`, `OS` | ignored by the member decoder (`Framing Unit`); exposed by the structured parser `GzipHeader.parseHeader`, which accepts exactly what the decoder accepts (`parseHeader_agrees`) |
+| `FEXTRA` | the decoder skips `XLEN` bytes; `GzipHeader` exposes them and has a subfield (`SI1 SI2 LEN`) parser; subfields are not validated on decode |
+| `FNAME`, `FCOMMENT` | skipped up to the zero byte by the decoder, exposed by `GzipHeader.parseHeader`; ISO 8859-1 content **not** validated |
 | `FHCRC` | **checked**: low 16 bits of the CRC-32 of the header bytes before it |
 | CRC-32 trailer | **checked** against `crc32` of the output |
 | `ISIZE` trailer | **checked**: output length mod 2^32 |
 | multi-member files | **proved** semantics: `decompress_eq` (= `decoder.members`), `members_encoder`, `decompress_append`; `gzip_concat` |
 | trailing garbage | **rejected** (stricter than GNU gzip, which ignores trailing zeros with a warning): `gzip_trailing_zero` |
-| encoder | stored blocks only (`Gzip.encoder`, round trip proved); the greedy LZ77/fixed-Huffman `Deflate.compress` is proved sound (`compress_compresses`) but is not wired into a gzip encoder; no dynamic-Huffman encoder |
-| DEFLATE decoder | all block types, `BTYPE = 11`, distance codes 30/31, literal/length symbols 286/287, `HLIT > 286`/`HDIST > 30`, incomplete codes (except the single-code case) and distances past the output rejected |
+| encoder | `Gzip.encoder` (stored blocks) and `Gzip.encoderFixed` (greedy LZ77, one fixed-Huffman block), both round trips proved; no dynamic-Huffman encoder. The registry's `gzip` encoder is the stored one |
+| DEFLATE decoder | sound and complete for the independent RFC 1951 semantics `DeflateSpec` (`DeflateSpec.deflateTake_iff`, zlib's `Policy.strict`); gzip files: `ContainerSpec.gzipDecompress_iff`; all block types, `BTYPE = 11`, distance codes 30/31, literal/length symbols 286/287, `HLIT > 286`/`HDIST > 30`, incomplete codes (except the single-code case) and distances past the output rejected |
 | fuel | the decoder is fuel-bounded by `bitsLeft + 1`; fuel is never the cause of a failure: `decompressBlocks_stable` and `decodeSymbolsFuel_stable` (in `Raw/…/Inflate/Stream/{Progress,Fuel}.lean`) prove any adequate fuel gives the same result, every block/symbol consumes a bit; `readCodeLengths` gets `total + 1` steps, each adding at least one length |
-| CRC-32 | defined as the reflected shift register with polynomial `0xEDB88320` (`crc32Byte`); checked on published values (`"123456789"` → `0xCBF43926`, `"a"`, `"abc"`, a pangram) and incremental laws; **not** proved equal to GF(2) polynomial division (Adler-32, by contrast, has a symbolic spec, `Adler32Spec`) |
-| append law | `Gzip.decoder.Local` is **not** stated; DEFLATE's is open (`Deflate.Task.local`); zlib's follows from it (`Zlib.local_of_deflate`) |
-| streaming | the zlib 1.3.1 gzip member machine is sound and rejection-sound (`Inflate.gzip_sound`); completeness open (`Inflate.Task.member_complete` covers zlib only) |
+| CRC-32 | the reflected shift register `crc32Byte` (polynomial `0xEDB88320`) is **proved** equal to the GF(2) polynomial definition (`Checksum.crc32_eq_spec`), plus published values |
+| append law | **proved**: `Gzip.local`, from `Deflate.local` (and `Zlib.local`) |
+| streaming | the zlib 1.3.1 gzip member machine is sound, rejection-sound and complete (`Inflate.gzip_sound`, `Inflate.gzip_complete`) |
 | vectors | GNU gzip and CPython `hello`, a corrupted CRC rejected |
 
-Open tasks touching gzip/DEFLATE: `Deflate.Task.local`,
-`Inflate.Task.member_complete`, `Inflate.Task.raw_complete`.
+The former open tasks `Deflate.Task.local`, `Inflate.Task.member_complete` and
+`Inflate.Task.raw_complete` are proved (`Deflate.task_local`, `Inflate.task_member_complete`,
+`Inflate.task_raw_complete`).
 
 ## Plans
 
@@ -222,16 +225,18 @@ format outside this library's scope; `pack200-gzip` is deprecated.
 
 ```sh
 lake build --wfail Silmaril.Formats.Compression.Registry.Thms \
-  Silmaril.Formats.Compression.Zstd.Thms Silmaril.Net.Http.ContentCoding.Thms
+  Silmaril.Formats.Compression.Zstd.Thms Silmaril.Net.Http.ContentCoding.Thms \
+  Silmaril.Net.Http.Qvalue.Thms Silmaril.Net.Http1.Codings.Thms
 ```
 
 ## Integration follow-ups
 
-- **Duplicate qvalue parser:** `parseQvalue` (RFC 9110 §12.4.2) also exists in `Http1.Codings`
-  (#156). Whichever lands second should reuse the other's, or prove them equal.
-- **Single-member gzip in the HTTP/1.1 track:** #158's `CodingLib` decodes the `gzip`
-  transfer coding as one member. This registry uses the gzip file decoder
-  (`Gzip.decoder.members`), which RFC 9112 §7.2 points to through RFC 9110 §8.4.1.3. Once
-  #165 lands, `gzipDecompress_iff` and `zlib_take_iff` (`ContainerSpec`) are the laws for
-  both registries. The status table here should then cite them, instead of the stored
-  round trips.
+- **qvalue parser:** shared. `Net.Http.Qvalue.parseQvalue` (RFC 9110 §12.4.2) is used by
+  both Accept-Encoding here and HTTP/1.1's `TE` (`Http1.Codings`).
+- **gzip in the HTTP/1.1 track:** #158's `CodingLib` decodes the `gzip` transfer coding
+  as a file of one or more members (`Decoder.members`), like this registry, as RFC 9112
+  §7.2 requires through RFC 9110 §8.4.1.3. `ContainerSpec.gzipDecompress_iff` and
+  `ContainerSpec.zlib_take_iff` are the decoder laws for both; the status table here still
+  cites the stored round trips.
+- **xxHash:** `Zstd.xxh64` here and `Checksum.xxh64Low32` (`Formats/Compression/XxHash`,
+  #169) are separate definitions; once both have landed, zstd should use the `XxHash` one.

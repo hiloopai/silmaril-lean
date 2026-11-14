@@ -9,7 +9,7 @@ import Silmaril.Proofs.Net.Http.ContentCoding
 
 Proved (standard axioms):
 
-* quality values: `parseQvalue_le`, `parseAcceptEncoding_le`, `qOf_le`: weights are
+* quality values: `parseAcceptEncoding_le` (from `Qvalue.parseQvalue_le`), `qOf_le`: weights are
   thousandths in `0 … 1000`;
 * selection: `select_pos` (a selected coding has `q > 0`), `select_mem` (it is a
   server coding or `identity`), `select_max` (no candidate has a higher weight),
@@ -35,11 +35,9 @@ Proved (standard axioms):
 namespace Silmaril.Net.Http.ContentCoding
 
 open Silmaril.Formats.Compression Silmaril.Formats.Compression.Registry
+open Silmaril.Net.Http.Qvalue (parseQvalue)
 
 /-! ## Quality values -/
-
-theorem parseQvalue_le {v : List UInt8} {q : Nat} (h : parseQvalue v = some q) : q ≤ 1000 :=
-  Proofs.Net.Http.ContentCoding.parseQvalue_le h
 
 theorem parseQvalue_half : parseQvalue (ascii "0.5") = some 500 := by decide
 

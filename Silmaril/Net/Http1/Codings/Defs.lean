@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Net.Http1.Framing.Defs
+public import Silmaril.Net.Http.Qvalue.Defs
 
 /-!
 # Transfer codings and `TE` (RFC 9112 §6.1, §7, §10.1)
@@ -35,6 +36,7 @@ registered codings define none); they are kept by `codingParams` for callers.
 namespace Silmaril.Net.Http1
 
 open Silmaril.Parse.ByteParse (Bytes)
+open Silmaril.Net.Http.Qvalue (parseQvalue)
 
 /-! ## Names -/
 
@@ -129,21 +131,6 @@ inductive TeOffer where
   | trailers
   | coding (name : Bytes) (q : Nat)
   deriving DecidableEq, Repr
-
-/-- `qvalue = ( "0" [ "." 0*3DIGIT ] ) / ( "1" [ "." 0*3("0") ] )` (RFC 9110 §12.4.2), in
-thousandths. -/
-def parseQvalue (v : Bytes) : Option Nat :=
-  match v with
-  | [] => none
-  | d :: rest =>
-    let frac := match rest with
-      | [] => some []
-      | c :: ds => if c = 0x2E ∧ ds.length ≤ 3 ∧ ds.all isDigit then some ds else none
-    frac.bind fun ds =>
-      let thousandths := decValue (ds ++ List.replicate (3 - ds.length) 0x30)
-      if d = 0x30 then some thousandths
-      else if d = 0x31 ∧ ds.all (· = 0x30) then some 1000
-      else none
 
 /-- Parse one `t-codings` element; `none` if its weight is malformed. -/
 def parseTeOffer (e : Bytes) : Option TeOffer :=
