@@ -224,3 +224,14 @@ format outside this library's scope; `pack200-gzip` is deprecated.
 lake build --wfail Silmaril.Formats.Compression.Registry.Thms \
   Silmaril.Formats.Compression.Zstd.Thms Silmaril.Net.Http.ContentCoding.Thms
 ```
+
+## Integration follow-ups
+
+- **Duplicate qvalue parser:** `parseQvalue` (RFC 9110 §12.4.2) also exists in `Http1.Codings`
+  (#156). Whichever lands second should reuse the other's, or prove them equal.
+- **Single-member gzip in the HTTP/1.1 track:** #158's `CodingLib` decodes the `gzip`
+  transfer coding as one member. This registry uses the gzip file decoder
+  (`Gzip.decoder.members`), which RFC 9112 §7.2 points to through RFC 9110 §8.4.1.3. Once
+  #165 lands, `gzipDecompress_iff` and `zlib_take_iff` (`ContainerSpec`) are the laws for
+  both registries. The status table here should then cite them, instead of the stored
+  round trips.
