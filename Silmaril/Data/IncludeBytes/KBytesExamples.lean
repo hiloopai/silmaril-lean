@@ -13,7 +13,7 @@ examples of hiloopai/silmaril-lean#125; its native-fallback examples are not her
 
 @[expose] public section
 
-namespace Silmaril.IncludeBytes.KernelExamples
+namespace Silmaril.IncludeBytes.KBytesExamples
 
 open Silmaril.KBytes
 
@@ -44,7 +44,7 @@ theorem raw_magic : helloRaw.data.toList.take 4 = [0x7f, 0x45, 0x4c, 0x46] := by
 noncomputable def otherRaw : ByteArray := include_bytes "../../../examples/dyn/pinned/hello-clang"
 
 /--
-error: kbytes_rel: the kernel rejected `Silmaril.IncludeBytes.KernelExamples.hello.toByteArray = decode 4096 16008 Silmaril.IncludeBytes.KernelExamples.hello.chunks` for this right-hand side (its literals are not Silmaril.IncludeBytes.KernelExamples.hello's)
+error: kbytes_rel: the kernel rejected `Silmaril.IncludeBytes.KBytesExamples.hello.toByteArray = decode 4096 16008 Silmaril.IncludeBytes.KBytesExamples.hello.chunks` for this right-hand side (its literals are not Silmaril.IncludeBytes.KBytesExamples.hello's)
 -/
 #guard_msgs in
 example : hello.toByteArray = otherRaw := by kbytes_rel
@@ -55,4 +55,4 @@ error: kbytes_rel: the right-hand side does not unfold to `IncludeBytes.decode c
 #guard_msgs in
 example : hello.toByteArray = helloRaw.extract 0 helloRaw.size := by kbytes_rel
 
-end Silmaril.IncludeBytes.KernelExamples
+end Silmaril.IncludeBytes.KBytesExamples
