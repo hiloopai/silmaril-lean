@@ -164,4 +164,98 @@ theorem mem_walk (path : List SeqStep) (q : List SeqStep) :
           simpa [segment] using h
       · simp at h
 
+/-! ## Block identities are distinct -/
+
+theorem step_eq {path s : List SeqStep} {x y : SeqStep} (hx : path ++ [x] <+: s)
+    (hy : path ++ [y] <+: s) : x = y := by
+  have h1 := hx.getElem (i := path.length) (by simp)
+  have h2 := hy.getElem (i := path.length) (by simp)
+  simpa using h1.trans h2.symm
+
+theorem ne_of_step {path s : List SeqStep} {x : SeqStep} (hx : path ++ [x] <+: s) : s ≠ path := by
+  intro h; have := hx.length_le; rw [h] at this; simp at this; omega
+
+theorem mem_nested_step (path : List SeqStep) (m : Nat) (t : Instr) (x : BlockId × Segment)
+    (hx : x ∈ nested path m t) : ∃ a, path ++ [(m, a)] <+: x.1.seq := by
+  obtain ⟨a, c, -, h⟩ := (mem_nested path m t x).1 hx
+  exact ⟨a, walk_prefix _ 0 [] c x h⟩
+
+/-- The identities `walk` lists from position `k`: blocks of its own sequence at positions `≥ k`,
+or blocks below a segment at a position `≥ k`. -/
+theorem walk_shape (path : List SeqStep) :
+    ∀ (is : List Instr) (k : Nat) (acc : List Instr), ∀ x ∈ walk path k acc is,
+      (x.1.seq = path ∧ k ≤ x.1.idx) ∨ ∃ m a, k ≤ m ∧ path ++ [(m, a)] <+: x.1.seq
+  | [], k, acc, x, hx => by
+    unfold walk at hx
+    split at hx
+    · simp at hx
+    · simp at hx; subst hx; simp
+  | i :: is, k, acc, x, hx => by
+    unfold walk at hx
+    split at hx
+    · simp only [List.mem_cons, List.mem_append] at hx
+      rcases hx with rfl | hx | hx
+      · simp
+      · obtain ⟨a, h⟩ := mem_nested_step path k i x hx
+        exact Or.inr ⟨k, a, le_rfl, h⟩
+      · rcases walk_shape path is (k + 1) [] x hx with ⟨h1, h2⟩ | ⟨m, a, h1, h2⟩
+        · exact Or.inl ⟨h1, by omega⟩
+        · exact Or.inr ⟨m, a, by omega, h2⟩
+    · exact walk_shape path is k (i :: acc) x hx
+
+theorem arms_nodup (path : List SeqStep) (k : Nat) (t e : List Instr)
+    (ht : ((walk (path ++ [(k, 0)]) 0 [] t).map (·.1)).Nodup)
+    (he : ((walk (path ++ [(k, 1)]) 0 [] e).map (·.1)).Nodup) :
+    ((walk (path ++ [(k, 0)]) 0 [] t).map (·.1) ++
+      (walk (path ++ [(k, 1)]) 0 [] e).map (·.1)).Nodup := by
+  rw [List.nodup_append]
+  refine ⟨ht, he, ?_⟩
+  simp only [List.mem_map]
+  rintro _ ⟨x, hx, rfl⟩ _ ⟨y, hy, rfl⟩ h
+  have h1 := walk_prefix _ 0 [] t x hx
+  have h2 := walk_prefix _ 0 [] e y hy
+  rw [h] at h1
+  have := step_eq h1 h2; simp at this
+
+mutual
+theorem walk_nodup (path : List SeqStep) (k : Nat) (acc : List Instr) :
+    ∀ (is : List Instr), ((walk path k acc is).map (·.1)).Nodup
+  | [] => by
+    unfold walk; split <;> simp
+  | i :: is => by
+    unfold walk
+    split
+    · simp only [List.map_cons, List.map_append, List.nodup_cons, List.nodup_append,
+        List.mem_append, List.mem_map, not_or, not_exists, not_and]
+      refine ⟨⟨?_, ?_⟩, nested_nodup path k i, walk_nodup path (k + 1) [] is, ?_⟩
+      · intro x hx h
+        obtain ⟨a, ha⟩ := mem_nested_step path k i x hx
+        exact ne_of_step ha (by rw [h])
+      · intro x hx h
+        rcases walk_shape path is (k + 1) [] x hx with ⟨_, h2⟩ | ⟨m, a, h1, h2⟩
+        · rw [h] at h2; simp at h2; omega
+        · rw [h] at h2; exact ne_of_step h2 rfl
+      · rintro _ ⟨x, hx, rfl⟩ _ ⟨y, hy, rfl⟩ h
+        obtain ⟨a, ha⟩ := mem_nested_step path k i x hx
+        rw [h] at ha
+        rcases walk_shape path is (k + 1) [] y hy with ⟨h1, _⟩ | ⟨m, b, h1, h2⟩
+        · exact ne_of_step ha h1
+        · have := step_eq ha h2; simp at this; omega
+    · exact walk_nodup path k (i :: acc) is
+theorem nested_nodup (path : List SeqStep) (k : Nat) :
+    ∀ (i : Instr), ((nested path k i).map (·.1)).Nodup
+  | .block _ b => by simpa [nested] using walk_nodup (path ++ [(k, 0)]) 0 [] b
+  | .loop _ b => by simpa [nested] using walk_nodup (path ++ [(k, 0)]) 0 [] b
+  | .tryTable _ _ b => by simpa [nested] using walk_nodup (path ++ [(k, 0)]) 0 [] b
+  | .if_ _ t e => by
+    simpa [nested] using arms_nodup path k t e (walk_nodup _ 0 [] t) (walk_nodup _ 0 [] e)
+  | i => by
+    rw [nested.eq_def]
+    split
+    all_goals first
+      | (simp; done)
+      | exact walk_nodup _ 0 [] _
+      | (simp only [List.map_append]; exact arms_nodup path k _ _ (walk_nodup _ 0 [] _) (walk_nodup _ 0 [] _))
+end
+
 end Silmaril.Wasm.Cfg.Proofs.BlockTree

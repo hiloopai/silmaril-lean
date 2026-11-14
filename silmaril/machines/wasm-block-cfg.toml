@@ -1,14 +1,16 @@
 # Basic-block CFGs of example Wasm functions, built by `Silmaril.Wasm.Cfg.blockCfg` (which realizes
-# the declarative relation `Silmaril.Wasm.Cfg.Edge`) and written as machine documents by
-# `ProjectSelfTest.WasmBlockCfg.blockDoc`; the `*_blocks` theorems there prove that each document
-# has exactly the builder's nodes and edges.
+# the declarative relation `Silmaril.Wasm.Cfg.Edge`), with the effect edges of
+# `Silmaril.Wasm.Cfg.EffectEdge`, written as machine documents by
+# `ProjectSelfTest.WasmBlockCfg.blockDoc`. The `*_blocks` theorems there prove that each document
+# has exactly these nodes and edges. These graphs are syntactic and incomplete: no theorem says
+# that executions follow them.
 schema = "silmaril.records.v0.2"
 
 [[machine]]
 name = "silmaril.wasm.blockcfg.verified.sum"
-doc = "Block CFG of `sum` (Examples.Verified.prog): the loop body splits at br_if 1 (leaves the block) and br 0 (back to the loop head)."
+doc = "Syntactic block CFG — incomplete, not an execution model: flow edges follow structured control, effect edges mark possible traps and raises; no theorem says executions follow this graph. `sum` (Examples.Verified.prog): the loop body splits at br_if 1 (leaves the block) and br 0 (back to the loop head)."
 states = ["exit", "trap", "raise", "invalid", "b0 [].0: 0 instrs → block", "b1 [0/0].0: 0 instrs → loop", "b2 [0/0.0/0].0: 3 instrs → br_if 1", "b3 [0/0.0/0].1: 8 instrs → br 0", "b4 [].1: 1 instrs → falls through"]
-labels = ["flow"]
+labels = ["flow", "effect"]
 edges = [
   ["b0 [].0: 0 instrs → block", "flow", "b1 [0/0].0: 0 instrs → loop"],
   ["b1 [0/0].0: 0 instrs → loop", "flow", "b2 [0/0.0/0].0: 3 instrs → br_if 1"],
@@ -24,9 +26,9 @@ error = ["trap", "raise", "invalid"]
 
 [[machine]]
 name = "silmaril.wasm.blockcfg.dispatch"
-doc = "Block CFG of a br_table dispatcher over three nested blocks (Wasm.Cfg.Examples.mod): one edge per br_table target."
+doc = "Syntactic block CFG — incomplete, not an execution model: flow edges follow structured control, effect edges mark possible traps and raises; no theorem says executions follow this graph. A br_table dispatcher over three nested blocks (Wasm.Cfg.Examples.mod): one flow edge per br_table target."
 states = ["exit", "trap", "raise", "invalid", "b0 [].0: 0 instrs → block", "b1 [0/0].0: 0 instrs → block", "b2 [0/0.0/0].0: 0 instrs → block", "b3 [0/0.0/0.0/0].0: 1 instrs → br_table [0, 1] 2", "b4 [0/0.0/0].1: 1 instrs → return", "b5 [0/0].1: 1 instrs → return", "b6 [].1: 1 instrs → falls through"]
-labels = ["flow"]
+labels = ["flow", "effect"]
 edges = [
   ["b0 [].0: 0 instrs → block", "flow", "b1 [0/0].0: 0 instrs → block"],
   ["b1 [0/0].0: 0 instrs → block", "flow", "b2 [0/0.0/0].0: 0 instrs → block"],
@@ -45,9 +47,9 @@ error = ["trap", "raise", "invalid"]
 
 [[machine]]
 name = "silmaril.wasm.blockcfg.specials"
-doc = "Block CFG with trap (unreachable), raise (throw) and exit (return) edges. No block branches to a missing label here, so `invalid` is unreachable (see Examples.badBranch)."
+doc = "Syntactic block CFG — incomplete, not an execution model: flow edges follow structured control, effect edges mark possible traps and raises; no theorem says executions follow this graph. Flow edges to trap (unreachable), raise (throw) and exit (return). No block branches to a missing label here, so `invalid` is unreachable (see Examples.badBranch)."
 states = ["exit", "trap", "raise", "invalid", "b0 [].0: 1 instrs → if", "b1 [0/0].0: 0 instrs → unreachable", "b2 [].1: 2 instrs → if", "b3 [1/0].0: 0 instrs → throw 0", "b4 [].2: 0 instrs → return"]
-labels = ["flow"]
+labels = ["flow", "effect"]
 edges = [
   ["b0 [].0: 1 instrs → if", "flow", "b1 [0/0].0: 0 instrs → unreachable"],
   ["b0 [].0: 1 instrs → if", "flow", "b2 [].1: 2 instrs → if"],
@@ -63,26 +65,55 @@ rejecting = []
 error = ["trap", "raise", "invalid"]
 
 [[machine]]
-name = "silmaril.wasm.blockcfg.rust_door.enter"
-doc = "Block CFG of `enter` of the compiled Rust door (Examples.RustInst.door, defined function 0)."
-states = ["exit", "trap", "raise", "invalid", "b0 [].0: 3 instrs → block", "b1 [0/0].0: 3 instrs → br_if 0", "b2 [0/0].1: 0 instrs → block", "b3 [0/0.1/0].0: 0 instrs → block", "b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "b6 [0/0.1/0.0/0].2: 2 instrs → br 2", "b7 [0/0.1/0].1: 8 instrs → br 1", "b8 [0/0].2: 1 instrs → falls through", "b9 [].1: 6 instrs → falls through"]
-labels = ["flow"]
+name = "silmaril.wasm.blockcfg.guarded"
+doc = "Syntactic block CFG — incomplete, not an execution model: flow edges follow structured control, effect edges mark possible traps and raises; no theorem says executions follow this graph. `guarded` (Wasm.Cfg.Examples.effectsMod): a division and a call inside a try_table body (effect edges to trap and raise; handler unresolved), a throw there, and a load after it."
+states = ["exit", "trap", "raise", "invalid", "b0 [].0: 0 instrs → block", "b1 [0/0].0: 0 instrs → try_table", "b2 [0/0.0/0].0: 6 instrs → if {may trap, call, handler unresolved}", "b3 [0/0.0/0.0/0].0: 0 instrs → throw 0 {handler unresolved}", "b4 [].1: 2 instrs → falls through {may trap}"]
+labels = ["flow", "effect"]
 edges = [
-  ["b0 [].0: 3 instrs → block", "flow", "b1 [0/0].0: 3 instrs → br_if 0"],
-  ["b1 [0/0].0: 3 instrs → br_if 0", "flow", "b9 [].1: 6 instrs → falls through"],
-  ["b1 [0/0].0: 3 instrs → br_if 0", "flow", "b2 [0/0].1: 0 instrs → block"],
+  ["b0 [].0: 0 instrs → block", "flow", "b1 [0/0].0: 0 instrs → try_table"],
+  ["b1 [0/0].0: 0 instrs → try_table", "flow", "b2 [0/0.0/0].0: 6 instrs → if {may trap, call, handler unresolved}"],
+  ["b1 [0/0].0: 0 instrs → try_table", "flow", "b4 [].1: 2 instrs → falls through {may trap}"],
+  ["b2 [0/0.0/0].0: 6 instrs → if {may trap, call, handler unresolved}", "flow", "b3 [0/0.0/0.0/0].0: 0 instrs → throw 0 {handler unresolved}"],
+  ["b2 [0/0.0/0].0: 6 instrs → if {may trap, call, handler unresolved}", "flow", "b4 [].1: 2 instrs → falls through {may trap}"],
+  ["b3 [0/0.0/0.0/0].0: 0 instrs → throw 0 {handler unresolved}", "flow", "raise"],
+  ["b4 [].1: 2 instrs → falls through {may trap}", "flow", "exit"],
+  ["b2 [0/0.0/0].0: 6 instrs → if {may trap, call, handler unresolved}", "effect", "trap"],
+  ["b2 [0/0.0/0].0: 6 instrs → if {may trap, call, handler unresolved}", "effect", "raise"],
+  ["b4 [].1: 2 instrs → falls through {may trap}", "effect", "trap"],
+]
+initial = ["b0 [].0: 0 instrs → block"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.blockcfg.rust_door.enter"
+doc = "Syntactic block CFG — incomplete, not an execution model: flow edges follow structured control, effect edges mark possible traps and raises; no theorem says executions follow this graph. `enter` of the compiled Rust door (Examples.RustInst.door, defined function 0)."
+states = ["exit", "trap", "raise", "invalid", "b0 [].0: 3 instrs → block {may trap}", "b1 [0/0].0: 3 instrs → br_if 0 {may trap}", "b2 [0/0].1: 0 instrs → block", "b3 [0/0.1/0].0: 0 instrs → block", "b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "b6 [0/0.1/0.0/0].2: 2 instrs → br 2", "b7 [0/0.1/0].1: 8 instrs → br 1 {call}", "b8 [0/0].2: 1 instrs → falls through {call}", "b9 [].1: 6 instrs → falls through {may trap}"]
+labels = ["flow", "effect"]
+edges = [
+  ["b0 [].0: 3 instrs → block {may trap}", "flow", "b1 [0/0].0: 3 instrs → br_if 0 {may trap}"],
+  ["b1 [0/0].0: 3 instrs → br_if 0 {may trap}", "flow", "b9 [].1: 6 instrs → falls through {may trap}"],
+  ["b1 [0/0].0: 3 instrs → br_if 0 {may trap}", "flow", "b2 [0/0].1: 0 instrs → block"],
   ["b2 [0/0].1: 0 instrs → block", "flow", "b3 [0/0.1/0].0: 0 instrs → block"],
   ["b3 [0/0.1/0].0: 0 instrs → block", "flow", "b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0"],
-  ["b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "flow", "b7 [0/0.1/0].1: 8 instrs → br 1"],
+  ["b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "flow", "b7 [0/0.1/0].1: 8 instrs → br 1 {call}"],
   ["b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "flow", "b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1"],
-  ["b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "flow", "b8 [0/0].2: 1 instrs → falls through"],
+  ["b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "flow", "b8 [0/0].2: 1 instrs → falls through {call}"],
   ["b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "flow", "b6 [0/0.1/0.0/0].2: 2 instrs → br 2"],
-  ["b6 [0/0.1/0.0/0].2: 2 instrs → br 2", "flow", "b9 [].1: 6 instrs → falls through"],
-  ["b7 [0/0.1/0].1: 8 instrs → br 1", "flow", "b9 [].1: 6 instrs → falls through"],
-  ["b8 [0/0].2: 1 instrs → falls through", "flow", "b9 [].1: 6 instrs → falls through"],
-  ["b9 [].1: 6 instrs → falls through", "flow", "exit"],
+  ["b6 [0/0.1/0.0/0].2: 2 instrs → br 2", "flow", "b9 [].1: 6 instrs → falls through {may trap}"],
+  ["b7 [0/0.1/0].1: 8 instrs → br 1 {call}", "flow", "b9 [].1: 6 instrs → falls through {may trap}"],
+  ["b8 [0/0].2: 1 instrs → falls through {call}", "flow", "b9 [].1: 6 instrs → falls through {may trap}"],
+  ["b9 [].1: 6 instrs → falls through {may trap}", "flow", "exit"],
+  ["b0 [].0: 3 instrs → block {may trap}", "effect", "trap"],
+  ["b1 [0/0].0: 3 instrs → br_if 0 {may trap}", "effect", "trap"],
+  ["b7 [0/0.1/0].1: 8 instrs → br 1 {call}", "effect", "trap"],
+  ["b7 [0/0.1/0].1: 8 instrs → br 1 {call}", "effect", "raise"],
+  ["b8 [0/0].2: 1 instrs → falls through {call}", "effect", "trap"],
+  ["b8 [0/0].2: 1 instrs → falls through {call}", "effect", "raise"],
+  ["b9 [].1: 6 instrs → falls through {may trap}", "effect", "trap"],
 ]
-initial = ["b0 [].0: 3 instrs → block"]
+initial = ["b0 [].0: 3 instrs → block {may trap}"]
 accepting = ["exit"]
 rejecting = []
 error = ["trap", "raise", "invalid"]

@@ -726,8 +726,9 @@ async function machinePage(name) {
       if (m.dominators) {
         const t = JSON.parse(m.dominators);
         idom = new Map(Object.entries(t));
-        prov = provBadge("lean", m.dominator_theorem) + ` <span class="muted">immediate dominators from ${esc((ly.initial || [])[0])}; ` +
-          "the exact dominator tree is unique on reachable states (<code>Graph.exact_unique</code>)</span>";
+        prov = provBadge("lean", m.dominator_theorem) + ` <span class="muted">immediate dominators of this document's graph, from ${esc((ly.initial || [])[0])}; ` +
+          "the exact dominator tree is unique on reachable states (<code>Graph.exact_unique</code>). " +
+          "This is a fact about the graph as drawn, not about any execution it may describe.</span>";
         // unreachable states have no dominator: null in the table; keep reachable ones only
         const reach = dominators(doc.states, doc.edges.map(([a, , b]) => [a, b]), ly.initial || []).reachable;
         for (const s of [...idom.keys()]) if (!reach.has(s)) idom.delete(s);

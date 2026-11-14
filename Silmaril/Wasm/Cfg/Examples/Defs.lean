@@ -61,4 +61,22 @@ def specials : Expr := bodyOf mod 1
 module contains one. -/
 def badBranch : Expr := [.block .empty [.br ⟨5⟩]]
 
+/-- A module whose function has effects: a division and a call inside a `try_table` body, a
+`throw` there, and a load after it. -/
+def effectsMod : Module := wat3! r#"
+(module
+  (import "env" "f" (func $f (param i32) (result i32)))
+  (tag $e)
+  (memory 1)
+  (func $guarded (export "guarded") (param $p i32) (param $q i32) (result i32)
+    (block $h
+      (try_table (catch_all $h)
+        (drop (call $f (i32.div_u (local.get $p) (local.get $q))))
+        (if (local.get $p) (then (throw $e)))))
+    (i32.load (local.get $q))))
+"#
+
+/-- The function with effects (the first defined function; function index 1 after the import). -/
+def guarded : Expr := bodyOf effectsMod 0
+
 end Silmaril.Wasm.Cfg.Examples
