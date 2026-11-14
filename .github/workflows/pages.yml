@@ -5,12 +5,15 @@ name: Explorer on GitHub Pages
 # at https://hiloopai.github.io/silmaril-lean/. Everything in it comes from this public
 # repository: record names, Lean module and declaration names, docs, CIDs and verdicts.
 #
-# It runs after CI succeeds on a push to main (so the shared Lake pool holds main's build), and
-# by hand. Repository settings: Pages, source "GitHub Actions".
+# It runs on every push to main, and by hand. It cannot be a `workflow_run` of CI: hiloop's prove
+# service admits a GitHub OIDC token only for the events `pull_request`, `push`, `merge_group`,
+# `workflow_dispatch` and `schedule` (authz `githubOidc.events`; `workflow_run` runs with the base
+# repository's privileges on input a fork can control, so it is never admitted, and a
+# `workflow_run` run got HTTP 401 from /v1/prove/sessions). The build on prove restores what main's
+# CI already published and builds the rest with --wfail, and `make pages` runs the full project
+# check, so a broken main fails here too. Repository settings: Pages, source "GitHub Actions".
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
 
@@ -24,10 +27,7 @@ concurrency:
 
 jobs:
   build:
-    if: >-
-      github.repository == 'hiloopai/silmaril-lean' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    if: github.repository == 'hiloopai/silmaril-lean'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -41,7 +41,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           # The client diffs against the nearest commit main's CI published.
           fetch-depth: 65
       - name: Assume the Lean CAS role

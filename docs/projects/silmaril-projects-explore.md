@@ -32,8 +32,10 @@ version and how many bytes have been read so far.
 ## The published explorer
 
 `.github/workflows/pages.yml` publishes silmaril's own project at
-<https://hiloopai.github.io/silmaril-lean/>. It runs after CI succeeds on a push to `main` (and by
-hand), restores main's build from the shared Lake pool, runs `sil project dump`, `check`,
+<https://hiloopai.github.io/silmaril-lean/>. It runs on every push to `main` (and by hand), and
+builds on hiloop's prove service (`make pages`). It is not a `workflow_run` of CI, because the prove
+service refuses OIDC tokens of `workflow_run` events. The worker restores main's build from the
+shared Lake pool and runs `sil project dump`, `check`,
 `sqlite --httpvfs` and `explore --db _site/project.sqlite --out _site/index.html`, and deploys
 `_site` to GitHub Pages (repository setting: Pages source "GitHub Actions"). The site holds only
 what the public repository already contains. GitHub Pages answers Range requests with the
