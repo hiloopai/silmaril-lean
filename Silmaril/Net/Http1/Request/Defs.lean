@@ -212,6 +212,7 @@ structure Accepted (cfg : ServerConfig) (h : RequestHead) (c : Context) : Prop w
   framing_ne : c.framing ≠ .invalid
   codings : checkCodings cfg.implements (transferCodings h.fields) = .ok
   method : c.method = Http.Method.ofToken h.line.method
+  target : ∃ host, c.target = targetUri cfg c.form h.line.target host
   persistent : c.persistent =
     (persists cfg.keepAlive h.line.version h.fields && !framingForcesClose h.line.version h.fields)
 

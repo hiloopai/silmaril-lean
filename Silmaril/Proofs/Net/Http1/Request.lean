@@ -18,6 +18,7 @@ theorem checkFraming_ok {cfg : ServerConfig} {v : Version} {m : Bytes} {form : T
     (hc : checkRequest.checkFraming cfg v m form fs t host = .ok c) :
     c.form = form ∧ c.framing = cfg.profile.frame v fs ∧ c.framing ≠ .invalid ∧
       checkCodings cfg.implements (transferCodings fs) = .ok ∧ c.method = Http.Method.ofToken m ∧
+      c.target = targetUri cfg form t host ∧
       c.persistent = (persists cfg.keepAlive v fs && !framingForcesClose v fs) := by
   unfold checkRequest.checkFraming at hc
   simp only at hc
@@ -28,7 +29,7 @@ theorem checkFraming_ok {cfg : ServerConfig} {v : Version} {m : Bytes} {form : T
   · cases hc
   · cases hc
   · cases hc
-  · next hk => cases hc; exact ⟨rfl, rfl, h₁, hk, rfl, rfl⟩
+  · next hk => cases hc; exact ⟨rfl, rfl, h₁, hk, rfl, rfl, rfl⟩
 
 theorem checkRequest_ok {cfg : ServerConfig} {h : RequestHead} {c : Context}
     (hc : checkRequest cfg h = .ok c) : Accepted cfg h c := by
@@ -48,16 +49,16 @@ theorem checkRequest_ok {cfg : ServerConfig} {h : RequestHead} {c : Context}
     split at hc
     · cases hc
     · next h₃ =>
-      obtain ⟨e₁, e₂, e₃, e₄, e₅, e₆⟩ := checkFraming_ok hc
+      obtain ⟨e₁, e₂, e₃, e₄, e₅, e₇, e₆⟩ := checkFraming_ok hc
       subst e₁
       exact ⟨by omega, hform, by simpa using h₂, ⟨[], Or.inr ⟨hh, by simpa using h₃⟩⟩, e₂, e₃, e₄,
-        e₅, e₆⟩
+        e₅, ⟨_, e₇⟩, e₆⟩
   · next host hh =>
     split at hc
     · next h₃ =>
-      obtain ⟨e₁, e₂, e₃, e₄, e₅, e₆⟩ := checkFraming_ok hc
+      obtain ⟨e₁, e₂, e₃, e₄, e₅, e₇, e₆⟩ := checkFraming_ok hc
       subst e₁
-      exact ⟨by omega, hform, by simpa using h₂, ⟨host, Or.inl ⟨hh, h₃⟩⟩, e₂, e₃, e₄, e₅, e₆⟩
+      exact ⟨by omega, hform, by simpa using h₂, ⟨host, Or.inl ⟨hh, h₃⟩⟩, e₂, e₃, e₄, e₅, ⟨_, e₇⟩, e₆⟩
     · cases hc
   · cases hc
 
