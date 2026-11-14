@@ -53,3 +53,58 @@ document has exactly the extraction's nodes and edges.
 
 The registry proves each document's immediate-dominator table. The explorer's machine page
 (Machines → `silmaril.wasm.cfg.*`) shows the flat CFG and its Lean kernel-checked dominator tree.
+
+## Roadmap: basic-block CFG relation
+
+The instruction-level extractor above is a prototype. The target is a **relation** from a Wasm
+function to a CFG whose nodes are basic blocks, with proofs that it is a function (existence and
+uniqueness) and that the executable extractors realize it.
+
+**Decisions so far:**
+
+1. **Canonical partition** (`Silmaril.Wasm.Cfg.Block`, done).
+   - *Terminators* are the structured instructions (`block`, `loop`, `if`, `try_table`), the
+     branches (`br`, `br_if`, `br_table`, `br_on_*`), `return` and tail calls, `unreachable` and
+     `throw`/`throw_ref`.
+   - Calls are *simple*: their trap or throw exits are marked on the node, not made separate edges.
+   - A segment is simple instructions followed by at most one terminator.
+   - `IsSegmentation` is the relation: nonempty segments covering the sequence, where only the last
+     may lack a terminator.
+   - **Proved:** every sequence has exactly one segmentation (`existsUnique_segmentation`), and
+     `segment` computes it.
+   - A block's identity is (sequence path, position in the segmentation).
+2. **Nested sequences and edges** (next).
+   - Nodes are the segments of every sequence of the body tree (bodies of `block`, `loop`, `if`
+     arms and `try_table`).
+   - Edges are given declaratively by the structured-control rules used above: label depth resolved
+     against the enclosing constructs, and a sequence's end continuing to its parent's continuation.
+   - Special nodes stay explicit: `exit`, `trap`, `raise`, `invalid`, and *unsupported* markings for
+     constructs the relation does not model exactly.
+   - To prove: the relation determines a unique graph on the canonical node identities, and the
+     executable and kernel-evaluated builders realize it. Kernel evaluation is to be benchmarked
+     against runtime evaluation.
+3. **Node interfaces.**
+   - Each block will carry its operand-stack input and output arity.
+   - Branch arguments are the label arity from the block type.
+   - Each block lists its trap and throw exits and the local, global and function indices it
+     references.
+   - The arities come from the existing validation typing, scoped to functions that validate.
+4. **Bytes**, valid serializer profile only (`encodeModule?`).
+   - A standalone function object is (locals, body).
+   - Its *body encoding* is the locals vector, then the expression, then `end` (`0x0b`).
+   - Its *code entry* is the body encoding with a u32 size prefix.
+   - The code section lists entries in the order of defined functions; module function index `k`
+     is `#imports + defined index`.
+   - A block's bytes are its simple instructions followed by its terminator's header (opcode and
+     block type). The nested sequences' bytes belong to their own blocks; the `else` and `end`
+     delimiters are attributed to the end of their sequence.
+   - To prove: the code entry of defined function `k` occurs in the module's bytes at the offset the
+     encoder places it.
+5. **Equivalences.**
+   - Graph equivalence is an isomorphism of block CFGs that preserves block contents.
+   - Dominator-tree equivalence goes through the exact dominator tree, which is unique on reachable
+     nodes (`Graph.exact_unique`). So it does not depend on choosing a tree, unlike sound or region
+     trees.
+   - Behavioral equivalence (function to CFG injective up to equivalence: semantics preserved and
+     reflected) needs the abstract environment and trace semantics owned by the Wasm games/traces
+     work. This development reuses that, and does not port a second semantics.
