@@ -1,0 +1,17 @@
+// The world of the example servers: the part of wasi:http/proxy@0.2.12 they use.
+package silmaril:servers;
+
+world server {
+  import wasi:http/types@0.2.12;
+  import wasi:io/streams@0.2.12;
+  export wasi:http/incoming-handler@0.2.12;
+}
+
+// The world of the filesystem servers (store, static): also wasi:filesystem.
+world fs-server {
+  import wasi:http/types@0.2.12;
+  import wasi:io/streams@0.2.12;
+  import wasi:filesystem/types@0.2.12;
+  import wasi:filesystem/preopens@0.2.12;
+  export wasi:http/incoming-handler@0.2.12;
+}

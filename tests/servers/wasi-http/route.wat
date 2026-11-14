@@ -1,0 +1,35 @@
+  ;; `route`: answer from the route table on the path-with-query (`routeResp`).
+  (data (i32.const 0x100) "/")
+  (data (i32.const 0x110) "/hello")
+  (data (i32.const 0x120) "home")
+  (data (i32.const 0x130) "hello")
+  (data (i32.const 0x140) "not found")
+
+  ;; The bytes at `p`, `n` are the bytes at `q`, `m`.
+  (func $eq (param $p i32) (param $n i32) (param $q i32) (param $m i32) (result i32)
+    (if (i32.ne (local.get $n) (local.get $m)) (then (return (i32.const 0))))
+    (loop $l
+      (if (i32.eqz (local.get $n)) (then (return (i32.const 1))))
+      (if (i32.ne (i32.load8_u (local.get $p)) (i32.load8_u (local.get $q)))
+        (then (return (i32.const 0))))
+      (local.set $p (i32.add (local.get $p) (i32.const 1)))
+      (local.set $q (i32.add (local.get $q) (i32.const 1)))
+      (local.set $n (i32.sub (local.get $n) (i32.const 1)))
+      (br $l))
+    (i32.const 0))
+
+  (func (export "wasi:http/incoming-handler@0.2.12#handle") (param $r i32) (param $o i32)
+    (local $p i32) (local $n i32)
+    (call $req_path (local.get $r) (global.get $ret))
+    (if (i32.load8_u (global.get $ret))
+      (then
+        (local.set $p (i32.load (i32.add (global.get $ret) (i32.const 4))))
+        (local.set $n (i32.load (i32.add (global.get $ret) (i32.const 8))))
+        (if (call $eq (local.get $p) (local.get $n) (i32.const 0x100) (i32.const 1))
+          (then (return (call $answer (local.get $o) (i32.const 200) (i32.const 0) (i32.const 0)
+            (i32.const 0x120) (i32.const 4)))))
+        (if (call $eq (local.get $p) (local.get $n) (i32.const 0x110) (i32.const 6))
+          (then (return (call $answer (local.get $o) (i32.const 200) (i32.const 0) (i32.const 0)
+            (i32.const 0x130) (i32.const 5)))))))
+    (call $answer (local.get $o) (i32.const 404) (i32.const 0) (i32.const 0)
+            (i32.const 0x140) (i32.const 9)))
