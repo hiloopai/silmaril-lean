@@ -43,4 +43,8 @@ theorem blocks_functional (body : Expr) (b : BlockId) (s s' : Segment)
     (h : (b, s) ∈ blocks body) (h' : (b, s') ∈ blocks body) : s = s' := by
   rw [mem_blocks] at h h'; exact Option.some.inj (h.symm.trans h')
 
+/-- **Block identities are distinct**: `blocks` lists each identity once. -/
+theorem blocks_ids_nodup (body : Expr) : ((blocks body).map (·.1)).Nodup :=
+  Proofs.BlockTree.walk_nodup [] 0 [] body
+
 end Silmaril.Wasm.Cfg

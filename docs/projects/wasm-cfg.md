@@ -85,16 +85,37 @@ uniqueness) and that the executable extractors realize it.
      - `loop` labels go to the loop body's entry; other labels go to the continuation.
      - Branches resolve by depth; the outermost label is `exit`.
      - `try_table` has an edge to each catch label, resolved outside it.
-   - Special nodes stay explicit: `exit`, `trap`, `raise`, `invalid`. Traps of ordinary
-     instructions and throws inside a `try_table` body are not edges: the `try_table` block's
-     catch edges stand for them.
-   - **Proved:** the one-pass builder `blockCfg` realizes `Edge` (`blockCfg_eq`, `edge_iff`), and
-     each block has exactly one successor list (`existsUnique_succ`). Kernel-checked examples:
-     `sum_blockCfg`, `dispatch_br_table_edges` (`decide +kernel`, a few seconds).
+   - Special nodes stay explicit: `exit`, `trap`, `raise`, `invalid`.
+   - **Proved:**
+     - the one-pass builder `blockCfg` realizes `Edge` (`blockCfg_eq`, `edge_iff`);
+     - each block has exactly one successor list (`existsUnique_succ`);
+     - block identities are distinct (`blocks_ids_nodup`, `blockCfg_ids_nodup`).
+   - Kernel-checked examples: `sum_blockCfg`, `dispatch_br_table_edges` (`decide +kernel`, a
+     few seconds).
+   - **Scope: syntactic and incomplete.** `Edge` is the structured-control reading of the
+     instruction tree. It is not derived from, or proved against, the Core 3.0 semantics; no
+     theorem says that executions follow it. That correspondence is the operational bridge
+     (behavioral equivalence, item 5 below).
+   - **Effect marks and effect edges** (`blockEffects`, `effectSucc`, `EffectEdge`). These are
+     syntactic and conservative ("may"). They keep the control edges from looking complete
+     where other instructions may leave the block:
+     - `mayTrap`: division and remainder, `trunc`, memory and table accesses, null and cast
+       checks, array operations. Effect edge to `trap`.
+     - `call`: direct, indirect and reference calls, including tail calls. Effect edges to
+       `trap` and `raise`, because the callee may trap, raise or not return.
+     - `unresolvedHandler`: a block inside a `try_table` body that calls or throws. Its exception
+       may be caught by an enclosing `try_table`, and the graph does not resolve which handler.
+       Its `throw` flow edge still goes to `raise`.
+     - Kernel-checked example: `guarded_effects`, `guarded_effect_edges`.
    - Kernel against runtime evaluation: measured, see *Benchmark* below.
    - On the explorer: `silmaril/machines/wasm-block-cfg.toml` holds the block CFGs of `sum`,
      `dispatch`, `specials` and the Rust door's `enter`, as machine documents
-     (`silmaril.wasm.blockcfg.*`), each with its kernel-checked dominator table.
+     (`silmaril.wasm.blockcfg.*`), each with its kernel-checked dominator table. There is also
+     `guarded`, which has effects. Edges are labelled `flow` or `effect`, and blocks carry their
+     effect marks.
+   - Each document's description, and the explorer's dominator caption, say the graph is
+     syntactic and incomplete: the dominator theorem is a fact about the drawn graph, not about
+     execution.
      `ProjectSelfTest.WasmBlockCfg.*_blocks` proves that each document has exactly the builder's
      nodes, edges and entry, by node index. The instruction-level documents
      (`silmaril.wasm.cfg.*`) stay alongside for comparison.
@@ -120,6 +141,8 @@ uniqueness) and that the executable extractors realize it.
    - Dominator-tree equivalence goes through the exact dominator tree, which is unique on reachable
      nodes (`Graph.exact_unique`). So it does not depend on choosing a tree, unlike sound or region
      trees.
+   - The operational bridge comes first: a block step relation stated through Core 3.0 `Steps`,
+     with a simulation onto CFG paths, starting with the fragment without calls.
    - Behavioral equivalence (function to CFG injective up to equivalence: semantics preserved and
      reflected) needs the abstract environment and trace semantics owned by the Wasm games/traces
      work. This development reuses that, and does not port a second semantics.

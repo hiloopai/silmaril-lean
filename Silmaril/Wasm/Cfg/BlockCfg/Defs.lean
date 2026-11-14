@@ -25,9 +25,18 @@ The edges are defined from `lookup` alone, with no builder:
   catch label; branches resolve by depth; `return` and tail calls exit; `unreachable` traps;
   `throw` and `throw_ref` raise. A block without a terminator falls through.
 
-Scope: these are the edges of the control instructions. Traps of ordinary instructions
-(division, memory bounds, calls) and exceptions raised inside a `try_table` body are not
-edges here: the `try_table` block's catch edges stand for them.
+**Scope: a syntactic, incomplete graph.** `Edge` is defined from the instruction tree by the
+structured-control rules above. It is not derived from, or proved against, the execution
+semantics: no theorem here says that a run of the function follows these edges.
+- `Edge` holds the edges of the control instructions only.
+- What other instructions may do is recorded separately, as *effect marks* (`blockEffects`) and
+  *effect edges* (`effectSucc`, below):
+  - instructions that may trap (division, truncation, memory and table accesses, null and cast
+    checks, array bounds) give a `trap` effect edge;
+  - calls may trap, raise or not return, so they give `trap` and `raise` effect edges;
+  - a block inside a `try_table` body that raises (by `throw` or a call) is marked
+    `unresolvedHandler`: its exception may be caught by the enclosing `try_table`, and this
+    graph does not resolve which handler catches it.
 -/
 
 namespace Silmaril.Wasm.Cfg
@@ -150,5 +159,67 @@ end
 
 /-- **The basic-block CFG of a body**, as an adjacency list built in one pass. -/
 def blockCfg (body : Expr) : List (BlockId × List Target) := walkE [] 0 [] .exit [.exit] body
+
+/-! ## Effect marks and effect edges
+
+Syntactic marks of what a block's instructions may do besides its control edges. They are
+conservative ("may"), not derived from the semantics. -/
+
+/-- An effect a block may have besides its control edges. -/
+inductive Effect where
+  /-- An instruction may trap (division, truncation, memory, table, null, cast, array bounds). -/
+  | mayTrap
+  /-- A call: the callee may trap, raise, or not return. -/
+  | call
+  /-- The block may raise inside a `try_table` body; the catching handler is not resolved. -/
+  | unresolvedHandler
+  deriving DecidableEq, Repr
+
+/-- The effects of one instruction (not counting the control edges of terminators). -/
+def instrEffects : Instr → List Effect
+  | .call _ | .returnCall _ => [.call]
+  | .callRef _ | .callIndirect .. | .returnCallRef _ | .returnCallIndirect .. => [.call, .mayTrap]
+  | .intBinOp _ (.div _) | .intBinOp _ (.rem _) | .convert (.trunc ..) => [.mayTrap]
+  | .intLoad .. | .floatLoad .. | .intStore .. | .floatStore .. | .vecLoad .. | .vecLoadLane ..
+  | .vecStore .. | .vecStoreLane .. | .memoryFill _ | .memoryCopy .. | .memoryInit .. => [.mayTrap]
+  | .tableGet _ | .tableSet _ | .tableFill _ | .tableCopy .. | .tableInit .. => [.mayTrap]
+  | .refAsNonNull | .refCast _ | .i31Get _ | .structGet .. | .structSet .. => [.mayTrap]
+  | .arrayNew _ | .arrayNewDefault _ | .arrayNewData .. | .arrayNewElem .. | .arrayGet ..
+  | .arraySet _ | .arrayLen | .arrayFill _ | .arrayCopy .. | .arrayInitData ..
+  | .arrayInitElem .. => [.mayTrap]
+  | _ => []
+
+/-- Whether the sequence at the reversed path `rp` lies inside a `try_table` body. -/
+def inTryRev (body : Expr) : List SeqStep → Bool
+  | [] => false
+  | (m, _) :: rp =>
+    (match lookup body ⟨rp.reverse, m⟩ with
+      | some ⟨_, some (.tryTable ..)⟩ => true
+      | _ => false) || inTryRev body rp
+
+/-- Whether sequence `p` lies inside a `try_table` body. -/
+def inTry (body : Expr) (p : List SeqStep) : Bool := inTryRev body p.reverse
+
+/-- Whether a block may raise: it calls, or ends with `throw`/`throw_ref`. -/
+def mayRaise (s : Segment) : Bool :=
+  s.instrs.any (fun i => (instrEffects i).contains .call) ||
+    match s.term with | some (.throw _) | some .throwRef => true | _ => false
+
+/-- The effect marks of block `b` with segment `s`, without repetition. -/
+def blockEffects (body : Expr) (b : BlockId) (s : Segment) : List Effect :=
+  let es := s.instrs.flatMap instrEffects
+  [Effect.mayTrap, .call].filter es.contains ++
+    (if inTry body b.seq && mayRaise s then [.unresolvedHandler] else [])
+
+/-- **The effect edges** of block `b`: to `trap` if it may trap or calls, to `raise` if it
+calls. These are "may" edges, kept apart from `Edge`. -/
+def effectSucc (body : Expr) (b : BlockId) (s : Segment) : List Target :=
+  let es := blockEffects body b s
+  (if es.contains .mayTrap || es.contains .call then [.trap] else []) ++
+    (if es.contains .call then [.raise] else [])
+
+/-- `t` is an effect successor of block `b`. -/
+def EffectEdge (body : Expr) (b : BlockId) (t : Target) : Prop :=
+  ∃ s, lookup body b = some s ∧ t ∈ effectSucc body b s
 
 end Silmaril.Wasm.Cfg
