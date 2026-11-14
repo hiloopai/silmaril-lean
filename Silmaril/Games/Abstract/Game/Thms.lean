@@ -5,6 +5,7 @@ public import Mathlib.Order.CompleteLattice.Basic
 public import Mathlib.Order.GaloisConnection.Defs
 public import Mathlib.Order.Setoid.Basic
 import Silmaril.Proofs.Games.Abstract.Game.Lattice
+import Silmaril.Proofs.Games.Abstract.Game.Embed
 
 /-!
 # Trace models of an abstract game: the lattice, determinism and morphisms
@@ -22,6 +23,9 @@ import Silmaril.Proofs.Games.Abstract.Game.Lattice
 * Pullback along a game morphism is functorial (`comap_id`, `comap_comp`),
   monotone, and right adjoint to pushforward (`gc_map_comap`), so it preserves
   arbitrary meets.
+* Along a morphism that is injective on moves and reflects Opponent
+  polarity, pushforward is an order embedding with `comap` as retraction
+  (`comap_map_eq`, `map_injective`, `map_le_map_iff`).
 * Observing through a morphism is coarser than equality of models:
   `obsKer_le` says that two programs with the same model have the same
   observation, for any denotation `den : P → TraceModel H`. The converse fails
@@ -94,6 +98,11 @@ theorem mem_sup {T U : TraceModel G} {p : List G.Move} : p ∈ T ⊔ U ↔ p ∈
   rw [← sSup_pair, mem_sSup_of_nonempty (Set.insert_nonempty _ _)]
   simp
 
+/-- A model accepts every legal run of Opponent moves after its plays. -/
+theorem append_mem_of_isO {T : TraceModel G} {s w : List G.Move} (hs : s ∈ T)
+    (hw : ∀ o ∈ w, G.IsO o) (hl : s ++ w ∈ G.Legal) : s ++ w ∈ T :=
+  Silmaril.Proofs.Games.Abstract.Game.append_mem_of_isO hs hw hl
+
 /-- Determinism is inherited by submodels. -/
 theorem Det.mono {T U : TraceModel G} (h : T ≤ U) (hU : U.Det) : T.Det :=
   Silmaril.Proofs.Games.Abstract.Game.Det.mono h hU
@@ -131,6 +140,23 @@ theorem comap_comp (f : G.Hom H) (g : H.Hom K) (T : TraceModel K) :
 /-- Pushforward is left adjoint to pullback. -/
 theorem gc_map_comap (f : G.Hom H) : GaloisConnection (map f) (comap f) :=
   Silmaril.Proofs.Games.Abstract.Game.gc_map_comap f
+
+/-- Along a morphism injective on moves that reflects Opponent polarity,
+pullback retracts pushforward. -/
+theorem comap_map_eq (f : G.Hom H) (hf : Function.Injective f.map)
+    (hO : ∀ m, H.IsO (f.map m) → G.IsO m) (T : TraceModel G) : comap f (map f T) = T :=
+  Silmaril.Proofs.Games.Abstract.Game.comap_map_eq f hf hO T
+
+/-- Pushforward along such a morphism is injective: an embedding of models. -/
+theorem map_injective (f : G.Hom H) (hf : Function.Injective f.map)
+    (hO : ∀ m, H.IsO (f.map m) → G.IsO m) : Function.Injective (map f) := fun T U h => by
+  rw [← comap_map_eq f hf hO T, h, comap_map_eq f hf hO U]
+
+/-- Pushforward along such a morphism reflects refinement. -/
+theorem map_le_map_iff (f : G.Hom H) (hf : Function.Injective f.map)
+    (hO : ∀ m, H.IsO (f.map m) → G.IsO m) {T U : TraceModel G} : map f T ≤ map f U ↔ T ≤ U :=
+  ⟨fun h => by rw [← comap_map_eq f hf hO T, ← comap_map_eq f hf hO U]; exact (gc_map_comap f).monotone_u h,
+    fun h => (gc_map_comap f).monotone_l h⟩
 
 /-- Pullback is monotone. -/
 theorem comap_mono (f : G.Hom H) : Monotone (comap f) := (gc_map_comap f).monotone_u
