@@ -9,10 +9,13 @@ the same convention). This module fixes the encodings of 16- and 32-bit fields u
 transport headers:
 
 * `be16 x`, `be32 x`: the two and four octets of `x`, most significant first;
-* `rd16 a b`, `rd32 a b c d`: the inverse readers.
+* `rd16 a b`, `rd32 a b c d`: the inverse readers;
+* `beBytes k x`, `beValue xs`: the `k` octets of a natural number, most significant first, and
+  the value of any number of octets (fields of other widths: HTTP/2's 24-bit length and 31-bit
+  stream identifier, WebSocket's 16- and 64-bit lengths, TLS record lengths).
 
 `Silmaril.Net.Wire.Thms` proves that they are mutually inverse (`rd16_be16`, `be16_rd16`,
-`rd32_be32`, `be32_rd32`). Everything is stated through `toNat`, so proofs are `omega`
+`rd32_be32`, `be32_rd32`, and for every width `beValue_beBytes`, `beBytes_beValue`). Everything is stated through `toNat`, so proofs are `omega`
 arithmetic on natural numbers.
 
 A Silmaril addition (region `Net`, see `docs/projects/wasm-wasi.md`).
@@ -37,6 +40,14 @@ def be32 (x : UInt32) : List UInt8 :=
 /-- Read a 32-bit field from four octets, most significant first. -/
 def rd32 (a b c d : UInt8) : UInt32 :=
   UInt32.ofNat (a.toNat * 16777216 + b.toNat * 65536 + c.toNat * 256 + d.toNat)
+
+/-- Big-endian octets of `x` in `k` octets (`x` is taken modulo `256 ^ k`). -/
+def beBytes : Nat → Nat → List UInt8
+  | 0, _ => []
+  | k + 1, x => (x / 256 ^ k % 256).toUInt8 :: beBytes k x
+
+/-- The big-endian value of octets. -/
+def beValue (xs : List UInt8) : Nat := xs.foldl (fun acc b => acc * 256 + b.toNat) 0
 
 /-- `n` zero octets (header padding, RFC 9293 §3.1 MUST-69). -/
 def zeros (n : Nat) : List UInt8 := List.replicate n 0

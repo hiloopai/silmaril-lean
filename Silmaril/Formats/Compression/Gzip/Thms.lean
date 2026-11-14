@@ -15,8 +15,15 @@ Proved (standard axioms):
 
 * `member_eq_decoder`: the format module's `gzipMember` is the framework
   container `framing.wrap Deflate.decoder`;
+* `framing_consumes`, `trailerIs`: the container laws;
 * `consumes`, `decoder_trailer`: a member consumes a prefix ending in the
   CRC-32/ISIZE trailer of its output, followed by the untouched rest;
+* `writes`, `roundTripFixed`, `codecFixed`: the emitted header and trailer are
+  accepted, so the compressing member encoder `encoderFixed` round-trips;
+* `output_le`, `members_output_le`, `decompress_output_le`: at most 2064 output
+  bytes per input byte, for one member and for whole multi-member files;
+* `framing_local`, `local`: header and trailer ignore appended bytes, so with
+  `Deflate.local` bytes after a member never change how it decodes;
 * `roundTrip`, `codec`, `compress_eq`, `decompress_compress`: the stored
   encoder round-trips;
 * `decompress_eq`: a gzip file is `decoder.members`, so `members_encoder` and
@@ -34,12 +41,45 @@ theorem member_eq_decoder : member = decoder := Proofs.Formats.Compression.Gzip.
 
 theorem consumes : decoder.Consumes := Proofs.Formats.Compression.Gzip.consumes
 
+theorem framing_consumes : framing.Consumes := Proofs.Formats.Compression.Gzip.framing_consumes
+
+/-- The trailer the container accepts after output `out` is `trailer out`. -/
+theorem trailerIs : framing.TrailerIs trailer := Proofs.Formats.Compression.Gzip.trailerIs
+
 /-- A member ends with the CRC-32 and ISIZE trailer of its output, then the rest. -/
 theorem decoder_trailer {bytes out rest : List UInt8} (h : decoder bytes = some (out, rest)) :
     ∃ pre, bytes = pre ++ (trailer out ++ rest) :=
   Proofs.Formats.Compression.Gzip.decoder_trailer h
 
 theorem roundTrip : RoundTrip decoder encoder := Proofs.Formats.Compression.Gzip.roundTrip
+
+theorem framing_local : framing.Local := Proofs.Formats.Compression.Gzip.framing_local
+
+theorem writes : framing.Writes header trailer := Proofs.Formats.Compression.Gzip.writes
+
+/-- The compressing member encoder round-trips. -/
+theorem roundTripFixed : RoundTrip decoder encoderFixed :=
+  Framing.wrap_roundTrip writes Deflate.roundTripFixed
+
+/-- gzip members with fixed-Huffman compression, as a framework codec. -/
+def codecFixed : Codec := ⟨decoder, encoderFixed, roundTripFixed⟩
+
+/-- **Output bound** of one member, per consumed input byte. -/
+theorem output_le {bytes out rest : List UInt8} (h : decoder bytes = some (out, rest)) :
+    out.length ≤ 2064 * (bytes.length - rest.length) :=
+  Proofs.Formats.Compression.Gzip.outputLe h
+
+/-- A whole multi-member file. -/
+theorem members_output_le {bytes out : List UInt8} (h : decoder.members bytes = some out) :
+    out.length ≤ 2064 * bytes.length :=
+  Proofs.Formats.Compression.Gzip.members_output_le h
+
+theorem decompress_output_le {bytes out : ByteArray} (h : decompress bytes = some out) :
+    out.size ≤ 2064 * bytes.size :=
+  Proofs.Formats.Compression.Gzip.decompress_output_le h
+
+/-- Bytes after a gzip member never change how it decodes. -/
+theorem «local» : decoder.Local := Proofs.Formats.Compression.Gzip.local_of_deflate Deflate.local
 
 /-- gzip members with stored blocks, as a framework codec. -/
 def codec : Codec := ⟨decoder, encoder, roundTrip⟩
