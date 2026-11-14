@@ -1490,13 +1490,25 @@ pub fn run(command: Command) -> Result<()> {
             if !urls.iter().any(|u| u == "project.sqlite") {
                 urls.push("project.sqlite".into());
             }
-            let page = explore::page(&format!("{} · silmaril project", p.name), &urls);
+            // The size and SHA-256 of the default database, when it exists now: the page checks
+            // the served file against them.
+            let meta = fs::read(dir.join(&db)).ok().map(|bytes| explore::DbMeta {
+                size: bytes.len() as u64,
+                sha256: hash::Digests::of(&bytes).sha256,
+            });
+            let page = explore::page(
+                &format!("{} · silmaril project", p.name),
+                &urls,
+                meta.as_ref(),
+            );
             let shown = shown(&dir, &out);
             let out = dir.join(out);
             if let Some(parent) = out.parent() {
                 fs::create_dir_all(parent).into_diagnostic()?;
             }
             fs::write(&out, page).into_diagnostic()?;
+            let sw = out.with_file_name(explore::SERVICE_WORKER_NAME);
+            fs::write(&sw, explore::SERVICE_WORKER).into_diagnostic()?;
             eprintln!("wrote {shown}; it opens {}", urls.join(", then "));
             if !dir.join(&db).exists() {
                 eprintln!(
