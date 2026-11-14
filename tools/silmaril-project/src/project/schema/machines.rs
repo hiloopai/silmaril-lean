@@ -3,7 +3,9 @@
 //!
 //! A machine row keeps the counts and the canonical JSON (`canonical`: states, labels and edges
 //! sorted and deduplicated, keys sorted), which is the document's content identity and what the
-//! explorer draws (layers included). The lists as written stay in the records file; the layer
+//! explorer draws (layers included), and, for a machine with one initial state, its immediate-
+//! dominator table (`dominators`, state → dominator, compact JSON) with the kernel-checked theorem
+//! that proves it (`dominator_theorem`). The lists as written stay in the records file; the layer
 //! lists are read only to accept them.
 use super::*;
 use serde::Deserialize;
@@ -21,6 +23,8 @@ table! {
         #[serde(skip)] n_labels: i64 = "INTEGER NOT NULL",
         #[serde(skip)] n_edges: i64 = "INTEGER NOT NULL",
         canonical: String = "TEXT NOT NULL",
+        dominators: Option<serde_json::Value> = "TEXT",
+        dominator_theorem: Option<String> = "TEXT",
     }
     extra {
         #[serde(rename = "sid")] sid_override: Option<String>,

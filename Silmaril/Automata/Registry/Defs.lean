@@ -3,6 +3,8 @@ module
 public import Silmaril.Project.Registry.Load.Defs
 public import Silmaril.Automata.Spec.Thms
 public meta import Silmaril.Automata.Spec.Defs
+public import Silmaril.Automata.Graph.Defs
+public meta import Silmaril.Automata.Graph.Defs
 
 /-!
 # Machines in silmaril projects: the `machine` and `machine_binding` record kinds
@@ -24,7 +26,10 @@ The `machine` handler checks the document (`Document.wf`: a valid identifier, di
 edges and layers on declared names), defines the Lean constant `<name> : Document` in the
 current namespace (so the JSON machine can be reasoned about on its own), and fills the fields
 `decl` (that constant), `deterministic` and `canonical` (`Document.canonJson`, the content
-identity).
+identity). With exactly one initial state, it also proves the theorem `<name>.dominators`: the
+immediate-dominator table of the document's graph rooted there (`Graph.idomTable`, checked by the
+kernel), and fills `dominators` (state → immediate dominator, `null` at the root and unreachable
+states) and `dominator_theorem`.
 
 **Attachments.** A `machine_binding` attaches a typed machine to a document:
 
@@ -82,6 +87,9 @@ def docTerm (d : Document) : CommandElabM Term := do
        layers := ⟨$(quote d.layers.initial), $(quote d.layers.accepting),
          $(quote d.layers.rejecting), $(quote d.layers.error)⟩ } : Silmaril.Automata.Document))
 
+/-- The largest machine whose dominator table the handler proves (kernel evaluation). -/
+def dominatorLimit : Nat := 64
+
 /-- `machine`: check the document, define its constant, fill `decl`, `deterministic`,
 `canonical`. -/
 @[silmaril_kind machine] def machineHandler : Handler where
@@ -100,6 +108,23 @@ def docTerm (d : Document) : CommandElabM Term := do
     let fs ← liftCoreM (fs.push kind "decl" (.str (leanToName decl)) decl)
     let fs ← liftCoreM (fs.push kind "deterministic" (.bool d.spec.deterministicB))
     let fs ← liftCoreM (fs.push kind "canonical" (.str d.canonJson))
+    -- With one initial state (and at most `dominatorLimit` states), the immediate-dominator
+    -- table of the document's graph, as a kernel-checked theorem.
+    let fs ← match d.layers.initial with
+      | [init] =>
+        if d.spec.states.length ≤ dominatorLimit then
+          let tbl := Silmaril.Automata.Graph.idomTable (d.spec.toDigraph init)
+          let thm := decl ++ `dominators
+          let ty ← `(Silmaril.Automata.Graph.idomTable
+            (Silmaril.Automata.Spec.toDigraph ($(mkIdent decl)).spec $(quote init)) = $(quote tbl))
+          elabDef true thm #[] (some ty) (← `(by decide +kernel))
+          let pairs := (List.range d.spec.states.length).zip tbl |>.filterMap fun (i, p) =>
+            d.spec.states[i]?.map fun s => (s, match p.bind (d.spec.states[·]?) with
+              | some a => Json.str a | none => Json.null)
+          let fs ← liftCoreM (fs.push kind "dominators" (Json.mkObj pairs))
+          liftCoreM (fs.push kind "dominator_theorem" (.str (leanToName thm)))
+        else pure fs
+      | _ => pure fs
     return #[(name, fs)]
 
 /-- `machine_binding`: prove that a typed machine (and its marks) is the document. -/

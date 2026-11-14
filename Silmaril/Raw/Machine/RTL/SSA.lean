@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Raw.Machine.RTL.Behaviour
-public import Silmaril.Raw.Machine.RTL.Machine.Graph.Dominance
+public import Silmaril.Machine.CBackend.Graph.Dominance.Defs
 public import Mathlib.Data.List.Nodup
 
 /-!

@@ -36,6 +36,37 @@ rejections that the product introduces.
 The synchronous product `DMachine.prod` is different: both machines take the same label, and it
 recognizes the intersection of the languages. It is the categorical product restricted to
 diagonal labels (`sync_eq_prod_diag`).
+## Rooted graphs: dominators and regions (`Automata.Graph`)
+
+The graph-analysis API that state machines and control-flow graphs share. Graphs are
+`Silmaril.Machine.Graph.Digraph`: nodes `0 … size - 1`, a successor function and one distinguished
+entry. Reachability, dominance and immediate dominators, with their proofs, come from that library.
+
+| Notion | Definition | Result |
+| --- | --- | --- |
+| sound dominator tree | `DomSound g p`: parents strictly dominate | not unique (`sound_not_unique`: on `0 → 1 → 2`, the star `starTree` and `idom` differ) |
+| exact dominator tree | `DomExact g p`: ancestors = strict dominators, on reachable nodes | exists (`idom_exact`); unique on reachable nodes (`exact_unique`); a finite check (`domExact_iff`, `Decidable`) |
+| entry sets | `SetDominates g E`; `withRoot g E` adds a synthetic root | `withRoot_dominates_iff`: dominance under the synthetic root is set dominance |
+| region trees | `RTree` (`leaf`, `group`), `flatten`, `Dissolve`/`Coarsens`, `SingleEntry`, `RTree.Valid` | many trees per flattening (`bracketings_not_unique`); coarsening keeps the flattening (`Coarsens.flatten_eq`); a single-entry region's header dominates it (`header_dominates`) |
+| machines | `NMachine.toDigraph`, `DMachine.toDigraph`, `Spec.toDigraph` | `reachable_iff`: graph reachability is machine reachability |
+
+The exact dominator tree is unique because, on a reachable node, the strict dominators are totally
+ordered by dominance, so a node's parent must be the greatest of them. Region trees have no such
+uniqueness: they are bracketings, related by coarsening with precise flattening laws, not a
+canonical object. No thesis-specific notion of braces is assumed beyond these definitions.
+
+**In the project.** A `machine` document with exactly one initial state (and at most 64 states)
+gets the kernel-checked theorem `<name>.dominators` (`Graph.idomTable` of `Spec.toDigraph`) and
+the fields `dominators` and `dominator_theorem`. The explorer's machine page toggles between the
+flat graph and the dominator tree. It labels each tree with its provenance:
+
+- **Lean kernel-checked**, naming the theorem, when the registry has one;
+- **browser-computed, unchecked** otherwise: iterative dataflow, with a synthetic root for several
+  initial states.
+
+Shapes: `silmaril.shapes.graph.{dominates, dom_tree_exact, dom_tree_sound, region_tree_valid}`.
+The self-test proves that the star from idle is the exact dominator tree of the HTTP/2 stream graph
+(`silmaril.net.http2.stream.dom_tree`, THM, decided by the kernel).
 
 ## Main theorems
 

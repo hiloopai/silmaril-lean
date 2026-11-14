@@ -192,3 +192,19 @@ silmaril instance silmaril.selftest.coin.json_simulates
 @[answers "silmaril.selftest.coin.json_simulates" thm] public theorem coin_sim :
     silmaril.selftest.coin.json_simulates := by
   unfold silmaril.selftest.coin.json_simulates; decide +kernel
+
+/-- The star from idle (node `0`): the exact dominator tree of the HTTP/2 stream graph. -/
+public def ProjectSelfTest.Machines.streamDomTree : Silmaril.Automata.Graph.Parent :=
+  fun b => if b = 0 then none else some 0
+
+/-- The HTTP/2 stream graph from idle. -/
+public def ProjectSelfTest.Machines.streamGraph : Silmaril.Machine.Graph.Digraph :=
+  Silmaril.Net.Http2.machine.toDigraph .idle
+
+silmaril instance silmaril.net.http2.stream.dom_tree
+    (title := "The star from idle is the exact dominator tree of the HTTP/2 stream graph") :=
+  silmaril.shapes.graph.dom_tree_exact (g := ProjectSelfTest.Machines.streamGraph)
+    (p := ProjectSelfTest.Machines.streamDomTree)
+@[answers "silmaril.net.http2.stream.dom_tree" thm] public theorem stream_dom_tree :
+    silmaril.net.http2.stream.dom_tree := by
+  unfold silmaril.net.http2.stream.dom_tree; decide +kernel
