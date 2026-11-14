@@ -1,0 +1,18 @@
+  ;; Policy `chaos @SEED@`, schedule `chaos-v1`: a call counter k (from 0, per instance); call k
+  ;; computes h = mix(SEED + (k + 1) * 0x9E3779B97F4A7C15) (the value of call k of `seeded
+  ;; SEED`) and returns, by h mod 8:
+  ;;   0, 1, 2, 3 -> h;  4 -> 0;  5 -> 0xFFFFFFFFFFFFFFFF;  6 -> 5;  7 -> 6.
+  (global $k (mut i64) (i64.const 0))
+  (func (export "wasi:random/random@0.2.12#get-random-u64") (result i64)
+    (local $h i64)
+    (global.set $k (i64.add (global.get $k) (i64.const 1)))
+    (local.set $h (call $mix (i64.add (i64.const @SEED@)
+      (i64.mul (global.get $k) (i64.const 0x9E3779B97F4A7C15)))))
+    (block $six (block $five (block $max (block $zero (block $seeded
+      (br_table $seeded $seeded $seeded $seeded $zero $max $five $six
+        (i32.wrap_i64 (i64.and (local.get $h) (i64.const 7)))))
+      (return (local.get $h)))
+      (return (i64.const 0)))
+      (return (i64.const 0xFFFFFFFFFFFFFFFF)))
+      (return (i64.const 5)))
+    (i64.const 6))

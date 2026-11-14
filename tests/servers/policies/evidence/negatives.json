@@ -1,0 +1,184 @@
+{
+  "schema": "silmaril.servers.runtime-evidence.v1",
+  "evidence": "runtime-test",
+  "note": "testing evidence, not a Lean proof",
+  "date": "2026-11-14T01:47:35Z",
+  "git": {
+    "commit": "1bbb9a6989b234e356cfd63825c5012be0e8116e",
+    "dirty": false
+  },
+  "tools": {
+    "runtime": {
+      "name": "wasmtime serve",
+      "version": "49.0.2",
+      "binary_sha256": "d0a014e0d5b0cf48dd3549c38e2e6ecd78ff09fb3e3f10d751b87b72bdfd8635"
+    },
+    "wasm_tools": {
+      "version": "wasm-tools 1.263.0 (7a2fa422c 2026-10-30)",
+      "binary_sha256": "694cb37dcda84a5d557334c1db882b986e43061abdb0af976b41b1614ee4530b"
+    },
+    "wac": {
+      "version": "wac-cli 0.12.0",
+      "binary_sha256": "7cd490edbd452221ef89e6750fc43eacc9b71b1242095eb577cb9a3bf0d3beda"
+    }
+  },
+  "negatives": [
+    {
+      "case": "a",
+      "name": "core module (dice, not a component)",
+      "artifact": {
+        "file": "dice.core.wasm",
+        "sha256": "5b91e8f18b11522e7fb4cc3093568bc0d9000632fb482506a9e4a9d30b5a74ef",
+        "bytes": 2095
+      },
+      "expected": "wasmtime serve rejects it (it serves components only)",
+      "observed": {
+        "wasm_tools_validate": {
+          "exit": 0,
+          "accepted": true,
+          "output": ""
+        },
+        "wasm_tools_component_wit": {
+          "exit": 1,
+          "accepted": false,
+          "output": "error: input is a core wasm module with no `component-type*` custom sections meaning that there is not WIT information; is the information not embedded or is this supposed to be a component?"
+        },
+        "wasmtime_serve": {
+          "startup": "failed",
+          "outcome": "rejected at startup",
+          "log": "Error: The serve command currently requires a component"
+        }
+      },
+      "as_expected": true
+    },
+    {
+      "case": "b",
+      "name": "export named wasi:http/incoming-handler@0.2.12 with handle: func(x: u32)",
+      "artifact": {
+        "file": "bad-handler.wasm",
+        "sha256": "57696f04c678b533fe057faf469ec1c6452cfbe67b05eb5f46cb0f342642dd82",
+        "bytes": 719
+      },
+      "expected": "well-formed (validate accepts, wit prints the wrong type); rejected by a type check against the world (component targets; wasmtime serve: no 200 from the handler)",
+      "observed": {
+        "wasm_tools_validate": {
+          "exit": 0,
+          "accepted": true,
+          "output": ""
+        },
+        "wasm_tools_component_wit": {
+          "exit": 0,
+          "accepted": true,
+          "output": "package root:component;\n\nworld root {\n  export wasi:http/incoming-handler@0.2.12;\n}\npackage wasi:http@0.2.12 {\n  interface incoming-handler {\n    handle: func(x: u32);\n  }\n}"
+        },
+        "wasm_tools_component_targets_dice_server": {
+          "exit": 1,
+          "accepted": false,
+          "output": "error: failed to validate encoded bytes\n\nCaused by:\n    0: type mismatch for import `dice-server`\n       type mismatch for export `wasi:http/incoming-handler@0.2.12`\n       missing expected export `incoming-request` (at offset 0x1b85)"
+        },
+        "control_dice_component_targets_dice_server": {
+          "exit": 0,
+          "accepted": true,
+          "output": ""
+        },
+        "wasmtime_serve": {
+          "startup": "listening",
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/",
+              "status": 500,
+              "body": "<!doctype html>\n<html>\n<head>\n    <title>500 Internal Server Error</title>\n</hea",
+              "curl_exit": 0
+            },
+            {
+              "method": "GET",
+              "path": "/",
+              "status": 500,
+              "body": "<!doctype html>\n<html>\n<head>\n    <title>500 Internal Server Error</title>\n</hea",
+              "curl_exit": 0
+            }
+          ],
+          "outcome": "status 500",
+          "same_outcome_every_request": true,
+          "log": "Serving HTTP on http://127.0.0.1:8090/\nerror: instantiation error: failed to convert function to given type\nerror: instantiation error: failed to convert function to given type"
+        }
+      },
+      "as_expected": true
+    },
+    {
+      "case": "c",
+      "name": "start function traps (initFail)",
+      "artifact": {
+        "file": "start-trap.wasm",
+        "sha256": "62474e18d242d820b4dfb16b228389c178b53c688046b670468002d96ee02dfe",
+        "bytes": 10919
+      },
+      "expected": "no response from the handler: the failure is observed at startup or per request (initFail)",
+      "observed": {
+        "wasm_tools_validate": {
+          "exit": 0,
+          "accepted": true,
+          "output": ""
+        },
+        "wasmtime_serve": {
+          "startup": "listening",
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/",
+              "status": 500,
+              "body": "<!doctype html>\n<html>\n<head>\n    <title>500 Internal Server Error</title>\n</hea",
+              "curl_exit": 0
+            },
+            {
+              "method": "GET",
+              "path": "/",
+              "status": 500,
+              "body": "<!doctype html>\n<html>\n<head>\n    <title>500 Internal Server Error</title>\n</hea",
+              "curl_exit": 0
+            }
+          ],
+          "outcome": "status 500",
+          "same_outcome_every_request": true,
+          "log": "Serving HTTP on http://127.0.0.1:8090/\nerror: instantiation error: error while executing at wasm backtrace:\n    0:    0xfb5 - <unknown>!boom\nerror: instantiation error: error while executing at wasm backtrace:\n    0:    0xfb5 - <unknown>!boom"
+        }
+      },
+      "as_expected": true
+    },
+    {
+      "case": "d",
+      "name": "handler loops forever",
+      "artifact": {
+        "file": "loop.wasm",
+        "sha256": "f7f74dedcecf07b42df4e17761646fbba2b153051ca50a88764203db4c3c24d3",
+        "bytes": 10882
+      },
+      "bound_s": 3,
+      "expected": "timeout: no response within the bound (divergence itself is not observable)",
+      "observed": {
+        "wasm_tools_validate": {
+          "exit": 0,
+          "accepted": true,
+          "output": ""
+        },
+        "wasmtime_serve": {
+          "startup": "listening",
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/",
+              "status": 0,
+              "body": "",
+              "curl_exit": 28
+            }
+          ],
+          "outcome": "timeout",
+          "same_outcome_every_request": true,
+          "log": "Serving HTTP on http://127.0.0.1:8090/\nerror: hyper::Error(IncompleteMessage)"
+        }
+      },
+      "as_expected": true
+    }
+  ]
+}
