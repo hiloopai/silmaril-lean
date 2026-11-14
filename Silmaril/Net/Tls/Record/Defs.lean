@@ -1,5 +1,6 @@
 module
 
+public import Silmaril.Net.Wire.Defs
 public import Silmaril.Net.Http2.Frame.Defs
 public import Silmaril.Net.Http.Field.Defs
 
@@ -40,7 +41,7 @@ and record protection; see docs/projects/crypto.md for their milestones.
 
 namespace Silmaril.Net.Tls
 
-open Silmaril.Net.Http2 (beBytes beValue)
+open Silmaril.Net.Wire (beBytes beValue)
 
 /-- The content types of RFC 8446 §5.1 and RFC 6520. -/
 def contentTypes : List Nat := [20, 21, 22, 23, 24]

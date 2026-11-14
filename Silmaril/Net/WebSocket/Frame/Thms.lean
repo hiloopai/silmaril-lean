@@ -30,19 +30,6 @@ CHECKED (`decide`): the examples of RFC 6455 §5.7.
 
 namespace Silmaril.Net.WebSocket
 
-/-- Big-endian octets read back (for `Silmaril.Net.Http2.beBytes`/`beValue`; a candidate for
-`Silmaril.Net.Wire`, see docs/projects/websocket-tls.md). -/
-theorem beValue_beBytes (k x : Nat) (hx : x < 256 ^ k) :
-    Silmaril.Net.Http2.beValue (Silmaril.Net.Http2.beBytes k x) = x :=
-  Silmaril.Proofs.Net.WebSocket.beValue_beBytes k x hx
-
-theorem beBytes_beValue (xs : List UInt8) :
-    Silmaril.Net.Http2.beBytes xs.length (Silmaril.Net.Http2.beValue xs) = xs :=
-  Silmaril.Proofs.Net.WebSocket.beBytes_beValue xs
-
-theorem beValue_lt (xs : List UInt8) : Silmaril.Net.Http2.beValue xs < 256 ^ xs.length :=
-  Silmaril.Proofs.Net.WebSocket.beValue_lt xs
-
 theorem applyMask_applyMask (k : MaskKey) (off : Nat) (xs : List UInt8) :
     applyMask k off (applyMask k off xs) = xs :=
   Silmaril.Proofs.Net.WebSocket.applyMask_applyMask k off xs

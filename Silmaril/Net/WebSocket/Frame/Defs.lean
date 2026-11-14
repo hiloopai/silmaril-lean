@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Net.Http2.Frame.Defs
+public import Silmaril.Net.Wire.Defs
 
 @[expose] public section
 
@@ -60,7 +60,7 @@ Theorems: `Silmaril.Net.WebSocket.Frame.Thms`.
 
 namespace Silmaril.Net.WebSocket
 
-open Silmaril.Net.Http2 (beBytes beValue)
+open Silmaril.Net.Wire (beBytes beValue)
 
 /-! ## Opcodes (§5.2, §11.8) -/
 

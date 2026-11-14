@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Net.Tls.Record.Defs
-public import Silmaril.Net.WebSocket.Frame.Thms
+public import Silmaril.Net.Wire.Thms
 
 @[expose] public section
 
@@ -20,7 +20,7 @@ CHECKED: a ClientHello record header (`16 03 01 …`).
 
 namespace Silmaril.Net.Tls
 
-open Silmaril.Net.Http2 (beBytes beValue)
+open Silmaril.Net.Wire (beBytes beValue)
 
 theorem decodeHeader_encodeHeader (limit : Nat) (h : RecordHeader) (hv : h.Valid limit)
     (rest : List UInt8) : decodeHeader limit (encodeHeader h ++ rest) = some (h, rest) := by
@@ -31,9 +31,9 @@ theorem decodeHeader_encodeHeader (limit : Nat) (h : RecordHeader) (hv : h.Valid
   have e2 : beBytes 2 h.length = [(h.length / 256 % 256).toUInt8, (h.length % 256).toUInt8] := by
     simp [beBytes]
   have v1 : beValue [(h.version / 256 % 256).toUInt8, (h.version % 256).toUInt8] = h.version := by
-    rw [← e1]; exact Silmaril.Net.WebSocket.beValue_beBytes 2 _ (by simpa using hver)
+    rw [← e1]; exact Silmaril.Net.Wire.beValue_beBytes 2 _ (by simpa using hver)
   have v2 : beValue [(h.length / 256 % 256).toUInt8, (h.length % 256).toUInt8] = h.length := by
-    rw [← e2]; exact Silmaril.Net.WebSocket.beValue_beBytes 2 _ (by simp; omega)
+    rw [← e2]; exact Silmaril.Net.Wire.beValue_beBytes 2 _ (by simp; omega)
   have tt : h.type.toUInt8.toNat = h.type := by
     simp only [Nat.toUInt8_eq, UInt8.toNat_ofNat']; omega
   simp only [encodeHeader, e1, e2, List.cons_append, List.nil_append, decodeHeader, v1, v2, tt]
