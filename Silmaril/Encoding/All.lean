@@ -10,6 +10,10 @@ public import Silmaril.Encoding.Encoded
 public import Silmaril.Encoding.Carriers
 public import Silmaril.Encoding.Unicode
 public import Silmaril.Encoding.Base64
+public import Silmaril.Encoding.Base32
+public import Silmaril.Encoding.Base16
+public import Silmaril.Encoding.Ascii
+public import Silmaril.Encoding.Punycode
 public import Silmaril.Encoding.Syntax
 public import Silmaril.Encoding.FunctionalCat
 public import Silmaril.Encoding.SyntaxCarriers
@@ -19,8 +23,8 @@ public import Silmaril.Encoding.SyntaxCarriers
 
 Encodings as values `EncRel σ α`, their lattice, induced partial
 equivalences, categories `EncCat σ` / `EncCat₂`, encoded values, and carrier
-functors (bytes, Unicode text, base64, naturals), and text/binary syntaxes
-(`WithText`, `WithBinary`).  See `Silmaril.Encoding.Relation`.
+functors (bytes, Unicode text, base64, base32, base16, naturals), and
+text/binary syntaxes (`WithText`, `WithBinary`).  See `Silmaril.Encoding.Relation`.
 Format instances live in `Silmaril.Formats.Json.Encoding`,
 `Silmaril.Formats.Cbor.Encoding` and `Silmaril.Formats.Cbor.EncodingJson`
 (and their `EncodingSyntax` companions).  `Silmaril.Encoding.Wasm` (`WasmText`,
