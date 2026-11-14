@@ -48,7 +48,8 @@ is undefined (`PMap.not_may_reflect`). They are reflected for models that stay i
 Proposed use by other transports:
 
 * a UDP or QUIC reading produces the same `TTrace` (datagram kind) and a `PMap` into
-  `Servers.Core` traces;
+  `Servers.Core` traces. The UDP reading is `Servers.UdpTransport` ([UDP](udp.md)): one flow
+  per peer, `Addr := Net.Ip.Endpoint`, boundaries kept, errors as `TEv.err`;
 * refinement and must/may statements reuse `TModel.Refines`, `Servers.Observe` and
   `Servers.Hosts`;
 * any packet-level relation is stated separately, as an explicit hypothesis.
