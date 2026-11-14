@@ -10,7 +10,8 @@ import Silmaril.Proofs.Wasm.Cfg.BlockTree
 
 The blocks `blocks` lists in the body's own sequence (path `[]`) are exactly the body's
 canonical segmentation (`Silmaril.Wasm.Cfg.Block.Thms`), numbered in order; every block of a
-nested sequence carries a strictly longer path that extends its parent's.
+nested sequence carries a strictly longer path that extends its parent's. At every depth,
+`blocks` lists exactly the graph of the declarative `lookup` (`mem_blocks`).
 -/
 
 namespace Silmaril.Wasm.Cfg
@@ -30,5 +31,16 @@ theorem blocks_top (body : Expr) :
     (blocks body).filter (fun x => x.1.seq == []) =
       (segment body).mapIdx fun j s => (⟨[], j⟩, s) := by
   simpa [blocks, segment] using Proofs.BlockTree.walk_top [] body 0 []
+
+/-- **`blocks` lists exactly the graph of `lookup`**: a block appears with an identity just
+when the identity names it through the canonical segmentations. -/
+theorem mem_blocks (body : Expr) (b : BlockId) (s : Segment) :
+    (b, s) ∈ blocks body ↔ lookup body b = some s := by
+  simpa [blocks, lookup, segment] using Proofs.BlockTree.mem_walk [] b.seq body 0 [] b.idx s
+
+/-- An identity names at most one block of `blocks`. -/
+theorem blocks_functional (body : Expr) (b : BlockId) (s s' : Segment)
+    (h : (b, s) ∈ blocks body) (h' : (b, s') ∈ blocks body) : s = s' := by
+  rw [mem_blocks] at h h'; exact Option.some.inj (h.symm.trans h')
 
 end Silmaril.Wasm.Cfg
