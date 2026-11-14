@@ -147,7 +147,8 @@ Known gaps in the QUIC layer:
 4. Add Huffman decoding for HPACK and QPACK (RFC 7541 Appendix B) with a round-trip proof.
 5. Model packets: packet number spaces, ACK ranges and frames allowed per packet type.
    Prove that the packet layer refines the stream service. RFC 9001 and RFC 9002 stay
-   assumptions unless the crypto track supplies a TLS model.
+   assumptions unless the crypto track supplies a TLS model. The datagram slice over UDP is
+   done, conditional on packet-protection integrity ([UDP](udp.md), `Net.Udp.QuicCarrier`).
 6. Follow WebTransport to RFC. Re-pin the codepoints when the draft is published, and add
    the session-flow model with capsules in flight.
 7. Differential tests against public HTTP/3 and QPACK corpora (for example the
