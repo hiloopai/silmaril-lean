@@ -84,6 +84,21 @@ prove that it computes the whole-input functions. `Checksum` finishes into
 a non-zero seed, checked against an independent implementation of the
 specification.
 
+## Building blocks
+
+[`Formats/Compression/Bwt`](../../Silmaril/Formats/Compression/Bwt/Thms.lean)
+holds the reversible transforms that bzip2 applies before its Huffman stage, as
+total list functions: the Burrows–Wheeler transform (Burrows and Wheeler, SRC
+Research Report 124, 1994) over any linearly ordered alphabet, specified by
+sorting all rotations, with its inverse by the LF mapping (`ibwt_bwt`, for every
+string, periodic ones included; the last column is a permutation of the input);
+move-to-front over bytes (`mtfDecode_mtfEncode`, symbols below 256); and bzip2's
+RUNA/RUNB zero-run coding (`zrleDecode_zrleEncode`). `banana`, `abracadabra` and
+small move-to-front and run codes are checked by `decide`. This is not bzip2: there
+is no `Decoder`, block format, Huffman stage, CRC or stream container, and the
+initial run-length stage (RLE1) is missing. The `Defs.lean` docstring lists the
+remaining steps to a bzip2 decoder.
+
 ## Open goals
 
 None. The former open goals are kept as `def Task.… : Prop` for compatibility and

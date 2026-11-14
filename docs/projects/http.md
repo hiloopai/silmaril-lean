@@ -84,10 +84,15 @@ modulo the staleness the response directives allow.
 | Request and status lines, field lines, heads: parser and serializer | 9112 §2–§5 | Proved: round trip, soundness, unambiguity (`Message.Thms`) |
 | Message body length rules, whole messages on a persistent connection | 9112 §6 | Proved: round trip, soundness, rules (`Framing.Thms`) |
 | Chunked transfer coding, chunk extensions, trailers | 9112 §7.1 | Proved: round trip, soundness, rechunking (`Chunked.Thms`) |
-| Connection management, persistence, pipelining, `Connection` | 9112 §9 | Planned |
-| HTTP/1.0 compatibility, `obs-fold` replacement | 9112 §6.1, §5.2 | Planned |
-| Other transfer codings, `TE` | 9112 §7.2–§7.4 | Planned |
-| Smuggling freedom: two conforming recipients agree on message boundaries | 9112 §11.2 | Planned |
+| Connection management, persistence, pipelining, `Connection`, hop-by-hop fields | 9112 §9, 9110 §7.6.1 | Proved: persistence rules, forced closure, pipelined server reads requests in order and nothing after a closing request, pipelined responses with `1xx` read back (`Connection.Thms`, `Pipeline.Thms`) |
+| HTTP/1.0 compatibility | 9112 §6.1, App. C.2.2 | Proved: `Transfer-Encoding` in HTTP/1.0 is faulty, `keep-alive` (`Profile.Thms`, `Connection.Thms`); `obs-fold` is rejected, not replaced (a gap for user agents) |
+| Other transfer codings, `TE` | 9112 §7.2–§7.4, §10.1 | Proved: coding checks; round trip under the abstract decoder assumption (`Codings.Thms`); `TE` defined and checked |
+| Request context: target forms, `Host`, version, `400`/`501`/`505`, RFC 9110 request | 9112 §2.3, §3, 9110 §7.2 | Proved (`Request.Thms`) |
+| Smuggling freedom: two conforming recipients agree on message boundaries | 9112 §11.2 | Proved for the framing profiles: compliant recipients never desynchronise, the common noncompliant ones do (`Profile.Thms`) |
+
+The requirement-by-requirement audit, with every gap, is [http1-compliance.md](http1-compliance.md).
+The institution of HTTP/1.1 implementations (vanilla, extension-compliant, noncompliant) and
+the OpenAPI 3.1.0 service model are in [http1-institution.md](http1-institution.md).
 
 ### D. HTTP/2 (RFC 9113, RFC 7541): `Silmaril.Net.Http2`, `Silmaril.Net.Hpack` (this pull request)
 
@@ -127,7 +132,7 @@ modelled as an abstract multiplexed stream service, as a parameter and not as an
 | Frame buffering is bounded by `SETTINGS_MAX_FRAME_SIZE` (RFC 9113 §4.2) | Proved (`readFrame_sound`) |
 | Flow control: data sent ≤ initial window + credit (RFC 9113 §5.2) | Proved (`runFlow_dataSent_le`) |
 | Never-indexed literals do not enter the dynamic table (RFC 7541 §7.1.3) | Proved (`processRep_literal_noindex`) |
-| Smuggling freedom across HTTP/1.1 recipients (CL/TE desync) | Planned |
+| Smuggling freedom across HTTP/1.1 recipients (CL/TE desync) | Proved at the framing level (`compliant_no_desync`, `desync_clte`, `desync_tete`) |
 | End-to-end: HTTP/2 → HTTP/1.1 translation preserves message boundaries and semantics | Planned |
 | Resource exhaustion: integer octet bounds, CONTINUATION floods, rapid reset (RST_STREAM rate) | Partly defined (`decodeIntBounded`); planned |
 | Each version's messages refine the RFC 9110 semantics; translations commute | Planned |
@@ -146,9 +151,10 @@ The milestones are ordered by dependency. Each one is one or more reviewable pul
    connection error.
 3. **Semantics completion (RFC 9110).** Cover the `#rule` list grammar, parameters, dates,
    conditional and range requests, content negotiation, authentication and intermediaries.
-4. **HTTP/1.1 completion.** Cover connection management and pipelining, plus the
-   HTTP/1.0 rules. Prove a smuggling-freedom theorem: two recipients that follow RFC 9112
-   §6.3 agree on every message boundary, or both reject the message.
+4. **HTTP/1.1 completion.** Connection management, pipelining, the HTTP/1.0 rules and
+   framing-level smuggling freedom are done ([http1-compliance.md](http1-compliance.md)).
+   Remaining: the gaps listed there (lenient head lexing as a profile, `obs-fold` replacement
+   for user agents, sender-side checks of generated responses, `IP-literal` hosts, limits).
 5. **Cross-version translation.** Define the HTTP/2 ↔ HTTP/1.1 gateway and prove that it
    preserves the RFC 9110 message, using the field-level lemmas of this pull request and the
    HTTP/1.1 parser round trips.
