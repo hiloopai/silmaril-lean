@@ -75,7 +75,7 @@ theorem filterMap_opOf_eq_nil (p : List Gc.Move) : p.filterMap CMove.opOf = [] :
   | cons x p ih =>
     cases x with
     | op m => exact m.elim
-    | _ => simpa [CMove.opOf] using ih
+    | _ => simp [CMove.opOf]
 
 theorem image_readsAs (b : Bool) :
     (List.filterMap Game.PHom.hideCells.map) '' (SetLike.coe (readsAs b)) = {[]} := by
