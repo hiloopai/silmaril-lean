@@ -49,7 +49,8 @@ laws above. None of these is implemented yet:
 * **LZ4**: the LZ4 frame format (magic, frame descriptor, optional xxHash-32
   block and content checksums) is a `Framing` around LZ4 block decoding.
 
-A new checksum (XXH64, CRC-64) is a `Checksum`; a streaming decoder for a new
+A new 32-bit checksum is a `Checksum` (`XxHash` gives XXH32 and the low half of
+XXH64, the LZ4 and zstd content checksums); a streaming decoder for a new
 format is an `Incremental` proved `Sound` against the format's `Decoder`.
 -/
 

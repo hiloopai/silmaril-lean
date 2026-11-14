@@ -33,6 +33,7 @@ and LZ4 fit; none of them is implemented.
 | [Zlib](../../Silmaril/Formats/Compression/Zlib/Thms.lean) | `Zlib.decoder = framing.wrap Deflate.decoder` | consumes, Adler-32 trailer, round trip, CPython vectors, dictionaries |
 | [Gzip](../../Silmaril/Formats/Compression/Gzip/Thms.lean) | `Gzip.decoder = framing.wrap Deflate.decoder`; files are `decoder.members` | consumes, CRC-32/ISIZE trailer, round trip, multi-member files, GNU and CPython vectors |
 | [Checksum](../../Silmaril/Formats/Compression/Checksum/Thms.lean) | `Checksum.adler32`, `Checksum.crc32` | published check values |
+| [XxHash](../../Silmaril/Formats/Compression/XxHash/Thms.lean) | `Checksum.xxh32`, `Checksum.xxh64Low32` | streaming states compute `xxh32`/`xxh64`; published and seeded vectors |
 | [Inflate](../../Silmaril/Formats/Compression/Inflate/Thms.lean) | `Inflate.member version kind`, `Inflate.raw version`: zlib 1.3.1's resumable inflater as `Incremental` machines | sound and rejection-sound for every call schedule, schedules agree, packed fixed tables agree with the canonical decoder |
 
 Assumptions and scope:
@@ -43,6 +44,26 @@ Assumptions and scope:
   implementations.
 - The inflater is a mathematical machine, not a refinement of zlib's C code.
 - The append laws and the completeness of the inflater are open; see Open goals.
+
+## xxHash
+
+[`XxHash/Defs.lean`](../../Silmaril/Formats/Compression/XxHash/Defs.lean) defines
+XXH32 and XXH64 (`xxh32 seed bytes : UInt32`, `xxh64 seed bytes : UInt64`) from
+the [xxHash specification](https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md),
+version 0.1.1, step by step. They are the content checksums of the LZ4 frame
+format (XXH32, seed 0) and of Zstandard (RFC 8878: the low 32 bits of XXH64,
+seed 0), both stored little-endian.
+
+xxHash mixes whole stripes (16 or 32 bytes) and finishes the tail with other
+rounds, so it is not a byte-at-a-time fold. It still fits `Checksum`: the
+streaming state (`XxHash.Stream`) keeps the four accumulators, a partial stripe
+and the length, and `Checksum.xxh32_digest` and `Checksum.xxh64Low32_digest`
+prove that it computes the whole-input functions. `Checksum` finishes into
+`UInt32`, so the full 64-bit digest of a stream is `XXH64.finish` of its state
+(`XxHash.xxh64_stream`). Known answers: the empty input, `"a"`, `"abc"` and
+`"Nobody inspects the spammish repetition"`, plus inputs with whole stripes and
+a non-zero seed, checked against an independent implementation of the
+specification.
 
 ## Open goals
 
@@ -70,8 +91,9 @@ proofs that relate them to the framework are in
 ## Check
 
 ```sh
-lake build --wfail Silmaril.Formats.Compression.Inflate.Thms Silmaril.Formats.Compression.Gzip.Thms
+lake build --wfail Silmaril.Formats.Compression.Inflate.Thms Silmaril.Formats.Compression.Gzip.Thms \
+  Silmaril.Formats.Compression.XxHash.Thms
 ```
 
-These two headers import every compression module; `make library`
+These headers import every compression module; `make library`
 builds all of them.
