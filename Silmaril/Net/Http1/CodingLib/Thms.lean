@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Net.Http1.CodingLib.Defs
 public import Silmaril.Net.Http1.Codings.Thms
+public import Silmaril.Formats.Compression.Thms
 
 /-!
 # Transfer codings from the compression library: laws
@@ -23,7 +24,7 @@ theorem libDecoders_inverts : libDecoders.Inverts libEncoders := by
   unfold libEncoders at hf
   unfold libDecoders
   split_ifs at hf ⊢ with h₁ h₂
-  · cases hf; exact ⟨_, rfl, fun x => RoundTrip.whole Gzip.codec.roundTrip x⟩
+  · cases hf; exact ⟨_, rfl, fun x => RoundTrip.members_single Gzip.codec.roundTrip x⟩
   · cases hf; exact ⟨_, rfl, fun x => RoundTrip.whole Zlib.codec.roundTrip x⟩
 
 theorem lib_roundTrip (cs : List Bytes) (x y : Bytes) (h : encodeTransfer libEncoders cs x = some y) :
