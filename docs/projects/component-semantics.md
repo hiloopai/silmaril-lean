@@ -113,22 +113,43 @@ No "components 1.0" is assumed: component features are `CMFeature` in
 
 ## Servers seam (stage 10)
 
-Notes from the server-side owners (PR #184 discussion). Stage 10 consumes these
-and redefines none of them:
+The server stack is merged and owned by the Servers, UDP and CFG work. Stage 10
+consumes it and redefines none of it:
 
-- **Seam.** A `Context.Reading` or `Transport.PMap` reads a `TraceModel` of a
-  wasi:http or wasi:sockets game into `Servers.Model` or `TTrace`. The existing
-  lift and refinement theorems then apply.
-- **Startup.** The startup stage lands on `Servers.Observe.Obs.initFail`.
+- `Servers.Transport` (#178, #181): `TEv Addr`, including `TEv.err`;
+  `TModel Addr := Set (TTrace Addr)` with `TModel.Refines` (inclusion); and
+  partial readings `PMap α β := α → Option β` with `PMap.image` and
+  `PMap.pull`.
+- `Servers.OpenApi` (#179): the OpenAPI institution.
+- `Servers.Tcp` (#183): the partial reading `h1Reading sel alpn p` from TCP
+  traces to HTTP/1 traces, and `AtMost`, `AtLeast` and `Exactly` with their
+  `mono` and `sat` lemmas. TLS and ALPN are explicit assumptions.
+- `Servers.UdpTransport` / `Net.Udp` (#180): the UDP institution and a
+  conditional DATAGRAM bridge. There is no refinement from packets to QUIC
+  streams.
+- `Servers.WasiHttp`, `Servers.WasiContext` and `Servers.Observe`: the wasi:http
+  readings and server observations, including `Obs.initFail`.
+
+**Seam.** Read a `TraceModel` (or the outcome-tagged `obs` of an `OMachine`) of
+a wasi:http or wasi:sockets game into `Servers.Model` or `TModel` through a
+`Context.Reading` or a `PMap`, so that `AtMost`, `AtLeast` and `Exactly` and the
+existing lifts apply. The bridges keep the following explicit:
+
+- **Startup.** Startup failure lands on `Obs.initFail`. Startup erasure
+  forgets failure (`exists_erased_eq_startPart_ne`), so a reading must keep it.
 - **Unions.** `Servers.Hosts.under` is a plain union. It agrees with
   `TraceModel` joins for nonempty host sets (`mem_sSup_of_nonempty`) and
-  differs at `∅` (`mem_bot`). Each bridge states which one it uses.
-- **Erased composites.** `Servers.WasiContext` keeps import events. An HTTP
-  reading of an erased composite (`Wasi.link`) needs its own theorem, which the
-  linking stage owes.
-- **Open hypotheses.** Concrete or byte-level claims carry the open
-  hypotheses on `main` as explicit assumptions: `WasiExamples.Task.wasmRuns`,
+  differs at `∅` (`mem_bot`).
+- **Erased composites.** `Servers.WasiContext` keeps import events, so an HTTP
+  reading of an erased composite (`Wasi.link`) is a separate theorem, owed by
+  the linking stage.
+- **Open binary-model tasks.** Concrete or byte-level claims carry the open
+  `Task.*` hypotheses on `main` as assumptions: `WasiExamples.Task.wasmRuns`,
   `WasiBinaries.Task.binRuns` and `WasiFs.Static.Task.staticRuns`.
+- **Liveness.** `TraceModel`s and `TModel`s are finite-trace safety models.
+  "Eventually responds" is not expressible in them. The outcome tags
+  (`Silmaril.Games.Abstract.Outcome`) record divergence, waiting and deadlock,
+  but without fairness. Liveness claims go through `Servers.Live` and say so.
 
 ## What the finite-trace layer does not claim
 
