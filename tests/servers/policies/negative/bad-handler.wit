@@ -1,0 +1,12 @@
+// Negative case (b): an interface with the name of wasi:http/incoming-handler@0.2.12 but
+// another type: `handle` takes a u32 (wasi:http's takes an incoming-request and a
+// response-outparam). The runner embeds bad-handler.wat with it, alone (no WASI deps).
+package wasi:http@0.2.12;
+
+interface incoming-handler {
+  handle: func(x: u32);
+}
+
+world bad-handler {
+  export incoming-handler;
+}

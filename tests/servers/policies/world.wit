@@ -1,0 +1,20 @@
+// Worlds of the runtime-policy experiments (tests/servers/wasi-http-policies.sh), over the WIT
+// of specs/wasi/0.2.12.
+package silmaril:policies;
+
+// The dice servers (dice.wat, dice-buggy.wat): the part of wasi:http/proxy@0.2.12 the example
+// servers use (`server` of ../wasi-http/world.wit) plus the modeled nondeterministic import
+// wasi:random/random. Composition with a host policy (`wac plug`) satisfies that import, so the
+// runtime only provides wasi:http and wasi:io.
+world dice-server {
+  import wasi:http/types@0.2.12;
+  import wasi:io/streams@0.2.12;
+  import wasi:random/random@0.2.12;
+  export wasi:http/incoming-handler@0.2.12;
+}
+
+// A host policy: an interpretation of wasi:random/random as a component (zero.wat,
+// seeded.wat.in, chaos.wat.in). It imports nothing.
+world random-host {
+  export wasi:random/random@0.2.12;
+}
