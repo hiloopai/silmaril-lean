@@ -6,6 +6,7 @@ public import Silmaril.Formats.Compression.Zlib.Basic
 public import Silmaril.Formats.Compression.Zlib.Take
 public import Silmaril.Formats.Compression.Zlib.Dictionary
 public import Silmaril.Formats.Compression.Zlib.DictionaryHistory
+public import Silmaril.Formats.Compression.Zlib.Windowed
 
 /-!
 # zlib (RFC 1950)
@@ -23,6 +24,9 @@ big-endian Adler-32 of the output.
   member) and the stored-block encoder;
 * `takeWithDictionary dictionary`: the `FDICT = 1` variant, which checks the
   dictionary's Adler-32 and seeds the DEFLATE history with it;
+* profiles (`Zlib.Windowed`): `takeWindowed` (distances within the `CINFO`
+  window), `takeWithDictionaryAnyWindow` (dictionaries for every `CINFO`),
+  `takeWithDictionaryWindowed` (both);
 * `sampleHello`: CPython's `zlib.compress(b"hello")`, a concrete member.
 -/
 

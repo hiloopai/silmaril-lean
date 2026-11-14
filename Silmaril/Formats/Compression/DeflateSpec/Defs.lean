@@ -26,7 +26,11 @@ output after the element (`out'`).
 * §3.2.5: `lengthTable`, `distTable`, `Symbols` (the compressed data of a block);
 * §3.2.6: `fixedLitLenLengths`, `fixedLitLenCode`, `fixedDistCode`;
 * §3.2.7: `codeLengthOrder`, `clLengths`, `LengthRuns`, `DynamicHeader`;
-* §3.2.3 again: `Block`, `Blocks`, `Stream` (blocks up to the one with `BFINAL`).
+* §3.2.3 again: `Block`, `Blocks`, `Stream` (blocks up to the one with `BFINAL`);
+* a bounded window (RFC 1950 §2.2 `CINFO`, for containers): `WithinWindow`,
+  `SymbolsWithin`, `BlockWithin`, `BlocksWithin`, `StreamWithin`,
+  `StreamWithHistoryWithin`, the relations above with every back-reference
+  distance at most the window.
 
 ## Acceptance policy
 
@@ -373,5 +377,71 @@ output `out`. Otherwise as `Stream`; `Stream p` is `StreamWithHistory p []`. -/
 def StreamWithHistory (p : Policy) (history input out rest : List UInt8) : Prop :=
   ∃ pad : List Bool, pad.length < 8 ∧
     Blocks p history (inputBits input) (history ++ out) (pad ++ inputBits rest)
+
+/-! ## A bounded window (RFC 1950 §2.2 `CINFO`)
+
+RFC 1951 itself bounds distances only by 32768 (§3.2.5) and by the data already
+produced. A container may announce a smaller window: zlib's `CINFO` is "the
+base-two logarithm of the LZ77 window size, minus eight" (RFC 1950 §2.2). The
+relations below are those above with one more condition on every
+back-reference, `WithinWindow window distance`; with `window = none` they are
+the relations above (`DeflateSpec.Thms`: `streamWithin_none`). -/
+
+/-- A back-reference distance is allowed by an optional window. -/
+def WithinWindow (window : Option Nat) (distance : Nat) : Prop := ∀ w ∈ window, distance ≤ w
+
+/-- `Symbols`, with every back-reference distance within `window`. -/
+inductive SymbolsWithin (window : Option Nat) (lit dist : Code) :
+    List UInt8 → List Bool → List UInt8 → List Bool → Prop
+  | endOfBlock {out bits rest} :
+      lit.Reads bits 256 rest → SymbolsWithin window lit dist out bits out rest
+  | literal {out bits r out' rest v} :
+      v < 256 → lit.Reads bits v r →
+      SymbolsWithin window lit dist (out ++ [UInt8.ofNat v]) r out' rest →
+      SymbolsWithin window lit dist out bits out' rest
+  | reference {out bits out' rest sym r1 lenExtra lenBase x r2 dsym r3 distExtra distBase y r4} :
+      lit.Reads bits sym r1 → lengthCode sym = some (lenExtra, lenBase) →
+      Field lenExtra r1 x r2 →
+      dist.Reads r2 dsym r3 → distCode dsym = some (distExtra, distBase) →
+      Field distExtra r3 y r4 →
+      distBase + y ≤ out.length → WithinWindow window (distBase + y) →
+      SymbolsWithin window lit dist (copyMatch out (distBase + y) (lenBase + x)) r4 out' rest →
+      SymbolsWithin window lit dist out bits out' rest
+
+/-- `Block`, with every back-reference distance within `window`. -/
+inductive BlockWithin (p : Policy) (window : Option Nat) :
+    List UInt8 → List Bool → List UInt8 → List Bool → Prop
+  | stored {out bits r1 pad r2 len r3 nlen r4 data rest} :
+      Field 2 bits 0 r1 →
+      r1 = pad ++ r2 → pad.length < 8 → r2.length % 8 = 0 →
+      Field 16 r2 len r3 → Field 16 r3 nlen r4 → nlen = len ^^^ 0xFFFF →
+      data.length = len → r4 = inputBits data ++ rest →
+      BlockWithin p window out bits (out ++ data) rest
+  | fixed {out bits r out' rest} :
+      Field 2 bits 1 r → SymbolsWithin window fixedLitLenCode fixedDistCode out r out' rest →
+      BlockWithin p window out bits out' rest
+  | dynamic {out bits r1 lit dist r2 out' rest} :
+      Field 2 bits 2 r1 → DynamicHeader p r1 lit dist r2 →
+      SymbolsWithin window lit dist out r2 out' rest →
+      BlockWithin p window out bits out' rest
+
+/-- `Blocks`, with every back-reference distance within `window`. -/
+inductive BlocksWithin (p : Policy) (window : Option Nat) :
+    List UInt8 → List Bool → List UInt8 → List Bool → Prop
+  | last {out bits out' rest} :
+      BlockWithin p window out bits out' rest → BlocksWithin p window out (true :: bits) out' rest
+  | notLast {out bits out1 r out' rest} :
+      BlockWithin p window out bits out1 r → BlocksWithin p window out1 r out' rest →
+      BlocksWithin p window out (false :: bits) out' rest
+
+/-- `StreamWithHistory`, with every back-reference distance within `window`. -/
+def StreamWithHistoryWithin (p : Policy) (window : Option Nat)
+    (history input out rest : List UInt8) : Prop :=
+  ∃ pad : List Bool, pad.length < 8 ∧
+    BlocksWithin p window history (inputBits input) (history ++ out) (pad ++ inputBits rest)
+
+/-- `Stream`, with every back-reference distance within `window`. -/
+def StreamWithin (p : Policy) (window : Option Nat) (input out rest : List UInt8) : Prop :=
+  StreamWithHistoryWithin p window [] input out rest
 
 end Silmaril.Formats.Compression.DeflateSpec

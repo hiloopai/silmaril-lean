@@ -21,22 +21,28 @@ are read by `leValue`/`beValue`. The only shared definition is the record
 * RFC 1950 §2.2: `ZlibHeader` (CMF/FLG), `ZlibMember` (`FDICT = 0`),
   `ZlibDictMember` (`FDICT = 1`, `DICTID` and the dictionary as DEFLATE history);
 * RFC 1952 §2.3: `GzipFlags`, `ExtraField`, `ZeroTerminated`, `HeaderCrc`,
-  `GzipMemberHeader`, `GzipMember`; §2.2: `GzipFile`, one or more members.
+  `GzipMemberHeader`, `GzipMember`; §2.2: `GzipFile`, one or more members;
+* profiles: `ZlibMemberWindowed`, `ZlibDictMemberAnyWindow`,
+  `ZlibDictMemberWindowed`, `GzipFilePrefix`.
 
 ## Policy
 
 * The DEFLATE body is read under `DeflateSpec.Policy.strict` (zlib's policy; see
   `DeflateSpec.Defs`).
 * zlib: `FLEVEL` is not constrained (RFC 1950 §2.2: "not needed for
-  decompression"). The window size `CINFO` does not limit back-reference
-  distances (zlib checks this only with `INFLATE_STRICT`).
-* zlib with a preset dictionary: only `CINFO = 7` (32 KiB window) is specified,
-  matching the profile of `Zlib.takeWithDictionary`; RFC 1950 allows smaller
-  windows there too.
+  decompression"). In `ZlibMember` and `ZlibDictMember` the window size `CINFO`
+  does not limit back-reference distances (zlib checks this only with
+  `INFLATE_STRICT`); the separately named `ZlibMemberWindowed` and
+  `ZlibDictMemberWindowed` do limit them to `zlibWindow cmf = 2 ^ (CINFO + 8)`.
+* zlib with a preset dictionary: `ZlibDictMember` specifies only `CINFO = 7`
+  (32 KiB window), matching `Zlib.takeWithDictionary`; `ZlibDictMemberAnyWindow`
+  and `ZlibDictMemberWindowed` allow every `CINFO`, as RFC 1950 does.
 * gzip: FEXTRA subfields, the ISO 8859-1 content of FNAME/FCOMMENT, `XFL` and
   `OS` are not constrained (RFC 1952 §2.3.1.2: a compliant decompressor "need
-  not examine any other part of the header"). A gzip file has no bytes after its
-  last member.
+  not examine any other part of the header"). A gzip file (`GzipFile`) has no
+  bytes after its last member; `GzipFilePrefix` is the separately named
+  suffix-lenient profile (members read greedily, then a suffix at which no
+  member starts).
 -/
 
 @[expose] public section
@@ -94,6 +100,46 @@ def ZlibDictMember (dictionary input out rest : List UInt8) : Prop :=
     input = cmf :: flg :: (dictid ++ body) ∧ ZlibHeader cmf flg ∧ fdict flg = true ∧
     cmf.toNat / 16 = 7 ∧ dictid.length = 4 ∧ beValue dictid = adler32Of dictionary ∧
     StreamWithHistory .strict dictionary body out (adler ++ rest) ∧
+    adler.length = 4 ∧ beValue adler = adler32Of out
+
+/-! ### zlib profiles: the `CINFO` window, dictionaries for every window
+
+`ZlibMember` and `ZlibDictMember` do not bound back-reference distances by the
+window `CINFO` announces (as zlib without `INFLATE_STRICT`). The relations below
+are separately named profiles. -/
+
+/-- The LZ77 window a zlib header announces: "CINFO is the base-2 logarithm of
+the LZ77 window size, minus eight", so `2 ^ (CINFO + 8)` bytes. -/
+def zlibWindow (cmf : UInt8) : Nat := 2 ^ (cmf.toNat / 16 + 8)
+
+/-- **A zlib member within its window**: `ZlibMember`, with every back-reference
+distance at most `zlibWindow cmf` (RFC 1950 §2.2, `CINFO`). -/
+def ZlibMemberWindowed (input out rest : List UInt8) : Prop :=
+  ∃ cmf flg body adler : _,
+    input = cmf :: flg :: body ∧ ZlibHeader cmf flg ∧ fdict flg = false ∧
+    StreamWithin .strict (some (zlibWindow cmf)) body out (adler ++ rest) ∧
+    adler.length = 4 ∧ beValue adler = adler32Of out
+
+/-- **A zlib member with the preset dictionary `dictionary`, for every `CINFO`**:
+`ZlibDictMember` without the `CINFO = 7` restriction. The whole dictionary is
+the history; back-references are bounded only by RFC 1951's 32768, so a stream
+may reach up to 32 KiB into the dictionary whatever its `CINFO`. -/
+def ZlibDictMemberAnyWindow (dictionary input out rest : List UInt8) : Prop :=
+  ∃ cmf flg dictid body adler : _,
+    input = cmf :: flg :: (dictid ++ body) ∧ ZlibHeader cmf flg ∧ fdict flg = true ∧
+    dictid.length = 4 ∧ beValue dictid = adler32Of dictionary ∧
+    StreamWithHistory .strict dictionary body out (adler ++ rest) ∧
+    adler.length = 4 ∧ beValue adler = adler32Of out
+
+/-- **A zlib member with a preset dictionary, within its window**: as
+`ZlibDictMemberAnyWindow`, with every back-reference distance at most
+`zlibWindow cmf`, so only the last `zlibWindow cmf` bytes of the dictionary can
+be referenced. -/
+def ZlibDictMemberWindowed (dictionary input out rest : List UInt8) : Prop :=
+  ∃ cmf flg dictid body adler : _,
+    input = cmf :: flg :: (dictid ++ body) ∧ ZlibHeader cmf flg ∧ fdict flg = true ∧
+    dictid.length = 4 ∧ beValue dictid = adler32Of dictionary ∧
+    StreamWithHistoryWithin .strict (some (zlibWindow cmf)) dictionary body out (adler ++ rest) ∧
     adler.length = 4 ∧ beValue adler = adler32Of out
 
 /-! ## gzip (RFC 1952 §2.3) -/
@@ -164,5 +210,16 @@ inductive GzipFile : List UInt8 → List UInt8 → Prop
   | last {input hdr out} : GzipMember input hdr out [] → GzipFile input out
   | cons {input hdr out rest out'} :
       GzipMember input hdr out rest → GzipFile rest out' → GzipFile input (out ++ out')
+
+/-- **A gzip file followed by bytes that are not a member** (the suffix-lenient
+profile): one or more members, read greedily, then `rest`, the first suffix at
+which no member starts (possibly empty). -/
+inductive GzipFilePrefix : List UInt8 → List UInt8 → List UInt8 → Prop
+  | last {input hdr out rest} :
+      GzipMember input hdr out rest → (∀ hdr' out' rest', ¬ GzipMember rest hdr' out' rest') →
+      GzipFilePrefix input out rest
+  | cons {input hdr out mid out' rest} :
+      GzipMember input hdr out mid → GzipFilePrefix mid out' rest →
+      GzipFilePrefix input (out ++ out') rest
 
 end Silmaril.Formats.Compression.ContainerSpec

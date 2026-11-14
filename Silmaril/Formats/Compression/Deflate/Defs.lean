@@ -5,6 +5,7 @@ public import Silmaril.Formats.Compression.Deflate.Stored
 public import Silmaril.Formats.Compression.Deflate.StoredWriter
 public import Silmaril.Formats.Compression.Deflate.Compress
 public import Silmaril.Formats.Compression.Deflate.WithHistory
+public import Silmaril.Formats.Compression.Deflate.Profile
 
 /-!
 # DEFLATE (RFC 1951)
@@ -25,6 +26,9 @@ optimised implementation (an `Array`-accumulating mirror is registered with
   relation (`decompress c = some data`);
 * `compress`: a greedy LZ77 matcher with one fixed-Huffman block;
 * `deflateTakeWithHistory`: decoding with a preset history (zlib dictionaries);
+* `deflateTakeProfile`, `deflateTakeWithHistoryProfile`: the decoder under a
+  `DecodeProfile` (`strict` = `deflateTake`, `rfc`, `windowed w`), and
+  `deflateTakeRfc`, the RFC-permissive decoder (`DeflateSpec.deflateTakeRfc_iff`);
 * `validCodeLengths`: the decoder accepts dynamic code lengths only when the
   code is complete (or the degenerate single-code case RFC 1951 §3.2.7 allows);
   `isValidLengths` is the Kraft inequality; `fixedLitLenLengths`,

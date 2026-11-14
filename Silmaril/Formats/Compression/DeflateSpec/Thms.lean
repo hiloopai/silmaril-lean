@@ -5,6 +5,7 @@ public import Silmaril.Formats.Compression.Deflate.Defs
 import Silmaril.Proofs.Formats.Compression.DeflateSpec.Policy
 import Silmaril.Proofs.Formats.Compression.DeflateSpec.Vectors
 import Silmaril.Proofs.Formats.Compression.DeflateSpec.History
+import Silmaril.Proofs.Formats.Compression.DeflateSpec.Witness
 public import Silmaril.Formats.Compression.Deflate.WithHistory
 
 /-!
@@ -42,6 +43,17 @@ Streams valid under `Policy.rfc` that it rejects:
 * incomplete code length codes, and incomplete literal/length or distance codes
   with more than one used symbol (zlib: "incomplete … tree"); the RFC only
   requires a prefix code, and mentions the incomplete one-code distance case.
+
+These differences are exact: `stream_strict_iff` (an RFC stream is strict iff
+`deflateTake` accepts its input), and `rfcOnly_hdist`, `rfcOnly_clCode`,
+`rfcOnly_litCode`, `rfcOnly_distCode` exhibit one RFC stream per difference that
+`deflateTake` rejects. The RFC-permissive decoder `Deflate.deflateTakeRfc`
+accepts exactly `Policy.rfc` streams (`deflateTakeRfc_iff`,
+`deflateTakeWithHistoryRfc_iff`); `Deflate.deflateTakeProfile .strict` is
+`deflateTake` (`deflateTakeProfile_strict`). With a window,
+`DecodeProfile.windowed w` accepts exactly `StreamWithin .strict (some w)`
+(`deflateTakeWindowed_iff`, with history `deflateTakeWithHistoryWindowed_iff`;
+`windowOnly` is a stream it rejects).
 
 Both policies, like zlib and the decoder, reject literal/length symbols 286 and
 287, distance symbols 30 and 31, `BTYPE = 11`, back-references before the start
@@ -157,5 +169,151 @@ theorem ofLengths_example :
 `X, Y, X, Y, X`. -/
 theorem copyMatch_example (x y : UInt8) : copyMatch [x, y] 2 5 = [x, y, x, y, x, y, x] :=
   Proofs.Formats.Compression.DeflateSpec.copyMatch_example x y
+
+/-! ### Strict against RFC-permissive: the exact difference
+
+`Policy.strict` and `Policy.rfc` differ only in the conditions on dynamic block
+headers (`HDIST`, completeness of the three codes). Every strict stream is an
+RFC stream with the same meaning (`Stream.strict_rfc`); conversely an RFC stream
+is strict exactly when `deflateTake` accepts its input (`stream_strict_iff`, a
+decidable condition). Each of the four header conditions makes a difference:
+`rfcOnly_hdist`, `rfcOnly_clCode`, `rfcOnly_litCode`, `rfcOnly_distCode` are
+RFC streams that `deflateTake` (and zlib 1.3.1) reject. -/
+
+/-- The RFC-permissive decoder `Deflate.deflateTakeRfc` decodes exactly the
+`Policy.rfc` streams. Incomplete codes are decoded by their canonical code;
+decoding fails only when an unassigned code word is read (`rfc_unassigned`). -/
+theorem deflateTakeRfc_iff {input out rest : List UInt8} :
+    Deflate.deflateTakeRfc input = .ok (out, rest) ↔ Stream .rfc input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.deflateTakeRfc_iff
+
+theorem deflateTakeWithHistoryRfc_iff {history input out rest : List UInt8} :
+    Deflate.deflateTakeWithHistoryRfc history input = .ok (out, rest) ↔
+      StreamWithHistory .rfc history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.deflateTakeWithHistoryRfc_iff
+
+/-- The generalised decoder at the strict profile is `deflateTake`. -/
+theorem deflateTakeProfile_strict (input : List UInt8) :
+    Deflate.deflateTakeProfile .strict input = Deflate.deflateTake input :=
+  Proofs.Formats.Compression.DeflateSpec.deflateTakeProfile_strict input
+
+theorem deflateTakeWithHistoryProfile_strict (history input : List UInt8) :
+    Deflate.deflateTakeWithHistoryProfile .strict history input =
+      Deflate.deflateTakeWithHistory history input :=
+  Proofs.Formats.Compression.DeflateSpec.deflateTakeWithHistoryProfile_strict history input
+
+theorem Stream.rfc_functional {input out out' rest rest' : List UInt8}
+    (h : Stream .rfc input out rest) (h' : Stream .rfc input out' rest') :
+    out = out' ∧ rest = rest' :=
+  Proofs.Formats.Compression.DeflateSpec.stream_rfc_functional h h'
+
+/-- **Strict = RFC + a decidable side condition.** -/
+theorem stream_strict_iff {input out rest : List UInt8} :
+    Stream .strict input out rest ↔
+      Stream .rfc input out rest ∧ (Deflate.deflateTake input).toBool = true :=
+  Proofs.Formats.Compression.DeflateSpec.stream_strict_iff
+
+/-- `HDIST = 30` (31 distance codes; §3.2.7 allows "1 - 32"), all codes complete:
+zlib "too many length or distance symbols". -/
+theorem rfcOnly_hdist :
+    Stream .rfc [0x05, 0xde, 0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90, 0x56, 0xff, 0x13, 0x94,
+      0x10] [0x61] [] ∧
+    ∀ out rest, ¬ Stream .strict [0x05, 0xde, 0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90, 0x56,
+      0xff, 0x13, 0x94, 0x10] out rest :=
+  Proofs.Formats.Compression.DeflateSpec.rfc_only
+    Proofs.Formats.Compression.DeflateSpec.witness_hdist_rfc
+    Proofs.Formats.Compression.DeflateSpec.witness_hdist_strict
+
+/-- An incomplete code length code (three symbols of length 2): zlib "invalid
+code lengths set". -/
+theorem rfcOnly_clCode :
+    Stream .rfc [0x05, 0xc0, 0x01, 0x09, 0x00, 0x00, 0x00, 0x00, 0xa0, 0xac, 0xf6, 0x2f, 0x21,
+      0x02] [0x61] [] ∧
+    ∀ out rest, ¬ Stream .strict [0x05, 0xc0, 0x01, 0x09, 0x00, 0x00, 0x00, 0x00, 0xa0, 0xac,
+      0xf6, 0x2f, 0x21, 0x02] out rest :=
+  Proofs.Formats.Compression.DeflateSpec.rfc_only
+    Proofs.Formats.Compression.DeflateSpec.witness_clCode_rfc
+    Proofs.Formats.Compression.DeflateSpec.witness_clCode_strict
+
+/-- An incomplete literal/length code with two used symbols (`a` of length 1,
+end-of-block of length 2): zlib "invalid literal/lengths set". -/
+theorem rfcOnly_litCode :
+    Stream .rfc [0x05, 0xc0, 0x01, 0x09, 0x00, 0x00, 0x00, 0x80, 0xa0, 0xad, 0xfe, 0x3f, 0x11,
+      0x02] [0x61] [] ∧
+    ∀ out rest, ¬ Stream .strict [0x05, 0xc0, 0x01, 0x09, 0x00, 0x00, 0x00, 0x80, 0xa0, 0xad,
+      0xfe, 0x3f, 0x11, 0x02] out rest :=
+  Proofs.Formats.Compression.DeflateSpec.rfc_only
+    Proofs.Formats.Compression.DeflateSpec.witness_litCode_rfc
+    Proofs.Formats.Compression.DeflateSpec.witness_litCode_strict
+
+/-- An incomplete distance code with two used symbols (both of length 2), one
+of them used by a back-reference: zlib "invalid distances set". -/
+theorem rfcOnly_distCode :
+    Stream .rfc [0x0d, 0xc1, 0x81, 0x00, 0x00, 0x00, 0x00, 0x80, 0x20, 0xd6, 0xfc, 0x25, 0xfe,
+      0x4d] [0x61, 0x61, 0x61, 0x61] [] ∧
+    ∀ out rest, ¬ Stream .strict [0x0d, 0xc1, 0x81, 0x00, 0x00, 0x00, 0x00, 0x80, 0x20, 0xd6,
+      0xfc, 0x25, 0xfe, 0x4d] out rest :=
+  Proofs.Formats.Compression.DeflateSpec.rfc_only
+    Proofs.Formats.Compression.DeflateSpec.witness_distCode_rfc
+    Proofs.Formats.Compression.DeflateSpec.witness_distCode_strict
+
+/-- The stream of `rfcOnly_litCode` with the unassigned code word `11` read
+where the end-of-block code `10` was: not a stream under either policy. -/
+theorem rfc_unassigned :
+    ∀ out rest, ¬ Stream .rfc [0x05, 0xc0, 0x01, 0x09, 0x00, 0x00, 0x00, 0x80, 0xa0, 0xad, 0xfe,
+      0x3f, 0x11, 0x06] out rest :=
+  Proofs.Formats.Compression.DeflateSpec.none_not_rfc
+    Proofs.Formats.Compression.DeflateSpec.witness_unassigned_rfc
+
+/-! ### A bounded window
+
+`StreamWithin p window` is `Stream p` with every back-reference distance at most
+the window (zlib's `CINFO`, RFC 1950 §2.2). `DecodeProfile.windowed w` is zlib's
+policy with that bound. -/
+
+theorem streamWithin_none {p : Policy} {input out rest : List UInt8} :
+    StreamWithin p none input out rest ↔ Stream p input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.streamWithHistoryWithin_none
+
+theorem streamWithHistoryWithin_none {p : Policy} {history input out rest : List UInt8} :
+    StreamWithHistoryWithin p none history input out rest ↔
+      StreamWithHistory p history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.streamWithHistoryWithin_none
+
+/-- A window of at least 32 KiB is no restriction (distances are at most 32768). -/
+theorem streamWithHistoryWithin_large {p : Policy} {w : Nat} (hw : 32768 ≤ w)
+    {history input out rest : List UInt8} :
+    StreamWithHistoryWithin p (some w) history input out rest ↔
+      StreamWithHistory p history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.streamWithHistoryWithin_large hw
+
+theorem StreamWithHistoryWithin.unwindowed {p : Policy} {w : Option Nat}
+    {history input out rest : List UInt8} (h : StreamWithHistoryWithin p w history input out rest) :
+    StreamWithHistory p history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.streamWithHistoryWithin_forget h
+
+/-- With a window of `w` bytes, only the last `w` bytes of a history matter. -/
+theorem StreamWithHistoryWithin.window {p : Policy} {w : Nat}
+    {history input out rest : List UInt8} :
+    StreamWithHistoryWithin p (some w) (history.drop (history.length - w)) input out rest ↔
+      StreamWithHistoryWithin p (some w) history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.streamWithHistoryWithin_window
+
+theorem deflateTakeWindowed_iff {w : Nat} {input out rest : List UInt8} :
+    Deflate.deflateTakeProfile (.windowed w) input = .ok (out, rest) ↔
+      StreamWithin .strict (some w) input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.deflateTakeWithHistoryWindowed_iff
+
+theorem deflateTakeWithHistoryWindowed_iff {w : Nat} {history input out rest : List UInt8} :
+    Deflate.deflateTakeWithHistoryProfile (.windowed w) history input = .ok (out, rest) ↔
+      StreamWithHistoryWithin .strict (some w) history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.deflateTakeWithHistoryWindowed_iff
+
+/-- A strict stream (`ab`, then `<length 3, distance 2>`) that a one-byte window
+rejects. -/
+theorem windowOnly :
+    Stream .strict [0x4b, 0x4c, 0x02, 0x42, 0x00] [0x61, 0x62, 0x61, 0x62, 0x61] [] ∧
+      ∀ out rest, ¬ StreamWithin .strict (some 1) [0x4b, 0x4c, 0x02, 0x42, 0x00] out rest :=
+  Proofs.Formats.Compression.DeflateSpec.window_witness
 
 end Silmaril.Formats.Compression.DeflateSpec

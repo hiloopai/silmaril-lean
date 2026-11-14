@@ -3,6 +3,7 @@ module
 public import Silmaril.Formats.Compression.Deflate.Defs
 public import Silmaril.Formats.Compression.Checksum.Defs
 public import Silmaril.Formats.Compression.Gzip.Basic
+public import Silmaril.Formats.Compression.Gzip.Prefix
 
 /-!
 # gzip (RFC 1952)
@@ -22,7 +23,9 @@ DEFLATE stream, and a trailer of the output's CRC-32 and its length modulo
 * `header`, `encoder`: the header we emit (no optional fields, `OS = 255`),
   stored DEFLATE blocks, the trailer;
 * `decompress`, `compress`: the `ByteArray` multi-member decoder and the
-  one-member stored-block encoder.
+  one-member stored-block encoder;
+* `decompressPrefix` (`Gzip.Prefix`): the suffix-lenient file profile, returning
+  the bytes after the last member that decodes.
 -/
 
 @[expose] public section
