@@ -45,7 +45,7 @@ error = ["trap", "raise", "invalid"]
 
 [[machine]]
 name = "silmaril.wasm.blockcfg.specials"
-doc = "Block CFG with every special node: exit, trap (unreachable), raise (throw), invalid (missing label)."
+doc = "Block CFG with trap (unreachable), raise (throw) and exit (return) edges. No block branches to a missing label here, so `invalid` is unreachable (see Examples.badBranch)."
 states = ["exit", "trap", "raise", "invalid", "b0 [].0: 1 instrs → if", "b1 [0/0].0: 0 instrs → unreachable", "b2 [].1: 2 instrs → if", "b3 [1/0].0: 0 instrs → throw 0", "b4 [].2: 0 instrs → return"]
 labels = ["flow"]
 edges = [
