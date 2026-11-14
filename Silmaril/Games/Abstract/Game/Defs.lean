@@ -68,7 +68,7 @@ namespace Game
 
 /-- The free game on a type of moves: every play is legal, and `IsO` says
 which moves are the environment's. -/
-def free (Move : Type u) (IsO : Move → Prop) : Game.{u} :=
+abbrev free (Move : Type u) (IsO : Move → Prop) : Game.{u} :=
   ⟨Move, IsO, Set.univ, trivial, fun _ _ => trivial⟩
 
 variable (G : Game.{u})
