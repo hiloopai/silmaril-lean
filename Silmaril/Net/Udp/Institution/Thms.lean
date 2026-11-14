@@ -26,6 +26,7 @@ Proofs in `Silmaril/Proofs/Net/Udp/Institution.lean`, using only the standard ax
 
 namespace Silmaril.Net.Udp.Inst
 
+open Silmaril.Net.Ip
 open CategoryTheory Silmaril.Logic.Institution Silmaril.Net.Udp.Network
 
 theorem sat_map_iff {A B : Sig} (σ : A ⟶ B) (M : Model B) (φ : Sen A) :

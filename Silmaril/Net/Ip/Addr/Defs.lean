@@ -13,6 +13,8 @@ Minimal Internet-layer addressing, as the transport protocols and WASI sockets u
   for the 128-bit fields), the shape of WASI's `ipv6-address = tuple<u16 × 8>`;
 * `IpAddr`, `Family`: either version, and its address family;
 * `Port`: a 16-bit port (RFC 768 "Fields", RFC 9293 §3.1);
+* `Endpoint`: a transport endpoint, an IP address and a port, without WASI's IPv6 flow and
+  scope fields (shared by the UDP and TCP models and usable as `Servers.Transport`'s `Addr`);
 * `SockAddr`: a socket address. Its IPv6 case carries the flow label and scope identifier as
   WASI's `ipv6-socket-address` record does (`flow-info`, `scope-id`); they are not on the wire
   of the transport protocols;
@@ -70,6 +72,13 @@ inductive Family where
 
 /-- A 16-bit transport port (RFC 768 "Fields", RFC 9293 §3.1). -/
 abbrev Port : Type := UInt16
+
+/-- **A transport endpoint**: an IP address and a port (RFC 768 "User Interface", RFC 9293
+§3.1: a connection is named by a pair of these). -/
+structure Endpoint where
+  ip : IpAddr
+  port : Port
+  deriving DecidableEq, Repr
 
 /-- A socket address: an IP address and a port; the IPv6 case also carries the flow
 information and the scope identifier, as WASI's `ipv6-socket-address` does. -/

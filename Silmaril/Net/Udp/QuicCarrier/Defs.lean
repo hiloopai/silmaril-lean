@@ -70,6 +70,7 @@ A Silmaril addition.
 
 namespace Silmaril.Net.Udp.QuicCarrier
 
+open Silmaril.Net.Ip
 open Silmaril.Net.Quic Silmaril.Net.Quic.Service Silmaril.Net.Udp.Network
 
 /-- A protected packet as this slice sees it: a packet number and one DATAGRAM frame's

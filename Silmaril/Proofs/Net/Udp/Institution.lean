@@ -10,6 +10,7 @@ public import Silmaril.Net.Udp.Network.Thms
 namespace Silmaril.Net.Udp.Proofs.Institution
 
 open CategoryTheory Silmaril.Net.Channel Silmaril.Net.Udp Silmaril.Net.Udp.Network
+open Silmaril.Net.Ip
 open Silmaril.Net.Udp.Inst
 
 theorem sat_map_iff {A B : Sig} (σ : A ⟶ B) (M : Model B) (φ : Sen A) :

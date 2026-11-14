@@ -44,6 +44,7 @@ A Silmaril addition.
 
 namespace Silmaril.Net.Udp.Inst
 
+open Silmaril.Net.Ip
 open CategoryTheory Silmaril.Logic.Institution Silmaril.Net.Channel Silmaril.Net.Udp.Network
 
 /-- A vocabulary: endpoint symbols and payload-kind symbols. -/

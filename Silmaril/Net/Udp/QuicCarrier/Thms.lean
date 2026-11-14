@@ -33,6 +33,7 @@ as an explicit hypothesis.
 
 namespace Silmaril.Net.Udp.QuicCarrier
 
+open Silmaril.Net.Ip
 open Silmaril.Net.Quic Silmaril.Net.Quic.Service Silmaril.Net.Udp.Network
 
 theorem carrier_sound (P : Protection) (k : P.Key) (limit : StreamType → Nat) (es : List Ev)

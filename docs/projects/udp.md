@@ -4,6 +4,9 @@ Modules: `Silmaril.Net.Udp.{Header,Service}` (RFC 768 format and the loose-chann
 already on main), and in this project `Silmaril.Net.Udp.Network`, `Silmaril.Net.Udp.Institution`,
 `Silmaril.Net.Udp.QuicCarrier` and `Silmaril.Net.Udp.Examples`.
 
+Endpoints are `Net.Ip.Endpoint` (IP address and port), shared with the TCP models and usable
+as the peer address type of `Servers.Transport`.
+
 ## Two levels, kept apart
 
 * **Socket API** (`Network.Obs`): what an application sees, `send`, `sendErr`, `recv a m` (with

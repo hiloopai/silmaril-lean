@@ -10,6 +10,7 @@ public import Batteries.Data.List.Perm
 
 namespace Silmaril.Net.Udp.Proofs.QuicCarrier
 
+open Silmaril.Net.Ip
 open Silmaril.Net.Quic Silmaril.Net.Quic.Service Silmaril.Net.Udp.Network
 open Silmaril.Net.Udp.QuicCarrier List
 

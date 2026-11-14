@@ -60,12 +60,6 @@ namespace Silmaril.Net.Udp
 
 open Silmaril.Net.Ip Silmaril.Net.Channel
 
-/-- **A UDP endpoint**: an IP address and a port. -/
-structure Endpoint where
-  ip : IpAddr
-  port : Port
-  deriving DecidableEq, Repr
-
 /-- The source endpoint of a message. -/
 def Msg.src (m : Msg) : Endpoint := ⟨m.srcIp, m.srcPort⟩
 
