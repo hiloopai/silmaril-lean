@@ -350,6 +350,132 @@
         ]
       }
     },
+    "machine": {
+      "description": "A machine document (`Silmaril.Automata.Document`): states, labels, edges and marking layers; Lean defines the constant `<name>` and fills `decl`, `deterministic` and `canonical`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The machine's name (its identifier)"
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The state names, distinct"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The label names, distinct"
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "The edges `[src, label, dst]`, between declared names"
+          },
+          "initial": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Initial states"
+          },
+          "accepting": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Accepting states"
+          },
+          "rejecting": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Rejecting states"
+          },
+          "error": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Error states"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "sid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A sid override (64 lowercase hex digits)"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "machine_binding": {
+      "description": "A typed machine (`decl : DMachine S L` over `FinNamed` types) attached to a machine document; Lean proves `<name>.bound` (and `<name>.layers` for `marks`)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The binding's name"
+          },
+          "machine": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+            "description": "The machine document (a `machine` record)"
+          },
+          "decl": {
+            "type": "string",
+            "description": "The typed machine"
+          },
+          "marks": {
+            "type": "string",
+            "description": "Its marks (`Marks S`), checked against the layers"
+          },
+          "doc": {
+            "type": "string",
+            "description": "A description"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "machine",
+          "decl"
+        ]
+      }
+    },
     "instance": {
       "description": "An instance of a problem over arguments: fix some of its arguments. The other keys go to the instance's judgement",
       "type": "array",
@@ -598,6 +724,97 @@
         },
         "required": [
           "name"
+        ]
+      }
+    },
+    "deprecation": {
+      "description": "A wrong problem, group or spec, kept for the record: why it is wrong and what replaces it. A `spec_bug` finding needs its problem (or the problem's spec, or the general problem it is an instance of) to be deprecated",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The deprecated problem, group or spec"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it is wrong"
+          },
+          "superseded_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The corrected problems, groups or specs that replace it"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "reason"
+        ]
+      }
+    },
+    "finding": {
+      "description": "The classification of a failing problem's refutation: a genuine defect of the code under test (`error`, on a problem that is not deprecated), a wrong statement (`spec_bug`, on a deprecated one), a gap of the machine model (`model_gap`, with a `pointer` to the missing instruction or feature) or `unclear`",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The refuted problem"
+          },
+          "classification": {
+            "enum": [
+              "error",
+              "spec_bug",
+              "model_gap",
+              "unclear"
+            ],
+            "description": "`error`, `spec_bug`, `model_gap` or `unclear`"
+          },
+          "note": {
+            "type": "string",
+            "description": "What the refutation shows"
+          },
+          "pointer": {
+            "type": "string",
+            "description": "What it points at: the missing instruction or feature (required for `model_gap`), a bug report, a commit"
+          },
+          "affected_versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`error` only: the versions the defect affects"
+          },
+          "fixed_in": {
+            "type": "string",
+            "description": "`error` only: the first fixed version"
+          },
+          "disclosure_status": {
+            "enum": [
+              "private",
+              "reported",
+              "public"
+            ],
+            "description": "`error` only: `private`, `reported` or `public`"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+          }
+        },
+        "required": [
+          "name",
+          "classification"
         ]
       }
     },
@@ -958,6 +1175,106 @@
             }
           }
         },
+        "machine": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "states": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The state names, distinct"
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The label names, distinct"
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": "The edges `[src, label, dst]`, between declared names"
+            },
+            "initial": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Initial states"
+            },
+            "accepting": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Accepting states"
+            },
+            "rejecting": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Rejecting states"
+            },
+            "error": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Error states"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            },
+            "sid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "A sid override (64 lowercase hex digits)"
+            }
+          }
+        },
+        "machine_binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "machine": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]*(\\.[a-z0-9][a-z0-9_-]*)*$",
+              "description": "The machine document (a `machine` record)"
+            },
+            "decl": {
+              "type": "string",
+              "description": "The typed machine"
+            },
+            "marks": {
+              "type": "string",
+              "description": "Its marks (`Marks S`), checked against the layers"
+            },
+            "doc": {
+              "type": "string",
+              "description": "A description"
+            }
+          }
+        },
         "instance": {
           "type": "object",
           "additionalProperties": false,
@@ -1163,6 +1480,73 @@
             "reason": {
               "type": "string",
               "description": "Why"
+            }
+          }
+        },
+        "deprecation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Why it is wrong"
+            },
+            "superseded_by": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The corrected problems, groups or specs that replace it"
+            }
+          }
+        },
+        "finding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "object",
+              "description": "Tool-only data (any table): not read by Lean, not compared by `sil project check`"
+            },
+            "classification": {
+              "enum": [
+                "error",
+                "spec_bug",
+                "model_gap",
+                "unclear"
+              ],
+              "description": "`error`, `spec_bug`, `model_gap` or `unclear`"
+            },
+            "note": {
+              "type": "string",
+              "description": "What the refutation shows"
+            },
+            "pointer": {
+              "type": "string",
+              "description": "What it points at: the missing instruction or feature (required for `model_gap`), a bug report, a commit"
+            },
+            "affected_versions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "`error` only: the versions the defect affects"
+            },
+            "fixed_in": {
+              "type": "string",
+              "description": "`error` only: the first fixed version"
+            },
+            "disclosure_status": {
+              "enum": [
+                "private",
+                "reported",
+                "public"
+              ],
+              "description": "`error` only: `private`, `reported` or `public`"
             }
           }
         },

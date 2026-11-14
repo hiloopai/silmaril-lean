@@ -1,0 +1,48 @@
+# A small machine document with two typed attachments over different inductive types
+# (`ProjectSelfTest.Machines`): one document, several bindings.
+schema = "silmaril.records.v0.2"
+
+[[machine]]
+name = "silmaril.selftest.door"
+doc = "A lockable door."
+states = ["closed", "locked", "open"]
+labels = ["close", "lock", "open", "unlock"]
+edges = [
+  ["closed", "lock", "locked"],
+  ["closed", "open", "open"],
+  ["locked", "unlock", "closed"],
+  ["open", "close", "closed"],
+]
+initial = ["closed"]
+accepting = ["closed", "locked"]
+
+[[machine_binding]]
+name = "silmaril.selftest.door.typed"
+machine = "silmaril.selftest.door"
+decl = "ProjectSelfTest.Machines.Door.machine"
+marks = "ProjectSelfTest.Machines.Door.marks"
+
+[[machine_binding]]
+name = "silmaril.selftest.door.typed_alt"
+machine = "silmaril.selftest.door"
+decl = "ProjectSelfTest.Machines.DoorAlt.machine"
+
+# A nondeterministic machine: a document that is not deterministic, bound to a typed `NMachine`.
+[[machine]]
+name = "silmaril.selftest.coin"
+doc = "A coin: tossing lands on either side."
+states = ["heads", "tails"]
+labels = ["toss"]
+edges = [
+  ["heads", "toss", "heads"],
+  ["heads", "toss", "tails"],
+  ["tails", "toss", "heads"],
+  ["tails", "toss", "tails"],
+]
+initial = ["heads"]
+accepting = ["tails"]
+
+[[machine_binding]]
+name = "silmaril.selftest.coin.typed"
+machine = "silmaril.selftest.coin"
+decl = "ProjectSelfTest.Machines.Coin.machine"

@@ -3,6 +3,37 @@
 schema = "silmaril.artifacts.v0.2"
 
 [[artifact]]
+cid = "bafkr4ia6ni4xr6hzdf2dxgsxx5dgcnsbxwqej6jol2xevz7eoamjbxpe4e"
+type = "blob"
+name = "silmaril.compiles_to.straight.source"
+paths = ["examples/compiles-to/straight/straight.c"]
+size = 155
+sha256 = "8b49538da88e3926f7c457e54fff82234e5ef0efb3c81372537b8f690f38b4b6"
+git_sha1 = "7c5be30070c4b48dd17e810e5fb461d5cc810612"
+
+[[artifact]]
+cid = "bafkr4iaoamwb7wrpbjzlr5xz3xvbm7x6agefggh7cuimziettjnufjrnre"
+type = "blob"
+name = "silmaril.wasm_components.gen.run.blob"
+paths = ["examples/project-formats/component-run.wasm"]
+size = 138
+sha256 = "a0e91d45b494f00088010cb9c890851d0c29b4ad3f51bb907cfe89b68f3a8bd6"
+git_sha1 = "61bc052b2dcb072bdef3149b1cc94a8758193f06"
+derivation = "silmaril.wasm_components.gen.run.recipe"
+meta = { wasm = { custom = [], exports = ["func run"], imports = ["func get"], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4ias57qpxdadwjv52mhbzjcb35ix57aweohwqy7ey2i7pjk2jfqgpu"
+type = "blob"
+name = "silmaril.wasm_components.wac.pilot.composed.blob"
+paths = ["examples/wasm-components/wac/pilot.wasm"]
+size = 366
+sha256 = "5d6d59812c64f0e82617a533cb06dcc4693b0d53805d2ed3bcff54945f5e65f2"
+git_sha1 = "99d61db748b7c88a1f473fafffbe51e83fda9cb9"
+derivation = "silmaril.wasm_components.wac.pilot.composed.compose"
+meta = { wasm = { composition_of = "silmaril.wasm_components.wac.pilot.blob", custom = ["component-name", "producers"], exports = ["func run"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
 cid = "bafkr4iayh6sghvglya2f5njxpzh5g3mgpnk72jf5vq3pglvmurqcakavqu"
 type = "blob"
 name = "silmaril.sysv_tv.max2.o2_obj"
@@ -12,6 +43,46 @@ sha256 = "707f0a3662799f76ba7587663c87d64200acde6a33c1ecd53225fbdca30dc279"
 git_sha1 = "fb9a6bfd343d1dd715ee4e8bef9d720c26751b51"
 
 [[artifact]]
+cid = "bafkr4ib4owwgjjlpdyshelx5yz5lgspygf47tzhkwpajtqjrxivic5aqy4"
+type = "blob"
+name = "silmaril.wasm_components.adapter.command.blob"
+paths = ["examples/wasm-components/adapter/wasi_snapshot_preview1.command.wasm"]
+size = 51854
+sha256 = "0b4fe490390ecc9c2222f969f65b179e658a3327e005efd4ddc959766132a3c4"
+git_sha1 = "8105b36cf0f8c972b5d2eb43bf2685880fdf505c"
+derivation = "silmaril.wasm_components.adapter.command.fetch"
+meta = { wasm = { custom = ["component-type:wit-bindgen:0.62.0:wasi:cli@0.2.12:command:encoded world", "name", "producers", "target_features"], exports = ["func adapter_close_badfd", "func adapter_monotonic_clock_set_paused", "func adapter_open_badfd", "func args_get", "func args_sizes_get", "func cabi_import_realloc", "func clock_res_get", "func clock_time_get", "func environ_get", "func environ_sizes_get", "func fd_advise", "func fd_allocate", "func fd_close", "func fd_datasync", "func fd_fdstat_get", "func fd_fdstat_set_flags", "func fd_fdstat_set_rights", "func fd_filestat_get", "func fd_filestat_set_size", "func fd_filestat_set_times", "func fd_pread", "func fd_prestat_dir_name", "func fd_prestat_get", "func fd_pwrite", "func fd_read", "func fd_readdir", "func fd_renumber", "func fd_seek", "func fd_sync", "func fd_tell", "func fd_write", "func path_create_directory", "func path_filestat_get", "func path_filestat_set_times", "func path_link", "func path_open", "func path_readlink", "func path_remove_directory", "func path_rename", "func path_symlink", "func path_unlink_file", "func poll_oneoff", "func proc_exit", "func proc_raise", "func random_get", "func reset_adapter_state", "func sched_yield", "func sock_accept", "func sock_recv", "func sock_send", "func sock_shutdown", "func wasi:cli/run@0.2.12#run"], imports = ["memory env/memory", "func wasi:filesystem/types@0.2.12/filesystem-error-code", "func wasi:io/error@0.2.12/[resource-drop]error", "func wasi:io/streams@0.2.12/[method]output-stream.check-write", "func wasi:io/streams@0.2.12/[method]output-stream.write", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-flush", "func __main_module__/cabi_realloc", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash", "func wasi:filesystem/types@0.2.12/[method]directory-entry-stream.read-directory-entry", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash-at", "func wasi:cli/environment@0.2.12/get-arguments", "func wasi:clocks/monotonic-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/now", "func wasi:clocks/monotonic-clock@0.2.12/now", "func wasi:cli/environment@0.2.12/get-environment", "func wasi:filesystem/types@0.2.12/[method]descriptor.advise", "func wasi:filesystem/types@0.2.12/[resource-drop]directory-entry-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync-data", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-flags", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-type", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-size", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times", "func wasi:filesystem/types@0.2.12/[method]descriptor.read", "func wasi:filesystem/preopens@0.2.6/get-directories", "func wasi:filesystem/types@0.2.12/[resource-drop]descriptor", "func wasi:filesystem/types@0.2.12/[method]descriptor.write", "func wasi:filesystem/types@0.2.12/[method]descriptor.append-via-stream", "func wasi:io/streams@0.2.12/[resource-drop]output-stream", "func wasi:io/streams@0.2.12/[method]input-stream.blocking-read", "func wasi:io/streams@0.2.12/[method]input-stream.read", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-directory", "func wasi:io/streams@0.2.12/[resource-drop]input-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync", "func wasi:filesystem/types@0.2.12/[method]descriptor.create-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.link-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.open-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.readlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.remove-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.rename-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.symlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.unlink-file-at", "func wasi:io/streams@0.2.12/[method]input-stream.subscribe", "func wasi:io/streams@0.2.12/[method]output-stream.subscribe", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-duration", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-instant", "func wasi:io/poll@0.2.12/[resource-drop]pollable", "func wasi:io/poll@0.2.12/poll", "func wasi:random/random@0.2.12/get-random-bytes", "func __main_module__/_start", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-via-stream", "func wasi:cli/stderr@0.2.12/get-stderr", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-write-and-flush", "func wasi:filesystem/types@0.2.12/[method]descriptor.write-via-stream", "func wasi:cli/stdin@0.2.12/get-stdin", "func wasi:cli/stdout@0.2.12/get-stdout", "func wasi:cli/terminal-stdin@0.2.12/get-terminal-stdin", "func wasi:cli/terminal-input@0.2.12/[resource-drop]terminal-input", "func wasi:cli/terminal-stdout@0.2.12/get-terminal-stdout", "func wasi:cli/terminal-output@0.2.12/[resource-drop]terminal-output", "func wasi:cli/terminal-stderr@0.2.12/get-terminal-stderr", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat", "func wasi:cli/exit@0.2.12/exit"], layer = "module", license = "Apache-2.0 WITH LLVM-exception", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4ib7gmlq4gu32xkzthiyt2t6dic47bkzw3xng6cekpjsbuyup3a4mm"
+type = "blob"
+name = "silmaril.compiles_to.straight.o2.object"
+paths = ["examples/compiles-to/straight/O2/straight.o"]
+size = 3176
+sha256 = "d1a77167a5a6957f6f42b5944ff5d28cb36c5b8901b8f564c4e73825cbf038a6"
+git_sha1 = "c1dbf53484ed8fbc80493c05d0902ebaa0695e9d"
+
+[[artifact]]
+cid = "bafkr4ib7s3eaupf7ex22wicx6v2lefydsnuilrpsbshiax6k5p42ew4g5a"
+type = "blob"
+name = "silmaril.wasm_components.wasi.io.v0_2_6.oci.blob"
+paths = ["examples/wasm-components/components/wasi/io-0.2.6.wasm"]
+size = 16027
+sha256 = "8e8ebc63a7670203b2a4868c2d0ba1d73b0ed0caa1c576edfd68762d7225a312"
+git_sha1 = "1f5eb845fdf01856d32283d2c2182c529fe19b1e"
+derivation = "silmaril.wasm_components.wasi.io.v0_2_6.oci.fetch"
+meta = { wasm = { custom = ["package-docs", "producers", "component-name", "version"], exports = ["type error", "type poll", "type streams", "type imports"], imports = [], layer = "component", license = "Apache-2.0 WITH LLVM-exception", package = "wasi:io@0.2.6", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4ibahvakl3iotlqggh5fy5645ytlcupxdxwansos7xccprmmm7f5vq"
+type = "blob"
+name = "silmaril.compiles_to.branch.o2.object"
+paths = ["examples/compiles-to/branch/O2/branch.o"]
+size = 2728
+sha256 = "9eee3bb05a8704841b354fafd443acb0f1f6f0a2ae7399e9bbf41e6d9b8269f4"
+git_sha1 = "0723f4d15ee948786d13e4fe62817312bc363037"
+
+[[artifact]]
 cid = "bafkr4ibdgmy2hitv7stkkh3k4luhsonl3ugqpu5swz6tnxkhjr7fb5xuka"
 type = "blob"
 name = "silmaril.sysv_tv.max2.c"
@@ -19,6 +90,17 @@ paths = ["examples/sysv-tv/max2/max2.c"]
 size = 209
 sha256 = "3719fe9008f66170e4a853b8bafdf4e61bc8beafb9c65038e427821191173476"
 git_sha1 = "6984f2d8085780cb8efb677ebf0c2e645437e440"
+
+[[artifact]]
+cid = "bafkr4ibxw3nqchjnfxq5hz7ldez5icwbothe3jvuktrsu5edaxsvncycta"
+type = "blob"
+name = "silmaril.wasm_components.gen.provider.blob"
+paths = ["examples/wasm-components/lean/provider.wasm"]
+size = 89
+sha256 = "98b99d2e593b6d3e30d767854b7ab38156e1f14173afc77ccff938bc3b0fa820"
+git_sha1 = "fab40c64c076929f5befd66599da93f25faa4156"
+derivation = "silmaril.wasm_components.gen.provider.recipe"
+meta = { wasm = { custom = [], exports = ["func get"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
 cid = "bafkr4ic6n6megvodyd2vunfrri6rltghpbtmmk7qwwbxotm4k5vpobhjqy"
@@ -38,6 +120,81 @@ paths = ["examples/project-formats/example-exec.c"]
 size = 84
 sha256 = "20f405d1d1acd3a6d3653b2960d386aba6f3e820c41007f21d552563f122177f"
 git_sha1 = "5204a0088e4abf687a483025c2143d5ce4eb8f64"
+
+[[artifact]]
+cid = "bafkr4iccoqsy5a346yjdsg2dsmfxpdoxw354jxdtdjdawnqnwy3glk7yha"
+type = "blob"
+name = "silmaril.wasm_components.gen.comp_b.blob"
+paths = ["examples/wasm-components/lean/comp-b.wasm"]
+size = 136
+sha256 = "778812d65295fedaa45bf99c095227deeccdcb60224e8262e6deea18e1c05b5c"
+git_sha1 = "6c9ddfa6ca851275cfa73385612e25de68dc5912"
+derivation = "silmaril.wasm_components.gen.recipe"
+meta = { wasm = { custom = [], exports = ["func run"], imports = ["func get"], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4icdq65gvqyawyu4yhu24b3nukooytojw5uvve6bic6iksra4fx5le"
+type = "blob"
+name = "silmaril.wasm_components.adapter.reactor.blob"
+paths = ["examples/wasm-components/adapter/wasi_snapshot_preview1.reactor.wasm"]
+size = 51660
+sha256 = "6d52112df28f0caee9018f911f279f94f848230b2f0ed02138290363e925671f"
+git_sha1 = "cebfde64e099c9d61248d0bb513bbc2ab97edec4"
+derivation = "silmaril.wasm_components.adapter.reactor.fetch"
+meta = { wasm = { custom = ["component-type:wit-bindgen:0.62.0:wasi:cli@0.2.12:imports:encoded world", "name", "producers", "target_features"], exports = ["func adapter_close_badfd", "func adapter_monotonic_clock_set_paused", "func adapter_open_badfd", "func args_get", "func args_sizes_get", "func cabi_import_realloc", "func clock_res_get", "func clock_time_get", "func environ_get", "func environ_sizes_get", "func fd_advise", "func fd_allocate", "func fd_close", "func fd_datasync", "func fd_fdstat_get", "func fd_fdstat_set_flags", "func fd_fdstat_set_rights", "func fd_filestat_get", "func fd_filestat_set_size", "func fd_filestat_set_times", "func fd_pread", "func fd_prestat_dir_name", "func fd_prestat_get", "func fd_pwrite", "func fd_read", "func fd_readdir", "func fd_renumber", "func fd_seek", "func fd_sync", "func fd_tell", "func fd_write", "func path_create_directory", "func path_filestat_get", "func path_filestat_set_times", "func path_link", "func path_open", "func path_readlink", "func path_remove_directory", "func path_rename", "func path_symlink", "func path_unlink_file", "func poll_oneoff", "func proc_exit", "func proc_raise", "func random_get", "func reset_adapter_state", "func sched_yield", "func sock_accept", "func sock_recv", "func sock_send", "func sock_shutdown"], imports = ["memory env/memory", "func wasi:filesystem/types@0.2.12/filesystem-error-code", "func wasi:io/error@0.2.12/[resource-drop]error", "func wasi:io/streams@0.2.12/[method]output-stream.check-write", "func wasi:io/streams@0.2.12/[method]output-stream.write", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-flush", "func __main_module__/cabi_realloc", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash", "func wasi:filesystem/types@0.2.12/[method]directory-entry-stream.read-directory-entry", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash-at", "func wasi:cli/environment@0.2.12/get-arguments", "func wasi:clocks/monotonic-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/now", "func wasi:clocks/monotonic-clock@0.2.12/now", "func wasi:cli/environment@0.2.12/get-environment", "func wasi:filesystem/types@0.2.12/[method]descriptor.advise", "func wasi:filesystem/types@0.2.12/[resource-drop]directory-entry-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync-data", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-flags", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-type", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-size", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times", "func wasi:filesystem/types@0.2.12/[method]descriptor.read", "func wasi:filesystem/preopens@0.2.6/get-directories", "func wasi:filesystem/types@0.2.12/[resource-drop]descriptor", "func wasi:filesystem/types@0.2.12/[method]descriptor.write", "func wasi:filesystem/types@0.2.12/[method]descriptor.append-via-stream", "func wasi:io/streams@0.2.12/[resource-drop]output-stream", "func wasi:io/streams@0.2.12/[method]input-stream.blocking-read", "func wasi:io/streams@0.2.12/[method]input-stream.read", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-directory", "func wasi:io/streams@0.2.12/[resource-drop]input-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync", "func wasi:filesystem/types@0.2.12/[method]descriptor.create-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.link-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.open-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.readlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.remove-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.rename-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.symlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.unlink-file-at", "func wasi:io/streams@0.2.12/[method]input-stream.subscribe", "func wasi:io/streams@0.2.12/[method]output-stream.subscribe", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-duration", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-instant", "func wasi:io/poll@0.2.12/[resource-drop]pollable", "func wasi:io/poll@0.2.12/poll", "func wasi:random/random@0.2.12/get-random-bytes", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-via-stream", "func wasi:cli/stderr@0.2.12/get-stderr", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-write-and-flush", "func wasi:filesystem/types@0.2.12/[method]descriptor.write-via-stream", "func wasi:cli/stdin@0.2.12/get-stdin", "func wasi:cli/stdout@0.2.12/get-stdout", "func wasi:cli/terminal-stdin@0.2.12/get-terminal-stdin", "func wasi:cli/terminal-input@0.2.12/[resource-drop]terminal-input", "func wasi:cli/terminal-stdout@0.2.12/get-terminal-stdout", "func wasi:cli/terminal-output@0.2.12/[resource-drop]terminal-output", "func wasi:cli/terminal-stderr@0.2.12/get-terminal-stderr", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat", "func wasi:cli/exit@0.2.12/exit"], layer = "module", license = "Apache-2.0 WITH LLVM-exception", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4icnlrdyw4h55eu5dzskxp2tianb3hf2vuiflhdf3kbzt3trmc2aei"
+type = "blob"
+name = "silmaril.compiles_to.straight.o0.object"
+paths = ["examples/compiles-to/straight/O0/straight.o"]
+size = 2848
+sha256 = "482026b8561dfbb3b2d13e49aba4d78354d6bee097524a97d5bdf662a48b26f4"
+git_sha1 = "1e6a36ba79198219bec280074e61c7a8f1fd7418"
+
+[[artifact]]
+cid = "bafkr4ictqucxu35a3436izezq5vb26k2agik7xus5o73igkx2k4hjchxde"
+type = "blob"
+name = "silmaril.wasm_components.gen.toy.world.blob"
+paths = ["examples/wasm-components/lean/toy.world.wasm"]
+size = 77
+sha256 = "3284b5c9b7266db2d9c11d5cf6c0f103b043a703969194ed7f4b0aea43adc391"
+git_sha1 = "49ad485b26afb7ff1c4f2d5c541721548fe0a7dd"
+derivation = "silmaril.wasm_components.gen.toy.world.project"
+meta = { wasm = { layer = "component", version = 13, world_of = "silmaril.wasm_components.gen.toy.blob" } }
+
+[[artifact]]
+cid = "bafkr4id2qqkr4ba2xpikyzhbkbeaf7jwpgs6lvia6fdkjhrtumyk3qez7a"
+type = "blob"
+name = "silmaril.wasm_components.gen.producer.blob"
+paths = ["examples/wasm-components/lean/producer.wasm"]
+size = 36
+sha256 = "5f66efaa564908d00b75378b33ead80c4b1b9e147d914cc722de0ca1caadea2b"
+git_sha1 = "de97556f982e82afad5b47151b638e5919ac0258"
+derivation = "silmaril.wasm_components.gen.recipe"
+meta = { wasm = { custom = [], exports = ["func get"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4ie2cya46wczkn5es7olssvrgbd6czastr2k7kbqpv3ehslchsocge"
+type = "blob"
+name = "silmaril.wasm_components.gen.toy_split.blob"
+paths = ["examples/wasm-components/lean/toy-split.wasm"]
+size = 319
+sha256 = "d31c5e35f3d9b81633e2098739fec0c0efcefdded7c8cc53b9fe0120fa2e5441"
+git_sha1 = "1cadbd00221307a85355856e7d2bbe2da7876b1e"
+derivation = "silmaril.wasm_components.gen.toy.recipe"
+meta = { wasm = { custom = [], exports = ["type r", "func make", "func get", "func drop"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4ie3ouhqswkeqg76fx44qmf3ymsl2rsuxx2ir7mqqfzutmqfib4jja"
+type = "blob"
+name = "silmaril.wasm_components.wasi.io.v0_2_12.oci.blob"
+paths = ["examples/wasm-components/components/wasi/io-0.2.12.wasm"]
+size = 15183
+sha256 = "910ed36e3589ab4c16c9942528152b80485e659852297916313318da47b44af8"
+git_sha1 = "7778b5d173be67811cc89a430de1df1cc083128f"
+derivation = "silmaril.wasm_components.wasi.io.v0_2_12.oci.fetch"
+meta = { wasm = { custom = ["package-docs", "producers", "component-name", "version"], exports = ["type error", "type poll", "type streams", "type imports"], imports = [], layer = "component", license = "Apache-2.0 WITH LLVM-exception", package = "wasi:io@0.2.12", version = 13 } }
 
 [[artifact]]
 cid = "bafkr4ieadls55ojjaudf67ylv3ol5ra6x4oe6iqgsbhx3iyzu7s7etrjuq"
@@ -66,6 +223,89 @@ size = 760
 sha256 = "23f2e8e0fe7f97665952687233e5a2465f00b0dd5bc6a8714bf533c1fbd8159e"
 git_sha1 = "207dbf73c7494d2cac2c6e3df2aa6fa94f9d0597"
 
+[[artifact]]
+cid = "bafkr4ifaiqnsd3oel5p6nvq57yfar6zdyw57hklpvrwt5isrlte7a3pnsm"
+type = "blob"
+name = "silmaril.wasm_components.gen.toy.blob"
+paths = ["examples/wasm-components/lean/toy.wasm"]
+size = 295
+sha256 = "1b557cbf64f58fc526735d99e79e17aa1e68e9434dcb934441669d63d42f112b"
+git_sha1 = "da6686ad7c276d6c51b4ee5b30e95a155370e3c6"
+derivation = "silmaril.wasm_components.gen.toy.recipe"
+meta = { wasm = { custom = [], exports = ["type r", "func make", "func get", "func drop"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4iftt5liw7pg4oqoomzko37mw3bvknodohn6dyltlz2bdw6ddrjxnu"
+type = "blob"
+name = "silmaril.wasm_components.gen.linked.world.blob"
+paths = ["examples/wasm-components/lean/linked.world.wasm"]
+size = 26
+sha256 = "e8f7e2796fdf49e5ab68ef7ef68014d8ab064a042cab4bf293b69e6c98737e58"
+git_sha1 = "ad8a9a88c1dd4ec5c3d0402d841ac01f0db4d5b3"
+derivation = "silmaril.wasm_components.gen.linked.world.project"
+meta = { wasm = { layer = "component", version = 13, world_of = "silmaril.wasm_components.gen.linked.blob" } }
+
+[[artifact]]
+cid = "bafkr4igulxj2rvkhkohnqu54m63jomq7anzzitot7w3qet5p55evslf3aa"
+type = "blob"
+name = "silmaril.wasm_components.gen.linked.blob"
+paths = ["examples/wasm-components/lean/linked.wasm"]
+size = 200
+sha256 = "f81b97a4e607ec7b090cfa220054e8b07c109c417a211a9147a510d2553e4a87"
+git_sha1 = "2dcf9157d4bce646c3fa2c40d63498c823d7996f"
+derivation = "silmaril.wasm_components.gen.recipe"
+meta = { wasm = { custom = ["producers"], exports = ["func run"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4igwf2kmhj2niyipfy4vqf2uebfabr62oxgwpxv7oonxmn32x4cli4"
+type = "blob"
+name = "silmaril.wasm_components.gen.comp_b.world.blob"
+paths = ["examples/wasm-components/lean/comp-b.world.wasm"]
+size = 34
+sha256 = "ba732a1b1ef96b839ced144dfc41bd9d38f924cf7bd9477c982197306c6252fc"
+git_sha1 = "2c4ff108774004d7af6ba3ec51a912e3b0e305ac"
+derivation = "silmaril.wasm_components.gen.comp_b.world.project"
+meta = { wasm = { layer = "component", version = 13, world_of = "silmaril.wasm_components.gen.comp_b.blob" } }
+
+[[artifact]]
+cid = "bafkr4ihjitr643vnhzwmwj2kyxkvpad23ayzskzhpihwasjbozsyeux65q"
+type = "blob"
+name = "silmaril.wasm_components.wac.pilot.blob"
+paths = ["examples/wasm-components/wac/pilot.wac"]
+size = 316
+sha256 = "4ec2af5297141cc06d702c332b3ba392baac034413bde69f79fca78aa5fc497b"
+git_sha1 = "79672c496c3cc005d89a277765d9152b8d7b96c0"
+meta = { wac = { exports = ["b.run"], instantiates = ["silmaril:provider", "silmaril:comp-b"], license = "LicenseRef-silmaril-lean", package = "silmaril:pilot" } }
+
+[[artifact]]
+cid = "bafkr4ihqbonquru6xcz27telzewjvmfmhwu4rs7xzqmny7jm5oc2yofwi4"
+type = "blob"
+name = "silmaril.compiles_to.branch.o0.object"
+paths = ["examples/compiles-to/branch/O0/branch.o"]
+size = 2768
+sha256 = "aa197ae40627c1e9b8e406993ac637210d7eb33d5c3d1f7213f5867040c840b6"
+git_sha1 = "a971203fb9c2ab64af57c738031875a0082dc251"
+
+[[artifact]]
+cid = "bafkr4ihvw6vj7vqvubsfcn7r3h5cioimkdv2ohe67bpce4aph6ytlrj3ke"
+type = "blob"
+name = "silmaril.wasm_components.wasi.io.v0_2_12.fixture.blob"
+paths = ["tests/wat/fixtures/wasi-io-0.2.12.wasm"]
+size = 15119
+sha256 = "085c156c4b0426e44606a929db36c99042df4e20129a304ce0906496fda6f9d0"
+git_sha1 = "8a75f85228766cd039ca0a922a546a824f656db9"
+derivation = "silmaril.wasm_components.wasi.io.v0_2_12.reencode"
+meta = { wasm = { custom = ["package-docs", "producers"], exports = ["type error", "type poll", "type streams", "type imports"], imports = [], layer = "component", license = "Apache-2.0 WITH LLVM-exception", package = "wasi:io@0.2.12", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4ihwmp4ceondl4bymky4ojjepe23h4aiz63gh75fxyqzrx77k7htma"
+type = "blob"
+name = "silmaril.compiles_to.branch.source"
+paths = ["examples/compiles-to/branch/branch.c"]
+size = 103
+sha256 = "6f463ede96e59be1e54fe54abc0b74d9609b7742772b5f7f14f995027fa7bcf6"
+git_sha1 = "30df5e372e0035083be3e774863bc03e18dbf110"
+
 [[derivation]]
 name = "silmaril.selftest.build.exec_elf"
 op = "link"
@@ -74,9 +314,182 @@ recipe = { path = "examples/project-formats/build.sh", cid = "bafkr4ihoh3kokxcw5
 toolchain = [{ name = "gcc", version = "13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1)" }, { name = "binutils", version = "2.42" }]
 flags = ["-O1", "-static", "-nostdlib", "-fno-pic", "-no-pie", "-fno-asynchronous-unwind-tables", "-fno-ident", "-Wl,--build-id=none", "-Wl,-z,max-page-size=4096", "-Wl,-z,noseparate-code", "-Wl,-z,norelro", "-s"]
 environment = { os = "ubuntu-24.04", arch = "x86_64" }
-receipt = { path = "examples/project-formats/RECEIPTS.sha256", cid = "bafkr4iadhv2n7jn2ooameubgzlstvwtd7zovkuyc674knbphwhx2pclj4i" }
+receipt = { path = "examples/project-formats/RECEIPTS.sha256", cid = "bafkr4igk5vxempz2xuxbt6yx7nqxwgtq3k2najjbhz5hkmen3enjjw5tj4" }
 doc = "example-exec.elf, a static x86-64 executable whose _start calls exit (examples/project-formats/build.sh rebuilds it bit for bit)"
 
 [[derivation.input]]
 role = "source"
 artifact = "silmaril.selftest.exec_c"
+
+[[derivation]]
+name = "silmaril.wasm_components.adapter.reactor.fetch"
+op = "fetch"
+status = "pinned"
+doc = "downloaded from https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.1/wasi_snapshot_preview1.reactor.wasm, checked against its sha256"
+meta = { crate = "crates/wasi-preview1-component-adapter", license_file = "examples/wasm-components/licenses/wasmtime-LICENSE", release = "wasmtime v50.0.1", tag_commit = "c307ec81de02852d815e9849f7c89d955c03c30d" }
+
+[[derivation.input]]
+role = "source"
+url = "https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.1/wasi_snapshot_preview1.reactor.wasm"
+sha256 = "6d52112df28f0caee9018f911f279f94f848230b2f0ed02138290363e925671f"
+
+[[derivation]]
+name = "silmaril.wasm_components.adapter.command.fetch"
+op = "fetch"
+status = "pinned"
+doc = "downloaded from https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.1/wasi_snapshot_preview1.command.wasm, checked against its sha256"
+meta = { crate = "crates/wasi-preview1-component-adapter", license_file = "examples/wasm-components/licenses/wasmtime-LICENSE", release = "wasmtime v50.0.1", tag_commit = "c307ec81de02852d815e9849f7c89d955c03c30d" }
+
+[[derivation.input]]
+role = "source"
+url = "https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.1/wasi_snapshot_preview1.command.wasm"
+sha256 = "0b4fe490390ecc9c2222f969f65b179e658a3327e005efd4ddc959766132a3c4"
+
+[[derivation]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.oci.fetch"
+op = "fetch"
+status = "pinned"
+doc = "wasi:io@0.2.12 from wasi.dev (OCI ghcr.io/webassembly/wasi/io:0.2.12), layer checked against its sha256"
+meta = { oci = { annotations = { description = "WASI I/O interfaces for streams and poll", licenses = "Apache-2.0 WITH LLVM-exception", source = "https://github.com/webassembly/wasi", url = "https://wasi.dev", version = "0.2.12" }, domain = "wasi.dev", manifest_digest = "sha256:bbcae4acc9a8e4d910f50d53cdb7fdb3649fdb6f18b4e226a671bca8fbc5df4d", registry = "ghcr.io", repository = "webassembly/wasi/io", tag = "0.2.12" } }
+
+[[derivation.input]]
+role = "source"
+name = "wasi:io@0.2.12"
+url = "https://ghcr.io/v2/webassembly/wasi/io/blobs/sha256:910ed36e3589ab4c16c9942528152b80485e659852297916313318da47b44af8"
+sha256 = "910ed36e3589ab4c16c9942528152b80485e659852297916313318da47b44af8"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.comp_b.world.project"
+op = "generate"
+status = "pinned"
+toolchain = [{ name = "wasm-wit", version = "silmaril-lean" }]
+flags = ["project"]
+doc = "the component's world: `wasm-wit project` (Wit.Tool.projectBytesX)"
+
+[[derivation.input]]
+role = "source"
+artifact = "silmaril.wasm_components.gen.comp_b.blob"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.linked.world.project"
+op = "generate"
+status = "pinned"
+toolchain = [{ name = "wasm-wit", version = "silmaril-lean" }]
+flags = ["project"]
+doc = "the component's world: `wasm-wit project` (Wit.Tool.projectBytesX)"
+
+[[derivation.input]]
+role = "source"
+artifact = "silmaril.wasm_components.gen.linked.blob"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.run.recipe"
+op = "generate"
+status = "pinned"
+recipe = { path = "examples/project-formats/gen-components.lean", cid = "bafkr4idvxaayydxbmd6demoejhh2ovwo774alj2t5p5lddcbmwvizflt4q" }
+toolchain = [{ name = "lean", version = "leanprover/lean4:nightly-2026-10-30" }, { name = "silmaril-lean", version = "(Silmaril.Wasm.Component.Binary.Example, encode)" }]
+doc = "lake env lean --run examples/project-formats/gen-components.lean: Binary.encode of Binary.Example.compB with its export ascribed (func (type 0))"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.recipe"
+op = "generate"
+status = "reproduced"
+recipe = { path = "examples/wasm-components/gen/Gen.lean", cid = "bafkr4ifn23e4kxtiicgb4uy62kggarmwf5b2h5m7qukfjpv5ggen6low5m" }
+toolchain = [{ name = "lean", version = "leanprover/lean4:nightly-2026-10-30" }, { name = "silmaril-lean", version = "(Silmaril.Wasm.Component.Binary.Example, encode)" }]
+receipt = { path = "examples/wasm-components/RECEIPTS.sha256", cid = "bafkr4iccelp6klt6muzm2xpwmziggjrbaxhqlakb2rdqmskn4suu4iq63i" }
+doc = "lake env lean examples/wasm-components/gen/Gen.lean: Binary.Example.producer, and Binary.encode of compB and linked"
+
+[[derivation.input]]
+role = "source"
+path = "Silmaril/Wasm/Component/Binary/Example/Defs.lean"
+cid = "bafkr4iczznh7b5v52vzpu42xl5fzjqxaceawg7nuuq7edt4gzqktnrsc64"
+
+[[derivation]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.reencode"
+op = "generate"
+status = "reproduced"
+recipe = { path = "examples/wasm-components/gen/reencode.sh", cid = "bafkr4ihzq7sjm4zvneajvknnskmagx46baoocdyqufhb25ovd3mbcg23nq" }
+toolchain = [{ name = "wasm-wit", version = "silmaril-lean (Wit.Tool.reencode)" }]
+flags = ["encode"]
+receipt = { path = "examples/wasm-components/RECEIPTS-reencode.sha256", cid = "bafkr4idkdnregpharfddqzejwtixfyhurqmqfyecz3es72t7m2wdkrqxmu" }
+doc = "wasm-wit encode of the published wasi:io@0.2.12 gives the tests/wat fixture byte for byte; wasm-tools 1.263.0 wrote the same bytes from the wasip2 1.0.4 crate's io.wit (tests/wat/README.md)"
+
+[[derivation.input]]
+role = "source"
+artifact = "silmaril.wasm_components.wasi.io.v0_2_12.oci.blob"
+
+[[derivation]]
+name = "silmaril.wasm_components.wasi.io.v0_2_6.oci.fetch"
+op = "fetch"
+status = "pinned"
+doc = "wasi:io@0.2.6 from wasi.dev (OCI ghcr.io/webassembly/wasi/io:0.2.6), layer checked against its sha256"
+meta = { oci = { annotations = { description = "A WASI API providing I/O stream abstractions.", licenses = "Apache-2.0 WITH LLVM-exception", source = "https://github.com/webassembly/wasi", url = "https://wasi.dev", version = "0.2.6" }, domain = "wasi.dev", manifest_digest = "sha256:183e9e142dbd3aacd0471a7115f1a7dac15f07099a441124c24e9a8439340316", registry = "ghcr.io", repository = "webassembly/wasi/io", tag = "0.2.6" } }
+
+[[derivation.input]]
+role = "source"
+name = "wasi:io@0.2.6"
+url = "https://ghcr.io/v2/webassembly/wasi/io/blobs/sha256:8e8ebc63a7670203b2a4868c2d0ba1d73b0ed0caa1c576edfd68762d7225a312"
+sha256 = "8e8ebc63a7670203b2a4868c2d0ba1d73b0ed0caa1c576edfd68762d7225a312"
+
+[[derivation]]
+name = "silmaril.wasm_components.wac.pilot.composed.compose"
+op = "link"
+status = "reproduced"
+toolchain = [{ name = "wac", version = "wac-cli 0.12.0" }]
+flags = ["compose", "--dep", "silmaril:provider=examples/wasm-components/lean/provider.wasm", "--dep", "silmaril:comp-b=examples/wasm-components/lean/comp-b.wasm", "-o", "examples/wasm-components/wac/pilot.wasm"]
+receipt = { path = "examples/wasm-components/wac/RECEIPTS.sha256", cid = "bafkr4iakzekjscp3dpawhhoxhhq2ryddof7uuq3pi2qdkes3gnynyoys5u" }
+doc = "`wac compose examples/wasm-components/wac/pilot.wac` with explicit dependencies"
+
+[[derivation.input]]
+role = "source"
+artifact = "silmaril.wasm_components.wac.pilot.blob"
+
+[[derivation.input]]
+role = "source"
+name = "silmaril:provider"
+artifact = "silmaril.wasm_components.gen.provider.blob"
+
+[[derivation.input]]
+role = "source"
+name = "silmaril:comp-b"
+artifact = "silmaril.wasm_components.gen.comp_b.blob"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.provider.recipe"
+op = "generate"
+status = "reproduced"
+recipe = { path = "examples/wasm-components/wac/Gen.lean", cid = "bafkr4ihr2t7m433wxcmgxnudzpcjx2gsgwuq2lecyfsbccobiv3g43udae" }
+toolchain = [{ name = "lean", version = "leanprover/lean4:nightly-2026-10-30" }, { name = "silmaril-lean", version = "(Silmaril.Project.WasmComponents.Wac.provider, Binary.encode)" }]
+receipt = { path = "examples/wasm-components/wac/RECEIPTS.sha256", cid = "bafkr4iakzekjscp3dpawhhoxhhq2ryddof7uuq3pi2qdkes3gnynyoys5u" }
+doc = "lake env lean examples/wasm-components/wac/Gen.lean: Binary.encode of Wac.provider"
+
+[[derivation.input]]
+role = "source"
+path = "Silmaril/Project/WasmComponents/Wac/Defs.lean"
+cid = "bafkr4ieny2oych4o2x4ohsxlsqcnqzdfxdtqjxlwg4zjzgjjqm7v7ky5va"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.toy.world.project"
+op = "generate"
+status = "pinned"
+toolchain = [{ name = "wasm-wit", version = "silmaril-lean" }]
+flags = ["project"]
+doc = "the component's world: `wasm-wit project` (Wit.Tool.projectBytesX)"
+
+[[derivation.input]]
+role = "source"
+artifact = "silmaril.wasm_components.gen.toy.blob"
+
+[[derivation]]
+name = "silmaril.wasm_components.gen.toy.recipe"
+op = "generate"
+status = "reproduced"
+recipe = { path = "examples/wasm-components/gen/Toy.lean", cid = "bafkr4ienl3vprdgtazfuzbtwglqvigzigrnuuiublskrguuwaeckdlk7ga" }
+toolchain = [{ name = "lean", version = "leanprover/lean4:nightly-2026-10-30" }, { name = "silmaril-lean", version = "(Silmaril.Project.WasmComponents.Toy.{toyAst,toySplitAst}, Binary.encode)" }]
+receipt = { path = "examples/wasm-components/gen/RECEIPTS-toy.sha256", cid = "bafkr4ifus2gbv5enhv7jf6eesavxscslmujszxyixe6wiel4mjvp2ipejq" }
+doc = "lake env lean examples/wasm-components/gen/Toy.lean: Binary.encode of Toy.toyAst and Toy.toySplitAst (run twice, identical output)"
+
+[[derivation.input]]
+role = "source"
+path = "Silmaril/Project/WasmComponents/Toy/Defs.lean"
+cid = "bafkr4idibc7j5ulv7lzwvpencuhhjbz6ood3ig7u3ww7x52jm7y6ap7yca"

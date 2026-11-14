@@ -1,0 +1,29 @@
+error: deprecation mk.a: superseded_by: a deprecation cannot supersede itself
+error: deprecation mk.a: superseded_by: no problem, group or spec mk.nowhere
+error: deprecation mk.c: a deprecation needs a `reason`
+error: deprecation mk.ghost: no such problem, group or spec
+error: finding mk.a: an error is a defect of the code under a correct spec, but the problem is deprecated (by its own deprecation); classify the refutation as spec_bug (M3)
+error: finding mk.all: a finding is about a problem, not a group
+error: finding mk.b: a spec_bug needs the problem (or its spec) to be deprecated: add a `[[deprecation]]` with the reason and `superseded_by` (M3)
+error: finding mk.d: `fixed_in` is for `error` findings only
+error: finding mk.d: a `model_gap` needs a `pointer` (the missing instruction or feature)
+error: finding mk.e: a finding classifies a refutation, but the verdict is holds (THM); remove the finding or refute the problem
+error: finding mk.e: disclosure_status "leaked" is not one of private, reported, public
+error: finding mk.f: classification "bogus" is not one of error, spec_bug, model_gap, unclear
+error: silmaril/marks.toml:10:18: finding.classification must be one of error, spec_bug, model_gap, unclear
+error: silmaril/marks.toml:3:1: finding mk.d: `fixed_in` is for `error` findings only
+error: silmaril/marks.toml:3:1: finding mk.d: a `model_gap` needs a `pointer` (the missing instruction or feature)
+warning: deprecation mk.c: deprecated without a replacement (`superseded_by`) (W4)
+summary: 6 problems (6 local), 1 groups, 12 records, 6 edges, 0 artifacts
+verdicts: 1 holds, 5 fails, 0 unknown (all 6 problems); 1 holds, 5 fails, 0 unknown (6 local)
+markings: 2 deprecations (2 problems, 0 groups, 0 specs), 2 problems deprecated; findings: 2 error, 1 spec_bug, 1 model_gap, 0 unclear; 1 failing problems not deprecated and unclassified
+verdicts without the deprecated: 1 holds, 3 fails, 0 unknown (4 problems)
+root: mk.all
+group mk.all: [mk.a=UNS[deprecated], mk.b=UNS, mk.c=UNS[deprecated], mk.d=UNS, mk.e=THM, mk.f=UNS]
+deprecated problem mk.a: wrong (no replacement)
+deprecated problem mk.c:  (no replacement)
+finding error mk.a [UNS] (deprecated by its own deprecation)
+finding error mk.e [THM] (disclosure leaked)
+finding spec_bug mk.b [UNS]
+finding model_gap mk.d [UNS] (fixed in 2.0)
+exit: failed

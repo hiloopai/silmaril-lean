@@ -159,7 +159,7 @@ A row group is one source function and its builds:
 | --- | --- | --- |
 | `silmaril.sysv_tv.max2.{o0,o2}_obj_value.parses` | the objects read as bytes | proved |
 | `silmaril.sysv_tv.max2.o0.code`, `….o2.code` | `elf.object_fn` | proved (kernel) |
-| `silmaril.sysv_tv.max2.elaborates` | `c.elaborates_to` | open (`Task.elaborates`). The elaborator's output is proved (`elab_ok`, by `cbv`); the procedure's shape is checked by `#guard` |
+| `silmaril.sysv_tv.max2.elaborates` | `c.elaborates_to` | proved (`elaborates`): the elaborator's output is the quoted Core `core` (`elab_core`, by `cbv`), whose procedure `max2` is `cfn` (`cfn_eq`) |
 | `silmaril.sysv_tv.max2.o0.compiles_to` | `c.compiles_to.open9` | open (`Task.o0_compiles_to`) |
 | `silmaril.sysv_tv.max2.o2.lifts` | `sysv.lifts.open9`, IR `bir9` | open (`Task.o2_lifts`) |
 | `silmaril.sysv_tv.max2.o2.ir_refines` | `c.ir_refines` | open (`Task.o2_ir_refines`) |
@@ -189,7 +189,7 @@ The group `silmaril.sysv_tv.max2` of `silmaril/selftest.toml` collects these row
 | **Proved** | `CFn.safe_of_final` and `CFn.not_safe_of_final_mainNext` (what follows a procedure's return, with the empty and with a failing continuation), `Meaning.Refines.{refl,trans}`, `sysvSpec_sub`, `strict_mono`, `Implements.of_refines`, `Lifts.implements_of_refines`, `C.CompilesTo.of_lift` (the composition), `C.CompilesToBuilds.of_lifts`, `Implements.abiFn`, `Implements.not_of_never_safe`, `ObjectFn.of_blob`, `Enterable.of_fits` (every placement that fits is enterable for signatures with up to six INTEGER arguments, by an explicit witness state); the generic cut-point simulation `Silmaril.Compiler.CompilesTo.Sim` with `Corr.whole_of_segments` |
 | **Trusted definitions** | The x86 model (`Open9.isa` and the others; see [x86](../x86.md)). The System V reading of arguments and results (`Silmaril.X86.SystemV`). The Cerberus port and its Core dynamics. The meaning of a construct the port does not support is "unsafe" (it permits anything). |
 | **Checked by compiled evaluation only** | C text to typed Ail (the frontend's typing pass is `partial`) |
-| **Open** | The example's `compiles_to`, `lifts` and `ir_refines` rows (their `Enterable` conjuncts are proved: `o0_enterable`, `o2_enterable`). Each also needs `cfn.meaning.Inhabited`: `max2` is safe on some argument tuple from *every* entry memory that satisfies the invariant, which no proof here covers yet. `Enterable` for signatures with stack arguments (more than six). The relation of `C.CompilesTo` to segment-level simulations built on `Sim`. |
+| **Open** | The example's `compiles_to`, `lifts` and `ir_refines` rows (their `Enterable` conjuncts are proved: `o0_enterable`, `o2_enterable`). Their safety companions are open: `Task.max2_safe` (`cfn.meaning.Inhabited`, which the `compiles_to` and `ir_refines` rows need: `max2` is safe on some argument tuple from *every* entry memory that satisfies the invariant) and `Task.o2_block_safe` (the Bir9 block's, which the `lifts` row needs). `Enterable` for signatures with stack arguments (more than six). Segment-level proofs of `c.compiles_to` rows are in the [compiles-to guide](compiles-to.md) (`FnData.compilesTo_of_segments`); this example's `-O0` object has no debug information, so its program points and frame slots are not generated yet. |
 
 **Profile:** INTEGER-class scalar arguments and results. The Core meaning additionally takes
 `int` parameters (the objects of the verified Core library). The function writes only its stack

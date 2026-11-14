@@ -1,14 +1,23 @@
-summary: 65 problems (65 local), 4 groups, 173 records, 83 edges, 7 artifacts
-verdicts: 12 holds, 2 fails, 51 unknown (all 65 problems); 12 holds, 2 fails, 51 unknown (65 local)
+summary: 123 problems (123 local), 7 groups, 333 records, 172 edges, 13 artifacts
+verdicts: 46 holds, 2 fails, 75 unknown (all 123 problems); 46 holds, 2 fails, 75 unknown (123 local)
+markings: 1 deprecations (1 problems, 0 groups, 0 specs), 2 problems deprecated; findings: 0 error, 1 spec_bug, 0 model_gap, 0 unclear; 0 failing problems not deprecated and unclassified
+verdicts without the deprecated: 46 holds, 0 fails, 75 unknown (121 problems)
 root: silmaril.selftest.all
-predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails
+predicate silmaril.selftest.small (arity 1): status contingent [CSA SAT], verdict fails, deprecated
+predicate silmaril.selftest.small_le (arity 1): status THM [THM], verdict holds
 predicate silmaril.selftest.square (arity 1): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.c.compiles_to (arity 5): status OPN [], verdict unknown
 predicate silmaril.shapes.c.compiles_to.builds (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.c.compiles_to.canonical_entry (arity 5): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.c.compiles_to.canonical_entry.open (arity 4): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.c.compiles_to.open (arity 4): status OPN [], verdict unknown
 predicate silmaril.shapes.c.compiles_to.open9 (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.c.compiles_to.point (arity 3): status OPN [], verdict unknown
+predicate silmaril.shapes.c.compiles_to.segment (arity 3): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.c.compiles_to.segment.open (arity 2): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.c.compiles_to.segment_from_c (arity 6): status OPN [], verdict unknown
 predicate silmaril.shapes.c.compiles_to.str9 (arity 4): status OPN [], verdict unknown
-predicate silmaril.shapes.c.elaborates_to (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.c.elaborates_to (arity 4): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.c.ir_refines (arity 3): status OPN [], verdict unknown
 predicate silmaril.shapes.elf.entry (arity 4): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.elf.entry.x86 (arity 3): status SAT [SAT], verdict unknown
@@ -20,6 +29,17 @@ predicate silmaril.shapes.elf.loads.x86 (arity 5): status OPN [], verdict unknow
 predicate silmaril.shapes.elf.object_fn (arity 4): status SAT [SAT], verdict unknown
 predicate silmaril.shapes.format.agree (arity 5): status OPN [], verdict unknown
 predicate silmaril.shapes.format.parses (arity 3): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.accepts (arity 4): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.machine.bisimilar (arity 7): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.machine.json.accepts (arity 2): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.machine.json.bisimilar (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.json.reach (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.json.simulates (arity 4): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.machine.nonempty (arity 3): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.machine.reach (arity 6): status SAT [SAT], verdict unknown
+predicate silmaril.shapes.machine.reach_set (arity 6): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.sat (arity 4): status OPN [], verdict unknown
+predicate silmaril.shapes.machine.simulates (arity 7): status OPN [], verdict unknown
 predicate silmaril.shapes.sysv.implements (arity 5): status OPN [], verdict unknown
 predicate silmaril.shapes.sysv.implements.open (arity 4): status OPN [], verdict unknown
 predicate silmaril.shapes.sysv.implements.open9 (arity 4): status OPN [], verdict unknown
@@ -40,8 +60,13 @@ predicate silmaril.shapes.x86.contract.str9 (arity 1): status OPN [], verdict un
 predicate silmaril.shapes.x86.contract_strict (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct (arity 2): status OPN [], verdict unknown
 predicate silmaril.shapes.x86.correct_loose (arity 2): status OPN [], verdict unknown
-group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(4 holds, 0 fails, 48 unknown), silmaril.sysv_tv.max2=group(4 holds, 0 fails, 11 unknown)]
+group silmaril.compiles_to.all: [silmaril.compiles_to.branch=group(12 holds, 0 fails, 5 unknown), silmaril.compiles_to.straight=group(14 holds, 0 fails, 3 unknown)]
+group silmaril.compiles_to.branch: [silmaril.compiles_to.branch.src.parses=THM, silmaril.compiles_to.branch.o0.obj.parses=THM, silmaril.compiles_to.branch.o2.obj.parses=THM, silmaril.compiles_to.branch.max2.elaborates=THM, silmaril.compiles_to.branch.o0.max2.code=THM, silmaril.compiles_to.branch.o0.max2.seg_0=THM, silmaril.compiles_to.branch.o0.max2.seg_1=THM, silmaril.compiles_to.branch.o0.max2.seg_2=THM, silmaril.compiles_to.branch.o0.max2.seg_3=THM, silmaril.compiles_to.branch.o0.max2.seg_4=THM, silmaril.compiles_to.branch.o0.max2.function=OPN, silmaril.compiles_to.branch.o0.max2.canonical=THM, silmaril.compiles_to.branch.o2.max2.code=THM, silmaril.compiles_to.branch.o2.max2.seg_0=OPN, silmaril.compiles_to.branch.o2.max2.function=OPN, silmaril.compiles_to.branch.o2.max2.canonical=OPN, silmaril.compiles_to.branch.max2.builds=OPN]
+group silmaril.compiles_to.straight: [silmaril.compiles_to.straight.src.parses=THM, silmaril.compiles_to.straight.o0.obj.parses=THM, silmaril.compiles_to.straight.o2.obj.parses=THM, silmaril.compiles_to.straight.add3.elaborates=THM, silmaril.compiles_to.straight.o0.add3.code=THM, silmaril.compiles_to.straight.o0.add3.seg_0=THM, silmaril.compiles_to.straight.o0.add3.seg_1=THM, silmaril.compiles_to.straight.o0.add3.seg_2=THM, silmaril.compiles_to.straight.o0.add3.seg_3=THM, silmaril.compiles_to.straight.o0.add3.seg_4=THM, silmaril.compiles_to.straight.o0.add3.function=OPN, silmaril.compiles_to.straight.o0.add3.canonical=THM, silmaril.compiles_to.straight.o2.add3.code=THM, silmaril.compiles_to.straight.o2.add3.seg_0=THM, silmaril.compiles_to.straight.o2.add3.function=OPN, silmaril.compiles_to.straight.o2.add3.canonical=THM, silmaril.compiles_to.straight.add3.builds=OPN]
+group silmaril.selftest.all: [silmaril.selftest.truth=THM, silmaril.selftest.small=contingent[deprecated], silmaril.selftest.small_le=THM, silmaril.selftest.open=OPN, silmaril.selftest.hello.six=THM, silmaril.selftest.square=SAT, silmaril.selftest.hello.six_row=THM, silmaril.selftest.formats=group(3 holds, 0 fails, 0 unknown), silmaril.shapes=group(31 holds, 0 fails, 72 unknown), silmaril.sysv_tv.max2=group(5 holds, 0 fails, 10 unknown), silmaril.compiles_to.all=group(26 holds, 0 fails, 8 unknown)]
 group silmaril.selftest.formats: [silmaril.selftest.module.parses=THM, silmaril.selftest.exit.parses=THM, silmaril.selftest.exit.entry=THM]
-group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN, silmaril.shapes.elf.object_fn=SAT, silmaril.shapes.sysv.implements=OPN, silmaril.shapes.sysv.lifts=OPN, silmaril.shapes.c.elaborates_to=OPN, silmaril.shapes.c.ir_refines=OPN, silmaril.shapes.c.compiles_to=OPN, silmaril.shapes.c.compiles_to.builds=OPN]
-group silmaril.sysv_tv.max2: [silmaril.sysv_tv.max2.o0_obj_value.parses=THM, silmaril.sysv_tv.max2.o2_obj_value.parses=THM, silmaril.sysv_tv.max2.o0.code=THM, silmaril.sysv_tv.max2.o2.code=THM, silmaril.sysv_tv.max2.elaborates=OPN, silmaril.sysv_tv.max2.o0.compiles_to=OPN, silmaril.sysv_tv.max2.o2.lifts=OPN, silmaril.sysv_tv.max2.o2.ir_refines=OPN, silmaril.sysv_tv.max2.o2.compiles_to=OPN, silmaril.sysv_tv.max2.builds=OPN, silmaril.sysv_tv.max2.o0.lifts_rtl=OPN, silmaril.sysv_tv.max2.o2.lifts_rtl=OPN, silmaril.sysv_tv.max2.o2.lifts_ssa=OPN, silmaril.sysv_tv.max2.rtl.ir_refines=OPN, silmaril.sysv_tv.max2.ssa.ir_refines=OPN]
-provenance: 1 derivations; 1 of 7 local artifacts have one
+group silmaril.shapes: [silmaril.shapes.format.parses=OPN, silmaril.shapes.format.agree=OPN, silmaril.shapes.value.satisfies=SAT, silmaril.shapes.elf.loads=OPN, silmaril.shapes.elf.entry=SAT, silmaril.shapes.elf.fn_contract=OPN, silmaril.shapes.x86.contract=OPN, silmaril.shapes.x86.contract_strict=OPN, silmaril.shapes.x86.abi_function=OPN, silmaril.shapes.x86.correct=OPN, silmaril.shapes.x86.correct_loose=OPN, silmaril.shapes.elf.object_fn=SAT, silmaril.shapes.sysv.implements=OPN, silmaril.shapes.sysv.lifts=OPN, silmaril.shapes.c.elaborates_to=SAT, silmaril.shapes.c.ir_refines=OPN, silmaril.shapes.c.compiles_to=OPN, silmaril.shapes.c.compiles_to.builds=OPN, silmaril.shapes.c.compiles_to.point=OPN, silmaril.shapes.c.compiles_to.segment=SAT, silmaril.shapes.c.compiles_to.segment_from_c=OPN, silmaril.shapes.c.compiles_to.canonical_entry=SAT, silmaril.shapes.machine.reach=SAT, silmaril.shapes.machine.reach_set=OPN, silmaril.shapes.machine.simulates=OPN, silmaril.shapes.machine.bisimilar=SAT, silmaril.shapes.machine.sat=OPN, silmaril.shapes.machine.json.reach=OPN, silmaril.shapes.machine.json.bisimilar=OPN, silmaril.shapes.machine.json.simulates=SAT, silmaril.shapes.machine.accepts=SAT, silmaril.shapes.machine.nonempty=SAT, silmaril.shapes.machine.json.accepts=SAT]
+group silmaril.sysv_tv.max2: [silmaril.sysv_tv.max2.o0_obj_value.parses=THM, silmaril.sysv_tv.max2.o2_obj_value.parses=THM, silmaril.sysv_tv.max2.o0.code=THM, silmaril.sysv_tv.max2.o2.code=THM, silmaril.sysv_tv.max2.elaborates=THM, silmaril.sysv_tv.max2.o0.compiles_to=OPN, silmaril.sysv_tv.max2.o2.lifts=OPN, silmaril.sysv_tv.max2.o2.ir_refines=OPN, silmaril.sysv_tv.max2.o2.compiles_to=OPN, silmaril.sysv_tv.max2.builds=OPN, silmaril.sysv_tv.max2.o0.lifts_rtl=OPN, silmaril.sysv_tv.max2.o2.lifts_rtl=OPN, silmaril.sysv_tv.max2.o2.lifts_ssa=OPN, silmaril.sysv_tv.max2.rtl.ir_refines=OPN, silmaril.sysv_tv.max2.ssa.ir_refines=OPN]
+deprecated problem silmaril.selftest.small: claims that every n is below 3 (superseded by silmaril.selftest.small_le)
+finding spec_bug silmaril.selftest.small [contingent]: 5 is not below 3 (small_csa): the statement, not the code, is wrong (deprecated by its own deprecation)
+provenance: 1 derivations; 1 of 13 local artifacts have one

@@ -1,0 +1,7 @@
+schema = "silmaril.records.v0.2"
+
+[[value]]
+name = "silmaril.wasm_components.wasi.io.v0_2_6.oci"
+format = "wit.binary"
+source = "silmaril.wasm_components.wasi.io.v0_2_6.oci.blob"
+doc = "wasi:io@0.2.6 as published (OCI ghcr.io/webassembly/wasi/io:0.2.6)"

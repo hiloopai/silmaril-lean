@@ -141,6 +141,30 @@ CREATE TABLE rooms(
   doc TEXT,
   UNIQUE(name)
 );
+CREATE TABLE machines(
+  sid TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  decl TEXT NOT NULL,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  doc TEXT,
+  deterministic INTEGER NOT NULL,
+  n_states INTEGER NOT NULL,
+  n_labels INTEGER NOT NULL,
+  n_edges INTEGER NOT NULL,
+  canonical TEXT NOT NULL,
+  UNIQUE(name)
+);
+CREATE TABLE machine_bindings(
+  name TEXT NOT NULL PRIMARY KEY,
+  machine TEXT NOT NULL,
+  decl TEXT NOT NULL,
+  marks TEXT,
+  theorem TEXT NOT NULL,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  doc TEXT
+);
 CREATE TABLE problems(
   sid TEXT NOT NULL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -224,7 +248,47 @@ CREATE TABLE summary(
   verdict TEXT NOT NULL CHECK(verdict IN ('holds','fails','unknown')),
   tier TEXT NOT NULL
 );
+CREATE TABLE deprecations(
+  name TEXT NOT NULL PRIMARY KEY,
+  kind TEXT NOT NULL CHECK(kind IN ('problem','group','spec')),
+  reason TEXT NOT NULL,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK(origin IN ('local','imported'))
+);
+CREATE TABLE deprecation_replacements(
+  name TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  replacement TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('problem','group','spec')),
+  PRIMARY KEY(name, pos)
+);
+CREATE TABLE deprecated_problems(
+  problem TEXT NOT NULL PRIMARY KEY,
+  via_kind TEXT NOT NULL CHECK(via_kind IN ('self','spec','instance')),
+  via TEXT NOT NULL
+);
+CREATE TABLE findings(
+  problem TEXT NOT NULL PRIMARY KEY,
+  classification TEXT NOT NULL CHECK(classification IN ('error','spec_bug','model_gap','unclear')),
+  note TEXT,
+  pointer TEXT,
+  fixed_in TEXT,
+  disclosure_status TEXT CHECK(disclosure_status IN ('private','reported','public')),
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK(origin IN ('local','imported'))
+);
+CREATE TABLE finding_versions(
+  problem TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  version TEXT NOT NULL,
+  PRIMARY KEY(problem, pos)
+);
 CREATE VIEW group_verdicts AS SELECT e.parent AS group_name, e.record_kind, e.record_name, e.pos, e.child, s.summary, s.verdict FROM edges e JOIN problems p ON p.name = e.parent AND p.kind = 'group' LEFT JOIN summary s ON s.problem = e.child;
+CREATE VIEW genuine_errors AS SELECT f.problem, p.title, s.summary, f.note, f.pointer, (SELECT group_concat(v.version, ',') FROM (SELECT version FROM finding_versions WHERE problem = f.problem ORDER BY pos) v) AS affected_versions, f.fixed_in, f.disclosure_status, f.module, f.origin FROM findings f JOIN problems p ON p.name = f.problem LEFT JOIN summary s ON s.problem = f.problem WHERE f.classification = 'error';
+CREATE VIEW model_gaps AS SELECT f.pointer, f.problem, p.title, f.note FROM findings f JOIN problems p ON p.name = f.problem WHERE f.classification = 'model_gap';
+CREATE VIEW spec_bugs AS SELECT f.problem, d.via_kind, d.via, f.note, f.pointer FROM findings f LEFT JOIN deprecated_problems d ON d.problem = f.problem WHERE f.classification = 'spec_bug';
+CREATE VIEW deprecated_with_replacements AS SELECT d.name, d.kind, d.reason, (SELECT group_concat(r.replacement, ',') FROM (SELECT replacement FROM deprecation_replacements WHERE name = d.name ORDER BY pos) r) AS superseded_by, d.module, d.origin FROM deprecations d;
+CREATE VIEW unclassified_failures AS SELECT s.problem, s.summary FROM summary s WHERE s.verdict = 'fails' AND s.problem NOT IN (SELECT problem FROM findings) AND s.problem NOT IN (SELECT problem FROM deprecated_problems);
 CREATE INDEX edges_parent ON edges(parent, child, kind, via);
 CREATE INDEX edges_child ON edges(child, parent);
 CREATE INDEX edges_kind ON edges(kind);
@@ -244,6 +308,11 @@ CREATE INDEX formats_base ON formats(base);
 CREATE INDEX format_laws_format ON format_laws(format);
 CREATE INDEX format_defaults_format ON format_defaults(format);
 CREATE INDEX artifact_paths_artifact ON artifact_paths(artifact);
+CREATE INDEX findings_classification ON findings(classification, problem);
+CREATE INDEX findings_pointer ON findings(pointer);
+CREATE INDEX deprecated_problems_via ON deprecated_problems(via);
+CREATE INDEX deprecation_replacements_replacement ON deprecation_replacements(replacement);
+CREATE INDEX machine_bindings_machine ON machine_bindings(machine);
 INSERT INTO meta(key, value) VALUES('dump_schema', 'silmaril.project-dump.v0.1');
 INSERT INTO meta(key, value) VALUES('modules', 'Lib');
 INSERT INTO meta(key, value) VALUES('roots', 'Lib');

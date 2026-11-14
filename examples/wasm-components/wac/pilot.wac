@@ -1,0 +1,12 @@
+package silmaril:pilot;
+
+// The provider component: exports `get : func() -> u32` (returns 42).
+let provider = new silmaril:provider {};
+
+// `comp-b` imports `get` and exports `run` (get() + 1); plug the provider's `get` into it.
+let b = new silmaril:comp-b {
+  get: provider.get,
+};
+
+// Export `run`.
+export b.run;
