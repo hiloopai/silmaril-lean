@@ -47,14 +47,16 @@ methods explicitly.
 ## Transfer codings from the compression library (`Silmaril.Net.Http1.CodingLib`)
 
 The `Decoders` parameter of `Silmaril.Net.Http1.Codings` is instantiated with the codecs of
-`Silmaril.Formats.Compression`: `gzip` (RFC 1952) and `deflate` (the zlib format,
-RFC 1950). `libDecoders_inverts` discharges the assumption `Decoders.Inverts`, so
-`lib_roundTrip` proves the round trip for any list of these codings, **for the library's stored-block encoders only** (Proved; general decoder correctness not established). Its only
-dependencies are `Gzip.roundTrip` and `Zlib.roundTrip`, which are unconditional but are about
-the library's **stored-block encoders**. It does not depend on `Deflate.Task.local` or the
-`Inflate.Task.*` completeness tasks. It is **not** a proof that gzip or DEFLATE decoding is
-correct on arbitrary compressed input (that rests on the compression track's own results and
-known-answer vectors). `compress` (LZW) is not implemented, so a server configured with
+`Silmaril.Formats.Compression`: `gzip` (an RFC 1952 file of one or more members, decoded with
+`Decoder.members` as RFC 9112 §7.2 and RFC 9110 §8.4.1.3 require) and `deflate` (one whole
+zlib member, RFC 1950). `libDecoders_inverts` discharges the assumption `Decoders.Inverts`, so
+`lib_roundTrip` proves the round trip for any list of these codings, **for the library's
+stored-block encoders only** (Proved). Its only dependencies are `Gzip.roundTrip`,
+`Zlib.roundTrip` and `RoundTrip.members_single`. This module does not itself prove that gzip or
+DEFLATE decoding is correct on arbitrary compressed input; that is the compression track's
+`DeflateSpec.deflateTake_iff` (the decoder against an independent RFC 1951 semantics) and the
+append laws, which `CodingLib` does not use.
+`compress` (LZW) is not implemented, so a server configured with
 `libImplements` answers it with `501`.
 
 ## REST services: an OpenAPI 3.1.0 subset (`Silmaril.Net.Http.OpenApi`)

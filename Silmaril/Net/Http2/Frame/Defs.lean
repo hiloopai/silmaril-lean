@@ -1,5 +1,7 @@
 module
 
+public import Silmaril.Net.Wire.Defs
+
 @[expose] public section
 
 /-!
@@ -60,13 +62,9 @@ def FrameHeader.Valid (h : FrameHeader) : Prop :=
 
 instance (h : FrameHeader) : Decidable h.Valid := by unfold FrameHeader.Valid; infer_instance
 
-/-- Big-endian octets of `x` in `k` octets. -/
-def beBytes : Nat → Nat → List UInt8
-  | 0, _ => []
-  | k + 1, x => (x / 256 ^ k % 256).toUInt8 :: beBytes k x
-
-/-- The big-endian value of octets. -/
-def beValue (xs : List UInt8) : Nat := xs.foldl (fun acc b => acc * 256 + b.toNat) 0
+/-! Big-endian integers are `Silmaril.Net.Wire.beBytes`/`beValue`; these names stay available
+as `Silmaril.Net.Http2.beBytes`/`beValue` for compatibility. -/
+export Silmaril.Net.Wire (beBytes beValue)
 
 /-- The 9-octet header (§4.1), reserved bit unset. -/
 def encodeHeader (h : FrameHeader) : List UInt8 :=

@@ -4,6 +4,7 @@ public import Silmaril.Formats.Compression.Zlib.Defs
 public import Silmaril.Formats.Compression.Checksum.Thms
 public import Silmaril.Formats.Compression.Deflate.Thms
 public import Silmaril.Raw.Formats.Compression.Zlib.Take
+public import Silmaril.Proofs.Formats.Compression.Bounds
 
 /-! Proofs for `Silmaril.Formats.Compression.Zlib.Thms`. -/
 
@@ -93,5 +94,24 @@ theorem compress_eq (data : ByteArray) : (compress data).data.toList = encoder d
   rw [compress, zlibCompress_toList]
   have h := Checksum.adler32_digest_byteArray data
   simp [Framing.encode, zlibHeader, trailer, h]
+
+/-! ### Output bounds -/
+
+theorem outputLe : Bounds.OutputLe decoder 2064 :=
+  Bounds.wrap_outputLe framing_consumes Bounds.decoder_outputLe
+
+theorem decompress_output_le {bytes out : ByteArray} (h : decompress bytes = some out) :
+    out.size ≤ 2064 * bytes.size := by
+  rw [decompress_eq] at h
+  unfold Decoder.whole at h
+  split at h
+  · next o heq =>
+    simp only [Option.map_some, Option.some.injEq] at h
+    subst h
+    have := outputLe heq
+    have h1 : (⟨o.toArray⟩ : ByteArray).size = o.length := by simp [ByteArray.size]
+    have h2 : bytes.data.toList.length = bytes.size := Array.length_toList
+    omega
+  · cases h
 
 end Silmaril.Proofs.Formats.Compression.Zlib

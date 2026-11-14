@@ -11,6 +11,13 @@ use std::path::{Component, Path};
 
 const TEMPLATE: &str = include_str!("explore.html");
 
+/// The service worker written next to the page (`explore-sw.js`): it keeps the database pages
+/// read lazily across reloads, keyed by the version tag in their URLs.
+pub const SERVICE_WORKER: &str = include_str!("explore-sw.js");
+
+/// The service worker's file name, next to the page.
+pub const SERVICE_WORKER_NAME: &str = "explore-sw.js";
+
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -29,11 +36,26 @@ fn script_json(v: &serde_json::Value) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
-/// The page titled `title`, which tries `db_urls` (relative to the page) in order.
-pub fn page(title: &str, db_urls: &[String]) -> String {
+/// What the page knows about its default database when it is generated: the size and SHA-256
+/// of the file's bytes. The page compares them with what the server serves (a page and a
+/// database from different deploys are reported, not mixed) and verifies whole downloads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbMeta {
+    pub size: u64,
+    pub sha256: String,
+}
+
+/// The page titled `title`, which tries `db_urls` (relative to the page) in order; `meta`
+/// describes the first of them, when it was readable at generation time.
+pub fn page(title: &str, db_urls: &[String], meta: Option<&DbMeta>) -> String {
+    let meta = meta.map_or(
+        serde_json::Value::Null,
+        |m| serde_json::json!({ "url": db_urls.first(), "size": m.size, "sha256": m.sha256 }),
+    );
     TEMPLATE
         .replace("__TITLE__", &html_escape(title))
         .replace("__DB_URLS__", &script_json(&serde_json::json!(db_urls)))
+        .replace("__DB_META__", &script_json(&meta))
 }
 
 /// `target` relative to the directory `from`, when both are relative paths without `..`.
@@ -70,12 +92,38 @@ mod tests {
         assert_eq!(r("/abs", "x"), None);
     }
 
+    /// Every table and view the database has is documented on the page's Schema tab.
+    #[test]
+    fn every_table_has_a_note() {
+        let start = TEMPLATE.find("const TABLE_DOCS = {").expect("TABLE_DOCS");
+        let docs = &TEMPLATE[start..start + TEMPLATE[start..].find("\n};").expect("end")];
+        let mut names: Vec<&str> = crate::project::schema::tables()
+            .iter()
+            .map(|t| t.name)
+            .collect();
+        for v in crate::project::schema::VIEWS {
+            let v = v.trim_start_matches("CREATE VIEW ");
+            names.push(&v[..v.find(' ').unwrap_or(v.len())]);
+        }
+        for n in names {
+            assert!(
+                docs.contains(&format!("\n  {n}: ")),
+                "no TABLE_DOCS entry for {n}"
+            );
+        }
+    }
+
     #[test]
     fn page_escapes_title_and_urls() {
         let p = page(
             "a<b",
             &["../x/</script>.sqlite".into(), "project.sqlite".into()],
+            Some(&DbMeta {
+                size: 3,
+                sha256: "ab".into(),
+            }),
         );
+        assert!(p.contains(r#""size":3"#));
         assert!(p.contains("<title>a&lt;b</title>"));
         assert!(!p.contains("x/</script>"));
         assert!(p.contains(r#"["../x/\u003c/script\u003e.sqlite","project.sqlite"]"#));
