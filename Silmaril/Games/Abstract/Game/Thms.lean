@@ -18,6 +18,7 @@ import Silmaril.Proofs.Games.Abstract.Game.Lattice
   (`mem_sSup_of_nonempty`), while `sSup ∅ = ⊥` is not the empty set (it
   contains the empty play and every run of Opponent moves).
 * Determinism is inherited by submodels (`Det.mono`); `⊥` is deterministic.
+  `DetUpTo X` weakens it by exceptional moves `X` (`det_iff_detUpTo_false`).
 * Pullback along a game morphism is functorial (`comap_id`, `comap_comp`),
   monotone, and right adjoint to pushforward (`gc_map_comap`), so it preserves
   arbitrary meets.
@@ -100,6 +101,15 @@ theorem Det.mono {T U : TraceModel G} (h : T ≤ U) (hU : U.Det) : T.Det :=
 /-- The model that never moves is deterministic. -/
 theorem det_bot : (⊥ : TraceModel G).Det := fun _ p _ hp _ hpo _ =>
   absurd ((mem_bot.1 hp).2 p (by simp)) hpo
+
+/-- Determinism is determinism up to no exceptional move. -/
+theorem det_iff_detUpTo_false {T : TraceModel G} : T.Det ↔ T.DetUpTo fun _ => False :=
+  ⟨fun h _ _ _ hp hq hpo hqo _ => .inl (h hp hq hpo hqo),
+    fun h _ _ _ hp hq hpo hqo => (h hp hq hpo hqo (fun _ _ h => h)).resolve_right (by simp)⟩
+
+/-- Determinism implies determinism up to any exceptional moves. -/
+theorem Det.detUpTo {T : TraceModel G} (h : T.Det) (X : G.Move → Prop) : T.DetUpTo X :=
+  fun _ _ _ hp hq hpo hqo _ => .inl (h hp hq hpo hqo)
 
 variable {H : Game.{v}} {K : Game.{w}}
 

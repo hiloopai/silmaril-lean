@@ -178,6 +178,13 @@ Proponent move can follow. Opponent moves are not constrained. -/
 def Det (T : TraceModel G) : Prop :=
   ∀ ⦃s p q⦄, s ++ [p] ∈ T → s ++ [q] ∈ T → ¬ G.IsO p → ¬ G.IsO q → p = q
 
+/-- Determinism up to exceptional moves `X` (for Wasm: trapping answers):
+after a play with no `X` move, two Proponent continuations are equal or one of
+them is in `X`. Plays after an exceptional move are not constrained. -/
+def DetUpTo (X : G.Move → Prop) (T : TraceModel G) : Prop :=
+  ∀ ⦃s p q⦄, s ++ [p] ∈ T → s ++ [q] ∈ T → ¬ G.IsO p → ¬ G.IsO q → (∀ m ∈ s, ¬ X m) →
+    p = q ∨ X p ∨ X q
+
 end TraceModel
 
 namespace Game
