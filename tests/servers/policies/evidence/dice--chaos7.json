@@ -1,0 +1,410 @@
+{
+  "schema": "silmaril.servers.runtime-evidence.v1",
+  "evidence": "runtime-test",
+  "note": "testing evidence, not a Lean proof",
+  "spec": "Silmaril.Servers.Examples.Dice",
+  "date": "2026-11-14T01:47:35Z",
+  "git": {
+    "commit": "1bbb9a6989b234e356cfd63825c5012be0e8116e",
+    "dirty": false
+  },
+  "tools": {
+    "runtime": {
+      "name": "wasmtime serve",
+      "version": "49.0.2",
+      "binary_sha256": "d0a014e0d5b0cf48dd3549c38e2e6ecd78ff09fb3e3f10d751b87b72bdfd8635"
+    },
+    "wasm_tools": {
+      "version": "wasm-tools 1.263.0 (7a2fa422c 2026-10-30)",
+      "binary_sha256": "694cb37dcda84a5d557334c1db882b986e43061abdb0af976b41b1614ee4530b"
+    },
+    "wac": {
+      "version": "wac-cli 0.12.0",
+      "binary_sha256": "7cd490edbd452221ef89e6750fc43eacc9b71b1242095eb577cb9a3bf0d3beda"
+    }
+  },
+  "server": "dice",
+  "policy": {
+    "name": "chaos",
+    "seed": 7,
+    "schedule_id": "chaos-v1",
+    "schedule": "h = mix64(SEED + (k + 1) * 0x9E3779B97F4A7C15), k the call counter (from 0, per instance); by h mod 8: 0..3 -> h, 4 -> 0, 5 -> 0xFFFFFFFFFFFFFFFF, 6 -> 5, 7 -> 6"
+  },
+  "artifacts": {
+    "server": {
+      "file": "dice.wasm",
+      "sha256": "6cf5d357a16f961f745b3dbe6adbdf3e44ec92b55cd43953f698dbef02a349cc",
+      "bytes": 11579
+    },
+    "policy": {
+      "file": "policy-chaos7.wasm",
+      "sha256": "4a11d1e48fe83869cdc8d9f205109e17149fb0b8dd33f954d2ec31e08990a148",
+      "bytes": 1262
+    },
+    "composed": {
+      "file": "dice--chaos7.wasm",
+      "sha256": "f084f3f745a5d35b992b5d1f92d36ac6bfe6b2fed7607b3611621b3971be5917",
+      "bytes": 15755,
+      "recompose_identical": true,
+      "imports": [
+        "wasi:io/error@0.2.12",
+        "wasi:io/streams@0.2.12",
+        "wasi:http/types@0.2.12"
+      ]
+    }
+  },
+  "bounds": {
+    "roll": 32,
+    "pair": 8,
+    "other_paths": [
+      "/nope",
+      "/nope",
+      "/roll?x=1",
+      "/rolls",
+      "/"
+    ],
+    "curl_timeout_s": 5,
+    "start_timeout_s": 10,
+    "serve_runs": 2
+  },
+  "trace": [
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll",
+      "status": 200,
+      "body": "1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/pair",
+      "status": 200,
+      "body": "1 1",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/nope",
+      "status": 404,
+      "body": "not found",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/nope",
+      "status": 404,
+      "body": "not found",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/roll?x=1",
+      "status": 404,
+      "body": "not found",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/rolls",
+      "status": 404,
+      "body": "not found",
+      "curl_exit": 0
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 404,
+      "body": "not found",
+      "curl_exit": 0
+    }
+  ],
+  "checks": {
+    "must": {
+      "pass": true,
+      "property": "/roll and each /pair component in 1..6; other paths 404 not found",
+      "violations": [],
+      "expected": "pass"
+    },
+    "replay": {
+      "pass": true,
+      "identical_traces": true
+    },
+    "may": {
+      "roll_values": [
+        1
+      ],
+      "pair_values": [
+        "1 1"
+      ],
+      "roll_constant_across_requests": true,
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false
+    }
+  }
+}
