@@ -20,8 +20,11 @@ key is hashed first, and a shorter one is right-padded with zeros.
 FIPS 198-1 §5 truncation is `List.take t` on the result. Key-length recommendations
 (FIPS 198-1 §3: at least `L/2` octets) are the caller's policy, not enforced here.
 
-Ported from the hiloopai/silmaril development (`Silmaril/Crypto/HMAC.lean`, written for that
-project), generalized from a block size and a bare function to a `HashFn`.
+Ported from the hiloopai/silmaril development (`Silmaril/Crypto/HMAC.lean` at commit
+`cc9b669ac918`; written in that repository in commits `459571791c` and `fda23a8838`, with no
+third-party source), generalized from a block size and a bare function to a `HashFn`. The owner
+of that repository authorized releasing its own code under this repository's MIT license on
+2026-11-14.
 
 No security property is stated. HMAC's PRF security (Bellare 2006) is a named assumption
 (`Catalog.Assumption.hmacPrf`), not a theorem.
