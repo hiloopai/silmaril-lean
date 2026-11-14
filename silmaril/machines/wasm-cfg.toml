@@ -1,0 +1,136 @@
+# Control-flow graphs of example Wasm functions, extracted by `Silmaril.Wasm.Cfg.ofExpr` and written
+# as machine documents by `ProjectSelfTest.WasmCfg.cfgDoc`; the `*_extracted` theorems there prove that
+# each document has exactly the extraction's nodes and edges.
+schema = "silmaril.records.v0.2"
+
+[[machine]]
+name = "silmaril.wasm.cfg.verified.sum"
+doc = "CFG of `sum` (Examples.Verified.prog): a loop in a block, left by br_if, re-entered by br."
+states = ["exit", "trap", "raise", "invalid", "4 local.get 2 @[1]", "5 block @[0]", "6 loop @[0, 0, 0]", "7 br 0 @[0, 0, 0, 0, 12]", "8 local.set 2 @[0, 0, 0, 0, 11]", "9 intBinOp @[0, 0, 0, 0, 10]", "10 local.get 1 @[0, 0, 0, 0, 9]", "11 local.get 2 @[0, 0, 0, 0, 8]", "12 local.set 1 @[0, 0, 0, 0, 7]", "13 intBinOp @[0, 0, 0, 0, 6]", "14 intConst @[0, 0, 0, 0, 5]", "15 local.get 1 @[0, 0, 0, 0, 4]", "16 br_if 1 @[0, 0, 0, 0, 3]", "17 intRelOp @[0, 0, 0, 0, 2]", "18 local.get 0 @[0, 0, 0, 0, 1]", "19 local.get 1 @[0, 0, 0, 0, 0]"]
+labels = ["flow"]
+edges = [
+  ["4 local.get 2 @[1]", "flow", "exit"],
+  ["5 block @[0]", "flow", "6 loop @[0, 0, 0]"],
+  ["6 loop @[0, 0, 0]", "flow", "19 local.get 1 @[0, 0, 0, 0, 0]"],
+  ["7 br 0 @[0, 0, 0, 0, 12]", "flow", "6 loop @[0, 0, 0]"],
+  ["8 local.set 2 @[0, 0, 0, 0, 11]", "flow", "7 br 0 @[0, 0, 0, 0, 12]"],
+  ["9 intBinOp @[0, 0, 0, 0, 10]", "flow", "8 local.set 2 @[0, 0, 0, 0, 11]"],
+  ["10 local.get 1 @[0, 0, 0, 0, 9]", "flow", "9 intBinOp @[0, 0, 0, 0, 10]"],
+  ["11 local.get 2 @[0, 0, 0, 0, 8]", "flow", "10 local.get 1 @[0, 0, 0, 0, 9]"],
+  ["12 local.set 1 @[0, 0, 0, 0, 7]", "flow", "11 local.get 2 @[0, 0, 0, 0, 8]"],
+  ["13 intBinOp @[0, 0, 0, 0, 6]", "flow", "12 local.set 1 @[0, 0, 0, 0, 7]"],
+  ["14 intConst @[0, 0, 0, 0, 5]", "flow", "13 intBinOp @[0, 0, 0, 0, 6]"],
+  ["15 local.get 1 @[0, 0, 0, 0, 4]", "flow", "14 intConst @[0, 0, 0, 0, 5]"],
+  ["16 br_if 1 @[0, 0, 0, 0, 3]", "flow", "4 local.get 2 @[1]"],
+  ["16 br_if 1 @[0, 0, 0, 0, 3]", "flow", "15 local.get 1 @[0, 0, 0, 0, 4]"],
+  ["17 intRelOp @[0, 0, 0, 0, 2]", "flow", "16 br_if 1 @[0, 0, 0, 0, 3]"],
+  ["18 local.get 0 @[0, 0, 0, 0, 1]", "flow", "17 intRelOp @[0, 0, 0, 0, 2]"],
+  ["19 local.get 1 @[0, 0, 0, 0, 0]", "flow", "18 local.get 0 @[0, 0, 0, 0, 1]"],
+]
+initial = ["5 block @[0]"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.cfg.dispatch"
+doc = "CFG of a br_table dispatcher over three nested blocks (Wasm.Cfg.Examples.mod)."
+states = ["exit", "trap", "raise", "invalid", "4 intConst @[1]", "5 block @[0]", "6 return @[0, 0, 2]", "7 intConst @[0, 0, 1]", "8 block @[0, 0, 0]", "9 return @[0, 0, 0, 0, 2]", "10 intConst @[0, 0, 0, 0, 1]", "11 block @[0, 0, 0, 0, 0]", "12 br_table [0, 1] 2 @[0, 0, 0, 0, 0, 0, 1]", "13 local.get 0 @[0, 0, 0, 0, 0, 0, 0]"]
+labels = ["flow"]
+edges = [
+  ["4 intConst @[1]", "flow", "exit"],
+  ["5 block @[0]", "flow", "8 block @[0, 0, 0]"],
+  ["6 return @[0, 0, 2]", "flow", "exit"],
+  ["7 intConst @[0, 0, 1]", "flow", "6 return @[0, 0, 2]"],
+  ["8 block @[0, 0, 0]", "flow", "11 block @[0, 0, 0, 0, 0]"],
+  ["9 return @[0, 0, 0, 0, 2]", "flow", "exit"],
+  ["10 intConst @[0, 0, 0, 0, 1]", "flow", "9 return @[0, 0, 0, 0, 2]"],
+  ["11 block @[0, 0, 0, 0, 0]", "flow", "13 local.get 0 @[0, 0, 0, 0, 0, 0, 0]"],
+  ["12 br_table [0, 1] 2 @[0, 0, 0, 0, 0, 0, 1]", "flow", "10 intConst @[0, 0, 0, 0, 1]"],
+  ["12 br_table [0, 1] 2 @[0, 0, 0, 0, 0, 0, 1]", "flow", "7 intConst @[0, 0, 1]"],
+  ["12 br_table [0, 1] 2 @[0, 0, 0, 0, 0, 0, 1]", "flow", "4 intConst @[1]"],
+  ["13 local.get 0 @[0, 0, 0, 0, 0, 0, 0]", "flow", "12 br_table [0, 1] 2 @[0, 0, 0, 0, 0, 0, 1]"],
+]
+initial = ["5 block @[0]"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.cfg.specials"
+doc = "CFG with unreachable (trap), throw (raise) and return (exit) edges."
+states = ["exit", "trap", "raise", "invalid", "4 return @[5]", "5 if @[4]", "6 throw 0 @[4, 0, 0]", "7 intTestOp @[3]", "8 local.get 0 @[2]", "9 if @[1]", "10 unreachable @[1, 0, 0]", "11 local.get 0 @[0]"]
+labels = ["flow"]
+edges = [
+  ["4 return @[5]", "flow", "exit"],
+  ["5 if @[4]", "flow", "6 throw 0 @[4, 0, 0]"],
+  ["5 if @[4]", "flow", "4 return @[5]"],
+  ["6 throw 0 @[4, 0, 0]", "flow", "raise"],
+  ["7 intTestOp @[3]", "flow", "5 if @[4]"],
+  ["8 local.get 0 @[2]", "flow", "7 intTestOp @[3]"],
+  ["9 if @[1]", "flow", "10 unreachable @[1, 0, 0]"],
+  ["9 if @[1]", "flow", "8 local.get 0 @[2]"],
+  ["10 unreachable @[1, 0, 0]", "flow", "trap"],
+  ["11 local.get 0 @[0]", "flow", "9 if @[1]"],
+]
+initial = ["11 local.get 0 @[0]"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.cfg.rust_door.enter"
+doc = "CFG of `enter` in the compiled Rust door (Examples.RustInst.door): nested blocks with br_if and br."
+states = ["exit", "trap", "raise", "invalid", "4 intStore @[9]", "5 local.get 2 @[8]", "6 intConst @[7]", "7 intStore @[6]", "8 local.get 1 @[5]", "9 intConst @[4]", "10 block @[3]", "11 call 3 @[3, 0, 5]", "12 block @[3, 0, 4]", "13 br 1 @[3, 0, 4, 0, 9]", "14 local.set 1 @[3, 0, 4, 0, 8]", "15 intConst @[3, 0, 4, 0, 7]", "16 call 2 @[3, 0, 4, 0, 6]", "17 call 1 @[3, 0, 4, 0, 5]", "18 call 0 @[3, 0, 4, 0, 4]", "19 intConst @[3, 0, 4, 0, 3]", "20 local.set 2 @[3, 0, 4, 0, 2]", "21 intConst @[3, 0, 4, 0, 1]", "22 block @[3, 0, 4, 0, 0]", "23 br 2 @[3, 0, 4, 0, 0, 0, 15]", "24 local.set 2 @[3, 0, 4, 0, 0, 0, 14]", "25 intConst @[3, 0, 4, 0, 0, 0, 13]", "26 br_if 1 @[3, 0, 4, 0, 0, 0, 12]", "27 intRelOp @[3, 0, 4, 0, 0, 0, 11]", "28 intConst @[3, 0, 4, 0, 0, 0, 10]", "29 local.tee 1 @[3, 0, 4, 0, 0, 0, 9]", "30 intBinOp @[3, 0, 4, 0, 0, 0, 8]", "31 intConst @[3, 0, 4, 0, 0, 0, 7]", "32 local.get 1 @[3, 0, 4, 0, 0, 0, 6]", "33 local.set 2 @[3, 0, 4, 0, 0, 0, 5]", "34 intConst @[3, 0, 4, 0, 0, 0, 4]", "35 br_if 0 @[3, 0, 4, 0, 0, 0, 3]", "36 intRelOp @[3, 0, 4, 0, 0, 0, 2]", "37 intConst @[3, 0, 4, 0, 0, 0, 1]", "38 local.get 0 @[3, 0, 4, 0, 0, 0, 0]", "39 br_if 0 @[3, 0, 3]", "40 local.tee 2 @[3, 0, 2]", "41 intLoad @[3, 0, 1]", "42 intConst @[3, 0, 0]", "43 local.set 1 @[2]", "44 intLoad @[1]", "45 intConst @[0]"]
+labels = ["flow"]
+edges = [
+  ["4 intStore @[9]", "flow", "exit"],
+  ["5 local.get 2 @[8]", "flow", "4 intStore @[9]"],
+  ["6 intConst @[7]", "flow", "5 local.get 2 @[8]"],
+  ["7 intStore @[6]", "flow", "6 intConst @[7]"],
+  ["8 local.get 1 @[5]", "flow", "7 intStore @[6]"],
+  ["9 intConst @[4]", "flow", "8 local.get 1 @[5]"],
+  ["10 block @[3]", "flow", "42 intConst @[3, 0, 0]"],
+  ["11 call 3 @[3, 0, 5]", "flow", "9 intConst @[4]"],
+  ["12 block @[3, 0, 4]", "flow", "22 block @[3, 0, 4, 0, 0]"],
+  ["13 br 1 @[3, 0, 4, 0, 9]", "flow", "9 intConst @[4]"],
+  ["14 local.set 1 @[3, 0, 4, 0, 8]", "flow", "13 br 1 @[3, 0, 4, 0, 9]"],
+  ["15 intConst @[3, 0, 4, 0, 7]", "flow", "14 local.set 1 @[3, 0, 4, 0, 8]"],
+  ["16 call 2 @[3, 0, 4, 0, 6]", "flow", "15 intConst @[3, 0, 4, 0, 7]"],
+  ["17 call 1 @[3, 0, 4, 0, 5]", "flow", "16 call 2 @[3, 0, 4, 0, 6]"],
+  ["18 call 0 @[3, 0, 4, 0, 4]", "flow", "17 call 1 @[3, 0, 4, 0, 5]"],
+  ["19 intConst @[3, 0, 4, 0, 3]", "flow", "18 call 0 @[3, 0, 4, 0, 4]"],
+  ["20 local.set 2 @[3, 0, 4, 0, 2]", "flow", "19 intConst @[3, 0, 4, 0, 3]"],
+  ["21 intConst @[3, 0, 4, 0, 1]", "flow", "20 local.set 2 @[3, 0, 4, 0, 2]"],
+  ["22 block @[3, 0, 4, 0, 0]", "flow", "38 local.get 0 @[3, 0, 4, 0, 0, 0, 0]"],
+  ["23 br 2 @[3, 0, 4, 0, 0, 0, 15]", "flow", "9 intConst @[4]"],
+  ["24 local.set 2 @[3, 0, 4, 0, 0, 0, 14]", "flow", "23 br 2 @[3, 0, 4, 0, 0, 0, 15]"],
+  ["25 intConst @[3, 0, 4, 0, 0, 0, 13]", "flow", "24 local.set 2 @[3, 0, 4, 0, 0, 0, 14]"],
+  ["26 br_if 1 @[3, 0, 4, 0, 0, 0, 12]", "flow", "11 call 3 @[3, 0, 5]"],
+  ["26 br_if 1 @[3, 0, 4, 0, 0, 0, 12]", "flow", "25 intConst @[3, 0, 4, 0, 0, 0, 13]"],
+  ["27 intRelOp @[3, 0, 4, 0, 0, 0, 11]", "flow", "26 br_if 1 @[3, 0, 4, 0, 0, 0, 12]"],
+  ["28 intConst @[3, 0, 4, 0, 0, 0, 10]", "flow", "27 intRelOp @[3, 0, 4, 0, 0, 0, 11]"],
+  ["29 local.tee 1 @[3, 0, 4, 0, 0, 0, 9]", "flow", "28 intConst @[3, 0, 4, 0, 0, 0, 10]"],
+  ["30 intBinOp @[3, 0, 4, 0, 0, 0, 8]", "flow", "29 local.tee 1 @[3, 0, 4, 0, 0, 0, 9]"],
+  ["31 intConst @[3, 0, 4, 0, 0, 0, 7]", "flow", "30 intBinOp @[3, 0, 4, 0, 0, 0, 8]"],
+  ["32 local.get 1 @[3, 0, 4, 0, 0, 0, 6]", "flow", "31 intConst @[3, 0, 4, 0, 0, 0, 7]"],
+  ["33 local.set 2 @[3, 0, 4, 0, 0, 0, 5]", "flow", "32 local.get 1 @[3, 0, 4, 0, 0, 0, 6]"],
+  ["34 intConst @[3, 0, 4, 0, 0, 0, 4]", "flow", "33 local.set 2 @[3, 0, 4, 0, 0, 0, 5]"],
+  ["35 br_if 0 @[3, 0, 4, 0, 0, 0, 3]", "flow", "21 intConst @[3, 0, 4, 0, 1]"],
+  ["35 br_if 0 @[3, 0, 4, 0, 0, 0, 3]", "flow", "34 intConst @[3, 0, 4, 0, 0, 0, 4]"],
+  ["36 intRelOp @[3, 0, 4, 0, 0, 0, 2]", "flow", "35 br_if 0 @[3, 0, 4, 0, 0, 0, 3]"],
+  ["37 intConst @[3, 0, 4, 0, 0, 0, 1]", "flow", "36 intRelOp @[3, 0, 4, 0, 0, 0, 2]"],
+  ["38 local.get 0 @[3, 0, 4, 0, 0, 0, 0]", "flow", "37 intConst @[3, 0, 4, 0, 0, 0, 1]"],
+  ["39 br_if 0 @[3, 0, 3]", "flow", "9 intConst @[4]"],
+  ["39 br_if 0 @[3, 0, 3]", "flow", "12 block @[3, 0, 4]"],
+  ["40 local.tee 2 @[3, 0, 2]", "flow", "39 br_if 0 @[3, 0, 3]"],
+  ["41 intLoad @[3, 0, 1]", "flow", "40 local.tee 2 @[3, 0, 2]"],
+  ["42 intConst @[3, 0, 0]", "flow", "41 intLoad @[3, 0, 1]"],
+  ["43 local.set 1 @[2]", "flow", "10 block @[3]"],
+  ["44 intLoad @[1]", "flow", "43 local.set 1 @[2]"],
+  ["45 intConst @[0]", "flow", "44 intLoad @[1]"],
+]
+initial = ["45 intConst @[0]"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]

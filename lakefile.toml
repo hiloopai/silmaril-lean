@@ -105,6 +105,7 @@ globs = [
   "Silmaril.RiscV.+", "Silmaril.SSA.+",
   "Silmaril.Semantics.+", "Silmaril.Wasm.Abstract.+", "Silmaril.Wasm.Auto.+", "Silmaril.Wasm.Auto2.+",
   "Silmaril.Wasm.Behaviour.+", "Silmaril.Wasm.Binary.+", "Silmaril.Wasm.Binaryen.+",
+  "Silmaril.Wasm.Cfg.+",
   "Silmaril.Wasm.Component.+", "Silmaril.Wasm.Declaration", "Silmaril.Wasm.Equiv.+",
   "Silmaril.Wasm.Examples.+", "Silmaril.Wasm.Execution.+", "Silmaril.Wasm.Extensions.+",
   "Silmaril.Wasm.FX.+", "Silmaril.Wasm.FnInst.+", "Silmaril.Wasm.Game.+",
