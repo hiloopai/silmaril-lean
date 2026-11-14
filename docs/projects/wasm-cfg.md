@@ -130,8 +130,9 @@ Method:
 - Each case is one file importing `Silmaril.Wasm.Cfg.BlockCfg.Thms`, run with `lake env lean`.
 - *Runtime* is `#eval (blockCfg body).length`; *kernel* is
   `theorem : (blockCfg body).length = n := by decide +kernel`.
-- Wall time minus the 3.0 s import-only baseline. Single runs on a 2-core CI-class container,
-  toolchain `nightly-2026-11-05`. Differences under about 0.3 s are noise.
+- Wall time minus the 3.0 s import-only baseline. One run per case on a 2-core container,
+  toolchain `nightly-2026-11-05`. Run-to-run variation of the whole process was about 0.3 s, so
+  smaller differences are not resolved.
 
 Bodies:
 - `synth d` nests `d` loops, each level `local.get 0; br_if 1; loop … br 0 end; nop`
@@ -140,19 +141,21 @@ Bodies:
 
 | body | blocks | runtime | kernel |
 |------|-------:|--------:|-------:|
-| `synth 10` | 31 | < 0.3 s | < 0.3 s |
-| `synth 50` | 151 | < 0.3 s | < 0.3 s |
-| `synth 200` | 601 | < 0.3 s | 2.3 s |
-| `synth 400` | 1201 | < 0.3 s | 9.7 s |
-| `synth 800` | 2401 | < 0.3 s | 57 s |
-| `flat 1000` | 1000 | < 0.3 s | 0.4 s |
-| `flat 4000` | 4000 | < 0.3 s | 1.7 s |
+| `synth 10` | 31 | not resolved | not resolved |
+| `synth 50` | 151 | not resolved | not resolved |
+| `synth 200` | 601 | not resolved | 2.3 s |
+| `synth 400` | 1201 | not resolved | 9.7 s |
+| `synth 800` | 2401 | not resolved | 57 s |
+| `flat 1000` | 1000 | not resolved | 0.4 s (near resolution) |
+| `flat 4000` | 4000 | not resolved | 1.7 s |
 
-Reading:
-- Runtime evaluation is below measurement resolution at every size tried.
-- The kernel is close to linear in the number of blocks for shallow bodies.
-- It grows faster than quadratically with nesting depth. Each nested block's identity carries its
-  full path, so the kernel rebuilds and compares paths of length up to the depth.
-- Real function bodies are shallow, so kernel checking per function is practical. Deeply nested
-  generated code would want path sharing or a de Bruijn-style relative identity.
-
+Reading (these single runs only; no general complexity claim):
+- *Runtime:* every `#eval` run finished within the baseline's run-to-run variation. That is a
+  measurement-resolution statement about these cases, not a time bound.
+- *Kernel, nesting:* checking time is sensitive to nesting depth. Doubling the depth from 200 to
+  400 multiplied it by about 4.2 (2.3 s to 9.7 s), and from 400 to 800 by about 5.9 (9.7 s to
+  57 s). Three points from one run each do not fix a growth rate.
+- *Kernel, flat:* for the flat family, 4000 blocks took 1.7 s.
+- Each nested block's identity carries its full path, which is a plausible source of the depth
+  sensitivity; this was not profiled.
+- These two synthetic families say nothing measured about other function shapes.
