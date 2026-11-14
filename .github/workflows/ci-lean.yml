@@ -85,27 +85,22 @@ jobs:
     # check on hiloop's prove service (hiloop devops/deploy/hosted/prove.md): the worker restores
     # from the pool, builds the targets with --wfail and runs `make check` in that checkout, so this
     # runner downloads no toolchain and no build. It keeps the target choice, which reads Git
-    # history, and runs the source gates itself when no Lake target is in scope. After main's checks
-    # pass, the worker builds and publishes main's commit with its seed (`publish-build`).
+    # history, and runs the source gates itself when no Lake target is in scope. Main's build is
+    # published by lake-publish.yml once CI passes.
     if: >-
       github.repository == 'hiloopai/silmaril-lean' &&
       !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     name: check on prove
     runs-on: ubuntu-24.04
-    # A main publication after a toolchain change, or a seed dispatch, may build cold: 90 minutes.
+    # Main after a toolchain change, or a seed dispatch, may build cold: 90 minutes.
     timeout-minutes: ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.seed)) && 90 || 30 }}
     permissions:
       contents: read
-      # GitHub OIDC for the prove api and for the Lean CAS role, which reads the client and lets
-      # the publication put main's source tree in the pool.
+      # GitHub OIDC for the prove api and for the Lean CAS role, which reads the client.
       id-token: write
     env:
       AWS_REGION: us-east-1
       CLIENT: s3://hiloop-lean-cas-607856468300-us-east-1/clients/7a977e3af86c/
-      # Main pushes and main seed dispatches publish main's build with its seed.
-      PUBLISH: >-
-        ${{ github.ref == 'refs/heads/main' &&
-            (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.seed)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -158,13 +153,6 @@ jobs:
           for target in $CHECK_TARGETS; do args+=(--build "$target"); done
           case " $CHECK_TARGETS " in *" wasm-opt "*) args+=(--out build/wasm-checks.json) ;; esac
           hiloop-prove run "${args[@]}" -- make check CHECK_TARGETS="$CHECK_TARGETS"
-      # The worker records a strict build of every target under main's commit and publishes it with
-      # main's seed, for hosts that never installed silmaril-lean.
-      - name: Publish main's build on prove
-        if: env.PUBLISH == 'true' && env.CHECK_TARGETS != ''
-        run: |
-          # shellcheck disable=SC2086 # one word per target
-          hiloop-prove publish-build $CHECK_TARGETS
       - name: Retain native check results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
