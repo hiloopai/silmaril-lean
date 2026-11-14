@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Formats.Compression.Defs
+public import Silmaril.Formats.Compression.XxHash.Defs
 
 /-!
 # Zstandard frames (RFC 8878): the uncompressed subset
@@ -11,7 +12,7 @@ the first milestone of the zstd plan in docs/projects/content-coding.md, not a
 zstd decoder: real encoders emit compressed blocks almost always.
 
 * `xxh64 seed bytes`: XXH64 (RFC 8878 §3.1.1, used for `Content_Checksum`), the
-  64-bit xxHash, written from its published algorithm over `UInt64`;
+  64-bit xxHash of `Formats.Compression.XxHash`;
 * `windowSize`: the `Window_Descriptor` formula of §3.1.1.1.2;
 * `parseHeader`: the frame header (§3.1.1.1): `Frame_Header_Descriptor` (reserved
   bit must be 0), `Window_Descriptor` (absent with `Single_Segment_Flag`, where
@@ -39,67 +40,14 @@ namespace Silmaril.Formats.Compression.Zstd
 
 namespace Xxh64
 
-def p1 : UInt64 := 0x9E3779B185EBCA87
-def p2 : UInt64 := 0xC2B2AE3D27D4EB4F
-def p3 : UInt64 := 0x165667B19E3779F9
-def p4 : UInt64 := 0x85EBCA77C2B2AE63
-def p5 : UInt64 := 0x27D4EB2F165667C5
-
-/-- Rotate left by `r` (`0 < r < 64`). -/
-def rotl (x : UInt64) (r : UInt64) : UInt64 := (x <<< r) ||| (x >>> (64 - r))
-
 /-- A little-endian integer of a byte string. -/
 def leNat (bs : List UInt8) : Nat := bs.foldr (fun b acc => b.toNat + 256 * acc) 0
 
-/-- A little-endian 64-bit lane. -/
-def lane (bs : List UInt8) : UInt64 := (leNat bs).toUInt64
-
-def round (acc input : UInt64) : UInt64 := rotl (acc + input * p2) 31 * p1
-
-def mergeRound (acc v : UInt64) : UInt64 := (acc ^^^ round 0 v) * p1 + p4
-
-/-- The four accumulators over whole 32-byte stripes; returns them and the tail. -/
-def stripes : Nat → UInt64 × UInt64 × UInt64 × UInt64 → List UInt8 →
-    (UInt64 × UInt64 × UInt64 × UInt64) × List UInt8
-  | 0, v, bs => (v, bs)
-  | fuel + 1, (v1, v2, v3, v4), bs =>
-    if 32 ≤ bs.length then
-      stripes fuel (round v1 (lane (bs.take 8)), round v2 (lane ((bs.drop 8).take 8)),
-        round v3 (lane ((bs.drop 16).take 8)), round v4 (lane ((bs.drop 24).take 8))) (bs.drop 32)
-    else ((v1, v2, v3, v4), bs)
-
-/-- The tail: 8-byte lanes, then a 4-byte lane, then single bytes. -/
-def tail : Nat → UInt64 → List UInt8 → UInt64
-  | 0, acc, _ => acc
-  | fuel + 1, acc, bs =>
-    if 8 ≤ bs.length then
-      tail fuel (rotl (acc ^^^ round 0 (lane (bs.take 8))) 27 * p1 + p4) (bs.drop 8)
-    else if 4 ≤ bs.length then
-      tail fuel (rotl (acc ^^^ lane (bs.take 4) * p1) 23 * p2 + p3) (bs.drop 4)
-    else
-      match bs with
-      | [] => acc
-      | b :: rest => tail fuel (rotl (acc ^^^ b.toUInt64 * p5) 11 * p1) rest
-
-def avalanche (h : UInt64) : UInt64 :=
-  let h := (h ^^^ (h >>> 33)) * p2
-  let h := (h ^^^ (h >>> 29)) * p3
-  h ^^^ (h >>> 32)
-
 end Xxh64
 
-open Xxh64 in
-/-- **XXH64** of `bytes` with `seed`. -/
-def xxh64 (seed : UInt64) (bytes : List UInt8) : UInt64 :=
-  let n := bytes.length
-  let (acc, rest) :=
-    if 32 ≤ n then
-      let ((v1, v2, v3, v4), rest) :=
-        stripes (n / 32) (seed + p1 + p2, seed + p2, seed, seed - p1) bytes
-      let acc := rotl v1 1 + rotl v2 7 + rotl v3 12 + rotl v4 18
-      (mergeRound (mergeRound (mergeRound (mergeRound acc v1) v2) v3) v4, rest)
-    else (seed + p5, bytes)
-  avalanche (tail (rest.length + 1) (acc + n.toUInt64) rest)
+/-- **XXH64** of `bytes` with `seed`: the library's `XxHash.xxh64` (one definition,
+shared with `Checksum.xxh64Low32`). -/
+abbrev xxh64 (seed : UInt64) (bytes : List UInt8) : UInt64 := XxHash.xxh64 seed bytes
 
 /-- The 32-bit `Content_Checksum` of a frame's content: the low 32 bits of
 `xxh64 0`, little-endian. -/

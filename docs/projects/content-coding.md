@@ -238,5 +238,5 @@ lake build --wfail Silmaril.Formats.Compression.Registry.Thms \
   §7.2 requires through RFC 9110 §8.4.1.3. `ContainerSpec.gzipDecompress_iff` and
   `ContainerSpec.zlib_take_iff` are the decoder laws for both; the status table here still
   cites the stored round trips.
-- **xxHash:** `Zstd.xxh64` here and `Checksum.xxh64Low32` (`Formats/Compression/XxHash`,
-  #169) are separate definitions; once both have landed, zstd should use the `XxHash` one.
+- **xxHash:** `Zstd.xxh64` is `XxHash.xxh64` (#169), one definition for zstd and the
+  `Checksum.xxh64Low32` streaming checksum.
