@@ -1,0 +1,8 @@
+85ddd6a396087d8e2d867e929bbfb606a7531484a0512d099da07f4332ea505a  mailbox/obj/ok.gcc.o
+3d50bc34962985525cdfb35459e69f56c6bdf43336f48d94b27f4c5ab53bb795  mailbox/obj/ok.clang.o
+dde81fdac592ddc91e0baf8cd9d92143b0821acf50191fe9b32faa4670b67f46  mailbox/obj/swap.gcc.o
+f35582a68b1801df606e784f40aadb35be9e1446646c9a471680e9dce2588c8b  mailbox/obj/swap.clang.o
+1433e59c13804e2e9fd22edcb7922ae971b48ed4cfcbe42fd56521b5b2956ec4  ring/obj/ok.gcc.o
+25fbb8e50c9b3062570e5f8537cd3279ab2ec1fbdd639166488dd5868f263f94  ring/obj/ok.clang.o
+2edaff4b5cac9de3e85bb38923b64e4f12938b1a95a359d906cdf6aaf505d675  ring/obj/swap.gcc.o
+e5a874e17a2c43eaf68e7d6a16253158364552e9a5580e6afcc1f0c49271d08f  ring/obj/swap.clang.o

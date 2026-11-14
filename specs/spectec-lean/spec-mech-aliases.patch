@@ -1,0 +1,24 @@
+diff -ru pin/specification/wasm-3.0/1.2-syntax.types.spectec pinm2/specification/wasm-3.0/1.2-syntax.types.spectec
+--- a/specification/wasm-3.0/1.2-syntax.types.spectec
++++ b/specification/wasm-3.0/1.2-syntax.types.spectec
+@@ -52,9 +52,9 @@
+   | ... | BOT
+ 
+ 
+-syntax Inn hint(show I#N) hint(macro "nt%") = I32 | I64
++syntax Inn hint(show I#N) hint(macro "nt%") = addrtype
+ syntax Fnn hint(show F#N) hint(macro "nt%") = F32 | F64
+-syntax Vnn hint(show V#N) hint(macro "nt%") = V128
++syntax Vnn hint(show V#N) hint(macro "nt%") = vectype
+ syntax Cnn hint(show t) = Inn | Fnn | Vnn
+ 
+ 
+@@ -94,7 +94,7 @@
+ 
+ syntax Pnn hint(show I#N) hint(macro "nt%") = packtype
+ syntax Jnn hint(show I#N) hint(macro "nt%") = Inn | Pnn
+-syntax Lnn hint(show I#N) hint(macro "nt%") = Inn | Fnn | Pnn
++syntax Lnn hint(show I#N) hint(macro "nt%") = lanetype
+ 
+ 
+ ;; Result types

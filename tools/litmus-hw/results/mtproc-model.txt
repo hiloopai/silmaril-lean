@@ -1,0 +1,6 @@
+# Silmaril/Proofs/Process/Mt/Explore.lean: every schedule of the executable SC scheduler
+# (Mt.X86.exec1), checked by #guard; observations as in mtproc-hw-*.txt
+SB        [r1, r2, status]     {[0,1,0], [1,0,0], [1,1,0]}   924 schedules
+MP        [flag, data, status] {[0,0,0], [0,1,0], [1,1,0]}
+INC2      [x, status]          {[1,0], [2,0]}
+LOCKINC2  [x, status]          {[2,0]}

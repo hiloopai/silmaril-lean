@@ -1,0 +1,19 @@
+# Drepper's futex mutex: two increments under the lock give 2.
+name Mutex
+source mutex.c
+loc m 0x10000 4 0
+loc c 0x10040 4 0
+loc d0 0x10080 4 0
+loc d1 0x100c0 4 0
+loc q 0x1010000 1 0
+thread P0
+thread P1
+quant forall
+cond c=2
+verdict forbidden forbidden forbidden
+dom 0 1 2
+cir mutex 1
+fuel 60
+waits 1
+blk false
+check tv

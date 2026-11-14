@@ -1,0 +1,7 @@
+X86_64 MP+movnti
+"Hand-written loose corner (non-temporal): MP whose data store is movnti. Not covered by x86-TSO; XL verdict only."
+{ int x=0; int y=0; 0:rax=1; }
+ P0               | P1            ;
+ movnti %eax,(x)  | movl (y),%eax ;
+ movl $1,(y)      | movl (x),%ebx ;
+exists (1:rax=1 /\ 1:rbx=0)

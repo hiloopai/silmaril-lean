@@ -64,8 +64,9 @@ would be stated against it.
   `inftrees.h`), the slow-path table `lookup` and `decode`, and the fixed tables
   `lenfix` and `distfix` of `inffixed.h`.
 
-`Task.member_complete` and `Task.raw_complete` (frozen, open) are the
-completeness directions.
+`Task.member_complete` and `Task.raw_complete` are the completeness directions,
+proved as `Inflate.task_member_complete` and `Inflate.task_raw_complete` (see
+`Inflate.Thms`, which also proves them for both versions and for gzip).
 -/
 
 @[expose] public section
@@ -108,11 +109,13 @@ def raw (version : Stream.Version) : Incremental where
 zlib and `Gzip.member` for gzip. -/
 abbrev shared : MemberSemantics.Kind → Decoder := MemberMachine.shared
 
-/-- **Open (frozen): member completeness.** Every zlib member is finished by the
-zlib 1.3.1 member machine with a schedule that offers no further input. -/
+/-- **Member completeness** (proved: `Inflate.task_member_complete`). Every zlib
+member is finished by the zlib 1.3.1 member machine with a schedule that offers
+no further input. -/
 def Task.member_complete : Prop := (member .v131 .zlib).Complete Zlib.decoder
 
-/-- **Open (frozen): raw completeness.** The same for the raw DEFLATE machine. -/
+/-- **Raw completeness** (proved: `Inflate.task_raw_complete`). The same for the
+raw DEFLATE machine. -/
 def Task.raw_complete : Prop := (raw .v131).Complete Deflate.decoder
 
 /-- `Zlib.sampleHello` offered as `78 | 9c cb 48 | cd c9 c9 07 00 06 | 2c 02 15 07`,
