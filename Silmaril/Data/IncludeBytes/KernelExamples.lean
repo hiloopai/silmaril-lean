@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Data.IncludeBytes
-public import Silmaril.Data.IncludeBytes.Kernel
+public import Silmaril.Data.IncludeBytes.KernelNative
 public import Silmaril.Prelude.Trust.Policy.Defs
 -- A native run interprets `IncludeBytes.decode`, so its code must be loaded at elaboration time.
 meta import Silmaril.Data.IncludeBytes.Types
@@ -51,7 +51,7 @@ kbytes_def helloC from_file "../../../examples/dyn/pinned/hello-gcc" computable
 
 /-- `raw` is a computation, not chunk literals, so `kbytes_rel` runs `bytes.eqByteArray`
 natively (default profile). -/
-theorem helloC_extract : helloC.toByteArray = helloRawC.extract 0 helloRawC.size := by kbytes_rel
+theorem helloC_extract : helloC.toByteArray = helloRawC.extract 0 helloRawC.size := by kbytes_rel_native
 
 -- The paranoid profile has no way to check it: `bytes.eqByteArray` has no kernel fallback.
 /--
@@ -59,7 +59,7 @@ error: edge_decide: bytes.eqByteArray may not run natively in Silmaril.Data.Incl
 -/
 #guard_msgs in
 set_option silmaril.trust.profile "paranoid" in
-example : helloC.toByteArray = helloRawC.extract 0 helloRawC.size := by kbytes_rel
+example : helloC.toByteArray = helloRawC.extract 0 helloRawC.size := by kbytes_rel_native
 
 -- The structural bridge has no native axiom; the fallback has one.
 /--

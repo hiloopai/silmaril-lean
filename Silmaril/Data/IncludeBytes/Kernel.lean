@@ -2,7 +2,6 @@ module
 
 public import Silmaril.Data.IncludeBytes.Types
 public import Silmaril.Prelude.Bytes.Elab.Defs
-public import Silmaril.Prelude.Bytes.Native.Defs
 public meta import Lean.Elab.Tactic
 
 /-! # Raw bytes and kernel bytes
@@ -16,9 +15,12 @@ literals as a tree the kernel reads quickly. This module relates the two with no
   `raw` and proves `x.toByteArray_eq : x.toByteArray = raw`.
 * `kbytes_rel` proves `K.toByteArray = raw` for a `kbytes_def` constant `K` and a term `raw`
   that unfolds to `decode` of the same literals. Its kernel check unfolds `ofChunks` on the
-  literal list and compares literals; it decodes no byte. For any other closed `raw`, it falls
-  back to `edge_decide` with `bytes.eqByteArray`, which runs natively when the policy allows
-  and otherwise fails, since that procedure has no kernel fallback.
+  literal list and compares literals; it decodes no byte.
+
+Everything here is kernel-checked. `kbytes_rel` has **no fallback**: on any other goal (a
+`raw` that is a computation rather than chunk literals, or literals that differ) it fails with
+an error and proves nothing. A native fallback for such goals is a separate trust-policy
+decision (the native procedures of hiloopai/silmaril-lean#125), not part of this module.
 -/
 
 @[expose] public section
@@ -92,7 +94,7 @@ syntax (name := kbytesOfInclude) "kbytes_def " ident &" of_include " ident (&" c
     (mkNatLit n) (mkConst (name ++ `chunks)) |>.app (mkConst (name ++ `eq_ofChunks))
   liftCoreM <| KBytes.Elab.addThm (name ++ `toByteArray_eq) ty pf
 
-/-- Prove `K.toByteArray = raw` (see the module docstring). -/
+/-- Prove `K.toByteArray = raw` structurally, or fail (see the module docstring). -/
 syntax (name := kbytesRel) "kbytes_rel" : tactic
 
 @[tactic kbytesRel] def evalKBytesRel : Tactic := fun _ => withMainContext do
@@ -100,22 +102,22 @@ syntax (name := kbytesRel) "kbytes_rel" : tactic
   let ty ← instantiateMVars (← goal.getType)
   let some (_, lhs, rhs) := ty.eq?
     | throwError "kbytes_rel: the goal must be `K.toByteArray = raw`"
-  let structural : TacticM Bool := do
-    unless lhs.isAppOfArity ``KBytes.toByteArray 1 do return false
-    let some k := lhs.appArg!.constName? | return false
-    let env ← getEnv
-    unless env.contains (k ++ `eq_ofChunks) do return false
-    let some (c, n, _) ← decodeArgs? rhs | return false
-    let pf := mkApp4 (mkConst ``IncludeBytes.toByteArray_eq_decode) (mkConst k) (mkNatLit c)
-      (mkNatLit n) (mkConst (k ++ `chunks)) |>.app (mkConst (k ++ `eq_ofChunks))
-    -- The kernel checks that `raw` unfolds to `decode c n k.chunks`, comparing literals.
-    try
-      let lemma ← withOptions (Elab.async.set · false) do mkAuxLemma [] ty pf
-      goal.assign (mkConst lemma)
-      return true
-    catch _ => return false
-  if ← structural then replaceMainGoal []
-  else
-    evalTactic (← `(tactic| exact KBytes.toByteArray_eq_of_eqByteArray _ _ (by edge_decide)))
+  unless lhs.isAppOfArity ``KBytes.toByteArray 1 do
+    throwError "kbytes_rel: the left-hand side must be `K.toByteArray`"
+  let some k := lhs.appArg!.constName?
+    | throwError "kbytes_rel: the left-hand side must be `K.toByteArray` for a constant `K`"
+  unless (← getEnv).contains (k ++ `eq_ofChunks) do
+    throwError "kbytes_rel: {k} is not defined by `kbytes_def` (no `{k ++ `eq_ofChunks}`)"
+  let some (c, n, _) ← decodeArgs? rhs
+    | throwError "kbytes_rel: the right-hand side does not unfold to `IncludeBytes.decode c n \
+        [literals]`; there is no fallback (no native evaluation)"
+  let pf := mkApp4 (mkConst ``IncludeBytes.toByteArray_eq_decode) (mkConst k) (mkNatLit c)
+    (mkNatLit n) (mkConst (k ++ `chunks)) |>.app (mkConst (k ++ `eq_ofChunks))
+  -- The kernel checks that `raw` unfolds to `decode c n k.chunks`, comparing literals.
+  let lemma ← try withOptions (Elab.async.set · false) do mkAuxLemma [] ty pf
+    catch _ => throwError "kbytes_rel: the kernel rejected `{k}.toByteArray = decode {c} {n} \
+        {k}.chunks` for this right-hand side (its literals are not {k}'s)"
+  goal.assign (mkConst lemma)
+  replaceMainGoal []
 
 end Silmaril.IncludeBytes.Kernel
