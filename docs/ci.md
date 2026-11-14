@@ -52,13 +52,14 @@ outside this measurement. Reruns use the current attempt's start time.
    and archive tool, so the build compiles only what changed since that commit.
 2. Lake checks the current input traces. Cache presence never counts as a
    passing test, and all native regression suites still run.
-3. After CI passes on a main push, the Lake pool workflow (`lake-publish.yml`) builds and
-   publishes main's commit on the prove worker (`hiloop-prove publish-build`): a recorded
-   build of every `make check` target, with a seed for hosts that never installed
-   silmaril-lean. It runs outside CI's time budget. The runner assumes the one pool role,
-   `gha-lean-cas`, which reads the client and puts the commit's source tree in the pool.
-   Fork pull requests get no OIDC token: they build on a free runner without the pool,
-   which does not fit the automatic limit.
+3. On every main push the Lake pool workflow (`lake-publish.yml`) builds and publishes
+   main's commit on the prove worker (`hiloop-prove publish-build`), beside CI and outside
+   its time budget: a recorded build of every `make check` target, with a seed for hosts
+   that never installed silmaril-lean. The prove service refuses `workflow_run` tokens,
+   so it cannot wait for CI; it publishes only a build that passes with `--wfail`. The
+   runner assumes the one pool role, `gha-lean-cas`, which reads the client and puts the
+   commit's source tree in the pool. Fork pull requests get no OIDC token: they build on
+   a free runner without the pool, which does not fit the automatic limit.
 
 After a toolchain or archive-tool change no published build matches. Run **CI**
 manually on **main** with **seed** checked: it builds cold with a 90-minute Lean

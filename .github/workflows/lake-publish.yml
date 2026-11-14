@@ -4,12 +4,11 @@ name: Lake pool
 # with its seed, for pull requests, prove sessions and hosts that never installed silmaril-lean.
 # hiloop's prove worker builds the commit next to the pool and publishes it
 # (`hiloop-prove publish-build`, hiloop devops/deploy/hosted/prove.md), so this runner downloads no
-# build. It runs after CI succeeds on main (a push, or a manual run such as the seed dispatch after a
-# toolchain change), outside CI's four-minute budget, and by hand on main.
+# build. It runs on every push to main, beside CI and outside its four-minute budget, and by hand on
+# main. The prove api accepts no `workflow_run` token (it runs on input a fork controls), so it
+# cannot wait for CI; `publish-build` publishes only a build that passes with --wfail.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
 
@@ -24,11 +23,7 @@ concurrency:
 jobs:
   publish:
     name: Publish main's Lake build
-    if: >-
-      github.repository == 'hiloopai/silmaril-lean' &&
-      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-       (github.event.workflow_run.conclusion == 'success' &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')))
+    if: github.repository == 'hiloopai/silmaril-lean' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     # A publication after a toolchain change builds cold on the worker.
     timeout-minutes: 90
@@ -44,7 +39,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           # The client diffs against the nearest commit main's CI published.
           fetch-depth: 65
       - name: Assume the Lean CAS role

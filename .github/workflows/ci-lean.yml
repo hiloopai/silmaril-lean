@@ -86,7 +86,7 @@ jobs:
     # from the pool, builds the targets with --wfail and runs `make check` in that checkout, so this
     # runner downloads no toolchain and no build. It keeps the target choice, which reads Git
     # history, and runs the source gates itself when no Lake target is in scope. Main's build is
-    # published by lake-publish.yml once CI passes.
+    # published by lake-publish.yml on the same push.
     if: >-
       github.repository == 'hiloopai/silmaril-lean' &&
       !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
