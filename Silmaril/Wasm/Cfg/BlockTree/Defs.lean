@@ -15,8 +15,9 @@ the then-arm of `if`, and `1` for the else-arm. A **block** is identified by `Bl
 sequence path and its position in that sequence's segmentation. `blocks body` lists every block
 of a body with its identity, sequences in pre-order and blocks in order.
 
-This is the node set of the basic-block CFG relation (roadmap, layer 2); the edge relation over
-these identities is next.
+`lookup body b` names the block declaratively, from the canonical segmentation alone;
+`blocks` is proved to list exactly its graph (`mem_blocks`). This is the node set of the
+basic-block CFG relation (roadmap, layer 2); the edge relation over these identities is next.
 -/
 
 namespace Silmaril.Wasm.Cfg
@@ -49,5 +50,29 @@ end
 
 /-- The basic blocks of a function body. -/
 def blocks (body : Expr) : List (BlockId × Segment) := walk [] 0 [] body
+
+/-- The nested sequence that arm `a` of terminator `t` opens: the body of `block`, `loop` and
+`try_table` (arm `0`), or the then- (`0`) and else-arm (`1`) of `if`. -/
+def armOf : Instr → Nat → Option (List Instr)
+  | .block _ b, 0 | .loop _ b, 0 | .tryTable _ _ b, 0 => some b
+  | .if_ _ t _, 0 => some t
+  | .if_ _ _ e, 1 => some e
+  | _, _ => none
+
+/-- The block at sequence path `q`, position `j`, below segments `segs` numbered from `k`:
+defined from the canonical segmentation alone. -/
+def blockAt (segs : List Segment) (k : Nat) : List SeqStep → Nat → Option Segment
+  | [], j => if k ≤ j then segs[j - k]? else none
+  | (m, a) :: q, j =>
+    if k ≤ m then do
+      let s ← segs[m - k]?
+      let t ← s.term
+      let c ← armOf t a
+      blockAt (segment c) 0 q j
+    else none
+
+/-- **The block a `BlockId` names in a body**, if any: follow the path through the canonical
+segmentations of the nested sequences, then take the position. -/
+def lookup (body : Expr) (b : BlockId) : Option Segment := blockAt (segment body) 0 b.seq b.idx
 
 end Silmaril.Wasm.Cfg
