@@ -16,7 +16,8 @@ and [`Thms.lean`](../../Silmaril/Formats/Compression/Thms.lean):
 | Member decoder | `Decoder := List UInt8 → Option (List UInt8 × List UInt8)`: one self-delimiting member at the front of the input, and the rest | `Consumes` (the rest is a suffix), `Local` (bytes after a member pass through) |
 | Whole buffer, files | `Decoder.whole`, `Decoder.members` (one or more concatenated members) | `RoundTrip.members` |
 | Encoder, codec | `Encoder`, `RoundTrip d e`, `Codec` | `RoundTrip.whole`, `.surjective`, `.injective` |
-| Container | `Framing H` (header with metadata `H`, trailer check), `Framing.wrap`, `Framing.encode` | `wrap_consumes`, `wrap_local`, `wrap_trailer`, `wrap_roundTrip` |
+| Container | `Framing H` (header with metadata `H`, trailer check), `Framing.wrap`, `Framing.wrapDep` (body chosen by the header), `Framing.encode` | `wrap_consumes`, `wrap_local`, `wrap_trailer`, `wrap_roundTrip`, and their `wrapDep_*` forms |
+| Resources | `Decoder.OutputLinear k` | `whole_outputLinear`, `members_outputLinear`, `wrapDep_outputLinear` |
 | Checksum | `Checksum` (`init`, `update`, `finish`), `Checksum.digest` | `digest_append` |
 | Streaming | `Incremental` (machine, calls, `status`), `Sound`, `RejectSound`, `Complete` | `sound_agree`, `local_of_sound_complete` |
 
@@ -24,6 +25,12 @@ The specification of a format is its member decoder; encoders are optional. A
 new format adds a topic `Formats/Compression/<Format>/{Defs,Thms}.lean` with its
 decoder. The framework docstring records where zstd, bzip2, xz/LZMA2, brotli
 and LZ4 fit; none of them is implemented.
+
+Parameterised formats (`Format`, `Encoding`), per-format capability claims
+(`Capability`, `Certified`, with security notes as data only) and whole-message
+transforms (`Transform`, `andThen`) are described in
+[compression-framework.md](compression-framework.md); `Catalog` certifies
+DEFLATE, zlib, gzip and the identity coding in those terms.
 
 ## Formats
 
@@ -88,8 +95,9 @@ proofs that relate them to the framework are in
 ## Check
 
 ```sh
-lake build --wfail Silmaril.Formats.Compression.Inflate.Thms Silmaril.Formats.Compression.Gzip.Thms
+lake build --wfail Silmaril.Formats.Compression.Catalog.Thms Silmaril.Formats.Compression.Inflate.Thms \
+  Silmaril.Formats.Compression.Gzip.Thms
 ```
 
-These two headers import every compression module; `make library`
+These headers import every compression module; `make library`
 builds all of them.

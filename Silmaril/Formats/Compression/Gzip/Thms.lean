@@ -15,6 +15,7 @@ Proved (standard axioms):
 
 * `member_eq_decoder`: the format module's `gzipMember` is the framework
   container `framing.wrap Deflate.decoder`;
+* `framing_consumes`, `trailerIs`: the container laws;
 * `consumes`, `decoder_trailer`: a member consumes a prefix ending in the
   CRC-32/ISIZE trailer of its output, followed by the untouched rest;
 * `writes`, `roundTripFixed`, `codecFixed`: the emitted header and trailer are
@@ -39,6 +40,11 @@ namespace Silmaril.Formats.Compression.Gzip
 theorem member_eq_decoder : member = decoder := Proofs.Formats.Compression.Gzip.member_eq_decoder
 
 theorem consumes : decoder.Consumes := Proofs.Formats.Compression.Gzip.consumes
+
+theorem framing_consumes : framing.Consumes := Proofs.Formats.Compression.Gzip.framing_consumes
+
+/-- The trailer the container accepts after output `out` is `trailer out`. -/
+theorem trailerIs : framing.TrailerIs trailer := Proofs.Formats.Compression.Gzip.trailerIs
 
 /-- A member ends with the CRC-32 and ISIZE trailer of its output, then the rest. -/
 theorem decoder_trailer {bytes out rest : List UInt8} (h : decoder bytes = some (out, rest)) :
