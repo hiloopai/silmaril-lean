@@ -1,0 +1,59 @@
+# The values of the Wasm components pilot (Silmaril.Project.WasmComponents.Thms loads this file
+# first). Each registered binary is read under the format of what it is; the Silmaril-generated
+# components (`gen.comp_b`, `gen.linked`, `gen.run` and the two worlds) are certificates
+# (`@[value]` in Silmaril.Project.WasmComponents.Thms), not tables here.
+schema = "silmaril.records.v0.2"
+
+[[value]]
+name = "silmaril.wasm_components.adapter.reactor"
+format = "wasm.module.core3"
+source = "silmaril.wasm_components.adapter.reactor.blob"
+doc = "The wasi_snapshot_preview1 reactor adapter of wasmtime v50.0.1 (a core module)"
+
+[[value]]
+name = "silmaril.wasm_components.adapter.reactor.world"
+format = "wasm.module.world"
+source = "silmaril.wasm_components.adapter.reactor.blob"
+doc = "The world the reactor adapter embeds (its component-type custom section)"
+
+[[value]]
+name = "silmaril.wasm_components.adapter.command"
+format = "wasm.module.core3"
+source = "silmaril.wasm_components.adapter.command.blob"
+doc = "The wasi_snapshot_preview1 command adapter of wasmtime v50.0.1 (a core module)"
+
+[[value]]
+name = "silmaril.wasm_components.adapter.command.world"
+format = "wasm.module.world"
+source = "silmaril.wasm_components.adapter.command.blob"
+doc = "The world the command adapter embeds (its component-type custom section)"
+
+[[value]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.oci"
+format = "wasm.component.binary"
+source = "silmaril.wasm_components.wasi.io.v0_2_12.oci.blob"
+doc = "wasi:io@0.2.12 as published (OCI ghcr.io/webassembly/wasi/io:0.2.12), as a component"
+
+[[value]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.oci.package"
+format = "wit.binary"
+source = "silmaril.wasm_components.wasi.io.v0_2_12.oci.blob"
+doc = "wasi:io@0.2.12 as published, as a WIT package"
+
+[[value]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.fixture"
+format = "wasm.component.binary"
+source = "silmaril.wasm_components.wasi.io.v0_2_12.fixture.blob"
+doc = "wasi:io@0.2.12 encoded by wasm-tools 1.263.0 from the wasip2 1.0.4 crate (tests/wat), as a component"
+
+[[value]]
+name = "silmaril.wasm_components.wasi.io.v0_2_12.fixture.package"
+format = "wit.binary"
+source = "silmaril.wasm_components.wasi.io.v0_2_12.fixture.blob"
+doc = "wasi:io@0.2.12 encoded by wasm-tools 1.263.0 (tests/wat), as a WIT package"
+
+[[value]]
+name = "silmaril.wasm_components.gen.producer"
+format = "wasm.module.core3"
+source = "silmaril.wasm_components.gen.producer.blob"
+doc = "A core module exporting get = 42 (Binary.Example.producer)"

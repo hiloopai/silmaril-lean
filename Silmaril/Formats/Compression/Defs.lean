@@ -20,8 +20,12 @@ it; they do not need to share anything else.
 * `Decoder.Consumes`, `Decoder.Local`: the member boundary laws. `Consumes` says
   the rest is a suffix of the input; `Local` says bytes appended after a member
   do not change how it decodes.
+* `Decoder.OutputLinear`: the intrinsic resource law, at most `k` output bytes
+  per consumed input byte.
 * `Framing`, `Framing.wrap`: a container (header, body, trailer) around a body
-  decoder, e.g. zlib (RFC 1950) and gzip (RFC 1952) around DEFLATE (RFC 1951).
+  decoder, e.g. zlib (RFC 1950) and gzip (RFC 1952) around DEFLATE (RFC 1951);
+  `Framing.wrapDep`: the same with a body decoder chosen by the header metadata
+  (a zlib preset dictionary, a zstd frame's window and dictionary).
 * `Checksum`: an incremental 32-bit checksum (`init`, `update`, `finish`), such
   as Adler-32 and CRC-32.
 * `Incremental`: a streaming decoder that is offered input in calls, with the
@@ -31,6 +35,11 @@ Byte strings are `List UInt8` here, the normal form for proofs. Formats that
 expose `ByteArray` interfaces relate them to these list-level decoders.
 
 ## Where future formats go
+
+The parameterised formats, the per-format capability claims (`Certified`) and
+whole-message transforms built on this vocabulary are in
+`Silmaril.Formats.Compression.Format` and `Silmaril.Formats.Compression.Transform`
+(docs/projects/compression-framework.md).
 
 Each format is a topic `Silmaril/Formats/Compression/<Format>/{Defs,Thms}.lean`
 that defines its member `Decoder` (and optionally an `Encoder`), and states the
@@ -49,7 +58,8 @@ laws above. None of these is implemented yet:
 * **LZ4**: the LZ4 frame format (magic, frame descriptor, optional xxHash-32
   block and content checksums) is a `Framing` around LZ4 block decoding.
 
-A new checksum (XXH64, CRC-64) is a `Checksum`; a streaming decoder for a new
+A new 32-bit checksum is a `Checksum` (`XxHash` gives XXH32 and the low half of
+XXH64, the LZ4 and zstd content checksums); a streaming decoder for a new
 format is an `Incremental` proved `Sound` against the format's `Decoder`.
 -/
 
@@ -107,6 +117,13 @@ progress needs at most one member per input byte, so the fuel is the length. -/
 def members (d : Decoder) (bytes : List UInt8) : Option (List UInt8) :=
   d.membersFuel (bytes.length + 1) bytes []
 
+/-- **Linear output bound**: a member produces at most `k` output bytes per input
+byte it consumes. This is an intrinsic resource law of the decoder, not a limit
+applied after decoding. -/
+def OutputLinear (d : Decoder) (k : Nat) : Prop :=
+  ∀ ⦃bytes out rest : List UInt8⦄, d bytes = some (out, rest) →
+    out.length ≤ k * (bytes.length - rest.length)
+
 end Decoder
 
 /-! ## Encoders and codecs -/
@@ -150,6 +167,21 @@ def wrap (f : Framing H) (body : Decoder) : Decoder := fun bytes =>
       | none => none
       | some rest => some (out, rest)
 
+/-- The member decoder of a container whose **body decoder depends on the header
+metadata**: a zlib header selects the DEFLATE history (preset dictionary), a zstd
+frame header the window size, dictionary and checksum flag. `wrap` is the case
+of a fixed body (`Framing.wrap_eq_wrapDep`). -/
+def wrapDep (f : Framing H) (body : H → Decoder) : Decoder := fun bytes =>
+  match f.header bytes with
+  | none => none
+  | some (h, afterHeader) =>
+    match body h afterHeader with
+    | none => none
+    | some (out, afterBody) =>
+      match f.trailer h out afterBody with
+      | none => none
+      | some rest => some (out, rest)
+
 /-- Header and trailer consume prefixes. -/
 def Consumes (f : Framing H) : Prop :=
   (∀ ⦃bytes h rest⦄, f.header bytes = some (h, rest) → rest <:+ bytes) ∧
@@ -171,6 +203,13 @@ def TrailerIs (f : Framing H) (spec : List UInt8 → List UInt8) : Prop :=
 after output `out`: what an encoder writes. -/
 def Writes (f : Framing H) (hdr : List UInt8) (trl : List UInt8 → List UInt8) : Prop :=
   ∀ rest : List UInt8, ∃ h, f.header (hdr ++ rest) = some (h, rest) ∧
+    ∀ out tail : List UInt8, f.trailer h out (trl out ++ tail) = some tail
+
+/-- `hdr` is a header the container accepts with metadata `h`, and `trl out` a
+trailer it accepts after output `out` under that metadata: what an encoder
+writes when the body it emits depends on the header (`wrapDep_roundTrip`). -/
+def WritesAt (f : Framing H) (hdr : List UInt8) (h : H) (trl : List UInt8 → List UInt8) : Prop :=
+  (∀ rest : List UInt8, f.header (hdr ++ rest) = some (h, rest)) ∧
     ∀ out tail : List UInt8, f.trailer h out (trl out ++ tail) = some tail
 
 /-- The container's encoder around a body encoder. -/

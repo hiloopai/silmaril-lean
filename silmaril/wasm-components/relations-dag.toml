@@ -1,0 +1,32 @@
+# The verdict DAG of the WASI version relations of the Wasm components pilot (loaded last by
+# Silmaril.Project.WasmComponents.Relations.Thms). Detached node by node, as the rest of the pilot.
+schema = "silmaril.records.v0.2"
+
+[[group]]
+name = "silmaril.wasm_components.relations"
+title = "WASI 0.3 via 0.2 and 0.2 via 0.3: the components of the WASI-versions work"
+children = ["silmaril.wasm_components.p3_over_p2.implements_via", "silmaril.wasm_components.p2_over_p3.implements_via", "silmaril.wasm_components.p2_over_p3.implements_via_clock", "silmaril.wasm_components.p2_over_p3.loose", "silmaril.wasm_components.p2_over_p3.strict"]
+
+[[detached]]
+name = "silmaril.wasm_components.relations"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.p3_over_p2.implements_via"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.p2_over_p3.implements_via"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.p2_over_p3.implements_via_clock"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.p2_over_p3.loose"
+reason = "a case study"
+
+[[detached]]
+name = "silmaril.wasm_components.p2_over_p3.strict"
+reason = "a case study"

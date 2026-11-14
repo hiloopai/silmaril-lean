@@ -1,0 +1,8 @@
+X86_64 MP+movnti+lock
+"Hand-written loose corner (non-temporal): MP+movnti with a locked add after the movnti. Not covered by x86-TSO; XL verdict only."
+{ int x=0; int y=0; int s=0; 0:rax=1; }
+ P0                | P1            ;
+ movnti %eax,(x)   | movl (y),%eax ;
+ lock addl $0,(s)  | movl (x),%ebx ;
+ movl $1,(y)       |               ;
+exists (1:rax=1 /\ 1:rbx=0)

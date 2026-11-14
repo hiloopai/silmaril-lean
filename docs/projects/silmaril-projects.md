@@ -199,6 +199,7 @@ another project imports them.
 | answer | a theorem establishing one SZS status of a problem (THM, SAT, UNS, CSA) | Lean: `@[answers "n" thm]` |
 | instance | a problem obtained by fixing arguments of another | `[[instance]]` |
 | room | sentences, models and satisfaction; a sentence is a predicate over models | `[[room]]`, Lean: `silmaril problem … in` |
+| machine | a finite machine document (states, labels, edges, marking layers) and its typed bindings | `[[machine]]`, `[[machine_binding]]` |
 | group | a DAG node whose result is the vector of its children's verdicts | `[[group]]` |
 | sid | a 256-bit silmaril identifier, written as 64 lowercase hex digits | `sid = "…"` |
 
@@ -234,6 +235,8 @@ first and the DAG after the statements, as in the quick start.
 | `value` | **name**, **format**, **source**, sources = `[{format, source}]`, doc, sid | reads the bytes; defines `N`, `N.parses`, `N.agrees.k` |
 | `model`, `spec` | **name**, **decl**, doc, sid; a spec also model, format | |
 | `room` | **name**, **decl**, doc, sid | `decl : Room`; fills `sen`, `mod` |
+| `machine` | **name**, states, labels, edges (`[src, label, dst]`), initial, accepting, rejecting, error, doc, sid | a valid machine document; defines `N : Document`; fills `decl`, `deterministic`, `canonical` ([automata.md](automata.md)) |
+| `machine_binding` | **name**, **machine**, **decl**, marks, doc | proves `N.bound` (and `N.layers`): the typed machine `decl` is the document |
 | `instance` | **name**, **of**, **args**, and the judgement keys | defines the instance and its edge |
 | `tasks` | **module**, **prefix**, and the judgement keys except `expect` | every `Task.x : Prop` of the module as the open problem `prefix.x` |
 | `judgement` | **name**, model, spec, values, artifacts, expect, title, doc, sid | the problem exists, the values are registered |
