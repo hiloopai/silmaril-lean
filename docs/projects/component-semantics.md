@@ -98,9 +98,9 @@ No "components 1.0" is assumed: component features are `CMFeature` in
 | Injectivity on a behavioural quotient | `lDet_bisim_iff_traces`, `lDet_bisim_iff_denote`: erasure is injective on the bisimulation quotient of deterministic, silent-step-free machines | Proved. The case with silent steps (weak bisimulation) is planned. |
 | Nondet: trace equality does not determine the machine | `exists_traces_eq_not_bisim` (`a.b + a.c` against `a.(b + c)`) | Proved |
 | Generic model agrees with the existing `E ↠ F` strategies; erasure commutes with `Strategy.ofLTS` | `sigGame`, `SigBridge.strategyIso` (order isomorphism), `Machine.ofLTS`, `traces_ofLTS`, `SigBridge.strategyIso_ofLTS`, `strategyIso_sSup`/`sInf` (`Silmaril.Games.Abstract.SigBridge`) | Proved |
-| Concrete Wasm instances map to machines and trace models; the square commutes | `ScalarInstance.strategy` as `(Machine.ofLTS (I.lts P s)).denote` | Stage 2, planned (a direct corollary) |
-| Wasm strategy determinism conditional on inputs | `SDet` for a deterministic profile, using `Wasm.Det`; NaN/relaxed counterexample | Stage 2, planned |
-| Full abstraction: trace equality iff contextual equivalence, with hypotheses; divergence, refusals, counterexamples | testing contexts, a definability hypothesis, may and must observations, completed and stuck traces | Stage 2, planned |
+| Concrete Wasm instances map to machines and trace models; the square commutes | `Silmaril.Wasm.Abstract.machine`, `strategyIso_strategy`, `machine_tau_free` (`Silmaril.Wasm.Abstract.Instance`) | Proved for scalar Core 3.0 instances |
+| Wasm strategy determinism conditional on inputs | `TraceModel.DetUpTo`, `det_iff_detUpTo_false`; `detMod_iff_detUpTo` (the existing `DetMod` is `DetUpTo` of the trap moves); `denote_detUpTo`: a `DetModule` with typed exports denotes a model that is deterministic modulo traps, under every profile | Proved, modulo traps and conditional on `DetModule`. There is no claim of determinism for nondeterministic profiles. |
+| Full abstraction: trace equality iff contextual equivalence, with hypotheses; divergence, refusals, counterexamples | `Tests`, `Passes`, `Le`, `Equiv`, `Separates`, `Complete` (`Silmaril.Games.Abstract.Testing`). Proved: `le_of_le` (soundness, no hypothesis); `le_iff_of_complete` and `equiv_iff_of_complete` (full abstraction **under** definability); `single_complete`; `equiv_through_iff` (contexts that observe through a morphism identify equal pullbacks); `Machine.exists_traces_eq_refusal` and `exists_traces_eq_divergence` (equal traces, different refusals, deadlock and divergence) | Generic results proved. Still open: discharging `Complete` for host contexts built with `Games.Composition` in `E ↠ F`, and failures–divergences equivalence. |
 | Startup-sensitive and startup-erased observations; when they coincide | phased game, erasure morphism; compare with `Sig.withInst` and `Games.Inst` | Stage 3, planned |
 | Partial map bytes → trace sets; `WithTop` against lower sets; orientation examples | see convention 5 | Stage 4, planned |
 | Linking with hiding for machines and traces; erasure commutes; agreement with `Games.Composition` and Wasm linking | synchronised product, parallel composition with hiding of trace models, reentrancy and init conditions | Stage 5, planned |
@@ -109,6 +109,25 @@ No "components 1.0" is assumed: component features are `CMFeature` in
 | Version and feature comparison of semantic domains (validation and semantics) | transport of `FeatureSet` order to denotation domains, using `Unified.Versions` embeddings; FX | Stage 8, planned |
 | Module variants: function-only exports, then memory, globals and tables as observable state | exported-state moves (read, write, grow), aliasing | Stage 9, planned |
 | HTTP and TCP games; WASI reading agrees with `Servers.WasiHttp`; POSIX and container adapters | consume Servers modules | Stage 10, planned; coordinated with the Servers, UDP and CFG owners |
+
+## Servers seam (stage 10)
+
+Notes from the server-side owners (PR #184 discussion). Stage 10 consumes these
+and redefines none of them:
+
+- **Seam.** A `Context.Reading` or `Transport.PMap` reads a `TraceModel` of a
+  wasi:http or wasi:sockets game into `Servers.Model` or `TTrace`. The existing
+  lift and refinement theorems then apply.
+- **Startup.** The startup stage lands on `Servers.Observe.Obs.initFail`.
+- **Unions.** `Servers.Hosts.under` is a plain union. It agrees with
+  `TraceModel` joins for nonempty host sets (`mem_sSup_of_nonempty`) and
+  differs at `∅` (`mem_bot`). Each bridge states which one it uses.
+- **Erased composites.** `Servers.WasiContext` keeps import events. An HTTP
+  reading of an erased composite (`Wasi.link`) needs its own theorem, which the
+  linking stage owes.
+- **Open hypotheses.** Concrete or byte-level claims carry the open
+  hypotheses on `main` as explicit assumptions: `WasiExamples.Task.wasmRuns`,
+  `WasiBinaries.Task.binRuns` and `WasiFs.Static.Task.staticRuns`.
 
 ## What the finite-trace layer does not claim
 
