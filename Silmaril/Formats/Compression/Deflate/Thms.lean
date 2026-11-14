@@ -4,6 +4,9 @@ public import Silmaril.Formats.Compression.Deflate.Defs
 public import Silmaril.Formats.Compression.Thms
 public import Silmaril.Formats.Compression.Deflate.HuffmanLemmas
 import Silmaril.Proofs.Formats.Compression.Deflate
+import Silmaril.Proofs.Formats.Compression.DeflateLocal
+import Silmaril.Proofs.Formats.Compression.Bounds
+import Silmaril.Proofs.Formats.Compression.FixedEncoder
 import Silmaril.Raw.Formats.Compression.Deflate.Stored
 import Silmaril.Raw.Formats.Compression.Deflate.RoundTrip
 import Silmaril.Raw.Formats.Compression.Deflate.WithHistory
@@ -16,13 +19,24 @@ import Silmaril.Raw.Formats.Compression.Deflate.HuffmanLemmas
 Proved (standard axioms):
 
 * `decoder_eq_some`, `consumes`: a member consumes a prefix of its input;
+* `deflateTake_append`, `deflateTakeWithHistory_append`, `local`, `task_local`:
+  bytes appended after a member never change how it decodes (the append law,
+  with or without a preset history);
 * `roundTrip`, `codec`: stored encodings decode back, whatever follows them;
   hence `exists_compresses` (every buffer is the decoding of some stream);
+* `compress_take`, `roundTripFixed`, `codecFixed`: the compressing encoder
+  (`compress`, greedy LZ77 with one fixed-Huffman block) emits one complete
+  member, which the list decoder reads back whatever follows it;
+* `output_le`, `withHistory_output_le`, `decoder_output_le`, `decompress_output_le`:
+  intrinsic output bounds; a member produces at most 2064 bytes (258 per bit)
+  for each input byte it consumes;
 * `compress_isSome`, `compress_compresses`: the LZ77/fixed-Huffman compressor
   is total and sound;
 * `fixedLitLen_valid`, `fixedDist_valid`: the fixed codes satisfy the Kraft inequality;
 * `blocksBytes_take`: any partition into stored blocks of at most 65535 bytes is
   accepted (a semantic contract, not one encoder's block boundaries);
+* `withHistory_empty`, `withHistory_suffix`: the empty
+  history is plain DEFLATE, and with any history a member consumes a prefix;
 * `history_stored`, `history_match`, `no_history_rejected`: preset histories
   are consulted, and a match into a missing history is rejected;
 * canonical Huffman codes (RFC 1951 §3.2.2): `assignCodes_getElem?` (the entry of each
@@ -32,8 +46,6 @@ Proved (standard axioms):
   `HuffmanTable.ofLengths_symOK` (every symbol with a nonzero length has a decodable code);
 * known-answer vectors produced by zlib (an independent implementation), one per
   block type, and two rejections (distance code 30, `BTYPE = 11`).
-
-Open: `Task.local` (the append law), frozen.
 -/
 
 @[expose] public section
@@ -48,8 +60,56 @@ theorem consumes : decoder.Consumes := Proofs.Formats.Compression.Deflate.decode
 
 theorem roundTrip : RoundTrip decoder encoder := Proofs.Formats.Compression.Deflate.roundTrip
 
+/-- Bytes after a DEFLATE stream are passed through untouched. -/
+theorem deflateTake_append {bs out rest : List UInt8} (h : deflateTake bs = .ok (out, rest))
+    (tail : List UInt8) : deflateTake (bs ++ tail) = .ok (out, rest ++ tail) :=
+  Proofs.Formats.Compression.DeflateLocal.deflateTake_append h tail
+
+/-- The same with a preset history (zlib dictionaries). -/
+theorem deflateTakeWithHistory_append {history bs out rest : List UInt8}
+    (h : deflateTakeWithHistory history bs = .ok (out, rest)) (tail : List UInt8) :
+    deflateTakeWithHistory history (bs ++ tail) = .ok (out, rest ++ tail) :=
+  Proofs.Formats.Compression.DeflateLocal.deflateTakeWithHistory_append h tail
+
+/-- **The append law**: DEFLATE members are self-delimiting. -/
+theorem «local» : decoder.Local := Proofs.Formats.Compression.DeflateLocal.decoder_local
+
+theorem task_local : Task.local := «local»
+
 /-- Raw DEFLATE with stored blocks, as a framework codec. -/
 def codec : Codec := ⟨decoder, encoder, roundTrip⟩
+
+/-- The output of `compress` is one complete member, decoded exactly to its end. -/
+theorem compress_take {data c : ByteArray} (h : compress data = some c) :
+    deflateTake c.data.toList = .ok (data.data.toList, []) :=
+  Proofs.Formats.Compression.FixedEncoder.compress_take h
+
+/-- The compressing encoder round-trips, whatever follows the member. -/
+theorem roundTripFixed : RoundTrip decoder encoderFixed :=
+  Proofs.Formats.Compression.FixedEncoder.roundTripFixed
+
+/-- Raw DEFLATE with the compressing fixed-Huffman encoder, as a framework codec. -/
+def codecFixed : Codec := ⟨decoder, encoderFixed, roundTripFixed⟩
+
+/-- **Output bound**: each consumed input byte yields at most 2064 output bytes
+(a token consumes at least one bit and emits at most 258 bytes). -/
+theorem output_le {bs out rest : List UInt8} (h : deflateTake bs = .ok (out, rest)) :
+    out.length ≤ 2064 * (bs.length - rest.length) :=
+  Proofs.Formats.Compression.Bounds.deflateTake_output_le h
+
+/-- With a preset history, the newly produced output obeys the same bound. -/
+theorem withHistory_output_le {history bs out rest : List UInt8}
+    (h : deflateTakeWithHistory history bs = .ok (out, rest)) :
+    out.length ≤ 2064 * (bs.length - rest.length) :=
+  Proofs.Formats.Compression.Bounds.deflateTakeWithHistory_output_le h
+
+theorem decoder_output_le {bytes out rest : List UInt8} (h : decoder bytes = some (out, rest)) :
+    out.length ≤ 2064 * (bytes.length - rest.length) :=
+  Proofs.Formats.Compression.Bounds.decoder_outputLe h
+
+theorem decompress_output_le {c d : ByteArray} (h : decompress c = some d) :
+    d.size ≤ 2064 * c.size :=
+  Proofs.Formats.Compression.Bounds.decompress_output_le h
 
 theorem exists_compresses (data : ByteArray) : ∃ c, Compresses data c :=
   decompress_surjective data
@@ -73,6 +133,16 @@ theorem blocksBytes_take (chunks : List (List UInt8)) (h : StoredWriter.Valid ch
     (trailer : List UInt8) :
     deflateTake (StoredWriter.blocksBytes chunks ++ trailer) = .ok (chunks.flatten, trailer) :=
   StoredWriter.deflateTake_blocksBytes chunks h trailer
+
+/-- The empty history is plain DEFLATE. -/
+theorem withHistory_empty (input : List UInt8) :
+    deflateTakeWithHistory [] input = deflateTake input :=
+  _root_.Silmaril.Formats.Compression.Deflate.deflateTakeWithHistory_empty input
+
+/-- With any history, a member consumes a prefix of its input. -/
+theorem withHistory_suffix {history input out rest : List UInt8}
+    (h : deflateTakeWithHistory history input = .ok (out, rest)) : rest <:+ input :=
+  _root_.Silmaril.Formats.Compression.Deflate.deflateTakeWithHistory_suffix h
 
 theorem history_stored (history data tail : List UInt8) :
     deflateTakeWithHistory history (storedBytes data ++ tail) = .ok (data, tail) :=
