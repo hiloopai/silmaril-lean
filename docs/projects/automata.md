@@ -23,6 +23,20 @@ The HTTP/2 stream state machine (RFC 9113 §5.1) is the first worked example.
 | Shapes | `Automata.Shapes` | `silmaril.shapes.machine.*`: reachability, set reachability, simulation, bisimulation, sentence satisfaction, word acceptance and language nonemptiness for typed machines; reachability, simulation, bisimulation and word acceptance for JSON machines, decidable without a typed machine. |
 | Registry | `Automata.Registry` | The `machine` and `machine_binding` record kinds, and `#silmaril_machine_toml`. |
 
+## Products and coproducts (`Automata.Ops`)
+
+`RelMach` is the category of relational machines (CSLib LTSs) whose morphisms map states and
+labels and preserve transitions. In it, `prod` (both components step, labels `L × K`) and `coprod`
+(each side's transitions, labels `L ⊕ K`) are a genuine categorical product and coproduct
+(`prodIsLimit`, `coprodIsColimit`). `TMach.toRelMach` sends typed machines there.
+
+The strict-homomorphism category `TMach` does not have these: a projection would have to reflect
+rejections that the product introduces.
+
+The synchronous product `DMachine.prod` is different: both machines take the same label, and it
+recognizes the intersection of the languages. It is the categorical product restricted to
+diagonal labels (`sync_eq_prod_diag`).
+
 ## Main theorems
 
 All of them use only the standard axioms.
