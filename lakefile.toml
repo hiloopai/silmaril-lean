@@ -90,7 +90,7 @@ globs = [
   "Silmaril.Project.Core.+", "Silmaril.Project.Formats.+", "Silmaril.Project.Registry.+",
   "Silmaril.Project.Room.+", "Silmaril.Project.Shapes.+",
   "Silmaril.Proofs.Calculi.+",
-  "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Elf.+",
+  "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Prelude.+", "Silmaril.Proofs.Elf.+",
   "Silmaril.Proofs.Formats.+", "Silmaril.Proofs.Libc.+", "Silmaril.Proofs.Numeric.+",
   "Silmaril.Proofs.Games.+", "Silmaril.Proofs.Logic.+", "Silmaril.Proofs.Problems.+",
   "Silmaril.Proofs.Process.+", "Silmaril.Proofs.Project.+", "Silmaril.Proofs.SSA.+",
