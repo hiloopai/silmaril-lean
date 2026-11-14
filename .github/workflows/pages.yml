@@ -32,56 +32,47 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
-      # GitHub OIDC for the read role of the shared Lean CAS (as in ci-lean.yml).
+      # GitHub OIDC for the prove api and for the Lean CAS role, which reads the client.
       id-token: write
     env:
-      LEAN_NUM_THREADS: 2
-      LAKE_CI_BUCKET: hiloop-lean-cas-607856468300-us-east-1
       AWS_REGION: us-east-1
-      LAKE_CACHE_DIR: ${{ github.workspace }}/.lake/cache
-      LAKE_ARTIFACT_CACHE: 'true'
-      # The libraries of the project's modules (silmaril.toml), restored from the pool.
-      CHECK_TARGETS: Silmaril ProjectSelfTest SysVTvExample CompilesToExamples
-      RUST_TOOLCHAIN: 1.98.1
+      CLIENT: s3://hiloop-lean-cas-607856468300-us-east-1/clients/8a938a675a99/
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # The client diffs against the nearest commit main's CI published.
           fetch-depth: 65
-      - name: Keep the Lean toolchain in RAM
-        run: |
-          mkdir -p /dev/shm/elan
-          echo "ELAN_HOME=/dev/shm/elan" >> "$GITHUB_ENV"
-          ln -s /dev/shm/elan "$HOME/.elan"
-      - name: Install the shared Lake cache
-        uses: ./.github/actions/lake-cache-tool
-      - name: Assume the Lean CAS read role
-        id: credentials
-        continue-on-error: true
+      - name: Assume the Lean CAS role
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: arn:aws:iam::607856468300:role/gha-silmaril-lean-read-lean-cas
+          role-to-assume: arn:aws:iam::607856468300:role/gha-lean-cas
           aws-region: us-east-1
-          role-duration-seconds: 3600
-      - name: Restore from the shared Lake pool
-        if: steps.credentials.outcome == 'success'
-        run: make cache
-      - name: Install Rust
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.14"
+      - name: Install hiloop-prove
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
-      - name: Build sil project
-        run: make project-tool
-      - name: Dump, check and write the database and the page
+          aws s3 cp --only-show-errors --recursive "$CLIENT" "$RUNNER_TEMP/client/"
+          cd "$RUNNER_TEMP/client"
+          sha256sum -c - <<'SUMS'
+          fa7a02e1a0948d5c005b6bbe60000b8ba98c677456fadac14fabb85d71e30914  hiloop_prove-0.0.0-py3-none-any.whl
+          3cc1c1bc5c3f1311ab05d40f808499138e78c03f635c0d001fb52a2996b7203a  hiloop_common-0.0.0-py3-none-any.whl
+          8c82f9b2efb1de32c904b3b97bc49809b31a5f639e9cb4c6c59a732e4804ee4c  requirements.txt
+          SUMS
+          uv venv -q "$RUNNER_TEMP/prove"
+          VIRTUAL_ENV="$RUNNER_TEMP/prove" uv pip install -q --require-hashes -r requirements.txt
+          VIRTUAL_ENV="$RUNNER_TEMP/prove" uv pip install -q --no-deps ./*.whl
+          echo "$RUNNER_TEMP/prove/bin" >> "$GITHUB_PATH"
+      # On hiloop's prove service: the worker restores the libraries of the project's modules
+      # (silmaril.toml) from the pool and runs `make pages` with its Rust 1.98; the page and its
+      # database come back as _site. This runner downloads no toolchain.
+      - name: Dump, check and write the database and the page, on prove
         run: |
-          sil=build/bin/silmaril-project
-          "$sil" dump --lake lake
-          "$sil" check
-          "$sil" sqlite --httpvfs > /dev/null
-          mkdir -p _site
-          cp .lake/silmaril/project.sqlite _site/project.sqlite
-          "$sil" explore --db _site/project.sqlite --out _site/index.html
+          hiloop-prove run --build Silmaril --build ProjectSelfTest --build SysVTvExample \
+            --build CompilesToExamples --out _site -- \
+            env -u CARGO_TARGET_DIR make pages
           ls -l _site
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
@@ -100,3 +91,20 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      # The explorer reads the database with Range requests: check that the deployed site answers
+      # one with identity bytes, a Content-Range total and the SQLite header (the page also falls
+      # back to a whole download, so this checks the fast path, not correctness).
+      - name: Check Range requests on the deployed database
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          url="${PAGE_URL%/}/project.sqlite"
+          for i in 1 2 3 4 5 6; do
+            headers=$(curl -sS -D - -o /tmp/head.bin -r 0-99 -H 'Accept-Encoding: identity' "$url") && break
+            sleep 10
+          done
+          echo "$headers"
+          echo "$headers" | grep -qi '^HTTP/[0-9.]* 206' || { echo "no 206 for a Range request"; exit 1; }
+          echo "$headers" | grep -qi '^content-range: bytes 0-99/[0-9]' || { echo "no Content-Range total"; exit 1; }
+          head -c 15 /tmp/head.bin | grep -q 'SQLite format 3' || { echo "not the SQLite header"; exit 1; }
+          curl -sSf -o /dev/null "${PAGE_URL%/}/explore-sw.js"

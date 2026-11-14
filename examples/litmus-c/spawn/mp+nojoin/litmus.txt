@@ -1,0 +1,11 @@
+# Control for MP+join: P0 reads x without joining P1, so r0=0 is allowed.
+name MP+nojoin
+source mp+nojoin.c
+loc x 0x10000 4 0
+loc r0 0x10080 4 0
+thread P0
+thread P1 spawned
+quant exists
+cond r0=0
+verdict allowed allowed allowed
+dom 0 1

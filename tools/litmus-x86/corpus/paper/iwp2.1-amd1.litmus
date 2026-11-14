@@ -1,0 +1,7 @@
+X86 iwp2.1/amd1
+"Transcribed from Owens, Sarkar, Sewell, A better x86 memory model: x86-TSO (extended version), Appendix A"
+{  }
+ P0          | P1          ;
+ MOV [x],$1  | MOV EAX,[y] ;
+ MOV [y],$1  | MOV EBX,[x] ;
+exists (1:EAX=1 /\ 1:EBX=0)

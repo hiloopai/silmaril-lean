@@ -99,14 +99,16 @@ Lake validates restored artifacts; `make check` still runs every native test.
 what your branch can change, as pull request CI does.
 
 `LAKE_CACHE_RECORD=build/lake-cache make check` records a successful build of every
-`make check` target from a clean checkout. After all checks pass, trusted main CI calls
-`cov-lake-cache put --repository hiloopai/silmaril-lean`. Publication does not
-run another build.
+`make check` target from a clean checkout. After all checks pass, main CI calls
+`cov-lake-cache put --seed --repository hiloopai/silmaril-lean`, which also publishes a seed
+for hosts that never installed silmaril-lean. Publication does not run another build. A pull
+request calls `cov-lake-cache put --repository hiloopai/silmaril-lean`, which shares the
+outputs its Lake built.
 
 CI gets short-lived credentials through GitHub OIDC; no cache key is stored in
-the repository. Pushes to `main` assume a role that may write this prefix; every
-other run assumes a read-only role. Fork pull requests receive no OIDC token and
-build normally. Remote failures remain visible and do not
+the repository. Every run of this repository assumes one role, `gha-lean-cas`, which
+may read and write the pool. Fork pull requests receive no OIDC token and build
+normally. Remote failures remain visible and do not
 suppress proof checks.
 
 Covalence owns the transfer, corruption and real-Lean integration tests. This

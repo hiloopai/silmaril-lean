@@ -41,3 +41,22 @@ rust:
   - 'Silmaril/Project/Registry/Load/Defs.lean'
   - 'docs/schemas/**'
   - '.github/**'
+
+# What `make project-registry` reads: the project manifest, registry and records, the Lake
+# manifests `sil project` loads, the files the registry names, and the tool itself.
+project:
+  - 'silmaril.toml'
+  - 'examples/wasm-components/**'
+  - 'Silmaril/Project/WasmComponents/**'
+  - 'Silmaril/Wasm/Component/Binary/Example/**'
+  - 'tests/wat/fixtures/**'
+  - 'silmaril/**'
+  - 'lakefile.toml'
+  - 'lake-manifest.json'
+  - 'examples/project/**'
+  - 'examples/project-formats/**'
+  - 'examples/compiles-to/**'
+  - 'examples/sysv-tv/**'
+  - 'tools/silmaril-project/**'
+  - 'Makefile'
+  - '.github/**'
