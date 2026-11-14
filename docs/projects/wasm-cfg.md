@@ -73,16 +73,26 @@ uniqueness) and that the executable extractors realize it.
    - **Proved:** every sequence has exactly one segmentation (`existsUnique_segmentation`), and
      `segment` computes it.
    - A block's identity is (sequence path, position in the segmentation).
-2. **Nested sequences and edges** (next).
+2. **Nested sequences and edges** (`Silmaril.Wasm.Cfg.BlockTree`, `Silmaril.Wasm.Cfg.BlockCfg`,
+   done except the benchmark).
    - Nodes are the segments of every sequence of the body tree (bodies of `block`, `loop`, `if`
-     arms and `try_table`).
-   - Edges are given declaratively by the structured-control rules used above: label depth resolved
-     against the enclosing constructs, and a sequence's end continuing to its parent's continuation.
-   - Special nodes stay explicit: `exit`, `trap`, `raise`, `invalid`, and *unsupported* markings for
-     constructs the relation does not model exactly.
-   - To prove: the relation determines a unique graph on the canonical node identities, and the
-     executable and kernel-evaluated builders realize it. Kernel evaluation is to be benchmarked
-     against runtime evaluation.
+     arms and `try_table`). A `BlockId` is a sequence path of `(segment, arm)` steps plus a
+     position. `lookup body b` names the block declaratively, through the canonical segmentations.
+     **Proved:** `blocks` lists exactly the graph of `lookup` (`mem_blocks`).
+   - Edges are given declaratively from `lookup` (`succOf`, `Edge`):
+     - `entry` gives the block at a position, or else the sequence's continuation.
+     - A nested sequence continues at its parent's next position; the body continues to `exit`.
+     - `loop` labels go to the loop body's entry; other labels go to the continuation.
+     - Branches resolve by depth; the outermost label is `exit`.
+     - `try_table` has an edge to each catch label, resolved outside it.
+   - Special nodes stay explicit: `exit`, `trap`, `raise`, `invalid`. Traps of ordinary
+     instructions and throws inside a `try_table` body are not edges: the `try_table` block's
+     catch edges stand for them.
+   - **Proved:** the one-pass builder `blockCfg` realizes `Edge` (`blockCfg_eq`, `edge_iff`), and
+     each block has exactly one successor list (`existsUnique_succ`). Kernel-checked examples:
+     `sum_blockCfg`, `dispatch_br_table_edges` (`decide +kernel`, a few seconds).
+   - Still to do: benchmark kernel against runtime evaluation, and serve the block CFG on the
+     explorer in place of the instruction-level prototype.
 3. **Node interfaces.**
    - Each block will carry its operand-stack input and output arity.
    - Branch arguments are the label arity from the block type.
