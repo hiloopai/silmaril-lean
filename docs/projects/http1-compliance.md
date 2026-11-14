@@ -73,7 +73,7 @@ Checked is open work. The modules are listed in the last section.
 | 7.1.1 | Chunk extensions: grammar; unknown extensions ignored | Proved | `isChunkExt_iff_abnf` |
 | 7.1.2 | Trailer fields: not merged when their definition forbids it (RFC 9110 §6.5.1) | Proved | `fieldValues_mergeTrailers`, `requestBodyLength_mergeTrailers` |
 | 7.1.3 | Decoding `chunked` gives the concatenated chunk data | Proved | `parseChunked_rechunk` |
-| 7.2 | `compress`, `deflate`, `gzip`; `x-compress`/`x-gzip` equivalent | Abstract | `Decoders` parameter; `decodeTransfer_encodeTransfer` under `Decoders.Inverts`, to be discharged by `Silmaril.Formats.Compression` |
+| 7.2 | `compress`, `deflate`, `gzip`; `x-compress`/`x-gzip` equivalent | `gzip`, `deflate`: round trip proved for the library's stored-block encoders only; general decoder correctness (arbitrary compressed input) not established. `compress`: Gap | `Decoders` parameter, `decodeTransfer_encodeTransfer`; instantiated by `Silmaril.Net.Http1.CodingLib` (`lib_roundTrip`, which uses only `Gzip.roundTrip` and `Zlib.roundTrip` and no `Task` hypothesis). No LZW decoder |
 | 7.3 | Transfer coding registry | Defined | `registeredCodings` |
 | 7.4, 10.1 | `TE`: `trailers`, codings with weights; `chunked` always acceptable | Defined, Checked | `teOffers`, `teTrailers`, `teAccepts` |
 | 7.4 | The sender of `TE` also sends the `TE` connection option | Defined | `declaresHopByHop` (no theorem) |
@@ -128,8 +128,8 @@ compliant.
 
 The rest of the extension surface is explicit: transfer codings the server implements
 (`ServerConfig.implements`, with decoders as a parameter), `TE`, chunk extensions (kept raw),
-upgrade tokens, and extension methods and fields (any `token`). The institution and
-OpenAPI layers will build on these surfaces in a follow-up pull request.
+upgrade tokens, and extension methods and fields (any `token`). The HTTP/1.1 institution and
+the OpenAPI service model build on these surfaces: see [http1-institution.md](http1-institution.md).
 
 Line-level leniency (bare `LF`, `obs-fold`, whitespace before `:`, leading empty lines) is not
 yet a profile knob: the head grammar is strict and rejects all of these (Checked). Modelling a
