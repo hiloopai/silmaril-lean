@@ -5,6 +5,14 @@ public import Silmaril.Project.Formats.Defs
 public import Silmaril.Project.Shapes.Format.Defs
 public import Silmaril.Project.Shapes.Elf.Thms
 public import ProjectSelfTest.Machines
+-- The Wasm components records (silmaril/wasm-components/*.toml) are part of this project; their
+-- modules declare the registry's artifacts first, so this module only adds the rest.
+public import Silmaril.Project.WasmComponents.Thms
+public import Silmaril.Project.WasmComponents.Relations.Thms
+public import Silmaril.Project.WasmComponents.Toy.Thms
+public import Silmaril.Project.WasmComponents.Versions.Thms
+public import Silmaril.Project.WasmComponents.Wac.Thms
+public import Silmaril.Project.WasmComponents.Wac.Verdicts.Thms
 
 /-!
 # The `sil project` self-test
@@ -69,7 +77,9 @@ silmaril deprecation silmaril.selftest.small (reason := "claims that every n is 
 
 silmaril conjecture silmaril.selftest.open : ∀ n : Nat, n + 0 = n
 
-silmaril artifacts "silmaril/artifacts.toml"
+-- The registry: the Wasm components modules imported above already declared its entries (each
+-- artifact record must come from one module of the dump), so this adds only what they did not.
+silmaril_artifacts_refresh "silmaril/artifacts.toml"
 silmaril value silmaril.selftest.hello : bytes := "examples/project/data/hello.txt"
 silmaril problem silmaril.selftest.hello.six about silmaril.selftest.hello : fun b => b.length = 6
   := by silmaril_decide

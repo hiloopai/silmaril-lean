@@ -8,7 +8,7 @@ development-environment checks, but defer the full Lean build until ready.
 
 | Check | Work | Automatic timeout |
 | --- | --- | --- |
-| Lean and native | `make check` on what the diff can change, staged CLI smoke | 15 minutes; 90 on the main publisher and on seed dispatches |
+| Lean and native | `make check` on what the diff can change, staged CLI smoke | 30 minutes on prove; 90 on main pushes and seed dispatches; 15 on fork pull requests |
 | Nightly | The full `make check` on main | 15 minutes |
 | LPS reality probes | Offline fixtures, 49 native probes, mutation/live tests | 5 minutes |
 | Development environments | Docker and Nix cross-tool smoke, in parallel | 10 minutes each |
@@ -43,7 +43,7 @@ outside this measurement. Reruns use the current attempt's start time.
 
 ## Cache and first run
 
-1. A same-repository pull request, a manual run and the nightly run check on hiloop's
+1. A same-repository pull request, a main push, a manual run and the nightly run check on hiloop's
    prove service: the job's small runner chooses the targets, and the worker restores
    from the shared Lake pool (main's build at the nearest published first-parent
    ancestor), builds them with `--wfail` and runs `make check` in the same checkout.
@@ -52,12 +52,12 @@ outside this measurement. Reruns use the current attempt's start time.
    and archive tool, so the build compiles only what changed since that commit.
 2. Lake checks the current input traces. Cache presence never counts as a
    passing test, and all native regression suites still run.
-3. Every main push restores with `make cache` on a Blacksmith runner, records its
-   build of every `make check` target after successful checks and publishes what the
-   pool lacks, with a seed for hosts that never installed silmaril-lean
-   (`put --seed`). It assumes the one pool role, `gha-lean-cas`. Fork pull requests
-   get no OIDC token: they build on a free runner without the pool, which does not
-   fit the automatic limit.
+3. After its checks pass, every main push builds and publishes main's commit on the
+   prove worker (`hiloop-prove publish-build`): a recorded build of every `make check`
+   target, with a seed for hosts that never installed silmaril-lean. The runner assumes
+   the one pool role, `gha-lean-cas`, which reads the client and puts the commit's
+   source tree in the pool. Fork pull requests get no OIDC token: they build on a free
+   runner without the pool, which does not fit the automatic limit.
 
 After a toolchain or archive-tool change no published build matches. Run **CI**
 manually on **main** with **seed** checked: it builds cold with a 90-minute Lean
@@ -69,7 +69,7 @@ A fork pull request's public Linux runner has four CPUs and 16 GB RAM.
 per core.
 Logs record available disk and memory, build-tree size and `time -v` results.
 The latter reports the largest process RSS, not total concurrent memory.
-Changed-main S3 publication remains inside the time budget and can cause it
+Main's publication on prove remains inside the time budget and can cause it
 to fail even when correctness passes; a cold build's compilation does not.
 
 Thomas owns the manual seed and timing helper. Remove the seed when the standard

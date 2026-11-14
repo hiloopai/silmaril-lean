@@ -75,7 +75,8 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.machine.sat", "silmaril.shapes.machine.json.reach",
   "silmaril.shapes.machine.json.bisimilar", "silmaril.shapes.machine.json.simulates",
   "silmaril.shapes.machine.accepts", "silmaril.shapes.machine.nonempty",
-  "silmaril.shapes.machine.json.accepts", "silmaril.shapes.graph.dominates",
+  "silmaril.shapes.machine.json.accepts", "silmaril.shapes.wasm.fn_spec",
+  "silmaril.shapes.wasm.returns", "silmaril.shapes.graph.dominates",
   "silmaril.shapes.graph.dom_tree_exact", "silmaril.shapes.graph.dom_tree_sound",
   "silmaril.shapes.graph.region_tree_valid"]
 
