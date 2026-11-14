@@ -146,3 +146,8 @@ deps = ["Prelude", "Semantics", "Logic", "Numeric", "Formats"]
 name = "Compiler"
 scope = "C compiler machinery over Cerberus Core: the Core elaboration correctness theorems, the compiler category and its Cerberus instance, the Clang JSON frontend, the Core reader and verified Core fragments. Also imports the x86 tree (`Silmaril.X86`) and the older `Silmaril.Compile` tree, which are not regions."
 deps = ["Prelude", "Semantics", "Logic", "Cerberus", "Machine"]
+
+[[region]]
+name = "Servers"
+scope = "Servers as specifications, platform-neutral: the server institution (interfaces of requests and responses, trace sentences, trace-set models, morphisms), request/response traces over connections with request identities (pipelining on one connection, concurrency across connections), the atomic, functional, linearizable and sequentially consistent readings with the lifts between them, refinement as trace inclusion, and the instances (HTTP over `Silmaril.Net.Http`, wasi:http components, processes and containers). Also imports `Silmaril.Net` (HTTP semantics and framing), `Silmaril.Wasi` (the WASI theories) and `Silmaril.Problems.Basic` (the problem registry attributes), which are not regions."
+deps = ["Prelude", "Semantics", "Logic", "Cli", "Games", "Wasm", "Process"]

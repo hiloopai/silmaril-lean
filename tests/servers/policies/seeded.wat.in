@@ -1,0 +1,7 @@
+  ;; Policy `seeded @SEED@`: the splitmix64 stream of the seed. The state starts at the seed;
+  ;; each call adds 0x9E3779B97F4A7C15 to it and returns the finaliser of the new state, so
+  ;; call k (from 0) of an instance returns mix(SEED + (k + 1) * 0x9E3779B97F4A7C15).
+  (global $state (mut i64) (i64.const @SEED@))
+  (func (export "wasi:random/random@0.2.12#get-random-u64") (result i64)
+    (global.set $state (i64.add (global.get $state) (i64.const 0x9E3779B97F4A7C15)))
+    (call $mix (global.get $state)))

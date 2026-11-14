@@ -1,0 +1,167 @@
+{
+  "schema": "silmaril.servers.runtime-evidence.v1",
+  "evidence": "runtime-test",
+  "note": "testing evidence, not a Lean proof",
+  "date": "2026-11-14T01:47:35Z",
+  "git": {
+    "commit": "1bbb9a6989b234e356cfd63825c5012be0e8116e",
+    "dirty": false
+  },
+  "tools": {
+    "runtime": {
+      "name": "wasmtime serve",
+      "version": "49.0.2",
+      "binary_sha256": "d0a014e0d5b0cf48dd3549c38e2e6ecd78ff09fb3e3f10d751b87b72bdfd8635"
+    },
+    "wasm_tools": {
+      "version": "wasm-tools 1.263.0 (7a2fa422c 2026-10-30)",
+      "binary_sha256": "694cb37dcda84a5d557334c1db882b986e43061abdb0af976b41b1614ee4530b"
+    },
+    "wac": {
+      "version": "wac-cli 0.12.0",
+      "binary_sha256": "7cd490edbd452221ef89e6750fc43eacc9b71b1242095eb577cb9a3bf0d3beda"
+    }
+  },
+  "runs": [
+    {
+      "server": "dice",
+      "policy": "zero",
+      "seed": null,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        1
+      ],
+      "pair_values": [
+        "1 1"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": true,
+      "composed_sha256": "6ab0cf5eab658ee965cbb727ccb68c25eb8f648ac7b31b6c7425026401e3eff9"
+    },
+    {
+      "server": "dice",
+      "policy": "seeded",
+      "seed": 1,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        6
+      ],
+      "pair_values": [
+        "6 2"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false,
+      "composed_sha256": "9e864482559743ae3c78bc6d59c4af5b22a1a5a0ddd81119f6795588451da108"
+    },
+    {
+      "server": "dice",
+      "policy": "seeded",
+      "seed": 42,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        2
+      ],
+      "pair_values": [
+        "2 2"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false,
+      "composed_sha256": "be6276caa97ca58fe7fc9d4cbff7321d2546376247764ce11721074bb1beb0da"
+    },
+    {
+      "server": "dice",
+      "policy": "chaos",
+      "seed": 7,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        1
+      ],
+      "pair_values": [
+        "1 1"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false,
+      "composed_sha256": "f084f3f745a5d35b992b5d1f92d36ac6bfe6b2fed7607b3611621b3971be5917"
+    },
+    {
+      "server": "dice-buggy",
+      "policy": "zero",
+      "seed": null,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        1
+      ],
+      "pair_values": [
+        "1 1"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": true,
+      "composed_sha256": "dbeca50af5284a7ddab77473ef4e22325ca998962466b017ed36f9bc2e10e537"
+    },
+    {
+      "server": "dice-buggy",
+      "policy": "seeded",
+      "seed": 1,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        3
+      ],
+      "pair_values": [
+        "6 2"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false,
+      "composed_sha256": "922690fdec4d7bd935558a1886cae2c93fcf8284e4a2eb94a8af099ed4feac17"
+    },
+    {
+      "server": "dice-buggy",
+      "policy": "seeded",
+      "seed": 42,
+      "must": true,
+      "replay": true,
+      "roll_values": [
+        6
+      ],
+      "pair_values": [
+        "2 2"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false,
+      "composed_sha256": "a9d28339ec1dfb968c5b3d7d9b4b61cc63b2d27bd3d5e5f57ce4f5e6974fcc1c"
+    },
+    {
+      "server": "dice-buggy",
+      "policy": "chaos",
+      "seed": 7,
+      "must": false,
+      "replay": true,
+      "roll_values": [
+        7
+      ],
+      "pair_values": [
+        "1 1"
+      ],
+      "fresh_instance_per_request_prediction_matches": true,
+      "shared_instance_prediction_matches": false,
+      "composed_sha256": "532eabef0a3a3b605dfff283f583c78d91d558b90c652b38dbc16b13a6fee6c6"
+    }
+  ],
+  "expectations": {
+    "dice_must_passes_under_every_policy": true,
+    "replay_identical_everywhere": true,
+    "dice_buggy_passes_under_zero": true,
+    "dice_buggy_fails_under": [
+      "chaos 7"
+    ],
+    "planted_negative_detected": true,
+    "negatives_as_expected": true
+  },
+  "observation": "per-request instantiation: every /roll of a run is the same value, and each trace is the one predicted when each request gets a fresh policy instance (draws 0 and 1 only), and for the seeded and chaos policies not the one predicted for one instance shared by all requests; an observation of wasmtime serve, not a proof",
+  "ok": true
+}

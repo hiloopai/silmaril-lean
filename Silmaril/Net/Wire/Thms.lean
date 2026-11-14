@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Net.Wire.Defs
+import Silmaril.Proofs.Net.Wire
 
 /-!
 # Network byte order: theorems
@@ -10,6 +11,10 @@ PROVED (standard axioms):
 * `rd16_be16`, `be16_rd16`: `be16` and `rd16` are mutually inverse; `rd32_be32`, `be32_rd32`
   the same for 32 bits. So a 16- or 32-bit field and its octets determine each other.
 * `be16_length`, `be32_length`, `zeros_length`, `be16_inj`, `be32_inj`.
+* `k`-octet integers (proofs in `Silmaril/Proofs/Net/Wire.lean`): `beValue_beBytes` (a value
+  below `256 ^ k` is read back from its `k` octets; `beValue_beBytes_mod` in general),
+  `beBytes_beValue` (octets are re-encoded exactly), `beValue_lt`, `length_beBytes`,
+  `beBytes_mod`, `beValue_cons`.
 -/
 
 @[expose] public section
@@ -113,5 +118,34 @@ theorem be16_toNat (x : UInt16) :
   have hx : x.toNat < 65536 := x.toNat_lt
   rw [u8_toNat_ofNat, u8_toNat_ofNat]
   omega
+
+/-! ## `k`-octet integers -/
+
+theorem length_beBytes (k x : Nat) : (beBytes k x).length = k :=
+  Silmaril.Proofs.Net.Wire.length_beBytes k x
+
+theorem beValue_cons (b : UInt8) (xs : List UInt8) :
+    beValue (b :: xs) = b.toNat * 256 ^ xs.length + beValue xs :=
+  Silmaril.Proofs.Net.Wire.beValue_cons b xs
+
+theorem beValue_beBytes_mod (k x : Nat) : beValue (beBytes k x) = x % 256 ^ k :=
+  Silmaril.Proofs.Net.Wire.beValue_beBytes_mod k x
+
+theorem beValue_beBytes (k x : Nat) (hx : x < 256 ^ k) : beValue (beBytes k x) = x :=
+  Silmaril.Proofs.Net.Wire.beValue_beBytes k x hx
+
+theorem beValue_lt (xs : List UInt8) : beValue xs < 256 ^ xs.length :=
+  Silmaril.Proofs.Net.Wire.beValue_lt xs
+
+theorem beBytes_mod (k x : Nat) : beBytes k (x % 256 ^ k) = beBytes k x :=
+  Silmaril.Proofs.Net.Wire.beBytes_mod k x
+
+theorem beBytes_beValue (xs : List UInt8) : beBytes xs.length (beValue xs) = xs :=
+  Silmaril.Proofs.Net.Wire.beBytes_beValue xs
+
+/-- Two octet lists of the same length with the same value are equal. -/
+theorem beValue_inj {xs ys : List UInt8} (hl : xs.length = ys.length)
+    (h : beValue xs = beValue ys) : xs = ys := by
+  rw [← beBytes_beValue xs, ← beBytes_beValue ys, hl, h]
 
 end Silmaril.Net.Wire
