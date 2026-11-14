@@ -92,6 +92,8 @@ modulo the staleness the response directives allow.
 | Smuggling freedom: two conforming recipients agree on message boundaries | 9112 §11.2 | Proved for the framing profiles: compliant recipients never desynchronise, the common noncompliant ones do (`Profile.Thms`) |
 
 The requirement-by-requirement audit, with every gap, is [http1-compliance.md](http1-compliance.md).
+The institution of HTTP/1.1 implementations (vanilla, extension-compliant, noncompliant) and
+the OpenAPI 3.1.0 service model are in [http1-institution.md](http1-institution.md).
 
 ### D. HTTP/2 (RFC 9113, RFC 7541): `Silmaril.Net.Http2`, `Silmaril.Net.Hpack` (this pull request)
 

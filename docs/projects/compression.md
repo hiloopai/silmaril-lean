@@ -40,6 +40,7 @@ DEFLATE, zlib, gzip and the identity coding in those terms.
 | [Zlib](../../Silmaril/Formats/Compression/Zlib/Thms.lean) | `Zlib.decoder = framing.wrap Deflate.decoder` | consumes, append law, Adler-32 trailer, stored and compressing (`encoderFixed`) round trips, output bound, CPython vectors, dictionaries |
 | [Gzip](../../Silmaril/Formats/Compression/Gzip/Thms.lean) | `Gzip.decoder = framing.wrap Deflate.decoder`; files are `decoder.members` | consumes, append law, CRC-32/ISIZE trailer, stored and compressing (`encoderFixed`) round trips, output bounds for members and whole files, multi-member files, GNU and CPython vectors |
 | [Checksum](../../Silmaril/Formats/Compression/Checksum/Thms.lean) | `Checksum.adler32`, `Checksum.crc32` | published check values; CRC-32 equals `crc32Spec`, the GF(2) polynomial definition of ISO 3309 / ITU-T V.42 (`crc32_eq_spec`, over the polynomial model `GF2Poly`), and detects every single-bit error |
+| [XxHash](../../Silmaril/Formats/Compression/XxHash/Thms.lean) | `Checksum.xxh32`, `Checksum.xxh64Low32` | streaming states compute `xxh32`/`xxh64`; published and seeded vectors |
 | [Inflate](../../Silmaril/Formats/Compression/Inflate/Thms.lean) | `Inflate.member version kind`, `Inflate.raw version`: zlib 1.3.1's resumable inflater as `Incremental` machines | sound, rejection-sound and complete, schedules agree, each call emits at most its output capacity, packed fixed tables agree with the canonical decoder |
 
 Assumptions and scope:
@@ -62,6 +63,26 @@ Assumptions and scope:
 - Encoders: the stored encoders (`encoder`) are linear-time and do not shrink
   data; `encoderFixed` (all three formats) compresses with greedy LZ77 and one
   fixed-Huffman block, whose match search is quadratic in the worst case.
+
+## xxHash
+
+[`XxHash/Defs.lean`](../../Silmaril/Formats/Compression/XxHash/Defs.lean) defines
+XXH32 and XXH64 (`xxh32 seed bytes : UInt32`, `xxh64 seed bytes : UInt64`) from
+the [xxHash specification](https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md),
+version 0.1.1, step by step. They are the content checksums of the LZ4 frame
+format (XXH32, seed 0) and of Zstandard (RFC 8878: the low 32 bits of XXH64,
+seed 0), both stored little-endian.
+
+xxHash mixes whole stripes (16 or 32 bytes) and finishes the tail with other
+rounds, so it is not a byte-at-a-time fold. It still fits `Checksum`: the
+streaming state (`XxHash.Stream`) keeps the four accumulators, a partial stripe
+and the length, and `Checksum.xxh32_digest` and `Checksum.xxh64Low32_digest`
+prove that it computes the whole-input functions. `Checksum` finishes into
+`UInt32`, so the full 64-bit digest of a stream is `XXH64.finish` of its state
+(`XxHash.xxh64_stream`). Known answers: the empty input, `"a"`, `"abc"` and
+`"Nobody inspects the spammish repetition"`, plus inputs with whole stripes and
+a non-zero seed, checked against an independent implementation of the
+specification.
 
 ## Building blocks
 
@@ -100,6 +121,16 @@ are proved:
 [deflate-zlib-gzip.md](deflate-zlib-gzip.md) lists, for RFC 1951, RFC 1950 and RFC 1952, each
 requirement with its theorem, check or documented policy, and the contract erebor-lean relies on.
 
+## HTTP content codings
+
+[content-coding.md](content-coding.md) builds on this framework: the IANA HTTP
+Content Coding registry as data (`Formats/Compression/Registry`), with `gzip` =
+`Gzip.decoder.members` and `deflate` = `Zlib.decoder.whole`; bounded decoding
+with an explicit `tooLarge` error; chains of codings; a partial zstd decoder
+(`Formats/Compression/Zstd`: frames of raw and RLE blocks, XXH64); and
+Content-Encoding/Accept-Encoding in `Net/Http/ContentCoding`. It also records an
+audit of what the gzip formalization covers.
+
 ## Layout
 
 Definitions are in `Silmaril/Formats/Compression/**` and their headers. The
@@ -111,7 +142,7 @@ proofs that relate them to the framework are in
 
 ```sh
 lake build --wfail Silmaril.Formats.Compression.Catalog.Thms Silmaril.Formats.Compression.Inflate.Thms \
-  Silmaril.Formats.Compression.Gzip.Thms
+  Silmaril.Formats.Compression.Gzip.Thms Silmaril.Formats.Compression.XxHash.Thms
 ```
 
 These headers import every compression module; `make library`
