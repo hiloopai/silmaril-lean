@@ -27,6 +27,9 @@ left (`Shape.self`). A **closed** module has only import calls.
 `close m` resolves the internal calls. It is the least fixpoint of `resolve m`,
 which replaces each internal call by a behaviour of the callee
 (`Subst`). A callee that traps or diverges makes the caller trap or diverge.
+The least fixpoint keeps only finite derivations, so an unbounded recursion
+gets no behaviour, not a divergence. `closeD` adds divergence along infinite
+internal-call chains that make finitely many import calls.
 Open and closed modules of a fixed shape are complete lattices, pointwise. Closing is
 monotone, but it does not commute with joins
 (`Silmaril.Games.Abstract.Module.Thms`): a pointwise join of open modules can
@@ -127,10 +130,52 @@ def resolve (m : sh.OpenMod) : sh.ClosedMod →o sh.ClosedMod where
   toFun c f s a := {y | ∃ x ∈ m f s a, Subst c x.1 x.2 y}
   monotone' _ _ h _ _ _ _ := fun ⟨x, hx, hs⟩ => ⟨x, hx, hs.mono h⟩
 
-/-- Close a module: the least fixpoint of resolution. Recursion through
-internal calls is the least solution, so a call that never bottoms out has no
-returning behaviour. -/
+/-- Close a module: the least fixpoint of resolution. Its behaviours are the
+*finite derivations*: every internal call is answered by a finished behaviour
+of the callee. A callee's `div` propagates to the caller (`Subst.intDiv`),
+but a recursion that never bottoms out yields **no behaviour at all**, not a
+`div`: `f` calling itself closes to the empty set
+(`Silmaril.Games.Abstract.Shape.exists_close_omits_div`). Use `closeD` when
+divergence through unbounded internal recursion must be observed. -/
 def close (m : sh.OpenMod) : sh.ClosedMod := (resolve m).lfp
+
+/-- Resolve the internal calls of a *prefix* of an open behaviour: every
+internal call in it returned. -/
+inductive SubstPre (c : sh.ClosedMod) : List (Call (sh.E ⊕ₛ sh.self)) → List (Call sh.E) → Prop
+  | nil : SubstPre c [] []
+  | ext {m : sh.E.Op} {n : sh.E.Ar m} {rest : List (Call (sh.E ⊕ₛ sh.self))}
+      {q : List (Call sh.E)} : SubstPre c rest q → SubstPre c (⟨.inl m, n⟩ :: rest) (⟨m, n⟩ :: q)
+  | int {g : sh.F} {a : sh.A g} {s : sh.S} {b : sh.B g} {s' : sh.S}
+      {rest : List (Call (sh.E ⊕ₛ sh.self))} {c₁ q : List (Call sh.E)} :
+      (c₁, .ret b s') ∈ c g s a → SubstPre c rest q →
+      SubstPre c (⟨.inr ⟨g, (a, s)⟩, (b, s')⟩ :: rest) (c₁ ++ q)
+
+/-- One descent: a call `x` of the module, running in `m`, performs the import
+calls `q` (its internal calls returning through `c`) and then makes the
+internal call `y`. -/
+def Descends (m : sh.OpenMod) (c : sh.ClosedMod) (x : sh.self.Op) (q : List (Call sh.E))
+    (y : sh.self.Op) : Prop :=
+  ∃ z ∈ m x.1 x.2.2 x.2.1, ∃ u ans rest, z.1 = u ++ ⟨.inr y, ans⟩ :: rest ∧ SubstPre c u q
+
+/-- An infinite chain of internal calls from `x`, making only finitely many
+import calls `qs` in total: divergence through unbounded internal recursion,
+observed after `qs`. -/
+def DivChain (m : sh.OpenMod) (c : sh.ClosedMod) (x : sh.self.Op) (qs : List (Call sh.E)) :
+    Prop :=
+  ∃ (g : Nat → sh.self.Op) (q : Nat → List (Call sh.E)) (N : Nat), g 0 = x ∧
+    (∀ n, Descends m c (g n) (q n) (g (n + 1))) ∧ (∀ n, N ≤ n → q n = []) ∧
+    qs = (List.range N).flatMap q
+
+/-- Closing with divergence: the finite derivations of `close`, plus `div`
+after the import calls of every infinite internal-call chain.
+
+**Scope.** An infinite chain with infinitely many import calls is an infinite
+productive run, which `AFun` does not represent; it is omitted. No theorem
+here states that `closeD` agrees with an operational semantics with recursion,
+or that it is a congruence for the outcome-sensitive equivalences; those are
+open. -/
+def closeD (m : sh.OpenMod) : sh.ClosedMod := fun f s a =>
+  close m f s a ∪ {y | y.2 = .div ∧ DivChain m (close m) ⟨f, (a, s)⟩ y.1}
 
 /-- A closed module as an open one that makes no internal call. -/
 def lift (c : sh.ClosedMod) : sh.OpenMod := fun f s a =>
