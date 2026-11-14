@@ -139,9 +139,9 @@ Remaining follow-ups with the other tracks:
 
 | Need | Plan | Owner |
 | --- | --- | --- |
-| HTTP/3 field sections | Already `List Hpack.Entry` in #159, so `Tunnel.Connect` applies to RFC 9220 unchanged | done |
-| `SETTINGS_ENABLE_CONNECT_PROTOCOL` | `Http3.settingEnableConnectProtocol` (#159) and `Tunnel.settingEnableConnectProtocol` are both 0x08. Whichever lands second defines its constant as the other's | QUIC/H3 track and this track |
-| Two `validExtendedConnect`s | `Tunnel` (this PR) and `Http3.ExtendedConnect` (#159) differ: this one needs exactly one `:authority` and a non-empty `:path` for every scheme. After both merge, prove `Tunnel.validExtendedConnect → Http3.validExtendedConnect` or make one canonical | both tracks |
+| HTTP/3 field sections | Done: QPACK decodes to `List Hpack.Entry` (#159), so `Tunnel.Connect` applies to RFC 9220 unchanged | — |
+| `SETTINGS_ENABLE_CONNECT_PROTOCOL` | Done: `Tunnel.settingEnableConnectProtocol` is `Http3.settingEnableConnectProtocol` (#159), 0x08 | — |
+| Two `validExtendedConnect`s | Done: `Tunnel.validExtendedConnect` (the stricter sender rule) implies `Http3.validExtendedConnect` (the receiver rule), `validExtendedConnect_http3`; both use `Http3.extendedConnectPseudo` | — |
 | permessage-deflate (RFC 7692) | Call `Formats.Compression.SyncFlush.inflateMessage` (#160) on messages with RSV1, once the extension is negotiated | compression track (#160), then this track |
 | Taking over the connection after 101 | #156's `keepOpen`/`switches` hand the connection to `Tunnel.Upgrade`; `stripHopByHop` removes `Upgrade`/`Connection` before forwarding | HTTP/1.1 track |
 

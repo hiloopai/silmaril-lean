@@ -17,7 +17,10 @@ PROVED (standard axioms):
   it fails the RFC 9113 request rules of the HTTP/2 track (`Http2.validRequest`), because
   `:protocol` is an unknown pseudo-header field there (RFC 9113 §8.3). An old server rejects it
   instead of opening a plain tunnel, which is why RFC 8441 needs no new error handling;
-* `websocket_is_extended`: a WebSocket bootstrap is an extended CONNECT.
+* `websocket_is_extended`: a WebSocket bootstrap is an extended CONNECT;
+* `validExtendedConnect_http3`: this module's (sender-side, stricter) rule implies the HTTP/3
+  track's `Http3.validExtendedConnect`, so what this track builds is accepted there;
+  `settingEnableConnectProtocol_eq`: both tracks use identifier 0x08.
 
 CHECKED (`decide`): the RFC 8441 §5.1 request and response; authority-form targets.
 -/
@@ -63,6 +66,26 @@ theorem websocket_is_extended {b : Bool} {fs : List Entry}
     (h : validWebSocketRequest b fs = true) : validExtendedConnect b fs = true := by
   simp only [validWebSocketRequest, Bool.and_eq_true] at h
   exact h.1.1
+
+theorem settingEnableConnectProtocol_eq : settingEnableConnectProtocol = 0x08 := rfl
+
+theorem validExtendedConnect_http3 {b : Bool} {fs : List Entry}
+    (h : validExtendedConnect b fs = true) : Silmaril.Net.Http3.validExtendedConnect b fs = true := by
+  simp only [validExtendedConnect, Bool.and_eq_true, beq_iff_eq] at h
+  obtain ⟨⟨⟨⟨⟨⟨⟨hb, hs⟩, hm⟩, hpr⟩, -⟩, hsc⟩, hpa⟩, hall⟩ := h
+  unfold Silmaril.Net.Http3.validExtendedConnect
+  simp only [hb, hs, hm, Bool.true_and, beq_self_eq_true]
+  match hq : pseudoValues fs ":protocol", hq2 : pseudoValues fs ":scheme",
+      hq3 : pseudoValues fs ":path", hpa with
+  | [pr], [s], [p], hpa =>
+    rw [hq] at hall
+    simp only [List.all_cons, List.all_nil, Bool.and_true] at hall
+    simp only [Bool.not_eq_true'] at hpa
+    simp [hall] at hpa ⊢
+    exact Or.inr hpa
+  | [], _, _, _ | _ :: _ :: _, _, _, _ => rw [hq] at hpr; simp at hpr
+  | [_], [], _, _ | [_], _ :: _ :: _, _, _ => rw [hq2] at hsc; simp at hsc
+  | [_], [_], [], hpa | [_], [_], _ :: _ :: _, hpa => simp at hpa
 
 /-! ## Examples -/
 

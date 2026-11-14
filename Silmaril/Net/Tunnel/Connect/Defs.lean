@@ -3,6 +3,8 @@ module
 public import Silmaril.Net.Http2.Fields.Defs
 public import Silmaril.Net.Http2.Frame.Defs
 public import Silmaril.Net.Http.Uri.Defs
+public import Silmaril.Net.Http3.Frame.Defs
+public import Silmaril.Net.Http3.ExtendedConnect.Defs
 
 @[expose] public section
 
@@ -63,8 +65,9 @@ def connectResponseOk (status : Nat) (fieldNames : List (List UInt8)) : Bool :=
 
 /-! ## Extended CONNECT (RFC 8441, RFC 9220) -/
 
-/-- `SETTINGS_ENABLE_CONNECT_PROTOCOL` (RFC 8441 §3, RFC 9220 §3). -/
-def settingEnableConnectProtocol : Nat := 0x08
+/-- `SETTINGS_ENABLE_CONNECT_PROTOCOL` (RFC 8441 §3, RFC 9220 §3): the HTTP/3 track's constant,
+which is also the HTTP/2 identifier. -/
+abbrev settingEnableConnectProtocol : Nat := Silmaril.Net.Http3.settingEnableConnectProtocol
 
 /-- Apply a received `SETTINGS_ENABLE_CONNECT_PROTOCOL` value to the current state (whether
 the peer has enabled extended CONNECT). -/
@@ -73,11 +76,16 @@ def applyEnableConnect (enabled : Bool) (value : Nat) : Except ErrorCode Bool :=
   else if value == 0 then (if enabled then .error .protocolError else .ok false)
   else .error .protocolError
 
-/-- The request pseudo-header fields with `:protocol`. -/
-def extendedPseudo : List (List UInt8) := requestPseudo ++ [ascii ":protocol"]
+/-- The request pseudo-header fields with `:protocol` (the HTTP/3 track's list). -/
+abbrev extendedPseudo : List (List UInt8) := Silmaril.Net.Http3.extendedConnectPseudo
 
 /-- An extended CONNECT request header section, given whether the peer enabled it. The
-`:protocol` value is non-empty (an upgrade token, RFC 9110 §7.8). -/
+`:protocol` value is non-empty (an upgrade token, RFC 9110 §7.8).
+
+This is the strict form a client sends: exactly one `:authority` and a non-empty `:path` for
+every scheme. `Silmaril.Net.Http3.validExtendedConnect` is the receiver's rule (at most one
+`:authority`; a non-empty `:path` only for `http`/`https`, RFC 9113 §8.3.1).
+`Connect.Thms.validExtendedConnect_http3` proves that every request valid here is valid there. -/
 def validExtendedConnect (enabled : Bool) (fs : List Entry) : Bool :=
   enabled && validSection extendedPseudo fs &&
     pseudoValues fs ":method" == [ascii "CONNECT"] &&
