@@ -366,4 +366,12 @@ block, and the remaining bits of that byte (`pad`) are ignored. -/
 def Stream (p : Policy) (input out rest : List UInt8) : Prop :=
   ∃ pad : List Bool, pad.length < 8 ∧ Blocks p [] (inputBits input) out (pad ++ inputBits rest)
 
+/-- A DEFLATE stream decoded after a preset `history` (RFC 1950 §2.2, `FDICT`;
+RFC 1951 §3.2.3: "the compressed data … may refer to strings in a previous
+block"): back-references may reach into `history`, which is not part of the
+output `out`. Otherwise as `Stream`; `Stream p` is `StreamWithHistory p []`. -/
+def StreamWithHistory (p : Policy) (history input out rest : List UInt8) : Prop :=
+  ∃ pad : List Bool, pad.length < 8 ∧
+    Blocks p history (inputBits input) (history ++ out) (pad ++ inputBits rest)
+
 end Silmaril.Formats.Compression.DeflateSpec

@@ -4,6 +4,8 @@ public import Silmaril.Formats.Compression.DeflateSpec.Defs
 public import Silmaril.Formats.Compression.Deflate.Defs
 import Silmaril.Proofs.Formats.Compression.DeflateSpec.Policy
 import Silmaril.Proofs.Formats.Compression.DeflateSpec.Vectors
+import Silmaril.Proofs.Formats.Compression.DeflateSpec.History
+public import Silmaril.Formats.Compression.Deflate.WithHistory
 
 /-!
 # DEFLATE (RFC 1951): the decoder against the declarative semantics
@@ -17,6 +19,10 @@ Proved (standard axioms):
 * `Stream.mono`, `Stream.strict_rfc`, `deflateTake_sound_rfc`: relaxing the
   policy keeps every stream and its meaning, so every stream the decoder accepts
   is also valid under the letter of the RFC (`Policy.rfc`);
+* `deflateTakeWithHistory_iff`: the same for a stream decoded after a preset
+  history (`StreamWithHistory`, used by zlib's `FDICT`), and
+  `StreamWithHistory.window`: only the last 32 KiB of a history matter, as
+  distances are at most 32768 (§3.2.5);
 * `kat_stored`, `kat_fixed`, `kat_dynamic`: the zlib vectors of `Deflate.Thms`
   (one per block type) are `Stream .strict` derivations, so the relation is not
   vacuous;
@@ -81,6 +87,27 @@ theorem Stream.strict_rfc {input out rest : List UInt8} (h : Stream .strict inpu
 theorem deflateTake_sound_rfc {input out rest : List UInt8}
     (h : Deflate.deflateTake input = .ok (out, rest)) : Stream .rfc input out rest :=
   (deflateTake_sound h).strict_rfc
+
+/-! ### Preset history -/
+
+/-- The decoder with an installed history decodes exactly the streams of
+`StreamWithHistory .strict`: back-references may reach into the history, which
+is not returned. -/
+theorem deflateTakeWithHistory_iff {history input out rest : List UInt8} :
+    Deflate.deflateTakeWithHistory history input = .ok (out, rest) ↔
+      StreamWithHistory .strict history input out rest :=
+  ⟨Proofs.Formats.Compression.DeflateSpec.deflateTakeWithHistory_sound,
+   Proofs.Formats.Compression.DeflateSpec.deflateTakeWithHistory_complete⟩
+
+theorem stream_iff_withHistory_nil {p : Policy} {input out rest : List UInt8} :
+    Stream p input out rest ↔ StreamWithHistory p [] input out rest := Iff.rfl
+
+/-- Only the last 32 KiB of a history can be referenced (RFC 1951 §3.2.5: distances
+are at most 32768). -/
+theorem StreamWithHistory.window {p : Policy} {history input out rest : List UInt8} :
+    StreamWithHistory p (history.drop (history.length - 32768)) input out rest ↔
+      StreamWithHistory p history input out rest :=
+  Proofs.Formats.Compression.DeflateSpec.streamWithHistory_window
 
 /-! ### Known answers -/
 

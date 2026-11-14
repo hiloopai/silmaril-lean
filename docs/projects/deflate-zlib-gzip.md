@@ -16,8 +16,8 @@ These are not the same object, and nothing here identifies them:
 | Name | What it is | Here |
 | --- | --- | --- |
 | RFC 1951 DEFLATE | a bit-level compressed-data format | `Deflate.decoder` (`deflateTake`), `DeflateSpec.Stream` |
-| RFC 1950 zlib | a container: 2-byte header, DEFLATE, Adler-32 of the output | `Zlib.decoder` (= `Zlib.take`) |
-| RFC 1952 gzip | a container: header with optional fields and FHCRC, DEFLATE, CRC-32 and ISIZE; files are one or more members | `Gzip.decoder` (= `gzipMember`), `Gzip.decompress` (= `gzipDecompress`), `GzipHeader` |
+| RFC 1950 zlib | a container: 2-byte header, DEFLATE, Adler-32 of the output | `Zlib.decoder` (= `Zlib.take`), `ContainerSpec.ZlibMember`, `ZlibDictMember` |
+| RFC 1952 gzip | a container: header with optional fields and FHCRC, DEFLATE, CRC-32 and ISIZE; files are one or more members | `Gzip.decoder` (= `gzipMember`), `Gzip.decompress` (= `gzipDecompress`), `GzipHeader`, `ContainerSpec.GzipMember`, `GzipFile` |
 | the zlib **library** (`inflate`, `deflate`, `uncompress`, `gz*`, `windowBits`, return codes, compression levels) | a C API implementing all three formats | **not** modelled here. The `Inflate` topic models zlib 1.3.1's resumable inflater as an abstract machine, not its C code. The library's API contracts are erebor-lean's subject |
 
 ## The consumer contract (erebor-lean)
@@ -27,9 +27,9 @@ erebor-lean (`Erebor/Zlib/Spec/**`) uses, as its RFC-level "L0" references:
 | Definition | Meaning in erebor | Evidence here |
 | --- | --- | --- |
 | `Deflate.deflateTake` | raw streams, `windowBits < 0` | `DeflateSpec.deflateTake_iff`, `Deflate.deflateTake_append` |
-| `Zlib.take` | `uncompress`, inflate chain, `windowBits` 8–15 | `Zlib.take_eq_decoder`, `Zlib.local`, the Adler-32 trailer |
-| `gzipMember` | one member, `windowBits = 31` | `Gzip.member_eq_decoder`, `Gzip.local`, `GzipHeader.parseHeader_agrees` |
-| `gzipDecompress` | the gz file API reference | `Gzip.decompress_eq` (= `decoder.members`) |
+| `Zlib.take` | `uncompress`, inflate chain, `windowBits` 8–15 | `ContainerSpec.zlib_take_iff` (iff `ZlibMember`), `Zlib.take_eq_decoder`, `Zlib.local` |
+| `gzipMember` | one member, `windowBits = 31` | `ContainerSpec.gzipMember_iff` (iff `GzipMember`), `Gzip.member_eq_decoder`, `Gzip.local` |
+| `gzipDecompress` | the gz file API reference | `ContainerSpec.gzipDecompress_iff` (iff `GzipFile`), `Gzip.decompress_eq` (= `decoder.members`) |
 | `gzipCompress` | test fixtures | `Gzip.decompress_compress`, `Gzip.compress_eq` |
 
 erebor-lean states refinements as `∀ future, deflateTake (input ++ future) = .ok (out,
@@ -48,6 +48,7 @@ erebor's open problem `zlib/refines/rfc1950--l1-stream` (`l1Complete`) is silmar
 | Stored, fixed-Huffman and dynamic-Huffman blocks are all accepted | Proved via `deflateTake_iff`. Checked on zlib's vectors: `kat_stored`, `kat_fixed`, `kat_dynamic`, also as instances of `Stream` |
 | Malformed input is rejected: `BTYPE = 11`, distance codes 30/31, lit/len 286/287, distances before the start of the output, bad `NLEN`, incomplete codes, truncation | Proved via completeness (anything the decoder accepts satisfies the spec, which excludes these). Checked: `kat_rejects_reserved_btype`, `kat_rejects_dist_code_30` |
 | Policy differences from the letter of the RFC | Policy | `Policy.strict` (zlib's behaviour = the decoder) refines `Policy.rfc` (`Stream.strict_rfc`). Stricter than the RFC: `HDIST` 30/31 rejected; incomplete code-length codes rejected; incomplete lit/len or distance codes rejected, except one used symbol with a 1-bit code. Both policies: code 284 with extra bits `11111` is length 258 (as zlib); up to 7 padding bits after the final block are ignored. Listed in `DeflateSpec/Thms.lean` |
+| Preset history (zlib `FDICT`): the decoder with an installed history is sound and complete for `StreamWithHistory`; only the last 32 KiB of a history can be referenced | Proved | `DeflateSpec.deflateTakeWithHistory_iff`, `StreamWithHistory.window` |
 | **Append law**: bytes after a stream never change its decoding (former `Task.local`) | Proved | `Deflate.deflateTake_append`, `deflateTakeWithHistory_append`, `Deflate.local` (`task_local`) |
 | Encoder validity | Proved | stored blocks: `Deflate.roundTrip`. Greedy LZ77 + one fixed-Huffman block: `Deflate.encoderFixed`, `roundTripFixed` (it stops exactly at its end: `compress_take`) |
 | Resource bound | Proved | `Deflate.output_le`: at most 2064 output bytes per consumed input byte (258 per bit); see "Resources" |
@@ -56,6 +57,9 @@ erebor's open problem `zlib/refines/rfc1950--l1-stream` (`l1Complete`) is silmar
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
+| An independent statement of RFC 1950 §2.2, separate from the decoder: CMF/FLG (`CM = 8`, `CINFO ≤ 7`, `FCHECK`), `FDICT = 0`, a `DeflateSpec.Stream` body, the big-endian Adler-32 trailer by its closed form `adler32Symbolic` | Defined | `ContainerSpec.Defs`: `ZlibHeader`, `ZlibMember input out rest` |
+| The member decoder is **sound and complete** for it | Proved | `ContainerSpec.zlib_take_iff` (`Zlib.take`), `zlib_decompress_iff` (whole buffer) |
+| Preset dictionary, independently: `FDICT = 1`, `DICTID` = Adler-32 (closed form) of the dictionary, body decoded with the whole dictionary as history (`StreamWithHistory`) | Defined; proved | `ContainerSpec.ZlibDictMember`; `zlib_takeWithDictionary_iff`: `Zlib.takeWithDictionary` accepts exactly `ZlibMember ∨ ZlibDictMember`. Profile: only `CINFO = 7` is specified with a dictionary, as the decoder implements (RFC 1950 allows smaller windows there) |
 | Header: `CM = 8`, `CINFO ≤ 7`, `(CMF·256 + FLG) mod 31 = 0`; `FDICT = 1` is rejected by `Zlib.take` (dictionary-free) | Defined; checked | `zlibCheckHeader`, `decompress_fdict` |
 | Preset dictionary: checked against `DICTID` and installed as DEFLATE history | Proved | `takeWithDictionary_eq_take`, `takeWithDictionary_stored`, `takeWithDictionary_wrong` |
 | Body is RFC 1951 | Proved | `Zlib.decoder = framing.wrap Deflate.decoder` (`take_eq_decoder`) |
@@ -70,6 +74,8 @@ erebor's open problem `zlib/refines/rfc1950--l1-stream` (`l1Complete`) is silmar
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
+| An independent statement of RFC 1952 §2.2–2.3, separate from the decoder: header grammar (magic, `CM`, `FLG` bits with reserved bits zero, `MTIME`, `XFL`, `OS`, FEXTRA with `XLEN`, zero-terminated FNAME/FCOMMENT, FHCRC as the low 16 bits of `crc32Spec` of the preceding header bytes), a `DeflateSpec.Stream` body, the `crc32Spec` trailer and `ISIZE` = length mod 2³²; a file is one or more members with no other bytes | Defined | `ContainerSpec.Defs`: `GzipFlags`, `GzipMemberHeader`, `GzipMember input hdr out rest`, `GzipFile input out` |
+| The decoders are **sound and complete** for it | Proved | `ContainerSpec.parseHeader_iff` (header), `gzipMember_iff` (member), `gzipDecompress_iff` (file) |
 | Magic `1f 8b`, `CM = 8`, reserved `FLG` bits must be 0 (§2.4: "must give an error indication") | Proved/checked | `checkHeader`; `GzipHeader.parseHeader_agrees` |
 | Optional fields: FEXTRA (`XLEN`), FNAME, FCOMMENT skipped; FHCRC checked as the low 16 bits of the CRC-32 of the preceding header | Proved | `parseHeader_agrees`; checked: `checkHeader_bad_hcrc` |
 | The parsed header (FTEXT, MTIME, XFL, OS, extra, name, comment, FHCRC) is available | Proved | `GzipHeader.parseHeader`, which accepts exactly what the decoder accepts |
@@ -82,6 +88,14 @@ erebor's open problem `zlib/refines/rfc1950--l1-stream` (`l1Complete`) is silmar
 | Append law | Proved | `Gzip.local`, `Gzip.framing_local` |
 | Encoder round trip | Proved | `Gzip.roundTrip` (fixed header). For any valid header (name, comment, extra, MTIME, OS, FHCRC): `GzipHeader.roundTrip`. `encodeMember default = Gzip.encoder`. Compressing: `Gzip.roundTripFixed` |
 | Compliant compressor (§2.4: correct ID1, ID2, CM, CRC32, ISIZE) | Proved | the encoders above |
+
+## External-encoder corpus
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| The decoders agree with the reference zlib library on varied inputs: raw DEFLATE (level 1), zlib at levels 6 and 9 (with `memLevel = 1`: dynamic, fixed, dynamic blocks), `Z_HUFFMAN_ONLY`, `Z_RLE` (a length-258 match), `Z_FIXED`, `Z_SYNC_FLUSH` and `Z_FULL_FLUSH` inside a member, `windowBits = 9` (`CINFO = 1`), a preset dictionary (`zdict`), gzip with FNAME and MTIME (`gzip.GzipFile`), a two-member gzip file, and a member with FEXTRA, FNAME, FCOMMENT and FHCRC | Checked | `Corpus.Thms`: 12 vectors, 6130 bytes of output in all (≤ 768 per vector, distances up to 686), each also restated as an instance of `DeflateSpec.Stream`, `ZlibMember`, `ZlibDictMember` or `GzipFile` (`*_spec`). Generated with CPython 3.13.5 and zlib 1.3.1; the exact expressions are in the docstrings of `Corpus.Defs` |
+| Corrupted inputs are rejected: a flipped bit in a dynamic block header, `FCHECK`, the Adler-32, CRC-32 and `ISIZE` trailers, FHCRC; a reserved `FLG` bit; a dictionary member with no or the wrong dictionary | Checked | `Corpus.Thms`: `badBody_take` … `zlibDict_wrongDictionary` |
+| Large inputs and long distances (up to 32 KiB) | Not checked | kernel evaluation of the list-based decoder costs about a minute per KiB of output (quadratic), so the corpus stays small; long distances are covered by the proofs only |
 
 ## Streaming (zlib 1.3.1's inflater as a machine)
 
