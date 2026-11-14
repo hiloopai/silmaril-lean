@@ -14,6 +14,7 @@ Round trips, bounds and the append law for RFC 9000 §16, for
 namespace Silmaril.Proofs.Net.Quic.VarInt
 
 open Silmaril.Net.Quic.VarInt
+open Silmaril.Net.Wire (beBytes)
 
 theorem toNat_toUInt8 (n : Nat) : n.toUInt8.toNat = n % 256 := by
   simp only [Nat.toUInt8_eq, UInt8.toNat_ofNat', Nat.reducePow]

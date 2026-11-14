@@ -1,5 +1,7 @@
 module
 
+public import Silmaril.Net.Wire.Defs
+
 @[expose] public section
 
 /-!
@@ -35,6 +37,8 @@ other topics (see `docs/projects/http3.md` for what is modelled and what is assu
 
 namespace Silmaril.Net.Quic.VarInt
 
+open Silmaril.Net.Wire (beBytes)
+
 /-- The largest variable-length integer, `2^62 - 1` (RFC 9000 §16). -/
 def maxValue : Nat := 2 ^ 62 - 1
 
@@ -43,10 +47,7 @@ def Valid (v : Nat) : Prop := v ≤ maxValue
 
 instance (v : Nat) : Decidable (Valid v) := inferInstanceAs (Decidable (v ≤ maxValue))
 
-/-- Big-endian octets of `x` in `k` octets (`x` taken modulo `256^k`). -/
-def beBytes : Nat → Nat → List UInt8
-  | 0, _ => []
-  | k + 1, x => (x / 256 ^ k % 256).toUInt8 :: beBytes k x
+/-! `beBytes k x`, the big-endian octets of `x` in `k` octets, is `Net.Wire.beBytes`. -/
 
 /-- The big-endian value of octets, added to `acc * 256^|xs|`. -/
 def beValueFrom (acc : Nat) (xs : List UInt8) : Nat := xs.foldl (fun a b => a * 256 + b.toNat) acc
