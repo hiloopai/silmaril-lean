@@ -11,7 +11,8 @@ is supplied as actual bytes: its full Adler-32 must match DICTID, while only its
 window suffix seeds DEFLATE history. The identifier is a checksum, never an
 assumption that a dictionary is unique. The dictionary-enabled decoder below
 uses an explicit 32 KiB profile; parsing smaller CINFO values does not imply
-support for those dictionary profiles. Dictionary-free members retain the
+support for those dictionary profiles (`Zlib.Windowed` adds them as separately
+named decoders). Dictionary-free members retain the
 existing zlib specification and ignore any offered dictionary. Trailer checks
 cover emitted data only, excluding the initial dictionary history.
 -/
