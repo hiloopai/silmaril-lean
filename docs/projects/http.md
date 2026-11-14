@@ -33,7 +33,8 @@ protocols:
 
 - TLS (RFC 8446) and ALPN (RFC 7301). The `https` scheme is assumed to provide a
   confidential, authenticated, reliable and ordered byte stream. Cryptographic content
-  belongs to the `Crypto` region.
+  belongs to the `Crypto` region. What HTTP sees of TLS (record header, ALPN, registries),
+  upgrades, CONNECT, extended CONNECT and WebSockets are in [websocket-tls.md](websocket-tls.md).
 - The QUIC loss recovery, congestion control and cryptographic handshake (RFC 9001, RFC 9002).
   HTTP/3 is to be modelled over an abstract QUIC stream service.
 - Specific content codings (gzip, brotli) and media types. Content coding may later reuse
