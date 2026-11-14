@@ -75,7 +75,8 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.machine.sat", "silmaril.shapes.machine.json.reach",
   "silmaril.shapes.machine.json.bisimilar", "silmaril.shapes.machine.json.simulates",
   "silmaril.shapes.machine.accepts", "silmaril.shapes.machine.nonempty",
-  "silmaril.shapes.machine.json.accepts"]
+  "silmaril.shapes.machine.json.accepts", "silmaril.shapes.wasm.fn_spec",
+  "silmaril.shapes.wasm.returns"]
 
 # The worked example of the System V translation-validation shapes (examples/sysv-tv,
 # docs/projects/sysv-tv.md): one C function, two builds.
