@@ -85,7 +85,7 @@ pub enum Record {
     Spec(Spec),
     Model(Model),
     Room(Room),
-    Machine(Machine),
+    Machine(Box<Machine>),
     MachineBinding(MachineBinding),
     Predicate(Predicate),
     Answer(Answer),
@@ -176,6 +176,12 @@ impl Col for i64 {
 impl Col for u64 {
     fn sql(&self) -> Sql {
         Sql::Int(i64::try_from(*self).unwrap_or(i64::MAX))
+    }
+}
+/// A JSON value column holds its compact JSON text.
+impl Col for serde_json::Value {
+    fn sql(&self) -> Sql {
+        Sql::Text(self.to_string())
     }
 }
 impl Col for bool {

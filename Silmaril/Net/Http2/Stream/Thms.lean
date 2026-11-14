@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Net.Http2.Stream.Defs
 public import Silmaril.Automata.Shapes.Thms
+public import Silmaril.Automata.Graph.Thms
 import Silmaril.Proofs.Net.Http2.Stream
 
 @[expose] public section
@@ -26,6 +27,7 @@ PROVED (standard axioms; proofs in `Silmaril/Proofs/Net/Http2/Stream.lean`), RFC
   `Silmaril.Automata.Decide`): every state is reachable from idle (`all_reachable`), closed
   reaches only closed (`closed_final`), and without END_STREAM or RST_STREAM a stream never
   closes (`quiet_never_closes`); `machine_step_iff` relates the machine to `step`;
+* `idom_table`: the immediate dominators of the stream graph from idle (all idle);
 * `openRemote_ok`: an accepted new peer stream identifier has the peer's parity and exceeds
   every earlier one (§5.1.1).
 -/
@@ -93,6 +95,13 @@ def quiet (e : Event) : Bool :=
 open Silmaril.Automata.Shapes in
 /-- Without END_STREAM or RST_STREAM, a stream never closes (§5.1). -/
 theorem quiet_never_closes : ¬ Reach machine quiet .idle .closed := by decide
+
+/-- **No state but idle dominates another**: in the stream graph from idle (labels forgotten), the
+immediate dominator of every other state is idle (node `0`). So the exact dominator tree is the
+star from idle (`Graph.exact_unique`): every state can be reached avoiding any other given state. -/
+theorem idom_table :
+    Silmaril.Automata.Graph.idomTable (machine.toDigraph .idle) =
+      [none, some 0, some 0, some 0, some 0, some 0, some 0] := by decide +kernel
 
 /-! A request/response exchange, from the client's side (§8.1). -/
 

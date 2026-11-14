@@ -199,7 +199,7 @@ fn record_rows(
                     n_states: n(x.states.len()),
                     n_labels: n(x.labels.len()),
                     n_edges: n(x.edges.len()),
-                    ..x.clone()
+                    ..(**x).clone()
                 });
             }
             Record::MachineBinding(x) => {
