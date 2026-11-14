@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Compiler.Native.Correctness.LiteralEmission.Defs
+import Silmaril.Prelude.BVDecide.Defs
 /-! Universal reduction of the real O0 lowering/SSA/ABI/emission path. Local
 cbv rules are proved equations for actual integer extraction and word bits;
 private opaque aliases retain symbolic input during the reduction. -/
@@ -105,7 +106,7 @@ theorem word_signed (number : Int) (bounded : IsInt32 number) :
 
 private theorem narrow_signed (value : BitVec 32) :
     (value.signExtend 64).setWidth 32 = value := by
-  bv_decide
+  bv_decide_kernel
 
 /-- Each independently bounded literal is already the value produced by either
 of the emitted signed32 normalizations. -/
