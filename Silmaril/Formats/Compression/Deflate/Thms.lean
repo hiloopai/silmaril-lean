@@ -35,6 +35,8 @@ Proved (standard axioms):
 * `fixedLitLen_valid`, `fixedDist_valid`: the fixed codes satisfy the Kraft inequality;
 * `blocksBytes_take`: any partition into stored blocks of at most 65535 bytes is
   accepted (a semantic contract, not one encoder's block boundaries);
+* `withHistory_empty`, `withHistory_suffix`: the empty
+  history is plain DEFLATE, and with any history a member consumes a prefix;
 * `history_stored`, `history_match`, `no_history_rejected`: preset histories
   are consulted, and a match into a missing history is rejected;
 * canonical Huffman codes (RFC 1951 §3.2.2): `assignCodes_getElem?` (the entry of each
@@ -131,6 +133,16 @@ theorem blocksBytes_take (chunks : List (List UInt8)) (h : StoredWriter.Valid ch
     (trailer : List UInt8) :
     deflateTake (StoredWriter.blocksBytes chunks ++ trailer) = .ok (chunks.flatten, trailer) :=
   StoredWriter.deflateTake_blocksBytes chunks h trailer
+
+/-- The empty history is plain DEFLATE. -/
+theorem withHistory_empty (input : List UInt8) :
+    deflateTakeWithHistory [] input = deflateTake input :=
+  _root_.Silmaril.Formats.Compression.Deflate.deflateTakeWithHistory_empty input
+
+/-- With any history, a member consumes a prefix of its input. -/
+theorem withHistory_suffix {history input out rest : List UInt8}
+    (h : deflateTakeWithHistory history input = .ok (out, rest)) : rest <:+ input :=
+  _root_.Silmaril.Formats.Compression.Deflate.deflateTakeWithHistory_suffix h
 
 theorem history_stored (history data tail : List UInt8) :
     deflateTakeWithHistory history (storedBytes data ++ tail) = .ok (data, tail) :=

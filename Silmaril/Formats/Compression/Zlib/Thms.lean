@@ -16,6 +16,7 @@ Proved (standard axioms):
 
 * `take_eq_decoder`: the format module's `zlibTake` is the framework container
   `framing.wrap Deflate.decoder`, so the framework laws apply;
+* `framing_consumes`, `framing_local`, `trailerIs`: the container laws;
 * `consumes`, `decoder_trailer`: a member consumes a prefix ending in the
   Adler-32 trailer of its output, followed by the untouched rest;
 * `roundTrip`, `codec`, `compress_eq`, `decompress_compress`: the stored
@@ -40,6 +41,13 @@ namespace Silmaril.Formats.Compression.Zlib
 theorem take_eq_decoder : take = decoder := Proofs.Formats.Compression.Zlib.take_eq_decoder
 
 theorem consumes : decoder.Consumes := Proofs.Formats.Compression.Zlib.consumes
+
+theorem framing_consumes : framing.Consumes := Proofs.Formats.Compression.Zlib.framing_consumes
+
+theorem framing_local : framing.Local := Proofs.Formats.Compression.Zlib.framing_local
+
+/-- The trailer the container accepts after output `out` is `trailer out`. -/
+theorem trailerIs : framing.TrailerIs trailer := Proofs.Formats.Compression.Zlib.trailerIs
 
 /-- A member ends with the Adler-32 trailer of its output, then the rest. -/
 theorem decoder_trailer {bytes out rest : List UInt8} (h : decoder bytes = some (out, rest)) :
