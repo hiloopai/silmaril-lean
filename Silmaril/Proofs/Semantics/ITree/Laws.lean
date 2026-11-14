@@ -1,0 +1,335 @@
+module
+
+public import Silmaril.Semantics.ITree.Defs
+public import Silmaril.Proofs.Semantics.ITree.Basic
+public import Silmaril.Proofs.Semantics.ITree.Monad
+public import Silmaril.Proofs.Semantics.ITree.Iteration
+import all Silmaril.Proofs.Semantics.ITree.Basic
+import all Silmaril.Proofs.Semantics.ITree.Monad
+import all Silmaril.Proofs.Semantics.ITree.Iteration
+import Batteries.Tactic.Alias
+
+/-!
+# Laws: proofs
+
+Proofs for `Silmaril.Semantics.ITree.Thms`. Nothing imports this module except
+that header and later Proofs modules of the topic.
+-/
+
+public section
+
+namespace Silmaril.Elgot.ITree
+
+open Silmaril.Elgot
+
+universe u v
+
+namespace Approx
+
+private theorem iter_fixpoint {E : Type u → Type u} {A B : Type v}
+    (n : Nat) (x : Approx E (B ⊕ A) n) (f : A → Approx E (B ⊕ A) n) :
+    iter n x f = bind n x (Sum.elim
+      (fun b => (ret (E := E) b).observe n)
+      (fun a => iter n (f a) f)) := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      rw [iter_succ, LawfulElgotMonad.fixpoint]
+      simp only [iterStep, bind, LawfulMonad.bind_assoc]
+      apply congrArg (x >>= ·)
+      funext node
+      cases node with
+      | ret s =>
+          cases s <;> simp [ret]
+      | vis e next =>
+          simp
+          funext r
+          rw [ih (next r) (fun a => truncate n (f a))]
+          apply congrArg (bind n (next r))
+          funext s
+          cases s with
+          | inl b => exact ((ret (E := E) b).coherent n).symm
+          | inr a => exact (truncate_iter n (f a) f).symm
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.iter_fixpoint := Silmaril.Elgot.ITree.Approx.iter_fixpoint
+
+private theorem truncate_mapReturn {E : Type u → Type u} {A B C : Type v}
+    (n : Nat) (x : Approx E (B ⊕ A) (n + 1)) (g : B → Approx E C (n + 1)) :
+    truncate n (mapReturn (n + 1) x g) =
+      mapReturn n (truncate n x) (fun b => truncate n (g b)) := by
+  rw [mapReturn, truncate_bind]
+  unfold mapReturn
+  apply congrArg (bind n (truncate n x))
+  funext s
+  cases s with
+  | inl b =>
+      simp only [Sum.elim_inl]
+      rw [truncate_bind]
+      apply congrArg (bind n (truncate n (g b)))
+      funext c
+      exact (ret (E := E) (Sum.inl c)).coherent n
+  | inr a =>
+      simp only [Sum.elim_inr]
+      exact (ret (E := E) (Sum.inr a)).coherent n
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.truncate_mapReturn := Silmaril.Elgot.ITree.Approx.truncate_mapReturn
+
+private theorem truncate_mapInl {E : Type u → Type u} {A B : Type v}
+    (n : Nat) (x : Approx E B (n + 1)) :
+    truncate n (mapInl (A := A) (n + 1) x) = mapInl n (truncate n x) := by
+  rw [mapInl, truncate_bind]
+  unfold mapInl
+  apply congrArg (bind n (truncate n x))
+  funext b
+  exact (ret (E := E) (Sum.inl b)).coherent n
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.truncate_mapInl := Silmaril.Elgot.ITree.Approx.truncate_mapInl
+
+private theorem iter_mapInl {E : Type u → Type u} {A B : Type v}
+    (n : Nat) (x : Approx E B n) (f : A → Approx E (B ⊕ A) n) :
+    iter n (mapInl n x) f = x := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      show iter (n + 1) (mapInl (n + 1) x) f = x
+      have hret : (fun b : B => truncate n ((ret (E := E) (Sum.inl b : B ⊕ A)).observe (n + 1))) =
+          fun b => (ret (E := E) (Sum.inl b : B ⊕ A)).observe n :=
+        funext fun b => (ret (E := E) (Sum.inl b : B ⊕ A)).coherent n
+      rw [iter_succ, LawfulElgotMonad.fixpoint]
+      simp only [mapInl, bind, iterStep, LawfulMonad.bind_assoc]
+      calc
+        _ = x >>= pure := by
+          apply congrArg (x >>= ·)
+          funext node
+          cases node with
+          | ret b => simp [ret]
+          | vis e next =>
+              simp only [Part.bind_eq_bind, Part.bind_some, Sum.elim_inl, Part.pure_eq_some,
+                Part.some_inj, Visible.vis.injEq, heq_eq_eq, true_and]
+              funext r
+              rw [hret]
+              exact ih (next r) (fun a => truncate n (f a))
+        _ = x := by
+          change Part.bind x Part.some = x
+          rw [Part.bind_some_eq_map]
+          exact Part.map_id' (fun _ => rfl) x
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.iter_mapInl := Silmaril.Elgot.ITree.Approx.iter_mapInl
+
+private theorem naturality_square {E : Type u → Type u} {A B C : Type v}
+    (n : Nat) (f : A → Approx E (B ⊕ A) (n + 1))
+    (g : B → Approx E C (n + 1))
+    (ih : ∀ x, bind n (iter n x (fun a => truncate n (f a)))
+        (fun b => truncate n (g b)) =
+      iter n (mapReturn (A := A) n x (fun b => truncate n (g b)))
+        (fun a => mapReturn (A := A) n (truncate n (f a)) (fun b => truncate n (g b)))) :
+    (Silmaril.Elgot.mapReturn (iterStep n f) (post n g) >=> liftPure (Sum.map
+          (id : Visible E C (Approx E C n) → Visible E C (Approx E C n))
+          (fun x => mapReturn (A := A) (B := B) (C := C) (n + 1) x g))) =
+      (liftPure (fun x => mapReturn (A := A) (B := B) (C := C) (n + 1) x g) >=>
+        iterStep n (fun a => mapReturn (A := A) (B := B) (C := C) (n + 1) (f a) g)) := by
+  funext x
+  simp only [Bind.kleisliRight, Silmaril.Elgot.mapReturn, liftPure, Function.comp_apply, iterStep,
+    post, mapReturn, bind, LawfulMonad.bind_assoc]
+  simp only [Part.pure_eq_some, Part.bind_eq_bind, Part.bind_some]
+  simp only [iterStep]
+  simp only [Part.bind_eq_bind]
+  rw [Part.bind_assoc]
+  apply congrArg (Part.bind x)
+  funext node
+  cases node with
+  | ret s =>
+      cases s with
+      | inl b =>
+          simp [Part.bind_assoc]
+          apply congrArg (Part.bind (g b))
+          funext node
+          cases node with
+          | ret c => simp [ret]
+          | vis e next =>
+              simp
+              funext r
+              rw [show (fun c => truncate n ((ret (E := E) (Sum.inl c)).observe (n + 1))) =
+                  (fun c => (ret (E := E) (Sum.inl c)).observe n) by
+                funext c
+                exact (ret (E := E) (Sum.inl c)).coherent n]
+              exact (iter_mapInl n (next r) _).symm
+      | inr a => simp [ret]
+  | vis e next =>
+      simp
+      funext r
+      calc
+        _ = iter n (mapReturn (A := A) (B := B) (C := C) n (next r)
+              (fun b => truncate n (g b)))
+            (fun a => mapReturn (A := A) (B := B) (C := C) n (truncate n (f a))
+              (fun b => truncate n (g b))) := ih (next r)
+        _ = _ := by
+          congr 1
+          · unfold mapReturn
+            apply congrArg (bind n (next r))
+            funext s
+            cases s with
+            | inl b =>
+                simp only [Sum.elim_inl]
+                exact (truncate_mapInl (A := A) n (g b)).symm
+            | inr a =>
+                simp only [Sum.elim_inr]
+                exact ((ret (E := E) (Sum.inr a : C ⊕ A)).coherent n).symm
+          · funext a
+            exact (truncate_mapReturn (A := A) n (f a) g).symm
+
+private theorem iter_naturality {E : Type u → Type u} {A B C : Type v}
+    (n : Nat) (x : Approx E (B ⊕ A) n) (f : A → Approx E (B ⊕ A) n)
+    (g : B → Approx E C n) :
+    bind n (iter n x f) g =
+      iter n (mapReturn (A := A) n x g) (fun a => mapReturn (A := A) n (f a) g) := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      change ((Silmaril.Elgot.iter (iterStep n f)) >=> (post n g)) x = _
+      rw [LawfulElgotMonad.naturality]
+      rw [LawfulElgotMonad.uniformity
+        (Silmaril.Elgot.mapReturn (iterStep n f) (post n g))
+        (iterStep n (fun a => mapReturn (A := A) (n + 1) (f a) g))
+        (fun x => mapReturn (A := A) (n + 1) x g)
+        (naturality_square n f g (fun y => ih y (fun a => truncate n (f a))
+          (fun b => truncate n (g b))))]
+      simp [Bind.kleisliRight, liftPure]
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.iter_naturality := Silmaril.Elgot.ITree.Approx.iter_naturality
+
+private theorem truncate_mapState {E : Type u → Type u} {A B C : Type v}
+    (n : Nat) (x : Approx E (B ⊕ A) (n + 1)) (h : A → C) :
+    truncate n (mapState (n + 1) x h) = mapState n (truncate n x) h := by
+  rw [mapState, truncate_bind]
+  unfold mapState
+  apply congrArg (bind n (truncate n x))
+  funext s
+  exact (ret (E := E) (Sum.map id h s)).coherent n
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.truncate_mapState := Silmaril.Elgot.ITree.Approx.truncate_mapState
+
+private theorem uniformity_square {E : Type u → Type u} {A B C : Type v}
+    (n : Nat) (f : A → Approx E (B ⊕ A) (n + 1))
+    (g : C → Approx E (B ⊕ C) (n + 1)) (h : A → C)
+    (comm : ∀ a, mapState (n + 1) (f a) h = g (h a))
+    (ih : ∀ x, iter n x (fun a => truncate n (f a)) =
+      iter n (mapState n x h) (fun c => truncate n (g c))) :
+    ((iterStep n f) >=> (liftPure (Sum.map id (fun x => mapState (n + 1) x h)))) =
+      ((liftPure (fun x => mapState (n + 1) x h)) >=> (iterStep n g)) := by
+  funext x
+  simp only [Bind.kleisliRight, liftPure, Function.comp_apply, iterStep, mapState, bind,
+    LawfulMonad.bind_assoc]
+  simp only [Part.pure_eq_some, Part.bind_eq_bind, Part.bind_some]
+  simp only [iterStep, Part.bind_eq_bind]
+  rw [Part.bind_assoc]
+  have hret : (fun s : B ⊕ A => truncate n ((ret (E := E) (Sum.map id h s)).observe (n + 1))) =
+      fun s => (ret (E := E) (Sum.map id h s)).observe n :=
+    funext fun s => (ret (E := E) (Sum.map id h s)).coherent n
+  apply congrArg (Part.bind x)
+  funext node
+  cases node with
+  | ret s =>
+      cases s with
+      | inl b => simp [ret]
+      | inr a =>
+          simp only [ret, Part.bind_some, Function.comp_apply, Sum.map_inr, Part.pure_eq_some,
+            Part.some_inj, Sum.inr.injEq]
+          exact comm a
+  | vis e next =>
+      simp only [Part.bind_some, Function.comp_apply, Sum.map_inl, id_eq, Part.pure_eq_some,
+        Part.some_inj, Sum.inl.injEq, Visible.vis.injEq, heq_eq_eq, true_and]
+      funext r
+      rw [hret]
+      exact ih (next r)
+
+private theorem iter_uniformity {E : Type u → Type u} {A B C : Type v}
+    (n : Nat) (x : Approx E (B ⊕ A) n)
+    (f : A → Approx E (B ⊕ A) n) (g : C → Approx E (B ⊕ C) n)
+    (h : A → C) (comm : ∀ a, mapState n (f a) h = g (h a)) :
+    iter n x f = iter n (mapState n x h) g := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      have hc (a : A) : mapState n (truncate n (f a)) h = truncate n (g (h a)) := by
+        rw [← truncate_mapState]
+        exact congrArg (truncate n) (comm a)
+      have hs := LawfulElgotMonad.uniformity (m := Part)
+        (iterStep n f) (iterStep n g) (fun x => mapState (n + 1) x h)
+        (uniformity_square n f g h comm (fun y => ih y
+          (fun a => truncate n (f a)) (fun c => truncate n (g c)) hc))
+      change Silmaril.Elgot.iter (iterStep n f) x = _
+      rw [congrFun hs x]
+      simp [Bind.kleisliRight, liftPure]
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.iter_uniformity := Silmaril.Elgot.ITree.Approx.iter_uniformity
+
+private theorem truncate_flattenApprox {E : Type u → Type u} {A B : Type v}
+    (n : Nat) (x : Approx E ((B ⊕ A) ⊕ A) (n + 1)) :
+    truncate n (flattenApprox (n + 1) x) = flattenApprox n (truncate n x) := by
+  rw [flattenApprox, truncate_bind]
+  unfold flattenApprox
+  apply congrArg (bind n (truncate n x))
+  funext s
+  exact (ret (E := E) (Silmaril.Elgot.flatten s)).coherent n
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.Approx.truncate_flattenApprox := Silmaril.Elgot.ITree.Approx.truncate_flattenApprox
+
+end Approx
+
+private theorem iterate_fixpoint {E : Type u → Type u} {A B : Type v}
+    (f : A → Tree E (B ⊕ A)) :
+    Silmaril.Elgot.iter f = fun a => f a >>= Sum.elim pure (Silmaril.Elgot.iter f) := by
+  funext a
+  apply Tree.ext
+  intro n
+  rw [observe_iter, observe_bind]
+  rw [Approx.iter_fixpoint]
+  apply congrArg (Approx.bind n ((f a).observe n))
+  funext s
+  cases s with
+  | inl b => rfl
+  | inr a => exact observe_iter f a n
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.iterate_fixpoint := Silmaril.Elgot.ITree.iterate_fixpoint
+
+private theorem iterate_naturality {E : Type u → Type u} {A B C : Type v}
+    (f : A → Tree E (B ⊕ A)) (g : B → Tree E C) :
+    ((Silmaril.Elgot.iter f) >=> g) =
+      Silmaril.Elgot.iter (Silmaril.Elgot.mapReturn f g) := by
+  funext a
+  apply Tree.ext
+  intro n
+  change (Silmaril.Elgot.iter f a >>= g).observe n = _
+  rw [observe_bind, observe_iter]
+  change Approx.bind n (Approx.iter n ((f a).observe n) (fun a => (f a).observe n))
+      (fun b => (g b).observe n) = _
+  rw [Approx.iter_naturality]
+  rw [observe_iter]
+  have hm (a : A) : (Silmaril.Elgot.mapReturn f g a).observe n =
+      Approx.mapReturn n ((f a).observe n) (fun b => (g b).observe n) := by
+    change Approx.bind n ((f a).observe n)
+      (fun s => (Sum.elim (fun b => g b >>= pure ∘ Sum.inl) (pure ∘ Sum.inr) s).observe n) = _
+    unfold Approx.mapReturn
+    apply congrArg (Approx.bind n ((f a).observe n))
+    funext s
+    cases s with
+    | inl b => rfl
+    | inr a => rfl
+  simp_rw [hm]
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.iterate_naturality := Silmaril.Elgot.ITree.iterate_naturality
+
+private theorem iterate_uniformity {E : Type u → Type u} {A B C : Type v}
+    (f : A → Tree E (B ⊕ A)) (g : C → Tree E (B ⊕ C)) (h : A → C)
+    (comm : (f >=> (liftPure (Sum.map id h))) = ((liftPure h) >=> g)) :
+    Silmaril.Elgot.iter f = ((liftPure h) >=> (Silmaril.Elgot.iter g)) := by
+  funext a
+  apply Tree.ext
+  intro n
+  have side : ∀ a, Approx.mapState n ((f a).observe n) h = (g (h a)).observe n := by
+    intro a
+    have ho : ((f >=> liftPure (Sum.map id h)) a).observe n =
+        ((liftPure h >=> g) a).observe n := congrArg (·.observe n) (congrFun comm a)
+    cases n with
+    | zero => rfl
+    | succ n => simpa [Bind.kleisliRight, liftPure, Approx.mapState, ret] using ho
+  rw [observe_iter, Approx.iter_uniformity n ((f a).observe n) (fun a => (f a).observe n)
+    (fun c => (g c).observe n) h side, side a]
+  simp only [Bind.kleisliRight, liftPure, Function.comp_apply]
+  rw [pure_bind]
+  change _ = (Silmaril.Elgot.iter g (h a)).observe n
+  exact (observe_iter g (h a) n).symm
+alias _root_.Silmaril.Proofs.Semantics.Elgot.ITree.iterate_uniformity := Silmaril.Elgot.ITree.iterate_uniformity
+
+end Silmaril.Elgot.ITree
