@@ -3,6 +3,7 @@ module
 public import Silmaril.Project.Defs
 public import Silmaril.Automata.Institution.Defs
 public import Silmaril.Automata.Machine.Defs
+public import Silmaril.Automata.Graph.Defs
 public import Mathlib.Data.Fintype.Basic
 
 /-!
@@ -24,6 +25,10 @@ JSON machines (`Document`s, on names):
 | `silmaril.shapes.machine.accepts` | `Accepts M w`: a marked machine accepts the word `w` |
 | `silmaril.shapes.machine.nonempty` | `Nonempty M`: it accepts some word |
 | `silmaril.shapes.machine.json.accepts` | `JsonAccepts d w`, along a document's edges and layers |
+| `silmaril.shapes.graph.dominates` | `Dominates g a b`, in a rooted graph (`Machine.Graph.Digraph`) |
+| `silmaril.shapes.graph.dom_tree_exact` | `DomTreeExact g p`: `p` is the (unique) exact dominator tree |
+| `silmaril.shapes.graph.dom_tree_sound` | `DomTreeSound g p`: `p`'s parents dominate their children |
+| `silmaril.shapes.graph.region_tree_valid` | `RegionTreeValid g t`: every group of `t` is a single-entry region |
 
 `Thms` makes **every** shape decidable: the typed ones through the verified procedures, the
 JSON ones on their own (`Spec.restrict`: a document only mentions finitely many names), and
@@ -101,6 +106,29 @@ initial to an accepting state. -/
   (title := "A JSON machine accepts a word")]
 def JsonAccepts (d : Document) (w : List String) : Prop :=
   ∃ s ∈ d.layers.initial, ∃ t ∈ d.layers.accepting, d.spec.toLTS.MTr s w t
+
+/-! ## Rooted graphs (`Silmaril.Automata.Graph`) -/
+
+/-- **Dominance** in a rooted graph. -/
+@[problem "silmaril.shapes.graph.dominates"
+  (title := "A node dominates another in a rooted graph")]
+def Dominates (g : Silmaril.Machine.Graph.Digraph) (a b : Nat) : Prop := g.Dominates a b
+
+/-- **An exact dominator tree**: ancestors are exactly strict dominators (unique on reachable
+nodes, `Graph.exact_unique`). -/
+@[problem "silmaril.shapes.graph.dom_tree_exact"
+  (title := "A tree is the exact dominator tree of a rooted graph")]
+def DomTreeExact (g : Silmaril.Machine.Graph.Digraph) (p : Graph.Parent) : Prop := Graph.DomExact g p
+
+/-- **A sound dominator tree**: parents strictly dominate (not unique). -/
+@[problem "silmaril.shapes.graph.dom_tree_sound"
+  (title := "A tree's parents dominate their children in a rooted graph")]
+def DomTreeSound (g : Silmaril.Machine.Graph.Digraph) (p : Graph.Parent) : Prop := Graph.DomSound g p
+
+/-- **A valid region tree**: every group is a single-entry region. -/
+@[problem "silmaril.shapes.graph.region_tree_valid"
+  (title := "A region tree of a rooted graph is valid")]
+def RegionTreeValid (g : Silmaril.Machine.Graph.Digraph) (t : Graph.RTree) : Prop := t.Valid g
 
 /-! ## Deciding problems of standalone JSON machines
 

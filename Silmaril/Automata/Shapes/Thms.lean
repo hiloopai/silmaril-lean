@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Automata.Shapes.Defs
 public import Silmaril.Automata.Decide.Thms
+public import Silmaril.Automata.Graph.Thms
 import Silmaril.Proofs.Automata.Shapes
 
 @[expose] public section
@@ -65,6 +66,14 @@ theorem jsonBisimilar_iff_of_bound [FinNamed S] [FinNamed T] [FinNamed L] (M : D
     (he : N.toSpec.canon = e.spec.canon) (s : S) (t : T) :
     Bisimilar M N s t ↔ JsonBisimilar d e (FinNamed.name s) (FinNamed.name t) :=
   Silmaril.Proofs.Automata.jsonBisimilar_iff_of_bound M N d e hd he s t
+
+/-! ## Rooted graphs -/
+
+instance (g : Silmaril.Machine.Graph.Digraph) (a b : Nat) : Decidable (Shapes.Dominates g a b) :=
+  inferInstanceAs (Decidable (g.Dominates a b))
+
+instance (g : Silmaril.Machine.Graph.Digraph) (p : Graph.Parent) : Decidable (DomTreeExact g p) :=
+  inferInstanceAs (Decidable (Graph.DomExact g p))
 
 /-! ## Words -/
 

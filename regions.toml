@@ -129,8 +129,8 @@ deps = ["Logic", "Wasm"]
 
 [[region]]
 name = "Automata"
-scope = "Finite machines as basic objects: finite named types (`FinNamed`) and their derive command, typed deterministic machines, relational machines and graphs with a CSLib LTS bridge, marking layers (initial, accepting, rejecting, error), JSON/TOML machine documents with canonical identity, categories and forgetful functors between them, the machine institution, verified reachability and simulation procedures, the `machine` record kind and its problem shapes."
-deps = ["Prelude", "Semantics", "Logic", "Project"]
+scope = "Finite machines as basic objects: finite named types (`FinNamed`) and their derive command, typed deterministic machines, relational machines and graphs with a CSLib LTS bridge, marking layers (initial, accepting, rejecting, error), JSON/TOML machine documents with canonical identity, categories and forgetful functors between them, the machine institution, verified reachability and simulation procedures, the `machine` record kind and its problem shapes; generic rooted-graph analysis (dominator-tree problems, multiple entries, region trees) over `Machine`'s `Digraph`."
+deps = ["Prelude", "Semantics", "Logic", "Project", "Machine"]
 
 [[region]]
 name = "Parse"

@@ -35,6 +35,8 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
 .tablebox { max-height:70vh; overflow:auto; display:inline-block; max-width:100%; }
 code, .mono, td { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
 .badge { display:inline-block; padding:0 6px; border-radius:3px; color:#fff; font-size:12px; font-family:ui-monospace, monospace; }
+.prov { display:inline-block; padding:0 6px; border-radius:3px; font-size:12px; border:1px solid; }
+.prov-lean { color:#1f7a3a; border-color:#2e9d4f; background:#eaf6ee; } .prov-gen { color:#8a5a00; border-color:#d9a400; background:#fff6dc; } .prov-browser { color:#555; border-color:#9aa0a6; background:#f1f3f5; }
 .holds { background:var(--holds); } .fails { background:var(--fails); } .unknown { background:var(--unknown); }
 .muted { color:var(--muted); }
 .grid { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
@@ -587,6 +589,66 @@ async function formatPage(name) {
   h += "<h2>Value sources read with it</h2>" + await tableOf(await first(DETAIL, "SELECT value, pos, cid, obligation FROM value_sources WHERE format = ? ORDER BY value, pos", [name]));
   return h;
 }
+// ---------- generic rooted-graph analysis (shared by machines and control-flow graphs) ----------
+// A provenance badge for a displayed analysis: checked by the Lean kernel (with the theorem that
+// checks it), computed by a generator without a proof, or computed here in the browser.
+function provBadge(kind, detail) {
+  const t = { lean: "Lean kernel-checked", gen: "generator-computed, unchecked", browser: "browser-computed, unchecked" }[kind];
+  return `<span class="prov prov-${kind}" title="${esc(detail || "")}">${t}${detail ? ": " + esc(detail) : ""}</span>`;
+}
+// Immediate dominators of `nodes` (ids) under `edges` ([from, to]) from the entries `roots`:
+// with several roots, a synthetic root (id null) precedes them, as in Silmaril.Automata.Graph's
+// `withRoot`. Returns { idom: Map(node -> parent or null), reachable: Set }. Iterative dataflow
+// over dominator sets: small graphs only; an unreachable node has no entry in `idom`.
+function dominators(nodes, edges, roots) {
+  const ROOT = "\u0000root";
+  const preds = new Map(nodes.map((n) => [n, []]));
+  for (const [a, b] of edges) if (preds.has(b) && preds.has(a)) preds.get(b).push(a);
+  const entry = roots.length === 1 ? roots[0] : ROOT;
+  if (roots.length !== 1) { preds.set(ROOT, []); for (const r of roots) preds.get(r).push(ROOT); }
+  const all = [...preds.keys()];
+  // reachability from the entry
+  const succ = new Map(all.map((n) => [n, []]));
+  for (const [b, ps] of preds) for (const a of ps) succ.get(a).push(b);
+  const reach = new Set([entry]), todo = [entry];
+  while (todo.length) for (const b of succ.get(todo.pop())) if (!reach.has(b)) { reach.add(b); todo.push(b); }
+  const R = all.filter((n) => reach.has(n));
+  const dom = new Map(R.map((n) => [n, n === entry ? new Set([n]) : new Set(R)]));
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const n of R) {
+      if (n === entry) continue;
+      let acc = null;
+      for (const p of preds.get(n)) if (reach.has(p)) acc = acc ? new Set([...acc].filter((x) => dom.get(p).has(x))) : new Set(dom.get(p));
+      const next = new Set(acc || []); next.add(n);
+      if (next.size !== dom.get(n).size) { dom.set(n, next); changed = true; }
+    }
+  }
+  const idom = new Map();
+  for (const n of R) {
+    if (n === entry) { idom.set(n, null); continue; }
+    const strict = [...dom.get(n)].filter((x) => x !== n);
+    // the strict dominator dominated by all others has the largest dominator set
+    const p = strict.reduce((best, x) => (best === undefined || dom.get(x).size > dom.get(best).size ? x : best), undefined);
+    idom.set(n, p === ROOT ? null : p);
+  }
+  idom.delete(ROOT);
+  return { idom, reachable: new Set(R.filter((n) => n !== ROOT)), synthetic: entry === ROOT };
+}
+// Draw a dominator tree (node -> parent) into `container`; unreachable nodes are listed apart.
+function drawDomTree(container, nodes, idom, label, style) {
+  const els = nodes.filter((n) => idom.has(n)).map((n) => ({ data: { id: "d:" + n, label: label(n) } }));
+  let i = 0;
+  for (const [n, p] of idom) if (p !== null && p !== undefined) els.push({ data: { id: "t" + (i++), source: "d:" + p, target: "d:" + n } });
+  return cytoscape({ container, elements: els, wheelSensitivity: 0.2,
+    layout: { name: "dagre", rankDir: "TB", nodeSep: 30, rankSep: 50 },
+    style: [{ selector: "node", style: Object.assign({ label: "data(label)", "background-color": "#fff", "border-color": "#2f5d9e",
+      "border-width": 1.5, shape: "round-rectangle", width: "label", height: 24, padding: 8, "font-size": 11,
+      "text-valign": "center", "text-halign": "center" }, style || {}) },
+      { selector: "edge", style: { "curve-style": "bezier", "target-arrow-shape": "triangle", width: 1.2,
+        "line-color": "#9aa0a6", "target-arrow-color": "#9aa0a6" } }] });
+}
+
 // A machine document drawn from its canonical JSON (states, labels, edges, layers): states are
 // nodes (initial: thick border; accepting: double border; rejecting: orange; error: red).
 // Parallel edges between two states are merged into one edge, and self-loops are folded into
@@ -615,6 +677,7 @@ async function machinePage(name) {
     `<span>deterministic: ${m.deterministic ? "yes" : "no"}</span> — initial: thick border; accepting: double border; rejecting: orange; error: red; ` +
     "↺ n: n self-loops. Click a state or an edge for its transitions.</p>";
   const big = doc.states.length > 12 || doc.edges.length > 40;
+  h += '<div class="controls"><button id="vflat">Flat graph</button><button id="vdom">Dominator tree</button> <span id="mprov"></span></div>';
   h += `<div id="mcy" style="height:${big ? 78 : 62}vh;min-height:420px;border:1px solid var(--line);background:var(--panel)"></div>`;
   h += '<div id="mdetail" class="muted" style="margin:8px 0;min-height:1.5em">Click a state or an edge.</div>';
   h += "<h2>Bindings (typed machines proved equal to this document)</h2>" + await tableOf(await first(DETAIL,
@@ -655,6 +718,33 @@ async function machinePage(name) {
           "text-rotation": big ? "autorotate" : "none", "control-point-step-size": big ? 60 : 40 } },
         { selector: ":selected", style: { "line-color": "#2f5d9e", "target-arrow-color": "#2f5d9e", "border-color": "#2f5d9e" } }] });
     const show = (html) => { $("#mdetail").classList.remove("muted"); $("#mdetail").innerHTML = html; };
+    // The dominator view: the kernel-checked table when the registry has one (one initial
+    // state), otherwise computed here from the initial states (several: a synthetic root).
+    const domView = () => {
+      mcy.destroy();
+      let idom, prov;
+      if (m.dominators) {
+        const t = JSON.parse(m.dominators);
+        idom = new Map(Object.entries(t));
+        prov = provBadge("lean", m.dominator_theorem) + ` <span class="muted">immediate dominators from ${esc((ly.initial || [])[0])}; ` +
+          "the exact dominator tree is unique on reachable states (<code>Graph.exact_unique</code>)</span>";
+        // unreachable states have no dominator: null in the table; keep reachable ones only
+        const reach = dominators(doc.states, doc.edges.map(([a, , b]) => [a, b]), ly.initial || []).reachable;
+        for (const s of [...idom.keys()]) if (!reach.has(s)) idom.delete(s);
+      } else {
+        const roots = (ly.initial || []).length ? ly.initial : [doc.states[0]];
+        const r = dominators(doc.states, doc.edges.map(([a, , b]) => [a, b]), roots);
+        idom = r.idom;
+        prov = provBadge("browser") + ` <span class="muted">from ${r.synthetic ? "a synthetic root over " : ""}${esc(roots.join(", "))}` +
+          `${(ly.initial || []).length ? "" : " (no initial state: the first state)"}</span>`;
+      }
+      const unreach = doc.states.filter((s) => !idom.has(s));
+      $("#mprov").innerHTML = prov + (unreach.length ? ` <span class="muted">unreachable: ${esc(unreach.join(", "))}</span>` : "");
+      mcy = drawDomTree($("#mcy"), doc.states, idom, (s) => s);
+    };
+    $("#vdom").addEventListener("click", domView);
+    $("#vflat").addEventListener("click", () => { route(); });
+    $("#mprov").innerHTML = '<span class="muted">flat graph of the document</span>';
     const list = (ls) => "<ul style=\"margin:4px 0\">" + ls.map((l) => `<li><code>${esc(l)}</code></li>`).join("") + "</ul>";
     mcy.on("tap", "edge", (ev) => {
       const d = ev.target.data();

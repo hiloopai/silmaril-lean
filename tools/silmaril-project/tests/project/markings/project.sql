@@ -153,6 +153,8 @@ CREATE TABLE machines(
   n_labels INTEGER NOT NULL,
   n_edges INTEGER NOT NULL,
   canonical TEXT NOT NULL,
+  dominators TEXT,
+  dominator_theorem TEXT,
   UNIQUE(name)
 );
 CREATE TABLE machine_bindings(
