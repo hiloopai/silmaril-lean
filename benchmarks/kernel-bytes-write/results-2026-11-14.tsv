@@ -1,0 +1,13 @@
+base	op	n	seconds	result
+zerosCanon 4096 1048576	write	64	0.37	ok
+zerosCanon 4096 1048576	write	256	0.43	ok
+zerosCanon 4096 1048576	write	1024	0.68	ok
+zerosCanon 4096 1048576	ropeWrite	64	1.62	ok
+zerosCanon 4096 1048576	ropeWrite	256	16.15	ok
+zerosCanon 4096 1048576	ropeWrite	1024	177.53	Bench.lean:7:178: error: (kernel) deterministic timeout
+zeros 1048576	write	64	4.24	ok
+zeros 1048576	write	256	17.97	ok
+zeros 1048576	write	1024	72.29	ok
+zeros 1048576	ropeWrite	64	0.55	ok
+zeros 1048576	ropeWrite	256	8.22	ok
+zeros 1048576	ropeWrite	1024	155.23	ok
