@@ -109,6 +109,20 @@ Each negative case is an expected rejection, recorded in `negatives.json`:
     `timeout`.
   - Divergence itself is not observable; only the bounded timeout is.
 
+## Lean counterparts
+
+The same claims as Lean theorems are in `Silmaril.Servers.Examples.Dice` and
+`Silmaril.Servers.Problems`, which arrive in the companion pull request
+`servers/observational-refinement`:
+
+- `dice_mustAll`: the must property holds under every stateful host.
+- `buggy_not_mustAll`: the planted bug fails it under the host that draws `6`.
+- `buggy_mustAll_zero`: the planted bug passes it under the zero host.
+- `perRequest_roll_const`: a fresh instance per request answers every `/roll` alike.
+
+`Problems.catalogue` marks each runtime check here as `runtimeTest` or `validatorCheck`, never
+`proof`.
+
 ## Per-request instantiation (an observation, not a proof)
 
 `wasmtime serve` makes a new instance of the composed component, and so of the policy, for
