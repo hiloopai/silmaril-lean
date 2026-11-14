@@ -26,6 +26,7 @@ abstract; `Silmaril.Net.Ip.Addr` is one choice):
 | `eof c` | the peer closed its direction (RECEIVE reported end of stream) | not used |
 | `close c` | the server closed its direction (CLOSE) | the server forgot the flow |
 | `reset c` | the connection was reset (abortive close) | not used |
+| `err c e` | an asynchronous error on `c` (`ECONNRESET`, `EPIPE`), code `e` | a datagram error on flow `c` (`EMSGSIZE`, `ENOBUFS`, ICMP unreachable), code `e` |
 | `fail p` | binding `p` failed (initialization failure) | the same |
 
 A trace (`TTrace Addr`) lists them in order; a model (`TModel Addr`) is a set of traces, and
@@ -90,6 +91,7 @@ inductive TEv (Addr : Type) where
   | eof (c : Conn)
   | close (c : Conn)
   | reset (c : Conn)
+  | err (c : Conn) (code : Nat)
   | fail (p : Port)
   deriving DecidableEq, Repr
 
