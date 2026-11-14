@@ -121,6 +121,16 @@ are proved:
 [deflate-zlib-gzip.md](deflate-zlib-gzip.md) lists, for RFC 1951, RFC 1950 and RFC 1952, each
 requirement with its theorem, check or documented policy, and the contract erebor-lean relies on.
 
+## HTTP content codings
+
+[content-coding.md](content-coding.md) builds on this framework: the IANA HTTP
+Content Coding registry as data (`Formats/Compression/Registry`), with `gzip` =
+`Gzip.decoder.members` and `deflate` = `Zlib.decoder.whole`; bounded decoding
+with an explicit `tooLarge` error; chains of codings; a partial zstd decoder
+(`Formats/Compression/Zstd`: frames of raw and RLE blocks, XXH64); and
+Content-Encoding/Accept-Encoding in `Net/Http/ContentCoding`. It also records an
+audit of what the gzip formalization covers.
+
 ## Layout
 
 Definitions are in `Silmaril/Formats/Compression/**` and their headers. The
