@@ -123,3 +123,19 @@ erebor's open problem `zlib/refines/rfc1950--l1-stream` (`l1Complete`) is silmar
   semantics, `windowBits` selection) is not modelled here.
 - Data structures and executable performance: the specifications are list-based. Executable
   `Array` mirrors are registered with `@[csimp]` and proved equal.
+
+## Integration follow-ups (HTTP/1.1 track, #158 `CodingLib`)
+
+Recorded for when the HTTP/1.1 work and this change have both landed:
+
+- `CodingLib` decodes the `gzip` transfer coding as a single member
+  (`Gzip.codec.decode.whole`). RFC 9112 §7.2 refers to the gzip *file* format
+  (RFC 9110 §8.4.1.3, RFC 1952 §2.2), which may have several members. The preferred
+  decoder is `Gzip.decompress` / `Gzip.decoder.members`, with `gzipDecompress_iff`
+  (`ContainerSpec.Thms`) as its law. `Gzip.codec` stays as it is for compatibility.
+- `CodingLib`'s docs can cite decoder correctness (`DeflateSpec.deflateTake_iff`,
+  `ContainerSpec.gzipMember_iff`, `gzipDecompress_iff`, `zlib_take_iff`) only once this
+  change is on main. Until then, its stored-codec round trip is not evidence of decoder
+  correctness, and the docs should not present it as such.
+- The qvalue parser (RFC 9110 §12.4.2) exists twice: in `Http1.Codings` (#156) and in
+  `Net.Http.ContentCoding` (#160). Whichever lands second should reuse the other's.
