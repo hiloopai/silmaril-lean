@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Data.IncludeBytes.KernelExamples
+public import Silmaril.Data.IncludeBytes.KBytesExamples
 public import Silmaril.Prelude.Bytes.Write.Thms
 
 /-! # Raw bytes and kernel bytes: writes
@@ -12,9 +12,9 @@ with no byte decoded in the kernel: the bridge `hello.toByteArray_eq` and the sp
 
 @[expose] public section
 
-namespace Silmaril.IncludeBytes.KernelWriteExamples
+namespace Silmaril.IncludeBytes.KBytesWriteExamples
 
-open Silmaril.KBytes Silmaril.IncludeBytes.KernelExamples
+open Silmaril.KBytes Silmaril.IncludeBytes.KBytesExamples
 
 theorem hello_toList : hello.toList = helloRaw.data.toList := by
   rw [← hello.toByteArray_eq]; rfl
@@ -32,4 +32,4 @@ theorem patched_raw_byte (v : Nat) :
   rw [getElem?_splice _ _ _ _ _ hl]
   simp
 
-end Silmaril.IncludeBytes.KernelWriteExamples
+end Silmaril.IncludeBytes.KBytesWriteExamples
