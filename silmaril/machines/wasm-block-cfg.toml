@@ -1,0 +1,88 @@
+# Basic-block CFGs of example Wasm functions, built by `Silmaril.Wasm.Cfg.blockCfg` (which realizes
+# the declarative relation `Silmaril.Wasm.Cfg.Edge`) and written as machine documents by
+# `ProjectSelfTest.WasmBlockCfg.blockDoc`; the `*_blocks` theorems there prove that each document
+# has exactly the builder's nodes and edges.
+schema = "silmaril.records.v0.2"
+
+[[machine]]
+name = "silmaril.wasm.blockcfg.verified.sum"
+doc = "Block CFG of `sum` (Examples.Verified.prog): the loop body splits at br_if 1 (leaves the block) and br 0 (back to the loop head)."
+states = ["exit", "trap", "raise", "invalid", "b0 [].0: 0 instrs → block", "b1 [0/0].0: 0 instrs → loop", "b2 [0/0.0/0].0: 3 instrs → br_if 1", "b3 [0/0.0/0].1: 8 instrs → br 0", "b4 [].1: 1 instrs → falls through"]
+labels = ["flow"]
+edges = [
+  ["b0 [].0: 0 instrs → block", "flow", "b1 [0/0].0: 0 instrs → loop"],
+  ["b1 [0/0].0: 0 instrs → loop", "flow", "b2 [0/0.0/0].0: 3 instrs → br_if 1"],
+  ["b2 [0/0.0/0].0: 3 instrs → br_if 1", "flow", "b4 [].1: 1 instrs → falls through"],
+  ["b2 [0/0.0/0].0: 3 instrs → br_if 1", "flow", "b3 [0/0.0/0].1: 8 instrs → br 0"],
+  ["b3 [0/0.0/0].1: 8 instrs → br 0", "flow", "b2 [0/0.0/0].0: 3 instrs → br_if 1"],
+  ["b4 [].1: 1 instrs → falls through", "flow", "exit"],
+]
+initial = ["b0 [].0: 0 instrs → block"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.blockcfg.dispatch"
+doc = "Block CFG of a br_table dispatcher over three nested blocks (Wasm.Cfg.Examples.mod): one edge per br_table target."
+states = ["exit", "trap", "raise", "invalid", "b0 [].0: 0 instrs → block", "b1 [0/0].0: 0 instrs → block", "b2 [0/0.0/0].0: 0 instrs → block", "b3 [0/0.0/0.0/0].0: 1 instrs → br_table [0, 1] 2", "b4 [0/0.0/0].1: 1 instrs → return", "b5 [0/0].1: 1 instrs → return", "b6 [].1: 1 instrs → falls through"]
+labels = ["flow"]
+edges = [
+  ["b0 [].0: 0 instrs → block", "flow", "b1 [0/0].0: 0 instrs → block"],
+  ["b1 [0/0].0: 0 instrs → block", "flow", "b2 [0/0.0/0].0: 0 instrs → block"],
+  ["b2 [0/0.0/0].0: 0 instrs → block", "flow", "b3 [0/0.0/0.0/0].0: 1 instrs → br_table [0, 1] 2"],
+  ["b3 [0/0.0/0.0/0].0: 1 instrs → br_table [0, 1] 2", "flow", "b4 [0/0.0/0].1: 1 instrs → return"],
+  ["b3 [0/0.0/0.0/0].0: 1 instrs → br_table [0, 1] 2", "flow", "b5 [0/0].1: 1 instrs → return"],
+  ["b3 [0/0.0/0.0/0].0: 1 instrs → br_table [0, 1] 2", "flow", "b6 [].1: 1 instrs → falls through"],
+  ["b4 [0/0.0/0].1: 1 instrs → return", "flow", "exit"],
+  ["b5 [0/0].1: 1 instrs → return", "flow", "exit"],
+  ["b6 [].1: 1 instrs → falls through", "flow", "exit"],
+]
+initial = ["b0 [].0: 0 instrs → block"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.blockcfg.specials"
+doc = "Block CFG with every special node: exit, trap (unreachable), raise (throw), invalid (missing label)."
+states = ["exit", "trap", "raise", "invalid", "b0 [].0: 1 instrs → if", "b1 [0/0].0: 0 instrs → unreachable", "b2 [].1: 2 instrs → if", "b3 [1/0].0: 0 instrs → throw 0", "b4 [].2: 0 instrs → return"]
+labels = ["flow"]
+edges = [
+  ["b0 [].0: 1 instrs → if", "flow", "b1 [0/0].0: 0 instrs → unreachable"],
+  ["b0 [].0: 1 instrs → if", "flow", "b2 [].1: 2 instrs → if"],
+  ["b1 [0/0].0: 0 instrs → unreachable", "flow", "trap"],
+  ["b2 [].1: 2 instrs → if", "flow", "b3 [1/0].0: 0 instrs → throw 0"],
+  ["b2 [].1: 2 instrs → if", "flow", "b4 [].2: 0 instrs → return"],
+  ["b3 [1/0].0: 0 instrs → throw 0", "flow", "raise"],
+  ["b4 [].2: 0 instrs → return", "flow", "exit"],
+]
+initial = ["b0 [].0: 1 instrs → if"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]
+
+[[machine]]
+name = "silmaril.wasm.blockcfg.rust_door.enter"
+doc = "Block CFG of `enter` of the compiled Rust door (Examples.RustInst.door, defined function 0)."
+states = ["exit", "trap", "raise", "invalid", "b0 [].0: 3 instrs → block", "b1 [0/0].0: 3 instrs → br_if 0", "b2 [0/0].1: 0 instrs → block", "b3 [0/0.1/0].0: 0 instrs → block", "b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "b6 [0/0.1/0.0/0].2: 2 instrs → br 2", "b7 [0/0.1/0].1: 8 instrs → br 1", "b8 [0/0].2: 1 instrs → falls through", "b9 [].1: 6 instrs → falls through"]
+labels = ["flow"]
+edges = [
+  ["b0 [].0: 3 instrs → block", "flow", "b1 [0/0].0: 3 instrs → br_if 0"],
+  ["b1 [0/0].0: 3 instrs → br_if 0", "flow", "b9 [].1: 6 instrs → falls through"],
+  ["b1 [0/0].0: 3 instrs → br_if 0", "flow", "b2 [0/0].1: 0 instrs → block"],
+  ["b2 [0/0].1: 0 instrs → block", "flow", "b3 [0/0.1/0].0: 0 instrs → block"],
+  ["b3 [0/0.1/0].0: 0 instrs → block", "flow", "b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0"],
+  ["b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "flow", "b7 [0/0.1/0].1: 8 instrs → br 1"],
+  ["b4 [0/0.1/0.0/0].0: 3 instrs → br_if 0", "flow", "b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1"],
+  ["b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "flow", "b8 [0/0].2: 1 instrs → falls through"],
+  ["b5 [0/0.1/0.0/0].1: 8 instrs → br_if 1", "flow", "b6 [0/0.1/0.0/0].2: 2 instrs → br 2"],
+  ["b6 [0/0.1/0.0/0].2: 2 instrs → br 2", "flow", "b9 [].1: 6 instrs → falls through"],
+  ["b7 [0/0.1/0].1: 8 instrs → br 1", "flow", "b9 [].1: 6 instrs → falls through"],
+  ["b8 [0/0].2: 1 instrs → falls through", "flow", "b9 [].1: 6 instrs → falls through"],
+  ["b9 [].1: 6 instrs → falls through", "flow", "exit"],
+]
+initial = ["b0 [].0: 3 instrs → block"]
+accepting = ["exit"]
+rejecting = []
+error = ["trap", "raise", "invalid"]

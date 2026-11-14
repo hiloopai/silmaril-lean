@@ -6,6 +6,7 @@ public import Silmaril.Project.Shapes.Format.Defs
 public import Silmaril.Project.Shapes.Elf.Thms
 public import ProjectSelfTest.Machines
 public import ProjectSelfTest.WasmCfg
+public import ProjectSelfTest.WasmBlockCfg
 -- The Wasm components records (silmaril/wasm-components/*.toml) are part of this project; their
 -- modules declare the registry's artifacts first, so this module only adds the rest.
 public import Silmaril.Project.WasmComponents.Thms

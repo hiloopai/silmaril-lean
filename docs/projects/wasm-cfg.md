@@ -91,8 +91,13 @@ uniqueness) and that the executable extractors realize it.
    - **Proved:** the one-pass builder `blockCfg` realizes `Edge` (`blockCfg_eq`, `edge_iff`), and
      each block has exactly one successor list (`existsUnique_succ`). Kernel-checked examples:
      `sum_blockCfg`, `dispatch_br_table_edges` (`decide +kernel`, a few seconds).
-   - Kernel against runtime evaluation: measured, see *Benchmark* below. Still to do: serve the
-     block CFG on the explorer in place of the instruction-level prototype.
+   - Kernel against runtime evaluation: measured, see *Benchmark* below.
+   - On the explorer: `silmaril/machines/wasm-block-cfg.toml` holds the block CFGs of `sum`,
+     `dispatch`, `specials` and the Rust door's `enter`, as machine documents
+     (`silmaril.wasm.blockcfg.*`), each with its kernel-checked dominator table.
+     `ProjectSelfTest.WasmBlockCfg.*_blocks` proves that each document has exactly the builder's
+     nodes, edges and entry, by node index. The instruction-level documents
+     (`silmaril.wasm.cfg.*`) stay alongside for comparison.
 3. **Node interfaces.**
    - Each block will carry its operand-stack input and output arity.
    - Branch arguments are the label arity from the block type.
