@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Abstract.HostClosing.Defs
 public import Silmaril.Games.Abstract.HostRun.Defs
+public import Silmaril.Games.Abstract.HostRunInf.Defs
 
 /-!
 # Core 3.0 invocations against the logged closed semantics with host calls: definitions
@@ -44,5 +45,13 @@ def CoreObs (P : Numerics.Profile) (host : HostSemantics H) (s : Store H) (a : N
   | .hostDiv _ _ => Diverges P host (invoke s a vs)
   | .blocked _ _ => ∃ c : Config H, Steps P host (invoke s a vs) c ∧
       Silmaril.Wasm.Abstract.Pending host c.store c.code ∧ ∀ c', ¬ Step P host c c'
+
+/-- The universal host: every answer and divergence is allowed. -/
+def anyHost : HostSemantics H := fun _ _ _ _ => True
+
+/-- **The productive runs of an invocation**, host-independently: Core runs under the
+universal host cut at their host events, one coherent run per stream. -/
+def wasmEvInf (P : Numerics.Profile) : PInf (wasmHostSig H) (Store H) (Nat × List Val) :=
+  fun s p => {ω | CoreInf P anyHost (invoke s p.1 p.2) ω}
 
 end Silmaril.Wasm.Abstract
