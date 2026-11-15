@@ -7,6 +7,7 @@ public import Silmaril.Wasm.Execution.Core.Soundness.Defs
 public import Silmaril.Wasm.Execution.Core.Sim.TypedContext
 public import Silmaril.Wasm.Execution.Core.InversionHost.Thms
 public import Silmaril.Wasm.Execution.Core.Inversion.Thms
+public import Silmaril.Games.Abstract.ModuleInf.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Split
@@ -18,6 +19,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostCall.Div
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Events
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Logged
 import Silmaril.Proofs.Wasm.Abstract.HostCall.LoggedDiv
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Chain
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -144,6 +146,16 @@ continuation goes on with the rest. `evDiv_through_steps` (deterministic profile
 `evDiv_unique` (a unique host-free step, a smaller measure when there are events),
 `evDiv_host_call` (the next event answers the host call), `evDiv_stuck`, `evDiv_trap`,
 `evDiv_nil`, `evDiv_mono`.
+
+**Building labelled and productive runs** (proofs in `Chain`), for the forward simulation of
+logged native runs: `evRun_of_free` (a host-free run is silent); `hEvStep_label`,
+`hEvStep_frame` (labelled steps lift through a label and a call frame), `evRun_wrap`,
+`coreInf_wrap` (a context lifting labelled steps lifts labelled and productive runs), and its
+instances `evRun_ctx`, `evRun_label`, `evRun_frame`, `coreInf_ctx`, `coreInf_label`,
+`coreInf_frame` (a sequence context, a label and a call frame); `hEvStep_host_call` (an answered host call is one event);
+`coreInf_prepend` (a labelled run in front of a productive run); **`coreInf_of_segments`**: a
+chain of labelled runs `K n ⟶ K (n + 1)` whose logs concatenate to an unbounded stream `ω`
+(`Shape.StreamConcat`) is a productive run with the events `ω`.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -789,5 +801,102 @@ theorem evDiv_host_call {n : Nat} {s : Store H} {f : Frame} {a : Nat} {fi : Func
     ∃ s' r cs', cs = ⟨(hh, s, us), (s', r)⟩ :: cs' ∧ host hh s us (.returned s' r) ∧
       EvDiv P host n ⟨s', f, vals ws ++ r.toAdmin ++ rest⟩ cs' :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_host_call hf hcode he hn h
+
+/-! ## Building labelled and productive runs -/
+
+/-- **A host-free run is silent.** -/
+theorem evRun_of_free {c c' : Config H} (h : Steps P (fun _ _ _ _ => False) c c') :
+    EvRun P host c [] c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_of_free h
+
+/-- **A labelled step lifts through a label**, with the same label. -/
+theorem hEvStep_label {s s' : Store H} {f f' : Frame} {b b' : List Admin}
+    {l : Option (Call (wasmHostSig H))} (n : Nat) (cont : List Instr)
+    (h : HEvStep P host ⟨s, f, b⟩ l ⟨s', f', b'⟩) :
+    HEvStep P host ⟨s, f, [.label n cont b]⟩ l ⟨s', f', [.label n cont b']⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hEvStep_label n cont h
+
+/-- **A labelled step lifts through a call frame**, with the same label. -/
+theorem hEvStep_frame {s s' : Store H} {f F F' : Frame} {b b' : List Admin}
+    {l : Option (Call (wasmHostSig H))} (n : Nat)
+    (h : HEvStep P host ⟨s, F, b⟩ l ⟨s', F', b'⟩) :
+    HEvStep P host ⟨s, f, [.frame n F b]⟩ l ⟨s', f, [.frame n F' b']⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hEvStep_frame n h
+
+/-- A context lifting every labelled step lifts labelled runs. -/
+theorem evRun_wrap (W : Config H → Config H)
+    (hW : ∀ c l c', HEvStep P host c l c' → HEvStep P host (W c) l (W c'))
+    {c c' : Config H} {cs : List (Call (wasmHostSig H))} (h : EvRun P host c cs c') :
+    EvRun P host (W c) cs (W c') :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_wrap W hW h
+
+/-- A context lifting every labelled step lifts productive runs. -/
+theorem coreInf_wrap (W : Config H → Config H)
+    (hW : ∀ c l c', HEvStep P host c l c' → HEvStep P host (W c) l (W c'))
+    {c : Config H} {ω : Nat → Call (wasmHostSig H)} (h : CoreInf P host c ω) :
+    CoreInf P host (W c) ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_wrap W hW h
+
+/-- A labelled run under values and before a continuation. -/
+theorem evRun_ctx {s s' : Store H} {f f' : Frame} {es es' : List Admin}
+    {cs : List (Call (wasmHostSig H))} (ws : List Val) (rest : List Admin)
+    (h : EvRun P host ⟨s, f, es⟩ cs ⟨s', f', es'⟩) :
+    EvRun P host ⟨s, f, vals ws ++ es ++ rest⟩ cs ⟨s', f', vals ws ++ es' ++ rest⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_ctx ws rest h
+
+/-- A labelled run inside a label. -/
+theorem evRun_label {s s' : Store H} {f f' : Frame} {es es' : List Admin}
+    {cs : List (Call (wasmHostSig H))} (n : Nat) (cont : List Instr)
+    (h : EvRun P host ⟨s, f, es⟩ cs ⟨s', f', es'⟩) :
+    EvRun P host ⟨s, f, [.label n cont es]⟩ cs ⟨s', f', [.label n cont es']⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_label n cont h
+
+/-- A labelled run inside a call frame; the outer frame is untouched. -/
+theorem evRun_frame {s s' : Store H} {f F F' : Frame} {es es' : List Admin}
+    {cs : List (Call (wasmHostSig H))} (n : Nat)
+    (h : EvRun P host ⟨s, F, es⟩ cs ⟨s', F', es'⟩) :
+    EvRun P host ⟨s, f, [.frame n F es]⟩ cs ⟨s', f, [.frame n F' es']⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_frame n h
+
+/-- A productive run under values and before a continuation. -/
+theorem coreInf_ctx {s : Store H} {f : Frame} {es : List Admin} {ω : Nat → Call (wasmHostSig H)}
+    (ws : List Val) (rest : List Admin) (h : CoreInf P host ⟨s, f, es⟩ ω) :
+    CoreInf P host ⟨s, f, vals ws ++ es ++ rest⟩ ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_ctx ws rest h
+
+/-- A productive run inside a label. -/
+theorem coreInf_label {s : Store H} {f : Frame} {es : List Admin} {ω : Nat → Call (wasmHostSig H)}
+    (n : Nat) (cont : List Instr) (h : CoreInf P host ⟨s, f, es⟩ ω) :
+    CoreInf P host ⟨s, f, [.label n cont es]⟩ ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_label n cont h
+
+/-- A productive run inside a call frame. -/
+theorem coreInf_frame {s : Store H} {f F : Frame} {es : List Admin}
+    {ω : Nat → Call (wasmHostSig H)} (n : Nat) (h : CoreInf P host ⟨s, F, es⟩ ω) :
+    CoreInf P host ⟨s, f, [.frame n F es]⟩ ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_frame n h
+
+/-- **An answered host call is its one event**, any frame. -/
+theorem hEvStep_host_call {s s' : Store H} {f : Frame} {a : Nat} {fi : FuncInst H} {hh : H}
+    {ps rs : Ty (.list .val)} {us : List Val} {r : Result}
+    (hf : s.funcs[a]? = some fi) (he : Expand fi.type (.func ps rs))
+    (hn : us.length = ps.length) (hcode : fi.code = .host hh)
+    (hans : host hh s us (.returned s' r)) :
+    HEvStep P host ⟨s, f, vals us ++ [.ref (.func a), .callRefType fi.type]⟩
+      (some ⟨(hh, s, us), (s', r)⟩) ⟨s', f, r.toAdmin⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hEvStep_host_call hf he hn hcode hans
+
+/-- **A finite labelled run in front of a productive run.** -/
+theorem coreInf_prepend {x y : Config H} {cs : List (Call (wasmHostSig H))}
+    {ω : Nat → Call (wasmHostSig H)} (hr : EvRun P host x cs y) (h : CoreInf P host y ω) :
+    CoreInf P host x (Silmaril.Games.Abstract.Shape.streamAppend cs ω) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_prepend hr h
+
+/-- **A chain of labelled runs is a productive run**: segments `K n ⟶ K (n + 1)` with logs
+`q n` whose concatenation is the unbounded stream `ω`. -/
+theorem coreInf_of_segments (K : Nat → Config H) (q : Nat → List (Call (wasmHostSig H)))
+    (h : ∀ n, EvRun P host (K n) (q n) (K (n + 1))) {ω : Nat → Call (wasmHostSig H)}
+    (hq : Silmaril.Games.Abstract.Shape.StreamConcat q ω) : CoreInf P host (K 0) ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_of_segments K q h hq
 
 end Silmaril.Wasm.Abstract

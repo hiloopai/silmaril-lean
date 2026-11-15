@@ -12,6 +12,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Quiet
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Log
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Inf
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Conv
 
 /-!
 # Productive runs of invocations: theorems
@@ -64,11 +65,37 @@ Proofs in `Silmaril.Proofs.Wasm.Abstract.HostClosingInf`. Every profile and host
 * `hostObsInf_wasmEvInf_le`: so against such a host, the productive observations of the Core
   witness `wasmEvInf (profile o)` are productive observations of `wasmEvInfN`.
 
+**The converse, natively to Core** (every profile, checked stores, typed invocations, a host in
+the native host slice; no determinism and no `HostTyped` needed):
+
+* `wasmEvFun_evRun` (**logged forward simulation of finite runs**): a returning behaviour
+  `(cs, ret ws)` of `wasmEvFun` with a log the host allows is a Core run of the invocation
+  whose host events are **exactly** `cs` (`EvRun`), ending at the values `ws`. Unlike
+  `wasmEv_core_done` (a run with *some* events), the log is kept: each import call resolved by
+  the closure is the one Core event of the answered host call, a Wasm callee contributes the
+  events of its body inside its frame, and all other Core glue is host-free. Proof (`Fwd`,
+  `FwdEval`): the cases of `Interp.wp_of_eval` with logs, by induction on `EvalL`, the arity
+  facts from `Interp.evalH_good`, and least-fixpoint induction on the closure;
+* `wasmEvInfN_coreInf` (**the converse bridge**): every productive run `ω ∈ wasmEvInfN` whose
+  answers the host allows is a productive Core run of the invocation with exactly the events
+  `ω` (`CoreInf`). Proof (`Seg`, `FwdInf`, `Conv`): a productive run within a function
+  (`InfL`) is, by induction, logged finite Core runs lifted through their contexts, ending in a
+  loop iterating forever, a chain of iterations (`coreInf_of_segments`, the stream regrouped
+  by iteration); a descent is a logged Core run from the call into the reached call, inside the
+  callee frame; a descent path then a productive body, or an infinite chain of descents nested
+  ever deeper, is a productive Core run;
+* `hostObsInf_wasmEvInfN_le` (every profile): so the productive observations of `wasmEvInfN`
+  against such a host are productive observations of the Core witness `wasmEvInf P`;
+* `hostObsInf_wasmEvInf_eq` (deterministic profile, a host with typed answers in the native
+  host slice, typed invocations): **the productive observations are equal**,
+  `hostObsInf (coreHostRel host) (wasmEvInf (profile o)) = hostObsInf (coreHostRel host)
+  wasmEvInfN`. The inclusion `⊆` is `hostObsInf_wasmEvInf_le` (deterministic profile only).
+
 Not yet: the converse for divergence (every `(cs, div) ∈ wasmEvFunD` with a log the host
-allows is such a Core run), and the converse for productive runs (every `ω ∈ wasmEvInfN` whose
-answers the host allows is a productive Core run, which would make `wasmEvInf (profile o)` and
-`wasmEvInfN` observationally equal on typed invocations), in any profile. So far the adequacy
-of `wasmEvInfN` is one inclusion, not yet a functor commutation.
+allows is a Core run with that log, then host-free divergence), the exact-log forward run of a
+*trapping* finished behaviour (`wasmEvFun_evRun` covers returning ones), and the inclusion
+`hostObsInf_wasmEvInf_le` (so the equality of productive observations) at profiles other than
+the deterministic one.
 -/
 
 @[expose] public section
@@ -247,5 +274,46 @@ theorem hostObsInf_wasmEvInf_le {o : SingleThreaded.GrowOracle} (hT : HostTyped 
   intro ω hω
   have h := wasmEvInf_hostObsInf.mp hω
   exact ⟨coreInf_wasmEvInfN hT hH hs hS hok h, fun n => coreInf_consistent h n⟩
+
+/-! ## The converse, natively to Core -/
+
+/-- **Logged forward simulation of finite runs** (every profile, checked stores, typed
+invocations, a host in the native host slice): a returning behaviour of `wasmEvFun` with a log
+the host allows is a Core run of the invocation whose host events are exactly that log. -/
+theorem wasmEvFun_evRun (hH : Interp.NativeHostSlice host) {s s₂ : Store H} {a : Nat}
+    {vs ws : List Val} (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {cs : List (Call (wasmHostSig H))} (h : (cs, .ret (.inl ws) s₂) ∈ wasmEvFun s (a, vs))
+    (hc : (coreHostRel host).Consistent cs) :
+    EvRun P host (invoke s a vs) cs ⟨s₂, {}, vals ws⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvFun_evRun hH hS hok h hc
+
+/-- **The converse bridge** (every profile, checked stores, typed invocations, a host in the
+native host slice): every productive run of the logged native semantics `wasmEvInfN` whose
+answers the host allows is a productive Core run of the invocation with exactly its events. -/
+theorem wasmEvInfN_coreInf (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat}
+    {vs : List Val} (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {ω : Nat → Call (wasmHostSig H)} (h : ω ∈ wasmEvInfN s (a, vs))
+    (hc : ∀ n, coreHostRel host (ω n).1 (.answer (ω n).2)) :
+    CoreInf P host (invoke s a vs) ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvInfN_coreInf hH hS hok h hc
+
+/-- **The productive observations of `wasmEvInfN` are Core observations** (every profile): against
+a host in the native host slice, `wasmEvInfN` observes no productive run that the Core witness
+`wasmEvInf P` does not. -/
+theorem hostObsInf_wasmEvInfN_le (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat}
+    {vs : List Val} (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs) :
+    hostObsInf (coreHostRel host) wasmEvInfN s (a, vs) ⊆
+      hostObsInf (coreHostRel host) (wasmEvInf P) s (a, vs) :=
+  fun _ hω => wasmEvInf_hostObsInf.mpr (wasmEvInfN_coreInf hH hS hok hω.1 hω.2)
+
+/-- **The productive observations are equal** (deterministic profile `profile o`, typed checked
+invocations, a host with typed answers in the native host slice): the Core witness and the
+logged native semantics have the same productive observations against the host. -/
+theorem hostObsInf_wasmEvInf_eq {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs) :
+    hostObsInf (coreHostRel host) (wasmEvInf (SingleThreaded.profile o)) s (a, vs) =
+      hostObsInf (coreHostRel host) wasmEvInfN s (a, vs) :=
+  Set.Subset.antisymm (hostObsInf_wasmEvInf_le hT hH hs hS hok) (hostObsInf_wasmEvInfN_le hH hS hok)
 
 end Silmaril.Wasm.Abstract
