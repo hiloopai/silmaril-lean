@@ -269,4 +269,19 @@ theorem ContextTyped.steps_typed (ht : HostTyped host) {c c' : Config H} (h : Si
     (hs : Steps P host c c') : Sim.ContextTyped c' :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.ContextTyped.steps_typed ht h hs
 
+/-- **A host call under a continuation, on counted runs**: blocked, or answered with
+the continuation taking fewer steps than the whole run. -/
+theorem host_call_runN_seq {n : Nat} {s : Store H} {f : Frame} {a : Nat} {fi : FuncInst H}
+    {hh : H} {ps rs : Ty (.list .val)} {ws us : List Val} {rest : List Admin} {c : Config H}
+    (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh) (he : Expand fi.type (.func ps rs))
+    (hn : us.length = ps.length)
+    (hrun : StepsN P host n
+      ⟨s, f, vals ws ++ vals us ++ .ref (.func a) :: .callRefType fi.type :: rest⟩ c)
+    (hend : ∀ c', ¬ Step P host c c') :
+    (c = ⟨s, f, vals ws ++ vals us ++ .ref (.func a) :: .callRefType fi.type :: rest⟩ ∧
+        ∀ o, ¬ host hh s us o) ∨
+      ∃ s' r m, m < n ∧ host hh s us (.returned s' r) ∧
+        StepsN P host m ⟨s', f, vals ws ++ r.toAdmin ++ rest⟩ c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.host_call_runN_seq hf hcode he hn hrun hend
+
 end Silmaril.Wasm.Abstract

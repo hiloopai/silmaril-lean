@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Abstract.HostEval.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Wasm.Execution.Core.Sim.ExitLift
 public import Silmaril.Wasm.Interp.Thms
+public import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 
 /-!
 # The whole-run backward simulation with host calls (proofs, first cases)
@@ -297,5 +298,113 @@ theorem back_op_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
     · exact .inl ⟨r, .opOk hi hev hfl hk, hr⟩
     · exact .inr hp
   · exact .inl ⟨_, .opStop hi hev hfl hn, habr hn⟩
+
+/-! ## Calls of host functions -/
+
+theorem code_call_split (stk : List Val) (n : Nat) (a : Nat) (d : Validation.DefType)
+    (rest : List Admin) :
+    vals stk.reverse ++ ([.ref (.func a), .callRefType d] ++ rest) =
+      vals (stk.drop n).reverse ++ vals (stk.take n).reverse ++
+        .ref (.func a) :: .callRefType d :: rest := by
+  have e : stk.reverse = (stk.drop n).reverse ++ (stk.take n).reverse := by
+    rw [← List.reverse_append, List.take_append_drop]
+  rw [e, vals_append]
+  simp
+
+/-- **The backward case of a direct call of a host function**, in the deterministic
+profile. After `call x` (a host-free step) the run is at the host call on the top
+`ps.length` values `us`. Either it is blocked there (`Pending`), or the host gave
+an answer the native semantics takes (`hostCall`): values (the run continues, in
+fewer steps, from the native continuation stack) or a trap (the run ends as the
+native trap). The host-slice facts give the result arity and exclude exceptions. -/
+theorem back_call_host {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Store H} {f₁ : Frame}
+    {stk₁ : List Val} {x : FuncIdx} {a : Nat} {fi : FuncInst H} {hh : H}
+    {ps rs : List Validation.CValType} {rest : List Admin} {c : Config H}
+    (hfi : s₁.func? f₁ x = some (a, fi)) (hcode : fi.code = .host hh)
+    (hty : Validation.DefType.funcType? fi.type = some (ps, rs)) (hp : ps.length ≤ stk₁.length)
+    (harity : ∀ s' ws, host hh s₁ (stk₁.take ps.length).reverse (.returned s' (.values ws)) →
+      ws.length = rs.length)
+    (hnothrow : ∀ s' t, ¬ host hh s₁ (stk₁.take ps.length).reverse (.returned s' (.throw t)))
+    (hrun : StepsN (SingleThreaded.profile o) host n
+      ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: rest⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    Pending host c.store c.code ∨
+      ∃ s₂ fl, hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
+        ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
+            StepsN (SingleThreaded.profile o) host m
+              ⟨s₂, f₁, vals (vs.take rs.length ++ stk₁.drop ps.length).reverse ++ rest⟩ c) ∨
+          (fl = .trap ∧ EndsAs (s₂, f₁, .trap) c)) := by
+  obtain ⟨hx, hf⟩ := Interp.func?_inv hfi
+  -- `call x` is a host-free step
+  have hd : SingleThreaded.Det.DStep o ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: rest⟩
+      ⟨s₁, f₁, vals stk₁.reverse ++ ([.ref (.func a), .callRefType fi.type] ++ rest)⟩ := by
+    have := Silmaril.Wasm.Logic.Core.Step.ctx (P := SingleThreaded.profile o)
+      (host := SingleThreaded.Det.noHost) stk₁.reverse rest (Step.call hx hf)
+    have h2 : Step (SingleThreaded.profile o) SingleThreaded.Det.noHost
+        ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: rest⟩
+        ⟨s₁, f₁, vals stk₁.reverse ++ ([.ref (.func a), .callRefType fi.type] ++ rest)⟩ := by
+      simpa using this
+    exact h2
+  obtain ⟨m₁, hm₁, hrun₁⟩ := stepsN_through hrun hend hd
+  rw [code_call_split stk₁ ps.length] at hrun₁
+  obtain ⟨ps', rs', hex, hpl, hrl⟩ := Interp.expand_of_funcType hty
+  have hn : (stk₁.take ps.length).reverse.length = ps'.length := by
+    simp only [List.length_reverse, List.length_take]; omega
+  rcases host_call_runN_seq hf hcode hex hn hrun₁ hend with ⟨rfl, hno⟩ | ⟨s₂, r, m, hm, hhost, hk⟩
+  · exact .inl (Pending.call hf hcode hex hn hno)
+  · right
+    have hcall : hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, resFlow r) := by
+      rw [hostCall_fixpoint]
+      exact .inr ⟨fi, hh, r, hf, hcode, hhost, rfl⟩
+    refine ⟨s₂, resFlow r, hcall, ?_⟩
+    rcases r with ws | t | _
+    · left
+      refine ⟨ws.reverse, m, by omega, rfl, ?_⟩
+      have hl := harity s₂ ws hhost
+      have htake : ws.reverse.take rs.length = ws.reverse :=
+        List.take_of_length_le (by simp [hl])
+      rw [htake]
+      simpa [Result.toAdmin] using hk
+    · exact (hnothrow s₂ t hhost).elim
+    · right
+      refine ⟨rfl, ?_⟩
+      have hc := steps_trap_head (ws := (stk₁.drop ps.length).reverse) (r := rest)
+        (by simpa [Result.toAdmin] using stepsN_steps hk) hend
+      subst hc
+      exact ⟨.trap, rfl, rfl, rfl, trivial⟩
+
+/-- **A direct call of a host function, as a tree** (deterministic profile): the
+arguments by `back_op_args`, the call by `back_call_host`, the following trees by
+`ihes`. The callee facts after the arguments (a host function with the declared
+type, its result arity and no exceptions) are the hypothesis `hcallee`. -/
+theorem back_op_call_host {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : Frame}
+    {stk : List Val} {x : FuncIdx} {args es : List Binaryen.BExpr} {c : Config H}
+    (hrun : StepsN (SingleThreaded.profile o) host n
+      ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList (.op (.call x) args :: es))⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c')
+    (ihargs : ∀ m ≤ n, ∀ c₁, StepsN (SingleThreaded.profile o) host m
+        ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList args)⟩ c₁ →
+      (∀ c', ¬ Step (SingleThreaded.profile o) host c₁ c') → BackOut host s f stk args c₁)
+    (hcallee : ∀ s₁ f₁ stk₁, EvalH host s f stk args (s₁, f₁, .normal stk₁) →
+      ∃ (a : Nat) (fi : FuncInst H) (hh : H) (ps rs : List Validation.CValType),
+        s₁.func? f₁ x = some (a, fi) ∧ fi.code = .host hh ∧
+        Validation.DefType.funcType? fi.type = some (ps, rs) ∧ ps.length ≤ stk₁.length ∧
+        (∀ s' ws, host hh s₁ (stk₁.take ps.length).reverse (.returned s' (.values ws)) →
+          ws.length = rs.length) ∧
+        ∀ s' t, ¬ host hh s₁ (stk₁.take ps.length).reverse (.returned s' (.throw t)))
+    (ihes : ∀ s₂ f₁ stk₂ m, m ≤ n →
+      StepsN (SingleThreaded.profile o) host m
+        ⟨s₂, f₁, vals stk₂.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ c →
+      BackOut host s₂ f₁ stk₂ es c) :
+    BackOut host s f stk (.op (.call x) args :: es) c := by
+  refine back_op_args hrun hend ihargs fun s₁ f₁ stk₁ m hm hev hrun₁ => ?_
+  obtain ⟨a, fi, hh, ps, rs, hfi, hcode, hty, hp, har, hnt⟩ := hcallee s₁ f₁ stk₁ hev
+  rcases back_call_host hfi hcode hty hp har hnt hrun₁ hend with hpend |
+      ⟨s₂, fl, hcall, ⟨vs, m', hm', hvs, hk⟩ | ⟨rfl, hends⟩⟩
+  · exact .inr hpend
+  · rcases ihes s₂ f₁ _ m' (by omega) hk with ⟨r, hev', hr⟩ | hp'
+    · exact .inl ⟨r, .callOk hev hfi hty hcall hvs hev', hr⟩
+    · exact .inr hp'
+  · exact .inl ⟨_, .callTrap hev hfi hty hcall, hends⟩
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval
