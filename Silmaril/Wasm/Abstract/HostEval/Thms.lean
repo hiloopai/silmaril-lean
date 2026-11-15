@@ -44,7 +44,9 @@ non-native or unchecked functions, and host exceptions.
 
 **Backward simulation, first cases** (`BackOut`: a stuck end of a Core run of
 the lowered trees is the end of an `EvalH` run, `EndsAs`, or is blocked at a host
-call with no outcome, `Pending`), any profile and host:
+call with no outcome, `Pending`, with reach evidence: a call `y` the trees reach
+through answered calls and Wasm callee bodies, `ReachP`, at which the end is
+blocked, `BlockedAt`), any profile and host:
 
 * `Pending.append`, `Pending.ne_vals`, `Pending.ne_trap`, `Pending.ne_throwing`;
 * `back_nil`: the empty tree list;
@@ -73,7 +75,7 @@ The flat and composed cases are stated for the deterministic profile
 
 * `back_call_host`, `back_op_call_host`: a direct call of a host function. After
   `call x` (host-free) the run is at the host call on the top `ps.length` values:
-  it is blocked there (`Pending`), or the host gave an answer that `hostCall`
+  it is blocked there (`Pending`, `BlockedAt` the callee), or the host gave an answer that `hostCall`
   takes, values (the run continues from the native continuation stack in fewer
   steps) or a trap. Result arity and no exceptions are hypotheses (the host
   slice, `Interp.NativeHostSlice`).
@@ -103,7 +105,7 @@ The flat and composed cases are stated for the deterministic profile
   the only steps into the callee (`call_step_unique`, `callRef_wasm_step_unique`),
   so its body runs strictly shorter than the whole run, in its frame and label
   (`HostCall.stepsN_frame_seq_split`), as the body's case says; a blocked body
-  blocks the call; otherwise the native `bodyCall` (hence `hostCall`) answers, and
+  blocks the call, at a pending call of the callee (`PendO`); otherwise the native `bodyCall` (hence `hostCall`) answers, and
   the frame is left by host-free steps (`frame_ends`, or a trap). The callee's
   result arity is the hypothesis `hret`.
 * `back_op_call`: a direct call as a tree, for any callee, from `back_op_args`, a
@@ -133,6 +135,10 @@ Core divergence.
 invocation `invoke s a vs` (`StoreOk`, `InvokeOk`, functions passing the check)
 to a stuck end is blocked at a host call, or ends exactly as a native answer
 `hostCall host s a vs (s₂, fl)` does: the callee's results, or a trap, in `s₂`.
+
+**With reach evidence** (`back_invoke_reach`, `back_invoke_reach_profile`): the blocked
+end is at a host call `y` with no outcome, the invoked function itself or a pending call of
+it (`PendO`), in the end's store and with its code at that call (`AtCall`).
 
 **Every profile** (`back_invoke_profile`, `back_invoke_steps_profile`): the same at
 every profile `P`, under two explicit native-profile side conditions: the store's Wasm
@@ -291,7 +297,7 @@ theorem back_call_host {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Store H
     (hrun : StepsN (SingleThreaded.profile o) host n
       ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: rest⟩ c)
     (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧ BlockedAt host c ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩) ∨
       ∃ s₂ fl, hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
         ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -426,7 +432,9 @@ theorem back_call_wasm {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Store H
       (∀ vs, r.2.2.retVals = some vs →
         rs.length ≤ vs.length ∧ ∀ ws, r.2.2 = .normal ws → ws.length = rs.length) ∧
       (r.2.2.retVals = none → r.2.2 = .trap)) :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧
+        ∃ y, PendO (hostCall host) ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ y ∧
+          BlockedAt host c y) ∨
       ∃ s₂ fl, hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
         ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -446,7 +454,13 @@ theorem back_op_call {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
     (hcase : ∀ s₁ f₁ stk₁ m, m ≤ n → EvalH host s f stk args (s₁, f₁, .normal stk₁) →
       StepsN (SingleThreaded.profile o) host m
         ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: expression (Binaryen.BExpr.lowerList es)⟩ c →
-      Pending host c.store c.code ∨
+      (Pending host c.store c.code ∧
+        ∃ (a : Nat) (fi : FuncInst H) (ps rs : List Validation.CValType)
+          (y : (wasmOShape H).self.Op), s₁.func? f₁ x = some (a, fi) ∧
+          Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+          (y = ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ ∨
+            PendO (hostCall host) ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ y) ∧
+          BlockedAt host c y) ∨
         ∃ (a : Nat) (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H)
           (fl : Binaryen.Flow), s₁.func? f₁ x = some (a, fi) ∧
           Validation.DefType.funcType? fi.type = some (ps, rs) ∧
@@ -538,6 +552,43 @@ theorem back_invoke {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
         ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
           (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.back_invoke hT hH hs hS hok hrun hend
+
+/-- **The backward simulation of an invocation, with reach evidence** (deterministic
+profile): a blocked end is at a host call `y` with no outcome, the invoked function or a
+pending call of it (`PendO`). -/
+theorem back_invoke_reach {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {n : Nat} {s : Store H} {a : Nat} {vs : List Val}
+    {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN (SingleThreaded.profile o) host n (invoke s a vs) c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    (∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧ y.2.2 = c.store ∧
+        c.store.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧ (∀ o, ¬ host hh c.store y.2.1 o) ∧
+        AtCall c.store y.1 y.2.1 c.code) ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H) (fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, fl) ∧
+        ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_invoke_reach hT hH hs hS hok hrun hend
+
+/-- **`back_invoke_reach` at every profile**, for native-profile Wasm functions and a host
+satisfying `Interp.HostNative`. -/
+theorem back_invoke_reach_profile {P : Silmaril.Wasm.Numerics.Profile} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host) {n : Nat} {s : Store H}
+    {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN P host n (invoke s a vs) c) (hend : ∀ c', ¬ Step P host c c') :
+    (∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧ y.2.2 = c.store ∧
+        c.store.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧ (∀ o, ¬ host hh c.store y.2.1 o) ∧
+        AtCall c.store y.1 y.2.1 c.code) ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H) (fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, fl) ∧
+        ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_invoke_reach_profile hT hH hN hs hS hW hok hrun hend
 
 /-- **The backward simulation of an invocation, every profile**, for native-profile Wasm
 functions and a host satisfying `Interp.HostNative`. -/

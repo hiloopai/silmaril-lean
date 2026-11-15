@@ -12,6 +12,10 @@ for a host with typed answers in the native host slice, is blocked at a host cal
 (`hostCall host s a vs`): the callee's results, or a trap, in the answer's store.
 A host function is read off the run (`host_call_runN_seq`); a Wasm function's
 body is given by `back_whole` (`back_callRef_wasm`).
+
+`back_invoke_reach` adds reach evidence: the blocked call is the invoked host function
+itself, or a pending call (`PendO`) of the invoked Wasm function. Both are read off
+`back_invoke_core`.
 -/
 
 @[expose] public section
@@ -23,13 +27,15 @@ open Silmaril.Wasm.SingleThreaded
 
 variable {H : Type} {host : HostSemantics H}
 
-/-- **The backward simulation of an invocation** (deterministic profile). -/
-theorem back_invoke {o : GrowOracle} (hT : HostTyped host) (hH : Interp.NativeHostSlice host)
+/-- **The backward simulation of an invocation, with reach evidence** (deterministic
+profile): both the blocked call (`Pending`) and how the native semantics reaches it. -/
+theorem back_invoke_core {o : GrowOracle} (hT : HostTyped host) (hH : Interp.NativeHostSlice host)
     {n : Nat} {s : Store H} {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s)
     (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
     (hrun : StepsN (profile o) host n (invoke s a vs) c)
     (hend : ∀ c', ¬ Step (profile o) host c c') :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧ ∃ y : (wasmOShape H).self.Op,
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧ BlockedAt host c y) ∨
       ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H) (fl : Binaryen.Flow),
         s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
         hostCall host s a vs (s₂, fl) ∧
@@ -54,7 +60,8 @@ theorem back_invoke {o : GrowOracle} (hT : HostTyped host) (hH : Interp.NativeHo
     have hn : vs.length = ps'.length := by simpa [Validation.Ty.length] using hlen
     rcases host_call_runN_seq hfi hcd he hn hrun'' hend with ⟨rfl, hno⟩ |
         ⟨s', r, m, -, hhost, hk⟩
-    · exact .inl (Pending.call (ws := []) hfi hcd he hn hno)
+    · exact .inl ⟨Pending.call (ws := []) hfi hcd he hn hno, _, .inl rfl, fi, hh, rfl, hfi, hcd,
+        hno, AtCall.here (ws := []) hfi⟩
     · right
       have hcall : hostCall host s a vs (s', resFlow r) := by
         rw [hostCall_fixpoint]
@@ -104,9 +111,10 @@ theorem back_invoke {o : GrowOracle} (hT : HostTyped host) (hH : Interp.NativeHo
           refine ⟨fun ws hws => ⟨Interp.retVals_length hok' hob hws, fun ws' hws' => by
             rw [hws'] at hok'; exact Interp.length_of_ends hok' hob⟩, fun hn => ?_⟩
           rcases hfl : r.2.2 with ws | ⟨_ | k, ws⟩ | ws | _ | t <;> rw [hfl] at hok' hn <;>
-            simp_all [Binaryen.Flow.retVals, Interp.FlowOk]) with hpend |
+            simp_all [Binaryen.Flow.retVals, Interp.FlowOk]) with ⟨hpend, y, hy, hb⟩ |
       ⟨s₂, fl, hcall, ⟨ws, m, -, hws, hk⟩ | ⟨rfl, hends⟩⟩
-    · exact .inl hpend
+    · rw [htake] at hy
+      exact .inl ⟨hpend, y, .inr hy, hb⟩
     · right
       rw [htake] at hcall
       refine ⟨fi, _, _, s₂, fl, hfi, hty, hcall, .inl ⟨ws, hws, ?_⟩⟩
@@ -123,5 +131,39 @@ theorem back_invoke {o : GrowOracle} (hT : HostTyped host) (hH : Interp.NativeHo
       have : cc = [.trap] := he'
       subst this
       rfl
+
+/-- **The backward simulation of an invocation** (deterministic profile). -/
+theorem back_invoke {o : GrowOracle} (hT : HostTyped host) (hH : Interp.NativeHostSlice host)
+    {n : Nat} {s : Store H} {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s)
+    (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN (profile o) host n (invoke s a vs) c)
+    (hend : ∀ c', ¬ Step (profile o) host c c') :
+    Pending host c.store c.code ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H) (fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, fl) ∧
+        ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
+  (back_invoke_core hT hH hs hS hok hrun hend).imp_left And.left
+
+/-- **The backward simulation of an invocation, with reach evidence** (deterministic
+profile): a stuck end is blocked at a host call `y` with no outcome, which is the
+invoked function itself or a pending call of it (`PendO`), or ends as a native answer. -/
+theorem back_invoke_reach {o : GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {n : Nat} {s : Store H} {a : Nat} {vs : List Val}
+    {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN (profile o) host n (invoke s a vs) c)
+    (hend : ∀ c', ¬ Step (profile o) host c c') :
+    (∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧ y.2.2 = c.store ∧
+        c.store.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧ (∀ o, ¬ host hh c.store y.2.1 o) ∧
+        AtCall c.store y.1 y.2.1 c.code) ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H) (fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, fl) ∧
+        ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
+  (back_invoke_core hT hH hs hS hok hrun hend).imp_left
+    fun ⟨_, y, hy, fi, hh, h⟩ => ⟨y, fi, hh, hy, h⟩
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval

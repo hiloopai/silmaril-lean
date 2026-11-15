@@ -84,13 +84,6 @@ outcome matches `r` (`Interp.Match`: same store and frame, matching flow). -/
 def EndsAs (r : Store H × Frame × Flow) (c : Config H) : Prop :=
   ∃ o : Logic.Core.Outcome, o.Ends c.code ∧ Interp.Match r c.store c.frame o
 
-/-- **The backward conclusion**: a stuck end `c` of a Core run of the lowered
-trees `es` on `stk` is the end of a native run with host calls (`EvalH`), or is
-blocked at a host call with no outcome. -/
-def BackOut (host : HostSemantics H) (s : Store H) (f : Frame) (stk : List Val)
-    (es : List BExpr) (c : Config H) : Prop :=
-  (∃ r, EvalH host s f stk es r ∧ EndsAs r c) ∨ Pending host c.store c.code
-
 /-- **A pending host call the host may diverge on** somewhere in the code, under
 values and labels or frames: the `hostDiv` observation, seen in Core. -/
 inductive PendingDiv (host : HostSemantics H) (s : Store H) : List Admin → Prop where
@@ -197,5 +190,29 @@ inductive AtCall (s : Store H) (a : Nat) (us : List Val) : List Admin → Prop w
       AtCall s a us es → AtCall s a us (vals ws ++ .label n cont es :: rest)
   | frame {ws : List Val} {n : Nat} {F : Frame} {es rest : List Admin} :
       AtCall s a us es → AtCall s a us (vals ws ++ .frame n F es :: rest)
+
+/-- The call `y` is reached from the trees, directly or through callee bodies. -/
+def ReachP (C : CallRel H) (s : Store H) (f : Frame) (stk : List Val) (es : List BExpr)
+    (y : (wasmOShape H).self.Op) : Prop :=
+  ReachO C s f stk es y ∨ ∃ z, ReachO C s f stk es z ∧ PendO C z y
+
+/-- `c` is blocked at the host call `y`: `y`'s store is `c`'s, `y` is a host function with no
+host outcome on its arguments, and `c`'s code is at that call. -/
+def BlockedAt (host : HostSemantics H) (c : Config H) (y : (wasmOShape H).self.Op) : Prop :=
+  ∃ (fi : FuncInst H) (hh : H), y.2.2 = c.store ∧ c.store.funcs[y.1]? = some fi ∧
+    fi.code = .host hh ∧ (∀ o, ¬ host hh c.store y.2.1 o) ∧ AtCall c.store y.1 y.2.1 c.code
+
+/-! ## Backward simulation: the conclusion -/
+
+/-- **The backward conclusion**: a stuck end `c` of a Core run of the lowered
+trees `es` on `stk` is the end of a native run with host calls (`EvalH`), or is
+blocked at a host call with no outcome (`Pending`), together with **reach
+evidence**: a host call `y` the native semantics reaches from the trees, through
+answered calls and Wasm callee bodies (`ReachP (hostCall host)`), at which `c` is
+blocked (`BlockedAt`). -/
+def BackOut (host : HostSemantics H) (s : Store H) (f : Frame) (stk : List Val)
+    (es : List BExpr) (c : Config H) : Prop :=
+  (∃ r, EvalH host s f stk es r ∧ EndsAs r c) ∨
+    (Pending host c.store c.code ∧ ∃ y, ReachP (hostCall host) s f stk es y ∧ BlockedAt host c y)
 
 end Silmaril.Wasm.Abstract

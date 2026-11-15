@@ -366,9 +366,9 @@ theorem case_call (hT : HostTyped host) (hH : Interp.NativeHostSlice host) {n : 
     | host hh =>
       rcases back_call_host hfi hcd hty hp
           (fun s' ws h => hH.arity s₁ a fi hh ps rs _ ws s' hfa hcd hty h)
-          (fun s' t h => hH.noThrow hh s₁ _ s' t h) hrun₁ hend with hpend |
+          (fun s' t h => hH.noThrow hh s₁ _ s' t h) hrun₁ hend with ⟨hpend, hb⟩ |
         ⟨s₂, fl, hcall, ⟨vs, m', hm', hvs, hk⟩ | ⟨hfl, hends⟩⟩
-      · exact .inl hpend
+      · exact .inl ⟨hpend, a, fi, ps, rs, _, hfi, hty, .inl rfl, hb⟩
       · exact .inr ⟨a, fi, ps, rs, s₂, fl, hfi, hty, hcall, .inl ⟨vs, m', by omega, hvs, hk⟩⟩
       · exact .inr ⟨a, fi, ps, rs, s₂, fl, hfi, hty, hcall, .inr ⟨hfl, hends⟩⟩
     | wasm fn =>
@@ -392,9 +392,9 @@ theorem case_call (hT : HostTyped host) (hH : Interp.NativeHostSlice host) {n : 
             refine ⟨fun vs hvs => ⟨Interp.retVals_length hok hob hvs, fun ws hws => by
               rw [hws] at hok; exact Interp.length_of_ends hok hob⟩, fun hn => ?_⟩
             rcases hfl : r.2.2 with ws | ⟨_ | k, ws⟩ | ws | _ | t <;> rw [hfl] at hok hn <;>
-              simp_all [Binaryen.Flow.retVals, Interp.FlowOk]) with hpend |
+              simp_all [Binaryen.Flow.retVals, Interp.FlowOk]) with ⟨hpend, y, hy, hb⟩ |
         ⟨s₂, fl, hcall, ⟨vs, m', hm', hvs, hk⟩ | ⟨hfl, hends⟩⟩
-      · exact .inl hpend
+      · exact .inl ⟨hpend, a, fi, ps, rs, y, hfi, hty, .inr hy, hb⟩
       · exact .inr ⟨a, fi, ps, rs, s₂, fl, hfi, hty, hcall, .inl ⟨vs, m', by omega, hvs, hk⟩⟩
       · exact .inr ⟨a, fi, ps, rs, s₂, fl, hfi, hty, hcall, .inr ⟨hfl, hends⟩⟩
   · intro s₁ f₁ stk₁ a fi ps rs s₂ fl vs m hm hev hfi hty hcall hvs hk

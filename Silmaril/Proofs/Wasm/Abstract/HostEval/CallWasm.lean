@@ -136,6 +136,13 @@ theorem pending_frame {s : Store H} {f F : Frame} {ws : List Val} {n : Nat}
     · exact pending_not_labelExit hp hex
   · exact frameExit_label hex rfl
 
+/-- A call reached in a callee body is reached under the callee's frame and label. -/
+theorem atCall_frame_label {s : Store H} {a : Nat} {us ws : List Val} {n : Nat} {F : Frame}
+    {b rest : List Admin} (h : AtCall s a us b) :
+    AtCall s a us (vals ws ++ [.frame n F [.label n [] b]] ++ rest) := by
+  have hl : AtCall s a us (vals [] ++ .label n [] b :: []) := AtCall.label h
+  simpa using AtCall.frame (ws := ws) (n := n) (F := F) (rest := rest) (by simpa using hl)
+
 /-- **The backward case of `call_ref` of a Wasm function** on the top `ps.length`
 values, deterministic profile. `call_ref` is the only step into the callee, so its
 body runs strictly shorter than the whole run, in its frame and label
@@ -162,7 +169,9 @@ theorem back_callRef_wasm {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Stor
       (∀ vs, r.2.2.retVals = some vs →
         rs.length ≤ vs.length ∧ ∀ ws, r.2.2 = .normal ws → ws.length = rs.length) ∧
       (r.2.2.retVals = none → r.2.2 = .trap)) :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧
+        ∃ y, PendO (hostCall host) ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ y ∧
+          BlockedAt host c y) ∨
       ∃ s₂ fl, hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
         ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -192,7 +201,8 @@ theorem back_callRef_wasm {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Stor
         vals ([] : List Val).reverse ++
           expression (Binaryen.BExpr.lowerList (Binaryen.liftInstrs fn.body))⟩ cb := by
     simpa [Binaryen.lowerList_liftInstrs, vals] using hb
-  rcases ihbody N₁ (by omega) cb hb' hsb with ⟨⟨s₂, f₂, fl⟩, hev, oc, he, hst, hfr, hm⟩ | hpend
+  rcases ihbody N₁ (by omega) cb hb' hsb with ⟨⟨s₂, f₂, fl⟩, hev, oc, he, hst, hfr, hm⟩ |
+      ⟨hpend, y, hy, hbl⟩
   · right
     dsimp only at hst hfr hm
     obtain ⟨rcs, rcf, rcc⟩ := cb
@@ -237,7 +247,8 @@ theorem back_callRef_wasm {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Stor
       (ws := (stk₁.drop ps.length).reverse) (n := rs.length) (rest := rest) hpend hsb
     have := stepsN_of_stuck hstk hk
     subst this
-    exact hpe
+    exact ⟨hpe, y, pendO_of_body (x := ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩) hf hcode hy,
+      blockedAt_mono hbl rfl atCall_frame_label⟩
 
 
 /-- **The backward case of a direct call of a Wasm function**, deterministic
@@ -261,7 +272,9 @@ theorem back_call_wasm {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Store H
       (∀ vs, r.2.2.retVals = some vs →
         rs.length ≤ vs.length ∧ ∀ ws, r.2.2 = .normal ws → ws.length = rs.length) ∧
       (r.2.2.retVals = none → r.2.2 = .trap)) :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧
+        ∃ y, PendO (hostCall host) ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ y ∧
+          BlockedAt host c y) ∨
       ∃ s₂ fl, hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
         ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -295,7 +308,13 @@ theorem back_op_call {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
     (hcase : ∀ s₁ f₁ stk₁ m, m ≤ n → EvalH host s f stk args (s₁, f₁, .normal stk₁) →
       StepsN (SingleThreaded.profile o) host m
         ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: expression (Binaryen.BExpr.lowerList es)⟩ c →
-      Pending host c.store c.code ∨
+      (Pending host c.store c.code ∧
+        ∃ (a : Nat) (fi : FuncInst H) (ps rs : List Validation.CValType)
+          (y : (wasmOShape H).self.Op), s₁.func? f₁ x = some (a, fi) ∧
+          Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+          (y = ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ ∨
+            PendO (hostCall host) ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ y) ∧
+          BlockedAt host c y) ∨
         ∃ (a : Nat) (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H)
           (fl : Binaryen.Flow), s₁.func? f₁ x = some (a, fi) ∧
           Validation.DefType.funcType? fi.type = some (ps, rs) ∧
@@ -316,13 +335,13 @@ theorem back_op_call {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
       BackOut host s₂ f₁ (vs.take rs.length ++ stk₁.drop ps.length) es c) :
     BackOut host s f stk (.op (.call x) args :: es) c := by
   refine back_op_args hrun hend ihargs fun s₁ f₁ stk₁ m hm hev hrun₁ => ?_
-  rcases hcase s₁ f₁ stk₁ m hm hev hrun₁ with hpend |
+  rcases hcase s₁ f₁ stk₁ m hm hev hrun₁ with ⟨hpend, a, fi, ps, rs, y, hfi, hty, hy, hb⟩ |
       ⟨a, fi, ps, rs, s₂, fl, hfi, hty, hcall, ⟨vs, m', hm', hvs, hk⟩ | ⟨rfl, hends⟩⟩
-  · exact .inr hpend
+  · exact .inr ⟨hpend, y, reachP_call hev hfi hty hy, hb⟩
   · rcases ihes s₁ f₁ stk₁ a fi ps rs s₂ fl vs m' hm' hev hfi hty hcall hvs hk with
-        ⟨r, hev', hr⟩ | hp'
+        ⟨r, hev', hr⟩ | ⟨hp', y, hy, hb⟩
     · exact .inl ⟨r, .callOk hev hfi hty hcall hvs hev', hr⟩
-    · exact .inr hp'
+    · exact .inr ⟨hp', y, reachP_lift (fun _ => ReachO.callK hev hfi hty hcall hvs) hy, hb⟩
   · exact .inl ⟨_, .callTrap hev hfi hty hcall, hends⟩
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval

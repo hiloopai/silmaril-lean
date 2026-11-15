@@ -11,11 +11,16 @@ public import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 
 A Core run of lowered native trees to a stuck configuration either ends as a
 native run with host calls (`EvalH host`) does, or is blocked at a host call
-with no outcome (`Pending`): `BackOut`. The proof is an induction on the length
+with no outcome (`Pending`), reached from the trees (`ReachP`) and with the end at
+that call (`BlockedAt`): `BackOut`. The proof is an induction on the length
 of the Core run (`StepsN`) and on the trees. This file has the first cases:
 
 * `Pending` facts: closed under appending code (`Pending.append`); a pending
   call is not values, not a trap and not a thrown exception;
+* reach evidence: `ReachP` is closed under the `ReachO` constructors
+  (`reachP_lift`, `reachP_call`), a reach in a Wasm callee body is a `PendO`
+  (`pendO_of_body`), and `BlockedAt` follows the call under appended code and
+  labels (`blockedAt_mono`, `atCall_append`, `atCall_label`);
 * `back_nil`: the empty tree list;
 * `back_op_args`: an operator tree `op i args :: es`. The run of the arguments
   is split off (`stepsN_seq_split`); an abrupt or blocked end of the arguments
@@ -40,6 +45,66 @@ theorem pending_append {s : Store H} {es : List Admin} (h : Pending host s es) (
   | call hf hcode he hn hno => simpa using Pending.call (rest := _ ++ rest') hf hcode he hn hno
   | label h => simpa using Pending.label (rest := _ ++ rest') h
   | frame h => simpa using Pending.frame (rest := _ ++ rest') h
+
+/-! ## Reach evidence -/
+
+theorem atCall_append {s : Store H} {a : Nat} {us : List Val} {es : List Admin}
+    (h : AtCall s a us es) (rest' : List Admin) : AtCall s a us (es ++ rest') := by
+  cases h with
+  | here hf => simpa using AtCall.here (rest := _ ++ rest') hf
+  | label h => simpa using AtCall.label (rest := _ ++ rest') h
+  | frame h => simpa using AtCall.frame (rest := _ ++ rest') h
+
+/-- A call reached under a label. -/
+theorem atCall_label {s : Store H} {a : Nat} {us ws : List Val} {n : Nat} {cont : List Instr}
+    {b rest : List Admin} (h : AtCall s a us b) :
+    AtCall s a us (vals ws ++ [.label n cont b] ++ rest) := by
+  simpa using AtCall.label (ws := ws) (n := n) (cont := cont) (rest := rest) h
+
+/-- `BlockedAt` depends only on the store and on the call in the code. -/
+theorem blockedAt_mono {c c' : Config H} {y : (wasmOShape H).self.Op} (h : BlockedAt host c y)
+    (hs : c'.store = c.store)
+    (hat : AtCall c.store y.1 y.2.1 c.code → AtCall c.store y.1 y.2.1 c'.code) :
+    BlockedAt host c' y := by
+  obtain ⟨fi, hh, h1, h2, h3, h4, h5⟩ := h
+  refine ⟨fi, hh, ?_, ?_, h3, ?_, ?_⟩ <;> rw [hs]
+  · exact h1
+  · exact h2
+  · exact h4
+  · exact hat h5
+
+/-- `ReachP` is closed under every `ReachO` constructor with the same reached call. -/
+theorem reachP_lift {C : CallRel H} {s s' : Store H} {f f' : Frame} {stk stk' : List Val}
+    {es es' : List Binaryen.BExpr} {y : (wasmOShape H).self.Op}
+    (hl : ∀ z, ReachO C s' f' stk' es' z → ReachO C s f stk es z)
+    (h : ReachP C s' f' stk' es' y) : ReachP C s f stk es y := by
+  rcases h with h | ⟨z, hz, hp⟩
+  · exact .inl (hl _ h)
+  · exact .inr ⟨z, hl _ hz, hp⟩
+
+/-- A direct call reaches its callee `z`, and every pending call of `z`. -/
+theorem reachP_call {C : CallRel H} {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val}
+    {x : FuncIdx} {args es : List Binaryen.BExpr} {a : Nat} {fi : FuncInst H}
+    {ps rs : List Validation.CValType} {y : (wasmOShape H).self.Op}
+    (hargs : EvalO C s f stk args (s₁, f₁, .normal stk₁))
+    (hfi : s₁.func? f₁ x = some (a, fi))
+    (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+    (hy : y = ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ ∨
+      PendO C ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ y) :
+    ReachP C s f stk (.op (.call x) args :: es) y := by
+  rcases hy with rfl | hp
+  · exact .inl (.here hargs hfi hty)
+  · exact .inr ⟨_, .here hargs hfi hty, hp⟩
+
+/-- A call reached in the body of a Wasm callee `x` is a pending call of `x`. -/
+theorem pendO_of_body {C : CallRel H} {x y : (wasmOShape H).self.Op} {fi : FuncInst H}
+    {fn : Func} (hf : x.2.2.funcs[x.1]? = some fi) (hcode : fi.code = .wasm fn)
+    (h : ReachP C x.2.2 (Frame.forCall fi.module x.2.1 fn.locals) [] (Binaryen.liftInstrs fn.body)
+      y) :
+    PendO C x y := by
+  rcases h with h | ⟨z, hz, hp⟩
+  · exact .body hf hcode h
+  · exact .desc hf hcode hz hp
 
 theorem not_mem_vals_of_val? {a : Admin} (ha : a.val? = none) {ws : List Val} : a ∉ vals ws := by
   intro hm
@@ -191,12 +256,13 @@ theorem back_op_args {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : I
         · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
         · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
   · -- blocked in the arguments
-    refine .inr ?_
+    obtain ⟨hp, y, hr, hb⟩ := hp
     rcases hk₁ with ⟨ws', hw, -⟩ | ⟨htr, -⟩ | ⟨x, hth, -⟩ | rfl
     · exact (pending_ne_vals hp ws' hw).elim
     · exact (pending_ne_trap hp htr).elim
     · exact (pending_ne_throwing hp x hth).elim
-    · exact pending_append hp _
+    · exact .inr ⟨pending_append hp _, y, reachP_lift (fun _ => ReachO.args) hr,
+        blockedAt_mono hb rfl (fun h => atCall_append h _)⟩
 
 /-! ## Flat instructions -/
 
@@ -294,9 +360,10 @@ theorem back_op_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
   by_cases hn : fl.IsNormal
   · rcases fl with stk₂ | _ | _ | _ | _ <;> simp only [Binaryen.Flow.IsNormal] at hn
     obtain ⟨m', hm', hrun₂⟩ := hnorm stk₂ rfl
-    rcases ihes s₁ f₁ stk₁ s₂ f₂ stk₂ m' (by omega) hev hfl hrun₂ with ⟨r, hk, hr⟩ | hp
+    rcases ihes s₁ f₁ stk₁ s₂ f₂ stk₂ m' (by omega) hev hfl hrun₂ with ⟨r, hk, hr⟩ |
+        ⟨hp, y, hy, hb⟩
     · exact .inl ⟨r, .opOk hi hev hfl hk, hr⟩
-    · exact .inr hp
+    · exact .inr ⟨hp, y, reachP_lift (fun _ => ReachO.opK hi hev hfl) hy, hb⟩
   · exact .inl ⟨_, .opStop hi hev hfl hn, habr hn⟩
 
 /-! ## Calls of host functions -/
@@ -328,7 +395,7 @@ theorem back_call_host {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Store H
     (hrun : StepsN (SingleThreaded.profile o) host n
       ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: rest⟩ c)
     (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧ BlockedAt host c ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩) ∨
       ∃ s₂ fl, hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
         ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -351,7 +418,7 @@ theorem back_call_host {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ : Store H
   have hn : (stk₁.take ps.length).reverse.length = ps'.length := by
     simp only [List.length_reverse, List.length_take]; omega
   rcases host_call_runN_seq hf hcode hex hn hrun₁ hend with ⟨rfl, hno⟩ | ⟨s₂, r, m, hm, hhost, hk⟩
-  · exact .inl (Pending.call hf hcode hex hn hno)
+  · exact .inl ⟨Pending.call hf hcode hex hn hno, fi, hh, rfl, hf, hcode, hno, AtCall.here hf⟩
   · right
     have hcall : hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, resFlow r) := by
       rw [hostCall_fixpoint]
@@ -399,12 +466,12 @@ theorem back_op_call_host {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H
     BackOut host s f stk (.op (.call x) args :: es) c := by
   refine back_op_args hrun hend ihargs fun s₁ f₁ stk₁ m hm hev hrun₁ => ?_
   obtain ⟨a, fi, hh, ps, rs, hfi, hcode, hty, hp, har, hnt⟩ := hcallee s₁ f₁ stk₁ hev
-  rcases back_call_host hfi hcode hty hp har hnt hrun₁ hend with hpend |
+  rcases back_call_host hfi hcode hty hp har hnt hrun₁ hend with ⟨hpend, hb⟩ |
       ⟨s₂, fl, hcall, ⟨vs, m', hm', hvs, hk⟩ | ⟨rfl, hends⟩⟩
-  · exact .inr hpend
-  · rcases ihes s₂ f₁ _ m' (by omega) hk with ⟨r, hev', hr⟩ | hp'
+  · exact .inr ⟨hpend, _, reachP_call hev hfi hty (.inl rfl), hb⟩
+  · rcases ihes s₂ f₁ _ m' (by omega) hk with ⟨r, hev', hr⟩ | ⟨hp', y, hy, hb⟩
     · exact .inl ⟨r, .callOk hev hfi hty hcall hvs hev', hr⟩
-    · exact .inr hp'
+    · exact .inr ⟨hp', y, reachP_lift (fun _ => ReachO.callK hev hfi hty hcall hvs) hy, hb⟩
   · exact .inl ⟨_, .callTrap hev hfi hty hcall, hends⟩
 
 /-! ## Blocks -/
@@ -476,7 +543,8 @@ theorem back_block {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : 
       BackOut host s f (stk.take np) body cb)
     (hblk : ∀ r, EvalH host s f (stk.take np) body r → ∀ vs, r.2.2.blockVals = some vs →
       nr ≤ vs.length ∧ ∀ ws, r.2.2 = .normal ws → ws.length = nr) :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧
+        ∃ y, ReachP (hostCall host) s f (stk.take np) body y ∧ BlockedAt host c y) ∨
       ∃ s₁ f₁ fl, EvalH host s f (stk.take np) body (s₁, f₁, fl) ∧
         ((∃ vs m, m ≤ n ∧ fl.blockVals = some vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -489,7 +557,8 @@ theorem back_block {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : 
     (B := Binaryen.BExpr.lowerList body) hp (Interp.step_block har) rest
   obtain ⟨m₁, hm₁, hrun₁⟩ := stepsN_through_steps henter hrun hend
   obtain ⟨cb, N₁, hN₁, hb, hsb, hk⟩ := stepsN_label_seq_split hrun₁ hend
-  rcases ihbody N₁ (by omega) cb hb hsb with ⟨⟨s₁, f₁, fl⟩, hev, oc, he, hst, hfr, hm⟩ | hpend
+  rcases ihbody N₁ (by omega) cb hb hsb with ⟨⟨s₁, f₁, fl⟩, hev, oc, he, hst, hfr, hm⟩ |
+      ⟨hpend, y, hy, hbl⟩
   · right
     dsimp only at hst hfr hm
     obtain ⟨rcs, rcf, rcc⟩ := cb
@@ -535,7 +604,7 @@ theorem back_block {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : 
       (n := nr) (cont := []) (rest := rest) (f := cb.frame) hpend hsb
     have := stepsN_of_stuck hstk hk
     subst this
-    exact hpe
+    exact ⟨hpe, y, hy, blockedAt_mono hbl rfl atCall_label⟩
 
 /-- **A block tree** (deterministic profile): `back_block`, then the following
 trees by `ihes`. -/
@@ -559,12 +628,12 @@ theorem back_block_tree {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} 
       BackOut host s₁ f₁ (vs.take nr ++ stk.drop np) es c) :
     BackOut host s f stk (.block bt body :: es) c := by
   rw [Interp.code_block] at hrun
-  rcases back_block har hp hrun hend ihbody hblk with hpend |
+  rcases back_block har hp hrun hend ihbody hblk with ⟨hpend, y, hy, hb⟩ |
       ⟨s₁, f₁, fl, hev, ⟨vs, m, hm, hvs, hk⟩ | ⟨k, vs, rfl, hends⟩ | ⟨hesc, hends⟩⟩
-  · exact .inr hpend
-  · rcases ihes s₁ f₁ fl vs m hm hev hvs hk with ⟨r, hev', hr⟩ | hp'
+  · exact .inr ⟨hpend, y, reachP_lift (fun _ => ReachO.block har) hy, hb⟩
+  · rcases ihes s₁ f₁ fl vs m hm hev hvs hk with ⟨r, hev', hr⟩ | ⟨hp', y, hy, hb⟩
     · exact .inl ⟨r, .blockOk har hev hvs hev', hr⟩
-    · exact .inr hp'
+    · exact .inr ⟨hp', y, reachP_lift (fun _ => ReachO.blockK har hev hvs) hy, hb⟩
   · exact .inl ⟨_, .blockBrk har hev, hends⟩
   · exact .inl ⟨_, .blockEsc har hev hesc, hends⟩
 
@@ -629,7 +698,8 @@ theorem back_loop {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : F
       BackOut host s f (stk.take np) body cb)
     (hlp : ∀ r, EvalH host s f (stk.take np) body r →
       (∀ ws, r.2.2 = .normal ws → ws.length = nr) ∧ ∀ vs, r.2.2 = .brk 0 vs → np ≤ vs.length) :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧
+        ∃ y, ReachP (hostCall host) s f (stk.take np) body y ∧ BlockedAt host c y) ∨
       ∃ s₁ f₁ fl, EvalH host s f (stk.take np) body (s₁, f₁, fl) ∧
         ((∃ vs m, m < n ∧ fl = .normal vs ∧
             StepsN (SingleThreaded.profile o) host m
@@ -644,7 +714,8 @@ theorem back_loop {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : F
     (B := Binaryen.BExpr.lowerList body) hp (Interp.step_loop har) rest
   obtain ⟨m₀, rfl, hrun₁⟩ := stepsN_unique (fun c₁ h => loop_step_unique har hp h) hstep hrun hend
   obtain ⟨cb, N₁, hN₁, hb, hsb, hk⟩ := stepsN_label_seq_split hrun₁ hend
-  rcases ihbody N₁ (by omega) cb hb hsb with ⟨⟨s₁, f₁, fl⟩, hev, oc, he, hst, hfr, hm⟩ | hpend
+  rcases ihbody N₁ (by omega) cb hb hsb with ⟨⟨s₁, f₁, fl⟩, hev, oc, he, hst, hfr, hm⟩ |
+      ⟨hpend, y, hy, hbl⟩
   · right
     dsimp only at hst hfr hm
     obtain ⟨rcs, rcf, rcc⟩ := cb
@@ -712,7 +783,7 @@ theorem back_loop {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : F
       (f := cb.frame) hpend hsb
     have := stepsN_of_stuck hstk hk
     subst this
-    exact hpe
+    exact ⟨hpe, y, hy, blockedAt_mono hbl rfl atCall_label⟩
 
 /-- **A loop tree** (deterministic profile): `back_loop`, then the following trees
 by `ihes`, and a re-entry by `ihloop` on a strictly shorter run. -/
@@ -740,16 +811,17 @@ theorem back_loop_tree {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {
       BackOut host s₁ f₁ (vs.take np ++ stk.drop np) (.loop bt body :: es) c) :
     BackOut host s f stk (.loop bt body :: es) c := by
   rw [Interp.code_loop] at hrun
-  rcases back_loop har hp hrun hend ihbody hlp with hpend |
+  rcases back_loop har hp hrun hend ihbody hlp with ⟨hpend, y, hy, hb⟩ |
       ⟨s₁, f₁, fl, hev, ⟨vs, m, hm, rfl, hk⟩ | ⟨vs, m, hm, rfl, hk⟩ | ⟨k, vs, rfl, hends⟩ |
         ⟨hesc, hends⟩⟩
-  · exact .inr hpend
-  · rcases ihes s₁ f₁ vs m hm hev hk with ⟨r, hev', hr⟩ | hp'
+  · exact .inr ⟨hpend, y, reachP_lift (fun _ => ReachO.loop har) hy, hb⟩
+  · rcases ihes s₁ f₁ vs m hm hev hk with ⟨r, hev', hr⟩ | ⟨hp', y, hy, hb⟩
     · exact .inl ⟨r, .loopOk har hev hev', hr⟩
-    · exact .inr hp'
-  · rcases ihloop s₁ f₁ vs m hm hev (by rw [Interp.code_loop]; exact hk) with ⟨r, hev', hr⟩ | hp'
+    · exact .inr ⟨hp', y, reachP_lift (fun _ => ReachO.loopK har hev) hy, hb⟩
+  · rcases ihloop s₁ f₁ vs m hm hev (by rw [Interp.code_loop]; exact hk) with ⟨r, hev', hr⟩ |
+        ⟨hp', y, hy, hb⟩
     · exact .inl ⟨r, .loopBack har hev hev', hr⟩
-    · exact .inr hp'
+    · exact .inr ⟨hp', y, reachP_lift (fun _ => ReachO.loopBack har hev) hy, hb⟩
   · exact .inl ⟨_, .loopBrk har hev, hends⟩
   · exact .inl ⟨_, .loopEsc har hev hesc, hends⟩
 
@@ -766,12 +838,13 @@ theorem back_prefix {n : Nat} {s : Store H} {f : Frame} {stk : List Val}
     (ihxs : ∀ m ≤ n, ∀ c₁, StepsN P host m
         ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList xs)⟩ c₁ →
       (∀ c', ¬ Step P host c₁ c') → BackOut host s f stk xs c₁) :
-    Pending host c.store c.code ∨
+    (Pending host c.store c.code ∧
+        ∃ y, ReachP (hostCall host) s f stk xs y ∧ BlockedAt host c y) ∨
       (∃ r₁, EvalH host s f stk xs r₁ ∧ ¬ r₁.2.2.IsNormal ∧ EndsAs r₁ c) ∨
       ∃ s₁ f₁ stk₁ m, m ≤ n ∧ EvalH host s f stk xs (s₁, f₁, .normal stk₁) ∧
         StepsN P host m ⟨s₁, f₁, vals stk₁.reverse ++ K⟩ c := by
   obtain ⟨c₁, n₁, h₁, hn₁, hs₁, hk₁⟩ := stepsN_seq_split hrun hend
-  rcases ihxs n₁ hn₁ c₁ h₁ hs₁ with ⟨⟨s₁, f₁, fl⟩, hev, o, he, hst, hfr, hfm⟩ | hp
+  rcases ihxs n₁ hn₁ c₁ h₁ hs₁ with ⟨⟨s₁, f₁, fl⟩, hev, o, he, hst, hfr, hfm⟩ | ⟨hp, y, hy, hb⟩
   · dsimp only at hst hfr hfm
     subst hst hfr
     by_cases hnorm : fl.IsNormal
@@ -823,7 +896,7 @@ theorem back_prefix {n : Nat} {s : Store H} {f : Frame} {stk : List Val}
     · exact (pending_ne_vals hp ws' hw).elim
     · exact (pending_ne_trap hp htr).elim
     · exact (pending_ne_throwing hp x hth).elim
-    · exact pending_append hp _
+    · exact ⟨pending_append hp _, y, hy, blockedAt_mono hb rfl (fun h => atCall_append h _)⟩
 
 /-- **An `if` tree** (deterministic profile): the condition by `back_prefix`, the
 host-free `if` step to the block of the chosen arm (`Interp.step_if_arm`), the arm
@@ -864,9 +937,9 @@ theorem back_if_tree {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
       BackOut host s₂ f₂ (vs.take nr ++ stk₁.drop np) es c) :
     BackOut host s f stk (.if_ bt cnd t el :: es) c := by
   rw [Interp.code_if] at hrun
-  rcases back_prefix (by simp) hrun hend ihcond with hpend | ⟨r₁, hev, hn, hends⟩ |
-      ⟨s₁, f₁, stk', m, hm, hev, hrun₁⟩
-  · exact .inr hpend
+  rcases back_prefix (by simp) hrun hend ihcond with ⟨hpend, y, hy, hb⟩ |
+      ⟨r₁, hev, hn, hends⟩ | ⟨s₁, f₁, stk', m, hm, hev, hrun₁⟩
+  · exact .inr ⟨hpend, y, reachP_lift (fun _ => ReachO.cond) hy, hb⟩
   · rcases r₁ with ⟨s₁, f₁, fl⟩
     exact .inl ⟨_, .ifAbort hev hn, hends⟩
   · obtain ⟨cv, stk₁, b, np, nr, rfl, hb, har, hp, hblk⟩ := hcond s₁ f₁ stk' hev
@@ -875,13 +948,13 @@ theorem back_if_tree {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f 
     obtain ⟨m₁, hm₁, hrun₂⟩ := stepsN_through hrun₁ hend hd
     rcases back_block har hp hrun₂ hend
         (fun m' hm' cb h hs => iharm s₁ f₁ cv stk₁ b np nr m' (by omega) hev hb har cb h hs) hblk with
-      hpend |
+      ⟨hpend, y, hy, hbl⟩ |
       ⟨s₂, f₂, fl, hevb, ⟨vs, m', hm', hvs, hk⟩ | ⟨k, vs, rfl, hends⟩ | ⟨hesc, hends⟩⟩
-    · exact .inr hpend
+    · exact .inr ⟨hpend, y, reachP_lift (fun _ => ReachO.arm hev hb har) hy, hbl⟩
     · rcases ihes s₁ f₁ cv stk₁ b np nr s₂ f₂ fl vs m' (by omega) hev hb har hevb hvs hk with
-          ⟨r, hev', hr⟩ | hp'
+          ⟨r, hev', hr⟩ | ⟨hp', y, hy, hbl⟩
       · exact .inl ⟨r, .ifOk hev hb har hevb hvs hev', hr⟩
-      · exact .inr hp'
+      · exact .inr ⟨hp', y, reachP_lift (fun _ => ReachO.ifK hev hb har hevb hvs) hy, hbl⟩
     · exact .inl ⟨_, .ifBrk hev hb har hevb, hends⟩
     · exact .inl ⟨_, .ifEsc hev hb har hevb hesc, hends⟩
 

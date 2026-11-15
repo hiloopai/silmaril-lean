@@ -72,4 +72,24 @@ theorem back_invoke_steps_profile {P : Numerics.Profile} (hT : HostTyped host)
   let ⟨_, h⟩ := stepsN_of_steps hrun
   back_invoke_profile hT hH hN hs hS hW hok h hend
 
+/-- **`back_invoke_reach` at every profile**, for a store with native-profile Wasm functions
+and a host satisfying `Interp.HostNative`. -/
+theorem back_invoke_reach_profile {P : Numerics.Profile} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host) {n : Nat} {s : Store H}
+    {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN P host n (invoke s a vs) c) (hend : ∀ c', ¬ Step P host c c') :
+    (∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧ y.2.2 = c.store ∧
+        c.store.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧ (∀ o, ¬ host hh c.store y.2.1 o) ∧
+        AtCall c.store y.1 y.2.1 c.code) ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H) (fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, fl) ∧
+        ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) := by
+  obtain ⟨hrun', hc⟩ := stepsN_profileH (P' := profile (fun _ _ _ _ => false)) hN hrun
+    (Interp.nhConfig_invoke hW a vs)
+  exact back_invoke_reach hT hH hs hS hok hrun' (stuck_profileH hc hend)
+
 end Silmaril.Proofs.Wasm.Abstract.HostEval

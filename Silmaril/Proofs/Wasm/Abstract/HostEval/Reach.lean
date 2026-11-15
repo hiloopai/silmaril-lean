@@ -21,13 +21,6 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Abstract
 
 variable {H : Type} {P : Silmaril.Wasm.Numerics.Profile} {host : HostSemantics H}
 
-theorem atCall_append {s : Store H} {a : Nat} {us : List Val} {es : List Admin}
-    (h : AtCall s a us es) (rest' : List Admin) : AtCall s a us (es ++ rest') := by
-  cases h with
-  | here hf => simpa using AtCall.here (rest := _ ++ rest') hf
-  | label h => simpa using AtCall.label (rest := _ ++ rest') h
-  | frame h => simpa using AtCall.frame (rest := _ ++ rest') h
-
 /-- **At a host call with no outcome, Core is blocked.** -/
 theorem atCall_pending {s : Store H} {a : Nat} {us : List Val} {es : List Admin}
     {fi : FuncInst H} {hh : H} {ps rs : Validation.Ty (.list .val)}

@@ -126,7 +126,7 @@ theorem stuck_iff {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
     (∀ c', ¬ Step (SingleThreaded.profile o) host c c') ↔ BackOut host s f stk es c := by
   constructor
   · exact back_whole hT hH n es s f stk labels ret out c hS hc ht hrun
-  · rintro (⟨r, -, he⟩ | hp)
+  · rintro (⟨r, -, he⟩ | ⟨hp, -⟩)
     · exact endsAs_stuck he
     · rcases c with ⟨s', f', code⟩
       exact pending_stuck hp f'
