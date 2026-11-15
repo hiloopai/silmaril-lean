@@ -1,11 +1,14 @@
 module
 
 public import Silmaril.Wasm.Abstract.HostCall.Defs
+public import Silmaril.Wasm.SingleThreaded.Profile
+public import Silmaril.Wasm.SingleThreaded.Determinism.HeadDet
 public import Silmaril.Wasm.Execution.Core.InversionHost.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Split
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Runs
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Through
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -56,6 +59,12 @@ is read off the run; nothing is assumed about the host.
 `es` taking `n₁ ≤ n` steps and the continuation after values the remaining
 `n - n₁`); `stepsN_label_split` (a label's body runs inside until the label is
 stuck, or exits by `LabelExit` with `n - n₁ - 1` steps left).
+
+**Runs pass through host-free steps** (deterministic profile `profile o`):
+`stepsN_through`, `stepsN_through_steps`. A Core run with any host from `K` to a
+stuck end also reaches that end, in no more steps, from any host-free successor
+of `K` (or the end of any host-free run from `K`): host-free steps join within
+one step, and a configuration with a host-free step is not at a host call.
 
 `coreHost_call_run_seq` is the same **under a continuation** `rest` after the
 call. It uses the sequence-context inversion `Step.callRef_host_inv_seq`, built
@@ -215,5 +224,21 @@ theorem stepsN_label_split {n : Nat} {s : Store H} {f : Frame} {k : Nat} {cont :
         ∃ out, n₁ < n ∧ LabelExit k cont c₁.code out ∧
           StepsN P host (n - n₁ - 1) ⟨c₁.store, c₁.frame, out⟩ c) :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_label_split hrun hend
+
+/-- **A run to a stuck end passes through every host-free step.** -/
+theorem stepsN_through {o : SingleThreaded.GrowOracle} {n : Nat} {K c d : Config H}
+    (hrun : StepsN (SingleThreaded.profile o) host n K c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c')
+    (hd : SingleThreaded.Det.DStep o K d) :
+    ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m d c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_through hrun hend hd
+
+/-- **A run to a stuck end passes through every host-free run.** -/
+theorem stepsN_through_steps {o : SingleThreaded.GrowOracle} {n : Nat} {K T c : Config H}
+    (hpred : Relation.ReflTransGen (SingleThreaded.Det.DStep o) K T)
+    (hrun : StepsN (SingleThreaded.profile o) host n K c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m T c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_through_steps hpred hrun hend
 
 end Silmaril.Wasm.Abstract

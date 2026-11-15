@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Abstract.HostEval.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Wasm.Execution.Core.Sim.ExitLift
+public import Silmaril.Wasm.Interp.Thms
 
 /-!
 # The whole-run backward simulation with host calls (proofs, first cases)
@@ -195,5 +196,71 @@ theorem back_op_args {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : I
     · exact (pending_ne_trap hp htr).elim
     · exact (pending_ne_throwing hp x hth).elim
     · exact pending_append hp _
+
+/-! ## Flat instructions -/
+
+/-- An abrupt matched final form (a branch, a return or a trap) has no step. -/
+theorem ends_abrupt_stuck {s : Store H} {f : Frame} {o : Outcome} {fl : Binaryen.Flow}
+    {c' : List Admin} (he : o.Ends c') (hm : Interp.FlowMatch fl o) (hn : ¬ fl.IsNormal)
+    (c : Config H) : ¬ Step P host ⟨s, f, c'⟩ c := by
+  intro hst
+  rcases c with ⟨s', f', es'⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
+  · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
+  · obtain ⟨x, rest, -, rfl⟩ := he
+    rcases Sim.Step.split_head (a := .plain (.br x)) rfl hst with ⟨ws, us, is', -, h, -⟩ |
+        ⟨h, -⟩ | ⟨h, -⟩
+    · exact Step.br_vals_stuck h
+    · cases h
+    · cases h
+  · obtain ⟨rest, rfl⟩ := he
+    rcases Sim.Step.split_head (a := .plain .return_) rfl hst with ⟨ws, us, is', -, h, -⟩ |
+        ⟨h, -⟩ | ⟨h, -⟩
+    · exact Step.return_vals_stuck h
+    · cases h
+    · cases h
+  · have hc : c' = [.trap] := he
+    subst hc
+    exact Step.trap_stuck hst
+  · rcases fl <;> simp_all [Interp.FlowMatch]
+  · rcases fl <;> simp_all [Interp.FlowMatch]
+  · rcases fl <;> simp_all [Interp.FlowMatch]
+
+/-- A run of `m` steps from a stuck configuration is empty. -/
+theorem stepsN_of_stuck {m : Nat} {X c : Config H} (hX : ∀ c', ¬ Step P host X c')
+    (h : StepsN P host m X c) : c = X := by
+  cases h with
+  | refl => rfl
+  | head h _ => exact (hX _ h).elim
+
+/-- **The backward case of a flat instruction**, in the deterministic profile and
+with any host. Let the native instruction `i` (not a call, passing the check)
+step `stk₁` to `(s₂, f₂, fl)`. Then a Core run of `vals stk₁ ++ i :: rest` to a
+stuck end either continues, after `i`, from `vals stk₂ ++ rest` in at most as many
+steps (`fl = normal stk₂`), or ends as the native abrupt result. -/
+theorem back_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ s₂ : Store H} {f₁ f₂ : Frame}
+    {stk₁ : List Val} {i : Instr} {fl : Binaryen.Flow} {rest : List Admin} {c : Config H}
+    {F : List (FuncInst H)} {mi : ModuleInst} {ret : Nat} {labels : List Nat} {h₀ : Nat}
+    {o₁ : Option Nat} (hi : ∀ x, i ≠ .call x)
+    (hc : Interp.flatChk F mi f₁.locals.length ret labels h₀ i = some o₁)
+    (hflat : Binaryen.evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, fl))
+    (hrun : StepsN (SingleThreaded.profile o) host n ⟨s₁, f₁, vals stk₁.reverse ++ .plain i :: rest⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    (∀ stk₂, fl = .normal stk₂ →
+        ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m ⟨s₂, f₂, vals stk₂.reverse ++ rest⟩ c) ∧
+      (¬ fl.IsNormal → EndsAs (s₂, f₂, fl) c) := by
+  refine ⟨fun stk₂ hfl => ?_, fun hn => ?_⟩
+  · subst hfl
+    have hst := Interp.steps_flat_normal (P := SingleThreaded.profile o)
+      (host := SingleThreaded.Det.noHost) hi hc hflat rest
+    exact stepsN_through_steps hst hrun hend
+  · have hw := Interp.wp_flat_abrupt (P := SingleThreaded.profile o)
+      (host := SingleThreaded.Det.noHost) hc hflat hn rest
+    obtain ⟨c', o', hst, he, hm⟩ := Interp.run_of_wp hw
+    obtain ⟨m, -, h⟩ := stepsN_through_steps hst hrun hend
+    have hc' := stepsN_of_stuck (ends_abrupt_stuck (P := SingleThreaded.profile o) (host := host)
+      (s := s₂) (f := f₂) he hm hn) h
+    subst hc'
+    exact ⟨o', he, rfl, rfl, hm⟩
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval

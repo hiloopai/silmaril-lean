@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Abstract.HostEval.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Wasm.Logic.Core.Thms
+public import Silmaril.Wasm.Interp.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 
@@ -42,7 +43,17 @@ call with no outcome, `Pending`), any profile and host:
   end of the arguments ends the whole run (`argsAbort`); a normal end on `stk₁`
   hands the remaining run from `vals stk₁ ++ i :: es` to the instruction's case.
 
-**Not yet proved.** The instruction cases (flat, calls, blocks, loops, `if`),
+* `back_flat` (deterministic profile, any host): a native flat instruction
+  (not a call, passing the check) stepping to `(s₂, f₂, fl)` is followed by every
+  Core run to a stuck end: after it, the run continues from `vals stk₂ ++ rest` in
+  at most as many steps when `fl` is normal, and otherwise ends as the native
+  abrupt result. Through `HostCall.stepsN_through_steps`: the native step predicts a
+  host-free Core run, and the actual run, whatever its host answers, passes
+  through it. With typed code the native step exists in any store
+  (`Interp.evalFlat_progressH`).
+
+**Not yet proved.** The composed operator case (threading the check and typing
+through the arguments), the calls, blocks, loops and `if`,
 hence the whole backward simulation, and the decomposition of divergence with
 host calls.
 -/
@@ -126,5 +137,19 @@ theorem back_op_args {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : I
       BackOut host s f stk (.op i args :: es) c) :
     BackOut host s f stk (.op i args :: es) c :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.back_op_args hrun hend ihargs hk
+
+/-- **The backward case of a flat instruction.** -/
+theorem back_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ s₂ : Store H} {f₁ f₂ : Frame}
+    {stk₁ : List Val} {i : Instr} {fl : Binaryen.Flow} {rest : List Admin} {c : Config H}
+    {F : List (FuncInst H)} {mi : ModuleInst} {ret : Nat} {labels : List Nat} {h₀ : Nat}
+    {o₁ : Option Nat} (hi : ∀ x, i ≠ .call x)
+    (hc : Interp.flatChk F mi f₁.locals.length ret labels h₀ i = some o₁)
+    (hflat : Binaryen.evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, fl))
+    (hrun : StepsN (SingleThreaded.profile o) host n ⟨s₁, f₁, vals stk₁.reverse ++ .plain i :: rest⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    (∀ stk₂, fl = .normal stk₂ →
+        ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m ⟨s₂, f₂, vals stk₂.reverse ++ rest⟩ c) ∧
+      (¬ fl.IsNormal → EndsAs (s₂, f₂, fl) c) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_flat hi hc hflat hrun hend
 
 end Silmaril.Wasm.Abstract
