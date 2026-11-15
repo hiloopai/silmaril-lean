@@ -6,6 +6,7 @@ public import Silmaril.Wasm.Abstract.HostClosing.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Done
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Back
+import Silmaril.Proofs.Wasm.Abstract.HostObs.Square
 
 /-!
 # Core 3.0 invocations against the logged closed semantics with host calls: theorems
@@ -39,6 +40,20 @@ end `c` of a Core run of a typed invocation is blocked at a host call
 `(hh, c.store, us)` the host has no outcome for, a pending call of `wasmEvPend` after a
 consistent log with `c` at that call (`AtCall`); or it agrees (`CoreEnd`) with a
 finished `wasmEvFun` behaviour after a consistent log. From `back_invoke_reach`.
+
+**The host-observation square** (`wasmHostObs`, the `HostRun.hostObs` observations of
+the invocation against `coreHostRel host`):
+
+* `wasmHostObs_sound` (every profile): every observation is its Core behaviour
+  (`CoreObs`): `done` a run to an agreeing stuck end, `hostDiv` Core divergence,
+  `blocked` a run to a stuck end blocked at a host call;
+* `core_stuck_wasmHostObs` (deterministic profile) and `core_stuck_wasmHostObs_profile`
+  (every profile, native side conditions): every stuck end of a Core run of the
+  invocation is a `done` observation it agrees with, or a `blocked` observation at the
+  host call it is at.
+
+Not covered: Core divergence back to a `hostDiv` observation or a divergent logged
+behaviour (backward divergence).
 -/
 
 @[expose] public section
@@ -128,5 +143,39 @@ theorem core_stuck_wasmEv_profile {P : Silmaril.Wasm.Numerics.Profile} (hT : Hos
       (∀ o, ¬ host hh c.store us o) ∧ AtCall c.store a' us c.code) ∨
       ∃ cs e, (coreHostRel host).Consistent cs ∧ (cs, e) ∈ wasmEvFun s (a, vs) ∧ CoreEnd c e :=
   Silmaril.Proofs.Wasm.Abstract.HostObs.core_stuck_wasmEv_profile hT hH hN hs hS hW hok hrun hend
+
+/-- **Soundness of the host observations** (every profile): every observation of the
+invocation against `coreHostRel host` is its Core behaviour. -/
+theorem wasmHostObs_sound {P : Silmaril.Wasm.Numerics.Profile} (hH : Interp.NativeHostSlice host)
+    {s : Store H} {a : Nat} {vs : List Val} (hS : Interp.StoreChk s.funcs)
+    (hok : InvokeOk s a vs) {o : HObs (wasmHostSig H) (Store H) (List Val ⊕ Nat)}
+    (h : o ∈ wasmHostObs host s a vs) : CoreObs P host s a vs o :=
+  Silmaril.Proofs.Wasm.Abstract.HostObs.wasmHostObs_sound hH hS hok h
+
+/-- **Completeness of the host observations for stuck ends** (deterministic profile). -/
+theorem core_stuck_wasmHostObs {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {n : Nat} {s : Store H} {a : Nat} {vs : List Val}
+    {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN (SingleThreaded.profile o) host n (invoke s a vs) c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    (∃ cs e, HObs.done cs e ∈ wasmHostObs host s a vs ∧ CoreEnd c e) ∨
+      ∃ (cs : List (Call (wasmHostSig H))) (hh : H) (a' : Nat) (us : List Val),
+        HObs.blocked cs (hh, c.store, us) ∈ wasmHostObs host s a vs ∧
+        AtCall c.store a' us c.code :=
+  Silmaril.Proofs.Wasm.Abstract.HostObs.core_stuck_wasmHostObs hT hH hs hS hok hrun hend
+
+/-- **Completeness for stuck ends, every profile**, for native-profile Wasm functions and an
+`Interp.HostNative` host. -/
+theorem core_stuck_wasmHostObs_profile {P : Silmaril.Wasm.Numerics.Profile}
+    (hT : HostTyped host) (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host)
+    {n : Nat} {s : Store H} {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s)
+    (hS : Interp.StoreChk s.funcs) (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN P host n (invoke s a vs) c) (hend : ∀ c', ¬ Step P host c c') :
+    (∃ cs e, HObs.done cs e ∈ wasmHostObs host s a vs ∧ CoreEnd c e) ∨
+      ∃ (cs : List (Call (wasmHostSig H))) (hh : H) (a' : Nat) (us : List Val),
+        HObs.blocked cs (hh, c.store, us) ∈ wasmHostObs host s a vs ∧
+        AtCall c.store a' us c.code :=
+  Silmaril.Proofs.Wasm.Abstract.HostObs.core_stuck_wasmHostObs_profile hT hH hN hs hS hW hok
+    hrun hend
 
 end Silmaril.Wasm.Abstract
