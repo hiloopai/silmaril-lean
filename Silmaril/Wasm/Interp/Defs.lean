@@ -261,14 +261,18 @@ abbrev chk1 (F : List (Execution.Core.FuncInst H)) (mi : Execution.Core.ModuleIn
     (labels : List Nat) (h : Nat) : Binaryen.BExpr → Option (Option Nat) :=
   chk1E noExt F mi nl ret labels h
 
-/-- **Every function of the store passes the arity check** in its own module: from the empty
-stack, with its parameters and declared locals, its body falls through (or branches to its
-own label, or returns) with exactly its results. -/
-def StoreChk (F : List (Execution.Core.FuncInst H)) : Prop :=
+/-- **Every function of the store passes the arity check** (with the extension
+`ext`) in its own module: from the empty stack, with its parameters and declared
+locals, its body falls through (or branches to its own label, or returns) with
+exactly its results. -/
+def StoreChkE (ext : ExtArity H) (F : List (Execution.Core.FuncInst H)) : Prop :=
   ∀ (a : Nat) (fi : Execution.Core.FuncInst H) (fn : Func) (ps rs : List Validation.CValType),
     F[a]? = some fi → fi.code = .wasm fn → Validation.DefType.funcType? fi.type = some (ps, rs) →
-    endsAt (chk F fi.module (ps.length + fn.locals.length) rs.length [rs.length] (some 0)
+    endsAt (chkE ext F fi.module (ps.length + fn.locals.length) rs.length [rs.length] (some 0)
       (Binaryen.liftInstrs fn.body)) rs.length = true
+
+/-- The store check with the native checker. -/
+abbrev StoreChk (F : List (Execution.Core.FuncInst H)) : Prop := StoreChkE noExt F
 
 /-- An executable `StoreChk` for one function (host functions and functions without a function
 type pass vacuously). -/

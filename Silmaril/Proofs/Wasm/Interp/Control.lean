@@ -861,7 +861,7 @@ end Calls
 def CoreGoodE (ext : ExtArity H) (P : Numerics.Profile) (host : HostSemantics H) (s : Store H)
     (f : Frame) (stk : List Val) (es : List Binaryen.BExpr) (r : Store H × Frame × Binaryen.Flow) :
     Prop :=
-  ∀ {labels : List Nat} {ret : Nat} {out : Option Nat}, StoreChk s.funcs →
+  ∀ {labels : List Nat} {ret : Nat} {out : Option Nat}, StoreChkE ext s.funcs →
     chkE ext s.funcs f.module f.locals.length ret labels (some stk.length) es = some out →
     WP P host s f (vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)) (Match r)
 
@@ -909,7 +909,7 @@ theorem code_if (stk : List Val) (bt : BlockType) (c t el es : List Binaryen.BEx
 
 /-- The check of the code after a block, from the values it hands on. -/
 theorem chk_after {labels : List Nat} {ret np nr : Nat} {out : Option Nat}
-    (inv1 : EvalInv s f (s₁, f₁, fl)) (hnp : np ≤ stk.length) (hnr : nr ≤ vs.length)
+    (inv1 : EvalInvE ext s f (s₁, f₁, fl)) (hnp : np ≤ stk.length) (hnr : nr ≤ vs.length)
     (h2 : chkE ext s.funcs f.module f.locals.length ret labels (some (stk.length - np + nr)) es =
       some out) :
     chkE ext s₁.funcs f₁.module f₁.locals.length ret labels
@@ -922,12 +922,12 @@ theorem chk_after {labels : List Nat} {ret np nr : Nat} {out : Option Nat}
 
 /-- What the arity check says about a checked body run. -/
 theorem body_facts {labels : List Nat} {ret n₀ nr : Nat} {stk₀ : List Val}
-    (hS : StoreChk s.funcs) (hbody : ArityGoodE ext s f stk₀ body (s₁, f₁, fl))
+    (hS : StoreChkE ext s.funcs) (hbody : ArityGoodE ext s f stk₀ body (s₁, f₁, fl))
     (hb : endsAt (chkE ext s.funcs f.module f.locals.length ret labels (some n₀) body) nr = true)
     (hlen : stk₀.length = n₀) :
     ∃ ob, (ob = none ∨ ob = some nr) ∧
       chkE ext s.funcs f.module f.locals.length ret labels (some stk₀.length) body = some ob ∧
-      FlowOk labels ret ob fl ∧ EvalInv s f (s₁, f₁, fl) := by
+      FlowOk labels ret ob fl ∧ EvalInvE ext s f (s₁, f₁, fl) := by
   obtain ⟨ob, hb', hob⟩ := endsAt_eq hb
   have hbc : chkE ext s.funcs f.module f.locals.length ret labels (some stk₀.length) body = some ob :=
     hlen ▸ hb'
@@ -957,7 +957,7 @@ theorem core_opOk (hargs : ArityGoodE ext s f stk args (s₁, f₁, .normal stk�
   obtain ⟨oa, ha, -⟩ := chk1_opE h1
   replace hf := flatChk_of_evalFlat hflat hf
   obtain ⟨ho, inv2⟩ := flat_normal hflat hf
-  have inv12 : EvalInv s f (s₂, f₂, .normal stk₂) := inv1.trans inv2
+  have inv12 : EvalInvE ext s f (s₂, f₂, .normal stk₂) := inv1.trans inv2
   have h2' : chkE ext s₂.funcs f₂.module f₂.locals.length ret labels (some stk₂.length) es =
       some out := by
     rw [← ho]
@@ -986,7 +986,7 @@ section CallCases
 variable {x : FuncIdx} {a : Nat} {fi : FuncInst H} {fn : Func} {ps rs : List Validation.CValType}
 
 /-- What the arity check says about a checked call before and after its callee. -/
-theorem call_facts {labels : List Nat} {ret : Nat} {out : Option Nat} (hS : StoreChk s.funcs)
+theorem call_facts {labels : List Nat} {ret : Nat} {out : Option Nat} (hS : StoreChkE ext s.funcs)
     (hargs : ArityGoodE ext s f stk args (s₁, f₁, .normal stk₁))
     (hfi : s₁.func? f₁ x = some (a, fi)) (hcode : fi.code = .wasm fn)
     (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
@@ -999,13 +999,13 @@ theorem call_facts {labels : List Nat} {ret : Nat} {out : Option Nat} (hS : Stor
         (calleeFrame fi fn stk₁ ps.length).locals.length rs.length [rs.length]
         (some ([] : List Val).length) (Binaryen.liftInstrs fn.body) = some ob ∧
       (ob = none ∨ ob = some rs.length) ∧ FlowOk [rs.length] rs.length ob fl ∧
-      EvalInv s f (s₁, f₁, .normal stk₁) ∧ FuncsGood s₁.funcs s₂.funcs ∧ ps.length ≤ stk₁.length ∧
+      EvalInvE ext s f (s₁, f₁, .normal stk₁) ∧ FuncsGoodE ext s₁.funcs s₂.funcs ∧ ps.length ≤ stk₁.length ∧
       chkE ext s.funcs f.module f.locals.length ret labels
         (some (stk₁.length - ps.length + rs.length)) es = some out := by
   obtain ⟨inv1, hp, h2⟩ := arity_call_pre hS hargs hfi hty hc
   obtain ⟨o, h1, -⟩ := chk_consE.mp hc
   obtain ⟨oa, ha, -⟩ := chk1_opE h1
-  have hS1 : StoreChk s₁.funcs := storeChk_inv inv1 hS
+  have hS1 : StoreChkE ext s₁.funcs := storeChk_inv inv1 hS
   obtain ⟨ob, hob, hb'⟩ := callee_chk (ext := ext) hS1 hfi hcode hty hp
   obtain ⟨hok, hinvb⟩ := hbody hS1 hb'
   exact ⟨oa, ob, ha, hb', hob, hok, inv1, hinvb.1, hp, h2⟩
@@ -1028,7 +1028,7 @@ theorem core_callOk (hargs : ArityGoodE ext s f stk args (s₁, f₁, .normal st
   have hnorm : ∀ ws, fl = .normal ws → ws.length = rs.length := by
     rintro ws rfl
     exact length_of_ends hok hob
-  have inv2 : EvalInv s f (s₂, f₁, .normal (vs.take rs.length ++ stk₁.drop ps.length)) :=
+  have inv2 : EvalInvE ext s f (s₂, f₁, .normal (vs.take rs.length ++ stk₁.drop ps.length)) :=
     ⟨inv1.1.trans hfuncs, inv1.2.1, inv1.2.2⟩
   have hlen : (vs.take rs.length ++ stk₁.drop ps.length).length =
       stk₁.length - ps.length + rs.length := by
@@ -1169,7 +1169,7 @@ theorem wp_if_arm {cv : Val} {b : Bool} {t el : List Binaryen.BExpr} {rest : Lis
 
 /-- What the arity check says about a checked `if` arm run. -/
 theorem if_facts {c t el : List Binaryen.BExpr} {cv : Val} {b : Bool} {labels : List Nat}
-    {ret : Nat} {out : Option Nat} (hS : StoreChk s.funcs)
+    {ret : Nat} {out : Option Nat} (hS : StoreChkE ext s.funcs)
     (hcond : ArityGoodE ext s f stk c (s₁, f₁, .normal (cv :: stk₁)))
     (har : Binaryen.arity f₁ bt = some (np, nr))
     (harm : ArityGoodE ext s₁ f₁ (stk₁.take np) (if b then t else el) (s₂, f₂, fl))
@@ -1178,8 +1178,8 @@ theorem if_facts {c t el : List Binaryen.BExpr} {cv : Val} {b : Bool} {labels : 
     ∃ oc ob, chkE ext s.funcs f.module f.locals.length ret labels (some stk.length) c = some oc ∧
       chkE ext s₁.funcs f₁.module f₁.locals.length ret (nr :: labels) (some (stk₁.take np).length)
         (if b then t else el) = some ob ∧ (ob = none ∨ ob = some nr) ∧
-      FlowOk (nr :: labels) ret ob fl ∧ EvalInv s f (s₁, f₁, .normal (cv :: stk₁)) ∧
-      EvalInv s₁ f₁ (s₂, f₂, fl) ∧ np ≤ stk₁.length ∧
+      FlowOk (nr :: labels) ret ob fl ∧ EvalInvE ext s f (s₁, f₁, .normal (cv :: stk₁)) ∧
+      EvalInvE ext s₁ f₁ (s₂, f₂, fl) ∧ np ≤ stk₁.length ∧
       chkE ext s₁.funcs f₁.module f₁.locals.length ret labels (some (stk₁.length - np + nr)) es =
         some out := by
   obtain ⟨inv1, hp, hbarm, h2⟩ := arity_if_pre (b := b) hS hcond har hc
@@ -1201,7 +1201,7 @@ theorem core_ifOk {c t el : List Binaryen.BExpr} {cv : Val} {b : Bool}
     CoreGoodE ext P host s f stk (.if_ bt c t el :: es) r := by
   intro labels ret out hS hc
   obtain ⟨oc, ob, hco, hbc, hob, hok, inv1, inv2, hp, h2⟩ := if_facts hS hcond har harm hc
-  have hS1 : StoreChk s₁.funcs := storeChk_inv inv1 hS
+  have hS1 : StoreChkE ext s₁.funcs := storeChk_inv inv1 hS
   have hnr : nr ≤ vs.length := blockVals_length hok hob hvs
   have hnorm : ∀ ws, fl = .normal ws → ws.length = nr := by
     rintro ws rfl

@@ -13,9 +13,10 @@ its runs of code checked by the extension `irExt` are Core 3.0 runs
 (`evalOXT_goodE`), with the arity invariants, at every profile and host, given
 a sound oracle (`OracleSoundX`).
 
-**Scope.** The invariants assume the native store check `StoreChk s.funcs`:
-the store's functions pass `chk`, which rejects `call_indirect`/`call_ref`, so
-only the running code may contain them (see `Silmaril.Wasm.Interp.OracleX.Thms`).
+**Scope.** The invariants assume the extended store check
+`StoreChkE irExt s.funcs`: the store's functions pass `chkE irExt`, so they may
+contain `call_indirect`/`call_ref` too (a natively checked store qualifies,
+`storeChkE_of_storeChk`).
 `irExt` describes `call_indirect x y` and `call_ref y` by the type
 `y` (`.fall (p + 1) q`). It does not describe the tail calls, so `chkE irExt`
 rejects them: for code with a tail call nothing is claimed here. A tail call
@@ -50,16 +51,16 @@ instance : ExtStable (irExt (H := H)) := ⟨fun _ h => h⟩
 def OracleSoundX (P : Numerics.Profile) (host : HostSemantics H) (C : Abstract.CallRel H) : Prop :=
   ∀ (s s₂ : Store H) (f : Frame) (a : Nat) (fi : FuncInst H) (ps rs : List Validation.CValType)
     (us : List Val) (fl : Binaryen.Flow) (c : Admin),
-    StoreChk s.funcs → s.funcs[a]? = some fi → Validation.DefType.funcType? fi.type = some (ps, rs) →
+    StoreChkE irExt s.funcs → s.funcs[a]? = some fi → Validation.DefType.funcType? fi.type = some (ps, rs) →
     us.length = ps.length → c.IsCallRef → C s a us (s₂, fl) →
     (∃ ob, (ob = none ∨ ob = some rs.length) ∧ FlowOk [rs.length] rs.length ob fl ∧
-        FuncsGood s.funcs s₂.funcs) ∧
+        FuncsGoodE irExt s.funcs s₂.funcs) ∧
       (∀ vs, fl.retVals = some vs → Steps P host
         ⟨s, f, vals us ++ [.ref (.func a), c]⟩ ⟨s₂, f, vals (vs.take rs.length).reverse⟩) ∧
       (fl = .trap → Steps P host ⟨s, f, vals us ++ [.ref (.func a), c]⟩ ⟨s₂, f, [.trap]⟩)
 
 theorem OracleSoundX.sound {C : Abstract.CallRel H} (hC : OracleSoundX P host C) :
-    OracleSound P host C :=
+    OracleSoundE irExt P host C :=
   fun s s₂ f a fi ps rs us fl hS hfi hty hn hcall =>
     hC s s₂ f a fi ps rs us fl (.callRefType fi.type) hS hfi hty hn trivial hcall
 
@@ -85,12 +86,12 @@ theorem flatChk_ir {i : Instr} {F : List (FuncInst H)} {mi : ModuleInst} {nl ret
 
 /-- The pre-call facts of an indirect or reference call. -/
 theorem arity_ir_pre {i : Instr} {top : Val} {labels : List Nat} {ret : Nat} {out : Option Nat}
-    (hS : StoreChk s.funcs) (iha : ArityGoodE irExt s f stk args (s₁, f₁, .normal (top :: stk₁)))
+    (hS : StoreChkE irExt s.funcs) (iha : ArityGoodE irExt s f stk args (s₁, f₁, .normal (top :: stk₁)))
     (hi : (∃ x, i = .callIndirect x y) ∨ i = .callRef y)
     (hy : typeArity f₁.module y = some (ps.length, rs.length))
     (hc : chkE irExt s.funcs f.module f.locals.length ret labels (some stk.length)
       (.op i args :: es) = some out) :
-    EvalInv s f (s₁, f₁, .normal (top :: stk₁)) ∧ ps.length ≤ stk₁.length ∧
+    EvalInvE irExt s f (s₁, f₁, .normal (top :: stk₁)) ∧ ps.length ≤ stk₁.length ∧
       chkE irExt s.funcs f.module f.locals.length ret labels
         (some (stk₁.length - ps.length + rs.length)) es = some out := by
   obtain ⟨o, h1, h2⟩ := chk_consE.mp hc
@@ -103,13 +104,13 @@ theorem arity_ir_pre {i : Instr} {top : Val} {labels : List Nat} {ret : Nat} {ou
   rwa [this] at h2
 
 /-- The oracle's facts at an indirect or reference call. -/
-theorem oracleX_at (hC : OracleSoundX P host C) (hS : StoreChk s.funcs) {top : Val}
-    (inv1 : EvalInv s f (s₁, f₁, .normal (top :: stk₁))) (hfi : s₁.funcs[fa]? = some fi)
+theorem oracleX_at (hC : OracleSoundX P host C) (hS : StoreChkE irExt s.funcs) {top : Val}
+    (inv1 : EvalInvE irExt s f (s₁, f₁, .normal (top :: stk₁))) (hfi : s₁.funcs[fa]? = some fi)
     (hty : Validation.DefType.funcType? fi.type = some (ps, rs)) (hp : ps.length ≤ stk₁.length)
     (hcall : C s₁ fa (stk₁.take ps.length).reverse (s₂, fl)) (f' : Frame) {c : Admin}
     (hcr : c.IsCallRef) :
     (∃ ob, (ob = none ∨ ob = some rs.length) ∧ FlowOk [rs.length] rs.length ob fl ∧
-        FuncsGood s₁.funcs s₂.funcs) ∧
+        FuncsGoodE irExt s₁.funcs s₂.funcs) ∧
       (∀ vs, fl.retVals = some vs → Steps P host
         ⟨s₁, f', vals (stk₁.take ps.length).reverse ++ [.ref (.func fa), c]⟩
         ⟨s₂, f', vals (vs.take rs.length).reverse⟩) ∧
@@ -130,7 +131,7 @@ theorem arityX_irOk {i : Instr} {top : Val} (hC : OracleSoundX P host C)
   obtain ⟨⟨ob, hob, hok, hfuncs⟩, -, -⟩ :=
     oracleX_at hC hS inv1 hfi hty hp hcall f₁ (c := .callRefType fi.type) trivial
   have hrs : rs.length ≤ vs.length := retVals_length hok hob hvs
-  have inv2 : EvalInv s f (s₂, f₁, .normal (vs.take rs.length ++ stk₁.drop ps.length)) :=
+  have inv2 : EvalInvE irExt s f (s₂, f₁, .normal (vs.take rs.length ++ stk₁.drop ps.length)) :=
     ⟨inv1.1.trans hfuncs, inv1.2.1, inv1.2.2⟩
   have hlen : (vs.take rs.length ++ stk₁.drop ps.length).length =
       stk₁.length - ps.length + rs.length := by
@@ -228,7 +229,7 @@ theorem coreX_irOk {i : Instr} {top : Val} (hC : OracleSoundX P host C)
   obtain ⟨⟨ob, hob, hok, hfuncs⟩, hret, -⟩ :=
     oracleX_at hC hS inv1 hfi hty hp hcall f₁ (c := .plain (.callRef y)) trivial
   have hrs : rs.length ≤ vs.length := retVals_length hok hob hvs
-  have inv2 : EvalInv s f (s₂, f₁, .normal (vs.take rs.length ++ stk₁.drop ps.length)) :=
+  have inv2 : EvalInvE irExt s f (s₂, f₁, .normal (vs.take rs.length ++ stk₁.drop ps.length)) :=
     ⟨inv1.1.trans hfuncs, inv1.2.1, inv1.2.2⟩
   have hlen : (vs.take rs.length ++ stk₁.drop ps.length).length =
       stk₁.length - ps.length + rs.length := by

@@ -15,14 +15,13 @@ the annotated type's counts; it forgets to `EvalOX` (`CallXT.EvalOXT.forget`).
 
 **Scope (intermediate).**
 
-* **Store check.** `ArityGoodE`, `CoreGoodE` and `OracleSoundX` assume
-  `StoreChk s.funcs`, the *native* store check: every function of the store
-  passes `chk`, which rejects `call_indirect` and `call_ref`. So the theorem is
-  non-vacuous only when the running code holds the indirect and reference
-  calls and the store's functions do not. Real programs, whose indirect calls
-  sit in store functions, are not covered until the store check is
-  parameterized by the extension (`StoreChkE irExt`, the shared checker's
-  next step).
+* **Store check.** `ArityGoodE irExt`, `CoreGoodE irExt` and `OracleSoundX`
+  assume and preserve `StoreChkE irExt s.funcs`: every function of the store
+  passes the extended check, so store functions may hold indirect and
+  reference calls. A natively checked store qualifies
+  (`storeChkE_of_storeChk`). An oracle answer that appends functions must keep
+  `StoreChkE irExt` (`FuncsGoodE irExt`); old functions transfer
+  (`storeChk_of_funcsExtE`).
 * Tail calls: `irExt` does not describe `return_call*`, so `chkE irExt`
   rejects code containing them and nothing is claimed for it. A tail call
   replaces the caller's frame in Core 3.0; its adequacy is a frame-level
@@ -53,9 +52,10 @@ theorem evalOXT_good {C : Abstract.CallRel H} (hC : OracleSoundX P host C) {s : 
     ArityGoodE irExt s f stk es r ∧ CoreGoodE irExt P host s f stk es r :=
   Silmaril.Wasm.Interp.evalOXT_goodE hC h
 
-/-- A sound oracle for every `call_ref` form is sound for `call`. -/
+/-- A sound oracle for every `call_ref` form is sound for `call`, for the store
+check extended by `irExt`. -/
 theorem oracleSound_of_X {C : Abstract.CallRel H} (hC : OracleSoundX P host C) :
-    Silmaril.Wasm.Interp.OracleSound P host C :=
+    Silmaril.Wasm.Interp.OracleSoundE irExt P host C :=
   hC.sound
 
 /-- **The closure on good stores is a sound oracle.** -/
