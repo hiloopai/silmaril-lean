@@ -325,4 +325,39 @@ def Match {H : Type} (r : Execution.Core.Store H × Execution.Core.Frame × Bina
     Logic.Core.Post H :=
   fun s f o => s = r.1 ∧ f = r.2.1 ∧ FlowMatch r.2.2 o
 
+/-! ## Pending tail calls -/
+
+section Tail
+
+open Silmaril.Wasm.Execution.Core
+
+variable {H : Type}
+
+/-- A pending tail call `.tail vs a c`, reached at store `s` and frame `f`, ends as
+the native result `r` does. In every outer frame `g`, the callee run (the
+`call_ref` form of `c`, resolved against `f`'s module) returns the top `n` of
+`r`'s return values or traps, in `r`'s store. This mirrors the `.tail` case of
+`Logic.Core.funcPost`. -/
+def TailRun (P : Numerics.Profile) (host : HostSemantics H) (n : Nat)
+    (r : Store H × Frame × Binaryen.Flow) (s : Store H) (f : Frame) (vs : List Val) (a : Nat)
+    (c : Admin) : Prop :=
+  c.IsReturnCallRef ∧ f = r.2.1 ∧
+  ∃ (vs₁ args : List Val) (fn : FuncInst H) (ps rs : Validation.Ty (.list .val)),
+    vs = vs₁ ++ args ∧ s.funcs[a]? = some fn ∧ Validation.Expand fn.type (.func ps rs) ∧
+    args.length = ps.length ∧ ∀ g : Frame,
+      (∃ ws, r.2.2 = .ret ws ∧ Steps P host
+          ⟨s, g, vals args ++ [.ref (.func a), c.retToCallIn f.module]⟩
+          ⟨r.1, g, vals (ws.take n).reverse⟩) ∨
+      (r.2.2 = .trap ∧ Steps P host
+          ⟨s, g, vals args ++ [.ref (.func a), c.retToCallIn f.module]⟩ ⟨r.1, g, [.trap]⟩)
+
+/-- **The tail-aware postcondition** of a native result, for an enclosing function
+of return arity `n`: `Match`, or a pending tail call that ends as the result does
+(`TailRun`). -/
+def MatchT (P : Numerics.Profile) (host : HostSemantics H) (n : Nat)
+    (r : Store H × Frame × Binaryen.Flow) : Logic.Core.Post H :=
+  fun s f o => Match r s f o ∨ ∃ vs a c, o = .tail vs a c ∧ TailRun P host n r s f vs a c
+
+end Tail
+
 end Silmaril.Wasm.Interp

@@ -857,13 +857,21 @@ end Calls
 
 /-! ## The simulation -/
 
-/-- The statement of `wp_of_eval` for one evaluation. -/
-def CoreGoodE (ext : ExtArity H) (P : Numerics.Profile) (host : HostSemantics H) (s : Store H)
+/-- The statement of `wp_of_eval` for one evaluation, with the postcondition `M ret r`
+chosen per return arity `ret` of the check. -/
+def CoreGoodQ (ext : ExtArity H) (P : Numerics.Profile) (host : HostSemantics H)
+    (M : Nat → Store H × Frame × Binaryen.Flow → Post H) (s : Store H)
     (f : Frame) (stk : List Val) (es : List Binaryen.BExpr) (r : Store H × Frame × Binaryen.Flow) :
     Prop :=
   ∀ {labels : List Nat} {ret : Nat} {out : Option Nat}, StoreChkE ext s.funcs →
     chkE ext s.funcs f.module f.locals.length ret labels (some stk.length) es = some out →
-    WP P host s f (vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)) (Match r)
+    WP P host s f (vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)) (M ret r)
+
+/-- The statement of `wp_of_eval` for one evaluation (postcondition `Match`). -/
+abbrev CoreGoodE (ext : ExtArity H) (P : Numerics.Profile) (host : HostSemantics H) (s : Store H)
+    (f : Frame) (stk : List Val) (es : List Binaryen.BExpr) (r : Store H × Frame × Binaryen.Flow) :
+    Prop :=
+  CoreGoodQ ext P host (fun _ => Match) s f stk es r
 
 /-- The native Core-run invariant. -/
 abbrev CoreGood (P : Numerics.Profile) (host : HostSemantics H) (s : Store H) (f : Frame)
@@ -874,7 +882,7 @@ section Cases
 
 set_option linter.unusedSectionVars false
 
-variable {ext : ExtArity H} [ExtStable ext]
+variable {ext : ExtArity H} [ExtStable ext] {M : Nat → Store H × Frame × Binaryen.Flow → Post H}
 
 variable {s s₁ s₂ : Store H} {f f₁ f₂ : Frame} {stk stk₁ stk₂ vs : List Val}
   {es args body : List Binaryen.BExpr} {i : Instr} {fl : Binaryen.Flow}
@@ -950,7 +958,8 @@ theorem core_argsAbort (iha : CoreGoodE ext P host s f stk args (s₁, f₁, fl)
 theorem core_opOk (hargs : ArityGoodE ext s f stk args (s₁, f₁, .normal stk₁))
     (iha : CoreGoodE ext P host s f stk args (s₁, f₁, .normal stk₁)) (hi : ∀ x, i ≠ .call x)
     (hflat : Binaryen.evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, .normal stk₂))
-    (ihk : CoreGoodE ext P host s₂ f₂ stk₂ es r) : CoreGoodE ext P host s f stk (.op i args :: es) r := by
+    (ihk : CoreGoodQ ext P host M s₂ f₂ stk₂ es r) :
+    CoreGoodQ ext P host M s f stk (.op i args :: es) r := by
   intro labels ret out hS hc
   obtain ⟨o, h1, h2⟩ := chk_consE.mp hc
   obtain ⟨hf, inv1⟩ := arity_args hS hargs h1
@@ -1019,8 +1028,8 @@ theorem core_callOk (hargs : ArityGoodE ext s f stk args (s₁, f₁, .normal st
     (ihb : CoreGoodE ext P host s₁ (calleeFrame fi fn stk₁ ps.length) [] (Binaryen.liftInstrs fn.body)
       (s₂, f₂, fl))
     (hvs : fl.retVals = some vs)
-    (ihk : CoreGoodE ext P host s₂ f₁ (vs.take rs.length ++ stk₁.drop ps.length) es r) :
-    CoreGoodE ext P host s f stk (.op (.call x) args :: es) r := by
+    (ihk : CoreGoodQ ext P host M s₂ f₁ (vs.take rs.length ++ stk₁.drop ps.length) es r) :
+    CoreGoodQ ext P host M s f stk (.op (.call x) args :: es) r := by
   intro labels ret out hS hc
   obtain ⟨oa, ob, ha, hb', hob, hok, inv1, hfuncs, hp, h2⟩ :=
     call_facts hS hargs hfi hcode hty hbody hc
@@ -1079,8 +1088,8 @@ variable {bt : BlockType} {np nr : Nat}
 theorem core_blockOk (har : Binaryen.arity f bt = some (np, nr))
     (hbody : ArityGoodE ext s f (stk.take np) body (s₁, f₁, fl))
     (ihb : CoreGoodE ext P host s f (stk.take np) body (s₁, f₁, fl)) (hvs : fl.blockVals = some vs)
-    (ihk : CoreGoodE ext P host s₁ f₁ (vs.take nr ++ stk.drop np) es r) :
-    CoreGoodE ext P host s f stk (.block bt body :: es) r := by
+    (ihk : CoreGoodQ ext P host M s₁ f₁ (vs.take nr ++ stk.drop np) es r) :
+    CoreGoodQ ext P host M s f stk (.block bt body :: es) r := by
   intro labels ret out hS hc
   obtain ⟨hp, hb, h2⟩ := arity_block_pre har hc
   obtain ⟨ob, hob, hbc, hok, inv1⟩ := body_facts hS hbody hb (take_length_of_le hp)
@@ -1106,8 +1115,8 @@ theorem core_blockAbrupt {fl' : Binaryen.Flow} (har : Binaryen.arity f bt = some
 theorem core_loopOk (har : Binaryen.arity f bt = some (np, nr))
     (hbody : ArityGoodE ext s f (stk.take np) body (s₁, f₁, .normal vs))
     (ihb : CoreGoodE ext P host s f (stk.take np) body (s₁, f₁, .normal vs))
-    (ihk : CoreGoodE ext P host s₁ f₁ (vs.take nr ++ stk.drop np) es r) :
-    CoreGoodE ext P host s f stk (.loop bt body :: es) r := by
+    (ihk : CoreGoodQ ext P host M s₁ f₁ (vs.take nr ++ stk.drop np) es r) :
+    CoreGoodQ ext P host M s f stk (.loop bt body :: es) r := by
   intro labels ret out hS hc
   obtain ⟨hp, hb, h2⟩ := arity_loop_pre har hc
   obtain ⟨ob, hob, hbc, hok, inv1⟩ := body_facts hS hbody hb (take_length_of_le hp)
@@ -1119,8 +1128,8 @@ theorem core_loopOk (har : Binaryen.arity f bt = some (np, nr))
 theorem core_loopBack (har : Binaryen.arity f bt = some (np, nr))
     (hbody : ArityGoodE ext s f (stk.take np) body (s₁, f₁, .brk 0 vs))
     (ihb : CoreGoodE ext P host s f (stk.take np) body (s₁, f₁, .brk 0 vs))
-    (ihk : CoreGoodE ext P host s₁ f₁ (vs.take np ++ stk.drop np) (.loop bt body :: es) r) :
-    CoreGoodE ext P host s f stk (.loop bt body :: es) r := by
+    (ihk : CoreGoodQ ext P host M s₁ f₁ (vs.take np ++ stk.drop np) (.loop bt body :: es) r) :
+    CoreGoodQ ext P host M s f stk (.loop bt body :: es) r := by
   intro labels ret out hS hc
   obtain ⟨hp, hb, -⟩ := arity_loop_pre har hc
   obtain ⟨_, _, hbc, hok, inv1⟩ := body_facts hS hbody hb (take_length_of_le hp)
@@ -1197,8 +1206,9 @@ theorem core_ifOk {c t el : List Binaryen.BExpr} {cv : Val} {b : Bool}
     (hb : Binaryen.truthy cv = some b) (har : Binaryen.arity f₁ bt = some (np, nr))
     (harm : ArityGoodE ext s₁ f₁ (stk₁.take np) (if b then t else el) (s₂, f₂, fl))
     (iharm : CoreGoodE ext P host s₁ f₁ (stk₁.take np) (if b then t else el) (s₂, f₂, fl))
-    (hvs : fl.blockVals = some vs) (ihk : CoreGoodE ext P host s₂ f₂ (vs.take nr ++ stk₁.drop np) es r) :
-    CoreGoodE ext P host s f stk (.if_ bt c t el :: es) r := by
+    (hvs : fl.blockVals = some vs)
+    (ihk : CoreGoodQ ext P host M s₂ f₂ (vs.take nr ++ stk₁.drop np) es r) :
+    CoreGoodQ ext P host M s f stk (.if_ bt c t el :: es) r := by
   intro labels ret out hS hc
   obtain ⟨oc, ob, hco, hbc, hob, hok, inv1, inv2, hp, h2⟩ := if_facts hS hcond har harm hc
   have hS1 : StoreChkE ext s₁.funcs := storeChk_inv inv1 hS

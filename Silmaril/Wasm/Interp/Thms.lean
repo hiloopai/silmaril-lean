@@ -10,6 +10,7 @@ public import Silmaril.Proofs.Wasm.Interp.Store
 public import Silmaril.Proofs.Wasm.Interp.CallFrame
 public import Silmaril.Proofs.Wasm.Interp.HostOracle
 public import Silmaril.Proofs.Wasm.Interp.FuncsExt
+public import Silmaril.Proofs.Wasm.Interp.Tail
 
 @[expose] public section
 
@@ -31,6 +32,19 @@ straight-line integer instructions with in-range local writes (`BExpr.straightLi
 * `steps_trap_of_eval`, `steps_trap_of_run`: a native evaluation or run ending in a trap
   (division/remainder by zero, signed overflow) is a Core 3.0 run of the lowered code, in any
   code context `rest`, to `[trap]`, every profile and host.
+
+**Pending tail calls** (`Silmaril.Proofs.Wasm.Interp.Tail`, checker step 4). `MatchT P host n r`
+is `Match r` or a pending tail call `.tail vs a c` that ends as `r` does (`TailRun`: in every
+outer frame the callee returns `r`'s top `n` return values, or traps, in `r`'s store). The
+invariant `CoreGoodQ ext P host M` takes the postcondition per return arity; `CoreGoodE` is
+`M = Match` (unchanged), `CoreGoodT` is `M = MatchT`. On results that neither return nor trap
+the two agree (`matchT_eq_match`, `core_of_coreT`); the continuation cases (`core_opOk`,
+`core_callOk`, `core_blockOk`, `core_loopOk`, `core_loopBack`, `core_ifOk`) hold for any `M`;
+the abrupt cases have `MatchT` versions (`coreT_argsAbort`, `coreT_blockAbrupt`,
+`coreT_loopAbrupt`, `coreT_ifAbrupt`, `coreT_ifAbort`), a pending tail leaving labels by
+`return_call_ref-label`; and calls whose callee body ends in a tail call (`coreT_callOk`,
+`coreT_callTrap`, through `funcPost_of_tailRun` and `frame_ends`). The tail rules of a
+derivation (producing `TailRun`) are not here.
 
 **Call oracles and host calls** (`Silmaril.Proofs.Wasm.Interp.OracleSim`, `HostOracle`).
 `evalO_good`: with a sound oracle (`OracleSound`: answers keep the store's functions, return at
