@@ -6,6 +6,7 @@ public import Silmaril.Wasm.Logic.Core.Thms
 public import Silmaril.Wasm.Interp.Thms
 public import Silmaril.Wasm.Abstract.Recursion.Defs
 public import Silmaril.Wasm.Abstract.DivO.Defs
+public import Silmaril.Wasm.Abstract.HostClosing.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostEval.CallWasm
@@ -19,6 +20,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.Exit
 import Silmaril.Proofs.Wasm.Abstract.HostEval.DivWhole
 import Silmaril.Proofs.Wasm.Abstract.HostEval.DivInvoke
 import Silmaril.Proofs.Wasm.Abstract.HostEval.FlatComplete
+import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedWhole
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -193,6 +195,17 @@ a pending call `PendO` of the invoked Wasm function), or the invoked function's 
 in the open semantics (`CallDivO (hostCall host)`). `invoke_div_decomp` refines the latter by
 `callDivO_path_or_chain`: a reached call diverging within its own function
 (`LocalCallDivO`), or an infinite chain of body descents (`BodyReachO`).
+
+**Exact same-log pending agreement** (`evRun_pend`, deterministic profile, under the
+hypotheses of `back_invoke_reach`): a finite Core run of a typed invocation with its exact
+host-event log `cs` (`HostCall.EvRun`), to a configuration at a host call `(hh, c.store, us)`
+(`decompose?`), is a pending host call of the logged closed semantics after **exactly** `cs`:
+`(cs, (hh, c.store, us)) ∈ wasmEvPend s (a, vs)` (`Silmaril.Wasm.Abstract.HostClosing`). The end
+need not be stuck: the host may have an answer for that call. Proof (`Logged*`): a logged
+backward simulation, the cases of `back_whole` on labelled runs (`HostCall.evRunN_seq_split` and
+the label and frame splits), with native evidence whose internal calls, resolved by the closure
+`Shape.close wasmHOpen`, perform exactly the run's host events: an answered host call is its one
+event, a Wasm callee's frame contributes the events of its body.
 
 **Not yet proved.** The commuting square with `HostRun.hostObs` (once the logged
 packaging exists), and the backward direction in other profiles.-/
@@ -802,5 +815,18 @@ theorem invoke_pendO_diverges {P : Silmaril.Wasm.Numerics.Profile} (hH : Interp.
     (hf : y.2.2.funcs[y.1]? = some fi) (hcode : fi.code = .host hh)
     (hdiv : host hh y.2.2 y.2.1 .diverged) : Diverges P host (invoke s a vs) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.invoke_pendO_diverges hH hS hok hp hf hcode hdiv
+
+/-- **Exact same-log pending agreement** (deterministic profile): a finite Core run of a typed
+invocation with its exact host-event log `cs`, to a configuration at a host call, is a pending
+host call of the logged closed semantics after exactly `cs`. -/
+theorem evRun_pend {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val} {c : Config H}
+    {cs : List (Silmaril.Games.Abstract.Call (wasmHostSig H))} {E : SingleThreaded.Ctx}
+    {a' : Nat} {hh : H} {us : List Val}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : EvRun (SingleThreaded.profile o) host (invoke s a vs) cs c)
+    (hd : SingleThreaded.decompose? c.store c.code = some (E, a', hh, us)) :
+    (cs, (hh, c.store, us)) ∈ wasmEvPend s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_pend hT hH hs hS hok hrun hd
 
 end Silmaril.Wasm.Abstract

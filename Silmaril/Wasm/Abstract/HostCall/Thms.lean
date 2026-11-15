@@ -16,6 +16,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostCall.Typed
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Ctx
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Div
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Events
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Logged
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -122,6 +123,17 @@ events of a finite labelled run of that same run, which continues productively w
 remaining events.
 `quiet_iff`: quiescent divergence is exactly host-free divergence (pure Wasm), or a host-free
 run to a host call the host diverges on (stuttering there: the `hostDiv` case).
+
+**Labelled runs, split with their logs** (`EvRunN`, the counted `EvRun`; proofs in `Logged`).
+The end of a run is only asked to have no *host-free* step, so it may sit at a host call the
+host could answer. `evRunN_of_evRun`, `evRunN_evRun`, `evRunN_steps`; `evRunN_seq_split`,
+`evRunN_label_seq_split`, `evRunN_frame_seq_split`: the splits of `stepsN_seq_split` and the
+label and frame splits, the log split as a concatenation; when the inner part ends at a host
+call (`decompose?`), the outer run ends there too, with no events left. `evRunN_through`,
+`evRunN_through_steps` (deterministic profile): a labelled run passes through host-free steps
+with the same log. `evRunN_unique`, `evRunN_host_call`: a unique host-free step, and a host call,
+which ends the run or is answered by its next event. `evRunN_trap_head`: a head trap only
+bubbles, with no events. `hEvStep_ctx`: labelled steps lift through contexts with the same label.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -528,5 +540,152 @@ theorem quiet_iff {c : Config H} :
         ∃ E a hh us, SingleThreaded.decompose? d.store d.code = some (E, a, hh, us) ∧
           host hh d.store us .diverged) :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.quiet_iff
+
+/-! ## Labelled runs, split with their logs -/
+
+theorem evRunN_evRun {n : Nat} {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRunN P host n c cs c') : EvRun P host c cs c' :=
+  h.evRun
+
+theorem evRunN_of_evRun {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRun P host c cs c') : ∃ n, EvRunN P host n c cs c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_of_evRun h
+
+theorem evRunN_steps {n : Nat} {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRunN P host n c cs c') : Steps P host c c' :=
+  h.steps
+
+theorem evRunN_zero_eq {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRunN P host 0 c cs c') : c' = c :=
+  h.zero_eq
+
+/-- A labelled run from a configuration with no step at all is empty. -/
+theorem evRunN_of_stuck {m : Nat} {X c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hX : ∀ c', ¬ Step P host X c') (h : EvRunN P host m X cs c) : c = X ∧ cs = [] :=
+  h.of_stuck hX
+
+/-- At a host call there is no host-free step. -/
+theorem noFree_of_decompose {c c' : Config H} {x : SingleThreaded.Ctx × Nat × H × List Val}
+    (hd : SingleThreaded.decompose? c.store c.code = some x) :
+    ¬ Step P SingleThreaded.Det.noHost c c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.noFree_of_decompose hd
+
+theorem decompose?_label_some {s : Store H} {n : Nat} {cont : List Instr} {b : List Admin}
+    {E : SingleThreaded.Ctx} {a : Nat} {hh : H} {us : List Val}
+    (hd : SingleThreaded.decompose? s b = some (E, a, hh, us)) :
+    SingleThreaded.decompose? s [.label n cont b] = some (.label [] n cont E [], a, hh, us) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.decompose?_label_some hd
+
+theorem decompose?_frame_some {s : Store H} {n : Nat} {F : Frame} {b : List Admin}
+    {E : SingleThreaded.Ctx} {a : Nat} {hh : H} {us : List Val}
+    (hd : SingleThreaded.decompose? s b = some (E, a, hh, us)) :
+    SingleThreaded.decompose? s [.frame n F b] = some (.frame [] n F E [], a, hh, us) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.decompose?_frame_some hd
+
+/-- A label exit form is not at a host call. -/
+theorem decompose?_labelExit {s : Store H} {n : Nat} {cont : List Instr} {b out : List Admin}
+    (h : LabelExit n cont b out) : SingleThreaded.decompose? s b = none :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.decompose?_labelExit h
+
+/-- **A labelled step lifts through a sequence context**, with the same label. -/
+theorem hEvStep_ctx {s s' : Store H} {f f' : Frame} {es es' : List Admin}
+    {l : Option (Call (wasmHostSig H))} (ws : List Val) (rest : List Admin)
+    (h : HEvStep P host ⟨s, f, es⟩ l ⟨s', f', es'⟩) :
+    HEvStep P host ⟨s, f, vals ws ++ es ++ rest⟩ l ⟨s', f', vals ws ++ es' ++ rest⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hEvStep_ctx ws rest h
+
+/-- **A head trap only bubbles**, with no host event. -/
+theorem evRunN_trap_head {m : Nat} {s : Store H} {f : Frame} {ws : List Val} {r : List Admin}
+    {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hrun : EvRunN P host m ⟨s, f, vals ws ++ .trap :: r⟩ cs c)
+    (hend : ∀ c', ¬ Step P SingleThreaded.Det.noHost c c') : c = ⟨s, f, [.trap]⟩ ∧ cs = [] :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_trap_head hrun hend
+
+/-- **Splitting a labelled run of a sequence** `es ++ rest` at the end of `es`, the log split
+as a concatenation. -/
+theorem evRunN_seq_split {n : Nat} {s : Store H} {f : Frame} {es rest : List Admin}
+    {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hrun : EvRunN P host n ⟨s, f, es ++ rest⟩ cs c)
+    (hend : ∀ c', ¬ Step P SingleThreaded.Det.noHost c c') :
+    ∃ (c₁ : Config H) (n₁ : Nat) (cs₁ cs₂ : List (Call (wasmHostSig H))), cs = cs₁ ++ cs₂ ∧
+      EvRunN P host n₁ ⟨s, f, es⟩ cs₁ c₁ ∧ n₁ ≤ n ∧
+      (∀ c', ¬ Step P SingleThreaded.Det.noHost c₁ c') ∧
+      ((∃ ws, c₁.code = vals ws ∧
+          EvRunN P host (n - n₁) ⟨c₁.store, c₁.frame, vals ws ++ rest⟩ cs₂ c) ∨
+        (c₁.code = [.trap] ∧ c = c₁ ∧ cs₂ = []) ∨
+        (∃ x, c₁.code = throwing x ∧ c = c₁ ∧ cs₂ = []) ∨
+        (c = ⟨c₁.store, c₁.frame, c₁.code ++ rest⟩ ∧ cs₂ = [])) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_seq_split hrun hend
+
+/-- **A labelled run in a label**: the body runs alone; then the label around it goes on. If
+the body ends at a host call, so does the whole run. -/
+theorem evRunN_label_seq_split {N : Nat} {s : Store H} {f : Frame} {ws : List Val} {n : Nat}
+    {cont : List Instr} {b rest : List Admin} {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hrun : EvRunN P host N ⟨s, f, vals ws ++ [.label n cont b] ++ rest⟩ cs c)
+    (hend : ∀ c', ¬ Step P SingleThreaded.Det.noHost c c') :
+    ∃ (cb : Config H) (N₁ : Nat) (cs₁ cs₂ : List (Call (wasmHostSig H))), cs = cs₁ ++ cs₂ ∧
+      N₁ ≤ N ∧ EvRunN P host N₁ ⟨s, f, b⟩ cs₁ cb ∧
+      (∀ c', ¬ Step P SingleThreaded.Det.noHost cb c') ∧
+      EvRunN P host (N - N₁) ⟨cb.store, cb.frame, vals ws ++ [.label n cont cb.code] ++ rest⟩
+        cs₂ c ∧
+      ((SingleThreaded.decompose? cb.store cb.code).isSome →
+        cs₂ = [] ∧ c = ⟨cb.store, cb.frame, vals ws ++ [.label n cont cb.code] ++ rest⟩) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_label_seq_split hrun hend
+
+/-- **A labelled run in a call frame**: the callee body runs alone, in its frame; then the
+frame and label around it go on. If the body ends at a host call, so does the whole run. -/
+theorem evRunN_frame_seq_split {N : Nat} {s : Store H} {f F : Frame} {ws : List Val} {n : Nat}
+    {b rest : List Admin} {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hrun : EvRunN P host N ⟨s, f, vals ws ++ [.frame n F [.label n [] b]] ++ rest⟩ cs c)
+    (hend : ∀ c', ¬ Step P SingleThreaded.Det.noHost c c') :
+    ∃ (cb : Config H) (N₁ : Nat) (cs₁ cs₂ : List (Call (wasmHostSig H))), cs = cs₁ ++ cs₂ ∧
+      N₁ ≤ N ∧ EvRunN P host N₁ ⟨s, F, b⟩ cs₁ cb ∧
+      (∀ c', ¬ Step P SingleThreaded.Det.noHost cb c') ∧
+      EvRunN P host (N - N₁)
+        ⟨cb.store, f, vals ws ++ [.frame n cb.frame [.label n [] cb.code]] ++ rest⟩ cs₂ c ∧
+      ((SingleThreaded.decompose? cb.store cb.code).isSome → cs₂ = [] ∧
+        c = ⟨cb.store, f, vals ws ++ [.frame n cb.frame [.label n [] cb.code]] ++ rest⟩) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_frame_seq_split hrun hend
+
+/-- **A labelled run passes through every host-free step**, with the same log. -/
+theorem evRunN_through {o : SingleThreaded.GrowOracle} {n : Nat} {K c : Config H}
+    {cs : List (Call (wasmHostSig H))} (hrun : EvRunN (SingleThreaded.profile o) host n K cs c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) SingleThreaded.Det.noHost c c')
+    {d : Config H} (hd : SingleThreaded.Det.DStep o K d) :
+    ∃ m ≤ n, EvRunN (SingleThreaded.profile o) host m d cs c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_through hrun hend hd
+
+/-- **A labelled run passes through every host-free run**, with the same log. -/
+theorem evRunN_through_steps {o : SingleThreaded.GrowOracle} {n : Nat} {K T c : Config H}
+    {cs : List (Call (wasmHostSig H))}
+    (hpred : Relation.ReflTransGen (SingleThreaded.Det.DStep o) K T)
+    (hrun : EvRunN (SingleThreaded.profile o) host n K cs c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) SingleThreaded.Det.noHost c c') :
+    ∃ m ≤ n, EvRunN (SingleThreaded.profile o) host m T cs c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_through_steps hpred hrun hend
+
+/-- A labelled run from a configuration whose only step is a host-free step to `d` goes
+through `d`, one step shorter, with the same log. -/
+theorem evRunN_unique {n : Nat} {K d c : Config H} {cs : List (Call (wasmHostSig H))}
+    (huniq : ∀ c₁, Step P host K c₁ → c₁ = d) (hK : Step P SingleThreaded.Det.noHost K d)
+    (hrun : EvRunN P host n K cs c) (hend : ∀ c', ¬ Step P SingleThreaded.Det.noHost c c') :
+    ∃ m, n = m + 1 ∧ EvRunN P host m d cs c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_unique huniq hK hrun hend
+
+/-- **A labelled run at a host call**: it ends there with no event, or its next event answers
+the call. -/
+theorem evRunN_host_call {n : Nat} {s : Store H} {f : Frame} {a : Nat} {fi : FuncInst H}
+    {hh : H} {ps rs : Ty (.list .val)} {ws us : List Val} {rest : List Admin}
+    {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh)
+    (he : Expand fi.type (.func ps rs)) (hn : us.length = ps.length)
+    (hrun : EvRunN P host n
+      ⟨s, f, vals ws ++ vals us ++ .ref (.func a) :: .callRefType fi.type :: rest⟩ cs c) :
+    (c = ⟨s, f, vals ws ++ vals us ++ .ref (.func a) :: .callRefType fi.type :: rest⟩ ∧
+        cs = []) ∨
+      ∃ s' r m cs', m < n ∧ cs = ⟨(hh, s, us), (s', r)⟩ :: cs' ∧
+        host hh s us (.returned s' r) ∧
+        EvRunN P host m ⟨s', f, vals ws ++ r.toAdmin ++ rest⟩ cs' c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_host_call hf hcode he hn hrun
 
 end Silmaril.Wasm.Abstract
