@@ -4,6 +4,7 @@ public import Mathlib.Order.Antisymmetrization
 public import Mathlib.Order.Hom.Basic
 public import Mathlib.Order.Setoid.Basic
 public import Mathlib.Data.Set.Basic
+public import Mathlib.Computability.Language
 
 /-!
 # Programs ordered by language inclusion
@@ -21,6 +22,14 @@ Given any carrier `X` of programs (or checkers, grammars, types …) and a langu
 * `LangEq lang`: the quotient by equality of languages (Mathlib's `Setoid.ker lang`), a
   **partial order**, order-isomorphic to the range of `lang` and to the antisymmetrization of
   `LangPre lang` (`Thms`).
+
+## Mathlib languages
+
+Mathlib's `Language α` (and so `Silmaril.Formats.Accept.ByteLang = Language UInt8`) is a
+`def` equal to `Set (List α)`, not reducible. Type-class search does not unfold it, so
+`LangPre lang` and `LangEq lang` for `lang : X → Language α` find no order instance. Wrap the
+map with `toSets lang : X → Set (List α)`; the order is then that of `Language α`
+(`LangPre.toSets_le_iff`, `LangEq.toSets_mk_eq_mk_iff`).
 
 ## Carriers and shapes
 
@@ -69,6 +78,10 @@ abbrev langSum (lang₁ : X → Set α) (lang₂ : Y → Set α) : X ⊕ Y → S
 /-- The language of a family of shapes. -/
 abbrev langSigma {ι : Type w} {X : ι → Type u} (lang : ∀ i, X i → Set α) :
     (Σ i, X i) → Set α := fun p => lang p.1 p.2
+
+/-- A family of Mathlib languages as a family of sets of words, for `LangPre`, `LangQuot`
+and `LangEq`. -/
+abbrev toSets {β : Type v} (lang : X → Language β) : X → Set (List β) := fun x => lang x
 
 /-! ## Quotients by a supplied equivalence -/
 

@@ -74,4 +74,17 @@ example (l l' : List ℕ) :
       listLang l ⊆ listLang l' :=
   inlEmb.le_iff_le
 
+/-! ## Mathlib languages (byte languages)
+
+`Language α` is not reducible to `Set (List α)` for instance search; `toSets` bridges. -/
+
+/-- Programs whose byte language is the words of length at most `n`. -/
+def boundedBytes (n : ℕ) : Language UInt8 := {w : List UInt8 | w.length ≤ n}
+
+example : Preorder (LangPre (toSets boundedBytes)) := inferInstance
+example : PartialOrder (LangEq (toSets boundedBytes)) := inferInstance
+
+example : LangPre.of (toSets boundedBytes) 1 ≤ LangPre.of _ 2 :=
+  LangPre.toSets_le_iff.2 fun _ (h : _ ≤ 1) => (h.trans (by decide) : _ ≤ 2)
+
 end Silmaril.Accept.OrderExamples

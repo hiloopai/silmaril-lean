@@ -52,6 +52,12 @@ Programs of any carrier `X`, compared by `lang : X → Set α`.
 | `LangEq lang` | `Quotient (Setoid.ker lang)`, a **partial order** (`mk_eq_mk_iff : mk x = mk y ↔ lang x = lang y`) |
 | `LangEq.toSetEmb`, `LangEq.rangeIso`, `LangEq.antisymmIso` | `LangEq lang ↪o Set α`, `≃o Set.range lang`, `≃o Antisymmetrization (LangPre lang) (· ≤ ·)` |
 
+For Mathlib languages (`Language α`, including `Silmaril.Formats.Accept.ByteLang`), wrap the
+map with `toSets`. `Language α` is a non-reducible `def` of `Set (List α)`, so instance search
+finds no order on `LangPre lang` for `lang : X → Language α`. For example,
+`LangEq (toSets fun m => Silmaril.Wasm.Game.Accept.bytesLang P m)` is the partial order of
+modules by byte language. See `LangPre.toSets_le_iff` and `LangEq.toSets_mk_eq_mk_iff`.
+
 Shapes are disjoint as programs, but not up to language: `inl_antisymmRel_inr_iff` and
 `LangEq.mk_inl_eq_mk_inr_iff` show that a left and a right program are identified exactly when
 their languages agree. A supplied equivalence must be proved to respect the language

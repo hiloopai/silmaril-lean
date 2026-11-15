@@ -72,6 +72,10 @@ def embed {lang' : Y → Set α} (f : X → Y) (hinj : Function.Injective f)
 def subtypeEmb (p : X → Prop) : LangPre (fun x : Subtype p => lang x.val) ↪o LangPre lang :=
   embed Subtype.val Subtype.val_injective fun _ => rfl
 
+/-- For Mathlib languages, the language preorder is the order of `Language β`. -/
+theorem toSets_le_iff {β : Type v} {lang : X → Language β} {x y : X} :
+    of (toSets lang) x ≤ of (toSets lang) y ↔ lang x ≤ lang y := Iff.rfl
+
 end LangPre
 
 section Shapes
@@ -201,6 +205,9 @@ def antisymmIso : Antisymmetrization (LangPre lang) (· ≤ ·) ≃o LangEq lang
 theorem mk_inl_eq_mk_inr_iff {Y : Type w} {lang₁ : X → Set α} {lang₂ : Y → Set α} {x : X}
     {y : Y} : mk (langSum lang₁ lang₂) (Sum.inl x) = mk _ (Sum.inr y) ↔ lang₁ x = lang₂ y :=
   mk_eq_mk_iff
+
+theorem toSets_mk_eq_mk_iff {β : Type v} {lang : X → Language β} {x y : X} :
+    mk (toSets lang) x = mk (toSets lang) y ↔ lang x = lang y := mk_eq_mk_iff
 
 end LangEq
 
