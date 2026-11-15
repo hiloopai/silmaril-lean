@@ -37,4 +37,12 @@ def coreHostRel (host : HostSemantics H) : HostRel (wasmHostSig H) := fun m o =>
   | .answer p => host m.1 m.2.1 m.2.2 (.returned p.1 p.2)
   | .diverge => host m.1 m.2.1 m.2.2 .diverged
 
+/-- A Core 3.0 run of exactly `n` steps (the measure of the whole-run backward
+simulation: a loop re-runs its tree on a strictly shorter run). -/
+inductive StepsN (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) :
+    Nat → Config H → Config H → Prop where
+  | refl (c : Config H) : StepsN P host 0 c c
+  | head {n : Nat} {c₁ c₂ c₃ : Config H} :
+      Step P host c₁ c₂ → StepsN P host n c₂ c₃ → StepsN P host (n + 1) c₁ c₃
+
 end Silmaril.Wasm.Abstract

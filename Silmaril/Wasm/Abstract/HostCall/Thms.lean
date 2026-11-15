@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Execution.Core.InversionHost.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Split
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Runs
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -49,6 +50,12 @@ is read off the run; nothing is assumed about the host.
   them followed by `rest`, or `c₁` is `[trap]`/`throwing x` and is the end of
   the run, or `c₁` is stuck on another head and the run ends at
   `c₁.code ++ rest`.
+
+**Counted runs** (`StepsN`, the measure of the whole-run backward simulation):
+`StepsN.steps`, `stepsN_of_steps`; `stepsN_seq_split` (the sequence split, with
+`es` taking `n₁ ≤ n` steps and the continuation after values the remaining
+`n - n₁`); `stepsN_label_split` (a label's body runs inside until the label is
+stuck, or exits by `LabelExit` with `n - n₁ - 1` steps left).
 
 `coreHost_call_run_seq` is the same **under a continuation** `rest` after the
 call. It uses the sequence-context inversion `Step.callRef_host_inv_seq`, built
@@ -179,5 +186,34 @@ theorem steps_seq_split {s : Store H} {f : Frame} {es rest : List Admin} {c : Co
         (c₁.code = [.trap] ∧ c = c₁) ∨ (∃ x, c₁.code = throwing x ∧ c = c₁) ∨
         c = ⟨c₁.store, c₁.frame, c₁.code ++ rest⟩) :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.steps_seq_split hrun hend
+
+theorem stepsN_steps {n : Nat} {c c' : Config H} (h : StepsN P host n c c') : Steps P host c c' :=
+  h.steps
+
+theorem stepsN_of_steps {c c' : Config H} (h : Steps P host c c') : ∃ n, StepsN P host n c c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_of_steps h
+
+/-- **Splitting a counted run of a sequence** `es ++ rest` at the end of `es`. -/
+theorem stepsN_seq_split {n : Nat} {s : Store H} {f : Frame} {es rest : List Admin}
+    {c : Config H} (hrun : StepsN P host n ⟨s, f, es ++ rest⟩ c)
+    (hend : ∀ c', ¬ Step P host c c') :
+    ∃ (c₁ : Config H) (n₁ : Nat), StepsN P host n₁ ⟨s, f, es⟩ c₁ ∧ n₁ ≤ n ∧
+      (∀ c', ¬ Step P host c₁ c') ∧
+      ((∃ ws, c₁.code = vals ws ∧
+          StepsN P host (n - n₁) ⟨c₁.store, c₁.frame, vals ws ++ rest⟩ c) ∨
+        (c₁.code = [.trap] ∧ c = c₁) ∨ (∃ x, c₁.code = throwing x ∧ c = c₁) ∨
+        c = ⟨c₁.store, c₁.frame, c₁.code ++ rest⟩) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_seq_split hrun hend
+
+/-- **Splitting a counted run of a label**: its body runs inside until the label
+is stuck, or exits. -/
+theorem stepsN_label_split {n : Nat} {s : Store H} {f : Frame} {k : Nat} {cont : List Instr}
+    {is : List Admin} {c : Config H} (hrun : StepsN P host n ⟨s, f, [.label k cont is]⟩ c)
+    (hend : ∀ c', ¬ Step P host c c') :
+    ∃ (c₁ : Config H) (n₁ : Nat), StepsN P host n₁ ⟨s, f, is⟩ c₁ ∧ n₁ ≤ n ∧
+      ((c = ⟨c₁.store, c₁.frame, [.label k cont c₁.code]⟩ ∧ ∀ c', ¬ Step P host c₁ c') ∨
+        ∃ out, n₁ < n ∧ LabelExit k cont c₁.code out ∧
+          StepsN P host (n - n₁ - 1) ⟨c₁.store, c₁.frame, out⟩ c) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_label_split hrun hend
 
 end Silmaril.Wasm.Abstract
