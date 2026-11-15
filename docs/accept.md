@@ -35,6 +35,30 @@ acceptance), `compl_acceptsSome`, `acceptsAll_subset_neverRejects` (needs disjoi
 deterministic collapse `acceptsSome_detRun`/`acceptsAll_detRun`/`neverRejects_detRun`,
 `Decides.and`/`or`/`not`/`comp`/`upTo`, and `iUnion_upTo`/`eq_iff_upTo_eq` for size slices.
 
+### `Silmaril.Semantics.Accept.Order.Defs` / `Thms`
+
+Programs of any carrier `X`, compared by `lang : X → Set α`.
+
+| Name | Meaning |
+| --- | --- |
+| `LangPre lang` | type synonym of `X`, **preorder** `x ≤ y ↔ lang x ⊆ lang y`; `LangPre.of`, `.val`, `.toLang` |
+| `LangPre.map f hf` / `LangPre.embed f hinj hf` | monotone map / order embedding along a language-preserving (injective) `f` |
+| `LangPre.subtypeEmb p` | sub-carrier `Subtype p` as an order embedding |
+| `langSum l₁ l₂`, `inlEmb`, `inrEmb` | two shapes `X ⊕ Y` in one preorder; inclusions are order embeddings |
+| `langSigma lang`, `sigmaEmb lang i` | a family of shapes `Σ i, X i` |
+| `RespectsLang s lang` | class: `s x y → lang x = lang y` |
+| `LangQuot s lang` | `Quotient s` with the descended language; a **preorder** (`mk_le_mk_iff`) |
+| `LangQuot.toLangEq` | monotone, order-reflecting, surjective comparison with `LangEq`; injective iff `s` identifies all equal-language programs (`toLangEq_injective_iff`) |
+| `LangEq lang` | `Quotient (Setoid.ker lang)`, a **partial order** (`mk_eq_mk_iff : mk x = mk y ↔ lang x = lang y`) |
+| `LangEq.toSetEmb`, `LangEq.rangeIso`, `LangEq.antisymmIso` | `LangEq lang ↪o Set α`, `≃o Set.range lang`, `≃o Antisymmetrization (LangPre lang) (· ≤ ·)` |
+
+Shapes are disjoint as programs, but not up to language: `inl_antisymmRel_inr_iff` and
+`LangEq.mk_inl_eq_mk_inr_iff` show that a left and a right program are identified exactly when
+their languages agree. A supplied equivalence must be proved to respect the language
+(`RespectsLang`) before its quotient carries an order.
+
+Examples: `Silmaril/Semantics/Accept/Order/Examples.lean`.
+
 ### Choosing a quantifier
 
 * A *validator* or *parser* that must accept the value: `acceptsSome` (some run succeeds) or,
