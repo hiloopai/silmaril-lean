@@ -115,6 +115,29 @@ lists of any total size. Also: `mem_everyItemω_iff_take` (every finite prefix) 
 
 Examples: `Silmaril/Semantics/Accept/Items/Examples.lean`.
 
+### `Silmaril.Semantics.Accept.Verdict.Defs` / `Thms`
+
+Components that can both accept and reject.
+
+| Name | Meaning |
+| --- | --- |
+| `acceptsSafely run acc rej` | `acceptsSome run acc ∩ neverRejects run rej`: some execution accepts and none rejects, over the **same** runner |
+| `conflicts acc rej` | `acc ∩ rej`: outcomes that both accept and reject (not assumed empty) |
+| `conflictInputs run acc rej` | inputs with some conflicting outcome |
+| `envRun r E` | executions over an environment class `E`: `{o \| ∃ e ∈ E, o ∈ r e a}` |
+
+Laws:
+- **Membership and inclusions:** `mem_acceptsSafely`, `acceptsSafely_subset_acceptsSome`, `acceptsSafely_subset_neverRejects`, `compl_acceptsSafely`.
+- **No outcomes:** an input with no outcome is never accepted (`not_mem_acceptsSafely_of_eq_empty`).
+- **Conflicts:** `not_mem_acceptsSafely_of_conflict`, `acceptsSafely_inter_conflictInputs`, `exists_accept_not_reject`, `acceptsSafely_diff`, `acceptsSafely_eq_empty_of_subset` (`acc ⊆ rej`), and `acceptsAll_inter_subset_acceptsSafely` (needs disjoint verdicts).
+- **Deterministic runners:** `acceptsSafely_detRun` (`f ⁻¹' (acc \ rej)`) and `Decides.acceptsSafely_detRun`.
+- **Monotonicity:** monotone in `acc` and antitone in `rej`. Under inclusion of runners it is neither: see `not_mono_runner` and `not_anti_runner`. `acceptsSafely_of_le` (an accepting outcome survives) and `acceptsSafely_of_ge` (no new outcome rejects) give the preserving conditions.
+- **Environment classes:** `mem_acceptsSafely_envRun` (some environment in `E` accepts, none in `E` rejects).
+
+The Wasm instance is `Silmaril.Wasm.Game.Accept.acceptedNotRejected` (Wasm development).
+
+Examples: `Silmaril/Semantics/Accept/Verdict/Examples.lean`.
+
 ### Choosing a quantifier
 
 * A *validator* or *parser* that must accept the value: `acceptsSome` (some run succeeds) or,
