@@ -91,7 +91,10 @@ on the existing head decomposition `Sim.Step.split_head`.
 abrupt head only bubbles), `diverges_seq_split` (a divergent run of `es ++ rest` diverges in
 `es`, or `es` runs to values and the continuation diverges), `diverges_label_split`,
 `diverges_frame_split` (a divergent label or frame diverges inside, or its body runs to an
-exit form and what it exits to diverges). The divergent counterparts of the splits above,
+exit form and what it exits to diverges), `diverges_host_call` (at a host call the host
+may diverge, or it answers and the continuation diverges), `diverges_wasm_call` (a Wasm call
+enters the callee's frame, which diverges). The divergent counterparts of the
+splits above,
 for the decomposition of Core divergence.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
@@ -374,5 +377,29 @@ theorem diverges_frame_split {s : Store H} {f F : Frame} {n : Nat} {is : List Ad
       ∃ (c₁ : Config H) (out : List Admin), Steps P host ⟨s, F, is⟩ c₁ ∧
         FrameExit c₁.store c₁.frame n c₁.code out ∧ Diverges P host ⟨c₁.store, f, out⟩ :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_frame_split h
+
+/-- **A divergent run at a host call**: the host may diverge on the call, or it answers and
+the run of the continuation diverges. -/
+theorem diverges_host_call {s : Store H} {f : Frame} {vs : List Val} {a : Nat} {r : Admin}
+    {fi : FuncInst H} {hh : H} {rest : List Admin} (hr : r.IsCallRef)
+    (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh)
+    (h : Diverges P host ⟨s, f, vals vs ++ .ref (.func a) :: r :: rest⟩) :
+    ∃ vs₁ vs₂ ps rs, vs = vs₁ ++ vs₂ ∧ Validation.Expand fi.type (.func ps rs) ∧
+      vs₂.length = ps.length ∧
+      (host hh s vs₂ .diverged ∨
+        ∃ s' res, host hh s vs₂ (.returned s' res) ∧
+          Diverges P host ⟨s', f, vals vs₁ ++ res.toAdmin ++ rest⟩) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_host_call hr hf hcode h
+
+/-- **A divergent run at a Wasm call** enters the callee's frame, and the run from there
+diverges. -/
+theorem diverges_wasm_call {s : Store H} {f : Frame} {vs : List Val} {a : Nat} {r : Admin}
+    {fi : FuncInst H} {code : Func} (hr : r.IsCallRef) (hf : s.funcs[a]? = some fi)
+    (hcode : fi.code = .wasm code) (h : Diverges P host ⟨s, f, vals vs ++ [.ref (.func a), r]⟩) :
+    ∃ vs₁ vs₂ ps rs, vs = vs₁ ++ vs₂ ∧ Validation.Expand fi.type (.func ps rs) ∧
+      vs₂.length = ps.length ∧
+      Diverges P host ⟨s, f, vals vs₁ ++ [.frame rs.length (Frame.forCall fi.module vs₂ code.locals)
+        [.label rs.length [] (expression code.body)]]⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_wasm_call hr hf hcode h
 
 end Silmaril.Wasm.Abstract
