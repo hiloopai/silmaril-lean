@@ -71,7 +71,8 @@ theorem soundAnsT_of_bodyT {C : Abstract.CallRel H} (hC : OracleSoundT P host C)
     rw [← hrl']
     exact .single (Step.callRefFunc hcr hfi hex hn' hcode)
   refine ⟨⟨ob, hob, hok, hinv.1⟩, ?_, ?_⟩ <;>
-  rcases run_of_wpT hwb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs', a', c', rest₀, hrun, hT⟩
+  rcases run_of_wpT hwb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs', a', c', rest₀, hrun, hT⟩ |
+      ⟨vs', c', rest₀, hrun, hc, hfl⟩
   · -- matched, returning
     intro vs hvs
     have inner := Steps.frame (P := P) (host := host) (f := f) rs.length
@@ -102,6 +103,11 @@ theorem soundAnsT_of_bodyT {C : Abstract.CallRel H} (hC : OracleSoundT P host C)
       obtain ⟨rfl, rfl⟩ := hK
       exact enter.trans (inner.trans hret)
     · simp [Binaryen.Flow.retVals] at hvs
+  · -- a pending null tail, returning: impossible, the result traps
+    intro vs hvs
+    dsimp only at hfl
+    subst hfl
+    simp [Binaryen.Flow.retVals] at hvs
   · -- matched, trapping
     intro htr
     subst htr
@@ -129,6 +135,14 @@ theorem soundAnsT_of_bodyT {C : Abstract.CallRel H} (hC : OracleSoundT P host C)
         ⟨s', f', vals (vs₁ ++ args) ++ .ref (.func a') :: c' :: rest₀⟩ from by simpa [vals] using hrun))
     exact enter.trans (inner.trans ((frame_tail_exit (f := f) (k := rs.length) (F := f')
       (vs₁ := vs₁) (rest := rest₀) hc hfn hex' hlen').trans htrs))
+  · -- a pending null tail, trapping: the frame traps
+    intro _
+    have inner := Steps.frame (P := P) (host := host) (f := f) rs.length
+      (Steps.label rs.length [] (show Steps P host
+        ⟨s, Frame.forCall fi.module us fn.locals, expression fn.body⟩
+        ⟨s₂, f₂, vals vs' ++ .ref .null :: c' :: rest₀⟩ from by simpa [vals] using hrun))
+    exact enter.trans (inner.trans (frame_tailNull (P := P) (host := host) (s := s₂) (f := f)
+      (n := rs.length) (F := f₂) (vs := vs') (rest := rest₀) hc))
 
 /-- **The closure on good stores is a sound oracle for `tExt`**, callee bodies possibly ending
 in direct tail calls. -/
