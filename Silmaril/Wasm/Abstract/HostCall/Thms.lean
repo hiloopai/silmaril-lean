@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Abstract.HostCall.Defs
 public import Silmaril.Wasm.Execution.Core.InversionHost.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Backward
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Split
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -36,6 +37,18 @@ on exactly its arguments, to a configuration with no step is either **blocked**
 host returned `(s', r)` and the run continues from `vals ws ++ r.toAdmin` in
 `s'`. Divergence of the host only stutters, so it never ends a run. The answer
 is read off the run; nothing is assumed about the host.
+
+**Splitting runs of sequences** (for the whole-run backward simulation):
+
+* `steps_trap_head`, `steps_throw_head`: a trap, or the canonical thrown form
+  `throwing x = [ref.exn x, throw_ref]`, at the head of the code only bubbles;
+  every run to a stuck configuration ends at `[trap]` (resp. `throwing x`) in
+  the same store and frame;
+* `steps_seq_split`: a run of `es ++ rest` to a stuck configuration first runs
+  `es` alone to a stuck `c₁`; then `c₁` is values and the run continues from
+  them followed by `rest`, or `c₁` is `[trap]`/`throwing x` and is the end of
+  the run, or `c₁` is stuck on another head and the run ends at
+  `c₁.code ++ rest`.
 
 `coreHost_call_run_seq` is the same **under a continuation** `rest` after the
 call. It uses the sequence-context inversion `Step.callRef_host_inv_seq`, built
@@ -145,5 +158,26 @@ theorem coreHost_call_run_seq {s : Store H} {f : Frame} {a : Nat} {fi : FuncInst
     · exact hno _ hans
     · exact hno _ hans
   · exact .inr ⟨s', r, hh', hst⟩
+
+/-- **A head trap only bubbles** to `[trap]`, in the same store and frame. -/
+theorem steps_trap_head {s : Store H} {f : Frame} {ws : List Val} {r : List Admin} {c : Config H}
+    (hrun : Steps P host ⟨s, f, vals ws ++ .trap :: r⟩ c) (hend : ∀ c', ¬ Step P host c c') :
+    c = ⟨s, f, [.trap]⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.steps_trap_head hrun hend
+
+/-- **A head exception only bubbles** to `throwing x`, in the same store and frame. -/
+theorem steps_throw_head {s : Store H} {f : Frame} {ws : List Val} {x : Nat} {r : List Admin}
+    {c : Config H} (hrun : Steps P host ⟨s, f, vals ws ++ throwing x ++ r⟩ c)
+    (hend : ∀ c', ¬ Step P host c c') : c = ⟨s, f, throwing x⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.steps_throw_head hrun hend
+
+/-- **Splitting a run of a sequence** `es ++ rest` at the end of `es`. -/
+theorem steps_seq_split {s : Store H} {f : Frame} {es rest : List Admin} {c : Config H}
+    (hrun : Steps P host ⟨s, f, es ++ rest⟩ c) (hend : ∀ c', ¬ Step P host c c') :
+    ∃ c₁ : Config H, Steps P host ⟨s, f, es⟩ c₁ ∧ (∀ c', ¬ Step P host c₁ c') ∧
+      ((∃ ws, c₁.code = vals ws ∧ Steps P host ⟨c₁.store, c₁.frame, vals ws ++ rest⟩ c) ∨
+        (c₁.code = [.trap] ∧ c = c₁) ∨ (∃ x, c₁.code = throwing x ∧ c = c₁) ∨
+        c = ⟨c₁.store, c₁.frame, c₁.code ++ rest⟩) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.steps_seq_split hrun hend
 
 end Silmaril.Wasm.Abstract
