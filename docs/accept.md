@@ -84,6 +84,31 @@ everywhere and `DecidesOn (within μ b)` when it is complete only up to a bound.
 Examples: `Silmaril/Semantics/Accept/Bounded/Examples.lean` (a toy document format with
 depth, a total checker and a depth-enforcing one).
 
+### `Silmaril.Semantics.Accept.Items.Defs` / `Thms`
+
+Sequences of items (for example JSON Lines). The layer is generic over the item type and the
+measures; concrete validity belongs to the format developments. **Finite item lists**
+(`List ι`: finitely many items, but arbitrarily many) are kept apart from **infinite item
+sequences** (CSLib's `ωSequence ι`, names ending in `ω`).
+
+| Name | Meaning |
+| --- | --- |
+| `everyItem L` | finite lists with every item in `L` |
+| `itemsWithin μ n` | per-item bound: every item has `μ x ≤ n` |
+| `totalWeight w s`, `totalWithin w n` | whole-list bound: `(s.map w).sum ≤ n` |
+| `countWithin n` | at most `n` items |
+| `everyItemω L`, `itemsWithinω μ n` | infinite counterparts (only per-item bounds) |
+
+Laws: `itemsWithin_not_subset_totalWithin` says a per-item bound bounds no whole-list weight.
+`totalWithin_subset_itemsWithin` gives the per-item bound from a whole-list one when
+`μ ≤ w`, and `itemsWithin_inter_countWithin_subset` gives a whole-list bound from a per-item
+bound plus an item count. Checkers lift with `List.all` (`Decides.everyItem`), and
+`DecidesOn.everyItem`/`DecidesOn.itemsWithin` carry correctness on per-item bounded domains to
+lists of any total size. Also: `mem_everyItemω_iff_take` (every finite prefix) and
+`kstar_eq_image_flatten` (Mathlib's Kleene star).
+
+Examples: `Silmaril/Semantics/Accept/Items/Examples.lean`.
+
 ### Choosing a quantifier
 
 * A *validator* or *parser* that must accept the value: `acceptsSome` (some run succeeds) or,

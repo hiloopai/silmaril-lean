@@ -70,6 +70,7 @@ public import Silmaril.SSA.LambdaRTL.Version.Thms
 public import Silmaril.Semantics.Accept.Rel.Thms
 public import Silmaril.Semantics.Accept.Order.Thms
 public import Silmaril.Semantics.Accept.Bounded.Thms
+public import Silmaril.Semantics.Accept.Items.Thms
 public import Silmaril.Semantics.Accept.Thms
 public import Silmaril.Semantics.Behaviour.Thms
 public import Silmaril.Semantics.Categories.Thms
