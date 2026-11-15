@@ -59,6 +59,31 @@ their languages agree. A supplied equivalence must be proved to respect the lang
 
 Examples: `Silmaril/Semantics/Accept/Order/Examples.lean`.
 
+### `Silmaril.Semantics.Accept.Bounded.Defs` / `Thms`
+
+| Name | Meaning |
+| --- | --- |
+| `within μ b` | `{a \| μ a ≤ b}` for a measure `μ : α → β` into any preorder (length, format depth, pairs of them via `within_prod`) |
+| `SoundOn D c L` | `∀ a ∈ D, c a = true → a ∈ L` |
+| `CompleteOn D c L` | `∀ a ∈ D, a ∈ L → c a = true` |
+| `DecidesOn D c L` | `∀ a ∈ D, (c a = true ↔ a ∈ L)`; outside `D` the checker may answer anything |
+
+Laws: `decidesOn_iff`, `decidesOn_univ` (and the sound/complete versions) recover the
+unrelativised notions; `SoundOn.anti`/`CompleteOn.anti`/`DecidesOn.anti` (smaller domain),
+`DecidesOn.within_mono` (smaller bound), `SoundOn.mono`/`CompleteOn.mono` (language),
+`…union`/`…iUnion`; exhaustion `complete_of_forall_within`/`decides_of_forall_within`;
+`decides_inter_iff : Decides c (L ∩ D) ↔ DecidesOn D c L ∧ Sound c D` and
+`DecidesOn.andBound` for checkers that enforce their bound; `upTo_eq_inter_within`.
+
+Bounded completeness is a modelling choice, not a law of the library. A one-shot interface
+with a fixed input buffer can only be complete on inputs that fit. A streaming checker can be
+complete on inputs of unbounded total size. A semantic specification needs no bound, and an
+executable total checker may or may not need one. Use `Decides` when the checker is complete
+everywhere and `DecidesOn (within μ b)` when it is complete only up to a bound.
+
+Examples: `Silmaril/Semantics/Accept/Bounded/Examples.lean` (a toy document format with
+depth, a total checker and a depth-enforcing one).
+
 ### Choosing a quantifier
 
 * A *validator* or *parser* that must accept the value: `acceptsSome` (some run succeeds) or,
