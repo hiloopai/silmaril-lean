@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Abstract.Recursion.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Defs
+public import Silmaril.Wasm.Interp.Defs
 
 /-!
 # The native semantics with host calls (stage H2)
@@ -58,5 +59,35 @@ def hostCall (host : HostSemantics H) : CallRel H := (hostCallOp host).lfp
 
 /-- **The native semantics with host calls.** -/
 abbrev EvalH (host : HostSemantics H) := EvalO (hostCall host)
+
+/-! ## Backward simulation: how a Core run ends -/
+
+/-- **A pending host call with no host outcome** somewhere in the code, under
+values and labels or frames: the `blocked` observation, seen in Core. The call
+is `ref.func a; call_ref` of a host function on exactly its arguments `us`, and
+the host has no outcome for it. -/
+inductive Pending (host : HostSemantics H) (s : Store H) : List Admin → Prop where
+  | call {ws us : List Val} {a : Nat} {fi : FuncInst H} {hh : H}
+      {ps rs : Validation.Ty (.list .val)} {rest : List Admin}
+      (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh)
+      (he : Validation.Expand fi.type (.func ps rs)) (hn : us.length = ps.length)
+      (hno : ∀ o, ¬ host hh s us o) :
+      Pending host s (vals ws ++ vals us ++ .ref (.func a) :: .callRefType fi.type :: rest)
+  | label {ws : List Val} {n : Nat} {cont : List Instr} {es rest : List Admin} :
+      Pending host s es → Pending host s (vals ws ++ .label n cont es :: rest)
+  | frame {ws : List Val} {n : Nat} {F : Frame} {es rest : List Admin} :
+      Pending host s es → Pending host s (vals ws ++ .frame n F es :: rest)
+
+/-- A Core configuration ends as the native result `r`: it is a final form whose
+outcome matches `r` (`Interp.Match`: same store and frame, matching flow). -/
+def EndsAs (r : Store H × Frame × Flow) (c : Config H) : Prop :=
+  ∃ o : Logic.Core.Outcome, o.Ends c.code ∧ Interp.Match r c.store c.frame o
+
+/-- **The backward conclusion**: a stuck end `c` of a Core run of the lowered
+trees `es` on `stk` is the end of a native run with host calls (`EvalH`), or is
+blocked at a host call with no outcome. -/
+def BackOut (host : HostSemantics H) (s : Store H) (f : Frame) (stk : List Val)
+    (es : List BExpr) (c : Config H) : Prop :=
+  (∃ r, EvalH host s f stk es r ∧ EndsAs r c) ∨ Pending host c.store c.code
 
 end Silmaril.Wasm.Abstract

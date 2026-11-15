@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Abstract.HostEval.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Wasm.Logic.Core.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
+import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -31,8 +32,19 @@ functions native and passing the arity check (`Interp.FuncsGood`), answer values
 at the declared result arity, and never throw. Not covered: hosts that append
 non-native or unchecked functions, and host exceptions.
 
-**Not yet proved.** The backward simulation and the decomposition of
-divergence with host calls.
+**Backward simulation, first cases** (`BackOut`: a stuck end of a Core run of
+the lowered trees is the end of an `EvalH` run, `EndsAs`, or is blocked at a host
+call with no outcome, `Pending`), any profile and host:
+
+* `Pending.append`, `Pending.ne_vals`, `Pending.ne_trap`, `Pending.ne_throwing`;
+* `back_nil`: the empty tree list;
+* `back_op_args`: an operator tree, through its arguments. An abrupt or blocked
+  end of the arguments ends the whole run (`argsAbort`); a normal end on `stk₁`
+  hands the remaining run from `vals stk₁ ++ i :: es` to the instruction's case.
+
+**Not yet proved.** The instruction cases (flat, calls, blocks, loops, `if`),
+hence the whole backward simulation, and the decomposition of divergence with
+host calls.
 -/
 
 public section
@@ -77,5 +89,42 @@ theorem steps_host_callTrap {s₁ s₂ : Store H} {f₁ : Frame} {stk₁ : List 
     (hans : host h s₁ (stk₁.take ps.length).reverse (.returned s₂ .trap)) :
     Steps P host ⟨s₁, f₁, vals stk₁.reverse ++ .plain (.call x) :: rest⟩ ⟨s₂, f₁, [.trap]⟩ :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.steps_host_callTrap hx hf he hcode hlen hans
+
+theorem Pending.append {s : Store H} {es : List Admin} (h : Pending host s es) (rest : List Admin) :
+    Pending host s (es ++ rest) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.pending_append h rest
+
+theorem Pending.ne_vals {s : Store H} {es : List Admin} (h : Pending host s es) (ws : List Val) :
+    es ≠ vals ws :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.pending_ne_vals h ws
+
+theorem Pending.ne_trap {s : Store H} {es : List Admin} (h : Pending host s es) : es ≠ [.trap] :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.pending_ne_trap h
+
+theorem Pending.ne_throwing {s : Store H} {es : List Admin} (h : Pending host s es) (x : Nat) :
+    es ≠ throwing x :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.pending_ne_throwing h x
+
+/-- **The empty tree list**: its run ends as the native `nil`. -/
+theorem back_nil {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {c : Config H}
+    (hrun : StepsN P host n ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList [])⟩ c) :
+    BackOut host s f stk [] c :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_nil hrun
+
+/-- **An operator tree, through its arguments.** -/
+theorem back_op_args {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : Instr}
+    {args es : List Binaryen.BExpr} {c : Config H}
+    (hrun : StepsN P host n
+      ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList (.op i args :: es))⟩ c)
+    (hend : ∀ c', ¬ Step P host c c')
+    (ihargs : ∀ m ≤ n, ∀ c₁, StepsN P host m
+        ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList args)⟩ c₁ →
+      (∀ c', ¬ Step P host c₁ c') → BackOut host s f stk args c₁)
+    (hk : ∀ s₁ f₁ stk₁ m, m ≤ n → EvalH host s f stk args (s₁, f₁, .normal stk₁) →
+      StepsN P host m ⟨s₁, f₁, vals stk₁.reverse ++ .plain i ::
+        expression (Binaryen.BExpr.lowerList es)⟩ c →
+      BackOut host s f stk (.op i args :: es) c) :
+    BackOut host s f stk (.op i args :: es) c :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_op_args hrun hend ihargs hk
 
 end Silmaril.Wasm.Abstract
