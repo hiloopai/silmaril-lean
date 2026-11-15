@@ -309,6 +309,23 @@ def nativeFuncsB {H : Type} (F : List (Execution.Core.FuncInst H)) : Bool :=
     | .wasm fn => instrsNative fn.body
     | .host _ => false
 
+/-! ## Native-profile stores with host functions -/
+
+/-- **Every Wasm function of the store is native-profile code**; unlike
+`Binaryen.NativeFuncsOk`, host functions are allowed. Not implied by `StoreChk`, which
+accepts any instruction after unreachable code. -/
+def NativeWasmFuncs {H : Type} (F : List (Execution.Core.FuncInst H)) : Prop :=
+  ∀ fi ∈ F, ∀ fn, fi.code = .wasm fn → ∀ i ∈ fn.body, Binaryen.instrInNativeProfile i
+
+/-- **A host that stays in the native profile**: its answers keep the Wasm functions of the
+store native-profile (it may allocate host functions or native Wasm functions) and never throw.
+A side condition on the host, not a consequence of `NativeHostSlice`. -/
+structure HostNative {H : Type} (host : Execution.Core.HostSemantics H) : Prop where
+  funcs : ∀ (h : H) (s s' : Execution.Core.Store H) (vs : List Execution.Core.Val) (r : Execution.Core.Result),
+    host h s vs (.returned s' r) → NativeWasmFuncs s.funcs → NativeWasmFuncs s'.funcs
+  noThrow : ∀ (h : H) (s s' : Execution.Core.Store H) (vs : List Execution.Core.Val) (t : Nat),
+    ¬ host h s vs (.returned s' (.throw t))
+
 /-! ## Matching outcomes -/
 
 /-- A native flow and a Core outcome agree (Core stacks bottom-first, native top-first; a branch

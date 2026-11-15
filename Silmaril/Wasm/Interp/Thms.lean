@@ -11,6 +11,7 @@ public import Silmaril.Proofs.Wasm.Interp.CallFrame
 public import Silmaril.Proofs.Wasm.Interp.HostOracle
 public import Silmaril.Proofs.Wasm.Interp.FuncsExt
 public import Silmaril.Proofs.Wasm.Interp.Tail
+public import Silmaril.Proofs.Wasm.Interp.ProfileHost
 
 @[expose] public section
 
@@ -86,6 +87,13 @@ normal forms and behaviours are profile-independent (`steps_profile_iff`,
 `diverges_profile_iff`, `core_behaviours_profile`), and closed-host normal forms reachable from a
 native configuration are unique at every profile (`eq_of_steps_nf`, transferred from
 silmaril-lean's deterministic-profile `eq_of_steps_of_nf`).
+
+**Profile independence with host functions** (`Silmaril.Proofs.Wasm.Interp.ProfileHost`). The
+store may contain host functions when its Wasm functions are native-profile code
+(`NativeWasmFuncs`; `StoreChk` does not imply it) and the host satisfies the explicit side
+condition `HostNative` (answers keep `NativeWasmFuncs` and never throw). Then `NHConfig` is closed
+under Core steps of every profile (`nAdmins_stepH`, `NHConfig.steps`), and with `step_profile`
+runs and divergence are the same at every profile (`steps_profileH`, `diverges_profileH`).
 
 **Forward simulation with structured control and calls, every profile and host.** For trees
 of straight-line integer operators, `select`, `unreachable`, blocks, loops, `if`, `br`, `br_if`,
