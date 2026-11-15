@@ -52,8 +52,18 @@ call with no outcome, `Pending`), any profile and host:
   through it. With typed code the native step exists in any store
   (`Interp.evalFlat_progressH`).
 
-**Not yet proved.** The composed operator case (threading the check and typing
-through the arguments), the calls, blocks, loops and `if`,
+* `back_op_flat`: an operator tree other than a call, composed from
+  `back_op_args`, `back_flat` and the case of the following trees. The native
+  step after the arguments and its check are hypotheses (`hflat`), to be
+  discharged from typing (`ContextTyped.steps_typed` with `HostTyped`,
+  `Interp.evalFlat_progressH`) and the forward arity invariants.
+
+The flat and composed cases are stated for the deterministic profile
+`SingleThreaded.profile o` (they follow host-free steps through
+`stepsN_through`); nothing is claimed here for other profiles.
+
+**Not yet proved.** Discharging `hflat` in the whole theorem, the calls, blocks,
+loops and `if`,
 hence the whole backward simulation, and the decomposition of divergence with
 host calls.
 -/
@@ -151,5 +161,27 @@ theorem back_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ s₂ : Store H
         ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m ⟨s₂, f₂, vals stk₂.reverse ++ rest⟩ c) ∧
       (¬ fl.IsNormal → EndsAs (s₂, f₂, fl) c) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.back_flat hi hc hflat hrun hend
+
+/-- **An operator tree other than a call** (deterministic profile, any host). -/
+theorem back_op_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : Frame}
+    {stk : List Val} {i : Instr} {args es : List Binaryen.BExpr} {c : Config H}
+    (hi : ∀ x, i ≠ .call x)
+    (hrun : StepsN (SingleThreaded.profile o) host n
+      ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList (.op i args :: es))⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c')
+    (ihargs : ∀ m ≤ n, ∀ c₁, StepsN (SingleThreaded.profile o) host m
+        ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList args)⟩ c₁ →
+      (∀ c', ¬ Step (SingleThreaded.profile o) host c₁ c') → BackOut host s f stk args c₁)
+    (hflat : ∀ s₁ f₁ stk₁, EvalH host s f stk args (s₁, f₁, .normal stk₁) →
+      (∃ r, Binaryen.evalFlat s₁ f₁ stk₁ i = some r) ∧
+      ∃ (F : List (FuncInst H)) (mi : ModuleInst) (ret : Nat) (labels : List Nat) (h₀ : Nat)
+        (o₁ : Option Nat), Interp.flatChk F mi f₁.locals.length ret labels h₀ i = some o₁)
+    (ihes : ∀ s₁ f₁ stk₁ s₂ f₂ stk₂ m, m ≤ n → EvalH host s f stk args (s₁, f₁, .normal stk₁) →
+      Binaryen.evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, .normal stk₂) →
+      StepsN (SingleThreaded.profile o) host m
+        ⟨s₂, f₂, vals stk₂.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ c →
+      BackOut host s₂ f₂ stk₂ es c) :
+    BackOut host s f stk (.op i args :: es) c :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_op_flat hi hrun hend ihargs hflat ihes
 
 end Silmaril.Wasm.Abstract

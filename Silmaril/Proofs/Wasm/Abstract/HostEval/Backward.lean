@@ -263,4 +263,39 @@ theorem back_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ s₂ : Store H
     subst hc'
     exact ⟨o', he, rfl, rfl, hm⟩
 
+/-- **An operator tree other than a call**, in the deterministic profile, any host:
+the arguments by `back_op_args`, the instruction by `back_flat`, the following
+trees by `ihes`. After the arguments complete normally, the native step and its
+check are given by `hflat` (from typing, `Interp.evalFlat_progressH`, and the
+forward arity invariants). -/
+theorem back_op_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : Frame}
+    {stk : List Val} {i : Instr} {args es : List Binaryen.BExpr} {c : Config H}
+    (hi : ∀ x, i ≠ .call x)
+    (hrun : StepsN (SingleThreaded.profile o) host n
+      ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList (.op i args :: es))⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c')
+    (ihargs : ∀ m ≤ n, ∀ c₁, StepsN (SingleThreaded.profile o) host m
+        ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList args)⟩ c₁ →
+      (∀ c', ¬ Step (SingleThreaded.profile o) host c₁ c') → BackOut host s f stk args c₁)
+    (hflat : ∀ s₁ f₁ stk₁, EvalH host s f stk args (s₁, f₁, .normal stk₁) →
+      (∃ r, Binaryen.evalFlat s₁ f₁ stk₁ i = some r) ∧
+      ∃ (F : List (FuncInst H)) (mi : ModuleInst) (ret : Nat) (labels : List Nat) (h₀ : Nat)
+        (o₁ : Option Nat), Interp.flatChk F mi f₁.locals.length ret labels h₀ i = some o₁)
+    (ihes : ∀ s₁ f₁ stk₁ s₂ f₂ stk₂ m, m ≤ n → EvalH host s f stk args (s₁, f₁, .normal stk₁) →
+      Binaryen.evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, .normal stk₂) →
+      StepsN (SingleThreaded.profile o) host m
+        ⟨s₂, f₂, vals stk₂.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ c →
+      BackOut host s₂ f₂ stk₂ es c) :
+    BackOut host s f stk (.op i args :: es) c := by
+  refine back_op_args hrun hend ihargs fun s₁ f₁ stk₁ m hm hev hrun₁ => ?_
+  obtain ⟨⟨⟨s₂, f₂, fl⟩, hfl⟩, F, mi, ret, labels, h₀, o₁, hc⟩ := hflat s₁ f₁ stk₁ hev
+  obtain ⟨hnorm, habr⟩ := back_flat hi hc hfl hrun₁ hend
+  by_cases hn : fl.IsNormal
+  · rcases fl with stk₂ | _ | _ | _ | _ <;> simp only [Binaryen.Flow.IsNormal] at hn
+    obtain ⟨m', hm', hrun₂⟩ := hnorm stk₂ rfl
+    rcases ihes s₁ f₁ stk₁ s₂ f₂ stk₂ m' (by omega) hev hfl hrun₂ with ⟨r, hk, hr⟩ | hp
+    · exact .inl ⟨r, .opOk hi hev hfl hk, hr⟩
+    · exact .inr hp
+  · exact .inl ⟨_, .opStop hi hev hfl hn, habr hn⟩
+
 end Silmaril.Proofs.Wasm.Abstract.HostEval

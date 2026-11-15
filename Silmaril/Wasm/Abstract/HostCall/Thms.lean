@@ -3,12 +3,15 @@ module
 public import Silmaril.Wasm.Abstract.HostCall.Defs
 public import Silmaril.Wasm.SingleThreaded.Profile
 public import Silmaril.Wasm.SingleThreaded.Determinism.HeadDet
+public import Silmaril.Wasm.Execution.Core.Soundness.Defs
+public import Silmaril.Wasm.Execution.Core.Sim.TypedContext
 public import Silmaril.Wasm.Execution.Core.InversionHost.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Split
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Runs
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Through
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Typed
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -65,6 +68,12 @@ stuck, or exits by `LabelExit` with `n - n₁ - 1` steps left).
 stuck end also reaches that end, in no more steps, from any host-free successor
 of `K` (or the end of any host-free run from `K`): host-free steps join within
 one step, and a configuration with a host-free step is not at a host call.
+
+**Typing with a relational host** (`HostTyped`: the typed-answers half of Core's
+`HostOk`, without asking every call to have an outcome): `Step.host_mono` (steps
+are monotone in the host, every profile), `hostOk_totalize` (the host that also
+diverges where it has no outcome is lawful), `Step.preservation_typed`,
+`ContextTyped.steps_typed`.
 
 `coreHost_call_run_seq` is the same **under a continuation** `rest` after the
 call. It uses the sequence-context inversion `Step.callRef_host_inv_seq`, built
@@ -240,5 +249,24 @@ theorem stepsN_through_steps {o : SingleThreaded.GrowOracle} {n : Nat} {K T c : 
     (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
     ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m T c :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_through_steps hpred hrun hend
+
+/-- **Core steps are monotone in the host.** -/
+theorem Step.host_mono {host' : HostSemantics H} (hle : ∀ h s vs o, host h s vs o → host' h s vs o)
+    {c c' : Config H} (hst : Step P host c c') : Step P host' c c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.Step.host_mono hle hst
+
+/-- **A host with typed answers, totalized, is lawful.** -/
+theorem hostOk_totalize (ht : HostTyped host) : HostOk (totalize host) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hostOk_totalize ht
+
+/-- **Preservation for a host with typed answers** (no outcome needs to exist). -/
+theorem Step.preservation_typed (ht : HostTyped host) {c c' : Config H} {ts : List CValType}
+    (hc : ConfigOk c ts) (h : Step P host c c') : ConfigOk c' ts ∧ Extend c.store c'.store :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.Step.preservation_typed ht hc h
+
+/-- Typing in an evaluation context is preserved along runs of a host with typed answers. -/
+theorem ContextTyped.steps_typed (ht : HostTyped host) {c c' : Config H} (h : Sim.ContextTyped c)
+    (hs : Steps P host c c') : Sim.ContextTyped c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.ContextTyped.steps_typed ht h hs
 
 end Silmaril.Wasm.Abstract
