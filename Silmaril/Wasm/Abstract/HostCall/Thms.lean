@@ -120,6 +120,8 @@ events `cs` (`EvRun`, `Quiet`), or productive with an infinite stream `ω` of ho
 `coreInf_prefix` (**prefix agreement**): the first `n` events of a productive run are the
 events of a finite labelled run of that same run, which continues productively with the
 remaining events.
+`quiet_iff`: quiescent divergence is exactly host-free divergence (pure Wasm), or a host-free
+run to a host call the host diverges on (stuttering there: the `hostDiv` case).
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -517,5 +519,14 @@ theorem coreInf_prefix {c : Config H} {ω : Nat → Call (wasmHostSig H)}
     ∃ c', EvRun P host c (List.ofFn fun i : Fin n => ω i) c' ∧
       CoreInf P host c' (fun k => ω (n + k)) :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_prefix h n
+
+/-- **Quiescent divergence, split**: host-free divergence, or a host-free run to a host call
+the host diverges on. -/
+theorem quiet_iff {c : Config H} :
+    Quiet P host c ↔ (Diverges P (fun _ _ _ _ => False) c ∨
+      ∃ d : Config H, Steps P (fun _ _ _ _ => False) c d ∧
+        ∃ E a hh us, SingleThreaded.decompose? d.store d.code = some (E, a, hh, us) ∧
+          host hh d.store us .diverged) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.quiet_iff
 
 end Silmaril.Wasm.Abstract

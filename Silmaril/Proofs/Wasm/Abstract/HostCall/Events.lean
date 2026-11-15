@@ -296,4 +296,56 @@ theorem coreInf_prefix {c : Config H} {ω : Nat → Call (wasmHostSig H)}
     rw [List.ofFn_succ_last]
     exact evRun_trans ih (seg n)
 
+/-! ## Quiescent divergence -/
+
+/-- **Quiescent divergence is host-free divergence, or a host-free run to a host call the
+host diverges on.** -/
+theorem quiet_split {c : Config H} (h : Quiet P host c) :
+    Diverges P (fun _ _ _ _ => False) c ∨
+      ∃ d : Config H, Steps P (fun _ _ _ _ => False) c d ∧
+        ∃ E a hh us, decompose? d.store d.code = some (E, a, hh, us) ∧
+          host hh d.store us .diverged := by
+  classical
+  obtain ⟨t, ht0, ht⟩ := h
+  by_cases hS : ∃ n, ¬ Step P (fun _ _ _ _ => False) (t n) (t (n + 1))
+  · let n := Nat.find hS
+    have hpre : ∀ m < n, Step P (fun _ _ _ _ => False) (t m) (t (m + 1)) := fun m hm =>
+      not_not.mp (Nat.find_min hS hm)
+    have hrun : ∀ m ≤ n, Steps P (fun _ _ _ _ => False) (t 0) (t m) := by
+      intro m
+      induction m with
+      | zero => exact fun _ => .refl
+      | succ m ih => exact fun hm => (ih (by omega)).tail (hpre m (by omega))
+    rcases ht n with hs | ⟨-, E, a, hh, us, hd, hdiv⟩
+    · exact absurd hs (Nat.find_spec hS)
+    · exact .inr ⟨t n, ht0 ▸ hrun n le_rfl, E, a, hh, us, hd, hdiv⟩
+  · refine .inl ⟨t, ht0, fun n => ?_⟩
+    exact not_not.mp (not_exists.mp hS n)
+
+theorem silent_of_noHost {c d : Config H} (hr : Steps P (fun _ _ _ _ => False) c d) :
+    Relation.ReflTransGen (fun a b => HEvStep P host a none b) c d := by
+  induction hr with
+  | refl => exact .refl
+  | tail _ hs ih => exact ih.tail (.inl hs)
+
+/-- The converse: host-free divergence, or a host-free run to a diverging host call, is
+quiescent. -/
+theorem quiet_of_split {c : Config H}
+    (h : Diverges P (fun _ _ _ _ => False) c ∨
+      ∃ d : Config H, Steps P (fun _ _ _ _ => False) c d ∧
+        ∃ E a hh us, decompose? d.store d.code = some (E, a, hh, us) ∧
+          host hh d.store us .diverged) : Quiet P host c := by
+  rcases h with hd | ⟨d, hr, E, a, hh, us, hdc, hdiv⟩
+  · exact Silmaril.InfiniteTrace.map (R := Step P (fun _ _ _ _ => False)) id
+      (fun _ _ hs => Or.inl hs) hd
+  · refine Silmaril.InfiniteTrace.of_steps (silent_of_noHost hr) ⟨fun _ => d, rfl, fun _ => ?_⟩
+    exact .inr ⟨rfl, E, a, hh, us, hdc, hdiv⟩
+
+theorem quiet_iff {c : Config H} :
+    Quiet P host c ↔ (Diverges P (fun _ _ _ _ => False) c ∨
+      ∃ d : Config H, Steps P (fun _ _ _ _ => False) c d ∧
+        ∃ E a hh us, decompose? d.store d.code = some (E, a, hh, us) ∧
+          host hh d.store us .diverged) :=
+  ⟨quiet_split, quiet_of_split⟩
+
 end Silmaril.Proofs.Wasm.Abstract.HostCall
