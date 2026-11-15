@@ -258,6 +258,8 @@ Examples: `Silmaril/Semantics/Accept/Session/Examples.lean`.
 
 Finite automata (Mathlib, CSLib) as presentations of languages: see [automata](accept-automata.md).
 
+Context-free grammars (Mathlib's `ContextFreeGrammar`) as presentations of acceptor sets, with checker bridges and a proved `(ⁿ )ⁿ` example: see [grammar presentations](accept-grammar.md).
+
 Byte languages, simple WIT types and the inputs accepted by Wasm modules and components
 instantiate this vocabulary: see [accepted inputs](projects/accepted-inputs.md).
 

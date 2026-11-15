@@ -71,6 +71,7 @@ public import Silmaril.Semantics.Accept.Func.Thms
 public import Silmaril.Semantics.Accept.IO.Thms
 public import Silmaril.Semantics.Accept.Regex.Thms
 public import Silmaril.Semantics.Accept.Automata.Thms
+public import Silmaril.Semantics.Accept.Grammar.Thms
 public import Silmaril.Semantics.Accept.Rel.Thms
 public import Silmaril.Semantics.Accept.Session.Thms
 public import Silmaril.Semantics.Accept.Success.Thms
