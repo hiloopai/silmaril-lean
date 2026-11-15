@@ -3,7 +3,9 @@ module
 public import Silmaril.Wasm.Abstract.HostSquare.Defs
 public import Silmaril.Wasm.Abstract.HostObs.Thms
 public import Silmaril.Wasm.Abstract.HostClosingInf.Thms
+public import Silmaril.Wasm.Interp.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostSquare.Basic
+import Silmaril.Proofs.Wasm.Abstract.HostSquare.Profile
 
 /-!
 # The exact-log commuting square for host calls (stage H2): theorems
@@ -29,6 +31,20 @@ typed answers in the native host slice (`HostTyped host`, `Interp.NativeHostSlic
 * `hostSquare_cover` (**completeness**): every Core run of the invocation extends to a stuck
   end (`hostSquare_stuck`) or diverges (`hostSquare_diverges`), so is a finite prefix of an
   observation of the square.
+
+**Every profile** `P`, for a store whose Wasm functions are native-profile code
+(`Interp.NativeWasmFuncs s.funcs`) and a host satisfying the explicit side condition
+`Interp.HostNative host` (its answers keep that, and never throw). Every configuration reached
+from the invocation is then `Interp.NHConfig`, where Core steps do not depend on the profile:
+
+* `hEvStep_profile`, `evRun_profile`, `quietSteps_profile`, `diverges_noHost_profile`,
+  `coreInf_profile`: labelled steps from native code, and labelled runs, event-free runs,
+  host-free divergence and productive runs from `NHConfig` configurations, transfer between
+  profiles. A labelled step needs only `NAdmins`; host-free divergence needs no `HostNative`
+  (the host `fun _ _ _ _ => False` satisfies it, `hostNative_noHost`);
+* `coreObsL_profile`: the Core observations of an invocation are the same at every profile;
+* `hostSquare_profile`, `hostSquare_cover_profile`: the square and its completeness at every
+  profile.
 -/
 
 @[expose] public section
@@ -101,5 +117,77 @@ theorem hostSquare_cover {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
         ((∃ cs, NatObs host s a vs (.div cs)) ∨ (∃ cs m, NatObs host s a vs (.hostDiv cs m)) ∨
           ∃ ω, NatObs host s a vs (.prod ω))) :=
   Silmaril.Proofs.Wasm.Abstract.HostSquare.hostSquare_cover hT hH hs hS hok hrun
+
+/-! ## Every profile -/
+
+/-- A labelled step from native-profile code is a labelled step at every profile. -/
+theorem hEvStep_profile {P P' : Numerics.Profile} {c c' : Config H}
+    {e : Option (Call (wasmHostSig H))} (h : HEvStep P host c e c') (hc : Interp.NAdmins c.code) :
+    HEvStep P' host c e c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.hEvStep_profile h hc
+
+/-- Labelled runs transfer between profiles from a native configuration; the end is native. -/
+theorem evRun_profile {P P' : Numerics.Profile} (hN : Interp.HostNative host) {c c' : Config H}
+    {cs : List (Call (wasmHostSig H))} (h : EvRun P host c cs c') (hc : Interp.NHConfig c) :
+    EvRun P' host c cs c' ∧ Interp.NHConfig c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.evRun_profile hN h hc
+
+/-- Event-free labelled runs transfer between profiles from a native configuration. -/
+theorem quietSteps_profile {P P' : Numerics.Profile} (hN : Interp.HostNative host)
+    {c c' : Config H} (h : Relation.ReflTransGen (fun a b => HEvStep P host a none b) c c')
+    (hc : Interp.NHConfig c) :
+    Relation.ReflTransGen (fun a b => HEvStep P' host a none b) c c' ∧ Interp.NHConfig c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.quietSteps_profile hN h hc
+
+/-- The host without outcomes stays in the native profile. -/
+theorem hostNative_noHost : Interp.HostNative (fun _ _ _ _ => False : HostSemantics H) :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.hostNative_noHost
+
+/-- Host-free divergence transfers between profiles from a native configuration. -/
+theorem diverges_noHost_profile {P P' : Numerics.Profile} {c : Config H}
+    (h : Diverges P (fun _ _ _ _ => False) c) (hc : Interp.NHConfig c) :
+    Diverges P' (fun _ _ _ _ => False) c :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.diverges_noHost_profile h hc
+
+/-- Productive runs transfer between profiles from a native configuration. -/
+theorem coreInf_profile {P P' : Numerics.Profile} (hN : Interp.HostNative host) {c : Config H}
+    {ω : Nat → Call (wasmHostSig H)} (h : CoreInf P host c ω) (hc : Interp.NHConfig c) :
+    CoreInf P' host c ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.coreInf_profile hN h hc
+
+/-- **The Core observations of an invocation are the same at every profile**, for a store with
+native-profile Wasm functions and a host satisfying `Interp.HostNative`. -/
+theorem coreObsL_profile {P P' : Numerics.Profile} (hN : Interp.HostNative host)
+    {s : Store H} {a : Nat} {vs : List Val} (hW : Interp.NativeWasmFuncs s.funcs)
+    (x : FullObs H) : CoreObsL P host s a vs x ↔ CoreObsL P' host s a vs x :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.coreObsL_profile hN hW x
+
+/-- **The exact-log commuting square at every profile** (typed checked invocations, a host with
+typed answers in the native host slice), for a store with native-profile Wasm functions and a
+host satisfying `Interp.HostNative`. -/
+theorem hostSquare_profile {P : Numerics.Profile} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host) {s : Store H} {a : Nat}
+    {vs : List Val} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs) (x : FullObs H) :
+    NatObs host s a vs x ↔ CoreObsL P host s a vs x :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.hostSquare_profile hT hH hN hs hS hW hok x
+
+/-- **Completeness of the square at every profile**, for a store with native-profile Wasm
+functions and a host satisfying `Interp.HostNative`. -/
+theorem hostSquare_cover_profile {P : Numerics.Profile} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host) {s : Store H} {a : Nat}
+    {vs : List Val} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs) {c : Config H}
+    (hrun : Steps P host (invoke s a vs) c) :
+    (∃ (d : Config H) (cs : List (Call (wasmHostSig H))),
+      Steps P host c d ∧ (∀ d', ¬ Step P host d d') ∧ EvRun P host (invoke s a vs) cs d ∧
+      ((∃ e, NatObs host s a vs (.done cs e) ∧ CoreEnd d e) ∨
+        ∃ (hh : H) (us : List Val), NatObs host s a vs (.blocked cs (hh, d.store, us)) ∧
+          ∃ (E : SingleThreaded.Ctx) (a' : Nat),
+            SingleThreaded.decompose? d.store d.code = some (E, a', hh, us))) ∨
+      (Diverges P host c ∧
+        ((∃ cs, NatObs host s a vs (.div cs)) ∨ (∃ cs m, NatObs host s a vs (.hostDiv cs m)) ∨
+          ∃ ω, NatObs host s a vs (.prod ω))) :=
+  Silmaril.Proofs.Wasm.Abstract.HostSquare.hostSquare_cover_profile hT hH hN hs hS hW hok hrun
 
 end Silmaril.Wasm.Abstract
