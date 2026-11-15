@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Abstract.HostEval.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Wasm.Logic.Core.Thms
 public import Silmaril.Wasm.Interp.Thms
+public import Silmaril.Wasm.Abstract.Recursion.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostEval.CallWasm
@@ -13,6 +14,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.Invoke
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Reach
 import Silmaril.Proofs.Wasm.Abstract.HostEval.PendO
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Profile
+import Silmaril.Proofs.Wasm.Abstract.HostEval.Exit
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -139,6 +141,11 @@ and the host satisfies `Interp.HostNative` (its answers keep that, and never thr
 Native configurations step alike at every profile (`Interp.step_profile`), so the run
 and its stuck end are a run and a stuck end at the deterministic profile. Hosts that
 allocate non-native Wasm functions are not covered.
+
+**By exit flows** (`back_invoke_exit`, `back_invoke_exit_profile`): the answered end
+stated with the invocation's exit flow `exitFlow rs.length bfl = some fl` (as in
+`ClosedOutcome` and the invocation packaging): `fl = .normal ws` with `c` the values
+`ws` in `s₂`, or `fl = .trap` with `c` a trap.
 
 **Forward reachability of pending calls**, every profile: `reach_atCall`: a reach
 of a call after answered calls (`ReachO (hostCall host)`, the oracle analog of
@@ -560,6 +567,36 @@ theorem back_invoke_steps_profile {P : Silmaril.Wasm.Numerics.Profile} (hT : Hos
         ((∃ ws, fl.retVals = some ws ∧ c = ⟨s₂, {}, vals (ws.take rs.length).reverse⟩) ∨
           (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.back_invoke_steps_profile hT hH hN hs hS hW hok hrun hend
+
+/-- **`back_invoke` by exit flows** (deterministic profile). -/
+theorem back_invoke_exit {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {n : Nat} {s : Store H} {a : Nat} {vs : List Val}
+    {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN (SingleThreaded.profile o) host n (invoke s a vs) c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    Pending host c.store c.code ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H)
+        (bfl fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, bfl) ∧ exitFlow rs.length bfl = some fl ∧
+        ((∃ ws, fl = .normal ws ∧ c = ⟨s₂, {}, vals ws⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_invoke_exit hT hH hs hS hok hrun hend
+
+/-- **`back_invoke_profile` by exit flows** (every profile, native side conditions). -/
+theorem back_invoke_exit_profile {P : Silmaril.Wasm.Numerics.Profile} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host) {n : Nat} {s : Store H}
+    {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN P host n (invoke s a vs) c) (hend : ∀ c', ¬ Step P host c c') :
+    Pending host c.store c.code ∨
+      ∃ (fi : FuncInst H) (ps rs : List Validation.CValType) (s₂ : Store H)
+        (bfl fl : Binaryen.Flow),
+        s.funcs[a]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+        hostCall host s a vs (s₂, bfl) ∧ exitFlow rs.length bfl = some fl ∧
+        ((∃ ws, fl = .normal ws ∧ c = ⟨s₂, {}, vals ws⟩) ∨
+          (fl = .trap ∧ c = ⟨s₂, {}, [.trap]⟩)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.back_invoke_exit_profile hT hH hN hs hS hW hok hrun hend
 
 /-- **At a host call with no outcome, Core is blocked.** -/
 theorem atCall_pending {s : Store H} {a : Nat} {us : List Val} {es : List Admin}
