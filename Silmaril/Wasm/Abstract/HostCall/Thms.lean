@@ -14,6 +14,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostCall.Runs
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Through
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Typed
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Ctx
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Div
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -86,7 +87,14 @@ context around it goes on).
 call. It uses the sequence-context inversion `Step.callRef_host_inv_seq`, built
 on the existing head decomposition `Sim.Step.split_head`.
 
-**Not yet proved.** The backward simulation of whole native runs.
+**Divergent runs** (any profile and host): `trap_not_diverges`, `throw_not_diverges` (an
+abrupt head only bubbles), `diverges_seq_split` (a divergent run of `es ++ rest` diverges in
+`es`, or `es` runs to values and the continuation diverges), `diverges_label_split`,
+`diverges_frame_split` (a divergent label or frame diverges inside, or its body runs to an
+exit form and what it exits to diverges). The divergent counterparts of the splits above,
+for the decomposition of Core divergence.
+
+The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
 
 public section
@@ -327,5 +335,44 @@ theorem stepsN_frame_seq_split {N : Nat} {s : Store H} {f F : Frame} {ws : List 
       StepsN P host (N - N₁)
         ⟨cb.store, f, vals ws ++ [.frame n cb.frame [.label n [] cb.code]] ++ rest⟩ c :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.stepsN_frame_seq_split hrun hend
+
+/-! ## Splitting divergent runs -/
+
+/-- A head trap does not diverge. -/
+theorem trap_not_diverges {s : Store H} {f : Frame} {ws : List Val} {r : List Admin} :
+    ¬ Diverges P host ⟨s, f, vals ws ++ .trap :: r⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.trap_not_diverges
+
+/-- A head exception does not diverge. -/
+theorem throw_not_diverges {s : Store H} {f : Frame} {ws : List Val} {x : Nat}
+    {r : List Admin} : ¬ Diverges P host ⟨s, f, vals ws ++ throwing x ++ r⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.throw_not_diverges
+
+/-- **Splitting a divergent run of a sequence** `es ++ rest`: it diverges in `es`, or `es`
+runs to values `ws` and the run of `vals ws ++ rest` diverges. -/
+theorem diverges_seq_split {s : Store H} {f : Frame} {es rest : List Admin}
+    (h : Diverges P host ⟨s, f, es ++ rest⟩) :
+    Diverges P host ⟨s, f, es⟩ ∨
+      ∃ (c₁ : Config H) (ws : List Val), Steps P host ⟨s, f, es⟩ c₁ ∧ c₁.code = vals ws ∧
+        Diverges P host ⟨c₁.store, c₁.frame, vals ws ++ rest⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_seq_split h
+
+/-- **Splitting a divergent run of a label**: it diverges inside, or its body runs to an
+exit form and what it exits to diverges. -/
+theorem diverges_label_split {s : Store H} {f : Frame} {k : Nat} {cont : List Instr}
+    {is : List Admin} (h : Diverges P host ⟨s, f, [.label k cont is]⟩) :
+    Diverges P host ⟨s, f, is⟩ ∨
+      ∃ (c₁ : Config H) (out : List Admin), Steps P host ⟨s, f, is⟩ c₁ ∧
+        LabelExit k cont c₁.code out ∧ Diverges P host ⟨c₁.store, c₁.frame, out⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_label_split h
+
+/-- **Splitting a divergent run of a frame**: it diverges inside (in the frame's own frame),
+or its body runs to an exit form and what it exits to diverges in the outer frame. -/
+theorem diverges_frame_split {s : Store H} {f F : Frame} {n : Nat} {is : List Admin}
+    (h : Diverges P host ⟨s, f, [.frame n F is]⟩) :
+    Diverges P host ⟨s, F, is⟩ ∨
+      ∃ (c₁ : Config H) (out : List Admin), Steps P host ⟨s, F, is⟩ c₁ ∧
+        FrameExit c₁.store c₁.frame n c₁.code out ∧ Diverges P host ⟨c₁.store, f, out⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_frame_split h
 
 end Silmaril.Wasm.Abstract
