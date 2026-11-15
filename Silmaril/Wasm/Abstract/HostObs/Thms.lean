@@ -71,8 +71,9 @@ omits divergence; linking them to a logged, host-independent divergent closing i
 productive runs of an invocation, host-independently, are its Core runs under the universal
 host `anyHost` cut at their host events (`CoreInf`), one coherent run per stream. Against a
 host, the productive observations (`hostObsInf (coreHostRel host) (wasmEvInf P)`) are exactly
-the productive Core runs with that host. This instance is Core-level; a characterization by
-the logged native semantics (`wasmHOpen`) is a further step.
+the productive Core runs with that host. Its native characterization by the logged semantics `wasmHOpen`
+(`wasmEvInfN`, `hostObsInf_wasmEvInf_eq`) and the assembled exact-log square (`hostSquare`)
+are in `Silmaril.Wasm.Abstract.HostClosingInf` and `Silmaril.Wasm.Abstract.HostSquare`.
 -/
 
 @[expose] public section

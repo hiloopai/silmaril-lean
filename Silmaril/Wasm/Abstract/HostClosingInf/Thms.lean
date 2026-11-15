@@ -15,6 +15,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Inf
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Conv
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Div
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.FwdTrap
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.PendFwd
 
 /-!
 # Productive runs of invocations: theorems
@@ -126,14 +127,28 @@ checked invocations, a host with typed answers in the native host slice), with
 * `wasmEvFun_trap_iff`: `(cs, trap) ∈ wasmEvFun` with a log the host allows exactly when the
   invocation has a Core run with the host events `cs` to a trap, in some store.
 
+**Pending calls at exactly their log, both directions**:
+
+* `wasmEvPend_evRun` (every profile, checked stores, typed invocations, a host in the native
+  host slice): a pending call `(cs, m)` of `wasmEvPend` with a log the host allows is a Core run
+  of the invocation with exactly the host events `cs` to a configuration at the host call `m`
+  (`decompose?`), in the store of `m`. Proof (`PendFwd`): by induction on `PendL`, each descent
+  a logged reach (`reachL_fwd`) inside the callee frame; a host function invoked directly is the
+  empty run. The call may have no host outcome, so the run is built against `host` also
+  answering `m` (`answerAt`), whose step at `m` shows the call under the context built;
+* `wasmEvPend_evRun_iff` (deterministic profile, typed checked invocations, a host with typed
+  answers in the native host slice): with `evRun_pend`, the pending calls with a log the host
+  allows are exactly the Core runs with that log to a configuration at that host call.
+
 Exceptions `ret (inr t)` are not covered: the native host slice (`noThrow`) and the checker
 exclude them from the Core side, and no statement here relates them.
 
 Not yet: the exact-log finished agreement (`wasmEvFun_vals_iff`, `wasmEvFun_trap_iff`), the
 inclusion `hostObsInf_wasmEvInf_le` (so the equality of productive observations), and adequacy
-for divergence after a log (`wasmEvFunD_of_evRun`, so the equivalence `wasmEvFunD_div_iff`), at
-profiles other than the deterministic one; the forward directions (`wasmEvFun_evRun`,
-`wasmEvFun_trap_evRun`, `wasmEvInfN_coreInf`, `wasmEvFunD_div_evRun`) hold at every profile.
+for divergence after a log (`wasmEvFunD_of_evRun`, so the equivalence `wasmEvFunD_div_iff`), and
+the pending agreement `wasmEvPend_evRun_iff`, at profiles other than the deterministic one; the
+forward directions (`wasmEvFun_evRun`, `wasmEvFun_trap_evRun`, `wasmEvInfN_coreInf`,
+`wasmEvFunD_div_evRun`, `wasmEvPend_evRun`) hold at every profile.
 -/
 
 @[expose] public section
@@ -361,6 +376,36 @@ theorem wasmEvFun_trap_iff {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
       ∃ s₂, EvRun (SingleThreaded.profile o) host (invoke s a vs) cs ⟨s₂, {}, [.trap]⟩ :=
   ⟨fun h => wasmEvFun_trap_evRun hH hS hok h.1 h.2,
     fun ⟨_, h⟩ => ⟨evRun_wasmEvFun_trap hT hH hs hS hok h, evRun_consistent h⟩⟩
+
+/-- **Pending calls, natively to Core, at exactly their log** (every profile, checked stores,
+typed invocations, a host in the native host slice): a pending call `(cs, m)` of `wasmEvPend`
+with a log the host allows is a Core run of the invocation with exactly the host events `cs`,
+to a configuration at the host call `m`, in the store of `m`. -/
+theorem wasmEvPend_evRun (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat}
+    {vs : List Val} (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {cs : List (Call (wasmHostSig H))} {m : (wasmHostSig H).Op}
+    (h : (cs, m) ∈ wasmEvPend s (a, vs)) (hc : (coreHostRel host).Consistent cs) :
+    ∃ (c : Config H) (E : SingleThreaded.Ctx) (a' : Nat), EvRun P host (invoke s a vs) cs c ∧
+      SingleThreaded.decompose? c.store c.code = some (E, a', m.1, m.2.2) ∧ c.store = m.2.1 :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvPend_evRun hH hS hok h hc
+
+/-- **Pending calls at exactly their log, both directions** (deterministic profile `profile o`,
+typed checked invocations, a host with typed answers in the native host slice):
+`(cs, (hh, s', us))` is a pending call of `wasmEvPend` with a log the host allows exactly when
+the invocation has a Core run with the host events `cs` to a configuration at the host call
+`(hh, us)`, in the store `s'`. -/
+theorem wasmEvPend_evRun_iff {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s s' : Store H} {a : Nat} {vs us : List Val} {hh : H}
+    {cs : List (Call (wasmHostSig H))} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hok : InvokeOk s a vs) :
+    ((cs, (hh, s', us)) ∈ wasmEvPend s (a, vs) ∧ (coreHostRel host).Consistent cs) ↔
+      ∃ (c : Config H) (E : SingleThreaded.Ctx) (a' : Nat),
+        EvRun (SingleThreaded.profile o) host (invoke s a vs) cs c ∧
+        SingleThreaded.decompose? c.store c.code = some (E, a', hh, us) ∧ c.store = s' := by
+  constructor
+  · exact fun h => wasmEvPend_evRun hH hS hok h.1 h.2
+  · rintro ⟨c, E, a', hrun, hd, rfl⟩
+    exact ⟨evRun_pend hT hH hs hS hok hrun hd, evRun_consistent hrun⟩
 
 /-- **The converse bridge** (every profile, checked stores, typed invocations, a host in the
 native host slice): every productive run of the logged native semantics `wasmEvInfN` whose
