@@ -44,3 +44,30 @@ deterministic collapse `acceptsSome_detRun`/`acceptsAll_detRun`/`neverRejects_de
 * A *robust* acceptance (“every run accepts”): `acceptsAll`.
 
 Examples and regression tests: `Silmaril/Semantics/Accept/Examples.lean`.
+
+### `Silmaril.Semantics.Accept.Rel.Defs` / `Thms`
+
+| Name | Meaning |
+| --- | --- |
+| `α -|> β` | scoped notation (`open scoped Silmaril.Accept`) for Mathlib's `SetRel α β = Set (α × β)` |
+| `outcomes R` | `fun a => {b \| (a, b) ∈ R}`, the runner of a relation |
+| `pullSome R L` | `R.preimage L`: some output in `L` |
+| `pullAll R L` | `R.core L`: every output in `L` (vacuous with none) |
+| `ofPartial f` | relation of `f : α → Option β` (`f a = some b`) |
+| `ofTotal f` | `Function.graph f` |
+| `partialComp f g` | Kleisli composition `fun a => (f a).bind g` |
+| `pdom f` | `{a \| (f a).isSome}` |
+| `IndexedLang A` | `∀ i, Set (A i)` |
+| `eraseSigma L` / `fiberLang M` | to and from `Set (Σ i, A i)`; `indexedLangIso` is an order isomorphism |
+| `eraseSome L` / `eraseAll L` | `⋃ i, L i` / `⋂ i, L i` over a common carrier |
+
+Rejection quantifiers: `neverRejects (outcomes R) rej = pullAll R rejᶜ`;
+`compl_pullSome : (pullSome R L)ᶜ = pullAll R Lᶜ`; for a partial function, `none` is in every
+`pullAll` and no `pullSome` (`mem_pullAll_ofPartial_of_none`,
+`not_mem_pullSome_ofPartial_of_none`), and `pullSome_ofPartial_eq`/`pullAll_ofPartial_eq`
+relate them through `pdom`. `not_mem_eraseSome` (rejected at every index) and
+`not_mem_eraseAll` (rejected at some index). Composition: `pullSome_comp`, `pullAll_comp`,
+`ofPartial_partialComp`, `ofTotal_comp`, `ofPartial_some_comp`. Checkers:
+`Decides.optionAny`, `Decides.optionAll`, `Decides.sigma`, `Decides.fiber`.
+
+Examples: `Silmaril/Semantics/Accept/Rel/Examples.lean`.
