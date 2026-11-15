@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Abstract.StoreCall.Thms
 public import Silmaril.Wasm.Abstract.DivO.Thms
 public import Silmaril.Wasm.Abstract.HostEval.Thms
 import Silmaril.Proofs.Wasm.Abstract.FullObsNative.Obs
+import Silmaril.Proofs.Wasm.Abstract.FullObsNative.Silent
 
 /-!
 # Full observations of the exposed native body, filtered by an oracle: theorems
@@ -38,6 +39,16 @@ EH/pending-tail `denXP`/`EvalOXP` is assumed or used):
 
 * `evalH_iff_obs`, `evalH_trap_iff_obs`: the finite part is the H2 native semantics `EvalH host`;
 * `localDivO_host_obsC`, `localDivO_host_of_obsC_inf`: local divergence `LocalDivO (hostCall host)`;
+* **silent paths are exact on checked typed trees**: `silent_localDivO_host`, under the hypotheses
+  of `back_whole` (`HostTyped host`, `Interp.NativeHostSlice host`, `Interp.StoreChk s.funcs`, the
+  arity check of the trees, a typed Core configuration), every `hostCall host`-answered silent
+  path is `LocalDivO (hostCall host)`: no stuck configuration is reachable (the check rejects
+  `try_table` and unknown arities and resolves callees; typed progress rules out flat rejections
+  and a bad `if` condition; a sound oracle never answers a branch past the callee's label). So
+  `localDivO_host_iff`: there, `LocalDivO (hostCall host)` is exactly a silent path after
+  answered calls or an infinite answered run (`localDivO_host_obsC_iff` on the observation).
+  Proof by coinduction on "checked, typed, and has an answered silent path", the hypotheses
+  carried past finished prefixes as in `div_whole`;
 * invocation bodies: `hostCall_wasm_iff`, `hostCall_iff_obs`, `hostCall_trap_iff_obs` (the H2
   callee relation on a Wasm function is its filtered body observation, as `EvalH`), and
   `localCallDivO_host_obsC`, `localCallDivO_host_of_obsC` (the `LocalCallDivO (hostCall host)`
@@ -196,6 +207,48 @@ theorem localDivO_host_of_obsC_inf {host : HostSemantics H} {s : Store H} {f : F
     {stk : List Val} {es : List BExpr} {ω : Nat → Call (liftSig (CallSig H))}
     (h : ω ∈ (obsC (hostCall host) es f stk).2 ⟨s⟩ ⟨⟩) : LocalDivO (hostCall host) s f stk es :=
   localDivO_of_obsC_inf h
+
+/-- **H2 silent paths of checked typed trees are local divergence.** Under the hypotheses of
+`back_whole`, a silent path after `hostCall host`-answered calls reaches no stuck configuration,
+so it is local divergence. -/
+theorem silent_localDivO_host {host : HostSemantics H} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame} {stk : List Val}
+    {es : List BExpr} {labels : List Nat} {ret : Nat} {out : Option Nat}
+    (hS : Interp.StoreChk s.funcs)
+    (hc : Interp.chk s.funcs f.module f.locals.length ret labels (some stk.length) es = some out)
+    (ht : Sim.ContextTyped ⟨s, f, vals stk.reverse ++ expression (BExpr.lowerList es)⟩) :
+    (∃ cs, Answered (hostCall host) cs ∧
+      Path (((denListE es f stk : M (CallSig H) H Res).run ⟨s⟩).run) cs .div) →
+      LocalDivO (hostCall host) s f stk es :=
+  Silmaril.Proofs.Wasm.Abstract.FullObsNative.silent_localDivO_host hT hH hS hc ht
+
+/-- **H2 local divergence of checked typed trees, exactly**: a silent path after answered calls
+or an infinite answered run. -/
+theorem localDivO_host_iff {host : HostSemantics H} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame} {stk : List Val}
+    {es : List BExpr} {labels : List Nat} {ret : Nat} {out : Option Nat}
+    (hS : Interp.StoreChk s.funcs)
+    (hc : Interp.chk s.funcs f.module f.locals.length ret labels (some stk.length) es = some out)
+    (ht : Sim.ContextTyped ⟨s, f, vals stk.reverse ++ expression (BExpr.lowerList es)⟩) :
+    LocalDivO (hostCall host) s f stk es ↔
+      (∃ cs, Answered (hostCall host) cs ∧
+        Path (((denListE es f stk : M (CallSig H) H Res).run ⟨s⟩).run) cs .div) ∨
+        ∃ ω, AnsweredS (hostCall host) ω ∧
+          InfPath (((denListE es f stk : M (CallSig H) H Res).run ⟨s⟩).run) ω :=
+  localDivO_iff_of_silent (silent_localDivO_host hT hH hS hc ht)
+
+/-- **H2 local divergence of checked typed trees, on the filtered observation**: a silent end or
+a productive run. -/
+theorem localDivO_host_obsC_iff {host : HostSemantics H} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame} {stk : List Val}
+    {es : List BExpr} {labels : List Nat} {ret : Nat} {out : Option Nat}
+    (hS : Interp.StoreChk s.funcs)
+    (hc : Interp.chk s.funcs f.module f.locals.length ret labels (some stk.length) es = some out)
+    (ht : Sim.ContextTyped ⟨s, f, vals stk.reverse ++ expression (BExpr.lowerList es)⟩) :
+    LocalDivO (hostCall host) s f stk es ↔
+      (∃ c, (c, End.div) ∈ (obsC (hostCall host) es f stk).1 ⟨s⟩ ⟨⟩) ∨
+        ∃ ω, ω ∈ (obsC (hostCall host) es f stk).2 ⟨s⟩ ⟨⟩ :=
+  (localDivO_host_iff hT hH hS hc ht).trans (or_congr obsC_div_iff.symm obsC_inf_iff.symm)
 
 /-- The H2 callee relation on a Wasm function: its body, run by `EvalH`. -/
 theorem hostCall_wasm_iff {host : HostSemantics H} {s : Store H} {a : Nat} {us : List Val}
