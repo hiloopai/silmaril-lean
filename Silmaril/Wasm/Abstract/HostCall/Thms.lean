@@ -15,6 +15,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostCall.Through
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Typed
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Ctx
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Div
+import Silmaril.Proofs.Wasm.Abstract.HostCall.Events
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -104,6 +105,14 @@ configurations): `diverges_through`, `diverges_through_steps`. Host-free steps j
 one step, and every successor other than the interpreter's (`stepI`) is a bubbling step that
 shrinks the code (`Interp.step?_lag_at`), so a divergent trace can be redirected through any
 host-free successor.
+
+**Host events of Core runs** (any profile and host). `HEvStep`: a Core step labelled by
+its host event (`none`: host-free or a divergence stutter; `some e`: an answered host call).
+`hEvStep_step`, `step_hEvStep`: labelled steps are exactly the Core steps; `hEvStep_unique`:
+the label is determined by the step, so no host event is dropped or invented.
+**`diverges_events`**: a Core run diverges iff it is quiescent after a finite run with host
+events `cs` (`EvRun`, `Quiet`), or productive with an infinite stream `ω` of host events
+(`CoreInf`, one coherent run cut at its events). No determinism is assumed.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -445,5 +454,38 @@ theorem diverges_through_steps {o : SingleThreaded.GrowOracle} {K T : Config H}
     (hpred : Relation.ReflTransGen (SingleThreaded.Det.DStep o) K T) (ht : Sim.ContextTyped K)
     (hK : Diverges (SingleThreaded.profile o) host K) : Diverges (SingleThreaded.profile o) host T :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_through_steps hpred ht hK
+
+/-! ## Host events of Core runs -/
+
+/-- A labelled step is a Core step. -/
+theorem hEvStep_step {c c' : Config H} {e : Option (Call (wasmHostSig H))}
+    (h : HEvStep P host c e c') : Step P host c c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hEvStep_step h
+
+/-- Every Core step is labelled. -/
+theorem step_hEvStep {c c' : Config H} (h : Step P host c c') : ∃ e, HEvStep P host c e c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.step_hEvStep h
+
+/-- **The label of a step is determined**: no host event is dropped or invented. -/
+theorem hEvStep_unique {c c' : Config H} {e e' : Option (Call (wasmHostSig H))}
+    (h : HEvStep P host c e c') (h' : HEvStep P host c e' c') : e = e' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.hEvStep_unique h h'
+
+/-- A finite labelled run is a Core run. -/
+theorem evRun_steps {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRun P host c cs c') : Steps P host c c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_steps h
+
+/-- A productive run is Core divergence. -/
+theorem coreInf_diverges {c : Config H} {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf P host c ω) : Diverges P host c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_diverges h
+
+/-- **Divergence by host events**: a Core run diverges iff it is quiescent after a finite run
+with host events `cs`, or productive with an infinite stream `ω` of host events. -/
+theorem diverges_events {c : Config H} :
+    Diverges P host c ↔
+      (∃ cs c', EvRun P host c cs c' ∧ Quiet P host c') ∨ ∃ ω, CoreInf P host c ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_events
 
 end Silmaril.Wasm.Abstract

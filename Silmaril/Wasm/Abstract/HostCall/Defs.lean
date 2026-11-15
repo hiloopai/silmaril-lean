@@ -3,6 +3,7 @@ module
 public import Silmaril.Games.Abstract.HostRun.Defs
 public import Silmaril.Wasm.Execution.Core.Step
 public import Silmaril.Wasm.Execution.Core.Soundness.Defs
+public import Silmaril.Wasm.SingleThreaded.Thread
 
 /-!
 # Core 3.0 host calls as a relational host (stage H2, first step)
@@ -63,5 +64,40 @@ def HostTyped (host : HostSemantics H) : Prop :=
 outcome `host` has, so every Core step with `host` is one with it. -/
 def totalize (host : HostSemantics H) : HostSemantics H := fun h s vs out =>
   host h s vs out ∨ (out = .diverged ∧ ∀ o, ¬ host h s vs o)
+
+/-! ## Host events of Core runs -/
+
+/-- **A Core step labelled by its host event.** `none`: a host-free step, or a stutter at a
+host call the host may diverge on. `some e`: the answered host call `e.1 = (hh, s, us)` at
+the configuration's callout (`decompose?`), answered `e.2 = (s', r)` by the host. -/
+def HEvStep (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (c : Config H) :
+    Option (Call (wasmHostSig H)) → Config H → Prop
+  | none, c' => Step P (fun _ _ _ _ => False) c c' ∨
+      (c' = c ∧ ∃ E a hh us, SingleThreaded.decompose? c.store c.code = some (E, a, hh, us) ∧
+        host hh c.store us .diverged)
+  | some e, c' => ∃ E a, SingleThreaded.decompose? c.store c.code = some (E, a, e.1.1, e.1.2.2) ∧
+      e.1.2.1 = c.store ∧ host e.1.1 c.store e.1.2.2 (.returned e.2.1 e.2.2) ∧
+      c' = ⟨e.2.1, c.frame, E.fill e.2.2.toAdmin⟩
+
+/-- A finite labelled run, with its host events in order. -/
+inductive EvRun (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) :
+    Config H → List (Call (wasmHostSig H)) → Config H → Prop where
+  | refl (c : Config H) : EvRun P host c [] c
+  | silent {c₁ c₂ c₃ : Config H} {cs : List (Call (wasmHostSig H))} :
+      HEvStep P host c₁ none c₂ → EvRun P host c₂ cs c₃ → EvRun P host c₁ cs c₃
+  | event {c₁ c₂ c₃ : Config H} {e : Call (wasmHostSig H)} {cs : List (Call (wasmHostSig H))} :
+      HEvStep P host c₁ (some e) c₂ → EvRun P host c₂ cs c₃ → EvRun P host c₁ (e :: cs) c₃
+
+/-- **Quiescent divergence**: an infinite run without host events. -/
+def Quiet (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (c : Config H) : Prop :=
+  Silmaril.InfiniteTrace (fun a b => HEvStep P host a none b) c
+
+/-- **A productive infinite run with host events `ω`**: one Core run from `c`, cut into
+segments `g n ⟶ g (n + 1)`, each event-free steps and then the host event `ω n`. -/
+def CoreInf (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (c : Config H)
+    (ω : Nat → Call (wasmHostSig H)) : Prop :=
+  ∃ g : Nat → Config H, g 0 = c ∧ ∀ n, ∃ c₁,
+    Relation.ReflTransGen (fun a b => HEvStep P host a none b) (g n) c₁ ∧
+      HEvStep P host c₁ (some (ω n)) (g (n + 1))
 
 end Silmaril.Wasm.Abstract
