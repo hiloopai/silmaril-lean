@@ -202,6 +202,13 @@ def BlockedAt (host : HostSemantics H) (c : Config H) (y : (wasmOShape H).self.O
   ∃ (fi : FuncInst H) (hh : H), y.2.2 = c.store ∧ c.store.funcs[y.1]? = some fi ∧
     fi.code = .host hh ∧ (∀ o, ¬ host hh c.store y.2.1 o) ∧ AtCall c.store y.1 y.2.1 c.code
 
+/-- The trees reach, directly or through callee bodies, a host call the host may diverge on. -/
+def HostDivReach (host : HostSemantics H) (s : Store H) (f : Frame) (stk : List Val)
+    (es : List BExpr) : Prop :=
+  ∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+    ReachP (hostCall host) s f stk es y ∧ y.2.2.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧
+      host hh y.2.2 y.2.1 .diverged
+
 /-! ## Backward simulation: the conclusion -/
 
 /-- **The backward conclusion**: a stuck end `c` of a Core run of the lowered

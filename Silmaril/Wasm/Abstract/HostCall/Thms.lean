@@ -93,9 +93,17 @@ abrupt head only bubbles), `diverges_seq_split` (a divergent run of `es ++ rest`
 `diverges_frame_split` (a divergent label or frame diverges inside, or its body runs to an
 exit form and what it exits to diverges), `diverges_host_call` (at a host call the host
 may diverge, or it answers and the continuation diverges), `diverges_wasm_call` (a Wasm call
-enters the callee's frame, which diverges). The divergent counterparts of the
-splits above,
-for the decomposition of Core divergence.
+enters the callee's frame, which diverges), `diverges_label_seq_split`,
+`diverges_frame_seq_split` (the same for a label or a call frame in place, under values and
+before a continuation: the body diverges, or it runs to a stuck end and the context around
+that end diverges). The divergent counterparts of the splits above, for the decomposition of
+Core divergence.
+
+**Divergent runs pass through host-free steps** (deterministic profile, any host, typed
+configurations): `diverges_through`, `diverges_through_steps`. Host-free steps join within
+one step, and every successor other than the interpreter's (`stepI`) is a bubbling step that
+shrinks the code (`Interp.step?_lag_at`), so a divergent trace can be redirected through any
+host-free successor.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -401,5 +409,41 @@ theorem diverges_wasm_call {s : Store H} {f : Frame} {vs : List Val} {a : Nat} {
       Diverges P host ⟨s, f, vals vs₁ ++ [.frame rs.length (Frame.forCall fi.module vs₂ code.locals)
         [.label rs.length [] (expression code.body)]]⟩ :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_wasm_call hr hf hcode h
+
+/-- **Splitting a divergent run of a label in place**, under values and before a
+continuation: the body diverges, or it runs to a stuck end and the label around that end
+diverges. -/
+theorem diverges_label_seq_split {s : Store H} {f : Frame} {ws : List Val} {n : Nat}
+    {cont : List Instr} {b rest : List Admin}
+    (h : Diverges P host ⟨s, f, vals ws ++ [.label n cont b] ++ rest⟩) :
+    Diverges P host ⟨s, f, b⟩ ∨
+      ∃ cb : Config H, Steps P host ⟨s, f, b⟩ cb ∧ (∀ c', ¬ Step P host cb c') ∧
+        Diverges P host ⟨cb.store, cb.frame, vals ws ++ [.label n cont cb.code] ++ rest⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_label_seq_split h
+
+/-- **Splitting a divergent run of a call frame in place**: the callee body diverges in its
+frame, or it runs to a stuck end and the frame and label around that end diverge. -/
+theorem diverges_frame_seq_split {s : Store H} {f F : Frame} {ws : List Val} {n : Nat}
+    {b rest : List Admin}
+    (h : Diverges P host ⟨s, f, vals ws ++ [.frame n F [.label n [] b]] ++ rest⟩) :
+    Diverges P host ⟨s, F, b⟩ ∨
+      ∃ cb : Config H, Steps P host ⟨s, F, b⟩ cb ∧ (∀ c', ¬ Step P host cb c') ∧
+        Diverges P host
+          ⟨cb.store, f, vals ws ++ [.frame n cb.frame [.label n [] cb.code]] ++ rest⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_frame_seq_split h
+
+/-- **A divergent run passes through every host-free step** of a typed configuration
+(deterministic profile, any host). -/
+theorem diverges_through {o : SingleThreaded.GrowOracle} {K d : Config H}
+    (ht : Sim.ContextTyped K) (hK : Diverges (SingleThreaded.profile o) host K)
+    (hd : SingleThreaded.Det.DStep o K d) : Diverges (SingleThreaded.profile o) host d :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_through ht hK hd
+
+/-- **A divergent run passes through every host-free run** of a typed configuration
+(deterministic profile, any host). -/
+theorem diverges_through_steps {o : SingleThreaded.GrowOracle} {K T : Config H}
+    (hpred : Relation.ReflTransGen (SingleThreaded.Det.DStep o) K T) (ht : Sim.ContextTyped K)
+    (hK : Diverges (SingleThreaded.profile o) host K) : Diverges (SingleThreaded.profile o) host T :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_through_steps hpred ht hK
 
 end Silmaril.Wasm.Abstract

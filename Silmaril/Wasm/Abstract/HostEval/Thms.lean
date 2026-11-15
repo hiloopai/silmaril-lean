@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Wasm.Logic.Core.Thms
 public import Silmaril.Wasm.Interp.Thms
 public import Silmaril.Wasm.Abstract.Recursion.Defs
+public import Silmaril.Wasm.Abstract.DivO.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostEval.CallWasm
@@ -15,6 +16,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.Reach
 import Silmaril.Proofs.Wasm.Abstract.HostEval.PendO
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Profile
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Exit
+import Silmaril.Proofs.Wasm.Abstract.HostEval.DivWhole
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -165,6 +167,17 @@ every profile: `invoke_pendO_atCall` (reached in Core, under the callee frames a
 labels entered on the way), `invoke_pendO_blocked` (a host call with no outcome is
 a reachable stuck `Pending` configuration), `invoke_pendO_diverges` (a host call
 the host may diverge on makes the invocation diverge in Core).
+
+**Divergent runs** (`div_whole`, deterministic profile `SingleThreaded.profile o`): for a
+host with typed answers in the native host slice, under the hypotheses of `back_whole`, a
+divergent Core run of the lowered trees either reaches a host call the host may diverge on
+(`HostDivReach`: a call `y` the trees reach through answered calls and Wasm callee bodies,
+`ReachP (hostCall host)`, of a host function whose host may diverge on it), or the open
+native semantics with host calls diverges coinductively (`EvalDivO (hostCall host)`). The
+coinductive counterpart of `back_whole`: the divergent run is split at each tree
+(`HostCall.diverges_seq_split`, `diverges_label_seq_split`, `diverges_frame_seq_split`,
+`diverges_host_call`), finite parts are read by `back_whole`, and host-free steps are passed
+through (`HostCall.diverges_through_steps`). Nothing is claimed for other profiles.
 
 **Not yet proved.** The commuting square with `HostRun.hostObs` (once the logged
 packaging exists), and the backward direction in other profiles.-/
@@ -510,6 +523,20 @@ theorem back_whole_steps {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
     BackOut host s f stk es c := by
   obtain ⟨n, hn⟩ := stepsN_of_steps hrun
   exact back_whole hT hH hS hc ht hn hend
+
+/-- **Divergent runs with host calls** (deterministic profile `profile o`): a divergent Core
+run of arity-checked, typed trees reaches a host call the host may diverge on
+(`HostDivReach`), or the open native semantics with host calls diverges coinductively
+(`EvalDivO (hostCall host)`). The coinductive counterpart of `back_whole`. -/
+theorem div_whole {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) :
+    ∀ s f stk es labels ret out, Interp.StoreChk s.funcs →
+      Interp.chk s.funcs f.module f.locals.length ret labels (some stk.length) es = some out →
+      Sim.ContextTyped ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ →
+      Diverges (SingleThreaded.profile o) host
+        ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ →
+      HostDivReach host s f stk es ∨ EvalDivO (hostCall host) s f stk es :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.div_whole hT hH
 
 /-- **A blocked host call is stuck**, in any frame and profile. -/
 theorem pending_stuck {P : Silmaril.Wasm.Numerics.Profile} {s : Store H} {es : List Admin}
