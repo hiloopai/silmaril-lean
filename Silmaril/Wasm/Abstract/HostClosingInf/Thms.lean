@@ -13,6 +13,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Quiet
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Log
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Inf
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Conv
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Div
 
 /-!
 # Productive runs of invocations: theorems
@@ -84,6 +85,21 @@ the native host slice; no determinism and no `HostTyped` needed):
   by iteration); a descent is a logged Core run from the call into the reached call, inside the
   callee frame; a descent path then a productive body, or an infinite chain of descents nested
   ever deeper, is a productive Core run;
+* `wasmEvFunD_div_evRun` (**the converse of quiescent adequacy**): every divergent behaviour
+  `(cs, div) ∈ wasmEvFunD` whose log the host allows is a Core run of the invocation with
+  exactly the host events `cs` (`EvRun`), then host-free divergence. Proof (`Div`): `close` has
+  no `div`; an infinite descent chain with finitely many import calls is the logged Core run of
+  the descents carrying them, then infinitely many host-free descents nested ever deeper, each
+  entering its callee in one step; a descent path to logged local divergence (`LDLw`) is the
+  logged Core run of the path and of the `EvalL` prefix (`reachL_fwd`, `prefix_glue`, …), then
+  host-free local divergence (`LocalDivO quietCall`), which is Core host-free divergence of the
+  checked trees: a non-trapping terminating run with host-free callees is a logged run with no
+  import call, and every unfolding takes a Core step or continues with strictly smaller trees
+  (`InfiniteTrace.coinduct`). The simulation runs against `host` without its divergent outcomes,
+  so the contexts it builds also lift host-free steps;
+* `wasmEvFunD_div_iff` (deterministic profile, a host with typed answers in the native host
+  slice, typed invocations): with `wasmEvFunD_of_evRun`, **divergence after a log is exactly
+  quiescent Core divergence after a run with that log**;
 * `hostObsInf_wasmEvInfN_le` (every profile): so the productive observations of `wasmEvInfN`
   against such a host are productive observations of the Core witness `wasmEvInf P`;
 * `hostObsInf_wasmEvInf_eq` (deterministic profile, a host with typed answers in the native
@@ -91,11 +107,11 @@ the native host slice; no determinism and no `HostTyped` needed):
   `hostObsInf (coreHostRel host) (wasmEvInf (profile o)) = hostObsInf (coreHostRel host)
   wasmEvInfN`. The inclusion `⊆` is `hostObsInf_wasmEvInf_le` (deterministic profile only).
 
-Not yet: the converse for divergence (every `(cs, div) ∈ wasmEvFunD` with a log the host
-allows is a Core run with that log, then host-free divergence), the exact-log forward run of a
-*trapping* finished behaviour (`wasmEvFun_evRun` covers returning ones), and the inclusion
-`hostObsInf_wasmEvInf_le` (so the equality of productive observations) at profiles other than
-the deterministic one.
+Not yet: the exact-log forward run of a *trapping* finished behaviour (`wasmEvFun_evRun` covers
+returning ones), the inclusion `hostObsInf_wasmEvInf_le` (so the equality of productive
+observations) at profiles other than the deterministic one, and likewise adequacy for divergence
+after a log (`wasmEvFunD_of_evRun`, so the equivalence `wasmEvFunD_div_iff`) at profiles other
+than the deterministic one.
 -/
 
 @[expose] public section
@@ -296,6 +312,31 @@ theorem wasmEvInfN_coreInf (hH : Interp.NativeHostSlice host) {s : Store H} {a :
     (hc : ∀ n, coreHostRel host (ω n).1 (.answer (ω n).2)) :
     CoreInf P host (invoke s a vs) ω :=
   Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvInfN_coreInf hH hS hok h hc
+
+/-- **The converse of quiescent adequacy** (every profile, checked stores, typed invocations, a
+host in the native host slice): a divergent behaviour `(cs, div)` of `wasmEvFunD` whose log the
+host allows is a Core run of the invocation with exactly the host events `cs`, then host-free
+divergence. -/
+theorem wasmEvFunD_div_evRun (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat}
+    {vs : List Val} (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {cs : List (Call (wasmHostSig H))} (h : (cs, .div) ∈ wasmEvFunD s (a, vs))
+    (hc : (coreHostRel host).Consistent cs) :
+    ∃ c', EvRun P host (invoke s a vs) cs c' ∧ Diverges P (fun _ _ _ _ => False) c' :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvFunD_div_evRun hH hS hok h hc
+
+/-- **Divergence after a log, both directions** (deterministic profile `profile o`, typed checked
+invocations, a host with typed answers in the native host slice): `(cs, div)` is a behaviour of
+`wasmEvFunD` with a log the host allows exactly when the invocation has a Core run with the host
+events `cs`, then host-free divergence. -/
+theorem wasmEvFunD_div_iff {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val}
+    {cs : List (Call (wasmHostSig H))} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hok : InvokeOk s a vs) :
+    ((cs, .div) ∈ wasmEvFunD s (a, vs) ∧ (coreHostRel host).Consistent cs) ↔
+      ∃ c', EvRun (SingleThreaded.profile o) host (invoke s a vs) cs c' ∧
+        Diverges (SingleThreaded.profile o) (fun _ _ _ _ => False) c' :=
+  ⟨fun h => wasmEvFunD_div_evRun hH hS hok h.1 h.2,
+    fun ⟨_, hrun, hd⟩ => wasmEvFunD_of_evRun hT hH hs hS hok hrun hd⟩
 
 /-- **The productive observations of `wasmEvInfN` are Core observations** (every profile): against
 a host in the native host slice, `wasmEvInfN` observes no productive run that the Core witness
