@@ -244,4 +244,56 @@ theorem diverges_events {c : Config H} :
     · exact Silmaril.InfiniteTrace.of_steps (evRun_steps hr) (quiet_diverges hq)
     · exact coreInf_diverges h
 
+/-! ## Prefixes and consistency -/
+
+theorem evRun_trans {c₁ c₂ c₃ : Config H} {cs cs' : List (Call (wasmHostSig H))}
+    (h : EvRun P host c₁ cs c₂) (h' : EvRun P host c₂ cs' c₃) : EvRun P host c₁ (cs ++ cs') c₃ := by
+  induction h with
+  | refl => exact h'
+  | silent hs _ ih => exact .silent hs (ih h')
+  | event hs _ ih => exact .event hs (ih h')
+
+/-- The events of an answered step are allowed by the host. -/
+theorem hEvStep_consistent {c c' : Config H} {e : Call (wasmHostSig H)}
+    (h : HEvStep P host c (some e) c') : coreHostRel host e.1 (.answer e.2) := by
+  obtain ⟨E, a, -, hs, hans, -⟩ := h
+  simpa [coreHostRel, hs] using hans
+
+/-- **The events of a finite labelled run are allowed by the host.** -/
+theorem evRun_consistent {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRun P host c cs c') : (coreHostRel host).Consistent cs := by
+  induction h with
+  | refl => exact fun _ h => nomatch h
+  | silent _ _ ih => exact ih
+  | event hs _ ih =>
+    intro x hx
+    rcases List.mem_cons.mp hx with rfl | hx
+    · exact hEvStep_consistent hs
+    · exact ih x hx
+
+/-- **The events of a productive run are allowed by the host.** -/
+theorem coreInf_consistent {c : Config H} {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf P host c ω) (n : Nat) : coreHostRel host (ω n).1 (.answer (ω n).2) := by
+  obtain ⟨g, -, hg⟩ := h
+  obtain ⟨_, -, he⟩ := hg n
+  exact hEvStep_consistent he
+
+/-- **Prefix agreement**: the first `n` events of a productive run are the events of a finite
+labelled run of the same run, which continues productively with the remaining events. -/
+theorem coreInf_prefix {c : Config H} {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf P host c ω) (n : Nat) :
+    ∃ c', EvRun P host c (List.ofFn fun i : Fin n => ω i) c' ∧
+      CoreInf P host c' (fun k => ω (n + k)) := by
+  obtain ⟨g, hg0, hg⟩ := h
+  have seg : ∀ m, EvRun P host (g m) [ω m] (g (m + 1)) := by
+    intro m
+    obtain ⟨c₁, hr, he⟩ := hg m
+    exact evRun_of_silent hr (.event he (.refl _))
+  refine ⟨g n, ?_, fun k => g (n + k), rfl, fun k => by simpa [Nat.add_assoc] using hg (n + k)⟩
+  induction n with
+  | zero => rw [← hg0]; exact .refl _
+  | succ n ih =>
+    rw [List.ofFn_succ_last]
+    exact evRun_trans ih (seg n)
+
 end Silmaril.Proofs.Wasm.Abstract.HostCall

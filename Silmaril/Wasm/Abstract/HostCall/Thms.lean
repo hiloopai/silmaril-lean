@@ -107,12 +107,19 @@ shrinks the code (`Interp.step?_lag_at`), so a divergent trace can be redirected
 host-free successor.
 
 **Host events of Core runs** (any profile and host). `HEvStep`: a Core step labelled by
-its host event (`none`: host-free or a divergence stutter; `some e`: an answered host call).
+its host event (`some e`: every answered host call, whatever its result and context; `none`:
+a host-free step or a stutter at a host call the host diverges on). `Quiet` is divergence
+without answered host calls, which includes stuttering at a diverging host call: it is not
+claimed to be pure Wasm divergence.
 `hEvStep_step`, `step_hEvStep`: labelled steps are exactly the Core steps; `hEvStep_unique`:
 the label is determined by the step, so no host event is dropped or invented.
 **`diverges_events`**: a Core run diverges iff it is quiescent after a finite run with host
 events `cs` (`EvRun`, `Quiet`), or productive with an infinite stream `ω` of host events
 (`CoreInf`, one coherent run cut at its events). No determinism is assumed.
+`evRun_consistent`, `coreInf_consistent`: every recorded event is an answer the host allows.
+`coreInf_prefix` (**prefix agreement**): the first `n` events of a productive run are the
+events of a finite labelled run of that same run, which continues productively with the
+remaining events.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -487,5 +494,28 @@ theorem diverges_events {c : Config H} :
     Diverges P host c ↔
       (∃ cs c', EvRun P host c cs c' ∧ Quiet P host c') ∨ ∃ ω, CoreInf P host c ω :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.diverges_events
+
+/-- Finite labelled runs compose. -/
+theorem evRun_trans {c₁ c₂ c₃ : Config H} {cs cs' : List (Call (wasmHostSig H))}
+    (h : EvRun P host c₁ cs c₂) (h' : EvRun P host c₂ cs' c₃) : EvRun P host c₁ (cs ++ cs') c₃ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_trans h h'
+
+/-- **The events of a finite labelled run are allowed by the host.** -/
+theorem evRun_consistent {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRun P host c cs c') : (coreHostRel host).Consistent cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evRun_consistent h
+
+/-- **The events of a productive run are allowed by the host.** -/
+theorem coreInf_consistent {c : Config H} {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf P host c ω) (n : Nat) : coreHostRel host (ω n).1 (.answer (ω n).2) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_consistent h n
+
+/-- **Prefix agreement**: the first `n` events of a productive run are the events of a finite
+labelled run of that run, which continues productively with the remaining events. -/
+theorem coreInf_prefix {c : Config H} {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf P host c ω) (n : Nat) :
+    ∃ c', EvRun P host c (List.ofFn fun i : Fin n => ω i) c' ∧
+      CoreInf P host c' (fun k => ω (n + k)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.coreInf_prefix h n
 
 end Silmaril.Wasm.Abstract

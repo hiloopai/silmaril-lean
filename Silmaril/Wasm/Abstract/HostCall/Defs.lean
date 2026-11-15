@@ -67,9 +67,10 @@ def totalize (host : HostSemantics H) : HostSemantics H := fun h s vs out =>
 
 /-! ## Host events of Core runs -/
 
-/-- **A Core step labelled by its host event.** `none`: a host-free step, or a stutter at a
-host call the host may diverge on. `some e`: the answered host call `e.1 = (hh, s, us)` at
-the configuration's callout (`decompose?`), answered `e.2 = (s', r)` by the host. -/
+/-- **A Core step labelled by its host event.** `some e`: an answered host call, `e.1 = (hh, s, us)`
+at the configuration's callout (`decompose?`, under any context), answered `e.2 = (s', r)` by
+the host, whatever the result (values, trap or exception). `none`: a host-free step, or a
+stutter at a host call the host diverges on (no answer is produced, so no event). -/
 def HEvStep (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (c : Config H) :
     Option (Call (wasmHostSig H)) → Config H → Prop
   | none, c' => Step P (fun _ _ _ _ => False) c c' ∨
@@ -88,7 +89,8 @@ inductive EvRun (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) :
   | event {c₁ c₂ c₃ : Config H} {e : Call (wasmHostSig H)} {cs : List (Call (wasmHostSig H))} :
       HEvStep P host c₁ (some e) c₂ → EvRun P host c₂ cs c₃ → EvRun P host c₁ (e :: cs) c₃
 
-/-- **Quiescent divergence**: an infinite run without host events. -/
+/-- **Quiescent divergence**: an infinite run without answered host calls. It is *not* pure
+Wasm divergence: it includes stuttering forever at a host call the host diverges on. -/
 def Quiet (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (c : Config H) : Prop :=
   Silmaril.InfiniteTrace (fun a b => HEvStep P host a none b) c
 
