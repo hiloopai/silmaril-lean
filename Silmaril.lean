@@ -69,6 +69,7 @@ public import Silmaril.SSA.LambdaRTL.Version.Institution.Defs
 public import Silmaril.SSA.LambdaRTL.Version.Thms
 public import Silmaril.Semantics.Accept.Func.Thms
 public import Silmaril.Semantics.Accept.IO.Thms
+public import Silmaril.Semantics.Accept.Regex.Thms
 public import Silmaril.Semantics.Accept.Rel.Thms
 public import Silmaril.Semantics.Accept.Session.Thms
 public import Silmaril.Semantics.Accept.Success.Thms

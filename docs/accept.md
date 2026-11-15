@@ -373,3 +373,8 @@ them. A host trap (`imp … none`) is not an event of any run; the component's o
 outputs are decoded per event (`Val` lists); typing is the decoders' job. Asynchronous
 components (component-model `async`, futures, streams, overlapping calls) are out of scope:
 they need call IDs supplied by the decoder and `Ev` directly.
+
+### Presentations: regular expressions
+
+Regular-expression syntax with abstract leaves over Mathlib's `Language α`, and byte
+specialisation: [accept-regex.md](accept-regex.md).
