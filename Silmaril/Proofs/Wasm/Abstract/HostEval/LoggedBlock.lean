@@ -50,6 +50,7 @@ def CallOutL (o : GrowOracle) (host : HostSemantics H) (n : Nat) (s₁ : Store H
       hostCall host s₁ a (stk₁.take ps.length).reverse (s₂, fl) ∧
       (∀ vs, fl.retVals = some vs → (q, .ret (.inl (vs.take rs.length).reverse) s₂) ∈
         Shape.close wasmHOpen a s₁ (stk₁.take ps.length).reverse) ∧
+      (fl = .trap → (q, .trap) ∈ Shape.close wasmHOpen a s₁ (stk₁.take ps.length).reverse) ∧
       ((∃ vs m, m < n ∧ fl.retVals = some vs ∧
           EvRunN (profile o) host m
             ⟨s₂, f₁, vals (vs.take rs.length ++ stk₁.drop ps.length).reverse ++ rest⟩ cs' c) ∨
@@ -92,7 +93,8 @@ theorem back_call_hostL {o : GrowOracle} {n : Nat} {s₁ : Store H} {f₁ : Fram
       rw [hostCall_fixpoint]
       exact .inr ⟨fi, hh, r, hf, hcode, hhost, rfl⟩
     refine ⟨s₂, resFlow r, [⟨(hh, s₁, (stk₁.take ps.length).reverse), (s₂, r)⟩], cs', rfl, hcall,
-      fun vs hvs => close_host hf hcode hty (exitFlow_of_retVals hvs), ?_⟩
+      fun vs hvs => close_host hf hcode hty (exitFlow_of_retVals hvs),
+      fun htr => close_host hf hcode hty (fl := .trap) (by rw [htr]; rfl), ?_⟩
     rcases r with ws | t | _
     · left
       refine ⟨ws.reverse, m, by omega, rfl, ?_⟩
@@ -127,6 +129,7 @@ theorem back_blockL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
     (∃ m, AtHost c m ∧ PendT s f (stk.take np) body cs m) ∨
       ∃ s₁ f₁ fl cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ EvalH host s f (stk.take np) body (s₁, f₁, fl) ∧
         (fl ≠ .trap → ∃ l, EvalL s f (stk.take np) body l (s₁, f₁, fl) ∧ Res l cs₁) ∧
+        (fl = .trap → TrapT s f (stk.take np) body cs₁) ∧
         ((∃ vs m, m ≤ n ∧ fl.blockVals = some vs ∧
             EvRunN (profile o) host m
               ⟨s₁, f₁, vals (vs.take nr ++ stk.drop np).reverse ++ rest⟩ cs₂ c) ∨
@@ -138,13 +141,13 @@ theorem back_blockL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
   obtain ⟨m₁, hm₁, hrun₁⟩ := evRunN_through_steps henter hrun hend
   obtain ⟨cb, N₁, cs₁, cs₂, rfl, hN₁, hb, hsb, hk, hx⟩ := evRunN_label_seq_split hrun₁ hend
   rcases ihbody N₁ (by omega) cb cs₁ hb hsb with
-      ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog⟩ | ⟨mm, hat, hpt⟩
+      ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog, htl⟩ | ⟨mm, hat, hpt⟩
   · right
-    dsimp only at hst hfr hm hlog
+    dsimp only at hst hfr hm hlog htl
     obtain ⟨rcs, rcf, rcc⟩ := cb
     dsimp only at hst hfr he hk
     subst hst hfr
-    refine ⟨rcs, rcf, fl, cs₁, cs₂, rfl, hev, hlog, ?_⟩
+    refine ⟨rcs, rcf, fl, cs₁, cs₂, rfl, hev, hlog, htl, ?_⟩
     cases hvs : fl.blockVals with
     | some vs =>
       obtain ⟨hnr, hnorm⟩ := hblk _ hev vs hvs
@@ -208,22 +211,24 @@ theorem back_block_treeL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
     BackOutL host s f stk (.block bt body :: es) cs c := by
   rw [Interp.code_block] at hrun
   rcases back_blockL har hp hrun hend ihbody hblk with ⟨mm, hat, hpt⟩ |
-      ⟨s₁, f₁, fl, cs₁, cs₂, rfl, hev, hlog, ⟨vs, m, hm, hvs, hk⟩ | ⟨k, vs, rfl, hends, rfl⟩ |
-        ⟨hesc, hends, rfl⟩⟩
+      ⟨s₁, f₁, fl, cs₁, cs₂, rfl, hev, hlog, htl, ⟨vs, m, hm, hvs, hk⟩ |
+        ⟨k, vs, rfl, hends, rfl⟩ | ⟨hesc, hends, rfl⟩⟩
   · exact .inr ⟨mm, hat, pendT_lift₀ (fun _ _ => ReachL.block har) hpt⟩
   · have hnt : fl ≠ .trap := by rintro rfl; simp [Binaryen.Flow.blockVals] at hvs
     obtain ⟨l₁, d₁, hl₁⟩ := hlog hnt
-    rcases ihes s₁ f₁ fl vs m cs₂ hm hev hvs hk with ⟨r, hev', hr, hlog'⟩ | ⟨mm, hat, hpt⟩
-    · refine .inl ⟨r, .blockOk har hev hvs hev', hr, fun hnt' => ?_⟩
-      obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt'
-      exact ⟨l₁ ++ l₂, .blockOk har d₁ hvs d₂, res_append hl₁ hl₂⟩
+    rcases ihes s₁ f₁ fl vs m cs₂ hm hev hvs hk with ⟨r, hev', hr, hlog', htl'⟩ | ⟨mm, hat, hpt⟩
+    · refine .inl ⟨r, .blockOk har hev hvs hev', hr, fun hnt' => ?_, fun htr => ?_⟩
+      · obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt'
+        exact ⟨l₁ ++ l₂, .blockOk har d₁ hvs d₂, res_append hl₁ hl₂⟩
+      · exact trapT_lift (fun l r d _ => .blockOk har d₁ hvs d) hl₁ (htl' htr)
     · exact .inr ⟨mm, hat, pendT_lift (fun _ _ => ReachL.blockK har d₁ hvs) hl₁ hpt⟩
-  · refine .inl ⟨_, .blockBrk har hev, hends, fun _ => ?_⟩
+  · refine .inl ⟨_, .blockBrk har hev, hends, fun _ => ?_, nofun⟩
     obtain ⟨l₁, d₁, hl₁⟩ := hlog nofun
     exact ⟨l₁, .blockBrk har d₁, by simpa using hl₁⟩
-  · refine .inl ⟨_, .blockEsc har hev hesc, hends, fun hnt => ?_⟩
-    obtain ⟨l₁, d₁, hl₁⟩ := hlog hnt
-    exact ⟨l₁, .blockEsc har d₁ hesc, by simpa using hl₁⟩
+  · refine .inl ⟨_, .blockEsc har hev hesc, hends, fun hnt => ?_, fun htr => ?_⟩
+    · obtain ⟨l₁, d₁, hl₁⟩ := hlog hnt
+      exact ⟨l₁, .blockEsc har d₁ hesc, by simpa using hl₁⟩
+    · simpa using trapT_lift₀ (fun l r d hr => .blockEsc har d hr.escapes) (htl htr)
 
 /-! ## Loops -/
 
@@ -244,6 +249,7 @@ theorem back_loopL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
     (∃ m, AtHost c m ∧ PendT s f (stk.take np) body cs m) ∨
       ∃ s₁ f₁ fl cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ EvalH host s f (stk.take np) body (s₁, f₁, fl) ∧
         (fl ≠ .trap → ∃ l, EvalL s f (stk.take np) body l (s₁, f₁, fl) ∧ Res l cs₁) ∧
+        (fl = .trap → TrapT s f (stk.take np) body cs₁) ∧
         ((∃ vs m, m < n ∧ fl = .normal vs ∧
             EvRunN (profile o) host m
               ⟨s₁, f₁, vals (vs.take nr ++ stk.drop np).reverse ++ rest⟩ cs₂ c) ∨
@@ -259,13 +265,13 @@ theorem back_loopL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
     evRunN_unique (fun c₁ h => loop_step_unique har hp h) hstep hrun hend
   obtain ⟨cb, N₁, cs₁, cs₂, rfl, hN₁, hb, hsb, hk, hx⟩ := evRunN_label_seq_split hrun₁ hend
   rcases ihbody N₁ (by omega) cb cs₁ hb hsb with
-      ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog⟩ | ⟨mm, hat, hpt⟩
+      ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog, htl⟩ | ⟨mm, hat, hpt⟩
   · right
-    dsimp only at hst hfr hm hlog
+    dsimp only at hst hfr hm hlog htl
     obtain ⟨rcs, rcf, rcc⟩ := cb
     dsimp only at hst hfr he hk
     subst hst hfr
-    refine ⟨rcs, rcf, fl, cs₁, cs₂, rfl, hev, hlog, ?_⟩
+    refine ⟨rcs, rcf, fl, cs₁, cs₂, rfl, hev, hlog, htl, ?_⟩
     obtain ⟨hnorm, hbr0⟩ := hlp _ hev
     rcases fl with ws | ⟨_ | k, vs⟩ | ws | _ | t
     · -- falls through
@@ -365,28 +371,31 @@ theorem back_loop_treeL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
     BackOutL host s f stk (.loop bt body :: es) cs c := by
   rw [Interp.code_loop] at hrun
   rcases back_loopL har hp hrun hend ihbody hlp with ⟨mm, hat, hpt⟩ |
-      ⟨s₁, f₁, fl, cs₁, cs₂, rfl, hev, hlog, ⟨vs, m, hm, rfl, hk⟩ | ⟨vs, m, hm, rfl, hk⟩ |
+      ⟨s₁, f₁, fl, cs₁, cs₂, rfl, hev, hlog, htl, ⟨vs, m, hm, rfl, hk⟩ | ⟨vs, m, hm, rfl, hk⟩ |
         ⟨k, vs, rfl, hends, rfl⟩ | ⟨hesc, hends, rfl⟩⟩
   · exact .inr ⟨mm, hat, pendT_lift₀ (fun _ _ => ReachL.loop har) hpt⟩
   · obtain ⟨l₁, d₁, hl₁⟩ := hlog nofun
-    rcases ihes s₁ f₁ vs m cs₂ hm hev hk with ⟨r, hev', hr, hlog'⟩ | ⟨mm, hat, hpt⟩
-    · refine .inl ⟨r, .loopOk har hev hev', hr, fun hnt => ?_⟩
-      obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt
-      exact ⟨l₁ ++ l₂, .loopOk har d₁ d₂, res_append hl₁ hl₂⟩
+    rcases ihes s₁ f₁ vs m cs₂ hm hev hk with ⟨r, hev', hr, hlog', htl'⟩ | ⟨mm, hat, hpt⟩
+    · refine .inl ⟨r, .loopOk har hev hev', hr, fun hnt => ?_, fun htr => ?_⟩
+      · obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt
+        exact ⟨l₁ ++ l₂, .loopOk har d₁ d₂, res_append hl₁ hl₂⟩
+      · exact trapT_lift (fun l r d _ => .loopOk har d₁ d) hl₁ (htl' htr)
     · exact .inr ⟨mm, hat, pendT_lift (fun _ _ => ReachL.loopK har d₁) hl₁ hpt⟩
   · obtain ⟨l₁, d₁, hl₁⟩ := hlog nofun
     rcases ihloop s₁ f₁ vs m cs₂ hm hev (by rw [Interp.code_loop]; exact hk) with
-        ⟨r, hev', hr, hlog'⟩ | ⟨mm, hat, hpt⟩
-    · refine .inl ⟨r, .loopBack har hev hev', hr, fun hnt => ?_⟩
-      obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt
-      exact ⟨l₁ ++ l₂, .loopBack har d₁ d₂, res_append hl₁ hl₂⟩
+        ⟨r, hev', hr, hlog', htl'⟩ | ⟨mm, hat, hpt⟩
+    · refine .inl ⟨r, .loopBack har hev hev', hr, fun hnt => ?_, fun htr => ?_⟩
+      · obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt
+        exact ⟨l₁ ++ l₂, .loopBack har d₁ d₂, res_append hl₁ hl₂⟩
+      · exact trapT_lift (fun l r d _ => .loopBack har d₁ d) hl₁ (htl' htr)
     · exact .inr ⟨mm, hat, pendT_lift (fun _ _ => ReachL.loopBack har d₁) hl₁ hpt⟩
-  · refine .inl ⟨_, .loopBrk har hev, hends, fun _ => ?_⟩
+  · refine .inl ⟨_, .loopBrk har hev, hends, fun _ => ?_, nofun⟩
     obtain ⟨l₁, d₁, hl₁⟩ := hlog nofun
     exact ⟨l₁, .loopBrk har d₁, by simpa using hl₁⟩
-  · refine .inl ⟨_, .loopEsc har hev hesc, hends, fun hnt => ?_⟩
-    obtain ⟨l₁, d₁, hl₁⟩ := hlog hnt
-    exact ⟨l₁, .loopEsc har d₁ hesc, by simpa using hl₁⟩
+  · refine .inl ⟨_, .loopEsc har hev hesc, hends, fun hnt => ?_, fun htr => ?_⟩
+    · obtain ⟨l₁, d₁, hl₁⟩ := hlog hnt
+      exact ⟨l₁, .loopEsc har d₁ hesc, by simpa using hl₁⟩
+    · simpa using trapT_lift₀ (fun l r d hr => .loopEsc har d hr.escapes) (htl htr)
 
 /-! ## `if` -/
 
@@ -402,15 +411,16 @@ theorem back_prefixL {P : Silmaril.Wasm.Numerics.Profile} {n : Nat} {s : Store H
       (∀ c', ¬ Step P Det.noHost c₁ c') → BackOutL host s f stk xs cs₁ c₁) :
     (∃ m, AtHost c m ∧ PendT s f stk xs cs m) ∨
       (∃ r₁, EvalH host s f stk xs r₁ ∧ ¬ r₁.2.2.IsNormal ∧ EndsAs r₁ c ∧
-        (r₁.2.2 ≠ .trap → ∃ l, EvalL s f stk xs l r₁ ∧ Res l cs)) ∨
+        (r₁.2.2 ≠ .trap → ∃ l, EvalL s f stk xs l r₁ ∧ Res l cs) ∧
+        (r₁.2.2 = .trap → TrapT s f stk xs cs)) ∨
       ∃ s₁ f₁ stk₁ m l₁ cs₁ cs₂, cs = cs₁ ++ cs₂ ∧ m ≤ n ∧
         EvalH host s f stk xs (s₁, f₁, .normal stk₁) ∧
         EvalL s f stk xs l₁ (s₁, f₁, .normal stk₁) ∧ Res l₁ cs₁ ∧
         EvRunN P host m ⟨s₁, f₁, vals stk₁.reverse ++ K⟩ cs₂ c := by
   obtain ⟨c₁, n₁, cs₁, cs₂, rfl, h₁, hn₁, hs₁, hk₁⟩ := evRunN_seq_split hrun hend
-  rcases ihxs n₁ hn₁ c₁ cs₁ h₁ hs₁ with ⟨⟨s₁, f₁, fl⟩, hev, ⟨o, he, hst, hfr, hfm⟩, hlog⟩ |
+  rcases ihxs n₁ hn₁ c₁ cs₁ h₁ hs₁ with ⟨⟨s₁, f₁, fl⟩, hev, ⟨o, he, hst, hfr, hfm⟩, hlog, htl⟩ |
       ⟨mm, hat, hp⟩
-  · dsimp only at hst hfr hfm hlog
+  · dsimp only at hst hfr hfm hlog htl
     subst hst hfr
     by_cases hnorm : fl.IsNormal
     · rcases fl with stk₁ | _ | _ | _ | _ <;> simp only [Binaryen.Flow.IsNormal] at hnorm
@@ -440,7 +450,7 @@ theorem back_prefixL {P : Silmaril.Wasm.Numerics.Profile} {n : Nat} {s : Store H
           rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
         all_goals exact h
       subst hcs₂
-      refine ⟨_, hev, hnorm, ?_, by simpa using hlog⟩
+      refine ⟨_, hev, hnorm, ?_, by simpa using hlog, by simpa using htl⟩
       rcases hk₁ with ⟨ws', hw, -⟩ | ⟨-, rfl, -⟩ | ⟨x, -, rfl, -⟩ | ⟨rfl, -⟩
       · rw [hw] at he
         obtain rfl := ends_vals he
@@ -515,12 +525,14 @@ theorem back_if_treeL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
     BackOutL host s f stk (.if_ bt cnd t el :: es) cs c := by
   rw [Interp.code_if] at hrun
   rcases back_prefixL (by simp) hrun hend ihcond with ⟨mm, hat, hpt⟩ |
-      ⟨r₁, hev, hn, hends, hlog⟩ | ⟨s₁, f₁, stk', m, l₁, cs₁, cs₂, rfl, hm, hev, d₁, hl₁, hrun₁⟩
+      ⟨r₁, hev, hn, hends, hlog, htl⟩ |
+      ⟨s₁, f₁, stk', m, l₁, cs₁, cs₂, rfl, hm, hev, d₁, hl₁, hrun₁⟩
   · exact .inr ⟨mm, hat, pendT_lift₀ (fun _ _ => ReachL.cond) hpt⟩
   · rcases r₁ with ⟨s₁, f₁, fl⟩
-    refine .inl ⟨_, .ifAbort hev hn, hends, fun hnt => ?_⟩
-    obtain ⟨l, d, hl⟩ := hlog hnt
-    exact ⟨l, .ifAbort d hn, hl⟩
+    refine .inl ⟨_, .ifAbort hev hn, hends, fun hnt => ?_, fun htr => ?_⟩
+    · obtain ⟨l, d, hl⟩ := hlog hnt
+      exact ⟨l, .ifAbort d hn, hl⟩
+    · exact trapT_lift₀ (fun l r d hr => .ifAbort d hr.notNormal) (htl htr)
   · obtain ⟨cv, stk₁, b, np, nr, rfl, hb, har, hp, hblk⟩ := hcond s₁ f₁ stk' hev
     have hd := Interp.step_if_arm (o := o) (s := s₁) (f := f₁) (stk := stk₁) (bt := bt) (t := t)
       (el := el) (rest := expression (Binaryen.BExpr.lowerList es)) hb
@@ -529,24 +541,27 @@ theorem back_if_treeL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
         (fun m' hm' cb cs₁ h hs => iharm s₁ f₁ cv stk₁ b np nr m' (by omega) hev hb har cb cs₁
           h hs) hblk with
       ⟨mm, hat, hpt⟩ |
-      ⟨s₂, f₂, fl, cs₃, cs₄, rfl, hevb, hlogb, ⟨vs, m', hm', hvs, hk⟩ | ⟨k, vs, rfl, hends, rfl⟩ |
-        ⟨hesc, hends, rfl⟩⟩
+      ⟨s₂, f₂, fl, cs₃, cs₄, rfl, hevb, hlogb, htlb, ⟨vs, m', hm', hvs, hk⟩ |
+        ⟨k, vs, rfl, hends, rfl⟩ | ⟨hesc, hends, rfl⟩⟩
     · exact .inr ⟨mm, hat, pendT_lift (fun _ _ => ReachL.arm d₁ hb har) hl₁ hpt⟩
     · have hnt : fl ≠ .trap := by rintro rfl; simp [Binaryen.Flow.blockVals] at hvs
       obtain ⟨l₂, d₂, hl₂⟩ := hlogb hnt
       rcases ihes s₁ f₁ cv stk₁ b np nr s₂ f₂ fl vs m' cs₄ (by omega) hev hb har hevb hvs hk with
-          ⟨r, hev', hr, hlog'⟩ | ⟨mm, hat, hpt⟩
-      · refine .inl ⟨r, .ifOk hev hb har hevb hvs hev', hr, fun hnt' => ?_⟩
-        obtain ⟨l₃, d₃, hl₃⟩ := hlog' hnt'
-        exact ⟨l₁ ++ l₂ ++ l₃, .ifOk d₁ hb har d₂ hvs d₃, by
-          simpa [List.append_assoc] using res_append hl₁ (res_append hl₂ hl₃)⟩
+          ⟨r, hev', hr, hlog', htl'⟩ | ⟨mm, hat, hpt⟩
+      · refine .inl ⟨r, .ifOk hev hb har hevb hvs hev', hr, fun hnt' => ?_, fun htr => ?_⟩
+        · obtain ⟨l₃, d₃, hl₃⟩ := hlog' hnt'
+          exact ⟨l₁ ++ l₂ ++ l₃, .ifOk d₁ hb har d₂ hvs d₃, by
+            simpa [List.append_assoc] using res_append hl₁ (res_append hl₂ hl₃)⟩
+        · simpa [List.append_assoc] using trapT_lift (l₀ := l₁ ++ l₂)
+            (fun l r d _ => .ifOk d₁ hb har d₂ hvs d) (res_append hl₁ hl₂) (htl' htr)
       · have := pendT_lift (fun _ _ => ReachL.ifK d₁ hb har d₂ hvs) (res_append hl₁ hl₂) hpt
         exact .inr ⟨mm, hat, by simpa [List.append_assoc] using this⟩
-    · refine .inl ⟨_, .ifBrk hev hb har hevb, hends, fun _ => ?_⟩
+    · refine .inl ⟨_, .ifBrk hev hb har hevb, hends, fun _ => ?_, nofun⟩
       obtain ⟨l₂, d₂, hl₂⟩ := hlogb nofun
       exact ⟨l₁ ++ l₂, .ifBrk d₁ hb har d₂, by simpa using res_append hl₁ hl₂⟩
-    · refine .inl ⟨_, .ifEsc hev hb har hevb hesc, hends, fun hnt => ?_⟩
-      obtain ⟨l₂, d₂, hl₂⟩ := hlogb hnt
-      exact ⟨l₁ ++ l₂, .ifEsc d₁ hb har d₂ hesc, by simpa using res_append hl₁ hl₂⟩
+    · refine .inl ⟨_, .ifEsc hev hb har hevb hesc, hends, fun hnt => ?_, fun htr => ?_⟩
+      · obtain ⟨l₂, d₂, hl₂⟩ := hlogb hnt
+        exact ⟨l₁ ++ l₂, .ifEsc d₁ hb har d₂ hesc, by simpa using res_append hl₁ hl₂⟩
+      · simpa using trapT_lift (fun l r d hr => .ifEsc d₁ hb har d hr.escapes) hl₁ (htlb htr)
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval

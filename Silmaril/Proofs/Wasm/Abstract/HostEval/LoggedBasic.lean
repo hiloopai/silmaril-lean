@@ -19,10 +19,16 @@ end has no host-free step, and produces native evidence whose log resolves to **
 * `AtHost c m`: the configuration `c` is at the host call `m` (`decompose?`);
 * `PendT`: the trees reach a call (`ReachL`) after completed calls resolving to `q`, and the
   call's pending host call after `q'` (`PendL`), with `cs = q ++ q'`;
+* `TrapT`: the trees trap after exactly `cs`: a logged run traps, its calls resolving to `cs`;
+  or a logged run reaches a call whose callee traps (that call answered by an exception, which
+  ends the logged run), the completed calls resolving to `q` and the callee's trapping closed
+  behaviour making the host calls `q'`, with `cs = q ++ q'`;
 * `BackOutL`: the end is the end of an `EvalH` run that, unless it traps, is also a logged run
-  whose calls resolve to `cs`; or the end is at a host call `m` pending after exactly `cs`.
+  whose calls resolve to `cs`, and if it traps, traps after exactly `cs` (`TrapT`); or the end
+  is at a host call `m` pending after exactly `cs`.
 
-This file: the bookkeeping, `back_nilL`, `back_op_argsL`, `back_flatL`, `back_op_flatL`.
+This file: the bookkeeping (`trapT_lift`, `trapT_call`), `back_nilL`, `back_op_argsL`,
+`back_flatL`, `back_op_flatL`.
 -/
 
 @[expose] public section
@@ -52,11 +58,26 @@ def PendT (s : Store H) (f : Frame) (stk : List Val) (es : List Binaryen.BExpr)
   ∃ (l : List (OCall H)) (y : (wasmOShape H).self.Op) (q q' : List (Call (wasmHostSig H))),
     ReachL s f stk es l y ∧ Res l q ∧ PendL y.2.2 y.1 y.2.1 q' m ∧ cs = q ++ q'
 
+/-- **The trees trap after exactly the host calls `cs`**: a logged run traps, its calls
+resolving to `cs`; or a logged run reaches a call whose callee traps, that call answered by an
+exception ending the logged run (as `Shape.Subst.intTrap` reads it), the completed calls
+resolving to `q`, the callee's trapping behaviour in the closure making the host calls `q'`, and
+`cs = q ++ q'`. -/
+def TrapT (s : Store H) (f : Frame) (stk : List Val) (es : List Binaryen.BExpr)
+    (cs : List (Call (wasmHostSig H))) : Prop :=
+  (∃ (l : List (OCall H)) (s' : Store H) (f' : Frame), EvalL s f stk es l (s', f', .trap) ∧
+      Res l cs) ∨
+    ∃ (l : List (OCall H)) (y : (wasmOShape H).self.Op) (ans : List Val ⊕ Nat) (s'' s' : Store H)
+      (f' : Frame) (t : Nat) (q q' : List (Call (wasmHostSig H))),
+      EvalL s f stk es (l ++ [⟨.inr y, (ans, s'')⟩]) (s', f', .throw t) ∧ Res l q ∧
+        (q', .trap) ∈ Shape.close wasmHOpen y.1 y.2.2 y.2.1 ∧ cs = q ++ q'
+
 /-- **The logged backward conclusion** for a run with the log `cs` to `c`. -/
 def BackOutL (host : HostSemantics H) (s : Store H) (f : Frame) (stk : List Val)
     (es : List Binaryen.BExpr) (cs : List (Call (wasmHostSig H))) (c : Config H) : Prop :=
   (∃ r, EvalH host s f stk es r ∧ EndsAs r c ∧
-      (r.2.2 ≠ .trap → ∃ l, EvalL s f stk es l r ∧ Res l cs)) ∨
+      (r.2.2 ≠ .trap → ∃ l, EvalL s f stk es l r ∧ Res l cs) ∧
+      (r.2.2 = .trap → TrapT s f stk es cs)) ∨
     ∃ m, AtHost c m ∧ PendT s f stk es cs m
 
 /-! ## Resolved logs -/
@@ -210,6 +231,47 @@ theorem pendT_call {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {
     PendT s f stk (.op (.call x) args :: es) (q₁ ++ q) m :=
   ⟨l₁, _, q₁, q, .here hargs hfi hty, h₁, hp, rfl⟩
 
+/-! ## Trapping evidence -/
+
+/-- A flow that stops a logged run: a trap or an exception. -/
+def Stops (fl : Binaryen.Flow) : Prop := fl = .trap ∨ ∃ t, fl = .throw t
+
+theorem Stops.notNormal {fl : Binaryen.Flow} (h : Stops fl) : ¬ fl.IsNormal := by
+  rcases h with rfl | ⟨t, rfl⟩ <;> exact id
+
+theorem Stops.escapes {fl : Binaryen.Flow} (h : Stops fl) : fl.Escapes := by
+  rcases h with rfl | ⟨t, rfl⟩ <;> trivial
+
+/-- `TrapT` is closed under the logged-run constructors that pass a stopping flow on, a
+resolved prefix log in front. -/
+theorem trapT_lift {s s' : Store H} {f f' : Frame} {stk stk' : List Val}
+    {es es' : List Binaryen.BExpr} {l₀ : List (OCall H)} {q₀ cs : List (Call (wasmHostSig H))}
+    (hE : ∀ l r, EvalL s' f' stk' es' l r → Stops r.2.2 → EvalL s f stk es (l₀ ++ l) r)
+    (h₀ : Res l₀ q₀) (h : TrapT s' f' stk' es' cs) : TrapT s f stk es (q₀ ++ cs) := by
+  rcases h with ⟨l, s₁, f₁, d, hl⟩ | ⟨l, y, ans, s'', s₁, f₁, t, q, q', d, hq, hm, rfl⟩
+  · exact .inl ⟨l₀ ++ l, s₁, f₁, hE _ _ d (.inl rfl), res_append h₀ hl⟩
+  · refine .inr ⟨l₀ ++ l, y, ans, s'', s₁, f₁, t, q₀ ++ q, q', ?_, res_append h₀ hq, hm, by simp⟩
+    simpa using hE _ _ d (.inr ⟨t, rfl⟩)
+
+theorem trapT_lift₀ {s s' : Store H} {f f' : Frame} {stk stk' : List Val}
+    {es es' : List Binaryen.BExpr} {cs : List (Call (wasmHostSig H))}
+    (hE : ∀ l r, EvalL s' f' stk' es' l r → Stops r.2.2 → EvalL s f stk es l r)
+    (h : TrapT s' f' stk' es' cs) : TrapT s f stk es cs := by
+  simpa using trapT_lift (l₀ := []) (q₀ := []) (fun l r d hr => by simpa using hE l r d hr) .nil h
+
+/-- A direct call whose callee traps. -/
+theorem trapT_call {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {x : FuncIdx}
+    {args es : List Binaryen.BExpr} {a : Nat} {fi : FuncInst H}
+    {ps rs : List Validation.CValType} {l₁ : List (OCall H)}
+    {q₁ q : List (Call (wasmHostSig H))}
+    (hargs : EvalL s f stk args l₁ (s₁, f₁, .normal stk₁)) (h₁ : Res l₁ q₁)
+    (hfi : s₁.func? f₁ x = some (a, fi))
+    (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+    (hm : (q, .trap) ∈ Shape.close wasmHOpen a s₁ (stk₁.take ps.length).reverse) :
+    TrapT s f stk (.op (.call x) args :: es) (q₁ ++ q) :=
+  .inr ⟨l₁, ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩, .inr 0, s₁, s₁, f₁, 0, q₁, q,
+    EvalL.callThrow (t := 0) (s₂ := s₁) hargs hfi hty, h₁, hm, rfl⟩
+
 /-! ## The empty tree list and operator arguments -/
 
 /-- **The empty tree list**, logged. -/
@@ -222,7 +284,7 @@ theorem back_nilL {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {c : Conf
     simpa [expression] using hrun
   obtain ⟨rfl, rfl⟩ := evRunN_of_stuck (fun _ => Sim.Step.not_vals) hrun'
   exact .inl ⟨(s, f, .normal stk), .nil, ⟨.normal stk.reverse, rfl, rfl, rfl, rfl⟩,
-    fun _ => ⟨[], .nil, .nil⟩⟩
+    fun _ => ⟨[], .nil, .nil⟩, nofun⟩
 
 /-- **An operator tree, through its arguments**, logged. -/
 theorem back_op_argsL {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : Instr}
@@ -241,10 +303,10 @@ theorem back_op_argsL {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : 
     BackOutL host s f stk (.op i args :: es) cs c := by
   rw [code_op_split] at hrun
   obtain ⟨c₁, n₁, cs₁, cs₂, rfl, h₁, hn₁, hs₁, hk₁⟩ := evRunN_seq_split hrun hend
-  rcases ihargs n₁ hn₁ c₁ cs₁ h₁ hs₁ with ⟨r₁, hev, ⟨o, he, hm⟩, hlog⟩ | ⟨mm, hat, hp⟩
+  rcases ihargs n₁ hn₁ c₁ cs₁ h₁ hs₁ with ⟨r₁, hev, ⟨o, he, hm⟩, hlog, htl⟩ | ⟨mm, hat, hp⟩
   · obtain ⟨hst, hfr, hfm⟩ := hm
     rcases r₁ with ⟨s₁, f₁, fl⟩
-    dsimp only at hst hfr hfm hlog
+    dsimp only at hst hfr hfm hlog htl
     subst hst hfr
     by_cases hnorm : fl.IsNormal
     · rcases fl with stk₁ | _ | _ | _ | _ <;> simp only [Binaryen.Flow.IsNormal] at hnorm
@@ -275,7 +337,7 @@ theorem back_op_argsL {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : 
           rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
         all_goals exact h
       subst hcs₂
-      refine .inl ⟨_, hev', ?_, fun hnt => ?_⟩
+      refine .inl ⟨_, hev', ?_, fun hnt => ?_, fun htr => ?_⟩
       · rcases hk₁ with ⟨ws', hw, -⟩ | ⟨-, rfl, -⟩ | ⟨x, -, rfl, -⟩ | ⟨rfl, -⟩
         · rw [hw] at he
           obtain rfl := ends_vals he
@@ -311,6 +373,7 @@ theorem back_op_argsL {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : 
           · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
       · obtain ⟨l, d, hl⟩ := hlog hnt
         exact ⟨l, .argsAbort d hnorm, by simpa using hl⟩
+      · simpa using trapT_lift₀ (fun l r d hr => .argsAbort d hr.notNormal) (htl htr)
   · -- at a host call in the arguments
     rcases hk₁ with ⟨ws', hw, -⟩ | ⟨htr, -⟩ | ⟨x, hth, -⟩ | ⟨rfl, rfl⟩
     · exact (atHost_ne_vals hat ws' hw).elim
@@ -380,13 +443,15 @@ theorem back_op_flatL {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f
   · rcases fl with stk₂ | _ | _ | _ | _ <;> simp only [Binaryen.Flow.IsNormal] at hn
     obtain ⟨m', hm', hrun₂⟩ := hnorm stk₂ rfl
     rcases ihes s₁ f₁ stk₁ s₂ f₂ stk₂ m' cs₂ (by omega) hev hfl hrun₂ with
-        ⟨r, hk, hr, hlog⟩ | ⟨mm, hat, hp⟩
-    · refine .inl ⟨r, .opOk hi hev hfl hk, hr, fun hnt => ?_⟩
-      obtain ⟨l₂, d₂, hl₂⟩ := hlog hnt
-      exact ⟨l₁ ++ l₂, .opOk hi d₁ hfl d₂, res_append hl₁ hl₂⟩
+        ⟨r, hk, hr, hlog, htl⟩ | ⟨mm, hat, hp⟩
+    · refine .inl ⟨r, .opOk hi hev hfl hk, hr, fun hnt => ?_, fun htr => ?_⟩
+      · obtain ⟨l₂, d₂, hl₂⟩ := hlog hnt
+        exact ⟨l₁ ++ l₂, .opOk hi d₁ hfl d₂, res_append hl₁ hl₂⟩
+      · exact trapT_lift (fun l r d _ => .opOk hi d₁ hfl d) hl₁ (htl htr)
     · exact .inr ⟨mm, hat, pendT_lift (fun _ _ => ReachL.opK hi d₁ hfl) hl₁ hp⟩
   · obtain ⟨hends, rfl⟩ := habr hn
     exact .inl ⟨_, .opStop hi hev hfl hn, hends, fun _ =>
-      ⟨l₁, .opStop hi d₁ hfl hn, by simpa using hl₁⟩⟩
+      ⟨l₁, .opStop hi d₁ hfl hn, by simpa using hl₁⟩, fun htr =>
+      .inl ⟨l₁, s₂, f₂, by simpa [← htr] using EvalL.opStop hi d₁ hfl hn, by simpa using hl₁⟩⟩
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval

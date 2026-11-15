@@ -9,7 +9,9 @@ public import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedBlock
 on a strictly shorter run, with its own part of the log (`evRunN_frame_seq_split`). A body
 ending at a host call is a pending host call of the callee (`PendL.desc`), the body's
 completed calls resolved; a body that returns is the callee's behaviour in the closure
-(`close_wasm`), whose host calls are exactly the body's part of the log. `back_op_callL`: a
+(`close_wasm`), whose host calls are exactly the body's part of the log; a body that traps is
+the callee's trapping behaviour (`close_of_trapT`, a trapping callee read by
+`Shape.Subst.intTrap`). `back_op_callL`: a
 direct call as a tree, its completed call recorded with the callee's behaviour.
 -/
 
@@ -23,6 +25,42 @@ open Silmaril.Wasm.Logic.Core (Outcome)
 open Silmaril.Wasm.SingleThreaded
 
 variable {H : Type} {host : HostSemantics H}
+
+/-- A resolved prefix, then an internal call whose callee traps, is a trapping resolution. -/
+theorem subst_trap_of_pre {c : (wasmHShape H).ClosedMod} {u : List (HCall H)}
+    {q q' : List (Call (wasmHostSig H))} (hu : Shape.SubstPre c u q)
+    {g : Nat} {args : List Val} {s₀ s'' : Store H} {ans : List Val ⊕ Nat}
+    (hm : (q', .trap) ∈ c g s₀ args) (rest : List (HCall H))
+    (e : End (Store H) (List Val ⊕ Nat)) :
+    Shape.Subst c (u ++ ⟨.inr ⟨g, (args, s₀)⟩, (ans, s'')⟩ :: rest) e (q ++ q', .trap) := by
+  induction hu with
+  | nil =>
+    have := Shape.Subst.intTrap (sh := wasmHShape H) (c := c) (g := g) (a := args) (s := s₀)
+      (ans := (ans, s'')) (rest := rest) (e := e) hm
+    simpa using this
+  | ext _ ih => exact .ext ih
+  | int hc _ ih =>
+    rw [List.append_assoc]
+    exact Shape.Subst.int hc ih
+
+/-- **A trapping body is a trapping behaviour of its function in the closure**, with exactly
+its host calls. -/
+theorem close_of_trapT {s : Store H} {a : Nat} {us : List Val} {fi : FuncInst H} {fn : Func}
+    {ps rs : List Validation.CValType} {q : List (Call (wasmHostSig H))}
+    (hf : s.funcs[a]? = some fi) (hcode : fi.code = .wasm fn)
+    (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+    (h : TrapT s (Frame.forCall fi.module us fn.locals) [] (Binaryen.liftInstrs fn.body) q) :
+    (q, .trap) ∈ Shape.close wasmHOpen a s us := by
+  rcases h with ⟨l, s', f', d, hl⟩ | ⟨l, y, ans, s'', s', f', t, q₁, q', d, hq, hm, rfl⟩
+  · exact close_wasm (fl := .trap) hf hcode hty d hl rfl
+  · rw [← Shape.resolve_close]
+    refine ⟨_, .inl ⟨fi, fn, ps, rs, s', f', .throw t, .throw t, _, hf, hcode, hty, d, rfl, rfl⟩, ?_⟩
+    obtain ⟨g, args, s₀⟩ := y
+    have e : (l ++ [(⟨.inr ⟨g, (args, s₀)⟩, (ans, s'')⟩ : OCall H)]).map OCall.lift =
+        l.map OCall.lift ++ [⟨.inr ⟨g, (args, s₀)⟩, (ans, s'')⟩] := by
+      rw [List.map_append]; rfl
+    rw [e]
+    exact subst_trap_of_pre hq hm [] _
 
 /-- **The backward case of `call_ref` of a Wasm function**, logged (deterministic profile). -/
 theorem back_callRef_wasmL {o : GrowOracle} {n : Nat} {s₁ : Store H} {f₁ : Frame}
@@ -72,9 +110,9 @@ theorem back_callRef_wasmL {o : GrowOracle} {n : Nat} {s₁ : Store H} {f₁ : F
           expression (Binaryen.BExpr.lowerList (Binaryen.liftInstrs fn.body))⟩ cs₁ cb := by
     simpa [Binaryen.lowerList_liftInstrs, vals] using hb
   rcases ihbody N₁ (by omega) cb cs₁ hb' hsb with
-      ⟨⟨s₂, f₂, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog⟩ | ⟨mm, hat, hpt⟩
+      ⟨⟨s₂, f₂, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog, htl⟩ | ⟨mm, hat, hpt⟩
   · right
-    dsimp only at hst hfr hm hlog
+    dsimp only at hst hfr hm hlog htl
     obtain ⟨rcs, rcf, rcc⟩ := cb
     dsimp only at hst hfr he hk
     subst hst hfr
@@ -87,7 +125,8 @@ theorem back_callRef_wasmL {o : GrowOracle} {n : Nat} {s₁ : Store H} {f₁ : F
       have hnt : fl ≠ .trap := by rintro rfl; simp [Binaryen.Flow.retVals] at hvs
       obtain ⟨l, d, hl⟩ := hlog hnt
       exact close_wasm hf hcode hty d hl (exitFlow_of_retVals hvs)
-    refine ⟨rcs, fl, cs₁, cs₂, rfl, hcall, hmem, ?_⟩
+    refine ⟨rcs, fl, cs₁, cs₂, rfl, hcall, hmem, fun htr => close_of_trapT hf hcode hty (htl htr),
+      ?_⟩
     obtain ⟨hvals, htrap⟩ := hret _ hev
     cases hvs : fl.retVals with
     | some vs =>
@@ -158,10 +197,10 @@ theorem back_call_wasmL {o : GrowOracle} {n : Nat} {s₁ : Store H} {f₁ : Fram
     evRunN_unique (fun c₁ h => call_step_unique hfi h) hs₁ hrun hend
   rcases back_callRef_wasmL hf hcode hty hp hrun₁ hend
       (fun m hm cb cs₁ h hs => ihbody m (by omega) cb cs₁ h hs) hret with hp' |
-    ⟨s₂, fl, q, cs', hcs, hcall, hmem, ⟨vs, m, hm, hvs, hk⟩ | htr⟩
+    ⟨s₂, fl, q, cs', hcs, hcall, hmem, hmt, ⟨vs, m, hm, hvs, hk⟩ | htr⟩
   · exact .inl hp'
-  · exact .inr ⟨s₂, fl, q, cs', hcs, hcall, hmem, .inl ⟨vs, m, by omega, hvs, hk⟩⟩
-  · exact .inr ⟨s₂, fl, q, cs', hcs, hcall, hmem, .inr htr⟩
+  · exact .inr ⟨s₂, fl, q, cs', hcs, hcall, hmem, hmt, .inl ⟨vs, m, by omega, hvs, hk⟩⟩
+  · exact .inr ⟨s₂, fl, q, cs', hcs, hcall, hmem, hmt, .inr htr⟩
 
 /-- **A direct call as a tree**, for any callee, logged. -/
 theorem back_op_callL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
@@ -196,18 +235,26 @@ theorem back_op_callL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
   subst hcs
   obtain ⟨a, fi, ps, rs, hfi, hty, hco⟩ := hcase s₁ f₁ stk₁ m cs₂ hm hev hrun₁
   rcases hco with ⟨mm, hat, hpl⟩ |
-      ⟨s₂, fl, q, cs', rfl, hcall, hmem, ⟨vs, m', hm', hvs, hk⟩ | ⟨rfl, hends, rfl⟩⟩
+      ⟨s₂, fl, q, cs', rfl, hcall, hmem, hmt, ⟨vs, m', hm', hvs, hk⟩ | ⟨rfl, hends, rfl⟩⟩
   · exact .inr ⟨mm, hat, pendT_call d₁ hl₁ hfi hty hpl⟩
   · have hz := res_single (hmem vs hvs)
     have d₁' : EvalL s f stk args l₁ (s₁, f₁, .normal stk₁) := d₁
     rcases ihes s₁ f₁ stk₁ a fi ps rs s₂ fl vs m' cs' (by omega) hev hfi hty hcall hvs hk with
-        ⟨r, hev', hr, hlog'⟩ | ⟨mm, hat, hpt⟩
-    · refine .inl ⟨r, .callOk hev hfi hty hcall hvs hev', hr, fun hnt => ?_⟩
-      obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt
-      refine ⟨_, EvalL.callRet (ws := (vs.take rs.length).reverse) (s₂ := s₂) d₁' hfi hty
-        (by rw [List.reverse_reverse]; exact d₂), ?_⟩
-      have := res_append hl₁ (res_append hz hl₂)
-      simpa [List.append_assoc] using this
+        ⟨r, hev', hr, hlog', htl'⟩ | ⟨mm, hat, hpt⟩
+    · refine .inl ⟨r, .callOk hev hfi hty hcall hvs hev', hr, fun hnt => ?_, fun htr => ?_⟩
+      · obtain ⟨l₂, d₂, hl₂⟩ := hlog' hnt
+        refine ⟨_, EvalL.callRet (ws := (vs.take rs.length).reverse) (s₂ := s₂) d₁' hfi hty
+          (by rw [List.reverse_reverse]; exact d₂), ?_⟩
+        have := res_append hl₁ (res_append hz hl₂)
+        simpa [List.append_assoc] using this
+      · have := trapT_lift (l₀ := l₁ ++ [OCall.mk a (stk₁.take ps.length).reverse s₁
+            (.inl (vs.take rs.length).reverse) s₂])
+          (fun l r d _ => by
+            have := EvalL.callRet (ws := (vs.take rs.length).reverse) (s₂ := s₂) d₁' hfi hty
+              (by rw [List.reverse_reverse]; exact d)
+            simpa [List.append_assoc] using this)
+          (res_append hl₁ hz) (htl' htr)
+        simpa [List.append_assoc] using this
     · have := pendT_lift (l₀ := l₁ ++ [OCall.mk a (stk₁.take ps.length).reverse s₁
           (.inl (vs.take rs.length).reverse) s₂])
         (fun l y h => by
@@ -216,6 +263,7 @@ theorem back_op_callL {o : GrowOracle} {n : Nat} {s : Store H} {f : Frame}
           simpa [List.append_assoc] using this)
         (res_append hl₁ hz) hpt
       exact .inr ⟨mm, hat, by simpa [List.append_assoc] using this⟩
-  · exact .inl ⟨_, .callTrap hev hfi hty hcall, hends, fun h => (h rfl).elim⟩
+  · exact .inl ⟨_, .callTrap hev hfi hty hcall, hends, fun h => (h rfl).elim,
+      fun _ => by simpa using trapT_call d₁ hl₁ hfi hty (hmt rfl)⟩
 
 end Silmaril.Proofs.Wasm.Abstract.HostEval

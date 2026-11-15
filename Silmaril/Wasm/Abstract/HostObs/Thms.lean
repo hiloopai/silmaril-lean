@@ -29,6 +29,11 @@ with typed answers in the native host slice:
 * `wasmEv_core_done` (every profile): a finished logged behaviour with a consistent log
   is a Core run of the invocation to a stuck end that agrees with it.
 
+Both relate the end only, with *some* log. At the run's own event log: `wasmEvFun_vals_iff`
+and `wasmEvFun_trap_iff` (`Silmaril.Wasm.Abstract.HostClosingInf`, deterministic profile;
+forward `wasmEvFun_evRun`, `wasmEvFun_trap_evRun` at every profile, backward
+`HostEval.evRun_wasmEvFun_vals`, `HostEval.evRun_wasmEvFun_trap`).
+
 **The pending halves, forward** (every profile): a pending host call of the logged
 semantics after a consistent log (`wasmEvPend`) is reached by Core.
 

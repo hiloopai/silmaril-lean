@@ -10,8 +10,8 @@ public import Silmaril.Proofs.Wasm.Abstract.HostEval.Invoke
 answers (`HostTyped`) in the native host slice (`Interp.NativeHostSlice`), every labelled Core
 run (`EvRunN`, with its exact log `cs`) of lowered, arity-checked, typed trees to an end with
 no host-free step satisfies `BackOutL`: it is the end of an `EvalH` run that, unless it traps,
-is a logged run whose calls resolve to exactly `cs`; or it is at a host call pending after
-exactly `cs` (`PendT`). The induction (`BackGoalL`) and the discharge of the hypotheses are
+is a logged run whose calls resolve to exactly `cs`, and if it traps, traps after exactly `cs`
+(`TrapT`); or it is at a host call pending after exactly `cs` (`PendT`). The induction (`BackGoalL`) and the discharge of the hypotheses are
 those of `back_whole` (`Whole`), with the logged cases.
 
 `invoke_pendL`, `evRun_pend`: a finite labelled Core run of a typed invocation, with its exact
@@ -541,7 +541,7 @@ theorem invoke_pendL (hT : HostTyped host) (hH : Interp.NativeHostSlice host) {n
             rw [hws'] at hok'; exact Interp.length_of_ends hok' hob⟩, fun hn => ?_⟩
           rcases hfl : r.2.2 with ws | ⟨_ | k, ws⟩ | ws | _ | t <;> rw [hfl] at hok' hn <;>
             simp_all [Binaryen.Flow.retVals, Interp.FlowOkE]) with ⟨mm, hat', hpl⟩ |
-      ⟨s₂, fl, q, cs', -, -, -, ⟨ws, m', -, hws, hk⟩ | ⟨rfl, hends, -⟩⟩
+      ⟨s₂, fl, q, cs', -, -, -, -, ⟨ws, m', -, hws, hk⟩ | ⟨rfl, hends, -⟩⟩
     · rw [htake] at hpl
       obtain rfl := atHost_unique hat hat'
       exact hpl

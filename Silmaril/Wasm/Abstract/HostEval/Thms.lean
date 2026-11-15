@@ -25,6 +25,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.FlatComplete
 import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedWhole
 import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedDiv
 import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedInf
+import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedDone
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -210,6 +211,16 @@ backward simulation, the cases of `back_whole` on labelled runs (`HostCall.evRun
 the label and frame splits), with native evidence whose internal calls, resolved by the closure
 `Shape.close wasmHOpen`, perform exactly the run's host events: an answered host call is its one
 event, a Wasm callee's frame contributes the events of its body.
+
+**Exact same-log finished agreement** (`evRun_wasmEvFun_vals`, `evRun_wasmEvFun_trap`,
+deterministic profile, under the hypotheses of `back_invoke_reach`): a finite Core run of a
+typed invocation with its exact host-event log `cs` to values `ws` at a store `s₂` is the
+returning behaviour `(cs, ret (inl ws) s₂)` of `wasmEvFun`, and its frame is the empty one
+(`evRun_vals_frame`); a run to a trap is the trapping behaviour `(cs, trap)`, whose end carries
+no store. These are the exact-log forms of `HostObs.core_done_wasmEv`. Proof (`LoggedDone`): the
+logged backward simulation also keeps the log of a trapping end (`TrapT`): the trees trap in a
+logged run whose calls resolve to `cs`, or reach a callee that traps, the call answered by an
+exception ending the logged run, so that the closure reads the trap by `Shape.Subst.intTrap`.
 
 **Divergence after a logged prefix** (`evRun_divL`, deterministic profile, under the
 hypotheses of `back_invoke_reach`): a finite Core run of a typed invocation with its exact
@@ -856,6 +867,39 @@ theorem evRun_pend {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
     (hd : SingleThreaded.decompose? c.store c.code = some (E, a', hh, us)) :
     (cs, (hh, c.store, us)) ∈ wasmEvPend s (a, vs) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_pend hT hH hs hS hok hrun hd
+
+/-- **Values, with exactly the run's log** (deterministic profile, typed checked invocations,
+a host with typed answers in the native host slice): a Core run of the invocation with the host
+events `cs` to the values `ws` at the store `s₂` is the returning behaviour
+`(cs, ret (inl ws) s₂)` of `wasmEvFun`. -/
+theorem evRun_wasmEvFun_vals {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s s₂ : Store H} {a : Nat} {vs ws : List Val} {f₂ : Frame}
+    {cs : List (Silmaril.Games.Abstract.Call (wasmHostSig H))}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : EvRun (SingleThreaded.profile o) host (invoke s a vs) cs ⟨s₂, f₂, vals ws⟩) :
+    (cs, .ret (.inl ws) s₂) ∈ wasmEvFun s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_wasmEvFun_vals hT hH hs hS hok hrun
+
+/-- **A finished run ends in the empty frame** (deterministic profile, typed checked
+invocations). -/
+theorem evRun_vals_frame {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s s₂ : Store H} {a : Nat} {vs ws : List Val} {f₂ : Frame}
+    {cs : List (Silmaril.Games.Abstract.Call (wasmHostSig H))}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : EvRun (SingleThreaded.profile o) host (invoke s a vs) cs ⟨s₂, f₂, vals ws⟩) :
+    f₂ = {} :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_vals_frame hT hH hs hS hok hrun
+
+/-- **A trap, with exactly the run's log** (deterministic profile, typed checked invocations, a
+host with typed answers in the native host slice): a Core run of the invocation with the host
+events `cs` to a trap is the trapping behaviour `(cs, trap)` of `wasmEvFun`. -/
+theorem evRun_wasmEvFun_trap {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s s₂ : Store H} {a : Nat} {vs : List Val} {f₂ : Frame}
+    {cs : List (Silmaril.Games.Abstract.Call (wasmHostSig H))}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : EvRun (SingleThreaded.profile o) host (invoke s a vs) cs ⟨s₂, f₂, [.trap]⟩) :
+    (cs, .trap) ∈ wasmEvFun s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_wasmEvFun_trap hT hH hs hS hok hrun
 
 /-- **Divergence of an invocation after a logged prefix** (deterministic profile): a finite
 Core run of a typed invocation with its exact host-event log `cs`, quiescent from there by

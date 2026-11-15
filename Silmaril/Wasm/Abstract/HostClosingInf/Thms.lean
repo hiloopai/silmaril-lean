@@ -14,6 +14,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Log
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Inf
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Conv
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Div
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.FwdTrap
 
 /-!
 # Productive runs of invocations: theorems
@@ -77,6 +78,14 @@ the native host slice; no determinism and no `HostTyped` needed):
   events of its body inside its frame, and all other Core glue is host-free. Proof (`Fwd`,
   `FwdEval`): the cases of `Interp.wp_of_eval` with logs, by induction on `EvalL`, the arity
   facts from `Interp.evalH_good`, and least-fixpoint induction on the closure;
+* `wasmEvFun_trap_evRun` (**the same for traps**): a trapping behaviour `(cs, trap)` of
+  `wasmEvFun` with a log the host allows is a Core run of the invocation whose host events are
+  exactly `cs`, ending at `[trap]` in the empty frame and some store (a trap carries none).
+  Proof (`FwdTrap`): least-fixpoint induction on the closure; a body trapping itself is
+  `evalL_fwd` in its frame, the trap leaving its label and frame; a body meeting a trapping
+  callee (`Shape.Subst.intTrap`) is a descent (`descends_unwrap`), a logged reach that is a
+  Core run into the call (`reachL_trap`), the callee's trap then bubbling out of every context;
+  a host callee answering a trap is its one event;
 * `wasmEvInfN_coreInf` (**the converse bridge**): every productive run `ω ∈ wasmEvInfN` whose
   answers the host allows is a productive Core run of the invocation with exactly the events
   `ω` (`CoreInf`). Proof (`Seg`, `FwdInf`, `Conv`): a productive run within a function
@@ -107,11 +116,24 @@ the native host slice; no determinism and no `HostTyped` needed):
   `hostObsInf (coreHostRel host) (wasmEvInf (profile o)) = hostObsInf (coreHostRel host)
   wasmEvInfN`. The inclusion `⊆` is `hostObsInf_wasmEvInf_le` (deterministic profile only).
 
-Not yet: the exact-log forward run of a *trapping* finished behaviour (`wasmEvFun_evRun` covers
-returning ones), the inclusion `hostObsInf_wasmEvInf_le` (so the equality of productive
-observations) at profiles other than the deterministic one, and likewise adequacy for divergence
-after a log (`wasmEvFunD_of_evRun`, so the equivalence `wasmEvFunD_div_iff`) at profiles other
-than the deterministic one.
+**Finished behaviours at exactly their log, both directions** (deterministic profile, typed
+checked invocations, a host with typed answers in the native host slice), with
+`HostEval.evRun_wasmEvFun_vals` and `HostEval.evRun_wasmEvFun_trap`:
+
+* `wasmEvFun_vals_iff`: `(cs, ret (inl ws) s₂) ∈ wasmEvFun` with a log the host allows exactly
+  when the invocation has a Core run with the host events `cs` to the values `ws` at `s₂`, in
+  the empty frame (a run to values ends in no other frame, `HostEval.evRun_vals_frame`);
+* `wasmEvFun_trap_iff`: `(cs, trap) ∈ wasmEvFun` with a log the host allows exactly when the
+  invocation has a Core run with the host events `cs` to a trap, in some store.
+
+Exceptions `ret (inr t)` are not covered: the native host slice (`noThrow`) and the checker
+exclude them from the Core side, and no statement here relates them.
+
+Not yet: the exact-log finished agreement (`wasmEvFun_vals_iff`, `wasmEvFun_trap_iff`), the
+inclusion `hostObsInf_wasmEvInf_le` (so the equality of productive observations), and adequacy
+for divergence after a log (`wasmEvFunD_of_evRun`, so the equivalence `wasmEvFunD_div_iff`), at
+profiles other than the deterministic one; the forward directions (`wasmEvFun_evRun`,
+`wasmEvFun_trap_evRun`, `wasmEvInfN_coreInf`, `wasmEvFunD_div_evRun`) hold at every profile.
 -/
 
 @[expose] public section
@@ -302,6 +324,43 @@ theorem wasmEvFun_evRun (hH : Interp.NativeHostSlice host) {s s₂ : Store H} {a
     (hc : (coreHostRel host).Consistent cs) :
     EvRun P host (invoke s a vs) cs ⟨s₂, {}, vals ws⟩ :=
   Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvFun_evRun hH hS hok h hc
+
+/-- **Logged forward simulation of trapping runs** (every profile, checked stores, typed
+invocations, a host in the native host slice): a trapping behaviour of `wasmEvFun` with a log the
+host allows is a Core run of the invocation to a trap whose host events are exactly that log. -/
+theorem wasmEvFun_trap_evRun (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat}
+    {vs : List Val} (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {cs : List (Call (wasmHostSig H))} (h : (cs, .trap) ∈ wasmEvFun s (a, vs))
+    (hc : (coreHostRel host).Consistent cs) :
+    ∃ s₂, EvRun P host (invoke s a vs) cs ⟨s₂, {}, [.trap]⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvFun_trap_evRun hH hS hok h hc
+
+/-- **Returning behaviours at exactly their log, both directions** (deterministic profile
+`profile o`, typed checked invocations, a host with typed answers in the native host slice):
+`(cs, ret (inl ws) s₂)` is a behaviour of `wasmEvFun` with a log the host allows exactly when the
+invocation has a Core run with the host events `cs` to the values `ws` at `s₂`, in the empty
+frame. -/
+theorem wasmEvFun_vals_iff {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s s₂ : Store H} {a : Nat} {vs ws : List Val}
+    {cs : List (Call (wasmHostSig H))} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hok : InvokeOk s a vs) :
+    ((cs, .ret (.inl ws) s₂) ∈ wasmEvFun s (a, vs) ∧ (coreHostRel host).Consistent cs) ↔
+      EvRun (SingleThreaded.profile o) host (invoke s a vs) cs ⟨s₂, {}, vals ws⟩ :=
+  ⟨fun h => wasmEvFun_evRun hH hS hok h.1 h.2,
+    fun h => ⟨evRun_wasmEvFun_vals hT hH hs hS hok h, evRun_consistent h⟩⟩
+
+/-- **Traps at exactly their log, both directions** (deterministic profile `profile o`, typed
+checked invocations, a host with typed answers in the native host slice): `(cs, trap)` is a
+behaviour of `wasmEvFun` with a log the host allows exactly when the invocation has a Core run
+with the host events `cs` to a trap, in some store. -/
+theorem wasmEvFun_trap_iff {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val}
+    {cs : List (Call (wasmHostSig H))} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hok : InvokeOk s a vs) :
+    ((cs, .trap) ∈ wasmEvFun s (a, vs) ∧ (coreHostRel host).Consistent cs) ↔
+      ∃ s₂, EvRun (SingleThreaded.profile o) host (invoke s a vs) cs ⟨s₂, {}, [.trap]⟩ :=
+  ⟨fun h => wasmEvFun_trap_evRun hH hS hok h.1 h.2,
+    fun ⟨_, h⟩ => ⟨evRun_wasmEvFun_trap hT hH hs hS hok h, evRun_consistent h⟩⟩
 
 /-- **The converse bridge** (every profile, checked stores, typed invocations, a host in the
 native host slice): every productive run of the logged native semantics `wasmEvInfN` whose

@@ -108,7 +108,7 @@ theorem backOutL_vals {s : Store H} {f : Frame} {stk : List Val} {es : List Bina
     (h : BackOutL host s f stk es cs c) (hw : c.code = vals ws) :
     ∃ stk₁ l, EvalH host s f stk es (c.store, c.frame, .normal stk₁) ∧
       EvalL s f stk es l (c.store, c.frame, .normal stk₁) ∧ Res l cs ∧ ws = stk₁.reverse := by
-  rcases h with ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog⟩ | ⟨m, hat, -⟩
+  rcases h with ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog, -⟩ | ⟨m, hat, -⟩
   · dsimp only at hst hfr hm hlog
     subst hst hfr
     rw [hw] at he
@@ -125,7 +125,7 @@ theorem backOutL_end {s : Store H} {f : Frame} {stk : List Val} {es : List Binar
     ∃ (fl : Binaryen.Flow) (oc : Outcome), EvalH host s f stk es (c.store, c.frame, fl) ∧
       oc.Ends c.code ∧ Interp.FlowMatch fl oc ∧
       (fl ≠ .trap → ∃ l, EvalL s f stk es l (c.store, c.frame, fl) ∧ Res l cs) := by
-  rcases h with ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog⟩ | ⟨m, hat, -⟩
+  rcases h with ⟨⟨s₁, f₁, fl⟩, hev, ⟨oc, he, hst, hfr, hm⟩, hlog, -⟩ | ⟨m, hat, -⟩
   · dsimp only at hst hfr hm hlog
     subst hst hfr
     exact ⟨fl, oc, hev, he, hm, hlog⟩
