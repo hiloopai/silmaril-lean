@@ -18,6 +18,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.Profile
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Exit
 import Silmaril.Proofs.Wasm.Abstract.HostEval.DivWhole
 import Silmaril.Proofs.Wasm.Abstract.HostEval.DivInvoke
+import Silmaril.Proofs.Wasm.Abstract.HostEval.FlatComplete
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -65,6 +66,12 @@ blocked, `BlockedAt`), any profile and host:
   host-free Core run, and the actual run, whatever its host answers, passes
   through it. With typed code the native step exists in any store
   (`Interp.evalFlat_progressH`).
+
+* `flat_complete` (deterministic profile, any host): with typed code, a Core run of
+  a checked flat instruction to a stuck end with final form `oc` is the native
+  `evalFlat` result, in the end's store and frame, with flow matching `oc`
+  (`Interp.FlowMatch`). It uses `outcome_ends_unique`: a code has at most one final
+  form (`Outcome.Ends`).
 
 * `back_op_flat`: an operator tree other than a call, composed from
   `back_op_args`, `back_flat` and the case of the following trees. The native
@@ -283,6 +290,25 @@ theorem back_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s₁ s₂ : Store H
         ∃ m ≤ n, StepsN (SingleThreaded.profile o) host m ⟨s₂, f₂, vals stk₂.reverse ++ rest⟩ c) ∧
       (¬ fl.IsNormal → EndsAs (s₂, f₂, fl) c) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.back_flat hi hc hflat hrun hend
+
+/-- **Final forms are unique.** A code has at most one final form (`Outcome.Ends`). -/
+theorem outcome_ends_unique {o o' : Outcome} {c : List Admin} (h : o.Ends c) (h' : o'.Ends c) :
+    o = o' :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.outcome_ends_unique h h'
+
+/-- **Completeness of a checked flat instruction** (deterministic profile, any host). A
+Core run of a typed, checked flat instruction other than a call to a stuck end with final
+form `oc` is the native `evalFlat` result: it ends in the native store and frame, and the
+native flow matches `oc`. -/
+theorem flat_complete {o : SingleThreaded.GrowOracle} {s : Store H} {f : Frame} {stk : List Val}
+    {i : Instr} {c : Config H} {F : List (FuncInst H)} {mi : ModuleInst} {ret : Nat}
+    {labels : List Nat} {o₁ : Option Nat} {oc : Outcome} (hi : ∀ x, i ≠ .call x)
+    (hc : Interp.flatChk F mi f.locals.length ret labels stk.length i = some o₁)
+    (ht : Sim.ContextTyped ⟨s, f, vals stk.reverse ++ [.plain i]⟩)
+    (h : Steps (SingleThreaded.profile o) host ⟨s, f, vals stk.reverse ++ [.plain i]⟩ c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') (he : oc.Ends c.code) :
+    ∃ fl, Binaryen.evalFlat s f stk i = some (c.store, c.frame, fl) ∧ Interp.FlowMatch fl oc :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.flat_complete hi hc ht h hend he
 
 /-- **An operator tree other than a call** (deterministic profile, any host). -/
 theorem back_op_flat {o : SingleThreaded.GrowOracle} {n : Nat} {s : Store H} {f : Frame}
