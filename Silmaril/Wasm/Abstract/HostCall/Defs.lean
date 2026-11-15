@@ -101,6 +101,17 @@ inductive EvRunN (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) :
       HEvStep P host c₁ (some e) c₂ → EvRunN P host n c₂ cs c₃ →
         EvRunN P host (n + 1) c₁ (e :: cs) c₃
 
+/-- **A finite labelled run with the host events `cs`, then host-free divergence**, cut at its
+last event: with no event, host-free divergence; otherwise a labelled run of at most `n` steps
+with the events `cs₀` to a configuration at a host call, its answer `e` (so `cs = cs₀ ++ [e]`),
+and host-free divergence after it. The measure of the logged divergent backward simulation. -/
+def EvDiv (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (n : Nat) (c : Config H)
+    (cs : List (Call (wasmHostSig H))) : Prop :=
+  (cs = [] ∧ Diverges P (fun _ _ _ _ => False) c) ∨
+    ∃ (k : Nat) (cs₀ : List (Call (wasmHostSig H))) (e : Call (wasmHostSig H)) (c₀ c₁ : Config H),
+      k ≤ n ∧ cs = cs₀ ++ [e] ∧ EvRunN P host k c cs₀ c₀ ∧ HEvStep P host c₀ (some e) c₁ ∧
+        Diverges P (fun _ _ _ _ => False) c₁
+
 /-- **Quiescent divergence**: an infinite run without answered host calls. It is *not* pure
 Wasm divergence: it includes stuttering forever at a host call the host diverges on. -/
 def Quiet (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (c : Config H) : Prop :=

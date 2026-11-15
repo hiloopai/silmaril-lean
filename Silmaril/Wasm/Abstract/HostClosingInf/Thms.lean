@@ -9,6 +9,7 @@ public import Silmaril.Wasm.Abstract.Decomp.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Quiet
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Log
 
 /-!
 # Productive runs of invocations: theorems
@@ -34,13 +35,19 @@ Proofs in `Silmaril.Proofs.Wasm.Abstract.HostClosingInf`. Every profile and host
 * `wasmEvFunD_of_diverges_closed`: a host-free divergent typed invocation (deterministic
   profile) has the behaviour `([], div)`;
 * `wasmEvFunD_of_evRun_nil`: **adequacy for the empty log**: a Core run of a typed invocation
-  with no host event, then host-free divergence, is `([], div)` in `wasmEvFunD`.
+  with no host event, then host-free divergence, is `([], div)` in `wasmEvFunD`;
+* `wasmEvFunD_of_evRun` (deterministic profile, typed checked invocations, a host with typed
+  answers in the native host slice): **adequacy for any log**: a Core run of a typed invocation
+  with its exact host-event log `cs`, then host-free divergence, is `(cs, div)` in
+  `wasmEvFunD`, with exactly that log. From `HostEval.evRun_divL` (a logged form of
+  `HostEval.div_whole`, on the run cut at its last event) at
+  `Q y q := (q, div) ∈ wasmEvFunD y`: host-free native divergence is local (`LogDiv.div`) or
+  reaches a host-free divergent call; a body diverging after a resolved log is `LDLw`, and a
+  body reaching a call after a resolved prefix is a descent with that prefix's import calls.
 
-Not yet: adequacy for a **nonempty** event log (`EvRun … cs c'` with `cs ≠ []`, then host-free
-divergence, gives `(cs, div) ∈ wasmEvFunD`). It needs a backward simulation of divergence that
-keeps the actual host-event log, a logged form of `HostEval.div_whole`. Also not yet: a
-characterization of `wasmEvInf` by the logged native semantics `wasmHOpen`. So far the
-productive runs are given by a Core witness, so their adequacy is not a functor commutation.
+Not yet: the converse (every `(cs, div) ∈ wasmEvFunD` with a log the host allows is such a Core
+run), and a characterization of `wasmEvInf` by the logged native semantics `wasmHOpen`. So far
+the productive runs are given by a Core witness, so their adequacy is not a functor commutation.
 -/
 
 @[expose] public section
@@ -118,6 +125,20 @@ theorem wasmEvFunD_of_evRun_nil {o : SingleThreaded.GrowOracle} {s : Store H} {a
     (hd : Diverges (SingleThreaded.profile o) (fun _ _ _ _ => False) c') :
     ([], .div) ∈ wasmEvFunD s (a, vs) ∧ (coreHostRel host).Consistent [] :=
   ⟨Silmaril.Proofs.Wasm.Abstract.HostClosingInf.evRun_nil_div hs hS hok hrun hd,
+    evRun_consistent hrun⟩
+
+/-- **Adequacy** (deterministic profile `profile o`, typed checked invocations, a host with
+typed answers in the native host slice): a Core run of a typed invocation with its exact
+host-event log `cs`, quiescent from there by host-free divergence, is the behaviour
+`(cs, div)` of `wasmEvFunD`, whose log the host allows. -/
+theorem wasmEvFunD_of_evRun {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val} {c' : Config H}
+    {cs : List (Call (wasmHostSig H))} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hok : InvokeOk s a vs)
+    (hrun : EvRun (SingleThreaded.profile o) host (invoke s a vs) cs c')
+    (hd : Diverges (SingleThreaded.profile o) (fun _ _ _ _ => False) c') :
+    (cs, .div) ∈ wasmEvFunD s (a, vs) ∧ (coreHostRel host).Consistent cs :=
+  ⟨Silmaril.Proofs.Wasm.Abstract.HostClosingInf.evRun_div hT hH hs hS hok hrun hd,
     evRun_consistent hrun⟩
 
 /-- **Productive prefixes are logged pending calls, at the same log** (deterministic profile,

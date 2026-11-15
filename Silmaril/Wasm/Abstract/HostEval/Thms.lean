@@ -7,6 +7,7 @@ public import Silmaril.Wasm.Interp.Thms
 public import Silmaril.Wasm.Abstract.Recursion.Defs
 public import Silmaril.Wasm.Abstract.DivO.Defs
 public import Silmaril.Wasm.Abstract.HostClosing.Defs
+public import Silmaril.Wasm.Abstract.HostClosingInf.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostEval.CallWasm
@@ -21,6 +22,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.DivWhole
 import Silmaril.Proofs.Wasm.Abstract.HostEval.DivInvoke
 import Silmaril.Proofs.Wasm.Abstract.HostEval.FlatComplete
 import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedWhole
+import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedDiv
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -206,6 +208,17 @@ backward simulation, the cases of `back_whole` on labelled runs (`HostCall.evRun
 the label and frame splits), with native evidence whose internal calls, resolved by the closure
 `Shape.close wasmHOpen`, perform exactly the run's host events: an answered host call is its one
 event, a Wasm callee's frame contributes the events of its body.
+
+**Divergence after a logged prefix** (`evRun_divL`, deterministic profile, under the
+hypotheses of `back_invoke_reach`): a finite Core run of a typed invocation with its exact
+host-event log `cs`, quiescent from there by host-free divergence, diverges natively after
+exactly `cs`: `Q (a, (vs, s)) cs` for every `Q` closed under `hnat` (host-free native
+divergence `EvalDivO closedCall` is `LogDivOut Q` with the empty log) and `hfun` (`LogDivOut Q`
+of a Wasm callee's body is `Q` of the call). `LogDivOut` is in
+`Silmaril.Wasm.Abstract.HostClosingInf`, which instantiates `Q` with `wasmEvFunD`. Proof
+(`LoggedDiv`): the cases of `back_wholeL` on a labelled run cut at its last event
+(`HostCall.EvDiv`), the finished parts read by `back_wholeL`, the part with no event left by
+`div_whole` at the closed host.
 
 **Not yet proved.** The commuting square with `HostRun.hostObs` (once the logged
 packaging exists), and the backward direction in other profiles.-/
@@ -828,5 +841,27 @@ theorem evRun_pend {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
     (hd : SingleThreaded.decompose? c.store c.code = some (E, a', hh, us)) :
     (cs, (hh, c.store, us)) ∈ wasmEvPend s (a, vs) :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_pend hT hH hs hS hok hrun hd
+
+/-- **Divergence of an invocation after a logged prefix** (deterministic profile): a finite
+Core run of a typed invocation with its exact host-event log `cs`, quiescent from there by
+host-free divergence, is `Q` of the invocation after exactly `cs`, for every `Q` that reads
+host-free native divergence (`hnat`) and the divergence of a Wasm callee's body (`hfun`). -/
+theorem evRun_divL {o : SingleThreaded.GrowOracle} {host : HostSemantics H}
+    (hT : HostTyped host) (hH : Interp.NativeHostSlice host)
+    (Q : (wasmOShape H).self.Op → List (Silmaril.Games.Abstract.Call (wasmHostSig H)) → Prop)
+    (hnat : ∀ (s : Store H) (f : Frame) (stk : List Val) (es : List BExpr),
+      EvalDivO closedCall s f stk es → LogDivOut Q s f stk es [])
+    (hfun : ∀ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (fn : Func) (ps rs : List CValType)
+      (cs : List (Silmaril.Games.Abstract.Call (wasmHostSig H))), y.2.2.funcs[y.1]? = some fi →
+      fi.code = .wasm fn → DefType.funcType? fi.type = some (ps, rs) →
+      LogDivOut Q y.2.2 (Frame.forCall fi.module y.2.1 fn.locals) [] (liftInstrs fn.body) cs →
+      Q y cs)
+    {s : Store H} {a : Nat} {vs : List Val} {c' : Config H}
+    {cs : List (Silmaril.Games.Abstract.Call (wasmHostSig H))}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : EvRun (SingleThreaded.profile o) host (invoke s a vs) cs c')
+    (hd : Diverges (SingleThreaded.profile o) (fun _ _ _ _ => False) c') :
+    Q ⟨a, (vs, s)⟩ cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_divL hT hH hnat hfun hs hS hok hrun hd
 
 end Silmaril.Wasm.Abstract

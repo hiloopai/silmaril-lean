@@ -17,6 +17,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostCall.Ctx
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Div
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Events
 import Silmaril.Proofs.Wasm.Abstract.HostCall.Logged
+import Silmaril.Proofs.Wasm.Abstract.HostCall.LoggedDiv
 
 /-!
 # Core 3.0 host calls as a relational host: theorems (stage H2, first step)
@@ -134,6 +135,15 @@ call (`decompose?`), the outer run ends there too, with no events left. `evRunN_
 with the same log. `evRunN_unique`, `evRunN_host_call`: a unique host-free step, and a host call,
 which ends the run or is answered by its next event. `evRunN_trap_head`: a head trap only
 bubbles, with no events. `hEvStep_ctx`: labelled steps lift through contexts with the same label.
+
+**A logged prefix, then host-free divergence** (`EvDiv`, cut at the last event; proofs in
+`LoggedDiv`). `evDiv_of_evRun`: a labelled run followed by host-free divergence is `EvDiv`.
+`evDiv_seq_split`, `evDiv_label_seq_split`, `evDiv_frame_seq_split`: the inner part diverges
+with the whole log, or runs to a stuck end (not at a host call) with a prefix of it, and the
+continuation goes on with the rest. `evDiv_through_steps` (deterministic profile, typed start),
+`evDiv_unique` (a unique host-free step, a smaller measure when there are events),
+`evDiv_host_call` (the next event answers the host call), `evDiv_stuck`, `evDiv_trap`,
+`evDiv_nil`, `evDiv_mono`.
 
 The backward simulation of whole native runs is in `Silmaril.Wasm.Abstract.HostEval`.
 -/
@@ -687,5 +697,97 @@ theorem evRunN_host_call {n : Nat} {s : Store H} {f : Frame} {a : Nat} {fi : Fun
         host hh s us (.returned s' r) ∧
         EvRunN P host m ⟨s', f, vals ws ++ r.toAdmin ++ rest⟩ cs' c :=
   Silmaril.Proofs.Wasm.Abstract.HostCall.evRunN_host_call hf hcode he hn hrun
+
+/-! ## A logged prefix, then host-free divergence -/
+
+/-- **A labelled run followed by host-free divergence** is `EvDiv`. -/
+theorem evDiv_of_evRun {c c' : Config H} {cs : List (Call (wasmHostSig H))}
+    (h : EvRun P host c cs c') (hd : Diverges P (fun _ _ _ _ => False) c') :
+    ∃ n, EvDiv P host n c cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_of_evRun h hd
+
+theorem evDiv_mono {n n' : Nat} {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hn : n ≤ n') (h : EvDiv P host n c cs) : EvDiv P host n' c cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_mono hn h
+
+/-- With no event, `EvDiv` is host-free divergence. -/
+theorem evDiv_nil {n : Nat} {c : Config H} (h : EvDiv P host n c []) :
+    Diverges P (fun _ _ _ _ => False) c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_nil h
+
+/-- A configuration with no step does not diverge, with or without events. -/
+theorem evDiv_stuck {n : Nat} {c : Config H} {cs : List (Call (wasmHostSig H))}
+    (hX : ∀ c', ¬ Step P host c c') : ¬ EvDiv P host n c cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_stuck hX
+
+/-- A head trap does not diverge, with or without events. -/
+theorem evDiv_trap {n : Nat} {s : Store H} {f : Frame} {ws : List Val} {r : List Admin}
+    {cs : List (Call (wasmHostSig H))} : ¬ EvDiv P host n ⟨s, f, vals ws ++ .trap :: r⟩ cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_trap
+
+/-- **Splitting a sequence**: `es` diverges with the whole log, or runs to values with a
+prefix of the log and the continuation goes on with the rest. -/
+theorem evDiv_seq_split {n : Nat} {s : Store H} {f : Frame} {es rest : List Admin}
+    {cs : List (Call (wasmHostSig H))} (h : EvDiv P host n ⟨s, f, es ++ rest⟩ cs) :
+    EvDiv P host n ⟨s, f, es⟩ cs ∨
+      ∃ (c₁ : Config H) (n₁ m : Nat) (cs₁ cs₂ : List (Call (wasmHostSig H))) (ws : List Val),
+        cs = cs₁ ++ cs₂ ∧ m ≤ n ∧ EvRunN P host n₁ ⟨s, f, es⟩ cs₁ c₁ ∧ c₁.code = vals ws ∧
+        EvDiv P host m ⟨c₁.store, c₁.frame, vals ws ++ rest⟩ cs₂ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_seq_split h
+
+/-- **Splitting a label in place**: the body diverges with the whole log, or runs to a stuck
+end that is not at a host call with a prefix of the log, and the label around that end goes
+on with the rest. -/
+theorem evDiv_label_seq_split {N : Nat} {s : Store H} {f : Frame} {ws : List Val} {n : Nat}
+    {cont : List Instr} {b rest : List Admin} {cs : List (Call (wasmHostSig H))}
+    (h : EvDiv P host N ⟨s, f, vals ws ++ [.label n cont b] ++ rest⟩ cs) :
+    EvDiv P host N ⟨s, f, b⟩ cs ∨
+      ∃ (cb : Config H) (N₁ m : Nat) (cs₁ cs₂ : List (Call (wasmHostSig H))),
+        cs = cs₁ ++ cs₂ ∧ m ≤ N ∧ EvRunN P host N₁ ⟨s, f, b⟩ cs₁ cb ∧
+        (∀ c', ¬ Step P SingleThreaded.Det.noHost cb c') ∧
+        SingleThreaded.decompose? cb.store cb.code = none ∧
+        EvDiv P host m ⟨cb.store, cb.frame, vals ws ++ [.label n cont cb.code] ++ rest⟩ cs₂ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_label_seq_split h
+
+/-- **Splitting a call frame in place**: the callee body diverges with the whole log, or runs
+to a stuck end that is not at a host call with a prefix of the log, and the frame and label
+around that end go on with the rest. -/
+theorem evDiv_frame_seq_split {N : Nat} {s : Store H} {f F : Frame} {ws : List Val} {n : Nat}
+    {b rest : List Admin} {cs : List (Call (wasmHostSig H))}
+    (h : EvDiv P host N ⟨s, f, vals ws ++ [.frame n F [.label n [] b]] ++ rest⟩ cs) :
+    EvDiv P host N ⟨s, F, b⟩ cs ∨
+      ∃ (cb : Config H) (N₁ m : Nat) (cs₁ cs₂ : List (Call (wasmHostSig H))),
+        cs = cs₁ ++ cs₂ ∧ m ≤ N ∧ EvRunN P host N₁ ⟨s, F, b⟩ cs₁ cb ∧
+        (∀ c', ¬ Step P SingleThreaded.Det.noHost cb c') ∧
+        SingleThreaded.decompose? cb.store cb.code = none ∧
+        EvDiv P host m
+          ⟨cb.store, f, vals ws ++ [.frame n cb.frame [.label n [] cb.code]] ++ rest⟩ cs₂ :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_frame_seq_split h
+
+/-- **Through host-free steps**, with the same log (deterministic profile, typed start). -/
+theorem evDiv_through_steps {o : SingleThreaded.GrowOracle} {n : Nat} {K T : Config H}
+    {cs : List (Call (wasmHostSig H))}
+    (hpred : Relation.ReflTransGen (SingleThreaded.Det.DStep o) K T) (ht : Sim.ContextTyped K)
+    (h : EvDiv (SingleThreaded.profile o) host n K cs) :
+    EvDiv (SingleThreaded.profile o) host n T cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_through_steps hpred ht h
+
+/-- **Through a unique host-free step**, with a smaller measure, when there are events. -/
+theorem evDiv_unique {n : Nat} {K d : Config H} {cs : List (Call (wasmHostSig H))}
+    (huniq : ∀ c₁, Step P host K c₁ → c₁ = d) (hK : Step P SingleThreaded.Det.noHost K d)
+    (hcs : cs ≠ []) (h : EvDiv P host n K cs) : ∃ m < n, EvDiv P host m d cs :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_unique huniq hK hcs h
+
+/-- **At a host call** the next event answers it, and the run goes on from the answer. -/
+theorem evDiv_host_call {n : Nat} {s : Store H} {f : Frame} {a : Nat} {fi : FuncInst H}
+    {hh : H} {ps rs : Ty (.list .val)} {ws us : List Val} {rest : List Admin}
+    {cs : List (Call (wasmHostSig H))}
+    (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh)
+    (he : Expand fi.type (.func ps rs)) (hn : us.length = ps.length)
+    (h : EvDiv P host n
+      ⟨s, f, vals ws ++ vals us ++ .ref (.func a) :: .callRefType fi.type :: rest⟩ cs) :
+    ∃ s' r cs', cs = ⟨(hh, s, us), (s', r)⟩ :: cs' ∧ host hh s us (.returned s' r) ∧
+      EvDiv P host n ⟨s', f, vals ws ++ r.toAdmin ++ rest⟩ cs' :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.evDiv_host_call hf hcode he hn h
 
 end Silmaril.Wasm.Abstract

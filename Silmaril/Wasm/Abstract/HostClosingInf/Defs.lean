@@ -25,6 +25,8 @@ the actual event logs of that run (`coreInf_prefix`).
 * `LogDiv s f stk es l`: the trees perform the logged open calls `l` (an `EvalL` prefix; the
   constructors are those of `ReachL`) and then diverge within the function, every further call
   answered by `quietCall` (`LocalDivO quietCall`);
+* `LogDivOut Q s f stk es cs`: the trees diverge after a prefix resolving to `cs`, within the
+  function (`LogDiv`) or in a reached callee whose divergence is given by `Q`;
 * `LDLw z u`: the body of the Wasm function called by `z` does so, `u` its log as calls of
   `wasmHOpen`;
 * `wasmEvFunD := Shape.closeDLog wasmHOpen LDLw`: `wasmEvFun` with divergence after descent
@@ -128,6 +130,17 @@ inductive LogDiv : Store H → Frame → List Val → List BExpr → List (OCall
       (hvs : fl.blockVals = some vs) :
       LogDiv s₂ f₂ (vs.take nr ++ stk₁.drop np) es l₃ →
       LogDiv s f stk (.if_ bt c t el :: es) (l₁ ++ l₂ ++ l₃)
+
+/-- **The trees diverge after a logged prefix resolving to the host calls `cs`**: within the
+function (`LogDiv`), its calls resolved by the closure to `cs`; or in a callee `y` reached
+after a prefix resolving to `q` (`ReachL`), the callee diverging after the rest `q'` as `Q`
+says. The one-function step of divergence after a log; `Q` is the callees' divergence. -/
+def LogDivOut (Q : (wasmOShape H).self.Op → List (Call (wasmHostSig H)) → Prop) (s : Store H)
+    (f : Frame) (stk : List Val) (es : List BExpr) (cs : List (Call (wasmHostSig H))) : Prop :=
+  (∃ l, LogDiv s f stk es l ∧ Shape.SubstPre (Shape.close wasmHOpen) (l.map OCall.lift) cs) ∨
+    ∃ (l : List (OCall H)) (y : (wasmOShape H).self.Op) (q q' : List (Call (wasmHostSig H))),
+      ReachL s f stk es l y ∧ Shape.SubstPre (Shape.close wasmHOpen) (l.map OCall.lift) q ∧
+        Q y q' ∧ cs = q ++ q'
 
 /-- **Logged local divergence of a call**: the body of the Wasm function called by `z`
 performs the open calls `u` and then diverges within the function, host-free. -/

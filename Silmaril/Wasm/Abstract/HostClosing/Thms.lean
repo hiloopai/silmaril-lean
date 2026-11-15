@@ -20,6 +20,9 @@ Internal Wasm calls never appear in the log; host calls appear in execution orde
 **The pending links.** `wasmEvPend_iff`: a host call is pending after a consistent log exactly
 when it is the invocation of a host function itself, or a host call reached by
 `PendO (hostCall host)` from the invocation (`Silmaril.Wasm.Abstract.HostEval`).
+
+**The reach link.** `reachL_of_reachO`: a reach of `hostCall host` is a logged reach
+(`ReachL`) whose completed calls, resolved by the closure, make host calls the host allows.
 -/
 
 public section
@@ -64,5 +67,14 @@ theorem wasmEvPend_iff {s : Store H} {a : Nat} {vs : List Val} {m : (wasmHostSig
     · subst hy
       exact ⟨[], .self hfi hcode, fun _ h => nomatch h⟩
     · exact Silmaril.Proofs.Wasm.Abstract.HostClosing.pendL_of_pendO hy hfi hcode
+
+/-- **A reach of `hostCall host` is a logged reach** whose completed calls, resolved by the
+closure, make host calls the host allows. -/
+theorem reachL_of_reachO {s : Store H} {f : Frame} {stk : List Val} {es : List BExpr}
+    {y : (wasmOShape H).self.Op} (h : ReachO (hostCall host) s f stk es y) :
+    ∃ l q, ReachL s f stk es l y ∧ Shape.SubstPre (Shape.close wasmHOpen) (l.map OCall.lift) q ∧
+      (coreHostRel host).Consistent q := by
+  obtain ⟨l, q, hr, ha, hc⟩ := Silmaril.Proofs.Wasm.Abstract.HostClosing.reachL_of_reachO h
+  exact ⟨l, q, hr, Silmaril.Proofs.Wasm.Abstract.HostClosing.substPre_lift_iff.mpr ha, hc⟩
 
 end Silmaril.Wasm.Abstract
