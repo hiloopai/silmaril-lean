@@ -22,6 +22,29 @@ open Silmaril.Wasm.Interp (Problem DivStep)
 
 variable {H : Type}
 
+/-- Unfolding open divergence once. -/
+theorem evalDivO_iff_step {C : CallRel H} {s : Store H} {f : Frame} {stk : List Val}
+    {es : List BExpr} :
+    EvalDivO C s f stk es ↔ DivStepO C (EvalDivO C) (EvalDivO C) s f stk es := by
+  unfold EvalDivO; conv_lhs => rw [← OrderHom.map_gfp (divOpO C)]
+  rfl
+
+/-- Unfolding local divergence once. -/
+theorem localDivO_iff_step {C : CallRel H} {s : Store H} {f : Frame} {stk : List Val}
+    {es : List BExpr} : LocalDivO C s f stk es ↔ DivStepO C (LocalDivO C) ⊥ s f stk es := by
+  unfold LocalDivO; conv_lhs => rw [← OrderHom.map_gfp (localDivOpO C)]
+  rfl
+
+/-- Coinduction for open divergence. -/
+theorem evalDivO_of_coind {C : CallRel H} {X : Problem H}
+    (h : ∀ s f stk es, X s f stk es → DivStepO C X X s f stk es) : X ≤ EvalDivO C :=
+  OrderHom.le_gfp (divOpO C) fun s f stk es hx => h s f stk es hx
+
+/-- Coinduction for local divergence. -/
+theorem localDivO_of_coind {C : CallRel H} {X : Problem H}
+    (h : ∀ s f stk es, X s f stk es → DivStepO C X ⊥ s f stk es) : X ≤ LocalDivO C :=
+  OrderHom.le_gfp (localDivOpO C) fun s f stk es hx => h s f stk es hx
+
 theorem divStepO_closed_iff {X Y : Problem H} {s : Store H} {f : Frame} {stk : List Val}
     {es : List BExpr} : DivStepO closedCall X Y s f stk es ↔ DivStep X Y s f stk es := by
   constructor

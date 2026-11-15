@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Interp.Diverge.Defs
 public import Silmaril.Wasm.Abstract.Recursion.Defs
+public import Silmaril.Wasm.Abstract.HostEval.Defs
 
 /-!
 # Coinductive divergence of the open native semantics: definitions
@@ -16,6 +17,12 @@ is read by `Y` (`callee`). At the closure `C = closedCall` it is `DivStep`
 * `EvalDivO C := gfp (X ↦ DivStepO C X X)`;
 * `LocalDivO C := gfp (X ↦ DivStepO C X ⊥)`: divergence within the function, every call it
   makes answered by `C`.
+
+For calls (`y` a callee, arguments and store, as in `ReachO`/`PendO`):
+
+* `CallDivO C y`: the body of the Wasm function `y` diverges (`EvalDivO C`);
+* `LocalCallDivO C y`: it diverges within its own function (`LocalDivO C`);
+* `BodyReachO C x y`: the body of `x` reaches the call `y` (one `PendO` descent).
 
 These are the Core-side decomposition targets of H2 divergence with
 `C = hostCall host`. The logged, host-independent packaging is separate.
@@ -126,5 +133,20 @@ def EvalDivO (C : CallRel H) : Problem H := (divOpO C).gfp
 
 /-- **Divergence within a function**, every call answered by `C`. -/
 def LocalDivO (C : CallRel H) : Problem H := (localDivOpO C).gfp
+
+/-- The body of the Wasm function called by `y` diverges. -/
+def CallDivO (C : CallRel H) (y : (wasmOShape H).self.Op) : Prop :=
+  ∃ (fi : FuncInst H) (fn : Func), y.2.2.funcs[y.1]? = some fi ∧ fi.code = .wasm fn ∧
+    EvalDivO C y.2.2 (Frame.forCall fi.module y.2.1 fn.locals) [] (liftInstrs fn.body)
+
+/-- The body of the Wasm function called by `y` diverges within its own function. -/
+def LocalCallDivO (C : CallRel H) (y : (wasmOShape H).self.Op) : Prop :=
+  ∃ (fi : FuncInst H) (fn : Func), y.2.2.funcs[y.1]? = some fi ∧ fi.code = .wasm fn ∧
+    LocalDivO C y.2.2 (Frame.forCall fi.module y.2.1 fn.locals) [] (liftInstrs fn.body)
+
+/-- The body of the Wasm function called by `x` reaches the call `y`. -/
+def BodyReachO (C : CallRel H) (x y : (wasmOShape H).self.Op) : Prop :=
+  ∃ (fi : FuncInst H) (fn : Func), x.2.2.funcs[x.1]? = some fi ∧ fi.code = .wasm fn ∧
+    ReachO C x.2.2 (Frame.forCall fi.module x.2.1 fn.locals) [] (liftInstrs fn.body) y
 
 end Silmaril.Wasm.Abstract
