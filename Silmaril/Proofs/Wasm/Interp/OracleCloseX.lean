@@ -19,7 +19,7 @@ indirect calls carry their typed arities (`CallXT.evalOXT_of_evalOX_ind`), so
 the forward simulation `evalOXT_goodE` applies; the callee's frame is entered by
 `call_ref-func` and left by `frame_ends`.
 
-**Scope.** As `evalOXT_goodE`: the native store check `StoreChk` is assumed,
+**Scope.** As `evalOXT_goodE`: the extended store check `StoreChkE irExt` is assumed,
 and code with `call_ref` is excluded (`indOkL`), pending its typed discharge.
 -/
 
@@ -106,10 +106,11 @@ theorem EvalOX.restrict {C : Abstract.CallRel H} {I : Store H → Prop}
 def SoundAns (P : Numerics.Profile) (host : HostSemantics H) (s : Store H) (a : Nat)
     (us : List Val) (out : Store H × Binaryen.Flow) : Prop :=
   ∀ (f : Frame) (fi : FuncInst H) (ps rs : List Validation.CValType) (c : Admin),
-    StoreChk s.funcs → s.funcs[a]? = some fi → Validation.DefType.funcType? fi.type = some (ps, rs) →
+    StoreChkE irExt s.funcs → s.funcs[a]? = some fi →
+    Validation.DefType.funcType? fi.type = some (ps, rs) →
     us.length = ps.length → c.IsCallRef →
     (∃ ob, (ob = none ∨ ob = some rs.length) ∧ FlowOk [rs.length] rs.length ob out.2 ∧
-        FuncsGood s.funcs out.1.funcs) ∧
+        FuncsGoodE irExt s.funcs out.1.funcs) ∧
       (∀ vs, out.2.retVals = some vs → Steps P host
         ⟨s, f, vals us ++ [.ref (.func a), c]⟩ ⟨out.1, f, vals (vs.take rs.length).reverse⟩) ∧
       (out.2 = .trap → Steps P host ⟨s, f, vals us ++ [.ref (.func a), c]⟩ ⟨out.1, f, [.trap]⟩)
@@ -135,7 +136,7 @@ theorem soundAns_of_body {C : Abstract.CallRel H} (hC : OracleSoundX P host C)
   have hb' : chkE irExt s.funcs (Frame.forCall fi.module us fn.locals).module
       (Frame.forCall fi.module us fn.locals).locals.length rs.length [rs.length]
       (some ([] : List Val).length) (Binaryen.liftInstrs fn.body) = some ob := by
-    rw [hlen]; exact chkE_of_chk _ _ hb
+    rw [hlen]; exact hb
   obtain ⟨hok, hinv⟩ := hA hS hb'
   have hwb := hCore hS hb'
   rw [Binaryen.lowerList_liftInstrs] at hwb
