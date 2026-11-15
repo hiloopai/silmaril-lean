@@ -2,10 +2,12 @@ module
 
 public import Silmaril.Wasm.Abstract.HostClosingInf.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
+public import Silmaril.Wasm.Abstract.HostEval.Thms
 public import Silmaril.Games.Abstract.HostRunInf.Thms
 public import Silmaril.Games.Abstract.ModuleDLog.Thms
 public import Silmaril.Wasm.Abstract.Decomp.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Basic
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Quiet
 
 /-!
@@ -17,7 +19,10 @@ Proofs in `Silmaril.Proofs.Wasm.Abstract.HostClosingInf`. Every profile and host
   `hostObsInf (coreHostRel host) (wasmEvInf P)`, are exactly the productive Core runs with that
   host (`CoreInf`);
 * `wasmEvInf_prefix` (**prefix agreement**): the first `n` events of such a run are the actual
-  event log of a finite run of the invocation (`EvRun`), continued productively.
+  event log of a finite run of the invocation (`EvRun`), continued productively;
+* `coreInf_pend` (deterministic profile, typed checked invocations): every finite prefix of a
+  productive run is a logged pending prefix of `wasmEvPend` at the run's next host call, with
+  **exactly** that log (from `evRun_pend`).
 
 **A finite log, then host-free divergence** (`wasmEvFunD := Shape.closeDLog wasmHOpen LDLw`):
 
@@ -33,8 +38,9 @@ Proofs in `Silmaril.Proofs.Wasm.Abstract.HostClosingInf`. Every profile and host
 
 Not yet: adequacy for a **nonempty** event log (`EvRun … cs c'` with `cs ≠ []`, then host-free
 divergence, gives `(cs, div) ∈ wasmEvFunD`). It needs a backward simulation of divergence that
-keeps the actual host-event log, a logged form of `HostEval.div_whole`. Also not yet: agreement
-of the productive prefixes with the logged pending prefixes of `wasmEvPend` with the same log.
+keeps the actual host-event log, a logged form of `HostEval.div_whole`. Also not yet: a
+characterization of `wasmEvInf` by the logged native semantics `wasmHOpen`. So far the
+productive runs are given by a Core witness, so their adequacy is not a functor commutation.
 -/
 
 @[expose] public section
@@ -113,5 +119,15 @@ theorem wasmEvFunD_of_evRun_nil {o : SingleThreaded.GrowOracle} {s : Store H} {a
     ([], .div) ∈ wasmEvFunD s (a, vs) ∧ (coreHostRel host).Consistent [] :=
   ⟨Silmaril.Proofs.Wasm.Abstract.HostClosingInf.evRun_nil_div hs hS hok hrun hd,
     evRun_consistent hrun⟩
+
+/-- **Productive prefixes are logged pending calls, at the same log** (deterministic profile,
+typed checked invocations). -/
+theorem coreInf_pend {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf (SingleThreaded.profile o) host (invoke s a vs) ω) (n : Nat) :
+    (streamTake ω n, (ω n).1) ∈ wasmEvPend s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.coreInf_pend hT hH hs hS hok h n
 
 end Silmaril.Wasm.Abstract
