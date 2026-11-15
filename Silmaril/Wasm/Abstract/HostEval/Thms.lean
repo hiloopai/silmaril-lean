@@ -17,6 +17,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.PendO
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Profile
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Exit
 import Silmaril.Proofs.Wasm.Abstract.HostEval.DivWhole
+import Silmaril.Proofs.Wasm.Abstract.HostEval.DivInvoke
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -178,6 +179,13 @@ coinductive counterpart of `back_whole`: the divergent run is split at each tree
 (`HostCall.diverges_seq_split`, `diverges_label_seq_split`, `diverges_frame_seq_split`,
 `diverges_host_call`), finite parts are read by `back_whole`, and host-free steps are passed
 through (`HostCall.diverges_through_steps`). Nothing is claimed for other profiles.
+
+**Divergent invocations** (`invoke_div`, deterministic profile): a divergent Core run of a
+typed invocation diverges at a host call the host may diverge on (the invoked host function, or
+a pending call `PendO` of the invoked Wasm function), or the invoked function's body diverges
+in the open semantics (`CallDivO (hostCall host)`). `invoke_div_decomp` refines the latter by
+`callDivO_path_or_chain`: a reached call diverging within its own function
+(`LocalCallDivO`), or an infinite chain of body descents (`BodyReachO`).
 
 **Not yet proved.** The commuting square with `HostRun.hostObs` (once the logged
 packaging exists), and the backward direction in other profiles.-/
@@ -537,6 +545,38 @@ theorem div_whole {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
         ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ →
       HostDivReach host s f stk es ∨ EvalDivO (hostCall host) s f stk es :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.div_whole hT hH
+
+/-- **Divergent invocations with host calls** (deterministic profile `profile o`): a divergent
+Core run of a typed invocation diverges at a host call `y` the host may diverge on, the invoked
+host function itself or a pending call of the invoked Wasm function (`PendO`), or the body of
+the invoked Wasm function diverges in the open native semantics (`CallDivO (hostCall host)`).
+The invocation-level form of `div_whole`. -/
+theorem invoke_div {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val} (hs : StoreOk s)
+    (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hd : Diverges (SingleThreaded.profile o) host (invoke s a vs)) :
+    (∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧
+        y.2.2.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧ host hh y.2.2 y.2.1 .diverged) ∨
+      CallDivO (hostCall host) ⟨a, (vs, s)⟩ :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.invoke_div hT hH hs hS hok hd
+
+/-- **A divergent invocation, decomposed** (deterministic profile `profile o`): it diverges at a
+host call the host may diverge on (as in `invoke_div`), or reaches (as the invoked function or
+a pending call of it) a call whose body diverges within its own function (`LocalCallDivO`), or
+starts an infinite chain of descents into callee bodies (`BodyReachO`). -/
+theorem invoke_div_decomp {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val} (hs : StoreOk s)
+    (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hd : Diverges (SingleThreaded.profile o) host (invoke s a vs)) :
+    (∃ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (hh : H),
+        (y = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ y) ∧
+        y.2.2.funcs[y.1]? = some fi ∧ fi.code = .host hh ∧ host hh y.2.2 y.2.1 .diverged) ∨
+      (∃ z, (z = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ z) ∧
+        LocalCallDivO (hostCall host) z) ∨
+      ∃ g : Nat → (wasmOShape H).self.Op, g 0 = ⟨a, (vs, s)⟩ ∧
+        ∀ n, BodyReachO (hostCall host) (g n) (g (n + 1)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.invoke_div_decomp hT hH hs hS hok hd
 
 /-- **A blocked host call is stuck**, in any frame and profile. -/
 theorem pending_stuck {P : Silmaril.Wasm.Numerics.Profile} {s : Store H} {es : List Admin}
