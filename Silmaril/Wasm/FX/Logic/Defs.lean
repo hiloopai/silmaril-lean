@@ -192,5 +192,6 @@ def corePost (K : Conts) (Q : PostFX H) : Silmaril.Wasm.Logic.Core.Post H := fun
   | .trap => Q s K f .trap
   | .throw a => Q s K f (.throw a)
   | .tail _ _ _ => False
+  | .tailNull _ _ => False
 
 end Silmaril.Wasm.FX.Logic

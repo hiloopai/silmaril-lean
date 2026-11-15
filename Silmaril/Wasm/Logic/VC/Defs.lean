@@ -237,6 +237,7 @@ def labelQ (n : Nat) (us : List Val) (K : Store H → Frame → List Val → Pro
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail (us ++ vs) a c)
+  | .tailNull _ _ => False
 
 /-- The postcondition of a loop body (`loopPost`): branching to the loop re-establishes the
 invariant `I` on the loop's `n` parameters; falling through continues with `K`. -/
@@ -250,6 +251,7 @@ def loopQ (n : Nat) (us : List Val) (I : Store H → Frame → List Val → Prop
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail (us ++ vs) a c)
+  | .tailNull _ _ => False
 
 /-- Loop invariants, numbered in pre-order, on the store, the frame and the loop parameters. -/
 abbrev Invs (H : Type) := Nat → Store H → Frame → List Val → Prop

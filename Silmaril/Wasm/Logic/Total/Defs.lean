@@ -112,5 +112,6 @@ def loopPostT (n : Nat) (us : List Val) (Inv : Store H → Frame → List Val �
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail (us ++ vs) a c)
+  | .tailNull _ _ => False
 
 end Silmaril.Wasm.Logic.Hoare

@@ -71,7 +71,7 @@ theorem labelPost.toK' {m : Nat} {cont : List Instr} {us : List Val} {Q Q' : Pos
   · exact hQ _ _ _ h
   · obtain ⟨vs₁, vs₂, he, hn, hw⟩ := h
     exact ⟨vs₁, vs₂, he, hn, (hw k).post_mono hQ⟩
-  all_goals exact hQ _ _ _ h
+  all_goals first | exact hQ _ _ _ h | exact h.elim
 
 /-! ## Blocks -/
 
@@ -121,6 +121,7 @@ def loopPost (n : Nat) (us : List Val) (Inv : Store H → Frame → List Val →
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail (us ++ vs) a c)
+  | .tailNull _ _ => False
 
 theorem loopPost.toK {m k : Nat} {us : List Val} {Inv : Store H → Frame → List Val → Prop}
     {Q : Post H} {bt : BlockType} {body : List Instr}

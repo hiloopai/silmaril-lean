@@ -334,6 +334,7 @@ theorem handler_progress {s : Store H} {f : Frame} {cs : List Catch} {b : List A
     · exact handler_progress_cut (Or.inr ⟨a, rfl⟩) hne
   · obtain ⟨hr, rest, rfl⟩ := he
     exact handler_progress_tail hr
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-- A handler whose body can step, or has exited, can step. -/
 theorem handler_progress' {n : Nat} {s : Store H} {f : Frame} {cs : List Catch} {b : List Admin}

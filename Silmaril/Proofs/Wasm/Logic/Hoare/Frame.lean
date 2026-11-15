@@ -78,6 +78,7 @@ theorem frame_progress {s : Store H} {F : Frame} {b : List Admin} {o : Outcome}
   · obtain ⟨hr, rest, rfl⟩ := he
     obtain ⟨vs₁, args, fn, ps, rs, rfl, hf, hE, hn, -⟩ := hq
     exact frame_progress_tail hr hf hE hn
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 theorem frame_progress' {n : Nat} {s : Store H} {F : Frame} {b : List Admin}
     (h : Safe P host (framePostK P host m f us Q k) (n + 1) ⟨s, F, b⟩) :

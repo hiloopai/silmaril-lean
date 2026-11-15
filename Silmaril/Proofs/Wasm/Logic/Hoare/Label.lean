@@ -106,6 +106,7 @@ theorem label_progress {s : Store H} {f : Frame} {b : List Admin} {o : Outcome}
         ⟨s, f, vals (vs ++ [.ref (.func a)]) ++ [r]⟩ := Step.returnCallRefLabel hr
     rw [List.append_assoc, List.singleton_append, ← tail_code] at hs
     exact ⟨_, Sim.Step.vals_left hs us⟩
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-- A label whose body can step, or has exited, can step. -/
 theorem label_progress' {n : Nat} {s : Store H} {f : Frame} {b : List Admin}

@@ -77,7 +77,7 @@ theorem pending_ne_throwing {s : Store H} {es : List Admin} (h : Pending host s 
 
 /-- The only outcome ending in values is falling through with them. -/
 theorem ends_vals {o : Outcome} {ws : List Val} (h : o.Ends (vals ws)) : o = .normal ws := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
   · exact congrArg Outcome.normal (Sim.vals_injective h.symm)
   · obtain ⟨x, rest, -, h⟩ := h
     have : Admin.plain (.br x) ∈ vals ws := by rw [h]; simp
@@ -90,6 +90,9 @@ theorem ends_vals {o : Outcome} {ws : List Val} (h : o.Ends (vals ws)) : o = .no
   · have : Admin.plain .throwRef ∈ vals ws := by
       rw [show vals ws = throwing a from h]; simp [throwing]
     exact (not_mem_vals_of_val? rfl this).elim
+  · obtain ⟨hr, rest, h⟩ := h
+    have : r ∈ vals ws := by rw [h]; simp
+    exact (not_mem_vals_of_val? (Admin.val?_of_isReturnCallRef hr) this).elim
   · obtain ⟨hr, rest, h⟩ := h
     have : r ∈ vals ws := by rw [h]; simp
     exact (not_mem_vals_of_val? (Admin.val?_of_isReturnCallRef hr) this).elim
@@ -168,7 +171,7 @@ theorem back_op_args {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : I
       · exact ⟨o, he, rfl, rfl, hfm⟩
       · exact ⟨o, he, rfl, rfl, hfm⟩
       · refine ⟨o, ?_, rfl, rfl, hfm⟩
-        rcases o with _ | ⟨l, vs⟩ | vs | _ | _ | ⟨vs, a, r⟩
+        rcases o with _ | ⟨l, vs⟩ | vs | _ | _ | ⟨vs, a, r⟩ | ⟨vs, r⟩
         · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
         · obtain ⟨x, rest, hx, he⟩ := he
           exact ⟨x, rest ++ (.plain i :: expression (Binaryen.BExpr.lowerList es)), hx, by
@@ -182,6 +185,7 @@ theorem back_op_args {n : Nat} {s : Store H} {f : Frame} {stk : List Val} {i : I
           rw [he']
           simpa using Step.trapInstrs (P := P) (host := host) (s := c₁.store) (f := c₁.frame)
             (vs := []) (rest := .plain i :: expression (Binaryen.BExpr.lowerList es)) (.inr (by simp))
+        · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
         · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
         · rcases fl <;> simp_all [Interp.FlowMatch, Binaryen.Flow.IsNormal]
   · -- blocked in the arguments

@@ -78,7 +78,7 @@ theorem wp_run {E : CoPset} {c : List Admin} {Φ : Res H → IProp GF} :
 /-- The outcome of an exit is determined by its code. -/
 theorem Exits.unique {o o' : Outcome} {c : List Admin} (he : Exits o c) (he' : Exits o' c) :
     o' = o := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | _
   · have hc : c = vals vs := he
     exact Hoare.exits_vals_inv (hc ▸ he')
   · obtain ⟨x, rest, rfl, rfl⟩ := he
@@ -91,6 +91,7 @@ theorem Exits.unique {o o' : Outcome} {c : List Admin} (he : Exits o c) (he' : E
     exact Hoare.exits_throw_inv he'
   · obtain ⟨hr, rest, rfl⟩ := he
     exact Hoare.exits_tail_inv hr he'
+  · exact he.elim
 
 /-- One step of `wp_exit`, given the rule for shorter exits. -/
 theorem wp_exit_of {E : CoPset} {c : List Admin} {o : Outcome} {Φ : Res H → IProp GF}
@@ -145,7 +146,7 @@ theorem not_exits_inert {s : Store H} {f : Frame} {W : List Val} {i : Instr} {re
     rw [← Hoare.fnv_vals_cons hi.1]; exact he.fnv
   have hbl : ¬ SingleThreaded.Det.Blocked (Admin.plain i) := fun hb =>
     Hoare.not_step_blocked hb hs
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | _
   · cases hok
   · obtain ⟨x, rest', -, hx⟩ := hok
     have hi' : Admin.plain i = .plain (.br x) := (List.cons.inj (Prod.mk.inj hx).2).1
@@ -163,6 +164,7 @@ theorem not_exits_inert {s : Store H} {f : Frame} {W : List Val} {i : Instr} {re
     rcases hr with ⟨y, rfl⟩ | ⟨d, rfl⟩
     · exact hbl (Or.inr (Or.inr (hi' ▸ trivial)))
     · cases hi'
+  · exact hok.elim
 
 /-- **The head rule** (after `Silmaril.Wasm.Logic.Hoare.Safe.head`): an inert plain
 instruction under the values `W` has a weakest precondition if, in every state,

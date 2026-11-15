@@ -41,11 +41,12 @@ theorem matchT_eq_match {r : Store H × Frame × Binaryen.Flow} (hr : ∀ ws, r.
   funext s f o
   apply propext
   constructor
-  · rintro (h | ⟨vs, a, c, -, hT⟩)
+  · rintro (h | ⟨vs, a, c, -, hT⟩ | ⟨vs, c, -, -, -, -, hw⟩)
     · exact h
     · rcases tailRun_flow hT with ⟨ws, hw⟩ | hw
       · exact absurd hw (hr ws)
       · exact absurd hw ht
+    · exact absurd hw ht
   · exact .inl
 
 theorem matchT_normal (s : Store H) (f : Frame) (vs : List Val) :
@@ -61,17 +62,40 @@ theorem wp_matchT_of_match {c : List Admin} {r : Store H × Frame × Binaryen.Fl
     (h : WP P host s f c (Match r)) : WP P host s f c (MatchT P host n r) :=
   WP.mono h fun _ _ _ hm => .inl hm
 
-/-- **A `WP` for `MatchT`** is the matched run, or a run to a pending tail. -/
+/-- **A `WP` for `MatchT`** is the matched run, a run to a pending tail, or a run
+to a pending null tail of a trapping result. -/
 theorem run_of_wpT {c : List Admin} {r : Store H × Frame × Binaryen.Flow}
     (h : WP P host s f c (MatchT P host n r)) :
     (∃ c' o, Steps P host ⟨s, f, c⟩ ⟨r.1, r.2.1, c'⟩ ∧ o.Ends c' ∧ FlowMatch r.2.2 o) ∨
-      ∃ s' f' vs a c' rest, Steps P host ⟨s, f, c⟩ ⟨s', f', vals vs ++ .ref (.func a) :: c' :: rest⟩ ∧
-        TailRun P host n r s' f' vs a c' := by
+      (∃ s' f' vs a c' rest, Steps P host ⟨s, f, c⟩ ⟨s', f', vals vs ++ .ref (.func a) :: c' :: rest⟩ ∧
+        TailRun P host n r s' f' vs a c') ∨
+      ∃ vs c' rest, Steps P host ⟨s, f, c⟩ ⟨r.1, r.2.1, vals vs ++ .ref .null :: c' :: rest⟩ ∧
+        c'.IsReturnCallRef ∧ r.2.2 = .trap := by
   obtain ⟨s', f', c', o, hs, he, hq⟩ := h
-  rcases hq with ⟨rfl, rfl, hm⟩ | ⟨vs, a, c₀, rfl, hT⟩
+  rcases hq with ⟨rfl, rfl, hm⟩ | ⟨vs, a, c₀, rfl, hT⟩ | ⟨vs, c₀, rfl, hc, rfl, rfl, htr⟩
   · exact .inl ⟨c', o, hs, he, hm⟩
   · obtain ⟨-, rest, rfl⟩ := he
-    exact .inr ⟨s', f', vs, a, c₀, rest, hs, hT⟩
+    exact .inr (.inl ⟨s', f', vs, a, c₀, rest, hs, hT⟩)
+  · obtain ⟨-, rest, rfl⟩ := he
+    exact .inr (.inr ⟨vs, c₀, rest, hs, hc, htr⟩)
+
+/-- **A pending null tail of a trapping result is a final form for `MatchT`**, in a
+value prefix and before more code. -/
+theorem wp_tailNull {r : Store H × Frame × Binaryen.Flow} {vs : List Val} {c : Admin}
+    (hc : c.IsReturnCallRef) (htr : r.2.2 = .trap) (pre : List Val) (rest rest' : List Admin) :
+    WP P host r.1 r.2.1 (vals pre ++ (vals vs ++ .ref .null :: c :: rest) ++ rest')
+      (MatchT P host n r) :=
+  ⟨r.1, r.2.1, _, .tailNull (pre ++ vs) c, .refl, ⟨hc, rest ++ rest', by simp⟩,
+    .inr (.inr ⟨_, c, rfl, hc, rfl, rfl, htr⟩)⟩
+
+/-- **A label around a pending null tail steps to it** (`return_call_ref-label`). -/
+theorem label_step_tailNull {k : Nat} {cont : List Instr} {vs : List Val} {c : Admin}
+    {rest : List Admin} (hc : c.IsReturnCallRef) :
+    Step P host ⟨s, f, [.label k cont (vals vs ++ .ref .null :: c :: rest)]⟩
+      ⟨s, f, vals vs ++ .ref .null :: c :: []⟩ := by
+  have := Step.returnCallRefLabel (P := P) (host := host) (s := s) (f := f) (k := k)
+    (cont := cont) (vs := vs ++ [.ref .null]) (rest := rest) hc
+  simpa [vals, Val.toAdmin] using this
 
 /-- **A pending tail is a final form for `MatchT`**, in a value prefix and before
 more code. -/
@@ -81,7 +105,7 @@ theorem wp_tail {r : Store H × Frame × Binaryen.Flow} {vs : List Val} {a : Nat
       (MatchT P host n r) := by
   obtain ⟨hc, hf, vs₁, args, fn, ps, rs, rfl, hfn, hex, hlen, hg⟩ := hT
   refine ⟨s, f, _, .tail (pre ++ vs₁ ++ args) a c, .refl, ⟨hc, rest ++ rest', by simp⟩, ?_⟩
-  exact .inr ⟨_, a, c, rfl, hc, hf, pre ++ vs₁, args, fn, ps, rs, by simp, hfn, hex, hlen, hg⟩
+  exact .inr (.inl ⟨_, a, c, rfl, hc, hf, pre ++ vs₁, args, fn, ps, rs, by simp, hfn, hex, hlen, hg⟩)
 
 /-- **A label around a pending tail steps to it** (`return_call_ref-label`). -/
 theorem label_step_tail {k : Nat} {cont : List Instr} {vs : List Val} {a : Nat} {c : Admin}
@@ -104,9 +128,12 @@ theorem tail_flow_eq {fl fl' : Binaryen.Flow} {r : Store H × Frame × Binaryen.
 theorem wp_append_abruptT {c rest : List Admin} {fl : Binaryen.Flow}
     (h : WP P host s f c (MatchT P host n (s₁, f₁, fl))) (hn : ¬ fl.IsNormal) :
     WP P host s f (c ++ rest) (MatchT P host n (s₁, f₁, fl)) := by
-  rcases run_of_wpT h with ⟨c', o, hst, he, hm⟩ | ⟨s', f', vs, a, c', rest₀, hst, hT⟩
+  rcases run_of_wpT h with ⟨c', o, hst, he, hm⟩ | ⟨s', f', vs, a, c', rest₀, hst, hT⟩ |
+      ⟨vs, c', rest₀, hst, hc, htr⟩
   · exact wp_matchT_of_match (wp_append_abrupt' ⟨_, _, c', o, hst, he, rfl, rfl, hm⟩ hn)
   · exact WP.steps (Steps.append rest hst) (by simpa [vals] using wp_tail hT [] rest₀ rest)
+  · exact WP.steps (Steps.append rest hst)
+      (by simpa [vals] using wp_tailNull (n := n) (r := (s₁, f₁, fl)) (vs := vs) hc htr [] rest₀ rest)
 
 /-- **Leaving a label abruptly**, for `MatchT`: the body's result passes out of
 the label (one label fewer for a branch); a pending tail leaves by
@@ -117,7 +144,8 @@ theorem wp_label_abruptT {code body rest : List Admin} {pre : List Val} {k : Nat
     (hb : WP P host s f body (MatchT P host n (s₁, f₁, fl)))
     (hfl : (∃ k vs, fl = .brk (k + 1) vs ∧ fl' = .brk k vs) ∨ (fl.Escapes ∧ fl' = fl)) :
     WP P host s f code (MatchT P host n (s₁, f₁, fl')) := by
-  rcases run_of_wpT hb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs, a, c', rest₀, hrun, hT⟩
+  rcases run_of_wpT hb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs, a, c', rest₀, hrun, hT⟩ |
+      ⟨vs, c', rest₀, hrun, hc, htr⟩
   · have inner := Steps.ctx (P := P) (host := host) pre rest (Steps.label k cont hrun)
     exact wp_matchT_of_match (WP.steps (enter.trans inner) (exit_abrupt he hm hfl pre rest))
   · obtain rfl := tail_flow_eq rfl (tailRun_flow hT) hfl
@@ -126,6 +154,13 @@ theorem wp_label_abruptT {code body rest : List Admin} {pre : List Val} {k : Nat
       (.single (label_step_tail (s := s') (f := f') (k := k) (cont := cont) (vs := vs) (a := a)
         (rest := rest₀) hT.1))
     exact WP.steps (enter.trans (inner.trans out)) (wp_tail hT pre [] rest)
+  · obtain rfl := tail_flow_eq rfl (.inr htr) hfl
+    have inner := Steps.ctx (P := P) (host := host) pre rest (Steps.label k cont hrun)
+    have out := Steps.ctx (P := P) (host := host) pre rest
+      (.single (label_step_tailNull (s := s₁) (f := f₁) (k := k) (cont := cont) (vs := vs)
+        (rest := rest₀) hc))
+    exact WP.steps (enter.trans (inner.trans out))
+      (wp_tailNull (n := n) (r := (s₁, f₁, fl')) hc htr pre [] rest)
 
 variable {stk : List Val} {bt : BlockType} {B : List Instr} {np nr : Nat}
 
@@ -206,8 +241,13 @@ theorem wp_call_okT {rest : List Admin} {Q : Post H} (hfi : s.func? f x = some (
     (hnorm : ∀ ws, fl = .normal ws → ws.length = rs.length)
     (hk : WP P host s₂ f (vals (vs.take rs.length ++ stk.drop ps.length).reverse ++ rest) Q) :
     WP P host s f (vals stk.reverse ++ .plain (.call x) :: rest) Q := by
-  rcases run_of_wpT hb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs', a', c', rest₀, hrun, hT⟩
+  rcases run_of_wpT hb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs', a', c', rest₀, hrun, hT⟩ |
+      ⟨vs', c', rest₀, hrun, hc, htr⟩
   · exact wp_call_ok hfi hcode hty hp ⟨_, _, c', o, hrun, he, rfl, rfl, hm⟩ hvs hrs hnorm hk
+  rotate_left
+  · dsimp only at htr
+    subst htr
+    simp [Binaryen.Flow.retVals] at hvs
   rcases tailRun_flow hT with ⟨ws, hw⟩ | hw <;> dsimp only at hw <;> subst hw
   · simp only [Binaryen.Flow.retVals, Option.some.injEq] at hvs
     subst hvs
@@ -240,8 +280,22 @@ theorem wp_call_trapT {rest : List Admin} (hfi : s.func? f x = some (a, fi))
         expression (Binaryen.BExpr.lowerList (Binaryen.liftInstrs fn.body)))
       (MatchT P host rs.length (s₂, f₂, .trap))) :
     WP P host s f (vals stk.reverse ++ .plain (.call x) :: rest) (Match (s₂, f, .trap)) := by
-  rcases run_of_wpT hb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs', a', c', rest₀, hrun, hT⟩
+  rcases run_of_wpT hb with ⟨c', o, hrun, he, hm⟩ | ⟨s', f', vs', a', c', rest₀, hrun, hT⟩ |
+      ⟨vs', c', rest₀, hrun, hc, -⟩
   · exact wp_call_trap hfi hcode hty hp ⟨_, _, c', o, hrun, he, rfl, rfl, hm⟩
+  rotate_left
+  · rw [Binaryen.lowerList_liftInstrs] at hrun
+    have enter := (steps_call_enter (P := P) (host := host) hfi hcode hty hp rest).to_reflTransGen
+    have inner := Steps.ctx (P := P) (host := host) (stk.drop ps.length).reverse rest
+      (Steps.frame (f := f) rs.length (Steps.label rs.length [] (show Steps P host
+        ⟨s, calleeFrame fi fn stk ps.length, expression fn.body⟩
+        ⟨s₂, f₂, vals vs' ++ .ref .null :: c' :: rest₀⟩ from hrun)))
+    have exit := Steps.ctx (P := P) (host := host) (stk.drop ps.length).reverse rest
+      (frame_tailNull (P := P) (host := host) (s := s₂) (f := f) (n := rs.length) (F := f₂)
+        (vs := vs') (rest := rest₀) hc)
+    have hw : WP P host s₂ f (vals (stk.drop ps.length).reverse ++ .trap :: rest)
+        (Match (s₂, f, .trap)) := wp_trap ⟨rfl, rfl, trivial⟩
+    exact WP.steps (enter.trans (inner.trans exit)) (by simpa using hw)
   obtain ⟨hc, hf', vs₁, args, fn', ps', rs', rfl, hfn, hex, hlen, hg⟩ := hT
   dsimp only at hf'
   subst hf'

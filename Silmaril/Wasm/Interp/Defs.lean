@@ -352,11 +352,13 @@ def TailRun (P : Numerics.Profile) (host : HostSemantics H) (n : Nat)
           ⟨s, g, vals args ++ [.ref (.func a), c.retToCallIn f.module]⟩ ⟨r.1, g, [.trap]⟩)
 
 /-- **The tail-aware postcondition** of a native result, for an enclosing function
-of return arity `n`: `Match`, or a pending tail call that ends as the result does
-(`TailRun`). -/
+of return arity `n`: `Match`, a pending tail call that ends as the result does
+(`TailRun`), or a pending tail call of a null reference, which traps when the
+frame is left, so ends as a trapping result in the same store. -/
 def MatchT (P : Numerics.Profile) (host : HostSemantics H) (n : Nat)
     (r : Store H × Frame × Binaryen.Flow) : Logic.Core.Post H :=
-  fun s f o => Match r s f o ∨ ∃ vs a c, o = .tail vs a c ∧ TailRun P host n r s f vs a c
+  fun s f o => Match r s f o ∨ (∃ vs a c, o = .tail vs a c ∧ TailRun P host n r s f vs a c) ∨
+    ∃ vs c, o = .tailNull vs c ∧ c.IsReturnCallRef ∧ s = r.1 ∧ f = r.2.1 ∧ r.2.2 = .trap
 
 end Tail
 

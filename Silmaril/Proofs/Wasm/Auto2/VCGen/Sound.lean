@@ -538,7 +538,9 @@ theorem labelQ_postT {n : Nat} {K : Store H → Frame → List Val → Prop} {Q 
     refine .exit (.normal (vs.drop (vs.length - n))) (by simp [expression, vals,
       Silmaril.Wasm.Logic.Hoare.Exits]) ?_
     simpa [seqPostT, TWP] using hK s f _ (by simpa using hk)
-  all_goals simpa [labelQ, labelPostT, Silmaril.Wasm.Logic.Hoare.labelPostK, seqPostT] using h
+  all_goals first
+    | exact h.elim
+    | simpa [labelQ, labelPostT, Silmaril.Wasm.Logic.Hoare.labelPostK, seqPostT] using h
 
 /-- **A block** entered with an empty stack, in either reading. -/
 theorem Wp.block0 {s : Store H} {f : Frame} {bt : BlockType} {n : Nat} {b : List Instr}

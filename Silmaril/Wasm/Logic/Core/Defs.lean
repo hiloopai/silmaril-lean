@@ -64,6 +64,10 @@ inductive Outcome where
   /-- About to tail-call the function at address `a` (`REF.FUNC_ADDR a` followed by the
   `RETURN_CALL_REF` form `c`), with the values `vs` below the reference. -/
   | tail (vs : List Val) (a : Nat) (c : Admin)
+  /-- About to tail-call a null reference (`REF.NULL` followed by the `RETURN_CALL_REF`
+  form `c`), with the values `vs` below the reference. It traps when the frame is
+  left (`return_call_ref-frame-null`). -/
+  | tailNull (vs : List Val) (c : Admin)
 
 /-- The code `c` is a final form of outcome `o`. -/
 def Outcome.Ends : Outcome → List Admin → Prop
@@ -75,6 +79,8 @@ def Outcome.Ends : Outcome → List Admin → Prop
   | .throw a, c => c = throwing a
   | .tail vs a r, c => r.IsReturnCallRef ∧ ∃ rest : List Admin,
       c = vals vs ++ .ref (.func a) :: r :: rest
+  | .tailNull vs r, c => r.IsReturnCallRef ∧ ∃ rest : List Admin,
+      c = vals vs ++ .ref .null :: r :: rest
 
 /-- Put the values `vs₀` below the stack of an outcome. A trap and a throw discard
 them. -/
@@ -85,6 +91,7 @@ def Outcome.prepend (vs₀ : List Val) : Outcome → Outcome
   | .trap => .trap
   | .throw a => .throw a
   | .tail vs a c => .tail (vs₀ ++ vs) a c
+  | .tailNull vs c => .tailNull (vs₀ ++ vs) c
 
 /-- Postconditions see the store, the frame and the outcome. -/
 abbrev Post (H : Type) := Store H → Frame → Outcome → Prop
@@ -123,6 +130,7 @@ def labelPost (P : Profile) (host : HostSemantics H) (n : Nat) (cont : List Inst
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail vs a c)
+  | .tailNull vs c => Q s f (.tailNull vs c)
 
 /-- What the body of a block of result arity `n` may end with, seen from outside
 the block: falling through or branching to the block's own label (`br 0`) both
@@ -136,6 +144,7 @@ def blockPost (n : Nat) (Q : Post H) : Post H := fun s f o =>
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail vs a c)
+  | .tailNull vs c => Q s f (.tailNull vs c)
 
 /-- What the body of a loop with parameter arity `n` may end with: a branch to the
 loop's own label (`br 0`) re-enters the loop with the top `n` values, which must
@@ -151,6 +160,7 @@ def loopPost (n : Nat) (Inv : Nat → Store H → Frame → List Val → Prop) (
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail vs a c)
+  | .tailNull vs c => Q s f (.tailNull vs c)
 
 /-- What a caught exception `a` becomes at the matching catch clause: a branch to
 the clause's label with the exception's fields, its reference, both, or nothing. -/
@@ -226,6 +236,7 @@ def funcPost (P : Profile) (host : HostSemantics H) (n : Nat) (K : Store H → L
       args.length = ps.length ∧ ∀ g : Frame, ∃ s' res,
         Steps P host ⟨s, g, vals args ++ [.ref (.func a), c.retToCallIn F.module]⟩
           ⟨s', g, vals res⟩ ∧ K s' res
+  | .tailNull _ _ => False
 
 /-! ## Straight-line code by evaluation -/
 

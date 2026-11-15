@@ -126,6 +126,7 @@ theorem framePostK_of_out {n k : Nat} {f F : Frame} {us : List Val} {Q : Post H}
   · exact h
   · exact h.elim
   · exact h.elim
+  · exact h.elim
 
 theorem framePostT_of_out {n : Nat} {f F : Frame} {us : List Val} {Q : Post H} {s : Store H}
     {o : Outcome} (h : FrameOut n f us Q s o) : framePostT P host n f us Q s F o := by
@@ -134,6 +135,7 @@ theorem framePostT_of_out {n : Nat} {f F : Frame} {us : List Val} {Q : Post H} {
   · exact h.elim
   · exact h.elim
   · exact h
+  · exact h.elim
   · exact h.elim
   · exact h.elim
 
@@ -166,6 +168,7 @@ theorem wp_frame_pinned {m : Corr} {n : Nat} {s s' : Store H} {F f : Frame} {b :
       exact wp_frame_trap h₂
     · exact ho.elim
     · exact ho.elim
+    · exact ho.elim
   · show FrameOut n f us Q s' o' → Wp m P host s f (vals us ++ [.frame n F b]) Q
     intro hout
     have hpin : ∀ s₁ F₁ o, Pin s' o' s₁ F₁ o → FrameOut n f us Q s₁ o := by
@@ -194,6 +197,7 @@ theorem pinned_label {n : Nat} {s s' : Store H} {F : Frame} {b : List Admin} {o'
     · exact ho.elim
     · exact ho.elim
     · exact ⟨rfl, rfl⟩
+    · exact ho.elim
     · exact ho.elim
     · exact ho.elim
   have h₁ := TSafe.label (m := n) (cont := []) (us := []) hl
@@ -251,6 +255,7 @@ theorem tfspec_of_pinned {s s' : Store H} {args : List Val} {a : Nat} {fi : Func
   · exact ho.elim
   · exact ho.elim
   · exact ⟨rfl, Or.inr (Or.inl ⟨rfl, rfl, rfl⟩)⟩
+  · exact ho.elim
   · exact ho.elim
   · exact ho.elim
 

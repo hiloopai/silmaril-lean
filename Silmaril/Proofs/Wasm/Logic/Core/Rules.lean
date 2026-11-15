@@ -105,7 +105,7 @@ theorem wp_throwing {s : Store H} {f : Frame} {vs : List Val} {a : Nat} {rest : 
 theorem wp_append_abrupt {s : Store H} {f : Frame} {c c₂ : List Admin} {o : Outcome}
     {Q : Post H} (he : o.Ends c) (hn : ∀ vs, o ≠ .normal vs) (hq : Q s f o) :
     WP P host s f (c ++ c₂) Q := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
   · exact absurd rfl (hn vs)
   · obtain ⟨x, rest, hx, rfl⟩ := he
     exact ⟨_, _, _, .br l vs, .refl, ⟨x, rest ++ c₂, hx, by simp⟩, hq⟩
@@ -119,6 +119,8 @@ theorem wp_append_abrupt {s : Store H} {f : Frame} {c c₂ : List Admin} {o : Ou
     exact hc ▸ wp_throwing hq
   · obtain ⟨hr, rest, rfl⟩ := he
     exact ⟨_, _, _, .tail vs a r, .refl, ⟨hr, rest ++ c₂, by simp⟩, hq⟩
+  · obtain ⟨hr, rest, rfl⟩ := he
+    exact ⟨_, _, _, .tailNull vs r, .refl, ⟨hr, rest ++ c₂, by simp⟩, hq⟩
 
 /-- **Sequencing** (Wasm Logic `[seq]`, Figure 10). -/
 theorem wp_seq {s : Store H} {f : Frame} {c₁ c₂ : List Admin} {Q : Post H}
@@ -134,7 +136,7 @@ theorem wp_seq {s : Store H} {f : Frame} {c₁ c₂ : List Admin} {Q : Post H}
 theorem Outcome.Ends.prepend {vs₀ : List Val} {o : Outcome} {c : List Admin} (he : o.Ends c) :
     (o.prepend vs₀).Ends (vals vs₀ ++ c) ∨
       (∃ a, o = .throw a ∧ c = throwing a) ∨ (o = .trap ∧ c = [.trap]) := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
   · have hc : c = vals vs := he
     refine .inl ?_
     show vals vs₀ ++ c = vals (vs₀ ++ vs)
@@ -145,6 +147,8 @@ theorem Outcome.Ends.prepend {vs₀ : List Val} {o : Outcome} {c : List Admin} (
     exact .inl ⟨rest, by simp⟩
   · exact .inr (.inr ⟨rfl, he⟩)
   · exact .inr (.inl ⟨a, rfl, he⟩)
+  · obtain ⟨hr, rest, rfl⟩ := he
+    exact .inl ⟨hr, rest, by simp⟩
   · obtain ⟨hr, rest, rfl⟩ := he
     exact .inl ⟨hr, rest, by simp⟩
 
@@ -279,10 +283,27 @@ theorem label_tail {vs : List Val} {a : Nat} {r : Admin} {rest : List Admin}
     ⟨hr, [], by simp [vals, Val.toAdmin]⟩
   exact WP.step st ⟨s, f, _, _, .refl, he, hq⟩
 
+/-- The code of a null tail call, with the null reference among the values. -/
+theorem tailNull_code (vs : List Val) (r : Admin) (rest : List Admin) :
+    vals vs ++ .ref .null :: r :: rest = vals (vs ++ [.ref .null]) ++ [r] ++ rest := by
+  simp [vals, Val.toAdmin]
+
+/-- A null tail call leaves the label. -/
+theorem label_tailNull {vs : List Val} {r : Admin} {rest : List Admin}
+    (hr : r.IsReturnCallRef) (hq : labelPost P host n cont Q s f (.tailNull vs r)) :
+    WP P host s f [.label n cont (vals vs ++ .ref .null :: r :: rest)] Q := by
+  have st : Step P host ⟨s, f, [.label n cont (vals vs ++ .ref .null :: r :: rest)]⟩
+      ⟨s, f, vals (vs ++ [.ref .null]) ++ [r]⟩ := by
+    rw [tailNull_code]
+    exact .returnCallRefLabel hr
+  have he : (Outcome.tailNull vs r).Ends (vals (vs ++ [.ref .null]) ++ [r]) :=
+    ⟨hr, [], by simp [vals, Val.toAdmin]⟩
+  exact WP.step st ⟨s, f, _, _, .refl, he, hq⟩
+
 /-- A final form inside a label. -/
 theorem label_ends {c : List Admin} {o : Outcome} (he : o.Ends c)
     (hq : labelPost P host n cont Q s f o) : WP P host s f [.label n cont c] Q := by
-  rcases o with vs | ⟨_ | l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨_ | l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
   · have hc : c = vals vs := he
     exact hc ▸ WP.step .labelVals (wp_vals hq)
   · obtain ⟨x, rest, hx, rfl⟩ := he
@@ -295,6 +316,8 @@ theorem label_ends {c : List Admin} {o : Outcome} (he : o.Ends c)
   · exact (show c = throwing a from he) ▸ label_throw hq
   · obtain ⟨hr, rest, rfl⟩ := he
     exact label_tail hr hq
+  · obtain ⟨hr, rest, rfl⟩ := he
+    exact label_tailNull hr hq
 
 /-- **Labels**: the common core of `wp_block` and `wp_loop`. -/
 theorem wp_label {code : List Admin} (h : WP P host s f code (labelPost P host n cont Q)) :
@@ -493,7 +516,7 @@ where
 theorem handler_ends {s : Store H} {f : Frame} {n : Nat} {cs : List Catch} {Q : Post H}
     {c : List Admin} {o : Outcome} (he : o.Ends c) (hq : handlerPost cs Q s f o) :
     WP P host s f [.handler n cs c] Q := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
   · have hc : c = vals vs := he
     exact hc ▸ WP.step .handlerVals (wp_vals hq)
   · obtain ⟨x, rest, hx, rfl⟩ := he
@@ -518,6 +541,14 @@ theorem handler_ends {s : Store H} {f : Frame} {n : Nat} {cs : List Catch} {Q : 
       rw [tail_code]
       exact .returnCallRefHandler hr
     have he : (Outcome.tail vs a r).Ends (vals (vs ++ [.ref (.func a)]) ++ [r]) :=
+      ⟨hr, [], by simp [vals, Val.toAdmin]⟩
+    exact WP.step st ⟨s, f, _, _, .refl, he, hq⟩
+  · obtain ⟨hr, rest, rfl⟩ := he
+    have st : Step P host ⟨s, f, [.handler n cs (vals vs ++ .ref .null :: r :: rest)]⟩
+        ⟨s, f, vals (vs ++ [.ref .null]) ++ [r]⟩ := by
+      rw [tailNull_code]
+      exact .returnCallRefHandler hr
+    have he : (Outcome.tailNull vs r).Ends (vals (vs ++ [.ref .null]) ++ [r]) :=
       ⟨hr, [], by simp [vals, Val.toAdmin]⟩
     exact WP.step st ⟨s, f, _, _, .refl, he, hq⟩
 

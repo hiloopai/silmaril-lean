@@ -161,6 +161,7 @@ def FnvOk : Outcome → List Val × List Admin → Prop
       p = (vs ++ [.ref (.exn a)], .plain .throwRef :: rest)
   | .tail vs a r, p => ((∃ y, r = .plain (.returnCallRef y)) ∨ (∃ d, r = .returnCallRefType d)) ∧
       ∃ rest : List Admin, p = (vs ++ [.ref (.func a)], r :: rest)
+  | .tailNull _ _, _ => False
 
 theorem fnv_vals_cons {vs : List Val} {e : Admin} {rest : List Admin} (he : e.val? = none) :
     SingleThreaded.Det.fnv (vals vs ++ e :: rest) = (vs, e :: rest) := by
@@ -185,7 +186,7 @@ theorem fnv_tail_code {vs : List Val} {a : Nat} {r : Admin} {rest : List Admin}
 
 theorem Exits.fnv {o : Outcome} {c : List Admin} (h : Exits o c) :
     FnvOk o (SingleThreaded.Det.fnv c) := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | _
   · rw [show c = vals vs from h, SingleThreaded.Det.fnv_vals]; rfl
   · obtain ⟨x, rest, hx, rfl⟩ := h
     exact ⟨x, rest, hx, fnv_vals_cons rfl⟩
@@ -197,6 +198,7 @@ theorem Exits.fnv {o : Outcome} {c : List Admin} (h : Exits o c) :
     exact ⟨vs, rest, (throwing_code vs a rest).symm ▸ fnv_vals_cons rfl⟩
   · obtain ⟨hr, rest, rfl⟩ := h
     exact ⟨SingleThreaded.Det.IsReturnCallRef.cases hr, rest, fnv_tail_code hr⟩
+  · exact h.elim
 
 /-- A head that is not a `return_call_ref` is not a tail call. -/
 theorem fnvOk_tail_ne {vs W : List Val} {a : Nat} {r e : Admin} {rest : List Admin}
@@ -260,7 +262,7 @@ theorem exits_tail_inv {o : Outcome} {vs : List Val} {a : Nat} {r : Admin} {rest
 /-- Every exit other than falling through ignores what follows. -/
 theorem Exits.append {o : Outcome} {c : List Admin} (he : Exits o c)
     (hn : ∀ vs, o ≠ .normal vs) (d : List Admin) : Exits o (c ++ d) := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | _
   · exact (hn vs rfl).elim
   · obtain ⟨x, rest, hx, rfl⟩ := he
     exact ⟨x, rest ++ d, hx, by simp⟩
@@ -272,6 +274,7 @@ theorem Exits.append {o : Outcome} {c : List Admin} (he : Exits o c)
     exact ⟨vs, rest ++ d, by simp⟩
   · obtain ⟨hr, rest, rfl⟩ := he
     exact ⟨hr, rest ++ d, by simp⟩
+  · exact he.elim
 
 /-- A trap inside a sequence steps only by discarding values and dead code. -/
 theorem exits_trap_step {s s' : Store H} {f f' : Frame} {vs : List Val} {rest c' : List Admin}
@@ -297,7 +300,7 @@ shortens the code. -/
 theorem Exits.step {o : Outcome} {s s' : Store H} {f f' : Frame} {c c' : List Admin}
     (he : Exits o c) (h : Step P host ⟨s, f, c⟩ ⟨s', f', c'⟩) :
     s' = s ∧ f' = f ∧ Exits o c' ∧ Sim.codeSize c' < Sim.codeSize c := by
-  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | _
   · have h' : Step P host ⟨s, f, vals vs⟩ ⟨s', f', c'⟩ := (show c = vals vs from he) ▸ h
     exact (not_step_vals h').elim
   · obtain ⟨x, rest, -, rfl⟩ := he
@@ -310,6 +313,7 @@ theorem Exits.step {o : Outcome} {s s' : Store H} {f f' : Frame} {c c' : List Ad
     exact exits_throw_step h
   · obtain ⟨hr, rest, rfl⟩ := he
     exact (not_step_blocked (Or.inr (Or.inr hr)) (tail_code vs a r rest ▸ h)).elim
+  · exact he.elim
 
 /-! ## Safety after one step -/
 

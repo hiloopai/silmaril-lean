@@ -25,7 +25,7 @@ variable {H : Type} {P : Profile} {host : HostSemantics H}
 theorem funcPost_mono {n : Nat} {K K' : Store H → List Val → Prop}
     (hK : ∀ s r, K s r → K' s r) {s : Store H} {F : Frame} {o : Outcome}
     (h : funcPost P host n K s F o) : funcPost P host n K' s F o := by
-  rcases o with vs | ⟨_ | l, vs⟩ | vs | _ | _ | ⟨vs, b, c⟩
+  rcases o with vs | ⟨_ | l, vs⟩ | vs | _ | _ | ⟨vs, b, c⟩ | ⟨vs, c⟩
   · exact ⟨h.1, hK _ _ h.2⟩
   · obtain ⟨vs₁, r, he, hl, hr⟩ := h
     exact ⟨vs₁, r, he, hl, hK _ _ hr⟩
@@ -38,6 +38,7 @@ theorem funcPost_mono {n : Nat} {K K' : Store H → List Val → Prop}
     refine ⟨vs₁, args, fn, ps, rs, he, hf, hx, hl, fun g => ?_⟩
     obtain ⟨s', r, hs, hr⟩ := hk g
     exact ⟨s', r, hs, hK _ _ hr⟩
+  · exact h.elim
 
 /-- A body-level specification for every input gives the call-level one. -/
 theorem Computes.funcSpec {α : Type} {fn : Func} {argsOf resOf : α → List Val}

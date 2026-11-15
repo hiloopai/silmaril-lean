@@ -53,7 +53,9 @@ variable {H : Type}
 /-! ## Exits -/
 
 /-- The code `c` has left with outcome `o`. A trap or an exception may still be
-inside a sequence (values before, dead code after); everything else is exact. -/
+inside a sequence (values before, dead code after); everything else is exact. A
+tail call of a null reference is not an exit here: this logic treats it as unsafe
+(`frame_callNull`). -/
 def Exits : Outcome → List Admin → Prop
   | .normal vs, c => c = vals vs
   | .br l vs, c => ∃ (x : LabelIdx) (rest : List Admin), x.toNat = l ∧
@@ -63,6 +65,7 @@ def Exits : Outcome → List Admin → Prop
   | .throw a, c => ∃ (vs : List Val) (rest : List Admin), c = vals vs ++ throwing a ++ rest
   | .tail vs a r, c => r.IsReturnCallRef ∧ ∃ rest : List Admin,
       c = vals vs ++ .ref (.func a) :: r :: rest
+  | .tailNull _ _, _ => False
 
 /-! ## Safety and the every-run weakest precondition -/
 
@@ -129,6 +132,7 @@ def labelPostK (P : Profile) (host : HostSemantics H) (n : Nat) (cont : List Ins
   | .trap => Q s f .trap
   | .throw a => Q s f (.throw a)
   | .tail vs a c => Q s f (.tail (us ++ vs) a c)
+  | .tailNull _ _ => False
 
 /-- `labelPostK` for every index. -/
 def labelPost (P : Profile) (host : HostSemantics H) (n : Nat) (cont : List Instr)
@@ -159,6 +163,7 @@ def framePostK (P : Profile) (host : HostSemantics H) (n : Nat) (f : Frame) (vs�
       vs = vs₁ ++ args ∧ s.funcs[a]? = some fn ∧ Expand fn.type (.func ps rs) ∧
       args.length = ps.length ∧
       Safe P host Q k ⟨s, f, vals vs₀ ++ vals args ++ [.ref (.func a), c.retToCallIn F.module]⟩
+  | .tailNull _ _ => False
 
 /-- The postcondition of a function body `expression body` run inside
 `FRAME_n{F} (LABEL_n{} …)`, as seen by the caller (the label of the body and the

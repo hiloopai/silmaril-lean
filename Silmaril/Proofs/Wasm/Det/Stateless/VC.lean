@@ -85,6 +85,7 @@ theorem exits_decompose {o : Outcome} {code : List Admin} (h : Exits o code) (s 
   | tail vs a r =>
     obtain ⟨hr, rest, he⟩ := h
     exact he ▸ decompose?_tail vs a hr rest
+  | tailNull _ _ => exact h.elim
 
 theorem trap_mem_toAdmin {r : Result} (h : Admin.trap ∈ r.toAdmin) : r = .trap := by
   cases r with

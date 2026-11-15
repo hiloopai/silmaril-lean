@@ -115,7 +115,7 @@ theorem frame_ends {c : List Admin} {o : Outcome} (he : o.Ends c)
     (hq : funcPost P host n K s F o) :
     ∃ s' res, Steps P host ⟨s, f, [.frame n F [.label n [] c]]⟩ ⟨s', f, vals res⟩ ∧
       K s' res := by
-  rcases o with vs | ⟨_ | l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩
+  rcases o with vs | ⟨_ | l, vs⟩ | vs | _ | a | ⟨vs, a, r⟩ | ⟨vs, r⟩
   · exact (show c = vals vs from he) ▸ frame_normal hq
   · obtain ⟨x, rest, hx, rfl⟩ := he
     exact frame_br hx hq
@@ -126,6 +126,22 @@ theorem frame_ends {c : List Admin} {o : Outcome} (he : o.Ends c)
   · exact hq.elim
   · obtain ⟨hr, rest, rfl⟩ := he
     exact frame_tail hr hq
+  · exact hq.elim
+
+/-- **A body that tail-called a null reference traps** when its frame is left
+(`return_call_ref-label`, then `return_call_ref-frame-null`). -/
+theorem frame_tailNull {vs : List Val} {r : Admin} {rest : List Admin} (hr : r.IsReturnCallRef) :
+    Steps P host ⟨s, f, [.frame n F [.label n [] (vals vs ++ .ref .null :: r :: rest)]]⟩
+      ⟨s, f, [.trap]⟩ := by
+  have h₁ : Step P host ⟨s, f, [.frame n F [.label n [] (vals vs ++ .ref .null :: r :: rest)]]⟩
+      ⟨s, f, [.frame n F (vals vs ++ [.ref .null, r] ++ [])]⟩ := by
+    have e : vals vs ++ .ref .null :: r :: rest = vals (vs ++ [.ref .null]) ++ [r] ++ rest := by
+      simp [vals, Val.toAdmin]
+    have e' : vals vs ++ [.ref .null, r] ++ [] = vals (vs ++ [.ref .null]) ++ [r] := by
+      simp [vals, Val.toAdmin]
+    rw [e, e']
+    exact Step.ctxtFrame (Step.returnCallRefLabel hr)
+  exact (Relation.ReflTransGen.single h₁).tail (Step.returnCallRefFrameNull hr)
 
 end Body
 

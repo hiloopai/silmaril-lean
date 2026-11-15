@@ -396,13 +396,14 @@ theorem wp_of_twp {s : Store H} {f : Frame} {code : List Admin} {Q : Post H}
     induction hc with
     | @exit c o he hq =>
       refine ⟨c.store, c.frame, c.code, o, .refl, ?_, hq⟩
-      rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, cc⟩
+      rcases o with vs | ⟨l, vs⟩ | vs | _ | a | ⟨vs, a, cc⟩ | _
       · exact he
       · exact he
       · exact he
       · exact ((hQ _ _).1 hq).elim
       · exact ((hQ _ _).2 a hq).elim
       · exact he
+      · exact he.elim
     | step hp _ ih =>
       obtain ⟨c₁, h₁⟩ := hp
       obtain ⟨s', f', c', o, hs, he, hq⟩ := ih c₁ h₁

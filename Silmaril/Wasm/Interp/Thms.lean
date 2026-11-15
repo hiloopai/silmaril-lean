@@ -34,8 +34,10 @@ straight-line integer instructions with in-range local writes (`BExpr.straightLi
   code context `rest`, to `[trap]`, every profile and host.
 
 **Pending tail calls** (`Silmaril.Proofs.Wasm.Interp.Tail`, checker step 4). `MatchT P host n r`
-is `Match r` or a pending tail call `.tail vs a c` that ends as `r` does (`TailRun`: in every
-outer frame the callee returns `r`'s top `n` return values, or traps, in `r`'s store). The
+is `Match r`, a pending tail call `.tail vs a c` that ends as `r` does (`TailRun`: in every
+outer frame the callee returns `r`'s top `n` return values, or traps, in `r`'s store), or a
+pending tail call of a null reference `.tailNull vs c`, which traps at the frame
+(`return_call_ref-frame-null`, `frame_tailNull`), so ends as a trapping `r` in the same store. The
 invariant `CoreGoodQ ext P host M` takes the postcondition per return arity; `CoreGoodE` is
 `M = Match` (unchanged), `CoreGoodT` is `M = MatchT`. On results that neither return nor trap
 the two agree (`matchT_eq_match`, `core_of_coreT`); the continuation cases (`core_opOk`,

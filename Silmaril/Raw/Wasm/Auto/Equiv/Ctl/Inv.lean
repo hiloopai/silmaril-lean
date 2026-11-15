@@ -54,6 +54,7 @@ theorem exits_unique {o o' : Outcome} {c : List Admin} (h : Exits o c) (h' : Exi
     exact (exits_throw_inv h').symm
   · obtain ⟨hr, rest, rfl⟩ := h
     exact (exits_tail_inv hr h').symm
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-- An exit of `c₁ ++ c₂` whose first part is not all values is an exit of `c₁`. -/
 theorem Exits.of_append {o : Outcome} {c₁ c₂ : List Admin} (hna : c₁.all Admin.isVal = false)
@@ -88,6 +89,7 @@ theorem Exits.of_append {o : Outcome} {c₁ c₂ : List Admin} (hna : c₁.all A
       · rw [hd]; trivial
     refine ⟨hr', es, ?_⟩
     rw [tail_code, hv, ha']
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-- A weakest precondition at an exit gives the postcondition of the exit. -/
 theorem hwp_exit_post {s : Store H} {f : Frame} {c : List Admin} {Q : Post H} {o : Outcome}
@@ -112,6 +114,7 @@ theorem hwp_exit_post {s : Store H} {f : Frame} {c : List Admin} {Q : Post H} {o
     obtain ⟨o', he', hq⟩ := (h 1).exit_of_stuck fun _ hst =>
       not_step_blocked (Or.inr (Or.inr hr)) (tail_code vs a r rest ▸ hst)
     exact exits_unique he' (show Exits (.tail vs a r) _ from ⟨hr, rest, rfl⟩) ▸ hq
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 theorem tsafe_exit_post {s : Store H} {f : Frame} {c : List Admin} {Q : Post H} {o : Outcome}
     (h : TSafe P host Q ⟨s, f, c⟩) (he : Exits o c) : Q s f o :=
@@ -238,6 +241,7 @@ theorem not_exits_label {o : Outcome} {us : List Val} {m : Nat} {cont : List Ins
     rcases hr with ⟨y, hy⟩ | ⟨d, hd⟩
     · cases hy
     · cases hd
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-! ## Both readings at once -/
 
@@ -288,6 +292,7 @@ theorem not_exits_of_val_none {o : Outcome} {vs : List Val} {a : Admin} {rest : 
     simp only [Prod.mk.injEq, List.cons.injEq] at hp
     rw [hp.2.1] at hnc
     rcases hr with ⟨y, rfl⟩ | ⟨d, rfl⟩ <;> exact hnc trivial
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-- A `br 0` with fewer values than the label's arity: the label cannot step. -/
 theorem label_br0_stuck {s : Store H} {f : Frame} {us vs : List Val} {m : Nat}
@@ -415,6 +420,7 @@ theorem wp_label_exit_post {m : Corr} {s : Store H} {f : Frame} {us : List Val} 
       exact this
     have := wp_exit_post (lift hst) (o := .tail (us ++ vs) a r) ⟨hr, [], by simp [vals, Val.toAdmin]⟩
     cases m <;> exact this
+  · exact (‹Exits (.tailNull _ _) _›).elim
 
 /-- A label body that is neither all values nor an exit steps, if the label does. -/
 theorem body_step_of_label {m : Corr} {s : Store H} {f : Frame} {us : List Val} {k : Nat}
