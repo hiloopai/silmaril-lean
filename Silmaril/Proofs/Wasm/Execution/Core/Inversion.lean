@@ -496,6 +496,104 @@ theorem callRef_wasm_inv {c c' : Config H} (h : Step P host c c') :
       | (simp at hl; subst hl; simp [Admin.IsCallRef] at hr; done)
       | (simp at hl; subst hl; simp [Admin.IsCallRef, Det.famOf] at hk; done)
 
+theorem callRef_host_inv {c c' : Config H} (h : Step P host c c') :
+    ∀ {vs : List Val} {a : Nat} {r : Admin} {fi : FuncInst H} {code : H}, r.IsCallRef →
+      c.store.funcs[a]? = some fi → fi.code = .host code →
+      c.code = vals vs ++ [.ref (.func a), r] →
+      ∃ vs₁ vs₂ ps rs, vs = vs₁ ++ vs₂ ∧ Expand fi.type (.func ps rs) ∧ vs₂.length = ps.length ∧
+        ((∃ s' res, host code c.store vs₂ (.returned s' res) ∧
+            c' = ⟨s', c.frame, vals vs₁ ++ res.toAdmin⟩) ∨
+          (host code c.store vs₂ .diverged ∧ c' = c)) := by
+  induction h with
+  | callRefFunc hr' hf' he hn hcode' =>
+    intro vs a r fi code hr hf hcode hc
+    obtain ⟨rfl, hx, rfl⟩ := last_two rfl rfl (Admin.val?_of_isCallRef hr')
+      (Admin.val?_of_isCallRef hr) hc
+    simp only [Admin.ref.injEq, Ref.func.injEq] at hx
+    subst hx
+    obtain rfl : _ = fi := Option.some.inj (hf'.symm.trans hf)
+    cases hcode'.symm.trans hcode
+  | callRefHost hr' hf' he hn hcode' hhost =>
+    intro vs a r fi code hr hf hcode hc
+    obtain ⟨rfl, hx, rfl⟩ := last_two rfl rfl (Admin.val?_of_isCallRef hr')
+      (Admin.val?_of_isCallRef hr) hc
+    simp only [Admin.ref.injEq, Ref.func.injEq] at hx
+    subst hx
+    obtain rfl : _ = fi := Option.some.inj (hf'.symm.trans hf)
+    obtain rfl : _ = code := FuncCode.host.inj (hcode'.symm.trans hcode)
+    exact ⟨[], _, _, _, rfl, he, hn, .inl ⟨_, _, hhost, by simp [vals]⟩⟩
+  | callRefHostDiv hr' hf' he hn hcode' hhost =>
+    intro vs a r fi code hr hf hcode hc
+    obtain ⟨rfl, hx, rfl⟩ := last_two rfl rfl (Admin.val?_of_isCallRef hr')
+      (Admin.val?_of_isCallRef hr) hc
+    simp only [Admin.ref.injEq, Ref.func.injEq] at hx
+    subst hx
+    obtain rfl : _ = fi := Option.some.inj (hf'.symm.trans hf)
+    obtain rfl : _ = code := FuncCode.host.inj (hcode'.symm.trans hcode)
+    exact ⟨[], _, _, _, rfl, he, hn, .inr ⟨hhost, rfl⟩⟩
+  | callRefNull hr' =>
+    intro vs a r fi code hr hf hcode hc
+    obtain ⟨-, hx, -⟩ := last_two (vs := []) rfl rfl (Admin.val?_of_isCallRef hr')
+      (Admin.val?_of_isCallRef hr) (by simpa [vals] using hc)
+    cases hx
+  | @ctxtInstrs s s' f f' vs₀ is is' rest hs hne ih =>
+    intro vs a r fi code hr hf hcode hc
+    dsimp only at hc hf ⊢
+    obtain ⟨w, b, t, hb, rfl⟩ := Sim.exists_head_of_not_all hs.not_all_isVal
+    have hc' : vals (vs₀ ++ w) ++ b :: (t ++ rest) =
+        vals (vs ++ [.ref (.func a)]) ++ r :: [] := by
+      simpa [vals, Val.toAdmin] using hc
+    obtain ⟨h1, rfl, h3⟩ := Sim.vals_append_cons_inj hb (Admin.val?_of_isCallRef hr) hc'
+    obtain ⟨rfl, rfl⟩ := List.append_eq_nil_iff.1 h3
+    rcases List.eq_nil_or_concat w with rfl | ⟨w', x, rfl⟩
+    · exact (callRef_stuck hs hr (by simp [vals])).elim
+    · have h1' : (vs₀ ++ w') ++ [x] = vs ++ [Val.ref (.func a)] := by simpa using h1
+      obtain ⟨hv, h2⟩ := List.append_inj' h1' rfl
+      obtain rfl := List.singleton_inj.1 h2
+      subst hv
+      obtain ⟨vs₁, vs₂, ps, rs, rfl, he, hn, hc''⟩ :=
+        ih (vs := w') hr hf hcode (by simp [vals, Val.toAdmin])
+      refine ⟨vs₀ ++ vs₁, vs₂, ps, rs, by simp, he, hn, ?_⟩
+      rcases hc'' with ⟨s'', res, hh, hc''⟩ | ⟨hh, hc''⟩
+      · simp only [Config.mk.injEq] at hc''
+        obtain ⟨rfl, rfl, rfl⟩ := hc''
+        exact .inl ⟨_, res, hh, by simp⟩
+      · simp only [Config.mk.injEq] at hc''
+        obtain ⟨rfl, rfl, hcc⟩ := hc''
+        refine .inr ⟨hh, ?_⟩
+        simp [hcc, vals, Val.toAdmin]
+  | @trapInstrs s f vs₀ rest _ =>
+    intro vs a r fi code hr hf hcode hc
+    have hc' : vals vs₀ ++ Admin.trap :: rest = vals (vs ++ [.ref (.func a)]) ++ r :: [] := by
+      simpa [vals, Val.toAdmin] using hc
+    obtain ⟨-, rfl, -⟩ := Sim.vals_append_cons_inj rfl (Admin.val?_of_isCallRef hr) hc'
+    simp [Admin.IsCallRef] at hr
+  | @throwRefInstrs s f vs₀ x rest _ =>
+    intro vs a r fi code hr hf hcode hc
+    have hc' : vals (vs₀ ++ [.ref (.exn x)]) ++ Admin.plain .throwRef :: rest =
+        vals (vs ++ [.ref (.func a)]) ++ r :: [] := by
+      simpa [vals, Val.toAdmin, throwing] using hc
+    obtain ⟨-, rfl, -⟩ := Sim.vals_append_cons_inj rfl (Admin.val?_of_isCallRef hr) hc'
+    simp [Admin.IsCallRef] at hr
+  | _ =>
+    intro vs a r fi code hr hf hcode hc
+    have hl := congrArg List.getLast? hc
+    simp only [List.getLast?_append, List.getLast?_singleton, List.getLast?_cons_cons,
+      Option.some_or, List.getLast?_cons] at hl
+    have hk := isCallRef_control hr
+    first
+      | (exact absurd (fam_parametric ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_numeric ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_vector ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_variable ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_table ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_memory ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_reference ‹_› hl) (by simp [hk]))
+      | (exact absurd (fam_aggregate ‹_› hl) (by simp [hk]))
+      | (simp at hl; done)
+      | (simp at hl; subst hl; simp [Admin.IsCallRef] at hr; done)
+      | (simp at hl; subst hl; simp [Admin.IsCallRef, Det.famOf] at hk; done)
+
 theorem call_inv_of {s : Store H} {f : Frame} {c : Config H} {x : FuncIdx} {a : Nat}
     {fi : FuncInst H} (hx : f.module.funcs[x.toNat]? = some a) (hf : s.funcs[a]? = some fi)
     (h : Step P host ⟨s, f, [.plain (.call x)]⟩ c) :

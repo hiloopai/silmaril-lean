@@ -94,6 +94,17 @@ theorem Step.callRef_wasm_inv {vs : List Val} {a : Nat} {r : Admin} {fi : FuncIn
         [.label rs.length [] (expression code.body)]]⟩ :=
   Proofs.Inversion.callRef_wasm_inv h hr hf hcode rfl
 
+/-- A `call_ref` of a host function only calls the host (`call_ref-hostfunc-res`, or the
+diverging stutter `call_ref-hostfunc-div`) on the top `ps.length` values, under the values below
+them (`ctxt-instrs`). -/
+theorem Step.callRef_host_inv {vs : List Val} {a : Nat} {r : Admin} {fi : FuncInst H} {hh : H}
+    (hr : r.IsCallRef) (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh)
+    (h : Step P host ⟨s, f, vals vs ++ [.ref (.func a), r]⟩ c) :
+    ∃ vs₁ vs₂ ps rs, vs = vs₁ ++ vs₂ ∧ Expand fi.type (.func ps rs) ∧ vs₂.length = ps.length ∧
+      ((∃ s' res, host hh s vs₂ (.returned s' res) ∧ c = ⟨s', f, vals vs₁ ++ res.toAdmin⟩) ∨
+        (host hh s vs₂ .diverged ∧ c = ⟨s, f, vals vs ++ [.ref (.func a), r]⟩)) :=
+  Proofs.Inversion.callRef_host_inv h hr hf hcode rfl
+
 /-- With exactly the callee's arguments, the step is the `call_ref-func` rule. -/
 theorem Step.callRef_wasm_inv_exact {vs : List Val} {a : Nat} {r : Admin} {fi : FuncInst H}
     {code : Func} {ps rs : Ty (.list .val)} (hr : r.IsCallRef) (hf : s.funcs[a]? = some fi)
