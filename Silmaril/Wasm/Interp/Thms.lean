@@ -18,6 +18,9 @@ public import Silmaril.Proofs.Wasm.Interp.ProfileHost
 /-!
 # The native Binaryen interpreter against Core 3.0: results
 
+**Checked flat instructions** (`flat_core_normal`, `flat_core_abrupt`): public forms of
+`steps_flat_normal`/`wp_flat_abrupt` for clients outside `Interp`.
+
 Proofs in `Silmaril.Proofs.Wasm.Interp.{Straight,Trap,Profile,Arity,Control,Invoke,Obligations,Lag,
 Termination,Progress,Total,Div,Check,Replace}`.
 
@@ -265,5 +268,27 @@ theorem native_store_adequacy {a : Nat} {vs : List Val} (hs : StoreOk s) (hF : B
       cases r <;> cases r' <;> simp_all [Result.toBehaviour]
     subst hr
     exact ⟨c, hst, hc, hcs⟩
+
+/-! ## Checked flat instructions as Core runs -/
+
+/-- **A checked flat instruction that completes normally is a Core run** (every profile and
+host), under any continuation `rest`. Public form of `steps_flat_normal`. -/
+theorem flat_core_normal {F : List (FuncInst H)} {mi : ModuleInst} {ret : Nat}
+    {labels : List Nat} {stk stk' : List Val} {h₀ : Nat} {o : Option Nat} {i : Instr}
+    (hi : ∀ x, i ≠ .call x) (hc : flatChk F mi f.locals.length ret labels h₀ i = some o)
+    (h : Binaryen.evalFlat s f stk i = some (s', f', .normal stk')) (rest : List Admin) :
+    Steps P host ⟨s, f, vals stk.reverse ++ .plain i :: rest⟩ ⟨s', f', vals stk'.reverse ++ rest⟩ :=
+  steps_flat_normal hi hc h rest
+
+/-- **A checked flat instruction that ends abruptly** (branch, `return` or trap) runs in Core
+to the matching final form (every profile and host), under any continuation `rest`. Public
+form of `wp_flat_abrupt`. -/
+theorem flat_core_abrupt {F : List (FuncInst H)} {mi : ModuleInst} {ret : Nat}
+    {labels : List Nat} {stk : List Val} {h₀ : Nat} {o : Option Nat} {i : Instr}
+    {fl : Binaryen.Flow} (hc : flatChk F mi f.locals.length ret labels h₀ i = some o)
+    (h : Binaryen.evalFlat s f stk i = some (s', f', fl)) (hn : ¬ fl.IsNormal)
+    (rest : List Admin) :
+    WP P host s f (vals stk.reverse ++ .plain i :: rest) (Match (s', f', fl)) :=
+  wp_flat_abrupt hc h hn rest
 
 end Silmaril.Wasm.Interp
