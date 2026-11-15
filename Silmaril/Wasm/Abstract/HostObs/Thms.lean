@@ -3,10 +3,12 @@ module
 public import Silmaril.Wasm.Abstract.HostObs.Defs
 public import Silmaril.Wasm.Abstract.HostEval.Thms
 public import Silmaril.Wasm.Abstract.HostClosing.Thms
+public import Silmaril.Wasm.Abstract.DivO.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Done
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Back
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Square
+import Silmaril.Proofs.Wasm.Abstract.HostObs.Div
 
 /-!
 # Core 3.0 invocations against the logged closed semantics with host calls: theorems
@@ -52,8 +54,11 @@ the invocation against `coreHostRel host`):
   invocation is a `done` observation it agrees with, or a `blocked` observation at the
   host call it is at.
 
-Not covered: Core divergence back to a `hostDiv` observation or a divergent logged
-behaviour (backward divergence).
+**Divergence, backward** (`core_div_wasmHostObs`, deterministic profile): a divergent
+Core run of the invocation is a `hostDiv` observation of `wasmHostObs`, or diverges
+natively: local divergence (`LocalCallDivO (hostCall host)`) after a finite descent, or an
+infinite descent chain. These two are not observations of `wasmHostObs`, whose closing
+omits divergence; linking them to a logged, host-independent divergent closing is open.
 -/
 
 @[expose] public section
@@ -177,5 +182,19 @@ theorem core_stuck_wasmHostObs_profile {P : Silmaril.Wasm.Numerics.Profile}
         AtCall c.store a' us c.code :=
   Silmaril.Proofs.Wasm.Abstract.HostObs.core_stuck_wasmHostObs_profile hT hH hN hs hS hW hok
     hrun hend
+
+/-- **Every Core divergence of a typed invocation is a `hostDiv` observation, or native
+divergence** (deterministic profile). -/
+theorem core_div_wasmHostObs {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val} (hs : StoreOk s)
+    (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hd : Diverges (SingleThreaded.profile o) host (invoke s a vs)) :
+    (∃ (cs : List (Call (wasmHostSig H))) (m : (wasmHostSig H).Op),
+        HObs.hostDiv cs m ∈ wasmHostObs host s a vs) ∨
+      (∃ z, (z = ⟨a, (vs, s)⟩ ∨ PendO (hostCall host) ⟨a, (vs, s)⟩ z) ∧
+        LocalCallDivO (hostCall host) z) ∨
+      ∃ g : Nat → (wasmOShape H).self.Op, g 0 = ⟨a, (vs, s)⟩ ∧
+        ∀ n, BodyReachO (hostCall host) (g n) (g (n + 1)) :=
+  Silmaril.Proofs.Wasm.Abstract.HostObs.core_div_wasmHostObs hT hH hs hS hok hd
 
 end Silmaril.Wasm.Abstract
