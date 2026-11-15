@@ -4,13 +4,12 @@ public import Silmaril.Wasm.Abstract.HostObs.Defs
 public import Silmaril.Wasm.Abstract.HostEval.Thms
 public import Silmaril.Wasm.Abstract.HostClosing.Thms
 public import Silmaril.Wasm.Abstract.DivO.Thms
-public import Silmaril.Games.Abstract.HostRunInf.Thms
+public import Silmaril.Wasm.Abstract.HostClosingInf.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Done
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Back
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Square
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Div
-import Silmaril.Proofs.Wasm.Abstract.HostObs.Inf
 
 /-!
 # Core 3.0 invocations against the logged closed semantics with host calls: theorems
@@ -62,7 +61,8 @@ natively: local divergence (`LocalCallDivO (hostCall host)`) after a finite desc
 infinite descent chain. These two are not observations of `wasmHostObs`, whose closing
 omits divergence; linking them to a logged, host-independent divergent closing is open.
 
-**Productive runs** (`wasmEvInf`, `wasmEvInf_hostObsInf`, every profile and host). The
+**Productive runs** (`Silmaril.Wasm.Abstract.HostClosingInf`: `wasmEvInf`,
+`wasmEvInf_hostObsInf`, `wasmEvInf_prefix`, every profile and host). The
 productive runs of an invocation, host-independently, are its Core runs under the universal
 host `anyHost` cut at their host events (`CoreInf`), one coherent run per stream. Against a
 host, the productive observations (`hostObsInf (coreHostRel host) (wasmEvInf P)`) are exactly
@@ -205,13 +205,5 @@ theorem core_div_wasmHostObs {o : SingleThreaded.GrowOracle} (hT : HostTyped hos
       ∃ g : Nat → (wasmOShape H).self.Op, g 0 = ⟨a, (vs, s)⟩ ∧
         ∀ n, BodyReachO (hostCall host) (g n) (g (n + 1)) :=
   Silmaril.Proofs.Wasm.Abstract.HostObs.core_div_wasmHostObs hT hH hs hS hok hd
-
-/-- **The productive observations against a host are its productive Core runs** (every
-profile and host). -/
-theorem wasmEvInf_hostObsInf {P : Silmaril.Wasm.Numerics.Profile} {s : Store H} {a : Nat}
-    {vs : List Val} {ω : Nat → Call (wasmHostSig H)} :
-    ω ∈ hostObsInf (coreHostRel host) (wasmEvInf P) s (a, vs) ↔
-      CoreInf P host (invoke s a vs) ω :=
-  Silmaril.Proofs.Wasm.Abstract.HostObs.wasmEvInf_hostObsInf
 
 end Silmaril.Wasm.Abstract

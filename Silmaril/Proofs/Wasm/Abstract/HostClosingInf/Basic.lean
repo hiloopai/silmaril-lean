@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Wasm.Abstract.HostObs.Defs
+public import Silmaril.Wasm.Abstract.HostClosingInf.Defs
 public import Silmaril.Wasm.Abstract.HostCall.Thms
 public import Silmaril.Games.Abstract.HostRunInf.Thms
 
@@ -20,7 +20,7 @@ exactly when they are consistent.
 
 @[expose] public section
 
-namespace Silmaril.Proofs.Wasm.Abstract.HostObs
+namespace Silmaril.Proofs.Wasm.Abstract.HostClosingInf
 
 open Silmaril.Games Silmaril.Games.Abstract
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Abstract
@@ -80,6 +80,14 @@ theorem coreInf_of_any {c : Config H} {ω : Nat → Call (wasmHostSig H)}
   obtain ⟨c₁, hr, he⟩ := hg n
   exact ⟨c₁, silent_of_any hr, hEvStep_of_any he (hc n)⟩
 
+/-- **Prefix agreement for invocations**: the first `n` events of a productive observation
+are the actual event log of a finite run of the invocation, continued productively. -/
+theorem wasmEvInf_prefix {s : Store H} {a : Nat} {vs : List Val} {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf P host (invoke s a vs) ω) (n : Nat) :
+    ∃ c', EvRun P host (invoke s a vs) (streamTake ω n) c' ∧
+      CoreInf P host c' (fun k => ω (n + k)) :=
+  coreInf_prefix h n
+
 /-- **The productive observations against a host are its productive Core runs.** -/
 theorem wasmEvInf_hostObsInf {s : Store H} {a : Nat} {vs : List Val}
     {ω : Nat → Call (wasmHostSig H)} :
@@ -87,4 +95,4 @@ theorem wasmEvInf_hostObsInf {s : Store H} {a : Nat} {vs : List Val}
       CoreInf P host (invoke s a vs) ω :=
   ⟨fun h => coreInf_of_any h.1 h.2, fun h => ⟨coreInf_any h, coreInf_consistent h⟩⟩
 
-end Silmaril.Proofs.Wasm.Abstract.HostObs
+end Silmaril.Proofs.Wasm.Abstract.HostClosingInf
