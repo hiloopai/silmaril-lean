@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Abstract.HostEval.Thms
 public import Silmaril.Wasm.Abstract.HostClosing.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Done
 import Silmaril.Proofs.Wasm.Abstract.HostObs.Pend
+import Silmaril.Proofs.Wasm.Abstract.HostObs.Back
 
 /-!
 # Core 3.0 invocations against the logged closed semantics with host calls: theorems
@@ -32,7 +33,12 @@ semantics after a consistent log (`wasmEvPend`) is reached by Core.
 * `wasmEvPend_core_diverges`: if the host may diverge on it, Core diverges, the
   `hostDiv` observation.
 
-Not yet: the pending halves backward (a blocked Core end is a logged pending call).
+**Every stuck end, backward** (`core_stuck_wasmEv`, deterministic profile;
+`core_stuck_wasmEv_profile`, every profile under the native side conditions): a stuck
+end `c` of a Core run of a typed invocation is blocked at a host call
+`(hh, c.store, us)` the host has no outcome for, a pending call of `wasmEvPend` after a
+consistent log with `c` at that call (`AtCall`); or it agrees (`CoreEnd`) with a
+finished `wasmEvFun` behaviour after a consistent log. From `back_invoke_reach`.
 -/
 
 @[expose] public section
@@ -96,5 +102,31 @@ theorem wasmEvPend_core_diverges {P : Silmaril.Wasm.Numerics.Profile}
     (h : (cs, (hh, s', us)) ∈ wasmEvPend s (a, vs)) (hc : (coreHostRel host).Consistent cs)
     (hdiv : host hh s' us .diverged) : Diverges P host (invoke s a vs) :=
   Silmaril.Proofs.Wasm.Abstract.HostObs.wasmEvPend_core_diverges hH hS hok h hc hdiv
+
+/-- **Every stuck end of a typed invocation is a logged observation** (deterministic
+profile): blocked at a logged pending host call, or a finished logged behaviour. -/
+theorem core_stuck_wasmEv {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {n : Nat} {s : Store H} {a : Nat} {vs : List Val}
+    {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN (SingleThreaded.profile o) host n (invoke s a vs) c)
+    (hend : ∀ c', ¬ Step (SingleThreaded.profile o) host c c') :
+    (∃ (hh : H) (a' : Nat) (us : List Val) (cs : List (Call (wasmHostSig H))),
+      (coreHostRel host).Consistent cs ∧ (cs, (hh, c.store, us)) ∈ wasmEvPend s (a, vs) ∧
+      (∀ o, ¬ host hh c.store us o) ∧ AtCall c.store a' us c.code) ∨
+      ∃ cs e, (coreHostRel host).Consistent cs ∧ (cs, e) ∈ wasmEvFun s (a, vs) ∧ CoreEnd c e :=
+  Silmaril.Proofs.Wasm.Abstract.HostObs.core_stuck_wasmEv hT hH hs hS hok hrun hend
+
+/-- **`core_stuck_wasmEv` at every profile**, for native-profile Wasm functions and an
+`Interp.HostNative` host. -/
+theorem core_stuck_wasmEv_profile {P : Silmaril.Wasm.Numerics.Profile} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) (hN : Interp.HostNative host) {n : Nat} {s : Store H}
+    {a : Nat} {vs : List Val} {c : Config H} (hs : StoreOk s) (hS : Interp.StoreChk s.funcs)
+    (hW : Interp.NativeWasmFuncs s.funcs) (hok : InvokeOk s a vs)
+    (hrun : StepsN P host n (invoke s a vs) c) (hend : ∀ c', ¬ Step P host c c') :
+    (∃ (hh : H) (a' : Nat) (us : List Val) (cs : List (Call (wasmHostSig H))),
+      (coreHostRel host).Consistent cs ∧ (cs, (hh, c.store, us)) ∈ wasmEvPend s (a, vs) ∧
+      (∀ o, ¬ host hh c.store us o) ∧ AtCall c.store a' us c.code) ∨
+      ∃ cs e, (coreHostRel host).Consistent cs ∧ (cs, e) ∈ wasmEvFun s (a, vs) ∧ CoreEnd c e :=
+  Silmaril.Proofs.Wasm.Abstract.HostObs.core_stuck_wasmEv_profile hT hH hN hs hS hW hok hrun hend
 
 end Silmaril.Wasm.Abstract
