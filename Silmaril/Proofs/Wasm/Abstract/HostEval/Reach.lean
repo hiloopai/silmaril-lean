@@ -97,12 +97,19 @@ theorem step_if_arm' {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType}
       (Step.ifTrue (bt := bt) (b₁ := Binaryen.BExpr.lowerList t)
         (b₂ := Binaryen.BExpr.lowerList el) h0)
 
+/-- What is known at a reached call: the store passes the check, and the callee
+has a function type whose parameters the arguments match in number. -/
+def CallFacts (y : (wasmOShape H).self.Op) : Prop :=
+  Interp.StoreChk y.2.2.funcs ∧ ∃ (fi : FuncInst H) (ps rs : List Validation.CValType),
+    y.2.2.funcs[y.1]? = some fi ∧ Validation.DefType.funcType? fi.type = some (ps, rs) ∧
+    y.2.1.length = ps.length
+
 /-- The conclusion of `reach_atCall`. -/
 def ReachCore (P : Silmaril.Wasm.Numerics.Profile) (host : HostSemantics H) (s : Store H)
     (f : Frame) (stk : List Val) (es : List Binaryen.BExpr) (y : (wasmOShape H).self.Op) : Prop :=
   ∃ (f' : Frame) (c : List Admin),
     Steps P host ⟨s, f, vals stk.reverse ++ expression (Binaryen.BExpr.lowerList es)⟩ ⟨y.2.2, f', c⟩ ∧
-      AtCall y.2.2 y.1 y.2.1 c
+      AtCall y.2.2 y.1 y.2.1 c ∧ CallFacts y
 
 /-- **Forward reachability of a call**, every profile: a reach of `y` after
 answered calls, of arity-checked trees in a checked store, is a Core run to a
@@ -128,17 +135,22 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
       simpa using Silmaril.Wasm.Logic.Core.Step.ctx (P := P) (host := host) stk₁.reverse
         (expression (Binaryen.BExpr.lowerList es)) (Step.call hx hf)
     rw [code_call_split stk₁ ps.length] at h₂
+    obtain ⟨inv1, hp, -⟩ :=
+      Interp.arity_call_pre hS (Interp.evalH_good (P := P) hH hargs).1 hfi hty hc
+    have hfacts : CallFacts (H := H) ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩ :=
+      ⟨Interp.storeChk_inv inv1 hS, fi, ps, rs, hf, hty, by
+        simp only [List.length_reverse, List.length_take]; omega⟩
     refine ⟨f₁, vals (stk₁.drop ps.length).reverse ++ vals (stk₁.take ps.length).reverse ++
       .ref (.func a) :: .callRefType fi.type :: expression (Binaryen.BExpr.lowerList es), ?_,
-      AtCall.here hf⟩
+      AtCall.here hf, hfacts⟩
     rw [Interp.code_op]
     exact h₁.tail h₂
   | @args s f stk i args es y _ ih =>
     intro labels ret out hS hc
     obtain ⟨o₁, h1, -⟩ := Interp.chk_consE.mp hc
     obtain ⟨oa, ha, -⟩ := Interp.chk1_opE h1
-    obtain ⟨f', c, hr, hat⟩ := ih hS ha
-    refine ⟨f', _, ?_, atCall_append hat (.plain i :: expression (Binaryen.BExpr.lowerList es))⟩
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih hS ha
+    refine ⟨f', _, ?_, atCall_append hat (.plain i :: expression (Binaryen.BExpr.lowerList es)), hcf⟩
     rw [Interp.code_op]
     exact Silmaril.Wasm.Logic.Core.Steps.append _ hr
   | @callK s s₁ s₂ f f₁ stk stk₁ vs x args es a fi ps rs fl y hargs hfi hty hcall hvs _ ih =>
@@ -162,7 +174,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have h2'' : Interp.chk s₂.funcs f₁.module f₁.locals.length ret labels
         (some (vs.take rs.length ++ stk₁.drop ps.length).length) es = some out := by
       rw [hlen]; simpa using Interp.chk_inv inv2 h2'
-    obtain ⟨f', c, hr, hat⟩ := ih (Interp.storeChk_inv inv2 hS) h2''
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih (Interp.storeChk_inv inv2 hS) h2''
     obtain ⟨hx, hfx⟩ := Interp.func?_inv hfi
     have h₁ := Silmaril.Wasm.Logic.Core.Steps.append
       (.plain (.call x) :: expression (Binaryen.BExpr.lowerList es)) (run_of_evalH' (P := P) hH hargs hS ha)
@@ -175,7 +187,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     rw [code_call_split stk₁ ps.length] at h₂
     have h₃ := Silmaril.Wasm.Logic.Core.Steps.ctx (P := P) (host := host)
       (stk₁.drop ps.length).reverse (expression (Binaryen.BExpr.lowerList es)) (hrunv vs hvs)
-    refine ⟨f', c, ?_, hat⟩
+    refine ⟨f', c, ?_, hat, hcf⟩
     rw [Interp.code_op]
     refine (h₁.tail h₂).trans (Relation.ReflTransGen.trans ?_ hr)
     simpa [List.reverse_append, List.append_assoc] using h₃
@@ -189,12 +201,12 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have h2' : Interp.chk s₂.funcs f₂.module f₂.locals.length ret labels (some stk₂.length) es =
         some out := by
       rw [← ho]; exact Interp.chk_inv inv12 h2
-    obtain ⟨f', c, hr, hat⟩ := ih (Interp.storeChk_inv inv12 hS) h2'
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih (Interp.storeChk_inv inv12 hS) h2'
     have h₁ := Silmaril.Wasm.Logic.Core.Steps.append
       (.plain i :: expression (Binaryen.BExpr.lowerList es)) (run_of_evalH' (P := P) hH hargs hS ha)
     have h₂ := Interp.steps_flat_normal (P := P) (host := host) hi hf hflat
       (expression (Binaryen.BExpr.lowerList es))
-    refine ⟨f', c, ?_, hat⟩
+    refine ⟨f', c, ?_, hat, hcf⟩
     rw [Interp.code_op]
     exact (h₁.trans h₂).trans hr
   | @block s f stk bt body es np nr y har _ ih =>
@@ -207,13 +219,13 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have hb' : Interp.chk s.funcs f.module f.locals.length ret (nr :: labels)
         (some (stk.take np).length) body = some ob := by
       rw [Interp.take_length_of_le hp]; exact hb
-    obtain ⟨f', c, hr, hat⟩ := ih hS hb'
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih hS hb'
     have henter := Interp.steps_enter (P := P) (host := host) (s := s) (f := f)
       (B := Binaryen.BExpr.lowerList body) hp (Interp.step_block har)
       (expression (Binaryen.BExpr.lowerList es))
     have hat' := AtCall.label (ws := (stk.drop np).reverse) (n := nr) (cont := [])
       (rest := expression (Binaryen.BExpr.lowerList es)) hat
-    refine ⟨f', _, ?_, hat'⟩
+    refine ⟨f', _, ?_, hat', hcf⟩
     rw [Interp.code_block]
     have hctx := Silmaril.Wasm.Logic.Core.Steps.ctx (P := P) (host := host)
       (stk.drop np).reverse (expression (Binaryen.BExpr.lowerList es))
@@ -233,13 +245,13 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have hnr := Interp.blockVals_length hok hob hvs
     have hnorm : ∀ ws, fl = .normal ws → ws.length = nr := by
       rintro ws rfl; exact Interp.length_of_ends hok hob
-    obtain ⟨f', c, hr, hat⟩ := ih (Interp.storeChk_inv inv1 hS)
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih (Interp.storeChk_inv inv1 hS)
       (Interp.chk_after (ext := Interp.noExt) inv1 hp hnr h2)
     obtain ⟨c', o', hbr, he, hm'⟩ :=
       Interp.run_of_wp ((Interp.evalH_good (P := P) hH hbody).2 hS hb')
     have htg := Interp.tg_block_vals (P := P) (host := host)
       (rest := expression (Binaryen.BExpr.lowerList es)) har hp hbr he hm' hvs hnr hnorm
-    refine ⟨f', c, ?_, hat⟩
+    refine ⟨f', c, ?_, hat, hcf⟩
     rw [Interp.code_block]
     exact htg.to_reflTransGen.trans hr
   | @loop s f stk bt body es np nr y har _ ih =>
@@ -252,14 +264,14 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have hb' : Interp.chk s.funcs f.module f.locals.length ret (np :: labels)
         (some (stk.take np).length) body = some ob := by
       rw [Interp.take_length_of_le hp]; exact hb
-    obtain ⟨f', c, hr, hat⟩ := ih hS hb'
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih hS hb'
     have henter := Interp.steps_enter (P := P) (host := host) (s := s) (f := f)
       (B := Binaryen.BExpr.lowerList body) hp (Interp.step_loop har)
       (expression (Binaryen.BExpr.lowerList es))
     have hat' := AtCall.label (ws := (stk.drop np).reverse) (n := np)
       (cont := [.loop bt (Binaryen.BExpr.lowerList body)])
       (rest := expression (Binaryen.BExpr.lowerList es)) hat
-    refine ⟨f', _, ?_, hat'⟩
+    refine ⟨f', _, ?_, hat', hcf⟩
     rw [Interp.code_loop]
     have hctx := Silmaril.Wasm.Logic.Core.Steps.ctx (P := P) (host := host)
       (stk.drop np).reverse (expression (Binaryen.BExpr.lowerList es))
@@ -277,7 +289,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
       rw [Interp.take_length_of_le hp]; exact hb
     obtain ⟨hok, inv1⟩ := (Interp.evalH_good (P := P) hH hbody).1 hS hb'
     have hlen : vs.length = nr := Interp.length_of_ends hok hob
-    obtain ⟨f', c, hr, hat⟩ := ih (Interp.storeChk_inv inv1 hS)
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih (Interp.storeChk_inv inv1 hS)
       (Interp.chk_after (ext := Interp.noExt) (vs := vs) inv1 hp hlen.ge h2)
     obtain ⟨c', o', hbr, he, hm'⟩ :=
       Interp.run_of_wp ((Interp.evalH_good (P := P) hH hbody).2 hS hb')
@@ -288,7 +300,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
       (cont := [.loop bt (Binaryen.BExpr.lowerList body)]) he hm' (stk.drop np).reverse
       (expression (Binaryen.BExpr.lowerList es))
     have htake : vs.take nr = vs := List.take_of_length_le hlen.le
-    refine ⟨f', c, ?_, hat⟩
+    refine ⟨f', c, ?_, hat, hcf⟩
     rw [Interp.code_loop]
     refine (henter.trans (Silmaril.Wasm.Logic.Core.Steps.ctx _ _
       (Silmaril.Wasm.Logic.Core.Steps.label np _ hbr))).trans ((hx.trans ?_))
@@ -311,7 +323,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
       omega
     have hlen : (vs.take np ++ stk.drop np).length = stk.length := by
       simp only [List.length_append, List.length_take, List.length_drop]; omega
-    obtain ⟨f', c, hr, hat⟩ := ih (Interp.storeChk_inv inv1 hS)
+    obtain ⟨f', c, hr, hat, hcf⟩ := ih (Interp.storeChk_inv inv1 hS)
       (by rw [hlen]; exact Interp.chk_inv inv1 hc)
     obtain ⟨c', o', hbr, he, hm'⟩ :=
       Interp.run_of_wp ((Interp.evalH_good (P := P) hH hbody).2 hS hb')
@@ -321,7 +333,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have hx := Interp.exit_br0 (P := P) (host := host) (s₁ := s₁) (f₁ := f₁) (n := np)
       (cont := [.loop bt (Binaryen.BExpr.lowerList body)]) he hm' hnp (stk.drop np).reverse
       (expression (Binaryen.BExpr.lowerList es))
-    refine ⟨f', c, ?_, hat⟩
+    refine ⟨f', c, ?_, hat, hcf⟩
     rw [Interp.code_loop]
     refine (henter.trans (Silmaril.Wasm.Logic.Core.Steps.ctx _ _
       (Silmaril.Wasm.Logic.Core.Steps.label np _ hbr))).trans ((hx.trans ?_))
@@ -331,10 +343,10 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     intro labels ret out hS hc
     obtain ⟨o₁, h1, -⟩ := Interp.chk_consE.mp hc
     obtain ⟨oc, hco, -⟩ := Interp.chk1_ifE h1
-    obtain ⟨f', c', hr, hat⟩ := ih hS hco
+    obtain ⟨f', c', hr, hat, hcf⟩ := ih hS hco
     refine ⟨f', _, ?_, atCall_append hat
       (.plain (.if_ bt (Binaryen.BExpr.lowerList t) (Binaryen.BExpr.lowerList el)) ::
-        expression (Binaryen.BExpr.lowerList es))⟩
+        expression (Binaryen.BExpr.lowerList es)), hcf⟩
     rw [Interp.code_if]
     exact Silmaril.Wasm.Logic.Core.Steps.append _ hr
   | @arm s s₁ f f₁ stk stk₁ cv b bt c t el es np nr y hcd hb har _ ih =>
@@ -347,7 +359,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have hb'' : Interp.chk s₁.funcs f₁.module f₁.locals.length ret (nr :: labels)
         (some (stk₁.take np).length) (if b then t else el) = some ob := by
       rw [Interp.take_length_of_le hp]; exact hb'
-    obtain ⟨f', c', hr, hat⟩ := ih (Interp.storeChk_inv inv1 hS) hb''
+    obtain ⟨f', c', hr, hat, hcf⟩ := ih (Interp.storeChk_inv inv1 hS) hb''
     have h₁ := Silmaril.Wasm.Logic.Core.Steps.append
       (.plain (.if_ bt (Binaryen.BExpr.lowerList t) (Binaryen.BExpr.lowerList el)) ::
         expression (Binaryen.BExpr.lowerList es)) (run_of_evalH' (P := P) hH hcd hS hco)
@@ -358,7 +370,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
       (expression (Binaryen.BExpr.lowerList es))
     have hat' := AtCall.label (ws := (stk₁.drop np).reverse) (n := nr) (cont := [])
       (rest := expression (Binaryen.BExpr.lowerList es)) hat
-    refine ⟨f', _, ?_, hat'⟩
+    refine ⟨f', _, ?_, hat', hcf⟩
     rw [Interp.code_if]
     have hctx := Silmaril.Wasm.Logic.Core.Steps.ctx (P := P) (host := host)
       (stk₁.drop np).reverse (expression (Binaryen.BExpr.lowerList es))
@@ -379,7 +391,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
     have hnr := Interp.blockVals_length hok hob hvs
     have hnorm : ∀ ws, fl = .normal ws → ws.length = nr := by
       rintro ws rfl; exact Interp.length_of_ends hok hob
-    obtain ⟨f', c', hr, hat⟩ := ih (Interp.storeChk_inv (inv1.trans inv2) hS)
+    obtain ⟨f', c', hr, hat, hcf⟩ := ih (Interp.storeChk_inv (inv1.trans inv2) hS)
       (Interp.chk_after (ext := Interp.noExt) inv2 hp hnr (Interp.chk_inv inv1 h2'))
     have h₁ := Silmaril.Wasm.Logic.Core.Steps.append
       (.plain (.if_ bt (Binaryen.BExpr.lowerList t) (Binaryen.BExpr.lowerList el)) ::
@@ -390,7 +402,7 @@ theorem reach_atCall (hH : Interp.NativeHostSlice host) {s : Store H} {f : Frame
       Interp.run_of_wp ((Interp.evalH_good (P := P) hH harm).2 hS₁ hb'')
     have htg := Interp.tg_block_vals (P := P) (host := host)
       (rest := expression (Binaryen.BExpr.lowerList es)) har hp hbr he hm' hvs hnr hnorm
-    refine ⟨f', c', ?_, hat⟩
+    refine ⟨f', c', ?_, hat, hcf⟩
     rw [Interp.code_if]
     exact ((h₁.tail h₂).trans htg.to_reflTransGen).trans hr
 
