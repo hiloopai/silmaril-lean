@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Abstract.FullObs.Defs
 public import Silmaril.Wasm.Abstract.BodyTrace.Thms
 public import Silmaril.Games.Abstract.FullFun.Thms
 import Silmaril.Proofs.Wasm.Abstract.FullObs.Iter
+import Silmaril.Proofs.Wasm.Abstract.FullObs.Map
 
 /-!
 # Full observations of interaction-tree bodies: theorems
@@ -26,7 +27,13 @@ import Silmaril.Proofs.Wasm.Abstract.FullObs.Iter
   `mem_toInf_iff_streamPrefix`). No productivity or non-empty-log assumption is needed:
   unboundedness is part of `FullFun.iter`;
 * `toFull_iter_hostObsInf`: hence against a relational host the productive observations of a
-  body loop decompose as `hostObsInf_iter` says.
+  body loop decompose as `hostObsInf_iter` says;
+* `toFull_pure`, `toFull_map`, `toFull_comap` (**faithfulness for pure maps**): a body
+  returning `h b` at once is `FullFun.pure.map h`, a body followed by a pure function `h` is
+  `FullFun.map`, and pre-composition with a pure function is `FullFun.comap`;
+* `toFull_whiskerRight`, `toFull_whiskerLeft` (**faithfulness for whiskering**): the body
+  running `f` on one component of a pair and returning the other unchanged is observed as
+  `FullFun.whiskerRight`/`FullFun.whiskerLeft`.
 
 Productive runs of bodies are coherent: a stream is a run of the tree exactly when all its
 finite prefixes are pending (`BodyTrace.infPath_iff_pend`), because bodies are deterministic
@@ -97,5 +104,39 @@ theorem toFull_iter_hostObsInf {E : Sig.{u}} {S T A B : Type (u + 1)} (F : Hom E
     congrArg Prod.snd (toFull_iter F)
   rw [e]
   exact hostObsInf_iter (toFull F) s a ω
+
+/-- **A pure body** is observed as a pure map. -/
+theorem toFull_pure {E : Sig.{u}} {S T B C : Type (u + 1)} (h : B → C) :
+    toFull (fun b => (pure (h b) : BodyM E S T C)) = FullFun.pure.map h :=
+  Silmaril.Proofs.Wasm.Abstract.FullObs.toFull_pure h
+
+/-- **Faithfulness for pure post-composition.** -/
+theorem toFull_map {E : Sig.{u}} {S T A B C : Type (u + 1)} (f : Hom E S T A B) (h : B → C) :
+    toFull (fun a => h <$> f a) = (toFull f).map h :=
+  Silmaril.Proofs.Wasm.Abstract.FullObs.toFull_map f h
+
+/-- **Faithfulness for pure pre-composition.** -/
+theorem toFull_comap {E : Sig.{u}} {S T A A' B : Type (u + 1)} (f : Hom E S T A B)
+    (k : A' → A) : toFull (fun a => f (k a)) = (toFull f).comap k := rfl
+
+/-- **Faithfulness for right whiskering**: run `f` on the first component, carry the second
+through. -/
+theorem toFull_whiskerRight {E : Sig.{u}} {S T A B : Type (u + 1)} (f : Hom E S T A B)
+    (C : Type (u + 1)) :
+    toFull (fun p : A × C => (·, p.2) <$> f p.1) = (toFull f).whiskerRight C :=
+  Prod.ext (funext fun s => funext fun p =>
+      congrFun (congrFun (congrArg Prod.fst (toFull_map f (·, p.2))) s) p.1)
+    (funext fun s => funext fun p =>
+      congrFun (congrFun (congrArg Prod.snd (toFull_map f (·, p.2))) s) p.1)
+
+/-- **Faithfulness for left whiskering**: run `f` on the second component, carry the first
+through. -/
+theorem toFull_whiskerLeft {E : Sig.{u}} {S T A B : Type (u + 1)} (C : Type (u + 1))
+    (f : Hom E S T A B) :
+    toFull (fun p : C × A => (p.1, ·) <$> f p.2) = (toFull f).whiskerLeft C :=
+  Prod.ext (funext fun s => funext fun p =>
+      congrFun (congrFun (congrArg Prod.fst (toFull_map f (p.1, ·))) s) p.2)
+    (funext fun s => funext fun p =>
+      congrFun (congrFun (congrArg Prod.snd (toFull_map f (p.1, ·))) s) p.2)
 
 end Silmaril.Wasm.Abstract.FullObs
