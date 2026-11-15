@@ -191,6 +191,10 @@ theorem coreHost_call_run_seq {s : Store H} {f : Frame} {a : Nat} {fi : FuncInst
     · exact hno _ hans
   · exact .inr ⟨s', r, hh', hst⟩
 
+/-- `[trap]` does not step, in any profile, host, store and frame. -/
+theorem trap_stuck {s : Store H} {f : Frame} {c : Config H} : ¬ Step P host ⟨s, f, [.trap]⟩ c :=
+  Silmaril.Proofs.Wasm.Abstract.HostCall.trap_stuck
+
 /-- **A head trap only bubbles** to `[trap]`, in the same store and frame. -/
 theorem steps_trap_head {s : Store H} {f : Frame} {ws : List Val} {r : List Admin} {c : Config H}
     (hrun : Steps P host ⟨s, f, vals ws ++ .trap :: r⟩ c) (hend : ∀ c', ¬ Step P host c c') :
