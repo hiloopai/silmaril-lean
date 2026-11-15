@@ -8,6 +8,7 @@ public import Silmaril.Wasm.Abstract.Recursion.Defs
 public import Silmaril.Wasm.Abstract.DivO.Defs
 public import Silmaril.Wasm.Abstract.HostClosing.Defs
 public import Silmaril.Wasm.Abstract.HostClosingInf.Defs
+public import Silmaril.Games.Abstract.ModuleInf.Defs
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostEval.Backward
 import Silmaril.Proofs.Wasm.Abstract.HostEval.CallWasm
@@ -23,6 +24,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostEval.DivInvoke
 import Silmaril.Proofs.Wasm.Abstract.HostEval.FlatComplete
 import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedWhole
 import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedDiv
+import Silmaril.Proofs.Wasm.Abstract.HostEval.LoggedInf
 
 /-!
 # The native semantics with host calls: theorems (stage H2)
@@ -219,6 +221,19 @@ of a Wasm callee's body is `Q` of the call). `LogDivOut` is in
 (`LoggedDiv`): the cases of `back_wholeL` on a labelled run cut at its last event
 (`HostCall.EvDiv`), the finished parts read by `back_wholeL`, the part with no event left by
 `div_whole` at the closed host.
+
+**Productive runs, logged** (`coreInf_invokeL`, deterministic profile, under the hypotheses
+of `back_invoke_reach`): a productive Core run of a typed invocation (`HostCall.CoreInf`, one
+coherent run with the host events `ω`) is `Q (a, (vs, s)) ω` for every `Q` closed under `hloc`
+(a productive run of a Wasm body within its function, `InfL`, its open calls resolved by the
+closure to exactly `ω`), `hdesc` (a logged reach `ReachL` in a Wasm body, its completed calls
+resolved to `q`, puts `q` in front) and `hchain` (an infinite chain of logged reaches whose
+resolved prefixes concatenate to `ω`). `Silmaril.Wasm.Abstract.HostClosingInf` instantiates `Q`
+with `wasmEvInfN`. Proof (`LoggedInf`): by tree size, the cases of `div_wholeL` on the
+productive splits of `HostCall.LoggedInf`; a loop branching back forever is `InfL.loopInf` by
+choice of its iterations, and the reaches of the module are chosen one after the other. The
+streams are unbounded because a productive run is not host-free divergence: infinitely many
+host-free iterations or reaches in a row would be one.
 
 **Not yet proved.** The commuting square with `HostRun.hostObs` (once the logged
 packaging exists), and the backward direction in other profiles.-/
@@ -863,5 +878,43 @@ theorem evRun_divL {o : SingleThreaded.GrowOracle} {host : HostSemantics H}
     (hd : Diverges (SingleThreaded.profile o) (fun _ _ _ _ => False) c') :
     Q ⟨a, (vs, s)⟩ cs :=
   Silmaril.Proofs.Wasm.Abstract.HostEval.evRun_divL hT hH hnat hfun hs hS hok hrun hd
+
+/-- **Productive runs of an invocation, logged** (deterministic profile): a productive Core run
+of a typed invocation is `Q` of the invocation with its exact host events, for every `Q` closed
+under productive runs within a Wasm body (`hloc`), logged reaches (`hdesc`) and infinite chains
+of logged reaches (`hchain`). -/
+theorem coreInf_invokeL {o : SingleThreaded.GrowOracle} {host : HostSemantics H}
+    (hT : HostTyped host) (hH : Interp.NativeHostSlice host)
+    (Q : (wasmOShape H).self.Op → (Nat → Silmaril.Games.Abstract.Call (wasmHostSig H)) → Prop)
+    (hloc : ∀ (y : (wasmOShape H).self.Op) (fi : FuncInst H) (fn : Func) (ν : Nat → OCall H)
+      (ω : Nat → Silmaril.Games.Abstract.Call (wasmHostSig H)), y.2.2.funcs[y.1]? = some fi →
+      fi.code = .wasm fn →
+      InfL y.2.2 (Frame.forCall fi.module y.2.1 fn.locals) [] (liftInstrs fn.body) ν →
+      Silmaril.Games.Abstract.Shape.SubstInf (Silmaril.Games.Abstract.Shape.close wasmHOpen)
+        (fun i => (ν i).lift) ω → Q y ω)
+    (hdesc : ∀ (y z : (wasmOShape H).self.Op) (fi : FuncInst H) (fn : Func)
+      (ps rs : List CValType) (l : List (OCall H))
+      (q : List (Silmaril.Games.Abstract.Call (wasmHostSig H)))
+      (ω : Nat → Silmaril.Games.Abstract.Call (wasmHostSig H)), y.2.2.funcs[y.1]? = some fi →
+      fi.code = .wasm fn → DefType.funcType? fi.type = some (ps, rs) →
+      ReachL y.2.2 (Frame.forCall fi.module y.2.1 fn.locals) [] (liftInstrs fn.body) l z →
+      Silmaril.Games.Abstract.Shape.SubstPre (Silmaril.Games.Abstract.Shape.close wasmHOpen)
+        (l.map OCall.lift) q → Q z ω → Q y (Silmaril.Games.Abstract.Shape.streamAppend q ω))
+    (hchain : ∀ (g : Nat → (wasmOShape H).self.Op)
+      (q : Nat → List (Silmaril.Games.Abstract.Call (wasmHostSig H)))
+      (ω : Nat → Silmaril.Games.Abstract.Call (wasmHostSig H)), (∀ n, ∃ (fi : FuncInst H)
+        (fn : Func) (ps rs : List CValType) (l : List (OCall H)),
+        (g n).2.2.funcs[(g n).1]? = some fi ∧ fi.code = .wasm fn ∧
+        DefType.funcType? fi.type = some (ps, rs) ∧
+        ReachL (g n).2.2 (Frame.forCall fi.module (g n).2.1 fn.locals) [] (liftInstrs fn.body) l
+          (g (n + 1)) ∧
+        Silmaril.Games.Abstract.Shape.SubstPre (Silmaril.Games.Abstract.Shape.close wasmHOpen)
+          (l.map OCall.lift) (q n)) →
+      Silmaril.Games.Abstract.Shape.StreamConcat q ω → Q (g 0) ω)
+    {s : Store H} {a : Nat} {vs : List Val}
+    {ω : Nat → Silmaril.Games.Abstract.Call (wasmHostSig H)}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    (h : CoreInf (SingleThreaded.profile o) host (invoke s a vs) ω) : Q ⟨a, (vs, s)⟩ ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostEval.coreInf_invokeL hT hH hloc hdesc hchain hs hS hok h
 
 end Silmaril.Wasm.Abstract

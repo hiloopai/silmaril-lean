@@ -5,6 +5,7 @@ public import Silmaril.Games.Abstract.HostRunInf.Defs
 public import Silmaril.Wasm.Abstract.HostClosing.Defs
 public import Silmaril.Wasm.Abstract.DivO.Defs
 public import Silmaril.Games.Abstract.ModuleDLog.Defs
+public import Silmaril.Games.Abstract.ModuleInf.Defs
 
 /-!
 # Productive runs of invocations: definitions
@@ -31,6 +32,21 @@ the actual event logs of that run (`coreInf_prefix`).
   `wasmHOpen`;
 * `wasmEvFunD := Shape.closeDLog wasmHOpen LDLw`: `wasmEvFun` with divergence after descent
   paths and infinite descent chains (`Shape.closeD`) and after logged local divergence.
+
+**Productive runs, natively and host-independently**:
+
+* `InfL s f stk es ω`: the trees run forever within their function, making the open calls `ω`
+  (each with its answer, as in `EvalL`). The constructors are those of `LogDiv`: a finite part
+  run by `EvalL` puts its log in front of the stream, a completed call is recorded with its
+  answer. The definition is inductive except for `loopInf`, a loop branching back forever, whose
+  stream is the concatenation of its iteration logs, of unbounded length; so a loop whose
+  iterations make no call claims no stream. Divergence inside a callee is not here;
+* `InfLw`: the productive open runs of a Wasm body, as calls of `wasmHOpen` (`OCall.lift`). Host
+  calls appear as the internal calls of host functions, which the closure resolves to their
+  one import call, as in `wasmHOpen`;
+* `wasmEvInfN := Shape.closeInfL wasmHOpen InfLw`: the productive runs through unbounded
+  recursion (`Shape.closeInf`), and those of a function's own body after a descent path, its
+  open calls resolved by the closure one choice per position (`Shape.SubstInf`).
 
 No host semantics occurs in these definitions.
 
@@ -154,5 +170,105 @@ def LDLw (z : (wasmHShape H).self.Op) (u : List (HCall H)) : Prop :=
 after descent chains and after logged local divergence (`Shape.closeDLog`). -/
 def wasmEvFunD : AFun (wasmHostSig H) (Store H) (Nat × List Val) (List Val ⊕ Nat) :=
   fun s p => Shape.closeDLog wasmHOpen LDLw p.1 s p.2
+
+/-! ## Productive runs inside one function, natively -/
+
+open Shape (streamAppend StreamConcat) in
+/-- **The trees run forever within the function, making the open calls `ω`.** The constructors
+are those of `LogDiv`: finite parts run by `EvalL` put their logs in front of the stream
+(`l ++ω ω`), and a completed call is recorded with its answer. The trees are finite and the
+only way back into a tree is a loop's back edge, so the definition is inductive except for one
+constructor, `loopInf`: a loop iterating forever, the stream the concatenation of the
+iteration logs, **of unbounded length**. So every stream is produced: a loop whose iterations
+make no call claims no stream (`InfL` has no gfp reading of an empty back edge). Divergence
+inside a callee is not here: it is a descent of the module (`Shape.closeInfL`). -/
+inductive InfL : Store H → Frame → List Val → List BExpr → (Nat → OCall H) → Prop where
+  | args {s : Store H} {f : Frame} {stk : List Val} {i : Instr} {args es : List BExpr}
+      {ω : Nat → OCall H} :
+      InfL s f stk args ω → InfL s f stk (.op i args :: es) ω
+  | callK {s s₁ s₂ : Store H} {f f₁ : Frame} {stk stk₁ ws : List Val} {x : FuncIdx}
+      {args es : List BExpr} {a : Nat} {fi : FuncInst H}
+      {ps rs : List Validation.CValType} {l₁ : List (OCall H)} {ω : Nat → OCall H}
+      (hargs : EvalL s f stk args l₁ (s₁, f₁, .normal stk₁))
+      (hfi : s₁.func? f₁ x = some (a, fi))
+      (hty : Validation.DefType.funcType? fi.type = some (ps, rs)) :
+      InfL s₂ f₁ (ws.reverse ++ stk₁.drop ps.length) es ω →
+      InfL s f stk (.op (.call x) args :: es)
+        ((l₁ ++ [OCall.mk a (stk₁.take ps.length).reverse s₁ (.inl ws) s₂]) ++ω ω)
+  | opK {s s₁ s₂ : Store H} {f f₁ f₂ : Frame} {stk stk₁ stk₂ : List Val} {i : Instr}
+      {args es : List BExpr} {l₁ : List (OCall H)} {ω : Nat → OCall H}
+      (hi : ∀ x, i ≠ .call x)
+      (hargs : EvalL s f stk args l₁ (s₁, f₁, .normal stk₁))
+      (hflat : evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, .normal stk₂)) :
+      InfL s₂ f₂ stk₂ es ω → InfL s f stk (.op i args :: es) (l₁ ++ω ω)
+  | block {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {body es : List BExpr}
+      {np nr : Nat} {ω : Nat → OCall H} (har : arity f bt = some (np, nr)) :
+      InfL s f (stk.take np) body ω → InfL s f stk (.block bt body :: es) ω
+  | blockK {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType}
+      {body es : List BExpr} {np nr : Nat} {fl : Flow} {l₁ : List (OCall H)}
+      {ω : Nat → OCall H}
+      (har : arity f bt = some (np, nr)) (hbody : EvalL s f (stk.take np) body l₁ (s₁, f₁, fl))
+      (hvs : fl.blockVals = some vs) :
+      InfL s₁ f₁ (vs.take nr ++ stk.drop np) es ω →
+      InfL s f stk (.block bt body :: es) (l₁ ++ω ω)
+  | loop {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {body es : List BExpr}
+      {np nr : Nat} {ω : Nat → OCall H} (har : arity f bt = some (np, nr)) :
+      InfL s f (stk.take np) body ω → InfL s f stk (.loop bt body :: es) ω
+  | loopK {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType}
+      {body es : List BExpr} {np nr : Nat} {l₁ : List (OCall H)} {ω : Nat → OCall H}
+      (har : arity f bt = some (np, nr))
+      (hbody : EvalL s f (stk.take np) body l₁ (s₁, f₁, .normal vs)) :
+      InfL s₁ f₁ (vs.take nr ++ stk.drop np) es ω →
+      InfL s f stk (.loop bt body :: es) (l₁ ++ω ω)
+  | loopBack {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType}
+      {body es : List BExpr} {np nr : Nat} {l₁ : List (OCall H)} {ω : Nat → OCall H}
+      (har : arity f bt = some (np, nr))
+      (hbody : EvalL s f (stk.take np) body l₁ (s₁, f₁, .brk 0 vs)) :
+      InfL s₁ f₁ (vs.take np ++ stk.drop np) (.loop bt body :: es) ω →
+      InfL s f stk (.loop bt body :: es) (l₁ ++ω ω)
+  /-- A loop iterating forever: the states `st n` at the loop head, the iteration logs `l n`,
+  the stream their concatenation, of unbounded length. -/
+  | loopInf {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {body es : List BExpr}
+      {np nr : Nat} {ω : Nat → OCall H} (st : Nat → Store H × Frame × List Val)
+      (l : Nat → List (OCall H)) (h0 : st 0 = (s, f, stk))
+      (har : ∀ n, arity (st n).2.1 bt = some (np, nr))
+      (hit : ∀ n, ∃ vs, EvalL (st n).1 (st n).2.1 ((st n).2.2.take np) body (l n)
+          ((st (n + 1)).1, (st (n + 1)).2.1, .brk 0 vs) ∧
+        (st (n + 1)).2.2 = vs.take np ++ (st n).2.2.drop np)
+      (hω : StreamConcat l ω) :
+      InfL s f stk (.loop bt body :: es) ω
+  | cond {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {c t el es : List BExpr}
+      {ω : Nat → OCall H} :
+      InfL s f stk c ω → InfL s f stk (.if_ bt c t el :: es) ω
+  | arm {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {cv : Val} {b : Bool}
+      {bt : BlockType} {c t el es : List BExpr} {np nr : Nat} {l₁ : List (OCall H)}
+      {ω : Nat → OCall H}
+      (hc : EvalL s f stk c l₁ (s₁, f₁, .normal (cv :: stk₁))) (hb : truthy cv = some b)
+      (har : arity f₁ bt = some (np, nr)) :
+      InfL s₁ f₁ (stk₁.take np) (if b then t else el) ω →
+      InfL s f stk (.if_ bt c t el :: es) (l₁ ++ω ω)
+  | ifK {s s₁ s₂ : Store H} {f f₁ f₂ : Frame} {stk stk₁ vs : List Val} {cv : Val} {b : Bool}
+      {bt : BlockType} {c t el es : List BExpr} {np nr : Nat} {fl : Flow}
+      {l₁ l₂ : List (OCall H)} {ω : Nat → OCall H}
+      (hc : EvalL s f stk c l₁ (s₁, f₁, .normal (cv :: stk₁))) (hb : truthy cv = some b)
+      (har : arity f₁ bt = some (np, nr))
+      (harm : EvalL s₁ f₁ (stk₁.take np) (if b then t else el) l₂ (s₂, f₂, fl))
+      (hvs : fl.blockVals = some vs) :
+      InfL s₂ f₂ (vs.take nr ++ stk₁.drop np) es ω →
+      InfL s f stk (.if_ bt c t el :: es) ((l₁ ++ l₂) ++ω ω)
+
+/-- **The productive open runs of a Wasm body**: the body of the Wasm function called runs
+forever within its function (`InfL`), its open calls lifted to calls of `wasmHOpen`
+(`OCall.lift`). A host function has none: its one import call ends it. Host-independent. -/
+def InfLw : Shape.OpenInf (wasmHShape H) := fun a s vs =>
+  {ν | ∃ (fi : FuncInst H) (fn : Func) (ω : Nat → OCall H), s.funcs[a]? = some fi ∧
+    fi.code = .wasm fn ∧ InfL s (Frame.forCall fi.module vs fn.locals) [] (liftInstrs fn.body) ω ∧
+    ν = fun i => (ω i).lift}
+
+/-- **The productive runs of an invocation, natively**: the closure of `wasmHOpen` with
+productive runs through unbounded recursion and inside one function after a descent path
+(`Shape.closeInfL`). No host semantics occurs. -/
+def wasmEvInfN : PInf (wasmHostSig H) (Store H) (Nat × List Val) :=
+  fun s p => Shape.closeInfL wasmHOpen InfLw p.1 s p.2
 
 end Silmaril.Wasm.Abstract

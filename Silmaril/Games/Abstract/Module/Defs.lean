@@ -228,7 +228,8 @@ internal recursion: the streams of import calls of `InfChain`s.
 **Scope.** Open functions are `AFun`s, which have no infinite behaviours of
 their own. So an infinite run *inside* one function without internal calls
 (a loop that keeps calling imports) is not represented here. Through internal
-recursion it is. -/
+recursion it is. `Shape.closeInfL` (`Silmaril.Games.Abstract.ModuleInf`) adds such runs, given
+as data next to the open module. -/
 def closeInf (m : sh.OpenMod) (f : sh.F) (s : sh.S) (a : sh.A f) : Set (Nat → Call sh.E) :=
   {ω | InfChain m (close m) ⟨f, (a, s)⟩ ω}
 

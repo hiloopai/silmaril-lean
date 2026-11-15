@@ -6,10 +6,12 @@ public import Silmaril.Wasm.Abstract.HostEval.Thms
 public import Silmaril.Games.Abstract.HostRunInf.Thms
 public import Silmaril.Games.Abstract.ModuleDLog.Thms
 public import Silmaril.Wasm.Abstract.Decomp.Defs
+public import Silmaril.Games.Abstract.ModuleInf.Thms
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Basic
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Pend
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Quiet
 import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Log
+import Silmaril.Proofs.Wasm.Abstract.HostClosingInf.Inf
 
 /-!
 # Productive runs of invocations: theorems
@@ -45,9 +47,28 @@ Proofs in `Silmaril.Proofs.Wasm.Abstract.HostClosingInf`. Every profile and host
   reaches a host-free divergent call; a body diverging after a resolved log is `LDLw`, and a
   body reaching a call after a resolved prefix is a descent with that prefix's import calls.
 
-Not yet: the converse (every `(cs, div) ∈ wasmEvFunD` with a log the host allows is such a Core
-run), and a characterization of `wasmEvInf` by the logged native semantics `wasmHOpen`. So far
-the productive runs are given by a Core witness, so their adequacy is not a functor commutation.
+**Productive runs, natively** (`wasmEvInfN := Shape.closeInfL wasmHOpen InfLw`):
+
+* `infL_nil`, `infL_loop_silent`, `infL_loop_op` (**productivity**): empty trees, a loop alone
+  whose iterations log no call and whose body has no productive run, and in particular
+  `loop { br 0 }`, claim no stream;
+* `wasmEvInfN_of_infL`, `wasmEvInfN_of_reachL`, `closeInf_le_wasmEvInfN`: a resolved productive
+  run of a Wasm body, a logged reach in front, and the productive runs through unbounded
+  recursion are productive runs of the invocation;
+* `coreInf_wasmEvInfN` (**the bridge**, deterministic profile, typed checked invocations, a
+  host with typed answers in the native host slice): every productive Core run of an invocation
+  is in `wasmEvInfN`, with exactly its host events. From `HostEval.coreInf_invokeL` at
+  `Q y ω := ω ∈ wasmEvInfN y`: a body's productive run within its function is `InfLw`, a
+  reach is a descent (`descends_of_reachL`), and an infinite chain of reaches is a
+  `Shape.InfChain`;
+* `hostObsInf_wasmEvInf_le`: so against such a host, the productive observations of the Core
+  witness `wasmEvInf (profile o)` are productive observations of `wasmEvInfN`.
+
+Not yet: the converse for divergence (every `(cs, div) ∈ wasmEvFunD` with a log the host
+allows is such a Core run), and the converse for productive runs (every `ω ∈ wasmEvInfN` whose
+answers the host allows is a productive Core run, which would make `wasmEvInf (profile o)` and
+`wasmEvInfN` observationally equal on typed invocations), in any profile. So far the adequacy
+of `wasmEvInfN` is one inclusion, not yet a functor commutation.
 -/
 
 @[expose] public section
@@ -150,5 +171,81 @@ theorem coreInf_pend {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
     (h : CoreInf (SingleThreaded.profile o) host (invoke s a vs) ω) (n : Nat) :
     (streamTake ω n, (ω n).1) ∈ wasmEvPend s (a, vs) :=
   Silmaril.Proofs.Wasm.Abstract.HostClosingInf.coreInf_pend hT hH hs hS hok h n
+
+/-! ## Productive runs inside one function, natively -/
+
+/-- **Empty trees have no productive run.** -/
+theorem infL_nil {s : Store H} {f : Frame} {stk : List Val} {ω : Nat → OCall H} :
+    ¬ InfL s f stk [] ω := nofun
+
+open Silmaril.Wasm.Binaryen in
+/-- **A silent loop claims no stream**: a loop alone, whose iterations log no call and whose
+body has no productive run of its own, has no productive run. -/
+theorem infL_loop_silent {bt : BlockType} {body : List BExpr}
+    (hsil : ∀ (s : Store H) f stk l r, EvalL s f stk body l r → l = [])
+    (hno : ∀ (s : Store H) f stk (ω : Nat → OCall H), ¬ InfL s f stk body ω)
+    {s : Store H} {f : Frame} {stk : List Val} {ω : Nat → OCall H} :
+    ¬ InfL s f stk [.loop bt body] ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.infL_loop_silent hsil hno
+
+open Silmaril.Wasm.Binaryen in
+/-- **`loop { i }` has no productive run** for a flat non-call instruction `i` with no operand
+trees, such as `br 0`: the loop that a greatest fixpoint with an empty back edge would let
+claim every stream. -/
+theorem infL_loop_op {bt : BlockType} {i : Silmaril.Wasm.Instr} (hi : ∀ x, i ≠ .call x)
+    {s : Store H} {f : Frame} {stk : List Val} {ω : Nat → OCall H} :
+    ¬ InfL s f stk [.loop bt [.op i []]] ω :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.infL_loop_op hi
+
+open Silmaril.Wasm.Binaryen in
+/-- **A resolved productive run of a Wasm body** is a productive run of the invocation. -/
+theorem wasmEvInfN_of_infL {s : Store H} {a : Nat} {vs : List Val} {fi : FuncInst H}
+    {fn : Func} {ω : Nat → OCall H} {ω' : Nat → Call (wasmHostSig H)}
+    (hf : s.funcs[a]? = some fi) (hcode : fi.code = .wasm fn)
+    (h : InfL s (Frame.forCall fi.module vs fn.locals) [] (liftInstrs fn.body) ω)
+    (hs : Shape.SubstInf (Shape.close wasmHOpen) (fun i => (ω i).lift) ω') :
+    ω' ∈ wasmEvInfN s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvInfN_of_infL hf hcode h hs
+
+open Silmaril.Wasm.Binaryen in
+/-- **A logged reach in a Wasm body**, its completed calls resolved to `q`, puts `q` in front
+of the productive runs of the reached call. -/
+theorem wasmEvInfN_of_reachL {y : (wasmOShape H).self.Op} {fi : FuncInst H} {fn : Func}
+    {ps rs : List Validation.CValType} {l : List (OCall H)} {z : (wasmOShape H).self.Op}
+    {q : List (Call (wasmHostSig H))} {ω : Nat → Call (wasmHostSig H)}
+    (hf : y.2.2.funcs[y.1]? = some fi) (hcode : fi.code = .wasm fn)
+    (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+    (hr : ReachL y.2.2 (Frame.forCall fi.module y.2.1 fn.locals) [] (liftInstrs fn.body) l z)
+    (hq : Shape.SubstPre (Shape.close wasmHOpen) (l.map OCall.lift) q)
+    (h : ω ∈ wasmEvInfN z.2.2 (z.1, z.2.1)) : Shape.streamAppend q ω ∈ wasmEvInfN y.2.2 (y.1, y.2.1) :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.wasmEvInfN_of_reachL hf hcode hty hr hq h
+
+/-- The productive runs through unbounded recursion are productive runs of the invocation. -/
+theorem closeInf_le_wasmEvInfN {s : Store H} {a : Nat} {vs : List Val} :
+    Shape.closeInf wasmHOpen a s vs ⊆ wasmEvInfN s (a, vs) :=
+  Shape.closeInf_subset_closeInfL _ _ _ _ _
+
+/-- **The bridge** (deterministic profile `profile o`, typed checked invocations, a host with
+typed answers in the native host slice): every productive Core run of an invocation is a
+productive run of the logged native semantics `wasmEvInfN`, with exactly its host events. -/
+theorem coreInf_wasmEvInfN {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs)
+    {ω : Nat → Call (wasmHostSig H)}
+    (h : CoreInf (SingleThreaded.profile o) host (invoke s a vs) ω) :
+    ω ∈ wasmEvInfN s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingInf.coreInf_wasmEvInfN hT hH hs hS hok h
+
+/-- **The productive observations of the Core witness are native** (deterministic profile,
+typed checked invocations): against a host, `wasmEvInf` observes no productive run that
+`wasmEvInfN` does not. -/
+theorem hostObsInf_wasmEvInf_le {o : SingleThreaded.GrowOracle} (hT : HostTyped host)
+    (hH : Interp.NativeHostSlice host) {s : Store H} {a : Nat} {vs : List Val}
+    (hs : StoreOk s) (hS : Interp.StoreChk s.funcs) (hok : InvokeOk s a vs) :
+    hostObsInf (coreHostRel host) (wasmEvInf (SingleThreaded.profile o)) s (a, vs) ⊆
+      hostObsInf (coreHostRel host) wasmEvInfN s (a, vs) := by
+  intro ω hω
+  have h := wasmEvInf_hostObsInf.mp hω
+  exact ⟨coreInf_wasmEvInfN hT hH hs hS hok h, fun n => coreInf_consistent h n⟩
 
 end Silmaril.Wasm.Abstract
