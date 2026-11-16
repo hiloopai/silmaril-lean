@@ -164,6 +164,61 @@ Each lift is the least system with its property (`…_le_iff`):
 | `liftAxAll L` | `a ⊢ c` for accepted `a`, every `c` | `{a | ProvesAll a}`, only if `C` is nonempty |
 | `liftCAll L` | `a ⊢ c` for every `a`, accepted `c` | `{c | a ⊢ c}` for any `a` |
 
+## Interpretations
+
+`Interp Env Value Ax C := (e : Env) → Value → Option (System (Ax e) (C e))` reads a value, under a
+typed configuration, as a system (`Interp/`).
+
+* `Env` is static configuration: an export or function index, an ABI, a profile, a set of
+  hosts. `Interp₀` is the case without configuration (`Env = PUnit`). How a runtime host
+  behaves is modelled separately and enters only through `Env` or `Value`. `Ax` and `C` are
+  families over `Env`, in independent universes.
+* `none` means the value cannot be read, for example because it does not parse. `some ⊥` is a
+  system, verified to prove nothing.
+  * `sysOrBot` (and `Interp.orBot`) is the explicit projection that sends `none` to `⊥`. It
+    loses the difference (`sysOrBot_not_injective`).
+  * The registry's `artifactSystem X I` is `sysOrBot (X.parse.map I)` (`sysOrBot_map_iff`).
+  * No lattice is claimed on `Option (System …)`; only raw systems form one.
+* Operations: `ofDecode`, `map`, `pullback`, `reindex`, `comap`.
+  * `pullback` commutes with the projection.
+  * A general `map f` commutes only if `f ⊥ = ⊥`, and there is a counterexample without it.
+* Evidence against a specification `ref`: `SoundFor`, `CompleteFor`, and `CompleteOnFor P`,
+  which is completeness on a slice such as a size bound.
+  * These quantify over defined readings only.
+  * Soundness can be read off the projection.
+  * Completeness can be read off the projection only given definedness, stated as a premise
+    (`Defined`).
+
+## Shapes
+
+Descriptors for shape filters (`Shape/`):
+
+| shape | meaning | recovers the system as |
+|---|---|---|
+| acceptor, `System Unit C` | a language of conclusions (`acceptorEquiv`, an order isomorphism) | `liftTTC ()`, `liftCAll` |
+| rejector, `System Ax Unit` | by convention, the contexts deriving the unique bottom (`rejectorEquiv`) | `liftAxFF · ()`, `liftAxAll` |
+| `SupportedAx S tt` | only `tt` proves anything | `S = liftTTC tt (ttSlice S tt)` |
+| `SupportedC S ff` | only `ff` is ever proved | `S = liftAxFF (ffSlice S ff) ff` |
+| `ContextFree S` | proofs do not depend on the context | some `liftCAll L` |
+| `ConclusionFree S` | each context proves all or nothing | some `liftAxAll L`; `L` is unique only if `C` is nonempty |
+
+Outside these shapes a slice does not determine the system (`slice_counterexample`).
+
+Checker predicates on list contexts (`ListPred`):
+
+* `SetInv` (depends only on the members) implies `PermInv`. The converse fails: the predicate
+  `length = 1` is a counterexample.
+* `UpClosed` (closed under membership weakening) is `SetInv ∧ AppendExtensive`.
+  `AppendClosed` (closed under concatenation) is a different property: the predicate `l = []`
+  has it but is not extensive.
+* `SetInv` is exactly factoring through `List.toFinset`.
+* `finExt` is an explicit, non-canonical extension of a checker predicate to sets. It is false
+  on infinite sets.
+
+Raw `System` stays rule-free. Bundled, proof-carrying closed systems and rule bundles belong to
+the structural modules (`Structural/`, `Gentzen/`), and `MultiSystem` is the raw type of
+Gentzen sequents.
+
 ## Modules and ownership
 
 | module | contents | owner |
@@ -175,6 +230,8 @@ Each lift is the least system with its property (`…_le_iff`):
 | `Silmaril/Logic/Consequence/Accept/{Defs,Thms}.lean` | acceptor lifts | core |
 | `Silmaril/Logic/Consequence/Signed/{Defs,Thms}.lean` | signed formulas, `negateEach`, carriers | core |
 | `Silmaril/Logic/Consequence/Multi/{Defs,Thms}.lean` | multiple conclusions, `rightExt`, `multiEntails`, rooms | core |
+| `Silmaril/Logic/Consequence/Interp/{Defs,Thms}.lean` | interpretations, projection, evidence | core |
+| `Silmaril/Logic/Consequence/Shape/{Defs,Thms}.lean` | acceptor/rejector shapes, slices, checker predicates | core |
 | `Silmaril/Logic/Consequence/Examples.lean` | worked examples | core |
 | `Silmaril/Logic/Consequence/Structural/…` | structural rules and derivation closures | structural derivations |
 | Wasm acceptor and SZS protocol modules | Wasm evidence for the lifts | Wasm/SZS protocols |
