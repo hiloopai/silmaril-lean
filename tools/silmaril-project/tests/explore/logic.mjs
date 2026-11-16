@@ -45,14 +45,14 @@ try {
   await p.click('#nav a[href="#/logics"]'); await settle(); await p.waitForSelector(".lg-views", { timeout: 30000 });
   const entry = await p.evaluate(() => ({ table: !!document.getElementById("lg-all"), graph: !!document.getElementById("lgcy"),
     tabs: [...document.querySelectorAll('.lg-views [role="tab"]')].map((t) => t.textContent + ":" + t.getAttribute("aria-selected")),
-    list: document.querySelector('.lg-views').getAttribute("role") }));
+    list: (document.querySelector('.lg-views') || { getAttribute: () => null }).getAttribute("role") }));
   check(entry.table && !entry.graph && entry.list === "tablist" && entry.tabs.join() === "Table:true,Graph:false", `the default view is the table, with Table | Graph tabs ${JSON.stringify(entry)}`);
   await p.fill("#lg-all-q", "modal"); await p.waitForTimeout(300);
   check(/#\/logics\/\?q=modal/.test(await p.evaluate(() => location.hash)), "the table's search is in the URL");
-  await p.click("#lg-tab-logic-graph"); await settle(); await p.waitForTimeout(500);
+  await p.click("#lg-tab-logic-graph"); await p.waitForSelector("#lg-q", { timeout: 60000 }); await settle(); await p.waitForTimeout(500);
   check(/#\/logic-graph\/\?q=modal/.test(await p.evaluate(() => location.hash)) && await p.inputValue("#lg-q") === "modal" &&
     await p.getAttribute("#lg-tab-logic-graph", "aria-selected") === "true", "the Graph tab opens the graph with the same search");
-  await p.click("#lg-tab-logics"); await settle(); await p.waitForTimeout(300);
+  await p.click("#lg-tab-logics"); await p.waitForSelector("#lg-all-q", { timeout: 60000 }); await settle(); await p.waitForTimeout(300);
   check(await p.inputValue("#lg-all-q") === "modal", "the Table tab returns with the search");
   await open("/logic-table/");
   check(await p.evaluate(() => !!document.getElementById("lg-all")) && await p.getAttribute("#lg-tab-logics", "aria-selected") === "true", "the earlier #/logic-table route still opens the table");
