@@ -39,6 +39,16 @@ Maps of propositions, each with a closure theorem in `Thms`:
 * `HOLProp.disjList Δ`: the disjunction of `Δ` (`⊥` when empty), with which `gentzen` collapses
   to `seq` (`Thms`: `gentzen_iff_seq_disjList`).
 * `toSeq Γ p`: the sentence `Γ ⊢ p` of the institution; `closedSen p`: the sentence `⊢ p`.
+
+**Derivability** is kept apart from these semantic systems:
+
+* `kernelFrom S Δ : System (List (HOLProp S)) (HOLProp S)`: `p` has a HOL Light kernel
+  derivation (`HOLLight.Derives`) from the axioms `Δ` whose hypotheses are the members of `Γ`.
+  It satisfies identity (`ASSUME`), weakening and cut, which are admissible in the kernel, and
+  substitution along `INST_TYPE` and `INST` (`Thms`).
+* `kernel S := kernelFrom S []`: pure HOL. It is sound for `seq` (`kernel_le_seq`). With axioms
+  the kernel instantiates them, so `kernelFrom S Δ` is sound only model-wise, for closed
+  consequences (`derives_le_globalSeq`).
 -/
 
 @[expose] public section
@@ -107,6 +117,14 @@ def disjList : List (HOLProp S) → HOLProp S
   | p :: ps => disj p (disjList ps)
 
 end HOLProp
+
+/-- **The HOL Light kernel as `HOLProp* ⊢ HOLProp`** from the axioms `Δ`: a kernel derivation of
+`p` whose hypotheses are the members of `Γ`. -/
+def kernelFrom (S : HolSig) (Δ : Theory) : System (List (HOLProp S)) (HOLProp S) :=
+  fun Γ p => Derives S.sig Δ (Γ.map Subtype.val).toFinset p.1
+
+/-- **Pure HOL derivability**: the kernel with no axioms. -/
+def kernel (S : HolSig) : System (List (HOLProp S)) (HOLProp S) := kernelFrom S []
 
 /-- The sentence `Γ ⊢ p` of the HOL institution. -/
 def toSeq (Γ : List (HOLProp S)) (p : HOLProp S) :

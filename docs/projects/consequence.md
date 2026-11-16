@@ -347,6 +347,13 @@ reindexing/substitution lemma. Point-wise single conclusion is below model-wise
 incomparable (`Institution/Examples.lean`). **A model-wise succedent is not a disjunctive (LK)
 succedent.**
 
+**The four laws.** Identity, weakening and cut are `Structural.Closed tarskiRules`. Substitution
+(structurality) is `Structural.Substitutive act R`: for an action `act : Sub → C → C` of
+substitutions on formulas, `R Γ c → R (Γ.map (act s)) (act s c)`. The logic chooses `Sub`, and
+with it the substitutions that are allowed (well-formed instantiations in HOL, syntax rewrites in
+Metamath). Derivability and semantic consequence are separate systems, related only by proved
+soundness (`≤`).
+
 ### HOL (`HOL/`)
 
 The HOL institution's sentences are sequents `H ⊢ p`, satisfied valuation by valuation. At the
@@ -361,14 +368,69 @@ level of propositions `HOLProp S` (bool-typed terms):
 Closure, all proved for `seq` and `gentzen`: structural (`seq_closed`, `gentzen_closed`,
 `seq_exchange`, `seq_contraction`), signature extension (`seq_map`, `gentzen_map`), type
 instantiation (`seq_tySubst`, `gentzen_tySubst`) and term instantiation (`seq_freeSubst`,
-`gentzen_freeSubst`). Soundness: `derives_le_seq` (HOL Light kernel, pure logic) and
-`logic_listSys_le_roomSeq` (sequent level). `HOL/Examples.lean` proves, over the initial
+`gentzen_freeSubst`); `seq_substitutive_ty` and `seq_substitutive_free` restate the last two as
+`Structural.Substitutive`. Soundness: `derives_le_seq` (HOL Light kernel, pure logic) and
+`logic_listSys_le_roomSeq` (sequent level).
+
+**Derivability on propositions.** `HOL.kernelFrom S Δ` is the HOL Light kernel as
+`HOLProp* ⊢ HOLProp`: a derivation from the axioms `Δ` whose hypotheses are the members of `Γ`;
+`HOL.kernel S` has no axioms. It satisfies identity, weakening and cut, which are admissible in
+the kernel (`kernelFrom_closed`), and substitution along `INST_TYPE` and `INST`
+(`kernelFrom_substitutive_ty`, `kernelFrom_substitutive_free`). `kernel_le_seq` is soundness. `HOL/Examples.lean` proves, over the initial
 signature, `x ⊢ y` in `globalSeq` but not in `seq`, and `⊢ x, ¬x` in `gentzen` but not in
 `globalGentzen`.
 
+### Theories (`Theory/`)
+
+`theoryOf D T Γ φ := D (T ∪ Γ) φ` reads a relation on sets of premises relative to a theory `T`.
+`ER.theorySys E T` is derivability from `T`, and `roomTheorySeq R T` is semantic consequence
+over the models of `T`. Both are the list reading of the entailment relation `ER.withTheory E T`,
+so both satisfy identity, weakening and cut (`theorySys_closed`, `roomTheorySeq_closed`). A
+derivability relation sound for a room is sound relative to every theory
+(`theoryOf_le_of_sound`, `theorySys_le_roomTheorySeq`). With `T = ∅` they are `ER.listSys` and
+`roomSeq`.
+
+### Metamath, PA, ZF and ZFC (`Metamath/`)
+
+Over a Metamath grammar `X` (`Metatheory.MMSig`), sentences are well-formed tree assertions,
+including their disjoint-variable conditions:
+
+| system | Lean | reading |
+|---|---|---|
+| derivability | `Metamath.derives X` | `A` is tree-derivable with the `Aᵢ` as axioms (`Grammar.TDerivable`) |
+| semantic consequence | `Metamath.entails X` | Carneiro's models (`Metamath.Model.Satisfies`) |
+| from a theory | `Metamath.theory X T`, `Metamath.theoryEntails X T` | `Γ ⊢_T A` |
+| PA | `Metamath.paTheory` | the 30 axioms of `peano.mm` |
+| ZF, ZFC | `Metamath.zfTheory`, `Metamath.zfcTheory` | set.mm's axioms over its set-theory fragment (`ZF0` omits `ax-ac`) |
+| set.mm's ZFC | `Metamath.setMMZFCTheory` | over all of set.mm's grammar |
+
+**Disjoint-variable conditions** are part of the assertions. They are not premises and not side
+conditions of the consequence relation: a derivation applies an assertion only under a
+substitution that is DV-safe for it. **Substitution** is along syntax rewrites (a typecode map, an
+injective variable renaming and a template per syntax rule): `derives_rewrite`,
+`derives_substitutive`. For theories, a rewrite must map each axiom to a theorem
+(`theory_rewrite`, `theory_substitutive`). Soundness: `derives_le_entails`,
+`theory_le_theoryEntails`. Also: `zfTheory_le_zfcTheory`, and `setMMZFCTheory_sound_zfSet` (every
+theorem of set.mm's ZFC holds in the `ZFSet` model). The arithmetic soundness of ZF and ZFC
+(`Peano.ToZF.arithSound_ZFC`) concerns one translation of arithmetic sentences. It does not
+translate PA derivations, so it is not a map between these systems.
+
+### Martin-Löf type theories (`TypeTheory/`)
+
+| theory | derivability | semantic consequence | soundness |
+|---|---|---|---|
+| extensional MLTT | `extensionalDerives` (`ECtx.JEqH`) | `extensionalEntails` (set hierarchies) | `extensionalDerives_le_entails` |
+| intensional MLTT, original rules, at a stage | `intensionalDerives stage` | `intensionalEntails stage` (realizability) | `intensionalDerives_le_entails` |
+| `λΠ` modulo rewriting | `lambdaPiDerives C` | none: the library pairs it with closed theories, which coincide with derivability by construction | — |
+
+Premises are whole judgments used as hypotheses. The context `Γ` of a judgment `Γ ⊢ J` is part
+of the sentence, not a list of premises. Identity, weakening and cut on judgment hypotheses hold
+(`…_closed`); weakening and substitution *of `Γ`* are admissible rules of each type theory, stated
+over judgments, and are not laws of these consequence relations.
+
 ### Dependent type theory: the lambda cube (`Silmaril/Calculi/LambdaCube/Consequence/`)
 
-There is no Martin-Löf type theory in the library. The dependent corners of the lambda cube
+The dependent corners of the lambda cube
 (`lambdaP` … `cc`) are the existing dependent institutions, and their sentences are judgements
 `Γ ⊢ t : A`, `Γ ⊢ t ≡ u : A` that carry their own dependent context. `Semantics.seq M`
 (`roomSeq`) relates lists of whole judgements. It is Tarski-closed in that outer list
@@ -389,6 +451,7 @@ semantics whose `seq` is admissibility.
 ### Gaps
 
 * HOL: no completeness (standard semantics is incomplete for the kernel).
+* No completeness is claimed for Metamath (Carneiro's models) or for the type theories.
 * Lambda cube: no hypothetical-judgement calculus (judgements as premises of derivations), no
   concrete model of a dependent corner, and no substitution closure for judgements. These would
   be new developments, not adapters.
@@ -465,7 +528,10 @@ Gentzen sequents.
 | `Silmaril/Logic/Consequence/Accept/{Defs,Thms}.lean` | acceptor lifts | core |
 | `Silmaril/Logic/Consequence/Acceptor/{Defs,Thms,Examples}.lean` | CSLib acceptors, interpreters and decoders as systems | core |
 | `Silmaril/Logic/Consequence/Institution/{Defs,Thms,Examples}.lean` | list-premise room systems, logics, point-wise vs model-wise | core |
-| `Silmaril/Logic/Consequence/HOL/{Defs,Thms,Examples}.lean` | HOL propositions: `seq`, `gentzen`, closure | core |
+| `Silmaril/Logic/Consequence/HOL/{Defs,Thms,Examples}.lean` | HOL propositions: `seq`, `gentzen`, the kernel (`kernelFrom`), closure, substitution | core |
+| `Silmaril/Logic/Consequence/Theory/{Defs,Thms}.lean` | consequence relative to a theory, syntactic and semantic | core |
+| `Silmaril/Logic/Consequence/Metamath/{Defs,Thms}.lean` | Metamath derivability and models; PA, ZF, ZFC | core |
+| `Silmaril/Logic/Consequence/TypeTheory/{Defs,Thms}.lean` | extensional and intensional MLTT, `λΠ` | core |
 | `Silmaril/Logic/Consequence/Signed/{Defs,Thms}.lean` | signed formulas, `negateEach`, carriers | core |
 | `Silmaril/Logic/Consequence/Multi/{Defs,Thms}.lean` | multiple conclusions, `rightExt`, `multiEntails`, rooms | core |
 | `Silmaril/Logic/Consequence/Interp/{Defs,Thms}.lean` | interpretations, projection, evidence | core |

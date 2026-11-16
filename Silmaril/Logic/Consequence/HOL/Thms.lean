@@ -4,6 +4,7 @@ public import Silmaril.Logic.Consequence.HOL.Defs
 public import Silmaril.Logic.Consequence.Institution.Thms
 public import Silmaril.Logic.HOLLight.Soundness.Thms
 import Silmaril.Proofs.Logic.Consequence.HOL.Basic
+import Silmaril.Proofs.Logic.Consequence.HOL.Kernel
 
 /-!
 # HOL propositions as consequence systems: laws
@@ -21,6 +22,13 @@ import Silmaril.Proofs.Logic.Consequence.HOL.Basic
   are model-wise consequences of `Δ` (not point-wise ones: the kernel instantiates axioms).
 * `gentzen_iff_seq_disjList`: `Γ ⊢ Δ` in `gentzen` iff `Γ ⊢ ⋁Δ` in `seq`, with HOL's defined
   disjunction. This is the precise sense in which `gentzen` is the classical (LK) reading.
+
+**Derivability.** `kernelFrom_closed`, `kernelFrom_substitutive_ty`,
+`kernelFrom_substitutive_free`: the kernel as a consequence system satisfies identity, weakening,
+cut and substitution. `kernel_le_seq`: pure HOL is sound for `seq`. Completeness is not claimed.
+
+**Substitution laws.** `seq_substitutive_ty`, `seq_substitutive_free`: `Structural.Substitutive`
+forms of `seq_tySubst` and `seq_freeSubst`.
 
 **Closure (each a theorem about `seq` and `gentzen`).**
 
@@ -162,5 +170,49 @@ theorem seq_freeSubst {Γ : List (HOLProp S)} {p : HOLProp S} (hs : seq.{u} S Γ
       (Proofs.Logic.Consequence.HOL.eval_substEnv x.1 x.2.1 x.2.2 σ hσ)) hs
 
 end FreeSubst
+
+/-! ## Substitution laws -/
+
+/-- `seq` is substitutive along well-formed type instantiations (`INST_TYPE`). -/
+theorem seq_substitutive_ty :
+    Structural.Substitutive
+      (fun σ : {σ : Nat → Ty // ∀ i, (σ i).WellFormed S.sig.tyOps} => HOLProp.tySubst σ.1 σ.2)
+      (seq.{u} S) :=
+  fun σ _ _ h => seq_tySubst σ.1 σ.2 h
+
+/-- `seq` is substitutive along type-respecting term instantiations (`INST`). -/
+theorem seq_substitutive_free :
+    Structural.Substitutive
+      (fun σ : {σ : Nat → Ty → Tm //
+          ∀ n B, B.WellFormed S.sig.tyOps → HasType S.sig [] (σ n B) B} =>
+        HOLProp.freeSubst σ.1 σ.2)
+      (seq.{u} S) :=
+  fun σ _ _ h => seq_freeSubst σ.1 σ.2 h
+
+/-! ## The kernel -/
+
+/-- Kernel derivability satisfies identity, weakening and cut. -/
+theorem kernelFrom_closed (Δ : Theory) :
+    Structural.Closed Structural.tarskiRules (kernelFrom S Δ) :=
+  Proofs.Logic.Consequence.HOL.kernelFrom_closed Δ
+
+/-- Kernel derivability is substitutive along type instantiations (`INST_TYPE`). -/
+theorem kernelFrom_substitutive_ty (Δ : Theory) :
+    Structural.Substitutive
+      (fun σ : {σ : Nat → Ty // ∀ i, (σ i).WellFormed S.sig.tyOps} => HOLProp.tySubst σ.1 σ.2)
+      (kernelFrom S Δ) :=
+  fun σ _ _ h => Proofs.Logic.Consequence.HOL.kernelFrom_tySubst Δ σ.1 σ.2 h
+
+/-- Kernel derivability is substitutive along term instantiations (`INST`). -/
+theorem kernelFrom_substitutive_free (Δ : Theory) :
+    Structural.Substitutive
+      (fun σ : {σ : Nat → Ty → Tm //
+          ∀ n B, B.WellFormed S.sig.tyOps → HasType S.sig [] (σ n B) B} =>
+        HOLProp.freeSubst σ.1 σ.2)
+      (kernelFrom S Δ) :=
+  fun σ _ _ h => Proofs.Logic.Consequence.HOL.kernelFrom_freeSubst Δ σ.1 σ.2 h
+
+/-- **Soundness of pure HOL**: kernel derivability is below `seq`. -/
+theorem kernel_le_seq : kernel S ≤ seq.{u} S := fun _ _ d => derives_le_seq d
 
 end Silmaril.Consequence.HOL

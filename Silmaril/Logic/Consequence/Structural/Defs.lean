@@ -21,6 +21,12 @@ closure adds exactly the rules it is asked to add.
 * `Cut R`: finite multi-cut. From premises `Γᵢ ⊢ cᵢ` (`i < n`) and `[c₀, …, cₙ₋₁] ⊢ c`,
   conclude `Γ₀ ++ … ++ Γₙ₋₁ ⊢ c`. Contexts are concatenated, never shared, so cut adds no
   weakening or contraction of its own: weakening by an arbitrary context is a separate rule.
+* `Substitutive act R`: invariance under substitution (structurality), for an action
+  `act : Sub → C → C` of substitutions on formulas. A logic says which substitutions are
+  allowed through the type `Sub`: well-formed type instantiations and type-respecting term
+  instantiations in HOL, syntax rewrites (an injective variable renaming with a template for each
+  syntax rule) in Metamath. Side conditions such as Metamath's disjoint-variable conditions are
+  part of the sentences or of `Sub`, never of this definition.
 
 **Closures.** `Rules C` selects which rules to close under (`refl`, `cut`: switches; `weak`:
 the weakening policy, `⊥` for none). `Derives rs R` is the inductive closure of `R` under the
@@ -38,7 +44,7 @@ above `R` (`Silmaril.Logic.Consequence.Structural.Thms`), which makes `closure r
 
 namespace Silmaril.Consequence.Structural
 
-universe u
+universe u v
 
 variable {C : Type u}
 
@@ -68,6 +74,11 @@ def Exchange (R : Rel C) : Prop := ∀ ⦃Γ Δ c⦄, Γ.Perm Δ → R Γ c → 
 
 /-- Contraction of a duplicated head premise. -/
 def Contraction (R : Rel C) : Prop := ∀ ⦃a Γ c⦄, R (a :: a :: Γ) c → R (a :: Γ) c
+
+/-- **Substitution (structurality)** along an action of substitutions on formulas: substituting
+in the premises and in the conclusion of a consequence gives a consequence. -/
+def Substitutive {Sub : Type v} (act : Sub → C → C) (R : Rel C) : Prop :=
+  ∀ (s : Sub) ⦃Γ c⦄, R Γ c → R (Γ.map (act s)) (act s c)
 
 /-- Finite multi-cut with concatenated contexts: from `Γᵢ ⊢ cᵢ` for every `(Γᵢ, cᵢ)` in `ps` and
 `[c₀, …] ⊢ c`, conclude `Γ₀ ++ … ⊢ c`. -/
