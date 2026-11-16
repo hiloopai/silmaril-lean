@@ -13,7 +13,7 @@ on judgments read as `J₁, …, Jₙ ⊢ J`, and, where the library has one, a 
 
 | theory | sentences | derivability | semantic consequence |
 |---|---|---|---|
-| extensional MLTT (cumulative universes, `Π`, `Σ`, `ℕ`, `Id` with reflection) | judgments `Γ ⊢ a ≡ b : A` (`EJdg`) | `extensionalDerives` (`ECtx.JEqH`) | `extensionalEntails`: validity in set hierarchies |
+| extensional MLTT (cumulative universes, `Π`, `Σ`, `ℕ`, `Id` with reflection) | judgments `Γ ⊢ a ≡ b : A` (`EJdg`, lifted by `ULift.up` into the room's sentences) | `extensionalDerives` (`ECtx.JEqH`) | `extensionalEntails`: validity in set hierarchies |
 | intensional MLTT (Martin-Löf's original rules with `J`), at a universe stage | scoped typings `Γ ⊢ t : A` | `intensionalDerives stage` (proof trees within the stage) | `intensionalEntails stage`: realizability at a capacity |
 | `λΠ` modulo rewriting, per calculus `C` | typings `Γ ⊢ t : A` | `lambdaPiDerives C` | none here (see below) |
 
@@ -43,16 +43,17 @@ universe u
 
 /-! ## Extensional MLTT -/
 
-/-- Judgments of extensional MLTT (lifted to the sentence universe of its room). -/
-abbrev ExtensionalJudgment : Type (u + 1) := ExtensionalMLTT.Institution.Sentence.{u}
+/-- **Extensional MLTT derivability**: `J` has a derivation with the `Jᵢ` as hypotheses. The
+logic's sentences are judgments lifted to the universe of its room; this is its derivability
+on the judgments themselves (`ULift.up`). -/
+def extensionalDerives : System (List ExtensionalMLTT.EJdg) ExtensionalMLTT.EJdg :=
+  (LogicalSystem.listSys ExtensionalMLTT.Institution.logic.{0} ⟨⟨⟩⟩).pullback
+    (List.map ULift.up) ULift.up
 
-/-- **Extensional MLTT derivability**: `J` has a derivation with the `Jᵢ` as hypotheses. -/
-def extensionalDerives : System (List ExtensionalJudgment.{u}) ExtensionalJudgment.{u} :=
-  LogicalSystem.listSys ExtensionalMLTT.Institution.logic.{u} ⟨⟨⟩⟩
-
-/-- **Extensional MLTT semantic consequence**: validity in every set hierarchy. -/
-def extensionalEntails : System (List ExtensionalJudgment.{u}) ExtensionalJudgment.{u} :=
-  roomSeq ExtensionalMLTT.Institution.room.{u}
+/-- **Extensional MLTT semantic consequence**: validity in every set hierarchy (in universe
+`u`), read on the judgments themselves. -/
+def extensionalEntails : System (List ExtensionalMLTT.EJdg) ExtensionalMLTT.EJdg :=
+  (roomSeq ExtensionalMLTT.Institution.room.{u}).pullback (List.map ULift.up) ULift.up
 
 /-! ## Intensional MLTT (original rules) -/
 

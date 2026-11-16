@@ -4,12 +4,16 @@ public import Silmaril.Logic.Consequence.TypeTheory.Defs
 public import Silmaril.Logic.Consequence.Institution.Thms
 public import Silmaril.Logic.TypeTheory.ExtensionalMLTT.Institution.Thms
 public import Silmaril.Logic.TypeTheory.IntensionalMLTT.OriginalInstitution.Thms
+public import Silmaril.Logic.Consequence.Thms
+import Silmaril.Proofs.Logic.Consequence.TypeTheory.Basic
 
 /-!
 # Martin-Löf type theories as consequence systems: laws and soundness
 
 * `extensionalDerives_closed`, `intensionalDerives_closed`, `lambdaPiDerives_closed` and the
   semantic `…Entails_closed`: identity, weakening and cut on judgment hypotheses.
+* The extensional systems are pullbacks along `ULift.up`, which keep these laws
+  (`Proofs.Logic.Consequence.TypeTheory.closed_pullback_map`).
 * `extensionalDerives_le_entails` (from `ExtensionalMLTT.Institution.logic_sound`) and
   `intensionalDerives_le_entails` (from `IntensionalMLTT.OriginalInstitution.logic_sound`):
   soundness. Completeness is not claimed.
@@ -24,16 +28,18 @@ open CategoryTheory Silmaril.Logic Silmaril.Logic.Institution Silmaril.Logic.Typ
 universe u
 
 theorem extensionalDerives_closed :
-    Structural.Closed Structural.tarskiRules extensionalDerives.{u} :=
-  listSys_closed (ExtensionalMLTT.Institution.logic.{u}.er ⟨⟨⟩⟩)
+    Structural.Closed Structural.tarskiRules extensionalDerives :=
+  Proofs.Logic.Consequence.TypeTheory.closed_pullback_map ULift.up
+    (listSys_closed (ExtensionalMLTT.Institution.logic.{0}.er ⟨⟨⟩⟩))
 
 theorem extensionalEntails_closed :
     Structural.Closed Structural.tarskiRules extensionalEntails.{u} :=
-  roomSeq_closed ExtensionalMLTT.Institution.room.{u}
+  Proofs.Logic.Consequence.TypeTheory.closed_pullback_map ULift.up
+    (roomSeq_closed ExtensionalMLTT.Institution.room.{u})
 
-/-- **Soundness of extensional MLTT** for set hierarchies. -/
-theorem extensionalDerives_le_entails : extensionalDerives.{u} ≤ extensionalEntails.{u} :=
-  listSys_le_roomSeq ExtensionalMLTT.Institution.logic_sound ⟨⟨⟩⟩
+/-- **Soundness of extensional MLTT** for set hierarchies (in universe `0`). -/
+theorem extensionalDerives_le_entails : extensionalDerives ≤ extensionalEntails.{0} :=
+  System.pullback_mono _ _ (listSys_le_roomSeq ExtensionalMLTT.Institution.logic_sound ⟨⟨⟩⟩)
 
 theorem intensionalDerives_closed (stage : IntensionalMLTT.OriginalInstitution.Stage) :
     Structural.Closed Structural.tarskiRules (intensionalDerives stage) :=
