@@ -274,6 +274,11 @@ requests add latency.
   - a value's sources (CID, format, obligation and its verdict) and the problems over it;
   - a format's laws, families, derived formats and values;
   - an artifact's paths, tool facts, and the values and problems that read it.
+- **WAST:** the commands of the spec test suite slice of [wasm-wast.md](wasm-wast.md), one row
+  per command: the input, the expected outcome, the interpreter's observation, the claim (row
+  and strength), its answer in the open database, the reason a command is unsupported or
+  undetermined (with counts) and the oracle's result. It reads `wast/report.json` and
+  `wast/oracle.json` next to the page (`python3 -I tools/wasm-wast/gen.py site DIR`).
 - **SQL:** a free-form query box with example queries. Results link every cell that names a
   known problem, value, format or artifact.
 

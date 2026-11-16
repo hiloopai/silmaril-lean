@@ -452,6 +452,7 @@ An indented name is a named instance of the shape above it, with some arguments 
 | `silmaril.shapes.cli.version` | `Version M (v : VersionVariant)` | `M` answers version requests as `v` says | `Version.of_sat`, `Version.ofCommand`, `Version.mono`, `version_via_iff` |
 | &nbsp;&nbsp;`….version.{basic,short}` | `v :=` a named variant | | |
 | `silmaril.shapes.cli.version.pinned` | `VersionPinned M (ver : String)` | `--version` prints a text containing `ver` | |
+| `silmaril.shapes.wasm.wast.returns_only`, `.traps_only` (and the existence forms `.returns`, `.traps`) | `ReturnsOnly o m pre act vs`, `TrapsOnly o m pre act` (`Silmaril.Project.Shapes.WasmWast`) | after the module `m` and the WAST actions `pre`, every host-free Core normal form of `act` under `profile o` returns `vs` (traps), and one exists ([wasm-wast.md](wasm-wast.md)) | `ScriptHolds.of_kernel`, `ScriptHolds.returnsOnly`, `ScriptHolds.trapsOnly`, `ReturnsOnly.not_traps` |
 
 `Contract M S` alone is filled by a spec no state enters. A row about a *function* uses
 `elf.fn_contract` or `x86.abi_function`, which add that the spec is entered at the code

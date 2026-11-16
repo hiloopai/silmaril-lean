@@ -1,0 +1,6938 @@
+{
+ "schema": "silmaril.wasm-wast.oracle.v0.2",
+ "generated_at": "2026-11-16T21:57:56Z",
+ "host": "Linux x86_64",
+ "oracle": {
+  "tool": "wasmtime",
+  "version": "50.0.0",
+  "url": "https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.0/wasmtime-v50.0.0-x86_64-linux.tar.xz",
+  "archive_sha256": "77c19ee0437991f9ac7837b9c269d9c7076744f85dad263fea5214cc2723c7ff",
+  "sha256": "f95e5beba6d176b447c2939607bae968ea47f87b156ddf559762f1bb3c00e9b7",
+  "command": "wasmtime wast SCRIPT",
+  "pins": "tools/wasm-jco/tests/pins.sh",
+  "version_output": "wasmtime 50.0.0 (ebe5e8df1 2026-10-20)"
+ },
+ "inputs": {
+  "spec": {
+   "repo": "https://github.com/WebAssembly/spec",
+   "rev": "608711107b7f1edb13efd57b7d79b49477462d36",
+   "archive_sha256": "22ef0dd9dd9603474c6a58fa644752a3e9b887b4043d5480490290f748acda1b"
+  },
+  "converter": {
+   "tool": "wasm-tools json-from-wast",
+   "version": "1.262.0",
+   "sha256": "fe6a056dc03269b06f53e0cff926101c17d4f4ea37fbaa077d049c0d18acb211"
+  },
+  "report_sha256": "883d8c5dd86398e817760989e8128e44ac39fd0d9af5ade5ad8226b968822841",
+  "files": [
+   {
+    "file": "test/core/i32.wast",
+    "sha256": "f3b7e8fd641893ea0989a8ab801fce0654d276d27b5cad9cf482291a422cffe8"
+   },
+   {
+    "file": "test/core/i64.wast",
+    "sha256": "7d0e27a617565e0685aef56cee01b2b4890084068e3989168c41d14c56b1945e"
+   },
+   {
+    "file": "test/core/int_exprs.wast",
+    "sha256": "e8b884e16bdbed0270e9b912eaa60a0e8688831e7574be98c00a60dcc667ed2b"
+   },
+   {
+    "file": "test/core/fac.wast",
+    "sha256": "160f50dd99afe4c87f9a49424887e6fd94baa79b20f0e07567b867e866b583d2"
+   },
+   {
+    "file": "test/core/traps.wast",
+    "sha256": "3c0615dd26ee186c9a8138e933ff068fd6679e4fc34756b4ab1605d1fc7f1ede"
+   },
+   {
+    "file": "test/core/address.wast",
+    "sha256": "108586531ce4b9445342a1f7c25880fd7deacb6e330b8a9f4430f7de7bd67f32"
+   }
+  ]
+ },
+ "results": [
+  {
+   "id": "i32:37",
+   "oracle": "pass",
+   "script_sha256": "612a5eef88d9772c3605cd494f34e0b5323a25c3dea510ad293e39d757e710fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:38",
+   "oracle": "pass",
+   "script_sha256": "5ed2c019725c9179f0420af219d85386ec219df60460ae28f9fc7e5973b9097f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:39",
+   "oracle": "pass",
+   "script_sha256": "1fc5a479d24bb30b44e5bcfc35fb7456db996f2b4ba22ca19f1fc44f3cc547ba",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:40",
+   "oracle": "pass",
+   "script_sha256": "8cb633790345c65ffd601cb949e8264e198fb35dc3909733defafc98ae7c5b0a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:41",
+   "oracle": "pass",
+   "script_sha256": "c9d51edd12197a7586df472608c738d9d3253879df429bca510dc8d20d4aa26f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:42",
+   "oracle": "pass",
+   "script_sha256": "0e321896f8ca88e69ca758821ad39e7e2e9d1636f5a4cfb7df66a67dff8e12d3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:43",
+   "oracle": "pass",
+   "script_sha256": "1f7b5f18c26d027dd008227e302e3c917897be3a6151ca836f3982aa1cf70fc8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:44",
+   "oracle": "pass",
+   "script_sha256": "42b947e4d0f4cda25bbc57d41108300081f1a03afacb3d3b0b19e349e8b9fafc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:46",
+   "oracle": "pass",
+   "script_sha256": "bdf761aedb58e54da00ea948defc3ddc42257fde756de6a8458328e24cb69299",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:47",
+   "oracle": "pass",
+   "script_sha256": "20865a9ff93f72c76626dacf0fb1aa7247493216906e88c05ad0b1d91e50c569",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:48",
+   "oracle": "pass",
+   "script_sha256": "176b41dca20ec4eb498156ca0d38a4929f0ad2d339db53b5a9b94f9849a000ce",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:49",
+   "oracle": "pass",
+   "script_sha256": "c281a31a8a867f86527e6034aa9ef20b5ff40eec4f4dce85002989ad68c247eb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:50",
+   "oracle": "pass",
+   "script_sha256": "3449b42444220dd4a6c8fe9c1b2f9fc751cf5c6c6e9ff3c253f15d11be0f5779",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:51",
+   "oracle": "pass",
+   "script_sha256": "fe2c7d324b8d078ddf086f6394f1b06bc94c353e442607dfdb751ee6273ed219",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:52",
+   "oracle": "pass",
+   "script_sha256": "893d783e30732ab20f51de10bfacafb1694fb8e153c06710dd65b2ed2d60b3b8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:54",
+   "oracle": "pass",
+   "script_sha256": "085319e5b7118c446cdc8676165d04250c23ea85129afb9dbaf8825b64b5c7fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:55",
+   "oracle": "pass",
+   "script_sha256": "43d3e2c0909b8abe1007551f46b4333c75f12f8bb163aaa5d2cfbd89e5f771c0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:56",
+   "oracle": "pass",
+   "script_sha256": "77e67f353b2e082fd7b2b95dfd76b1fc4fee457b53a663bac47d86584891b28a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:57",
+   "oracle": "pass",
+   "script_sha256": "6957b0a327046caea602049559e640a1efaa40bd485546062b67ec8a38a86078",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:58",
+   "oracle": "pass",
+   "script_sha256": "d2d84bbc2cccf390c47b002b176d3b28fcbd865422d0bb06be2bffde87a4c374",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:59",
+   "oracle": "pass",
+   "script_sha256": "48c78a4bd52b02db830ae07749944461f1daa38d5a5325b11952d6c13b6b0c33",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:60",
+   "oracle": "pass",
+   "script_sha256": "ea0c1a3fdfe990c4322882f42fba38846b5e6119e25378c42dd233551f2ad853",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:61",
+   "oracle": "pass",
+   "script_sha256": "ca86c632dc89f87ce5c3dfb3661a86c61a7bf7923fbb76cfb02a8563821055c3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:62",
+   "oracle": "pass",
+   "script_sha256": "e2e29a43446c2497e55bb3c9647a0447269e5f0cdabdf56b46648ea819a84558",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:64",
+   "oracle": "pass",
+   "script_sha256": "ee234005959aafee0dc4812725a99e77fbd81acf358f28fe13757232e6c4094d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:65",
+   "oracle": "pass",
+   "script_sha256": "04b3eae81f37f6ac45fd04e08a23182751de1bfca01b3e538cece5197c65bde4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:66",
+   "oracle": "pass",
+   "script_sha256": "e6ebe2b6324b9404108c459676576d341605fd6effc5b56ca0e5d9fe85a8cdcf",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:67",
+   "oracle": "pass",
+   "script_sha256": "753bc1ffa0ecb8918ba05c808250c6ab9b11aba511726dab9143bd2ac342e746",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:68",
+   "oracle": "pass",
+   "script_sha256": "cdd9daabefed77082dafea1b4ee036c1247d9c72dd668bb97008cf0d5e73a0c9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:69",
+   "oracle": "pass",
+   "script_sha256": "ac70d37d69199155367a54b6e274d1e1556abe95832dc2c045fca43f2d572ca1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:70",
+   "oracle": "pass",
+   "script_sha256": "feea376c2d78d797d32201da479d45f8f52cc86e2bb4a8126645ec52a0b2c160",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:71",
+   "oracle": "pass",
+   "script_sha256": "b2e07e8da3dff202bdd6d47cd45bd04a176d136cefbdc4fc93dc7a79d8d7a4c0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:72",
+   "oracle": "pass",
+   "script_sha256": "f353b2e6e0e5e2a3d1467cbb74ead690cceea420fef7f075a11231b80dd1f687",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:73",
+   "oracle": "pass",
+   "script_sha256": "97ec9692595dd1a86b96a3ee2cdd01d3429078358face8b1d9cd0f7917df6856",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:74",
+   "oracle": "pass",
+   "script_sha256": "4ce459e41bb71f885726b6194bb75520687628223f764f2351207cfe3f2629d3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:75",
+   "oracle": "pass",
+   "script_sha256": "e8bd74ba2875dcddfeb13399d460746a55b8f3aa31cd516a8a7ac39a0f115557",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:76",
+   "oracle": "pass",
+   "script_sha256": "586a1e29276c8aaba1e12a8b6cb86f07b93265e2368f2d8626186546feacb26e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:77",
+   "oracle": "pass",
+   "script_sha256": "70c839e50aa2063261622b55e84d0905b2ae303b729fa9a436de295fb9e9d892",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:78",
+   "oracle": "pass",
+   "script_sha256": "03d8738f14abec7dd8eb491a2755cd81b507c6e4e8916b3bf1ffa10db2cb407e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:79",
+   "oracle": "pass",
+   "script_sha256": "384e0cd36bfad8c3880e0d6da05e2050f07009aec418e5cce424c967f4f3a601",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:80",
+   "oracle": "pass",
+   "script_sha256": "fa8978a8acd6622a57b335344e1597d7c0d083a80f8586af5859ec9a356c3db6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:81",
+   "oracle": "pass",
+   "script_sha256": "69f94a086bfa09638e14b0c5bafb6206c45f7d44f3a30e538d6ea2e824878740",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:82",
+   "oracle": "pass",
+   "script_sha256": "d51c8a35d3d320c52c4b5bc8b277ecc33dc9999ce5f856a9b46521ed2608437b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:83",
+   "oracle": "pass",
+   "script_sha256": "9f916092ad982251f6fec2ef982b47d386bab00202b5ce1c52df09e1ac9ae1cb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:85",
+   "oracle": "pass",
+   "script_sha256": "55aaebc5cfc4af5b9fcc153aa8da1931bec8276d54af20a336645f4f689829f6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:86",
+   "oracle": "pass",
+   "script_sha256": "3c6cea976cbb568df08f7f2f3790c1c003d9f925483101ed340b4ec334ab829f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:87",
+   "oracle": "pass",
+   "script_sha256": "dfc3d6a92222d33788b4be6d5eeb92ed5838c1559bda850e160e81668e0cea2c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:88",
+   "oracle": "pass",
+   "script_sha256": "8a4735639e0a10f072013b1dea36ff0592c8704391cbae3523965a16a6fe1f43",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:89",
+   "oracle": "pass",
+   "script_sha256": "463cae11daecfa216e00b8c3d393c418ba570fb7e386ab8f9d70d51352b365fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:90",
+   "oracle": "pass",
+   "script_sha256": "84d16ea8ee7250ea368e3037ef5401e21185f69ced10990981f508287a94f797",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:91",
+   "oracle": "pass",
+   "script_sha256": "cae7691f355987ef11b13ff8bbeb671bf1e77cd4941cc21e9e33e02c2ad9d0ee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:92",
+   "oracle": "pass",
+   "script_sha256": "721e5daa6ebb034e5334110d81706ec1a50e40e839647bccafb8034cde93ed40",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:93",
+   "oracle": "pass",
+   "script_sha256": "e76f18feb9b2d716b4f5256ffd30df8af1c3b4bcb30136129c21cf8570b2936f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:94",
+   "oracle": "pass",
+   "script_sha256": "e560718af4f7af0cf6b3cad5ab167a988ccab6256e1673eef0b741f4a400a071",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:95",
+   "oracle": "pass",
+   "script_sha256": "46736c8126a7c8a236e81ea44e9df4793ec96056267fba3a3ae9e644246ce3e0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:96",
+   "oracle": "pass",
+   "script_sha256": "ba8c06e3b6a18ea67cfb7858d4cad72d1806501a845dbc311e4327dd4ce5a610",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:97",
+   "oracle": "pass",
+   "script_sha256": "8aa3584a821273b3757a3a9078f8d3ef6a1eec6b4e6b38b765a5d74b463dc94f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:98",
+   "oracle": "pass",
+   "script_sha256": "9905daa36b93538d8a4174fa5987987f3fd0926db74d13c2839cea088980736f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:99",
+   "oracle": "pass",
+   "script_sha256": "f5ac1f9cccaafc2a2788d2bacf13478befbba1846cd28e7769f76279589a7d34",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:100",
+   "oracle": "pass",
+   "script_sha256": "8ec18e5d324dc4be7714bc18f8855728727c44ee45ca8e516ed1dcd9770a25d0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:102",
+   "oracle": "pass",
+   "script_sha256": "8a66b1413fb3152edfc0b763c927ec7eb34257250f08f2347dc4303a053a7570",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:103",
+   "oracle": "pass",
+   "script_sha256": "4c13f1533db57e7a6c06a644807b8c258a06043cf60eb28559b08cda2c92cdc7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:104",
+   "oracle": "pass",
+   "script_sha256": "17f26980ce25e9d67f281f8181b45bc3b55a08e498c0869b2cc79fa78a2fd27c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:105",
+   "oracle": "pass",
+   "script_sha256": "969eb5150a2b22db7ce94077de54a87a3544b2ed314daf8bf14e31394cdb9561",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:106",
+   "oracle": "pass",
+   "script_sha256": "0c3e0977cea69b3b09c38b2ad7ef53da33d95276e91b0c551debb49b9b4a6724",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:107",
+   "oracle": "pass",
+   "script_sha256": "7af5c14ec9b491fd6370e4dd4d6a07f52130ac3cc080aed20955f86be5e286ed",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:108",
+   "oracle": "pass",
+   "script_sha256": "5622ce96ca13c2f734a5694ca8b7808cef348fab71bf5a5759fba680a2a58373",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:109",
+   "oracle": "pass",
+   "script_sha256": "a88b2f54075b656cc4490078d0b56e234f2a35af0b66532f0e55c0ca3eded349",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:110",
+   "oracle": "pass",
+   "script_sha256": "84cda1dcd9e17bf5f7fac3910a503771eda5c50cd23a8d530dcd6de9114ccccc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:111",
+   "oracle": "pass",
+   "script_sha256": "405d5de888f766a3bacf3a2132dc728223b8950c715e5c6c8865355ab7fb6edd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:112",
+   "oracle": "pass",
+   "script_sha256": "084bf5d12cde3ca89701f3a9e1b249d1c2685dca7626eaf0ccf4e77762a79d16",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:113",
+   "oracle": "pass",
+   "script_sha256": "5ad089a6b4b8f43be6d4779638f8529d19864a0e070b056f0fbec2cc2151a44b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:114",
+   "oracle": "pass",
+   "script_sha256": "777d918c2ae175f6441bacb1da7fe08db44a389f4a5d8b24f11e53c1e2d71363",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:115",
+   "oracle": "pass",
+   "script_sha256": "3f026d7c9190c8644ca9707e6b53051b402c220ca108fafefdb97ce17e779469",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:116",
+   "oracle": "pass",
+   "script_sha256": "44119f0b00e23c56a8a842dbf69e561dbd75144d1b894b19994ef08b98d14b57",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:117",
+   "oracle": "pass",
+   "script_sha256": "d1a09057d3ca40f107b396a32668bd060febb79bec0addcaa99483313c6da6e8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:118",
+   "oracle": "pass",
+   "script_sha256": "d11432d7b9bc90fbc45d28c411894dc6882b896eb6edadc2f48c25a107c2ff91",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:119",
+   "oracle": "pass",
+   "script_sha256": "0285f68d72247d340f3f344c42fd4be5c5ffdd25aea72b6c815a2afc1a4255c8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:120",
+   "oracle": "pass",
+   "script_sha256": "6b4a0e9c025eba9805f6a4778d4b537218ec446f900bfa850391705eb5aabeab",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:121",
+   "oracle": "pass",
+   "script_sha256": "601ee12aa4862de8de11caef95a25b4fc9e818567f36eb4e0908ddc1846cc4b1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:123",
+   "oracle": "pass",
+   "script_sha256": "c59a13e84043f720bef706a232838764cafff2420d3cea878c9d2ceb56226537",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:124",
+   "oracle": "pass",
+   "script_sha256": "dbae6701d9389fbd0527f8ddf248cbceca7847e3462cae38965be175d120b655",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:125",
+   "oracle": "pass",
+   "script_sha256": "635ab8d80951250898949005d442017e30df8761cf0648daa146ddd572d44500",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:126",
+   "oracle": "pass",
+   "script_sha256": "3080eb057b38366ac87c55b044eb8aee50a642764db6de9f1e25b3f09315e6ed",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:127",
+   "oracle": "pass",
+   "script_sha256": "3eb916e3fcbfc78513c4d70f6c980c0e42451bbf43c344ce55014dca72e83491",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:128",
+   "oracle": "pass",
+   "script_sha256": "d3a647479394f37d6ba34243ab682c25cc845bdda5cef24f7bcd1ec499e87a3f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:129",
+   "oracle": "pass",
+   "script_sha256": "273860bc46004e2019f02cffd9fbe345c5dcee3f4c49b978f8f3f2b4daa7757f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:130",
+   "oracle": "pass",
+   "script_sha256": "ec3458722d2c159150e8c0602b875fe4ff2e771cf529ee9b5335ba054187ee63",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:131",
+   "oracle": "pass",
+   "script_sha256": "979172324b64be3b49be0e173f0a88aa79abf5240430c7af6fdd7f207de670c7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:132",
+   "oracle": "pass",
+   "script_sha256": "6bf5f5fe20a578ac3ec2cd9312000cbbea51b30fc40332e239de12536408cd45",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:133",
+   "oracle": "pass",
+   "script_sha256": "cd11bc57f6626e0bb708f10b1846f0a4a3cdff8626d10331d4f547d11cd99cd2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:134",
+   "oracle": "pass",
+   "script_sha256": "46fc43d64d9eb15b51d58d1f437c110c14c1fa12a7a3123f735d899ba3024d1d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:135",
+   "oracle": "pass",
+   "script_sha256": "bb72a60813d670cc44b1aeaeb5a86b3fd8c69abcf85d4b115c5187e08495ff60",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:136",
+   "oracle": "pass",
+   "script_sha256": "4802c179e07022e7b4f189e99275554c8504b98751d05f20b8992db98c058662",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:137",
+   "oracle": "pass",
+   "script_sha256": "7cb25abb0862f30b348f2dde8112075d17deb5f9eb275a76e84d6ec66e82bcb7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:138",
+   "oracle": "pass",
+   "script_sha256": "82607e2a2b6b460992b8eec2b346c4768794c925848c2b17679b03b0dcd794c4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:140",
+   "oracle": "pass",
+   "script_sha256": "9dcea2b78a58913b4608186fd9976a743b5c3499f43d7205b6bb8421e6a52d31",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:141",
+   "oracle": "pass",
+   "script_sha256": "4f348c8efecc2f29da4f9040eede18bc7d4464b649fc82b345830b625c8fa7c4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:142",
+   "oracle": "pass",
+   "script_sha256": "050cdea27a082d8a3e0a24380eb759e6eef9b1a3b58468e44a04b4a38dda0d61",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:143",
+   "oracle": "pass",
+   "script_sha256": "e433cf13ca17cab7e5ae80b1711e0b2df433deaef18618dfe850228bb388c1be",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:144",
+   "oracle": "pass",
+   "script_sha256": "a67a7d5bf5907b75f5c542064e9920c5cbba06b87eb402e5d8ee18ead46e633e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:145",
+   "oracle": "pass",
+   "script_sha256": "644b8e80c2b480b84a1bec621e2b2d78a07c15470aee6d98201e06b8603b4265",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:146",
+   "oracle": "pass",
+   "script_sha256": "58a7bf8490c152ca35245501250adbfa2b2d020d1612d666716d130c18119c6b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:147",
+   "oracle": "pass",
+   "script_sha256": "346e2ca4b620f0e652cd49447ba793da1302f25a663f120a2bee3c9d640d1f6e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:149",
+   "oracle": "pass",
+   "script_sha256": "aaa8453b43413c4f1b6812f9350aeecfaeaf1c90cfacd74df54226df9590a670",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:150",
+   "oracle": "pass",
+   "script_sha256": "b99a34fb25749316a4c8e1335ea87f369ba47a67b9d91b81dc9af129baa7c8b1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:151",
+   "oracle": "pass",
+   "script_sha256": "e0d422f130f35b2b90f895e27407f13b350ed14a25dda3245c5d0d6f33ad9db7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:152",
+   "oracle": "pass",
+   "script_sha256": "38b73551e1247f4410edb48d40c34f9cf4dd83f3f21e78c9cf7eb543fd5c8451",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:153",
+   "oracle": "pass",
+   "script_sha256": "1236fbeee84177735065265a6220e3d1797149c9b651be8a1f9e3936866230f9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:154",
+   "oracle": "pass",
+   "script_sha256": "dfe8d352febe556375e8bcee4fd5cbc03df10cd5ec2863ee51917cb87f02d47c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:155",
+   "oracle": "pass",
+   "script_sha256": "11b81e7a2d41a7f6da6c0223f85952bc7918ffa07597652033e94b0e34214012",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:156",
+   "oracle": "pass",
+   "script_sha256": "12db419e3396fd179071805fe20e1f52431dbf2a8fa937c85e328710d057e863",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:158",
+   "oracle": "pass",
+   "script_sha256": "b7252ef6d29f31517c311268d584172599a97fc6cafc60c3a4962351380e562e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:159",
+   "oracle": "pass",
+   "script_sha256": "05b7299a727277727151b768e199876ae78f1a092d66eea8e50270c8885cf912",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:160",
+   "oracle": "pass",
+   "script_sha256": "92487fba657d6662880ee6e6cfc9f1ae1174caef9af38a5f57c7b1ab1e4ce82c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:161",
+   "oracle": "pass",
+   "script_sha256": "d00ff4d279e4530d104dd40086306dc37a436139c9d71112ac8416a0cc32b93f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:162",
+   "oracle": "pass",
+   "script_sha256": "03f20fc9ca8b891a1d7b830917e2c3b6b198322f696e346ae99a75e3691dd0e2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:163",
+   "oracle": "pass",
+   "script_sha256": "8615e179c5f11f0ebed8a98aa5f95ea1347235a53d7aaaa6a810bebc3ea97335",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:164",
+   "oracle": "pass",
+   "script_sha256": "a7290582f401e2c78d94c403b75f2ce0e58bb415bfff7ebfd4fc1dac214e16a1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:165",
+   "oracle": "pass",
+   "script_sha256": "700f7db1ed402325841826aaf166c942fe35bc4ae47159025afce0974caebe3c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:166",
+   "oracle": "pass",
+   "script_sha256": "54129eda73ece1d952d5b2c5dbb979f7579e631b3d730e252389567d56bc7c79",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:167",
+   "oracle": "pass",
+   "script_sha256": "9aaadc12545447aae8385d462b0b09e01d124b05ef54ff18357cfe2003b79b20",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:169",
+   "oracle": "pass",
+   "script_sha256": "c7dbf4b64371e50ba36e7a6eef41d5e3d16d094f3f3b75af6b5feee6c6a399ba",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:170",
+   "oracle": "pass",
+   "script_sha256": "464d37a98d5a2b1a847bf8087da36364c8f15a4a4f7e470c438f40ff1747a39f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:171",
+   "oracle": "pass",
+   "script_sha256": "a6128681f237e6f795c87adcf930fd80aed8c81da2b2aa64648de7d244cf636b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:172",
+   "oracle": "pass",
+   "script_sha256": "7bd279d6f62f61201b119c4eb867f2ef7c9af51611cecd894e24ea7d241d4707",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:173",
+   "oracle": "pass",
+   "script_sha256": "7812e197026de7c5eb29a73919b65260f2a9599ff496b6dd333436b901fe1af6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:174",
+   "oracle": "pass",
+   "script_sha256": "bf434a1e1b3870087b52808be9c07b54f3d57c2e5aa2aab7592e674679d9e02a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:175",
+   "oracle": "pass",
+   "script_sha256": "4f0ad6edcf1ee19afc23ef68a8e4354c15cc4a1da614b63fed8595e615bc8bc1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:176",
+   "oracle": "pass",
+   "script_sha256": "2f1c439b037923ab9d4065f02571953e4be1a91e5f636500971ff60656debb29",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:177",
+   "oracle": "pass",
+   "script_sha256": "4456a35487a87d24f55c30e6fc96e17bf909b76e16b4a4655c335fb75192badb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:178",
+   "oracle": "pass",
+   "script_sha256": "3621dd91f9cc3ec5286f5f91877fc5cee738abda7cd3b2a718d5d437c6144084",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:179",
+   "oracle": "pass",
+   "script_sha256": "422669236ea4a69b140b1c96c81aa5d23f8dabd20b90db9c9bc4e96d05701be1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:181",
+   "oracle": "pass",
+   "script_sha256": "088d4c4a08e24b178c7c95738ae45bdf6f13819cc345b8a9151be122e9b11345",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:182",
+   "oracle": "pass",
+   "script_sha256": "91ba278bcaae900be9d495846c481830b4261b4f6102c56a46d017c35474ce72",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:183",
+   "oracle": "pass",
+   "script_sha256": "6864835931f7a0562cab1e2f796e1aff5c4016fd26aed4d7e7b568517736501c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:184",
+   "oracle": "pass",
+   "script_sha256": "9dbc89a6671156a6be376e46c2961130aa8c5b85e7370b2bd1602e5861f8269d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:185",
+   "oracle": "pass",
+   "script_sha256": "1a73e743047472bbad4c709cfcb1f987803a77ada4368e94834d342ac5cea448",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:186",
+   "oracle": "pass",
+   "script_sha256": "5a7ae48b0fbb710e708cac4cd85a2c6fd201f1b1a860c102ba639a1ccd36d4bd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:187",
+   "oracle": "pass",
+   "script_sha256": "dc5686e1fbfb453bc36ce28823654d4996fbab0d830bf1beaf727f6dcc137483",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:188",
+   "oracle": "pass",
+   "script_sha256": "8fda45c5fdc0be877dd856bcaac33623ee7f103e45ddce56896d71a6f396cc99",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:189",
+   "oracle": "pass",
+   "script_sha256": "c6bf085f5f3103fa3dd2a2ee010b7838e54cb07600eb680d8218266c418ff545",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:190",
+   "oracle": "pass",
+   "script_sha256": "a54a3f010112b3370f445e4b73df2297c9809b292d05accb45ff5825dddcd087",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:191",
+   "oracle": "pass",
+   "script_sha256": "d8ac80d87317e7cd7f287e5d9768158ab7dfa4e6fb6a8bafcbb2dbd9720d7ff0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:192",
+   "oracle": "pass",
+   "script_sha256": "915fd88e7efa6c80d010a2f778b8c4ee362134ecc1b5331fe6d76415bef37fda",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:193",
+   "oracle": "pass",
+   "script_sha256": "d3029b3fc06c46bd99038f4a59fde3828aeaf2c7b29ccd370c41fd397e4b05d3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:194",
+   "oracle": "pass",
+   "script_sha256": "051614fe4a9e053990c630e670a434b5e47f51aa2d88383e88461a9ba429d67f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:195",
+   "oracle": "pass",
+   "script_sha256": "c90db5060eadb32af0361e5166261e15c694732ab3b69c57b6321574e4f95ef0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:196",
+   "oracle": "pass",
+   "script_sha256": "26859791e0146d06e85bcbb24deb08b7ebbe2c07ff3f5e20ae9cdfb56fb6b41a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:197",
+   "oracle": "pass",
+   "script_sha256": "930b32dea4c3d4501889087d11369e229977549e21a50a49620d3aeb5f2e6f6f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:199",
+   "oracle": "pass",
+   "script_sha256": "7930396a2329a0c24306724dd0e403bb73d70f123d381f723f61955db37b20d5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:200",
+   "oracle": "pass",
+   "script_sha256": "727fc6d071ea36448c0777b755dcf604c024a39bb37b705bc119d2902ccfa08e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:201",
+   "oracle": "pass",
+   "script_sha256": "597b5465514d1117da7ccacef5048bcd3a166532fab87522ecf4c763a4c92bab",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:202",
+   "oracle": "pass",
+   "script_sha256": "9ba076201ac2bb4ac89674c5527a675863604241d9b8dc6ae56df9a2507aa56f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:203",
+   "oracle": "pass",
+   "script_sha256": "3d29e00daf0d925cc5de4ee477d16566542ddfe11e7e0aa950cf904f5daca91d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:204",
+   "oracle": "pass",
+   "script_sha256": "9635d083b6051d06ccc0d01fd4b0f05a4559cb535b559e86ed8ba68dd0be892f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:205",
+   "oracle": "pass",
+   "script_sha256": "8f4b56b2278c8d921765381dc59a5dbf6b2dbc257baec0b101781f79f8f544fd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:206",
+   "oracle": "pass",
+   "script_sha256": "05771760eff17b8ea05032833313818e9a35c1547ced2ab12a4b67780b445638",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:207",
+   "oracle": "pass",
+   "script_sha256": "be7b1d55e32a522c93f695855c1529f33d717df4e3aed8eb78e6a5b1baa5c1ee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:208",
+   "oracle": "pass",
+   "script_sha256": "d0494add30081a38bcd3d56c9e2315b8ecc7eab5b5aaac9014427991f63ffddf",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:209",
+   "oracle": "pass",
+   "script_sha256": "c0b1028049de76e39217ed71410e1865ed97bbcf103031e700539c59d238b57d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:210",
+   "oracle": "pass",
+   "script_sha256": "c539dff5d68aa7d288c8180cb8990c8368d382f2e58846006d3d5c46884cbddb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:211",
+   "oracle": "pass",
+   "script_sha256": "54ecf403d9b1bd97a4b12cb571303c7490d2e1b58e4280c759cdb054a6a9bcce",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:212",
+   "oracle": "pass",
+   "script_sha256": "2a2a855c7078c97e4e5bac0e4e8e247518da0a6e75ef648501148a12be12da7e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:213",
+   "oracle": "pass",
+   "script_sha256": "f01d54f33877e9843a6d1e86c857e248458e59bb74920c710c15112435839273",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:214",
+   "oracle": "pass",
+   "script_sha256": "3ed2d697e0cf3ffbbba189bf66013af830a1c915b2aa165258156f011c3327df",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:215",
+   "oracle": "pass",
+   "script_sha256": "b2176dae315ea74d3b41b2369f026e8e5a0c899cba55ca7c99aba5bfd55be3ae",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:217",
+   "oracle": "pass",
+   "script_sha256": "444f01ad1db8d79b7290381859e578b8a8b76d029e1f67c4db3f3916fa5110ce",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:218",
+   "oracle": "pass",
+   "script_sha256": "f522318141d0d848e7e7cbe1975643b6791114cda27d23abd16a3dba068f9cc9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:219",
+   "oracle": "pass",
+   "script_sha256": "ef6dbfa1da5c5ba8ef1adb5c0540940a48d99b9807479deebec06be5dd9c7a30",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:220",
+   "oracle": "pass",
+   "script_sha256": "291bfbc53653925765ca916fa1fabff11d56c53ff17b6437afb51f13fd0cc8b4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:221",
+   "oracle": "pass",
+   "script_sha256": "ea15a39a6b9f5fa89674fb3d793920e78386118638a6bb1ab6c6d06e3007c080",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:222",
+   "oracle": "pass",
+   "script_sha256": "468b6860b5d5806fb41ba255083f7a254e473ca94250bf53080b6399e778e4f1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:223",
+   "oracle": "pass",
+   "script_sha256": "3d26d918b281f51f22d15dd4c435a841c7ff39778a6e5a64210b1b272114c889",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:224",
+   "oracle": "pass",
+   "script_sha256": "98f3ef7bb0201690afbfb19f3c6794eac7fa6d81fe9f88414ce8066708aee766",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:225",
+   "oracle": "pass",
+   "script_sha256": "03456c03aa09bab66f5d414b6078e5ac1bf8ec52e6ade922bb8ed303b941102c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:226",
+   "oracle": "pass",
+   "script_sha256": "f2d018f46b330b9d590df801f87f76cf1843966b88c9ed4e49395619d669ecf3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:227",
+   "oracle": "pass",
+   "script_sha256": "e7d63d78426aef5bf9da795a604cc381b19566966a60f7e89bcf706347f03ae2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:228",
+   "oracle": "pass",
+   "script_sha256": "38015b373d31868abe91c72fd17c9be59d5a4450884483730be5c1f5b9fd9139",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:229",
+   "oracle": "pass",
+   "script_sha256": "09df0fbb13c4477c7801cd0d3497c739c1d9b67c0637b4148f123cfc3c9a2d44",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:231",
+   "oracle": "pass",
+   "script_sha256": "84b0fe31dc081f4ed261af0f2b14364d5466d5965ef91bc16d2c91e024fc35c4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:232",
+   "oracle": "pass",
+   "script_sha256": "28d16195d66b4ca6cc0551335cc2b97440e80b1f9bbd8c6b6bf9a1e3f85f452c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:233",
+   "oracle": "pass",
+   "script_sha256": "2399865fe2c3dd680ced6b0c1d7f1491454fa14a426a2955fcc35e1f0315afda",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:234",
+   "oracle": "pass",
+   "script_sha256": "85f4b7198688cbd2dbf958bf096357c3c2a848815043b5bed1232b0bceff2adb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:235",
+   "oracle": "pass",
+   "script_sha256": "d8dcdd0f4f7ce37e8026443d37aa1a425e01c1011553536d71ee25cafa2a5849",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:236",
+   "oracle": "pass",
+   "script_sha256": "2589109939e9aa049929fdfc50da39e10cb1790318c5c1d0832a78aee91e3ffa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:237",
+   "oracle": "pass",
+   "script_sha256": "b276be85b940b2ce917110a3bc6ea79886438a95ffd559ee3848298adca7398c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:238",
+   "oracle": "pass",
+   "script_sha256": "cc0ed26ba449caf57afb8dfe2092c134afe5dd5c9563656a353046a9b45e25ea",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:239",
+   "oracle": "pass",
+   "script_sha256": "e8b1ff5e100adb785c920020819f4aa5fcbd7f80b06b7f0fc90530e3035be31b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:240",
+   "oracle": "pass",
+   "script_sha256": "fb13b68321437e9a34979906e48a58c30b9562b966578e6f918719c01cc78520",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:241",
+   "oracle": "pass",
+   "script_sha256": "28c6cd5a1e644788d45903b8526853ec9e7c6acee800299e4acaaa1b8f4ee61b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:242",
+   "oracle": "pass",
+   "script_sha256": "04ce403888c61e806f73d567529d8eec731cdf086e29a00a436a46052cdcfbe3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:243",
+   "oracle": "pass",
+   "script_sha256": "f9069ccf4d1fd338bcfc1a3563723d322d5be92c9c6b980e840ea8ade1449a3a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:245",
+   "oracle": "pass",
+   "script_sha256": "4b67625ed00d5b458f1c9dc146638555a3a5198ec400d92ab7a380de0c7c13e4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:246",
+   "oracle": "pass",
+   "script_sha256": "3e2fed706a647d810fd28c50b157d7c4fe1c9c54fc399d8b6f83e14521b8b828",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:247",
+   "oracle": "pass",
+   "script_sha256": "6c764bb98daf132bb019e8bebc4e70ac4e82853152388c9cfe31803bd4d237c0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:248",
+   "oracle": "pass",
+   "script_sha256": "4662835364b960fd8189eade32e77b49c3af8feac29fab8d05affc2f484afbe3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:249",
+   "oracle": "pass",
+   "script_sha256": "f149abc2730caa413690ad73a1c6951496e43b67b9873b50e72173980bdbf62e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:250",
+   "oracle": "pass",
+   "script_sha256": "7a34005602b55062b8014dbb731ff09e4e85354f115ee9711f3d21805d9dc962",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:251",
+   "oracle": "pass",
+   "script_sha256": "23f732885c79b30fdc4cb7bae6262accf4197e4c8b778df355ba4f98a75d544e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:252",
+   "oracle": "pass",
+   "script_sha256": "d8f574f26411c03905c5de89befdd3922db2b1ff2dc035e1ea4b63de90005030",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:254",
+   "oracle": "pass",
+   "script_sha256": "f64e7ed4a255cae751b368c30c565284ce2ccbb98d89d300c27914ceae633c9d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:255",
+   "oracle": "pass",
+   "script_sha256": "9cb2ccc242873f2d91663440b4bcb431888bb1c93ebd82d69d681bc45b17bfd5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:256",
+   "oracle": "pass",
+   "script_sha256": "e1576f2424f5dbc3238ffecdc67bdc21c799a07c673106df78998a192efabfa6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:257",
+   "oracle": "pass",
+   "script_sha256": "fcf8ffa9487653b4ad75780f741ba75d9716c9d23d67ce3f5400a9314af4dbe7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:258",
+   "oracle": "pass",
+   "script_sha256": "564161c28435b76bf1ec2bed278206f91c1c7dac33ecdd6a70c27b2136c200f8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:259",
+   "oracle": "pass",
+   "script_sha256": "1c3ba44816ef9280f8741c483b6ac6f810fccd6f4a7b277e79aa51a58c0e3763",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:261",
+   "oracle": "pass",
+   "script_sha256": "b5ba3bc124fd8add0d6c307e11538fa0564eafc5b0e5f5300c1ea2c4e42b7c5a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:262",
+   "oracle": "pass",
+   "script_sha256": "6db09fd61f8cf563ccd9adf7fe260ca03cbeffeaf228b0cb3306c8b1f7b5bf42",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:263",
+   "oracle": "pass",
+   "script_sha256": "beedfe7cf703f6504c21f40cf3b0a75448a38ae1dd0bb371f48cec87d5ad3f01",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:264",
+   "oracle": "pass",
+   "script_sha256": "518e571293a10520654b42ebe4c13b6f8355c21fb3e1394937a335b6d88e7a01",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:265",
+   "oracle": "pass",
+   "script_sha256": "ec91f482a68bbef7ab46c11b413ea60f4707c81266331678b45993dd03c4c296",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:266",
+   "oracle": "pass",
+   "script_sha256": "7fc97d29059881620c47e5bb52f8d048ae2d2bf9cd080019359ca2cd44504723",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:267",
+   "oracle": "pass",
+   "script_sha256": "3bbbf8ce9e6c1fbb617fded37bb7bbe58e7e2842e177b9b1a66ceeb03b204944",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:268",
+   "oracle": "pass",
+   "script_sha256": "468f303ebd433470b9c9d1ae8854cf6de908e9eaa962109180d4eddec6e45efa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:270",
+   "oracle": "pass",
+   "script_sha256": "b3fb5447fee080d01d2878727adffce1511dc84102820389fa05dee34de8dcb7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:271",
+   "oracle": "pass",
+   "script_sha256": "d4e2be511569b2eb255b83d4b902ece3191495671b1a7462f2d795ffcf19b2d1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:272",
+   "oracle": "pass",
+   "script_sha256": "57402bb7becf28890972c1f10ab23ed63878566895621e1d5e146f0e03697fcc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:273",
+   "oracle": "pass",
+   "script_sha256": "223d021c99441e56b5816da893ebe6fff6171b88f696237df861bd7c5cfae20b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:274",
+   "oracle": "pass",
+   "script_sha256": "c8ea46967b60578972053d2d7585bbaa1fa463435d45922ccf517e1c051015e5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:275",
+   "oracle": "pass",
+   "script_sha256": "0534b6a05bf0a6388adc23372ccb95275211c970c62b8b3596b1332ee580352c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:276",
+   "oracle": "pass",
+   "script_sha256": "b64379907c234156567d1a2a8c4b5e9f37c46225841537bbd23524dcb3be1a10",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:278",
+   "oracle": "pass",
+   "script_sha256": "1c40f3a2eb9cecf6152327b951702b51519db426afc5eed82741c84943ebd60a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:279",
+   "oracle": "pass",
+   "script_sha256": "2725406659bdbaf9186d81f7a82d849cece4b981ce40abe2dee487ca48350e6c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:280",
+   "oracle": "pass",
+   "script_sha256": "36c67bf36bbfc52b7cb4af6923ec278251843433c136e8433e195c779cdd0f94",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:281",
+   "oracle": "pass",
+   "script_sha256": "c4efe028ab7cb4e7d5decbf0c81fdba8988f03646b4ef6ef169d62c78548fc31",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:282",
+   "oracle": "pass",
+   "script_sha256": "3fd05da375f4f5e90ca07804218910b932e147d215996afbecbe5ae4849680bc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:283",
+   "oracle": "pass",
+   "script_sha256": "aedc14db012d27a910935ad98016c57884e056d72dee8636d7c4c04e74a6272a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:284",
+   "oracle": "pass",
+   "script_sha256": "f994bd0f3d6b52504cdbb50bb109af6dd1224b02fb5f1857a06235e20961fae9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:286",
+   "oracle": "pass",
+   "script_sha256": "f333b83e330dd27979ef436ac47483389d6346a609a2010ba469864d49ecc211",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:287",
+   "oracle": "pass",
+   "script_sha256": "acf540ef8feac581ac4fe5a9ade7d58d3bfc03f40e995e26063f75476d813b01",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:288",
+   "oracle": "pass",
+   "script_sha256": "990ed9e6ee01fc854b6e49324de878b2d2857be644ea2b8b6f9b240a0bf65807",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:289",
+   "oracle": "pass",
+   "script_sha256": "faf4af1929a0f5c178a7b16ab22a12fdb6386de47d7ff762e800bda6e3aba094",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:290",
+   "oracle": "pass",
+   "script_sha256": "5b7bb3be90fe9d662404008d8a984e02dca8e15f76defb7638e6d7aa33701162",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:292",
+   "oracle": "pass",
+   "script_sha256": "285995b06fc079bb50f048e36cffaf282d013d55aca79c86745c1eb480974470",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:293",
+   "oracle": "pass",
+   "script_sha256": "1cccd8404479a66b02bc7700cd4cbe404cce83bef5f166e7e95f3a2a6d81ba45",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:294",
+   "oracle": "pass",
+   "script_sha256": "6dea94d0cc1aa155b055f5c7c8f901d0852eeda6a874e6bceb285bc445688e21",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:295",
+   "oracle": "pass",
+   "script_sha256": "7e7e4d83e297f8c516c8c2c8a6a14c516f5f8341f05909dd04933cc13a9258f1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:296",
+   "oracle": "pass",
+   "script_sha256": "337b9eec362cdf15975d067c0a5bf2986290e8624589b25826e0e1b906769516",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:297",
+   "oracle": "pass",
+   "script_sha256": "deb4031e136ec8ab3c2dc669bd433a4526465a3a1cf39c52cc63f02c0edc72e1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:298",
+   "oracle": "pass",
+   "script_sha256": "c218942f3a1398497bf61e01fd017a55ee1fc11ea87d97e60c1df7c5f65aa677",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:299",
+   "oracle": "pass",
+   "script_sha256": "3eb6cba5dc6463ede012a19745d063c8e958e1db6b29f26fe27cdc1e39b9cb12",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:300",
+   "oracle": "pass",
+   "script_sha256": "dd5b419e8cbc45247ca104fd1c29e643f8d5fa4ee50777ecda37807d7e27543f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:301",
+   "oracle": "pass",
+   "script_sha256": "1f659f3a94cab4fd931bf67a793a87d91cc40d230d6ccb5727706990f6324b84",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:302",
+   "oracle": "pass",
+   "script_sha256": "2dc74dc97e920cc780e483a355a169f2bff2747faaee320f663833107cc45da2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:303",
+   "oracle": "pass",
+   "script_sha256": "2d22d9f656790fb369212d32f06fcd30996836c4d3d96489c1c4cc419a42cc0a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:304",
+   "oracle": "pass",
+   "script_sha256": "848c3ca0afb16c520321c5d67714cb5511947a347a5d4f0b5095a529319314af",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:305",
+   "oracle": "pass",
+   "script_sha256": "de0a1e8e58a574ca0dabe7f50758d7fca06d135afeeca9a7183c59fcc9b7b1be",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:307",
+   "oracle": "pass",
+   "script_sha256": "e5a0bc56783d68b6b310548e609c3afbf3923ca6103f0e8d5186ab078edbb39d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:308",
+   "oracle": "pass",
+   "script_sha256": "4ddb3c3b9761c805de7291ba3d2547db33b304277702b4c9b4d9753ca89d50ca",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:309",
+   "oracle": "pass",
+   "script_sha256": "8ab793afa93ffac57bc9c666e9aa616f1f865e0567cf8047c6a6514610209b30",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:310",
+   "oracle": "pass",
+   "script_sha256": "48b4abd105b37695cdd04155ddd9d987b25fd4d323cd11a9063701285b6566a9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:311",
+   "oracle": "pass",
+   "script_sha256": "bdb787680b0cf562a060b6751e215b36a7c6cd711322777f9c21e13c7b799d1a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:312",
+   "oracle": "pass",
+   "script_sha256": "48aa9d6c22a38c682c768d4a1af6859baa91759fef201feadb279aa6779651db",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:313",
+   "oracle": "pass",
+   "script_sha256": "842825115bec8739b0c0fe958ee2271cbf7f3bfc93d6173b99c041ffd426d2a7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:314",
+   "oracle": "pass",
+   "script_sha256": "4022ab608e8387f6a2ba2d9a629fc25b2f9922fded80c622533f2d8d44415f80",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:315",
+   "oracle": "pass",
+   "script_sha256": "8a59eca824a2b414b96bb4c9ede320de960b6ae7124a77b6d1a7d576df4479ef",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:316",
+   "oracle": "pass",
+   "script_sha256": "435c5d3683c9e0b3b241095fc2dff8dfd763c1963a0343a7dce931382aa8ec43",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:317",
+   "oracle": "pass",
+   "script_sha256": "b65f8fdb5ce9d420b77ad2519a62bc57ef25f53d1d9ea66d5890aecb53a64508",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:318",
+   "oracle": "pass",
+   "script_sha256": "a09389e54ce221ff80ba2302a7c24fb9f99d2c8798a45acb559eee079aaaade0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:319",
+   "oracle": "pass",
+   "script_sha256": "8b815c7405f54830cfc09e1e943411677fe5038c8d53c958e39a5c3768694263",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:320",
+   "oracle": "pass",
+   "script_sha256": "3d1964cf2daf8cfebdc04827c62d7c05a4c382ae9e935db35247b1f1c94dc4d1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:322",
+   "oracle": "pass",
+   "script_sha256": "de20772dc4c8a3b51ce09cda71cc3ef7f5216ee5ca5679cae11414fc5488d04c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:323",
+   "oracle": "pass",
+   "script_sha256": "85b871fdfb0c2ecace302c1c3bf63803d022005cf2c574c79cc4b13843629c57",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:324",
+   "oracle": "pass",
+   "script_sha256": "4d1ee35b23f0f0cbea850424ae41c323629f71489da26ab9dad4814e46f06728",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:325",
+   "oracle": "pass",
+   "script_sha256": "30a496314876ba1ea25f6e133499fb17c22e78e4a1aec2bcc19c17bbde0e6419",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:326",
+   "oracle": "pass",
+   "script_sha256": "52ae79540b78b003b77a68ad66e99ae6e3e00e0b458a86505abd7146b6b0d69f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:327",
+   "oracle": "pass",
+   "script_sha256": "a34cc0f0a420a2930365e5e28fae2788a917a854de2dae47757b4331ed3b419d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:328",
+   "oracle": "pass",
+   "script_sha256": "2525eed641a6bb952d937dcfaf16379307631ea1cd0d86c9be75799151c4ad9a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:329",
+   "oracle": "pass",
+   "script_sha256": "fc84dfd7d287efefa9409eda08040bcf9206ae49a8aeba51c8e039a63ec12427",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:330",
+   "oracle": "pass",
+   "script_sha256": "3a57c2789d78b6e952c80d4813aa7863383e20cd103f8905f07f17e6ab4ddd92",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:331",
+   "oracle": "pass",
+   "script_sha256": "db5f303e1a86d7188e53279dfa7109aa31c36a3e646a48caaecdc85f108c2cfe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:332",
+   "oracle": "pass",
+   "script_sha256": "0bc6ddd0575c9c2309266a03e70663c291486e09278dd61c6bc9e4285d4ff2ce",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:333",
+   "oracle": "pass",
+   "script_sha256": "55cfda8affd167ebc269096484eba61bc0a4e4a34ee92bbf4e047b4406783a11",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:334",
+   "oracle": "pass",
+   "script_sha256": "aff8af48009c10e093d9e8b98df1d9f45ee697075821b0b8d0bf23cb25d23fd2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:335",
+   "oracle": "pass",
+   "script_sha256": "9e5825f1e9c707ced5a3a981c4522a2f12ce19f4081f9dbab58de51cea55a7d0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:337",
+   "oracle": "pass",
+   "script_sha256": "a55fcd121c90122c7dbf9819ff055b1d7524442d89cfb30827d677b33d958adf",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:338",
+   "oracle": "pass",
+   "script_sha256": "709c02e362c364682cabe2f1836af824702395b607fdc6842320d25f8bd9a974",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:339",
+   "oracle": "pass",
+   "script_sha256": "209e5613736e3b31f93a1be4a211399f57b99568288e15618ba2a81aed9889d0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:340",
+   "oracle": "pass",
+   "script_sha256": "baafb5f373378c900f1710b816877a865fc5cde5fb2c2a3e63aacbfa6a58643b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:341",
+   "oracle": "pass",
+   "script_sha256": "725c016fd01a62ad83426a8de67f00279fd1f316536fb342b70f3c8ed853a557",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:342",
+   "oracle": "pass",
+   "script_sha256": "c2f8e259e18c79686476c1bd88beb7494e6d1736d4668ed1cd14441b5a8080a4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:343",
+   "oracle": "pass",
+   "script_sha256": "78b55d1b14616e424c05ce600e95747cae18bc22531811781e499c0993c9d823",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:344",
+   "oracle": "pass",
+   "script_sha256": "b76f888bca77ae05a1b67750ac07ee51eab2767c759fa60a1d255c8ccbf8b3fb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:345",
+   "oracle": "pass",
+   "script_sha256": "2e1e085c01562d2956079cbe2dbde129e1c04adc91173684771636c6c43d8e6c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:346",
+   "oracle": "pass",
+   "script_sha256": "e287276afd02a7aa2b28b5bb9be21e15c7dc33b8a94d356b3bb88afef278815e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:347",
+   "oracle": "pass",
+   "script_sha256": "6dcde4acbe5a34742e2f506c420ac8fb7df2c72ed930c98b06b828e185819975",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:348",
+   "oracle": "pass",
+   "script_sha256": "ec714dcf3700c5c4ec3b70ac7356d76a765568f5e12e39f3bd3cc5f3dd9e4641",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:349",
+   "oracle": "pass",
+   "script_sha256": "ac5b87c385318ae24c268a865ab5d1b3d8fb287c7e5e41adc59adc33d9156952",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:350",
+   "oracle": "pass",
+   "script_sha256": "68d1ab2089ef95efc72fd22ede50aff9c20ac1c83898f0b60d1fd3725cafec7c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:352",
+   "oracle": "pass",
+   "script_sha256": "43771c0713de0262a490e64fa600023c04d32481040336a4dcfb73487023a776",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:353",
+   "oracle": "pass",
+   "script_sha256": "86a8dbb44374b3e003a3d9b497e4acba19a53b638e2d283fc0e522c054a9f7ba",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:354",
+   "oracle": "pass",
+   "script_sha256": "8d9ffdb8d6e3ab15bd77ffa70783c20fb5ed592d86df3aff7b1c2eae49bb2928",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:355",
+   "oracle": "pass",
+   "script_sha256": "0fb238e3cf05bc361328755a2b4ddc7922bc0c0a7b8719929f6cefdc74a90595",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:356",
+   "oracle": "pass",
+   "script_sha256": "0f178c171b5ef5b41d425ac4cb7dc828ff87ab584292d13d5ee63eaf2537a9ca",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:357",
+   "oracle": "pass",
+   "script_sha256": "85ffe8e0b040f71cf8739d9ed64b20ad98551cdf1dd84ae21bec023a6a7b21bd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:358",
+   "oracle": "pass",
+   "script_sha256": "84bfccd77a0f750e4ce7973df2509b19fdba5458bd41d4d01b7cad20ca27e87e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:359",
+   "oracle": "pass",
+   "script_sha256": "121659c49ad20e011f783f0cc9b154d097a34b7b533e35b9e2378e4d71a4d5aa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:360",
+   "oracle": "pass",
+   "script_sha256": "cf3c7f25f2c7f8e870219cce853e5ac894b67380f42e7a04dbceefc0f7b2fc54",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:361",
+   "oracle": "pass",
+   "script_sha256": "030a3abbaf0e2a32cf21d7ac9e1bfc14b68e51b61d913da8e76ffcc91d54fd44",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:362",
+   "oracle": "pass",
+   "script_sha256": "2f0efe1be17a566ec77fc96ef19136af4696b794df98b8e008a62bec10011ec0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:363",
+   "oracle": "pass",
+   "script_sha256": "1f5e39d6ee9bd4ec929e066d5b64285bba9e48eeec3d249e108c38fab374dae9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:364",
+   "oracle": "pass",
+   "script_sha256": "a86e944723344e93174b88f4097a08a0d4dd9462998a5ffd2318f52fe91b9291",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:365",
+   "oracle": "pass",
+   "script_sha256": "ccd1a143fbfc1005a506b6f533ad5b0c4281f0e7c8029f959c12edca76d5674a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:367",
+   "oracle": "pass",
+   "script_sha256": "5ece3150acb971a10bbaa00abf45f1218af042127748fb479ebf3463be67b408",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:368",
+   "oracle": "pass",
+   "script_sha256": "34b92890632af917e8fcc6d86ef5fc87a85aba7a7fd7015f3eca96c2817fdbca",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:369",
+   "oracle": "pass",
+   "script_sha256": "afe7d697955b056007e0dbbd9b533b81b4c437900db94ef7dbbcb6d2e93ca9e2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:370",
+   "oracle": "pass",
+   "script_sha256": "94e4ecf09ed2e7923e5245ef65d34a59f7eee9ae776d35fb4b38f72061d52411",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:371",
+   "oracle": "pass",
+   "script_sha256": "1b31b5b7d3b91e2ae09ac0873561a19714f79086271c42d0151807da370166e0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:372",
+   "oracle": "pass",
+   "script_sha256": "a7dd7ba1299dc52835a8d6e9c7a9b47a5649b693269373eb6d3daf34046d1204",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:373",
+   "oracle": "pass",
+   "script_sha256": "59249a452632708f845c527a667ffb3b398dc0681ae291a89774ebcbda6a2299",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:374",
+   "oracle": "pass",
+   "script_sha256": "d45f716a47df42924cbb17920aa694a1aae771d3b36eccdd7433388016ca2188",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:375",
+   "oracle": "pass",
+   "script_sha256": "e0b7c1025eff73e2db32e7c513c67b559c7cb057d914bec2f9d0fb4c60b64b8b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:376",
+   "oracle": "pass",
+   "script_sha256": "c7a316a39ea5b569270663ef6170f7f5e89cdcc915a9448a0aa7e5ff256e23f2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:377",
+   "oracle": "pass",
+   "script_sha256": "76fb2c13db13dc3137232e0465470074c24daa8f0c7d117bf2e3017af306ad6f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:378",
+   "oracle": "pass",
+   "script_sha256": "26cebf48198386fae5216d015d762feeaefb4b9303f6b503efd1e1ebb620b7f3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:379",
+   "oracle": "pass",
+   "script_sha256": "3a1cfb2642bfc2e909f00cc9a59c7a008ae5ae9fc263955e31f38bdb19fdd230",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:380",
+   "oracle": "pass",
+   "script_sha256": "7840c186d56674bdc8efdca465d15909123c743e61f3f0b9fb94c65a95b742fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:382",
+   "oracle": "pass",
+   "script_sha256": "b9198c4e4e7fd82304ab041bcb2c880dc8c540dd2c94e388629ea14ea9dcfc79",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:383",
+   "oracle": "pass",
+   "script_sha256": "7d46b4ad7b031d917f43f81b231aa3d52f79e080f17fa181a99cda625a351e53",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:384",
+   "oracle": "pass",
+   "script_sha256": "8ab1a59075cd742d932a0b4250c5dd0087ac60f81f8b4bde2bb852d9ee2de714",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:385",
+   "oracle": "pass",
+   "script_sha256": "84fefc9b9d1954dfc74fe7ab492a06266015eb184543c244758ac59d0983972e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:386",
+   "oracle": "pass",
+   "script_sha256": "a39e4c621aabafdc4c66dd2f415deed5798746897ca5e59bef00723724f57294",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:387",
+   "oracle": "pass",
+   "script_sha256": "3ccb2535b4492d4540c87e5e39d68645eecf018d4573c41322aac2990bd45667",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:388",
+   "oracle": "pass",
+   "script_sha256": "4e2e89a12085dc06fb6e696cbbe126a56760a5437ad2f684fc057d7d82131598",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:389",
+   "oracle": "pass",
+   "script_sha256": "e976f32e53a2cdb7cb8ea289c613fbbd52c9145c3a6f5224291fbbd01ff66ea4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:390",
+   "oracle": "pass",
+   "script_sha256": "427ce54f01a3cc7cf3cb358ce5c106cc2a79d03f0be41059eadb93a0bbe02229",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:391",
+   "oracle": "pass",
+   "script_sha256": "4aaecca17ba700b773936b9242b6c6c966719e4a2989b738a809fbbf6b74dc33",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:392",
+   "oracle": "pass",
+   "script_sha256": "8bc50f541b99b51a10de3583fc7dbe115d1e26362e7786f73000e52564c55cb2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:393",
+   "oracle": "pass",
+   "script_sha256": "6871005572fb864de20bcce3cd354733f01f40f9ecc54c8584552effcd133bd8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:394",
+   "oracle": "pass",
+   "script_sha256": "8745b125ada37ef6018ad1764bf179f7476d1445819782a21eb6ec46ac125cef",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:395",
+   "oracle": "pass",
+   "script_sha256": "6d35bba31a1a5f61e8578f4e80769cb02c65fda23e40b8eb2bd7108687a4febd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:397",
+   "oracle": "pass",
+   "script_sha256": "64f978d92a1832499db922ab06cdb4e41bea9c802dc4ee5ea57ff7e04c94f558",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:398",
+   "oracle": "pass",
+   "script_sha256": "72f1fba770079278d52f1d5f32041b8eb51c7fb05e022a02d2f6fe0a115f67ef",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:399",
+   "oracle": "pass",
+   "script_sha256": "da06f42912792be47dac9fe6b840d59ca088b0067a369b7733c1b80272b8bde1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:400",
+   "oracle": "pass",
+   "script_sha256": "d31adff3ae664bc891872a8ffb63e424a858d2d52ec28bccb3449f05f9b2a1c5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:401",
+   "oracle": "pass",
+   "script_sha256": "37752d02055e092704af235761491a6ffbf0905a5a28c4d4665cba317808d90c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:402",
+   "oracle": "pass",
+   "script_sha256": "abe39acc58111b2916860c6c1d917985bf23238e033e1b665322dffa534aa71a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:403",
+   "oracle": "pass",
+   "script_sha256": "2f36688df7fda894034f6757beac80417d7a1b5613e02a206a3f2bf6a535edee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:404",
+   "oracle": "pass",
+   "script_sha256": "b1ed6ee579c1c7448c622c9c3b6154d9c391a67c2707f8f51c7f4ecbe05c9c1f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:405",
+   "oracle": "pass",
+   "script_sha256": "7180455d3d2e1f371af35247dc86f25ac5f5f4d0f5827b53cd69138a44fe5018",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:406",
+   "oracle": "pass",
+   "script_sha256": "6c5632f9678a0cc15020ee1ffb9d0de4eb6f36c46d6a46fb5246eb5f21dee6d3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:407",
+   "oracle": "pass",
+   "script_sha256": "a2842b6cf13a50f9ae38cb3b19e4394a58adb054dc8b12547e60c79d07606ca2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:408",
+   "oracle": "pass",
+   "script_sha256": "2be9e794de33b6c1a1fa529b4bf31b8c971af958a0090ec745446fca98d280d6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:409",
+   "oracle": "pass",
+   "script_sha256": "fb57183b91ba374fe56405374a6e2a1aca59ae20185c1799d1081513335751b1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:410",
+   "oracle": "pass",
+   "script_sha256": "c2d3b28e7772d2acfb4195046a0471662a8d28ac5e08f592cd4a07ea40f0db00",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:412",
+   "oracle": "pass",
+   "script_sha256": "bdc386a7f474a84559d15d51090ea82e7ad58d5c05bf1abdb8f6bd1821ffb8a6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:413",
+   "oracle": "pass",
+   "script_sha256": "e949fa3ef2756651613c73218904b96c02897ba386498561027f105fa9227c38",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:414",
+   "oracle": "pass",
+   "script_sha256": "7956eb3050eb6976fa17d42c6247d3f8795640f9d4454f34b96f53bcf8915a1b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:415",
+   "oracle": "pass",
+   "script_sha256": "17169815f0df19fa67fd340e1cf6bfcefb53e0f3972ccdca91fc890275d23aa1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:416",
+   "oracle": "pass",
+   "script_sha256": "fb59b39fe0e1359d55820f708b39f0ae7b7407c5218c895390021ed99f216c6e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:417",
+   "oracle": "pass",
+   "script_sha256": "8238e1a99f13128316ea6dad0c2e999bff22fc3aa16ff3be056279906645b0f8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:418",
+   "oracle": "pass",
+   "script_sha256": "cb058a24b2eaa5e36a281dd48f656ac1ed4dd72182e824468403f5f86d33e942",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:419",
+   "oracle": "pass",
+   "script_sha256": "f766d48f039d2b5ab06d6c1057983badbd73d8c44e9b1ef53b27494c1928400e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:420",
+   "oracle": "pass",
+   "script_sha256": "6d02052a22a4e001e05b9ca0836abc50ec35c7e115c55c4ee1eca896ed856284",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:421",
+   "oracle": "pass",
+   "script_sha256": "859da5fb495a021e03ee36f522edfd0a6e5d013ff8c9d0425b0f949680d932eb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:422",
+   "oracle": "pass",
+   "script_sha256": "58de4b36c3476b7bc66c8b0d89514c2430a0eb31b819990ce7c543dfc63cf59c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:423",
+   "oracle": "pass",
+   "script_sha256": "60f3b09b50c75a8f6ddac41b10d99c11349d26925ed7fdf0d565cd2afcc3498f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:424",
+   "oracle": "pass",
+   "script_sha256": "3002bde3c38d3720d1b752f2fb01c2799bd3f4b641fb5279b4333a7b6d6e9b34",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:425",
+   "oracle": "pass",
+   "script_sha256": "de28b62bd2b8657429afcabcfc00b635bb7da5266e82d5b16b0916615097b39f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:427",
+   "oracle": "pass",
+   "script_sha256": "a84c3db94fffbc005a8628dc4867c3a09674e8b88b44360fd70c4216f6b344b4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:428",
+   "oracle": "pass",
+   "script_sha256": "e9dc7a0e26ae3ca54eb43195a419e579aab75de24a8b870e33937c61e6eaf0df",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:429",
+   "oracle": "pass",
+   "script_sha256": "a250dcf4110d3fd84d148aad638806195411f5541a2a84e9f91abc16b7e23f6d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:430",
+   "oracle": "pass",
+   "script_sha256": "490ae59bf5e33aff6e06cbaed25ac103762001ae135befdfe2a30586ab7a395d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:431",
+   "oracle": "pass",
+   "script_sha256": "1c1645bd69d1bd70b9a574858e1eb6f682fb71c014833714cbb8d9696ba0652a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:432",
+   "oracle": "pass",
+   "script_sha256": "bed3b8cdbc76a4c09f3f20ce59c46cdd9b725c84d37043c9dac7ad9a546524c0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:433",
+   "oracle": "pass",
+   "script_sha256": "1ad552b157566ce059c2d5f713f8165b3bc6683bde4a4a4dfdb8deb42c0eb32f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:434",
+   "oracle": "pass",
+   "script_sha256": "7b4cc114be2cad1fe5ddec9d19ae455beaf42411149e11362618b9a036a17222",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:435",
+   "oracle": "pass",
+   "script_sha256": "85c8f0cf7c9cdffafeb76e462c9762226a782df411be20d7257530d9b1b175b9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:436",
+   "oracle": "pass",
+   "script_sha256": "1e1295848094eb663d03aea997e0dac8515073b850f38a57a4ad6613a38ad5f7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:437",
+   "oracle": "pass",
+   "script_sha256": "68f9a6189b7cc8988efd8f27d00ebc1655562ea36586cbe2c0f110b9ba8a69de",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:438",
+   "oracle": "pass",
+   "script_sha256": "9013342222db7bb9f082bd8404d78f750212995574eeeb3565eaa57a20dcf6d6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:439",
+   "oracle": "pass",
+   "script_sha256": "ade1f70ddd9afaff2fa8dfc0722071b49c7cced230e510bdcf219fe58d473d5b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i32:440",
+   "oracle": "pass",
+   "script_sha256": "001d921a8393908aa38e51e75649236fa100d7482da43e8af3aedd6c2d1d7f38",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:38",
+   "oracle": "pass",
+   "script_sha256": "860b5114de69ce992500caf0177539a5665f94d858761427cb53d1f98fa0c8a8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:39",
+   "oracle": "pass",
+   "script_sha256": "afb4c755e7c21497ae3b280ac747b550ded2c2cb4b8e82faaf2e7f068b092387",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:40",
+   "oracle": "pass",
+   "script_sha256": "9ff464e0a14f5a3539056c4206cee43a2341fa6f1a00689875c167204ebff8bb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:41",
+   "oracle": "pass",
+   "script_sha256": "6141786777a91af86dbc0d23803d4adde3faad20e58860b47cce12c45459a7fb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:42",
+   "oracle": "pass",
+   "script_sha256": "878cc1a8f7c3b71d898c377ef01e3f789542baba479d6afd8f32cd347517fd65",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:43",
+   "oracle": "pass",
+   "script_sha256": "bee3a8e4749f4f09cb1ae767e6fc81b52efdce1a117b6b332aed1105d76713b2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:44",
+   "oracle": "pass",
+   "script_sha256": "11145cec6a68f64e3bdb1374ab4653d3180c9d4155a67952c77d872b708307f5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:45",
+   "oracle": "pass",
+   "script_sha256": "480455b3dc68f4c8796b1b775e47801649859636edd98ccdc6793cc963729560",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:47",
+   "oracle": "pass",
+   "script_sha256": "8e71ec57262d880aff61d9f7216a365ddb49b5d24f6eff7fa9bd6c8e9bb71a23",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:48",
+   "oracle": "pass",
+   "script_sha256": "fc25b1387ac479db45c12f93d001a8764d57f1a856d4d74ca044a73d22f676a2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:49",
+   "oracle": "pass",
+   "script_sha256": "38ab0e30e2194b7d563dc4b81bafa2768a65166f1cd564b66eae3b60e6b2380a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:50",
+   "oracle": "pass",
+   "script_sha256": "181f30190143674ea67f7b9dbb7ff423560dc3e3c812e86c2a9d2ce26c4317dd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:51",
+   "oracle": "pass",
+   "script_sha256": "e41c4feea16b439d330fefff97b30d7635ce88da408d05254a0605467834a1b4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:52",
+   "oracle": "pass",
+   "script_sha256": "53b390c87109e0da557aecc6eb349c47975c62e5e4cca192f6487f3e91404f5f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:53",
+   "oracle": "pass",
+   "script_sha256": "3b7abde0cd8c89d4b2a00f195499f191d2af5e74394ab828841a0fb74f9cad3a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:55",
+   "oracle": "pass",
+   "script_sha256": "5a4afab8f93ba6a0939e583d1252caf56941f97991a2537cab4ab73b4e8d4aa9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:56",
+   "oracle": "pass",
+   "script_sha256": "0f61e2c2c12581e113ad32d812f7176aca432658b88f67145738efdea44c87bd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:57",
+   "oracle": "pass",
+   "script_sha256": "838e11052b12003352e69cabd41f151c1a6f845c549d086b39b7196435460d58",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:58",
+   "oracle": "pass",
+   "script_sha256": "d5fece1ad22f0701ead27a2c0f777d323a7352e7357cc5717e2634ccdd387207",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:59",
+   "oracle": "pass",
+   "script_sha256": "099655c163b929c42509e73fea8c25d1d94a62b7a9f094c9acf30a54367e1d98",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:60",
+   "oracle": "pass",
+   "script_sha256": "90bd9870caa2769999218b545ce1c7ed0729ab9324c78000a872cf94aea505f4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:61",
+   "oracle": "pass",
+   "script_sha256": "6c473e33818df74761422e9fba2a9ee62b837a7f667d1b365589bd3f22be693f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:62",
+   "oracle": "pass",
+   "script_sha256": "b273c19b3380800996b0568820bc9a9ea3c0714ca3ddb5b95cebf13ac4abd98a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:63",
+   "oracle": "pass",
+   "script_sha256": "5a38363e6cee47c2750606da2633702e547baa1185ac7f72f3efeced8eb3a09e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:65",
+   "oracle": "pass",
+   "script_sha256": "89c880d8d4184e6013e124eeacfda71aaf33cad94724b36ba5ba7ee10c3cb2e8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:66",
+   "oracle": "pass",
+   "script_sha256": "267871987f7aa15c8b1ba0ca390028cab20d6e9754799f0442399cc56a10a4b1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:67",
+   "oracle": "pass",
+   "script_sha256": "0ecdc02b2fed76fb57a76dc58fe6c3b937ce951324982c3f45e81cead1e6e657",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:68",
+   "oracle": "pass",
+   "script_sha256": "9b2a11c7fd31e8ab18315fdf1e8b0380942a2d8b87aa1e1be8333fdedc41f53c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:69",
+   "oracle": "pass",
+   "script_sha256": "d14d4e694f1f0343431c9dc69aefbdc05e5f719c9e066fad0f716dd54f8c65cf",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:70",
+   "oracle": "pass",
+   "script_sha256": "9e5afc998b524337448cb5b9c44acf7204363268e88aa079930ce3c743709be9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:71",
+   "oracle": "pass",
+   "script_sha256": "6f189f8d4165905d451ebf8c518b8a68f067957940c7caf132efdce98f4e4b07",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:72",
+   "oracle": "pass",
+   "script_sha256": "d32ad922669c0b6bbeba71ec14257e108c44f78bbd1d2bd1f9958cbbf1a09a75",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:73",
+   "oracle": "pass",
+   "script_sha256": "4c1188010f7b49098d40457e6415ab25645c1a55df36f1ff4a4e053fe28747dc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:74",
+   "oracle": "pass",
+   "script_sha256": "f4c6fef08f91128be554951ee30815108f6eb7258d6b7ccbb560c8a0ea99e1af",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:75",
+   "oracle": "pass",
+   "script_sha256": "041159c2fb396d09815bc3df0ccaa42cf9a7e3ada470b999bc3eb95784868ff8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:76",
+   "oracle": "pass",
+   "script_sha256": "5eb1c8931289d8c217eeb6ba0368d27639ba1c83764dd3647584ab893102b067",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:77",
+   "oracle": "pass",
+   "script_sha256": "0e87923036120513e25460d730a4fd9c26c8028a852c3d189bb8623849919f08",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:78",
+   "oracle": "pass",
+   "script_sha256": "d1969962dc2deffaee6a5261cac231076fd22a7c650e213e621255b39a04ac0b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:79",
+   "oracle": "pass",
+   "script_sha256": "c619d4b7dd092bfa84fb7057ea126e1841d6c0d817ef26a96c12755b57f8f8bb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:80",
+   "oracle": "pass",
+   "script_sha256": "a7628b17d2df15a00d55e5952787cdc43b4302698a6b99b4b0be7efadaef191a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:81",
+   "oracle": "pass",
+   "script_sha256": "8dfc6689a7771c86c4a6785911b1814babe4ca05912ce636da0f86a335058793",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:82",
+   "oracle": "pass",
+   "script_sha256": "8b2117db18aa67d12f85cfb772a94b93214de1d525d87699089ed08b7873fe71",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:83",
+   "oracle": "pass",
+   "script_sha256": "d23b869b410debbb9693ef168aab370f1fba2af702a8a688964cadf6bf5e7668",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:84",
+   "oracle": "pass",
+   "script_sha256": "558b5c9aa8a36b690977ee3d8be7bbc1e54b8e95fdc1b7a00c6d0d4cedfd6ebc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:86",
+   "oracle": "pass",
+   "script_sha256": "05a61c4cd7aa9140fe0c1dade99a32dd4633007c6beaef9dc0e4c0d218d4328c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:87",
+   "oracle": "pass",
+   "script_sha256": "4b8a5877d0c713fb46ef6a01e7579e1af1b9226e0686dc22c3d691d1542377f2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:88",
+   "oracle": "pass",
+   "script_sha256": "f0f23fc3f809244ead0a823664eb2db9bdc13bc0e7cd472ce76550819ef5d9a4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:89",
+   "oracle": "pass",
+   "script_sha256": "31811cc0f6e8dac9e969616ffb5c3c2eda7ca6b7c12b0e83599002c117fc76c5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:90",
+   "oracle": "pass",
+   "script_sha256": "20147cb5e8be236609da0f23ff78cdb97a57c7520ecbabee896a0afca1767fd1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:91",
+   "oracle": "pass",
+   "script_sha256": "109fe3bdc5e9da78ecdde700598b53f95bc4dd835dd805db30cb0f3f1a7e84e4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:92",
+   "oracle": "pass",
+   "script_sha256": "9eea2e629ba8cedf86bf31b5f9b702933aa5ae37c53ccb15f182db42492eaa72",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:93",
+   "oracle": "pass",
+   "script_sha256": "6de52398d7fdf25e07fc8f26bf45d781351ef8ca368bea7864a2b2b3e8bc9159",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:94",
+   "oracle": "pass",
+   "script_sha256": "a89c4215d6ce4447ef63097a7c5a9316815f469ac34d6adfc3daafc568d9fa16",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:95",
+   "oracle": "pass",
+   "script_sha256": "2abe8d8240c9f09f8d8ed7801f1c3245cc6ee05b787276437e75be38d3a2096a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:96",
+   "oracle": "pass",
+   "script_sha256": "8b442a01905f17b6aa2718341b410d2c4b52091cf358f343c62a6e3304885a34",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:97",
+   "oracle": "pass",
+   "script_sha256": "88f188f13e5ddbe7525b61545c2085a05c20dd3d0c4e59609e94c408230940e1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:98",
+   "oracle": "pass",
+   "script_sha256": "e10357123088ed7cbe70f23bd60e3a4ec93cffec4e5ad960a945f33b7f3149e2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:99",
+   "oracle": "pass",
+   "script_sha256": "2d75d1395bb20a136e9f35609b7c0ab2262cd24da6d66823ca1dd90d7419d271",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:100",
+   "oracle": "pass",
+   "script_sha256": "4bf39736469616fff1336c0d5e7358979ad0ddd7bab7b82ab451b0f8e3e19066",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:101",
+   "oracle": "pass",
+   "script_sha256": "bb446963d71186363cff7e17a8950313fffaef7bc6ead469c398e0868ded4cd1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:103",
+   "oracle": "pass",
+   "script_sha256": "cb9a8127dba923b157ec94877da69ad09b17ca22c81c05eb69248414670587cb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:104",
+   "oracle": "pass",
+   "script_sha256": "90253385f89a47e5dd62eda4d78f589998fdf322e8a3ac31fab47bff9dadd8e9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:105",
+   "oracle": "pass",
+   "script_sha256": "7d91832db8ab13c78760210556d44ccb7025f94862d992a69cdb01ec9ba15493",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:106",
+   "oracle": "pass",
+   "script_sha256": "0be09ededad90dcfc4225a1ca31699f67180b92d93c09f91558b2b95244a5e14",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:107",
+   "oracle": "pass",
+   "script_sha256": "33206076846732000d87dfa8a6ae7317164211d566fa863030cb2a89fe4a02bb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:108",
+   "oracle": "pass",
+   "script_sha256": "52d06a6e27b0d2a1b65a8f822acababe02dd0ef96cfad5c164e304d107108c48",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:109",
+   "oracle": "pass",
+   "script_sha256": "647a65585b7b1eb3487e44c6ad9e6aabdea743c574ba7656bc7dadb5aefd2f06",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:110",
+   "oracle": "pass",
+   "script_sha256": "f909486b222caeba8697f9bb4ed3db87cdd39208795cfe9d78ff6ea04cd53fb8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:111",
+   "oracle": "pass",
+   "script_sha256": "f396cc1d0ebf325bd4cfc1d5508927d5c6d2ad05835bacf95fa272cfb9f9d38a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:112",
+   "oracle": "pass",
+   "script_sha256": "370fd2c5b5b63c5bb31675704f17da3b6b7c6c8f0c175353a1c55e4ee3cfc46d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:113",
+   "oracle": "pass",
+   "script_sha256": "6a8d2530dca850a0d1749ade59870927b579be77370b73897eb90370c577e150",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:114",
+   "oracle": "pass",
+   "script_sha256": "18d0d492f8f8420e3d5dbdea0a4939653746c8265ec9806b15b12b9131b13a70",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:115",
+   "oracle": "pass",
+   "script_sha256": "9182976816cfe0705111cabbb66a44f4f74eaffde5fa52bb8f6dea64eb547aa7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:116",
+   "oracle": "pass",
+   "script_sha256": "0b936e9bc23456793432dc7d8d9c4a32a0cc5ef7e2a0a333fff38d56dfe88bdb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:117",
+   "oracle": "pass",
+   "script_sha256": "9266bb6189db5deeecac57ab6b69804552267c4948c1855719040ec35332c9f6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:118",
+   "oracle": "pass",
+   "script_sha256": "471fbd059856232a09aec5884e276bb32d1fdf973ab67f678b9b78970a21789b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:119",
+   "oracle": "pass",
+   "script_sha256": "456f98cb08e8bf85188ff78043cadc5086f648564ac830fdf6959f8ca74931a2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:120",
+   "oracle": "pass",
+   "script_sha256": "7586899c69dd17e3e09a7c319867c2d90eab34eeef09bf3cb233e601b0a5fc45",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:121",
+   "oracle": "pass",
+   "script_sha256": "6bd0305dcf29d8ed97cd26084e1142b388eed734c8fbb42cf640a7b334318735",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:122",
+   "oracle": "pass",
+   "script_sha256": "5dbacd7475eefffa9177bada8a213e7d41b99ea1f49f6d32ae82be5e86c5619c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:124",
+   "oracle": "pass",
+   "script_sha256": "408ab8fa9206975de3b66a1da2c9b1ecc9cafe67d4dc246eab6a10419f71c511",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:125",
+   "oracle": "pass",
+   "script_sha256": "6f5e80883279a2027a4d8328f1020bf3cf3b6536becaa7293d678fab228fe92c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:126",
+   "oracle": "pass",
+   "script_sha256": "738c6027d166b0e5e7296995da77f0dd9804ca91a2a1e37548eb7990954ef5d4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:127",
+   "oracle": "pass",
+   "script_sha256": "b3df9ad6b727aaadd727db6a4177f504e9e67144e7f6f57b5bbd9d7e9160c879",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:128",
+   "oracle": "pass",
+   "script_sha256": "f0e36f2ed04b82a600f6217c7dfb9b1cc9d576b3803ae8c4f778f6179477c167",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:129",
+   "oracle": "pass",
+   "script_sha256": "65310f18b6352b386da9b1ccc23ffc52d8d30c8ead800f00973e24ffa1f26c85",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:130",
+   "oracle": "pass",
+   "script_sha256": "1bce251b661a15c83cfb9d504e41e13adc3197370cb08687fd9537b9d390c0a1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:131",
+   "oracle": "pass",
+   "script_sha256": "15a08a70fe0d9eda365e6aa6dd00108924134315bf642194f3b01c0de9166f92",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:132",
+   "oracle": "pass",
+   "script_sha256": "2b40875d4b7ec83bba99c94a7ddae9df6f7130aba088277a310a425510d4cd55",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:133",
+   "oracle": "pass",
+   "script_sha256": "6f3307943f62233390e9f9720d235cc597e0c623a27cb21407b58ba10f6cfd1f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:134",
+   "oracle": "pass",
+   "script_sha256": "4c94275fbefea12459d95d5dcb9d6fd42ea276e5a46a4f4aa9473a18fcbb9e64",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:135",
+   "oracle": "pass",
+   "script_sha256": "26d16678213d53723de5349367c30790979fe3e928ec4ee8c68c7a6e72fe29d1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:136",
+   "oracle": "pass",
+   "script_sha256": "7c0d31961ae9460fc85a5037cc599ff66bb9bd46c031268392e4d23b65348ad7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:137",
+   "oracle": "pass",
+   "script_sha256": "e04b67b6b7f9471f9ba0b950c761978743b0a160649c000eda15791c45f1c69e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:138",
+   "oracle": "pass",
+   "script_sha256": "689535b326a74b4059735012c2908922655ab8ea41d786f794be440e2a48314f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:139",
+   "oracle": "pass",
+   "script_sha256": "43caa20260bae86b1bb379fad4d40e56d605d25ba411a7c784b22baa909a5301",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:141",
+   "oracle": "pass",
+   "script_sha256": "135ef6f8efaa806563e5e59845101f3be496556e5cdc67350562ed0e4290ca64",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:142",
+   "oracle": "pass",
+   "script_sha256": "8ec2b24a0606fc75db21d52a58f23ad686016d50a1bc1b5b7af60507d0a47fde",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:143",
+   "oracle": "pass",
+   "script_sha256": "085401a92431d2889bea32e1684db79c0beea3d0ca8168f3cc1d82b72a7f22be",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:144",
+   "oracle": "pass",
+   "script_sha256": "878cb51bce474900a2255c259a4b955d7bc17f21a5574a01125bd09fd5fe82fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:145",
+   "oracle": "pass",
+   "script_sha256": "1f9175c939b506b87cf52bbe8f2dd85c19735c93565cff7fbd3001734cc65afc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:146",
+   "oracle": "pass",
+   "script_sha256": "17686f97f27a61a535e1e3256cee95ce3274718588cb23fe54080baa1514f0be",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:147",
+   "oracle": "pass",
+   "script_sha256": "5f7bc7d91548eba2a44722b75a9f2613eb78bd8a0921b3538a59ad3083f0fa02",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:148",
+   "oracle": "pass",
+   "script_sha256": "48227b2285b536b2d7d8693372a78eb13c8620776b4273d853b81dd1098c42f9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:150",
+   "oracle": "pass",
+   "script_sha256": "e1c0e6eb286800d395fb76109b5fc2abca95b9f4e9e82927e25e7447512b885a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:151",
+   "oracle": "pass",
+   "script_sha256": "75d84527ad523daaf6884ae75e2027f966c38843d77605c836fd3790639c6886",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:152",
+   "oracle": "pass",
+   "script_sha256": "9d8a66f48594f12c5d5928811488d6583558fe35a4c244e1ddacadc0e53c6c69",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:153",
+   "oracle": "pass",
+   "script_sha256": "f36f39a5d7b63263e560c6c3f6eb29f1be9fab49e64f5ed685da447efb8eaf4f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:154",
+   "oracle": "pass",
+   "script_sha256": "c6a583cc363ec77a9c0e3c7387c98abf7af51cadc882ab36be3236ccc72d61f1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:155",
+   "oracle": "pass",
+   "script_sha256": "c8b39c31d9364aa3e28c540c2bcf49104613f89d57d15d37f35c85bf7590c31a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:156",
+   "oracle": "pass",
+   "script_sha256": "ddcce04e4b8e25c98e5b89cd954bc76704e3254ecfb71a2049db3a0d8daff2bb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:157",
+   "oracle": "pass",
+   "script_sha256": "91f41aa35a4f8389a5ab056128876fb03cac2200f27f6badf0b0327415dd93b6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:159",
+   "oracle": "pass",
+   "script_sha256": "019979f680fa39e741c3d8c5389ed6b3ae49d767508a085c5eaa153c02a49cf7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:160",
+   "oracle": "pass",
+   "script_sha256": "079e662bb674d33669a6c2736c8f8927d08045087170decd5c390697fccbad7a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:161",
+   "oracle": "pass",
+   "script_sha256": "6a30845e6e55fa2d2f825f5c702572d130b1ace5937756d2439f4a863e479473",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:162",
+   "oracle": "pass",
+   "script_sha256": "0655352e4f68d39c6681b251fbe6d304cfcd985fc1604e707c08b1579255c6db",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:163",
+   "oracle": "pass",
+   "script_sha256": "dc5ac8da30cd57ce6253f328550dbfb837e6385b424203890d87b47f81b0c26e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:164",
+   "oracle": "pass",
+   "script_sha256": "b5ffb67ce0878df40fcb5235fb439d45f1c5976491602bbf1351e5b46082c6da",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:165",
+   "oracle": "pass",
+   "script_sha256": "32ce48884187829b91340f06f5debb59ba5c6ce140e404f106da491a81b85ccb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:166",
+   "oracle": "pass",
+   "script_sha256": "94a8ea1fc5361022891e793fdc055e4be2f3ca10465dcc19afb5085e532b1e98",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:167",
+   "oracle": "pass",
+   "script_sha256": "3e5a4049590b7f7bf1742d4713b3f1e03d0ac0ba599f33368417e674cd63f3db",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:168",
+   "oracle": "pass",
+   "script_sha256": "0f8991948faa0c3211d7c1ec3c5240aa07620d941ef777c55e9a7d98325d8eef",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:170",
+   "oracle": "pass",
+   "script_sha256": "17a22f5293e47cdc45ccb9850930743276b83c475f05b7947db6e87a8e1f0045",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:171",
+   "oracle": "pass",
+   "script_sha256": "220a47c4d2f0935dd936d05fba7c07a6249be4305f50aac3f659e00a309b346b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:172",
+   "oracle": "pass",
+   "script_sha256": "90019d70a627fa66be4fa52a3ecb93b59f7c0e0067a16a4ce9197c05016d5802",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:173",
+   "oracle": "pass",
+   "script_sha256": "973577aebdcd08ca98db6111e29b2071f5ccda66d63fdd2d62077ad92d8304fd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:174",
+   "oracle": "pass",
+   "script_sha256": "5ff8f9c0fb3b8f4ca3c2b2fbc7c60272df54eb554245c9647a9c548857cf4f4e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:175",
+   "oracle": "pass",
+   "script_sha256": "a29eec2a3b90c2ffded6c5e86aa3adfcc68071b80e672880e04b498deb9a7c60",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:176",
+   "oracle": "pass",
+   "script_sha256": "6a73c74b29012fd097671e3772845e995789de781ffb1d9b17b1f4430ce795d5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:177",
+   "oracle": "pass",
+   "script_sha256": "f992f49da80f118470ff7e3805c233292ea7c67e3f475d3360d0f093ca3e969f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:178",
+   "oracle": "pass",
+   "script_sha256": "f4122b9c180456f39db59f43a51deffa7e61cd59fd812d70a04ad26266efb68f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:179",
+   "oracle": "pass",
+   "script_sha256": "e711cca83c8e92a3b93743329a2e89bd18d72418bf37ea545f254c519be59a0e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:180",
+   "oracle": "pass",
+   "script_sha256": "cb68d9e314fabf599e3bdb9adbdc182919546cdb702e11fde291a6907de6937c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:182",
+   "oracle": "pass",
+   "script_sha256": "03eb9d2d4a32e34b5f4fd69c234dd5f4b3ba91af339487faeaeff90715f3289d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:183",
+   "oracle": "pass",
+   "script_sha256": "95825cb85d8ce2cf7721dd1919e055fbd95a89779be3ce229c412d9699668d9c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:184",
+   "oracle": "pass",
+   "script_sha256": "463f4ec6a27f4b213c443d2a6f580c1aadc8c310982c09ac7d0bf727cfe4a716",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:185",
+   "oracle": "pass",
+   "script_sha256": "1824f4d0090a6a3ca4f06b55209ceb28cca619e8b04423a57b46c36aa61f501f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:186",
+   "oracle": "pass",
+   "script_sha256": "628571c8d0f1fffbc0a48340687bf9edf0410baefdfb7be01087ef9f15bbb589",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:187",
+   "oracle": "pass",
+   "script_sha256": "fddeb9af5824fae39632934b45f19fff1a8ffec0e631f594f5e54a7589c8c426",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:188",
+   "oracle": "pass",
+   "script_sha256": "bf3cb5c27a965729fdc4806e0f9044a725e6c8808150a41706d0434d31cdd9c3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:189",
+   "oracle": "pass",
+   "script_sha256": "6473cc88128349f9fe30a38105132b4804d3ac85869440caa28e9e5f22b97e8f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:190",
+   "oracle": "pass",
+   "script_sha256": "8a622f16388320d273a1f7702bfdf5870bb99e864e78b90e3f5f045b8b14326f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:191",
+   "oracle": "pass",
+   "script_sha256": "cefecdf92cb91abc7bbc1070176308034fa838bdca1329b9b8402901b7892418",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:192",
+   "oracle": "pass",
+   "script_sha256": "f3f13946c0780c982dad0d75516ba17351435ee5ccf75e7f20ba1f39b05e525d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:193",
+   "oracle": "pass",
+   "script_sha256": "a0ca31f1d538324349b822031c3293d26c88349d2ea1befc3bbd3720685ccfae",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:194",
+   "oracle": "pass",
+   "script_sha256": "c3d18d12ea1e1cdaa14045a97d040426b0921015a2d8a872aa889987be2596f7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:195",
+   "oracle": "pass",
+   "script_sha256": "826b7336f56addc6089ab4d70d70302fb4f035ec37259327af20515dabb07016",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:196",
+   "oracle": "pass",
+   "script_sha256": "dd7e04ab6567455a0ef5729228c214ad97b48ac44505980e92b373fe62cb9040",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:197",
+   "oracle": "pass",
+   "script_sha256": "e7cda42f127a48346f2fbcafbe5dfbb899eab9588ff5d567e66110390009db5b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:198",
+   "oracle": "pass",
+   "script_sha256": "b882d909988e4ef9ddbb57a6b1c85fa513b9067cdfb3880426c19e60ba763416",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:200",
+   "oracle": "pass",
+   "script_sha256": "6c176c916661a13f18a7bce6d68ca888a6828c88501c5f7b35b03fa89647e64e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:201",
+   "oracle": "pass",
+   "script_sha256": "dc6ea5e2ef1f5912659142ae4deb43d736388ffcd7915c76f79bae87b123397e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:202",
+   "oracle": "pass",
+   "script_sha256": "9a6a121b8b24994659b6403cf459f005bb75de0d8f3ed70b37bdb28621049003",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:203",
+   "oracle": "pass",
+   "script_sha256": "3899a5d4f8ccebba2257c82a1a1d5ce9c4358ab2e0beae17eede4ce023c4893e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:204",
+   "oracle": "pass",
+   "script_sha256": "407a8b6f9867a9bcc00a3a7874dd5ade3630d23566acb2a9e092a186f197946a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:205",
+   "oracle": "pass",
+   "script_sha256": "121fda1b9257894b3387c403a07ce7f3662fa5f9818be3b1c643b4dbe8bcbec3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:206",
+   "oracle": "pass",
+   "script_sha256": "29d3ce4661099e23aea2db34392f2411a3cdbaecf280d2b44e498bb99639873f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:207",
+   "oracle": "pass",
+   "script_sha256": "e004c14cf66dbff04b9d610cf921c9305b2746fe96a873ee7ec117458363595d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:208",
+   "oracle": "pass",
+   "script_sha256": "86bddcb5dc9d56c442dbc212be5a5d2585e49a18cfc198ae9b569739e553e905",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:209",
+   "oracle": "pass",
+   "script_sha256": "3afaef15d26cca8e301bb6489b13b845202415ec6d16d7d7d9e7f790f7f5a394",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:210",
+   "oracle": "pass",
+   "script_sha256": "b9b8328f113caaa985c0ca2244c221c7e53c6db60fdeabe0f8db14c9dd4d1c3c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:211",
+   "oracle": "pass",
+   "script_sha256": "7e88048c5aebffd84362596b245f85b5608056fc3f47391ac6fda3d8ee6daef4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:212",
+   "oracle": "pass",
+   "script_sha256": "35ddaaf854e15f0ef4ca9894943cab151cb2ed87b2e507df42aa4dc7e9621ce9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:213",
+   "oracle": "pass",
+   "script_sha256": "839841fc0cfe9c14d40c374f650f0a6d630d98607d177c8e3c4edf1ab8fc7e0d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:214",
+   "oracle": "pass",
+   "script_sha256": "0e25bb0095af869743eaee706ed4f7389aa14626a8be8450c27c461c7c3a49b6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:215",
+   "oracle": "pass",
+   "script_sha256": "a0890cd7cd24bfff0946f8e58b2907e76707a607efc3c418ea2696ee9fa4b5e5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:216",
+   "oracle": "pass",
+   "script_sha256": "bdb78e90d888f287c01708a1292b82f3bb4b2b1f5a986ade4c7f73e3f4a6911e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:218",
+   "oracle": "pass",
+   "script_sha256": "4380a747d15e255a231af5506bb4b2318d9d68826af50702ed884af8adcea411",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:219",
+   "oracle": "pass",
+   "script_sha256": "f0a2a0be23fb87a396485c3a03986ddad14ac9df2b24d98c5fd21dd8aa54706c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:220",
+   "oracle": "pass",
+   "script_sha256": "4977c8d9f157d95731abbad913bbc9e861fa15b867d5b75498d0bc05ec025fba",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:221",
+   "oracle": "pass",
+   "script_sha256": "fd7e686bfcb7d28c7f733df702dd0669c0a839995d92dff8afe695f1c76bbab2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:222",
+   "oracle": "pass",
+   "script_sha256": "d811529c1e96329012b4eca037be62431cf82b1f0d7ee04fd300d5ff9fb986dd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:223",
+   "oracle": "pass",
+   "script_sha256": "1f2637ef35dc317fc0a8167b056b24e593fbd0211c1e9b12895b58409fef8944",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:224",
+   "oracle": "pass",
+   "script_sha256": "f7b47ad007e6ad38f67e380dac6db795b15d2a6a49b05a1bab46789d27f72c7e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:225",
+   "oracle": "pass",
+   "script_sha256": "9993000beb13001c5c71583a590674a7d70447bda1e6a2dbeb591a45bb0dadee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:226",
+   "oracle": "pass",
+   "script_sha256": "5e01d86119d78e178b514aeead2da5410ab81f484c4efc0eb171391a1357cfa4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:227",
+   "oracle": "pass",
+   "script_sha256": "4da25dadf01fac2201770da678fbb45625f6a0de608c577848eb1ba9f16406f4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:228",
+   "oracle": "pass",
+   "script_sha256": "785072815809a9c5c70973b6e37ddb85b43a21fab9179357914f22392807cbba",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:229",
+   "oracle": "pass",
+   "script_sha256": "15ee5839f22fe8020c56b170f789e9d83aa2742b9815a65c7fc7b8bf05c3872e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:230",
+   "oracle": "pass",
+   "script_sha256": "ec668201901e0b145f3e0b11c55318f64cec02cbd96a899abcf980b37e5b18c6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:232",
+   "oracle": "pass",
+   "script_sha256": "63aff19c06dc180bac3693a50d74c66c93cb315efb6229adf342f56b6c6aec53",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:233",
+   "oracle": "pass",
+   "script_sha256": "d434ecd266c8c53a509dc662647ed51bb80ca5610c7803381de047def8fcf053",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:234",
+   "oracle": "pass",
+   "script_sha256": "5de1cd32c2528b97fcd197a46f2fdbc2e3405af07ca2a886e8c9bf8ea141fbcb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:235",
+   "oracle": "pass",
+   "script_sha256": "32f8ee47b7c83cb9900153f9fa1a69c993f7cbd356ab09d490793a3f8213ed5e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:236",
+   "oracle": "pass",
+   "script_sha256": "18d3df23edcf60ace755bcd335572f05162db65dc2d68cd483689a5259160ebd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:237",
+   "oracle": "pass",
+   "script_sha256": "8863f28ea9183e63137f4d982d628da4708547a3d6bd053238c78ec9e94224fa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:238",
+   "oracle": "pass",
+   "script_sha256": "f2fb2a8f4553672080032c94e08f501e9d272a4df23119eb0f7dcf31a0159785",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:239",
+   "oracle": "pass",
+   "script_sha256": "f2f7599470857d6bf74c9a8a26a818c1fcb28d4188e458f41a22a0a50e7097fd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:240",
+   "oracle": "pass",
+   "script_sha256": "14a206693dd4be7855d95a97e5a20ea04f48e37221f1f8e81ae9149441317d99",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:241",
+   "oracle": "pass",
+   "script_sha256": "58e2b6a0adaa36a9a57bbec035158f57801684aea1afbf15458eab13a52739be",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:242",
+   "oracle": "pass",
+   "script_sha256": "35a3b678911139778b9bce9fcc930395711625752efd08ff148d126e38ea7719",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:243",
+   "oracle": "pass",
+   "script_sha256": "9ec1ffe9ec3b850e5110df0644903ad096fc14136eae234f5d96bc8d931c5af3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:244",
+   "oracle": "pass",
+   "script_sha256": "2f7c1c3b3560ba029de6b57aafa88457ae3141c1f66ff1bf9e8d116b2e92cbde",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:246",
+   "oracle": "pass",
+   "script_sha256": "b85e7391825e40bab6c76070f633c8717cc39944360ec7ae49f1f6329c990718",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:247",
+   "oracle": "pass",
+   "script_sha256": "e44976f05009989f0344f13978a7d607f4c3c9a964cd51046f0ce29a66d29481",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:248",
+   "oracle": "pass",
+   "script_sha256": "6ef96e261376c590e51623ea7766da59e36aa6fed2af23d8db682862c2500ea8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:249",
+   "oracle": "pass",
+   "script_sha256": "f42092de58481323775d55684d19853b48bc65657cfca79e3ff5ee2cd9d569f9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:250",
+   "oracle": "pass",
+   "script_sha256": "d2beae541f453ac28408b0428de55df67863fda75a33d16da0a9ac7cf04aea1a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:251",
+   "oracle": "pass",
+   "script_sha256": "bbf83f8e5a64128c03b2856d8eb3680730e232f07ff3de2df09d8446c27b04c1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:252",
+   "oracle": "pass",
+   "script_sha256": "46fba3a383151d360166bae9c3ddadebfe3ee98e8cd5717f7a82768a641484c2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:253",
+   "oracle": "pass",
+   "script_sha256": "9b1d3095ca526dd225f892d0cf584805e50b8ffff3c2a0e2a54f8fb8756a1235",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:255",
+   "oracle": "pass",
+   "script_sha256": "1a73d11d800498c0c43b898b916838a86b1c83dc590680a3d816f48057d8cb75",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:256",
+   "oracle": "pass",
+   "script_sha256": "3d395a3919d72fbe81b9b168f0f7eace967ac5350e7581d1066a189043bc99d5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:257",
+   "oracle": "pass",
+   "script_sha256": "6ea0d38d1605d43f2bfd54a638075a3f2a8d2f44c9c0be6d0b965350f075957b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:258",
+   "oracle": "pass",
+   "script_sha256": "78b5dab2e37624e374e29c34a762d87224b57abc1632551515efe2c0f43f482c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:259",
+   "oracle": "pass",
+   "script_sha256": "13979637b43b59368bef0c72e2d2a3611ddd5dd8ecbd136fd33568a664172f25",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:260",
+   "oracle": "pass",
+   "script_sha256": "a324c46a5c041ed3cad53240c68f8112a615952abaf8b2c3aeb156160762d512",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:262",
+   "oracle": "pass",
+   "script_sha256": "a2e524681346fdcbb9b50e26dfe2e36cf7b56b5423e5fe560a232445a3eb9817",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:263",
+   "oracle": "pass",
+   "script_sha256": "92a16a7a87684d9901e7a6f884da252e4e4bcf5aaed5c45ce42caf8e1e57ab5b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:264",
+   "oracle": "pass",
+   "script_sha256": "0c61d1c4e9d59da937d01868798b343f150e1d427cea109d2846778519770a78",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:265",
+   "oracle": "pass",
+   "script_sha256": "ef8b9e31600170e3f706d008bc72750e08ae672eafea5687cc1a0dadb9cf21a4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:266",
+   "oracle": "pass",
+   "script_sha256": "9a2227f8485a41bb8102f7cd6c1ae6029c8d6e76867c51a54328a22f8b7f9a6e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:267",
+   "oracle": "pass",
+   "script_sha256": "8b7f72bb58a328b75fe639b1675230392396324a6cecfc2f09543012880f6267",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:268",
+   "oracle": "pass",
+   "script_sha256": "043278f810638eb40b4753f135e22bc7541a20af12a168eb91a514cf8394e61d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:269",
+   "oracle": "pass",
+   "script_sha256": "450618fef9138bd16b3cfde25c11de8f5d36555db846e8030eea5d7060daaf0b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:271",
+   "oracle": "pass",
+   "script_sha256": "9121cb6d0ef15bc6855620c9e55145ffede10a6dd7114a3ed8a3ecfe9c183e4d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:272",
+   "oracle": "pass",
+   "script_sha256": "9255d90b90fc81300f58d14d4602a9914089b954830ed556fdc5101ba5eb87c3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:273",
+   "oracle": "pass",
+   "script_sha256": "df6a6406df3a737e994c3ff4fcf70e4269e5b8796916d2c637e39af60af58bf0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:274",
+   "oracle": "pass",
+   "script_sha256": "b9305d36e2df5e7db9006f1f6c090625dbf4f57a95164575534fcb06f0a3fe9c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:275",
+   "oracle": "pass",
+   "script_sha256": "8513703745fe9cdf6d3657752c9779d252aa8584bd80238c9c751588dba669a7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:276",
+   "oracle": "pass",
+   "script_sha256": "43badefb659953025418f6afd4108093002d3e1ad4cb9d4962460835d66d3975",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:277",
+   "oracle": "pass",
+   "script_sha256": "e72ccd3e9c237b523f522e912e3d5fcf63a85c440565a0d98267a615919ab570",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:279",
+   "oracle": "pass",
+   "script_sha256": "02e13dd36c85c64f7f45b2848673aaab75ca8b3f3e3087597d2072578eacbdd8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:280",
+   "oracle": "pass",
+   "script_sha256": "c01cb6531a2c7a7ddb22a5520f8f3ef1efe3c357f4c99803c9b450d8d71f7986",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:281",
+   "oracle": "pass",
+   "script_sha256": "6039bb1fdff3d5d0896540f6831648c84b84bf52d8122fa6b4526f467e977ab1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:282",
+   "oracle": "pass",
+   "script_sha256": "a941517e9071dd307818b5c00fb6d14456ec30ad66f8929176639965d0c0d853",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:283",
+   "oracle": "pass",
+   "script_sha256": "f07e3c8b35d6f43be05739796d7b92579e4c27463d7c420c77051837d7a495f8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:284",
+   "oracle": "pass",
+   "script_sha256": "56807def6bc09924117364f0355b1c721cc0087926bcb5b4e802d354e982eb6e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:285",
+   "oracle": "pass",
+   "script_sha256": "d8bc46d30e813da55b1fd2f0911abfcc566d82891d6ccc98906c35cbf4da1b4e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:287",
+   "oracle": "pass",
+   "script_sha256": "81e802b58d8b35d4ddade8cf6ff6bdf2b016a8d010397669c890dfd7e0dcc047",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:288",
+   "oracle": "pass",
+   "script_sha256": "78a3fdb99963f1ff1908409721461114b1c6809956b528cc411174e661dbc6c2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:289",
+   "oracle": "pass",
+   "script_sha256": "5dedc528b6fd0a2b30037d5e3e9eabf78dfa4bf4af09beab59d9d7bb1850ebcd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:290",
+   "oracle": "pass",
+   "script_sha256": "dcc479a3b7b32272f0187203563dc448cebcdc41104d620967228df00657c186",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:291",
+   "oracle": "pass",
+   "script_sha256": "1a1ac93de2538c796e2b2a78107d19e3547749d31b4348830c33e5e7e9407d9f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:292",
+   "oracle": "pass",
+   "script_sha256": "3c6a02be8fe2c68dcf870ddbe1d664f72c046a03a067a3cfbe880aa2efbe884a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:293",
+   "oracle": "pass",
+   "script_sha256": "363fd31119d79944001e45dee92254346e0bbea7c66bc7085888c13c0f0463bc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:294",
+   "oracle": "pass",
+   "script_sha256": "4fc0a6ae049c04e520a65ff8b006dca339868a5b15277810d4d80cbe60cfc4c2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:295",
+   "oracle": "pass",
+   "script_sha256": "ac12b514d133c58eb7b2022a76190d97e1829a89b1176f1df7769ffabb9d4b7e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:296",
+   "oracle": "pass",
+   "script_sha256": "165121f704f8c9fa2cae151aa0bb38c590ddca4f625206fb8ad2f3f4fc161b2a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:298",
+   "oracle": "pass",
+   "script_sha256": "115e3fb6c09ae73fe71a9b5d0c2eadad9263df7a0dc3ca1259ed78ebc1b63f2a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:299",
+   "oracle": "pass",
+   "script_sha256": "cd85336160d178f6f32915c474e60100606ef01d4ac494cb534215f300829ef6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:300",
+   "oracle": "pass",
+   "script_sha256": "244df32a5a1e65a8734e1e4bafd83893a7e5faab3ce26f0ca963c9a30e9226f6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:301",
+   "oracle": "pass",
+   "script_sha256": "0c12ef5fcb1f6e4c72b75a0bef90a23b31b8a9a1ec99407777bd2e43b4c1c74d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:302",
+   "oracle": "pass",
+   "script_sha256": "5ee9b3ee466d783cf681184aec648aa8b047b9f7852a9e54ae540ec53ee0e51d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:304",
+   "oracle": "pass",
+   "script_sha256": "8ef6731efc2bf1b6452c57704088062fbf05346cc257742fc023f1c425260275",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:305",
+   "oracle": "pass",
+   "script_sha256": "8348cb4030e94231ef4f84da0a4502be5df8129a204fd58fdebc60ccec92fe35",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:306",
+   "oracle": "pass",
+   "script_sha256": "def6160585bf2f17767419798b50723bd821478258725dea676912c5e000a6c3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:307",
+   "oracle": "pass",
+   "script_sha256": "63a8b01fd8240b73078a4fbe2d48f0de374b2bfddcbc1cec826d39411f750f17",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:308",
+   "oracle": "pass",
+   "script_sha256": "5a4231ad56e765e8676b30a26495dba82ae9eb16027e3c3b030e3c4e153656a7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:309",
+   "oracle": "pass",
+   "script_sha256": "8f4e78fac71e6d347e39c78b9754e6c39f15fe9a8a6d6c7a21c2fbaf420dea64",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:310",
+   "oracle": "pass",
+   "script_sha256": "0f89499ad6fe05eaf382dbe43cef0f2c685f3d52ec7dbd1c02bc4620acc3e353",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:311",
+   "oracle": "pass",
+   "script_sha256": "39347ff7c34ad4c8b2dfe257782c9adb2fcdbba9c6d96ebb1bc5280622a4095b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:312",
+   "oracle": "pass",
+   "script_sha256": "76665abd40ed8a1592bfb393781a498e08fe899c04f11cc1c99d35602cdc4b65",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:313",
+   "oracle": "pass",
+   "script_sha256": "f84eadd3571066ccb5c06048762f2928b35f75531d95cb5cb4591ef19557976f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:314",
+   "oracle": "pass",
+   "script_sha256": "d59d72defc82adaca778f7bbd972a2fffe53d05d01d1c17fdb0bc7ae95ae4087",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:315",
+   "oracle": "pass",
+   "script_sha256": "32fba1d2575a18a867c80a9e5dd7543aa0de804ca420bfbb370a255fc67254e3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:316",
+   "oracle": "pass",
+   "script_sha256": "3298d0a6992d476cd0a168305c78a1226e1d5a2734631ac18888696e62c90e61",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:317",
+   "oracle": "pass",
+   "script_sha256": "450df095b76a56a03082836c75ef2c4c19233ade6dc2c65eb8167b900f187e4c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:319",
+   "oracle": "pass",
+   "script_sha256": "f3968ed9aec0845d77b9653540f17e95efe4a1d6aa77ee5c8883541f828cc589",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:320",
+   "oracle": "pass",
+   "script_sha256": "df62793363893451cef59025d60db37cd1ff25074fe60b3d00c49df048fcc7d0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:321",
+   "oracle": "pass",
+   "script_sha256": "714d3a1947731e253c2140392eece5135e37624c02f933e1f5ba2cdc8d3b775e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:322",
+   "oracle": "pass",
+   "script_sha256": "b9d32290dc81fe3b1fb28731899f2df4b9d003083491ed08474e46e4a614f1b5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:323",
+   "oracle": "pass",
+   "script_sha256": "7a50496cad95c0d63fb6a6e30fc4e2076b546867d09df754f1f5c957ffbfbfa6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:324",
+   "oracle": "pass",
+   "script_sha256": "844c37e372ca545959053ce0bb44331bb7166f780e8e9c40a2d83c4a5c58fe5c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:325",
+   "oracle": "pass",
+   "script_sha256": "0c1ae36fab7160508f9140a1a3f343fece659bab1145c8ba8910b901e86f35fd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:326",
+   "oracle": "pass",
+   "script_sha256": "f9cd29ae05bfc88a4732cdf3953f2aa29e5f29b454c9b94ec4908d3def04372d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:327",
+   "oracle": "pass",
+   "script_sha256": "e2c4ffc7381edfaea44d1be91777cf886c6ad79f53d25f9c3920b4c1f2ea46e8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:328",
+   "oracle": "pass",
+   "script_sha256": "0f7ab1d2c43162f356f96e0929093a3b836e7a4bde64de64783f395bbb264c37",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:329",
+   "oracle": "pass",
+   "script_sha256": "cd65b158e4d0a97fe68e03b24347ef8361fb56e9d902445a649cedfc2cc4a7b6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:330",
+   "oracle": "pass",
+   "script_sha256": "3389678cfb044cfc111012ec5da44422f72bc9488195a6e9b5125a0351d056bb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:331",
+   "oracle": "pass",
+   "script_sha256": "27d37c53c50c91b3ec9eb75ed6252b603793b858bcb3f6ae88b407f5a83ceea8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:332",
+   "oracle": "pass",
+   "script_sha256": "ffb60ddd0f84b6639a45bbacfd05785c9578406f42099acab7a1f1f2714e01ec",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:334",
+   "oracle": "pass",
+   "script_sha256": "3cb94accae42b2658edb240c037e251486d46ca34203b3bcf376f6737f36a7aa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:335",
+   "oracle": "pass",
+   "script_sha256": "568bf48c82011711578209df21ab531464b4a4d934325470ace4e10c717f5250",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:336",
+   "oracle": "pass",
+   "script_sha256": "3df1acc0f3038ed2578650c6ef403b924b68b20b749e4d0f4cb2a6db44ff80b7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:337",
+   "oracle": "pass",
+   "script_sha256": "07b31f70e2a1d5bcf3849cf1faed92dad21d7ffb5ea0752181c6b738c742e8bb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:338",
+   "oracle": "pass",
+   "script_sha256": "9808d0efd9ecf1b63274ead7bac0873802b490520c001664c62965c7339450bc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:339",
+   "oracle": "pass",
+   "script_sha256": "848b35612b24d9ec88daa41717d59be18a9aea761606c8e0b30ca0d0d88f5545",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:340",
+   "oracle": "pass",
+   "script_sha256": "28f4d604fb99fb0a801af2edd8c4dd4eefb59acd7c15ce05800ab7939d317d35",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:341",
+   "oracle": "pass",
+   "script_sha256": "267140eb4d52a2c4cf35d5e17d96d1d888a8edf2979ac8a9d9827142da3275a1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:342",
+   "oracle": "pass",
+   "script_sha256": "b9cab2b7399ffcaef650ba65c884fbbe8509cc530b9f52c374e2c487ea1640b6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:343",
+   "oracle": "pass",
+   "script_sha256": "7471d1932c17cc183c1fe34fee34e9ee66bacef17e6b08094fa96f5c48a68049",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:344",
+   "oracle": "pass",
+   "script_sha256": "bd17c826518c0c6843347619f2bed8f9ec93889babd6643f0cd16a0d64b56e36",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:345",
+   "oracle": "pass",
+   "script_sha256": "9a2459f3ccea0110ef2c67682006eb1629d3b7de96d55851cea8447d63c62ef0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:346",
+   "oracle": "pass",
+   "script_sha256": "ea3abfddd2c50c39875ccb11247dfc1079b2e206a756859e80fc7e3be7f96d97",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:347",
+   "oracle": "pass",
+   "script_sha256": "d8271fa75a32b7e90e2b8b0282583345d3047944020f02078c2a99a0a72dd992",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:349",
+   "oracle": "pass",
+   "script_sha256": "6e10ae9d44821747fb50dfff26617f770833a29384e76446e4c9457b490ae64b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:350",
+   "oracle": "pass",
+   "script_sha256": "7f78b17c1b9377f9f7074599000f86f53a04388fd82086fe0775380f0b015ece",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:351",
+   "oracle": "pass",
+   "script_sha256": "a5bcf5324422d4aeeb864bc75f2a2f97dbf92eadfe09f8c4240674610941425f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:352",
+   "oracle": "pass",
+   "script_sha256": "c47c1b3be6f56b6d7865d74204c27124d0b6324eb6195be55071b490760cc008",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:353",
+   "oracle": "pass",
+   "script_sha256": "4ea8c7512ccc9fbaee634189136e34d7915e78c26add8f3482675cbb46a8134b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:354",
+   "oracle": "pass",
+   "script_sha256": "fe2fce54d6c96a5f14c19b892e4e0538c7d8ac02a9711bdad9ec425bfeff5b8b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:355",
+   "oracle": "pass",
+   "script_sha256": "7116a2d23e7b2b1cb5758386b42efce923f2079a32e0b96e0ffa5fb8792c1d2a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:356",
+   "oracle": "pass",
+   "script_sha256": "3ea1d4e8f09a46fb8cb4a1c1a31dac8183c510ca0873b8a5cc01dc703b3b9ad7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:357",
+   "oracle": "pass",
+   "script_sha256": "c1235b783323ef89aa8655f24a4916ac8f8c6470cc345ff77f8f1344ce0103c9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:358",
+   "oracle": "pass",
+   "script_sha256": "5111795abb70df1de780ebce91b1e5b3fa3115e7ebae699b97ead4030c836b8e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:359",
+   "oracle": "pass",
+   "script_sha256": "06f0841631b32b99953669a860a01ba929e13c16ae5d873d5fc98b7bd9076adb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:360",
+   "oracle": "pass",
+   "script_sha256": "eb78ace5db10430b87c50b09c4a561565ce8d2625a4cae4575161dd841769642",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:361",
+   "oracle": "pass",
+   "script_sha256": "19f1f066712013ef1360e0e0163090e15564d0d9ec67d4da7250f0a66c15f98d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:362",
+   "oracle": "pass",
+   "script_sha256": "bd0a7d209a4d67dc41980ddf5533f57d9193d2077d758b8fe45d4f33a9fcb1b8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:364",
+   "oracle": "pass",
+   "script_sha256": "b0e7ee34648dcc44a76ab54cdb095bf7944eaa875fb0e648aebae97229ec1710",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:365",
+   "oracle": "pass",
+   "script_sha256": "c2a5754c3fe2d011cd04e33ce6c694b8b7da9e031b00967c11adaf3334dc9260",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:366",
+   "oracle": "pass",
+   "script_sha256": "17e8946358d2f9314a5fb458d211623252495bf225369731276960688fa17bdd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:367",
+   "oracle": "pass",
+   "script_sha256": "e37b62daea13e0e0ea2b8b7a7825fd165260e13f6d4a77189387dc5e92ea695e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:368",
+   "oracle": "pass",
+   "script_sha256": "5cedf3c24b631f58b54b144b128e7c986731887a4d1d5fefbdad8ac3bd42ffa9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:369",
+   "oracle": "pass",
+   "script_sha256": "0c5794056fdedd4411f5455a4d4a69c72ae31ab5deb08afb8b01252be2fce7b0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:370",
+   "oracle": "pass",
+   "script_sha256": "ad1927cecfd1c588314bd7e0a3a14ce241fe4699539f8319b5dee746396f983f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:371",
+   "oracle": "pass",
+   "script_sha256": "b296eccf073c5056afb8fc1e86e0da51659ad5974a0cef57f33ba8fd6d371b98",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:372",
+   "oracle": "pass",
+   "script_sha256": "b5330725d7621468dc76851df4a66c992e9af21746a679c35e4515a79d186795",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:373",
+   "oracle": "pass",
+   "script_sha256": "462cb3ac90e5d81e889d68c5b9e4da8648e5f163884718703fbfa5b4270558db",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:374",
+   "oracle": "pass",
+   "script_sha256": "068dceb25f80a2098e40d1f45448a1e8e8be15ca64708aca3c6aa981ff0ca948",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:375",
+   "oracle": "pass",
+   "script_sha256": "7730fe9640549fc19823d52722f8ef1957b23286897773dfb9dd1d33e2bcd9e0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:376",
+   "oracle": "pass",
+   "script_sha256": "99f50706ef0a6f247484312b60a33e9ff224abc09bca21fb41a58aae23a54895",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:377",
+   "oracle": "pass",
+   "script_sha256": "a1a342aad02bc6c4e8c5d25c1619cae607a168d9ba1c2f65953e344366dee4f7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:379",
+   "oracle": "pass",
+   "script_sha256": "5adce0cd63ab530dc7a0ba0c7af0aedc49d9aa5b2135e4f83f4075d44e2517ac",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:380",
+   "oracle": "pass",
+   "script_sha256": "dc82a381f509e2f8234dac0c4827f9992f988c035cc7b91f01bf4a543c9aca0a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:381",
+   "oracle": "pass",
+   "script_sha256": "269d04148a6a2224378acdf941ddb9cb5ed28c021eab8cb3665c67395e63cce0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:382",
+   "oracle": "pass",
+   "script_sha256": "e3fb05d85b2c93448176780413610365c7805378ced73423e20dddd47510fab4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:383",
+   "oracle": "pass",
+   "script_sha256": "4494b4e86d1a3dc6712f8d7644e33f1b0f1009d693d5efd1fdea22cd5166c80b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:384",
+   "oracle": "pass",
+   "script_sha256": "71f5944c8078c84f1477003f4ea8da2c40c99acabbe12af930a5b19c6d4cbc6d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:385",
+   "oracle": "pass",
+   "script_sha256": "9d46055351571d0c241c14c7cc0153e7b4606aefd40afc5129fc910ac8964ed5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:386",
+   "oracle": "pass",
+   "script_sha256": "e09a199e11d7c4e9b3236a3409c264a9751916fb2b6ea2aa525d1fcd7283b5ee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:387",
+   "oracle": "pass",
+   "script_sha256": "6b48e564defd3ec0fff3f286f907c4998e64b81c99410b7e6825f27751c2f7ff",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:388",
+   "oracle": "pass",
+   "script_sha256": "b6e63822ee05cc89099cc1bda226c60995e63f84b3f7780332d6d9ec61555448",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:389",
+   "oracle": "pass",
+   "script_sha256": "63b0119283b8b55349a8be6ffeda72e41686c67dde118cd9cae400357e45b04e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:390",
+   "oracle": "pass",
+   "script_sha256": "536d067aef255f2af40e004473b9cd1649436ab39c23785258dba3306b945f1c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:391",
+   "oracle": "pass",
+   "script_sha256": "4e39382d4d8587f70e69c601cc2cbe6f6cb606b696c6434b3f3aa5375fd8188e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:392",
+   "oracle": "pass",
+   "script_sha256": "9b2561b61bc5999e82983ec910a37ad6ff6817eb4e5d540dc12b03906b3c1e7c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:394",
+   "oracle": "pass",
+   "script_sha256": "3f34a8af9d2f4b9e2788efc6e781c6f8bea9768c33348a9800ea4fac3604d4b4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:395",
+   "oracle": "pass",
+   "script_sha256": "50d3b3ddee5fa62433f5c129f339b685689b94cb9bdfeb5f890072fd30c79138",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:396",
+   "oracle": "pass",
+   "script_sha256": "31272159126ab0cc700d952b989ee4ee08be8dee9773895a6d339d887c0538f0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:397",
+   "oracle": "pass",
+   "script_sha256": "6bf9bcf5a2fb69ee9b63cf6866512706ab0334f2007347a745886bc9a8d460f9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:398",
+   "oracle": "pass",
+   "script_sha256": "a7b8b4923d203a4f7f42422e385ad9034f9946ccdc3a39d8948f049d737dc472",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:399",
+   "oracle": "pass",
+   "script_sha256": "2103b8a4e013424ea4ed00e67a1719282f4f7088fad58525f75458e0e4a2b7e0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:400",
+   "oracle": "pass",
+   "script_sha256": "9f80516b6128f45f1253adec7bde7722e83a456b38159f9e3520c1b93729d97e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:401",
+   "oracle": "pass",
+   "script_sha256": "b6d3fd86660bff5fb01e265c12d1c40eaf70425b7039d59579a60aaa72d2ade0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:402",
+   "oracle": "pass",
+   "script_sha256": "cb3ddb5152698e8a0e537ea44b42621fca5920418b829d9b65cdfcbdddbd0132",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:403",
+   "oracle": "pass",
+   "script_sha256": "72fae3f65ad4cf2068c09df9e070fec18cd1a0035acd8ef529dfa5444f2f337b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:404",
+   "oracle": "pass",
+   "script_sha256": "c6e1d498e35939afe4c20f43cddddcd5caf36f7015841be111efda42dae4289a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:405",
+   "oracle": "pass",
+   "script_sha256": "118a6800ce93ab9d33a463bc7758e637a4cbfa11e1581bcaa5455e70ee2707d6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:406",
+   "oracle": "pass",
+   "script_sha256": "c9acaf29494138beac000a87e122de8e6c9e280ee7fb83ac32afa6f350b4e489",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:407",
+   "oracle": "pass",
+   "script_sha256": "4c4be824e593c1c87ef1715c6ce983e6726ae781152ef4ff0a02fc2bacabf52f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:409",
+   "oracle": "pass",
+   "script_sha256": "25ed68da41d57f68808d985460afdb4c0577cabf60104435cf7ce4384139fbc0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:410",
+   "oracle": "pass",
+   "script_sha256": "cd2db85c4394c1fd89b94f48ab0344e8c9bdd52e95d05a6e7803f2453cbeff9c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:411",
+   "oracle": "pass",
+   "script_sha256": "a73071af285527404ea1560a034dc2b80ca2e395160e607e5ad7986cd8ff39d3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:412",
+   "oracle": "pass",
+   "script_sha256": "166bff4dadda77d1f00e5a87f450d68c9e534b6cac573ecbc00b071086047817",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:413",
+   "oracle": "pass",
+   "script_sha256": "8c65c6cfadc9f6b541be665553630438d53eb6bd363203e48e1c344ea7737a29",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:414",
+   "oracle": "pass",
+   "script_sha256": "9251597c2181855c6c69cac0a7f7da283a5b59675715109f52a37408945449f7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:415",
+   "oracle": "pass",
+   "script_sha256": "107530fc0a81b484c6bfc17fa758af044474e520ccfe89a5be019bfb0c514f8b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:416",
+   "oracle": "pass",
+   "script_sha256": "f01f318008b69a51b4373206c2f688e14e6c02b6f24a3a04965a32820a71d196",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:417",
+   "oracle": "pass",
+   "script_sha256": "c4e39d3de1fbe3b8cc6692b4ef4007780b84e93f2f93f68df8bdcc8731cf622d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:418",
+   "oracle": "pass",
+   "script_sha256": "38c49823b42009e02c2e08b553ff1d80ddd0243ca122839cdb407f2e6564b888",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:419",
+   "oracle": "pass",
+   "script_sha256": "95f531f82cdcf0ef50bcd87ede99ed767a0b95598a0a3c2dbb045b4d98ee05d9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:420",
+   "oracle": "pass",
+   "script_sha256": "db07fffe470f4b89d92a87b76912d8dcb9ee007953417cfbaa3d550c5951d2ff",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:421",
+   "oracle": "pass",
+   "script_sha256": "ac3ca389e235b5a2d488905e84d79ec1ea51e4e1e9c93a4a832cb4e412ea509e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:422",
+   "oracle": "pass",
+   "script_sha256": "a0f3522b3226d4136aa0c6a3ad5bd663f224d6e2cfad0abf825d42220cffffaf",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:424",
+   "oracle": "pass",
+   "script_sha256": "8037f51375183e77851d755090769a25dc170ab559b49959d0530060f3046510",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:425",
+   "oracle": "pass",
+   "script_sha256": "8d13396d48f1eff8fb4f1b5ddb6e6827df3fd72321bdca9c77f4760135182cbb",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:426",
+   "oracle": "pass",
+   "script_sha256": "b920caf0bb973734c59108aeeb69b491b6204e9b4cda5800565d3ba91c738165",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:427",
+   "oracle": "pass",
+   "script_sha256": "50d745d5d12efebb214b1983dbd073fa7be844360105aa94c6f5843fa8767ece",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:428",
+   "oracle": "pass",
+   "script_sha256": "9815544796c1b54f8d71d89f0807ad415b0d68460a4420754398b3b8b89f3cf7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:429",
+   "oracle": "pass",
+   "script_sha256": "fd5fdf3ff33b6ed3df55858b49d19338fec6aa1ccadf1ac79570bfd55a547d59",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:430",
+   "oracle": "pass",
+   "script_sha256": "826807b7dea8c55deb2d80519b9c6bc924f53a21164414431f0921696bd774b8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:431",
+   "oracle": "pass",
+   "script_sha256": "e07d53478ee72b21b195f6fe23baa6124a1bcd6487775323f55300acf3159b78",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:432",
+   "oracle": "pass",
+   "script_sha256": "5d9afa38356b50fd597e7d828bc6c1d3ec99007f60a5da182f0e7391baed235a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:433",
+   "oracle": "pass",
+   "script_sha256": "93ca988876c20ac224e1ae5ba85f48d9fb7e7c1320038e8e7823a880bb6912ae",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:434",
+   "oracle": "pass",
+   "script_sha256": "f0e395fd0ef577fda1a3324cc69cd928d98ee490b03f5d34a230980b36da1efd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:435",
+   "oracle": "pass",
+   "script_sha256": "80218228c124d26887df795723322d41e958c14df540014817ced62c37a47292",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:436",
+   "oracle": "pass",
+   "script_sha256": "0d57a4132b10dd04fcb3c39709406cf328aebc9e71f1d8b9a2a257e89be23292",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:437",
+   "oracle": "pass",
+   "script_sha256": "b4de694f2d6206d82a4e267ad52b2719e0d19bee4e3b5d9d68ebb107420784fd",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:439",
+   "oracle": "pass",
+   "script_sha256": "717abc5eb085145b14b97b34906d0f902a738c7f54f12fb92cf8f195e8aebff3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:440",
+   "oracle": "pass",
+   "script_sha256": "e8488504178958d8856d67fff02ae448cd813673f430d21eeb321d17bb741b13",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:441",
+   "oracle": "pass",
+   "script_sha256": "384ea58111d0434a95b7c2a7a88d71e19958f0c76b1175de2ec89ad9458328df",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:442",
+   "oracle": "pass",
+   "script_sha256": "d578293836c0936186ee1994b4899af6659cb4443b7e8831e21d7e75dfbdff0f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:443",
+   "oracle": "pass",
+   "script_sha256": "04fcca7738713bf6110ef190d19fdef8a00ad67621298cfc23a94e77f13c95a5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:444",
+   "oracle": "pass",
+   "script_sha256": "2efaa082b9845d2f820b33e1b4d39dc9f71c9007e8f91276ca4ff1a15c96dbbe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:445",
+   "oracle": "pass",
+   "script_sha256": "a3f00e2982911d6b17eb7ea99ee7f0e1310384a4ad1faa8ab13b8c0a3e146d79",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:446",
+   "oracle": "pass",
+   "script_sha256": "eec330abef8f51f735380a617548bd2d8dfbf15330ba1601cd9fc2061f8966ed",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:447",
+   "oracle": "pass",
+   "script_sha256": "adb463a58e0926e6ebb2f3f8dcd03ff3dcb0a372e4a4c9b010b50cbefab4c7af",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:448",
+   "oracle": "pass",
+   "script_sha256": "fd7e031c72fb43b7f670d52989cc959746d5c307a1f18c54a03314ef86c47973",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:449",
+   "oracle": "pass",
+   "script_sha256": "aebb4a923507ff1147753bbffa40315f709d04b1c0afb424148c78bf24056bc1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:450",
+   "oracle": "pass",
+   "script_sha256": "11aa71194c550d3318f57f4e7e515f9ac6d5ffb581cadbf8988729399cd1ebc1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:451",
+   "oracle": "pass",
+   "script_sha256": "dbba2738db1292122dbf62d10391bcfa96cf5d3b6a336ad25f7116136fd91813",
+   "silmaril": "proved"
+  },
+  {
+   "id": "i64:452",
+   "oracle": "pass",
+   "script_sha256": "8c3ca2c999ce99a58fb6d2ce74c04b631ef87a8631e0f5dead919f548960bae6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:18",
+   "oracle": "pass",
+   "script_sha256": "36220254b19d5f654729ca1895570e60879f2f403d4060aeb4be8b2d58d5cd9e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:19",
+   "oracle": "pass",
+   "script_sha256": "fbfffba759ae3fdf0c4366ebae26ec3529404bf5051e691f383f13ac543cb7c8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:20",
+   "oracle": "pass",
+   "script_sha256": "f051726cc7f25abdea9bab9eae72746280e60f9e61b400b29b4b756cc8274bfc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:21",
+   "oracle": "pass",
+   "script_sha256": "5e602eb10cef12802d5216c88b85c9e6f7f180a92686a250f6340a2d723d8483",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:30",
+   "oracle": "pass",
+   "script_sha256": "4be65dc11c87bf11f6b462b57fb74df1b6becb0e2c3f4ac542b9254885e5d7b4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:31",
+   "oracle": "pass",
+   "script_sha256": "abcc6abf88e1f34a2bc7437e0bf48cb01237ce96ab80cca63a72da5731634cee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:40",
+   "oracle": "pass",
+   "script_sha256": "133c8453425cdde6bd78f5a75e049f01551fbe6d56a4bc048932642e9fe0975a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:56",
+   "oracle": "pass",
+   "script_sha256": "51aa9827d80185d99e457575ad958b73e09d6ae951d2af41730b747f8f3753f5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:57",
+   "oracle": "pass",
+   "script_sha256": "9a8eaaab32612c3e8c6d27f4e0365d6d46335f5ddbd300c59b95a5cb7c091d73",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:58",
+   "oracle": "pass",
+   "script_sha256": "63e4f1a2e5a6c0aad9ecb321628e9e7cbe1df2f72fa2bf5ca7398f40b99d3687",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:59",
+   "oracle": "pass",
+   "script_sha256": "db1b8e03c1e78de8407ad33231c16325a55545f896052ff7daa47b34723b4966",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:75",
+   "oracle": "pass",
+   "script_sha256": "b4290aa0a0af3fb79910e5ac7ae010da339f314cefbbc46d4243cc23a9d60c7a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:76",
+   "oracle": "pass",
+   "script_sha256": "8157cb3561b78ae68e34c9bb172e7c5deb60f64372a08eb88a9e3f56539f47be",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:77",
+   "oracle": "pass",
+   "script_sha256": "bb709b3e12efc446ade151f47a42caaa21bddf3f02ea12e036ffa896e1e20d87",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:78",
+   "oracle": "pass",
+   "script_sha256": "be6e9692f7aaed6ebf243e1e9fd3c48c2733955f51d7d9852b3a21925a5c1187",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:94",
+   "oracle": "pass",
+   "script_sha256": "54b6abce3befb6583185cdf3e128544457cbbee107a947a873009f91d7aa06d8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:95",
+   "oracle": "pass",
+   "script_sha256": "d8801b258688ceb0651c1e34cbf5ffb2cefebf7d531c7325659d05d0ad4d120a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:96",
+   "oracle": "pass",
+   "script_sha256": "0103c0507c71b31507d428eefbea3d43dde77565766ad1201e8fb3f306a829ab",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:97",
+   "oracle": "pass",
+   "script_sha256": "3fe108b715e549e7d0267e1064402a91801cc621381f070eb9b3c27bce5d92d3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:113",
+   "oracle": "pass",
+   "script_sha256": "0e8ed6c8cc84935b97cbf0079be7f5c9d265be3c947c4644ae063210f4633fec",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:114",
+   "oracle": "pass",
+   "script_sha256": "c15f4a01b37cf8df31f843d85a6c3e77f0fe72ddcde9003ea922471ff5618af8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:115",
+   "oracle": "pass",
+   "script_sha256": "3ee8bcff444fe218f5c821b685fbd7607b7c20a5b413184cd4299a9ba1a17d80",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:116",
+   "oracle": "pass",
+   "script_sha256": "45d886b834b9eca6c4cf3ae1ac37189f9f361338a90462079da27b1466b1a5ee",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:132",
+   "oracle": "pass",
+   "script_sha256": "e92b4b27c601f8a9a2e69639729b043cad99b86e426e588246aa326f8dc996b9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:133",
+   "oracle": "pass",
+   "script_sha256": "d605b7cc190dae10f3c0c9a5de48e67d9b1e1d7de8d8140fe451a2bdb1fa6af1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:134",
+   "oracle": "pass",
+   "script_sha256": "7f2a14f55ba08e5765b4ea80b72d08e521f9a0631bcf05fd7672b8728e0543c8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:135",
+   "oracle": "pass",
+   "script_sha256": "96a0dbe11d25b8b8427cc2f5529cde8fc1909a2d6c026791d7c47ce21559424e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:151",
+   "oracle": "pass",
+   "script_sha256": "ccdf35d3a1ade471989583607b6b0c22d1b4b8e2b31cb260c4d5fff20efaeb50",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:152",
+   "oracle": "pass",
+   "script_sha256": "fe92aa8de06d21f973876c4234a93dbb1120e985ca09bd2ca6636069a56cf15c",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:153",
+   "oracle": "pass",
+   "script_sha256": "77c969f1175aa4a66a36f63d0b4428fcf6a297bb9e3102b7eb35ceafee508733",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:154",
+   "oracle": "pass",
+   "script_sha256": "a25bec8cd5d135f58922867feae96c50178408bc0d4cde590da7a802348bb94d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:166",
+   "oracle": "pass",
+   "script_sha256": "a750ca5e97286339d81cf3c5c50b8bd419d77c176c581666961774773457b5c3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:167",
+   "oracle": "pass",
+   "script_sha256": "e5eab9b77bf62e6ab7ff4d743c6ff376be4bf105d436dd0e11f72a74cdb366fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:179",
+   "oracle": "pass",
+   "script_sha256": "1bc0a3fac381b90bee59c97f353ed29c3c80e4e718990d2173be1ba7240f9333",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:180",
+   "oracle": "pass",
+   "script_sha256": "d19d252dc14f6e5a472ead84daa5ee2eb187db0d74a00794d41abfc7cc1c5377",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:196",
+   "oracle": "pass",
+   "script_sha256": "6545c8db5b8db5b3155f8fdc60cf41bbf5961536cbe70f901a145ed8bbfb9a47",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:197",
+   "oracle": "pass",
+   "script_sha256": "43b8b6661e5702c9506933e50f2a7504ebb5a35a869dd130e4211ad0c3ef33a6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:198",
+   "oracle": "pass",
+   "script_sha256": "cfbd360fd5d679a24d06dd1bc2a44829162f23242e97a8d75af8d0cc342ec1fe",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:199",
+   "oracle": "pass",
+   "script_sha256": "47c9d6f7911d95f3c20b939c43e8744425ab0d14a348415f2d01901e604bbb83",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:215",
+   "oracle": "pass",
+   "script_sha256": "deb99d75ee3f0042ea39cf1d446e58891fd78b84e1da246fe3f2272fbab66e59",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:216",
+   "oracle": "pass",
+   "script_sha256": "ec25db7e3909a5b87eb27bee0e0d21478eb2544adaab076b9f4f9c679596e478",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:217",
+   "oracle": "pass",
+   "script_sha256": "ef14e90096d0d37702ef6db9f321bdce9919c1518ac4c32361c1536af0de5543",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:218",
+   "oracle": "pass",
+   "script_sha256": "4e4dccd09bac46c60bce80fa079778787e915e6bef124ff7f978f334b37916ef",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:219",
+   "oracle": "pass",
+   "script_sha256": "043ca0258ad0afa7c25bc3712f3304ec3acc47b0c0304a8e25b5452de2b324c0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:220",
+   "oracle": "pass",
+   "script_sha256": "5ce6f2fc553ca55ea94a502f7de719b5fb145e1bb0acd72c796f3a84dbe1bbd0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:221",
+   "oracle": "pass",
+   "script_sha256": "cf1b759ba56703dc40386eb3dff4e88038918982d102552ada91bf1dbff1caf8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:222",
+   "oracle": "pass",
+   "script_sha256": "8c4b37fec3896af5c0437269744e8346c70062c95b96cd600e62e850ed1c384f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:238",
+   "oracle": "pass",
+   "script_sha256": "23dbcdb4d555e3da40c2ca837843616aa6594241c801546f9fffd76dc61fa40d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:239",
+   "oracle": "pass",
+   "script_sha256": "a72c6185f91ea61c5cf94cdf681ba5215768cedce468483a354eaa2e6be0c1f5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:240",
+   "oracle": "pass",
+   "script_sha256": "09cfdb924bcea71efff4523ae6e4bb1eb290b95347848cf1683032cc1ad55f82",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:241",
+   "oracle": "pass",
+   "script_sha256": "87cf7f59d58a41abfc6c8444835ff6bd3d2c708a5081fe10216dbd2a57f87df8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:242",
+   "oracle": "pass",
+   "script_sha256": "7c564734d7faef880b6f4c777d3d8fbb8797b39034e4b9c6b51d22db74cda726",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:243",
+   "oracle": "pass",
+   "script_sha256": "b99b677cf1e32510861a292af4a9273533b9bf3b16d37525b7e49d19f64efb37",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:244",
+   "oracle": "pass",
+   "script_sha256": "0fb5b215b300d391c083171bb432327f60f0220cac5d2c8ded08629fae64b5e9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:245",
+   "oracle": "pass",
+   "script_sha256": "a255850e9504532ef0106868c2b2a2ea08a344613ae619580996c5f4bb0234a8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:261",
+   "oracle": "pass",
+   "script_sha256": "e6465bb19cabd8af4dd360a70dfcef506c060668a4e55ddee329392f50446d83",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:262",
+   "oracle": "pass",
+   "script_sha256": "050253979501a5b53482f008e1d9c245784be769508e490b83399b6f2e65e063",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:263",
+   "oracle": "pass",
+   "script_sha256": "6487e0ad09902a2d0b28eabb124b3285c5aba087c5bc61be92d8fc61b9b4db72",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:264",
+   "oracle": "pass",
+   "script_sha256": "f0f3e5352e35a94b05b2ddc39fdc25bb8beeedffe6839676c979f282904b5938",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:265",
+   "oracle": "pass",
+   "script_sha256": "691f3a7f1b572899fa9ae52601f4095e6c541247b66df9fa5d904c44efe52474",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:266",
+   "oracle": "pass",
+   "script_sha256": "afd9ccb5af188e9802b334b922a23ddc02a4d314a0d9d7b26dc823609a27beb2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:267",
+   "oracle": "pass",
+   "script_sha256": "0177f100e28a67d7fd1c8aa656d426423aef8d603c390eff232052fb2c1aa69b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:268",
+   "oracle": "pass",
+   "script_sha256": "55624fb3f734e5fe8f1e5315e31e6f1f7b667a853d87d48882b86a6281eb7cb8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:284",
+   "oracle": "pass",
+   "script_sha256": "5ae615ed48ba363a26e14ebe01f983755d438015b1e22fdbd07e41c80e477980",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:285",
+   "oracle": "pass",
+   "script_sha256": "0536b58f0487411de21727ead97c3372079bd3a89f332476f093d814e386d3ed",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:286",
+   "oracle": "pass",
+   "script_sha256": "55a436d0d4d78dea58b705947ff04facba9638e6e7314297f0cbf8e574af156f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:287",
+   "oracle": "pass",
+   "script_sha256": "ce5a6102756c27ce5e99b7676abbba3957a3efd95d3a8806d30f860502285f96",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:288",
+   "oracle": "pass",
+   "script_sha256": "88f9b2c1957d4fa636f883be7fb1d3aca23b359ab1847c3ee109ef5c2b9b34c4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:289",
+   "oracle": "pass",
+   "script_sha256": "4d5078eb491f2aac9af6da21110898c150852ad623ddc9894181f69daf402efc",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:290",
+   "oracle": "pass",
+   "script_sha256": "58c307215e0d0647d73aba9565163cfb7e66b554d3c2c26247fd0487faf252aa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:291",
+   "oracle": "pass",
+   "script_sha256": "649619afcdb83f4bd80f2aaec46d3cb85dc7fb9b5788887bb835d4e3979ffdb4",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:307",
+   "oracle": "pass",
+   "script_sha256": "3e27ef9fe4a2b04c3cd6af78caeb93a1c2acb42b6b33875ee23b116b14b91ef8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:308",
+   "oracle": "pass",
+   "script_sha256": "6baa01e341c52ed50379b915e7dd1d48ff9b57a44ece0af740e2fac66e9f4aed",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:309",
+   "oracle": "pass",
+   "script_sha256": "c264005cba8b1dbcc309249eee3a82312173315d29b6e289746256f02650b36f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:310",
+   "oracle": "pass",
+   "script_sha256": "7f567a9cf74e5aae71636008216dea346205e89188616b7fac928557275c062f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:311",
+   "oracle": "pass",
+   "script_sha256": "20c0dfd68099bfcbe50f5f431b532b3ab39cd725a0f8db8780a338a669306d10",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:312",
+   "oracle": "pass",
+   "script_sha256": "52ff8706cfd541524b7230e4f0a6d34cf0e7edb96af62dcd8bbf88eb9bc780f9",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:313",
+   "oracle": "pass",
+   "script_sha256": "810b72ba62d731ebe218e36e07380f1efe302e8a5d4b6551fee4ba4d301e8ed7",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:314",
+   "oracle": "pass",
+   "script_sha256": "d6c7dc16eb63b76af262cd1e358fdc39a62e66ad6cfdd222ad84711ddec4ce20",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:330",
+   "oracle": "pass",
+   "script_sha256": "7acaac7e2781452b98d1f5cb44cede5f7b1e334a8032f0d4460f4edfb7d91d95",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:331",
+   "oracle": "pass",
+   "script_sha256": "2c08e5649572676b61a011a3fcd01179c1050a9eeac7e514452fc13f6c12d915",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:332",
+   "oracle": "pass",
+   "script_sha256": "80d40c0965ee96ed65434bf5fda6f3e0bc85d8c4a12572dc34ac327ae876ac6d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:333",
+   "oracle": "pass",
+   "script_sha256": "f10b3e34021a8e67907c8b639f66e8b150f4057410151256c74a569d7777b85e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:334",
+   "oracle": "pass",
+   "script_sha256": "5bb635aa277b9fa09de57153e97fe0ea54b8665646d71bfdf8f2b03ddd7476ea",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:335",
+   "oracle": "pass",
+   "script_sha256": "cb4f10d661691b6815c2dac2f03dfeea3c8a79748e3afc97ca98866526bef025",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:336",
+   "oracle": "pass",
+   "script_sha256": "c2b1cf643e27ca62837524aaba6e2e8c8454ca0193abeb3aefac7c65253668c1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:337",
+   "oracle": "pass",
+   "script_sha256": "d2ac5b6875099c3e85f11340127a03387689f1a5d98ea55eb482548fa3f506f8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:349",
+   "oracle": "pass",
+   "script_sha256": "dbbccf2e4aa733bcfd6e966d4a80752945b79c179625f879751f0638aec6548e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "int_exprs:350",
+   "oracle": "pass",
+   "script_sha256": "f4a1fceb0a1888071310b3f7b5466e2e58248991eef2a225d5fbcdb6628ff1aa",
+   "silmaril": "proved"
+  },
+  {
+   "id": "fac:102",
+   "oracle": "pass",
+   "script_sha256": "597478ad87b76c686147bc4fe0c21ed87ca305043cc47a489de0c6e5b3eb4347",
+   "silmaril": "proved"
+  },
+  {
+   "id": "fac:103",
+   "oracle": "pass",
+   "script_sha256": "41fd7a42a1f65b09138260a77842e7bbaf268cd18c112e366e52b49bb4103147",
+   "silmaril": "proved"
+  },
+  {
+   "id": "fac:104",
+   "oracle": "pass",
+   "script_sha256": "9d3de5826cea0cd0c4572c99c110354bb0aa64bd591a53b81276d10bf8c8f7c1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "fac:105",
+   "oracle": "pass",
+   "script_sha256": "9cc22b2d2a0fc12494ede4f8a7cbb9691e32745abdfa85a6cd060b9c6b37c698",
+   "silmaril": "proved"
+  },
+  {
+   "id": "fac:106",
+   "oracle": "pass",
+   "script_sha256": "e33f3beb6b4745c5f01ac6ccaa8c670cb3fdcdbd1473663113182e98a6a8c8ab",
+   "silmaril": "proved"
+  },
+  {
+   "id": "fac:107",
+   "oracle": "pass",
+   "script_sha256": "6ea12b3794e1e1c285b702ea104f5db5191f38e78ac81ee39e923321518a7ce1",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:16",
+   "oracle": "pass",
+   "script_sha256": "344d50604f034f12c819b3d34cd5410008a41f4df3961a2472e8cebd307724d0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:17",
+   "oracle": "pass",
+   "script_sha256": "738a2358b4da55498b0eb15fee62d1631dd9db52c45aec3eef1bf2779334f45b",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:18",
+   "oracle": "pass",
+   "script_sha256": "3c14604fce00b8a2dd313d738968eb8b502091f8c5fbc0b7a82898ae6749873a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:19",
+   "oracle": "pass",
+   "script_sha256": "d1a38c5eb270c8981b8742d07edcc0f77336b17c60c97373b84bcb0a47ff2733",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:20",
+   "oracle": "pass",
+   "script_sha256": "d39dcf11ddec95f03e6d64a7ccfcfe19b9a1ce69224ec3d63b84416db6ac81b5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:21",
+   "oracle": "pass",
+   "script_sha256": "ff3c7d7406607beec525729930c2026338ffa1dc7497bdf4df9cc13084255af5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:34",
+   "oracle": "pass",
+   "script_sha256": "fb24c4a5c40b0cec735eb05f187f9fff0eb282fecf58940399a5d0f3fe705af2",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:35",
+   "oracle": "pass",
+   "script_sha256": "273665a88880124edf14d81b3a4b8d5c716af7dcef9012a9eb75413cf94df901",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:36",
+   "oracle": "pass",
+   "script_sha256": "0e78c6fd5dcf11c4030443f997ca13238d971a133432abe35917702ac6a05c38",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:37",
+   "oracle": "pass",
+   "script_sha256": "dc6868f8db9458b6bbe22f729c08810160d41c077571023eeb460acf7efeb808",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:50",
+   "oracle": "pass",
+   "script_sha256": "556d4ee8c946ca8bf0d9a1a8732eb3e50b0f262d5acd1ab7358457035a3d9a3e",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:51",
+   "oracle": "pass",
+   "script_sha256": "bcedff73dfc90d6229212b6086d7c65256e52ad75d02690b1f7e8c8893414358",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:52",
+   "oracle": "pass",
+   "script_sha256": "98e0bf8fdb9feb729af4d3b282c1909abc5c191162f0a06d8e2b70f2bbba4155",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:53",
+   "oracle": "pass",
+   "script_sha256": "0db45e2be2f761ed11d1b741c977f0a8d418044bf288a5b8ed1912b3bec1e11d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:54",
+   "oracle": "pass",
+   "script_sha256": "d7da0915cf4c0afa795aa6015d562f125f30700d5bbb7ca40e83d4c6ff1012c0",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:55",
+   "oracle": "pass",
+   "script_sha256": "1d1cf44495849470246e59d2def9ba81e9a9cc7a87edb8b00479529a03bc7b5d",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:56",
+   "oracle": "pass",
+   "script_sha256": "6b93f014b6c918fe8fec58878d37191fd6582618253f3093e7ef3c4829bb2ce3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:57",
+   "oracle": "pass",
+   "script_sha256": "9841279ce144482c7470dc6a5f3523a57d9d0719257397c0c23a72b650fd2a06",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:78",
+   "oracle": "pass",
+   "script_sha256": "6c44aefbdd45a13ad1ba4729c322f9f3ead06fa0cd84f472155ed76feebb3895",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:79",
+   "oracle": "pass",
+   "script_sha256": "6eab1c18cf5572fb5f09b5da02a72199666c144b0bca143938d27acb648543f8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:80",
+   "oracle": "pass",
+   "script_sha256": "cb26b2d233191f05b604b2304cd36b1ed0d8915f1626cff29c265e90e375d8db",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:81",
+   "oracle": "pass",
+   "script_sha256": "ef3d44936534beb2cc563c0f927003fdb7a5807309834ec00cf4084461a2bb98",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:82",
+   "oracle": "pass",
+   "script_sha256": "985f0e3d23010468fcae16673af7cb9ac3b130e7f55d9814ef9404f70183f2e8",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:83",
+   "oracle": "pass",
+   "script_sha256": "796c37edc17bb6d18f6c9934bf6bfd60ecc4aff823f268be89d6012869aae167",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:84",
+   "oracle": "pass",
+   "script_sha256": "ba96aa73634fb46a9b70981d29fd6c53df2aa1fafcbf7f44f66dcd34d41da007",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:85",
+   "oracle": "pass",
+   "script_sha256": "a1e4b84649657515ebaa681a82c52c823edaec2e08b613d3f53eaba3f31afeb5",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:86",
+   "oracle": "pass",
+   "script_sha256": "5a4b88aa53f02cea26af11ef2935ea78e9b483cdaf9218512dbdbcc474054658",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:87",
+   "oracle": "pass",
+   "script_sha256": "6d4ae9ef372e5b6e46d89abfc91dfaf4ae9a24bf9827c2f64d545f09bfd4d6b3",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:88",
+   "oracle": "pass",
+   "script_sha256": "836edd45984b33c00cd76eec537df5d06febe0eb369a3809c8b175fe45a6971a",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:89",
+   "oracle": "pass",
+   "script_sha256": "6a352478db7ecf52ae63913fe2e92be43dd6ec48c9d0ef812b006166d9ddb623",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:90",
+   "oracle": "pass",
+   "script_sha256": "068daae2f56c2c50df4b73f3b69e8102660e0b5c542adc2f289d5e47006bd7c6",
+   "silmaril": "proved"
+  },
+  {
+   "id": "traps:91",
+   "oracle": "pass",
+   "script_sha256": "8fe97f41e50669039418763bb5dabe5fa2f0985b06b5d6e378e8b3719d02948f",
+   "silmaril": "proved"
+  },
+  {
+   "id": "address:104",
+   "oracle": "pass",
+   "script_sha256": "1c1727a3ed409de0d04c4f562d2b5e1372757b55ddd80c35ef91e1c76f076f34",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:105",
+   "oracle": "pass",
+   "script_sha256": "8d43ed7344694719b0f109a9c163ef043d7661f553e957bd61e70b74803c51c9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:106",
+   "oracle": "pass",
+   "script_sha256": "8489b0448571f35eb9ac9228844e9a4722fb7eeca7dc17b48a63790546d46f96",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:107",
+   "oracle": "pass",
+   "script_sha256": "fc1e739fda9bd9ca3906fbe5b02ab191ced61de2dd15dc433b01a84c0a10d319",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:108",
+   "oracle": "pass",
+   "script_sha256": "526bd10619fade4695812ff800f77e2ffcf9b12028e9d6aaa9110dbbe95e31c9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:110",
+   "oracle": "pass",
+   "script_sha256": "6ab65bec91f0cdaa1c8328b967eb3b2e07c4ca6aa8561f2d1090147c1abdec67",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:111",
+   "oracle": "pass",
+   "script_sha256": "c05c54d4755e931a7f7fe282b7f23d15448ff6b18e487c622a21d42870859d6b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:112",
+   "oracle": "pass",
+   "script_sha256": "537d190097cda99b1c7c9a34861c35db564bbdf635832923cd23f6fa60182770",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:113",
+   "oracle": "pass",
+   "script_sha256": "4d10d8669dab68a9f5090644a8fe4967b96228aa2f1adededdb4c7745e3ef876",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:114",
+   "oracle": "pass",
+   "script_sha256": "fb40f571eef43e6bc21e155843e6a7d3302891339a7b34b26fe3c9021d73840c",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:116",
+   "oracle": "pass",
+   "script_sha256": "3f363641ed2c13416d23d0949fd787dc0b9b6f66303da5daa53fc3584f37d799",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:117",
+   "oracle": "pass",
+   "script_sha256": "0771b29231b899a66a8ebf259530b060eb1e29f9fc087b5a7f5895d7ebef8771",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:118",
+   "oracle": "pass",
+   "script_sha256": "a1b9c9fa987903e815aa5fba847da218d6ab0273c6899b8b7286c8cc437f3dcb",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:119",
+   "oracle": "pass",
+   "script_sha256": "4ffd69bc913d16ef606bd5bf5aa44690bfc51fe8eea75611f062371d1425ff7b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:120",
+   "oracle": "pass",
+   "script_sha256": "e69cdd39f865cddd739c589cb4aaff9a2cf328e622552748272ec4f359dd53f0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:122",
+   "oracle": "pass",
+   "script_sha256": "1fd9f9ab470269a763fc9bb5fcf00e2b6fd1a7ec9322e716135de4738e6c1523",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:123",
+   "oracle": "pass",
+   "script_sha256": "fc518ae8d5b774eebdb1c081799359b192687e539bb0127ec507871765c6d285",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:124",
+   "oracle": "pass",
+   "script_sha256": "6c3becd6af6eb864b161cf0ee729820c6f9778066797d54d072bc8dfaf60de59",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:125",
+   "oracle": "pass",
+   "script_sha256": "c175dabaaf702727d75db25c284c35e77a32483df03e5509b994e3679b6ebdb4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:126",
+   "oracle": "pass",
+   "script_sha256": "eb6b85dfa1915c1a880ff8361c51be078457b2ab3627eb4358e1c328e1ed9e66",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:128",
+   "oracle": "pass",
+   "script_sha256": "fb4a17e4ed74a63b249bd95c90142b042b175dcdd80ea6a775373d8ce987b5e2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:129",
+   "oracle": "pass",
+   "script_sha256": "7cb9fedbded870e5738a8019c5e9cb6e469765b34e1d11d991c6d8aff9b78f23",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:130",
+   "oracle": "pass",
+   "script_sha256": "083ffdbd04f8df50573c26506bf81919d8b68e31c59e06f6b854640fc46d3f9a",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:131",
+   "oracle": "pass",
+   "script_sha256": "e0d67a87ea7edfb73aa067a9a87ecc511c9fc1b233bd6e49d8ad80ab3700a0f2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:132",
+   "oracle": "pass",
+   "script_sha256": "5464a945097c1b400b519189511a9685125df1a5f9957715d0a8c981e4f4d0c4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:134",
+   "oracle": "pass",
+   "script_sha256": "cb6ca255ed2fb4d032206ef23ccac392a2fd3a7d2e543377bc1552fdbf35b962",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:135",
+   "oracle": "pass",
+   "script_sha256": "ec7b5664ef7a34577b451ecd9db94a312dce6a0dba451c6d8fd0616a7070ea94",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:136",
+   "oracle": "pass",
+   "script_sha256": "b4c05f3d149549da35256fc9016d6260f44d496818f791f4423b5fbd3f89a0aa",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:137",
+   "oracle": "pass",
+   "script_sha256": "f997e7549811698ae6239fed3951d8dcb65a3733f53a300356fba7b6c5444f1e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:138",
+   "oracle": "pass",
+   "script_sha256": "7f21abd11c2c62fa68dd14a32aef919e8e084fb1524cd761fe37c42618fa92e2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:140",
+   "oracle": "pass",
+   "script_sha256": "6aa2df0a12caf58c714bba1120fa681a012831a363c0d041b52528c20f9728c0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:141",
+   "oracle": "pass",
+   "script_sha256": "6aa424e94db7bd81977235d408866b5ce8bfce7f41f46a1f7ee2e7a936f5d629",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:142",
+   "oracle": "pass",
+   "script_sha256": "dc7bc257f1b26536760d672e949083e76ad79c89342ee7ba0137f62127a47d0c",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:143",
+   "oracle": "pass",
+   "script_sha256": "280a6cc0fe7aa0a36c5b9dedf757a33420f98d549141f3f5d3eef90119b42eaa",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:144",
+   "oracle": "pass",
+   "script_sha256": "1d71f0c917ff1b3cc47ec650babda4c6c0d18845df4fad42dca7a9c1baa75b45",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:146",
+   "oracle": "pass",
+   "script_sha256": "37a1d711d8ed8818c82e4a6882e74e28cf7942659b79f80fbed435da8c9e10e0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:147",
+   "oracle": "pass",
+   "script_sha256": "30e19e39fd05c73809a34e5c7349b69078991f1c178af5c96629810e033cc5c7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:148",
+   "oracle": "pass",
+   "script_sha256": "bfbd2d2929632c0d316e21361975507b3ef85bb75ce0e660968ed0887ead9753",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:149",
+   "oracle": "pass",
+   "script_sha256": "e36d0e5a2f6603ca7732c3f8dd86d36bde07fbc859e7d8b0e7795e8b70905dec",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:150",
+   "oracle": "pass",
+   "script_sha256": "f178c27cee97f7567fd1f3146636c98fe7944cad6eb1f06d016ad761db29115b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:152",
+   "oracle": "pass",
+   "script_sha256": "efc96b3847eac68ea418869ea6b4eb1ed9d1c125009a6ff909b6ddf61096cdd0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:153",
+   "oracle": "pass",
+   "script_sha256": "ca253a00c4894406514736d50e2d9e2a06bdc0f4770e0e422b0291a1b9d08c32",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:154",
+   "oracle": "pass",
+   "script_sha256": "0641426085caee6665f179d29df6745b63db15e352ed987d9e302e0b947d96f8",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:155",
+   "oracle": "pass",
+   "script_sha256": "e8ce0be596ac5de9721a88101e0b312713c0300cd5db270fff9bae53c33bb261",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:156",
+   "oracle": "pass",
+   "script_sha256": "57d9493208eb1bbeb674fffa7aa12101856bf7f1744fc58ad97ad5bbb41c25d6",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:158",
+   "oracle": "pass",
+   "script_sha256": "2df8ae2ce341a85e3ab74d8a0ee690efdaa6622333613bef0cad2c7343c8fae7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:159",
+   "oracle": "pass",
+   "script_sha256": "1c3dcbe803c163bd8db46a8729db8519c376eba464b3715ac1e195f964f38a83",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:160",
+   "oracle": "pass",
+   "script_sha256": "130f62da5e117b6b68dabd215d1713bb5a350a7bf9cf514a677ec228d8a75dc5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:161",
+   "oracle": "pass",
+   "script_sha256": "e988ccc2e76a77f01202c5e459dcf8726078f15d770e90e3793166feea22a306",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:162",
+   "oracle": "pass",
+   "script_sha256": "63286d5b4f506ec48147ca4ed42271ce0d9bddf9bf0890eb69a1f67d58640244",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:164",
+   "oracle": "pass",
+   "script_sha256": "7cadcd09b058310a2884a5242dc9cd2f5bc3966905ee8287e228bfc629001d58",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:165",
+   "oracle": "pass",
+   "script_sha256": "3393719de991f5b9b6d57fc63f6696acaa19b67f9b3925d6d0b4a279d2a36b63",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:166",
+   "oracle": "pass",
+   "script_sha256": "1ba1304967cc70d9db24a81a6e830079f0fa93a14f5cd52d0c1d9acb8e78fc6e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:167",
+   "oracle": "pass",
+   "script_sha256": "479394759369a8aedc080494c8f511f271ed2eb95f89c072cd66aac9db799d2d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:168",
+   "oracle": "pass",
+   "script_sha256": "e4e735e22eeebdd3d191a734f0376e769078a76177a32ac31320dfc4983855c6",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:170",
+   "oracle": "pass",
+   "script_sha256": "b1577bef47cc061fb978826a93a264747ba0e37ac8f5af750dc80f41fd048839",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:171",
+   "oracle": "pass",
+   "script_sha256": "89d11fc31b0ecbc6c6aabf4bdbe7978cdb3a0cf85e964ecd2f25dc2804fb9ef1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:172",
+   "oracle": "pass",
+   "script_sha256": "598149326a02aa461ff6ffe84a7c2a6d1c47ae9921e529277e09a2212c7e7ce9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:173",
+   "oracle": "pass",
+   "script_sha256": "7ad7e188473c52eeb67e4aa921f8dba0f5724c6bc552bd0ed24fd5eb9c5a0741",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:174",
+   "oracle": "pass",
+   "script_sha256": "b4243cf4ab488678cfebc6280086134dfe95f5713bac9eb52cdfc591e979d62f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:176",
+   "oracle": "pass",
+   "script_sha256": "718a0e55964f6d79cdc267f1c4ec4a82eb55dd05207c6520a39fd643c7d3dff1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:177",
+   "oracle": "pass",
+   "script_sha256": "26f525bdb687b1fcec272ce5c70097f16c23a12622808201ad84d66e3eb639b5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:178",
+   "oracle": "pass",
+   "script_sha256": "525bbfb7c15e165fcdb857f54cb7abf52a1d3965535fbfd3e877fe7e00fe18bc",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:179",
+   "oracle": "pass",
+   "script_sha256": "25a020d5b4bfeae031f83ba4beec6ed626889663f127ce0e75888c044aa9e56b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:180",
+   "oracle": "pass",
+   "script_sha256": "b0aa7af0aa92d9382b8744fd011b639d1e3ff397426823a057f32c2127e9f2e0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:182",
+   "oracle": "pass",
+   "script_sha256": "bece165671c78c8c70b1c37461e3dd1bda617da37426401d75d1e0e0eb9abb2d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:183",
+   "oracle": "pass",
+   "script_sha256": "da3be6a044cf19a1e8d3077a2880258873b21102826cb133de87be61229432ce",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:184",
+   "oracle": "pass",
+   "script_sha256": "7237e9dda997ddb6b28289644e571b9eb122c4ba3d2130ddd918644ed055d21b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:185",
+   "oracle": "pass",
+   "script_sha256": "d8fb90c4d2466a3df8d2124aaf67b24828625da5201add8af0cbaa78f4e0cb90",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:186",
+   "oracle": "pass",
+   "script_sha256": "c8bf23f55e3c0c44968bd6dea82c10d1301cc1f9f07c2847b5b0e2d270013e97",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:188",
+   "oracle": "pass",
+   "script_sha256": "26d434e47024a296802a591d262da56b78dbfeed011401c4e12819db5ca13409",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:189",
+   "oracle": "pass",
+   "script_sha256": "b8f65c6adcc273bd6a772907f5f0ce04c1a94f7b21eae0d9a90f5b1368ec3c95",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:190",
+   "oracle": "pass",
+   "script_sha256": "2711c78e285168be3de0bb8391ab56b0fdbf12b25107d3ffba946d34e8ba9511",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:191",
+   "oracle": "pass",
+   "script_sha256": "c2dac777c35b1d9f33aa2dddc4177d28a0c4a2c1c095899df4d808dd1fbb0ea6",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:192",
+   "oracle": "pass",
+   "script_sha256": "b7ec29a617ac8a042f68742fa559f0a55c6638c2916aeccdefdad076f77c8b6e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:194",
+   "oracle": "pass",
+   "script_sha256": "c9da3938fc7ea283c625155d4354dd8ba955cb79b856bea7a52be52884ef1d19",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:195",
+   "oracle": "pass",
+   "script_sha256": "cdcb178ce7e68a9417a49d23d817b3fa0c2ba4eb5215f01fbd720f74330bd254",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:196",
+   "oracle": "pass",
+   "script_sha256": "3f376884248afb878a77cdc55a002eaa633dcbe4696a767f3bfaf379fc219d47",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:197",
+   "oracle": "pass",
+   "script_sha256": "7abab3c471c4f154e37753cac9b0cedd343312ebb6cca2af035243b7f49da9e7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:198",
+   "oracle": "pass",
+   "script_sha256": "60817572fe6cbc94cb54a606b1166e05e8895947292591201a516f40e407e9a5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:199",
+   "oracle": "pass",
+   "script_sha256": "87ba43959dbbddaf023736918afff23c85044cfedcaef8894cd4b6ab8dc9c929",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:201",
+   "oracle": "pass",
+   "script_sha256": "2fdb92cb4e9abe4c4d13b38a4d564b9b7ab2d3dcfaa9da0ec457331b162cf5c1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:202",
+   "oracle": "pass",
+   "script_sha256": "00876e9ca701f00573fb1beeb55a5fd85d7535c3d2bd40d19e3dd1499c88be90",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:203",
+   "oracle": "pass",
+   "script_sha256": "186912b988e3bf23a7c4b25f0060733081bd1b45b2b2e3d9f4416694f37f95a1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:204",
+   "oracle": "pass",
+   "script_sha256": "134be737490b0eb58cc0dabb51fe045abbd32dbd88ec6adc6c43bf024406f23b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:205",
+   "oracle": "pass",
+   "script_sha256": "074624e68cec462f93d4ef77216bab77b35291caf76d8868b8d32a6a78c26d95",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:207",
+   "oracle": "pass",
+   "script_sha256": "1396ad19ff104102c600bc96e06140aa24eb4dd29ded2ccbf729223808cf963d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:208",
+   "oracle": "pass",
+   "script_sha256": "18806d0c607e6fd3d6cc5f59bb470ae64a207f9646b43ab84bb8d4d9bda0aa24",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:209",
+   "oracle": "pass",
+   "script_sha256": "a0fac6007521ede28827af0095b1cd8cbc4bc1fc7dd442d7290866069f2bbe0d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:210",
+   "oracle": "pass",
+   "script_sha256": "7ee48a3d08beb6355f7df0ba7f36941722b76280dd1645652da5e1fa4cfd73b2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:211",
+   "oracle": "pass",
+   "script_sha256": "3adc116ebf4938efa0a867c98e0c797e5138efb5eda6354e4a6106d0920aeb2a",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:362",
+   "oracle": "pass",
+   "script_sha256": "e03f0305fe09664b0954729449d26f80c54bbd2bf9ea7313c8d3ab84757b2c33",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:363",
+   "oracle": "pass",
+   "script_sha256": "3e0eb12ad81b6b0eb0fd10d01e0d4abee3b10a07568339baf267df1be7fd891b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:364",
+   "oracle": "pass",
+   "script_sha256": "85d357d5219c73a675185b5542ff8af63436f8b037bb54ee1df5e9680c904180",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:365",
+   "oracle": "pass",
+   "script_sha256": "bead8ade6e10456c4ca95fb2f3dd9c480e28c4685f9fa0e63c243ad12b161d4c",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:366",
+   "oracle": "pass",
+   "script_sha256": "12588c2ca6d3f222f7159595c526a4bffc80a32739a608750ccaad4e501dfa70",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:368",
+   "oracle": "pass",
+   "script_sha256": "ffe1188319feb5080549195d5fe8a01ff838f0ba07bff7b40192ffd96e52a508",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:369",
+   "oracle": "pass",
+   "script_sha256": "a01f13ea5d9c493b3201d175995f1f4aee5ce89f7000c01c728636af7c27e7ee",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:370",
+   "oracle": "pass",
+   "script_sha256": "40ed1d16636182fc3a0ed7df76025f12271a9fc22a31a8473882e06520b13c1d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:371",
+   "oracle": "pass",
+   "script_sha256": "edac5661d1cebb2e49c7472385af934a06691518c6c12d32c2df94392af5963a",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:372",
+   "oracle": "pass",
+   "script_sha256": "4fdeffa7762e0888b00ebb5a968dc9cf45520367661a12fe21d6a96261cdf880",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:374",
+   "oracle": "pass",
+   "script_sha256": "77a4200b4d4916dcd7e6f3f8529d9d060df1c901f45a1a7b1338245aee8f4152",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:375",
+   "oracle": "pass",
+   "script_sha256": "d08745d260afd12c0323e4b6267115bdced0e8f30c159f31c2d5b3a3f6d72766",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:376",
+   "oracle": "pass",
+   "script_sha256": "e9c0e3992789e7defe48667cf26e02fe36080730d7ae1424f237256a471db634",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:377",
+   "oracle": "pass",
+   "script_sha256": "103a1340d1be5768e80059c4631c9aff4cd2606c5383a7ec73fcbcccfcd0dd53",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:378",
+   "oracle": "pass",
+   "script_sha256": "f381446ed8d78b5d24442a54982d61ffbee56987f0170a76a5a98cd73a910f61",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:380",
+   "oracle": "pass",
+   "script_sha256": "a4aaf54c35dd80b62dae6059e9d26c63c0dfa72e706723541e0d2137f3606cfe",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:381",
+   "oracle": "pass",
+   "script_sha256": "4985923cb84158dff314d7af49da0dd9aaa51e831905cc3474a122f174540804",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:382",
+   "oracle": "pass",
+   "script_sha256": "aea19dac20c3a4bdbadf8d126c826657867dd6b3dc5ba907cc86c69e9a3f8822",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:383",
+   "oracle": "pass",
+   "script_sha256": "6b6dbe0ddf7a86b1451cc3bbca894e6b63506ff20e3fd34a8535123cdc8522a7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:384",
+   "oracle": "pass",
+   "script_sha256": "a1da7932e1f905be0cbd58013e628458cbf1af7c8660f967b3e7b03f51bbb446",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:386",
+   "oracle": "pass",
+   "script_sha256": "595f5a46327f9a97e2b719f0b38b6a3c71a4ed5ac7df0047f1092103d58c00f1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:387",
+   "oracle": "pass",
+   "script_sha256": "c0f9fb893aa7cfe943273ec4b8fc7e44baa97be2e1cb58ecdf72828f43550f19",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:388",
+   "oracle": "pass",
+   "script_sha256": "dcd1c445d8ce62d14d5c1c5e74cb8a8438ad7336cecfa5b2e13335586a1cf9a2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:389",
+   "oracle": "pass",
+   "script_sha256": "34eabb2511b01a2f43711b44f5d64dce4e114ed9eec78a830ad46b1c922d3940",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:390",
+   "oracle": "pass",
+   "script_sha256": "89c7623b15c87829c0140f571de444b579e1027fd974f9802402462073a88c8c",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:392",
+   "oracle": "pass",
+   "script_sha256": "6239f05946d86f017637d6941ad46535fb84a476e466bd112df7887d90293aa5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:393",
+   "oracle": "pass",
+   "script_sha256": "b05b5f08e6e8ae804cc92a05267fed6844efdceefe31889af1f47e983d641520",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:394",
+   "oracle": "pass",
+   "script_sha256": "7d29ac01808601c8efc3d0324d7e7d41b0c0ac81aab92a0e04fc2c77f1be08dc",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:395",
+   "oracle": "pass",
+   "script_sha256": "fef15a245aabcf5ea58eed9131d954f66b937e6bbc4acbff4c50bea9f1de7a01",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:396",
+   "oracle": "pass",
+   "script_sha256": "35eed3ecc57e64950a0f2caf203386ab9e2cd800b80677a0931dd9304f2c773a",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:398",
+   "oracle": "pass",
+   "script_sha256": "2ef3cbd23380047324f1b49d72fb361a22e34d16f52265b791c9a2f248165890",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:399",
+   "oracle": "pass",
+   "script_sha256": "786ca731944436094ac98fe37d2aedcfc36a555391a20613a3152125f04211c9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:400",
+   "oracle": "pass",
+   "script_sha256": "b751c48ccd4c1bb111eabb64c5f1b7739f21f361b1c8fbedff17348c077265cc",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:401",
+   "oracle": "pass",
+   "script_sha256": "d0719f57144577d8e68fc2711db902cc60ab422092a7369a03ff5287db181171",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:402",
+   "oracle": "pass",
+   "script_sha256": "31d957e0040405a43a2c204a330a083796c5e781311a7a065705a7532509f931",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:404",
+   "oracle": "pass",
+   "script_sha256": "f8ba30bbbfe552d3c6d864a2c6aa9a0c21847f5e0cc8beb8b533c45955a21a62",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:405",
+   "oracle": "pass",
+   "script_sha256": "58c66c52e584526e9acf6e5b921f2848725101595e9d59aefac08661ddbd7fa9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:406",
+   "oracle": "pass",
+   "script_sha256": "2ba86076dfbd9f7e962687e20e368a2151a58cc822d1e684089b0c694490e041",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:407",
+   "oracle": "pass",
+   "script_sha256": "82482897f181f1077dc119b3380c028934b0257b8fea533031fa0eb5108d7d95",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:408",
+   "oracle": "pass",
+   "script_sha256": "0d22047a164c446b90efd768761357e9d7fc338465d571a468c6818d0fb64725",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:410",
+   "oracle": "pass",
+   "script_sha256": "378d54e9d658da03e9f195645c20f0aa68dcd8e1dcefbaf01206b74d617f30d3",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:411",
+   "oracle": "pass",
+   "script_sha256": "b7356820960813a1847d71721d61f59b58c5e5aaf8bcd8dca7a07e70c955c188",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:412",
+   "oracle": "pass",
+   "script_sha256": "28b2cc0ea37b515980301efc7b4a8dd32bc40d6d8708942853e9cdf886d459d5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:413",
+   "oracle": "pass",
+   "script_sha256": "9654c2ebed5d00a91111c517efd9f53db0ca0eee9354ac57dc259054ad1fcb30",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:414",
+   "oracle": "pass",
+   "script_sha256": "9f3cea496ddab434ece5bca52dc783cf0a41664dd0b293862d162c44da354a34",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:416",
+   "oracle": "pass",
+   "script_sha256": "4be2362a7f296f0c4fe30a0b85a611bc7cf091fb6a8d5e123b57bf513980bd94",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:417",
+   "oracle": "pass",
+   "script_sha256": "ac5201454ae1a77f6f8562d7a864fa240bc5be9b6e88c404629563f60bc8ced7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:418",
+   "oracle": "pass",
+   "script_sha256": "a6b92823fb9a0571bffdcbe661be7fb458ab8cba61113143acf531a6e6aeb4e2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:419",
+   "oracle": "pass",
+   "script_sha256": "82a95815571b92807d4d170730fdd8ac0e1dd4497c97923ead7cce6c13e9c778",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:420",
+   "oracle": "pass",
+   "script_sha256": "54fb5310a00751bdd3980ef12860fe095aa32fc5cfb7addc78967ba64992f7a5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:422",
+   "oracle": "pass",
+   "script_sha256": "1935055d418e0ffa15d8e608a6b324424802b80da4f0bf03280d5a21b5622bbf",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:423",
+   "oracle": "pass",
+   "script_sha256": "058376f8bf722fbd9ec197768bee766ec5953a01a7e03e70c903b9240c4df513",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:424",
+   "oracle": "pass",
+   "script_sha256": "c013fba4ec0a5cff849c0154f4d83fa214657dd70300e30ef77262dae8112fd0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:425",
+   "oracle": "pass",
+   "script_sha256": "833e4a05c43038ba672a3ac434d9f6b755d3ae6ec42483d919f8bee5e54fa94e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:426",
+   "oracle": "pass",
+   "script_sha256": "38c05b2c79683877c71bfce0eea47af1f55f992145c6885264215872eb73ed4f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:428",
+   "oracle": "pass",
+   "script_sha256": "0b9e715199bf2d38d24c6a75a9a8ee8e61bdb5ceef8c4bc1b9cbc1a0252f882b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:429",
+   "oracle": "pass",
+   "script_sha256": "e3a7e4c065f8fac0067ca935606b8240fa99dd04ad48d394cd1b44d94eb0649d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:430",
+   "oracle": "pass",
+   "script_sha256": "b58d2bec854616861cffca945852c5b19aa46bd1bf1e67950cf3cc824efafdd4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:431",
+   "oracle": "pass",
+   "script_sha256": "2e3119728bf6a1c9fb6c938ba761cdd1a505f0c75af497b87101b1ff6076e2a6",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:432",
+   "oracle": "pass",
+   "script_sha256": "411487a669baaff2bad526ff33e420fa07eb35613df61356982b45ee02f9bd8d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:434",
+   "oracle": "pass",
+   "script_sha256": "cee70f64df958c79a7df25d73784f64991780a0a32150c963d10b7b302aeae5f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:435",
+   "oracle": "pass",
+   "script_sha256": "da44e137cb66040d3c69f7177195cbe7be9a51478167af6721084a082af69873",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:436",
+   "oracle": "pass",
+   "script_sha256": "53b6829ae3842ff12695544f2a7542d4ff1ed48dc2c2d4127f29a69f9a25a168",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:437",
+   "oracle": "pass",
+   "script_sha256": "3c600eb199f7d11e73f753a6924ceb25140a851fe747720117960e654d0344c6",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:438",
+   "oracle": "pass",
+   "script_sha256": "ecd463863526b4f258834b42af4db0e7f0884a4a31a07824a7479e2f44bf54fc",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:440",
+   "oracle": "pass",
+   "script_sha256": "b1ee88136e3575d5fa2b065f8c6a4e98dd6f36db70c65d4a8e6efabb6633ad6d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:441",
+   "oracle": "pass",
+   "script_sha256": "fbbf2678ed7ea9bbe4813658717adb57ca33f66d40265ca711cc2f098e0bc46f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:442",
+   "oracle": "pass",
+   "script_sha256": "1291bb93ce62922aea167424aff0c0375b51179a3f34e5d1549ff58c379b77ed",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:443",
+   "oracle": "pass",
+   "script_sha256": "d879ff30918ce493e039a4491bf0f920dbca205731995056529b66ea0bee7706",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:444",
+   "oracle": "pass",
+   "script_sha256": "1a467615fb406335174001b6a16428c1b0ef9253cfb55fe50302d0cc57c7295e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:446",
+   "oracle": "pass",
+   "script_sha256": "c6c6dc7891876d2992f022fc20fb36b7890d54421243d47092f9f6147863d806",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:447",
+   "oracle": "pass",
+   "script_sha256": "be3f1702f0e427bd072950b063ab3cac1a13ab7f65f8f912dda05d87c8735385",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:448",
+   "oracle": "pass",
+   "script_sha256": "db178a6160ad519c3947a94c7310d25d2f4044e44a3e54f335be55d96b21de13",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:449",
+   "oracle": "pass",
+   "script_sha256": "5a3c689aee7ec763cb9f30b3899f725218522696dab3dca179fc4117e16d52d4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:450",
+   "oracle": "pass",
+   "script_sha256": "447d90b025170d38ffac24c0c95e24e5bb5745ef59972b4e3489df89256f1963",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:452",
+   "oracle": "pass",
+   "script_sha256": "cefa52be6e35e696088b8bf3aea16c94c2a359214350cbabadc9eb3099e8efc3",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:453",
+   "oracle": "pass",
+   "script_sha256": "d09b7e65e228399eb4c9355c2793d77bcee6d6b7f16933f321551c022dd238ca",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:454",
+   "oracle": "pass",
+   "script_sha256": "54a8cda28fb8b89cf9d0bd9b6800c6f7909eef32bac8bfc37e1fca7ad26cda82",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:455",
+   "oracle": "pass",
+   "script_sha256": "78ca9a73d8c90825eb1975d1ac17fb4673e7bc12c07ed0de23e870ad774b7a68",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:456",
+   "oracle": "pass",
+   "script_sha256": "2ca9939ad773c59e002954ae258d855d320c9410d3581ae0cc6b525dd8c8388b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:458",
+   "oracle": "pass",
+   "script_sha256": "fe2cfa74c52d6ed8c9de45ba8990645be817fca5f03e718573d409c8dcc52007",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:459",
+   "oracle": "pass",
+   "script_sha256": "c11706ae52f46ed64fec7e1486f74c7741f83828da62114000d14302a297fcdf",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:460",
+   "oracle": "pass",
+   "script_sha256": "1faf72544c8c7dd34e751ceab33645c6a292179c955f99332c8cb7973fe74624",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:461",
+   "oracle": "pass",
+   "script_sha256": "079ee2b2c1df9dbeb1a744ae7cb752467126f716fbd56452ee8f63b3f3378e6a",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:462",
+   "oracle": "pass",
+   "script_sha256": "9500bca83e410e2d4913a7c5911a763caa78ede41446f3496e20dcba5d619878",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:464",
+   "oracle": "pass",
+   "script_sha256": "35700bdc1843e2d3246812b8e466dd5c231b01fcd6c058c8a176f3ee1d9ef013",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:465",
+   "oracle": "pass",
+   "script_sha256": "631b1614bff1d1964788773850caca6233f63927301992fef2a7816a5a16acc2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:466",
+   "oracle": "pass",
+   "script_sha256": "72599fb0a7811fadb0b747fa5ca36542a79519be747dd8e79e533b4124ede7e3",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:467",
+   "oracle": "pass",
+   "script_sha256": "04203e00ec31c8f150aa8ed162d759277c94bd080bca2dcef43d7ee8cfbe5b39",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:468",
+   "oracle": "pass",
+   "script_sha256": "00cf701dd23f3fc0882f4f5fee126f1bf745df6d9ddb1c8a2da4c67a97f36cc2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:470",
+   "oracle": "pass",
+   "script_sha256": "4933f154d81cc55c0ed88d019b32ca14e6724a10d1b27766ae5f1b72e592f070",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:471",
+   "oracle": "pass",
+   "script_sha256": "174a8909f3d07e544e6480a965ce039f2f17c9d2faa8a1a8948f3ea3563fe4ae",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:472",
+   "oracle": "pass",
+   "script_sha256": "b38d2097367b6d14ab51ca3594de51138d4898a73e2707d80b645bbf8b65b5e2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:473",
+   "oracle": "pass",
+   "script_sha256": "33042e877400f19ee3a6c881b7fa1626a593cbb07e7b73fa1ebfab5316e35808",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:474",
+   "oracle": "pass",
+   "script_sha256": "9346baca5cc1586aa01ef9c1510e100943230afba2ca8ab87562eee0e8fd3991",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:476",
+   "oracle": "pass",
+   "script_sha256": "a92bb609e58c8144095768ec71b432e50ef52b81fef46a78828f742d6cc2f089",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:477",
+   "oracle": "pass",
+   "script_sha256": "4a9d18e6e4afd9f7fb37e8df76c04ea7b2f290936b7cdcd8bd535e3bdac975b0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:478",
+   "oracle": "pass",
+   "script_sha256": "5949bb37273b93203f749410f2fdc40ca29a5a53c88bb7b7af65e7b8c7e61fec",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:479",
+   "oracle": "pass",
+   "script_sha256": "bc18f19717c94cc4af20156388d802fa6a5ce16e78336680c93e7545968fb13f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:480",
+   "oracle": "pass",
+   "script_sha256": "a8ad4716cbf8f8a095245309c969c5e169d42cb207df247db8cf67902291e867",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:482",
+   "oracle": "pass",
+   "script_sha256": "e5702596131602d7ed9cfa5e6365fc2d07a99df5ec428555007ef244c31d24ee",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:483",
+   "oracle": "pass",
+   "script_sha256": "6dd8136f03568ee39fa4f0aea43477fa37c26e33780f6dcc56e03a1fe1bf9f4e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:484",
+   "oracle": "pass",
+   "script_sha256": "0911c0ad62b94353f015a8455232a5228499723cec31d29a37196eb50c95b1e7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:485",
+   "oracle": "pass",
+   "script_sha256": "358315be41175a433a7123e2d4623434960d190a154c94d6b52601541acfd278",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:486",
+   "oracle": "pass",
+   "script_sha256": "d482c144690c73f5c3ff89a0d282b24aaa206ae9b253a07acc104e8179a9e50e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:488",
+   "oracle": "pass",
+   "script_sha256": "76246cbc2baaeec5d009562b26f99a3a8b84b5b2ac4c6970f5033ab7b3436172",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:489",
+   "oracle": "pass",
+   "script_sha256": "1b146adcc11327e5f79a3b1b8c68a42663e97861e1ed4220b45bbd7370f8875e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:490",
+   "oracle": "pass",
+   "script_sha256": "234a41a2e10a955cb5a26a0198ff36fbde4a583119cff710596f910f62e23787",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:491",
+   "oracle": "pass",
+   "script_sha256": "8af53f21ab3e98cd49ec061c3ed32b0bb10cdd337e91cec87b671957bf79e9b7",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:492",
+   "oracle": "pass",
+   "script_sha256": "4f930967495d0257daecc73728dcdf522b082bfeda808a54827f606b6e38e51e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:493",
+   "oracle": "pass",
+   "script_sha256": "1f0d5fb5a0f30f5fb16f2da760e0afa519a59c1270862fc77c4ebcd1f74f9f64",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:494",
+   "oracle": "pass",
+   "script_sha256": "e7b2c3290e20f9d8cdc08113ba23e76c7df1672c3e921609868fafc754cb9fcd",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:496",
+   "oracle": "pass",
+   "script_sha256": "9d9559c35a1ba15072f9324e055c4d7505e224f18ba8e430ca06c249d985f001",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:497",
+   "oracle": "pass",
+   "script_sha256": "1767fae318fb6ac547eb4d2711172749873534ce6738777fbcff81432341542b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:498",
+   "oracle": "pass",
+   "script_sha256": "b99694751cf76188f72d23ac6804e34ea30d0fcba9718118b04386e3986d6dfa",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:499",
+   "oracle": "pass",
+   "script_sha256": "0275528f3be1acb718c0b0a979c4611f1df8ddeac2dd5065672835064e91b597",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:500",
+   "oracle": "pass",
+   "script_sha256": "e3b8802f30ee25fb246d83cece29b88255a0bcea95d5ac900cca942485a02416",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:501",
+   "oracle": "pass",
+   "script_sha256": "93f748d6f14d0a1739954f48360c202e983e8d3d3a452cdc30889723cce3c76d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:502",
+   "oracle": "pass",
+   "script_sha256": "19a7f779bd79329859452884030ad3a250e5a799631c28044a3b4b4e716b209b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:504",
+   "oracle": "pass",
+   "script_sha256": "1f27d53ab24ef332d416ea8f467b4396fef13b1a4aa6b1d24cc24ba16d69ae19",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:505",
+   "oracle": "pass",
+   "script_sha256": "ba6307db11b0b639c3be3dba3fa355679ab4004de85366348071745bc831196b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:506",
+   "oracle": "pass",
+   "script_sha256": "e78ecb76a488322003cfe3610650276feb51b79b2a1f58fde71d730fa65eedc9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:507",
+   "oracle": "pass",
+   "script_sha256": "5e7e0ff43adfd177c4ff206f5a75f9316b0a42f1c4e7450191ccc7781394c8e9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:508",
+   "oracle": "pass",
+   "script_sha256": "7495ac36e8272f2386b64b36ff1d6c570fc87991b88065ab54bfa8af6603fb3f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:509",
+   "oracle": "pass",
+   "script_sha256": "824a23722d843e1e6ce9d5b60f632dce9faa2c7a8a81f6baf828bb784bb1f874",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:510",
+   "oracle": "pass",
+   "script_sha256": "836ac0097af2efa6c25eebc02fd443f13ec5b878759f264e6118060db4fd6bb9",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:538",
+   "oracle": "pass",
+   "script_sha256": "3d05348bf82f29fe5ac9c6d66d044a334a41971d52f15cbc36de62bc04728800",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:539",
+   "oracle": "pass",
+   "script_sha256": "ac0d21a90a5b51fc570d3148644adaf2d878c38a0042868ba1c6bca430e92fc3",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:540",
+   "oracle": "pass",
+   "script_sha256": "22cf2f9b50a1faf5963977efb3f189ec340482221e3796bda21b09037d841204",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:541",
+   "oracle": "pass",
+   "script_sha256": "df764bb6394b41c766a0fedc79d8fc86ad911bc6bb4c3de4b2d3df2d03a817ff",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:542",
+   "oracle": "pass",
+   "script_sha256": "50d3c0b52c6c81afdb4911a6975f3e0318cc6b278bbd9cbf1cc6950c2cb0e98e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:544",
+   "oracle": "pass",
+   "script_sha256": "ced85eaf62b9103d2db6caf820755eb544f51b5706fbb6c326929292239f7644",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:545",
+   "oracle": "pass",
+   "script_sha256": "b8de6252878b737622a31fe2f95e282b664d00f0f48a2655d92230586fe00457",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:546",
+   "oracle": "pass",
+   "script_sha256": "60cc9dc405e2c7dff90572d8eddbb51880cf2a8b7cf33599faab5ee6aac0a7a4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:547",
+   "oracle": "pass",
+   "script_sha256": "6e0ec8bd72b7b49cebe5a1018a8db3f23c20a4d7176f625ca9d6b547896d3623",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:548",
+   "oracle": "pass",
+   "script_sha256": "d8d215b6bb29aff59f3b69275f6193318e1714be486f8d0e0d67a8f16d9da83e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:550",
+   "oracle": "pass",
+   "script_sha256": "e6facd7b13b89db10f126f794a65a75997a996e7c12645c5813b389f721e36ac",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:551",
+   "oracle": "pass",
+   "script_sha256": "0dee09620441992652267e548793487f1761f34d340c02441304538d331e522e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:552",
+   "oracle": "pass",
+   "script_sha256": "0270358859a9baf10a8659fe6ec42c3f5d5754b4478555bdf568c4c6bbd26a83",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:553",
+   "oracle": "pass",
+   "script_sha256": "6c07ffb13d697805647b4082d8d774d3d7955040bf2ad6f15d04aabfa6527adc",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:554",
+   "oracle": "pass",
+   "script_sha256": "cdfb7ac1ca2a6dc03a6429c3dae03a8b054332823ffee9f192e58909eccd4a00",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:556",
+   "oracle": "pass",
+   "script_sha256": "3e6985c438c1a63cbe0b95193001d6289426447f22397ec48491ba886d4b4531",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:557",
+   "oracle": "pass",
+   "script_sha256": "07ca77f268963c8d1119c3f6d48c9d65992c87d81d1e89f68ca04dbcbcfc0cc4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:559",
+   "oracle": "pass",
+   "script_sha256": "05a8eed05f70ee6bb5847a4c6b8f463c20fac17c036481519df45c2001230677",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:560",
+   "oracle": "pass",
+   "script_sha256": "a20b35907a29ad9e93b5df0507e7df455d72e9c19e7a169a9fdff39bfc0a0f9d",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:588",
+   "oracle": "pass",
+   "script_sha256": "de6602f741bfeeee6a4ab04d418cdebcbec61ad492c4b06c16e50db58a1edfab",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:589",
+   "oracle": "pass",
+   "script_sha256": "503de63857aca147032eb05487f4cbe3d06dda6e3a91b5011808dfd1af611cd2",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:590",
+   "oracle": "pass",
+   "script_sha256": "3da29ea0c3a8ea8b8c2c2381125ba91ad5406fbf92bec9b4ec5a6799acd4939c",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:591",
+   "oracle": "pass",
+   "script_sha256": "ddea99d132643595e8d4f9cd2c9b9d6805e0a7ff56deafa0e8f56f196b48c9e0",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:592",
+   "oracle": "pass",
+   "script_sha256": "d174683cf11a2e726f35b0394294972355e515746347977e08828c489ce30802",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:594",
+   "oracle": "pass",
+   "script_sha256": "3cdc76be8ba4cdb09efad1eeb329d7978e33ecb332a1ad20058e34900e7588c1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:595",
+   "oracle": "pass",
+   "script_sha256": "1a6dfc5bc46e67da8e3cd561f8a1b31327ef83c0f84560af20daa873e8f4945e",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:596",
+   "oracle": "pass",
+   "script_sha256": "4263a70f0b286ced3fba031a69196940626d3e617998d23082ce5cc892793db4",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:597",
+   "oracle": "pass",
+   "script_sha256": "686c5c8c0b0246c96212fb4b933d2359b4304127f771503f7fda310f46b84392",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:598",
+   "oracle": "pass",
+   "script_sha256": "bc469aa9ca16e7e74620025d7a2794470a798c574fefbfa541aafc0008f7dbd5",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:600",
+   "oracle": "pass",
+   "script_sha256": "9d5b38c22ca6f9b83f5a48f96afcca94691f3728329544bdb6e7bf611e263859",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:601",
+   "oracle": "pass",
+   "script_sha256": "30bb763d4b44f52a32f2aa4c279df397088a1a1006cb43f6a3eca5fe33ff5e23",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:602",
+   "oracle": "pass",
+   "script_sha256": "d0afa794f8668d3fd83a10830b0f134365591b45fcd1d8930451def98466ce7b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:603",
+   "oracle": "pass",
+   "script_sha256": "4d1592fd7b31819f8d7a20062c0fc5e27f09fdde771271adba8f5d3642db824b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:604",
+   "oracle": "pass",
+   "script_sha256": "dc8c697a074317b54b612843ecf8056c26f4c4ff06afeb9ed97bfeccfd9f344a",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:606",
+   "oracle": "pass",
+   "script_sha256": "4b5158ee2d70904dee9c3efd7b75d222e0bffb558edcdf776cd389b1de7dcbd1",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:607",
+   "oracle": "pass",
+   "script_sha256": "1ea31468400a00e77c2b8d9f47b8fb461209e97244beba18998919f46ccad49f",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:609",
+   "oracle": "pass",
+   "script_sha256": "3ad4743569be0b8dcc165f853e52831446e9cc3671a5b617d9b5f726f8df345b",
+   "silmaril": "undetermined"
+  },
+  {
+   "id": "address:610",
+   "oracle": "pass",
+   "script_sha256": "9d94d65d24d0681a48fc34f2273f358a2bde4007362203ebee99eb6b1b7d1a54",
+   "silmaril": "undetermined"
+  }
+ ],
+ "counts": {
+  "run": 1140,
+  "oracle_pass": 1140,
+  "kernel_proved": 885,
+  "agree_with_kernel": 885,
+  "native_only": 255,
+  "agree_with_native_run": 255
+ },
+ "files": [
+  {
+   "file": "test/core/i32.wast",
+   "sha256": "f3b7e8fd641893ea0989a8ab801fce0654d276d27b5cad9cf482291a422cffe8",
+   "oracle": "fail",
+   "stderr": "Error: failed to run script file 'test/core/i32.wast'\n\nCaused by:\n    0: failed directive on test/core/i32.wast:979\n    1: assert_invalid: expected \"unexpected token\", got \"expected a i32\n     --> <anon>:1:31\n      |\n    1 | (func (result i32) (i32.const nan:arithmetic)) \n      |                               ^\"\n\n"
+  },
+  {
+   "file": "test/core/i64.wast",
+   "sha256": "7d0e27a617565e0685aef56cee01b2b4890084068e3989168c41d14c56b1945e",
+   "oracle": "fail",
+   "stderr": "Error: failed to run script file 'test/core/i64.wast'\n\nCaused by:\n    0: failed directive on test/core/i64.wast:488\n    1: assert_invalid: expected \"unexpected token\", got \"expected a i64\n     --> <anon>:1:31\n      |\n    1 | (func (result i64) (i64.const nan:arithmetic)) \n      |                               ^\"\n\n"
+  },
+  {
+   "file": "test/core/int_exprs.wast",
+   "sha256": "e8b884e16bdbed0270e9b912eaa60a0e8688831e7574be98c00a60dcc667ed2b",
+   "oracle": "pass"
+  },
+  {
+   "file": "test/core/fac.wast",
+   "sha256": "160f50dd99afe4c87f9a49424887e6fd94baa79b20f0e07567b867e866b583d2",
+   "oracle": "pass"
+  },
+  {
+   "file": "test/core/traps.wast",
+   "sha256": "3c0615dd26ee186c9a8138e933ff068fd6679e4fc34756b4ab1605d1fc7f1ede",
+   "oracle": "pass"
+  },
+  {
+   "file": "test/core/address.wast",
+   "sha256": "108586531ce4b9445342a1f7c25880fd7deacb6e330b8a9f4430f7de7bd67f32",
+   "oracle": "pass"
+  }
+ ]
+}
