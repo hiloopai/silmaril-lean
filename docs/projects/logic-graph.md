@@ -111,6 +111,15 @@ the models of a theory `T`). `Silmaril.LogicGraph.Consequence.Defs` registers th
 | extensional MLTT | `logic.consequence.mltt.extensional.derives` | `….extensional.entails` | extensional MLTT (sentences lifted by `ULift`) |
 | intensional MLTT (original rules) | `logic.consequence.mltt.intensional.derives` | `….intensional.entails` | intensional MLTT, at `⊤` |
 
+**The coverage matrix** (`Silmaril.LogicGraph.Consequence.Matrix.Defs`, registered as the evidence
+matrix `logic.consequence.coverage`) sets every family (HOL, extensional and intensional MLTT, λΠ,
+Metamath, PA, ZF, ZFC) against every feature. The features are abstract syntax, institution,
+derivability, semantic consequence, soundness, identity/weakening/cut, substitution, completeness,
+concrete syntax, concrete institution, concrete consequence systems and registration here. Each
+cell names its Lean declarations, and Lean checks that they exist. A cell is `defined`, `proved`,
+`registered`, `absent` or `not claimed`, and every absent cell says why. Completeness is
+`not claimed` for every family. The explorer shows the matrix at the end of `#/logic-consequence/`.
+
 The relations between them are standard consequence problems answered by the library's theorems:
 `sound_at` from each derivability to its semantic consequence (soundness), from ZF to ZFC (an
 inclusion), and `tarski_closed` (identity, weakening and cut). No completeness is claimed. The

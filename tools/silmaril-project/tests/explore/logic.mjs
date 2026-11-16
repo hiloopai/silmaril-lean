@@ -170,6 +170,24 @@ try {
   await p.fill("#lg-cons-q", "zfc");
   await p.waitForTimeout(200);
   check(/q=zfc/.test(await p.evaluate(() => location.hash)) && (await rows("#lg-cons")).length >= 2, "the search is kept in the URL");
+  // the coverage matrix: every family against every feature, no completeness claimed, absences explained
+  const mx = await p.evaluate(() => {
+    const t = document.getElementById("lg-matrix"); if (!t) return null;
+    const heads = [...t.querySelectorAll("thead th")].map((th) => th.textContent);
+    const rowsM = [...t.querySelectorAll("tbody tr")].map((tr) => ({ fam: tr.querySelector("th").textContent,
+      cells: [...tr.querySelectorAll("td")].map((td) => ({ s: td.dataset.strength || "", note: (td.querySelector(".lg-mx-note") || {}).textContent || "",
+        links: td.querySelectorAll(".lg-mx-decls a").length })) }));
+    return { heads, rows: rowsM };
+  });
+  check(mx && mx.rows.length === 8 && mx.heads.length === 13, `the coverage matrix: 8 families, 12 features (${mx && mx.rows.length}, ${mx && mx.heads.length - 1})`);
+  if (mx) {
+    const ci = mx.heads.indexOf("completeness") - 1;
+    check(mx.rows.every((r) => r.cells.every((c) => c.s && c.links > 0)), "every cell has a status and names its declarations");
+    check(ci >= 0 && mx.rows.every((r) => r.cells[ci].s === "not claimed"), "completeness is not claimed for any family");
+    check(mx.rows.every((r) => r.cells.every((c) => c.s !== "absent" || c.note)), "every absent cell says why");
+    const hol = mx.rows.find((r) => r.fam === "HOL"), si = mx.heads.indexOf("concrete syntax") - 1;
+    check(hol && hol.cells[si].s === "proved", "HOL's concrete syntax is proved to round-trip");
+  }
   await shot("logic-consequence");
   await open("/system/" + encodeURIComponent("logic.consequence.metamath.zfc.entails"));
   await p.waitForFunction(() => /over the sentences of/.test(document.querySelector("main").textContent), null, { timeout: 60000 });

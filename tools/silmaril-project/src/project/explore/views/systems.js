@@ -499,8 +499,11 @@ environment as Lean definitions). Problems without a Lean answer are unknown. No
   // declarations they list as supporting references.
   async function matrixSection(ctx) {
     if (!Explorer.tables().has("consequence_matrix_cells")) return "";
-    const cells = await ctx.q("SELECT * FROM consequence_matrix_cells ORDER BY matrix, pos LIMIT 500");
-    if (!cells.length) return "";
+    // the logic graph's coverage matrices are shown on its consequence page, not here
+    const cells = await ctx.q("SELECT * FROM consequence_matrix_cells WHERE matrix NOT LIKE 'logic.%' ORDER BY matrix, pos LIMIT 500");
+    const logic = await ctx.q("SELECT count(*) AS n FROM consequence_matrix_cells WHERE matrix LIKE 'logic.%'");
+    const more = logic.length && logic[0].n ? `<p class="muted">The coverage matrix of the logics' consequence systems is on <a href="#/logic-consequence/">Logics → Consequence systems</a>.</p>` : "";
+    if (!cells.length) return more;
     const ref = (t) => { const sl = typeof sourceLink === "function" ? sourceLink(t.module, t.name) : "";
       return `${term(t.name)}${sl ? " " + sl : ` <span class="muted" title="no source for ${ui.esc(t.module)} on this page">(${ui.esc(t.module)})</span>`}`; };
     let h = "";
@@ -519,7 +522,7 @@ ${count("evidence", "specStrategy")} spec strategy, ${count("evidence", "executi
             `<td>${ui.esc(c.evidence)}</td><td>${ui.esc(c.strength)}</td><td>${ui.esc(c.note)}</td><td>${ts.map(ref).join("<br>")}</td></tr>`; }).join("") +
         `</tbody></table></div>`;
     }
-    return h;
+    return h + more;
   }
 
   // The Interpretations pane: every registered interpretation of a value as a language
