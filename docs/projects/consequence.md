@@ -188,6 +188,9 @@ typed configuration, as a system (`Interp/`).
   * Soundness can be read off the projection.
   * Completeness can be read off the projection only given definedness, stated as a premise
     (`Defined`).
+  * Evidence of this kind never shows that a reading is defined. That a value can be read at
+    all (in the registry, that the artifact decodes and its interpretation is defined) needs its
+    own certificate.
 
 ## Shapes
 
