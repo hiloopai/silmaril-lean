@@ -36,8 +36,10 @@ canonical ABI lifts the bytes `68 69 21` from linear memory.
   on `"hi"`; `acceptedExport_of_run` turns such a run into `AcceptedExport`.
 * `hi_mem_of_runHi`: given that run, `"hi!"` is in `refBytesSystem` (by `refBytesSystem_of_run`,
   a kernel-checked soundness theorem). The hypothesis is exactly the `#guard`ed run. Kernel
-  evaluation of this run needs a 64 KiB linear memory in the kernel, which exceeds kernel
-  recursion depth today (`Wasm.KernelEval` memory representations are the pending remedy).
+  evaluation of this run needs a 64 KiB `ByteArray` linear memory in the kernel, which exceeds
+  kernel recursion depth. Over the engine `core3K neverFail`, whose memories are `KMem` trees, the
+  same run is kernel-checked (`Ref.KMem.Examples`: `runHiK_true`, `acceptedK_hi`); carrying it to
+  `core3 neverFail` needs a REF-level simulation (`docs/projects/wasm-memrep.md`).
 -/
 
 @[expose] public section

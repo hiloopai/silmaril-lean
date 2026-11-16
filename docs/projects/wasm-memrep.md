@@ -110,21 +110,106 @@ a 2-vCPU sandbox. Wall time and peak RSS are for the whole `lean` process, inclu
 
 The 1 MiB `KMem` run is `MemRepSimExamples.scatterRun` in `Execution/MemRep/Sim/Examples.lean`.
 
-## Not yet
+## The engine over a representation (step 4)
 
-1. **A `KMem` core engine.** `core3`'s step side (`status`, `Internal`, `resume`, `invoke`)
-   now runs on `Store H KMem` (`statusC (stepI o)`, `internalC (stepI o)`, `resume`), with the
-   simulation lemmas above. A `CoreEngine` needs the remaining fields over `R` too:
-   * instantiation (`prepareE?`: `instantiateOnce?`/`instantiateDirect?`, `allocModule?`, data
-     segment initialisation into memory);
-   * `allocHost` and `externTypeE?`/`funcTypeE?` (store reads only);
-   * the canonical-ABI memory accessors `SingleThreaded.memSize?`/`memRead?`/`memWrite?`
-     (through `MemRep.readBytes`/`writeBytes`).
-   Each needs a `toBytes` lemma. Instantiation is the largest; the data-segment writes go
-   through `MemRep.writeBytes`.
-2. **Carrying REF runs across engines.** REF (`Component.Machine`, `acceptRun`, `Accepted`) is
-   parametric in its `CoreEngine`. Transferring a run on a `KMem` engine to `core3 neverFail`
-   needs an engine-simulation notion (a store map commuting with every engine field) and a
-   proof that the REF machine, oracle and `Steps` respect it. None exists yet. Without it,
-   `Ref.Examples.acceptHiBytes` cannot be kernel-checked on `KMem`. Today it is checked only by
-   compiled evaluation (`#guard runHi`).
+* **Generic instantiation and accessors.** Everything `core3`'s store fields use now takes
+  `Store H R`:
+  * constant evaluation (`constInstr?`, `structNew?`, `arrayNewFixed?`, `constExpr?`,
+    `evalConst?`) and `$evalglobals`/`$evalexprs(s)` (`evalGlobals?`, `evalExprs?`,
+    `evalExprss?`);
+  * allocation (`allocTag`, …, `allocElem`, `allocMany`, `allocModule?`, `ModuleInst.initial`);
+  * segment initialisation (`tableInitLoop`, `memoryInitLoop`, `elemDrop?`, `dataDrop?`,
+    `initElemSeg?`, …, `initSegments?`) and `prepare?`, `instantiate?`, `prepareDirect?`,
+    `instantiateDirect?`, `instantiateOnce?`;
+  * `externAddrType?`, `externAddrOk?`, `externAddrsOk?`;
+  * the component accessors `SingleThreaded.allocHost`, `memSize?`, `memAddrType?`,
+    `tableAddrType?`, `memRead?`, `memWrite?`, `tableFunc?`;
+  * the engine's own `Core3.externTypeE?`, `prepareE?`, `prepareSpecE?`, `statusE`, `funcTypeE?`.
+
+  Bytes are touched only by `allocMem` (`MemRep.zeros`), `memoryInitLoop` (`MemRep.size`,
+  `MemRep.store`) and the accessors (`MemRep.size`, `readBytes`, `writeBytes`). Theorem
+  statements are unchanged, except that `memoryInitLoopK_eq` and `tableInitLoopK_eq` (Auto2
+  kernel) now name the implicit `ByteArray`. Some proofs needed small edits:
+  * proofs that unfold these definitions at `ByteArray` rewrite with the `rfl` lemmas
+    `MemRep.size_byteArray`, `store_byteArray`, `readBytes_byteArray`, `writeBytes_byteArray` and
+    `zeros_byteArray`, now all in `Execution/MemRep/Defs.lean`;
+  * a few proofs compared a `match` of a generic definition with the same `match` written at
+    `ByteArray` (by `rfl` or `show`). Lean does not unfold one auxiliary matcher into the other,
+    so these proofs now case on the discriminant.
+* **Simulation lemmas** (`Execution/MemRep/Inst/Thms.lean`, proofs in
+  `Proofs/Wasm/Execution/MemRepInst.lean`). These follow `instantiateOnce?_mapH`:
+  * at any `R`: `evalConst?_toBytes`, `evalGlobals?_toBytes`, `externAddrType?_toBytes`,
+    `externAddrsOk?_toBytes`, `allocHost_toBytes`, `memAddrType?_toBytes`,
+    `tableAddrType?_toBytes` and `tableFunc?_toBytes`;
+  * at a lawful `R`: `allocModule?_toBytes`, `initSegments?_toBytes`, `prepare?_toBytes`,
+    `instantiateDirect?_toBytes`, `instantiateOnce?_toBytes`, `memSize?_toBytes`,
+    `memRead?_toBytes` and `memWrite?_toBytes`.
+* **Engine simulation** (`Component/Engine/Sim`).
+  * `CoreEngine.StoreImpl E` is the store-dependent part of an engine over `E`'s static part.
+    `E.withStore I` has `E`'s modules, types, addresses and threads, by definition.
+  * `CoreEngine.StoreSim E I` is a store map `φ` that commutes with every store operation: `empty`,
+    `externType?`, `prepare?`, `allocHost`, `funcType?`, the memory and table accessors, `status`
+    and `resume`. It is also a functional bisimulation of `Internal` (`internal`,
+    `internal_lift`).
+  * `CoreEngine.ExecSim` relates executable steppers.
+  * `Thms`: `StoreSim.steps` and `steps_lift` (runs), `diverges_iff`, `extends_iff`, `lawful`
+    (`CoreEngine.Lawful` carries over) and `ExecSim.runCore`.
+* **The `KMem` engine** (`Component/Engine/Core3K`).
+  * `core3Impl o R` and `core3On o R := (core3 o).withStore (core3Impl o R)`, with
+    `core3On_byteArray : core3On o ByteArray = core3 o` (by `rfl`).
+  * `core3K o := core3On o KMem`, with the stepper `core3ExecK o`.
+  * `core3Sim o R : (core3 o).StoreSim (core3Impl o R)` has store map `Store.toBytes`.
+    `core3ExecSim` relates the steppers, and `core3On_lawful` gives the laws (from
+    `core3_lawful`).
+  * Consequences: `core3On_steps`, `core3On_steps_lift`, `core3On_diverges_iff` and
+    `core3ExecOn_runCore`.
+* **A component accepted in the kernel on `KMem`**
+  (`Wasi/Component/Accept/Ref/KMem/Examples.lean`). For `Ref.Examples.acceptHiBytes`,
+  `runHiK_true` checks the whole pipeline with `decide +kernel`: decode, validate, link the host
+  `accept`, instantiate the core module with its 64 KiB memory and data segment, call `run`, and
+  lift `list<u8>` from memory. `acceptedK_hi` then gives `Accepted` on REF over
+  `core3K neverFail` for the decoded component, by `acceptRun_sound`.
+
+### Kernel measurement (component acceptance)
+
+One run each on a 2-vCPU sandbox. Times are for the whole `lean` process; the imports alone
+take 5.2 s and 1.40 GB.
+
+| engine | check | result | wall | peak RSS |
+|---|---|---|---|---|
+| `core3K neverFail` (`KMem`) | `runHiK = true` | passes | 5.6 s | 2.02 GB |
+| `core3 neverFail` (`ByteArray`) | `runHi = true` | `(kernel) deep recursion detected` | 13.8 s | 3.42 GB |
+| `core3 neverFail` (`ByteArray`), `maxRecDepth 1000000` | `runHi = true` | `decide` fails to reduce | 223 s | 31.5 GB |
+
+Both checks use `decide +kernel`. The `ByteArray` rows are this branch's `ByteArray` memory
+operations, without the separate `writeSlice` change of #707.
+
+## Not yet: REF over `core3K` as REF over `core3`
+
+`acceptedK_hi` is about REF over `core3K neverFail`. `refBytesSystem` (and `hi_mem_of_runHi`)
+use `core3 neverFail`. A `StoreSim` relates the two engines but does not carry REF runs between
+them. Doing so needs a REF-level simulation, which is not proved:
+
+1. **REF types are indexed by the engine, not by its static part.** `CStore E`, `Machine.Config E σ`,
+   `Label E σ`, `Canon.P E σ`, `Call E`, `Ret E`, `Task E`, `End E`, `Caller E`, `CFuncInst E`,
+   `ResourceType E`, `Instantiate.ItemVal E`, `ThreadBody E`, `LoopPoint E` and `CanonHost E`
+   are all applied to the engine `E` itself. Even though `core3K o` and `core3 o` share their
+   static fields definitionally, `Task (core3K o)` and `Task (core3 o)` are different types. The
+   engine store's host type is `CanonHost E`, so a map also has to rename host code
+   (`Store.mapH`, as in `Proofs/Wasm/Component/Reference/HostMap.lean`).
+2. **Programs see the whole store.** REF's specification programs `Canon.P E σ` are free-monad
+   trees over `Canon.Op E σ`. `Op.get` passes the whole `CStore E` to a continuation, and
+   `Op.modify` takes an arbitrary function `CStore E → CStore E`. So configurations, and
+   `Label.host (.run p)`, hold Lean functions of the store, and a map on configurations cannot be
+   defined structurally. The transfer needs a logical relation on programs: continuations of
+   `get` related on stores related by `toBytes`, `modify` functions commuting with it. Then every
+   REF program reachable from `acceptLinkedProg` and the dispatcher `Canon.dispatch` needs a proof
+   that it is related to itself across the two engines. That covers instantiation, canon
+   lift/lower, the builtins and the host `accept`, which are tens of thousands of lines of
+   definitions.
+3. Given 1 and 2, `Steps`, `Accepted` and `acceptRun` transfer by induction on `Machine.Step`, the
+   oracle being `Oracle.first` on both sides. Then `refBytesSystem first.prof acceptHiBytes hi`
+   would follow from `runHiK_true`.
+
+Without the transfer, `hi_mem_of_runHi` over `core3` is still conditional on the native
+`#guard runHi`. The `ByteArray` kernel run fails (table above).

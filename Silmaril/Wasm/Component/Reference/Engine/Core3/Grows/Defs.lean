@@ -450,6 +450,7 @@ theorem Grows.memAddrType {s s' : Store H} (hg : Grows s s') {m : Nat} {at_ : Ad
 theorem Grows.memSize {s s' : Store H} (hg : Grows s s') {m n : Nat}
     (h : memSize? s m = some n) : ∃ n', memSize? s' m = some n' ∧ n ≤ n' := by
   unfold memSize? at h ⊢
+  simp only [Silmaril.Wasm.Execution.MemRep.size_byteArray] at h ⊢
   cases e : s.mems[m]? with
   | none => rw [e] at h; cases h
   | some mi =>

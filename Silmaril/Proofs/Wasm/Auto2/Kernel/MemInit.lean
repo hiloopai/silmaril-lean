@@ -108,7 +108,7 @@ theorem memoryInitLoop_fast {f : Frame} {x : MemIdx} {y : DataIdx} {a : AddrType
     have hn0 : n = 0 := BitVec.eq_of_toNat_eq (by simpa using hn)
     subst hn0
     rw [memoryInitLoop]
-    simp only [hm, hd]
+    simp only [hm, hd, MemRep.size_byteArray, MemRep.store_byteArray]
     simp [show i.toNat ≤ mi.bytes.size by omega, show j.toNat ≤ di.bytes.size by omega]
   | k + 1, s, mi, i, j, n, hn, hm, hd, hi, hj, hiw, hjw => by
     have hn0 : n ≠ 0 := by
@@ -131,7 +131,7 @@ theorem memoryInitLoop_fast {f : Frame} {x : MemIdx} {y : DataIdx} {a : AddrType
     have hi1 := toNat_add_one i (by omega)
     have hj1 := toNat_add_one j (by omega)
     rw [memoryInitLoop]
-    simp only [hm, hd]
+    simp only [hm, hd, MemRep.size_byteArray, MemRep.store_byteArray]
     have hc : i.toNat + n.toNat ≤ mi.bytes.size ∧ j.toNat + n.toNat ≤ di.bytes.size :=
       ⟨by omega, by omega⟩
     simp only [hc, hn0, ↓reduceDIte, hb, hst]
@@ -152,7 +152,7 @@ theorem memoryInitLoop_fast {f : Frame} {x : MemIdx} {y : DataIdx} {a : AddrType
       rw [writeL_cons]
 
 /-- **`memoryInitLoopK = memoryInitLoop`.** -/
-theorem memoryInitLoopK_eq : @memoryInitLoopK H = @memoryInitLoop H := by
+theorem memoryInitLoopK_eq : @memoryInitLoopK H = @memoryInitLoop H ByteArray _ := by
   funext s f x y a i j n
   unfold memoryInitLoopK
   split

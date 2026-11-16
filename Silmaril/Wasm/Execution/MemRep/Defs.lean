@@ -87,6 +87,24 @@ instance : MemRep ByteArray where
   extend m n := m ++ ⟨Array.replicate n 0⟩
   zeros n := ⟨Array.replicate n 0⟩
 
+/-! The `ByteArray` operations are the specification ones, by `rfl`. -/
+
+@[simp] theorem MemRep.size_byteArray (m : ByteArray) : MemRep.size m = m.size := rfl
+@[simp] theorem MemRep.load_byteArray (m : ByteArray) (a count : Nat) :
+    MemRep.load m a count = Memory.load m a count := rfl
+@[simp] theorem MemRep.store_byteArray (m : ByteArray) (a : Nat) {count : Nat}
+    (w : BitVec (8 * count)) : MemRep.store m a w = Memory.store m a w := rfl
+@[simp] theorem MemRep.extend_byteArray (m : ByteArray) (n : Nat) :
+    MemRep.extend m n = m ++ ⟨Array.replicate n 0⟩ := rfl
+
+@[simp] theorem MemRep.zeros_byteArray (n : Nat) :
+    MemRep.zeros (R := ByteArray) n = ByteArray.mk (Array.replicate n 0) := rfl
+@[simp] theorem MemRep.readBytes_byteArray (m : ByteArray) (a count : Nat) :
+    MemRep.readBytes m a count = Memory.readBytes m a count := rfl
+@[simp] theorem MemRep.writeBytes_byteArray (m : ByteArray) (a : Nat) (bs : ByteArray) :
+    MemRep.writeBytes m a bs = Memory.writeBytes m a bs := rfl
+@[simp] theorem MemRep.toBytes_byteArray (m : ByteArray) : MemRep.toBytes m = m := rfl
+
 /-! ## Trees of bytes -/
 
 /-- A well-formed `KBytes` tree as linear memory. -/

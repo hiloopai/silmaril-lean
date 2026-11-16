@@ -16,24 +16,10 @@ public import Silmaril.Wasm.Execution.MemRep.Defs
 
 At `R = ByteArray` they are the specification functions (`MemInst.pagesR_byteArray`,
 `MemInst.growR?_byteArray`); the `MemRep ByteArray` operations reduce to the
-`Execution.Memory` ones by `rfl` (`MemRep.load_byteArray`, …).
+`Execution.Memory` ones by `rfl` (`MemRep.load_byteArray`, …, in `Execution.MemRep.Defs`).
 -/
 
 namespace Silmaril.Wasm.Execution
-
-namespace MemRep
-
-/-! ## The `ByteArray` representation is the specification -/
-
-@[simp] theorem size_byteArray (m : ByteArray) : MemRep.size m = m.size := rfl
-@[simp] theorem load_byteArray (m : ByteArray) (a count : Nat) :
-    MemRep.load m a count = Memory.load m a count := rfl
-@[simp] theorem store_byteArray (m : ByteArray) (a : Nat) {count : Nat} (w : BitVec (8 * count)) :
-    MemRep.store m a w = Memory.store m a w := rfl
-@[simp] theorem extend_byteArray (m : ByteArray) (n : Nat) :
-    MemRep.extend m n = m ++ ⟨Array.replicate n 0⟩ := rfl
-
-end MemRep
 
 namespace Core
 

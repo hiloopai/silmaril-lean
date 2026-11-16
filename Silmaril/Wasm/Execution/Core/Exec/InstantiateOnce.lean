@@ -67,8 +67,8 @@ def Module.closedGlobalTypes (m : Module) : List CGlobalType :=
 `$instantiate`, then the spec's direct instantiation of the residue whose trailing global imports
 are the globals `$evalglobals` allocated (so `$allocmodule` reuses them instead of copying
 them). -/
-def instantiateOnce? (s : Store H) (m : Module) (xas : List ExternAddr) :
-    Option (Store H × Frame × Option FuncIdx) :=
+def instantiateOnce? {R : Type} [MemRep R] (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Store H R × Frame × Option FuncIdx) :=
   match evalGlobals? evalConst? s ⟨[], ModuleInst.initial s m xas⟩ (Module.closedGlobalTypes m)
       (m.globals.map Global.init) with
   | none => none

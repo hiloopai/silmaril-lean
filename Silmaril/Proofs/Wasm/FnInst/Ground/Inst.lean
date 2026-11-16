@@ -313,7 +313,13 @@ theorem prepare?_bodiesRel {ev : Store H → Frame → Expr → Option (Store H 
         · cases h
         · split at h
           · cases h
-          · exact prepare?_alloc hfs h
+          · rename_i vG _ _ _ _ rT _ _ s₃ _ rE _
+            rcases hA : allocModule? s₃ m xas vG rT rE with _ | ⟨s₄, mi⟩
+            · simp only [hA, reduceCtorEq] at h
+            · obtain ⟨s₄', hA', hst⟩ := allocModule?_bodiesRel hfs hA
+              simp only [hA, Option.some.injEq, Prod.mk.injEq] at h
+              obtain ⟨rfl, rfl⟩ := h
+              exact ⟨⟨s₄', { module := mi }, _⟩, by rw [hA'], rfl, rfl, hst⟩
     · exact absurd hc ‹_›
   · cases h
 
@@ -356,8 +362,7 @@ theorem instantiateDirect?_bodiesRel {BI : List Instr → List Instr → Prop} {
       have he : (s₁, f₁, st₀) = (s', f', st) := Option.some.inj h
       obtain ⟨rfl, rfl, rfl⟩ : s₁ = s' ∧ f₁ = f' ∧ st₀ = st := by simpa only [Prod.mk.injEq] using he
       refine ⟨wf s₁ c'.store.funcs, ?_, storeRel_wf hst (initSegments?_funcs hi)⟩
-      show (match initSegments? evalConst? c'.store c'.frame { m with funcs := gs } with
-        | none => none | some (s', f') => some (s', f', st₀)) = _
+      dsimp only
       rw [initSegments?_rel hfr hst hi]
 
 /-- **Single allocation of modules with related bodies**: the same frame and start function,

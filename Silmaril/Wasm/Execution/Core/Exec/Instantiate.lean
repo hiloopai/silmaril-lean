@@ -23,11 +23,11 @@ def EvalSound (P : Profile) (host : HostSemantics H)
   ∀ s f e s' v, ev s f e = some (s', v) → EvalExpr P host s f e s' f [v]
 
 section
-variable (ev : Store H → Frame → Expr → Option (Store H × Val))
+variable {R : Type} (ev : Store H R → Frame → Expr → Option (Store H R × Val))
 
 /-- Computable `$evalglobals`. -/
-def evalGlobals? : Store H → Frame → List CGlobalType → List Expr →
-    Option (Store H × Frame × List Val)
+def evalGlobals? : Store H R → Frame → List CGlobalType → List Expr →
+    Option (Store H R × Frame × List Val)
   | s, f, [], [] => some (s, f, [])
   | s, f, g :: gs, e :: es =>
     match ev s f e with
@@ -41,7 +41,7 @@ def evalGlobals? : Store H → Frame → List CGlobalType → List Expr →
   | _, _, _, _ => none
 
 /-- Computable `$evalexprs`: every value must be a reference. -/
-def evalExprs? : Store H → Frame → List Expr → Option (Store H × Frame × List Ref)
+def evalExprs? : Store H R → Frame → List Expr → Option (Store H R × Frame × List Ref)
   | s, f, [] => some (s, f, [])
   | s, f, e :: es =>
     match ev s f e with
@@ -52,7 +52,8 @@ def evalExprs? : Store H → Frame → List Expr → Option (Store H × Frame ×
     | _ => none
 
 /-- Computable `$evalexprss`. -/
-def evalExprss? : Store H → Frame → List (List Expr) → Option (Store H × Frame × List (List Ref))
+def evalExprss? : Store H R → Frame → List (List Expr) →
+    Option (Store H R × Frame × List (List Ref))
   | s, f, [] => some (s, f, [])
   | s, f, es :: ess =>
     match evalExprs? ev s f es with
@@ -63,7 +64,8 @@ def evalExprss? : Store H → Frame → List (List Expr) → Option (Store H × 
       | some (s'', f'', rss) => some (s'', f'', rs :: rss)
 
 /-- Computable `$instantiate`, following `Instantiate.run`. -/
-def instantiate? (s : Store H) (m : Module) (xas : List ExternAddr) : Option (Config H) :=
+def instantiate? [MemRep R] (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Config H R) :=
   if m.elems.length ≤ 2 ^ 32 ∧ m.data.length ≤ 2 ^ 32 ∧
       (∀ d ∈ m.data, d.bytes.size < 2 ^ 32) ∧ (∀ e ∈ m.elems, e.init.length < 2 ^ 32) then
     match evalGlobals? ev s ⟨[], ModuleInst.initial s m xas⟩

@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Wasm.Execution.Core.Step
+public import Silmaril.Wasm.Execution.MemRep.Defs
 
 @[expose] public section
 
@@ -53,30 +54,32 @@ theorem allocTypes_eq {rts : List RecType} {dts : List DefType} (h : TypesOk {} 
     allocTypes rts = dts := by
   simpa [allocTypes] using allocTypes_foldl_eq h
 
-def allocTag (s : Store H) (d : DefType) : Store H × Nat :=
+def allocTag {R : Type} (s : Store H R) (d : DefType) : Store H R × Nat :=
   ({ s with tags := s.tags ++ [⟨d⟩] }, s.tags.length)
 
-def allocGlobal (s : Store H) (g : CGlobalType) (v : Val) : Store H × Nat :=
+def allocGlobal {R : Type} (s : Store H R) (g : CGlobalType) (v : Val) : Store H R × Nat :=
   ({ s with globals := s.globals ++ [⟨g, v⟩] }, s.globals.length)
 
-def allocMem (s : Store H) (m : MemoryType) : Store H × Nat :=
-  ({ s with mems := s.mems ++ [⟨m, ByteArray.mk (Array.replicate (m.limits.min.val * Memory.pageSize) 0)⟩] },
+def allocMem {R : Type} [MemRep R] (s : Store H R) (m : MemoryType) : Store H R × Nat :=
+  ({ s with mems := s.mems ++ [⟨m, MemRep.zeros (m.limits.min.val * Memory.pageSize)⟩] },
     s.mems.length)
 
-def allocTable (s : Store H) (t : CTableType) (r : Ref) : Store H × Nat :=
+def allocTable {R : Type} (s : Store H R) (t : CTableType) (r : Ref) : Store H R × Nat :=
   ({ s with tables := s.tables ++ [⟨t, List.replicate t.limits.min.val r⟩] }, s.tables.length)
 
-def allocFunc (s : Store H) (d : DefType) (code : FuncCode H) (m : ModuleInst) : Store H × Nat :=
+def allocFunc {R : Type} (s : Store H R) (d : DefType) (code : FuncCode H) (m : ModuleInst) :
+    Store H R × Nat :=
   ({ s with funcs := s.funcs ++ [⟨d, m, code⟩] }, s.funcs.length)
 
-def allocData (s : Store H) (bytes : ByteArray) : Store H × Nat :=
+def allocData {R : Type} (s : Store H R) (bytes : ByteArray) : Store H R × Nat :=
   ({ s with datas := s.datas ++ [⟨bytes⟩] }, s.datas.length)
 
-def allocElem (s : Store H) (rt : CRefType) (refs : List Ref) : Store H × Nat :=
+def allocElem {R : Type} (s : Store H R) (rt : CRefType) (refs : List Ref) : Store H R × Nat :=
   ({ s with elems := s.elems ++ [⟨rt, refs⟩] }, s.elems.length)
 
 /-- Allocate a list, threading the store (`$alloc*s`). -/
-def allocMany {α : Type} (alloc : Store H → α → Store H × Nat) : Store H → List α → Store H × List Nat
+def allocMany {R α : Type} (alloc : Store H R → α → Store H R × Nat) :
+    Store H R → List α → Store H R × List Nat
   | s, [] => (s, [])
   | s, x :: xs =>
     let (s₁, a) := alloc s x
@@ -106,8 +109,9 @@ def allocExport? (mi : ModuleInst) (e : Export) : Option ExportInst :=
 
 /-- `$allocmodule(s, module, externaddr*, val_G*, ref_T*, (ref_E*)*)`. Out-of-range
 type or export indices (impossible for valid modules) make it `none`. -/
-def allocModule? (s : Store H) (m : Module) (xas : List ExternAddr) (valsG : List Val)
-    (refsT : List Ref) (refsE : List (List Ref)) : Option (Store H × ModuleInst) := do
+def allocModule? {R : Type} [MemRep R] (s : Store H R) (m : Module) (xas : List ExternAddr)
+    (valsG : List Val) (refsT : List Ref) (refsE : List (List Ref)) :
+    Option (Store H R × ModuleInst) := do
   let dts := allocTypes m.types
   let close {k : TKind} (t : Ty k) : Ty k := t.substAll (dts.map .dt)
   let tagTypes ← m.tags.mapM fun x => dts[x.toNat]?
@@ -182,7 +186,8 @@ inductive EvalExprss (P : Profile) (host : HostSemantics H) :
       EvalExprss P host s f (es :: ess) s'' f'' (rs :: rss)
 
 /-- The provisional module instance `moduleinst_0` used to evaluate initializers. -/
-def ModuleInst.initial (s : Store H) (m : Module) (xas : List ExternAddr) : ModuleInst :=
+def ModuleInst.initial {R : Type} (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    ModuleInst :=
   { types := allocTypes m.types, globals := ExternAddr.globals xas,
     funcs := ExternAddr.funcs xas ++ (List.range m.funcs.length).map (s.funcs.length + ·) }
 
