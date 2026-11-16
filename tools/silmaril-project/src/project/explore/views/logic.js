@@ -51,6 +51,7 @@
     s.textContent =
       ".lg-tabs { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 10px; } .lg-tabs a { border:1px solid var(--line); border-radius:4px; padding:2px 8px; text-decoration:none; background:var(--panel); } " +
       ".lg-tabs a.on { background:var(--accent); color:#fff; border-color:var(--accent); } .lg-tabs a span { color:inherit; opacity:.75; } " +
+      ".lg-proved { color:#137333; font-weight:600; white-space:nowrap; } " +
       ".lg-views { display:inline-flex; margin-right:10px; } .lg-views a { border-radius:0; } .lg-views a:first-child { border-radius:4px 0 0 4px; } .lg-views a:last-child { border-radius:0 4px 4px 0; border-left:0; } " +
       ".pill { font-size:11px; border:1px solid var(--line); border-radius:8px; padding:0 5px; white-space:nowrap; } " +
       "#lgwrap { display:flex; gap:12px; height:calc(100vh - 230px); min-height:440px; } " +
@@ -85,8 +86,27 @@
     const factsOf = new Map();
     for (const f of facts) { const k = f.kind + ":" + f.edge; if (!factsOf.has(k)) factsOf.set(k, []); factsOf.get(k).push(f); }
     const tag = (kind) => (r) => Object.assign(r, { kind, id: kind + ":" + r.name, facts: factsOf.get(kind + ":" + r.name) || [] });
+    const { consequence, consRel } = await loadConsequence(ctx);
     return { institution: institutions.map(tag("institution")), room: rooms.map(tag("room")), comorphism: comorphisms.map(tag("comorphism")),
-      morphism: morphisms.map(tag("morphism")), corridor: corridors.map(tag("corridor")), kinds };
+      morphism: morphisms.map(tag("morphism")), corridor: corridors.map(tag("corridor")), kinds, consequence, consRel };
+  }
+  // The consequence systems of the logics: those over a registered room (Lean checked the room and,
+  // for a semantic reading, that the system is the room's consequence) and those registered with
+  // the logic graph (`logic.consequence.*`), with the standard problems relating them.
+  async function loadConsequence(ctx) {
+    if (!has("consequence_systems")) return { consequence: [], consRel: [] };
+    const consequence = await ctx.q("SELECT name, title, doc, reading, room, room_at, room_term, room_lift, decl, module, contexts, conclusions " +
+      "FROM consequence_systems WHERE room IS NOT NULL OR name LIKE 'logic.consequence.%' ORDER BY name LIMIT 2000").catch(() => []);
+    if (!consequence.length || !has("consequence_problems")) return { consequence, consRel: [] };
+    const marks = consequence.map(() => "?").join(",");
+    const rows = await ctx.q(`SELECT problem, shape, role, system, summary, title FROM consequence_problems WHERE problem IN ` +
+      `(SELECT problem FROM consequence_problems WHERE system IN (${marks})) ORDER BY problem, pos LIMIT 5000`, consequence.map((c) => c.name)).catch(() => []);
+    const by = new Map();
+    for (const r of rows) {
+      if (!by.has(r.problem)) by.set(r.problem, { problem: r.problem, shape: r.shape.replace(/^silmaril\.shapes\.consequence\./, ""), summary: r.summary, title: r.title });
+      by.get(r.problem)[r.role] = r.system;
+    }
+    return { consequence, consRel: [...by.values()] };
   }
   const nodeKind = (k) => k === "corridor" ? "room" : "institution";
   const label = (r) => r.title || short(r.name);
@@ -105,7 +125,8 @@
     const cur = on === "logic-table" ? "logics" : on;
     const items = [["institutions", "Institutions" + n("institution")],
       ["comorphisms", "Comorphisms" + n("comorphism")], ["morphisms", "Morphisms" + n("morphism")], ["rooms", "Rooms" + n("room")],
-      ["corridors", "Corridors" + n("corridor")], ["logic-coverage", "Coverage"]];
+      ["corridors", "Corridors" + n("corridor")],
+      ["logic-consequence", "Consequence systems" + (d && d.consequence ? ` <span>${d.consequence.length}</span>` : "")], ["logic-coverage", "Coverage"]];
     return `<nav class="lg-tabs" aria-label="logic graph"><span class="lg-views" role="tablist" aria-label="view the logic graph as">` +
       views.map(([id, t, href]) => `<a role="tab" href="${href}" id="lg-tab-${id}" aria-selected="${id === cur}"${id === cur ? ' class="on" aria-current="page"' : ""}>${t}</a>`).join("") +
       `</span>` + items.map(([id, t]) => `<a href="#/${id}"${id === cur ? ' class="on" aria-current="page"' : ""}>${t}</a>`).join("") + `</nav>`;
@@ -238,6 +259,12 @@
         if (rs.length) rows.push(["rooms", rs.map((x) => rec("room", x.name) + ` <span class="muted">at ${ui.esc(x.signature)}</span>`).join("<br>")]);
       }
       if (kind === "institution" || kind === "room") {
+        const rooms = kind === "room" ? new Set([r.name]) : new Set(d.room.filter((x) => x.institution === r.name).map((x) => x.name));
+        const cs = d.consequence.filter((c) => rooms.has(c.room));
+        if (cs.length) rows.push(["consequence systems", cs.map((c) => consLink(c) + ` <span class="muted">${ui.esc(c.reading || "")}${c.room_at ? " at " + ui.esc(c.room_at) : ""}${kind === "institution" ? " over " + ui.esc(c.room) : ""}</span>`).join("<br>") +
+          ` <br><a href="#/logic-consequence/">all consequence systems of the logics</a>`]);
+      }
+      if (kind === "institution" || kind === "room") {
         const out = EDGES.flatMap((k) => d[k].filter((e) => e.src === r.name && nodeKind(k) === kind).map((e) => `${edgeSwatch(k)} ${rec(k, e.name)} → ${rec(kind, e.dst)}`));
         const inc = EDGES.flatMap((k) => d[k].filter((e) => e.dst === r.name && nodeKind(k) === kind).map((e) => `${edgeSwatch(k)} ${rec(kind, e.src)} → ${rec(k, e.name)}`));
         rows.push(["outgoing", out.join("<br>") || '<span class="muted">none</span>'], ["incoming", inc.join("<br>") || '<span class="muted">none</span>']);
@@ -277,6 +304,58 @@
       } });
     return { html: tabs("logics", d, params(arg).p.get("q") || "") + `<h2>Logic graph: every node and edge (${all.length})</h2>
 <p class="muted">Search by any column (words are ANDed); click a header to sort. Edges go from → to as Lean writes their type.</p>` + legend() + g.html, init: g.init };
+  }
+
+  // ---------- consequence systems of the logics ----------
+  const consLink = (c) => `<a href="#/system/${encodeURIComponent(c.name)}">${ui.esc(c.title || c.name)}</a>`;
+  const READING = { derivability: "derivability (a proof system)", semantic: "semantic consequence (Lean checked: the room's consequence)" };
+  const RELATION = { sound_at: "is sound for", tarski_closed: "satisfies identity, weakening and cut", complete_at: "is complete for", translates_at: "translates into" };
+  const status = (r) => r.summary === "THM" ? `<span class="lg-proved" title="proved for every context and conclusion">✓ proved</span>` : ui.esc(r.summary || "open");
+  async function consequencePage(arg, ctx) {
+    style();
+    if (!has("institutions")) return tabs("logic-consequence") + missing;
+    const d = await load(ctx);
+    const byName = new Map(d.consequence.map((c) => [c.name, c]));
+    const roomOf = new Map(d.room.map((r) => [r.name, r]));
+    const sys = (n) => byName.has(n) ? consLink(byName.get(n)) : `<a href="#/system/${encodeURIComponent(n)}">${ui.esc(n)}</a>`;
+    const logic = (c) => {
+      if (!c.room) return '<span class="muted">none: not over a registered room\'s sentences</span>';
+      const rm = roomOf.get(c.room);
+      return rec("room", c.room) + (c.room_at ? ` <span class="muted">at</span> ${code(c.room_at)}` : "") +
+        (rm && rm.institution ? ` <span class="muted">fiber of</span> ${rec("institution", rm.institution)}` : "") + (c.room_lift ? ` <span class="muted">(sentences lifted by ULift)</span>` : "");
+    };
+    // `sound_at` S T is soundness when S is a derivability and T is not (a semantic consequence, or
+    // HOL's sequent semantics, which is over propositions rather than a room's sentences); between two
+    // derivabilities it says that every consequence of S is one of T
+    const relName = (r) => r.shape !== "sound_at" ? (RELATION[r.shape] || r.shape)
+      : (byName.get(r.S) || {}).reading === "derivability" && (byName.get(r.T) || {}).reading !== "derivability" ? "is sound for" : "is included in";
+    const relOf = (c) => d.consRel.filter((r) => r.S === c.name || r.T === c.name).map((r) =>
+      r.S === c.name ? `${ui.esc(relName(r))}${r.T ? " " + sys(r.T) : ""} ${status(r)}` : `${sys(r.S)} ${ui.esc(relName(r))} it ${status(r)}`).join("<br>");
+    const q = params(arg).p.get("q") || "";
+    const g = grid("lg-cons", d.consequence, [
+      { key: "name", label: "system", html: consLink, text: (c) => `${c.name} ${c.title || ""}` },
+      { key: "reading", label: "reading", html: (c) => c.reading ? ui.esc(c.reading) : '<span class="muted">—</span>' },
+      { key: "room", label: "over the sentences of", html: logic, text: (c) => `${c.room || ""} ${c.room_at || ""}` },
+      { key: "conclusions", label: "sentences", html: (c) => code(c.conclusions) },
+      { key: "rel", label: "proved relations", html: relOf, text: (c) => d.consRel.filter((r) => r.S === c.name || r.T === c.name).map((r) => r.shape).join(" ") },
+      { key: "decl", label: "Lean definition", html: (c) => code(c.decl) },
+    ], { q, empty: "No consequence system of a logic is registered.",
+      onFilter: (v) => history.replaceState(null, "", "#/logic-consequence/" + (v ? "?q=" + encodeURIComponent(v) : "")) });
+    const rels = d.consRel.filter((r) => r.S);
+    const relTable = rels.length ? `<div class="tablebox"><table class="lg-grid" id="lg-cons-rel"><thead><tr><th>system</th><th>relation</th><th>to</th><th>status</th><th>problem</th></tr></thead><tbody>` +
+      rels.map((r) => `<tr><td>${sys(r.S)}</td><td>${ui.esc(relName(r))}</td><td>${r.T ? sys(r.T) : ""}</td><td>${status(r)}</td><td>${ui.link("problem", r.problem)}</td></tr>`).join("") +
+      `</tbody></table></div>` : `<p class="muted">No relation is stated.</p>`;
+    const html = tabs("logic-consequence", d) + `<h2>Consequence systems of the logics (${d.consequence.length})</h2>
+<p style="max-width:860px">A consequence system relates a list of premises to a conclusion, <code>Γ ⊢ φ</code>. A logic has two kinds:
+<b>derivability</b>, a proof system, and <b>semantic consequence</b>, truth in every model of the premises. They are separate
+systems, and the only relation between them shown here is a proved one: <i>soundness</i>, derivability below semantic
+consequence. "Is included in" relates two systems of one kind (every consequence of ZF is one of ZFC). No completeness is claimed. Each system names the registered room whose sentences it relates; Lean checks the
+sentences and, for a semantic reading, that the system <i>is</i> the room's consequence (<code>roomSeq</code>, or
+<code>roomTheorySeq</code> over the models of a theory such as PA or ZFC).</p>
+<p class="muted" style="max-width:860px">Metamath's disjoint-variable conditions are part of its sentences (assertion frames), not premises.
+The context of an MLTT judgment <code>Γ ⊢ J</code> is part of the judgment: the premises of these systems are whole judgments.
+See <a href="#/systems">Systems</a> for every registered consequence system.</p>` + g.html + `<h3>Proved relations</h3>` + relTable;
+    return { html, init: g.init };
   }
 
   // ---------- the graph ----------
@@ -676,6 +755,7 @@ Until a family lands here, nothing in it is registered, and nothing here claims 
   Explorer.registerView({ id: "logic-table", title: "Logic table", tab: "logics", render: table });
   Explorer.registerView({ id: "logic-graph", title: "Logic graph", tab: "logics", render: graphView });
   Explorer.registerView({ id: "logic-coverage", title: "Logic coverage", tab: "logics", render: coverage });
+  Explorer.registerView({ id: "logic-consequence", title: "Consequence systems of the logics", tab: "logics", render: consequencePage });
   for (const k of [...NODES, ...EDGES]) {
     Explorer.registerView({ id: KIND[k].plural, title: KIND[k].title, tab: "logics", render: registry(k) });
     Explorer.registerView({ id: k, title: k, tab: "logics", render: detail(k) });

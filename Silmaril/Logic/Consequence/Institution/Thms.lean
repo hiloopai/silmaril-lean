@@ -10,7 +10,7 @@ import Silmaril.Proofs.Logic.Consequence.Institution.Basic
 
 **Agreement.** `roomSeq_iff_entails`: `roomSeq R Γ φ` is `Room.Entails` on the members of `Γ`
 (so `roomSeq` is `roomSys` restricted to finite contexts). `roomMulti_eq_valid`: `roomMulti R` is
-`Gentzen.Valid R.Sat`. `roomMulti_single`: its singleton-succedent part is `roomSeq R`.
+`Gentzen.Valid R.Sat`. `roomMulti_single_eq`: its singleton-succedent part is `roomSeq R`.
 `listSys_semanticER`: the semantic entailment relation of `R` gives `roomSeq R` again.
 
 **Closure (exactly these rules).**
@@ -75,7 +75,7 @@ theorem roomMulti_eq_valid : roomMulti R = Gentzen.Valid R.Sat := rfl
 theorem roomMulti_closed : Gentzen.Closed Gentzen.defaultRules (roomMulti R) :=
   Gentzen.valid_closed
 
-theorem roomMulti_single : (roomMulti R).single = roomSeq R :=
+theorem roomMulti_single_eq : (roomMulti R).single = roomSeq R :=
   funext fun _ => funext fun _ => propext Gentzen.entails_iff_valid.symm
 
 theorem listSys_semanticER : ER.listSys R.semanticER = roomSeq R := rfl

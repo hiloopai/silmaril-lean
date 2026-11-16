@@ -352,6 +352,12 @@ met, which is not the same as true. Constructions name their operands on the sys
       ["construction", ui.esc(OPS[c.op] || c.op)],
       ["Lean definition", code(c.decl) + ` <span class="muted">in ${ui.esc(c.module)}</span>${src ? " " + src : ""}`],
     ];
+    if (c.reading) rows.push(["reading", c.reading === "semantic"
+      ? "semantic consequence <span class=\"muted\">(Lean checked that it is the room's consequence)</span>"
+      : "derivability <span class=\"muted\">(a proof system on the room's sentences; related to semantic consequence only by proved soundness)</span>"]);
+    if (c.room) rows.push(["over the sentences of", `<a href="#/room/${encodeURIComponent(c.room)}">${ui.esc(c.room)}</a>` +
+      (c.room_at ? ` <span class="muted">at</span> ${code(c.room_at)}` : "") + (c.room_lift ? ` <span class="muted">(sentences lifted by ULift)</span>` : "") +
+      ` <span class="muted">— <a href="#/logic-consequence/">consequence systems of the logics</a></span>`]);
     if (c.op === "artifact" && c.value) rows.push(...await artifactRows(c, ctx));
     if (c.witness) rows.push(["witness system", term(c.witness) + ` <span class="muted">(a type of derivations of each Γ ⊢ φ)</span>`]);
     if (operands.length) rows.push(["operands", operands.map((o) => sysLink(o.operand)).join(", ")]);

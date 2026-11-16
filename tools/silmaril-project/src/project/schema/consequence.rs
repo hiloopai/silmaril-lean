@@ -42,10 +42,7 @@ pub const CONSEQUENCE_SHAPES: &[(&str, &[&str])] = &[
         "silmaril.shapes.consequence.complete_within_at",
         &["type", "type", "S", "T", "mu", "b", "ctx", "phi"],
     ),
-    (
-        "silmaril.shapes.consequence.tarski_closed",
-        &["type", "S"],
-    ),
+    ("silmaril.shapes.consequence.tarski_closed", &["type", "S"]),
     (
         "silmaril.shapes.consequence.gentzen_closed",
         &["type", "rules", "S"],

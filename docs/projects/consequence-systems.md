@@ -60,6 +60,13 @@ system with `op := decl`. Lean fills `decl`, `contexts`, `conclusions` and `term
 constant as instance arguments print it, which is how the database relates problems to
 systems). `title`, `doc` and `source` (a `references.bib` key) are kept as written.
 
+**Over a logic's room.** `(room := R) (room_at := "a …") (reading := semantic | derivability)`
+places a system over the sentences of a registered room (`docs/projects/logic-graph.md`). Lean
+checks that the conclusions are `R.Sen` (or that `R.Sen` is `ULift` of them) and the contexts
+lists of them. With `reading := semantic` Lean also checks that the system is the room's
+consequence, `roomSeq R` or `roomTheorySeq R T`. The explorer lists these systems at
+`#/logic-consequence/`.
+
 ## Systems of registered artifacts
 
 `op := artifact` mirrors `language … (op := artifact)`. An interpretation is its own record:
@@ -243,6 +250,7 @@ once).
 | `translates_at S T f g Γ φ` | `S Γ φ → T (f Γ) (g φ)` | `S ≤ T.pullback f g`: the translation preserves consequence | | | a consequence not preserved |
 | `complete_within_at S T μ b Γ φ` | `μ Γ φ ≤ b → T Γ φ → S Γ φ` | complete on `μ ≤ b` | | | a counterexample within the bound |
 | `gentzen_closed rs S` (closed) | `Gentzen.Closed rs S` | closed under `rs` | | false: not closed | |
+| `tarski_closed S` (closed) | `Structural.Closed tarskiRules S` | identity, weakening along list inclusion and cut | | false: one of them fails | |
 | `reflects_at S T f g Γ φ` | `T (f Γ) (g φ) → S Γ φ` | `T.pullback f g ≤ S`: the translation reflects consequence | | | a translated consequence not reflected |
 
 (all named `silmaril.shapes.consequence.<shape>`; THM of `translates_at S T f g` is exactly

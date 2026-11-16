@@ -366,7 +366,8 @@ silmaril group silmaril.shapes.consequence (title := "The standard consequence s
     silmaril.shapes.consequence.context_free, silmaril.shapes.consequence.conclusion_free,
     silmaril.shapes.consequence.supported_ax, silmaril.shapes.consequence.supported_c,
     silmaril.shapes.consequence.ctx_perm_inv, silmaril.shapes.consequence.ctx_set_inv,
-    silmaril.shapes.consequence.ctx_up_closed, silmaril.shapes.consequence.ctx_append_extensive])
+    silmaril.shapes.consequence.ctx_up_closed, silmaril.shapes.consequence.ctx_append_extensive,
+    silmaril.shapes.consequence.tarski_closed])
 
 silmaril group silmaril.selftest.consequence (title := "Consequence systems")
   (children := [silmaril.selftest.consequence.p_derives_r,

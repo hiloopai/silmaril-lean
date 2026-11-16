@@ -150,6 +150,34 @@ try {
     await p.keyboard.press("Escape");
   }
 
+  // consequence systems of the logics: a tab, a table of systems with their rooms and readings, and the
+  // proved relations (soundness of derivability for semantic consequence, inclusions, the structural laws)
+  await open("/logics/");
+  check(await p.evaluate(() => !!document.querySelector('.lg-tabs a[href="#/logic-consequence"]')), "the logic pages link the consequence systems");
+  await open("/logic-consequence/");
+  const cs = await rows("#lg-cons");
+  const csText = cs.map((r) => r.join(" | ")).join("\n");
+  check(cs.length >= 18, `consequence systems of the logics (${cs.length})`);
+  for (const t of ["PA (peano.mm)", "ZF (set.mm)", "ZFC (set.mm)", "Metamath over set.mm's grammar", "HOL: the kernel", "Extensional MLTT", "Intensional MLTT"])
+    check(csText.includes(t), `the table lists ${t}`);
+  check(cs.filter((r) => r[1] === "semantic").every((r) => /room/.test(r[2])), "every semantic reading names its room");
+  const rel = await rows("#lg-cons-rel");
+  const sound = rel.filter((r) => r[1] === "is sound for");
+  check(sound.length >= 9 && sound.every((r) => /proved/.test(r[3])), `soundness relations, all proved (${sound.length})`);
+  check(rel.some((r) => /ZF \(set\.mm\): derivability/.test(r[0]) && r[1] === "is included in" && /ZFC \(set\.mm\): derivability/.test(r[2])), "ZF's consequences are ZFC's (an inclusion, not soundness)");
+  check(!rel.some((r) => /complete/.test(r[1])), "no completeness is claimed");
+  await p.fill("#lg-cons-q", "zfc");
+  await p.waitForTimeout(200);
+  check(/q=zfc/.test(await p.evaluate(() => location.hash)) && (await rows("#lg-cons")).length >= 2, "the search is kept in the URL");
+  await shot("logic-consequence");
+  await open("/system/" + encodeURIComponent("logic.consequence.metamath.zfc.entails"));
+  const sysText = await p.textContent("main");
+  check(/semantic consequence/.test(sysText) && /logic\.institution\.metatheory\.metamath\.room/.test(sysText) && /Silmaril\.Consequence\.Metamath\.zf/.test(sysText),
+    "a system's page shows its reading and its room");
+  await open("/room/" + encodeURIComponent("logic.institution.metatheory.metamath.room"));
+  const roomText = await p.textContent("main");
+  check(/consequence systems/.test(roomText) && /PA \(peano\.mm\)/.test(roomText) && /ZFC \(set\.mm\)/.test(roomText), "the Metamath room lists its consequence systems");
+
   // coverage
   await open("/logic-coverage/");
   const cov = await p.textContent("main");

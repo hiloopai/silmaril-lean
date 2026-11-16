@@ -48,7 +48,8 @@ try {
   check(byName[S + "raw_or_hyp"][2] === "union of 2 systems" && byName[S + "gap"][2] === "diff of 2 systems",
     "the index names a construction without its operands");
   check(/^list of Consequence\.Atom → other Consequence\.Atom( |$)/.test(byName[S + "raw"][3]) &&
-    await p.evaluate(() => document.querySelector("#systems-table tbody tr td:nth-child(4) code").title === "ProjectSelfTest.Consequence.Atom"),
+    await p.evaluate((n) => [...document.querySelectorAll("#systems-table tbody tr")].find((tr) => tr.cells[0].textContent.trim() === n)
+      .querySelector("td:nth-child(4) code").title === "ProjectSelfTest.Consequence.Atom", S + "raw"),
     `the typed shape: list contexts, a scalar conclusion, compact, full term as the title (${byName[S + "raw"][3]})`);
   check(/^list of Consequence\.Signed Unit signed → list of Consequence\.Signed Unit signed raw sequent$/.test(byName[S + "multi.lit"][3]),
     `multi.lit: signed lists on both sides, a raw sequent (${byName[S + "multi.lit"][3]})`);

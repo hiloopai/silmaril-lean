@@ -55,6 +55,15 @@ certificate is what ties the system to a Lean module (`artifactSystem_of_is`). T
 environment occur in `I`'s definition is a sanity check of the metadata, not a proof that the
 definition models execution.
 
+**Rooms and readings.** `(room := R) (room_at := "a …") (reading := semantic | derivability)`
+places a system in the logic graph: `R` is a registered `room` record (applied to `room_at` when
+it is a family). Lean checks that the system's conclusions are `R.Sen`, or that `R.Sen` is
+`ULift` of them, and that its contexts are lists of them. With `reading := semantic` Lean also
+checks that the system is `roomSeq R` or `roomTheorySeq R T` (pulled back along `ULift.up` when
+lifted). `derivability` is a label. Soundness of a derivability for a semantic consequence is a
+problem (`silmaril.shapes.consequence.sound_at`), never this field. Lean fills `room_term` and
+`room_lift`.
+
 The fields `title`, `doc` and `source` (a citation key of `references.bib`, or a section of a
 standard) are kept as written.
 
