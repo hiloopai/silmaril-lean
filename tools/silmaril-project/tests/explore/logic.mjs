@@ -154,7 +154,7 @@ try {
   // proved relations (soundness of derivability for semantic consequence, inclusions, the structural laws)
   await open("/logics/");
   check(await p.evaluate(() => !!document.querySelector('.lg-tabs a[href="#/logic-consequence"]')), "the logic pages link the consequence systems");
-  await open("/logic-consequence/");
+  await open("/logic-consequence/"); await p.waitForSelector("#lg-cons-rel", { timeout: 60000 });
   const cs = await rows("#lg-cons");
   const csText = cs.map((r) => r.join(" | ")).join("\n");
   check(cs.length >= 18, `consequence systems of the logics (${cs.length})`);
@@ -171,10 +171,12 @@ try {
   check(/q=zfc/.test(await p.evaluate(() => location.hash)) && (await rows("#lg-cons")).length >= 2, "the search is kept in the URL");
   await shot("logic-consequence");
   await open("/system/" + encodeURIComponent("logic.consequence.metamath.zfc.entails"));
+  await p.waitForFunction(() => /over the sentences of/.test(document.querySelector("main").textContent), null, { timeout: 60000 });
   const sysText = await p.textContent("main");
   check(/semantic consequence/.test(sysText) && /logic\.institution\.metatheory\.metamath\.room/.test(sysText) && /Silmaril\.Consequence\.Metamath\.zf/.test(sysText),
     "a system's page shows its reading and its room");
   await open("/room/" + encodeURIComponent("logic.institution.metatheory.metamath.room"));
+  await p.waitForFunction(() => /consequence systems/.test(document.querySelector("main").textContent), null, { timeout: 60000 });
   const roomText = await p.textContent("main");
   check(/consequence systems/.test(roomText) && /PA \(peano\.mm\)/.test(roomText) && /ZFC \(set\.mm\)/.test(roomText), "the Metamath room lists its consequence systems");
 
