@@ -561,8 +561,13 @@ def objLine (kvs : List (String × Json)) : String :=
 def linesArray (items : Array String) : String :=
   if items.isEmpty then "[]" else "[\n    " ++ ",\n    ".intercalate items.toList ++ "\n  ]"
 
+/-- The keys whose values are lists of declarations (the evidence of a catalogue entry, the
+declarations of an exclusion), located like constant-valued keys. -/
+def declListKeys : List String := ["evidence", "decls"]
+
 /-- The declaration ranges of every declaration the dump names (a problem's or solution's
-`decl`, and a record's `decl`, `proof`, `rel`, `abi` or `environment` that is a constant), one
+`decl`; a record's `decl`, `proof`, `rel`, `abi` or `environment` that is a constant; the
+declarations of its `evidence` and `decls` lists; the `proof` of each of its `facts`), one
 object per line, sorted by name: `decl` (as the dump spells it), `module`, then Lean's
 `DeclarationRanges` (`range`, then `selectionRange`; lines 1-based, columns in codepoints,
 0-based). A declaration without ranges is omitted. Locations are presentation data for source
@@ -571,10 +576,20 @@ def dumpLocations (env : Environment) : MetaM (Array String) := do
   let mut named : Std.HashMap String Name := {}
   for p in problems env do named := named.insert (toString p.decl) p.decl
   for s in solutions env do named := named.insert (toString s.decl) s.decl
+  let add (named : Std.HashMap String Name) (s : String) : Std.HashMap String Name :=
+    if env.contains s.toName then named.insert s s.toName else named
   for r in records env do
     for (k, v) in r.fields do
-      if let .str s := v then
-        if constKeys.contains k && env.contains s.toName then named := named.insert s s.toName
+      match v with
+      | .str s => if constKeys.contains k then named := add named s
+      -- lists of declarations (`evidence`, `decls`) and the theorems of `facts`
+      | .arr xs =>
+        for x in xs do
+          match x with
+          | .str s => if declListKeys.contains k then named := add named s
+          | .obj _ => if let .ok (.str s) := x.getObjVal? "proof" then named := add named s
+          | _ => pure ()
+      | _ => pure ()
   (named.toArray.qsort (·.1 < ·.1)).filterMapM fun (s, n) => do
     let some r ← findDeclarationRanges? n | return none
     let pos (k : String) (p : Position) : List (String × Json) :=

@@ -320,12 +320,26 @@ fn module_files(dir: &Path, db: &Path) -> Result<std::collections::BTreeMap<Stri
     let conn =
         rusqlite::Connection::open_with_flags(db, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
             .into_diagnostic()?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT module FROM problems UNION SELECT module FROM answers \
-             UNION SELECT module FROM objects WHERE module IS NOT NULL",
-        )
-        .into_diagnostic()?;
+    // Every module the page may show a declaration of: those of problems, answers and objects, and
+    // the declaring module of every located declaration (`decl_locations`) and audited
+    // declaration (`logic_audit`), which may differ from the module of the record that names it.
+    let has = |t: &str| -> bool {
+        conn.query_row("SELECT 1 FROM sqlite_master WHERE name = ?1", [t], |_| {
+            Ok(())
+        })
+        .is_ok()
+    };
+    let mut sql = String::from(
+        "SELECT module FROM problems UNION SELECT module FROM answers \
+         UNION SELECT module FROM objects WHERE module IS NOT NULL",
+    );
+    if has("decl_locations") {
+        sql.push_str(" UNION SELECT module FROM decl_locations");
+    }
+    if has("logic_audit") {
+        sql.push_str(" UNION SELECT decl_module FROM logic_audit");
+    }
+    let mut stmt = conn.prepare(&sql).into_diagnostic()?;
     let modules = stmt
         .query_map([], |r| r.get::<_, Option<String>>(0))
         .into_diagnostic()?
@@ -1591,6 +1605,44 @@ pub fn run(command: Command) -> Result<()> {
 mod tests {
     use super::schema::*;
     use super::*;
+
+    /// The page's module files include the declaring modules of located declarations: a record
+    /// registered in one module may name a declaration of another (the explorer's source view of
+    /// `Silmaril.SSA.LambdaRTL.Institution.rtlObs`, registered in `Silmaril.LogicGraph.Nodes.SSA.Defs`).
+    #[test]
+    fn module_files_include_declaring_modules() {
+        let dir = tempfile::tempdir().unwrap();
+        for m in ["Reg/Nodes.lean", "Lib/Inst/Defs.lean", "Lib/Proofs/X.lean"] {
+            let f = dir.path().join(m);
+            fs::create_dir_all(f.parent().unwrap()).unwrap();
+            fs::write(&f, "").unwrap();
+        }
+        let db = dir.path().join("p.sqlite");
+        let c = rusqlite::Connection::open(&db).unwrap();
+        c.execute_batch(
+            "CREATE TABLE problems(module TEXT); CREATE TABLE answers(module TEXT); \
+             CREATE TABLE objects(module TEXT); INSERT INTO objects VALUES ('Reg.Nodes'); \
+             CREATE TABLE decl_locations(decl TEXT, module TEXT); \
+             INSERT INTO decl_locations VALUES ('Lib.Inst.inst', 'Lib.Inst.Defs'); \
+             CREATE TABLE logic_audit(decl TEXT, decl_module TEXT); \
+             INSERT INTO logic_audit VALUES ('Lib.x', 'Lib.Proofs.X');",
+        )
+        .unwrap();
+        drop(c);
+        let m = module_files(dir.path(), &db).unwrap();
+        assert_eq!(
+            m.get("Reg.Nodes").map(String::as_str),
+            Some("Reg/Nodes.lean")
+        );
+        assert_eq!(
+            m.get("Lib.Inst.Defs").map(String::as_str),
+            Some("Lib/Inst/Defs.lean")
+        );
+        assert_eq!(
+            m.get("Lib.Proofs.X").map(String::as_str),
+            Some("Lib/Proofs/X.lean")
+        );
+    }
 
     #[test]
     fn write_atomic_writes_through_symlinks() {

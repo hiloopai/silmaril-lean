@@ -6,6 +6,10 @@
 // * the table lists every node and edge and filters and sorts; the five registries list their records, filter,
 //   and link to detail pages with source declarations, endpoints, facts and crosslinks;
 // * the coverage page shows the audit (with omitted declarations), the pinned Hets list and the pending families;
+// * Logics in the navigation opens the table; Table | Graph are tabs (role tablist) carrying the search;
+//   the #/logic-graph and #/logic-table routes keep working;
+// * the source view of a registered declaration, a fact's theorem and a catalogue entry's evidence is
+//   read from the declaration's own module at Lean's range (not from the registering module);
 // * a narrow (phone) viewport stacks the graph and its details; no page error anywhere.
 //   node logic.mjs SITE_DIR [SHOTS_DIR]
 import { spawn } from "node:child_process";
@@ -33,10 +37,27 @@ try {
     [...tr.children].map((td) => td.textContent.trim())), sel);
   const counts = () => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".lg-tabs a")].map((a) => [a.getAttribute("href").slice(2), +(a.querySelector("span") || { textContent: "-1" }).textContent])));
 
+  // the entry: the navigation opens the table; Table | Graph are tabs; the search text goes along
+  await open("/summary");
+  const nav = await p.evaluate(() => [...document.querySelectorAll("#nav a")].map((a) => a.getAttribute("href")));
+  check(nav.includes("#/logics") && !nav.includes("#/logic-graph"), `Logics is in the navigation, opening the table (${nav.filter((h) => /logic/.test(h))})`);
+  await p.click('#nav a[href="#/logics"]'); await settle(); await p.waitForTimeout(300);
+  const entry = await p.evaluate(() => ({ table: !!document.getElementById("lg-all"), graph: !!document.getElementById("lgcy"),
+    tabs: [...document.querySelectorAll('.lg-views [role="tab"]')].map((t) => t.textContent + ":" + t.getAttribute("aria-selected")),
+    list: document.querySelector('.lg-views').getAttribute("role") }));
+  check(entry.table && !entry.graph && entry.list === "tablist" && entry.tabs.join() === "Table:true,Graph:false", `the default view is the table, with Table | Graph tabs ${JSON.stringify(entry)}`);
+  await p.fill("#lg-all-q", "modal"); await p.waitForTimeout(300);
+  check(/#\/logics\/\?q=modal/.test(await p.evaluate(() => location.hash)), "the table's search is in the URL");
+  await p.click("#lg-tab-logic-graph"); await settle(); await p.waitForTimeout(500);
+  check(/#\/logic-graph\/\?q=modal/.test(await p.evaluate(() => location.hash)) && await p.inputValue("#lg-q") === "modal" &&
+    await p.getAttribute("#lg-tab-logic-graph", "aria-selected") === "true", "the Graph tab opens the graph with the same search");
+  await p.click("#lg-tab-logics"); await settle(); await p.waitForTimeout(300);
+  check(await p.inputValue("#lg-all-q") === "modal", "the Table tab returns with the search");
+  await open("/logic-table/");
+  check(await p.evaluate(() => !!document.getElementById("lg-all")) && await p.getAttribute("#lg-tab-logics", "aria-selected") === "true", "the earlier #/logic-table route still opens the table");
+
   // the graph
   await open("/logic-graph/");
-  const nav = await p.evaluate(() => [...document.querySelectorAll("#nav a")].map((a) => a.getAttribute("href")));
-  check(nav.includes("#/logic-graph"), "Logic graph is in the navigation");
   const n = await counts();
   check(n.institutions > 10 && n.comorphisms > 5 && n.morphisms >= 1 && n.rooms >= 1 && n.corridors >= 1, `registry counts ${JSON.stringify(n)}`);
   const g0 = await p.evaluate(() => window.explore.logicGraph);
@@ -79,7 +100,7 @@ try {
   check(await p.evaluate(() => !!document.querySelector("#lgcy canvas")), "zoom and fit keep the canvas");
 
   // the table
-  await open("/logic-table/");
+  await open("/logics/");
   const all = await rows("#lg-all");
   check(all.length === n.institutions + n.rooms + n.comorphisms + n.morphisms + n.corridors, `the table lists every node and edge (${all.length})`);
   await p.fill("#lg-all-q", "morphism"); await p.waitForTimeout(200);
@@ -104,6 +125,30 @@ try {
   }
   await open("/institutions");
   await shot("logic-institutions");
+
+  // the source view: a registered declaration is shown from its own module (Lean's range), not from the
+  // module of the record that registers it; likewise a fact's theorem and a catalogue entry's evidence
+  if (await p.evaluate(() => document.getElementById("source-meta").textContent.trim() !== "null")) {
+    for (const [decl, file] of [["Silmaril.SSA.LambdaRTL.Institution.rtlObs", "Silmaril/SSA/LambdaRTL/Institution/Defs.lean"],
+        ["Silmaril.Logic.Institution.Examples.plToFol_modelExpansive", "Silmaril/Logic/Institution/Examples/Comorphisms.lean"],
+        ["Silmaril.Logic.Algebraic.Initial.Matching.FiniteSortedCompiler.Institution.sourceInst", "Silmaril/Proofs/Logic/Algebraic/InitialMatching/FiniteSortedInstitution.lean"],
+        ["Silmaril.Logic.Metamath.Peano.ZF.ZF0", "Silmaril/Logic/Metamath/Peano/ZFC.lean"]]) {
+      await open("/source/" + encodeURIComponent(decl));
+      await p.waitForFunction(() => !document.querySelector(".lean-src") || !/reading the Lean source/.test(document.querySelector(".lean-src").textContent), null, { timeout: 30000 });
+      const v = await p.evaluate(() => ({ where: (document.querySelector(".src-permalink") || {}).textContent || "", exact: !!document.querySelector(".src-exact"),
+        sel: (document.querySelector(".sl-sel") || {}).textContent || "", text: (document.querySelector(".lean-src") || {}).textContent || "" }));
+      const last = decl.split(".").pop();
+      check(v.where.startsWith(file) && v.exact && v.sel.includes(last) && !/No declaration of/.test(v.text),
+        `source of ${decl}: ${v.where} ${v.exact ? "exact" : "not exact"}; the marked line names ${last}`);
+    }
+    // from the institution's page: its declaration in its own module
+    await open("/institution/" + encodeURIComponent("ssa.lambda_rtl.institution.rtl_obs"));
+    await p.click("main button.srcview"); await p.waitForTimeout(300);
+    await p.waitForFunction(() => { const d = document.querySelector("dialog.dlg .lean-src"); return d && !/reading the Lean source/.test(d.textContent); }, null, { timeout: 30000 });
+    const dv = await p.evaluate(() => ({ where: document.querySelector("dialog.dlg .src-permalink").textContent, exact: !!document.querySelector("dialog.dlg .src-exact") }));
+    check(dv.where.startsWith("Silmaril/SSA/LambdaRTL/Institution/Defs.lean") && dv.exact, `the institution page's "view" shows ${dv.where}`);
+    await p.keyboard.press("Escape");
+  }
 
   // coverage
   await open("/logic-coverage/");

@@ -112,12 +112,16 @@ columns `src`, `dst`), `logic_facts`, `logic_edge_kinds`, `logic_audit`, `hets_l
 `hets_comorphisms`, `logic_pending`; views `logic_edges`, `logic_nodes`, `logic_coverage`,
 `hets_coverage`.
 
-Explorer routes: `#/logic-graph/` (the graph: level, edge-kind, search and isolated-node filters,
-fit, zoom, direction, reset; `#/logic-graph/<kind>:<name>` selects and centres one node or edge,
-and the filters are kept in the URL), `#/logic-table/` (every node and edge, searchable and
-sortable), `#/institutions`, `#/comorphisms`, `#/morphisms`, `#/rooms`, `#/corridors` (the
-registries), `#/<kind>/<name>` (one record, with its source, endpoints, incoming and outgoing
-edges, parallel and opposite edges, facts, fibers and Hets relation), and `#/logic-coverage/`.
+Explorer routes: **Logics** in the navigation opens `#/logics/` (every node and edge as a table,
+searchable and sortable: the default view; `#/logic-table/` is the same view). **Table** and
+**Graph** are tabs over the same data, and the search text goes from one to the other.
+`#/logic-graph/` is the graph (level, edge-kind, search and isolated-node filters, layout, fit,
+zoom, reset); `#/logic-graph/<kind>:<name>` selects and centres one node or edge, and the filters
+are kept in the URL. `#/institutions`, `#/comorphisms`, `#/morphisms`, `#/rooms`, `#/corridors`
+are the registries; `#/<kind>/<name>` is one record (its source, endpoints, incoming and outgoing
+edges, parallel and opposite edges, facts, fibers and Hets relation); `#/logic-coverage/` is the
+coverage. Source views read a declaration from its own module at the range Lean recorded
+(`decl_locations`), whichever module registers it.
 
 ## Checking it
 

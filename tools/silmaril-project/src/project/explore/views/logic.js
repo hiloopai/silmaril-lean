@@ -3,7 +3,7 @@
 // corridors; the five registries; the coverage audit (declarations the registry omits, the pinned
 // Hets logic graph, logic families not yet in this repository).
 //   #/logic-graph/[<kind>:<name>][?level=…&kinds=…&q=…&layout=layered&group=0&isolated=0]   the graph viewer, a selection deep-linked
-//   #/logic-table/[?q=…]                                  every node and edge, searchable and sortable
+//   #/logics/[?q=…]  (also #/logic-table/)                every node and edge, searchable and sortable: the default view
 //   #/institutions #/comorphisms #/morphisms #/rooms #/corridors   the registries
 //   #/institution/<name> … #/corridor/<name>             one record, with its crosslinks
 //   #/logic-coverage                                      the audit
@@ -51,6 +51,7 @@
     s.textContent =
       ".lg-tabs { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 10px; } .lg-tabs a { border:1px solid var(--line); border-radius:4px; padding:2px 8px; text-decoration:none; background:var(--panel); } " +
       ".lg-tabs a.on { background:var(--accent); color:#fff; border-color:var(--accent); } .lg-tabs a span { color:inherit; opacity:.75; } " +
+      ".lg-views { display:inline-flex; margin-right:10px; } .lg-views a { border-radius:0; } .lg-views a:first-child { border-radius:4px 0 0 4px; } .lg-views a:last-child { border-radius:0 4px 4px 0; border-left:0; } " +
       ".pill { font-size:11px; border:1px solid var(--line); border-radius:8px; padding:0 5px; white-space:nowrap; } " +
       "#lgwrap { display:flex; gap:12px; height:calc(100vh - 230px); min-height:440px; } " +
       "#lgcy { flex:1 1 auto; border:1px solid var(--line); background:var(--panel); min-width:0; position:relative; } " +
@@ -94,12 +95,20 @@
     return { sel: decodeURIComponent(i < 0 ? arg : arg.slice(0, i)), p: new URLSearchParams(i < 0 ? "" : arg.slice(i + 1)) };
   };
 
-  function tabs(on, d) {
+  // The navigation of the logic pages: the Table | Graph views of the graph (a tab list; the search
+  // text `q` is carried from one to the other), then the registries and the coverage. `on` is the
+  // id of the current page; the table answers to `logics` (the default) and `logic-table`.
+  function tabs(on, d, q) {
     const n = (k) => d ? ` <span>${d[k].length}</span>` : "";
-    const items = [["logic-graph", "Graph"], ["logic-table", "Table"], ["institutions", "Institutions" + n("institution")],
+    const qs = q ? "?q=" + encodeURIComponent(q) : "";
+    const views = [["logics", "Table", "#/logics/" + qs], ["logic-graph", "Graph", "#/logic-graph/" + qs]];
+    const cur = on === "logic-table" ? "logics" : on;
+    const items = [["institutions", "Institutions" + n("institution")],
       ["comorphisms", "Comorphisms" + n("comorphism")], ["morphisms", "Morphisms" + n("morphism")], ["rooms", "Rooms" + n("room")],
       ["corridors", "Corridors" + n("corridor")], ["logic-coverage", "Coverage"]];
-    return `<nav class="lg-tabs" aria-label="logic graph">${items.map(([id, t]) => `<a href="#/${id}"${id === on ? ' class="on" aria-current="page"' : ""}>${t}</a>`).join("")}</nav>`;
+    return `<nav class="lg-tabs" aria-label="logic graph"><span class="lg-views" role="tablist" aria-label="view the logic graph as">` +
+      views.map(([id, t, href]) => `<a role="tab" href="${href}" id="lg-tab-${id}" aria-selected="${id === cur}"${id === cur ? ' class="on" aria-current="page"' : ""}>${t}</a>`).join("") +
+      `</span>` + items.map(([id, t]) => `<a href="#/${id}"${id === cur ? ' class="on" aria-current="page"' : ""}>${t}</a>`).join("") + `</nav>`;
   }
   function legend() {
     return `<div class="lg-legend" id="lg-legend" role="list" aria-label="legend">` +
@@ -247,7 +256,7 @@
   // ---------- the table of everything ----------
   async function table(arg, ctx) {
     style();
-    if (!has("institutions")) return tabs("logic-table") + missing;
+    if (!has("institutions")) return tabs("logics") + missing;
     const d = await load(ctx);
     const all = [...NODES, ...EDGES].flatMap((k) => d[k]);
     const g = grid("lg-all", all, [
@@ -262,8 +271,11 @@
       { key: "decl", label: "Lean declaration", html: (r) => code(r.decl) },
       { key: "module", label: "module" },
     ], { q: params(arg).p.get("q") || "", empty: "Nothing is registered.",
-      onFilter: (q) => history.replaceState(null, "", "#/logic-table/" + (q ? "?q=" + encodeURIComponent(q) : "")) });
-    return { html: tabs("logic-table", d) + `<h2>Logic graph: every node and edge (${all.length})</h2>
+      onFilter: (q) => {
+        history.replaceState(null, "", "#/logics/" + (q ? "?q=" + encodeURIComponent(q) : ""));
+        const g = document.getElementById("lg-tab-logic-graph"); if (g) g.setAttribute("href", "#/logic-graph/" + (q ? "?q=" + encodeURIComponent(q) : ""));
+      } });
+    return { html: tabs("logics", d, params(arg).p.get("q") || "") + `<h2>Logic graph: every node and edge (${all.length})</h2>
 <p class="muted">Search by any column (words are ANDed); click a header to sort. Edges go from → to as Lean writes their type.</p>` + legend() + g.html, init: g.init };
   }
 
@@ -278,7 +290,7 @@
     const kinds = new Set((p.get("kinds") || EDGES.join(",")).split(",").filter((k) => EDGES.includes(k)));
     const total = NODES.reduce((n, k) => n + d[k].length, 0);
     const options = [...NODES, ...EDGES].flatMap((k) => d[k].map((r) => `<option value="${ui.esc(r.id)}"${r.id === sel ? " selected" : ""}>${ui.esc(k)}: ${ui.esc(r.name)}</option>`)).join("");
-    const html = tabs("logic-graph", d) + `<h2>Logic graph</h2>
+    const html = tabs("logic-graph", d, p.get("q") || "") + `<h2>Logic graph</h2>
 <p class="muted">Registered institutions and the comorphisms and morphisms between them; one level down, rooms and the corridors between them.
 Every arrow points from A to B as its Lean type <code>Inst.CoHom A B</code>, <code>Inst.Hom A B</code> or <code>Corridor A B</code> says.
 This is the registry of this repository, not Hets's logic graph: see <a href="#/logic-coverage">Coverage</a> for how they relate and what is omitted.</p>
@@ -311,6 +323,7 @@ This is the registry of this repository, not Hets's logic graph: see <a href="#/
         if (!state.group) qs.set("group", "0");
         const s = qs.toString();
         history.replaceState(null, "", "#/logic-graph/" + (state.sel ? encodeURIComponent(state.sel) : "") + (s ? "?" + s : ""));
+        const t = document.getElementById("lg-tab-logics"); if (t) t.setAttribute("href", "#/logics/" + (state.q ? "?q=" + encodeURIComponent(state.q) : ""));
       };
       // Parallel edges of one kind between the same two nodes are drawn as one edge ("3 comorphisms"); selecting it lists them.
       let bundles = new Map(), bundleOf = new Map();
@@ -657,11 +670,14 @@ Until a family lands here, nothing in it is registered, and nothing here claims 
     return { html: h, init: () => { if (initOmitted) initOmitted(); if (initHets) initHets(); if (initCat) initCat(); if (initEx) initEx(); } };
   }
 
-  Explorer.registerView({ id: "logic-graph", title: "Logic graph", nav: 66, render: graphView });
-  Explorer.registerView({ id: "logic-table", title: "Logic table", tab: "logic-graph", render: table });
-  Explorer.registerView({ id: "logic-coverage", title: "Logic coverage", tab: "logic-graph", render: coverage });
+  // `#/logics` (the table) is the entry of the navigation; `#/logic-table` is the same view under its
+  // earlier name, and `#/logic-graph/…` the graph (deep links to a selection keep working).
+  Explorer.registerView({ id: "logics", title: "Logics", nav: 66, render: table });
+  Explorer.registerView({ id: "logic-table", title: "Logic table", tab: "logics", render: table });
+  Explorer.registerView({ id: "logic-graph", title: "Logic graph", tab: "logics", render: graphView });
+  Explorer.registerView({ id: "logic-coverage", title: "Logic coverage", tab: "logics", render: coverage });
   for (const k of [...NODES, ...EDGES]) {
-    Explorer.registerView({ id: KIND[k].plural, title: KIND[k].title, tab: "logic-graph", render: registry(k) });
-    Explorer.registerView({ id: k, title: k, tab: "logic-graph", render: detail(k) });
+    Explorer.registerView({ id: KIND[k].plural, title: KIND[k].title, tab: "logics", render: registry(k) });
+    Explorer.registerView({ id: k, title: k, tab: "logics", render: detail(k) });
   }
 })();
