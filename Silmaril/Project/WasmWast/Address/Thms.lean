@@ -12,6 +12,11 @@ which instantiates the module, including its data segments, and runs the command
 stores; the claims are about `ByteArray` stores and Core reduction, by `scriptK_of_scriptKM`); each row
 `silmaril.wasm_wast.address.l<line>` is one `assert_return` (`silmaril.shapes.wasm.wast.returns_only`) or
 `assert_trap` (`….traps_only`) at line `<line>` of the file, answered from it.
+
+An `assert_invalid` row (`….validator_rejects`) or binary `assert_malformed` row
+(`….decoder_rejects`) is tool-level: silmaril-lean's validator (decoder) rejects the bytes, by one
+`decide +kernel` evaluation. It does not claim that the module is invalid (malformed) in the
+specification; see `ValidatorRejects.not_valid` for what follows from `validate?_complete`.
 -/
 
 @[expose] public section
@@ -1845,6 +1850,12 @@ silmaril instance silmaril.wasm_wast.address.l610 (expect := "THM") :=
 @[answers "silmaril.wasm_wast.address.l610" thm] theorem l610 : silmaril.wasm_wast.address.l610 :=
   script3.trapsOnly 18 rfl
 
+silmaril instance silmaril.wasm_wast.address.l214 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.validator_rejects (b := invalid214)
+
+@[answers "silmaril.wasm_wast.address.l214" thm] theorem l214 : silmaril.wasm_wast.address.l214 :=
+  ValidatorRejects.of_kernel (by decide +kernel)
+
 end Silmaril.Project.WasmWast.Address
 
 end
@@ -2105,4 +2116,5 @@ silmaril group silmaril.wasm_wast.address (title := "test/core/address.wast: the
     silmaril.wasm_wast.address.l606,
     silmaril.wasm_wast.address.l607,
     silmaril.wasm_wast.address.l609,
-    silmaril.wasm_wast.address.l610])
+    silmaril.wasm_wast.address.l610,
+    silmaril.wasm_wast.address.l214])

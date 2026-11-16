@@ -12,10 +12,11 @@
  },
  "profile": "profile neverFail (deterministic: canonical NaNs, $ND = false, grow fails only when impossible)",
  "assumptions": [
-  "the module is valid, has no imports and no start function, and its function exports have scalar types",
-  "no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
-  "script state: the store threads through the earlier actions of the same module, in order",
-  "termination is witnessed by the kernel run; other runs reach the same normal form by determinism"
+  "assert_return/assert_trap rows: the module is valid, has no imports and no start function, and its function exports have scalar types",
+  "assert_return/assert_trap rows: no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
+  "assert_return/assert_trap rows: the script state: the store threads through the earlier actions of the same module, in order",
+  "assert_return/assert_trap rows: termination is witnessed by the kernel run; other runs reach the same normal form by determinism",
+  "assert_invalid rows are tool-level (silmaril.shapes.wasm.wast.validator_rejects): silmaril-lean's decode? reads the bytes wasm-tools wrote and silmaril-lean's validate? rejects the module; with validate?_complete, no module the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)"
  ],
  "files": [
   {
@@ -8498,664 +8499,1577 @@
    "file": "i32",
    "line": 444,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "cadcd6653d80779a798d0de6be8fc1e6bd5a51c6b11ae57ef9ca03c58ed36474",
+   "problem": "silmaril.wasm_wast.i32.l444",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l444",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:452",
    "file": "i32",
    "line": 452,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "5b34165c7cda20abbbdfc19aa7b4657e02d56f10d1fb1719fa59baed3a760bf4",
+   "problem": "silmaril.wasm_wast.i32.l452",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l452",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:461",
    "file": "i32",
    "line": 461,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "c805a38f5119a572dbdbf915516058b4283effe4396459e44d229977d18c9fc1",
+   "problem": "silmaril.wasm_wast.i32.l461",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l461",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:470",
    "file": "i32",
    "line": 470,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "ccc5288d7518102066a6fcc659ce9c8672aa6a2b60939d79d6f7841f67bd2570",
+   "problem": "silmaril.wasm_wast.i32.l470",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l470",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:479",
    "file": "i32",
    "line": 479,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "8c895bad88a96993ab8d4b8c632e229f380987c7c1a9e1b71fc11ec754f9f9d8",
+   "problem": "silmaril.wasm_wast.i32.l479",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l479",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:488",
    "file": "i32",
    "line": 488,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7d2620b63eddbdc83d8efbf819dc65a301d89bda9ca09d61804e7ddb8670fec8",
+   "problem": "silmaril.wasm_wast.i32.l488",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l488",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:497",
    "file": "i32",
    "line": 497,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "2b78dbaeb50b3b2f62473a929391300d706da9737ade9eff950510a6aa44a2e1",
+   "problem": "silmaril.wasm_wast.i32.l497",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l497",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:506",
    "file": "i32",
    "line": 506,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "3f5c117f99226ba468b26e8ed8eabd871baa639e4ae268a6e1971513905c0f46",
+   "problem": "silmaril.wasm_wast.i32.l506",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l506",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:515",
    "file": "i32",
    "line": 515,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d6a306f97af5a35504d0b5c915c82d1afd325e803e6cdfa4503316edf548bb75",
+   "problem": "silmaril.wasm_wast.i32.l515",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l515",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:523",
    "file": "i32",
    "line": 523,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "9a78ebb5ad55291bb3b5676c2a01c4e5a7765a4b74030c17440bc57aca8d89e6",
+   "problem": "silmaril.wasm_wast.i32.l523",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l523",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:531",
    "file": "i32",
    "line": 531,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "110427f6902d91e97d02697b3a3f0fe407b1f6cfdfd9818a2c112ce449c9c49c",
+   "problem": "silmaril.wasm_wast.i32.l531",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l531",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:540",
    "file": "i32",
    "line": 540,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "6b6cf3fae4163b4863783dc9f261ae21e2d45adf3741d638686dc95d5d4edcfc",
+   "problem": "silmaril.wasm_wast.i32.l540",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l540",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:556",
    "file": "i32",
    "line": 556,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "b65d2346ee5549b9df631c4134325aa8111fa1381d12a3efc39ed4a53f9ab963",
+   "problem": "silmaril.wasm_wast.i32.l556",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l556",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:565",
    "file": "i32",
    "line": 565,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "1e34fb5709be748016223505445debbe8702352ed40ab1bb9a0b179e216be739",
+   "problem": "silmaril.wasm_wast.i32.l565",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l565",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:574",
    "file": "i32",
    "line": 574,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "1d265af230feb44453a375dc85edd913a64fd3c18a1ff9e807ce1dc6537c28a5",
+   "problem": "silmaril.wasm_wast.i32.l574",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l574",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:583",
    "file": "i32",
    "line": 583,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "13e249c0eac3f04ab29b9bb88cc69a38366e214d09c7e499322c8f9ef3cec7ce",
+   "problem": "silmaril.wasm_wast.i32.l583",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l583",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:592",
    "file": "i32",
    "line": 592,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "f3d3997b6805415f5bd31ae22fbbaec8979758096b9107a9c9cdd528fa426d18",
+   "problem": "silmaril.wasm_wast.i32.l592",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l592",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:601",
    "file": "i32",
    "line": 601,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "8a8e9ba9b998446f28004ab5c970cbdb1b3e0acf02b2f05171be26108d87f675",
+   "problem": "silmaril.wasm_wast.i32.l601",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l601",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:611",
    "file": "i32",
    "line": 611,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "64c00fca78c899f053dfbff99cd56cbae9b5aae11cc0b8e14a9bde0ef3a61c11",
+   "problem": "silmaril.wasm_wast.i32.l611",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l611",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:619",
    "file": "i32",
    "line": 619,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "9e230f99b69c2ffa6df3d6197ecf7c0a4e5c1490bbb22de878a720801aa2d744",
+   "problem": "silmaril.wasm_wast.i32.l619",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l619",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:627",
    "file": "i32",
    "line": 627,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "e23768742b77816640723c1c9f0c976ddb307c8522c9f65a5521284b943aa22d",
+   "problem": "silmaril.wasm_wast.i32.l627",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l627",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:636",
    "file": "i32",
    "line": 636,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "28523ab4d910f123caf5da60a75862968ce3390eca082c027f7b48610f5e502e",
+   "problem": "silmaril.wasm_wast.i32.l636",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l636",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:645",
    "file": "i32",
    "line": 645,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "e32f213f27096533579672f93adbbbbd503a3ec80b6b9342ad229383d5cb03da",
+   "problem": "silmaril.wasm_wast.i32.l645",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l645",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:654",
    "file": "i32",
    "line": 654,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "f93f30a6b9cf60fba859ee2f417efab50191df4197b64a912434035e7b7983b1",
+   "problem": "silmaril.wasm_wast.i32.l654",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l654",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:663",
    "file": "i32",
    "line": 663,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "2022a4ac663fe73d2c85b3242f766ae52f57b542a8e41bc160b8aaebb201c9b4",
+   "problem": "silmaril.wasm_wast.i32.l663",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l663",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:672",
    "file": "i32",
    "line": 672,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "1bb60843bae59b732a466388f852b6517615e3a413a2334402622641064c1e0f",
+   "problem": "silmaril.wasm_wast.i32.l672",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l672",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:681",
    "file": "i32",
    "line": 681,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "9f35a25428951faf8028517ca3608015f8faf7d0c1032fed0805edd52498ab7a",
+   "problem": "silmaril.wasm_wast.i32.l681",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l681",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:691",
    "file": "i32",
    "line": 691,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "a87bbead287231f260eea4a4e084690a694b9aa78240a9256690c28c26a41f4d",
+   "problem": "silmaril.wasm_wast.i32.l691",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l691",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:701",
    "file": "i32",
    "line": 701,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "6087031200987dcb4d5b30d49644581cc286d3a068c4d70f0a1c9918268bb56d",
+   "problem": "silmaril.wasm_wast.i32.l701",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l701",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:710",
    "file": "i32",
    "line": 710,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d59316949611d8afd081d849ed1bd84f7fc34b2b7367c874c7fde5ebaecc53d8",
+   "problem": "silmaril.wasm_wast.i32.l710",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l710",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:719",
    "file": "i32",
    "line": 719,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "26bf96da0c15da550d8ebea167728840fcdccc0110875b6fb8a520925cafab35",
+   "problem": "silmaril.wasm_wast.i32.l719",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l719",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:728",
    "file": "i32",
    "line": 728,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "6d26791992844534ab4af8a35122a76e45164c62e088adae2fff5df2ddd8100a",
+   "problem": "silmaril.wasm_wast.i32.l728",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l728",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:737",
    "file": "i32",
    "line": 737,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "c89be396b1db11ce3a55b654ff34e9f3643380c86080c7bb3ad004f7758946a7",
+   "problem": "silmaril.wasm_wast.i32.l737",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l737",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:746",
    "file": "i32",
    "line": 746,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "94323ed12605ca577a412d325893b481cf730fa31c2bea1cf0fbd2c13a5be6da",
+   "problem": "silmaril.wasm_wast.i32.l746",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l746",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:755",
    "file": "i32",
    "line": 755,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "cdba3a6ad6a94529eb46ffdcdd18d3dca85053915ecb9eb1fbade7d31fd4299d",
+   "problem": "silmaril.wasm_wast.i32.l755",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l755",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:763",
    "file": "i32",
    "line": 763,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d41f95bc9bbeec7993bc0432a4999072c2d1c52b875f6b68f55a1c1a7f136642",
+   "problem": "silmaril.wasm_wast.i32.l763",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l763",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:771",
    "file": "i32",
    "line": 771,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "daf6eed21e2c40e0d3e1786ce36076ed9f756f0e8aca102c604a480249fe3e24",
+   "problem": "silmaril.wasm_wast.i32.l771",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l771",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:779",
    "file": "i32",
    "line": 779,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "658854c8becebb6915cb3c92bc30e3634313235aa7d06f0a5702e28336f8d7fe",
+   "problem": "silmaril.wasm_wast.i32.l779",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l779",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:787",
    "file": "i32",
    "line": 787,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "0461ddd6635b6cfc8732228ff52044beb1aec40472c390ad5972dff89e8a2560",
+   "problem": "silmaril.wasm_wast.i32.l787",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l787",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:796",
    "file": "i32",
    "line": 796,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d989fe05af324f2a778fcf3cf0d456cfb87cb7352d727f72d8ff09cfa653a17a",
+   "problem": "silmaril.wasm_wast.i32.l796",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l796",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:805",
    "file": "i32",
    "line": 805,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d537d35149b37eb068ba7548f86d09c6a2c0a899556429d46038136ef3bc7e6d",
+   "problem": "silmaril.wasm_wast.i32.l805",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l805",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:821",
    "file": "i32",
    "line": 821,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d0a92289252c1359c08ce8219034a31b2555fbe9eef304c33413dd813f8d8599",
+   "problem": "silmaril.wasm_wast.i32.l821",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l821",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:837",
    "file": "i32",
    "line": 837,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "dfc216fb83c05521719abdc2687e172be209bcb228f05a075a3d330191254b03",
+   "problem": "silmaril.wasm_wast.i32.l837",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l837",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:846",
    "file": "i32",
    "line": 846,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7613cdc9f60e22d0185760521186bb4c889471c90dae25f9f37dddc8cec24cbe",
+   "problem": "silmaril.wasm_wast.i32.l846",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l846",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:855",
    "file": "i32",
    "line": 855,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "cd07c8804987a7e643f537a12b39c5dd248e56973710f5182199d99cfa30a466",
+   "problem": "silmaril.wasm_wast.i32.l855",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l855",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:864",
    "file": "i32",
    "line": 864,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "8d2fb16f776fc66e603489489895d0e4e369b71905c41141d7e05694dd79ecc0",
+   "problem": "silmaril.wasm_wast.i32.l864",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l864",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:873",
    "file": "i32",
    "line": 873,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "0c253a7af3e1d21f43af7eefeea221254e4e6a068973a1135a77a68b60cf8016",
+   "problem": "silmaril.wasm_wast.i32.l873",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l873",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:882",
    "file": "i32",
    "line": 882,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "0f6e574fdb6695860dbb8546e5d4fddf86308ae59d97c44b116801fa1aed026a",
+   "problem": "silmaril.wasm_wast.i32.l882",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l882",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:891",
    "file": "i32",
    "line": 891,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "f19327990a62702cd970529008aeb13b451b9a000867869e4c867be66d10d032",
+   "problem": "silmaril.wasm_wast.i32.l891",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l891",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:900",
    "file": "i32",
    "line": 900,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "ee5caa94c2158a91902b54c23be826e31cc43733b1f37c94982a07451c23c653",
+   "problem": "silmaril.wasm_wast.i32.l900",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l900",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:909",
    "file": "i32",
    "line": 909,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "dbb60449154cbfd14de8def130d5c376b516a59168061a510b35b4ad0a269fc0",
+   "problem": "silmaril.wasm_wast.i32.l909",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l909",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:918",
    "file": "i32",
    "line": 918,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "fec4bccf9c2954bb2fbaa6dc976bf84fc12cf678597cec5d8c60cbd79f6f0928",
+   "problem": "silmaril.wasm_wast.i32.l918",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l918",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:927",
    "file": "i32",
    "line": 927,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "8ee5e0849b6b8ec8fd5a0851969953258aea959e8cde45c0bfaae41724b4e272",
+   "problem": "silmaril.wasm_wast.i32.l927",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l927",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:936",
    "file": "i32",
    "line": 936,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "65aa4665ed588b522b37fcf9605675db7c79ef27891b9eab8916f8be8a4bc600",
+   "problem": "silmaril.wasm_wast.i32.l936",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l936",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:948",
    "file": "i32",
    "line": 948,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7f2c6b84a7a84688bc5aef3118bb9c9fd8e0fd8d3d0cac02c5ae702f7f4de80f",
+   "problem": "silmaril.wasm_wast.i32.l948",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l948",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:949",
    "file": "i32",
    "line": 949,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "05bc54da58858ac0bd0873a74fd0ec3b229462b1b4fe68916d4d9bbb85414801",
+   "problem": "silmaril.wasm_wast.i32.l949",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l949",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:950",
    "file": "i32",
    "line": 950,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "44b415a5e2c0a3fe59570e60523b7f7ea047b5c3b6de5896f9cabd9bdbf52a87",
+   "problem": "silmaril.wasm_wast.i32.l950",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l950",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:951",
    "file": "i32",
    "line": 951,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "67b79b5105e0aa028e45047af9ef5b955863b32ecdaa11a959effc26c0f50a9c",
+   "problem": "silmaril.wasm_wast.i32.l951",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l951",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:952",
    "file": "i32",
    "line": 952,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "efcb45eaaba05bc12d3622e8ae73b96901be5e8fc1d9fc7605153d56d3f4f610",
+   "problem": "silmaril.wasm_wast.i32.l952",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l952",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:953",
    "file": "i32",
    "line": 953,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "a0e473840079300801de4208ae0f1050e0d5f55c342f6e49194f7002c61b3f11",
+   "problem": "silmaril.wasm_wast.i32.l953",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l953",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:954",
    "file": "i32",
    "line": 954,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "c21d24fe2cd29c367efba57c6f3df3b0facbf0a311f19a803007f43ae05847b8",
+   "problem": "silmaril.wasm_wast.i32.l954",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l954",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:955",
    "file": "i32",
    "line": 955,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "e9adc0421094874618494a36e6aa7ed7ee2a9b390d1498a5c3337260dcadda77",
+   "problem": "silmaril.wasm_wast.i32.l955",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l955",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:956",
    "file": "i32",
    "line": 956,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "c647ae9ea6838e1af354369b3094a3448b500b6b3354c1d99253575583a78c97",
+   "problem": "silmaril.wasm_wast.i32.l956",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l956",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:957",
    "file": "i32",
    "line": 957,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "e2c70721bb38c616b3bd6dda7317921faccf6b963fa418ac0e3f6f3973f28eec",
+   "problem": "silmaril.wasm_wast.i32.l957",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l957",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:958",
    "file": "i32",
    "line": 958,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7caabac1198494fcad92c7a0f225fb601637abd632c55e56dec8af8af1b87c2b",
+   "problem": "silmaril.wasm_wast.i32.l958",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l958",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:959",
    "file": "i32",
    "line": 959,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7ba932cf697f37efc6697e76bcb9b98c3faa3ada0e4c8c257627573321658bc3",
+   "problem": "silmaril.wasm_wast.i32.l959",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l959",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:960",
    "file": "i32",
    "line": 960,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "29d71a0a7a1dcc46e41b850ee82bd5db883f094eae9cd1cc833b0c816875ac2c",
+   "problem": "silmaril.wasm_wast.i32.l960",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l960",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:961",
    "file": "i32",
    "line": 961,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "2032ab242e55b9a9c6b37867bc0ea6a6c50e84f9c3a1bb1d295ccafcc9352783",
+   "problem": "silmaril.wasm_wast.i32.l961",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l961",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:962",
    "file": "i32",
    "line": 962,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "1bd651b8b22e76474280265a318b5fc85a0865355ab1f56105a3a76abff5e7ca",
+   "problem": "silmaril.wasm_wast.i32.l962",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l962",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:963",
    "file": "i32",
    "line": 963,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d807166893b33e64a11dbb488975c247a435ebdfb25d61a9e79387af235b1af3",
+   "problem": "silmaril.wasm_wast.i32.l963",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l963",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:964",
    "file": "i32",
    "line": 964,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "f81e8c42dfef26e74378115cc7778799e1cfef08d0be3316d40ef9ef0c49305a",
+   "problem": "silmaril.wasm_wast.i32.l964",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l964",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:965",
    "file": "i32",
    "line": 965,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "1ac47f1d4bc9a1c00919a25e9201790839860e0c49d013c634ee9df010c8a53d",
+   "problem": "silmaril.wasm_wast.i32.l965",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l965",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:966",
    "file": "i32",
    "line": 966,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "efe83fd0959a1a4bc660f32f6e7149d2f3a09ea8bfba10def1bced24346d33c8",
+   "problem": "silmaril.wasm_wast.i32.l966",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l966",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:967",
    "file": "i32",
    "line": 967,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "e0c4264f0c4f0e8ef1b9e39c76b60942f0bb0ef5cb8297706efadd16561e3b13",
+   "problem": "silmaril.wasm_wast.i32.l967",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l967",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:968",
    "file": "i32",
    "line": 968,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "aa981bd6281f3530ff98887ed15b3356ff16a0b08dcc35e9c8b1197049247cca",
+   "problem": "silmaril.wasm_wast.i32.l968",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l968",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:969",
    "file": "i32",
    "line": 969,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "92469242e74010729700410b15ce91c4f5a762a881df76343725b8ef7b21b776",
+   "problem": "silmaril.wasm_wast.i32.l969",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l969",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:970",
    "file": "i32",
    "line": 970,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7448497e6ad5bcf565aaf2acc8cfe125b37542df8d26ff2bb22bbf29d7e219a6",
+   "problem": "silmaril.wasm_wast.i32.l970",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l970",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:971",
    "file": "i32",
    "line": 971,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "77abbf551ec4febe7df528cc8791d2d575d92d26fcef71db3dce144e30fa0a87",
+   "problem": "silmaril.wasm_wast.i32.l971",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l971",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:972",
    "file": "i32",
    "line": 972,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "fcfa8c9dc190be54ed669d53731899898d72815628e9a9cde5a20b0738f58782",
+   "problem": "silmaril.wasm_wast.i32.l972",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l972",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:973",
    "file": "i32",
    "line": 973,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "213b4460bb2fe55db30e101bde25ef8fa88078909435174d1db6b2f2e123ea05",
+   "problem": "silmaril.wasm_wast.i32.l973",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l973",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:974",
    "file": "i32",
    "line": 974,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "a928b3892bdbb434b3ff75cef18c20158ba049b441510bc7640c6e1aa2a5fba1",
+   "problem": "silmaril.wasm_wast.i32.l974",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l974",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:975",
    "file": "i32",
    "line": 975,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "4a01b784ad063f471d53206cd6325f3ac7640a04233374fff615031094d063b0",
+   "problem": "silmaril.wasm_wast.i32.l975",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l975",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:976",
    "file": "i32",
    "line": 976,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "94b7c9ed6b2cd4cae8e3ad0c4c9e2107ee87fae361bcfc367a0d04cd4ffcbcd7",
+   "problem": "silmaril.wasm_wast.i32.l976",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I32.l976",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i32:979",
@@ -9163,7 +10077,11 @@
    "line": 979,
    "type": "assert_malformed",
    "status": "unsupported",
-   "reason": "assert_malformed: decoder/text rejection (no shape)"
+   "expected": [
+    "malformed"
+   ],
+   "text": "unexpected token",
+   "reason": "assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness theorem and its syntax error also covers unsupported text (no shape)"
   },
   {
    "id": "i32:983",
@@ -9171,7 +10089,11 @@
    "line": 983,
    "type": "assert_malformed",
    "status": "unsupported",
-   "reason": "assert_malformed: decoder/text rejection (no shape)"
+   "expected": [
+    "malformed"
+   ],
+   "text": "unexpected token",
+   "reason": "assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness theorem and its syntax error also covers unsupported text (no shape)"
   },
   {
    "id": "i64:38",
@@ -17585,232 +18507,551 @@
    "file": "i64",
    "line": 457,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "d69e9cd77e0d63bfd05a15905021939c1875b3b5e676e4820e4640a77be28653",
+   "problem": "silmaril.wasm_wast.i64.l457",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l457",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:458",
    "file": "i64",
    "line": 458,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "08db6d02f642f7db848b0db5a5edc0964bdbdd4552f932a9a09309bca09d00a9",
+   "problem": "silmaril.wasm_wast.i64.l458",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l458",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:459",
    "file": "i64",
    "line": 459,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "b3b6c5c5d6b5de2c0060b255290213cef1c5dc3621225738d5b221902593c5cc",
+   "problem": "silmaril.wasm_wast.i64.l459",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l459",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:460",
    "file": "i64",
    "line": 460,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "81a1aa62a3643d9b7ffb812d4940280cc017e0654bc0205436190aa799078058",
+   "problem": "silmaril.wasm_wast.i64.l460",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l460",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:461",
    "file": "i64",
    "line": 461,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "b610facb82656936ab6548d414752801427ba1c6723ba21a532e0d91ebc64491",
+   "problem": "silmaril.wasm_wast.i64.l461",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l461",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:462",
    "file": "i64",
    "line": 462,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "2f4505e634a57b130ce358d7f7b22870e1ca48bf9a74e91524d0e733ca665695",
+   "problem": "silmaril.wasm_wast.i64.l462",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l462",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:463",
    "file": "i64",
    "line": 463,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "5bcbeddd3a0294237726e800ee77d1ee0306f3798b7ad3a60a5de8c6458463e0",
+   "problem": "silmaril.wasm_wast.i64.l463",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l463",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:464",
    "file": "i64",
    "line": 464,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "6e42c4d6ab6f7d5876bc85093257f487d113379987fa59c14dfe8f275a2f1f47",
+   "problem": "silmaril.wasm_wast.i64.l464",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l464",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:465",
    "file": "i64",
    "line": 465,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "7f10d344e992684115547de2f1b5cfbe6749e9df2d8146031567f42de969bc46",
+   "problem": "silmaril.wasm_wast.i64.l465",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l465",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:466",
    "file": "i64",
    "line": 466,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "5a8230c07b6d8b33b173d9e3ea9ec6ed6bba841ef9561b032859eeef9d5f2eef",
+   "problem": "silmaril.wasm_wast.i64.l466",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l466",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:467",
    "file": "i64",
    "line": 467,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "3b85448415a9b73587545713912f4ac716879a5bf5c396791cdef4c5d7dda1d3",
+   "problem": "silmaril.wasm_wast.i64.l467",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l467",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:468",
    "file": "i64",
    "line": 468,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "29696bec6642c93b8d63fecef151d0fa21f3d86a804990c0e7fef22a3e144eb1",
+   "problem": "silmaril.wasm_wast.i64.l468",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l468",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:469",
    "file": "i64",
    "line": 469,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "3ae7fbc89ea311c6b6823d9a78beef6d7aeec3b141fced232366a29b2c0c0b97",
+   "problem": "silmaril.wasm_wast.i64.l469",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l469",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:470",
    "file": "i64",
    "line": 470,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "842c62a2fe07ee508cae89e706ae2e55cd485355c742ac14a3eb7dfb22839ea7",
+   "problem": "silmaril.wasm_wast.i64.l470",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l470",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:471",
    "file": "i64",
    "line": 471,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "ce8afe10884267b1eccd7b1be0e1d5589029b80b9ca38fd964a9080a47a9dcc9",
+   "problem": "silmaril.wasm_wast.i64.l471",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l471",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:472",
    "file": "i64",
    "line": 472,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "b3d0289d1afb512c1fdab07b10a7271b0e5bc58793a693a3cbf7627fe890af2d",
+   "problem": "silmaril.wasm_wast.i64.l472",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l472",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:473",
    "file": "i64",
    "line": 473,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "fc26f756084b99d60128731cbb541427427f7831c969df932605bf0886305ca9",
+   "problem": "silmaril.wasm_wast.i64.l473",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l473",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:474",
    "file": "i64",
    "line": 474,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "3eb3cd8d52c3148a446d2caed7dc768c7ce66ae54310f6c7372bbe4b99cdd7ac",
+   "problem": "silmaril.wasm_wast.i64.l474",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l474",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:475",
    "file": "i64",
    "line": 475,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "de4a974369b0b95972084e49947a2330a9dab18341c82c9bc8533c97178988df",
+   "problem": "silmaril.wasm_wast.i64.l475",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l475",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:476",
    "file": "i64",
    "line": 476,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "dece9d01ab22079bd6298bbe4a8dc9586c203159ab1f7bb538a0ea6c0f198fc4",
+   "problem": "silmaril.wasm_wast.i64.l476",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l476",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:477",
    "file": "i64",
    "line": 477,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "ba9f9fac436cd2b2dee45f29287261246c276b6578ab38bcb2825012a6633baa",
+   "problem": "silmaril.wasm_wast.i64.l477",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l477",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:478",
    "file": "i64",
    "line": 478,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "1c311a101cf61d2815fe72956fec3c9fc76d7c84a2d4eaae0c760f0c886f2443",
+   "problem": "silmaril.wasm_wast.i64.l478",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l478",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:479",
    "file": "i64",
    "line": 479,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "f0bc96779265b56eccdd3b9e33482c646ceaea10c99a402b797da07263bc3e27",
+   "problem": "silmaril.wasm_wast.i64.l479",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l479",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:480",
    "file": "i64",
    "line": 480,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "e620654fc0e61d2c3ff75277c4f46aa4575b361db79028ee5146bcc04150ebff",
+   "problem": "silmaril.wasm_wast.i64.l480",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l480",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:481",
    "file": "i64",
    "line": 481,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "26959a6980bc9878e2013e8175590ae12935b2ffeaa9824118bea233fa8235c4",
+   "problem": "silmaril.wasm_wast.i64.l481",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l481",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:482",
    "file": "i64",
    "line": 482,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "b55194df0b3096a571381e261cd6ba173349a5ba8c9bdfe8de084eb02fb270c0",
+   "problem": "silmaril.wasm_wast.i64.l482",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l482",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:483",
    "file": "i64",
    "line": 483,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "8ca9175830260b5ee9b2c90491c13aba7d1536ab2f9499cd86235cb1db09b0eb",
+   "problem": "silmaril.wasm_wast.i64.l483",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l483",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:484",
    "file": "i64",
    "line": 484,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "cbdc37dc5da851aabe1717f6610152edca35e0914a9fe6c883c23685fa195fe5",
+   "problem": "silmaril.wasm_wast.i64.l484",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l484",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:485",
    "file": "i64",
    "line": 485,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "type mismatch",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "binary",
+   "wasm_sha256": "9d06a8357b0b1607134895698ec76743e52e38244f776bd7d5b9217e45f7f043",
+   "problem": "silmaril.wasm_wast.i64.l485",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.I64.l485",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "i64:488",
@@ -17818,7 +19059,11 @@
    "line": 488,
    "type": "assert_malformed",
    "status": "unsupported",
-   "reason": "assert_malformed: decoder/text rejection (no shape)"
+   "expected": [
+    "malformed"
+   ],
+   "text": "unexpected token",
+   "reason": "assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness theorem and its syntax error also covers unsupported text (no shape)"
   },
   {
    "id": "i64:492",
@@ -17826,7 +19071,11 @@
    "line": 492,
    "type": "assert_malformed",
    "status": "unsupported",
-   "reason": "assert_malformed: decoder/text rejection (no shape)"
+   "expected": [
+    "malformed"
+   ],
+   "text": "unexpected token",
+   "reason": "assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness theorem and its syntax error also covers unsupported text (no shape)"
   },
   {
    "id": "int_exprs:18",
@@ -22501,8 +23750,19 @@
    "file": "address",
    "line": 214,
    "type": "assert_invalid",
-   "status": "unsupported",
-   "reason": "assert_invalid: needs validator completeness (no shape)"
+   "status": "proved",
+   "expected": [
+    "invalid"
+   ],
+   "text": "offset out of range",
+   "observed": "decode? reads a module; validate? rejects it",
+   "module_type": "text",
+   "wasm_sha256": "4a1ae061b7e6d5f372825c46d3105755f76aa66fc78cb3ba886b2c0a7412b858",
+   "problem": "silmaril.wasm_wast.address.l214",
+   "shape": "silmaril.shapes.wasm.wast.validator_rejects",
+   "theorem": "Silmaril.Project.WasmWast.Address.l214",
+   "strength": "tool",
+   "checker": "validatorRejectsB"
   },
   {
    "id": "address:362",
@@ -25983,12 +27243,11 @@
  ],
  "counts": {
   "total": 1258,
-  "proved": 1140,
-  "unsupported": 118
+  "proved": 1253,
+  "unsupported": 5
  },
  "reasons": {
-  "unsupported: assert_invalid: needs validator completeness (no shape)": 113,
-  "unsupported: assert_malformed: decoder/text rejection (no shape)": 4,
+  "unsupported: assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness theorem and its syntax error also covers unsupported text (no shape)": 4,
   "unsupported: assert_exhaustion: resource exhaustion is not modelled": 1
  }
 }

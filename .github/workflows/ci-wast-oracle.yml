@@ -1,0 +1,42 @@
+name: WAST oracle
+
+# The bounded oracle job of docs/projects/wasm-wast.md ("The oracle"): re-run the pinned
+# wasmtime 50.0.0 on every WAST command the report gives to it, and fail on any disagreement
+# with the committed record. An oracle verdict is test-wise agreement of an independent
+# implementation, not a proof; the kernel rows are checked by the Lean build. No Lean here.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  oracle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Keyed by the pins: every tool is re-checked against its pinned SHA-256 after a restore.
+      - name: Restore the pinned tools
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cache/silmaril-tools/wasm-tools-*
+            ~/.cache/silmaril-tools/dl-wasm-spec-*
+            ~/.cache/silmaril-tools/src/wasm-spec-*
+            ~/.cache/silmaril-tools/wasmtime-*
+          key: wast-oracle-v1-${{ hashFiles('tools/wasm-tools/tests/pins.sh', 'tools/wasm-jco/tests/pins.sh') }}
+      - name: Fetch the spec suite and wasm-tools (SHA-256 checked)
+        run: tools/wasm-tools/tests/fetch-pins.sh wasm-tools spec
+      - name: Fetch wasmtime 50.0.0 (archive and binary SHA-256 checked)
+        run: python3 -I tools/wasm-wast/gen.py fetch-wasmtime
+      - name: Convert the slice (wasm-tools json-from-wast; spec files checked against report.json)
+        run: python3 -I tools/wasm-wast/gen.py convert
+      - name: Check the committed oracle record (provenance, selection, every script's SHA-256)
+        run: python3 -I tools/wasm-wast/gen.py verify --scripts
+      - name: Re-run wasmtime on every command; fail on any failure or difference from oracle.json
+        run: python3 -I tools/wasm-wast/gen.py oracle --check
+      - name: Wrong expectations must be rejected by wasmtime (committed and generated)
+        run: python3 -I tools/wasm-wast/gen.py regress

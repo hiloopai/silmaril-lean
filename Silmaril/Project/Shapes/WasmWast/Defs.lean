@@ -9,6 +9,7 @@ public import Silmaril.Wasm.Game.Signature.Defs
 public import Silmaril.Wasm.Validation.Check.Validate
 public import Silmaril.Wasm.Verify.Kernel.Defs
 public import Silmaril.Wasm.Execution.MemRep.Defs
+public import Silmaril.Wasm.Binary.Core.Decode
 
 /-!
 # Standard problem shapes: WAST script commands
@@ -22,6 +23,8 @@ over the Core semantics `Silmaril.Wasm.Execution.Core.Step` and not over an inte
 | `silmaril.shapes.wasm.wast.returns_only` | `ReturnsOnly o m pre act vs`: `Returns`, and every host-free normal form of `act` returns `vs` (no divergence: theorem `ReturnsOnly.always`) |
 | `silmaril.shapes.wasm.wast.traps` | `Traps o m pre act`: some host-free normal form of `act` is a trap |
 | `silmaril.shapes.wasm.wast.traps_only` | `TrapsOnly o m pre act`: `Traps`, and every host-free normal form of `act` is a trap (no divergence: theorem `TrapsOnly.always`) |
+| `silmaril.shapes.wasm.wast.validator_rejects` | `ValidatorRejects b`: silmaril-lean's decoder `decode?` reads the bytes `b` as some module `m`, and silmaril-lean's validator `validate?` rejects `m` (tool-level) |
+| `silmaril.shapes.wasm.wast.decoder_rejects` | `DecoderRejects b`: silmaril-lean's decoder `decode?` rejects the bytes `b` (tool-level) |
 
 **Script state.** `m` is the script's current module: it must be valid (`ModuleOk m ⟨[], _⟩`),
 have no imports and no start function. Its instance and initial store are those of
@@ -57,9 +60,23 @@ existence part, by the one-step diamond `Det.DStep.join'` and the fact that the 
 non-trivial peak have smaller code (`Det.DStep.shrink`). So every `returns_only`/`traps_only` row
 also excludes divergence at `profile o` (`ScriptHolds.always`).
 
+**Rejections are tool-level.** `ValidatorRejects` and `DecoderRejects` are about silmaril-lean's
+functions `decode?` and `validate?`, not about the specification: their titles do not claim that
+the module is invalid or the bytes malformed. What follows from them is exactly:
+
+* `ValidatorRejects b` with the validator's completeness `validate?_complete` and the decoder's
+  soundness `decode?_sound` and functionality: no module that `b` encodes in silmaril-lean's
+  binary grammar `Binary.Core.Encodes` is `ModuleValid` in silmaril-lean's validation relation
+  `ModuleOk` (`ValidatorRejects.not_valid`, `….Thms`). The validator's soundness
+  `validate?_sound` gives nothing about a rejection. That `Encodes` and `ModuleOk` are the
+  specification's binary format and validation rules is a transcription, not a theorem here.
+* `DecoderRejects b`: nothing beyond the decoder's output; `decode?` is sound, not complete, so
+  a rejection does not exclude that `b` encodes a module.
+
 The NaN payload, relaxed SIMD and grow nondeterminism of the specification profile
-`Profile.spec`, `assert_exhaustion` (no resource bounds are modelled), `assert_invalid`,
-`assert_malformed`, `assert_unlinkable` and `assert_uninstantiable` have no shape here
+`Profile.spec`, `assert_exhaustion` (no resource bounds are modelled), `assert_malformed` on
+text (no binary exists; silmaril-lean's WAT front end has no completeness theorem),
+`assert_unlinkable` and `assert_uninstantiable` have no shape here
 (`docs/projects/wasm-wast.md`).
 
 `Silmaril.Project.Shapes.WasmWast.Thms` proves every command of a script at once from one
@@ -177,6 +194,31 @@ def Always (o : GrowOracle) (m : Module) (pre : List Action) (act : Action) (r :
     ¬ Diverges (profile o) Det.noHost (invoke s a act.args) ∧
     ∀ c', Steps (profile o) Det.noHost (invoke s a act.args) c' →
       ∃ c, Steps (profile o) Det.noHost c' c ∧ InvokeNF o s a act.args c ∧ c.outcome? = some r
+
+/-! ## Rejections (tool-level) -/
+
+/-- **`assert_invalid`, tool-level**: silmaril-lean's decoder `decode?` reads the bytes `b` as some
+module, and silmaril-lean's validator `validate?` rejects that module. A statement about the two
+functions, not about the specification's validity; with `validate?_complete` it gives
+`ValidatorRejects.not_valid` (`….Thms`). -/
+@[problem "silmaril.shapes.wasm.wast.validator_rejects"
+  (title := "silmaril-lean's validator rejects the module that silmaril-lean's decoder reads from given bytes")]
+def ValidatorRejects (b : ByteArray) : Prop :=
+  ∃ m, Binary.Core.decode? b = some m ∧ validate? m = none
+
+/-- **`assert_malformed` on a binary, tool-level**: silmaril-lean's decoder `decode?` rejects the
+bytes `b`. The decoder is sound, not complete, so this does not say that `b` encodes no
+module. -/
+@[problem "silmaril.shapes.wasm.wast.decoder_rejects"
+  (title := "silmaril-lean's decoder rejects given bytes")]
+def DecoderRejects (b : ByteArray) : Prop :=
+  Binary.Core.decode? b = none
+
+/-- The kernel checker of `ValidatorRejects`: decode, then validate. -/
+def validatorRejectsB (b : ByteArray) : Bool :=
+  match Binary.Core.decode? b with
+  | some m => (validate? m).isNone
+  | none => false
 
 /-! ## Scripts -/
 

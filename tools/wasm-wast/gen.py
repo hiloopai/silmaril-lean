@@ -6,7 +6,9 @@
     python3 -I tools/wasm-wast/gen.py emit      # write the Lean modules and the report
     python3 -I tools/wasm-wast/gen.py fetch-wasmtime  # download the pinned wasmtime, SHA-256 checked
     python3 -I tools/wasm-wast/gen.py oracle    # run the pinned wasmtime on every command
+    python3 -I tools/wasm-wast/gen.py oracle --check  # re-run wasmtime; fail on any difference (CI)
     python3 -I tools/wasm-wast/gen.py verify    # re-check oracle.json's provenance (no wasmtime)
+    python3 -I tools/wasm-wast/gen.py regress   # wasmtime must reject deliberately wrong expectations (CI)
     python3 -I tools/wasm-wast/gen.py all       # convert, probe, emit, oracle, in order
     python3 -I tools/wasm-wast/gen.py site DIR  # copy report.json, oracle.json to DIR/wast/ (explorer)
 
@@ -14,6 +16,11 @@ Inputs are pinned: the spec test suite and wasm-tools by tools/wasm-tools/tests/
 (installed by tools/wasm-tools/tests/fetch-pins.sh spec wasm-tools), wasmtime 50.0.0 by
 tools/wasm-jco/tests/pins.sh. Each is checked against its SHA-256 before use. Downloads and
 generated JSON are data: this script parses them and never executes anything inside them.
+
+`assert_invalid` and binary `assert_malformed` commands are answered by the tool-level shapes
+`silmaril.shapes.wasm.wast.validator_rejects` / `decoder_rejects` (`decide +kernel` on
+`validatorRejectsB` / `decode?`): claims about silmaril-lean's decoder and validator, not about
+the specification. Text `assert_malformed` commands stay unsupported (TEXT_MALFORMED).
 
 The probe runs silmaril-lean's interpreter natively (`lake env lean` on a generated file) only to
 decide which commands to give to the kernel; nothing it prints is a proof. The proofs are the
@@ -57,6 +64,18 @@ FUEL = 100000
 # reason; their commands are undetermined. It is empty.
 KERNEL_OUT = {}
 O = "Silmaril.Wasm.SingleThreaded.neverFail"
+# Text-format `assert_malformed` (`module quote` that wasm-tools cannot encode): no binary exists.
+# silmaril-lean's WAT front end `Tools.Parse.textModule` rejects all four of the slice natively,
+# with its `.syntax` error, but that error also covers text outside its elaborator and the front
+# end has no completeness theorem: a kernel row would not separate malformed from unsupported text.
+TEXT_MALFORMED = ("assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness "
+                  "theorem and its syntax error also covers unsupported text (no shape)")
+# The rejection shapes: (shape, Lean name, kernel checker) by the function that rejects.
+REJECT = {"validator": ("silmaril.shapes.wasm.wast.validator_rejects", "ValidatorRejects", "validatorRejectsB"),
+          "decoder": ("silmaril.shapes.wasm.wast.decoder_rejects", "DecoderRejects", "decode?")}
+# Which rejection each assertion expects (another one is a mismatch).
+REJECT_WANT = {"assert_invalid": "validator", "assert_malformed": "decoder"}
+REGRESS = ROOT / "tools/wasm-wast/regress"
 NS = "silmaril.wasm_wast"
 
 
@@ -93,9 +112,15 @@ SPEC_CORE = pathlib.Path(WT["WASM_SPEC_DIR"]) / f"spec-{WT['WASM_SPEC_REV']}" / 
 def convert():
     need(WT["WT_UPSTREAM"], WT["WT_UPSTREAM_SHA256"], "wasm-tools")
     need(WT["WASM_SPEC_ARCHIVE"], WT["WASM_SPEC_SHA256"], "the spec test suite archive")
+    recorded = {x["file"]: x["sha256"] for x in json.loads(REPORT.read_text())["files"]} if REPORT.is_file() else {}
     for f, _ in FILES:
         d = WORK / "json" / f
         d.mkdir(parents=True, exist_ok=True)
+        # The unpacked spec file must be the one report.json records (fetch-pins.sh checks only the
+        # archive, and an unpacked tree may be cached).
+        want = recorded.get(f"test/core/{f}.wast")
+        if want is not None and sha256(SPEC_CORE / f"{f}.wast") != want:
+            sys.exit(f"gen.py: {SPEC_CORE / f'{f}.wast'} does not match the SHA-256 {want} recorded in report.json")
         subprocess.run([WT["WT_UPSTREAM"], "json-from-wast", str(SPEC_CORE / f"{f}.wast"), "-o", str(d / f"{f}.json"),
                         "--wasm-dir", str(d)], check=True)
         print(f"convert {f}: {d / (f + '.json')}")
@@ -152,11 +177,19 @@ def load(f):
             row["text"] = c["text"]
         rows.append(row)
         reason = None
-        if t in ("assert_invalid", "assert_malformed", "assert_unlinkable", "assert_uninstantiable", "register",
+        if t in ("assert_invalid", "assert_malformed"):
+            # The binary of the module: given (`module binary`), or written by wasm-tools for a
+            # text module it can encode (`binary_filename`, e.g. `assert_invalid` on text).
+            fn = c.get("binary_filename") or (c.get("filename") if c.get("module_type") == "binary" else None)
+            row["module_type"] = c.get("module_type")
+            if fn:
+                row["status"], row["reject_wasm"] = "reject_candidate", fn
+            else:
+                row["status"], row["reason"] = "unsupported", TEXT_MALFORMED
+            continue
+        if t in ("assert_unlinkable", "assert_uninstantiable", "register",
                  "module_definition", "module_instance", "assert_exception", "assert_suspension"):
-            reason = {"assert_invalid": "assert_invalid: needs validator completeness (no shape)",
-                      "assert_malformed": "assert_malformed: decoder/text rejection (no shape)",
-                      "assert_unlinkable": "assert_unlinkable (no shape)",
+            reason = {"assert_unlinkable": "assert_unlinkable (no shape)",
                       "assert_uninstantiable": "assert_uninstantiable (no shape)"}.get(t, f"{t} (no shape)")
             row["status"], row["reason"] = "unsupported", reason
             continue
@@ -283,6 +316,14 @@ def probeCmds (tag : String) (fuel : Nat) (mi : ModuleInst) : Nat → Store Nat 
       | some (_, false, _) => IO.println s!"P\\t{tag}\\t{k}\\tundetermined\\tout of fuel ({fuel} steps)"
       | _ => IO.println s!"P\\t{tag}\\t{k}\\terror\\tstopped without a result (stuck or host call)"
 
+def probeReject (tag : String) (bytes : ByteArray) : IO Unit :=
+  match Silmaril.Wasm.Binary.Core.decode? bytes with
+  | none => IO.println s!"R\\t{tag}\\tdecoder"
+  | some m =>
+    match validate? m with
+    | none => IO.println s!"R\\t{tag}\\tvalidator"
+    | some _ => IO.println s!"R\\t{tag}\\taccepts"
+
 def probe (tag : String) (bytes : ByteArray) (cmds : List Cmd) : IO Unit := do
   match Silmaril.Wasm.Binary.Core.decode? bytes with
   | none => IO.println s!"M\\t{tag}\\tdecode\\tthe decoder rejects the module"
@@ -318,17 +359,23 @@ def probe():
             cmds = runnable(seg)
             out.append(f"#eval probe {lean_str(tag)} b_{f}_{seg['index']} [\n  " +
                        ",\n  ".join(lean_cmd(r) for r in cmds) + "]\n")
+        for r in rows:
+            if r["status"] == "reject_candidate":
+                out.append(bytes_lean(f"r_{f}_{r['line']}", (WORK / "json" / f / r["reject_wasm"]).read_bytes()))
+                out.append(f"#eval probeReject {lean_str(r['id'])} r_{f}_{r['line']}\n")
     with tempfile.TemporaryDirectory() as td:
         p = pathlib.Path(td) / "Probe.lean"
         p.write_text("\n".join(out))
         r = subprocess.run(["lake", "env", "lean", str(p)], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         sys.exit("probe failed:\n" + r.stdout[-4000:] + r.stderr[-4000:])
-    res = {"modules": {}, "cmds": {}}
+    res = {"modules": {}, "cmds": {}, "rejects": {}}
     for line in r.stdout.splitlines():
         parts = line.split("\t")
         if parts[0] == "M":
             res["modules"][parts[1]] = {"status": parts[2], "detail": parts[3] if len(parts) > 3 else ""}
+        elif parts[0] == "R":
+            res["rejects"][parts[1]] = parts[2]
         elif parts[0] == "P":
             res["cmds"][f"{parts[1]}/{parts[2]}"] = {"status": parts[3], "detail": parts[4] if len(parts) > 4 else ""}
     (WORK / "probe.json").write_text(json.dumps(res, indent=1))
@@ -395,6 +442,20 @@ def classify():
         for r in rows:
             if r.get("status") == "candidate":
                 r["status"], r["reason"] = "undetermined", "not run"
+            if r.get("status") == "reject_candidate":
+                got = pr.get("rejects", {}).get(r["id"])
+                want = REJECT_WANT[r["type"]]
+                if got is not None:
+                    r["observed"] = {"validator": "decode? reads a module; validate? rejects it",
+                                     "decoder": "decode? rejects the bytes",
+                                     "accepts": "decode? reads a module; validate? accepts it"}[got]
+                if got == want:
+                    r["status"], r["reject"] = "proved", got
+                elif got is None:
+                    r["status"], r["reason"] = "undetermined", "not probed"
+                else:
+                    r["status"] = "mismatch"
+                    r["reason"] = f"{r['type']} expects a {want} rejection; silmaril-lean: {r['observed']}"
         files.append((f, mod, segs, rows))
     return files
 
@@ -407,10 +468,13 @@ def emit():
               "converter": {"tool": "wasm-tools json-from-wast", "version": WT["WT_VERSION"],
                             "sha256": WT["WT_UPSTREAM_SHA256"]},
               "profile": "profile neverFail (deterministic: canonical NaNs, $ND = false, grow fails only when impossible)",
-              "assumptions": ["the module is valid, has no imports and no start function, and its function exports have scalar types",
-                              "no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
-                              "script state: the store threads through the earlier actions of the same module, in order",
-                              "termination is witnessed by the kernel run; other runs reach the same normal form by determinism"],
+              "assumptions": ["assert_return/assert_trap rows: the module is valid, has no imports and no start function, and its function exports have scalar types",
+                              "assert_return/assert_trap rows: no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
+                              "assert_return/assert_trap rows: the script state: the store threads through the earlier actions of the same module, in order",
+                              "assert_return/assert_trap rows: termination is witnessed by the kernel run; other runs reach the same normal form by determinism",
+                              "assert_invalid rows are tool-level (silmaril.shapes.wasm.wast.validator_rejects): silmaril-lean's decode? reads "
+                              "the bytes wasm-tools wrote and silmaril-lean's validate? rejects the module; with validate?_complete, no module "
+                              "the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)"],
               "files": [], "commands": []}
     imports = []
     for f, mod, segs, rows in files:
@@ -424,7 +488,7 @@ def emit():
                                              **({"checker": "scriptKM" if s["kmem"] else "scriptK"}
                                                 if s["reason"] is None and s["kernel_reason"] is None else {})}
                                             for s in segs]})
-        if any(seg["kernel"] for seg in segs):
+        if any(seg["kernel"] for seg in segs) or any(r.get("reject") for r in rows):
             defs, thms = emit_file(f, mod, segs, rows, sha)
             (LEAN_DIR / mod).mkdir(parents=True, exist_ok=True)
             (LEAN_DIR / mod / "Defs.lean").write_text(defs)
@@ -447,12 +511,25 @@ def emit():
             if r["type"] == "assert_trap":
                 c["expected"] = ["trap"]
                 c["trap_text"] = r.get("text")
+            if r["type"] in REJECT_WANT:
+                c["expected"] = [r["type"].removeprefix("assert_")]
+                c["text"] = r.get("text")
             for k in ("reason", "observed"):
                 if k in r:
                     c[k] = r[k]
             if "seg" in r:
                 c["module"] = r["seg"]
-            if r["status"] == "proved":
+            if "reject_wasm" in r:
+                c["module_type"] = r["module_type"]
+                c["wasm_sha256"] = sha256(WORK / "json" / f / r["reject_wasm"])
+                if r["status"] == "proved":
+                    shape, _, checker = REJECT[r["reject"]]
+                    c["problem"] = f"{NS}.{f}.l{r['line']}"
+                    c["shape"] = shape
+                    c["theorem"] = f"Silmaril.Project.WasmWast.{mod}.l{r['line']}"
+                    c["strength"] = "tool"
+                    c["checker"] = checker
+            elif r["status"] == "proved":
                 kind = "returns_only" if r["type"] == "assert_return" else "traps_only"
                 c["problem"] = f"{NS}.{f}.l{r['line']}"
                 c["shape"] = f"silmaril.shapes.wasm.wast.{kind}"
@@ -503,7 +580,7 @@ wasm-tools {WT['WT_VERSION']} `json-from-wast` writes for it, read by silmaril-l
 (`decode?`, sound: `decode?_sound`). `mJ` is the module of the `J`-th `(module …)` of the file and
 `cmdsJ` the commands after it that the kernel runs, in script order: an `assert_return` or
 `assert_trap` that the kernel checks keeps its expectation; every other one is kept as an action
-(`expect := none`) so that the store threads through it.
+(`expect := none`) so that the store threads through it.{{rdoc}}
 -/
 
 @[expose] public section
@@ -512,6 +589,10 @@ namespace {ns}
 
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 """]
+    rejects = [r for r in rows if r.get("reject") and r["status"] == "proved"]
+    rdoc = ("" if not rejects else "\n\n`invalidL` / `malformedL` are the bytes of the module of the `assert_invalid` /\n"
+            "`assert_malformed` at line `L`: the binary that wasm-tools writes for it.")
+    defs[0] = defs[0].replace("{rdoc}", rdoc)
     kinds = {s["kmem"] for s in segs if s["reason"] is None and s["kernel"]}
     checker = ("(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptK` per module)" if kinds == {False}
                else "(one `decide +kernel` evaluation per module: `ScriptHolds.of_kernelKM` evaluates `scriptKM`,\n"
@@ -529,7 +610,7 @@ public import Silmaril.Project.Shapes.WasmWast.Thms
 Generated by `tools/wasm-wast/gen.py`; do not edit. `scriptJ` proves every command of `cmdsJ`
 {checker}; each row
 `{NS}.{f}.l<line>` is one `assert_return` (`silmaril.shapes.wasm.wast.returns_only`) or
-`assert_trap` (`….traps_only`) at line `<line>` of the file, answered from it.
+`assert_trap` (`….traps_only`) at line `<line>` of the file, answered from it.{{rthm}}
 -/
 
 @[expose] public section
@@ -538,6 +619,11 @@ namespace {ns}
 
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 """]
+    thms[0] = thms[0].replace("{rthm}", "" if not rejects else
+        "\n\nAn `assert_invalid` row (`….validator_rejects`) or binary `assert_malformed` row\n"
+        "(`….decoder_rejects`) is tool-level: silmaril-lean's validator (decoder) rejects the bytes, by one\n"
+        "`decide +kernel` evaluation. It does not claim that the module is invalid (malformed) in the\n"
+        "specification; see `ValidatorRejects.not_valid` for what follows from `validate?_complete`.")
     byid = {r["id"]: r for r in rows}
     for seg in segs:
         j = seg["index"]
@@ -579,9 +665,24 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
                             f"  (m := m{j}) (pre := pre cmds{j} {k}) (act := {act})\n")
                 thms.append(f"@[answers {lean_str(name)} thm] theorem l{row['line']} : {name} :=\n"
                             f"  script{j}.trapsOnly {k} rfl\n")
+    for r in rejects:
+        L = r["line"]
+        shape, lean, _ = REJECT[r["reject"]]
+        var = f"{r['type'].removeprefix('assert_')}{L}"
+        data = (WORK / "json" / f / r["reject_wasm"]).read_bytes()
+        defs.append(f"/-- The bytes of the module of the `{r['type']}` at line {L} (`{r['reject_wasm']}`,\n"
+                    f"SHA-256 `{sha256(WORK / 'json' / f / r['reject_wasm'])}`). -/")
+        defs.append(bytes_lean(var, data))
+        name = f"{NS}.{f}.l{L}"
+        thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n"
+                    f"  {shape} (b := {var})\n")
+        proof = "(by decide +kernel)"
+        thms.append(f"@[answers {lean_str(name)} thm] theorem l{L} : {name} :=\n"
+                    f"  {lean}.of_kernel {proof}\n")
     defs.append(f"end {ns}\n\nend\n")
     thms.append(f"end {ns}\n\nend\n")
     names = [f"{NS}.{f}.l{byid[r['id']]['line']}" for seg in segs for r, ok in seg["kernel"] if ok]
+    names += [f"{NS}.{f}.l{r['line']}" for r in rejects]
     thms.append(f"silmaril group {NS}.{f} (title := {lean_str(f'test/core/{f}.wast: the kernel-checked commands')})\n"
                 f"  (children := [\n    " + ",\n    ".join(names) + "])\n")
     return "\n".join(defs), "\n".join(thms)
@@ -666,8 +767,7 @@ def oracle_scripts(rep):
                     prev.append(r)
                     continue
                 if mod is None:
-                    data = (WORK / "json" / f / seg["wasm"]).read_bytes()
-                    mod = '(module binary "' + "".join(f"\\{b:02x}" for b in data) + '")'
+                    mod = module_binary((WORK / "json" / f / seg["wasm"]).read_bytes())
                 lines = [mod]
                 for p in prev:
                     lines.append(f"(invoke {lean_str(p['action']['field'])} {' '.join(wast_val(show_val(v)) for v in p['action']['args'])})"
@@ -675,6 +775,18 @@ def oracle_scripts(rep):
                 lines.append(wast_cmd(r))
                 yield r["id"], "\n".join(lines) + "\n"
                 prev.append(r)
+        # Rejections: the same bytes as the row, as `(module binary …)`, under the same assertion.
+        for r in rows:
+            if "reject_wasm" in r and status[r["id"]]["status"] in ("proved", "mismatch"):
+                yield r["id"], reject_script(r["type"], (WORK / "json" / f / r["reject_wasm"]).read_bytes(), r.get("text", ""))
+
+
+def module_binary(data):
+    return '(module binary "' + "".join(f"\\{b:02x}" for b in data) + '")'
+
+
+def reject_script(kind, data, text):
+    return f"({kind} {module_binary(data)} {lean_str(text)})\n"
 
 
 def text_sha256(t):
@@ -708,7 +820,9 @@ def scrub(err):
 
 def oracle():
     """Run wasmtime 50.0.0 `wast` on one small script per command (`oracle_scripts`). A command
-    passes when wasmtime accepts the script."""
+    passes when wasmtime accepts the script. With `--check` (CI), oracle.json is not rewritten:
+    the fresh record goes to WORK/oracle.check.json, and the run fails if any command fails under
+    wasmtime, or if its verdicts, scripts or kernel statuses differ from the committed record."""
     if not pathlib.Path(JCO["WASMTIME"]).is_file():
         fetch_wasmtime()
     need(JCO["WASMTIME"], JCO["WASMTIME_SHA256"], "wasmtime")
@@ -735,8 +849,97 @@ def oracle():
         res["files"].append({"file": f"test/core/{f}.wast", "sha256": sha256(SPEC_CORE / f"{f}.wast"),
                              "oracle": "pass" if pr.returncode == 0 else "fail",
                              **({"stderr": scrub(pr.stderr)[-400:]} if pr.returncode else {})})
-    ORACLE.write_text(json.dumps(res, indent=1) + "\n")
     print(json.dumps(res["counts"]), file=sys.stderr)
+    if "--check" not in sys.argv:
+        ORACLE.write_text(json.dumps(res, indent=1) + "\n")
+        return
+    out = WORK / "oracle.check.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res, indent=1) + "\n")
+    old = json.loads(ORACLE.read_text())
+    key = lambda x: (x["id"], x["oracle"], x["script_sha256"], x["silmaril"])
+    bad = [f"{x['id']}: wasmtime fails: {x.get('stderr', '')[-200:]!r}" for x in res["results"] if x["oracle"] != "pass"]
+    new_k, old_k = {key(x) for x in res["results"]}, {key(x) for x in old["results"]}
+    bad += [f"not in oracle.json: {k}" for k in sorted(new_k - old_k)]
+    bad += [f"in oracle.json, not re-obtained: {k}" for k in sorted(old_k - new_k)]
+    fk = lambda x: (x["file"], x["sha256"], x["oracle"])
+    if [fk(x) for x in res["files"]] != [fk(x) for x in old.get("files", [])]:
+        bad.append("the verdicts on the unmodified upstream files differ from oracle.json")
+    print(f"oracle --check: {len(res['results'])} commands re-run, {res['counts']['oracle_pass']} pass; record {out}")
+    if bad:
+        print("\n".join(f"oracle --check: DISAGREE {b}" for b in bad[:50]), file=sys.stderr)
+        sys.exit(1)
+    print("oracle --check: ok (every command passes; verdicts, scripts and statuses equal oracle.json)")
+
+
+def regress():
+    """The oracle's own regression: wasmtime must reject a deliberately wrong expectation.
+
+    * Committed scripts `regress/wrong-*.wast`: each has exactly one directive marked `;; WRONG`
+      (a wrong expectation). wasmtime must fail, and on that directive's line, so that the
+      failure is the wrong expectation and not, say, a parse error. `regress/right-*.wast` (the
+      same modules, right expectations) must pass, so the failures are not a broken wasmtime.
+    * Generated scripts: the first `assert_return` and the first `assert_invalid` script of
+      `oracle_scripts`, with the expectation made wrong (the result value plus one; the module
+      replaced by a valid empty one). wasmtime must fail on each, so `oracle`'s scripts can fail.
+    Exits 1 if any wrong expectation is accepted or any control fails."""
+    if not pathlib.Path(JCO["WASMTIME"]).is_file():
+        fetch_wasmtime()
+    need(JCO["WASMTIME"], JCO["WASMTIME_SHA256"], "wasmtime")
+    bad, n = [], 0
+
+    def run(path):
+        return subprocess.run([JCO["WASMTIME"], "wast", str(path)], capture_output=True, text=True)
+
+    for p in sorted(REGRESS.glob("*.wast")):
+        n += 1
+        r = run(p)
+        if p.name.startswith("right-"):
+            if r.returncode != 0:
+                bad.append(f"{p.name}: the control fails: {scrub(r.stderr)[-300:]!r}")
+            continue
+        marks = [i + 1 for i, line in enumerate(p.read_text().splitlines()) if ";; WRONG" in line]
+        if len(marks) != 1:
+            bad.append(f"{p.name}: {len(marks)} `;; WRONG` marks, want 1")
+        elif r.returncode == 0:
+            bad.append(f"{p.name}: wasmtime ACCEPTS a wrong expectation (line {marks[0]})")
+        elif f"{p.name}:{marks[0]}" not in r.stderr:
+            bad.append(f"{p.name}: wasmtime fails, but not on the wrong line {marks[0]}: {scrub(r.stderr)[-300:]!r}")
+    rep = json.loads(REPORT.read_text())
+    byid = {c["id"]: c for c in rep["commands"]}
+    have_json = all((WORK / "json" / f / f"{f}.json").is_file() for f, _ in FILES)
+    if not have_json:
+        bad.append(f"converted JSON missing under {WORK / 'json'} (run `gen.py convert`)")
+    else:
+        mutants = {}
+        for cid, text in oracle_scripts(rep):
+            t = byid[cid]["type"]
+            last = text.rstrip("\n").split("\n")[-1]
+            if t == "assert_return" and t not in mutants:
+                m = re.search(r"\((i32|i64)\.const (-?[0-9]+)\)\)$", last)
+                if m:
+                    w = WIDTH[m.group(1)]
+                    wrong = last[:m.start()] + f"({m.group(1)}.const {(int(m.group(2)) + 1) % (1 << w)}))"
+                    mutants[t] = (cid, text.rstrip("\n")[: -len(last)] + wrong + "\n")
+            elif t == "assert_invalid" and t not in mutants:
+                mutants[t] = (cid, reject_script("assert_invalid", bytes.fromhex("0061736d01000000"), byid[cid].get("text") or ""))
+        with tempfile.TemporaryDirectory() as td:
+            for t in ("assert_return", "assert_invalid"):
+                if t not in mutants:
+                    bad.append(f"no {t} script to mutate")
+                    continue
+                cid, text = mutants[t]
+                path = pathlib.Path(td) / "wrong.wast"
+                path.write_text(text)
+                n += 1
+                if run(path).returncode == 0:
+                    bad.append(f"{cid} ({t}) with a wrong expectation: wasmtime ACCEPTS it")
+    print(f"regress: {n} scripts run ({len(list(REGRESS.glob('wrong-*.wast')))} committed wrong, "
+          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 2 generated wrong)")
+    if bad:
+        print("\n".join(f"regress: FAIL {b}" for b in bad), file=sys.stderr)
+        sys.exit(1)
+    print("regress: ok (every wrong expectation is rejected by wasmtime; every control passes)")
 
 
 def verify():
@@ -818,7 +1021,7 @@ def main():
     if cmd == "site":
         return site()
     steps = {"convert": [convert], "probe": [probe], "emit": [emit], "oracle": [oracle],
-             "fetch-wasmtime": [fetch_wasmtime], "verify": [verify],
+             "fetch-wasmtime": [fetch_wasmtime], "verify": [verify], "regress": [regress],
              "all": [convert, probe, emit, oracle]}
     if cmd not in steps:
         sys.exit(__doc__)

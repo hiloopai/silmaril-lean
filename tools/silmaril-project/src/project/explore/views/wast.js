@@ -17,6 +17,16 @@ const WastModel = (() => {
   const STRENGTH = {
     "silmaril.shapes.wasm.wast.returns_only": "returns these values at every host-free normal form; no host-free run diverges (theorem ReturnsOnly.always)",
     "silmaril.shapes.wasm.wast.traps_only": "traps at every host-free normal form; no host-free run diverges (theorem TrapsOnly.always)",
+    "silmaril.shapes.wasm.wast.validator_rejects": "silmaril-lean's decoder reads the bytes and silmaril-lean's validator rejects the module; " +
+      "with validate?_complete, no module the bytes encode is valid in silmaril-lean's ModuleOk (ValidatorRejects.not_valid). " +
+      "Not a claim that the module is invalid in the specification",
+    "silmaril.shapes.wasm.wast.decoder_rejects": "silmaril-lean's decoder rejects the bytes; the decoder is sound, not complete, " +
+      "so this is not a claim that the bytes are malformed",
+  };
+  // How strong a proved row's claim is (the report's `strength`).
+  const CLAIM = {
+    only: "semantic: Core reduction",
+    tool: "tool-level rejection",
   };
   // The oracle result of each command, by id.
   function oracleIndex(oracle) {
@@ -38,8 +48,13 @@ const WastModel = (() => {
     }
     const ox = oracleIndex(oracle);
     let oracleRun = 0, agreeProved = 0, proved = 0, disagree = 0;
+    const byClaim = {};
     for (const c of report.commands) {
-      if (c.status === "proved") proved++;
+      if (c.status === "proved") {
+        proved++;
+        const k = CLAIM[c.strength] || c.strength || "?";
+        byClaim[k] = (byClaim[k] || 0) + 1;
+      }
       const o = ox.get(c.id);
       if (!o) continue;
       oracleRun++;
@@ -47,7 +62,7 @@ const WastModel = (() => {
       if (o.oracle !== "pass") disagree++;
     }
     const reasons = Object.entries(byReason).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    return { total: report.commands.length, byStatus, byFile, reasons, proved, oracleRun, agreeProved, disagree,
+    return { total: report.commands.length, byStatus, byFile, reasons, proved, byClaim, oracleRun, agreeProved, disagree,
       oracleLoaded: !!oracle };
   }
   // The table rows, filtered by status and file ("" for every one).
@@ -57,10 +72,14 @@ const WastModel = (() => {
       const o = ox.get(c.id);
       return {
         id: c.id, file: c.file, line: c.line, type: c.type, status: c.status,
-        input: c.invoke == null ? "" : `${c.invoke}(${(c.args || []).join(", ")})`,
+        input: c.invoke != null ? `${c.invoke}(${(c.args || []).join(", ")})`
+          : c.wasm_sha256 ? `module (${c.module_type || "binary"}), binary SHA-256 ${c.wasm_sha256.slice(0, 12)}…` : "",
         expected: (c.expected || []).join(", "),
         observed: c.observed || "",
         strength: c.shape ? STRENGTH[c.shape] || c.shape : "",
+        // "semantic: Core reduction" (assert_return, assert_trap) or "tool-level rejection"
+        // (assert_invalid, assert_malformed: claims about silmaril-lean's decoder and validator).
+        claim: c.status === "proved" ? CLAIM[c.strength] || c.strength || "" : "",
         problem: c.problem || null, theorem: c.theorem || null, reason: c.reason || "",
         // The kernel checker of a proved row: `scriptK` (ByteArray stores) or `scriptKM` (KMem
         // stores, for modules with data segments); the claim is the same.
@@ -69,7 +88,7 @@ const WastModel = (() => {
       };
     });
   }
-  return Object.freeze({ STATUS_ORDER, STATUS_TEXT, STRENGTH, summarize, rows, oracleIndex });
+  return Object.freeze({ STATUS_ORDER, STATUS_TEXT, STRENGTH, CLAIM, summarize, rows, oracleIndex });
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = WastModel;
 
@@ -101,14 +120,15 @@ if (typeof registerView === "function") {
     let h = "<h2>WAST: the spec test suite, command by command</h2>";
     h += `<p>WebAssembly/spec <code>${esc((report.spec.rev || "").slice(0, 12))}</code> (archive SHA-256 <code>${esc(report.spec.archive_sha256 || "")}</code>), ` +
       `converted by ${esc(report.converter.tool)} ${esc(report.converter.version)}. Profile: ${esc(report.profile)}.</p>`;
-    h += "<p>Assumptions of every theorem:</p><ul>" + report.assumptions.map((a) => `<li>${esc(a)}</li>`).join("") + "</ul>";
+    h += "<p>Assumptions of the theorems (each says which rows it concerns):</p><ul>" + report.assumptions.map((a) => `<li>${esc(a)}</li>`).join("") + "</ul>";
     h += `<p><b>${s.total}</b> commands: ` + WastModel.STATUS_ORDER.filter((k) => s.byStatus[k]).map((k) =>
       `<a href="#/wast/${encodeURIComponent(k)}" title="${esc(WastModel.STATUS_TEXT[k])}">${esc(k)} ${s.byStatus[k]}</a>`).join(" · ") +
-      ` · <a href="#/wast">all</a>. In this database: ${[...db.values()].filter((r) => r.status === "THM").length} rows answered THM ` +
+      ` · <a href="#/wast">all</a>. Proved, by claim strength: ` +
+      Object.entries(s.byClaim).map(([k, v]) => `${esc(k)} ${v}`).join(" · ") + `. In this database: ${[...db.values()].filter((r) => r.status === "THM").length} rows answered THM ` +
       `(of ${s.proved} proved in the report).</p>`;
     h += s.oracleLoaded
       ? `<p>Oracle: ${esc(oracle.oracle.tool)} ${esc(oracle.oracle.version)} (SHA-256 <code>${esc(oracle.oracle.sha256)}</code>), ` +
-        `run outside CI: ${s.oracleRun} commands run, ${s.agreeProved} of ${s.proved} kernel-proved commands agree, ${s.disagree} disagree.</p>`
+        `re-run in CI (the WAST oracle job) when its inputs change and nightly: ${s.oracleRun} commands run, ${s.agreeProved} of ${s.proved} kernel-proved commands agree, ${s.disagree} disagree.</p>`
       : '<p class="muted">No oracle results (<code>wast/oracle.json</code>) next to the page.</p>';
     h += "<h3>Reasons</h3>" + tbl(s.reasons, [["reason", (r) => esc(r[0])], ["commands", (r) => String(r[1])]]);
     h += "<h3>Files</h3>" + tbl(Object.entries(s.byFile), [["file", ([f]) => `<a href="#/wast/|${encodeURIComponent(f)}">${esc(f)}.wast</a>`],
@@ -120,7 +140,8 @@ if (typeof registerView === "function") {
       ["input", (r) => `<code>${esc(r.input)}</code>`],
       ["expected", (r) => `<code>${esc(r.expected)}</code>`],
       ["observed", (r) => `<code>${esc(r.observed)}</code>`],
-      ["claim", (r) => r.problem ? `${link("problem", r.problem, r.problem)}<br><span class="muted">${esc(r.strength)}</span>` : ""],
+      ["claim", (r) => r.problem ? `${link("problem", r.problem, r.problem)}<br><b>${esc(r.claim)}</b>: ` +
+        `<span class="muted">${esc(r.strength)}</span>` : ""],
       ["status", (r) => {
         const d = r.problem && db.get(r.problem);
         return `${esc(r.status)}${r.checker ? ` <span class="muted">(${esc(r.checker)})</span>` : ""}${d ? " · " + esc(d.status || "no answer") + (d.tier ? " (" + esc(d.tier) + ")" : "") :

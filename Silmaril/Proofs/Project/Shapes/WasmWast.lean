@@ -8,6 +8,8 @@ public import Silmaril.Wasm.SingleThreaded.Determinism.Join
 public import Silmaril.Wasm.SingleThreaded.Soundness
 public import Silmaril.Wasm.Verify.Kernel.Thms
 public import Silmaril.Wasm.Execution.MemRep.Inst.Thms
+import Silmaril.Wasm.Binary.Core.DecodeSound
+import Silmaril.Wasm.Validation.Check.ValidateFinal
 
 /-!
 # Proofs: WAST script commands from one kernel evaluation
@@ -24,6 +26,9 @@ public import Silmaril.Wasm.Execution.MemRep.Inst.Thms
   `scriptK … = true`, by `instantiateOnce?_toBytes` and `runI_toBytes`;
 * `reaches_always`: at `profile o` one run of a command to a result rules out infinite runs of
   it and extends every finite run to that result (`Det.DStep.join'`, `Det.DStep.shrink`).
+* `validatorRejects_not_valid`: a validator rejection of the module the decoder reads excludes
+  every valid module the bytes encode (`decode?_sound`, `Binary.Core.functional`,
+  `validate?_complete`).
 -/
 
 @[expose] public section
@@ -405,6 +410,16 @@ theorem reaches_always {o : GrowOracle} {m : Module} {pre : List Action} {act : 
   cases ha'
   obtain ⟨hdiv, hext⟩ := invokeNF_always hc
   exact ⟨hdiv, fun c' hc' => ⟨c, hext c' hc', hc, hr⟩⟩
+
+/-! ## Rejections -/
+
+theorem validatorRejects_not_valid {b : ByteArray} (h : ValidatorRejects b) {m : Module}
+    (hm : Binary.Core.Encodes b.data.toList m) : ¬ ModuleValid m := by
+  obtain ⟨m', hd, hv⟩ := h
+  rintro ⟨mt, hok⟩
+  obtain rfl := Binary.Core.functional (Binary.Core.decode?_sound hd) hm
+  rw [validate?_complete hok] at hv
+  cases hv
 
 end Silmaril.Proofs.Project.Shapes.WasmWast
 

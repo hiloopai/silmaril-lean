@@ -62,3 +62,13 @@ project:
   - 'tools/silmaril-project/**'
   - 'Makefile'
   - '.github/**'
+
+# What the WAST oracle job reads: the generator, its committed report, oracle record and
+# regression scripts, and the pins of the spec suite, wasm-tools and wasmtime.
+wast-oracle:
+  - 'tools/wasm-wast/**'
+  - 'examples/wasm-wast/**'
+  - 'tools/wasm-tools/tests/pins.sh'
+  - 'tools/wasm-tools/tests/fetch-pins.sh'
+  - 'tools/wasm-jco/tests/pins.sh'
+  - '.github/**'

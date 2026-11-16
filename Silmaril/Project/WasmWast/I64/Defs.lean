@@ -15,6 +15,9 @@ wasm-tools 1.262.0 `json-from-wast` writes for it, read by silmaril-lean's decod
 `cmdsJ` the commands after it that the kernel runs, in script order: an `assert_return` or
 `assert_trap` that the kernel checks keeps its expectation; every other one is kept as an action
 (`expect := none`) so that the store threads through it.
+
+`invalidL` / `malformedL` are the bytes of the module of the `assert_invalid` /
+`assert_malformed` at line `L`: the binary that wasm-tools writes for it.
 -/
 
 @[expose] public section
@@ -450,6 +453,180 @@ def cmds0 : List Cmd := [
   ⟨⟨"ge_u", [Val.i64 18446744073709551615, Val.i64 9223372036854775808]⟩, some (.values [Val.i32 1])⟩,
   ⟨⟨"ge_u", [Val.i64 9223372036854775808, Val.i64 9223372036854775807]⟩, some (.values [Val.i32 1])⟩,
   ⟨⟨"ge_u", [Val.i64 9223372036854775807, Val.i64 9223372036854775808]⟩, some (.values [Val.i32 0])⟩]
+
+/-- The bytes of the module of the `assert_invalid` at line 457 (`i64.1.wasm`,
+SHA-256 `d69e9cd77e0d63bfd05a15905021939c1875b3b5e676e4820e4640a77be28653`). -/
+def invalid457 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 124, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 458 (`i64.2.wasm`,
+SHA-256 `08db6d02f642f7db848b0db5a5edc0964bdbdd4552f932a9a09309bca09d00a9`). -/
+def invalid458 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 131, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 459 (`i64.3.wasm`,
+SHA-256 `b3b6c5c5d6b5de2c0060b255290213cef1c5dc3621225738d5b221902593c5cc`). -/
+def invalid459 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 127, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 460 (`i64.4.wasm`,
+SHA-256 `81a1aa62a3643d9b7ffb812d4940280cc017e0654bc0205436190aa799078058`). -/
+def invalid460 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 128, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 461 (`i64.5.wasm`,
+SHA-256 `b610facb82656936ab6548d414752801427ba1c6723ba21a532e0d91ebc64491`). -/
+def invalid461 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 126, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 462 (`i64.6.wasm`,
+SHA-256 `2f4505e634a57b130ce358d7f7b22870e1ca48bf9a74e91524d0e733ca665695`). -/
+def invalid462 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 132, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 463 (`i64.7.wasm`,
+SHA-256 `5bcbeddd3a0294237726e800ee77d1ee0306f3798b7ad3a60a5de8c6458463e0`). -/
+def invalid463 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 129, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 464 (`i64.8.wasm`,
+SHA-256 `6e42c4d6ab6f7d5876bc85093257f487d113379987fa59c14dfe8f275a2f1f47`). -/
+def invalid464 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 130, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 465 (`i64.9.wasm`,
+SHA-256 `7f10d344e992684115547de2f1b5cfbe6749e9df2d8146031567f42de969bc46`). -/
+def invalid465 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 137, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 466 (`i64.10.wasm`,
+SHA-256 `5a8230c07b6d8b33b173d9e3ea9ec6ed6bba841ef9561b032859eeef9d5f2eef`). -/
+def invalid466 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 138, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 467 (`i64.11.wasm`,
+SHA-256 `3b85448415a9b73587545713912f4ac716879a5bf5c396791cdef4c5d7dda1d3`). -/
+def invalid467 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 134, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 468 (`i64.12.wasm`,
+SHA-256 `29696bec6642c93b8d63fecef151d0fa21f3d86a804990c0e7fef22a3e144eb1`). -/
+def invalid468 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 135, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 469 (`i64.13.wasm`,
+SHA-256 `3ae7fbc89ea311c6b6823d9a78beef6d7aeec3b141fced232366a29b2c0c0b97`). -/
+def invalid469 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 136, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 470 (`i64.14.wasm`,
+SHA-256 `842c62a2fe07ee508cae89e706ae2e55cd485355c742ac14a3eb7dfb22839ea7`). -/
+def invalid470 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 125, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 471 (`i64.15.wasm`,
+SHA-256 `ce8afe10884267b1eccd7b1be0e1d5589029b80b9ca38fd964a9080a47a9dcc9`). -/
+def invalid471 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 133, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 472 (`i64.16.wasm`,
+SHA-256 `b3d0289d1afb512c1fdab07b10a7271b0e5bc58793a693a3cbf7627fe890af2d`). -/
+def invalid472 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 7, 1, 5, 0,
+  65, 0, 80, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 473 (`i64.17.wasm`,
+SHA-256 `fc26f756084b99d60128731cbb541427427f7831c969df932605bf0886305ca9`). -/
+def invalid473 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 7, 1, 5, 0,
+  65, 0, 121, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 474 (`i64.18.wasm`,
+SHA-256 `3eb3cd8d52c3148a446d2caed7dc768c7ce66ae54310f6c7372bbe4b99cdd7ac`). -/
+def invalid474 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 7, 1, 5, 0,
+  65, 0, 122, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 475 (`i64.19.wasm`,
+SHA-256 `de4a974369b0b95972084e49947a2330a9dab18341c82c9bc8533c97178988df`). -/
+def invalid475 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 7, 1, 5, 0,
+  65, 0, 123, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 476 (`i64.20.wasm`,
+SHA-256 `dece9d01ab22079bd6298bbe4a8dc9586c203159ab1f7bb538a0ea6c0f198fc4`). -/
+def invalid476 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 81, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 477 (`i64.21.wasm`,
+SHA-256 `ba9f9fac436cd2b2dee45f29287261246c276b6578ab38bcb2825012a6633baa`). -/
+def invalid477 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 89, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 478 (`i64.22.wasm`,
+SHA-256 `1c311a101cf61d2815fe72956fec3c9fc76d7c84a2d4eaae0c760f0c886f2443`). -/
+def invalid478 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 90, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 479 (`i64.23.wasm`,
+SHA-256 `f0bc96779265b56eccdd3b9e33482c646ceaea10c99a402b797da07263bc3e27`). -/
+def invalid479 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 85, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 480 (`i64.24.wasm`,
+SHA-256 `e620654fc0e61d2c3ff75277c4f46aa4575b361db79028ee5146bcc04150ebff`). -/
+def invalid480 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 86, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 481 (`i64.25.wasm`,
+SHA-256 `26959a6980bc9878e2013e8175590ae12935b2ffeaa9824118bea233fa8235c4`). -/
+def invalid481 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 87, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 482 (`i64.26.wasm`,
+SHA-256 `b55194df0b3096a571381e261cd6ba173349a5ba8c9bdfe8de084eb02fb270c0`). -/
+def invalid482 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 88, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 483 (`i64.27.wasm`,
+SHA-256 `8ca9175830260b5ee9b2c90491c13aba7d1536ab2f9499cd86235cb1db09b0eb`). -/
+def invalid483 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 83, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 484 (`i64.28.wasm`,
+SHA-256 `cbdc37dc5da851aabe1717f6610152edca35e0914a9fe6c883c23685fa195fe5`). -/
+def invalid484 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 84, 11]⟩
+
+/-- The bytes of the module of the `assert_invalid` at line 485 (`i64.29.wasm`,
+SHA-256 `9d06a8357b0b1607134895698ec76743e52e38244f776bd7d5b9217e45f7f043`). -/
+def invalid485 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 126, 3, 2, 1, 0, 10, 12, 1, 10, 0,
+  65, 0, 67, 0, 0, 0, 0, 82, 11]⟩
 
 end Silmaril.Project.WasmWast.I64
 

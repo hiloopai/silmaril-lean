@@ -24,6 +24,11 @@ import Silmaril.Proofs.Project.Shapes.WasmWast
 * `Reaches.always`, `ReturnsOnly.always`, `TrapsOnly.always`, `ScriptHolds.always`: under
   `profile o`, a row also excludes divergence: no host-free run of the action is infinite, and
   every finite run extends to a normal form with the row's outcome (`Always`).
+* `ValidatorRejects.of_kernel`, `DecoderRejects.of_kernel`: the tool-level rejection shapes from
+  one kernel evaluation.
+* `ValidatorRejects.not_valid`: what a validator rejection gives through `validate?_complete`:
+  no module that the bytes encode in `Binary.Core.Encodes` is `ModuleValid`. Both relations are
+  silmaril-lean's transcriptions; `validate?_sound` alone gives nothing about a rejection.
 
 Proofs: `Silmaril.Proofs.Project.Shapes.WasmWast`.
 -/
@@ -118,6 +123,29 @@ theorem ScriptHolds.always {o : GrowOracle} {m : Module} {cmds : List Cmd}
       Always o m (pre cmds k) act e.result := by
   have := h k _ hk
   cases e <;> exact ⟨this.1, this.2, this.1.always⟩
+
+/-! ## Rejections (tool-level) -/
+
+/-- **A validator rejection, from one kernel evaluation** of `validatorRejectsB`. -/
+theorem ValidatorRejects.of_kernel {b : ByteArray} (h : validatorRejectsB b = true) :
+    ValidatorRejects b := by
+  unfold validatorRejectsB at h
+  split at h
+  · exact ⟨_, ‹_›, Option.isNone_iff_eq_none.mp h⟩
+  · cases h
+
+/-- **A decoder rejection, from one kernel evaluation.** -/
+theorem DecoderRejects.of_kernel {b : ByteArray}
+    (h : (Binary.Core.decode? b).isNone = true) : DecoderRejects b :=
+  Option.isNone_iff_eq_none.mp h
+
+/-- **What a validator rejection gives**: with the validator's completeness (`validate?_complete`)
+and the decoder's soundness and functionality (`decode?_sound`, `Binary.Core.functional`), no
+module that `b` encodes in silmaril-lean's binary grammar is valid in silmaril-lean's validation
+relation `ModuleOk`. Relative to those transcriptions, not to the specification itself. -/
+theorem ValidatorRejects.not_valid {b : ByteArray} (h : ValidatorRejects b) {m : Module}
+    (hm : Binary.Core.Encodes b.data.toList m) : ¬ Validation.ModuleValid m :=
+  Silmaril.Proofs.Project.Shapes.WasmWast.validatorRejects_not_valid h hm
 
 end Silmaril.Project.Shapes.WasmWast
 

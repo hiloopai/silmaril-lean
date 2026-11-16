@@ -15,6 +15,9 @@ wasm-tools 1.262.0 `json-from-wast` writes for it, read by silmaril-lean's decod
 `cmdsJ` the commands after it that the kernel runs, in script order: an `assert_return` or
 `assert_trap` that the kernel checks keeps its expectation; every other one is kept as an action
 (`expect := none`) so that the store threads through it.
+
+`invalidL` / `malformedL` are the bytes of the module of the `assert_invalid` /
+`assert_malformed` at line `L`: the binary that wasm-tools writes for it.
 -/
 
 @[expose] public section
@@ -423,6 +426,12 @@ def cmds3 : List Cmd := [
   ⟨⟨"64_good3", [Val.i32 4294967295]⟩, some .trap⟩,
   ⟨⟨"64_bad", [Val.i32 0]⟩, some .trap⟩,
   ⟨⟨"64_bad", [Val.i32 1]⟩, some .trap⟩]
+
+/-- The bytes of the module of the `assert_invalid` at line 214 (`address.1.wasm`,
+SHA-256 `4a1ae061b7e6d5f372825c46d3105755f76aa66fc78cb3ba886b2c0a7412b858`). -/
+def invalid214 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 5, 3, 1, 0, 1, 10,
+  14, 1, 12, 0, 65, 0, 40, 2, 128, 128, 128, 128, 16, 26, 11]⟩
 
 end Silmaril.Project.WasmWast.Address
 

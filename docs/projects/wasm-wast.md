@@ -1,9 +1,12 @@
 # WAST commands of the spec test suite as kernel-checked problems
 
 A slice of the WebAssembly specification test suite, command by command, as problem rows of
-the standard shapes `silmaril.shapes.wasm.wast.*`. Each row is answered by a theorem about Core
-reduction (`Silmaril.Wasm.Execution.Core.Step`), checked by the Lean kernel. The same commands
-were also run by a pinned independent implementation (wasmtime 50.0.0), outside CI.
+the standard shapes `silmaril.shapes.wasm.wast.*`. Each `assert_return`/`assert_trap` row is
+answered by a theorem about Core reduction (`Silmaril.Wasm.Execution.Core.Step`), checked by the
+Lean kernel. Each `assert_invalid` row is answered by a **tool-level** theorem: silmaril-lean's
+validator rejects the module (see [Rejections](#rejections-tool-level)). The same commands are
+run by a pinned independent implementation (wasmtime 50.0.0), in CI by the
+[WAST oracle job](#the-ci-oracle-job).
 
 Tests establish agreement only on the cases tested. A row says what silmaril-lean's Core
 semantics does on one command; it does not say that the Core semantics is the specification
@@ -21,6 +24,8 @@ each implementation-to-specification bridge and staged acceptance criteria, is
 | `silmaril.shapes.wasm.wast.returns_only` | `ReturnsOnly o m pre act vs` | `Returns`, and **every** host-free **normal form** of `act` returns `vs`: no normal form is a trap, other values, a stuck or a host-call state |
 | `silmaril.shapes.wasm.wast.traps` | `Traps o m pre act` | some host-free run of `act` traps |
 | `silmaril.shapes.wasm.wast.traps_only` | `TrapsOnly o m pre act` | `Traps`, and every host-free normal form of `act` is a trap (the trap message is not part of the claim) |
+| `silmaril.shapes.wasm.wast.validator_rejects` | `ValidatorRejects b` | **tool-level**: silmaril-lean's decoder `decode?` reads the bytes `b` as some module, and silmaril-lean's validator `validate?` rejects it |
+| `silmaril.shapes.wasm.wast.decoder_rejects` | `DecoderRejects b` | **tool-level**: silmaril-lean's decoder `decode?` rejects the bytes `b` |
 
 The `…_only` statements quantify over **normal forms** only ("every normal outcome is `r`"), not
 over runs: on their own they do not exclude an infinite run. Divergence is excluded by a
@@ -93,6 +98,56 @@ normal form, and the diamond carries every finite run to that normal form. All o
 host-free runs: a run that calls a host function stops at a normal form (a host call), which
 the `…_only` rows exclude as an outcome.
 
+### Rejections (tool-level)
+
+```lean
+def ValidatorRejects (b : ByteArray) : Prop :=
+  ∃ m, Binary.Core.decode? b = some m ∧ validate? m = none
+def DecoderRejects (b : ByteArray) : Prop := Binary.Core.decode? b = none
+```
+
+Both are statements about silmaril-lean's functions, not about the specification. Their titles
+("silmaril-lean's validator rejects the module that silmaril-lean's decoder reads from given
+bytes", "silmaril-lean's decoder rejects given bytes") do not say that the module is invalid or
+that the bytes are malformed. What does follow, exactly:
+
+* **Validator soundness gives nothing about a rejection.** `validate?_sound :
+  validate? m = some mt → ModuleOk m mt` speaks only about acceptance.
+* **Validator completeness** is proved: `validate?_complete : ModuleOk m mt → validate? m = some mt`
+  (`Silmaril.Wasm.Validation.Check.ValidateFinal`, axioms `propext`, `Classical.choice`,
+  `Quot.sound`). With the decoder's soundness `decode?_sound` and the functionality of the binary
+  grammar (`Binary.Core.functional`), a validator rejection gives
+
+  ```lean
+  theorem ValidatorRejects.not_valid (h : ValidatorRejects b)
+      (hm : Binary.Core.Encodes b.data.toList m) : ¬ Validation.ModuleValid m
+  ```
+
+  no module that `b` encodes in silmaril-lean's binary grammar `Binary.Core.Encodes` is valid in
+  silmaril-lean's validation relation `ModuleOk`. Both relations are silmaril-lean's
+  transcriptions of the specification; that they agree with the specification's binary format
+  and validation rules is not a theorem here (the SpecTec validation bridge is fragmentary:
+  [Confidence](wasm-confidence.md#1-bridge-matrix-implementation-to-specification)). So an
+  `assert_invalid` row is "invalid relative to silmaril-lean's transcription", not "invalid in
+  the specification".
+* **Decoder completeness** is not proved: `decode?` is sound only, so `DecoderRejects b` does not
+  exclude that `b` encodes a module. No binary `assert_malformed` is in this slice.
+* **The bytes** are what wasm-tools 1.262.0 `json-from-wast` writes for the WAST module (also for
+  the one `module quote` of `address.wast`, which wasm-tools encodes). The text-to-binary step is
+  the upstream tool's.
+
+`ValidatorRejects.of_kernel (h : validatorRejectsB b = true)` and `DecoderRejects.of_kernel (h :
+(decode? b).isNone = true)` prove the shapes from one `decide +kernel` evaluation each. The
+expected rejection must be the one that happens: an `assert_invalid` whose bytes the decoder
+rejects, or a binary `assert_malformed` that the decoder accepts, would be a mismatch, not a row.
+
+**Text `assert_malformed`** (four in `i32.wast`/`i64.wast`: `(i32.const nan:arithmetic)` and
+`nan:canonical`, and the same for `i64`) stays unsupported. There is no binary, so the decoder
+does not apply. silmaril-lean's WAT front end `Silmaril.Wasm.Tools.Parse.textModule` rejects all
+four natively, but with its `.syntax` error, which also covers text outside its elaborator, and
+the front end has no completeness theorem. A kernel row would only say "the front end does not
+accept this text", which is also true of supported-but-unimplemented syntax.
+
 ## The proof route
 
 `ScriptHolds o m cmds` says that every command of a script holds after the commands before it.
@@ -144,7 +199,9 @@ Every answer depends only on `propext`, `Classical.choice` and `Quot.sound`
 (`#print axioms Silmaril.Project.WasmWast.I32.l37`, `….Traps.l17`, `….I32.script0`,
 `….Address.script0`, `….Address.script3`, `….Address.l104` (`assert_return`), `….Address.l192`
 (`assert_trap`), `ScriptHolds.of_kernel`, `ScriptHolds.of_kernelKM`, `scriptK_of_scriptKM`,
-`Reaches.always`, `ScriptHolds.always`, `ScriptAt.unique`).
+`Reaches.always`, `ScriptHolds.always`, `ScriptAt.unique`; and for the rejections
+`ValidatorRejects.of_kernel`, `DecoderRejects.of_kernel`, `ValidatorRejects.not_valid` and all
+113 `assert_invalid` answers, e.g. `….I32.l444`, `….I64.l457`, `….Address.l214`).
 
 ## The slice and its counts
 
@@ -158,16 +215,20 @@ kernel-checked.
 
 | file | commands | proved | unsupported | undetermined |
 |---|---|---|---|---|
-| `i32.wast` | 459 | 374 | 85 | 0 |
-| `i64.wast` | 415 | 384 | 31 | 0 |
+| `i32.wast` | 459 | 457 | 2 | 0 |
+| `i64.wast` | 415 | 413 | 2 | 0 |
 | `int_exprs.wast` | 89 | 89 | 0 | 0 |
 | `fac.wast` | 7 | 6 | 1 | 0 |
 | `traps.wast` | 32 | 32 | 0 | 0 |
-| `address.wast` | 256 | 255 | 1 | 0 |
-| **total** | **1258** | **1140** | **118** | **0** |
+| `address.wast` | 256 | 256 | 0 | 0 |
+| **total** | **1258** | **1253** | **5** | **0** |
 
 Commands are every command after a module (`module` commands themselves are not counted). The
-1140 proved rows are 1025 `assert_return` (`returns_only`) and 115 `assert_trap` (`traps_only`).
+1253 proved rows are 1025 `assert_return` (`returns_only`) and 115 `assert_trap` (`traps_only`),
+claims about Core reduction, and 113 `assert_invalid` (`validator_rejects`: 83 in `i32.wast`, 29
+in `i64.wast`, 1 in `address.wast`), **tool-level** claims (`report.json` field `strength`:
+`only` or `tool`). Before the rejection shapes, the 113 were unsupported (1140 proved, 118
+unsupported).
 The 255 rows of `address.wast` (206 `assert_return`, 49 `assert_trap`, in 4 modules, every one
 with a data segment) are proved on `KMem` stores (`ScriptHolds.of_kernelKM`); the others on
 `ByteArray` stores (`ScriptHolds.of_kernel`). Before the `KMem` checker, the 255 were
@@ -176,16 +237,21 @@ Reasons for the commands that are not proved:
 
 | count | status | reason |
 |---|---|---|
-| 113 | unsupported | `assert_invalid`: needs validator completeness; no shape |
-| 4 | unsupported | `assert_malformed` (text): no shape |
+| 4 | unsupported | `assert_malformed` on text: no binary; the WAT front end has no completeness theorem and its syntax error also covers unsupported text ([above](#rejections-tool-level)) |
 | 1 | unsupported | `assert_exhaustion` (`fac.wast`): resource exhaustion is not modelled |
 
-No command was a mismatch, and none ran out of fuel (100 000 steps per call).
+No command was a mismatch, and none ran out of fuel (100 000 steps per call). Every
+`assert_invalid` module is decoded by `decode?` and rejected by `validate?` (none is rejected by
+the decoder, none accepted). `address.wast` line 214 is a `module quote` with
+`offset=4294967296` on a 32-bit memory: the decoder reads the 64-bit offset and the validator
+rejects it.
 
 Kernel time (one `lake build` of each generated module, one core): `I32.Thms` 36 s, `I64.Thms`
 43 s, `IntExprs.Thms` 33 s, `Fac.Thms` 62 s, `Traps.Thms` about 30 s. `Address.Thms` (four
 modules on `KMem`, with their `decodeJ` checks): 133 s and 9.3 GB peak RSS for the whole `lean`
-process (`lake env lean`, one run on a 2-vCPU sandbox).
+process (`lake env lean`, one run on a 2-vCPU sandbox). With the 113 rejection rows, one
+`lake build` of the generated modules on a 2-vCPU sandbox (two modules at a time) took
+`I32.Thms` 48 s (83 rejection rows), `I64.Thms` 45 s (29), `Address.Thms` 130 s (1).
 
 Per module of `address.wast` (`benchmarks/wasm-wast-kmem`, one run each, whole `lean` process,
 imports alone 3.6 s and 1.55 GB):
@@ -207,7 +273,8 @@ the former `simp [mJ, hx]` proof exceeded the default heartbeats on module 1.
 `gen.py oracle` runs the pinned wasmtime 50.0.0 (`tools/wasm-jco/tests/pins.sh`, binary SHA-256
 `f95e5beba6d176b447c2939607bae968ea47f87b156ddf559762f1bb3c00e9b7`) as `wasmtime wast` on one
 small script per command: the same module binary as `(module binary …)`, the actions before the
-command in that module, then the command. Results are in `examples/wasm-wast/oracle.json`
+command in that module, then the command. For an `assert_invalid` row the script is
+`(assert_invalid (module binary …) "message")` on the row's bytes. Results are in `examples/wasm-wast/oracle.json`
 (schema `silmaril.wasm-wast.oracle.v0.2`), with their provenance:
 
 * `oracle`: tool, version, release URL, archive SHA-256
@@ -225,6 +292,8 @@ python3 -I tools/wasm-wast/gen.py fetch-wasmtime   # pinned archive, SHA-256 che
 python3 -I tools/wasm-wast/gen.py convert          # needs the spec and wasm-tools pins (below)
 python3 -I tools/wasm-wast/gen.py oracle           # rewrites oracle.json (fetches wasmtime if absent)
 python3 -I tools/wasm-wast/gen.py verify --scripts # no wasmtime: re-checks oracle.json
+python3 -I tools/wasm-wast/gen.py oracle --check   # re-runs wasmtime, compares with oracle.json (CI)
+python3 -I tools/wasm-wast/gen.py regress          # wrong expectations must be rejected (CI)
 ```
 
 `fetch-wasmtime` downloads the release archive into a fresh temporary directory, checks its
@@ -233,23 +302,66 @@ the pinned path (`$SIL_TOOLS/wasmtime-50.0.0/wasmtime`). `verify` does not run w
 checks that the recorded tool provenance equals the pins, that `report.json` and the spec files
 have the recorded SHA-256, that the commands run are exactly those the report selects (with the
 report's statuses), and that the counts follow from the results. With the converted JSON present
-(`--scripts` requires it) it regenerates all 1140 scripts and compares their SHA-256; a fresh
-`convert` into an empty `WASM_WAST_WORK` reproduces all 1140. `verify` checks consistency of the
-record, not wasmtime's verdicts: those are re-obtained only by running `oracle` again. The
-whole `oracle` run takes about 10 s on one core (1140 scripts and the 6 upstream files).
+(`--scripts` requires it) it regenerates all 1253 scripts and compares their SHA-256. `verify`
+checks consistency of the record, not wasmtime's verdicts: those are re-obtained only by running
+`oracle` again (in CI, `oracle --check`). `convert` also checks each unpacked spec file against
+the SHA-256 that `report.json` records. The whole `oracle` run takes about 11 s on the
+development sandbox (1253 scripts and the 6 upstream files).
 
 Results:
 
-* 1140 commands run, all of them kernel-proved (the 255 of `address.wast` on `KMem` stores);
-* **1140 of 1140** kernel-proved commands pass under wasmtime. The verdicts and the scripts are
-  those of the earlier run, when the 255 of `address.wast` were native-only: only their kernel
-  status changed;
+* 1253 commands run, all of them kernel-proved (1140 executions, 113 validator rejections);
+* **1253 of 1253** kernel-proved commands pass under wasmtime: wasmtime also rejects each of the
+  113 `assert_invalid` binaries. The 1140 execution scripts and verdicts are those of the
+  earlier runs;
 * the unmodified upstream files: `int_exprs`, `fac`, `traps`, `address` pass. `i32` and `i64`
-  fail on an `assert_invalid` text-parser message (`nan:arithmetic` in an `i32.const`), not on
-  an execution command.
+  fail on a text `assert_malformed` whose message wasmtime's text parser words differently
+  (`nan:arithmetic` in an `i32.const`: "expected a i32", not "unexpected token"), not on an
+  execution or validation command.
 
-The oracle is not run in CI. A bounded CI job is proposed in
-[Confidence in the Wasm semantics](wasm-confidence.md#5-a-bounded-ci-oracle-job-proposal).
+### The CI oracle job
+
+`.github/workflows/ci-wast-oracle.yml` (job `wast-oracle` of `CI`, with no Lean build) runs on
+pull requests that touch `tools/wasm-wast/**`, `examples/wasm-wast/**`,
+`tools/wasm-tools/tests/{pins,fetch-pins}.sh`, `tools/wasm-jco/tests/pins.sh` or `.github/**`
+(the `wast-oracle` filter of `.github/paths-filter.yml`), on `workflow_dispatch`, and nightly
+(`.github/workflows/nightly.yml`). The `CI` result job requires it whenever its filter matches.
+
+```sh
+tools/wasm-tools/tests/fetch-pins.sh wasm-tools spec  # archives and binaries, SHA-256 checked
+python3 -I tools/wasm-wast/gen.py fetch-wasmtime      # archive and binary, SHA-256 checked
+python3 -I tools/wasm-wast/gen.py convert             # spec files checked against report.json
+python3 -I tools/wasm-wast/gen.py verify --scripts    # the committed record is consistent
+python3 -I tools/wasm-wast/gen.py oracle --check      # re-run wasmtime on every command
+python3 -I tools/wasm-wast/gen.py regress             # wrong expectations must fail
+```
+
+The pinned tools are cached by the SHA-256 of the two pins files (`actions/cache`) and re-checked
+against their pinned SHA-256 after every restore. `oracle --check` does not rewrite
+`oracle.json`: it fails if any command fails under wasmtime, or if the re-run's (id, verdict,
+script SHA-256, kernel status) set or the upstream files' verdicts differ from the committed
+record, and it writes the fresh record to `$WASM_WAST_WORK/oracle.check.json`.
+
+**The wrong-expectation regression** (`gen.py regress`) checks that the oracle can fail:
+
+* `tools/wasm-wast/regress/wrong-{return,trap,invalid,malformed}.wast`, committed, each with one
+  directive marked `;; WRONG` (`assert_return` of 2 where the function returns 1, `assert_trap`
+  on `6 / 3`, `assert_invalid` on a valid module, `assert_malformed` on the empty module). wasmtime
+  must fail on each, and on the marked line (so the failure is the wrong expectation, not a
+  parse error);
+* `regress/right-control.wast`: the same modules with right expectations; wasmtime must pass;
+* two generated mutants: the first `assert_return` script of `oracle_scripts` with its result
+  plus one, and the first `assert_invalid` script with its module replaced by the empty (valid)
+  module. wasmtime must fail on each.
+
+Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (7 scripts). Tampering
+with one committed verdict in `oracle.json` makes `oracle --check` exit 1, and making
+`wrong-return.wast` right makes `regress` exit 1 ("wasmtime ACCEPTS a wrong expectation").
+
+Cost: downloads of about 35 MB on a cold cache (spec archive 15.0 MB, wasm-tools and wasmtime
+archives), then `convert` 0.2 s, `oracle --check` about 11 s, `verify --scripts` and `regress`
+about 1 s each on the development sandbox; the job has a 5-minute timeout. It grows linearly with
+the number of scripts (about 9 ms each).
 
 ## Trust boundary
 
@@ -264,8 +376,12 @@ The oracle is not run in CI. A bounded CI job is proposed in
   `register`, named modules and the spectest host are not in this fragment.
 * **The binaries** are wasm-tools' output for the WAST text. The text-to-binary step is the
   pinned upstream tool's, not silmaril-lean's.
+* **Rejection rows** (`assert_invalid`) are tool-level: silmaril-lean's `decode?` and
+  `validate?` on wasm-tools' bytes. Through `validate?_complete` they exclude validity in
+  silmaril-lean's `ModuleOk`, a transcription of the specification's validation rules whose
+  agreement with them is not proved ([Rejections](#rejections-tool-level)).
 * **The oracle** is test-wise agreement of an independent implementation on the scripts it was
-  given, not a proof; what it relies on is listed in
+  given, not a proof (also when CI runs it); what it relies on is listed in
   [Confidence in the Wasm semantics](wasm-confidence.md#4-external-oracle-trust-boundary).
 * **The generator** (`tools/wasm-wast/gen.py`) chooses which commands to give to the kernel from
   a native interpreter run. It cannot make a wrong row pass: every row is a kernel-checked
@@ -276,16 +392,19 @@ The oracle is not run in CI. A bounded CI job is proposed in
 ## Files and how to regenerate
 
 * `Silmaril/Project/Shapes/WasmWast/{Defs,Thms}.lean`, `Silmaril/Proofs/Project/Shapes/WasmWast.lean`:
-  the shapes, the kernel checker and its soundness.
+  the shapes, the kernel checkers and their soundness, `ValidatorRejects.not_valid`.
 * `Silmaril/Project/WasmWast/<File>/{Defs,Thms}.lean` (generated): the bytes, modules and
   command lists, then the kernel theorems and the rows `silmaril.wasm_wast.<file>.l<line>`.
   `Silmaril.Project.WasmWast.Thms` imports them all, and `silmaril.toml` puts it in the project
   dump.
 * `examples/wasm-wast/report.json` (every command: inputs, expectation, observation, status,
-  reason, row), `examples/wasm-wast/oracle.json`.
+  reason, row, claim strength `only` or `tool`), `examples/wasm-wast/oracle.json`.
+* `tools/wasm-wast/regress/*.wast`: the oracle's wrong-expectation regression and its control;
+  `.github/workflows/ci-wast-oracle.yml`: the CI oracle job.
 * The explorer view `#/wast` (`tools/silmaril-project/src/project/explore/views/wast.js`, test
   `tests/explore/wast_view.test.mjs`) reads `wast/report.json` and `wast/oracle.json` next to
-  the page, and the rows' answers from the database.
+  the page, and the rows' answers from the database. Each proved row shows its claim strength:
+"semantic: Core reduction" or "tool-level rejection".
 
 ```sh
 tools/wasm-tools/tests/fetch-pins.sh wasm-tools spec      # pinned, SHA-256 checked
@@ -302,6 +421,8 @@ python3 -I tools/wasm-wast/gen.py site .lake/silmaril     # report next to explo
 ## Not yet
 
 NaN-pattern results (`nan:canonical`, `nan:arithmetic`) as allowed-set claims under
-`Profile.spec`; `assert_invalid` (validator completeness, or a weaker validator-rejects label);
-`assert_malformed` (decoder rejection); `assert_unlinkable`/`assert_uninstantiable`; imports
-and the spectest host; `register`; and the rest of the suite.
+`Profile.spec`; `assert_invalid` relative to the specification (a proved bridge between
+`ModuleOk` and the SpecTec validation rules); `assert_malformed` beyond the tool level (decoder
+completeness; text: a WAT front end with a completeness theorem and an error that separates
+malformed from unsupported text); `assert_unlinkable`/`assert_uninstantiable`; imports and the
+spectest host; `register`; and the rest of the suite.
