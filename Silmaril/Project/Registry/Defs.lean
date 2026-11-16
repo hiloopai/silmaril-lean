@@ -581,13 +581,18 @@ def dumpLocations (env : Environment) : MetaM (Array String) := do
   for r in records env do
     for (k, v) in r.fields do
       match v with
-      | .str s => if constKeys.contains k then named := add named s
-      -- lists of declarations (`evidence`, `decls`) and the theorems of `facts`
+      -- an evidence matrix cell's `reading` is a declaration too
+      | .str s => if constKeys.contains k || k == "reading" then named := add named s
+      -- lists of declarations (`evidence`, `decls`), the theorems of `facts` and the supporting
+      -- declarations of a matrix cell (`theorems`, `{name, module}` each)
       | .arr xs =>
         for x in xs do
           match x with
           | .str s => if declListKeys.contains k then named := add named s
-          | .obj _ => if let .ok (.str s) := x.getObjVal? "proof" then named := add named s
+          | .obj _ =>
+            if let .ok (.str s) := x.getObjVal? "proof" then named := add named s
+            if k == "theorems" then
+              if let .ok (.str s) := x.getObjVal? "name" then named := add named s
           | _ => pure ()
       | _ => pure ()
   (named.toArray.qsort (·.1 < ·.1)).filterMapM fun (s, n) => do

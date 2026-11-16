@@ -179,7 +179,7 @@ try {
         links: td.querySelectorAll(".lg-mx-decls a").length })) }));
     return { heads, rows: rowsM };
   });
-  check(mx && mx.rows.length === 8 && mx.heads.length === 13, `the coverage matrix: 8 families, 12 features (${mx && mx.rows.length}, ${mx && mx.heads.length - 1})`);
+  check(mx && mx.rows.length === 8 && mx.heads.length === 14, `the coverage matrix: 8 families, 13 features (${mx && mx.rows.length}, ${mx && mx.heads.length - 1})`);
   if (mx) {
     const ci = mx.heads.indexOf("completeness") - 1;
     check(mx.rows.every((r) => r.cells.every((c) => c.s && c.links > 0)), "every cell has a status and names its declarations");
@@ -187,7 +187,27 @@ try {
     check(mx.rows.every((r) => r.cells.every((c) => c.s !== "absent" || c.note)), "every absent cell says why");
     const hol = mx.rows.find((r) => r.fam === "HOL"), si = mx.heads.indexOf("concrete syntax") - 1;
     check(hol && hol.cells[si].s === "proved", "HOL's concrete syntax is proved to round-trip");
+    // formal definition and explorer registration are separate columns
+    const ea = mx.heads.indexOf("explorer: abstract") - 1, ec = mx.heads.indexOf("explorer: concrete") - 1;
+    check(ea >= 0 && ec >= 0, "the matrix separates registering abstract and concrete systems from defining them");
+    const concreteRegistered = mx.rows.filter((r) => r.cells[ec].s === "registered").map((r) => r.fam).sort();
+    check(JSON.stringify(concreteRegistered) === JSON.stringify(["HOL", "extensional MLTT"]), `concrete systems are registered for exactly HOL and extensional MLTT (${concreteRegistered})`);
   }
+  const noteLinks = await p.evaluate(() => [...document.querySelectorAll("#lg-matrix td.lg-mx[data-strength=registered] .lg-mx-note a")].map((a) => a.getAttribute("href")));
+  check(["#/institution/logic.consequence.concrete.hol.institution", "#/comorphism/logic.consequence.concrete.mltt.to_abstract",
+    "#/system/logic.consequence.concrete.hol.kernel"].every((h) => noteLinks.includes(h)), "the matrix links the registered concrete records");
+
+  // the concrete systems and their relations to the abstract ones
+  await p.fill("#lg-cons-q", "S-expressions"); await p.waitForTimeout(200);
+  const conc = await rows("#lg-cons");
+  check(conc.length === 5, `five consequence systems over S-expressions (${conc.length})`);
+  const crel = (await rows("#lg-cons-rel")).filter((r) => /S-expressions/.test(r[0]) || /S-expressions/.test(r[2]));
+  const kinds = (k) => crel.filter((r) => r[1] === k && /proved/.test(r[3])).length;
+  check(kinds("translates into") === 6 && kinds("translates conservatively (reflects) into") === 4 && kinds("is sound for") === 2,
+    `concrete translations to and from the abstract systems, reflection and soundness, all proved (${crel.length})`);
+  check(crel.some((r) => /HOL over S-expressions: the kernel/.test(r[0]) && r[1] === "translates into" && /HOL: the kernel on propositions/.test(r[2])),
+    "the concrete HOL kernel translates into the abstract kernel");
+  await p.fill("#lg-cons-q", "");
   await shot("logic-consequence");
   await open("/system/" + encodeURIComponent("logic.consequence.metamath.zfc.entails"));
   await p.waitForFunction(() => /over the sentences of/.test(document.querySelector("main").textContent), null, { timeout: 60000 });
@@ -198,6 +218,38 @@ try {
   await p.waitForFunction(() => /consequence systems/.test(document.querySelector("main").textContent), null, { timeout: 60000 });
   const roomText = await p.textContent("main");
   check(/consequence systems/.test(roomText) && /PA \(peano\.mm\)/.test(roomText) && /ZFC \(set\.mm\)/.test(roomText), "the Metamath room lists its consequence systems");
+
+  // the concrete institutions in the logic graph: their pages, the comorphisms to the abstract institutions, the graph
+  await open("/logics/?q=concrete.hol");
+  const concNodes = (await rows("#lg-all")).filter((r) => /logic\.consequence\.concrete\./.test(r[1]));
+  check(concNodes.length === 4, `the concrete HOL institution, room, corridor and comorphism are in the table (${concNodes.length})`);
+  await open("/institution/" + encodeURIComponent("logic.consequence.concrete.mltt.institution"));
+  const ci = await p.textContent("main");
+  check(/logic\.consequence\.concrete\.mltt\.to_abstract/.test(ci) && /logic\.type_theory\.extensional_mltt\.institution\.bundled/.test(ci),
+    "the concrete MLTT institution's page shows its comorphism to abstract MLTT");
+  await open("/comorphism/" + encodeURIComponent("logic.consequence.concrete.hol.to_abstract"));
+  const cc = await p.textContent("main");
+  check(/logic\.consequence\.concrete\.hol\.institution/.test(cc) && /logic\.institution\.metatheory\.hol\.institution/.test(cc) && /model_expansive/.test(cc),
+    "the HOL comorphism goes from concrete to abstract HOL, model-expansive");
+  await open("/corridor/" + encodeURIComponent("logic.consequence.concrete.mltt.corridor"));
+  check(/logic\.type_theory\.extensional_mltt\.institution\.room/.test(await p.textContent("main")), "the MLTT corridor goes to the abstract MLTT room");
+  await open("/logic-graph/" + encodeURIComponent("comorphism:logic.consequence.concrete.hol.to_abstract"));
+  check(/to_abstract/.test(await p.textContent("#lgside")), "the graph selects the concrete-to-abstract comorphism");
+  await open("/room/" + encodeURIComponent("logic.consequence.concrete.mltt.room"));
+  check(/Extensional MLTT over S-expressions: derivability/.test(await p.textContent("main")), "the concrete MLTT room lists its consequence systems");
+  // the source of the concrete declarations and of the parser examples
+  if (await p.evaluate(() => document.getElementById("source-meta").textContent.trim() !== "null")) {
+    for (const [decl, file] of [["Silmaril.Consequence.Concrete.holToAbstract", "Silmaril/Logic/Consequence/Concrete/Defs.lean"],
+        ["Silmaril.Logic.HOLLight.SExp.parseTm_printTm", "Silmaril/Logic/HOLLight/SExp/Thms.lean"],
+        ["Silmaril.Logic.HOLLight.SExp.Examples.idEqId", "Silmaril/Logic/HOLLight/SExp/Examples.lean"],
+        ["Silmaril.Logic.TypeTheory.ExtensionalMLTT.SExp.Examples.polyId", "Silmaril/Logic/TypeTheory/ExtensionalMLTT/SExp/Examples.lean"]]) {
+      await open("/source/" + encodeURIComponent(decl));
+      await p.waitForFunction(() => !document.querySelector(".lean-src") || !/reading the Lean source/.test(document.querySelector(".lean-src").textContent), null, { timeout: 30000 });
+      const v = await p.evaluate(() => ({ where: (document.querySelector(".src-permalink") || {}).textContent || "", exact: !!document.querySelector(".src-exact"),
+        text: (document.querySelector(".lean-src") || {}).textContent || "" }));
+      check(v.where.startsWith(file) && v.exact && (!/Examples/.test(file) || /#guard/.test(v.text)), `source of ${decl}: ${v.where} ${v.exact ? "exact" : "not exact"}`);
+    }
+  }
 
   // coverage
   await open("/logic-coverage/");

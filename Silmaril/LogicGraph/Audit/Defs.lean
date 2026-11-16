@@ -3,6 +3,7 @@ module
 public import Silmaril.LogicGraph.Nodes.Defs
 public import Silmaril.LogicGraph.Edges.Defs
 public import Silmaril.LogicGraph.Hets.Defs
+public import Silmaril.LogicGraph.Consequence.Concrete.Defs
 public import Silmaril.Automata.Institution.Thms
 public import Silmaril.Calculi.LambdaCube.Hets.Defs
 public import Silmaril.Calculi.LambdaCube.PER.CubeMorphisms.Defs
@@ -1416,7 +1417,8 @@ public import Silmaril.X86.Institution.Defs
 /-!
 # Logic graph: the audit
 
-Every registration (`Silmaril.LogicGraph.{Nodes,Edges}.Defs`), the Hets list, and every header
+Every registration (`Silmaril.LogicGraph.{Nodes,Edges}.Defs`, and the concrete-syntax institutions
+of `Silmaril.LogicGraph.Consequence.Concrete.Defs`), the Hets list, and every header
 module that declares an institution, comorphism, morphism, room or corridor (or a family of
 them). `silmaril logic_audit` then records each such declaration of `Silmaril` reachable from
 here, with the record that registers it, if any: what the registry omits is listed, and generic

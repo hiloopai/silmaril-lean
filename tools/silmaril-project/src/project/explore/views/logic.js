@@ -310,7 +310,8 @@
   // ---------- consequence systems of the logics ----------
   const consLink = (c) => `<a href="#/system/${encodeURIComponent(c.name)}">${ui.esc(c.title || c.name)}</a>`;
   const READING = { derivability: "derivability (a proof system)", semantic: "semantic consequence (Lean checked: the room's consequence)" };
-  const RELATION = { sound_at: "is sound for", tarski_closed: "satisfies identity, weakening and cut", complete_at: "is complete for", translates_at: "translates into" };
+  const RELATION = { sound_at: "is sound for", tarski_closed: "satisfies identity, weakening and cut", complete_at: "is complete for",
+    translates_at: "translates into", reflects_at: "translates conservatively (reflects) into" };
   const status = (r) => r.summary === "THM" ? `<span class="lg-proved" title="proved for every context and conclusion">✓ proved</span>` : ui.esc(r.summary || "open");
   async function consequencePage(arg, ctx) {
     style();
@@ -346,7 +347,7 @@
     const relTable = rels.length ? `<div class="tablebox"><table class="lg-grid" id="lg-cons-rel"><thead><tr><th>system</th><th>relation</th><th>to</th><th>status</th><th>problem</th></tr></thead><tbody>` +
       rels.map((r) => `<tr><td>${sys(r.S)}</td><td>${ui.esc(relName(r))}</td><td>${r.T ? sys(r.T) : ""}</td><td>${status(r)}</td><td>${ui.link("problem", r.problem)}</td></tr>`).join("") +
       `</tbody></table></div>` : `<p class="muted">No relation is stated.</p>`;
-    const matrix = await coverageMatrix(ctx);
+    const matrix = await coverageMatrix(ctx, d);
     const html = tabs("logic-consequence", d) + `<h2>Consequence systems of the logics (${d.consequence.length})</h2>
 <p style="max-width:860px">A consequence system relates a list of premises to a conclusion, <code>Γ ⊢ φ</code>. A logic has two kinds:
 <b>derivability</b>, a proof system, and <b>semantic consequence</b>, truth in every model of the premises. They are separate
@@ -365,7 +366,16 @@ See <a href="#/systems">Systems</a> for every registered consequence system.</p>
   // theorems (each a link to its source), with the owner's note. Lean checked only that every named
   // declaration exists.
   const MARK = { proved: ["✓", "lg-proved"], defined: ["◆", "lg-defined"], registered: ["▣", "lg-registered"], absent: ["—", "lg-absent"], "not claimed": ["∅", "lg-absent"] };
-  async function coverageMatrix(ctx) {
+  // a registered record's name in a note becomes a link to its page
+  function recordLinks(text, d) {
+    const kinds = [...NODES, ...EDGES];
+    return ui.esc(text).replace(/logic\.[a-z0-9_]+(?:\.[a-z0-9_*]+)*/g, (n) => {
+      for (const k of kinds) if (d[k].some((r) => r.name === n)) return rec(k, n);
+      if (d.consequence.some((c) => c.name === n)) return `<a href="#/system/${encodeURIComponent(n)}">${n}</a>`;
+      return n;
+    });
+  }
+  async function coverageMatrix(ctx, d) {
     if (!has("consequence_matrix_cells")) return "";
     const cells = await ctx.q("SELECT pos, variant, reading, theorems, evidence, strength, note FROM consequence_matrix_cells WHERE matrix = ? ORDER BY pos LIMIT 2000",
       ["logic.consequence.coverage"]).catch(() => []);
@@ -378,12 +388,13 @@ See <a href="#/systems">Systems</a> for every registered consequence system.</p>
       const [m, cls] = MARK[c.strength] || ["?", ""];
       let thms = []; try { thms = JSON.parse(c.theorems || "[]").map((t) => t.name); } catch (e) { thms = []; }
       return `<td class="lg-mx" data-strength="${ui.esc(c.strength)}" title="${ui.esc(c.note || c.strength)}"><span class="${cls}">${m} ${ui.esc(c.strength)}</span>` +
-        `<div class="lg-mx-decls">${[c.reading, ...thms].map(srcLink).join(" ")}</div>${c.note ? `<div class="muted lg-mx-note">${ui.esc(c.note)}</div>` : ""}</td>`;
+        `<div class="lg-mx-decls">${[c.reading, ...thms].map(srcLink).join(" ")}</div>${c.note ? `<div class="muted lg-mx-note">${recordLinks(c.note, d)}</div>` : ""}</td>`;
     };
     return `<h3 id="lg-coverage-matrix">Coverage matrix</h3><p class="muted" style="max-width:860px">Every logic family against every feature: its
 abstract syntax, institution, derivability and semantic consequence, soundness, the structural and substitution laws, completeness,
-concrete (S-expression) syntax and the institutions and consequence systems over it, and its registration here. Each cell names the Lean
-declarations (links to their source); Lean checked that they exist. ✓ proved, ◆ defined, ▣ registered, — absent, ∅ not claimed; every
+concrete (S-expression) syntax and the institutions and consequence systems over it (formal definitions), and, separately, what is
+registered here: the abstract systems and the concrete ones. Each cell names the Lean declarations (links to their source); Lean checked
+that they exist. Registered records in a note link to their pages. ✓ proved, ◆ defined, ▣ registered, — absent, ∅ not claimed; every
 absent or unclaimed cell says why.</p><div class="tablebox"><table class="lg-grid" id="lg-matrix"><thead><tr><th>family</th>` +
       feats.map((f) => `<th>${ui.esc(f)}</th>`).join("") + `</tr></thead><tbody>` +
       fams.map((v) => `<tr><th scope="row">${ui.esc(v)}</th>${feats.map((f) => cell(at.get(v + "\u0000" + f))).join("")}</tr>`).join("") +

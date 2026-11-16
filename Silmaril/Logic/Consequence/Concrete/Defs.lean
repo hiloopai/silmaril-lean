@@ -144,6 +144,11 @@ noncomputable def mlttCorridor : mlttRoom.{u} ⟶ Institution.room.{u} where
   mod := 𝟭 _
   sat _ _ := Iff.rfl
 
+/-- **Semantic consequence of the concrete MLTT room**, on concrete judgments: `roomSeq mlttRoom`
+read through `ULift.up`. It is `mlttEntails` (`Thms`: `mlttRoomEntails_iff`). -/
+noncomputable def mlttRoomEntails : System (List MLTTSen) MLTTSen :=
+  (roomSeq mlttRoom.{u}).pullback (List.map ULift.up) ULift.up
+
 /-- **The concrete extensional MLTT institution.** -/
 noncomputable def mlttInst : Inst.{0, 0, u + 1, u + 1, u + 1} :=
   ⟨Discrete Unit, Discrete.functor fun _ => mlttRoom.{u}⟩

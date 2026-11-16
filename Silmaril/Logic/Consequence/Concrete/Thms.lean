@@ -26,7 +26,7 @@ cut); `holKernel_le_holSeq`, `mlttDerives_le_entails` (soundness). No completene
 **Institutions.** The corridors and the comorphisms keep the models, so they are model-expansive
 (`holCorridor_modelExpansive`, `holToAbstract_modelExpansive`, `mlttCorridor_modelExpansive`,
 `mlttToAbstract_modelExpansive`). So semantic consequence over concrete sentences is semantic
-consequence over what they denote (`holRoom_seq_iff`, `mlttRoom_seq_iff`).
+consequence over what they denote (`holRoom_seq_iff`, `mlttRoom_seq_iff`, `mlttRoomEntails_iff`).
 -/
 
 @[expose] public section
@@ -145,6 +145,16 @@ theorem mlttRoom_seq_iff (Γ : List mlttRoom.{u}.Sen) (e : mlttRoom.{u}.Sen) :
       roomSeq Institution.room.{u} (Γ.map mlttCorridor.{u}.sen) (mlttCorridor.{u}.sen e) :=
   ⟨fun h => (corridorSeq mlttCorridor.{u}).sound Γ e h,
     corridorSeq_reflect mlttCorridor.{u} mlttCorridor_modelExpansive⟩
+
+/-- The concrete room's semantic consequence is validity in set hierarchies of what the concrete
+judgments denote. -/
+theorem mlttRoomEntails_iff (Γ : List MLTTSen) (e : MLTTSen) :
+    mlttRoomEntails.{u} Γ e ↔ TypeTheory.extensionalEntails.{u} (Γ.map MLTTSen.toJdg) e.toJdg :=
+  Proofs.Logic.Consequence.Concrete.mlttRoomEntails_iff Γ e
+
+/-- **Soundness of extensional MLTT for the concrete room.** -/
+theorem mlttDerives_le_roomEntails : mlttDerives ≤ mlttRoomEntails.{0} :=
+  fun Γ e h => (mlttRoomEntails_iff Γ e).2 (mlttDerives_le_entails Γ e h)
 
 end MLTT
 

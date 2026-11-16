@@ -111,11 +111,31 @@ the models of a theory `T`). `Silmaril.LogicGraph.Consequence.Defs` registers th
 | extensional MLTT | `logic.consequence.mltt.extensional.derives` | `….extensional.entails` | extensional MLTT (sentences lifted by `ULift`) |
 | intensional MLTT (original rules) | `logic.consequence.mltt.intensional.derives` | `….intensional.entails` | intensional MLTT, at `⊤` |
 
+**Over concrete syntax.** `Silmaril.LogicGraph.Consequence.Concrete.Defs` registers HOL and
+extensional MLTT over their S-expression syntaxes ([consequence.md](consequence.md), "Concrete
+syntax"):
+
+| | HOL | extensional MLTT |
+|---|---|---|
+| institution | `logic.consequence.concrete.hol.institution` (a family over signatures) | `logic.consequence.concrete.mltt.institution` |
+| room | `logic.consequence.concrete.hol.room` | `logic.consequence.concrete.mltt.room` |
+| corridor to the abstract room | `logic.consequence.concrete.hol.corridor` | `logic.consequence.concrete.mltt.corridor` |
+| comorphism to the abstract institution | `logic.consequence.concrete.hol.to_abstract` (to `logic.institution.metatheory.hol.institution`) | `logic.consequence.concrete.mltt.to_abstract` (to `logic.type_theory.extensional_mltt.institution.bundled`) |
+| consequence systems | `logic.consequence.concrete.hol.kernel`, `….hol.seq`, `….hol.sequent.entails` | `logic.consequence.concrete.mltt.derives`, `….mltt.entails` |
+
+The corridors and comorphisms carry the proved fact `model_expansive`. The problems
+`translates_at` and `reflects_at` relate each concrete system to its abstract system, through the
+relation to the abstract syntax. The translation is conservative, and for derivability the encoding
+translates back. `sound_at` and `tarski_closed` carry over. The abstract HOL institution
+`⟨HolSig, HOL.inst⟩` is registered as the HOL comorphism's target.
+
 **The coverage matrix** (`Silmaril.LogicGraph.Consequence.Matrix.Defs`, registered as the evidence
 matrix `logic.consequence.coverage`) sets every family (HOL, extensional and intensional MLTT, λΠ,
 Metamath, PA, ZF, ZFC) against every feature. The features are abstract syntax, institution,
 derivability, semantic consequence, soundness, identity/weakening/cut, substitution, completeness,
-concrete syntax, concrete institution, concrete consequence systems and registration here. Each
+concrete syntax, concrete institution, concrete consequence systems, and registration here, in two
+columns of its own: `explorer: abstract` and `explorer: concrete`. A `proved` concrete cell is a formal
+statement; registration is a separate column. Each
 cell names its Lean declarations, and Lean checks that they exist. A cell is `defined`, `proved`,
 `registered`, `absent` or `not claimed`, and every absent cell says why. Completeness is
 `not claimed` for every family. The explorer shows the matrix at the end of `#/logic-consequence/`.

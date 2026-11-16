@@ -85,6 +85,21 @@ theorem mlttEntails_ofJdg_iff (Γ : List EJdg) (J : EJdg) :
 theorem mlttDerives_closed : Structural.Closed Structural.tarskiRules mlttDerives :=
   TypeTheory.closed_pullback_map MLTTSen.toJdg Consequence.TypeTheory.extensionalDerives_closed
 
+theorem mlttRoomEntails_iff (Γ : List MLTTSen) (e : MLTTSen) :
+    mlttRoomEntails.{u} Γ e ↔ TypeTheory.extensionalEntails.{u} (Γ.map MLTTSen.toJdg) e.toJdg := by
+  show roomSeq mlttRoom.{u} (Γ.map ULift.up) (ULift.up e) ↔
+    roomSeq Institution.room.{u} ((Γ.map MLTTSen.toJdg).map ULift.up) (ULift.up e.toJdg)
+  constructor
+  · intro h M hM
+    exact h M fun x hx => by
+      obtain ⟨y, hy, rfl⟩ := List.mem_map.1 hx
+      exact hM _ (List.mem_map_of_mem (List.mem_map_of_mem hy))
+  · intro h M hM
+    exact h M fun x hx => by
+      obtain ⟨y, hy, rfl⟩ := List.mem_map.1 hx
+      obtain ⟨z, hz, rfl⟩ := List.mem_map.1 hy
+      exact hM _ (List.mem_map_of_mem hz)
+
 end MLTT
 
 end Silmaril.Proofs.Logic.Consequence.Concrete
