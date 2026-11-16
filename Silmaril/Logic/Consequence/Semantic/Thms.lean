@@ -23,6 +23,9 @@ of a target model the translation is conservative (borrowing).
 
 **Rooms.** `roomSatisfaction_entails`: the entailment of a room is `Room.Entails`;
 `corridorHom_toTranslation`: the translation of a corridor is `roomSys.map`.
+`classicInstitutionSys_obj_rel`, `classicInstitutionSys_map_c`: for a classic institution the
+system at `Σ` is `Room.Entails` of `I.room Σ`, and a signature morphism translates conclusions
+by `I.Sen.map σ`.
 -/
 
 @[expose] public section
@@ -91,5 +94,13 @@ theorem roomSatisfaction_entails (R : Institution.Room.{w, m₁, m₂}) :
 
 theorem corridorHom_toTranslation {R₁ R₂ : Institution.Room.{w, m₁, m₂}}
     (f : Institution.Corridor R₁ R₂) : (corridorHom f).toTranslation = roomSys.map f := rfl
+
+theorem classicInstitutionSys_obj_rel {Sign : Type u} [Category.{v} Sign]
+    (I : Institution.ClassicInstitution.{u, v, w, m₁, m₂} Sign) (S : Sign) :
+    ((classicInstitutionSys I).obj S).rel = (I.room S).Entails := rfl
+
+theorem classicInstitutionSys_map_c {Sign : Type u} [Category.{v} Sign]
+    (I : Institution.ClassicInstitution.{u, v, w, m₁, m₂} Sign) {S S' : Sign} (σ : S ⟶ S') :
+    ((classicInstitutionSys I).map σ).c = I.Sen.map σ := rfl
 
 end Silmaril.Consequence

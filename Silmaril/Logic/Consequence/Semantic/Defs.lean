@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Logic.Consequence.Translation.Defs
-public import Silmaril.Logic.Institution.Room
+public import Silmaril.Logic.Institution.Basic
 public import Silmaril.Logic.Szs.Defs
 
 /-!
@@ -26,7 +26,7 @@ Its *entailment* is the consequence system
   Its entailment is `Room.Entails` (`Thms`). A corridor gives a `Satisfaction.Hom` (its
   satisfaction condition gives both conditions) and `roomSys : Room ⥤ Sys` is a functor; an
   institution `I : Sign ⥤ Room` therefore gives `I ⋙ roomSys`, a functor from signatures to
-  consequence systems (`institutionSys`). Model morphisms are forgotten: consequence only
+  consequence systems (`institutionSys`; for a `ClassicInstitution`, `classicInstitutionSys`). Model morphisms are forgotten: consequence only
   sees the objects of each model category.
 
 What is *not* claimed: an arbitrary `Satisfaction` need not be monotone in any order on
@@ -117,10 +117,20 @@ def roomSys : Institution.Room.{w, m₁, m₂} ⥤ Sys.{w, w} where
   map_id _ := Translation.ext (funext Set.image_id) rfl
   map_comp f g := Translation.ext (funext fun s => Set.image_comp g.sen f.sen s) rfl
 
-/-- An institution, as a functor from signatures to rooms, gives a consequence system per
-signature and a translation per signature morphism. -/
+/-- An institution, as a functor `Sign ⥤ Room` into the category `Room.category` of
+`Silmaril.Logic.Institution.Room` (corridors translate sentences forwards and reduce models
+backwards), gives a consequence system per signature and a translation per signature morphism.
+It is covariant in signatures, as the sentence functor is; the contravariant model functor only
+enters through the corridors' satisfaction condition. -/
 def institutionSys {Sign : Type u} [Category.{v} Sign] (I : Sign ⥤ Institution.Room.{w, m₁, m₂}) :
     Sign ⥤ Sys.{w, w} :=
   I ⋙ roomSys
+
+/-- A classic institution (`Sen : Sign ⥤ Type`, `Mod : Signᵒᵖ ⥤ Cat`, satisfaction condition)
+through `ClassicInstitution.toRoomFunctor`: the system at `Σ` is semantic consequence between
+sets of `Σ`-sentences and `Σ`-sentences, and `σ : Σ ⟶ Σ'` translates by `Sen.map σ`. -/
+def classicInstitutionSys {Sign : Type u} [Category.{v} Sign]
+    (I : Institution.ClassicInstitution.{u, v, w, m₁, m₂} Sign) : Sign ⥤ Sys.{w, w} :=
+  institutionSys I.toRoomFunctor
 
 end Silmaril.Consequence

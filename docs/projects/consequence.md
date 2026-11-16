@@ -106,10 +106,16 @@ and `satC`. Its consequence system is `entails a c := ∀ m, satAx m a → satC 
   through its satisfaction condition, and `roomSys : Room ⥤ Sys` is a functor. This is the
   only place where institution laws are used, and they are the corridor's satisfaction
   condition. Model morphisms are forgotten.
-* **Institutions.** An institution `I : Sign ⥤ Room` gives `institutionSys I := I ⋙ roomSys`,
-  one system per signature and one translation per signature morphism. Since an institution
-  is just a functor into `Room`, the signature-general program can be built on this without
-  changing the core.
+* **Institutions.** The target is the existing category `Room.category`
+  (`Silmaril.Logic.Institution.Room`), where corridors translate sentences forwards and reduce
+  models backwards.
+  * An institution `I : Sign ⥤ Room` gives `institutionSys I := I ⋙ roomSys`, one system per
+    signature and one translation per signature morphism.
+  * A `ClassicInstitution` (`Sen : Sign ⥤ Type`, `Mod : Signᵒᵖ ⥤ Cat`) goes through
+    `toRoomFunctor` to `classicInstitutionSys`. Its system at `Σ` is `(I.room Σ).Entails`, and
+    `σ` translates conclusions by `I.Sen.map σ`, both by `rfl`.
+  * The result is covariant in signatures. The model functor enters only through the
+    satisfaction condition.
 
 ## Acceptors
 
