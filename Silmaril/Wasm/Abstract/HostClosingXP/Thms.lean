@@ -9,6 +9,7 @@ import Silmaril.Proofs.Wasm.Abstract.HostClosingXP.Direct
 import Silmaril.Proofs.Wasm.Abstract.HostClosingXP.TrapClose
 import Silmaril.Proofs.Wasm.Abstract.HostClosingXP.Cut
 import Silmaril.Proofs.Wasm.Abstract.HostClosingXP.BackWhole
+import Silmaril.Proofs.Wasm.Abstract.HostClosingXP.PendRun
 
 /-!
 # The canonical relation with host calls as an open module: theorems
@@ -86,6 +87,28 @@ trap, or a pending tail call made in the caller's frame by `return_call_ref-fram
 tail callee read back on the strictly shorter rest of the run, a host tail callee its one event
 there). Callee types come from typing: progress at a `call_ref` form, a successful cast for
 `return_call_indirect`, the operand's subtyping chain for `return_call_ref`.
+
+**Pending calls at exactly their log** (`wasmEvPendXP`: a host function invoked directly, a call
+reached in a Wasm body, inside handlers, at `call`, `call_indirect` or `call_ref`, descended into,
+or a frame-level tail call to the callee, `PendLXP`):
+
+* `wasmEvPendXP_evRun` (every profile, the hypotheses of the forward lemmas): a pending call
+  `(cs, m)` with a log the host allows is a Core run of the invocation with exactly the host
+  events `cs`, to a configuration at the host call `m` (`decompose?`), in the store of `m`;
+* `evRun_pendXP` (deterministic profile, the hypotheses of the backward lemmas): a Core run of the
+  invocation with the host events `cs` to a configuration at a host call `(hh, us)` is the
+  pending call `(cs, (hh, c.store, us))`;
+* `wasmEvPendXP_evRun_iff`: both directions.
+
+Proof (`PendReach`, `PendClose`, `PendRun`): through the trapping behaviours, at the host
+`answerAt host m` that also answers the call `m` by a trap in its store (it keeps every
+hypothesis on the host). A pending call answered by a trap is a trapping behaviour of the closure
+(a reach is the prefix of a logged run cutting the reached call, resolved by the callee's trap;
+a frame-level tail call is resolved the same way), so by `wasmEvFunXP_trap_evRun` a Core run to a
+trap, cut at its last event. Conversely the Core run, its call answered by a trap that then
+leaves every context, is a trapping Core run, so by `evRun_wasmEvFunXP_trap` a trapping behaviour
+of the closure; in every closed behaviour the log before a host event is a pending call of it
+(least-fixpoint induction; every logged call of a canonical run is reached).
 
 **Cut calls**:
 
@@ -284,6 +307,58 @@ theorem wasmEvFunXP_trap_iff (hT : HostTyped host) (hH : NativeHostSlice host)
     fun ⟨_, h⟩ => ⟨evRun_wasmEvFunXP_trap hT hH hE hs hS hts hok h, evRun_consistent h⟩⟩
 
 end Back
+
+/-! ## Pending calls at exactly their log -/
+
+section Pend
+
+open Silmaril.Wasm.Interp (NativeHostSlice HostSliceE TagsOk StoreChkE ehExt)
+open Silmaril.Wasm.SingleThreaded (GrowOracle profile)
+
+variable {host : HostSemantics H} {tags : List TagInst}
+
+/-- **Pending calls, natively to Core, at exactly their log** (every profile): a pending call
+`(cs, m)` of `wasmEvPendXP` with a log the host allows is a Core run of the invocation with
+exactly the host events `cs`, to a configuration at the host call `m`, in the store of `m`. -/
+theorem wasmEvPendXP_evRun {P : Silmaril.Wasm.Numerics.Profile} (hH : NativeHostSlice host)
+    (hE : HostSliceE tags host) {s : Store H} {a : Nat} {vs : List Val} (hts : TagsOk tags s)
+    (hS : StoreChkE (ehExt tags) s.funcs) (hok : InvokeOk s a vs)
+    {cs : List (Call (wasmHostSig H))} {m : (wasmHostSig H).Op}
+    (h : (cs, m) ∈ wasmEvPendXP s (a, vs)) (hc : (coreHostRel host).Consistent cs) :
+    ∃ (c : Config H) (E : SingleThreaded.Ctx) (a' : Nat), EvRun P host (invoke s a vs) cs c ∧
+      SingleThreaded.decompose? c.store c.code = some (E, a', m.1, m.2.2) ∧ c.store = m.2.1 :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingXP.wasmEvPendXP_evRun hH hE hts hS hok h hc
+
+/-- **Core runs to a host call are pending calls at exactly their log** (deterministic profile):
+a Core run of a typed invocation with the host events `cs` to a configuration at a host call
+`(hh, us)` is the pending call `(cs, (hh, c.store, us))` of `wasmEvPendXP`. -/
+theorem evRun_pendXP {o : GrowOracle} (hT : HostTyped host) (hH : NativeHostSlice host)
+    (hE : HostSliceE tags host) {s : Store H} {a : Nat} {vs : List Val} (hs : StoreOk s)
+    (hS : StoreChkE (ehExt tags) s.funcs) (hts : TagsOk tags s) (hok : InvokeOk s a vs)
+    {c : Config H} {cs : List (Call (wasmHostSig H))} {E : SingleThreaded.Ctx} {a' : Nat} {hh : H}
+    {us : List Val} (hrun : EvRun (profile o) host (invoke s a vs) cs c)
+    (hd : SingleThreaded.decompose? c.store c.code = some (E, a', hh, us)) :
+    (cs, (hh, c.store, us)) ∈ wasmEvPendXP s (a, vs) :=
+  Silmaril.Proofs.Wasm.Abstract.HostClosingXP.evRun_pendXP hT hH hE hs hS hts hok hrun hd
+
+/-- **Pending calls at exactly their log, both directions** (deterministic profile):
+`(cs, (hh, s', us))` is a pending call of `wasmEvPendXP` with a log the host allows exactly when
+the invocation has a Core run with the host events `cs` to a configuration at the host call
+`(hh, us)`, in the store `s'`. -/
+theorem wasmEvPendXP_evRun_iff {o : GrowOracle} (hT : HostTyped host)
+    (hH : NativeHostSlice host) (hE : HostSliceE tags host) {s s' : Store H} {a : Nat}
+    {vs us : List Val} {hh : H} {cs : List (Call (wasmHostSig H))} (hs : StoreOk s)
+    (hS : StoreChkE (ehExt tags) s.funcs) (hts : TagsOk tags s) (hok : InvokeOk s a vs) :
+    ((cs, (hh, s', us)) ∈ wasmEvPendXP s (a, vs) ∧ (coreHostRel host).Consistent cs) ↔
+      ∃ (c : Config H) (E : SingleThreaded.Ctx) (a' : Nat),
+        EvRun (profile o) host (invoke s a vs) cs c ∧
+        SingleThreaded.decompose? c.store c.code = some (E, a', hh, us) ∧ c.store = s' := by
+  constructor
+  · exact fun h => wasmEvPendXP_evRun hH hE hts hS hok h.1 h.2
+  · rintro ⟨c, E, a', hrun, hd, rfl⟩
+    exact ⟨evRun_pendXP hT hH hE hs hS hts hok hrun hd, evRun_consistent hrun⟩
+
+end Pend
 
 /-! ## Cut calls -/
 

@@ -38,6 +38,15 @@ once in a trap (`callCut`, `indCut`, `refCut`). No behaviour of the closure retu
 (`Shape.Subst.int`); it only lets the closure see a trapping (or diverging) callee. It contributes
 no returning or throwing behaviour.
 
+**Pending host calls**, as `HostClosing`'s `ReachL`/`PendL`/`wasmEvPend`:
+
+* `ReachLXP`: the trees reach an internal call after a logged prefix (`EvalLXPh`), at `call`,
+  a resolved `call_indirect` or `call_ref`, possibly inside handlers;
+* `PendLXP`, `wasmEvPendXP`: a host function invoked directly; a call reached in a Wasm body (the
+  body's completed calls resolved against the closure) whose callee's pending call it is; or the
+  pending call of the callee of the body's pending tail call, made at the frame after the body's
+  calls (a host tail callee is pending there).
+
 Theorems in `Silmaril.Wasm.Abstract.HostClosingXP.Thms`.
 -/
 
@@ -343,5 +352,166 @@ def wasmHOpenXP : (wasmHShape H).OpenMod := fun a s vs =>
 closed. -/
 def wasmEvFunXP : AFun (wasmHostSig H) (Store H) (Nat × List Val) (List Val ⊕ Nat) :=
   fun s p => Shape.close wasmHOpenXP p.1 s p.2
+
+/-! ## Pending host calls -/
+
+/-- **The trees reach the internal call `z`** after a logged canonical prefix (`EvalLXPh`): the
+analog of `ReachL` for the canonical relation. The call is reached at a `call`, a resolved
+`call_indirect` or a `call_ref` on a function reference, possibly inside handlers; the prefix
+runs are complete logged runs, so a call answered by an exception and caught by a handler leads
+to a reach in the code after the handler's target. A pending tail call makes no call in the body;
+it is a call of the frame (`PendLXP.tail`). -/
+inductive ReachLXP : Store H → Frame → List Val → List BExpr → List (OCall H) →
+    (wasmOShape H).self.Op → Prop where
+  /-- At `call x`. -/
+  | call {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {x : FuncIdx}
+      {args es : List BExpr} {a : Nat} {fi : FuncInst H} {ps rs : List Validation.CValType}
+      {l : List (OCall H)} (hargs : EvalLXPh s f stk args l (s₁, f₁, .flow (.normal stk₁)))
+      (hfi : s₁.func? f₁ x = some (a, fi))
+      (hty : Validation.DefType.funcType? fi.type = some (ps, rs)) :
+      ReachLXP s f stk (.op (.call x) args :: es) l ⟨a, ((stk₁.take ps.length).reverse, s₁)⟩
+  /-- At a resolved `call_indirect x y`. -/
+  | ind {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {x : TableIdx}
+      {y : TypeIdx} {args es : List BExpr} {ad : AddrType} {i : BitVec ad.intType.width}
+      {fa : Nat} {fi : FuncInst H} {ps rs : List Validation.CValType} {l : List (OCall H)}
+      (hargs : EvalLXPh s f stk args l (s₁, f₁, .flow (.normal (.num ⟨.int ad.intType, i⟩ :: stk₁))))
+      (hres : CallRes.IndRes s₁ f₁ x y ad i (some fa)) (hfi : s₁.funcs[fa]? = some fi)
+      (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+      (hy : typeArity f₁.module y = some (ps.length, rs.length)) :
+      ReachLXP s f stk (.op (.callIndirect x y) args :: es) l
+        ⟨fa, ((stk₁.take ps.length).reverse, s₁)⟩
+  /-- At `call_ref y` on a function reference. -/
+  | ref {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {y : TypeIdx}
+      {args es : List BExpr} {fa : Nat} {fi : FuncInst H} {ps rs : List Validation.CValType}
+      {l : List (OCall H)}
+      (hargs : EvalLXPh s f stk args l (s₁, f₁, .flow (.normal (.ref (.func fa) :: stk₁))))
+      (hfi : s₁.funcs[fa]? = some fi) (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+      (hy : typeArity f₁.module y = some (ps.length, rs.length)) :
+      ReachLXP s f stk (.op (.callRef y) args :: es) l ⟨fa, ((stk₁.take ps.length).reverse, s₁)⟩
+  | args {s : Store H} {f : Frame} {stk : List Val} {i : Instr} {args es : List BExpr}
+      {l : List (OCall H)} {z : (wasmOShape H).self.Op} :
+      ReachLXP s f stk args l z → ReachLXP s f stk (.op i args :: es) l z
+  | callK {s s₁ s₂ : Store H} {f f₁ : Frame} {stk stk₁ ws : List Val} {x : FuncIdx}
+      {args es : List BExpr} {a : Nat} {fi : FuncInst H} {ps rs : List Validation.CValType}
+      {l₁ l₂ : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (hargs : EvalLXPh s f stk args l₁ (s₁, f₁, .flow (.normal stk₁)))
+      (hfi : s₁.func? f₁ x = some (a, fi))
+      (hty : Validation.DefType.funcType? fi.type = some (ps, rs)) :
+      ReachLXP s₂ f₁ (ws.reverse ++ stk₁.drop ps.length) es l₂ z →
+      ReachLXP s f stk (.op (.call x) args :: es)
+        (l₁ ++ OCall.mk a (stk₁.take ps.length).reverse s₁ (.inl ws) s₂ :: l₂) z
+  | indK {s s₁ s₂ : Store H} {f f₁ : Frame} {stk stk₁ ws : List Val} {x : TableIdx}
+      {y : TypeIdx} {args es : List BExpr} {ad : AddrType} {i : BitVec ad.intType.width}
+      {fa : Nat} {fi : FuncInst H} {ps rs : List Validation.CValType} {l₁ l₂ : List (OCall H)}
+      {z : (wasmOShape H).self.Op}
+      (hargs : EvalLXPh s f stk args l₁ (s₁, f₁, .flow (.normal (.num ⟨.int ad.intType, i⟩ :: stk₁))))
+      (hres : CallRes.IndRes s₁ f₁ x y ad i (some fa)) (hfi : s₁.funcs[fa]? = some fi)
+      (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+      (hy : typeArity f₁.module y = some (ps.length, rs.length)) :
+      ReachLXP s₂ f₁ (ws.reverse ++ stk₁.drop ps.length) es l₂ z →
+      ReachLXP s f stk (.op (.callIndirect x y) args :: es)
+        (l₁ ++ OCall.mk fa (stk₁.take ps.length).reverse s₁ (.inl ws) s₂ :: l₂) z
+  | refK {s s₁ s₂ : Store H} {f f₁ : Frame} {stk stk₁ ws : List Val} {y : TypeIdx}
+      {args es : List BExpr} {fa : Nat} {fi : FuncInst H} {ps rs : List Validation.CValType}
+      {l₁ l₂ : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (hargs : EvalLXPh s f stk args l₁ (s₁, f₁, .flow (.normal (.ref (.func fa) :: stk₁))))
+      (hfi : s₁.funcs[fa]? = some fi) (hty : Validation.DefType.funcType? fi.type = some (ps, rs))
+      (hy : typeArity f₁.module y = some (ps.length, rs.length)) :
+      ReachLXP s₂ f₁ (ws.reverse ++ stk₁.drop ps.length) es l₂ z →
+      ReachLXP s f stk (.op (.callRef y) args :: es)
+        (l₁ ++ OCall.mk fa (stk₁.take ps.length).reverse s₁ (.inl ws) s₂ :: l₂) z
+  | opK {s s₁ s₂ : Store H} {f f₁ f₂ : Frame} {stk stk₁ stk₂ : List Val} {i : Instr}
+      {args es : List BExpr} {l₁ l₂ : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (hi : ∀ x, i ≠ .call x)
+      (hargs : EvalLXPh s f stk args l₁ (s₁, f₁, .flow (.normal stk₁)))
+      (hflat : evalFlat s₁ f₁ stk₁ i = some (s₂, f₂, .normal stk₂)) :
+      ReachLXP s₂ f₂ stk₂ es l₂ z → ReachLXP s f stk (.op i args :: es) (l₁ ++ l₂) z
+  | block {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {body es : List BExpr}
+      {np nr : Nat} {l : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (har : arity f bt = some (np, nr)) :
+      ReachLXP s f (stk.take np) body l z → ReachLXP s f stk (.block bt body :: es) l z
+  | blockK {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType}
+      {body es : List BExpr} {np nr : Nat} {fl : Flow} {l₁ l₂ : List (OCall H)}
+      {z : (wasmOShape H).self.Op} (har : arity f bt = some (np, nr))
+      (hbody : EvalLXPh s f (stk.take np) body l₁ (s₁, f₁, .flow fl))
+      (hvs : fl.blockVals = some vs) :
+      ReachLXP s₁ f₁ (vs.take nr ++ stk.drop np) es l₂ z →
+      ReachLXP s f stk (.block bt body :: es) (l₁ ++ l₂) z
+  | loop {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {body es : List BExpr}
+      {np nr : Nat} {l : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (har : arity f bt = some (np, nr)) :
+      ReachLXP s f (stk.take np) body l z → ReachLXP s f stk (.loop bt body :: es) l z
+  | loopK {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType}
+      {body es : List BExpr} {np nr : Nat} {l₁ l₂ : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (har : arity f bt = some (np, nr))
+      (hbody : EvalLXPh s f (stk.take np) body l₁ (s₁, f₁, .flow (.normal vs))) :
+      ReachLXP s₁ f₁ (vs.take nr ++ stk.drop np) es l₂ z →
+      ReachLXP s f stk (.loop bt body :: es) (l₁ ++ l₂) z
+  | loopBack {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType}
+      {body es : List BExpr} {np nr : Nat} {l₁ l₂ : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (har : arity f bt = some (np, nr))
+      (hbody : EvalLXPh s f (stk.take np) body l₁ (s₁, f₁, .flow (.brk 0 vs))) :
+      ReachLXP s₁ f₁ (vs.take np ++ stk.drop np) (.loop bt body :: es) l₂ z →
+      ReachLXP s f stk (.loop bt body :: es) (l₁ ++ l₂) z
+  | cond {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {c t el es : List BExpr}
+      {l : List (OCall H)} {z : (wasmOShape H).self.Op} :
+      ReachLXP s f stk c l z → ReachLXP s f stk (.if_ bt c t el :: es) l z
+  | arm {s s₁ : Store H} {f f₁ : Frame} {stk stk₁ : List Val} {cv : Val} {b : Bool}
+      {bt : BlockType} {c t el es : List BExpr} {np nr : Nat} {l₁ l₂ : List (OCall H)}
+      {z : (wasmOShape H).self.Op}
+      (hc : EvalLXPh s f stk c l₁ (s₁, f₁, .flow (.normal (cv :: stk₁)))) (hb : truthy cv = some b)
+      (har : arity f₁ bt = some (np, nr)) :
+      ReachLXP s₁ f₁ (stk₁.take np) (if b then t else el) l₂ z →
+      ReachLXP s f stk (.if_ bt c t el :: es) (l₁ ++ l₂) z
+  | ifK {s s₁ s₂ : Store H} {f f₁ f₂ : Frame} {stk stk₁ vs : List Val} {cv : Val} {b : Bool}
+      {bt : BlockType} {c t el es : List BExpr} {np nr : Nat} {fl : Flow}
+      {l₁ l₂ l₃ : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (hc : EvalLXPh s f stk c l₁ (s₁, f₁, .flow (.normal (cv :: stk₁)))) (hb : truthy cv = some b)
+      (har : arity f₁ bt = some (np, nr))
+      (harm : EvalLXPh s₁ f₁ (stk₁.take np) (if b then t else el) l₂ (s₂, f₂, .flow fl))
+      (hvs : fl.blockVals = some vs) :
+      ReachLXP s₂ f₂ (vs.take nr ++ stk₁.drop np) es l₃ z →
+      ReachLXP s f stk (.if_ bt c t el :: es) (l₁ ++ l₂ ++ l₃) z
+  /-- Inside a handler. -/
+  | handler {s : Store H} {f : Frame} {stk : List Val} {bt : BlockType} {cs : List Catch}
+      {body es : List BExpr} {np nr : Nat} {l : List (OCall H)} {z : (wasmOShape H).self.Op}
+      (har : arity f bt = some (np, nr)) :
+      ReachLXP s f (stk.take np) body l z → ReachLXP s f stk (.tryTable bt cs body :: es) l z
+  | tryK {s s₁ : Store H} {f f₁ : Frame} {stk vs : List Val} {bt : BlockType} {cs : List Catch}
+      {body es : List BExpr} {np nr : Nat} {fl : Flow} {l₁ l₂ : List (OCall H)}
+      {z : (wasmOShape H).self.Op} (har : arity f bt = some (np, nr))
+      (hbody : EvalLXPh s f (stk.take np) body l₁ (s₁, f₁, .flow fl))
+      (hvs : fl.blockVals = some vs) :
+      ReachLXP s₁ f₁ (vs.take nr ++ stk.drop np) es l₂ z →
+      ReachLXP s f stk (.tryTable bt cs body :: es) (l₁ ++ l₂) z
+
+/-- **A pending host call of an invocation under the canonical relation**, after the host calls
+`cs`: a host function invoked directly; or the pending call of a callee reached in a Wasm body,
+the body's completed calls resolved against the closure (`desc`); or the pending call of the
+callee of the body's pending tail call, made at the frame after the body's calls (`tail`; a host
+tail callee is pending there, as the same self call). -/
+inductive PendLXP : Store H → Nat → List Val → List (Call (wasmHostSig H)) →
+    (wasmHostSig H).Op → Prop where
+  | self {s : Store H} {a : Nat} {vs : List Val} {fi : FuncInst H} {hh : H}
+      (hf : s.funcs[a]? = some fi) (hcode : fi.code = .host hh) : PendLXP s a vs [] (hh, s, vs)
+  | desc {s : Store H} {a : Nat} {vs : List Val} {fi : FuncInst H} {fn : Func}
+      {l : List (OCall H)} {q q' : List (Call (wasmHostSig H))} {z : (wasmOShape H).self.Op}
+      {m : (wasmHostSig H).Op}
+      (hf : s.funcs[a]? = some fi) (hcode : fi.code = .wasm fn)
+      (hr : ReachLXP s (Frame.forCall fi.module vs fn.locals) [] (liftInstrs fn.body) l z)
+      (hq : Shape.SubstPre (Shape.close wasmHOpenXP) (l.map OCall.lift) q) :
+      PendLXP z.2.2 z.1 z.2.1 q' m → PendLXP s a vs (q ++ q') m
+  | tail {s s₁ : Store H} {a : Nat} {vs : List Val} {fi : FuncInst H} {fn : Func}
+      {f₂ : Frame} {a' n : Nat} {args : List Val} {l : List (OCall H)}
+      {q q' : List (Call (wasmHostSig H))} {m : (wasmHostSig H).Op}
+      (hf : s.funcs[a]? = some fi) (hcode : fi.code = .wasm fn)
+      (hbody : EvalLXPh s (Frame.forCall fi.module vs fn.locals) [] (liftInstrs fn.body) l
+        (s₁, f₂, .tail a' args n))
+      (hq : Shape.SubstPre (Shape.close wasmHOpenXP) (l.map OCall.lift) q) :
+      PendLXP s₁ a' args q' m → PendLXP s a vs (q ++ q') m
+
+/-- **The pending host calls of an invocation under the canonical relation.** -/
+def wasmEvPendXP : Silmaril.Games.Abstract.Pending (wasmHostSig H) (Store H) (Nat × List Val) :=
+  fun s p => {x | PendLXP s p.1 p.2 x.1 x.2}
 
 end Silmaril.Wasm.Abstract
