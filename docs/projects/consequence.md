@@ -119,6 +119,39 @@ and `satC`. Its consequence system is `entails a c := ∀ m, satAx m a → satC 
   * The result is covariant in signatures. The model functor enters only through the
     satisfaction condition.
 
+## Multiple conclusions and signed formulas
+
+`MultiSystem C D := System (List C) (List D)`: `Γ ⊢ Δ`, with **conjunction on the left and
+disjunction on the right**. A raw multi-system has no structural rule. Weakening defaults to
+membership inclusion: `WeakL`, `WeakR`, `Weak`. Order- and multiplicity-sensitive weakening
+stays opt-in through `MonoWrt` with `List.Sublist` or `List.Subperm`.
+
+| name | meaning |
+|---|---|
+| `M.single` | the restriction to singleton succedents, `Γ ⊢ [d]` |
+| `rightExt R` | `∃ d ∈ Δ, R Γ d`, the least right-weak extension of a single-conclusion `R` (`rightExt_le_iff`); it never proves `[]` |
+| `multiEntails satC satD` | every model of all of `Γ` satisfies some member of `Δ` |
+| `roomMulti R`, `corridorMulti f` | the room version, and its translation along corridors (functorial) |
+| `posPartAlong e M`, `posPart M` | the part of `M` on formulas embedded by an explicit `e`; for `Signed`, `e := pos` |
+
+* `rightExt` is not the semantic completion. In `rightExt_ne_multiEntails`, `⊢ [true, false]`
+  holds semantically, but neither `⊢ true` nor `⊢ false` does.
+* Empty sides:
+  * `Γ ⊢ []` says that `Γ` has no model, i.e. the conjunction is inconsistent
+    (`multiEntails_nil_right`).
+  * `⊢ Δ` says that the disjunction is valid (`multiEntails_nil_left`).
+
+`Signed A` (`pos a`, `neg a`) has Mathlib's `InvolutiveNeg`, and `negateEach l` negates every
+member of a list.
+
+* An arbitrary involutive negation may have fixed points, so it does not single out the
+  positive formulas. That is why positive parts always go through an explicit embedding.
+* `Signed` really does decompose: `Signed.eq_of_isPos_atom` and `Signed.neg_ne_self`.
+* For heterogeneous `C` and `D`, `SignedCarrier C D A` holds the explicit maps into one carrier,
+  and nothing more is assumed.
+* The structural modules own the conversions `Γ ⊢ Δ` ↔ unsatisfiability of
+  `Γ ++ negateEach Δ` (and the tautology form).
+
 ## Acceptors
 
 A language `L : Set _` (the convention of `Silmaril.Accept`) lifts to a system in four ways.
@@ -140,6 +173,8 @@ Each lift is the least system with its property (`…_le_iff`):
 | `Silmaril/Logic/Consequence/Ax/{Defs,Thms}.lean` | context shapes and their maps | core |
 | `Silmaril/Logic/Consequence/Semantic/{Defs,Thms}.lean` | satisfaction, SZS, rooms, institutions | core |
 | `Silmaril/Logic/Consequence/Accept/{Defs,Thms}.lean` | acceptor lifts | core |
+| `Silmaril/Logic/Consequence/Signed/{Defs,Thms}.lean` | signed formulas, `negateEach`, carriers | core |
+| `Silmaril/Logic/Consequence/Multi/{Defs,Thms}.lean` | multiple conclusions, `rightExt`, `multiEntails`, rooms | core |
 | `Silmaril/Logic/Consequence/Examples.lean` | worked examples | core |
 | `Silmaril/Logic/Consequence/Structural/…` | structural rules and derivation closures | structural derivations |
 | Wasm acceptor and SZS protocol modules | Wasm evidence for the lifts | Wasm/SZS protocols |
