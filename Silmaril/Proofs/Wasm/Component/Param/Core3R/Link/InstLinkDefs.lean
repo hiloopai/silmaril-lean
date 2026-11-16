@@ -165,16 +165,16 @@ theorem lowersL_run {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
           ((List.range' k m).map fun j => .canon (.lower j [])))
         cfg { sc with frame := { sc.frame with
           coreFuncs := sc.frame.coreFuncs ++
-            addrList Pf (List.range' ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k) m) } }
+            addrList (V := V) (IR := IR) Pf (List.range' ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k) m) } }
         { cfg with store := { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } }
   | 0, k, sc, cfg, hkm, _, hcore, _ => by
     have hk : k = c.imports.length := hkm
     have hst : { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } = cfg.store := by
       rw [← List.take_length (l := c.imports), ← hk, ← hcore]
     have hfr : { sc with frame := { sc.frame with
-        coreFuncs := sc.frame.coreFuncs ++ addrList Pf (List.range'
+        coreFuncs := sc.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k) 0) } } = sc := by
-      have e : sc.frame.coreFuncs ++ addrList Pf (List.range'
+      have e : sc.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k) 0) =
           sc.frame.coreFuncs := List.append_nil _
       rw [e]
@@ -197,9 +197,9 @@ theorem lowersL_run {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
     have hfr : sc.frame.coreFuncs ++
         ([(cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k] :
           List (core3R Pf V IR).FuncAddr) ++
-        addrList Pf (List.range' ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length +
+        addrList (V := V) (IR := IR) Pf (List.range' ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length +
           (k + 1)) m) =
-        sc.frame.coreFuncs ++ addrList Pf (List.range'
+        sc.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k) (m + 1)) := by
       rw [List.append_assoc, List.range'_succ, Nat.add_assoc]
       rfl
@@ -208,7 +208,7 @@ theorem lowersL_run {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
 
 /-- The inline core instance exporting core functions `b, …, b + n - 1` under the names `ps`. -/
 theorem coreExportsAt_run (sc : Scope (core3R Pf V IR)) (cfg : Machine.Config (core3R Pf V IR) σ)
-    (b : Nat) (ps : CoreIface) (hcf : sc.frame.coreFuncs = addrList Pf (List.range' b ps.length)) :
+    (b : Nat) (ps : CoreIface) (hcf : sc.frame.coreFuncs = addrList (V := V) (IR := IR) Pf (List.range' b ps.length)) :
     TRuns (instantiateDef R inst outer args sc
         (.coreInstance (.exports (ps.mapIdx fun k p => (p.1, ⟨.func, k⟩))))) cfg
       { sc with frame := { sc.frame with
@@ -422,16 +422,16 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
         ([c.mod.mod] : List (core3R Pf V IR).Module) } }
     cfg (Nat.zero_add _) hfB hcore₀ hb'
   -- the inline core instance
-  have hcfC : (scA.frame.coreFuncs ++ addrList Pf (List.range'
+  have hcfC : (scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
       ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + 0) c.imports.length)) =
-      addrList Pf (List.range' (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length
+      addrList (V := V) (IR := IR) Pf (List.range' (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length
         c.mod.imports.length) := by
     rw [hfA, hlenm, Nat.add_zero]
     rfl
   have rD := coreExportsAt_run (R := R) (inst := inst) (outer := outer) (args := args)
     { scA with frame := { scA.frame with
         coreModules := scA.frame.coreModules ++ ([c.mod.mod] : List (core3R Pf V IR).Module),
-        coreFuncs := scA.frame.coreFuncs ++ addrList Pf (List.range'
+        coreFuncs := scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + 0) c.imports.length) } }
     { cfg with store := { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } }
     _ c.mod.imports hcfC
@@ -446,7 +446,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
   have rE := instantiateEnv_run (R := R) (inst := inst) (outer := outer) (args := args)
     { scA with frame := { scA.frame with
         coreModules := scA.frame.coreModules ++ ([c.mod.mod] : List (core3R Pf V IR).Module),
-        coreFuncs := scA.frame.coreFuncs ++ addrList Pf (List.range'
+        coreFuncs := scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + 0) c.imports.length),
         coreInstances := scA.frame.coreInstances ++
           ([envExportsAt (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length
@@ -457,7 +457,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
   have hinv : ExpInvAt ((core3R Pf V IR).exports ci) 1 c.imports.length 0
       ({ scA.frame with
           coreModules := scA.frame.coreModules ++ ([c.mod.mod] : List (core3R Pf V IR).Module),
-          coreFuncs := scA.frame.coreFuncs ++ addrList Pf (List.range'
+          coreFuncs := scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
             ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + 0) c.imports.length),
           coreInstances := scA.frame.coreInstances ++
             ([envExportsAt (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length
@@ -467,9 +467,9 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
     · show (scA.frame.coreInstances ++ _ ++ _)[1]? = _
       rw [hfA]
       rfl
-    · show (scA.frame.coreFuncs ++ addrList Pf _).length = _
+    · show (scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf _).length = _
       rw [hfA]
-      show (addrList Pf (List.range' _ c.imports.length)).length = c.imports.length + 0
+      show (addrList (V := V) (IR := IR) Pf (List.range' _ c.imports.length)).length = c.imports.length + 0
       exact List.length_range'
     · show scA.frame.funcs.length = _
       rw [hfA]
@@ -480,7 +480,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
     (args := args) c.mod.exports 1 c.imports.length fb addr c.exports 0
     { scA with frame := { scA.frame with
         coreModules := scA.frame.coreModules ++ ([c.mod.mod] : List (core3R Pf V IR).Module),
-        coreFuncs := scA.frame.coreFuncs ++ addrList Pf (List.range'
+        coreFuncs := scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + 0) c.imports.length),
         coreInstances := scA.frame.coreInstances ++
           ([envExportsAt (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length

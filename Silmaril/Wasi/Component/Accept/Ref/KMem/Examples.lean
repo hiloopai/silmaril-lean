@@ -1,7 +1,8 @@
 module
 
 public import Silmaril.Wasi.Component.Accept.Ref.Examples
-public import Silmaril.Wasm.Component.Engine.Core3K.Defs
+public import Silmaril.Wasm.Component.Engine.Core3K.Thms
+public import Silmaril.Wasi.Component.Accept.Ref.Transfer.Thms
 
 /-! # Component acceptors on the reference machine over `KMem` memories (`decide +kernel`)
 
@@ -20,8 +21,15 @@ instantiation with the host `accept`, core instantiation with the data segment, 
   executable soundness theorem `acceptRun_sound` (which holds for every core engine).
 
 `acceptedK_hi` is a statement about REF over `core3K`. `refBytesSystem` is stated over
-`core3 neverFail`; carrying REF runs from `core3K` to `core3` needs a REF-level simulation, which
-is not proved yet (`docs/projects/wasm-memrep.md`).
+`core3 neverFail`. The REF machine simulation (`Machine.Transfer`) carries the run over, given
+two relational hypotheses that are **not proved**:
+
+* `hi_mem_of_progRel`: `"hi!"` is in `refBytesSystem` over `core3 neverFail`, if the acceptor's
+  dispatcher and its linked instantiation programs over `core3K neverFail` and `core3 neverFail`
+  are related (`DispatchRel`, `ProgRel` for `core3Sim neverFail KMem`).
+
+So `"hi!"` in `refBytesSystem` remains conditional (here on those hypotheses, and in
+`Ref.Examples.hi_mem_of_runHi` on the native `#guard runHi`); see `docs/projects/wasm-memrep.md`.
 -/
 
 @[expose] public section
@@ -62,5 +70,19 @@ theorem acceptedK_hi : ∃ a : RefAcceptor first.prof,
       obtain ⟨args, hmem, heq⟩ := List.any_eq_true.mp h
       rw [(Value.Val.beqList_iff _ _).mp heq] at hmem
       exact ⟨a, ha, acceptRun_sound _ firstK hst hmem⟩
+
+open Silmaril.Wasm.Component.Machine.Transfer in
+/-- **`"hi!"` is in `refBytesSystem` over `core3 neverFail`, given related programs**: the
+kernel-checked run on `KMem` (`acceptedK_hi`) carried over by `accepted_of_withStore`. The two
+hypotheses (related dispatchers, related instantiation programs) are open obligations. -/
+theorem hi_mem_of_progRel
+    (hd : DispatchRel (core3Sim Silmaril.Wasm.SingleThreaded.neverFail Silmaril.Wasm.Execution.KMem)
+      (dispatch (E := core3K Silmaril.Wasm.SingleThreaded.neverFail)) (dispatch (E := Eng)))
+    (hp : ∀ c, ProgRel (core3Sim Silmaril.Wasm.SingleThreaded.neverFail Silmaril.Wasm.Execution.KMem)
+      (acceptLinkedProg (E := core3K Silmaril.Wasm.SingleThreaded.neverFail) c)
+      (acceptLinkedProg (E := Eng) c)) :
+    refBytesSystem first.prof acceptHiBytes hi :=
+  let ⟨_, ha, hacc⟩ := acceptedK_hi
+  (refBytesSystem_of_decode ha).2 (accepted_of_withStore _ hd (hp _) hacc)
 
 end Silmaril.Wasi.Accept.Ref.Examples

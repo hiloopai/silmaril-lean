@@ -45,7 +45,7 @@ open Engine
 
 /-- A canon built-in with resolved immediates; one constructor per `Syntax.Builtin`
 constructor, in the same order and with the same names. -/
-inductive ResolvedBuiltin (E : CoreEngine) where
+inductive ResolvedBuiltin (E : CoreEngine.Static) where
   | resourceNew (rt : RtId) (rep : AddrType)
   | resourceDrop (rt : RtId)
   | resourceRep (rt : RtId) (rep : AddrType)
@@ -93,7 +93,7 @@ inductive ResolvedBuiltin (E : CoreEngine) where
   deriving DecidableEq
 
 /-- Host code of the shared core store: the `H` parameter of `E.Store`. -/
-inductive CanonHost (E : CoreEngine) where
+inductive CanonHost (E : CoreEngine.Static) where
   /-- `canon lower callee opts` in instance `inst`; `ft` is the callee's function type. -/
   | lowered (callee : FuncId) (ft : WIT.FuncType Empty RtId) (opts : CanonOpts E) (inst : InstId)
   /-- A canon built-in defined in instance `inst`. -/

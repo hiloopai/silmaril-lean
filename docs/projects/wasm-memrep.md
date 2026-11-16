@@ -184,32 +184,74 @@ take 5.2 s and 1.40 GB.
 Both checks use `decide +kernel`. The `ByteArray` rows are this branch's `ByteArray` memory
 operations, without the separate `writeSlice` change of #707.
 
-## Not yet: REF over `core3K` as REF over `core3`
+## REF over `E.withStore I` and REF over `E` (step 5, partial)
 
 `acceptedK_hi` is about REF over `core3K neverFail`. `refBytesSystem` (and `hi_mem_of_runHi`)
-use `core3 neverFail`. A `StoreSim` relates the two engines but does not carry REF runs between
-them. Doing so needs a REF-level simulation, which is not proved:
+use `core3 neverFail`. This step proves a REF-level simulation that is conditional on related
+programs. It does **not** yet give `"hi!"` in `refBytesSystem` unconditionally.
 
-1. **REF types are indexed by the engine, not by its static part.** `CStore E`, `Machine.Config E σ`,
-   `Label E σ`, `Canon.P E σ`, `Call E`, `Ret E`, `Task E`, `End E`, `Caller E`, `CFuncInst E`,
-   `ResourceType E`, `Instantiate.ItemVal E`, `ThreadBody E`, `LoopPoint E` and `CanonHost E`
-   are all applied to the engine `E` itself. Even though `core3K o` and `core3 o` share their
-   static fields definitionally, `Task (core3K o)` and `Task (core3 o)` are different types. The
-   engine store's host type is `CanonHost E`, so a map also has to rename host code
-   (`Store.mapH`, as in `Proofs/Wasm/Component/Reference/HostMap.lean`).
-2. **Programs see the whole store.** REF's specification programs `Canon.P E σ` are free-monad
-   trees over `Canon.Op E σ`. `Op.get` passes the whole `CStore E` to a continuation, and
-   `Op.modify` takes an arbitrary function `CStore E → CStore E`. So configurations, and
-   `Label.host (.run p)`, hold Lean functions of the store, and a map on configurations cannot be
-   defined structurally. The transfer needs a logical relation on programs: continuations of
-   `get` related on stores related by `toBytes`, `modify` functions commuting with it. Then every
-   REF program reachable from `acceptLinkedProg` and the dispatcher `Canon.dispatch` needs a proof
-   that it is related to itself across the two engines. That covers instantiation, canon
-   lift/lower, the builtins and the host `accept`, which are tens of thousands of lines of
-   definitions.
-3. Given 1 and 2, `Steps`, `Accepted` and `acceptRun` transfer by induction on `Machine.Step`, the
-   oracle being `Oracle.first` on both sides. Then `refBytesSystem first.prof acceptHiBytes hi`
-   would follow from `runHiK_true`.
+* **Component data indexed by the static part** (`Engine/Static/Defs.lean`). `CoreEngine.Static`
+  has the module, extern and address types of an engine, and `CoreEngine.toStatic` (reducible, also
+  a coercion) projects them. The plain-data REF types are now indexed by it: `CanonOpts`,
+  `LiftLowerContext`, `ResolvedBuiltin`, `CanonHost`, `ResourceType`, `BufferDesc`, `End`,
+  `Caller`, `Task`, `CFuncInst`, `Canon.Ret`, `ThreadBody`, `LoopPoint`, `Canon.Call`,
+  `Instantiate.ItemVal`, `Closure` and `Frame`. Every use `Task E` with `E : CoreEngine` elaborates
+  to `Task E.toStatic`, so no statement changed. Since `(E.withStore I).toStatic` unfolds to
+  `E.toStatic`, these types agree across the two engines by definition. In particular the core
+  store's host type `CanonHost E` agrees, so no host renaming (`Store.mapH`) is needed. One proof
+  needed an explicit engine argument (`Param/Core3R/Link/InstImpDefs.lean`).
+* **The relation** (`Reference/Machine/Transfer/Defs.lean`), for `S : E.StoreSim I`:
+  * `mapStore S` maps the core store of a `CStore` by `S.φ` and keeps the other fields.
+  * `ProgRel S` is a logical relation on `Canon.P`. The two programs issue the same operations
+    with the same data. `get` continuations are related at `mapStore`-related stores, and
+    `modify` functions commute with `mapStore`.
+  * `CfgRel`, `ActRel`, `FocusRel`, `SegRel`, `LabelRel` and `DispatchRel` lift it to
+    configurations, labels and dispatchers.
+* **The simulation** (`Transfer/Thms.lean`, proofs in
+  `Proofs/Wasm/Component/Reference/Transfer.lean`). `step_sim` and `steps_sim`: given related
+  dispatchers, every step or run over `E.withStore I` is matched over `E` from a related
+  configuration, with related labels. Every rule of `Machine.Step` is covered, including faults
+  and host events. The host-frame programs `invokeProg`, `tickProg`, `cancelProg` and `runProg`
+  are proved related to themselves. Some commutations, such as `CStore.candidates` with
+  `mapStore`, hold by definition, but the elaborator does not unfold two instances of one
+  matcher at different engines when the discriminant is stuck. These are closed by `kernel_rfl`
+  (`Eq.refl`, checked by the kernel).
+* **Acceptance** (`Wasi/Component/Accept/Ref/Transfer/Thms.lean`). `accepted_of_withStore`:
+  `Accepted` over `E.withStore I` gives `Accepted` over `E`. It needs two hypotheses: the
+  acceptor's dispatchers are `DispatchRel`-related, and the instantiation programs
+  `acceptLinkedProg c` are `ProgRel`-related.
+* **`"hi!"`, conditionally** (`Ref/KMem/Examples.lean`). `hi_mem_of_progRel`: the two
+  hypotheses for `core3Sim neverFail KMem` give `refBytesSystem first.prof acceptHiBytes hi` from
+  `acceptedK_hi`.
 
-Without the transfer, `hi_mem_of_runHi` over `core3` is still conditional on the native
-`#guard runHi`. The `ByteArray` kernel run fails (table above).
+* **Pilot of the obligations** (`Reference/Canon/Transfer/Thms.lean`). The `Canon.Context`
+  programs that touch the core store, `ptrType`, `memLen`, `readMem` and `writeMem`, are
+  `ProgRel S`-related to themselves for every `S`. The proofs use only the memory laws of the
+  store simulation.
+
+### What remains
+
+The two hypotheses are a parametricity statement: the REF programs reachable from
+`acceptLinkedProg` and `Canon.dispatch` are related to themselves across the two engines. Lean
+has no internal parametricity, so each generic definition needs its own proof. That means about
+500 definitions in `Canon` and `Instantiate`, plus the `Runtime` helpers they use. Two ways to
+discharge them:
+
+Only 11 program definitions read or write `CStore.core`. In `Canon.Context` these are
+`ptrTypeIn`, `memBytes?`, `memLen`, `readMem`, `writeMemSt` and `writeMem`; the four programs
+among them are related by the pilot. The others are `threadNewIndirect` (`Canon.Builtins.Thread`)
+and `setCoreSt`, `allocHostSt`, `addrTypesOf`, `allocCoreHost` and `instantiateCore`
+(`Instantiate`). Every other program only reads or writes fields that `mapStore` keeps, but
+still needs its own `ProgRel` proof, because the program terms differ between the two engines.
+
+1. Prove `ProgRel` compositionally for each program, using `ProgRel.bind` and the primitive
+   lemmas. Pure store reads that do not touch `core` commute by definition (`kernel_rfl`). Reads
+   and writes of the core store need the `StoreSim` laws.
+2. Refactor REF so that programs never see the core store. Core-store accesses (about 200 uses of
+   `CStore.core`) would become engine operations issued as effects, and the component store
+   without `core` would depend only on `E.toStatic`. Then the programs over the two engines are
+   the same term, and only the machine's handling of the new effects needs `StoreSim`.
+
+Until one of these is done, `hi_mem_of_runHi` over `core3` stays conditional on the native
+`#guard runHi`, and `hi_mem_of_progRel` stays conditional on the relational hypotheses. The
+`ByteArray` kernel run fails on this branch (table above).

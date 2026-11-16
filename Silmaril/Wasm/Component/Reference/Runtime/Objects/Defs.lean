@@ -51,7 +51,7 @@ open Engine AsyncRef
 
 /-- REF `ResourceType` (L703): the defining instance (`none` for host-defined resources), the
 representation type (`rep` of `resourcetype`, i32 or 🐘 i64) and the optional destructor. -/
-structure ResourceType (E : CoreEngine) where
+structure ResourceType (E : CoreEngine.Static) where
   /-- REF `impl`. -/
   impl : Option InstId
   /-- The representation address type (`rep` of the resource type definition). -/
@@ -245,7 +245,7 @@ structure Thread where
 /-- A stream/future copy buffer: REF `GuestBuffer` (L887, with its `LiftLowerContext` whose
 borrow scope is none), or a host buffer (choice point E1). `length` is REF `length`,
 `progress` REF `progress`. -/
-inductive BufferDesc (E : CoreEngine) where
+inductive BufferDesc (E : CoreEngine.Static) where
   | guest (cx : LiftLowerContext E) (t : Option (WIT.ClosedType RtId)) (ptr length progress : Nat)
   | host (b : HostBufId) (length progress : Nat)
   deriving DecidableEq
@@ -268,7 +268,7 @@ end BufferDesc
 
 /-- REF `End` (L931) and its four subclasses (`kind`). `owner = none` is a host end;
 `other = none` means the peer was dropped. -/
-structure End (E : CoreEngine) where
+structure End (E : CoreEngine.Static) where
   /-- The concrete end class. -/
   kind : EndKind
   /-- REF `t` (element type; `none` for unit). -/
@@ -330,7 +330,7 @@ inductive SubKind where
   caller's flat arguments, the position of the `CoreValueIter` over them, the callee's
   function type and `max_flat_params`/`max_flat_results`.
 * `sub kind`: other internal nested calls (`SubKind`). -/
-inductive Caller (E : CoreEngine) where
+inductive Caller (E : CoreEngine.Static) where
   | host (call : CallId) (args : List Value.Val) (depth : Nat)
   | lower (subtask : SubtaskId) (cx : LiftLowerContext E) (flatArgs : List FlatValue) (pos : Nat)
       (ft : WIT.FuncType Empty RtId) (maxParams maxResults : Nat)
@@ -338,7 +338,7 @@ inductive Caller (E : CoreEngine) where
   deriving DecidableEq
 
 /-- REF `Task` (L392). `caller` names the `(on_start, on_resolve)` pair. -/
-structure Task (E : CoreEngine) where
+structure Task (E : CoreEngine.Static) where
   /-- REF `ft`. -/
   ft : WIT.FuncType Empty RtId
   /-- REF `opts`. -/
@@ -388,7 +388,7 @@ structure InstState where
 
 /-- A component-level function value (REF `FuncInst`, L385-389): a lifted core function
 (`Store.lift`, L542) or a host function (choice point E1). -/
-inductive CFuncInst (E : CoreEngine) where
+inductive CFuncInst (E : CoreEngine.Static) where
   | lifted (core : E.FuncAddr) (ft : WIT.FuncType Empty RtId) (opts : CanonOpts E) (inst : InstId)
   | host (ft : WIT.FuncType Empty RtId) (h : HostFuncId)
   deriving DecidableEq

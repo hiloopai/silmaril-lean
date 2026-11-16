@@ -234,7 +234,7 @@ instance instDecidableAllowed (prof : ProfileKind) :
 
 /-- The universal result of a late-bound call (see the call contract table). `E` is a phantom
 parameter kept for uniformity with `Call E`. -/
-inductive Ret (E : CoreEngine) where
+inductive Ret (E : CoreEngine.Static) where
   | unit
   | nat (n : Nat)
   | flat (vs : List FlatValue)
@@ -249,7 +249,7 @@ inductive Ret (E : CoreEngine) where
   | items (exports : List (String × Instantiate.ItemVal E))
 
 /-- A REF `thread_func` closure, as data. -/
-inductive ThreadBody (E : CoreEngine) where
+inductive ThreadBody (E : CoreEngine.Static) where
   /-- The implicit thread of `canon_lift` (`thread_func`, L2077-2135) of task `task` calling
   `callee`. -/
   | liftImplicit (task : TaskId) (callee : E.FuncAddr)
@@ -272,7 +272,7 @@ def ThreadBody.task {E : CoreEngine} : ThreadBody E → TaskId
 
 /-- A REF `while` loop, entered at its head (one constructor per loop; see the module
 docstring). -/
-inductive LoopPoint (E : CoreEngine) where
+inductive LoopPoint (E : CoreEngine.Static) where
   /-- `canon_lift` callback loop (L2108-2134): `while code != EXIT` for task `task` on its
   implicit thread `thread`, with the last unpacked callback code and waitable-set index. -/
   | callbackLoop (task : TaskId) (thread : ThreadId) (code si : Nat)
@@ -306,7 +306,7 @@ inductive HostObs where
 
 /-- Late-bound calls: defunctionalized Python closures and loops, resolved by the
 non-recursive dispatcher (`Canon.dispatch`). See the call contract table in the module docstring. -/
-inductive Call (E : CoreEngine) where
+inductive Call (E : CoreEngine.Static) where
   /-- REF `LiftLowerContext.reallocate` (`Ret.nat`). -/
   | reallocate (cx : LiftLowerContext E) (old oldLen align newLen : Nat)
   /-- REF `FuncInst(on_start, on_resolve)` of function value `f` (`Ret.cancel`). -/

@@ -4,7 +4,7 @@ public import Silmaril.Wasm.Component.Reference.Runtime.Ids.Defs
 public import Silmaril.Wasm.Component.Reference.Types.Basic.Defs
 public import Silmaril.Wasm.Component.Reference.Value.Basic.Defs
 public import Silmaril.Wasm.Component.Reference.Validation.Context.Defs
-public import Silmaril.Wasm.Component.Engine.Interface
+public import Silmaril.Wasm.Component.Engine.Static.Defs
 
 /-!
 # Instantiation-time item values, closures and frames
@@ -37,7 +37,7 @@ open _root_.Silmaril.Wasm.Component.Validation (CoreTypeSlot)
 mutual
 
 /-- The run-time value of a component-level index entry (Explainer.md, "Index Spaces"). -/
-inductive ItemVal (E : CoreEngine) where
+inductive ItemVal (E : CoreEngine.Static) where
   /-- A core module (static code). -/
   | coreModule (m : E.Module)
   /-- A component function. -/
@@ -53,12 +53,12 @@ inductive ItemVal (E : CoreEngine) where
 
 /-- A component closure: the definitions and the captured enclosing frames, innermost
 first (the targets of `alias outer`). -/
-structure Closure (E : CoreEngine) where
+structure Closure (E : CoreEngine.Static) where
   body : Syntax.Component E.Module
   outer : List (Frame E)
 
 /-- The index spaces of one component scope at run time. -/
-structure Frame (E : CoreEngine) where
+structure Frame (E : CoreEngine.Static) where
   coreFuncs : List E.FuncAddr
   coreTables : List E.ExternVal
   coreMems : List E.ExternVal

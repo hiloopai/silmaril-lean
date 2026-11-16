@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Wasm.Component.Engine.Interface
+public import Silmaril.Wasm.Component.Engine.Static.Defs
 public import Silmaril.Wasm.Component.Reference.Runtime.Ids.Defs
 public import Silmaril.Wasm.Component.Reference.ABI.Calling.Defs
 public import Silmaril.Wasm.Component.Reference.ABI.String.Defs
@@ -42,7 +42,7 @@ open Engine
 
 /-- REF `CanonicalOptions` (L608-613) with its superclasses `LiftLowerOptions` and
 `LiftOptions` (L595-606) flattened into one record. -/
-structure CanonOpts (E : CoreEngine) where
+structure CanonOpts (E : CoreEngine.Static) where
   /-- REF `string_encoding` (default `'utf8'`). -/
   encoding : ABI.StringEncoding := .utf8
   /-- REF `memory` (an engine memory address). -/
@@ -94,7 +94,7 @@ inductive BorrowScope where
 
 /-- REF `LiftLowerContext` (L615-623) as plain data: the options, the component instance and
 the borrow scope. -/
-structure LiftLowerContext (E : CoreEngine) where
+structure LiftLowerContext (E : CoreEngine.Static) where
   /-- REF `opts`. -/
   opts : CanonOpts E
   /-- REF `inst`. -/
