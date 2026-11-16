@@ -5756,3 +5756,12 @@ cic-definition-aware-semantics.md.
 
 This review matched source definitions, public theorem signatures and the named
 example statements. It did not rerun Lean or audit transitive proof dependencies.
+
+## Concrete syntax
+
+`Silmaril.Logic.TypeTheory.ExtensionalMLTT.SExp` writes extensional MLTT terms, contexts and
+judgments as S-expressions (`(jdg (ctx (x nat)) nat (fv x) (fv x))`, with de Bruijn indices
+`(bv n)` checked against the binders in scope). The byte round trip `parseJdg_printJdg` holds
+exactly for the judgments whose names are legal atoms. Institutions and consequence systems over
+this syntax are in `Silmaril.Logic.Consequence.Concrete` ([consequence.md](consequence.md),
+"Concrete syntax").

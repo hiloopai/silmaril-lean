@@ -428,6 +428,39 @@ of the sentence, not a list of premises. Identity, weakening and cut on judgment
 (`…_closed`); weakening and substitution *of `Γ`* are admissible rules of each type theory, stated
 over judgments, and are not laws of these consequence relations.
 
+### Concrete syntax: S-expressions (`Concrete/`)
+
+HOL and extensional MLTT have a concrete syntax over the S-expressions of `Silmaril.Logic.Smt.SE`,
+whose ASCII reader and writer are proved to round-trip (`read_render`):
+
+| | grammar and codec | round trips |
+|---|---|---|
+| HOL types and terms | `Silmaril.Logic.HOLLight.SExp`: `(-> A B)`, `(tyapp n A*)`, `(bvar n)`, `(fvar n A)`, `(= A)`, `(@ A)`, `(const n A*)`, `(app t u)`, `(lam A t)` | `decodeTm_eq_some_iff` (the decoder accepts exactly the canonical forms), `parseTm_printTm` (bytes, every term) |
+| extensional MLTT terms, contexts, judgments | `Silmaril.Logic.TypeTheory.ExtensionalMLTT.SExp`: `(pi A B)`, `(lam A b)`, `(bv n)`, `(fv x)`, …, `(ctx (x A)*)`, `(jdg Γ A a b)` | `decodeJdg_eq_some_iff`, `parseJdg_printJdg` (bytes, exactly the judgments whose names are legal atoms: `legal_encodeJdg_iff`, `legalNames_of_parseJdg`) |
+
+Numerals are canonical decimals (`Silmaril.Logic.Concrete.SExp`). A malformed input decodes to
+`none`: an unknown keyword, a wrong number of arguments, a non-canonical numeral, a de Bruijn index
+out of scope (examples in each `SExp/Examples.lean`). **The relation to the abstract syntax** is
+*denotation*, `e` denotes `t` when `encode t = e`. It is a bijection between the canonical
+S-expressions and the abstract syntax.
+
+`Silmaril.Logic.Consequence.Concrete` defines institutions and consequence systems over the
+concrete syntax:
+
+| | concrete sentences | consequence systems | institution, and its comorphism into the abstract one |
+|---|---|---|---|
+| HOL at a signature `S` | `HOLSen S` (propositions), `HOLSequent S` (`(sequent (h*) c)`) | `holKernel S Δ`, `holSeq S` | `holRoom S`, `holInst S`, `holToAbstract S` |
+| extensional MLTT | `MLTTSen` (judgments) | `mlttDerives`, `mlttEntails` | `mlttRoom`, `mlttInst`, `mlttToAbstract` |
+
+Consequence over concrete syntax holds iff it holds over the abstract syntax it denotes
+(`holKernel_ofProp_iff`, `mlttDerives_ofJdg_iff`, and translations both ways). Identity,
+weakening, cut and soundness carry over (`holKernel_closed`, `holKernel_le_holSeq`,
+`mlttDerives_closed`, `mlttDerives_le_entails`). The comorphisms keep the models, so they are
+model-expansive, and semantic consequence over concrete sentences is semantic consequence over what
+they denote (`holRoom_seq_iff`, `mlttRoom_seq_iff`). A concrete HOL sequent lists its hypotheses,
+which the institution's sentences hold as a finite set, so many concrete sequents denote one
+sentence.
+
 ### Dependent type theory: the lambda cube (`Silmaril/Calculi/LambdaCube/Consequence/`)
 
 The dependent corners of the lambda cube
@@ -532,6 +565,7 @@ Gentzen sequents.
 | `Silmaril/Logic/Consequence/Theory/{Defs,Thms}.lean` | consequence relative to a theory, syntactic and semantic | core |
 | `Silmaril/Logic/Consequence/Metamath/{Defs,Thms}.lean` | Metamath derivability and models; PA, ZF, ZFC | core |
 | `Silmaril/Logic/Consequence/TypeTheory/{Defs,Thms}.lean` | extensional and intensional MLTT, `λΠ` | core |
+| `Silmaril/Logic/Consequence/Concrete/{Defs,Thms}.lean` | institutions and consequence systems over S-expression syntax | core |
 | `Silmaril/Logic/Consequence/Signed/{Defs,Thms}.lean` | signed formulas, `negateEach`, carriers | core |
 | `Silmaril/Logic/Consequence/Multi/{Defs,Thms}.lean` | multiple conclusions, `rightExt`, `multiEntails`, rooms | core |
 | `Silmaril/Logic/Consequence/Interp/{Defs,Thms}.lean` | interpretations, projection, evidence | core |

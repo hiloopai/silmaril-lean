@@ -86,3 +86,11 @@ records.
 Reference files are HOL Light's `fusion.ml`, `class.ml` and `nums.ml`, pinned at
 `d30e8239887b2348a063f82232a864de1cc2df15`. They are references for the primitive rules and initial classical axioms.
 Exact file hashes are in [references.bib](../../references.bib).
+
+## Concrete syntax
+
+`Silmaril.Logic.HOLLight.SExp` writes HOL Light types and terms as S-expressions
+(`(lam bool (bvar 0))`, `(app (= bool) (fvar 3 bool))`), with a decoder that accepts exactly the
+canonical forms and a proved byte round trip (`parseTm_printTm`). Institutions and consequence
+systems over this syntax, and their relation to the abstract syntax, are in
+`Silmaril.Logic.Consequence.Concrete` ([consequence.md](consequence.md), "Concrete syntax").
