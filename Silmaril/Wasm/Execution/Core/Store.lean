@@ -21,7 +21,7 @@ namespace Silmaril.Wasm.Execution.Core
 
 open Silmaril.Wasm.Validation
 
-variable {H : Type}
+variable {H : Type} {R : Type}
 
 /-! ## Accessors (relative to the current frame) -/
 
@@ -53,7 +53,7 @@ def Store.global? (s : Store H) (f : Frame) (x : GlobalIdx) : Option (Nat × Glo
   return (a, ← s.globals[a]?)
 
 /-- `$mem(z, x)` with its address. -/
-def Store.mem? (s : Store H) (f : Frame) (x : MemIdx) : Option (Nat × MemInst) := do
+def Store.mem? (s : Store H R) (f : Frame) (x : MemIdx) : Option (Nat × MemInst R) := do
   let a ← f.module.mems[x.toNat]?
   return (a, ← s.mems[a]?)
 
@@ -63,7 +63,7 @@ def Store.table? (s : Store H) (f : Frame) (x : TableIdx) : Option (Nat × Table
   return (a, ← s.tables[a]?)
 
 /-- `$data(z, x)` with its address. -/
-def Store.data? (s : Store H) (f : Frame) (x : DataIdx) : Option (Nat × DataInst) := do
+def Store.data? (s : Store H R) (f : Frame) (x : DataIdx) : Option (Nat × DataInst) := do
   let a ← f.module.datas[x.toNat]?
   return (a, ← s.datas[a]?)
 
@@ -80,13 +80,13 @@ def Store.setGlobal (s : Store H) (a : Nat) (v : Val) : Store H :=
 def Store.setTable (s : Store H) (a : Nat) (ti : TableInst) : Store H :=
   { s with tables := s.tables.set a ti }
 
-def Store.setMem (s : Store H) (a : Nat) (mi : MemInst) : Store H :=
+def Store.setMem (s : Store H R) (a : Nat) (mi : MemInst R) : Store H R :=
   { s with mems := s.mems.set a mi }
 
 def Store.setElem (s : Store H) (a : Nat) (refs : List Ref) : Store H :=
   { s with elems := s.elems.modify a fun e => { e with refs := refs } }
 
-def Store.setData (s : Store H) (a : Nat) (bytes : ByteArray) : Store H :=
+def Store.setData (s : Store H R) (a : Nat) (bytes : ByteArray) : Store H R :=
   { s with datas := s.datas.modify a fun _ => ⟨bytes⟩ }
 
 /-- `$with_struct(z, a, i, fv)`. -/

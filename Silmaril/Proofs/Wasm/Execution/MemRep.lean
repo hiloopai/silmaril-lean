@@ -87,6 +87,14 @@ theorem grow_eq (m : KMem) (maximum : Option Nat) (delta : Nat) :
       ByteArray.data_append]
   · rfl
 
+theorem extend_eq (m : KMem) (n : Nat) :
+    KMem.toBytes (KMem.extend m n) = KMem.toBytes m ++ ⟨Array.replicate n 0⟩ := by
+  apply ByteArray.ext; apply Array.toList_inj.mp
+  show (m.t ++ (KMem.zeros _).t).toList = _
+  rw [toList_append]
+  simp [toList_toBytes, KMem.zeros, toList_zerosCanon _ _ (by decide : 0 < KMem.leafBytes),
+    ByteArray.data_append]
+
 theorem zeros_eq (n : Nat) : (KMem.toBytes (KMem.zeros n)).data.toList = List.replicate n 0 := by
   rw [toList_toBytes]
   exact toList_zerosCanon _ _ (by decide)

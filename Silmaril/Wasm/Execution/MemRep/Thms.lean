@@ -7,7 +7,8 @@ import Silmaril.Proofs.Wasm.Execution.MemRep
 
 * `ByteArray` is lawful: it is the specification (`toBytes = id`).
 * `KMem` (well-formed `KBytes`) is lawful: `KMem.load_eq`, `KMem.store_eq`,
-  `KMem.readBytes_eq`, `KMem.writeBytes_eq`, `KMem.grow_eq`, `KMem.zeros_eq`. The two digit
+  `KMem.readBytes_eq`, `KMem.writeBytes_eq`, `KMem.grow_eq`, `KMem.extend_eq`,
+  `KMem.zeros_eq`. The two digit
   lemmas are `decodeLE_eq` (`Memory.decodeLE b = KBytes.leVal b.data.toList`) and
   `encodeLE_toList` (`(Memory.encodeLE n v).data.toList = KBytes.unpack n v`).
 -/
@@ -32,6 +33,7 @@ instance : LawfulMemRep ByteArray where
   readBytes_eq _ _ _ := rfl
   writeBytes_eq _ _ _ := Option.map_id'
   grow_eq _ _ _ := Option.map_id'
+  extend_eq _ _ := rfl
   zeros_eq n := by simp [MemRep.toBytes, MemRep.zeros]
 
 namespace KMem
@@ -50,6 +52,9 @@ theorem writeBytes_eq (m : KMem) (a : Nat) (bs : ByteArray) :
 theorem grow_eq (m : KMem) (maximum : Option Nat) (delta : Nat) :
     (m.grow? maximum delta).map toBytes = Memory.grow? m.toBytes maximum delta :=
   Silmaril.Proofs.Wasm.Execution.MemRep.grow_eq m maximum delta
+theorem extend_eq (m : KMem) (n : Nat) :
+    (m.extend n).toBytes = m.toBytes ++ ⟨Array.replicate n 0⟩ :=
+  Silmaril.Proofs.Wasm.Execution.MemRep.extend_eq m n
 theorem zeros_eq (n : Nat) : (zeros n).toBytes.data.toList = List.replicate n 0 :=
   Silmaril.Proofs.Wasm.Execution.MemRep.zeros_eq n
 
@@ -62,6 +67,7 @@ instance : LawfulMemRep KMem where
   readBytes_eq := KMem.readBytes_eq
   writeBytes_eq := KMem.writeBytes_eq
   grow_eq := KMem.grow_eq
+  extend_eq := KMem.extend_eq
   zeros_eq := KMem.zeros_eq
 
 end Silmaril.Wasm.Execution

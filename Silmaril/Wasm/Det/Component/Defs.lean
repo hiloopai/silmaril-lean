@@ -278,7 +278,8 @@ def ObsDetermines {ι α β : Type} (C : ι → CallSem α β) (Obs : Store Nat 
 (same memories otherwise, same type and size of memory `m`). This is "the observable state"
 of the scratch discipline: everything but the scratch bytes. -/
 def ScratchEq (m lo hi : Nat) (s₁ s₂ : Store Nat) : Prop :=
-  { s₁ with mems := [] } = { s₂ with mems := [] } ∧ s₁.mems.length = s₂.mems.length ∧
+  ({ s₁ with mems := [] } : Store Nat) = { s₂ with mems := [] } ∧
+    s₁.mems.length = s₂.mems.length ∧
     (∀ j, j ≠ m → s₁.mems[j]? = s₂.mems[j]?) ∧
     ∀ mi₁ mi₂, s₁.mems[m]? = some mi₁ → s₂.mems[m]? = some mi₂ →
       mi₁.type = mi₂.type ∧ mi₁.bytes.size = mi₂.bytes.size ∧

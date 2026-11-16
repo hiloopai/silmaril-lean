@@ -19,6 +19,7 @@ specification through `toBytes : R → ByteArray`:
 | `readBytes m a count` | `= Memory.readBytes (toBytes m) a count` |
 | `writeBytes m a bs` | `.map toBytes = Memory.writeBytes (toBytes m) a bs` |
 | `grow? m max d` | `.map toBytes = Memory.grow? (toBytes m) max d` |
+| `extend m n` | `toBytes (extend m n) = toBytes m ++` `n` zero bytes |
 | `zeros n` | `toBytes (zeros n)` is `n` zero bytes |
 
 Instances:
@@ -33,8 +34,10 @@ Instances:
   `KBytes.unpack_leVal` and two digit lemmas relating `Memory.decodeLE`/`Memory.encodeLE` to
   `KBytes.leVal`/`KBytes.unpack` (`Thms`).
 
-This module defines the interface and its instances. Running Core's interpreter over a
-lawful `R` is a separate step.
+This module defines the interface and its instances. Core's memory instances are generic in
+the representation (`Core.MemInst R`); the interpreter's memory family runs over any
+`[MemRep R]` (`SingleThreaded.Exec.Mem`) and commutes with `toBytes` at a lawful `R`
+(`Execution.MemRep.Sim.Thms`).
 -/
 
 @[expose] public section
@@ -51,6 +54,8 @@ class MemRep (R : Type) where
   readBytes : R → Nat → Nat → Option ByteArray
   writeBytes : R → Nat → ByteArray → Option R
   grow? : R → Option Nat → Nat → Option R
+  /-- Append `n` zero bytes, without bounds checks (Core's `$growmem` checks its own bounds). -/
+  extend : R → Nat → R
   zeros : Nat → R
 
 /-- **The laws**: every operation agrees with the `ByteArray` specification through `toBytes`. -/
@@ -65,6 +70,8 @@ class LawfulMemRep (R : Type) [MemRep R] : Prop where
     (MemRep.writeBytes m a bs).map MemRep.toBytes = Memory.writeBytes (MemRep.toBytes m) a bs
   grow_eq : ∀ (m : R) max d,
     (MemRep.grow? (R := R) m max d).map MemRep.toBytes = Memory.grow? (MemRep.toBytes m) max d
+  extend_eq : ∀ (m : R) n,
+    MemRep.toBytes (MemRep.extend m n) = MemRep.toBytes m ++ ⟨Array.replicate n 0⟩
   zeros_eq : ∀ n, (MemRep.toBytes (MemRep.zeros (R := R) n)).data.toList = List.replicate n 0
 
 /-! ## The specification -/
@@ -77,6 +84,7 @@ instance : MemRep ByteArray where
   readBytes := Memory.readBytes
   writeBytes := Memory.writeBytes
   grow? := Memory.grow?
+  extend m n := m ++ ⟨Array.replicate n 0⟩
   zeros n := ⟨Array.replicate n 0⟩
 
 /-! ## Trees of bytes -/
@@ -114,11 +122,14 @@ def readBytes (m : KMem) (a count : Nat) : Option ByteArray :=
 /-- `n` zero bytes in `leafBytes` leaves. -/
 def zeros (n : Nat) : KMem := ⟨zerosCanon leafBytes n, Silmaril.KBytes.wf_zerosCanon _ _⟩
 
+/-- Append `n` zero bytes as a canonical tree of zero leaves. -/
+def extend (m : KMem) (n : Nat) : KMem :=
+  ⟨m.t ++ (zeros n).t, Silmaril.KBytes.wf_append m.wf (zeros _).wf⟩
+
 def grow? (m : KMem) (maximum : Option Nat) (delta : Nat) : Option KMem :=
   if m.t.len % Memory.pageSize = 0 ∧ m.t.len / Memory.pageSize + delta ≤ Memory.maxPages ∧
       (maximum.isNone ∨ m.t.len / Memory.pageSize + delta ≤ maximum.getD 0) then
-    some ⟨m.t ++ (zeros (delta * Memory.pageSize)).t,
-      Silmaril.KBytes.wf_append m.wf (zeros _).wf⟩
+    some (extend m (delta * Memory.pageSize))
   else none
 
 end KMem
@@ -131,6 +142,7 @@ instance : MemRep KMem where
   readBytes := KMem.readBytes
   writeBytes := KMem.writeBytes
   grow? := KMem.grow?
+  extend := KMem.extend
   zeros := KMem.zeros
 
 end Silmaril.Wasm.Execution

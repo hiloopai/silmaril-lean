@@ -77,7 +77,8 @@ def RefObsDetermines (prof : ProfileKind) (h : Host E σ) (σ0 : σ)
 
 /-- Core stores equal except on the bytes `[lo, hi)` of memory `m` (any host type). -/
 def ScratchEqH {H : Type} (m lo hi : Nat) (s₁ s₂ : Silmaril.Wasm.Execution.Core.Store H) : Prop :=
-  { s₁ with mems := [] } = { s₂ with mems := [] } ∧ s₁.mems.length = s₂.mems.length ∧
+  ({ s₁ with mems := [] } : Silmaril.Wasm.Execution.Core.Store H) = { s₂ with mems := [] } ∧
+    s₁.mems.length = s₂.mems.length ∧
     (∀ j, j ≠ m → s₁.mems[j]? = s₂.mems[j]?) ∧
     ∀ mi₁ mi₂, s₁.mems[m]? = some mi₁ → s₂.mems[m]? = some mi₂ →
       mi₁.type = mi₂.type ∧ mi₁.bytes.size = mi₂.bytes.size ∧
