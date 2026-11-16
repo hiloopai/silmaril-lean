@@ -77,7 +77,7 @@ theorem instantiateCall_simple' {c : Simple} {I : Silmaril.Wasm.Game.ScalarInsta
     {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {ci : (core3R Pf V IR).Inst}
     (hF : CoreFacts c I cs ci) (outer : List (Frame (core3R Pf V IR)))
     (cfg : Machine.Config (core3R Pf V IR) σ)
-    (hcore : cfg.store.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ es, funcExports es = exportMap c ∧ TagOrFunc es ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ [] : P (core3R Pf V IR) σ (Ret (core3R Pf V IR))) cfg
         (.items es)
@@ -109,12 +109,12 @@ theorem instantiateCall_simpleI' {c : SimpleI} (hc : c.Good) (har : c.Arity)
     (outer : List (Frame (core3R Pf V IR))) (vs : Exports (core3R Pf V IR))
     (cfg : Machine.Config (core3R Pf V IR) σ) {fb : Nat}
     (hF : CoreFactsL c cs₀ (nextInst cfg.store) fid addr cs ci)
-    (hcore : cfg.store.core = cs₀) (hfb : cfg.store.funcs.length = fb)
+    (hcore : cfg.core = cs₀) (hfb : cfg.store.funcs.length = fb)
     (hb : ImportsBound c vs fid cfg.store) :
     ∃ es, funcExports es = c.exports.mapIdx (fun i x => (x.name, ⟨fb + i⟩)) ∧ TagOrFunc es ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ vs : P (core3R Pf V IR) σ (Ret (core3R Pf V IR))) cfg
         (.items es)
-        { cfg with store := nestStoreI cs cfg.store addr (nextInst cfg.store) c } := by
+        { cfg with core := cs, store := nestStoreI cs cfg.store addr (nextInst cfg.store) c } := by
   obtain ⟨sc', hr, hx⟩ := toRefDefsL_run (R := callRecurse) (inst := nextInst cfg.store)
     (outer := outer) (args := vs) hc har hF
     { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store } hcore hfb hb

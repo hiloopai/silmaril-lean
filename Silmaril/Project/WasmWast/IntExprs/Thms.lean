@@ -19,10 +19,10 @@ namespace Silmaril.Project.WasmWast.IntExprs
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 
 /-- The decoder reads the file's bytes as `m0`. -/
-theorem decode0 : Silmaril.Wasm.Binary.Core.decode? bytes0 = some m0 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes0).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m0, hx]
+theorem decode0 : Silmaril.Wasm.Binary.Core.decode? bytes0 = some m0 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes0).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds0`, by one kernel evaluation. -/
 theorem script0 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m0 cmds0 :=
@@ -57,10 +57,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l21 (expect := "THM") :=
   script0.returnsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m1`. -/
-theorem decode1 : Silmaril.Wasm.Binary.Core.decode? bytes1 = some m1 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes1).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m1, hx]
+theorem decode1 : Silmaril.Wasm.Binary.Core.decode? bytes1 = some m1 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes1).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds1`, by one kernel evaluation. -/
 theorem script1 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m1 cmds1 :=
@@ -81,10 +81,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l31 (expect := "THM") :=
   script1.returnsOnly 1 rfl
 
 /-- The decoder reads the file's bytes as `m2`. -/
-theorem decode2 : Silmaril.Wasm.Binary.Core.decode? bytes2 = some m2 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes2).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m2, hx]
+theorem decode2 : Silmaril.Wasm.Binary.Core.decode? bytes2 = some m2 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes2).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds2`, by one kernel evaluation. -/
 theorem script2 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m2 cmds2 :=
@@ -98,10 +98,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l40 (expect := "THM") :=
   script2.returnsOnly 0 rfl
 
 /-- The decoder reads the file's bytes as `m3`. -/
-theorem decode3 : Silmaril.Wasm.Binary.Core.decode? bytes3 = some m3 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes3).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m3, hx]
+theorem decode3 : Silmaril.Wasm.Binary.Core.decode? bytes3 = some m3 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes3).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds3`, by one kernel evaluation. -/
 theorem script3 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m3 cmds3 :=
@@ -136,10 +136,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l59 (expect := "THM") :=
   script3.returnsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m4`. -/
-theorem decode4 : Silmaril.Wasm.Binary.Core.decode? bytes4 = some m4 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes4).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m4, hx]
+theorem decode4 : Silmaril.Wasm.Binary.Core.decode? bytes4 = some m4 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes4).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds4`, by one kernel evaluation. -/
 theorem script4 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m4 cmds4 :=
@@ -174,10 +174,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l78 (expect := "THM") :=
   script4.returnsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m5`. -/
-theorem decode5 : Silmaril.Wasm.Binary.Core.decode? bytes5 = some m5 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes5).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m5, hx]
+theorem decode5 : Silmaril.Wasm.Binary.Core.decode? bytes5 = some m5 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes5).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds5`, by one kernel evaluation. -/
 theorem script5 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m5 cmds5 :=
@@ -212,10 +212,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l97 (expect := "THM") :=
   script5.returnsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m6`. -/
-theorem decode6 : Silmaril.Wasm.Binary.Core.decode? bytes6 = some m6 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes6).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m6, hx]
+theorem decode6 : Silmaril.Wasm.Binary.Core.decode? bytes6 = some m6 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes6).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds6`, by one kernel evaluation. -/
 theorem script6 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m6 cmds6 :=
@@ -250,10 +250,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l116 (expect := "THM") :=
   script6.trapsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m7`. -/
-theorem decode7 : Silmaril.Wasm.Binary.Core.decode? bytes7 = some m7 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes7).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m7, hx]
+theorem decode7 : Silmaril.Wasm.Binary.Core.decode? bytes7 = some m7 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes7).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds7`, by one kernel evaluation. -/
 theorem script7 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m7 cmds7 :=
@@ -288,10 +288,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l135 (expect := "THM") :=
   script7.trapsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m8`. -/
-theorem decode8 : Silmaril.Wasm.Binary.Core.decode? bytes8 = some m8 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes8).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m8, hx]
+theorem decode8 : Silmaril.Wasm.Binary.Core.decode? bytes8 = some m8 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes8).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds8`, by one kernel evaluation. -/
 theorem script8 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m8 cmds8 :=
@@ -326,10 +326,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l154 (expect := "THM") :=
   script8.returnsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m9`. -/
-theorem decode9 : Silmaril.Wasm.Binary.Core.decode? bytes9 = some m9 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes9).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m9, hx]
+theorem decode9 : Silmaril.Wasm.Binary.Core.decode? bytes9 = some m9 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes9).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds9`, by one kernel evaluation. -/
 theorem script9 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m9 cmds9 :=
@@ -350,10 +350,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l167 (expect := "THM") :=
   script9.returnsOnly 1 rfl
 
 /-- The decoder reads the file's bytes as `m10`. -/
-theorem decode10 : Silmaril.Wasm.Binary.Core.decode? bytes10 = some m10 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes10).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m10, hx]
+theorem decode10 : Silmaril.Wasm.Binary.Core.decode? bytes10 = some m10 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes10).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds10`, by one kernel evaluation. -/
 theorem script10 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m10 cmds10 :=
@@ -374,10 +374,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l180 (expect := "THM") :=
   script10.returnsOnly 1 rfl
 
 /-- The decoder reads the file's bytes as `m11`. -/
-theorem decode11 : Silmaril.Wasm.Binary.Core.decode? bytes11 = some m11 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes11).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m11, hx]
+theorem decode11 : Silmaril.Wasm.Binary.Core.decode? bytes11 = some m11 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes11).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds11`, by one kernel evaluation. -/
 theorem script11 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m11 cmds11 :=
@@ -412,10 +412,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l199 (expect := "THM") :=
   script11.trapsOnly 3 rfl
 
 /-- The decoder reads the file's bytes as `m12`. -/
-theorem decode12 : Silmaril.Wasm.Binary.Core.decode? bytes12 = some m12 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes12).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m12, hx]
+theorem decode12 : Silmaril.Wasm.Binary.Core.decode? bytes12 = some m12 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes12).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds12`, by one kernel evaluation. -/
 theorem script12 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m12 cmds12 :=
@@ -478,10 +478,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l222 (expect := "THM") :=
   script12.returnsOnly 7 rfl
 
 /-- The decoder reads the file's bytes as `m13`. -/
-theorem decode13 : Silmaril.Wasm.Binary.Core.decode? bytes13 = some m13 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes13).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m13, hx]
+theorem decode13 : Silmaril.Wasm.Binary.Core.decode? bytes13 = some m13 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes13).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds13`, by one kernel evaluation. -/
 theorem script13 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m13 cmds13 :=
@@ -544,10 +544,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l245 (expect := "THM") :=
   script13.returnsOnly 7 rfl
 
 /-- The decoder reads the file's bytes as `m14`. -/
-theorem decode14 : Silmaril.Wasm.Binary.Core.decode? bytes14 = some m14 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes14).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m14, hx]
+theorem decode14 : Silmaril.Wasm.Binary.Core.decode? bytes14 = some m14 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes14).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds14`, by one kernel evaluation. -/
 theorem script14 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m14 cmds14 :=
@@ -610,10 +610,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l268 (expect := "THM") :=
   script14.returnsOnly 7 rfl
 
 /-- The decoder reads the file's bytes as `m15`. -/
-theorem decode15 : Silmaril.Wasm.Binary.Core.decode? bytes15 = some m15 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes15).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m15, hx]
+theorem decode15 : Silmaril.Wasm.Binary.Core.decode? bytes15 = some m15 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes15).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds15`, by one kernel evaluation. -/
 theorem script15 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m15 cmds15 :=
@@ -676,10 +676,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l291 (expect := "THM") :=
   script15.returnsOnly 7 rfl
 
 /-- The decoder reads the file's bytes as `m16`. -/
-theorem decode16 : Silmaril.Wasm.Binary.Core.decode? bytes16 = some m16 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes16).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m16, hx]
+theorem decode16 : Silmaril.Wasm.Binary.Core.decode? bytes16 = some m16 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes16).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds16`, by one kernel evaluation. -/
 theorem script16 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m16 cmds16 :=
@@ -742,10 +742,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l314 (expect := "THM") :=
   script16.returnsOnly 7 rfl
 
 /-- The decoder reads the file's bytes as `m17`. -/
-theorem decode17 : Silmaril.Wasm.Binary.Core.decode? bytes17 = some m17 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes17).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m17, hx]
+theorem decode17 : Silmaril.Wasm.Binary.Core.decode? bytes17 = some m17 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes17).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds17`, by one kernel evaluation. -/
 theorem script17 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m17 cmds17 :=
@@ -808,10 +808,10 @@ silmaril instance silmaril.wasm_wast.int_exprs.l337 (expect := "THM") :=
   script17.returnsOnly 7 rfl
 
 /-- The decoder reads the file's bytes as `m18`. -/
-theorem decode18 : Silmaril.Wasm.Binary.Core.decode? bytes18 = some m18 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes18).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m18, hx]
+theorem decode18 : Silmaril.Wasm.Binary.Core.decode? bytes18 = some m18 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes18).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds18`, by one kernel evaluation. -/
 theorem script18 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m18 cmds18 :=

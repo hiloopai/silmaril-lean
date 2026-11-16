@@ -118,11 +118,11 @@ theorem toRefH_run {l : HLinked2}
     (hIn : (l.imp.imports.map (·.1)).Nodup) (hW : l.WireTy) (hN : l.toL2.NamesOk)
     {addrI : Nat → Nat} {csi : (core3P Pf).Store (CanonHost (core3P Pf))} {cii : (core3P Pf).Inst}
     (hFi : CoreFactsL l.imp cse ⟨2⟩ l.fid addrI csi cii)
-    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.store.core = (core3P Pf).empty _)
+    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.core = (core3P Pf).empty _)
     (hfuncs : cfg.store.funcs = hostList 0 l.host) (hinsts : cfg.store.insts = [{}]) :
     ∃ sc', ORuns D (List.foldlM (instantiateDef (callRecurse : Recurse (core3P Pf) σ) ⟨0⟩ []
         (importArgs l.host)) {} l.toRef) cfg [] sc'
-        { cfg with store :=
+        { cfg with core := csi, store :=
             linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l.toL2 cfg.store } ∧
       funcExports sc'.exports = l.exportMap := by
   have hHn := host_nodup hW hIn
@@ -251,7 +251,7 @@ theorem toRefH_run {l : HLinked2}
     (linkArgsH l) cfgE (hn2 ▸ hFi) rfl hfb hb
   rw [hn2] at hrI
   let cfgI : Machine.Config (core3P Pf) σ :=
-    { cfg with store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l.toL2 cfg.store }
+    { cfg with core := csi, store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l.toL2 cfg.store }
   let sc₅ : Scope (core3P Pf) :=
     { sc₄ with frame := { sc₄.frame with instances := sc₄.frame.instances ++ [esI] } }
   have hc₄ : sc₄.frame.component? 1 = some clI := by
@@ -361,12 +361,12 @@ theorem rootCallH_run {l : HLinked2}
     (hIn : (l.imp.imports.map (·.1)).Nodup) (hW : l.WireTy) (hN : l.toL2.NamesOk)
     {addrI : Nat → Nat} {csi : (core3P Pf).Store (CanonHost (core3P Pf))} {cii : (core3P Pf).Inst}
     (hFi : CoreFactsL l.imp cse ⟨2⟩ l.fid addrI csi cii)
-    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.store.core = (core3P Pf).empty _)
+    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.core = (core3P Pf).empty _)
     (hfuncs : cfg.store.funcs = hostList 0 l.host) (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = l.exportMap ∧
       ORuns D (instantiateRootCall l.toRef (importArgs l.host) : P (core3P Pf) σ _) cfg []
         (⟨0⟩, es)
-        { cfg with store :=
+        { cfg with core := csi, store :=
             rootStoreL cse csi (fun k => Ie.addrs.getD k 0) addrI l.toL2 cfg.store } := by
   have hHn := host_nodup hW hIn
   obtain ⟨sc', hr, hx⟩ := toRefH_run hD hEg hFe hIg hIa hIn hW hN hFi
@@ -404,10 +404,11 @@ theorem hostConfig_eqH (l : HLinked2) (h₀ : σ) :
 importer), the host functions, then the exporter's lifted functions, then the importer's. -/
 noncomputable def afterLinkH (P : Profile) (csi : (core3P P).Store (CanonHost (core3P P)))
     (addrE addrI : Nat → Nat) (l : HLinked2) (h : σ) : Machine.Config (core3P P) σ :=
-  Config.init
-    { core := csi, insts := [{}, {}, {}],
+  { Config.init
+    { insts := [{}, {}, {}],
       funcs := hostList 0 l.host ++ liftedList addrE ⟨1⟩ l.exp.exports ++
-        liftedList addrI ⟨2⟩ l.imp.exports } h
+        liftedList addrI ⟨2⟩ l.imp.exports } h with
+    core := csi }
 
 /-- **The instantiation program of `l.toRef` runs** from the host functions' configuration to
 `afterLinkH`, observing the root instance `0` and the export map `l.exportMap`. -/

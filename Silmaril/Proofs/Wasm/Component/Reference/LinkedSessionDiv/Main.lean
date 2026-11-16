@@ -68,7 +68,7 @@ theorem sessDivL_fwd (S₀ : LStat P l Ie Ii u₀ F₀ B₀ (ownOf s₀)) (hB₀
     | none =>
       obtain ⟨m', hc, hR'⟩ := linkCall_fwd (prof := prof) (impl := impl)
         (ST := ST) (h₀ := h₀) S₀ hB₀ hfs R d hok hpath hexp hans
-      have R₁ : ReadyL P l Ie Ii s₀ u₀ F₀ m'.store.core ιe ιi G u₁ π₁ (k + 1) :=
+      have R₁ : ReadyL P l Ie Ii s₀ u₀ F₀ m'.core ιe ιi G u₁ π₁ (k + 1) :=
         ⟨hR', R.thE, R.thI, R.leave, fresh_succL R.fresh⟩
       refine .trap hc ?_
       rw [resumeCfg_readyL]

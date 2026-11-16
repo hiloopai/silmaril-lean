@@ -167,7 +167,7 @@ theorem linkCallT (S₀ : LStat P l Ie Ii u₀ F₀ B₀ (ownOf s₀)) (hB₀ : 
       ⟨l.exp.exports.length + j⟩ (vs.map toRefVal) m' .trap) :
     ∃ (d : Linked2.SessRound l Ii) (u' π' : Store Nat), d.j = j ∧ d.vs = vs ∧ d.Ok ∧
       d.ans = none ∧ Ii.Path P (.idle u) d.instMoves (.idle u') ∧
-      Linked2.ExpRunT P l Ie π d.dss.flatten π' ∧ LReady P l Ie Ii s₀ u₀ F₀ m'.store.core u' π' := by
+      Linked2.ExpRunT P l Ie π d.dss.flatten π' ∧ LReady P l Ie Ii s₀ u₀ F₀ m'.core u' π' := by
   have hx : l.imp.exports[j] ∈ l.imp.exports := List.getElem_mem j.isLt
   obtain ⟨nm, hcore⟩ := S₀.impGood.core _ hx
   have hk : l.imp.exports[j].core < l.imp.mod.exports.length :=
@@ -361,7 +361,7 @@ trapped configuration. -/
 theorem resumeCfg_readyL (cs : (core3P P).Store (CanonHost (core3P P))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (ST : List Subtask) (h₀ : σ)
     (m' : Machine.Config (E3 P) σ) :
-    resumeCfg (readyCfgL cs ιe ιi fs G ST h₀) m' = readyCfgL m'.store.core ιe ιi fs G ST m'.host :=
+    resumeCfg (readyCfgL cs ιe ιi fs G ST h₀) m' = readyCfgL m'.core ιe ιi fs G ST m'.host :=
   rfl
 
 /-- **Resumable linked sessions between calls are specification sessions.** -/

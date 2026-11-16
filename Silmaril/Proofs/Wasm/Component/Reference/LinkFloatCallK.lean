@@ -196,17 +196,17 @@ theorem call_trunLK (prof : ProfileKind) (cs : (core3P P).Store (CanonHost (core
       (invokedAtL cs ιe ιi fs G ST h₀ k j (vs.map toRefVal)) := by
   obtain ⟨Mℓ, th, cx, f, segs, rest, tr₁, hpre, hc, hl, hpost⟩ :=
     call_atLKV (impl := impl) prof cs ιe ιi fs G ST h₀ k j a x vs hres hmaxr hth hleave hf
-  have hc' : Mℓ.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .get fun s =>
+  have hc' : Mℓ.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .readCore fun s =>
       lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toRefVals vs)
         (toClosedList x.ty.params) >>= f), segs⟩ :: rest := by
     rw [hc, paramTypes_liftedFt, lowerFlatValues_float (max := ABI.maxFlatParams) _ _ _ hmax]
     rfl
   have hch := lowerFlatTypesV (E := E3 P) (σ := σ) Limits.spec Quirks.none cx
-    (ptrTypeIn Mℓ.store cx) prof x.ty.params vs hck
+    (ptrTypeIn (CoreEngine.view _ Mℓ.core) cx) prof x.ty.params vs hck
   have ht := ChoiceProg.trun (hr := fun _ _ => false) (dispatch := DI P impl) hch
-    { Mℓ with ctl := ⟨th, .prog (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn Mℓ.store cx)
+    { Mℓ with ctl := ⟨th, .prog (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ Mℓ.core) cx)
       (toRefVals vs) (toClosedList x.ty.params) >>= f), segs⟩ :: rest } f th segs rest rfl hl
-  refine TRun.of_lrun hpre (TRun.of_lrun (uniqueStep_getD hc' hl) (ht.bind ?_))
+  refine TRun.of_lrun hpre (TRun.of_lrun (uniqueStep_readCoreD hc' hl) (ht.bind ?_))
   rintro m ⟨out, ⟨vs', hn, hck', rfl⟩, rfl⟩
   obtain ⟨M₀, th', K, segs', rest', tr₂, hl₁, hat⟩ := hpost (lowerArgs x.ty.params vs')
   exact TRun.of_lrun hl₁ (.done ⟨vs', th', K, segs', rest', hn, hck', hat⟩)

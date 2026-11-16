@@ -24,12 +24,12 @@ def Config.withStart (c : Config H) : Option FuncIdx → Config H
   | none => c
 
 section
-variable (ev : Store H → Frame → Expr → Option (Store H × Val))
+variable {R : Type} [MemRep R] (ev : Store H R → Frame → Expr → Option (Store H R × Val))
 
 /-- Computable preparation: allocation plus segment initialisation code, with the
 start function returned rather than appended. -/
-def prepare? (s : Store H) (m : Module) (xas : List ExternAddr) :
-    Option (Config H × Option FuncIdx) :=
+def prepare? (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Config H R × Option FuncIdx) :=
   if m.elems.length ≤ 2 ^ 32 ∧ m.data.length ≤ 2 ^ 32 ∧
       (∀ d ∈ m.data, d.bytes.size < 2 ^ 32) ∧ (∀ e ∈ m.elems, e.init.length < 2 ^ 32) then
     match evalGlobals? ev s ⟨[], ModuleInst.initial s m xas⟩

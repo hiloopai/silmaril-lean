@@ -36,10 +36,10 @@ variable {Pf : Silmaril.Wasm.Numerics.Profile} {σ : Type}
 
 /-- The store after the nested instantiation of a simple component in the instance allocated
 next: as `instStore`, at an arbitrary instance id. -/
-noncomputable def nestStore (cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR)))
+noncomputable def nestStore (_cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR)))
     (s : CStore (core3R Pf V IR)) (addr : Nat → Nat) (inst : InstId) (c : Simple) :
     CStore (core3R Pf V IR) :=
-  liftStore cs (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr inst c.exports)
+  liftStore (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr inst c.exports)
 
 /-- The id of the next component instance. -/
 noncomputable abbrev nextInst (s : CStore (core3R Pf V IR)) : InstId :=
@@ -49,7 +49,7 @@ noncomputable abbrev nextInst (s : CStore (core3R Pf V IR)) : InstId :=
 noncomputable def nestCfg (cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR)))
     (cfg : Machine.Config (core3R Pf V IR) σ) (addr : Nat → Nat) (c : Simple) :
     Machine.Config (core3R Pf V IR) σ :=
-  { cfg with store := nestStore cs cfg.store addr (nextInst cfg.store) c }
+  { cfg with core := cs, store := nestStore cs cfg.store addr (nextInst cfg.store) c }
 
 /-- **The nested instantiation of an import-free simple component runs silently**: from a store
 with the empty core store and no component function, the dispatcher's program for
@@ -59,7 +59,7 @@ theorem instantiateCall_simple {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstan
     {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {ci : (core3R Pf V IR).Inst}
     (hF : CoreFacts c I cs ci) (outer : List (Frame (core3R Pf V IR)))
     (cfg : Machine.Config (core3R Pf V IR) σ)
-    (hcore : cfg.store.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ es, funcExports es = exportMap c ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ [] : P (core3R Pf V IR) σ (Ret (core3R Pf V IR))) cfg
         (.items es)

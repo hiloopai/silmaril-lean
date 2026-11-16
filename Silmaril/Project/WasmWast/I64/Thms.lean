@@ -19,10 +19,10 @@ namespace Silmaril.Project.WasmWast.I64
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 
 /-- The decoder reads the file's bytes as `m0`. -/
-theorem decode0 : Silmaril.Wasm.Binary.Core.decode? bytes0 = some m0 := by
-  have h : (Silmaril.Wasm.Binary.Core.decode? bytes0).isSome = true := by decide +kernel
-  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h
-  simp [m0, hx]
+theorem decode0 : Silmaril.Wasm.Binary.Core.decode? bytes0 = some m0 :=
+  (Option.some_get (by decide +kernel :
+    (Silmaril.Wasm.Binary.Core.decode? bytes0).isSome = true)).symm.trans
+    (congrArg some (Option.get_eq_getD _))
 
 /-- Every command of `cmds0`, by one kernel evaluation. -/
 theorem script0 : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail m0 cmds0 :=

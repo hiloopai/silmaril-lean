@@ -56,6 +56,7 @@ namespace Silmaril.Wasm.Component.Engine
 namespace Core3
 
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation
+open Silmaril.Wasm.Execution (MemRep)
 
 /-! ## Import and export types are valid in the empty context -/
 
@@ -279,7 +280,7 @@ def exportTypesE (m : Module) : List (String × ExtT) :=
   | none => []
 
 /-- The type of an external address: its principal type, when that is valid in `{}`. -/
-def externTypeE? {H : Type} (s : Store H) (xa : ExternAddr) : Option ExtT :=
+def externTypeE? {H R : Type} (s : Store H R) (xa : ExternAddr) : Option ExtT :=
   match externAddrType? s xa with
   | some τ => if h : ExternTypeOk.check {} τ = true then some ⟨τ, ExternTypeOk.check_sound h⟩
     else none
@@ -290,8 +291,8 @@ the spec's `$instantiate` (every global allocated in `$evalglobals` and again in
 to the deviations listed in Silmaril.Wasm.Execution.Core.Instantiation: `instantiateDirect?` on a module accepted by
 `validate?` whose arguments pass `externAddrsOk?` against its import types; the start index
 becomes the start address. -/
-def prepareSpecE? {H : Type} (s : Store H) (m : Module) (xas : List ExternAddr) :
-    Option (Store H × ModuleInst × Option Nat) :=
+def prepareSpecE? {H R : Type} [MemRep R] (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Store H R × ModuleInst × Option Nat) :=
   match validate? m with
   | none => none
   | some mt =>
@@ -307,8 +308,8 @@ def prepareSpecE? {H : Type} (s : Store H) (m : Module) (xas : List ExternAddr) 
 /-- Instantiation: `instantiateOnce?` (every global allocated once) on a module accepted by
 `validate?` whose arguments pass `externAddrsOk?` against its import types; the start index
 becomes the start address. -/
-def prepareE? {H : Type} (s : Store H) (m : Module) (xas : List ExternAddr) :
-    Option (Store H × ModuleInst × Option Nat) :=
+def prepareE? {H R : Type} [MemRep R] (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Store H R × ModuleInst × Option Nat) :=
   match validate? m with
   | none => none
   | some mt =>
@@ -326,8 +327,8 @@ def toCR : CallResult → SingleThreaded.CallResult
 
 /-- The flat status: `statusC (stepI o)` with values converted to flat values; non-flat results
 and non-flat callout arguments are `stuck`. -/
-def statusE {H : Type} (o : SingleThreaded.GrowOracle) (s : Store H) (t : SingleThreaded.Thread) :
-    Status H :=
+def statusE {H R : Type} [MemRep R] (o : SingleThreaded.GrowOracle) (s : Store H R)
+    (t : SingleThreaded.Thread) : Status H :=
   match SingleThreaded.statusC (SingleThreaded.Exec.stepI o) s t with
   | .running => .running
   | .returned (.values vs) =>
@@ -365,7 +366,7 @@ def asGlobal? : ExternAddr → Option Nat
 def instExports (i : ModuleInst) : List (String × ExternAddr) := i.exports.map fun x => (x.name, x.addr)
 
 /-- The type of a function address. -/
-def funcTypeE? {H : Type} (s : Store H) (a : Nat) : Option DefType := s.funcs[a]?.map (·.type)
+def funcTypeE? {H R : Type} (s : Store H R) (a : Nat) : Option DefType := s.funcs[a]?.map (·.type)
 
 end Core3
 
@@ -582,14 +583,14 @@ example :
   decide +kernel
 
 /-- Instantiating with a wrong number of arguments fails. -/
-example : prepareE? (H := Nat) {} exGlobal [.func 0] = none := by decide +kernel
+example : prepareE? (H := Nat) (R := ByteArray) {} exGlobal [.func 0] = none := by decide +kernel
 
 /-- A module defining one global: single allocation leaves one global in the store, named by the
 instance; the spec's `$instantiate` leaves two, the instance naming the second. -/
 example :
-    ((prepareE? (H := Nat) {} exGlobal []).map fun r => (r.2.1.globals, r.1.globals.length)) =
-      some ([0], 1) ∧
-    ((prepareSpecE? (H := Nat) {} exGlobal []).map fun r =>
+    ((prepareE? (H := Nat) (R := ByteArray) {} exGlobal []).map fun r =>
+      (r.2.1.globals, r.1.globals.length)) = some ([0], 1) ∧
+    ((prepareSpecE? (H := Nat) (R := ByteArray) {} exGlobal []).map fun r =>
       (r.2.1.globals, r.1.globals.length)) = some ([1], 2) := by
   decide +kernel
 

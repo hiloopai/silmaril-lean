@@ -70,7 +70,7 @@ theorem instantiateOnce?_noStart (s : Store H) (m : Module) (xas : List ExternAd
   simp only [initial_noStart, e, e₂, prepare?_noStart]
   split
   · rfl
-  · cases prepare? evalConst? _ m.globalResidue _ with
+  · cases prepare? (R := ByteArray) evalConst? _ m.globalResidue _ with
     | none => rfl
     | some p =>
       dsimp only [Option.map]

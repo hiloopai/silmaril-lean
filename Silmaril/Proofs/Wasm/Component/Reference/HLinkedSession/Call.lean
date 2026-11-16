@@ -641,7 +641,7 @@ theorem calls_of_trapEndH {cs : (core3P P).Store (CanonHost (core3P P))} {ιe ι
     {c : (E3 P).Store (CanonHost (E3 P))} {s : σ}
     (h : TrapEndH prof P impl (invokedAtL cs ιe ιi fs G ST h₀ k j args) c s) :
     ∃ m', Calls prof (fun _ _ => false) (DI P impl) (readyCfgL cs ιe ιi fs G ST h₀) ⟨k⟩ ⟨j⟩ args
-      m' .trap ∧ m'.store.core = c ∧ m'.host = s := by
+      m' .trap ∧ m'.core = c ∧ m'.host = s := by
   obtain ⟨tr, m', r, hh, hi, hl, hc, hs⟩ := h
   exact ⟨m', ⟨tr, .cons (invoke_stepL hG j args) r, fun ev hm => absurd hm (hh ev),
     fun _ msg => hi msg, hl⟩, hc, hs⟩
@@ -660,7 +660,7 @@ def FwdOutH (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ) (l : 
         (readyCfgL cs' ιe' ιi' fs G' ST' s') (.resolved (some (ws.map toRefVal))) ∧
       ReadyL P l.toW Ie Ii s₀ u₀ F₀ cs' ιe' ιi' G' u₁ π₁ (k + 1)
   | none => ∃ m', Calls prof (fun _ _ => false) (DI P impl) m ⟨k⟩ ⟨j⟩ args m' .trap ∧
-      LReady P l.toW Ie Ii s₀ u₀ F₀ m'.store.core u₁ π₁ ∧ m'.host = s'
+      LReady P l.toW Ie Ii s₀ u₀ F₀ m'.core u₁ π₁ ∧ m'.host = s'
 
 section Call
 

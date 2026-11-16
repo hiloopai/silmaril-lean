@@ -231,22 +231,26 @@ theorem instantiateCore_run (f : Frame (core3R Pf V IR)) (cfg : Machine.Config (
     {m : Silmaril.Wasm.Module} {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))}
     {ci : (core3R Pf V IR).Inst} (hm : f.coreModules = [m])
     (himp : (core3R Pf V IR).importTypes m = [])
-    (hp : (core3R Pf V IR).prepare? cfg.store.core m [] = some (cs, ci, none)) :
+    (hp : (core3R Pf V IR).prepare? cfg.core m [] = some (cs, ci, none)) :
     TRuns (instantiateCore inst f 0 [] : P (core3R Pf V IR) σ _) cfg ((core3R Pf V IR).exports ci)
-      { cfg with store := setCoreSt cs cfg.store } := by
+      { cfg with core := cs } := by
   have hmod : f.coreModule? 0 = some m := by rw [Frame.coreModule?, hm]; rfl
-  have himps : coreImportsFor? cfg.store.core m [] f = some [] := by
-    unfold coreImportsFor?
-    rw [himp]
-    rfl
   unfold instantiateCore
   rw [hmod]
-  refine (TRuns.pure _ cfg).bind ((TRuns.getStore cfg).bind ?_)
-  rw [himps]
+  refine (TRuns.pure _ cfg).bind ((TRuns.readCore cfg).bind ?_)
+  have himps : ∀ ety, coreImportsWith? ety m [] f = some [] := fun ety => by
+    unfold coreImportsWith?; rw [himp]; rfl
+  simp only [himps]
   refine (TRuns.pure _ cfg).bind ?_
+  rw [show (CoreEngine.view _ cfg.core).prepare? m [] = some (CoreEngine.exports _ ci, none) by
+    show Option.map (fun r => (CoreEngine.exports _ r.2.1, r.2.2))
+      ((core3R Pf V IR).prepare? cfg.core m []) = _
+    rw [hp]; rfl]
+  have hpc : prepareCore cfg.core m [] = cs := by unfold prepareCore; rw [hp]
   dsimp only
-  rw [hp]
-  exact (TRuns.modifyStore (f := setCoreSt cs) (fun _ => rfl) cfg).bind (TRuns.pure _ _)
+  rw [← hpc]
+  exact (TRuns.prepareOp m [] cfg).bind (f := fun _ => Pure.pure (CoreEngine.exports _ ci))
+    (TRuns.pure _ _)
 
 theorem instDef_coreModule (sc : Scope (core3R Pf V IR)) (m : (core3R Pf V IR).Module) :
     instantiateDef R inst outer args sc (.coreModule m) =
@@ -287,30 +291,30 @@ theorem instDef_coreInstance (sc : Scope (core3R Pf V IR)) (cfg : Machine.Config
     {m : (core3R Pf V IR).Module} {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))}
     {ci : (core3R Pf V IR).Inst} (hm : sc.frame.coreModules = [m])
     (himp : (core3R Pf V IR).importTypes m = [])
-    (hp : (core3R Pf V IR).prepare? cfg.store.core m [] = some (cs, ci, none)) :
+    (hp : (core3R Pf V IR).prepare? cfg.core m [] = some (cs, ci, none)) :
     TRuns (instantiateDef R inst outer args sc (.coreInstance (.instantiate 0 [])))
       cfg { sc with frame := { sc.frame with
         coreInstances := sc.frame.coreInstances ++ [(core3R Pf V IR).exports ci] } }
-      { cfg with store := setCoreSt cs cfg.store } :=
+      { cfg with core := cs } :=
   (instantiateCore_run (inst := inst) sc.frame cfg hm himp hp).bind (TRuns.pure _ _)
 
 /-- The store after the core instance and the lifted functions `fs`. -/
-noncomputable def liftStore (cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))) (s : CStore (core3R Pf V IR))
+noncomputable def liftStore (s : CStore (core3R Pf V IR))
     (fs : List (CFuncInst (core3R Pf V IR))) : CStore (core3R Pf V IR) :=
-  { setCoreSt cs s with funcs := s.funcs ++ fs }
+  { s with funcs := s.funcs ++ fs }
 
 /-- **The definitions of `c.toRef` run silently** from a store with the empty core store and
 no component function: the core instance, then the lifted functions of the exports. -/
 theorem toRefDefs_run {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {ci : (core3R Pf V IR).Inst}
     (hF : CoreFacts c I cs ci) (cfg : Machine.Config (core3R Pf V IR) σ)
-    (hcore : cfg.store.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R inst outer args) {} c.toRef) cfg sc'
-        { cfg with store :=
-            liftStore cs cfg.store (liftedList (fun k => I.addrs.getD k 0) inst c.exports) } ∧
+        { cfg with core := cs, store :=
+            liftStore cfg.store (liftedList (fun k => I.addrs.getD k 0) inst c.exports) } ∧
       funcExports sc'.exports = c.exports.mapIdx (fun k x => (x.name, ⟨0 + k⟩)) ∧
       NoImport c.toRef := by
-  have hp : (core3R Pf V IR).prepare? cfg.store.core c.mod.mod [] = some (cs, ci, none) := by
+  have hp : (core3R Pf V IR).prepare? cfg.core c.mod.mod [] = some (cs, ci, none) := by
     rw [hcore]
     exact hF.prepare
   have h₁ := instDef_coreModule (R := R) (inst := inst) (outer := outer) (args := args) {}
@@ -320,14 +324,14 @@ theorem toRefDefs_run {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
       exports := [] } cfg rfl hF.imports hp
   have hinv : ExpInv ((core3R Pf V IR).exports ci) 0 (coreFrame c.mod.mod ((core3R Pf V IR).exports ci)) :=
     ⟨rfl, rfl, rfl⟩
-  have hs : (setCoreSt cs cfg.store).funcs.length = 0 := by
+  have hs : cfg.store.funcs.length = 0 := by
     show cfg.store.funcs.length = 0
     rw [hfuncs]
     rfl
   obtain ⟨sc', hr, hx, hn⟩ := exportsDefs_run (R := R) (inst := inst) (outer := outer)
     (args := args) c.mod (fun k => I.addrs.getD k 0) c.exports 0
     { frame := coreFrame c.mod.mod ((core3R Pf V IR).exports ci), exports := [] }
-    { cfg with store := setCoreSt cs cfg.store } hinv hs hF.lookup
+    { cfg with core := cs } hinv hs hF.lookup
   have hn' : NoImport c.toRef := by
     unfold Simple.toRef
     refine NoImport.append (fun d hd => ?_) hn
@@ -355,20 +359,20 @@ theorem checkImport_run {r : Except String Unit} (hr : r = .ok ())
 
 /-- The store after root instantiation: instance `0`, the core store and the lifted
 functions. -/
-noncomputable def instStore (cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR)))
+noncomputable def instStore
     (s : CStore (core3R Pf V IR)) (addr : Nat → Nat) (c : Simple) : CStore (core3R Pf V IR) :=
-  liftStore cs (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr ⟨0⟩ c.exports)
+  liftStore (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr ⟨0⟩ c.exports)
 
 /-- **Root instantiation of `c.toRef` runs silently**: the root checks pass, instance `0` is
 allocated, and the definitions run (`toRefDefs_run`). -/
 theorem rootCall_run {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {ci : (core3R Pf V IR).Inst}
     (hF : CoreFacts c I cs ci) (cfg : Machine.Config (core3R Pf V IR) σ)
-    (hcore : cfg.store.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = [])
+    (hcore : cfg.core = (core3R Pf V IR).empty _) (hfuncs : cfg.store.funcs = [])
     (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = exportMap c ∧
       TRuns (instantiateRootCall c.toRef [] : P (core3R Pf V IR) σ _) cfg (⟨0⟩, es)
-        { cfg with store := instStore cs cfg.store (fun k => I.addrs.getD k 0) c } := by
+        { cfg with core := cs, store := instStore cfg.store (fun k => I.addrs.getD k 0) c } := by
   obtain ⟨sc', hr, hx, hn⟩ := toRefDefs_run (R := callRecurse) (inst := ⟨0⟩) (outer := [])
     (args := []) hF { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store }
     hcore hfuncs

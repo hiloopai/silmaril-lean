@@ -34,13 +34,13 @@ abbrev CoreSt (E : CoreEngine) : Type := E.Store (CanonHost E) × E.Thread (Cano
 continuation `K`. -/
 def coreCfg (B : Config E σ) (th : Option ThreadId) (K : List FlatValue → P E σ (Ret E))
     (segs : List (Seg E σ)) (rest : List (Activation E σ)) (x : CoreSt E) : Config E σ :=
-  { B with store := { B.store with core := x.1 }, ctl := ⟨th, .core x.2 K, segs⟩ :: rest }
+  { B with core := x.1, ctl := ⟨th, .core x.2 K, segs⟩ :: rest }
 
 /-- The configuration after the core activation returned `vs`. -/
 def retCfg (B : Config E σ) (th : Option ThreadId) (K : List FlatValue → P E σ (Ret E))
     (segs : List (Seg E σ)) (rest : List (Activation E σ)) (x : CoreSt E)
     (vs : List FlatValue) : Config E σ :=
-  { B with store := { B.store with core := x.1 }, ctl := ⟨th, .prog (K vs), segs⟩ :: rest }
+  { B with core := x.1, ctl := ⟨th, .prog (K vs), segs⟩ :: rest }
 
 /-- An internal core step allowed by the machine. -/
 def CoreStep (E : CoreEngine) (x y : CoreSt E) : Prop :=

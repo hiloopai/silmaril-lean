@@ -350,10 +350,12 @@ theorem evalGlobals?_mapH (s : Store H) f gs es :
       simp only [evalGlobals?, evalConst?_mapH]
       rcases evalConst? s f e with _ | ⟨s', v⟩
       · rfl
-      · have hf := ih (allocGlobal s' gt v).1 (withGlobal f (allocGlobal s' gt v).2) es
-        exact (congrArg (fun o => match o with
-          | none => none | some (s'', f'', vs) => some (s'', f'', v :: vs)) hf).trans
-          (mapS_consVal g _ v)
+      · dsimp only [mapS_some]
+        rw [show allocGlobal (Store.mapH g s') gt v =
+          (Store.mapH g (allocGlobal s' gt v).1, (allocGlobal s' gt v).2) from rfl]
+        dsimp only
+        rw [ih]
+        split <;> split <;> simp_all [mapS]
 
 theorem evalExprs?_mapH (s : Store H) f es :
     evalExprs? evalConst? (Store.mapH g s) f es = mapS g (evalExprs? evalConst? s f es) := by
@@ -430,9 +432,8 @@ theorem memoryInitLoop_mapH (s : Store H) f x y a i j n :
     memoryInitLoop (Store.mapH g s) f x y a i j n = (memoryInitLoop s f x y a i j n).map (Store.mapH g) := by
   induction hn : n.toNat using Nat.strong_induction_on generalizing s i j n with
   | _ k ih =>
-    rw [memoryInitLoop, memoryInitLoop]
-    show (match s.mem? f x, s.data? f y with
-      | some (ma, mi), some (_, di) => _ | _, _ => none) = _
+    rw [memoryInitLoop, memoryInitLoop, show (Store.mapH g s).mem? f x = s.mem? f x from rfl,
+      show (Store.mapH g s).data? f y = s.data? f y from rfl]
     rcases s.mem? f x with _ | ⟨ma, mi⟩ <;> rcases s.data? f y with _ | ⟨_, di⟩ <;> try rfl
     dsimp only
     split_ifs with h₁ h₂
@@ -543,12 +544,9 @@ theorem instantiateDirect?_mapH (s : Store H) m xas :
   simp only [instantiateDirect?, prepareDirect?, prepare?_mapH]
   rcases prepare? evalConst? s m xas with _ | ⟨c, st⟩
   · rfl
-  · show (match initSegments? evalConst? (Store.mapH g c.store) c.frame m with
-      | none => none | some (s', f') => some (s', f', st)) =
-      mapS g (match initSegments? evalConst? c.store c.frame m with
-      | none => none | some (s', f') => some (s', f', st))
+  · dsimp only [mapC, Option.map_some, Config.mapH]
     rw [initSegments?_mapH]
-    rcases initSegments? evalConst? c.store c.frame m with _ | ⟨s', f'⟩ <;> rfl
+    split <;> split <;> simp_all [mapS]
 
 theorem mapH_globals_length (s : Store H) : (Store.mapH g s).globals.length = s.globals.length := rfl
 

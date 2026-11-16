@@ -136,7 +136,7 @@ theorem sessH_fwd (hHd : Handles prof P impl g l) (hT : l.HostTyped g)
     | none =>
       obtain ⟨m', hc, hR', hhost⟩ := linkCall_fwdG (prof := prof) (impl := impl)
         (ST := ST) hHd hT S₀ hB₀ hfs R d hok hpath hexp hr₁ hans
-      have R₁ : ReadyL P l.toW Ie Ii s₀ u₀ F₀ m'.store.core ιe ιi G u₁ π₁ (k + 1) :=
+      have R₁ : ReadyL P l.toW Ie Ii s₀ u₀ F₀ m'.core ιe ιi G u₁ π₁ (k + 1) :=
         ⟨hR', R.thE, R.thI, R.leave, fresh_succL R.fresh⟩
       obtain ⟨cs'', ιe'', ιi'', G'', ST'', hS, R''⟩ := ih _ _ _ _ _ _ _ _ R₁ hr₂
       refine ⟨cs'', ιe'', ιi'', G'', ST'', .trap hc ?_, ?_⟩
@@ -257,7 +257,7 @@ theorem handles_silent {l : HLinked2} (har : l.imp.Arity) (hff : l.imp.FloatFree
   have hT := TrapsAtRH.trapEndH (fun _ h => by cases h) (hat.blockH M₂ _ _ rfl rfl htasks (by
     intro h
     cases h) (instCandidates_enter hinst hready))
-  have hc : M₂.store.core = y.1 := rfl
+  have hc : M₂.core = y.1 := rfl
   have hh : M₂.host = h := rfl
   rw [hc, hh] at hT
   exact TrapEndH.steps (.cons s₃ (Adequacy.steps_append rB.steps (.cons s₄ (.refl _))))

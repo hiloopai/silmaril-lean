@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Wasm.SingleThreaded.Determinism
-public import Silmaril.Wasm.Execution.Core.GrowImpl
+public import Silmaril.Wasm.Execution.Core.MemRep
 
 @[expose] public section
 
@@ -11,12 +11,19 @@ public import Silmaril.Wasm.Execution.Core.GrowImpl
 stores, `memory.size`/`grow`/`fill`/`copy`/`init`, `data.drop`) under the
 deterministic single-threaded profile `profile o`, and is sound and complete for
 the memory-family head steps.
+
+The step functions run over any memory representation `[MemRep R]` (`Store H R`), through
+`MemRep.load`/`store`/`size`, `MemInst.pagesR` and `MemInst.growR?`. Soundness and completeness
+are stated at the specification representation `R = ByteArray` (`Store H`), where those
+operations are the `Execution.Memory` and `Store.lean` ones (`MemRep.load_byteArray`, …,
+`MemInst.growR?_byteArray`).
 -/
 
 namespace Silmaril.Wasm.SingleThreaded.Exec
 
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
+open Silmaril.Wasm.Execution (MemRep)
 
 variable {H : Type}
 
@@ -145,66 +152,66 @@ def packExt (t : IntType) (sx : Signedness) {n : Nat} (c : BitVec n) : BitVec t.
 section Instrs
 open Silmaril.Wasm.Execution
 
-variable (s : Store H) (f : Frame)
+variable {R : Type} [MemRep R] (s : Store H R) (f : Frame)
 
-def loadInt (t : IntType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H)
+def loadInt (t : IntType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H R)
   | [v] =>
     match addrOf? v, s.mem? f x with
     | some ⟨_, i⟩, some (_, mi) =>
-      match Memory.load mi.bytes (effAddr i.toNat arg) (t.width / 8) with
+      match MemRep.load mi.bytes (effAddr i.toNat arg) (t.width / 8) with
       | some c => some ⟨s, f, [.plain (.intConst t (c.setWidth t.width))]⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _ => none
   | _ => none
 
 def loadPack (t : IntType) (sz : PackSize) (sx : Signedness) (x : MemIdx) (arg : MemArg) :
-    List Val → Option (Config H)
+    List Val → Option (Config H R)
   | [v] =>
     match addrOf? v, s.mem? f x with
     | some ⟨_, i⟩, some (_, mi) =>
-      match Memory.load mi.bytes (effAddr i.toNat arg) (sz.width / 8) with
+      match MemRep.load mi.bytes (effAddr i.toNat arg) (sz.width / 8) with
       | some c => some ⟨s, f, [.plain (.intConst t (packExt t sx c))]⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _ => none
   | _ => none
 
-def loadFloat (t : FloatType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H)
+def loadFloat (t : FloatType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H R)
   | [v] =>
     match addrOf? v, s.mem? f x with
     | some ⟨_, i⟩, some (_, mi) =>
-      match Memory.load mi.bytes (effAddr i.toNat arg) (t.width / 8) with
+      match MemRep.load mi.bytes (effAddr i.toNat arg) (t.width / 8) with
       | some c => some ⟨s, f, [.plain (.floatConst t (c.setWidth t.width))]⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _ => none
   | _ => none
 
-def vecLoad (op : VecLoadOp) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H)
+def vecLoad (op : VecLoadOp) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H R)
   | [v] =>
     match addrOf? v, s.mem? f x with
     | some ⟨_, i⟩, some (_, mi) =>
-      match Memory.load mi.bytes (effAddr i.toNat arg) (op.accessWidth / 8) with
+      match MemRep.load mi.bytes (effAddr i.toNat arg) (op.accessWidth / 8) with
       | some c => some ⟨s, f, [.plain (.vecConst (vecLoadResult op c))]⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _ => none
   | _ => none
 
 def vecLoadLane (sz : PackSize) (x : MemIdx) (arg : MemArg) (j : LaneIdx) :
-    List Val → Option (Config H)
+    List Val → Option (Config H R)
   | [v, w] =>
     match addrOf? v, vecOf? w, s.mem? f x with
     | some ⟨_, i⟩, some c, some (_, mi) =>
-      match Memory.load mi.bytes (effAddr i.toNat arg) (sz.width / 8) with
+      match MemRep.load mi.bytes (effAddr i.toNat arg) (sz.width / 8) with
       | some k => some ⟨s, f, [.plain (.vecConst (invLanes sz.width
           ((lanes sz.width (128 / sz.width) c).set j.val (k.setWidth sz.width))))]⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _, _ => none
   | _ => none
 
-def storeInt (t : IntType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H)
+def storeInt (t : IntType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H R)
   | [v, w] =>
     match addrOf? v, intOf? t w, s.mem? f x with
     | some ⟨_, i⟩, some c, some (ma, mi) =>
-      match Memory.store mi.bytes (effAddr i.toNat arg) (count := t.width / 8)
+      match MemRep.store mi.bytes (effAddr i.toNat arg) (count := t.width / 8)
           (c.setWidth _) with
       | some b => some ⟨s.setMem ma { mi with bytes := b }, f, []⟩
       | none => some ⟨s, f, [.trap]⟩
@@ -212,77 +219,77 @@ def storeInt (t : IntType) (x : MemIdx) (arg : MemArg) : List Val → Option (Co
   | _ => none
 
 def storePack (t : IntType) (sz : PackSize) (x : MemIdx) (arg : MemArg) :
-    List Val → Option (Config H)
+    List Val → Option (Config H R)
   | [v, w] =>
     match addrOf? v, intOf? t w, s.mem? f x with
     | some ⟨_, i⟩, some c, some (ma, mi) =>
-      match Memory.store mi.bytes (effAddr i.toNat arg) (count := sz.width / 8)
+      match MemRep.store mi.bytes (effAddr i.toNat arg) (count := sz.width / 8)
           (c.setWidth _) with
       | some b => some ⟨s.setMem ma { mi with bytes := b }, f, []⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _, _ => none
   | _ => none
 
-def storeFloat (t : FloatType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H)
+def storeFloat (t : FloatType) (x : MemIdx) (arg : MemArg) : List Val → Option (Config H R)
   | [v, w] =>
     match addrOf? v, floatOf? t w, s.mem? f x with
     | some ⟨_, i⟩, some c, some (ma, mi) =>
-      match Memory.store mi.bytes (effAddr i.toNat arg) (count := t.width / 8)
+      match MemRep.store mi.bytes (effAddr i.toNat arg) (count := t.width / 8)
           (c.setWidth _) with
       | some b => some ⟨s.setMem ma { mi with bytes := b }, f, []⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _, _ => none
   | _ => none
 
-def vecStore (x : MemIdx) (arg : MemArg) : List Val → Option (Config H)
+def vecStore (x : MemIdx) (arg : MemArg) : List Val → Option (Config H R)
   | [v, w] =>
     match addrOf? v, vecOf? w, s.mem? f x with
     | some ⟨_, i⟩, some c, some (ma, mi) =>
-      match Memory.store mi.bytes (effAddr i.toNat arg) (count := 16) c with
+      match MemRep.store mi.bytes (effAddr i.toNat arg) (count := 16) c with
       | some b => some ⟨s.setMem ma { mi with bytes := b }, f, []⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _, _ => none
   | _ => none
 
 def vecStoreLane (sz : PackSize) (x : MemIdx) (arg : MemArg) (j : LaneIdx) :
-    List Val → Option (Config H)
+    List Val → Option (Config H R)
   | [v, w] =>
     match addrOf? v, vecOf? w, s.mem? f x with
     | some ⟨_, i⟩, some c, some (ma, mi) =>
-      match Memory.store mi.bytes (effAddr i.toNat arg) (count := sz.width / 8)
+      match MemRep.store mi.bytes (effAddr i.toNat arg) (count := sz.width / 8)
           (((lanes sz.width (128 / sz.width) c).getD j.val 0).setWidth _) with
       | some b => some ⟨s.setMem ma { mi with bytes := b }, f, []⟩
       | none => some ⟨s, f, [.trap]⟩
     | _, _, _ => none
   | _ => none
 
-def memSize (x : MemIdx) : List Val → Option (Config H)
+def memSize (x : MemIdx) : List Val → Option (Config H R)
   | [] =>
     match s.mem? f x with
-    | some (_, mi) => some ⟨s, f, [aconst mi.type.address (BitVec.ofNat _ mi.pages)]⟩
+    | some (_, mi) => some ⟨s, f, [aconst mi.type.address (BitVec.ofNat _ mi.pagesR)]⟩
     | none => none
   | _ => none
 
-def memGrow (o : GrowOracle) (x : MemIdx) : List Val → Option (Config H)
+def memGrow (o : GrowOracle) (x : MemIdx) : List Val → Option (Config H R)
   | [v] =>
     match addrOf? v, s.mem? f x with
     | some ⟨a, n⟩, some (ma, mi) =>
-      if (profile o).growMayFail .memory ma mi.pages n.toNat then
+      if (profile o).growMayFail .memory ma mi.pagesR n.toNat then
         some ⟨s, f, [aconst a (BitVec.allOnes _)]⟩
       else
-        match mi.grow? n.toNat with
-        | some mi' => some ⟨s.setMem ma mi', f, [aconst a (BitVec.ofNat _ mi.pages)]⟩
+        match mi.growR? n.toNat with
+        | some mi' => some ⟨s.setMem ma mi', f, [aconst a (BitVec.ofNat _ mi.pagesR)]⟩
         | none => some ⟨s, f, [aconst a (BitVec.allOnes _)]⟩
     | _, _ => none
   | _ => none
 
-def memFill (x : MemIdx) : List Val → Option (Config H)
+def memFill (x : MemIdx) : List Val → Option (Config H R)
   | [v₁, v, v₃] =>
     match addrOf? v₁, s.mem? f x with
     | some ⟨a, i⟩, some (_, mi) =>
       match intOf? a.intType v₃ with
       | some n =>
-        if mi.bytes.size < i.toNat + n.toNat then some ⟨s, f, [.trap]⟩
+        if MemRep.size mi.bytes < i.toNat + n.toNat then some ⟨s, f, [.trap]⟩
         else if n = 0 then some ⟨s, f, []⟩
         else some ⟨s, f, [aconst a i, v.toAdmin, store8 x,
           aconst a (i + 1), v.toAdmin, aconst a (n - 1), .plain (.memoryFill x)]⟩
@@ -290,11 +297,12 @@ def memFill (x : MemIdx) : List Val → Option (Config H)
     | _, _ => none
   | _ => none
 
-def memCopy (x₁ x₂ : MemIdx) : List Val → Option (Config H)
+def memCopy (x₁ x₂ : MemIdx) : List Val → Option (Config H R)
   | [v₁, v₂, v₃] =>
     match addrOf? v₁, addrOf? v₂, addrOf? v₃, s.mem? f x₁, s.mem? f x₂ with
     | some ⟨a₁, i₁⟩, some ⟨a₂, i₂⟩, some ⟨a', n⟩, some (_, mi₁), some (_, mi₂) =>
-      if mi₁.bytes.size < i₁.toNat + n.toNat ∨ mi₂.bytes.size < i₂.toNat + n.toNat then
+      if MemRep.size mi₁.bytes < i₁.toNat + n.toNat ∨
+          MemRep.size mi₂.bytes < i₂.toNat + n.toNat then
         some ⟨s, f, [.trap]⟩
       else if n = 0 then some ⟨s, f, []⟩
       else if i₁.toNat ≤ i₂.toNat then
@@ -308,11 +316,11 @@ def memCopy (x₁ x₂ : MemIdx) : List Val → Option (Config H)
     | _, _, _, _, _ => none
   | _ => none
 
-def memInit (x : MemIdx) (y : DataIdx) : List Val → Option (Config H)
+def memInit (x : MemIdx) (y : DataIdx) : List Val → Option (Config H R)
   | [v₁, v₂, v₃] =>
     match addrOf? v₁, i32Of? v₂, i32Of? v₃, s.mem? f x, s.data? f y with
     | some ⟨a, i⟩, some j, some n, some (_, mi), some (_, di) =>
-      if mi.bytes.size < i.toNat + n.toNat ∨ di.bytes.size < j.toNat + n.toNat then
+      if MemRep.size mi.bytes < i.toNat + n.toNat ∨ di.bytes.size < j.toNat + n.toNat then
         some ⟨s, f, [.trap]⟩
       else if n = 0 then some ⟨s, f, []⟩
       else
@@ -323,7 +331,7 @@ def memInit (x : MemIdx) (y : DataIdx) : List Val → Option (Config H)
     | _, _, _, _, _ => none
   | _ => none
 
-def dataDrop (y : DataIdx) : List Val → Option (Config H)
+def dataDrop (y : DataIdx) : List Val → Option (Config H R)
   | [] =>
     match s.data? f y with
     | some (da, _) => some ⟨s.setData da ByteArray.empty, f, []⟩
@@ -333,8 +341,8 @@ def dataDrop (y : DataIdx) : List Val → Option (Config H)
 end Instrs
 
 /-- One memory-family step on exactly the consumed arguments. -/
-def stepArgs (o : GrowOracle) (s : Store H) (f : Frame) (args : List Val) (e : Admin) :
-    Option (Config H) :=
+def stepArgs {R : Type} [MemRep R] (o : GrowOracle) (s : Store H R) (f : Frame)
+    (args : List Val) (e : Admin) : Option (Config H R) :=
   match e with
   | .plain (.intLoad t none x arg) => loadInt s f t x arg args
   | .plain (.intLoad t (some (sz, sx)) x arg) => loadPack s f t sz sx x arg args
@@ -368,6 +376,8 @@ macro "mem_decode" : tactic => `(tactic| (
 
 /-- Split a per-instruction step and substitute its outcome. -/
 macro "mem_split" h:ident : tactic => `(tactic| (
+  try simp only [MemRep.load_byteArray, MemRep.store_byteArray, MemRep.size_byteArray,
+    MemInst.pagesR_byteArray, MemInst.growR?_byteArray] at $h:ident
   repeat' split at $h:ident
   all_goals (try simp only [Option.some.injEq, reduceCtorEq] at $h:ident)
   all_goals (try contradiction)
@@ -535,8 +545,8 @@ theorem stepArgs_complete {o : GrowOracle} {e : Admin} {l : List Admin}
 end Mem
 
 /-- The memory-family head step: consume the top `k` values of `vs`. -/
-def memoryStep? (o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def memoryStep? {R : Type} [MemRep R] (o : GrowOracle) (s : Store H R) (f : Frame)
+    (vs : List Val) (e : Admin) : Option (Nat × Config H R) :=
   match Mem.arity e with
   | some k =>
     if k ≤ vs.length then (Mem.stepArgs o s f (vs.drop (vs.length - k)) e).map (k, ·) else none

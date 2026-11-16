@@ -81,7 +81,7 @@ structure StartPathI (prof : ProfileKind) (Pf : Profile)
   pre : ∃ tr, LRun prof (answerHostS Pf g).hr (DA Pf g) (instStartIS c h₀) tr M₀ ∧
     traceObs tr = []
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   ret : ∀ y : CoreSt (E3 Pf), ∃ tr, LRun prof (answerHostS Pf g).hr (DA Pf g)
     (retCfg M₀ th K segs rest y []) tr (afterStartCfgI Pf g y.1 a addr c h₀) ∧

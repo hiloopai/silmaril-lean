@@ -29,14 +29,14 @@ namespace Silmaril.Wasm.SingleThreaded
 
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation Silmaril.Wasm.Numerics
 
-variable {H : Type}
+variable {H R : Type}
 
 inductive Thread where
   | pending (a : Nat) (args : List Val)
   | active (frame : Frame) (code : List Admin)
 
 /-- The Core configuration denoted by a thread. -/
-def Thread.config (s : Store H) : Thread → Config H
+def Thread.config (s : Store H R) : Thread → Config H R
   | .pending a args => invoke s a args
   | .active f code => ⟨s, f, code⟩
 
@@ -93,7 +93,7 @@ theorem splitVals_snd_sizeOf (l : List Admin) : sizeOf (splitVals l).2 ≤ sizeO
     (cases a.val? <;> simp); omega
 
 /-- The host code and arity of the function at address `a`, if it is a host function. -/
-def hostArity? (s : Store H) (a : Nat) : Option (H × Nat) :=
+def hostArity? (s : Store H R) (a : Nat) : Option (H × Nat) :=
   match s.funcs[a]? with
   | some fi =>
     match fi.code, fi.type.funcType? with
@@ -103,7 +103,7 @@ def hostArity? (s : Store H) (a : Nat) : Option (H × Nat) :=
 
 /-- Locate a host-call redex: the context, the callee address, its host code and
 the arguments. -/
-def decompose? (s : Store H) (code : List Admin) : Option (Ctx × Nat × H × List Val) :=
+def decompose? (s : Store H R) (code : List Admin) : Option (Ctx × Nat × H × List Val) :=
   match _hs : splitVals code with
   | (vs, .label n cont body :: rest) =>
     (decompose? s body).map fun (E, a, h, args) => (.label vs n cont E rest, a, h, args)
@@ -136,7 +136,7 @@ decreasing_by
 
 /-- A thread with no store-independent redex other than a host call, in terms of
 its code (a pending thread is loaded first). -/
-def Thread.code (s : Store H) (t : Thread) : List Admin := (t.config s).code
+def Thread.code (s : Store H R) (t : Thread) : List Admin := (t.config s).code
 
 /-- The internal (host-free) step of the single-threaded machine: a Core step in
 the deterministic profile with the empty host relation. The result is active. -/
@@ -156,7 +156,7 @@ noncomputable def status (o : GrowOracle) (s : Store H) (t : Thread) : Status H 
     | none => if ∃ y, Internal o (s, t) y then .running else .stuck
 
 /-- Plug a host result into the callout context. -/
-def resume (s : Store H) (t : Thread) (r : CallResult) : Thread :=
+def resume (s : Store H R) (t : Thread) (r : CallResult) : Thread :=
   let c := t.config s
   match decompose? s c.code with
   | some (E, _, _, _) => .active c.frame (E.fill r.toAdmin)
@@ -164,7 +164,7 @@ def resume (s : Store H) (t : Thread) (r : CallResult) : Thread :=
 
 /-- Resumption with a full Core host result (exceptions are propagated inside the
 thread, as `$lift_result` does). -/
-def resumeResult (s : Store H) (t : Thread) (r : Result) : Thread :=
+def resumeResult (s : Store H R) (t : Thread) (r : Result) : Thread :=
   let c := t.config s
   match decompose? s c.code with
   | some (E, _, _, _) => .active c.frame (E.fill r.toAdmin)

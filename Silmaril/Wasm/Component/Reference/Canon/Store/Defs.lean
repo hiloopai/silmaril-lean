@@ -430,11 +430,10 @@ namespace P.Inv
 
 variable {I : CStore E → Prop}
 
-/-- The store updates `store` can issue, each preserving `I`: memory writes, resource
-handle allocation, handle-table insertion, `num_borrows += 1`, and the end owner/index updates
-of `lower_async_value`. -/
+/-- The component-store updates `store` can issue, each preserving `I`: resource handle
+allocation, handle-table insertion, `num_borrows += 1`, and the end owner/index updates of
+`lower_async_value` (its memory writes change only the core store). -/
 structure StorePres (I : CStore E → Prop) : Prop where
-  write : ∀ m p bs s, I s → I (writeMemSt m p bs s)
   allocRes : AllocResHandlePres I
   addHandle : AddHandlePres I
   incBorrows : ∀ t st, I st → I (HandleSt.incBorrows (E := E) t st)

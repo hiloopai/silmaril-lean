@@ -152,7 +152,7 @@ end Frame
 
 /-- The value of an entry of any index space. Component-level sorts (and core modules) are
 `item`s. -/
-inductive Entry (E : CoreEngine) where
+inductive Entry (E : CoreEngine.Static) where
   | coreFunc (a : E.FuncAddr)
   /-- A core table, memory, global or tag. -/
   | coreExtern (x : E.ExternVal)
@@ -482,6 +482,21 @@ def coreImportsFor? (s : E.Store H) (m : E.Module) (args : List (String × Nat))
     Option (List E.ExternVal) :=
   (E.importTypes m).mapM (coreImportFor? s args f)
 
+/-- `coreImportFor?` for an extern-type query `ety` in place of a store (the query of the core
+store that programs read through `Canon.Op.readCore`). -/
+def coreImportWith? (ety : E.ExternVal → Option E.ExternType) (args : List (String × Nat))
+    (f : Frame E) (imp : String × String × E.ExternType) : Option E.ExternVal := do
+  let i ← args.lookup imp.1
+  let exports ← f.coreInstance? i
+  let v ← lookupExport? exports imp.2.1
+  let τ ← ety v
+  if E.ExternSub τ imp.2.2 then some v else none
+
+/-- `coreImportsFor?` for an extern-type query `ety` in place of a store. -/
+def coreImportsWith? (ety : E.ExternVal → Option E.ExternType) (m : E.Module)
+    (args : List (String × Nat)) (f : Frame E) : Option (List E.ExternVal) :=
+  (E.importTypes m).mapM (coreImportWith? ety args f)
+
 /-- The relational reading of one import. -/
 def CoreImportOk (s : E.Store H) (args : List (String × Nat)) (f : Frame E)
     (imp : String × String × E.ExternType) (v : E.ExternVal) : Prop :=
@@ -505,7 +520,7 @@ def binderBase : Nat := 2 ^ 32
 def binderVar (k : Nat) : RtId := ⟨binderBase + k⟩
 
 /-- A semantic entity type over resource identities and the engine's core extern types. -/
-abbrev EntityT (E : CoreEngine) := Types.Entity RtId E.ExternType
+abbrev EntityT (E : CoreEngine.Static) := Types.Entity RtId E.ExternType
 
 /-- The position of `r` in `bs`. -/
 def binderIdx? (r : RtId) : List RtId → Option Nat
@@ -574,7 +589,7 @@ def pushEntityType (f : Frame E) : EntityT E → Frame E
 /-- The state of the resolution of one instance or component type scope: the local index
 spaces, the ∀-binders and imports (component types only), the ∃-binders and exports, and the
 next free binder number. -/
-structure TyScope (E : CoreEngine) where
+structure TyScope (E : CoreEngine.Static) where
   frame : Frame E := Frame.empty
   imported : List RtId := []
   imports : List (String × EntityT E) := []

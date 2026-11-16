@@ -20,7 +20,7 @@ open Silmaril.Wasm.Validation
 variable {H : Type}
 
 /-- The principal (instance) type of an external address. -/
-def externAddrType? (s : Store H) : ExternAddr → Option CExternType
+def externAddrType? {R : Type} (s : Store H R) : ExternAddr → Option CExternType
   | .tag a => s.tags[a]?.map fun ti => .tag ti.type
   | .global a => s.globals[a]?.map fun gi => .global gi.type
   | .mem a => s.mems[a]?.map fun mi => .mem mi.type
@@ -28,13 +28,13 @@ def externAddrType? (s : Store H) : ExternAddr → Option CExternType
   | .func a => s.funcs[a]?.map fun fi => .func fi.type
 
 /-- Boolean `Externaddr_ok` checker. -/
-def externAddrOk? (s : Store H) (xa : ExternAddr) (xt : CExternType) : Bool :=
+def externAddrOk? {R : Type} (s : Store H R) (xa : ExternAddr) (xt : CExternType) : Bool :=
   match externAddrType? s xa with
   | some xt' => ExternTypeOk.check {} xt && ExternSub.check {} xt' xt
   | none => false
 
 /-- Pointwise `Externaddr_ok` checker. -/
-def externAddrsOk? (s : Store H) : List ExternAddr → List CExternType → Bool
+def externAddrsOk? {R : Type} (s : Store H R) : List ExternAddr → List CExternType → Bool
   | [], [] => true
   | xa :: xas, xt :: xts => externAddrOk? s xa xt && externAddrsOk? s xas xts
   | _, _ => false

@@ -22,7 +22,7 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 /-! ## Head steps, decomposed steps and bubbles are steps -/
 
@@ -139,10 +139,10 @@ theorem sizeOf_frame_body {n : Nat} {fi : Frame} {is : List Admin} :
     sizeOf is < sizeOf (Admin.frame n fi is) := by simp
 
 /-- One layer of the driver, given a recursor for smaller codes. -/
-def layer (head : Store H → Frame → List Val → Admin → Option (Nat × Config H))
-    (s : Store H) (f : Frame) (vs : List Val) (e : Admin) (rest : List Admin)
-    (rec : (c' : Config H) → sizeOf c'.code < sizeOf e → Option (Config H)) :
-    Option (Config H) :=
+def layer (head : Store H R → Frame → List Val → Admin → Option (Nat × Config H R))
+    (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) (rest : List Admin)
+    (rec : (c' : Config H R) → sizeOf c'.code < sizeOf e → Option (Config H R)) :
+    Option (Config H R) :=
   match isTrap e with
   | true => if vs.isEmpty && rest.isEmpty then none else some ⟨s, f, [.trap]⟩
   | false =>
@@ -174,8 +174,8 @@ theorem sizeOf_lt_of_split {code : List Admin} {vs : List Val} {e : Admin} {rest
 end Drv
 
 /-- One step of the driver. -/
-def step? (head : Store H → Frame → List Val → Admin → Option (Nat × Config H))
-    (c : Config H) : Option (Config H) :=
+def step? (head : Store H R → Frame → List Val → Admin → Option (Nat × Config H R))
+    (c : Config H R) : Option (Config H R) :=
   match _hs : splitVals c.code with
   | (_, []) => none
   | (vs, e :: rest) =>
@@ -183,15 +183,15 @@ def step? (head : Store H → Frame → List Val → Admin → Option (Nat × Co
 termination_by sizeOf c.code
 decreasing_by exact lt_trans ‹_› (Drv.sizeOf_lt_of_split _hs)
 
-theorem step?_nil {head : Store H → Frame → List Val → Admin → Option (Nat × Config H)}
-    {c : Config H} {vs : List Val} (hs : splitVals c.code = (vs, [])) : step? head c = none := by
+theorem step?_nil {head : Store H R → Frame → List Val → Admin → Option (Nat × Config H R)}
+    {c : Config H R} {vs : List Val} (hs : splitVals c.code = (vs, [])) : step? head c = none := by
   rw [step?]
   split
   · rfl
   · rename_i hs'; rw [hs] at hs'; cases hs'
 
-theorem step?_cons {head : Store H → Frame → List Val → Admin → Option (Nat × Config H)}
-    {c : Config H} {vs : List Val} {e : Admin} {rest : List Admin}
+theorem step?_cons {head : Store H R → Frame → List Val → Admin → Option (Nat × Config H R)}
+    {c : Config H R} {vs : List Val} {e : Admin} {rest : List Admin}
     (hs : splitVals c.code = (vs, e :: rest)) :
     step? head c = Drv.layer head c.store c.frame vs e rest fun c' _ => step? head c' := by
   rw [step?]

@@ -68,7 +68,10 @@ test("the committed report: every proved row names its problem and shape, and th
   for (const c of report.commands.filter((c) => c.status === "proved")) {
     assert.match(c.problem, /^silmaril\.wasm_wast\.[a-z0-9_]+\.l[0-9]+$/);
     assert.ok(W.STRENGTH[c.shape], c.shape);
+    assert.ok(["scriptK", "scriptKM"].includes(c.checker), c.id);
   }
+  // address.wast's modules have data segments: their rows are checked on KMem stores.
+  for (const c of report.commands.filter((c) => c.status === "proved" && c.file === "address")) assert.equal(c.checker, "scriptKM", c.id);
   for (const c of report.commands.filter((c) => c.status === "unsupported" || c.status === "undetermined")) assert.ok(c.reason, c.id);
   if (orc) assert.equal(s.agreeProved, s.proved);
 });

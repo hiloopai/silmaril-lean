@@ -78,33 +78,42 @@ def externType? (s : Store H) : ExternAddr → Option CExternType
 /-- Import matching in the empty context. -/
 abbrev ExternSubClosed (a b : CExternType) : Prop := ExternSub {} a b
 
+section
+variable {R : Type}
+
 /-- Allocate a host function of a flat type. -/
-def allocHost (s : Store H) (ft : V1.FuncType) (h : H) : Store H × Nat :=
+def allocHost (s : Store H R) (ft : V1.FuncType) (h : H) : Store H R × Nat :=
   allocFunc s (ofFlatType ft) (.host h) {}
 
-def memSize? (s : Store H) (a : Nat) : Option Nat := s.mems[a]?.map fun mi => mi.bytes.size
+def memSize? [Silmaril.Wasm.Execution.MemRep R] (s : Store H R) (a : Nat) : Option Nat :=
+  s.mems[a]?.map fun mi => Silmaril.Wasm.Execution.MemRep.size mi.bytes
 
-def memAddrType? (s : Store H) (a : Nat) : Option AddrType := s.mems[a]?.map fun mi => mi.type.address
+def memAddrType? (s : Store H R) (a : Nat) : Option AddrType :=
+  s.mems[a]?.map fun mi => mi.type.address
 
-def tableAddrType? (s : Store H) (a : Nat) : Option AddrType :=
+def tableAddrType? (s : Store H R) (a : Nat) : Option AddrType :=
   s.tables[a]?.map fun ti => ti.type.address
 
-def memRead? (s : Store H) (a start len : Nat) : Option ByteArray := do
+def memRead? [Silmaril.Wasm.Execution.MemRep R] (s : Store H R) (a start len : Nat) :
+    Option ByteArray := do
   let mi ← s.mems[a]?
-  Silmaril.Wasm.Execution.Memory.readBytes mi.bytes start len
+  Silmaril.Wasm.Execution.MemRep.readBytes mi.bytes start len
 
-def memWrite? (s : Store H) (a start : Nat) (bytes : ByteArray) : Option (Store H) := do
+def memWrite? [Silmaril.Wasm.Execution.MemRep R] (s : Store H R) (a start : Nat)
+    (bytes : ByteArray) : Option (Store H R) := do
   let mi ← s.mems[a]?
-  let b ← Silmaril.Wasm.Execution.Memory.writeBytes mi.bytes start bytes
+  let b ← Silmaril.Wasm.Execution.MemRep.writeBytes mi.bytes start bytes
   return s.setMem a { mi with bytes := b }
 
 /-- `none` = out of bounds, `some none` = null or non-function reference. -/
-def tableFunc? (s : Store H) (t i : Nat) : Option (Option Nat) := do
+def tableFunc? (s : Store H R) (t i : Nat) : Option (Option Nat) := do
   let ti ← s.tables[t]?
   let r ← ti.refs[i]?
   return match r with
     | .func a => some a
     | _ => none
+
+end
 
 /-! ## Flat-value adapter (CoreEngine uses `FlatValue`) -/
 

@@ -156,24 +156,31 @@ theorem fstore_eq : @fstore = @Memory.store := by
 
 /-! ## The head step and the run -/
 
-theorem loadIntF_eq : @loadIntF H = @Mem.loadInt H := by
+theorem loadIntF_eq : @loadIntF H = @Mem.loadInt H ByteArray _ := by
   funext s f t x arg args
   unfold loadIntF Mem.loadInt
-  rw [fload_eq]
-  rfl
+  simp only [fload_eq, Execution.MemRep.load_byteArray]
+  rcases args with _ | ⟨v, _ | _⟩ <;> try rfl
+  dsimp only
+  rcases Mem.addrOf? v with _ | ⟨_, i⟩ <;> rcases s.mem? f x with _ | ⟨_, mi⟩ <;> rfl
 
-theorem storeIntF_eq : @storeIntF H = @Mem.storeInt H := by
+theorem storeIntF_eq : @storeIntF H = @Mem.storeInt H ByteArray _ := by
   funext s f t x arg args
   unfold storeIntF Mem.storeInt
-  rw [fstore_eq]
-  rfl
+  simp only [fstore_eq, Execution.MemRep.store_byteArray]
+  rcases args with _ | ⟨v, _ | ⟨w, _ | _⟩⟩ <;> try rfl
+  dsimp only
+  rcases Mem.addrOf? v with _ | ⟨_, i⟩ <;> rcases Mem.intOf? t w with _ | c <;>
+    rcases s.mem? f x with _ | ⟨_, mi⟩ <;> try rfl
+  dsimp only
+  split <;> rename_i h <;> simp only [h]
 
-theorem stepArgsF_eq : @stepArgsF H = @Mem.stepArgs H := by
+theorem stepArgsF_eq : @stepArgsF H = @Mem.stepArgs H ByteArray _ := by
   funext o s f args e
   unfold stepArgsF
   split <;> simp only [Mem.stepArgs, loadIntF_eq, storeIntF_eq]
 
-theorem memoryStepF_eq : @memoryStepF H = @memoryStep? H := by
+theorem memoryStepF_eq : @memoryStepF H = @memoryStep? H ByteArray _ := by
   funext o s f vs e
   simp only [memoryStepF, memoryStep?, stepArgsF_eq]
   rfl
@@ -208,7 +215,7 @@ theorem splitK_eq : splitK = splitVals := by
     rw [ih, splitVals]
     cases a.val? <;> rfl
 
-theorem stepK_eq (head : HeadFn H) (d : Nat) : stepK head d = step? head := by
+theorem stepK_eq {R : Type} (head : HeadFn H R) (d : Nat) : stepK head d = step? head := by
   induction d with
   | zero => funext c; rfl
   | succ d ih =>
@@ -222,7 +229,7 @@ theorem stepK_eq (head : HeadFn H) (d : Nat) : stepK head d = step? head := by
     | (vs, []) => exact (step?_nil hs).symm
     | (vs, e :: rest) => exact (step?_cons hs).symm
 
-theorem runK_eq (head : HeadFn H) : runK head = run? head := by
+theorem runK_eq {R : Type} (head : HeadFn H R) : runK head = run? head := by
   funext n
   induction n with
   | zero => funext c; rfl

@@ -28,7 +28,8 @@ Labels are `tau` unless stated otherwise.
   below continues.
 * `prog (pure r)`, no segment, host frame: pop `a`; at the bottom of the chain,
   `r = cancel c'` records the `on_cancel` of the latest top-level call.
-* `get` / `modify f`: read / update the store.
+* `get` / `modify f`: read / update the store. `readCore`: the queries `E.view` of the core
+  store; `memWrite`, `allocHost`, `prepare`: update the core store.
 * `trap r` (label `trap r`): `lockdown := true`, `ctl := []` (saved continuations are kept).
 * `choose k` (label `choice k r`): ask the oracle; stop (`none`) if it failed or the answer
   is not `Allowed o.prof k`.
@@ -49,7 +50,8 @@ Labels are `tau` unless stated otherwise.
   `dispatch (.hostCallout h args)` (with `Canon.dispatch`, `Canon.hostCalloutProg`: the entry
   check `Canon.calloutEntry` on the current thread, then the canon code; the step itself checks
   nothing, so another dispatcher must keep the check, `Canon.withCalloutEntry`); otherwise (label
-  `core`): `X.step?` on `(store.core, t)`, whose `none` stops the machine.
+  `core`): `X.step?` on `(core, t)` (the configuration's core store), whose `none` stops the
+  machine.
 
 `step?` is `none` when the host is in control (`ctl = []`), in particular after a trap
 (`step?_lockdown`).
@@ -133,9 +135,6 @@ def incNesting (s : CStore E) : CStore E := { s with nestingDepth := s.nestingDe
 
 /-- REF `self.nesting_depth -= 1`. -/
 def decNesting (s : CStore E) : CStore E := { s with nestingDepth := s.nestingDepth - 1 }
-
-/-- Replace the core store (a core step). -/
-def setCore (c : E.Store (CanonHost E)) (s : CStore E) : CStore E := { s with core := c }
 
 end CStoreOps
 
@@ -244,7 +243,7 @@ def retStep (m : Config E σ) (a : Activation E σ) (rest : List (Activation E �
     match r with
     | .flat vs =>
       tauStep o (m.withCtl
-        ({ a with focus := .core (E.resume m.store.core t (.values vs)) k, segs } :: rest))
+        ({ a with focus := .core (E.resume m.core t (.values vs)) k, segs } :: rest))
     | _ => trapStep o m (.internal "host callout returned a non-flat result")
   | [] => finish o m a rest r
 
@@ -302,6 +301,17 @@ def opStep (m : Config E σ) (a : Activation E σ) (rest : List (Activation E σ
     tauStep o ({ m with host := s }.withCtl ({ a with focus := .prog (k ()) } :: rest))
   | .emit ob, k =>
     some (.obs ob, o.state, (m.observe ob).withCtl ({ a with focus := .prog (k ()) } :: rest))
+  | .readCore, k =>
+    tauStep o (m.withCtl ({ a with focus := .prog (k (E.view m.core)) } :: rest))
+  | .memWrite ma ptr bytes, k =>
+    tauStep o ({ m with core := (E.memWrite? m.core ma ptr bytes).getD m.core }.withCtl
+      ({ a with focus := .prog (k ()) } :: rest))
+  | .allocHost ty h, k =>
+    tauStep o ({ m with core := (E.allocHost m.core ty h).1 }.withCtl
+      ({ a with focus := .prog (k ()) } :: rest))
+  | .prepare md imports, k =>
+    tauStep o ({ m with core := prepareCore m.core md imports }.withCtl
+      ({ a with focus := .prog (k ()) } :: rest))
 
 /-- One step of a core activation `t` (continuation `k`) at the head. A callout runs the
 dispatched program `dispatch (.hostCallout h args)`, which (for `Canon.dispatch`) checks the
@@ -309,7 +319,7 @@ current thread before any canon code runs (`Canon.calloutEntry`). -/
 def coreStep (m : Config E σ) (a : Activation E σ) (rest : List (Activation E σ))
     (t : E.Thread (CanonHost E)) (k : List FlatValue → P E σ (Ret E)) :
     StepResult E σ o.State :=
-  match E.status m.store.core t with
+  match E.status m.core t with
   | .returned (.values vs) => tauStep o (m.withCtl ({ a with focus := .prog (k vs) } :: rest))
   | .returned .trap => trapStep o m .coreTrap
   | .callout h args =>
@@ -317,10 +327,10 @@ def coreStep (m : Config E σ) (a : Activation E σ) (rest : List (Activation E 
       { a with focus := .prog (dispatch (.hostCallout h args)), segs := .core t k :: a.segs }
     tauStep o (m.withCtl (a' :: rest))
   | _ =>
-    match X.step? (m.store.core, t) with
+    match X.step? (m.core, t) with
     | some (c', t') =>
       some (.core, o.state,
-        (m.mapStore (setCore c')).withCtl ({ a with focus := .core t' k } :: rest))
+        ({ m with core := c' }.withCtl ({ a with focus := .core t' k } :: rest)))
     | none => none
 
 /-- One machine step (see the rule table in the module docstring); `none` when the host is in

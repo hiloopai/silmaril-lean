@@ -62,6 +62,9 @@ const WastModel = (() => {
         observed: c.observed || "",
         strength: c.shape ? STRENGTH[c.shape] || c.shape : "",
         problem: c.problem || null, theorem: c.theorem || null, reason: c.reason || "",
+        // The kernel checker of a proved row: `scriptK` (ByteArray stores) or `scriptKM` (KMem
+        // stores, for modules with data segments); the claim is the same.
+        checker: c.checker || "",
         oracle: o ? o.oracle : null,
       };
     });
@@ -120,7 +123,7 @@ if (typeof registerView === "function") {
       ["claim", (r) => r.problem ? `${link("problem", r.problem, r.problem)}<br><span class="muted">${esc(r.strength)}</span>` : ""],
       ["status", (r) => {
         const d = r.problem && db.get(r.problem);
-        return `${esc(r.status)}${d ? " · " + esc(d.status || "no answer") + (d.tier ? " (" + esc(d.tier) + ")" : "") :
+        return `${esc(r.status)}${r.checker ? ` <span class="muted">(${esc(r.checker)})</span>` : ""}${d ? " · " + esc(d.status || "no answer") + (d.tier ? " (" + esc(d.tier) + ")" : "") :
           r.problem ? ' · <span class="muted">not in this database</span>' : ""}`;
       }],
       ["reason", (r) => esc(r.reason)],

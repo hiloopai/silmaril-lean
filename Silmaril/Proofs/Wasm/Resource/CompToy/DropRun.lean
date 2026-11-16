@@ -64,7 +64,7 @@ theorem runs_enterN {m : Machine.Config (E3 P) Unit} {Gt : List (Runtime.Task (E
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ (by exact hi))
   rw [hadd]
   exact RunsQ.bind (runs_modifyStore _ _
-    (CStore.registerThreadSt_frame (E := E3 P) _ _ _).2.2.2.2.2.2.1) (.pure _ _)
+    (CStore.registerThreadSt_frame (E := E3 P) _ _ _).2.2.2.2.2.1) (.pure _ _)
   rfl
 
 /-- The value of `rep` passed to a destructor by `on_start` in store `S` (caller record `c`). -/
@@ -142,8 +142,8 @@ theorem runs_lowerDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P)) (v 
     funext p
     cases p <;> (rw [ite_eq_right_iff.mpr (by intro h; exact absurd h (by decide +kernel))]; rfl)
   rw [e]
-  apply RunsQ.get
-  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx) [.int k n]
+  apply RunsQ.readCore
+  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ m.core) cx) [.int k n]
     [.prim .u32]) _ _ _ _
   unfold lowerFlatTypes
   rw [lowerFlatAt.eq_def]
@@ -162,8 +162,8 @@ theorem runs_liftDtor {th : Option ThreadId} (cx : LiftLowerContext (E3 P))
     funext p
     cases p <;> (rw [ite_eq_right_iff.mpr (by intro h; exact absurd h (by decide +kernel))]; rfl)
   rw [e]
-  apply RunsQ.get
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx) [] (.ofList []))
+  apply RunsQ.readCore
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ m.core) cx) [] (.ofList []))
     _ _ _ _
   unfold liftFlatTypes
   exact .pure _ _
@@ -274,7 +274,9 @@ macro "dstep " h:term : tactic => `(tactic| apply LRun.prog rfl (fun _ _ e => by
     | exact Step.currentThread rfl | exact Step.hostGet rfl | exact Step.hostSet rfl
     | exact Step.emit rfl | exact Step.popCore rfl
     | exact Step.resumeThread rfl rfl | exact Step.newThread rfl rfl | exact Step.threadExit rfl
-    | exact Step.hostDone rfl | exact Step.callCore rfl))
+    | exact Step.hostDone rfl | exact Step.callCore rfl
+    | exact Step.readCore rfl | exact Step.memWrite rfl | exact Step.allocHost rfl
+    | exact Step.prepare rfl))
 
 /-- The store `S` with the instance `ι` and one more caller record (the destructor record of
 `rep`), task and thread. -/

@@ -62,7 +62,7 @@ def BackOutH (P : Profile) (l : HLinked2) (Ie Ii : Silmaril.Wasm.Game.ScalarInst
       ∃ (cs' : (core3P P).Store (CanonHost (core3P P))) (ιe' ιi' : InstState) (G' : Garb P σ)
         (ST' : List Subtask), m' = readyCfgL cs' ιe' ιi' fs G' ST' s' ∧
         ReadyL P l.toW Ie Ii s₀ u₀ F₀ cs' ιe' ιi' G' u₁ π₁ (k + 1)
-  | .trap => o = none ∧ LReady P l.toW Ie Ii s₀ u₀ F₀ m'.store.core u₁ π₁ ∧ m'.host = s'
+  | .trap => o = none ∧ LReady P l.toW Ie Ii s₀ u₀ F₀ m'.core u₁ π₁ ∧ m'.host = s'
   | _ => False
 
 section Call

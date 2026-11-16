@@ -98,9 +98,9 @@ def threadNewIndirect (tbl : E.TableAddr) (ft : V1.FuncType) (fi : Nat) (c : Fla
   let task ← currentTask
   let tk ← getTask task
   trapIf (!(← getInst tk.inst).mayLeave) .cannotLeave
-  let s ← getStore
-  let f ← orTrap .threadNewIndirectNull ((E.tableFunc? s.core tbl fi).join)
-  trapIf (E.funcType? s.core f != some (E.ofFlatType ft)) .threadNewIndirectType
+  let v ← readCore
+  let f ← orTrap .threadNewIndirectNull ((v.tableFunc? tbl fi).join)
+  trapIf (!v.funcHasType f ft) .threadNewIndirectType
   let nt ← newThread (.newIndirect task f c)
   let i ← Runtime.Task.registerThread task nt
   return [i32Flat i]

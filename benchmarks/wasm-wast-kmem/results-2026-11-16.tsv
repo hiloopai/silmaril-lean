@@ -1,0 +1,10 @@
+case	exit	wall_s	peak_rss_gb	status
+imports	0	3.6	1.55	ok
+kmem0	0	27.8	5.92	ok
+kmem1	0	47.4	9.49	ok
+kmem2	0	5.3	1.95	ok
+kmem3	0	6.2	2.00	ok
+bytes0	1	38.4	6.84	(kernel) deep recursion detected, use `set_option maxRecDepth <num>` to increase the limit
+bytes1	1	52.1	10.15	(kernel) deep recursion detected, use `set_option maxRecDepth <num>` to increase the limit
+bytes2	1	15.6	3.32	(kernel) deep recursion detected, use `set_option maxRecDepth <num>` to increase the limit
+bytes3	1	15.9	3.32	(kernel) deep recursion detected, use `set_option maxRecDepth <num>` to increase the limit

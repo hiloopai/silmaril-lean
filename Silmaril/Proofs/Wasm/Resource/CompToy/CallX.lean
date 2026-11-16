@@ -146,7 +146,7 @@ theorem runs_exitMT {th : Option ThreadId} {m : Machine.Config (E3 P) Unit}
     apply RunsQ.bind (runs_getObj ArenaField.insts _ _ hi)
     rw [hrem]
     exact runs_modifyStore _ _
-      (CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.2.1
+      (CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.1
     rfl
   unfold Task.exitImplicitThread
   apply RunsQ.of_tr
@@ -184,10 +184,9 @@ variable (P) in
 /-- The store at the return of a call whose core phase appended the records `Xt`, `Xth`, `Xc`. -/
 noncomputable def tStoreX (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState)
     (G : ToyGarb P) (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) (ιx : InstState) (Hx : List ResourceHandle)
-    (cs : (core3P P).Store (CanonHost (core3P P))) (Xt : List (Runtime.Task (E3 P)))
+    (_cs : (core3P P).Store (CanonHost (core3P P))) (Xt : List (Runtime.Task (E3 P)))
     (Xth : List Runtime.Thread) (Xc : List (Caller (E3 P))) : CStore (E3 P) :=
   { tStore₄ P ft c ι ι' G k args ιx Hx with
-    core := cs
     tasks := G.tasks ++ [(tTask₁ P ft G.callers ⟨G.threads.length⟩).withState .started] ++ Xt
     threads := G.threads ++ [(thread₁ G.tasks).withIndex 1] ++ Xth
     callers := G.callers ++ [.host ⟨k⟩ args 0] ++ Xc }
@@ -238,7 +237,7 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
     ∃ M₀ th K segs rest tr₁, LRun prof (refHost P).hr (D P) (toyInvoked P c ι G k ⟨j⟩ args) tr₁ M₀ ∧
       th = some ⟨G.threads.length⟩ ∧ M₀.ctl =
         ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat addr xs) K, segs⟩ :: rest ∧
-      M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧
+      M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧ M₀.core = setCtr P (toyInst P).core c ∧
       (∀ ys, ∃ (β : Type) (f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit β)
         (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
@@ -254,10 +253,10 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ft)) m trF (ws, cur)
             { m with store := tStoreX P ft c ι ι' G k args ι₅ H₅ cs' Xt Xth Xc }) →
-        cs' = setCtr P (toyInst P).store.core c' →
+        cs' = setCtr P (toyInst P).core c' →
         ι₅.removeThread? 1 = some (⟨G.threads.length⟩, InstState.removeThread 1 ι₅) →
         ∃ tr, LRun prof (refHost P).hr (D P)
-          { M₀ with store := tStoreX P ft c ι ι' G k args ιc Hc cs' Xt Xth Xc, conts := C,
+          { M₀ with store := tStoreX P ft c ι ι' G k args ιc Hc cs' Xt Xth Xc, core := cs', conts := C,
                     ctl := ⟨th, .prog (K ys), segs⟩ :: rest } tr
           (toyCfgX P c' (InstState.removeThread 1 ι₅)
             (nextGX P G ft k j addr args ws H₅ Xt Xth Xc C)) := by
@@ -303,7 +302,7 @@ theorem toy_callAtX (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr 
   apply RunsQ.chunk rfl (hlow _ (setTaskState_last (Gt := G.tasks) rfl _)) rfl
   mstep
   exact .refl _
-  refine ⟨rfl, rfl, rfl, fun ys => ⟨_, _, _, rfl⟩, ?_⟩
+  refine ⟨rfl, rfl, rfl, rfl, fun ys => ⟨_, _, _, rfl⟩, ?_⟩
   intro cs' ιc ι₅ Hc H₅ ys ws cur trF c' Xt Xth Xc C hlift hcs hrem
   apply Exists.intro
   apply RunsQ.chunk2 rfl (hlift _ rfl) rfl

@@ -8,6 +8,7 @@ public import Silmaril.Wasm.SingleThreaded.Determinism.HeadDet
 public import Silmaril.Wasm.Game.Signature.Defs
 public import Silmaril.Wasm.Validation.Check.Validate
 public import Silmaril.Wasm.Verify.Kernel.Defs
+public import Silmaril.Wasm.Execution.MemRep.Defs
 
 /-!
 # Standard problem shapes: WAST script commands
@@ -63,7 +64,10 @@ The NaN payload, relaxed SIMD and grow nondeterminism of the specification profi
 
 `Silmaril.Project.Shapes.WasmWast.Thms` proves every command of a script at once from one
 kernel evaluation (`ScriptHolds.of_kernel`), through silmaril-lean's verified interpreter
-(`runInvoke?_sound`, `runInvoke?_stopped`) and determinism (`DStep.join'`).
+(`runInvoke?_sound`, `runInvoke?_stopped`) and determinism (`DStep.join'`). For modules whose
+instantiation writes data segments into a memory, the kernel evaluation runs on `KMem` stores
+(`scriptKM`, `ScriptHolds.of_kernelKM`); the claims stay the ones above, over `ByteArray`
+stores.
 -/
 
 @[expose] public section
@@ -223,8 +227,9 @@ def argsOk : List Val → List CValType → Bool
   | .num n :: vs, p :: ps => decide (p = .num n.type) && argsOk vs ps
   | _, _ => false
 
-/-- The function `a` of `s` has a function type whose parameters `args` match. -/
-def invokeOkB (s : Store Nat) (a : Nat) (args : List Val) : Bool :=
+/-- The function `a` of `s` has a function type whose parameters `args` match. Only the
+functions of `s` are read, so it is stated over any memory representation `R`. -/
+def invokeOkB {R : Type} (s : Store Nat R) (a : Nat) (args : List Val) : Bool :=
   match s.funcs[a]? with
   | some fi =>
     match fi.type.funcType? with
@@ -232,8 +237,9 @@ def invokeOkB (s : Store Nat) (a : Nat) (args : List Val) : Bool :=
     | none => false
   | none => false
 
-/-- Every function export of `mi` has a scalar function type in `s`. -/
-def exportsScalar (s : Store Nat) (mi : ModuleInst) : Bool :=
+/-- Every function export of `mi` has a scalar function type in `s` (any memory representation
+`R`: only the functions are read). -/
+def exportsScalar {R : Type} (s : Store Nat R) (mi : ModuleInst) : Bool :=
   ((Game.exportFuncAddrs mi).mapM fun a =>
     (s.funcs[a]?).bind fun fi => Game.FnType.ofDefType? fi.type).isSome
 
@@ -270,6 +276,75 @@ noncomputable def scriptK (o : GrowOracle) (fuel : Nat) (m : Module) (cmds : Lis
       | some (s, f, none) => exportsScalar s f.module && cmdsK o fuel f.module s cmds
       | _ => false
   | none => false
+
+/-! ## The kernel checker on `KMem`
+
+`scriptK` keeps every memory as a `ByteArray`. The kernel evaluates `ByteArray` operations
+through their logical definitions (`ByteArray.copySlice`, `Array.extract`), element by element
+over the whole memory, so a module whose instantiation writes a data segment into a 64 KiB
+memory is out of its reach. `scriptKM` is `scriptK` with the store over `KMem`
+(`Silmaril.Wasm.Execution.MemRep`), a balanced tree of bytes whose reads and writes touch only
+the leaves they need: it instantiates `m` from `importStoreKM` with the generic
+`instantiateOnce?`, and runs each command with the generic interpreter head step `interpHead o`
+under the structural driver `Verify.Kernel.runK`. `scriptK_of_scriptKM` (`….Thms`) shows that
+`scriptKM … = true` implies `scriptK … = true`, through the simulation lemmas
+`instantiateOnce?_toBytes` and `runI_toBytes`; so `ScriptHolds.of_kernelKM` proves the same
+`ScriptHolds` claims, which stay about `ByteArray` stores and `Step (profile o)`. -/
+
+open Silmaril.Wasm.Execution (KMem) in
+/-- The empty store with `KMem` memories (it has none): `importStoreKM.toBytes` is
+`Game.importStore []`. -/
+def importStoreKM : Store Nat KMem := { funcs := [] }
+
+/-- `runInvoke?` at any memory representation, with the structural driver `Verify.Kernel.runK`
+over the interpreter's head step `interpHead o`. -/
+noncomputable def runInvokeKR {R : Type} [Silmaril.Wasm.Execution.MemRep R] (o : GrowOracle)
+    (n : Nat) (s : Store Nat R) (a : Nat) (vs : List Val) :
+    Option (Config Nat R × Bool × Option Result) :=
+  let r := Silmaril.Wasm.Verify.Kernel.runK (Exec.interpHead o) n (invoke s a vs)
+  some (r.1, r.2, r.1.outcome?)
+
+section KM
+
+open Silmaril.Wasm.Execution (KMem)
+
+/-- `actK` on a `KMem` store. -/
+noncomputable def actKM (o : GrowOracle) (fuel : Nat) (mi : ModuleInst) (s : Store Nat KMem)
+    (act : Action) : Option (Config Nat KMem) :=
+  match exportFunc? mi act.name with
+  | some a =>
+    if invokeOkB s a act.args then
+      match runInvokeKR o fuel s a act.args with
+      | some (c, true, some _) => some c
+      | _ => none
+    else none
+  | none => none
+
+/-- `cmdsK` on a `KMem` store. -/
+noncomputable def cmdsKM (o : GrowOracle) (fuel : Nat) (mi : ModuleInst) :
+    Store Nat KMem → List Cmd → Bool
+  | _, [] => true
+  | s, cmd :: cmds =>
+    match actKM o fuel mi s cmd.act with
+    | some c =>
+      (match cmd.expect with
+        | some e => decide (c.outcome? = some e.result)
+        | none => true) && cmdsKM o fuel mi c.store cmds
+    | none => false
+
+/-- `scriptK` on a `KMem` store: validate and instantiate `m` from `importStoreKM`, then run and
+check the commands. -/
+noncomputable def scriptKM (o : GrowOracle) (fuel : Nat) (m : Module) (cmds : List Cmd) :
+    Bool :=
+  match validate? m with
+  | some mt =>
+    mt.imports.isEmpty &&
+      match instantiateOnce? importStoreKM m [] with
+      | some (s, f, none) => exportsScalar s f.module && cmdsKM o fuel f.module s cmds
+      | _ => false
+  | none => false
+
+end KM
 
 end Silmaril.Project.Shapes.WasmWast
 

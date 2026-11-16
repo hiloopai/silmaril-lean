@@ -16,14 +16,15 @@ implementation on one script.
 | SpecTec spec (Wasm 3.0, `608711107b`) → `Execution.Core` relational `Step` | **partial**: both directions on typed, `BoundedSelM`, no-memory-SIMD configurations with a finite `HostOk` host (`wholeStepValidRMNoMSH_backend`); the whole-step goals `Task.wholeStep` / `Bwd.Task.wholeStepUpTo` are open | the spec test suite at `608711107b`: 1140 commands of 6 files run (§2) |
 | SpecTec Wasm 1.0 → V1 | **both directions proved** at `fwdB10` (`wholeStep10_both`) | — |
 | SpecTec Wasm 2.0 → V2 | forward only, partly (`wholeStepVec`); `Task.wholeStepValid` and the backward goals are open | — |
-| `SingleThreaded.stepI` / `runInvoke?` interpreter → `Step` | **sound and complete** (`interpHead_sound`, `HeadExact`, `runInvoke?_sound`, `runInvoke?_complete`) at `profile o` (deterministic, canonical NaNs, grow oracle) | wasmtime 50.0.0 on the WAST slice: 885/885 kernel-proved and 255/255 native-only commands agree |
+| `SingleThreaded.stepI` / `runInvoke?` interpreter → `Step` | **sound and complete** (`interpHead_sound`, `HeadExact`, `runInvoke?_sound`, `runInvoke?_complete`) at `profile o` (deterministic, canonical NaNs, grow oracle) | wasmtime 50.0.0 on the WAST slice: 1140/1140 kernel-proved commands agree |
 | `runInvokeK` (kernel-evaluable) | `runInvokeK_eq : runInvokeK o = runInvoke? o` | — |
-| WAST script commands → `Step` (#843) | **per command, proved**: `ScriptHolds.of_kernel` turns one `decide +kernel` run of `scriptK` into `ReturnsOnly`/`TrapsOnly` for every command of a module; `ScriptHolds.always` adds termination (§3) | wasmtime 50.0.0 (§4) |
+| `scriptKM` (kernel checker on `KMem` stores) → `scriptK` | `scriptK_of_scriptKM`, from `instantiateOnce?_toBytes`, `runI_toBytes` (#796) | — |
+| WAST script commands → `Step` (#843) | **per command, proved**: `ScriptHolds.of_kernel` (or `ScriptHolds.of_kernelKM`, for modules with data segments) turns one `decide +kernel` run of `scriptK` (`scriptKM`) into `ReturnsOnly`/`TrapsOnly` for every command of a module; `ScriptHolds.always` adds termination (§3) | wasmtime 50.0.0 (§4) |
 | `Profile.deterministic` vs `Profile.spec` | canonical NaNs refine the spec's NaN sets (`floatUnOpP_canonical_spec`, …); determinism (`Internal.deterministic`, `Det.DStep.join'`, `reach_normal_unique`) only at `profile o` | — |
 | Binaryen interpreter / `wasm-shell` | **open** (`FwdSim`/`BwdSim` unproved; fragments in `Wasm/Interp`) | wasm-opt release suites (tested) |
 | Component IR `Comp.denU`/`denI` ↔ REF (reference machine) | `Simple.sound` (import-free numeric); session adequacy with imports on a fragment (#805, open); start comparison on 3 litmus components (#827, open) | wasmtime 50.0.0, wasm-tools 1.262.0, jco 1.39.0 (not run in CI) |
 | REF (Lean transcription of `definitions.py` @ `a25fc0b`) | a transcription, **not** an independent authority | component-model test suite (not vendored) |
-| KMem evaluator (#796, open) | `stepI_toBytes`, engine simulation, REF transfer: unconditional in #796 | — |
+| KMem evaluator (#796, open) | `stepI_toBytes`, `runI_toBytes`, `instantiateOnce?_toBytes`, engine simulation, REF transfer: unconditional in #796; used by the WAST checker `scriptKM` | — |
 
 Tool correctness (decoder, validator, encoder, WAST parser) is a separate axis. The decoder is
 sound (`decode?_sound`), not complete. Validator and WAST-parser theorems are listed in
@@ -49,11 +50,11 @@ traps, address}.wast`: **1258 commands**. `module` commands themselves are not c
 | `int_exprs.wast` | 89 | 89 | 0 | 0 |
 | `fac.wast` | 7 | 6 | 1 | 0 |
 | `traps.wast` | 32 | 32 | 0 | 0 |
-| `address.wast` | 256 | 0 | 1 | 255 |
-| **total** | **1258** | **885** | **118** | **255** |
+| `address.wast` | 256 | 255 | 1 | 0 |
+| **total** | **1258** | **1140** | **118** | **0** |
 
-By assertion: `assert_return` 819 proved (`returns_only`) and 206 undetermined; `assert_trap`
-66 proved (`traps_only`) and 49 undetermined; `assert_invalid` 113, `assert_malformed` 4 and
+By assertion: `assert_return` 1025 proved (`returns_only`); `assert_trap` 115 proved
+(`traps_only`); `assert_invalid` 113, `assert_malformed` 4 and
 `assert_exhaustion` 1 unsupported. No command was a mismatch, and none ran out of fuel (100 000
 steps per call).
 
@@ -61,7 +62,6 @@ steps per call).
 
 | count | status | reason |
 |---|---|---|
-| 255 | undetermined | `address.wast`: instantiating a data segment into a 64 KiB memory exceeds the kernel's recursion limit (`ByteArray.copySlice` is evaluated element by element). The native interpreter and wasmtime give the expected outcome on all 255; neither is a proof. The KMem evaluator (#796) is the route. |
 | 113 | unsupported | `assert_invalid`: needs validator completeness; no shape |
 | 4 | unsupported | `assert_malformed` (text): no shape |
 | 1 | unsupported | `assert_exhaustion` (`fac.wast`): resource exhaustion is not modelled |
@@ -76,8 +76,8 @@ final stores (also after a trap); `profile o` with `o = neverFail`; no host func
 
 | assertion | shape and strength | status |
 |---|---|---|
-| `assert_return` (exact values) | `returns_only`: some host-free run returns `vs`, and **every host-free normal form** returns `vs`. Plus, by `ReturnsOnly.always`: no host-free run is infinite, and every finite run extends to a normal form returning `vs`. | 819 proved |
-| `assert_trap` | `traps_only`: same, with "is a trap"; the trap message is not part of the claim. `TrapsOnly.always` excludes divergence. | 66 proved |
+| `assert_return` (exact values) | `returns_only`: some host-free run returns `vs`, and **every host-free normal form** returns `vs`. Plus, by `ReturnsOnly.always`: no host-free run is infinite, and every finite run extends to a normal form returning `vs`. | 1025 proved |
+| `assert_trap` | `traps_only`: same, with "is a trap"; the trap message is not part of the claim. `TrapsOnly.always` excludes divergence. | 115 proved |
 | `assert_return` with `nan:canonical` / `nan:arithmetic` | needs an allowed-set shape under `Profile.spec`; uniqueness is not claimable (NaN payloads are nondeterministic in the spec) | no shape; none in this slice |
 | `assert_exhaustion` | unsupported: stacks are unbounded in the model | 1 skipped |
 | `assert_invalid` | needs validator completeness for `¬ ∃ t, Valid m t`; otherwise only "the validator rejects", labelled as weaker | no shape |
@@ -103,7 +103,7 @@ Every theorem above depends only on `propext`, `Classical.choice` and `Quot.soun
 An oracle result is **test-wise agreement**: wasmtime 50.0.0, given one script, accepted it.
 It is not a proof, it is not checked by Lean, and it says nothing about commands that were not
 run. What it adds is independence: an implementation not derived from silmaril-lean's semantics
-gives the same outcome as the kernel-checked row on 885 of 885 commands.
+gives the same outcome as the kernel-checked row on 1140 of 1140 commands.
 
 What is trusted when reading `examples/wasm-wast/oracle.json`:
 
@@ -160,16 +160,17 @@ changed `report.json` without a regenerated `oracle.json` fails `verify`.
 
 | stage | scope | acceptance criterion | state |
 |---|---|---|---|
-| S0 | the slice of §2 | every command counted with a status and reason; every proved row a kernel theorem with termination; oracle 100 % agreement on executed commands; provenance verifiable | **met** in #843 (885 proved, 885/885 agree) |
+| S0 | the slice of §2 | every command counted with a status and reason; every proved row a kernel theorem with termination; oracle 100 % agreement on executed commands; provenance verifiable | **met** in #843 (885 proved, 885/885 agree); with the `KMem` checker, 1140 proved, 1140/1140 agree |
 | S1 | numeric scripts (`i32`, `i64`, `f32`, `f64`, `conversions`, `int_exprs`, …) | ≥ 95 % of `assert_return`/`assert_trap` commands kernel-checked at `profile o`, NaN-pattern results as allowed-set claims under `Profile.spec`; every skip classified; oracle agreement 100 % on executed ones | `i32`, `i64`, `int_exprs`: 100 % of their 847 `assert_return`/`assert_trap` commands proved; floats and conversions not started |
-| S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps` and `fac` proved; `address` undetermined (255) |
+| S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps`, `fac` and `address` proved (`address` on `KMem` stores, `ScriptHolds.of_kernelKM`); the other files not started |
 | S3 | validation (`assert_invalid`) | validator completeness proved, or claims labelled tool-level; 100 % of commands accounted for | not started (113 counted) |
 | S4 | decoding (`assert_malformed` binary) | decoder rejection kernel-checked; completeness or an explicit weaker label | not started |
 | S5 | SIMD, relaxed SIMD, GC, exceptions, tail calls, memory64, multi-memory | per-proposal pass/skip counts; nondeterministic results as allowed-set claims | not started |
 | C1 | component-model WAST suite (pinned) on REF | per-file PASS/FAIL/UNSUP counts as JSON, shown in the explorer; agreement with wasmtime 50 | not started |
 | C2 | components with lists, strings, resources | IR/REF adequacy extended | in progress (#805, #827) |
 
-CI budget per stage: kernel time is per generated module (here 33 s to 61 s each), so shard by
+CI budget per stage: kernel time is per generated module (here 33 s to 62 s each, and 133 s with
+9.3 GB peak RSS for `address.wast` on `KMem`), so shard by
 file; the oracle job of §5 grows linearly with the number of scripts (about 9 ms each).
 
 ## 7. Highest-risk caveats

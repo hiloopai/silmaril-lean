@@ -1,6 +1,6 @@
 {
  "schema": "silmaril.wasm-wast.oracle.v0.2",
- "generated_at": "2026-11-16T21:57:56Z",
+ "generated_at": "2026-11-16T23:00:16Z",
  "host": "Linux x86_64",
  "oracle": {
   "tool": "wasmtime",
@@ -23,7 +23,7 @@
    "version": "1.262.0",
    "sha256": "fe6a056dc03269b06f53e0cff926101c17d4f4ea37fbaa077d049c0d18acb211"
   },
-  "report_sha256": "883d8c5dd86398e817760989e8128e44ac39fd0d9af5ade5ad8226b968822841",
+  "report_sha256": "89bd0ba50bd1ad73f4524dcd8164671d1a1c60a8c5ce2b9a798cadc2b4067f17",
   "files": [
    {
     "file": "test/core/i32.wast",
@@ -5366,1540 +5366,1540 @@
    "id": "address:104",
    "oracle": "pass",
    "script_sha256": "1c1727a3ed409de0d04c4f562d2b5e1372757b55ddd80c35ef91e1c76f076f34",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:105",
    "oracle": "pass",
    "script_sha256": "8d43ed7344694719b0f109a9c163ef043d7661f553e957bd61e70b74803c51c9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:106",
    "oracle": "pass",
    "script_sha256": "8489b0448571f35eb9ac9228844e9a4722fb7eeca7dc17b48a63790546d46f96",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:107",
    "oracle": "pass",
    "script_sha256": "fc1e739fda9bd9ca3906fbe5b02ab191ced61de2dd15dc433b01a84c0a10d319",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:108",
    "oracle": "pass",
    "script_sha256": "526bd10619fade4695812ff800f77e2ffcf9b12028e9d6aaa9110dbbe95e31c9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:110",
    "oracle": "pass",
    "script_sha256": "6ab65bec91f0cdaa1c8328b967eb3b2e07c4ca6aa8561f2d1090147c1abdec67",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:111",
    "oracle": "pass",
    "script_sha256": "c05c54d4755e931a7f7fe282b7f23d15448ff6b18e487c622a21d42870859d6b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:112",
    "oracle": "pass",
    "script_sha256": "537d190097cda99b1c7c9a34861c35db564bbdf635832923cd23f6fa60182770",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:113",
    "oracle": "pass",
    "script_sha256": "4d10d8669dab68a9f5090644a8fe4967b96228aa2f1adededdb4c7745e3ef876",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:114",
    "oracle": "pass",
    "script_sha256": "fb40f571eef43e6bc21e155843e6a7d3302891339a7b34b26fe3c9021d73840c",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:116",
    "oracle": "pass",
    "script_sha256": "3f363641ed2c13416d23d0949fd787dc0b9b6f66303da5daa53fc3584f37d799",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:117",
    "oracle": "pass",
    "script_sha256": "0771b29231b899a66a8ebf259530b060eb1e29f9fc087b5a7f5895d7ebef8771",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:118",
    "oracle": "pass",
    "script_sha256": "a1b9c9fa987903e815aa5fba847da218d6ab0273c6899b8b7286c8cc437f3dcb",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:119",
    "oracle": "pass",
    "script_sha256": "4ffd69bc913d16ef606bd5bf5aa44690bfc51fe8eea75611f062371d1425ff7b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:120",
    "oracle": "pass",
    "script_sha256": "e69cdd39f865cddd739c589cb4aaff9a2cf328e622552748272ec4f359dd53f0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:122",
    "oracle": "pass",
    "script_sha256": "1fd9f9ab470269a763fc9bb5fcf00e2b6fd1a7ec9322e716135de4738e6c1523",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:123",
    "oracle": "pass",
    "script_sha256": "fc518ae8d5b774eebdb1c081799359b192687e539bb0127ec507871765c6d285",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:124",
    "oracle": "pass",
    "script_sha256": "6c3becd6af6eb864b161cf0ee729820c6f9778066797d54d072bc8dfaf60de59",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:125",
    "oracle": "pass",
    "script_sha256": "c175dabaaf702727d75db25c284c35e77a32483df03e5509b994e3679b6ebdb4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:126",
    "oracle": "pass",
    "script_sha256": "eb6b85dfa1915c1a880ff8361c51be078457b2ab3627eb4358e1c328e1ed9e66",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:128",
    "oracle": "pass",
    "script_sha256": "fb4a17e4ed74a63b249bd95c90142b042b175dcdd80ea6a775373d8ce987b5e2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:129",
    "oracle": "pass",
    "script_sha256": "7cb9fedbded870e5738a8019c5e9cb6e469765b34e1d11d991c6d8aff9b78f23",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:130",
    "oracle": "pass",
    "script_sha256": "083ffdbd04f8df50573c26506bf81919d8b68e31c59e06f6b854640fc46d3f9a",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:131",
    "oracle": "pass",
    "script_sha256": "e0d67a87ea7edfb73aa067a9a87ecc511c9fc1b233bd6e49d8ad80ab3700a0f2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:132",
    "oracle": "pass",
    "script_sha256": "5464a945097c1b400b519189511a9685125df1a5f9957715d0a8c981e4f4d0c4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:134",
    "oracle": "pass",
    "script_sha256": "cb6ca255ed2fb4d032206ef23ccac392a2fd3a7d2e543377bc1552fdbf35b962",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:135",
    "oracle": "pass",
    "script_sha256": "ec7b5664ef7a34577b451ecd9db94a312dce6a0dba451c6d8fd0616a7070ea94",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:136",
    "oracle": "pass",
    "script_sha256": "b4c05f3d149549da35256fc9016d6260f44d496818f791f4423b5fbd3f89a0aa",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:137",
    "oracle": "pass",
    "script_sha256": "f997e7549811698ae6239fed3951d8dcb65a3733f53a300356fba7b6c5444f1e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:138",
    "oracle": "pass",
    "script_sha256": "7f21abd11c2c62fa68dd14a32aef919e8e084fb1524cd761fe37c42618fa92e2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:140",
    "oracle": "pass",
    "script_sha256": "6aa2df0a12caf58c714bba1120fa681a012831a363c0d041b52528c20f9728c0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:141",
    "oracle": "pass",
    "script_sha256": "6aa424e94db7bd81977235d408866b5ce8bfce7f41f46a1f7ee2e7a936f5d629",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:142",
    "oracle": "pass",
    "script_sha256": "dc7bc257f1b26536760d672e949083e76ad79c89342ee7ba0137f62127a47d0c",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:143",
    "oracle": "pass",
    "script_sha256": "280a6cc0fe7aa0a36c5b9dedf757a33420f98d549141f3f5d3eef90119b42eaa",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:144",
    "oracle": "pass",
    "script_sha256": "1d71f0c917ff1b3cc47ec650babda4c6c0d18845df4fad42dca7a9c1baa75b45",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:146",
    "oracle": "pass",
    "script_sha256": "37a1d711d8ed8818c82e4a6882e74e28cf7942659b79f80fbed435da8c9e10e0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:147",
    "oracle": "pass",
    "script_sha256": "30e19e39fd05c73809a34e5c7349b69078991f1c178af5c96629810e033cc5c7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:148",
    "oracle": "pass",
    "script_sha256": "bfbd2d2929632c0d316e21361975507b3ef85bb75ce0e660968ed0887ead9753",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:149",
    "oracle": "pass",
    "script_sha256": "e36d0e5a2f6603ca7732c3f8dd86d36bde07fbc859e7d8b0e7795e8b70905dec",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:150",
    "oracle": "pass",
    "script_sha256": "f178c27cee97f7567fd1f3146636c98fe7944cad6eb1f06d016ad761db29115b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:152",
    "oracle": "pass",
    "script_sha256": "efc96b3847eac68ea418869ea6b4eb1ed9d1c125009a6ff909b6ddf61096cdd0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:153",
    "oracle": "pass",
    "script_sha256": "ca253a00c4894406514736d50e2d9e2a06bdc0f4770e0e422b0291a1b9d08c32",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:154",
    "oracle": "pass",
    "script_sha256": "0641426085caee6665f179d29df6745b63db15e352ed987d9e302e0b947d96f8",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:155",
    "oracle": "pass",
    "script_sha256": "e8ce0be596ac5de9721a88101e0b312713c0300cd5db270fff9bae53c33bb261",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:156",
    "oracle": "pass",
    "script_sha256": "57d9493208eb1bbeb674fffa7aa12101856bf7f1744fc58ad97ad5bbb41c25d6",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:158",
    "oracle": "pass",
    "script_sha256": "2df8ae2ce341a85e3ab74d8a0ee690efdaa6622333613bef0cad2c7343c8fae7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:159",
    "oracle": "pass",
    "script_sha256": "1c3dcbe803c163bd8db46a8729db8519c376eba464b3715ac1e195f964f38a83",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:160",
    "oracle": "pass",
    "script_sha256": "130f62da5e117b6b68dabd215d1713bb5a350a7bf9cf514a677ec228d8a75dc5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:161",
    "oracle": "pass",
    "script_sha256": "e988ccc2e76a77f01202c5e459dcf8726078f15d770e90e3793166feea22a306",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:162",
    "oracle": "pass",
    "script_sha256": "63286d5b4f506ec48147ca4ed42271ce0d9bddf9bf0890eb69a1f67d58640244",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:164",
    "oracle": "pass",
    "script_sha256": "7cadcd09b058310a2884a5242dc9cd2f5bc3966905ee8287e228bfc629001d58",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:165",
    "oracle": "pass",
    "script_sha256": "3393719de991f5b9b6d57fc63f6696acaa19b67f9b3925d6d0b4a279d2a36b63",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:166",
    "oracle": "pass",
    "script_sha256": "1ba1304967cc70d9db24a81a6e830079f0fa93a14f5cd52d0c1d9acb8e78fc6e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:167",
    "oracle": "pass",
    "script_sha256": "479394759369a8aedc080494c8f511f271ed2eb95f89c072cd66aac9db799d2d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:168",
    "oracle": "pass",
    "script_sha256": "e4e735e22eeebdd3d191a734f0376e769078a76177a32ac31320dfc4983855c6",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:170",
    "oracle": "pass",
    "script_sha256": "b1577bef47cc061fb978826a93a264747ba0e37ac8f5af750dc80f41fd048839",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:171",
    "oracle": "pass",
    "script_sha256": "89d11fc31b0ecbc6c6aabf4bdbe7978cdb3a0cf85e964ecd2f25dc2804fb9ef1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:172",
    "oracle": "pass",
    "script_sha256": "598149326a02aa461ff6ffe84a7c2a6d1c47ae9921e529277e09a2212c7e7ce9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:173",
    "oracle": "pass",
    "script_sha256": "7ad7e188473c52eeb67e4aa921f8dba0f5724c6bc552bd0ed24fd5eb9c5a0741",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:174",
    "oracle": "pass",
    "script_sha256": "b4243cf4ab488678cfebc6280086134dfe95f5713bac9eb52cdfc591e979d62f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:176",
    "oracle": "pass",
    "script_sha256": "718a0e55964f6d79cdc267f1c4ec4a82eb55dd05207c6520a39fd643c7d3dff1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:177",
    "oracle": "pass",
    "script_sha256": "26f525bdb687b1fcec272ce5c70097f16c23a12622808201ad84d66e3eb639b5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:178",
    "oracle": "pass",
    "script_sha256": "525bbfb7c15e165fcdb857f54cb7abf52a1d3965535fbfd3e877fe7e00fe18bc",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:179",
    "oracle": "pass",
    "script_sha256": "25a020d5b4bfeae031f83ba4beec6ed626889663f127ce0e75888c044aa9e56b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:180",
    "oracle": "pass",
    "script_sha256": "b0aa7af0aa92d9382b8744fd011b639d1e3ff397426823a057f32c2127e9f2e0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:182",
    "oracle": "pass",
    "script_sha256": "bece165671c78c8c70b1c37461e3dd1bda617da37426401d75d1e0e0eb9abb2d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:183",
    "oracle": "pass",
    "script_sha256": "da3be6a044cf19a1e8d3077a2880258873b21102826cb133de87be61229432ce",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:184",
    "oracle": "pass",
    "script_sha256": "7237e9dda997ddb6b28289644e571b9eb122c4ba3d2130ddd918644ed055d21b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:185",
    "oracle": "pass",
    "script_sha256": "d8fb90c4d2466a3df8d2124aaf67b24828625da5201add8af0cbaa78f4e0cb90",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:186",
    "oracle": "pass",
    "script_sha256": "c8bf23f55e3c0c44968bd6dea82c10d1301cc1f9f07c2847b5b0e2d270013e97",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:188",
    "oracle": "pass",
    "script_sha256": "26d434e47024a296802a591d262da56b78dbfeed011401c4e12819db5ca13409",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:189",
    "oracle": "pass",
    "script_sha256": "b8f65c6adcc273bd6a772907f5f0ce04c1a94f7b21eae0d9a90f5b1368ec3c95",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:190",
    "oracle": "pass",
    "script_sha256": "2711c78e285168be3de0bb8391ab56b0fdbf12b25107d3ffba946d34e8ba9511",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:191",
    "oracle": "pass",
    "script_sha256": "c2dac777c35b1d9f33aa2dddc4177d28a0c4a2c1c095899df4d808dd1fbb0ea6",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:192",
    "oracle": "pass",
    "script_sha256": "b7ec29a617ac8a042f68742fa559f0a55c6638c2916aeccdefdad076f77c8b6e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:194",
    "oracle": "pass",
    "script_sha256": "c9da3938fc7ea283c625155d4354dd8ba955cb79b856bea7a52be52884ef1d19",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:195",
    "oracle": "pass",
    "script_sha256": "cdcb178ce7e68a9417a49d23d817b3fa0c2ba4eb5215f01fbd720f74330bd254",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:196",
    "oracle": "pass",
    "script_sha256": "3f376884248afb878a77cdc55a002eaa633dcbe4696a767f3bfaf379fc219d47",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:197",
    "oracle": "pass",
    "script_sha256": "7abab3c471c4f154e37753cac9b0cedd343312ebb6cca2af035243b7f49da9e7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:198",
    "oracle": "pass",
    "script_sha256": "60817572fe6cbc94cb54a606b1166e05e8895947292591201a516f40e407e9a5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:199",
    "oracle": "pass",
    "script_sha256": "87ba43959dbbddaf023736918afff23c85044cfedcaef8894cd4b6ab8dc9c929",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:201",
    "oracle": "pass",
    "script_sha256": "2fdb92cb4e9abe4c4d13b38a4d564b9b7ab2d3dcfaa9da0ec457331b162cf5c1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:202",
    "oracle": "pass",
    "script_sha256": "00876e9ca701f00573fb1beeb55a5fd85d7535c3d2bd40d19e3dd1499c88be90",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:203",
    "oracle": "pass",
    "script_sha256": "186912b988e3bf23a7c4b25f0060733081bd1b45b2b2e3d9f4416694f37f95a1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:204",
    "oracle": "pass",
    "script_sha256": "134be737490b0eb58cc0dabb51fe045abbd32dbd88ec6adc6c43bf024406f23b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:205",
    "oracle": "pass",
    "script_sha256": "074624e68cec462f93d4ef77216bab77b35291caf76d8868b8d32a6a78c26d95",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:207",
    "oracle": "pass",
    "script_sha256": "1396ad19ff104102c600bc96e06140aa24eb4dd29ded2ccbf729223808cf963d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:208",
    "oracle": "pass",
    "script_sha256": "18806d0c607e6fd3d6cc5f59bb470ae64a207f9646b43ab84bb8d4d9bda0aa24",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:209",
    "oracle": "pass",
    "script_sha256": "a0fac6007521ede28827af0095b1cd8cbc4bc1fc7dd442d7290866069f2bbe0d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:210",
    "oracle": "pass",
    "script_sha256": "7ee48a3d08beb6355f7df0ba7f36941722b76280dd1645652da5e1fa4cfd73b2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:211",
    "oracle": "pass",
    "script_sha256": "3adc116ebf4938efa0a867c98e0c797e5138efb5eda6354e4a6106d0920aeb2a",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:362",
    "oracle": "pass",
    "script_sha256": "e03f0305fe09664b0954729449d26f80c54bbd2bf9ea7313c8d3ab84757b2c33",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:363",
    "oracle": "pass",
    "script_sha256": "3e0eb12ad81b6b0eb0fd10d01e0d4abee3b10a07568339baf267df1be7fd891b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:364",
    "oracle": "pass",
    "script_sha256": "85d357d5219c73a675185b5542ff8af63436f8b037bb54ee1df5e9680c904180",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:365",
    "oracle": "pass",
    "script_sha256": "bead8ade6e10456c4ca95fb2f3dd9c480e28c4685f9fa0e63c243ad12b161d4c",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:366",
    "oracle": "pass",
    "script_sha256": "12588c2ca6d3f222f7159595c526a4bffc80a32739a608750ccaad4e501dfa70",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:368",
    "oracle": "pass",
    "script_sha256": "ffe1188319feb5080549195d5fe8a01ff838f0ba07bff7b40192ffd96e52a508",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:369",
    "oracle": "pass",
    "script_sha256": "a01f13ea5d9c493b3201d175995f1f4aee5ce89f7000c01c728636af7c27e7ee",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:370",
    "oracle": "pass",
    "script_sha256": "40ed1d16636182fc3a0ed7df76025f12271a9fc22a31a8473882e06520b13c1d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:371",
    "oracle": "pass",
    "script_sha256": "edac5661d1cebb2e49c7472385af934a06691518c6c12d32c2df94392af5963a",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:372",
    "oracle": "pass",
    "script_sha256": "4fdeffa7762e0888b00ebb5a968dc9cf45520367661a12fe21d6a96261cdf880",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:374",
    "oracle": "pass",
    "script_sha256": "77a4200b4d4916dcd7e6f3f8529d9d060df1c901f45a1a7b1338245aee8f4152",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:375",
    "oracle": "pass",
    "script_sha256": "d08745d260afd12c0323e4b6267115bdced0e8f30c159f31c2d5b3a3f6d72766",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:376",
    "oracle": "pass",
    "script_sha256": "e9c0e3992789e7defe48667cf26e02fe36080730d7ae1424f237256a471db634",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:377",
    "oracle": "pass",
    "script_sha256": "103a1340d1be5768e80059c4631c9aff4cd2606c5383a7ec73fcbcccfcd0dd53",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:378",
    "oracle": "pass",
    "script_sha256": "f381446ed8d78b5d24442a54982d61ffbee56987f0170a76a5a98cd73a910f61",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:380",
    "oracle": "pass",
    "script_sha256": "a4aaf54c35dd80b62dae6059e9d26c63c0dfa72e706723541e0d2137f3606cfe",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:381",
    "oracle": "pass",
    "script_sha256": "4985923cb84158dff314d7af49da0dd9aaa51e831905cc3474a122f174540804",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:382",
    "oracle": "pass",
    "script_sha256": "aea19dac20c3a4bdbadf8d126c826657867dd6b3dc5ba907cc86c69e9a3f8822",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:383",
    "oracle": "pass",
    "script_sha256": "6b6dbe0ddf7a86b1451cc3bbca894e6b63506ff20e3fd34a8535123cdc8522a7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:384",
    "oracle": "pass",
    "script_sha256": "a1da7932e1f905be0cbd58013e628458cbf1af7c8660f967b3e7b03f51bbb446",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:386",
    "oracle": "pass",
    "script_sha256": "595f5a46327f9a97e2b719f0b38b6a3c71a4ed5ac7df0047f1092103d58c00f1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:387",
    "oracle": "pass",
    "script_sha256": "c0f9fb893aa7cfe943273ec4b8fc7e44baa97be2e1cb58ecdf72828f43550f19",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:388",
    "oracle": "pass",
    "script_sha256": "dcd1c445d8ce62d14d5c1c5e74cb8a8438ad7336cecfa5b2e13335586a1cf9a2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:389",
    "oracle": "pass",
    "script_sha256": "34eabb2511b01a2f43711b44f5d64dce4e114ed9eec78a830ad46b1c922d3940",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:390",
    "oracle": "pass",
    "script_sha256": "89c7623b15c87829c0140f571de444b579e1027fd974f9802402462073a88c8c",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:392",
    "oracle": "pass",
    "script_sha256": "6239f05946d86f017637d6941ad46535fb84a476e466bd112df7887d90293aa5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:393",
    "oracle": "pass",
    "script_sha256": "b05b5f08e6e8ae804cc92a05267fed6844efdceefe31889af1f47e983d641520",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:394",
    "oracle": "pass",
    "script_sha256": "7d29ac01808601c8efc3d0324d7e7d41b0c0ac81aab92a0e04fc2c77f1be08dc",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:395",
    "oracle": "pass",
    "script_sha256": "fef15a245aabcf5ea58eed9131d954f66b937e6bbc4acbff4c50bea9f1de7a01",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:396",
    "oracle": "pass",
    "script_sha256": "35eed3ecc57e64950a0f2caf203386ab9e2cd800b80677a0931dd9304f2c773a",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:398",
    "oracle": "pass",
    "script_sha256": "2ef3cbd23380047324f1b49d72fb361a22e34d16f52265b791c9a2f248165890",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:399",
    "oracle": "pass",
    "script_sha256": "786ca731944436094ac98fe37d2aedcfc36a555391a20613a3152125f04211c9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:400",
    "oracle": "pass",
    "script_sha256": "b751c48ccd4c1bb111eabb64c5f1b7739f21f361b1c8fbedff17348c077265cc",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:401",
    "oracle": "pass",
    "script_sha256": "d0719f57144577d8e68fc2711db902cc60ab422092a7369a03ff5287db181171",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:402",
    "oracle": "pass",
    "script_sha256": "31d957e0040405a43a2c204a330a083796c5e781311a7a065705a7532509f931",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:404",
    "oracle": "pass",
    "script_sha256": "f8ba30bbbfe552d3c6d864a2c6aa9a0c21847f5e0cc8beb8b533c45955a21a62",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:405",
    "oracle": "pass",
    "script_sha256": "58c66c52e584526e9acf6e5b921f2848725101595e9d59aefac08661ddbd7fa9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:406",
    "oracle": "pass",
    "script_sha256": "2ba86076dfbd9f7e962687e20e368a2151a58cc822d1e684089b0c694490e041",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:407",
    "oracle": "pass",
    "script_sha256": "82482897f181f1077dc119b3380c028934b0257b8fea533031fa0eb5108d7d95",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:408",
    "oracle": "pass",
    "script_sha256": "0d22047a164c446b90efd768761357e9d7fc338465d571a468c6818d0fb64725",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:410",
    "oracle": "pass",
    "script_sha256": "378d54e9d658da03e9f195645c20f0aa68dcd8e1dcefbaf01206b74d617f30d3",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:411",
    "oracle": "pass",
    "script_sha256": "b7356820960813a1847d71721d61f59b58c5e5aaf8bcd8dca7a07e70c955c188",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:412",
    "oracle": "pass",
    "script_sha256": "28b2cc0ea37b515980301efc7b4a8dd32bc40d6d8708942853e9cdf886d459d5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:413",
    "oracle": "pass",
    "script_sha256": "9654c2ebed5d00a91111c517efd9f53db0ca0eee9354ac57dc259054ad1fcb30",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:414",
    "oracle": "pass",
    "script_sha256": "9f3cea496ddab434ece5bca52dc783cf0a41664dd0b293862d162c44da354a34",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:416",
    "oracle": "pass",
    "script_sha256": "4be2362a7f296f0c4fe30a0b85a611bc7cf091fb6a8d5e123b57bf513980bd94",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:417",
    "oracle": "pass",
    "script_sha256": "ac5201454ae1a77f6f8562d7a864fa240bc5be9b6e88c404629563f60bc8ced7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:418",
    "oracle": "pass",
    "script_sha256": "a6b92823fb9a0571bffdcbe661be7fb458ab8cba61113143acf531a6e6aeb4e2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:419",
    "oracle": "pass",
    "script_sha256": "82a95815571b92807d4d170730fdd8ac0e1dd4497c97923ead7cce6c13e9c778",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:420",
    "oracle": "pass",
    "script_sha256": "54fb5310a00751bdd3980ef12860fe095aa32fc5cfb7addc78967ba64992f7a5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:422",
    "oracle": "pass",
    "script_sha256": "1935055d418e0ffa15d8e608a6b324424802b80da4f0bf03280d5a21b5622bbf",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:423",
    "oracle": "pass",
    "script_sha256": "058376f8bf722fbd9ec197768bee766ec5953a01a7e03e70c903b9240c4df513",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:424",
    "oracle": "pass",
    "script_sha256": "c013fba4ec0a5cff849c0154f4d83fa214657dd70300e30ef77262dae8112fd0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:425",
    "oracle": "pass",
    "script_sha256": "833e4a05c43038ba672a3ac434d9f6b755d3ae6ec42483d919f8bee5e54fa94e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:426",
    "oracle": "pass",
    "script_sha256": "38c05b2c79683877c71bfce0eea47af1f55f992145c6885264215872eb73ed4f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:428",
    "oracle": "pass",
    "script_sha256": "0b9e715199bf2d38d24c6a75a9a8ee8e61bdb5ceef8c4bc1b9cbc1a0252f882b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:429",
    "oracle": "pass",
    "script_sha256": "e3a7e4c065f8fac0067ca935606b8240fa99dd04ad48d394cd1b44d94eb0649d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:430",
    "oracle": "pass",
    "script_sha256": "b58d2bec854616861cffca945852c5b19aa46bd1bf1e67950cf3cc824efafdd4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:431",
    "oracle": "pass",
    "script_sha256": "2e3119728bf6a1c9fb6c938ba761cdd1a505f0c75af497b87101b1ff6076e2a6",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:432",
    "oracle": "pass",
    "script_sha256": "411487a669baaff2bad526ff33e420fa07eb35613df61356982b45ee02f9bd8d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:434",
    "oracle": "pass",
    "script_sha256": "cee70f64df958c79a7df25d73784f64991780a0a32150c963d10b7b302aeae5f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:435",
    "oracle": "pass",
    "script_sha256": "da44e137cb66040d3c69f7177195cbe7be9a51478167af6721084a082af69873",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:436",
    "oracle": "pass",
    "script_sha256": "53b6829ae3842ff12695544f2a7542d4ff1ed48dc2c2d4127f29a69f9a25a168",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:437",
    "oracle": "pass",
    "script_sha256": "3c600eb199f7d11e73f753a6924ceb25140a851fe747720117960e654d0344c6",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:438",
    "oracle": "pass",
    "script_sha256": "ecd463863526b4f258834b42af4db0e7f0884a4a31a07824a7479e2f44bf54fc",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:440",
    "oracle": "pass",
    "script_sha256": "b1ee88136e3575d5fa2b065f8c6a4e98dd6f36db70c65d4a8e6efabb6633ad6d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:441",
    "oracle": "pass",
    "script_sha256": "fbbf2678ed7ea9bbe4813658717adb57ca33f66d40265ca711cc2f098e0bc46f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:442",
    "oracle": "pass",
    "script_sha256": "1291bb93ce62922aea167424aff0c0375b51179a3f34e5d1549ff58c379b77ed",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:443",
    "oracle": "pass",
    "script_sha256": "d879ff30918ce493e039a4491bf0f920dbca205731995056529b66ea0bee7706",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:444",
    "oracle": "pass",
    "script_sha256": "1a467615fb406335174001b6a16428c1b0ef9253cfb55fe50302d0cc57c7295e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:446",
    "oracle": "pass",
    "script_sha256": "c6c6dc7891876d2992f022fc20fb36b7890d54421243d47092f9f6147863d806",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:447",
    "oracle": "pass",
    "script_sha256": "be3f1702f0e427bd072950b063ab3cac1a13ab7f65f8f912dda05d87c8735385",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:448",
    "oracle": "pass",
    "script_sha256": "db178a6160ad519c3947a94c7310d25d2f4044e44a3e54f335be55d96b21de13",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:449",
    "oracle": "pass",
    "script_sha256": "5a3c689aee7ec763cb9f30b3899f725218522696dab3dca179fc4117e16d52d4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:450",
    "oracle": "pass",
    "script_sha256": "447d90b025170d38ffac24c0c95e24e5bb5745ef59972b4e3489df89256f1963",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:452",
    "oracle": "pass",
    "script_sha256": "cefa52be6e35e696088b8bf3aea16c94c2a359214350cbabadc9eb3099e8efc3",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:453",
    "oracle": "pass",
    "script_sha256": "d09b7e65e228399eb4c9355c2793d77bcee6d6b7f16933f321551c022dd238ca",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:454",
    "oracle": "pass",
    "script_sha256": "54a8cda28fb8b89cf9d0bd9b6800c6f7909eef32bac8bfc37e1fca7ad26cda82",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:455",
    "oracle": "pass",
    "script_sha256": "78ca9a73d8c90825eb1975d1ac17fb4673e7bc12c07ed0de23e870ad774b7a68",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:456",
    "oracle": "pass",
    "script_sha256": "2ca9939ad773c59e002954ae258d855d320c9410d3581ae0cc6b525dd8c8388b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:458",
    "oracle": "pass",
    "script_sha256": "fe2cfa74c52d6ed8c9de45ba8990645be817fca5f03e718573d409c8dcc52007",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:459",
    "oracle": "pass",
    "script_sha256": "c11706ae52f46ed64fec7e1486f74c7741f83828da62114000d14302a297fcdf",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:460",
    "oracle": "pass",
    "script_sha256": "1faf72544c8c7dd34e751ceab33645c6a292179c955f99332c8cb7973fe74624",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:461",
    "oracle": "pass",
    "script_sha256": "079ee2b2c1df9dbeb1a744ae7cb752467126f716fbd56452ee8f63b3f3378e6a",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:462",
    "oracle": "pass",
    "script_sha256": "9500bca83e410e2d4913a7c5911a763caa78ede41446f3496e20dcba5d619878",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:464",
    "oracle": "pass",
    "script_sha256": "35700bdc1843e2d3246812b8e466dd5c231b01fcd6c058c8a176f3ee1d9ef013",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:465",
    "oracle": "pass",
    "script_sha256": "631b1614bff1d1964788773850caca6233f63927301992fef2a7816a5a16acc2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:466",
    "oracle": "pass",
    "script_sha256": "72599fb0a7811fadb0b747fa5ca36542a79519be747dd8e79e533b4124ede7e3",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:467",
    "oracle": "pass",
    "script_sha256": "04203e00ec31c8f150aa8ed162d759277c94bd080bca2dcef43d7ee8cfbe5b39",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:468",
    "oracle": "pass",
    "script_sha256": "00cf701dd23f3fc0882f4f5fee126f1bf745df6d9ddb1c8a2da4c67a97f36cc2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:470",
    "oracle": "pass",
    "script_sha256": "4933f154d81cc55c0ed88d019b32ca14e6724a10d1b27766ae5f1b72e592f070",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:471",
    "oracle": "pass",
    "script_sha256": "174a8909f3d07e544e6480a965ce039f2f17c9d2faa8a1a8948f3ea3563fe4ae",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:472",
    "oracle": "pass",
    "script_sha256": "b38d2097367b6d14ab51ca3594de51138d4898a73e2707d80b645bbf8b65b5e2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:473",
    "oracle": "pass",
    "script_sha256": "33042e877400f19ee3a6c881b7fa1626a593cbb07e7b73fa1ebfab5316e35808",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:474",
    "oracle": "pass",
    "script_sha256": "9346baca5cc1586aa01ef9c1510e100943230afba2ca8ab87562eee0e8fd3991",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:476",
    "oracle": "pass",
    "script_sha256": "a92bb609e58c8144095768ec71b432e50ef52b81fef46a78828f742d6cc2f089",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:477",
    "oracle": "pass",
    "script_sha256": "4a9d18e6e4afd9f7fb37e8df76c04ea7b2f290936b7cdcd8bd535e3bdac975b0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:478",
    "oracle": "pass",
    "script_sha256": "5949bb37273b93203f749410f2fdc40ca29a5a53c88bb7b7af65e7b8c7e61fec",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:479",
    "oracle": "pass",
    "script_sha256": "bc18f19717c94cc4af20156388d802fa6a5ce16e78336680c93e7545968fb13f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:480",
    "oracle": "pass",
    "script_sha256": "a8ad4716cbf8f8a095245309c969c5e169d42cb207df247db8cf67902291e867",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:482",
    "oracle": "pass",
    "script_sha256": "e5702596131602d7ed9cfa5e6365fc2d07a99df5ec428555007ef244c31d24ee",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:483",
    "oracle": "pass",
    "script_sha256": "6dd8136f03568ee39fa4f0aea43477fa37c26e33780f6dcc56e03a1fe1bf9f4e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:484",
    "oracle": "pass",
    "script_sha256": "0911c0ad62b94353f015a8455232a5228499723cec31d29a37196eb50c95b1e7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:485",
    "oracle": "pass",
    "script_sha256": "358315be41175a433a7123e2d4623434960d190a154c94d6b52601541acfd278",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:486",
    "oracle": "pass",
    "script_sha256": "d482c144690c73f5c3ff89a0d282b24aaa206ae9b253a07acc104e8179a9e50e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:488",
    "oracle": "pass",
    "script_sha256": "76246cbc2baaeec5d009562b26f99a3a8b84b5b2ac4c6970f5033ab7b3436172",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:489",
    "oracle": "pass",
    "script_sha256": "1b146adcc11327e5f79a3b1b8c68a42663e97861e1ed4220b45bbd7370f8875e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:490",
    "oracle": "pass",
    "script_sha256": "234a41a2e10a955cb5a26a0198ff36fbde4a583119cff710596f910f62e23787",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:491",
    "oracle": "pass",
    "script_sha256": "8af53f21ab3e98cd49ec061c3ed32b0bb10cdd337e91cec87b671957bf79e9b7",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:492",
    "oracle": "pass",
    "script_sha256": "4f930967495d0257daecc73728dcdf522b082bfeda808a54827f606b6e38e51e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:493",
    "oracle": "pass",
    "script_sha256": "1f0d5fb5a0f30f5fb16f2da760e0afa519a59c1270862fc77c4ebcd1f74f9f64",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:494",
    "oracle": "pass",
    "script_sha256": "e7b2c3290e20f9d8cdc08113ba23e76c7df1672c3e921609868fafc754cb9fcd",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:496",
    "oracle": "pass",
    "script_sha256": "9d9559c35a1ba15072f9324e055c4d7505e224f18ba8e430ca06c249d985f001",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:497",
    "oracle": "pass",
    "script_sha256": "1767fae318fb6ac547eb4d2711172749873534ce6738777fbcff81432341542b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:498",
    "oracle": "pass",
    "script_sha256": "b99694751cf76188f72d23ac6804e34ea30d0fcba9718118b04386e3986d6dfa",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:499",
    "oracle": "pass",
    "script_sha256": "0275528f3be1acb718c0b0a979c4611f1df8ddeac2dd5065672835064e91b597",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:500",
    "oracle": "pass",
    "script_sha256": "e3b8802f30ee25fb246d83cece29b88255a0bcea95d5ac900cca942485a02416",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:501",
    "oracle": "pass",
    "script_sha256": "93f748d6f14d0a1739954f48360c202e983e8d3d3a452cdc30889723cce3c76d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:502",
    "oracle": "pass",
    "script_sha256": "19a7f779bd79329859452884030ad3a250e5a799631c28044a3b4b4e716b209b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:504",
    "oracle": "pass",
    "script_sha256": "1f27d53ab24ef332d416ea8f467b4396fef13b1a4aa6b1d24cc24ba16d69ae19",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:505",
    "oracle": "pass",
    "script_sha256": "ba6307db11b0b639c3be3dba3fa355679ab4004de85366348071745bc831196b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:506",
    "oracle": "pass",
    "script_sha256": "e78ecb76a488322003cfe3610650276feb51b79b2a1f58fde71d730fa65eedc9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:507",
    "oracle": "pass",
    "script_sha256": "5e7e0ff43adfd177c4ff206f5a75f9316b0a42f1c4e7450191ccc7781394c8e9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:508",
    "oracle": "pass",
    "script_sha256": "7495ac36e8272f2386b64b36ff1d6c570fc87991b88065ab54bfa8af6603fb3f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:509",
    "oracle": "pass",
    "script_sha256": "824a23722d843e1e6ce9d5b60f632dce9faa2c7a8a81f6baf828bb784bb1f874",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:510",
    "oracle": "pass",
    "script_sha256": "836ac0097af2efa6c25eebc02fd443f13ec5b878759f264e6118060db4fd6bb9",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:538",
    "oracle": "pass",
    "script_sha256": "3d05348bf82f29fe5ac9c6d66d044a334a41971d52f15cbc36de62bc04728800",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:539",
    "oracle": "pass",
    "script_sha256": "ac0d21a90a5b51fc570d3148644adaf2d878c38a0042868ba1c6bca430e92fc3",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:540",
    "oracle": "pass",
    "script_sha256": "22cf2f9b50a1faf5963977efb3f189ec340482221e3796bda21b09037d841204",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:541",
    "oracle": "pass",
    "script_sha256": "df764bb6394b41c766a0fedc79d8fc86ad911bc6bb4c3de4b2d3df2d03a817ff",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:542",
    "oracle": "pass",
    "script_sha256": "50d3c0b52c6c81afdb4911a6975f3e0318cc6b278bbd9cbf1cc6950c2cb0e98e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:544",
    "oracle": "pass",
    "script_sha256": "ced85eaf62b9103d2db6caf820755eb544f51b5706fbb6c326929292239f7644",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:545",
    "oracle": "pass",
    "script_sha256": "b8de6252878b737622a31fe2f95e282b664d00f0f48a2655d92230586fe00457",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:546",
    "oracle": "pass",
    "script_sha256": "60cc9dc405e2c7dff90572d8eddbb51880cf2a8b7cf33599faab5ee6aac0a7a4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:547",
    "oracle": "pass",
    "script_sha256": "6e0ec8bd72b7b49cebe5a1018a8db3f23c20a4d7176f625ca9d6b547896d3623",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:548",
    "oracle": "pass",
    "script_sha256": "d8d215b6bb29aff59f3b69275f6193318e1714be486f8d0e0d67a8f16d9da83e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:550",
    "oracle": "pass",
    "script_sha256": "e6facd7b13b89db10f126f794a65a75997a996e7c12645c5813b389f721e36ac",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:551",
    "oracle": "pass",
    "script_sha256": "0dee09620441992652267e548793487f1761f34d340c02441304538d331e522e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:552",
    "oracle": "pass",
    "script_sha256": "0270358859a9baf10a8659fe6ec42c3f5d5754b4478555bdf568c4c6bbd26a83",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:553",
    "oracle": "pass",
    "script_sha256": "6c07ffb13d697805647b4082d8d774d3d7955040bf2ad6f15d04aabfa6527adc",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:554",
    "oracle": "pass",
    "script_sha256": "cdfb7ac1ca2a6dc03a6429c3dae03a8b054332823ffee9f192e58909eccd4a00",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:556",
    "oracle": "pass",
    "script_sha256": "3e6985c438c1a63cbe0b95193001d6289426447f22397ec48491ba886d4b4531",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:557",
    "oracle": "pass",
    "script_sha256": "07ca77f268963c8d1119c3f6d48c9d65992c87d81d1e89f68ca04dbcbcfc0cc4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:559",
    "oracle": "pass",
    "script_sha256": "05a8eed05f70ee6bb5847a4c6b8f463c20fac17c036481519df45c2001230677",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:560",
    "oracle": "pass",
    "script_sha256": "a20b35907a29ad9e93b5df0507e7df455d72e9c19e7a169a9fdff39bfc0a0f9d",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:588",
    "oracle": "pass",
    "script_sha256": "de6602f741bfeeee6a4ab04d418cdebcbec61ad492c4b06c16e50db58a1edfab",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:589",
    "oracle": "pass",
    "script_sha256": "503de63857aca147032eb05487f4cbe3d06dda6e3a91b5011808dfd1af611cd2",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:590",
    "oracle": "pass",
    "script_sha256": "3da29ea0c3a8ea8b8c2c2381125ba91ad5406fbf92bec9b4ec5a6799acd4939c",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:591",
    "oracle": "pass",
    "script_sha256": "ddea99d132643595e8d4f9cd2c9b9d6805e0a7ff56deafa0e8f56f196b48c9e0",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:592",
    "oracle": "pass",
    "script_sha256": "d174683cf11a2e726f35b0394294972355e515746347977e08828c489ce30802",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:594",
    "oracle": "pass",
    "script_sha256": "3cdc76be8ba4cdb09efad1eeb329d7978e33ecb332a1ad20058e34900e7588c1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:595",
    "oracle": "pass",
    "script_sha256": "1a6dfc5bc46e67da8e3cd561f8a1b31327ef83c0f84560af20daa873e8f4945e",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:596",
    "oracle": "pass",
    "script_sha256": "4263a70f0b286ced3fba031a69196940626d3e617998d23082ce5cc892793db4",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:597",
    "oracle": "pass",
    "script_sha256": "686c5c8c0b0246c96212fb4b933d2359b4304127f771503f7fda310f46b84392",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:598",
    "oracle": "pass",
    "script_sha256": "bc469aa9ca16e7e74620025d7a2794470a798c574fefbfa541aafc0008f7dbd5",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:600",
    "oracle": "pass",
    "script_sha256": "9d5b38c22ca6f9b83f5a48f96afcca94691f3728329544bdb6e7bf611e263859",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:601",
    "oracle": "pass",
    "script_sha256": "30bb763d4b44f52a32f2aa4c279df397088a1a1006cb43f6a3eca5fe33ff5e23",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:602",
    "oracle": "pass",
    "script_sha256": "d0afa794f8668d3fd83a10830b0f134365591b45fcd1d8930451def98466ce7b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:603",
    "oracle": "pass",
    "script_sha256": "4d1592fd7b31819f8d7a20062c0fc5e27f09fdde771271adba8f5d3642db824b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:604",
    "oracle": "pass",
    "script_sha256": "dc8c697a074317b54b612843ecf8056c26f4c4ff06afeb9ed97bfeccfd9f344a",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:606",
    "oracle": "pass",
    "script_sha256": "4b5158ee2d70904dee9c3efd7b75d222e0bffb558edcdf776cd389b1de7dcbd1",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:607",
    "oracle": "pass",
    "script_sha256": "1ea31468400a00e77c2b8d9f47b8fb461209e97244beba18998919f46ccad49f",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:609",
    "oracle": "pass",
    "script_sha256": "3ad4743569be0b8dcc165f853e52831446e9cc3671a5b617d9b5f726f8df345b",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   },
   {
    "id": "address:610",
    "oracle": "pass",
    "script_sha256": "9d94d65d24d0681a48fc34f2273f358a2bde4007362203ebee99eb6b1b7d1a54",
-   "silmaril": "undetermined"
+   "silmaril": "proved"
   }
  ],
  "counts": {
   "run": 1140,
   "oracle_pass": 1140,
-  "kernel_proved": 885,
-  "agree_with_kernel": 885,
-  "native_only": 255,
-  "agree_with_native_run": 255
+  "kernel_proved": 1140,
+  "agree_with_kernel": 1140,
+  "native_only": 0,
+  "agree_with_native_run": 0
  },
  "files": [
   {

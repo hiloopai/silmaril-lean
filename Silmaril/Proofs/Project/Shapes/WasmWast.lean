@@ -7,6 +7,7 @@ public import Silmaril.Wasm.SingleThreaded.Exec.StatusComplete
 public import Silmaril.Wasm.SingleThreaded.Determinism.Join
 public import Silmaril.Wasm.SingleThreaded.Soundness
 public import Silmaril.Wasm.Verify.Kernel.Thms
+public import Silmaril.Wasm.Execution.MemRep.Inst.Thms
 
 /-!
 # Proofs: WAST script commands from one kernel evaluation
@@ -19,6 +20,8 @@ public import Silmaril.Wasm.Verify.Kernel.Thms
 * `invokeNF_unique`: host-free normal forms of an invocation are unique (`DStep.join'`,
   `nf_unique_of_join`), hence `scriptAt_unique`: a script reaches at most one state;
 * `scriptHolds_of_kernel`: `scriptK … = true` gives `ScriptHolds`;
+* `scriptK_of_scriptKM`: `scriptKM … = true` (the checker on `KMem` stores) gives
+  `scriptK … = true`, by `instantiateOnce?_toBytes` and `runI_toBytes`;
 * `reaches_always`: at `profile o` one run of a command to a result rules out infinite runs of
   it and extends every finite run to that result (`Det.DStep.join'`, `Det.DStep.shrink`).
 -/
@@ -227,6 +230,89 @@ theorem scriptHolds_of_kernel {o : GrowOracle} {fuel : Nat} {m : Module} {cmds :
       simpa using cmdsK_holds hs hS h k cmd hk
     · cases h
   · cases h
+
+/-! ## From `KMem` stores to `ByteArray` stores -/
+
+section KM
+
+open Silmaril.Wasm.Execution (KMem MemRep LawfulMemRep)
+
+theorem importStoreKM_toBytes : importStoreKM.toBytes = Game.importStore [] := rfl
+
+theorem exportsScalar_toBytes {R : Type} [MemRep R] (s : Store Nat R) (mi : ModuleInst) :
+    exportsScalar s.toBytes mi = exportsScalar s mi := rfl
+
+theorem invokeOkB_toBytes {R : Type} [MemRep R] (s : Store Nat R) (a : Nat) (args : List Val) :
+    invokeOkB s.toBytes a args = invokeOkB s a args := rfl
+
+/-- `runInvokeK` on `s.toBytes` is `runInvokeKR` on `s`, read through `toBytes`. -/
+theorem runInvokeK_toBytes {R : Type} [MemRep R] [LawfulMemRep R] (o : GrowOracle) (n : Nat)
+    (s : Store Nat R) (a : Nat) (vs : List Val) :
+    Silmaril.Wasm.Verify.Kernel.runInvokeK o n s.toBytes a vs =
+      (runInvokeKR o n s a vs).map fun p => (p.1.toBytes, p.2.1, p.2.2) := by
+  rw [Silmaril.Wasm.Verify.Kernel.runInvokeK_eq]
+  have h := Exec.runI_toBytes o n (invoke s a vs)
+  have hi : (invoke s a vs).toBytes = invoke s.toBytes a vs := rfl
+  rw [hi] at h
+  have hk : Silmaril.Wasm.Verify.Kernel.runK (Exec.interpHead (H := Nat) (R := R) o) n
+      (invoke s a vs) = Exec.runI o n (invoke s a vs) := by
+    rw [Silmaril.Wasm.Verify.Kernel.runK_eq]; rfl
+  simp only [Exec.runInvoke?, runInvokeKR, hk, ← h, Option.map_some]
+  rfl
+
+theorem actK_of_actKM {o : GrowOracle} {fuel : Nat} {mi : ModuleInst} {s : Store Nat KMem}
+    {act : Action} {c : Config Nat KMem} (h : actKM o fuel mi s act = some c) :
+    actK o fuel mi s.toBytes act = some c.toBytes := by
+  unfold actKM at h
+  unfold actK
+  split at h
+  · simp only [invokeOkB_toBytes]
+    split at h
+    · rename_i hok
+      simp only [hok, ↓reduceIte, runInvokeK_toBytes]
+      split at h
+      · rename_i c' r hrun
+        cases h
+        rw [hrun]
+        rfl
+      · cases h
+    · cases h
+  · cases h
+
+theorem cmdsK_of_cmdsKM {o : GrowOracle} {fuel : Nat} {mi : ModuleInst} :
+    ∀ {cmds : List Cmd} {s : Store Nat KMem}, cmdsKM o fuel mi s cmds = true →
+      cmdsK o fuel mi s.toBytes cmds = true
+  | [], _, _ => rfl
+  | cmd :: cmds, s, h => by
+    unfold cmdsKM at h
+    unfold cmdsK
+    split at h
+    · rename_i c hc
+      rw [actK_of_actKM hc]
+      simp only [Bool.and_eq_true] at h ⊢
+      exact ⟨h.1, cmdsK_of_cmdsKM h.2⟩
+    · cases h
+
+/-- **The `KMem` checker implies the `ByteArray` checker.** -/
+theorem scriptK_of_scriptKM {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : List Cmd}
+    (h : scriptKM o fuel m cmds = true) : scriptK o fuel m cmds = true := by
+  unfold scriptKM at h
+  unfold scriptK
+  split at h
+  · simp only [Bool.and_eq_true] at h ⊢
+    refine ⟨h.1, ?_⟩
+    have h2 := h.2
+    split at h2
+    · rename_i s f hi
+      have hb := instantiateOnce?_toBytes importStoreKM m []
+      rw [hi, importStoreKM_toBytes] at hb
+      rw [← hb]
+      simp only [Option.map_some, Bool.and_eq_true] at h2 ⊢
+      exact ⟨by rw [exportsScalar_toBytes]; exact h2.1, cmdsK_of_cmdsKM h2.2⟩
+    · cases h2
+  · cases h
+
+end KM
 
 /-! ## Termination
 

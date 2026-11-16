@@ -41,16 +41,16 @@ variable {P : Profile} {σ : Type} {g : σ → HostFuncId → List Silmaril.Wasm
 /-! ## Configurations between calls with callout records -/
 
 /-- The store between calls, with the subtasks `ST` of earlier callouts. -/
-def readyStoreI (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
+def readyStoreI (ι : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (ST : List Subtask) : CStore (E3 P V IR) :=
-  { readyStore cs ι fs G with subtasks := ST }
+  { readyStore ι fs G with subtasks := ST }
 
 /-- The configuration between calls, with the subtasks `ST` of earlier callouts, in host state
 `h`. -/
 def readyCfgI (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (ST : List Subtask) (h : σ) :
     Machine.Config (E3 P V IR) σ :=
-  { readyCfgH cs ι fs G h with store := readyStoreI cs ι fs G ST }
+  { readyCfgH cs ι fs G h with store := readyStoreI ι fs G ST }
 
 /-- The leftovers after call `k` of function `j` on `args` with results `rs`, whose callouts
 appended the caller records `CL`. -/
@@ -108,7 +108,7 @@ structure CallAtKA (prof : ProfileKind) (P : Profile)
     (rest : List (Activation (E3 P V IR) σ)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a
     (lowerArgs x.ty.params vs)) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   funcs : M₀.store.funcs = fs
   entry : ∀ f ft opts, calloutEntry M₀.store th (.lowered f ft opts ⟨0⟩) = none

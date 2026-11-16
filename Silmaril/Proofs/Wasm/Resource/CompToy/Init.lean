@@ -89,6 +89,22 @@ theorem silentRun_detRunL {α : Type} (p : Canon.P E σ α) :
       refine ⟨_, hq.cons (.inr ⟨o, rfl⟩), ?_, .cons hl (SRuns.emit_step th o k f segs rest m) d⟩
       rw [← ho]
       rfl
+    | readCore =>
+      obtain ⟨tr, hq, ho, d⟩ := ih (E.view m.core) h hl th f segs rest
+      exact ⟨_, hq.cons (.inl rfl), ho,
+        .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.readCore rfl)) d⟩
+    | memWrite ma ptr bytes =>
+      obtain ⟨tr, hq, ho, d⟩ := ih () h hl th f segs rest
+      exact ⟨_, hq.cons (.inl rfl), ho,
+        .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.memWrite rfl)) d⟩
+    | allocHost ty hh =>
+      obtain ⟨tr, hq, ho, d⟩ := ih () h hl th f segs rest
+      exact ⟨_, hq.cons (.inl rfl), ho,
+        .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.allocHost rfl)) d⟩
+    | prepare md imports =>
+      obtain ⟨tr, hq, ho, d⟩ := ih () h hl th f segs rest
+      exact ⟨_, hq.cons (.inl rfl), ho,
+        .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.prepare rfl)) d⟩
     | _ => simp only [silentRun, reduceCtorEq] at h
 
 end Silent
@@ -112,18 +128,18 @@ theorem toyInst_lockdown : (toyInst P).store.lockdown = false := by kernel_rfl
 no leftovers. -/
 theorem toyInst_eq : toyInst P = toyCfg P 0 {} (ToyGarb.empty P) := by kernel_rfl
 
-theorem toyInst_globals_length : (toyInst P).store.core.globals.length = 1 := by kernel_rfl
+theorem toyInst_globals_length : (toyInst P).core.globals.length = 1 := by kernel_rfl
 
 /-- The counter of `toyCfg P c ι G` is `c`. -/
 theorem toyCtrP_toyCfg {c : ℕ} (ι : InstState) (G : ToyGarb P) (hc : c < 2 ^ 32) :
     toyCtrP P (toyCfg P c ι G) = c := by
   obtain ⟨g, hg⟩ := List.length_eq_one_iff.mp (toyInst_globals_length P)
-  have hgl : (toyCfg P c ι G).store.core.globals =
+  have hgl : (toyCfg P c ι G).core.globals =
       [{ g with value := .i32 (BitVec.ofNat 32 c) }] := by
-    show ((toyInst P).store.core.globals.modify 0 _) = _
+    show ((toyInst P).core.globals.modify 0 _) = _
     rw [hg]
     rfl
-  show (match ((toyCfg P c ι G).store.core.globals[0]?).map
+  show (match ((toyCfg P c ι G).core.globals[0]?).map
       Silmaril.Wasm.Execution.Core.GlobalInst.value with
     | some (Silmaril.Wasm.Execution.Core.Val.num v) => v.bits.toNat
     | _ => 0) = c

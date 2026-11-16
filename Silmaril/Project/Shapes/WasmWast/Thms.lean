@@ -11,6 +11,10 @@ import Silmaril.Proofs.Project.Shapes.WasmWast
   instantiates `m` and runs the commands in order with the kernel-evaluable interpreter
   `runInvokeK`; the claims are about Core reduction, through the interpreter's soundness and
   stopping theorems and determinism at `profile o`.
+* `ScriptHolds.of_kernelKM h`: the same from `h : scriptKM o fuel m cmds = true`, the checker
+  that instantiates and runs on `KMem` stores (`scriptK_of_scriptKM`). Needed when the module's
+  instantiation writes data segments into a memory: the kernel cannot evaluate `ByteArray`
+  writes into a 64 KiB memory.
 * `ScriptHolds.returnsOnly`, `ScriptHolds.trapsOnly`: the row of command `k`.
 * `ReturnsOnly.returns`, `TrapsOnly.traps`: the weaker existence shapes;
   `ReturnsOnly.not_traps`, `TrapsOnly.not_returns`: an `…_only` claim excludes the other
@@ -34,6 +38,19 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.SingleThreaded
 theorem ScriptHolds.of_kernel {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : List Cmd}
     (h : scriptK o fuel m cmds = true) : ScriptHolds o m cmds :=
   Silmaril.Proofs.Project.Shapes.WasmWast.scriptHolds_of_kernel h
+
+/-- **The `KMem` checker implies the `ByteArray` checker**: a kernel evaluation of `scriptKM`
+(instantiation and runs on `KMem` stores) gives `scriptK … = true`, through the simulation
+lemmas `instantiateOnce?_toBytes` and `runI_toBytes`. -/
+theorem scriptK_of_scriptKM {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : List Cmd}
+    (h : scriptKM o fuel m cmds = true) : scriptK o fuel m cmds = true :=
+  Silmaril.Proofs.Project.Shapes.WasmWast.scriptK_of_scriptKM h
+
+/-- **Every command of a script, from one kernel evaluation on `KMem` stores.** The claims are
+the same as those of `ScriptHolds.of_kernel`, about `ByteArray` stores and `Step (profile o)`. -/
+theorem ScriptHolds.of_kernelKM {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : List Cmd}
+    (h : scriptKM o fuel m cmds = true) : ScriptHolds o m cmds :=
+  .of_kernel (scriptK_of_scriptKM h)
 
 /-- The row of an `assert_return` command `k`. -/
 theorem ScriptHolds.returnsOnly {o : GrowOracle} {m : Module} {cmds : List Cmd}

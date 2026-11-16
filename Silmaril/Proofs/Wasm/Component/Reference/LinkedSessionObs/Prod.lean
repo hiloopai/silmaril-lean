@@ -165,7 +165,7 @@ theorem refSessProd_of_prefixL (prof : ProfileKind) {l : Linked2} (hl : l.Adequa
       | none =>
         rw [hout] at hF
         obtain ⟨m', hc, hR'⟩ := hF
-        refine ⟨_, .trap hc, m'.store.core, ιe, ιi, G, ST, m'.host,
+        refine ⟨_, .trap hc, m'.core, ιe, ιi, G, ST, m'.host,
           resumeCfg_readyL _ _ _ _ _ _ _ _, ?_⟩
         exact ⟨hR', R.thE, R.thI, R.leave, fresh_succL R.fresh⟩)
   refine ⟨afterLink P (reloc cse (Store.mapH Prod.fst r)) (fun k => Ie.addrs.getD k 0)

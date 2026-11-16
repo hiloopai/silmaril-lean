@@ -270,7 +270,7 @@ theorem core_to_result (C : CallCtxAt P c I cs x vs) {M₀ : Machine.Config (E3 
     {th : Option ThreadId} {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))}
     {segs : List (Seg (E3 P) Unit)} {rest : List (Activation (E3 P) Unit)}
     (hctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (I.addrs.getD x.core 0)
-      (lowerArgs x.ty.params vs)) K, segs⟩ :: rest) (hcore : M₀.store.core = cs)
+      (lowerArgs x.ty.params vs)) K, segs⟩ :: rest) (hcore : M₀.core = cs)
     {s' : Store Nat} {t' : STh}
     (run : Reach P (Store.mapH (fun _ => 0) cs,
       Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (I.addrs.getD x.core 0) (lowerArgs x.ty.params vs)) (s', t')) :

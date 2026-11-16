@@ -380,6 +380,7 @@ theorem memoryInitLoop_complete {x : MemIdx} {y : DataIdx} {a : AddrType} :
   | _ k ih =>
   intro s s' f f' i j W hs
   rw [memoryInitLoop]
+  simp only [MemRep.size_byteArray, MemRep.store_byteArray]
   split
   · rename_i ma mi da di hm hd
     split

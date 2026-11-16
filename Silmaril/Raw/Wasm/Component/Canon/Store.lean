@@ -90,8 +90,9 @@ is on the element type `u` alone.
 * Floats are lowered through `encodeFloat`, which issues the C7 choice `choose (.nan t x)`
   only on a NaN.
 * Proved here: `matchCase_self`, `packFlags_lt`, and `P.Inv` lemmas for every program
-  (`P.Inv.store` by mutual well-founded recursion, under `StorePres I`: the memory writes and
-  handle/end updates of the reused lowering functions preserve `I`). Nothing about the
+  (`P.Inv.store` by mutual well-founded recursion, under `StorePres I`: the handle/end
+  updates of the reused lowering functions preserve `I`; memory writes change only the core
+  store). Nothing about the
   result of these programs is proved here (the load/store round trip is
   `Canon/Properties/LoadStore.lean`). -/
 
@@ -171,7 +172,7 @@ theorem storeList (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLowerC
     (vs : List Val) (ptr : Nat) (u : WIT.ClosedType RtId) (m : Option Nat) :
     P.Inv I (Canon.storeList lim q cx vs ptr u m : P E σ Unit) :=
   bind (ptrType cx) fun _ =>
-    storeListWith _ _ (fun e a => store h lim q cx e u a) _ _ _ h.write
+    storeListWith _ _ (fun e a => store h lim q cx e u a) _ _ _
 
 end P.Inv
 

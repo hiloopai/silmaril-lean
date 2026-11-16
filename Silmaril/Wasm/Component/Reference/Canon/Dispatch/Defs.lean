@@ -133,7 +133,7 @@ variable {E : CoreEngine} {σ : Type}
   `confine`d while the calling thread's instance may not leave (`calloutBody`); default:
   `hostTrap`;
 * `buffer op`: host buffer operations (`Call.hostBuffer`); default: `internal` trap. -/
-structure HostImpl (E : CoreEngine) (σ : Type) where
+structure HostImpl (E : CoreEngine.Static) (σ : Type) where
   funcs : HostFuncId → CallerId → P E σ (Ret E)
   threadBody : HostFuncId → TaskId → P E σ (Ret E) :=
     fun _ _ => internal "dispatch: no host thread bodies"

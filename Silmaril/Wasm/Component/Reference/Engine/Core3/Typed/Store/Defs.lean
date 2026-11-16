@@ -106,6 +106,7 @@ theorem memWrite?_storeOk {s s' : Store H} {m st : Nat} {bs : ByteArray} (hs : S
     (h : SingleThreaded.memWrite? s m st bs = some s') :
     StoreOk s' ∧ Extend s s' ∧ s'.funcs = s.funcs := by
   unfold SingleThreaded.memWrite? at h
+  simp only [Silmaril.Wasm.Execution.MemRep.writeBytes_byteArray] at h
   cases hm : s.mems[m]? with
   | none => simp [hm] at h
   | some mi =>

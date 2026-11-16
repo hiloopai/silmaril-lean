@@ -26,6 +26,8 @@ single store into a one-page memory costs billions of kernel steps. This topic g
   (`kDepth = 64` layers of labels, handlers and frames; deeper code falls back to `step?`), and
   `splitVals` (which evaluates its recursive call twice) by `splitK` (`List.rec`, once). About
   2× faster on a 100-iteration loop (`benchmarks/wasm-tactics`).
+  `stepK` and `runK` take a head step over any memory representation (`HeadFn H R`), so
+  `runK (interpHead o)` also runs on `KMem` stores (`Execution.MemRep`).
 
 `runIF_eq : runIF = runI`, `runInvokeF_eq : runInvokeF = runInvoke?`, `runIK_eq : runIK = runI`
 and `runInvokeK_eq : runInvokeK = runInvoke?` (`Silmaril.Wasm.Verify.Kernel.Thms`) let a kernel
@@ -188,7 +190,7 @@ noncomputable def splitK (l : List Admin) : List Val × List Admin :=
 def kDepth : Nat := 64
 
 /-- The driver `step? head` by recursion on a depth fuel `d`; out of fuel, `step? head`. -/
-noncomputable def stepK (head : HeadFn H) : Nat → Config H → Option (Config H)
+noncomputable def stepK {R : Type} (head : HeadFn H R) : Nat → Config H R → Option (Config H R)
   | 0, c => step? head c
   | d + 1, c =>
     match splitK c.code with
@@ -196,7 +198,7 @@ noncomputable def stepK (head : HeadFn H) : Nat → Config H → Option (Config 
     | (vs, e :: rest) => Drv.layer head c.store c.frame vs e rest fun c' _ => stepK head d c'
 
 /-- `run? head` with `stepK head kDepth`. -/
-noncomputable def runK (head : HeadFn H) : Nat → Config H → Config H × Bool
+noncomputable def runK {R : Type} (head : HeadFn H R) : Nat → Config H R → Config H R × Bool
   | 0, c => (c, false)
   | n + 1, c =>
     match stepK head kDepth c with

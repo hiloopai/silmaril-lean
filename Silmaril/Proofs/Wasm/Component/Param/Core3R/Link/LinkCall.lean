@@ -73,7 +73,7 @@ def ResolvesD (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P V IR) σ
 /-- The configuration with three component instances, the host in control. -/
 def after3 (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V IR)))
     (fs : List (CFuncInst (core3R P V IR))) (h : σ) : Machine.Config (E3 P V IR) σ :=
-  Config.init { core := cs, insts := [{}, {}, {}], funcs := fs } h
+  { Config.init { insts := [{}, {}, {}], funcs := fs } h with core := cs }
 
 /-- The configuration after the host invoked function `j` on `args` from `after3`. -/
 def invoked3 (P : Profile) (cs : (core3R P V IR).Store (CanonHost (core3R P V IR)))
@@ -167,7 +167,7 @@ theorem runs_unregisterH {th : Option ThreadId} {m : Machine.Config (E3 P V IR) 
   apply RunsQ.bind (.pure _ _)
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ hi)
   rw [hrem]
-  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P V IR) _ _ _ _).2.2.2.2.2.2.2.1
+  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P V IR) _ _ _ _).2.2.2.2.2.2.1
   rfl
 
 theorem runs_exitH {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
@@ -214,10 +214,10 @@ def taskRetL (x : SimpleExport) : Runtime.Task (E3 P V IR) :=
 
 /-- The store of the call with the nested calls' records `N`: the exporter's instance state `ιe`,
 the importer's `ιi`, the importer's task `tk` and thread `thr` first. -/
-def storeLN (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState)
+def storeLN (_cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (tk : Runtime.Task (E3 P V IR)) (thr : Runtime.Thread)
     (args : List Silmaril.Wasm.Component.Reference.Val) (N : List (NRec P V IR)) : CStore (E3 P V IR) :=
-  { core := cs, insts := [{}, ιe, ιi], funcs := fs, tasks := tk :: N.map (·.task),
+  { insts := [{}, ιe, ιi], funcs := fs, tasks := tk :: N.map (·.task),
     threads := thr :: N.map (·.thread), callers := .host ⟨0⟩ args 0 :: N.map (·.caller),
     subtasks := N.map (·.sub), nestingDepth := 1 }
 

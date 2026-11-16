@@ -60,19 +60,18 @@ theorem coreCfg_mkB {M₀ : Machine.Config (E3 P) Unit} {ι' : InstState} {H : L
 
 /-- The lift of `make`'s result at the return point, for an own handle of representation `c`
 at index `j`. -/
-theorem make_liftAt {cs' : (core3P P).Store (CanonHost (core3P P))} {T T₅ : Silmaril.Wasm.Component.Runtime.Table HandleEntry}
+theorem make_liftAt {T T₅ : Silmaril.Wasm.Component.Runtime.Table HandleEntry}
     {Hs : List ResourceHandle} {j : ℕ} {hid : HandleObjId} (hj : j < 2 ^ 32)
     (hrm : T.remove? j = some (.resource hid, T₅))
     (hH : Hs[hid.idx]? = some { rt := ⟨0⟩, rep := c, own := true }) :
     ∀ m : Machine.Config (E3 P) Unit,
-      m.store = { tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T } Hs with
-        core := cs' } →
+      m.store = tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T } Hs →
       RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList [.int .i32 (BitVec.ofNat 32 j)]) (resultTypes ftMake)) m
         [.tau, .tau, .tau, .tau] ([.own c], ⟨[.int .i32 (BitVec.ofNat 32 j)], 1⟩)
-        { m with store := { tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T₅ }
-            Hs with core := cs' } } := by
+        { m with store := (tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T₅ }
+            Hs) } := by
   intro m hm
   obtain ⟨⟩ := m
   dsimp only at hm
@@ -95,15 +94,15 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
         (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Silmaril.Wasm.Component.Reference.Val) (cur : FlatCursor)
         (trF : List (Label (E3 P) Unit)) (c' : ℕ),
         (∀ m : Machine.Config (E3 P) Unit,
-          m.store = { tStore₄ P ftMake c ι (callI ι G) G k [] ιc Hc with core := cs' } →
+          m.store = (tStore₄ P ftMake c ι (callI ι G) G k [] ιc Hc) →
           RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ftMake)) m trF (ws, cur)
-            { m with store := { tStore₄ P ftMake c ι (callI ι G) G k [] ι₅ H₅ with core := cs' } }) →
-        cs' = setCtr P (toyInst P).store.core c' →
+            { m with store := tStore₄ P ftMake c ι (callI ι G) G k [] ι₅ H₅ }) →
+        cs' = setCtr P (toyInst P).core c' →
         ι₅.removeThread? 1 = some (⟨G.threads.length⟩, InstState.removeThread 1 ι₅) →
         ∃ tr, LRun prof (refHost P).hr (D P)
-          { M₀ with store := { tStore₄ P ftMake c ι (callI ι G) G k [] ιc Hc with core := cs' },
+          { M₀ with store := tStore₄ P ftMake c ι (callI ι G) G k [] ιc Hc, core := cs',
                     ctl := ⟨some ⟨G.threads.length⟩, .prog (K ys), segs⟩ :: rest } tr
           (toyCfgX P c' (InstState.removeThread 1 ι₅) (nextG P G ftMake k 0 2 [] ws H₅)))
     (r' : Steps prof (refHost P).hr (D P) (coreCfg M₀ (some ⟨G.threads.length⟩) K segs rest
@@ -153,8 +152,8 @@ theorem make_from_core {M₀ m' : Machine.Config (E3 P) Unit}
   rw [e] at hs1
   obtain ⟨β, f, g, hKe⟩ := hK [.int .i32 (BitVec.ofNat 32 j)]
   have hm₁' : m₁ = { M₀ with
-      store := { tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T } Hs with
-        core := y.1 },
+      store := tStore₄ P ftMake c ι (callI ι G) G k [] { callI ι G with handles := T } Hs,
+      core := y.1,
       ctl := ⟨some ⟨G.threads.length⟩, .prog (K [.int .i32 (BitVec.ofNat 32 j)]), segs⟩ :: rest } := by
     rw [hm₁]
     simp only [retCfg, mkB, hst]
@@ -200,7 +199,7 @@ theorem toy_make {a : List Silmaril.Wasm.Component.Reference.Val} {m' : Machine.
   have hadd := addThread?_free hth ⟨G.threads.length⟩
   by_cases ha : a = []
   · subst ha
-    obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, rfl, hctl, hst, hK, hret⟩ := toy_callAt prof ftMake
+    obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, rfl, hctl, hst, hcore, hK, hret⟩ := toy_callAt prof ftMake
       0 2 [] [] c ι _ _ G k G.handles _ rfl rfl hadd (fun m hm => by
         obtain ⟨⟩ := m
         dsimp only at hm
@@ -208,13 +207,12 @@ theorem toy_make {a : List Silmaril.Wasm.Component.Reference.Val} {m' : Machine.
         exact runs_lower_make _ _)
     rcases hpre.inv (hm₂ ▸ r₁) with hl | ⟨tr', e, r'⟩
     · exact absurd ho (hl.not_holds _ _)
-    have hcore : M₀.store.core = toyCs P c := by rw [hst]; rfl
     have hev' : ∀ ev, Label.host ev ∈ tr' → CallHostEvent ⟨k⟩ ev :=
       fun ev hm => hev ev (e ▸ List.mem_append_right _ hm)
     obtain ⟨hc1, T₅, Hs, hTB₅, hr, hm'⟩ := make_from_core hc hG hk hleave hTB hst hK
       (fun cs' ιc ι₅ Hc H₅ ys ws cur trF c' hl hcs hrem =>
         hret cs' ιc ι₅ Hc H₅ ys ws cur trF c' hl hcs hrem)
-      (hcore ▸ eq_coreCfg hctl ▸ r') hev' ho
+      ((show M₀.core = toyCs P c from hcore) ▸ eq_coreCfg hctl ▸ r') hev' ho
     exact ⟨rfl, hc1, T₅, Hs, hTB₅, hr, hm'⟩
   · obtain ⟨trT, mT, rT, hrun, hlive, hu⟩ := toy_callAt_trap prof ftMake 0 2 a c ι _ G k rfl rfl
       hadd (fun m _ => lower_make_traps _ a ha m)

@@ -11,15 +11,16 @@ public import Silmaril.Raw.Wasm.Component.Canon.Effects
 The memory-facing helpers of REF `LiftLowerContext` and `MemInst`
 (`design/mvp/canonical-abi/definitions.py` at component-model `a25fc0b`,
 <https://github.com/WebAssembly/component-model/blob/a25fc0b372dd21f07f0242c46e98bd0f1ea0c0e1/design/mvp/canonical-abi/definitions.py>),
-written in `P E σ` over the core memory of the engine store `CStore.core`:
+written in `P E σ` over the core memory of the engine store (read through `Op.readCore`,
+written through `Op.memWrite`):
 
 | Lean | REF |
 | --- | --- |
-| `ptrTypeIn s cx`, `ptrType cx` | `cx.opts.memory.ptr_type()` (`MemInst.ptr_type`, L588) |
+| `ptrTypeIn v cx`, `ptrType cx` | `cx.opts.memory.ptr_type()` (`MemInst.ptr_type`, L588) |
 | `ptrSizeOf`, `ptrSize cx` | `ptr_size` (L567), `MemInst.ptr_size` (L591) |
 | `utf16Tag cx` | the UTF-16 tag bit `ABI.utf16Tag` (bit 31 or 63) of the pointer width |
 | `memLen cx` | `len(cx.opts.memory)` |
-| `memBytes? s cx ptr len` | `cx.opts.memory[ptr : ptr+len]` (pure, no trap) |
+| `memBytes? v cx ptr len` | `cx.opts.memory[ptr : ptr+len]` (pure, no trap) |
 | `readMem cx ptr len` | the same, trapping `outOfBounds` |
 | `writeMem cx ptr bytes` | `cx.opts.memory[ptr : ptr+len] = bytes`, trapping `outOfBounds` |
 | `checkAligned ptr align` | `trap_if(ptr != align_to(ptr, alignment))` |
@@ -77,30 +78,11 @@ variable {I : CStore E → Prop}
 theorem utf16Tag (cx : LiftLowerContext E) : P.Inv I (Canon.utf16Tag cx : P E σ _) :=
   bind (ptrType cx) fun _ => pure _
 
-theorem storeU32 (cx : LiftLowerContext E) (ptr v : Nat)
-    (h : ∀ m s, I s → I (writeMemSt m ptr (u32Bytes v) s)) :
+theorem storeU32 (cx : LiftLowerContext E) (ptr v : Nat) :
     P.Inv I (Canon.storeU32 cx ptr v : P E σ Unit) :=
-  bind (checkAligned _ _) fun _ => bind (checkInBounds _ _ _) fun _ => writeMem _ _ _ h
+  bind (checkAligned _ _) fun _ => bind (checkInBounds _ _ _) fun _ => writeMem _ _ _
 
 end P.Inv
-
-/-- A memory write changes only the core store: every component-level arena and `Store`
-field is unchanged. -/
-theorem writeMemSt_frame (m : E.MemAddr) (ptr : Nat) (bytes : ByteArray) (s : CStore E) :
-    ∃ c, writeMemSt m ptr bytes s = { s with core := c } := by
-  unfold writeMemSt
-  split
-  · exact ⟨_, rfl⟩
-  · exact ⟨s.core, rfl⟩
-
-/-- Corollary of `writeMemSt_frame` for the most used fields. -/
-theorem writeMemSt_fields (m : E.MemAddr) (ptr : Nat) (bytes : ByteArray) (s : CStore E) :
-    let s' := writeMemSt m ptr bytes s
-    s'.insts = s.insts ∧ s'.tasks = s.tasks ∧ s'.threads = s.threads ∧
-      s'.waiting = s.waiting ∧ s'.lockdown = s.lockdown := by
-  obtain ⟨c, hc⟩ := writeMemSt_frame m ptr bytes s
-  rw [hc]
-  exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-! ## Examples -/
 
@@ -112,8 +94,8 @@ example (cx : LiftLowerContext E) : P E σ Nat := do
   unpackEvent cx ptr ⟨.subtask, 1, 2⟩
 
 /-- Without a memory the pointer width is `i32` (D-g). -/
-example (s : CStore E) (inst : InstId) :
-    ptrTypeIn s ({ opts := {}, inst := inst } : LiftLowerContext E) = .i32 := rfl
+example (v : CoreEngine.CoreView E (CanonHost E)) (inst : InstId) :
+    ptrTypeIn v ({ opts := {}, inst := inst } : LiftLowerContext E) = .i32 := rfl
 
 end Examples
 

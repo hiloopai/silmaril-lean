@@ -25,6 +25,9 @@ machine's configuration; the executable step is `Machine/Exec.lean` and the rela
     canon host function, `Store.lower`'s `core_func_inst`); the `Ret.flat` result of the callout
     program resumes `t` (`E.resume`), whose returned values then go to `k`.
   An activation with an empty segment stack whose focus returns has finished.
+* **The shared core store** lives in `Config.core`, not in the component store `CStore E`.
+  Programs read it through `Op.readCore` (the queries `CoreEngine.view E m.core`) and update it
+  through `Op.memWrite`, `Op.allocHost` and `Op.prepare`; core activations step on it.
 * **Blocked threads' continuations** live in `Config.conts`, indexed by `ThreadId`, and never
   in the component store `CStore E` (issue #477; the REF keeps them in `Thread.cont`, L279-390).
 * **The control chain** `Config.ctl`: its head is the running activation. The activations below
@@ -99,8 +102,10 @@ structure Activation where
 
 /-- A machine configuration (see the module docstring). -/
 structure Config where
-  /-- The component store (including the shared core store). -/
+  /-- The component store. -/
   store : CStore E
+  /-- The shared core-engine store (its host code is canon host sites); initially empty. -/
+  core : E.Store (CanonHost E) := E.empty (CanonHost E)
   /-- The host (embedder / test harness) state. -/
   host : σ
   /-- Saved activations of blocked threads, indexed by `ThreadId.idx`. -/
@@ -188,9 +193,17 @@ def withFocus (a : Activation E σ) (f : Focus E σ) : Activation E σ := { a wi
 
 end Activation
 
+/-- The core store after `Op.prepare md imports` (unchanged when `E.prepare?` fails). -/
+def prepareCore (c : E.Store (CanonHost E)) (md : E.Module) (imports : List E.ExternVal) :
+    E.Store (CanonHost E) :=
+  match E.prepare? c md imports with
+  | some (c', _, _) => c'
+  | none => c
+
 namespace Config
 
-/-- The initial machine: the host is in control, nothing saved, nothing pending. -/
+/-- The initial machine: the host is in control, nothing saved, nothing pending, and the empty
+core store. -/
 def init (store : CStore E) (host : σ) : Config E σ := { store, host }
 
 /-- The saved activation of thread `t`, if any. -/

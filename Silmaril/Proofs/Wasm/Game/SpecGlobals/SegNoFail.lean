@@ -115,6 +115,8 @@ theorem memoryInitLoop_repl {f : Frame} {x : MemIdx} {y : DataIdx} {a : AddrType
     have hm : (repl G F u).mem? (frame ρ f) x = u.mem? f x := rfl
     have hd : (repl G F u).data? (frame ρ f) y = u.data? f y := rfl
     rw [memoryInitLoop, memoryInitLoop, hm, hd]
+    simp only [Silmaril.Wasm.Execution.MemRep.size_byteArray,
+      Silmaril.Wasm.Execution.MemRep.store_byteArray]
     rcases u.mem? f x with _ | ⟨ma, mi⟩ <;> rcases u.data? f y with _ | ⟨da, di⟩
     all_goals try rfl
     by_cases hb : i.toNat + nb.toNat ≤ mi.bytes.size ∧ j.toNat + nb.toNat ≤ di.bytes.size

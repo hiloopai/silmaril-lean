@@ -21,12 +21,12 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace AggAcc
 
 /-- The trapping configuration. -/
-def trapC (s : Store H) (f : Frame) : Config H := ⟨s, f, [.trap]⟩
+def trapC (s : Store H R) (f : Frame) : Config H R := ⟨s, f, [.trap]⟩
 
 /-- The fields of a structure type, via `Expand`. -/
 def structFields? (d : DefType) : Option (Ty (.list .field)) :=
@@ -41,19 +41,19 @@ def arrayField? (d : DefType) : Option CFieldType :=
   | _ => none
 
 /-- `a` is an allocated array and `bound` exceeds its length. -/
-def oobA (s : Store H) (a bound : Nat) : Bool :=
+def oobA (s : Store H R) (a bound : Nat) : Bool :=
   match s.arrays[a]? with
   | some ai => decide (ai.fields.length < bound)
   | none => false
 
 /-- The element segment `y` exists and `bound` exceeds its length. -/
-def oobE (s : Store H) (f : Frame) (y : ElemIdx) (bound : Nat) : Bool :=
+def oobE (s : Store H R) (f : Frame) (y : ElemIdx) (bound : Nat) : Bool :=
   match s.elem? f y with
   | some (_, ei) => decide (ei.refs.length < bound)
   | none => false
 
 /-- The array type `x` and data segment `y` exist and `j + n·|zt|/8` exceeds the segment. -/
-def oobD (s : Store H) (f : Frame) (x : TypeIdx) (y : DataIdx) (j n : Nat) : Bool :=
+def oobD (s : Store H R) (f : Frame) (x : TypeIdx) (y : DataIdx) (j n : Nat) : Bool :=
   match f.type? x, s.data? f y with
   | some d, some (_, di) =>
     match arrayField? d with
@@ -62,8 +62,8 @@ def oobD (s : Store H) (f : Frame) (x : TypeIdx) (y : DataIdx) (j n : Nat) : Boo
     | none => false
   | _, _ => false
 
-def structGet (s : Store H) (f : Frame) (sx : Option Signedness) (x : TypeIdx) (i : FieldIdx) :
-    List Val → Option (Nat × Config H)
+def structGet (s : Store H R) (f : Frame) (sx : Option Signedness) (x : TypeIdx) (i : FieldIdx) :
+    List Val → Option (Nat × Config H R)
   | .ref .null :: _ => some (1, trapC s f)
   | .ref (.struct a) :: _ =>
     match s.structs[a]? with
@@ -86,8 +86,8 @@ def structGet (s : Store H) (f : Frame) (sx : Option Signedness) (x : TypeIdx) (
               else none
   | _ => none
 
-def structSet (s : Store H) (f : Frame) (x : TypeIdx) (i : FieldIdx) :
-    List Val → Option (Nat × Config H)
+def structSet (s : Store H R) (f : Frame) (x : TypeIdx) (i : FieldIdx) :
+    List Val → Option (Nat × Config H R)
   | _ :: .ref .null :: _ => some (2, trapC s f)
   | v :: .ref (.struct a) :: _ =>
     match s.structs[a]? with
@@ -109,8 +109,8 @@ def structSet (s : Store H) (f : Frame) (x : TypeIdx) (i : FieldIdx) :
       else none
   | _ => none
 
-def arrayGet (s : Store H) (f : Frame) (sx : Option Signedness) (x : TypeIdx) :
-    List Val → Option (Nat × Config H)
+def arrayGet (s : Store H R) (f : Frame) (sx : Option Signedness) (x : TypeIdx) :
+    List Val → Option (Nat × Config H R)
   | .num ⟨.int .i32, _⟩ :: .ref .null :: _ => some (2, trapC s f)
   | .num ⟨.int .i32, i⟩ :: .ref (.array a) :: _ =>
     match s.arrays[a]? with
@@ -130,7 +130,7 @@ def arrayGet (s : Store H) (f : Frame) (sx : Option Signedness) (x : TypeIdx) :
             else none
   | _ => none
 
-def arraySet (s : Store H) (f : Frame) (x : TypeIdx) : List Val → Option (Nat × Config H)
+def arraySet (s : Store H R) (f : Frame) (x : TypeIdx) : List Val → Option (Nat × Config H R)
   | _ :: .num ⟨.int .i32, _⟩ :: .ref .null :: _ => some (3, trapC s f)
   | v :: .num ⟨.int .i32, i⟩ :: .ref (.array a) :: _ =>
     match s.arrays[a]? with
@@ -149,7 +149,7 @@ def arraySet (s : Store H) (f : Frame) (x : TypeIdx) : List Val → Option (Nat 
       else some (3, trapC s f)
   | _ => none
 
-def arrayLen (s : Store H) (f : Frame) : List Val → Option (Nat × Config H)
+def arrayLen (s : Store H R) (f : Frame) : List Val → Option (Nat × Config H R)
   | .ref .null :: _ => some (1, trapC s f)
   | .ref (.array a) :: _ =>
     match s.arrays[a]? with
@@ -157,8 +157,8 @@ def arrayLen (s : Store H) (f : Frame) : List Val → Option (Nat × Config H)
     | some ai => some (1, ⟨s, f, [constI32 (BitVec.ofNat 32 ai.fields.length)]⟩)
   | _ => none
 
-def fillArr (s : Store H) (f : Frame) (x : TypeIdx) (a : Nat) (i : BitVec 32) (v : Val)
-    (n : BitVec 32) : Option (Nat × Config H) :=
+def fillArr (s : Store H R) (f : Frame) (x : TypeIdx) (a : Nat) (i : BitVec 32) (v : Val)
+    (n : BitVec 32) : Option (Nat × Config H R) :=
   match s.arrays[a]? with
   | none => none
   | some ai =>
@@ -167,14 +167,14 @@ def fillArr (s : Store H) (f : Frame) (x : TypeIdx) (a : Nat) (i : BitVec 32) (v
     else some (4, ⟨s, f, [arrRef a, constI32 i, v.toAdmin, .plain (.arraySet x),
         arrRef a, constI32 (i + 1), v.toAdmin, constI32 (n - 1), .plain (.arrayFill x)]⟩)
 
-def arrayFill (s : Store H) (f : Frame) (x : TypeIdx) : List Val → Option (Nat × Config H)
+def arrayFill (s : Store H R) (f : Frame) (x : TypeIdx) : List Val → Option (Nat × Config H R)
   | .num ⟨.int .i32, _⟩ :: _ :: .num ⟨.int .i32, _⟩ :: .ref .null :: _ => some (4, trapC s f)
   | .num ⟨.int .i32, n⟩ :: v :: .num ⟨.int .i32, i⟩ :: .ref (.array a) :: _ =>
     fillArr s f x a i v n
   | _ => none
 
-def copyArr (s : Store H) (f : Frame) (x₁ x₂ : TypeIdx) (r₁ : Ref) (i₁ : BitVec 32) (r₂ : Ref)
-    (i₂ n : BitVec 32) : Option (Nat × Config H) :=
+def copyArr (s : Store H R) (f : Frame) (x₁ x₂ : TypeIdx) (r₁ : Ref) (i₁ : BitVec 32) (r₂ : Ref)
+    (i₂ n : BitVec 32) : Option (Nat × Config H R) :=
   if r₁ = .null then some (5, trapC s f)
   else if r₂ = .null then some (5, trapC s f)
   else
@@ -210,13 +210,13 @@ def copyArr (s : Store H) (f : Frame) (x₁ x₂ : TypeIdx) (r₁ : Ref) (i₁ :
         | _, _ => none
     | _, _ => none
 
-def arrayCopy (s : Store H) (f : Frame) (x₁ x₂ : TypeIdx) : List Val → Option (Nat × Config H)
+def arrayCopy (s : Store H R) (f : Frame) (x₁ x₂ : TypeIdx) : List Val → Option (Nat × Config H R)
   | .num ⟨.int .i32, n⟩ :: .num ⟨.int .i32, i₂⟩ :: .ref r₂ :: .num ⟨.int .i32, i₁⟩ :: .ref r₁ :: _ =>
     copyArr s f x₁ x₂ r₁ i₁ r₂ i₂ n
   | _ => none
 
-def initElemArr (s : Store H) (f : Frame) (x : TypeIdx) (y : ElemIdx) (r : Ref)
-    (i j n : BitVec 32) : Option (Nat × Config H) :=
+def initElemArr (s : Store H R) (f : Frame) (x : TypeIdx) (y : ElemIdx) (r : Ref)
+    (i j n : BitVec 32) : Option (Nat × Config H R) :=
   if r = .null then some (4, trapC s f)
   else
     match r with
@@ -240,14 +240,14 @@ def initElemArr (s : Store H) (f : Frame) (x : TypeIdx) (y : ElemIdx) (r : Ref)
         | _, _ => none
     | _ => none
 
-def arrayInitElem (s : Store H) (f : Frame) (x : TypeIdx) (y : ElemIdx) :
-    List Val → Option (Nat × Config H)
+def arrayInitElem (s : Store H R) (f : Frame) (x : TypeIdx) (y : ElemIdx) :
+    List Val → Option (Nat × Config H R)
   | .num ⟨.int .i32, n⟩ :: .num ⟨.int .i32, j⟩ :: .num ⟨.int .i32, i⟩ :: .ref r :: _ =>
     initElemArr s f x y r i j n
   | _ => none
 
-def initDataArr (s : Store H) (f : Frame) (x : TypeIdx) (y : DataIdx) (r : Ref)
-    (i j n : BitVec 32) : Option (Nat × Config H) :=
+def initDataArr (s : Store H R) (f : Frame) (x : TypeIdx) (y : DataIdx) (r : Ref)
+    (i j n : BitVec 32) : Option (Nat × Config H R) :=
   if r = .null then some (4, trapC s f)
   else
     match r with
@@ -278,8 +278,8 @@ def initDataArr (s : Store H) (f : Frame) (x : TypeIdx) (y : DataIdx) (r : Ref)
         | _, _ => none
     | _ => none
 
-def arrayInitData (s : Store H) (f : Frame) (x : TypeIdx) (y : DataIdx) :
-    List Val → Option (Nat × Config H)
+def arrayInitData (s : Store H R) (f : Frame) (x : TypeIdx) (y : DataIdx) :
+    List Val → Option (Nat × Config H R)
   | .num ⟨.int .i32, n⟩ :: .num ⟨.int .i32, j⟩ :: .num ⟨.int .i32, i⟩ :: .ref r :: _ =>
     initDataArr s f x y r i j n
   | _ => none
@@ -289,8 +289,8 @@ end AggAcc
 open AggAcc in
 /-- Head step for the aggregate access and bulk instructions. `vs` is the whole
 bottom-first value prefix; the result consumes its top `k` values. -/
-def aggAccessStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def aggAccessStep? (_o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain (.structGet sx x i) => structGet s f sx x i vs.reverse
   | .plain (.structSet x i) => structSet s f x i vs.reverse

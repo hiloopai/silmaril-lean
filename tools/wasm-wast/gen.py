@@ -17,7 +17,8 @@ generated JSON are data: this script parses them and never executes anything ins
 
 The probe runs silmaril-lean's interpreter natively (`lake env lean` on a generated file) only to
 decide which commands to give to the kernel; nothing it prints is a proof. The proofs are the
-`decide +kernel` evaluations of `scriptK` in the emitted modules (docs/projects/wasm-wast.md).
+`decide +kernel` evaluations of `scriptK` (or, for modules with data segments, of `scriptKM`, which
+instantiates and runs on `KMem` stores) in the emitted modules (docs/projects/wasm-wast.md).
 
 The oracle is test-wise agreement with an independent implementation, not a proof. `oracle`
 records its provenance in oracle.json (wasmtime version, archive and binary SHA-256, the
@@ -48,11 +49,13 @@ ORACLE = ROOT / "examples/wasm-wast/oracle.json"
 # The slice: spec test files, with their Lean module names.
 FILES = [("i32", "I32"), ("i64", "I64"), ("int_exprs", "IntExprs"), ("fac", "Fac"), ("traps", "Traps"), ("address", "Address")]
 FUEL = 100000
-# Modules whose kernel evaluation is out of reach: instantiating a data segment into a memory
-# goes through `ByteArray.copySlice`, whose logical definition the kernel evaluates element by
-# element over the whole 64 KiB page, and exceeds the kernel's recursion limit.
-KERNEL_DATA = ("kernel: instantiating a data segment into a 64 KiB memory exceeds the kernel's recursion "
-               "limit (ByteArray.copySlice); the native interpreter run is recorded but is not a proof")
+# Modules with data segments are checked on KMem stores (`scriptKM`, `ScriptHolds.of_kernelKM`):
+# the kernel evaluates `ByteArray` writes (`ByteArray.copySlice`) element by element over the whole
+# 64 KiB page and exceeds its recursion limit, while `KMem` writes touch only the leaves they need.
+# The claims are the same (`scriptK_of_scriptKM`). Modules without data segments keep `scriptK`.
+# KERNEL_OUT lists modules ("file/index") whose kernel evaluation is still out of reach, with the
+# reason; their commands are undetermined. It is empty.
+KERNEL_OUT = {}
 O = "Silmaril.Wasm.SingleThreaded.neverFail"
 NS = "silmaril.wasm_wast"
 
@@ -347,9 +350,8 @@ def classify():
             if reason is None and (mres is None or mres["status"] != "ok"):
                 reason = f"module: {mres['detail'] if mres else 'not probed'}"
             seg["reason"] = reason
-            seg["kernel_reason"] = None
-            if reason is None and mres["detail"] not in ("", "0"):
-                seg["kernel_reason"] = KERNEL_DATA
+            seg["kernel_reason"] = KERNEL_OUT.get(tag) if reason is None else None
+            seg["kmem"] = reason is None and mres["detail"] not in ("", "0")
             run = runnable(seg) if reason is None else []
             stop = None
             kernel = []
@@ -418,7 +420,10 @@ def emit():
                                              "wasm_sha256": sha256(WORK / "json" / f / s["wasm"]) if s["wasm"] else None,
                                              "status": "ok" if s["reason"] is None and s["kernel_reason"] is None
                                              else "unsupported" if s["reason"] else "undetermined",
-                                             "reason": s["reason"] or s["kernel_reason"]} for s in segs]})
+                                             "reason": s["reason"] or s["kernel_reason"],
+                                             **({"checker": "scriptKM" if s["kmem"] else "scriptK"}
+                                                if s["reason"] is None and s["kernel_reason"] is None else {})}
+                                            for s in segs]})
         if any(seg["kernel"] for seg in segs):
             defs, thms = emit_file(f, mod, segs, rows, sha)
             (LEAN_DIR / mod).mkdir(parents=True, exist_ok=True)
@@ -453,6 +458,7 @@ def emit():
                 c["shape"] = f"silmaril.shapes.wasm.wast.{kind}"
                 c["theorem"] = f"Silmaril.Project.WasmWast.{mod}.l{r['line']}"
                 c["strength"] = "only"
+                c["checker"] = "scriptKM" if segs[r["seg"]]["kmem"] else "scriptK"
             report["commands"].append(c)
     groups = [f"{NS}.{f}" for f, mod in FILES if f"Silmaril.Project.WasmWast.{mod}.Thms" in imports]
     top = ("module\n\n" + "".join(f"public import {i}\n" for i in imports) +
@@ -506,6 +512,12 @@ namespace {ns}
 
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 """]
+    kinds = {s["kmem"] for s in segs if s["reason"] is None and s["kernel"]}
+    checker = ("(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptK` per module)" if kinds == {False}
+               else "(one `decide +kernel` evaluation per module: `ScriptHolds.of_kernelKM` evaluates `scriptKM`,\n"
+               "which instantiates the module, including its data segments, and runs the commands on `KMem`\n"
+               "stores; the claims are about `ByteArray` stores and Core reduction, by `scriptK_of_scriptKM`"
+               + (")" if kinds == {True} else ";\nmodules without data segments use `ScriptHolds.of_kernel` and `scriptK`)"))
     thms = [f"""module
 
 public import {ns}.Defs
@@ -515,7 +527,7 @@ public import Silmaril.Project.Shapes.WasmWast.Thms
 # WAST rows: `test/core/{f}.wast`, answered by kernel evaluation
 
 Generated by `tools/wasm-wast/gen.py`; do not edit. `scriptJ` proves every command of `cmdsJ`
-(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptK` per module); each row
+{checker}; each row
 `{NS}.{f}.l<line>` is one `assert_return` (`silmaril.shapes.wasm.wast.returns_only`) or
 `assert_trap` (`….traps_only`) at line `<line>` of the file, answered from it.
 -/
@@ -541,13 +553,13 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
                     f"def cmds{j} : List Cmd := [\n  " +
                     ",\n  ".join(lean_cmd(r, ok) for r, ok in seg["kernel"]) + "]\n")
         thms.append(f"/-- The decoder reads the file's bytes as `m{j}`. -/\n"
-                    f"theorem decode{j} : Silmaril.Wasm.Binary.Core.decode? bytes{j} = some m{j} := by\n"
-                    f"  have h : (Silmaril.Wasm.Binary.Core.decode? bytes{j}).isSome = true := by decide +kernel\n"
-                    f"  obtain ⟨x, hx⟩ := Option.isSome_iff_exists.mp h\n"
-                    f"  simp [m{j}, hx]\n")
+                    f"theorem decode{j} : Silmaril.Wasm.Binary.Core.decode? bytes{j} = some m{j} :=\n"
+                    f"  (Option.some_get (by decide +kernel :\n"
+                    f"    (Silmaril.Wasm.Binary.Core.decode? bytes{j}).isSome = true)).symm.trans\n"
+                    f"    (congrArg some (Option.get_eq_getD _))\n")
         thms.append(f"/-- Every command of `cmds{j}`, by one kernel evaluation. -/\n"
                     f"theorem script{j} : ScriptHolds {O} m{j} cmds{j} :=\n"
-                    f"  .of_kernel (fuel := {FUEL}) (by decide +kernel)\n")
+                    f"  .{'of_kernelKM' if seg['kmem'] else 'of_kernel'} (fuel := {FUEL}) (by decide +kernel)\n")
         for k, (r, ok) in enumerate(seg["kernel"]):
             if not ok:
                 continue

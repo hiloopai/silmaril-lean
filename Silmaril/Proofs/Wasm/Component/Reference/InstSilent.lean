@@ -96,6 +96,21 @@ inductive SRuns : {α : Type} → P E σ α → Machine.Config E σ → List Hos
   | emit {α : Type} {o : HostObs} {k : Unit → P E σ α} {m : Machine.Config E σ}
       {os : List HostObs} {a : α} {m' : Machine.Config E σ} :
       SRuns (k ()) (observe m o) os a m' → SRuns (.op (S := Eff E σ) (.emit o) k) m (o :: os) a m'
+  | readCore {α : Type} {k : CoreEngine.CoreView E (CanonHost E) → P E σ α}
+      {m : Machine.Config E σ} {os : List HostObs} {a : α} {m' : Machine.Config E σ} :
+      SRuns (k (E.view m.core)) m os a m' → SRuns (.op (S := Eff E σ) .readCore k) m os a m'
+  | memWrite {α : Type} {ma : E.MemAddr} {ptr : Nat} {bytes : ByteArray} {k : Unit → P E σ α}
+      {m : Machine.Config E σ} {os : List HostObs} {a : α} {m' : Machine.Config E σ} :
+      SRuns (k ()) { m with core := (E.memWrite? m.core ma ptr bytes).getD m.core } os a m' →
+      SRuns (.op (S := Eff E σ) (.memWrite ma ptr bytes) k) m os a m'
+  | allocHost {α : Type} {ty : _} {h : CanonHost E} {k : Unit → P E σ α}
+      {m : Machine.Config E σ} {os : List HostObs} {a : α} {m' : Machine.Config E σ} :
+      SRuns (k ()) { m with core := (E.allocHost m.core ty h).1 } os a m' →
+      SRuns (.op (S := Eff E σ) (.allocHost ty h) k) m os a m'
+  | prepare {α : Type} {md : E.Module} {imports : List E.ExternVal} {k : Unit → P E σ α}
+      {m : Machine.Config E σ} {os : List HostObs} {a : α} {m' : Machine.Config E σ} :
+      SRuns (k ()) { m with core := prepareCore m.core md imports } os a m' →
+      SRuns (.op (S := Eff E σ) (.prepare md imports) k) m os a m'
 
 theorem observe_store (m : Machine.Config E σ) (o : HostObs) : (observe m o).store = m.store := by
   cases o <;> rfl
@@ -110,6 +125,10 @@ theorem bind {α β : Type} {p : P E σ α} {f : α → P E σ β} {m m₁ m₂ 
   | get _ ih => exact .get (ih h₂)
   | modify hf _ ih => exact .modify hf (ih h₂)
   | emit _ ih => exact .emit (ih h₂)
+  | readCore _ ih => exact .readCore (ih h₂)
+  | memWrite _ ih => exact .memWrite (ih h₂)
+  | allocHost _ ih => exact .allocHost (ih h₂)
+  | prepare _ ih => exact .prepare (ih h₂)
 
 /-- The labels of a silent run: `tau` and observations. -/
 def Quiet (tr : List (Label E σ)) : Prop := ∀ l ∈ tr, l = .tau ∨ ∃ o, l = .obs o
@@ -169,6 +188,26 @@ theorem detRunL {α : Type} {p : P E σ α} {m m' : Machine.Config E σ} {os : L
     refine ⟨_, hq.cons (.inr ⟨o, rfl⟩), ?_, .cons hl (emit_step th o k f segs rest m) d⟩
     rw [← ho]
     rfl
+  | readCore _ ih =>
+    intro f segs rest
+    obtain ⟨tr, hq, ho, d⟩ := ih hl f segs rest
+    exact ⟨_, hq.cons (.inl rfl), ho,
+      .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.readCore rfl)) d⟩
+  | memWrite _ ih =>
+    intro f segs rest
+    obtain ⟨tr, hq, ho, d⟩ := ih hl f segs rest
+    exact ⟨_, hq.cons (.inl rfl), ho,
+      .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.memWrite rfl)) d⟩
+  | allocHost _ ih =>
+    intro f segs rest
+    obtain ⟨tr, hq, ho, d⟩ := ih hl f segs rest
+    exact ⟨_, hq.cons (.inl rfl), ho,
+      .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.allocHost rfl)) d⟩
+  | prepare _ ih =>
+    intro f segs rest
+    obtain ⟨tr, hq, ho, d⟩ := ih hl f segs rest
+    exact ⟨_, hq.cons (.inl rfl), ho,
+      .cons hl (.of_prog rfl (fun _ _ e => by cases e) (.prepare rfl)) d⟩
 
 end SRuns
 
