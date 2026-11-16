@@ -5,6 +5,7 @@ public import Silmaril.Project.Registry.Language.Defs
 public import Silmaril.Project.Registry.Predicate.Defs
 public import Silmaril.Logic.Consequence.Defs
 public import Silmaril.Logic.Consequence.Interp.Defs
+public import Silmaril.Logic.Consequence.Theory.Defs
 public import Silmaril.Project.ConsequenceSystems.Defs
 
 /-!
@@ -206,6 +207,77 @@ def singletonEnv? (Env : Expr) : MetaM (Option Expr) := do
     fs ← fs.push kind "contexts" (.str (← ppOneLine Ax))
     return #[(name, ← fs.push kind "conclusions" (.str (← ppOneLine C)))]
 
+/-- The readings a system may declare: Lean checks `semantic` (below); `derivability` is a label
+that soundness problems relate to the semantic reading. -/
+def consequenceReadings : List String := ["derivability", "semantic"]
+
+/-- **The room a system is over** (`room`, `room_at`) and its reading (`reading`).
+
+`(room := R)` names a registered `room` record; `(room_at := "a …")` gives its arguments when the
+room is a family (Lean terms, as a string). Lean checks that the system's conclusions are the
+room's sentences and its contexts lists of them, definitionally: `C ≡ R.Sen`, or `R.Sen ≡ ULift C`
+(sentences lifted to the room's universe, `lifted`). With `(reading := semantic)` Lean also checks
+that the system *is* the room's semantic consequence, `roomSeq R` or `roomTheorySeq R T` for some
+theory `T`, pulled back along `ULift.up` when lifted. Lean fills `room_term` (the room, printed)
+and `room_lift`. -/
+def roomFields (kind : String) (fs : Fields) (d : Name) (Ax C : Expr) : TermElabM Fields :=
+    withTransparency .default do
+  let reading? ← match fs.get? "reading" with
+    | none => pure none
+    | some (.str r) =>
+      unless consequenceReadings.contains r do
+        throwError "silmaril {kind}: unknown reading {r.quote}; expected one of {consequenceReadings}"
+      pure (some r)
+    | some _ => throwError "silmaril {kind}: `reading` is a string"
+  let some (.str rname) := fs.get? "room" | do
+    if reading? == some "semantic" then
+      throwError "silmaril {kind}: a semantic reading names its room: `(room := …)`"
+    if (fs.get? "room_at").isSome then throwError "silmaril {kind}: `room_at` needs `room`"
+    return fs
+  let rr ← needRecord kind "room" rname
+  let some rd := rr.str? "decl" | throwError "silmaril {kind}: room {rname} has no `decl`"
+  let R ← match fs.get? "room_at" with
+    | none => mkConstWithFreshMVarLevels rd.toName
+    | some (.str t) =>
+      let stx ← match Parser.runParserCategory (← getEnv) `term s!"{rd} {t}" with
+        | .ok stx => pure stx
+        | .error err => throwError "silmaril {kind}: `room_at`: {err}"
+      elabClosed stx none
+    | some _ => throwError "silmaril {kind}: `room_at` is Lean terms, written as a string"
+  let Rty ← whnf (← inferType R)
+  unless Rty.isAppOf ``Silmaril.Logic.Institution.Room do
+    throwError "silmaril {kind}: room {rname} at these arguments has type{indentExpr Rty}
+      not `Room`; a family of rooms takes its arguments in `room_at`"
+  let sen ← mkAppM ``Silmaril.Logic.Institution.Room.Sen #[R]
+  -- compare as written, then head-normalized (projections of a room's definition)
+  let defEq (a b : Expr) : MetaM Bool := do
+    if ← isDefEq a b then return true
+    isDefEq (← whnf a) (← whnf b)
+  let (ur, us) := (← mkFreshLevelMVar, ← mkFreshLevelMVar)
+  let lift ← if ← defEq C sen then pure false
+    else if ← defEq sen (mkApp (mkConst ``ULift [ur, us]) C) then pure true
+    else throwError "silmaril {kind}: the conclusions{indentExpr C}\nare not the sentences of \
+      room {rname},{indentExpr sen}\nnor are those sentences `ULift` of them"
+  unless ← isDefEq Ax (← mkAppM ``List #[C]) do
+    throwError "silmaril {kind}: a system over room {rname} has lists of its sentences as \
+      contexts, not{indentExpr Ax}"
+  if reading? == some "semantic" then
+    let liftUp (S : Expr) : MetaM Expr := do
+      if !lift then return S
+      let up := mkApp (mkConst ``ULift.up [ur, us]) C
+      mkAppM ``Silmaril.Consequence.System.pullback #[← mkAppM ``List.map #[up], up, S]
+    let seq ← liftUp (← mkAppM ``Silmaril.Consequence.roomSeq #[R])
+    let T ← mkFreshExprMVar (← mkAppM ``Set #[sen])
+    let thy ← liftUp (← mkAppM ``Silmaril.Consequence.roomTheorySeq #[R, T])
+    let sys := mkConst d
+    unless (← isDefEq sys seq) || (← isDefEq sys thy) do
+      throwError "silmaril {kind}: a semantic reading is the room's consequence, `roomSeq R` or \
+        `roomTheorySeq R T`{if lift then " pulled back along `ULift.up`" else ""}; {d} is \
+        neither, for R ={indentExpr R}"
+  let mut fs := fs
+  fs ← fs.push kind "room_term" (.str (← ppOneLine (← instantiateMVars R)))
+  fs.push kind "room_lift" (.bool lift)
+
 /-- `consequence_system N := S`, or a construction (`op := union | inter | diff | erase`). -/
 @[silmaril_kind consequence_system] def consequenceSystemHandler : Handler where
   run? := some fun kind name? fs => do
@@ -321,6 +393,7 @@ def singletonEnv? (Env : Expr) : MetaM (Option Expr) := do
     fs ← fs.push kind "contexts" (.str (← ppOneLine Ax))
     fs ← fs.push kind "conclusions" (.str (← ppOneLine C))
     fs ← systemShapeFields kind fs Ax C
+    fs ← roomFields kind fs d Ax C
     return #[(name, fs)]
 
 /-! ## Evidence matrices -/

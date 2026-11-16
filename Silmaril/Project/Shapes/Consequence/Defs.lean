@@ -4,6 +4,7 @@ public import Silmaril.Project.Defs
 public import Silmaril.Project.Registry.Consequence.Defs
 public import Silmaril.Logic.Consequence.Defs
 public import Silmaril.Logic.Consequence.Gentzen.Defs
+public import Silmaril.Logic.Consequence.Structural.Defs
 public import Silmaril.Logic.Consequence.Interp.Defs
 public import Silmaril.Logic.Consequence.Shape.Defs
 
@@ -29,6 +30,9 @@ UNS of `derives S` both hold, and SAT and CSA both fail — nothing is assumed n
 | `silmaril.shapes.consequence.complete_within_at` | `CompleteWithinAt S T μ b Γ φ`: `μ Γ φ ≤ b → T Γ φ → S Γ φ` | `S` is complete for `T` on the pairs with `μ Γ φ ≤ b` | | | a counterexample within the bound |
 | `silmaril.shapes.consequence.translates_at` | `TranslatesAt S T f g Γ φ`: `S Γ φ → T (f Γ) (g φ)` | `(f, g)` preserves consequence | | | a consequence it does not preserve |
 | `silmaril.shapes.consequence.reflects_at` | `ReflectsAt S T f g Γ φ`: `T (f Γ) (g φ) → S Γ φ` | `(f, g)` reflects consequence (conservativity) | | | a translated consequence whose source is not one |
+
+`silmaril.shapes.consequence.tarski_closed S` (`Structural.Closed tarskiRules S`) certifies that a
+list-premise system satisfies identity, weakening along list inclusion and cut.
 
 `silmaril.shapes.consequence.gentzen_closed rs S` (`Gentzen.Closed rs S`, closed once `rs` and
 `S` are fixed) certifies that a sequent relation `S : Gentzen.Seq C` is closed under the rule
@@ -107,6 +111,14 @@ def CompleteAt {Ax C : Type} (S T : System Ax C) (Γ : Ax) (φ : C) : Prop := T 
   (title := "A system is complete for another within a measure bound")]
 def CompleteWithinAt {Ax C : Type} (S T : System Ax C) (μ : Ax → C → ℕ) (b : ℕ) (Γ : Ax) (φ : C) :
     Prop := μ Γ φ ≤ b → T Γ φ → S Γ φ
+
+/-- **A list-premise system satisfies identity, weakening and cut** (`Structural.Closed
+Structural.tarskiRules`: a premise is a consequence, premises may be added along list inclusion,
+and finite multi-cut). -/
+@[problem "silmaril.shapes.consequence.tarski_closed"
+  (title := "A system satisfies identity, weakening and cut")]
+def TarskiClosed {C : Type} (S : System (List C) C) : Prop :=
+  Silmaril.Consequence.Structural.Closed Silmaril.Consequence.Structural.tarskiRules S
 
 /-- **A sequent relation is closed under a Gentzen rule profile.** -/
 @[problem "silmaril.shapes.consequence.gentzen_closed"

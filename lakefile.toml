@@ -81,7 +81,7 @@ globs = [
   "Silmaril", "Silmaril.Apps.+", "Silmaril.Automata.+", "Silmaril.Proofs.Automata.+",
   "Silmaril.Calculi.*", "Silmaril.Cli.*", "Silmaril.Compile.+",
   "Silmaril.Courses.+", "Silmaril.Crypto.+", "Silmaril.Data.+", "Silmaril.Elf.+", "Silmaril.Encoding.*",
-  "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Sim.+", "Silmaril.Libc.+", "Silmaril.Logic.*", "Silmaril.LogicGraph.Nodes.+", "Silmaril.LogicGraph.Edges.+", "Silmaril.LogicGraph.Audit.+",
+  "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Sim.+", "Silmaril.Libc.+", "Silmaril.Logic.*", "Silmaril.LogicGraph.Nodes.+", "Silmaril.LogicGraph.Edges.+", "Silmaril.LogicGraph.Audit.+", "Silmaril.LogicGraph.Consequence.+",
   "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+",
   "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+",

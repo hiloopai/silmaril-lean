@@ -43,6 +43,10 @@ pub const CONSEQUENCE_SHAPES: &[(&str, &[&str])] = &[
         &["type", "type", "S", "T", "mu", "b", "ctx", "phi"],
     ),
     (
+        "silmaril.shapes.consequence.tarski_closed",
+        &["type", "S"],
+    ),
+    (
         "silmaril.shapes.consequence.gentzen_closed",
         &["type", "rules", "S"],
     ),
@@ -101,7 +105,10 @@ table! {
     /// and the typed shape (`ctx_kind`, `ctx_elem`, `ctx_signed`, the same for conclusions, and
     /// `raw_sequent`; null in a dump written before they existed)
     /// (`decl` as instance arguments print it) and `contexts` and `conclusions` (the types `Ax`
-    /// and `C`, printed).
+    /// and `C`, printed). `room` names the registered room whose sentences the system relates
+    /// (`room_at`: its arguments; `room_term`: the room, printed; `room_lift`: sentences are
+    /// `ULift` of the conclusions), checked by Lean; `reading` is `semantic` (checked to be the
+    /// room's consequence) or `derivability`.
     ConsequenceSystem = "consequence_systems", key("sid"), unique("name") {
         #[serde(skip)] sid: String = "TEXT NOT NULL",
         name: String = "TEXT NOT NULL",
@@ -121,6 +128,11 @@ table! {
         concl_elem: Option<String> = "TEXT",
         concl_signed: Option<bool> = "INTEGER",
         raw_sequent: Option<bool> = "INTEGER",
+        room: Option<String> = "TEXT",
+        room_at: Option<String> = "TEXT",
+        room_term: Option<String> = "TEXT",
+        room_lift: Option<bool> = "INTEGER",
+        reading: Option<String> = "TEXT CHECK(reading IN ('derivability','semantic'))",
         title: Option<String> = "TEXT",
         doc: Option<String> = "TEXT",
         source: Option<String> = "TEXT",

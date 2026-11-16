@@ -440,6 +440,12 @@ fn consequence_refs<'a>(c: &'a ConsequenceSystem, at: &str, refs: &mut Refs<'a>,
             .iter()
             .map(|a| ("args", "consequence_system", a.clone())),
     );
+    // Lean checked that the system is over this room's sentences, and that a semantic
+    // reading is the room's consequence.
+    refs.extend(c.room.iter().map(|r| ("room", "room", r.clone())));
+    if c.room.is_none() && (c.room_at.is_some() || c.reading.as_deref() == Some("semantic")) {
+        o.error(at, "`room_at` and a semantic `reading` need `room`");
+    }
 }
 
 /// The facts of an edge state properties known for its kind (Lean checked the statements).

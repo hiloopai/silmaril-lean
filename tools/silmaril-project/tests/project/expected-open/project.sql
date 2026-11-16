@@ -454,6 +454,11 @@ CREATE TABLE consequence_systems(
   concl_elem TEXT,
   concl_signed INTEGER,
   raw_sequent INTEGER,
+  room TEXT,
+  room_at TEXT,
+  room_term TEXT,
+  room_lift INTEGER,
+  reading TEXT CHECK(reading IN ('derivability','semantic')),
   title TEXT,
   doc TEXT,
   source TEXT,
@@ -794,6 +799,8 @@ INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.co
 INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.supported_c', 1, 'type');
 INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.supported_c', 2, 'S');
 INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.supported_c', 3, 'ff');
+INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.tarski_closed', 0, 'type');
+INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.tarski_closed', 1, 'S');
 INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.translates_at', 0, 'type');
 INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.translates_at', 1, 'type');
 INSERT INTO consequence_shape_roles(shape, pos, role) VALUES('silmaril.shapes.consequence.translates_at', 2, 'type');
