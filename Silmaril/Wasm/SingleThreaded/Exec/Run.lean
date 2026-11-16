@@ -28,16 +28,18 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
-/-- The type of head-step functions the driver is generic over. -/
-abbrev HeadFn (H : Type) := Store H → Frame → List Val → Admin → Option (Nat × Config H)
+/-- The type of head-step functions the driver is generic over, over the memory representation
+`R` (by default the specification's `ByteArray`). -/
+abbrev HeadFn (H : Type) (R : Type := ByteArray) :=
+  Store H R → Frame → List Val → Admin → Option (Nat × Config H R)
 
 /-! ## The run loop -/
 
 /-- Iterate `step? head` at most `n` times: `(c', true)` if the driver stopped at
 `c'`, `(c', false)` if the fuel ran out at `c'`. -/
-def run? (head : HeadFn H) : Nat → Config H → Config H × Bool
+def run? (head : HeadFn H R) : Nat → Config H R → Config H R × Bool
   | 0, c => (c, false)
   | n + 1, c =>
     match step? head c with
@@ -45,20 +47,20 @@ def run? (head : HeadFn H) : Nat → Config H → Config H × Bool
     | some c' => run? head n c'
 
 section basic
-variable {head : HeadFn H}
+variable {head : HeadFn H R}
 
-@[simp] theorem run?_zero (c : Config H) : run? head 0 c = (c, false) := rfl
+@[simp] theorem run?_zero (c : Config H R) : run? head 0 c = (c, false) := rfl
 
-theorem run?_succ_none {n : Nat} {c : Config H} (h : step? head c = none) :
+theorem run?_succ_none {n : Nat} {c : Config H R} (h : step? head c = none) :
     run? head (n + 1) c = (c, true) := by
   simp [run?, h]
 
-theorem run?_succ_some {n : Nat} {c c' : Config H} (h : step? head c = some c') :
+theorem run?_succ_some {n : Nat} {c c' : Config H R} (h : step? head c = some c') :
     run? head (n + 1) c = run? head n c' := by
   simp [run?, h]
 
 /-- More fuel does not change a stopped result. -/
-theorem run?_mono : ∀ {n m : Nat} {c c' : Config H}, run? head n c = (c', true) → n ≤ m →
+theorem run?_mono : ∀ {n m : Nat} {c c' : Config H R}, run? head n c = (c', true) → n ≤ m →
     run? head m c = (c', true)
   | 0, _, _, _, h, _ => by simp at h
   | n + 1, m + 1, c, c', h, hle => by
@@ -70,7 +72,7 @@ theorem run?_mono : ∀ {n m : Nat} {c c' : Config H}, run? head n c = (c', true
   | _ + 1, 0, _, _, _, hle => by omega
 
 /-- **Stopped** results are driver-stuck. -/
-theorem run?_stopped : ∀ (n : Nat) (c : Config H), (run? head n c).2 = true →
+theorem run?_stopped : ∀ (n : Nat) (c : Config H R), (run? head n c).2 = true →
     step? head (run? head n c).1 = none
   | 0, c, h => by simp at h
   | n + 1, c, h => by
@@ -455,7 +457,7 @@ def codeOutcome? : List Admin → Option Result
   | code => (code.mapM Admin.val?).map .values
 
 /-- Classify a final configuration. -/
-def _root_.Silmaril.Wasm.Execution.Core.Config.outcome? (c : Config H) : Option Result := codeOutcome? c.code
+def _root_.Silmaril.Wasm.Execution.Core.Config.outcome? (c : Config H R) : Option Result := codeOutcome? c.code
 
 theorem mapM_val?_eq_some : ∀ {l : List Admin} {vs : List Val},
     l.mapM Admin.val? = some vs → l = vals vs

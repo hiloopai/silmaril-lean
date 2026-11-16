@@ -74,7 +74,7 @@ inductive ExternAddrOk (s : Store H) : ExternAddr → CExternType → Prop where
       (hok : ExternTypeOk {} xt) (hs : ExternSub {} xt' xt) : ExternAddrOk s xa xt
 
 /-- The precise (principal) type of a reference, when it exists. -/
-def Ref.type? (s : Store H) : Ref → Option CRefType
+def Ref.type? {R : Type} (s : Store H R) : Ref → Option CRefType
   | .null => some (.ref true .bot)
   | .i31 _ => some (.ref false (.abs .i31))
   | .struct a => s.structs[a]?.map fun si => .ref false (.defHeap si.type)

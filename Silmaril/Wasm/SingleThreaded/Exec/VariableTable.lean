@@ -19,7 +19,7 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace VarTab
 
@@ -145,8 +145,8 @@ theorem asRef?_sound {v : Val} {r : Ref} (h : asRef? v = some r) : v.toAdmin = .
 
 /-! ## Table handlers -/
 
-def tableGet? (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
-    Option (Nat × Config H) := do
+def tableGet? (s : Store H R) (f : Frame) (x : TableIdx) (vs : List Val) :
+    Option (Nat × Config H R) := do
   let v ← top1? vs
   let p ← asAddr? v
   let t ← s.table? f x
@@ -154,8 +154,8 @@ def tableGet? (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
   | some r => some (1, ⟨s, f, [.ref r]⟩)
   | none => some (1, ⟨s, f, [.trap]⟩)
 
-def tableSet? (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
-    Option (Nat × Config H) := do
+def tableSet? (s : Store H R) (f : Frame) (x : TableIdx) (vs : List Val) :
+    Option (Nat × Config H R) := do
   let q ← top2? vs
   let p ← asAddr? q.1
   let r ← asRef? q.2
@@ -164,12 +164,12 @@ def tableSet? (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
     some (2, ⟨s.setTable t.1 { t.2 with refs := t.2.refs.set p.2.toNat r }, f, []⟩)
   else some (2, ⟨s, f, [.trap]⟩)
 
-def tableSize? (s : Store H) (f : Frame) (x : TableIdx) : Option (Nat × Config H) := do
+def tableSize? (s : Store H R) (f : Frame) (x : TableIdx) : Option (Nat × Config H R) := do
   let t ← s.table? f x
   some (0, ⟨s, f, [aconst t.2.type.address (BitVec.ofNat _ t.2.refs.length)]⟩)
 
-def tableGrow? (o : GrowOracle) (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
-    Option (Nat × Config H) := do
+def tableGrow? (o : GrowOracle) (s : Store H R) (f : Frame) (x : TableIdx) (vs : List Val) :
+    Option (Nat × Config H R) := do
   let q ← top2? vs
   let r ← asRef? q.1
   let p ← asAddr? q.2
@@ -180,8 +180,8 @@ def tableGrow? (o : GrowOracle) (s : Store H) (f : Frame) (x : TableIdx) (vs : L
     | none => some (2, ⟨s, f, [aconst p.1 (BitVec.allOnes _)]⟩)
   else some (2, ⟨s, f, [aconst p.1 (BitVec.allOnes _)]⟩)
 
-def tableFill? (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
-    Option (Nat × Config H) := do
+def tableFill? (s : Store H R) (f : Frame) (x : TableIdx) (vs : List Val) :
+    Option (Nat × Config H R) := do
   let q ← top3? vs
   let p ← asAddr? q.1
   let n ← asAddrOf? p.1 q.2.2
@@ -191,8 +191,8 @@ def tableFill? (s : Store H) (f : Frame) (x : TableIdx) (vs : List Val) :
   else some (3, ⟨s, f, [aconst p.1 p.2, q.2.1.toAdmin, .plain (.tableSet x),
     aconst p.1 (p.2 + 1), q.2.1.toAdmin, aconst p.1 (n - 1), .plain (.tableFill x)]⟩)
 
-def tableCopy? (s : Store H) (f : Frame) (x₁ x₂ : TableIdx) (vs : List Val) :
-    Option (Nat × Config H) := do
+def tableCopy? (s : Store H R) (f : Frame) (x₁ x₂ : TableIdx) (vs : List Val) :
+    Option (Nat × Config H R) := do
   let q ← top3? vs
   let p₁ ← asAddr? q.1
   let p₂ ← asAddr? q.2.1
@@ -212,8 +212,8 @@ def tableCopy? (s : Store H) (f : Frame) (x₁ x₂ : TableIdx) (vs : List Val) 
       .plain (.tableGet x₂), .plain (.tableSet x₁),
       aconst p₁.1 p₁.2, aconst p₂.1 p₂.2, aconst p'.1 (p'.2 - 1), .plain (.tableCopy x₁ x₂)]⟩)
 
-def tableInit? (s : Store H) (f : Frame) (x : TableIdx) (y : ElemIdx) (vs : List Val) :
-    Option (Nat × Config H) := do
+def tableInit? (s : Store H R) (f : Frame) (x : TableIdx) (y : ElemIdx) (vs : List Val) :
+    Option (Nat × Config H R) := do
   let q ← top3? vs
   let p ← asAddr? q.1
   let j ← asI32? q.2.1
@@ -228,7 +228,7 @@ def tableInit? (s : Store H) (f : Frame) (x : TableIdx) (y : ElemIdx) (vs : List
         aconst p.1 (p.2 + 1), constI32 (j + 1), constI32 (n - 1), .plain (.tableInit x y)]⟩)
     | none => none
 
-def elemDrop? (s : Store H) (f : Frame) (y : ElemIdx) : Option (Nat × Config H) := do
+def elemDrop? (s : Store H R) (f : Frame) (y : ElemIdx) : Option (Nat × Config H R) := do
   let el ← s.elem? f y
   some (0, ⟨s.setElem el.1 [], f, []⟩)
 
@@ -375,8 +375,8 @@ open VarTab
 /-! ## The step functions -/
 
 /-- Head step of the variable family. -/
-def variableStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def variableStep? (_o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain (.localGet x) =>
     match f.local? x with
@@ -398,8 +398,8 @@ def variableStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e
   | _ => none
 
 /-- Head step of the table family. -/
-def tableStep? (o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def tableStep? (o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain (.tableGet x) => tableGet? s f x vs
   | .plain (.tableSet x) => tableSet? s f x vs

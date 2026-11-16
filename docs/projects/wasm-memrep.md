@@ -51,17 +51,80 @@ The check stores at 64 scattered addresses of a 1 MiB memory, then loads one bac
   show that a memory-family step on `Store H R` then `toBytes` is the step on
   `s.toBytes`.
 
+## The interpreter over a representation (step 3)
+
+* **Generic interpreter.** Every instruction family of the computable interpreter
+  (`SingleThreaded/Exec`: `parametricStep?`, `numericStep?`, `vectorStep?`, `variableStep?`,
+  `tableStep?`, `memoryStep?`, `referenceStep?`, `aggNewStep?`, `aggAccessStep?`,
+  `controlStep?`, `adminStep?` and their helpers), the driver (`Drv.layer`, `step?`, `run?`,
+  `HeadFn H R`), `interpHead`, `stepI` and `runI` take `Store H R` / `Config H R`. So do the
+  store helpers they use (`Store.global?`, `table?`, `elem?`, `tag?`, `func?`, `funcAt?`,
+  `setGlobal`, `setTable`, `setElem`, `setStructField`, `setArrayField`, `addStruct`,
+  `addArray`, `addExn`, `Ref.type?`, `refOk?`) and the thread level (`Core.invoke`,
+  `Thread.config`, `Thread.code`, `hostArity?`, `decompose?`, `resume`, `resumeResult`,
+  `statusC`, `internalC`, `runC`). Apart from definitions, only the driver lemmas `step?_nil`, `step?_cons` and the
+  `run?` lemmas `run?_zero`, `run?_succ_none`, `run?_succ_some`, `run?_mono` and
+  `run?_stopped` changed: they are now stated over any `R` with the same proofs. Every other
+  theorem keeps its statement and proof at the default `ByteArray`. The relational
+  side (`Step`, `Head`, `HeadSound`, `HeadExact`, `IsCtxtHead`, `Internal`, `status`) stays
+  at `ByteArray`.
+* **Simulation** (`Execution/MemRep/Sim/Thms.lean`, proofs in
+  `Proofs/Wasm/Execution/MemRepStep.lean`). `Store.toBytes` changes only `mems`, so each
+  non-memory family commutes with it at *any* `R`, with no law. Each lemma pushes
+  `Option.map` through binds, `if`s and `match`es; store reads and updates of other fields
+  commute by `rfl`. The lemmas are `parametricStep?_toBytes`, …, `adminStep?_toBytes` and
+  `refOk?_toBytes`. At a lawful `R`:
+  * `interpHead_toBytes`: the head step commutes with `toBytes`;
+  * `step?_toBytes`: any driver whose head step commutes;
+  * `stepI_toBytes : (stepI o c).map Config.toBytes = stepI o c.toBytes`;
+  * `runI_toBytes : Prod.map Config.toBytes id (runI o n c) = runI o n c.toBytes`, by
+    induction on fuel;
+  * thread level: `statusC_toBytes`, `internalC_toBytes`, `runC_toBytes`, `resume_toBytes` and
+    `decompose?_toBytes`. These are the functions `core3Exec` uses for its status, internal
+    step and resumption.
+  Combined with `stepI_sound`/`runI_steps` at `ByteArray`, every step or run on `KMem` is,
+  read through `toBytes`, a Core reduction.
+* **Host calls.** The interpreter never applies a host relation. `stepI` is the host-free step
+  (`noHost`), and a call to a host function is not a head step. `statusC` reports it as
+  `callout h args` and the embedder answers with `resume` (as `core3`'s `status`/`resume` do).
+  Callouts and resumption are the same on `s` and `s.toBytes` (`statusC_toBytes`,
+  `resume_toBytes`), so this layer needs no representation-level host interface. Host
+  *functions* acting on memory (the component engine's `memRead?`/`memWrite?` used by the
+  canonical ABI) are engine fields. They are still at `ByteArray`; see below.
+
+### Kernel measurement (whole interpreter)
+
+The program does 64 scattered `i32.store`s into a memory and then one `i32.load` (194
+interpreter steps). The kernel runs it with `runI neverFail 300`, checked by `decide +kernel`.
+The ByteArray runs used the same program truncated to the given fuel. Each row is one run on
+a 2-vCPU sandbox. Wall time and peak RSS are for the whole `lean` process, including about
+2.7 s and 1.3 GB of imports.
+
+| representation | memory | steps | result | wall | peak RSS |
+|---|---|---|---|---|---|
+| `KMem` | 1 MiB | full run (194) | passes | 3.1 s | 1.35 GB |
+| `KMem` | 64 KiB | full run (194) | passes | 2.9 s | 1.32 GB |
+| `ByteArray` | 256 B | fuel 20 | passes | 99 s | 8.9 GB |
+| `ByteArray` | 256 B | fuel 80 | passes | 377 s | 26.5 GB |
+| `ByteArray` | 4 KiB / 16 KiB | full run | `decide` fails (kernel gives up) | 3–5 s | 1.4–1.7 GB |
+
+The 1 MiB `KMem` run is `MemRepSimExamples.scatterRun` in `Execution/MemRep/Sim/Examples.lean`.
+
 ## Not yet
 
-1. Make `stepI` (`interpHead`, `HeadFn`, `step?`, `run?`) generic in `R`. The other eight
-   families (`parametric`, `numeric`, `vector`, `variable`, `table`, `reference`, the two
-   aggregate families, `control`/`admin`) only read and update non-memory store fields, but
-   their signatures and the `Store` helpers they use (`Store.global?`, `Store.setGlobal`,
-   `Store.table?`, `Store.addStruct`, …) are stated at `Store H`. Each needs the same
-   generalization, plus a commuting lemma with `Store.toBytes` (a field-wise rewrite, since
-   `toBytes` only touches `mems`). Host calls (`HostSemantics`) are relations on `Store H`
-   and need a representation-level host interface or a `toBytes` pre-/post-composition.
-2. With that, `stepI_toBytes : (stepI o c).map Config.toBytes = stepI o c.toBytes` follows
-   from `memoryStep?_toBytes` and the per-family lemmas; `runI` then commutes by induction.
-3. Make the component engine (`core3Exec`) and REF generic in `R`, then transfer REF runs
-   and acceptance along `Store.toBytes`.
+1. **A `KMem` core engine.** `core3`'s step side (`status`, `Internal`, `resume`, `invoke`)
+   now runs on `Store H KMem` (`statusC (stepI o)`, `internalC (stepI o)`, `resume`), with the
+   simulation lemmas above. A `CoreEngine` needs the remaining fields over `R` too:
+   * instantiation (`prepareE?`: `instantiateOnce?`/`instantiateDirect?`, `allocModule?`, data
+     segment initialisation into memory);
+   * `allocHost` and `externTypeE?`/`funcTypeE?` (store reads only);
+   * the canonical-ABI memory accessors `SingleThreaded.memSize?`/`memRead?`/`memWrite?`
+     (through `MemRep.readBytes`/`writeBytes`).
+   Each needs a `toBytes` lemma. Instantiation is the largest; the data-segment writes go
+   through `MemRep.writeBytes`.
+2. **Carrying REF runs across engines.** REF (`Component.Machine`, `acceptRun`, `Accepted`) is
+   parametric in its `CoreEngine`. Transferring a run on a `KMem` engine to `core3 neverFail`
+   needs an engine-simulation notion (a store map commuting with every engine field) and a
+   proof that the REF machine, oracle and `Steps` respect it. None exists yet. Without it,
+   `Ref.Examples.acceptHiBytes` cannot be kernel-checked on `KMem`. Today it is checked only by
+   compiled evaluation (`#guard runHi`).

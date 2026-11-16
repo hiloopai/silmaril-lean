@@ -215,7 +215,7 @@ structure Instantiate (P : Profile) (host : HostSemantics H) (s : Store H) (m : 
       (match m.start with | some x => [.plain (.call x)] | none => [])⟩
 
 /-- `$invoke(s, funcaddr, val*)`. -/
-def invoke (s : Store H) (a : Nat) (vs : List Val) : Config H :=
+def invoke {R : Type} (s : Store H R) (a : Nat) (vs : List Val) : Config H R :=
   ⟨s, {}, vals vs ++ [.ref (.func a), .callRefType ((s.funcs[a]?.map FuncInst.type).getD default)]⟩
 
 /-- The premises of `$invoke`: the function exists and the arguments are typed. -/

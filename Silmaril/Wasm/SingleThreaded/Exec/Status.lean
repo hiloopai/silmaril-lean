@@ -25,7 +25,7 @@ namespace Silmaril.Wasm.SingleThreaded
 
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation Silmaril.Wasm.Numerics
 
-variable {H : Type}
+variable {H R : Type}
 
 /-! ## Boolean tests -/
 
@@ -68,7 +68,7 @@ theorem exists_vals_iff (l : List Admin) : (∃ vs, l = vals vs) ↔ (splitVals 
 /-! ## Computable status -/
 
 /-- The computable status of a thread, relative to a Core step function. -/
-def statusC (stepC : Config H → Option (Config H)) (s : Store H) (t : Thread) : Status H :=
+def statusC (stepC : Config H R → Option (Config H R)) (s : Store H R) (t : Thread) : Status H :=
   let c := t.config s
   if (splitVals c.code).2.isEmpty then .returned (.values (splitVals c.code).1)
   else if isTrap? c.code then .returned .trap
@@ -119,8 +119,8 @@ theorem statusC_eq {stepC : Config H → Option (Config H)} {s : Store H} {t : T
 /-! ## Computable internal step -/
 
 /-- A computable internal step: the successor configuration as an active thread. -/
-def internalC (stepC : Config H → Option (Config H)) (p : Store H × Thread) :
-    Option (Store H × Thread) :=
+def internalC (stepC : Config H R → Option (Config H R)) (p : Store H R × Thread) :
+    Option (Store H R × Thread) :=
   (stepC (p.2.config p.1)).map fun c' => (c'.store, .active c'.frame c'.code)
 
 theorem internalC_sound {stepC : Config H → Option (Config H)} {s : Store H} {t : Thread}
@@ -136,8 +136,8 @@ theorem internalC_sound {stepC : Config H → Option (Config H)} {s : Store H} {
 
 /-- Run internal steps while the thread is `running`, for at most `fuel` steps.
 Returns the final store, thread and status (`.running` when fuel ran out). -/
-def runC (stepC : Config H → Option (Config H)) : Nat → Store H → Thread →
-    Store H × Thread × Status H
+def runC (stepC : Config H R → Option (Config H R)) : Nat → Store H R → Thread →
+    Store H R × Thread × Status H
   | 0, s, t => (s, t, .running)
   | n + 1, s, t =>
     match statusC stepC s t with

@@ -38,13 +38,14 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
+open Silmaril.Wasm.Execution (MemRep)
 
 variable {H : Type}
 
 /-! ## The head step and the interpreter step -/
 
 /-- The full computable head step. -/
-def interpHead (o : GrowOracle) : HeadFn H := fun s f vs e =>
+def interpHead {R : Type} [MemRep R] (o : GrowOracle) : HeadFn H R := fun s f vs e =>
   match famOf e with
   | .parametric => parametricStep? o s f vs e
   | .numeric => numericStep? o s f vs e
@@ -57,10 +58,12 @@ def interpHead (o : GrowOracle) : HeadFn H := fun s f vs e =>
   | .control => controlStep? refOk? o s f vs e <|> adminStep? o s f vs e
 
 /-- The interpreter step. -/
-def stepI (o : GrowOracle) : Config H → Option (Config H) := step? (interpHead o)
+def stepI {R : Type} [MemRep R] (o : GrowOracle) : Config H R → Option (Config H R) :=
+  step? (interpHead o)
 
 /-- The interpreter run loop. -/
-def runI (o : GrowOracle) : Nat → Config H → Config H × Bool := run? (interpHead o)
+def runI {R : Type} [MemRep R] (o : GrowOracle) : Nat → Config H R → Config H R × Bool :=
+  run? (interpHead o)
 
 /-- The side conditions of the head step: cast targets are valid closed types
 (a separate execution-head development (not included in this package)'s `HeadInv`). -/

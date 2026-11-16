@@ -18,12 +18,12 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 /-! ## Cast decision -/
 
 /-- Decide `RefOk s r rt` (for valid `rt`, in a well-typed store). -/
-def refOk? (s : Store H) (r : Ref) (rt : CRefType) : Bool :=
+def refOk? (s : Store H R) (r : Ref) (rt : CRefType) : Bool :=
   (match Ref.type? s r with
    | none => false
    | some rt₀ => Sub.check {} rt₀ rt) &&
@@ -110,7 +110,7 @@ theorem refOk?_iff {s : Store H} (hs : StoreOk s) :
 /-! ## The reference family -/
 
 /-- The reference family on the reversed (top-first) value stack. -/
-def refStepRev? (s : Store H) (f : Frame) : List Val → Admin → Option (Nat × Config H)
+def refStepRev? (s : Store H R) (f : Frame) : List Val → Admin → Option (Nat × Config H R)
   | _, .plain (.refNull _) => some (0, ⟨s, f, [.ref .null]⟩)
   | _, .plain (.refFunc x) =>
     match f.module.funcs[x.toNat]? with
@@ -138,8 +138,8 @@ def refStepRev? (s : Store H) (f : Frame) : List Val → Admin → Option (Nat �
   | _, _ => none
 
 /-- The reference-family head step. -/
-def referenceStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def referenceStep? (_o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   refStepRev? s f vs.reverse e
 
 theorem Ref.drop_of_reverse {vs top rest : List Val} (h : vs.reverse = top ++ rest) :

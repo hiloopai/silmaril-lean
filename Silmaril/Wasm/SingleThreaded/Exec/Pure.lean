@@ -16,7 +16,7 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace Pure
 
@@ -164,8 +164,8 @@ open _root_.Silmaril.Wasm.SingleThreaded.Exec.Pure
 /-! ## Parametric instructions -/
 
 /-- Head step of the parametric family. -/
-def parametricStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def parametricStep? (_o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain .nop => some (0, ⟨s, f, []⟩)
   | .plain .unreachable => some (0, ⟨s, f, [.trap]⟩)
@@ -242,8 +242,8 @@ theorem parametricStep?_complete {o : GrowOracle} {s : Store H} {f : Frame} {vs 
 /-! ## Numeric instructions -/
 
 /-- Head step of the numeric family (canonical NaNs). -/
-def numericStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def numericStep? (_o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain (.intUnOp t op) =>
     (top1 vs).bind fun v => (asInt t v).map fun x =>

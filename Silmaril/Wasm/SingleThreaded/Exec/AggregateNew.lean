@@ -18,7 +18,7 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace AggNew
 
@@ -140,8 +140,8 @@ theorem valI32_eq_some {l : List Val} {v : Val} {n : BitVec 32} :
   · rintro rfl; rfl
 
 /-- `struct.new x`. -/
-def structNew? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
-    Option (Nat × Config H) := do
+def structNew? (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) :
+    Option (Nat × Config H R) := do
   let (d, fs) ← structType? f x
   if fs.length ≤ vs.length ∧
       (fs.toList.zip (top vs fs.length)).all (fun p => packable (fieldStorage p.1) p.2) then
@@ -150,21 +150,21 @@ def structNew? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
   else none
 
 /-- `struct.new_default x`. -/
-def structNewDefault? (s : Store H) (f : Frame) (x : TypeIdx) : Option (Nat × Config H) := do
+def structNewDefault? (s : Store H R) (f : Frame) (x : TypeIdx) : Option (Nat × Config H R) := do
   let (_, fs) ← structType? f x
   let dv ← fs.toList.mapM (fun ft => defaultVal? (fieldStorage ft).unpack)
   some (0, ⟨s, f, vals dv ++ [.plain (.structNew x)]⟩)
 
 /-- `array.new x`. -/
-def arrayNew? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
-    Option (Nat × Config H) := do
+def arrayNew? (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) :
+    Option (Nat × Config H R) := do
   let (v, n) ← valI32 (top vs 2)
   some (2, ⟨s, f, vals (List.replicate n.toNat v) ++
     [.plain (.arrayNewFixed x ⟨n.toNat, n.isLt⟩)]⟩)
 
 /-- `array.new_default x`. -/
-def arrayNewDefault? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
-    Option (Nat × Config H) := do
+def arrayNewDefault? (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) :
+    Option (Nat × Config H R) := do
   let n ← i32s1 (top vs 1)
   let (_, ft) ← arrayType? f x
   let v ← defaultVal? (fieldStorage ft).unpack
@@ -172,8 +172,8 @@ def arrayNewDefault? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
     [.plain (.arrayNewFixed x ⟨n.toNat, n.isLt⟩)]⟩)
 
 /-- `array.new_fixed x n`. -/
-def arrayNewFixed? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) (n : Fin (2 ^ 32)) :
-    Option (Nat × Config H) := do
+def arrayNewFixed? (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) (n : Fin (2 ^ 32)) :
+    Option (Nat × Config H R) := do
   let (d, ft) ← arrayType? f x
   if n.val ≤ vs.length ∧ (top vs n.val).all (packable (fieldStorage ft)) then
     some (n.val, ⟨s.addArray ⟨d, (top vs n.val).map (packField (fieldStorage ft))⟩, f,
@@ -181,8 +181,8 @@ def arrayNewFixed? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) (n : 
   else none
 
 /-- `array.new_elem x y`. -/
-def arrayNewElem? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) (y : ElemIdx) :
-    Option (Nat × Config H) := do
+def arrayNewElem? (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) (y : ElemIdx) :
+    Option (Nat × Config H R) := do
   let (i, n) ← i32s2 (top vs 2)
   let (_, ei) ← s.elem? f y
   if ei.refs.length < i.toNat + n.toNat then
@@ -192,8 +192,8 @@ def arrayNewElem? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) (y : E
       [.plain (.arrayNewFixed x ⟨n.toNat, n.isLt⟩)]⟩)
 
 /-- `array.new_data x y`. -/
-def arrayNewData? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) (y : DataIdx) :
-    Option (Nat × Config H) := do
+def arrayNewData? (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) (y : DataIdx) :
+    Option (Nat × Config H R) := do
   let (i, n) ← i32s2 (top vs 2)
   let (_, ft) ← arrayType? f x
   let (_, di) ← s.data? f y
@@ -217,8 +217,8 @@ def AggNewInstr : Admin → Prop
   | _ => False
 
 /-- Head step of the aggregate allocation rules. -/
-def aggNewStep? (_o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def aggNewStep? (_o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain (.structNew x) => structNew? s f vs x
   | .plain (.structNewDefault x) => structNewDefault? s f x

@@ -18,7 +18,7 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace Ctl
 
@@ -42,7 +42,7 @@ theorem drop_succ_of_getLast? {α : Type _} {vs : List α} {v : α} (h : vs.getL
     List.drop_append_of_le_length (by omega)]
 
 /-- `CALL_REF` at the top of the stack. -/
-def callRef? (s : Store H) (f : Frame) (vs : List Val) : Option (Nat × Config H) :=
+def callRef? (s : Store H R) (f : Frame) (vs : List Val) : Option (Nat × Config H R) :=
   match vs.getLast? with
   | some (.ref .null) => some (1, ⟨s, f, [.trap]⟩)
   | some (.ref (.func a)) =>
@@ -60,8 +60,8 @@ def callRef? (s : Store H) (f : Frame) (vs : List Val) : Option (Nat × Config H
   | _ => none
 
 /-- A block-like instruction consuming `t₁.length` values. -/
-def block? (s : Store H) (f : Frame) (vs : List Val) (bt : BlockType)
-    (mk : List CValType → List CValType → List Val → Admin) : Option (Nat × Config H) :=
+def block? (s : Store H R) (f : Frame) (vs : List Val) (bt : BlockType)
+    (mk : List CValType → List CValType → List Val → Admin) : Option (Nat × Config H R) :=
   match f.module.blockType? bt with
   | some (t₁, t₂) =>
     if t₁.length ≤ vs.length then
@@ -70,8 +70,8 @@ def block? (s : Store H) (f : Frame) (vs : List Val) (bt : BlockType)
   | none => none
 
 /-- Plain control instructions. -/
-def plainStep? (cast : Store H → Ref → CRefType → Bool) (s : Store H) (f : Frame)
-    (vs : List Val) : Instr → Option (Nat × Config H)
+def plainStep? (cast : Store H R → Ref → CRefType → Bool) (s : Store H R) (f : Frame)
+    (vs : List Val) : Instr → Option (Nat × Config H R)
   | .block bt body => block? s f vs bt fun _ t₂ a =>
       .label t₂.length [] (vals a ++ expression body)
   | .loop bt body => block? s f vs bt fun t₁ _ a =>
@@ -160,8 +160,8 @@ def plainStep? (cast : Store H → Ref → CRefType → Bool) (s : Store H) (f :
 end Ctl
 
 /-- One control head step at the instruction `e` under the value prefix `vs`. -/
-def controlStep? (cast : Store H → Ref → CRefType → Bool) (_o : GrowOracle) (s : Store H)
-    (f : Frame) (vs : List Val) (e : Admin) : Option (Nat × Config H) :=
+def controlStep? (cast : Store H R → Ref → CRefType → Bool) (_o : GrowOracle) (s : Store H R)
+    (f : Frame) (vs : List Val) (e : Admin) : Option (Nat × Config H R) :=
   if e.isCallRef then Ctl.callRef? s f vs
   else
     match e with
