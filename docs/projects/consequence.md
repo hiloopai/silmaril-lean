@@ -63,7 +63,9 @@ These are separate definitions because they come apart:
 A `Translation S T` consists of maps `ax`, `c` with `S ≤ T.pullback ax c`. It is
 conservative when `T.pullback ax c ≤ S` as well.
 
-* `Sys`, the bundled systems, form a Mathlib `Category` with translations as morphisms.
+* `Sys`, the bundled systems, form a Mathlib `Category` whose morphisms are all **sound**
+  translations. Conservativity is a separate predicate on a translation (`Conservative`,
+  closed under identity and composition); the category does not require it.
 * `WSys` and `WTranslation` (which also map witnesses) form a category too, and
   `WSys.erase : WSys ⥤ Sys` is a functor.
 * `Sys.forget : Sys ⥤ Type u × Type v` is faithful.
@@ -144,6 +146,10 @@ Each lift is the least system with its property (`…_le_iff`):
 | explorer pages, [consequence-systems.md](consequence-systems.md) | presentation and master roadmap | explorer/examples |
 
 ## Next steps for the core
+
+* Reindexing as a functor between fibres, using the order category of `System Ax C`. Mathlib
+  gives `Ax → C → Prop` its pointwise `Pi` category first, so this needs an explicit
+  order-category wrapper and was left out instead of being stated for the wrong category.
 
 * A signature-indexed version of `Satisfaction` (a functor `Sign ⥤` satisfactions) whose
   restriction to rooms is `institutionSys`.
