@@ -78,7 +78,7 @@ end
 variable {E : CoreEngine}
 
 /-- The empty frame (the index spaces of a component before its first definition). -/
-def Frame.empty : Frame E where
+def Frame.empty {E : CoreEngine.Static} : Frame E where
   coreFuncs := []
   coreTables := []
   coreMems := []

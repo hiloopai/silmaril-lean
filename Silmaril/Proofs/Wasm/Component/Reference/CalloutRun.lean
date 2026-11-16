@@ -225,16 +225,16 @@ theorem runs_lowerOnStart {th : Option ThreadId} {m : Machine.Config (E3 P) σ} 
     ∃ pos tr, RunsQ d th (lowerOnStart Limits.spec Quirks.none c) m tr (ws.map toRefVal)
       { m with store := LowerSt.setCallerPosSt c pos (LowerSt.startSt S m.store) } := by
   have hl : ∃ cur, liftFlatTypes (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) (toClosedList p.params) ⟨ys, 0⟩ =
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) (toClosedList p.params) ⟨ys, 0⟩ =
         pure (ws.map toRefVal, cur) := by
     have h := liftFlatTypes_liftArgs (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) hff hys
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) hff hys
     rwa [hws] at h
   obtain ⟨cur, hcur⟩ := hl
   have hmp : RunsQ d th (maybeOnProgress S) m [.tau] () m :=
     RunsQ.getObj_bind _ _ hS (by rw [hidx]; exact RunsQ.pure _ _)
   have hlf : RunsQ d th (liftFlatTypes Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) (toClosedList p.params) ⟨ys, 0⟩)
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) (toClosedList p.params) ⟨ys, 0⟩)
       { m with store := LowerSt.startSt S m.store } [] (ws.map toRefVal, cur)
       { m with store := LowerSt.startSt S m.store } := by
     rw [hcur]
@@ -247,7 +247,7 @@ theorem runs_lowerOnStart {th : Option ThreadId} {m : Machine.Config (E3 P) σ} 
   show RunsQ _ _ (liftFlatValues Limits.spec Quirks.none cx 16 ⟨ys, 0⟩
     ((witFt p).params.map (·.2)) >>= _) _ _ _ _
   rw [liftFlatValues_witFt hmax]
-  apply RunsQ.bind (RunsQ.bind (RunsQ.get (RunsQ.pure _ _)) hlf)
+  apply RunsQ.bind (RunsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) hlf)
   exact RunsQ.modify_bind _ rfl rfl (RunsQ.pure _ _)
 
 /-- `on_resolve` of a `canon_lower` caller record lowers the results and resolves the
@@ -274,7 +274,7 @@ theorem runs_lowerOnResolve {th : Option ThreadId} {m : Machine.Config (E3 P) σ
   show RunsQ _ _ (lowerFlatValues Limits.spec Quirks.none cx 1 (us.map toRefVal)
     (witFt p).result.toList (some ⟨ys, pos⟩) >>= _) _ _ _ _
   rw [e]
-  apply RunsQ.bind (RunsQ.bind (RunsQ.get (RunsQ.pure _ _)) (RunsQ.pure _ _))
+  apply RunsQ.bind (RunsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) (RunsQ.pure _ _))
   apply RunsQ.bind (RunsQ.pure _ _)
   exact RunsQ.modify rfl (RunsQ.pure _ _)
 
@@ -541,9 +541,9 @@ theorem traps_callout_lift {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
   let cx : LiftLowerContext (E3 P) := { opts := {}, inst := inst, scope := .subtask S }
   let m₂ : Machine.Config (E3 P) σ := { m with store := allocSC m.store inst ys p }
   have hT : IsTrap (liftFlatTypes (σ := σ) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m₂.store) cx) (toClosedList p.params) ⟨ys, 0⟩) := by
+      (ptrTypeIn (CoreEngine.view _ m₂.core) cx) (toClosedList p.params) ⟨ys, 0⟩) := by
     have h := liftFlatTypes_liftArgs (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m₂.store) cx) hpf hys
+      (ptrTypeIn (CoreEngine.view _ m₂.core) cx) hpf hys
     rwa [hws] at h
   have hmp : RunsQ (DA P g) th (maybeOnProgress S) m₂ [.tau] () m₂ :=
     RunsQ.getObj_bind _ _ (allocSC_subtasks _ _ _ _) (RunsQ.pure _ _)
@@ -556,7 +556,7 @@ theorem traps_callout_lift {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     show TrapsQ _ _ (liftFlatValues Limits.spec Quirks.none cx 16 ⟨ys, 0⟩
       ((witFt p).params.map (·.2)) >>= _) _ _ _
     rw [liftFlatValues_witFt hmaxp]
-    exact TrapsQ.left (TrapsQ.bind (RunsQ.get (RunsQ.pure _ _)) (TrapsQ.trap _ hT))
+    exact TrapsQ.left (TrapsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) (TrapsQ.trap _ hT))
   have hfn : TrapsQ (DA P g) th ((answerHostS P g).impl.funcs fn ⟨m.store.callers.length⟩) m₂
       (.tau :: (.tau :: hstart.choose)) { m₂ with store := LowerSt.startSt S m₂.store } :=
     TrapsQ.left (TrapsQ.callIn (TrapsQ.bind (RunsQ.getObj _ _ (allocSC_callers _ _ _ _))

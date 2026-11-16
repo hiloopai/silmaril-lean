@@ -25,8 +25,9 @@ Per definition (`instantiateDef`):
 * `component c`: push the closure `⟨c, f :: outer⟩`.
 * `import n d`: push `args[n]` into `sort(d)`; a missing argument traps
   `hostTrap "missing import"`.
-* `core instance (instantiate m args)`: `coreImportsFor?`, `E.prepare?` on the core store
-  (failure traps `coreTrap`), then the start function as a synchronous task of `inst`
+* `core instance (instantiate m args)`: `coreImportsWith?` on the extern types of the core
+  store (`Op.readCore`), `E.prepare?` on the core store (`Op.prepare`; failure traps
+  `coreTrap`), then the start function as a synchronous task of `inst`
   (`runStart`), then push the export map.
 * `core instance (exports ...)` and `instance (exports ...)`: push the synthetic bag.
 * `instance (instantiate c args)`: evaluate the arguments, `recurse` (a fresh instance), push
@@ -36,8 +37,9 @@ Per definition (`instantiateDef`):
   (`allocResourceType`), push it. Other `type`s: resolve (`resolveDefValType?`,
   `resolveFuncType?`) and push (static).
 * `canon lift`: `Store.lift`, allocate `CFuncInst.lifted core ft opts inst`, push its `FuncId`.
-* `canon lower`: `Store.lower`, `E.allocHost` of `CanonHost.lowered callee ft opts inst`, push
-  the address. `canon <builtin>`: `E.allocHost` of `CanonHost.builtin b inst`, push it.
+* `canon lower`: `Store.lower`, `E.allocHost` (`Op.allocHost`) of
+  `CanonHost.lowered callee ft opts inst`, push the address. `canon <builtin>`: `E.allocHost` of
+  `CanonHost.builtin b inst`, push it.
 * `export n si`: record `(n, E[si])` and push it again.
 
 **Start functions** (Concurrency.md "Interaction with the start function"): a core start function
@@ -128,7 +130,7 @@ open Engine Canon _root_.Silmaril.Wasm.Component.Runtime
 variable {E : CoreEngine} {σ : Type}
 
 /-- An export map (and an argument map) of a component instance. -/
-abbrev Exports (E : CoreEngine) := List (String × ItemVal E)
+abbrev Exports (E : CoreEngine.Static) := List (String × ItemVal E)
 
 /-- Nested instantiation: instantiate a closure with arguments in a fresh component instance
 and return its exports (see the module docstring for the ties). -/
@@ -136,24 +138,17 @@ abbrev Recurse (E : CoreEngine) (σ : Type) := Closure E → Exports E → P E �
 
 /-- The state threaded through the definitions of one component: its index spaces and the
 exports recorded so far (in definition order). -/
-structure Scope (E : CoreEngine) where
+structure Scope (E : CoreEngine.Static) where
   frame : Frame E := Frame.empty
   exports : Exports E := []
 
-/-! ## Named store updates -/
+/-! ## Core-store queries -/
 
-/-- Replace the core store (after core instantiation). -/
-def setCoreSt (c : E.Store (CanonHost E)) (s : CStore E) : CStore E := { s with core := c }
-
-/-- Allocate a canon host function of flat type `ty` with host code `h` in the core store. -/
-def allocHostSt (ty : V1.FuncType) (h : CanonHost E) (s : CStore E) : CStore E :=
-  { s with core := (E.allocHost s.core ty h).1 }
-
-/-- The address types of memories and tables in the core store (`.i32` for unknown
-addresses, deviation D-g). -/
-def addrTypesOf (s : CStore E) : AddrTypes E where
-  mem m := (E.memAddrType? s.core m).getD .i32
-  table t := (E.tableAddrType? s.core t).getD .i32
+/-- The address types of memories and tables for the core-store queries `v` (`.i32` for
+unknown addresses, deviation D-g). -/
+def addrTypesOf (v : CoreEngine.CoreView E (CanonHost E)) : AddrTypes E where
+  mem m := (v.memAddrType? m).getD .i32
+  table t := (v.tableAddrType? t).getD .i32
 
 /-! ## Helpers -/
 
@@ -210,10 +205,10 @@ def allocFunc (fi : CFuncInst E) : P E σ FuncId := allocObj ArenaField.funcs fi
 `Store.lower`, L545-548, for `lowered`; the canon built-ins likewise). Its flat core type is
 `CanonHost.coreType` at the current memory/table address types. -/
 def allocCoreHost (h : CanonHost E) : P E σ E.FuncAddr := do
-  let s ← getStore
-  let ty := h.coreType (addrTypesOf s)
-  modifyStore (allocHostSt ty h)
-  return (E.allocHost s.core ty h).2
+  let v ← readCore
+  let ty := h.coreType (addrTypesOf v)
+  allocHostOp ty h
+  return v.allocAddr ty h
 
 /-- The implicit component-level type `func()` of start functions. -/
 def startType : WIT.FuncType Empty RtId := ⟨[], none, false⟩
@@ -246,16 +241,16 @@ store (failure traps), the start function (as a synchronous task), and the expor
 def instantiateCore (inst : InstId) (f : Frame E) (m : Nat) (args : List (String × Nat)) :
     P E σ (List (String × E.ExternVal)) := do
   let md ← need "core module index" (f.coreModule? m)
-  let s ← getStore
-  let imports ← need "core instantiation arguments" (coreImportsFor? s.core md args f)
-  match E.prepare? s.core md imports with
+  let v ← readCore
+  let imports ← need "core instantiation arguments" (coreImportsWith? v.externType? md args f)
+  match v.prepare? md imports with
   | none => trap .coreTrap
-  | some (core', ci, start) =>
-    modifyStore (setCoreSt core')
+  | some (exports, start) =>
+    prepareOp md imports
     match start with
     | none => pure ()
     | some sf => runStart inst sf
-    pure (E.exports ci)
+    pure exports
 
 /-- A syntactic type definition as a run-time type (resources excluded), in frame `f` with
 enclosing frames `outer`. Instance and component types are resolved with their binders

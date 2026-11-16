@@ -40,7 +40,7 @@ structure CallAtF (prof : ProfileKind) (P : Profile)
     (K : List FlatValue → Canon.P (E3 P V IR) Unit (Ret (E3 P V IR))) (segs : List (Seg (E3 P V IR) Unit))
     (rest : List (Activation (E3 P V IR) Unit)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a xs) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   ret : ∀ (y : CoreSt (E3 P V IR)) (ys : List Flat) (ws : List Silmaril.Wasm.Component.Val),
     ys.map (·.type) = ValTy.flatList x.ty.results → liftArgs x.ty.results ys = some ws →

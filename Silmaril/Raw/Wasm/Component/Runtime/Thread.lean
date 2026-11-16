@@ -151,18 +151,18 @@ theorem CStore.thread?_stopWaitingSt (t u : ThreadId) (s : CStore E) :
 /-- `start_waiting` touches only the thread arena and `waiting`. -/
 theorem CStore.startWaitingSt_frame (t : ThreadId) (rc : ReadyCond) (s : CStore E) :
     let s' := s.startWaitingSt t rc
-    s'.core = s.core ∧ s'.insts = s.insts ∧ s'.tasks = s.tasks ∧ s'.subtasks = s.subtasks ∧
+    s'.insts = s.insts ∧ s'.tasks = s.tasks ∧ s'.subtasks = s.subtasks ∧
       s'.ends = s.ends ∧ s'.wsets = s.wsets ∧ s'.nestingDepth = s.nestingDepth ∧
       s'.lockdown = s.lockdown :=
-  ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- `stop_waiting` touches only the thread arena and `waiting`. -/
 theorem CStore.stopWaitingSt_frame (t : ThreadId) (s : CStore E) :
     let s' := s.stopWaitingSt t
-    s'.core = s.core ∧ s'.insts = s.insts ∧ s'.tasks = s.tasks ∧ s'.subtasks = s.subtasks ∧
+    s'.insts = s.insts ∧ s'.tasks = s.tasks ∧ s'.subtasks = s.subtasks ∧
       s'.ends = s.ends ∧ s'.wsets = s.wsets ∧ s'.nestingDepth = s.nestingDepth ∧
       s'.lockdown = s.lockdown :=
-  ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 end Updates
 

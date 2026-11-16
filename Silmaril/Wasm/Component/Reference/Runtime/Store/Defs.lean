@@ -6,15 +6,20 @@ public import Silmaril.Wasm.Component.Reference.Runtime.Arena.Defs
 /-!
 # The component store `CStore`
 
-`Runtime.CStore E` is all component-level runtime state as plain data: the shared core-engine
-store (whose host code is `CanonHost E`), one append-only `Arena` per REF runtime object kind
+`Runtime.CStore E` is all component-level runtime state as plain data: one append-only `Arena`
+per REF runtime object kind
 (instances, resource types, function values, tasks, threads, subtasks, resource handles,
 stream/future ends, waitable sets, error contexts, callers), and the REF `Store` fields
 (`design/mvp/canonical-abi/definitions.py` at component-model `a25fc0b`, `Store`, L508-515,
 <https://github.com/WebAssembly/component-model/blob/a25fc0b372dd21f07f0242c46e98bd0f1ea0c0e1/design/mvp/canonical-abi/definitions.py>):
 `waiting` (REF `store.waiting`, in append order), `nesting_depth` and `lockdown`. The
-component store lives OUTSIDE the core store (issue #477). Continuations of blocked threads are
-NOT part of it (they live in the machine).
+component store lives OUTSIDE the core store (issue #477). Neither the shared core-engine store
+nor the continuations of blocked threads are part of it: both live in the machine
+configuration (`Machine.Config.core`, `Machine.Config.conts`). Specification programs reach the
+core store only through the core operations of `Canon.Op` (`readCore`, `memWrite`, `allocHost`,
+`prepare`). So `CStore E` is indexed by the static part of the engine
+(`CoreEngine.Static`) only: engines with the same static part, such as `E` and
+`E.withStore I`, have the same component store type.
 
 Arena access is uniform: an `ArenaField E Id α` names one arena of the store together with its
 id type, and `ArenaField.alloc`/`get?`/`set`/`modify` act on the store through it. The
@@ -34,10 +39,9 @@ namespace Silmaril.Wasm.Component.Runtime
 
 open Engine
 
-/-- The component store: the core store plus all component-level runtime objects. -/
-structure CStore (E : CoreEngine) where
-  /-- The shared core-engine store; its host code is canon host sites. -/
-  core : E.Store (CanonHost E)
+/-- The component store: all component-level runtime objects (the core store is held by the
+machine, `Machine.Config.core`). -/
+structure CStore (E : CoreEngine.Static) where
   /-- Component instances (REF `ComponentInstance`). -/
   insts : Arena InstState := []
   /-- Resource types (REF `ResourceType`). -/
@@ -69,12 +73,12 @@ structure CStore (E : CoreEngine) where
 
 namespace CStore
 
-variable {E : CoreEngine}
+variable {E : CoreEngine.Static}
 
-/-- REF `Store.__init__`: the empty core store and no objects. -/
-def empty : CStore E := { core := E.empty (CanonHost E) }
+/-- REF `Store.__init__`: no objects (the empty core store is `Machine.Config.core`'s
+default). -/
+def empty : CStore E := {}
 
-@[simp] theorem empty_core : (empty : CStore E).core = E.empty (CanonHost E) := rfl
 @[simp] theorem empty_insts : (empty : CStore E).insts = [] := rfl
 @[simp] theorem empty_resourceTypes : (empty : CStore E).resourceTypes = [] := rfl
 @[simp] theorem empty_funcs : (empty : CStore E).funcs = [] := rfl
@@ -94,7 +98,7 @@ end CStore
 
 /-- One arena of the component store with its id type: a lens `get`/`put` onto the arena and
 the id wrapping `mkId`/`idx` (a bijection with `Nat`). -/
-structure ArenaField (E : CoreEngine) (Id : Type) (α : Type) where
+structure ArenaField (E : CoreEngine.Static) (Id : Type) (α : Type) where
   /-- Read the arena. -/
   get : CStore E → Arena α
   /-- Replace the arena. -/
@@ -110,7 +114,7 @@ structure ArenaField (E : CoreEngine) (Id : Type) (α : Type) where
 
 namespace ArenaField
 
-variable {E : CoreEngine} {Id α : Type} (F : ArenaField E Id α)
+variable {E : CoreEngine.Static} {Id α : Type} (F : ArenaField E Id α)
 
 attribute [simp] get_put put_get idx_mkId mkId_idx
 
@@ -282,7 +286,7 @@ end ArenaField
 
 namespace CStore
 
-variable {E : CoreEngine}
+variable {E : CoreEngine.Static}
 
 /-- The component instance `i`. -/
 def inst? (s : CStore E) (i : InstId) : Option InstState := ArenaField.insts.get? s i
@@ -321,7 +325,7 @@ open Engine
 
 namespace ArenaField
 
-variable {E : CoreEngine} {Id α : Type} (F : ArenaField E Id α)
+variable {E : CoreEngine.Static} {Id α : Type} (F : ArenaField E Id α)
 
 theorem idx_injective {i j : Id} (h : F.idx i = F.idx j) : i = j := by
   rw [← F.mkId_idx i, ← F.mkId_idx j, h]

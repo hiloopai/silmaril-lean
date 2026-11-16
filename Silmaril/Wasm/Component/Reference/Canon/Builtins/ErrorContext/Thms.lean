@@ -61,9 +61,8 @@ theorem errorContextNew (lim : Limits) (q : Quirks) (opts : CanonOpts E) (ptr un
   · exact Canon.P.Inv.bind (Canon.P.Inv.allocObj _ _ (halloc _)) fun x =>
       Canon.P.Inv.bind (Canon.P.Inv.handlesAdd _ _ (hadd _ _)) fun _ => Canon.P.Inv.pure _
 
-/-- `error-context.debug-message` preserves `I` when memory writes do. -/
-theorem errorContextDebugMessage (lim : Limits) (q : Quirks) (opts : CanonOpts E) (i ptr : Nat)
-    (hw : ∀ m p bs s, I s → I (writeMemSt m p bs s)) :
+/-- `error-context.debug-message` preserves every invariant `I`: it writes only memory. -/
+theorem errorContextDebugMessage (lim : Limits) (q : Quirks) (opts : CanonOpts E) (i ptr : Nat) :
     P.Inv I (Builtins.errorContextDebugMessage lim q opts i ptr : P E σ _) := by
   unfold Builtins.errorContextDebugMessage
   refine Canon.P.Inv.bind Canon.P.Inv.currentInst fun inst => ?_
@@ -75,7 +74,7 @@ theorem errorContextDebugMessage (lim : Limits) (q : Quirks) (opts : CanonOpts E
   refine Canon.P.Inv.bind (Canon.P.Inv.ptrSize _) fun sz => ?_
   refine Canon.P.Inv.bind (Canon.P.Inv.checkAligned _ _) fun _ => ?_
   refine Canon.P.Inv.bind (Canon.P.Inv.checkInBounds _ _ _) fun _ => ?_
-  exact Canon.P.Inv.bind (Canon.P.Inv.storeString _ _ _ _ _ hw) fun _ => Canon.P.Inv.pure _
+  exact Canon.P.Inv.bind (Canon.P.Inv.storeString _ _ _ _ _) fun _ => Canon.P.Inv.pure _
 
 /-- `error-context.drop` preserves `I` when removing a handle from an instance does. -/
 theorem errorContextDrop (i : Nat)

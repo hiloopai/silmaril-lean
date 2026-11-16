@@ -44,7 +44,7 @@ noncomputable def liftedFuncs (P : Profile) (addr : Nat → Nat) (c : Simple) :
 store `cs`, one component instance and the component functions `fs`. -/
 noncomputable def afterInstH {σ : Type} (P : Profile) (cs : (core3P P).Store (CanonHost (core3P P)))
     (fs : List (CFuncInst (core3P P))) (h : σ) : Machine.Config (core3P P) σ :=
-  Config.init { core := cs, insts := [{}], funcs := fs } h
+  { Config.init { insts := [{}], funcs := fs } h with core := cs }
 
 /-- The configuration after instantiation, with the host state `()`. -/
 noncomputable abbrev afterInst (P : Profile) (cs : (core3P P).Store (CanonHost (core3P P)))

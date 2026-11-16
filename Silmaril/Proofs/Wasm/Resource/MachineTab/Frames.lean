@@ -23,10 +23,6 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Engine Silmaril.Wasm.Compon
 
 variable {E : CoreEngine}
 
-theorem writeMemSt_insts (m : E.MemAddr) (p : ℕ) (bs : ByteArray) (s : CStore E) :
-    (writeMemSt m p bs s).insts = s.insts := by
-  unfold writeMemSt; split <;> rfl
-
 theorem modifyWaitableCommon_insts (w : Waitable) (f : WaitableCommon → WaitableCommon)
     (s : CStore E) : (CStore.modifyWaitableCommon w f s).insts = s.insts := by
   cases w <;> rfl

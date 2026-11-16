@@ -320,22 +320,24 @@ the core store. -/
 theorem instantiateCore_run (f : Frame E) (cfg : Machine.Config E σ) {m : E.Module}
     {cs : E.Store (CanonHost E)} {ci : E.Inst} (hm : f.coreModules = [m])
     (himp : E.importTypes m = [])
-    (hp : E.prepare? cfg.store.core m [] = some (cs, ci, none)) :
+    (hp : E.prepare? cfg.core m [] = some (cs, ci, none)) :
     TRuns (instantiateCore inst f 0 [] : P E σ _) cfg (E.exports ci)
-      { cfg with store := setCoreSt cs cfg.store } := by
+      { cfg with core := cs } := by
   have hmod : f.coreModule? 0 = some m := by rw [Frame.coreModule?, hm]; rfl
-  have himps : coreImportsFor? cfg.store.core m [] f = some [] := by
-    unfold coreImportsFor?
-    rw [himp]
-    rfl
   unfold instantiateCore
   rw [hmod]
-  refine (TRuns.pure _ cfg).bind ((TRuns.getStore cfg).bind ?_)
-  rw [himps]
+  refine (TRuns.pure _ cfg).bind ((TRuns.readCore cfg).bind ?_)
+  have himps : ∀ ety, coreImportsWith? ety m [] f = some [] := fun ety => by
+    unfold coreImportsWith?; rw [himp]; rfl
+  simp only [himps]
   refine (TRuns.pure _ cfg).bind ?_
+  rw [show (CoreEngine.view _ cfg.core).prepare? m [] = some (CoreEngine.exports _ ci, none) by
+    simp only [CoreEngine.view, hp, Option.map_some]]
+  have hpc : prepareCore cfg.core m [] = cs := by unfold prepareCore; rw [hp]
   dsimp only
-  rw [hp]
-  exact (TRuns.modifyStore (f := setCoreSt cs) (fun _ => rfl) cfg).bind (TRuns.pure _ _)
+  rw [← hpc]
+  exact (TRuns.prepareOp m [] cfg).bind (f := fun _ => Pure.pure (CoreEngine.exports _ ci))
+    (TRuns.pure _ _)
 
 theorem instDef_coreModule (sc : Scope E) (m : E.Module) :
     instantiateDef R inst outer args sc (.coreModule m) =
@@ -352,17 +354,17 @@ noncomputable def coreFrame (m : E.Module) (es₀ : List (String × E.ExternVal)
 theorem instDef_coreInstance (sc : Scope E) (cfg : Machine.Config E σ) {m : E.Module}
     {cs : E.Store (CanonHost E)} {ci : E.Inst} (hm : sc.frame.coreModules = [m])
     (himp : E.importTypes m = [])
-    (hp : E.prepare? cfg.store.core m [] = some (cs, ci, none)) :
+    (hp : E.prepare? cfg.core m [] = some (cs, ci, none)) :
     TRuns (instantiateDef R inst outer args sc (.coreInstance (.instantiate 0 [])))
       cfg { sc with frame := { sc.frame with
         coreInstances := sc.frame.coreInstances ++ [E.exports ci] } }
-      { cfg with store := setCoreSt cs cfg.store } :=
+      { cfg with core := cs } :=
   (instantiateCore_run (inst := inst) sc.frame cfg hm himp hp).bind (TRuns.pure _ _)
 
 /-- The store after the core instance and the lifted functions `fs`. -/
-noncomputable def liftStore (cs : E.Store (CanonHost E)) (s : CStore E)
+noncomputable def liftStore (s : CStore E)
     (fs : List (CFuncInst E)) : CStore E :=
-  { setCoreSt cs s with funcs := s.funcs ++ fs }
+  { s with funcs := s.funcs ++ fs }
 
 omit [∀ a b, Decidable (E.ExternSub a b)] in
 /-- `c.toRef` mapped along `ofCore`. -/
@@ -379,13 +381,13 @@ store and no component function: the core instance, then the lifted functions of
 theorem toRefDefs_run {ofCore : Silmaril.Wasm.Module → E.Module} {c : Simple}
     {cs : E.Store (CanonHost E)} {ci : E.Inst} {addr : Nat → E.FuncAddr}
     (hF : InstFacts E ofCore c cs ci addr) (cfg : Machine.Config E σ)
-    (hcore : cfg.store.core = E.empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = E.empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R inst outer args) {}
           (Silmaril.Wasm.Component.Syntax.Component.map ofCore c.toRef)) cfg sc'
-        { cfg with store := liftStore cs cfg.store (liftedList addr inst c.exports) } ∧
+        { cfg with core := cs, store := liftStore cfg.store (liftedList addr inst c.exports) } ∧
       funcExports sc'.exports = c.exports.mapIdx (fun k x => (x.name, ⟨0 + k⟩)) ∧
       NoImport (Silmaril.Wasm.Component.Syntax.Component.map ofCore c.toRef) := by
-  have hp : E.prepare? cfg.store.core (ofCore c.mod.mod) [] = some (cs, ci, none) := by
+  have hp : E.prepare? cfg.core (ofCore c.mod.mod) [] = some (cs, ci, none) := by
     rw [hcore]
     exact hF.prepare
   have h₁ := instDef_coreModule (R := R) (inst := inst) (outer := outer) (args := args) {}
@@ -395,14 +397,14 @@ theorem toRefDefs_run {ofCore : Silmaril.Wasm.Module → E.Module} {c : Simple}
       exports := [] } cfg rfl hF.imports hp
   have hinv : ExpInv (E.exports ci) 0 (coreFrame (ofCore c.mod.mod) (E.exports ci)) :=
     ⟨rfl, rfl, rfl⟩
-  have hs : (setCoreSt cs cfg.store).funcs.length = 0 := by
+  have hs : cfg.store.funcs.length = 0 := by
     show cfg.store.funcs.length = 0
     rw [hfuncs]
     rfl
   obtain ⟨sc', hr, hx, hn⟩ := exportsDefs_run (R := R) (inst := inst) (outer := outer)
     (args := args) ofCore c.mod addr c.exports 0
     { frame := coreFrame (ofCore c.mod.mod) (E.exports ci), exports := [] }
-    { cfg with store := setCoreSt cs cfg.store } hinv hs hF.lookup
+    { cfg with core := cs } hinv hs hF.lookup
   have hn' : NoImport (Silmaril.Wasm.Component.Syntax.Component.map ofCore c.toRef) := by
     rw [toRef_map]
     refine NoImport.append (fun d hd => ?_) hn
@@ -432,20 +434,20 @@ theorem checkImport_run {r : Except String Unit} (hr : r = .ok ())
 
 /-- The store after root instantiation: instance `0`, the core store and the lifted
 functions. -/
-noncomputable def instStore (cs : E.Store (CanonHost E)) (s : CStore E)
+noncomputable def instStore (s : CStore E)
     (addr : Nat → E.FuncAddr) (c : Simple) : CStore E :=
-  liftStore cs (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr ⟨0⟩ c.exports)
+  liftStore (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr ⟨0⟩ c.exports)
 
 /-- **Root instantiation of `c.toRef.map ofCore` runs silently**. -/
 theorem rootCall_run {ofCore : Silmaril.Wasm.Module → E.Module} {c : Simple}
     {cs : E.Store (CanonHost E)} {ci : E.Inst} {addr : Nat → E.FuncAddr}
     (hF : InstFacts E ofCore c cs ci addr) (cfg : Machine.Config E σ)
-    (hcore : cfg.store.core = E.empty _) (hfuncs : cfg.store.funcs = [])
+    (hcore : cfg.core = E.empty _) (hfuncs : cfg.store.funcs = [])
     (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = exportMap c ∧
       TRuns (instantiateRootCall (Silmaril.Wasm.Component.Syntax.Component.map ofCore c.toRef) [] :
           P E σ _) cfg (⟨0⟩, es)
-        { cfg with store := instStore cs cfg.store addr c } := by
+        { cfg with core := cs, store := instStore cfg.store addr c } := by
   obtain ⟨sc', hr, hx, hn⟩ := toRefDefs_run (R := callRecurse) (inst := ⟨0⟩) (outer := [])
     (args := []) hF { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store }
     hcore hfuncs
@@ -474,7 +476,7 @@ theorem rootCall_run {ofCore : Silmaril.Wasm.Module → E.Module} {c : Simple}
 /-- The configuration after instantiation. -/
 noncomputable def afterInstE (cs : E.Store (CanonHost E)) (fs : List (CFuncInst E)) :
     Machine.Config E Unit :=
-  Config.init { core := cs, insts := [{}], funcs := fs } ()
+  { Config.init { insts := [{}], funcs := fs } () with core := cs }
 
 /-- The lifted functions of the exports of `c`, at the core addresses `addr x.core`. -/
 noncomputable def liftedFuncsE (addr : Nat → E.FuncAddr) (c : Simple) : List (CFuncInst E) :=

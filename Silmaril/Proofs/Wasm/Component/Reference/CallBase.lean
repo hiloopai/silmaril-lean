@@ -135,6 +135,22 @@ inductive RunsQ : {α : Type} → Option ThreadId → P E σ α → Config E σ 
       {m' : Config E σ} :
       RunsQ th (dispatch c) m tr₁ r m₁ → RunsQ th (k r) m₁ tr₂ a m' →
       RunsQ th (.op (S := Eff E σ) (.call c) k) m (.tau :: (tr₁ ++ .tau :: tr₂)) a m'
+  | readCore {α : Type} {th : Option ThreadId} {k : CoreEngine.CoreView E (CanonHost E) → P E σ α}
+      {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      RunsQ th (k (E.view m.core)) m tr a m' →
+      RunsQ th (.op (S := Eff E σ) .readCore k) m (.tau :: tr) a m'
+  | memWrite {α : Type} {th : Option ThreadId} {ma : E.MemAddr} {ptr : Nat} {bytes : ByteArray}
+      {k : Unit → P E σ α} {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      RunsQ th (k ()) { m with core := (E.memWrite? m.core ma ptr bytes).getD m.core } tr a m' →
+      RunsQ th (.op (S := Eff E σ) (.memWrite ma ptr bytes) k) m (.tau :: tr) a m'
+  | allocHost {α : Type} {th : Option ThreadId} {ty : _} {h : CanonHost E}
+      {k : Unit → P E σ α} {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      RunsQ th (k ()) { m with core := (E.allocHost m.core ty h).1 } tr a m' →
+      RunsQ th (.op (S := Eff E σ) (.allocHost ty h) k) m (.tau :: tr) a m'
+  | prepare {α : Type} {th : Option ThreadId} {md : E.Module} {imports : List E.ExternVal}
+      {k : Unit → P E σ α} {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      RunsQ th (k ()) { m with core := prepareCore m.core md imports } tr a m' →
+      RunsQ th (.op (S := Eff E σ) (.prepare md imports) k) m (.tau :: tr) a m'
 
 /-- `observe` keeps the store. -/
 @[simp] theorem observe_store (m : Config E σ) (o : HostObs) : (observe m o).store = m.store := by
@@ -165,6 +181,10 @@ theorem bind {α β : Type} {th : Option ThreadId} {p : P E σ α} {f : α → P
   | call hc _ _ ih =>
     rw [List.cons_append, List.append_assoc, List.cons_append]
     exact RunsQ.call hc (ih h₂)
+  | readCore _ ih => exact .readCore (ih h₂)
+  | memWrite _ ih => exact .memWrite (ih h₂)
+  | allocHost _ ih => exact .allocHost (ih h₂)
+  | prepare _ ih => exact .prepare (ih h₂)
 
 /-- The lockdown flag is kept. -/
 theorem lock {α : Type} {th : Option ThreadId} {p : P E σ α} {m m' : Config E σ}
@@ -180,6 +200,10 @@ theorem lock {α : Type} {th : Option ThreadId} {p : P E σ α} {m m' : Config E
   | emit _ ih => exact ih.trans (congrArg CStore.lockdown (observe_store _ _))
   | newThread _ hs _ ih => exact ih.trans hs
   | call _ _ ih₁ ih₂ => exact ih₂.trans ih₁
+  | readCore _ ih => exact ih
+  | memWrite _ ih => exact ih
+  | allocHost _ ih => exact ih
+  | prepare _ ih => exact ih
 
 /-- One live step of the program in focus. -/
 theorem live_op {m : Config E σ} {th : Option ThreadId} {p : P E σ (Ret E)}
@@ -248,6 +272,22 @@ theorem lrun {α : Type} {th : Option ThreadId} {p : P E σ α} {m m' : Config E
         .tau { m₁ with ctl := ⟨th, .prog (k r >>= f), segs⟩ :: rest } :=
       .of_prog rfl (fun _ _ e => by cases e) (.popProg (k := fun r => k r >>= f) (r := r) rfl)
     exact .cons (live_op hl) s₁ (d₁.trans (.cons (live_op hl₁) s₂ (ih₂ hl₁ f segs rest)))
+  | readCore _ ih =>
+    intro hl f segs rest
+    exact .cons (live_op hl) (.of_prog rfl (fun _ _ e => by cases e) (.readCore rfl))
+      (ih hl f segs rest)
+  | memWrite _ ih =>
+    intro hl f segs rest
+    exact .cons (live_op hl) (.of_prog rfl (fun _ _ e => by cases e) (.memWrite rfl))
+      (ih hl f segs rest)
+  | allocHost _ ih =>
+    intro hl f segs rest
+    exact .cons (live_op hl) (.of_prog rfl (fun _ _ e => by cases e) (.allocHost rfl))
+      (ih hl f segs rest)
+  | prepare _ ih =>
+    intro hl f segs rest
+    exact .cons (live_op hl) (.of_prog rfl (fun _ _ e => by cases e) (.prepare rfl))
+      (ih hl f segs rest)
 
 /-- `lrun` at a configuration whose focus is `p >>= f`. -/
 theorem lrun_at {α : Type} {th : Option ThreadId} {p : P E σ α} {M m' : Config E σ}

@@ -80,21 +80,21 @@ theorem waitableSetWait (lim : Limits) (mem : E.MemAddr) (si ptr : Nat)
     (hd : ∀ ws s, I s → I (s.wsetDecWaitingSt ws))
     (hw : ∀ ws t s, I s → I (s.startWaitingSt t (.wsetHasEvent ws)))
     (he : ∀ ws l s, I s → I (s.wsetSetElemsSt ws l))
-    (ht : ∀ w s, I s → I (s.takeWaitableEventSt w)) (hm : MemWritePres I) :
+    (ht : ∀ w s, I s → I (s.takeWaitableEventSt w)) :
     P.Inv I (Builtins.waitableSetWait lim mem si ptr : P E σ _) :=
   P.Inv.bind enterWaitableBuiltin fun inst =>
     P.Inv.bind (P.Inv.handlesGet inst si) fun e => P.Inv.bind (expectWset e) fun ws =>
       P.Inv.bind (wsetWait_inv (hi ws) (hd ws) (hw ws) (he ws) ht) fun _ =>
-        P.Inv.bind (P.Inv.unpackEvent _ _ _ hm) fun _ => P.Inv.pure _
+        P.Inv.bind (P.Inv.unpackEvent _ _ _) fun _ => P.Inv.pure _
 
 theorem waitableSetPoll (lim : Limits) (mem : E.MemAddr) (si ptr : Nat)
     (he : ∀ ws l s, I s → I (s.wsetSetElemsSt ws l))
-    (ht : ∀ w s, I s → I (s.takeWaitableEventSt w)) (hm : MemWritePres I) :
+    (ht : ∀ w s, I s → I (s.takeWaitableEventSt w)) :
     P.Inv I (Builtins.waitableSetPoll lim mem si ptr : P E σ _) :=
   P.Inv.bind enterWaitableBuiltin fun inst =>
     P.Inv.bind (P.Inv.handlesGet inst si) fun e => P.Inv.bind (expectWset e) fun ws =>
       P.Inv.bind (wsetPoll_inv (he ws) ht) fun _ =>
-        P.Inv.bind (P.Inv.unpackEvent _ _ _ hm) fun _ => P.Inv.pure _
+        P.Inv.bind (P.Inv.unpackEvent _ _ _) fun _ => P.Inv.pure _
 
 theorem waitableSetDrop (lim : Limits) (i : Nat)
     (hR : ∀ inst s, I s → I (ArenaField.insts.modify s inst (InstState.removeHandle i))) :

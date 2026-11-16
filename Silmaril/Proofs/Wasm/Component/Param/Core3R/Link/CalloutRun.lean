@@ -60,16 +60,16 @@ theorem runs_lowerOnStart {th : Option ThreadId} {m : Machine.Config (E3 P V IR)
     ∃ pos tr, RunsQ d th (lowerOnStart Limits.spec Quirks.none c) m tr (ws.map toRefVal)
       { m with store := LowerSt.setCallerPosSt c pos (LowerSt.startSt S m.store) } := by
   have hl : ∃ cur, liftFlatTypes (σ := σ) (E := E3 P V IR) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) (toClosedList p.params) ⟨ys, 0⟩ =
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) (toClosedList p.params) ⟨ys, 0⟩ =
         pure (ws.map toRefVal, cur) := by
     have h := liftFlatTypes_liftArgs (σ := σ) (E := E3 P V IR) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) hff hys
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) hff hys
     rwa [hws] at h
   obtain ⟨cur, hcur⟩ := hl
   have hmp : RunsQ d th (maybeOnProgress S) m [.tau] () m :=
     RunsQ.getObj_bind _ _ hS (by rw [hidx]; exact RunsQ.pure _ _)
   have hlf : RunsQ d th (liftFlatTypes Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) (toClosedList p.params) ⟨ys, 0⟩)
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) (toClosedList p.params) ⟨ys, 0⟩)
       { m with store := LowerSt.startSt S m.store } [] (ws.map toRefVal, cur)
       { m with store := LowerSt.startSt S m.store } := by
     rw [hcur]
@@ -82,7 +82,7 @@ theorem runs_lowerOnStart {th : Option ThreadId} {m : Machine.Config (E3 P V IR)
   show RunsQ _ _ (liftFlatValues Limits.spec Quirks.none cx 16 ⟨ys, 0⟩
     ((witFt p).params.map (·.2)) >>= _) _ _ _ _
   rw [liftFlatValues_witFt hmax]
-  apply RunsQ.bind (RunsQ.bind (RunsQ.get (RunsQ.pure _ _)) hlf)
+  apply RunsQ.bind (RunsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) hlf)
   exact RunsQ.modify_bind _ rfl rfl (RunsQ.pure _ _)
 
 /-- `on_resolve` of a `canon_lower` caller record lowers the results and resolves the
@@ -109,7 +109,7 @@ theorem runs_lowerOnResolve {th : Option ThreadId} {m : Machine.Config (E3 P V I
   show RunsQ _ _ (lowerFlatValues Limits.spec Quirks.none cx 1 (us.map toRefVal)
     (witFt p).result.toList (some ⟨ys, pos⟩) >>= _) _ _ _ _
   rw [e]
-  apply RunsQ.bind (RunsQ.bind (RunsQ.get (RunsQ.pure _ _)) (RunsQ.pure _ _))
+  apply RunsQ.bind (RunsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) (RunsQ.pure _ _))
   apply RunsQ.bind (RunsQ.pure _ _)
   exact RunsQ.modify rfl (RunsQ.pure _ _)
 

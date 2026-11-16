@@ -286,7 +286,7 @@ theorem step_forward (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod
   · have CR := callRunT (prof := prof) C R hff hmax hres hmaxr hffr hget
     obtain ⟨m', hcall, hcore'⟩ := call_forward_trap C R CR htrap
     have hwf : I.WellFormed s' := htrap.wellFormed hI (hc.core _ hx) R.wf
-    have hs₁ : Store.mapH (fun _ => (0 : Nat)) m'.store.core = s' := by
+    have hs₁ : Store.mapH (fun _ => (0 : Nat)) m'.core = s' := by
       rw [hcore']
       exact mapH_mapH_of_noHostFns _ _ (noHostFns_of_wf hI.2.1 hwf)
     have hst : SessStep prof (refHost P)
@@ -295,7 +295,7 @@ theorem step_forward (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod
         (resumeCfg (readyCfg cs ι (liftedFuncs P (fun k => I.addrs.getD k 0) c) G) m') :=
       .trap hcall
     rw [resumeCfg_ready] at hst
-    exact ⟨m'.store.core, ι, G, hst, resume_ready C R (hs₁ ▸ htrap), hs₁⟩
+    exact ⟨m'.core, ι, G, hst, resume_ready C R (hs₁ ▸ htrap), hs₁⟩
 
 /-- **The converse of prefix closure** for a store-deterministic session triple: if every finite
 prefix of the typed calls `a` with the outcomes `out` is a session behaviour, there is a coherent

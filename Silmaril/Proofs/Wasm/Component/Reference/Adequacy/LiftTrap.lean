@@ -379,17 +379,17 @@ theorem lrun_lift_trapS {α : Type} {th : Option ThreadId} (prof : ProfileKind) 
     rw [resultTypes_liftedFt x hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
       liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
   have hT := liftFlatTypes_liftArgsS (σ := Unit) (E := E3 P) Limits.spec Quirks.none cx
-    (ptrTypeIn M.store cx) hff hys
+    (ptrTypeIn (CoreEngine.view _ M.core) cx) hff hys
   rw [hnone] at hT
   obtain ⟨r, k₀, hr, hk⟩ := hT
-  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .get fun s =>
+  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .readCore fun s =>
       (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toClosedList x.ty.results)
         ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest := by
     rw [hc, e]
     rfl
   have s₁ : Step prof (refHost P).hr (D P) M .tau { M with ctl := ⟨th, .prog
-      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn M.store cx) (toClosedList x.ty.results)
-        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.get hc'
+      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ M.core) cx) (toClosedList x.ty.results)
+        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.readCore hc'
   rw [hk] at s₁
   refine ⟨_, r, hr, .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) s₁) (.refl _), ⟨List.cons_ne_nil _ _, hl⟩,

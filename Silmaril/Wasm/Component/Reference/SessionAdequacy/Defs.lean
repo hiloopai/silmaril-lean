@@ -63,7 +63,7 @@ variable {E : CoreEngine} [∀ a b, Decidable (E.ExternSub a b)] {σ : Type}
 the configuration `m` before the call, with the core store and host state of the trapped
 configuration `mT`. -/
 def resumeCfg (m mT : Machine.Config E σ) : Machine.Config E σ :=
-  { m with store := { m.store with core := mT.store.core }, host := mT.host }
+  { m with core := mT.core, host := mT.host }
 
 /-- **A resumable session** of top-level calls `k, k + 1, …` of the function values `f` on
 `args` from `m`, with the outcome of each call: `some rs` for a call resolving with results

@@ -19,9 +19,8 @@ variable {E : CoreEngine} {I : E.StoreImpl} (S : E.StoreSim I)
 
 theorem cfgRel_initCfg :
     CfgRel S (initCfg (E := E.withStore I)) (initCfg (E := E)) where
-  store := by
-    show (CStore.empty : CStore E) = mapStore S CStore.empty
-    simp only [mapStore, CStore.empty, S.empty]
+  store := rfl
+  core := (S.empty _).symm
   host := rfl
   conts := .nil
   ctl := .nil
@@ -67,5 +66,17 @@ theorem accepted_of_withStore [∀ a b, Decidable (E.ExternSub a b)] {prof : Pro
     exact envLabel_labelOf (henv l' hl')
   · rw [← hm₂.host]
     exact hw
+
+/-- The acceptor's dispatchers over `E.withStore I` and `E` are related: they are the same
+definition, which reaches the core store only through the core operations. -/
+theorem dispatchRel [∀ a b, Decidable (E.ExternSub a b)] :
+    DispatchRel S (dispatch (E := E.withStore I)) (dispatch (E := E)) := fun _ => by
+  prog_rel_refl
+
+/-- The linked instantiation programs over `E.withStore I` and `E` are related. -/
+theorem progRel_acceptLinkedProg [∀ a b, Decidable (E.ExternSub a b)]
+    (c : Syntax.Component E.Module) :
+    ProgRel S (acceptLinkedProg (E := E.withStore I) c) (acceptLinkedProg (E := E) c) := by
+  prog_rel_refl
 
 end Silmaril.Proofs.Wasi.Component.Accept.RefTransfer

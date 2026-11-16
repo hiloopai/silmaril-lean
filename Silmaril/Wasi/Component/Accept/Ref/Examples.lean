@@ -38,8 +38,9 @@ canonical ABI lifts the bytes `68 69 21` from linear memory.
   a kernel-checked soundness theorem). The hypothesis is exactly the `#guard`ed run. Kernel
   evaluation of this run needs a 64 KiB `ByteArray` linear memory in the kernel, which exceeds
   kernel recursion depth. Over the engine `core3K neverFail`, whose memories are `KMem` trees, the
-  same run is kernel-checked (`Ref.KMem.Examples`: `runHiK_true`, `acceptedK_hi`); carrying it to
-  `core3 neverFail` needs a REF-level simulation (`docs/projects/wasm-memrep.md`).
+  same run is kernel-checked (`Ref.KMem.Examples`: `runHiK_true`, `acceptedK_hi`), and the REF
+  machine simulation carries it to `core3 neverFail`: `Ref.KMem.Examples.hi_mem` proves
+  `"hi!"` in `refBytesSystem` with no hypothesis (`docs/projects/wasm-memrep.md`).
 -/
 
 @[expose] public section

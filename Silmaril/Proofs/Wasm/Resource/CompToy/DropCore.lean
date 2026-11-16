@@ -49,21 +49,21 @@ def dropFSpec (c : ℕ) (w : BitVec 32) : FSpec (CanonHost (E3 P)) where
   pre s args := s = toyCs P c ∧ args = [.i32 w]
   post _ _ s' o := s' = toyCs P c ∧ o = .normal []
 
-theorem toyCore_drop_code : ((toyInst P).store.core.funcs[4]?).map FuncInst.code =
+theorem toyCore_drop_code : ((toyInst P).core.funcs[4]?).map FuncInst.code =
     some (.wasm ⟨⟨1⟩, [], [.localGet ⟨0⟩, .call ⟨1⟩]⟩) := by kernel_rfl
 
-theorem toyCore_drop_type : ((toyInst P).store.core.funcs[4]?).map
+theorem toyCore_drop_type : ((toyInst P).core.funcs[4]?).map
     (fun fi => decide (Expand fi.type
       (Silmaril.Wasm.Game.FnType.toComp ⟨[.num (.int .i32)], []⟩))) = some true := by kernel_rfl
 
-theorem toyCore_drop_module : ((toyInst P).store.core.funcs[4]?).map
+theorem toyCore_drop_module : ((toyInst P).core.funcs[4]?).map
     (fun fi => fi.module.funcs[1]?) = some (some 1) := by
   kernel_rfl
 
-theorem toyCore_dropH_code : ((toyInst P).store.core.funcs[1]?).map FuncInst.code =
+theorem toyCore_dropH_code : ((toyInst P).core.funcs[1]?).map FuncInst.code =
     some (.host (dropH P)) := by kernel_rfl
 
-theorem toyCore_dropH_type : ((toyInst P).store.core.funcs[1]?).map
+theorem toyCore_dropH_type : ((toyInst P).core.funcs[1]?).map
     (fun fi => decide (Expand fi.type
       (Silmaril.Wasm.Game.FnType.toComp ⟨[.num (.int .i32)], []⟩))) = some true := by
   kernel_rfl
@@ -73,7 +73,7 @@ variable {P}
 /-- The call of `res.drop` in `drop`. -/
 theorem drop_call {c : ℕ} {w : BitVec 32} {F f : Frame} {fi₁ : FuncInst (CanonHost (E3 P))}
     {vs₀ : List Execution.Core.Val} {k nr : ℕ} (hnr : nr = 0)
-    (hx : F.module.funcs[1]? = some 1) (hf₁ : (toyInst P).store.core.funcs[1]? = some fi₁)
+    (hx : F.module.funcs[1]? = some 1) (hf₁ : (toyInst P).core.funcs[1]? = some fi₁)
     (hcode : fi₁.code = .host (dropH P))
     (he : Expand fi₁.type (Silmaril.Wasm.Game.FnType.toComp ⟨[.num (.int .i32)], []⟩)) :
     HWP P (Hdrop P w) (toyCs P c) F (vals [.i32 w] ++ [.plain (.call ⟨1⟩)])
@@ -103,10 +103,10 @@ theorem dropSpec_valid (c : ℕ) (w : BitVec 32) : FSpecValid P (Hdrop P w) 4 (d
     have hmod := toyCore_drop_module P
     have hc₁ := toyCore_dropH_code P
     have ht₁ := toyCore_dropH_type P
-    cases hf : (toyInst P).store.core.funcs[4]? with
+    cases hf : (toyInst P).core.funcs[4]? with
     | none => simp [hf] at hcode
     | some fi =>
-    cases hf₁ : (toyInst P).store.core.funcs[1]? with
+    cases hf₁ : (toyInst P).core.funcs[1]? with
     | none => simp [hf₁] at hc₁
     | some fi₁ =>
       simp only [hf, Option.map_some, Option.some.injEq, decide_eq_true_eq] at hcode ht hmod

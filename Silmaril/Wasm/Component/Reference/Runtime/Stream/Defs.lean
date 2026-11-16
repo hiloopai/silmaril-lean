@@ -119,7 +119,7 @@ end BufferDesc
 /-- The result of a copy at the pure level: nothing to move, or `n > 0` elements to move from
 `writerBuf` (of `writerEnd`) to `readerBuf` (of `readerEnd`); the buffers are given as they were
 before the transfer. -/
-inductive CopyAction (E : CoreEngine) where
+inductive CopyAction (E : CoreEngine.Static) where
   | none
   | transfer (writerEnd readerEnd : EndId) (n : Nat) (writerBuf readerBuf : BufferDesc E)
   deriving DecidableEq

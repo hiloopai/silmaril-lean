@@ -82,6 +82,18 @@ theorem uniqueStep_get {prof : ProfileKind} {M : Machine.Config (E3 P) Unit}
   .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) (.get hc)) (.refl _)
 
+/-- A program `p >>= f` in focus after reading the core store. -/
+theorem uniqueStep_readCore {prof : ProfileKind} {M : Machine.Config (E3 P) Unit}
+    {th : Option ThreadId} {g : CoreEngine.CoreView (E3 P) (CanonHost (E3 P)) →
+      Canon.P (E3 P) Unit (Ret (E3 P))}
+    {segs : List (Seg (E3 P) Unit)} {rest : List (Activation (E3 P) Unit)}
+    (hc : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .readCore g), segs⟩ :: rest)
+    (hl : M.store.lockdown = false) :
+    LRun prof (refHost P).hr (D P) M [.tau]
+      { M with ctl := ⟨th, .prog (g (CoreEngine.view _ M.core)), segs⟩ :: rest } :=
+  .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
+    (.of_prog hc (fun _ _ e => by cases e) (.readCore hc)) (.refl _)
+
 /-- **The branching run of a call with floats**: every run from the host's invocation stays
 live until it reaches the core activation of an admissible argument list. -/
 theorem call_trun (prof : ProfileKind) (cs : (core3P P).Store (CanonHost (core3P P)))
@@ -94,17 +106,17 @@ theorem call_trun (prof : ProfileKind) (cs : (core3P P).Store (CanonHost (core3P
     TRun prof (refHost P).hr (D P) (QF prof P cs x a vs) (invokedCfg P cs fs j (vs.map toRefVal)) := by
   obtain ⟨Mℓ, th, cx, f, segs, rest, tr₁, hpre, hc, hl, hpost⟩ :=
     call_at_float prof cs fs j a x vs hres hmaxr hffr hf
-  have hc' : Mℓ.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .get fun s =>
+  have hc' : Mℓ.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .readCore fun s =>
       lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toRefVals vs)
         (toClosedList x.ty.params) >>= f), segs⟩ :: rest := by
     rw [hc, paramTypes_liftedFt, lowerFlatValues_float (max := ABI.maxFlatParams) _ _ _ hmax]
     rfl
   have hch := lowerFlatTypes_float (E := E3 P) (σ := Unit) Limits.spec Quirks.none cx
-    (ptrTypeIn Mℓ.store cx) prof x.ty.params vs hff hck
+    (ptrTypeIn (CoreEngine.view _ Mℓ.core) cx) prof x.ty.params vs hff hck
   have ht := ChoiceProg.trun (hr := (refHost P).hr) (dispatch := D P) hch
-    { Mℓ with ctl := ⟨th, .prog (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn Mℓ.store cx)
+    { Mℓ with ctl := ⟨th, .prog (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ Mℓ.core) cx)
       (toRefVals vs) (toClosedList x.ty.params) >>= f), segs⟩ :: rest } f th segs rest rfl hl
-  refine TRun.of_lrun hpre (TRun.of_lrun (uniqueStep_get hc' hl) (ht.bind ?_))
+  refine TRun.of_lrun hpre (TRun.of_lrun (uniqueStep_readCore hc' hl) (ht.bind ?_))
   rintro m ⟨out, ⟨vs', hn, hck', rfl⟩, rfl⟩
   obtain ⟨M₀, th', K, segs', rest', hl₁, hat⟩ := hpost (lowerArgs x.ty.params vs')
   exact TRun.of_lrun hl₁ (.done ⟨vs', th', K, segs', rest', hn, hck', hat⟩)

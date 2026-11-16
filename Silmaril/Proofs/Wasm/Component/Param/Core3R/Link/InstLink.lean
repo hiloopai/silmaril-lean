@@ -167,7 +167,7 @@ noncomputable def linkStore (cse csi : (core3R Pf V IR).Store (CanonHost (core3R
 theorem linkStoreE_nextInst (cse : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))) (addrE : Nat → Nat)
     (l : Linked2) {s : CStore (core3R Pf V IR)} (hs : s.insts = [{}]) :
     nextInst (linkStoreE cse addrE l s) = ⟨2⟩ := by
-  simp [linkStoreE, nestStore, liftStore, setCoreSt, nextInst, ArenaField.size, ArenaField.insts,
+  simp [linkStoreE, nestStore, liftStore, nextInst, ArenaField.size, ArenaField.insts,
     ArenaOps.allocSt, ArenaField.alloc, Arena.alloc, hs]
 
 theorem funcExports_mapIdx_func : ∀ (xs : List SimpleExport) (fb : Nat),
@@ -198,11 +198,11 @@ theorem toRefL_run {l : Linked2}
     (hIn : (l.imp.imports.map (·.1)).Nodup) (hW : l.WireTy) (hN : l.NamesOk)
     {addrI : Nat → Nat} {csi : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {cii : (core3R Pf V IR).Inst}
     (hFi : CoreFactsL l.imp cse ⟨2⟩ l.wireFid addrI csi cii)
-    (cfg : Machine.Config (core3R Pf V IR) σ) (hcore : cfg.store.core = (core3R Pf V IR).empty _)
+    (cfg : Machine.Config (core3R Pf V IR) σ) (hcore : cfg.core = (core3R Pf V IR).empty _)
     (hfuncs : cfg.store.funcs = []) (hinsts : cfg.store.insts = [{}]) :
     ∃ sc', ORuns D (List.foldlM (instantiateDef (callRecurse : Recurse (core3R Pf V IR) σ) ⟨0⟩ [] [])
         {} l.toRef) cfg [] sc'
-        { cfg with store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store } ∧
+        { cfg with core := csi, store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store } ∧
       funcExports sc'.exports = exportMapL l := by
   -- the closures
   let sc₁ : Scope (core3R Pf V IR) := { frame := { Frame.empty with components := [clE l] } }
@@ -286,7 +286,7 @@ theorem toRefL_run {l : Linked2}
     (hn2 ▸ hFi) rfl hfb hb
   rw [hn2] at hrI
   let cfgI : Machine.Config (core3R Pf V IR) σ :=
-    { cfg with store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store }
+    { cfg with core := csi, store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store }
   let sc₅ : Scope (core3R Pf V IR) :=
     { frame := { Frame.empty with components := [clE l, clI l], instances := [esE, esI],
                                   funcs := l.wire.map FuncId.mk } }
@@ -350,11 +350,11 @@ theorem rootCallL_run {l : Linked2}
     (hIn : (l.imp.imports.map (·.1)).Nodup) (hW : l.WireTy) (hN : l.NamesOk)
     {addrI : Nat → Nat} {csi : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {cii : (core3R Pf V IR).Inst}
     (hFi : CoreFactsL l.imp cse ⟨2⟩ l.wireFid addrI csi cii)
-    (cfg : Machine.Config (core3R Pf V IR) σ) (hcore : cfg.store.core = (core3R Pf V IR).empty _)
+    (cfg : Machine.Config (core3R Pf V IR) σ) (hcore : cfg.core = (core3R Pf V IR).empty _)
     (hfuncs : cfg.store.funcs = []) (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = exportMapL l ∧
       ORuns D (instantiateRootCall l.toRef [] : P (core3R Pf V IR) σ _) cfg [] (⟨0⟩, es)
-        { cfg with store :=
+        { cfg with core := csi, store :=
             rootStoreL cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store } := by
   obtain ⟨sc', hr, hx⟩ := toRefL_run hD hEg hFe hIg hIa hIn hW hN hFi
     { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store } hcore hfuncs
@@ -384,9 +384,10 @@ the shared core store `csi`, three component instances (the root, the exporter, 
 the exporter's lifted functions then the importer's. -/
 noncomputable def afterLink (P : Profile) (csi : (core3R P V IR).Store (CanonHost (core3R P V IR)))
     (addrE addrI : Nat → Nat) (l : Linked2) (h : σ) : Machine.Config (core3R P V IR) σ :=
-  Config.init
-    { core := csi, insts := [{}, {}, {}],
-      funcs := liftedList addrE ⟨1⟩ l.exp.exports ++ liftedList addrI ⟨2⟩ l.imp.exports } h
+  { Config.init
+    { insts := [{}, {}, {}],
+      funcs := liftedList addrE ⟨1⟩ l.exp.exports ++ liftedList addrI ⟨2⟩ l.imp.exports } h with
+    core := csi }
 
 /-- **The instantiation program of `l.toRef` runs** from the initial configuration to
 `afterLink`, observing the root instance `0` and the export map `exportMapL l`. -/

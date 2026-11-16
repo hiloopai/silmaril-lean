@@ -86,13 +86,13 @@ def ScratchEqH {H : Type} (m lo hi : Nat) (s₁ s₂ : Silmaril.Wasm.Execution.C
 
 /-- A configuration with its core store erased. -/
 def eraseCore {E : Engine} {σ : Type} (m : Config E σ) : Config E σ :=
-  { m with store := { m.store with core := E.empty _ } }
+  { m with core := E.empty _ }
 
 /-- **The scratch observable state** of reference configurations over `core3P P`: equal up to the
 core store, whose stores agree outside the scratch bytes. -/
 def ScratchCfg {P : Silmaril.Wasm.Numerics.Profile} {σ : Type} (m lo hi : Nat)
     (c₁ c₂ : Config (core3P P) σ) : Prop :=
-  eraseCore c₁ = eraseCore c₂ ∧ ScratchEqH m lo hi c₁.store.core c₂.store.core
+  eraseCore c₁ = eraseCore c₂ ∧ ScratchEqH m lo hi c₁.core c₂.core
 
 /-! ## Fresh, admissible call sequences -/
 
@@ -169,8 +169,8 @@ def eraseBook {E : Engine} {σ : Type} (m : Config E σ) : Config E σ :=
     pending := []
     results := []
     cancels := []
+    core := E.empty _
     store := { m.store with
-      core := E.empty _
       tasks := []
       threads := []
       callers := []
@@ -179,6 +179,6 @@ def eraseBook {E : Engine} {σ : Type} (m : Config E σ) : Config E σ :=
 /-- **The scratch observable state ignoring the call bookkeeping** (engine `core3P P`). -/
 def BookCfg {P : Silmaril.Wasm.Numerics.Profile} {σ : Type} (m lo hi : Nat)
     (c₁ c₂ : Config (core3P P) σ) : Prop :=
-  eraseBook c₁ = eraseBook c₂ ∧ ScratchEqH m lo hi c₁.store.core c₂.store.core
+  eraseBook c₁ = eraseBook c₂ ∧ ScratchEqH m lo hi c₁.core c₂.core
 
 end Silmaril.Wasm.Det.CompScratch

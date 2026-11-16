@@ -71,6 +71,10 @@ theorem Step.step?_of_det {m m' : Config E σ} {l : Label E σ}
   | hostGet hc => exact ⟨_, by simp only [step?, hc, opStep, tauStep]; rfl⟩
   | hostSet hc => exact ⟨_, by simp only [step?, hc, opStep, tauStep]; rfl⟩
   | emit hc => exact ⟨_, by simp only [step?, hc, opStep, observe_eq]; rfl⟩
+  | readCore hc => exact ⟨_, by simp only [step?, hc, opStep, tauStep]; rfl⟩
+  | memWrite hc => exact ⟨_, by simp only [step?, hc, opStep, tauStep]; rfl⟩
+  | allocHost hc => exact ⟨_, by simp only [step?, hc, opStep, tauStep]; rfl⟩
+  | prepare hc => exact ⟨_, by simp only [step?, hc, opStep, tauStep]; rfl⟩
   | fault hf => exact Fault.step?_of hf
   | hostInvoke => exact absurd rfl (hl.2.2 _)
   | hostTick => exact absurd rfl (hl.2.2 _)

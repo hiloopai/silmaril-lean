@@ -38,13 +38,13 @@ def LEndT (B : Machine.Config (E3 P) σ) (th : Option ThreadId)
       (∃ f a p ys, (E3 P).status y.1 y.2 = .callout (.lowered f (witFt p) {} ⟨2⟩) ys ∧
         ArenaField.funcs.get? B.store f = some (.lifted a (witFt p) {} ⟨1⟩) ∧
         p.results.length ≤ 1 ∧ out = .trap ∧
-        ((liftArgs p.params ys = none ∧ m'.store.core = y.1) ∨
+        ((liftArgs p.params ys = none ∧ m'.core = y.1) ∨
           ∃ ws e, liftArgs p.params ys = some ws ∧
             Relation.ReflTransGen (CoreStep (E3 P))
               (y.1, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a (lowerArgs p.params ws)) e ∧
             ((E3 P).status e.1 e.2 = .returned .trap ∨
               ∃ zs, (E3 P).status e.1 e.2 = .returned (.values zs) ∧
-                liftArgs p.results zs = none) ∧ m'.store.core = e.1)))
+                liftArgs p.results zs = none) ∧ m'.core = e.1)))
 
 theorem lend_consT {B : Machine.Config (E3 P) σ} {th : Option ThreadId}
     {K : List Flat → Canon.P (E3 P) σ (Ret (E3 P))} {segs : List (Seg (E3 P) σ)}

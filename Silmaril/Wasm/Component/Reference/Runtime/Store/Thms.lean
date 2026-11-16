@@ -22,7 +22,7 @@ open Engine
 
 namespace ArenaField
 
-variable {E : CoreEngine} {Id α : Type} (F : ArenaField E Id α)
+variable {E : CoreEngine.Static} {Id α : Type} (F : ArenaField E Id α)
 
 /-- Allocation adds exactly the fresh id and leaves every other lookup unchanged. -/
 theorem get?_alloc (s : CStore E) (x : α) (i : Id) :

@@ -6,9 +6,8 @@ public meta import Lean
 /-!
 # Proofs: the component machine over `E.withStore I` is simulated by the machine over `E`
 
-* Programs: `ProgRel.bind` and the primitive operations (`rel_getStore_bind`, `rel_modifyStore`,
-  `rel_callRet`, …); the host-frame programs `invokeProg`, `cancelProg`, `runProg` and
-  `tickProg` are related to themselves.
+* Core-store queries: `view_φ`, the queries of a mapped store are those of the store.
+* Programs: every program is related to itself (`ProgRel.refl`); `ProgRel.bind`.
 * Configurations: inversion of the running activation (`ctl_prog`, `ctl_core`), saved
   continuations (`setSlot`, `cont?`).
 * `step_sim`: every step of `E.withStore I` from a configuration related to `m` is matched by a
@@ -16,13 +15,17 @@ public meta import Lean
 -/
 
 open Lean Elab Tactic Meta in
-/-- Close `a = b` by `Eq.refl a`, leaving the definitional check to the kernel. The elaborator
-does not unfold two instances of one matcher at different engines (`E` and `E.withStore I`)
-when the discriminant is stuck, although the kernel does. -/
-elab "kernel_rfl" : tactic => do
+/-- Close `ProgRel S p' p` by `ProgRel.refl S p`, leaving the check that `p'` and `p` are the same
+term up to unfolding (the program over `E.withStore I` and over `E`) to the kernel. -/
+elab "prog_rel_refl_core" : tactic => do
   let g ← getMainGoal
-  let some (_, a, _) := (← whnfR (← g.getType)).eq? | throwError "kernel_rfl: not an equation"
-  g.assign (← mkEqRefl a)
+  let ty ← whnfR (← g.getType)
+  let args := ty.getAppArgs
+  unless ty.isAppOf ``Silmaril.Wasm.Component.Machine.Transfer.ProgRel && args.size = 7 do
+    throwError "prog_rel_refl_core: not a `ProgRel` goal"
+  let e ← mkAppOptM `Silmaril.Proofs.Wasm.Component.Reference.Transfer.ProgRel.refl
+    #[none, none, some args[3]!, none, none, some args[6]!]
+  g.assign e
   replaceMainGoal []
 
 @[expose] public section
@@ -37,7 +40,55 @@ variable {E : CoreEngine} {I : E.StoreImpl} (S : E.StoreSim I) {σ : Type}
 
 local notation "E'" => CoreEngine.withStore E I
 
+/-! ## The core-store queries -/
+
+/-- The queries of a mapped store are those of the store. -/
+theorem view_φ {H : Type} (c : I.Store H) : E.view (S.φ c) = (E.withStore I).view c := by
+  have hw : ∀ m st bs, (E.memWrite? (S.φ c) m st bs).isSome = (I.memWrite? c m st bs).isSome :=
+    fun m st bs => by rw [S.memWrite?, Option.isSome_map]
+  have hp : ∀ md vs, (E.prepare? (S.φ c) md vs).map (fun r => (E.exports r.2.1, r.2.2)) =
+      (I.prepare? c md vs).map (fun r => (E.exports r.2.1, r.2.2)) :=
+    fun md vs => by rw [S.prepare?, Option.map_map]; rfl
+  unfold CoreEngine.view
+  dsimp only [CoreEngine.withStore]
+  congr 1
+  · funext v; exact S.externType? c v
+  · funext f ft; rw [S.funcType?]
+  · funext m; exact S.memAddrType? c m
+  · funext m; exact S.memSize? c m
+  · funext m st len; exact S.memRead? c m st len
+  · funext m st bs; exact hw m st bs
+  · funext t; exact S.tableAddrType? c t
+  · funext t i; exact S.tableFunc? c t i
+  · funext ty h; rw [S.allocHost]
+  · funext md vs; exact hp md vs
+
 /-! ## Programs -/
+
+/-- **Every program is related to itself**: programs over `E.withStore I` and `E` have the same
+type, and the relation follows the program tree. -/
+theorem ProgRel.refl {α : Type} (p : P E σ α) : ProgRel S p p := by
+  induction p with
+  | pure a => exact .pure a
+  | op o k ih =>
+    cases o with
+    | get => exact .get ih
+    | modify f => exact .modify f (ih ())
+    | trap r => exact .trap r _ _
+    | choose ck => exact .choose ck ih
+    | callCore f args => exact .callCore f args ih
+    | call c => exact .call c ih
+    | currentThread => exact .currentThread ih
+    | newThread b => exact .newThread b ih
+    | block sw => exact .block sw (ih ())
+    | resumeThread t => exact .resumeThread t (ih ())
+    | hostGet => exact .hostGet ih
+    | hostSet h => exact .hostSet h (ih ())
+    | emit o => exact .emit o (ih ())
+    | readCore => exact .readCore ih
+    | memWrite m ptr bytes => exact .memWrite m ptr bytes (ih ())
+    | allocHost ty h => exact .allocHost ty h (ih ())
+    | prepare md imports => exact .prepare md imports (ih ())
 
 theorem ProgRel.bind {α β : Type} {p' : P E' σ α} {p : P E σ α} (h : ProgRel S p' p)
     {f' : α → P E' σ β} {f : α → P E σ β} (hf : ∀ a, ProgRel S (f' a) (f a)) :
@@ -45,7 +96,7 @@ theorem ProgRel.bind {α β : Type} {p' : P E' σ α} {p : P E σ α} (h : ProgR
   induction h with
   | pure a => exact hf a
   | get _ ih => exact .get fun s => ih s
-  | modify hc _ ih => exact .modify hc ih
+  | modify f _ ih => exact .modify f ih
   | trap r k k' => exact .trap r _ _
   | choose ck _ ih => exact .choose ck fun r => ih r
   | callCore f args _ ih => exact .callCore f args fun r => ih r
@@ -57,101 +108,14 @@ theorem ProgRel.bind {α β : Type} {p' : P E' σ α} {p : P E σ α} (h : ProgR
   | hostGet _ ih => exact .hostGet fun r => ih r
   | hostSet h _ ih => exact .hostSet h ih
   | emit o _ ih => exact .emit o ih
-
-theorem ProgRel.pure' {α : Type} (a : α) : ProgRel S (Pure.pure a : P E' σ α) (Pure.pure a) :=
-  .pure a
-
-theorem rel_getStore_bind {α : Type} {k' : CStore E' → P E' σ α} {k : CStore E → P E σ α}
-    (h : ∀ s, ProgRel S (k' s) (k (mapStore S s))) :
-    ProgRel S (getStore >>= k') (getStore >>= k) :=
-  .get h
-
-theorem rel_modifyStore {f' : CStore E' → CStore E'} {f : CStore E → CStore E}
-    (h : ∀ s, mapStore S (f' s) = f (mapStore S s)) :
-    ProgRel S (modifyStore f' : P E' σ Unit) (modifyStore f) :=
-  .modify h (.pure ())
-
-theorem rel_callRet (c : Call E) :
-    ProgRel S (callRet c : P E' σ (Ret E')) (callRet c : P E σ (Ret E)) :=
-  .call c fun r => .pure r
-
-theorem rel_choose (ck : ChoiceKind) :
-    ProgRel S (Canon.choose ck : P E' σ ck.Resp) (Canon.choose ck) :=
-  .choose ck fun r => .pure r
-
-theorem rel_hostGet : ProgRel S (hostGet : P E' σ σ) hostGet := .hostGet fun r => .pure r
-
-theorem rel_resumeThread (t : ThreadId) :
-    ProgRel S (resumeThread t : P E' σ Unit) (resumeThread t) := .resumeThread t (.pure ())
-
-/-! ## Store updates that do not touch the core store -/
-
-theorem mapStore_threadStatusSt (t : ThreadId) (st : ThreadStatus) (s : CStore E') :
-    mapStore S (threadStatusSt t st s) = threadStatusSt t st (mapStore S s) := rfl
-
-theorem mapStore_lockdownSt (s : CStore E') : mapStore S (lockdownSt s) = lockdownSt (mapStore S s) :=
-  rfl
-
-theorem mapStore_enterHostSt (s : CStore E') :
-    mapStore S (enterHostSt s) = enterHostSt (mapStore S s) := rfl
-
-theorem mapStore_leaveHostSt (s : CStore E') :
-    mapStore S (leaveHostSt s) = leaveHostSt (mapStore S s) := rfl
-
-theorem mapStore_stopWaitingSt (t : ThreadId) (s : CStore E') :
-    mapStore S (s.stopWaitingSt t) = (mapStore S s).stopWaitingSt t := rfl
-
-theorem mapStore_allocCaller (x : Caller E) (s : CStore E') :
-    mapStore S (ArenaOps.allocSt ArenaField.callers x s) =
-      ArenaOps.allocSt ArenaField.callers x (mapStore S s) := rfl
-
-theorem candidates_mapStore (hr : Nat → Bool) (s : CStore E') :
-    (mapStore S s).candidates hr = s.candidates hr := by
-  kernel_rfl
-
-theorem threadIs_mapStore (p : Thread → Bool) (t : ThreadId) (s : CStore E') :
-    (mapStore S s).threadIs p t = s.threadIs p t := by
-  kernel_rfl
-
-/-! ## The host-frame programs -/
-
-theorem rel_invokeProg (c : CallId) (f : FuncId) (args : List Val) :
-    ProgRel S (invokeProg c f args : P E' σ (Ret E')) (invokeProg c f args) := by
-  refine rel_getStore_bind S fun s => ?_
-  refine .modify (fun s => mapStore_allocCaller S _ s) ?_
-  refine .modify (fun s => mapStore_enterHostSt S s) ?_
-  refine .call _ fun r => ?_
-  exact .modify (fun s => mapStore_leaveHostSt S s) (.pure r)
-
-theorem rel_cancelProg (r : CancelRef) :
-    ProgRel S (cancelProg r : P E' σ (Ret E')) (cancelProg r) := by
-  refine .modify (fun s => mapStore_enterHostSt S s) ?_
-  refine .call _ fun _ => ?_
-  exact .modify (fun s => mapStore_leaveHostSt S s) (.pure _)
+  | readCore _ ih => exact .readCore fun v => ih v
+  | memWrite m ptr bytes _ ih => exact .memWrite m ptr bytes ih
+  | allocHost ty h _ ih => exact .allocHost ty h ih
+  | prepare md imports _ ih => exact .prepare md imports ih
 
 theorem rel_runProg {p' : P E' σ (Ret E')} {p : P E σ (Ret E)} (h : ProgRel S p' p) :
     ProgRel S (runProg p') (runProg p) :=
   ProgRel.bind S h fun _ => .pure _
-
-theorem rel_resume (t : ThreadId) :
-    ProgRel S (Thread.resume t : P E' σ Unit) (Thread.resume t) := by
-  refine rel_getStore_bind S fun s => ?_
-  rw [threadIs_mapStore]
-  split
-  · exact .modify (fun s => mapStore_stopWaitingSt S t s) (rel_resumeThread S t)
-  · exact rel_resumeThread S t
-
-theorem rel_tickProg (hr : HostReady σ) :
-    ProgRel S (tickProg hr : P E' σ (Ret E')) (tickProg hr) := by
-  refine .modify (fun s => mapStore_enterHostSt S s) ?_
-  refine rel_getStore_bind S fun s => ?_
-  refine ProgRel.bind S (rel_hostGet S) fun h => ?_
-  rw [candidates_mapStore]
-  split
-  · exact .modify (fun s => mapStore_leaveHostSt S s) (.pure _)
-  · refine ProgRel.bind S (ProgRel.bind S (rel_choose S _) fun _ => .pure _) fun t => ?_
-    refine ProgRel.bind S (rel_resume S t) fun _ => ?_
-    exact .modify (fun s => mapStore_leaveHostSt S s) (.pure _)
 
 /-! ## Inversion of related programs -/
 
@@ -162,16 +126,35 @@ variable {S} {α : Type}
 theorem inv_pure {a : α} {p : P E σ α} (h : ProgRel S (.pure a : P E' σ α) p) : p = .pure a := by
   cases h; rfl
 
-theorem inv_get {k' : CStore E' → P E' σ α} {p : P E σ α}
+theorem inv_get {k' : CStore E → P E' σ α} {p : P E σ α}
     (h : ProgRel S (.op (S := Eff E' σ) .get k') p) :
-    ∃ k, p = .op (S := Eff E σ) .get k ∧ ∀ s, ProgRel S (k' s) (k (mapStore S s)) := by
+    ∃ k, p = .op (S := Eff E σ) .get k ∧ ∀ s, ProgRel S (k' s) (k s) := by
   cases h; exact ⟨_, rfl, ‹_›⟩
 
-theorem inv_modify {f' : CStore E' → CStore E'} {k' : Unit → P E' σ α} {p : P E σ α}
-    (h : ProgRel S (.op (S := Eff E' σ) (.modify f') k') p) :
-    ∃ f k, p = .op (S := Eff E σ) (.modify f) k ∧ (∀ s, mapStore S (f' s) = f (mapStore S s)) ∧
-      ProgRel S (k' ()) (k ()) := by
-  cases h; exact ⟨_, _, rfl, ‹_›, ‹_›⟩
+theorem inv_modify {f : CStore E → CStore E} {k' : Unit → P E' σ α} {p : P E σ α}
+    (h : ProgRel S (.op (S := Eff E' σ) (.modify f) k') p) :
+    ∃ k, p = .op (S := Eff E σ) (.modify f) k ∧ ProgRel S (k' ()) (k ()) := by
+  cases h; exact ⟨_, rfl, ‹_›⟩
+
+theorem inv_readCore {k' : CoreEngine.CoreView E (CanonHost E) → P E' σ α} {p : P E σ α}
+    (h : ProgRel S (.op (S := Eff E' σ) .readCore k') p) :
+    ∃ k, p = .op (S := Eff E σ) .readCore k ∧ ∀ v, ProgRel S (k' v) (k v) := by
+  cases h; exact ⟨_, rfl, ‹_›⟩
+
+theorem inv_memWrite {a : E.MemAddr} {ptr : Nat} {bytes : ByteArray} {k' : Unit → P E' σ α}
+    {p : P E σ α} (h : ProgRel S (.op (S := Eff E' σ) (.memWrite a ptr bytes) k') p) :
+    ∃ k, p = .op (S := Eff E σ) (.memWrite a ptr bytes) k ∧ ProgRel S (k' ()) (k ()) := by
+  cases h; exact ⟨_, rfl, ‹_›⟩
+
+theorem inv_allocHost {ty} {hh : CanonHost E} {k' : Unit → P E' σ α}
+    {p : P E σ α} (h : ProgRel S (.op (S := Eff E' σ) (.allocHost ty hh) k') p) :
+    ∃ k, p = .op (S := Eff E σ) (.allocHost ty hh) k ∧ ProgRel S (k' ()) (k ()) := by
+  cases h; exact ⟨_, rfl, ‹_›⟩
+
+theorem inv_prepare {md : E.Module} {imports : List E.ExternVal} {k' : Unit → P E' σ α}
+    {p : P E σ α} (h : ProgRel S (.op (S := Eff E' σ) (.prepare md imports) k') p) :
+    ∃ k, p = .op (S := Eff E σ) (.prepare md imports) k ∧ ProgRel S (k' ()) (k ()) := by
+  cases h; exact ⟨_, rfl, ‹_›⟩
 
 theorem inv_trap {r : TrapReason} {k' : Empty → P E' σ α} {p : P E σ α}
     (h : ProgRel S (.op (S := Eff E' σ) (.trap r) k') p) :
@@ -392,9 +375,31 @@ theorem threadBody_task (b : ThreadBody E) :
     ThreadBody.task (E := E') b = ThreadBody.task (E := E) b := by
   cases b <;> rfl
 
-theorem alloc_threads_mapStore (s : CStore E') (x : Runtime.Thread) :
-    ArenaField.threads.alloc (mapStore S s) x =
-      (mapStore S (ArenaField.threads.alloc s x).1, (ArenaField.threads.alloc s x).2) := rfl
+/-! ## The host-frame programs -/
+
+theorem rel_invokeProg (c : CallId) (f : FuncId) (args : List Val) :
+    ProgRel S (invokeProg c f args : P E' σ (Ret E')) (invokeProg c f args) :=
+  ProgRel.refl S _
+
+theorem rel_cancelProg (r : CancelRef) :
+    ProgRel S (cancelProg r : P E' σ (Ret E')) (cancelProg r) := ProgRel.refl S _
+
+theorem rel_tickProg (hr : HostReady σ) :
+    ProgRel S (tickProg hr : P E' σ (Ret E')) (tickProg hr) := by prog_rel_refl_core
+
+/-! ## Core-store updates -/
+
+theorem memWrite_φ {H : Type} (c : I.Store H) (a : E.MemAddr) (ptr : Nat) (bytes : ByteArray) :
+    (E.memWrite? (S.φ c) a ptr bytes).getD (S.φ c) = S.φ ((I.memWrite? c a ptr bytes).getD c) := by
+  rw [S.memWrite?]
+  cases I.memWrite? c a ptr bytes <;> rfl
+
+theorem prepareCore_φ (c : I.Store (CanonHost E)) (md : E.Module) (imports : List E.ExternVal) :
+    prepareCore (E := E) (S.φ c) md imports = S.φ (prepareCore (E := E') c md imports) := by
+  unfold prepareCore
+  dsimp only [CoreEngine.withStore]
+  rw [S.prepare?]
+  cases I.prepare? c md imports <;> rfl
 
 /-! ## Labels -/
 
@@ -538,7 +543,7 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     cases inv_pure hp
     obtain ⟨k, segs₀, rfl, hk, hs⟩ := segs_core hs
     refine ⟨_, .popCore hc', { hm with ctl := .cons ⟨rfl, ⟨?_, hk⟩, hs⟩ hr }⟩
-    rw [hm.store]
+    rw [hm.core]
     exact (S.resume _ _ _).symm
   | threadExit hc =>
     cases labelRel_tau hl
@@ -546,7 +551,7 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     cases inv_pure hp
     cases segs_nil hs
     exact ⟨_, .threadExit hc', { hm with
-      store := by rw [hm.store]; exact (mapStore_threadStatusSt S _ _ _).symm
+      store := by rw [hm.store]; rfl
       ctl := hr }⟩
   | hostDone hc =>
     cases labelRel_tau hl
@@ -567,33 +572,33 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
   | @coreInternal _ ct₀ _ _ _ c₁ ct₁ hc hst hint =>
     cases labelRel_core hl
     obtain ⟨k, segs, rest, hc', hk, hs, hr⟩ := ctl_core hm hc
-    have hst' : E.status m.store.core ct₀ = .running ∨ E.status m.store.core ct₀ = .stuck := by
-      rw [hm.store]
+    have hst' : E.status m.core ct₀ = .running ∨ E.status m.core ct₀ = .stuck := by
+      rw [hm.core]
       exact (S.status _ _).symm ▸ hst
     have hint' := S.internal hint
     refine ⟨_, .coreInternal (c' := S.φ c₁) (ct' := ct₁) hc' hst'
-      (by rw [hm.store]; exact hint'), { hm with
-      store := by rw [hm.store]; rfl
+      (by rw [hm.core]; exact hint'), { hm with
+      core := rfl
       ctl := .cons ⟨rfl, ⟨rfl, hk⟩, hs⟩ hr }⟩
   | @coreReturned _ ct₀ _ _ _ vs hc hst =>
     cases labelRel_tau hl
     obtain ⟨k, segs, rest, hc', hk, hs, hr⟩ := ctl_core hm hc
-    have hst' : E.status m.store.core ct₀ = .returned (.values vs) := by
-      rw [hm.store]
+    have hst' : E.status m.core ct₀ = .returned (.values vs) := by
+      rw [hm.core]
       exact (S.status _ _).trans hst
     exact ⟨_, .coreReturned hc' hst', { hm with ctl := .cons ⟨rfl, hk _, hs⟩ hr }⟩
   | @coreTrap _ ct₀ _ _ _ hc hst =>
     cases labelRel_trap hl
     obtain ⟨k, segs, rest, hc', hk, hs, hr⟩ := ctl_core hm hc
-    have hst' : E.status m.store.core ct₀ = .returned .trap := by
-      rw [hm.store]
+    have hst' : E.status m.core ct₀ = .returned .trap := by
+      rw [hm.core]
       exact (S.status _ _).trans hst
     exact ⟨_, .coreTrap hc' hst', cfgRel_trapCfg hm⟩
   | @coreCallout _ ct₀ _ _ _ h₀ args₀ hc hst =>
     cases labelRel_tau hl
     obtain ⟨k, segs, rest, hc', hk, hs, hr⟩ := ctl_core hm hc
-    have hst' : E.status m.store.core ct₀ = .callout h₀ args₀ := by
-      rw [hm.store]
+    have hst' : E.status m.core ct₀ = .callout h₀ args₀ := by
+      rw [hm.core]
       exact (S.status _ _).trans hst
     exact ⟨_, .coreCallout hc' hst', { hm with
       ctl := .cons ⟨rfl, hd _, .cons ⟨rfl, hk⟩ hs⟩ hr }⟩
@@ -607,9 +612,9 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
   | modify hc =>
     cases labelRel_tau hl
     obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
-    obtain ⟨f, k, rfl, hf, hk⟩ := inv_modify hp
+    obtain ⟨k, rfl, hk⟩ := inv_modify hp
     exact ⟨_, .modify hc', { hm with
-      store := by rw [hm.store]; exact (hf _).symm
+      store := by rw [hm.store]
       ctl := .cons ⟨rfl, hk, hs⟩ hr }⟩
   | trap hc =>
     cases labelRel_trap hl
@@ -631,8 +636,9 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
     obtain ⟨k, rfl, hk⟩ := inv_newThread hp
     have halloc' : ArenaField.threads.alloc m.store { task := ThreadBody.task (E := E) b₀ } =
-        (mapStore S s₀, t₀) := by
-      rw [hm.store, alloc_threads_mapStore, ← threadBody_task, halloc]
+        (s₀, t₀) := by
+      rw [hm.store, ← threadBody_task]
+      exact halloc
     have hc2 := cfgRel_setCont hm t₀ (.some (⟨rfl, hd _, .nil⟩ :
       ActRel S (threadAct d' t₀ b₀) (threadAct d t₀ b₀)))
     exact ⟨_, .newThread hc' halloc', { hc2 with
@@ -645,7 +651,7 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     have hc2 := cfgRel_setCont hm t₀ (.some (⟨rfl, hk, hs⟩ :
       ActRel S (blockedAct t₀ _ _) (blockedAct t₀ _ _)))
     exact ⟨_, .block hc', { hc2 with
-      store := by rw [hm.store]; exact (mapStore_threadStatusSt S _ _ _).symm
+      store := by rw [hm.store]; rfl
       ctl := hr }⟩
   | @blockSwitch t₀ o₀ _ _ _ _ hc hb =>
     cases labelRel_tau hl
@@ -656,10 +662,7 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     obtain ⟨b, hb', hbr⟩ := cont?_some hc2 hb
     have hc3 := cfgRel_setCont hc2 o₀ (.none : Option.Rel (ActRel S) none none)
     exact ⟨_, .blockSwitch hc' hb', { hc3 with
-      store := by
-        rw [hm.store]
-        exact ((mapStore_threadStatusSt S _ _ _).trans
-          (congrArg _ (mapStore_threadStatusSt S _ _ _))).symm
+      store := by rw [hm.store]; rfl
       ctl := .cons hbr hr }⟩
   | @resumeThread _ t₀ _ _ _ _ hc hb =>
     cases labelRel_tau hl
@@ -668,7 +671,7 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     obtain ⟨b, hb', hbr⟩ := cont?_some hm hb
     have hc2 := cfgRel_setCont hm t₀ (.none : Option.Rel (ActRel S) none none)
     exact ⟨_, .resumeThread hc' hb', { hc2 with
-      store := by rw [hm.store]; exact (mapStore_threadStatusSt S _ _ _).symm
+      store := by rw [hm.store]; rfl
       ctl := .cons hbr (.cons ⟨rfl, hk, hs⟩ hr) }⟩
   | hostGet hc =>
     cases labelRel_tau hl
@@ -687,6 +690,34 @@ theorem step_sim (hd : DispatchRel S d' d) {m' n' : Config E' σ} {l' : Label E'
     obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
     obtain ⟨k, rfl, hk⟩ := inv_emit hp
     exact ⟨_, .emit hc', { cfgRel_observe hm _ with ctl := .cons ⟨rfl, hk, hs⟩ hr }⟩
+  | readCore hc =>
+    cases labelRel_tau hl
+    obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
+    obtain ⟨k, rfl, hk⟩ := inv_readCore hp
+    refine ⟨_, .readCore hc', { hm with ctl := .cons ⟨rfl, ?_, hs⟩ hr }⟩
+    rw [hm.core, view_φ]
+    exact hk _
+  | memWrite hc =>
+    cases labelRel_tau hl
+    obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
+    obtain ⟨k, rfl, hk⟩ := inv_memWrite hp
+    exact ⟨_, .memWrite hc', { hm with
+      core := by rw [hm.core]; exact memWrite_φ S _ _ _ _
+      ctl := .cons ⟨rfl, hk, hs⟩ hr }⟩
+  | allocHost hc =>
+    cases labelRel_tau hl
+    obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
+    obtain ⟨k, rfl, hk⟩ := inv_allocHost hp
+    exact ⟨_, .allocHost hc', { hm with
+      core := by rw [hm.core, S.allocHost]
+      ctl := .cons ⟨rfl, hk, hs⟩ hr }⟩
+  | prepare hc =>
+    cases labelRel_tau hl
+    obtain ⟨p, segs, rest, hc', hp, hs, hr⟩ := ctl_prog hm hc
+    obtain ⟨k, rfl, hk⟩ := inv_prepare hp
+    exact ⟨_, .prepare hc', { hm with
+      core := by rw [hm.core]; exact prepareCore_φ S _ _ _
+      ctl := .cons ⟨rfl, hk, hs⟩ hr }⟩
   | fault hf =>
     cases labelRel_trap hl
     exact ⟨_, .fault (fault_sim hm hf), cfgRel_trapCfg hm⟩

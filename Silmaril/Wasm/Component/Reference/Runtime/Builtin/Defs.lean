@@ -103,7 +103,7 @@ inductive CanonHost (E : CoreEngine.Static) where
   deriving DecidableEq
 
 /-- Address types of core memories and tables (they live in the core store). -/
-structure AddrTypes (E : CoreEngine) where
+structure AddrTypes (E : CoreEngine.Static) where
   /-- Address type of a memory. -/
   mem : E.MemAddr → AddrType
   /-- Address type of a table. -/

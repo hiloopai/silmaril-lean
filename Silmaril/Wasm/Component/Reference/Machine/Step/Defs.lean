@@ -38,6 +38,8 @@ Programs (head activation `⟨th, .prog p, segs⟩ :: rest` of `m.ctl`):
 | `call` | `call c` | push seg `.prog k`, focus `dispatch c` | `tau` |
 | `callCore` | `callCore f args` | focus core `E.invoke f args` | `tau` |
 | `get` / `modify` | store access | `k s` / apply `f` | `tau` |
+| `readCore` | core-store queries | `k (E.view core)` | `tau` |
+| `memWrite` / `allocHost` / `prepare` | core-store updates | update `core`, `k ()` | `tau` |
 | `trap` | `trap r` | lockdown, discard `ctl` | `trap r` |
 | `choose` | `choose k` | any `r` with `Allowed prof k r` | `choice k r` |
 | `currentThread` | | `k th` | `tau` |
@@ -276,7 +278,7 @@ inductive Step (prof : ProfileKind) (hr : HostReady σ) (dispatch : Call E → P
   | popCore {m : Config E σ} {th vs ct k segs rest} :
       m.ctl = ⟨th, .prog (.pure (.flat vs)), .core ct k :: segs⟩ :: rest →
       Step prof hr dispatch m .tau
-        { m with ctl := ⟨th, .core (E.resume m.store.core ct (.values vs)) k, segs⟩ :: rest }
+        { m with ctl := ⟨th, .core (E.resume m.core ct (.values vs)) k, segs⟩ :: rest }
   /-- The body of thread `t` returned: `t` exits and its resumer continues. -/
   | threadExit {m : Config E σ} {t : ThreadId} {r rest} :
       m.ctl = ⟨some t, .prog (.pure r), []⟩ :: rest →
@@ -299,25 +301,24 @@ inductive Step (prof : ProfileKind) (hr : HostReady σ) (dispatch : Call E → P
   /-- An internal (host-free) step of the running core activation. -/
   | coreInternal {m : Config E σ} {th ct k segs rest c' ct'} :
       m.ctl = ⟨th, .core ct k, segs⟩ :: rest →
-      (E.status m.store.core ct = .running ∨ E.status m.store.core ct = .stuck) →
-      E.Internal (m.store.core, ct) (c', ct') →
-      Step prof hr dispatch m .core
-        { m with store := { m.store with core := c' }, ctl := ⟨th, .core ct' k, segs⟩ :: rest }
+      (E.status m.core ct = .running ∨ E.status m.core ct = .stuck) →
+      E.Internal (m.core, ct) (c', ct') →
+      Step prof hr dispatch m .core { m with core := c', ctl := ⟨th, .core ct' k, segs⟩ :: rest }
   /-- The core activation returned values. -/
   | coreReturned {m : Config E σ} {th ct k segs rest vs} :
       m.ctl = ⟨th, .core ct k, segs⟩ :: rest →
-      E.status m.store.core ct = .returned (.values vs) →
+      E.status m.core ct = .returned (.values vs) →
       Step prof hr dispatch m .tau { m with ctl := ⟨th, .prog (k vs), segs⟩ :: rest }
   /-- The core activation trapped (or threw): the machine traps. -/
   | coreTrap {m : Config E σ} {th ct k segs rest} :
       m.ctl = ⟨th, .core ct k, segs⟩ :: rest →
-      E.status m.store.core ct = .returned .trap →
+      E.status m.core ct = .returned .trap →
       Step prof hr dispatch m (.trap .coreTrap) (trapCfg m)
   /-- The core activation called a canon host function: run its callout program (with
   `Canon.dispatch`, `Canon.hostCalloutProg`, which checks the current thread first). -/
   | coreCallout {m : Config E σ} {th ct k segs rest h args} :
       m.ctl = ⟨th, .core ct k, segs⟩ :: rest →
-      E.status m.store.core ct = .callout h args →
+      E.status m.core ct = .callout h args →
       Step prof hr dispatch m .tau
         { m with ctl := ⟨th, .prog (dispatch (.hostCallout h args)), .core ct k :: segs⟩ ::
           rest }
@@ -390,6 +391,29 @@ inductive Step (prof : ProfileKind) (hr : HostReady σ) (dispatch : Call E → P
       m.ctl = ⟨th, .prog (.op (S := Eff E σ) (.emit o) k), segs⟩ :: rest →
       Step prof hr dispatch m (.obs o)
         { observe m o with ctl := ⟨th, .prog (k ()), segs⟩ :: rest }
+  /-- Read the core store through its queries. -/
+  | readCore {m : Config E σ} {th k segs rest} :
+      m.ctl = ⟨th, .prog (.op (S := Eff E σ) .readCore k), segs⟩ :: rest →
+      Step prof hr dispatch m .tau
+        { m with ctl := ⟨th, .prog (k (E.view m.core)), segs⟩ :: rest }
+  /-- Write core memory (on failure of the engine write the core store is unchanged). -/
+  | memWrite {m : Config E σ} {th a ptr bytes k segs rest} :
+      m.ctl = ⟨th, .prog (.op (S := Eff E σ) (.memWrite a ptr bytes) k), segs⟩ :: rest →
+      Step prof hr dispatch m .tau
+        { m with core := (E.memWrite? m.core a ptr bytes).getD m.core,
+                 ctl := ⟨th, .prog (k ()), segs⟩ :: rest }
+  /-- Allocate a canon host function in the core store. -/
+  | allocHost {m : Config E σ} {th ty h k segs rest} :
+      m.ctl = ⟨th, .prog (.op (S := Eff E σ) (.allocHost ty h) k), segs⟩ :: rest →
+      Step prof hr dispatch m .tau
+        { m with core := (E.allocHost m.core ty h).1,
+                 ctl := ⟨th, .prog (k ()), segs⟩ :: rest }
+  /-- Core instantiation on the core store (unchanged when `E.prepare?` fails). -/
+  | prepare {m : Config E σ} {th md imports k segs rest} :
+      m.ctl = ⟨th, .prog (.op (S := Eff E σ) (.prepare md imports) k), segs⟩ :: rest →
+      Step prof hr dispatch m .tau
+        { m with core := prepareCore m.core md imports,
+                 ctl := ⟨th, .prog (k ()), segs⟩ :: rest }
   /-- A violated machine invariant: internal trap. -/
   | fault {m : Config E σ} {msg : String} :
       Fault m msg → Step prof hr dispatch m (.trap (.internal msg)) (trapCfg m)

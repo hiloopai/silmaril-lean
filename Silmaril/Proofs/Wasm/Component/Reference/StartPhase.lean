@@ -36,7 +36,7 @@ structure StartPath (prof : ProfileKind) (Pf : Profile) (c : Simple)
     (segs : List (Seg (core3P Pf) Unit)) (rest : List (Activation (core3P Pf) Unit)) : Prop where
   pre : ∃ tr, LRun prof (refHost Pf).hr (D Pf) (instStart c) tr M₀ ∧ traceObs tr = []
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   ret : ∀ y : CoreSt (E3 Pf), ∃ tr, LRun prof (refHost Pf).hr (D Pf)
     (retCfg M₀ th K segs rest y []) tr (afterStartCfg Pf y.1 a addr c) ∧
@@ -51,7 +51,7 @@ theorem start_path {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
   obtain ⟨K, D₁, hK⟩ := R (fun _ => pure .unit) [] [] rfl
   obtain ⟨M₀, th, Kc, segs, rest, tr₂, D₂, ho₂, hA⟩ := start_at prof
     { (allocCfg : Machine.Config (core3P Pf) Unit) with
-      store := setCoreSt cs (allocCfg : Machine.Config (core3P Pf) Unit).store
+      core := cs
       ctl := [⟨none, .prog (runStart ⟨0⟩ a >>= K), []⟩] } a {} (enterInst {} ⟨0⟩) (th := none)
     (K := K) (segs := []) (rest := []) rfl rfl rfl (addThread?_ok (.inl rfl) _)
     (removeThread?_enter _ _)
@@ -59,12 +59,12 @@ theorem start_path {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     hA.lock, fun y => ?_⟩
   obtain ⟨tr₃, D₃, ho₃⟩ := hA.ret y
   obtain ⟨tr₄, hP₄, ho₄⟩ := hP (startedCfg { (allocCfg : Machine.Config (core3P Pf) Unit) with
-      store := setCoreSt cs (allocCfg : Machine.Config (core3P Pf) Unit).store
+      core := cs
       ctl := [⟨none, .prog (runStart ⟨0⟩ a >>= K), []⟩] } a (enterInst {} ⟨0⟩) y.1) rfl
   obtain ⟨D₄, hl₄⟩ := hK _ _ _ _ hP₄ rfl
   have s : UniqueStep prof (refHost Pf).hr (D Pf)
       { endCfg (startedCfg { (allocCfg : Machine.Config (core3P Pf) Unit) with
-          store := setCoreSt cs (allocCfg : Machine.Config (core3P Pf) Unit).store
+          core := cs
           ctl := [⟨none, .prog (runStart ⟨0⟩ a >>= K), []⟩] } a (enterInst {} ⟨0⟩) y.1)
           (fun k => I.addrs.getD k 0) c with
         ctl := [⟨none, .prog (Pure.pure .unit), []⟩] } .tau

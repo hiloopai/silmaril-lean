@@ -52,7 +52,7 @@ Labels are `tau` unless stated otherwise.
   `dispatch (.hostCallout h args)` (with `Canon.dispatch`, `Canon.hostCalloutProg`: the entry
   check `Canon.calloutEntry` on the current thread, then the canon code; the step itself checks
   nothing, so another dispatcher must keep the check, `Canon.withCalloutEntry`); otherwise (label
-  `core`): `X.step?` on `(store.core, t)`, whose `none` stops the machine.
+  `core`): `X.step?` on `(core, t)`, whose `none` stops the machine.
 
 `step?` is `none` when the host is in control (`ctl = []`), in particular after a trap
 (`step?_lockdown`).

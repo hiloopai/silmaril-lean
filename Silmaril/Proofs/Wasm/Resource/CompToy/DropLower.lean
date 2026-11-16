@@ -104,8 +104,8 @@ theorem runs_lower_drop {th : Option ThreadId} (t : TaskId) (n : ℕ) :
   refine ⟨[.tau] ++ (([.tau, .tau] ++ ([.tau] ++ ([.tau] ++ []))) ++ [] ++ ([] ++ [])), ?_⟩
   intro m ι₁ ι₂ i hi hadd
   rw [lower_drop_eq]
-  apply RunsQ.get
-  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store
+  apply RunsQ.readCore
+  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none _ (ptrTypeIn (CoreEngine.view _ m.core)
     ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))) [.own n]
     [.own ⟨0⟩]) _ _ _ _
   unfold lowerFlatTypes
@@ -162,9 +162,9 @@ theorem lower_drop_traps {th : Option ThreadId} (t : TaskId) (args : List Silmar
             exact TrapsQ.left (TrapsQ.trap _ (isTrap_trap _))
       · rw [lowerFlatAt_own_other _ _ v (fun n e => hv ⟨n, e⟩)]
         exact ⟨_, _, TrapsQ.left (TrapsQ.trap _ (isTrap_trap _))⟩
-  obtain ⟨trT, mT, hT⟩ := hp (ptrTypeIn m.store
+  obtain ⟨trT, mT, hT⟩ := hp (ptrTypeIn (CoreEngine.view _ m.core)
     ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)))
   rw [lower_drop_eq]
-  exact ⟨_, _, TrapsQ.bind (RunsQ.get (RunsQ.pure _ _)) hT⟩
+  exact ⟨_, _, TrapsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) hT⟩
 
 end Silmaril.Wasm.Resource.CompToy

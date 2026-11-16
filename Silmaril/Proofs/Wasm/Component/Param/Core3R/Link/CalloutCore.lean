@@ -82,8 +82,8 @@ def LowerAt (g : σ → HostFuncId → List Silmaril.Wasm.Component.Reference.Va
 /-- `Ok` depends only on the fields that callouts do not change. -/
 theorem _root_.Silmaril.Proofs.Wasm.Component.Reference.LowerSite.OkR.extSC {L : LowerSite P} {B : Machine.Config (E3 P V IR) σ}
     {th : Option ThreadId} {ys : List Flat} (ST : List Subtask) (CL : List (Caller (E3 P V IR)))
-    (cs : (E3 P V IR).Store (CanonHost (E3 P V IR))) (hok : L.OkR g B.store th ys) :
-    L.OkR g { (extSC B ST CL).store with core := cs } th ys :=
+    (_cs : (E3 P V IR).Store (CanonHost (E3 P V IR))) (hok : L.OkR g B.store th ys) :
+    L.OkR g (extSC B ST CL).store th ys :=
   { entry := hok.entry, inst := hok.inst, leave := hok.leave, func := hok.func, pff := hok.pff
     rff := hok.rff, typed := hok.typed, maxp := hok.maxp, res := hok.res, maxr := hok.maxr
     answers := hok.answers }

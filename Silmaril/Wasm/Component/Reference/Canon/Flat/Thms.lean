@@ -193,7 +193,7 @@ theorem liftFlatValues (h : LoadPres I) (lim : Limits) (q : Quirks) (cx : LiftLo
       fun _ => bind (loadTypesAt h lim q cx p ts _) fun _ => pure _)
       (liftFlatTypes h lim q cx p ts vi)
 
-theorem lowerFlatPrim (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLowerContext E)
+theorem lowerFlatPrim (lim : Limits) (q : Quirks) (cx : LiftLowerContext E)
     (p : AddrType) (pt : WIT.Primitive) (v : Val) :
     P.Inv I (Canon.lowerFlatPrim lim q cx p pt v : P E σ _) := by
   unfold Canon.lowerFlatPrim
@@ -202,7 +202,7 @@ theorem lowerFlatPrim (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLo
   · exact bind (lowerFloat _ _) fun _ => pure _
   · exact bind (lowerFloat _ _) fun _ => pure _
   · exact pure _
-  · exact bind (storeStringIntoRange _ _ _ _ h.write) fun _ => pure _
+  · exact bind (storeStringIntoRange _ _ _ _) fun _ => pure _
   · split
     · exact pure _
     · exact flatMismatch
@@ -252,7 +252,7 @@ mutual
   theorem lowerFlatAt (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLowerContext E)
       (p : AddrType) : (v : Val) → (t : WIT.ClosedType RtId) →
       P.Inv I (Canon.lowerFlatAt lim q cx p v t : P E σ _)
-    | v, .prim pt => by rw [Canon.lowerFlatAt]; exact lowerFlatPrim h _ _ _ _ _ _
+    | v, .prim pt => by rw [Canon.lowerFlatAt]; exact lowerFlatPrim _ _ _ _ _ _
     | _, .ref r => nomatch r
     | v, .list u => by
       rw [Canon.lowerFlatAt.eq_def]; cases v <;> try first | exact flatMismatch

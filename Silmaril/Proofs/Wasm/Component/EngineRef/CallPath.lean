@@ -70,7 +70,7 @@ theorem runs_lower {th : Option ThreadId} (x : SimpleExport)
       (paramTypes (liftedFt x)) none) m [.tau]
       (Silmaril.Wasm.Component.lowerArgs x.ty.params vs) m := by
   rw [paramTypes_liftedFt, lowerFlatValues_toClosed (max := ABI.maxFlatParams) _ _ _ hf hck hmax]
-  exact .get (.pure _ _)
+  exact .readCore (.pure _ _)
 
 theorem resultTypes_liftedFt (x : SimpleExport)
     (h : x.ty.results.length ≤ 1) : resultTypes (liftedFt x) = toClosedList x.ty.results := by
@@ -88,14 +88,14 @@ theorem runs_lift_some {th : Option ThreadId} (x : SimpleExport)
     ∃ c, RunsQ (D E) th (liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults (.ofList ys)
       (resultTypes (liftedFt x))) m [.tau] (ws.map toRefVal, c) m := by
   have h := liftFlatTypes_liftArgs (σ := Unit) (E := E) Limits.spec Quirks.none cx
-    (ptrTypeIn m.store cx) hff hys
+    (ptrTypeIn (CoreEngine.view _ m.core) cx) hff hys
   rw [hws] at h
   obtain ⟨c, hc⟩ := h
   refine ⟨c, ?_⟩
   rw [resultTypes_liftedFt x hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
     liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
-  refine .get ?_
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx)
+  refine .readCore ?_
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ m.core) cx)
     (toClosedList x.ty.results) ⟨ys, 0⟩) _ _ _ _
   rw [hc]
   exact .pure _ _
@@ -120,17 +120,17 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
     rw [resultTypes_liftedFt x hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
       liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
   have hT := liftFlatTypes_liftArgs (σ := Unit) (E := E) Limits.spec Quirks.none cx
-    (ptrTypeIn M.store cx) hff hys
+    (ptrTypeIn (CoreEngine.view _ M.core) cx) hff hys
   rw [hnone] at hT
   obtain ⟨r, k₀, hk⟩ := hT
-  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff E Unit) .get fun s =>
+  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff E Unit) .readCore fun s =>
       (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toClosedList x.ty.results)
         ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest := by
     rw [hc, e]
     rfl
   have s₁ : Step prof (refHostE E).hr (D E) M .tau { M with ctl := ⟨th, .prog
-      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn M.store cx) (toClosedList x.ty.results)
-        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.get hc'
+      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ M.core) cx) (toClosedList x.ty.results)
+        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.readCore hc'
   rw [hk] at s₁
   refine ⟨_, r, .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) s₁) (.refl _), ⟨List.cons_ne_nil _ _, hl⟩,
@@ -167,7 +167,7 @@ structure CallAt (prof : ProfileKind) (cs : E.Store (CanonHost E))
     (K : List FlatValue → Canon.P E Unit (Ret E)) (segs : List (Seg E Unit))
     (rest : List (Activation E Unit)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (E.invoke a (lowerArgs x.ty.params vs)) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   ret : ∀ (y : CoreSt E) (ys : List Flat) (ws : List Silmaril.Wasm.Component.Val),
     ys.map (·.type) = ValTy.flatList x.ty.results → liftArgs x.ty.results ys = some ws →

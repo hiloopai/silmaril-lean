@@ -272,7 +272,7 @@ def lowerFuture (lim : Limits) (cx : LiftLowerContext E) (e : EndId) : P E σ Na
 dropped: `store.lift(rt.dtor or (lambda rep: []), ft, opts, rt.impl)` lowered into the
 current instance and called with `[h.rep]`. `dtor = none` is REF's no-op `lambda rep: []`,
 which is still called through `lift`/`lower`. -/
-structure DtorRequest (E : CoreEngine) where
+structure DtorRequest (E : CoreEngine.Static) where
   /-- The resource type of the dropped handle. -/
   rt : RtId
   /-- REF `rt.impl` (the instance the destructor runs in; `none` for host resources). -/

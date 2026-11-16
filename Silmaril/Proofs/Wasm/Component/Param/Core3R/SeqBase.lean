@@ -55,15 +55,15 @@ structure Garb (P : Profile) (V : Silmaril.Wasm.Module → Prop)
   cancels : List (CallId × CancelRef)
 
 /-- The store between calls. -/
-def readyStore (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
+def readyStore (ι : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) : CStore (E3 P V IR) :=
-  { core := cs, insts := [ι], funcs := fs, tasks := G.tasks, threads := G.threads,
+  { insts := [ι], funcs := fs, tasks := G.tasks, threads := G.threads,
     callers := G.callers }
 
 /-- The configuration between calls, with host state `h`. -/
 def readyCfgH (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ι : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (h : σ) : Machine.Config (E3 P V IR) σ :=
-  { store := readyStore cs ι fs G, host := h, conts := G.conts, pending := G.pending,
+  { store := readyStore ι fs G, core := cs, host := h, conts := G.conts, pending := G.pending,
     results := G.results, cancels := G.cancels }
 
 /-- The configuration between calls. -/
@@ -318,7 +318,7 @@ theorem runs_enter {m : Machine.Config (E3 P V IR) σ} {Gt : List (Runtime.Task 
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ (by exact hi))
   rw [hadd]
   exact RunsQ.bind (runs_modifyStore _ _
-    (CStore.registerThreadSt_frame (E := E3 P V IR) _ _ _).2.2.2.2.2.2.1) (.pure _ _)
+    (CStore.registerThreadSt_frame (E := E3 P V IR) _ _ _).2.2.2.2.2.1) (.pure _ _)
   rfl
 
 /-! ## Caller records of top-level calls -/
@@ -406,7 +406,7 @@ theorem runs_unregister {th : Option ThreadId} {m : Machine.Config (E3 P V IR) �
   apply RunsQ.bind (.pure _ _)
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ hi)
   rw [hrem]
-  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P V IR) _ _ _ _).2.2.2.2.2.2.2.1
+  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P V IR) _ _ _ _).2.2.2.2.2.2.1
   rfl
 
 theorem runs_exit {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}

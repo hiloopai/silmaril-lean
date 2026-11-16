@@ -114,30 +114,28 @@ theorem lowerL_step {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
     (cs₀ : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))) (fid : Nat → FuncId)
     (sc : Scope (core3R Pf V IR)) (cfg : Machine.Config (core3R Pf V IR) σ) (k : Nat)
     (hk : k < c.imports.length) (hf : sc.frame.funcs[k]? = some (fid k))
-    (hcore : cfg.store.core = trampStoreL Pf cs₀ inst fid (c.imports.take k))
+    (hcore : cfg.core = trampStoreL Pf cs₀ inst fid (c.imports.take k))
     {fi : CFuncInst (core3R Pf V IR)} (hs : ArenaField.funcs.get? cfg.store (fid k) = some fi)
     (ht : fi.ft = witFt c.imports[k].2) :
     TRuns (instantiateDef R inst outer args sc (.canon (.lower k []))) cfg
       { sc with frame := { sc.frame with coreFuncs := sc.frame.coreFuncs ++
           ([(cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k] :
             List (core3R Pf V IR).FuncAddr) } }
-      { cfg with store := { cfg.store with
-          core := trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) } } := by
+      { cfg with core := trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) } := by
   obtain ⟨h₁, h₂, h₃⟩ := har _ (List.getElem_mem hk)
   have hty : (CanonHost.lowered (E := core3R Pf V IR) (fid k) fi.ft {} inst).coreType
-      (addrTypesOf cfg.store) = flatV1 c.imports[k].2 := by
+      (addrTypesOf (CoreEngine.view _ cfg.core)) = flatV1 c.imports[k].2 := by
     rw [ht]
     exact coreType_lowered _ _ _ _ h₁ h₂ h₃
   have hl : (c.imports.take k).length = k := List.length_take_of_le (Nat.le_of_lt hk)
   have r := lower_run (R := R) (inst := inst) (outer := outer) (args := args) sc cfg hf hs hty
-  have ha : ((core3R Pf V IR).allocHost cfg.store.core (flatV1 c.imports[k].2)
+  have ha : ((core3R Pf V IR).allocHost cfg.core (flatV1 c.imports[k].2)
       (.lowered (fid k) fi.ft {} inst)).2 =
         (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k := by
-    show (cfg.store.core : Silmaril.Wasm.Execution.Core.Store _).funcs.length = _
+    show (cfg.core : Silmaril.Wasm.Execution.Core.Store _).funcs.length = _
     rw [hcore, trampStoreL_funcs_length, hl]
-  have hst : allocHostSt (flatV1 c.imports[k].2) (.lowered (fid k) fi.ft {} inst)
-      cfg.store = { cfg.store with
-        core := trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) } := by
+  have hst : ((core3P Pf).allocHost cfg.core (flatV1 c.imports[k].2)
+      (.lowered (fid k) fi.ft {} inst)).1 = trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) := by
     have e : trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) =
         { (trampStoreL Pf cs₀ inst fid (c.imports.take k) :
             Silmaril.Wasm.Execution.Core.Store (CanonHost (core3R Pf V IR))) with
@@ -158,7 +156,7 @@ theorem lowersL_run {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
     (cs₀ : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))) (fid : Nat → FuncId) :
     ∀ (m k : Nat) (sc : Scope (core3R Pf V IR)) (cfg : Machine.Config (core3R Pf V IR) σ),
       k + m = c.imports.length → (∀ j < c.imports.length, sc.frame.funcs[j]? = some (fid j)) →
-      cfg.store.core = trampStoreL Pf cs₀ inst fid (c.imports.take k) →
+      cfg.core = trampStoreL Pf cs₀ inst fid (c.imports.take k) →
       (∀ j (hj : j < c.imports.length), ∃ fi,
         ArenaField.funcs.get? cfg.store (fid j) = some fi ∧ fi.ft = witFt c.imports[j].2) →
       TRuns (List.foldlM (instantiateDef R inst outer args) sc
@@ -166,10 +164,11 @@ theorem lowersL_run {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
         cfg { sc with frame := { sc.frame with
           coreFuncs := sc.frame.coreFuncs ++
             addrList (V := V) (IR := IR) Pf (List.range' ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k) m) } }
-        { cfg with store := { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } }
+        { cfg with core := trampStoreL Pf cs₀ inst fid c.imports }
   | 0, k, sc, cfg, hkm, _, hcore, _ => by
     have hk : k = c.imports.length := hkm
-    have hst : { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } = cfg.store := by
+    have hst : ({ cfg with core := trampStoreL Pf cs₀ inst fid c.imports } :
+        Machine.Config (core3R Pf V IR) σ) = cfg := by
       rw [← List.take_length (l := c.imports), ← hk, ← hcore]
     have hfr : { sc with frame := { sc.frame with
         coreFuncs := sc.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
@@ -191,8 +190,7 @@ theorem lowersL_run {c : SimpleI} (har : ∀ p ∈ c.imports, (ValTy.flatList p.
       { sc with frame := { sc.frame with coreFuncs := sc.frame.coreFuncs ++
           ([(cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k] :
             List (core3R Pf V IR).FuncAddr) } }
-      { cfg with store := { cfg.store with
-          core := trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) } }
+      { cfg with core := trampStoreL Pf cs₀ inst fid (c.imports.take (k + 1)) }
       (by omega) hf rfl hs
     have hfr : sc.frame.coreFuncs ++
         ([(cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + k] :
@@ -386,10 +384,10 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
     {cs₀ : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {fid : Nat → FuncId} {addr : Nat → Nat}
     {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {ci : (core3R Pf V IR).Inst}
     (hF : CoreFactsL c cs₀ inst fid addr cs ci) (cfg : Machine.Config (core3R Pf V IR) σ) {fb : Nat}
-    (hcore : cfg.store.core = cs₀) (hfb : cfg.store.funcs.length = fb)
+    (hcore : cfg.core = cs₀) (hfb : cfg.store.funcs.length = fb)
     (hb : ImportsBound c args fid cfg.store) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R inst outer args) {} c.toRef) cfg sc'
-        { cfg with store := liftStore cs cfg.store (liftedList addr inst c.exports) } ∧
+        { cfg with core := cs, store := liftStore cfg.store (liftedList addr inst c.exports) } ∧
       funcExports sc'.exports = c.exports.mapIdx fun i x => (x.name, ⟨fb + i⟩) := by
   have hb' : ∀ j (hj : j < c.imports.length), ∃ fi,
       ArenaField.funcs.get? cfg.store (fid j) = some fi ∧ fi.ft = witFt c.imports[j].2 :=
@@ -412,7 +410,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
     show scA.frame.funcs[j]? = _
     rw [hfA]
     simp [hj, Frame.empty]
-  have hcore₀ : cfg.store.core = trampStoreL Pf cs₀ inst fid (c.imports.take 0) := by
+  have hcore₀ : cfg.core = trampStoreL Pf cs₀ inst fid (c.imports.take 0) := by
     rw [hcore]
     simp [trampStoreL, trampsL]
     rfl
@@ -433,7 +431,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
         coreModules := scA.frame.coreModules ++ ([c.mod.mod] : List (core3R Pf V IR).Module),
         coreFuncs := scA.frame.coreFuncs ++ addrList (V := V) (IR := IR) Pf (List.range'
           ((cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length + 0) c.imports.length) } }
-    { cfg with store := { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } }
+    { cfg with core := trampStoreL Pf cs₀ inst fid c.imports }
     _ c.mod.imports hcfC
   -- the core instantiation
   have hmE : (scA.frame.coreModules ++ ([c.mod.mod] : List (core3R Pf V IR).Module)) =
@@ -451,7 +449,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
         coreInstances := scA.frame.coreInstances ++
           ([envExportsAt (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length
             c.mod.imports] : List (List (String × (core3R Pf V IR).ExternVal))) } }
-    { cfg with store := { cfg.store with core := trampStoreL Pf cs₀ inst fid c.imports } } hmE
+    { cfg with core := trampStoreL Pf cs₀ inst fid c.imports } hmE
     (hF.imports _ hciE) hF.prepare
   -- the exports
   have hinv : ExpInvAt ((core3R Pf V IR).exports ci) 1 c.imports.length 0
@@ -474,8 +472,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
     · show scA.frame.funcs.length = _
       rw [hfA]
       simp [Frame.empty]
-  have hs : (setCoreSt cs { cfg.store with
-      core := trampStoreL Pf cs₀ inst fid c.imports }).funcs.length = fb + 0 := hfb
+  have hs : cfg.store.funcs.length = fb + 0 := hfb
   obtain ⟨scF, rF, hxF⟩ := exportsDefsAtL_run (R := R) (inst := inst) (outer := outer)
     (args := args) c.mod.exports 1 c.imports.length fb addr c.exports 0
     { scA with frame := { scA.frame with
@@ -486,8 +483,7 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
           ([envExportsAt (cs₀ : Silmaril.Wasm.Execution.Core.Store _).funcs.length
             c.mod.imports] : List (List (String × (core3R Pf V IR).ExternVal))) ++
           [(core3R Pf V IR).exports ci] } }
-    { cfg with store := setCoreSt cs { cfg.store with
-        core := trampStoreL Pf cs₀ inst fid c.imports } }
+    { cfg with core := cs }
     hinv hs (fun x hx => hF.lookup x hx)
   have hlA' : scA.frame.types.length = (SimpleI.importsDefs c.imports 0).2 := hlA
   rw [hlA'] at rF
@@ -507,10 +503,10 @@ theorem toRefDefsL_run {c : SimpleI} (hc : c.Good) (har : c.Arity)
 
 /-- The store after the nested instantiation of a simple component with imports in the
 instance allocated next: the core store `cs`, the lifted functions after those of `s`. -/
-noncomputable def nestStoreI (cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR)))
+noncomputable def nestStoreI (_cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR)))
     (s : CStore (core3R Pf V IR)) (addr : Nat → Nat) (inst : InstId) (c : SimpleI) :
     CStore (core3R Pf V IR) :=
-  liftStore cs (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr inst c.exports)
+  liftStore (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr inst c.exports)
 
 /-- **The nested instantiation of a simple component with imports runs silently**: in a store
 whose core store is `cs₀` and which holds `fb` component functions, with import `j` bound to
@@ -523,12 +519,12 @@ theorem instantiateCall_simpleI {c : SimpleI} (hc : c.Good) (har : c.Arity)
     (outer : List (Frame (core3R Pf V IR))) (vs : Exports (core3R Pf V IR))
     (cfg : Machine.Config (core3R Pf V IR) σ) {fb : Nat}
     (hF : CoreFactsL c cs₀ (nextInst cfg.store) fid addr cs ci)
-    (hcore : cfg.store.core = cs₀) (hfb : cfg.store.funcs.length = fb)
+    (hcore : cfg.core = cs₀) (hfb : cfg.store.funcs.length = fb)
     (hb : ImportsBound c vs fid cfg.store) :
     ∃ es, funcExports es = c.exports.mapIdx (fun i x => (x.name, ⟨fb + i⟩)) ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ vs : P (core3R Pf V IR) σ (Ret (core3R Pf V IR))) cfg
         (.items es)
-        { cfg with store := nestStoreI cs cfg.store addr (nextInst cfg.store) c } := by
+        { cfg with core := cs, store := nestStoreI cs cfg.store addr (nextInst cfg.store) c } := by
   obtain ⟨sc', hr, hx⟩ := toRefDefsL_run (R := callRecurse) (inst := nextInst cfg.store)
     (outer := outer) (args := vs) hc har hF
     { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store } hcore hfb hb

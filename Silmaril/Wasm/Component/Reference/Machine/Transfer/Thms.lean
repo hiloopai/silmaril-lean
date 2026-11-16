@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Component.Reference.Machine.Transfer.Defs
 import Silmaril.Proofs.Wasm.Component.Reference.Transfer
+public meta import Lean
 
 /-!
 # The machine over `E.withStore I` is simulated by the machine over `E`
@@ -15,13 +16,16 @@ For a store simulation `S : E.StoreSim I` (`Engine.Sim`):
   (`rel_invokeProg`, `rel_tickProg`, `rel_cancelProg`, `rel_runProg`), so they need no
   hypothesis.
 * `steps_sim`: the same for runs with related traces.
-* `ProgRel.bind`: the relation is closed under sequencing; `rel_getStore_bind`,
-  `rel_modifyStore`, `rel_callRet`: the primitive operations.
+* `ProgRel.refl`: every program is related to itself; `ProgRel.bind`: the relation is closed
+  under sequencing. `view_φ`: the core-store queries of `S.φ c` are those of `c`.
 * For traces without `run` events, `labelOf` gives related labels (`forall₂_labelOf`) with the
   same observations (`traceObs_map_labelOf`).
 
-These are conditional on the dispatchers, and transfer a run only from a related initial
-program. Which REF programs are related to themselves across two engines is not proved here.
+`step_sim` and `steps_sim` are stated for related dispatchers and a related initial
+configuration. For a concrete pair of definitions (a dispatcher or an instantiation program
+over `E.withStore I` and over `E`), relatedness is `ProgRel.refl` once the two terms agree up to
+unfolding, which holds for every REF program because programs reach the core store only
+through the core operations (`Canon.Op`); see `Wasi.Accept.Ref.Transfer`.
 -/
 
 @[expose] public section
@@ -34,24 +38,19 @@ open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtim
 
 variable {E : CoreEngine} {I : E.StoreImpl} (S : E.StoreSim I) {σ : Type}
 
+/-- The queries of a mapped core store are those of the store. -/
+theorem view_φ {H : Type} (c : I.Store H) : E.view (S.φ c) = (E.withStore I).view c :=
+  Silmaril.Proofs.Wasm.Component.Reference.Transfer.view_φ S c
+
+/-- **Every program is related to itself** (programs over `E.withStore I` and over `E` have the
+same type). -/
+theorem ProgRel.refl {α : Type} (p : P E σ α) : ProgRel S p p :=
+  Silmaril.Proofs.Wasm.Component.Reference.Transfer.ProgRel.refl S p
+
 theorem ProgRel.bind {α β : Type} {p' : P (E.withStore I) σ α} {p : P E σ α}
     (h : ProgRel S p' p) {f' : α → P (E.withStore I) σ β} {f : α → P E σ β}
     (hf : ∀ a, ProgRel S (f' a) (f a)) : ProgRel S (p' >>= f') (p >>= f) :=
   Silmaril.Proofs.Wasm.Component.Reference.Transfer.ProgRel.bind S h hf
-
-theorem rel_getStore_bind {α : Type} {k' : CStore (E.withStore I) → P (E.withStore I) σ α}
-    {k : CStore E → P E σ α} (h : ∀ s, ProgRel S (k' s) (k (mapStore S s))) :
-    ProgRel S (getStore >>= k') (getStore >>= k) :=
-  Silmaril.Proofs.Wasm.Component.Reference.Transfer.rel_getStore_bind S h
-
-theorem rel_modifyStore {f' : CStore (E.withStore I) → CStore (E.withStore I)}
-    {f : CStore E → CStore E} (h : ∀ s, mapStore S (f' s) = f (mapStore S s)) :
-    ProgRel S (modifyStore f' : P (E.withStore I) σ Unit) (modifyStore f) :=
-  Silmaril.Proofs.Wasm.Component.Reference.Transfer.rel_modifyStore S h
-
-theorem rel_callRet (c : Call E) :
-    ProgRel S (callRet c : P (E.withStore I) σ (Ret (E.withStore I))) (callRet c : P E σ (Ret E)) :=
-  Silmaril.Proofs.Wasm.Component.Reference.Transfer.rel_callRet S c
 
 theorem rel_invokeProg (c : CallId) (f : FuncId) (args : List Val) :
     ProgRel S (invokeProg c f args : P (E.withStore I) σ (Ret (E.withStore I)))
@@ -102,3 +101,19 @@ theorem steps_sim (hd : DispatchRel S d' d) {m' n' : Config (E.withStore I) σ}
   Silmaril.Proofs.Wasm.Component.Reference.Transfer.steps_sim hd h hm htr
 
 end Silmaril.Wasm.Component.Machine.Transfer
+
+open Lean Elab Tactic Meta in
+/-- Close `ProgRel S p' p` by `ProgRel.refl S p`, where `p'` is the same program definition as
+`p` at the engine `E.withStore I`. The check that the two terms agree up to unfolding is left to
+the kernel: the elaborator's unifier does not unfold the two applications of a program
+definition at the two engines. -/
+elab "prog_rel_refl" : tactic => do
+  let g ← getMainGoal
+  let ty ← whnfR (← g.getType)
+  let args := ty.getAppArgs
+  unless ty.isAppOf ``Silmaril.Wasm.Component.Machine.Transfer.ProgRel && args.size = 7 do
+    throwError "prog_rel_refl: not a `ProgRel` goal"
+  let e ← mkAppOptM ``Silmaril.Wasm.Component.Machine.Transfer.ProgRel.refl
+    #[none, none, some args[3]!, none, none, some args[6]!]
+  g.assign e
+  replaceMainGoal []

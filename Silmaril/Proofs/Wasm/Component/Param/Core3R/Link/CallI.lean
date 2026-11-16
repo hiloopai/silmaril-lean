@@ -62,7 +62,7 @@ structure CallAtA (prof : ProfileKind) (P : Profile) (g : σ → HostFuncId → 
     (rest : List (Activation (E3 P V IR) σ)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a
     (lowerArgs x.ty.params vs)) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   funcs : M₀.store.funcs = fs
   entry : ∀ f ft opts, calloutEntry M₀.store th (.lowered f ft opts ⟨0⟩) = none

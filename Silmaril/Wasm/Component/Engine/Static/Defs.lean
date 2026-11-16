@@ -21,6 +21,14 @@ engines with the same static part, such as `E` and `E.withStore I`, therefore ha
 types of such data by definition: `CanonHost (E.withStore I)` and `CanonHost E` are both
 `CanonHost E.toStatic` up to unfolding. This is what lets a store map relate the component
 stores of the two engines (`Machine.Transfer`).
+
+* `CoreEngine.CoreView E H`: the read-only queries of a core store that component-level
+  programs use (extern types, a function type test against a flat signature, memory and table
+  address types, memory size, contents and write bounds, funcref table entries, and the results
+  of host-function allocation and core instantiation), with results in the static part.
+* `CoreEngine.view E s`: these queries on the store `s` of `E`. The reference machine answers the
+  operation `Canon.Op.readCore` with `E.view` of its core store, so specification programs never
+  see a store of `E` itself.
 -/
 
 @[expose] public section
@@ -58,5 +66,45 @@ attribute [instance] CoreEngine.Static.decEqFuncAddr CoreEngine.Static.decEqMemA
   ExternVal := E.ExternVal
 
 instance : Coe CoreEngine CoreEngine.Static := ⟨CoreEngine.toStatic⟩
+
+/-- The read-only queries of a core store over host code `H`, with results in the static part:
+extern types, a function type test against a flat signature, memory and table address types,
+memory size, contents and write bounds, funcref table entries, and the results (without the
+new store) of host-function allocation and of core instantiation. -/
+structure CoreEngine.CoreView (E : CoreEngine.Static) (H : Type) where
+  /-- The type of an external value. -/
+  externType? : E.ExternVal → Option E.ExternType
+  /-- Whether a function has the core type of a flat signature. -/
+  funcHasType : E.FuncAddr → V1.FuncType → Bool
+  /-- Address type of a memory. -/
+  memAddrType? : E.MemAddr → Option AddrType
+  /-- Memory size in bytes. -/
+  memSize? : E.MemAddr → Option Nat
+  /-- Read `len` bytes at `start`. -/
+  memRead? : E.MemAddr → (start len : Nat) → Option ByteArray
+  /-- Whether writing `bytes` at `start` succeeds. -/
+  memWriteOk : E.MemAddr → (start : Nat) → ByteArray → Bool
+  /-- Address type of a table. -/
+  tableAddrType? : E.TableAddr → Option AddrType
+  /-- Funcref table read: `none` when out of bounds, `some none` for a null entry. -/
+  tableFunc? : E.TableAddr → Nat → Option (Option E.FuncAddr)
+  /-- The address a host-function allocation returns. -/
+  allocAddr : V1.FuncType → H → E.FuncAddr
+  /-- Core instantiation: the exports of the new instance and its start function. -/
+  prepare? : E.Module → List E.ExternVal →
+    Option (List (String × E.ExternVal) × Option E.FuncAddr)
+
+/-- The queries of `E` on the store `s`. -/
+def CoreEngine.view (E : CoreEngine) {H : Type} (s : E.Store H) : CoreEngine.CoreView E H where
+  externType? := E.externType? s
+  funcHasType f ft := E.funcType? s f == some (E.ofFlatType ft)
+  memAddrType? := E.memAddrType? s
+  memSize? := E.memSize? s
+  memRead? := E.memRead? s
+  memWriteOk m start bytes := (E.memWrite? s m start bytes).isSome
+  tableAddrType? := E.tableAddrType? s
+  tableFunc? := E.tableFunc? s
+  allocAddr ty h := (E.allocHost s ty h).2
+  prepare? m imports := (E.prepare? s m imports).map fun r => (E.exports r.2.1, r.2.2)
 
 end Silmaril.Wasm.Component.Engine

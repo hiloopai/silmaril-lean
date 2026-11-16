@@ -52,36 +52,34 @@ theorem storeListIntoRangeWith (cx : LiftLowerContext E) (el : ABI.Layout)
 
 theorem storeListWith (cx : LiftLowerContext E) (el : ABI.Layout)
     {storeElem : Val → Nat → P E σ Unit} (h : ∀ e a, P.Inv I (storeElem e a)) (fixed : Bool)
-    (vs : List Val) (ptr : Nat) (hw : ∀ m p bs s, I s → I (writeMemSt m p bs s)) :
+    (vs : List Val) (ptr : Nat) :
     P.Inv I (Canon.storeListWith cx el storeElem fixed vs ptr) := by
   unfold Canon.storeListWith
   split
   · exact storeListIntoValidRangeWith _ h _ _
   · exact bind (storeListIntoRangeWith cx el h vs) fun _ => bind (ptrSize cx) fun _ =>
-      bind (storeInt _ _ _ _ _ (hw · _ _)) fun _ => storeInt _ _ _ _ _ (hw · _ _)
+      bind (storeInt _ _ _ _ _) fun _ => storeInt _ _ _ _ _
 
-theorem storeVariantHead (cx : LiftLowerContext E) (n : Nat) (a : ABI.Alignment) (i ptr : Nat)
-    (hw : ∀ m p bs s, I s → I (writeMemSt m p bs s)) :
+theorem storeVariantHead (cx : LiftLowerContext E) (n : Nat) (a : ABI.Alignment) (i ptr : Nat) :
     P.Inv I (Canon.storeVariantHead cx n a i ptr : P E σ Nat) :=
-  bind (storeInt _ _ _ _ _ (hw · _ _)) fun _ => pure _
+  bind (storeInt _ _ _ _ _) fun _ => pure _
 
-theorem storeFlags (cx : LiftLowerContext E) (n : Nat) (bs : List Bool) (ptr : Nat)
-    (hw : ∀ m p bs s, I s → I (writeMemSt m p bs s)) :
+theorem storeFlags (cx : LiftLowerContext E) (n : Nat) (bs : List Bool) (ptr : Nat) :
     P.Inv I (Canon.storeFlags cx n bs ptr : P E σ Unit) :=
-  storeInt _ _ _ _ _ (hw · _ _)
+  storeInt _ _ _ _ _
 
 theorem storePrim (lim : Limits) (q : Quirks) (cx : LiftLowerContext E) (pt : WIT.Primitive)
-    (v : Val) (ptr : Nat) (hw : ∀ m p bs s, I s → I (writeMemSt m p bs s)) :
+    (v : Val) (ptr : Nat) :
     P.Inv I (Canon.storePrim lim q cx pt v ptr : P E σ Unit) := by
   unfold Canon.storePrim
   split
-  · exact storeInt _ _ _ _ _ (hw · _ _)
-  · exact bind (encodeFloat _ _) fun _ => storeInt _ _ _ _ _ (hw · _ _)
-  · exact bind (encodeFloat _ _) fun _ => storeInt _ _ _ _ _ (hw · _ _)
-  · exact storeInt _ _ _ _ _ (hw · _ _)
-  · exact storeString _ _ _ _ _ hw
+  · exact storeInt _ _ _ _ _
+  · exact bind (encodeFloat _ _) fun _ => storeInt _ _ _ _ _
+  · exact bind (encodeFloat _ _) fun _ => storeInt _ _ _ _ _
+  · exact storeInt _ _ _ _ _
+  · exact storeString _ _ _ _ _
   · split
-    · exact storeInt _ _ _ _ _ (hw · _ _)
+    · exact storeInt _ _ _ _ _
     · exact storeMismatch
   · exact storeMismatch
 
@@ -100,7 +98,7 @@ namespace P.Inv
 variable {I : CStore E → Prop}
 
 /-- The `option` arm of `store`, given the invariant for the payload's stores. -/
-theorem storeOption (h : StorePres I) {lim : Limits} {q : Quirks} {cx : LiftLowerContext E}
+theorem storeOption {lim : Limits} {q : Quirks} {cx : LiftLowerContext E}
     {u : WIT.ClosedType RtId}
     (hu : ∀ x a, P.Inv I (Canon.store lim q cx x u a : P E σ Unit)) (v : Val) (ptr : Nat) :
     P.Inv I (Canon.store lim q cx v (.option u) ptr : P E σ Unit) := by
@@ -108,15 +106,15 @@ theorem storeOption (h : StorePres I) {lim : Limits} {q : Quirks} {cx : LiftLowe
   cases v <;> try first | exact storeMismatch
   rename_i i payload
   rcases i with _ | _ | i
-  · exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _ h.write) fun _ => pure _
-  · refine bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _ h.write) fun _ => ?_
+  · exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _) fun _ => pure _
+  · refine bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _) fun _ => ?_
     cases payload
     · exact storeMismatch
     · exact hu _ _
   · exact storeMismatch
 
 /-- The `result` arm of `store`, given the invariant for both optional payload stores. -/
-theorem storeResult (h : StorePres I) {lim : Limits} {q : Quirks} {cx : LiftLowerContext E}
+theorem storeResult {lim : Limits} {q : Quirks} {cx : LiftLowerContext E}
     {ok err : Option (WIT.ClosedType RtId)}
     (hok : ∀ x a, P.Inv I (Canon.storeOpt lim q cx x ok a : P E σ Unit))
     (herr : ∀ x a, P.Inv I (Canon.storeOpt lim q cx x err a : P E σ Unit)) (v : Val)
@@ -125,8 +123,8 @@ theorem storeResult (h : StorePres I) {lim : Limits} {q : Quirks} {cx : LiftLowe
   cases v <;> try first | exact storeMismatch
   rename_i i payload
   rcases i with _ | _ | i
-  · exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _ h.write) fun _ => hok _ _
-  · exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _ h.write) fun _ => herr _ _
+  · exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _) fun _ => hok _ _
+  · exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _) fun _ => herr _ _
   · exact storeMismatch
 
 mutual
@@ -137,21 +135,21 @@ theorem store (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLowerConte
     P.Inv I (Canon.store lim q cx v t ptr : P E σ Unit) := by
   rw [Canon.store.eq_def]
   cases t with
-  | prim pt => exact storePrim _ _ _ _ _ _ h.write
+  | prim pt => exact storePrim _ _ _ _ _ _
   | ref r => exact nomatch r
   | list u =>
     cases v <;> try first | exact storeMismatch
     exact bind (ptrType cx) fun _ =>
-      storeListWith _ _ (fun e a => store h lim q cx e u a) _ _ _ h.write
+      storeListWith _ _ (fun e a => store h lim q cx e u a) _ _ _
   | fixedList u n =>
     cases v <;> try first | exact storeMismatch
     exact bind (ptrType cx) fun _ =>
-      storeListWith _ _ (fun e a => store h lim q cx e u a) _ _ _ h.write
+      storeListWith _ _ (fun e a => store h lim q cx e u a) _ _ _
   | map k u =>
     cases v <;> try first | exact storeMismatch
-    refine bind (ptrType cx) fun p => storeListWith _ _ (fun e a => ?_) _ _ _ h.write
+    refine bind (ptrType cx) fun p => storeListWith _ _ (fun e a => ?_) _ _ _
     split
-    · exact bind (storePrim _ _ _ _ _ _ h.write) fun _ => store h lim q cx _ u _
+    · exact bind (storePrim _ _ _ _ _ _) fun _ => store h lim q cx _ u _
     · exact storeMismatch
   | record fields =>
     cases v <;> try first | exact storeMismatch
@@ -161,41 +159,41 @@ theorem store (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLowerConte
     exact storeTuple h lim q cx _ ts ptr
   | variant cases =>
     cases v <;> try first | exact storeMismatch
-    exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _ h.write) fun _ =>
+    exact bind (ptrType cx) fun _ => bind (storeVariantHead _ _ _ _ _) fun _ =>
       storeCase h lim q cx _ _ cases _
   | enum labels =>
     cases v <;> try first | exact storeMismatch
-    exact ite (bind (storeVariantHead _ _ _ _ _ h.write) fun _ => pure _) storeMismatch
+    exact ite (bind (storeVariantHead _ _ _ _ _) fun _ => pure _) storeMismatch
   | option u =>
     rw [← Canon.store.eq_def lim q cx v (.option u) ptr]
-    exact storeOption h (fun x a => store h lim q cx x u a) v ptr
+    exact storeOption (fun x a => store h lim q cx x u a) v ptr
   | result ok err =>
     rw [← Canon.store.eq_def lim q cx v (.result ok err) ptr]
-    exact storeResult h (fun x a => storeOpt h lim q cx x ok a)
+    exact storeResult (fun x a => storeOpt h lim q cx x ok a)
       (fun x a => storeOpt h lim q cx x err a) v ptr
   | flags labels =>
     cases v <;> try first | exact storeMismatch
-    exact storeFlags _ _ _ _ h.write
+    exact storeFlags _ _ _ _
   | own rt =>
     cases v <;> try first | exact storeMismatch
     exact bind (lowerOwn h.allocRes h.addHandle _ _ _ _) fun _ =>
-      storeInt _ _ _ _ _ (h.write · _ _)
+      storeInt _ _ _ _ _
   | borrow rt =>
     cases v <;> try first | exact storeMismatch
     exact bind (lowerBorrow h.allocRes h.addHandle h.incBorrows _ _ _ _) fun _ =>
-      storeInt _ _ _ _ _ (h.write · _ _)
+      storeInt _ _ _ _ _
   | stream u =>
     cases v <;> try first | exact storeMismatch
     exact bind (lowerAsyncValue h.addHandle h.setEndOwner h.setEndIndex _ _ _ _) fun _ =>
-      storeInt _ _ _ _ _ (h.write · _ _)
+      storeInt _ _ _ _ _
   | future u =>
     cases v <;> try first | exact storeMismatch
     exact bind (lowerAsyncValue h.addHandle h.setEndOwner h.setEndIndex _ _ _ _) fun _ =>
-      storeInt _ _ _ _ _ (h.write · _ _)
+      storeInt _ _ _ _ _
   | errorContext =>
     cases v <;> try first | exact storeMismatch
     exact bind (lowerErrorContext h.addHandle _ _ _) fun _ =>
-      storeInt _ _ _ _ _ (h.write · _ _)
+      storeInt _ _ _ _ _
 termination_by sizeOf t
 
 theorem storeFields (h : StorePres I) (lim : Limits) (q : Quirks) (cx : LiftLowerContext E)

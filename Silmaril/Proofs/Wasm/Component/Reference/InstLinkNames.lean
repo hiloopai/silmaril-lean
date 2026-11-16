@@ -67,6 +67,10 @@ theorem SRuns.rets {α : Type} {Q : α → Prop} {p : P E σ α} {m m' : Machine
   | get _ ih => cases hq with | op hk => exact ih (hk _)
   | modify _ _ ih => cases hq with | op hk => exact ih (hk _)
   | emit _ ih => cases hq with | op hk => exact ih (hk _)
+  | readCore _ ih => cases hq with | op hk => exact ih (hk _)
+  | memWrite _ ih => cases hq with | op hk => exact ih (hk _)
+  | allocHost _ ih => cases hq with | op hk => exact ih (hk _)
+  | prepare _ ih => cases hq with | op hk => exact ih (hk _)
 
 /-! ## Export maps of functions and generated type names -/
 
@@ -402,7 +406,7 @@ theorem instantiateCall_simple' {c : Simple} {I : Silmaril.Wasm.Game.ScalarInsta
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFacts c I cs ci) (outer : List (Frame (core3P Pf)))
     (cfg : Machine.Config (core3P Pf) σ)
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ es, funcExports es = exportMap c ∧ TagOrFunc es ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ [] : P (core3P Pf) σ (Ret (core3P Pf))) cfg
         (.items es)
@@ -434,12 +438,12 @@ theorem instantiateCall_simpleI' {c : SimpleI} (hc : c.Good) (har : c.Arity)
     (outer : List (Frame (core3P Pf))) (vs : Exports (core3P Pf))
     (cfg : Machine.Config (core3P Pf) σ) {fb : Nat}
     (hF : CoreFactsL c cs₀ (nextInst cfg.store) fid addr cs ci)
-    (hcore : cfg.store.core = cs₀) (hfb : cfg.store.funcs.length = fb)
+    (hcore : cfg.core = cs₀) (hfb : cfg.store.funcs.length = fb)
     (hb : ImportsBound c vs fid cfg.store) :
     ∃ es, funcExports es = c.exports.mapIdx (fun i x => (x.name, ⟨fb + i⟩)) ∧ TagOrFunc es ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ vs : P (core3P Pf) σ (Ret (core3P Pf))) cfg
         (.items es)
-        { cfg with store := nestStoreI cs cfg.store addr (nextInst cfg.store) c } := by
+        { cfg with core := cs, store := nestStoreI cs cfg.store addr (nextInst cfg.store) c } := by
   obtain ⟨sc', hr, hx⟩ := toRefDefsL_run (R := callRecurse) (inst := nextInst cfg.store)
     (outer := outer) (args := vs) hc har hF
     { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store } hcore hfb hb

@@ -369,7 +369,7 @@ theorem eq_core_k {M₀ : Machine.Config (E3 P V IR) Unit} {th : Option ThreadId
     {K : List FlatValue → Canon.P (E3 P V IR) Unit (Ret (E3 P V IR))} {segs : List (Seg (E3 P V IR) Unit)}
     {rest : List (Activation (E3 P V IR) Unit)} {a : Nat} {xs : List FlatValue}
     (hctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a xs) K, segs⟩ ::
-      rest) (hcore : M₀.store.core = cs) :
+      rest) (hcore : M₀.core = cs) :
     M₀ = coreCfg M₀ th K segs rest (cs, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a xs) := by
   rw [← hcore]
   exact eq_coreCfg hctl
@@ -380,7 +380,7 @@ theorem core_run_k {M₀ m' : Machine.Config (E3 P V IR) Unit} {th : Option Thre
     {rest : List (Activation (E3 P V IR) Unit)} {tr : List (Label (E3 P V IR) Unit)} {a : Nat}
     {xs : List FlatValue}
     (hctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a xs) K, segs⟩ ::
-      rest) (hcore : M₀.store.core = cs) (hs : Steps prof (refHostR P V IR).hr (D P V IR) M₀ tr m') :
+      rest) (hcore : M₀.core = cs) (hs : Steps prof (refHostR P V IR).hr (D P V IR) M₀ tr m') :
     Steps prof (refHostR P V IR).hr (D P V IR)
       (coreCfg M₀ th K segs rest (cs, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a xs)) tr m' := by
   exact eq_core_k hctl hcore ▸ hs

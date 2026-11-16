@@ -35,10 +35,10 @@ def thread₁ (Gt : List (Runtime.Task (E3 P))) : Runtime.Thread :=
   { status := .running, task := ⟨Gt.length⟩ }
 
 /-- The store when the thread of call `k` starts running. -/
-def store₁ (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
+def store₁ (_cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (x : SimpleExport) (k : Nat)
     (args : List Silmaril.Wasm.Component.Reference.Val) : CStore (E3 P) :=
-  { readyStore cs ι fs G with
+  { readyStore ι fs G with
     tasks := G.tasks ++ [task₀ x G.callers]
     threads := G.threads ++ [thread₁ G.tasks]
     callers := G.callers ++ [.host ⟨k⟩ args 0]
@@ -110,7 +110,7 @@ structure CallAtK (prof : ProfileKind) (P : Profile) (cs : (core3P P).Store (Can
     (rest : List (Activation (E3 P) Unit)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a
     (lowerArgs x.ty.params vs)) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   ret : ∀ (y : CoreSt (E3 P)) (ys : List Flat) (ws : List Silmaril.Wasm.Component.Val),
     ys.map (·.type) = ValTy.flatList x.ty.results → liftArgs x.ty.results ys = some ws →

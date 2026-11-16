@@ -143,7 +143,7 @@ def TrapsAtS (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
     (M : Machine.Config (E3 P) σ) (c : (E3 P).Store (CanonHost (E3 P))) : Prop :=
   ∃ tr mT r, (∀ msg, r ≠ .internal msg) ∧ LRun prof (fun _ _ => false) (DI P impl) M tr mT ∧
     Live mT ∧ UniqueStep prof (fun _ _ => false) (DI P impl) mT (.trap r) (trapCfg mT) ∧
-    mT.store.core = c
+    mT.core = c
 
 theorem TrapsAtS.lrun {M M' : Machine.Config (E3 P) σ} {tr : List (Label (E3 P) σ)}
     {c : (E3 P).Store (CanonHost (E3 P))}
@@ -158,7 +158,7 @@ theorem TrapsQS.trapsAtS {α : Type} {th : Option ThreadId} {p : Canon.P (E3 P) 
     {segs : List (Seg (E3 P) σ)} {rest : List (Activation (E3 P) σ)} {tr : List (Label (E3 P) σ)}
     (hc : M.ctl = ⟨th, .prog (p >>= f), segs⟩ :: rest) (h : TrapsQS (DI P impl) th p M tr mT)
     (hl : M.store.lockdown = false) {c : (E3 P).Store (CanonHost (E3 P))}
-    (hcore : mT.store.core = c) : TrapsAtS prof P impl M c := by
+    (hcore : mT.core = c) : TrapsAtS prof P impl M c := by
   have e : M = { M with ctl := ⟨th, .prog (p >>= f), segs⟩ :: rest } := by
     cases M
     cases hc
@@ -179,7 +179,7 @@ theorem lrun_lift_trapAtS {α : Type} {th : Option ThreadId} (p : Silmaril.Wasm.
     {segs : List (Seg (E3 P) σ)} {rest : List (Activation (E3 P) σ)}
     (hc : M.ctl = ⟨th, .prog ((liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
       (.ofList ys) (resultTypes (witFt p)) >>= f) >>= g), segs⟩ :: rest)
-    (hl : M.store.lockdown = false) : TrapsAtS prof P impl M M.store.core := by
+    (hl : M.store.lockdown = false) : TrapsAtS prof P impl M M.core := by
   have e : liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults (.ofList ys)
       (resultTypes (witFt p)) =
         (ptrType cx >>= fun q => liftFlatTypes Limits.spec Quirks.none cx q
@@ -187,17 +187,17 @@ theorem lrun_lift_trapAtS {α : Type} {th : Option ThreadId} (p : Silmaril.Wasm.
     rw [resultTypes_witFt p hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
       liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
   have hT := Adequacy.liftFlatTypes_liftArgsS (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-    (ptrTypeIn M.store cx) hff hys
+    (ptrTypeIn (CoreEngine.view _ M.core) cx) hff hys
   rw [hnone] at hT
   obtain ⟨r, k₀, hr, hk⟩ := hT
-  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .get fun s =>
+  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .readCore fun s =>
       (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toClosedList p.results)
         ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest := by
     rw [hc, e]
     rfl
   have s₁ : Step prof (fun _ _ => false) (DI P impl) M .tau { M with ctl := ⟨th, .prog
-      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn M.store cx) (toClosedList p.results)
-        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.get hc'
+      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ M.core) cx) (toClosedList p.results)
+        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.readCore hc'
   rw [hk] at s₁
   exact ⟨_, _, r, hr, .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) s₁) (.refl _), ⟨List.cons_ne_nil _ _, hl⟩,
@@ -216,9 +216,9 @@ theorem traps_lowerOnStartS {th : Option ThreadId} {m : Machine.Config (E3 P) σ
     ∃ tr, TrapsQS (DI P impl) th (lowerOnStart Limits.spec Quirks.none c) m tr
       { m with store := LowerSt.startSt S m.store } := by
   have hT : Adequacy.IsSpecTrap (liftFlatTypes (σ := σ) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) (toClosedList p.params) ⟨ys, 0⟩) := by
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) (toClosedList p.params) ⟨ys, 0⟩) := by
     have h := Adequacy.liftFlatTypes_liftArgsS (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-      (ptrTypeIn (LowerSt.startSt S m.store) cx) hff hys
+      (ptrTypeIn (CoreEngine.view _ m.core) cx) hff hys
     rwa [hws] at h
   have hmp : RunsQ (DI P impl) th (maybeOnProgress S) m [.tau] () m :=
     RunsQ.getObj_bind _ _ hS (by rw [hidx]; exact RunsQ.pure _ _)
@@ -226,7 +226,7 @@ theorem traps_lowerOnStartS {th : Option ThreadId} {m : Machine.Config (E3 P) σ
       ((witFt p).params.map (·.2))) { m with store := LowerSt.startSt S m.store } [.tau]
       { m with store := LowerSt.startSt S m.store } := by
     rw [liftFlatValues_witFt hmax]
-    exact TrapsQS.bind (RunsQ.get (RunsQ.pure _ _)) (TrapsQS.trap _ hT)
+    exact TrapsQS.bind (RunsQ.readCore (RunsQ.pure _ _)) (TrapsQS.trap _ hT)
   exact ⟨_, TrapsQS.bind (RunsQ.getObj _ _ hc) (TrapsQS.bind hmp
     (TrapsQS.bind (RunsQ.modify rfl (RunsQ.pure _ _)) (TrapsQS.left hlift)))⟩
 
@@ -241,7 +241,7 @@ theorem traps_startLTS {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
     (hff : floatFreeList p.params = true) (hys : ys.map (·.type) = ValTy.flatList p.params)
     (hmax : (ValTy.flatList p.params).length ≤ 16) (hws : liftArgs p.params ys = none) :
     ∃ tr mT, TrapsQS (DI P impl) th (Task.start ⟨Gt.length⟩) m tr mT ∧
-      mT.store.core = m.store.core := by
+      mT.core = m.core := by
   obtain ⟨tr, h⟩ := traps_lowerOnStartS (impl := impl) (th := th)
     (m := { m with store := CStore.setTaskState ⟨Gt.length⟩ .started m.store }) (by exact hc)
     (by exact hS) hidx hff hys hmax hws
@@ -273,7 +273,7 @@ theorem lift_body_trapTS (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P)) (
           (thread₁ S.tasks) S.insts
         ctl := ⟨some ⟨S.threads.length⟩,
           .prog (DI P impl (.threadBody (.liftImplicit ⟨S.tasks.length⟩ a))), []⟩ :: R }
-      S.core := by
+      M₀.core := by
   obtain ⟨trS, mT, hst, hcore⟩ := traps_startLTS (impl := impl) (th := some ⟨S.threads.length⟩)
     (m := { M₀ with
       store := nstore S { inst := ⟨2⟩ } (lowerRec ⟨S.subtasks.length⟩ ⟨2⟩ ys p 0) (ntask₁ S p)
@@ -311,11 +311,11 @@ theorem nest_trap_argsTS (B : Machine.Config (E3 P) σ) (ιe ιe' : InstState) (
     TrapsAtS prof P impl (coreCfg (extN B ιe N C) th K segs rest x) x.1 := by
   obtain ⟨C₁, R, tr₁, h₁, -⟩ := nest_pre (prof := prof) (impl := impl) B ιe ιe' N C th K segs
     rest x f a p ys ιi hs hentry hi hleave hf
-  have hie : ({ (extN B ιe N C).store with core := x.1 } : CStore (E3 P)).insts[1]? = some ιe :=
+  have hie : ((extN B ιe N C).store : CStore (E3 P)).insts[1]? = some ιe :=
     List.getElem?_set_self hlen
   exact TrapsAtS.lrun h₁ (lift_body_trapTS (prof := prof) (impl := impl)
     { coreCfg (extN B ιe N C) th K segs rest x with conts := C₁ }
-    { (extN B ιe N C).store with core := x.1 } ys p a R hie hadd rfl hpf hys hmaxp hws)
+    (extN B ιe N C).store ys p a R hie hadd rfl hpf hys hmaxp hws)
 
 /-- `lift_body_atT` (same proof), the trap of a failing lift a specification trap. -/
 theorem lift_body_atTS (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P)) (ys : List Flat)
@@ -344,7 +344,7 @@ theorem lift_body_atTS (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P)) (ys
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl)
           (retCfg { M₀ with store := nstoreCore S ys p ιe' pos } (some ⟨S.threads.length⟩) K'
             segs' R y zs) tr'
-          { M₀ with store := nstoreRet S y.1 ys p ιe' pos us, ctl := R }) ∧
+          { M₀ with store := nstoreRet S y.1 ys p ιe' pos us, core := y.1, ctl := R }) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
         TrapsAtS prof P impl
@@ -372,9 +372,9 @@ theorem lift_body_atTS (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P)) (ys
   · intro y zs us hzs hus
     apply Exists.intro
     unfold retCfg
-    apply LRun.store_congr (S' := nstore { S with core := y.1 } { inst := ⟨2⟩, state := .started }
+    apply LRun.store_congr (S' := nstore S { inst := ⟨2⟩, state := .started }
       (lowerRec ⟨S.subtasks.length⟩ ⟨2⟩ ys p pos) ((ntask₁ S p).withState .started)
-      ((thread₁ S.tasks).withIndex 1) (S.insts.set 1 ιe')) (by rw [nstoreCore_eq]; rfl)
+      ((thread₁ S.tasks).withIndex 1) (S.insts.set 1 ιe')) (by rw [nstoreCore_eq])
     apply RunsQ.chunk2 rfl (runs_lift_someP (impl := impl) p hres hmaxr hrf hzs hus _ _).choose_spec
       (by exact hl)
     apply RunsQ.chunk2 rfl (by exact (runs_returnL (impl := impl) (Gt := S.tasks) rfl rfl rfl rfl
@@ -383,7 +383,7 @@ theorem lift_body_atTS (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P)) (ys
     apply LRun.store_congr (nstore_return S y.1 ys p ιe' pos _)
     apply RunsQ.chunk rfl (runs_exitG (impl := impl) (Gt := S.tasks) (Gth := S.threads) rfl rfl rfl
       rfl rfl rfl (by exact hie') hrem) (by exact hl)
-    lstep ((CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.2.1.trans hl)
+    lstep ((CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.1.trans hl)
     exact lrun_refl_store (nstore_exit S y.1 _ _ p ιe')
   · intro y zs hzs hn
     exact lrun_lift_trapAtS p hres hmaxr hrf hzs hn rfl (by exact hl)
@@ -414,23 +414,23 @@ theorem nest_atTS (B : Machine.Config (E3 P) σ) (ιe ιe' : InstState) (N : Lis
       LRun prof (fun _ _ => false) (DI P impl) (coreCfg (extN B ιe N C) th K segs rest x) tr M₁ ∧
       M₁.ctl = ⟨th', .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a (lowerArgs p.params ws))
         K', segs'⟩ :: rest' ∧
-      M₁.store.core = x.1 ∧ M₁.store.lockdown = false ∧
+      M₁.core = x.1 ∧ M₁.store.lockdown = false ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat) (us : List Silmaril.Wasm.Component.Val),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = some us →
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr'
           (coreCfg (extN B (InstState.removeThread 1 ιe')
-            (N ++ [nrec { (extN B ιe N C).store with core := x.1 } ys p pos (lowerArgs p.results us)])
+            (N ++ [nrec (extN B ιe N C).store ys p pos (lowerArgs p.results us)])
             C₁) th K segs rest (y.1, (E3 P).resume y.1 x.2 (.values (lowerArgs p.results us))))) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
         TrapsAtS prof P impl (retCfg M₁ th' K' segs' rest' y zs) y.1) := by
   obtain ⟨C₁, R, tr₁, h₁, hback⟩ := nest_pre (prof := prof) (impl := impl) B ιe ιe' N C th K segs
     rest x f a p ys ιi hs hentry hi hleave hf
-  have hie : ({ (extN B ιe N C).store with core := x.1 } : CStore (E3 P)).insts[1]? = some ιe :=
+  have hie : ((extN B ιe N C).store : CStore (E3 P)).insts[1]? = some ιe :=
     List.getElem?_set_self hlen
   obtain ⟨pos, K', segs', tr₂, h₂, hret, htrap⟩ := lift_body_atTS (prof := prof) (impl := impl)
     { coreCfg (extN B ιe N C) th K segs rest x with conts := C₁ }
-    { (extN B ιe N C).store with core := x.1 } ys p ws a R hie hadd hrem rfl hpf hys hmaxp hws
+    (extN B ιe N C).store ys p ws a R hie hadd hrem rfl hpf hys hmaxp hws
     hres hrf hmaxr
   refine ⟨pos, C₁, _, _, K', segs', _, _, h₁.trans h₂, rfl, rfl, rfl, ?_, htrap⟩
   intro y zs us hzs hus

@@ -22,7 +22,7 @@ and **gap** (a verification gap).
 
 | item | status | evidence | next step |
 |---|---|---|---|
-| end-to-end runs with linear memory are not kernel-checked | **gap** | evaluating a 64 KiB memory in the kernel exceeds its recursion depth (`decide +kernel` fails); the run is checked by `#guard` and enters proofs only as a hypothesis (`hi_mem_of_runHi`) | kernel-friendly memory representations (the `Wasm.KernelEval` work in review) |
+| end-to-end runs with linear memory over `ByteArray` memories are not kernel-checked | **closed for `acceptHiBytes`** | the run over `ByteArray` memories still exceeds the kernel; the same run over `KMem` memories is kernel-checked (`runHiK_true`) and carried to `core3 neverFail` by the REF machine simulation, giving `Ref.KMem.Examples.hi_mem` with no hypothesis (`docs/projects/wasm-memrep.md`) | other end-to-end runs through `core3K` |
 | no proof that a REF component accepts *only* certain bytes | **gap** | `Accepted` is existential; only inclusions are shown | invariants of REF runs (e.g. a component that never calls `accept` accepts nothing) |
 | upstream parity suites (wasm-tools, jco, wac, wasmtime) | **gap** | not run by CI (`docs/projects/wasm-components.md`) | run them in a scheduled job |
 

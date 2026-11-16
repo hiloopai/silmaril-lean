@@ -21,15 +21,15 @@ instantiation with the host `accept`, core instantiation with the data segment, 
   executable soundness theorem `acceptRun_sound` (which holds for every core engine).
 
 `acceptedK_hi` is a statement about REF over `core3K`. `refBytesSystem` is stated over
-`core3 neverFail`. The REF machine simulation (`Machine.Transfer`) carries the run over, given
-two relational hypotheses that are **not proved**:
+`core3 neverFail`. The REF machine simulation (`Machine.Transfer`) carries the run over:
 
 * `hi_mem_of_progRel`: `"hi!"` is in `refBytesSystem` over `core3 neverFail`, if the acceptor's
   dispatcher and its linked instantiation programs over `core3K neverFail` and `core3 neverFail`
   are related (`DispatchRel`, `ProgRel` for `core3Sim neverFail KMem`).
-
-So `"hi!"` in `refBytesSystem` remains conditional (here on those hypotheses, and in
-`Ref.Examples.hi_mem_of_runHi` on the native `#guard runHi`); see `docs/projects/wasm-memrep.md`.
+* `hi_mem`: both hypotheses hold (`Ref.Transfer.accepted_of_storeSim`), so **`"hi!"` is in
+  `refBytesSystem` over `core3 neverFail`** with no hypothesis. The only computation is the
+  kernel run `runHiK_true` over `KMem` memories. This supersedes `Ref.Examples.hi_mem_of_runHi`,
+  whose hypothesis is the native `#guard runHi` over `ByteArray` memories.
 -/
 
 @[expose] public section
@@ -73,8 +73,8 @@ theorem acceptedK_hi : ∃ a : RefAcceptor first.prof,
 
 open Silmaril.Wasm.Component.Machine.Transfer in
 /-- **`"hi!"` is in `refBytesSystem` over `core3 neverFail`, given related programs**: the
-kernel-checked run on `KMem` (`acceptedK_hi`) carried over by `accepted_of_withStore`. The two
-hypotheses (related dispatchers, related instantiation programs) are open obligations. -/
+kernel-checked run on `KMem` (`acceptedK_hi`) carried over by `accepted_of_withStore`. Both
+hypotheses hold (`hi_mem`). -/
 theorem hi_mem_of_progRel
     (hd : DispatchRel (core3Sim Silmaril.Wasm.SingleThreaded.neverFail Silmaril.Wasm.Execution.KMem)
       (dispatch (E := core3K Silmaril.Wasm.SingleThreaded.neverFail)) (dispatch (E := Eng)))
@@ -84,5 +84,14 @@ theorem hi_mem_of_progRel
     refBytesSystem first.prof acceptHiBytes hi :=
   let ⟨_, ha, hacc⟩ := acceptedK_hi
   (refBytesSystem_of_decode ha).2 (accepted_of_withStore _ hd (hp _) hacc)
+
+/-- **`"hi!"` is in `refBytesSystem` over `core3 neverFail`**: the kernel-checked run on the
+`KMem` engine (`runHiK_true`, `acceptedK_hi`) carried to the `ByteArray` engine by the REF
+machine simulation for `core3Sim neverFail KMem` (`accepted_of_storeSim`). -/
+theorem hi_mem : refBytesSystem first.prof acceptHiBytes hi :=
+  let ⟨_, ha, hacc⟩ := acceptedK_hi
+  (refBytesSystem_of_decode ha).2
+    (accepted_of_storeSim (core3Sim Silmaril.Wasm.SingleThreaded.neverFail
+      Silmaril.Wasm.Execution.KMem) hacc)
 
 end Silmaril.Wasi.Accept.Ref.Examples

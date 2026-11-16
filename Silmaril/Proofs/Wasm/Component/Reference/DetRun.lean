@@ -74,7 +74,7 @@ theorem det_of_core {m m' : Config E σ} {l : Label E σ} {th : Option ThreadId}
     {ct : E.Thread (CanonHost E)} {k : List FlatValue → P E σ (Ret E)}
     {segs : List (Seg E σ)} {rest : List (Activation E σ)}
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct ≠ .running ∧ E.status m.store.core ct ≠ .stuck)
+    (hs : E.status m.core ct ≠ .running ∧ E.status m.core ct ≠ .stuck)
     (h : Step prof hr dispatch m l m') : Label.Det l := by
   refine ⟨fun k r e => ?_, fun e => ?_, fun ev e => ?_⟩
   · subst e
@@ -101,7 +101,7 @@ theorem UniqueStep.of_core {m m₁ : Config E σ} {l : Label E σ} {th : Option 
     {ct : E.Thread (CanonHost E)} {k : List FlatValue → P E σ (Ret E)}
     {segs : List (Seg E σ)} {rest : List (Activation E σ)}
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct ≠ .running ∧ E.status m.store.core ct ≠ .stuck)
+    (hs : E.status m.core ct ≠ .running ∧ E.status m.core ct ≠ .stuck)
     (h : Step prof hr dispatch m l m₁) : UniqueStep prof hr dispatch m l m₁ :=
   ⟨h, fun _ _ h' => Step.det h' (det_of_core hc hs h') h (det_of_core hc hs h)⟩
 
@@ -198,6 +198,22 @@ inductive Runs : {α : Type} → Option ThreadId → P E σ α → Config E σ �
       ArenaField.threads.alloc m.store { task := b.task } = (s', t) →
       Runs th (k t) { m.setCont t (some (threadAct dispatch t b)) with store := s' } tr a m' →
       Runs th (.op (S := Eff E σ) (.newThread b) k) m (.tau :: tr) a m'
+  | readCore {α : Type} {th : Option ThreadId} {k : CoreEngine.CoreView E (CanonHost E) → P E σ α}
+      {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      Runs th (k (E.view m.core)) m tr a m' →
+      Runs th (.op (S := Eff E σ) .readCore k) m (.tau :: tr) a m'
+  | memWrite {α : Type} {th : Option ThreadId} {ma : E.MemAddr} {ptr : Nat} {bytes : ByteArray}
+      {k : Unit → P E σ α} {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      Runs th (k ()) { m with core := (E.memWrite? m.core ma ptr bytes).getD m.core } tr a m' →
+      Runs th (.op (S := Eff E σ) (.memWrite ma ptr bytes) k) m (.tau :: tr) a m'
+  | allocHost {α : Type} {th : Option ThreadId} {ty : _} {h : CanonHost E}
+      {k : Unit → P E σ α} {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      Runs th (k ()) { m with core := (E.allocHost m.core ty h).1 } tr a m' →
+      Runs th (.op (S := Eff E σ) (.allocHost ty h) k) m (.tau :: tr) a m'
+  | prepare {α : Type} {th : Option ThreadId} {md : E.Module} {imports : List E.ExternVal}
+      {k : Unit → P E σ α} {m : Config E σ} {tr : List (Label E σ)} {a : α} {m' : Config E σ} :
+      Runs th (k ()) { m with core := prepareCore m.core md imports } tr a m' →
+      Runs th (.op (S := Eff E σ) (.prepare md imports) k) m (.tau :: tr) a m'
   | call {α : Type} {th : Option ThreadId} {c : Call E} {k : Ret E → P E σ α} {m : Config E σ}
       {tr₁ : List (Label E σ)} {r : Ret E} {m₁ : Config E σ} {tr₂ : List (Label E σ)} {a : α}
       {m' : Config E σ} :
@@ -219,6 +235,10 @@ theorem bind {α β : Type} {th : Option ThreadId} {p : P E σ α} {f : α → P
   | currentThread _ ih => exact .currentThread (ih h₂)
   | emit _ ih => exact .emit (ih h₂)
   | newThread ha _ ih => exact .newThread ha (ih h₂)
+  | readCore _ ih => exact .readCore (ih h₂)
+  | memWrite _ ih => exact .memWrite (ih h₂)
+  | allocHost _ ih => exact .allocHost (ih h₂)
+  | prepare _ ih => exact .prepare (ih h₂)
   | call hc _ _ ih =>
     rw [List.cons_append, List.append_assoc, List.cons_append]
     exact Runs.call hc (ih h₂)
@@ -286,6 +306,18 @@ theorem detRun {α : Type} {th : Option ThreadId} {p : P E σ α} {m m' : Config
   | newThread ha _ ih =>
     intro f segs rest
     exact .cons (.of_prog rfl (fun _ _ e => by cases e) (.newThread rfl ha)) (ih f segs rest)
+  | readCore _ ih =>
+    intro f segs rest
+    exact .cons (.of_prog rfl (fun _ _ e => by cases e) (.readCore rfl)) (ih f segs rest)
+  | memWrite _ ih =>
+    intro f segs rest
+    exact .cons (.of_prog rfl (fun _ _ e => by cases e) (.memWrite rfl)) (ih f segs rest)
+  | allocHost _ ih =>
+    intro f segs rest
+    exact .cons (.of_prog rfl (fun _ _ e => by cases e) (.allocHost rfl)) (ih f segs rest)
+  | prepare _ ih =>
+    intro f segs rest
+    exact .cons (.of_prog rfl (fun _ _ e => by cases e) (.prepare rfl)) (ih f segs rest)
   | @call _ th c k m tr₁ r m₁ tr₂ a m' _ _ ih₁ ih₂ =>
     intro f segs rest
     have s₁ : UniqueStep prof hr dispatch

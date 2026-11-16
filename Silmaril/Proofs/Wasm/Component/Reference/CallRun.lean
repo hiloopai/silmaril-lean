@@ -107,7 +107,7 @@ theorem quiet {mE : Machine.Config E σ} {c : CallId} (hc : mE.ctl = [])
 theorem eq_coreCfg {M : Machine.Config E σ} {th : Option ThreadId}
     {t : E.Thread (CanonHost E)} {K : List FlatValue → P E σ (Ret E)} {segs : List (Seg E σ)}
     {rest : List (Activation E σ)} (h : M.ctl = ⟨th, .core t K, segs⟩ :: rest) :
-    M = coreCfg M th K segs rest (M.store.core, t) := by
+    M = coreCfg M th K segs rest (M.core, t) := by
   obtain ⟨⟨⟩⟩ := M
   cases h
   rfl

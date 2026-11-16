@@ -31,30 +31,30 @@ variable {E : CoreEngine}
 /-- `register_thread` touches only the task, instance and thread arenas. -/
 theorem CStore.registerThreadSt_frame (task : TaskId) (t : ThreadId) (s : CStore E) :
     let s' := s.registerThreadSt task t
-    s'.core = s.core ∧ s'.waiting = s.waiting ∧ s'.subtasks = s.subtasks ∧ s'.ends = s.ends ∧
+    s'.waiting = s.waiting ∧ s'.subtasks = s.subtasks ∧ s'.ends = s.ends ∧
       s'.wsets = s.wsets ∧ s'.nestingDepth = s.nestingDepth ∧ s'.lockdown = s.lockdown ∧
       s'.resourceTypes = s.resourceTypes ∧ s'.funcs = s.funcs ∧
       s'.resHandles = s.resHandles ∧ s'.errCtxs = s.errCtxs ∧ s'.callers = s.callers := by
   simp only [registerThreadSt]
   split
-  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   · split
-    · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- `unregister_thread` touches only the task and instance arenas. -/
 theorem CStore.unregisterThreadSt_frame (task : TaskId) (t : ThreadId) (i : Nat)
     (s : CStore E) :
     let s' := s.unregisterThreadSt task t i
-    s'.core = s.core ∧ s'.threads = s.threads ∧ s'.waiting = s.waiting ∧
+    s'.threads = s.threads ∧ s'.waiting = s.waiting ∧
       s'.subtasks = s.subtasks ∧ s'.ends = s.ends ∧ s'.wsets = s.wsets ∧
       s'.nestingDepth = s.nestingDepth ∧ s'.lockdown = s.lockdown ∧
       s'.resourceTypes = s.resourceTypes ∧ s'.funcs = s.funcs ∧
       s'.resHandles = s.resHandles ∧ s'.errCtxs = s.errCtxs ∧ s'.callers = s.callers := by
   simp only [unregisterThreadSt]
   split
-  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 end Updates
 

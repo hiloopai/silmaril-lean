@@ -84,7 +84,7 @@ theorem runs_enter {m : Machine.Config (E3 P) σ} {Gt : List (Runtime.Task (E3 P
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ (by exact hi))
   rw [hadd]
   exact RunsQ.bind (runs_modifyStore _ _
-    (CStore.registerThreadSt_frame (E := E3 P) _ _ _).2.2.2.2.2.2.1) (.pure _ _)
+    (CStore.registerThreadSt_frame (E := E3 P) _ _ _).2.2.2.2.2.1) (.pure _ _)
   rfl
 
 /-! ## Caller records of top-level calls -/
@@ -172,7 +172,7 @@ theorem runs_unregister {th : Option ThreadId} {m : Machine.Config (E3 P) σ}
   apply RunsQ.bind (.pure _ _)
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ hi)
   rw [hrem]
-  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.2.1
+  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.1
   rfl
 
 theorem runs_exit {th : Option ThreadId} {m : Machine.Config (E3 P) σ}

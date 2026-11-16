@@ -63,7 +63,7 @@ theorem calls_of_trapEnd {cs : (core3P P).Store (CanonHost (core3P P))} {ιe ιi
     {c : (E3 P).Store (CanonHost (E3 P))}
     (h : TrapEnd prof P impl (invokedAtL cs ιe ιi fs G ST h₀ k j args) c) :
     ∃ m', Calls prof (fun _ _ => false) (DI P impl) (readyCfgL cs ιe ιi fs G ST h₀) ⟨k⟩ ⟨j⟩ args
-      m' .trap ∧ m'.store.core = c := by
+      m' .trap ∧ m'.core = c := by
   obtain ⟨tr, m', r, hh, hi, hl, hc⟩ := h
   exact ⟨m', ⟨tr, .cons (invoke_stepL hG j args) r, fun ev hm => absurd hm (hh ev),
     fun _ msg => hi msg, hl⟩, hc⟩
@@ -91,7 +91,7 @@ def FwdOut (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ) (l : L
         (readyCfgL cs' ιe' ιi' fs G' ST' h₀) (.resolved (some (ws.map toRefVal))) ∧
       ReadyL P l Ie Ii s₀ u₀ F₀ cs' ιe' ιi' G' u₁ π₁ (k + 1)
   | none => ∃ m', Calls prof (fun _ _ => false) (DI P impl) m ⟨k⟩ ⟨j⟩ args m' .trap ∧
-      LReady P l Ie Ii s₀ u₀ F₀ m'.store.core u₁ π₁
+      LReady P l Ie Ii s₀ u₀ F₀ m'.core u₁ π₁
 
 /-- **A specification round is a call of the reference machine** (`FwdOut`). -/
 theorem linkCall_fwd (S₀ : LStat P l Ie Ii u₀ F₀ B₀ (ownOf s₀)) (hB₀ : B₀.store.funcs = fs)

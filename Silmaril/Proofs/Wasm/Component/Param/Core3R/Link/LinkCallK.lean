@@ -67,16 +67,17 @@ variable {P : Profile} {σ : Type} {prof : ProfileKind} {impl : HostImpl (E3 P V
 
 /-- The store between linked calls: the exporter's instance state `ιe`, the importer's `ιi`, the
 leftovers `G` and the subtasks `ST` of earlier nested calls. -/
-def readyStoreL (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState)
+def readyStoreL (_cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (ST : List Subtask) : CStore (E3 P V IR) :=
-  { core := cs, insts := [{}, ιe, ιi], funcs := fs, tasks := G.tasks, threads := G.threads,
+  { insts := [{}, ιe, ιi], funcs := fs, tasks := G.tasks, threads := G.threads,
     callers := G.callers, subtasks := ST }
 
 /-- The configuration between linked calls, in host state `h`. -/
 def readyCfgL (cs : (core3R P V IR).Store (CanonHost (core3R P V IR))) (ιe ιi : InstState)
     (fs : List (CFuncInst (core3R P V IR))) (G : Garb P V IR σ) (ST : List Subtask) (h : σ) :
     Machine.Config (E3 P V IR) σ :=
-  { store := readyStoreL cs ιe ιi fs G ST, host := h, conts := G.conts, pending := G.pending,
+  { store := readyStoreL cs ιe ιi fs G ST, core := cs, host := h, conts := G.conts,
+    pending := G.pending,
     results := G.results, cancels := G.cancels }
 
 /-- The configuration after the host invoked function `j` on `args` as call `k`. -/
@@ -238,7 +239,7 @@ theorem runs_enter3 {th : ThreadId} {m : Machine.Config (E3 P V IR) σ}
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ (by exact hi))
   rw [hadd]
   exact RunsQ.bind (runs_modifyStore _ _
-    (CStore.registerThreadSt_frame (E := E3 P V IR) _ _ _).2.2.2.2.2.2.1) (.pure _ _)
+    (CStore.registerThreadSt_frame (E := E3 P V IR) _ _ _).2.2.2.2.2.1) (.pure _ _)
   rfl
 
 /-- `Task.return_` of a task with records on both sides, its caller a host record. -/
@@ -281,7 +282,7 @@ theorem runs_unregisterM {th : Option ThreadId} {m : Machine.Config (E3 P V IR) 
   apply RunsQ.bind (.pure _ _)
   apply RunsQ.bind (runs_getObj ArenaField.insts _ _ hi)
   rw [hrem]
-  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P V IR) _ _ _ _).2.2.2.2.2.2.2.1
+  exact runs_modifyStore _ _ (CStore.unregisterThreadSt_frame (E := E3 P V IR) _ _ _ _).2.2.2.2.2.2.1
   rfl
 
 theorem runs_exitM {th : Option ThreadId} {m : Machine.Config (E3 P V IR) σ}
@@ -390,7 +391,7 @@ theorem start_of {M : Machine.Config (E3 P V IR) σ} {ιe : InstState} {th : Opt
     {K : List FlatValue → Canon.P (E3 P V IR) σ (Ret (E3 P V IR))} {segs : List (Seg (E3 P V IR) σ)}
     {rest : List (Activation (E3 P V IR) σ)} {t : (E3 P V IR).Thread (CanonHost (E3 P V IR))}
     {cs : (core3R P V IR).Store (CanonHost (core3R P V IR))}
-    (hc : M.ctl = ⟨th, .core t K, segs⟩ :: rest) (hcs : M.store.core = cs)
+    (hc : M.ctl = ⟨th, .core t K, segs⟩ :: rest) (hcs : M.core = cs)
     (h1 : M.store.insts.set 1 ιe = M.store.insts) (hl : M.store.lockdown = false) :
     M = coreCfg (extN M ιe [] M.conts) th K segs rest (cs, t) := by
   rw [extN_nil M ιe h1 hl, ← hcs]
