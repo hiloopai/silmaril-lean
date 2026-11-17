@@ -1,0 +1,93 @@
+module
+
+public import Silmaril.Project.Defs
+public import Silmaril.Cerberus.TV.Validate.Defs
+public import Silmaril.Cerberus.TV.Provenance.Defs
+public import Silmaril.Compiler.Native.TargetCoherence.Defs
+
+/-!
+# Standard problem shapes: whole-program C translation validation
+
+The whole-program edges of C translation validation (docs/projects/c-tv.md), stated over the
+Cerberus Core semantics (`Silmaril.Cerberus.TV.Behaviour`), and the coherence of a target
+profile with that semantics (`Silmaril.Cerberus.TV.Profile`).
+
+| name | statement |
+|---|---|
+| `silmaril.shapes.c.tv.refines` | `Refines impl src tgt`: every observation of `tgt` is one of `src`, `tgt` reaches no gap or stuck state, and `tgt` has no infinite run |
+| `silmaril.shapes.c.tv.refines_ub_free` | `RefinesUBFree impl src tgt`: `Refines`, and no ending of `src` is undefined behaviour, so no target observation is admitted only through source UB |
+| `silmaril.shapes.c.tv.not_refines` | `¬ Refines impl src tgt` |
+| `silmaril.shapes.c.tv.equivalent` | `Equivalent impl P Q`: refinement both ways |
+| `silmaril.shapes.c.tv.profile_coherent_at` | `p.CoherentAt s`: the Core semantics, the elaborator configuration and the target profile agree on the scalar type `s` (storage, alignment, signedness, endianness, numeric format) |
+
+These are about closed programs (no input beyond the command-line arguments) and about the Lean
+port's semantics. Statements about functions in contexts, external calls and divergence are other
+shapes (`c.elaborates_to`, `c.compiles_to*`, and the roadmap).
+
+## Profiles
+
+* `linuxX86_64`: x86-64 Linux, System V psABI data model (`Data.Layout.sysvX86_64`), the formats
+  binary32, binary64 and x87 extended (80 value bits in 16 bytes), C11, and the elaborator
+  configuration `TargetCoherence.linuxLP64`.
+* `legacyPinnedApple`: the same data model with upstream's pinned elaborator configuration
+  `Target.pinnedApple`, whose every floating layout is 8/8; it is kept to show that it is not
+  coherent at `float` and `long double`, not as a target to validate against.
+-/
+
+@[expose] public section
+
+namespace Silmaril.Project.Shapes.CTV
+
+open Silmaril.Cerberus
+open Silmaril.Cerberus.TV
+
+/-- x86-64 Linux under the System V psABI, C11 (module docstring). -/
+def linuxX86_64 : Profile where
+  name := "x86_64-linux-gnu (System V LP64), C11"
+  language := ⟨.c11, false⟩
+  dataModel := Silmaril.Data.Layout.sysvX86_64
+  floatFormat
+    | .float => some .binary32
+    | .double => some .binary64
+    | .longDouble => some .x87
+    | .float128 => some .binary128
+  elaborator := Silmaril.Compiler.Native.TargetCoherence.linuxLP64
+  impl := Spec.Impl.lp64
+
+/-- Upstream's pinned elaborator configuration against the System V data model. -/
+def legacyPinnedApple : Profile :=
+  { linuxX86_64 with
+    name := "legacy: Target.pinnedApple elaborator, System V data model"
+    elaborator := Target.pinnedApple }
+
+/-- **Whole-program refinement** of closed Core programs. -/
+@[problem "silmaril.shapes.c.tv.refines"
+  (title := "A closed C program's Core refines another's (terminating, supported, observational)")]
+def CRefines (impl : Spec.Impl) (src tgt : Closed) : Prop :=
+  Refines impl src tgt
+
+/-- **Refinement of a UB-free source**: the row cannot rest on source undefined behaviour. -/
+@[problem "silmaril.shapes.c.tv.refines_ub_free"
+  (title := "A closed C program's Core refines another's, which has no undefined behaviour")]
+def CRefinesUBFree (impl : Spec.Impl) (src tgt : Closed) : Prop :=
+  RefinesUBFree impl src tgt
+
+/-- **Non-refinement**: negative evidence. -/
+@[problem "silmaril.shapes.c.tv.not_refines"
+  (title := "A closed C program's Core does not refine another's")]
+def CNotRefines (impl : Spec.Impl) (src tgt : Closed) : Prop :=
+  ¬ Refines impl src tgt
+
+/-- **Whole-program equivalence** of closed Core programs. -/
+@[problem "silmaril.shapes.c.tv.equivalent"
+  (title := "Two closed C programs' Cores are equivalent (terminating, supported, observational)")]
+def CEquivalent (impl : Spec.Impl) (P Q : Closed) : Prop :=
+  TV.Equivalent impl P Q
+
+/-- **Profile coherence at a scalar type.** -/
+@[problem "silmaril.shapes.c.tv.profile_coherent_at"
+  (title := "The Core semantics and a target profile agree on a scalar type")]
+def ProfileCoherentAt (p : Profile) (s : Scalar) : Prop :=
+  p.CoherentAt s
+
+end Silmaril.Project.Shapes.CTV

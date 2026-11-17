@@ -86,7 +86,7 @@ globs = [
   "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+",
   # Project, except `Project.WasmComponents` and `Project.WasmP3Rust` (`SilmarilWasmProject` below).
-  "Silmaril.Project.Defs", "Silmaril.Project.CompilesTo.+", "Silmaril.Project.Components.+",
+  "Silmaril.Project.Defs", "Silmaril.Project.CompilesTo.+", "Silmaril.Project.CTV.+", "Silmaril.Project.Components.+",
   "Silmaril.Project.ConsequenceSystems.+",
   "Silmaril.Project.Core.+", "Silmaril.Project.Formats.+", "Silmaril.Project.Languages.+",
   "Silmaril.Project.Registry.+",

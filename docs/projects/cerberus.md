@@ -239,3 +239,6 @@ captured loaded-integer conversions (`ci_cerberus_integer_cast`); a parameter ca
   vendored RISC-V package that is not in this release.
 - The System V / x86 translation-validation machinery and the native C compiler.
   These are planned for later releases.
+
+Whole-program translation validation over this port (refinement between closed Core programs,
+target-profile coherence, the roadmap) is described in [c-tv.md](c-tv.md).
