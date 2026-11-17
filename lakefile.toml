@@ -659,6 +659,14 @@ name = "ctv-pipeline"
 root = "CtvPipeline"
 srcDir = "tools/ctv-pipeline"
 
+# The explorer's C programs tab data (docs/projects/c-tv.md): theorems read from the checked
+# modules by their statements, profile coherence, the corpus.
+[[lean_exe]]
+name = "c-pages"
+root = "CPages"
+srcDir = "tools/c-pages"
+supportInterpreter = true
+
 # The Cerberus oracle replays (docs/projects/cerberus.md): each reads the genuine Cerberus
 # fixtures under benchmarks/cerberus-elaboration/oracle at run time.
 [[lean_exe]]

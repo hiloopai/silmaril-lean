@@ -421,3 +421,14 @@ a language with `Explorer.ui.href("languages", key)`.
   are drawn as box nodes, not as enclosing compound boxes.
 - The page targets schema `silmaril.project-db.v0.1` and warns about any other schema. Queries
   against missing tables may fail.
+
+## C programs
+
+The **C programs** tab (`views/c.js`) reads `c/` next to the page, written by `c-pages`
+(`tools/c-pages`, `make pages`): the C translation-validation corpus (`examples/c-programs`) with
+every representation of each program (source, `gcc -E` output, Clang's JSON AST, typed Ail from
+both frontends, Core), its producer, the browser's SHA-256 check against `provenance.json` and an
+evidence tag (`kernel`, `compiled`, `external`, `missing`, `sanity run`); the theorems of the C TV
+modules whose statement is a C TV shape, read by `c-pages` from their types; and the target
+profiles' coherence tables. `tests/explore/c.mjs` checks it in Chromium
+([c-tv.md](c-tv.md)).

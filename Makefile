@@ -28,7 +28,7 @@ library:
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
 # The Cerberus tests and executables (docs/projects/cerberus.md).
-CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront ctv-pipeline \
+CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront ctv-pipeline c-pages \
 	ci_cerberus_genuine_oracle ci_cerberus_elaboration_oracle ci_cerberus_integer_cast \
 	ci_cerberus_parameter_call
 # The C compiler's executables (docs/projects/ccomp.md).
@@ -182,6 +182,9 @@ pages: project-tool
 	# The ELF pages read the checked theorem modules of the pinned files (tools/elf-pages).
 	lake build --wfail elf-pages $(ELF_PINNED) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
 	lake env .lake/build/bin/elf-pages _site
+	# The C programs tab reads the C TV theorems (by their statements) and the corpus (tools/c-pages).
+	lake build --wfail c-pages tests.cerberus.TVExamples
+	lake env .lake/build/bin/c-pages _site
 
 # The registry and records checks, without Lean (what CI runs when their inputs change).
 project-registry: project-tool

@@ -158,7 +158,11 @@ listed with the stage that addresses them.
    theorem's name. Includes Clang-route vs Cerberus-route Core equivalence where both frontends
    accept the program, and explicit rejections (asm labels, attributes, unsupported constructs
    are preserved as named errors, never normalized away).
-3. **Explorer: C programs tab.** Source, Clang AST JSON, Ail, Core and the translations with
+3. **Explorer: C programs tab.** *Started*: `views/c.js` with data from `tools/c-pages` (`make pages`):
+   the corpus with every stage, its producer, SHA-256 checked in the browser and evidence tag;
+   the C TV theorems listed **from their statements** (a theorem is never matched by its name);
+   the profile coherence tables; browser test `tests/explore/c.mjs`, including the negative
+   association checks (a decoy theorem, no theorem on a corpus program). Remaining: Source, Clang AST JSON, Ail, Core and the translations with
    their trust tags, models and profile; source links pinned to a commit; browser tests including
    negative association tests (a theorem about another program or profile is not shown as
    evidence).

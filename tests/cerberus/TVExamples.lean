@@ -85,4 +85,8 @@ theorem shallow_unknown :
     (validate Spec.Impl.lp64 (add 1 2) (add 3 0) { depth := 20 }).verdict = .unknown := by
   cbv
 
+/-- A decoy for the explorer's association test (`tools/silmaril-project/tests/explore/c.mjs`): its
+name mentions a corpus program and a shape, its statement is neither, so `c-pages` must not list it. -/
+theorem decoy_arithmetic_refines : (1 : Nat) + 2 = 3 := rfl
+
 end Tests.CTV
