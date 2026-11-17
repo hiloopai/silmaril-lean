@@ -155,6 +155,24 @@ conformance of a *pure* function. A function with effects (`memset`) gives its `
    this conjunct vacuous.
    No row claims conformance at the link-time address of a shared object.
 
+### From an assembly function (`Elf.Abi.Asm`)
+
+`Code.ofAsm f image` and `Code.ofAsmWith f data image` project an ISA-independent assembly
+function (`Elf.Asm.AsmFunction`, #851's core) to a row's `Code`. The projection reads only typed
+fields: name, extent, bytes, symbol. It never reads listing text, decodings or `abiRef`. It lives
+on the ABI side, so the ELF/assembly core does not import the ABI. `codeOf_ofAsm` and
+`codeOf_ofAsmWith` turn the function's byte and symbol evidence (`BytesAt`, `SymbolOf`) and the
+binding's lookup into `CodeOf`; `ofAsmWith` also needs each data range mapped read-only by the
+file (`MappedAt`). The import closure holds the core's definitions and theorems, not its x86
+decode adapters.
+
+**Loading is an assumption.** `CodeOf`, `Untouched` and `Placement` say what the file contains
+and which load bases it admits. That a process's memory holds those bytes at the rebased
+addresses is the row's admission hypothesis (`Placed.loaded`). No row proves that ld.so maps the
+file so, or infers it from `Placement`. Code the loader runs (constructors, IFUNC resolvers) is
+outside the statement. A loader model that discharges `Placed.loaded` from the file would be a
+separate adapter.
+
 ## Header satisfaction
 
 A coverage per binary lists the claimed functions and excludes every other declared function

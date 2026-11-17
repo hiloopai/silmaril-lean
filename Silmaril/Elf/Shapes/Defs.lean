@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Elf.Facts.Defs
+public import Silmaril.Elf.Like.Defs
 public import Silmaril.Project.Defs
 
 /-! # Problem shapes: facts about an ELF file
@@ -22,6 +23,9 @@ file and fact; the parse row is the one a Rust emitter's output is checked again
 | `silmaril.shapes.elf.code_at` | `CodeAt X v code`: `code` is mapped read-only executable at `v` |
 | `silmaril.shapes.elf.binds` | `Binds X sel v code`: `sel` denotes the plain function at `v`, code `code` (compound: `lookup` ∧ `code_at`, `Shapes.binds_iff`) |
 | `silmaril.shapes.elf.entry_point` | `EntryIs X v`: the entry point (`e_entry`) of `X` is `v` |
+| `silmaril.shapes.elf.machine` | `MachineIs X m`: `X` is for the machine `m` (`e_machine`) |
+| `silmaril.shapes.elf.entries` | `EntriesAre X es`: the entry points of `X` are `es` (`File.entries`) |
+| `silmaril.shapes.elf.is_entry` | `IsEntry X e`: `e` is an entry point of `X` |
 
 They sit beside the loader shapes `silmaril.shapes.elf.loads` and `silmaril.shapes.elf.entry`
 (`Silmaril.Project.Shapes.Elf`, the LPS `ET_EXEC` loader), which these do not replace.
@@ -106,5 +110,17 @@ def Binds {V : Type} (X : Value V) (sel : Sel) (v : Nat) (code : List (BitVec 8)
 /-- **The entry point of `X` is `v`.** -/
 @[problem "silmaril.shapes.elf.entry_point" (title := "The entry point of an ELF file")]
 def EntryIs {V : Type} (X : Value V) (v : Nat) : Prop := Silmaril.Elf.EntryIs (file X) v
+
+/-- **`X` is for the machine `m`** (`e_machine`). -/
+@[problem "silmaril.shapes.elf.machine" (title := "The machine an ELF file is for")]
+def MachineIs {V : Type} (X : Value V) (m : Nat) : Prop := Silmaril.Elf.MachineIs X m
+
+/-- **The entry points of `X` are `es`.** -/
+@[problem "silmaril.shapes.elf.entries" (title := "The entry points of an ELF file")]
+def EntriesAre {V : Type} (X : Value V) (es : List EntryPoint) : Prop := Silmaril.Elf.EntriesAre X es
+
+/-- **`e` is an entry point of `X`.** -/
+@[problem "silmaril.shapes.elf.is_entry" (title := "An entry point of an ELF file")]
+def IsEntry {V : Type} (X : Value V) (e : EntryPoint) : Prop := Silmaril.Elf.IsEntry X e
 
 end Silmaril.Elf.Shapes
