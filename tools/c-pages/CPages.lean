@@ -8,7 +8,7 @@ import Silmaril.Project.Shapes.CTV.Thms
 lake env .lake/build/bin/c-pages OUTDIR     write OUTDIR/c/{theorems.json, profiles.json, programs/…}
 ```
 
-1. **Imports the checked modules** `Silmaril.Project.Shapes.CTV.Thms` and `tests.cerberus.TVExamples`
+1. **Imports the checked modules** `Silmaril.Project.Shapes.CTV.Thms` and `CTvRows`
    (built by `lake build --wfail`) and lists every theorem whose **statement** is a shape of
    `Silmaril.Project.Shapes.CTV` (`CRefines`, `CRefinesUBFree`, `CNotRefines`, `CEquivalent`,
    `ProfileCoherentAt`, or the negation of one): the shape, the arguments and the statement as
@@ -30,22 +30,36 @@ def shapes : List (Name × String) := [
   (``CRefinesUBFree, "silmaril.shapes.c.tv.refines_ub_free"),
   (``CNotRefines, "silmaril.shapes.c.tv.not_refines"),
   (``CEquivalent, "silmaril.shapes.c.tv.equivalent"),
-  (``ProfileCoherentAt, "silmaril.shapes.c.tv.profile_coherent_at")]
+  (``ProfileCoherentAt, "silmaril.shapes.c.tv.profile_coherent_at"),
+  (``ProfileApplies, "silmaril.shapes.c.tv.profile_applies"),
+  (``CRefinesOn, "silmaril.shapes.c.tv.refines_on")]
 
-def modules : List Name := [`Silmaril.Project.Shapes.CTV.Thms, `tests.cerberus.TVExamples]
+def modules : List Name := [`Silmaril.Project.Shapes.CTV.Thms, `CTvRows]
 
 def runCore {α : Type} (env : Environment) (x : CoreM α) : IO α := do
   let (a, _) ← x.toIO { fileName := "<c-pages>", fileMap := default, maxHeartbeats := 0 } { env }
   pure a
 
-/-- The shape a statement is an instance of, whether it is negated, and its arguments. -/
-def shapeOf? (ty : Expr) : Option (String × Bool × Array Expr) :=
+/-- The shape a statement is an instance of, whether it is negated, its arguments, and the
+registered row it states (when the statement is a row constant of the records, `silmaril.…`,
+whose definition is the shape's application: unfolded once). -/
+def shapeOf? (env : Environment) (ty : Expr) : Option (String × Bool × Array Expr × Option Name) :=
   let (neg, body) := match ty.not? with
     | some b => (true, b)
     | none => (false, ty)
-  match body.getAppFn with
-  | .const c _ => (shapes.lookup c).map fun s => (s, neg, body.getAppArgs)
-  | _ => none
+  let direct (e : Expr) := match e.getAppFn with
+    | .const c _ => (shapes.lookup c).map fun s => (s, e.getAppArgs)
+    | _ => none
+  match direct body with
+  | some (s, args) => some (s, neg, args, none)
+  | none => match body with
+    | .const row _ =>
+        if (`silmaril).isPrefixOf row then
+          match env.find? row with
+          | some (.defnInfo d) => (direct d.value).map fun (s, args) => (s, neg, args, some row)
+          | _ => none
+        else none
+    | _ => none
 
 structure Thm where
   name : Name
@@ -56,11 +70,13 @@ structure Thm where
   statement : String
   axioms : Array Name
   line : Option Nat
+  row : Option Name
 
 def Thm.json (t : Thm) : Json := Json.mkObj [("name", t.name.toString), ("module", t.module.toString),
   ("shape", t.shape), ("negated", t.negated), ("args", Json.arr (t.args.map Json.str)),
   ("statement", t.statement), ("axioms", Json.arr (t.axioms.map (Json.str ·.toString))),
-  ("line", match t.line with | some l => Json.num l | none => Json.null)]
+  ("line", match t.line with | some l => Json.num l | none => Json.null),
+  ("row", match t.row with | some r => Json.str r.toString | none => Json.null)]
 
 def theorems (env : Environment) : IO (Array Thm) := do
   let mods := modules.filterMap env.getModuleIdx?
@@ -70,9 +86,10 @@ def theorems (env : Environment) : IO (Array Thm) := do
     unless (env.getModuleIdxFor? n).any mods.contains do continue
     let .thmInfo ti := ci | continue
     if n.isInternal then continue
-    let some (shape, negated, args) := shapeOf? ti.type | continue
+    let some (shape, negated, args, row) := shapeOf? env ti.type | continue
+    let head := (shapes.find? (·.2 == shape)).map (·.1) |>.getD .anonymous
     let explicit : Array Bool ← runCore env <| MetaM.run' do
-      let fty ← inferType (shapeHead ti.type)
+      let fty ← inferType (mkConst head (← mkFreshLevelMVarsFor (← getConstInfo head)))
       forallTelescope fty fun xs _ => xs.mapM fun x => return (← x.fvarId!.getBinderInfo).isExplicit
     let args := (args.zip explicit).filterMap fun (a, e) => if e then some a else none
     let pp ← runCore env do
@@ -84,10 +101,8 @@ def theorems (env : Environment) : IO (Array Thm) := do
     let module := match env.getModuleIdxFor? n with
       | some i => env.header.moduleNames[i.toNat]!
       | none => .anonymous
-    out := out.push ⟨n, module, shape, negated, pp.1, pp.2, axioms, line⟩
+    out := out.push ⟨n, module, shape, negated, pp.1, pp.2, axioms, line, row⟩
   return out.qsort fun a b => a.name.toString < b.name.toString
-where
-  shapeHead (ty : Expr) : Expr := ((ty.not?).getD ty).getAppFn
 
 def scalarName (s : Scalar) : String :=
   (reprStr s).replace "Silmaril.Cerberus.TV.Scalar." ""

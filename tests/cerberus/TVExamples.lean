@@ -4,6 +4,9 @@ import Silmaril.Project.Shapes.CTV.Thms
 /-!
 # Whole-program validation examples (kernel-checked)
 
+The registered rows (with the project's statement and axiom audit) are in `examples/c-tv/CTvRows.lean`;
+this file keeps the remaining verdict checks (`unsupported`, `unknown`, the exit-status host).
+
 Each verdict is computed by `cbv` (a proof the kernel checks) and turned into a statement of the
 shapes by the validator's soundness theorems. Axioms: `propext`, `Classical.choice`, `Quot.sound`
 (audited in `tests/cerberus/TVValidate.lean`).
@@ -84,9 +87,5 @@ theorem noMain_source_unknown :
 theorem shallow_unknown :
     (validate Spec.Impl.lp64 (add 1 2) (add 3 0) { depth := 20 }).verdict = .unknown := by
   cbv
-
-/-- A decoy for the explorer's association test (`tools/silmaril-project/tests/explore/c.mjs`): its
-name mentions a corpus program and a shape, its statement is neither, so `c-pages` must not list it. -/
-theorem decoy_arithmetic_refines : (1 : Nat) + 2 = 3 := rfl
 
 end Tests.CTV

@@ -71,7 +71,7 @@ jobs:
       - name: Dump, check and write the database and the page, on prove
         run: |
           hiloop-prove run --build Silmaril --build SilmarilLogicGraphData --build ProjectSelfTest --build SysVTvExample \
-            --build CompilesToExamples --build wasm-pages --build elf-pages --build c-pages --out _site -- \
+            --build CompilesToExamples --build CTvRows --build wasm-pages --build elf-pages --build c-pages --out _site -- \
             env -u CARGO_TARGET_DIR make pages PAGES_SOURCE_REV="$GITHUB_SHA"
           ls -l _site
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

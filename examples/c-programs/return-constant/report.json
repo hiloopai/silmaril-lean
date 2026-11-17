@@ -29,22 +29,53 @@
  "pairs": [
   {
    "coveredOnlyByUB": false,
+   "relation": "frontend agreement (Core to Core)",
    "source": "cerberus",
    "target": "clang",
    "uncovered": 0,
+   "validatedUBFree": true,
    "verdict": "validated"
   },
   {
    "coveredOnlyByUB": false,
+   "relation": "frontend agreement (Core to Core)",
    "source": "clang",
    "target": "cerberus",
    "uncovered": 0,
+   "validatedUBFree": true,
    "verdict": "validated"
   }
  ],
  "profile": "linuxX86_64",
  "routes": {
   "cerberus": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     }
+    ],
+    "mentions": [
+     "float",
+     "double",
+     "longDouble",
+     "bool",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
    "core": "cerberus.core.sexp.gz",
    "coreSha256": "d42891c7f5efe66c66c4227e825c008ccfca176ca97310a9e05eb3e9d5874c62",
    "explore": {
@@ -67,6 +98,33 @@
    "status": "elaborated"
   },
   "clang": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     }
+    ],
+    "mentions": [
+     "float",
+     "double",
+     "longDouble",
+     "bool",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
    "core": "clang.core.sexp.gz",
    "coreSha256": "2ad10c7e4b3bd6917c3cef2cb66aa315df348d0307cfe8a9493a829ee2d314fd",
    "explore": {

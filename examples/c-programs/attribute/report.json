@@ -28,6 +28,35 @@
  "profile": "linuxX86_64",
  "routes": {
   "clang": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     }
+    ],
+    "mentions": [
+     "bool",
+     "float",
+     "double",
+     "longDouble",
+     "char",
+     "pointer",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
    "core": "clang.core.sexp.gz",
    "coreSha256": "ebe1e3b63b0de278fa80c65cdeb3c7992f8898f990e629183f3860a4a86b680c",
    "explore": {

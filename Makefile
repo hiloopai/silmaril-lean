@@ -33,7 +33,7 @@ CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront 
 	ci_cerberus_parameter_call
 # The C compiler's executables (docs/projects/ccomp.md).
 CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject SilmarilLogicGraphData ProjectSelfTest wasm-pages elf-pages $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject SilmarilLogicGraphData ProjectSelfTest wasm-pages elf-pages $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples CTvRows $(CCOMP_TARGETS)
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
@@ -183,7 +183,7 @@ pages: project-tool
 	lake build --wfail elf-pages $(ELF_PINNED) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
 	lake env .lake/build/bin/elf-pages _site
 	# The C programs tab reads the C TV theorems (by their statements) and the corpus (tools/c-pages).
-	lake build --wfail c-pages tests.cerberus.TVExamples
+	lake build --wfail c-pages CTvRows
 	lake env .lake/build/bin/c-pages _site
 
 # The registry and records checks, without Lean (what CI runs when their inputs change).

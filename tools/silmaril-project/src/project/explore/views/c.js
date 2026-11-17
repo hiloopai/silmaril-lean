@@ -37,6 +37,7 @@
     external: ["muted", "external", "output of an external tool taken as given (gcc -E, clang): not checked"],
     oracle: ["muted", "oracle", "agreement with another implementation on this input: testing"],
     missing: ["err", "missing", "no evidence: this edge is a gap of the pipeline"],
+    ubonly: ["err", "only through source UB", "validated, but the source reaches undefined behaviour, which admits every observation: not a validation of defined behaviour"],
     sanity: ["muted", "sanity run", "one run of one native build, checked against the Core's allowed observations (Spec.check): not compiler correctness"],
   };
   const tag = (k) => { const t = TAG[k] || ["muted", k, ""]; return `<span class="ctag ctag-${t[0]}" data-tag="${esc(t[1])}" title="${esc(t[2])}">${esc(t[1])}</span>`; };
@@ -106,15 +107,16 @@
       const blocked = new Set(prov.blockedRoutes || []);
       const rc = (r) => routeCell(rep, prov, r) + (blocked.has(r) ? ' <span class="err cblocked"><b>source correspondence blocked</b></span>' : "");
       h += `<tr data-program="${esc(p.name)}" data-status="${esc(p.status)}"><td>${plink(p.name)}</td><td><code>${esc(p.status)}</code></td><td>${rc("cerberus")}</td><td>${rc("clang")}</td>` +
-        `<td>${cross}</td><td>${obs}</td><td>${drops}</td><td>${v.length ? tag("compiled") : tag("missing")}</td></tr>`;
+        `<td>${cross}</td><td>${obs}</td><td>${drops}</td><td>${v.length ? tag("compiled") + (v.some(([, x]) => /source UB/.test(x)) ? " " + tag("ubonly") : "") : tag("missing")}</td></tr>`;
     }
     h += "</tbody></table>";
     h += `<h3>Kernel-checked theorems (${thms.theorems.length})</h3><p class="muted">Every theorem of ${thms.modules.map((m) => repoLink(moduleFile(m), null, m)).join(" and ")} whose statement is a C TV shape, ` +
       "read by <code>c-pages</code> from the theorem's type. The programs here are constructed Core files (the elaborated " +
       "<code>return a + b;</code> family of <code>Silmaril.Project.CTV.Examples</code>), not corpus programs.</p>";
-    h += '<table id="cthms"><thead><tr><th>theorem</th><th>shape</th><th>arguments</th><th>axioms</th><th>evidence</th></tr></thead><tbody>';
+    h += '<table id="cthms"><thead><tr><th>theorem</th><th>registered row</th><th>shape</th><th>arguments</th><th>axioms</th><th>evidence</th></tr></thead><tbody>';
     for (const t of thms.theorems) {
       h += `<tr data-theorem="${esc(t.name)}"><td>${repoLink(moduleFile(t.module), t.line, t.name.split(".").pop())}</td>` +
+        `<td>${t.row ? `<a href="#/problem/${enc(t.row)}"><code>${esc(t.row.replace(/^silmaril\.c_tv\./, ""))}</code></a>` : '<span class="muted">—</span>'}</td>` +
         `<td>${t.negated ? "¬ " : ""}<code>${esc(shapeShort(t.shape))}</code></td><td>${t.args.map((a) => `<code>${esc(a.replace(/^Silmaril\.(Project\.(Shapes\.)?CTV(\.Examples)?|Cerberus\.(TV|Spec))\./, ""))}</code>`).join(" ")}</td>` +
         `<td class="muted">${esc(t.axioms.join(", "))}</td><td>${tag("kernel")}</td></tr>`;
     }
@@ -194,7 +196,7 @@
     h += "<h3>Validation</h3>";
     if (!rep) h += `<p>${tag("missing")} No route elaborated; nothing was explored or validated.</p>`;
     else {
-      h += '<table id="cexplore"><thead><tr><th>route</th><th>status</th><th>endings</th><th>exhaustive</th><th>gap / stuck / UB</th><th>transitions</th></tr></thead><tbody>';
+      h += '<table id="cexplore"><thead><tr><th>route</th><th>status</th><th>endings</th><th>exhaustive</th><th>gap / stuck / UB</th><th>transitions</th><th>x86-64 per-type check (necessary filter)</th></tr></thead><tbody>';
       for (const [r, v] of Object.entries(rep.routes)) {
         if (v.status !== "elaborated") { h += `<tr><td>${esc(r)}</td><td class="err">${esc(v.status)}</td><td colspan="4">${esc(v.why || "")}</td></tr>`; continue; }
         const x = v.explore;
@@ -203,12 +205,17 @@
         for (const s of x.sample) { const k = `${s.outcome.kind}${s.outcome.exit != null ? " " + s.outcome.exit : ""}${s.stdout ? " stdout " + JSON.stringify(s.stdout) : ""}`; groups.set(k, (groups.get(k) || 0) + 1); }
         const shown = [...groups].map(([k, n]) => esc(k) + (n > 1 ? ` <span class="muted">×${n}</span>` : "")).join("<br>");
         h += `<tr><td>${esc(r)}</td><td>elaborated</td><td>${shown}<br><span class="muted">${x.endings} endings${x.endings > x.sample.length ? `, first ${x.sample.length} shown` : ""}</span></td>` +
-          `<td>${x.limited ? '<span class="err">no (bounded)</span>' : "yes"}</td><td>${x.gap ? "gap " : ""}${x.stuck ? "stuck " : ""}${x.ub ? "UB" : ""}${!x.gap && !x.stuck && !x.ub ? "none" : ""}</td><td>${x.steps}</td></tr>`;
+          `<td>${x.limited ? '<span class="err">no (bounded)</span>' : "yes"}</td><td>${x.gap ? "gap " : ""}${x.stuck ? "stuck " : ""}${x.ub ? "UB" : ""}${!x.gap && !x.stuck && !x.ub ? "none" : ""}</td><td>${x.steps}</td>` +
+          `<td class="capplies" data-applies="${v.applicability ? v.applicability.applies : ""}">${v.applicability ? (v.applicability.applies ? "passes" : '<span class="err">fails</span>') +
+            ` <span class="muted">(reachable Core names ${esc(v.applicability.mentions.join(", ") || "nothing")})</span>` +
+            v.applicability.blockers.map((b) => `<br><span class="err">${esc(b.type)}: ${esc(b.issues.join("; "))}</span>`).join("") : "—"}</td></tr>`;
       }
       h += "</tbody></table>";
-      h += '<table id="cpairs"><thead><tr><th>source</th><th>target</th><th>verdict</th><th>covered only by source UB</th><th>evidence</th></tr></thead><tbody>';
-      for (const p of rep.pairs) h += `<tr><td>${esc(p.source)}</td><td>${esc(p.target)}</td><td><b>${esc(p.verdict)}</b></td><td>${p.coveredOnlyByUB ? '<span class="err">yes</span>' : "no"}</td>` +
-        `<td>${p.verdict === "validated" || p.verdict === "refuted" ? tag("compiled") : tag("missing")}</td></tr>`;
+      h += '<p class="muted">A pair of routes is a <b>frontend agreement</b>: the Core of one frontend refines the other\'s (Core to Core). It says nothing about a compiler\'s output (the compiler-origin relation is <code>c.compiles_to</code>).</p>';
+      h += '<table id="cpairs"><thead><tr><th>source</th><th>target</th><th>relation</th><th>verdict</th><th>source UB-free (validateUBFree)</th><th>covered only by source UB</th><th>evidence</th></tr></thead><tbody>';
+      for (const p of rep.pairs) h += `<tr data-ubfree="${p.validatedUBFree}"><td>${esc(p.source)}</td><td>${esc(p.target)}</td><td>${esc(p.relation || "")}</td><td><b>${esc(p.verdict)}</b></td>` +
+        `<td>${p.validatedUBFree ? "yes" : '<span class="err">no</span>'}</td><td>${p.coveredOnlyByUB ? '<span class="err">yes</span>' : "no"}</td>` +
+        `<td>${p.verdict === "validated" || p.verdict === "refuted" ? tag("compiled") + (p.verdict === "validated" && !p.validatedUBFree ? " " + tag("ubonly") : "") : tag("missing")}</td></tr>`;
       if (!rep.pairs.length) h += `<tr><td colspan="5">${tag("missing")} fewer than two routes elaborated: no cross-validation</td></tr>`;
       h += "</tbody></table>";
       h += '<table id="cobs"><thead><tr><th>native run</th><th>termination</th><th>allowed by the Core (Spec.check)</th><th>evidence</th></tr></thead><tbody>';

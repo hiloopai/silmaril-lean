@@ -75,6 +75,12 @@ inductive Relation where
   | refines
   /-- Whole-program equivalence (`TV.Equivalent`). -/
   | equivalent
+  /-- Two frontends' Cores of one source refine each other (`TV.Refines` between them): a
+  Core-to-Core relation, not a statement about any compiler's output. -/
+  | frontendAgreement
+  /-- A compiler's output implements the source (`c.compiles_to*`): the compiler-origin relation,
+  which no Core-to-Core relation implies. -/
+  | compiles
   deriving DecidableEq, Repr
 
 /-- What an edge rests on (module docstring). -/

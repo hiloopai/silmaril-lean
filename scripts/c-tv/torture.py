@@ -17,7 +17,14 @@ The denominator is every case of benchmarks/gcc-torture/manifest.json (3,852 C f
   gap                  some Core exploration reached a gap (`error`/`unsupported`) or a stuck state
   unknown              every elaborated route's exploration hit its bounds
   explored             one route elaborated and was explored exhaustively (no cross-validation)
-  cross-validated      two routes elaborated, explored exhaustively, and validated both ways
+  cross-validated      two routes elaborated, explored exhaustively, and validated both ways, each
+                       source exploration exhaustive without undefined behaviour (`validateUBFree`):
+                       a frontend agreement (Core to Core), not a compiler-origin result
+  cross-validated-ub   validated both ways, but some direction rests on source undefined behaviour:
+                       counted separately, never as a cross-validation of defined behaviour
+  cross-validated-blocked validated both ways, but a route accepted a construct it drops (an asm
+                       label, an attribute it does not show it keeps): that route's Core does not
+                       correspond to the source, so the agreement is not counted
   refuted              the two routes' Cores were found not to refine each other (a frontend disagreement)
   timeout / tool-error the pipeline did not finish / a tool failed unexpectedly
 
@@ -102,6 +109,19 @@ def one(case, root, binary, sums, timeouts):
         row["routes"] = why
         if not routes:
             row["status"] = "frontend-rejected"; return row
+        # A route that accepted a construct it drops no longer corresponds to the source
+        # (scripts/c-tv/corpus.py: blocking losses). Such a route's agreement never counts.
+        pre = open(os.path.join(tmp, "t.i"), errors="replace").read()
+        blocked = []
+        if "cerberus" in routes and re.search(r"\b(__asm__|__asm|asm)\s*(volatile|__volatile__)?\s*\(", pre):
+            blocked.append("cerberus: asm label or register dropped")
+        attrs = {a.strip("_") for a in re.findall(r"__attribute__\s*\(\(\s*([A-Za-z_][A-Za-z0-9_]*)", pre)}
+        if "cerberus" in routes and attrs:
+            blocked.append("cerberus: attributes accepted without evidence they are kept")
+        if "clang" in routes and attrs - {"used", "unused", "deprecated", "noinline", "always_inline", "aligned", "mode"}:
+            blocked.append("clang: attributes accepted without evidence they are kept")
+        if blocked:
+            row["blocked"] = blocked
         observes = []
         if case.startswith("execute/"):
             open(os.path.join(tmp, "empty.out"), "wb").close()
@@ -146,8 +166,13 @@ def one(case, root, binary, sums, timeouts):
         else:
             verdicts = [p["verdict"] for p in rep["pairs"]]
             row["pairs"] = {f'{p["source"]}->{p["target"]}': p["verdict"] for p in rep["pairs"]}
-            if len(el) == 2 and verdicts and all(v == "validated" for v in verdicts):
+            ubfree = [p["validatedUBFree"] for p in rep["pairs"]]
+            if row.get("blocked") and len(el) == 2 and verdicts and all(v == "validated" for v in verdicts):
+                row["status"] = "cross-validated-blocked"
+            elif len(el) == 2 and verdicts and all(v == "validated" for v in verdicts) and all(ubfree):
                 row["status"] = "cross-validated"
+            elif len(el) == 2 and verdicts and all(v == "validated" for v in verdicts):
+                row["status"] = "cross-validated-ub"
             elif "refuted" in verdicts:
                 row["status"] = "refuted"
             elif any(not x["limited"] for x in ex.values()):
@@ -197,11 +222,12 @@ def main():
                 print(f"{i}/{len(chosen)} {time.time() - start:.0f}s", file=sys.stderr, flush=True)
     ordered = [rows[c] for c in cases]
     statuses = ["not-attempted", "harness-needed", "frontend-rejected", "elaborator-rejected", "no-main", "gap", "unknown",
-                "explored", "cross-validated", "refuted", "timeout", "tool-error"]
+                "explored", "cross-validated", "cross-validated-ub", "cross-validated-blocked", "refuted", "timeout", "tool-error"]
     summary = {s: sum(1 for r in ordered if r["status"] == s) for s in statuses}
     assert sum(summary.values()) == len(cases)
     for part in ["compile/", "execute/"]:
         summary[part] = {s: sum(1 for r in ordered if r["status"] == s and r["case"].startswith(part)) for s in statuses}
+    summary["blocked"] = sum(1 for r in ordered if r.get("blocked"))
     summary["profileIncoherent"] = sum(1 for r in ordered if r.get("profileIncoherent"))
     summary["ubReached"] = sum(1 for r in ordered if r.get("ubReached"))
     summary["coreAllowsPass"] = {v: sum(1 for r in ordered if v in (r.get("coreAllowsPass") or {}).values()) for v in ["admitted", "rejected", "unknown"]}

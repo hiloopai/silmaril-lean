@@ -62,6 +62,8 @@ try {
     check(r && v.every(([k, x]) => r.text.includes(`${k}: ${x}`)), `${pr.name}: its verdicts are shown`);
     check(r && (v.length ? r.tags.includes("compiled") && !r.tags.includes("kernel") : r.tags.includes("missing")),
       `${pr.name}: evidence tag ${v.length ? "compiled" : "missing"}, never kernel`);
+    const ubOnly = v.some(([, x]) => /source UB/.test(x));
+    check(r && ubOnly === r.tags.includes("only through source UB"), `${pr.name}: UB-only coverage ${ubOnly ? "is" : "is not"} flagged`);
   }
   const th = await p.evaluate(() => [...document.querySelectorAll("#cthms tbody tr")].map((r) => ({
     name: r.dataset.theorem, tags: [...r.querySelectorAll(".ctag")].map((t) => t.dataset.tag), href: r.querySelector("a.srclink")?.href })));
@@ -70,6 +72,8 @@ try {
   check(th.every((x) => x.tags.length === 1 && x.tags[0] === "kernel"), "every listed theorem is tagged kernel");
   check(!thms.theorems.some((t) => /decoy/.test(t.name)) && !th.some((x) => /decoy/.test(x.name)),
     "the decoy theorem (a shape and a program in its name, neither in its statement) is not listed");
+  const rowsOf = await p.evaluate(() => [...document.querySelectorAll("#cthms tbody tr")].map((r) => r.children[1].textContent.trim()));
+  check(thms.theorems.filter((t) => t.row).length === rowsOf.filter((x) => x !== "—").length, "each registered row's theorem shows its row");
   check(thms.theorems.every((t) => t.shape.startsWith("silmaril.shapes.c.tv.") && t.axioms.every((a) => ["propext", "Classical.choice", "Quot.sound"].includes(a))),
     "every theorem is a C TV shape with the standard axioms only");
   check(th.every((x) => x.href && /\/blob\/[0-9a-f]{7,40}\//.test(x.href)), "theorem source links are pinned to a commit");
@@ -86,6 +90,14 @@ try {
     check(true, `${pr.decl}: theorem columns match profiles.json`);
   }
   await shot("c-index");
+  // A registered row's link opens its problem in the project database, with the status its theorem gives.
+  const rowThm = thms.theorems.find((t) => t.row === "silmaril.c_tv.examples.overflow.refines_ub_free");
+  if (rowThm) {
+    await open("/problem/" + encodeURIComponent(rowThm.row));
+    const body = await p.evaluate(() => document.querySelector("#main").textContent);
+    check(/UNS/.test(body) && body.includes(rowThm.name.split(".").pop()), "the UB-only row's problem page shows UNS and the refuting theorem");
+    await shot("c-row-overflow-ub-free");
+  }
 
   for (const pr of idx.programs) {
     const prov = json(`programs/${pr.name}/provenance.json`);
@@ -119,7 +131,18 @@ try {
       if (f.endsWith(".gz")) bytes = zlib.gunzipSync(bytes);
       if (crypto.createHash("sha256").update(bytes).digest("hex") !== a.sha256) check(false, `${pr.name}/${f}: SHA-256 of the site file`);
     }
-    if (pr.name === "asm-label" || pr.name === "calls") await shot("c-program-" + pr.name);
+    const rep = fs.existsSync(path.join(site, "c", "programs", pr.name, "report.json")) ? json(`programs/${pr.name}/report.json`) : null;
+    if (rep) {
+      const pairs = await p.evaluate(() => [...document.querySelectorAll("#cpairs tbody tr[data-ubfree]")].map((r) => ({ ubfree: r.dataset.ubfree, text: r.textContent,
+        tags: [...r.querySelectorAll(".ctag")].map((t) => t.dataset.tag) })));
+      check(pairs.length === rep.pairs.length && rep.pairs.every((q, i) => pairs[i].ubfree === String(q.validatedUBFree) && pairs[i].text.includes("frontend agreement") &&
+        (q.verdict === "validated" && !q.validatedUBFree) === pairs[i].tags.includes("only through source UB")),
+        `${pr.name}: every pair is a frontend agreement, UB-free or flagged`);
+      const ap = await p.evaluate(() => [...document.querySelectorAll("td.capplies")].map((t) => t.dataset.applies));
+      const want = Object.values(rep.routes).filter((x) => x.status === "elaborated").map((x) => String(x.applicability.applies));
+      check(JSON.stringify(ap.filter((x) => x !== "")) === JSON.stringify(want), `${pr.name}: per-route profile applicability shown (${want})`);
+    }
+    if (["asm-label", "calls", "overflow-return", "signed-narrow"].includes(pr.name)) await shot("c-program-" + pr.name);
   }
   check(errors.length === 0, `no page or console errors${errors.length ? ": " + errors.join("; ") : ""}`);
 } finally {

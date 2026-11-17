@@ -184,9 +184,11 @@ def one(name, binary, tools, rev):
             cores = {k: v["coreSha256"] for k, v in report["routes"].items() if "coreSha256" in v}
             for p in report["pairs"]:
                 if p["source"] in cores and p["target"] in cores:
-                    rel = "refines"
+                    # Two frontends' Cores: a frontend agreement (Core to Core), not a compiler relation.
+                    rel = "frontendAgreement"
                     edges.append({"source": cores[p["source"]], "target": cores[p["target"]], "relation": rel,
                                   "verdict": p["verdict"], "coveredOnlyByUB": p["coveredOnlyByUB"],
+                                  "validatedUBFree": p["validatedUBFree"],
                                   "evidence": {"compiled": "Silmaril.Cerberus.TV.validate"} if p["verdict"] in ("validated", "refuted") else "missing",
                                   "profile": "linuxX86_64"})
             json.dump(report, open(os.path.join(out, "report.json"), "w"), indent=1, sort_keys=True)
@@ -252,7 +254,7 @@ STATUSES = [
     ("frontend-rejected", "no route produced typed Ail"),
     ("elaborator-rejected", "typed Ail from some route, Core from none"),
     ("single-route", "Core from exactly one route (the other rejected at its frontend or elaborator)"),
-    ("agreement-ub-free", "Core from both routes; each refines the other (TV.validate, compiled), explorations exhaustive, no undefined behaviour"),
+    ("agreement-ub-free", "Core from both routes; each refines the other (TV.validate, compiled) with a UB-free source both ways (validateUBFree)"),
     ("agreement-ub-only", "Core from both routes; each refines the other, but some exploration reaches undefined behaviour"),
     ("other", "Core from both routes, any other verdict (refuted, unknown, unsupported)"),
 ]
@@ -270,7 +272,8 @@ def status_of(report, prov):
         return "single-route"
     pairs = report["pairs"]
     if pairs and all(p["verdict"] == "validated" for p in pairs):
-        clean = all(not v["explore"]["ub"] and not v["explore"]["limited"] for v in el.values())
+        clean = (all(p["validatedUBFree"] for p in pairs) if all("validatedUBFree" in p for p in pairs) else
+                 all(not v["explore"]["ub"] and not v["explore"]["limited"] for v in el.values()))
         return "agreement-ub-free" if clean else "agreement-ub-only"
     return "other"
 
@@ -399,7 +402,12 @@ def main(argv):
     rows = []
     for n in names:
         name, report, failures = one(n, binary, tools, rev)
-        verdicts = {f'{p["source"]}->{p["target"]}': p["verdict"] for p in (report or {}).get("pairs", [])}
+        # A verdict that rests only on source undefined behaviour is reported as such, never as a
+        # plain validation.
+        verdicts = {f'{p["source"]}->{p["target"]}': (p["verdict"] + (" (UB-free source)" if p["validatedUBFree"] else
+                    " (only through source UB)" if p["verdict"] == "validated" and p["coveredOnlyByUB"] else
+                    " (source UB reached)" if p["verdict"] == "validated" else ""))
+                    for p in (report or {}).get("pairs", [])}
         routes = {k: v.get("status") for k, v in (report or {}).get("routes", {}).items()}
         prov = json.load(open(os.path.join(CORPUS, name, "provenance.json")))
         rows.append({"name": name, "routes": routes, "verdicts": verdicts, "failures": sorted(failures),

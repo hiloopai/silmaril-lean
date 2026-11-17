@@ -10,8 +10,8 @@
    },
    "status": "agreement-ub-free",
    "verdicts": {
-    "cerberus->clang": "validated",
-    "clang->cerberus": "validated"
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
    }
   },
   {
@@ -50,8 +50,22 @@
    },
    "status": "agreement-ub-free",
    "verdicts": {
-    "cerberus->clang": "validated",
-    "clang->cerberus": "validated"
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "compare",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
    }
   },
   {
@@ -101,6 +115,17 @@
   {
    "blockedRoutes": [],
    "failures": [],
+   "name": "local-if",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "rejected"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
    "name": "locals",
    "routes": {
     "cerberus": "rejected",
@@ -108,6 +133,34 @@
    },
    "status": "elaborator-rejected",
    "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "nested-calls",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "overflow-return",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-only",
+   "verdicts": {
+    "cerberus->clang": "validated (only through source UB)",
+    "clang->cerberus": "validated (only through source UB)"
+   }
   },
   {
    "blockedRoutes": [],
@@ -141,8 +194,36 @@
    },
    "status": "agreement-ub-free",
    "verdicts": {
-    "cerberus->clang": "validated",
-    "clang->cerberus": "validated"
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "sign-extend",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "signed-narrow",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
    }
   },
   {
@@ -189,6 +270,34 @@
    },
    "status": "elaborator-rejected",
    "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsigned-parameter",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsigned-wrap",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
   }
  ],
  "schema": "silmaril.c-tv.corpus.v1",
@@ -196,7 +305,7 @@
   "cerb-lean": "7388fce668288274cff2f963061052343a183f1f59e2d41a2c62f2bc3e1f60e7",
   "cfront": "3c1fa73fd49ec347703964e29b2d79b7b65c2164f2a7a5ef822f6e8c2df9032a",
   "clang": "Debian clang version 19.1.7 (3+b1)",
-  "ctv-pipeline": "d38081850351ca603e0ba3bc8195d230ade4a1e44db24b6e9cbc8de796991720",
+  "ctv-pipeline": "bf5770e21d848c6ed224e8e938ad48fa0e0305d1dd3dc2b94c7341f39182ce93",
   "gcc": "gcc (Debian 14.2.0-19) 14.2.0"
  }
 }

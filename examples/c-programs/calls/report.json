@@ -29,22 +29,64 @@
  "pairs": [
   {
    "coveredOnlyByUB": false,
+   "relation": "frontend agreement (Core to Core)",
    "source": "cerberus",
    "target": "clang",
    "uncovered": 0,
+   "validatedUBFree": true,
    "verdict": "validated"
   },
   {
    "coveredOnlyByUB": false,
+   "relation": "frontend agreement (Core to Core)",
    "source": "clang",
    "target": "cerberus",
    "uncovered": 0,
+   "validatedUBFree": true,
    "verdict": "validated"
   }
  ],
  "profile": "linuxX86_64",
  "routes": {
   "cerberus": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     },
+     {
+      "issues": [
+       "unknown: Struct: outside the coherence table"
+      ],
+      "type": "outside:Struct"
+     }
+    ],
+    "mentions": [
+     "bool",
+     "float",
+     "double",
+     "longDouble",
+     "size",
+     "ushort",
+     "outside:Struct",
+     "char",
+     "pointer",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
    "core": "cerberus.core.sexp.gz",
    "coreSha256": "be996379a465af70db49c9ce15570f47209dbf23daad2e89643e80b50c11c0fd",
    "explore": {
@@ -284,6 +326,44 @@
    "status": "elaborated"
   },
   "clang": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     },
+     {
+      "issues": [
+       "unknown: Struct: outside the coherence table"
+      ],
+      "type": "outside:Struct"
+     }
+    ],
+    "mentions": [
+     "bool",
+     "float",
+     "double",
+     "longDouble",
+     "size",
+     "ushort",
+     "outside:Struct",
+     "char",
+     "pointer",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
    "core": "clang.core.sexp.gz",
    "coreSha256": "dc3f339857b5c34c5b40370ab004fbd93906464a2fa5cdf742451e7353df47ed",
    "explore": {

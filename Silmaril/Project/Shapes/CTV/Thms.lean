@@ -33,6 +33,11 @@ theorem CRefinesUBFree.of_validate {impl : Spec.Impl} {src tgt : Closed} (bounds
     (h : validateUBFree impl src tgt bounds = true) : CRefinesUBFree impl src tgt :=
   validateUBFree_sound impl src tgt bounds h
 
+theorem CRefinesOn.of_validate {p : Profile} {src tgt : Codec.FileBindings} (bounds : Bounds)
+    (h : (validate p.impl (Closed.ofBindings src) (Closed.ofBindings tgt) bounds).verdict = .validated)
+    (hs : p.AppliesTo src) (ht : p.AppliesTo tgt) : CRefinesOn p src tgt :=
+  ⟨validate_sound _ _ _ bounds h, hs, ht⟩
+
 theorem CNotRefines.of_validate {impl : Spec.Impl} {src tgt : Closed} (bounds : Bounds)
     (h : (validate impl src tgt bounds).verdict = .refuted) : CNotRefines impl src tgt :=
   validate_refuted impl src tgt bounds h

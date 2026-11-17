@@ -26,14 +26,35 @@ open Silmaril.Cerberus
 open Silmaril.Cerberus.TV
 open Silmaril.Compiler.Native.Correctness
 
-/-- `int main(void) { return a + b; }` as elaborated Core. -/
-def add (a b : Int) : Closed := ⟨(AdditionSource.bindings a b).toFile, ∅, []⟩
+/-- `int main(void) { return a + b; }` as elaborated Core: its file bindings. -/
+def addBindings (a b : Int) : Codec.FileBindings := AdditionSource.bindings a b
+
+/-- `int main(void) { return a + b; }` as a closed program. -/
+def add (a b : Int) : Closed := ⟨(addBindings a b).toFile, ∅, []⟩
+
+/-- The programs the registered rows (`silmaril/c-tv.toml`) name. -/
+def foldSource : Closed := add 1 2
+def foldTarget : Closed := add 3 0
+def wrongFoldTarget : Closed := add 2 2
+def foldSourceBindings : Codec.FileBindings := addBindings 1 2
+def foldTargetBindings : Codec.FileBindings := addBindings 3 0
+
+/-- A **synthetic** file: the `1 + 2` file whose function information gives `main` the return
+type `float`. It exists to exercise `Profile.AppliesTo` on a mention the x86-64 profile is not
+coherent at; it is not the output of any frontend. -/
+def floatSignatureBindings : Codec.FileBindings :=
+  let b := addBindings 1 2
+  { b with funInfo := b.funInfo.map fun (sym, loc, attrs, _, ps, v, d) =>
+      (sym, loc, attrs, Ctype.mk [] (.basic (.floating (.realFloating .float))), ps, v, d) }
 
 /-- The same file without a `main` symbol: its startup ends in an `error` gap. -/
 def noMain : Closed := ⟨{ (add 1 2).file with main := none }, ∅, []⟩
 
 /-- `INT_MAX + 1`: signed overflow, undefined behaviour (C11 §6.5p5). -/
 def overflow : Closed := add 2147483647 1
+
+/-- `return 2 + 2;`, a target that `overflow` covers only through undefined behaviour. -/
+def overflowTarget : Closed := add 2 2
 
 /-- An implementation whose exit status keeps only the low bit (a deliberately unusual host, to
 show that observations depend on the implementation-defined choices). -/

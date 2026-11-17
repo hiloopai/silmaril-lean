@@ -21,9 +21,10 @@ Related pages: [Cerberus C semantics](cerberus.md) (the Lean port this builds on
 | Exhaustive bounded exploration of a closed Core program | `Silmaril/Cerberus/TV/Explore/{Defs,Thms}.lean` | soundness, completeness, termination and progress **proved** |
 | Refinement validator `validate` (verdicts `validated`, `refuted`, `unsupported`, `unknown`) | `Silmaril/Cerberus/TV/Validate/{Defs,Thms}.lean` | `validate_sound`, `validate_refuted`, `validateEquivalent_sound` **proved** |
 | Target profiles and their coherence with the Core semantics, per scalar type | `Silmaril/Cerberus/TV/Profile/Defs.lean` | decidable; table for x86-64 System V **computed in the kernel** |
+| Per-type applicability of a profile to a program (`mentions`, `AppliesTo`, `RefinesOn`) | `Silmaril/Cerberus/TV/Applicability/Defs.lean` | decidable |
 | Stages, artifacts, edges and evidence kinds | `Silmaril/Cerberus/TV/Provenance/Defs.lean` | vocabulary |
-| Shapes `silmaril.shapes.c.tv.{refines,refines_ub_free,not_refines,equivalent,profile_coherent_at}` | `Silmaril/Project/Shapes/CTV/{Defs,Thms}.lean` | shapes, bridges from verdicts |
-| Examples over elaborated Core | programs in `Silmaril/Project/CTV/Examples/Defs.lean`, verdicts in `tests/cerberus/TVExamples.lean` | 14 kernel-checked verdicts, positive and negative; interpreted negative checks in `tests/cerberus/TVValidate.lean` |
+| Shapes `silmaril.shapes.c.tv.{refines,refines_ub_free,not_refines,equivalent,profile_coherent_at,profile_applies,refines_on}` | `Silmaril/Project/Shapes/CTV/{Defs,Thms}.lean` | shapes, bridges from verdicts |
+| Registered rows over elaborated Core | programs in `Silmaril/Project/CTV/Examples/Defs.lean`, rows in `silmaril/c-tv.toml`, theorems in `examples/c-tv/CTvRows.lean`, more verdicts in `tests/cerberus/TVExamples.lean` | 14 kernel-checked verdicts, positive and negative; interpreted negative checks in `tests/cerberus/TVValidate.lean` |
 
 All theorems depend only on `propext`, `Classical.choice` and `Quot.sound`. Verdicts in the
 examples are computed in the kernel (`by cbv`); none uses `native_decide`.
@@ -141,50 +142,114 @@ upstream:
 Nothing from either is copied here. Using them is on the roadmap (stage 6) as a differential
 comparison on the corpus, with their licences recorded if any file is ever reused.
 
-## Roadmap to a full C translation-validation toolkit
+## Relations: Core to Core, frontend agreement, compiler origin
 
-Each stage is a reviewed pull request with its own scope. Caveats of the current stage are
-listed with the stage that addresses them.
+Three different relations are kept apart, in the shapes, the provenance edges
+(`TV.Provenance.Relation`) and the explorer:
 
-1. **Foundations** (this stage). Done: as above.
-2. **Program corpus and stage artifacts.** *Started*: [`examples/c-programs`](../../examples/c-programs/README.md)
-   (16 programs, every artifact with provenance and SHA-256; `ctv-pipeline`; Clang route vs
-   Cerberus route cross-validated through the same elaborator where both elaborate: 3 programs,
-   compiled evidence; `make c-tv-check`). Remaining: C programs with their exact source, preprocessed text,
-   Clang JSON AST, Cabs/Ail/typed Ail/Core from the Lean frontend and from the Clang route, each
-   with provenance (source SHA-256, compiler and version, options, target, language); records
-   (`silmaril/c-tv/*.toml`) with instances of the shapes and `@[solves]` theorems, so the
-   explorer associates evidence by the exact statement checked by `sil project check`, not by a
-   theorem's name. Includes Clang-route vs Cerberus-route Core equivalence where both frontends
-   accept the program, and explicit rejections (asm labels, attributes, unsupported constructs
-   are preserved as named errors, never normalized away).
-3. **Explorer: C programs tab.** *Started*: `views/c.js` with data from `tools/c-pages` (`make pages`):
-   the corpus with every stage, its producer, SHA-256 checked in the browser and evidence tag;
-   the C TV theorems listed **from their statements** (a theorem is never matched by its name);
-   the profile coherence tables; browser test `tests/explore/c.mjs`, including the negative
-   association checks (a decoy theorem, no theorem on a corpus program). Remaining: Source, Clang AST JSON, Ail, Core and the translations with
-   their trust tags, models and profile; source links pinned to a commit; browser tests including
-   negative association tests (a theorem about another program or profile is not shown as
-   evidence).
-4. **GCC torture manifest.** *Started*: [`benchmarks/gcc-torture`](../../benchmarks/gcc-torture/README.md):
-   the pinned manifest (3,852 cases, SHA-256 re-checked), `scripts/c-tv/torture.py`, and the first
-   full run: 4 cross-validated (all trivial), 46 compile-only without `main`, 1,131 frontend-
-   and 2,512 elaborator-rejected, 158 needing the DejaGNU harness, 1 timeout; the ranked blockers
-   are the next port obligations. Plan: GCC 14.3.0 (`c9cd41fb`), all 3,852 files of
-   `gcc.c-torture/{compile,execute}` with SHA-256s (GPL-3.0-or-later tests stay in the pinned GCC
-   checkout; only the manifest is stored); per test a status among *not attempted*, *outside the
-   supported profile* (with the construct), *frontend rejected*, *validator unknown* (bound),
-   *validator unsupported* (gap), *validated*, *refuted*, *timeout*, *UB-dependent test*
-   (tests that rely on undefined or implementation-specific behaviour), with the denominator
-   always 3,852. Execution comparisons against GCC/Clang binaries are sanity checks and are
-   reported separately from validation.
-5. **Compositional evidence.** Statements for expressions, statements and functions in
-   contexts (evaluation contexts of Core, the function's caller and its external calls under
-   contracts), composed into whole-program statements, instead of one monolithic equality;
-   connect to the existing function-level shapes (`c.elaborates_to`, `c.ir_refines`,
-   `c.compiles_to*`) through adapters.
-6. **Upstream comparison.** Differential runs of OathTech/cerberus-lean and of the OCaml
-   Cerberus on the corpus, reported as oracle evidence with exact revisions.
+| Relation | What it relates | Where |
+| --- | --- | --- |
+| Core to Core (`refines`, `equivalent`) | two closed Core programs, under the port's semantics | `c.tv.refines*`, `c.tv.equivalent`, `c.tv.not_refines` |
+| frontend agreement (`frontendAgreement`) | the Cores two frontends (Clang route, Cerberus route) give one source: a Core-to-Core relation between their outputs | corpus reports, torture `cross-validated` |
+| compiler origin (`compiles`) | a compiler's machine code and a C function's Core | `c.compiles_to*` ([compiles-to](compiles-to.md)); whole-program object code is open |
+
+No Core-to-Core row implies anything about a compiler's output. The **per-type profile check**
+(`c.tv.profile_applies`, and `c.tv.refines_on`, which is Core refinement plus that check on both
+programs) is a necessary filter, not a statement about the target. It requires every type named
+by the reachable Core to be in the coherence table and coherent: `TV.mentions` scans the program
+part (its own functions, globals, tags and function information), the runtime functions and the
+implementation constants it reaches (transitively, by symbol and by `PEimpl`/`Impl` name), and
+over-approximates within them (a floating object or value without its kind counts as all three).
+The x86-64 check fails for any program whose reachable Core names `float`, `long double`,
+`wchar_t`, or a type outside the table (aggregates, enums, exact-width integers). It cannot see
+operations rather than types (conversions, shifts, division in the runtime and `impl`;
+builtin functions run natively and only their call-site types are scanned),
+allocator addresses, byte-level punning, or the enum registry (run empty).
+
+The check is conservative to the point of failing on every corpus program: Cerberus's runtime
+conversion functions that the corpus Cores reach (`conv_int` and its callees) dispatch on the
+type and name `is_representable_floating`, `loaded_ivfromfloat` and the floating kinds, even on
+integer-only paths. Only the constructed `return a + b;` files (whose runtime is three integer
+functions) pass. A check over the types of the executed path, proved to cover them, is on the
+roadmap (milestone 7).
+
+## Undefined behaviour in the accounting
+
+A source reaching undefined behaviour admits every observation (C11 §4p2). A verdict that rests
+on it is never counted as a validation of defined behaviour:
+
+* the report flags `coveredOnlyByUB`; the shape `c.tv.refines_ub_free` (`validateUBFree`)
+  requires an exhaustive source exploration without undefined behaviour;
+* the corpus labels such verdicts "only through source UB" (`overflow-return`), and the explorer
+  tags them;
+* the torture runner counts them as `cross-validated-ub`, separately from `cross-validated`,
+  which requires UB-free sources in both directions.
+
+## Registered rows
+
+[`silmaril/c-tv.toml`](../../silmaril/c-tv.toml) registers the rows (group `silmaril.c_tv.all`, a
+child of the root group), and [`examples/c-tv/CTvRows.lean`](../../examples/c-tv/CTvRows.lean)
+solves or refutes each one with a theorem whose statement is the row. `sil project check` audits
+the statements and axioms; the explorer's C tab and its problem pages read them from the
+database. Rows: the fold refines / refines UB-free / is equivalent (THM); the wrong fold does not
+refine (UNS); `INT_MAX + 1` is refined by anything (THM) but not UB-free (UNS); the x86-64 per-type
+check passes on the fold (THM), the fold refines with the check on both programs (THM), and the
+check fails on a synthetic file whose Core names `float` (UNS); and one `profile_coherent_at` row per scalar type of the
+table, 18 THM and 3 UNS (`wchar_t`, `float`, `long double`).
+
+`CTvRows` is not a `module`. Under the module system the same `cbv` runs of the Core dynamics are
+two orders of magnitude slower (a six-transition prefix of `return 1 + 2;` did not finish in three
+minutes, while the whole validation takes seconds outside one): the declarations are real
+registered declarations with their kernel-checked proof terms, and moving them into a module is
+an open obligation. No verdict is evaluated natively for a kernel claim.
+
+## Two scopes
+
+### The current, restricted validator
+
+What a `validated` or `refuted` verdict covers today, and nothing more: a **closed** program (no
+input, fixed command-line arguments), whose execution tree under the port's Core semantics is
+**finite and fits the bounds** (every run at most `depth` transitions), with a **terminating**
+target that stays in the supported fragment, as a **Core-to-Core** relation. Unknown verdicts may
+hide true refinements (coverage is ending by ending). Programs with loops whose runs exceed the
+bounds, inputs, divergence, or an object-code side are out of its scope by construction, not
+merely untested.
+
+### The long-term roadmap: every in-scope GCC torture test validated, validators proved sound
+
+Independent of the restricted validator's limits; each milestone is a reviewed PR with
+soundness theorems and negative tests, and moves torture statuses (benchmarks/gcc-torture) from
+rejected/unknown toward validated against the fixed denominator of 3,852.
+
+1. **Foundations** (#894). Done.
+2. **Program corpus, stage artifacts and registered rows** (#898, and the registry PR). Remaining:
+   kernel instances for corpus Cores (needs the module-system `cbv` issue solved, or a symbolic
+   validator instead of enumeration).
+3. **Explorer: C programs tab** (#900). Remaining: rows for corpus programs once they exist.
+4. **GCC torture manifest and runner** (#902). Remaining: interpret DejaGNU `.x` options and the
+   builtins harness; a `gnu89`/permissive language profile with its own coherence obligations.
+5. **Elaborator coverage.** Port the rest of `translation.lem`, ranked by the torture blockers:
+   defined variadic, `noreturn` and non-`int` functions; statements and loops; all integer
+   operators; initialized locals of every type; `sizeof` of expressions; aggregates; floating
+   constants.
+6. **Frontend coverage.** The Clang route's block locations, `asm` statements, `va_list`; the
+   Cerberus route's implicit `int`, K&R definitions and GNU extensions, each preserved or
+   rejected explicitly.
+7. **A precise per-type check and profile-parametric memory.** A per-type check over the types
+   the executed paths touch, proved to cover them (the current scan of reachable runtime code
+   fails on every corpus program). Then profile-parametric memory: `Mem.Concrete` layouts and floating values from the profile
+   (binary32, x87, binary128), the `wchar_t` range, aggregate layout through the shared ABI layout
+   (main task's `Data.Layout`), endianness; then the profile applies to floating programs.
+8. **Validators beyond enumeration.** Symbolic or simulation-based Core-to-Core validators with
+   soundness proofs (no finite-tree requirement); divergence-aware refinement; set coverage of
+   endings; partial-order reduction for `unseq`.
+9. **Inputs and environment.** Observations over stdin, files and `argv`; external calls under
+   contracts (compositional evidence: expressions, statements, functions, modules).
+10. **Compiler origin.** Whole-program object code against the source's Core, through the ELF,
+    startup and ABI shapes owned by those tasks (consumed by adapters); this, not frontend
+    agreement, is what "the GCC torture test is translation-validated" requires.
+11. **Upstream comparison.** OathTech/cerberus-lean and the OCaml Cerberus on the corpus and the
+    torture cases, reported as oracle evidence with exact revisions.
 
 ### Open obligations (concrete, by area)
 
@@ -217,11 +282,10 @@ listed with the stage that addresses them.
 * **Machine code.** Whole-program C ↔ object code (beyond the function segments of
   [compiles-to](compiles-to.md)) needs the ELF/startup and ABI pieces owned by the ELF and ABI
   work, consumed through adapters.
-* **Kernel evaluation under the module system.** The example verdicts are computed by `cbv` in a
-  non-`module` test file: in a `module` the same `cbv` runs did not finish within minutes (with the
-  `cbv_eval` equations and `import all` of the String modules the compiles-to proofs use), while
-  each takes seconds outside one. Rows in the project database (stage 2) need them in a module, so
-  this has to be resolved (or the rows built in a non-module library) first.
+* **Kernel evaluation under the module system.** The registered rows (`CTvRows`) are computed by
+  `cbv` in a non-`module` library: in a `module` the same `cbv` runs did not finish within minutes
+  (with the `cbv_eval` equations and `import all` of the String modules the compiles-to proofs
+  use), while each takes seconds outside one.
 * **Validator soundness for the full toolkit.** Each new validator lands with its soundness
   theorem and negative tests; native (compiled) evaluation of a validator is tagged `compiled`,
   never presented as a kernel fact.

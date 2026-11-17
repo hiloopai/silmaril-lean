@@ -3,6 +3,7 @@ module
 public import Silmaril.Project.Defs
 public import Silmaril.Cerberus.TV.Validate.Defs
 public import Silmaril.Cerberus.TV.Provenance.Defs
+public import Silmaril.Cerberus.TV.Applicability.Defs
 public import Silmaril.Compiler.Native.TargetCoherence.Defs
 
 /-!
@@ -18,11 +19,19 @@ profile with that semantics (`Silmaril.Cerberus.TV.Profile`).
 | `silmaril.shapes.c.tv.refines_ub_free` | `RefinesUBFree impl src tgt`: `Refines`, and no ending of `src` is undefined behaviour, so no target observation is admitted only through source UB |
 | `silmaril.shapes.c.tv.not_refines` | `¬ Refines impl src tgt` |
 | `silmaril.shapes.c.tv.equivalent` | `Equivalent impl P Q`: refinement both ways |
-| `silmaril.shapes.c.tv.profile_coherent_at` | `p.CoherentAt s`: the Core semantics, the elaborator configuration and the target profile agree on the scalar type `s` (storage, alignment, signedness, endianness, numeric format) |
+| `silmaril.shapes.c.tv.profile_coherent_at` | `p.CoherentAt s`: the Core semantics, the elaborator configuration and the target profile agree on the scalar type `s` (storage, alignment, signedness, value range, endianness, numeric format) |
+| `silmaril.shapes.c.tv.profile_applies` | `p.AppliesTo b`: the per-type check passes: every type named by the program part of `b`, the runtime functions and the implementation constants it reaches (by name, a superset of what runs) is in the coherence table and coherent (`TV.Applicability`); a necessary filter |
+| `silmaril.shapes.c.tv.refines_on` | `RefinesOn p src tgt`: Core refinement with `p`'s `Spec.Impl` choices, and the per-type check passes on both programs; not a statement about the target |
 
-These are about closed programs (no input beyond the command-line arguments) and about the Lean
-port's semantics. Statements about functions in contexts, external calls and divergence are other
-shapes (`c.elaborates_to`, `c.compiles_to*`, and the roadmap).
+**Every one of these relates Cores, or a Core and a profile.** They are about closed programs (no
+input beyond the command-line arguments) and about the Lean port's semantics. None says that a
+compiler's output implements C: that compiler-origin relation is `c.compiles_to*` (a placed
+machine function and a C function's Core) and the roadmap, and nothing here implies it. When the
+two Cores come from two frontends (the corpus's Clang and Cerberus routes), a `refines` row is a
+frontend agreement. A Core row describes x86-64 Linux C only through a `profile_applies` row,
+which is per type and is necessary, not sufficient: `refines` alone claims nothing about any real
+target. Statements about functions in contexts, external calls and divergence are other shapes
+(`c.elaborates_to`, `c.compiles_to*`, and the roadmap).
 
 ## Profiles
 
@@ -89,5 +98,17 @@ def CEquivalent (impl : Spec.Impl) (P Q : Closed) : Prop :=
   (title := "The Core semantics and a target profile agree on a scalar type")]
 def ProfileCoherentAt (p : Profile) (s : Scalar) : Prop :=
   p.CoherentAt s
+
+/-- **A profile applies to a program** (per type: `TV.Profile.AppliesTo`). -/
+@[problem "silmaril.shapes.c.tv.profile_applies"
+  (title := "The per-type profile check passes: every type the program's reachable Core names (program part, runtime functions and implementation constants reachable by name) is coherent")]
+def ProfileApplies (p : Profile) (b : Codec.FileBindings) : Prop :=
+  p.AppliesTo b
+
+/-- **Refinement on a target profile** (`TV.RefinesOn`). -/
+@[problem "silmaril.shapes.c.tv.refines_on"
+  (title := "Core refinement, and the profile's per-type check passes on both programs (a necessary filter, not a target statement)")]
+def CRefinesOn (p : Profile) (src tgt : Codec.FileBindings) : Prop :=
+  RefinesOn p src tgt
 
 end Silmaril.Project.Shapes.CTV

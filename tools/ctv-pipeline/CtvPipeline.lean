@@ -5,6 +5,7 @@ import Silmaril.Cerberus.Codec.WellFormed.Defs
 import Silmaril.Cerberus.Spec.Check.Defs
 import Silmaril.Cerberus.Elab.Translate.Defs
 import Silmaril.Compiler.Native.TargetCoherence.Defs
+import Silmaril.Project.Shapes.CTV.Defs
 
 /-! # `ctv-pipeline`: typed Ail → Core → whole-program validation (docs/projects/c-tv.md)
 
@@ -21,9 +22,13 @@ symbol of the typed Ail). The elaborator runs with the target configuration
 `TargetCoherence.linuxLP64` and no enum registrations.
 
 `run` writes `OUTDIR/<NAME>.core.sexp` for every route the elaborator accepts and prints one JSON
-report: per route the elaboration result and the exploration of its Core (endings, `limited`,
-`stuck`, gaps, undefined behaviour), per ordered pair of routes the validator's verdict
-(`Silmaril.Cerberus.TV.validate`), and per observation (`--observe NAME STATUS STDOUT`: an exit
+report: per route the elaboration result, the exploration of its Core (endings, `limited`,
+`stuck`, gaps, undefined behaviour) and the per-type applicability of the x86-64 profile
+(`TV.mentions`, `Profile.AppliesTo`, `Profile.blockers`); per ordered pair of routes the
+validator's verdict (`Silmaril.Cerberus.TV.validate`; `validatedUBFree` when the source exploration
+was exhaustive without undefined behaviour, as `validateUBFree` requires). A pair of routes is a
+**frontend agreement**: a Core-to-Core relation between two frontends' outputs, not a compiler
+relation; and per observation (`--observe NAME STATUS STDOUT`: an exit
 status and a file with the stdout of a native run) the verdict of `Spec.check` on every route.
 
 **Evidence kind**: everything here is computed by the compiled Lean code (`compiled` in
@@ -139,16 +144,26 @@ def run (runtimePath : String) (fresh : Nat) (outDir : String) (o : Opts) : IO U
         let P : Closed := ⟨b.toFile, ∅, []⟩
         let L := P.explore bounds
         programs := programs.push (name, P)
+        let p := Silmaril.Project.Shapes.CTV.linuxX86_64
+        let mention : Mention → String
+          | .scalar s => (reprStr s).replace "Silmaril.Cerberus.TV.Scalar." ""
+          | .outside t => s!"outside:{t}"
+        let profile := Json.mkObj [("profile", "linuxX86_64"), ("applies", decide (p.AppliesTo b)),
+          ("mentions", Json.arr ((mentions b).map (Json.str ∘ mention)).toArray),
+          ("blockers", Json.arr ((p.blockers b).map fun (m, is) => Json.mkObj [("type", mention m),
+            ("issues", Json.arr (is.map fun | .differs w => Json.str s!"differs: {w}" | .unknown w => Json.str s!"unknown: {w}").toArray)]).toArray)]
         routes := routes.push (name, Json.mkObj [("status", "elaborated"),
-          ("core", s!"{name}.core.sexp"), ("explore", leavesJson L)])
+          ("core", s!"{name}.core.sexp"), ("explore", leavesJson L), ("applicability", profile)])
   let mut pairs : Array Json := #[]
   for (a, A) in programs do
     for (b, B) in programs do
       if a != b then
         let r := validate Spec.Impl.lp64 A B bounds
+        let ubFree := r.verdict == .validated && !r.source.limited && !r.source.ub
         pairs := pairs.push (Json.mkObj [("source", a), ("target", b),
+          ("relation", "frontend agreement (Core to Core)"),
           ("verdict", verdictString r.verdict), ("coveredOnlyByUB", r.coveredOnlyByUB),
-          ("uncovered", r.uncovered.length)])
+          ("validatedUBFree", ubFree), ("uncovered", r.uncovered.length)])
   let mut observations : Array Json := #[]
   for (name, status, file) in o.observe do
     let out ← IO.FS.readBinFile file
