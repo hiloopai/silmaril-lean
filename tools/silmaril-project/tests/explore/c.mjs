@@ -123,8 +123,11 @@ try {
     const views = await p.$$("button.cview");
     for (const v of views) await v.click();
     await p.waitForFunction(() => [...document.querySelectorAll(".csha")].every((s) => s.textContent), null, { timeout: 30000 });
-    const shas = await p.evaluate(() => [...document.querySelectorAll(".csha")].map((s) => s.textContent));
-    check(shas.length > 0 && shas.every((s) => s === "SHA-256 matches provenance.json"), `${pr.name}: every viewed artifact's SHA-256 matches (${shas.length})`);
+    const shas = await p.evaluate(() => [...document.querySelectorAll(".csha")].map((s) => ({ m: s.dataset.match, t: s.textContent })));
+    check(shas.length > 0 && shas.every((s) => s.m === "true" && /corrupted or changed bytes only/.test(s.t) && /semantic relation/.test(s.t)),
+      `${pr.name}: every viewed artifact's SHA-256 matches, labelled as a corruption check only (${shas.length})`);
+    const db = await p.evaluate(() => [...document.querySelectorAll("#cdb li")].map((l) => ({ k: l.dataset.db, ok: l.dataset.ok })));
+    check(db.length === 2 && db.every((x) => x.ok === "true"), `${pr.name}: source.c and provenance.json agree with their registered artifacts in the project database`);
     // And independently of the page.
     for (const [f, a] of Object.entries(prov.artifacts)) {
       let bytes = fs.readFileSync(path.join(site, "c", "programs", pr.name, f));

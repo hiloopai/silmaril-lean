@@ -10,19 +10,47 @@
 (() => {
   const { esc, badge } = Explorer.ui;
   const cache = new Map();
+  // Bounds: a fetched file at most FETCH_LIMIT bytes, a decompressed one at most INFLATE_LIMIT
+  // (a gzip bomb stops with an error instead of exhausting memory).
+  const FETCH_LIMIT = 8 << 20, INFLATE_LIMIT = 32 << 20;
+  async function readBounded(stream, limit, what) {
+    const rd = stream.getReader(), parts = [];
+    let n = 0;
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      n += value.length;
+      if (n > limit) { rd.cancel().catch(() => {}); throw new Error(`${what} exceeds the ${limit >> 20} MiB bound`); }
+      parts.push(value);
+    }
+    const out = new Uint8Array(n);
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
   function cFetch(rel, how) {
-    if (!cache.has(rel)) cache.set(rel, fetch("c/" + rel).then(async (r) => {
+    const key = how + ":" + rel;
+    if (!cache.has(key)) cache.set(key, fetch("c/" + rel).then(async (r) => {
       if (!r.ok) throw new Error(`c/${rel}: HTTP ${r.status}`);
-      if (how === "json") return r.json();
-      let bytes = new Uint8Array(await r.arrayBuffer());
+      let bytes = await readBounded(r.body, FETCH_LIMIT, `c/${rel}`);
+      if (how === "json") return JSON.parse(new TextDecoder("utf-8").decode(bytes));
       if (rel.endsWith(".gz")) {
-        const s = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-        bytes = new Uint8Array(await new Response(s).arrayBuffer());
+        bytes = await readBounded(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")), INFLATE_LIMIT,
+          `c/${rel} (decompressed)`);
       }
       return bytes;
     }));
-    return cache.get(rel).catch((e) => { cache.delete(rel); throw e; });
+    return cache.get(key).catch((e) => { cache.delete(key); throw e; });
   }
+  // The project database's record of a registered corpus file (silmaril/artifacts.toml, written by
+  // scripts/c-tv/corpus.py --register): its SHA-256 and CID, or null.
+  async function registered(ctx, name) {
+    if (!ctx || !Explorer.tables().has("artifacts")) return null;
+    const rows = await ctx.q("SELECT name, cid, sha256, size FROM artifacts WHERE name = ?", [name]);
+    return rows[0] || null;
+  }
+  const HASH_NOTE = "a hash match detects corrupted or changed bytes only: it says nothing about who produced " +
+    "them, and nothing about their semantic relation to the C source";
   const missing = (e) => `<p class="err">The C page data is not available here (${esc(e.message || e)}). ` +
     "It is written by <code>c-pages</code> (<code>make pages</code>) next to the page.</p>";
   const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -146,9 +174,10 @@
   ];
   const VIEW_LIMIT = 200000;
 
-  async function program(name) {
-    let prov, rep = null, thms;
-    try { [prov, thms] = await Promise.all([cFetch(`programs/${name}/provenance.json`, "json"), cFetch("theorems.json", "json")]); }
+  async function program(name, ctx) {
+    let prov, rep = null, thms, provBytes;
+    try { [prov, thms, provBytes] = await Promise.all([cFetch(`programs/${name}/provenance.json`, "json"), cFetch("theorems.json", "json"),
+      cFetch(`programs/${name}/provenance.json`, "bytes")]); }
     catch (e) { return missing(e); }
     try { rep = await cFetch(`programs/${name}/report.json`, "json"); } catch (e) { rep = null; }
     // Two stages may have the same bytes (gcc -E of a file without directives is the file): an
@@ -164,6 +193,17 @@
       `${esc(prov.tools.gcc)}, ${esc(prov.tools.clang)}.</p>`;
     // A theorem is about a corpus program only if c-pages read that program from its statement (`program`);
     // no current statement names one, and a theorem is never matched by its name.
+    // The project database's record of this program's source and provenance (registered artifacts).
+    const [regSrc, regProv] = await Promise.all([registered(ctx, `silmaril.c_tv.corpus.${name}.source`),
+      registered(ctx, `silmaril.c_tv.corpus.${name}.provenance`)]);
+    const provSum = await sha256(provBytes);
+    const srcRec = prov.artifacts["source.c"];
+    const dbRow = (label, reg, ok) => !reg ? `<li class="err" data-db="${label}" data-ok="false">${esc(label)}: not registered in the project database</li>`
+      : `<li class="${ok ? "" : "err"}" data-db="${label}" data-ok="${ok}">${esc(label)}: registered as <code>${esc(reg.name)}</code> (CID <code>${esc(String(reg.cid).slice(0, 16))}…</code>); ` +
+        (ok ? "the served bytes' SHA-256 equals the database's" : "<b>the served bytes' SHA-256 differs from the database's</b>") + "</li>";
+    h += `<ul id="cdb">${dbRow("provenance.json", regProv, regProv && regProv.sha256 === provSum)}` +
+      `${dbRow("source.c", regSrc, regSrc && srcRec && regSrc.sha256 === srcRec.sha256)}</ul>` +
+      `<p class="muted">${esc(HASH_NOTE)}.</p>`;
     const kernel = thms.theorems.filter((t) => t.program === name);
     h += `<p class="cnote" id="ckernel">Kernel-checked theorems about this program: <b>${kernel.length}</b>. ` +
       (kernel.length ? "" : "No theorem's statement is about this program's Core; its verdicts below are compiled evidence.") + "</p>";
@@ -230,8 +270,11 @@
         try {
           const bytes = await cFetch(`programs/${name}/${b.dataset.file}`, "bytes");
           const sum = await sha256(bytes);
-          out.textContent = sum === b.dataset.sha ? "SHA-256 matches provenance.json" : `SHA-256 MISMATCH: ${sum}`;
+          out.textContent = sum === b.dataset.sha
+            ? `SHA-256 matches provenance.json (${HASH_NOTE})`
+            : `SHA-256 MISMATCH with provenance.json: these bytes are not the recorded ones (${sum})`;
           out.className = "csha " + (sum === b.dataset.sha ? "muted" : "err");
+          out.dataset.match = String(sum === b.dataset.sha);
           let text = new TextDecoder("utf-8").decode(bytes.subarray(0, VIEW_LIMIT));
           if (b.dataset.file.endsWith(".json.gz") && bytes.length <= VIEW_LIMIT) { try { text = JSON.stringify(JSON.parse(text), null, 1); } catch (e) { /* keep the text */ } }
           pre.textContent = text + (bytes.length > VIEW_LIMIT ? `\n… (${bytes.length - VIEW_LIMIT} more bytes not shown)` : "");
@@ -242,6 +285,6 @@
     return { html: h, init };
   }
 
-  Explorer.registerView({ id: "c", title: "C programs", nav: 86, render: index });
-  Explorer.registerView({ id: "c-program", title: "C program", tab: "c", render: (arg) => program(arg) });
+  Explorer.registerView({ id: "c", title: "C programs", nav: 87, render: index });
+  Explorer.registerView({ id: "c-program", title: "C program", tab: "c", render: (arg, ctx) => program(arg, ctx) });
 })();

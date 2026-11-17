@@ -12,6 +12,60 @@ sha256 = "8b49538da88e3926f7c457e54fff82234e5ef0efb3c81372537b8f690f38b4b6"
 git_sha1 = "7c5be30070c4b48dd17e810e5fb461d5cc810612"
 
 [[artifact]]
+cid = "bafkr4iaaddzqmm2utv4mkc5mf7biccbv6xaiwyaqq2ts7i4z4idtds2hmi"
+type = "blob"
+name = "silmaril.c_tv.corpus.division-by-zero.source"
+paths = ["examples/c-programs/division-by-zero/source.c"]
+size = 68
+sha256 = "4f7495ba101dae3f210daf6831cf9164f2274265ae76bc3d7a99020deeb75671"
+git_sha1 = "ee2649918c6986f655042ac1422b2ab5ef741963"
+
+[[artifact]]
+cid = "bafkr4iaaxndrz6szy5n4hvixtfoe5oknpxnk67xzhviemqqytetrxe52yi"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-calls.provenance"
+paths = ["examples/c-programs/unsequenced-calls/provenance.json"]
+size = 5085
+sha256 = "649e960101b65f6e65140d6071aead02d385c0b3f6b2e3a74cf94565bceb40e3"
+git_sha1 = "a3c0ceaaf7ce96f5ad47c70ea8b759148cbd4fc0"
+
+[[artifact]]
+cid = "bafkr4iaflegz5qnfrap4cyh6gq7fvf5o6y2ajlohtd26rivyu5ufm2twvq"
+type = "blob"
+name = "silmaril.c_tv.corpus.nested-calls.source"
+paths = ["examples/c-programs/nested-calls/source.c"]
+size = 115
+sha256 = "45aea32f77aa24b14b56f3dcb06166081be553c143a88a56efd6cbf4fa0943c5"
+git_sha1 = "5e98de7f074796de7c4e7301de92ade296507a79"
+
+[[artifact]]
+cid = "bafkr4iagrd3h6exau7teyuvwbxx4wnzwae25itazs7524z47tft5e4i33u"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-overflow.provenance"
+paths = ["examples/c-programs/signed-overflow/provenance.json"]
+size = 5080
+sha256 = "1c96c042c07cc31d467cbbc565ee4e8a9407b8c5b2cfc21475aab0a3b139bc83"
+git_sha1 = "f404b9a331beb04d4097fff9ab8cc0791300ad76"
+
+[[artifact]]
+cid = "bafkr4iahdauyqhxc3vgbldj2g5i2u22533zqdy6nnl6nd3mcaiszw4q5jy"
+type = "blob"
+name = "silmaril.c_tv.corpus.globals.provenance"
+paths = ["examples/c-programs/globals/provenance.json"]
+size = 5074
+sha256 = "0f72ef02c9aaa422013ee2481f881bd3650952b86eb243a109467982dbe3a01f"
+git_sha1 = "2eb43912b2c99aa8814a87bc2e894a73c927cf30"
+
+[[artifact]]
+cid = "bafkr4iaijqv3cpirwd3xbcpslkw5f736wyrym7b7kebpbrbzbx2enb37pe"
+type = "blob"
+name = "silmaril.c_tv.corpus.recursion.source"
+paths = ["examples/c-programs/recursion/source.c"]
+size = 107
+sha256 = "35888579a50aaed36378ebeef4a1137101080c999ce2b29f5d6a70b5c955988d"
+git_sha1 = "b2fec42e0e4f488487b49e876ec764a5bb399a66"
+
+[[artifact]]
 cid = "bafkr4ialkxfgfwrnf7rx6rjx57kzqmey6jqs5536k4irxrxl3c5bfvyi4a"
 type = "blob"
 name = "silmaril.wasm.examples.lrat.lrat_module"
@@ -33,6 +87,15 @@ derivation = "silmaril.wasm_components.gen.run.recipe"
 meta = { wasm = { custom = [], exports = ["func run"], imports = ["func get"], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4iar7nat4pzyxpu35mjr22obilftkfqcjuevxoe4wmx5pfi4mum32u"
+type = "blob"
+name = "silmaril.c_tv.corpus.arithmetic.source"
+paths = ["examples/c-programs/arithmetic/source.c"]
+size = 43
+sha256 = "81ce1cb66259297398a2ad0f56f931659be1e80dedf9232bc9e687c81ec0d35f"
+git_sha1 = "e0537ce36c1da171276f4e5de0865b6bfec377e7"
+
+[[artifact]]
 cid = "bafkr4ias57qpxdadwjv52mhbzjcb35ix57aweohwqy7ey2i7pjk2jfqgpu"
 type = "blob"
 name = "silmaril.wasm_components.wac.pilot.composed.blob"
@@ -44,6 +107,15 @@ derivation = "silmaril.wasm_components.wac.pilot.composed.compose"
 meta = { wasm = { composition_of = "silmaril.wasm_components.wac.pilot.blob", custom = ["component-name", "producers"], exports = ["func run"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4iavqynv7dbwth7y3q2dy5zsp56xjhblywd7vok2bhn6qoy64apctu"
+type = "blob"
+name = "silmaril.c_tv.corpus.globals.source"
+paths = ["examples/c-programs/globals/source.c"]
+size = 126
+sha256 = "0b6d5633f843ee3aa4e29c28287e623f542ddd85a2cafd80bbe1b1d49acf01ab"
+git_sha1 = "abc754b563fd0262cdcbc59220dfe602a49eba90"
+
+[[artifact]]
 cid = "bafkr4iayh6sghvglya2f5njxpzh5g3mgpnk72jf5vq3pglvmurqcakavqu"
 type = "blob"
 name = "silmaril.sysv_tv.max2.o2_obj"
@@ -51,6 +123,33 @@ paths = ["examples/sysv-tv/max2/O2/max2.o"]
 size = 736
 sha256 = "707f0a3662799f76ba7587663c87d64200acde6a33c1ecd53225fbdca30dc279"
 git_sha1 = "fb9a6bfd343d1dd715ee4e8bef9d720c26751b51"
+
+[[artifact]]
+cid = "bafkr4iayypurtfessxuna7lqwdu3zmeymsm5hsipyhdkq3m45nb24c2qiq"
+type = "blob"
+name = "silmaril.c_tv.corpus.locals.provenance"
+paths = ["examples/c-programs/locals/provenance.json"]
+size = 5071
+sha256 = "1f940b5e964439adf817debbe7ff6936240ef203a1ce27c4f3cf444b5195b168"
+git_sha1 = "e9f77296526140932cd0e0e532044de4121026fe"
+
+[[artifact]]
+cid = "bafkr4iazhyqnpauh5hgyfmzpw4phl747vr5uhrrmhhj2vjwqutmb4m4osy"
+type = "blob"
+name = "silmaril.c_tv.corpus.recursion.provenance"
+paths = ["examples/c-programs/recursion/provenance.json"]
+size = 5076
+sha256 = "0a11b192f7f47ff08127b19a23a446eeaa489d4bdfc3b972845ad4328f842350"
+git_sha1 = "06e9c34f9ba8a4489813809489402e3f7eb53ff3"
+
+[[artifact]]
+cid = "bafkr4ib3fcojui76jivuuhx7idxflclexsmpkctkc25ovreadjwxspfw2q"
+type = "blob"
+name = "silmaril.c_tv.corpus.control-flow.source"
+paths = ["examples/c-programs/control-flow/source.c"]
+size = 125
+sha256 = "0458b980464b1e0211ee37b96259bb5a38636f4de5f5459e5fa34f2ec9d5c485"
+git_sha1 = "3c62550ede0d510c066ec6634ab19d4bd1516a72"
 
 [[artifact]]
 cid = "bafkr4ib4owwgjjlpdyshelx5yz5lgspygf47tzhkwpajtqjrxivic5aqy4"
@@ -62,6 +161,15 @@ sha256 = "0b4fe490390ecc9c2222f969f65b179e658a3327e005efd4ddc959766132a3c4"
 git_sha1 = "8105b36cf0f8c972b5d2eb43bf2685880fdf505c"
 derivation = "silmaril.wasm_components.adapter.command.fetch"
 meta = { wasm = { custom = ["component-type:wit-bindgen:0.62.0:wasi:cli@0.2.12:command:encoded world", "name", "producers", "target_features"], exports = ["func adapter_close_badfd", "func adapter_monotonic_clock_set_paused", "func adapter_open_badfd", "func args_get", "func args_sizes_get", "func cabi_import_realloc", "func clock_res_get", "func clock_time_get", "func environ_get", "func environ_sizes_get", "func fd_advise", "func fd_allocate", "func fd_close", "func fd_datasync", "func fd_fdstat_get", "func fd_fdstat_set_flags", "func fd_fdstat_set_rights", "func fd_filestat_get", "func fd_filestat_set_size", "func fd_filestat_set_times", "func fd_pread", "func fd_prestat_dir_name", "func fd_prestat_get", "func fd_pwrite", "func fd_read", "func fd_readdir", "func fd_renumber", "func fd_seek", "func fd_sync", "func fd_tell", "func fd_write", "func path_create_directory", "func path_filestat_get", "func path_filestat_set_times", "func path_link", "func path_open", "func path_readlink", "func path_remove_directory", "func path_rename", "func path_symlink", "func path_unlink_file", "func poll_oneoff", "func proc_exit", "func proc_raise", "func random_get", "func reset_adapter_state", "func sched_yield", "func sock_accept", "func sock_recv", "func sock_send", "func sock_shutdown", "func wasi:cli/run@0.2.12#run"], imports = ["memory env/memory", "func wasi:filesystem/types@0.2.12/filesystem-error-code", "func wasi:io/error@0.2.12/[resource-drop]error", "func wasi:io/streams@0.2.12/[method]output-stream.check-write", "func wasi:io/streams@0.2.12/[method]output-stream.write", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-flush", "func __main_module__/cabi_realloc", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash", "func wasi:filesystem/types@0.2.12/[method]directory-entry-stream.read-directory-entry", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash-at", "func wasi:cli/environment@0.2.12/get-arguments", "func wasi:clocks/monotonic-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/now", "func wasi:clocks/monotonic-clock@0.2.12/now", "func wasi:cli/environment@0.2.12/get-environment", "func wasi:filesystem/types@0.2.12/[method]descriptor.advise", "func wasi:filesystem/types@0.2.12/[resource-drop]directory-entry-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync-data", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-flags", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-type", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-size", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times", "func wasi:filesystem/types@0.2.12/[method]descriptor.read", "func wasi:filesystem/preopens@0.2.6/get-directories", "func wasi:filesystem/types@0.2.12/[resource-drop]descriptor", "func wasi:filesystem/types@0.2.12/[method]descriptor.write", "func wasi:filesystem/types@0.2.12/[method]descriptor.append-via-stream", "func wasi:io/streams@0.2.12/[resource-drop]output-stream", "func wasi:io/streams@0.2.12/[method]input-stream.blocking-read", "func wasi:io/streams@0.2.12/[method]input-stream.read", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-directory", "func wasi:io/streams@0.2.12/[resource-drop]input-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync", "func wasi:filesystem/types@0.2.12/[method]descriptor.create-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.link-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.open-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.readlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.remove-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.rename-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.symlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.unlink-file-at", "func wasi:io/streams@0.2.12/[method]input-stream.subscribe", "func wasi:io/streams@0.2.12/[method]output-stream.subscribe", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-duration", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-instant", "func wasi:io/poll@0.2.12/[resource-drop]pollable", "func wasi:io/poll@0.2.12/poll", "func wasi:random/random@0.2.12/get-random-bytes", "func __main_module__/_start", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-via-stream", "func wasi:cli/stderr@0.2.12/get-stderr", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-write-and-flush", "func wasi:filesystem/types@0.2.12/[method]descriptor.write-via-stream", "func wasi:cli/stdin@0.2.12/get-stdin", "func wasi:cli/stdout@0.2.12/get-stdout", "func wasi:cli/terminal-stdin@0.2.12/get-terminal-stdin", "func wasi:cli/terminal-input@0.2.12/[resource-drop]terminal-input", "func wasi:cli/terminal-stdout@0.2.12/get-terminal-stdout", "func wasi:cli/terminal-output@0.2.12/[resource-drop]terminal-output", "func wasi:cli/terminal-stderr@0.2.12/get-terminal-stderr", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat", "func wasi:cli/exit@0.2.12/exit"], layer = "module", license = "Apache-2.0 WITH LLVM-exception", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4ib542hxftza7cejvzsrron5l2hrnhtcndde3hboqwn2ejflymh7hq"
+type = "blob"
+name = "silmaril.c_tv.corpus.attribute.provenance"
+paths = ["examples/c-programs/attribute/provenance.json"]
+size = 5631
+sha256 = "4cd055482c01d7641c32b3ec3d765d184392f77c699bdbcd3e33a2053ce6dd1f"
+git_sha1 = "6f417516a82b4625fe6f22d2d4c452c47c07d144"
 
 [[artifact]]
 cid = "bafkr4ib7gmlq4gu32xkzthiyt2t6dic47bkzw3xng6cekpjsbuyup3a4mm"
@@ -102,6 +210,42 @@ sha256 = "3719fe9008f66170e4a853b8bafdf4e61bc8beafb9c65038e427821191173476"
 git_sha1 = "6984f2d8085780cb8efb677ebf0c2e645437e440"
 
 [[artifact]]
+cid = "bafkr4ibdwwyzl3nf3l4vstsjoduu4u7vml4mk2lwbmzns5omuhxpdi2mmq"
+type = "blob"
+name = "silmaril.c_tv.corpus.compare.source"
+paths = ["examples/c-programs/compare/source.c"]
+size = 51
+sha256 = "1ffe8a6149321d932e29ad9b31754eef609a3b590917bc30043e7f35310f4ebb"
+git_sha1 = "f3a7316cc26a988ad1f9deaa9830f829ba276dd3"
+
+[[artifact]]
+cid = "bafkr4ibekhzr7v7x6pgbx6h6p4rpv5sxdbtpidklbhzvs5dkqtqk34n7uq"
+type = "blob"
+name = "silmaril.c_tv.corpus.return-constant.provenance"
+paths = ["examples/c-programs/return-constant/provenance.json"]
+size = 7397
+sha256 = "3129d3834298808556f3dbb7a03f167e98cc52ed71644885c05b956dcdeadbf4"
+git_sha1 = "9b09120b9dee686ccf390a0026b48b88b227a902"
+
+[[artifact]]
+cid = "bafkr4ibnbqb6lrbqvxcbea42g6kfjbbfodatgejmucagv5tutlwmp6bh7i"
+type = "blob"
+name = "silmaril.c_tv.corpus.float.provenance"
+paths = ["examples/c-programs/float/provenance.json"]
+size = 5070
+sha256 = "f049ef033efd9d2d141b4618b22b194aa214429ac6f40dd74941715492fa586c"
+git_sha1 = "f54896af31748034b47702f9369277e5b1d12fdb"
+
+[[artifact]]
+cid = "bafkr4ibx7liug5bcie5xxobegruf5tivliterjxnyfl2775oyjxdkzjzea"
+type = "blob"
+name = "silmaril.c_tv.corpus.sign-extend.source"
+paths = ["examples/c-programs/sign-extend/source.c"]
+size = 54
+sha256 = "73261278ca05db0268f2840031f9b1b556af8e5dc1e0150fdd31aa1ab22572ce"
+git_sha1 = "da4cc504feb7fe3b6dad2548e26fc558de0883eb"
+
+[[artifact]]
 cid = "bafkr4ibxw3nqchjnfxq5hz7ldez5icwbothe3jvuktrsu5edaxsvncycta"
 type = "blob"
 name = "silmaril.wasm_components.gen.provider.blob"
@@ -113,6 +257,15 @@ derivation = "silmaril.wasm_components.gen.provider.recipe"
 meta = { wasm = { custom = [], exports = ["func get"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4ic4sktgneoiqtut27uw3fltn5p55vqfdwgtaz4rvjhandg74x3wuy"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-overflow.source"
+paths = ["examples/c-programs/signed-overflow/source.c"]
+size = 66
+sha256 = "b02f6dc27b4eb88886043a7e750849a599199dd50c1de3f1c3cf63074ad04026"
+git_sha1 = "488e4603ea3ee17e44b456c7922399ea8ff28d78"
+
+[[artifact]]
 cid = "bafkr4ic6n6megvodyd2vunfrri6rltghpbtmmk7qwwbxotm4k5vpobhjqy"
 type = "blob"
 name = "silmaril.selftest.exec_elf"
@@ -121,6 +274,15 @@ size = 632
 sha256 = "78876f12a993ef67ba550ff2061043f506f0b03b4ecc465119cc07675fa0ec9f"
 git_sha1 = "bb8f5384d1c3c893660bc4fbf760bf06e130fab4"
 derivation = "silmaril.selftest.build.exec_elf"
+
+[[artifact]]
+cid = "bafkr4ic7hikxcqevoskmotnuurz3w7lahzurlppvaayoguf5l3lhnk2kua"
+type = "blob"
+name = "silmaril.c_tv.corpus.compare.provenance"
+paths = ["examples/c-programs/compare/provenance.json"]
+size = 7390
+sha256 = "96a87f064bdf06ea737e9c3cc496b7af46bf72c80379fa5fdd4c338bc49e0bc5"
+git_sha1 = "84c53a0aebf8a46ef543930006a45f6aea75be21"
 
 [[artifact]]
 cid = "bafkr4icba4n5q24t2zxrw4jqvz7tt35scfkughvbka2ho333wopftykey4"
@@ -164,6 +326,15 @@ derivation = "silmaril.wasm_components.adapter.reactor.fetch"
 meta = { wasm = { custom = ["component-type:wit-bindgen:0.62.0:wasi:cli@0.2.12:imports:encoded world", "name", "producers", "target_features"], exports = ["func adapter_close_badfd", "func adapter_monotonic_clock_set_paused", "func adapter_open_badfd", "func args_get", "func args_sizes_get", "func cabi_import_realloc", "func clock_res_get", "func clock_time_get", "func environ_get", "func environ_sizes_get", "func fd_advise", "func fd_allocate", "func fd_close", "func fd_datasync", "func fd_fdstat_get", "func fd_fdstat_set_flags", "func fd_fdstat_set_rights", "func fd_filestat_get", "func fd_filestat_set_size", "func fd_filestat_set_times", "func fd_pread", "func fd_prestat_dir_name", "func fd_prestat_get", "func fd_pwrite", "func fd_read", "func fd_readdir", "func fd_renumber", "func fd_seek", "func fd_sync", "func fd_tell", "func fd_write", "func path_create_directory", "func path_filestat_get", "func path_filestat_set_times", "func path_link", "func path_open", "func path_readlink", "func path_remove_directory", "func path_rename", "func path_symlink", "func path_unlink_file", "func poll_oneoff", "func proc_exit", "func proc_raise", "func random_get", "func reset_adapter_state", "func sched_yield", "func sock_accept", "func sock_recv", "func sock_send", "func sock_shutdown"], imports = ["memory env/memory", "func wasi:filesystem/types@0.2.12/filesystem-error-code", "func wasi:io/error@0.2.12/[resource-drop]error", "func wasi:io/streams@0.2.12/[method]output-stream.check-write", "func wasi:io/streams@0.2.12/[method]output-stream.write", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-flush", "func __main_module__/cabi_realloc", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash", "func wasi:filesystem/types@0.2.12/[method]directory-entry-stream.read-directory-entry", "func wasi:filesystem/types@0.2.12/[method]descriptor.metadata-hash-at", "func wasi:cli/environment@0.2.12/get-arguments", "func wasi:clocks/monotonic-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/resolution", "func wasi:clocks/wall-clock@0.2.12/now", "func wasi:clocks/monotonic-clock@0.2.12/now", "func wasi:cli/environment@0.2.12/get-environment", "func wasi:filesystem/types@0.2.12/[method]descriptor.advise", "func wasi:filesystem/types@0.2.12/[resource-drop]directory-entry-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync-data", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-flags", "func wasi:filesystem/types@0.2.12/[method]descriptor.get-type", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-size", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times", "func wasi:filesystem/types@0.2.12/[method]descriptor.read", "func wasi:filesystem/preopens@0.2.6/get-directories", "func wasi:filesystem/types@0.2.12/[resource-drop]descriptor", "func wasi:filesystem/types@0.2.12/[method]descriptor.write", "func wasi:filesystem/types@0.2.12/[method]descriptor.append-via-stream", "func wasi:io/streams@0.2.12/[resource-drop]output-stream", "func wasi:io/streams@0.2.12/[method]input-stream.blocking-read", "func wasi:io/streams@0.2.12/[method]input-stream.read", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-directory", "func wasi:io/streams@0.2.12/[resource-drop]input-stream", "func wasi:filesystem/types@0.2.12/[method]descriptor.sync", "func wasi:filesystem/types@0.2.12/[method]descriptor.create-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.set-times-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.link-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.open-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.readlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.remove-directory-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.rename-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.symlink-at", "func wasi:filesystem/types@0.2.12/[method]descriptor.unlink-file-at", "func wasi:io/streams@0.2.12/[method]input-stream.subscribe", "func wasi:io/streams@0.2.12/[method]output-stream.subscribe", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-duration", "func wasi:clocks/monotonic-clock@0.2.12/subscribe-instant", "func wasi:io/poll@0.2.12/[resource-drop]pollable", "func wasi:io/poll@0.2.12/poll", "func wasi:random/random@0.2.12/get-random-bytes", "func wasi:filesystem/types@0.2.12/[method]descriptor.read-via-stream", "func wasi:cli/stderr@0.2.12/get-stderr", "func wasi:io/streams@0.2.12/[method]output-stream.blocking-write-and-flush", "func wasi:filesystem/types@0.2.12/[method]descriptor.write-via-stream", "func wasi:cli/stdin@0.2.12/get-stdin", "func wasi:cli/stdout@0.2.12/get-stdout", "func wasi:cli/terminal-stdin@0.2.12/get-terminal-stdin", "func wasi:cli/terminal-input@0.2.12/[resource-drop]terminal-input", "func wasi:cli/terminal-stdout@0.2.12/get-terminal-stdout", "func wasi:cli/terminal-output@0.2.12/[resource-drop]terminal-output", "func wasi:cli/terminal-stderr@0.2.12/get-terminal-stderr", "func wasi:filesystem/types@0.2.12/[method]descriptor.stat", "func wasi:cli/exit@0.2.12/exit"], layer = "module", license = "Apache-2.0 WITH LLVM-exception", version = 1 } }
 
 [[artifact]]
+cid = "bafkr4icjgmr7ie7r7he7evny6egvudsquazdoacho6cds45ue324zocfba"
+type = "blob"
+name = "silmaril.c_tv.corpus.arithmetic.provenance"
+paths = ["examples/c-programs/arithmetic/provenance.json"]
+size = 7393
+sha256 = "55df3f050e31681c34fb674eb42fb2a00a61ca173350433bbbdd4666084ae1da"
+git_sha1 = "b5e4f5b765044404a75cc0eca4871ff9fda1e671"
+
+[[artifact]]
 cid = "bafkr4icnlrdyw4h55eu5dzskxp2tianb3hf2vuiflhdf3kbzt3trmc2aei"
 type = "blob"
 name = "silmaril.compiles_to.straight.o0.object"
@@ -171,6 +342,33 @@ paths = ["examples/compiles-to/straight/O0/straight.o"]
 size = 2848
 sha256 = "482026b8561dfbb3b2d13e49aba4d78354d6bee097524a97d5bdf662a48b26f4"
 git_sha1 = "1e6a36ba79198219bec280074e61c7a8f1fd7418"
+
+[[artifact]]
+cid = "bafkr4ico6ofnmbxie5we4vljzbuihmjpzekisozxf7ocfcrqo5qjrs47ga"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-wrap.provenance"
+paths = ["examples/c-programs/unsigned-wrap/provenance.json"]
+size = 7396
+sha256 = "9ee5439e8f4c7d24cee2467eb7d5df00ad83ba32de3ca92fd9e26cb548e56bf6"
+git_sha1 = "5bd0002949a5178631b14dcb1c17b4137ff7647e"
+
+[[artifact]]
+cid = "bafkr4icodc4patm2wak6gwidnh3ecsl7mrbbrpx6l6s3esg3u2ytrwz2qu"
+type = "blob"
+name = "silmaril.c_tv.corpus.statement-expression.provenance"
+paths = ["examples/c-programs/statement-expression/provenance.json"]
+size = 4615
+sha256 = "dd17871bd491187a4984185882ca3452cb0a633e591fb664b6bab8a039162b4d"
+git_sha1 = "c7e08f0619059c6fd397cfe5682014c9d0d3bf53"
+
+[[artifact]]
+cid = "bafkr4icrvn5lof5ndccourkmzehbsb36qnhpxrp5o33qal4qpc5zsb322e"
+type = "blob"
+name = "silmaril.c_tv.corpus.calls.provenance"
+paths = ["examples/c-programs/calls/provenance.json"]
+size = 7391
+sha256 = "7c07a289e2af519ac85b20952699bccd8f350b0fb79afbffebc5922d79de479d"
+git_sha1 = "5b02af5f1a3f56bcf9121154e082ea29ebd5b596"
 
 [[artifact]]
 cid = "bafkr4ictqucxu35a3436izezq5vb26k2agik7xus5o73igkx2k4hjchxde"
@@ -195,6 +393,42 @@ derivation = "silmaril.wasm_components.gen.recipe"
 meta = { wasm = { custom = [], exports = ["func get"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
 
 [[artifact]]
+cid = "bafkr4idasijzgeoybdfhygh7g7ufc5p3blgfde4lwte2sfwt2lxv7vmhbe"
+type = "blob"
+name = "silmaril.c_tv.corpus.asm-label.source"
+paths = ["examples/c-programs/asm-label/source.c"]
+size = 113
+sha256 = "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+git_sha1 = "d9df15c84f03a6838d0852ab8c4e3e384669ef50"
+
+[[artifact]]
+cid = "bafkr4idaxvk2ox2m6feg5u7h3wdqmhtndtgmgb4onhbcjeok2et3ule3hy"
+type = "blob"
+name = "silmaril.c_tv.corpus.local-if.provenance"
+paths = ["examples/c-programs/local-if/provenance.json"]
+size = 5845
+sha256 = "770568991713f7bf3c90219fc01db93f19c51786f46ee516e87c70e01b1ce578"
+git_sha1 = "9d0805610f5548754271b49b5fa005b8aa66453c"
+
+[[artifact]]
+cid = "bafkr4idnv4ltojtijgeikvpz5kf37d3nsxgwt6urzgscqcluv5btneu4zm"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-narrow.provenance"
+paths = ["examples/c-programs/signed-narrow/provenance.json"]
+size = 7396
+sha256 = "6df73911df1a2e49a58d422d0fe46ee6533ea85c7870ed87b77adf74c7dd96a6"
+git_sha1 = "692a95ebdaf226c751565014152e8e09ffeef290"
+
+[[artifact]]
+cid = "bafkr4idoelh5kltbh4sgl4xtdy5yarjl2xzk7j232persmm6kekua6fozq"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-calls.source"
+paths = ["examples/c-programs/unsequenced-calls/source.c"]
+size = 147
+sha256 = "ef79ad7b3691ab3bc5e9bb1c8a3f82b2b27984e1487b66733d37d51e8e995485"
+git_sha1 = "457232aa25d6a95c41cdc966f1df377b463e6e17"
+
+[[artifact]]
 cid = "bafkr4idoj3jthgktqxbftz44w246p3wdpidf2ovoow33snorjmipg7akay"
 type = "blob"
 name = "silmaril.wasm.examples.empty_check.prog"
@@ -203,6 +437,33 @@ size = 45
 sha256 = "54c4c74e6990f39b6cd1a5c7c1af7eae3a4dd6a725acd2eb7de2c21b1b0ce9ce"
 git_sha1 = "2282fc103b615d71c4b38f6ef89047419214b321"
 meta = { wasm = { custom = [], exports = ["func check"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4idproz2yj5w7a6oaz3sxqadib6zdtleyupusuhtbcacy4gwfy7dze"
+type = "blob"
+name = "silmaril.c_tv.corpus.pointer.source"
+paths = ["examples/c-programs/pointer/source.c"]
+size = 83
+sha256 = "8e629333b962a0df7997dc4e6192256fbeb5dbfa78c9ce2ebe94b99402faf04e"
+git_sha1 = "197e9fa8e343a87faea66c676167df8dcd6a6fc2"
+
+[[artifact]]
+cid = "bafkr4idw647iipzs6c5ogppsjq22nteuhutvtqzb7hnz4ghponq772daty"
+type = "blob"
+name = "silmaril.c_tv.corpus.nested-calls.provenance"
+paths = ["examples/c-programs/nested-calls/provenance.json"]
+size = 7398
+sha256 = "1f6a17dceaa667c33623af85ee41a54bf0423780d27e2b9717a3a9197dfe4da5"
+git_sha1 = "e80033707b7f120a7c50d87f956cc68e5afc7025"
+
+[[artifact]]
+cid = "bafkr4idzvt25k7wkl7nms4onnbvuhefwmsjmma3kw5rkxbcrn2vb5o6dai"
+type = "blob"
+name = "silmaril.c_tv.corpus.calls.source"
+paths = ["examples/c-programs/calls/source.c"]
+size = 134
+sha256 = "eb1e4dfc10c49ae5c42e6afe37163116055fbdabb62abee9cbcacd28d23e5290"
+git_sha1 = "7910b89733d1b4e076e3a04fcd0480f3f9df9ba4"
 
 [[artifact]]
 cid = "bafkr4ie2cya46wczkn5es7olssvrgbd6czastr2k7kbqpv3ehslchsocge"
@@ -236,6 +497,33 @@ sha256 = "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
 git_sha1 = "357f72da7a0db8add83699082fd51d46bf3352fb"
 
 [[artifact]]
+cid = "bafkr4ieet2kloi4ebyedt2hyyojenyhsfsqgzev2jm6iscm27or562q4je"
+type = "blob"
+name = "silmaril.c_tv.corpus.return-constant.source"
+paths = ["examples/c-programs/return-constant/source.c"]
+size = 30
+sha256 = "7fbc7c908f797d1f300a709612039356f21f0a219e50286fefc599af2103cc77"
+git_sha1 = "8250209b35dd7aaed9215af11b8b8dc101802aac"
+
+[[artifact]]
+cid = "bafkr4ielfznyl42eadtlzqokfoyapr7p6jw2incnaerll52glyyaarwtla"
+type = "blob"
+name = "silmaril.c_tv.corpus.locals.source"
+paths = ["examples/c-programs/locals/source.c"]
+size = 78
+sha256 = "a1b5cb5bf9f1c4a89b3a7990fae056bc46b9983b4782faaa48353c7fa582cee8"
+git_sha1 = "d8a6503df20c9c4ff4bcfc755a5ec3c5f53791dd"
+
+[[artifact]]
+cid = "bafkr4iem6l3ll67yh5gtqw2tapmihawst6qfa6pkvitkbqzhrnvorl2yfi"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-parameter.provenance"
+paths = ["examples/c-programs/unsigned-parameter/provenance.json"]
+size = 7401
+sha256 = "8602482549679cf59df56511e104e16fff4457165f8dabfd9d1b73e8e3a57b09"
+git_sha1 = "98bf93eb230ba3ceb8bd39baf5a47ae7bb1d3a70"
+
+[[artifact]]
 cid = "bafkr4ieojr6bxgo37viopkkrqx7k2xxbish2sbfc7xlxr2xv6ln72yu2te"
 type = "blob"
 name = "silmaril.selftest.hello_txt"
@@ -252,6 +540,33 @@ paths = ["examples/sysv-tv/max2/O0/max2.o"]
 size = 760
 sha256 = "23f2e8e0fe7f97665952687233e5a2465f00b0dd5bc6a8714bf533c1fbd8159e"
 git_sha1 = "207dbf73c7494d2cac2c6e3df2aa6fa94f9d0597"
+
+[[artifact]]
+cid = "bafkr4iet2df2f2lu46j5ixcwnxc4cgzm5xfar6loobktd6ipiffx2goxca"
+type = "blob"
+name = "silmaril.c_tv.corpus.sign-extend.provenance"
+paths = ["examples/c-programs/sign-extend/provenance.json"]
+size = 7394
+sha256 = "bab38624469ed3238baf40125ff35859ced3565a738b29dae50321625aba4c01"
+git_sha1 = "89cba163da011924c3ec3c792b374e9e538f911e"
+
+[[artifact]]
+cid = "bafkr4ievhrour3qagzq537r7zcil3aegafrvjybblbcjch7ulpf3n7f32e"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-narrow.source"
+paths = ["examples/c-programs/signed-narrow/source.c"]
+size = 123
+sha256 = "407f1cb52df14d759ed61757211568881ab425de62065e5a58b6b2fddf761859"
+git_sha1 = "1ef9f5fc8e111c5446e0dcd3e6d13392f2c47303"
+
+[[artifact]]
+cid = "bafkr4if5yqgqj4jedpyqc3vzl6sm55b5fwkevb5oi3lfjoixvgffjlh424"
+type = "blob"
+name = "silmaril.c_tv.corpus.pointer.provenance"
+paths = ["examples/c-programs/pointer/provenance.json"]
+size = 5072
+sha256 = "a6717018213a08fbdca196b9b592031e0fc253f804575373147704c3d94bc584"
+git_sha1 = "d13226bad7b9ba80f09e7cac754ddda788f1146a"
 
 [[artifact]]
 cid = "bafkr4if7lm7jpnq7acg5hqxn7mnkkeuye3wrqc7i7wgfczwqjizhqf2apa"
@@ -275,6 +590,42 @@ derivation = "silmaril.wasm_components.gen.toy.recipe"
 meta = { wasm = { custom = [], exports = ["type r", "func make", "func get", "func drop"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4ifdsqyv4fvsio2ewv4owtb4l4pnrcazkm5fdxa5mldqjrqlx76znq"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-wrap.source"
+paths = ["examples/c-programs/unsigned-wrap/source.c"]
+size = 67
+sha256 = "c70e1c0c264476997868b3641c981df607cec416ed3a248de5ba30173844c53d"
+git_sha1 = "8d88891791553c61de9817c2926d315a986159b8"
+
+[[artifact]]
+cid = "bafkr4ifpczp3gdcbpjfq7m7hdyetlcqtbapanmezxv4gluoakqs2oxhvaa"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-ub.provenance"
+paths = ["examples/c-programs/unsequenced-ub/provenance.json"]
+size = 5079
+sha256 = "9cdd67bfbac96f4fe96bbadef2c41f55957b00496c5e407a8f6b6b1856c2c7e5"
+git_sha1 = "2922ea5ec53dfc9859f688e95f20568915eb8e9a"
+
+[[artifact]]
+cid = "bafkr4ifqntcol7775lg6iqy2uuw25bd3erniitm46d5fem7kj4vfw5y2am"
+type = "blob"
+name = "silmaril.c_tv.corpus.statement-expression.source"
+paths = ["examples/c-programs/statement-expression/source.c"]
+size = 51
+sha256 = "3f0ab67a6984a40fbd11046a416573dbe017a88c85534770fadb893926ca98a5"
+git_sha1 = "51a7b15a37f40e2a2a28eea113ebca701ca7f2db"
+
+[[artifact]]
+cid = "bafkr4ifqre753ekajzjt56sirra63qbebak6kaohqpd7ydrpnnetuvwdze"
+type = "blob"
+name = "silmaril.c_tv.corpus.local-if.source"
+paths = ["examples/c-programs/local-if/source.c"]
+size = 70
+sha256 = "cd069bae8c7cf3e99502e2c35ed7d5a9537ec3dec272ea176a85d0b85f463ee7"
+git_sha1 = "b91b7774333fc1ba106de8850c3cf80b8c813445"
+
+[[artifact]]
 cid = "bafkr4iftejn2uc2tq5nhwijs7kpn3nbh3hjjyqix34k7hvzdvsilsxxbva"
 type = "blob"
 name = "silmaril.wasm.game.examples.ex_start"
@@ -296,6 +647,24 @@ derivation = "silmaril.wasm_components.gen.linked.world.project"
 meta = { wasm = { layer = "component", version = 13, world_of = "silmaril.wasm_components.gen.linked.blob" } }
 
 [[artifact]]
+cid = "bafkr4ig5mtyvtggqmkwtpssv5as4fhqya3nepy5awnvsf6vlrtbvwbjcme"
+type = "blob"
+name = "silmaril.c_tv.corpus.asm-label.provenance"
+paths = ["examples/c-programs/asm-label/provenance.json"]
+size = 5771
+sha256 = "e4941a9150d461781dc7785989a2879e868b319bdf6a9361ae26a59a0d6f39d1"
+git_sha1 = "c718b662c84d9710814d7eda7498d91fc96fc44d"
+
+[[artifact]]
+cid = "bafkr4ig6o5gz66s5hcyx3wodcjkgj2yktl476ambbhkwkr3kvt7pahicne"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-ub.source"
+paths = ["examples/c-programs/unsequenced-ub/source.c"]
+size = 65
+sha256 = "464a9d6905b7ee2857fc89873178183940c93ccc1582f8a42492634702192fb2"
+git_sha1 = "87e079c3aaeceb977461051ed03cd588bfb10d8f"
+
+[[artifact]]
 cid = "bafkr4igey43jzn5rh4ji7q2uib4g6bzs3ammrmur7eds3nlp6xjdul6jfi"
 type = "blob"
 name = "silmaril.wasm.examples.member_check.prog"
@@ -304,6 +673,42 @@ size = 108
 sha256 = "8afda6952213be3482ebb31dc2240433d1921021c9dcb00fa3205774903e11f9"
 git_sha1 = "e8d7b1a4b7eef943d0916d0eee09ceedc472bc8e"
 meta = { wasm = { custom = [], exports = ["func check"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4igmmlwgzatnkmwdqmysnnnttecnzimndc7wadauzpe7o3wzeum4ie"
+type = "blob"
+name = "silmaril.c_tv.corpus.float.source"
+paths = ["examples/c-programs/float/source.c"]
+size = 76
+sha256 = "44d640014b4a603f7115ffb33580a8d1014c570e1dbdbfe7cbc4c252431cc57d"
+git_sha1 = "af1ee6fe5f6edddfcb85ba505c53495721e70294"
+
+[[artifact]]
+cid = "bafkr4ignrfwbkgupzr47oypjgnufeyqfpke4faas5qkmxqlkluain33mey"
+type = "blob"
+name = "silmaril.c_tv.corpus.division-by-zero.provenance"
+paths = ["examples/c-programs/division-by-zero/provenance.json"]
+size = 5081
+sha256 = "7a38242faf2dcaa6f7157fa73f6aafc7759201bd5c36115e3c61a8b9eb2459e3"
+git_sha1 = "1ab63bb425a1e9f7917a4b1a645e02ab61bcebd4"
+
+[[artifact]]
+cid = "bafkr4igqaa3isdytqx2l5f3dejmc5h5zynkrlefuek2ni2tnw4j74mydum"
+type = "blob"
+name = "silmaril.c_tv.corpus.attribute.source"
+paths = ["examples/c-programs/attribute/source.c"]
+size = 107
+sha256 = "5500c53777f1441fb7a50c166a0fa9f419753e27074f7581a761de908bdb3396"
+git_sha1 = "3253f66959bf0f6fab5205695d02238d16a8a1db"
+
+[[artifact]]
+cid = "bafkr4igu7cqka6xc4vskventcqtl4st3ch72dab7rjtzddicimaspy7b6u"
+type = "blob"
+name = "silmaril.c_tv.corpus.overflow-return.provenance"
+paths = ["examples/c-programs/overflow-return/provenance.json"]
+size = 7398
+sha256 = "bbbef38f265d68a7fc0c9415bc4e547fa87599eef0bc67c7180c5adef6f731bf"
+git_sha1 = "fede6fd784eb06c024f26a93314e6258d76812f1"
 
 [[artifact]]
 cid = "bafkr4igulxj2rvkhkohnqu54m63jomq7anzzitot7w3qet5p55evslf3aa"
@@ -328,6 +733,24 @@ derivation = "silmaril.wasm_components.gen.comp_b.world.project"
 meta = { wasm = { layer = "component", version = 13, world_of = "silmaril.wasm_components.gen.comp_b.blob" } }
 
 [[artifact]]
+cid = "bafkr4ihhb2chrlxma56yl4h4zahixr46i6pj3ftbh6bmmism4vd3bbual4"
+type = "blob"
+name = "silmaril.c_tv.corpus.overflow-return.source"
+paths = ["examples/c-programs/overflow-return/source.c"]
+size = 125
+sha256 = "5706f295e81f8a0810d3b226ad883a6fdf4e0fd5eaaccfebb8ee3d38f7cfe0a8"
+git_sha1 = "b54c1893deaa343a7da805bee28c509da74526cc"
+
+[[artifact]]
+cid = "bafkr4ihhg4mawhyt7eno33xdwrjzfkxsrhsr7qfda7dqxx466yxdj5body"
+type = "blob"
+name = "silmaril.c_tv.corpus.control-flow.provenance"
+paths = ["examples/c-programs/control-flow/provenance.json"]
+size = 5079
+sha256 = "095fe7f99de1ec4da5b279e82e9950913545cc8eb72df7982d26c01e332b2ccf"
+git_sha1 = "58f4b214fb9eb75c23be55075bb0653d27302d7c"
+
+[[artifact]]
 cid = "bafkr4ihjitr643vnhzwmwj2kyxkvpad23ayzskzhpihwasjbozsyeux65q"
 type = "blob"
 name = "silmaril.wasm_components.wac.pilot.blob"
@@ -336,6 +759,15 @@ size = 316
 sha256 = "4ec2af5297141cc06d702c332b3ba392baac034413bde69f79fca78aa5fc497b"
 git_sha1 = "79672c496c3cc005d89a277765d9152b8d7b96c0"
 meta = { wac = { exports = ["b.run"], instantiates = ["silmaril:provider", "silmaril:comp-b"], license = "LicenseRef-silmaril-lean", package = "silmaril:pilot" } }
+
+[[artifact]]
+cid = "bafkr4ihkgioltbwlz4vq7ut3yy3xz326c3stsq2exau2ht444n6xfongoy"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-parameter.source"
+paths = ["examples/c-programs/unsigned-parameter/source.c"]
+size = 73
+sha256 = "80f31a7762137d7def9dd5aad94f29e39714fa8ed8a8c7107ca3d7cf5fc2bfa2"
+git_sha1 = "cafdee59e0e5ee0a528b6fda4aa04a2d6151e001"
 
 [[artifact]]
 cid = "bafkr4ihqbonquru6xcz27telzewjvmfmhwu4rs7xzqmny7jm5oc2yofwi4"

@@ -1,4 +1,4 @@
-summary: 919 problems (919 local), 50 groups, 4913 records, 1679 edges, 36 artifacts
+summary: 919 problems (919 local), 50 groups, 4913 records, 1679 edges, 84 artifacts
 verdicts: 433 holds, 334 fails, 152 unknown (all 919 problems); 433 holds, 334 fails, 152 unknown (919 local)
 markings: 2 deprecations (1 problems, 0 groups, 0 specs), 2 problems deprecated; findings: 0 error, 1 spec_bug, 0 model_gap, 0 unclear; 332 failing problems not deprecated and unclassified
 verdicts without the deprecated: 433 holds, 332 fails, 152 unknown (917 problems)
@@ -325,4 +325,4 @@ group silmaril.wasm_components.wasi_io: [silmaril.wasm_components.wasi.io.v0_2_1
 deprecated language silmaril.selftest.lang.digits.v0: admits the empty input; numbers have at least one digit (superseded by silmaril.selftest.lang.digits)
 deprecated problem silmaril.selftest.small: claims that every n is below 3 (superseded by silmaril.selftest.small_le)
 finding spec_bug silmaril.selftest.small [contingent]: 5 is not below 3 (small_csa): the statement, not the code, is wrong (deprecated by its own deprecation)
-provenance: 14 derivations; 17 of 36 local artifacts have one
+provenance: 14 derivations; 17 of 84 local artifacts have one
