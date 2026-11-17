@@ -12,8 +12,9 @@ PROVED (standard axioms; the per-header facts rewrite with `Pinned.import_<name>
 `decide +kernel` on the literal entries, never on the JSON):
 
 * `declares_iff_of_header`, `declares_iff_of_all`: when the subset reader's header is the
-  import's (or the two agree on a list of names) and the conventions are `sysvInt`'s, the two
-  routes give the same `Declares`;
+  import's (or the two agree on a list of names, and `A` lowers alike with the two routes' tag
+  definitions, as `sysvInt`, which reads none, does) and the conventions are `sysvInt`'s, the
+  two routes give the same `Declares`;
 * `arith_declares_iff`: for `arith.h`, `Declares sysvInt LeafArith.hdr` (the subset reader) and
   `DeclaresImport sysvInt sysvCcs Pinned.arith` (clang) are the same relation, for every name and
   prototype;
@@ -47,9 +48,10 @@ theorem declares_iff_of_header
 
 theorem declares_iff_of_all {fs : List String}
     (h : fs.all (fun f => hdr.proto? f == imp.proto? f &&
-      (imp.fn? f).any (fun x => ccs.contains x.2.cc)) = true) :
+      (imp.fn? f).any (fun x => ccs.contains x.2.cc)) = true)
+    (he : ∀ cp, A.lower hdr.env cp = A.lower imp.header.env cp) :
     ∀ f ∈ fs, ∀ p : A.V.Proto, Declares A hdr f p ↔ DeclaresImport A ccs imp f p :=
-  Silmaril.Proofs.Machine.Abi.Conformance.Import.declares_iff_of_all h
+  Silmaril.Proofs.Machine.Abi.Conformance.Import.declares_iff_of_all h he
 
 set_option maxRecDepth 100000 in
 theorem arith_coverage :
@@ -71,7 +73,7 @@ theorem zlibSolo_declares_iff :
     ∀ f ∈ Silmaril.Data.Layout.Header.Zlib.checksumApi, ∀ p : sysvInt.V.Proto,
       Declares sysvInt Silmaril.Data.Layout.Header.Zlib.solo f p ↔
         DeclaresImport sysvInt sysvCcs zlibSolo f p :=
-  declares_iff_of_all (by rw [import_zlibSolo]; decide +kernel)
+  declares_iff_of_all (by rw [import_zlibSolo]; decide +kernel) (fun _ => rfl)
 
 set_option maxRecDepth 100000 in
 theorem zlibHosted_declares_iff :
@@ -80,12 +82,12 @@ theorem zlibHosted_declares_iff :
       ∀ p : sysvInt.V.Proto,
       Declares sysvInt Silmaril.Data.Layout.Header.Zlib.hosted f p ↔
         DeclaresImport sysvInt sysvCcs zlibHosted f p :=
-  declares_iff_of_all (by rw [import_zlibHosted]; decide +kernel)
+  declares_iff_of_all (by rw [import_zlibHosted]; decide +kernel) (fun _ => rfl)
 
 theorem zlibHosted_disagreement_lowers_alike :
-    (sysvInt.lower (Silmaril.Data.Layout.Header.Zlib.sizedProto .size)).toOption.map
+    (sysvInt.lower [] (Silmaril.Data.Layout.Header.Zlib.sizedProto .size)).toOption.map
         (·.signature) = some ⟨[.uint64, .pointer, .uint64], some .uint64⟩ ∧
-    (sysvInt.lower (Silmaril.Data.Layout.Header.Zlib.sizedProto .long)).toOption.map
+    (sysvInt.lower [] (Silmaril.Data.Layout.Header.Zlib.sizedProto .long)).toOption.map
         (·.signature) = some ⟨[.uint64, .pointer, .uint64], some .uint64⟩ := by
   decide +kernel
 

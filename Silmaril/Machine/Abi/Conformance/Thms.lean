@@ -100,14 +100,14 @@ theorem HeaderSatPartial.conforms {cov : Coverage} {impl : String → Option (Im
 
 /-- What `sysvInt` lowers and refuses, and a coverage with an `unsupported` exclusion. -/
 theorem sysvInt_lower_examples :
-    (sysvInt.lower ⟨.int .long .unsigned, [.ptr .void, .int .int .signed], false⟩).toOption.map
+    (sysvInt.lower [] ⟨.int .long .unsigned, [.ptr .void, .int .int .signed], false⟩).toOption.map
         (·.signature) = some ⟨[.pointer, .int32], some .uint64⟩ ∧
-    (sysvInt.lower ⟨.void, [.int .size .unsigned], false⟩).toOption.map (·.signature) =
+    (sysvInt.lower [] ⟨.void, [.int .size .unsigned], false⟩).toOption.map (·.signature) =
       some ⟨[.uint64], none⟩ ∧
-    (sysvInt.lower ⟨.float .double, [.float .double], false⟩).toOption.isNone = true ∧
-    (sysvInt.lower ⟨.int .int .signed, [.struct "s"], false⟩).toOption.isNone = true ∧
-    (sysvInt.lower ⟨.int .int .signed, [.int .short .signed], false⟩).toOption.isNone = true ∧
-    (sysvInt.lower ⟨.int .int .signed, [.ptr (.int .char .plain)], true⟩).toOption.isNone = true ∧
+    (sysvInt.lower [] ⟨.float .double, [.float .double], false⟩).toOption.isNone = true ∧
+    (sysvInt.lower [] ⟨.int .int .signed, [.struct "s"], false⟩).toOption.isNone = true ∧
+    (sysvInt.lower [] ⟨.int .int .signed, [.int .short .signed], false⟩).toOption.isNone = true ∧
+    (sysvInt.lower [] ⟨.int .int .signed, [.ptr (.int .char .plain)], true⟩).toOption.isNone = true ∧
     Coverage.check sysvInt ⟨[("h.h", "double f(double); int g(int); int printf(const char *, ...);")], "h.h"⟩
       ⟨[], [("f", .unsupported "SSE"), ("g", .unclaimed "example"),
         ("printf", .unsupported "varargs")]⟩ = true ∧

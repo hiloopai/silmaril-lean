@@ -182,6 +182,9 @@ pages: project-tool
 	# The ELF pages read the checked theorem modules of the pinned files (tools/elf-pages).
 	lake build --wfail elf-pages $(ELF_PINNED) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
 	lake env .lake/build/bin/elf-pages _site
+	# The Headers tab: header reading, ABI lowering and layouts (tools/header-pages).
+	lake build --wfail header-pages
+	lake env .lake/build/bin/header-pages _site
 
 # The registry and records checks, without Lean (what CI runs when their inputs change).
 project-registry: project-tool

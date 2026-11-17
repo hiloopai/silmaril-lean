@@ -733,6 +733,12 @@ name = "elf-staged"
 root = "ElfStaged"
 srcDir = "tools/elf-staged"
 
+# The explorer's Headers tab data (tools/header-pages): header reading, ABI lowering and layouts.
+[[lean_exe]]
+name = "header-pages"
+root = "HeaderPages"
+srcDir = "tools/header-pages"
+
 # The explorer's ELF tab data (tools/elf-pages, docs/projects/elf-reader.md).
 [[lean_exe]]
 name = "elf-pages"
