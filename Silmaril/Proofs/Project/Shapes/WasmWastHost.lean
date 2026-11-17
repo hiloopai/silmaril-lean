@@ -6,6 +6,8 @@ public import Silmaril.Wasm.Abstract.HostDet.Thms
 public import Silmaril.Wasm.Abstract.HostCall.Defs
 public import Silmaril.Wasm.Component.Reference.Engine.Core3.Typed.Store.Defs
 public import Silmaril.Wasm.Execution.MemRep.Sim.Thms
+public import Silmaril.Wasm.Game.InstantiateTrap.Thms
+public import Silmaril.Wasm.Execution.Core.Exec.InstantiateIff
 
 /-!
 # Proofs: linked WAST scripts against the typed `spectest` host
@@ -128,15 +130,14 @@ theorem instG_toBytes (o : GrowOracle) (fuel : Nat) (ctx : CtxR R) (m : Module) 
       cases externAddrsOk? s₀ xas mt.imports with
       | false => rfl
       | true =>
-        simp only [ite_true, ← instantiateOnce?_toBytes]
-        cases instantiateOnce? s₀ m xas with
+        simp only [ite_true, instantiateCfg?_toBytes]
+        cases instantiateCfg? s₀ m xas with
         | none => rfl
         | some p =>
-          obtain ⟨s, f, st⟩ := p
+          obtain ⟨c, mi⟩ := p
           simp only [Option.map_some]
-          rw [show (⟨s.toBytes, f, startCode st⟩ : Config Nat) =
-            Config.toBytes ⟨s, f, startCode st⟩ from rfl, ← runHG_toBytes]
-          cases runHG o fuel fuel (⟨s, f, startCode st⟩, ctx.log) <;> rfl
+          rw [← runHG_toBytes]
+          cases runHG o fuel fuel (c, ctx.log) <;> rfl
 
 omit [LawfulMemRep R] in
 theorem inst?_toBytes (ctx : CtxR R) (t : Target) : ctx.toBytes.inst? t = ctx.inst? t := by
@@ -578,22 +579,52 @@ theorem instG_sound {fuel : Nat} {ctx : CtxR ByteArray} {m : Module} {c : Config
       split at h
       · rename_i hx
         split at h
-        · rename_i s f st hi
+        · rename_i c₁ mi₁ hi
           have hm := validate?_sound hv
           have hs₀ := resolve?_ok hs hr
           have hx' := externAddrsOk?_sound hx
-          have hc := Game.instantiateOnce?_configOk hs₀ hm hx' hi
-          cases hrun : runHG o fuel fuel (⟨s, f, startCode st⟩, ctx.log) with
+          have hc := Game.instantiateCfg?_configOk hs₀ hm hx' hi
+          obtain ⟨c₀, hI, hmi, hS⟩ := instantiateCfg?_sound (P := profile o)
+            (host := fun _ _ _ _ => False) ⟨mt.exports, mt.imports, hm, hx'⟩ hi
+          have hI' : Instantiate (profile o) Spectest.host s₀ m xas c₀ :=
+            (instantiate?_iff ⟨mt.exports, mt.imports, hm, hx'⟩).1
+              (instantiate?_evalConst_complete hI)
+          cases hrun : runHG o fuel fuel (c₁, ctx.log) with
           | none => rw [hrun] at h; cases h
           | some p =>
             obtain ⟨c', l'⟩ := p
             rw [hrun] at h
             simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨⟨rfl, rfl⟩, rfl⟩ := h
-            obtain ⟨hnf, hok⟩ := runHG_sound fuel hc hrun
-            exact ⟨.mk hm hr hx' hi hnf, ConfigOk.storeOk hok⟩
+            obtain ⟨⟨hrest, hnf⟩, hok⟩ := runHG_sound fuel hc hrun
+            have := InstNF.mk (o := o) (ctx := ctx) hm hr hx' hI'
+              ⟨(steps_free_lsteps hS ctx.log).trans hrest, hnf⟩
+            rw [hmi] at this
+            exact ⟨this, ConfigOk.storeOk hok⟩
         · cases h
       · cases h
+
+/-- **A segment trap of the specification's instantiation is a script outcome**: the residual
+store of `instantiateT?` (`instantiateT?_trap_sound`) is the store of a normal form `trap` of the
+`Instantiate` configuration under `Spectest.host`, with the log unchanged. -/
+theorem instNF_of_trap {ctx : CtxR ByteArray} {m : Module} {mt : CModuleType} {s₀ s' : Store Nat}
+    {xas : List ExternAddr} (hm : ModuleOk m mt)
+    (hr : resolve? ctx.regs ctx.store m.imports = some (s₀, xas))
+    (hx : List.Forall₂ (ExternAddrOk s₀) xas mt.imports) (h : instantiateT? s₀ m xas = .trap s') :
+    ∃ mi, InstNF o ctx m (some .trap) s' ctx.log mi := by
+  have hvalid : ∃ xtE xtI, ModuleOk m ⟨xtI, xtE⟩ ∧ List.Forall₂ (ExternAddrOk s₀) xas xtI :=
+    ⟨mt.exports, mt.imports, hm, hx⟩
+  obtain ⟨c, st, -, -, hI, hS⟩ := instantiateT?_trap_sound (P := profile o)
+    (host := fun _ _ _ _ => False) hvalid h
+  have hI' : Instantiate (profile o) Spectest.host s₀ m xas (c.withStart st) :=
+    (instantiate?_iff hvalid).1 (instantiate?_evalConst_complete hI)
+  have hnf : NF o (c.withStart st, ctx.log) (⟨s', c.frame, [.trap]⟩, ctx.log) :=
+    ⟨steps_free_lsteps hS ctx.log, no_step_of (fun _ hx => Det.not_step_trap hx)
+      (fun _ _ _ _ hd => by
+        have e : decompose? s' [.trap] = none :=
+          decompose?_vals_cons_none (vs := []) (r := []) rfl fun _ _ => decompHead_trap
+        exact absurd (e.symm.trans hd) (by simp))⟩
+  exact ⟨_, InstNF.mk hm hr hx hI' hnf⟩
 
 theorem actG_sound {fuel : Nat} {ctx : CtxR ByteArray} {act : Action} {r : Result}
     {s : Store Nat} {l : HostLog Nat} (hs : StoreOk ctx.store)
@@ -701,9 +732,8 @@ theorem instNF_unique {ctx : CtxR ByteArray} {m : Module} {ro ro' : Option Resul
       rw [hr] at hr'
       simp only [Option.some.injEq, Prod.mk.injEq] at hr'
       obtain ⟨rfl, rfl⟩ := hr'
-      rw [hi] at hi'
-      simp only [Option.some.injEq, Prod.mk.injEq] at hi'
-      obtain ⟨rfl, rfl, rfl⟩ := hi'
+      obtain rfl : _ = _ := Option.some.inj
+        ((instantiate?_evalConst_complete hi).symm.trans (instantiate?_evalConst_complete hi'))
       obtain ⟨rfl, rfl⟩ := nf_unique hc hc'
       exact ⟨rfl, rfl, rfl, rfl⟩
 

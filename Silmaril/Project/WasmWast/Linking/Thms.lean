@@ -686,6 +686,286 @@ silmaril instance silmaril.wasm_wast.linking.l376 (expect := "THM") :=
 @[answers "silmaril.wasm_wast.linking.l376" thm] theorem l376 : silmaril.wasm_wast.linking.l376 :=
   script.returnsOnly 111 (by kernel_rfl)
 
+silmaril instance silmaril.wasm_wast.linking.l379 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 112) (m := u379)
+
+@[answers "silmaril.wasm_wast.linking.l379" thm] theorem l379 : silmaril.wasm_wast.linking.l379 :=
+  script.uninstantiable 112 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l388 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 113) (m := u388)
+
+@[answers "silmaril.wasm_wast.linking.l388" thm] theorem l388 : silmaril.wasm_wast.linking.l388 :=
+  script.unlinkable 113 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l397 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.traps_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 114) (act := .invoke (.named "Mt") "call" [Val.i32 7])
+
+@[answers "silmaril.wasm_wast.linking.l397" thm] theorem l397 : silmaril.wasm_wast.linking.l397 :=
+  script.trapsOnly 114 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l402 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 115) (m := u402)
+
+@[answers "silmaril.wasm_wast.linking.l402" thm] theorem l402 : silmaril.wasm_wast.linking.l402 :=
+  script.uninstantiable 115 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l410 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 116) (act := .invoke (.named "Mt") "call" [Val.i32 7]) (vs := [Val.i32 0])
+
+@[answers "silmaril.wasm_wast.linking.l410" thm] theorem l410 : silmaril.wasm_wast.linking.l410 :=
+  script.returnsOnly 116 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l411 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.traps_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 117) (act := .invoke (.named "Mt") "call" [Val.i32 8])
+
+@[answers "silmaril.wasm_wast.linking.l411" thm] theorem l411 : silmaril.wasm_wast.linking.l411 :=
+  script.trapsOnly 117 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l414 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 118) (m := u414)
+
+@[answers "silmaril.wasm_wast.linking.l414" thm] theorem l414 : silmaril.wasm_wast.linking.l414 :=
+  script.uninstantiable 118 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l423 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 119) (act := .invoke (.named "Mt") "call" [Val.i32 7]) (vs := [Val.i32 0])
+
+@[answers "silmaril.wasm_wast.linking.l423" thm] theorem l423 : silmaril.wasm_wast.linking.l423 :=
+  script.returnsOnly 119 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l442 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 123) (m := u442)
+
+@[answers "silmaril.wasm_wast.linking.l442" thm] theorem l442 : silmaril.wasm_wast.linking.l442 :=
+  script.unlinkable 123 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l446 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 124) (m := u446)
+
+@[answers "silmaril.wasm_wast.linking.l446" thm] theorem l446 : silmaril.wasm_wast.linking.l446 :=
+  script.unlinkable 124 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l451 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 125) (m := u451)
+
+@[answers "silmaril.wasm_wast.linking.l451" thm] theorem l451 : silmaril.wasm_wast.linking.l451 :=
+  script.unlinkable 125 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l455 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 126) (m := u455)
+
+@[answers "silmaril.wasm_wast.linking.l455" thm] theorem l455 : silmaril.wasm_wast.linking.l455 :=
+  script.unlinkable 126 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l460 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 127) (m := u460)
+
+@[answers "silmaril.wasm_wast.linking.l460" thm] theorem l460 : silmaril.wasm_wast.linking.l460 :=
+  script.unlinkable 127 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l464 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 128) (m := u464)
+
+@[answers "silmaril.wasm_wast.linking.l464" thm] theorem l464 : silmaril.wasm_wast.linking.l464 :=
+  script.unlinkable 128 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l493 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 132) (act := .invoke (.named "Mm") "load" [Val.i32 12]) (vs := [Val.i32 2])
+
+@[answers "silmaril.wasm_wast.linking.l493" thm] theorem l493 : silmaril.wasm_wast.linking.l493 :=
+  script.returnsOnly 132 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l494 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 133) (act := .invoke (.named "Nm") "Mm.load" [Val.i32 12]) (vs := [Val.i32 2])
+
+@[answers "silmaril.wasm_wast.linking.l494" thm] theorem l494 : silmaril.wasm_wast.linking.l494 :=
+  script.returnsOnly 133 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l495 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 134) (act := .invoke (.named "Nm") "load" [Val.i32 12]) (vs := [Val.i32 242])
+
+@[answers "silmaril.wasm_wast.linking.l495" thm] theorem l495 : silmaril.wasm_wast.linking.l495 :=
+  script.returnsOnly 134 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l506 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 136) (act := .invoke (.named "Mm") "load" [Val.i32 12]) (vs := [Val.i32 167])
+
+@[answers "silmaril.wasm_wast.linking.l506" thm] theorem l506 : silmaril.wasm_wast.linking.l506 :=
+  script.returnsOnly 136 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l507 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 137) (act := .invoke (.named "Nm") "Mm.load" [Val.i32 12]) (vs := [Val.i32 167])
+
+@[answers "silmaril.wasm_wast.linking.l507" thm] theorem l507 : silmaril.wasm_wast.linking.l507 :=
+  script.returnsOnly 137 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l508 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 138) (act := .invoke (.named "Nm") "load" [Val.i32 12]) (vs := [Val.i32 242])
+
+@[answers "silmaril.wasm_wast.linking.l508" thm] theorem l508 : silmaril.wasm_wast.linking.l508 :=
+  script.returnsOnly 138 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l509 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 139) (act := .invoke (.named "Om") "load" [Val.i32 12]) (vs := [Val.i32 167])
+
+@[answers "silmaril.wasm_wast.linking.l509" thm] theorem l509 : silmaril.wasm_wast.linking.l509 :=
+  script.returnsOnly 139 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l517 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 141) (m := u517)
+
+@[answers "silmaril.wasm_wast.linking.l517" thm] theorem l517 : silmaril.wasm_wast.linking.l517 :=
+  script.uninstantiable 141 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l532 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 143) (act := .invoke (.named "Pm") "grow" [Val.i32 0]) (vs := [Val.i32 1])
+
+@[answers "silmaril.wasm_wast.linking.l532" thm] theorem l532 : silmaril.wasm_wast.linking.l532 :=
+  script.returnsOnly 143 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l533 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 144) (act := .invoke (.named "Pm") "grow" [Val.i32 2]) (vs := [Val.i32 1])
+
+@[answers "silmaril.wasm_wast.linking.l533" thm] theorem l533 : silmaril.wasm_wast.linking.l533 :=
+  script.returnsOnly 144 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l534 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 145) (act := .invoke (.named "Pm") "grow" [Val.i32 0]) (vs := [Val.i32 3])
+
+@[answers "silmaril.wasm_wast.linking.l534" thm] theorem l534 : silmaril.wasm_wast.linking.l534 :=
+  script.returnsOnly 145 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l535 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 146) (act := .invoke (.named "Pm") "grow" [Val.i32 1]) (vs := [Val.i32 3])
+
+@[answers "silmaril.wasm_wast.linking.l535" thm] theorem l535 : silmaril.wasm_wast.linking.l535 :=
+  script.returnsOnly 146 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l536 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 147) (act := .invoke (.named "Pm") "grow" [Val.i32 1]) (vs := [Val.i32 4])
+
+@[answers "silmaril.wasm_wast.linking.l536" thm] theorem l536 : silmaril.wasm_wast.linking.l536 :=
+  script.returnsOnly 147 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l537 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 148) (act := .invoke (.named "Pm") "grow" [Val.i32 0]) (vs := [Val.i32 5])
+
+@[answers "silmaril.wasm_wast.linking.l537" thm] theorem l537 : silmaril.wasm_wast.linking.l537 :=
+  script.returnsOnly 148 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l538 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 149) (act := .invoke (.named "Pm") "grow" [Val.i32 1]) (vs := [Val.i32 4294967295])
+
+@[answers "silmaril.wasm_wast.linking.l538" thm] theorem l538 : silmaril.wasm_wast.linking.l538 :=
+  script.returnsOnly 149 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l539 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 150) (act := .invoke (.named "Pm") "grow" [Val.i32 0]) (vs := [Val.i32 5])
+
+@[answers "silmaril.wasm_wast.linking.l539" thm] theorem l539 : silmaril.wasm_wast.linking.l539 :=
+  script.returnsOnly 150 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l542 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.unlinkable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 151) (m := u542)
+
+@[answers "silmaril.wasm_wast.linking.l542" thm] theorem l542 : silmaril.wasm_wast.linking.l542 :=
+  script.unlinkable 151 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l550 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 152) (act := .invoke (.named "Mm") "load" [Val.i32 0]) (vs := [Val.i32 0])
+
+@[answers "silmaril.wasm_wast.linking.l550" thm] theorem l550 : silmaril.wasm_wast.linking.l550 :=
+  script.returnsOnly 152 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l555 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 153) (m := u555)
+
+@[answers "silmaril.wasm_wast.linking.l555" thm] theorem l555 : silmaril.wasm_wast.linking.l555 :=
+  script.uninstantiable 153 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l563 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 154) (act := .invoke (.named "Mm") "load" [Val.i32 0]) (vs := [Val.i32 97])
+
+@[answers "silmaril.wasm_wast.linking.l563" thm] theorem l563 : silmaril.wasm_wast.linking.l563 :=
+  script.returnsOnly 154 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l564 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 155) (act := .invoke (.named "Mm") "load" [Val.i32 327670]) (vs := [Val.i32 0])
+
+@[answers "silmaril.wasm_wast.linking.l564" thm] theorem l564 : silmaril.wasm_wast.linking.l564 :=
+  script.returnsOnly 155 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l567 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 156) (m := u567)
+
+@[answers "silmaril.wasm_wast.linking.l567" thm] theorem l567 : silmaril.wasm_wast.linking.l567 :=
+  script.uninstantiable 156 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l576 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 157) (act := .invoke (.named "Mm") "load" [Val.i32 0]) (vs := [Val.i32 97])
+
+@[answers "silmaril.wasm_wast.linking.l576" thm] theorem l576 : silmaril.wasm_wast.linking.l576 :=
+  script.returnsOnly 157 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l593 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 160) (m := u593)
+
+@[answers "silmaril.wasm_wast.linking.l593" thm] theorem l593 : silmaril.wasm_wast.linking.l593 :=
+  script.uninstantiable 160 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l609 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 161) (act := .invoke (.named "Ms") "get memory[0]" []) (vs := [Val.i32 104])
+
+@[answers "silmaril.wasm_wast.linking.l609" thm] theorem l609 : silmaril.wasm_wast.linking.l609 :=
+  script.returnsOnly 161 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.linking.l610 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 162) (act := .invoke (.named "Ms") "get table[0]" []) (vs := [Val.i32 57005])
+
+@[answers "silmaril.wasm_wast.linking.l610" thm] theorem l610 : silmaril.wasm_wast.linking.l610 :=
+  script.returnsOnly 162 (by kernel_rfl)
+
 end Silmaril.Project.WasmWast.Linking
 
 end
@@ -784,4 +1064,44 @@ silmaril group silmaril.wasm_wast.linking (title := "test/core/linking.wast: the
     silmaril.wasm_wast.linking.l359,
     silmaril.wasm_wast.linking.l360,
     silmaril.wasm_wast.linking.l362,
-    silmaril.wasm_wast.linking.l376])
+    silmaril.wasm_wast.linking.l376,
+    silmaril.wasm_wast.linking.l379,
+    silmaril.wasm_wast.linking.l388,
+    silmaril.wasm_wast.linking.l397,
+    silmaril.wasm_wast.linking.l402,
+    silmaril.wasm_wast.linking.l410,
+    silmaril.wasm_wast.linking.l411,
+    silmaril.wasm_wast.linking.l414,
+    silmaril.wasm_wast.linking.l423,
+    silmaril.wasm_wast.linking.l442,
+    silmaril.wasm_wast.linking.l446,
+    silmaril.wasm_wast.linking.l451,
+    silmaril.wasm_wast.linking.l455,
+    silmaril.wasm_wast.linking.l460,
+    silmaril.wasm_wast.linking.l464,
+    silmaril.wasm_wast.linking.l493,
+    silmaril.wasm_wast.linking.l494,
+    silmaril.wasm_wast.linking.l495,
+    silmaril.wasm_wast.linking.l506,
+    silmaril.wasm_wast.linking.l507,
+    silmaril.wasm_wast.linking.l508,
+    silmaril.wasm_wast.linking.l509,
+    silmaril.wasm_wast.linking.l517,
+    silmaril.wasm_wast.linking.l532,
+    silmaril.wasm_wast.linking.l533,
+    silmaril.wasm_wast.linking.l534,
+    silmaril.wasm_wast.linking.l535,
+    silmaril.wasm_wast.linking.l536,
+    silmaril.wasm_wast.linking.l537,
+    silmaril.wasm_wast.linking.l538,
+    silmaril.wasm_wast.linking.l539,
+    silmaril.wasm_wast.linking.l542,
+    silmaril.wasm_wast.linking.l550,
+    silmaril.wasm_wast.linking.l555,
+    silmaril.wasm_wast.linking.l563,
+    silmaril.wasm_wast.linking.l564,
+    silmaril.wasm_wast.linking.l567,
+    silmaril.wasm_wast.linking.l576,
+    silmaril.wasm_wast.linking.l593,
+    silmaril.wasm_wast.linking.l609,
+    silmaril.wasm_wast.linking.l610])

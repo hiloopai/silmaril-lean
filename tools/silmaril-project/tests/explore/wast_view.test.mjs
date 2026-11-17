@@ -165,4 +165,16 @@ test("the committed report: every proved row names its problem and shape, and th
     assert.equal(c.checker, "scriptKM", c.id);
   for (const c of report.commands.filter((c) => c.status === "unsupported" || c.status === "undetermined")) assert.ok(c.reason, c.id);
   if (orc) assert.equal(s.agreeProved, s.proved);
+  // A segment trap of `assert_trap (module …)` is a proved row, and the script goes on with the
+  // residual store: linking.wast line 410 reads the element that the failed module stored at
+  // index 7 of the shared table before its out-of-bounds segment trapped.
+  const byId = Object.fromEntries(report.commands.map((c) => [c.id, c]));
+  for (const id of ["linking:402", "data:211", "elem:594"]) {
+    assert.equal(byId[id].status, "proved", id);
+    assert.equal(byId[id].shape, "silmaril.shapes.wasm.wast.host.uninstantiable", id);
+    assert.match(byId[id].observed, /segment initialisation traps/, id);
+  }
+  assert.equal(byId["linking:410"].status, "proved");
+  assert.equal(byId["linking:411"].status, "proved");
+  assert.ok(!report.commands.some((c) => c.status === "undetermined" && /segment/.test(c.reason || "")));
 });

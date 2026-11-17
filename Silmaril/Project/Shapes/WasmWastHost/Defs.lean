@@ -3,6 +3,7 @@ module
 public import Silmaril.Project.Shapes.WasmWastLink.Defs
 public import Silmaril.Wasm.Abstract.HostDet.Defs
 public import Silmaril.Wasm.SingleThreaded.Interface
+public import Silmaril.Wasm.Execution.InstantiateTrap.Defs
 
 /-!
 # Standard problem shapes: linked WAST scripts against the typed `spectest` host
@@ -17,7 +18,7 @@ the reference interpreter as host functions, host-allocated globals and shared t
 | `silmaril.shapes.wasm.wast.host.traps_only` | `TrapsOnly o pre act`: the same with a trap |
 | `silmaril.shapes.wasm.wast.host.unlinkable` | `Unlinkable o pre m`: after `pre`, `m` is valid and its imports cannot be linked: some import names nothing in the registry, or the resolved external addresses do not have the import types (`ExternAddrOk`) |
 | `silmaril.shapes.wasm.wast.host.log_is` | `LogIs o cmds l`: the script `cmds` runs, and every context it reaches has the host-call log `l` (its printed values are `Spectest.printed l`) |
-| `silmaril.shapes.wasm.wast.host.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links and `instantiateOnce?` allocates it, and its start function traps, at every normal form under `Spectest.host` |
+| `silmaril.shapes.wasm.wast.host.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links, and the specification's instantiation configuration (`Instantiate`) traps, in its segment initialisation or its start function, at every normal form under `Spectest.host` |
 
 ## The environment: host, registry and observation
 
@@ -83,6 +84,24 @@ assertion holds (`CmdRun`); runs are `LStep` runs to normal forms under `Spectes
 `ScriptAt o pre ctx` relates the prefix to every context it can reach; at `profile o` there is at
 most one (`ScriptAt.unique`). The commands are those of `Silmaril.Project.Shapes.WasmWastLink`
 (`Cmd`, `Action`, `Target`).
+
+**Instantiation is the specification's.** A module (`InstNF`) is instantiated by the
+configuration of `Instantiate` (Wasm 3.0 §4.4 `$instantiate`, every global allocated as
+`$evalglobals` and then `$allocmodule` allocate it), run to a normal form under `Spectest.host`:
+its segment code, then its start call. The context after a module, an action or an
+`assert_trap (module …)` is that of the reference interpreter at `608711107b`
+(`interpreter/exec/eval.ml` l. 1305–1326 `init`: the instance is built, then its segment code and
+start call run on mutable tables and memories; `interpreter/script/runner.ml` l. 559–566: an
+`assert_uninstantiable` holds when instantiation raises a trap, and binds nothing):
+
+* `module`: the normal form returns no values; its store and log, and the instance is current
+  (and named);
+* `assert_trap (module …)` (`assert_uninstantiable`): the normal form is a trap, either of a
+  segment initialisation (`table.init`/`memory.init` out of bounds) or of the start function.
+  The script goes on in the store of that normal form: the **residual store** with the module's
+  allocation and every write of the earlier segments and of the start code, also into imported
+  tables and memories; nothing is rolled back. The failed instance is never current, named or
+  registered (the reference interpreter binds nothing).
 
 `Silmaril.Project.Shapes.WasmWastHost.Thms` proves every claim of a script from one kernel
 evaluation of `scriptHK` on `KMem` stores (`ScriptHolds.of_kernel`).
@@ -246,19 +265,24 @@ inductive ActNF (o : GrowOracle) (ctx : Ctx) :
       (hg : ctx.store.globals[a]? = some gi) :
       ActNF o ctx (.get t name) (some (.values [gi.value])) ctx.store ctx.log
 
-/-- Linking and instantiating `m` in `ctx` can end with the outcome `ro` of the start code, the
-store `s`, the log `l` and the instance `mi`: `m` is valid, its imports resolve (allocating the
-fresh `spectest` entities) to addresses of the import types, `instantiateOnce?` allocates it and
-initialises its segments, and the start call (if any) runs to a normal form. -/
+/-- Linking and instantiating `m` in `ctx` can end with the outcome `ro`, the store `s`, the log
+`l` and the instance `mi`: `m` is valid, its imports resolve (allocating the fresh `spectest`
+entities) to the store `s₀` and addresses `xas` of the import types, `c₀` is **the
+specification's instantiation configuration** `Instantiate (profile o) Spectest.host s₀ m xas c₀`
+(Wasm 3.0 `$instantiate`: `$evalglobals`, `$allocmodule`, then the code of the element and data
+segments and the start call), and `c₀` runs to a normal form under `Spectest.host`. `mi` is the
+module instance of `c₀`. A segment initialisation that traps and a start function that traps are
+both a normal form `trap`, in the store of the trapping configuration (the residual store: the
+allocation and the writes of the earlier segments persist). -/
 inductive InstNF (o : GrowOracle) (ctx : Ctx) (m : Module) :
     Option Result → Store Nat → HostLog Nat → ModuleInst → Prop
-  | mk {mt : CModuleType} {s₀ : Store Nat} {xas : List ExternAddr} {s : Store Nat} {f : Frame}
-      {st : Option FuncIdx} {c : Config Nat} {l : HostLog Nat} (hm : ModuleOk m mt)
+  | mk {mt : CModuleType} {s₀ : Store Nat} {xas : List ExternAddr} {c₀ c : Config Nat}
+      {l : HostLog Nat} (hm : ModuleOk m mt)
       (hr : resolve? ctx.regs ctx.store m.imports = some (s₀, xas))
       (hx : List.Forall₂ (ExternAddrOk s₀) xas mt.imports)
-      (hi : instantiateOnce? s₀ m xas = some (s, f, st))
-      (hc : NF o (⟨s, f, startCode st⟩, ctx.log) (c, l)) :
-      InstNF o ctx m c.outcome? c.store l f.module
+      (hi : Instantiate (profile o) Spectest.host s₀ m xas c₀)
+      (hc : NF o (c₀, ctx.log) (c, l)) :
+      InstNF o ctx m c.outcome? c.store l c₀.frame.module
 
 /-- One command changes the context. -/
 inductive CmdRun (o : GrowOracle) : Ctx → Cmd → Ctx → Prop
@@ -284,8 +308,9 @@ inductive Run (o : GrowOracle) : Ctx → List Cmd → Ctx → Prop
       (t : Run o ctx' cmds ctx'') : Run o ctx (cmd :: cmds) ctx''
 
 /-- **The initial context**: the instance `sh` of `Spectest.shared` (the shared table, table64
-and memory), allocated in the empty store; `"spectest"` is bound to the environment with `sh`;
-no current module; empty log. -/
+and memory), allocated in the empty store (`Spectest.shared` has no globals, segments or start
+function, so `instantiateOnce?` is the specification's allocation, `instantiateOnce?_of_nil`);
+`"spectest"` is bound to the environment with `sh`; no current module; empty log. -/
 def Init (ctx : Ctx) : Prop :=
   ∃ s f, instantiateOnce? (Game.importStore []) Spectest.shared [] = some (s, f, none) ∧
     ctx = { store := s, regs := [("spectest", .spectest f.module)] }
@@ -329,9 +354,12 @@ def Unlinkable (o : GrowOracle) (pre : List Cmd) (m : Module) : Prop :=
       ∀ mt s₀ xas, ModuleOk m mt → resolve? ctx.regs ctx.store m.imports = some (s₀, xas) →
         ¬ List.Forall₂ (ExternAddrOk s₀) xas mt.imports
 
-/-- **`assert_uninstantiable`, start trap, against the `spectest` host**. -/
+/-- **`assert_trap (module …)` (`assert_uninstantiable`), against the `spectest` host**: after
+`pre`, `m` links and the normal forms of its instantiation (`InstNF`: the specification's
+`Instantiate` configuration, its segment code and start call) are traps: some normal form is a
+trap, and every one is. -/
 @[problem "silmaril.shapes.wasm.wast.host.uninstantiable"
-  (title := "After a linked WAST script prefix (typed spectest host), a module links and its start function traps, at every normal form")]
+  (title := "After a linked WAST script prefix (typed spectest host), a module links and its instantiation (segment initialisation or start function) traps, at every normal form")]
 def Uninstantiable (o : GrowOracle) (pre : List Cmd) (m : Module) : Prop :=
   (∃ ctx s l mi, ScriptAt o pre ctx ∧ InstNF o ctx m (some .trap) s l mi) ∧
     ∀ ctx ro s l mi, ScriptAt o pre ctx → InstNF o ctx m ro s l mi → ro = some .trap
@@ -373,7 +401,9 @@ def Always (o : GrowOracle) (pre : List Cmd) (act : Action) (r : Result) : Prop 
 /-! ## The kernel checker
 
 `scriptHK o fuel cmds` instantiates `Spectest.shared`, then runs every command on `KMem` stores
-(`Silmaril.Wasm.Execution.MemRep`). A run alternates host-free runs of at most `fuel` steps
+(`Silmaril.Wasm.Execution.MemRep`); a module is instantiated by `instantiateCfg?` (`prepare?`, the
+specification's allocation, then the trap-aware segment initialisation), and its configuration
+runs on as an action does. A run alternates host-free runs of at most `fuel` steps
 (`WasmWastLink.runG`: the interpreter head step `interpHead o` under `Verify.Kernel.runK`) with
 host calls at the callout (`decompose?`), at most `fuel` of them, answered as `Spectest.host`
 answers and logged (`runHG`). It is stated over any memory representation; `ScriptHolds.of_kernel`
@@ -399,7 +429,8 @@ noncomputable def runHG (o : GrowOracle) (fuel : Nat) :
         else some (c', l)
       | none => some (c', l)
 
-/-- Link, instantiate and run the start code of `m`: the stopped configuration, the log and the
+/-- Link and instantiate `m` (`instantiateCfg?`: the specification's `$instantiate`, then its
+segment code, trap-aware) and run on to a stop: the stopped configuration, the log and the
 instance. -/
 noncomputable def instG (o : GrowOracle) (fuel : Nat) (ctx : CtxR R) (m : Module) :
     Option ((Config Nat R × HostLog Nat) × ModuleInst) :=
@@ -410,9 +441,8 @@ noncomputable def instG (o : GrowOracle) (fuel : Nat) (ctx : CtxR R) (m : Module
     | none => none
     | some (s₀, xas) =>
       if externAddrsOk? s₀ xas mt.imports then
-        match instantiateOnce? s₀ m xas with
-        | some (s, f, st) =>
-          (runHG o fuel fuel (⟨s, f, startCode st⟩, ctx.log)).map fun p => (p, f.module)
+        match instantiateCfg? s₀ m xas with
+        | some (c, mi) => (runHG o fuel fuel (c, ctx.log)).map fun p => (p, mi)
         | none => none
       else none
 

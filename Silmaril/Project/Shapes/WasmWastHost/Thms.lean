@@ -4,6 +4,7 @@ public import Silmaril.Project.Shapes.WasmWastHost.Defs
 public import Silmaril.Wasm.Abstract.HostDet.Thms
 public import Silmaril.Wasm.Abstract.HostCall.Defs
 public import Silmaril.Wasm.Execution.Core.Instantiation
+public import Silmaril.Wasm.Execution.InstantiateTrap.Defs
 import Silmaril.Proofs.Project.Shapes.WasmWastHost
 
 /-!
@@ -29,10 +30,12 @@ get the same one.
 
 * `ScriptHolds.of_kernel h`: every claim of the linked script `cmds` holds against
   `Spectest.host`, from one kernel evaluation `h : scriptHK o fuel cmds = true`
-  (`decide +kernel`): `KMem` stores to `ByteArray` stores (`instantiateOnce?_toBytes`,
+  (`decide +kernel`): `KMem` stores to `ByteArray` stores (`instantiateCfg?_toBytes`,
   `runI_toBytes`, `decompose?_toBytes`), the interpreter's soundness and stopping theorems between
-  host calls, `Ctx.fill_callout_typed` at host calls, `Game.instantiateOnce?_configOk`, and
-  determinism with a deterministic host (`LSteps.nf_unique_of_hostDet`).
+  host calls, `Ctx.fill_callout_typed` at host calls, `instantiateCfg?_sound` (the checker's
+  instantiation is reached from the `Instantiate` configuration), `Game.instantiateCfg?_configOk`
+  (also the residual store of a segment trap is typed), and determinism with a deterministic host
+  (`LSteps.nf_unique_of_hostDet`) and of `Instantiate` (`instantiate?_evalConst_complete`).
 * `LogIs.of_kernel h`: the host-call log after the script, from `h : logHK o fuel cmds = some l`
   (`decide +kernel`).
 * `ScriptHolds.returnsOnly`, `….trapsOnly`, `….unlinkable`, `….uninstantiable`: the row of
@@ -44,6 +47,12 @@ get the same one.
   under `Spectest.host` (`Steps.always_of_hostDet`).
 * `Unlinkable.not_instantiate`: no `Instantiate` derivation exists for the resolved store and
   addresses, under any profile and host.
+
+**Instantiation.** `InstNF` is stated with the specification's `Instantiate` (every global
+allocated as `$instantiate` allocates it), so a module with globals needs no renaming.
+`InstNF.of_trap`: a segment trap of `instantiateT?` with the residual store `s'` is the outcome
+`trap` in `s'` (with `ScriptHolds.uninstantiable`, the rows of segment-trapping
+`assert_trap (module …)`); `InstNF.unique`: at `profile o` instantiation has one outcome.
 
 Proofs: `Silmaril.Proofs.Project.Shapes.WasmWastHost`.
 -/
@@ -197,6 +206,25 @@ theorem ReturnsOnly.always {o : GrowOracle} {pre : List Cmd} {act : Action} {vs 
 theorem TrapsOnly.always {o : GrowOracle} {pre : List Cmd} {act : Action}
     (h : TrapsOnly o pre act) : Always o pre act .trap :=
   h.1.always
+
+/-- **A segment trap is a script outcome, with the residual store**: when the imports of a valid
+`m` resolve to `s₀`, `xas` of the import types and the specification's instantiation traps in its
+segment initialisation with the residual store `s'` (`instantiateT?`, `instantiateT?_trap_sound`),
+the `Instantiate` configuration has the normal form `trap` in `s'` under `Spectest.host`, and the
+log is unchanged. -/
+theorem InstNF.of_trap {o : GrowOracle} {ctx : Ctx} {m : Module} {mt : CModuleType}
+    {s₀ s' : Store Nat} {xas : List ExternAddr} (hm : ModuleOk m mt)
+    (hr : resolve? ctx.regs ctx.store m.imports = some (s₀, xas))
+    (hx : List.Forall₂ (ExternAddrOk s₀) xas mt.imports) (h : instantiateT? s₀ m xas = .trap s') :
+    ∃ mi, InstNF o ctx m (some .trap) s' ctx.log mi :=
+  Silmaril.Proofs.Project.Shapes.WasmWastHost.instNF_of_trap hm hr hx h
+
+/-- **At `profile o`, instantiation has one outcome**: one result (or none), store, log and
+instance. -/
+theorem InstNF.unique {o : GrowOracle} {ctx : Ctx} {m : Module} {ro ro' : Option Result}
+    {s s' : Store Nat} {l l' : HostLog Nat} {mi mi' : ModuleInst} (h : InstNF o ctx m ro s l mi)
+    (h' : InstNF o ctx m ro' s' l' mi') : ro = ro' ∧ s = s' ∧ l = l' ∧ mi = mi' :=
+  Silmaril.Proofs.Project.Shapes.WasmWastHost.instNF_unique h h'
 
 /-- **An unlinkable module has no instantiation** for the store and addresses its imports
 resolve to, under any profile `P` and host. -/

@@ -39,6 +39,111 @@ theorem decodes : decodesB = true := (Bool.and_eq_true_iff.mp check).1
 /-- Every claim of the script. -/
 theorem script : ScriptHolds Silmaril.Wasm.SingleThreaded.neverFail cmds := .of_kernel (Bool.and_eq_true_iff.mp check).2
 
+silmaril instance silmaril.wasm_wast.data.l211 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 31) (m := u211)
+
+@[answers "silmaril.wasm_wast.data.l211" thm] theorem l211 : silmaril.wasm_wast.data.l211 :=
+  script.uninstantiable 31 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l219 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 32) (m := u219)
+
+@[answers "silmaril.wasm_wast.data.l219" thm] theorem l219 : silmaril.wasm_wast.data.l219 :=
+  script.uninstantiable 32 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l227 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 33) (m := u227)
+
+@[answers "silmaril.wasm_wast.data.l227" thm] theorem l227 : silmaril.wasm_wast.data.l227 :=
+  script.uninstantiable 33 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l234 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 34) (m := u234)
+
+@[answers "silmaril.wasm_wast.data.l234" thm] theorem l234 : silmaril.wasm_wast.data.l234 :=
+  script.uninstantiable 34 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l241 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 35) (m := u241)
+
+@[answers "silmaril.wasm_wast.data.l241" thm] theorem l241 : silmaril.wasm_wast.data.l241 :=
+  script.uninstantiable 35 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l258 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 36) (m := u258)
+
+@[answers "silmaril.wasm_wast.data.l258" thm] theorem l258 : silmaril.wasm_wast.data.l258 :=
+  script.uninstantiable 36 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l267 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 37) (m := u267)
+
+@[answers "silmaril.wasm_wast.data.l267" thm] theorem l267 : silmaril.wasm_wast.data.l267 :=
+  script.uninstantiable 37 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l274 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 38) (m := u274)
+
+@[answers "silmaril.wasm_wast.data.l274" thm] theorem l274 : silmaril.wasm_wast.data.l274 :=
+  script.uninstantiable 38 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l282 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 39) (m := u282)
+
+@[answers "silmaril.wasm_wast.data.l282" thm] theorem l282 : silmaril.wasm_wast.data.l282 :=
+  script.uninstantiable 39 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l290 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 40) (m := u290)
+
+@[answers "silmaril.wasm_wast.data.l290" thm] theorem l290 : silmaril.wasm_wast.data.l290 :=
+  script.uninstantiable 40 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l298 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 41) (m := u298)
+
+@[answers "silmaril.wasm_wast.data.l298" thm] theorem l298 : silmaril.wasm_wast.data.l298 :=
+  script.uninstantiable 41 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l305 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 42) (m := u305)
+
+@[answers "silmaril.wasm_wast.data.l305" thm] theorem l305 : silmaril.wasm_wast.data.l305 :=
+  script.uninstantiable 42 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l313 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 43) (m := u313)
+
+@[answers "silmaril.wasm_wast.data.l313" thm] theorem l313 : silmaril.wasm_wast.data.l313 :=
+  script.uninstantiable 43 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l320 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 44) (m := u320)
+
+@[answers "silmaril.wasm_wast.data.l320" thm] theorem l320 : silmaril.wasm_wast.data.l320 :=
+  script.uninstantiable 44 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.data.l543 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 47) (act := .invoke .cur "load" []) (vs := [Val.i32 205])
+
+@[answers "silmaril.wasm_wast.data.l543" thm] theorem l543 : silmaril.wasm_wast.data.l543 :=
+  script.returnsOnly 47 (by kernel_rfl)
+
 silmaril instance silmaril.wasm_wast.data.l330 (expect := "THM") :=
   silmaril.shapes.wasm.wast.validator_rejects (b := invalid330)
 
@@ -165,6 +270,20 @@ end
 
 silmaril group silmaril.wasm_wast.data (title := "test/core/data.wast: the kernel-checked commands (linked script)")
   (children := [
+    silmaril.wasm_wast.data.l211,
+    silmaril.wasm_wast.data.l219,
+    silmaril.wasm_wast.data.l227,
+    silmaril.wasm_wast.data.l234,
+    silmaril.wasm_wast.data.l241,
+    silmaril.wasm_wast.data.l258,
+    silmaril.wasm_wast.data.l267,
+    silmaril.wasm_wast.data.l274,
+    silmaril.wasm_wast.data.l282,
+    silmaril.wasm_wast.data.l290,
+    silmaril.wasm_wast.data.l298,
+    silmaril.wasm_wast.data.l305,
+    silmaril.wasm_wast.data.l313,
+    silmaril.wasm_wast.data.l320,
     silmaril.wasm_wast.data.l330,
     silmaril.wasm_wast.data.l338,
     silmaril.wasm_wast.data.l351,
@@ -184,4 +303,5 @@ silmaril group silmaril.wasm_wast.data (title := "test/core/data.wast: the kerne
     silmaril.wasm_wast.data.l497,
     silmaril.wasm_wast.data.l506,
     silmaril.wasm_wast.data.l514,
-    silmaril.wasm_wast.data.l523])
+    silmaril.wasm_wast.data.l523,
+    silmaril.wasm_wast.data.l543])

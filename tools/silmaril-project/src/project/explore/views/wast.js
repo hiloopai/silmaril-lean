@@ -49,7 +49,8 @@ const WastModel = (() => {
       "import types (ExternAddrOk, silmaril-lean's transcription of Externaddr_ok); so no Instantiate derivation exists for them " +
       "(Unlinkable.not_instantiate)",
     "silmaril.shapes.wasm.wast.host.uninstantiable": "against the typed spectest host, after the linked script prefix, the module links " +
-      "and instantiateOnce? allocates it, and its start function traps at every normal form (segment traps have no shape)",
+      "and the specification's instantiation (Instantiate) traps at every normal form, in a segment initialisation or the start " +
+      "function; the script goes on with the residual store, and the failed instance is never current, named or registered",
     "silmaril.shapes.wasm.wast.host.log_is": "against the typed spectest host, the script runs and its host-call log (the printed " +
       "values, Spectest.printed) is the given one, in every context it reaches",
   };

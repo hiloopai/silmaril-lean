@@ -426,12 +426,12 @@ def instP (fuel : Nat) (ctx : LCtx) (m : Module) : Except String ((Config Nat ×
     | none => .error "an import does not resolve to an export of a registered module or a spectest name"
     | some (s₀, xas) =>
       if externAddrsOk? s₀ xas mt.imports then
-        match instantiateOnce? s₀ m xas with
-        | some (s, f, st) =>
-          match runHP fuel fuel (⟨s, f, startCode st⟩, ctx.log) with
-          | some p => .ok (p, f.module)
+        match instantiateCfg? s₀ m xas with
+        | some (c, mi) =>
+          match runHP fuel fuel (c, ctx.log) with
+          | some p => .ok (p, mi)
           | none => .error s!"the start function did not stop ({fuel} steps)"
-        | none => .error "instantiateOnce? fails (a segment initialisation is out of bounds, or allocation fails)"
+        | none => .error "instantiateCfg? fails without a trap (allocation or an initialiser fails)"
       else .error "the import types do not match"
 
 def showOut : Option Result → String
@@ -513,7 +513,16 @@ partial def probeL (tag : String) (fuel : Nat) : Nat → LCtx → List LCmd → 
     | .ok ((c, l), _) =>
       match c.outcome? with
       | some .trap => do
-        IO.println s!"P\t{tag}\t{k}\tpass\tthe start function traps"
+        -- `instantiateCfg?` hands a segment trap on as the configuration `[trap]`, the start code
+        -- otherwise; a start function that traps never logs before the module's own code runs.
+        let seg := match resolve? ctx.regs ctx.store m.imports with
+          | some (s₀, xas) => match instantiateT? s₀ m xas with
+            | .trap _ => true
+            | _ => false
+          | none => false
+        let why := if seg then "a segment initialisation traps (the script goes on with the residual store)"
+          else "the start function traps"
+        IO.println s!"P\t{tag}\t{k}\tpass\t{why}"
         printedP tag k ctx.log l
         probeL tag fuel (k + 1) { ctx with store := c.store, log := l } cmds
       | some r => do
@@ -1064,15 +1073,18 @@ def emit():
                               "and action of the file, in order (stores and the host-call log persist across modules, also through imported memories, "
                               "tables and globals); imports resolve in import order through the registry (resolve?): an export of a registered "
                               "instance, or a spectest name (fresh print function or global per import, the shared table/table64/memory, as the "
-                              "reference interpreter's spectest.ml), and must have the import types (ExternAddrOk); modules are allocated and their "
-                              "segments initialised by instantiateOnce?; start functions run as Core reduction",
+                              "reference interpreter's spectest.ml), and must have the import types (ExternAddrOk); modules are instantiated by the "
+                              "specification's Instantiate configuration (every global allocated as $instantiate allocates it), whose segment "
+                              "code and start call run as Core reduction against Spectest.host",
                               "linked-script rows: host model: " + HOST_MODEL,
                               "linked-script assert_unlinkable rows (silmaril.shapes.wasm.wast.host.unlinkable): the module is valid and its imports "
                               "do not resolve, or resolve to addresses without the import types (ExternAddrOk, silmaril-lean's transcription "
                               "of Externaddr_ok); hence no Instantiate derivation for them (Unlinkable.not_instantiate)",
-                              "linked-script assert_uninstantiable rows (silmaril.shapes.wasm.wast.host.uninstantiable): the module links and is "
-                              "allocated, and its start function traps at every normal form against Spectest.host; a segment initialisation that traps makes "
-                              "instantiateOnce? fail and has no shape (the script stops there)"],
+                              "linked-script assert_uninstantiable rows (silmaril.shapes.wasm.wast.host.uninstantiable): the module links and its "
+                              "Instantiate configuration traps at every normal form against Spectest.host, in a segment initialisation "
+                              "(table.init/memory.init out of bounds) or in the start function; the script goes on in the store of that "
+                              "normal form (the residual store: the allocation and the earlier writes persist, also in imported tables and "
+                              "memories; instantiateT?_trap_sound, InstNF.of_trap), and the failed instance is never current, named or registered"],
               "files": [], "commands": []}
     imports = []
     for f, mod, segs, rows in files:
@@ -1858,9 +1870,13 @@ def regress():
       replaced by a valid empty one), and the first `nan:arithmetic` expectation of an `add` of a
       non-canonical NaN, made `nan:canonical`; and in the linked script of linking.wast, the
       first `assert_return` on a module that imports from another registered module, plus one
-      (wasmtime must fail on that line). wasmtime must fail on each, so `oracle`'s scripts can
-      fail. The committed `wrong-linked-state.wast` writes a memory and a global through imports
-      from one module and reads them from another.
+      (wasmtime must fail on that line); and in the same script, the first `assert_return` after
+      an `assert_trap (module …)` whose segment initialisation traps (it observes the residual
+      store), plus one (wasmtime must fail on that line). wasmtime must fail on each, so
+      `oracle`'s scripts can fail. The committed `wrong-linked-state.wast` writes a memory and a
+      global through imports from one module and reads them from another;
+      `wrong-segment-trap-state.wast` reads, from another module, what the segments of a failed
+      instantiation wrote into an imported table and memory before the trap.
     Exits 1 if any wrong expectation is accepted or any control fails."""
     if not pathlib.Path(JCO["WASMTIME"]).is_file():
         fetch_wasmtime()
@@ -1925,7 +1941,41 @@ def regress():
                     wrong = line[:m.start()] + f"({m.group(1)}.const {(int(m.group(2)) + 1) % (1 << w)}))"
                     mutants["linked"] = (f"{cid} (script line {ln})", "\n".join(lines[:ln - 1] + [wrong]) + "\n", ln)
                     break
+        # State after a failed instantiation made wrong: in the linked script of linking.wast, the
+        # first `assert_return` after an `assert_trap (module …)` whose segment initialisation
+        # traps (the row reads what the earlier segments wrote into the shared table), plus one.
+        for f, ids, text in oracle_link_scripts(rep):
+            if f != "linking" or "segtrap" in mutants:
+                continue
+            lines = text.rstrip("\n").split("\n")
+            after = False
+            for cid, ln in ids:
+                c, line = byid[cid], lines[ln - 1]
+                if c["type"] == "assert_uninstantiable" and "segment" in str(c.get("observed", "")):
+                    after = True
+                    continue
+                m = re.search(r"\((i32|i64)\.const (-?[0-9]+)\)\)$", line)
+                if after and c["type"] == "assert_return" and m:
+                    w = WIDTH[m.group(1)]
+                    wrong = line[:m.start()] + f"({m.group(1)}.const {(int(m.group(2)) + 1) % (1 << w)}))"
+                    mutants["segtrap"] = (f"{cid} (script line {ln})", "\n".join(lines[:ln - 1] + [wrong]) + "\n", ln)
+                    break
         with tempfile.TemporaryDirectory() as td:
+            for key in ("segtrap",):
+                if key not in mutants:
+                    bad.append(f"no {key} linked script to mutate")
+                    continue
+                cid, text, line = mutants.pop(key)
+                path = pathlib.Path(td) / "wrong.wast"
+                path.write_text(text)
+                n += 1
+                r = run(path)
+                if r.returncode == 0:
+                    bad.append(f"{cid} ({key}) with a wrong expectation: wasmtime ACCEPTS it")
+                elif f"wrong.wast:{line}" not in r.stderr:
+                    bad.append(f"{cid} ({key}): wasmtime fails, but not on the wrong line {line}: {scrub(r.stderr)[-300:]!r}")
+                else:
+                    print(f"regress: {key}: {cid}: rejected on the marked line")
             if "linked" not in mutants:
                 bad.append("no linked script to mutate")
             else:
@@ -1949,7 +1999,7 @@ def regress():
                 if run(path).returncode == 0:
                     bad.append(f"{cid} ({t}) with a wrong expectation: wasmtime ACCEPTS it")
     print(f"regress: {n} scripts run ({len(list(REGRESS.glob('wrong-*.wast')))} committed wrong, "
-          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 4 generated wrong)")
+          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 5 generated wrong)")
     if bad:
         print("\n".join(f"regress: FAIL {b}" for b in bad), file=sys.stderr)
         sys.exit(1)

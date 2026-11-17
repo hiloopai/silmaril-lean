@@ -67,6 +67,195 @@ silmaril instance silmaril.wasm_wast.elem.l176 (expect := "THM") :=
 @[answers "silmaril.wasm_wast.elem.l176" thm] theorem l176 : silmaril.wasm_wast.elem.l176 :=
   script.returnsOnly 14 (by kernel_rfl)
 
+silmaril instance silmaril.wasm_wast.elem.l594 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 65) (m := u594)
+
+@[answers "silmaril.wasm_wast.elem.l594" thm] theorem l594 : silmaril.wasm_wast.elem.l594 :=
+  script.uninstantiable 65 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l603 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 66) (m := u603)
+
+@[answers "silmaril.wasm_wast.elem.l603" thm] theorem l603 : silmaril.wasm_wast.elem.l603 :=
+  script.uninstantiable 66 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l612 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 67) (m := u612)
+
+@[answers "silmaril.wasm_wast.elem.l612" thm] theorem l612 : silmaril.wasm_wast.elem.l612 :=
+  script.uninstantiable 67 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l621 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 68) (m := u621)
+
+@[answers "silmaril.wasm_wast.elem.l621" thm] theorem l621 : silmaril.wasm_wast.elem.l621 :=
+  script.uninstantiable 68 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l628 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 69) (m := u628)
+
+@[answers "silmaril.wasm_wast.elem.l628" thm] theorem l628 : silmaril.wasm_wast.elem.l628 :=
+  script.uninstantiable 69 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l636 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 70) (m := u636)
+
+@[answers "silmaril.wasm_wast.elem.l636" thm] theorem l636 : silmaril.wasm_wast.elem.l636 :=
+  script.uninstantiable 70 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l645 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 71) (m := u645)
+
+@[answers "silmaril.wasm_wast.elem.l645" thm] theorem l645 : silmaril.wasm_wast.elem.l645 :=
+  script.uninstantiable 71 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l653 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 72) (m := u653)
+
+@[answers "silmaril.wasm_wast.elem.l653" thm] theorem l653 : silmaril.wasm_wast.elem.l653 :=
+  script.uninstantiable 72 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l662 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 73) (m := u662)
+
+@[answers "silmaril.wasm_wast.elem.l662" thm] theorem l662 : silmaril.wasm_wast.elem.l662 :=
+  script.uninstantiable 73 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l670 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 74) (m := u670)
+
+@[answers "silmaril.wasm_wast.elem.l670" thm] theorem l670 : silmaril.wasm_wast.elem.l670 :=
+  script.uninstantiable 74 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l679 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 75) (m := u679)
+
+@[answers "silmaril.wasm_wast.elem.l679" thm] theorem l679 : silmaril.wasm_wast.elem.l679 :=
+  script.uninstantiable 75 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l687 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.uninstantiable (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 76) (m := u687)
+
+@[answers "silmaril.wasm_wast.elem.l687" thm] theorem l687 : silmaril.wasm_wast.elem.l687 :=
+  script.uninstantiable 76 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l706 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.traps_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 78) (act := .invoke .cur "init" [])
+
+@[answers "silmaril.wasm_wast.elem.l706" thm] theorem l706 : silmaril.wasm_wast.elem.l706 :=
+  script.trapsOnly 78 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l716 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.traps_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 80) (act := .invoke .cur "init" [])
+
+@[answers "silmaril.wasm_wast.elem.l716" thm] theorem l716 : silmaril.wasm_wast.elem.l716 :=
+  script.trapsOnly 80 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l908 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 82) (act := .invoke .cur "call-overwritten" []) (vs := [Val.i32 66])
+
+@[answers "silmaril.wasm_wast.elem.l908" thm] theorem l908 : silmaril.wasm_wast.elem.l908 :=
+  script.returnsOnly 82 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l921 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 84) (act := .invoke .cur "call-overwritten-element" []) (vs := [Val.i32 66])
+
+@[answers "silmaril.wasm_wast.elem.l921" thm] theorem l921 : silmaril.wasm_wast.elem.l921 :=
+  script.returnsOnly 84 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l946 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.traps_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 87) (act := .invoke (.named "module1") "call-7" [])
+
+@[answers "silmaril.wasm_wast.elem.l946" thm] theorem l946 : silmaril.wasm_wast.elem.l946 :=
+  script.trapsOnly 87 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l947 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 88) (act := .invoke (.named "module1") "call-8" []) (vs := [Val.i32 65])
+
+@[answers "silmaril.wasm_wast.elem.l947" thm] theorem l947 : silmaril.wasm_wast.elem.l947 :=
+  script.returnsOnly 88 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l948 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 89) (act := .invoke (.named "module1") "call-9" []) (vs := [Val.i32 66])
+
+@[answers "silmaril.wasm_wast.elem.l948" thm] theorem l948 : silmaril.wasm_wast.elem.l948 :=
+  script.returnsOnly 89 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l959 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 91) (act := .invoke (.named "module1") "call-7" []) (vs := [Val.i32 67])
+
+@[answers "silmaril.wasm_wast.elem.l959" thm] theorem l959 : silmaril.wasm_wast.elem.l959 :=
+  script.returnsOnly 91 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l960 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 92) (act := .invoke (.named "module1") "call-8" []) (vs := [Val.i32 68])
+
+@[answers "silmaril.wasm_wast.elem.l960" thm] theorem l960 : silmaril.wasm_wast.elem.l960 :=
+  script.returnsOnly 92 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l961 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 93) (act := .invoke (.named "module1") "call-9" []) (vs := [Val.i32 66])
+
+@[answers "silmaril.wasm_wast.elem.l961" thm] theorem l961 : silmaril.wasm_wast.elem.l961 :=
+  script.returnsOnly 93 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l972 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 95) (act := .invoke (.named "module1") "call-7" []) (vs := [Val.i32 67])
+
+@[answers "silmaril.wasm_wast.elem.l972" thm] theorem l972 : silmaril.wasm_wast.elem.l972 :=
+  script.returnsOnly 95 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l973 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 96) (act := .invoke (.named "module1") "call-8" []) (vs := [Val.i32 69])
+
+@[answers "silmaril.wasm_wast.elem.l973" thm] theorem l973 : silmaril.wasm_wast.elem.l973 :=
+  script.returnsOnly 96 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l974 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 97) (act := .invoke (.named "module1") "call-9" []) (vs := [Val.i32 70])
+
+@[answers "silmaril.wasm_wast.elem.l974" thm] theorem l974 : silmaril.wasm_wast.elem.l974 :=
+  script.returnsOnly 97 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l1016 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 100) (act := .invoke (.named "m") "get" [Val.i32 0]) (vs := [Val.ref .null])
+
+@[answers "silmaril.wasm_wast.elem.l1016" thm] theorem l1016 : silmaril.wasm_wast.elem.l1016 :=
+  script.returnsOnly 100 (by kernel_rfl)
+
+silmaril instance silmaril.wasm_wast.elem.l1017 (expect := "THM") :=
+  silmaril.shapes.wasm.wast.host.returns_only (o := Silmaril.Wasm.SingleThreaded.neverFail)
+  (pre := pre cmds 101) (act := .invoke (.named "m") "get" [Val.i32 1]) (vs := [Val.ref .null])
+
+@[answers "silmaril.wasm_wast.elem.l1017" thm] theorem l1017 : silmaril.wasm_wast.elem.l1017 :=
+  script.returnsOnly 101 (by kernel_rfl)
+
 silmaril instance silmaril.wasm_wast.elem.l517 (expect := "THM") :=
   silmaril.shapes.wasm.wast.validator_rejects (b := invalid517)
 
@@ -235,6 +424,20 @@ silmaril group silmaril.wasm_wast.elem (title := "test/core/elem.wast: the kerne
     silmaril.wasm_wast.elem.l176,
     silmaril.wasm_wast.elem.l517,
     silmaril.wasm_wast.elem.l525,
+    silmaril.wasm_wast.elem.l594,
+    silmaril.wasm_wast.elem.l603,
+    silmaril.wasm_wast.elem.l612,
+    silmaril.wasm_wast.elem.l621,
+    silmaril.wasm_wast.elem.l628,
+    silmaril.wasm_wast.elem.l636,
+    silmaril.wasm_wast.elem.l645,
+    silmaril.wasm_wast.elem.l653,
+    silmaril.wasm_wast.elem.l662,
+    silmaril.wasm_wast.elem.l670,
+    silmaril.wasm_wast.elem.l679,
+    silmaril.wasm_wast.elem.l687,
+    silmaril.wasm_wast.elem.l706,
+    silmaril.wasm_wast.elem.l716,
     silmaril.wasm_wast.elem.l722,
     silmaril.wasm_wast.elem.l733,
     silmaril.wasm_wast.elem.l741,
@@ -255,7 +458,20 @@ silmaril group silmaril.wasm_wast.elem (title := "test/core/elem.wast: the kerne
     silmaril.wasm_wast.elem.l870,
     silmaril.wasm_wast.elem.l878,
     silmaril.wasm_wast.elem.l886,
+    silmaril.wasm_wast.elem.l908,
+    silmaril.wasm_wast.elem.l921,
+    silmaril.wasm_wast.elem.l946,
+    silmaril.wasm_wast.elem.l947,
+    silmaril.wasm_wast.elem.l948,
+    silmaril.wasm_wast.elem.l959,
+    silmaril.wasm_wast.elem.l960,
+    silmaril.wasm_wast.elem.l961,
+    silmaril.wasm_wast.elem.l972,
+    silmaril.wasm_wast.elem.l973,
+    silmaril.wasm_wast.elem.l974,
     silmaril.wasm_wast.elem.l979,
     silmaril.wasm_wast.elem.l984,
     silmaril.wasm_wast.elem.l989,
-    silmaril.wasm_wast.elem.l998])
+    silmaril.wasm_wast.elem.l998,
+    silmaril.wasm_wast.elem.l1016,
+    silmaril.wasm_wast.elem.l1017])

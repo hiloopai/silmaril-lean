@@ -59,7 +59,17 @@ theorem externAddrsOk?_toBytes (s : Store H R) (xas : List ExternAddr) (xts : Li
     externAddrsOk? s.toBytes xas xts = externAddrsOk? s xas xts :=
   Silmaril.Proofs.Wasm.Execution.MemRepInst.externAddrsOk?_toBytes s xas xts
 
+/-- An element segment's initialisation commutes with `toBytes`. -/
+theorem initElemSeg?_toBytes (s : Store H R) (f : Frame) (k : Nat) (e : Elem) :
+    initElemSeg? evalConst? s.toBytes f k e = (initElemSeg? evalConst? s f k e).map Store.toBytes :=
+  Silmaril.Proofs.Wasm.Execution.MemRepInst.initElemSeg?_toBytes s f k e
+
 variable [LawfulMemRep R]
+
+/-- A data segment's initialisation commutes with `toBytes` (lawful representations). -/
+theorem initDataSeg?_toBytes (s : Store H R) (f : Frame) (k : Nat) (d : Data) :
+    initDataSeg? evalConst? s.toBytes f k d = (initDataSeg? evalConst? s f k d).map Store.toBytes :=
+  Silmaril.Proofs.Wasm.Execution.MemRepInst.initDataSeg?_toBytes s f k d
 
 theorem allocModule?_toBytes (s : Store H R) (m : Module) (xas : List ExternAddr)
     (valsG : List Val) (refsT : List Ref) (refsE : List (List Ref)) :

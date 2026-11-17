@@ -529,10 +529,250 @@ def bytes_m12 : ByteArray := ⟨#[
 /-- The module at line 372, as silmaril-lean's decoder reads it. -/
 def m12 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m12).getD {}
 
+/-- The bytes of the module of the `assert_uninstantiable` at line 379 (`linking.48.wasm`,
+SHA-256 `1bd422a16b9505fabaee58a30749d2b6de8c513086b78b366151c184191852c6`). -/
+def bytes_u379 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 2, 12, 1, 2, 77, 116, 3, 116, 97, 98,
+  1, 112, 0, 0, 3, 2, 1, 0, 9, 7, 1, 0, 65, 10, 11, 1, 0, 10, 4, 1, 2, 0, 11, 0,
+  11, 4, 110, 97, 109, 101, 1, 4, 1, 0, 1, 102]⟩
+
+/-- The module of the `assert_uninstantiable` at line 379, as silmaril-lean's decoder reads it. -/
+def u379 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u379).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 388 (`linking.49.wasm`,
+SHA-256 `d2fa2134ad5b995af4ba487774fa14cfc754c4310694fc24f6ec2e8dad111df8`). -/
+def bytes_u388 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 2, 22, 2, 2, 77, 116, 3, 116, 97,
+  98, 1, 112, 0, 10, 2, 77, 116, 3, 109, 101, 109, 2, 0, 1, 3, 2, 1, 0, 9, 13, 2, 0, 65,
+  7, 11, 1, 0, 0, 65, 9, 11, 1, 0, 10, 6, 1, 4, 0, 65, 0, 11, 0, 11, 4, 110, 97, 109,
+  101, 1, 4, 1, 0, 1, 102]⟩
+
+/-- The module of the `assert_unlinkable` at line 388, as silmaril-lean's decoder reads it. -/
+def u388 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u388).getD {}
+
+/-- The bytes of the module of the `assert_uninstantiable` at line 402 (`linking.50.wasm`,
+SHA-256 `63379e04f1c3b099d92bd3e9a0a3a13c5c4a66a93b80347d3ac8cee6cc4e5a27`). -/
+def bytes_u402 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 2, 12, 1, 2, 77, 116, 3, 116, 97,
+  98, 1, 112, 0, 10, 3, 2, 1, 0, 9, 17, 2, 0, 65, 7, 11, 1, 0, 0, 65, 8, 11, 5, 0,
+  0, 0, 0, 0, 10, 6, 1, 4, 0, 65, 0, 11, 0, 11, 4, 110, 97, 109, 101, 1, 4, 1, 0, 1,
+  102]⟩
+
+/-- The module of the `assert_uninstantiable` at line 402, as silmaril-lean's decoder reads it. -/
+def u402 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u402).getD {}
+
+/-- The bytes of the module of the `assert_uninstantiable` at line 414 (`linking.51.wasm`,
+SHA-256 `ddf7d4a6a2a7d873349810fe6973cb1ea4d6f2cf2a838b59a18ca72a73f792f7`). -/
+def bytes_u414 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 2, 12, 1, 2, 77, 116, 3, 116, 97,
+  98, 1, 112, 0, 10, 3, 2, 1, 0, 5, 3, 1, 0, 1, 9, 7, 1, 0, 65, 7, 11, 1, 0, 10,
+  6, 1, 4, 0, 65, 0, 11, 11, 9, 1, 0, 65, 128, 128, 4, 11, 1, 100, 0, 11, 4, 110, 97, 109,
+  101, 1, 4, 1, 0, 1, 102]⟩
+
+/-- The module of the `assert_uninstantiable` at line 414, as silmaril-lean's decoder reads it. -/
+def u414 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u414).getD {}
+
+/-- The bytes of the module at line 426 (`linking.52.wasm`,
+SHA-256 `9025b3a6f69e232f75a47f592f9b1202623edfb3c67a0aa7d8cd54afe75b826e`). -/
+def bytes_m13 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 4, 11, 3, 112, 0, 1, 99, 0, 0, 1,
+  111, 0, 1, 7, 37, 3, 10, 116, 45, 102, 117, 110, 99, 110, 117, 108, 108, 1, 0, 9, 116, 45, 114, 101,
+  102, 110, 117, 108, 108, 1, 1, 8, 116, 45, 101, 120, 116, 101, 114, 110, 1, 2, 0, 23, 4, 110, 97, 109,
+  101, 0, 10, 9, 77, 116, 97, 98, 108, 101, 95, 101, 120, 4, 4, 1, 0, 1, 116]⟩
+
+/-- The module at line 426, as silmaril-lean's decoder reads it. -/
+def m13 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m13).getD {}
+
+/-- The bytes of the module at line 434 (`linking.53.wasm`,
+SHA-256 `13a8f4cb21bb2eadeb273026fb906abe1c8ae6a53de88f877d83fcbce6f76624`). -/
+def bytes_m14 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 2, 74, 3, 9, 77, 116, 97, 98, 108, 101,
+  95, 101, 120, 10, 116, 45, 102, 117, 110, 99, 110, 117, 108, 108, 1, 112, 0, 1, 9, 77, 116, 97, 98, 108,
+  101, 95, 101, 120, 9, 116, 45, 114, 101, 102, 110, 117, 108, 108, 1, 99, 0, 0, 1, 9, 77, 116, 97, 98,
+  108, 101, 95, 101, 120, 8, 116, 45, 101, 120, 116, 101, 114, 110, 1, 111, 0, 1, 0, 11, 4, 110, 97, 109,
+  101, 4, 4, 1, 0, 1, 116]⟩
+
+/-- The module at line 434, as silmaril-lean's decoder reads it. -/
+def m14 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m14).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 442 (`linking.54.wasm`,
+SHA-256 `68eb89a2c57b52f5b3e4e84a3e128b862d79aae87ece27f9fd2cfa4d2972af95`). -/
+def bytes_u442 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 25, 1, 9, 77, 116, 97, 98, 108, 101, 95, 101, 120, 9, 116, 45,
+  114, 101, 102, 110, 117, 108, 108, 1, 112, 0, 1]⟩
+
+/-- The module of the `assert_unlinkable` at line 442, as silmaril-lean's decoder reads it. -/
+def u442 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u442).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 446 (`linking.55.wasm`,
+SHA-256 `f88c1d89f901e851dd107f6aa0e855cf032eddb0a27058f354d16371aae4bd3f`). -/
+def bytes_u446 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 24, 1, 9, 77, 116, 97, 98, 108, 101, 95, 101, 120, 8, 116, 45,
+  101, 120, 116, 101, 114, 110, 1, 112, 0, 1]⟩
+
+/-- The module of the `assert_unlinkable` at line 446, as silmaril-lean's decoder reads it. -/
+def u446 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u446).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 451 (`linking.56.wasm`,
+SHA-256 `8be8eda29d29c53f0458e6af3a7ca353438b7e8079ff9cdace5e0791e9ac6a36`). -/
+def bytes_u451 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 2, 27, 1, 9, 77, 116, 97, 98, 108, 101,
+  95, 101, 120, 10, 116, 45, 102, 117, 110, 99, 110, 117, 108, 108, 1, 99, 0, 0, 1, 0, 11, 4, 110, 97,
+  109, 101, 4, 4, 1, 0, 1, 116]⟩
+
+/-- The module of the `assert_unlinkable` at line 451, as silmaril-lean's decoder reads it. -/
+def u451 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u451).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 455 (`linking.57.wasm`,
+SHA-256 `ea9f5f54540e2d7a80de429f830f948ab16ee22e558c159874c8f8574e5213ce`). -/
+def bytes_u455 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 2, 25, 1, 9, 77, 116, 97, 98, 108, 101,
+  95, 101, 120, 8, 116, 45, 101, 120, 116, 101, 114, 110, 1, 99, 0, 0, 1, 0, 11, 4, 110, 97, 109, 101,
+  4, 4, 1, 0, 1, 116]⟩
+
+/-- The module of the `assert_unlinkable` at line 455, as silmaril-lean's decoder reads it. -/
+def u455 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u455).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 460 (`linking.58.wasm`,
+SHA-256 `ac8b2e8de9cab2881c8889356deead6468bc5c28c3644f99dd6ec01cf05bac33`). -/
+def bytes_u460 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 26, 1, 9, 77, 116, 97, 98, 108, 101, 95, 101, 120, 10, 116, 45,
+  102, 117, 110, 99, 110, 117, 108, 108, 1, 111, 0, 1]⟩
+
+/-- The module of the `assert_unlinkable` at line 460, as silmaril-lean's decoder reads it. -/
+def u460 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u460).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 464 (`linking.59.wasm`,
+SHA-256 `b5627e9a43e7810bd5d5647bf8ded322a42f5aa5556c8e11cc66fb9272434dbd`). -/
+def bytes_u464 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 25, 1, 9, 77, 116, 97, 98, 108, 101, 95, 101, 120, 9, 116, 45,
+  114, 101, 102, 110, 117, 108, 108, 1, 111, 0, 1]⟩
+
+/-- The module of the `assert_unlinkable` at line 464, as silmaril-lean's decoder reads it. -/
+def u464 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u464).getD {}
+
+/-- The bytes of the module at line 471 (`linking.60.wasm`,
+SHA-256 `fe808565f9c6f89ec0f3e8529f25ea6e615dedac5913e0e96a47263ef4b3064b`). -/
+def bytes_m15 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 6, 1, 96, 1, 127, 1, 127, 3, 2, 1, 0, 5, 4, 1, 1,
+  1, 5, 7, 14, 2, 3, 109, 101, 109, 2, 0, 4, 108, 111, 97, 100, 0, 0, 10, 9, 1, 7, 0, 32,
+  0, 45, 0, 0, 11, 11, 16, 1, 0, 65, 10, 11, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0,
+  18, 4, 110, 97, 109, 101, 0, 3, 2, 77, 109, 2, 6, 1, 0, 1, 0, 1, 97]⟩
+
+/-- The module at line 471, as silmaril-lean's decoder reads it. -/
+def m15 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m15).getD {}
+
+/-- The bytes of the module at line 481 (`linking.61.wasm`,
+SHA-256 `eede2d528f3145061885a5c929d17e875bec7d499dc2e745d9d506f8f57dd943`). -/
+def bytes_m16 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 6, 1, 96, 1, 127, 1, 127, 2, 11, 1, 2, 77, 109, 4, 108,
+  111, 97, 100, 0, 0, 3, 2, 1, 0, 5, 3, 1, 0, 1, 7, 18, 2, 7, 77, 109, 46, 108, 111, 97,
+  100, 0, 0, 4, 108, 111, 97, 100, 0, 1, 10, 9, 1, 7, 0, 32, 0, 45, 0, 0, 11, 11, 12, 1,
+  0, 65, 10, 11, 6, 240, 241, 242, 243, 244, 245, 0, 28, 4, 110, 97, 109, 101, 0, 3, 2, 78, 109, 1,
+  8, 1, 0, 5, 108, 111, 97, 100, 77, 2, 6, 1, 1, 1, 0, 1, 97]⟩
+
+/-- The module at line 481, as silmaril-lean's decoder reads it. -/
+def m16 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m16).getD {}
+
+/-- The bytes of the module at line 497 (`linking.62.wasm`,
+SHA-256 `419de342ebd0ee091c4d68495b796c7a5f85bd71fc9d0f51e23549ecc5a2e7ce`). -/
+def bytes_m17 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 6, 1, 96, 1, 127, 1, 127, 2, 11, 1, 2, 77, 109, 3, 109,
+  101, 109, 2, 0, 1, 3, 2, 1, 0, 7, 8, 1, 4, 108, 111, 97, 100, 0, 0, 10, 9, 1, 7, 0,
+  32, 0, 45, 0, 0, 11, 11, 14, 1, 0, 65, 5, 11, 8, 160, 161, 162, 163, 164, 165, 166, 167, 0, 18,
+  4, 110, 97, 109, 101, 0, 3, 2, 79, 109, 2, 6, 1, 0, 1, 0, 1, 97]⟩
+
+/-- The module at line 497, as silmaril-lean's decoder reads it. -/
+def m17 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m17).getD {}
+
+/-- The bytes of the module at line 511 (`linking.63.wasm`,
+SHA-256 `42ee6c3b42fd3367eeee4e4f717673668af7647c33047851c1d28a31dc49e684`). -/
+def bytes_m18 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 11, 1, 2, 77, 109, 3, 109, 101, 109, 2, 0, 0, 11, 9, 1,
+  0, 65, 255, 255, 3, 11, 1, 97]⟩
+
+/-- The module at line 511, as silmaril-lean's decoder reads it. -/
+def m18 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m18).getD {}
+
+/-- The bytes of the module of the `assert_uninstantiable` at line 517 (`linking.64.wasm`,
+SHA-256 `9dc9ae31e66227f389fb72c667f7b1eb98123062f2cf0ddeb282d8a11f4bd714`). -/
+def bytes_u517 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 11, 1, 2, 77, 109, 3, 109, 101, 109, 2, 0, 0, 11, 9, 1,
+  0, 65, 128, 128, 4, 11, 1, 97]⟩
+
+/-- The module of the `assert_uninstantiable` at line 517, as silmaril-lean's decoder reads it. -/
+def u517 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u517).getD {}
+
+/-- The bytes of the module at line 524 (`linking.65.wasm`,
+SHA-256 `9aa0ded842eeebd523257be3365a68ee727df8848548501b93082e88fbae04a3`). -/
+def bytes_m19 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 6, 1, 96, 1, 127, 1, 127, 2, 12, 1, 2, 77, 109, 3, 109,
+  101, 109, 2, 1, 1, 8, 3, 2, 1, 0, 7, 8, 1, 4, 103, 114, 111, 119, 0, 0, 10, 8, 1, 6,
+  0, 32, 0, 64, 0, 11, 0, 18, 4, 110, 97, 109, 101, 0, 3, 2, 80, 109, 2, 6, 1, 0, 1, 0,
+  1, 97]⟩
+
+/-- The module at line 524, as silmaril-lean's decoder reads it. -/
+def m19 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m19).getD {}
+
+/-- The bytes of the module of the `assert_unlinkable` at line 542 (`linking.66.wasm`,
+SHA-256 `36eb2a7b2c06e1fd46d143292ca4ac5b16783dcec49183397b99a0afc5b2c132`). -/
+def bytes_u542 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 2, 39, 3, 8, 115, 112, 101, 99, 116, 101,
+  115, 116, 5, 112, 114, 105, 110, 116, 0, 0, 2, 77, 109, 3, 109, 101, 109, 2, 0, 1, 2, 77, 109, 3,
+  116, 97, 98, 1, 112, 0, 0, 11, 9, 1, 0, 65, 0, 11, 3, 97, 98, 99, 0, 14, 4, 110, 97, 109,
+  101, 1, 7, 1, 0, 4, 104, 111, 115, 116]⟩
+
+/-- The module of the `assert_unlinkable` at line 542, as silmaril-lean's decoder reads it. -/
+def u542 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u542).getD {}
+
+/-- The bytes of the module of the `assert_uninstantiable` at line 555 (`linking.67.wasm`,
+SHA-256 `c1557aca923d5cdc0d620339758c4aa63287eafb4bdf36151ec8fbcbf4da7c48`). -/
+def bytes_u555 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 2, 11, 1, 2, 77, 109, 3, 109, 101, 109, 2, 0, 1, 11, 34, 2,
+  0, 65, 0, 11, 3, 97, 98, 99, 0, 65, 246, 255, 19, 11, 18, 122, 122, 122, 122, 122, 122, 122, 122, 122,
+  122, 122, 122, 122, 122, 122, 122, 122, 122]⟩
+
+/-- The module of the `assert_uninstantiable` at line 555, as silmaril-lean's decoder reads it. -/
+def u555 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u555).getD {}
+
+/-- The bytes of the module of the `assert_uninstantiable` at line 567 (`linking.68.wasm`,
+SHA-256 `efcf6f1972ddfc53d75b21240b9a5cb5f0d0058a3e1ed320a806382cdb9427b6`). -/
+def bytes_u567 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 2, 11, 1, 2, 77, 109, 3, 109, 101, 109,
+  2, 0, 1, 3, 2, 1, 0, 4, 4, 1, 112, 0, 0, 9, 7, 1, 0, 65, 0, 11, 1, 0, 10, 4,
+  1, 2, 0, 11, 11, 9, 1, 0, 65, 0, 11, 3, 97, 98, 99]⟩
+
+/-- The module of the `assert_uninstantiable` at line 567, as silmaril-lean's decoder reads it. -/
+def u567 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u567).getD {}
+
+/-- The bytes of the module at line 579 (`linking.69.wasm`,
+SHA-256 `9383c2849606c2ce83bf649f04bfa4e2330202519fec20f03831cc384690db7d`). -/
+def bytes_m20 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 3, 3, 2, 0, 0, 4, 4, 1, 112,
+  0, 1, 5, 3, 1, 0, 1, 7, 49, 4, 6, 109, 101, 109, 111, 114, 121, 2, 0, 5, 116, 97, 98, 108,
+  101, 1, 0, 13, 103, 101, 116, 32, 109, 101, 109, 111, 114, 121, 91, 48, 93, 0, 0, 12, 103, 101, 116, 32,
+  116, 97, 98, 108, 101, 91, 48, 93, 0, 1, 10, 17, 2, 7, 0, 65, 0, 45, 0, 0, 11, 7, 0, 65,
+  0, 17, 0, 0, 11, 0, 16, 4, 110, 97, 109, 101, 0, 3, 2, 77, 115, 4, 4, 1, 0, 1, 116]⟩
+
+/-- The module at line 579, as silmaril-lean's decoder reads it. -/
+def m20 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_m20).getD {}
+
+/-- The bytes of the module of the `assert_uninstantiable` at line 593 (`linking.70.wasm`,
+SHA-256 `fcaa0d6832fb0c05d426ac45b70026341110e14071fd50b356255d59fc0e26ea`). -/
+def bytes_u593 : ByteArray := ⟨#[
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 8, 2, 96, 0, 1, 127, 96, 0, 0, 2, 27, 2, 2, 77, 115,
+  6, 109, 101, 109, 111, 114, 121, 2, 0, 1, 2, 77, 115, 5, 116, 97, 98, 108, 101, 1, 112, 0, 1, 3,
+  3, 2, 0, 1, 8, 1, 1, 9, 7, 1, 0, 65, 0, 11, 1, 0, 10, 12, 2, 6, 0, 65, 173, 189,
+  3, 11, 3, 0, 0, 11, 11, 11, 1, 0, 65, 0, 11, 5, 104, 101, 108, 108, 111, 0, 17, 4, 110, 97,
+  109, 101, 1, 10, 2, 0, 1, 102, 1, 4, 109, 97, 105, 110]⟩
+
+/-- The module of the `assert_uninstantiable` at line 593, as silmaril-lean's decoder reads it. -/
+def u593 : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_u593).getD {}
+
 /-- Every module of the script decodes (so `mJ`, `uL` are the decoder's readings, not the
 default `{}` of `getD`). -/
 def decodesB : Bool :=
-  [bytes_m0, bytes_m1, bytes_m2, bytes_u28, bytes_u32, bytes_m3, bytes_m4, bytes_u87, bytes_u91, bytes_m5, bytes_m6, bytes_u133, bytes_u138, bytes_u142, bytes_u146, bytes_u151, bytes_u155, bytes_u159, bytes_u164, bytes_u168, bytes_u172, bytes_u176, bytes_u182, bytes_u186, bytes_u190, bytes_u194, bytes_u199, bytes_u203, bytes_u207, bytes_u211, bytes_u216, bytes_u220, bytes_u224, bytes_u228, bytes_u233, bytes_u237, bytes_u241, bytes_u245, bytes_u250, bytes_u254, bytes_u258, bytes_u262, bytes_m7, bytes_m8, bytes_m9, bytes_m10, bytes_m11, bytes_m12].all fun b => (Silmaril.Wasm.Binary.Core.decode? b).isSome
+  [bytes_m0, bytes_m1, bytes_m2, bytes_u28, bytes_u32, bytes_m3, bytes_m4, bytes_u87, bytes_u91, bytes_m5, bytes_m6, bytes_u133, bytes_u138, bytes_u142, bytes_u146, bytes_u151, bytes_u155, bytes_u159, bytes_u164, bytes_u168, bytes_u172, bytes_u176, bytes_u182, bytes_u186, bytes_u190, bytes_u194, bytes_u199, bytes_u203, bytes_u207, bytes_u211, bytes_u216, bytes_u220, bytes_u224, bytes_u228, bytes_u233, bytes_u237, bytes_u241, bytes_u245, bytes_u250, bytes_u254, bytes_u258, bytes_u262, bytes_m7, bytes_m8, bytes_m9, bytes_m10, bytes_m11, bytes_m12, bytes_u379, bytes_u388, bytes_u402, bytes_u414, bytes_m13, bytes_m14, bytes_u442, bytes_u446, bytes_u451, bytes_u455, bytes_u460, bytes_u464, bytes_m15, bytes_m16, bytes_m17, bytes_m18, bytes_u517, bytes_m19, bytes_u542, bytes_u555, bytes_u567, bytes_m20, bytes_u593].all fun b => (Silmaril.Wasm.Binary.Core.decode? b).isSome
 
 /-- The script that the kernel runs, in order. -/
 def cmds : List Cmd := [
@@ -647,7 +887,58 @@ def cmds : List Cmd := [
   .module (some "G1") m11,
   .register "G1" (.named "G1"),
   .module (some "G2") m12,
-  .action (.get (.named "G2") "g") (some (.values [Val.i32 5]))]
+  .action (.get (.named "G2") "g") (some (.values [Val.i32 5])),
+  .uninstantiable u379 true,
+  .unlinkable u388 true,
+  .action (.invoke (.named "Mt") "call" [Val.i32 7]) (some .trap),
+  .uninstantiable u402 true,
+  .action (.invoke (.named "Mt") "call" [Val.i32 7]) (some (.values [Val.i32 0])),
+  .action (.invoke (.named "Mt") "call" [Val.i32 8]) (some .trap),
+  .uninstantiable u414 true,
+  .action (.invoke (.named "Mt") "call" [Val.i32 7]) (some (.values [Val.i32 0])),
+  .module (some "Mtable_ex") m13,
+  .register "Mtable_ex" (.named "Mtable_ex"),
+  .module none m14,
+  .unlinkable u442 true,
+  .unlinkable u446 true,
+  .unlinkable u451 true,
+  .unlinkable u455 true,
+  .unlinkable u460 true,
+  .unlinkable u464 true,
+  .module (some "Mm") m15,
+  .register "Mm" (.named "Mm"),
+  .module (some "Nm") m16,
+  .action (.invoke (.named "Mm") "load" [Val.i32 12]) (some (.values [Val.i32 2])),
+  .action (.invoke (.named "Nm") "Mm.load" [Val.i32 12]) (some (.values [Val.i32 2])),
+  .action (.invoke (.named "Nm") "load" [Val.i32 12]) (some (.values [Val.i32 242])),
+  .module (some "Om") m17,
+  .action (.invoke (.named "Mm") "load" [Val.i32 12]) (some (.values [Val.i32 167])),
+  .action (.invoke (.named "Nm") "Mm.load" [Val.i32 12]) (some (.values [Val.i32 167])),
+  .action (.invoke (.named "Nm") "load" [Val.i32 12]) (some (.values [Val.i32 242])),
+  .action (.invoke (.named "Om") "load" [Val.i32 12]) (some (.values [Val.i32 167])),
+  .module none m18,
+  .uninstantiable u517 true,
+  .module (some "Pm") m19,
+  .action (.invoke (.named "Pm") "grow" [Val.i32 0]) (some (.values [Val.i32 1])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 2]) (some (.values [Val.i32 1])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 0]) (some (.values [Val.i32 3])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 1]) (some (.values [Val.i32 3])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 1]) (some (.values [Val.i32 4])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 0]) (some (.values [Val.i32 5])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 1]) (some (.values [Val.i32 4294967295])),
+  .action (.invoke (.named "Pm") "grow" [Val.i32 0]) (some (.values [Val.i32 5])),
+  .unlinkable u542 true,
+  .action (.invoke (.named "Mm") "load" [Val.i32 0]) (some (.values [Val.i32 0])),
+  .uninstantiable u555 true,
+  .action (.invoke (.named "Mm") "load" [Val.i32 0]) (some (.values [Val.i32 97])),
+  .action (.invoke (.named "Mm") "load" [Val.i32 327670]) (some (.values [Val.i32 0])),
+  .uninstantiable u567 true,
+  .action (.invoke (.named "Mm") "load" [Val.i32 0]) (some (.values [Val.i32 97])),
+  .module (some "Ms") m20,
+  .register "Ms" (.named "Ms"),
+  .uninstantiable u593 true,
+  .action (.invoke (.named "Ms") "get memory[0]" []) (some (.values [Val.i32 104])),
+  .action (.invoke (.named "Ms") "get table[0]" []) (some (.values [Val.i32 57005]))]
 
 end Silmaril.Project.WasmWast.Linking
 
