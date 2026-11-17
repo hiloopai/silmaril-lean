@@ -51,7 +51,9 @@ children = ["silmaril.selftest.truth", "silmaril.selftest.small", "silmaril.self
   "silmaril.selftest.formats", "silmaril.shapes", "silmaril.sysv_tv.max2",
   "silmaril.compiles_to.all", "silmaril.selftest.languages", "formats.examples",
   "formats.catalogue", "silmaril.selftest.consequence", "silmaril.selftest.wasm_acceptors",
-  "silmaril.elf.cli", "silmaril.abi", "silmaril.abi.zlib", "silmaril.abi.zlib_libz"]
+  "silmaril.elf.cli", "silmaril.abi", "silmaril.abi.zlib", "silmaril.abi.zlib_libz",
+  "silmaril.abi.zlib_libz_1_2_11", "silmaril.abi.zlib_libz_1_3_1_gcc", "silmaril.abi.zlib_libz_1_3_1_clang",
+  "silmaril.abi.zlib_matrix"]
 
 [[group]]
 name = "silmaril.selftest.formats"

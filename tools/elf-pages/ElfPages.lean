@@ -9,6 +9,17 @@ import Silmaril.Elf.Staged.Pinned.LeafArith.Thms
 import Silmaril.Elf.Staged.Pinned.LeafArith.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibChecksums.Defs
 import Silmaril.Elf.Staged.Pinned.ZlibLibz.Defs
+-- The pages load each pinned file's `Thms` and `Functions` at run time; importing them here makes
+-- `lake build elf-pages` build them, so no separate target list has to name them.
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Functions
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Functions
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Functions
 import Silmaril.Elf.Staged.Pinned.GlibcLibm.Defs
 import Silmaril.Elf.Staged.Pinned.GlibcLibc.Defs
 import Silmaril.Crypto.SHA256
@@ -113,6 +124,40 @@ def pinned : List Pinned := [
       ("symbols", "stripped: .dynsym only"),
       ("licence", "zlib licence (NOTICES/zlib)"),
       ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.3.dfsg-3.1ubuntu2.3")] },
+  { slug := "zlib-libz-1.2.11", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz1211
+    title := "zlib 1.2.11 libz.so.1.2.11 (Ubuntu zlib1g 1:1.2.11.dfsg-2ubuntu9.2, amd64)"
+    path := Pinned.ZlibLibz1211.path, sha256 := Pinned.ZlibLibz1211.sha256, size := Pinned.ZlibLibz1211.size
+    L := Pinned.ZlibLibz1211.L, bodies := Pinned.ZlibLibz1211.bodies, ld := Pinned.ZlibLibz1211.ld
+    provenance := [
+      ("package", "Ubuntu 22.04 zlib1g 1:1.2.11.dfsg-2ubuntu9.2 (amd64), /lib/x86_64-linux-gnu/libz.so.1.2.11, unmodified"),
+      ("url:package", "https://launchpad.net/ubuntu/+archive/primary/+files/zlib1g_1.2.11.dfsg-2ubuntu9.2_amd64.deb"),
+      ("package sha256", "9dc17e51a1be2d9ed63b7b84ef0e4e29c5abe6f1bc62cb03e7181483cce8a2f2 (as in the jammy-updates Packages index)"),
+      ("fetch", "examples/elf/pin.sh --fetch (verifies the package and file hashes)"),
+      ("symbols", "stripped: .dynsym only; crc32_z is an STT_GNU_IFUNC"),
+      ("licence", "zlib licence (NOTICES/zlib)"),
+      ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.2.11.dfsg-2ubuntu9.2")] },
+  { slug := "zlib-libz-1.3.1-gcc", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc
+    title := "zlib 1.3.1 libz.so.1.3.1 (GCC 13.3 -O2, release tarball)"
+    path := Pinned.ZlibLibz131Gcc.path, sha256 := Pinned.ZlibLibz131Gcc.sha256, size := Pinned.ZlibLibz131Gcc.size
+    L := Pinned.ZlibLibz131Gcc.L, bodies := Pinned.ZlibLibz131Gcc.bodies, ld := Pinned.ZlibLibz131Gcc.ld
+    provenance := [
+      ("compiler", "GCC 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), GNU ld 2.42"),
+      ("build", "examples/libs/zlib/build.sh: ./configure && make libz.so.1.3.1, CFLAGS -O2, in ubuntu:24.04 pinned by digest with the toolchain from the Ubuntu snapshot archive; byte-for-byte reproducible (build.sh --check)"),
+      ("source", "zlib 1.3.1 release tarball, sha256 9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"),
+      ("url:source", "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"),
+      ("symbols", ".symtab and .dynsym; crc32 and adler32 tail-call their _z functions through the PLT"),
+      ("licence", "zlib licence (NOTICES/zlib)")] },
+  { slug := "zlib-libz-1.3.1-clang", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang
+    title := "zlib 1.3.1 libz.so.1.3.1 (Clang 18.1 -O2, release tarball)"
+    path := Pinned.ZlibLibz131Clang.path, sha256 := Pinned.ZlibLibz131Clang.sha256, size := Pinned.ZlibLibz131Clang.size
+    L := Pinned.ZlibLibz131Clang.L, bodies := Pinned.ZlibLibz131Clang.bodies, ld := Pinned.ZlibLibz131Clang.ld
+    provenance := [
+      ("compiler", "Ubuntu clang 18.1.3 (1ubuntu1), GNU ld 2.42"),
+      ("build", "examples/libs/zlib/build.sh: ./configure && make libz.so.1.3.1, CFLAGS -O2, in ubuntu:24.04 pinned by digest with the toolchain from the Ubuntu snapshot archive; byte-for-byte reproducible (build.sh --check)"),
+      ("source", "zlib 1.3.1 release tarball, sha256 9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"),
+      ("url:source", "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"),
+      ("symbols", ".symtab and .dynsym; crc32 and adler32 tail-call their _z functions through the PLT"),
+      ("licence", "zlib licence (NOTICES/zlib)")] },
   { slug := "glibc-libm", ns := `Silmaril.Elf.Staged.Pinned.GlibcLibm
     title := "glibc 2.39 libm.so.6 (Ubuntu libc6 2.39-0ubuntu8.9, amd64)"
     path := Pinned.GlibcLibm.path, sha256 := Pinned.GlibcLibm.sha256, size := Pinned.GlibcLibm.size

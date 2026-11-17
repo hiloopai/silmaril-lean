@@ -277,6 +277,35 @@ The binary is zlib 1.3 and the excerpt is zlib 1.3.1's `zlib.h`: the rows are ab
 library as a provider of the excerpt's declarations, with each binding checked against the
 library's own symbol versions.
 
+## The library matrix: zlib across versions and compilers
+
+`Silmaril.Elf.Abi.ZlibMatrix` adds three shared libraries to the two above. The header, the
+prototypes and the C specs are the same values; the files, the code and the coverage differ.
+The group `silmaril.abi.zlib_matrix` collects all five binaries.
+
+| binary | provenance | claimed | excluded (each reason checked against the file) |
+| --- | --- | --- | --- |
+| `libz.so.1.2.11` | Ubuntu 22.04 zlib1g 1:1.2.11.dfsg-2ubuntu9.2, stripped; the package SHA-256 is the one in the archive's `jammy-updates` index | `adler32_z`, `adler32` | `crc32_z` is an `STT_GNU_IFUNC` (`crc32z_ifunc`: no code is that function of the file); `crc32` tail-calls it through the PLT; `crc32_combine_gen` and `crc32_combine_op` are **absent**, which is the version gap (`version_gap`); the rest present, unclaimed |
+| `libz.so.1.3.1` (GCC) | GCC 13.3 `-O2` build of the release tarball, reproducible (`examples/libs/zlib/build.sh --check`) | `crc32_z`, `adler32_z` | `crc32`, `adler32` tail-call through the PLT; the rest present, unclaimed |
+| `libz.so.1.3.1` (Clang) | Clang 18.1 `-O2` build of the same tarball, same container | `crc32_z`, `adler32_z` | as GCC's |
+
+What the matrix shows:
+- **Versions.** The 1.3.1 header against a 1.2.11 library. `crc32_combine_gen` and
+  `crc32_combine_op` came in 1.2.12, and `Absent` proves them missing from every table of the
+  file, in every version. Such a row can reach `header_sat_available` but never
+  `header_sat_complete`. `crc32_z` and `adler32_z` date from 1.2.9, and all four libraries define
+  them at `ZLIB_1.2.9`.
+- **Packaging.** Ubuntu's 1.2.11 dispatches `crc32_z` at load time (an IFUNC), and `CodeOf`
+  refuses it. Ubuntu's 1.3 wrappers jump straight to the `_z` functions. The upstream builds
+  keep semantic interposition, so their wrappers tail-call through the PLT: a jump through a GOT
+  slot that ld.so fills, which the row's code region cannot contain.
+- **Compilers.** GCC's and Clang's `crc32_z` are different code (1041 and 2176 bytes) for the
+  same specification, each with its own open task.
+
+All rows are on `Open9`, total, frame 256, at every load base. The header rows are partial.
+`scripts/abi-bytes/zlib_matrix.py` generates the code bytes and regions and checks each
+claimed symbol's value, size, type and version against the file. The kernel checks them again.
+
 ## Distinct from the shapes that state less
 
 | shape | says | does not say |
@@ -359,7 +388,10 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 - The open zlib conformance tasks, per binary:
   - the static `zlib-checksums`, whose total contracts are proved but whose first-return forms
     are open;
-  - Ubuntu's `libz.so.1.3`, at every load base (its file facts are proved).
+  - Ubuntu's `libz.so.1.3`, at every load base (its file facts are proved);
+  - the library matrix (1.2.11, and GCC and Clang builds of 1.3.1), at every load base.
+- Rows for the remaining declarations (`crc32_combine`, `adler32_combine`, `get_crc_table`,
+  `zlibVersion`, `zlibCompileFlags`), so that a binary can reach `header_sat_available`.
 - `Open9` rows.
 - `sysvInt` extended to aggregates, SSE and varargs.
 - `Win64` as an `AbiDef`.
