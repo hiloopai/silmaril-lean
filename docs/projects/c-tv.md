@@ -225,7 +225,9 @@ rejected/unknown toward validated against the fixed denominator of 3,852.
 2. **Program corpus, stage artifacts and registered rows** (#898, and the registry PR). Remaining:
    kernel instances for corpus Cores (needs the module-system `cbv` issue solved, or a symbolic
    validator instead of enumeration).
-3. **Explorer: C programs tab** (#900). Remaining: rows for corpus programs once they exist.
+3. **Explorer: C programs tab** (#900; on the project database and with tamper tests: #934 — the
+   corpus's sources and provenance are registered artifacts, and a full `make pages` is checked
+   together with the CLI tab). Remaining: rows for corpus programs once they exist.
 4. **GCC torture manifest and runner** (#902). Remaining: interpret DejaGNU `.x` options and the
    builtins harness; a `gnu89`/permissive language profile with its own coherence obligations.
 5. **Elaborator coverage.** Port the rest of `translation.lem`, ranked by the torture blockers:
@@ -243,12 +245,19 @@ rejected/unknown toward validated against the fixed denominator of 3,852.
 8. **Validators beyond enumeration.** Symbolic or simulation-based Core-to-Core validators with
    soundness proofs (no finite-tree requirement); divergence-aware refinement; set coverage of
    endings; partial-order reduction for `unseq`.
-9. **Inputs and environment.** Observations over stdin, files and `argv`; external calls under
-   contracts (compositional evidence: expressions, statements, functions, modules).
-10. **Compiler origin.** Whole-program object code against the source's Core, through the ELF,
+9. **Compositional evidence.** *Started* (`Silmaril.Cerberus.TV.Compose`): vertical composition
+   (`Refines.trans`, `Equivalent.symm`/`trans`: pipeline steps compose without re-validating the
+   end points; `fold_in_two_steps` in `CTvRows`), and function-level refinement over explicit
+   contexts (`ContextRefines`, shape `c.tv.context_refines`, validator `validateContexts` with its
+   soundness theorem, `ContextRefines.then` for replacing one function and then another; a
+   registered row replaces `main`'s Core in its file). Remaining: contextual refinement for all
+   contexts (a simulation over the Core LTS, or contracts at the function boundary), expression-
+   and statement-level contexts, and external calls under contracts.
+10. **Inputs and environment.** Observations over stdin, files and `argv`.
+11. **Compiler origin.** Whole-program object code against the source's Core, through the ELF,
     startup and ABI shapes owned by those tasks (consumed by adapters); this, not frontend
     agreement, is what "the GCC torture test is translation-validated" requires.
-11. **Upstream comparison.** OathTech/cerberus-lean and the OCaml Cerberus on the corpus and the
+12. **Upstream comparison.** OathTech/cerberus-lean and the OCaml Cerberus on the corpus and the
     torture cases, reported as oracle evidence with exact revisions.
 
 ### Open obligations (concrete, by area)

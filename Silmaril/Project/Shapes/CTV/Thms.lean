@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Project.Shapes.CTV.Defs
 public import Silmaril.Cerberus.TV.Validate.Thms
+public import Silmaril.Cerberus.TV.Compose.Thms
 
 /-!
 # Standard problem shapes: whole-program C translation validation (theorems)
@@ -37,6 +38,11 @@ theorem CRefinesOn.of_validate {p : Profile} {src tgt : Codec.FileBindings} (bou
     (h : (validate p.impl (Closed.ofBindings src) (Closed.ofBindings tgt) bounds).verdict = .validated)
     (hs : p.AppliesTo src) (ht : p.AppliesTo tgt) : CRefinesOn p src tgt :=
   ⟨validate_sound _ _ _ bounds h, hs, ht⟩
+
+theorem CContextRefines.of_validate {impl : Spec.Impl} {ctxs : List Codec.FileBindings} {f : Sym}
+    {d d' : Core.FunDecl Codec.wireModel Unit Unit} (bounds : Bounds)
+    (h : validateContexts impl ctxs f d d' bounds = true) : CContextRefines impl ctxs f d d' :=
+  validateContexts_sound impl ctxs f d d' bounds h
 
 theorem CNotRefines.of_validate {impl : Spec.Impl} {src tgt : Closed} (bounds : Bounds)
     (h : (validate impl src tgt bounds).verdict = .refuted) : CNotRefines impl src tgt :=

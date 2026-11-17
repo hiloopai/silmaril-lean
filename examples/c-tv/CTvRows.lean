@@ -131,6 +131,17 @@ theorem overflow_validated : (validate Spec.Impl.lp64 overflow overflowTarget).v
 @[refutes "silmaril.c_tv.profile.linux_x86_64.long_double"] theorem incoherent_longDouble : ¬ silmaril.c_tv.profile.linux_x86_64.long_double :=
   not_coherentAt_of (by cbv)
 
+/-- Function level: `main`'s definition replaced, in the listed context (`TV.ContextRefines`). -/
+@[solves "silmaril.c_tv.examples.main_fold.context_refines"] theorem main_fold_context_refines :
+    silmaril.c_tv.examples.main_fold.context_refines :=
+  CContextRefines.of_validate {} (by cbv)
+
+/-- Vertical composition: two validated steps (`1 + 2` to `2 + 1`, then `2 + 1` to `3 + 0`) give
+the end-to-end refinement by `Refines.trans`, without validating the end points together. -/
+theorem fold_in_two_steps : Refines Spec.Impl.lp64 (add 1 2) (add 3 0) :=
+  Refines.trans (validate_sound _ _ _ {} (show (validate Spec.Impl.lp64 (add 1 2) (add 2 1)).verdict = .validated by cbv))
+    (validate_sound _ _ _ {} (show (validate Spec.Impl.lp64 (add 2 1) (add 3 0)).verdict = .validated by cbv))
+
 /-- A decoy for the explorer's association test (`tools/silmaril-project/tests/explore/c.mjs`): its
 name mentions a corpus program and a shape, its statement is neither, so `c-pages` must not list it. -/
 theorem decoy_arithmetic_refines : (1 : Nat) + 2 = 3 := rfl

@@ -126,6 +126,23 @@ Reading the table:
 * **Harness.** 158 execute/ cases need DejaGNU behaviour (`.x` scripts, the builtins directory's
   extra sources) that the runner does not interpret.
 
+## Gap roadmap
+
+Every case of the denominator, by the first gap it hits, against the milestone that closes it.
+The rows are disjoint and sum to the denominator. Even a case past every row needs milestone 7 (a
+precise per-type check) and milestone 11 (compiler origin) before it is translation-validated.
+
+| Gap | Roadmap milestone (docs/projects/c-tv.md) | Cases |
+| --- | --- | ---: |
+| Harness: DejaGNU `.x` options, builtins sources | 4 (runner) | 158 |
+| Language profile: implicit `int`, K&R, implicit declarations (both routes) | 4, 6 | 762 |
+| Frontend, other (asm statements, `va_list`, GNU extensions, VLAs, bit-fields) | 6 | 368 |
+| Elaborator: rest of `translation.lem` (functions, statements, operators, locals, globals) | 5 | 2,513 |
+| Whole-program behaviour undefined (compile/ without `main`) | — (frontend/elaborator acceptance only) | 46 |
+| Timeouts | 8 (validators beyond enumeration) | 1 |
+| Cross-validated (frontend agreement, trivial) | then 7 (per-type check), 11 (compiler origin) | 4 |
+| **total** | | **3,852** |
+
 ## What a status does not mean
 
 * `cross-validated` is two frontends agreeing through one elaborator on the Core semantics. It

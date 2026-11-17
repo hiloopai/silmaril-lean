@@ -32,6 +32,22 @@ def addBindings (a b : Int) : Codec.FileBindings := AdditionSource.bindings a b
 /-- `int main(void) { return a + b; }` as a closed program. -/
 def add (a b : Int) : Closed := ⟨(addBindings a b).toFile, ∅, []⟩
 
+/-- `main`'s symbol in these files. -/
+def mainSym : Sym := Literal42.sym 1 "main"
+
+/-- `main`'s definition in the file of `return a + b;`. -/
+def mainDecl (a b : Int) : Core.FunDecl Codec.wireModel Unit Unit :=
+  match (addBindings a b).funs with
+  | (_, d) :: _ => d
+  | [] => .builtinDecl .unknown .unit []
+
+/-- `main`'s definitions in the function-level row. -/
+def mainFoldBefore : Core.FunDecl Codec.wireModel Unit Unit := mainDecl 1 2
+def mainFoldAfter : Core.FunDecl Codec.wireModel Unit Unit := mainDecl 3 0
+
+/-- The contexts of the function-level rows: the `return 1 + 2;` file. -/
+def mainContexts : List Codec.FileBindings := [addBindings 1 2]
+
 /-- The programs the registered rows (`silmaril/c-tv.toml`) name. -/
 def foldSource : Closed := add 1 2
 def foldTarget : Closed := add 3 0
