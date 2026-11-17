@@ -39,6 +39,10 @@ file, with no per-file indices: a statement names a function by lookup ("the def
 | bridges | `Silmaril.Elf.Bridge`, `Silmaril.Elf.BindEq` | the API against the loader readers, `ElfBind` and silmaril's ELF readers |
 | executables | `Silmaril.Elf.Exe` | `NoTextRelD`, `InterpIs`, `ExeFacts`, `roLoaded_of_exeLoaded` |
 | CLI executables | `Silmaril.Elf.CliExe` | `silmaril.shapes.elf.cli_exe` over the CLI institution |
+| carriers | `Silmaril.Elf.Like` | `ElfLike` for blobs, byte arrays, kernel bytes, values, images, the CST and the AST; `Denotes`, `MachineIs`, `File.entries`, `EntriesAre`, `IsEntry` |
+| decoding | `Silmaril.Elf.Decode` | `decode`: `ok`, `unsupported`, `invalid` or `incomplete`, on whole files and partial views |
+| addresses | `Silmaril.Elf.Image` | file offsets, virtual addresses, zero fill and overlap: `File.origins`, `File.resolve`, `SegBytes` |
+| assembly functions | `Silmaril.Elf.Asm` | `AsmFunction` and its separate evidence (`ArchOf`, `BytesAt`, `SymbolOf`, `DecodesAs`, `LinesTile`, `RefsGrounded`); see [elf-asm.md](elf-asm.md) |
 
 The parse is the specification: `Parses F A` says that the reader `read`, run on the bytes `F`,
 returns the AST `A`. Every fact is an existential over the parse (`KindIs F k := ∃ A, Parses F A
@@ -61,6 +65,9 @@ versions, weak and hidden definitions.
 | `silmaril.shapes.elf.code_at` | `CodeAt X v code`: `code` is mapped read-only executable at `v` | `Shapes` |
 | `silmaril.shapes.elf.binds` | `Binds X sel v code`: `sel` denotes the plain function at `v`, with code `code` | `Shapes` |
 | `silmaril.shapes.elf.entry_point` | `EntryIs X v`: the entry point of `X` is `v` | `Shapes` |
+| `silmaril.shapes.elf.machine` | `MachineIs X m`: the `e_machine` of `X` is `m` | `Shapes` |
+| `silmaril.shapes.elf.entries` | `EntriesAre X es`: the entry points of `X` are `es` (`File.entries`) | `Shapes` |
+| `silmaril.shapes.elf.is_entry` | `IsEntry X e`: `e` is an entry point of `X` | `Shapes` |
 | `silmaril.shapes.elf.cli_exe` | `CliExe exe k ld L M φ`: an executable of kind `k` with the API facts its loading model `ld` needs satisfies the CLI sentence `φ` under the model `M` | `CliExe` |
 
 They sit beside the loader shapes `silmaril.shapes.elf.loads` and `silmaril.shapes.elf.entry`
@@ -150,6 +157,12 @@ lake build --wfail Silmaril.Elf.Defs Silmaril.Elf.Shapes.Thms Silmaril.Elf.Check
   Silmaril.Elf.Example.Thms Silmaril.Elf.Staged.Thms Silmaril.Elf.Staged.Leaf.Thms Silmaril.Elf.Staged.Example.Thms
 lake build elf-staged   # the native tool (benchmarks/elf-staged)
 ```
+
+## Assembly functions
+
+[elf-asm.md](elf-asm.md): one function of a file as a compiler explorer shows it (`AsmFunction`),
+with its architecture, bytes, symbol, decoding, listing and references as separate kernel-checked
+facts on the file's bytes, and its JSON form for views (`tools/elf-asm`).
 
 ## The per-part reader and the explorer's ELF tab
 
