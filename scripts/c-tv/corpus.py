@@ -23,6 +23,18 @@ Usage: scripts/c-tv/corpus.py [--bin .lake/build/bin] [NAME...]
 import gzip, hashlib, json, os, re, shutil, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _torture():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ctv_torture", os.path.join(os.path.dirname(os.path.abspath(__file__)), "torture.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+# Native runs share the torture runner's caps (time, CPU, memory, file size, stdout bytes).
+run_native, NATIVE = _torture().run_native, _torture().NATIVE
 CORPUS = os.path.join(ROOT, "examples", "c-programs")
 RUNTIME = os.path.join(ROOT, "benchmarks", "cerberus-elaboration", "oracle", "constant-return", "core.sexp.gz")
 TARGET = "x86_64-linux-gnu"
@@ -32,12 +44,13 @@ def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def run(cmd, cwd, stdin=None, timeout=600):
-    try:
-        p = subprocess.run(cmd, cwd=cwd, input=stdin, capture_output=True, timeout=timeout)
-        return p.returncode, p.stdout, p.stderr
-    except subprocess.TimeoutExpired:
-        return "timeout", b"", b""
+# Tool runs share the torture runner's launcher: a deadline over the whole lifecycle, the process
+# group killed at the end, outputs capped, no stdin.
+_tool_run = _torture().run
+
+
+def run(cmd, cwd, timeout=600):
+    return _tool_run(cmd, cwd, timeout)
 
 
 def version(cmd):
@@ -142,12 +155,12 @@ def one(name, binary, tools, rev):
         if rc != 0:
             failures[f"native-{level}"] = err.decode(errors="replace")[-1000:]
             continue
-        rc, so, _ = run([exe], out, timeout=10)
+        res, so = run_native(exe, out)
         os.remove(exe)
-        if rc == "timeout":
-            failures[f"native-{level}"] = "run timed out (10 s)"
+        if res["ended"] not in ("exit", "signal"):
+            failures[f"native-{level}"] = f"run ended by {res['ended']} (caps: {NATIVE})"
             continue
-        term = f"signal:{-rc}" if rc < 0 and rc != -6 else ("abort" if rc == -6 else str(rc))
+        term = (("abort" if res["code"] == 6 else f"signal:{res['code']}") if res["ended"] == "signal" else str(res["code"]))
         open(os.path.join(out, f"native-{level}.out"), "wb").write(so)
         observes += ["--observe", f"gcc-{level}", term, f"native-{level}.out"]
 

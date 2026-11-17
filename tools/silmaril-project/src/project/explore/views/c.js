@@ -104,7 +104,7 @@
     let idx, thms, profs;
     try { [idx, thms, profs] = await Promise.all([cFetch("programs/index.json", "json"), cFetch("theorems.json", "json"), cFetch("profiles.json", "json")]); }
     catch (e) { return missing(e); }
-    let h = "<h2>C programs</h2>";
+    let h = '<h2>C programs</h2><p><a href="#/c-torture" id="ctorturelink">GCC torture suite: the pinned manifest and one status per case (not coverage)</a></p>';
     h += `<p class="cnote">Translation validation of C programs over the Lean port of Cerberus's Core semantics (${repoLink("docs/projects/c-tv.md", null, "docs/projects/c-tv.md")}). ` +
       "Each stage below is a separate representation with its own producer, and each edge has its own evidence. " +
       `${tag("compiled")} verdicts were computed by compiled Lean code; only ${tag("kernel")} rows are kernel-checked theorems. ` +
@@ -285,6 +285,46 @@
     return { html: h, init };
   }
 
+  // The GCC torture report: one status per case of the pinned manifest, never presented as coverage.
+  async function torture() {
+    let rep;
+    try {
+      const bytes = await cFetch("torture/tv-report.json.gz", "bytes");
+      rep = JSON.parse(new TextDecoder("utf-8").decode(bytes));
+    } catch (e) { return missing(e); }
+    const rows = rep.cases, n = rep.denominator;
+    const statuses = [...new Set(rows.map((r) => r.status))];
+    const count = (f) => rows.filter(f).length;
+    let h = "<h2>GCC C torture suite</h2>";
+    h += `<p class="cnote" id="tnotcoverage"><b>Not coverage.</b> No torture test is translation-validated here. ` +
+      `The ${count((r) => r.status === "cross-validated")} <code>cross-validated</code> cases are trivial frontend agreements (Core to Core, compiled evidence): ` +
+      "see the highlights below. Validating a torture test needs, beyond these, a precise per-type check and the compiler-origin relation " +
+      `(${repoLink("benchmarks/gcc-torture/README.md", null, "the gap roadmap")}, ${repoLink("docs/projects/c-tv.md", null, "c-tv.md")}).</p>`;
+    h += `<p class="muted">Manifest: GCC <code>${esc(rep.manifest.revision.slice(0, 12))}</code>, SHA-256 <code>${esc(rep.manifest.sha256.slice(0, 12))}…</code>; ` +
+      `every attempted case's source was checked against it during the run (${count((r) => r.sourceVerified)} verified). ` +
+      `Tools: ${esc(rep.tools.gcc)}, ${esc(rep.tools.clang)}; profile <code>${esc(rep.options.pipeline.profile)}</code>; ` +
+      `native runs capped at ${rep.native.timeoutSeconds} s, ${rep.native.addressSpaceBytes >> 20} MiB, ${rep.native.stdoutBytes >> 20} MiB of stdout.</p>`;
+    h += `<table id="tstatus"><thead><tr><th>status</th><th>compile/</th><th>execute/</th><th>total</th></tr></thead><tbody>`;
+    for (const st of statuses) h += `<tr data-status="${esc(st)}"><td><code>${esc(st)}</code></td><td>${count((r) => r.status === st && r.case.startsWith("compile/"))}</td>` +
+      `<td>${count((r) => r.status === st && r.case.startsWith("execute/"))}</td><td>${count((r) => r.status === st)}</td></tr>`;
+    h += `<tr><td><b>denominator</b></td><td>${count((r) => r.case.startsWith("compile/"))}</td><td>${count((r) => r.case.startsWith("execute/"))}</td><td><b>${n}</b></td></tr></tbody></table>`;
+    const xv = rows.filter((r) => r.status.startsWith("cross-validated"));
+    h += `<h3>Highlights: the cross-validated cases</h3><table id="thighlights"><thead><tr><th>case</th><th>status</th><th>why it is not coverage</th></tr></thead><tbody>`;
+    for (const r of xv) {
+      const why = [];
+      if (r.compileOnly) why.push("<b>compile-only test</b>: it is about compiling, its evidence must be function-level (no function-level edge exists for it yet); its whole-program behaviour is incidental");
+      if (r.targetConditional) why.push("<b>architecture-gated</b>: <code>#if</code> on a target macro selects the test; on x86-64 it preprocesses to a trivial <code>main</code> returning 0");
+      why.push("frontend agreement only (Core to Core, compiled); no per-type check passes and no compiler-origin edge");
+      h += `<tr data-case="${esc(r.case)}" data-compile-only="${!!r.compileOnly}" data-target-conditional="${!!r.targetConditional}"><td><code>${esc(r.case)}</code></td>` +
+        `<td><code>${esc(r.status)}</code></td><td>${why.join("<br>")}</td></tr>`;
+    }
+    h += "</tbody></table>";
+    h += `<p class="muted">Compile-only cases elaborated without <code>main</code>: ${count((r) => r.status === "no-main")} (<code>no-main</code>; the function-level gap: their evidence would be per function). ` +
+      `Cases with a route that dropped a construct: ${count((r) => r.blocked)}. Native runs that hit a cap: ${count((r) => r.native && ["timeout", "stdout-limit"].includes(r.native.ended))}.</p>`;
+    return h;
+  }
+
   Explorer.registerView({ id: "c", title: "C programs", nav: 87, render: index });
+  Explorer.registerView({ id: "c-torture", title: "GCC torture", tab: "c", render: () => torture() });
   Explorer.registerView({ id: "c-program", title: "C program", tab: "c", render: (arg, ctx) => program(arg, ctx) });
 })();

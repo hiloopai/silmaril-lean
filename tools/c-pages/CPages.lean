@@ -18,7 +18,8 @@ lake env .lake/build/bin/c-pages OUTDIR     write OUTDIR/c/{theorems.json, profi
    type (compiled evaluation), and pairs each row with the theorems whose statement is that row's
    coherence or incoherence.
 3. Copies `examples/c-programs` (the corpus and its provenance, `scripts/c-tv/corpus.py`) to
-   `OUTDIR/c/programs`. The corpus's verdicts are compiled evidence; no theorem is about a corpus
+   `OUTDIR/c/programs`, and the GCC torture report (`benchmarks/gcc-torture/tv-report.json.gz`) to
+   `OUTDIR/c/torture`. The corpus's verdicts are compiled evidence; no theorem is about a corpus
    program, and the page says so.
 -/
 
@@ -142,5 +143,8 @@ def main (args : List String) : IO UInt32 := do
     ("theorems", Json.arr (thms.map Thm.json))]).pretty ++ "\n")
   IO.FS.writeFile (dir / "profiles.json") ((profiles thms).pretty ++ "\n")
   copyTree "examples/c-programs" (dir / "programs")
+  IO.FS.createDirAll (dir / "torture")
+  IO.FS.writeBinFile (dir / "torture" / "tv-report.json.gz")
+    (← IO.FS.readBinFile "benchmarks/gcc-torture/tv-report.json.gz")
   IO.println s!"c-pages: {thms.size} theorems, 2 profiles, the corpus -> {dir}"
   return 0

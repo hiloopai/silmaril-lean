@@ -90,6 +90,20 @@ try {
     check(true, `${pr.decl}: theorem columns match profiles.json`);
   }
   await shot("c-index");
+  // The torture page: statuses summing to the denominator, a not-coverage banner, and every
+  // cross-validated case highlighted with why it is not coverage.
+  const tz = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(site, "c", "torture", "tv-report.json.gz"))));
+  await open("/c-torture");
+  const tt = await p.evaluate(() => ({ banner: document.querySelector("#tnotcoverage")?.textContent || "",
+    rows: [...document.querySelectorAll("#tstatus tbody tr[data-status]")].map((r) => Number(r.lastElementChild.textContent)),
+    hl: [...document.querySelectorAll("#thighlights tbody tr")].map((r) => ({ c: r.dataset.case, co: r.dataset.compileOnly, tc: r.dataset.targetConditional, t: r.textContent })) }));
+  check(/Not coverage/.test(tt.banner), "the torture page says it is not coverage");
+  check(tt.rows.reduce((a, b) => a + b, 0) === tz.denominator && tz.denominator === 3852, `torture statuses sum to the denominator (${tz.denominator})`);
+  const xv = tz.cases.filter((r) => r.status.startsWith("cross-validated"));
+  check(tt.hl.length === xv.length && xv.every((r, i) => tt.hl[i].c === r.case && tt.hl[i].co === String(!!r.compileOnly) && tt.hl[i].tc === String(!!r.targetConditional)),
+    `every cross-validated case is highlighted with its compile-only / architecture-gated flags (${xv.length})`);
+  check(tt.hl.every((x) => /frontend agreement only/.test(x.t)), "each highlight says it is a frontend agreement only");
+  await shot("c-torture");
   // A registered row's link opens its problem in the project database, with the status its theorem gives.
   const rowThm = thms.theorems.find((t) => t.row === "silmaril.c_tv.examples.overflow.refines_ub_free");
   if (rowThm) {

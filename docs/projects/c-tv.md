@@ -248,9 +248,15 @@ rejected/unknown toward validated against the fixed denominator of 3,852.
 9. **Compositional evidence.** *Started* (`Silmaril.Cerberus.TV.Compose`): vertical composition
    (`Refines.trans`, `Equivalent.symm`/`trans`: pipeline steps compose without re-validating the
    end points; `fold_in_two_steps` in `CTvRows`), and function-level refinement over explicit
-   contexts (`ContextRefines`, shape `c.tv.context_refines`, validator `validateContexts` with its
-   soundness theorem, `ContextRefines.then` for replacing one function and then another; a
-   registered row replaces `main`'s Core in its file). Remaining: contextual refinement for all
+   contexts: the shape `c.tv.context_refines` is `FunctionRefines` (a nonempty list of contexts,
+   each with a substitution witness `Substitutes`: the function defined in the context's own
+   functions and not shadowed by its runtime library), validated by `validateContexts` with its
+   soundness theorem; `ContextRefines` is the raw weak relation (vacuous for no context, a no-op for
+   an undefined or shadowed symbol) and `ContextRefines.then` composes replacing one function and
+   then another; a registered row replaces `main`'s Core in its file, and
+   `tests/cerberus/TVCompose.lean` keeps the vacuous and bogus cases rejected. The torture suite's 1,979 compile/ cases
+   (46 of which elaborate without `main`) need exactly this function-level evidence, not
+   whole-program behaviour. Remaining: contextual refinement for all
    contexts (a simulation over the Core LTS, or contracts at the function boundary), expression-
    and statement-level contexts, and external calls under contracts.
 10. **Inputs and environment.** Observations over stdin, files and `argv`.

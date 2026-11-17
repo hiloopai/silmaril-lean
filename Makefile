@@ -225,6 +225,7 @@ CERBERUS_ORACLE := benchmarks/cerberus-elaboration/oracle
 .PHONY: c-tv-check
 c-tv-check:
 	$(PYTHON) -I scripts/c-tv/corpus.py --check
+	$(PYTHON) -I scripts/c-tv/check-torture.py
 
 .PHONY: cerberus-oracle
 cerberus-oracle:
