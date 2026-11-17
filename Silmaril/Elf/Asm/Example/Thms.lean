@@ -71,6 +71,14 @@ theorem crc32_refs : RefsGrounded F crc32 x86Open crc32Decoding := by
 theorem crc32_contract : BytesAt F crc32 ∧ ∀ entry, (crc32Contract entry).Total Silmaril.X86.Open.isa :=
   ⟨crc32_bytes, crc32_total⟩
 
+/-- The reference of `crc32` targets segment 1 (the read-only `.text`): segment association
+from the target address alone. -/
+theorem crc32_ref_target : ∀ r ∈ crc32.refs, RefTargetIn F r 1 ∧ RefTargetReadOnly F r := by
+  intro r hr
+  simp only [crc32, List.mem_singleton] at hr; subst hr
+  exact ⟨⟨A, 0x401990, .file 0x1990, parses, rfl, by decide +kernel⟩,
+    ⟨A, 0x401990, parses, rfl, by decide +kernel, by decide +kernel⟩⟩
+
 /-! ## `crc32_z` -/
 
 theorem crc32_z_arch : ArchOf F crc32_z := archOf_of_check parses (by decide +kernel)

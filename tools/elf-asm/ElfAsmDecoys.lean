@@ -1,5 +1,6 @@
 import Silmaril.Elf.Asm.Example.Thms
 import Silmaril.Elf.Asm.Example.Reloc.Thms
+import Silmaril.Elf.Asm.Example.LeafArith.Thms
 
 /-! # Decoys for `elf-asm --self-test`
 
@@ -35,5 +36,14 @@ theorem contract_alone : ∀ entry, (Silmaril.X86.Ladder.ZlibChecksums.crc32Cont
 /-- A decoding of the same bytes under another function: no `decode` evidence for `crc32`. -/
 theorem other_decodes : DecodesAs x86Open { crc32 with name := "other" } crc32Decoding :=
   crc32_decodes
+
+/-- Presence of a sample's name in another file: no `present` evidence. -/
+theorem present_other_file (h : Silmaril.Elf.Load.PresentFn Reloc.F (nameOf "clamp_i32")) :
+    Silmaril.Elf.Load.PresentFn Reloc.F (nameOf "clamp_i32") := h
+
+/-- Presence of another name in the sample's file: no `present` evidence for `clamp_i32`. -/
+theorem present_other_name :
+    Silmaril.Elf.Load.PresentFn LeafArith.F (nameOf "popcount32") :=
+  ⟨LeafArith.ast, LeafArith.parses, by decide +kernel⟩
 
 end ElfAsmDecoys

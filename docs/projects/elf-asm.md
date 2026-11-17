@@ -58,6 +58,60 @@ origins), `offsetOf_of_unique` (they give *the* origin when it is unique), and
 segment). `Untouched A v len` says no dynamic relocation writes into a range (each by the width its type writes; unknown widths touch everything); memory after loading
 equals file bytes only there (or under a loading model, `Silmaril.Elf.Link.ElfBind`).
 
+## Loaded code and data (`Silmaril.Elf.Load`)
+
+ELF-only adapters a statement about a function of a file needs next to `CodeAt`:
+
+| name | statement |
+|---|---|
+| `ReadOnlyAt F v bytes` | the first readable, non-writable `PT_LOAD` mapping `[v, v + n)` holds `bytes` (constant tables, strings); `readOnlyAt_of_kbytes` from one kernel read of an `include_bytes` file |
+| `Image.Untouched A v n` | no dynamic relocation writes the range, each by the width its type writes (`File.relocWidth`: the x86-64 psABI widths, 16 for `TLSDESC`, the symbol's size for `COPY`); an unknown width touches every range |
+| `File.loadRanges`, `LoadRangesAre F rs` | the image: every `PT_LOAD` as `(p_vaddr, p_memsz)` |
+| `PresentFn F n`, `AbsentName F n` | some table (`.symtab`, `.dynsym`) defines a function named `n`; no table defines any symbol named `n`. Versions are ignored, and `.symtab`'s `name@VER`/`name@@VER` count as `name` (`baseName`) |
+| `LookupFn F sel d`, `lookup_sym_entry`, `lookupFn_sym` | the lookup finds `d` and the entry is a function; for `.sym` this follows from the lookup (a defined function entry with that name), for `.dyn` it is a separate check (ld.so also binds `OBJECT`, `NOTYPE`, `COMMON`, `TLS`) |
+| `Asm.RefTargetIn F r i`, `Asm.RefTargetReadOnly F r` | a reference's target lies in segment `i`; every segment mapping it is read-only (from the address alone, no decoder) |
+| `ImageLoaded F A base mem`, `readWith_of_segBytes`, `readWith_of_codeAt`, `readWith_of_readOnlyAt` | a memory holding the image at `base` wherever no relocation writes; then an untouched segment range reads back as the file's bytes at `base + v` |
+
+Boundaries, each with a kernel-checked example (`Silmaril.Elf.Load.Examples`):
+
+- **`Untouched` is a footprint model.** It is about the relocation records and the widths
+  `File.relocWidth` assigns. For `COPY` the width is the destination's `st_size`, which bounds
+  what glibc (`MIN` of the definition's and the destination's size) and musl (the destination's
+  size) copy. That bound is an assumption about the loader; another loader is outside the domain.
+- **`ReadOnlyAt` is a first match.** `overlap_first`/`overlap_ambiguous` show a read-only segment
+  found first while a writable one maps the same address. `readOnlyAt_unique` adds `Unambiguous`
+  and concludes that the read-only segment is the only origin of every byte.
+- **`ImageLoaded` is a hypothesis, sometimes unsatisfiable.** `conflict_no_memory`: when two
+  segments map one address from differing file bytes, no memory satisfies it, so a statement
+  conditional on it is vacuous for that file. `one_loaded`/`one_read`: on a one-segment image a
+  memory satisfies it, and the read-back theorem gives the file's bytes, so the chain is not
+  vacuous.
+
+`ImageLoaded` is a property of a memory: nothing here runs a loader, and `Placement F base` only
+says which bases a statement covers. Its satisfiability is not proved; on a file whose overlapping
+segments disagree it is unsatisfiable, so check `Image.Unambiguous` on the load ranges (done for
+the leaf-arith sample). `ReadOnlyAt` takes the first read-only segment and alone does not exclude a
+writable segment over the same addresses; `Unambiguous` does. `Untouched` is relative to the
+relocation records and their widths (`COPY`: the destination `st_size`, an upper bound on what
+ld.so copies); it does not cover code that runs during loading (`IRELATIVE` resolvers,
+constructors) or permission changes, which a real-load statement takes as assumptions. A process statement takes `ImageLoaded` as a hypothesis or
+derives it from a loading model (`ElfBind.RoLoaded`, `Dyn.Loader.ExeLoaded`).
+
+Versioned lookup is the existing `Sel.dyn ⟨name, weak, ver⟩` (`Silmaril.Elf.Lookup`: ld.so's
+`do_lookup_x` with `check_match`). A versioned reference matches the definition of exactly that
+version, or else an unversioned, non-hidden definition when the reference is not hidden. An
+unversioned reference matches version indices 0–2. A later (`@@` default) version makes the lookup
+refuse (glibc's `num_versions` fallback is not modelled), as does an object without
+`DT_GNU_HASH`: no fact is stated. Presence by name ignores versions.
+
+`Asm.Unrelocated F f` is `Image.Untouched` for a function's extent. The sample
+`Silmaril.Elf.Asm.Example.LeafArith` grounds `clamp_i32` (`0x4013a0`, 19 bytes) and `sat_add_u32`
+(`0x401400`, 29 bytes) of the pinned `leaf-arith` (the existing `Ladder.Pinned.LeafArith.exe`
+literal) in every dimension, with `PresentFn`, `AbsentName` (`rt_write`), `ReadOnlyAt` (`"FAIL"`
+in `.rodata`), the image and its zero-fill segment, and `clamp_loaded`: in any memory holding the
+image at base 0 with execute permission, the function's bytes are fetchable at its address. It
+imports no ABI module.
+
 ## Assembly functions (`Silmaril.Elf.Asm`)
 
 An `AsmFunction` is data: name, architecture (`e_machine`, class, data, OS ABI), an ABI

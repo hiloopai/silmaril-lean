@@ -11,3 +11,7 @@ python3 -I scripts/elf-asm/listing.py \
   examples/elf-asm/reloc/scaled.o \
   Silmaril.Elf.Asm.Example.Reloc Silmaril/Elf/Asm/Example/Reloc/Listing.lean \
   scaledLines=scaled_plus_bias:0:20 "$@"
+python3 -I scripts/elf-asm/listing.py \
+  examples/elf-ladder/01-leaf-arith/pinned/leaf-arith \
+  Silmaril.Elf.Asm.Example.LeafArith Silmaril/Elf/Asm/Example/LeafArith/Listing.lean \
+  clampLines=clamp_i32:0x4013a0:19 satLines=sat_add_u32:0x401400:29 "$@"

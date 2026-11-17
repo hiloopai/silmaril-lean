@@ -24,6 +24,7 @@ One namespace for what a proof needs to know about an ELF64 file: import this mo
 | shapes | `Silmaril.Elf.Shapes` | `silmaril.shapes.elf.{parses,index,kind,symbol,lookup,needed,relocs,placement,code_at,binds,entry_point,machine,entries,is_entry}` |
 | decoding (import separately) | `Silmaril.Elf.Decode` | `decode`: `ok`, `unsupported`, `invalid`, `incomplete`; `whole`, `prefixOf`, `windows`, `Refines` |
 | addresses (import separately) | `Silmaril.Elf.Image` | `File.origins`, `File.resolve`, `Origin.{file,zeroFill}`, `MapsFile`, `FileBytes`, `SegBytes`, `Untouched` |
+| loaded code and data (import separately) | `Silmaril.Elf.Load` | `ReadOnlyAt`, `File.loadRanges`, `PresentFn`, `AbsentName`, `ImageLoaded`, `readWith_of_segBytes` |
 | assembly functions (import separately) | `Silmaril.Elf.Asm` | `AsmFunction`, `Isa`, `ArchOf`, `BytesAt`, `SymbolOf`, `DecodesAs`, `LinesTile`, `RefsGrounded`; `Asm.X86` (`x86Ext`, `x86Open`, `x86Open9`); `Asm.Export` (`silmaril.elf.asm/1`) |
 | bridges | `Silmaril.Elf.Bridge` (import separately) | `Task.*` relating `DynElf`, `ElfBind`, `Dyn.Loader`, silmaril readers |
 | loading models | `Silmaril.Elf.Link.{ElfBind,Dyn.Loader,Dyn.Image}` (import separately) | `ElfBind.{Bound,CodeAt,Placement,RoLoaded}`, `Dyn.ExeLoaded` (ld.so's effect, a specified relation) |

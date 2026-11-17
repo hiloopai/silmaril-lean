@@ -19,6 +19,8 @@ believed is a set of separate propositions about it, each stated against the fil
 | symbol | `SymbolOf F f` | the symbol table entry `f.symbol` is a function named `f.name` with value `f.extent.vaddr` and size `f.extent.size` |
 | decoding | `DecodesAs isa f d` | the instruction model `isa`, for `f.arch.machine`, decodes `f.bytes` exactly into `d`, back to back |
 | listing boundaries | `LinesTile f` | the listing lines' byte ranges tile `f.bytes` (the line *text* is never read) |
+| reference targets | `RefTargetIn F r i`, `RefTargetReadOnly F r` | a reference's target address lies in segment `i`; every segment mapping it is read-only |
+| unrelocated | `Unrelocated F f` | no dynamic relocation writes `f`'s bytes (`Image.Untouched`, by relocation width) |
 | references | `RefsGrounded F f isa d` | each reference that claims to come from a relocation is that relocation of the file (offset, type, addend, symbol name); each decoded one is the target of the decoded branch |
 
 None of these implies another: the bytes can be grounded with no instruction model for the
@@ -109,6 +111,8 @@ structure CodeRef where
   target : Option Nat := none
   /-- The target symbol's name, when known. -/
   symbol : Option String := none
+  /-- The target symbol's version (`GLIBC_2.2.5`), when known. Metadata. -/
+  version : Option String := none
   /-- The relocation type (`r_type`), `0` when not a relocation. -/
   kind : Nat := 0
   addend : Int := 0
@@ -131,10 +135,15 @@ structure AsmFunction where
   /-- A display or reference identifier for the calling convention (`"sysv64"`, …).
   Metadata: no proposition reads it. -/
   abiRef : Option String := none
+  /-- The document `abiRef` cites (with its version), when known. Metadata, as `abiRef`. -/
+  abiSource : Option String := none
   extent : Extent
   symbol : Option SymRef := none
   bytes : List Byte
   lines : List Line := []
+  /-- The tool that printed `lines` (`"GNU objdump 2.44"`), when known. The lines are display
+  data in every case: no proposition reads them. -/
+  listingTool : Option String := none
   refs : List CodeRef := []
   deriving DecidableEq, Repr
 
@@ -166,6 +175,12 @@ def SectionBytesAt (F : Blob) (f : AsmFunction) : Prop :=
 def selTable : File.RelocSel → Table
   | .dynamic => .dynsym
   | .forSection _ => .symtab
+
+/-- **No dynamic relocation of `F` writes `f`'s bytes** (`Image.Untouched`, by the width each
+relocation type writes), so a memory holding the image loaded at a base holds `f.bytes` at
+`base + f.extent.vaddr` (`Load.readWith_of_segBytes`). -/
+def Unrelocated (F : Blob) (f : AsmFunction) : Prop :=
+  ∃ A, Parses F A ∧ Image.Untouched A f.extent.vaddr f.bytes.length
 
 /-- **The symbol table entry `f.symbol` is the function `f.name` at `f.extent`** (`STT_FUNC` or
 `STT_GNU_IFUNC`). The name is compared as `nameOf f.name`, one byte per character, so it is exact
@@ -258,6 +273,18 @@ def decodedRefOk (f : AsmFunction) (isa : Isa) (d : List (Nat × isa.Instr)) (r 
   match insnAt d 0 r.off with
   | some (n, i) => r.target.isSome && isa.target i (f.extent.vaddr + r.off) n == r.target
   | none => false
+
+/-- **The target of `r` lies in segment `i` of `F`**: `r.target = some t` (a link-time address)
+and program header `i` maps `t` (file-backed or zero fill). Generic: it reads the target address,
+not how it was found. -/
+def RefTargetIn (F : Blob) (r : CodeRef) (i : Nat) : Prop :=
+  ∃ A t o, Parses F A ∧ r.target = some t ∧ (i, o) ∈ A.origins t
+
+/-- **The target of `r` is read-only**: some segment maps it, and every segment that maps it is
+not writable (`PF_W` clear). -/
+def RefTargetReadOnly (F : Blob) (r : CodeRef) : Prop :=
+  ∃ A t, Parses F A ∧ r.target = some t ∧ A.origins t ≠ [] ∧
+    ∀ io ∈ A.origins t, ∃ ph, A.phdrs[io.1]? = some ph ∧ ph.flags / 2 % 2 = 0
 
 /-- **Every non-display reference of `f` is grounded** (against the decoding `d` by `isa`). -/
 def RefsGrounded (F : Blob) (f : AsmFunction) (isa : Isa) (d : List (Nat × isa.Instr)) : Prop :=

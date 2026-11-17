@@ -144,8 +144,15 @@ def x86RelocWidth : Nat → Option Nat
   | 41 | 42 => some 4      -- GOTPCRELX, REX_GOTPCRELX
   | _ => none
 
-/-- **The bytes the dynamic relocation `r` of `A` writes**, if known: the x86-64 width of its
-type, and for `R_X86_64_COPY` the size of its `.dynsym` symbol. `none` for any other machine. -/
+/-- **The bytes the dynamic relocation `r` of `A` writes**, in the footprint model: the x86-64
+width of its type, and for `R_X86_64_COPY` the size of its `.dynsym` symbol (the destination in
+this file). `none` for any other machine.
+
+`COPY` copies from the definition a lookup resolves in another object. glibc's x86-64
+`elf_machine_rela` copies `MIN (sym->st_size, refsym->st_size)` bytes (definition, destination)
+and musl copies the destination's `st_size`, so the destination size bounds both. That bound is an
+assumption about the loader, not a fact of this file: a loader that copies the definition's size
+is outside the supported domain. -/
 def _root_.Silmaril.Elf.File.relocWidth (A : File) (r : File.Reloc) : Option Nat :=
   if A.header.machine ≠ EM_X86_64_MACHINE then none
   else if r.kind = 5 then (A.dynsyms[r.symbol]?).map (·.raw.size)
@@ -154,9 +161,11 @@ def _root_.Silmaril.Elf.File.relocWidth (A : File) (r : File.Reloc) : Option Nat
 /-- `[o, o + w)` and `[v, v + len)` are disjoint. -/
 def Misses (o w v len : Nat) : Bool := decide (o + w ≤ v) || decide (v + len ≤ o)
 
-/-- **No dynamic relocation writes into `[v, v + len)`**: every relocation has a known width
-(`File.relocWidth`) and writes outside the range. A relocation of unknown width touches every
-range. -/
+/-- **No dynamic relocation writes into `[v, v + len)`**, in the footprint model: every relocation
+record has a known width (`File.relocWidth`) and its footprint misses the range. A relocation of
+unknown width touches every range. This is a fact about the file's relocation records; it says
+something about memory after loading only through a loading relation that assumes the loader
+writes no more than these footprints (`Load.ImageLoaded`). -/
 def Untouched (A : File) (v len : Nat) : Prop :=
   ∀ r ∈ A.relocs .dynamic, ∃ w, A.relocWidth r = some w ∧ Misses r.offset w v len = true
 

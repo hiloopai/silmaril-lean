@@ -2,6 +2,7 @@ import Lean
 import Silmaril.Elf.Asm.Export
 import Silmaril.Elf.Asm.Example.Thms
 import Silmaril.Elf.Asm.Example.Reloc.Thms
+import Silmaril.Elf.Asm.Example.LeafArith.Thms
 import ElfAsmDecoys
 
 /-!
@@ -33,7 +34,9 @@ open Silmaril.Elf.Asm.Export
 namespace ElfAsm
 
 /-- The checked theorem modules whose statements are read. -/
-def thmModules : List Name := [`Silmaril.Elf.Asm.Example.Thms, `Silmaril.Elf.Asm.Example.Reloc.Thms]
+def thmModules : List Name :=
+  [`Silmaril.Elf.Asm.Example.Thms, `Silmaril.Elf.Asm.Example.Reloc.Thms,
+    `Silmaril.Elf.Asm.Example.LeafArith.Thms]
 
 /-- The decoy module of the self-test. -/
 def decoyModule : Name := `ElfAsmDecoys
@@ -46,7 +49,9 @@ structure FileInfo where
 def files : List FileInfo := [
   ⟨`Silmaril.Elf.Staged.Pinned.ZlibChecksums.F, Silmaril.Elf.Staged.Pinned.ZlibChecksums.path,
     Silmaril.Elf.Staged.Pinned.ZlibChecksums.sha256⟩,
-  ⟨`Silmaril.Elf.Asm.Example.Reloc.F, Example.Reloc.path, Example.Reloc.fileSha256⟩]
+  ⟨`Silmaril.Elf.Asm.Example.Reloc.F, Example.Reloc.path, Example.Reloc.fileSha256⟩,
+  ⟨`Silmaril.Elf.Asm.Example.LeafArith.F, "examples/elf-ladder/01-leaf-arith/pinned/leaf-arith",
+    "d9cf1e5ddd99bcb2abeca7ae44f899c03bbd93586458a7367e1ff6d4a6472484"⟩]
 
 structure Sample where
   decl : Name
@@ -68,7 +73,11 @@ def samples : List Sample := [
     [Decoding.of x86Open ``Example.crc32Decoding Example.crc32Decoding]⟩,
   ⟨``Example.otherMachine, zlibF, Example.otherMachine, []⟩,
   ⟨``Example.Reloc.scaledPlusBias, `Silmaril.Elf.Asm.Example.Reloc.F, Example.Reloc.scaledPlusBias,
-    [Decoding.of x86Ext ``Example.Reloc.scaledDecoding Example.Reloc.scaledDecoding]⟩]
+    [Decoding.of x86Ext ``Example.Reloc.scaledDecoding Example.Reloc.scaledDecoding]⟩,
+  ⟨``Example.LeafArith.clamp, `Silmaril.Elf.Asm.Example.LeafArith.F, Example.LeafArith.clamp,
+    [Decoding.of x86Open ``Example.LeafArith.clampDecoding Example.LeafArith.clampDecoding]⟩,
+  ⟨``Example.LeafArith.sat, `Silmaril.Elf.Asm.Example.LeafArith.F, Example.LeafArith.sat,
+    [Decoding.of x86Open ``Example.LeafArith.satDecoding Example.LeafArith.satDecoding]⟩]
 
 /-- The instruction models, by constant. -/
 def isas : List (Name × String) :=
@@ -120,6 +129,15 @@ def classifyConj (c : Expr) : MetaM (Option Finding) :=
     | some ``LinesTile => pure ((fnConst? args[0]!).map (·, "lineTiles", none, none))
     | some ``DecodesAs => pure ((fnConst? args[1]!).map (·, "decode", some (isaName args[0]!), none))
     | some ``RefsGrounded => pure (withFile "refs" (some (isaName args[2]!)) args[0]! args[1]!)
+    | some ``Unrelocated => pure (withFile "unrelocated" none args[0]! args[1]!)
+    | some ``Silmaril.Elf.Load.PresentFn =>
+      -- `PresentFn F (nameOf "f")`: the sample of that name and file
+      let n := args[1]!.consumeMData
+      pure (match n.getAppFn.constName?, n.appArg!.consumeMData with
+        | some ``Silmaril.Elf.nameOf, .lit (.strVal str) =>
+          (samples.find? fun s => s.f.name == str && some s.file == fileOf args[0]!).map
+            fun s => (s.decl, "present", none, fileOf args[0]!)
+        | _, _ => none)
     | some ``Silmaril.Elf.CodeAt =>
       pure (match vaddrOf? args[1]!, bytesOf? args[2]! with
         | some n, some m => if n == m then some (n, "code", none, fileOf args[0]!) else none
@@ -185,7 +203,7 @@ def selfTest (env : Environment) : IO Unit := do
   let want : List (String × List (Name × String × Nat)) := [
     ("moved_tiles", []), ("crc32_bytes", []), ("crc32_other_file", []),
     ("crc32_z_bytes_if", [(``Example.crc32_z, "bytes", 1)]), ("contract_alone", []),
-    ("other_decodes", [])]
+    ("other_decodes", []), ("present_other_file", []), ("present_other_name", [])]
   let thms ← theoremsOf env decoyModule
   for (short, exp) in want do
     let some (n, ty) := thms.find? (·.1 == decoyModule ++ short.toName)
@@ -193,8 +211,15 @@ def selfTest (env : Environment) : IO Unit := do
     let got := (← runMeta env (classify n ty)).map fun (f, e) => (f, e.kind, e.hypotheses.length)
     unless got == exp do throw (IO.userError s!"self-test: {short} gives {got}, expected {exp}")
 
+/-- The parse of a pinned file, read from its path (metadata for `targetIn`; natively computed). -/
+def parseFile (fi : FileInfo) : IO (Option Silmaril.Elf.File) := do
+  let raw ← IO.FS.readBinFile fi.path
+  pure (Silmaril.Elf.parse (Silmaril.Elf.blobOf ⟨raw⟩))
+
 def generate : IO Json := do
   let env ← loadEnv
+  let mut asts : List (Name × Option Silmaril.Elf.File) := []
+  for fi in files do asts := asts ++ [(fi.decl, ← parseFile fi)]
   selfTest env
   let mut ev : List (Name × Evidence) := []
   for m in thmModules do
@@ -204,12 +229,12 @@ def generate : IO Json := do
       let axs := (axs.qsort Name.lt).toList
       ev := ev ++ es.map fun (f, e) => (f, { e with axioms := axs })
   pure <| Json.mkObj [
-    ("schema", Json.str schema),
+    ("schema", Json.str schema), ("schemaVersion", Json.str schemaVersion),
     ("files", Json.arr (files.toArray.map fun fi => Json.mkObj [
       ("decl", Json.str fi.decl.toString), ("path", Json.str fi.path), ("sha256", Json.str fi.digest)])),
     ("functions", Json.arr (samples.toArray.map fun s =>
       match functionJson s.decl s.f s.decodings
-          (ev.filterMap fun (f, e) => if f == s.decl then some e else none) with
+          (ev.filterMap fun (f, e) => if f == s.decl then some e else none) ((asts.lookup s.file).join) with
       | .obj kvs => .obj (kvs.insert "file" (Json.str s.file.toString))
       | j => j))]
 
