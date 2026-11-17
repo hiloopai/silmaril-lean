@@ -4,6 +4,8 @@ import Silmaril.Elf.Asm.Example.Thms
 import Silmaril.Elf.Asm.Example.Reloc.Thms
 import Silmaril.Elf.Asm.Example.LeafArith.Thms
 import ElfAsmDecoys
+import Silmaril.Elf.Pin.Examples
+import Silmaril.Elf.Staged.Pinned.LeafArith.Defs
 
 /-!
 # `elf-asm`: assembly functions as JSON, with evidence read from theorem statements
@@ -41,17 +43,37 @@ def thmModules : List Name :=
 /-- The decoy module of the self-test. -/
 def decoyModule : Name := `ElfAsmDecoys
 
+/-- A file of the records, with the path and SHA-256 the JSON shows. When the record's file is not
+itself an `include_bytes` pin, `pin` names one, `(F, theorem)`: the path and SHA-256 are that pin's
+(`elf-pages`/`gen.sh` and `examples/elf/pin.sh --check` tie them to the bytes), and the theorem
+must state exactly `decl = F` (checked: `checkPin`), so the record's blob is that file. -/
 structure FileInfo where
   decl : Name
   path : String
   digest : String
+  pin : Option (Name × Name) := none
+  deriving Inhabited
 
 def files : List FileInfo := [
   ⟨`Silmaril.Elf.Staged.Pinned.ZlibChecksums.F, Silmaril.Elf.Staged.Pinned.ZlibChecksums.path,
-    Silmaril.Elf.Staged.Pinned.ZlibChecksums.sha256⟩,
-  ⟨`Silmaril.Elf.Asm.Example.Reloc.F, Example.Reloc.path, Example.Reloc.fileSha256⟩,
-  ⟨`Silmaril.Elf.Asm.Example.LeafArith.F, "examples/elf-ladder/01-leaf-arith/pinned/leaf-arith",
-    "d9cf1e5ddd99bcb2abeca7ae44f899c03bbd93586458a7367e1ff6d4a6472484"⟩]
+    Silmaril.Elf.Staged.Pinned.ZlibChecksums.sha256, none⟩,
+  -- an object file of this repository, not a pinned file: its path and SHA-256 are metadata
+  ⟨`Silmaril.Elf.Asm.Example.Reloc.F, Example.Reloc.path, Example.Reloc.fileSha256, none⟩,
+  ⟨`Silmaril.Elf.Asm.Example.LeafArith.F, Silmaril.Elf.Staged.Pinned.LeafArith.path,
+    Silmaril.Elf.Staged.Pinned.LeafArith.sha256,
+    some (`Silmaril.Elf.Staged.Pinned.LeafArith.F, `Silmaril.Elf.Pin.Examples.leafArith_record_file)⟩]
+
+/-- The modules the file theorems are in (imported, not scanned for evidence). -/
+def pinModules : List Name := [`Silmaril.Elf.Pin.Examples]
+
+/-- **The record's file is the pin's file**: the theorem exists, states exactly `decl = F` (no
+other proposition), and uses only the standard axioms. -/
+def checkPin (env : Environment) (fi : FileInfo) : Except String Unit := do
+  let some (F, thm) := fi.pin | return
+  let some (.thmInfo ti) := env.find? thm | throw s!"{fi.decl}: {thm} is not a theorem"
+  let want := mkApp3 (.const ``Eq [Level.one]) (.const ``Silmaril.X86.Link.Blob [])
+    (.const fi.decl []) (.const F [])
+  unless ti.type.consumeMData == want do throw s!"{fi.decl}: {thm} does not state exactly {fi.decl} = {F}"
 
 structure Sample where
   decl : Name
@@ -196,7 +218,7 @@ def theoremsOf (env : Environment) (m : Name) : IO (Array (Name × Expr)) := do
 
 def loadEnv : IO Environment := do
   Lean.initSearchPath (← Lean.findSysroot)
-  importModules ((decoyModule :: thmModules).toArray.map ({ module := · })) {}
+  importModules ((decoyModule :: thmModules ++ pinModules).toArray.map ({ module := · })) {}
 
 /-- **The self-test**: each decoy gives exactly the expected `(function, kind, #premises)`. -/
 def selfTest (env : Environment) : IO Unit := do
@@ -210,6 +232,15 @@ def selfTest (env : Environment) : IO Unit := do
       | throw (IO.userError s!"self-test: decoy {short} missing")
     let got := (← runMeta env (classify n ty)).map fun (f, e) => (f, e.kind, e.hypotheses.length)
     unless got == exp do throw (IO.userError s!"self-test: {short} gives {got}, expected {exp}")
+  -- file identity: the true pins pass; a pin to another file, or a theorem about another file, fails
+  for fi in files do
+    if let .error m := checkPin env fi then throw (IO.userError s!"self-test: {m}")
+  let leaf := (files.find? (·.decl == `Silmaril.Elf.Asm.Example.LeafArith.F)).get!
+  for (what, bad) in [("another file", { leaf with pin := some (`Silmaril.Elf.Staged.Pinned.ZlibChecksums.F,
+        `Silmaril.Elf.Pin.Examples.leafArith_record_file) }),
+      ("a theorem about another pair", { leaf with pin := some (`Silmaril.Elf.Staged.Pinned.LeafArith.F,
+        `Silmaril.Elf.Pin.Examples.zlibChecksums_exe_eq) })] do
+    if let .ok () := checkPin env bad then throw (IO.userError s!"self-test: a pin to {what} is accepted")
 
 /-- The parse of a pinned file, read from its path (metadata for `targetIn`; natively computed). -/
 def parseFile (fi : FileInfo) : IO (Option Silmaril.Elf.File) := do

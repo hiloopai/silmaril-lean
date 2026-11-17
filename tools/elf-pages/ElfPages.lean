@@ -121,7 +121,7 @@ def pinned : List Pinned := [
       ("licence", "toolchain start-up objects: glibc crt (LGPL-2.1-or-later with the linking exception), GCC crtbeginS/crtendS (GPL-3.0-or-later with the GCC Runtime Library Exception); examples/dyn/README.md")] },
   { slug := "leaf-arith", ns := `Silmaril.Elf.Staged.Pinned.LeafArith
     title := "elf-ladder rung 01 leaf-arith (arith.c leaf functions, -O2, static, not stripped)"
-    path := Pinned.LeafArith.path, sha256 := Pinned.LeafArith.sha256, size := Pinned.LeafArith.size
+    path := Pinned.LeafArith.path, «sha256» := Pinned.LeafArith.sha256, size := Pinned.LeafArith.size
     L := Pinned.LeafArith.L, bodies := Pinned.LeafArith.bodies, ld := Pinned.LeafArith.ld
     provenance := [
       ("source", "examples/elf-ladder/01-leaf-arith/arith.c, arith.h and main.c, with examples/elf-ladder/common (written for this repository)"),
@@ -151,7 +151,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.3.dfsg-3.1ubuntu2.3")] },
   { slug := "zlib-libz-1.2.11", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz1211
     title := "zlib 1.2.11 libz.so.1.2.11 (Ubuntu zlib1g 1:1.2.11.dfsg-2ubuntu9.2, amd64)"
-    path := Pinned.ZlibLibz1211.path, sha256 := Pinned.ZlibLibz1211.sha256, size := Pinned.ZlibLibz1211.size
+    path := Pinned.ZlibLibz1211.path, «sha256» := Pinned.ZlibLibz1211.sha256, size := Pinned.ZlibLibz1211.size
     L := Pinned.ZlibLibz1211.L, bodies := Pinned.ZlibLibz1211.bodies, ld := Pinned.ZlibLibz1211.ld
     provenance := [
       ("package", "Ubuntu 22.04 zlib1g 1:1.2.11.dfsg-2ubuntu9.2 (amd64), /lib/x86_64-linux-gnu/libz.so.1.2.11, unmodified"),
@@ -163,7 +163,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.2.11.dfsg-2ubuntu9.2")] },
   { slug := "zlib-libz-1.3.1-gcc", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc
     title := "zlib 1.3.1 libz.so.1.3.1 (GCC 13.3 -O2, release tarball)"
-    path := Pinned.ZlibLibz131Gcc.path, sha256 := Pinned.ZlibLibz131Gcc.sha256, size := Pinned.ZlibLibz131Gcc.size
+    path := Pinned.ZlibLibz131Gcc.path, «sha256» := Pinned.ZlibLibz131Gcc.sha256, size := Pinned.ZlibLibz131Gcc.size
     L := Pinned.ZlibLibz131Gcc.L, bodies := Pinned.ZlibLibz131Gcc.bodies, ld := Pinned.ZlibLibz131Gcc.ld
     provenance := [
       ("compiler", "GCC 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), GNU ld 2.42"),
@@ -174,7 +174,7 @@ def pinned : List Pinned := [
       ("licence", "zlib licence (NOTICES/zlib)")] },
   { slug := "zlib-libz-1.3.1-clang", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang
     title := "zlib 1.3.1 libz.so.1.3.1 (Clang 18.1 -O2, release tarball)"
-    path := Pinned.ZlibLibz131Clang.path, sha256 := Pinned.ZlibLibz131Clang.sha256, size := Pinned.ZlibLibz131Clang.size
+    path := Pinned.ZlibLibz131Clang.path, «sha256» := Pinned.ZlibLibz131Clang.sha256, size := Pinned.ZlibLibz131Clang.size
     L := Pinned.ZlibLibz131Clang.L, bodies := Pinned.ZlibLibz131Clang.bodies, ld := Pinned.ZlibLibz131Clang.ld
     provenance := [
       ("compiler", "Ubuntu clang 18.1.3 (1ubuntu1), GNU ld 2.42"),
