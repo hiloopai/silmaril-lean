@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Abstract.HostDet.Thms
 public import Silmaril.Wasm.Abstract.HostCall.Defs
 public import Silmaril.Wasm.Execution.Core.Instantiation
 public import Silmaril.Wasm.Execution.InstantiateTrap.Defs
+public import Silmaril.Project.Shapes.WasmWastRef.Thms
 import Silmaril.Proofs.Project.Shapes.WasmWastHost
 
 /-!
@@ -39,7 +40,8 @@ get the same one.
 * `LogIs.of_kernel h`: the host-call log after the script, from `h : logHK o fuel cmds = some l`
   (`decide +kernel`).
 * `ScriptHolds.returnsOnly`, `….trapsOnly`, `….unlinkable`, `….uninstantiable`: the row of
-  command `k`.
+  command `k`; `ReturnsOnly.matching`: a `returns_matching` row (result patterns such as
+  `(ref.func)`) from the exact row of the same command and one `matchAll` evaluation.
 * `ScriptAt.unique`: at `profile o`, a script prefix reaches at most one context: one store,
   registry and **host-call log** (so the printed output `Spectest.printed ctx.log` is determined).
 * `Only.unique`, `ReturnsOnly.not_traps`, `TrapsOnly.not_returns`.
@@ -155,6 +157,14 @@ theorem ScriptHolds.returnsOnly {o : GrowOracle} {cmds : List Cmd} (h : ScriptHo
     (hk : cmds[k]? = some (.action act (some (.values vs)))) :
     ReturnsOnly o (pre cmds k) act vs :=
   h k _ hk
+
+/-- **A pattern row from an exact row**: if every normal form returns `vs` and `vs` matches the
+patterns `ps` (decided by `matchAll`), every normal form returns values matching `ps`. -/
+theorem ReturnsOnly.matching {o : GrowOracle} {pre : List Cmd} {act : Action} {vs : List Val}
+    {ps : List WasmWastRef.Pat} (h : ReturnsOnly o pre act vs)
+    (hm : WasmWastRef.matchAll ps vs = true) : ReturnsMatching o pre act ps :=
+  ⟨⟨vs, h.1, WasmWastRef.matchAll_sound hm⟩, fun ctx ro s l hS hA =>
+    ⟨vs, h.2 ctx ro s l hS hA, WasmWastRef.matchAll_sound hm⟩⟩
 
 /-- The row of an `assert_trap` command `k`. -/
 theorem ScriptHolds.trapsOnly {o : GrowOracle} {cmds : List Cmd} (h : ScriptHolds o cmds)

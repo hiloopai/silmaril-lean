@@ -41,7 +41,9 @@ The claims are three separate shapes, at `Profile.spec nd r`, over the script se
 from). `ReturnsAllowedExists` is the weakest claim and is what a run at the deterministic
 profile gives by refinement (`Reaches.spec`, `….WasmWastSpec.Thms`).
 
-**The kernel checker** `scriptSK m cmds` validates and instantiates `m` (as `scriptK`) and, for
+**The kernel checker** `scriptSK m cmds` validates `m`, checks that it has no element or data
+segments and no start function (so the specification's instantiation configuration has no code
+and the instantiated state is unique under `Profile.spec`), instantiates it (as `scriptK`) and, for
 every command, checks that the exported function is a straight-line numeric function
 (`StraightLine.fn?`: `local.get 0 … local.get (k-1); op`), computes the class of the
 specification's result set of `op` on the arguments (`numericSet?`: one exact value, the
@@ -133,7 +135,7 @@ inductive RunS (nd : Bool) (r : RelaxedChoice) (mi : ModuleInst) :
 runs of the earlier actions). -/
 def ScriptAtS (nd : Bool) (r : RelaxedChoice) (m : Module) (pre : List Action) (mi : ModuleInst)
     (s : Store Nat) : Prop :=
-  ∃ s₀, Instance m s₀ mi ∧ RunS nd r mi s₀ pre s
+  ∃ s₀, Instance (Profile.spec nd r) m s₀ mi ∧ RunS nd r mi s₀ pre s
 
 /-- Some host-free normal form of `act`, at some state of the script, has an outcome in `R`. -/
 def ReachesS (nd : Bool) (r : RelaxedChoice) (m : Module) (pre : List Action) (act : Action)
@@ -345,14 +347,16 @@ def cmdSK (s : Store Nat) (mi : ModuleInst) (cmd : CmdS) : Bool :=
     | none => false
   | none => false
 
-/-- Validate and instantiate `m`, then check every command from the instantiated store. -/
+/-- Validate `m` (no imports, no element or data segments, no start function, so the
+specification's instantiation configuration has no code), instantiate it as the specification
+does (`instantiateCfg?`), then check every command from the instantiated store. -/
 def scriptSK (m : Module) (cmds : List CmdS) : Bool :=
   match validate? m with
   | some mt =>
-    mt.imports.isEmpty &&
-      match instantiateOnce? (Game.importStore []) m [] with
-      | some (s, f, none) => cmds.all (cmdSK s f.module)
-      | _ => false
+    mt.imports.isEmpty && m.elems.isEmpty && m.data.isEmpty && m.start.isNone &&
+      match instantiateCfg? (Game.importStore []) m [] with
+      | some (c, mi) => c.code.isEmpty && cmds.all (cmdSK c.store mi)
+      | none => false
   | none => false
 
 end Silmaril.Project.Shapes.WasmWastSpec

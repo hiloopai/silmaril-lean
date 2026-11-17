@@ -16,7 +16,8 @@ const WastModel = (() => {
     context: "a register or bare action of a linked script: part of the context of later rows (no claim)",
   };
   const STRENGTH = {
-    "silmaril.shapes.wasm.wast.returns_only": "returns these values at every host-free normal form; no host-free run diverges (theorem ReturnsOnly.always)",
+    "silmaril.shapes.wasm.wast.returns_only": "from the specification's instantiation (Instantiate, run to the empty code), returns these " +
+      "values at every host-free normal form; no host-free run diverges (theorem ReturnsOnly.always)",
     "silmaril.shapes.wasm.wast.traps_only": "traps at every host-free normal form; no host-free run diverges (theorem TrapsOnly.always)",
     "silmaril.shapes.wasm.wast.returns_allowed_all": "under Profile.spec (the specification's NaN result sets), every host-free normal form " +
       "returns values in the allowed set (nan:canonical, nan:arithmetic, or exact bits), and some run reaches one",
@@ -42,6 +43,9 @@ const WastModel = (() => {
       "leave the store unchanged and are logged; print functions and globals fresh per import, table and memory shared), after the " +
       "linked script prefix (every earlier module, register and action of the file), returns these values at every normal form; " +
       "no run diverges (ReturnsOnly.always, from Spectest.hostDet)",
+    "silmaril.shapes.wasm.wast.host.returns_matching": "against the typed spectest host, after the linked script prefix, returns " +
+      "values matching the result patterns at every normal form ((ref.func): any function reference; (ref.extern n), (ref.null): " +
+      "exact values); from the exact row of the values the kernel run returns (ReturnsOnly.matching); no run diverges",
     "silmaril.shapes.wasm.wast.host.traps_only": "against the typed spectest host, after the linked script prefix, traps at every " +
       "normal form; no run diverges (TrapsOnly.always)",
     "silmaril.shapes.wasm.wast.host.unlinkable": "against the typed spectest host, after the linked script prefix, the module is valid " +

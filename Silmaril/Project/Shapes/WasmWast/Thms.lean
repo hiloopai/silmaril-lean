@@ -8,9 +8,13 @@ import Silmaril.Proofs.Project.Shapes.WasmWast
 
 * `ScriptHolds.of_kernel h`: every command of the script `m`, `cmds` holds, from one kernel
   evaluation `h : scriptK o fuel m cmds = true` (`decide +kernel`). The kernel validates and
-  instantiates `m` and runs the commands in order with the kernel-evaluable interpreter
-  `runInvokeK`; the claims are about Core reduction, through the interpreter's soundness and
-  stopping theorems and determinism at `profile o`.
+  instantiates `m` (`instantiateCfg?`, the specification's allocation) and runs the commands in
+  order with the kernel-evaluable interpreter `runInvokeK`; the claims are about Core reduction
+  from the specification's `Instantiate` (`Instance`), through `Instance.of_cfg`, the
+  interpreter's soundness and stopping theorems and determinism at `profile o`.
+* `Instance.of_cfg`: when `instantiateCfg?` ends at the empty code, the script state is the
+  specification's instantiation `Instance P m s mi` under every profile `P`, in a typed store;
+  `Instance.unique`: at `profile o` it is unique.
 * `ScriptHolds.of_kernelKM h`: the same from `h : scriptKM o fuel m cmds = true`, the checker
   that instantiates and runs on `KMem` stores (`scriptK_of_scriptKM`). Needed when the module's
   instantiation writes data segments into a memory: the kernel cannot evaluate `ByteArray`
@@ -46,7 +50,7 @@ theorem ScriptHolds.of_kernel {o : GrowOracle} {fuel : Nat} {m : Module} {cmds :
 
 /-- **The `KMem` checker implies the `ByteArray` checker**: a kernel evaluation of `scriptKM`
 (instantiation and runs on `KMem` stores) gives `scriptK … = true`, through the simulation
-lemmas `instantiateOnce?_toBytes` and `runI_toBytes`. -/
+lemmas `instantiateCfg?_toBytes` and `runI_toBytes`. -/
 theorem scriptK_of_scriptKM {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : List Cmd}
     (h : scriptKM o fuel m cmds = true) : scriptK o fuel m cmds = true :=
   Silmaril.Proofs.Project.Shapes.WasmWast.scriptK_of_scriptKM h
@@ -56,6 +60,21 @@ the same as those of `ScriptHolds.of_kernel`, about `ByteArray` stores and `Step
 theorem ScriptHolds.of_kernelKM {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : List Cmd}
     (h : scriptKM o fuel m cmds = true) : ScriptHolds o m cmds :=
   .of_kernel (scriptK_of_scriptKM h)
+
+/-- **The checker's instantiation is the specification's**: when `m` is valid without imports and
+`instantiateCfg?` (`prepare?`, then the segment initialisation) ends at the empty code, the
+`Instantiate` configuration runs to it under every profile (`Instance`), and its store is
+typed. -/
+theorem Instance.of_cfg {P : Numerics.Profile} {m : Module} {mt : Validation.CModuleType}
+    {c : Config Nat} {mi : ModuleInst} (hv : Validation.validate? m = some mt)
+    (himp : mt.imports = []) (hcfg : instantiateCfg? (Game.importStore []) m [] = some (c, mi))
+    (hc : c.code = []) : Instance P m c.store mi ∧ StoreOk c.store :=
+  Silmaril.Proofs.Project.Shapes.WasmWast.instance_of_cfg hv himp hcfg hc
+
+/-- **At `profile o`, the specification's instantiation has one outcome.** -/
+theorem Instance.unique {o : GrowOracle} {m : Module} {s s' : Store Nat} {mi mi' : ModuleInst}
+    (h : Instance (profile o) m s mi) (h' : Instance (profile o) m s' mi') : s = s' ∧ mi = mi' :=
+  Silmaril.Proofs.Project.Shapes.WasmWast.instance_unique h h'
 
 /-- The row of an `assert_return` command `k`. -/
 theorem ScriptHolds.returnsOnly {o : GrowOracle} {m : Module} {cmds : List Cmd}

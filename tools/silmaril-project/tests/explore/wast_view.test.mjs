@@ -177,4 +177,16 @@ test("the committed report: every proved row names its problem and shape, and th
   assert.equal(byId["linking:410"].status, "proved");
   assert.equal(byId["linking:411"].status, "proved");
   assert.ok(!report.commands.some((c) => c.status === "undetermined" && /segment/.test(c.reason || "")));
+  // Host references: `(ref.extern n)` arguments and results, and the `(ref.func)` pattern, are proved
+  // rows; no linked command is undetermined any more.
+  for (const id of ["global:235", "global:241", "elem:1019", "elem:1020", "elem:1022", "elem:1023", "elem:1030"]) {
+    assert.equal(byId[id].status, "proved", id);
+    assert.equal(byId[id].shape, "silmaril.shapes.wasm.wast.host.returns_only", id);
+  }
+  for (const id of ["global:660", "global:661"]) {
+    assert.equal(byId[id].status, "proved", id);
+    assert.equal(byId[id].shape, "silmaril.shapes.wasm.wast.host.returns_matching", id);
+    assert.match(byId[id].observed, /ref\.func:/, id);
+  }
+  assert.ok(!report.commands.some((c) => c.script === "linked" && c.status === "undetermined"));
 });

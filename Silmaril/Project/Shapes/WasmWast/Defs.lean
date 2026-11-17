@@ -10,6 +10,7 @@ public import Silmaril.Wasm.Validation.Check.Validate
 public import Silmaril.Wasm.Verify.Kernel.Defs
 public import Silmaril.Wasm.Execution.MemRep.Defs
 public import Silmaril.Wasm.Binary.Core.Decode
+public import Silmaril.Wasm.Execution.InstantiateTrap.Defs
 
 /-!
 # Standard problem shapes: WAST script commands
@@ -26,10 +27,13 @@ over the Core semantics `Silmaril.Wasm.Execution.Core.Step` and not over an inte
 | `silmaril.shapes.wasm.wast.validator_rejects` | `ValidatorRejects b`: silmaril-lean's decoder `decode?` reads the bytes `b` as some module `m`, and silmaril-lean's validator `validate?` rejects `m` (tool-level) |
 | `silmaril.shapes.wasm.wast.decoder_rejects` | `DecoderRejects b`: silmaril-lean's decoder `decode?` rejects the bytes `b` (tool-level) |
 
-**Script state.** `m` is the script's current module: it must be valid (`ModuleOk m ⟨[], _⟩`),
-have no imports and no start function. Its instance and initial store are those of
-`instantiateOnce?` from the empty store (`Instance`, which runs the element and data segment
-initialisation). `pre` lists the actions of the script that come before the command, after
+**Script state.** `m` is the script's current module: it must be valid (`ModuleOk m ⟨[], _⟩`)
+and have no imports. Its instance and initial store are **the specification's instantiation**
+(`Instance P m s mi`): the configuration of `Instantiate P Det.noHost (Game.importStore []) m [] c₀`
+(Wasm 3.0 `$instantiate`: `$evalglobals`, `$allocmodule`, every global allocated as they allocate
+it, then the code of the element and data segments and the start call) runs by host-free steps
+under the row's profile to the empty code, in the store `s`; `mi` is the module instance of
+`c₀`. No function of silmaril-lean is part of the statement. `pre` lists the actions of the script that come before the command, after
 `m`, in order: every earlier action, whether it was a bare `invoke`, an `assert_return` or an
 `assert_trap`. Each action `invoke name args` calls the function export `name` and runs to a
 host-free normal form (`InvokeNF`) whose code is a result (values, a trap or an exception).
@@ -111,11 +115,17 @@ def exportFunc? (mi : ModuleInst) (name : String) : Option Nat :=
   | some ⟨_, .func a⟩ => some a
   | _ => none
 
-/-- `m` is valid, has no imports and no start function, and its instantiation from the empty
-store (including segment initialisation) is the store `s` with the module instance `mi`. -/
-def Instance (m : Module) (s : Store Nat) (mi : ModuleInst) : Prop :=
+/-- **The specification's instantiation of a module without imports**, under the profile `P`:
+`m` is valid with no imports, and the configuration `c₀` of `Instantiate P Det.noHost
+(Game.importStore []) m [] c₀` (Wasm 3.0 `$instantiate` in the empty store: `$evalglobals`, then
+`$allocmodule`, so every global is allocated as the specification allocates it; then the code of
+the element segments, of the data segments and the start call) runs by host-free steps under `P`
+to the empty code (it returns no values), in the store `s`. `mi` is the module instance of
+`c₀`. -/
+def Instance (P : Numerics.Profile) (m : Module) (s : Store Nat) (mi : ModuleInst) : Prop :=
   (∃ xtE, ModuleOk m ⟨[], xtE⟩) ∧
-    ∃ f : Frame, instantiateOnce? (Game.importStore []) m [] = some (s, f, none) ∧ f.module = mi
+    ∃ c₀ c : Config Nat, Instantiate P Det.noHost (Game.importStore []) m [] c₀ ∧
+      c₀.frame.module = mi ∧ Steps P Det.noHost c₀ c ∧ c.code = [] ∧ c.store = s
 
 /-- `c` is a host-free normal form of `$invoke(s, a, args)` under `profile o`: reachable by host-free
 steps and with no host-free step (a result, a stuck configuration or a pending host call). -/
@@ -135,7 +145,7 @@ inductive Run (o : GrowOracle) (mi : ModuleInst) : Store Nat → List Action →
 /-- The script made of the module `m` and the actions `pre` can be in the state `(mi, s)`. -/
 def ScriptAt (o : GrowOracle) (m : Module) (pre : List Action) (mi : ModuleInst)
     (s : Store Nat) : Prop :=
-  ∃ s₀, Instance m s₀ mi ∧ Run o mi s₀ pre s
+  ∃ s₀, Instance (profile o) m s₀ mi ∧ Run o mi s₀ pre s
 
 /-- After the script `m`, `pre`, some host-free normal form of `act` has the outcome `r`. -/
 def Reaches (o : GrowOracle) (m : Module) (pre : List Action) (act : Action) (r : Result) :
@@ -254,8 +264,10 @@ def ScriptHolds (o : GrowOracle) (m : Module) (cmds : List Cmd) : Prop :=
 
 /-! ## The kernel checker
 
-`scriptK o fuel m cmds` validates `m`, instantiates it, checks that its function exports have
-scalar types, then runs every command with `fuel` steps of the kernel-evaluable interpreter
+`scriptK o fuel m cmds` validates `m`, instantiates it as the specification does
+(`instantiateCfg?`: `prepare?`, the allocation of `$instantiate` with every global allocated
+twice, then the segment initialisation; its configuration must have the empty code), then runs
+every command with `fuel` steps of the kernel-evaluable interpreter
 `runInvokeK`, checking that each run stops at a result, that its arguments are typed, and the
 expected outcome. `ScriptHolds.of_kernel` (`….Thms`) turns `scriptK … = true` into
 `ScriptHolds`. -/
@@ -280,12 +292,6 @@ def invokeOkB {R : Type} (s : Store Nat R) (a : Nat) (args : List Val) : Bool :=
     | some (ps, _) => argsOk args ps
     | none => false
   | none => false
-
-/-- Every function export of `mi` has a scalar function type in `s` (any memory representation
-`R`: only the functions are read). -/
-def exportsScalar {R : Type} (s : Store Nat R) (mi : ModuleInst) : Bool :=
-  ((Game.exportFuncAddrs mi).mapM fun a =>
-    (s.funcs[a]?).bind fun fi => Game.FnType.ofDefType? fi.type).isSome
 
 /-- Run one action with `fuel` steps: the stopped configuration, if it is a result. -/
 noncomputable def actK (o : GrowOracle) (fuel : Nat) (mi : ModuleInst) (s : Store Nat)
@@ -316,9 +322,9 @@ noncomputable def scriptK (o : GrowOracle) (fuel : Nat) (m : Module) (cmds : Lis
   match validate? m with
   | some mt =>
     mt.imports.isEmpty &&
-      match instantiateOnce? (Game.importStore []) m [] with
-      | some (s, f, none) => exportsScalar s f.module && cmdsK o fuel f.module s cmds
-      | _ => false
+      match instantiateCfg? (Game.importStore []) m [] with
+      | some (c, mi) => c.code.isEmpty && cmdsK o fuel mi c.store cmds
+      | none => false
   | none => false
 
 /-! ## The kernel checker on `KMem`
@@ -329,10 +335,10 @@ over the whole memory, so a module whose instantiation writes a data segment int
 memory is out of its reach. `scriptKM` is `scriptK` with the store over `KMem`
 (`Silmaril.Wasm.Execution.MemRep`), a balanced tree of bytes whose reads and writes touch only
 the leaves they need: it instantiates `m` from `importStoreKM` with the generic
-`instantiateOnce?`, and runs each command with the generic interpreter head step `interpHead o`
+`instantiateCfg?`, and runs each command with the generic interpreter head step `interpHead o`
 under the structural driver `Verify.Kernel.runK`. `scriptK_of_scriptKM` (`….Thms`) shows that
 `scriptKM … = true` implies `scriptK … = true`, through the simulation lemmas
-`instantiateOnce?_toBytes` and `runI_toBytes`; so `ScriptHolds.of_kernelKM` proves the same
+`instantiateCfg?_toBytes` and `runI_toBytes`; so `ScriptHolds.of_kernelKM` proves the same
 `ScriptHolds` claims, which stay about `ByteArray` stores and `Step (profile o)`. -/
 
 open Silmaril.Wasm.Execution (KMem) in
@@ -383,9 +389,9 @@ noncomputable def scriptKM (o : GrowOracle) (fuel : Nat) (m : Module) (cmds : Li
   match validate? m with
   | some mt =>
     mt.imports.isEmpty &&
-      match instantiateOnce? importStoreKM m [] with
-      | some (s, f, none) => exportsScalar s f.module && cmdsKM o fuel f.module s cmds
-      | _ => false
+      match instantiateCfg? importStoreKM m [] with
+      | some (c, mi) => c.code.isEmpty && cmdsKM o fuel mi c.store cmds
+      | none => false
   | none => false
 
 end KM

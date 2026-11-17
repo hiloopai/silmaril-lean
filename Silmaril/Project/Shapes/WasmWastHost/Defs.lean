@@ -4,6 +4,7 @@ public import Silmaril.Project.Shapes.WasmWastLink.Defs
 public import Silmaril.Wasm.Abstract.HostDet.Defs
 public import Silmaril.Wasm.SingleThreaded.Interface
 public import Silmaril.Wasm.Execution.InstantiateTrap.Defs
+public import Silmaril.Project.Shapes.WasmWastRef.Defs
 
 /-!
 # Standard problem shapes: linked WAST scripts against the typed `spectest` host
@@ -16,6 +17,7 @@ the reference interpreter as host functions, host-allocated globals and shared t
 |---|---|
 | `silmaril.shapes.wasm.wast.host.returns_only` | `ReturnsOnly o pre act vs`: after the script prefix `pre`, some normal form of the action `act` under `Spectest.host` returns `vs`, and every one does |
 | `silmaril.shapes.wasm.wast.host.traps_only` | `TrapsOnly o pre act`: the same with a trap |
+| `silmaril.shapes.wasm.wast.host.returns_matching` | `ReturnsMatching o pre act ps`: some normal form of `act` returns values matching the result patterns `ps` (`(ref.func)`: any function reference; otherwise exact), and every one does |
 | `silmaril.shapes.wasm.wast.host.unlinkable` | `Unlinkable o pre m`: after `pre`, `m` is valid and its imports cannot be linked: some import names nothing in the registry, or the resolved external addresses do not have the import types (`ExternAddrOk`) |
 | `silmaril.shapes.wasm.wast.host.log_is` | `LogIs o cmds l`: the script `cmds` runs, and every context it reaches has the host-call log `l` (its printed values are `Spectest.printed l`) |
 | `silmaril.shapes.wasm.wast.host.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links, and the specification's instantiation configuration (`Instantiate`) traps, in its segment initialisation or its start function, at every normal form under `Spectest.host` |
@@ -113,7 +115,7 @@ namespace Silmaril.Project.Shapes.WasmWastHost
 
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded Silmaril.Wasm.Abstract
-open Silmaril.Project.Shapes.WasmWast (Expect exportFunc? invokeOkB importStoreKM)
+open Silmaril.Project.Shapes.WasmWast (Expect exportFunc? importStoreKM)
 open Silmaril.Project.Shapes.WasmWastLink (Names lookup Target bindName exportAddr? Action Cmd)
 
 /-! ## The `spectest` environment -/
@@ -343,6 +345,18 @@ def ReturnsOnly (o : GrowOracle) (pre : List Cmd) (act : Action) (vs : List Val)
 def TrapsOnly (o : GrowOracle) (pre : List Cmd) (act : Action) : Prop :=
   Reaches o pre act .trap ∧ Only o pre act .trap
 
+/-- **`assert_return` with result patterns, in a linked script, against the `spectest` host**:
+after the commands `pre`, some normal form of `act` under `profile o` and `Spectest.host` returns
+values matching the patterns `ps` (`WasmWastRef.MatchAll`: exact values, or `(ref.func)` for any
+function reference), and every normal form of `act` does. -/
+@[problem "silmaril.shapes.wasm.wast.host.returns_matching"
+  (title := "A WAST action after a linked script prefix (typed spectest host) returns values matching given result patterns, at every normal form")]
+def ReturnsMatching (o : GrowOracle) (pre : List Cmd) (act : Action) (ps : List WasmWastRef.Pat) :
+    Prop :=
+  (∃ vs, Reaches o pre act (.values vs) ∧ WasmWastRef.MatchAll ps vs) ∧
+    ∀ ctx ro s l, ScriptAt o pre ctx → ActNF o ctx act ro s l →
+      ∃ vs, ro = some (.values vs) ∧ WasmWastRef.MatchAll ps vs
+
 /-- **`assert_unlinkable`, against the `spectest` host**: the prefix reaches a context, and in
 every context it reaches, `m` is valid and cannot be linked: if its imports resolve to the store
 `s₀` and the addresses `xas`, these do not have the import types of `m` in `s₀`. -/
@@ -463,7 +477,7 @@ noncomputable def actG (o : GrowOracle) (fuel : Nat) (ctx : CtxR R) :
     | some mi =>
       match exportFunc? mi name with
       | some a =>
-        if invokeOkB ctx.store a args then
+        if WasmWastRef.invokeOkRB ctx.store a args then
           (runHG o fuel fuel (invoke ctx.store a args, ctx.log)).bind fun p =>
             p.1.outcome?.map fun r => (r, p.1.store, p.2)
         else none

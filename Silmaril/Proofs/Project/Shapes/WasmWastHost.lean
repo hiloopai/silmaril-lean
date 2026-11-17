@@ -8,6 +8,7 @@ public import Silmaril.Wasm.Component.Reference.Engine.Core3.Typed.Store.Defs
 public import Silmaril.Wasm.Execution.MemRep.Sim.Thms
 public import Silmaril.Wasm.Game.InstantiateTrap.Thms
 public import Silmaril.Wasm.Execution.Core.Exec.InstantiateIff
+public import Silmaril.Project.Shapes.WasmWastRef.Thms
 
 /-!
 # Proofs: linked WAST scripts against the typed `spectest` host
@@ -158,8 +159,9 @@ theorem actG_toBytes (o : GrowOracle) (fuel : Nat) (ctx : CtxR R) (act : Action)
       | none => rfl
       | some a =>
         simp only
-        rw [show invokeOkB ctx.toBytes.store a args = invokeOkB ctx.store a args from rfl]
-        cases invokeOkB ctx.store a args with
+        rw [show Silmaril.Project.Shapes.WasmWastRef.invokeOkRB ctx.toBytes.store a args =
+          Silmaril.Project.Shapes.WasmWastRef.invokeOkRB ctx.store a args from rfl]
+        cases Silmaril.Project.Shapes.WasmWastRef.invokeOkRB ctx.store a args with
         | false => rfl
         | true =>
           simp only [ite_true]
@@ -638,7 +640,7 @@ theorem actG_sound {fuel : Nat} {ctx : CtxR ByteArray} {act : Action} {r : Resul
       · rename_i a ha
         split at h
         · rename_i hok
-          have hi := Silmaril.Proofs.Project.Shapes.WasmWast.invokeOk_of_invokeOkB hok
+          have hi := Silmaril.Project.Shapes.WasmWastRef.invokeOkRB_sound hok
           obtain ⟨_, _, rs, _, _, hc⟩ := invoke_ok hs hi
           cases hrun : runHG o fuel fuel (invoke ctx.store a args, ctx.log) with
           | none => rw [hrun] at h; cases h

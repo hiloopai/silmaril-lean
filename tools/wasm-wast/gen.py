@@ -118,6 +118,8 @@ LINK_SHAPE = {"assert_return": "silmaril.shapes.wasm.wast.host.returns_only",
               "assert_trap": "silmaril.shapes.wasm.wast.host.traps_only",
               "assert_unlinkable": "silmaril.shapes.wasm.wast.host.unlinkable",
               "assert_uninstantiable": "silmaril.shapes.wasm.wast.host.uninstantiable"}
+# `assert_return` with a result pattern (`(ref.func)`): `ReturnsOnly.matching` of the exact row.
+MATCH_SHAPE = "silmaril.shapes.wasm.wast.host.returns_matching"
 LINK_STRENGTH = {"assert_return": "only", "assert_trap": "only", "assert_unlinkable": "link",
                  "assert_uninstantiable": "only"}
 HOST_MODEL = ("spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference "
@@ -444,7 +446,7 @@ def actP (fuel : Nat) (ctx : LCtx) : LAction → Except (String × String) (Resu
     | some mi =>
       match exportFunc? mi name with
       | some a =>
-        if invokeOkB ctx.store a args then
+        if Silmaril.Project.Shapes.WasmWastRef.invokeOkRB ctx.store a args then
           match runHP fuel fuel (invoke ctx.store a args, ctx.log) with
           | some (c, l) =>
             match c.outcome? with
@@ -541,12 +543,59 @@ end LinkProbe
 """
 
 
+def lean_link_val(v):
+    """An argument or exact result of a linked script as a Lean value: a number, or the host
+    reference `(ref.extern n)` (`Extern.ExternRef (Script.HostRef n)` in the reference
+    interpreter, `REF.EXTERN (REF.HOST_ADDR n)` in the specification), the Core value
+    `.ref (.extern (.host n))`."""
+    if v["type"] == "externref" and re.fullmatch(r"[0-9]+", str(v.get("value"))):
+        return f"Val.ref (.extern (.host {int(v['value'])}))"
+    return lean_val(v)
+
+
 def lean_res(v):
-    """An expected result as a Lean value: exact numbers, or a null reference (`ref.null`, an
-    untyped `Ref.null` in Core); `None` for patterns (NaN classes, non-null references)."""
+    """An expected result as a Lean value: exact numbers, `(ref.extern n)`, or a null reference
+    (`ref.null`, an untyped `Ref.null` in Core); `None` for patterns (NaN classes, `(ref.func)`)."""
     if v["type"] in ("externref", "funcref", "anyref", "exnref") and v.get("value") == "null" or v["type"] == "refnull":
         return "Val.ref .null"
-    return lean_val(v)
+    return lean_link_val(v)
+
+
+def link_pat(v):
+    """The result pattern (`WasmWastRef.Pat`) of an expected result of a linked script: `(ref.func)`
+    (wasm-tools: a `funcref` without a value) is `.funcRef`, any function reference; an exact
+    result is `.exact v`; `None` otherwise (NaN patterns and other reference patterns)."""
+    if v["type"] == "funcref" and v.get("value") is None:
+        return ".funcRef"
+    lv = lean_res(v)
+    return None if lv is None else f".exact ({lv})"
+
+
+def observed_vals(detail):
+    """The values of a probe result `values t:x …` as Lean values and as tokens, or None."""
+    if not detail.startswith("values"):
+        return None
+    toks = detail.split()[1:]
+    out = []
+    for tok in toks:
+        if tok == "ref.null":
+            out.append("Val.ref .null")
+        elif tok.startswith("ref.func:"):
+            out.append(f"Val.ref (.func {int(tok.split(':')[1])})")
+        elif tok.startswith("ref.extern:"):
+            out.append(f"Val.ref (.extern (.host {int(tok.split(':')[1])}))")
+        elif tok.split(":")[0] in WIDTH:
+            out.append(lean_val({"type": tok.split(":")[0], "value": tok.split(":")[1]}))
+        else:
+            return None
+    return out, toks
+
+
+def pat_matches(pat, lean):
+    """`Pat.matches` on the Lean texts of a pattern and a value."""
+    if pat == ".funcRef":
+        return lean.startswith("Val.ref (.func ")
+    return pat == f".exact ({lean})"
 
 
 def show_res(v):
@@ -602,24 +651,30 @@ def load_link(f):
                              "type": act.get("type")}
             if "expected" in c:
                 row["expected"] = c["expected"]
-            args = [lean_val(v) for v in act.get("args", [])]
+            args = [lean_link_val(v) for v in act.get("args", [])]
             if act.get("type") not in ("invoke", "get"):
                 row["status"], row["reason"] = "unsupported", f"action {act.get('type')}"
                 items.append({"kind": "stop", "row": row})
                 continue
             if None in args:
-                row["status"], row["reason"] = "unsupported", "argument type outside i32/i64/f32/f64 (the action cannot be run)"
+                row["status"], row["reason"] = "unsupported", "argument outside numbers and (ref.extern n) (the action cannot be run)"
                 items.append({"kind": "stop", "row": row})
                 continue
             row["lean_args"] = args
             expect = None
             if t == "assert_return":
                 exp = [lean_res(v) for v in c.get("expected", [])]
-                if None in exp:
+                lpats = [link_pat(v) for v in c.get("expected", [])]
+                if None in exp and None not in lpats:
+                    # A result pattern such as `(ref.func)`: the probe runs the action without an
+                    # expectation; `classify_link` gives the kernel the exact values it observed
+                    # when they match, and the row is `host.returns_matching`.
+                    row["pats"] = lpats
+                elif None in exp:
                     pats = [str(v.get("value")) for v in c.get("expected", []) if lean_res(v) is None]
                     row["status"] = "unsupported"
                     row["reason"] = ("NaN pattern (allowed-set shape not implemented for linked scripts)" if any("nan:" in p for p in pats)
-                                     else "result pattern outside exact numbers and null references")
+                                     else "result pattern outside exact values and (ref.func)")
                 else:
                     expect = ("values", exp)
             elif t == "assert_trap":
@@ -749,7 +804,18 @@ def classify_link(pr):
             printed = pr.get("link_printed", {}).get(f"link:{f}/{k}")
             if printed:
                 row["printed"] = printed
-            if p["status"] == "pass":
+            if p["status"] == "ran" and "pats" in row:
+                ob = observed_vals(p["detail"])
+                if ob is not None and len(ob[0]) == len(row["pats"]) and all(map(pat_matches, row["pats"], ob[0])):
+                    # The exact values of the run are the kernel's expectation; the row's claim is
+                    # the pattern (`ReturnsOnly.matching`).
+                    it["expect"] = ("values", ob[0])
+                    row["status"] = "proved"
+                    kernel.append((it, True))
+                else:
+                    row["status"], row["reason"] = "mismatch", "silmaril-lean's results do not match the result pattern"
+                    kernel.append((it, False))
+            elif p["status"] == "pass":
                 row["status"] = "proved"
                 kernel.append((it, True))
             elif p["status"] == "mismatch":
@@ -816,6 +882,9 @@ def showVal : Val → String
   | .num ⟨.float .f32, b⟩ => s!"f32:{b.toNat}"
   | .num ⟨.float .f64, b⟩ => s!"f64:{b.toNat}"
   | .vec b => s!"v128:{b.toNat}"
+  | .ref .null => "ref.null"
+  | .ref (.func a) => s!"ref.func:{a}"
+  | .ref (.extern (.host n)) => s!"ref.extern:{n}"
   | .ref _ => "ref"
 
 def showRes : Result → String
@@ -889,12 +958,15 @@ def probeS (tag : String) (bytes : ByteArray) (cmds : List CmdS) : IO Unit := do
     | none => IO.println s!"M\\t{tag}\\tvalidate\\tthe validator rejects the module"
     | some mt =>
       if !mt.imports.isEmpty then IO.println s!"M\\t{tag}\\timports\\tthe module has imports" else
-      match instantiateOnce? (Game.importStore []) m [] with
-      | some (s, f, none) => do
+      if !(m.elems.isEmpty && m.data.isEmpty && m.start.isNone) then
+        IO.println s!"M\\t{tag}\\tsegments\\tthe module has element or data segments or a start function" else
+      match instantiateCfg? (Game.importStore []) m [] with
+      | some (c, mi) =>
+        if c.code.isEmpty then do
           IO.println s!"M\\t{tag}\\tok\\t{m.data.length}"
-          probeSCmds tag s f.module 0 cmds
-      | some (_, _, some _) => IO.println s!"M\\t{tag}\\tstart\\tthe module has a start function"
-      | none => IO.println s!"M\\t{tag}\\tinstantiate\\tinstantiation fails (or traps)"
+          probeSCmds tag c.store mi 0 cmds
+        else IO.println s!"M\\t{tag}\\tinstantiate\\tthe instantiation code does not end empty"
+      | none => IO.println s!"M\\t{tag}\\tinstantiate\\tinstantiation fails"
 
 def probe (tag : String) (bytes : ByteArray) (cmds : List Cmd) : IO Unit := do
   match Silmaril.Wasm.Binary.Core.decode? bytes with
@@ -904,15 +976,13 @@ def probe (tag : String) (bytes : ByteArray) (cmds : List Cmd) : IO Unit := do
     | none => IO.println s!"M\\t{tag}\\tvalidate\\tthe validator rejects the module"
     | some mt =>
       if !mt.imports.isEmpty then IO.println s!"M\\t{tag}\\timports\\tthe module has imports" else
-      match instantiateOnce? (Game.importStore []) m [] with
-      | some (s, f, none) =>
-        if !exportsScalar s f.module then
-          IO.println s!"M\\t{tag}\\texports\\ta function export has a non-scalar type"
-        else do
+      match instantiateCfg? (Game.importStore []) m [] with
+      | some (c, mi) =>
+        if c.code.isEmpty then do
           IO.println s!"M\\t{tag}\\tok\\t{m.data.length}"
-          probeCmds tag {fuel} f.module 0 s cmds
-      | some (_, _, some _) => IO.println s!"M\\t{tag}\\tstart\\tthe module has a start function"
-      | none => IO.println s!"M\\t{tag}\\tinstantiate\\tinstantiation fails (or traps)"
+          probeCmds tag {fuel} mi 0 c.store cmds
+        else IO.println s!"M\\t{tag}\\tstart\\tthe instantiation code does not end empty (a start function, or a segment trap)"
+      | none => IO.println s!"M\\t{tag}\\tinstantiate\\tinstantiation fails"
 """
 
 
@@ -1054,12 +1124,15 @@ def emit():
               "profile": f"{PROFILE_DET} for the returns_only/traps_only rows and the link.* rows of the linked files "
                          "(" + ", ".join(f"{f}.wast" for f, _ in LINK_FILES) + f"); {PROFILE_SPEC} for the "
                          "returns_allowed_all/traps_all/terminates_all rows of " + ", ".join(f"{f}.wast" for f, _ in FILES if f in SPEC),
-              "assumptions": ["assert_return/assert_trap rows: the module is valid, has no imports and no start function, and its function exports have scalar types",
+              "assumptions": ["assert_return/assert_trap rows: the module is valid and has no imports; its instance and initial store are the specification's "
+                              "instantiation (Instance: the Instantiate configuration of Wasm 3.0 $instantiate in the empty store, every global "
+                              "allocated as $evalglobals and $allocmodule allocate it, run by host-free Core steps under the row's profile to the "
+                              "empty code: segment code and, if any, the start call)",
                               "assert_return/assert_trap rows: no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
                               "assert_return/assert_trap rows: the script state: the store threads through the earlier actions of the same module, in order",
                               "assert_return/assert_trap rows: termination is witnessed by the kernel run; other runs reach the same normal form by determinism",
                               "returns_allowed_all/traps_all/terminates_all rows (" + ", ".join(f"{f}.wast" for f, _ in FILES if f in SPEC) + "): the same module "
-                              "conditions; claims are about Core reduction Step (Profile.spec nd r) with no host function, for every $ND and relaxed choice "
+                              "conditions, and no element or data segments and no start function (the Instantiate configuration has no code); claims are about Core reduction Step (Profile.spec nd r) with no host function, for every $ND and relaxed choice "
                               "(rows state nd = true, r = default); every exported function is straight-line numeric (local.get 0 ... local.get (k-1); op), "
                               "so every run is described by Silmaril.Wasm.Execution.Core.StraightLine.{nf, reaches, not_diverges, extends_nf}; "
                               "nan:canonical = canonical NaN of either sign, nan:arithmetic = NaN with the quiet bit set, of either sign, "
@@ -1231,7 +1304,7 @@ def link_report_row(f, mod, r):
             c.update(problem=f"{NS}.{f}.l{r['line']}", shape=shape, theorem=f"Silmaril.Project.WasmWast.{mod}.l{r['line']}",
                      strength="tool", checker=checker)
     elif r["status"] == "proved":
-        shape = LINK_SHAPE[r["type"]]
+        shape = LINK_SHAPE[r["type"]] if "pats" not in r else MATCH_SHAPE
         c.update(problem=f"{NS}.{f}.l{r['line']}", shape=shape, theorem=f"Silmaril.Project.WasmWast.{mod}.l{r['line']}",
                  strength=LINK_STRENGTH[r["type"]], profile="profile neverFail", host=HOST_MODEL, checker="scriptHK",
                  observation="results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed")
@@ -1309,7 +1382,9 @@ Generated by `tools/wasm-wast/gen.py`; do not edit. `script` proves every claim 
 globals per import), instantiates and runs every command in order on `KMem` stores, answering
 print calls as `Spectest.host`; the claims are about `ByteArray` stores and Core reduction
 `Step (profile neverFail) Spectest.host`). Each row `{NS}.{f}.l<line>` is the command at
-line `<line>`: `assert_return` (`silmaril.shapes.wasm.wast.host.returns_only`), `assert_trap`
+line `<line>`: `assert_return` (`silmaril.shapes.wasm.wast.host.returns_only`; with a result pattern
+such as `(ref.func)`, `….host.returns_matching`, from the exact row of the values the kernel run
+returns by `ReturnsOnly.matching`), `assert_trap`
 (`….host.traps_only`), `assert_unlinkable` (`….host.unlinkable`) or `assert_uninstantiable`
 (`….host.uninstantiable`), after the commands before it (`pre cmds k`). `decodes`: every module of the script is the
 decoder's reading of its bytes (not the default `{{}}` of `getD`), from the same kernel
@@ -1349,7 +1424,12 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
             name = f"{NS}.{f}.l{row['line']}"
             names.append(name)
             t = row["type"]
-            if t == "assert_return":
+            if t == "assert_return" and "pats" in row:
+                head = (f"  silmaril.shapes.wasm.wast.host.returns_matching (o := {O})\n"
+                        f"  (pre := pre cmds {k}) (act := {lean_link_action(row)}) (ps := [{', '.join(row['pats'])}])\n")
+                proof = (f"(script.returnsOnly {k} (vs := [{', '.join(it['expect'][1])}]) (by kernel_rfl)).matching\n"
+                         f"    rfl")
+            elif t == "assert_return":
                 head = (f"  silmaril.shapes.wasm.wast.host.returns_only (o := {O})\n"
                         f"  (pre := pre cmds {k}) (act := {lean_link_action(row)}) (vs := [{', '.join(it['expect'][1])}])\n")
                 proof = f"script.returnsOnly {k} (by kernel_rfl)"
@@ -1576,6 +1656,8 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 
 def wast_val(s):
     t, v = s.split(":", 1)
+    if t == "externref":
+        return f"(ref.extern {v})"
     if t in ("f32", "f64") and re.fullmatch(r"[0-9]+", v):
         w = WIDTH[t]
         return f"({t}.const {'-' if int(v) >> (w - 1) else ''}nan:0x{int(v) & ((1 << (w - 9 if w == 32 else w - 12)) - 1):x})" \
@@ -1872,11 +1954,15 @@ def regress():
       first `assert_return` on a module that imports from another registered module, plus one
       (wasmtime must fail on that line); and in the same script, the first `assert_return` after
       an `assert_trap (module …)` whose segment initialisation traps (it observes the residual
-      store), plus one (wasmtime must fail on that line). wasmtime must fail on each, so
+      store), plus one (wasmtime must fail on that line); and in the linked script of global.wast,
+      the first `assert_return` expecting a host reference `(ref.extern n)`, with `n + 1` (wasmtime
+      must fail on that line). wasmtime must fail on each, so
       `oracle`'s scripts can fail. The committed `wrong-linked-state.wast` writes a memory and a
       global through imports from one module and reads them from another;
       `wrong-segment-trap-state.wast` reads, from another module, what the segments of a failed
-      instantiation wrote into an imported table and memory before the trap.
+      instantiation wrote into an imported table and memory before the trap;
+      `wrong-externref.wast` expects `(ref.extern 2)` where the stored host reference is
+      `(ref.extern 1)`.
     Exits 1 if any wrong expectation is accepted or any control fails."""
     if not pathlib.Path(JCO["WASMTIME"]).is_file():
         fetch_wasmtime()
@@ -1960,8 +2046,22 @@ def regress():
                     wrong = line[:m.start()] + f"({m.group(1)}.const {(int(m.group(2)) + 1) % (1 << w)}))"
                     mutants["segtrap"] = (f"{cid} (script line {ln})", "\n".join(lines[:ln - 1] + [wrong]) + "\n", ln)
                     break
+        # A host reference made wrong: in the linked script of global.wast, the first
+        # `assert_return` expecting `(ref.extern n)` (it reads the reference that line 235 stored
+        # in a mutable `externref` global), with `n + 1`. wasmtime must fail on that line.
+        for f, ids, text in oracle_link_scripts(rep):
+            if f != "global" or "externref" in mutants:
+                continue
+            lines = text.rstrip("\n").split("\n")
+            for cid, ln in ids:
+                line = lines[ln - 1]
+                m = re.search(r"\(ref\.extern ([0-9]+)\)\)$", line)
+                if byid[cid]["type"] == "assert_return" and m:
+                    wrong = line[:m.start()] + f"(ref.extern {int(m.group(1)) + 1}))"
+                    mutants["externref"] = (f"{cid} (script line {ln})", "\n".join(lines[:ln - 1] + [wrong]) + "\n", ln)
+                    break
         with tempfile.TemporaryDirectory() as td:
-            for key in ("segtrap",):
+            for key in ("segtrap", "externref"):
                 if key not in mutants:
                     bad.append(f"no {key} linked script to mutate")
                     continue
@@ -1999,7 +2099,7 @@ def regress():
                 if run(path).returncode == 0:
                     bad.append(f"{cid} ({t}) with a wrong expectation: wasmtime ACCEPTS it")
     print(f"regress: {n} scripts run ({len(list(REGRESS.glob('wrong-*.wast')))} committed wrong, "
-          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 5 generated wrong)")
+          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 6 generated wrong)")
     if bad:
         print("\n".join(f"regress: FAIL {b}" for b in bad), file=sys.stderr)
         sys.exit(1)

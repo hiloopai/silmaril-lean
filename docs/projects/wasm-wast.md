@@ -9,8 +9,11 @@ Lean kernel: at the deterministic profile for the integer, control and memory fi
 ([Under the specification profile](#under-the-specification-profile)). Each `assert_invalid` row is answered by a **tool-level** theorem: silmaril-lean's
 validator rejects the module (see [Rejections](#rejections-tool-level)). Seven files with
 several modules, imports, `register` and the `spectest` module are checked as **linked scripts**,
-one per file, with `spectest` modelled by a **closed Wasm module**, not a host
-([Linked scripts](#linked-scripts-imports-register-and-the-spectest-host)). The same commands are
+one per file, against the typed `spectest` host `Spectest.host`, with the WAST host references
+`(ref.extern n)` as arguments and results
+([Linked scripts](#linked-scripts-imports-register-and-the-spectest-host)). Every row's script
+state starts from the specification's `Instantiate`
+([below](#single-module-files-on-the-specifications-instantiate)). The same commands are
 run by a pinned independent implementation (wasmtime 50.0.0), in CI by the
 [WAST oracle job](#the-ci-oracle-job).
 
@@ -48,15 +51,28 @@ theorem about the shapes, not by their statements (see [Termination](#terminatio
 
 The definitions:
 
-* `Instance m s mi`: `m` is valid (`ModuleOk m ⟨[], _⟩`, so no imports), and instantiating it
-  from the empty store with `instantiateOnce?`, including the segment initialisation, gives the
-  store `s`, the module instance `mi` and no start function.
+* `Instance P m s mi`: **the specification's instantiation** under the profile `P`: `m` is
+  valid (`ModuleOk m ⟨[], _⟩`, so no imports), and the configuration `c₀` of
+  `Instantiate P Det.noHost (Game.importStore []) m [] c₀` (Wasm 3.0 `$instantiate` in the empty
+  store: `$evalglobals`, `$allocmodule`, so every global is allocated as the specification
+  allocates it, then the code of the element segments, the data segments and the start call)
+  runs by host-free steps under `P` to the empty code, in the store `s`; `mi` is the module
+  instance of `c₀`:
+
+  ```lean
+  def Instance (P : Numerics.Profile) (m : Module) (s : Store Nat) (mi : ModuleInst) : Prop :=
+    (∃ xtE, ModuleOk m ⟨[], xtE⟩) ∧
+      ∃ c₀ c : Config Nat, Instantiate P Det.noHost (Game.importStore []) m [] c₀ ∧
+        c₀.frame.module = mi ∧ Steps P Det.noHost c₀ c ∧ c.code = [] ∧ c.store = s
+  ```
+
+  No function of silmaril-lean is part of it ([below](#single-module-files-on-the-specifications-instantiate)).
 * `InvokeNF o s a args c`: `c` is reachable from `$invoke(s, a, args)` by
   `Step (profile o) noHost` and has no such step.
 * `Run o mi s acts s'`: each action `invoke name args` calls the function export `name` of
   `mi` and runs to an `InvokeNF` whose code is a result (values, trap or exception). Its store
   is the next state, so the store persists across calls, also after a trap.
-* `ScriptAt o m pre mi s := ∃ s₀, Instance m s₀ mi ∧ Run o mi s₀ pre s`.
+* `ScriptAt o m pre mi s := ∃ s₀, Instance (profile o) m s₀ mi ∧ Run o mi s₀ pre s`.
 * `Reaches`/`Only o m pre act r`: some/every `InvokeNF` of `act` at some/every `ScriptAt` state has
   the outcome `r`.
 * `Always o m pre act r`: at every `ScriptAt` state, no host-free run of `act` is infinite
@@ -248,7 +264,9 @@ in the expectation (a class of canonical NaNs is contained in `nan:canonical` an
 `nan:arithmetic`; a class of arithmetic NaNs only in `nan:arithmetic`; an exact value in the
 pattern it matches; never a NaN class in an exact value).
 
-**The checker.** `scriptSK m cmds` validates and instantiates `m` (as `scriptK`) and checks, for
+**The checker.** `scriptSK m cmds` validates `m`, checks that it has no element or data
+segments and no start function (so the `Instantiate` configuration has no code), instantiates it
+(as `scriptK`, with `instantiateCfg?`) and checks, for
 every command, that its export is a straight-line numeric function (`StraightLine.fn?`) and
 that its result class is contained in its expectation. It runs no interpreter.
 
@@ -285,6 +303,7 @@ a concrete typed host, by the shapes of `Silmaril.Project.Shapes.WasmWastHost`:
 |---|---|
 | `silmaril.shapes.wasm.wast.host.returns_only` | `ReturnsOnly o pre act vs`: after the commands `pre`, some normal form of the action `act` under `Step (profile o) Spectest.host` returns `vs`, and every one does |
 | `silmaril.shapes.wasm.wast.host.traps_only` | `TrapsOnly o pre act`: the same with a trap |
+| `silmaril.shapes.wasm.wast.host.returns_matching` | `ReturnsMatching o pre act ps`: some normal form of `act` returns values matching the result patterns `ps` (`WasmWastRef.MatchAll`: `(ref.func)` is any function reference, every other pattern an exact value), and every one does ([Host references](#host-references-refextern-n-and-reffunc)) |
 | `silmaril.shapes.wasm.wast.host.unlinkable` | `Unlinkable o pre m`: after `pre`, `m` is valid, and its imports either do not resolve through the registry, or resolve (allocating fresh `spectest` entities) to addresses that do not have the import types (`ExternAddrOk`) |
 | `silmaril.shapes.wasm.wast.host.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links, and the specification's instantiation configuration (`Instantiate`) traps at every normal form under `Spectest.host`, in a segment initialisation or in the start function |
 | `silmaril.shapes.wasm.wast.host.log_is` | `LogIs o cmds l`: the script runs, and every context it reaches has the host-call log `l` (the observation; the printed values are `Spectest.printed l`) |
@@ -427,8 +446,8 @@ a stopped configuration with no callout, or a callout the host does not answer, 
 `Spectest.host` (`Step.split_host`); and `LSteps.nf_unique_of_hostDet` with `Spectest.hostDet`.
 `logHK` runs the same commands and returns the log (`LogIs.of_kernel`).
 
-**Strength labels** (`report.json` `strength`): `only` for `host.returns_only`, `host.traps_only`
-and `host.uninstantiable` (Core reduction against `Spectest.host`, every normal form); `link` for
+**Strength labels** (`report.json` `strength`): `only` for `host.returns_only`, `host.traps_only`,
+`host.returns_matching` and `host.uninstantiable` (Core reduction against `Spectest.host`, every normal form); `link` for
 `host.unlinkable` (relative to `resolve?` and the `ExternAddrOk` transcription). `register` and
 bare actions are `context` rows. Every row of a linked file records its context (`context`:
 registered names, named modules, the current module and its imports, the module's own imports for
@@ -452,12 +471,92 @@ functions differs from the reference interpreter (above); the typed host does no
 
 **What stops a script.** The script is cut at the first command the kernel cannot run, and every
 later command of the file is undetermined (with the reason): an action with an argument outside
-`i32`/`i64`/`f32`/`f64` (`externref` arguments in `global.wast` line 235 and `elem.wast` line 1019:
-the host references of `ref.extern n` are not modelled), or an instantiation that fails without a
-trap. Expectations outside exact numbers and null references (NaN patterns, `(ref.func)`,
-`(ref.extern n)`) are unsupported rows whose actions still run for the context. An
-`assert_trap (module …)` whose segment initialisation traps does not stop a script: the script
-goes on with the residual store (next section).
+numbers and `(ref.extern n)`, or an instantiation that fails without a trap. No command of the
+seven files stops a script any more. Expectations outside exact values and `(ref.func)` (NaN
+patterns, other reference patterns; none occur in the seven files) would be unsupported rows
+whose actions still run for the context. An `assert_trap (module …)` whose segment
+initialisation traps does not stop a script either: the script goes on with the residual store
+(below).
+
+### Host references: `(ref.extern n)` and `(ref.func)`
+
+`global.wast` (lines 235–241: `set-mr`/`get-mr` store and read `(ref.extern 10)` in a mutable
+`externref` global; lines 660–661: `(ref.func)` results of a `funcref` table) and `elem.wast`
+(lines 1019–1030: `set`/`get` store and read `(ref.extern 42)`, `(ref.extern 137)` in an
+`externref` table) pass **host references** as arguments and expect them as results. No Wasm
+module can write these values; they are part of the WAST script language.
+
+**Upstream semantics** (WebAssembly/spec `608711107b`; the reference interpreter's files):
+
+* `interpreter/text/parser.mly` (SHA-256
+  `85c4e03eded78d1774ecffa9fa4a21a7d8cfc6779aea3aa64672ab0a827b6c57`) lines 1507–1509
+  (`literal_ref`): `(ref.host n)` is `Script.HostRef n` and **`(ref.extern n)` is
+  `Extern.ExternRef (Script.HostRef n)`**: the host reference `n`, converted to `extern`. Lines
+  1525–1537 (`result`): `(ref.extern n)`, `(ref.host n)` and `(ref.null)` are `RefPat` (a
+  value), `(ref.null ht)` is `NullPat`, `(ref.func)` is `RefTypePat FuncHT`, `(ref.extern)` is
+  `RefTypePat ExternHT`.
+* `interpreter/script/script.ml` (SHA-256
+  `a0f3d4168f4bd1405de0a5aa1b9cb4c7bb13a6ea41c27cffaec773e9f7cf0555`) line 3: `HostRef of int32`
+  extends `Value.ref_`; lines 77–81: its type is `any` (`type_of_ref'`); lines 89–94: two host
+  references are equal when their numbers are. `interpreter/runtime/extern.ml` (SHA-256
+  `d903075808640a32a2faa4cfcf3016ade8fa7acf07e2e97dc36e7c3cbb616c42`): `ExternRef of ref_`,
+  of type `extern`, equal when the wrapped references are.
+* `interpreter/script/runner.ml` (SHA-256
+  `ac35f60152daa83b6b5b94d39a1cc9586d9aadbb265a7e51f8d1e8d3791be5a3`) lines 402–417
+  (`run_action`): an `invoke` checks each literal's type against the parameter type
+  (`Match.match_valtype`; `(ref.extern n)` has type `(ref extern)`), then calls the function.
+  Lines 464–477 (`assert_ref_pat`): a `RefPat` holds when `Value.eq_ref` does (for
+  `ExternRef`/`HostRef`/`NullRef`: structural equality), `NullPat` holds for every null,
+  `RefTypePat FuncHT` for every function reference (`Instance.FuncRef _`, never null), and
+  `RefTypePat ExternHT` for **every** reference, null included.
+* The specification (SpecTec Wasm 3.0, vendored): `4.0-execution.configurations.spectec` lines
+  42–43, `REF.HOST_ADDR hostaddr` and `REF.EXTERN ref` are reference values;
+  `4.1-execution.values.spectec` lines 57–63, `Ref_ok/host: s ⊢ REF.HOST_ADDR a : REF ANY` and
+  `Ref_ok/extern: s ⊢ REF.EXTERN ref : REF EXTERN` if `ref : REF ANY` and `ref ≠ REF.NULL`.
+
+So `(ref.extern n)` is the specification's `REF.EXTERN (REF.HOST_ADDR n)`. silmaril-lean's Core
+already has both (`Ref.host`, `Ref.extern`, typed by `RefOk.host`, `RefOk.extern`): the argument
+is the Core value `.ref (.extern (.host n))` (`WasmWastRef.externHost n`), with no new runtime
+syntax and no change to `Step`.
+
+**silmaril-lean** (`Silmaril.Project.Shapes.WasmWastRef`, a small header of its own):
+
+* Arguments: `argsOkR` accepts a number of exactly its parameter type and `(ref.extern n)` for a
+  parameter `(ref null? extern)`; `invokeOkRB s a args` reads the parameter types of function
+  `a`. The linked checker `scriptHK` uses it in place of `WasmWast.invokeOkB` (numbers only), and
+
+  ```lean
+  theorem invokeOkRB_sound (h : invokeOkRB s a args = true) : InvokeOk s a args
+  ```
+
+  gives the premise of `$invoke` (`RefOk.extern (RefOk.host n)`, and `Reftype_sub/null` for a
+  nullable parameter), so the soundness proof of `scriptHK` is unchanged otherwise.
+* Results: `(ref.extern n)` and `(ref.null …)` are exact values, compared by `Val` equality,
+  which is `eq_ref` on these references; they stay `host.returns_only` rows. `(ref.func)` is the
+  pattern `Pat.funcRef` (`Pat.Matches .funcRef w ↔ ∃ a, w = .ref (.func a)`), stated by the shape
+  `host.returns_matching`. Its rows come from the exact row of the values the kernel run returns:
+
+  ```lean
+  theorem ReturnsOnly.matching (h : ReturnsOnly o pre act vs)
+      (hm : WasmWastRef.matchAll ps vs = true) : ReturnsMatching o pre act ps
+  ```
+
+  (the generator puts the probe's values, e.g. `[.ref (.func 54)]` for `global.wast` line 660,
+  into the kernel's command list; `matchAll_sound` decides the pattern). The claim of the row is
+  the pattern, not the address.
+* Not modelled: `(ref.host n)` arguments (none in the slice), `(ref.extern)` and the other
+  type patterns (`(ref.any)`, `(ref.eq)`, …), `either`, and null arguments `(ref.null …)` (none
+  in the seven files).
+
+Of the 51 formerly undetermined commands of `global.wast` and `elem.wast`, 48 are proved rows
+now and 3 are `context` rows (2 `register`, 1 bare action); the 3 commands with `externref`
+arguments and the 6 `(ref.extern n)`/`(ref.func)` expectations are proved rows: 57 more proved
+rows, 0 undetermined. wasmtime 50.0.0 agrees on each (`oracle --check`).
+
+`#print axioms` gives only `propext`, `Classical.choice` and `Quot.sound` (or fewer) for
+`WasmWastRef.invokeOkRB_sound`, `WasmWastRef.matchAll_sound`, `ReturnsOnly.matching`,
+`WasmWastHost.ScriptHolds.of_kernel`, and the rows `….Global.l235`, `….Global.l241`,
+`….Global.l660` (`(ref.func)`), `….Elem.l1019`, `….Elem.l1030`.
 
 ### Instantiation that traps: the residual store
 
@@ -579,16 +678,66 @@ itself, and the checker instantiates with `prepare?` (the specification's alloca
 `ScriptHolds o m cmds` says that every command of a script holds after the commands before it.
 `ScriptHolds.of_kernel (h : scriptK o fuel m cmds = true)` proves it from **one** kernel
 evaluation per module (`decide +kernel`). `scriptK` validates `m` (`validate?`), checks that it
-has no imports and that its function exports have scalar types, instantiates it, and runs the
+has no imports, instantiates it with `instantiateCfg?` (the specification's allocation `prepare?`,
+then the segment initialisation) and checks that the configuration has the empty code, and runs the
 commands in order with `fuel` steps each of the kernel-evaluable interpreter `runInvokeK`. For
 each command it checks that the arguments are typed (`invokeOkB`), that the run stopped at a
 result, and the expected outcome. The proof (`Silmaril.Proofs.Project.Shapes.WasmWast`) uses:
 
-* `validate?_sound` and `Silmaril.Wasm.Game.IsInstance.ok`: the instantiated store is well typed;
+* `instance_of_cfg` (below): the checker's instantiation is `Instance`, and its store is well
+  typed (`Game.instantiateCfg?_configOk`);
 * `runInvokeK_eq`, `runInvoke?_steps_noHost`, `runInvoke?_stopped`, `runInvoke?_sound`: the
   stopped run is a host-free normal form, and the next store is well typed;
 * `Det.DStep.join'` and `nf_unique_of_join`: normal forms are unique, so a script reaches at
   most one state (`scriptAt_unique`) and every normal form of the command is the one found.
+
+### Single-module files on the specification's `Instantiate`
+
+Until this change the single-module files stated their script state with `instantiateOnce?` in
+the empty store: a function of silmaril-lean that allocates every global once, while the
+specification's `$instantiate` allocates every global twice (`$evalglobals`, then
+`$allocmodule`). The two agree exactly only on modules without globals; with globals, only up to
+a renaming of global addresses. So no lemma `instantiateOnce? ∅ m = some x → Instantiate …` can
+make rows exact for every module, and the shape now states the specification directly:
+`Instance P m s mi` (above) is `Instantiate P Det.noHost (Game.importStore []) m [] c₀` run to the
+empty code, at the row's profile (`profile o` in `ScriptAt`, `Profile.spec nd r` in
+`ScriptAtS`). The row statements are textually unchanged (their shapes' arguments are the same);
+what they mean is now relative to `Instantiate` and `Step` only, also for modules with globals.
+
+The checkers instantiate as the specification does, with `instantiateCfg?` (`prepare?`, globals
+allocated twice), as the linked scripts already did:
+
+```lean
+theorem instance_of_cfg (hv : validate? m = some mt) (himp : mt.imports = [])
+    (hcfg : instantiateCfg? (Game.importStore []) m [] = some (c, mi)) (hc : c.code = []) :
+    Instance P m c.store mi ∧ StoreOk c.store                 -- every profile P
+theorem instance_unique (h : Instance (profile o) m s mi) (h' : Instance (profile o) m s' mi') :
+    s = s' ∧ mi = mi'
+```
+
+(`Silmaril.Proofs.Project.Shapes.WasmWast`): `instantiateCfg?_sound` gives the `Instantiate`
+configuration and its run to the checker's configuration, `Game.instantiateCfg?_configOk` its
+typing; uniqueness from `instantiate?_evalConst_complete` (`Instantiate` has one configuration)
+and `nf_unique_of_join` (host-free normal forms at `profile o`). Under `Profile.spec`
+(`scriptSK`) the checker also requires no element or data segments and no start function, so the
+`Instantiate` configuration has no code and the state is unique without determinism
+(`instance_unique_nil`); every module of the six float files is such a module. `Reaches.spec`
+lifts an instance at `profile o` to `Profile.spec nd {}` (`instance_spec`: `Instantiate` does
+not depend on the profile, `instantiate?_iff`; the run refines, `Steps.deterministic_refines_spec`).
+
+The kernel checks themselves are the same `decide +kernel` evaluations in the same row modules;
+only the checker definitions changed, so the rows were rebuilt, not regenerated. In the slice no
+instantiated module of a single-module file has a global (the three `i32.wast` modules with
+globals are `assert_invalid` modules, never instantiated), so no row's verdict depends on the
+change; the statements are exact for modules with globals as well. The former `exportsScalar`
+check (needed only for `Game.IsInstance.ok`) is gone. `Instance.of_cfg` and `Instance.unique`
+restate the two theorems in `….WasmWast.Thms`.
+
+`#print axioms` gives only `propext`, `Classical.choice` and `Quot.sound` for `instance_of_cfg`,
+`instance_unique`, `instance_unique_nil`, `instance_spec`, `ScriptHolds.of_kernel`,
+`ScriptHolds.of_kernelKM`, `scriptK_of_scriptKM`, `ScriptAt.unique`, `ScriptHoldsS.of_kernel`,
+`Reaches.spec`, and the rows `….I32.l37`, `….I32.script0`, `….Traps.l17`, `….Address.l104`
+(`KMem`), `….F32.l19`, `….F32.l19_terminates` (`Profile.spec`).
 
 ### Modules with data segments: the checker on `KMem`
 
@@ -604,19 +753,19 @@ theorem ScriptHolds.of_kernelKM (h : scriptKM o fuel m cmds = true) : ScriptHold
 
 `scriptKM` is `scriptK` with the store over `KMem` (`Silmaril.Wasm.Execution.MemRep`, #796): a
 balanced tree of bytes whose reads and writes touch only the leaves they need. It instantiates
-`m` from `importStoreKM` (the empty `KMem` store) with the generic `instantiateOnce?`, and runs
+`m` from `importStoreKM` (the empty `KMem` store) with the generic `instantiateCfg?`, and runs
 each command with `runInvokeKR`, the structural driver `Verify.Kernel.runK` over the generic
 interpreter head step `interpHead o`. The statement `ScriptHolds o m cmds` is unchanged: it is
 about the `ByteArray` semantics (`Instance`, `InvokeNF` over `Step (profile o)`). The proof
 (`Silmaril.Proofs.Project.Shapes.WasmWast.scriptK_of_scriptKM`) maps every `KMem` store to its
 `ByteArray` reading `Store.toBytes`:
 
-* `importStoreKM.toBytes = Game.importStore []` (by `rfl`) and `instantiateOnce?_toBytes`: the
+* `importStoreKM.toBytes = Game.importStore []` (by `rfl`) and `instantiateCfg?_toBytes`: the
   `KMem` instantiation, read through `toBytes`, is the `ByteArray` instantiation;
 * `runK_eq` (now stated at any representation), `runI_toBytes` and
   `(invoke s a vs).toBytes = invoke s.toBytes a vs`: each `KMem` run, read through `toBytes`, is
   `runInvoke?` on the `ByteArray` store, with the same stop flag and outcome (`runInvokeK_toBytes`);
-* `invokeOkB` and `exportsScalar` read only the functions of the store, which `toBytes` keeps.
+* `invokeOkB` reads only the functions of the store, which `toBytes` keeps.
 
 So `scriptKM … = true` gives `scriptK … = true`, and `ScriptHolds.of_kernel` does the rest. The
 kernel never evaluates a `ByteArray` memory.
@@ -674,16 +823,21 @@ every command of the file but its `module` commands.
 | `linking.wast` | 142 | 133 | 9 | 0 | 0 |
 | `exports.wast` | 41 | 41 | 0 | 0 | 0 |
 | `start.wast` | 15 | 10 | 4 | 1 | 0 |
-| `global.wast` | 115 | 70 | 0 | 7 | 38 |
+| `global.wast` | 115 | 111 | 1 | 3 | 0 |
 | `data.wast` | 36 | 35 | 1 | 0 | 0 |
-| `elem.wast` | 77 | 57 | 2 | 5 | 13 |
-| **total** | **576** | **474** | **22** | **29** | **51** |
+| `elem.wast` | 77 | 73 | 4 | 0 | 0 |
+| **total** | **576** | **531** | **25** | **20** | **0** |
+
+Before host references ([above](#host-references-refextern-n-and-reffunc)): 474 proved, 22
+context, 29 unsupported, 51 undetermined (`global.wast` 70 proved, 38 undetermined; `elem.wast`
+57 proved, 13 undetermined).
 
 Before the scripts went on after a segment trap (the residual store, above): 392 proved, 16
 context, 32 unsupported, 136 undetermined; `linking.wast` 93, `data.wast` 20, `elem.wast` 30
 proved.
 
-The 474 proved rows: 149 `assert_return` (`host.returns_only`), 29 `assert_trap`
+The 531 proved rows: 199 `assert_return` (`host.returns_only`), 2 `assert_return` with the
+`(ref.func)` pattern (`host.returns_matching`, `global.wast` lines 660 and 661), 34 `assert_trap`
 (`host.traps_only`), 136 `assert_unlinkable` (`host.unlinkable`, strength `link`), 34
 `assert_uninstantiable` (`host.uninstantiable`: 32 segment initialisations that trap, in
 `linking.wast`, `data.wast` and `elem.wast`, and 2 start functions that trap, `start.wast` and
@@ -694,27 +848,32 @@ before its out-of-bounds data segment trapped (`….Linking.l410`, `….Linking.
 a print function in these scripts is a host call answered by `Spectest.host` and logged: the rows
 at lines 97, 98 and 116 of `imports.wast` print 15 values (`report.json` `printed`, from the
 probe), and the start functions of three modules of `start.wast` call `print_i32` (twice) and
-`print` (no values). Besides the 474 rows of the suite there are the 4 hand-written rows
-`silmaril.wasm_wast.spectest_host.*` (3 `host.returns_only`, 1 `host.log_is`). The 22 `context`
-rows are 17 `register` commands and 5 bare actions (`start.wast`, `data.wast`), run as part of
-every later row's prefix.
+`print` (no values). Besides the 531 rows of the suite there are the 4 hand-written rows
+`silmaril.wasm_wast.spectest_host.*` (3 `host.returns_only`, 1 `host.log_is`). The 25 `context`
+rows are 19 `register` commands and 6 bare actions (`start.wast`, `data.wast`, `elem.wast`), run
+as part of every later row's prefix. The rows with host references: `global.wast` lines 235
+(`set-mr` with `(ref.extern 10)`, no results) and 241 (`get-mr` returns `(ref.extern 10)`),
+`elem.wast` lines 1019, 1020 (`set` with `(ref.extern 42)`, `(ref.extern 137)` into the
+`externref` table of `$m`), 1022, 1023 (`get` returns them) and 1030 (after a module importing
+that table re-initialises index 0 with `(ref.null extern)` by an element segment, index 1 still
+holds `(ref.extern 137)`); e.g. `….Global.l241 : host.returns_only neverFail (pre cmds 32)
+(.invoke .cur "get-mr" []) [Val.ref (.extern (.host 10))]`.
 
 | count | status | reason |
 |---|---|---|
-| 38 | undetermined | an earlier command of the script did not run: `global.wast` line 235 calls `set-mr` with `(ref.extern 10)` |
-| 13 | undetermined | an earlier command of the script did not run: `elem.wast` line 1019 calls with an `externref` argument |
 | 20 | unsupported | `assert_malformed` on text (as above) |
-| 6 | unsupported | an expectation outside exact numbers and null references (`(ref.func)`, `(ref.extern n)`); the action still runs for the context |
-| 3 | unsupported | an `externref` argument (`(ref.extern n)`: host references are not modelled); the script stops there |
+| 0 | undetermined | — |
 | 0 | mismatch | — |
 
 `names.wast` is left out for kernel time: the kernel check of its third module (7.6 KB, 480
 exports) exceeded 33 GB of memory within two minutes; the native probe passes all its 482
 `assert_return` and the 2 calls of `spectest.print_i32` of its last module.
 
-Kernel time of the linked files (one `lake build`, 2-vCPU sandbox, two modules at a time):
-`Imports.Thms` 86 s (161 modules, 128 `assert_unlinkable` among them), `Global.Thms` 133 s (one
-module run, 41 rejection rows), `Elem.Thms` 42 s, `Linking.Thms` 38 s, `Data.Thms` 10 s, `Exports.Thms` 9.5 s, `Start.Thms` 6 s. The check of `global.wast`'s script alone (one
+Kernel time of the linked files (one `lake build` of all row modules after the change to the
+specification's instantiation, 2-vCPU sandbox, two modules at a time): `Imports.Thms` 74 s (161
+modules, 128 `assert_unlinkable` among them), `Global.Thms` 130 s (the whole script now, 41
+rejection rows), `Elem.Thms` 52 s, `Linking.Thms` 42 s, `Data.Thms` 11 s, `Exports.Thms` 8 s,
+`Start.Thms` 4 s. The check of `global.wast`'s script alone (one
 `decide +kernel` of `decodesB && scriptLK …`) takes 104 s and 20.7 GB peak RSS; the kernel's
 cache shares the decoding of each module between `decodesB` and the checker (with separate
 `decode` theorems the two together took about 290 s). Decoding dominates: the modules are
@@ -822,12 +981,12 @@ the pinned path (`$SIL_TOOLS/wasmtime-50.0.0/wasmtime`). `verify` does not run w
 checks that the recorded tool provenance equals the pins, that `report.json` and the spec files
 have the recorded SHA-256, that the commands run are exactly those the report selects (with the
 report's statuses), and that the counts follow from the results. With the converted JSON present
-(`--scripts` requires it) it regenerates all 8215 single scripts and the 6 linked-file scripts
+(`--scripts` requires it) it regenerates all 8215 single scripts and the 7 linked-file scripts
 and compares their SHA-256. `verify`
 checks consistency of the record, not wasmtime's verdicts: those are re-obtained only by running
 `oracle` again (in CI, `oracle --check`). `convert` also checks each unpacked spec file against
 the SHA-256 that `report.json` records. The whole `oracle` run takes about 75 s on the
-development sandbox (8221 scripts and the 19 upstream files).
+development sandbox (8222 scripts and the 19 upstream files).
 
 **Linked files.** For a linked file the oracle runs **one script per file**: every command the
 kernel ran, in order, as the file writes it (modules as `(module $name? binary …)` of the same
@@ -844,9 +1003,12 @@ immutable: cannot modify it with `global.set`" for "immutable global", a parse e
 
 Results:
 
-* 8568 commands run: the 8563 kernel-proved and 5 context actions (4 of `start.wast`, 1 of
-  `data.wast`; native only); **8563 of 8563** kernel-proved commands pass, among them the 474 of
-  the linked files (348 in 7 linked-file scripts, 126 rejections in single scripts);
+* 8626 commands run: the 8620 kernel-proved and 6 context actions (4 of `start.wast`, 1 of
+  `data.wast`, 1 of `elem.wast`; native only); **8620 of 8620** kernel-proved commands pass,
+  among them the 531 of the linked files (405 in 7 linked-file scripts, 126 rejections in single
+  scripts), with every `(ref.extern n)` argument and result and both `(ref.func)` results;
+* before host references: 8568 commands run, 8563 of 8563 kernel-proved pass (474 of the linked
+  files);
 * before the residual store: 8485 commands run, 8481 of 8481 kernel-proved pass (392 of the
   linked files);
 * earlier: 8089 commands run, all of them kernel-proved (1140 executions at `profile o`, 6783 at
@@ -921,22 +1083,28 @@ record, and it writes the fresh record to `$WASM_WAST_WORK/oracle.check.json`.
   marked line expects 0 (a rolled-back memory); wasmtime must fail on it ("expected 0, actual
   42"). `regress/right-segment-trap-state.wast` (42; the stored function is callable, index 1
   traps) must pass;
-* five generated mutants: the first `assert_return` script of `oracle_scripts` with its result
+* `regress/wrong-externref.wast`: **a host reference**. A module stores its `externref` argument
+  in a mutable global and a table; after `(invoke "set" (ref.extern 1))` the marked line expects
+  `(ref.extern 2)` from the global; wasmtime must fail on it ("expected 2 found 1").
+  `regress/right-externref.wast` (`(ref.extern 1)`) must pass;
+* six generated mutants: the first `assert_return` script of `oracle_scripts` with its result
   plus one, the first `assert_invalid` script with its module replaced by the empty (valid)
   module, the first `nan:arithmetic` script of an `add` of a non-canonical NaN with
   `nan:canonical` instead, and, in the linked script of `linking.wast`, the first
   `assert_return` on a current module that imports from another registered module, plus one,
   with the script cut after it (wasmtime must fail on that line), and in the same script the
   first `assert_return` after a segment-trapping `assert_trap (module …)` (line 410, which reads
-  the residual table), plus one (wasmtime must fail on that line). wasmtime must fail on each.
+  the residual table), plus one (wasmtime must fail on that line), and in the linked script of
+  `global.wast` the first `assert_return` expecting `(ref.extern n)` (line 241, `(ref.extern 10)`)
+  with `(ref.extern 11)` (wasmtime must fail on that line). wasmtime must fail on each.
 
-Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (18 scripts: 9 committed
-wrong, 4 committed controls, 5 generated wrong). Tampering
+Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (21 scripts: 10 committed
+wrong, 5 committed controls, 6 generated wrong). Tampering
 with one committed verdict in `oracle.json` makes `oracle --check` exit 1, and making
 `wrong-return.wast` right makes `regress` exit 1 ("wasmtime ACCEPTS a wrong expectation").
 
 Cost: downloads of about 35 MB on a cold cache (spec archive 15.0 MB, wasm-tools and wasmtime
-archives), then `convert` 0.5 s, `oracle --check` about 63 s (8215 single scripts, 6 linked-file
+archives), then `convert` 0.5 s, `oracle --check` about 63 s (8215 single scripts, 7 linked-file
 scripts, 19 upstream files), `verify --scripts` and `regress` about 1 s each on the development
 sandbox; the job has a 5-minute timeout. It grows linearly with the number of scripts (about
 7 ms each); a linked file adds one script, not one per command.
@@ -946,11 +1114,12 @@ sandbox; the job has a 5-minute timeout. It grows linearly with the number of sc
 * **Core vs the specification.** Rows are about silmaril-lean's `Execution.Core.Step`. Its
   agreement with the SpecTec transcription of Wasm 3.0 is partly proved, and the whole-step
   simulation goals are open (`docs/projects/wasm.md`).
-* **Instantiation.** In the single-module files it is `instantiateOnce?` (a function, related to
-  the relational `Instantiate` by `instantiateOnce?_steps`; their modules are instantiated in the
-  empty store). In the linked files the statement is the specification's `Instantiate` itself
-  (`InstNF`: globals allocated as `$instantiate` allocates them, segment code and start call run
-  by `Step`); the checker's `instantiateCfg?` is related to it by `instantiateCfg?_sound`.
+* **Instantiation.** Every statement uses the specification's `Instantiate` itself: `Instance`
+  in the single-module files (in the empty store), `InstNF` in the linked files (globals allocated
+  as `$instantiate` allocates them, segment code and start call run by `Step`); the checkers'
+  `instantiateCfg?` is related to it by `instantiateCfg?_sound`. `Instantiate` is silmaril-lean's
+  transcription of `$instantiate` (with the documented closing of global types over the allocated
+  types), not proved equal to the SpecTec rule.
 * **Profiles.** The integer, control and memory rows are at `profile neverFail`; the float rows
   at `Profile.spec nd r` (the theorems hold for every `nd` and `r`; the rows state `Profile.spec`'s
   defaults). A `Profile.spec` row quantifies over every run of the specification's NaN choices;
@@ -960,8 +1129,9 @@ sandbox; the job has a 5-minute timeout. It grows linearly with the number of sc
   check, not a weaker claim.
 * **`KMem` rows** (`address.wast`) are kernel evaluations on `KMem` stores, carried to the
   `ByteArray` statements by proved simulations (`scriptK_of_scriptKM`): no extra assumption.
-* **Modules** of the single-module files must be valid, with no imports, no start function
-  and scalar function exports. In the **linked files** modules may import (resolved by name
+* **Modules** of the single-module files must be valid, with no imports; the checkers also
+  require the instantiation code to end empty (so no start function in practice), and, under
+  `Profile.spec`, no element or data segments. In the **linked files** modules may import (resolved by name
   through the registry, typed by `ExternAddrOk`) and have start functions; a segment trap during
   instantiation is a trap of the `Instantiate` configuration, and the script goes on with the
   residual store.
@@ -1007,6 +1177,9 @@ sandbox; the job has a 5-minute timeout. It grows linearly with the number of sc
   command lists, then the kernel theorems and the rows `silmaril.wasm_wast.<file>.l<line>`.
   `Silmaril.Project.WasmWast.Thms` imports them all, and `silmaril.toml` puts it in the project
   dump.
+* `Silmaril/Project/Shapes/WasmWastRef/{Defs,Thms}.lean`,
+  `Silmaril/Proofs/Project/Shapes/WasmWastRef.lean`: host references, `(ref.extern n)` arguments
+  (`argsOkR`, `invokeOkRB`, `invokeOkRB_sound`) and the result patterns `Pat` (`matchAll_sound`).
 * `Silmaril/Project/Shapes/WasmWastHost/{Defs,Thms}.lean`,
   `Silmaril/Proofs/Project/Shapes/WasmWastHost.lean`: the typed host `Spectest.host`, the registry
   `resolve?`, the script contexts with the host-call log, the shapes `host.*`, the checkers
@@ -1071,6 +1244,7 @@ deterministic interpreter up to NaN payloads, which needs the payloads not to re
 as allowed sets; `assert_invalid` relative to the specification (a proved bridge between
 `ModuleOk` and the SpecTec validation rules); `assert_malformed` beyond the tool level (decoder
 completeness; text: a WAT front end with a completeness theorem and an error that separates
-malformed from unsupported text); host references (`ref.extern n`) as arguments and
-results; `names.wast` (kernel memory); the `env` virtual module of the reference interpreter;
+malformed from unsupported text); the WAST reference patterns other than exact values and
+`(ref.func)` (`(ref.extern)`, `(ref.any)`, …, `either`) and `(ref.host n)` arguments (none in the
+slice); `names.wast` (kernel memory); the `env` virtual module of the reference interpreter;
 claims about printed output as text; and the rest of the suite.

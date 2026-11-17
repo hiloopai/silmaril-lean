@@ -8,14 +8,22 @@ public import Silmaril.Wasm.SingleThreaded.Determinism.Join
 public import Silmaril.Wasm.SingleThreaded.Soundness
 public import Silmaril.Wasm.Verify.Kernel.Thms
 public import Silmaril.Wasm.Execution.MemRep.Inst.Thms
+public import Silmaril.Wasm.Execution.InstantiateTrap.Thms
+public import Silmaril.Wasm.Game.InstantiateTrap.Thms
+public import Silmaril.Wasm.Game.InstantiateTyped.Thms
+public import Silmaril.Wasm.Execution.Core.Exec.InstantiateIff
 import Silmaril.Wasm.Binary.Core.DecodeSound
 import Silmaril.Wasm.Validation.Check.ValidateFinal
 
 /-!
 # Proofs: WAST script commands from one kernel evaluation
 
-* `storeOk_of_inst`: the store of an instantiated module (valid, no imports, scalar function
-  exports) is well typed, through `Silmaril.Wasm.Game.IsInstance.ok`;
+* `instance_of_cfg`: when `instantiateCfg?` (the specification's allocation, then the segment
+  initialisation) ends at the empty code, the `Instantiate` configuration runs to it
+  (`instantiateCfg?_sound`), so the script state is `Instance`, and the store is typed
+  (`Game.instantiateCfg?_configOk`);
+* `instance_unique`: at `profile o` the instantiation has one outcome
+  (`instantiate?_evalConst_complete`, `nf_unique_of_join`);
 * `invokeOk_of_invokeOkB`: typed arguments give the premise `InvokeOk` of `$invoke`;
 * `actK_sound`: a stopped run of `runInvokeK` at a result is a host-free normal form, and its
   store is well typed (`runInvoke?_steps_noHost`, `runInvoke?_stopped`, `runInvoke?_sound`);
@@ -23,7 +31,7 @@ import Silmaril.Wasm.Validation.Check.ValidateFinal
   `nf_unique_of_join`), hence `scriptAt_unique`: a script reaches at most one state;
 * `scriptHolds_of_kernel`: `scriptK … = true` gives `ScriptHolds`;
 * `scriptK_of_scriptKM`: `scriptKM … = true` (the checker on `KMem` stores) gives
-  `scriptK … = true`, by `instantiateOnce?_toBytes` and `runI_toBytes`;
+  `scriptK … = true`, by `instantiateCfg?_toBytes` and `runI_toBytes`;
 * `reaches_always`: at `profile o` one run of a command to a result rules out infinite runs of
   it and extends every finite run to that result (`Det.DStep.join'`, `Det.DStep.shrink`).
 * `validatorRejects_not_valid`: a validator rejection of the module the decoder reads excludes
@@ -38,40 +46,28 @@ namespace Silmaril.Proofs.Project.Shapes.WasmWast
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded Silmaril.Project.Shapes.WasmWast
 
-/-! ## Instances -/
+/-! ## Instances: the specification's instantiation -/
 
-theorem forall₂_of_mapM {α β : Type} {f : α → Option β} :
-    ∀ {l : List α} {l' : List β}, l.mapM f = some l' → List.Forall₂ (fun a b => f a = some b) l l'
-  | [], l', h => by simp at h; subst h; exact .nil
-  | a :: l, l', h => by
-    rw [List.mapM_cons] at h
-    cases ha : f a with
-    | none => simp [ha] at h
-    | some b =>
-      cases hl : l.mapM f with
-      | none => simp [ha, hl] at h
-      | some bs =>
-        have h' : b :: bs = l' := by simpa [ha, hl] using h
-        subst h'
-        exact .cons ha (forall₂_of_mapM hl)
+theorem not_step_nil {P : Numerics.Profile} {c : Config Nat} (hc : c.code = []) (x : Config Nat) :
+    ¬ Step P Det.noHost c x := by
+  rcases c with ⟨s, f, code⟩
+  cases hc
+  exact fun h => Det.not_step_vals (W := []) h
 
-/-- The store of an instantiated module with no imports and scalar function exports is well
+/-- **The checker's instantiation is the specification's**: when the module is valid without
+imports and `instantiateCfg?` (`prepare?`, then the trap-aware segment initialisation) ends at the
+empty code, the `Instantiate` configuration runs to it under every profile, and its store is
 typed. -/
-theorem storeOk_of_inst {m : Module} {mt : CModuleType} {s : Store Nat} {f : Frame}
-    (hv : validate? m = some mt) (himp : mt.imports = [])
-    (hi : instantiateOnce? (Game.importStore []) m [] = some (s, f, none))
-    (hx : exportsScalar s f.module = true) : StoreOk s := by
-  unfold exportsScalar at hx
-  obtain ⟨ts, hts⟩ := Option.isSome_iff_exists.mp hx
-  have hI : Game.IsInstance m mt ⟨[], ts, Game.exportFuncAddrs f.module, s⟩ := by
-    refine ⟨hv, by simp [himp], by simp [himp, CExternType.funcs], ⟨f, ?_, rfl⟩, ?_⟩
-    · rw [himp]
-      exact hi
-    · refine (forall₂_of_mapM hts).imp fun a ft h => ?_
-      cases hf : s.funcs[a]? with
-      | none => simp [hf] at h
-      | some fi => exact ⟨fi, rfl, by simpa [hf] using h⟩
-  exact hI.ok.storeOk
+theorem instance_of_cfg {P : Numerics.Profile} {m : Module} {mt : CModuleType} {c : Config Nat}
+    {mi : ModuleInst} (hv : validate? m = some mt) (himp : mt.imports = [])
+    (hcfg : instantiateCfg? (Game.importStore []) m [] = some (c, mi)) (hc : c.code = []) :
+    Instance P m c.store mi ∧ StoreOk c.store := by
+  have hm : ModuleOk m ⟨[], mt.exports⟩ := by rw [← himp]; exact validate?_sound hv
+  obtain ⟨c₀, hI, hmi, hst⟩ := instantiateCfg?_sound (P := P) (host := Det.noHost)
+    ⟨mt.exports, [], hm, .nil⟩ hcfg
+  refine ⟨⟨⟨mt.exports, hm⟩, c₀, c, hI, hmi, hst, hc, rfl⟩, ?_⟩
+  exact ConfigOk.storeOk (Game.instantiateCfg?_configOk Game.importStore_nil_ok (validate?_sound hv)
+    (by rw [himp]; exact .nil) hcfg)
 
 /-! ## Invocations -/
 
@@ -135,13 +131,17 @@ theorem invokeNF_unique {o : GrowOracle} {s : Store Nat} {a : Nat} {args : List 
 
 /-! ## Scripts -/
 
-theorem instance_unique {m : Module} {s s' : Store Nat} {mi mi' : ModuleInst}
-    (h : Instance m s mi) (h' : Instance m s' mi') : s = s' ∧ mi = mi' := by
-  obtain ⟨-, f, hf, rfl⟩ := h
-  obtain ⟨-, f', hf', rfl⟩ := h'
-  rw [hf] at hf'
-  simp only [Option.some.injEq, Prod.mk.injEq] at hf'
-  obtain ⟨rfl, rfl, -⟩ := hf'
+/-- At `profile o`, the specification's instantiation has one outcome: `Instantiate` has one
+configuration (`instantiate?_evalConst_complete`), and host-free normal forms are unique
+(`DStep.join'`). -/
+theorem instance_unique {o : GrowOracle} {m : Module} {s s' : Store Nat} {mi mi' : ModuleInst}
+    (h : Instance (profile o) m s mi) (h' : Instance (profile o) m s' mi') : s = s' ∧ mi = mi' := by
+  obtain ⟨-, c₀, c, hI, rfl, hst, hc, rfl⟩ := h
+  obtain ⟨-, c₀', c', hI', rfl, hst', hc', rfl⟩ := h'
+  obtain rfl : c₀ = c₀' := Option.some.inj
+    ((instantiate?_evalConst_complete hI).symm.trans (instantiate?_evalConst_complete hI'))
+  obtain rfl := nf_unique_of_join (R := Det.DStep o) (fun ha hb => Det.DStep.join' ha hb) hst hst'
+    (not_step_nil hc) (not_step_nil hc')
   exact ⟨rfl, rfl⟩
 
 theorem run_unique {o : GrowOracle} {mi : ModuleInst} {s s₁ s₂ : Store Nat} {acts : List Action}
@@ -225,12 +225,11 @@ theorem scriptHolds_of_kernel {o : GrowOracle} {fuel : Nat} {m : Module} {cmds :
     simp only [Bool.and_eq_true, List.isEmpty_iff] at h
     obtain ⟨himp, h⟩ := h
     split at h
-    · rename_i s f hi
-      simp only [Bool.and_eq_true] at h
-      obtain ⟨hx, h⟩ := h
-      have hs := storeOk_of_inst hv himp hi hx
-      have hS : ScriptAt o m [] f.module s :=
-        ⟨s, ⟨⟨mt.exports, by rw [← himp]; exact validate?_sound hv⟩, f, hi, rfl⟩, .nil _⟩
+    · rename_i c mi hcfg
+      simp only [Bool.and_eq_true, List.isEmpty_iff] at h
+      obtain ⟨hc, h⟩ := h
+      obtain ⟨hI, hs⟩ := instance_of_cfg (P := profile o) hv himp hcfg hc
+      have hS : ScriptAt o m [] mi c.store := ⟨c.store, hI, .nil _⟩
       intro k cmd hk
       simpa using cmdsK_holds hs hS h k cmd hk
     · cases h
@@ -243,9 +242,6 @@ section KM
 open Silmaril.Wasm.Execution (KMem MemRep LawfulMemRep)
 
 theorem importStoreKM_toBytes : importStoreKM.toBytes = Game.importStore [] := rfl
-
-theorem exportsScalar_toBytes {R : Type} [MemRep R] (s : Store Nat R) (mi : ModuleInst) :
-    exportsScalar s.toBytes mi = exportsScalar s mi := rfl
 
 theorem invokeOkB_toBytes {R : Type} [MemRep R] (s : Store Nat R) (a : Nat) (args : List Val) :
     invokeOkB s.toBytes a args = invokeOkB s a args := rfl
@@ -308,12 +304,12 @@ theorem scriptK_of_scriptKM {o : GrowOracle} {fuel : Nat} {m : Module} {cmds : L
     refine ⟨h.1, ?_⟩
     have h2 := h.2
     split at h2
-    · rename_i s f hi
-      have hb := instantiateOnce?_toBytes importStoreKM m []
+    · rename_i c mi hi
+      have hb := instantiateCfg?_toBytes importStoreKM m []
       rw [hi, importStoreKM_toBytes] at hb
-      rw [← hb]
+      rw [hb]
       simp only [Option.map_some, Bool.and_eq_true] at h2 ⊢
-      exact ⟨by rw [exportsScalar_toBytes]; exact h2.1, cmdsK_of_cmdsKM h2.2⟩
+      exact ⟨h2.1, cmdsK_of_cmdsKM h2.2⟩
     · cases h2
   · cases h
 

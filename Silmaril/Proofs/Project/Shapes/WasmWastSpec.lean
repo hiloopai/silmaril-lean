@@ -4,6 +4,7 @@ public import Silmaril.Project.Shapes.WasmWastSpec.Defs
 public import Silmaril.Wasm.Execution.StraightLine.Thms
 public import Silmaril.Wasm.Execution.Core.SpecProfile
 public import Silmaril.Wasm.SingleThreaded.Determinism.Stuck
+public import Silmaril.Wasm.Execution.Core.Exec.InstantiateIff
 import Silmaril.Proofs.Project.Shapes.WasmWast
 import Silmaril.Wasm.Validation.Check.ValidateFinal
 
@@ -469,25 +470,56 @@ theorem runS_self {s : Store Nat} {mi : ModuleInst} :
     obtain ⟨res, hres⟩ := mem_outcome hm
     exact .cons hG.ha hnf hres (runS_self (fun act h => hg act (by simp [h])))
 
-theorem scriptAtS_iff {m : Module} {s : Store Nat} {mi : ModuleInst} (hI : Instance m s mi)
+/-- From a configuration with no code, the only run is the empty one. -/
+theorem steps_nil_eq {P : Profile} {c c' : Config Nat} (hc : c.code = [])
+    (h : Steps P Det.noHost c c') : c' = c := by
+  rcases Relation.ReflTransGen.cases_head h with rfl | ⟨x, hx, -⟩
+  · rfl
+  · exact absurd hx (WasmWast.not_step_nil hc x)
+
+/-- Without element and data segments and without a start function, the specification's
+instantiation configuration has no code. -/
+theorem instantiate_code_nil {P : Profile} {m : Module} {c₀ : Config Nat}
+    (hI : Instantiate P Det.noHost (Game.importStore []) m [] c₀)
+    (hn : m.elems = [] ∧ m.data = [] ∧ m.start = none) : c₀.code = [] := by
+  obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, -, -, rfl⟩ := hI.run
+  obtain ⟨he, hd, hs⟩ := hn
+  simp [he, hd, hs, expression]
+
+/-- Without element and data segments and without a start function, the specification's
+instantiation has one outcome under every profile. -/
+theorem instance_unique_nil {P : Profile} {m : Module} {s s' : Store Nat} {mi mi' : ModuleInst}
+    (hn : m.elems = [] ∧ m.data = [] ∧ m.start = none) (h : Instance P m s mi)
+    (h' : Instance P m s' mi') : s = s' ∧ mi = mi' := by
+  obtain ⟨-, c₀, c, hI, rfl, hst, -, rfl⟩ := h
+  obtain ⟨-, c₀', c', hI', rfl, hst', -, rfl⟩ := h'
+  obtain rfl : c₀ = c₀' := Option.some.inj
+    ((instantiate?_evalConst_complete hI).symm.trans (instantiate?_evalConst_complete hI'))
+  have h0 := instantiate_code_nil hI hn
+  rw [steps_nil_eq h0 hst, steps_nil_eq h0 hst']
+  exact ⟨rfl, rfl⟩
+
+theorem scriptAtS_iff {m : Module} {s : Store Nat} {mi : ModuleInst}
+    (hn : m.elems = [] ∧ m.data = [] ∧ m.start = none) (hI : Instance (Profile.spec nd r) m s mi)
     {pre : List Action} (hg : ∀ act ∈ pre, ∃ a S, Good s mi act a S) {mi' : ModuleInst}
     {s' : Store Nat} : ScriptAtS nd r m pre mi' s' ↔ mi' = mi ∧ s' = s := by
   constructor
   · rintro ⟨s₀, hI', hrun⟩
-    obtain ⟨rfl, rfl⟩ := WasmWast.instance_unique hI hI'
+    obtain ⟨rfl, rfl⟩ := instance_unique_nil hn hI hI'
     exact ⟨rfl, runS_eq hg hrun⟩
   · rintro ⟨rfl, rfl⟩
     exact ⟨_, hI, runS_self hg⟩
 
 /-- The claims of one command. -/
-theorem cmd_holds {m : Module} {s : Store Nat} {mi : ModuleInst} (hI : Instance m s mi)
+theorem cmd_holds {m : Module} {s : Store Nat} {mi : ModuleInst}
+    (hn : m.elems = [] ∧ m.data = [] ∧ m.start = none) (hI : Instance (Profile.spec nd r) m s mi)
     {pre : List Action} (hg : ∀ act ∈ pre, ∃ a S, Good s mi act a S) {cmd : CmdS} {a : Nat}
     {S : NumSet} (hG : Good s mi cmd.act a S) (he : ∀ e, cmd.expect = some e → S.sub e = true) :
     cmd.Holds nd r m pre := by
-  have hS : ScriptAtS nd r m pre mi s := (scriptAtS_iff hI hg).mpr ⟨rfl, rfl⟩
+  have hS : ScriptAtS nd r m pre mi s := (scriptAtS_iff hn hI hg).mpr ⟨rfl, rfl⟩
   have hterm : TerminatesAll nd r m pre cmd.act := by
     intro mi' s' a' hS' ha'
-    obtain ⟨rfl, rfl⟩ := (scriptAtS_iff hI hg).mp hS'
+    obtain ⟨rfl, rfl⟩ := (scriptAtS_iff hn hI hg).mp hS'
     rw [hG.ha] at ha'
     cases ha'
     exact hG.term nd r
@@ -499,7 +531,7 @@ theorem cmd_holds {m : Module} {s : Store Nat} {mi : ModuleInst} (hI : Instance 
     · obtain ⟨is', hm, hnf⟩ := hG.ex nd r
       obtain ⟨res, hres, hR⟩ := sub_sound hsub hm
       exact ⟨mi, s, a, _, res, hS, hG.ha, hnf, hres, hR⟩
-    · obtain ⟨rfl, rfl⟩ := (scriptAtS_iff hI hg).mp hS'
+    · obtain ⟨rfl, rfl⟩ := (scriptAtS_iff hn hI hg).mp hS'
       rw [hG.ha] at ha'
       cases ha'
       obtain ⟨is', hm, rfl⟩ := hG.nf nd r c hc
@@ -517,22 +549,23 @@ theorem scriptHoldsS_of_kernel {m : Module} {cmds : List CmdS} (h : scriptSK m c
   unfold scriptSK at h
   split at h
   · rename_i mt hv
-    simp only [Bool.and_eq_true, List.isEmpty_iff] at h
-    obtain ⟨himp, h⟩ := h
+    simp only [Bool.and_eq_true, List.isEmpty_iff, Option.isNone_iff_eq_none] at h
+    obtain ⟨⟨⟨⟨himp, he⟩, hd⟩, hst⟩, h⟩ := h
     split at h
-    · rename_i s f hi
-      have hI : Instance m s f.module :=
-        ⟨⟨mt.exports, by rw [← himp]; exact validate?_sound hv⟩, f, hi, rfl⟩
+    · rename_i c mi hcfg
+      simp only [Bool.and_eq_true, List.isEmpty_iff] at h
+      obtain ⟨hc, h⟩ := h
+      have hI := (WasmWast.instance_of_cfg (P := Profile.spec nd r) hv himp hcfg hc).1
       rw [List.all_eq_true] at h
       intro k cmd hk
-      have hmem : ∀ act ∈ preS cmds k, ∃ a S, Good s f.module act a S := by
+      have hmem : ∀ act ∈ preS cmds k, ∃ a S, Good c.store mi act a S := by
         intro act hact
         simp only [preS, List.mem_map] at hact
-        obtain ⟨c, hc, rfl⟩ := hact
-        obtain ⟨a, S, hG, -⟩ := cmdSK_sound (h c (List.mem_of_mem_take hc))
+        obtain ⟨c', hc', rfl⟩ := hact
+        obtain ⟨a, S, hG, -⟩ := cmdSK_sound (h c' (List.mem_of_mem_take hc'))
         exact ⟨a, S, hG⟩
-      obtain ⟨a, S, hG, he⟩ := cmdSK_sound (h cmd (List.mem_of_getElem? hk))
-      exact cmd_holds hI hmem hG he
+      obtain ⟨a, S, hG, he'⟩ := cmdSK_sound (h cmd (List.mem_of_getElem? hk))
+      exact cmd_holds ⟨he, hd, hst⟩ hI hmem hG he'
     · cases h
   · cases h
 
@@ -578,11 +611,21 @@ theorem run_spec {mi : ModuleInst} {s s' : Store Nat} {pre : List Action}
   | nil => exact .nil _
   | cons ha hc hr _ ih => exact .cons ha (invokeNF_spec nd hc hr) hr ih
 
+/-- The specification's instantiation at `profile o` is one at `Profile.spec nd {}`: `Instantiate`
+does not depend on the profile (`instantiate?_iff`), and the run of its code refines. -/
+theorem instance_spec {m : Module} {s : Store Nat} {mi : ModuleInst}
+    (h : Instance (profile o) m s mi) : Instance (Profile.spec nd {}) m s mi := by
+  obtain ⟨hm, c₀, c, hI, hmi, hst, hc, hs⟩ := h
+  have hI' : Instantiate (Profile.spec nd {}) Det.noHost (Game.importStore []) m [] c₀ :=
+    (instantiate?_iff hI.valid).1 (instantiate?_evalConst_complete hI)
+  exact ⟨hm, c₀, c, hI', hmi, Steps.deterministic_refines_spec nd hst, hc, hs⟩
+
 /-- **A run at `profile o` to a result is a run at `Profile.spec nd {}`.** -/
 theorem reaches_spec {m : Module} {pre : List Action} {act : Action} {res : Result}
     (h : Reaches o m pre act res) : ReachesS nd {} m pre act (· = res) := by
   obtain ⟨mi, s, a, c, ⟨s₀, hI, hrun⟩, ha, hc, hr⟩ := h
-  exact ⟨mi, s, a, c, res, ⟨s₀, hI, run_spec nd hrun⟩, ha, invokeNF_spec nd hc hr, hr, rfl⟩
+  exact ⟨mi, s, a, c, res, ⟨s₀, instance_spec nd hI, run_spec nd hrun⟩, ha, invokeNF_spec nd hc hr,
+    hr, rfl⟩
 
 theorem returnsAllowedExists_of_returns {m : Module} {pre : List Action} {act : Action}
     {vs : List Val} (h : Returns o m pre act vs) :

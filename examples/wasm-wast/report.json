@@ -12,11 +12,11 @@
  },
  "profile": "profile neverFail (deterministic: canonical NaNs, $ND = false, grow fails only when impossible) for the returns_only/traps_only rows and the link.* rows of the linked files (imports.wast, linking.wast, exports.wast, start.wast, global.wast, data.wast, elem.wast); Profile.spec (nan := .spec: float operators return the specification's result sets; $ND = true, default relaxed choices; the kernel theorems hold for every $ND and relaxed choice) for the returns_allowed_all/traps_all/terminates_all rows of f32.wast, f64.wast, f32_bitwise.wast, f64_bitwise.wast, float_misc.wast, conversions.wast",
  "assumptions": [
-  "assert_return/assert_trap rows: the module is valid, has no imports and no start function, and its function exports have scalar types",
+  "assert_return/assert_trap rows: the module is valid and has no imports; its instance and initial store are the specification's instantiation (Instance: the Instantiate configuration of Wasm 3.0 $instantiate in the empty store, every global allocated as $evalglobals and $allocmodule allocate it, run by host-free Core steps under the row's profile to the empty code: segment code and, if any, the start call)",
   "assert_return/assert_trap rows: no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
   "assert_return/assert_trap rows: the script state: the store threads through the earlier actions of the same module, in order",
   "assert_return/assert_trap rows: termination is witnessed by the kernel run; other runs reach the same normal form by determinism",
-  "returns_allowed_all/traps_all/terminates_all rows (f32.wast, f64.wast, f32_bitwise.wast, f64_bitwise.wast, float_misc.wast, conversions.wast): the same module conditions; claims are about Core reduction Step (Profile.spec nd r) with no host function, for every $ND and relaxed choice (rows state nd = true, r = default); every exported function is straight-line numeric (local.get 0 ... local.get (k-1); op), so every run is described by Silmaril.Wasm.Execution.Core.StraightLine.{nf, reaches, not_diverges, extends_nf}; nan:canonical = canonical NaN of either sign, nan:arithmetic = NaN with the quiet bit set, of either sign, other expectations are exact bits",
+  "returns_allowed_all/traps_all/terminates_all rows (f32.wast, f64.wast, f32_bitwise.wast, f64_bitwise.wast, float_misc.wast, conversions.wast): the same module conditions, and no element or data segments and no start function (the Instantiate configuration has no code); claims are about Core reduction Step (Profile.spec nd r) with no host function, for every $ND and relaxed choice (rows state nd = true, r = default); every exported function is straight-line numeric (local.get 0 ... local.get (k-1); op), so every run is described by Silmaril.Wasm.Execution.Core.StraightLine.{nf, reaches, not_diverges, extends_nf}; nan:canonical = canonical NaN of either sign, nan:arithmetic = NaN with the quiet bit set, of either sign, other expectations are exact bits",
   "assert_invalid rows are tool-level (silmaril.shapes.wasm.wast.validator_rejects): silmaril-lean's decode? reads the bytes wasm-tools wrote and silmaril-lean's validate? rejects the module; with validate?_complete, no module the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)",
   "linked-script rows (imports.wast, linking.wast, exports.wast, start.wast, global.wast, data.wast, elem.wast; silmaril.shapes.wasm.wast.host.*): the whole file is one script, from the context Init; claims are about Core reduction Step (profile neverFail) against the concrete host Spectest.host (deterministic: Spectest.hostDet), after the actual runs of every earlier module, register and action of the file, in order (stores and the host-call log persist across modules, also through imported memories, tables and globals); imports resolve in import order through the registry (resolve?): an export of a registered instance, or a spectest name (fresh print function or global per import, the shared table/table64/memory, as the reference interpreter's spectest.ml), and must have the import types (ExternAddrOk); modules are instantiated by the specification's Instantiate configuration (every global allocated as $instantiate allocates it), whose segment code and start call run as Core reduction against Spectest.host",
   "linked-script rows: host model: spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
@@ -1484,56 +1484,56 @@
      "line": 295,
      "name": null,
      "wasm_sha256": "d79cb12351cf1d0db941cf6a7e0f84b1915ae1780f178b74643051cc9b2d7019",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 2,
      "line": 296,
      "name": null,
      "wasm_sha256": "d79cb12351cf1d0db941cf6a7e0f84b1915ae1780f178b74643051cc9b2d7019",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 3,
      "line": 373,
      "name": null,
      "wasm_sha256": "b9f7376853de86a528899640e0c6f49afa67f68616dcc3e9373c2c97c373d36b",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 4,
      "line": 374,
      "name": null,
      "wasm_sha256": "b64f7c93719721f8af2877a957ab5b3961da7c3c463458a5aeabeb8a748c76b4",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 5,
      "line": 381,
      "name": null,
      "wasm_sha256": "d1b71b4bb52db96ab5e7b97060b98b51f4fd0b625ac441fa66490bfc8f8f7624",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 6,
      "line": 411,
      "name": null,
      "wasm_sha256": "dd654c11e40b2cebb5b728443089857c2c04cc528d67e3ed240717f50f9eb03d",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 7,
      "line": 629,
      "name": null,
      "wasm_sha256": "cf3056891f7b38427d9f4a0c79bc61d9d6510c9666acda07ec2b3212e6417203",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 8,
      "line": 634,
      "name": null,
      "wasm_sha256": "bf8088a285c15f71e3674d65f6ff0096b76c917c8166254a54d8dda0fe0ce326",
-     "status": "not run"
+     "status": "run"
     }
    ]
   },
@@ -2263,56 +2263,56 @@
      "line": 1025,
      "name": null,
      "wasm_sha256": "e5dfb7736f3a1f7d0f15d604e1c1bd2b9a8fc9154baf75cfed870a90c884d82e",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 70,
      "line": 1034,
      "name": "module4",
      "wasm_sha256": "a434e181a6c1d645830c51a75e2ef40f9af1b4735a33c95c0ba96432038119ae",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 71,
      "line": 1043,
      "name": null,
      "wasm_sha256": "a3c352c33d2f7b49563bac714d645d39b98be5ceeefbc8ba9cff53cefbf8c56a",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 72,
      "line": 1057,
      "name": null,
      "wasm_sha256": "a3c83f0df24f0f2eb09af0ce3e25068c448b7ff618b37488b08e1e183e9fd48b",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 73,
      "line": 1068,
      "name": null,
      "wasm_sha256": "60c80d2e64f98386b0f2acbceecac027ad6e933b080fe5b97020acd10940b9b7",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 74,
      "line": 1079,
      "name": null,
      "wasm_sha256": "b0017f8ad1f214fea0a4ca3ff6c2f11f48d8a2bc754255ebc70be266d334e3f3",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 75,
      "line": 1092,
      "name": null,
      "wasm_sha256": "99b3243529af91cc479043f10fcfe0d2cd23607486df471a8379c8ffb1e76fa9",
-     "status": "not run"
+     "status": "run"
     },
     {
      "index": 76,
      "line": 1113,
      "name": null,
      "wasm_sha256": "78a7927fb9b56dbb498b3109ad541339c50d958618d10f5f383b085d14f9f687",
-     "status": "not run"
+     "status": "run"
     }
    ]
   }
@@ -331810,7 +331810,7 @@
    "expected": [
     "externref:null"
    ],
-   "observed": "values ref",
+   "observed": "values ref.null",
    "context": {
     "registered": [
      "spectest"
@@ -331855,7 +331855,7 @@
    "expected": [
     "externref:null"
    ],
-   "observed": "values ref",
+   "observed": "values ref.null",
    "context": {
     "registered": [
      "spectest"
@@ -332871,301 +332871,950 @@
    "file": "global",
    "line": 235,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "set-mr",
    "args": [
     "externref:10"
    ],
    "expected": [],
-   "reason": "argument type outside i32/i64/f32/f64 (the action cannot be run)"
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l235",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l235",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l235",
+     "theorem": "Silmaril.Project.WasmWast.Global.l235"
+    }
+   ]
   },
   {
    "id": "global:237",
    "file": "global",
    "line": 237,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-x",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l237",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l237",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l237",
+     "theorem": "Silmaril.Project.WasmWast.Global.l237"
+    }
+   ]
   },
   {
    "id": "global:238",
    "file": "global",
    "line": 238,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-y",
    "args": [],
    "expected": [
     "i64:7"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i64:7",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l238",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l238",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i64:7"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l238",
+     "theorem": "Silmaril.Project.WasmWast.Global.l238"
+    }
+   ]
   },
   {
    "id": "global:239",
    "file": "global",
    "line": 239,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-7",
    "args": [],
    "expected": [
     "f32:1090519040"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values f32:1090519040",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l239",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l239",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "f32:1090519040"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l239",
+     "theorem": "Silmaril.Project.WasmWast.Global.l239"
+    }
+   ]
   },
   {
    "id": "global:240",
    "file": "global",
    "line": 240,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-8",
    "args": [],
    "expected": [
     "f64:4621256167635550208"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values f64:4621256167635550208",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l240",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l240",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "f64:4621256167635550208"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l240",
+     "theorem": "Silmaril.Project.WasmWast.Global.l240"
+    }
+   ]
   },
   {
    "id": "global:241",
    "file": "global",
    "line": 241,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-mr",
    "args": [],
    "expected": [
     "externref:10"
    ],
-   "reason": "result pattern outside exact numbers and null references"
+   "observed": "values ref.extern:10",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l241",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l241",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "externref:10"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l241",
+     "theorem": "Silmaril.Project.WasmWast.Global.l241"
+    }
+   ]
   },
   {
    "id": "global:243",
    "file": "global",
    "line": 243,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-select-first",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l243",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l243",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l243",
+     "theorem": "Silmaril.Project.WasmWast.Global.l243"
+    }
+   ]
   },
   {
    "id": "global:244",
    "file": "global",
    "line": 244,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-select-mid",
    "args": [],
    "expected": [
     "i32:2"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l244",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l244",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l244",
+     "theorem": "Silmaril.Project.WasmWast.Global.l244"
+    }
+   ]
   },
   {
    "id": "global:245",
    "file": "global",
    "line": 245,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-select-last",
    "args": [],
    "expected": [
     "i32:2"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l245",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l245",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l245",
+     "theorem": "Silmaril.Project.WasmWast.Global.l245"
+    }
+   ]
   },
   {
    "id": "global:247",
    "file": "global",
    "line": 247,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-loop-first",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l247",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l247",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l247",
+     "theorem": "Silmaril.Project.WasmWast.Global.l247"
+    }
+   ]
   },
   {
    "id": "global:248",
    "file": "global",
    "line": 248,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-loop-mid",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l248",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l248",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l248",
+     "theorem": "Silmaril.Project.WasmWast.Global.l248"
+    }
+   ]
   },
   {
    "id": "global:249",
    "file": "global",
    "line": 249,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-loop-last",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l249",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l249",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l249",
+     "theorem": "Silmaril.Project.WasmWast.Global.l249"
+    }
+   ]
   },
   {
    "id": "global:251",
    "file": "global",
    "line": 251,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-if-condition",
    "args": [],
    "expected": [
     "i32:2"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l251",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l251",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l251",
+     "theorem": "Silmaril.Project.WasmWast.Global.l251"
+    }
+   ]
   },
   {
    "id": "global:252",
    "file": "global",
    "line": 252,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-if-then",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l252",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l252",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l252",
+     "theorem": "Silmaril.Project.WasmWast.Global.l252"
+    }
+   ]
   },
   {
    "id": "global:253",
    "file": "global",
    "line": 253,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-if-else",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l253",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l253",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l253",
+     "theorem": "Silmaril.Project.WasmWast.Global.l253"
+    }
+   ]
   },
   {
    "id": "global:255",
    "file": "global",
    "line": 255,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-br_if-first",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l255",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l255",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l255",
+     "theorem": "Silmaril.Project.WasmWast.Global.l255"
+    }
+   ]
   },
   {
    "id": "global:256",
    "file": "global",
    "line": 256,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-br_if-last",
    "args": [],
    "expected": [
     "i32:2"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l256",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l256",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l256",
+     "theorem": "Silmaril.Project.WasmWast.Global.l256"
+    }
+   ]
   },
   {
    "id": "global:258",
    "file": "global",
    "line": 258,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-br_table-first",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l258",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l258",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l258",
+     "theorem": "Silmaril.Project.WasmWast.Global.l258"
+    }
+   ]
   },
   {
    "id": "global:259",
    "file": "global",
    "line": 259,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-br_table-last",
    "args": [],
    "expected": [
     "i32:2"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l259",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l259",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l259",
+     "theorem": "Silmaril.Project.WasmWast.Global.l259"
+    }
+   ]
   },
   {
    "id": "global:261",
    "file": "global",
    "line": 261,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-call_indirect-first",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l261",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l261",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l261",
+     "theorem": "Silmaril.Project.WasmWast.Global.l261"
+    }
+   ]
   },
   {
    "id": "global:262",
    "file": "global",
    "line": 262,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-call_indirect-mid",
    "args": [],
    "expected": [
     "i32:2"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l262",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l262",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l262",
+     "theorem": "Silmaril.Project.WasmWast.Global.l262"
+    }
+   ]
   },
   {
    "id": "global:263",
    "file": "global",
    "line": 263,
    "type": "assert_trap",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-call_indirect-last",
    "args": [],
@@ -333173,120 +333822,393 @@
     "trap"
    ],
    "trap_text": "undefined element",
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "trap",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l263",
+   "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l263",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "trap"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+     "problem": "silmaril.wasm_wast.global.l263",
+     "theorem": "Silmaril.Project.WasmWast.Global.l263"
+    }
+   ]
   },
   {
    "id": "global:265",
    "file": "global",
    "line": 265,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-store-first",
    "args": [],
    "expected": [],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l265",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l265",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l265",
+     "theorem": "Silmaril.Project.WasmWast.Global.l265"
+    }
+   ]
   },
   {
    "id": "global:266",
    "file": "global",
    "line": 266,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-store-last",
    "args": [],
    "expected": [],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l266",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l266",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l266",
+     "theorem": "Silmaril.Project.WasmWast.Global.l266"
+    }
+   ]
   },
   {
    "id": "global:267",
    "file": "global",
    "line": 267,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-load-operand",
    "args": [],
    "expected": [
     "i32:1"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:1",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l267",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l267",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:1"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l267",
+     "theorem": "Silmaril.Project.WasmWast.Global.l267"
+    }
+   ]
   },
   {
    "id": "global:268",
    "file": "global",
    "line": 268,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-memory.grow-value",
    "args": [],
    "expected": [
     "i32:1"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:1",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l268",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l268",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:1"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l268",
+     "theorem": "Silmaril.Project.WasmWast.Global.l268"
+    }
+   ]
   },
   {
    "id": "global:270",
    "file": "global",
    "line": 270,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-call-value",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l270",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l270",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l270",
+     "theorem": "Silmaril.Project.WasmWast.Global.l270"
+    }
+   ]
   },
   {
    "id": "global:272",
    "file": "global",
    "line": 272,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-return-value",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l272",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l272",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l272",
+     "theorem": "Silmaril.Project.WasmWast.Global.l272"
+    }
+   ]
   },
   {
    "id": "global:273",
    "file": "global",
    "line": 273,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-drop-operand",
    "args": [],
    "expected": [],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l273",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l273",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l273",
+     "theorem": "Silmaril.Project.WasmWast.Global.l273"
+    }
+   ]
   },
   {
    "id": "global:274",
    "file": "global",
    "line": 274,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-br-value",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l274",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l274",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l274",
+     "theorem": "Silmaril.Project.WasmWast.Global.l274"
+    }
+   ]
   },
   {
    "id": "global:276",
    "file": "global",
    "line": 276,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-local.set-value",
    "args": [
@@ -333295,14 +334217,45 @@
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l276",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l276",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l276",
+     "theorem": "Silmaril.Project.WasmWast.Global.l276"
+    }
+   ]
   },
   {
    "id": "global:277",
    "file": "global",
    "line": 277,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-local.tee-value",
    "args": [
@@ -333311,63 +334264,218 @@
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l277",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l277",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l277",
+     "theorem": "Silmaril.Project.WasmWast.Global.l277"
+    }
+   ]
   },
   {
    "id": "global:278",
    "file": "global",
    "line": 278,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-global.set-value",
    "args": [],
    "expected": [
     "i32:6"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:6",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l278",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l278",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:6"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l278",
+     "theorem": "Silmaril.Project.WasmWast.Global.l278"
+    }
+   ]
   },
   {
    "id": "global:280",
    "file": "global",
    "line": 280,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-unary-operand",
    "args": [],
    "expected": [
     "i32:0"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:0",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l280",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l280",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:0"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l280",
+     "theorem": "Silmaril.Project.WasmWast.Global.l280"
+    }
+   ]
   },
   {
    "id": "global:281",
    "file": "global",
    "line": 281,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-binary-operand",
    "args": [],
    "expected": [
     "i32:36"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:36",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l281",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l281",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:36"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l281",
+     "theorem": "Silmaril.Project.WasmWast.Global.l281"
+    }
+   ]
   },
   {
    "id": "global:282",
    "file": "global",
    "line": 282,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "as-compare-operand",
    "args": [],
    "expected": [
     "i32:1"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:1",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 3",
+    "current_imports": [
+     "spectest.global_i32",
+     "spectest.global_i64"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l282",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l282",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:1"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l282",
+     "theorem": "Silmaril.Project.WasmWast.Global.l282"
+    }
+   ]
   },
   {
    "id": "global:285",
@@ -334214,20 +335322,29 @@
    "file": "global",
    "line": 632,
    "type": "register",
-   "status": "undetermined",
+   "status": "context",
    "script": "linked",
    "register": {
     "as": "G",
     "module": "current"
    },
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "reason": "register: part of the script context of later rows (no claim)",
+   "context": {
+    "registered": [
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 629",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   }
   },
   {
    "id": "global:659",
    "file": "global",
    "line": 659,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-elem",
    "args": [
@@ -334236,14 +335353,45 @@
    "expected": [
     "refnull:null"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values ref.null",
+   "context": {
+    "registered": [
+     "G",
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 634",
+    "current_imports": [
+     "G.g"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l659",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l659",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "refnull:null"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l659",
+     "theorem": "Silmaril.Project.WasmWast.Global.l659"
+    }
+   ]
   },
   {
    "id": "global:660",
    "file": "global",
    "line": 660,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-elem",
    "args": [
@@ -334252,14 +335400,45 @@
    "expected": [
     "funcref:(ref.func)"
    ],
-   "reason": "result pattern outside exact numbers and null references"
+   "observed": "values ref.func:54",
+   "context": {
+    "registered": [
+     "G",
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 634",
+    "current_imports": [
+     "G.g"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l660",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_matching",
+   "theorem": "Silmaril.Project.WasmWast.Global.l660",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "funcref:(ref.func)"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_matching",
+     "problem": "silmaril.wasm_wast.global.l660",
+     "theorem": "Silmaril.Project.WasmWast.Global.l660"
+    }
+   ]
   },
   {
    "id": "global:661",
    "file": "global",
    "line": 661,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-elem",
    "args": [
@@ -334268,14 +335447,45 @@
    "expected": [
     "funcref:(ref.func)"
    ],
-   "reason": "result pattern outside exact numbers and null references"
+   "observed": "values ref.func:54",
+   "context": {
+    "registered": [
+     "G",
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 634",
+    "current_imports": [
+     "G.g"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l661",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_matching",
+   "theorem": "Silmaril.Project.WasmWast.Global.l661",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "funcref:(ref.func)"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_matching",
+     "problem": "silmaril.wasm_wast.global.l661",
+     "theorem": "Silmaril.Project.WasmWast.Global.l661"
+    }
+   ]
   },
   {
    "id": "global:663",
    "file": "global",
    "line": 663,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-data",
    "args": [
@@ -334284,14 +335494,45 @@
    "expected": [
     "i32:1145324612"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:1145324612",
+   "context": {
+    "registered": [
+     "G",
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 634",
+    "current_imports": [
+     "G.g"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l663",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l663",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:1145324612"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l663",
+     "theorem": "Silmaril.Project.WasmWast.Global.l663"
+    }
+   ]
   },
   {
    "id": "global:664",
    "file": "global",
    "line": 664,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get-data",
    "args": [
@@ -334300,7 +335541,38 @@
    "expected": [
     "i32:2290649224"
    ],
-   "reason": "an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:2290649224",
+   "context": {
+    "registered": [
+     "G",
+     "spectest"
+    ],
+    "named": [],
+    "current": "module at line 634",
+    "current_imports": [
+     "G.g"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.global.l664",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Global.l664",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:2290649224"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.global.l664",
+     "theorem": "Silmaril.Project.WasmWast.Global.l664"
+    }
+   ]
   },
   {
    "id": "global:667",
@@ -337317,7 +338589,7 @@
    "expected": [
     "externref:null"
    ],
-   "observed": "values ref",
+   "observed": "values ref.null",
    "context": {
     "registered": [
      "exporter",
@@ -337369,7 +338641,7 @@
    "expected": [
     "externref:null"
    ],
-   "observed": "values ref",
+   "observed": "values ref.null",
    "context": {
     "registered": [
      "exporter",
@@ -337411,7 +338683,7 @@
    "file": "elem",
    "line": 1019,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "set",
    "args": [
@@ -337420,14 +338692,47 @@
    ],
    "on": "$m",
    "expected": [],
-   "reason": "argument type outside i32/i64/f32/f64 (the action cannot be run)"
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "$m",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1019",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1019",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1019",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1019"
+    }
+   ]
   },
   {
    "id": "elem:1020",
    "file": "elem",
    "line": 1020,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "set",
    "args": [
@@ -337436,14 +338741,47 @@
    ],
    "on": "$m",
    "expected": [],
-   "reason": "argument type outside i32/i64/f32/f64 (the action cannot be run)"
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "$m",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1020",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1020",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1020",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1020"
+    }
+   ]
   },
   {
    "id": "elem:1022",
    "file": "elem",
    "line": 1022,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "get",
    "args": [
@@ -337453,14 +338791,49 @@
    "expected": [
     "externref:42"
    ],
-   "reason": "result pattern outside exact numbers and null references"
+   "observed": "values ref.extern:42",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "$m",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1022",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1022",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "externref:42"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1022",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1022"
+    }
+   ]
   },
   {
    "id": "elem:1023",
    "file": "elem",
    "line": 1023,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "get",
    "args": [
@@ -337470,14 +338843,49 @@
    "expected": [
     "externref:137"
    ],
-   "reason": "result pattern outside exact numbers and null references"
+   "observed": "values ref.extern:137",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "$m",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1023",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1023",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "externref:137"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1023",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1023"
+    }
+   ]
   },
   {
    "id": "elem:1029",
    "file": "elem",
    "line": 1029,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "get",
    "args": [
@@ -337487,14 +338895,51 @@
    "expected": [
     "externref:null"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values ref.null",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1025",
+    "current_imports": [
+     "exporter.table"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1029",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1029",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "externref:null"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1029",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1029"
+    }
+   ]
   },
   {
    "id": "elem:1030",
    "file": "elem",
    "line": 1030,
    "type": "assert_return",
-   "status": "unsupported",
+   "status": "proved",
    "script": "linked",
    "invoke": "get",
    "args": [
@@ -337504,41 +338949,134 @@
    "expected": [
     "externref:137"
    ],
-   "reason": "result pattern outside exact numbers and null references"
+   "observed": "values ref.extern:137",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1025",
+    "current_imports": [
+     "exporter.table"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1030",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1030",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "externref:137"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1030",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1030"
+    }
+   ]
   },
   {
    "id": "elem:1041",
    "file": "elem",
    "line": 1041,
    "type": "register",
-   "status": "undetermined",
+   "status": "context",
    "script": "linked",
    "register": {
     "as": "module4",
     "module": "$module4"
    },
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "reason": "register: part of the script context of later rows (no claim)",
+   "context": {
+    "registered": [
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "$module4",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   }
   },
   {
    "id": "elem:1053",
    "file": "elem",
    "line": 1053,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_imported_elem",
    "args": [],
    "expected": [
     "i32:42"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:42",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1043",
+    "current_imports": [
+     "module4.f"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1053",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1053",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:42"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1053",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1053"
+    }
+   ]
   },
   {
    "id": "elem:1065",
    "file": "elem",
    "line": 1065,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337547,14 +339085,51 @@
    "expected": [
     "i32:42"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:42",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1057",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1065",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1065",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:42"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1065",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1065"
+    }
+   ]
   },
   {
    "id": "elem:1066",
    "file": "elem",
    "line": 1066,
    "type": "assert_trap",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337564,14 +339139,51 @@
     "trap"
    ],
    "trap_text": "uninitialized element",
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "trap",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1057",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1066",
+   "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1066",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "trap"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+     "problem": "silmaril.wasm_wast.elem.l1066",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1066"
+    }
+   ]
   },
   {
    "id": "elem:1076",
    "file": "elem",
    "line": 1076,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337580,14 +339192,51 @@
    "expected": [
     "i32:42"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:42",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1068",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1076",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1076",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:42"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1076",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1076"
+    }
+   ]
   },
   {
    "id": "elem:1077",
    "file": "elem",
    "line": 1077,
    "type": "assert_trap",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337597,14 +339246,51 @@
     "trap"
    ],
    "trap_text": "uninitialized element",
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "trap",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1068",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1077",
+   "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1077",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "trap"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+     "problem": "silmaril.wasm_wast.elem.l1077",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1077"
+    }
+   ]
   },
   {
    "id": "elem:1087",
    "file": "elem",
    "line": 1087,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337613,14 +339299,51 @@
    "expected": [
     "i32:42"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:42",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1079",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1087",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1087",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:42"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1087",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1087"
+    }
+   ]
   },
   {
    "id": "elem:1088",
    "file": "elem",
    "line": 1088,
    "type": "assert_trap",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337630,14 +339353,51 @@
     "trap"
    ],
    "trap_text": "uninitialized element",
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "trap",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1079",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1088",
+   "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1088",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "trap"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+     "problem": "silmaril.wasm_wast.elem.l1088",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1088"
+    }
+   ]
   },
   {
    "id": "elem:1109",
    "file": "elem",
    "line": 1109,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337646,14 +339406,53 @@
    "expected": [
     "i32:42"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:42",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1092",
+    "current_imports": [
+     "spectest.global_i32"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1109",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1109",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:42"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1109",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1109"
+    }
+   ]
   },
   {
    "id": "elem:1110",
    "file": "elem",
    "line": 1110,
    "type": "assert_trap",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "call_in_table",
    "args": [
@@ -337663,47 +339462,137 @@
     "trap"
    ],
    "trap_text": "uninitialized element",
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "trap",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1092",
+    "current_imports": [
+     "spectest.global_i32"
+    ],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1110",
+   "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1110",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "trap"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.traps_only",
+     "problem": "silmaril.wasm_wast.elem.l1110",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1110"
+    }
+   ]
   },
   {
    "id": "elem:1125",
    "file": "elem",
    "line": 1125,
    "type": "action",
-   "status": "undetermined",
+   "status": "context",
    "script": "linked",
    "invoke": "init",
    "args": [],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "reason": "a bare action: part of the script context of later rows (no claim)",
+   "observed": "values ",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1113",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   }
   },
   {
    "id": "elem:1126",
    "file": "elem",
    "line": 1126,
    "type": "assert_return",
-   "status": "undetermined",
+   "status": "proved",
    "script": "linked",
    "invoke": "run",
    "args": [],
    "expected": [
     "i32:205"
    ],
-   "reason": "an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))"
+   "observed": "values i32:205",
+   "context": {
+    "registered": [
+     "module4",
+     "exporter",
+     "module1",
+     "spectest"
+    ],
+    "named": [
+     "module4",
+     "m",
+     "module3",
+     "module2",
+     "module1"
+    ],
+    "current": "module at line 1113",
+    "current_imports": [],
+    "host": "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+   },
+   "problem": "silmaril.wasm_wast.elem.l1126",
+   "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+   "theorem": "Silmaril.Project.WasmWast.Elem.l1126",
+   "strength": "only",
+   "profile": "profile neverFail",
+   "host": "spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one shared instance per script; a print call returns no values, leaves the store unchanged and appends (code, args) to the host-call log, whose projection Spectest.printed is the printed values (Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; the oracle uses wasmtime's own spectest",
+   "checker": "scriptHK",
+   "observation": "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+   "allowed": [
+    "i32:205"
+   ],
+   "claims": [
+    {
+     "kind": "only",
+     "shape": "silmaril.shapes.wasm.wast.host.returns_only",
+     "problem": "silmaril.wasm_wast.elem.l1126",
+     "theorem": "Silmaril.Project.WasmWast.Elem.l1126"
+    }
+   ]
   }
  ],
  "counts": {
   "total": 8674,
-  "proved": 8563,
-  "unsupported": 38,
-  "context": 22,
-  "undetermined": 51
+  "proved": 8620,
+  "unsupported": 29,
+  "context": 25
  },
  "reasons": {
-  "undetermined: an earlier command of the script did not run (line 235: argument type outside i32/i64/f32/f64 (the action cannot be run))": 38,
   "unsupported: assert_malformed on text: no binary; silmaril-lean's WAT front end has no completeness theorem and its syntax error also covers unsupported text (no shape)": 28,
-  "undetermined: an earlier command of the script did not run (line 1019: argument type outside i32/i64/f32/f64 (the action cannot be run))": 13,
-  "unsupported: result pattern outside exact numbers and null references": 6,
-  "unsupported: argument type outside i32/i64/f32/f64 (the action cannot be run)": 3,
   "unsupported: assert_exhaustion: resource exhaustion is not modelled": 1
  }
 }
