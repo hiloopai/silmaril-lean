@@ -10,6 +10,17 @@ public import Silmaril.Raw.X86.Str9L
   exts)` (lens `s ↦ s.x`, MXCSR the frame), for every feature set and list of lanes; and
   `run_of_str9v`: every `Str9V` run from DF clear is a run here.
 * `step_of_fetch_lane`: the law of a lane form, at the fetch window.
+* `step_of_listed_lane_head`: **a form of the first lane at a listed offset**, whatever bytes
+  follow it, where no decoder of `Str9X` claims the form's bytes (`laneBad`, by `decide`);
+  `step_of_listed_float`: a committed scalar SSE form (`floatExt`, the first lane of `lanes` and
+  of `Features.sseExts`) takes the core, the XMM file and MXCSR from its `X86.Float` result and
+  keeps the upper YMM halves, DF, the x87 state and the ghost state (`back_withFloat`);
+  `laneBad_addsd`: `addsd %xmm1, %xmm0` (`F2 0F 58 C1`) is such a form.
+* `towerMissing_of_listed`, `towerMissing_of_listed_lane`, `towerMissing_of_listed_v`: **the
+  feature gate of the tower's own forms** (`towerMissing`, from `vRequires`) is inactive at a
+  listed integer instruction or lane form, and at a listed `Str9V` form is the first feature
+  the form needs and `F` lacks; `decodeL_vpcmpeqb`: `vpcmpeqb (%rdi), %ymm0, %ymm1`
+  (`C5 FD 74 0F`) is a four-byte `Str9V` form needing AVX2.
 
 The proofs are in `Silmaril.Raw.X86.Str9L`, re-exported here. `Str9L/Vectors.lean` runs the
 `avx` lane's and `roundss`/`roundsd`'s native vectors through `Str9L.step v3 lanes`.
@@ -72,6 +83,18 @@ theorem reaches_of_str9v (F : FeatureSet) (exts : List Extension) {v v' : Str9V.
     (h : Reaches Str9V.step v v') :
     Reaches (step F exts) ⟨⟨⟨v, false⟩, fpu⟩, mxcsr⟩ ⟨⟨⟨v', false⟩, fpu⟩, mxcsr⟩ :=
   let ⟨n, hn⟩ := h; ⟨n, run_of_str9v F exts fpu mxcsr hn⟩
+
+/-- `addsd %xmm1, %xmm0` (`F2 0F 58 C1`) is a four-byte `floatExt` form no decoder of `Str9X`
+claims, whatever follows it. -/
+theorem laneBad_addsd : laneBad [0xF2, 0x0F, 0x58, 0xC1] = true ∧
+    Silmaril.X86.Float.decode [0xF2, 0x0F, 0x58, 0xC1] =
+      some (.arith .add .double .xmm0 (.reg .xmm1), 4) := by decide
+
+/-- `vpcmpeqb (%rdi), %ymm0, %ymm1` (`C5 FD 74 0F`) is a listed four-byte `Str9V` form that
+needs AVX2. -/
+theorem decodeL_vpcmpeqb :
+    ((Str9V.decodeL [0xC5, 0xFD, 0x74, 0x0F]).map fun p => (vRequires p.1, p.2)) =
+      some ([.avx2], 4) := by decide
 
 /-- `v3` has no AVX-512 feature, so the view is exact for every lane on it. -/
 theorem v3_noAvx512 : Silmaril.X86.Features.Feature.all.all

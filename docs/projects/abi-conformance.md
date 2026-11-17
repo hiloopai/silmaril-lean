@@ -321,6 +321,8 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 | `Silmaril.Machine.Abi.Conformance.Win64`, `….SysvScalar` | `win64Int`, `lowerWin64Int` and `sysvScalar`, `kindOf`, `objectOf`, `argOf`, `lowerScalar`, with their lowering examples |
 | `Silmaril.Machine.Abi.SystemV.Scalar` | the scalar-and-aggregate vocabulary and convention: `Kind`, `Agg`, `Eights`, `Arg`, `Proto`, `scalarPlan`, `plan_scalarPlan`, `entry_inhabited`, `sysv`, `resultAt_some`, `resultAt_direct`, `resultAt_indirect` |
 | `Silmaril.Data.Layout` (`msX64`) | the Microsoft x64 LLP64 data model |
+| `Silmaril.Machine.Abi.Conformance.Sse` | `Mach.str9L F exts`: `Str9L.isa F exts` on `SState` (the tower state and the hidden parts of the FFI vector and x87 fields); it models the machine, the whole vector and x87 fields, DF, MXCSR and the x87 control word, and carries x87 mode and the FFI thread pointer (`str9L_models`, `str9L_carried`); every fitting state completes (`str9L_fillsAll`: any per-read time-stamp stream, CET flag and hidden part); no step at a tower VEX/BMI/`movbe` form whose features `F` lacks (`Str9L.towerMissing`; `str9L_vpcmpeqb_none` on `baseline64`); rows hold for processes without user shadow stacks; completions allow any x87 TOP and tags (an x87 row needs an empty-stack entry assumption); the SSE argument and `double` result bridges (`entry_xmm`, `resultAt_store_double`, `fills_tower` through `Sep.Plan.ffiXState`) |
+| `Silmaril.Machine.Abi.Conformance.Sse.Add` | the first floating-point row: `addsd %xmm1, %xmm0; ret` as `double add(double, double)` under `sysvScalar.defaultEnv` (default-environment subset: control bits `0x1F80`, any status flags; `admitted_pe` with `0x1FA0`) on `Mach.str9L FeatureSet.baseline64 Features.sseExts`, total, result binary64 addition by `Numeric.Float`'s x86 SSE profile of the entry MXCSR, which reads only its control bits (`conforms`, `sum_control`); the same bytes do not conform on `Open` (`open_not`) |
 | `Silmaril.Machine.Abi.Conformance.LeafArith` | the example: its header, code, specs, coverage, witness state, test machines, open tasks, proofs and negative tests |
 | `Silmaril.X86.Open.FsBase` | `Open.step_fsBase`, `Open9.step_fsBase`: no step writes the FS base (proving `FsBase.Task.openStepKeepsFs`) |
 | `Silmaril.Project.Shapes.Abi` | `silmaril.shapes.abi.conforms`, `header_sat_partial`, `header_sat_available`, `header_sat_complete` and their `sysv_int` instances |
@@ -340,7 +342,7 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 - `sysvScalar` and `win64Int` instances of the registry shapes, and rows for them (a
   `sysvScalar` row about floating computation needs a machine with SSE steps).
 - A reference machine for `Faithful`.
-- A `Mach` with SSE steps (`Str9L`) that models the vector registers and MXCSR (`models`), with
-  its completions (`Fills`); rows on it state their entry environment through the ABI
-  (`EntryEnv`), and a default-MXCSR row is a default-environment subset.
+- Rows on `Mach.str9L` beyond `Sse.Add`: an entry environment "every exception masked" (any
+  rounding mode, DAZ, FTZ) wider than the default-environment subset; libm declarations as open
+  ABI problems.
 - The explorer's prototype and ABI views.

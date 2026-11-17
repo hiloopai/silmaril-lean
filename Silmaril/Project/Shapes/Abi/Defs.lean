@@ -54,7 +54,7 @@ open Silmaril.Machine.Abi.Conformance
 /-- **The code conforms to the ABI `A` on the machine model `M`** as the function `f` of the
 header `hdr` (`Silmaril.Machine.Abi.Conformance.Conforms`). -/
 @[problem "silmaril.shapes.abi.conforms"
-  (title := "Machine code conforms to a versioned ABI on a restricted x86-64 machine model (FP, vector and control state carried by the model, not proved), as its C header declares it")]
+  (title := "Machine code conforms to a versioned ABI on a restricted x86-64 machine model, as its C header declares it (which FP, vector and control state the model computes and which it carries depends on the machine: Mach.models)")]
 def AbiConforms (A : AbiDef) (M : Mach) (mode : Mode) (hdr : HeaderSrc) (f : String)
     (p : A.V.Proto) (c : Code) (frame : Nat) (S : CallSpec A.V p) : Prop :=
   Conforms A M mode hdr f p c frame S
