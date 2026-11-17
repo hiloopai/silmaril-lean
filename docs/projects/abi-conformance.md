@@ -55,15 +55,15 @@ structure Conforms (A : AbiDef) (M : Mach) (mode : Mode) (hdr : HeaderSrc) (f : 
 
 | ingredient | definition | content |
 | --- | --- | --- |
-| ABI and its version | `AbiDef` | `id` and `source` (the versioned document); the data model; `lower` from a C prototype to the ABI's prototype, or an explicit refusal; a `Convention` (`Entry`, `Return`, `ResultAt`); `argArea` and `owned` (memory the callee gets) |
-| prototype | `Declares A hdr f p` | the header files parse to a header declaring `f`, and `A.lower` maps its prototype to `p`. The parsed prototype is a function of the header (`hdr.proto? f`), so it is the exact one: result and parameter types with their signedness and widths. Qualifiers are kept beside it (`hdr.quals? f`, by pointer level); they do not change the lowering. The reader (`Data.Layout.Header.read`) refuses incompatible redeclarations, including differing pointee qualifiers. The check runs by `decide`, so no signature is attached by hand |
+| ABI and its version | `AbiDef` | `id` and `source` (the versioned document); the data model; `lower` from a C prototype to the ABI's prototype, or an explicit refusal, given the tag definitions of the header (`Header.env`) for by-value structs and unions; a `Convention` (`Entry`, `Return`, `ResultAt`); `argArea` and `owned` (memory the callee gets) |
+| prototype | `Declares A hdr f p` | the header files parse to a header declaring `f`, and `A.lower` maps its prototype to `p` with the tag definitions of the same header (`hdr.env`): a by-value `struct T` is laid out as that header defines `T` (`sysvScalar_tag_mismatch`). The parsed prototype is a function of the header (`hdr.proto? f`), so it is the exact one: result and parameter types with their signedness and widths. Qualifiers are kept beside it (`hdr.quals? f`, by pointer level); they do not change the lowering. The reader (`Data.Layout.Header.read`) refuses incompatible redeclarations, including differing pointee qualifiers. The check runs by `decide`, so no signature is attached by hand |
 | code identity | `Code`, `Placed` | the bytes, the load address, the entry offset, the function's extent, the read-only data, and the image's address ranges. An admitted state has the code and data loaded, `rip` at the entry, and the return address outside the code |
 | admissible calls | `Admit` | listed below this table |
 | execution | `callModelOf M` | the **first return** of `M`; the result is read at the function's own return |
 | no stuck state | `safe`, `NoStuck` | every state before the return takes a step on `M` |
 | call/return | `Good.ret` = `A.conv.Return` | `rip` = the return address, `rsp + 8`, the callee-saved registers, DF clear, x87 mode, MXCSR and x87 control, the FFI thread pointer |
 | result | `Good.result` | some `r` with `A.conv.ResultAt` (excess register bits unspecified) and `S.post a s r t` |
-| memory | `Good.frame` | written only inside `S.writes` (caller-visible effects) or `Owned`, which is bounded and admitted: `[rsp − frame, rsp)` for the row's stated `frame` (the red zone is the first 128 of these bytes when `frame ≥ 128`; `frame = 0` owns none), the incoming argument area `[rsp + 8, rsp + 8 + argArea)`, and `A.owned` (sret; empty for `sysvInt`). `Stack` makes all of it mapped, readable, writable and apart from the code, data, image and objects. Memory further below `rsp` is not owned |
+| memory | `Good.frame` | written only inside `S.writes` (caller-visible effects) or `Owned`, which is bounded and admitted: `[rsp − frame, rsp)` for the row's stated `frame` (the red zone is the first 128 of these bytes when `frame ≥ 128`; `frame = 0` owns none), the incoming argument area `[rsp + 8, rsp + 8 + argArea)`, and `A.owned` (the storage of a MEMORY result at RDI under `sysvScalar`; empty for `sysvInt` and `win64Int`). `Stack` makes all of it mapped, readable, writable and apart from the code, data, image and objects. Memory further below `rsp` is not owned |
 | thread pointer | `Good.fsBase` | the machine's FS base (what `%fs:` reads) is unchanged; on `Open` and `Open9` no step writes it (`Open.step_fsBase`, `Open9.step_fsBase`) |
 | non-vacuity | `nonvacuous`, `enterable` | some admitted call exists; and for **every** argument tuple and caller memory the precondition admits, whose caller-visible objects avoid the code and its read-only data (`Code.Outside`), an admitted call with those arguments, the same objects and the same bytes on them (every buffer content). The rest of that call's memory (code, stack, permissions) is the ABI's, not the caller's: a row says nothing about caller states whose objects overlap the code or its data. A row cannot be non-vacuous through one hand-picked call while its precondition admits others |
 | mode | `mode` | `.total`: every admitted call returns. `.safe`: partial correctness, divergence allowed, stuck states not |
@@ -120,14 +120,21 @@ conformance of a *pure* function. A function with effects (`memset`) gives its `
 | `AbiDef` | id | source | supported subset |
 | --- | --- | --- | --- |
 | `sysvInt` | `x86_64-sysv-psabi@e1ce0983/lp64/integer` | System V AMD64 psABI, x86-psABIs/x86-64-ABI@e1ce098331da5dbd66e1ffc74162380bcc213236, §3.2 | fixed-arity prototypes of 4- and 8-byte integers and pointers, up to 127 parameters; the full `Ffi.Entry`/`Ffi.Return` discipline; the planner `SystemV.Abi.plan` (`intPlan` on this subset); arguments past the sixth on the stack, owned by the callee |
-| `sysvScalar` | `x86_64-sysv-psabi@e1ce0983/lp64/scalar` | as `sysvInt`, §3.2.3 (classification of INTEGER and SSE scalars, returning of values) | `sysvInt`'s subset plus `float` and `double` (SSE class; sizes from the data model's `floatShape`: 4 bytes is binary32, 8 is binary64), mixed freely: INTEGER arguments in RDI…R9 and SSE arguments in XMM0–XMM7, counted separately, the rest in 8-byte stack slots in argument order (owned by the callee); result in RAX or XMM0. The convention is `Machine.Abi.SystemV.Scalar.sysv`, on the same planner (`scalarPlan`, `plan_scalarPlan`) and `Ffi` relations |
+| `sysvScalar` | `x86_64-sysv-psabi@e1ce0983/lp64/scalar-aggregates` | as `sysvInt`, §3.2.3 (classification of INTEGER and SSE scalars and of aggregates and unions into eightbytes, passing on the stack when registers run out, returning of values, the hidden pointer of MEMORY results) | `sysvInt`'s subset plus `float` and `double` (SSE class; sizes from the data model's `floatShape`: 4 bytes is binary32, 8 is binary64), mixed freely, **and structs and unions by value**, classified from their member layout in the header (`objectOf`: the System V layout `bitLayout .sysv`, members' own classes merged into eightbytes by the ABI model's `SystemV.Abi.aggregate`; members may be integers of any width, `_Bool`, enums, pointers, `float`, `double`, named bit-fields, arrays and nested structs and unions). INTEGER eightbytes in RDI…R9 and SSE eightbytes in XMM0–XMM7, counted separately; an aggregate over 16 bytes (MEMORY), or one whose eightbytes do not all find a register, goes whole to 8-byte stack slots in argument order (owned by the callee); result eightbytes in RAX/RDX and XMM0/XMM1, a MEMORY result through the hidden pointer (RDI in, RAX out; the storage is `owned`). The convention is `Machine.Abi.SystemV.Scalar.sysv`, on the same planner (`scalarPlan`, `plan_scalarPlan`) and `Ffi` relations (`Ffi.SretAt`, `resultAt_direct`, `resultAt_indirect`) |
 | `win64Int` | `x86_64-ms-x64@cpp-docs-e6106755/llp64/integer` | Microsoft, "x64 calling convention" (learn.microsoft.com/en-us/cpp/build/x64-calling-convention, MicrosoftDocs/cpp-docs@e61067551f92a1c7beaad20c04b9f5ccfd2b5dd6) and "Overview of x64 ABI conventions" (…/x64-software-conventions, cpp-docs@d25e83731f0600bc021bd0b084ad5812b6cfe88f) | `sysvInt`'s C subset under the **LLP64** data model `Data.Layout.msX64` (`long` is 4 bytes, `wchar_t` 2, `long double` 8), with the `Machine.Abi.Win64.win64` convention: RCX, RDX, R8, R9, a 32-byte shadow area, then 8-byte slots at `rsp + 8 + 8i`; result in RAX; no red zone. The callee owns the shadow area and its stack arguments (`argArea = 8 · max n 4`) |
 
 The data model is part of the lowering: the header `long f(long);` declares `f` as
 `int32 → int32` under `win64Int` and as `int64 → int64` under `sysvInt` and `sysvScalar`
 (`win64Int_lower_examples`). `sysvScalar_lower_examples` shows the planner's placements
 (`double f(double, int)`: XMM0, EDI, result in XMM0; a ninth `float` on the stack while a later
-`long` still gets RDI).
+`long` still gets RDI). `sysvScalar_aggregate_classes`, `sysvScalar_aggregate_args` and
+`sysvScalar_aggregate_results` read structs from header text and show the classes and the
+planner's placements: `struct { long a, b; }` in RDI, RSI and returned in RAX, RDX;
+`struct { double x, y; }` in XMM0, XMM1; `struct { long a; double b; }` in RDI and XMM0;
+`struct { float a, b, c; }` in XMM0 (`a`, `b`) and XMM1 (`c`); a 24-byte struct on the stack
+and, as a result, through the hidden pointer (`Return.indirect 24 8`, the arguments then
+starting at RSI); after five `long`s, a two-`long` struct on the stack whole while a later
+`long` still gets R9.
 
 **`sysvScalar` and the standard machines.** `Open` and `Open9` model no SSE instruction. Code
 that reads an XMM argument or writes XMM0 is stuck on them, so it has no `sysvScalar` row
@@ -143,10 +150,16 @@ arguments without touching them.
 - enums;
 - varargs.
 
-`lowerScalar` (`sysvScalar`) accepts `float` and `double` and refuses, with a message, `long
-double` (X87/X87UP: passed in memory, returned in `%st0`), `__float128` (SSE/SSEUP), `_Bool`,
-`char`, `short`, enums, structs and unions by value, and varargs (the `%al` count and
-`va_list`).
+`lowerScalar` (`sysvScalar`) accepts `float`, `double` and structs and unions by value, and
+refuses, with a message (pinned in `SysvScalar.Thms`): `long double` (X87/X87UP: passed in
+memory, returned in `%st0`) and `__float128` (SSE/SSEUP) as parameters, results or members;
+`__int128` members; as parameters and results `_Bool`, `char`, `short`, enums and arrays; a
+struct or union the header does not define (incomplete); zero-length or flexible array
+members; unnamed bit-fields of nonzero width; bit-fields in a nested aggregate (`layoutTy`
+refuses them); an aggregate with an eightbyte of padding only (NO_CLASS), aligned to more than
+8 bytes, or larger than 2^32 bytes; and varargs (the `%al` count and `va_list`). The clang
+import records no tag definitions yet, so on that route by-value structs are refused as
+incomplete.
 
 ## The ELF binding
 
@@ -276,8 +289,8 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 | `Silmaril.Data.Layout.Header` | the header subset reader (`read`), `CProto`, `Header`; tagged struct, union and enum definitions are read into `Header.decls`/`Header.enums` (`Header.env` for layouts). Header satisfaction concerns the prototypes only |
 | `Silmaril.Data.Layout.Header.Import`, `Silmaril.Machine.Abi.Conformance.Import` | the clang route: a provenance-tagged import of a pinned clang JSON AST, its cross-check with the subset reader, and coverage and `Declares` from it ([C headers](c-headers.md)) |
 | `Silmaril.Machine.Abi.Conformance` | `AbiDef`, `sysvInt`, `Code`, `CallSpec`, `Admit`, `NoStuck`, `Good`, `Conforms`, `Faithful`, `Coverage`, `HeaderSatPartial`, `HeaderSatAvailable`, `HeaderSatComplete`; `conforms_of_strict`, `Conforms.steps`, `Conforms.onRef` |
-| `Silmaril.Machine.Abi.Conformance.Win64`, `….SysvScalar` | `win64Int`, `lowerWin64Int` and `sysvScalar`, `kindOf`, `lowerScalar`, with their lowering examples |
-| `Silmaril.Machine.Abi.SystemV.Scalar` | the scalar-fragment vocabulary and convention: `Kind`, `Proto`, `scalarPlan`, `plan_scalarPlan`, `entry_inhabited`, `sysv`, `resultAt_some` |
+| `Silmaril.Machine.Abi.Conformance.Win64`, `….SysvScalar` | `win64Int`, `lowerWin64Int` and `sysvScalar`, `kindOf`, `objectOf`, `argOf`, `lowerScalar`, with their lowering examples |
+| `Silmaril.Machine.Abi.SystemV.Scalar` | the scalar-and-aggregate vocabulary and convention: `Kind`, `Agg`, `Eights`, `Arg`, `Proto`, `scalarPlan`, `plan_scalarPlan`, `entry_inhabited`, `sysv`, `resultAt_some`, `resultAt_direct`, `resultAt_indirect` |
 | `Silmaril.Data.Layout` (`msX64`) | the Microsoft x64 LLP64 data model |
 | `Silmaril.Machine.Abi.Conformance.LeafArith` | the example: its header, code, specs, coverage, witness state, test machines, open tasks, proofs and negative tests |
 | `Silmaril.X86.Open.FsBase` | `Open.step_fsBase`, `Open9.step_fsBase`: no step writes the FS base (proving `FsBase.Task.openStepKeepsFs`) |
@@ -292,8 +305,9 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
     are open;
   - Ubuntu's `libz.so.1.3`, with versioned bindings and rebasing.
 - `Open9` rows.
-- System V aggregates, `long double` and varargs; Microsoft x64 floating arguments
-  (positional XMM0–XMM3) and aggregates.
+- System V `long double`, `__int128`, over-aligned and SSEUP aggregates, and varargs; tag
+  definitions in the clang import; Microsoft x64 floating arguments (positional XMM0–XMM3) and
+  aggregates.
 - `sysvScalar` and `win64Int` instances of the registry shapes, and rows for them (a
   `sysvScalar` row about floating computation needs a machine with SSE steps).
 - A reference machine for `Faithful`.

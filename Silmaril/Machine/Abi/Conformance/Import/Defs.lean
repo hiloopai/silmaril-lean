@@ -12,7 +12,8 @@ information for headers the subset reader refuses, with what `CProto` does not c
 calling convention and the attributes. Here it feeds the same notions.
 
 * `status A ccs e`: what a declaration is for an ABI `A` whose conventions are `ccs`:
-  - `claimable`: an external function with a prototype `A.lower` accepts, in one of `ccs`;
+  - `claimable`: an external function with a prototype `A.lower` accepts (with the import's
+    tag definitions, `imp.header.env`), in one of `ccs`;
   - `unsupported why`: an external function that is not, with the reason. The reason is the
     import's (clang's type is outside `CProto`; the strict decoder refused the node), the
     convention's, an asm label (the binary's symbol is not the C name, which `CodeOf` binds),
@@ -30,6 +31,11 @@ calling convention and the attributes. Here it feeds the same notions.
 * `DeclaresImport A ccs imp f p`: the import gives `f` a prototype that `A` lowers to `p`, in a
   convention of `ccs`. `Thms.declares_iff` gives `Declares ↔ DeclaresImport` when the two
   routes read the same header.
+
+The lowering reads by-value structs and unions in the import's tag definitions
+(`imp.header.env`). The import records none yet (`Imported.header` has no `decls`), so on this
+route a by-value struct or union is refused as incomplete; an ABI whose lowering ignores tag
+definitions (`sysvInt`) lowers alike on both routes.
 -/
 
 @[expose] public section
@@ -60,8 +66,10 @@ inductive Status where
   | notFunction
   deriving DecidableEq, Repr
 
-/-- The status of a declaration for `A` with conventions `ccs`. -/
-def status (A : AbiDef) (ccs : List CallConv) (e : Entry) : Status :=
+/-- The status of a declaration for `A` with conventions `ccs`, its by-value structs and unions
+read in `env`. -/
+def status (A : AbiDef) (ccs : List CallConv) (env : Silmaril.Data.Layout.Env) (e : Entry) :
+    Status :=
   match e.kind, e.body with
   | .function, .function f =>
     if e.implicit then .internal "implicit: clang's declaration of a library builtin"
@@ -72,15 +80,16 @@ def status (A : AbiDef) (ccs : List CallConv) (e : Entry) : Status :=
       | .unsupported why => .unsupported why
       | .ok cp =>
         if !ccs.contains f.cc then .unsupported ("calling convention " ++ ccSpelling f.cc)
-        else match A.lower cp with
+        else match A.lower env cp with
           | .error why => .unsupported why
           | .ok _ => .claimable
   | .function, .unsupported why => .unsupported why
   | _, _ => .notFunction
 
-/-- Every declaration with its status, in order. -/
+/-- Every declaration with its status, in order, lowered with the import's tag definitions
+(`imp.header.env`). -/
 def table (A : AbiDef) (ccs : List CallConv) (imp : Imported) : List (String × Status) :=
-  imp.entries.map fun e => (e.name, status A ccs e)
+  imp.entries.map fun e => (e.name, status A ccs imp.header.env e)
 
 /-- Whether a status is a function of the header's interface. -/
 def Status.interface : Status → Bool
@@ -130,11 +139,11 @@ def ccsOk (ccs : List CallConv) (imp : Imported) : Bool :=
   imp.header.names.all fun f => (imp.fn? f).any fun (_, x) => ccs.contains x.cc
 
 /-- **The import declares `f` with a C prototype that `A` lowers to `p`**, in a convention of
-`ccs`. -/
+`ccs`, with the import's tag definitions (`imp.header.env`). -/
 def DeclaresImport (A : AbiDef) (ccs : List CallConv) (imp : Imported) (f : String)
     (p : A.V.Proto) : Prop :=
   ∃ cp, imp.proto? f = some cp ∧ (imp.fn? f).any (fun (_, x) => ccs.contains x.cc) = true ∧
-    A.lower cp = .ok p
+    A.lower imp.header.env cp = .ok p
 
 end Silmaril.Machine.Abi.Conformance
 

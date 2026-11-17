@@ -101,7 +101,10 @@ theorem stack (p : Proto) (hp : p.signature.arguments.length ≤ 6) (off len : N
     show 8 * (p.signature.arguments.length - 6) = 0
     omega
   have hsp : sp (ffiSt off x y z) = 0x8ff8 := rfl
-  refine ⟨by omega, ?_, ?_, ?_, ?_, (fun _ h => nomatch h), ?_, fun _ h => nomatch h⟩
+  refine ⟨by omega, ?_, ?_, ?_, ?_, (fun _ h => nomatch h), ?_, (fun _ h => nomatch h),
+    (fun _ h => nomatch h), (fun _ h => nomatch h), (fun _ h => nomatch h),
+    (fun _ h => nomatch h), (fun _ h => nomatch h), (fun _ h => nomatch h),
+    (fun _ h => nomatch h)⟩
   · rw [ha, hsp]; decide
   · rw [ha, hsp]; exact permitted _ _ _ (by decide)
   · rw [ha, hsp]; exact permitted _ _ _ (by decide)

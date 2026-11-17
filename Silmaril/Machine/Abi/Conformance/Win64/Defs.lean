@@ -57,7 +57,7 @@ def win64Int : AbiDef where
   V := Silmaril.Machine.Abi.SystemV.vocab
   D := Silmaril.Machine.Abi.SystemV.CallSite
   conv := Silmaril.Machine.Abi.Win64.win64
-  lower := lowerWin64Int Silmaril.Data.Layout.msX64
+  lower _ := lowerWin64Int Silmaril.Data.Layout.msX64
   argArea p := 8 * max p.signature.arguments.length 4
   owned _ _ _ := False
 
