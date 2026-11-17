@@ -27,6 +27,11 @@ import Silmaril.Cli.Spec.Asyncify.Thms
 import Silmaril.Cli.Spec.WasmTools.Thms
 import Silmaril.Cli.Spec.WasmVerify.Thms
 import Silmaril.Wasm.Binaryen.DriverSpec.Thms
+-- The assembly tab's modules (`asmModules`), loaded at run time to locate the declarations that
+-- `examples/elf-asm/samples.json` names. They bring the `binary_image … sha256 "…"` syntax
+-- (Silmaril.Data.BinaryImage), so `sha256` is a keyword here: fields of that name are `«sha256»`.
+import Silmaril.Elf.Asm.Example.Thms
+import Silmaril.Elf.Asm.Example.Reloc.Thms
 
 /-!
 # `elf-pages`: the explorer's ELF tab data
@@ -34,7 +39,15 @@ import Silmaril.Wasm.Binaryen.DriverSpec.Thms
 ```
 lake env .lake/build/bin/elf-pages OUTDIR     write OUTDIR/elf/{index.json, f/SLUG.json, dis/SLUG.json, blob/SLUG.bin}
 lake env .lake/build/bin/elf-pages --verify OUTDIR    re-derive everything and compare with OUTDIR/elf
+lake env .lake/build/bin/elf-pages --self-test OUTDIR write, verify, and check that tampered pages are rejected
 ```
+
+It also copies the assembly functions of `tools/elf-asm` (`examples/elf-asm/samples.json`,
+schema `silmaril.elf.asm/1`) to `OUTDIR/elf/asm.json` unchanged, for the assembly tab; their
+evidence is read from theorem statements and checked by `elf-asm --check` (`make elf-check`), not
+re-derived here. Next to it, `elf/asm-decls.json` gives the module and source line of every
+declaration the file names, each looked up in the checked environment (a name that is not there
+stops the tool).
 
 For each pinned file (`Silmaril.Elf.Staged.Pinned.*`) the tool
 
@@ -71,7 +84,7 @@ structure Pinned where
   ns : Name
   title : String
   path : String
-  sha256 : String
+  «sha256» : String
   size : Nat
   L : Layout
   bodies : List Body
@@ -82,7 +95,7 @@ structure Pinned where
 def pinned : List Pinned := [
   { slug := "hello-gcc", ns := `Silmaril.Elf.Staged.Pinned.HelloGcc
     title := "hello world (gcc 13.3 -O2), dynamically linked against glibc 2.39"
-    path := Pinned.HelloGcc.path, sha256 := Pinned.HelloGcc.sha256, size := Pinned.HelloGcc.size
+    path := Pinned.HelloGcc.path, «sha256» := Pinned.HelloGcc.sha256, size := Pinned.HelloGcc.size
     L := Pinned.HelloGcc.L, bodies := Pinned.HelloGcc.bodies, ld := Pinned.HelloGcc.ld
     provenance := [
       ("source", "examples/dyn/hello/hello.c (written for this repository)"),
@@ -91,7 +104,7 @@ def pinned : List Pinned := [
       ("licence", "toolchain start-up objects: glibc crt (LGPL-2.1-or-later with the linking exception), GCC crtbeginS/crtendS (GPL-3.0-or-later with the GCC Runtime Library Exception); examples/dyn/README.md")] },
   { slug := "hello-clang", ns := `Silmaril.Elf.Staged.Pinned.HelloClang
     title := "hello world (clang 18.1 -O2), dynamically linked against glibc 2.39"
-    path := Pinned.HelloClang.path, sha256 := Pinned.HelloClang.sha256, size := Pinned.HelloClang.size
+    path := Pinned.HelloClang.path, «sha256» := Pinned.HelloClang.sha256, size := Pinned.HelloClang.size
     L := Pinned.HelloClang.L, bodies := Pinned.HelloClang.bodies, ld := Pinned.HelloClang.ld
     provenance := [
       ("source", "examples/dyn/hello/hello.c (written for this repository)"),
@@ -100,7 +113,7 @@ def pinned : List Pinned := [
       ("licence", "toolchain start-up objects: glibc crt (LGPL-2.1-or-later with the linking exception), GCC crtbeginS/crtendS (GPL-3.0-or-later with the GCC Runtime Library Exception); examples/dyn/README.md")] },
   { slug := "zlib-checksums", ns := `Silmaril.Elf.Staged.Pinned.ZlibChecksums
     title := "zlib 1.3.1 adler32.c + crc32.c (-DZ_SOLO -O2, static, not stripped)"
-    path := Pinned.ZlibChecksums.path, sha256 := Pinned.ZlibChecksums.sha256, size := Pinned.ZlibChecksums.size
+    path := Pinned.ZlibChecksums.path, «sha256» := Pinned.ZlibChecksums.sha256, size := Pinned.ZlibChecksums.size
     L := Pinned.ZlibChecksums.L, bodies := Pinned.ZlibChecksums.bodies, ld := Pinned.ZlibChecksums.ld
     provenance := [
       ("source", "zlib 1.3.1 adler32.c and crc32.c, unmodified, with examples/elf-ladder/03-zlib-checksums/main.c (release tarball sha256 9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23)"),
@@ -109,7 +122,7 @@ def pinned : List Pinned := [
       ("licence", "zlib licence (examples/elf-ladder/03-zlib-checksums/pinned/LICENSE.zlib, NOTICES/zlib)")] },
   { slug := "zlib-libz", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz
     title := "zlib 1.3 libz.so.1.3 (Ubuntu zlib1g 1:1.3.dfsg-3.1ubuntu2.3, amd64)"
-    path := Pinned.ZlibLibz.path, sha256 := Pinned.ZlibLibz.sha256, size := Pinned.ZlibLibz.size
+    path := Pinned.ZlibLibz.path, «sha256» := Pinned.ZlibLibz.sha256, size := Pinned.ZlibLibz.size
     L := Pinned.ZlibLibz.L, bodies := Pinned.ZlibLibz.bodies, ld := Pinned.ZlibLibz.ld
     provenance := [
       ("package", "Ubuntu zlib1g 1:1.3.dfsg-3.1ubuntu2.3 (amd64), /usr/lib/x86_64-linux-gnu/libz.so.1.3, unmodified"),
@@ -121,7 +134,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.3.dfsg-3.1ubuntu2.3")] },
   { slug := "glibc-libm", ns := `Silmaril.Elf.Staged.Pinned.GlibcLibm
     title := "glibc 2.39 libm.so.6 (Ubuntu libc6 2.39-0ubuntu8.9, amd64)"
-    path := Pinned.GlibcLibm.path, sha256 := Pinned.GlibcLibm.sha256, size := Pinned.GlibcLibm.size
+    path := Pinned.GlibcLibm.path, «sha256» := Pinned.GlibcLibm.sha256, size := Pinned.GlibcLibm.size
     L := Pinned.GlibcLibm.L, bodies := Pinned.GlibcLibm.bodies, ld := Pinned.GlibcLibm.ld
     provenance := [
       ("package", "Ubuntu libc6 2.39-0ubuntu8.9 (amd64), unmodified"),
@@ -133,7 +146,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/glibc/2.39-0ubuntu8.9")] },
   { slug := "glibc-libc", ns := `Silmaril.Elf.Staged.Pinned.GlibcLibc
     title := "glibc 2.39 libc.so.6 (Ubuntu libc6 2.39-0ubuntu8.9, amd64)"
-    path := Pinned.GlibcLibc.path, sha256 := Pinned.GlibcLibc.sha256, size := Pinned.GlibcLibc.size
+    path := Pinned.GlibcLibc.path, «sha256» := Pinned.GlibcLibc.sha256, size := Pinned.GlibcLibc.size
     L := Pinned.GlibcLibc.L, bodies := Pinned.GlibcLibc.bodies, ld := Pinned.GlibcLibc.ld
     provenance := [
       ("package", "Ubuntu libc6 2.39-0ubuntu8.9 (amd64), unmodified"),
@@ -145,7 +158,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/glibc/2.39-0ubuntu8.9")] },
   { slug := "gnu-sha256sum", ns := `Silmaril.Elf.Staged.Pinned.Sha256sum
     title := "GNU coreutils 9.4 sha256sum (Ubuntu 9.4-3ubuntu6.3, amd64)"
-    path := Pinned.Sha256sum.path, sha256 := Pinned.Sha256sum.sha256, size := Pinned.Sha256sum.size
+    path := Pinned.Sha256sum.path, «sha256» := Pinned.Sha256sum.sha256, size := Pinned.Sha256sum.size
     L := Pinned.Sha256sum.L, bodies := Pinned.Sha256sum.bodies, ld := Pinned.Sha256sum.ld
     provenance := [
       ("package", "Ubuntu coreutils 9.4-3ubuntu6.3 (amd64), /usr/bin/sha256sum, unmodified"),
@@ -840,7 +853,7 @@ structure IoRecord where
   title : String
   binary : String
   elfSlug : Option String
-  sha256 : String
+  «sha256» : String
   level : String
   input : List (String × String)
   output : List (String × String)
@@ -887,7 +900,7 @@ def helloModel : List (String × String) := [
 def ioRecords : List IoRecord := [
   { id := "hello-gcc", title := "hello world (gcc 13.3 -O2), dynamically linked against glibc 2.39"
     binary := "examples/dyn/pinned/hello-gcc", elfSlug := some "hello-gcc"
-    sha256 := "6964f3f23e27cfd2b6c26bd469cb210ff000dd359fc9988138cadc96683065c7"
+    «sha256» := "6964f3f23e27cfd2b6c26bd469cb210ff000dd359fc9988138cadc96683065c7"
     level := "L1 (stream) for the cli_exe row; L3 (full invocation) for the Program API claim"
     input := [("argv", "any (the claim is uniform: Level.liftAll)"), ("stdin", "any"),
       ("environment", "any"), ("files", "any (read-only; hello reads none)"),
@@ -913,7 +926,7 @@ def ioRecords : List IoRecord := [
       "the loader is a transcription of ld.so, trusted", "consumption, reads and the file log are not observed (L3 via toCli)"] },
   { id := "hello-clang", title := "hello world (clang 18.1 -O2), dynamically linked against glibc 2.39 (lazy binding)"
     binary := "examples/dyn/pinned/hello-clang", elfSlug := some "hello-clang"
-    sha256 := "ecad1a19e6e63e4828e9386a9c831dc6beb635c6858dc42d2c248e6397eaa713"
+    «sha256» := "ecad1a19e6e63e4828e9386a9c831dc6beb635c6858dc42d2c248e6397eaa713"
     level := "process level (no CLI-institution row yet)"
     input := [("argv", "any argc"), ("stdin", "not read"), ("environment", "any"), ("precondition", "reliable writes for the exact output")]
     output := [("stdout", "hello, world\n (a prefix if writes may fail)"), ("exit", "0")]
@@ -923,7 +936,7 @@ def ioRecords : List IoRecord := [
     limits := ["no cli_exe row: the Program API description (Bin) of hello-clang is not stated as a CLI model here"] },
   { id := "sha256sum-min", title := "sha256sum-min: a libc-free static reimplementation of GNU coreutils 9.4 sha256sum (stdin tier)"
     binary := "Silmaril.Process.LPS.Problems.GnuSha256sum.Elf (the file as Lean literals; apps/sha256sum-min)", elfSlug := none
-    sha256 := "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
+    «sha256» := "22fa6345cc5bed08f07d4d5a0836885118259a73402470e4d7f7a7a81ad42817"
     level := "LPS process (observable syscall traces)"
     input := [("argv", "the program name only (stdin tier)"), ("stdin", "any finite byte stream"),
       ("environment", "any admissible launch (stack placement in Linux's randomisation windows)"),
@@ -940,7 +953,7 @@ def ioRecords : List IoRecord := [
       ⟨`Silmaril.Cli.Spec.Sha256sum.spec, "specification (CLI institution)", "the standard sha256sum spec; this proof is stated in LPS, not as this sentence", []⟩]
     limits := ["stdin tier only (no options, no file operands)", "this binary is not the distro sha256sum of the ELF tab"] },
   { id := "sha256-cli", title := "sha256-cli: a freestanding SHA-256 filter (prints 64 hex digits and \\n)"
-    binary := "apps/sha256-cli", elfSlug := none, sha256 := "(see apps/sha256-cli/manifest.json)"
+    binary := "apps/sha256-cli", elfSlug := none, «sha256» := "(see apps/sha256-cli/manifest.json)"
     level := "LPS process"
     input := [("stdin", "any finite byte stream"), ("argv", "any")]
     output := [("stdout", "64 hex digits of SHA-256(stdin) and \\n"), ("exit", "0")]
@@ -949,7 +962,7 @@ def ioRecords : List IoRecord := [
     limits := [] },
   { id := "gnu-sha256sum", title := "GNU coreutils 9.4 sha256sum (Ubuntu, dynamic, glibc + libcrypto)"
     binary := "examples/elf/pinned/gnu-sha256sum", elfSlug := some "gnu-sha256sum"
-    sha256 := "4d2db56c867e5324e0084c9e897f6360d37517de77ac96f2bd31494223d69a60"
+    «sha256» := "4d2db56c867e5324e0084c9e897f6360d37517de77ac96f2bd31494223d69a60"
     level := "—"
     input := [], output := []
     model := []
@@ -1174,13 +1187,57 @@ def cliIndex (env : Environment) : IO Json := do
       ("level", js r.level), ("implementation", pairs r.implementation), ("edges", es), ("notes", toJson r.notes)])
   pure (Json.mkObj [("schema", js "silmaril.cli-pages.v1"), ("io", Json.arr ios), ("specs", Json.arr specs)])
 
+/-! ## Assembly functions (`elf/asm.json`, `elf/asm-decls.json`) -/
+
+/-- The committed output of `tools/elf-asm` (docs/projects/elf-asm.md). -/
+def asmPath : String := "examples/elf-asm/samples.json"
+def asmSchema : String := "silmaril.elf.asm/1"
+def asmModules : Array Name := #[`Silmaril.Elf.Asm.Example.Thms, `Silmaril.Elf.Asm.Example.Reloc.Thms]
+
+/-- The declaration names an assembly JSON mentions: its files, its functions and their files,
+decodings, evidence and (when present) ABI conformance rows. -/
+def asmDeclNames (j : Json) : Array String := Id.run do
+  let arr (x : Json) (k : String) : Array Json := ((x.getObjValD k).getArr?.toOption).getD #[]
+  let str (x : Json) (k : String) : Option String := (x.getObjValD k).getStr?.toOption
+  let mut out : Array String := (arr j "files").filterMap (str · "decl")
+  for f in arr j "functions" do
+    out := out ++ ([str f "decl", str f "file"].filterMap id).toArray
+    for k in ["decodings", "evidence", "abi"] do
+      out := out ++ (arr f k).filterMap (str · "decl")
+  pure (out.foldl (fun acc n => if acc.contains n then acc else acc.push n) #[])
+
+/-- `elf/asm.json` (the committed file, unchanged) and `elf/asm-decls.json` (where each named
+declaration is: module, file, line, read from the environment). -/
+def asmPages (env : Environment) : IO (Json × Json) := do
+  let j ← match Json.parse (← IO.FS.readFile asmPath) with
+    | .ok j => pure j
+    | .error e => throw (IO.userError s!"{asmPath}: {e}")
+  unless j.getObjValD "schema" == js asmSchema do
+    throw (IO.userError s!"{asmPath}: schema is not {asmSchema}")
+  let mut decls : Array (String × Json) := #[]
+  for s in asmDeclNames j do
+    let d := s.toName
+    let some ci := env.find? d | throw (IO.userError s!"{asmPath}: {s} is not in the environment ({asmModules})")
+    let module := match env.getModuleIdxFor? d with
+      | some i => env.header.moduleNames[i.toNat]!
+      | none => .anonymous
+    let line ← runCore env do return ((← Lean.findDeclarationRanges? d).map (·.range.pos.line))
+    let kind := match ci with
+      | .thmInfo _ => "theorem" | .defnInfo _ => "definition" | .opaqueInfo _ => "opaque"
+      | .axiomInfo _ => "axiom" | _ => "declaration"
+    decls := decls.push (s, Json.mkObj [("module", js module.toString),
+      ("file", js (module.toString.replace "." "/" ++ ".lean")), ("kind", js kind),
+      ("line", match line with | some l => jn l | none => Json.null)])
+  pure (j, Json.mkObj [("schema", js "silmaril.elf-pages.asm-decls.v1"), ("source", js asmPath),
+    ("decls", Json.mkObj decls.toList)])
+
 /-! ## Driver -/
 
 def loadEnv : IO Environment := do
   Lean.initSearchPath (← Lean.findSysroot)
   importModules (pinned.toArray.flatMap fun P => #[{ module := P.ns ++ `Thms }, { module := P.ns ++ `Functions }] ++
     (if P.slug == "zlib-checksums" then #[{ module := P.ns ++ `Contracts }] else #[]) ++
-    cliModules.map ({ module := · })) {}
+    cliModules.map ({ module := · }) ++ asmModules.map ({ module := · })) {}
 
 def generateWithEnv : IO (Environment × List (String × Json) × List (String × ByteArray)) := do
   let e0 ← IO.monoMsNow
@@ -1229,8 +1286,9 @@ def generateWithEnv : IO (Environment × List (String × Json) × List (String �
       ("kernelOnly", toJson (thms.all fun t => t.axioms.all (standardAxioms.contains ·))),
       ("coverageSummary", pg.getObjValD "coverageSummary")])
   let cli ← cliIndex env
+  let (asm, asmDecls) ← asmPages env
   pure (env, ("index.json", Json.mkObj [("schema", js "silmaril.elf-pages.v1"), ("files", Json.arr index)]) ::
-    ("cli.json", cli) :: files, blobs)
+    ("cli.json", cli) :: ("asm.json", asm) :: ("asm-decls.json", asmDecls) :: files, blobs)
 
 def generate : IO (List (String × Json) × List (String × ByteArray)) := do
   let (_, files, blobs) ← generateWithEnv
@@ -1307,7 +1365,7 @@ def differences (out : String) (files : List (String × Json)) (blobs : List (St
 
 /-- Edits of the explorer data that `--verify` must reject: each moves a byte range, re-associates a
 theorem with another part or function, widens a coverage class, hides axioms or links a contract to
-another function. -/
+another function, or changes or drops a piece of an assembly function's evidence. -/
 def tampers : List (String × String × (Json → Json)) :=
   let modArr (f : Array Json → Array Json) (key : String) (j : Json) : Json :=
     match j.getObjValD key with
@@ -1335,7 +1393,12 @@ def tampers : List (String × String × (Json → Json)) :=
       | _ => r) "io"),
    ("contract linked to another function", "f/zlib-checksums.json", modArr (modFirst
       (fun r => r.getObjValD "name" == Json.str "crc32_z") fun r =>
-        r.setObjVal! "contracts" (Json.arr #[js "Silmaril.Elf.Staged.Pinned.ZlibChecksums.adler32_z_contract"])) "functions")]
+        r.setObjVal! "contracts" (Json.arr #[js "Silmaril.Elf.Staged.Pinned.ZlibChecksums.adler32_z_contract"])) "functions"),
+   ("assembly evidence kind changed", "asm.json", modArr (fun a => a.modify 0 fun f =>
+      f.setObjVal! "evidence" (.arr ((((f.getObjValD "evidence").getArr?.toOption).getD #[]).modify 0 fun e =>
+        e.setObjVal! "kind" (js (if e.getObjValD "kind" == js "notArch" then "arch" else "notArch"))))) "functions"),
+   ("assembly evidence dropped", "asm.json", modArr (fun a => a.modify 0 fun f =>
+      f.setObjVal! "evidence" (.arr (((f.getObjValD "evidence").getArr?.toOption).getD #[]).pop)) "functions")]
 
 def main (args : List String) : IO UInt32 := do
   match args with

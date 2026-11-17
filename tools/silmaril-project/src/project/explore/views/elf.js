@@ -374,13 +374,21 @@ table.elf-dis tr.hit td { background:#fff1b8; }
     try { d = await elfJson(`f/${enc(slug)}.json`); } catch (e) { return elfMissing(e); }
     const T = thmByDecl(d);
     const fs = d.functions || [];
+    // Assembly records of this file (elf/asm.json, the Assembly tab), matched by the file's path
+    // and the symbol's name. Optional: without the data the table has no assembly links.
+    const asm = await elfJson("asm.json").catch(() => null);
+    const asmFile = asm && (asm.files || []).find((x) => x.path === d.path);
+    const asmNames = new Map();
+    if (asmFile) for (const r of asm.functions || []) if (r.file === asmFile.decl) asmNames.set(r.name, (asmNames.get(r.name) || 0) + 1);
+    const asmLink = (f) => asmNames.has(f.name) ? `<br><a class="elf-asm" href="#/asm/${enc(slug)}/${enc(f.name)}" title="assembly records of this file named ${esc(f.name)}: bytes, decodings and evidence by dimension">assembly${asmNames.get(f.name) > 1 ? ` (${asmNames.get(f.name)} records)` : ""}</a>` : "";
     const counts = { defined: fs.filter((f) => f.defined).length, imports: fs.filter((f) => !f.defined).length,
       unknown: fs.filter((f) => f.defined && f.size === 0).length, ifunc: fs.filter((f) => f.ifunc).length,
       contracts: fs.filter((f) => f.contracts.length).length };
     const tables = [...new Set(fs.map((f) => f.table))];
     let h = head(d, "functions") + `<p class="note">${esc(FN_NOTE)}</p>`;
     h += `<p>${fs.length} function symbols (${tables.map(esc).join(", ") || "no symbol table"}): ${counts.defined} defined, ${counts.imports} imports, ` +
-      `${counts.unknown} with unknown extent (size 0), ${counts.ifunc} IFUNC; <b>${counts.contracts}</b> with a contract theorem, the others have <b>no contract statement</b> in this repository.</p>`;
+      `${counts.unknown} with unknown extent (size 0), ${counts.ifunc} IFUNC; <b>${counts.contracts}</b> with a contract theorem, the others have <b>no contract statement</b> in this repository.</p>` +
+      (asmNames.size ? `<p>${asmNames.size} of these names have <a href="#/asm/${enc(slug)}">assembly records</a> (bytes, decodings and evidence by dimension).</p>` : "");
     h += '<div class="controls"><input type="text" id="elf-fq" placeholder="filter by name or version" size="30">' +
       '<label><input type="checkbox" id="elf-fdef" checked> defined only</label><label><input type="checkbox" id="elf-fcon"> with contract</label>' +
       '<span id="elf-fn" class="muted"></span> <span id="elf-fpg"></span></div><div id="elf-ft"></div>';
@@ -400,7 +408,7 @@ table.elf-dis tr.hit td { background:#fff1b8; }
         $("#elf-fn").textContent = `${rows.length} of ${fs.length}`;
         $("#elf-fpg").innerHTML = pages > 1 ? `<button type="button" id="elf-fprev"${page ? "" : " disabled"}>◀</button> page ${page + 1} of ${pages} <button type="button" id="elf-fnext"${page + 1 < pages ? "" : " disabled"}>▶</button>` : "";
         $("#elf-ft").innerHTML = '<div class="tablebox"><table class="elf-fns"><thead><tr><th>symbol</th><th>version</th><th>type, bind</th><th>address</th><th>size / extent</th><th>file offset</th><th>segment</th><th>section</th><th>aliases, overlaps</th><th>symbol theorem</th><th>contract</th></tr></thead><tbody>' +
-          rows.slice(page * FPAGE, (page + 1) * FPAGE).map((f) => `<tr data-fn="${esc(f.name)}"><td><code>${esc(f.name)}</code><br><span class="muted">${esc(f.table)} #${f.idx}</span></td>` +
+          rows.slice(page * FPAGE, (page + 1) * FPAGE).map((f) => `<tr data-fn="${esc(f.name)}"><td><code>${esc(f.name)}</code><br><span class="muted">${esc(f.table)} #${f.idx}</span>${asmLink(f)}</td>` +
             `<td>${esc(f.version || "")}</td><td>${esc(f.type)}${f.ifunc ? ' <span class="st" title="a resolver: the implementation is chosen at load time">resolver</span>' : ""}<br><span class="muted">${esc(f.bind)}</span></td>` +
             `<td>${f.defined && f.value ? (f.offset != null ? dlink(slug, hx(f.value), hx(f.value)) : hx(f.value)) : '<span class="muted">—</span>'}</td>` +
             `<td>${f.size || ""} <span class="${f.extent.startsWith("known") ? "muted" : "st"}">${esc(f.extent)}</span></td>` +

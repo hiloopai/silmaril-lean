@@ -6,6 +6,7 @@ public import Silmaril.Elf.Lookup.Defs
 public import Silmaril.Elf.Index.Defs
 public import Silmaril.Elf.Facts.Defs
 public import Silmaril.Elf.Shapes.Defs
+public import Silmaril.Elf.Like.Defs
 
 /-! # The ELF verification API (`Silmaril.Elf`)
 
@@ -19,7 +20,11 @@ One namespace for what a proof needs to know about an ELF64 file: import this mo
 | semantics | `Silmaril.Elf.Lookup` | `Ref`, `Ver`, `Def`, `Sel`, `File.lookupDef`, `File.select`, `File.relocs`, `DynConsistent` |
 | index | `Silmaril.Elf.Index` | `Index`, `Index.build`, `Index.lookup` |
 | facts | `Silmaril.Elf.Facts` | `KindIs`, `SymbolAt`, `Lookup`, `Needed`, `Relocs`, `Placement`, `CodeAt`, `Binds` |
-| shapes | `Silmaril.Elf.Shapes` | `silmaril.shapes.elf.{parses,index,kind,symbol,lookup,needed,relocs,placement,code_at,binds}` |
+| like | `Silmaril.Elf.Like` | `ElfLike` (over `Silmaril.ByteSource`), `Denotes`, `MachineIs`, `EntryPoint`, `File.entries`, `EntriesAre`, `IsEntry` |
+| shapes | `Silmaril.Elf.Shapes` | `silmaril.shapes.elf.{parses,index,kind,symbol,lookup,needed,relocs,placement,code_at,binds,entry_point,machine,entries,is_entry}` |
+| decoding (import separately) | `Silmaril.Elf.Decode` | `decode`: `ok`, `unsupported`, `invalid`, `incomplete`; `whole`, `prefixOf`, `windows`, `Refines` |
+| addresses (import separately) | `Silmaril.Elf.Image` | `File.origins`, `File.resolve`, `Origin.{file,zeroFill}`, `MapsFile`, `FileBytes`, `SegBytes`, `Untouched` |
+| assembly functions (import separately) | `Silmaril.Elf.Asm` | `AsmFunction`, `Isa`, `ArchOf`, `BytesAt`, `SymbolOf`, `DecodesAs`, `LinesTile`, `RefsGrounded`; `Asm.X86` (`x86Ext`, `x86Open`, `x86Open9`); `Asm.Export` (`silmaril.elf.asm/1`) |
 | bridges | `Silmaril.Elf.Bridge` (import separately) | `Task.*` relating `DynElf`, `ElfBind`, `Dyn.Loader`, silmaril readers |
 | loading models | `Silmaril.Elf.Link.{ElfBind,Dyn.Loader,Dyn.Image}` (import separately) | `ElfBind.{Bound,CodeAt,Placement,RoLoaded}`, `Dyn.ExeLoaded` (ld.so's effect, a specified relation) |
 | equivalences | `Silmaril.Elf.BindEq` (import separately) | `codeAt_iff`, `placement_iff`, `directCall_of_binds` |
