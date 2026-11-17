@@ -43,7 +43,7 @@ theorem crcData_untouched : ∀ d ∈ crcData, missesAllB A0 8 d.1.toNat d.2.len
 
 theorem machine_x86_64 : A0.header.machine = EM_X86_64 := by decide +kernel
 
-theorem reloc_width : (A0.relocs .dynamic).all (fun r => relocWidth r.kind == some 8) = true := by
+theorem reloc_width : widthsB A0 8 = true := by
   decide +kernel
 
 theorem crc32Combine_code : CodeOf F (.dynsym (some zlib122)) "crc32_combine" crc32CombineCode :=
@@ -52,7 +52,7 @@ theorem crc32Combine_code : CodeOf F (.dynsym (some zlib122)) "crc32_combine" cr
     crcData_mapped image_eq
 
 theorem crc32Combine_untouched : Untouched F crc32CombineCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) crcData_untouched
+  untouched_of parses reloc_width (by decide +kernel) crcData_untouched
 
 theorem crc32Combine_declared : Declares sysvInt hdr "crc32_combine" combineProto := declares_of_sig (by decide +kernel)
 
@@ -65,7 +65,7 @@ theorem adler32Combine_code : CodeOf F (.dynsym (some zlib122)) "adler32_combine
     (fun _ h => nomatch h) image_eq
 
 theorem adler32Combine_untouched : Untouched F adler32CombineCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) (fun _ h => nomatch h)
+  untouched_of parses reloc_width (by decide +kernel) (fun _ h => nomatch h)
 
 theorem adler32Combine_declared : Declares sysvInt hdr "adler32_combine" combineProto := declares_of_sig (by decide +kernel)
 
@@ -78,7 +78,7 @@ theorem crc32CombineGen_code : CodeOf F (.dynsym (some zlib1212)) "crc32_combine
     crcData_mapped image_eq
 
 theorem crc32CombineGen_untouched : Untouched F crc32CombineGenCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) crcData_untouched
+  untouched_of parses reloc_width (by decide +kernel) crcData_untouched
 
 theorem crc32CombineGen_declared : Declares sysvInt hdr "crc32_combine_gen" genProto := declares_of_sig (by decide +kernel)
 
@@ -91,7 +91,7 @@ theorem crc32CombineOp_code : CodeOf F (.dynsym (some zlib1212)) "crc32_combine_
     (fun _ h => nomatch h) image_eq
 
 theorem crc32CombineOp_untouched : Untouched F crc32CombineOpCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) (fun _ h => nomatch h)
+  untouched_of parses reloc_width (by decide +kernel) (fun _ h => nomatch h)
 
 theorem crc32CombineOp_declared : Declares sysvInt hdr "crc32_combine_op" opProto := declares_of_sig (by decide +kernel)
 
@@ -104,7 +104,7 @@ theorem getCrcTable_code : CodeOf F (.dynsym none) "get_crc_table" getCrcTableCo
     crcData_mapped image_eq
 
 theorem getCrcTable_untouched : Untouched F getCrcTableCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) crcData_untouched
+  untouched_of parses reloc_width (by decide +kernel) crcData_untouched
 
 theorem getCrcTable_declared : Declares sysvInt hdr "get_crc_table" ptrProto := declares_of_sig (by decide +kernel)
 
@@ -117,7 +117,7 @@ theorem zlibVersion_code : CodeOf F (.dynsym none) "zlibVersion" zlibVersionCode
     crcData_mapped image_eq
 
 theorem zlibVersion_untouched : Untouched F zlibVersionCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) crcData_untouched
+  untouched_of parses reloc_width (by decide +kernel) crcData_untouched
 
 theorem zlibVersion_declared : Declares sysvInt hdr "zlibVersion" ptrProto := declares_of_sig (by decide +kernel)
 
@@ -130,7 +130,7 @@ theorem zlibCompileFlags_code : CodeOf F (.dynsym (some zlib1202)) "zlibCompileF
     (fun _ h => nomatch h) image_eq
 
 theorem zlibCompileFlags_untouched : Untouched F zlibCompileFlagsCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) (fun _ h => nomatch h)
+  untouched_of parses reloc_width (by decide +kernel) (fun _ h => nomatch h)
 
 theorem zlibCompileFlags_declared : Declares sysvInt hdr "zlibCompileFlags" flagsProto := declares_of_sig (by decide +kernel)
 

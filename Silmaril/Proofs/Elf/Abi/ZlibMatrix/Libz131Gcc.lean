@@ -45,7 +45,7 @@ theorem crcData_untouched : ∀ d ∈ crcData, missesAllB A0 8 d.1.toNat d.2.len
 `RELATIVE`). -/
 theorem machine_x86_64 : A0.header.machine = EM_X86_64 := by decide +kernel
 
-theorem reloc_width : (A0.relocs .dynamic).all (fun r => relocWidth r.kind == some 8) = true := by
+theorem reloc_width : widthsB A0 8 = true := by
   decide +kernel
 
 theorem reloc_kinds : (A0.relocs .dynamic).all (fun r => [6, 7, 8].contains r.kind) = true := by
@@ -57,7 +57,7 @@ theorem crc32z_code : CodeOf F (.dynsym (some zlib129)) "crc32_z" crc32zCode :=
     crcData_mapped image_eq
 
 theorem crc32z_untouched : Untouched F crc32zCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) crcData_untouched
+  untouched_of parses reloc_width (by decide +kernel) crcData_untouched
 
 theorem crc32z_declared : Declares sysvInt hdr "crc32_z" zProto := declares_of_sig (by decide +kernel)
 
@@ -67,7 +67,7 @@ theorem adler32z_code : CodeOf F (.dynsym (some zlib129)) "adler32_z" adler32zCo
     (fun _ h => nomatch h) image_eq
 
 theorem adler32z_untouched : Untouched F adler32zCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) (fun _ h => nomatch h)
+  untouched_of parses reloc_width (by decide +kernel) (fun _ h => nomatch h)
 
 theorem adler32z_declared : Declares sysvInt hdr "adler32_z" zProto := declares_of_sig (by decide +kernel)
 

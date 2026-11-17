@@ -1,5 +1,6 @@
 module
 
+public import Silmaril.Elf.Abi.Thms
 public import Silmaril.Machine.Abi.Conformance.Zlib.Defs
 public import Silmaril.Elf.Abi.Defs
 public import Silmaril.Elf.Staged.Pinned.ZlibChecksums.Thms
@@ -79,8 +80,7 @@ theorem adler32_code : CodeOf F .symtab "adler32" adler32Code :=
 
 theorem relocs_empty : A0.relocs .dynamic = [] := by decide +kernel
 
-theorem untouched (c : Code) : Untouched F c :=
-  ⟨_, parses, by decide +kernel, by rw [relocs_empty]; simp⟩
+theorem untouched (c : Code) : Untouched F c := Silmaril.Elf.Abi.untouched_of_norelocs parses relocs_empty
 
 /-- `zlib-checksums` is `ET_EXEC`: it admits base `0` and no other. -/
 theorem placement_zero_ok : Placement F 0 :=

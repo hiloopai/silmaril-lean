@@ -57,44 +57,36 @@ theorem not_codeOf_ifunc (hp : Parses F A0) {b : Binding} {f : String} {d : Def}
   rw [hi] at hf
   cases hf
 
-/-- No dynamic relocation, `w` bytes each, writes `[v, v + n)`. -/
+/-- No dynamic relocation, `w` bytes each, writes `[v, v + n)` (the core's `Image.Misses`). -/
 def missesAllB (A0 : File) (w v n : Nat) : Bool :=
-  (A0.relocs .dynamic).all fun r => decide (r.offset + w ≤ v ∨ v + n ≤ r.offset)
+  (A0.relocs .dynamic).all fun r => Silmaril.Elf.Image.Misses r.offset w v n
 
-/-- `Untouched` from the file's machine, a width every dynamic relocation has, and the misses. -/
-theorem untouched_of (hp : Parses F A0) {c : Code} {w : Nat} (hm : A0.header.machine = EM_X86_64)
-    (hw : (A0.relocs .dynamic).all (fun r => relocWidth r.kind == some w) = true)
+/-- Every dynamic relocation is `w` bytes wide (`File.relocWidth`) and neither `COPY` nor
+`IRELATIVE`. -/
+def widthsB (A0 : File) (w : Nat) : Bool :=
+  (A0.relocs .dynamic).all fun r => A0.relocWidth r == some w && r.kind != R_X86_64_COPY &&
+    r.kind != R_X86_64_IRELATIVE
+
+/-- `Untouched` from the relocations' widths and kinds and the misses. -/
+theorem untouched_of (hp : Parses F A0) {c : Code} {w : Nat} (hw : widthsB A0 w = true)
     (hc : missesAllB A0 w c.base.toNat c.bytes.length = true)
     (hd : ∀ d ∈ c.data, missesAllB A0 w d.1.toNat d.2.length = true) : Untouched F c := by
-  refine ⟨_, hp, hm, fun r hr => ⟨w, ?_, ?_, fun d hdm => ?_⟩⟩
-  · exact beq_iff_eq.mp (List.all_eq_true.mp hw r hr)
-  · unfold Misses; exact of_decide_eq_true (List.all_eq_true.mp hc r hr)
-  · unfold Misses; exact of_decide_eq_true (List.all_eq_true.mp (hd d hdm) r hr)
+  have hw' := fun r hr => List.all_eq_true.mp hw r hr
+  simp only [Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at hw'
+  refine ⟨_, hp, fun r hr => ⟨w, (hw' r hr).1.1, List.all_eq_true.mp hc r hr⟩,
+    fun d hdm r hr => ⟨w, (hw' r hr).1.1, List.all_eq_true.mp (hd d hdm) r hr⟩,
+    fun r hr => ⟨(hw' r hr).1.2, (hw' r hr).2⟩⟩
 
-/-- Some table defines a function (`STT_FUNC` or `STT_GNU_IFUNC`) named `f`. -/
-def presentB (A0 : File) (f : String) : Bool :=
-  [Table.symtab, .dynsym].any fun t => (A0.symbols t).any fun s =>
-    s.name == nameOf f && s.raw.sectionIndex != 0 && (s.kind == 2 || s.kind == 10)
+/-- Some table defines a function named `f` (the core's `File.definesFn`). -/
+def presentB (A0 : File) (f : String) : Bool := A0.definesFn (nameOf f)
 
-theorem present_of (hp : Parses F A0) {f : String} (h : presentB A0 f = true) : Present F f := by
-  simp only [presentB, List.any_cons, List.any_nil, Bool.or_false, Bool.or_eq_true,
-    List.any_eq_true, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at h
-  rcases h with ⟨s, hs, ⟨hn, hi⟩, hk⟩ | ⟨s, hs, ⟨hn, hi⟩, hk⟩
-  · exact ⟨_, hp, .symtab, s, hs, hn, hi, by simpa using hk⟩
-  · exact ⟨_, hp, .dynsym, s, hs, hn, hi, by simpa using hk⟩
+theorem present_of (hp : Parses F A0) {f : String} (h : presentB A0 f = true) : Present F f := ⟨_, hp, h⟩
 
-/-- No table has a defined symbol named `f` (any type, any version). -/
-def absentB (A0 : File) (f : String) : Bool :=
-  [Table.symtab, .dynsym].all fun t => (A0.symbols t).all fun s =>
-    s.name != nameOf f || s.raw.sectionIndex == 0
+/-- No table defines a symbol named `f` (the core's `File.definesName`). -/
+def absentB (A0 : File) (f : String) : Bool := !A0.definesName (nameOf f)
 
-theorem absent_of (hp : Parses F A0) {f : String} (h : absentB A0 f = true) : Absent F f := by
-  refine ⟨_, hp, fun t s hs hn => ?_⟩
-  simp only [absentB, List.all_cons, List.all_nil, Bool.and_true, Bool.and_eq_true,
-    List.all_eq_true, Bool.or_eq_true, bne_iff_ne, ne_eq, beq_iff_eq] at h
-  cases t
-  · exact (h.1 s hs).resolve_left (not_not.mpr hn)
-  · exact (h.2 s hs).resolve_left (not_not.mpr hn)
+theorem absent_of (hp : Parses F A0) {f : String} (h : absentB A0 f = true) : Absent F f :=
+  ⟨_, hp, by simpa [absentB] using h⟩
 
 /-- `Declares` from the decidable comparison of lowered signatures (as
 `Proofs.Elf.Abi.ZlibRows.declares_of_sig`, which is another topic's proof module; follow-up: one

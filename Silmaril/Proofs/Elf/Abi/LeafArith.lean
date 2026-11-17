@@ -43,29 +43,16 @@ theorem funcSym {t : Table} {i : Nat} {f : String} (h : funcSymB A0 t i f = true
     exact ⟨s, ⟨_, parses, hs⟩, h.1, h.2⟩
   · exact absurd h (by simp)
 
-def absentB (A : File) (f : String) : Bool :=
-  [Table.symtab, Table.dynsym].all fun t =>
-    (A.symbols t).all fun s => s.name != nameOf f || s.raw.sectionIndex == 0
+/-- No table defines a symbol named `f` (the core's `File.definesName`). -/
+def absentB (A : File) (f : String) : Bool := !A.definesName (nameOf f)
 
-theorem absent_of {f : String} (h : absentB A0 f = true) : Absent F f := by
-  refine ⟨_, parses, fun t s hs hn => ?_⟩
-  simp only [absentB, List.all_cons, List.all_nil, Bool.and_true, Bool.and_eq_true,
-    List.all_eq_true, Bool.or_eq_true, bne_iff_ne, ne_eq, beq_iff_eq] at h
-  cases t
-  · exact (h.1 s hs).resolve_left (by simpa using hn)
-  · exact (h.2 s hs).resolve_left (by simpa using hn)
+theorem absent_of {f : String} (h : absentB A0 f = true) : Absent F f :=
+  ⟨_, parses, by simpa [absentB] using h⟩
 
-def presentB (A : File) (f : String) : Bool :=
-  [Table.symtab, Table.dynsym].any fun t =>
-    (A.symbols t).any fun s => s.name == nameOf f && s.raw.sectionIndex != 0 &&
-      (s.kind == 2 || s.kind == 10)
+/-- Some table defines a function named `f` (the core's `File.definesFn`). -/
+def presentB (A : File) (f : String) : Bool := A.definesFn (nameOf f)
 
-theorem present_of {f : String} (h : presentB A0 f = true) : Present F f := by
-  simp only [presentB, List.any_cons, List.any_nil, Bool.or_false, Bool.or_eq_true,
-    List.any_eq_true, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at h
-  rcases h with ⟨s, hs, ⟨hn, hi⟩, hk⟩ | ⟨s, hs, ⟨hn, hi⟩, hk⟩
-  · exact ⟨_, parses, .symtab, s, hs, hn, hi, by simpa using hk⟩
-  · exact ⟨_, parses, .dynsym, s, hs, hn, hi, by simpa using hk⟩
+theorem present_of {f : String} (h : presentB A0 f = true) : Present F f := ⟨_, parses, h⟩
 
 /-! ## The code -/
 
@@ -86,7 +73,7 @@ theorem codeOf (f : String) (i v n off : Nat) (hl : A0.select (Binding.symtab.se
 theorem relocs_empty : A0.relocs .dynamic = [] := by decide +kernel
 
 theorem untouched (off n : Nat) : Untouched F (region off n) :=
-  ⟨_, parses, by decide +kernel, by rw [relocs_empty]; simp⟩
+  untouched_of_norelocs parses relocs_empty
 
 /-- `leaf-arith` is `ET_EXEC`: its only load base is `0`. -/
 theorem placement_zero {b : Nat} (h : Placement F b) : b = 0 := by

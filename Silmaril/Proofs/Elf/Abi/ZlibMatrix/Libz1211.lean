@@ -32,7 +32,7 @@ theorem image_eq : image = A0.loads.map fun ph => (BitVec.ofNat 64 ph.virtualAdd
 `RELATIVE`). -/
 theorem machine_x86_64 : A0.header.machine = EM_X86_64 := by decide +kernel
 
-theorem reloc_width : (A0.relocs .dynamic).all (fun r => relocWidth r.kind == some 8) = true := by
+theorem reloc_width : widthsB A0 8 = true := by
   decide +kernel
 
 theorem reloc_kinds : (A0.relocs .dynamic).all (fun r => [6, 7, 8].contains r.kind) = true := by
@@ -44,7 +44,7 @@ theorem adler32z_code : CodeOf F (.dynsym (some zlib129)) "adler32_z" adler32zCo
     (fun _ h => nomatch h) image_eq
 
 theorem adler32z_untouched : Untouched F adler32zCode :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) (fun _ h => nomatch h)
+  untouched_of parses reloc_width (by decide +kernel) (fun _ h => nomatch h)
 
 theorem adler32z_declared : Declares sysvInt hdr "adler32_z" zProto := declares_of_sig (by decide +kernel)
 
@@ -54,7 +54,7 @@ theorem adler32_code : CodeOf F (.dynsym none) "adler32" adler32Code :=
     (fun _ h => nomatch h) image_eq
 
 theorem adler32_untouched : Untouched F adler32Code :=
-  untouched_of parses machine_x86_64 reloc_width (by decide +kernel) (fun _ h => nomatch h)
+  untouched_of parses reloc_width (by decide +kernel) (fun _ h => nomatch h)
 
 theorem adler32_declared : Declares sysvInt hdr "adler32" wProto := declares_of_sig (by decide +kernel)
 

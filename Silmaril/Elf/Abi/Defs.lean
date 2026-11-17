@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Elf.Facts.Defs
+public import Silmaril.Elf.Image.Defs
+public import Silmaril.Elf.Load.Defs
 public import Silmaril.Project.Shapes.Abi.Defs
 
 /-!
@@ -85,15 +87,10 @@ def Binding.table : Binding → Table
   | .symtab => .symtab
   | .dynsym _ => .dynsym
 
-/-- `ph` is a `PT_LOAD` mapping `[v, v + len)` from the file, readable and not writable. -/
-def roSeg (v len : Nat) (ph : Silmaril.Formats.ELF.ProgramHeader) : Bool :=
-  ph.kind == PT_LOAD && ph.flags / 2 % 2 == 0 && ph.flags / 4 % 2 == 1 &&
-    decide (ph.virtualAddress ≤ v) && decide (v + len ≤ ph.virtualAddress + ph.fileSize)
-
-/-- **`F` maps `bytes` read-only at `v`** (any read-only `PT_LOAD`, as `CodeAt` for code). -/
-def MappedAt (F : Blob) (v : Nat) (bytes : List (BitVec 8)) : Prop :=
-  ∃ A, Parses F A ∧ ∃ ph, A.phdrs.find? (roSeg v bytes.length) = some ph ∧
-    blobRead F (ph.offset + (v - ph.virtualAddress)) bytes.length = some (Blob.valueLE bytes)
+/-- **`F` maps `bytes` read-only at `v`**: the ELF core's `Load.ReadOnlyAt` (the first readable,
+non-writable `PT_LOAD` mapping the range maps exactly these bytes from the file). -/
+abbrev MappedAt (F : Blob) (v : Nat) (bytes : List (BitVec 8)) : Prop :=
+  Silmaril.Elf.Load.ReadOnlyAt F v bytes
 
 /-- **The code is the function `f` of `F`** (at link-time addresses): the binding's lookup finds a
 plain function at the entry with the code's extent, the symbol entry it found is an `STT_FUNC`
@@ -107,54 +104,36 @@ def CodeOf (F : Blob) (b : Binding) (f : String) (c : Code) : Prop :=
   (∀ d ∈ c.data, MappedAt F d.1.toNat d.2) ∧
   ∃ A, Parses F A ∧ c.image = A.loads.map fun ph => (BitVec.ofNat 64 ph.virtualAddress, ph.memorySize)
 
-/-- `EM_X86_64`: relocation type numbers below are x86-64's. -/
+/-- `EM_X86_64`. -/
 def EM_X86_64 : Nat := 62
 
-/-- **The bytes an x86-64 dynamic relocation of type `k` writes** at its offset (the field of the
-x86-64 psABI's relocation table, x86-psABIs/x86-64-ABI@e1ce0983 §4.4.1; `TLSDESC` is two words,
-§"Thread-Local Storage Descriptors"). Every other type is `none`, and a relocation of it counts as
-touching everything (`Untouched`): `R_X86_64_COPY` (5, writes the destination symbol's
-`st_size`), `R_X86_64_IRELATIVE` (37: ld.so runs the IFUNC resolver it names, code this check
-says nothing about), the link-time-only types, and unknown numbers.
+/-- `R_X86_64_COPY`: copies a symbol's bytes from another object; its footprint depends on the
+loader's choice of size (`File.relocWidth` bounds it by the destination's `st_size`, a loader
+assumption). Refused here rather than assumed. -/
+def R_X86_64_COPY : Nat := 5
 
-| width | types |
-| --- | --- |
-| 0 | `NONE` (0) |
-| 4 | `PC32` (2), `32` (10), `32S` (11), `TPOFF32` (23) |
-| 8 | `64` (1), `GLOB_DAT` (6), `JUMP_SLOT` (7), `RELATIVE` (8), `DTPMOD64` (16), `DTPOFF64` (17), `TPOFF64` (18), `PC64` (24), `RELATIVE64` (38) |
-| 16 | `TLSDESC` (36) |
--/
-def relocWidth : Nat → Option Nat
-  | 0 => some 0
-  | 2 | 10 | 11 | 23 => some 4
-  | 1 | 6 | 7 | 8 | 16 | 17 | 18 | 24 | 38 => some 8
-  | 36 => some 16
-  | _ => none
+/-- `R_X86_64_IRELATIVE`: ld.so runs the IFUNC resolver it names, code this check says nothing
+about. Refused here, although its write is 8 bytes. -/
+def R_X86_64_IRELATIVE : Nat := 37
 
-/-- `[o, o + w)` misses `[v, v + n)`. -/
-def Misses (o w v n : Nat) : Prop := o + w ≤ v ∨ v + n ≤ o
-
-/-- **No dynamic relocation patches the code or its data**: the file is x86-64, and every dynamic
-relocation (what ld.so applies, RELR entries expanded) has a known width (`relocWidth`) and
-writes `[offset, offset + width)` outside the code bytes and outside each data range. A
-relocation of unknown or symbol-dependent width (`COPY`), or one that makes the loader run code
-(`IRELATIVE`), is refused. It covers relocation writes, not code the loader runs for other
-reasons (constructors, `DT_INIT`, other objects' IFUNC resolvers). -/
+/-- **No dynamic relocation patches the code or its data**: the ELF core's footprint check
+(`Image.Untouched`: every dynamic relocation has a known width, `File.relocWidth`, per x86-64 type,
+16 bytes for `TLSDESC`, unknown types and other machines touching every range) on the code bytes
+and on each data range, and no `COPY` or `IRELATIVE` relocation at all. It covers relocation
+writes, not code the loader runs for other reasons (constructors, `DT_INIT`, other objects'
+IFUNC resolvers). -/
 def Untouched (F : Blob) (c : Code) : Prop :=
-  ∃ A, Parses F A ∧ A.header.machine = EM_X86_64 ∧ ∀ r ∈ A.relocs .dynamic, ∃ w,
-    relocWidth r.kind = some w ∧ Misses r.offset w c.base.toNat c.bytes.length ∧
-    ∀ d ∈ c.data, Misses r.offset w d.1.toNat d.2.length
+  ∃ A, Parses F A ∧ Silmaril.Elf.Image.Untouched A c.base.toNat c.bytes.length ∧
+    (∀ d ∈ c.data, Silmaril.Elf.Image.Untouched A d.1.toNat d.2.length) ∧
+    ∀ r ∈ A.relocs .dynamic, r.kind ≠ R_X86_64_COPY ∧ r.kind ≠ R_X86_64_IRELATIVE
 
-/-- **`f` is absent from `F`**: no symbol table (`.symtab`, `.dynsym`, any version) has a
-defined symbol named `f`. -/
-def Absent (F : Blob) (f : String) : Prop :=
-  ∃ A, Parses F A ∧ ∀ t, ∀ s ∈ A.symbols t, s.name = nameOf f → s.raw.sectionIndex = 0
+/-- **`f` is absent from `F`**: the ELF core's `Load.AbsentName`: no symbol table (`.symtab`,
+`.dynsym`) defines a symbol named `f`, in any version (`name@VER` spellings included). -/
+abbrev Absent (F : Blob) (f : String) : Prop := Silmaril.Elf.Load.AbsentName F (nameOf f)
 
-/-- **`f` is present in `F`**: some symbol table defines a function (`STT_FUNC` or
-`STT_GNU_IFUNC`) named `f`. -/
-def Present (F : Blob) (f : String) : Prop :=
-  ∃ A, Parses F A ∧ ∃ t, ∃ s ∈ A.symbols t, s.name = nameOf f ∧ s.raw.sectionIndex ≠ 0 ∧
-    (s.kind = 2 ∨ s.kind = 10)
+/-- **`f` is present in `F`**: the ELF core's `Load.PresentFn`: some table defines a function
+(`STT_FUNC` or `STT_GNU_IFUNC`) named `f`, in some version. -/
+abbrev Present (F : Blob) (f : String) : Prop := Silmaril.Elf.Load.PresentFn F (nameOf f)
 
 /-- **The function `f` of the ELF file `F` conforms to the ABI `A` on the machine `M`**, as the
 header `hdr` declares it: the code is the file's (`CodeOf`, at link-time addresses), no dynamic

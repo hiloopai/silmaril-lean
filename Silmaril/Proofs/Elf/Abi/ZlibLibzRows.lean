@@ -26,16 +26,10 @@ theorem adler32_declared : Declares sysvInt hdr "adler32" wProto := declares_of_
 
 theorem coverage_check : coverage.check sysvInt hdr = true := by decide +kernel
 
-/-- `.dynsym` defines a function (`STT_FUNC` or `STT_GNU_IFUNC`) named `f`. -/
-def presentB (f : String) : Bool :=
-  (A0.symbols .dynsym).any fun s => s.name == nameOf f && s.raw.sectionIndex != 0 &&
-    (s.kind == 2 || s.kind == 10)
+/-- Some table defines a function named `f` (the core's `File.definesFn`). -/
+def presentB (f : String) : Bool := A0.definesFn (nameOf f)
 
-theorem present_of {f : String} (h : presentB f = true) : Present F f := by
-  simp only [presentB, List.any_eq_true, Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq,
-    bne_iff_ne, ne_eq] at h
-  obtain ⟨s, hs, ⟨hn, hi⟩, hk⟩ := h
-  exact ⟨_, parses, .dynsym, s, hs, hn, hi, hk⟩
+theorem present_of {f : String} (h : presentB f = true) : Present F f := ⟨_, parses, h⟩
 
 theorem excluded_ok : ∀ e ∈ coverage.excluded,
     (match e.2 with

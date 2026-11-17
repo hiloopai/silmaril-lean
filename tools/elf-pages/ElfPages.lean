@@ -9,9 +9,17 @@ import Silmaril.Elf.Staged.Pinned.LeafArith.Thms
 import Silmaril.Elf.Staged.Pinned.LeafArith.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibChecksums.Defs
 import Silmaril.Elf.Staged.Pinned.ZlibLibz.Defs
+-- The pages load each pinned file's `Thms` and `Functions` at run time; importing them here makes
+-- `lake build elf-pages` build them, so no separate target list has to name them.
 import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Functions
 import Silmaril.Elf.Staged.Pinned.GlibcLibm.Defs
 import Silmaril.Elf.Staged.Pinned.GlibcLibc.Defs
 import Silmaril.Crypto.SHA256

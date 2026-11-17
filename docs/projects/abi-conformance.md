@@ -141,14 +141,14 @@ conformance of a *pure* function. A function with effects (`memset`) gives its `
      rejected.
    - A read-only executable `PT_LOAD` maps the code bytes, and read-only segments map the data.
    - The code's image is the file's `PT_LOAD` ranges.
-2. **`Untouched F c`.** The file is x86-64, and every dynamic relocation has a known width
-   (`relocWidth`, from the psABI's relocation table: 4, 8, or 16 for `TLSDESC`; types the
-   check does not accept, `SIZE64` among them, are refused) and writes outside
-   the code and its data. `COPY` (it writes the symbol's `st_size`), `IRELATIVE` (ld.so runs the
-   IFUNC resolver it names), link-time-only and unknown types are refused wherever they are (`not_untouched_copy`, `not_untouched_unknown`), as is a
-   file of another machine. A `TLSDESC` 12 bytes below the code is refused
-   (`not_untouched_tlsdesc`); the former check, which took every relocation as 8 bytes, accepted
-   it (`misses8_tlsdesc`).
+2. **`Untouched F c`.** The ELF core's footprint check (`Image.Untouched`, #883) on the code and
+   on each data range: every dynamic relocation has a known width (`File.relocWidth`: the psABI
+   field width per x86-64 type, 16 for `TLSDESC`; unknown types and other machines touch every
+   range) and misses the range. In addition, any `COPY` relocation (its footprint depends on the
+   loader's choice of size) and any `IRELATIVE` (ld.so runs its resolver) is refused. Negatives:
+   `not_untouched_tlsdesc` (a check that took every relocation as 8 bytes would pass it,
+   `misses8_tlsdesc`), `not_untouched_copy`, `not_untouched_irelative`, `not_untouched_unknown`,
+   `not_untouched_machine`.
 3. **Rebased conformance.** The file admits at least one load base, and at **every load base
    the file admits** (`Placement`: `0` for `ET_EXEC`, page-aligned for `ET_DYN`), the rebased
    code (`Code.rebase`) conforms. Without the first part, a file that admits no base would make
@@ -163,8 +163,8 @@ for a reason. Each reason is checked:
 | exclusion | checked |
 | --- | --- |
 | `unsupported` | the ABI's lowering refuses the prototype (`Coverage.check`) |
-| `absent` | no symbol table of the file defines the name, in any version (`Elf.Abi.Absent`): an API version gap |
-| `unclaimed` | the file does define a function of that name (`Elf.Abi.Present`); the reason text is documentation |
+| `absent` | no symbol table of the file defines the name, in any version, `name@VER` spellings included (`Elf.Abi.Absent` = the core's `Load.AbsentName`): an API version gap |
+| `unclaimed` | the file does define a function of that name (`Elf.Abi.Present` = the core's `Load.PresentFn`); the reason text is documentation |
 
 - **`HeaderSatPartial`** / `abi_header_sat_partial` requires:
   - at least one claimed function;

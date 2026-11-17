@@ -42,29 +42,16 @@ theorem adler32_declared : Declares sysvInt hdr "adler32" wProto := declares_of_
 
 theorem coverage_check : coverage.check sysvInt hdr = true := by decide +kernel
 
-def absentB (f : String) : Bool :=
-  [Table.symtab, Table.dynsym].all fun t =>
-    (A0.symbols t).all fun s => s.name != nameOf f || s.raw.sectionIndex == 0
+/-- No table defines a symbol named `f` (the core's `File.definesName`). -/
+def absentB (f : String) : Bool := !A0.definesName (nameOf f)
 
-def presentB (f : String) : Bool :=
-  [Table.symtab, Table.dynsym].any fun t =>
-    (A0.symbols t).any fun s => s.name == nameOf f && s.raw.sectionIndex != 0 &&
-      (s.kind == 2 || s.kind == 10)
+/-- Some table defines a function named `f` (the core's `File.definesFn`). -/
+def presentB (f : String) : Bool := A0.definesFn (nameOf f)
 
-theorem absent_of {f : String} (h : absentB f = true) : Absent F f := by
-  refine ⟨_, parses, fun t s hs hn => ?_⟩
-  simp only [absentB, List.all_cons, List.all_nil, Bool.and_true, Bool.and_eq_true,
-    List.all_eq_true, Bool.or_eq_true, bne_iff_ne, ne_eq, beq_iff_eq] at h
-  cases t
-  · exact (h.1 s hs).resolve_left (by simpa using hn)
-  · exact (h.2 s hs).resolve_left (by simpa using hn)
+theorem absent_of {f : String} (h : absentB f = true) : Absent F f :=
+  ⟨_, parses, by simpa [absentB] using h⟩
 
-theorem present_of {f : String} (h : presentB f = true) : Present F f := by
-  simp only [presentB, List.any_cons, List.any_nil, Bool.or_false, Bool.or_eq_true,
-    List.any_eq_true, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq] at h
-  rcases h with ⟨s, hs, ⟨hn, hi⟩, hk⟩ | ⟨s, hs, ⟨hn, hi⟩, hk⟩
-  · exact ⟨_, parses, .symtab, s, hs, hn, hi, by simpa using hk⟩
-  · exact ⟨_, parses, .dynsym, s, hs, hn, hi, by simpa using hk⟩
+theorem present_of {f : String} (h : presentB f = true) : Present F f := ⟨_, parses, h⟩
 
 theorem excluded_ok : ∀ e ∈ coverage.excluded,
     (match e.2 with
