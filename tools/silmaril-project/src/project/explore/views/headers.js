@@ -5,8 +5,10 @@
 // generated literal `Pinned.<Name>.entries`), each entry's status for every ABI definition
 // (claimable, unsupported or internal, with the reason) and, for a claimable prototype, its
 // lowering and call plan. Data: headers/index.json (`header-pages`, silmaril.header-pages/2).
-// Every value is computed by the definitions the conformance rows and layout theorems use; none
-// is shown as a theorem. Every string of the data goes through `esc`.
+// Every value is computed by the definitions the conformance rows and layout theorems use. A
+// layout column names a theorem only when the data carries its `proof` (header-pages checked the
+// theorem's statement exactly against the table and its axioms); every other column says
+// "computed, not a theorem". Every string of the data goes through `esc`.
 (() => {
   const DATA = "headers/index.json", SCHEMA = "silmaril.header-pages/2";
   const enc = encodeURIComponent;
@@ -31,6 +33,25 @@
     : `<span class="hdr-ok">${esc(l.ok)}</span>` + (l.plan ? (l.plan.ok ? `<div class="hdr-plan">args: ${esc(l.plan.ok.arguments.join(" · ") || "none")}<br>result: ${esc(l.plan.ok.result)}<br><span class="muted" data-stack>outgoing stack: ${esc(l.plan.ok.stackSize)} B${l.planNote ? " · " + esc(l.planNote) : ""}</span></div>`
       : `<div class="hdr-plan hdr-refused">plan refused: ${esc(l.plan.refused)}</div>`) : "");
 
+  // A layout column's theorem: its name, linked to its source line when the page knows the
+  // sources (`repoFile`, provenance.js), and its padding theorem; or "computed, not a theorem".
+  const thmRef = (t, what) => {
+    const f = typeof repoFile === "function" && typeof t.file === "string" ? repoFile(t.file) : null;
+    const name = `<code>${esc(t.decl)}</code>`;
+    return f ? `<a data-thm="${esc(what)}" data-decl="${esc(t.decl)}" href="${esc(f.blob)}${Number.isInteger(t.line) ? "#L" + t.line : ""}" target="_blank" rel="noopener noreferrer" title="${esc(f.path)}${Number.isInteger(t.line) ? ":" + esc(t.line) : ""}">${name}</a>`
+      : `<span data-thm-name="${esc(what)}" data-decl="${esc(t.decl)}">${name}</span>`;
+  };
+  const isThm = (t) => !!t && typeof t.decl === "string" && t.status === "proved";
+  function proofCell(L) {
+    if (!L) return "";
+    const p = L.proof;
+    if (!isThm(p) || !isThm(p.padding))
+      return `<span class="muted" data-computed title="${esc(L.proofNote || "")}">computed, not a theorem</span>`;
+    const title = `header-pages checked the statement exactly: ${p.statement || ""}; axioms: ${(Array.isArray(p.axioms) ? p.axioms.join(", ") : "") || "none"} (standard only)`;
+    return `<span class="hdr-ok" title="${esc(title)}">theorem</span> ${thmRef(p, "layout")}` +
+      `<br><span class="muted">padding counts:</span> ${thmRef(p.padding, "padding")}`;
+  }
+
   function layoutTable(a, dms) {
     const names = a.members.map((m) => m.name);
     let h = '<table class="hdr"><thead><tr><th>member</th><th>type</th>' + dms.map((dm) => `<th>${esc(dm)}<br><span class="muted">bit offset / bits</span></th>`).join("") + "</tr></thead><tbody>";
@@ -45,6 +66,8 @@
       return `<td data-pad="${esc(dm)}">${!L || L.refused != null || !L.ok.padding ? "" : L.ok.padding.length === 0 ? "none" :
         `${esc(L.ok.paddingBytes)} B: ` + L.ok.padding.map(([lo, hi]) => `[${esc(lo)}, ${esc(hi)})`).join(" ")}` +
         `${L && L.refused == null && L.ok.paddingBits != null ? ` <span class="muted">(${esc(L.ok.paddingBits)} padding bits)</span>` : ""}</td>`; }).join("") + "</tr>";
+    h += '<tr><th colspan=2>kernel theorem <span class="muted">(this column\'s slots, size, alignment and padding counts)</span></th>' +
+      dms.map((dm) => `<td data-proof="${esc(dm)}">${proofCell(a.layouts[dm])}</td>`).join("") + "</tr>";
     return h + "</tbody></table>";
   }
 
@@ -52,8 +75,10 @@
   function subsetSection(d, h) {
     if (h.read == null) return '<h3 data-route="subset">Subset reader route</h3><p class="muted" data-read="none">No subset-reader route for this header.</p>';
     let x = '<h3 data-route="subset">Subset reader route</h3>' +
-      `<p>files: ${(h.files || []).map((f) => `<code>${esc(f.path)}</code>`).join(", ")} · root <code>${esc(h.root)}</code></p>` +
-      `<p class="hdr-note">Computed by <code>Silmaril.Data.Layout.Header.read</code>, each ABI definition's <code>lower</code> and the layout definitions (<code>bitLayout</code>), run on these files: these are the values the conformance rows and layout theorems are about, not theorems themselves.</p>`;
+      `<p>files: ${(h.files || []).map((f) => `<code>${esc(f.path)}</code>`).join(", ")} · root <code>${esc(h.root)}</code>` +
+      (h.text != null ? `<br><span class="muted" data-text>read from the compiled-in constant <code>${esc(h.text)}</code>, the text its layout theorems are about (the file must equal it for a theorem to be named)</span>` : "") + "</p>" +
+      `<p class="hdr-note">Computed by <code>Silmaril.Data.Layout.Header.read</code>, each ABI definition's <code>lower</code> and the layout definitions (<code>bitLayout</code>), run on these files: these are the values the conformance rows and layout theorems are about, not theorems themselves. ` +
+      `A layout column that names a theorem is the exception: <code>header-pages</code> checked that the theorem states exactly this column's layout of this header's definitions, with only the standard axioms.</p>`;
     if (h.read.refused != null) return x + `<p class="hdr-refused" data-read="refused">The subset reader refuses this header: ${esc(h.read.refused)}</p>`;
     const abis = d.abis.map((a) => a.name);
     x += "<h4>Prototypes</h4>" + `<p class="muted">${d.abis.map((a) => `<code>${esc(a.name)}</code> = ${esc(a.id)}`).join(" · ")}</p>` +

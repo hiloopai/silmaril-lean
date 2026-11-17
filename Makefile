@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: logic-graph-check tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check pages elf-check demo demo-process demo-sha256 help
+.PHONY: logic-graph-check tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check pages elf-check header-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -33,7 +33,7 @@ CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront 
 	ci_cerberus_parameter_call
 # The C compiler's executables (docs/projects/ccomp.md).
 CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject SilmarilLogicGraphData ProjectSelfTest wasm-pages elf-pages $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject SilmarilLogicGraphData ProjectSelfTest wasm-pages elf-pages header-pages $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples $(CCOMP_TARGETS)
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \
@@ -80,6 +80,7 @@ check:
 	$(if $(filter ci_cerberus_genuine_oracle,$(CHECK_TARGETS)),$(MAKE) cerberus-oracle)
 	$(if $(filter wasm-opt,$(CHECK_TARGETS)),$(LAKE) build --wfail $(RELEASE_BINARIES) && $(MAKE) release-check)
 	$(if $(filter elf-pages,$(CHECK_TARGETS)),$(MAKE) elf-check)
+	$(if $(filter header-pages,$(CHECK_TARGETS)),$(MAKE) header-check)
 	$(if $(filter SilmarilLogicGraphData,$(CHECK_TARGETS)),$(MAKE) logic-graph-check)
 
 # The logic graph's records files: editing a records file
@@ -96,6 +97,11 @@ elf-check:
 		$(ELF_PINNED) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
 	scripts/elf-reader/gen.sh --check
 	scripts/elf-reader/test-pages.sh
+
+# The Headers tab's layout links (tools/header-pages): every true link accepted, every decoy refused.
+header-check:
+	$(LAKE) build --wfail header-pages
+	$(LAKE) env .lake/build/bin/header-pages --self-test
 
 release-check:
 	$(PYTHON) tools/binaryen-lean/check-release.py --jobs $$(nproc) --report build/wasm-checks.json

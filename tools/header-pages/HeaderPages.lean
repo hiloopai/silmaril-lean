@@ -1,5 +1,10 @@
-import Lean.Data.Json
+import Lean
 import Silmaril.Data.Layout.Header.Defs
+import Silmaril.Data.Layout.Header.Demo.Defs
+-- loaded at run time (`demoModules`) to check the layout links: imported here so that building
+-- header-pages builds them
+import Silmaril.Data.Layout.Header.Demo.Thms
+import Silmaril.Data.Layout.Header.Demo.Decoys
 import Silmaril.Data.Layout.Bitfield.Defs
 import Silmaril.Machine.Abi.Conformance.Defs
 import Silmaril.Machine.Abi.Conformance.Win64.Defs
@@ -35,7 +40,18 @@ artifact is not read here.
 Every value is computed by the definitions that conformance rows and layout theorems use, run
 here on the header files and literals; none is a theorem. A view must say so.
 
+**Layout links.** `demo.h` (`layout-demo`) is read from the compiled-in constant
+`Header.Demo.demoH` (the file on disk must equal it, else no link). Each of its layouts is linked
+to the kernel theorem an explicit table (`demoLinks`) names, and only after `checkEq` accepts it:
+loaded from the compiled modules (`importModules`), the theorem's type must be exactly
+`@Eq T (layoutOf <pol> <dm> demoEnv <kind> "<tag>") rhs` (and `paddingOf` likewise) with the
+table's policy, data model, kind and tag as constants and literals, `rhs` a literal whose decoded
+value is the one the page shows, and the proof's axioms the standard three. Otherwise the layout
+gets `proof: null` and the reason. `--self-test` checks that every true link is accepted and
+that decoys (`Header.Demo.Decoys`, swapped and tampered links) are refused.
+
     lake env .lake/build/bin/header-pages OUTDIR
+    lake env .lake/build/bin/header-pages --self-test
 -/
 
 open Lean (Json)
@@ -56,6 +72,8 @@ structure Src where
   note : String := ""
   /-- Whether the subset reader is run on `files` (a clang-only header has no files here). -/
   subset : Bool := true
+  /-- `demo.h`: read from the compiled-in `Header.Demo.demoH`, its layouts linked (`demoLinks`). -/
+  demo : Bool := false
 
 def sources : List Src := [
   { id := "arith", title := "elf-ladder rung 01 arith.h (and the rt.h it includes)",
@@ -71,7 +89,7 @@ def sources : List Src := [
     files := [("probe.h", "examples/headers/probe/probe.h")], root := "probe.h",
     note := "exercises what the subset reader refuses" },
   { id := "layout-demo", title := "layout demo: aggregates under two data models",
-    files := [("demo.h", "examples/headers/layout/demo.h")], root := "demo.h" },
+    files := [("demo.h", "examples/headers/layout/demo.h")], root := "demo.h", demo := true },
   { id := "glibc-string", title := "glibc string.h (the clang import's hosted header)",
     files := [], root := "/usr/include/string.h", subset := false,
     note := "only the clang route: the file is the pinned clang image's, not in this repository" }]
@@ -203,25 +221,258 @@ def paddingRanges (slots : List BitSlot) (size : Nat) : List (Nat × Nat) :=
     | (lo, hi) :: rest => if hi == b then (lo, b + 1) :: rest else (b, b + 1) :: acc
     | [] => [(b, b + 1)]) []).reverse
 
-def layoutJson (pol : BitPolicy) (dm : DataModel) (env : Env) (d : Decl) : Json :=
-  exceptJson (fun (slots, sh) =>
+/-! ## Layout links: exact, checked theorems -/
+
+open Silmaril.Data.Layout.Header.Demo (demoH demoFiles demoEnv layoutOf paddingOf)
+
+/-- The modules the links are read from, loaded at run time (`loadEnv`). -/
+def demoModules : Array Lean.Name :=
+  #[`Silmaril.Data.Layout.Header.Demo.Thms, `Silmaril.Data.Layout.Header.Demo.Decoys]
+
+/-- The module every linked theorem must be declared in. -/
+def demoThmsModule : Lean.Name := `Silmaril.Data.Layout.Header.Demo.Thms
+
+/-- A data model as the page names it: its bit-field policy and data model, as values and as the
+constants a linked theorem must name. -/
+structure Model where
+  key : String
+  pol : BitPolicy
+  dm : DataModel
+  polConst : Lean.Name
+  dmConst : Lean.Name
+
+def models : List Model := [
+  ⟨"sysvX86_64", .sysv, sysvX86_64, ``BitPolicy.sysv, ``sysvX86_64⟩,
+  ⟨"msX64", .ms, msX64, ``BitPolicy.ms, ``msX64⟩]
+
+/-- **A layout table's link** (curated): the aggregate, the data model, and the theorems of its
+layout and of its padding counts. Nothing here is trusted: `checkLink` derives every claim from
+the theorems' types and the values the page shows. -/
+structure LayoutLink where
+  kind : Kind
+  tag : String
+  model : String
+  layout : Lean.Name
+  padding : Lean.Name
+
+instance : Inhabited LayoutLink := ⟨⟨.struct, "", "", .anonymous, .anonymous⟩⟩
+
+open Silmaril.Data.Layout.Header.Demo in
+/-- The theorems of `demo.h`'s layout tables (`Header.Demo.Thms`), by an explicit table. -/
+def demoLinks : List LayoutLink := [
+  ⟨.struct, "rec", "sysvX86_64", ``rec_sysv, ``rec_sysv_padding⟩,
+  ⟨.struct, "rec", "msX64", ``rec_ms, ``rec_ms_padding⟩,
+  ⟨.struct, "pt", "sysvX86_64", ``pt_sysv, ``pt_sysv_padding⟩,
+  ⟨.struct, "pt", "msX64", ``pt_ms, ``pt_ms_padding⟩,
+  ⟨.union, "word", "sysvX86_64", ``word_sysv, ``word_sysv_padding⟩,
+  ⟨.union, "word", "msX64", ``word_ms, ``word_ms_padding⟩,
+  ⟨.struct, "node", "sysvX86_64", ``node_sysv, ``node_sysv_padding⟩,
+  ⟨.struct, "node", "msX64", ``node_ms, ``node_ms_padding⟩,
+  ⟨.struct, "pair", "sysvX86_64", ``pair_sysv, ``pair_sysv_padding⟩,
+  ⟨.struct, "pair", "msX64", ``pair_ms, ``pair_ms_padding⟩,
+  ⟨.struct, "vec2", "sysvX86_64", ``vec2_sysv, ``vec2_sysv_padding⟩,
+  ⟨.struct, "vec2", "msX64", ``vec2_ms, ``vec2_ms_padding⟩,
+  ⟨.struct, "mixed", "sysvX86_64", ``mixed_sysv, ``mixed_sysv_padding⟩,
+  ⟨.struct, "mixed", "msX64", ``mixed_ms, ``mixed_ms_padding⟩]
+
+def kindConst : Kind → Lean.Name
+  | .struct => ``Kind.struct
+  | .union => ``Kind.union
+
+def aggKindText : Kind → String
+  | .struct => "struct"
+  | .union => "union"
+
+/-- `fn <pol> <dm> demoEnv <kind> "<tag>"`: constants and a string literal, nothing else. -/
+def queryExpr (fn : Lean.Name) (m : Model) (k : Kind) (tag : String) : Lean.Expr :=
+  Lean.mkAppN (.const fn []) #[.const m.polConst [], .const m.dmConst [], .const ``demoEnv [],
+    .const (kindConst k) [], .lit (.strVal tag)]
+
+def queryText (fn : Lean.Name) (m : Model) (k : Kind) (tag : String) : String :=
+  s!"{fn} {m.polConst} {m.dmConst} {``demoEnv} {kindConst k} \"{tag}\""
+
+def tyOption (t : Lean.Expr) : Lean.Expr := .app (.const ``Option [.zero]) t
+def tyProd (a b : Lean.Expr) : Lean.Expr := Lean.mkApp2 (.const ``Prod [.zero, .zero]) a b
+def tyNat : Lean.Expr := .const ``Nat []
+def tySlot : Lean.Expr := .const ``BitSlot []
+def tyShape : Lean.Expr := .const ``Shape []
+def tySlots : Lean.Expr := .app (.const ``List [.zero]) tySlot
+/-- `Option (List BitSlot × Shape)`, `layoutOf`'s type. -/
+def tyLayout : Lean.Expr := tyOption (tyProd tySlots tyShape)
+/-- `Option (Nat × Nat)`, `paddingOf`'s type. -/
+def tyPadding : Lean.Expr := tyOption (tyProd tyNat tyNat)
+
+/-! Literal right-hand sides, decoded structurally: a numeral (`OfNat.ofNat Nat n (instOfNatNat
+n)` or a raw literal), a string literal, and applications of `BitSlot.mk`, `Shape.mk`,
+`Prod.mk`, `List.cons`/`List.nil` and `Option.some`/`Option.none` at exactly the expected types.
+Anything else (a constant, a function application, …) is not decoded. -/
+
+def natLit? (e : Lean.Expr) : Option Nat :=
+  match e with
+  | .lit (.natVal n) => some n
+  | _ => match e.getAppFn, e.getAppArgs with
+    | .const ``OfNat.ofNat [.zero], #[.const ``Nat [], .lit (.natVal n), i] =>
+      if i == .app (.const ``instOfNatNat []) (.lit (.natVal n)) then some n else none
+    | _, _ => none
+
+def strLit? : Lean.Expr → Option String
+  | .lit (.strVal s) => some s
+  | _ => none
+
+def slotLit? (e : Lean.Expr) : Option BitSlot :=
+  match e.getAppFn, e.getAppArgs with
+  | .const ``BitSlot.mk [], #[n, o, w] => do pure ⟨← strLit? n, ← natLit? o, ← natLit? w⟩
+  | _, _ => none
+
+def shapeLit? (e : Lean.Expr) : Option Shape :=
+  match e.getAppFn, e.getAppArgs with
+  | .const ``Shape.mk [], #[s, a] => do pure ⟨← natLit? s, ← natLit? a⟩
+  | _, _ => none
+
+partial def listLit? {α : Type} (elem : Lean.Expr) (f : Lean.Expr → Option α) (e : Lean.Expr) :
+    Option (List α) :=
+  match e.getAppFn, e.getAppArgs with
+  | .const ``List.nil [.zero], #[t] => if t == elem then some [] else none
+  | .const ``List.cons [.zero], #[t, x, xs] =>
+    if t == elem then do pure ((← f x) :: (← listLit? elem f xs)) else none
+  | _, _ => none
+
+def pairLit? {α β : Type} (a b : Lean.Expr) (f : Lean.Expr → Option α) (g : Lean.Expr → Option β)
+    (e : Lean.Expr) : Option (α × β) :=
+  match e.getAppFn, e.getAppArgs with
+  | .const ``Prod.mk [.zero, .zero], #[ta, tb, x, y] =>
+    if ta == a && tb == b then do pure (← f x, ← g y) else none
+  | _, _ => none
+
+def optionLit? {α : Type} (t : Lean.Expr) (f : Lean.Expr → Option α) (e : Lean.Expr) :
+    Option (Option α) :=
+  match e.getAppFn, e.getAppArgs with
+  | .const ``Option.none [.zero], #[t'] => if t' == t then some none else none
+  | .const ``Option.some [.zero], #[t', x] => if t' == t then (f x).map some else none
+  | _, _ => none
+
+def layoutLit? : Lean.Expr → Option (Option (List BitSlot × Shape)) :=
+  optionLit? (tyProd tySlots tyShape) (pairLit? tySlots tyShape (listLit? tySlot slotLit?) shapeLit?)
+
+def paddingLit? : Lean.Expr → Option (Option (Nat × Nat)) :=
+  optionLit? (tyProd tyNat tyNat) (pairLit? tyNat tyNat natLit? natLit?)
+
+def runCore {α : Type} (env : Lean.Environment) (x : Lean.CoreM α) : IO α := do
+  let (a, _) ← x.toIO { fileName := "<header-pages>", fileMap := default } { env }
+  pure a
+
+def standardAxioms : List Lean.Name := [``propext, ``Classical.choice, ``Quot.sound]
+
+/-- **The exact check of one theorem.** `decl` must be a theorem (not an axiom or definition),
+without universe parameters, whose type is exactly `@Eq ty (fn <pol> <dm> demoEnv <kind> "<tag>")
+rhs` (syntactically, after removing top-level metadata: nothing is unfolded), with `rhs` a
+literal (`decode`) equal to `shown`, the value the page shows; whose axioms are among `propext`,
+`Classical.choice` and `Quot.sound`; and declared in `Header.Demo.Thms`. Returns the link, or
+the reason it is refused. -/
+def checkEq {α : Type} [BEq α] (env : Lean.Environment) (decl fn : Lean.Name) (ty : Lean.Expr)
+    (decode : Lean.Expr → Option (Option α)) (m : Model) (k : Kind) (tag : String)
+    (shown : Option α) : IO (Except String Json) := do
+  let some (.thmInfo ti) := env.find? decl | return .error s!"{decl}: not a theorem"
+  unless ti.levelParams.isEmpty do return .error s!"{decl}: has universe parameters"
+  let .app (.app (.app (.const ``Eq [lvl]) t) lhs) rhs := ti.type.consumeMData
+    | return .error s!"{decl}: its type is not an equation"
+  unless lvl == .succ .zero && t == ty do return .error s!"{decl}: not an equation in {ty}"
+  unless lhs == queryExpr fn m k tag do
+    return .error s!"{decl}: its left-hand side is not exactly {queryText fn m k tag}"
+  let some v := decode rhs | return .error s!"{decl}: its right-hand side is not a literal"
+  unless v == shown do return .error s!"{decl}: its right-hand side is not the value the page shows"
+  let axs ← runCore env (Lean.collectAxioms decl)
+  unless axs.all standardAxioms.contains do
+    return .error s!"{decl}: depends on {axs.toList}, not only propext, Classical.choice and Quot.sound"
+  let module := match env.getModuleIdxFor? decl with
+    | some i => env.header.moduleNames[i.toNat]!
+    | none => .anonymous
+  unless module == demoThmsModule do
+    return .error s!"{decl}: declared in {if module.isAnonymous then "no module" else module.toString}, not {demoThmsModule}"
+  let line ← runCore env do return ((← Lean.findDeclarationRanges? decl).map (·.range.pos.line))
+  pure (.ok (Json.mkObj [("decl", js decl.toString), ("module", js module.toString),
+    ("file", js (module.toString.replace "." "/" ++ ".lean")),
+    ("line", match line with | some l => jn l | none => Json.null),
+    ("status", js "proved"),
+    ("axioms", Json.arr ((axs.qsort Lean.Name.lt).map (js ·.toString))),
+    ("statement", js s!"{queryText fn m k tag} = <the value shown>")]))
+
+/-- The padding counts a page shows for a layout (`paddingBytes`, `paddingBits`). -/
+def shownPadding (shown : Option (List BitSlot × Shape)) : Option (Nat × Nat) :=
+  shown.map fun (ss, sh) => (paddingBytes ss sh, paddingBits ss sh)
+
+/-- **A layout table's link**: both theorems of `l` checked (`checkEq`) against the aggregate
+`kind tag` under `m` and the layout the page shows; the layout theorem's link, with the padding
+theorem's under `padding`. -/
+def checkLink (env : Lean.Environment) (l : LayoutLink) (m : Model) (k : Kind) (tag : String)
+    (shown : Option (List BitSlot × Shape)) : IO (Except String Json) := do
+  match ← checkEq env l.layout ``layoutOf tyLayout layoutLit? m k tag shown with
+  | .error e => pure (.error e)
+  | .ok lj =>
+    match ← checkEq env l.padding ``paddingOf tyPadding paddingLit? m k tag (shownPadding shown) with
+    | .error e => pure (.error e)
+    | .ok pj => pure (.ok (lj.setObjVal! "padding" pj))
+
+/-- Whether `demo.h`'s page may be linked: the file on disk is the compiled-in `demoH`, and the
+header's definitions (read from `demoH`) are `demoEnv`. -/
+def demoGate (env : Env) (disk : String) : Except String Unit := do
+  unless disk == demoH do
+    throw "examples/headers/layout/demo.h differs from the compiled-in Header.Demo.demoH; no theorem is linked"
+  unless env == demoEnv do throw "the header's definitions are not Header.Demo.demoEnv; no theorem is linked"
+
+/-- Whether the loaded `Header.Demo.Defs` holds the same text as the binary: in the environment the
+theorems are read from (`loadEnv`), `demoH` is a definition whose value is exactly the string
+literal `text` (the compiled-in `demoH`). Lake does not track `include_str`, so after a partial
+or stale build the binary and the loaded oleans could disagree; this refuses every link then. -/
+def loadedGate (lenv : Lean.Environment) (text : String) : Except String Unit :=
+  match lenv.find? ``demoH with
+  | some (.defnInfo d) =>
+    if d.value.consumeMData == .lit (.strVal text) then .ok ()
+    else .error "the loaded Header.Demo.demoH is not the text compiled into header-pages (stale build?); no theorem is linked"
+  | _ => .error "Header.Demo.demoH is not a definition in the loaded environment; no theorem is linked"
+
+/-- The link context of a header page: the loaded environment and the gate. -/
+abbrev LinkCtx := Option (Lean.Environment × Except String Unit)
+
+/-- The `proof` of one layout table (`null`, with `proofNote`, when there is none). -/
+def proofFor (ctx : LinkCtx) (m : Model) (env : Env) (d : Decl)
+    (shown : Option (List BitSlot × Shape)) : IO (List (String × Json)) := do
+  let none' (why : String) : List (String × Json) := [("proof", Json.null), ("proofNote", js why)]
+  let some (lenv, gate) := ctx
+    | return none' "no theorem is registered for this header's layouts: computed, not a theorem"
+  if let .error e := gate then return none' e
+  let some l := demoLinks.find? fun l => l.kind == d.kind && l.tag == d.tag && l.model == m.key
+    | return none' "no theorem is registered for this table"
+  -- the page's value is `layoutOf` on `demoEnv` (compiled evaluation), as the theorem states
+  unless layoutOf m.pol m.dm demoEnv d.kind d.tag == shown && env == demoEnv do
+    return none' "the value shown is not layoutOf on demoEnv"
+  match ← checkLink lenv l m d.kind d.tag shown with
+  | .ok j => pure [("proof", j)]
+  | .error e => pure (none' s!"refused: {e}")
+
+def layoutJson (ctx : LinkCtx) (m : Model) (env : Env) (d : Decl) : IO Json := do
+  let r := bitLayout m.pol m.dm env d
+  let base := exceptJson (fun (slots, sh) =>
     let pad := paddingRanges slots sh.size
     Json.mkObj [("size", jn sh.size), ("align", jn sh.align),
       ("members", Json.arr (slots.toArray.map slotJson)),
       ("padding", Json.arr (pad.toArray.map fun (lo, hi) => Json.arr #[jn lo, jn hi])),
       -- the library's counts (`Data.Layout.paddingBytes`/`paddingBits`, the definitions the
-      -- layout theorems state, e.g. `Header.rec_layout_sysv`); the ranges above are this tool's
-      -- rendering of the same byte predicate, checked against `paddingBytes` by headers.mjs
+      -- layout theorems state); the ranges above are this tool's rendering of the same byte
+      -- predicate, checked against `paddingBytes` by headers.mjs
       ("paddingBytes", jn (paddingBytes slots sh)),
-      ("paddingBits", jn (paddingBits slots sh))]) (bitLayout pol dm env d)
+      ("paddingBits", jn (paddingBits slots sh))]) r
+  let fs ← proofFor ctx m env d r.toOption
+  pure (fs.foldl (fun j (k, v) => j.setObjVal! k v) base)
 
-def declJson (env : Env) (d : Decl) : Json :=
-  Json.mkObj [("kind", js (match d.kind with | .struct => "struct" | .union => "union")),
+def declJson (ctx : LinkCtx) (env : Env) (d : Decl) : IO Json := do
+  let mut ls : List (String × Json) := []
+  for m in models do ls := ls ++ [(m.key, ← layoutJson ctx m env d)]
+  pure (Json.mkObj [("kind", js (aggKindText d.kind)),
     ("tag", js d.tag),
     ("members", Json.arr (d.fields.toArray.map fun fl => Json.mkObj [("name", js fl.name),
       ("type", js (fl.ty.declare "")), ("bits", match fl.bits with | some b => jn b | none => Json.null)])),
-    ("layouts", Json.mkObj [("sysvX86_64", layoutJson .sysv sysvX86_64 env d),
-      ("msX64", layoutJson .ms msX64 env d)])]
+    ("layouts", Json.mkObj ls)])
 
 /-! ## The clang route -/
 
@@ -333,28 +584,158 @@ def clangFor (id : String) : Json :=
     | none => Json.null
   | none => Json.null
 
-def headerJson (s : Src) : IO Json := do
-  let mut files : Array (String × String) := #[]
-  for (n, p) in s.files do files := files.push (n, ← IO.FS.readFile p)
+def headerJson (lenv : Lean.Environment) (s : Src) : IO Json := do
+  let mut disk : Array (String × String) := #[]
+  for (n, p) in s.files do disk := disk.push (n, ← IO.FS.readFile p)
+  -- `demo.h` is read from the compiled-in `demoH`, the text its theorems are about; the file on
+  -- disk is only compared with it (`demoGate`)
+  let files := if s.demo then demoFiles else disk.toList
   let base := [("id", js s.id), ("title", js s.title), ("note", js s.note), ("root", js s.root),
     ("files", Json.arr (s.files.toArray.map fun (n, p) => Json.mkObj [("name", js n), ("path", js p)])),
+    ("text", if s.demo then js (toString ``demoH) else Json.null),
     ("clang", clangFor s.id)]
   if !s.subset then return Json.mkObj (base ++ [("read", Json.null)])
-  match read files.toList s.root with
+  match read files s.root with
   | .error e => pure (Json.mkObj (base ++ [("read", Json.mkObj [("refused", js e)])]))
-  | .ok h => pure (Json.mkObj (base ++ [("read", Json.mkObj [("ok", Json.bool true)]),
+  | .ok h =>
+    let ctx : LinkCtx := if s.demo then
+      some (lenv, loadedGate lenv demoH *> demoGate h.env (((disk.find? (·.1 == "demo.h")).map (·.2)).getD "")) else none
+    let aggs ← h.env.toArray.mapM (declJson ctx h.env)
+    pure (Json.mkObj (base ++ [("read", Json.mkObj [("ok", Json.bool true)]),
       ("typedefs", Json.arr (h.typedefs.toArray.map fun (n, t) => Json.mkObj [("name", js n), ("type", js (t.declare ""))])),
       ("enums", Json.arr (h.enums.toArray.map fun (t, cs) => Json.mkObj [("tag", js t),
         ("constants", Json.arr (cs.toArray.map fun (c, v) => Json.arr #[js c, js (toString v)]))])),
-      ("aggregates", Json.arr (h.env.toArray.map (declJson h.env))),
+      ("aggregates", Json.arr aggs),
       ("prototypes", Json.arr (h.protos.toArray.map fun (f, cp) => protoJson h f cp))]))
 
+/-- The modules of the links (`demoModules`), from the build's search path (`lake env`). -/
+def loadEnv : IO Lean.Environment := do
+  Lean.initSearchPath (← Lean.findSysroot)
+  Lean.importModules (demoModules.map ({ module := · })) {}
+
+/-! ## Self-test: true links accepted, decoys refused -/
+
+/-- An environment with a theorem `HeaderPagesSelfTest.<name>` of type `ty`, proved by `value`
+(after adding `HeaderPagesSelfTest.ax : ty` when `value` is `none`): declarations no module
+holds, built at run time so that the library needs no axiom. -/
+def withTheorem (env : Lean.Environment) (name : String) (ty : Lean.Expr) (value : Option Lean.Expr) :
+    IO Lean.Environment := runCore env do
+  let thm := `HeaderPagesSelfTest ++ name.toName
+  let v ← match value with
+    | some v => pure v
+    | none =>
+      let ax := `HeaderPagesSelfTest ++ (name ++ "_ax").toName
+      Lean.addDecl (.axiomDecl { name := ax, levelParams := [], type := ty, isUnsafe := false })
+      pure (.const ax [])
+  Lean.addDecl (.thmDecl { name := thm, levelParams := [], type := ty, value := v, all := [thm] })
+  Lean.getEnv
+
+/-- A decoy: what it is, the environment it is checked in, the link, and the table it is put on
+(aggregate, data model, the value shown). -/
+structure Decoy where
+  what : String
+  env : Lean.Environment
+  link : LayoutLink := default
+  kind : Kind := .struct
+  tag : String := "rec"
+  model : String := "sysvX86_64"
+  shown : Option (Option (List BitSlot × Shape)) := none
+
+def shownOf (m : Model) (k : Kind) (tag : String) : Option (List BitSlot × Shape) :=
+  (demoEnv.find? k tag).bind fun d => (bitLayout m.pol m.dm demoEnv d).toOption
+
+def selfTest : IO UInt32 := do
+  let env ← loadEnv
+  let mut failed := 0
+  -- the table covers every aggregate of demo.h under both data models, and each link is accepted
+  for d in demoEnv do
+    for m in models do
+      let some l := demoLinks.find? fun l => l.kind == d.kind && l.tag == d.tag && l.model == m.key
+        | IO.eprintln s!"header-pages --self-test: no link for {d.tag} under {m.key}"; failed := failed + 1; continue
+      match ← checkLink env l m d.kind d.tag (shownOf m d.kind d.tag) with
+      | .ok _ => pure ()
+      | .error e => IO.eprintln s!"header-pages --self-test: a true link is refused ({e})"; failed := failed + 1
+  let D := `Silmaril.Data.Layout.Header.Demo
+  let X := D ++ `Decoys
+  let some recSysv := demoLinks.find? fun l => l.tag == "rec" && l.model == "sysvX86_64" | return 1
+  let some recThm := env.find? recSysv.layout | return 1
+  let some sysv := models.find? (·.key == "sysvX86_64") | return 1
+  let recShown := shownOf sysv .struct "rec"
+  let tampered (f : List BitSlot × Shape → List BitSlot × Shape) := recShown.map f
+  -- run-time theorems: the right statement backed by an axiom; the right statement proved by
+  -- `rec_sysv` but declared outside `Header.Demo.Thms`
+  let envAx ← withTheorem env "rec_by_axiom" recThm.type none
+  let envCopy ← withTheorem env "rec_copy" recThm.type (some (.const recSysv.layout []))
+  let decoys0 : List Decoy := [
+    { what := "another tag: pt_sysv on rec's table", env, link := { recSysv with layout := D ++ `pt_sysv } },
+    { what := "the other data model: rec_ms on rec's System V table", env, link := { recSysv with layout := D ++ `rec_ms } },
+    { what := "the other data model's padding: rec_ms_padding", env, link := { recSysv with padding := D ++ `rec_ms_padding } },
+    { what := "another tag's padding: pt_sysv_padding", env, link := { recSysv with padding := D ++ `pt_sysv_padding } },
+    { what := "another environment with the same slots and shape (Header.recEnv)", env,
+      link := { recSysv with layout := X ++ `rec_other_env } },
+    { what := "another environment (Header.ptEnv) on pt's table", env, tag := "pt",
+      link := { recSysv with tag := "pt", layout := X ++ `pt_other_env, padding := D ++ `pt_sysv_padding } },
+    { what := "a tautology about the right constants", env, link := { recSysv with layout := X ++ `rec_refl } },
+    { what := "the right equation under a disjunction", env, link := { recSysv with layout := X ++ `rec_or_true } },
+    { what := "the right equation flipped", env, link := { recSysv with layout := X ++ `rec_flipped } },
+    { what := "a right-hand side that is not a literal (Header.recLayout)", env,
+      link := { recSysv with layout := X ++ `rec_rhs_not_literal } },
+    { what := "Microsoft policy with the System V data model, on the System V table", env,
+      link := { recSysv with layout := X ++ `rec_mixed_model } },
+    { what := "Microsoft policy with the System V data model, on the Microsoft table", env, model := "msX64",
+      link := { recSysv with model := "msX64", layout := X ++ `rec_mixed_model, padding := D ++ `rec_ms_padding } },
+    { what := "another kind: struct word = none on union word's table", env, kind := .union, tag := "word",
+      link := { recSysv with kind := .union, tag := "word", layout := X ++ `word_as_struct, padding := D ++ `word_sysv_padding } },
+    { what := "the padding theorem as the layout theorem", env, link := { recSysv with layout := D ++ `rec_sysv_padding } },
+    { what := "the layout theorem as the padding theorem", env, link := { recSysv with padding := recSysv.layout } },
+    { what := "a definition, not a theorem (demoEnv)", env, link := { recSysv with layout := ``demoEnv } },
+    { what := "a wrong right-hand side: the size shown is 33", env,
+      shown := some (tampered fun (ss, sh) => (ss, { sh with size := 33 })) },
+    { what := "a wrong right-hand side: flags shown at bit 9", env,
+      shown := some (tampered fun (ss, sh) => (ss.map fun s => if s.name == "flags" then { s with off := 9 } else s, sh)) },
+    { what := "a wrong right-hand side: the layout shown as refused", env, shown := some none },
+    { what := "the right statement proved from an axiom", env := envAx,
+      link := { recSysv with layout := `HeaderPagesSelfTest.rec_by_axiom } },
+    { what := "an axiom, not a theorem", env := envAx, link := { recSysv with layout := `HeaderPagesSelfTest.rec_by_axiom_ax } },
+    { what := "the right statement declared outside Header.Demo.Thms", env := envCopy,
+      link := { recSysv with layout := `HeaderPagesSelfTest.rec_copy } }]
+  -- a decoy that names no link is put on rec's System V link
+  let decoys := decoys0.map fun d => if d.link.layout.isAnonymous then { d with link := recSysv } else d
+  let mut refused := 0
+  for d in decoys do
+    let some m := models.find? (·.key == d.model) | return 1
+    let shown := d.shown.getD (shownOf m d.kind d.tag)
+    match ← checkLink d.env d.link m d.kind d.tag shown with
+    | .ok _ => IO.eprintln s!"header-pages --self-test: the checker accepted '{d.what}'"; failed := failed + 1
+    | .error e => refused := refused + 1; IO.println s!"header-pages --self-test: refused '{d.what}': {e}"
+  -- the gate: a file on disk that is not `demoH`, and definitions that are not `demoEnv`
+  let gates := [("demo.h on disk differs from demoH", demoGate demoEnv (demoH ++ " ")),
+    ("definitions other than demoEnv", demoGate demoEnv.reverse demoH),
+    ("loaded demoH differs from the compiled text (stale build)", loadedGate env (demoH ++ " "))]
+  for (what, g) in gates do
+    match g with
+    | .ok _ => IO.eprintln s!"header-pages --self-test: the gate accepted '{what}'"; failed := failed + 1
+    | .error e => refused := refused + 1; IO.println s!"header-pages --self-test: refused '{what}': {e}"
+  unless loadedGate env demoH matches .ok _ do
+    IO.eprintln "header-pages --self-test: the loaded-text gate refuses the loaded demoH"; failed := failed + 1
+  unless demoGate demoEnv demoH matches .ok _ do
+    IO.eprintln "header-pages --self-test: the gate refuses demoH itself"; failed := failed + 1
+  let total := decoys.length + gates.length
+  if failed == 0 then
+    IO.println s!"header-pages --self-test: ok ({demoLinks.length} links accepted, {refused} of {total} decoys refused)"
+    pure 0
+  else
+    IO.eprintln s!"header-pages --self-test: {failed} failures"; pure 1
+
 def main (args : List String) : IO UInt32 := do
-  let [out] := args | IO.eprintln "usage: header-pages OUTDIR"; return 2
+  if args == ["--self-test"] then return ← selfTest
+  let [out] := args | IO.eprintln "usage: header-pages OUTDIR | header-pages --self-test"; return 2
+  let lenv ← loadEnv
   let mut hs : Array Json := #[]
-  for s in sources do hs := hs.push (← headerJson s)
+  for s in sources do hs := hs.push (← headerJson lenv s)
   let j := Json.mkObj [("schema", js "silmaril.header-pages/2"),
     ("note", js "computed by the reader, the ABI definitions' lowering and the layout definitions, run on the header files; not theorems"),
+    ("proofNote", js "a layout with a proof is linked to a kernel theorem whose statement header-pages checked exactly: layoutOf (and paddingOf) of that policy, data model, Header.Demo.demoEnv, kind and tag equals the literal the table shows, with only the standard axioms; every other layout is computed, not a theorem"),
     ("clangNote", js "computed by the import's status, interface and lowering definitions, run on the literal entries of each pinned clang import and its .prov; not theorems"),
     ("abis", Json.arr (abis.toArray.map fun (n, A) => Json.mkObj [("name", js n), ("id", js A.id), ("source", js A.source),
       ("clangCcs", Json.arr ((clangCcs n).toArray.map (js ∘ ccText))),

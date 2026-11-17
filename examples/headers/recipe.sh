@@ -153,7 +153,8 @@ if [ $check = 1 ]; then
       "$pinned/Defs.lean examples/elf-ladder/common/rt.h" \
       "Silmaril/Data/Layout/Header/Zlib/Defs.lean examples/headers/zlib-1.3.1/zlib.h" \
       "Silmaril/Data/Layout/Header/Zlib/Defs.lean examples/headers/zlib-1.3.1/zconf-solo.h" \
-      "Silmaril/Data/Layout/Header/Zlib/Defs.lean examples/headers/zlib-1.3.1/zconf-hosted.h"; do
+      "Silmaril/Data/Layout/Header/Zlib/Defs.lean examples/headers/zlib-1.3.1/zconf-hosted.h" \
+      "Silmaril/Data/Layout/Header/Demo/Defs.lean examples/headers/layout/demo.h"; do
     set -- $pair
     if grep -q "$(sha "$ROOT/$2")" "$ROOT/$1"; then echo "ok $1 names the SHA-256 of $2"
     else echo "STALE $1 does not name the SHA-256 of $2" >&2; status=1; fi

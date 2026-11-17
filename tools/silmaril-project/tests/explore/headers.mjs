@@ -5,9 +5,12 @@
 // arguments, and each aggregate shows both data models' size and alignment as the data says. On
 // the clang route: the provenance, the counts and every entry's name, convention, symbol and
 // status for each ABI as the data says; probe.h shows its clang entries although its subset route
-// is refused; glibc string.h has a page with strerror_r and its asm label. Nothing is called a
-// theorem or proved. A tampered copy of the data (markup in names, types, reasons and paths) is
-// shown as text and runs nothing. No page or console errors.
+// is refused; glibc string.h has a page with strerror_r and its asm label. A layout column names
+// a theorem exactly when the data carries its `proof`: demo.h's 14 columns name their layout and
+// padding theorems as the data says (linked to their source lines), every other column says
+// "computed, not a theorem" and has no theorem link; nothing is called proved. A tampered copy of
+// the data (markup in names, types, reasons, paths and theorem names; a dropped and a non-proved
+// proof) is shown as text and runs nothing. No page or console errors.
 //   node headers.mjs SITE_DIR [SHOTS_DIR]
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -52,6 +55,10 @@ const bad2 = structuredClone(t.headers.find((h) => h.id === "layout-demo"));
 Object.assign(bad2, { id: P2, title: P1 });
 bad2.prototypes[0].c = P1; bad2.prototypes[0].lowering.sysvInt = { refused: P2 };
 bad2.aggregates[0].members[0].name = P2; bad2.aggregates[0].members[0].type = P1;
+bad2.aggregates[0].layouts.sysvX86_64.proof = null; bad2.aggregates[0].layouts.sysvX86_64.proofNote = P1;
+bad2.aggregates[1].layouts.sysvX86_64.proof.status = "sorry";
+Object.assign(bad2.aggregates[2].layouts.msX64.proof, { decl: P1 + P2, file: P2, statement: P1, axioms: [P2] });
+bad2.aggregates[2].layouts.msX64.proof.padding.decl = P2;
 t.headers.push(bad2);
 fs.mkdirSync(path.join(tdir, "headers"));
 fs.writeFileSync(path.join(tdir, "headers", "index.json"), JSON.stringify(t));
@@ -86,6 +93,11 @@ try {
         Object.fromEntries([...r.querySelectorAll("td[data-abi]")].map((c) => [c.dataset.abi, c.innerText]))])),
       pads: Object.fromEntries([...document.querySelectorAll("h4[data-agg]")].map((h4) => [h4.dataset.agg,
         Object.fromEntries([...h4.nextElementSibling.querySelectorAll("td[data-pad]")].map((c) => [c.dataset.pad, c.innerText.trim()]))])),
+      proofs: Object.fromEntries([...document.querySelectorAll("h4[data-agg]")].map((h4) => [h4.dataset.agg,
+        Object.fromEntries([...h4.nextElementSibling.querySelectorAll("td[data-proof]")].map((c) => [c.dataset.proof, {
+          text: c.innerText.trim(), computed: !!c.querySelector("[data-computed]"),
+          links: [...c.querySelectorAll("a[data-thm]")].map((a) => ({ what: a.dataset.thm, decl: a.dataset.decl, text: a.innerText, href: a.getAttribute("href") })),
+          names: c.querySelectorAll("[data-thm-name]").length }]))])),
       aggs: Object.fromEntries([...document.querySelectorAll("h4[data-agg]")].map((h4) => [h4.dataset.agg,
         Object.fromEntries([...h4.nextElementSibling.querySelectorAll("td[data-dm]")].map((c) => [c.dataset.dm, c.innerText.trim()]))])),
       counts: Object.fromEntries([...document.querySelectorAll("[data-clang-counts] [data-count]")].map((s) => [s.dataset.count, s.innerText])),
@@ -122,6 +134,24 @@ try {
         `${h.id}: the padding ranges add up to the library's paddingBytes`);
       check((h.aggregates || []).every((a) => d.dataModels.every((dm) => (pg.pads[a.tag]?.[dm] ?? "") === padText(a.layouts[dm]))),
         `${h.id}: each aggregate's padding per data model as the data says`);
+      // theorem links: exactly where the data has a proof, with its names and source lines
+      const linkOk = (l, t, what) => l && l.what === what && l.decl === t.decl && l.text === t.decl &&
+        l.href.includes("/blob/") && l.href.endsWith("/" + t.file + "#L" + t.line);
+      let nThm = 0, nComp = 0, bad3 = "";
+      for (const a of h.aggregates || []) for (const dm of d.dataModels) {
+        const L = a.layouts[dm], c = pg.proofs[a.tag]?.[dm];
+        const ok = !c ? false : L.proof ? (nThm++, !c.computed && c.links.length === 2 && linkOk(c.links[0], L.proof, "layout") &&
+            linkOk(c.links[1], L.proof.padding, "padding") && L.proof.status === "proved" && L.proof.padding.status === "proved")
+          : (nComp++, c.computed && c.text === "computed, not a theorem" && c.links.length === 0 && c.names === 0);
+        if (!ok) bad3 ||= `${a.tag}/${dm}`;
+      }
+      check(!bad3, `${h.id}: ${nThm} layout columns name their layout and padding theorems as the data says (linked to their source lines), ${nComp} say "computed, not a theorem" with no link ${bad3}`);
+      if (h.id === "layout-demo") {
+        const want = (h.aggregates || []).flatMap((a) => [["sysvX86_64", "sysv"], ["msX64", "ms"]].map(([dm, s]) =>
+          [a.layouts[dm].proof?.decl, a.layouts[dm].proof?.padding?.decl, `Silmaril.Data.Layout.Header.Demo.${a.tag}_${s}`]));
+        check(want.length === 14 && want.every(([l, p, n]) => l === n && p === n + "_padding") && h.text === "Silmaril.Data.Layout.Header.Demo.demoH",
+          `layout-demo: all 14 layout columns carry a proof (Header.Demo.<tag>_<sysv|ms> and _padding), read from Header.Demo.demoH`);
+      } else check((h.aggregates || []).every((a) => d.dataModels.every((dm) => a.layouts[dm].proof == null)), `${h.id}: no layout carries a proof`);
     }
     // The clang route.
     if (!h.clang) check(!!(await p.$('[data-clang="none"]')) && pg.entries.length === 0, `${h.id}: no clang route, said so`);
@@ -151,6 +181,8 @@ try {
       check(eok, `${h.id}: ${c.entries.length} clang entries: name, location, declaration, convention, attributes, symbol, and each ABI's status (and claimable plans) as the data says ${bad1}`);
     }
     check(!/\b(theorem proved|proved|verified)\b/i.test(pg.text.replace(/not theorems/g, "")), `${h.id}: nothing is called proved or verified`);
+    if (h.id === "arith" || h.id.startsWith("zlib")) check((h.aggregates || []).every((a) => d.dataModels.every((dm) => !a.layouts[dm].proof)) &&
+      !(await p.$("a[data-thm], [data-thm-name]")), `${h.id}: no theorem is named (${(h.aggregates || []).length} aggregates, all computed)`);
     const st = (n) => pg.entries.find((e) => e.name === n)?.st || {};
     if (h.id === "probe") {
       check(pg.refused && pg.entries.length > 0, "probe: the subset route is refused, the clang route shows entries");
@@ -201,6 +233,15 @@ try {
     check(must.every((s) => r.text.includes(s)), `tamper ${what}: the markup is shown literally`);
     if (shots && hash === "/headers/tamper") await tp.screenshot({ path: path.join(shots, "headers-tamper.png"), fullPage: true });
   }
+  // the tampered layout-demo copy: a dropped and a non-proved proof are "computed", markup in a theorem name is text
+  const tc = await tp.evaluate(() => Object.fromEntries([...document.querySelectorAll("h4[data-agg]")].map((h4) => [h4.dataset.agg,
+    Object.fromEntries([...h4.nextElementSibling.querySelectorAll("td[data-proof]")].map((c) => [c.dataset.proof,
+      { text: c.innerText.trim(), links: c.querySelectorAll("a[data-thm], [data-thm-name]").length }]))])));
+  const [a0, a1, a2] = bad2.aggregates.map((a) => a.tag);
+  check(tc[a0]?.sysvX86_64?.text === "computed, not a theorem" && tc[a0].sysvX86_64.links === 0 &&
+    tc[a1]?.sysvX86_64?.text === "computed, not a theorem" && tc[a1].sysvX86_64.links === 0,
+    `tamper: a dropped proof and a proof whose status is not "proved" show "computed, not a theorem", no link (${JSON.stringify([tc[a0]?.sysvX86_64, tc[a1]?.sysvX86_64])})`);
+  check((tc[a2]?.msX64?.text || "").includes(P1 + P2) && (tc[a2]?.msX64?.text || "").includes(P2), "tamper: markup in theorem names is shown literally");
   check(terr.length === 0, `tamper: no page or console errors ${terr.join("; ")}`);
 } finally { await b.close(); srv.kill(); tsrv.kill(); fs.rmSync(tdir, { recursive: true, force: true }); }
 console.log(fails.length ? `${fails.length} FAILED` : "all ok");
