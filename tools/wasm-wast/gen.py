@@ -30,11 +30,11 @@ For them the probe computes the class of the specification's result set instead 
 interpreter.
 
 The files in LINK_FILES (imports, linking, exports, start, global, data, elem) are linked
-scripts: each file is one script, checked by one `decide +kernel` evaluation of `scriptLK`
-(`Silmaril.Project.Shapes.WasmWastLink`) from the context `Init`, in which `spectest` is the closed
-Wasm module `Spectest.module` (not a host; its print functions have empty bodies). Their rows are
-`link.returns_only`/`link.traps_only`/`link.unlinkable`/`link.uninstantiable` after every earlier
-module, `register` and action of the file; `register` and bare actions are `context` rows. The
+scripts: each file is one script, checked by one `decide +kernel` evaluation of `scriptHK`
+(`Silmaril.Project.Shapes.WasmWastHost`) from the context `Init`, against the typed `spectest` host
+`Spectest.host` (fresh print functions and globals per import, shared table and memory, print calls
+logged). Their rows are `host.returns_only`/`host.traps_only`/`host.unlinkable`/
+`host.uninstantiable` after every earlier module, `register` and action of the file; `register` and bare actions are `context` rows. The
 oracle runs each linked file's script once (wasmtime with its own spectest); a command passes when
 wasmtime gets past its line.
 
@@ -106,25 +106,33 @@ REJECT = {"validator": ("silmaril.shapes.wasm.wast.validator_rejects", "Validato
 # Which rejection each assertion expects (another one is a mismatch).
 REJECT_WANT = {"assert_invalid": "validator", "assert_malformed": "decoder"}
 # Linked scripts: whole files with several modules, imports, `register`, named modules, `get` and
-# the `spectest` module, checked by `scriptLK` (`Silmaril.Project.Shapes.WasmWastLink`): one kernel
-# evaluation per file runs the whole script in order, from the context `Init` (the closed module
-# `Spectest.module` registered as "spectest"), on KMem stores.
+# the `spectest` host, checked by `scriptHK` (`Silmaril.Project.Shapes.WasmWastHost`): one kernel
+# evaluation per file runs the whole script in order, from the context `Init` (the shared spectest
+# table and memory, "spectest" bound to the host environment), on KMem stores.
 # names.wast is left out for kernel time: its third module (7.6 KB, 480 exports) exceeds 33 GB of
 # memory within two minutes of the kernel check (the native probe passes all 482 assert_return).
 LINK_FILES = [("imports", "Imports"), ("linking", "Linking"), ("exports", "Exports"), ("start", "Start"),
               ("global", "Global"), ("data", "Data"), ("elem", "Elem")]
 LINK = {f for f, _ in LINK_FILES}
-LINK_SHAPE = {"assert_return": "silmaril.shapes.wasm.wast.link.returns_only",
-              "assert_trap": "silmaril.shapes.wasm.wast.link.traps_only",
-              "assert_unlinkable": "silmaril.shapes.wasm.wast.link.unlinkable",
-              "assert_uninstantiable": "silmaril.shapes.wasm.wast.link.uninstantiable"}
+LINK_SHAPE = {"assert_return": "silmaril.shapes.wasm.wast.host.returns_only",
+              "assert_trap": "silmaril.shapes.wasm.wast.host.traps_only",
+              "assert_unlinkable": "silmaril.shapes.wasm.wast.host.unlinkable",
+              "assert_uninstantiable": "silmaril.shapes.wasm.wast.host.uninstantiable"}
 LINK_STRENGTH = {"assert_return": "only", "assert_trap": "only", "assert_unlinkable": "link",
                  "assert_uninstantiable": "only"}
-HOST_MODEL = ("spectest = the closed Wasm module Spectest.module (Silmaril.Project.Shapes.WasmWastLink.Defs), "
-              "allocated once per script and registered as \"spectest\": globals 666/666/666.6/666.6, table and table64 "
-              "10..20 funcref, memory 1..2; its print functions have empty bodies (no values, store unchanged: "
-              "Spectest.print_nf); printed output is erased and not claimed; no .host function instance; "
+HOST_MODEL = ("spectest = the typed host Spectest.host (Silmaril.Project.Shapes.WasmWastHost.Defs), as the reference "
+              "interpreter's interpreter/host/spectest.ml at the pinned spec commit: each import of a print function "
+              "allocates a fresh host function (code 0..6, type ps -> []), each import of global_i32/i64/f32/f64 a fresh "
+              "immutable global (666, 666, 666.6, 666.6); table, table64 (10..20 funcref) and memory (1..2 pages) are one "
+              "shared instance per script; a print call returns no values, leaves the store unchanged and appends "
+              "(code, args) to the host-call log, whose projection Spectest.printed is the printed values "
+              "(Spectest.hostDet, Spectest.hostTyped, Spectest.print_nf); WAST assertions do not observe printed output; "
               "the oracle uses wasmtime's own spectest")
+HOST_CTX = "spectest = Spectest.host (fresh print functions and globals per import; shared table, table64, memory)"
+# Hand-written linked-script rows, committed (not written by `emit`): (Lean module, group suffix).
+# SpectestHost: the spectest host's shared memory, fresh globals and print log
+# (tools/wasm-wast/regress/right-spectest-shared.wast as Lean modules).
+HAND_ROWS = [("SpectestHost", "spectest_host")]
 REGRESS = ROOT / "tools/wasm-wast/regress"
 NS = "silmaril.wasm_wast"
 
@@ -384,9 +392,11 @@ def runnable(seg):
 
 LINK_PROBE = r"""
 section LinkProbe
-open Silmaril.Project.Shapes.WasmWastLink hiding Ctx Action Cmd NF pre Only Reaches ReturnsOnly TrapsOnly ScriptHolds ScriptAt Run Always
+open Silmaril.Project.Shapes.WasmWastHost hiding Ctx NF pre Only Reaches ReturnsOnly TrapsOnly ScriptHolds ScriptAt Run Always
+open Silmaril.Project.Shapes.WasmWastLink (bindName exportAddr?)
+open Silmaril.Wasm.Abstract (HostLog)
 
-abbrev LCtx := Silmaril.Project.Shapes.WasmWastLink.Ctx
+abbrev LCtx := Silmaril.Project.Shapes.WasmWastHost.Ctx
 abbrev LAction := Silmaril.Project.Shapes.WasmWastLink.Action
 abbrev LCmd := Silmaril.Project.Shapes.WasmWastLink.Cmd
 
@@ -394,18 +404,32 @@ def runP (fuel : Nat) (c : Config Nat) : Option (Config Nat) :=
   let r := Exec.runI neverFail fuel c
   if r.2 then some r.1 else none
 
-def instP (fuel : Nat) (ctx : LCtx) (m : Module) : Except String (Config Nat × ModuleInst) :=
+/-- `runHG` with the native interpreter: host-free runs, and host calls answered as
+`Spectest.host` answers them, logged. -/
+def runHP (fuel : Nat) : Nat → Config Nat × HostLog Nat → Option (Config Nat × HostLog Nat)
+  | 0, _ => none
+  | n + 1, (c, l) =>
+    match runP fuel c with
+    | none => none
+    | some c' =>
+      match decompose? c'.store c'.code with
+      | some (E, _, k, args) =>
+        if Spectest.answers c'.store k then runHP fuel n (⟨c'.store, c'.frame, E.fill []⟩, l ++ [(k, args)])
+        else some (c', l)
+      | none => some (c', l)
+
+def instP (fuel : Nat) (ctx : LCtx) (m : Module) : Except String ((Config Nat × HostLog Nat) × ModuleInst) :=
   match validate? m with
   | none => .error "the validator rejects the module"
   | some mt =>
-    match resolve? ctx.regs m.imports with
-    | none => .error "an import does not resolve to an export of a registered module"
-    | some xas =>
-      if externAddrsOk? ctx.store xas mt.imports then
-        match instantiateOnce? ctx.store m xas with
+    match resolve? ctx.regs ctx.store m.imports with
+    | none => .error "an import does not resolve to an export of a registered module or a spectest name"
+    | some (s₀, xas) =>
+      if externAddrsOk? s₀ xas mt.imports then
+        match instantiateOnce? s₀ m xas with
         | some (s, f, st) =>
-          match runP fuel ⟨s, f, startCode st⟩ with
-          | some c => .ok (c, f.module)
+          match runHP fuel fuel (⟨s, f, startCode st⟩, ctx.log) with
+          | some p => .ok (p, f.module)
           | none => .error s!"the start function did not stop ({fuel} steps)"
         | none => .error "instantiateOnce? fails (a segment initialisation is out of bounds, or allocation fails)"
       else .error "the import types do not match"
@@ -414,17 +438,17 @@ def showOut : Option Result → String
   | some r => showRes r
   | none => "a normal form that is not a result (stuck)"
 
-def actP (fuel : Nat) (ctx : LCtx) : LAction → Except (String × String) (Result × Store Nat)
+def actP (fuel : Nat) (ctx : LCtx) : LAction → Except (String × String) (Result × Store Nat × HostLog Nat)
   | .invoke t name args =>
     match ctx.inst? t with
     | some mi =>
       match exportFunc? mi name with
       | some a =>
         if invokeOkB ctx.store a args then
-          match runP fuel (invoke ctx.store a args) with
-          | some c =>
+          match runHP fuel fuel (invoke ctx.store a args, ctx.log) with
+          | some (c, l) =>
             match c.outcome? with
-            | some r => .ok (r, c.store)
+            | some r => .ok (r, c.store, l)
             | none => .error ("error", "stopped without a result (stuck)")
           | none => .error ("undetermined", s!"out of fuel ({fuel} steps)")
         else .error ("error", "arguments not typed")
@@ -436,41 +460,49 @@ def actP (fuel : Nat) (ctx : LCtx) : LAction → Except (String × String) (Resu
       match exportAddr? mi name with
       | some (.global a) =>
         match ctx.store.globals[a]? with
-        | some gi => .ok (.values [gi.value], ctx.store)
+        | some gi => .ok (.values [gi.value], ctx.store, ctx.log)
         | none => .error ("error", "no global")
       | _ => .error ("error", "no global export")
     | none => .error ("error", "no such module")
+
+/-- The values printed by the host calls of one command (the log grew from `l₀` to `l`). -/
+def printedP (tag : String) (k : Nat) (l₀ l : HostLog Nat) : IO Unit :=
+  let new := l.drop l₀.length
+  if new.isEmpty then pure () else
+  IO.println s!"O\t{tag}\t{k}\t{",".intercalate ((Spectest.printed new).map showVal)}"
 
 partial def probeL (tag : String) (fuel : Nat) : Nat → LCtx → List LCmd → IO Unit
   | _, _, [] => pure ()
   | k, ctx, .module name m :: cmds =>
     match instP fuel ctx m with
-    | .ok (c, mi) =>
+    | .ok ((c, l), mi) =>
       if decide (c.outcome? = some (.values [])) then do
         IO.println s!"P\t{tag}\t{k}\tran\tinstantiated"
+        printedP tag k ctx.log l
         probeL tag fuel (k + 1)
-          { ctx with store := c.store, cur := some mi, named := bindName name mi ctx.named } cmds
+          { ctx with store := c.store, log := l, cur := some mi, named := bindName name mi ctx.named } cmds
       else IO.println s!"P\t{tag}\t{k}\terror\tmodule: the start code ends with {showOut c.outcome?}"
     | .error e => IO.println s!"P\t{tag}\t{k}\terror\tmodule: {e}"
   | k, ctx, .register as t :: cmds =>
     match ctx.inst? t with
     | some mi => do
       IO.println s!"P\t{tag}\t{k}\tran\tregistered"
-      probeL tag fuel (k + 1) { ctx with regs := (as, mi) :: ctx.regs } cmds
+      probeL tag fuel (k + 1) { ctx with regs := (as, .inst mi) :: ctx.regs } cmds
     | none => IO.println s!"P\t{tag}\t{k}\terror\tregister: no such module"
   | k, ctx, .action act e :: cmds =>
     match actP fuel ctx act with
-    | .ok (r, s) => do
+    | .ok (r, s, l) => do
       let ok := match e with
         | some e => if decide (r = e.result) then "pass" else "mismatch"
         | none => "ran"
       IO.println s!"P\t{tag}\t{k}\t{ok}\t{showRes r}"
-      probeL tag fuel (k + 1) { ctx with store := s } cmds
+      printedP tag k ctx.log l
+      probeL tag fuel (k + 1) { ctx with store := s, log := l } cmds
     | .error (st, d) => IO.println s!"P\t{tag}\t{k}\t{st}\t{d}"
   | k, ctx, .unlinkable m _ :: cmds => do
     if (validate? m).isNone then IO.println s!"P\t{tag}\t{k}\terror\tthe validator rejects the module" else
     if unlinkableG ctx m then do
-      let why := match resolve? ctx.regs m.imports with
+      let why := match resolve? ctx.regs ctx.store m.imports with
         | none => "an import does not resolve"
         | some _ => "the import types do not match"
       IO.println s!"P\t{tag}\t{k}\tpass\tunlinkable: {why}"
@@ -478,21 +510,23 @@ partial def probeL (tag : String) (fuel : Nat) : Nat → LCtx → List LCmd → 
     else IO.println s!"P\t{tag}\t{k}\tmismatch\tthe module links"
   | k, ctx, .uninstantiable m _ :: cmds =>
     match instP fuel ctx m with
-    | .ok (c, _) =>
+    | .ok ((c, l), _) =>
       match c.outcome? with
       | some .trap => do
         IO.println s!"P\t{tag}\t{k}\tpass\tthe start function traps"
-        probeL tag fuel (k + 1) { ctx with store := c.store } cmds
+        printedP tag k ctx.log l
+        probeL tag fuel (k + 1) { ctx with store := c.store, log := l } cmds
       | some r => do
         IO.println s!"P\t{tag}\t{k}\tmismatch\tthe start code ends with {showRes r}"
-        probeL tag fuel (k + 1) { ctx with store := c.store } cmds
+        printedP tag k ctx.log l
+        probeL tag fuel (k + 1) { ctx with store := c.store, log := l } cmds
       | none => IO.println s!"P\t{tag}\t{k}\terror\tthe start code ends with {showOut none}"
     | .error e => IO.println s!"P\t{tag}\t{k}\terror\tinstantiation: {e}"
 
 def probeLink (tag : String) (fuel : Nat) (cmds : List LCmd) : IO Unit :=
-  match validate? Spectest.module, instantiateOnce? (Game.importStore []) Spectest.module [] with
-  | some _, some (s, f, none) => probeL tag fuel 0 { store := s, regs := [("spectest", f.module)] } cmds
-  | _, _ => IO.println s!"P\t{tag}\t0\terror\tspectest does not instantiate"
+  match validate? Spectest.shared, instantiateOnce? (Game.importStore []) Spectest.shared [] with
+  | some _, some (s, f, none) => probeL tag fuel 0 { store := s, regs := [("spectest", .spectest f.module)] } cmds
+  | _, _ => IO.println s!"P\t{tag}\t0\terror\tspectest's shared table and memory do not instantiate"
 
 end LinkProbe
 """
@@ -686,7 +720,7 @@ def classify_link(pr):
                 end = k
                 break
             ctx = {"registered": list(regs), "named": list(named), "current": cur,
-                   "current_imports": list(cur_imports), "host": "spectest = closed Spectest.module"}
+                   "current_imports": list(cur_imports), "host": HOST_CTX}
             if it["kind"] == "module":
                 cur = f"${it['name']}" if it["name"] else f"module at line {it['line']}"
                 cur_imports = imps.get(f"link:{f}/{k}", [])
@@ -703,6 +737,9 @@ def classify_link(pr):
                 kernel.append((it, False))
                 continue
             row["observed"] = p["detail"]
+            printed = pr.get("link_printed", {}).get(f"link:{f}/{k}")
+            if printed:
+                row["printed"] = printed
             if p["status"] == "pass":
                 row["status"] = "proved"
                 kernel.append((it, True))
@@ -756,6 +793,7 @@ def classify_link(pr):
 
 PROBE_HEAD = """import Silmaril.Project.Shapes.WasmWast.Defs
 import Silmaril.Project.Shapes.WasmWastLink.Defs
+import Silmaril.Project.Shapes.WasmWastHost.Defs
 import Silmaril.Project.Shapes.WasmWastSpec.Defs
 import Silmaril.Wasm.Binary.Core.Decode
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
@@ -909,6 +947,8 @@ def probe():
             res["modules"][parts[1]] = {"status": parts[2], "detail": parts[3] if len(parts) > 3 else ""}
         elif parts[0] == "R":
             res["rejects"][parts[1]] = parts[2]
+        elif parts[0] == "O":
+            res.setdefault("link_printed", {})[f"{parts[1]}/{parts[2]}"] = [x for x in parts[3].split(",") if x]
         elif parts[0] == "P":
             res["cmds"][f"{parts[1]}/{parts[2]}"] = {"status": parts[3], "detail": parts[4] if len(parts) > 4 else ""}
     (WORK / "probe.json").write_text(json.dumps(res, indent=1))
@@ -1018,18 +1058,20 @@ def emit():
                               "assert_invalid rows are tool-level (silmaril.shapes.wasm.wast.validator_rejects): silmaril-lean's decode? reads "
                               "the bytes wasm-tools wrote and silmaril-lean's validate? rejects the module; with validate?_complete, no module "
                               "the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)",
-                              "linked-script rows (" + ", ".join(f"{f}.wast" for f, _ in LINK_FILES) + "; silmaril.shapes.wasm.wast.link.*): the "
-                              "whole file is one script, from the context Init; claims are about Core reduction Step (profile neverFail) with no host "
-                              "function (Det.noHost), after the actual runs of every earlier module, register and action of the file, in order "
-                              "(stores persist across modules, also through imported memories, tables and globals); imports resolve by name to "
-                              "exports of registered instances (resolve?, the reference interpreter's registry) and must have the import types "
-                              "(ExternAddrOk); modules are allocated and their segments initialised by instantiateOnce?; start functions run as Core reduction",
+                              "linked-script rows (" + ", ".join(f"{f}.wast" for f, _ in LINK_FILES) + "; silmaril.shapes.wasm.wast.host.*): the "
+                              "whole file is one script, from the context Init; claims are about Core reduction Step (profile neverFail) against the "
+                              "concrete host Spectest.host (deterministic: Spectest.hostDet), after the actual runs of every earlier module, register "
+                              "and action of the file, in order (stores and the host-call log persist across modules, also through imported memories, "
+                              "tables and globals); imports resolve in import order through the registry (resolve?): an export of a registered "
+                              "instance, or a spectest name (fresh print function or global per import, the shared table/table64/memory, as the "
+                              "reference interpreter's spectest.ml), and must have the import types (ExternAddrOk); modules are allocated and their "
+                              "segments initialised by instantiateOnce?; start functions run as Core reduction",
                               "linked-script rows: host model: " + HOST_MODEL,
-                              "linked-script assert_unlinkable rows (silmaril.shapes.wasm.wast.link.unlinkable): the module is valid and its imports "
-                              "do not resolve by name, or resolve to addresses without the import types (ExternAddrOk, silmaril-lean's transcription "
+                              "linked-script assert_unlinkable rows (silmaril.shapes.wasm.wast.host.unlinkable): the module is valid and its imports "
+                              "do not resolve, or resolve to addresses without the import types (ExternAddrOk, silmaril-lean's transcription "
                               "of Externaddr_ok); hence no Instantiate derivation for them (Unlinkable.not_instantiate)",
-                              "linked-script assert_uninstantiable rows (silmaril.shapes.wasm.wast.link.uninstantiable): the module links and is "
-                              "allocated, and its start function traps at every host-free normal form; a segment initialisation that traps makes "
+                              "linked-script assert_uninstantiable rows (silmaril.shapes.wasm.wast.host.uninstantiable): the module links and is "
+                              "allocated, and its start function traps at every normal form against Spectest.host; a segment initialisation that traps makes "
                               "instantiateOnce? fail and has no shape (the script stops there)"],
               "files": [], "commands": []}
     imports = []
@@ -1109,10 +1151,14 @@ def emit():
             report["commands"].append(c)
     emit_link(report, imports)
     groups = [f"{NS}.{f}" for f, mod in FILES + LINK_FILES if f"Silmaril.Project.WasmWast.{mod}.Thms" in imports]
+    # Hand-written rows (not generated; their modules are committed): HAND_ROWS.
+    imports = imports + [f"Silmaril.Project.WasmWast.{mod}.Thms" for mod, _ in HAND_ROWS]
+    groups = groups + [f"{NS}.{g}" for _, g in HAND_ROWS]
     top = ("module\n\n" + "".join(f"public import {i}\n" for i in imports) +
            "\n/-! # WAST rows of the pinned spec test suite: every file of the slice\n\n"
            "Generated by `tools/wasm-wast/gen.py` (`docs/projects/wasm-wast.md`). The group "
-           f"`{NS}` (a child of the root `silmaril.all`) has one group per file. -/\n\n"
+           f"`{NS}` (a child of the root `silmaril.all`) has one group per file, and the groups of the "
+           "hand-written rows (" + ", ".join(f"`Silmaril.Project.WasmWast.{m}`" for m, _ in HAND_ROWS) + "). -/\n\n"
            f"silmaril group {NS} (title := \"WAST commands of the WebAssembly spec test suite, kernel-checked\")\n"
            f"  (children := [{', '.join(groups)}])\n")
     (LEAN_DIR / "Thms.lean").write_text(top)
@@ -1162,7 +1208,7 @@ def link_report_row(f, mod, r):
     if r["type"] in REJECT_WANT:
         c["expected"] = [r["type"].removeprefix("assert_")]
         c["text"] = r.get("text")
-    for k in ("reason", "observed", "context"):
+    for k in ("reason", "observed", "context", "printed"):
         if k in r:
             c[k] = r[k]
     if "reject_wasm" in r:
@@ -1175,7 +1221,8 @@ def link_report_row(f, mod, r):
     elif r["status"] == "proved":
         shape = LINK_SHAPE[r["type"]]
         c.update(problem=f"{NS}.{f}.l{r['line']}", shape=shape, theorem=f"Silmaril.Project.WasmWast.{mod}.l{r['line']}",
-                 strength=LINK_STRENGTH[r["type"]], profile="profile neverFail", host=HOST_MODEL, checker="scriptLK")
+                 strength=LINK_STRENGTH[r["type"]], profile="profile neverFail", host=HOST_MODEL, checker="scriptHK",
+                 observation="results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed")
         if r["type"] in ("assert_return", "assert_trap"):
             c["allowed"] = c["expected"]
         c["claims"] = [{"kind": LINK_STRENGTH[r["type"]], "shape": shape, "problem": c["problem"], "theorem": c["theorem"]}]
@@ -1200,10 +1247,11 @@ WebAssembly/spec at `{WT['WASM_SPEC_REV']}`
 Each module is the binary that wasm-tools {WT['WT_VERSION']} `json-from-wast` writes for it, read by
 silmaril-lean's decoder (`decode?`, sound: `decode?_sound`). `mJ` is the module of the `J`-th
 `(module …)` of the file and `uL` the module of the `assert_unlinkable` / `assert_uninstantiable` at
-line `L`. `cmds` is the script in order, from the context `Init` (the closed module
-`Spectest.module` registered as `"spectest"`): every module, `register`, action and module assertion
-up to the first command the kernel does not run. An assertion that the kernel checks keeps its
-claim; every other one is kept for the context only (`expect := none`, `claim := false`).{{rdoc}}
+line `L`. `cmds` is the script in order, from the context `Init` of
+`Silmaril.Project.Shapes.WasmWastHost` (the typed `spectest` host): every module, `register`, action
+and module assertion up to the first command the kernel does not run. An assertion that the
+kernel checks keeps its claim; every other one is kept for the context only (`expect := none`,
+`claim := false`).{{rdoc}}
 -/
 
 @[expose] public section
@@ -1237,20 +1285,21 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
     thms = [f"""module
 
 public import {ns}.Defs
-public import Silmaril.Project.Shapes.WasmWastLink.Thms
+public import Silmaril.Project.Shapes.WasmWastHost.Thms
 public import Silmaril.Project.Shapes.WasmWast.Thms
 
 /-!
 # WAST rows: `test/core/{f}.wast`, a linked script answered by one kernel evaluation
 
 Generated by `tools/wasm-wast/gen.py`; do not edit. `script` proves every claim of `cmds`
-(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptLK`, which instantiates the
-closed `Spectest.module`, then validates, links, instantiates and runs every command in order on
-`KMem` stores; the claims are about `ByteArray` stores and host-free Core reduction). Each row
-`{NS}.{f}.l<line>` is the command at line `<line>`: `assert_return`
-(`silmaril.shapes.wasm.wast.link.returns_only`), `assert_trap` (`….link.traps_only`),
-`assert_unlinkable` (`….link.unlinkable`) or `assert_uninstantiable` (`….link.uninstantiable`),
-after the commands before it (`pre cmds k`). `decodes`: every module of the script is the
+(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptHK`, which allocates the shared
+`spectest` table and memory, then validates, links (allocating fresh `spectest` print functions and
+globals per import), instantiates and runs every command in order on `KMem` stores, answering
+print calls as `Spectest.host`; the claims are about `ByteArray` stores and Core reduction
+`Step (profile neverFail) Spectest.host`). Each row `{NS}.{f}.l<line>` is the command at
+line `<line>`: `assert_return` (`silmaril.shapes.wasm.wast.host.returns_only`), `assert_trap`
+(`….host.traps_only`), `assert_unlinkable` (`….host.unlinkable`) or `assert_uninstantiable`
+(`….host.uninstantiable`), after the commands before it (`pre cmds k`). `decodes`: every module of the script is the
 decoder's reading of its bytes (not the default `{{}}` of `getD`), from the same kernel
 evaluation. The index fact `cmds[k]? = some …` of a row is checked by `kernel_rfl`.{{rthm}}
 -/
@@ -1259,7 +1308,7 @@ evaluation. The index fact `cmds[k]? = some …` of a row is checked by `kernel_
 
 namespace {ns}
 
-open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWastLink
+open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWastHost
 """]
     thms[0] = thms[0].replace("{rthm}", "" if not rejects else
         "\n\nAn `assert_invalid` row (`silmaril.shapes.wasm.wast.validator_rejects`) or binary\n"
@@ -1271,14 +1320,14 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
             # One kernel evaluation decodes every module (`decodesB`) and runs the script: the
             # kernel's cache shares the decoding with the checker's unfolding of `mJ`.
             thms.append(f"/-- The kernel checker accepts the script, and every module decodes. -/\n"
-                        f"theorem check : (decodesB && scriptLK {O} {FUEL} cmds) = true := by decide +kernel\n")
+                        f"theorem check : (decodesB && scriptHK {O} {FUEL} cmds) = true := by decide +kernel\n")
             thms.append("/-- Every module of the script is the decoder's reading of its bytes. -/\n"
                         "theorem decodes : decodesB = true := (Bool.and_eq_true_iff.mp check).1\n")
             thms.append(f"/-- Every claim of the script. -/\n"
                         f"theorem script : ScriptHolds {O} cmds := .of_kernel (Bool.and_eq_true_iff.mp check).2\n")
         else:
             thms.append(f"/-- The kernel checker accepts the script. -/\n"
-                        f"theorem check : scriptLK {O} {FUEL} cmds = true := by decide +kernel\n")
+                        f"theorem check : scriptHK {O} {FUEL} cmds = true := by decide +kernel\n")
             thms.append(f"/-- Every claim of the script. -/\n"
                         f"theorem script : ScriptHolds {O} cmds := .of_kernel check\n")
         for k, (it, ok) in enumerate(kernel):
@@ -1289,16 +1338,16 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
             names.append(name)
             t = row["type"]
             if t == "assert_return":
-                head = (f"  silmaril.shapes.wasm.wast.link.returns_only (o := {O})\n"
+                head = (f"  silmaril.shapes.wasm.wast.host.returns_only (o := {O})\n"
                         f"  (pre := pre cmds {k}) (act := {lean_link_action(row)}) (vs := [{', '.join(it['expect'][1])}])\n")
                 proof = f"script.returnsOnly {k} (by kernel_rfl)"
             elif t == "assert_trap":
-                head = (f"  silmaril.shapes.wasm.wast.link.traps_only (o := {O})\n"
+                head = (f"  silmaril.shapes.wasm.wast.host.traps_only (o := {O})\n"
                         f"  (pre := pre cmds {k}) (act := {lean_link_action(row)})\n")
                 proof = f"script.trapsOnly {k} (by kernel_rfl)"
             else:
                 kind = t.removeprefix("assert_")
-                head = (f"  silmaril.shapes.wasm.wast.link.{kind} (o := {O})\n"
+                head = (f"  silmaril.shapes.wasm.wast.host.{kind} (o := {O})\n"
                         f"  (pre := pre cmds {k}) (m := {link_mod_var(it)})\n")
                 proof = f"script.{kind} {k} (by kernel_rfl)"
             thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n{head}")
@@ -1326,7 +1375,7 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 def emit_link(report, imports):
     for f, mod, items, rows, kernel in classify_link(json.loads((WORK / "probe.json").read_text())):
         sha = sha256(SPEC_CORE / f"{f}.wast")
-        report["files"].append({"file": f"test/core/{f}.wast", "sha256": sha, "script": "linked", "checker": "scriptLK",
+        report["files"].append({"file": f"test/core/{f}.wast", "sha256": sha, "script": "linked", "checker": "scriptHK",
                                 "modules": [{"index": it["index"], "line": it["line"], "name": it["name"],
                                              "wasm_sha256": sha256(WORK / "json" / f / it["wasm"]) if it["wasm"] else None,
                                              "status": "run" if any(it is x for x, _ in kernel) else "not run"}

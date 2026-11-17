@@ -94,13 +94,14 @@ test("rows under Profile.spec show the claim kinds, the allowed set and the prof
 test("rows of a linked script show their context and the host model", () => {
   const linked = { commands: [
     { id: "linking:17", file: "linking", line: 17, type: "assert_return", status: "proved", script: "linked", invoke: "call", args: [],
-      on: "$Mf", expected: ["i32:2"], problem: "silmaril.wasm_wast.linking.l17", shape: "silmaril.shapes.wasm.wast.link.returns_only",
-      strength: "only", checker: "scriptLK", host: "spectest = the closed Wasm module Spectest.module",
-      context: { registered: ["Mf", "spectest"], named: ["Mf"], current: "$Nf", current_imports: ["Mf.call"], host: "spectest = closed Spectest.module" },
-      claims: [{ kind: "only", shape: "silmaril.shapes.wasm.wast.link.returns_only", problem: "silmaril.wasm_wast.linking.l17" }] },
+      on: "$Mf", expected: ["i32:2"], problem: "silmaril.wasm_wast.linking.l17", shape: "silmaril.shapes.wasm.wast.host.returns_only",
+      strength: "only", checker: "scriptHK", host: "spectest = the typed host Spectest.host", printed: ["i32:13"],
+      observation: "results; the host-call log (Spectest.printed) is determined by ScriptAt.unique but not claimed",
+      context: { registered: ["Mf", "spectest"], named: ["Mf"], current: "$Nf", current_imports: ["Mf.call"], host: "spectest = Spectest.host" },
+      claims: [{ kind: "only", shape: "silmaril.shapes.wasm.wast.host.returns_only", problem: "silmaril.wasm_wast.linking.l17" }] },
     { id: "linking:28", file: "linking", line: 28, type: "assert_unlinkable", status: "proved", script: "linked", expected: ["unlinkable"],
       module_type: "binary", wasm_sha256: "abcdef0123456789abcd", problem: "silmaril.wasm_wast.linking.l28",
-      shape: "silmaril.shapes.wasm.wast.link.unlinkable", strength: "link", checker: "scriptLK",
+      shape: "silmaril.shapes.wasm.wast.host.unlinkable", strength: "link", checker: "scriptHK",
       context: { registered: ["spectest"], named: [], current: null, current_imports: [], module_imports: ["spectest.unknown"] } },
     { id: "linking:7", file: "linking", line: 7, type: "register", status: "context", script: "linked", register: { as: "Mf", module: "$Mf" },
       reason: "register: part of the script context of later rows (no claim)" },
@@ -109,8 +110,11 @@ test("rows of a linked script show their context and the host model", () => {
   assert.equal(rs[0].input, "$Mf.call()");
   assert.ok(rs[0].linked);
   assert.match(rs[0].context, /registered: Mf, spectest; named: \$Mf; current: \$Nf \(imports: Mf\.call\)/);
-  assert.match(rs[0].context, /host: spectest = closed Spectest\.module/);
+  assert.match(rs[0].context, /host: spectest = Spectest\.host/);
   assert.match(rs[0].strength, /linked script prefix/);
+  assert.match(rs[0].strength, /typed spectest host/);
+  assert.equal(rs[0].printed, "i32:13");
+  assert.match(rs[0].observation, /host-call log/);
   assert.equal(rs[0].claim, "semantic: Core reduction");
   assert.match(rs[1].claim, /linking/);
   assert.match(rs[1].strength, /ExternAddrOk/);
@@ -139,12 +143,13 @@ test("the committed report: every proved row names its problem and shape, and th
       assert.equal(c.claims[1].problem, c.problem + "_terminates", c.id);
       for (const x of c.claims) assert.ok(W.STRENGTH[x.shape], x.shape);
     } else if (c.script === "linked" && !c.wasm_sha256 || c.type === "assert_unlinkable" || c.type === "assert_uninstantiable") {
-      // A row of a linked script: one kernel evaluation of scriptLK per file, under the closed
-      // spectest module, with the script context of the row.
-      assert.equal(c.checker, "scriptLK", c.id);
-      assert.match(c.shape, /^silmaril\.shapes\.wasm\.wast\.link\./, c.id);
+      // A row of a linked script: one kernel evaluation of scriptHK per file, against the typed
+      // spectest host, with the script context of the row.
+      assert.equal(c.checker, "scriptHK", c.id);
+      assert.match(c.shape, /^silmaril\.shapes\.wasm\.wast\.host\./, c.id);
       assert.equal(c.strength, c.type === "assert_unlinkable" ? "link" : "only", c.id);
-      assert.match(c.host, /closed Wasm module Spectest\.module/, c.id);
+      assert.match(c.host, /typed host Spectest\.host/, c.id);
+      assert.match(c.observation, /host-call log/, c.id);
       assert.ok(c.context && Array.isArray(c.context.registered) && c.context.registered.includes("spectest"), c.id);
     } else if (c.type === "assert_return" || c.type === "assert_trap") {
       assert.equal(c.strength, "only", c.id);

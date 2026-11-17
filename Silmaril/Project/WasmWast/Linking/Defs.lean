@@ -12,10 +12,11 @@ WebAssembly/spec at `608711107b7f1edb13efd57b7d79b49477462d36`
 Each module is the binary that wasm-tools 1.262.0 `json-from-wast` writes for it, read by
 silmaril-lean's decoder (`decode?`, sound: `decode?_sound`). `mJ` is the module of the `J`-th
 `(module …)` of the file and `uL` the module of the `assert_unlinkable` / `assert_uninstantiable` at
-line `L`. `cmds` is the script in order, from the context `Init` (the closed module
-`Spectest.module` registered as `"spectest"`): every module, `register`, action and module assertion
-up to the first command the kernel does not run. An assertion that the kernel checks keeps its
-claim; every other one is kept for the context only (`expect := none`, `claim := false`).
+line `L`. `cmds` is the script in order, from the context `Init` of
+`Silmaril.Project.Shapes.WasmWastHost` (the typed `spectest` host): every module, `register`, action
+and module assertion up to the first command the kernel does not run. An assertion that the
+kernel checks keeps its claim; every other one is kept for the context only (`expect := none`,
+`claim := false`).
 -/
 
 @[expose] public section

@@ -88,7 +88,10 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.wasm.wast.returns_allowed_all", "silmaril.shapes.wasm.wast.traps_all",
   "silmaril.shapes.wasm.wast.terminates_all", "silmaril.shapes.wasm.wast.link.returns_only",
   "silmaril.shapes.wasm.wast.link.traps_only", "silmaril.shapes.wasm.wast.link.unlinkable",
-  "silmaril.shapes.wasm.wast.link.uninstantiable", "silmaril.shapes.graph.dominates",
+  "silmaril.shapes.wasm.wast.link.uninstantiable", "silmaril.shapes.wasm.wast.host.returns_only",
+  "silmaril.shapes.wasm.wast.host.traps_only", "silmaril.shapes.wasm.wast.host.unlinkable",
+  "silmaril.shapes.wasm.wast.host.uninstantiable", "silmaril.shapes.wasm.wast.host.log_is",
+  "silmaril.shapes.graph.dominates",
   "silmaril.shapes.graph.dom_tree_exact", "silmaril.shapes.graph.dom_tree_sound",
   "silmaril.shapes.graph.region_tree_valid"]
 

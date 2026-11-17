@@ -38,6 +38,20 @@ const WastModel = (() => {
       "of Externaddr_ok); so no Instantiate derivation exists for them (Unlinkable.not_instantiate)",
     "silmaril.shapes.wasm.wast.link.uninstantiable": "after the linked script prefix, the module links and instantiateOnce? allocates it, " +
       "and its start function traps at every host-free normal form (segment traps have no shape)",
+    "silmaril.shapes.wasm.wast.host.returns_only": "against the typed spectest host (Spectest.host: print calls return no values, " +
+      "leave the store unchanged and are logged; print functions and globals fresh per import, table and memory shared), after the " +
+      "linked script prefix (every earlier module, register and action of the file), returns these values at every normal form; " +
+      "no run diverges (ReturnsOnly.always, from Spectest.hostDet)",
+    "silmaril.shapes.wasm.wast.host.traps_only": "against the typed spectest host, after the linked script prefix, traps at every " +
+      "normal form; no run diverges (TrapsOnly.always)",
+    "silmaril.shapes.wasm.wast.host.unlinkable": "against the typed spectest host, after the linked script prefix, the module is valid " +
+      "and its imports do not resolve through the registry, or resolve (allocating fresh spectest entities) to addresses without the " +
+      "import types (ExternAddrOk, silmaril-lean's transcription of Externaddr_ok); so no Instantiate derivation exists for them " +
+      "(Unlinkable.not_instantiate)",
+    "silmaril.shapes.wasm.wast.host.uninstantiable": "against the typed spectest host, after the linked script prefix, the module links " +
+      "and instantiateOnce? allocates it, and its start function traps at every normal form (segment traps have no shape)",
+    "silmaril.shapes.wasm.wast.host.log_is": "against the typed spectest host, the script runs and its host-call log (the printed " +
+      "values, Spectest.printed) is the given one, in every context it reaches",
   };
   // How strong a proved row's claim is (the report's `strength`).
   const CLAIM = {
@@ -129,10 +143,14 @@ const WastModel = (() => {
         checker: c.checker || "",
         // A row of a linked script: the context its claim is relative to (registered names, named
         // modules, the current module and its imports, the module's own imports for a module
-        // assertion) and the host model (the closed spectest module).
+        // assertion) and the host model (the typed spectest host).
         linked: c.script === "linked",
         context: contextText(c.context),
         host: c.host || "",
+        // The observation projection of the row's claim, and the values its command printed
+        // (from the probe; the log itself is determined by ScriptAt.unique).
+        observation: c.observation || "",
+        printed: (c.printed || []).join(", "),
         oracle: o ? o.oracle : null,
       };
     });
@@ -200,7 +218,9 @@ if (typeof registerView === "function") {
         return `${esc(r.status)}${r.checker ? ` <span class="muted">(${esc(r.checker)})</span>` : ""}${d ? " · " + esc(d.status || "no answer") + (d.tier ? " (" + esc(d.tier) + ")" : "") :
           r.problem ? ' · <span class="muted">not in this database</span>' : ""}`;
       }],
-      ["context", (r) => r.context ? `<span class="muted">${esc(r.context)}</span>` : ""],
+      ["context", (r) => (r.context ? `<span class="muted">${esc(r.context)}</span>` : "") +
+        (r.printed ? `<br>printed: <code>${esc(r.printed)}</code>` : "") +
+        (r.observation ? `<br><span class="muted">observation: ${esc(r.observation)}</span>` : "")],
       ["reason", (r) => esc(r.reason)],
       ["oracle", (r) => esc(r.oracle || "")],
     ]);

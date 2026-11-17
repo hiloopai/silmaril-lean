@@ -10,7 +10,7 @@ Lean kernel: at the deterministic profile for the integer, control and memory fi
 validator rejects the module (see [Rejections](#rejections-tool-level)). Seven files with
 several modules, imports, `register` and the `spectest` module are checked as **linked scripts**,
 one per file, with `spectest` modelled by a **closed Wasm module**, not a host
-([Linked scripts](#linked-scripts-imports-register-and-the-spectest-module)). The same commands are
+([Linked scripts](#linked-scripts-imports-register-and-the-spectest-host)). The same commands are
 run by a pinned independent implementation (wasmtime 50.0.0), in CI by the
 [WAST oracle job](#the-ci-oracle-job).
 
@@ -273,90 +273,176 @@ about the runs of `profile o`, and `Profile.spec` has more. That is why the floa
 by the fragment theorem, not by the deterministic interpreter. No row of the slice is left at the
 existence shape: every command of the six files is in the fragment.
 
-## Linked scripts: imports, register and the spectest module
+## Linked scripts: imports, register and the spectest host
 
 The files `test/core/{imports,linking,exports,start,global,data,elem}.wast` have several
 modules per file, imports, `register`, named modules (`module $M`, `(invoke $M …)`, `(get $M …)`),
-the `spectest` module and module assertions (`assert_unlinkable`, `assert_trap` on a module, which
-wasm-tools calls `assert_uninstantiable`). Each is checked as **one script per file** by the shapes
-of `Silmaril.Project.Shapes.WasmWastLink`:
+imports from `spectest` and module assertions (`assert_unlinkable`, `assert_trap` on a module,
+which wasm-tools calls `assert_uninstantiable`). Each is checked as **one script per file**, against
+a concrete typed host, by the shapes of `Silmaril.Project.Shapes.WasmWastHost`:
 
 | name | statement |
 |---|---|
-| `silmaril.shapes.wasm.wast.link.returns_only` | `ReturnsOnly o pre act vs`: after the commands `pre`, some host-free normal form of the action `act` returns `vs`, and every one does |
-| `silmaril.shapes.wasm.wast.link.traps_only` | `TrapsOnly o pre act`: the same with a trap |
-| `silmaril.shapes.wasm.wast.link.unlinkable` | `Unlinkable o pre m`: after `pre`, `m` is valid, and its imports either do not resolve by name to exports of registered instances, or resolve to addresses that do not have the import types (`ExternAddrOk`) |
-| `silmaril.shapes.wasm.wast.link.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links, `instantiateOnce?` allocates it, and its start function traps at every host-free normal form |
+| `silmaril.shapes.wasm.wast.host.returns_only` | `ReturnsOnly o pre act vs`: after the commands `pre`, some normal form of the action `act` under `Step (profile o) Spectest.host` returns `vs`, and every one does |
+| `silmaril.shapes.wasm.wast.host.traps_only` | `TrapsOnly o pre act`: the same with a trap |
+| `silmaril.shapes.wasm.wast.host.unlinkable` | `Unlinkable o pre m`: after `pre`, `m` is valid, and its imports either do not resolve through the registry, or resolve (allocating fresh `spectest` entities) to addresses that do not have the import types (`ExternAddrOk`) |
+| `silmaril.shapes.wasm.wast.host.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links, `instantiateOnce?` allocates it, and its start function traps at every normal form under `Spectest.host` |
+| `silmaril.shapes.wasm.wast.host.log_is` | `LogIs o cmds l`: the script runs, and every context it reaches has the host-call log `l` (the observation; the printed values are `Spectest.printed l`) |
 
-**The environment is a closed Wasm module, not a host.** `spectest` is the instance of the fixed
-module `Spectest.module` (`….WasmWastLink.Defs`), written out in Lean, allocated once per script in
-the empty store and registered as `"spectest"` (`Init`). Its exports and their values follow
-`interpreter/host/spectest.ml` at `608711107b` (SHA-256
-`1cb35539f6c7c6d1f8f488f37d4c847a664866ab1550db72a5deb84f7a2822f0`): `global_i32` and `global_i64`
-666, `global_f32` 666.6 (bits `0x4426A666`, the `f32` rounding of the `f64` 666.6, as
-`F32.of_float`), `global_f64` 666.6 (bits `0x4084D4CCCCCCCCCD`), all immutable; `table` and `table64`
-(address type `i32`/`i64`, limits 10..20, `funcref`, null); `memory` (`i32`, 1..2 pages); `print`,
-`print_i32`, `print_i64`, `print_f32`, `print_f64`, `print_i32_f32`, `print_f64_f64` with the
-types of `spectest.ml` and no results. In `spectest.ml` the print functions are host functions that
-print their arguments; here they are Wasm functions with empty bodies:
+### The reference `spectest` at the pinned commit
 
-* `Spectest.valid`: the module validates, with no imports (kernel);
-* `Spectest.print_nf`: every function export of the instance registered as `"spectest"`, called with
-  arguments of its parameter types in any store that holds the same function instance, reaches the
-  empty code in the **same** store (a host-free normal form): no values, no store effect (kernel
-  check `printsEmptyB` and the general `emptyBody_nf`).
+The reference interpreter of WebAssembly/spec at `608711107b7f1edb13efd57b7d79b49477462d36`
+(the commit pinned in `tools/wasm-tools/tests/pins.sh`; the files below are those of
+`https://github.com/WebAssembly/spec/tree/608711107b7f1edb13efd57b7d79b49477462d36/interpreter`):
 
-So no `.host` function instance is ever allocated, and every claim is about host-free reduction
-`Step (profile o) Det.noHost`. What `spectest.ml` prints is **erased**: no claim is about an output
-trace. Nothing here says that a context cannot distinguish this module from a host implementation
-of `spectest`, and the rows are not `.host` conformance results. The other differences from
-`spectest.ml`: there, every lookup of a global or a print function allocates a fresh instance
-(`table`, `table64` and `memory` are allocated once, as here); here every import of a name shares
-one instance (the globals are immutable, so only identity could tell). The oracle (wasmtime) uses
-its own `spectest`; its agreement on these scripts is evidence about the outcomes, not a proof
-that the closed module replaces the host.
+* `interpreter/main/main.ml` l. 11–12: `Run.register_virtual "spectest" Spectest.lookup` and
+  `Run.register_virtual "env" Env.lookup`: `spectest` is a *virtual* module, a lookup function, not
+  an instance.
+* `interpreter/script/runner.ml` l. 314: the registry maps a module name to a function
+  `name -> externtype -> externinst option`; l. 338–349 (`lookup_registry`, `lookup_import`):
+  each import calls that function **once, when the importing module is linked**; l. 352–357
+  (`register_virtual`, `register_instance`): `(register "M" $i)` binds `M` to the exports of the
+  instance `$i`, so a later `register "spectest"` shadows the virtual one; l. 395–400
+  (`run_instantiation`): every import of a module is looked up, in import order (`List.map2`),
+  before `Eval.init` checks the import types (`interpreter/exec/eval.ml` l. 1183–1190
+  `init_import`, a `Link` error otherwise). The lookup ignores the requested type.
+* `interpreter/host/spectest.ml` l. 48–64 (`lookup`):
+  * `print`, `print_i32`, `print_i64`, `print_f32`, `print_f64`, `print_i32_f32`, `print_f64_f64`
+    call `func print ts []` (l. 34–36), which calls `Func.alloc_host`: **a fresh host function at
+    every lookup**, of the defined type `ts → []` (one final sub type, no supertypes). Calling it
+    runs `print` (l. 38–45): one line `"<value> : <type>"` per argument on standard output (the
+    type is the value's own), then `flush_all`, and it returns no values. `eval.ml` l. 1131–1133
+    applies it to the arguments and pushes its (empty) results; it never traps, diverges or
+    touches the store. `print` with no arguments prints nothing.
+  * `global_i32`, `global_i64`, `global_f32`, `global_f64` call `global (GlobalT (Cons, t))`
+    (l. 10–20), which calls `Global.alloc`: **a fresh immutable global at every lookup**, value 666
+    (`i32`, `i64`) or 666.6 (`F32.of_float 666.6` = bits `0x4426A666`, `F64.of_float 666.6` = bits
+    `0x4084D4CCCCCCCCCD`).
+  * `table`, `table64`, `memory` (l. 22–32) are top-level `let` values, allocated once when the
+    module `Spectest` is initialised: **every lookup returns the same table or memory**, for the
+    whole process (so across the scripts of one run). `table`: `i32`, limits 10..20, nullable
+    `funcref`, null; `table64`: the same with `i64`; `memory`: `i32`, 1..2 pages.
+  * Any other name: `None`, an `unknown import` link error.
 
-**Script state.** A context (`Ctx`) is the store, the registered names (most recent first), the
-named modules and the current module. `pre` lists the commands before the row, from `Init`; each
-changes the context as the reference interpreter does when its assertion holds (`CmdRun`):
+What is observable inside a WAST script: tables and memory are mutable and shared, so writes
+through one import are seen through another (the row `silmaril.wasm_wast.spectest_host.shared_memory`
+below). The globals are immutable, and function references have no equality in Wasm 3.0
+(`funcref` is not a subtype of `eqref`), so fresh versus shared globals and print functions are
+a property of the store that Wasm code cannot observe; only the embedder (and the store) can. The
+printed output is not observed by any WAST assertion.
 
-* `module`: valid (`ModuleOk`), every import resolved by name through the registry (`resolve?`:
-  `(import "M" "x" …)` is the export `x` of the instance registered as `M`), the resolved addresses
-  of the import types (`ExternAddrOk`: the premise of the specification's `$instantiate`),
-  allocated and segments initialised by `instantiateOnce?`, then the start call (if any) run to a
-  host-free normal form that is a result. The instance becomes current (and named);
+### The typed host, the registry and the observation
+
+`Silmaril.Project.Shapes.WasmWastHost.Defs` models the environment in exactly those respects:
+
+* **Host.** `Spectest.host : HostSemantics Nat`: a call of host code `k < 7` (the `k`-th print
+  function of `Spectest.entries`) in the store `s` returns `s` unchanged and no values, when every
+  host function instance with code `k` has no results (`printsTyped`, a guard that makes the
+  answers typed in every store; in a script it always holds). It never diverges. Facts (`….Thms`):
+  - `Spectest.hostDet : HostDet Spectest.host`: at most one outcome per call;
+  - `Spectest.hostTyped : HostTyped Spectest.host`: every answer keeps the store typed, extends it
+    and has the callee's result type;
+  - `Spectest.print_nf`: for `s.funcs[a]? = some fi` with `fi.code = .host k`, the host answering
+    `k` in `s`, and arguments of the parameter count, `NF o (invoke s a args, l)
+    (⟨s, {}, []⟩, l ++ [(k, args)])`: one logged step to the empty code in the same store, a
+    normal form; the call is appended to the log.
+* **Registry.** A registered name is a module instance (`Reg.inst`, by `register`) or the
+  `spectest` environment (`Reg.spectest sh`). `resolve? regs s imps` is stateful and goes in
+  import order: an import of an instance is its export; an import of `spectest` is
+  `Spectest.lookup?`: a print function is a fresh `allocHost` (code `k`, type `ofFlatType (ps →
+  [])`, the reference interpreter's final sub type), a global a fresh `allocGlobal`, and `table`,
+  `table64`, `memory` the exports of the one instance `sh` of `Spectest.shared`, allocated in the
+  empty store at `Init`. Facts: `Spectest.lookup?_print`, `….lookup?_global` (the next address,
+  a new instance), `….lookup?_shared` (the shared address, store unchanged);
+  `Spectest.resolve?_print_twice`, `….resolve?_global_twice` (two imports of one name: two
+  addresses), `….resolve?_memory_twice` (two imports of `memory`: one address). The table and
+  memory are shared within a script; the reference interpreter also shares them across the scripts
+  of one process (one script per file here, so no row depends on it).
+* **Observation.** Runs are `LStep` runs (`Silmaril.Wasm.Abstract.HostDet`): a host-free step
+  keeps the log, an answered host call at the `decompose?` callout (under any label, handler or
+  frame) appends `(host function, arguments)`, a divergent call stutters. The script context keeps
+  the log; `Spectest.printed log` (the arguments, in order) is the reference interpreter's output,
+  one line per value. The rows claim results; the log is determined (`ScriptAt.unique` covers the
+  whole context, log included) and claimed by `log_is` rows. `report.json` records the printed
+  values of each command that prints (`printed`, from the probe; not a proof).
+
+**Determinism with a host** (`Silmaril.Wasm.Abstract.HostDet.Thms`, reusable for any host): with
+`HostDet host` at `profile o`,
+
+* `Step.join_of_hostDet`: two steps of a configuration join in at most one step each;
+  `Step.eq_or_shrink_of_hostDet`: they are equal or the first has smaller code. Host-free steps
+  join by `Det.DStep.join'`; a host-free step has no callout (`Step.noRedex`,
+  `decompose?_none_of_noRedex`), so it never competes with a host step; two host steps are at the
+  same callout (`Step.split_host`) with the same outcome.
+* `Steps.nf_unique_of_hostDet`, `Steps.always_of_hostDet`: normal forms are unique, and a run to
+  one excludes infinite runs (a divergent host call included).
+* `LSteps.nf_unique_of_hostDet`: the normal form **and the log** of a run to it are unique.
+
+No typing hypothesis is needed for these.
+
+**Script state.** A context (`Ctx`) is the store, the registry, the named modules, the current
+module and the host-call log. `pre` lists the commands before the row, from `Init`; each changes
+the context as the reference interpreter does when its assertion holds (`CmdRun`):
+
+* `module`: valid (`ModuleOk`), every import resolved (`resolve?`, allocating the fresh `spectest`
+  entities), the resolved addresses of the import types in the resolved store (`ExternAddrOk`: the
+  premise of the specification's `$instantiate`), allocated and segments initialised by
+  `instantiateOnce?`, then the start call (if any) run to a normal form under `Spectest.host` that
+  is a result. The instance becomes current (and named); the log grows by the start function's
+  print calls;
 * `register "M" $t?`: the current (or named) instance registered as `M`;
-* an action, whatever its expectation: a host-free normal form that is a result, whose store is
-  the next one. Stores persist across modules, through imported memories, tables and globals,
-  and after traps;
-* `assert_unlinkable`: no change; `assert_uninstantiable`: the store of the start call's normal
-  form (the start function's writes into imported state persist; the instance is unreachable).
+* an action, whatever its expectation: a normal form that is a result, whose store and log are the
+  next ones. Stores persist across modules, through imported memories, tables and globals, and
+  after traps;
+* `assert_unlinkable`: no change (the entities its resolution allocated are dropped, as the
+  reference interpreter drops them); `assert_uninstantiable`: the store and log of the start call's
+  normal form.
 
 `ScriptAt.unique`: at `profile o` the prefix reaches at most one context, so `Only` (every normal
 form) is meaningful; `ReturnsOnly.always`, `TrapsOnly.always` add that no run of the invoked
-function diverges. `Unlinkable.not_instantiate`: no `Instantiate` derivation (silmaril-lean's
-transcription of `$instantiate`) exists for the resolved addresses, under any profile and host
-(`ModuleOk.unique`). The name resolution itself is the WAST script semantics (the reference
-interpreter's registry), not part of the Wasm specification.
+function under `Spectest.host` diverges. `Unlinkable.not_instantiate`: no `Instantiate`
+derivation exists for the resolved store and addresses, under any profile and host. The name
+resolution is the WAST script semantics (the reference interpreter's registry), not part of the
+Wasm specification.
 
-**The checker.** `scriptLK o fuel cmds` instantiates `Spectest.module`, then validates, resolves,
+**The checker.** `scriptHK o fuel cmds` allocates the shared instance, then validates, resolves,
 type-checks the imports (`externAddrsOk?`), instantiates (`instantiateOnce?`) and runs the start
-code and every action with the interpreter head step under `Verify.Kernel.runK`, on `KMem` stores.
-`ScriptHolds.of_kernel` carries one `decide +kernel` evaluation to the claims, through:
-`instantiateOnce?_toBytes`, `runI_toBytes` (the `KMem` run is the `ByteArray` run read through
-`toBytes`); `Game.instantiateOnce?_configOk` (new: instantiation of a valid module in a well-typed
-store against addresses of the import types gives a typed configuration, with any imports and any
-start function), so every store of the script is typed (`StoreOk`); `runI_steps_typed`,
-`runI_stopped_no_step_typed`, `runI_typed` (a stopped run is a host-free normal form and stays
-typed); `externAddrsOk?_sound`/`_complete` (the latter needs the typed store); and `nf_unique`,
-`nf_always` for the normal forms of any configuration (`Det.DStep.join'`, `Det.DStep.shrink`).
+code and every action on `KMem` stores with `runHG`: host-free runs of at most `fuel` steps of
+the interpreter head step under `Verify.Kernel.runK`, and at a callout (`decompose?`) whose host
+code the host answers (`Spectest.answers`), the empty result plugged into the context and the call
+logged, at most `fuel` times. `ScriptHolds.of_kernel` carries one `decide +kernel` evaluation to
+the claims, through: `instantiateOnce?_toBytes`, `runI_toBytes`, `decompose?_toBytes`,
+`resolve?_toBytes` (the `KMem` run is the `ByteArray` run read through `toBytes`);
+`Game.instantiateOnce?_configOk` and `resolve?_ok` (fresh host functions by `allocHost_storeOk`,
+fresh numeric globals by `storeOk_allocGlobal`), so every store is typed; between host calls
+`runG_sound` (a stopped run is a host-free normal form and stays typed); at a host call
+`Ctx.fill_callout_typed` (the empty result has the callee's empty result type, by `printsTyped`);
+a stopped configuration with no callout, or a callout the host does not answer, has no step under
+`Spectest.host` (`Step.split_host`); and `LSteps.nf_unique_of_hostDet` with `Spectest.hostDet`.
+`logHK` runs the same commands and returns the log (`LogIs.of_kernel`).
 
-**Strength labels** (`report.json` `strength`): `only` for `link.returns_only`, `link.traps_only`
-and `link.uninstantiable` (Core reduction, every normal form); `link` for `link.unlinkable`
-(relative to `resolve?` and the `ExternAddrOk` transcription). `register` and bare actions are
-`context` rows: no claim, but part of every later row's `pre`. Every row of a linked file
-records its context (`context`: registered names, named modules, the current module and its
-imports, the module's own imports for a module assertion, the host model).
+**Strength labels** (`report.json` `strength`): `only` for `host.returns_only`, `host.traps_only`
+and `host.uninstantiable` (Core reduction against `Spectest.host`, every normal form); `link` for
+`host.unlinkable` (relative to `resolve?` and the `ExternAddrOk` transcription). `register` and
+bare actions are `context` rows. Every row of a linked file records its context (`context`:
+registered names, named modules, the current module and its imports, the module's own imports for
+a module assertion, the host model), the host model (`host`), the observation (`observation`) and,
+when the command printed, the printed values (`printed`).
+
+**The hand-written rows** `silmaril.wasm_wast.spectest_host.*` (`Silmaril.Project.WasmWast.SpectestHost`,
+the script `tools/wasm-wast/regress/right-spectest-shared.wast` written as Lean modules): `$W`
+and `$R` import `spectest`'s `memory` separately; `before_write` (`$R` reads 0),
+`shared_memory` (after `$W` stores 42, `$R` reads 42: shared, as upstream; a memory per import
+would give 0, the expectation of `regress/wrong-spectest-shared.wast` that wasmtime must reject),
+`globals` (two imports of `global_i32` add to 1332) and `log` (`log_is`: the log is
+`[(1, [i32 42])]`, one `print_i32` call; upstream prints `42 : i32`).
+
+**The closed-module shapes are superseded.** `Silmaril.Project.Shapes.WasmWastLink` (the shapes
+`silmaril.shapes.wasm.wast.link.*`, `spectest` as the closed Wasm module `Spectest.module` with
+empty print bodies and one shared instance, host-free reduction `Step (profile o) Det.noHost`,
+printed output erased) is kept for its definitions (`Cmd`, `Action`, `Target`, which the scripts
+use) and its theorems; no row uses its shapes any more. Its sharing of globals and print
+functions differs from the reference interpreter (above); the typed host does not.
 
 **What stops a script.** The script is cut at the first command the kernel cannot run, and every
 later command of the file is undetermined (with the reason): an action with an argument outside
@@ -460,7 +546,7 @@ kernel-checked.
 
 Commands are every command after a module (`module` commands themselves are not counted).
 
-The linked files (one script per file, [Linked scripts](#linked-scripts-imports-register-and-the-spectest-module)):
+The linked files (one script per file, [Linked scripts](#linked-scripts-imports-register-and-the-spectest-host)):
 every command of the file but its `module` commands.
 
 | file | commands | proved | context | unsupported | undetermined |
@@ -474,15 +560,19 @@ every command of the file but its `module` commands.
 | `elem.wast` | 77 | 30 | 0 | 6 | 41 |
 | **total** | **576** | **392** | **16** | **32** | **136** |
 
-The 392 proved rows: 113 `assert_return` (`link.returns_only`), 24 `assert_trap`
-(`link.traps_only`), 128 `assert_unlinkable` (`link.unlinkable`, strength `link`), 1
-`assert_uninstantiable` (`link.uninstantiable`, `start.wast`: a start function that traps), and
+The 392 proved rows: 113 `assert_return` (`host.returns_only`), 24 `assert_trap`
+(`host.traps_only`), 128 `assert_unlinkable` (`host.unlinkable`, strength `link`), 1
+`assert_uninstantiable` (`host.uninstantiable`, `start.wast`: a start function that traps), and
 126 rejections (122 `assert_invalid`, 4 binary `assert_malformed`, tool-level, as above). Of the
 `assert_return` rows, 11 read a global with `get` and 2 expect a null reference; 62 of the
 `assert_return`/`assert_trap` rows act on a named module; for 60 of them the current module
 imports from another registered module (calls, and memories, tables and globals that other
 modules write through imports), and for 4 it imports `spectest`'s print functions (`start.wast`
-also calls them from start functions). The 16 `context` rows are 12 `register` commands and 4 bare
+also calls them from start functions). Every call of a print function in these scripts is a host
+call answered by `Spectest.host` and logged: the rows at lines 97, 98 and 116 of `imports.wast`
+print 15 values (`report.json` `printed`, from the probe), and the start functions of three
+modules of `start.wast` call `print_i32` (twice) and `print` (no values). Besides the 392 rows of the suite there are the 4 hand-written
+rows `silmaril.wasm_wast.spectest_host.*` (3 `host.returns_only`, 1 `host.log_is`). The 16 `context` rows are 12 `register` commands and 4 bare
 actions (`start.wast`), run as part of every later row's prefix.
 
 | count | status | reason |
@@ -621,9 +711,10 @@ kernel ran, in order, as the file writes it (modules as `(module $name? binary �
 bytes, `register`, actions and assertions with their original expectations, `assert_unlinkable`
 and `assert_trap (module …)`), so each command sees exactly the context of its row. A command
 passes when wasmtime gets past its line (`script_line`); every command of the file records the
-file script's SHA-256 (`script: linked:<file>`). wasmtime uses its own `spectest`, so its
-agreement is evidence about the outcomes, not a proof that the closed `Spectest.module` replaces
-the host. A rejection row passes when wasmtime rejects the module; wasmtime also compares its own
+file script's SHA-256 (`script: linked:<file>`). wasmtime uses its own `spectest` (one shared
+instance of everything, also globals and functions), so its agreement is evidence about the
+outcomes, not a proof about `Spectest.host`; where the two differ (identity of globals and print
+functions) Wasm code cannot observe it. A rejection row passes when wasmtime rejects the module; wasmtime also compares its own
 message with the file's, and for 6 `global.wast` rows only the wording differs ("global is
 immutable: cannot modify it with `global.set`" for "immutable global", a parse error for
 "malformed mutability"): those record `message: differs` with wasmtime's error.
@@ -691,6 +782,11 @@ record, and it writes the fresh record to `$WASM_WAST_WORK/oracle.check.json`.
   them. The marked line expects 43 where the other module wrote 42; wasmtime must fail on it
   ("expected 43 / 0x…2b, actual 42 / 0x…2a"). `regress/right-linked-state.wast`, the same with
   42, must pass;
+* `regress/wrong-spectest-shared.wast`: **spectest's shared memory**. `$W` and `$R` import
+  `spectest`'s `memory` separately; after `$W` stores 42, the marked line expects 0 from `$R`'s
+  load (what a memory per import would give). wasmtime must fail on it.
+  `regress/right-spectest-shared.wast` (42) must pass; it is also the kernel-checked script of the
+  rows `silmaril.wasm_wast.spectest_host.*`;
 * `regress/right-control.wast`: the same modules with right expectations (`nan:arithmetic`,
   `nan:canonical` for `f32.add` of the canonical `nan` and `0`, `-0`); wasmtime must pass;
 * four generated mutants: the first `assert_return` script of `oracle_scripts` with its result
@@ -730,12 +826,15 @@ sandbox; the job has a 5-minute timeout. It grows linearly with the number of sc
   and scalar function exports. In the **linked files** modules may import (resolved by name
   through the registry, typed by `ExternAddrOk`) and have start functions; segment traps during
   instantiation stop the script.
-* **The `spectest` environment** of the linked files is the closed Wasm module
-  `Spectest.module`, an explicit parameter of every linked row (through `Init`), not a host and
-  not a model of arbitrary hosts. Its print functions have empty bodies (`Spectest.print_nf`):
-  printed output is erased and no claim is about it. The rows are not `.host` conformance
-  results, and nothing here proves that a context cannot tell the closed module from a host
-  implementation; wasmtime's agreement (with its own `spectest`) is evidence, not that proof.
+* **The `spectest` environment** of the linked files is the concrete typed host `Spectest.host`
+  with its registry (`resolve?`, `Spectest.lookup?`) and its observation (the host-call log), an
+  explicit parameter of every linked row (`Step (profile o) Spectest.host`, `Init`). It is a
+  transcription of the reference interpreter's `spectest.ml` (fresh print functions and globals per
+  import, shared table and memory, print calls returning no values with the store unchanged);
+  the transcription is checked against the source by reading, not proved. The rows are claims
+  about this host, not about arbitrary hosts, and nothing here says that a context cannot tell it
+  from another `spectest` implementation. The printed output is the log projection
+  `Spectest.printed`, not bytes (the text of a value is the reference interpreter's printer).
 * **Name resolution** (`resolve?`) and the script semantics of `register`, named modules and
   `get` are the reference interpreter's script semantics, transcribed; they are not part of the
   Wasm specification.
@@ -769,9 +868,16 @@ sandbox; the job has a 5-minute timeout. It grows linearly with the number of sc
   command lists, then the kernel theorems and the rows `silmaril.wasm_wast.<file>.l<line>`.
   `Silmaril.Project.WasmWast.Thms` imports them all, and `silmaril.toml` puts it in the project
   dump.
+* `Silmaril/Project/Shapes/WasmWastHost/{Defs,Thms}.lean`,
+  `Silmaril/Proofs/Project/Shapes/WasmWastHost.lean`: the typed host `Spectest.host`, the registry
+  `resolve?`, the script contexts with the host-call log, the shapes `host.*`, the checkers
+  `scriptHK`, `logHK` and their soundness; `Silmaril/Wasm/Abstract/HostDet/{Defs,Thms}.lean`
+  (proofs `Silmaril/Proofs/Wasm/Abstract/HostDet.lean`): `HostDet`, logged runs `LStep`, and
+  determinism, uniqueness of normal forms and logs, and termination with a deterministic host.
+  `Silmaril/Project/WasmWast/SpectestHost/{Defs,Thms}.lean`: the hand-written rows.
 * `Silmaril/Project/Shapes/WasmWastLink/{Defs,Thms}.lean`,
-  `Silmaril/Proofs/Project/Shapes/WasmWastLink.lean`: `Spectest.module`, the script contexts and
-  runs, the linked shapes, the checker `scriptLK` and its soundness (with `nf_unique`,
+  `Silmaril/Proofs/Project/Shapes/WasmWastLink.lean` (superseded, no rows): `Spectest.module`, the
+  closed-module script contexts and runs, the `link.*` shapes, the checker `scriptLK` and its soundness (with `nf_unique`,
   `nf_always` for the normal forms of any configuration); `Silmaril/Wasm/Game/InstantiateTyped/Thms.lean`
   (proofs `Silmaril/Proofs/Wasm/Game/Instantiate/Typed.lean`): `instantiateOnce?_configOk`
   (instantiation against typed imports is typed) and `importStore_nil_ok`, in a small header of
@@ -792,8 +898,8 @@ sandbox; the job has a 5-minute timeout. It grows linearly with the number of sc
 form", "some run (existence)", "every run terminates") and problem. A row of a linked file also
 shows its input on its target module (`$M.f(…)`, `get g`, `register "M" $M`) and its script
 context: the registered names, the named modules, the current module and its imports, the
-module's own imports for a module assertion, and the host model (`spectest` = the closed
-`Spectest.module`); `linking` labels the claim strength of `assert_unlinkable` rows, and
+module's own imports for a module assertion, the host model (`spectest` = `Spectest.host`), the
+observation and the printed values; `linking` labels the claim strength of `assert_unlinkable` rows, and
 `context` the status of `register` and bare actions.
 
 ```sh
@@ -820,6 +926,5 @@ completeness; text: a WAT front end with a completeness theorem and an error tha
 malformed from unsupported text); a trap-aware `instantiateOnce?` (segment traps leave the
 earlier segment writes in the store), which would let `linking.wast`, `data.wast` and `elem.wast`
 run past their segment-trap assertions; host references (`ref.extern n`) as arguments and
-results; `names.wast` (kernel memory); a genuine typed `.host` model of `spectest` with
-host-aware determinism through frames and labels (until then, rows touching real host calls could
-only be existence claims); and the rest of the suite.
+results; `names.wast` (kernel memory); the `env` virtual module of the reference interpreter;
+claims about printed output as text; and the rest of the suite.

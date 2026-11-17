@@ -2,8 +2,8 @@
 
 A roadmap, and the state of its first slice ([WAST rows](wasm-wast.md), PR #843, extended
 since by the `KMem` checker, the tool-level rejection shapes, the CI oracle job, the float
-files at the specification profile, and linked scripts with imports, `register` and a closed
-`spectest` module). Grounded in
+files at the specification profile, linked scripts with imports and `register`, and the typed
+`spectest` host with host-aware determinism). Grounded in
 `main` at `5170984b` plus #843.
 
 Testing never proves universal soundness: it establishes agreement on the cases tested.
@@ -28,8 +28,9 @@ implementation on one script.
 | WAST `assert_invalid` → `ValidatorRejects` | **per command, proved, tool-level**: `ValidatorRejects.of_kernel` (one `decide +kernel` of `validatorRejectsB`); `ValidatorRejects.not_valid` adds "no module the bytes encode is `ModuleValid`" via `validate?_complete` | wasmtime 50.0.0 (§4) |
 | WAST script commands → `Step` (#843) | **per command, proved**: `ScriptHolds.of_kernel` (or `ScriptHolds.of_kernelKM`, for modules with data segments) turns one `decide +kernel` run of `scriptK` (`scriptKM`) into `ReturnsOnly`/`TrapsOnly` for every command of a module; `ScriptHolds.always` adds termination (§3) | wasmtime 50.0.0 (§4) |
 | `Profile.deterministic` vs `Profile.spec` | **existence, in general**: every `profile o` step is a `Profile.spec nd {}` step (`Step.deterministic_refines_spec`), so a deterministic run to a result is a spec run (`Reaches.spec`, `Returns.allowedExists`). **Every normal form and termination, for a fragment only**: for straight-line numeric functions (`local.get 0 … local.get (k-1); op`, `op` a scalar numeric instruction), at **every** profile, every host-free normal form of `$invoke` is a result of `NumericStep P` in the same store (`StraightLine.nf`), each such result is reached (`StraightLine.reaches`), and no run is infinite (`StraightLine.not_diverges`, `extends_nf`). Determinism (`Internal.deterministic`, `Det.DStep.join'`, `reach_normal_unique`) and interpreter completeness only at `profile o`; no general theorem describes all `Profile.spec` runs of other code (memory, control, NaNs reaching control) | — |
-| WAST linked scripts (imports, `register`, named modules, `get`, module assertions) → `Step`, `instantiateOnce?`, `ExternAddrOk` | **per command, proved**: `ScriptHolds.of_kernel` (`….WasmWastLink`) turns one `decide +kernel` run of `scriptLK` per file into `link.returns_only`/`link.traps_only`/`link.uninstantiable` (every host-free normal form, after every earlier module, `register` and action of the file) and `link.unlinkable` (valid, and the imports do not resolve to addresses of the import types); `ScriptAt.unique`, `ReturnsOnly.always`, `Unlinkable.not_instantiate`. Stores are typed throughout by the new `Game.instantiateOnce?_configOk` (any imports, any start function). Name resolution (`resolve?`) is the reference interpreter's script semantics, transcribed | wasmtime 50.0.0: 392/392 agree (one script per file) |
-| `spectest` (reference interpreter host module) → the closed module `Spectest.module` | **a model, not a theorem**: the exports, types, limits and global bit patterns of `spectest.ml` at `608711107b`, written out as a Wasm module; its print functions have empty bodies (`Spectest.print_nf`: no values, same store) and their output is erased. No `.host` function instance; no refinement between this module and a host `spectest` is proved. A typed `.host` model with host-aware determinism is a follow-up | wasmtime's own `spectest` (agreement on outcomes only) |
+| WAST linked scripts (imports, `register`, named modules, `get`, module assertions) → `Step (profile o) Spectest.host`, `instantiateOnce?`, `ExternAddrOk` | **per command, proved, relative to the concrete host `Spectest.host`**: `ScriptHolds.of_kernel : scriptHK o fuel cmds = true → ScriptHolds o cmds` (`….WasmWastHost`) turns one `decide +kernel` run per file into `host.returns_only`/`host.traps_only`/`host.uninstantiable` (every normal form of `Step (profile o) Spectest.host`, after every earlier module, `register` and action of the file) and `host.unlinkable`; `ScriptAt.unique` (one context, host-call log included), `ReturnsOnly.always` (no infinite run under the host, via `Steps.always_of_hostDet`), `Unlinkable.not_instantiate`, `LogIs.of_kernel` (the log). Stores typed by `Game.instantiateOnce?_configOk` and `resolve?_ok`; host calls typed by `Ctx.fill_callout_typed`. Name resolution (`resolve?`) is the reference interpreter's script semantics, transcribed | wasmtime 50.0.0: 392/392 agree (one script per file) |
+| `spectest` (reference interpreter host module, `interpreter/host/spectest.ml` at `608711107b`) → `Spectest.host` with `resolve?` and the log `LStep` | **a transcription, checked by reading, with proved properties**: print functions are host functions (fresh per import, `Spectest.lookup?_print`, `….resolve?_print_twice`) answered with the unchanged store and no values (`Spectest.print_nf`); globals fresh per import (`….lookup?_global`, `….resolve?_global_twice`); `table`, `table64`, `memory` shared (`….lookup?_shared`, `….resolve?_memory_twice`); observation: the host-call log, projected by `Spectest.printed` to upstream's output lines. `Spectest.hostDet : HostDet Spectest.host`, `Spectest.hostTyped : HostTyped Spectest.host`. Not claimed: indistinguishability from other `spectest` implementations; output as text; the `env` virtual module. The closed module `Spectest.module` (`….WasmWastLink`) is superseded (no rows) | wasmtime's own `spectest` (agreement on outcomes; it shares globals and functions too, which Wasm code cannot observe); `regress/wrong-spectest-shared.wast` (shared memory) rejected |
+| Core `Step` with a host → determinism | **proved for any deterministic host** (`Silmaril.Wasm.Abstract.HostDet.Thms`): `Step.join_of_hostDet (hd : HostDet host) : Step (profile o) host c c₁ → Step (profile o) host c c₂ → Det.Join (Step (profile o) host) c₁ c₂`; `Steps.nf_unique_of_hostDet`; `Steps.always_of_hostDet` (a run to a normal form excludes infinite runs); `LSteps.nf_unique_of_hostDet` (normal form and host-call log unique). No typing hypothesis | — |
 | WAST float commands → `Step (Profile.spec nd r)` | **per command, proved**: `ScriptHoldsS.of_kernel` turns one `decide +kernel` run of `scriptSK` (fragment check `StraightLine.fn?`, result class `numericSet?`, containment `NumSet.sub`) into `returns_allowed_all`/`traps_all` (every normal form, with existence) and `terminates_all` for every command of a module, for every `nd` and `r`; `numericSet?_sound` relates the classes to `floatUnOpRel`/`floatBinOpRel`/`convertRel` | wasmtime 50.0.0: 6783/6783 agree (one NaN per run, §4) |
 | Binaryen interpreter / `wasm-shell` | **open** (`FwdSim`/`BwdSim` unproved; fragments in `Wasm/Interp`) | wasm-opt release suites (tested) |
 | Component IR `Comp.denU`/`denI` ↔ REF (reference machine) | `Simple.sound` (import-free numeric); session adequacy with imports on a fragment (#805, open); start comparison on 3 litmus components (#827, open) | wasmtime 50.0.0, wasm-tools 1.262.0, jco 1.39.0 (not run in CI) |
@@ -131,10 +132,11 @@ no host functions.
 | `assert_exhaustion` | unsupported: stacks are unbounded in the model | 1 skipped |
 | `assert_invalid` | `validator_rejects`, **tool-level**: silmaril-lean's `decode?` reads the bytes and its `validate?` rejects the module. With `validate?_complete`: no module the bytes encode in `Binary.Core.Encodes` is `ModuleValid` (`ValidatorRejects.not_valid`), relative to silmaril-lean's transcriptions `Encodes` and `ModuleOk`; not invalidity in the spec (the `ModuleOk` ↔ SpecTec bridge is open, §1). `validate?_sound` gives nothing about a rejection | 113 proved (tool-level) |
 | `assert_malformed` | binary: `decoder_rejects`, **tool-level** ("the decoder rejects"; `decode?` is only sound, so not grammar rejection); text: unsupported, since the WAT front end's `.syntax` error also covers unsupported text and it has no completeness theorem | binary: shape, none in this slice; text: 4 unsupported |
-| `assert_return`, `assert_trap` in a linked file | `link.returns_only`, `link.traps_only`: the same, after **every** earlier module, `register` and action of the file from the context `Init` (the closed `Spectest.module` registered as `"spectest"`); imports resolved by name and typed by `ExternAddrOk`, stores threaded across modules (also through imported memories, tables and globals) | 137 proved |
-| `assert_unlinkable` | `link.unlinkable`, strength `link`: the module is valid and its imports do not resolve to exports of registered instances, or resolve to addresses without the import types (`ExternAddrOk`, a transcription of `Externaddr_ok`); `Unlinkable.not_instantiate`: no `Instantiate` derivation exists for them | 128 proved |
-| `assert_uninstantiable` (`assert_trap (module …)`) | start trap: `link.uninstantiable` (the module links, `instantiateOnce?` allocates it, its start function traps at every normal form); segment trap: unsupported (`instantiateOnce?` only reports failure) | 1 proved, 3 unsupported |
+| `assert_return`, `assert_trap` in a linked file | `host.returns_only`, `host.traps_only`: the same, under `Step (profile o) Spectest.host` (print calls are host calls), after **every** earlier module, `register` and action of the file from the context `Init` (the shared `spectest` table and memory; `"spectest"` bound to the host environment); imports resolved through the registry (fresh `spectest` print functions and globals per import) and typed by `ExternAddrOk`, stores and the host-call log threaded across modules (also through imported memories, tables and globals) | 137 proved |
+| `assert_unlinkable` | `host.unlinkable`, strength `link`: the module is valid and its imports do not resolve through the registry, or resolve to addresses without the import types (`ExternAddrOk`, a transcription of `Externaddr_ok`); `Unlinkable.not_instantiate`: no `Instantiate` derivation exists for them | 128 proved |
+| `assert_uninstantiable` (`assert_trap (module …)`) | start trap: `host.uninstantiable` (the module links, `instantiateOnce?` allocates it, its start function traps at every normal form); segment trap: unsupported (`instantiateOnce?` only reports failure) | 1 proved, 3 unsupported |
 | `register`, bare actions, `get`, named modules | script-state transitions of the linked shapes (`CmdRun`); `get` reads a global export | 16 `context` rows; 11 `get` rows proved |
+| the printed output of a script (no WAST assertion) | `host.log_is`: the script runs and every context it reaches has the host-call log `l` (`LogIs.of_kernel`) | 1 proved (`silmaril.wasm_wast.spectest_host.log`) |
 
 **Wording.** The `…_only` statements quantify over normal forms only: "every normal outcome is
 `r`". That no run diverges is a separate theorem, proved for every row:
@@ -161,8 +163,10 @@ run. What it adds is independence: an implementation not derived from silmaril-l
 gives the same outcome as the kernel-checked row on 8481 of 8481 commands (for the 288
 `assert_invalid` and 4 binary `assert_malformed` rows: wasmtime also rejects the same bytes; for
 6 of them with a differently worded message). For a linked-file row, wasmtime runs the whole file's script, with
-its **own** `spectest`: agreement on the outcome, not evidence that the closed `Spectest.module`
-and a host `spectest` are indistinguishable. For a `Profile.spec` row, wasmtime
+its **own** `spectest`: agreement on the outcome, not evidence about `Spectest.host` beyond it
+(wasmtime shares one instance of every `spectest` entity; the reference interpreter and
+`Spectest.host` allocate globals and print functions per import, a difference Wasm code cannot
+observe). For a `Profile.spec` row, wasmtime
 runs once and returns one NaN: its pass says that this member is in the allowed set, not that
 every member of the specification's result set is; the latter is the kernel row's claim. Running it in CI (§5) does not make
 it a proof.
@@ -220,8 +224,8 @@ them a `nan:arithmetic` expectation made `nan:canonical`). About 55 s of work af
 |---|---|---|---|
 | S0 | the slice of §2 | every command counted with a status and reason; every proved row a kernel theorem with termination; oracle 100 % agreement on executed commands; provenance verifiable | **met** in #843 (885 proved, 885/885 agree); with the `KMem` checker, 1140 proved, 1140/1140 agree; with the rejection shapes, 1253 proved (113 tool-level), 1253/1253 agree, re-checked in CI (§5) |
 | S1 | numeric scripts (`i32`, `i64`, `f32`, `f64`, `conversions`, `int_exprs`, …) | ≥ 95 % of `assert_return`/`assert_trap` commands kernel-checked at `profile o`, NaN-pattern results as allowed-set claims under `Profile.spec`; every skip classified; oracle agreement 100 % on executed ones | `i32`, `i64`, `int_exprs`: 100 % of their 847 `assert_return`/`assert_trap` commands proved at `profile o`; `f32`, `f64`, `f32_bitwise`, `f64_bitwise`, `float_misc`, `conversions`: 100 % of their 6783 proved at `Profile.spec` (every normal form, termination), 6783/6783 oracle agreement; `f32_cmp`, `f64_cmp`, `float_exprs`, `float_literals`, `float_memory` not started |
-| S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps`, `fac` and `address` proved (`address` on `KMem` stores, `ScriptHolds.of_kernelKM`); `assert_unlinkable` and start-trap `assert_uninstantiable` shapes in place (`link.*`), 128 + 1 proved; segment-trap instantiation not modelled; the other files not started |
-| S2' | linking (`imports`, `linking`, `exports`, `start`, `global`, `data`, `elem`) | whole-file scripts with imports, `register`, named modules, `get`; a stated `spectest` model; every command accounted for; oracle agreement on the same script context | 392 of 576 proved, 16 context, 32 unsupported, 136 undetermined (segment traps, `externref` arguments), 392/392 agree; `spectest` is the closed `Spectest.module` (a model, §1); `names.wast` left out for kernel memory |
+| S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps`, `fac` and `address` proved (`address` on `KMem` stores, `ScriptHolds.of_kernelKM`); `assert_unlinkable` and start-trap `assert_uninstantiable` shapes in place (`host.*`), 128 + 1 proved; segment-trap instantiation not modelled; the other files not started |
+| S2' | linking (`imports`, `linking`, `exports`, `start`, `global`, `data`, `elem`) | whole-file scripts with imports, `register`, named modules, `get`; a stated `spectest` model; every command accounted for; oracle agreement on the same script context | 392 of 576 proved, 16 context, 32 unsupported, 136 undetermined (segment traps, `externref` arguments), 392/392 agree; `spectest` is the typed host `Spectest.host` with the reference interpreter's identity semantics (§1), plus 4 hand-written rows (shared memory, fresh globals, the print log); `names.wast` left out for kernel memory |
 | S3 | validation (`assert_invalid`) | validator completeness proved, or claims labelled tool-level; 100 % of commands accounted for | **met at the tool level** for the slice: 113/113 proved as `validator_rejects`, labelled tool-level; `validate?_complete` is proved, so they exclude `ModuleOk`-validity; invalidity in the spec waits on the `ModuleOk` ↔ SpecTec bridge |
 | S4 | decoding (`assert_malformed` binary) | decoder rejection kernel-checked; completeness or an explicit weaker label | shape `decoder_rejects` (tool-level) in place; no binary `assert_malformed` in the slice; the 4 text ones unsupported (§3) |
 | S5 | SIMD, relaxed SIMD, GC, exceptions, tail calls, memory64, multi-memory | per-proposal pass/skip counts; nondeterministic results as allowed-set claims | not started |
@@ -242,13 +246,12 @@ with the number of scripts (about 7 ms each).
    proved only at `profile o`. Under `Profile.spec`, every-normal-form and termination claims
    are proved only for straight-line numeric functions (the float rows); existence lifts in
    general (`Reaches.spec`). Relaxed SIMD and grow failure have no allowed-set rows yet.
-3. **Hosts:** rows are host-free. Imports between modules are in the linked fragment, but
-   `spectest` is the closed Wasm module `Spectest.module` (print functions with empty bodies,
-   output erased), an explicit parameter of the rows, not a host: no `.host` instance is
-   allocated, no refinement between the module and a host `spectest` is proved, and the rows are
-   not host conformance results. A typed `HostSemantics` model needs host-aware determinism
-   through frames and labels (not in the repository); until then rows with real host calls
-   could only be existence claims.
+3. **Hosts:** the single-module rows are host-free. The linked rows are relative to one concrete
+   host, `Spectest.host` (a transcription of `spectest.ml`, checked by reading against the pinned
+   source, §1), with its registry and its observation (the host-call log). Determinism with a host
+   is proved for every deterministic host (`Step.join_of_hostDet`), so these rows keep
+   every-normal-form claims and termination; they are not claims about arbitrary hosts, and
+   printed output is a log projection, not text.
 4. **Resource exhaustion** and stack overflow are not modelled.
 5. **Rejections are tool-level.** The validator is complete for `ModuleOk`, but `ModuleOk` ↔
    SpecTec validation is open, so `assert_invalid` rows do not say "invalid in the spec"; decoder
@@ -257,3 +260,34 @@ with the number of scripts (about 7 ms each).
 6. **Components:** REF is a transcription, not an independent oracle; IR↔REF adequacy is
    fragmentary; the external oracles are not run in CI.
 7. The **Binaryen interpreter** is unverified; `wasm-shell` agreement is tested only.
+
+## 8. Direct evidence for the current API, and the plan
+
+What the linked WAST rows rest on, by name (all depend only on `propext`, `Classical.choice`,
+`Quot.sound`; `#print axioms` on each):
+
+| theorem | statement (abridged) | relative to |
+|---|---|---|
+| `Silmaril.Wasm.Abstract.Step.join_of_hostDet` | `HostDet host → Step (profile o) host c c₁ → Step (profile o) host c c₂ → Det.Join (Step (profile o) host) c₁ c₂` | any host with at most one outcome per call; profile `profile o` |
+| `Silmaril.Wasm.Abstract.Steps.always_of_hostDet` | `HostDet host → Steps … c₀ c → (∀ x, ¬ Step … c x) → ¬ Diverges (profile o) host c₀ ∧ ∀ c', Steps … c₀ c' → Steps … c' c` | the same |
+| `Silmaril.Wasm.Abstract.LSteps.nf_unique_of_hostDet` | two logged runs from one configuration and log to normal forms end in the same configuration with the same host-call log | the same; observation: the log of `(host function, arguments)` |
+| `Silmaril.Project.Shapes.WasmWastHost.Spectest.hostDet` | `HostDet Spectest.host` | the concrete `spectest` host |
+| `….Spectest.hostTyped` | `HostTyped Spectest.host`: answers keep the store typed, extend it, and have the callee's result type | the same |
+| `….Spectest.print_nf` | a host function of code `k` answered by the host, invoked with arguments of its parameter count: `NF o (invoke s a args, l) (⟨s, {}, []⟩, l ++ [(k, args)])` | the same; `profile o` |
+| `….Spectest.resolve?_print_twice`, `….resolve?_global_twice`, `….resolve?_memory_twice` | two imports of a print function (a global) get two new addresses; two imports of `memory` get one shared address and leave the store unchanged | the registry `resolve?` (the reference interpreter's `lookup_import`) |
+| `….ScriptHolds.of_kernel` | `scriptHK o fuel cmds = true → ScriptHolds o cmds` (every `host.*` claim of the script) | `Spectest.host`, `profile o`, `ByteArray` stores |
+| `….ScriptAt.unique` | at `profile o` a script prefix reaches at most one context (store, registry, named modules, current module, log) | the same |
+| `….LogIs.of_kernel` | `logHK o fuel cmds = some l → LogIs o cmds l` | the same; observation `Spectest.printed` |
+| `Silmaril.Project.WasmWast.SpectestHost.shared_memory` | after `$W` stores 42 through its import of `spectest.memory`, `$R`'s load through its own import returns 42 at every normal form | the same |
+
+Prioritized plan for the WAST bridge:
+
+1. **Trap-aware instantiation** (segment traps keep the earlier writes): unblocks 98 undetermined
+   linked commands (`linking.wast`, `data.wast`, `elem.wast`).
+2. **Host references** (`ref.extern n`) as a typed host extension of the same shape as
+   `Spectest.host` (an embedder-allocated reference type, deterministic): unblocks 38 `global.wast`
+   commands and 6 reference-pattern expectations.
+3. **The `ModuleOk` ↔ SpecTec validation bridge**, then `Task.wholeStep` (§7.1): the rows are
+   about `Execution.Core`, not yet about the transcribed specification.
+4. **Allowed-set rows beyond straight-line floats** and the remaining spec files.
+

@@ -1,6 +1,6 @@
 {
  "schema": "silmaril.wasm-wast.oracle.v0.2",
- "generated_at": "2026-11-17T02:51:11Z",
+ "generated_at": "2026-11-17T04:23:13Z",
  "host": "Linux x86_64",
  "oracle": {
   "tool": "wasmtime",
@@ -23,7 +23,7 @@
    "version": "1.262.0",
    "sha256": "fe6a056dc03269b06f53e0cff926101c17d4f4ea37fbaa077d049c0d18acb211"
   },
-  "report_sha256": "0bfb892380e12959b591617ecd23afa8963eafb0c5a8d279802dcde93e9c3be3",
+  "report_sha256": "0bcdf364696d9e8fd2e16e107d354979c6d9cfaed6d323ee77571c3020f8c651",
   "files": [
    {
     "file": "test/core/i32.wast",
@@ -48860,7 +48860,7 @@
    "script_sha256": "527888f2b58ce0bf022441f11f3c117d71a9b92178b4f624290e9aa1e729eb56",
    "silmaril": "proved",
    "message": "differs",
-   "stderr": "Error: failed to run script file '/tmp/tmpwj_b4zn7/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpwj_b4zn7/t.wast:1\n    1: assert_invalid: expected \"immutable global\", got \"failed to compile: wasm[0]::function[0]\n\nCaused by:\n    0: WebAssembly translation error\n    1: Invalid input WebAssembly code at offset 39: global is immutable: cannot modify it with `global.set`\n\"\n\n"
+   "stderr": "Error: failed to run script file '/tmp/tmpkenshk9z/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpkenshk9z/t.wast:1\n    1: assert_invalid: expected \"immutable global\", got \"failed to compile: wasm[0]::function[0]\n\nCaused by:\n    0: WebAssembly translation error\n    1: Invalid input WebAssembly code at offset 39: global is immutable: cannot modify it with `global.set`\n\"\n\n"
   },
   {
    "id": "global:290",
@@ -48868,7 +48868,7 @@
    "script_sha256": "e6cf5c8d9ee6cbea42ef62e5a73007b51f27361d6637273ea798d502f72a0d67",
    "silmaril": "proved",
    "message": "differs",
-   "stderr": "Error: failed to run script file '/tmp/tmpwj_b4zn7/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpwj_b4zn7/t.wast:1\n    1: assert_invalid: expected \"immutable global\", got \"failed to compile: wasm[0]::function[0]\n\nCaused by:\n    0: WebAssembly translation error\n    1: Invalid input WebAssembly code at offset 51: global is immutable: cannot modify it with `global.set`\n\"\n\n"
+   "stderr": "Error: failed to run script file '/tmp/tmpkenshk9z/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpkenshk9z/t.wast:1\n    1: assert_invalid: expected \"immutable global\", got \"failed to compile: wasm[0]::function[0]\n\nCaused by:\n    0: WebAssembly translation error\n    1: Invalid input WebAssembly code at offset 51: global is immutable: cannot modify it with `global.set`\n\"\n\n"
   },
   {
    "id": "global:299",
@@ -48972,7 +48972,7 @@
    "script_sha256": "c3de5b7c083d736b58834d65f9f2d6569804aeff31b7e8d32a86206f0bcd6681",
    "silmaril": "proved",
    "message": "differs",
-   "stderr": "Error: failed to run script file '/tmp/tmpwj_b4zn7/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpwj_b4zn7/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x25)\n\"\n\n"
+   "stderr": "Error: failed to run script file '/tmp/tmpkenshk9z/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpkenshk9z/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x25)\n\"\n\n"
   },
   {
    "id": "global:398",
@@ -48980,7 +48980,7 @@
    "script_sha256": "a136855a5c51e8a2dd00f2bfcb19a458d175f9674a0e1e110ba0d1f65980c124",
    "silmaril": "proved",
    "message": "differs",
-   "stderr": "Error: failed to run script file '/tmp/tmpwj_b4zn7/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpwj_b4zn7/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x25)\n\"\n\n"
+   "stderr": "Error: failed to run script file '/tmp/tmpkenshk9z/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpkenshk9z/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x25)\n\"\n\n"
   },
   {
    "id": "global:415",
@@ -48988,7 +48988,7 @@
    "script_sha256": "5eef8e27f39bc6b5d7971845094074f6e67f6526602fc1e44dcc6a495ca4e7e4",
    "silmaril": "proved",
    "message": "differs",
-   "stderr": "Error: failed to run script file '/tmp/tmpwj_b4zn7/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpwj_b4zn7/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x10)\n\"\n\n"
+   "stderr": "Error: failed to run script file '/tmp/tmpkenshk9z/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpkenshk9z/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x10)\n\"\n\n"
   },
   {
    "id": "global:427",
@@ -48996,7 +48996,7 @@
    "script_sha256": "01314fad2e6ff877d7939450b5f683ac8f2a61885280211a230eb18aa5b66081",
    "silmaril": "proved",
    "message": "differs",
-   "stderr": "Error: failed to run script file '/tmp/tmpwj_b4zn7/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpwj_b4zn7/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x10)\n\"\n\n"
+   "stderr": "Error: failed to run script file '/tmp/tmpkenshk9z/t.wast'\n\nCaused by:\n    0: failed directive on /tmp/tmpkenshk9z/t.wast:1\n    1: assert_invalid: expected \"malformed mutability\", got \"failed to parse WebAssembly module\n\nCaused by:\n    malformed global flags (at offset 0x10)\n\"\n\n"
   },
   {
    "id": "global:441",
