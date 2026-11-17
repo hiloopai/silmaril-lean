@@ -198,6 +198,21 @@ lake env .lake/build/bin/elf-asm examples/elf-asm/samples.json
 lake env .lake/build/bin/elf-asm --check examples/elf-asm/samples.json
 ```
 
+## File identity (`Silmaril.Elf.Pin`)
+
+A file can be pinned twice: as a `Blob` literal (`Silmaril.X86.Ladder.Pinned.*.exe`, what the
+records' `decide +kernel` proofs read) and as `include_bytes` (`Silmaril.Elf.Staged.Pinned.*.F`, what
+the conformance rows read, its SHA-256 checked by `examples/elf/pin.sh --check`). Comparing their
+path and SHA-256 strings compares only what each declares. `Pin.blobOf_decode` turns the blob of
+an `include_bytes` file into arithmetic on its chunk literals, so equality of the two pins is a
+kernel theorem that takes seconds and decodes no bytes (`Pin.Examples`: `leafArith_exe_eq`,
+`zlibChecksums_exe_eq`, `leafArith_record_file`, and `leafArith_ne` for a changed byte).
+
+`elf-asm` shows a record file's path and SHA-256 from an `include_bytes` pin only when a theorem
+states exactly `decl = F` for that pin (`FileInfo.pin`, `checkPin`). Its self-test refuses a pin to
+another file and a theorem about another pair. The relocatable sample (`Example.Reloc`) is an
+object of this repository, not a pinned file: its path and SHA-256 are metadata.
+
 ## Not here
 
 - Dynamic relocations (`RefOrigin.reloc .dynamic`) in a sample (code of shared objects has none;

@@ -40,7 +40,8 @@ function expected(fn) {
   const models = [...new Set(fn.decodings.map((x) => x.model).concat(fn.evidence.filter((e) => e.kind === "decode" || e.kind === "noDecode").map((e) => e.model)))];
   if (!models.length) out.push(["decode", null, "none"]);
   for (const m of models) out.push(["decode", m, statusOf(fn.evidence.filter((e) => e.kind === "decode" && e.model === m), fn.evidence.filter((e) => e.kind === "noDecode" && e.model === m))]);
-  out.push(["abi", null, (fn.abi || []).length ? "rows" : "none"]);
+  const rows = Array.isArray(fn.abiRows) ? fn.abiRows : Array.isArray(fn.abi) ? fn.abi : [];
+  out.push(["abi", null, rows.length ? "rows" : "none"]);
   return out;
 }
 
@@ -110,7 +111,10 @@ try {
     const decRows = pg.dims.filter(([dim]) => dim in DIMS);
     check(decRows.every(([dim, , , text]) => fn.evidence.filter((e) => DIMS[dim][0].concat(DIMS[dim][1]).includes(e.kind)).every((e) => text.includes(e.decl.split(".").slice(-2).join(".")))),
       `${tag}: every evidence declaration is listed in its dimension's row`);
-    check(pg.dims.some(([dim, , st, text]) => dim === "abi" && st === (fn.abi && fn.abi.length ? "rows" : "none") && (fn.abi && fn.abi.length || /no conformance row/.test(text))), `${tag}: ABI conformance is its own row ("no conformance row")`);
+    const abiRs = Array.isArray(fn.abiRows) ? fn.abiRows : [];
+    check(pg.dims.some(([dim, , st, text]) => dim === "abi" && st === (abiRs.length ? "rows" : "none") &&
+      (abiRs.length ? abiRs.every((r) => text.includes(r.problemId) && text.includes(r.bridge.split(".").pop()) && /checked/.test(text)) : /no conformance row/.test(text))),
+      `${tag}: ABI conformance is its own row (${abiRs.length ? abiRs.map((r) => r.problemId).join(", ") + ", each with its bridge" : '"no conformance row"'})`);
     check(!/\bverified\b/i.test(pg.text.replace(/\(unverified\)/g, "")), `${tag}: no overall verified badge`);
     check(pg.meta.some((t) => t === "metadata (not evidence)") && pg.extent.abiRef.includes(fn.abiRef ?? "unknown"), `${tag}: abiRef shown as metadata (not evidence)`);
     check(/display only, not checked/.test(pg.disp) && /display only, not checked/.test(pg.text), `${tag}: display lines labelled display only, not checked`);

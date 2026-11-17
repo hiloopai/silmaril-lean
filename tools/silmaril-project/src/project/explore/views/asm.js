@@ -163,7 +163,9 @@ table.asm-ev td ul { margin:0; padding-left:16px; }
       : s === "conflicting" ? '<span class="st st-bad">both it and its negation are stated</span>'
       : '<span class="muted">none</span>';
   }
-  const abiRows = (fn) => Array.isArray(fn.abi) ? fn.abi : [];
+  // Conformance rows: `abiRows` (elf-pages adds them, each linked to the record by a checked bridge
+  // theorem); a pre-1.2 `abi` array is still read. A 1.2 `abi` object is metadata, never rows.
+  const abiRows = (fn) => Array.isArray(fn.abiRows) ? fn.abiRows : Array.isArray(fn.abi) ? fn.abi : [];
   // The read-only data a conformance row's code carries (`Code.data`). A range counts only with a
   // finite extent, its exact bytes, a theorem grounding them in the file's read-only mapping
   // (`MappedAt`) and one that no relocation writes them (`Untouched`); a read-only flag or a
@@ -205,7 +207,9 @@ table.asm-ev td ul { margin:0; padding-left:16px; }
     if (!abi.length) h += '<tr><td class="dim">ABI conformance</td><td><span class="muted">a conformance problem of the calling-convention layer</span></td><td><span class="muted">none</span></td>' +
       '<td colspan="4"><span class="muted">no conformance row</span> <span class="muted">(this data has no ABI conformance evidence; <code>abiRef</code> above is metadata, not evidence)</span></td></tr>';
     abi.forEach((a, i) => {
-      h += `<tr data-kind="abi">${i === 0 ? `<td class="dim" rowspan="${abi.length}">ABI conformance</td>` : ""}<td>problem <code>${esc(a.problemId ?? "")}</code><br><span class="muted">ABI ${esc(a.abiId ?? "")}, ${esc(a.mode ?? "")}${a.frame != null ? ", frame " + esc(a.frame) : ""}</span></td>` +
+      h += `<tr data-kind="abi">${i === 0 ? `<td class="dim" rowspan="${abi.length}">ABI conformance</td>` : ""}<td>problem <code>${esc(a.problemId ?? "")}</code><br><span class="muted">ABI ${esc(a.abiId ?? "")}, ${esc(a.mode ?? "")}${a.frame != null ? ", frame " + esc(a.frame) : ""}${a.machine ? ", on " + esc(a.machine) : ""}</span>` +
+        `${a.bridge ? `<br><span class="muted">same function as this record:</span> ${declCell(decls, a.bridge)} <span class="muted">(${esc(a.association ?? "")})</span>` : ""}` +
+        `${a.limits ? `<br><span class="asm-meta" title="what the row does not claim">${esc(a.limits)}</span>` : ""}</td>` +
         `<td><span class="st" title="as given by the conformance row">${esc(a.status ?? "")}</span></td><td>${a.decl ? declCell(decls, a.decl) : none}</td><td colspan="3"><span class="muted">as given by the conformance row</span>${dataCell(a, decls)}</td></tr>`;
     });
     h += "</tbody>";

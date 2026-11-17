@@ -9,9 +9,17 @@ import Silmaril.Elf.Staged.Pinned.LeafArith.Thms
 import Silmaril.Elf.Staged.Pinned.LeafArith.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibChecksums.Defs
 import Silmaril.Elf.Staged.Pinned.ZlibLibz.Defs
+-- The pages load each pinned file's `Thms` and `Functions` at run time; importing them here makes
+-- `lake build elf-pages` build them, so no separate target list has to name them.
 import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz1211.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Defs
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Thms
+import Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang.Functions
 import Silmaril.Elf.Staged.Pinned.GlibcLibm.Defs
 import Silmaril.Elf.Staged.Pinned.GlibcLibc.Defs
 import Silmaril.Crypto.SHA256
@@ -40,6 +48,9 @@ import Silmaril.Wasm.Binaryen.DriverSpec.Thms
 import Silmaril.Elf.Asm.Example.Thms
 import Silmaril.Elf.Asm.Example.Reloc.Thms
 import Silmaril.Elf.Asm.Example.LeafArith.Thms
+import Silmaril.Elf.Abi.Asm.LeafArith.Thms
+import Silmaril.Elf.Abi.Asm.LeafArith.Decoys
+import Silmaril.Elf.Pin.Examples
 
 /-!
 # `elf-pages`: the explorer's ELF tab data
@@ -121,7 +132,7 @@ def pinned : List Pinned := [
       ("licence", "toolchain start-up objects: glibc crt (LGPL-2.1-or-later with the linking exception), GCC crtbeginS/crtendS (GPL-3.0-or-later with the GCC Runtime Library Exception); examples/dyn/README.md")] },
   { slug := "leaf-arith", ns := `Silmaril.Elf.Staged.Pinned.LeafArith
     title := "elf-ladder rung 01 leaf-arith (arith.c leaf functions, -O2, static, not stripped)"
-    path := Pinned.LeafArith.path, sha256 := Pinned.LeafArith.sha256, size := Pinned.LeafArith.size
+    path := Pinned.LeafArith.path, «sha256» := Pinned.LeafArith.sha256, size := Pinned.LeafArith.size
     L := Pinned.LeafArith.L, bodies := Pinned.LeafArith.bodies, ld := Pinned.LeafArith.ld
     provenance := [
       ("source", "examples/elf-ladder/01-leaf-arith/arith.c, arith.h and main.c, with examples/elf-ladder/common (written for this repository)"),
@@ -151,7 +162,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.3.dfsg-3.1ubuntu2.3")] },
   { slug := "zlib-libz-1.2.11", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz1211
     title := "zlib 1.2.11 libz.so.1.2.11 (Ubuntu zlib1g 1:1.2.11.dfsg-2ubuntu9.2, amd64)"
-    path := Pinned.ZlibLibz1211.path, sha256 := Pinned.ZlibLibz1211.sha256, size := Pinned.ZlibLibz1211.size
+    path := Pinned.ZlibLibz1211.path, «sha256» := Pinned.ZlibLibz1211.sha256, size := Pinned.ZlibLibz1211.size
     L := Pinned.ZlibLibz1211.L, bodies := Pinned.ZlibLibz1211.bodies, ld := Pinned.ZlibLibz1211.ld
     provenance := [
       ("package", "Ubuntu 22.04 zlib1g 1:1.2.11.dfsg-2ubuntu9.2 (amd64), /lib/x86_64-linux-gnu/libz.so.1.2.11, unmodified"),
@@ -163,7 +174,7 @@ def pinned : List Pinned := [
       ("url:source", "https://launchpad.net/ubuntu/+source/zlib/1:1.2.11.dfsg-2ubuntu9.2")] },
   { slug := "zlib-libz-1.3.1-gcc", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz131Gcc
     title := "zlib 1.3.1 libz.so.1.3.1 (GCC 13.3 -O2, release tarball)"
-    path := Pinned.ZlibLibz131Gcc.path, sha256 := Pinned.ZlibLibz131Gcc.sha256, size := Pinned.ZlibLibz131Gcc.size
+    path := Pinned.ZlibLibz131Gcc.path, «sha256» := Pinned.ZlibLibz131Gcc.sha256, size := Pinned.ZlibLibz131Gcc.size
     L := Pinned.ZlibLibz131Gcc.L, bodies := Pinned.ZlibLibz131Gcc.bodies, ld := Pinned.ZlibLibz131Gcc.ld
     provenance := [
       ("compiler", "GCC 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), GNU ld 2.42"),
@@ -174,7 +185,7 @@ def pinned : List Pinned := [
       ("licence", "zlib licence (NOTICES/zlib)")] },
   { slug := "zlib-libz-1.3.1-clang", ns := `Silmaril.Elf.Staged.Pinned.ZlibLibz131Clang
     title := "zlib 1.3.1 libz.so.1.3.1 (Clang 18.1 -O2, release tarball)"
-    path := Pinned.ZlibLibz131Clang.path, sha256 := Pinned.ZlibLibz131Clang.sha256, size := Pinned.ZlibLibz131Clang.size
+    path := Pinned.ZlibLibz131Clang.path, «sha256» := Pinned.ZlibLibz131Clang.sha256, size := Pinned.ZlibLibz131Clang.size
     L := Pinned.ZlibLibz131Clang.L, bodies := Pinned.ZlibLibz131Clang.bodies, ld := Pinned.ZlibLibz131Clang.ld
     provenance := [
       ("compiler", "Ubuntu clang 18.1.3 (1ubuntu1), GNU ld 2.42"),
@@ -1244,7 +1255,8 @@ def cliIndex (env : Environment) : IO Json := do
 def asmPath : String := "examples/elf-asm/samples.json"
 def asmSchema : String := "silmaril.elf.asm/1"
 def asmModules : Array Name := #[`Silmaril.Elf.Asm.Example.Thms, `Silmaril.Elf.Asm.Example.Reloc.Thms,
-  `Silmaril.Elf.Asm.Example.LeafArith.Thms]
+  `Silmaril.Elf.Asm.Example.LeafArith.Thms, `Silmaril.Elf.Abi.Asm.LeafArith.Thms,
+  `Silmaril.Elf.Abi.Asm.LeafArith.Decoys, `Silmaril.Elf.Pin.Examples]
 
 /-- The declaration names an assembly JSON mentions: its files, its functions and their files,
 decodings, evidence and (when present) ABI conformance rows. -/
@@ -1254,11 +1266,167 @@ def asmDeclNames (j : Json) : Array String := Id.run do
   let mut out : Array String := (arr j "files").filterMap (str · "decl")
   for f in arr j "functions" do
     out := out ++ ([str f "decl", str f "file"].filterMap id).toArray
-    for k in ["decodings", "evidence", "abi"] do
+    for k in ["decodings", "evidence", "abi", "abiRows"] do
       out := out ++ (arr f k).filterMap (str · "decl")
+    out := out ++ (arr f "abiRows").filterMap (str · "bridge")
+    out := out ++ (arr f "abiRows").filterMap (str · "fileEq")
   pure (out.foldl (fun acc n => if acc.contains n then acc else acc.push n) #[])
 
-/-- `elf/asm.json` (the committed file, unchanged) and `elf/asm-decls.json` (where each named
+
+/-- **A conformance row of an assembly record** (curated, then checked exactly). The curated
+fields name declarations and the values a reader is told; `abiLinkJson` derives every shown value
+from the registered problem's own arguments and refuses the link unless:
+
+* the bridge's type is exactly `SameFunction c r`, with `c` the problem's code argument and `r` the
+  record (`Silmaril.Elf.Abi.Asm.LeafArith.SameFunction`: entry address, extent and bytes);
+* `fileEq`'s type is exactly `@Eq Blob <the record's file constant> <the problem's file argument>`
+  (a kernel theorem such as `Silmaril.Elf.Pin.Examples.leafArith_record_file`, #978): the record's
+  file and the row's file are the same blob, not only the same path and SHA-256 strings (those stay
+  displayed metadata);
+* the problem's function name is the record's name, and its mode, frame and id are the curated
+  ones;
+* the solution's type is exactly the problem.
+
+Status comes from the solution's and the bridge's axioms. -/
+structure AbiLink where
+  record : Name
+  bridge : Name
+  /-- A theorem `record file = the problem's file`. -/
+  fileEq : Name
+  problemConst : Name
+  solution : Name
+  /-- What the reader is told; each is checked against the problem. -/
+  problemId : String
+  mode : String
+  frame : Nat
+  deriving Inhabited
+
+def abiLinks : List AbiLink := [
+  { record := `Silmaril.Elf.Asm.Example.LeafArith.clamp, bridge := `Silmaril.Elf.Abi.Asm.LeafArith.clamp_record_code
+    fileEq := `Silmaril.Elf.Pin.Examples.leafArith_record_file
+    problemConst := `silmaril.elf.abi.leaf_arith.clamp_i32, solution := `Silmaril.Elf.Abi.LeafArith.clamp_row
+    problemId := "silmaril.elf.abi.leaf_arith.clamp_i32", mode := "total", frame := 0 },
+  { record := `Silmaril.Elf.Asm.Example.LeafArith.sat, bridge := `Silmaril.Elf.Abi.Asm.LeafArith.sat_record_code
+    fileEq := `Silmaril.Elf.Pin.Examples.leafArith_record_file
+    problemConst := `silmaril.elf.abi.leaf_arith.sat_add_u32, solution := `Silmaril.Elf.Abi.LeafArith.sat_row
+    problemId := "silmaril.elf.abi.leaf_arith.sat_add_u32", mode := "total", frame := 0 }]
+
+/-- A record's file, as `asm.json` names it: its declaration, path and SHA-256. -/
+structure RecordFile where
+  name : String
+  path : String
+  sha : String
+
+/-- The problem's arguments: an instance (`silmaril instance … := shape (A := …) …`) unfolded to
+`Silmaril.Elf.Abi.AbiConforms A M mode hdr f p F b c frame S` (the definition of the shape `silmaril.shapes.elf.abi_conforms`). -/
+partial def abiConformsArgs (env : Environment) (e : Expr) : Option (Array Expr) :=
+  let e := e.headBeta
+  let fn := e.getAppFn
+  match fn with
+  | .const n _ =>
+    if n == `Silmaril.Elf.Abi.AbiConforms then
+      let as := e.getAppArgs
+      if as.size == 11 then some as else none
+    else match env.find? n with
+      | some (.defnInfo d) => abiConformsArgs env (d.value.beta e.getAppArgs)
+      | _ => none
+  | _ => none
+
+def litNat? : Expr → Option Nat
+  | .lit (.natVal n) => some n
+  | e => match e.getAppFn, e.getAppArgs with
+    | .const ``OfNat.ofNat _, #[_, .lit (.natVal n), _] => some n
+    | _, _ => none
+
+def abiLinkJson (env : Environment) (l : AbiLink) (rf : RecordFile) (recordName : String) :
+    IO (Except String Json) := do
+  let some (.defnInfo pd) := env.find? l.problemConst | return .error s!"{l.problemConst}: not a registered problem"
+  let some args := abiConformsArgs env pd.value
+    | return .error s!"{l.problemConst}: not an instance of silmaril.shapes.elf.abi_conforms"
+  let (A, M, mode, f, F, c, frame) := (args[0]!, args[1]!, args[2]!, args[4]!, args[6]!, args[8]!, args[9]!)
+  -- the bridge: exactly `SameFunction c record`
+  let some (.thmInfo bi) := env.find? l.bridge | return .error s!"{l.bridge}: not a theorem"
+  let want := mkApp2 (.const `Silmaril.Elf.Abi.Asm.LeafArith.SameFunction []) c (.const l.record [])
+  unless bi.type.consumeMData == want do
+    return .error s!"{l.bridge}: its type is not exactly SameFunction <the problem's code> {l.record}"
+  -- the file: a theorem `record file = problem file`, exactly (the strings are only displayed)
+  let some (.thmInfo fi) := env.find? l.fileEq | return .error s!"{l.fileEq}: not a theorem"
+  let fileOk : Bool := match fi.type.consumeMData with
+    | .app (.app (.app (.const ``Eq _) α) lhs) rhs =>
+      α == .const ``Silmaril.X86.Link.Blob [] && lhs == .const rf.name.toName [] && rhs == F
+    | _ => false
+  unless fileOk do
+    return .error s!"{l.fileEq}: its type is not exactly {rf.name} = <the problem's file>"
+  let some P := pinned.find? (fun P => F == .const (P.ns ++ `F) []) | return .error s!"{l.problemConst}: its file is no pinned file"
+  -- name, mode, frame, id
+  unless f == .lit (.strVal recordName) do return .error s!"{l.problemConst}: its function is not {recordName}"
+  let modeS := match mode with | .const n _ => n.componentsRev.head!.toString | _ => "?"
+  unless modeS == l.mode do return .error s!"{l.problemConst}: mode {modeS}, not {l.mode}"
+  unless litNat? frame == some l.frame do return .error s!"{l.problemConst}: frame is not {l.frame}"
+  unless l.problemConst.toString == l.problemId do return .error s!"{l.problemConst}: id is not {l.problemId}"
+  -- the solution
+  let some (.thmInfo si) := env.find? l.solution | return .error s!"{l.solution}: not a theorem"
+  unless si.type.consumeMData == .const l.problemConst [] do
+    return .error s!"{l.solution}: does not state exactly {l.problemConst}"
+  let abiId ← runCore env do
+    let r : Lean.MetaM Expr := Lean.Meta.whnfD (mkApp (.const `Silmaril.Machine.Abi.Conformance.AbiDef.id []) A)
+    return (← r.run')
+  let abiIdS := match abiId with | .lit (.strVal s) => s | _ => toString A
+  let machine := match M.getAppFn with | .const n _ => n.toString | _ => toString M
+  let ((axs, _), _) := (axiomsOf env l.solution).run ({}, {})
+  let ((baxs, _), _) := (axiomsOf env l.bridge).run ({}, {})
+  let ((faxs, _), _) := (axiomsOf env l.fileEq).run ({}, {})
+  let std (xs : NameSet) := xs.toArray.all (standardAxioms.contains ·)
+  let status := if [axs, baxs, faxs].any (·.contains ``sorryAx) then "sorry"
+    else if std axs && std baxs && std faxs then "proved" else "proved with other axioms"
+  pure (.ok (Json.mkObj [("problemId", js l.problemId), ("decl", js l.solution.toString),
+    ("bridge", js l.bridge.toString), ("abiId", js abiIdS), ("machine", js machine),
+    ("mode", js modeS), ("frame", jn l.frame), ("status", js status),
+    ("limits", js "the machine is a restricted model; FP, vector and control state is carried by the model, not proved; real x86 only under Faithful"),
+    ("fileEq", js l.fileEq.toString),
+    ("fileIdentity", js s!"{rf.name} = {P.ns ++ `F} ({l.fileEq}); {P.path}, SHA-256 {P.«sha256»} (displayed)"),
+    ("association", js "checked")]))
+
+/-- **Decoy links the checker must refuse** (`Silmaril.Elf.Abi.Asm.LeafArith.Decoys`, and
+tampered curated values). -/
+def abiLinkDecoys : List (String × AbiLink × Option RecordFile) :=
+  let clampL := abiLinks[0]!
+  [("clamp record linked to the sat_add_u32 row with clamp's bridge", { clampL with problemConst := `silmaril.elf.abi.leaf_arith.sat_add_u32, solution := `Silmaril.Elf.Abi.LeafArith.sat_row, problemId := "silmaril.elf.abi.leaf_arith.sat_add_u32" }, none),
+   ("bridge True ∨ SameFunction satCode clamp", { clampL with bridge := `Silmaril.Elf.Abi.Asm.LeafArith.Decoys.or_true, problemConst := `silmaril.elf.abi.leaf_arith.sat_add_u32, solution := `Silmaril.Elf.Abi.LeafArith.sat_row, problemId := "silmaril.elf.abi.leaf_arith.sat_add_u32" }, none),
+   ("bridge satCode = satCode ∧ clamp = clamp", { clampL with bridge := `Silmaril.Elf.Abi.Asm.LeafArith.Decoys.both_refl, problemConst := `silmaril.elf.abi.leaf_arith.sat_add_u32, solution := `Silmaril.Elf.Abi.LeafArith.sat_row, problemId := "silmaril.elf.abi.leaf_arith.sat_add_u32" }, none),
+   ("sat's bridge for the clamp record", { clampL with bridge := `Silmaril.Elf.Abi.Asm.LeafArith.sat_record_code }, none),
+   ("wrong file", clampL, some { name := "x", path := "examples/elf-ladder/03-zlib-checksums/pinned/zlib-checksums", sha := "00" }),
+   ("a record of another pin carrying leaf-arith's path and SHA-256 strings", clampL,
+      some ⟨"Silmaril.Elf.Staged.Pinned.ZlibChecksums.F", "examples/elf-ladder/01-leaf-arith/pinned/leaf-arith",
+        "d9cf1e5ddd99bcb2abeca7ae44f899c03bbd93586458a7367e1ff6d4a6472484"⟩),
+   ("the file theorem of another pair (zlibChecksums_exe_eq)", { clampL with fileEq := `Silmaril.Elf.Pin.Examples.zlibChecksums_exe_eq }, none),
+   ("a non-equality as the file theorem", { clampL with fileEq := `Silmaril.Elf.Abi.Asm.LeafArith.clamp_record_code }, none),
+   ("wrong mode", { clampL with mode := "safe" }, none),
+   ("wrong frame", { clampL with frame := 128 }, none),
+   ("wrong problem id", { clampL with problemId := "silmaril.elf.abi.leaf_arith.sat_add_u32" }, none),
+   ("solution of another problem", { clampL with solution := `Silmaril.Elf.Abi.LeafArith.sat_row }, none)]
+
+/-- The leaf-arith record file, as `asm.json` names it. -/
+def leafRecordFile : RecordFile :=
+  { name := "Silmaril.Elf.Asm.Example.LeafArith.F", path := "examples/elf-ladder/01-leaf-arith/pinned/leaf-arith",
+    sha := "d9cf1e5ddd99bcb2abeca7ae44f899c03bbd93586458a7367e1ff6d4a6472484" }
+
+/-- Every true link is accepted and every decoy refused; the number of failures. -/
+def abiLinkSelfTest (env : Environment) : IO Nat := do
+  let mut failed := 0
+  for l in abiLinks do
+    if let .error m ← abiLinkJson env l leafRecordFile (if l.record == `Silmaril.Elf.Asm.Example.LeafArith.clamp then "clamp_i32" else "sat_add_u32") then
+      IO.eprintln s!"elf-pages abi links: a true link is refused ({m})"; failed := failed + 1
+  let mut refused := 0
+  for (what, l, rf) in abiLinkDecoys do
+    match ← abiLinkJson env l (rf.getD leafRecordFile) "clamp_i32" with
+    | .ok _ => IO.eprintln s!"elf-pages abi links: the checker accepted '{what}'"; failed := failed + 1
+    | .error m => refused := refused + 1; IO.println s!"elf-pages abi links: refused '{what}': {m}"
+  IO.println s!"elf-pages abi links: {abiLinks.length} true links accepted, {refused} of {abiLinkDecoys.length} decoys refused"
+  pure failed
+
+/-- `elf/asm.json` (the committed file, with each record's checked conformance rows added as
+`abiRows`) and `elf/asm-decls.json` (where each named
 declaration is: module, file, line, read from the environment). -/
 def asmPages (env : Environment) : IO (Json × Json) := do
   let j ← match Json.parse (← IO.FS.readFile asmPath) with
@@ -1266,6 +1434,24 @@ def asmPages (env : Environment) : IO (Json × Json) := do
     | .error e => throw (IO.userError s!"{asmPath}: {e}")
   unless j.getObjValD "schema" == js asmSchema do
     throw (IO.userError s!"{asmPath}: schema is not {asmSchema}")
+  -- the conformance rows of each record (`abiRows`; `abi` stays the record's metadata object)
+  let mut fns : Array Json := #[]
+  for f in ((j.getObjValD "functions").getArr?.toOption.getD #[]) do
+    let d := ((f.getObjValD "decl").getStr?.toOption.getD "").toName
+    let mut rows : Array Json := #[]
+    let fileDecl := (f.getObjValD "file").getStr?.toOption.getD ""
+    let fileEntry := ((j.getObjValD "files").getArr?.toOption.getD #[]).find? (fun x => (x.getObjValD "decl").getStr?.toOption == some fileDecl)
+    let rfPath : String := (fileEntry.bind (fun x => (x.getObjValD "path").getStr?.toOption)).getD ""
+    let rfSha : String := (fileEntry.bind (fun x => (x.getObjValD "sha256").getStr?.toOption)).getD ""
+    let rf : RecordFile := ⟨fileDecl, rfPath, rfSha⟩
+    let name := (f.getObjValD "name").getStr?.toOption.getD ""
+    for l in abiLinks do
+      if l.record == d then
+        match ← abiLinkJson env l rf name with
+        | .ok r => rows := rows.push r
+        | .error m => throw (IO.userError s!"elf-pages abi link: {m}")
+    fns := fns.push (if rows.isEmpty then f else f.setObjVal! "abiRows" (Json.arr rows))
+  let j := j.setObjVal! "functions" (Json.arr fns)
   let mut decls : Array (String × Json) := #[]
   for s in asmDeclNames j do
     let d := s.toName
@@ -1471,6 +1657,7 @@ def main (args : List String) : IO UInt32 := do
     unless (← differences out files blobs).isEmpty do
       IO.eprintln "elf-pages --self-test: freshly written pages differ"; return 1
     let mut failed ← associationSelfTest env
+    failed := failed + (← abiLinkSelfTest env)
     for (what, rel, edit) in tampers do
       let some (_, j) := files.find? (·.1 == rel) | IO.eprintln s!"no {rel}"; return 1
       let p := System.FilePath.mk out / "elf" / rel
