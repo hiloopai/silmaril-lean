@@ -166,7 +166,11 @@ listed with the stage that addresses them.
    their trust tags, models and profile; source links pinned to a commit; browser tests including
    negative association tests (a theorem about another program or profile is not shown as
    evidence).
-4. **GCC torture manifest.** GCC 14.3.0 (`c9cd41fb`), all 3,852 files of
+4. **GCC torture manifest.** *Started*: [`benchmarks/gcc-torture`](../../benchmarks/gcc-torture/README.md):
+   the pinned manifest (3,852 cases, SHA-256 re-checked), `scripts/c-tv/torture.py`, and the first
+   full run: 4 cross-validated (all trivial), 46 compile-only without `main`, 1,131 frontend-
+   and 2,512 elaborator-rejected, 158 needing the DejaGNU harness, 1 timeout; the ranked blockers
+   are the next port obligations. Plan: GCC 14.3.0 (`c9cd41fb`), all 3,852 files of
    `gcc.c-torture/{compile,execute}` with SHA-256s (GPL-3.0-or-later tests stay in the pinned GCC
    checkout; only the manifest is stored); per test a status among *not attempted*, *outside the
    supported profile* (with the construct), *frontend rejected*, *validator unknown* (bound),
