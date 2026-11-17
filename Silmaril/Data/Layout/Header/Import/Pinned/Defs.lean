@@ -20,6 +20,7 @@ normalizes it and does not assume clang correct.
 | `zlibSolo` | zlib 1.3.1 `zlib.h` | `-ffreestanding -fno-builtin -DZ_SOLO` | `zlib.h`, `./zconf.h` |
 | `zlibHosted` | zlib 1.3.1 `zlib.h` | hosted (the image's glibc) | `zlib.h`, `./zconf.h` |
 | `glibcString` | glibc `/usr/include/string.h` | hosted | `/usr/include/string.h` |
+| `glibcMath` | glibc `/usr/include/math.h` (libm) | hosted | `/usr/include/math.h`, `bits/mathcalls.h`, `bits/mathcalls-helper-functions.h`, `bits/floatn-common.h` |
 
 All use `-std=gnu11` and target `x86_64-unknown-linux-gnu`.
 

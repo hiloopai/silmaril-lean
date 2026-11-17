@@ -1,0 +1,15 @@
+artifact: glibc-math.json
+image: silkeh/clang@sha256:3914c93a02e866795aafc80737488e515b96390eff3d2787cf8c5095997baea9
+clang: Debian clang version 18.1.8 (++20240731024826+3b5b5c1ec4a3-1~exp1~20240731144843.145)
+target: x86_64-unknown-linux-gnu
+std: gnu11
+cwd: .
+command: clang -target x86_64-unknown-linux-gnu -x c -std=gnu11 /usr/include/math.h -Xclang -ast-dump=json -fsyntax-only
+filter: python3 -I filter.py /usr/include/math.h /usr/include/x86_64-linux-gnu/bits/mathcalls.h /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h /usr/include/x86_64-linux-gnu/bits/floatn-common.h
+filter-sha256: f7234d7a7bbf7792b9482c54edfb2d2a4ee1cb9f1c192a769e8cf0f34613241f
+input: /usr/include/math.h 4a0b7f8fe8b7d97eab417c8c295a6aecaba8b7d49bc240e40c35fd01b87ffad2 (in the image)
+input: /usr/include/x86_64-linux-gnu/bits/mathcalls.h bb2f279f45b98be7fadcb1b6df9c6eeb121d77fd1a256b0a4fa91180d16d0ac3 (in the image)
+input: /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h c5f7141d7c6c3ac2a132528c56d2a712bd0304dfc205a0f0f0fd8fa59021f757 (in the image)
+input: /usr/include/x86_64-linux-gnu/bits/floatn-common.h 34470310bc42f4ed4a8790ca3f33d1a11878a583561d51ad324ef5fb925d5493 (in the image)
+json-sha256: db61bb75bdeca38285face86a1962ee1ea37a6f9b9b82c0e37c5b37e82f25e3d
+json-bytes: 294120

@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Machine.Abi.Conformance.Import.Defs
+public import Silmaril.Machine.Abi.Conformance.SysvScalar.Defs
 public import Silmaril.Machine.Abi.Conformance.LeafArith.Defs
 public import Silmaril.Data.Layout.Header.Import.Pinned.Thms
 import Silmaril.Proofs.Machine.Abi.Conformance.Import
@@ -27,7 +28,21 @@ PROVED (standard axioms; the per-header facts rewrite with `Pinned.import_<name>
   example's `LeafArith.coverage` (checked by the subset route, `Coverage.check`) is also a
   checked coverage of the import;
 * `zlibSolo_coverage`, `zlibHosted_coverage`, `probe_coverage`, `glibcString_coverage`: each
-  header's claimable functions and its unsupported ones with the reasons.
+  header's claimable functions and its unsupported ones with the reasons;
+* `glibcMath_coverage`: glibc's `math.h` (libm) as pinned (`-std=gnu11`, default feature set;
+  `Pinned.glibcMath_reads`) under the INTEGER fragment `sysvInt`: nothing is claimable; all 438
+  explicit functions are refused because a parameter or the result is a floating type (SSE/x87
+  classes). The 177 `internal` entries are clang's implicit builtin declarations, each the
+  duplicate of one of those 438 (`Pinned.glibcMath_implicit_duplicates`), so no public name is
+  classified internal. This is `sysvInt`'s scope, not a statement about libm or the whole
+  `math.h` API: the `double`/`float` declarations are for `sysvScalar` with an SSE-capable
+  machine, `long double` is X87 class, outside both;
+* `glibcMath_coverage_sysvScalar`: the same `math.h` under `sysvScalar` (float and double in
+  SSE): 288 of the 438 explicit functions are claimable (`sin`, `sinf`, …); the other 150 are
+  refused, every one because a parameter or the result is `long double` (X87/X87UP class), which
+  includes `nexttoward`/`nexttowardf` (a `long double` parameter). Claimable means the
+  prototype lowers and the calling convention is the default one; it is not conformance of any
+  libm binary, and a row on such code needs a machine with SSE steps (#994, stage 2).
 -/
 
 @[expose] public section
@@ -142,6 +157,32 @@ theorem glibcString_coverage :
     ((table sysvInt sysvCcs glibcString).filter (fun x => x.2 matches .internal _)).length =
       26 := by
   rw [import_glibcString]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem glibcMath_coverage :
+    claimable sysvInt sysvCcs glibcMath = [] ∧
+    (unsupportedFns sysvInt sysvCcs glibcMath).length = 438 ∧
+    (unsupportedFns sysvInt sysvCcs glibcMath).all (fun x =>
+      x.2 == "floating type: SSE/x87 classes are outside the INTEGER fragment" ||
+      x.2 == "result: floating type: SSE/x87 classes are outside the INTEGER fragment") ∧
+    ((table sysvInt sysvCcs glibcMath).filter (fun x => x.2 matches .internal _)).length =
+      177 := by
+  rw [import_glibcMath]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem glibcMath_coverage_sysvScalar :
+    (claimable sysvScalar sysvCcs glibcMath).length = 288 ∧
+    (unsupportedFns sysvScalar sysvCcs glibcMath).length = 150 ∧
+    (unsupportedFns sysvScalar sysvCcs glibcMath).all (fun x =>
+      x.2 == "long double: X87/X87UP class (passed in memory, returned in %st0); outside the \
+        scalar fragment" ||
+      x.2 == "result: long double: X87/X87UP class (passed in memory, returned in %st0); \
+        outside the scalar fragment") ∧
+    (claimable sysvScalar sysvCcs glibcMath).contains "sin" ∧
+    (claimable sysvScalar sysvCcs glibcMath).contains "sinf" ∧
+    ((unsupportedFns sysvScalar sysvCcs glibcMath).map (·.1)).contains "sinl" ∧
+    ((unsupportedFns sysvScalar sysvCcs glibcMath).map (·.1)).contains "nexttoward" := by
+  rw [import_glibcMath]; decide +kernel
 
 end Silmaril.Machine.Abi.Conformance
 

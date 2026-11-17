@@ -41,8 +41,10 @@ def arithJson : String :=
 /-- `examples/headers/clang/arith.prov`. -/
 def arithProv : String :=
   include_str "../../../../../../../examples/headers/clang/arith.prov"
-/-- `arith.h` and the `rt.h` it includes, as clang reads it: the import of `arithJson`. -/
-def arith : Imported := .ofJson (.parse arithProv) arithJson
+/-- `arith.h` and the `rt.h` it includes, as clang reads it: the import of `arithJson`. Noncomputable: the kernel computes it (in
+`import_arith`), and compiled code uses the literal `Arith.entries`. Compiling it would parse the
+JSON when a program that imports this module starts, with recursion as deep as the JSON is long. -/
+noncomputable def arith : Imported := .ofJson (.parse arithProv) arithJson
 
 /-- The entries of `arith`, as a literal. -/
 def Arith.entries : List Entry := [
