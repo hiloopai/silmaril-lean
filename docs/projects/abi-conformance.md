@@ -232,7 +232,7 @@ All rows are on `Open`.
 | `Data.Layout.Header.qualifier_redeclaration` | `int f(const char *); int f(char *);` and other redeclarations with differing pointee qualifiers |
 | `Elf.Abi.LeafArith.not_codeOf_offset` | an entry that is not the symbol's `st_value` |
 | `Elf.Abi.not_abiConforms_of_noPlacement` | any claim, for any spec and machine, on a file that admits no load base |
-| header reader (`Data.Layout.Header.Thms`) | conflicting redeclarations, `#if`, definitions, function pointers, K&R declarations, and the other constructs outside the subset |
+| header reader (`Data.Layout.Header.Thms`) | conflicting redeclarations and tag redefinitions, `#if`, untagged definitions, flexible arrays, function pointers, K&R declarations, `#pragma pack`, and the other constructs outside the subset |
 
 The schema tests run on small machines given by a step function (`Witness.toy`). They test the
 statement, not x86 code.
@@ -254,7 +254,7 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 
 | module | content |
 | --- | --- |
-| `Silmaril.Data.Layout.Header` | the header subset reader (`read`), `CProto`, `Header` |
+| `Silmaril.Data.Layout.Header` | the header subset reader (`read`), `CProto`, `Header`; tagged struct, union and enum definitions are read into `Header.decls`/`Header.enums` (`Header.env` for layouts). Header satisfaction concerns the prototypes only |
 | `Silmaril.Machine.Abi.Conformance` | `AbiDef`, `sysvInt`, `Code`, `CallSpec`, `Admit`, `NoStuck`, `Good`, `Conforms`, `Faithful`, `Coverage`, `HeaderSatPartial`, `HeaderSatAvailable`, `HeaderSatComplete`; `conforms_of_strict`, `Conforms.steps`, `Conforms.onRef` |
 | `Silmaril.Machine.Abi.Conformance.LeafArith` | the example: its header, code, specs, coverage, witness state, test machines, open tasks, proofs and negative tests |
 | `Silmaril.X86.Open.FsBase` | `Open.step_fsBase`, `Open9.step_fsBase`: no step writes the FS base (proving `FsBase.Task.openStepKeepsFs`) |

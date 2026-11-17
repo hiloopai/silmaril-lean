@@ -15,7 +15,7 @@ formats).
   LP64 (`long` is 8 bytes) versus ILP32, `long double` (x87 16/16 on x86-64, binary128 16/16 on
   AArch64 and RISC-V, 12/4 on i386), the signedness of plain `char` and `wchar_t`, the enum
   representation, and the in-struct alignment of 8-byte scalars on i386 (4). Models:
-  `sysvX86_64`, `aapcs64`, `rv64Lp64`, `i386Ilp32`, `wasm32`.
+  `sysvX86_64`, `msX64` (LLP64: `long` is 4 bytes), `aapcs64`, `rv64Lp64`, `i386Ilp32`, `wasm32`.
 * **Layouts** (`layoutTy`, `declLayout`, `resolve`): the psABI padding discipline shared by the
   System V x86-64, AAPCS64 and RISC-V psABIs for ordinary members: each member is placed at
   the next multiple of its alignment, a struct is as aligned as its most aligned member and its
@@ -153,6 +153,23 @@ def sysvX86_64 : DataModel where
   bool := ⟨1, 1⟩
   charSigned := true
   wcharSigned := true
+
+/-- **Microsoft x64** (LLP64, MSVC): `long` is 4 bytes, `long double` is `double` (8/8), `wchar_t`
+is an unsigned 2-byte type, plain `char` is signed; pointers and `size_t` are 8 bytes. -/
+def msX64 : DataModel where
+  name := "x64 Microsoft (LLP64)"
+  intShape
+    | .char => some ⟨1, 1⟩ | .short => some ⟨2, 2⟩ | .int => some ⟨4, 4⟩ | .long => some ⟨4, 4⟩
+    | .longLong | .size | .ptrdiff | .intptr => some ⟨8, 8⟩
+    | .int128 => none | .wchar => some ⟨2, 2⟩
+    | .exact n => exactShape n
+  floatShape
+    | .float => some ⟨4, 4⟩ | .double => some ⟨8, 8⟩
+    | .longDouble => some ⟨8, 8⟩ | .float128 => none
+  ptr := ⟨8, 8⟩
+  bool := ⟨1, 1⟩
+  charSigned := true
+  wcharSigned := false
 
 /-- AAPCS64 (LP64, Linux): sizes as x86-64; `long double` is IEEE binary128 (16/16);
 plain `char` and `wchar_t` are unsigned. -/
