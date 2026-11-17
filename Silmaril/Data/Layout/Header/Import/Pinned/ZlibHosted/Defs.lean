@@ -41,8 +41,10 @@ def zlibHostedJson : String :=
 /-- `examples/headers/clang/zlib-hosted.prov`. -/
 def zlibHostedProv : String :=
   include_str "../../../../../../../examples/headers/clang/zlib-hosted.prov"
-/-- zlib 1.3.1's `zlib.h`, hosted, as clang reads it: the import of `zlibHostedJson`. -/
-def zlibHosted : Imported := .ofJson (.parse zlibHostedProv) zlibHostedJson
+/-- zlib 1.3.1's `zlib.h`, hosted, as clang reads it: the import of `zlibHostedJson`. Noncomputable: the kernel computes it (in
+`import_zlibHosted`), and compiled code uses the literal `ZlibHosted.entries`. Compiling it would parse the
+JSON when a program that imports this module starts, with recursion as deep as the JSON is long. -/
+noncomputable def zlibHosted : Imported := .ofJson (.parse zlibHostedProv) zlibHostedJson
 
 /-- The entries of `zlibHosted`, as a literal. -/
 def ZlibHosted.entries : List Entry := [
