@@ -74,9 +74,9 @@ theorem stack : Stack sysvScalar sretProto sretCode 0 (fun _ => False) (sretSt 0
     have := image_above r hr
     omega
 
-theorem admitted (M : Mach) (hl : M.isa.live (M.load (sretSt 0x10000))) :
+theorem admitted (M : Mach) (hl : ∀ x, M.Fills (sretSt 0x10000) x → M.isa.live x) :
     Admit sysvScalar M sretProto sretCode 0 (CallSpec.abiPure _ _) sretArgs (sretSt 0x10000) :=
-  ⟨hl, entry, placed _ _ _ _ _, stack, rfl⟩
+  ⟨hl, entry, trivial, placed _ _ _ _ _, stack, rfl⟩
 
 /-- An admitted call's result storage is apart from the code: RDI at the code is refused. -/
 theorem not_admitted_code (M : Mach) (S : CallSpec sysvScalar.V sretProto) (a) :

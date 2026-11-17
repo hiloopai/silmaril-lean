@@ -42,7 +42,9 @@ def lowerWin64Int (dm : DataModel) (cp : CProto) :
 /-- **Microsoft x64, INTEGER fragment**, under the LLP64 data model `msX64`: fixed-arity
 prototypes of 4- and 8-byte integers and pointers (`long` is 4 bytes), with the
 `Machine.Abi.Win64.win64` discipline (RCX, RDX, R8, R9, a 32-byte shadow area, then 8-byte
-stack slots; result in RAX). The callee owns the shadow area and its stack arguments. -/
+stack slots; result in RAX). The callee owns the shadow area and its stack arguments. Every
+entry environment is admitted (`EntryEnv` is `True`): the convention constrains the MXCSR and
+x87 control word only at return (control bits preserved). -/
 def win64Int : AbiDef where
   id := "x86_64-ms-x64@cpp-docs-e6106755/llp64/integer"
   source := "Microsoft, \"x64 calling convention\", \
@@ -60,6 +62,7 @@ def win64Int : AbiDef where
   lower _ := lowerWin64Int Silmaril.Data.Layout.msX64
   argArea p := 8 * max p.signature.arguments.length 4
   owned _ _ _ := False
+  EntryEnv _ _ := True
 
 end Silmaril.Machine.Abi.Conformance
 

@@ -223,15 +223,16 @@ theorem sat_declared : Declares sysvInt hdr "sat_add_u32" satProto :=
 theorem clamp_conforms (mode : Mode) :
     Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto clampCode 0 clampS := by
   refine conforms_of_strict clamp_strict clamp_declared (by decide +kernel)
-    ⟨clampArgs, ffiSt 0x30 5 0 3, ⟨trivial, clamp_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
+    ⟨clampArgs, ffiSt 0x30 5 0 3, ⟨fun _ _ => trivial, clamp_entry, trivial, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
       trivial⟩
     (fun a _ _ _ => match a with
       | .cons x (.cons lo (.cons hi .nil)) => ⟨ffiSt 0x30 (wide x) (wide lo) (wide hi),
-          ⟨trivial, clamp_entry_of x lo hi, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
+          ⟨fun _ _ => trivial, clamp_entry_of x lo hi, trivial, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
           trivial, fun _ => Iff.rfl, fun _ h => h.elim⟩)
     (fun _ _ ad => abiEntry_of_entry ad.entry)
-    (fun _ _ ad _ => ⟨⟨ad.placed.loaded, ad.placed.pc⟩, ad.placed.retOutside⟩) ?_
-  intro a s t ad _ fr res
+    (fun _ _ _ ad _ hx => hx ▸ ⟨⟨ad.placed.loaded, ad.placed.pc⟩, ad.placed.retOutside⟩) ?_
+  intro a s x t ad _ hx fr res
+  subst hx
   refine ⟨return_of_result (fun _ => rfl) (fun _ => rfl) ad.entry res, ?_,
     writesWithin_mono res.frame (fun _ h => nomatch h), fs_of_runs fr.1⟩
   match a, ad with
@@ -240,21 +241,21 @@ theorem clamp_conforms (mode : Mode) :
     have hrax : (t.core.read .rax).setWidth 32 = clampSpec x lo hi := by
       rw [show t.core.read .rax = _ from res.post, ← hx, ← hl, ← hh]
       simp
-      rfl
     exact ⟨clampSpec x lo hi, (resultAt_int32 _ _ _ _ _).2 hrax, rfl⟩
 
 theorem sat_conforms (mode : Mode) :
     Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "sat_add_u32" satProto satCode 0 satS := by
   refine conforms_of_strict sat_strict sat_declared (by decide +kernel)
     ⟨satArgs, ffiSt 0x90 0xfffffff0 0x20 0,
-      ⟨trivial, sat_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩, trivial⟩
+      ⟨fun _ _ => trivial, sat_entry, trivial, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩, trivial⟩
     (fun a _ _ _ => match a with
       | .cons x (.cons y .nil) => ⟨ffiSt 0x90 (wide x) (wide y) 0,
-          ⟨trivial, sat_entry_of x y, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
+          ⟨fun _ _ => trivial, sat_entry_of x y, trivial, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
           trivial, fun _ => Iff.rfl, fun _ h => h.elim⟩)
     (fun _ _ ad => abiEntry_of_entry ad.entry)
-    (fun _ _ ad _ => ⟨⟨ad.placed.loaded, ad.placed.pc⟩, ad.placed.retOutside⟩) ?_
-  intro a s t ad _ fr res
+    (fun _ _ _ ad _ hx => hx ▸ ⟨⟨ad.placed.loaded, ad.placed.pc⟩, ad.placed.retOutside⟩) ?_
+  intro a s x t ad _ hx fr res
+  subst hx
   refine ⟨return_of_result (fun _ => rfl) (fun _ => rfl) ad.entry res, ?_,
     writesWithin_mono res.frame (fun _ h => nomatch h), fs_of_runs fr.1⟩
   match a, ad with
@@ -263,7 +264,6 @@ theorem sat_conforms (mode : Mode) :
     have hrax : (t.core.read .rax).setWidth 32 = satAddSpec x y := by
       rw [show t.core.read .rax = _ from res.post, ← hx, ← hy]
       simp
-      rfl
     exact ⟨satAddSpec x y, (resultAt_uint32 _ _ _ _ _).2 hrax, rfl⟩
 
 /-- **The statement discriminates**: `clamp_i32` does not conform with the spec "returns its
@@ -272,13 +272,14 @@ theorem clamp_rejects_first (mode : Mode) :
     ¬ Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto clampCode 0 clampFirstS := by
   intro bad
   have ad : Admit sysvInt (Mach.ofInt Open.isa) clampProto clampCode 0 clampFirstS clampArgs (ffiSt 0x30 5 0 3) :=
-    ⟨trivial, clamp_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩
+    ⟨fun _ _ => trivial, clamp_entry, trivial, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩
   have ad' : Admit sysvInt (Mach.ofInt Open.isa) clampProto clampCode 0 clampS clampArgs (ffiSt 0x30 5 0 3) :=
-    ⟨trivial, clamp_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩
+    ⟨fun _ _ => trivial, clamp_entry, trivial, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩
   have good := clamp_conforms .total
-  obtain ⟨t, ht⟩ := good.progress rfl _ _ ad' trivial
-  obtain ⟨r, hr, hpost⟩ := (good.sound _ _ ad' trivial t ht).result
-  obtain ⟨r', hr', hpost'⟩ := (bad.sound _ _ ad trivial t ht).result
+  obtain ⟨t, ht⟩ := good.progress rfl _ _ ad' trivial _ rfl
+  have ht' : t ∈ callModelOf (Mach.ofInt Open.isa) (ffiSt 0x30 5 0 3) := ⟨_, rfl, ht⟩
+  obtain ⟨r, hr, hpost⟩ := (good.sound _ _ ad' trivial t ht').result
+  obtain ⟨r', hr', hpost'⟩ := (bad.sound _ _ ad trivial t ht').result
   have e1 := (resultAt_int32 _ _ _ _ _).1 hr
   have e2 := (resultAt_int32 _ _ _ _ _).1 hr'
   have h1 : @Eq (BitVec 32) r (clampSpec 5 0 3) := hpost
