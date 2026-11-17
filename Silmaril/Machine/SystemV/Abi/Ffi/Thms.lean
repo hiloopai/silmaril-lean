@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Machine.SystemV.Abi.Ffi.Defs
+import Silmaril.Proofs.Machine.SystemV.Abi.Ffi.Chunks
 
 @[expose] public section
 namespace Silmaril.Machine.SystemV.Abi.Ffi
@@ -72,5 +73,16 @@ theorem Realizes.partialCorrect_of_deterministic {signature : Signature}
   obtain ⟨witness, witnessRun, resultAt⟩ := correct arguments call entry domainAt
   have equal := deterministic call witness final witnessRun run
   exact equal ▸ resultAt
+
+/-- Four little-endian bytes determine a 32-bit word. -/
+theorem bytes4_inj {x y : BitVec 32} (h : bytesOfNat x.toNat 0 4 = bytesOfNat y.toNat 0 4) :
+    x = y :=
+  Silmaril.Proofs.Machine.SystemV.Abi.Ffi.bytes4_inj h
+
+/-- A 32-bit value encoded in four bytes, read from the low half of register `r`. -/
+theorem chunk32_iff (s : State) (r : Silmaril.X86.Reg) (v : BitVec 32) :
+    ChunksAt s (bytesOfNat (v.setWidth 64).toNat 0 4) [⟨0, 4, .gp r⟩] ↔
+      (s.machine.core.read r).setWidth 32 = v :=
+  Silmaril.Proofs.Machine.SystemV.Abi.Ffi.chunk32_iff s r v
 
 end Silmaril.Machine.SystemV.Abi.Ffi

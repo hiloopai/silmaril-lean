@@ -3,6 +3,10 @@ import Silmaril.Elf.Staged.Reader.Defs
 import Silmaril.Elf.Staged.Pinned.HelloGcc.Defs
 import Silmaril.Elf.Staged.Pinned.HelloClang.Defs
 import Silmaril.Elf.Staged.Pinned.Sha256sum.Defs
+import Silmaril.Elf.Staged.Pinned.LeafArith.Defs
+-- loaded at run time (not in the Makefile's ELF_PINNED): imported so building elf-pages builds them
+import Silmaril.Elf.Staged.Pinned.LeafArith.Thms
+import Silmaril.Elf.Staged.Pinned.LeafArith.Functions
 import Silmaril.Elf.Staged.Pinned.ZlibChecksums.Defs
 import Silmaril.Elf.Staged.Pinned.ZlibLibz.Defs
 import Silmaril.Elf.Staged.Pinned.GlibcLibm.Defs
@@ -79,6 +83,15 @@ def pinned : List Pinned := [
       ("linked", "dynamically against glibc 2.39: PT_INTERP /lib64/ld-linux-x86-64.so.2, DT_NEEDED libc.so.6 (both read by the checked loader-view theorem)"),
       ("build", "clang 18.1.3 (1:18.1.3-1ubuntu1) -O2 with GCC 13's crt objects, default PIE; byte-for-byte reproducible (examples/dyn/pins.txt, examples/dyn/pin.sh --build)"),
       ("licence", "toolchain start-up objects: glibc crt (LGPL-2.1-or-later with the linking exception), GCC crtbeginS/crtendS (GPL-3.0-or-later with the GCC Runtime Library Exception); examples/dyn/README.md")] },
+  { slug := "leaf-arith", ns := `Silmaril.Elf.Staged.Pinned.LeafArith
+    title := "elf-ladder rung 01 leaf-arith (arith.c leaf functions, -O2, static, not stripped)"
+    path := Pinned.LeafArith.path, sha256 := Pinned.LeafArith.sha256, size := Pinned.LeafArith.size
+    L := Pinned.LeafArith.L, bodies := Pinned.LeafArith.bodies, ld := Pinned.LeafArith.ld
+    provenance := [
+      ("source", "examples/elf-ladder/01-leaf-arith/arith.c, arith.h and main.c, with examples/elf-ladder/common (written for this repository)"),
+      ("build", "examples/elf-ladder/01-leaf-arith/build.sh: GCC 13.3.0, GNU ld 2.42, -O2 (examples/elf-ladder/common/flags.sh), static, not stripped (.symtab present)"),
+      ("abi conformance", "clamp_i32 and sat_add_u32 conform, as arith.h declares them, to the INTEGER fragment of the System V AMD64 psABI on the restricted open machine model Open (FP, vector and control state carried by the model, not proved for real x86); arith.h is satisfied only PARTIALLY (2 functions claimed, not header satisfaction): Silmaril.Elf.Abi.LeafArith (rows silmaril.elf.abi.leaf_arith.*, docs/projects/abi-conformance.md)"),
+      ("licence", "this repository's MIT licence")] },
   { slug := "zlib-checksums", ns := `Silmaril.Elf.Staged.Pinned.ZlibChecksums
     title := "zlib 1.3.1 adler32.c + crc32.c (-DZ_SOLO -O2, static, not stripped)"
     path := Pinned.ZlibChecksums.path, sha256 := Pinned.ZlibChecksums.sha256, size := Pinned.ZlibChecksums.size

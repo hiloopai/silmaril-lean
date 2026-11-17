@@ -33,6 +33,7 @@ case "${1:-}" in
   --check)
     check pinned/gnu-sha256sum "$SHA256SUM_SHA"
     for l in "${LIBS[@]}"; do set -- $l; check "pinned/$1" "$5"; done
+    check ../elf-ladder/01-leaf-arith/pinned/leaf-arith d9cf1e5ddd99bcb2abeca7ae44f899c03bbd93586458a7367e1ff6d4a6472484
     check ../elf-ladder/03-zlib-checksums/pinned/zlib-checksums eeb7934b8c5a13b6fb98ee1a3a15dd2e6861436a6502544dcc549695c39df343
     for h in hello-gcc hello-clang; do check "../dyn/pinned/$h" "$(awk -v h="$h" '$1 == h {print $2}' ../dyn/pins.txt)"; done
     echo "pin.sh: ok" ;;

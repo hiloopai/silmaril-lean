@@ -1,15 +1,18 @@
 module
 
 public import Silmaril.Machine.Abi.FsBase.Defs
+public import Silmaril.X86.Open.FsBase.Thms
 /-! # The FFI thread pointer and the machine's FS base: theorems
 
 * `ffiExecute_carried`, `callModel_carried` (PROVED, by construction): every final state of
   `Open.ffiExecute` / `OpenMachine.callModel` carries the FFI-only state of the initial one,
   whatever the code does. These are the obligations met **by the model**.
-* `reaches_fsBase`, `ffiExecute_fsBase`, `callModel_fsBase` (conditional on
-  `Task.openStepKeepsFs`): the machine FS base is preserved, and a coherent initial state
-  (`FsCoherent`) gives a coherent final state, so `Ffi.Return.threadPointer` is then a fact
-  about the register `%fs:` operands read.
+* `openStepKeepsFs`, `open9StepKeepsFs` (PROVED): no step of `Open` / `Open9` writes the
+  machine FS base (`Silmaril.X86.Open.step_fsBase`, `Silmaril.X86.Open9.step_fsBase`).
+* `reaches_fsBase`, `ffiExecute_fsBase`, `callModel_fsBase` (stated with
+  `Task.openStepKeepsFs` as a hypothesis, which `openStepKeepsFs` discharges): the machine FS
+  base is preserved, and a coherent initial state (`FsCoherent`) gives a coherent final state,
+  so `Ffi.Return.threadPointer` is then a fact about the register `%fs:` operands read.
 -/
 
 @[expose] public section
@@ -30,6 +33,12 @@ theorem callModel_carried {s t : Ffi.State} (h : t ∈ callModel s) : Carried s 
   obtain ⟨-, e⟩ := h
   rw [e]
   exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- No step of the open machine writes the FS base. -/
+theorem openStepKeepsFs : Task.openStepKeepsFs := fun _ _ h => Open.step_fsBase h
+
+/-- No step of the open machine over `Ext9` writes the FS base. -/
+theorem open9StepKeepsFs : Task.open9StepKeepsFs := fun _ _ h => Open9.step_fsBase h
 
 theorem reaches_fsBase (task : Task.openStepKeepsFs) :
     ∀ (n : Nat) (m m' : MState), Silmaril.Machine.Execution.run Open.step n m = some m' →

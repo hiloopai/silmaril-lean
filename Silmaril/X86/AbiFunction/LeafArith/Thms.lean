@@ -3,6 +3,7 @@ module
 public import Silmaril.X86.AbiFunction.LeafArith.Defs
 public import Silmaril.X86.AbiFunction.Thms
 public import Silmaril.X86.Ladder.LeafArith.Thms
+public import Silmaril.X86.Ladder.LeafArith.Realizes.Thms
 public import Silmaril.X86.Ladder.Pinned.LeafArith.Thms
 meta import Silmaril.X86.AbiFunction.LeafArith.Defs
 /-!

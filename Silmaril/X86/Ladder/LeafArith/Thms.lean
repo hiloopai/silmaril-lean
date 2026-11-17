@@ -6,7 +6,6 @@ import Silmaril.Proofs.X86.Ladder.LeafArith.Bswap
 import Silmaril.Proofs.X86.Ladder.LeafArith.SatAdd
 import Silmaril.Proofs.X86.Ladder.LeafArith.Clamp
 import Silmaril.Proofs.X86.Ladder.LeafArith.Gcd
-import Silmaril.Proofs.X86.Ladder.LeafArith.Realizes
 /-!
 # Ladder rung 01 (gcc -O2): System V function contracts
 
@@ -18,8 +17,9 @@ the callee-saved registers and all of memory unchanged, and `rax` the C function
 the 32-bit arguments in `edi`, `esi`, `edx` (`*_total`, packaged as `FnContract Open.isa`
 in `*_contract`).
 
-`*_realizes`: the same contracts as integer System V `Silmaril.Machine.SystemV.Realizes`
-certificates (`FnContract.toRealizes`) for the C signatures `u32(u32)`, `u32(u32, u32)` and
+`*_realizes` (in `Silmaril.X86.Ladder.LeafArith.Realizes.Thms`, a separate header because its
+proofs import the System V adapter `Silmaril.X86.FnContract.SystemV`): the same contracts as
+integer System V `Silmaril.Machine.SystemV.Realizes` certificates (`FnContract.toRealizes`) for the C signatures `u32(u32)`, `u32(u32, u32)` and
 `int(int, int, int)`: from every ABI-admitted call whose entry is the function with the code
 loaded, an open run to a System V return with the C result in `eax` and no memory written.
 The typed FFI form (`FnContract.toFfiRealizes`, the ABI model's `Abi.Ffi.Realizes`) is not
@@ -75,30 +75,6 @@ theorem gcd_u32_total : gcdSpec'.Total Open.isa :=
 /-- x86 `bswap` at 32 bits is the C expression of `bswap32_manual`. -/
 theorem byteSwap32_eq (x : BitVec 32) : Silmaril.X86.Ext.byteSwap32 x = bswap32Spec x :=
   Silmaril.Proofs.X86.Ladder.LeafArith.byteSwap32_eq x
-
-/-- `bswap32_manual` realizes `u32 bswap32_manual(u32)`. -/
-theorem bswap32_manual_realizes :
-    Silmaril.Machine.SystemV.Realizes sigU1 bswapResult noWrites (loadedAt 0xb0)
-      (fun call final => Silmaril.Machine.Execution.Reaches Open.step call.initial final) :=
-  Silmaril.Proofs.X86.Ladder.LeafArith.bswap_realizes
-
-/-- `sat_add_u32` realizes `u32 sat_add_u32(u32, u32)`. -/
-theorem sat_add_u32_realizes :
-    Silmaril.Machine.SystemV.Realizes sigU2 satResult noWrites (loadedAt 0x90)
-      (fun call final => Silmaril.Machine.Execution.Reaches Open.step call.initial final) :=
-  Silmaril.Proofs.X86.Ladder.LeafArith.sat_realizes
-
-/-- `clamp_i32` realizes `int clamp_i32(int, int, int)`. -/
-theorem clamp_i32_realizes :
-    Silmaril.Machine.SystemV.Realizes sigI3 clampResult noWrites (loadedAt 0x30)
-      (fun call final => Silmaril.Machine.Execution.Reaches Open.step call.initial final) :=
-  Silmaril.Proofs.X86.Ladder.LeafArith.clamp_realizes
-
-/-- `gcd_u32` realizes `u32 gcd_u32(u32, u32)`. -/
-theorem gcd_u32_realizes :
-    Silmaril.Machine.SystemV.Realizes sigU2 gcdResult noWrites (loadedAt 0x0)
-      (fun call final => Silmaril.Machine.Execution.Reaches Open.step call.initial final) :=
-  Silmaril.Proofs.X86.Ladder.LeafArith.gcd_realizes
 
 /-- The contract of `bswap32_manual`. -/
 def bswap32_manual_contract : FnContract Open.isa := ⟨bswapSpec, bswap32_manual_total⟩
