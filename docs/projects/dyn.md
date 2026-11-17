@@ -44,8 +44,11 @@ The C sources and the pinned executables are in `examples/dyn/`. `examples/dyn/p
 checks the sha256 of the committed files and `--build` rebuilds them.
 
 * `Dyn.Hello`: hello world for gcc (eager binding, CET `.plt.sec`) and clang (lazy binding):
-  every run halts with status 0 and stdout `hello, world\n`. `hello_gcc_sen` restates the gcc
-  result as a sentence of `BinInstitution`.
+  every run *of the process model* (the file's code on `Open9`, glibc's functions as trusted
+  contract steps, memory from the trusted loader relation) halts with status 0 and stdout
+  `hello, world\n`. `hello_gcc_sen` restates the gcc result as a sentence of `BinInstitution`.
+  This is not a claim about glibc's code: real execution (`LibMod.helloGcc_real`) is
+  conditional on the open `Task.helloGccCrt` and `HelloLib` (`Dyn.LibMod.Hello`).
 * `Dyn.Small`: `return 0`, `return 42` and a `scanf`/`printf` adder for gcc and clang, with
   non-vacuity witnesses.
 * `Dyn.Program.Examples`: hello, `cat` of stdin and `cat FILE` through the program API.
