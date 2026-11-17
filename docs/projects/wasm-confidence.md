@@ -1,7 +1,8 @@
 # Confidence that silmaril-lean's Wasm semantics match the Wasm specification
 
 A roadmap, and the state of its first slice ([WAST rows](wasm-wast.md), PR #843, extended
-since by the `KMem` checker, the tool-level rejection shapes and the CI oracle job). Grounded in
+since by the `KMem` checker, the tool-level rejection shapes, the CI oracle job and the float
+files at the specification profile). Grounded in
 `main` at `5170984b` plus #843.
 
 Testing never proves universal soundness: it establishes agreement on the cases tested.
@@ -14,10 +15,10 @@ implementation on one script.
 
 | implementation / translation | universal theorem status | external oracle (pinned) |
 |---|---|---|
-| SpecTec spec (Wasm 3.0, `608711107b`) → `Execution.Core` relational `Step` | **partial**: both directions on typed, `BoundedSelM`, no-memory-SIMD configurations with a finite `HostOk` host (`wholeStepValidRMNoMSH_backend`); the whole-step goals `Task.wholeStep` / `Bwd.Task.wholeStepUpTo` are open | the spec test suite at `608711107b`: 1253 commands of 6 files run (§2) |
+| SpecTec spec (Wasm 3.0, `608711107b`) → `Execution.Core` relational `Step` | **partial**: both directions on typed, `BoundedSelM`, no-memory-SIMD configurations with a finite `HostOk` host (`wholeStepValidRMNoMSH_backend`); the whole-step goals `Task.wholeStep` / `Bwd.Task.wholeStepUpTo` are open | the spec test suite at `608711107b`: 8089 commands of 12 files run (§2) |
 | SpecTec Wasm 1.0 → V1 | **both directions proved** at `fwdB10` (`wholeStep10_both`) | — |
 | SpecTec Wasm 2.0 → V2 | forward only, partly (`wholeStepVec`); `Task.wholeStepValid` and the backward goals are open | — |
-| `SingleThreaded.stepI` / `runInvoke?` interpreter → `Step` | **sound and complete** (`interpHead_sound`, `HeadExact`, `runInvoke?_sound`, `runInvoke?_complete`) at `profile o` (deterministic, canonical NaNs, grow oracle) | wasmtime 50.0.0 on the WAST slice: 1140/1140 kernel-proved execution commands agree (CI, §5) |
+| `SingleThreaded.stepI` / `runInvoke?` interpreter → `Step` | **sound and complete** (`interpHead_sound`, `HeadExact`, `runInvoke?_sound`, `runInvoke?_complete`) at `profile o` (deterministic, canonical NaNs, grow oracle) only; **not** a description of the runs of `Profile.spec` (next rows) | wasmtime 50.0.0 on the WAST slice: 1140/1140 kernel-proved execution commands at `profile o` agree (CI, §5) |
 | `runInvokeK` (kernel-evaluable) | `runInvokeK_eq : runInvokeK o = runInvoke? o` | — |
 | `scriptKM` (kernel checker on `KMem` stores) → `scriptK` | `scriptK_of_scriptKM`, from `instantiateOnce?_toBytes`, `runI_toBytes` (#796) | — |
 | `validate?` (validator) → `ModuleOk` (silmaril-lean's validation relation) | **sound and complete**: `validate?_sound`, `validate?_complete`, `validate?_isSome_iff` (unconditional) | wasmtime 50.0.0 rejects all 113 `assert_invalid` modules of the slice that `validate?` rejects |
@@ -25,7 +26,8 @@ implementation on one script.
 | `decode?` (decoder) → `Binary.Core.Encodes` | **sound only** (`decode?_sound`; `Binary.Core.functional`); completeness not proved | wasm-tools 1.262.0 binaries of the slice (all decode) |
 | WAST `assert_invalid` → `ValidatorRejects` | **per command, proved, tool-level**: `ValidatorRejects.of_kernel` (one `decide +kernel` of `validatorRejectsB`); `ValidatorRejects.not_valid` adds "no module the bytes encode is `ModuleValid`" via `validate?_complete` | wasmtime 50.0.0 (§4) |
 | WAST script commands → `Step` (#843) | **per command, proved**: `ScriptHolds.of_kernel` (or `ScriptHolds.of_kernelKM`, for modules with data segments) turns one `decide +kernel` run of `scriptK` (`scriptKM`) into `ReturnsOnly`/`TrapsOnly` for every command of a module; `ScriptHolds.always` adds termination (§3) | wasmtime 50.0.0 (§4) |
-| `Profile.deterministic` vs `Profile.spec` | canonical NaNs refine the spec's NaN sets (`floatUnOpP_canonical_spec`, …); determinism (`Internal.deterministic`, `Det.DStep.join'`, `reach_normal_unique`) only at `profile o` | — |
+| `Profile.deterministic` vs `Profile.spec` | **existence, in general**: every `profile o` step is a `Profile.spec nd {}` step (`Step.deterministic_refines_spec`), so a deterministic run to a result is a spec run (`Reaches.spec`, `Returns.allowedExists`). **Every normal form and termination, for a fragment only**: for straight-line numeric functions (`local.get 0 … local.get (k-1); op`, `op` a scalar numeric instruction), at **every** profile, every host-free normal form of `$invoke` is a result of `NumericStep P` in the same store (`StraightLine.nf`), each such result is reached (`StraightLine.reaches`), and no run is infinite (`StraightLine.not_diverges`, `extends_nf`). Determinism (`Internal.deterministic`, `Det.DStep.join'`, `reach_normal_unique`) and interpreter completeness only at `profile o`; no general theorem describes all `Profile.spec` runs of other code (memory, control, NaNs reaching control) | — |
+| WAST float commands → `Step (Profile.spec nd r)` | **per command, proved**: `ScriptHoldsS.of_kernel` turns one `decide +kernel` run of `scriptSK` (fragment check `StraightLine.fn?`, result class `numericSet?`, containment `NumSet.sub`) into `returns_allowed_all`/`traps_all` (every normal form, with existence) and `terminates_all` for every command of a module, for every `nd` and `r`; `numericSet?_sound` relates the classes to `floatUnOpRel`/`floatBinOpRel`/`convertRel` | wasmtime 50.0.0: 6783/6783 agree (one NaN per run, §4) |
 | Binaryen interpreter / `wasm-shell` | **open** (`FwdSim`/`BwdSim` unproved; fragments in `Wasm/Interp`) | wasm-opt release suites (tested) |
 | Component IR `Comp.denU`/`denI` ↔ REF (reference machine) | `Simple.sound` (import-free numeric); session adequacy with imports on a fragment (#805, open); start comparison on 3 litmus components (#827, open) | wasmtime 50.0.0, wasm-tools 1.262.0, jco 1.39.0 (not run in CI) |
 | REF (Lean transcription of `definitions.py` @ `a25fc0b`) | a transcription, **not** an independent authority | component-model test suite (not vendored) |
@@ -48,7 +50,9 @@ theorems are listed in [wasm-tools-trust.md](wasm-tools-trust.md). Agreement wit
 | oracle | wasmtime 50.0.0 (`ebe5e8df1 2026-10-20`; `tools/wasm-jco/tests/pins.sh`) | archive `77c19ee0437991f9ac7837b9c269d9c7076744f85dad263fea5214cc2723c7ff`, binary `f95e5beba6d176b447c2939607bae968ea47f87b156ddf559762f1bb3c00e9b7` |
 
 **Denominator.** Every command after a `module` command of `test/core/{i32, i64, int_exprs, fac,
-traps, address}.wast`: **1258 commands**. `module` commands themselves are not counted.
+traps, address}.wast` (deterministic profile) and `test/core/{f32, f64, f32_bitwise, f64_bitwise,
+float_misc, conversions}.wast` (specification profile): **8098 commands**. `module` commands
+themselves are not counted.
 
 | file | commands | proved | unsupported | undetermined |
 |---|---|---|---|---|
@@ -58,19 +62,28 @@ traps, address}.wast`: **1258 commands**. `module` commands themselves are not c
 | `fac.wast` | 7 | 6 | 1 | 0 |
 | `traps.wast` | 32 | 32 | 0 | 0 |
 | `address.wast` | 256 | 256 | 0 | 0 |
-| **total** | **1258** | **1253** | **5** | **0** |
+| `f32.wast` | 2513 | 2511 | 2 | 0 |
+| `f64.wast` | 2513 | 2511 | 2 | 0 |
+| `f32_bitwise.wast` | 363 | 363 | 0 | 0 |
+| `f64_bitwise.wast` | 363 | 363 | 0 | 0 |
+| `float_misc.wast` | 470 | 470 | 0 | 0 |
+| `conversions.wast` | 618 | 618 | 0 | 0 |
+| **total** | **8098** | **8089** | **9** | **0** |
 
-By assertion: `assert_return` 1025 proved (`returns_only`); `assert_trap` 115 proved
-(`traps_only`); `assert_invalid` 113 proved **tool-level** (`validator_rejects`);
-`assert_malformed` 4 (all text) and `assert_exhaustion` 1 unsupported. Before the rejection
-shapes: 1140 proved, 118 unsupported. No command was a mismatch, and none ran out of fuel (100 000
-steps per call).
+By assertion: at `profile o`, `assert_return` 1025 proved (`returns_only`) and `assert_trap` 115
+proved (`traps_only`); at `Profile.spec`, `assert_return` 6716 proved (`returns_allowed_all`:
+4885 exact, 895 `nan:canonical`, 936 `nan:arithmetic` expectations) and `assert_trap` 67 proved
+(`traps_all`), each also with a `terminates_all` row; `assert_invalid` 166 proved **tool-level**
+(`validator_rejects`); `assert_malformed` 8 (all text) and `assert_exhaustion` 1 unsupported.
+Before the float files: 1253 proved, 5 unsupported. No command was a mismatch, and none ran out
+of fuel (100 000 steps per call). Not in the slice: `f32_cmp`, `f64_cmp` (in the fragment, left
+out for kernel time), `float_exprs`, `float_literals`, `float_memory` (outside the fragment).
 
 **Skip reasons.**
 
 | count | status | reason |
 |---|---|---|
-| 4 | unsupported | `assert_malformed` on text: no binary; the WAT front end has no completeness theorem and its syntax error also covers unsupported text |
+| 8 | unsupported | `assert_malformed` on text: no binary; the WAT front end has no completeness theorem and its syntax error also covers unsupported text |
 | 1 | unsupported | `assert_exhaustion` (`fac.wast`): resource exhaustion is not modelled |
 
 "Undetermined" never means the implementation failed: it means no theorem was produced.
@@ -79,13 +92,16 @@ steps per call).
 
 Each row is stated over: the module (valid, no imports, no start function, instantiated from the
 empty store); the actions of all earlier commands of the same module, threaded through their
-final stores (also after a trap); `profile o` with `o = neverFail`; no host functions.
+final stores (also after a trap); `profile o` with `o = neverFail` for the integer, control and
+memory files, `Profile.spec` (every run of the specification's NaN choices) for the float files;
+no host functions.
 
 | assertion | shape and strength | status |
 |---|---|---|
 | `assert_return` (exact values) | `returns_only`: some host-free run returns `vs`, and **every host-free normal form** returns `vs`. Plus, by `ReturnsOnly.always`: no host-free run is infinite, and every finite run extends to a normal form returning `vs`. | 1025 proved |
 | `assert_trap` | `traps_only`: same, with "is a trap"; the trap message is not part of the claim. `TrapsOnly.always` excludes divergence. | 115 proved |
-| `assert_return` with `nan:canonical` / `nan:arithmetic` | needs an allowed-set shape under `Profile.spec`; uniqueness is not claimable (NaN payloads are nondeterministic in the spec) | no shape; none in this slice |
+| `assert_return` at `Profile.spec` (float files; `nan:canonical`, `nan:arithmetic` or exact bits) | `returns_allowed_all`: some host-free run returns values in the allowed set, and **every host-free normal form** of every run of `Profile.spec` does (canonical = canonical NaN of either sign; arithmetic = NaN with the quiet bit set, either sign; exact = same bits, `-0 ≠ +0`). Plus `terminates_all`, its own row: no host-free run is infinite. Uniqueness is not claimed (NaN payloads are nondeterministic) | 6716 proved, each with termination |
+| `assert_trap` at `Profile.spec` | `traps_all` and `terminates_all` | 67 proved |
 | `assert_exhaustion` | unsupported: stacks are unbounded in the model | 1 skipped |
 | `assert_invalid` | `validator_rejects`, **tool-level**: silmaril-lean's `decode?` reads the bytes and its `validate?` rejects the module. With `validate?_complete`: no module the bytes encode in `Binary.Core.Encodes` is `ModuleValid` (`ValidatorRejects.not_valid`), relative to silmaril-lean's transcriptions `Encodes` and `ModuleOk`; not invalidity in the spec (the `ModuleOk` ↔ SpecTec bridge is open, §1). `validate?_sound` gives nothing about a rejection | 113 proved (tool-level) |
 | `assert_malformed` | binary: `decoder_rejects`, **tool-level** ("the decoder rejects"; `decode?` is only sound, so not grammar rejection); text: unsupported, since the WAT front end's `.syntax` error also covers unsupported text and it has no completeness theorem | binary: shape, none in this slice; text: 4 unsupported |
@@ -96,12 +112,16 @@ final stores (also after a trap); `profile o` with `o = neverFail`; no host func
 `r`". That no run diverges is a separate theorem, proved for every row:
 `Reaches.always : Reaches o m pre act r → Always o m pre act r`, from the one-step diamond
 (`Det.DStep.join'`) and the strict decrease of code size on a non-trivial peak
-(`Det.DStep.shrink`). It is a property of `profile o`; it is not claimed under `Profile.spec`.
+(`Det.DStep.shrink`). It is a property of `profile o`. Under `Profile.spec` termination is the
+separate shape `terminates_all`, proved for the float rows from the straight-line fragment
+theorem (`StraightLine.not_diverges`), not from determinism.
 
 **Script state.** A row is relative to the actual run of the earlier actions, not to their
 expected outcomes. Earlier assertions are their own rows; a later row does not assume them, but
 its existence part does require every earlier action to end at a result, and at `profile o` the
-earlier actions leave exactly one state (`ScriptAt.unique`).
+earlier actions leave exactly one state (`ScriptAt.unique`). At `Profile.spec` the earlier
+actions of the float files leave exactly the instantiated state, whatever their runs
+(`scriptAtS_iff`): every function keeps the store (`StraightLine.nf`).
 
 Every theorem above depends only on `propext`, `Classical.choice` and `Quot.sound`.
 
@@ -110,8 +130,10 @@ Every theorem above depends only on `propext`, `Classical.choice` and `Quot.soun
 An oracle result is **test-wise agreement**: wasmtime 50.0.0, given one script, accepted it.
 It is not a proof, it is not checked by Lean, and it says nothing about commands that were not
 run. What it adds is independence: an implementation not derived from silmaril-lean's semantics
-gives the same outcome as the kernel-checked row on 1253 of 1253 commands (for the 113
-`assert_invalid` rows: wasmtime also rejects the same bytes). Running it in CI (§5) does not make
+gives the same outcome as the kernel-checked row on 8089 of 8089 commands (for the 166
+`assert_invalid` rows: wasmtime also rejects the same bytes). For a `Profile.spec` row, wasmtime
+runs once and returns one NaN: its pass says that this member is in the allowed set, not that
+every member of the specification's result set is; the latter is the kernel row's claim. Running it in CI (§5) does not make
 it a proof.
 
 What is trusted when reading `examples/wasm-wast/oracle.json`:
@@ -119,10 +141,14 @@ What is trusted when reading `examples/wasm-wast/oracle.json`:
 * that the binary with SHA-256 `f95e5b…` is wasmtime 50.0.0 as released (the archive SHA-256 was
   recorded on 2026-11-09 from the GitHub release asset; `fetch-wasmtime` re-checks both);
 * that `wasmtime wast` implements the WAST assertions as specified (in particular, an
-  `assert_trap` passes on any trap, whatever its message, as in the rows); `gen.py regress`
-  checks only that it rejects a few deliberately wrong expectations of each kind (§5);
+  `assert_trap` passes on any trap, whatever its message, as in the rows, and `nan:canonical`,
+  `nan:arithmetic` and exact float constants keep their meaning: canonical NaN of either sign,
+  quiet NaN of either sign, same bits); `gen.py regress` checks only that it rejects a few
+  deliberately wrong expectations of each kind, among them `nan:canonical` on an arithmetic
+  non-canonical result and `+0` for `-0` (§5);
 * that the script given to wasmtime is the one whose SHA-256 is recorded, and that it encodes
-  the row's command: the same module binary, the same earlier actions, the same command. `gen.py
+  the row's command: the same module binary, the same earlier actions (none for the float files,
+whose modules have no state), the same command. `gen.py
   verify --scripts` regenerates every script and compares its SHA-256; it checks consistency
   of the record, not wasmtime's verdicts;
 * the machine that ran it (`host`, `generated_at`): verdicts are only re-obtained by running
@@ -150,17 +176,18 @@ python3 -I tools/wasm-wast/gen.py regress              # wrong expectations must
 
 The job fails on any oracle failure, on any difference between the re-run and the committed
 `oracle.json` (verdicts, scripts, kernel statuses, upstream-file verdicts), on a stale record
-(`verify`), and if wasmtime accepts any deliberately wrong expectation (`regress`: four committed
-`wrong-*.wast` scripts, each required to fail on its marked line, a passing control, and two
-generated mutants). About 15 s of work after downloads (35 MB on a cold cache, then cached by the
-pins' SHA-256 and re-checked); timeout 5 minutes.
+(`verify`), and if wasmtime accepts any deliberately wrong expectation (`regress`: six committed
+`wrong-*.wast` scripts, each required to fail on its marked line, among them a wrong
+`nan:canonical` and a wrong signed zero, a passing control, and three generated mutants, one of
+them a `nan:arithmetic` expectation made `nan:canonical`). About 55 s of work after downloads
+(35 MB on a cold cache, then cached by the pins' SHA-256 and re-checked); timeout 5 minutes.
 
 ## 6. Staged acceptance criteria
 
 | stage | scope | acceptance criterion | state |
 |---|---|---|---|
 | S0 | the slice of §2 | every command counted with a status and reason; every proved row a kernel theorem with termination; oracle 100 % agreement on executed commands; provenance verifiable | **met** in #843 (885 proved, 885/885 agree); with the `KMem` checker, 1140 proved, 1140/1140 agree; with the rejection shapes, 1253 proved (113 tool-level), 1253/1253 agree, re-checked in CI (§5) |
-| S1 | numeric scripts (`i32`, `i64`, `f32`, `f64`, `conversions`, `int_exprs`, …) | ≥ 95 % of `assert_return`/`assert_trap` commands kernel-checked at `profile o`, NaN-pattern results as allowed-set claims under `Profile.spec`; every skip classified; oracle agreement 100 % on executed ones | `i32`, `i64`, `int_exprs`: 100 % of their 847 `assert_return`/`assert_trap` commands proved; floats and conversions not started |
+| S1 | numeric scripts (`i32`, `i64`, `f32`, `f64`, `conversions`, `int_exprs`, …) | ≥ 95 % of `assert_return`/`assert_trap` commands kernel-checked at `profile o`, NaN-pattern results as allowed-set claims under `Profile.spec`; every skip classified; oracle agreement 100 % on executed ones | `i32`, `i64`, `int_exprs`: 100 % of their 847 `assert_return`/`assert_trap` commands proved at `profile o`; `f32`, `f64`, `f32_bitwise`, `f64_bitwise`, `float_misc`, `conversions`: 100 % of their 6783 proved at `Profile.spec` (every normal form, termination), 6783/6783 oracle agreement; `f32_cmp`, `f64_cmp`, `float_exprs`, `float_literals`, `float_memory` not started |
 | S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps`, `fac` and `address` proved (`address` on `KMem` stores, `ScriptHolds.of_kernelKM`); the other files not started |
 | S3 | validation (`assert_invalid`) | validator completeness proved, or claims labelled tool-level; 100 % of commands accounted for | **met at the tool level** for the slice: 113/113 proved as `validator_rejects`, labelled tool-level; `validate?_complete` is proved, so they exclude `ModuleOk`-validity; invalidity in the spec waits on the `ModuleOk` ↔ SpecTec bridge |
 | S4 | decoding (`assert_malformed` binary) | decoder rejection kernel-checked; completeness or an explicit weaker label | shape `decoder_rejects` (tool-level) in place; no binary `assert_malformed` in the slice; the 4 text ones unsupported (§3) |
@@ -168,17 +195,20 @@ pins' SHA-256 and re-checked); timeout 5 minutes.
 | C1 | component-model WAST suite (pinned) on REF | per-file PASS/FAIL/UNSUP counts as JSON, shown in the explorer; agreement with wasmtime 50 | not started |
 | C2 | components with lists, strings, resources | IR/REF adequacy extended | in progress (#805, #827) |
 
-CI budget per stage: kernel time is per generated module (here 33 s to 62 s each, and 133 s with
-9.3 GB peak RSS for `address.wast` on `KMem`), so shard by
-file; the oracle job of §5 grows linearly with the number of scripts (about 9 ms each).
+CI budget per stage: kernel time is per generated module (here 33 s to 62 s each, 133 s with
+9.3 GB peak RSS for `address.wast` on `KMem`, and up to about 320 s for the 5000 rows of
+`f32.wast`/`f64.wast` at `Profile.spec`), so shard by file; the oracle job of §5 grows linearly
+with the number of scripts (about 7 ms each).
 
 ## 7. Highest-risk caveats
 
 1. **SpecTec ↔ Core 3.0 whole-step** simulation is open. Rows are proved against
    `Execution.Core`, not against the spec transcription. Closing `Task.wholeStep` is the top
    priority for "equivalent to the specification".
-2. **Profiles:** uniqueness and termination are proved only at `profile o`. NaN payloads, relaxed
-   SIMD and grow failure are nondeterministic in the spec and need allowed-set claims.
+2. **Profiles:** uniqueness, interpreter completeness and the general termination argument are
+   proved only at `profile o`. Under `Profile.spec`, every-normal-form and termination claims
+   are proved only for straight-line numeric functions (the float rows); existence lifts in
+   general (`Reaches.spec`). Relaxed SIMD and grow failure have no allowed-set rows yet.
 3. **Hosts:** rows are host-free; the spectest host and imports are not in the fragment.
 4. **Resource exhaustion** and stack overflow are not modelled.
 5. **Rejections are tool-level.** The validator is complete for `ModuleOk`, but `ModuleOk` ↔

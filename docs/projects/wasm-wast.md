@@ -3,7 +3,10 @@
 A slice of the WebAssembly specification test suite, command by command, as problem rows of
 the standard shapes `silmaril.shapes.wasm.wast.*`. Each `assert_return`/`assert_trap` row is
 answered by a theorem about Core reduction (`Silmaril.Wasm.Execution.Core.Step`), checked by the
-Lean kernel. Each `assert_invalid` row is answered by a **tool-level** theorem: silmaril-lean's
+Lean kernel: at the deterministic profile for the integer, control and memory files, and at the
+**specification profile** `Profile.spec` (the specification's NaN result sets, with
+`nan:canonical`/`nan:arithmetic` as allowed sets) for the float and conversion files
+([Under the specification profile](#under-the-specification-profile)). Each `assert_invalid` row is answered by a **tool-level** theorem: silmaril-lean's
 validator rejects the module (see [Rejections](#rejections-tool-level)). The same commands are
 run by a pinned independent implementation (wasmtime 50.0.0), in CI by the
 [WAST oracle job](#the-ci-oracle-job).
@@ -26,6 +29,15 @@ each implementation-to-specification bridge and staged acceptance criteria, is
 | `silmaril.shapes.wasm.wast.traps_only` | `TrapsOnly o m pre act` | `Traps`, and every host-free normal form of `act` is a trap (the trap message is not part of the claim) |
 | `silmaril.shapes.wasm.wast.validator_rejects` | `ValidatorRejects b` | **tool-level**: silmaril-lean's decoder `decode?` reads the bytes `b` as some module, and silmaril-lean's validator `validate?` rejects it |
 | `silmaril.shapes.wasm.wast.decoder_rejects` | `DecoderRejects b` | **tool-level**: silmaril-lean's decoder `decode?` rejects the bytes `b` |
+
+`Silmaril.Project.Shapes.WasmWastSpec.Defs`, at `Profile.spec nd r` (below):
+
+| shape | Lean | statement |
+|---|---|---|
+| `silmaril.shapes.wasm.wast.returns_allowed_exists` | `ReturnsAllowedExists nd r m pre act ps` | **some** host-free run of `act` reaches a normal form returning values in the allowed set `ps` |
+| `silmaril.shapes.wasm.wast.returns_allowed_all` | `ReturnsAllowedAll nd r m pre act ps` | `ReturnsAllowedExists`, and **every** host-free normal form of `act`, at every state the earlier actions can leave, returns values in `ps` |
+| `silmaril.shapes.wasm.wast.traps_all` | `TrapsAll nd r m pre act` | some host-free run of `act` traps, and every host-free normal form is a trap |
+| `silmaril.shapes.wasm.wast.terminates_all` | `TerminatesAll nd r m pre act` | at every state the earlier actions can leave, **no** host-free run of `act` is infinite, and every finite run extends to a normal form |
 
 The `…_only` statements quantify over **normal forms** only ("every normal outcome is `r`"), not
 over runs: on their own they do not exclude an infinite run. Divergence is excluded by a
@@ -73,7 +85,7 @@ uses `o = neverFail` (growth fails only when it must). Under `profile o`, Core r
 deterministic up to bubbling (`Det.DStep.join'`), so host-free normal forms are unique
 (`nf_unique_of_join`). That is what makes the `…_only` shapes provable. Under the
 specification profile `Profile.spec` (nondeterministic NaN payloads, relaxed SIMD, grow
-failure) uniqueness does not hold and an allowed-set shape is needed. None is implemented yet.
+failure) uniqueness does not hold: the allowed-set shapes of the next section are stated there.
 
 ### Termination
 
@@ -148,6 +160,116 @@ four natively, but with its `.syntax` error, which also covers text outside its 
 the front end has no completeness theorem. A kernel row would only say "the front end does not
 accept this text", which is also true of supported-but-unimplemented syntax.
 
+## Under the specification profile
+
+The specification leaves NaN payloads open: a float operator returns a *set* of results, and an
+`assert_return` may expect `nan:canonical` or `nan:arithmetic` instead of a value. The rows of
+`f32.wast`, `f64.wast`, `f32_bitwise.wast`, `f64_bitwise.wast`, `float_misc.wast` and
+`conversions.wast` are stated
+at `Profile.spec nd r` (`nan := .spec`: float operators step to every member of
+`floatUnOpRel`/`floatBinOpRel`/`convertRel`; grow failure nondeterministic), not at the
+deterministic profile, and with three separate claims.
+
+**Allowed sets** (`Silmaril.Project.Shapes.WasmWastSpec.Defs`), one pattern per result, over the
+bits of the value (`M` = 23 or 52 trailing significand bits):
+
+| WAST | `ValPat` | allowed values |
+|---|---|---|
+| `nan:canonical` | `.canonicalNaN t` | `CanonicalBits t`: exponent field all ones, payload exactly `2^(M-1)`; either sign |
+| `nan:arithmetic` | `.arithmeticNaN t` | `ArithmeticBits t`: exponent field all ones, payload at least `2^(M-1)` (the quiet bit set); either sign |
+| any other value | `.exact v` | exactly `v`, as bits: `-0 ≠ +0`, and a NaN constant is its exact bit pattern |
+
+Every canonical NaN is arithmetic (`arithmeticBits_of_canonicalBits`), not conversely: the two
+patterns stay distinct.
+
+**The script semantics** is that of the deterministic shapes with `profile o` replaced by
+`Profile.spec nd r`: `InvokeNFS` (a host-free normal form under `Profile.spec`), `RunS` (each
+earlier action runs to *some* normal form at a result, whose store is the next state),
+`ScriptAtS` (every state the earlier actions can leave). `ReachesS`/`AllS` quantify over these
+states and normal forms.
+
+**Three claims, three shapes.**
+
+1. **Existence** (`returns_allowed_exists`; also the first half of `returns_allowed_all` and
+   `traps_all`): some run reaches an allowed outcome.
+2. **Every normal form** (`returns_allowed_all`, `traps_all`): every host-free normal form, at
+   every state, has an allowed outcome. This is a statement about all runs of
+   `Profile.spec`, not about one deterministic run.
+3. **Termination** (`terminates_all`): no host-free run is infinite, and every finite run
+   extends to a normal form. Under `Profile.spec` this does not follow from the other two
+   (there is no determinism to derive it from), so it is its own shape and its own row
+   (`….l<line>_terminates`).
+
+**The fragment theorem** (`Silmaril.Wasm.Execution.StraightLine.Thms`, proofs in
+`Silmaril.Proofs.Wasm.Execution.StraightLine`). A *straight-line numeric function*
+(`StraightLine.Fn fi k op`) has no declared locals, one result, and the body
+`local.get 0 … local.get (k-1); op` with `op` a scalar numeric instruction of arity `k`
+(`NumericStep`: integer and float unary, binary, test and comparison operators, conversions).
+Every function of the six files is one. For such a function at address `a` of the store `s`
+and **any** profile `P`:
+
+```lean
+theorem StraightLine.nf (hf : s.funcs[a]? = some fi) (hfn : Fn fi args.length op)
+    (hex : ∃ is', NumericStep P (vals args ++ [.plain op]) is')
+    (h : Steps P noHost (invoke s a args) c) (hnf : ∀ x, ¬ Step P noHost c x) :
+    ∃ is', NumericStep P (vals args ++ [.plain op]) is' ∧ c = ⟨s, {}, is'⟩
+theorem StraightLine.reaches (hf) (hfn) (hn : NumericStep P (vals args ++ [.plain op]) is') :
+    Steps P noHost (invoke s a args) ⟨s, {}, is'⟩
+theorem StraightLine.not_diverges (hf) (hfn) : ¬ Diverges P noHost (invoke s a args)
+theorem StraightLine.extends_nf (hf) (hfn) (h : Steps P noHost (invoke s a args) c) :
+    ∃ c', Steps P noHost c c' ∧ ∀ x, ¬ Step P noHost c' x
+```
+
+So the normal forms of the invocation are exactly the results of the numeric step, in the
+empty frame and the **same store**, and every run terminates. The proof follows the stages of a
+run (`call_ref`, `k` `local.get`s, the numeric step, `label-vals`/`trap-label`,
+`frame-vals`/`trap-frame`) with a rank that every step decreases (`inv_step`); every step from a
+stage is inverted through the head decomposition `Det.Step.decomp`, which holds at every
+profile. Only the numeric step depends on `P`, and it is kept as the relation.
+
+**The result classes.** `numericSet? op args` computes the class of the specification's result
+set of a float operator, comparison or conversion on given arguments, by the case split of the
+relations themselves: one exact value; the canonical NaNs of a type (the result is a NaN and
+every NaN operand is canonical); the arithmetic NaNs of a type (the result is a NaN and some
+operand is a non-canonical NaN); or a trap (`trunc` of a NaN or out of range). Then
+
+```lean
+theorem numericSet?_sound (h : numericSet? op args = some S) :
+    (∀ is', NumericStep (Profile.spec nd r) (vals args ++ [.plain op]) is' → S.Mem is') ∧
+      ∃ is', NumericStep (Profile.spec nd r) (vals args ++ [.plain op]) is'
+```
+
+from the repository's NaN classes (`F32.IsCanonicalNaN` ⊆ `CanonicalBits`, `F32.IsArithmeticNaN`
+⊆ `ArithmeticBits`, and the same for `F64`). `NumSet.sub S e` decides that the class is contained
+in the expectation (a class of canonical NaNs is contained in `nan:canonical` and in
+`nan:arithmetic`; a class of arithmetic NaNs only in `nan:arithmetic`; an exact value in the
+pattern it matches; never a NaN class in an exact value).
+
+**The checker.** `scriptSK m cmds` validates and instantiates `m` (as `scriptK`) and checks, for
+every command, that its export is a straight-line numeric function (`StraightLine.fn?`) and
+that its result class is contained in its expectation. It runs no interpreter.
+
+```lean
+theorem ScriptHoldsS.of_kernel (h : scriptSK m cmds = true) : ScriptHoldsS nd r m cmds
+```
+
+for **every** `nd` and `r` (the relaxed builtins play no role in scalar numerics); the rows state
+`nd = true` and the default relaxed choice, `Profile.spec`'s defaults. The earlier actions of a
+script cannot change the state: by `StraightLine.nf`, every normal form of every action keeps the
+store, so `ScriptAtS` has exactly the instantiated state (`scriptAtS_iff`). Each command gives
+two rows: `l<line>` (`returns_allowed_all` or `traps_all`) and `l<line>_terminates`
+(`terminates_all`), answered by `ScriptHoldsS.returnsAllowedAll`, `.trapsAll` and
+`.terminatesAll`; the row's index fact `cmdsJ[k]? = some …` is one more `decide +kernel`.
+
+**Refinement, for existence only.** `Reaches.spec : Reaches o m pre act res → ReachesS nd {} m
+pre act (· = res)` lifts a run at `profile o` to `Profile.spec nd {}` (by
+`Steps.deterministic_refines_spec`; a result is a normal form at every profile), and
+`Returns.allowedExists` turns a `returns` row into `returns_allowed_exists` with exact patterns.
+Uniqueness (`Only`) and termination (`Reaches.always`) do **not** transfer this way: they are
+about the runs of `profile o`, and `Profile.spec` has more. That is why the float rows are proved
+by the fragment theorem, not by the deterministic interpreter. No row of the slice is left at the
+existence shape: every command of the six files is in the fragment.
+
 ## The proof route
 
 `ScriptHolds o m cmds` says that every command of a script holds after the commands before it.
@@ -201,14 +323,22 @@ Every answer depends only on `propext`, `Classical.choice` and `Quot.sound`
 (`assert_trap`), `ScriptHolds.of_kernel`, `ScriptHolds.of_kernelKM`, `scriptK_of_scriptKM`,
 `Reaches.always`, `ScriptHolds.always`, `ScriptAt.unique`; and for the rejections
 `ValidatorRejects.of_kernel`, `DecoderRejects.of_kernel`, `ValidatorRejects.not_valid` and all
-113 `assert_invalid` answers, e.g. `….I32.l444`, `….I64.l457`, `….Address.l214`).
+113 `assert_invalid` answers, e.g. `….I32.l444`, `….I64.l457`, `….Address.l214`). The same holds
+for the specification-profile theorems and rows: `StraightLine.nf`, `.reaches`,
+`.not_diverges`, `.extends_nf`, `.fn?_sound`, `ScriptHoldsS.of_kernel`,
+`ScriptHoldsS.terminatesAll`, `numericSet?_sound`, `Reaches.spec`, `Returns.allowedExists`,
+`….F32.check0`, `….F32.l19`, `….F32.l19_terminates`, `….F32.l51` (`nan:canonical`), `….F32.l52`
+(`nan:arithmetic`), `….F32.l2523` (`assert_invalid`), `….F64.l52`, `….F64.l52_terminates`,
+`….Conversions.l78` (`assert_trap`), `….Conversions.l78_terminates`, `….Conversions.l560`,
+`….F32Bitwise.l10`.
 
 ## The slice and its counts
 
 WebAssembly/spec at `608711107b7f1edb13efd57b7d79b49477462d36` (the archive pinned in
 `tools/wasm-tools/tests/pins.sh`, SHA-256
 `22ef0dd9dd9603474c6a58fa644752a3e9b887b4043d5480490290f748acda1b`):
-`test/core/{i32,i64,int_exprs,fac,traps,address}.wast`. Each module is the binary that the
+`test/core/{i32,i64,int_exprs,fac,traps,address}.wast` at the deterministic profile and
+`test/core/{f32,f64,f32_bitwise,f64_bitwise,float_misc,conversions}.wast` at the specification profile. Each module is the binary that the
 pinned wasm-tools 1.262.0 `json-from-wast` writes for it. The binary is read by silmaril-lean's
 decoder (`decode?`, sound by `decode?_sound`), and `decodeJ : decode? bytesJ = some mJ` is
 kernel-checked.
@@ -221,9 +351,29 @@ kernel-checked.
 | `fac.wast` | 7 | 6 | 1 | 0 |
 | `traps.wast` | 32 | 32 | 0 | 0 |
 | `address.wast` | 256 | 256 | 0 | 0 |
-| **total** | **1258** | **1253** | **5** | **0** |
+| `f32.wast` | 2513 | 2511 | 2 | 0 |
+| `f64.wast` | 2513 | 2511 | 2 | 0 |
+| `f32_bitwise.wast` | 363 | 363 | 0 | 0 |
+| `f64_bitwise.wast` | 363 | 363 | 0 | 0 |
+| `float_misc.wast` | 470 | 470 | 0 | 0 |
+| `conversions.wast` | 618 | 618 | 0 | 0 |
+| **total** | **8098** | **8089** | **9** | **0** |
 
-Commands are every command after a module (`module` commands themselves are not counted). The
+Commands are every command after a module (`module` commands themselves are not counted).
+
+The six float files (6840 commands, 6836 proved): 6716 `assert_return` and 67 `assert_trap` at
+`Profile.spec` (`returns_allowed_all`/`traps_all` plus `terminates_all`, so 13 566 rows), and 53
+`assert_invalid` (`validator_rejects`, tool-level: 11 in each of `f32.wast`/`f64.wast`, 3 in each
+bitwise file, 25 in `conversions.wast`). The 6716 `assert_return` expectations are 4885 exact
+values, 895 `nan:canonical` and 936 `nan:arithmetic`; each `nan:canonical` command's class is
+the canonical NaNs, and each `nan:arithmetic` command's class the arithmetic NaNs (an operand is
+the non-canonical `nan:0x200000`, or `nan:0x4000000000000` for `f64`). Not in the slice:
+`f32_cmp.wast`, `f64_cmp.wast` (4800 comparisons with deterministic `i32` results, in the
+fragment, left out for kernel time: about 9 minutes of row elaboration), and `float_exprs.wast`,
+`float_literals.wast`, `float_memory.wast` (constants, memory and compound expressions: outside
+the straight-line fragment).
+
+At the deterministic profile, the
 1253 proved rows are 1025 `assert_return` (`returns_only`) and 115 `assert_trap` (`traps_only`),
 claims about Core reduction, and 113 `assert_invalid` (`validator_rejects`: 83 in `i32.wast`, 29
 in `i64.wast`, 1 in `address.wast`), **tool-level** claims (`report.json` field `strength`:
@@ -237,7 +387,7 @@ Reasons for the commands that are not proved:
 
 | count | status | reason |
 |---|---|---|
-| 4 | unsupported | `assert_malformed` on text: no binary; the WAT front end has no completeness theorem and its syntax error also covers unsupported text ([above](#rejections-tool-level)) |
+| 8 | unsupported | `assert_malformed` on text: no binary; the WAT front end has no completeness theorem and its syntax error also covers unsupported text ([above](#rejections-tool-level)); 2 in each of `i32`, `i64`, `f32`, `f64` (`(… .const nan:arithmetic)` and `nan:canonical` as constants) |
 | 1 | unsupported | `assert_exhaustion` (`fac.wast`): resource exhaustion is not modelled |
 
 No command was a mismatch, and none ran out of fuel (100 000 steps per call). Every
@@ -252,6 +402,13 @@ modules on `KMem`, with their `decodeJ` checks): 133 s and 9.3 GB peak RSS for t
 process (`lake env lean`, one run on a 2-vCPU sandbox). With the 113 rejection rows, one
 `lake build` of the generated modules on a 2-vCPU sandbox (two modules at a time) took
 `I32.Thms` 48 s (83 rejection rows), `I64.Thms` 45 s (29), `Address.Thms` 130 s (1).
+The float files at `Profile.spec` (one `lake build`, 2-vCPU sandbox, two modules at a time):
+`F32.Thms` about 300 s and `F64.Thms` 319 s (2500 commands, 5000 rows each), `Conversions.Thms`
+133 s, `F32Bitwise.Thms` and `F64Bitwise.Thms` 19 s each, `FloatMisc.Thms` 55 s. The kernel evaluation of `scriptSK` on
+all 2500 commands of `f32.wast`, with `decode0`, takes about 15 s (whole `lean` process 20 s);
+the rest is the elaboration of the rows and their index facts. The index fact `cmdsJ[k]? = some
+…` of a row is checked by `decide +kernel`: with `rfl`, the elaborator's unfolding of the list
+made `F32.Thms` take over 10 minutes.
 
 Per module of `address.wast` (`benchmarks/wasm-wast-kmem`, one run each, whole `lean` process,
 imports alone 3.6 s and 1.55 GB):
@@ -273,7 +430,11 @@ the former `simp [mJ, hx]` proof exceeded the default heartbeats on module 1.
 `gen.py oracle` runs the pinned wasmtime 50.0.0 (`tools/wasm-jco/tests/pins.sh`, binary SHA-256
 `f95e5beba6d176b447c2939607bae968ea47f87b156ddf559762f1bb3c00e9b7`) as `wasmtime wast` on one
 small script per command: the same module binary as `(module binary …)`, the actions before the
-command in that module, then the command. For an `assert_invalid` row the script is
+command in that module, then the command. For the six float files the script is the module and
+the command alone: their modules have no memory, table, global or data (type, function, export,
+code and name sections only), and every function is straight-line numeric (the kernel checker
+requires it), so no earlier action can affect a command; with the earlier actions the scripts
+grew quadratically (2500 commands per module). For an `assert_invalid` row the script is
 `(assert_invalid (module binary …) "message")` on the row's bytes. Results are in `examples/wasm-wast/oracle.json`
 (schema `silmaril.wasm-wast.oracle.v0.2`), with their provenance:
 
@@ -302,22 +463,28 @@ the pinned path (`$SIL_TOOLS/wasmtime-50.0.0/wasmtime`). `verify` does not run w
 checks that the recorded tool provenance equals the pins, that `report.json` and the spec files
 have the recorded SHA-256, that the commands run are exactly those the report selects (with the
 report's statuses), and that the counts follow from the results. With the converted JSON present
-(`--scripts` requires it) it regenerates all 1253 scripts and compares their SHA-256. `verify`
+(`--scripts` requires it) it regenerates all 8089 scripts and compares their SHA-256. `verify`
 checks consistency of the record, not wasmtime's verdicts: those are re-obtained only by running
 `oracle` again (in CI, `oracle --check`). `convert` also checks each unpacked spec file against
-the SHA-256 that `report.json` records. The whole `oracle` run takes about 11 s on the
-development sandbox (1253 scripts and the 6 upstream files).
+the SHA-256 that `report.json` records. The whole `oracle` run takes about 52 s on the
+development sandbox (8089 scripts and the 12 upstream files).
 
 Results:
 
-* 1253 commands run, all of them kernel-proved (1140 executions, 113 validator rejections);
-* **1253 of 1253** kernel-proved commands pass under wasmtime: wasmtime also rejects each of the
-  113 `assert_invalid` binaries. The 1140 execution scripts and verdicts are those of the
-  earlier runs;
-* the unmodified upstream files: `int_exprs`, `fac`, `traps`, `address` pass. `i32` and `i64`
-  fail on a text `assert_malformed` whose message wasmtime's text parser words differently
-  (`nan:arithmetic` in an `i32.const`: "expected a i32", not "unexpected token"), not on an
-  execution or validation command.
+* 8089 commands run, all of them kernel-proved (1140 executions at `profile o`, 6783 at
+  `Profile.spec`, 166 validator rejections);
+* **8089 of 8089** kernel-proved commands pass under wasmtime: wasmtime also rejects each of the
+  166 `assert_invalid` binaries. The 1253 earlier scripts and their verdicts are unchanged;
+* wasmtime's `wast` runner keeps the patterns' meaning: `nan:canonical` passes only on
+  `0x7fc00000`/`0xffc00000` (`f32`) and the `f64` analogues, `nan:arithmetic` on any NaN with the
+  quiet bit set, and an exact float constant is compared as bits. It returns one NaN per
+  command (on `f32.add` of `nan:0x200000` and `0`: `0x7fe00000`, the quieted operand), so its
+  agreement is agreement of one member of the allowed set, not of the whole result set;
+* the unmodified upstream files: `int_exprs`, `fac`, `traps`, `address`, `f32_bitwise`,
+  `f64_bitwise`, `float_misc`, `conversions` pass. `i32`, `i64`, `f32` and `f64` fail on a text
+  `assert_malformed` whose message wasmtime's text parser words differently (`nan:arithmetic`
+  in an `i32.const`: "expected a i32", in an `f32.const`: "expected a float", not "unexpected
+  token"), not on an execution or validation command.
 
 ### The CI oracle job
 
@@ -344,24 +511,29 @@ record, and it writes the fresh record to `$WASM_WAST_WORK/oracle.check.json`.
 
 **The wrong-expectation regression** (`gen.py regress`) checks that the oracle can fail:
 
-* `tools/wasm-wast/regress/wrong-{return,trap,invalid,malformed}.wast`, committed, each with one
-  directive marked `;; WRONG` (`assert_return` of 2 where the function returns 1, `assert_trap`
-  on `6 / 3`, `assert_invalid` on a valid module, `assert_malformed` on the empty module). wasmtime
+* `tools/wasm-wast/regress/wrong-{return,trap,invalid,malformed,nan-canonical,signed-zero}.wast`,
+  committed, each with one directive marked `;; WRONG` (`assert_return` of 2 where the function
+  returns 1, `assert_trap` on `6 / 3`, `assert_invalid` on a valid module, `assert_malformed` on
+  the empty module, `nan:canonical` for `f32.add` of the non-canonical `nan:0x200000` and `0`,
+  whose results are arithmetic NaNs only, and `0` for `f32.neg 0`, which is `-0`). wasmtime
   must fail on each, and on the marked line (so the failure is the wrong expectation, not a
-  parse error);
-* `regress/right-control.wast`: the same modules with right expectations; wasmtime must pass;
-* two generated mutants: the first `assert_return` script of `oracle_scripts` with its result
-  plus one, and the first `assert_invalid` script with its module replaced by the empty (valid)
-  module. wasmtime must fail on each.
+  parse error); the NaN script fails with "expected canon-nan / 0x7fc00000, actual NaN /
+  0x7fe00000", the zero script with "expected 0 / 0x00000000, actual -0 / 0x80000000";
+* `regress/right-control.wast`: the same modules with right expectations (`nan:arithmetic`,
+  `nan:canonical` for `f32.add` of the canonical `nan` and `0`, `-0`); wasmtime must pass;
+* three generated mutants: the first `assert_return` script of `oracle_scripts` with its result
+  plus one, the first `assert_invalid` script with its module replaced by the empty (valid)
+  module, and the first `nan:arithmetic` script of an `add` of a non-canonical NaN with
+  `nan:canonical` instead. wasmtime must fail on each.
 
-Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (7 scripts). Tampering
+Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (10 scripts). Tampering
 with one committed verdict in `oracle.json` makes `oracle --check` exit 1, and making
 `wrong-return.wast` right makes `regress` exit 1 ("wasmtime ACCEPTS a wrong expectation").
 
 Cost: downloads of about 35 MB on a cold cache (spec archive 15.0 MB, wasm-tools and wasmtime
-archives), then `convert` 0.2 s, `oracle --check` about 11 s, `verify --scripts` and `regress`
+archives), then `convert` 0.5 s, `oracle --check` about 52 s, `verify --scripts` and `regress`
 about 1 s each on the development sandbox; the job has a 5-minute timeout. It grows linearly with
-the number of scripts (about 9 ms each).
+the number of scripts (about 7 ms each).
 
 ## Trust boundary
 
@@ -370,6 +542,13 @@ the number of scripts (about 9 ms each).
   simulation goals are open (`docs/projects/wasm.md`).
 * **Instantiation** is `instantiateOnce?` (a function, related to the relational `Instantiate`
   by `instantiateOnce?_steps`).
+* **Profiles.** The integer, control and memory rows are at `profile neverFail`; the float rows
+  at `Profile.spec nd r` (the theorems hold for every `nd` and `r`; the rows state `Profile.spec`'s
+  defaults). A `Profile.spec` row quantifies over every run of the specification's NaN choices;
+  wasmtime makes one.
+* **The fragment** of the float rows is the straight-line numeric functions; the kernel checker
+  verifies it per function (`StraightLine.fn?_sound`), so a function outside it is a failed
+  check, not a weaker claim.
 * **`KMem` rows** (`address.wast`) are kernel evaluations on `KMem` stores, carried to the
   `ByteArray` statements by proved simulations (`scriptK_of_scriptKM`): no extra assumption.
 * **Modules** must be valid, with no imports, no start function and scalar function exports.
@@ -393,18 +572,30 @@ the number of scripts (about 9 ms each).
 
 * `Silmaril/Project/Shapes/WasmWast/{Defs,Thms}.lean`, `Silmaril/Proofs/Project/Shapes/WasmWast.lean`:
   the shapes, the kernel checkers and their soundness, `ValidatorRejects.not_valid`.
+* `Silmaril/Project/Shapes/WasmWastSpec/{Defs,Thms}.lean`,
+  `Silmaril/Proofs/Project/Shapes/WasmWastSpec.lean`: the allowed sets, the shapes at
+  `Profile.spec`, the result classes and the checker `scriptSK` with its soundness, and the
+  refinement `Reaches.spec`.
+* `Silmaril/Wasm/Execution/StraightLine/{Defs,Thms}.lean`,
+  `Silmaril/Proofs/Wasm/Execution/StraightLine.lean`: every run of a straight-line numeric
+  function, at any profile.
 * `Silmaril/Project/WasmWast/<File>/{Defs,Thms}.lean` (generated): the bytes, modules and
   command lists, then the kernel theorems and the rows `silmaril.wasm_wast.<file>.l<line>`.
   `Silmaril.Project.WasmWast.Thms` imports them all, and `silmaril.toml` puts it in the project
   dump.
 * `examples/wasm-wast/report.json` (every command: inputs, expectation, observation, status,
-  reason, row, claim strength `only` or `tool`), `examples/wasm-wast/oracle.json`.
+  reason, row, claim strength `only`, `all` or `tool`; for a proved execution row its `profile`,
+  its `allowed` set and its `claims`, each with a kind: `only`, `all`, `terminates`), and
+  `examples/wasm-wast/oracle.json`. For a float row the observation is the class of the
+  specification's result set (`values f32:…`, `nan:canonical f32`, `nan:arithmetic f32`, `trap`).
 * `tools/wasm-wast/regress/*.wast`: the oracle's wrong-expectation regression and its control;
   `.github/workflows/ci-wast-oracle.yml`: the CI oracle job.
 * The explorer view `#/wast` (`tools/silmaril-project/src/project/explore/views/wast.js`, test
   `tests/explore/wast_view.test.mjs`) reads `wast/report.json` and `wast/oracle.json` next to
-  the page, and the rows' answers from the database. Each proved row shows its claim strength:
-"semantic: Core reduction" or "tool-level rejection".
+  the page, and the rows' answers from the database. Each proved row shows its claim strength
+("semantic: Core reduction", "semantic: Core reduction under Profile.spec, every normal form" or
+"tool-level rejection"), its profile and allowed set, and each claim with its kind ("every normal
+form", "some run (existence)", "every run terminates") and problem.
 
 ```sh
 tools/wasm-tools/tests/fetch-pins.sh wasm-tools spec      # pinned, SHA-256 checked
@@ -420,8 +611,11 @@ python3 -I tools/wasm-wast/gen.py site .lake/silmaril     # report next to explo
 
 ## Not yet
 
-NaN-pattern results (`nan:canonical`, `nan:arithmetic`) as allowed-set claims under
-`Profile.spec`; `assert_invalid` relative to the specification (a proved bridge between
+Float rows beyond straight-line numeric functions (`float_exprs`, `float_misc`, `float_memory`:
+a general theorem about the spec profile's runs, e.g. a simulation of `Profile.spec` by the
+deterministic interpreter up to NaN payloads, which needs the payloads not to reach control);
+`f32_cmp`/`f64_cmp` (in the fragment, left out for kernel time); relaxed SIMD and grow failure
+as allowed sets; `assert_invalid` relative to the specification (a proved bridge between
 `ModuleOk` and the SpecTec validation rules); `assert_malformed` beyond the tool level (decoder
 completeness; text: a WAT front end with a completeness theorem and an error that separates
 malformed from unsupported text); `assert_unlinkable`/`assert_uninstantiable`; imports and the

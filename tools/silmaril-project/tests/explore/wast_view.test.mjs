@@ -26,18 +26,24 @@ const fixture = {
       strength: "tool", checker: "validatorRejectsB" },
     { id: "address:104", file: "address", line: 104, type: "assert_return", status: "undetermined", reason: "kernel: data",
       invoke: "8u_good1", args: ["i32:0"], expected: ["i32:97"], observed: "values i32:97" },
+    { id: "f32:42", file: "f32", line: 42, type: "assert_return", status: "proved", invoke: "add", args: ["f32:2139095040", "f32:4286578688"],
+      expected: ["f32:nan:canonical"], allowed: ["f32:nan:canonical"], observed: "nan:canonical f32", profile: "Profile.spec",
+      problem: "silmaril.wasm_wast.f32.l42", shape: "silmaril.shapes.wasm.wast.returns_allowed_all", strength: "all", checker: "scriptSK",
+      claims: [{ kind: "all", shape: "silmaril.shapes.wasm.wast.returns_allowed_all", problem: "silmaril.wasm_wast.f32.l42" },
+        { kind: "terminates", shape: "silmaril.shapes.wasm.wast.terminates_all", problem: "silmaril.wasm_wast.f32.l42_terminates" }] },
   ],
 };
 const oracle = { results: [{ id: "i32:37", oracle: "pass" }, { id: "i32:64", oracle: "pass" }, { id: "address:104", oracle: "fail" }] };
 
 test("counts by status, by file and by reason", () => {
   const s = W.summarize(fixture, oracle);
-  assert.equal(s.total, 5);
-  assert.deepEqual(s.byStatus, { proved: 3, unsupported: 1, undetermined: 1 });
+  assert.equal(s.total, 6);
+  assert.deepEqual(s.byStatus, { proved: 4, unsupported: 1, undetermined: 1 });
   assert.equal(s.byFile.i32.total, 4);
   assert.equal(s.byFile.address.undetermined, 1);
   assert.deepEqual(s.reasons, [["undetermined: kernel: data", 1], ["unsupported: assert_malformed on text (no shape)", 1]]);
-  assert.deepEqual(s.byClaim, { "semantic: Core reduction": 1, "tool-level rejection": 1, "?": 1 });
+  assert.deepEqual(s.byClaim, { "semantic: Core reduction": 1, "tool-level rejection": 1, "?": 1,
+    "semantic: Core reduction under Profile.spec, every normal form": 1 });
 });
 
 test("oracle agreement counts only kernel-proved rows as agreeing", () => {
@@ -50,7 +56,7 @@ test("oracle agreement counts only kernel-proved rows as agreeing", () => {
 
 test("rows: inputs, expectation, claim strength and filters", () => {
   const rs = W.rows(fixture, oracle);
-  assert.equal(rs.length, 5);
+  assert.equal(rs.length, 6);
   assert.equal(rs[0].input, "add(i32:1, i32:1)");
   assert.equal(rs[0].expected, "i32:2");
   assert.match(rs[0].strength, /every host-free normal form/);
@@ -58,7 +64,7 @@ test("rows: inputs, expectation, claim strength and filters", () => {
   assert.match(rs[1].strength, /trap/);
   assert.equal(rs[2].problem, null);
   assert.equal(rs[4].oracle, "fail");
-  assert.equal(W.rows(fixture, oracle, { status: "proved" }).length, 3);
+  assert.equal(W.rows(fixture, oracle, { status: "proved" }).length, 4);
   assert.equal(W.rows(fixture, oracle, { file: "address" }).length, 1);
 });
 
@@ -72,6 +78,19 @@ test("rejection rows are labelled tool-level and do not claim spec invalidity", 
   assert.match(W.STRENGTH["silmaril.shapes.wasm.wast.decoder_rejects"], /not a claim that the bytes are malformed/);
 });
 
+test("rows under Profile.spec show the claim kinds, the allowed set and the profile", () => {
+  const r = W.rows(fixture, oracle)[5];
+  assert.equal(r.profile, "Profile.spec");
+  assert.equal(r.allowed, "f32:nan:canonical");
+  assert.deepEqual(r.claims.map((x) => x.kind), ["all", "terminates"]);
+  assert.match(r.claims[0].kindText, /every normal form/);
+  assert.match(r.claims[1].kindText, /terminates/);
+  assert.match(r.claim, /Profile\.spec, every normal form/);
+  assert.match(W.STRENGTH[r.claims[1].shape], /no host-free run is infinite/);
+  assert.match(W.STRENGTH["silmaril.shapes.wasm.wast.returns_allowed_exists"], /existence only/);
+  assert.equal(W.rows(fixture, oracle)[0].claims.length, 0);
+});
+
 test("the committed report: every proved row names its problem and shape, and the oracle agrees", () => {
   const root = path.join(here, "../../../../examples/wasm-wast");
   const report = JSON.parse(fs.readFileSync(path.join(root, "report.json"), "utf8"));
@@ -83,7 +102,14 @@ test("the committed report: every proved row names its problem and shape, and th
     assert.match(c.problem, /^silmaril\.wasm_wast\.[a-z0-9_]+\.l[0-9]+$/);
     assert.ok(W.STRENGTH[c.shape], c.shape);
     assert.ok(W.CLAIM[c.strength], c.id);
-    if (c.type === "assert_return" || c.type === "assert_trap") {
+    if ((c.type === "assert_return" || c.type === "assert_trap") && c.strength === "all") {
+      // Under Profile.spec: every normal form, and termination of every run, as two problems.
+      assert.equal(c.checker, "scriptSK", c.id);
+      assert.equal(c.profile, "Profile.spec", c.id);
+      assert.deepEqual(c.claims.map((x) => x.kind), ["all", "terminates"], c.id);
+      assert.equal(c.claims[1].problem, c.problem + "_terminates", c.id);
+      for (const x of c.claims) assert.ok(W.STRENGTH[x.shape], x.shape);
+    } else if (c.type === "assert_return" || c.type === "assert_trap") {
       assert.equal(c.strength, "only", c.id);
       assert.ok(["scriptK", "scriptKM"].includes(c.checker), c.id);
     } else {

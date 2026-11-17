@@ -17,6 +17,12 @@ const WastModel = (() => {
   const STRENGTH = {
     "silmaril.shapes.wasm.wast.returns_only": "returns these values at every host-free normal form; no host-free run diverges (theorem ReturnsOnly.always)",
     "silmaril.shapes.wasm.wast.traps_only": "traps at every host-free normal form; no host-free run diverges (theorem TrapsOnly.always)",
+    "silmaril.shapes.wasm.wast.returns_allowed_all": "under Profile.spec (the specification's NaN result sets), every host-free normal form " +
+      "returns values in the allowed set (nan:canonical, nan:arithmetic, or exact bits), and some run reaches one",
+    "silmaril.shapes.wasm.wast.returns_allowed_exists": "under Profile.spec, some host-free run returns values in the allowed set " +
+      "(existence only: says nothing about the other runs)",
+    "silmaril.shapes.wasm.wast.traps_all": "under Profile.spec, every host-free normal form is a trap, and some run reaches one",
+    "silmaril.shapes.wasm.wast.terminates_all": "under Profile.spec, no host-free run is infinite, and every finite run extends to a normal form",
     "silmaril.shapes.wasm.wast.validator_rejects": "silmaril-lean's decoder reads the bytes and silmaril-lean's validator rejects the module; " +
       "with validate?_complete, no module the bytes encode is valid in silmaril-lean's ModuleOk (ValidatorRejects.not_valid). " +
       "Not a claim that the module is invalid in the specification",
@@ -26,7 +32,16 @@ const WastModel = (() => {
   // How strong a proved row's claim is (the report's `strength`).
   const CLAIM = {
     only: "semantic: Core reduction",
+    all: "semantic: Core reduction under Profile.spec, every normal form",
+    exists: "semantic: Core reduction under Profile.spec, some run only",
     tool: "tool-level rejection",
+  };
+  // The kinds of claim of a row (the report's `claims[].kind`).
+  const KIND = {
+    only: "every normal form (profile neverFail; termination by Reaches.always)",
+    all: "every normal form",
+    exists: "some run (existence)",
+    terminates: "every run terminates",
   };
   // The oracle result of each command, by id.
   function oracleIndex(oracle) {
@@ -81,6 +96,12 @@ const WastModel = (() => {
         // (assert_invalid, assert_malformed: claims about silmaril-lean's decoder and validator).
         claim: c.status === "proved" ? CLAIM[c.strength] || c.strength || "" : "",
         problem: c.problem || null, theorem: c.theorem || null, reason: c.reason || "",
+        // Each claim of a proved row: its kind (`only`, `all`, `exists`, `terminates`), shape and
+        // problem. A row under Profile.spec has two: its expectation at every normal form, and
+        // termination of every run.
+        claims: (c.claims || []).map((x) => ({ kind: x.kind, kindText: KIND[x.kind] || x.kind, shape: x.shape, problem: x.problem })),
+        // The profile of the claims and the allowed set (the expectation's patterns).
+        profile: c.profile || "", allowed: (c.allowed || []).join(", "),
         // The kernel checker of a proved row: `scriptK` (ByteArray stores) or `scriptKM` (KMem
         // stores, for modules with data segments); the claim is the same.
         checker: c.checker || "",
@@ -88,7 +109,7 @@ const WastModel = (() => {
       };
     });
   }
-  return Object.freeze({ STATUS_ORDER, STATUS_TEXT, STRENGTH, CLAIM, summarize, rows, oracleIndex });
+  return Object.freeze({ STATUS_ORDER, STATUS_TEXT, STRENGTH, CLAIM, KIND, summarize, rows, oracleIndex });
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = WastModel;
 
@@ -140,8 +161,12 @@ if (typeof registerView === "function") {
       ["input", (r) => `<code>${esc(r.input)}</code>`],
       ["expected", (r) => `<code>${esc(r.expected)}</code>`],
       ["observed", (r) => `<code>${esc(r.observed)}</code>`],
-      ["claim", (r) => r.problem ? `${link("problem", r.problem, r.problem)}<br><b>${esc(r.claim)}</b>: ` +
-        `<span class="muted">${esc(r.strength)}</span>` : ""],
+      ["claim", (r) => !r.problem ? "" : r.claims.length
+        ? `<b>${esc(r.claim)}</b>${r.profile ? ` <span class="muted">(${esc(r.profile)})</span>` : ""}` +
+          (r.allowed ? `<br>allowed: <code>${esc(r.allowed)}</code>` : "") +
+          r.claims.map((x) => `<br>${esc(x.kindText)}: ${link("problem", x.problem, x.problem)}<br>` +
+            `<span class="muted">${esc(WastModel.STRENGTH[x.shape] || x.shape)}</span>`).join("")
+        : `${link("problem", r.problem, r.problem)}<br><b>${esc(r.claim)}</b>: <span class="muted">${esc(r.strength)}</span>`],
       ["status", (r) => {
         const d = r.problem && db.get(r.problem);
         return `${esc(r.status)}${r.checker ? ` <span class="muted">(${esc(r.checker)})</span>` : ""}${d ? " · " + esc(d.status || "no answer") + (d.tier ? " (" + esc(d.tier) + ")" : "") :

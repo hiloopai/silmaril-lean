@@ -73,10 +73,11 @@ the module is invalid or the bytes malformed. What follows from them is exactly:
 * `DecoderRejects b`: nothing beyond the decoder's output; `decode?` is sound, not complete, so
   a rejection does not exclude that `b` encodes a module.
 
-The NaN payload, relaxed SIMD and grow nondeterminism of the specification profile
-`Profile.spec`, `assert_exhaustion` (no resource bounds are modelled), `assert_malformed` on
-text (no binary exists; silmaril-lean's WAT front end has no completeness theorem),
-`assert_unlinkable` and `assert_uninstantiable` have no shape here
+The NaN payloads of the specification profile `Profile.spec` are covered by the allowed-set
+shapes of `Silmaril.Project.Shapes.WasmWastSpec.Defs` (for straight-line numeric functions).
+Relaxed SIMD and grow nondeterminism, `assert_exhaustion` (no resource bounds are modelled),
+`assert_malformed` on text (no binary exists; silmaril-lean's WAT front end has no completeness
+theorem), `assert_unlinkable` and `assert_uninstantiable` have no shape here
 (`docs/projects/wasm-wast.md`).
 
 `Silmaril.Project.Shapes.WasmWast.Thms` proves every command of a script at once from one

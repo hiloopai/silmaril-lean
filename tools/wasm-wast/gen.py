@@ -22,6 +22,13 @@ generated JSON are data: this script parses them and never executes anything ins
 `validatorRejectsB` / `decode?`): claims about silmaril-lean's decoder and validator, not about
 the specification. Text `assert_malformed` commands stay unsupported (TEXT_MALFORMED).
 
+The files in SPEC (f32, f64, f32_bitwise, f64_bitwise, float_misc, conversions) are checked under
+the specification profile `Profile.spec` by `scriptSK` (`ScriptHoldsS.of_kernel`): their WAST
+patterns `nan:canonical`/`nan:arithmetic` are allowed sets, and each command gives a
+`returns_allowed_all`/`traps_all` row (every normal form) and a `terminates_all` row (every run).
+For them the probe computes the class of the specification's result set instead of running the
+interpreter.
+
 The probe runs silmaril-lean's interpreter natively (`lake env lean` on a generated file) only to
 decide which commands to give to the kernel; nothing it prints is a proof. The proofs are the
 `decide +kernel` evaluations of `scriptK` (or, for modules with data segments, of `scriptKM`, which
@@ -54,7 +61,21 @@ LEAN_DIR = ROOT / "Silmaril/Project/WasmWast"
 REPORT = ROOT / "examples/wasm-wast/report.json"
 ORACLE = ROOT / "examples/wasm-wast/oracle.json"
 # The slice: spec test files, with their Lean module names.
-FILES = [("i32", "I32"), ("i64", "I64"), ("int_exprs", "IntExprs"), ("fac", "Fac"), ("traps", "Traps"), ("address", "Address")]
+FILES = [("i32", "I32"), ("i64", "I64"), ("int_exprs", "IntExprs"), ("fac", "Fac"), ("traps", "Traps"), ("address", "Address"),
+         ("f32", "F32"), ("f64", "F64"), ("f32_bitwise", "F32Bitwise"), ("f64_bitwise", "F64Bitwise"),
+         ("float_misc", "FloatMisc"), ("conversions", "Conversions")]
+# Files whose assert_return/assert_trap commands are checked under the specification profile
+# `Profile.spec` (nondeterministic NaN payloads), by `scriptSK` (`ScriptHoldsS.of_kernel`): every
+# exported function must be straight-line numeric (`StraightLine.fn?`), and each command's claims
+# are `returns_allowed_all`/`traps_all` (every normal form) and `terminates_all` (every run), with
+# the WAST patterns `nan:canonical`/`nan:arithmetic` as allowed sets. The other files keep the
+# deterministic profile (`returns_only`/`traps_only`).
+SPEC = {"f32", "f64", "f32_bitwise", "f64_bitwise", "float_misc", "conversions"}
+SPEC_SHAPE = {"assert_return": "silmaril.shapes.wasm.wast.returns_allowed_all",
+              "assert_trap": "silmaril.shapes.wasm.wast.traps_all"}
+TERM_SHAPE = "silmaril.shapes.wasm.wast.terminates_all"
+PROFILE_SPEC = "Profile.spec (nan := .spec: float operators return the specification's result sets; $ND = true, default relaxed choices; the kernel theorems hold for every $ND and relaxed choice)"
+PROFILE_DET = "profile neverFail (deterministic: canonical NaNs, $ND = false, grow fails only when impossible)"
 FUEL = 100000
 # Modules with data segments are checked on KMem stores (`scriptKM`, `ScriptHolds.of_kernelKM`):
 # the kernel evaluates `ByteArray` writes (`ByteArray.copySlice`) element by element over the whole
@@ -139,6 +160,16 @@ def lean_val(v):
     return f"Val.{t} {n}" if t in ("i32", "i64") else f"Val.num ⟨.float .{t}, {n}⟩"
 
 
+def lean_pat(v):
+    """The `ValPat` of an expected result: `nan:canonical`/`nan:arithmetic` patterns, or the exact
+    value (compared as bits)."""
+    t, x = v["type"], v.get("value")
+    if t in ("f32", "f64") and x in ("nan:canonical", "nan:arithmetic"):
+        return f".{'canonicalNaN' if x == 'nan:canonical' else 'arithmeticNaN'} .{t}"
+    lv = lean_val(v)
+    return None if lv is None else f".exact ({lv})"
+
+
 def show_val(v):
     """`type:bits` with the bits as an unsigned decimal (as the interpreter's observation is
     printed), or the WAST text of a pattern such as `nan:canonical`."""
@@ -215,6 +246,13 @@ def load(f):
                 if t == "action":
                     row["expect"] = None
                     row["status"] = "action"
+                elif t == "assert_return" and f in SPEC:
+                    pats = [lean_pat(v) for v in c.get("expected", [])]
+                    if None in pats:
+                        row["status"], row["reason"], row["expect"] = "unsupported", "result type outside i32/i64/f32/f64", None
+                    else:
+                        row["expect"] = ("values", pats)
+                        row["status"] = "candidate"
                 elif t == "assert_return":
                     exp = [lean_val(v) for v in c.get("expected", [])]
                     if None in exp:
@@ -282,9 +320,12 @@ def runnable(seg):
 # ---------- probe ----------
 
 PROBE_HEAD = """import Silmaril.Project.Shapes.WasmWast.Defs
+import Silmaril.Project.Shapes.WasmWastSpec.Defs
 import Silmaril.Wasm.Binary.Core.Decode
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
 open Silmaril.Wasm.Validation Silmaril.Wasm.SingleThreaded
+open Silmaril.Project.Shapes.WasmWastSpec (CmdS NumSet numericSet?)
+set_option maxRecDepth 100000
 
 def showVal : Val → String
   | .num ⟨.int .i32, b⟩ => s!"i32:{b.toNat}"
@@ -324,6 +365,54 @@ def probeReject (tag : String) (bytes : ByteArray) : IO Unit :=
     | none => IO.println s!"R\\t{tag}\\tvalidator"
     | some _ => IO.println s!"R\\t{tag}\\taccepts"
 
+def showFT : FloatType → String
+  | .f32 => "f32"
+  | .f64 => "f64"
+
+def showSet : NumSet → String
+  | .exact v => "values " ++ showVal v
+  | .canonical t => s!"nan:canonical {showFT t}"
+  | .arithmetic t => s!"nan:arithmetic {showFT t}"
+  | .trap => "trap"
+
+/-- The specification profile: no interpreter run, the class of the result set (the store does not
+change: every function is straight-line numeric). -/
+def probeSCmds (tag : String) (s : Store Nat) (mi : ModuleInst) : Nat → List CmdS → IO Unit
+  | _, [] => pure ()
+  | k, cmd :: cmds => do
+    match exportFunc? mi cmd.act.name with
+    | none => IO.println s!"P\\t{tag}\\t{k}\\terror\\tno function export"
+    | some a =>
+      match s.funcs[a]? with
+      | none => IO.println s!"P\\t{tag}\\t{k}\\terror\\tno function"
+      | some fi =>
+        match StraightLine.fn? fi cmd.act.args.length with
+        | none => IO.println s!"P\\t{tag}\\t{k}\\terror\\tnot a straight-line numeric function (local.get 0 ... local.get (k-1); op)"
+        | some op =>
+          match numericSet? op cmd.act.args with
+          | none => IO.println s!"P\\t{tag}\\t{k}\\terror\\tno result class for the instruction and arguments"
+          | some S =>
+            let ok := match cmd.expect with
+              | some e => if S.sub e then "pass" else "mismatch"
+              | none => "ran"
+            IO.println s!"P\\t{tag}\\t{k}\\t{ok}\\t{showSet S}"
+            probeSCmds tag s mi (k + 1) cmds
+
+def probeS (tag : String) (bytes : ByteArray) (cmds : List CmdS) : IO Unit := do
+  match Silmaril.Wasm.Binary.Core.decode? bytes with
+  | none => IO.println s!"M\\t{tag}\\tdecode\\tthe decoder rejects the module"
+  | some m =>
+    match validate? m with
+    | none => IO.println s!"M\\t{tag}\\tvalidate\\tthe validator rejects the module"
+    | some mt =>
+      if !mt.imports.isEmpty then IO.println s!"M\\t{tag}\\timports\\tthe module has imports" else
+      match instantiateOnce? (Game.importStore []) m [] with
+      | some (s, f, none) => do
+          IO.println s!"M\\t{tag}\\tok\\t{m.data.length}"
+          probeSCmds tag s f.module 0 cmds
+      | some (_, _, some _) => IO.println s!"M\\t{tag}\\tstart\\tthe module has a start function"
+      | none => IO.println s!"M\\t{tag}\\tinstantiate\\tinstantiation fails (or traps)"
+
 def probe (tag : String) (bytes : ByteArray) (cmds : List Cmd) : IO Unit := do
   match Silmaril.Wasm.Binary.Core.decode? bytes with
   | none => IO.println s!"M\\t{tag}\\tdecode\\tthe decoder rejects the module"
@@ -357,7 +446,7 @@ def probe():
             tag = f"{f}/{seg['index']}"
             out.append(bytes_lean(f"b_{f}_{seg['index']}", data))
             cmds = runnable(seg)
-            out.append(f"#eval probe {lean_str(tag)} b_{f}_{seg['index']} [\n  " +
+            out.append(f"#eval {'probeS' if f in SPEC else 'probe'} {lean_str(tag)} b_{f}_{seg['index']} [\n  " +
                        ",\n  ".join(lean_cmd(r) for r in cmds) + "]\n")
         for r in rows:
             if r["status"] == "reject_candidate":
@@ -398,7 +487,8 @@ def classify():
                 reason = f"module: {mres['detail'] if mres else 'not probed'}"
             seg["reason"] = reason
             seg["kernel_reason"] = KERNEL_OUT.get(tag) if reason is None else None
-            seg["kmem"] = reason is None and mres["detail"] not in ("", "0")
+            seg["kmem"] = reason is None and mres["detail"] not in ("", "0") and f not in SPEC
+            seg["spec"] = f in SPEC
             run = runnable(seg) if reason is None else []
             stop = None
             kernel = []
@@ -422,7 +512,8 @@ def classify():
                     row["k"] = len(kernel)
                 elif p["status"] == "mismatch":
                     row["status"] = "mismatch"
-                    row["reason"] = "the interpreter's outcome differs from the expectation"
+                    row["reason"] = ("the specification's result set is not contained in the expectation" if seg["spec"]
+                                     else "the interpreter's outcome differs from the expectation")
                 kernel.append((r, p["status"] == "pass"))
             seg["kernel"] = kernel if seg["kernel_reason"] is None else []
             # Commands of the segment after a stop, or after a truncating command, are undetermined.
@@ -467,11 +558,18 @@ def emit():
                        "archive_sha256": WT["WASM_SPEC_SHA256"]},
               "converter": {"tool": "wasm-tools json-from-wast", "version": WT["WT_VERSION"],
                             "sha256": WT["WT_UPSTREAM_SHA256"]},
-              "profile": "profile neverFail (deterministic: canonical NaNs, $ND = false, grow fails only when impossible)",
+              "profile": f"{PROFILE_DET} for the returns_only/traps_only rows; {PROFILE_SPEC} for the "
+                         "returns_allowed_all/traps_all/terminates_all rows of " + ", ".join(f"{f}.wast" for f, _ in FILES if f in SPEC),
               "assumptions": ["assert_return/assert_trap rows: the module is valid, has no imports and no start function, and its function exports have scalar types",
                               "assert_return/assert_trap rows: no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
                               "assert_return/assert_trap rows: the script state: the store threads through the earlier actions of the same module, in order",
                               "assert_return/assert_trap rows: termination is witnessed by the kernel run; other runs reach the same normal form by determinism",
+                              "returns_allowed_all/traps_all/terminates_all rows (" + ", ".join(f"{f}.wast" for f, _ in FILES if f in SPEC) + "): the same module "
+                              "conditions; claims are about Core reduction Step (Profile.spec nd r) with no host function, for every $ND and relaxed choice "
+                              "(rows state nd = true, r = default); every exported function is straight-line numeric (local.get 0 ... local.get (k-1); op), "
+                              "so every run is described by Silmaril.Wasm.Execution.Core.StraightLine.{nf, reaches, not_diverges, extends_nf}; "
+                              "nan:canonical = canonical NaN of either sign, nan:arithmetic = NaN with the quiet bit set, of either sign, "
+                              "other expectations are exact bits",
                               "assert_invalid rows are tool-level (silmaril.shapes.wasm.wast.validator_rejects): silmaril-lean's decode? reads "
                               "the bytes wasm-tools wrote and silmaril-lean's validate? rejects the module; with validate?_complete, no module "
                               "the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)"],
@@ -485,7 +583,7 @@ def emit():
                                              "status": "ok" if s["reason"] is None and s["kernel_reason"] is None
                                              else "unsupported" if s["reason"] else "undetermined",
                                              "reason": s["reason"] or s["kernel_reason"],
-                                             **({"checker": "scriptKM" if s["kmem"] else "scriptK"}
+                                             **({"checker": "scriptSK" if s["spec"] else "scriptKM" if s["kmem"] else "scriptK"}
                                                 if s["reason"] is None and s["kernel_reason"] is None else {})}
                                             for s in segs]})
         if any(seg["kernel"] for seg in segs) or any(r.get("reject") for r in rows):
@@ -529,12 +627,26 @@ def emit():
                     c["theorem"] = f"Silmaril.Project.WasmWast.{mod}.l{r['line']}"
                     c["strength"] = "tool"
                     c["checker"] = checker
+            elif r["status"] == "proved" and segs[r["seg"]]["spec"]:
+                c["problem"] = f"{NS}.{f}.l{r['line']}"
+                c["shape"] = SPEC_SHAPE[r["type"]]
+                c["theorem"] = f"Silmaril.Project.WasmWast.{mod}.l{r['line']}"
+                c["strength"] = "all"
+                c["profile"] = "Profile.spec"
+                c["allowed"] = c["expected"]
+                c["claims"] = [{"kind": "all", "shape": c["shape"], "problem": c["problem"], "theorem": c["theorem"]},
+                               {"kind": "terminates", "shape": TERM_SHAPE, "problem": f"{NS}.{f}.l{r['line']}_terminates",
+                                "theorem": f"Silmaril.Project.WasmWast.{mod}.l{r['line']}_terminates"}]
+                c["checker"] = "scriptSK"
             elif r["status"] == "proved":
                 kind = "returns_only" if r["type"] == "assert_return" else "traps_only"
                 c["problem"] = f"{NS}.{f}.l{r['line']}"
                 c["shape"] = f"silmaril.shapes.wasm.wast.{kind}"
                 c["theorem"] = f"Silmaril.Project.WasmWast.{mod}.l{r['line']}"
                 c["strength"] = "only"
+                c["profile"] = "profile neverFail"
+                c["allowed"] = c["expected"]
+                c["claims"] = [{"kind": "only", "shape": c["shape"], "problem": c["problem"], "theorem": c["theorem"]}]
                 c["checker"] = "scriptKM" if segs[r["seg"]]["kmem"] else "scriptK"
             report["commands"].append(c)
     groups = [f"{NS}.{f}" for f, mod in FILES if f"Silmaril.Project.WasmWast.{mod}.Thms" in imports]
@@ -564,9 +676,12 @@ def emit():
 
 def emit_file(f, mod, segs, rows, sha):
     ns = f"Silmaril.Project.WasmWast.{mod}"
+    spec = f in SPEC
+    simp_ = "\npublic import Silmaril.Project.Shapes.WasmWastSpec.Defs" if spec else ""
+    sopen = "\nopen Silmaril.Project.Shapes.WasmWastSpec" if spec else ""
     defs = [f"""module
 
-public import Silmaril.Project.Shapes.WasmWast.Defs
+public import Silmaril.Project.Shapes.WasmWast.Defs{simp_}
 public import Silmaril.Wasm.Binary.Core.Decode
 
 /-!
@@ -580,44 +695,54 @@ wasm-tools {WT['WT_VERSION']} `json-from-wast` writes for it, read by silmaril-l
 (`decode?`, sound: `decode?_sound`). `mJ` is the module of the `J`-th `(module …)` of the file and
 `cmdsJ` the commands after it that the kernel runs, in script order: an `assert_return` or
 `assert_trap` that the kernel checks keeps its expectation; every other one is kept as an action
-(`expect := none`) so that the store threads through it.{{rdoc}}
+(`expect := none`) so that the store threads through it.{{sdoc}}{{rdoc}}
 -/
 
 @[expose] public section
 
 namespace {ns}
 
-open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
+open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast{sopen}
 """]
+    defs[0] = defs[0].replace("{sdoc}", "" if not spec else
+        "\n\nThe commands are checked under the specification profile `Profile.spec` (`CmdS`,\n"
+        "`….WasmWastSpec.Defs`): an `assert_return` expectation is one pattern per result, `nan:canonical`\n"
+        "(`.canonicalNaN`), `nan:arithmetic` (`.arithmeticNaN`) or an exact value compared as bits (`.exact`).")
     rejects = [r for r in rows if r.get("reject") and r["status"] == "proved"]
     rdoc = ("" if not rejects else "\n\n`invalidL` / `malformedL` are the bytes of the module of the `assert_invalid` /\n"
             "`assert_malformed` at line `L`: the binary that wasm-tools writes for it.")
     defs[0] = defs[0].replace("{rdoc}", rdoc)
     kinds = {s["kmem"] for s in segs if s["reason"] is None and s["kernel"]}
-    checker = ("(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptK` per module)" if kinds == {False}
+    checker = ("(`ScriptHoldsS.of_kernel`, one `decide +kernel` evaluation of `scriptSK` per module, under\n"
+               "`Profile.spec nd r` for every `nd` and `r`)") if spec else ("(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptK` per module)" if kinds == {False}
                else "(one `decide +kernel` evaluation per module: `ScriptHolds.of_kernelKM` evaluates `scriptKM`,\n"
                "which instantiates the module, including its data segments, and runs the commands on `KMem`\n"
                "stores; the claims are about `ByteArray` stores and Core reduction, by `scriptK_of_scriptKM`"
                + (")" if kinds == {True} else ";\nmodules without data segments use `ScriptHolds.of_kernel` and `scriptK`)"))
+    rowdoc = (f"each row\n`{NS}.{f}.l<line>` is one `assert_return` (`silmaril.shapes.wasm.wast.returns_allowed_all`: every\n"
+              "host-free normal form returns values in the allowed set, and some run reaches one) or `assert_trap`\n"
+              "(`….traps_all`) at line `<line>` of the file, and `….l<line>_terminates`\n"
+              "(`….terminates_all`) says that no run of it is infinite; both answered from it.") if spec else (
+              f"each row\n`{NS}.{f}.l<line>` is one `assert_return` (`silmaril.shapes.wasm.wast.returns_only`) or\n"
+              "`assert_trap` (`….traps_only`) at line `<line>` of the file, answered from it.")
+    sthm = "\npublic import Silmaril.Project.Shapes.WasmWastSpec.Thms" if spec else ""
     thms = [f"""module
 
 public import {ns}.Defs
-public import Silmaril.Project.Shapes.WasmWast.Thms
+public import Silmaril.Project.Shapes.WasmWast.Thms{sthm}
 
 /-!
 # WAST rows: `test/core/{f}.wast`, answered by kernel evaluation
 
 Generated by `tools/wasm-wast/gen.py`; do not edit. `scriptJ` proves every command of `cmdsJ`
-{checker}; each row
-`{NS}.{f}.l<line>` is one `assert_return` (`silmaril.shapes.wasm.wast.returns_only`) or
-`assert_trap` (`….traps_only`) at line `<line>` of the file, answered from it.{{rthm}}
+{checker}; {rowdoc}{{rthm}}
 -/
 
 @[expose] public section
 
 namespace {ns}
 
-open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
+open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast{sopen}
 """]
     thms[0] = thms[0].replace("{rthm}", "" if not rejects else
         "\n\nAn `assert_invalid` row (`….validator_rejects`) or binary `assert_malformed` row\n"
@@ -635,24 +760,54 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
         defs.append(bytes_lean(f"bytes{j}", data))
         defs.append(f"/-- The module at line {seg['line']}, as silmaril-lean's decoder reads it. -/\n"
                     f"def m{j} : Module := (Silmaril.Wasm.Binary.Core.decode? bytes{j}).getD {{}}\n")
-        defs.append(f"/-- The commands after line {seg['line']} that the kernel runs. -/\n"
-                    f"def cmds{j} : List Cmd := [\n  " +
+        # Long list literals exceed the default recursion depth of the elaborator.
+        rec = "set_option maxRecDepth 20000 in\n" if spec or len(seg["kernel"]) > 500 else ""
+        defs.append(f"{rec}/-- The commands after line {seg['line']} that the kernel runs. -/\n"
+                    f"def cmds{j} : List {'CmdS' if spec else 'Cmd'} := [\n  " +
                     ",\n  ".join(lean_cmd(r, ok) for r, ok in seg["kernel"]) + "]\n")
         thms.append(f"/-- The decoder reads the file's bytes as `m{j}`. -/\n"
                     f"theorem decode{j} : Silmaril.Wasm.Binary.Core.decode? bytes{j} = some m{j} :=\n"
                     f"  (Option.some_get (by decide +kernel :\n"
                     f"    (Silmaril.Wasm.Binary.Core.decode? bytes{j}).isSome = true)).symm.trans\n"
                     f"    (congrArg some (Option.get_eq_getD _))\n")
-        thms.append(f"/-- Every command of `cmds{j}`, by one kernel evaluation. -/\n"
-                    f"theorem script{j} : ScriptHolds {O} m{j} cmds{j} :=\n"
-                    f"  .{'of_kernelKM' if seg['kmem'] else 'of_kernel'} (fuel := {FUEL}) (by decide +kernel)\n")
+        if spec:
+            thms.append(f"/-- The kernel checker accepts `cmds{j}`. -/\n"
+                        f"theorem check{j} : scriptSK m{j} cmds{j} = true := by decide +kernel\n")
+            thms.append(f"/-- Every command of `cmds{j}`, under `Profile.spec nd r`. -/\n"
+                        f"theorem script{j} (nd : Bool) (r : Silmaril.Wasm.Numerics.RelaxedChoice) :\n"
+                        f"    ScriptHoldsS nd r m{j} cmds{j} :=\n"
+                        f"  .of_kernel check{j}\n")
+        else:
+            thms.append(f"/-- Every command of `cmds{j}`, by one kernel evaluation. -/\n"
+                        f"theorem script{j} : ScriptHolds {O} m{j} cmds{j} :=\n"
+                        f"  .{'of_kernelKM' if seg['kmem'] else 'of_kernel'} (fuel := {FUEL}) (by decide +kernel)\n")
         for k, (r, ok) in enumerate(seg["kernel"]):
             if not ok:
                 continue
             row = byid[r["id"]]
             name = f"{NS}.{f}.l{row['line']}"
             act = f"⟨{lean_str(row['action']['field'])}, [{', '.join(row['lean_args'])}]⟩"
-            if row["type"] == "assert_return":
+            if spec:
+                if row["type"] == "assert_return":
+                    thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n"
+                                f"  silmaril.shapes.wasm.wast.returns_allowed_all (nd := true) (r := {{}})\n"
+                                f"  (m := m{j}) (pre := preS cmds{j} {k}) (act := {act}) (ps := [{', '.join(row['expect'][1])}])\n")
+                    thms.append(f"@[answers {lean_str(name)} thm] theorem l{row['line']} : {name} :=\n"
+                                f"  (script{j} true {{}}).returnsAllowedAll {k} (by decide +kernel)\n")
+                else:
+                    thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n"
+                                f"  silmaril.shapes.wasm.wast.traps_all (nd := true) (r := {{}})\n"
+                                f"  (m := m{j}) (pre := preS cmds{j} {k}) (act := {act})\n")
+                    thms.append(f"@[answers {lean_str(name)} thm] theorem l{row['line']} : {name} :=\n"
+                                f"  (script{j} true {{}}).trapsAll {k} (by decide +kernel)\n")
+                thms.append(f"silmaril instance {name}_terminates (expect := \"THM\") :=\n"
+                            f"  silmaril.shapes.wasm.wast.terminates_all (nd := true) (r := {{}})\n"
+                            f"  (m := m{j}) (pre := preS cmds{j} {k}) (act := {act})\n")
+                thms.append(f"@[answers {lean_str(name + '_terminates')} thm] theorem l{row['line']}_terminates :\n"
+                            f"    {name}_terminates :=\n"
+                            f"  (script{j} true {{}}).terminatesAll (cmd := {lean_cmd(r, ok)}) {k}\n"
+                            f"    (by decide +kernel)\n")
+            elif row["type"] == "assert_return":
                 vs = ", ".join(row["expect"][1])
                 thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n"
                             f"  silmaril.shapes.wasm.wast.returns_only (o := {O})\n"
@@ -681,7 +836,8 @@ open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
                     f"  {lean}.of_kernel {proof}\n")
     defs.append(f"end {ns}\n\nend\n")
     thms.append(f"end {ns}\n\nend\n")
-    names = [f"{NS}.{f}.l{byid[r['id']]['line']}" for seg in segs for r, ok in seg["kernel"] if ok]
+    names = [f"{NS}.{f}.l{byid[r['id']]['line']}{x}" for seg in segs for r, ok in seg["kernel"] if ok
+             for x in (("", "_terminates") if spec else ("",))]
     names += [f"{NS}.{f}.l{r['line']}" for r in rejects]
     thms.append(f"silmaril group {NS}.{f} (title := {lean_str(f'test/core/{f}.wast: the kernel-checked commands')})\n"
                 f"  (children := [\n    " + ",\n    ".join(names) + "])\n")
@@ -751,8 +907,9 @@ def fetch_wasmtime():
 
 def oracle_scripts(rep):
     """The oracle's script for every command it runs, in order: (id, script text). The command's
-    module (the same binary, as `(module binary …)`), the actions before it in the same module,
-    then the command. Deterministic in report.json and the converted JSON."""
+    module (the same binary, as `(module binary …)`), the actions before it in the same module
+    (not for the SPEC files, whose modules have no state), then the command. Deterministic in
+    report.json and the converted JSON."""
     status = {c["id"]: c for c in rep["commands"]}
     for f, _ in FILES:
         segs, rows = load(f)
@@ -769,7 +926,11 @@ def oracle_scripts(rep):
                 if mod is None:
                     mod = module_binary((WORK / "json" / f / seg["wasm"]).read_bytes())
                 lines = [mod]
-                for p in prev:
+                # The modules of the SPEC files have no memory, table or global, and every function is
+                # straight-line numeric (the kernel checker requires it; StraightLine.nf: the store is
+                # unchanged), so an earlier action cannot affect a command: the script is the module
+                # and the command. Elsewhere the earlier actions of the module come first.
+                for p in ([] if f in SPEC else prev):
                     lines.append(f"(invoke {lean_str(p['action']['field'])} {' '.join(wast_val(show_val(v)) for v in p['action']['args'])})"
                                  if p["type"] == "action" else wast_cmd(p))
                 lines.append(wast_cmd(r))
@@ -881,7 +1042,9 @@ def regress():
       same modules, right expectations) must pass, so the failures are not a broken wasmtime.
     * Generated scripts: the first `assert_return` and the first `assert_invalid` script of
       `oracle_scripts`, with the expectation made wrong (the result value plus one; the module
-      replaced by a valid empty one). wasmtime must fail on each, so `oracle`'s scripts can fail.
+      replaced by a valid empty one), and the first `nan:arithmetic` expectation of an `add` of a
+      non-canonical NaN, made `nan:canonical`. wasmtime must fail on each, so `oracle`'s scripts
+      can fail.
     Exits 1 if any wrong expectation is accepted or any control fails."""
     if not pathlib.Path(JCO["WASMTIME"]).is_file():
         fetch_wasmtime()
@@ -915,6 +1078,11 @@ def regress():
         for cid, text in oracle_scripts(rep):
             t = byid[cid]["type"]
             last = text.rstrip("\n").split("\n")[-1]
+            # A NaN pattern made wrong: `nan:arithmetic` -> `nan:canonical` on an `add` of a
+            # non-canonical NaN (the spec allows any arithmetic NaN; wasmtime keeps the payload).
+            if (t == "assert_return" and "nan" not in mutants and byid[cid].get("invoke") == "add"
+                    and last.endswith(".const nan:arithmetic))") and "nan:0x" in last):
+                mutants["nan"] = (cid, text.rstrip("\n")[: -len(last)] + last.replace("nan:arithmetic))", "nan:canonical))") + "\n")
             if t == "assert_return" and t not in mutants:
                 m = re.search(r"\((i32|i64)\.const (-?[0-9]+)\)\)$", last)
                 if m:
@@ -924,7 +1092,7 @@ def regress():
             elif t == "assert_invalid" and t not in mutants:
                 mutants[t] = (cid, reject_script("assert_invalid", bytes.fromhex("0061736d01000000"), byid[cid].get("text") or ""))
         with tempfile.TemporaryDirectory() as td:
-            for t in ("assert_return", "assert_invalid"):
+            for t in ("assert_return", "assert_invalid", "nan"):
                 if t not in mutants:
                     bad.append(f"no {t} script to mutate")
                     continue
@@ -935,7 +1103,7 @@ def regress():
                 if run(path).returncode == 0:
                     bad.append(f"{cid} ({t}) with a wrong expectation: wasmtime ACCEPTS it")
     print(f"regress: {n} scripts run ({len(list(REGRESS.glob('wrong-*.wast')))} committed wrong, "
-          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 2 generated wrong)")
+          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 3 generated wrong)")
     if bad:
         print("\n".join(f"regress: FAIL {b}" for b in bad), file=sys.stderr)
         sys.exit(1)
