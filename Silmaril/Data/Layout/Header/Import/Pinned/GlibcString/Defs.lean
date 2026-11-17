@@ -39,8 +39,10 @@ def glibcStringJson : String :=
 /-- `examples/headers/clang/glibc-string.prov`. -/
 def glibcStringProv : String :=
   include_str "../../../../../../../examples/headers/clang/glibc-string.prov"
-/-- glibc's `string.h`, hosted, as clang reads it: the import of `glibcStringJson`. -/
-def glibcString : Imported := .ofJson (.parse glibcStringProv) glibcStringJson
+/-- glibc's `string.h`, hosted, as clang reads it: the import of `glibcStringJson`. Noncomputable: the kernel computes it (in
+`import_glibcString`), and compiled code uses the literal `GlibcString.entries`. Compiling it would parse the
+JSON when a program that imports this module starts, with recursion as deep as the JSON is long. -/
+noncomputable def glibcString : Imported := .ofJson (.parse glibcStringProv) glibcStringJson
 
 /-- The entries of `glibcString`, as a literal. -/
 def GlibcString.entries : List Entry := [

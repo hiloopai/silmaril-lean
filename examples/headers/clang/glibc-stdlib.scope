@@ -1,0 +1,80 @@
+scope: glibc-stdlib
+top-level declarations: 299
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h
+dropped: 3 FunctionDecl /usr/include/x86_64-linux-gnu/bits/byteswap.h
+dropped: 4 TypedefDecl /usr/include/x86_64-linux-gnu/bits/floatn-common.h
+dropped: 9 RecordDecl /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h
+dropped: 13 TypedefDecl /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h
+dropped: 4 TypedefDecl /usr/include/x86_64-linux-gnu/bits/stdint-intn.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/struct_mutex.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h
+dropped: 4 RecordDecl /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h
+dropped: 5 TypedefDecl /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/types.h
+dropped: 63 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types/clock_t.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types/time_t.h
+dropped: 1 TypedefDecl /usr/include/x86_64-linux-gnu/bits/types/timer_t.h
+dropped: 3 FunctionDecl /usr/include/x86_64-linux-gnu/bits/uintn-identity.h
+dropped: 2 FunctionDecl /usr/include/x86_64-linux-gnu/sys/select.h
+dropped: 1 RecordDecl /usr/include/x86_64-linux-gnu/sys/select.h
+dropped: 4 TypedefDecl /usr/include/x86_64-linux-gnu/sys/select.h
+dropped: 33 TypedefDecl /usr/include/x86_64-linux-gnu/sys/types.h
+dropped: 1 TypedefDecl /usr/lib/llvm-18/lib/clang/18/include/__stddef_size_t.h
+dropped: 1 TypedefDecl /usr/lib/llvm-18/lib/clang/18/include/__stddef_wchar_t.h
+dropped: 5 TypedefDecl implicit None
+kept: 1 FunctionDecl /usr/include/alloca.h
+kept: 1 FunctionDecl implicit /usr/include/alloca.h
+kept: 101 FunctionDecl /usr/include/stdlib.h
+kept: 18 FunctionDecl implicit /usr/include/stdlib.h
+kept: 5 RecordDecl /usr/include/stdlib.h
+kept: 4 TypedefDecl /usr/include/stdlib.h
+function declarations dropped by the file filter: 8
+explicit function names, pinned configuration: 109
+explicit function names, -D_GNU_SOURCE (not pinned): 146
+names only under -D_GNU_SOURCE: 37 (37 without a leading __)
+names only in the pinned configuration: 0
+  canonicalize_file_name
+  getpt
+  grantpt
+  mkostemp
+  mkostemp64
+  mkostemps
+  mkostemps64
+  mkstemp64
+  mkstemps64
+  posix_openpt
+  ptsname
+  ptsname_r
+  qsort_r
+  secure_getenv
+  strfromd
+  strfromf
+  strfromf32
+  strfromf32x
+  strfromf64
+  strfromf64x
+  strfroml
+  strtod_l
+  strtof32
+  strtof32_l
+  strtof32x
+  strtof32x_l
+  strtof64
+  strtof64_l
+  strtof64x
+  strtof64x_l
+  strtof_l
+  strtol_l
+  strtold_l
+  strtoll_l
+  strtoul_l
+  strtoull_l
+  unlockpt

@@ -260,7 +260,11 @@ structure Placed (c : Code) (s : Ffi.State) : Prop where
   the image and the caller-visible objects. This is the psABI's guarantee that the caller
   provides the result storage (§3.2.3: "the caller provides space for the return value"),
   which the callee writes; that the storage does not alias anything else the call sees is a
-  requirement on admitted calls, not something the callee could check. -/
+  requirement on admitted calls, not something the callee could check.
+
+Apartness from the image also excludes result storage inside the loaded image's own ranges: in
+a statically linked program a caller may pass the address of a file-local static as the hidden
+pointer. Rows do not cover such calls; the claim is narrower, not unsound. -/
 structure Stack (A : AbiDef) (p : A.V.Proto) (c : Code) (frame : Nat) (objects : Nat → Prop)
     (s : Ffi.State) : Prop where
   room : frame ≤ sp s

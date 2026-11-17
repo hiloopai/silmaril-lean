@@ -42,8 +42,10 @@ def zlibSoloJson : String :=
 /-- `examples/headers/clang/zlib-solo.prov`. -/
 def zlibSoloProv : String :=
   include_str "../../../../../../../examples/headers/clang/zlib-solo.prov"
-/-- zlib 1.3.1's `zlib.h` under `-DZ_SOLO`, as clang reads it: the import of `zlibSoloJson`. -/
-def zlibSolo : Imported := .ofJson (.parse zlibSoloProv) zlibSoloJson
+/-- zlib 1.3.1's `zlib.h` under `-DZ_SOLO`, as clang reads it: the import of `zlibSoloJson`. Noncomputable: the kernel computes it (in
+`import_zlibSolo`), and compiled code uses the literal `ZlibSolo.entries`. Compiling it would parse the
+JSON when a program that imports this module starts, with recursion as deep as the JSON is long. -/
+noncomputable def zlibSolo : Imported := .ofJson (.parse zlibSoloProv) zlibSoloJson
 
 /-- The entries of `zlibSolo`, as a literal. -/
 def ZlibSolo.entries : List Entry := [

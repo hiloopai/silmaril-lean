@@ -100,7 +100,9 @@ def artifacts : List (String × String × String) :=
    ("probe", "Probe", "The probe header `examples/headers/probe/probe.h`"),
    ("zlib-solo", "ZlibSolo", "zlib 1.3.1's `zlib.h` under `-DZ_SOLO`"),
    ("zlib-hosted", "ZlibHosted", "zlib 1.3.1's `zlib.h`, hosted"),
-   ("glibc-string", "GlibcString", "glibc's `string.h`, hosted")]
+   ("glibc-string", "GlibcString", "glibc's `string.h`, hosted"),
+   ("glibc-math", "GlibcMath", "glibc's `math.h` (libm), hosted"),
+   ("glibc-stdlib", "GlibcStdlib", "glibc's `stdlib.h` (with `alloca.h`), hosted")]
 
 def moduleText (file name what prov : String) (imp : Imported) : String :=
   let v := name.decapitalize
@@ -134,8 +136,10 @@ def {v}Json : String :=
 /-- `examples/headers/clang/{file}.prov`. -/
 def {v}Prov : String :=
   include_str \"{up}{file}.prov\"
-/-- {what}, as clang reads it: the import of `{v}Json`. -/
-def {v} : Imported := .ofJson (.parse {v}Prov) {v}Json
+/-- {what}, as clang reads it: the import of `{v}Json`. Noncomputable: the kernel computes it (in
+`import_{v}`), and compiled code uses the literal `{name}.entries`. Compiling it would parse the
+JSON when a program that imports this module starts, with recursion as deep as the JSON is long. -/
+noncomputable def {v} : Imported := .ofJson (.parse {v}Prov) {v}Json
 
 /-- The entries of `{v}`, as a literal. -/
 def {name}.entries : List Entry := [

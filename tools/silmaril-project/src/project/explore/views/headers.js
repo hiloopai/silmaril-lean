@@ -92,11 +92,15 @@
   }
 
   // A status cell's text: what `Conformance.status` says, with the reason.
-  const statusText = (s) => !s ? "—" : s.status === "claimable" ? "claimable"
-    : s.status === "notFunction" ? "not a function" : `${s.status}: ${s.why}`;
-  const statusCell = (s, l) => {
+  const statusText = (s, e) => !s ? "—" : s.status === "claimable" ? "claimable"
+    : s.status === "notFunction" ? "not a function"
+    : s.status === "internal" && e && e.implicit ? (e.duplicateOfExplicit
+      ? "excluded duplicate: clang's implicit builtin declaration; the explicit declaration of the same name is classified on its own"
+      : `implicit, excluded (no explicit declaration of this name in the import): ${s.why}`)
+    : `${s.status}: ${s.why}`;
+  const statusCell = (s, l, e) => {
     const cls = !s ? "muted" : s.status === "claimable" ? "hdr-ok" : s.status === "unsupported" ? "hdr-refused" : "hdr-internal";
-    return `<span class="${cls}">${esc(statusText(s))}</span>` + (s && s.status === "claimable" && l ? `<div class="hdr-plan">${lowerCell(l)}</div>` : "");
+    return `<span class="${cls}">${esc(statusText(s, e))}</span>` + (s && s.status === "claimable" && l ? `<div class="hdr-plan">${lowerCell(l)}</div>` : "");
   };
 
   // The clang route of one pinned import.
@@ -122,6 +126,7 @@
       d.abis.map((a) => { const k = (c.abiCounts || {})[a.name] || {};
         return `<tr data-abi-count="${esc(a.name)}"><td><code>${esc(a.name)}</code></td><td>${(a.clangCcs || []).map((x) => `<code>${esc(x)}</code>`).join(", ")}${a.clangCcsNote ? `<br><span class="muted" data-ccs-note>${esc(a.clangCcsNote)}</span>` : ""}</td>` +
           `<td data-n="interface">${esc(k.interface)}</td><td data-n="claimable">${esc(k.claimable)}</td><td data-n="unsupported">${esc(k.unsupported)}</td></tr>`; }).join("") + "</tbody></table>";
+    if (c.scope) x += `<details data-scope><summary>Scope report <code>${esc(c.scope.path)}</code> (regenerated and compared byte for byte by <code>recipe.sh --check</code>; not a theorem)</summary><pre>${esc(c.scope.text)}</pre></details>`;
     x += '<h4>Entries</h4><div class="tablebox"><table class="hdr"><thead><tr><th>#</th><th>name</th><th>kind</th><th>location</th><th>C declaration</th><th>convention</th><th>attributes</th><th>symbol</th>' +
       abis.map((a) => `<th>${esc(a)}</th>`).join("") + "</tr></thead><tbody>" +
       (c.entries || []).map((e, i) => {
@@ -132,7 +137,7 @@
           `<td>${e.loc ? `<code>${esc(e.loc.file)}:${esc(e.loc.line)}</code>` : ""}</td><td>${decl}</td>` +
           `<td data-cc>${e.cc != null ? `<code>${esc(e.cc)}</code>` : ""}</td><td data-attrs>${(e.attrs || []).map((a) => esc(a)).join(", ")}</td>` +
           `<td data-symbol>${e.symbol != null ? `<code>${esc(e.symbol)}</code>` : ""}${e.asmLabel != null ? `<br><span class="muted" data-asm>asm label <code>${esc(e.asmLabel)}</code></span>` : ""}</td>` +
-          abis.map((a) => `<td data-cabi="${esc(a)}" data-status="${esc(e.status && e.status[a] ? e.status[a].status : "")}">${statusCell(e.status && e.status[a], e.lowering && e.lowering[a])}</td>`).join("") + "</tr>";
+          abis.map((a) => `<td data-cabi="${esc(a)}" data-status="${esc(e.status && e.status[a] ? e.status[a].status : "")}">${statusCell(e.status && e.status[a], e.lowering && e.lowering[a], e)}</td>`).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
     return x;
   }

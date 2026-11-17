@@ -66,7 +66,9 @@ fs.writeFileSync(path.join(tdir, "headers", "index.json"), JSON.stringify(t));
 const srv = serve(site, port, "/tmp/headers_requests.jsonl"), tsrv = serve(tdir, tport, "/tmp/headers_tamper_requests.jsonl");
 const b = await pw.chromium.launch({ executablePath: process.env.CHROME ||
   (fs.existsSync("/opt/ms-playwright/chromium-1248/chrome-linux64/chrome") ? "/opt/ms-playwright/chromium-1248/chrome-linux64/chrome" : undefined) });
-const statusText = (s) => !s ? "—" : s.status === "claimable" ? "claimable" : s.status === "notFunction" ? "not a function" : `${s.status}: ${s.why}`;
+const statusText = (s, e) => !s ? "—" : s.status === "claimable" ? "claimable" : s.status === "notFunction" ? "not a function"
+  : s.status === "internal" && e && e.implicit ? (e.duplicateOfExplicit ? "excluded duplicate" : "implicit, excluded")
+  : `${s.status}: ${s.why}`;
 try {
   await new Promise((r) => setTimeout(r, 800));
   const p = await b.newPage({ viewport: { width: 1500, height: 1400 } });
@@ -161,6 +163,11 @@ try {
         `${h.id}: clang counts as the data says (${JSON.stringify(c.counts)})`);
       check(d.abis.every((a) => ["interface", "claimable", "unsupported"].every((k) => pg.abiCounts[a.name]?.[k] === String(c.abiCounts[a.name][k]))),
         `${h.id}: per-ABI interface / claimable / unsupported counts as the data says`);
+      check(c.entries.every((e, i) => !e.implicit || e.status.sysvInt?.status !== "internal" ||
+          (e.duplicateOfExplicit ? /^excluded duplicate/ : /^implicit, excluded/).test(pg.entries[i]?.st.sysvInt?.t || "")),
+        `${h.id}: each implicit entry is labelled an excluded duplicate exactly when the import has an explicit declaration of its name`);
+      check(!c.scope || (await p.$eval("[data-scope] pre", (el) => el.textContent).catch(() => null)) === c.scope.text,
+        `${h.id}: the scope report is shown verbatim when the artifact has one`);
       check(d.abis.every((a) => pg.ccsNotes[a.name] === a.clangCcsNote) && /default C convention is System V/.test(pg.ccsNotes.win64Int || ""), `${h.id}: each ABI's accepted conventions carry their note (win64Int: the Linux target's default is System V)`);
       check(pg.prov.image === pv.image && pg.prov.clang === pv.clang && pg.prov.target === pv.target && pg.prov.std === pv.std &&
         pv.inputs.every((i) => pg.prov.inputs.includes(i.file) && pg.prov.inputs.includes(i.sha256)) &&
@@ -173,7 +180,7 @@ try {
           (e.asmLabel == null || r.symbol.includes("asm label " + e.asmLabel)) && r.attrs === (e.attrs || []).join(", ") &&
           (!e.loc || r.row.includes(`${e.loc.file}:${e.loc.line}`)) &&
           (e.decl.ok != null ? r.row.includes(e.decl.ok) : r.row.includes("import: " + e.decl.unsupported)) &&
-          d.abis.every((a) => r.st[a.name]?.s === e.status[a.name].status && r.st[a.name].t.startsWith(statusText(e.status[a.name])) &&
+          d.abis.every((a) => r.st[a.name]?.s === e.status[a.name].status && r.st[a.name].t.startsWith(statusText(e.status[a.name], e)) &&
             (e.status[a.name].status !== "claimable" || !e.lowering?.[a.name]?.ok || r.st[a.name].t.includes(e.lowering[a.name].ok)) &&
             (a.name !== "sysvScalar" || e.status[a.name].status !== "claimable" || !e.lowering?.sysvScalar?.plan?.ok || r.st[a.name].t.includes("result: " + e.lowering.sysvScalar.plan.ok.result)));
         if (!ok) { eok = false; bad1 ||= `#${i} ${e.name}`; }
@@ -200,7 +207,7 @@ try {
       const s = pg.entries.find((e) => e.name === "strerror_r");
       check(!!s && s.symbol.includes("asm label __xpg_strerror_r") && Object.values(s.st).every((x) => x.s === "unsupported"),
         "glibc-string: strerror_r with asm label __xpg_strerror_r, unsupported under every ABI");
-      check(pg.entries.some((e) => /^internal: implicit/.test(e.st.sysvInt?.t || "")), "glibc-string: clang's implicit builtin declarations are internal");
+      check(pg.entries.some((e) => /^excluded duplicate/.test(e.st.sysvInt?.t || "")), "glibc-string: clang's implicit builtin declarations are excluded duplicates");
       if (shots) await p.screenshot({ path: path.join(shots, "headers-glibc-string.png"), fullPage: true });
     }
     if (h.id === "layout-demo") {
@@ -244,5 +251,17 @@ try {
   check((tc[a2]?.msX64?.text || "").includes(P1 + P2) && (tc[a2]?.msX64?.text || "").includes(P2), "tamper: markup in theorem names is shown literally");
   check(terr.length === 0, `tamper: no page or console errors ${terr.join("; ")}`);
 } finally { await b.close(); srv.kill(); tsrv.kill(); fs.rmSync(tdir, { recursive: true, force: true }); }
+{
+  // every pinned clang artifact of the recipe has a page (no silently missing mapping)
+  const clangDir = path.join(path.dirname(new URL(import.meta.url).pathname), "../../../../examples/headers/clang");
+  const provs = fs.readdirSync(clangDir).filter((f) => f.endsWith(".prov")).map((f) => f.replace(/\.prov$/, ".json")).sort();
+  const shown = d.headers.filter((h) => h.clang).map((h) => h.clang.provenance.artifact).sort();
+  check(provs.every((a) => shown.includes(a)), `every pinned clang artifact has a page (${provs.length}: ${provs.join(", ")}; shown ${shown.length})`);
+  const math = d.headers.find((h) => h.id === "glibc-math"), std = d.headers.find((h) => h.id === "glibc-stdlib");
+  check(!!math && math.clang.counts.total === 623 && math.clang.counts.functions === 615 && math.clang.abiCounts.sysvScalar.claimable === 288 && math.clang.abiCounts.sysvInt.claimable === 0 && /488/.test(math.note),
+    "glibc-math: 623 entries, 615 functions, 288 claimable under sysvScalar, 0 under sysvInt, the pinned-configuration note");
+  check(!!std && std.clang.counts.total === 130 && std.clang.abiCounts.sysvInt.claimable === 73 && std.clang.abiCounts.sysvInt.unsupported === 28 && !!std.clang.scope,
+    "glibc-stdlib: 130 entries, 73 claimable and 28 refused under sysvInt, with its scope report");
+}
 console.log(fails.length ? `${fails.length} FAILED` : "all ok");
 process.exit(fails.length ? 1 : 0);

@@ -1,0 +1,13 @@
+artifact: glibc-stdlib.json
+image: silkeh/clang@sha256:3914c93a02e866795aafc80737488e515b96390eff3d2787cf8c5095997baea9
+clang: Debian clang version 18.1.8 (++20240731024826+3b5b5c1ec4a3-1~exp1~20240731144843.145)
+target: x86_64-unknown-linux-gnu
+std: gnu11
+cwd: .
+command: clang -target x86_64-unknown-linux-gnu -x c -std=gnu11 /usr/include/stdlib.h -Xclang -ast-dump=json -fsyntax-only
+filter: python3 -I filter.py /usr/include/stdlib.h /usr/include/alloca.h
+filter-sha256: f7234d7a7bbf7792b9482c54edfb2d2a4ee1cb9f1c192a769e8cf0f34613241f
+input: /usr/include/stdlib.h 2b535c0953b3441ef72729d09e83d98d22f87ca68f8b0e8f85d2fd2285afbc91 (in the image)
+input: /usr/include/alloca.h 3f2699e77f222953411a2c276513fbe8d4b04aa410a50d5d5b762a019fad391c (in the image)
+json-sha256: 70fb104eec20492aee2c0f0f62282b68d947ed0ed94a4f7d2a1a39a6b5055488
+json-bytes: 57171

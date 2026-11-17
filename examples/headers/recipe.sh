@@ -22,7 +22,10 @@
 # Inputs: the repository's examples/elf-ladder/01-leaf-arith/arith.h and
 # examples/elf-ladder/common/rt.h; examples/headers/probe/probe.h; zlib 1.3.1's zlib.h and
 # zconf.h from the release tarball (fetched, SHA-256 checked, not committed; set ZLIB_TARBALL
-# to a local copy to skip the download); glibc's string.h as installed in the image.
+# to a local copy to skip the download); glibc's string.h, stdlib.h (with alloca.h, which it
+# includes by default) and math.h as installed in the image
+# (math.h's declarations are written in bits/mathcalls.h and bits/mathcalls-helper-functions.h,
+# expanded once per floating type; bits/floatn-common.h has the _FloatN typedefs).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
@@ -97,6 +100,24 @@ run probe "$ROOT/examples/headers/probe" . "probe.h" -ffreestanding -fno-builtin
 run zlib-solo "$work/zlib" zlib-1.3.1 "zlib.h ./zconf.h" -ffreestanding -fno-builtin -DZ_SOLO zlib.h
 run zlib-hosted "$work/zlib" zlib-1.3.1 "zlib.h ./zconf.h" zlib.h
 run glibc-string "$work" . "/usr/include/string.h" /usr/include/string.h
+run glibc-stdlib "$work" . "/usr/include/stdlib.h /usr/include/alloca.h" /usr/include/stdlib.h
+run glibc-math "$work" . "/usr/include/math.h /usr/include/x86_64-linux-gnu/bits/mathcalls.h /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h /usr/include/x86_64-linux-gnu/bits/floatn-common.h" \
+  /usr/include/math.h
+# scope NAME HEADER "FILES": the scope report of an artifact (clang/scope.py): what the file
+# filter keeps and drops of HEADER's whole translation unit, and the explicit function names
+# HEADER has only under -D_GNU_SOURCE (not pinned).
+scope() {
+  local name=$1 header=$2 files=$3
+  docker run --rm --network none -v "$HERE/clang:/recipe:ro" "$IMAGE" bash -c \
+    'set -euo pipefail
+     c=(clang -target "$1" -x c -std="$2" "$4" -Xclang -ast-dump=json -fsyntax-only)
+     "${c[@]}" > /tmp/default.json; "${c[@]}" -D_GNU_SOURCE > /tmp/gnu.json
+     python3 -I /recipe/scope.py "$5" "$3" /tmp/default.json -D_GNU_SOURCE /tmp/gnu.json' \
+    recipe "$TARGET" "$STD" "$files" "$header" "$name" > "$out/clang/$name.scope"
+}
+mathfiles="/usr/include/math.h /usr/include/x86_64-linux-gnu/bits/mathcalls.h /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h /usr/include/x86_64-linux-gnu/bits/floatn-common.h"
+scope glibc-math /usr/include/math.h "$mathfiles"
+scope glibc-stdlib /usr/include/stdlib.h "/usr/include/stdlib.h /usr/include/alloca.h"
 sed -i "s|^input: zlib.h|source: zlib-1.3.1.tar.gz $ZLIB_SHA256 $ZLIB_URL\ninput: zlib.h|" \
   "$out/clang/zlib-solo.prov" "$out/clang/zlib-hosted.prov"
 
@@ -137,7 +158,7 @@ if [ $check = 1 ]; then lean_out=$out/lean; else lean_out=$ROOT/$pinned; fi
 
 if [ $check = 1 ]; then
   status=0
-  for f in "$out"/clang/*.json "$out"/clang/*.prov "$out/zlib-1.3.1/zlib.h"; do
+  for f in "$out"/clang/*.json "$out"/clang/*.prov "$out"/clang/*.scope "$out/zlib-1.3.1/zlib.h"; do
     rel=${f#"$out/"}
     if cmp -s "$f" "$HERE/$rel"; then echo "ok $rel ($(wc -c < "$f") bytes)"
     else echo "DIFFERS $rel" >&2; status=1; fi

@@ -39,8 +39,10 @@ def probeJson : String :=
 /-- `examples/headers/clang/probe.prov`. -/
 def probeProv : String :=
   include_str "../../../../../../../examples/headers/clang/probe.prov"
-/-- The probe header `examples/headers/probe/probe.h`, as clang reads it: the import of `probeJson`. -/
-def probe : Imported := .ofJson (.parse probeProv) probeJson
+/-- The probe header `examples/headers/probe/probe.h`, as clang reads it: the import of `probeJson`. Noncomputable: the kernel computes it (in
+`import_probe`), and compiled code uses the literal `Probe.entries`. Compiling it would parse the
+JSON when a program that imports this module starts, with recursion as deep as the JSON is long. -/
+noncomputable def probe : Imported := .ofJson (.parse probeProv) probeJson
 
 /-- The entries of `probe`, as a literal. -/
 def Probe.entries : List Entry := [

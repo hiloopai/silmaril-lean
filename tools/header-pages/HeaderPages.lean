@@ -15,6 +15,8 @@ import Silmaril.Data.Layout.Header.Import.Pinned.Probe.Defs
 import Silmaril.Data.Layout.Header.Import.Pinned.ZlibSolo.Defs
 import Silmaril.Data.Layout.Header.Import.Pinned.ZlibHosted.Defs
 import Silmaril.Data.Layout.Header.Import.Pinned.GlibcString.Defs
+import Silmaril.Data.Layout.Header.Import.Pinned.GlibcMath.Defs
+import Silmaril.Data.Layout.Header.Import.Pinned.GlibcStdlib.Defs
 
 /-!
 # The explorer's Headers tab data (`OUTDIR/headers/index.json`)
@@ -92,7 +94,13 @@ def sources : List Src := [
     files := [("demo.h", "examples/headers/layout/demo.h")], root := "demo.h", demo := true },
   { id := "glibc-string", title := "glibc string.h (the clang import's hosted header)",
     files := [], root := "/usr/include/string.h", subset := false,
-    note := "only the clang route: the file is the pinned clang image's, not in this repository" }]
+    note := "only the clang route: the file is the pinned clang image's, not in this repository" },
+  { id := "glibc-stdlib", title := "glibc stdlib.h with alloca.h (the clang import's hosted header)",
+    files := [], root := "/usr/include/stdlib.h", subset := false,
+    note := "only the clang route, in the pinned configuration (-std=gnu11, default feature set): not the whole stdlib.h API; see the scope report" },
+  { id := "glibc-math", title := "glibc math.h, libm (the clang import's hosted header)",
+    files := [], root := "/usr/include/math.h", subset := false,
+    note := "only the clang route, in the pinned configuration (-std=gnu11, default feature set): not the whole math.h API (488 public names exist only under -D_GNU_SOURCE); see the scope report" }]
 
 /-- The ABI definitions a prototype is lowered by. -/
 def abis : List (String × AbiDef) := [("sysvInt", sysvInt), ("win64Int", win64Int), ("sysvScalar", sysvScalar)]
@@ -113,7 +121,11 @@ def artifacts : List Artifact := [
   ⟨"zlibSolo", "Pinned.zlibSolo", "Pinned.ZlibSolo.entries", zlibSoloProv, ZlibSolo.entries⟩,
   ⟨"zlibHosted", "Pinned.zlibHosted", "Pinned.ZlibHosted.entries", zlibHostedProv, ZlibHosted.entries⟩,
   ⟨"glibcString", "Pinned.glibcString", "Pinned.GlibcString.entries", glibcStringProv,
-    GlibcString.entries⟩]
+    GlibcString.entries⟩,
+  ⟨"glibcStdlib", "Pinned.glibcStdlib", "Pinned.GlibcStdlib.entries", glibcStdlibProv,
+    GlibcStdlib.entries⟩,
+  ⟨"glibcMath", "Pinned.glibcMath", "Pinned.GlibcMath.entries", glibcMathProv,
+    GlibcMath.entries⟩]
 
 /-- The import of an artifact: its provenance and the literal entries. -/
 def Artifact.imported (a : Artifact) : Imported := ⟨.parse a.prov, a.entries, none⟩
@@ -128,6 +140,8 @@ def clangOf : String → Option (String × String)
   | "zlib-hosted" => some ("zlibHosted", "the full zlib 1.3.1 release zlib.h and its zconf.h, \
       hosted; the subset route reads a checksum excerpt")
   | "glibc-string" => some ("glibcString", "glibc's string.h in the pinned clang image")
+  | "glibc-stdlib" => some ("glibcStdlib", "glibc's stdlib.h (with alloca.h) in the pinned clang image")
+  | "glibc-math" => some ("glibcMath", "glibc's math.h (with bits/mathcalls*.h and bits/floatn-common.h) in the pinned clang image")
   | _ => none
 
 /-- The conventions each ABI definition accepts on the import's target
@@ -523,19 +537,20 @@ def optStr : Option String → Json
 
 /-- One entry: what the import reads of it, and its status for each ABI definition (`stat`, from
 `table`). A prototype also gets the subset route's lowering and call plan, in `env`. -/
-def entryJson (env : Env) (e : Entry) (stat : List (String × Status)) : Json :=
+def entryJson (env : Env) (e : Entry) (stat : List (String × Status)) (dup : Bool := false) : Json :=
   let loc := match e.loc with
     | some l => Json.mkObj [("file", js l.file), ("line", jn l.line)]
     | none => Json.null
   let decl : Json := match e.body with
     | .function f => gotJson (fun cp => cp.render e.name) f.proto
     | .typedef t => gotJson (fun t => "typedef " ++ t.declare e.name) t
-    | .tag d => Json.mkObj [("ok", js (kindText e.kind ++ " " ++ e.name ++ (if d then " { … }" else "")))]
+    | .tag d => Json.mkObj [("ok", js (kindText e.kind ++ " " ++
+        (if e.name == "" then "(anonymous)" else e.name) ++ (if d then " { … }" else "")))]
     | .variable t st =>
       gotJson (fun t => (match st with | some x => x ++ " " | none => "") ++ t.declare e.name) t
     | .unsupported w => Json.mkObj [("unsupported", js w)]
   let base := [("name", js e.name), ("kind", js (kindText e.kind)), ("loc", loc),
-    ("implicit", Json.bool e.implicit), ("decl", decl),
+    ("implicit", Json.bool e.implicit), ("duplicateOfExplicit", Json.bool dup), ("decl", decl),
     ("status", Json.mkObj (stat.map fun (n, s) => (n, statusJson s)))]
   Json.mkObj <| match e.body with
     | .function f => base ++ [("variadic", Json.bool f.variadic), ("cc", js (ccText f.cc)),
@@ -575,14 +590,25 @@ def clangJson (a : Artifact) (relation : String) : Json :=
       ("claimable", jn (claimable A (clangCcs n) imp).length),
       ("unsupported", jn (unsupportedFns A (clangCcs n) imp).length)]))),
     ("entries", Json.arr (es.toArray.mapIdx fun i e =>
-      entryJson env e (tables.map fun (n, t) => (n, (t[i]?.map (·.2)).getD .notFunction))))]
+      entryJson env e (tables.map fun (n, t) => (n, (t[i]?.map (·.2)).getD .notFunction))
+        -- an implicit entry is an excluded duplicate when the import also has an explicit
+        -- function entry of the same name, classified on its own
+        (e.implicit && es.any fun e' => !e'.implicit && e'.kind == .function && e'.name == e.name)))]
 
-def clangFor (id : String) : Json :=
+/-- The recipe's scope report of an artifact (`examples/headers/clang/<name>.scope`, checked byte
+for byte by `recipe.sh --check`; not a theorem), if it has one. -/
+def scopeOf (a : Artifact) : IO Json := do
+  let path := "examples/headers/clang/" ++ ((Provenance.parse a.prov).artifact.replace ".json" ".scope")
+  if ← System.FilePath.pathExists path then
+    pure (Json.mkObj [("path", js path), ("text", js (← IO.FS.readFile path))])
+  else pure Json.null
+
+def clangFor (id : String) : IO Json := do
   match clangOf id with
   | some (k, rel) => match artifacts.find? (·.key == k) with
-    | some a => clangJson a rel
-    | none => Json.null
-  | none => Json.null
+    | some a => pure ((clangJson a rel).setObjVal! "scope" (← scopeOf a))
+    | none => throw (IO.userError s!"header-pages: no artifact {k} for page {id}")
+  | none => pure Json.null
 
 def headerJson (lenv : Lean.Environment) (s : Src) : IO Json := do
   let mut disk : Array (String × String) := #[]
@@ -593,7 +619,7 @@ def headerJson (lenv : Lean.Environment) (s : Src) : IO Json := do
   let base := [("id", js s.id), ("title", js s.title), ("note", js s.note), ("root", js s.root),
     ("files", Json.arr (s.files.toArray.map fun (n, p) => Json.mkObj [("name", js n), ("path", js p)])),
     ("text", if s.demo then js (toString ``demoH) else Json.null),
-    ("clang", clangFor s.id)]
+    ("clang", ← clangFor s.id)]
   if !s.subset then return Json.mkObj (base ++ [("read", Json.null)])
   match read files s.root with
   | .error e => pure (Json.mkObj (base ++ [("read", Json.mkObj [("refused", js e)])]))
