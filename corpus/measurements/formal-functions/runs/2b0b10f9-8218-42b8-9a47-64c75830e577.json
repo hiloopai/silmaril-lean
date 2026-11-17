@@ -1,0 +1,356 @@
+{
+  "schema_version": 1,
+  "run_id": "2b0b10f9-8218-42b8-9a47-64c75830e577",
+  "stage": "openssl-quic-count-contextual-tv",
+  "measurement_tool_sha256": "73b879b4211a225b213deb84986411385e6506134c39de6f42768fb60ffeb07a",
+  "started_utc": "2026-11-17T23:49:30.494148+00:00",
+  "command": [
+    "lake",
+    "build",
+    "--wfail",
+    "Silmaril.Elf.Corpus.OpenSslQuicCount.Thms"
+  ],
+  "cwd": "/work/openssl-asm-recipes",
+  "target": "x86_64-linux-gnu",
+  "repository": {
+    "commit": "ee2eabe24cbbea697c1f86003a653a4b66f2fb96",
+    "dirty": true,
+    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "cache": "warm",
+  "concurrency": 2,
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "runner": {
+    "hostname": "modal",
+    "platform": "Linux-4.19.0-gvisor-x86_64-with-glibc2.41",
+    "cpu_model": "unknown",
+    "visible_cpus": 24,
+    "task_cpu_budget": 8,
+    "task_memory_budget_bytes": 34359738368,
+    "cgroup": {}
+  },
+  "inputs": [
+    {
+      "path": "Silmaril/Elf/Corpus/OpenSslQuicCount/Thms.lean",
+      "sha256": "0bef5276a180c5bf26b0a297510b3222c892c4cd268d5953b868b7227e5d52e1"
+    },
+    {
+      "path": "Silmaril/Elf/Corpus/OpenSslQuicCount/Defs.lean",
+      "sha256": "4bda227171cb2790e6dc5ecd9b4604eb3a95fc704e6a480008ea3c21a292e971"
+    },
+    {
+      "path": "Silmaril/Proofs/Elf/Corpus/OpenSslQuicCount.lean",
+      "sha256": "2297e4843812b72ba9af1d3de3fc50cd34a4c0386ba1b8a093a9119933cfa232"
+    },
+    {
+      "path": "corpus/openssl/upstream/openssl-3.5.9/ssl/quic/quic_impl.c",
+      "sha256": "91936212cbc1c446ab512b2b33a1887e788e83c09c82051115eac3b79eb92937"
+    },
+    {
+      "path": "corpus/elf/openssl/x86_64/libssl.so.3",
+      "sha256": "cd856f63e645e38ed5698dc3e33b6f7775dbc57dff0ae37db340851787c378b2"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bytes.lean",
+      "sha256": "c21e0b6557c74d99ff3f7735544e7c52b73cde0260846bbf47f1cbb5c6db57af"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Decomp.lean",
+      "sha256": "b7ee5819de6beaf64f47f75a8acc29b7490197cdf50ffc1ce538ab960b57cf5a"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Defs.lean",
+      "sha256": "f9b5ffe15528becd7e8cac4b6f974cfad5d89a715d78495bd98499e5e0349ad3"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Functions.lean",
+      "sha256": "b5d88a066ae1737fea11b907539cb31013c4f38814cd12b2d1250a6fe50ff980"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Thms.lean",
+      "sha256": "9a8c22d02c8d2cf346b02b762dfea95b215f80eab3ab732b48dcf2aba98e71a6"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Functions/Part0.lean",
+      "sha256": "4dea3b9611f591a1cc4de7005271c74a2e5f08f67da6435acfc9180024dbdf9d"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Functions/Part1.lean",
+      "sha256": "dae8a175adf1ed13fb0b5127d85d4a8d1501e3b310eba9eee665360d05e64262"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Functions/Part2.lean",
+      "sha256": "1b383aaec834c41531fe698509f7b176e8d5a1b98633c2092bae2a53259fbb63"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part0.lean",
+      "sha256": "f03f3c45154a83341e038e069252e30680e8f30917c82082ff07db49f7054fdb"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part1.lean",
+      "sha256": "8a6819d97a66268f6cf7e27218ed34ebfe275f60d073b1481761cd2b65b63d35"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part2.lean",
+      "sha256": "7d7463e7c76bdd389f7c09f7373a2cd426f4d1e01f600864b862b9b1e16e0e76"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part3.lean",
+      "sha256": "3b67cb57c9dae93eaf6ce5d6b4e61b7c077eeb5327e97f0dc781f1a9882604aa"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part4.lean",
+      "sha256": "c154d07bc1a2b728dc2aaf318d24c268c396e1ab8ab90c829c0928f15185402f"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part5.lean",
+      "sha256": "835b0ac98291c5c93ba2d9d27f4858907c3fb46fed72e31751896758a595a09f"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part6.lean",
+      "sha256": "06ebbfdd0aad7e6a95df3cce6c2cfb60c43bb951b060e1aa63fb19059dd4b495"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part7.lean",
+      "sha256": "13965a940b05f132bcaa131a9b35e22a5cab7c1fd6e3dd2c657310f709c62e6e"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part8.lean",
+      "sha256": "339a299868e85dce802fdba978b2aed58c71de1e5e2c4b1f02c5b53be6347cd1"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part9.lean",
+      "sha256": "8fc79da5cddb78ec0a5f2f3b9f0bb9a99c52282f4c1afc4669e1b27c80d5c33d"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part10.lean",
+      "sha256": "19ef13f768c4a3a929674d7fb02ecd2e3b2855f11eab87ff18a9339914e80a12"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part11.lean",
+      "sha256": "f2447b438d55d9ffde084c540ebb0c2894a8b3d033fa10451a54af420e2ca379"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part12.lean",
+      "sha256": "77de3a47d19a80ca86eea05437b37dfa7ef4ff997545dac69852bdfdd1a24288"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part13.lean",
+      "sha256": "5ef1d1a7017508f4ad7221d1871575818b3df1a81f6a1816cbdb94ab3b647613"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part14.lean",
+      "sha256": "4bb4da8e967455bd05c8fac74df098305d6b713aec50032c19e546ae3c75e867"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part15.lean",
+      "sha256": "ced77214f153ed5e9a3b1622d569fb4e3c0443f33ac72e31de3909c102feedf7"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part16.lean",
+      "sha256": "ce74a96d4402e09456a2dc31635c45cc99a4b211399e21f57881cd63edfc9378"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part17.lean",
+      "sha256": "be2950ca5e775f248448f3d4c71a5ef5c8f264dbfae52c16501d6d0325080897"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part18.lean",
+      "sha256": "95efb259f6ea4f0573cdd73cd3f26dcf2736d1fd9a1a88a7321598d0cf3bf316"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part19.lean",
+      "sha256": "b1ee1616bf55b068772586da9f8d415ddff13029a85c83afcb914bf110f6dc60"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part20.lean",
+      "sha256": "10bd1b303fa7276a8a7650de165055bac0e14cde646805db38aadf4737a8c068"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part21.lean",
+      "sha256": "c129da3bd8b28b6bfc60b383209b71a6d68b687a008699d246e6a9c0d1edec7f"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part22.lean",
+      "sha256": "a5bf9f23991fa4bc745fe1651f79f811f802807f15954821ab100731d66acff4"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part23.lean",
+      "sha256": "e0d5165b1e646d90b1cf057d2fd3ce453060f9ea06574f5909788f4a0ffc715f"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part24.lean",
+      "sha256": "94d2a21e6c66eb686e8a136a986d1fc95d5332bca8157254dc92d357a6fe2cb6"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part25.lean",
+      "sha256": "2eb6a8f1169c11244cf6047177c4c67f4847e465354962577bb093f80cbc2bfe"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part26.lean",
+      "sha256": "60764d75782035e66685aa25468aa73f5c5bb9dfe97095096518288031295803"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part27.lean",
+      "sha256": "d090a3c0f4736a96900bd91793a0b29f39305b8b21062d72c73d5eeabd25dcbc"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part28.lean",
+      "sha256": "216b5f36f3db894edf91f7cbaf99b570817076359594d6373001231dc7858458"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part29.lean",
+      "sha256": "aee554f45e007ced0bb3076b902e76f8e8e7ee3e561681a43d40652844d7e7d0"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part30.lean",
+      "sha256": "441f2d5002fd93136528930fb5f5c9d6dec1a031668cf017ef835dd09ed5b359"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part31.lean",
+      "sha256": "1bd3becb95d1fb3d3ab258c68dfd80659d0268f3d1d8e42223d8cd19d1c12f8e"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part32.lean",
+      "sha256": "c6b7f8429e73522f494d98bc5f494b142923f400535d329b6735e809b924ed9f"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part33.lean",
+      "sha256": "25e1c7adf6f96fe51b68ce42c11b2434fcabc16da76b2bf609b2bf75195916fa"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part34.lean",
+      "sha256": "213ce71767e482f2e0a3633df127707bb0508953ce9f376cb26032e5bea877a3"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part35.lean",
+      "sha256": "6b49dcea3df139e5497373b5fda0cc5d93dcba7c6747f4e0f3065398badf7fa2"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part36.lean",
+      "sha256": "81f46cc061c00c81fb22200782da72af6b00963089608a30123dca5e7d762b57"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part37.lean",
+      "sha256": "9140cf7c86a909707c138422e8cbe26d4b68f5e90c7d7891fde352f9697e26d7"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part38.lean",
+      "sha256": "413c4188186c12c464b4040c83a7bfecdf9eab5b1817c4f78ed2161493e6bb59"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part39.lean",
+      "sha256": "1c85822838fc3a4c33afb529d8673e70c25bc4caf8f7d8c8dcec58c49fdd9d26"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part40.lean",
+      "sha256": "890b7e1f40e7be1ee5aff8f0fdca9176b6abd731ab4f3763de7d3d878f15718b"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part41.lean",
+      "sha256": "06fc8c1986f77fc15bf25ac9a1328d5ff88548ff7c22779a0d6a7cb8054f0cb0"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part42.lean",
+      "sha256": "289541b64f9e86f9527a76840d1a71323484ecb58e27ccd7cbd5915d36604d40"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part43.lean",
+      "sha256": "0904b30ea5c19f67b5efad40fab78e9292b8046a5d2b739261240767c5c72141"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part44.lean",
+      "sha256": "4df7d9efa204d058e3fb7093d23824c4cbb0e5fb16b465da630d459abaa758c7"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part45.lean",
+      "sha256": "d265dc56d5672e1b6534d63764fc372b593a1660f11e4c2f1309fe891b0ec460"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part46.lean",
+      "sha256": "e6418d2d358d4df996f0498604a934ae76a3ecb2300096b7ac9d50e914bb95e3"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part47.lean",
+      "sha256": "0e56e015e4299f34c78d6a99c7338fda7f668e8036978f5775f6f4c3a16895a3"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part48.lean",
+      "sha256": "d9fa8ce66e480aa45cf1ddc534cbe917d03bffc6aacf54d77c49bad3b2ddf0ff"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part49.lean",
+      "sha256": "feb6840eba221dfe35dc0c42afd3d47e572038459d00704e2a49d5610eb63e34"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part50.lean",
+      "sha256": "a416367df3de1cdd6272ba6127f88878e92316e8ec246bc5b26264f976b42f29"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part51.lean",
+      "sha256": "30e7b7ecf6b58a9896bcb8c84be680c6c5a322fb187117452522a6c28cdf2d7d"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part52.lean",
+      "sha256": "c5c5d9ef10dc8a43400be00e9d8189d36ca3786290f1efb10bd73ae667b9762c"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part53.lean",
+      "sha256": "3d77b933a7fbbcaf80ee363f9ef2f687ddddb77714b30d69083318e76dd9a0fe"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part54.lean",
+      "sha256": "ee55c070a2f1e744676547dd702a103332a2c6cb54259b113019f2200480f66c"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part55.lean",
+      "sha256": "eb402fb828acafc327e432e817843229fb91e2b62e7819993060721227ac59e5"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part56.lean",
+      "sha256": "da6d9f9d8f43621fcb605e2cb167d3e850cb4f1d424f3908e62699c5c4b9e240"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part57.lean",
+      "sha256": "ec20fabc3b0fc77cd4203bdfef514d030311cf52dee531b5f0fd0c9e79161912"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part58.lean",
+      "sha256": "8588ad2ea7e6da3084987ce2ba49065de0e18af1f150775150273167255bea9e"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part59.lean",
+      "sha256": "bde1a0d463d10c055e6cf40736aed56b7b49f3791d405e6bdcc2ebba8f0c672d"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part60.lean",
+      "sha256": "c51ae1490bb71a92d13ce86b01f2d4817726c1c4b2a6dd7f1655a1e6f024821a"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part61.lean",
+      "sha256": "aafa98d2767d384dcc1a9f1d0811b1f1f1b42bc5ee6cee23a65c5d284b8ad297"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part62.lean",
+      "sha256": "5a57ce416419f4a1ce408b6b9c1344e3b6494610cd7fbba438cb77acbd6eea43"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part63.lean",
+      "sha256": "9d801d7a36008563c5f33340663a2e473fda4b59b5569d4363a33ef608d1be97"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part64.lean",
+      "sha256": "e82ab0ac9aa76fda1ad653c79894d58d96adfdd7303f08b1c5f34a185e60c99b"
+    },
+    {
+      "path": "Silmaril/Elf/Staged/Corpus/Openssl/X8664/LibsslSo3/Bodies/Part65.lean",
+      "sha256": "6fa7365acbcb03f91e07b3e0e74da7bf93711871f5bbbd49f6a0f1cc7fe38dc7"
+    }
+  ],
+  "wall_seconds": 18.304426017999504,
+  "exit_code": 0,
+  "user_cpu_seconds": 12.0,
+  "system_cpu_seconds": 21.01,
+  "peak_rss_kib": 3799476,
+  "measurement": "Linux wait4 child accounting; includes waited-for descendants; RSS is maximum, not sum"
+}

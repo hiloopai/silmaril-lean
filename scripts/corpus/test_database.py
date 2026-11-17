@@ -29,12 +29,12 @@ class CorpusDatabase(unittest.TestCase):
 
     def test_concrete_function_statement_binding(self):
         data = inventory(ROOT)
-        self.assertEqual(data['formal_statement_counts'], {'contextual_c_to_elf': 3, 'functional_equivalence': 1})
+        self.assertEqual(data['formal_statement_counts'], {'contextual_c_to_elf': 4, 'functional_equivalence': 1})
         participants = [a for a in data['artifacts'] if a['functional_equivalence_statements']]
         self.assertEqual(len(participants), 2)
         self.assertEqual({a['project'] for a in participants}, {'mimalloc'})
         source_participants = [a for a in data['artifacts'] if a['contextual_c_to_elf_statements']]
-        self.assertEqual([a['path'] for a in source_participants], ['corpus/elf/mimalloc/x86_64/libmimalloc.so.2.1'])
+        self.assertEqual([a['path'] for a in source_participants], ['corpus/elf/mimalloc/x86_64/libmimalloc.so.2.1', 'corpus/elf/openssl/x86_64/libssl.so.3'])
         check = json.loads((ROOT / 'corpus/measurements/formal-functions/checks.json').read_text())['statements'][0]
         source = ROOT / next(iter(check['module_sha256']))
         original = matrix.sha

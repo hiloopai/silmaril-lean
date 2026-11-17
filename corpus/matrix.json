@@ -2730,9 +2730,16 @@
         "target": "x86_64-linux-gnu"
       },
       "build_id": "e2a46f70b897681d862ea15a49dfc3d6044da8517c1fb76706432f8a1738110b",
-      "contextual_c_to_elf_statements": 0,
+      "contextual_c_to_elf_statements": 1,
       "defined_nonzero_function_symbol_entries": 2513,
-      "formal_statements": [],
+      "formal_statements": [
+        {
+          "declaration": "Silmaril.Elf.Corpus.OpenSslQuicCount.Task.compiles_to",
+          "kind": "contextual_c_to_elf",
+          "root": "Silmaril.Elf.Corpus.OpenSslQuicCount.Thms",
+          "status": "stated-unproved"
+        }
+      ],
       "functional_equivalence_statements": 0,
       "has_symtab": true,
       "lean_status": "canonical: whole-file parse and structural decomposition",
@@ -44850,7 +44857,7 @@
     }
   ],
   "formal_statement_counts": {
-    "contextual_c_to_elf": 3,
+    "contextual_c_to_elf": 4,
     "functional_equivalence": 1
   },
   "hierarchy": [

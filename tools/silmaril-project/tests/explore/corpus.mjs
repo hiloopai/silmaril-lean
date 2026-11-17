@@ -18,7 +18,7 @@ try{
   assert.match(await page.locator('#main').innerText(),/Software under test/);
   const initialReads=fs.readFileSync(requestLog,'utf8').trim().split('\n').map(JSON.parse).filter(r=>r.path==='/project.sqlite');
   assert.ok(initialReads.reduce((n,r)=>n+(r.method==='GET'?r.bytes:0),0)<2*1024*1024,'landing page reads compact indexes rather than artifact evidence payloads');
-  assert.match(await page.locator('#main').innerText(),/3 contextual C → ELF statements/);
+  assert.match(await page.locator('#main').innerText(),/4 contextual C → ELF statements/);
   assert.match(await page.locator('#main').innerText(),/1 function-equivalence statements/);
   assert.equal(await page.locator('#nav a').count(),2,'standalone corpus database gets dedicated navigation');
   assert.equal(await page.locator('#source .err').count(),0,'recognized corpus schema');

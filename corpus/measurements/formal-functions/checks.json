@@ -81,6 +81,23 @@
         "corpus/mimalloc/semantic-inputs/2.1.9/default/x86_64/O2/closed-leaves/_mi_allocator_done.c": "841fad1c24521f77fe20bfcfa422508d38bdd257acf7dfd9122d2b6796d7a531",
         "Silmaril/Cerberus/Elaboration/Functions/Defs.lean": "ae17c99141fdab2c3825556cc979f7837a07469045b8274515ed8222b1465351"
       }
+    },
+    {
+      "kind": "contextual_c_to_elf",
+      "status": "stated-unproved",
+      "function_symbol": "ossl_quic_num_ciphers",
+      "declaration": "Silmaril.Elf.Corpus.OpenSslQuicCount.Task.compiles_to",
+      "root": "Silmaril.Elf.Corpus.OpenSslQuicCount.Thms",
+      "run_receipt": "corpus/measurements/formal-functions/runs/2b0b10f9-8218-42b8-9a47-64c75830e577.json",
+      "artifact_sha256": {
+        "corpus/elf/openssl/x86_64/libssl.so.3": "cd856f63e645e38ed5698dc3e33b6f7775dbc57dff0ae37db340851787c378b2"
+      },
+      "module_sha256": {
+        "Silmaril/Elf/Corpus/OpenSslQuicCount/Thms.lean": "0bef5276a180c5bf26b0a297510b3222c892c4cd268d5953b868b7227e5d52e1",
+        "Silmaril/Elf/Corpus/OpenSslQuicCount/Defs.lean": "4bda227171cb2790e6dc5ecd9b4604eb3a95fc704e6a480008ea3c21a292e971",
+        "Silmaril/Proofs/Elf/Corpus/OpenSslQuicCount.lean": "2297e4843812b72ba9af1d3de3fc50cd34a4c0386ba1b8a093a9119933cfa232",
+        "corpus/openssl/upstream/openssl-3.5.9/ssl/quic/quic_impl.c": "91936212cbc1c446ab512b2b33a1887e788e83c09c82051115eac3b79eb92937"
+      }
     }
   ]
 }
