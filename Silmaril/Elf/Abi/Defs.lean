@@ -207,20 +207,20 @@ end
 silmaril instance silmaril.shapes.elf.abi_conforms.sysv_int_open
     (title := "abi_conforms, System V AMD64 INTEGER fragment, on the open machine model (Open)") :=
   silmaril.shapes.elf.abi_conforms (A := Silmaril.Machine.Abi.Conformance.sysvInt)
-    (M := Silmaril.X86.Open.isa)
+    (M := Silmaril.Machine.Abi.Conformance.Mach.ofInt Silmaril.X86.Open.isa)
 silmaril instance silmaril.shapes.elf.abi_conforms.sysv_int_open9
     (title := "abi_conforms, System V AMD64 INTEGER fragment, on the open machine model (Open9)") :=
   silmaril.shapes.elf.abi_conforms (A := Silmaril.Machine.Abi.Conformance.sysvInt)
-    (M := Silmaril.X86.Open9.isa)
+    (M := Silmaril.Machine.Abi.Conformance.Mach.ofInt Silmaril.X86.Open9.isa)
 silmaril instance silmaril.shapes.elf.abi_header_sat_partial.sysv_int_open
     (title := "abi_header_sat_partial, System V AMD64 INTEGER fragment, on the open machine model (Open)") :=
   silmaril.shapes.elf.abi_header_sat_partial (A := Silmaril.Machine.Abi.Conformance.sysvInt)
-    (M := Silmaril.X86.Open.isa)
+    (M := Silmaril.Machine.Abi.Conformance.Mach.ofInt Silmaril.X86.Open.isa)
 silmaril instance silmaril.shapes.elf.abi_header_sat_available.sysv_int_open
     (title := "abi_header_sat_available, System V AMD64 INTEGER fragment, on the open machine model (Open)") :=
   silmaril.shapes.elf.abi_header_sat_available (A := Silmaril.Machine.Abi.Conformance.sysvInt)
-    (M := Silmaril.X86.Open.isa)
+    (M := Silmaril.Machine.Abi.Conformance.Mach.ofInt Silmaril.X86.Open.isa)
 silmaril instance silmaril.shapes.elf.abi_header_sat_complete.sysv_int_open
     (title := "abi_header_sat_complete, System V AMD64 INTEGER fragment, on the open machine model (Open)") :=
   silmaril.shapes.elf.abi_header_sat_complete (A := Silmaril.Machine.Abi.Conformance.sysvInt)
-    (M := Silmaril.X86.Open.isa)
+    (M := Silmaril.Machine.Abi.Conformance.Mach.ofInt Silmaril.X86.Open.isa)

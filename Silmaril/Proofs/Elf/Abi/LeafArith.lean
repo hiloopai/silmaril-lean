@@ -108,8 +108,8 @@ theorem row (f : String) (i v n off : Nat) (hl : A0.select (Binding.symtab.sel f
       some (some ⟨i, v, n, false, false⟩))
     (hv : v = (region off n).base.toNat + off) (hs : funcSymB A0 .symtab i f = true)
     {p : Silmaril.Machine.Abi.SystemV.Proto} {S : CallSpec sysvInt.V p}
-    (h : Conforms sysvInt Silmaril.X86.Open.isa .total hdr f p (region off n) 0 S) :
-    AbiConforms sysvInt Silmaril.X86.Open.isa .total hdr f p F .symtab (region off n) 0 S :=
+    (h : Conforms sysvInt (Mach.ofInt Silmaril.X86.Open.isa) .total hdr f p (region off n) 0 S) :
+    AbiConforms sysvInt (Mach.ofInt Silmaril.X86.Open.isa) .total hdr f p F .symtab (region off n) 0 S :=
   ⟨codeOf f i v n off hl hv hs, untouched off n, ⟨0, placement_zero_ok⟩, fun b hb => by
     rw [placement_zero hb, rebase_zero]; exact h⟩
 

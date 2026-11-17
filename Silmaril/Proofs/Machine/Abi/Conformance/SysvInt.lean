@@ -53,7 +53,8 @@ theorem abiEntry_of_entry {a : vocab.Args p} {s : Ffi.State} (entry : sysvInt.co
 
 /-- A function-contract result from a System V entry state is a System V return, on a machine
 whose core and memory are the state's. -/
-theorem return_of_result {M : Mach} (hc : ∀ m, M.core m = m.core) (hm : ∀ m, M.mem m = m.memory)
+theorem return_of_result {M : Silmaril.X86.SegVC.Isa MState} (hc : ∀ m, M.core m = m.core)
+    (hm : ∀ m, M.mem m = m.memory)
     {S : Silmaril.X86.FnContract.Spec MState} {a : vocab.Args p} {s : Ffi.State}
     {t : MState} (entry : sysvInt.conv.Entry p a s) (res : S.Result M s.machine t) :
     sysvInt.conv.Return p s { s with machine := t } := by

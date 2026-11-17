@@ -74,7 +74,7 @@ theorem stack : Stack sysvScalar sretProto sretCode 0 (fun _ => False) (sretSt 0
     have := image_above r hr
     omega
 
-theorem admitted (M : Mach) (hl : M.live (sretSt 0x10000).machine) :
+theorem admitted (M : Mach) (hl : M.isa.live (M.load (sretSt 0x10000))) :
     Admit sysvScalar M sretProto sretCode 0 (CallSpec.abiPure _ _) sretArgs (sretSt 0x10000) :=
   ⟨hl, entry, placed _ _ _ _ _, stack, rfl⟩
 

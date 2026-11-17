@@ -12,16 +12,20 @@ PROVED (standard axioms), proofs in `Silmaril.Proofs.Machine.Abi.Conformance.Bas
   results are conforming returns, gives a `Conforms` row in either mode (a first return also
   rules out stuck states, `noStuck_of_firstReturn`);
 * `Conforms.steps`: **stuck code does not conform**, in either mode: an admitted call of a
-  conforming function takes a step at its entry;
+  conforming function takes a step at its entry (the `Mach` laws tie the machine's entry state
+  to the placed code);
 * `Conforms.onRef`: **a row on `M` holds on every reference machine `M` is faithful to**
   (`Faithful`): the reference machine's first returns are conforming returns, and in total
   mode there is one. A row is a statement about real x86 only through this, with `Faithful`
   as its assumption;
 * `Conforms.exists_good`, `Conforms.toSafe`: a total row has an admitted call with a conforming
   return; a total row is a safe row;
-* `callModelOf_carried`: the call relation carries the state the integer machine lacks (vectors,
-  x87, direction flag, MXCSR, x87 control word, the FFI copy of the thread pointer). The return
-  obligations about that state hold by the model; `Faithful` is what makes them true of real x86;
+* `mem_callModelOf_ofInt`, `faithful_ofInt_iff`: on an integer machine (`Mach.ofInt`), the
+  call relation and faithfulness read directly on `s.machine`;
+* `callModelOf_carried`: on an integer machine, the call relation carries the state the machine
+  lacks (vectors, x87, direction flag, MXCSR, x87 control word, the FFI copy of the thread
+  pointer). The return obligations about that state hold by the model; `Faithful` is what makes
+  them true of real x86;
 * `not_headerSatPartial_nil`, `HeaderSatAvailable.total`: **coverage cannot be hidden**: nothing
   claimed is not partial header satisfaction, and a claimed function in `.safe` mode rules out
   available (hence complete) satisfaction;
@@ -41,26 +45,27 @@ open Silmaril.X86.FnContract (Spec AbiEntry FirstReturn)
 variable {A : AbiDef} {M : Mach} {mode : Mode} {hdr : HeaderSrc} {f : String} {p : A.V.Proto}
   {c : Code} {frame : Nat} {S : CallSpec A.V p}
 
-theorem conforms_of_strict {S' : Spec MState} (hs : S'.Strict M)
+theorem conforms_of_strict {S' : Spec M.σ} (hs : S'.Strict M.isa)
     (hdecl : Declares A hdr f p) (hext : c.off + c.len ≤ c.bytes.length)
     (hnv : ∃ a s, Admit A M p c frame S a s ∧ S.pre a s.machine.memory)
     (hen : ∀ a mem, S.pre a mem → (∀ x, S.objects a mem x → c.Outside x) →
       ∃ s, Admit A M p c frame S a s ∧ S.pre a s.machine.memory ∧
         (∀ x, S.objects a s.machine.memory x ↔ S.objects a mem x) ∧
         ∀ x, S.objects a mem x → s.machine.memory.bytes[x]? = mem.bytes[x]?)
-    (habi : ∀ a s, Admit A M p c frame S a s → AbiEntry (M.core s.machine) (M.mem s.machine))
-    (hentry : ∀ a s, Admit A M p c frame S a s → S.pre a s.machine.memory → S'.entry s.machine)
+    (habi : ∀ a s, Admit A M p c frame S a s →
+      AbiEntry (M.isa.core (M.load s)) (M.isa.mem (M.load s)))
+    (hentry : ∀ a s, Admit A M p c frame S a s → S.pre a s.machine.memory →
+      S'.entry (M.load s))
     (hgood : ∀ a s t, Admit A M p c frame S a s → S.pre a s.machine.memory →
-      FirstReturn M s.machine t → S'.Result M s.machine t →
-      Good A p frame S a s { s with machine := t }) :
+      FirstReturn M.isa (M.load s) t → S'.Result M.isa (M.load s) t →
+      Good A p frame S a s (M.store s t)) :
     Conforms A M mode hdr f p c frame S :=
   Silmaril.Proofs.Machine.Abi.Conformance.conforms_of_strict hs hdecl hext hnv hen habi hentry hgood
 
-theorem Conforms.steps (h : Conforms A M mode hdr f p c frame S) (hc : ∀ m, M.core m = m.core)
-    (hm : ∀ m, M.mem m = m.memory) (hlen : 0 < c.len) {a : A.V.Args p} {s : Ffi.State}
-    (ad : Admit A M p c frame S a s) (pre : S.pre a s.machine.memory) :
-    (M.step s.machine).isSome :=
-  Silmaril.Proofs.Machine.Abi.Conformance.Conforms.steps h hc hm hlen ad pre
+theorem Conforms.steps (h : Conforms A M mode hdr f p c frame S) (hlen : 0 < c.len)
+    {a : A.V.Args p} {s : Ffi.State} (ad : Admit A M p c frame S a s)
+    (pre : S.pre a s.machine.memory) : (M.isa.step (M.load s)).isSome :=
+  Silmaril.Proofs.Machine.Abi.Conformance.Conforms.steps h hlen ad pre
 
 theorem Conforms.onRef {R : Ref} (hf : Faithful R M) (h : Conforms A M mode hdr f p c frame S)
     {a : A.V.Args p} {s : Ffi.State} (ad : Admit A M p c frame S a s)
@@ -86,10 +91,24 @@ theorem Conforms.toSafe (h : Conforms A M .total hdr f p c frame S) :
     Conforms A M .safe hdr f p c frame S :=
   Silmaril.Proofs.Machine.Abi.Conformance.Conforms.toSafe h
 
-theorem callModelOf_carried {s t : Ffi.State} (h : t ∈ callModelOf M s) :
+theorem mem_callModelOf_ofInt {I : Silmaril.X86.SegVC.Isa MState} {hc : ∀ m, I.core m = m.core}
+    {hm : ∀ m, I.mem m = m.memory} {s t : Ffi.State} :
+    t ∈ callModelOf (Mach.ofInt I hc hm) s ↔
+      FirstReturn I s.machine t.machine ∧ t = { s with machine := t.machine } :=
+  Silmaril.Proofs.Machine.Abi.Conformance.mem_callModelOf_ofInt
+
+theorem callModelOf_carried {I : Silmaril.X86.SegVC.Isa MState} {hc : ∀ m, I.core m = m.core}
+    {hm : ∀ m, I.mem m = m.memory} {s t : Ffi.State}
+    (h : t ∈ callModelOf (Mach.ofInt I hc hm) s) :
     t.vectors = s.vectors ∧ t.x87 = s.x87 ∧ t.direction = s.direction ∧ t.x87Mode = s.x87Mode ∧
-      t.mxcsr = s.mxcsr ∧ t.x87Control = s.x87Control ∧ t.fsBase = s.fsBase := by
-  rw [h.2]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      t.mxcsr = s.mxcsr ∧ t.x87Control = s.x87Control ∧ t.fsBase = s.fsBase :=
+  Silmaril.Proofs.Machine.Abi.Conformance.callModelOf_carried h
+
+theorem faithful_ofInt_iff {R : Ref} {I : Silmaril.X86.SegVC.Isa MState}
+    {hc : ∀ m, I.core m = m.core} {hm : ∀ m, I.mem m = m.memory} :
+    Faithful R (Mach.ofInt I hc hm) ↔
+      ∀ s m', I.step s.machine = some m' → R.step s = some { s with machine := m' } :=
+  Silmaril.Proofs.Machine.Abi.Conformance.faithful_ofInt_iff
 
 theorem HeaderSatPartial.conforms {cov : Coverage} {impl : String → Option (Impl A)}
     (h : HeaderSatPartial A M hdr cov impl) {f : String} (hf : f ∈ cov.claimed) :

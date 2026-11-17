@@ -49,7 +49,7 @@ def satArgs : vocab.Args satProto :=
   .cons (0xfffffff0 : BitVec 32) (.cons (0x20 : BitVec 32) .nil)
 
 /-- A segment machine whose step is `f` (no decoder: the law `step_of` is vacuous). -/
-def toy (f : MState → Option MState) : Mach where
+def toyIsa (f : MState → Option MState) : Silmaril.X86.SegVC.Isa MState where
   Instr := Unit
   instDecEq := inferInstance
   decode _ := none
@@ -65,6 +65,9 @@ def toy (f : MState → Option MState) : Mach where
   step := f
   live_step _ _ := trivial
   step_of _ _ _ _ hd _ _ := nomatch hd
+
+/-- `toyIsa f` as an integer machine (`Mach.ofInt`). -/
+def toy (f : MState → Option MState) : Mach := Mach.ofInt (toyIsa f)
 
 /-- The admitted call `clamp_i32(5, 0, 3)`, on any toy machine. -/
 def s0 : Ffi.State := ffiSt 0x30 5 0 3

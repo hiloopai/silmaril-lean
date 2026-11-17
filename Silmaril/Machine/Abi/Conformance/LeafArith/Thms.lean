@@ -44,21 +44,21 @@ namespace Silmaril.Machine.Abi.Conformance.LeafArith
 open Silmaril.X86 (Open.isa)
 
 theorem clamp_conforms (mode : Mode) :
-    Conforms sysvInt Open.isa mode hdr "clamp_i32" clampProto clampCode 0 clampS :=
+    Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto clampCode 0 clampS :=
   Silmaril.Proofs.Machine.Abi.Conformance.LeafArith.clamp_conforms mode
 
 theorem sat_conforms (mode : Mode) :
-    Conforms sysvInt Open.isa mode hdr "sat_add_u32" satProto satCode 0 satS :=
+    Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "sat_add_u32" satProto satCode 0 satS :=
   Silmaril.Proofs.Machine.Abi.Conformance.LeafArith.sat_conforms mode
 
 theorem clamp_rejects_first (mode : Mode) :
-    ¬ Conforms sysvInt Open.isa mode hdr "clamp_i32" clampProto clampCode 0 clampFirstS :=
+    ¬ Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto clampCode 0 clampFirstS :=
   Silmaril.Proofs.Machine.Abi.Conformance.LeafArith.clamp_rejects_first mode
 
 theorem coverage_check : coverage.check sysvInt hdr = true :=
   Silmaril.Proofs.Machine.Abi.Conformance.LeafArith.coverage_check
 
-theorem header_sat : HeaderSatPartial sysvInt Open.isa hdr coverage impl :=
+theorem header_sat : HeaderSatPartial sysvInt (Mach.ofInt Open.isa) hdr coverage impl :=
   Silmaril.Proofs.Machine.Abi.Conformance.LeafArith.header_sat
 
 section Negative
@@ -73,7 +73,7 @@ theorem open_mid_not (mode : Mode) (S : CallSpec sysvInt.V clampProto)
       (ffiSt 1 5 0 3).machine.memory = fun _ => False)
     (hpre : S.pre clampArgs
       (ffiSt 1 5 0 3).machine.memory) :
-    ¬ Conforms sysvInt Open.isa mode hdr "clamp_i32" clampProto (region 1 19) 0 S :=
+    ¬ Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto (region 1 19) 0 S :=
   Silmaril.Proofs.Machine.Abi.Conformance.Negative.open_mid_not mode S hS hpre
 
 theorem stuck_not (mode : Mode) (S : CallSpec sysvInt.V clampProto)

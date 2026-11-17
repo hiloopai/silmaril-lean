@@ -27,25 +27,32 @@ predicate, and no signature is attached to a symbol by hand:
 | the prototype | `declared`: the header files parse (`Data.Layout.Header.read`, which refuses incompatible redeclarations) to a header declaring `f` with a C prototype that `A.lower` maps to `p`, with the tag definitions of **that** header (`HeaderSrc.env`: a by-value `struct T` is the `T` the same header defines). The prototype is a function of the header (`HeaderSrc.proto?`): the exact parsed one, with signedness and widths; its qualifiers are `HeaderSrc.quals?` (they do not change the lowering) |
 | the code | `code : Code`: the bytes, where they are loaded, the entry offset, the function's extent, the read-only data it reads and the image's address ranges |
 | admissible calls | `Admit`: a live machine state; `A.conv.Entry p a s`; the code and data placed, with the return address outside the code; the memory `A` gives the callee (`Stack`: `frame` bytes below `rsp`, the return address, the argument area, and `A.owned`, the storage of a MEMORY result); the FFI thread pointer equal to the machine's (`fsCoherent`). The stack window must be readable, writable, and apart from the code, the data, the image and the call's caller-visible objects (`S.objects`); every byte of `A.owned` readable, writable, and apart from the stack window, the code, the data, the image and `S.objects`. Also `S.pre a mem`: the C precondition, on the arguments and memory only |
-| execution | `callModelOf M`: the **first return** of `M` (`FnContract.FirstReturn`) |
+| the machine | `M : Mach`: a segment machine `M.isa` on its own state `M.σ`, with a lens into the FFI state (`M.load`, `M.store`) whose core and memory are `s.machine`'s. An integer machine on `MState` is `Mach.ofInt I` (it loads `s.machine` and carries the rest of the FFI state) |
+| execution | `callModelOf M`: the **first return** of `M.isa` (`FnContract.FirstReturn`) from `M.load s`, stored back into `s` (`M.store`) |
 | no stuck state | `safe`: from every admitted call, every state before the return takes a step on `M` (`NoStuck`). Code using an instruction `M` does not model is stuck, so it does not conform in either mode (`Proofs….Negative`) |
 | return | `Good`: `Return`; a result with `ResultAt` and `S.post`; memory written only inside `S.writes` or `Owned`: the memory `Stack` admits (the row's `frame` bytes `[rsp − frame, rsp)`, which contain the red zone when `frame ≥ 128`; the argument area; `A.owned`, each byte of which `Stack` requires readable, writable and apart from the rest). Nothing else below `rsp` is owned; the machine's FS base unchanged |
 | non-vacuity | `nonvacuous`: some admitted call exists; `enterable`: for every argument tuple and caller memory the precondition admits (objects outside the code and its data), an admitted call with those arguments, the same objects and the same bytes on them; the rest of its memory is the ABI's. The precondition, shown with every row, is what restricts the claim |
 | mode | `.total`: every admitted call returns. `.safe`: partial correctness, divergence allowed, stuck states not |
 
 **The machine is a restricted model, and `sysvInt` a restricted fragment.** `M : Mach` is any
-x86-64 segment machine on the integer state, and the standard ones (`Open`, `Open9`) decode an
-integer subset of x86-64. A row is a statement about `M`. `sysvInt` is the INTEGER fragment of
+x86-64 segment machine with a lens into the FFI state; the standard ones (`Mach.ofInt` of
+`Open.isa`, `Open9.isa`) are integer machines on `MState` and decode an integer subset of
+x86-64. A row is a statement about `M`. `sysvInt` is the INTEGER fragment of
 the System V psABI (fixed-arity 4- and 8-byte integers and pointers), not the whole psABI.
 
-**FP, vector and control state are preserved by construction, not proved.** `Ffi.State`'s
-vector, x87, direction-flag, MXCSR and x87-control state is carried unchanged by `callModelOf`
-(`Thms.callModelOf_carried`), so `Return`'s obligations about it hold *by the model*: a row
-proves nothing about them for real x86. Those obligations are about real x86 only through `Faithful R M`: on a
-reference machine `R`, each step `M` takes is the same step and leaves that state unchanged.
+**FP, vector and control state are preserved by construction, not proved.** On an integer
+machine (`Mach.ofInt`), `Ffi.State`'s vector, x87, direction-flag, MXCSR and x87-control state
+is carried unchanged by `callModelOf` (`Thms.callModelOf_carried`), so `Return`'s obligations
+about it hold *by the model*: a row proves nothing about them for real x86. Those obligations
+are about real x86 only through `Faithful R M`: on a reference machine `R`, each step `M` takes
+is the same step and leaves that state unchanged.
 `Thms.Conforms.onRef` transfers a row to `R` under that assumption; nothing here proves it of
 hardware. Because stuck states are excluded, an instruction outside `M` (SSE, x87, `std`,
-`ldmxcsr`, `fldcw`, `bsr` on `Open`) makes a row unprovable, never vacuous.
+`ldmxcsr`, `fldcw`, `bsr` on `Open`) makes a row unprovable, never vacuous. A machine that
+models more of the state (SSE registers, MXCSR) loads and stores it through its lens, and its
+rows prove `Return`'s obligations about that state rather than carrying it. How such a
+machine fills machine state the FFI state does not determine, and which MXCSR modes an
+admitted call may start in, is not fixed yet: `Mach` has no environment field.
 
 **External calls and the runtime.** The machine is the only place behaviour comes from. On the
 open machines there are no external calls: a call to code that is not loaded is stuck. A machine
@@ -181,23 +188,83 @@ def Code.rebase (c : Code) (b : Nat) : Code where
   data := c.data.map fun d => (d.1 + BitVec.ofNat 64 b, d.2)
   image := c.image.map fun r => (r.1 + BitVec.ofNat 64 b, r.2)
 
-/-- The machines conformance is stated on (`Mach`): x86-64 segment machines on the integer
-open state. These are **restricted models**: the standard ones (`Open`, `Open9`, `Str9`) decode
-an integer subset of x86-64 and have no SSE, x87, MXCSR or direction-flag instruction. A row on
-`M` is a statement about `M`; reading it about real x86 needs `Faithful` (below). -/
-abbrev Mach := Silmaril.X86.SegVC.Isa MState
+/-- **The machines conformance is stated on** (`Mach`): an x86-64 segment machine `isa` on a
+state `σ`, with a lens into the FFI state. `load s` is the machine state of the FFI state `s`;
+`store s x` writes the machine state `x` back into `s`. The laws tie the lens to the integer
+state every other ingredient reads (`Admit`, `Placed`, `Stack` and `Good` read `s.machine`):
+the machine's core and memory of `load s` are `s.machine`'s, `store` writes `x`'s core and
+memory to `s.machine`, and storing what was loaded changes nothing. `load (store s x) = x` is
+**not** required: the FFI state need not hold everything the machine models.
 
-/-- **The call relation of `M`**: the first return of the run from the entry state, with the
-state the machine does not model (vectors, x87, control state, FFI thread pointer) carried. -/
+These are **restricted models**: the standard ones (`Mach.ofInt Open.isa`, `Mach.ofInt
+Open9.isa`, `Mach.ofInt Str9.isa`) decode an integer subset of x86-64 and have no SSE, x87,
+MXCSR or direction-flag instruction. A row on `M` is a statement about `M`; reading it about
+real x86 needs `Faithful` (below).
+
+**Only `Mach.ofInt` machines are sound to state rows on today.** For a general lens the laws
+leave three gaps (review of #994), which a richer machine (stage 2: SSE, `Str9L`) must close
+before any row uses it:
+1. *`store` may supply what the machine never computed.* The laws constrain `store s x` only
+   on `.machine` and at `x = load s`; a lawful `store` may set `direction`, `x87Mode`, MXCSR or
+   vectors on its own, making `Return`'s obligations hold by the lens. Fix: split the FFI state
+   into what the machine models and what it carries (`store s x = merge s (view x)`, with
+   `store (store s x) y = store s y`), or a per-machine theorem listing exactly which FFI fields
+   come from `σ`, shown with every row.
+2. *Hidden state is fixed by `load`.* State the FFI state does not determine (a time-stamp
+   oracle, entry MXCSR modes) is whatever `load` picks, so a row covers one completion, not
+   every one hardware may present. Fix: quantify `callModelOf`, `NoStuck` and `Admit` over every
+   completion (`Fills : Ffi.State → σ → Prop`), or require `load (store s x) = x` for the state
+   the rows are about.
+3. *`Faithful` quantifies over every `y` through `store s y`.* If `store` drops state a step
+   reads, no reference machine is faithful and `Conforms.onRef` never applies (vacuous, not
+   unsound). Fix: restrict `Faithful` to states reached from `load s`, or require dropped state
+   not to influence `step`.
+Within a call, runs stay in `σ` and `store` is applied once; composing two calls
+(`load (store s y)`) restarts the hidden state, which a theorem chaining calls must say. -/
+structure Mach where
+  /-- The machine's state. -/
+  σ : Type
+  /-- The machine. -/
+  isa : Silmaril.X86.SegVC.Isa σ
+  /-- The machine state of an FFI state. -/
+  load : Ffi.State → σ
+  /-- Write a machine state back into an FFI state. -/
+  store : Ffi.State → σ → Ffi.State
+  core_load : ∀ s, isa.core (load s) = s.machine.core
+  mem_load : ∀ s, isa.mem (load s) = s.machine.memory
+  machine_store : ∀ s x, (store s x).machine = ⟨isa.core x, isa.mem x⟩
+  store_load : ∀ s, store s (load s) = s
+
+/-- **An integer machine** (on `MState`, whose core and memory are the state's) as a `Mach`:
+it loads `s.machine` and stores into it, so the rest of the FFI state (vectors, x87, control
+state, thread pointer) is carried unchanged by `callModelOf` (`Thms.callModelOf_carried`). The
+side conditions hold by `rfl` for the standard machines. -/
+def Mach.ofInt (I : Silmaril.X86.SegVC.Isa MState)
+    (hc : ∀ m, I.core m = m.core := by intro _; rfl)
+    (hm : ∀ m, I.mem m = m.memory := by intro _; rfl) : Mach where
+  σ := MState
+  isa := I
+  load s := s.machine
+  store s m := { s with machine := m }
+  core_load s := hc s.machine
+  mem_load s := hm s.machine
+  machine_store _ x := by rw [hc, hm]
+  store_load _ := rfl
+
+/-- **The call relation of `M`**: the first return of the run from the loaded entry state,
+stored back into the entry's FFI state (`Mach.store`). For an integer machine
+(`Mach.ofInt`), the state the machine does not model (vectors, x87, control state, FFI thread
+pointer) is carried. -/
 def callModelOf (M : Mach) : Contracts.Model Ffi.State Ffi.State := fun s =>
-  {t | Silmaril.X86.FnContract.FirstReturn M s.machine t.machine ∧ t = { s with machine := t.machine }}
+  {t | ∃ y, Silmaril.X86.FnContract.FirstReturn M.isa (M.load s) y ∧ t = M.store s y}
 
 /-- **No stuck state**: every state the machine reaches from `s` before the function returns,
 and that is not the return, takes a step. A run may diverge; it may not get stuck (an
 instruction outside the model, a fault, a fetch outside the code). -/
 def NoStuck (M : Mach) (s : Ffi.State) : Prop :=
-  ∀ m, Silmaril.X86.FnContract.RunsIn M (fun x => ¬ Silmaril.X86.FnContract.Returned M s.machine x)
-      s.machine m → ¬ Silmaril.X86.FnContract.Returned M s.machine m → (M.step m).isSome
+  ∀ y, Silmaril.X86.FnContract.RunsIn M.isa
+      (fun x => ¬ Silmaril.X86.FnContract.Returned M.isa (M.load s) x) (M.load s) y →
+    ¬ Silmaril.X86.FnContract.Returned M.isa (M.load s) y → (M.isa.step y).isSome
 
 /-- **A C-level call spec** for prototype `p`.
 
@@ -288,7 +355,7 @@ structure Stack (A : AbiDef) (p : A.V.Proto) (c : Code) (frame : Nat) (objects :
 (`FsBase.FsCoherent`). -/
 structure Admit (A : AbiDef) (M : Mach) (p : A.V.Proto) (c : Code) (frame : Nat)
     (S : CallSpec A.V p) (a : A.V.Args p) (s : Ffi.State) : Prop where
-  live : M.live s.machine
+  live : M.isa.live (M.load s)
   entry : A.conv.Entry p a s
   placed : Placed c s
   stack : Stack A p c frame (S.objects a s.machine.memory) s
@@ -376,13 +443,13 @@ included): a finer model of x86-64, or hardware observed by a differential-testi
 structure Ref where
   step : Ffi.State → Option Ffi.State
 
-/-- **`M` is faithful to the reference `R`**: wherever `M` takes a step, `R` takes the same step
-on the integer state and leaves the state `M` does not model unchanged. For the standard
-integer machines this is the claim that each instruction they decode is executed by real x86 as
-they say and touches no vector, x87 or control state; it is an **assumption** of every
-real-x86 reading of a row, not proved here. -/
+/-- **`M` is faithful to the reference `R`**: wherever `M` takes a step from `y`, `R` takes the
+same step from any FFI state holding `y` (`M.store s y`), and leaves the state `M` does not
+model unchanged. For the standard integer machines this is the claim that each instruction they
+decode is executed by real x86 as they say and touches no vector, x87 or control state; it is an
+**assumption** of every real-x86 reading of a row, not proved here. -/
 def Faithful (R : Ref) (M : Mach) : Prop :=
-  ∀ s m', M.step s.machine = some m' → R.step s = some { s with machine := m' }
+  ∀ s y y', M.isa.step y = some y' → R.step (M.store s y) = some (M.store s y')
 
 /-- Runs of the reference machine taking every step from a state satisfying `P`. -/
 inductive Ref.RunsIn (R : Ref) (P : Ffi.State → Prop) : Ffi.State → Ffi.State → Prop
@@ -391,8 +458,8 @@ inductive Ref.RunsIn (R : Ref) (P : Ffi.State → Prop) : Ffi.State → Ffi.Stat
 
 /-- The first returns of the reference machine (returned as for `M`). -/
 def Ref.callModel (R : Ref) (M : Mach) : Contracts.Model Ffi.State Ffi.State := fun s =>
-  {t | R.RunsIn (fun x => ¬ Silmaril.X86.FnContract.Returned M s.machine x.machine) s t ∧
-    Silmaril.X86.FnContract.Returned M s.machine t.machine}
+  {t | R.RunsIn (fun x => ¬ Silmaril.X86.FnContract.Returned M.isa (M.load s) (M.load x)) s t ∧
+    Silmaril.X86.FnContract.Returned M.isa (M.load s) (M.load t)}
 
 /-! ## Header satisfaction -/
 

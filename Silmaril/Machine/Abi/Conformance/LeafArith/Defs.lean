@@ -97,12 +97,12 @@ def bswapS : CallSpec sysvInt.V bswapProto where
 /-- **Open**: `gcd_u32` (`0x401370`, 37 bytes) conforms. Its block certificate (`gcdCert`, a loop
 with Euclid's invariant) is proved; the first-return form is not. -/
 def Task.gcd_conforms : Prop :=
-  Conforms sysvInt Silmaril.X86.Open.isa .total hdr "gcd_u32" satProto (region 0 37) 0 gcdS
+  Conforms sysvInt (Mach.ofInt Silmaril.X86.Open.isa) .total hdr "gcd_u32" satProto (region 0 37) 0 gcdS
 
 /-- **Open**: `bswap32_manual` (`0x401420`, 5 bytes: `mov %edi,%eax; bswap %eax; ret`)
 conforms. -/
 def Task.bswap_conforms : Prop :=
-  Conforms sysvInt Silmaril.X86.Open.isa .total hdr "bswap32_manual" bswapProto (region 0xb0 5) 0 bswapS
+  Conforms sysvInt (Mach.ofInt Silmaril.X86.Open.isa) .total hdr "bswap32_manual" bswapProto (region 0xb0 5) 0 bswapS
 
 /-- The coverage of `arith.h` by the pinned `leaf-arith` that this example proves: the two
 functions with first-return proofs, and every other declaration excluded with its reason. -/

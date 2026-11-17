@@ -59,7 +59,8 @@ structure Conforms (A : AbiDef) (M : Mach) (mode : Mode) (hdr : HeaderSrc) (f : 
 | prototype | `Declares A hdr f p` | the header files parse to a header declaring `f`, and `A.lower` maps its prototype to `p` with the tag definitions of the same header (`hdr.env`): a by-value `struct T` is laid out as that header defines `T` (`sysvScalar_tag_mismatch`). The parsed prototype is a function of the header (`hdr.proto? f`), so it is the exact one: result and parameter types with their signedness and widths. Qualifiers are kept beside it (`hdr.quals? f`, by pointer level); they do not change the lowering. The reader (`Data.Layout.Header.read`) refuses incompatible redeclarations, including differing pointee qualifiers. The check runs by `decide`, so no signature is attached by hand |
 | code identity | `Code`, `Placed` | the bytes, the load address, the entry offset, the function's extent, the read-only data, and the image's address ranges. An admitted state has the code and data loaded, `rip` at the entry, and the return address outside the code |
 | admissible calls | `Admit` | listed below this table |
-| execution | `callModelOf M` | the **first return** of `M`; the result is read at the function's own return |
+| machine | `M : Mach` | a segment machine `M.isa` on its own state `M.σ`, with a lens into the FFI state: `M.load s` is the machine state of `s`, `M.store s x` writes `x` back; its core and memory are always `s.machine`'s. An integer machine `I` on `MState` is `Mach.ofInt I` (it loads `s.machine` and carries the rest of the FFI state) |
+| execution | `callModelOf M` | the **first return** of `M.isa` from `M.load s`, stored back into `s`; the result is read at the function's own return |
 | no stuck state | `safe`, `NoStuck` | every state before the return takes a step on `M` |
 | call/return | `Good.ret` = `A.conv.Return` | `rip` = the return address, `rsp + 8`, the callee-saved registers, DF clear, x87 mode, MXCSR and x87 control, the FFI thread pointer |
 | result | `Good.result` | some `r` with `A.conv.ResultAt` (excess register bits unspecified) and `S.post a s r t` |
@@ -94,14 +95,16 @@ conformance of a *pure* function. A function with effects (`memset`) gives its `
   instruction. Such an instruction is undecodable on them, so code that uses one is stuck.
   Because `safe` excludes stuck states, that code has **no row in either mode**: the row is
   unprovable, not vacuously true.
-- **State the integer machine lacks: preserved by construction.** `callModelOf` carries the
-  vector, x87, DF, MXCSR and x87-control state unchanged (`callModelOf_carried`). The `Return`
+- **State the integer machine lacks: preserved by construction.** On an integer machine
+  (`Mach.ofInt`), `callModelOf` carries the vector, x87, DF, MXCSR and x87-control state
+  unchanged (`callModelOf_carried`). The `Return`
   obligations about it hold *by the model*, so a row proves nothing about them for real x86;
   that is `Faithful`'s content.
-- **Faithfulness.** `Faithful R M`: wherever `M` steps, the reference machine `R` (on the whole
-  FFI state) takes the same step and leaves that extra state unchanged. `Conforms.onRef`
-  transfers a row to `R`: every first return of `R` is a conforming return, and in total mode
-  there is one. For real x86 this is an **assumption** about the model (each decoded instruction
+- **Faithfulness.** `Faithful R M`: wherever `M` steps from `x`, the reference machine `R` (on
+  the whole FFI state) takes the same step from every FFI state holding `x` (`M.store s x`) and
+  leaves the state `M` does not model unchanged (on `Mach.ofInt`, `faithful_ofInt_iff`).
+  `Conforms.onRef` transfers a row to `R`: every first return of `R` is a conforming return,
+  and in total mode there is one. For real x86 this is an **assumption** about the model (each decoded instruction
   is executed as `M` says and touches no vector, x87 or control state). It is not proved here;
   the open-machine trust base is described in [x86](../x86.md).
 - **External calls.** Behaviour comes only from `M`. On the open machines a call to code that is
@@ -288,7 +291,7 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 | --- | --- |
 | `Silmaril.Data.Layout.Header` | the header subset reader (`read`), `CProto`, `Header`; tagged struct, union and enum definitions are read into `Header.decls`/`Header.enums` (`Header.env` for layouts). Header satisfaction concerns the prototypes only |
 | `Silmaril.Data.Layout.Header.Import`, `Silmaril.Machine.Abi.Conformance.Import` | the clang route: a provenance-tagged import of a pinned clang JSON AST, its cross-check with the subset reader, and coverage and `Declares` from it ([C headers](c-headers.md)) |
-| `Silmaril.Machine.Abi.Conformance` | `AbiDef`, `sysvInt`, `Code`, `CallSpec`, `Admit`, `NoStuck`, `Good`, `Conforms`, `Faithful`, `Coverage`, `HeaderSatPartial`, `HeaderSatAvailable`, `HeaderSatComplete`; `conforms_of_strict`, `Conforms.steps`, `Conforms.onRef` |
+| `Silmaril.Machine.Abi.Conformance` | `AbiDef`, `sysvInt`, `Code`, `Mach`, `Mach.ofInt`, `CallSpec`, `Admit`, `NoStuck`, `Good`, `Conforms`, `Faithful`, `Coverage`, `HeaderSatPartial`, `HeaderSatAvailable`, `HeaderSatComplete`; `conforms_of_strict`, `Conforms.steps`, `Conforms.onRef` |
 | `Silmaril.Machine.Abi.Conformance.Win64`, `….SysvScalar` | `win64Int`, `lowerWin64Int` and `sysvScalar`, `kindOf`, `objectOf`, `argOf`, `lowerScalar`, with their lowering examples |
 | `Silmaril.Machine.Abi.SystemV.Scalar` | the scalar-and-aggregate vocabulary and convention: `Kind`, `Agg`, `Eights`, `Arg`, `Proto`, `scalarPlan`, `plan_scalarPlan`, `entry_inhabited`, `sysv`, `resultAt_some`, `resultAt_direct`, `resultAt_indirect` |
 | `Silmaril.Data.Layout` (`msX64`) | the Microsoft x64 LLP64 data model |
@@ -311,4 +314,7 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 - `sysvScalar` and `win64Int` instances of the registry shapes, and rows for them (a
   `sysvScalar` row about floating computation needs a machine with SSE steps).
 - A reference machine for `Faithful`.
+- A `Mach` with SSE steps (`Str9L`), loading and storing the vector registers and MXCSR through
+  its lens. Which MXCSR modes an admitted call may start in (an environment of the machine) is
+  not decided; `Mach` has no such field yet.
 - The explorer's prototype and ABI views.

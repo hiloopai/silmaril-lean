@@ -221,7 +221,7 @@ theorem sat_declared : Declares sysvInt hdr "sat_add_u32" satProto :=
       [.typedef "u32" (.int .int .unsigned), .typedef "u32" (.int .int .unsigned)], false⟩), rfl⟩
 
 theorem clamp_conforms (mode : Mode) :
-    Conforms sysvInt Open.isa mode hdr "clamp_i32" clampProto clampCode 0 clampS := by
+    Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto clampCode 0 clampS := by
   refine conforms_of_strict clamp_strict clamp_declared (by decide +kernel)
     ⟨clampArgs, ffiSt 0x30 5 0 3, ⟨trivial, clamp_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩,
       trivial⟩
@@ -240,10 +240,11 @@ theorem clamp_conforms (mode : Mode) :
     have hrax : (t.core.read .rax).setWidth 32 = clampSpec x lo hi := by
       rw [show t.core.read .rax = _ from res.post, ← hx, ← hl, ← hh]
       simp
+      rfl
     exact ⟨clampSpec x lo hi, (resultAt_int32 _ _ _ _ _).2 hrax, rfl⟩
 
 theorem sat_conforms (mode : Mode) :
-    Conforms sysvInt Open.isa mode hdr "sat_add_u32" satProto satCode 0 satS := by
+    Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "sat_add_u32" satProto satCode 0 satS := by
   refine conforms_of_strict sat_strict sat_declared (by decide +kernel)
     ⟨satArgs, ffiSt 0x90 0xfffffff0 0x20 0,
       ⟨trivial, sat_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩, trivial⟩
@@ -262,16 +263,17 @@ theorem sat_conforms (mode : Mode) :
     have hrax : (t.core.read .rax).setWidth 32 = satAddSpec x y := by
       rw [show t.core.read .rax = _ from res.post, ← hx, ← hy]
       simp
+      rfl
     exact ⟨satAddSpec x y, (resultAt_uint32 _ _ _ _ _).2 hrax, rfl⟩
 
 /-- **The statement discriminates**: `clamp_i32` does not conform with the spec "returns its
 first argument". On `clamp_i32(5, 0, 3)` the one outcome reads back as `3`, not `5`. -/
 theorem clamp_rejects_first (mode : Mode) :
-    ¬ Conforms sysvInt Open.isa mode hdr "clamp_i32" clampProto clampCode 0 clampFirstS := by
+    ¬ Conforms sysvInt (Mach.ofInt Open.isa) mode hdr "clamp_i32" clampProto clampCode 0 clampFirstS := by
   intro bad
-  have ad : Admit sysvInt Open.isa clampProto clampCode 0 clampFirstS clampArgs (ffiSt 0x30 5 0 3) :=
+  have ad : Admit sysvInt (Mach.ofInt Open.isa) clampProto clampCode 0 clampFirstS clampArgs (ffiSt 0x30 5 0 3) :=
     ⟨trivial, clamp_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩
-  have ad' : Admit sysvInt Open.isa clampProto clampCode 0 clampS clampArgs (ffiSt 0x30 5 0 3) :=
+  have ad' : Admit sysvInt (Mach.ofInt Open.isa) clampProto clampCode 0 clampS clampArgs (ffiSt 0x30 5 0 3) :=
     ⟨trivial, clamp_entry, placed _ _ _ _ _, stack _ (by decide) _ _ _ _ _, rfl⟩
   have good := clamp_conforms .total
   obtain ⟨t, ht⟩ := good.progress rfl _ _ ad' trivial
@@ -286,7 +288,7 @@ theorem clamp_rejects_first (mode : Mode) :
 
 theorem coverage_check : coverage.check sysvInt hdr = true := by decide +kernel
 
-theorem header_sat : HeaderSatPartial sysvInt Open.isa hdr coverage impl := by
+theorem header_sat : HeaderSatPartial sysvInt (Mach.ofInt Open.isa) hdr coverage impl := by
   refine ⟨by decide, coverage_check, fun f hf => ?_⟩
   simp only [coverage, List.mem_cons, List.not_mem_nil, or_false] at hf
   rcases hf with rfl | rfl

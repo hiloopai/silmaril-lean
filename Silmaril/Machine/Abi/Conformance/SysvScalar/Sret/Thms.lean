@@ -29,7 +29,7 @@ open Silmaril.Machine.Abi.Conformance
 theorem owned_iff (r : Silmaril.X86.Word) (x : Nat) :
     sysvScalar.owned sretProto (sretSt r) x ↔ r.toNat ≤ x ∧ x < r.toNat + 24 := Iff.rfl
 
-theorem admitted (M : Mach) (hl : M.live (sretSt 0x10000).machine) :
+theorem admitted (M : Mach) (hl : M.isa.live (M.load (sretSt 0x10000))) :
     Admit sysvScalar M sretProto sretCode 0 (CallSpec.abiPure _ _) sretArgs (sretSt 0x10000) :=
   Silmaril.Proofs.Machine.Abi.Conformance.SysvScalar.Sret.admitted M hl
 

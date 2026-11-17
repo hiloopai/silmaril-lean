@@ -48,7 +48,8 @@ IEEE binary32, an 8-byte type binary64. `lowerScalar` refuses, with a reason:
 **What a row does not cover.** The standard machines (`Open`, `Open9`) model no SSE
 instruction, so code that reads an XMM argument or writes XMM0 is stuck on them and has no
 `sysvScalar` row there. A row on such a machine is for code that receives floating arguments
-and does not touch them (they are carried by `callModelOf`, unchanged); a row about floating
+and does not touch them (on an integer machine, `Mach.ofInt`, they are carried by
+`callModelOf`, unchanged); a row about floating
 computation needs a machine with SSE steps.
 
 **Result storage.** The hidden pointer of a MEMORY result points at memory the callee owns

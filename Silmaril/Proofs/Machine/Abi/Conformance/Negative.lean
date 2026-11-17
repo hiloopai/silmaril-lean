@@ -46,22 +46,23 @@ theorem retOf_s0 : Silmaril.X86.FnContract.retOf s0.machine.core s0.machine.memo
   retOf_st _ _ _ _
 
 theorem not_returned_s0 (f : MState → Option MState) :
-    ¬ Silmaril.X86.FnContract.Returned (toy f) s0.machine s0.machine :=
-  not_returned_entry (M := toy f) (c := clampCode) (fun _ => rfl) (fun _ => rfl) (by decide)
+    ¬ Silmaril.X86.FnContract.Returned (toy f).isa s0.machine s0.machine :=
+  not_returned_entry (M := toy f) (c := clampCode) (by decide)
     (by decide +kernel) (placed _ _ _ _ _)
 
 theorem returned_ret0 (f : MState → Option MState) (c : State) (m : Memory) :
-    Silmaril.X86.FnContract.Returned (toy f) s0.machine (ret0 c m) := by
+    Silmaril.X86.FnContract.Returned (toy f).isa s0.machine (ret0 c m) := by
   refine ⟨?_, ?_⟩
-  · show retAt = _; rw [show (toy f).core s0.machine = s0.machine.core from rfl,
-      show (toy f).mem s0.machine = s0.machine.memory from rfl, retOf_s0]
+  · show retAt = _; rw [show (toy f).isa.core s0.machine = s0.machine.core from rfl,
+      show (toy f).isa.mem s0.machine = s0.machine.memory from rfl, retOf_s0]
   · show Silmaril.Machine.RegisterFile.write c.regs .rsp (0x8ff8 + 8) .rsp = _
     simp [Silmaril.Machine.RegisterFile.write]; rfl
 
 
 theorem firstReturn_oneStep (c : State) (m : Memory) :
-    Silmaril.X86.FnContract.FirstReturn (toy (oneStep c m)) s0.machine (ret0 c m) :=
-  ⟨.step (not_returned_s0 _) (by simp [toy, oneStep]; rfl) (.refl _), returned_ret0 _ c m⟩
+    Silmaril.X86.FnContract.FirstReturn (toy (oneStep c m)).isa s0.machine (ret0 c m) :=
+  ⟨.step (not_returned_s0 _) (by simp [toy, Mach.ofInt, toyIsa, oneStep]; rfl) (.refl _),
+    returned_ret0 _ c m⟩
 
 /-! ## Stuck code -/
 
@@ -70,9 +71,9 @@ theorem stuck_not (mode : Mode) (S : CallSpec sysvInt.V clampProto)
     (hpre : S.pre clampArgs s0.machine.memory) :
     ¬ Conforms sysvInt (toy fun _ => none) mode hdr "clamp_i32" clampProto clampCode 0 S := by
   intro h
-  have := Silmaril.Proofs.Machine.Abi.Conformance.Conforms.steps h (fun _ => rfl) (fun _ => rfl)
+  have := Silmaril.Proofs.Machine.Abi.Conformance.Conforms.steps h
     (by decide) (admit _ hS) hpre
-  simp [toy] at this
+  simp [toy, Mach.ofInt, toyIsa] at this
 
 /-! ## A callee-saved register clobbered -/
 
@@ -86,7 +87,8 @@ theorem clobber_not (mode : Mode) :
   obtain ⟨_, _, hret⟩ := g.ret
   have := hret.calleeSaved .rbx (by decide)
   revert this
-  simp [ret0, clobbered, s0, ffiSt, st, Silmaril.Machine.RegisterFile.write, State.read,
+  simp [toy, Mach.ofInt, ret0, clobbered, s0, ffiSt, st, Silmaril.Machine.RegisterFile.write,
+    State.read,
     State.write, Silmaril.Machine.Abi.SystemV.callOf]
 
 /-! ## A write below the stack pointer with no frame -/
@@ -130,16 +132,18 @@ theorem unbalanced_not (mode : Mode) :
       (CallSpec.abiPure sysvInt.V clampProto) := by
   intro h
   have hns := h.safe clampArgs s0 (admit _ rfl) trivial
-  have hnr : ¬ Silmaril.X86.FnContract.Returned (toy unbalancedStep) s0.machine
+  have hnr : ¬ Silmaril.X86.FnContract.Returned (toy unbalancedStep).isa s0.machine
       ⟨unbalancedCore, s0.machine.memory⟩ := by
     rintro ⟨-, hsp⟩
     revert hsp
     show Silmaril.Machine.RegisterFile.write s0.machine.core.regs .rsp (0x8ff8 + 16) .rsp ≠ _
     simp [Silmaril.Machine.RegisterFile.write]
     decide
-  have := hns _ (.step (not_returned_s0 _) (by simp [toy, unbalancedStep]; rfl) (.refl _)) hnr
+  have := hns _
+    (.step (not_returned_s0 _) (by simp [toy, Mach.ofInt, toyIsa, unbalancedStep]; rfl) (.refl _))
+    hnr
   revert this
-  simp [toy, unbalancedStep, unbalancedCore]
+  simp [toy, Mach.ofInt, toyIsa, unbalancedStep, unbalancedCore]
   decide
 
 /-! ## A prototype the header does not declare -/
@@ -211,9 +215,9 @@ theorem open_stuck_mid : Silmaril.X86.Open.step (st 1 5 0 3) = none := by
 theorem open_mid_not (mode : Mode) (S : CallSpec sysvInt.V clampProto)
     (hS : S.objects clampArgs (ffiSt 1 5 0 3).machine.memory = fun _ => False)
     (hpre : S.pre clampArgs (ffiSt 1 5 0 3).machine.memory) :
-    ¬ Conforms sysvInt Silmaril.X86.Open.isa mode hdr "clamp_i32" clampProto (region 1 19) 0 S := by
+    ¬ Conforms sysvInt (Mach.ofInt Silmaril.X86.Open.isa) mode hdr "clamp_i32" clampProto (region 1 19) 0 S := by
   intro h
-  have ad : Admit sysvInt Silmaril.X86.Open.isa clampProto (region 1 19) 0 S clampArgs (ffiSt 1 5 0 3) := by
+  have ad : Admit sysvInt (Mach.ofInt Silmaril.X86.Open.isa) clampProto (region 1 19) 0 S clampArgs (ffiSt 1 5 0 3) := by
     refine ⟨trivial, ?_, placed _ _ _ _ _, hS ▸ stack _ (by decide) _ _ _ _ _, rfl⟩
     refine ⟨retAt, rfl, ⟨⟨rfl, _, rfl, (Silmaril.Proofs.Machine.Abi.Conformance.SysvInt.chunk32_iff _ .rdi _).2 rfl⟩,
       ⟨rfl, _, rfl, (Silmaril.Proofs.Machine.Abi.Conformance.SysvInt.chunk32_iff _ .rsi _).2 rfl⟩,
@@ -223,7 +227,7 @@ theorem open_mid_not (mode : Mode) (S : CallSpec sysvInt.V clampProto)
       decide
     · change (0x8ff8 : Word).toNat + 8 + alignUp (8 * (3 - 6)) 16 ≤ 2 ^ 64
       decide
-  have := Silmaril.Proofs.Machine.Abi.Conformance.Conforms.steps h (fun _ => rfl) (fun _ => rfl)
+  have := Silmaril.Proofs.Machine.Abi.Conformance.Conforms.steps h
     (by decide) ad hpre
   change (Silmaril.X86.Open.step (st 1 5 0 3)).isSome = true at this
   rw [open_stuck_mid] at this
