@@ -147,7 +147,10 @@ Each stage is a reviewed pull request with its own scope. Caveats of the current
 listed with the stage that addresses them.
 
 1. **Foundations** (this stage). Done: as above.
-2. **Program corpus and stage artifacts.** C programs with their exact source, preprocessed text,
+2. **Program corpus and stage artifacts.** *Started*: [`examples/c-programs`](../../examples/c-programs/README.md)
+   (16 programs, every artifact with provenance and SHA-256; `ctv-pipeline`; Clang route vs
+   Cerberus route cross-validated through the same elaborator where both elaborate: 3 programs,
+   compiled evidence; `make c-tv-check`). Remaining: C programs with their exact source, preprocessed text,
    Clang JSON AST, Cabs/Ail/typed Ail/Core from the Lean frontend and from the Clang route, each
    with provenance (source SHA-256, compiler and version, options, target, language); records
    (`silmaril/c-tv/*.toml`) with instances of the shapes and `@[solves]` theorems, so the

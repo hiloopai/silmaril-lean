@@ -653,6 +653,12 @@ name = "cfront"
 root = "Cfront"
 srcDir = "tools/cfront"
 
+# C translation validation (docs/projects/c-tv.md): typed Ail to Core to whole-program verdicts.
+[[lean_exe]]
+name = "ctv-pipeline"
+root = "CtvPipeline"
+srcDir = "tools/ctv-pipeline"
+
 # The Cerberus oracle replays (docs/projects/cerberus.md): each reads the genuine Cerberus
 # fixtures under benchmarks/cerberus-elaboration/oracle at run time.
 [[lean_exe]]

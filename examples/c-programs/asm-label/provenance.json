@@ -1,0 +1,191 @@
+{
+ "artifacts": {
+  "cerberus.core.sexp.gz": {
+   "bytes": 498484,
+   "file": "cerberus.core.sexp.gz",
+   "inputs": [
+    "0a9f68b1eca513af826d759d6eb7fe192f28ec544b26e6bf951b0443d86c3966"
+   ],
+   "producer": {
+    "args": [],
+    "target": "x86_64-linux-gnu",
+    "tool": "ctv-pipeline run",
+    "version": "6f1c9fc0110757e5daa04959b50b13fb65834eef"
+   },
+   "sha256": "481295c7026a4e556e53d0b2146f191c29faac00099a152b6a2adea80bec212e",
+   "sha256Of": "uncompressed",
+   "stage": "core"
+  },
+  "cerberus.tail.sexp": {
+   "bytes": 3608,
+   "file": "cerberus.tail.sexp",
+   "inputs": [
+    "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+   ],
+   "producer": {
+    "args": [
+     "preprocessed.i"
+    ],
+    "target": "x86_64-linux-gnu",
+    "tool": "cerb-lean parse --level tail",
+    "version": "6f1c9fc0110757e5daa04959b50b13fb65834eef"
+   },
+   "sha256": "0a9f68b1eca513af826d759d6eb7fe192f28ec544b26e6bf951b0443d86c3966",
+   "stage": "typedAil"
+  },
+  "clang-ast.json.gz": {
+   "bytes": 10672,
+   "file": "clang-ast.json.gz",
+   "inputs": [
+    "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+   ],
+   "producer": {
+    "args": [
+     "-x",
+     "c",
+     "-std=c11",
+     "-target",
+     "x86_64-linux-gnu",
+     "-Xclang",
+     "-ast-dump=json",
+     "-fsyntax-only",
+     "preprocessed.i"
+    ],
+    "target": "x86_64-linux-gnu",
+    "tool": "clang -ast-dump=json",
+    "version": "Debian clang version 19.1.7 (3+b1)"
+   },
+   "sha256": "b856ac352699a6d9736c4b1f09582875c5bc56b9bb01c7ca33f50986b38e6232",
+   "sha256Of": "uncompressed",
+   "stage": "clangAst"
+  },
+  "native-O0.out": {
+   "bytes": 0,
+   "file": "native-O0.out",
+   "inputs": [
+    "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+   ],
+   "producer": {
+    "args": [],
+    "target": "x86_64-linux-gnu",
+    "tool": "gcc O0 && run",
+    "version": "gcc (Debian 14.2.0-19) 14.2.0"
+   },
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "stage": "observation"
+  },
+  "native-O2.out": {
+   "bytes": 0,
+   "file": "native-O2.out",
+   "inputs": [
+    "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+   ],
+   "producer": {
+    "args": [],
+    "target": "x86_64-linux-gnu",
+    "tool": "gcc O2 && run",
+    "version": "gcc (Debian 14.2.0-19) 14.2.0"
+   },
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "stage": "observation"
+  },
+  "preprocessed.i": {
+   "bytes": 113,
+   "file": "preprocessed.i",
+   "inputs": [
+    "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+   ],
+   "producer": {
+    "args": [
+     "-E",
+     "-P",
+     "-std=c11",
+     "source.c",
+     "-o",
+     "preprocessed.i"
+    ],
+    "target": "x86_64-linux-gnu",
+    "tool": "gcc -E",
+    "version": "gcc (Debian 14.2.0-19) 14.2.0"
+   },
+   "sha256": "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0",
+   "stage": "preprocessed"
+  },
+  "source.c": {
+   "bytes": 113,
+   "file": "source.c",
+   "inputs": [],
+   "producer": null,
+   "sha256": "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0",
+   "stage": "source"
+  }
+ },
+ "blockedRoutes": [
+  "cerberus"
+ ],
+ "edges": [
+  {
+   "evidence": {
+    "external": "gcc -E"
+   },
+   "relation": "produces",
+   "source": "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0",
+   "target": "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+  },
+  {
+   "evidence": {
+    "compiled": "Silmaril.Cerberus.Frontend (cerb-lean)"
+   },
+   "relation": "elaborates",
+   "source": "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0",
+   "sourceCorrespondence": "blocked: asm label or register",
+   "target": "0a9f68b1eca513af826d759d6eb7fe192f28ec544b26e6bf951b0443d86c3966"
+  },
+  {
+   "evidence": {
+    "external": "clang"
+   },
+   "relation": "produces",
+   "source": "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0",
+   "target": "b856ac352699a6d9736c4b1f09582875c5bc56b9bb01c7ca33f50986b38e6232"
+  },
+  {
+   "evidence": {
+    "compiled": "Silmaril.Cerberus.Elaboration.Functions.elaborate"
+   },
+   "relation": "elaborates",
+   "source": "0a9f68b1eca513af826d759d6eb7fe192f28ec544b26e6bf951b0443d86c3966",
+   "sourceCorrespondence": "blocked: asm label or register",
+   "target": "481295c7026a4e556e53d0b2146f191c29faac00099a152b6a2adea80bec212e"
+  }
+ ],
+ "failures": {
+  "clang.tail": {
+   "exit": 1,
+   "output": "($reject 1 ($str \"cfront-clang 23.1.0 ea7d852a70e8bdfaf601d6626a760f9771b2c4b4\") ($str \"gcc_4.9.0_x86_64-apple-darwin10.8.0\") ($str \"cfront\") ($loc_unknown) ($str \"FunctionDecl renamed: attribute AsmLabelAttr is not supported\"))\ncfront: clang-ast.json: FunctionDecl renamed: attribute AsmLabelAttr is not supported\n"
+  }
+ },
+ "language": "C11",
+ "losses": [
+  {
+   "blocking": true,
+   "construct": "asm label or register",
+   "route": "cerberus",
+   "rule": "dropped by the parser, as upstream c_parser.mly does (Silmaril/Raw/Cerberus/Frontend/Declarations.lean, initDeclaratorRest)",
+   "why": "the assembler name or register the declaration gives is lost: the route's Core does not represent the source's linkage names"
+  }
+ ],
+ "name": "asm-label",
+ "profile": "linuxX86_64",
+ "repositoryRevision": "6f1c9fc0110757e5daa04959b50b13fb65834eef",
+ "schema": "silmaril.c-tv.provenance.v1",
+ "target": "x86_64-linux-gnu",
+ "tools": {
+  "cerb-lean": "7388fce668288274cff2f963061052343a183f1f59e2d41a2c62f2bc3e1f60e7",
+  "cfront": "3c1fa73fd49ec347703964e29b2d79b7b65c2164f2a7a5ef822f6e8c2df9032a",
+  "clang": "Debian clang version 19.1.7 (3+b1)",
+  "ctv-pipeline": "d38081850351ca603e0ba3bc8195d230ade4a1e44db24b6e9cbc8de796991720",
+  "gcc": "gcc (Debian 14.2.0-19) 14.2.0"
+ },
+ "warnings": []
+}

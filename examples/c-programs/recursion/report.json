@@ -1,0 +1,39 @@
+{
+ "bounds": {
+  "budget": 2000000,
+  "depth": 100000
+ },
+ "elaborator": "Silmaril.Cerberus.Elaboration.Functions.elaborate, TargetCoherence.linuxLP64",
+ "evidence": "compiled",
+ "fresh": 4,
+ "observations": [
+  {
+   "check": {},
+   "name": "gcc-O0",
+   "stdoutBytes": 0,
+   "termination": "exit 20"
+  },
+  {
+   "check": {},
+   "name": "gcc-O2",
+   "stdoutBytes": 0,
+   "termination": "exit 20"
+  }
+ ],
+ "pairs": [],
+ "profile": "linuxX86_64",
+ "routes": {
+  "cerberus": {
+   "stage": "elaborate",
+   "status": "rejected",
+   "why": "Silmaril.Cerberus.Elaboration.State.Error.message \"unsupported: binary operator outside scalar add/sub/mul/gt/eq\""
+  },
+  "clang": {
+   "stage": "elaborate",
+   "status": "rejected",
+   "why": "Silmaril.Cerberus.Elaboration.State.Error.message \"unsupported: binary operator outside scalar add/sub/mul/gt/eq\""
+  }
+ },
+ "runtime": "benchmarks/cerberus-elaboration/oracle/constant-return/core.sexp.gz",
+ "schema": "silmaril.c-tv.pipeline.v1"
+}

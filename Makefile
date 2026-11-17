@@ -28,7 +28,7 @@ library:
 # Everything `make check` builds; a recorded build publishes exactly these. A pull
 # request narrows it to what its diff can change (`make scope`).
 # The Cerberus tests and executables (docs/projects/cerberus.md).
-CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront \
+CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront ctv-pipeline \
 	ci_cerberus_genuine_oracle ci_cerberus_elaboration_oracle ci_cerberus_integer_cast \
 	ci_cerberus_parameter_call
 # The C compiler's executables (docs/projects/ccomp.md).
@@ -77,6 +77,7 @@ check:
 	fi
 	$(MAKE) process-gates
 	$(if $(filter ci_cerberus_genuine_oracle,$(CHECK_TARGETS)),$(MAKE) cerberus-oracle)
+	$(if $(filter ctv-pipeline,$(CHECK_TARGETS)),$(MAKE) c-tv-check)
 	$(if $(filter wasm-opt,$(CHECK_TARGETS)),$(LAKE) build --wfail $(RELEASE_BINARIES) && $(MAKE) release-check)
 	$(if $(filter elf-pages,$(CHECK_TARGETS)),$(MAKE) elf-check)
 	$(if $(filter SilmarilLogicGraphData,$(CHECK_TARGETS)),$(MAKE) logic-graph-check)
@@ -216,6 +217,12 @@ help:
 
 # The Cerberus oracle replays over benchmarks/cerberus-elaboration/oracle (docs/projects/cerberus.md).
 CERBERUS_ORACLE := benchmarks/cerberus-elaboration/oracle
+# The C translation-validation corpus (docs/projects/c-tv.md): the stored reports and Core
+# documents agree with a fresh run of ctv-pipeline on the stored typed Ail.
+.PHONY: c-tv-check
+c-tv-check:
+	$(PYTHON) -I scripts/c-tv/corpus.py --check
+
 .PHONY: cerberus-oracle
 cerberus-oracle:
 	.lake/build/bin/ci_cerberus_genuine_oracle $(CERBERUS_ORACLE)

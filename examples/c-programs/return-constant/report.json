@@ -1,0 +1,94 @@
+{
+ "bounds": {
+  "budget": 2000000,
+  "depth": 100000
+ },
+ "elaborator": "Silmaril.Cerberus.Elaboration.Functions.elaborate, TargetCoherence.linuxLP64",
+ "evidence": "compiled",
+ "fresh": 1,
+ "observations": [
+  {
+   "check": {
+    "cerberus": "admitted",
+    "clang": "admitted"
+   },
+   "name": "gcc-O0",
+   "stdoutBytes": 0,
+   "termination": "exit 42"
+  },
+  {
+   "check": {
+    "cerberus": "admitted",
+    "clang": "admitted"
+   },
+   "name": "gcc-O2",
+   "stdoutBytes": 0,
+   "termination": "exit 42"
+  }
+ ],
+ "pairs": [
+  {
+   "coveredOnlyByUB": false,
+   "source": "cerberus",
+   "target": "clang",
+   "uncovered": 0,
+   "verdict": "validated"
+  },
+  {
+   "coveredOnlyByUB": false,
+   "source": "clang",
+   "target": "cerberus",
+   "uncovered": 0,
+   "verdict": "validated"
+  }
+ ],
+ "profile": "linuxX86_64",
+ "routes": {
+  "cerberus": {
+   "core": "cerberus.core.sexp.gz",
+   "coreSha256": "d42891c7f5efe66c66c4227e825c008ccfca176ca97310a9e05eb3e9d5874c62",
+   "explore": {
+    "endings": 1,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 42,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 78,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  },
+  "clang": {
+   "core": "clang.core.sexp.gz",
+   "coreSha256": "2ad10c7e4b3bd6917c3cef2cb66aa315df348d0307cfe8a9493a829ee2d314fd",
+   "explore": {
+    "endings": 1,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 42,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 78,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  }
+ },
+ "runtime": "benchmarks/cerberus-elaboration/oracle/constant-return/core.sexp.gz",
+ "schema": "silmaril.c-tv.pipeline.v1"
+}

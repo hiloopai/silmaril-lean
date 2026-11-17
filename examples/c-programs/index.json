@@ -1,0 +1,202 @@
+{
+ "programs": [
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "arithmetic",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated",
+    "clang->cerberus": "validated"
+   }
+  },
+  {
+   "blockedRoutes": [
+    "cerberus"
+   ],
+   "failures": [
+    "clang.tail"
+   ],
+   "name": "asm-label",
+   "routes": {
+    "cerberus": "elaborated"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [
+    "cerberus.tail"
+   ],
+   "name": "attribute",
+   "routes": {
+    "clang": "elaborated"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "calls",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated",
+    "clang->cerberus": "validated"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "control-flow",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "division-by-zero",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "float",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "globals",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "locals",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "pointer",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "recursion",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "return-constant",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated",
+    "clang->cerberus": "validated"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "signed-overflow",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [
+    "cerberus.tail"
+   ],
+   "name": "statement-expression",
+   "routes": {
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsequenced-calls",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsequenced-ub",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  }
+ ],
+ "schema": "silmaril.c-tv.corpus.v1",
+ "tools": {
+  "cerb-lean": "7388fce668288274cff2f963061052343a183f1f59e2d41a2c62f2bc3e1f60e7",
+  "cfront": "3c1fa73fd49ec347703964e29b2d79b7b65c2164f2a7a5ef822f6e8c2df9032a",
+  "clang": "Debian clang version 19.1.7 (3+b1)",
+  "ctv-pipeline": "d38081850351ca603e0ba3bc8195d230ade4a1e44db24b6e9cbc8de796991720",
+  "gcc": "gcc (Debian 14.2.0-19) 14.2.0"
+ }
+}

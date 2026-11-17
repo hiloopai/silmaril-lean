@@ -1,0 +1,528 @@
+{
+ "bounds": {
+  "budget": 2000000,
+  "depth": 100000
+ },
+ "elaborator": "Silmaril.Cerberus.Elaboration.Functions.elaborate, TargetCoherence.linuxLP64",
+ "evidence": "compiled",
+ "fresh": 8,
+ "observations": [
+  {
+   "check": {
+    "cerberus": "admitted",
+    "clang": "admitted"
+   },
+   "name": "gcc-O0",
+   "stdoutBytes": 0,
+   "termination": "exit 5"
+  },
+  {
+   "check": {
+    "cerberus": "admitted",
+    "clang": "admitted"
+   },
+   "name": "gcc-O2",
+   "stdoutBytes": 0,
+   "termination": "exit 5"
+  }
+ ],
+ "pairs": [
+  {
+   "coveredOnlyByUB": false,
+   "source": "cerberus",
+   "target": "clang",
+   "uncovered": 0,
+   "verdict": "validated"
+  },
+  {
+   "coveredOnlyByUB": false,
+   "source": "clang",
+   "target": "cerberus",
+   "uncovered": 0,
+   "verdict": "validated"
+  }
+ ],
+ "profile": "linuxX86_64",
+ "routes": {
+  "cerberus": {
+   "core": "cerberus.core.sexp.gz",
+   "coreSha256": "be996379a465af70db49c9ce15570f47209dbf23daad2e89643e80b50c11c0fd",
+   "explore": {
+    "endings": 40,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 41918,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  },
+  "clang": {
+   "core": "clang.core.sexp.gz",
+   "coreSha256": "dc3f339857b5c34c5b40370ab004fbd93906464a2fa5cdf742451e7353df47ed",
+   "explore": {
+    "endings": 40,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 5,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 41179,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  }
+ },
+ "runtime": "benchmarks/cerberus-elaboration/oracle/constant-return/core.sexp.gz",
+ "schema": "silmaril.c-tv.pipeline.v1"
+}
