@@ -22,6 +22,10 @@ milestone "compositional evidence"). Two kinds of composition, both reduced to `
   finite list of contexts is validated by `validateContexts`, sound for `FunctionRefines`
   (`validateContexts_sound`).
 
+* **Several functions** (`ModuleRefines`, `validateModule`): replacing a list of distinct
+  functions, validated one function at a time (stage `i` to stage `i + 1`, the earlier ones already
+  replaced) and composed by induction into the end-to-end refinement (`validateModule_sound`).
+
 **Scope.** Contexts are explicit, finite lists of closed programs: this is not contextual
 refinement for *all* contexts (that needs a simulation proof over the Core LTS, or contracts at
 the function's boundary), not yet expression- or statement-level, and external calls are not yet
@@ -75,5 +79,43 @@ def validateContexts (impl : Spec.Impl) (ctxs : List Codec.FileBindings) (f : Sy
     (d d' : Core.FunDecl Codec.wireModel Unit Unit) (bounds : Bounds := {}) : Bool :=
   !ctxs.isEmpty && ctxs.all (fun b => decide (Substitutes b f)) &&
   ctxs.all fun b => (validate impl (Closed.withFunction b f d) (Closed.withFunction b f d') bounds).verdict == .validated
+
+/-! ## Several functions at once -/
+
+/-- One function's replacement: its symbol, and its definitions before and after. -/
+structure Replacement where
+  f : Sym
+  before : Core.FunDecl Codec.wireModel Unit Unit
+  after : Core.FunDecl Codec.wireModel Unit Unit
+
+/-- **Stage `i`** of replacing the functions `rs` in `b`: the first `i` replacements installed with
+their `after` definitions, the others with their `before` ones. Stage 0 is the program before,
+stage `rs.length` the program after. -/
+def stage (b : Codec.FileBindings) (rs : List Replacement) (i : Nat) : Codec.FileBindings :=
+  rs.zipIdx.foldl (fun acc p => acc.setFunction p.1.f (if p.2 < i then p.1.after else p.1.before)) b
+
+/-- **Module-level refinement over listed contexts**: the contexts and the replacements are not
+empty, the replaced functions are distinct, each is substituted in each context (`Substitutes`:
+replaced, not necessarily called), and in each context the program with every function at its
+`after` definition refines the one with every function at its `before` definition. Still a
+claim about the listed contexts only. -/
+structure ModuleRefines (impl : Spec.Impl) (ctxs : List Codec.FileBindings) (rs : List Replacement) :
+    Prop where
+  nonempty : ctxs ≠ []
+  replacements : rs ≠ []
+  distinct : (rs.map (·.f.key)).Nodup
+  substitutes : ∀ b ∈ ctxs, ∀ r ∈ rs, Substitutes b r.f
+  refines : ∀ b ∈ ctxs, Refines impl (Closed.ofBindings (stage b rs 0)) (Closed.ofBindings (stage b rs rs.length))
+
+/-- **The module validator**: the side conditions, and in each context each step (stage `i` to
+stage `i + 1`: one function replaced, the earlier ones already replaced) `validated`. The
+end-to-end refinement follows by composing the steps (`validateModule_sound`). -/
+def validateModule (impl : Spec.Impl) (ctxs : List Codec.FileBindings) (rs : List Replacement)
+    (bounds : Bounds := {}) : Bool :=
+  !ctxs.isEmpty && !rs.isEmpty && decide (rs.map (·.f.key)).Nodup &&
+  ctxs.all (fun b => rs.all fun r => decide (Substitutes b r.f)) &&
+  ctxs.all fun b => (List.range rs.length).all fun i =>
+    (validate impl (Closed.ofBindings (stage b rs i)) (Closed.ofBindings (stage b rs (i + 1))) bounds).verdict
+      == .validated
 
 end Silmaril.Cerberus.TV

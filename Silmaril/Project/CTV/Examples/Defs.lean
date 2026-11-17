@@ -2,6 +2,8 @@ module
 
 public import Silmaril.Cerberus.TV.Validate.Defs
 public import Silmaril.Compiler.Native.Correctness.AdditionSource.Defs
+public import Silmaril.Compiler.Core.ParameterCallReturn.Defs
+public import Silmaril.Cerberus.TV.Compose.Defs
 
 /-!
 # Whole-program validation examples over elaborated Core
@@ -75,5 +77,75 @@ def overflowTarget : Closed := add 2 2
 /-- An implementation whose exit status keeps only the low bit (a deliberately unusual host, to
 show that observations depend on the implementation-defined choices). -/
 def lowBitHost : Spec.Impl := { status := fun n => (n % 2).toNat }
+
+/-! ## Two functions: `main` calls `id`
+
+The typed Ail of `int id(int x) { return E; } int main(void) { return id(A); }` for a body `E` and
+an argument `A`, elaborated by the Lean elaborator with the explicit runtime of
+`Silmaril.Compiler.Core.ParameterCallReturn` (as that module's own example is). The module-level
+rows replace both functions. -/
+
+section TwoFunctions
+open Silmaril.Compiler.Core.ParameterCallReturn Silmaril.Compiler.Core.ParameterCallReturn.Example
+open Silmaril.Cerberus.Elaboration
+
+/-- The integer constant `n`. -/
+def lit (n : Int) : Ail.TypedExpression :=
+  .mk (.rvalue (.basic (.integer (.concrete (.signed .int))))) [] .unknown
+    (.const (.integer (.iconstant n .decimal none)))
+
+/-- `a + b` on integer constants. -/
+def addLit (a b : Int) : Ail.TypedExpression :=
+  .mk (.rvalue (.basic (.integer (.concrete (.signed .int))))) [] .unknown
+    (.binary (lit a) (.arithmetic .add) (lit b))
+
+/-- `id(arg)`. -/
+def callId (arg : Ail.TypedExpression) : Ail.TypedExpression :=
+  .mk (.rvalue (.basic (.integer (.concrete (.signed .int))))) [] .unknown
+    (.call (.mk (.rvalue (.pointer qualifiers functionType)) [] .unknown (.functionDecay
+      (.mk (.lvalue qualifiers functionType false) [] .unknown (.ident fSymbol)))) [arg])
+
+/-- `int id(int x) { return idBody; } int main(void) { return id(arg); }`. -/
+def twoFunctions (idBody arg : Ail.TypedExpression) : Ail.TypedProgram :=
+  let (m, s) := program
+  (m, { s with functionDefinitions := [
+      (fSymbol, {loc := .unknown, marker := 7, attrs := .mk [], params := [parameterSymbol], body := statement (.block [] [statement (.return_ idBody)])}),
+      (mainSymbol, {loc := .unknown, marker := 8, attrs := .mk [], params := [], body := statement (.block [] [statement (.return_ (callId arg))])})] })
+
+/-- The elaborated file (`AdditionSource.bindings 0 0` if the elaborator rejected it; the rows
+check that it does not, `twoFunctions_elaborate` in `CTvRows`). -/
+def elabTwo (idBody arg : Ail.TypedExpression) : Codec.FileBindings :=
+  match (Functions.elaborate Silmaril.Cerberus.Target.pinnedApple Target.emptyEnvironment runtime
+      (twoFunctions idBody arg) freshness).1 with
+  | .ok b => b
+  | .error _ => AdditionSource.bindings 0 0
+
+/-- A function's definition in a file (a dummy declaration if absent). -/
+def defOf (b : Codec.FileBindings) (f : Sym) : Core.FunDecl Codec.wireModel Unit Unit :=
+  match b.funs.find? (fun e => e.1.key == f.key) with
+  | some (_, d) => d
+  | none => .builtinDecl .unknown .unit []
+
+/-- `int id(int x) { return x; } int main(void) { return id(42); }`. -/
+def twoBefore : Codec.FileBindings := elabTwo parameterExpression integer42
+/-- `int id(int x) { return 42; } int main(void) { return id(40 + 2); }`. -/
+def twoAfter : Codec.FileBindings := elabTwo (lit 42) (addLit 40 2)
+/-- `int id(int x) { return 41; } …`: a wrong replacement of `id`. -/
+def twoWrong : Codec.FileBindings := elabTwo (lit 41) integer42
+
+/-- The contexts of the module-level rows: the `twoBefore` file. -/
+def twoContexts : List Codec.FileBindings := [twoBefore]
+
+/-- Replace `id` (by `return 42;`) and `main` (by `return id(40 + 2);`). `id := return 42;` is not
+a correct `id` in general: it refines only because the context calls `id(42)`. -/
+def twoReplacements : List Replacement :=
+  [⟨fSymbol, defOf twoBefore fSymbol, defOf twoAfter fSymbol⟩,
+   ⟨mainSymbol, defOf twoBefore mainSymbol, defOf twoAfter mainSymbol⟩]
+
+/-- Replace `id` by `return 41;`: refuted. -/
+def twoWrongReplacements : List Replacement :=
+  [⟨fSymbol, defOf twoBefore fSymbol, defOf twoWrong fSymbol⟩]
+
+end TwoFunctions
 
 end Silmaril.Project.CTV.Examples

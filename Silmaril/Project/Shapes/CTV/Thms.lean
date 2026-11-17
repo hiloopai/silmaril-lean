@@ -44,6 +44,18 @@ theorem CContextRefines.of_validate {impl : Spec.Impl} {ctxs : List Codec.FileBi
     (h : validateContexts impl ctxs f d d' bounds = true) : CContextRefines impl ctxs f d d' :=
   validateContexts_sound impl ctxs f d d' bounds h
 
+theorem CModuleRefines.of_validate {impl : Spec.Impl} {ctxs : List Codec.FileBindings}
+    {rs : List Replacement} (bounds : Bounds) (h : validateModule impl ctxs rs bounds = true) :
+    CModuleRefines impl ctxs rs :=
+  validateModule_sound impl ctxs rs bounds h
+
+/-- A refuted end-to-end refinement in one context refutes the module row. -/
+theorem CModuleRefines.not_of_refuted {impl : Spec.Impl} {ctxs : List Codec.FileBindings}
+    {rs : List Replacement} {b : Codec.FileBindings} (hb : b ∈ ctxs) (bounds : Bounds)
+    (h : (validate impl (Closed.ofBindings (stage b rs 0)) (Closed.ofBindings (stage b rs rs.length)) bounds).verdict = .refuted) :
+    ¬ CModuleRefines impl ctxs rs :=
+  fun hm => validate_refuted impl _ _ bounds h (hm.refines b hb)
+
 theorem CNotRefines.of_validate {impl : Spec.Impl} {src tgt : Closed} (bounds : Bounds)
     (h : (validate impl src tgt bounds).verdict = .refuted) : CNotRefines impl src tgt :=
   validate_refuted impl src tgt bounds h

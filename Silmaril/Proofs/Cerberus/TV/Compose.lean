@@ -44,4 +44,33 @@ theorem validateContexts_sound (impl : Spec.Impl) (ctxs : List Codec.FileBinding
   simp only [beq_iff_eq] at this
   exact validate_sound impl _ _ bounds this
 
+/-- Consecutive refinements compose from stage 0 to any later stage. -/
+theorem refines_chain {impl : Spec.Impl} (P : Nat → Closed)
+    (h : ∀ i, Refines impl (P i) (P (i + 1))) : ∀ n, 0 < n → Refines impl (P 0) (P n)
+  | 0, hn => absurd hn (Nat.lt_irrefl 0)
+  | 1, _ => h 0
+  | n + 2, _ => Refines.trans (refines_chain P h (n + 1) (Nat.succ_pos n)) (h (n + 1))
+
+/-- Consecutive refinements up to `n` compose from stage 0 to stage `n`. -/
+theorem refines_chain_upto {impl : Spec.Impl} (P : Nat → Closed) :
+    ∀ n, 0 < n → (∀ i < n, Refines impl (P i) (P (i + 1))) → Refines impl (P 0) (P n)
+  | 0, hn, _ => absurd hn (Nat.lt_irrefl 0)
+  | 1, _, h => h 0 (Nat.zero_lt_one)
+  | n + 2, _, h => Refines.trans (refines_chain_upto P (n + 1) (Nat.succ_pos n)
+      (fun i hi => h i (by omega))) (h (n + 1) (by omega))
+
+theorem validateModule_sound (impl : Spec.Impl) (ctxs : List Codec.FileBindings) (rs : List Replacement)
+    (bounds : Bounds) (h : validateModule impl ctxs rs bounds = true) : ModuleRefines impl ctxs rs := by
+  simp only [validateModule, Bool.and_eq_true, Bool.not_eq_true', List.isEmpty_eq_false_iff,
+    decide_eq_true_eq] at h
+  obtain ⟨⟨⟨⟨hc, hr⟩, hd⟩, hs⟩, hv⟩ := h
+  refine ⟨hc, hr, hd, fun b hb r hrr => of_decide_eq_true (List.all_eq_true.mp (List.all_eq_true.mp hs b hb) r hrr), ?_⟩
+  intro b hb
+  have hsteps := List.all_eq_true.mp hv b hb
+  have hlen : 0 < rs.length := List.length_pos_iff.mpr hr
+  exact refines_chain_upto (fun i => Closed.ofBindings (stage b rs i)) rs.length hlen fun i hi => by
+    have := List.all_eq_true.mp hsteps i (List.mem_range.mpr hi)
+    simp only [beq_iff_eq] at this
+    exact validate_sound impl _ _ bounds this
+
 end Silmaril.Proofs.Cerberus.TV

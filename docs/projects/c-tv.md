@@ -166,7 +166,7 @@ operations rather than types (conversions, shifts, division in the runtime and `
 builtin functions run natively and only their call-site types are scanned),
 allocator addresses, byte-level punning, or the enum registry (run empty).
 
-The check is conservative to the point of failing on every corpus program: Cerberus's runtime
+Under the default profile (`linuxX86_64`, elaborated with `TargetCoherence.linuxLP64`) the check is conservative to the point of failing on every corpus program: Cerberus's runtime
 conversion functions that the corpus Cores reach (`conv_int` and its callees) dispatch on the
 type and name `is_representable_floating`, `loaded_ivfromfloat` and the floating kinds, even on
 integer-only paths. Only the constructed `return a + b;` files (whose runtime is three integer
@@ -239,7 +239,11 @@ rejected/unknown toward validated against the fixed denominator of 3,852.
    rejected explicitly.
 7. **A precise per-type check and profile-parametric memory.** A per-type check over the types
    the executed paths touch, proved to cover them (the current scan of reachable runtime code
-   fails on every corpus program). Then profile-parametric memory: `Mem.Concrete` layouts and floating values from the profile
+   fails on every corpus program under the default profile). `ctv-pipeline --profile` selects the
+   profile, its elaborator configuration and its implementation-defined choices; elaborated with
+   upstream's `Target.pinnedApple` (`--profile legacyPinnedApple`) the integer corpus programs
+   reach only integer runtime functions and pass that profile's check, which shows the check
+   depends on the elaboration, not only on the source. Then profile-parametric memory: `Mem.Concrete` layouts and floating values from the profile
    (binary32, x87, binary128), the `wchar_t` range, aggregate layout through the shared ABI layout
    (main task's `Data.Layout`), endianness; then the profile applies to floating programs.
 8. **Validators beyond enumeration.** Symbolic or simulation-based Core-to-Core validators with
@@ -254,7 +258,13 @@ rejected/unknown toward validated against the fixed denominator of 3,852.
    soundness theorem; `ContextRefines` is the raw weak relation (vacuous for no context, a no-op for
    an undefined or shadowed symbol) and `ContextRefines.then` composes replacing one function and
    then another; a registered row replaces `main`'s Core in its file, and
-   `tests/cerberus/TVCompose.lean` keeps the vacuous and bogus cases rejected. The torture suite's 1,979 compile/ cases
+   `tests/cerberus/TVCompose.lean` keeps the vacuous and bogus cases rejected. Several functions at
+   once: `ModuleRefines` (shape `c.tv.module_refines`; nonempty contexts and replacements, distinct
+   substituted functions), validated one function at a time (stage `i` to `i + 1`) and composed by
+   induction (`validateModule_sound`, `refines_chain_upto`); registered rows replace `id` and
+   `main` in `int id(int x) { return x; } int main(void) { return id(42); }` (THM: `id := return 42`
+   refines only because `main` calls `id(42)`, so the claim is about that context) and refute
+   `id := return 41` (UNS). The torture suite's 1,979 compile/ cases
    (46 of which elaborate without `main`) need exactly this function-level evidence, not
    whole-program behaviour. Remaining: contextual refinement for all
    contexts (a simulation over the Core LTS, or contracts at the function boundary), expression-
@@ -265,6 +275,36 @@ rejected/unknown toward validated against the fixed denominator of 3,852.
     agreement, is what "the GCC torture test is translation-validated" requires.
 12. **Upstream comparison.** OathTech/cerberus-lean and the OCaml Cerberus on the corpus and the
     torture cases, reported as oracle evidence with exact revisions.
+
+## Unported C work from moria-lean, and the models still missing
+
+Everything of moria-lean's C and Cerberus trees is either ported (the Cerberus closure, Core
+elaboration, the Clang importer, the C semantics `Compiler/C/Sem` except below, CompilesTo and the
+Cerberus oracle), owned by another task, or listed here with its reason.
+
+| Unported | What | Why, and what would port it |
+| --- | --- | --- |
+| `Compiler/C/Sem/{C0SignedCondition,C0SignedConditionChecks,C0SignedSafety,C0SignedToCminor,C0SignedToCminorChecks,C0SignedX86Add,C0SignedX86AddChecks}` | signed C0 fragments lowered to Cminor and x86 adds | depend on `Machine/CSupport/CompCert/*`: **deferred by decision** (licence boundary, below) |
+| `Compiler/C/Sem/RefinedC{MaxLir,MaxLirChecks,OwnedLir,OwnedRV64,OwnedScalar*,OwnedSwapLir*,OwnedUint64*,ProgramsLir,ProgramsSignedLir*}` (23 modules) | RefinedC-owned fragments lowered through LIR to RV64 | same dependency: **deferred** |
+| `Machine/CSupport/CompCert/*` (12 modules) | restricted Clight, Cminor, integer support, lowering and validation | 8 carry `LGPL-2.1-or-later` headers adapted from CompCert v3.17 (`7b1f02b0`, files CompCert dual-licenses); 4 are moria-original but import them. Kept out of this MIT repository by decision (2026-11-17); porting would need a NOTICES/CompCert entry and the per-file licence, or a clean-room replacement |
+| `tools/c-bench` (Rust: Clang JSON import benchmark, native-quality, native torture runner) | native-compiler measurements | not translation validation; `scripts/c-tv/torture.py` is the TV runner. Porting the JSON-import benchmark is optional tooling |
+| `benchmarks/gcc-torture/{recorded,initial,latency}*.json`, `triage/` | the native compiler's torture coverage and its gap triage | native-compiler evidence, not TV; the manifest was ported |
+| `checkpoint/c-layout-explorer-*` | C layout explorer | main task (9e7aa15b) |
+| `oss/cerberus-tv` wave 3 (23 x86 modules) | x86 decoding, relocation, system V contracts | ELF/x86 tasks |
+
+Models the toolkit does not have yet, each with its milestone above:
+
+| Model | Now | Needed |
+| --- | --- | --- |
+| Memory | Cerberus's concrete PNVI-ae-udi memory, LP64 layouts fixed, deterministic allocator | profile-parametric layouts (7); other provenance models; allocation nondeterminism; effective types / strict aliasing |
+| Floating point | every real floating type stored in 8 bytes and computed in binary64 | binary32, x87 extended, binary128 through the shared IEEE model (7) |
+| Integers | LP64; `wchar_t`'s range is unsigned while its layout is signed (incoherent with x86-64) | the `wchar_t` range; other data models (7) |
+| Endianness | little-endian | big-endian targets (7) |
+| Concurrency, atomics | not supported (sequential semantics) | an SC or weak-memory Core semantics |
+| Inputs and environment | closed programs, fixed `argv` | stdin, files, `argv` as inputs (10) |
+| Divergence | targets must terminate | divergence-aware refinement and its validators (8) |
+| Function boundaries | function- and module-level refinement over listed contexts | all contexts (simulation or boundary contracts), external calls under contracts (9) |
+| Machine code | function segments (`c.compiles_to*`) | whole-program object code against the source's Core (11) |
 
 ### Open obligations (concrete, by area)
 

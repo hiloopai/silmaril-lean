@@ -18,8 +18,9 @@ ctv-pipeline run RUNTIME FRESH OUTDIR [--depth N] [--budget N] [--observe NAME T
 `RUNTIME` is a genuine Cerberus Core document whose runtime maps (`stdlib`, `impl`) and the
 runtime alias map next to it (`ailnames.sexp`) are the elaborator's runtime inputs
 (benchmarks/cerberus-elaboration/oracle). `FRESH` is the first fresh symbol number (above every
-symbol of the typed Ail). The elaborator runs with the target configuration
-`TargetCoherence.linuxLP64` and no enum registrations.
+symbol of the typed Ail). The elaborator runs with the target configuration of the profile (`--profile linuxX86_64`, the default: `TargetCoherence.linuxLP64`;
+`--profile legacyPinnedApple`: upstream's `Target.pinnedApple`) and no enum registrations; the
+profile's implementation-defined choices are those of every validation and observation check.
 
 `run` writes `OUTDIR/<NAME>.core.sexp` for every route the elaborator accepts and prints one JSON
 report: per route the elaboration result, the exploration of its Core (endings, `limited`,
@@ -76,12 +77,24 @@ inductive Elaborated where
   | ok (b : Codec.FileBindings)
   | rejected (stage why : String)
 
-def elaborateTail (runtime : Functions.RuntimeInputs) (fresh : Nat) (text : String) :
+/-- The profiles the pipeline runs under (`--profile`): the target profile (per-type check, the
+implementation-defined choices `impl` of every validation and observation check) and the
+elaborator configuration it names. -/
+def profiles : List (String × Silmaril.Cerberus.TV.Profile) :=
+  [("linuxX86_64", Silmaril.Project.Shapes.CTV.linuxX86_64),
+   ("legacyPinnedApple", Silmaril.Project.Shapes.CTV.legacyPinnedApple)]
+
+/-- The elaborator configuration each profile names, by declaration. -/
+def elaboratorDecl : String → String
+  | "legacyPinnedApple" => "Target.pinnedApple"
+  | _ => "TargetCoherence.linuxLP64"
+
+def elaborateTail (profile : Silmaril.Cerberus.TV.Profile) (runtime : Functions.RuntimeInputs) (fresh : Nat) (text : String) :
     Except String Elaborated := do
   match ← Ail.Codec.readTailDocument text with
   | .reject _ _ stage _ msg => pure (.rejected stage msg)
   | .document _ _ prog =>
-    let (result, _) := Functions.elaborate Silmaril.Compiler.Native.TargetCoherence.linuxLP64
+    let (result, _) := Functions.elaborate profile.elaborator
       Target.emptyEnvironment runtime prog ⟨⟨[]⟩, fresh, fresh + 100000000⟩
     match result with
     | .ok b => pure (.ok b)
@@ -107,6 +120,7 @@ def checkVerdict : Spec.Verdict → String
   | .admitted => "admitted" | .rejected => "rejected" | .unknown => "unknown"
 
 structure Opts where
+  profile : String := "linuxX86_64"
   depth : Nat := 100000
   budget : Nat := 2000000
   observe : List (String × Spec.Termination × String) := []
@@ -114,6 +128,8 @@ structure Opts where
 
 partial def parseOpts : List String → Opts → Except String Opts
   | [], o => .ok o
+  | "--profile" :: p :: rest, o =>
+      if profiles.any (·.1 == p) then parseOpts rest { o with profile := p } else .error s!"unknown profile {p}"
   | "--depth" :: n :: rest, o => do parseOpts rest { o with depth := ← (n.toNat?.elim (.error "depth") .ok) }
   | "--budget" :: n :: rest, o => do parseOpts rest { o with budget := ← (n.toNat?.elim (.error "budget") .ok) }
   | "--observe" :: name :: st :: file :: rest, o => do
@@ -127,6 +143,7 @@ partial def parseOpts : List String → Opts → Except String Opts
       | _ => .error s!"unexpected argument {r}"
 
 def run (runtimePath : String) (fresh : Nat) (outDir : String) (o : Opts) : IO UInt32 := do
+  let some prof := profiles.lookup o.profile | throw (IO.userError s!"unknown profile {o.profile}")
   let runtime ← readRuntime runtimePath
   IO.FS.createDirAll outDir
   let bounds : Bounds := { depth := o.depth, budget := o.budget }
@@ -134,7 +151,7 @@ def run (runtimePath : String) (fresh : Nat) (outDir : String) (o : Opts) : IO U
   let mut programs : Array (String × Closed) := #[]
   for (name, path) in o.routes do
     let text ← readText path
-    match elaborateTail runtime fresh text with
+    match elaborateTail prof runtime fresh text with
     | .error e => routes := routes.push (name, Json.mkObj [("status", "undecodable"), ("why", e)])
     | .ok (.rejected stage why) =>
         routes := routes.push (name, Json.mkObj [("status", "rejected"), ("stage", stage), ("why", why)])
@@ -144,11 +161,11 @@ def run (runtimePath : String) (fresh : Nat) (outDir : String) (o : Opts) : IO U
         let P : Closed := ⟨b.toFile, ∅, []⟩
         let L := P.explore bounds
         programs := programs.push (name, P)
-        let p := Silmaril.Project.Shapes.CTV.linuxX86_64
+        let p := prof
         let mention : Mention → String
           | .scalar s => (reprStr s).replace "Silmaril.Cerberus.TV.Scalar." ""
           | .outside t => s!"outside:{t}"
-        let profile := Json.mkObj [("profile", "linuxX86_64"), ("applies", decide (p.AppliesTo b)),
+        let profile := Json.mkObj [("profile", o.profile), ("applies", decide (p.AppliesTo b)),
           ("mentions", Json.arr ((mentions b).map (Json.str ∘ mention)).toArray),
           ("blockers", Json.arr ((p.blockers b).map fun (m, is) => Json.mkObj [("type", mention m),
             ("issues", Json.arr (is.map fun | .differs w => Json.str s!"differs: {w}" | .unknown w => Json.str s!"unknown: {w}").toArray)]).toArray)]
@@ -158,7 +175,7 @@ def run (runtimePath : String) (fresh : Nat) (outDir : String) (o : Opts) : IO U
   for (a, A) in programs do
     for (b, B) in programs do
       if a != b then
-        let r := validate Spec.Impl.lp64 A B bounds
+        let r := validate prof.impl A B bounds
         let ubFree := r.verdict == .validated && !r.source.limited && !r.source.ub
         pairs := pairs.push (Json.mkObj [("source", a), ("target", b),
           ("relation", "frontend agreement (Core to Core)"),
@@ -170,14 +187,14 @@ def run (runtimePath : String) (fresh : Nat) (outDir : String) (o : Opts) : IO U
     let obs : Spec.Obs := ⟨status, out.toList.map (·.toNat)⟩
     let mut per : Array (String × Json) := #[]
     for (p, P) in programs do
-      let r := Spec.check Spec.Impl.lp64 P.file P.enums P.args [obs] { depth := o.depth, budget := o.budget }
+      let r := Spec.check prof.impl P.file P.enums P.args [obs] { depth := o.depth, budget := o.budget }
       per := per.push (p, Json.str (checkVerdict (r.verdict obs)))
     let term := match status with
       | .exit n => s!"exit {n}" | .abort => "abort" | .signal n => s!"signal {n}"
     observations := observations.push (Json.mkObj [("name", name), ("termination", term),
       ("stdoutBytes", out.size), ("check", Json.mkObj per.toList)])
-  let report := Json.mkObj [("schema", "silmaril.c-tv.pipeline.v1"), ("profile", "linuxX86_64"),
-    ("elaborator", "Silmaril.Cerberus.Elaboration.Functions.elaborate, TargetCoherence.linuxLP64"),
+  let report := Json.mkObj [("schema", "silmaril.c-tv.pipeline.v1"), ("profile", o.profile),
+    ("elaborator", s!"Silmaril.Cerberus.Elaboration.Functions.elaborate, {elaboratorDecl o.profile}"),
     ("runtime", runtimePath), ("fresh", fresh), ("bounds", Json.mkObj [("depth", o.depth), ("budget", o.budget)]),
     ("evidence", "compiled"), ("routes", Json.mkObj routes.toList), ("pairs", Json.arr pairs),
     ("observations", Json.arr observations)]
@@ -190,7 +207,7 @@ def main (args : List String) : IO UInt32 := do
     | ["elaborate", runtimePath, fresh, tail, out] =>
         let runtime ← readRuntime runtimePath
         let some n := fresh.toNat? | IO.eprintln "FRESH must be a number"; return 2
-        match elaborateTail runtime n (← readText tail) with
+        match elaborateTail Silmaril.Project.Shapes.CTV.linuxX86_64 runtime n (← readText tail) with
         | .error e => IO.eprintln s!"ctv-pipeline: {tail}: {e}"; return 3
         | .ok (.rejected stage why) => IO.eprintln s!"ctv-pipeline: {tail}: rejected ({stage}): {why}"; return 1
         | .ok (.ok b) => IO.FS.writeFile out (Elab.printDocument b); return 0

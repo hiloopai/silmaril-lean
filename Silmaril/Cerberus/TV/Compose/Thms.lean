@@ -65,4 +65,19 @@ theorem ContextRefines.nil (impl : Spec.Impl) (f : Sym) (d d' : Core.FunDecl Cod
 theorem FunctionRefines.not_nil {impl : Spec.Impl} {f : Sym} {d d' : Core.FunDecl Codec.wireModel Unit Unit} :
     ¬ FunctionRefines impl [] f d d' := fun h => h.nonempty rfl
 
+/-- **Steps compose**: refinements between consecutive stages give the refinement from stage 0
+to stage `n`. -/
+theorem refines_chain_upto {impl : Spec.Impl} (P : Nat → Closed) (n : Nat) (hn : 0 < n)
+    (h : ∀ i < n, Refines impl (P i) (P (i + 1))) : Refines impl (P 0) (P n) :=
+  Proofs.Cerberus.TV.refines_chain_upto P n hn h
+
+/-- **The module validator is sound**: one function at a time, composed by induction. -/
+theorem validateModule_sound (impl : Spec.Impl) (ctxs : List Codec.FileBindings) (rs : List Replacement)
+    (bounds : Bounds) (h : validateModule impl ctxs rs bounds = true) : ModuleRefines impl ctxs rs :=
+  Proofs.Cerberus.TV.validateModule_sound impl ctxs rs bounds h
+
+/-- `ModuleRefines` never holds for no context. -/
+theorem ModuleRefines.not_nil {impl : Spec.Impl} {rs : List Replacement} : ¬ ModuleRefines impl [] rs :=
+  fun h => h.nonempty rfl
+
 end Silmaril.Cerberus.TV

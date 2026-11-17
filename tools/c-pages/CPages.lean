@@ -34,7 +34,8 @@ def shapes : List (Name × String) := [
   (``ProfileCoherentAt, "silmaril.shapes.c.tv.profile_coherent_at"),
   (``ProfileApplies, "silmaril.shapes.c.tv.profile_applies"),
   (``CRefinesOn, "silmaril.shapes.c.tv.refines_on"),
-  (``CContextRefines, "silmaril.shapes.c.tv.context_refines")]
+  (``CContextRefines, "silmaril.shapes.c.tv.context_refines"),
+  (``CModuleRefines, "silmaril.shapes.c.tv.module_refines")]
 
 def modules : List Name := [`Silmaril.Project.Shapes.CTV.Thms, `CTvRows]
 

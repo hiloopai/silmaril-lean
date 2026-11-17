@@ -40,3 +40,16 @@ example : validateContexts Spec.Impl.lp64 [shadowed] mainSym mainFoldBefore main
 example : Substitutes (addBindings 1 2) mainSym := by decide +kernel
 example : validateContexts Spec.Impl.lp64 mainContexts mainSym mainFoldBefore (mainDecl 2 2) = false := by cbv
 example : validateContexts Spec.Impl.lp64 mainContexts mainSym mainFoldBefore mainFoldAfter = true := by cbv
+
+/-! Module level (`ModuleRefines`, `validateModule`): the same side conditions. -/
+
+attribute [local cbv_eval] Silmaril.Cerberus.Elaboration.Expressions.expression.eq_def
+set_option cbv.maxSteps 10000000
+
+example {rs : List Replacement} : ¬ CModuleRefines Spec.Impl.lp64 [] rs := ModuleRefines.not_nil
+example : validateModule Spec.Impl.lp64 [] twoReplacements = false := by cbv
+example : validateModule Spec.Impl.lp64 twoContexts [] = false := by cbv
+/-- The same function twice is rejected. -/
+example : validateModule Spec.Impl.lp64 twoContexts (twoReplacements ++ twoReplacements) = false := by cbv
+/-- A function the context does not define is rejected. -/
+example : validateModule Spec.Impl.lp64 twoContexts [⟨bogusSym, mainFoldBefore, mainFoldAfter⟩] = false := by cbv

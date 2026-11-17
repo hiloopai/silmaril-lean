@@ -22,6 +22,9 @@ namespace CTvRows
 
 set_option maxRecDepth 100000
 
+-- The elaborator's expression translation is well-founded recursion: cbv uses its equation.
+attribute [local cbv_eval] Silmaril.Cerberus.Elaboration.Expressions.expression.eq_def
+
 theorem fold_validated : (validate Spec.Impl.lp64 foldSource foldTarget).verdict = .validated := by cbv
 
 @[solves "silmaril.c_tv.examples.fold.refines"] theorem fold_refines : silmaril.c_tv.examples.fold.refines :=
@@ -141,6 +144,34 @@ the end-to-end refinement by `Refines.trans`, without validating the end points 
 theorem fold_in_two_steps : Refines Spec.Impl.lp64 (add 1 2) (add 3 0) :=
   Refines.trans (validate_sound _ _ _ {} (show (validate Spec.Impl.lp64 (add 1 2) (add 2 1)).verdict = .validated by cbv))
     (validate_sound _ _ _ {} (show (validate Spec.Impl.lp64 (add 2 1) (add 3 0)).verdict = .validated by cbv))
+
+/-- The two-function files are genuine elaborator output (the elaborator accepts each program). -/
+theorem twoFunctions_elaborate :
+    ((Silmaril.Cerberus.Elaboration.Functions.elaborate Silmaril.Cerberus.Target.pinnedApple Target.emptyEnvironment
+      Silmaril.Compiler.Core.ParameterCallReturn.Example.runtime
+      (twoFunctions Silmaril.Compiler.Core.ParameterCallReturn.Example.parameterExpression
+        Silmaril.Compiler.Core.ParameterCallReturn.Example.integer42)
+      Silmaril.Compiler.Core.ParameterCallReturn.Example.freshness).1.isOk ∧
+    (Silmaril.Cerberus.Elaboration.Functions.elaborate Silmaril.Cerberus.Target.pinnedApple Target.emptyEnvironment
+      Silmaril.Compiler.Core.ParameterCallReturn.Example.runtime (twoFunctions (lit 42) (addLit 40 2))
+      Silmaril.Compiler.Core.ParameterCallReturn.Example.freshness).1.isOk ∧
+    (Silmaril.Cerberus.Elaboration.Functions.elaborate Silmaril.Cerberus.Target.pinnedApple Target.emptyEnvironment
+      Silmaril.Compiler.Core.ParameterCallReturn.Example.runtime
+      (twoFunctions (lit 41) Silmaril.Compiler.Core.ParameterCallReturn.Example.integer42)
+      Silmaril.Compiler.Core.ParameterCallReturn.Example.freshness).1.isOk) = true := by cbv
+
+set_option cbv.maxSteps 10000000 in
+/-- Module level: `id` and `main` replaced, validated one function at a time and composed
+(`validateModule_sound`). -/
+@[solves "silmaril.c_tv.examples.two_functions.module_refines"] theorem two_functions_module_refines :
+    silmaril.c_tv.examples.two_functions.module_refines :=
+  CModuleRefines.of_validate {} (by cbv)
+
+set_option cbv.maxSteps 10000000 in
+/-- `id := return 41;` is refuted end to end in the context. -/
+@[refutes "silmaril.c_tv.examples.two_functions_wrong.module_refines"] theorem two_functions_wrong :
+    ¬ silmaril.c_tv.examples.two_functions_wrong.module_refines :=
+  CModuleRefines.not_of_refuted (b := twoBefore) (by simp [twoContexts]) {} (by cbv)
 
 /-- A decoy for the explorer's association test (`tools/silmaril-project/tests/explore/c.mjs`): its
 name mentions a corpus program and a shape, its statement is neither, so `c-pages` must not list it. -/
