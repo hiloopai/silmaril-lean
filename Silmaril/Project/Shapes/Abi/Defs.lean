@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Machine.Abi.Conformance.Defs
+public import Silmaril.Machine.Abi.Conformance.Win64.Defs
+public import Silmaril.Machine.Abi.Conformance.SysvScalar.Defs
 public import Silmaril.Project.Shapes.X86.Defs
 
 /-!
@@ -91,4 +93,12 @@ silmaril instance silmaril.shapes.abi.conforms.sysv_int_open
 silmaril instance silmaril.shapes.abi.conforms.sysv_int_open9
     (title := "conforms, System V AMD64 INTEGER fragment, on the open machine model (Open9)") :=
   silmaril.shapes.abi.conforms (A := Silmaril.Machine.Abi.Conformance.sysvInt)
+    (M := Silmaril.X86.Open9.isa)
+silmaril instance silmaril.shapes.abi.conforms.win64_int_open
+    (title := "conforms, Microsoft x64 INTEGER fragment (LLP64: long is 4 bytes), on the open machine model (Open)") :=
+  silmaril.shapes.abi.conforms (A := Silmaril.Machine.Abi.Conformance.win64Int)
+    (M := Silmaril.X86.Open.isa)
+silmaril instance silmaril.shapes.abi.conforms.sysv_scalar_open9
+    (title := "conforms, System V AMD64 scalar fragment (float/double in SSE), on the open machine model (Open9: no SSE instructions, so code touching an XMM register has no row)") :=
+  silmaril.shapes.abi.conforms (A := Silmaril.Machine.Abi.Conformance.sysvScalar)
     (M := Silmaril.X86.Open9.isa)

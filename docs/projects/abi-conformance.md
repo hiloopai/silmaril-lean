@@ -120,14 +120,33 @@ conformance of a *pure* function. A function with effects (`memset`) gives its `
 | `AbiDef` | id | source | supported subset |
 | --- | --- | --- | --- |
 | `sysvInt` | `x86_64-sysv-psabi@e1ce0983/lp64/integer` | System V AMD64 psABI, x86-psABIs/x86-64-ABI@e1ce098331da5dbd66e1ffc74162380bcc213236, §3.2 | fixed-arity prototypes of 4- and 8-byte integers and pointers, up to 127 parameters; the full `Ffi.Entry`/`Ffi.Return` discipline; the planner `SystemV.Abi.plan` (`intPlan` on this subset); arguments past the sixth on the stack, owned by the callee |
+| `sysvScalar` | `x86_64-sysv-psabi@e1ce0983/lp64/scalar` | as `sysvInt`, §3.2.3 (classification of INTEGER and SSE scalars, returning of values) | `sysvInt`'s subset plus `float` and `double` (SSE class; sizes from the data model's `floatShape`: 4 bytes is binary32, 8 is binary64), mixed freely: INTEGER arguments in RDI…R9 and SSE arguments in XMM0–XMM7, counted separately, the rest in 8-byte stack slots in argument order (owned by the callee); result in RAX or XMM0. The convention is `Machine.Abi.SystemV.Scalar.sysv`, on the same planner (`scalarPlan`, `plan_scalarPlan`) and `Ffi` relations |
+| `win64Int` | `x86_64-ms-x64@cpp-docs-e6106755/llp64/integer` | Microsoft, "x64 calling convention" (learn.microsoft.com/en-us/cpp/build/x64-calling-convention, MicrosoftDocs/cpp-docs@e61067551f92a1c7beaad20c04b9f5ccfd2b5dd6) and "Overview of x64 ABI conventions" (…/x64-software-conventions, cpp-docs@d25e83731f0600bc021bd0b084ad5812b6cfe88f) | `sysvInt`'s C subset under the **LLP64** data model `Data.Layout.msX64` (`long` is 4 bytes, `wchar_t` 2, `long double` 8), with the `Machine.Abi.Win64.win64` convention: RCX, RDX, R8, R9, a 32-byte shadow area, then 8-byte slots at `rsp + 8 + 8i`; result in RAX; no red zone. The callee owns the shadow area and its stack arguments (`argArea = 8 · max n 4`) |
 
-`lowerInt` refuses everything else with a message:
+The data model is part of the lowering: the header `long f(long);` declares `f` as
+`int32 → int32` under `win64Int` and as `int64 → int64` under `sysvInt` and `sysvScalar`
+(`win64Int_lower_examples`). `sysvScalar_lower_examples` shows the planner's placements
+(`double f(double, int)`: XMM0, EDI, result in XMM0; a ninth `float` on the stack while a later
+`long` still gets RDI).
+
+**`sysvScalar` and the standard machines.** `Open` and `Open9` model no SSE instruction. Code
+that reads an XMM argument or writes XMM0 is stuck on them, so it has no `sysvScalar` row
+there; a row about floating computation needs a machine with SSE steps (and its `Faithful`
+assumption). On the open machines a `sysvScalar` row covers code that receives floating
+arguments without touching them.
+
+`lowerInt` (and `lowerWin64Int`) refuse everything else with a message:
 
 - `_Bool`, `char` and `short`;
 - floating types (SSE and x87 classes);
 - structs and unions passed by value;
 - enums;
 - varargs.
+
+`lowerScalar` (`sysvScalar`) accepts `float` and `double` and refuses, with a message, `long
+double` (X87/X87UP: passed in memory, returned in `%st0`), `__float128` (SSE/SSEUP), `_Bool`,
+`char`, `short`, enums, structs and unions by value, and varargs (the `%al` count and
+`va_list`).
 
 ## The ELF binding
 
@@ -256,6 +275,9 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
 | --- | --- |
 | `Silmaril.Data.Layout.Header` | the header subset reader (`read`), `CProto`, `Header` |
 | `Silmaril.Machine.Abi.Conformance` | `AbiDef`, `sysvInt`, `Code`, `CallSpec`, `Admit`, `NoStuck`, `Good`, `Conforms`, `Faithful`, `Coverage`, `HeaderSatPartial`, `HeaderSatAvailable`, `HeaderSatComplete`; `conforms_of_strict`, `Conforms.steps`, `Conforms.onRef` |
+| `Silmaril.Machine.Abi.Conformance.Win64`, `….SysvScalar` | `win64Int`, `lowerWin64Int` and `sysvScalar`, `kindOf`, `lowerScalar`, with their lowering examples |
+| `Silmaril.Machine.Abi.SystemV.Scalar` | the scalar-fragment vocabulary and convention: `Kind`, `Proto`, `scalarPlan`, `plan_scalarPlan`, `entry_inhabited`, `sysv`, `resultAt_some` |
+| `Silmaril.Data.Layout` (`msX64`) | the Microsoft x64 LLP64 data model |
 | `Silmaril.Machine.Abi.Conformance.LeafArith` | the example: its header, code, specs, coverage, witness state, test machines, open tasks, proofs and negative tests |
 | `Silmaril.X86.Open.FsBase` | `Open.step_fsBase`, `Open9.step_fsBase`: no step writes the FS base (proving `FsBase.Task.openStepKeepsFs`) |
 | `Silmaril.Project.Shapes.Abi` | `silmaril.shapes.abi.conforms`, `header_sat_partial`, `header_sat_available`, `header_sat_complete` and their `sysv_int` instances |
@@ -269,7 +291,9 @@ the state's (as here), in `Machine.SystemV.Abi.Ffi`, and derive the `OpenMachine
     are open;
   - Ubuntu's `libz.so.1.3`, with versioned bindings and rebasing.
 - `Open9` rows.
-- `sysvInt` extended to aggregates, SSE and varargs.
-- `Win64` as an `AbiDef`.
+- System V aggregates, `long double` and varargs; Microsoft x64 floating arguments
+  (positional XMM0–XMM3) and aggregates.
+- `sysvScalar` and `win64Int` instances of the registry shapes, and rows for them (a
+  `sysvScalar` row about floating computation needs a machine with SSE steps).
 - A reference machine for `Faithful`.
 - The explorer's prototype and ABI views.

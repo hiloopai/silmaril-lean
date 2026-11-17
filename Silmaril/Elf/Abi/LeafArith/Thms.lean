@@ -100,7 +100,8 @@ end
 silmaril group silmaril.abi
   (title := "ABI conformance: the shapes and the leaf-arith rows")
   (children := [silmaril.shapes.abi.conforms, silmaril.shapes.abi.conforms.sysv_int_open,
-    silmaril.shapes.abi.conforms.sysv_int_open9, silmaril.shapes.abi.header_sat_partial,
+    silmaril.shapes.abi.conforms.sysv_int_open9, silmaril.shapes.abi.conforms.win64_int_open,
+    silmaril.shapes.abi.conforms.sysv_scalar_open9, silmaril.shapes.abi.header_sat_partial,
     silmaril.shapes.abi.header_sat_available, silmaril.shapes.abi.header_sat_complete,
     silmaril.shapes.elf.abi_conforms,
     silmaril.shapes.elf.abi_conforms.sysv_int_open, silmaril.shapes.elf.abi_conforms.sysv_int_open9,
