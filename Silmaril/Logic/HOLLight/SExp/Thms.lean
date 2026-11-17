@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Logic.HOLLight.SExp.Defs
 public import Silmaril.Logic.Smt.SExpr.Writer.Thms
+public import Silmaril.Logic.Concrete.Codec.Defs
 import Silmaril.Proofs.Logic.HOLLight.SExp.Basic
 
 /-!
@@ -40,5 +41,13 @@ theorem legal_encodeTm (t : Tm) : LegalExpr (encodeTm t) :=
 /-- **Bytes round trip.** -/
 theorem parseTm_printTm (t : Tm) : parseTm (printTm t) = some t :=
   Proofs.Logic.HOLLight.SExp.parseTm_printTm t
+
+/-- **The default presentation of HOL Light terms**, `silmaril.hol-light.term` (version 1). -/
+def codec : Silmaril.Logic.Concrete.SExpCodec Tm where
+  name := "silmaril.hol-light.term"
+  version := "1"
+  encode := encodeTm
+  decode := decodeTm
+  decode_eq_some_iff _ _ := decodeTm_eq_some_iff
 
 end Silmaril.Logic.HOLLight.SExp
