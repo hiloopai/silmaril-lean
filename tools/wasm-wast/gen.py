@@ -29,6 +29,15 @@ patterns `nan:canonical`/`nan:arithmetic` are allowed sets, and each command giv
 For them the probe computes the class of the specification's result set instead of running the
 interpreter.
 
+The files in LINK_FILES (imports, linking, exports, start, global, data, elem) are linked
+scripts: each file is one script, checked by one `decide +kernel` evaluation of `scriptLK`
+(`Silmaril.Project.Shapes.WasmWastLink`) from the context `Init`, in which `spectest` is the closed
+Wasm module `Spectest.module` (not a host; its print functions have empty bodies). Their rows are
+`link.returns_only`/`link.traps_only`/`link.unlinkable`/`link.uninstantiable` after every earlier
+module, `register` and action of the file; `register` and bare actions are `context` rows. The
+oracle runs each linked file's script once (wasmtime with its own spectest); a command passes when
+wasmtime gets past its line.
+
 The probe runs silmaril-lean's interpreter natively (`lake env lean` on a generated file) only to
 decide which commands to give to the kernel; nothing it prints is a proof. The proofs are the
 `decide +kernel` evaluations of `scriptK` (or, for modules with data segments, of `scriptKM`, which
@@ -96,6 +105,26 @@ REJECT = {"validator": ("silmaril.shapes.wasm.wast.validator_rejects", "Validato
           "decoder": ("silmaril.shapes.wasm.wast.decoder_rejects", "DecoderRejects", "decode?")}
 # Which rejection each assertion expects (another one is a mismatch).
 REJECT_WANT = {"assert_invalid": "validator", "assert_malformed": "decoder"}
+# Linked scripts: whole files with several modules, imports, `register`, named modules, `get` and
+# the `spectest` module, checked by `scriptLK` (`Silmaril.Project.Shapes.WasmWastLink`): one kernel
+# evaluation per file runs the whole script in order, from the context `Init` (the closed module
+# `Spectest.module` registered as "spectest"), on KMem stores.
+# names.wast is left out for kernel time: its third module (7.6 KB, 480 exports) exceeds 33 GB of
+# memory within two minutes of the kernel check (the native probe passes all 482 assert_return).
+LINK_FILES = [("imports", "Imports"), ("linking", "Linking"), ("exports", "Exports"), ("start", "Start"),
+              ("global", "Global"), ("data", "Data"), ("elem", "Elem")]
+LINK = {f for f, _ in LINK_FILES}
+LINK_SHAPE = {"assert_return": "silmaril.shapes.wasm.wast.link.returns_only",
+              "assert_trap": "silmaril.shapes.wasm.wast.link.traps_only",
+              "assert_unlinkable": "silmaril.shapes.wasm.wast.link.unlinkable",
+              "assert_uninstantiable": "silmaril.shapes.wasm.wast.link.uninstantiable"}
+LINK_STRENGTH = {"assert_return": "only", "assert_trap": "only", "assert_unlinkable": "link",
+                 "assert_uninstantiable": "only"}
+HOST_MODEL = ("spectest = the closed Wasm module Spectest.module (Silmaril.Project.Shapes.WasmWastLink.Defs), "
+              "allocated once per script and registered as \"spectest\": globals 666/666/666.6/666.6, table and table64 "
+              "10..20 funcref, memory 1..2; its print functions have empty bodies (no values, store unchanged: "
+              "Spectest.print_nf); printed output is erased and not claimed; no .host function instance; "
+              "the oracle uses wasmtime's own spectest")
 REGRESS = ROOT / "tools/wasm-wast/regress"
 NS = "silmaril.wasm_wast"
 
@@ -134,7 +163,7 @@ def convert():
     need(WT["WT_UPSTREAM"], WT["WT_UPSTREAM_SHA256"], "wasm-tools")
     need(WT["WASM_SPEC_ARCHIVE"], WT["WASM_SPEC_SHA256"], "the spec test suite archive")
     recorded = {x["file"]: x["sha256"] for x in json.loads(REPORT.read_text())["files"]} if REPORT.is_file() else {}
-    for f, _ in FILES:
+    for f, _ in FILES + LINK_FILES:
         d = WORK / "json" / f
         d.mkdir(parents=True, exist_ok=True)
         # The unpacked spec file must be the one report.json records (fetch-pins.sh checks only the
@@ -180,7 +209,41 @@ def show_val(v):
 
 
 def lean_str(s):
-    return json.dumps(s, ensure_ascii=False)
+    """A Lean string literal: printable characters as they are, the others as `\\xHH` / `\\uHHHH`
+    escapes (Lean has no `\\b` or `\\f`)."""
+    out = []
+    for ch in s:
+        o = ord(ch)
+        if ch in ('"', "\\"):
+            out.append("\\" + ch)
+        elif ch == "\n":
+            out.append("\\n")
+        elif ch == "\t":
+            out.append("\\t")
+        elif o < 0x20 or o == 0x7F:
+            out.append(f"\\x{o:02x}")
+        elif 0x80 <= o < 0xA0 or 0xD800 <= o <= 0xDFFF:
+            out.append(f"\\u{o:04x}")
+        else:
+            out.append(ch)
+    return '"' + "".join(out) + '"'
+
+
+def wast_str(s):
+    """A WAST string literal: printable ASCII as it is, every other character as a `\\u{H}`
+    escape (the same text as `json.dumps` on printable ASCII)."""
+    out = []
+    for ch in s:
+        o = ord(ch)
+        if ch in ('"', "\\"):
+            out.append("\\" + ch)
+        elif o < 0x20 or o >= 0x7F:
+            # wasmtime's lexer rejects unescaped "confusing" characters (bidi controls, zero
+            # widths); every non-ASCII character is escaped, so the text is ASCII.
+            out.append(f"\\u{{{o:x}}}")
+        else:
+            out.append(ch)
+    return '"' + "".join(out) + '"'
 
 
 # ---------- the script model: segments of a module and its commands ----------
@@ -317,9 +380,382 @@ def runnable(seg):
     return out
 
 
+# ---------- linked scripts: whole files with imports, register and the closed spectest module ----------
+
+LINK_PROBE = r"""
+section LinkProbe
+open Silmaril.Project.Shapes.WasmWastLink hiding Ctx Action Cmd NF pre Only Reaches ReturnsOnly TrapsOnly ScriptHolds ScriptAt Run Always
+
+abbrev LCtx := Silmaril.Project.Shapes.WasmWastLink.Ctx
+abbrev LAction := Silmaril.Project.Shapes.WasmWastLink.Action
+abbrev LCmd := Silmaril.Project.Shapes.WasmWastLink.Cmd
+
+def runP (fuel : Nat) (c : Config Nat) : Option (Config Nat) :=
+  let r := Exec.runI neverFail fuel c
+  if r.2 then some r.1 else none
+
+def instP (fuel : Nat) (ctx : LCtx) (m : Module) : Except String (Config Nat × ModuleInst) :=
+  match validate? m with
+  | none => .error "the validator rejects the module"
+  | some mt =>
+    match resolve? ctx.regs m.imports with
+    | none => .error "an import does not resolve to an export of a registered module"
+    | some xas =>
+      if externAddrsOk? ctx.store xas mt.imports then
+        match instantiateOnce? ctx.store m xas with
+        | some (s, f, st) =>
+          match runP fuel ⟨s, f, startCode st⟩ with
+          | some c => .ok (c, f.module)
+          | none => .error s!"the start function did not stop ({fuel} steps)"
+        | none => .error "instantiateOnce? fails (a segment initialisation is out of bounds, or allocation fails)"
+      else .error "the import types do not match"
+
+def showOut : Option Result → String
+  | some r => showRes r
+  | none => "a normal form that is not a result (stuck)"
+
+def actP (fuel : Nat) (ctx : LCtx) : LAction → Except (String × String) (Result × Store Nat)
+  | .invoke t name args =>
+    match ctx.inst? t with
+    | some mi =>
+      match exportFunc? mi name with
+      | some a =>
+        if invokeOkB ctx.store a args then
+          match runP fuel (invoke ctx.store a args) with
+          | some c =>
+            match c.outcome? with
+            | some r => .ok (r, c.store)
+            | none => .error ("error", "stopped without a result (stuck)")
+          | none => .error ("undetermined", s!"out of fuel ({fuel} steps)")
+        else .error ("error", "arguments not typed")
+      | none => .error ("error", "no function export")
+    | none => .error ("error", "no such module")
+  | .get t name =>
+    match ctx.inst? t with
+    | some mi =>
+      match exportAddr? mi name with
+      | some (.global a) =>
+        match ctx.store.globals[a]? with
+        | some gi => .ok (.values [gi.value], ctx.store)
+        | none => .error ("error", "no global")
+      | _ => .error ("error", "no global export")
+    | none => .error ("error", "no such module")
+
+partial def probeL (tag : String) (fuel : Nat) : Nat → LCtx → List LCmd → IO Unit
+  | _, _, [] => pure ()
+  | k, ctx, .module name m :: cmds =>
+    match instP fuel ctx m with
+    | .ok (c, mi) =>
+      if decide (c.outcome? = some (.values [])) then do
+        IO.println s!"P\t{tag}\t{k}\tran\tinstantiated"
+        probeL tag fuel (k + 1)
+          { ctx with store := c.store, cur := some mi, named := bindName name mi ctx.named } cmds
+      else IO.println s!"P\t{tag}\t{k}\terror\tmodule: the start code ends with {showOut c.outcome?}"
+    | .error e => IO.println s!"P\t{tag}\t{k}\terror\tmodule: {e}"
+  | k, ctx, .register as t :: cmds =>
+    match ctx.inst? t with
+    | some mi => do
+      IO.println s!"P\t{tag}\t{k}\tran\tregistered"
+      probeL tag fuel (k + 1) { ctx with regs := (as, mi) :: ctx.regs } cmds
+    | none => IO.println s!"P\t{tag}\t{k}\terror\tregister: no such module"
+  | k, ctx, .action act e :: cmds =>
+    match actP fuel ctx act with
+    | .ok (r, s) => do
+      let ok := match e with
+        | some e => if decide (r = e.result) then "pass" else "mismatch"
+        | none => "ran"
+      IO.println s!"P\t{tag}\t{k}\t{ok}\t{showRes r}"
+      probeL tag fuel (k + 1) { ctx with store := s } cmds
+    | .error (st, d) => IO.println s!"P\t{tag}\t{k}\t{st}\t{d}"
+  | k, ctx, .unlinkable m _ :: cmds => do
+    if (validate? m).isNone then IO.println s!"P\t{tag}\t{k}\terror\tthe validator rejects the module" else
+    if unlinkableG ctx m then do
+      let why := match resolve? ctx.regs m.imports with
+        | none => "an import does not resolve"
+        | some _ => "the import types do not match"
+      IO.println s!"P\t{tag}\t{k}\tpass\tunlinkable: {why}"
+      probeL tag fuel (k + 1) ctx cmds
+    else IO.println s!"P\t{tag}\t{k}\tmismatch\tthe module links"
+  | k, ctx, .uninstantiable m _ :: cmds =>
+    match instP fuel ctx m with
+    | .ok (c, _) =>
+      match c.outcome? with
+      | some .trap => do
+        IO.println s!"P\t{tag}\t{k}\tpass\tthe start function traps"
+        probeL tag fuel (k + 1) { ctx with store := c.store } cmds
+      | some r => do
+        IO.println s!"P\t{tag}\t{k}\tmismatch\tthe start code ends with {showRes r}"
+        probeL tag fuel (k + 1) { ctx with store := c.store } cmds
+      | none => IO.println s!"P\t{tag}\t{k}\terror\tthe start code ends with {showOut none}"
+    | .error e => IO.println s!"P\t{tag}\t{k}\terror\tinstantiation: {e}"
+
+def probeLink (tag : String) (fuel : Nat) (cmds : List LCmd) : IO Unit :=
+  match validate? Spectest.module, instantiateOnce? (Game.importStore []) Spectest.module [] with
+  | some _, some (s, f, none) => probeL tag fuel 0 { store := s, regs := [("spectest", f.module)] } cmds
+  | _, _ => IO.println s!"P\t{tag}\t0\terror\tspectest does not instantiate"
+
+end LinkProbe
+"""
+
+
+def lean_res(v):
+    """An expected result as a Lean value: exact numbers, or a null reference (`ref.null`, an
+    untyped `Ref.null` in Core); `None` for patterns (NaN classes, non-null references)."""
+    if v["type"] in ("externref", "funcref", "anyref", "exnref") and v.get("value") == "null" or v["type"] == "refnull":
+        return "Val.ref .null"
+    return lean_val(v)
+
+
+def show_res(v):
+    if v["type"] == "refnull" or v.get("value") == "null":
+        return f"{v['type']}:null"
+    if v.get("value") is None:
+        return f"{v['type']}:(ref.func)" if v["type"] == "funcref" else f"{v['type']}:?"
+    return show_val(v)
+
+
+def load_link(f):
+    """The script of a linked file: the commands in order (`items`, the Cmd candidates), and one
+    report row per command that is not a module."""
+    d = json.loads((WORK / "json" / f / f"{f}.json").read_text())
+    items, rows, nmod = [], [], 0
+    for c in d["commands"]:
+        t, line = c["type"], c["line"]
+        if t == "module":
+            it = {"kind": "module", "line": line, "name": c.get("name"), "wasm": c.get("filename"), "index": nmod}
+            nmod += 1
+            if c.get("module_type") != "binary":
+                it["stop"] = f"module given as {c.get('module_type')}"
+            items.append(it)
+            continue
+        row = {"id": f"{f}:{line}", "file": f, "line": line, "type": t, "link": True}
+        rows.append(row)
+        if "text" in c:
+            row["text"] = c["text"]
+        if t in ("assert_invalid", "assert_malformed"):
+            fn = c.get("binary_filename") or (c.get("filename") if c.get("module_type") == "binary" else None)
+            row["module_type"] = c.get("module_type")
+            if fn:
+                row["status"], row["reject_wasm"] = "reject_candidate", fn
+            else:
+                row["status"], row["reason"] = "unsupported", TEXT_MALFORMED
+            continue
+        if t == "register":
+            row["register"] = {"as": c["as"], "module": c.get("name")}
+            items.append({"kind": "register", "row": row, "as": c["as"], "target": c.get("name")})
+            continue
+        if t in ("assert_unlinkable", "assert_uninstantiable"):
+            row["module_type"] = c.get("module_type")
+            if c.get("module_type") != "binary":
+                row["status"], row["reason"] = "unsupported", f"module given as {c.get('module_type')}"
+                items.append({"kind": "stop", "row": row})
+                continue
+            row["link_wasm"] = c["filename"]
+            items.append({"kind": t.removeprefix("assert_"), "row": row, "wasm": c["filename"]})
+            continue
+        act = c.get("action")
+        if t in ("action", "assert_return", "assert_trap") and act:
+            row["action"] = {"field": act.get("field"), "args": act.get("args", []), "module": act.get("module"),
+                             "type": act.get("type")}
+            if "expected" in c:
+                row["expected"] = c["expected"]
+            args = [lean_val(v) for v in act.get("args", [])]
+            if act.get("type") not in ("invoke", "get"):
+                row["status"], row["reason"] = "unsupported", f"action {act.get('type')}"
+                items.append({"kind": "stop", "row": row})
+                continue
+            if None in args:
+                row["status"], row["reason"] = "unsupported", "argument type outside i32/i64/f32/f64 (the action cannot be run)"
+                items.append({"kind": "stop", "row": row})
+                continue
+            row["lean_args"] = args
+            expect = None
+            if t == "assert_return":
+                exp = [lean_res(v) for v in c.get("expected", [])]
+                if None in exp:
+                    pats = [str(v.get("value")) for v in c.get("expected", []) if lean_res(v) is None]
+                    row["status"] = "unsupported"
+                    row["reason"] = ("NaN pattern (allowed-set shape not implemented for linked scripts)" if any("nan:" in p for p in pats)
+                                     else "result pattern outside exact numbers and null references")
+                else:
+                    expect = ("values", exp)
+            elif t == "assert_trap":
+                expect = ("trap", None)
+            items.append({"kind": "act", "row": row, "expect": expect})
+            continue
+        row["status"], row["reason"] = "unsupported", f"{t} (no shape)"
+        items.append({"kind": "stop", "row": row})
+    return items, rows
+
+
+def link_runnable(items):
+    out = []
+    for it in items:
+        if it["kind"] == "stop" or it.get("stop"):
+            break
+        out.append(it)
+    return out
+
+
+def lean_target(name):
+    return ".cur" if not name else f"(.named {lean_str(name)})"
+
+
+def lean_link_action(row):
+    a = row["action"]
+    if a["type"] == "get":
+        return f".get {lean_target(a['module'])} {lean_str(a['field'])}"
+    return f".invoke {lean_target(a['module'])} {lean_str(a['field'])} [{', '.join(row['lean_args'])}]"
+
+
+def link_mod_var(it):
+    return f"m{it['index']}" if it["kind"] == "module" else f"u{it['row']['line']}"
+
+
+def lean_link_cmd(it, claim):
+    k = it["kind"]
+    if k == "module":
+        return f".module {'none' if not it['name'] else '(some ' + lean_str(it['name']) + ')'} {link_mod_var(it)}"
+    if k == "register":
+        return f".register {lean_str(it['as'])} {lean_target(it['target'])}"
+    if k in ("unlinkable", "uninstantiable"):
+        return f".{k} {link_mod_var(it)} {'true' if claim else 'false'}"
+    e = it["expect"] if claim else None
+    es = "none" if e is None else (f"(some (.values [{', '.join(e[1])}]))" if e[0] == "values" else "(some .trap)")
+    return f".action ({lean_link_action(it['row'])}) {es}"
+
+
+def link_wasm(f, it):
+    return (WORK / "json" / f / (it["wasm"])).read_bytes()
+
+
+def probe_link(out):
+    for f, _ in LINK_FILES:
+        items, rows = load_link(f)
+        run = link_runnable(items)
+        for it in run:
+            if it["kind"] in ("module", "unlinkable", "uninstantiable"):
+                out.append(bytes_lean(f"b_{f}_{link_mod_var(it)}", link_wasm(f, it)))
+        defs = "".join(f"def mod_{f}_{link_mod_var(it)} : Module := (Silmaril.Wasm.Binary.Core.decode? b_{f}_{link_mod_var(it)}).getD {{}}\n"
+                       for it in run if it["kind"] in ("module", "unlinkable", "uninstantiable"))
+        out.append(defs)
+        for it in run:
+            if it["kind"] in ("module", "unlinkable", "uninstantiable"):
+                out.append(f"#eval if (Silmaril.Wasm.Binary.Core.decode? b_{f}_{link_mod_var(it)}).isNone then "
+                           f"IO.println \"D\\t{f}\\t{link_mod_var(it)}\" else pure ()\n")
+        for k, it in enumerate(run):
+            if it["kind"] in MODKINDS:
+                out.append(f"#eval IO.println (\"I\\tlink:{f}/{k}\\t\" ++ \",\".intercalate "
+                           f"(mod_{f}_{link_mod_var(it)}.imports.map fun i => i.moduleName ++ \".\" ++ i.name))\n")
+        cmds = [lean_link_cmd(it, True).replace(f" {link_mod_var(it)}", f" mod_{f}_{link_mod_var(it)}")
+                if it["kind"] in ("module", "unlinkable", "uninstantiable") else lean_link_cmd(it, True) for it in run]
+        out.append(f"set_option maxRecDepth 100000 in\n#eval probeLink {lean_str('link:' + f)} {FUEL} [\n  " + ",\n  ".join(cmds) + "]\n")
+        for r in rows:
+            if r.get("status") == "reject_candidate":
+                out.append(bytes_lean(f"r_{f}_{r['line']}", (WORK / "json" / f / r["reject_wasm"]).read_bytes()))
+                out.append(f"#eval probeReject {lean_str(r['id'])} r_{f}_{r['line']}\n")
+
+
+MODKINDS = ("module", "unlinkable", "uninstantiable")
+
+
+def classify_link(pr):
+    """Statuses of the rows of the linked files, the commands the kernel runs (with their claims),
+    and the script context of each row (registered names, named modules, the current module and
+    its imports, the host model)."""
+    files = []
+    for f, mod in LINK_FILES:
+        items, rows = load_link(f)
+        run = link_runnable(items)
+        undec = set(pr.get("link_decode", {}).get(f, []))
+        imps = pr.get("link_imports", {})
+        kernel, end, why = [], len(run), None
+        regs, named, cur, cur_imports = ["spectest"], [], None, []
+        for k, it in enumerate(run):
+            row = it.get("row")
+            p = pr["cmds"].get(f"link:{f}/{k}")
+            if it["kind"] in MODKINDS and link_mod_var(it) in undec:
+                p = {"status": "unsupported", "detail": "silmaril-lean's decoder rejects the module"}
+            if p is None or p["status"] in ("error", "undetermined", "unsupported"):
+                st = "undetermined" if p and p["status"] == "undetermined" else "unsupported"
+                why = p["detail"] if p else "not probed"
+                if row is not None:
+                    row["status"], row["reason"] = st, why
+                else:
+                    why = f"the module at line {it['line']} does not instantiate in silmaril-lean: {why}"
+                end = k
+                break
+            ctx = {"registered": list(regs), "named": list(named), "current": cur,
+                   "current_imports": list(cur_imports), "host": "spectest = closed Spectest.module"}
+            if it["kind"] == "module":
+                cur = f"${it['name']}" if it["name"] else f"module at line {it['line']}"
+                cur_imports = imps.get(f"link:{f}/{k}", [])
+                if it["name"]:
+                    named.insert(0, it["name"])
+                kernel.append((it, False))
+                continue
+            row["context"] = ctx
+            if it["kind"] in ("unlinkable", "uninstantiable"):
+                row["context"] = {**ctx, "module_imports": imps.get(f"link:{f}/{k}", [])}
+            if it["kind"] == "register":
+                regs.insert(0, it["as"])
+                row["status"], row["reason"] = "context", "register: part of the script context of later rows (no claim)"
+                kernel.append((it, False))
+                continue
+            row["observed"] = p["detail"]
+            if p["status"] == "pass":
+                row["status"] = "proved"
+                kernel.append((it, True))
+            elif p["status"] == "mismatch":
+                row["status"], row["reason"] = "mismatch", "silmaril-lean's run differs from the expectation"
+                kernel.append((it, False))
+                if it["kind"] == "unlinkable":
+                    # The reference interpreter would go on with a module that links: the context differs.
+                    end, why = k + 1, "an earlier assert_unlinkable does not hold in silmaril-lean"
+                    break
+            else:
+                if row.get("status") != "unsupported":
+                    row["status"], row["reason"] = "context", "a bare action: part of the script context of later rows (no claim)"
+                kernel.append((it, False))
+        if why is None and end < len(items):
+            stopper = items[end]
+            why = stopper.get("stop") or (stopper.get("row") or {}).get("reason") or "an unsupported command"
+            why = f"line {stopper.get('line') or stopper['row']['line']}: {why}"
+        for i, it in enumerate(items):
+            r = it.get("row")
+            if r is None or i <= end and r.get("status") is not None:
+                continue
+            if r.get("status") == "unsupported":
+                continue
+            r["status"] = "undetermined"
+            r["reason"] = f"an earlier command of the script did not run ({why})"
+            r.pop("observed", None)
+            r.pop("context", None)
+        for r in rows:
+            if r.get("status") is None:
+                r["status"], r["reason"] = "undetermined", "not run"
+            if r.get("status") == "reject_candidate":
+                got = pr.get("rejects", {}).get(r["id"])
+                want = REJECT_WANT[r["type"]]
+                if got is not None:
+                    r["observed"] = {"validator": "decode? reads a module; validate? rejects it",
+                                     "decoder": "decode? rejects the bytes",
+                                     "accepts": "decode? reads a module; validate? accepts it"}[got]
+                if got == want:
+                    r["status"], r["reject"] = "proved", got
+                elif got is None:
+                    r["status"], r["reason"] = "undetermined", "not probed"
+                else:
+                    r["status"] = "mismatch"
+                    r["reason"] = f"{r['type']} expects a {want} rejection; silmaril-lean: {r['observed']}"
+        files.append((f, mod, items, rows, kernel))
+    return files
+
+
 # ---------- probe ----------
 
 PROBE_HEAD = """import Silmaril.Project.Shapes.WasmWast.Defs
+import Silmaril.Project.Shapes.WasmWastLink.Defs
 import Silmaril.Project.Shapes.WasmWastSpec.Defs
 import Silmaril.Wasm.Binary.Core.Decode
 open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWast
@@ -452,16 +888,24 @@ def probe():
             if r["status"] == "reject_candidate":
                 out.append(bytes_lean(f"r_{f}_{r['line']}", (WORK / "json" / f / r["reject_wasm"]).read_bytes()))
                 out.append(f"#eval probeReject {lean_str(r['id'])} r_{f}_{r['line']}\n")
+    out.append(LINK_PROBE)
+    probe_link(out)
     with tempfile.TemporaryDirectory() as td:
         p = pathlib.Path(td) / "Probe.lean"
         p.write_text("\n".join(out))
+        if os.environ.get("WASM_WAST_KEEP_PROBE"):  # keep a copy of the probe file (debugging)
+            shutil.copyfile(p, os.environ["WASM_WAST_KEEP_PROBE"])
         r = subprocess.run(["lake", "env", "lean", str(p)], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         sys.exit("probe failed:\n" + r.stdout[-4000:] + r.stderr[-4000:])
-    res = {"modules": {}, "cmds": {}, "rejects": {}}
+    res = {"modules": {}, "cmds": {}, "rejects": {}, "link_decode": {}, "link_imports": {}}
     for line in r.stdout.splitlines():
         parts = line.split("\t")
-        if parts[0] == "M":
+        if parts[0] == "D":
+            res["link_decode"].setdefault(parts[1], []).append(parts[2])
+        elif parts[0] == "I":
+            res["link_imports"][parts[1]] = [x for x in (parts[2] if len(parts) > 2 else "").split(",") if x]
+        elif parts[0] == "M":
             res["modules"][parts[1]] = {"status": parts[2], "detail": parts[3] if len(parts) > 3 else ""}
         elif parts[0] == "R":
             res["rejects"][parts[1]] = parts[2]
@@ -558,7 +1002,8 @@ def emit():
                        "archive_sha256": WT["WASM_SPEC_SHA256"]},
               "converter": {"tool": "wasm-tools json-from-wast", "version": WT["WT_VERSION"],
                             "sha256": WT["WT_UPSTREAM_SHA256"]},
-              "profile": f"{PROFILE_DET} for the returns_only/traps_only rows; {PROFILE_SPEC} for the "
+              "profile": f"{PROFILE_DET} for the returns_only/traps_only rows and the link.* rows of the linked files "
+                         "(" + ", ".join(f"{f}.wast" for f, _ in LINK_FILES) + f"); {PROFILE_SPEC} for the "
                          "returns_allowed_all/traps_all/terminates_all rows of " + ", ".join(f"{f}.wast" for f, _ in FILES if f in SPEC),
               "assumptions": ["assert_return/assert_trap rows: the module is valid, has no imports and no start function, and its function exports have scalar types",
                               "assert_return/assert_trap rows: no host function (Det.noHost); claims are about Core reduction Step (profile neverFail)",
@@ -572,7 +1017,20 @@ def emit():
                               "other expectations are exact bits",
                               "assert_invalid rows are tool-level (silmaril.shapes.wasm.wast.validator_rejects): silmaril-lean's decode? reads "
                               "the bytes wasm-tools wrote and silmaril-lean's validate? rejects the module; with validate?_complete, no module "
-                              "the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)"],
+                              "the bytes encode is valid in silmaril-lean's ModuleOk (a transcription; not a claim about the specification)",
+                              "linked-script rows (" + ", ".join(f"{f}.wast" for f, _ in LINK_FILES) + "; silmaril.shapes.wasm.wast.link.*): the "
+                              "whole file is one script, from the context Init; claims are about Core reduction Step (profile neverFail) with no host "
+                              "function (Det.noHost), after the actual runs of every earlier module, register and action of the file, in order "
+                              "(stores persist across modules, also through imported memories, tables and globals); imports resolve by name to "
+                              "exports of registered instances (resolve?, the reference interpreter's registry) and must have the import types "
+                              "(ExternAddrOk); modules are allocated and their segments initialised by instantiateOnce?; start functions run as Core reduction",
+                              "linked-script rows: host model: " + HOST_MODEL,
+                              "linked-script assert_unlinkable rows (silmaril.shapes.wasm.wast.link.unlinkable): the module is valid and its imports "
+                              "do not resolve by name, or resolve to addresses without the import types (ExternAddrOk, silmaril-lean's transcription "
+                              "of Externaddr_ok); hence no Instantiate derivation for them (Unlinkable.not_instantiate)",
+                              "linked-script assert_uninstantiable rows (silmaril.shapes.wasm.wast.link.uninstantiable): the module links and is "
+                              "allocated, and its start function traps at every host-free normal form; a segment initialisation that traps makes "
+                              "instantiateOnce? fail and has no shape (the script stops there)"],
               "files": [], "commands": []}
     imports = []
     for f, mod, segs, rows in files:
@@ -649,7 +1107,8 @@ def emit():
                 c["claims"] = [{"kind": "only", "shape": c["shape"], "problem": c["problem"], "theorem": c["theorem"]}]
                 c["checker"] = "scriptKM" if segs[r["seg"]]["kmem"] else "scriptK"
             report["commands"].append(c)
-    groups = [f"{NS}.{f}" for f, mod in FILES if f"Silmaril.Project.WasmWast.{mod}.Thms" in imports]
+    emit_link(report, imports)
+    groups = [f"{NS}.{f}" for f, mod in FILES + LINK_FILES if f"Silmaril.Project.WasmWast.{mod}.Thms" in imports]
     top = ("module\n\n" + "".join(f"public import {i}\n" for i in imports) +
            "\n/-! # WAST rows of the pinned spec test suite: every file of the slice\n\n"
            "Generated by `tools/wasm-wast/gen.py` (`docs/projects/wasm-wast.md`). The group "
@@ -672,6 +1131,214 @@ def emit():
     print(json.dumps(report["counts"]), file=sys.stderr)
     for k, v in report["reasons"].items():
         print(f"  {v:4d} {k}", file=sys.stderr)
+
+
+def link_report_row(f, mod, r):
+    """The report entry of a row of a linked file."""
+    c = {k: r[k] for k in ("id", "file", "line", "type", "status") if k in r}
+    c["script"] = "linked"
+    if "action" in r:
+        a = r["action"]
+        if a["type"] == "get":
+            c["get"] = a["field"]
+        else:
+            c["invoke"] = a["field"]
+            c["args"] = [show_val(v) for v in a["args"]]
+        if a.get("module"):
+            c["on"] = f"${a['module']}"
+    if "expected" in r:
+        c["expected"] = [show_res(v) for v in r["expected"]]
+    if r["type"] == "assert_trap":
+        c["expected"] = ["trap"]
+        c["trap_text"] = r.get("text")
+    if r["type"] in ("assert_unlinkable", "assert_uninstantiable"):
+        c["expected"] = [r["type"].removeprefix("assert_")]
+        c["text"] = r.get("text")
+        if "link_wasm" in r:
+            c["module_type"] = r.get("module_type")
+            c["wasm_sha256"] = sha256(WORK / "json" / f / r["link_wasm"])
+    if r["type"] == "register":
+        c["register"] = {"as": r["register"]["as"], "module": f"${r['register']['module']}" if r["register"]["module"] else "current"}
+    if r["type"] in REJECT_WANT:
+        c["expected"] = [r["type"].removeprefix("assert_")]
+        c["text"] = r.get("text")
+    for k in ("reason", "observed", "context"):
+        if k in r:
+            c[k] = r[k]
+    if "reject_wasm" in r:
+        c["module_type"] = r["module_type"]
+        c["wasm_sha256"] = sha256(WORK / "json" / f / r["reject_wasm"])
+        if r["status"] == "proved":
+            shape, _, checker = REJECT[r["reject"]]
+            c.update(problem=f"{NS}.{f}.l{r['line']}", shape=shape, theorem=f"Silmaril.Project.WasmWast.{mod}.l{r['line']}",
+                     strength="tool", checker=checker)
+    elif r["status"] == "proved":
+        shape = LINK_SHAPE[r["type"]]
+        c.update(problem=f"{NS}.{f}.l{r['line']}", shape=shape, theorem=f"Silmaril.Project.WasmWast.{mod}.l{r['line']}",
+                 strength=LINK_STRENGTH[r["type"]], profile="profile neverFail", host=HOST_MODEL, checker="scriptLK")
+        if r["type"] in ("assert_return", "assert_trap"):
+            c["allowed"] = c["expected"]
+        c["claims"] = [{"kind": LINK_STRENGTH[r["type"]], "shape": shape, "problem": c["problem"], "theorem": c["theorem"]}]
+    return c
+
+
+def emit_link_file(f, mod, items, rows, kernel, sha):
+    ns = f"Silmaril.Project.WasmWast.{mod}"
+    mods = [it for it, _ in kernel if it["kind"] in MODKINDS]
+    rejects = [r for r in rows if r.get("reject") and r["status"] == "proved"]
+    defs = [f"""module
+
+public import Silmaril.Project.Shapes.WasmWastLink.Defs
+public import Silmaril.Wasm.Binary.Core.Decode
+
+/-!
+# WAST rows: `test/core/{f}.wast` of the WebAssembly spec test suite, as a linked script
+
+Generated by `tools/wasm-wast/gen.py`; do not edit. The source is `test/core/{f}.wast` of
+WebAssembly/spec at `{WT['WASM_SPEC_REV']}`
+(SHA-256 `{sha}`).
+Each module is the binary that wasm-tools {WT['WT_VERSION']} `json-from-wast` writes for it, read by
+silmaril-lean's decoder (`decode?`, sound: `decode?_sound`). `mJ` is the module of the `J`-th
+`(module …)` of the file and `uL` the module of the `assert_unlinkable` / `assert_uninstantiable` at
+line `L`. `cmds` is the script in order, from the context `Init` (the closed module
+`Spectest.module` registered as `"spectest"`): every module, `register`, action and module assertion
+up to the first command the kernel does not run. An assertion that the kernel checks keeps its
+claim; every other one is kept for the context only (`expect := none`, `claim := false`).{{rdoc}}
+-/
+
+@[expose] public section
+
+namespace {ns}
+
+open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWastLink
+"""]
+    defs[0] = defs[0].replace("{rdoc}", "" if not rejects else
+        "\n\n`invalidL` / `malformedL` are the bytes of the module of the `assert_invalid` /\n"
+        "`assert_malformed` at line `L`: the binary that wasm-tools writes for it.")
+    for it in mods:
+        v = link_mod_var(it)
+        data = link_wasm(f, it)
+        line = it["line"] if it["kind"] == "module" else it["row"]["line"]
+        what = "module" if it["kind"] == "module" else f"module of the `assert_{it['kind']}`"
+        defs.append(("set_option maxRecDepth 100000 in\n" if len(data) > 2000 else "") +
+                    f"/-- The bytes of the {what} at line {line} (`{it['wasm']}`,\n"
+                    f"SHA-256 `{sha256(WORK / 'json' / f / it['wasm'])}`). -/")
+        defs.append(bytes_lean(f"bytes_{v}", data))
+        defs.append(f"/-- The {what} at line {line}, as silmaril-lean's decoder reads it. -/\n"
+                    f"def {v} : Module := (Silmaril.Wasm.Binary.Core.decode? bytes_{v}).getD {{}}\n")
+    if mods:
+        defs.append("/-- Every module of the script decodes (so `mJ`, `uL` are the decoder's readings, not the\n"
+                    "default `{}` of `getD`). -/\n"
+                    "def decodesB : Bool :=\n  [" + ", ".join(f"bytes_{link_mod_var(it)}" for it in mods) +
+                    "].all fun b => (Silmaril.Wasm.Binary.Core.decode? b).isSome\n")
+    rec = "set_option maxRecDepth 20000 in\n" if len(kernel) > 400 else ""
+    defs.append(f"{rec}/-- The script that the kernel runs, in order. -/\n"
+                f"def cmds : List Cmd := [\n  " + ",\n  ".join(lean_link_cmd(it, ok) for it, ok in kernel) + "]\n")
+    thms = [f"""module
+
+public import {ns}.Defs
+public import Silmaril.Project.Shapes.WasmWastLink.Thms
+public import Silmaril.Project.Shapes.WasmWast.Thms
+
+/-!
+# WAST rows: `test/core/{f}.wast`, a linked script answered by one kernel evaluation
+
+Generated by `tools/wasm-wast/gen.py`; do not edit. `script` proves every claim of `cmds`
+(`ScriptHolds.of_kernel`, one `decide +kernel` evaluation of `scriptLK`, which instantiates the
+closed `Spectest.module`, then validates, links, instantiates and runs every command in order on
+`KMem` stores; the claims are about `ByteArray` stores and host-free Core reduction). Each row
+`{NS}.{f}.l<line>` is the command at line `<line>`: `assert_return`
+(`silmaril.shapes.wasm.wast.link.returns_only`), `assert_trap` (`….link.traps_only`),
+`assert_unlinkable` (`….link.unlinkable`) or `assert_uninstantiable` (`….link.uninstantiable`),
+after the commands before it (`pre cmds k`). `decodes`: every module of the script is the
+decoder's reading of its bytes (not the default `{{}}` of `getD`), from the same kernel
+evaluation. The index fact `cmds[k]? = some …` of a row is checked by `kernel_rfl`.{{rthm}}
+-/
+
+@[expose] public section
+
+namespace {ns}
+
+open Silmaril.Wasm Silmaril.Wasm.Execution.Core Silmaril.Project.Shapes.WasmWastLink
+"""]
+    thms[0] = thms[0].replace("{rthm}", "" if not rejects else
+        "\n\nAn `assert_invalid` row (`silmaril.shapes.wasm.wast.validator_rejects`) or binary\n"
+        "`assert_malformed` row (`….decoder_rejects`) is tool-level: silmaril-lean's validator (decoder)\n"
+        "rejects the bytes, by one `decide +kernel` evaluation.")
+    names = []
+    if kernel:
+        if mods:
+            # One kernel evaluation decodes every module (`decodesB`) and runs the script: the
+            # kernel's cache shares the decoding with the checker's unfolding of `mJ`.
+            thms.append(f"/-- The kernel checker accepts the script, and every module decodes. -/\n"
+                        f"theorem check : (decodesB && scriptLK {O} {FUEL} cmds) = true := by decide +kernel\n")
+            thms.append("/-- Every module of the script is the decoder's reading of its bytes. -/\n"
+                        "theorem decodes : decodesB = true := (Bool.and_eq_true_iff.mp check).1\n")
+            thms.append(f"/-- Every claim of the script. -/\n"
+                        f"theorem script : ScriptHolds {O} cmds := .of_kernel (Bool.and_eq_true_iff.mp check).2\n")
+        else:
+            thms.append(f"/-- The kernel checker accepts the script. -/\n"
+                        f"theorem check : scriptLK {O} {FUEL} cmds = true := by decide +kernel\n")
+            thms.append(f"/-- Every claim of the script. -/\n"
+                        f"theorem script : ScriptHolds {O} cmds := .of_kernel check\n")
+        for k, (it, ok) in enumerate(kernel):
+            if not ok:
+                continue
+            row = it["row"]
+            name = f"{NS}.{f}.l{row['line']}"
+            names.append(name)
+            t = row["type"]
+            if t == "assert_return":
+                head = (f"  silmaril.shapes.wasm.wast.link.returns_only (o := {O})\n"
+                        f"  (pre := pre cmds {k}) (act := {lean_link_action(row)}) (vs := [{', '.join(it['expect'][1])}])\n")
+                proof = f"script.returnsOnly {k} (by kernel_rfl)"
+            elif t == "assert_trap":
+                head = (f"  silmaril.shapes.wasm.wast.link.traps_only (o := {O})\n"
+                        f"  (pre := pre cmds {k}) (act := {lean_link_action(row)})\n")
+                proof = f"script.trapsOnly {k} (by kernel_rfl)"
+            else:
+                kind = t.removeprefix("assert_")
+                head = (f"  silmaril.shapes.wasm.wast.link.{kind} (o := {O})\n"
+                        f"  (pre := pre cmds {k}) (m := {link_mod_var(it)})\n")
+                proof = f"script.{kind} {k} (by kernel_rfl)"
+            thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n{head}")
+            thms.append(f"@[answers {lean_str(name)} thm] theorem l{row['line']} : {name} :=\n  {proof}\n")
+    for r in rejects:
+        L = r["line"]
+        shape, lean, _ = REJECT[r["reject"]]
+        var = f"{r['type'].removeprefix('assert_')}{L}"
+        defs.append(f"/-- The bytes of the module of the `{r['type']}` at line {L} (`{r['reject_wasm']}`,\n"
+                    f"SHA-256 `{sha256(WORK / 'json' / f / r['reject_wasm'])}`). -/")
+        defs.append(bytes_lean(var, (WORK / "json" / f / r["reject_wasm"]).read_bytes()))
+        name = f"{NS}.{f}.l{L}"
+        names.append(name)
+        thms.append(f"silmaril instance {name} (expect := \"THM\") :=\n  {shape} (b := {var})\n")
+        thms.append(f"@[answers {lean_str(name)} thm] theorem l{L} : {name} :=\n"
+                    f"  Silmaril.Project.Shapes.WasmWast.{lean}.of_kernel (by decide +kernel)\n")
+    defs.append(f"end {ns}\n\nend\n")
+    thms.append(f"end {ns}\n\nend\n")
+    names.sort(key=lambda n: int(n.rsplit(".l", 1)[1]))
+    thms.append(f"silmaril group {NS}.{f} (title := {lean_str(f'test/core/{f}.wast: the kernel-checked commands (linked script)')})\n"
+                f"  (children := [\n    " + ",\n    ".join(names) + "])\n")
+    return "\n".join(defs), "\n".join(thms)
+
+
+def emit_link(report, imports):
+    for f, mod, items, rows, kernel in classify_link(json.loads((WORK / "probe.json").read_text())):
+        sha = sha256(SPEC_CORE / f"{f}.wast")
+        report["files"].append({"file": f"test/core/{f}.wast", "sha256": sha, "script": "linked", "checker": "scriptLK",
+                                "modules": [{"index": it["index"], "line": it["line"], "name": it["name"],
+                                             "wasm_sha256": sha256(WORK / "json" / f / it["wasm"]) if it["wasm"] else None,
+                                             "status": "run" if any(it is x for x, _ in kernel) else "not run"}
+                                            for it in items if it["kind"] == "module"]})
+        if kernel or any(r.get("reject") for r in rows):
+            defs, thms = emit_link_file(f, mod, items, rows, kernel, sha)
+            (LEAN_DIR / mod).mkdir(parents=True, exist_ok=True)
+            (LEAN_DIR / mod / "Defs.lean").write_text(defs)
+            (LEAN_DIR / mod / "Thms.lean").write_text(thms)
+            imports.append(f"Silmaril.Project.WasmWast.{mod}.Thms")
+        for r in rows:
+            report["commands"].append(link_report_row(f, mod, r))
 
 
 def emit_file(f, mod, segs, rows, sha):
@@ -931,12 +1598,17 @@ def oracle_scripts(rep):
                 # unchanged), so an earlier action cannot affect a command: the script is the module
                 # and the command. Elsewhere the earlier actions of the module come first.
                 for p in ([] if f in SPEC else prev):
-                    lines.append(f"(invoke {lean_str(p['action']['field'])} {' '.join(wast_val(show_val(v)) for v in p['action']['args'])})"
+                    lines.append(f"(invoke {wast_str(p['action']['field'])} {' '.join(wast_val(show_val(v)) for v in p['action']['args'])})"
                                  if p["type"] == "action" else wast_cmd(p))
                 lines.append(wast_cmd(r))
                 yield r["id"], "\n".join(lines) + "\n"
                 prev.append(r)
         # Rejections: the same bytes as the row, as `(module binary …)`, under the same assertion.
+        for r in rows:
+            if "reject_wasm" in r and status[r["id"]]["status"] in ("proved", "mismatch"):
+                yield r["id"], reject_script(r["type"], (WORK / "json" / f / r["reject_wasm"]).read_bytes(), r.get("text", ""))
+    for f, _ in LINK_FILES:
+        _, rows = load_link(f)
         for r in rows:
             if "reject_wasm" in r and status[r["id"]]["status"] in ("proved", "mismatch"):
                 yield r["id"], reject_script(r["type"], (WORK / "json" / f / r["reject_wasm"]).read_bytes(), r.get("text", ""))
@@ -946,8 +1618,82 @@ def module_binary(data):
     return '(module binary "' + "".join(f"\\{b:02x}" for b in data) + '")'
 
 
+def wast_res(v):
+    """An expected result in WAST text, as the file writes it."""
+    t, x = v["type"], v.get("value")
+    if t == "refnull":
+        return "(ref.null)"
+    if t in ("externref", "funcref", "anyref", "exnref") and x == "null":
+        return f"(ref.null {t.removesuffix('ref')})"
+    if t == "funcref" and x is None:
+        return "(ref.func)"
+    if t == "externref" and x is not None:
+        return f"(ref.extern {x})"
+    return wast_val(show_val(v))
+
+
+def wast_link_action(r):
+    a = r["action"]
+    on = f" ${a['module']}" if a.get("module") else ""
+    if a["type"] == "get":
+        return f"(get{on} {wast_str(a['field'])})"
+    return f"(invoke{on} {wast_str(a['field'])} {' '.join(wast_val(show_val(v)) for v in a['args'])})".replace(" )", ")")
+
+
+def link_ran(c):
+    return c["status"] in ("proved", "mismatch", "context") or "observed" in c
+
+
+def link_selected(c):
+    return c.get("script") == "linked" and "reject_wasm" not in c and \
+        (c["status"] in ("proved", "mismatch") or "observed" in c)
+
+
+def oracle_link_scripts(rep):
+    """One script per linked file: every command the kernel ran, in order, as the file writes it
+    (modules as `(module $name? binary …)` of the same bytes, `register`, actions and assertions
+    with their original expectations, module assertions). The oracle runs it once; a command passes
+    when wasmtime gets past its line. Yields (file, [(id, script line)], text). Deterministic in
+    report.json and the converted JSON."""
+    status = {c["id"]: c for c in rep["commands"]}
+    for f, _ in LINK_FILES:
+        items, _ = load_link(f)
+        lines, ids, pending = [], [], []
+        for it in items:
+            if it["kind"] == "module":
+                if it.get("stop"):
+                    break
+                nm = f" ${it['name']}" if it["name"] else ""
+                pending.append(module_binary(link_wasm(f, it)).replace("(module ", f"(module{nm} ", 1))
+                continue
+            r = it["row"]
+            c = status[r["id"]]
+            if not link_ran(c):
+                break
+            lines += pending
+            pending = []
+            k = it["kind"]
+            if k == "register":
+                lines.append(f"(register {wast_str(it['as'])}{' $' + it['target'] if it['target'] else ''})")
+            elif k == "unlinkable":
+                lines.append(f"(assert_unlinkable {module_binary(link_wasm(f, it))} {wast_str(r.get('text', ''))})")
+            elif k == "uninstantiable":
+                # The file writes `(assert_trap (module …) "…")` (wasm-tools: `assert_uninstantiable`).
+                lines.append(f"(assert_trap {module_binary(link_wasm(f, it))} {wast_str(r.get('text', ''))})")
+            elif r["type"] == "assert_return":
+                lines.append(f"(assert_return {wast_link_action(r)}{''.join(' ' + wast_res(v) for v in r.get('expected', []))})")
+            elif r["type"] == "assert_trap":
+                lines.append(f"(assert_trap {wast_link_action(r)} {wast_str(r.get('text', ''))})")
+            else:
+                lines.append(wast_link_action(r))
+            if link_selected(c):
+                ids.append((r["id"], len(lines)))
+        if ids:
+            yield f, ids, "\n".join(lines) + "\n"
+
+
 def reject_script(kind, data, text):
-    return f"({kind} {module_binary(data)} {lean_str(text)})\n"
+    return f"({kind} {module_binary(data)} {wast_str(text)})\n"
 
 
 def text_sha256(t):
@@ -994,18 +1740,36 @@ def oracle():
            "host": f"{platform.system()} {platform.machine()}",
            "oracle": {**provenance(), "version_output": ver}, "inputs": inputs(rep), "results": []}
     status = {c["id"]: c["status"] for c in rep["commands"]}
+    kinds = {c["id"]: c["type"] for c in rep["commands"]}
     with tempfile.TemporaryDirectory() as td:
         script = pathlib.Path(td) / "t.wast"
         for cid, text in oracle_scripts(rep):
             script.write_text(text)
             pr = subprocess.run([JCO["WASMTIME"], "wast", str(script)], capture_output=True, text=True)
-            res["results"].append({"id": cid, "oracle": "pass" if pr.returncode == 0 else "fail",
+            # A rejection row passes when wasmtime rejects the module. wasmtime also compares its
+            # own message with the file's (substring); when only the wording differs, the row
+            # passes and the record says so (`message`), with wasmtime's error.
+            worded = pr.returncode != 0 and kinds.get(cid) in REJECT_WANT and \
+                re.search(r"(assert_invalid|assert_malformed): expected \".*\", got \"", pr.stderr) is not None
+            res["results"].append({"id": cid, "oracle": "pass" if pr.returncode == 0 or worded else "fail",
                                    "script_sha256": text_sha256(text), "silmaril": status[cid],
-                                   **({"stderr": scrub(pr.stderr)[-400:]} if pr.returncode else {})})
+                                   **({"message": "differs", "stderr": scrub(pr.stderr)[-400:]} if worded else
+                                      {"stderr": scrub(pr.stderr)[-400:]} if pr.returncode else {})})
+        # Linked files: one run of the whole script; a command passes when wasmtime gets past it.
+        for f, ids, text in oracle_link_scripts(rep):
+            script.write_text(text)
+            pr = subprocess.run([JCO["WASMTIME"], "wast", str(script)], capture_output=True, text=True)
+            m = re.search(r"t\.wast:(\d+):", pr.stderr)
+            bad = int(m.group(1)) if pr.returncode and m else (0 if pr.returncode else None)
+            for cid, line in ids:
+                ok = bad is None or line < bad
+                res["results"].append({"id": cid, "oracle": "pass" if ok else "fail", "script": f"linked:{f}",
+                                       "script_line": line, "script_sha256": text_sha256(text), "silmaril": status[cid],
+                                       **({} if ok else {"stderr": scrub(pr.stderr)[-400:]})})
     res["counts"] = oracle_counts(res["results"])
     # The whole upstream files, unmodified, as a baseline of the oracle itself.
     res["files"] = []
-    for f, _ in FILES:
+    for f, _ in FILES + LINK_FILES:
         pr = subprocess.run([JCO["WASMTIME"], "wast", str(SPEC_CORE / f"{f}.wast")], capture_output=True, text=True)
         res["files"].append({"file": f"test/core/{f}.wast", "sha256": sha256(SPEC_CORE / f"{f}.wast"),
                              "oracle": "pass" if pr.returncode == 0 else "fail",
@@ -1043,8 +1807,11 @@ def regress():
     * Generated scripts: the first `assert_return` and the first `assert_invalid` script of
       `oracle_scripts`, with the expectation made wrong (the result value plus one; the module
       replaced by a valid empty one), and the first `nan:arithmetic` expectation of an `add` of a
-      non-canonical NaN, made `nan:canonical`. wasmtime must fail on each, so `oracle`'s scripts
-      can fail.
+      non-canonical NaN, made `nan:canonical`; and in the linked script of linking.wast, the
+      first `assert_return` on a module that imports from another registered module, plus one
+      (wasmtime must fail on that line). wasmtime must fail on each, so `oracle`'s scripts can
+      fail. The committed `wrong-linked-state.wast` writes a memory and a global through imports
+      from one module and reads them from another.
     Exits 1 if any wrong expectation is accepted or any control fails."""
     if not pathlib.Path(JCO["WASMTIME"]).is_file():
         fetch_wasmtime()
@@ -1070,7 +1837,7 @@ def regress():
             bad.append(f"{p.name}: wasmtime fails, but not on the wrong line {marks[0]}: {scrub(r.stderr)[-300:]!r}")
     rep = json.loads(REPORT.read_text())
     byid = {c["id"]: c for c in rep["commands"]}
-    have_json = all((WORK / "json" / f / f"{f}.json").is_file() for f, _ in FILES)
+    have_json = all((WORK / "json" / f / f"{f}.json").is_file() for f, _ in FILES + LINK_FILES)
     if not have_json:
         bad.append(f"converted JSON missing under {WORK / 'json'} (run `gen.py convert`)")
     else:
@@ -1091,7 +1858,37 @@ def regress():
                     mutants[t] = (cid, text.rstrip("\n")[: -len(last)] + wrong + "\n")
             elif t == "assert_invalid" and t not in mutants:
                 mutants[t] = (cid, reject_script("assert_invalid", bytes.fromhex("0061736d01000000"), byid[cid].get("text") or ""))
+        # Cross-module state made wrong: in the linked script of linking.wast, the first
+        # `assert_return` on the current module when that module imports from a registered
+        # module other than spectest (so its result depends on another module's state), plus
+        # one, with the script cut after it. wasmtime must fail on that line.
+        for f, ids, text in oracle_link_scripts(rep):
+            if f != "linking" or "linked" in mutants:
+                continue
+            lines = text.rstrip("\n").split("\n")
+            for cid, ln in ids:
+                c, line = byid[cid], lines[ln - 1]
+                ctx = c.get("context") or {}
+                m = re.search(r"\((i32|i64)\.const (-?[0-9]+)\)\)$", line)
+                if (c["type"] == "assert_return" and m and ctx.get("current") and c.get("on") == ctx["current"]
+                        and any(not x.startswith("spectest.") for x in ctx.get("current_imports", []))):
+                    w = WIDTH[m.group(1)]
+                    wrong = line[:m.start()] + f"({m.group(1)}.const {(int(m.group(2)) + 1) % (1 << w)}))"
+                    mutants["linked"] = (f"{cid} (script line {ln})", "\n".join(lines[:ln - 1] + [wrong]) + "\n", ln)
+                    break
         with tempfile.TemporaryDirectory() as td:
+            if "linked" not in mutants:
+                bad.append("no linked script to mutate")
+            else:
+                cid, text, line = mutants.pop("linked")
+                path = pathlib.Path(td) / "wrong.wast"
+                path.write_text(text)
+                n += 1
+                r = run(path)
+                if r.returncode == 0:
+                    bad.append(f"{cid} (linked) with a wrong expectation: wasmtime ACCEPTS it")
+                elif f"wrong.wast:{line}" not in r.stderr:
+                    bad.append(f"{cid} (linked): wasmtime fails, but not on the wrong line {line}: {scrub(r.stderr)[-300:]!r}")
             for t in ("assert_return", "assert_invalid", "nan"):
                 if t not in mutants:
                     bad.append(f"no {t} script to mutate")
@@ -1103,7 +1900,7 @@ def regress():
                 if run(path).returncode == 0:
                     bad.append(f"{cid} ({t}) with a wrong expectation: wasmtime ACCEPTS it")
     print(f"regress: {n} scripts run ({len(list(REGRESS.glob('wrong-*.wast')))} committed wrong, "
-          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 3 generated wrong)")
+          f"{len(list(REGRESS.glob('right-*.wast')))} committed controls, 4 generated wrong)")
     if bad:
         print("\n".join(f"regress: FAIL {b}" for b in bad), file=sys.stderr)
         sys.exit(1)
@@ -1140,7 +1937,7 @@ def verify():
     for x in orc["results"]:
         check(status.get(x["id"]) == x["silmaril"], f"{x['id']}: silmaril status {x['silmaril']} vs report {status.get(x['id'])}")
     check(orc.get("counts") == oracle_counts(orc["results"]), "counts do not follow from the results")
-    have_json = all((WORK / "json" / f / f"{f}.json").is_file() for f, _ in FILES)
+    have_json = all((WORK / "json" / f / f"{f}.json").is_file() for f, _ in FILES + LINK_FILES)
     if "--scripts" in sys.argv and not have_json:
         bad.append(f"--scripts: converted JSON missing under {WORK / 'json'} (run `gen.py convert`)")
     scripts = "skipped (no converted JSON; `gen.py convert` enables it)"
@@ -1150,8 +1947,14 @@ def verify():
         for cid, text in oracle_scripts(rep):
             n += 1
             check(rec.get(cid) == text_sha256(text), f"{cid}: script SHA-256 differs")
+        nl = 0
+        for f, ids, text in oracle_link_scripts(rep):
+            nl += 1
+            for cid, _ in ids:
+                n += 1
+                check(rec.get(cid) == text_sha256(text), f"{cid}: linked script ({f}) SHA-256 differs")
         check(n == len(rec), f"scripts: {n} regenerated, {len(rec)} recorded")
-        scripts = f"{n} regenerated, SHA-256 compared"
+        scripts = f"{n} regenerated ({nl} linked-file scripts), SHA-256 compared"
     c = orc["counts"]
     print(f"verify: oracle.json of {orc.get('generated_at')}, wasmtime {orc['oracle']['version']} "
           f"(binary SHA-256 {orc['oracle']['sha256']}); {c['run']} commands, "
@@ -1165,9 +1968,9 @@ def verify():
 
 def wast_cmd(r):
     a = r["action"]
-    inv = f"(invoke {lean_str(a['field'])} {' '.join(wast_val(show_val(v)) for v in a['args'])})"
+    inv = f"(invoke {wast_str(a['field'])} {' '.join(wast_val(show_val(v)) for v in a['args'])})"
     if r["type"] == "assert_trap":
-        return f"(assert_trap {inv} {lean_str(r.get('text', ''))})"
+        return f"(assert_trap {inv} {wast_str(r.get('text', ''))})"
     if r["type"] == "assert_return":
         return f"(assert_return {inv} {' '.join(wast_val(show_val(v)) for v in r.get('expected', []))})"
     return inv

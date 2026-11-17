@@ -7,7 +7,10 @@ Lean kernel: at the deterministic profile for the integer, control and memory fi
 **specification profile** `Profile.spec` (the specification's NaN result sets, with
 `nan:canonical`/`nan:arithmetic` as allowed sets) for the float and conversion files
 ([Under the specification profile](#under-the-specification-profile)). Each `assert_invalid` row is answered by a **tool-level** theorem: silmaril-lean's
-validator rejects the module (see [Rejections](#rejections-tool-level)). The same commands are
+validator rejects the module (see [Rejections](#rejections-tool-level)). Seven files with
+several modules, imports, `register` and the `spectest` module are checked as **linked scripts**,
+one per file, with `spectest` modelled by a **closed Wasm module**, not a host
+([Linked scripts](#linked-scripts-imports-register-and-the-spectest-module)). The same commands are
 run by a pinned independent implementation (wasmtime 50.0.0), in CI by the
 [WAST oracle job](#the-ci-oracle-job).
 
@@ -270,6 +273,102 @@ about the runs of `profile o`, and `Profile.spec` has more. That is why the floa
 by the fragment theorem, not by the deterministic interpreter. No row of the slice is left at the
 existence shape: every command of the six files is in the fragment.
 
+## Linked scripts: imports, register and the spectest module
+
+The files `test/core/{imports,linking,exports,start,global,data,elem}.wast` have several
+modules per file, imports, `register`, named modules (`module $M`, `(invoke $M …)`, `(get $M …)`),
+the `spectest` module and module assertions (`assert_unlinkable`, `assert_trap` on a module, which
+wasm-tools calls `assert_uninstantiable`). Each is checked as **one script per file** by the shapes
+of `Silmaril.Project.Shapes.WasmWastLink`:
+
+| name | statement |
+|---|---|
+| `silmaril.shapes.wasm.wast.link.returns_only` | `ReturnsOnly o pre act vs`: after the commands `pre`, some host-free normal form of the action `act` returns `vs`, and every one does |
+| `silmaril.shapes.wasm.wast.link.traps_only` | `TrapsOnly o pre act`: the same with a trap |
+| `silmaril.shapes.wasm.wast.link.unlinkable` | `Unlinkable o pre m`: after `pre`, `m` is valid, and its imports either do not resolve by name to exports of registered instances, or resolve to addresses that do not have the import types (`ExternAddrOk`) |
+| `silmaril.shapes.wasm.wast.link.uninstantiable` | `Uninstantiable o pre m`: after `pre`, `m` links, `instantiateOnce?` allocates it, and its start function traps at every host-free normal form |
+
+**The environment is a closed Wasm module, not a host.** `spectest` is the instance of the fixed
+module `Spectest.module` (`….WasmWastLink.Defs`), written out in Lean, allocated once per script in
+the empty store and registered as `"spectest"` (`Init`). Its exports and their values follow
+`interpreter/host/spectest.ml` at `608711107b` (SHA-256
+`1cb35539f6c7c6d1f8f488f37d4c847a664866ab1550db72a5deb84f7a2822f0`): `global_i32` and `global_i64`
+666, `global_f32` 666.6 (bits `0x4426A666`, the `f32` rounding of the `f64` 666.6, as
+`F32.of_float`), `global_f64` 666.6 (bits `0x4084D4CCCCCCCCCD`), all immutable; `table` and `table64`
+(address type `i32`/`i64`, limits 10..20, `funcref`, null); `memory` (`i32`, 1..2 pages); `print`,
+`print_i32`, `print_i64`, `print_f32`, `print_f64`, `print_i32_f32`, `print_f64_f64` with the
+types of `spectest.ml` and no results. In `spectest.ml` the print functions are host functions that
+print their arguments; here they are Wasm functions with empty bodies:
+
+* `Spectest.valid`: the module validates, with no imports (kernel);
+* `Spectest.print_nf`: every function export of the instance registered as `"spectest"`, called with
+  arguments of its parameter types in any store that holds the same function instance, reaches the
+  empty code in the **same** store (a host-free normal form): no values, no store effect (kernel
+  check `printsEmptyB` and the general `emptyBody_nf`).
+
+So no `.host` function instance is ever allocated, and every claim is about host-free reduction
+`Step (profile o) Det.noHost`. What `spectest.ml` prints is **erased**: no claim is about an output
+trace. Nothing here says that a context cannot distinguish this module from a host implementation
+of `spectest`, and the rows are not `.host` conformance results. The other differences from
+`spectest.ml`: there, every lookup of a global or a print function allocates a fresh instance
+(`table`, `table64` and `memory` are allocated once, as here); here every import of a name shares
+one instance (the globals are immutable, so only identity could tell). The oracle (wasmtime) uses
+its own `spectest`; its agreement on these scripts is evidence about the outcomes, not a proof
+that the closed module replaces the host.
+
+**Script state.** A context (`Ctx`) is the store, the registered names (most recent first), the
+named modules and the current module. `pre` lists the commands before the row, from `Init`; each
+changes the context as the reference interpreter does when its assertion holds (`CmdRun`):
+
+* `module`: valid (`ModuleOk`), every import resolved by name through the registry (`resolve?`:
+  `(import "M" "x" …)` is the export `x` of the instance registered as `M`), the resolved addresses
+  of the import types (`ExternAddrOk`: the premise of the specification's `$instantiate`),
+  allocated and segments initialised by `instantiateOnce?`, then the start call (if any) run to a
+  host-free normal form that is a result. The instance becomes current (and named);
+* `register "M" $t?`: the current (or named) instance registered as `M`;
+* an action, whatever its expectation: a host-free normal form that is a result, whose store is
+  the next one. Stores persist across modules, through imported memories, tables and globals,
+  and after traps;
+* `assert_unlinkable`: no change; `assert_uninstantiable`: the store of the start call's normal
+  form (the start function's writes into imported state persist; the instance is unreachable).
+
+`ScriptAt.unique`: at `profile o` the prefix reaches at most one context, so `Only` (every normal
+form) is meaningful; `ReturnsOnly.always`, `TrapsOnly.always` add that no run of the invoked
+function diverges. `Unlinkable.not_instantiate`: no `Instantiate` derivation (silmaril-lean's
+transcription of `$instantiate`) exists for the resolved addresses, under any profile and host
+(`ModuleOk.unique`). The name resolution itself is the WAST script semantics (the reference
+interpreter's registry), not part of the Wasm specification.
+
+**The checker.** `scriptLK o fuel cmds` instantiates `Spectest.module`, then validates, resolves,
+type-checks the imports (`externAddrsOk?`), instantiates (`instantiateOnce?`) and runs the start
+code and every action with the interpreter head step under `Verify.Kernel.runK`, on `KMem` stores.
+`ScriptHolds.of_kernel` carries one `decide +kernel` evaluation to the claims, through:
+`instantiateOnce?_toBytes`, `runI_toBytes` (the `KMem` run is the `ByteArray` run read through
+`toBytes`); `Game.instantiateOnce?_configOk` (new: instantiation of a valid module in a well-typed
+store against addresses of the import types gives a typed configuration, with any imports and any
+start function), so every store of the script is typed (`StoreOk`); `runI_steps_typed`,
+`runI_stopped_no_step_typed`, `runI_typed` (a stopped run is a host-free normal form and stays
+typed); `externAddrsOk?_sound`/`_complete` (the latter needs the typed store); and `nf_unique`,
+`nf_always` for the normal forms of any configuration (`Det.DStep.join'`, `Det.DStep.shrink`).
+
+**Strength labels** (`report.json` `strength`): `only` for `link.returns_only`, `link.traps_only`
+and `link.uninstantiable` (Core reduction, every normal form); `link` for `link.unlinkable`
+(relative to `resolve?` and the `ExternAddrOk` transcription). `register` and bare actions are
+`context` rows: no claim, but part of every later row's `pre`. Every row of a linked file
+records its context (`context`: registered names, named modules, the current module and its
+imports, the module's own imports for a module assertion, the host model).
+
+**What stops a script.** The script is cut at the first command the kernel cannot run, and every
+later command of the file is undetermined (with the reason): an action with an argument outside
+`i32`/`i64`/`f32`/`f64` (`externref` arguments in `global.wast`: the host references of
+`ref.extern n` are not modelled), and an instantiation that `instantiateOnce?` rejects. The latter
+are the `assert_trap (module …)` whose **segment initialisation** traps (out-of-bounds `elem` or
+`data`): in the specification the trap leaves the earlier segment writes in the (possibly shared)
+store, while `instantiateOnce?` only reports failure, so the context after it is not known. Those
+module assertions are unsupported, not proved. Expectations outside exact numbers and null
+references (NaN patterns, `(ref.func)`, `(ref.extern n)`) are unsupported rows whose actions still
+run for the context.
+
 ## The proof route
 
 `ScriptHolds o m cmds` says that every command of a script holds after the commands before it.
@@ -360,6 +459,53 @@ kernel-checked.
 | **total** | **8098** | **8089** | **9** | **0** |
 
 Commands are every command after a module (`module` commands themselves are not counted).
+
+The linked files (one script per file, [Linked scripts](#linked-scripts-imports-register-and-the-spectest-module)):
+every command of the file but its `module` commands.
+
+| file | commands | proved | context | unsupported | undetermined |
+|---|---|---|---|---|---|
+| `imports.wast` | 150 | 128 | 6 | 16 | 0 |
+| `linking.wast` | 142 | 93 | 6 | 1 | 42 |
+| `exports.wast` | 41 | 41 | 0 | 0 | 0 |
+| `start.wast` | 15 | 10 | 4 | 1 | 0 |
+| `global.wast` | 115 | 70 | 0 | 7 | 38 |
+| `data.wast` | 36 | 20 | 0 | 1 | 15 |
+| `elem.wast` | 77 | 30 | 0 | 6 | 41 |
+| **total** | **576** | **392** | **16** | **32** | **136** |
+
+The 392 proved rows: 113 `assert_return` (`link.returns_only`), 24 `assert_trap`
+(`link.traps_only`), 128 `assert_unlinkable` (`link.unlinkable`, strength `link`), 1
+`assert_uninstantiable` (`link.uninstantiable`, `start.wast`: a start function that traps), and
+126 rejections (122 `assert_invalid`, 4 binary `assert_malformed`, tool-level, as above). Of the
+`assert_return` rows, 11 read a global with `get` and 2 expect a null reference; 62 of the
+`assert_return`/`assert_trap` rows act on a named module; for 60 of them the current module
+imports from another registered module (calls, and memories, tables and globals that other
+modules write through imports), and for 4 it imports `spectest`'s print functions (`start.wast`
+also calls them from start functions). The 16 `context` rows are 12 `register` commands and 4 bare
+actions (`start.wast`), run as part of every later row's prefix.
+
+| count | status | reason |
+|---|---|---|
+| 98 | undetermined | an earlier command of the script did not run: an `assert_trap (module …)` whose segment initialisation traps (`linking.wast` line 379, `data.wast`, `elem.wast`), which `instantiateOnce?` reports as a failure, so the context after it is not known |
+| 38 | undetermined | an earlier command of the script did not run: `global.wast` line 235 calls `set-mr` with `(ref.extern 10)` |
+| 20 | unsupported | `assert_malformed` on text (as above) |
+| 6 | unsupported | an expectation outside exact numbers and null references (`(ref.func)`, `(ref.extern n)`); the action still runs for the context |
+| 3 | unsupported | the segment-trap `assert_trap (module …)` themselves |
+| 3 | unsupported | an `externref` argument (`(ref.extern n)`: host references are not modelled); the script stops there |
+| 0 | mismatch | — |
+
+`names.wast` is left out for kernel time: the kernel check of its third module (7.6 KB, 480
+exports) exceeded 33 GB of memory within two minutes; the native probe passes all its 482
+`assert_return` and the 2 calls of `spectest.print_i32` of its last module.
+
+Kernel time of the linked files (one `lake build`, 2-vCPU sandbox, two modules at a time):
+`Imports.Thms` 86 s (161 modules, 128 `assert_unlinkable` among them), `Global.Thms` 133 s (one
+module run, 41 rejection rows), `Elem.Thms` 42 s, `Linking.Thms` 38 s, `Data.Thms` 10 s, `Exports.Thms` 9.5 s, `Start.Thms` 6 s. The check of `global.wast`'s script alone (one
+`decide +kernel` of `decodesB && scriptLK …`) takes 104 s and 20.7 GB peak RSS; the kernel's
+cache shares the decoding of each module between `decodesB` and the checker (with separate
+`decode` theorems the two together took about 290 s). Decoding dominates: the modules are
+read by `decode?` in the kernel.
 
 The six float files (6840 commands, 6836 proved): 6716 `assert_return` and 67 `assert_trap` at
 `Profile.spec` (`returns_allowed_all`/`traps_all` plus `terminates_all`, so 13 566 rows), and 53
@@ -463,15 +609,31 @@ the pinned path (`$SIL_TOOLS/wasmtime-50.0.0/wasmtime`). `verify` does not run w
 checks that the recorded tool provenance equals the pins, that `report.json` and the spec files
 have the recorded SHA-256, that the commands run are exactly those the report selects (with the
 report's statuses), and that the counts follow from the results. With the converted JSON present
-(`--scripts` requires it) it regenerates all 8089 scripts and compares their SHA-256. `verify`
+(`--scripts` requires it) it regenerates all 8215 single scripts and the 6 linked-file scripts
+and compares their SHA-256. `verify`
 checks consistency of the record, not wasmtime's verdicts: those are re-obtained only by running
 `oracle` again (in CI, `oracle --check`). `convert` also checks each unpacked spec file against
-the SHA-256 that `report.json` records. The whole `oracle` run takes about 52 s on the
-development sandbox (8089 scripts and the 12 upstream files).
+the SHA-256 that `report.json` records. The whole `oracle` run takes about 75 s on the
+development sandbox (8221 scripts and the 19 upstream files).
+
+**Linked files.** For a linked file the oracle runs **one script per file**: every command the
+kernel ran, in order, as the file writes it (modules as `(module $name? binary …)` of the same
+bytes, `register`, actions and assertions with their original expectations, `assert_unlinkable`
+and `assert_trap (module …)`), so each command sees exactly the context of its row. A command
+passes when wasmtime gets past its line (`script_line`); every command of the file records the
+file script's SHA-256 (`script: linked:<file>`). wasmtime uses its own `spectest`, so its
+agreement is evidence about the outcomes, not a proof that the closed `Spectest.module` replaces
+the host. A rejection row passes when wasmtime rejects the module; wasmtime also compares its own
+message with the file's, and for 6 `global.wast` rows only the wording differs ("global is
+immutable: cannot modify it with `global.set`" for "immutable global", a parse error for
+"malformed mutability"): those record `message: differs` with wasmtime's error.
 
 Results:
 
-* 8089 commands run, all of them kernel-proved (1140 executions at `profile o`, 6783 at
+* 8485 commands run: the 8481 kernel-proved and 4 context actions of `start.wast` (native
+  only); **8481 of 8481** kernel-proved commands pass, among them the 392 of the linked files
+  (266 in 6 linked-file scripts, 126 rejections in single scripts);
+* earlier: 8089 commands run, all of them kernel-proved (1140 executions at `profile o`, 6783 at
   `Profile.spec`, 166 validator rejections);
 * **8089 of 8089** kernel-proved commands pass under wasmtime: wasmtime also rejects each of the
   166 `assert_invalid` binaries. The 1253 earlier scripts and their verdicts are unchanged;
@@ -484,7 +646,11 @@ Results:
   `f64_bitwise`, `float_misc`, `conversions` pass. `i32`, `i64`, `f32` and `f64` fail on a text
   `assert_malformed` whose message wasmtime's text parser words differently (`nan:arithmetic`
   in an `i32.const`: "expected a i32", in an `f32.const`: "expected a float", not "unexpected
-  token"), not on an execution or validation command.
+  token"), not on an execution or validation command. Of the linked files, `imports`,
+  `linking`, `exports`, `data` and `elem` pass; `start.wast` fails on a text
+  `assert_malformed` (wasmtime: "attempted to parse a wasm module with a component parser", not
+  "multiple start sections") and `global.wast` on an `assert_invalid` whose message wasmtime words
+  differently (above).
 
 ### The CI oracle job
 
@@ -519,21 +685,30 @@ record, and it writes the fresh record to `$WASM_WAST_WORK/oracle.check.json`.
   must fail on each, and on the marked line (so the failure is the wrong expectation, not a
   parse error); the NaN script fails with "expected canon-nan / 0x7fc00000, actual NaN /
   0x7fe00000", the zero script with "expected 0 / 0x00000000, actual -0 / 0x80000000";
+* `regress/wrong-linked-state.wast`: **cross-module state**. `$Mem` exports a memory and a
+  mutable global and is registered; `$Writer` imports both (and `spectest.print_i32`), stores 42
+  at address 0 and sets the global to 7; `$Reader` imports the same memory and global and reads
+  them. The marked line expects 43 where the other module wrote 42; wasmtime must fail on it
+  ("expected 43 / 0x…2b, actual 42 / 0x…2a"). `regress/right-linked-state.wast`, the same with
+  42, must pass;
 * `regress/right-control.wast`: the same modules with right expectations (`nan:arithmetic`,
   `nan:canonical` for `f32.add` of the canonical `nan` and `0`, `-0`); wasmtime must pass;
-* three generated mutants: the first `assert_return` script of `oracle_scripts` with its result
+* four generated mutants: the first `assert_return` script of `oracle_scripts` with its result
   plus one, the first `assert_invalid` script with its module replaced by the empty (valid)
-  module, and the first `nan:arithmetic` script of an `add` of a non-canonical NaN with
-  `nan:canonical` instead. wasmtime must fail on each.
+  module, the first `nan:arithmetic` script of an `add` of a non-canonical NaN with
+  `nan:canonical` instead, and, in the linked script of `linking.wast`, the first
+  `assert_return` on a current module that imports from another registered module, plus one,
+  with the script cut after it (wasmtime must fail on that line). wasmtime must fail on each.
 
-Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (10 scripts). Tampering
+Locally: `oracle --check` and `verify --scripts` pass, `regress` passes (13 scripts). Tampering
 with one committed verdict in `oracle.json` makes `oracle --check` exit 1, and making
 `wrong-return.wast` right makes `regress` exit 1 ("wasmtime ACCEPTS a wrong expectation").
 
 Cost: downloads of about 35 MB on a cold cache (spec archive 15.0 MB, wasm-tools and wasmtime
-archives), then `convert` 0.5 s, `oracle --check` about 52 s, `verify --scripts` and `regress`
-about 1 s each on the development sandbox; the job has a 5-minute timeout. It grows linearly with
-the number of scripts (about 7 ms each).
+archives), then `convert` 0.5 s, `oracle --check` about 63 s (8215 single scripts, 6 linked-file
+scripts, 19 upstream files), `verify --scripts` and `regress` about 1 s each on the development
+sandbox; the job has a 5-minute timeout. It grows linearly with the number of scripts (about
+7 ms each); a linked file adds one script, not one per command.
 
 ## Trust boundary
 
@@ -551,8 +726,19 @@ the number of scripts (about 7 ms each).
   check, not a weaker claim.
 * **`KMem` rows** (`address.wast`) are kernel evaluations on `KMem` stores, carried to the
   `ByteArray` statements by proved simulations (`scriptK_of_scriptKM`): no extra assumption.
-* **Modules** must be valid, with no imports, no start function and scalar function exports.
-  `register`, named modules and the spectest host are not in this fragment.
+* **Modules** of the single-module files must be valid, with no imports, no start function
+  and scalar function exports. In the **linked files** modules may import (resolved by name
+  through the registry, typed by `ExternAddrOk`) and have start functions; segment traps during
+  instantiation stop the script.
+* **The `spectest` environment** of the linked files is the closed Wasm module
+  `Spectest.module`, an explicit parameter of every linked row (through `Init`), not a host and
+  not a model of arbitrary hosts. Its print functions have empty bodies (`Spectest.print_nf`):
+  printed output is erased and no claim is about it. The rows are not `.host` conformance
+  results, and nothing here proves that a context cannot tell the closed module from a host
+  implementation; wasmtime's agreement (with its own `spectest`) is evidence, not that proof.
+* **Name resolution** (`resolve?`) and the script semantics of `register`, named modules and
+  `get` are the reference interpreter's script semantics, transcribed; they are not part of the
+  Wasm specification.
 * **The binaries** are wasm-tools' output for the WAST text. The text-to-binary step is the
   pinned upstream tool's, not silmaril-lean's.
 * **Rejection rows** (`assert_invalid`) are tool-level: silmaril-lean's `decode?` and
@@ -583,6 +769,14 @@ the number of scripts (about 7 ms each).
   command lists, then the kernel theorems and the rows `silmaril.wasm_wast.<file>.l<line>`.
   `Silmaril.Project.WasmWast.Thms` imports them all, and `silmaril.toml` puts it in the project
   dump.
+* `Silmaril/Project/Shapes/WasmWastLink/{Defs,Thms}.lean`,
+  `Silmaril/Proofs/Project/Shapes/WasmWastLink.lean`: `Spectest.module`, the script contexts and
+  runs, the linked shapes, the checker `scriptLK` and its soundness (with `nf_unique`,
+  `nf_always` for the normal forms of any configuration); `Silmaril/Wasm/Game/InstantiateTyped/Thms.lean`
+  (proofs `Silmaril/Proofs/Wasm/Game/Instantiate/Typed.lean`): `instantiateOnce?_configOk`
+  (instantiation against typed imports is typed) and `importStore_nil_ok`, in a small header of
+  their own so that the widely imported `Wasm.Game.Instantiate.Thms` and
+  `Project.Shapes.WasmWast.Thms` are unchanged (no rebuild of their importers).
 * `examples/wasm-wast/report.json` (every command: inputs, expectation, observation, status,
   reason, row, claim strength `only`, `all` or `tool`; for a proved execution row its `profile`,
   its `allowed` set and its `claims`, each with a kind: `only`, `all`, `terminates`), and
@@ -595,7 +789,12 @@ the number of scripts (about 7 ms each).
   the page, and the rows' answers from the database. Each proved row shows its claim strength
 ("semantic: Core reduction", "semantic: Core reduction under Profile.spec, every normal form" or
 "tool-level rejection"), its profile and allowed set, and each claim with its kind ("every normal
-form", "some run (existence)", "every run terminates") and problem.
+form", "some run (existence)", "every run terminates") and problem. A row of a linked file also
+shows its input on its target module (`$M.f(…)`, `get g`, `register "M" $M`) and its script
+context: the registered names, the named modules, the current module and its imports, the
+module's own imports for a module assertion, and the host model (`spectest` = the closed
+`Spectest.module`); `linking` labels the claim strength of `assert_unlinkable` rows, and
+`context` the status of `register` and bare actions.
 
 ```sh
 tools/wasm-tools/tests/fetch-pins.sh wasm-tools spec      # pinned, SHA-256 checked
@@ -618,5 +817,9 @@ deterministic interpreter up to NaN payloads, which needs the payloads not to re
 as allowed sets; `assert_invalid` relative to the specification (a proved bridge between
 `ModuleOk` and the SpecTec validation rules); `assert_malformed` beyond the tool level (decoder
 completeness; text: a WAT front end with a completeness theorem and an error that separates
-malformed from unsupported text); `assert_unlinkable`/`assert_uninstantiable`; imports and the
-spectest host; `register`; and the rest of the suite.
+malformed from unsupported text); a trap-aware `instantiateOnce?` (segment traps leave the
+earlier segment writes in the store), which would let `linking.wast`, `data.wast` and `elem.wast`
+run past their segment-trap assertions; host references (`ref.extern n`) as arguments and
+results; `names.wast` (kernel memory); a genuine typed `.host` model of `spectest` with
+host-aware determinism through frames and labels (until then, rows touching real host calls could
+only be existence claims); and the rest of the suite.

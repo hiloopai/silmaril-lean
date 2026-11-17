@@ -42,8 +42,9 @@ expected outcomes: `pre` records only the actions, and the state is whatever the
 whatever their outcomes were. The expectations of earlier assertions are separate claims (their
 own rows). The `Reaches` part of a claim does require every earlier action to end at a result
 (values, trap or exception); if one of them had no such normal form, `ScriptAt` would be empty,
-`Only` vacuous and `Reaches` false. `register`, named modules, `get` and other modules are not
-part of this fragment.
+`Only` vacuous and `Reaches` false. `register`, named modules, `get`, imports and other modules
+are not part of this fragment: they are the linked-script shapes of
+`Silmaril.Project.Shapes.WasmWastLink`.
 
 **Profile.** Every step is a Core step `Step (profile o) noHost`: the deterministic profile
 (canonical NaNs, `$ND = false`, `memory.grow`/`table.grow` failing exactly when the grow oracle
@@ -77,8 +78,8 @@ The NaN payloads of the specification profile `Profile.spec` are covered by the 
 shapes of `Silmaril.Project.Shapes.WasmWastSpec.Defs` (for straight-line numeric functions).
 Relaxed SIMD and grow nondeterminism, `assert_exhaustion` (no resource bounds are modelled),
 `assert_malformed` on text (no binary exists; silmaril-lean's WAT front end has no completeness
-theorem), `assert_unlinkable` and `assert_uninstantiable` have no shape here
-(`docs/projects/wasm-wast.md`).
+theorem) have no shape here; `assert_unlinkable` and `assert_uninstantiable` (start traps) are
+shapes of `Silmaril.Project.Shapes.WasmWastLink` (`docs/projects/wasm-wast.md`).
 
 `Silmaril.Project.Shapes.WasmWast.Thms` proves every command of a script at once from one
 kernel evaluation (`ScriptHolds.of_kernel`), through silmaril-lean's verified interpreter

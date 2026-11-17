@@ -1,8 +1,9 @@
 # Confidence that silmaril-lean's Wasm semantics match the Wasm specification
 
 A roadmap, and the state of its first slice ([WAST rows](wasm-wast.md), PR #843, extended
-since by the `KMem` checker, the tool-level rejection shapes, the CI oracle job and the float
-files at the specification profile). Grounded in
+since by the `KMem` checker, the tool-level rejection shapes, the CI oracle job, the float
+files at the specification profile, and linked scripts with imports, `register` and a closed
+`spectest` module). Grounded in
 `main` at `5170984b` plus #843.
 
 Testing never proves universal soundness: it establishes agreement on the cases tested.
@@ -15,7 +16,7 @@ implementation on one script.
 
 | implementation / translation | universal theorem status | external oracle (pinned) |
 |---|---|---|
-| SpecTec spec (Wasm 3.0, `608711107b`) → `Execution.Core` relational `Step` | **partial**: both directions on typed, `BoundedSelM`, no-memory-SIMD configurations with a finite `HostOk` host (`wholeStepValidRMNoMSH_backend`); the whole-step goals `Task.wholeStep` / `Bwd.Task.wholeStepUpTo` are open | the spec test suite at `608711107b`: 8089 commands of 12 files run (§2) |
+| SpecTec spec (Wasm 3.0, `608711107b`) → `Execution.Core` relational `Step` | **partial**: both directions on typed, `BoundedSelM`, no-memory-SIMD configurations with a finite `HostOk` host (`wholeStepValidRMNoMSH_backend`); the whole-step goals `Task.wholeStep` / `Bwd.Task.wholeStepUpTo` are open | the spec test suite at `608711107b`: 8485 commands of 19 files run (§2) |
 | SpecTec Wasm 1.0 → V1 | **both directions proved** at `fwdB10` (`wholeStep10_both`) | — |
 | SpecTec Wasm 2.0 → V2 | forward only, partly (`wholeStepVec`); `Task.wholeStepValid` and the backward goals are open | — |
 | `SingleThreaded.stepI` / `runInvoke?` interpreter → `Step` | **sound and complete** (`interpHead_sound`, `HeadExact`, `runInvoke?_sound`, `runInvoke?_complete`) at `profile o` (deterministic, canonical NaNs, grow oracle) only; **not** a description of the runs of `Profile.spec` (next rows) | wasmtime 50.0.0 on the WAST slice: 1140/1140 kernel-proved execution commands at `profile o` agree (CI, §5) |
@@ -27,6 +28,8 @@ implementation on one script.
 | WAST `assert_invalid` → `ValidatorRejects` | **per command, proved, tool-level**: `ValidatorRejects.of_kernel` (one `decide +kernel` of `validatorRejectsB`); `ValidatorRejects.not_valid` adds "no module the bytes encode is `ModuleValid`" via `validate?_complete` | wasmtime 50.0.0 (§4) |
 | WAST script commands → `Step` (#843) | **per command, proved**: `ScriptHolds.of_kernel` (or `ScriptHolds.of_kernelKM`, for modules with data segments) turns one `decide +kernel` run of `scriptK` (`scriptKM`) into `ReturnsOnly`/`TrapsOnly` for every command of a module; `ScriptHolds.always` adds termination (§3) | wasmtime 50.0.0 (§4) |
 | `Profile.deterministic` vs `Profile.spec` | **existence, in general**: every `profile o` step is a `Profile.spec nd {}` step (`Step.deterministic_refines_spec`), so a deterministic run to a result is a spec run (`Reaches.spec`, `Returns.allowedExists`). **Every normal form and termination, for a fragment only**: for straight-line numeric functions (`local.get 0 … local.get (k-1); op`, `op` a scalar numeric instruction), at **every** profile, every host-free normal form of `$invoke` is a result of `NumericStep P` in the same store (`StraightLine.nf`), each such result is reached (`StraightLine.reaches`), and no run is infinite (`StraightLine.not_diverges`, `extends_nf`). Determinism (`Internal.deterministic`, `Det.DStep.join'`, `reach_normal_unique`) and interpreter completeness only at `profile o`; no general theorem describes all `Profile.spec` runs of other code (memory, control, NaNs reaching control) | — |
+| WAST linked scripts (imports, `register`, named modules, `get`, module assertions) → `Step`, `instantiateOnce?`, `ExternAddrOk` | **per command, proved**: `ScriptHolds.of_kernel` (`….WasmWastLink`) turns one `decide +kernel` run of `scriptLK` per file into `link.returns_only`/`link.traps_only`/`link.uninstantiable` (every host-free normal form, after every earlier module, `register` and action of the file) and `link.unlinkable` (valid, and the imports do not resolve to addresses of the import types); `ScriptAt.unique`, `ReturnsOnly.always`, `Unlinkable.not_instantiate`. Stores are typed throughout by the new `Game.instantiateOnce?_configOk` (any imports, any start function). Name resolution (`resolve?`) is the reference interpreter's script semantics, transcribed | wasmtime 50.0.0: 392/392 agree (one script per file) |
+| `spectest` (reference interpreter host module) → the closed module `Spectest.module` | **a model, not a theorem**: the exports, types, limits and global bit patterns of `spectest.ml` at `608711107b`, written out as a Wasm module; its print functions have empty bodies (`Spectest.print_nf`: no values, same store) and their output is erased. No `.host` function instance; no refinement between this module and a host `spectest` is proved. A typed `.host` model with host-aware determinism is a follow-up | wasmtime's own `spectest` (agreement on outcomes only) |
 | WAST float commands → `Step (Profile.spec nd r)` | **per command, proved**: `ScriptHoldsS.of_kernel` turns one `decide +kernel` run of `scriptSK` (fragment check `StraightLine.fn?`, result class `numericSet?`, containment `NumSet.sub`) into `returns_allowed_all`/`traps_all` (every normal form, with existence) and `terminates_all` for every command of a module, for every `nd` and `r`; `numericSet?_sound` relates the classes to `floatUnOpRel`/`floatBinOpRel`/`convertRel` | wasmtime 50.0.0: 6783/6783 agree (one NaN per run, §4) |
 | Binaryen interpreter / `wasm-shell` | **open** (`FwdSim`/`BwdSim` unproved; fragments in `Wasm/Interp`) | wasm-opt release suites (tested) |
 | Component IR `Comp.denU`/`denI` ↔ REF (reference machine) | `Simple.sound` (import-free numeric); session adequacy with imports on a fragment (#805, open); start comparison on 3 litmus components (#827, open) | wasmtime 50.0.0, wasm-tools 1.262.0, jco 1.39.0 (not run in CI) |
@@ -51,8 +54,10 @@ theorems are listed in [wasm-tools-trust.md](wasm-tools-trust.md). Agreement wit
 
 **Denominator.** Every command after a `module` command of `test/core/{i32, i64, int_exprs, fac,
 traps, address}.wast` (deterministic profile) and `test/core/{f32, f64, f32_bitwise, f64_bitwise,
-float_misc, conversions}.wast` (specification profile): **8098 commands**. `module` commands
-themselves are not counted.
+float_misc, conversions}.wast` (specification profile): 8098 commands; and every command but the
+`module` commands of the linked files `test/core/{imports, linking, exports, start, global, data,
+elem}.wast` (one script per file): 576 commands. **8674 commands**. `module` commands themselves
+are not counted.
 
 | file | commands | proved | unsupported | undetermined |
 |---|---|---|---|---|
@@ -68,7 +73,23 @@ themselves are not counted.
 | `f64_bitwise.wast` | 363 | 363 | 0 | 0 |
 | `float_misc.wast` | 470 | 470 | 0 | 0 |
 | `conversions.wast` | 618 | 618 | 0 | 0 |
-| **total** | **8098** | **8089** | **9** | **0** |
+| **total, single-module files** | **8098** | **8089** | **9** | **0** |
+
+Linked files (`context`: `register` and bare actions, no claim, part of later rows' prefixes):
+
+| file | commands | proved | context | unsupported | undetermined |
+|---|---|---|---|---|---|
+| `imports.wast` | 150 | 128 | 6 | 16 | 0 |
+| `linking.wast` | 142 | 93 | 6 | 1 | 42 |
+| `exports.wast` | 41 | 41 | 0 | 0 | 0 |
+| `start.wast` | 15 | 10 | 4 | 1 | 0 |
+| `global.wast` | 115 | 70 | 0 | 7 | 38 |
+| `data.wast` | 36 | 20 | 0 | 1 | 15 |
+| `elem.wast` | 77 | 30 | 0 | 6 | 41 |
+| **total, linked** | **576** | **392** | **16** | **32** | **136** |
+
+**All files: 8674 commands, 8481 proved, 16 context, 41 unsupported, 136 undetermined, 0
+mismatch.**
 
 By assertion: at `profile o`, `assert_return` 1025 proved (`returns_only`) and `assert_trap` 115
 proved (`traps_only`); at `Profile.spec`, `assert_return` 6716 proved (`returns_allowed_all`:
@@ -83,6 +104,11 @@ out for kernel time), `float_exprs`, `float_literals`, `float_memory` (outside t
 
 | count | status | reason |
 |---|---|---|
+| 98 | undetermined | linked files: after an `assert_trap (module …)` whose segment initialisation traps (`instantiateOnce?` reports a failure; the store after the trap is not computed), the rest of the script |
+| 38 | undetermined | `global.wast`: after an action with an `externref` argument (`ref.extern n`: host references are not modelled) |
+| 3 + 3 | unsupported | those two kinds of command themselves |
+| 6 | unsupported | linked files: expectations `(ref.func)`, `(ref.extern n)` (the action still runs) |
+| 20 | unsupported | linked files: `assert_malformed` on text |
 | 8 | unsupported | `assert_malformed` on text: no binary; the WAT front end has no completeness theorem and its syntax error also covers unsupported text |
 | 1 | unsupported | `assert_exhaustion` (`fac.wast`): resource exhaustion is not modelled |
 
@@ -105,8 +131,10 @@ no host functions.
 | `assert_exhaustion` | unsupported: stacks are unbounded in the model | 1 skipped |
 | `assert_invalid` | `validator_rejects`, **tool-level**: silmaril-lean's `decode?` reads the bytes and its `validate?` rejects the module. With `validate?_complete`: no module the bytes encode in `Binary.Core.Encodes` is `ModuleValid` (`ValidatorRejects.not_valid`), relative to silmaril-lean's transcriptions `Encodes` and `ModuleOk`; not invalidity in the spec (the `ModuleOk` ↔ SpecTec bridge is open, §1). `validate?_sound` gives nothing about a rejection | 113 proved (tool-level) |
 | `assert_malformed` | binary: `decoder_rejects`, **tool-level** ("the decoder rejects"; `decode?` is only sound, so not grammar rejection); text: unsupported, since the WAT front end's `.syntax` error also covers unsupported text and it has no completeness theorem | binary: shape, none in this slice; text: 4 unsupported |
-| `assert_unlinkable`, `assert_uninstantiable` | instantiation fails at import matching / traps during start or initialisation | no shape |
-| `register`, `get`, named modules | script-state transitions | not in the fragment |
+| `assert_return`, `assert_trap` in a linked file | `link.returns_only`, `link.traps_only`: the same, after **every** earlier module, `register` and action of the file from the context `Init` (the closed `Spectest.module` registered as `"spectest"`); imports resolved by name and typed by `ExternAddrOk`, stores threaded across modules (also through imported memories, tables and globals) | 137 proved |
+| `assert_unlinkable` | `link.unlinkable`, strength `link`: the module is valid and its imports do not resolve to exports of registered instances, or resolve to addresses without the import types (`ExternAddrOk`, a transcription of `Externaddr_ok`); `Unlinkable.not_instantiate`: no `Instantiate` derivation exists for them | 128 proved |
+| `assert_uninstantiable` (`assert_trap (module …)`) | start trap: `link.uninstantiable` (the module links, `instantiateOnce?` allocates it, its start function traps at every normal form); segment trap: unsupported (`instantiateOnce?` only reports failure) | 1 proved, 3 unsupported |
+| `register`, bare actions, `get`, named modules | script-state transitions of the linked shapes (`CmdRun`); `get` reads a global export | 16 `context` rows; 11 `get` rows proved |
 
 **Wording.** The `…_only` statements quantify over normal forms only: "every normal outcome is
 `r`". That no run diverges is a separate theorem, proved for every row:
@@ -130,8 +158,11 @@ Every theorem above depends only on `propext`, `Classical.choice` and `Quot.soun
 An oracle result is **test-wise agreement**: wasmtime 50.0.0, given one script, accepted it.
 It is not a proof, it is not checked by Lean, and it says nothing about commands that were not
 run. What it adds is independence: an implementation not derived from silmaril-lean's semantics
-gives the same outcome as the kernel-checked row on 8089 of 8089 commands (for the 166
-`assert_invalid` rows: wasmtime also rejects the same bytes). For a `Profile.spec` row, wasmtime
+gives the same outcome as the kernel-checked row on 8481 of 8481 commands (for the 288
+`assert_invalid` and 4 binary `assert_malformed` rows: wasmtime also rejects the same bytes; for
+6 of them with a differently worded message). For a linked-file row, wasmtime runs the whole file's script, with
+its **own** `spectest`: agreement on the outcome, not evidence that the closed `Spectest.module`
+and a host `spectest` are indistinguishable. For a `Profile.spec` row, wasmtime
 runs once and returns one NaN: its pass says that this member is in the allowed set, not that
 every member of the specification's result set is; the latter is the kernel row's claim. Running it in CI (§5) does not make
 it a proof.
@@ -148,7 +179,8 @@ What is trusted when reading `examples/wasm-wast/oracle.json`:
   non-canonical result and `+0` for `-0` (§5);
 * that the script given to wasmtime is the one whose SHA-256 is recorded, and that it encodes
   the row's command: the same module binary, the same earlier actions (none for the float files,
-whose modules have no state), the same command. `gen.py
+whose modules have no state), the same command; for a linked file, every command the kernel ran
+before it, in order, with the same module binaries and names (one script per file). `gen.py
   verify --scripts` regenerates every script and compares its SHA-256; it checks consistency
   of the record, not wasmtime's verdicts;
 * the machine that ran it (`host`, `generated_at`): verdicts are only re-obtained by running
@@ -188,7 +220,8 @@ them a `nan:arithmetic` expectation made `nan:canonical`). About 55 s of work af
 |---|---|---|---|
 | S0 | the slice of §2 | every command counted with a status and reason; every proved row a kernel theorem with termination; oracle 100 % agreement on executed commands; provenance verifiable | **met** in #843 (885 proved, 885/885 agree); with the `KMem` checker, 1140 proved, 1140/1140 agree; with the rejection shapes, 1253 proved (113 tool-level), 1253/1253 agree, re-checked in CI (§5) |
 | S1 | numeric scripts (`i32`, `i64`, `f32`, `f64`, `conversions`, `int_exprs`, …) | ≥ 95 % of `assert_return`/`assert_trap` commands kernel-checked at `profile o`, NaN-pattern results as allowed-set claims under `Profile.spec`; every skip classified; oracle agreement 100 % on executed ones | `i32`, `i64`, `int_exprs`: 100 % of their 847 `assert_return`/`assert_trap` commands proved at `profile o`; `f32`, `f64`, `f32_bitwise`, `f64_bitwise`, `float_misc`, `conversions`: 100 % of their 6783 proved at `Profile.spec` (every normal form, termination), 6783/6783 oracle agreement; `f32_cmp`, `f64_cmp`, `float_exprs`, `float_literals`, `float_memory` not started |
-| S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps`, `fac` and `address` proved (`address` on `KMem` stores, `ScriptHolds.of_kernelKM`); the other files not started |
+| S2 | memory, tables, control (`address`, `memory*`, `br*`, `call*`, `traps`) | the same; data segments in the kernel (KMem, #796); `assert_unlinkable`/`assert_uninstantiable` shapes | `traps`, `fac` and `address` proved (`address` on `KMem` stores, `ScriptHolds.of_kernelKM`); `assert_unlinkable` and start-trap `assert_uninstantiable` shapes in place (`link.*`), 128 + 1 proved; segment-trap instantiation not modelled; the other files not started |
+| S2' | linking (`imports`, `linking`, `exports`, `start`, `global`, `data`, `elem`) | whole-file scripts with imports, `register`, named modules, `get`; a stated `spectest` model; every command accounted for; oracle agreement on the same script context | 392 of 576 proved, 16 context, 32 unsupported, 136 undetermined (segment traps, `externref` arguments), 392/392 agree; `spectest` is the closed `Spectest.module` (a model, §1); `names.wast` left out for kernel memory |
 | S3 | validation (`assert_invalid`) | validator completeness proved, or claims labelled tool-level; 100 % of commands accounted for | **met at the tool level** for the slice: 113/113 proved as `validator_rejects`, labelled tool-level; `validate?_complete` is proved, so they exclude `ModuleOk`-validity; invalidity in the spec waits on the `ModuleOk` ↔ SpecTec bridge |
 | S4 | decoding (`assert_malformed` binary) | decoder rejection kernel-checked; completeness or an explicit weaker label | shape `decoder_rejects` (tool-level) in place; no binary `assert_malformed` in the slice; the 4 text ones unsupported (§3) |
 | S5 | SIMD, relaxed SIMD, GC, exceptions, tail calls, memory64, multi-memory | per-proposal pass/skip counts; nondeterministic results as allowed-set claims | not started |
@@ -209,7 +242,13 @@ with the number of scripts (about 7 ms each).
    proved only at `profile o`. Under `Profile.spec`, every-normal-form and termination claims
    are proved only for straight-line numeric functions (the float rows); existence lifts in
    general (`Reaches.spec`). Relaxed SIMD and grow failure have no allowed-set rows yet.
-3. **Hosts:** rows are host-free; the spectest host and imports are not in the fragment.
+3. **Hosts:** rows are host-free. Imports between modules are in the linked fragment, but
+   `spectest` is the closed Wasm module `Spectest.module` (print functions with empty bodies,
+   output erased), an explicit parameter of the rows, not a host: no `.host` instance is
+   allocated, no refinement between the module and a host `spectest` is proved, and the rows are
+   not host conformance results. A typed `HostSemantics` model needs host-aware determinism
+   through frames and labels (not in the repository); until then rows with real host calls
+   could only be existence claims.
 4. **Resource exhaustion** and stack overflow are not modelled.
 5. **Rejections are tool-level.** The validator is complete for `ModuleOk`, but `ModuleOk` ↔
    SpecTec validation is open, so `assert_invalid` rows do not say "invalid in the spec"; decoder

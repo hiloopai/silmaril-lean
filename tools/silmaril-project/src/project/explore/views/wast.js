@@ -6,13 +6,14 @@
 // The pure part (`WastModel`) has no DOM and is loaded by the Node test
 // tests/explore/wast_view.test.mjs.
 const WastModel = (() => {
-  const STATUS_ORDER = ["proved", "mismatch", "undetermined", "unsupported", "action"];
+  const STATUS_ORDER = ["proved", "mismatch", "undetermined", "unsupported", "context", "action"];
   const STATUS_TEXT = {
     proved: "kernel-checked theorem",
     mismatch: "the interpreter disagrees with the expectation",
     undetermined: "not decided (see the reason)",
     unsupported: "outside the fragment (see the reason)",
     action: "an action of the script (no claim)",
+    context: "a register or bare action of a linked script: part of the context of later rows (no claim)",
   };
   const STRENGTH = {
     "silmaril.shapes.wasm.wast.returns_only": "returns these values at every host-free normal form; no host-free run diverges (theorem ReturnsOnly.always)",
@@ -28,6 +29,15 @@ const WastModel = (() => {
       "Not a claim that the module is invalid in the specification",
     "silmaril.shapes.wasm.wast.decoder_rejects": "silmaril-lean's decoder rejects the bytes; the decoder is sound, not complete, " +
       "so this is not a claim that the bytes are malformed",
+    "silmaril.shapes.wasm.wast.link.returns_only": "after the linked script prefix (every earlier module, register and action of the file, " +
+      "from the closed spectest module), returns these values at every host-free normal form; no host-free run diverges (ReturnsOnly.always)",
+    "silmaril.shapes.wasm.wast.link.traps_only": "after the linked script prefix, traps at every host-free normal form; " +
+      "no host-free run diverges (TrapsOnly.always)",
+    "silmaril.shapes.wasm.wast.link.unlinkable": "after the linked script prefix, the module is valid and its imports do not resolve by name " +
+      "to exports of registered modules, or resolve to addresses without the import types (ExternAddrOk, silmaril-lean's transcription " +
+      "of Externaddr_ok); so no Instantiate derivation exists for them (Unlinkable.not_instantiate)",
+    "silmaril.shapes.wasm.wast.link.uninstantiable": "after the linked script prefix, the module links and instantiateOnce? allocates it, " +
+      "and its start function traps at every host-free normal form (segment traps have no shape)",
   };
   // How strong a proved row's claim is (the report's `strength`).
   const CLAIM = {
@@ -35,10 +45,12 @@ const WastModel = (() => {
     all: "semantic: Core reduction under Profile.spec, every normal form",
     exists: "semantic: Core reduction under Profile.spec, some run only",
     tool: "tool-level rejection",
+    link: "semantic: linking (name resolution and the ExternAddrOk transcription)",
   };
   // The kinds of claim of a row (the report's `claims[].kind`).
   const KIND = {
     only: "every normal form (profile neverFail; termination by Reaches.always)",
+    link: "every context the prefix reaches (one, at profile neverFail)",
     all: "every normal form",
     exists: "some run (existence)",
     terminates: "every run terminates",
@@ -80,6 +92,14 @@ const WastModel = (() => {
     return { total: report.commands.length, byStatus, byFile, reasons, proved, byClaim, oracleRun, agreeProved, disagree,
       oracleLoaded: !!oracle };
   }
+  // The script context of a linked row, as one line.
+  function contextText(x) {
+    if (!x) return "";
+    const list = (l) => (l && l.length ? l.join(", ") : "none");
+    return `registered: ${list(x.registered)}; named: ${list((x.named || []).map((n) => "$" + n))}; ` +
+      `current: ${x.current || "none"}` + (x.current ? ` (imports: ${list(x.current_imports)})` : "") +
+      (x.module_imports ? `; this module imports: ${list(x.module_imports)}` : "") + (x.host ? `; host: ${x.host}` : "");
+  }
   // The table rows, filtered by status and file ("" for every one).
   function rows(report, oracle, { status = "", file = "" } = {}) {
     const ox = oracleIndex(oracle);
@@ -87,8 +107,10 @@ const WastModel = (() => {
       const o = ox.get(c.id);
       return {
         id: c.id, file: c.file, line: c.line, type: c.type, status: c.status,
-        input: c.invoke != null ? `${c.invoke}(${(c.args || []).join(", ")})`
-          : c.wasm_sha256 ? `module (${c.module_type || "binary"}), binary SHA-256 ${c.wasm_sha256.slice(0, 12)}…` : "",
+        input: (c.on ? c.on + "." : "") + (c.invoke != null ? `${c.invoke}(${(c.args || []).join(", ")})`
+          : c.get != null ? `get ${c.get}`
+          : c.register ? `register "${c.register.as}" ${c.register.module}`
+          : c.wasm_sha256 ? `module (${c.module_type || "binary"}), binary SHA-256 ${c.wasm_sha256.slice(0, 12)}…` : ""),
         expected: (c.expected || []).join(", "),
         observed: c.observed || "",
         strength: c.shape ? STRENGTH[c.shape] || c.shape : "",
@@ -105,11 +127,17 @@ const WastModel = (() => {
         // The kernel checker of a proved row: `scriptK` (ByteArray stores) or `scriptKM` (KMem
         // stores, for modules with data segments); the claim is the same.
         checker: c.checker || "",
+        // A row of a linked script: the context its claim is relative to (registered names, named
+        // modules, the current module and its imports, the module's own imports for a module
+        // assertion) and the host model (the closed spectest module).
+        linked: c.script === "linked",
+        context: contextText(c.context),
+        host: c.host || "",
         oracle: o ? o.oracle : null,
       };
     });
   }
-  return Object.freeze({ STATUS_ORDER, STATUS_TEXT, STRENGTH, CLAIM, KIND, summarize, rows, oracleIndex });
+  return Object.freeze({ STATUS_ORDER, STATUS_TEXT, STRENGTH, CLAIM, KIND, summarize, rows, oracleIndex, contextText });
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = WastModel;
 
@@ -172,6 +200,7 @@ if (typeof registerView === "function") {
         return `${esc(r.status)}${r.checker ? ` <span class="muted">(${esc(r.checker)})</span>` : ""}${d ? " · " + esc(d.status || "no answer") + (d.tier ? " (" + esc(d.tier) + ")" : "") :
           r.problem ? ' · <span class="muted">not in this database</span>' : ""}`;
       }],
+      ["context", (r) => r.context ? `<span class="muted">${esc(r.context)}</span>` : ""],
       ["reason", (r) => esc(r.reason)],
       ["oracle", (r) => esc(r.oracle || "")],
     ]);
