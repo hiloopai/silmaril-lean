@@ -5,7 +5,7 @@ description = "The silmaril library: formats, standard shapes, and the self-test
 modules = ["ProjectSelfTest", "Silmaril.Project.Formats.Thms", "Silmaril.Project.Shapes.Format.Thms",
   "Silmaril.Project.Shapes.Language.Thms", "Silmaril.Project.Shapes.Consequence.Thms",
   "Silmaril.Project.Languages.Wasm.Defs",
-  "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Elf.CliExe.Hello.Thms", "Silmaril.Project.Shapes.Abi.Defs", "Silmaril.Elf.Abi.LeafArith.Thms", "Silmaril.Project.Shapes.X86.Thms",
+  "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Elf.CliExe.Hello.Thms", "Silmaril.Project.Shapes.Abi.Defs", "Silmaril.Elf.Abi.LeafArith.Thms", "Silmaril.Elf.Abi.Zlib.Thms", "Silmaril.Project.Shapes.X86.Thms",
   "Silmaril.Project.Shapes.SysV.Thms", "Silmaril.Project.Shapes.C.Thms",
   "Silmaril.Project.Shapes.SysV.Rtl.Defs", "SysVTvExample", "SysVTvRtl",
   "Silmaril.Project.Shapes.CompilesTo.Thms", "CompilesToExamples",
