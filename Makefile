@@ -7,7 +7,7 @@ CARGO ?= cargo
 PROJECT_TARGET = $(or $(CARGO_TARGET_DIR),tools/silmaril-project/target)
 WASM_TOOLS := wasm-as wasm-dis wasm-opt wasm-merge wasm-shell wasm-ctor-eval wasm-metadce
 
-.PHONY: compiler-explorer-check logic-graph-check tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check acceptor-report pages elf-check demo demo-process demo-sha256 help
+.PHONY: compiler-explorer-check logic-graph-check lean-ndjson-check tools stage library cache scope check release-check process-check process-gates project-lean project-tool project-registry project-check acceptor-report pages elf-check demo demo-process demo-sha256 help
 
 tools:
 	$(LAKE) build --wfail $(WASM_TOOLS)
@@ -83,6 +83,10 @@ check:
 	$(if $(filter elf-pages,$(CHECK_TARGETS)),$(MAKE) elf-check)
 	$(if $(filter SilmarilLogicGraphData,$(CHECK_TARGETS)),$(MAKE) logic-graph-check)
 	$(if $(filter cexplorer-export CompilesToExamples,$(CHECK_TARGETS)),$(MAKE) compiler-explorer-check)
+
+# The Lean-NDJSON fixture is what lean4export writes now (docs/projects/formal-rows.md).
+lean-ndjson-check:
+	scripts/lean-ndjson/export-fixtures.sh --check
 
 # The compiler explorer end to end: the exporter on every manifest, the statuses against
 # examples/compiler-explorer/expected-status.txt, the database and view tests

@@ -72,6 +72,44 @@ conditions for `hyp`, `weaken` and the theory's axioms).
   six rejections (wrong axiom conclusion, unknown rule, missing hypothesis, forward citation, empty
   lines, not a proof) and byte-level syntax errors.
 
+## Lean-NDJSON: lean4export files of proof declarations (`Silmaril.ProofFormats.LeanNDJSON`)
+
+**The format** is lean4export's NDJSON, format version **3.1.0** (`.lake/packages/mathlib/lean4export`,
+the exporter the pinned Mathlib vendors; its `format_ndjson.md` is the specification). A file is a
+metadata line, then name (`in`), level (`il`) and expression (`ie`) table records and declaration
+records (`axiom`, `def`, `thm`, `opaque`, `quot`, `inductive` blocks).
+
+**Decoding and validation** (`Silmaril.Formats.LeanNDJSON`, region Formats; the event types, strict
+decoder and reference validator are adapted from the moria project's Lean-NDJSON decoder, with
+the `quot` and `inductive` records added):
+
+* `parseFile`: strict JSON decoding of every record (exact keys, non-negative ids, 3.1.0 shapes
+  only; `mdata` is refused); errors name the line.
+* `SerialValid` / `serialValid?` (`serialValid?_iff`): each record defines the next id of its
+  table and refers only to entries written before it, which excludes duplicates, forward
+  references and cycles; `Valid` adds distinct declared names (`validate?_iff`).
+
+**Import** (`…ProofFormats.LeanNDJSON.Arithmetic`, region ProofFormats, which depends on Logic and
+Formats): `importCheck T bytes d` decodes and validates the file, requires `d` to be a `def` with no
+universe parameters (an axiom, theorem, opaque, quotient or inductive is refused), translates its
+**value** by a fixed table of constructors (proof trees, lists, `SE`, `Seq`, formulas, terms,
+numerals and string literals, and parameterless definitions in the file) into
+`silmaril.derivation.tree`, and checks that with `checkTree T`. The declared type and the metadata
+are never used as evidence. `importCheck_sound`: an accepted declaration is a derivation of the
+reported judgment, from a `Valid` file.
+
+**The fixture** `tests/lean-ndjson/pa-derivations.ndjson` (14 636 records) is lean4export's output,
+run with no options (no `--export-unsafe`, `--export-mdata` or `--ignore-missing`), for the proof
+declarations of `…Arithmetic.Derivation.Exported` (constructor normal form, each `rfl`-equal to its
+`Examples` proof) and for `Examples.zeroAdd`. `scripts/lean-ndjson/export-fixtures.sh` regenerates
+it, and `--check` compares a fresh export with it. `…LeanNDJSON.Arithmetic.Examples` reads it at
+build time: five accepted imports with the Lean proof objects' conclusions, two checker
+rejections, four refusals before checking (an unsupported encoding, a formula that is not a proof,
+a λ-abstraction, a missing name), a declaration turned into an axiom or a theorem, a replaced
+declared type (no effect) and a replaced value (a different conclusion), and seven byte mutations
+of the real file (a duplicated record, a forward reference, a self-reference, an unknown field,
+`mdata`, a wrong format version, an empty line), each refused with its reason.
+
 ## Registry and explorer
 
 Six record kinds (`Silmaril.Project.Registry.Formal.Defs`). In each, Lean checks the claim from
@@ -172,7 +210,8 @@ indexed derivation format will follow this format rather than invent a JSONL sch
    derivation systems; derivation-system morphisms.
 5. **Proof formats**:
    - the S-expression tree and lines formats are done, with PA/Q elaboration;
-   - Lean-NDJSON (lean4export 3.1.0 files of real derivation declarations, decoded with
-     reference validation and independently checked) is not done;
+   - Lean-NDJSON is done for PA and Q (above); other logics' proof objects are not imported yet,
+     and kernel-level checking of the exported environment (typing of declarations) is out of
+     scope;
    - a documented Alethe fragment with an adapter that rejects unsupported rules is not done.
 6. Standard JSON and DASL syntaxes are future plans, outside this scope.

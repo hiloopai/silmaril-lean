@@ -82,7 +82,7 @@ globs = [
   "Silmaril.Calculi.*", "Silmaril.Cli.*", "Silmaril.Compile.+",
   "Silmaril.Containers.+", "Silmaril.Courses.+", "Silmaril.Crypto.+", "Silmaril.Data.+", "Silmaril.Elf.+", "Silmaril.Encoding.*",
   "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Sim.+", "Silmaril.Libc.+", "Silmaril.Logic.*", "Silmaril.LogicGraph.Nodes.+", "Silmaril.LogicGraph.Edges.+", "Silmaril.LogicGraph.Audit.+", "Silmaril.LogicGraph.Consequence.+",
-  "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+", "Silmaril.ProofFormats.+",
+  "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+", "Silmaril.ProofFormats.*",
   "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+",
   # Project, except `Project.WasmComponents` and `Project.WasmP3Rust` (`SilmarilWasmProject` below).
