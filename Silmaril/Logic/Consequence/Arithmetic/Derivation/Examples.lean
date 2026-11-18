@@ -140,22 +140,27 @@ theorem zeroAdd_derives : paDerives [] zeroAddFormula := checkTree_sound zeroAdd
 
 /-! ## Rejections -/
 
+/-- Claims `⊢ 0 + 0 = S0` by `add-zero`. -/
+def wrongAxiom : ProofTree SE Seq :=
+  .infer (ax "add-zero") (closed (.equal (.add .zero .zero) (.succ .zero))) []
+
 /-- `add-zero` does not conclude `0 + 0 = S0`. -/
-theorem wrongAxiom_rejected :
-    checkTree .pa (treeCodec.encode (.infer (ax "add-zero")
-      (closed (.equal (.add .zero .zero) (.succ .zero))) [])) = .error .check := by
+theorem wrongAxiom_rejected : checkTree .pa (treeCodec.encode wrongAxiom) = .error .check := by
   rw [checkTree_encode]; rfl
+
+/-- Claims `⊢ 0 + 0 = 0` by an unknown rule. -/
+def unknownRule : ProofTree SE Seq := .infer (.atom "magic") (closed zeroAddZeroFormula) []
 
 /-- An unknown rule. -/
 theorem unknownRule_rejected :
-    checkTree .pa (treeCodec.encode (.infer (.atom "magic") (closed zeroAddZeroFormula) [])) =
-      .error .elaboration := by
+    checkTree .pa (treeCodec.encode unknownRule) = .error .elaboration := by
   rw [checkTree_encode]; rfl
 
+/-- Claims `⊢ 0 + 0 = 0` as a hypothesis, from no hypotheses. -/
+def missingHyp : ProofTree SE Seq := .infer (.atom "hyp") (closed zeroAddZeroFormula) []
+
 /-- A hypothesis that is not in the context. -/
-theorem missingHyp_rejected :
-    checkTree .pa (treeCodec.encode (.infer (.atom "hyp") (closed zeroAddZeroFormula) [])) =
-      .error .check := by
+theorem missingHyp_rejected : checkTree .pa (treeCodec.encode missingHyp) = .error .check := by
   rw [checkTree_encode]; rfl
 
 /-- A line citing a later line. -/

@@ -12,6 +12,8 @@ public import Silmaril.Logic.TypeTheory.ExtensionalMLTT.SExp.Thms
 public meta import Silmaril.Logic.Consequence.Arithmetic.Thms
 public meta import Silmaril.Logic.Consequence.SecondOrder.Thms
 public meta import Silmaril.Logic.Consequence.FirstOrder.Thms
+public import Silmaril.Logic.Consequence.Arithmetic.Derivation.Examples
+public meta import Silmaril.Logic.Consequence.Arithmetic.Derivation.Examples
 
 /-!
 # The formal rows: FOL, PA, second-order arithmetic, HOL and MLTT
@@ -52,6 +54,10 @@ def mlttBounded1 := TypeTheory.boundedDerives.{1} 1
 def mlttBounded2 := TypeTheory.boundedDerives.{2} 2
 /-- Three universe levels. -/
 def mlttBounded3 := TypeTheory.boundedDerives.{3} 3
+/-- PA derivability by checked proof trees (the derivation system). -/
+def paTreeDerives := Arithmetic.ND.treeDerives .pa
+/-- Q derivability by checked proof trees. -/
+def qTreeDerives := Arithmetic.ND.treeDerives .q
 /-- First-order semantic consequence over `orderSig`. -/
 def folConsequence := FirstOrder.consequence FirstOrder.orderSig
 /-- Truth in ℕ over `orderSig`. -/
@@ -96,6 +102,11 @@ silmaril consequence_system logic.formal.fol.consequence :=
   (title := "FOL over orderSig: truth in every structure")
 silmaril consequence_system logic.formal.fol.truth_nat := Silmaril.LogicGraph.Consequence.Formal.folTruthNat
   (title := "FOL over orderSig: truth in ℕ")
+
+silmaril consequence_system logic.formal.pa.tree.derives := Silmaril.LogicGraph.Consequence.Formal.paTreeDerives
+  (reading := "derivability") (title := "PA: checked proof trees (derivation system)")
+silmaril consequence_system logic.formal.q.tree.derives := Silmaril.LogicGraph.Consequence.Formal.qTreeDerives
+  (reading := "derivability") (title := "Q: checked proof trees (derivation system)")
 
 /-! ## Presentations -/
 
@@ -198,6 +209,81 @@ silmaril logic_property logic.formal.mltt.extensional.soundness :=
   (role := "inclusion") (system := "logic.consequence.mltt.extensional.derives")
   (target := "logic.consequence.mltt.extensional.entails")
 
+/-! ## Derivation systems and derivations -/
+
+silmaril presentation logic.formal.pa.sequent := Silmaril.Consequence.Arithmetic.ND.seqCodec
+  (title := "PA judgments: (seq n (hypotheses) conclusion)")
+silmaril presentation logic.formal.pa.proof_tree := Silmaril.Consequence.Arithmetic.ND.treeCodec
+  (title := "PA proofs as S-expression trees")
+silmaril presentation logic.formal.pa.proof_lines := Silmaril.Consequence.Arithmetic.ND.linesCodec
+  (title := "PA proofs as indexed S-expression lines")
+
+silmaril logic_property logic.formal.pa.tree.soundness := Silmaril.Consequence.Arithmetic.ND.treeDerives_soundFor
+  (arg := ".pa") (role := "soundness") (system := "logic.formal.pa.tree.derives")
+  (title := "Checked PA proof trees are sound for ℕ (by local soundness)")
+silmaril logic_property logic.formal.q.tree.soundness := Silmaril.Consequence.Arithmetic.ND.treeDerives_soundFor
+  (arg := ".q") (role := "soundness") (system := "logic.formal.q.tree.derives")
+  (title := "Checked Q proof trees are sound for ℕ (by local soundness)")
+silmaril logic_property logic.formal.pa.tree.consistency := Silmaril.Consequence.Arithmetic.ND.pa_tree_consistent
+  (role := "consistency") (system := "logic.formal.pa.tree.derives")
+  (title := "Checked PA proof trees do not derive ⊥")
+silmaril logic_property logic.formal.q.tree.consistency := Silmaril.Consequence.Arithmetic.ND.q_tree_consistent
+  (role := "consistency") (system := "logic.formal.q.tree.derives")
+  (title := "Checked Q proof trees do not derive ⊥")
+
+silmaril derivation_system logic.formal.pa.nd := Silmaril.Consequence.Arithmetic.ND.system (arg := ".pa")
+  (judgments := "logic.formal.pa.sequent")
+  (formats := [logic.formal.pa.proof_tree, logic.formal.pa.proof_lines])
+  (locally_sound := "Silmaril.Consequence.Arithmetic.ND.locallySound_valid .pa")
+  (agrees := "Silmaril.Consequence.Arithmetic.ND.treeDerives_pa") (system := "logic.formal.pa.derives")
+  (title := "PA natural deduction: rule instances checked step by step")
+silmaril derivation_system logic.formal.q.nd := Silmaril.Consequence.Arithmetic.ND.system (arg := ".q")
+  (judgments := "logic.formal.pa.sequent")
+  (formats := [logic.formal.pa.proof_tree, logic.formal.pa.proof_lines])
+  (locally_sound := "Silmaril.Consequence.Arithmetic.ND.locallySound_valid .q")
+  (agrees := "Silmaril.Consequence.Arithmetic.ND.treeDerives_q") (system := "logic.formal.q.derives")
+  (title := "Q natural deduction: rule instances checked step by step")
+
+silmaril derivation logic.formal.pa.proof.zero_add := Silmaril.Consequence.Arithmetic.ND.Examples.zeroAdd
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.pa.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.zeroAdd_checks_pa,
+    Silmaril.Consequence.Arithmetic.ND.Examples.zeroAdd_rejected_q])
+  (derives := Silmaril.Consequence.Arithmetic.ND.Examples.zeroAdd_derives)
+  (derives_system := "logic.formal.pa.derives")
+  (title := "∀x. 0 + x = x, by induction (PA accepts, Q rejects)")
+silmaril derivation logic.formal.pa.proof.zero_add_zero := Silmaril.Consequence.Arithmetic.ND.Examples.zeroAddZero
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.pa.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.zeroAddZero_checks_pa,
+    Silmaril.Consequence.Arithmetic.ND.Examples.zeroAddZero_checks_q])
+  (derives := Silmaril.Consequence.Arithmetic.ND.Examples.zeroAddZero_derives)
+  (derives_system := "logic.formal.pa.derives")
+  (title := "0 + 0 = 0, by the axiom add-zero")
+silmaril derivation logic.formal.pa.proof.inst_add_zero := Silmaril.Consequence.Arithmetic.ND.Examples.instAddZero
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.q.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.instAddZero_checks,
+    Silmaril.Consequence.Arithmetic.ND.Examples.instAddZero_lines_checks])
+  (derives := Silmaril.Consequence.Arithmetic.ND.Examples.instAddZero_derives)
+  (derives_system := "logic.formal.q.derives")
+  (title := "0 + 0 = 0 from ∀x. x + 0 = x, by ∀-elimination (trees and lines)")
+silmaril derivation logic.formal.pa.proof.eq_symm := Silmaril.Consequence.Arithmetic.ND.Examples.eqSymm
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.q.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.eqSymm_checks])
+  (derives := Silmaril.Consequence.Arithmetic.ND.Examples.eqSymm_derives)
+  (derives_system := "logic.formal.q.derives")
+  (title := "∀x ∀y. x = y → y = x, by equality elimination")
+silmaril derivation logic.formal.pa.proof.wrong_axiom := Silmaril.Consequence.Arithmetic.ND.Examples.wrongAxiom
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.pa.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.wrongAxiom_rejected])
+  (title := "Rejected: add-zero does not conclude 0 + 0 = S0")
+silmaril derivation logic.formal.pa.proof.unknown_rule := Silmaril.Consequence.Arithmetic.ND.Examples.unknownRule
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.pa.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.unknownRule_rejected])
+  (title := "Rejected: an unknown rule")
+silmaril derivation logic.formal.pa.proof.missing_hyp := Silmaril.Consequence.Arithmetic.ND.Examples.missingHyp
+  (presentation := "logic.formal.pa.proof_tree") (system := "logic.formal.pa.nd")
+  (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.missingHyp_rejected])
+  (title := "Rejected: a hypothesis that is not in the context")
+
 /-! ## Concrete problems -/
 
 silmaril logic_problem logic.formal.pa.zero_add_zero := Silmaril.Consequence.Arithmetic.zeroAddZero
@@ -263,12 +349,20 @@ silmaril logic_row logic.formal.row.fol
 silmaril logic_row logic.formal.row.pa
   (title := "Peano arithmetic (and Robinson's Q)")
   (variant := "First-order PA: Q's axioms and the induction schema for every formula; classical natural deduction; standard model ℕ.")
-  (systems := [logic.formal.pa.derives, logic.formal.q.derives, logic.formal.pa.truth, logic.formal.pa.derives.sexp])
+  (systems := [logic.formal.pa.derives, logic.formal.q.derives, logic.formal.pa.truth, logic.formal.pa.derives.sexp,
+    logic.formal.pa.tree.derives, logic.formal.q.tree.derives])
   (interpretations := [Silmaril.Consequence.Arithmetic.standard])
-  (presentations := [logic.formal.pa.sexp, logic.formal.pa.sexp_words])
+  (presentations := [logic.formal.pa.sexp, logic.formal.pa.sexp_words, logic.formal.pa.sequent,
+    logic.formal.pa.proof_tree, logic.formal.pa.proof_lines])
   (properties := [logic.formal.pa.soundness, logic.formal.q.soundness, logic.formal.pa.consistency,
-    logic.formal.q.consistency, logic.formal.pa.nontriviality, logic.formal.pa.sexp.consistency, logic.formal.q.pa])
+    logic.formal.q.consistency, logic.formal.pa.nontriviality, logic.formal.pa.sexp.consistency, logic.formal.q.pa,
+    logic.formal.pa.tree.soundness, logic.formal.q.tree.soundness, logic.formal.pa.tree.consistency,
+    logic.formal.q.tree.consistency])
   (problems := [logic.formal.pa.zero_add_zero, logic.formal.pa.zero_or_successor])
+  (derivation_systems := [logic.formal.pa.nd, logic.formal.q.nd])
+  (derivations := [logic.formal.pa.proof.zero_add, logic.formal.pa.proof.zero_add_zero,
+    logic.formal.pa.proof.inst_add_zero, logic.formal.pa.proof.eq_symm, logic.formal.pa.proof.wrong_axiom,
+    logic.formal.pa.proof.unknown_rule, logic.formal.pa.proof.missing_hyp])
   (order := 2)
 silmaril logic_row logic.formal.row.second_order
   (title := "Second-order arithmetic: RCA₀, WKL₀, ACA₀, Z₂")

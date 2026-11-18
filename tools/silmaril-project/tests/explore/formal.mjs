@@ -5,7 +5,9 @@
 //   their statements and axioms, and its concrete problems;
 // * a problem's page shows its S-expression, switches presentation (kept in the URL) and lists its checked claims;
 // * property and presentation pages, deep links, and the exact source of a property's theorem and of a problem's
-//   sentence; a narrow (phone) viewport; no page error anywhere.
+//   sentence; a narrow (phone) viewport; no page error anywhere;
+// * derivation systems and derivations: the PA row's proofs, a derivation system's checked claims, a proof's
+//   verdicts (accepted and rejected), its proof tree, its indexed steps and its formats (kept in the URL).
 //   node formal.mjs SITE_DIR [SHOTS_DIR]
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -41,10 +43,11 @@ try {
   check(t.length === 5, `five logics (${t.length})`);
   check(/First-order/.test(t[0][0]) && /Peano/.test(t[1][0]) && /Second-order/.test(t[2][0]) && /HOL/.test(t[3][0]) && /Martin-Löf/.test(t[4][0]),
     `first-order logic, PA and second-order arithmetic come first (${t.map((r) => r[0].slice(0, 20))})`);
-  check(/proved \(2\)/.test(t[1][3]) && /proved \(3\)/.test(t[1][4]), `PA: soundness ×2, consistency ×3 (${t[1][3]}, ${t[1][4]})`);
+  check(/proved \(4\)/.test(t[1][3]) && /proved \(5\)/.test(t[1][4]), `PA: soundness ×4, consistency ×5, with the checked proof trees (${t[1][3]}, ${t[1][4]})`);
+  check(/✓ 4/.test(t[1][8]) && /\/ 7/.test(t[1][8]), `PA: 4 accepted proofs of 7 registered (${t[1][8]})`);
   check(/proved \(8\)/.test(t[2][3]) && /proved \(5\)/.test(t[2][4]), `second order: soundness ×8 (full and Henkin), consistency ×5 (${t[2][3]}, ${t[2][4]})`);
   check(t[0][3] === "—" && /proved \(1\)/.test(t[0][4]) && /proved \(1\)/.test(t[0][5]), `FOL: no soundness (no derivations), consistency of consequence and a model (${t[0][3]}, ${t[0][4]}, ${t[0][5]})`);
-  check(/silmaril\.fol\.formula/.test(t[0][1]) && /silmaril\.arithmetic\.formula/.test(t[1][1]) && /\+1/.test(t[1][1]), "default presentations, PA with a second one");
+  check(/silmaril\.fol\.formula/.test(t[0][1]) && /silmaril\.arithmetic\.formula/.test(t[1][1]) && /\+4/.test(t[1][1]), "default presentations; PA with its words presentation and its judgment and proof formats");
   check(/proved \(1\)/.test(t[3][3]) && /proved \(2\)/.test(t[3][4]) && /silmaril\.hol-light\.prop/.test(t[3][1]),
     `HOL: soundness for the standard interpretation, consistency pure and classical, the proposition presentation (${t[3][1]}, ${t[3][3]}, ${t[3][4]})`);
   check(/proved \(4\)/.test(t[4][5]), `MLTT: four consistency (nontriviality) results, bounded extensional and intensional (${t[4][5]})`);
@@ -106,6 +109,38 @@ try {
       check(v.where.startsWith(file) && v.exact, `source of ${decl}: ${v.where} ${v.exact ? "exact" : "not exact"}`);
     }
   }
+
+  // derivation systems and derivations
+  await open("/formal-row/" + encodeURIComponent("logic.formal.row.pa"), "#fr-dsys");
+  const ds = await rows("#fr-dsys");
+  check(ds.length === 2 && ds.every((r) => /locally sound/.test(r[3]) && /agrees with/.test(r[3])) && /proof_tree|derivation\.tree/.test(ds[0][2]),
+    `PA and Q derivation systems with checked claims (${ds.map((r) => r[3])})`);
+  const dr = await rows("#fr-derivations");
+  check(dr.length === 7 && dr.filter((r) => /✗ rejected/.test(r[2])).length === 4 && dr.filter((r) => /✓ accepted/.test(r[2])).length === 4,
+    `seven derivations: four accepted by some checker, four with a rejection (${dr.map((r) => r[2].slice(0, 30))})`);
+  await open("/derivation-system/" + encodeURIComponent("logic.formal.pa.nd"), "#fr-dsys-claims");
+  const dc = await p.textContent("#fr-dsys-claims");
+  check(/LocallySound/.test(dc) && /treeDerives \S*Theory\.pa = \S*paDerives/.test(dc) && /standard axioms only/.test(dc), "the PA derivation system: local soundness and agreement with paDerives, as statements");
+  await open("/derivation/" + encodeURIComponent("logic.formal.pa.proof.zero_add"), "#fr-tree");
+  const vs = await p.textContent("#fr-verdicts");
+  check(/accepted by checkTree Theory\.pa/.test(vs) && /rejected by checkTree Theory\.q at check/.test(vs), `∀x. 0 + x = x: PA accepts, Q rejects at the check (${vs.slice(0, 120)})`);
+  const tree = await p.evaluate(() => ({ root: document.querySelector("#fr-tree > li > .fr-rule").textContent,
+    rules: [...document.querySelectorAll("#fr-tree .fr-rule")].map((x) => x.textContent) }));
+  check(tree.root === "imp-elim" && tree.rules.includes("(ax induction)") && tree.rules.includes("(ax add-succ)") && tree.rules.length === 9,
+    `the proof tree: induction, then the step by add-succ (${tree.rules})`);
+  const st = await rows("#fr-steps");
+  check(st.length === 9 && /forall/.test(st[8][2]) && st[8][3] !== "", `nine indexed steps, the last concluding ∀x. 0 + x = x from cited lines (${st[8]})`);
+  await p.hover("#fr-step-8"); await p.waitForTimeout(100);
+  check(await p.evaluate(() => document.querySelectorAll("#fr-steps tr.fr-hl").length === 2), "hovering a step highlights its premises");
+  await p.selectOption("#fr-dpres", "logic.formal.pa.proof_lines"); await p.waitForTimeout(200);
+  check(/^\( proof \( infer/.test((await p.textContent("#fr-dsexp")).trim()) && /presentation=logic\.formal\.pa\.proof_lines/.test(await p.evaluate(() => location.hash)),
+    "switching to the lines format rewrites the S-expression and keeps it in the URL");
+  await shot("formal-derivation");
+  await open("/derivation/" + encodeURIComponent("logic.formal.pa.proof.inst_add_zero") + "?presentation=logic.formal.pa.proof_lines", "#fr-dsexp");
+  check(/^\( proof /.test((await p.textContent("#fr-dsexp")).trim()) && /accepted by checkLines Theory\.q/.test(await p.textContent("#fr-verdicts")),
+    "a deep link opens the lines format; the lines checker's verdict is listed");
+  await open("/derivation/" + encodeURIComponent("logic.formal.pa.proof.unknown_rule"), "#fr-verdicts");
+  check(/rejected by checkTree Theory\.pa at elaboration/.test(await p.textContent("#fr-verdicts")), "an unknown rule is rejected at elaboration");
 
   // a phone
   const m = await b.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });

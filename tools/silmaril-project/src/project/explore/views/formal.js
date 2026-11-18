@@ -6,6 +6,8 @@
 //   #/formal-property/<name>        one theorem with its role, its statement and its axioms
 //   #/formal-problem/<name>         one concrete problem, in each presentation, with its checked claims
 //   #/presentation/<name>           one S-expression presentation
+//   #/derivation-system/<name>      one derivation system: judgments, proof formats, checked claims
+//   #/derivation/<name>             one concrete proof: its formats, proof tree, indexed steps and verdicts
 // Lean checked every role and claim from the theorems' types (Silmaril.Project.Registry.Formal):
 // a name alone never stands for a property.
 (() => {
@@ -38,20 +40,54 @@
       ".fr-sexp { background:#f6f8fa; border:1px solid #d0d7de; border-radius:4px; padding:8px; white-space:pre-wrap; word-break:break-word; font-size:13px; max-width:900px; } " +
       ".fr-src { font-size:12px; margin-left:6px; } .fr-claims dt { font-weight:600; } .fr-claims dd { margin:0 0 8px 16px; } " +
       "table.fr-rows td { vertical-align:top; } .fr-variant { max-width:420px; font-size:13px; } " +
+      ".fr-bad { color:#b3261e; font-weight:600; white-space:nowrap; } .fr-tree, .fr-tree ul { list-style:none; padding-left:18px; margin:0; } " +
+      ".fr-tree li { margin:2px 0; } .fr-tree .fr-rule { font-weight:600; color:#1a73e8; } .fr-tree code { font-size:12px; } " +
+      "table.fr-steps tr.fr-hl td { background:#fff4ce; } table.fr-steps td { vertical-align:top; } " +
       "@media (max-width: 700px) { table.fr-rows th:nth-child(3), table.fr-rows td:nth-child(3) { display:none; } }";
     document.head.appendChild(s);
   }
 
   async function load(ctx) {
-    const [rows, props, problems, pres] = await Promise.all([
+    const [rows, props, problems, pres, dsys, ders] = await Promise.all([
       ctx.q("SELECT * FROM logic_rows ORDER BY coalesce(row_order, 999), name LIMIT 500"),
       ctx.q("SELECT * FROM logic_properties ORDER BY name LIMIT 2000"),
       ctx.q("SELECT * FROM logic_problems ORDER BY name LIMIT 2000"),
       ctx.q("SELECT * FROM presentations ORDER BY name LIMIT 2000"),
+      has("derivation_systems") ? ctx.q("SELECT * FROM derivation_systems ORDER BY name LIMIT 2000") : [],
+      has("derivations") ? ctx.q("SELECT * FROM derivations ORDER BY name LIMIT 2000") : [],
     ]);
-    return { rows, props, problems, pres, prop: new Map(props.map((p) => [p.name, p])), problem: new Map(problems.map((p) => [p.name, p])),
-      presentation: new Map(pres.map((p) => [p.name, p])) };
+    return { rows, props, problems, pres, dsys, ders, prop: new Map(props.map((p) => [p.name, p])), problem: new Map(problems.map((p) => [p.name, p])),
+      presentation: new Map(pres.map((p) => [p.name, p])), dsysMap: new Map(dsys.map((x) => [x.name, x])), der: new Map(ders.map((x) => [x.name, x])) };
   }
+
+  // A small S-expression reader for Lean's printed proofs (atoms and lists; no strings).
+  function readSExp(text) {
+    const toks = text.match(/[()]|[^\s()]+/g) || [];
+    let i = 0;
+    const one = () => { const t = toks[i++]; if (t !== "(") return t; const xs = []; while (i < toks.length && toks[i] !== ")") xs.push(one()); i++; return xs; };
+    return toks.length ? one() : null;
+  }
+  const showSExp = (e) => Array.isArray(e) ? `(${e.map(showSExp).join(" ")})` : String(e);
+  // The tree format: (assume J) | (infer RULE J tree*)
+  function treeHtml(e) {
+    if (!Array.isArray(e)) return `<li><code>${ui.esc(showSExp(e))}</code></li>`;
+    if (e[0] === "assume") return `<li><span class="fr-rule">assume</span> <code>${ui.esc(showSExp(e[1]))}</code></li>`;
+    if (e[0] === "infer") {
+      const subs = e.slice(3);
+      return `<li><span class="fr-rule">${ui.esc(showSExp(e[1]))}</span> <code>${ui.esc(showSExp(e[2]))}</code>` +
+        (subs.length ? `<ul>${subs.map(treeHtml).join("")}</ul>` : "") + `</li>`;
+    }
+    return `<li><code>${ui.esc(showSExp(e))}</code></li>`;
+  }
+  const shortName = (s) => String(s || "");
+  const verdictBadge = (v) => v.accepted
+    ? `<span class="fr-ok" title="${ui.esc(v.statement)}">✓ accepted by <code>${ui.esc(shortName(v.checker))}</code></span>`
+    : `<span class="fr-bad" title="${ui.esc(v.statement)}">✗ rejected by <code>${ui.esc(shortName(v.checker))}</code>${v.stage ? ` at ${ui.esc(v.stage)}` : ""}</span>`;
+  const derivationRow = (x) => `<tr><td>${link("derivation", x.name, x.title || x.name)}</td><td>${code(x.conclusion)}</td>` +
+    `<td>${list(x.verdicts).map(verdictBadge).join("<br>")}</td><td class="num">${list(x.steps).length}</td></tr>`;
+  const derivationTable = (xs, id) => `<div class="tablebox"><table class="lg-grid" id="${id}"><thead><tr><th>derivation</th><th>conclusion</th><th>verdicts (Lean-checked)</th><th>steps</th></tr></thead><tbody>` +
+    xs.map(derivationRow).join("") + `</tbody></table></div>`;
+  const claimRole = { locally_sound: "locally sound", agrees: "agrees with" };
 
   const status = (ps, role) => {
     const xs = ps.filter((p) => p.role === role);
@@ -74,7 +110,11 @@
         `<td>${(() => { const mn = ps.filter((p) => p.role === "satisfiability" || p.role === "nontriviality");
           return mn.length ? `<span class="fr-ok" title="${ui.esc(mn.map((p) => p.statement).join("\n"))}">✓ proved (${mn.length})</span>` : '<span class="fr-none">—</span>'; })()}</td>` +
         `<td>${status(ps, "inclusion")}</td>` +
-        `<td class="num">${list(r.problems).length}</td></tr>`;
+        `<td class="num">${list(r.problems).length}</td>` +
+        `<td>${(() => { const ds = list(r.derivations).map((n) => d.der.get(n)).filter(Boolean);
+          if (!ds.length) return '<span class="fr-none">—</span>';
+          const acc = ds.filter((x) => list(x.verdicts).some((v) => v.accepted)).length;
+          return `<span class="fr-ok" title="checked proofs (accepted by some checker) / registered proofs">✓ ${acc}</span> <span class="muted">/ ${ds.length}</span>`; })()}</td></tr>`;
     }).join("");
     return `<h2>Formal rows: interpretation, soundness and consistency (${d.rows.length})</h2>
 <p style="max-width:900px">Each row is a logic with its consequence systems, its interpretations in Lean, its S-expression presentations and its
@@ -83,7 +123,7 @@ consistency is <code>System.ConsistentWrt S ff Γ</code>, and so on) for the row
 Every result is relative to Lean's own consistency and to the stated models; none is claimed for arbitrary added axioms.
 See <a href="https://github.com/hiloopai/silmaril-lean/blob/main/docs/projects/formal-rows.md">formal-rows.md</a> for the acceptance matrix.</p>
 <div class="tablebox"><table class="lg-grid fr-rows" id="fr-rows"><thead><tr><th>logic</th><th>default presentation</th><th>variant and semantics</th>
-<th>soundness</th><th>consistency</th><th>model / nontriviality</th><th>inclusions</th><th>problems</th></tr></thead><tbody>${body}</tbody></table></div>`;
+<th>soundness</th><th>consistency</th><th>model / nontriviality</th><th>inclusions</th><th>problems</th><th>proofs</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
   function propertyRow(p) {
@@ -115,7 +155,95 @@ See <a href="https://github.com/hiloopai/silmaril-lean/blob/main/docs/projects/f
     h += `<h3>Concrete problems</h3>` + (pbs.length ? `<div class="tablebox"><table class="lg-grid" id="fr-problems"><thead><tr><th>problem</th><th>S-expression (default presentation)</th><th>claims</th></tr></thead><tbody>` +
       pbs.map((p) => `<tr><td>${link("formal-problem", p.name, p.title || p.name)}</td><td><code>${ui.esc(p.sexp)}</code></td><td>${claimsShort(p)}</td></tr>`).join("") +
       `</tbody></table></div>` : `<p class="muted">None registered.</p>`);
+    const dss = list(r.derivation_systems).map((n) => d.dsysMap.get(n)).filter(Boolean);
+    const drs = list(r.derivations).map((n) => d.der.get(n)).filter(Boolean);
+    if (dss.length) h += `<h3>Derivation systems</h3><div class="tablebox"><table class="lg-grid" id="fr-dsys"><thead><tr><th>derivation system</th><th>judgments</th><th>proof formats</th><th>claims (Lean-checked)</th></tr></thead><tbody>` +
+      dss.map((x) => `<tr><td>${link("derivation-system", x.name, x.title || x.name)}</td><td>${x.judgments ? link("presentation", x.judgments) : code(x.judgment)}</td>` +
+        `<td>${list(x.formats).map((f) => link("presentation", f, (d.presentation.get(f) || {}).codec_name || f)).join("<br>")}</td>` +
+        `<td>${list(x.claims).map((c) => `<span class="fr-ok" title="${ui.esc(c.statement)}">✓ ${ui.esc(claimRole[c.role] || c.role)}</span>`).join(" ")}</td></tr>`).join("") +
+      `</tbody></table></div>`;
+    if (drs.length) h += `<h3>Derivations</h3>` + derivationTable(drs, "fr-derivations");
     return h;
+  }
+
+  async function derivationSystemPage(name, ctx) {
+    style();
+    if (!has("derivation_systems")) return missing;
+    const d = await load(ctx);
+    const x = d.dsysMap.get(name);
+    if (!x) return `<p class="err">no derivation system ${ui.esc(name)}</p>`;
+    const row = d.rows.find((r) => list(r.derivation_systems).includes(name));
+    let h = `<p>${row ? link("formal-row", row.name, "← " + row.title) : ""}</p><h2>derivation system: ${ui.esc(x.title || x.name)}</h2>`;
+    h += `<p class="muted" style="max-width:900px">Proofs are explicit objects (trees or indexed lines) whose every step is checked to be an instance of its rule
+(<code>DerivationSystem.Instance</code>); raw rule names are elaborated by untrusted code and then checked.</p><dl>`;
+    h += `<dt>system</dt><dd>${code(x.decl)}${x.arg ? ` <span class="muted">at ${ui.esc(x.arg)}</span>` : ""}${srcOf(x.decl)}</dd>`;
+    h += `<dt>judgments</dt><dd>${code(x.judgment)}${x.judgments ? ` in ${link("presentation", x.judgments)}` : ""}</dd>`;
+    h += `<dt>proof formats</dt><dd>${list(x.formats).map((f) => link("presentation", f, (d.presentation.get(f) || {}).codec_name || f)).join("<br>") || "—"}</dd></dl>`;
+    h += `<h3>Claims</h3><dl class="fr-claims" id="fr-dsys-claims">`;
+    for (const c of list(x.claims)) {
+      h += `<dt>${ui.esc(claimRole[c.role] || c.role)}${c.role === "agrees" && x.system ? ` ${link("system", x.system)}` : ""}${c.interpretation ? ` <span class="muted">for ${ui.esc(c.interpretation)}</span>` : ""}</dt>` +
+        `<dd>${code(c.statement)}<br>by ${code(c.proof)} · ${axiomsText(c.axioms)}</dd>`;
+    }
+    h += `</dl>`;
+    const drs = d.ders.filter((y) => y.system === name);
+    h += `<h3>Derivations</h3>` + (drs.length ? derivationTable(drs, "fr-dsys-derivations") : `<p class="muted">None registered.</p>`);
+    return h;
+  }
+
+  async function derivationPage(arg, ctx) {
+    style();
+    if (!has("derivations")) return missing;
+    const i = arg.indexOf("?"), name = decodeURIComponent(i < 0 ? arg : arg.slice(0, i));
+    const sel = new URLSearchParams(i < 0 ? "" : arg.slice(i + 1)).get("presentation");
+    const d = await load(ctx);
+    const x = d.der.get(name);
+    if (!x) return `<p class="err">no derivation ${ui.esc(name)}</p>`;
+    const rend = obj(x.renderings) || {};
+    const keys = Object.keys(rend);
+    const cur = sel && rend[sel] != null ? sel : x.presentation;
+    const row = d.rows.find((r) => list(r.derivations).includes(name));
+    let h = `<p>${row ? link("formal-row", row.name, "← " + row.title) : ""}</p><h2>${ui.esc(x.title || x.name)}</h2>`;
+    h += `<dl><dt>derivation system</dt><dd>${link("derivation-system", x.system, (d.dsysMap.get(x.system) || {}).title || x.system)}</dd>` +
+      `<dt>conclusion</dt><dd>${code(x.conclusion)}</dd><dt>proof object</dt><dd>${code(x.decl)}${srcOf(x.decl)}</dd></dl>`;
+    h += `<h3>Verdicts</h3><p class="muted">Each is a Lean theorem <code>check e = r</code> about an encoding of this proof, proved by the kernel.</p><ul id="fr-verdicts">` +
+      list(x.verdicts).map((v) => `<li>${verdictBadge(v)} <span class="muted">on ${ui.esc((d.presentation.get(v.format) || {}).codec_name || v.format)}</span><br>${code(v.statement)} by ${code(v.proof)}${srcOf(v.proof)} · ${axiomsText(v.axioms)}</li>`).join("") + `</ul>`;
+    const dv = obj(x.derives);
+    if (dv) h += `<p><span class="fr-ok">✓ derives</span> ${x.derives_system ? link("system", x.derives_system) : ""}: ${code(dv.statement)} by ${code(dv.proof)}${srcOf(dv.proof)} · ${axiomsText(dv.axioms)}</p>`;
+    h += `<h3>Proof tree</h3><ul class="fr-tree" id="fr-tree">${treeHtml(readSExp(rend[x.presentation] != null ? rend[x.presentation] : x.sexp))}</ul>`;
+    const steps = list(x.steps);
+    h += `<h3>Indexed steps</h3><p class="muted">The tree flattened into lines (<code>ProofTree.lines</code>); each step cites earlier lines.</p>` +
+      `<div class="tablebox"><table class="lg-grid fr-steps" id="fr-steps"><thead><tr><th>#</th><th>rule</th><th>judgment</th><th>premises</th></tr></thead><tbody>` +
+      steps.map((st) => `<tr id="fr-step-${st.index}" data-prem="${list(st.premises).join(",")}"><td class="num">${st.index}</td><td>${st.kind === "assume" ? "assume" : `<span class="fr-rule">${ui.esc(st.rule)}</span>`}</td>` +
+        `<td><code>${ui.esc(st.judgment)}</code></td><td>${list(st.premises).map((k) => `<a href="#fr-step-${k}" data-step="${k}">${k}</a>`).join(", ")}</td></tr>`).join("") +
+      `</tbody></table></div>`;
+    h += `<h3>S-expression</h3><label>format <select id="fr-dpres">${(keys.length ? keys : [x.presentation]).map((k) => {
+      const pr = d.presentation.get(k);
+      return `<option value="${ui.esc(k)}"${k === cur ? " selected" : ""}>${ui.esc(pr ? `${pr.codec_name} v${pr.codec_version}` : k)}</option>`; }).join("")}</select></label>`;
+    h += `<pre class="fr-sexp" id="fr-dsexp">${ui.esc(rend[cur] != null ? rend[cur] : x.sexp)}</pre>`;
+    const init = () => {
+      const s = document.getElementById("fr-dpres");
+      if (s) s.addEventListener("change", () => {
+        document.getElementById("fr-dsexp").textContent = rend[s.value] != null ? rend[s.value] : x.sexp;
+        history.replaceState(null, "", `#/derivation/${encodeURIComponent(name)}?presentation=${encodeURIComponent(s.value)}`);
+      });
+      const tb = document.getElementById("fr-steps");
+      if (tb) {
+        tb.addEventListener("mouseover", (ev) => {
+          const tr = ev.target.closest("tr[data-prem]");
+          tb.querySelectorAll("tr.fr-hl").forEach((r) => r.classList.remove("fr-hl"));
+          if (!tr) return;
+          for (const k of tr.dataset.prem.split(",").filter(Boolean)) { const r = document.getElementById("fr-step-" + k); if (r) r.classList.add("fr-hl"); }
+        });
+        tb.addEventListener("click", (ev) => {
+          const a = ev.target.closest("a[data-step]");
+          if (!a) return;
+          ev.preventDefault();
+          const r = document.getElementById("fr-step-" + a.dataset.step);
+          if (r) { r.scrollIntoView({ block: "center" }); r.classList.add("fr-hl"); }
+        });
+      }
+    };
+    return { html: h, init };
   }
 
   const claimsShort = (p) => [["derived", "derived"], ["entailed", "entailed"], ["truth", "true"]]
@@ -203,4 +331,6 @@ exactly its canonical forms (<code>SExpCodec.decode_eq_some_iff</code>).</p>`;
   Explorer.registerView({ id: "formal-problem", title: "Concrete problem", tab: "formal", render: problemPage });
   Explorer.registerView({ id: "formal-property", title: "Property", tab: "formal", render: propertyPage });
   Explorer.registerView({ id: "presentation", title: "Presentation", tab: "formal", render: presentationPage });
+  Explorer.registerView({ id: "derivation-system", title: "Derivation system", tab: "formal", render: derivationSystemPage });
+  Explorer.registerView({ id: "derivation", title: "Derivation", tab: "formal", render: derivationPage });
 })();

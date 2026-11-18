@@ -102,6 +102,9 @@ pub enum Record {
     LogicProperty(LogicProperty),
     LogicProblem(LogicProblem),
     LogicRow(LogicRow),
+    DerivationSystem(DerivationSystem),
+    #[serde(rename = "derivation")]
+    ProofDerivation(ProofDerivation),
     Machine(Box<Machine>),
     MachineBinding(MachineBinding),
     LanguageDomain(LanguageDomain),
@@ -164,6 +167,8 @@ record_kinds! {
     LogicProperty = "logic_property", key name, object None;
     LogicProblem = "logic_problem", key name, object None;
     LogicRow = "logic_row", key name, object None;
+    DerivationSystem = "derivation_system", key name, object None;
+    ProofDerivation = "derivation", key name, object None;
     Machine = "machine", key name, object Some("machine");
     MachineBinding = "machine_binding", key name, object None;
     LanguageDomain = "language_domain", key name, object Some("language_domain");
@@ -475,6 +480,8 @@ pub fn tables() -> Vec<TableInfo> {
         info::<LogicProperty>(),
         info::<LogicProblem>(),
         info::<LogicRow>(),
+        info::<DerivationSystem>(),
+        info::<ProofDerivation>(),
         info::<Machine>(),
         info::<MachineBinding>(),
         info::<LanguageDomain>(),

@@ -74,7 +74,7 @@ conditions for `hyp`, `weaken` and the theory's axioms).
 
 ## Registry and explorer
 
-Four record kinds (`Silmaril.Project.Registry.Formal.Defs`). In each, Lean checks the claim from
+Six record kinds (`Silmaril.Project.Registry.Formal.Defs`). In each, Lean checks the claim from
 the theorem's **type**, never from its name:
 
 | kind | Lean checks | the record keeps |
@@ -82,13 +82,18 @@ the theorem's **type**, never from its name:
 | `presentation N := c` | `c : SExpCodec A` | the codec's own name and version (reduced from `c`), `A`, default flag |
 | `logic_property N := t (role := r) (system := S)` | `t`'s statement has the role's shape for the registered system: soundness `System.SoundFor S I`, consistency `System.ConsistentWrt S ff Γ`, nontriviality `System.ContextConsistent S Γ`, satisfiability `Room.Satisfiable` / `Satisfaction.Satisfiable`, inclusion `S ≤ T` | statement, interpretation / falsity / context, axioms |
 | `logic_problem N := φ (presentation := P)` | each claim theorem is about `φ`: `S Γ φ` (derived, entailed) or `I.satC m φ` (true) | the S-expression of `φ` in every registered presentation of its abstract syntax, computed by running the printers |
-| `logic_row N` | every referenced record exists | systems, interpretations, presentations, properties, problems, variant |
+| `logic_row N` | every referenced record exists | systems, interpretations, presentations, properties, problems, derivation systems, derivations, variant |
+| `derivation_system N := D (arg := a)` | `D a : DerivationSystem J`; `judgments` presents `J`; each of `formats` presents proof trees or lines over `J`; `locally_sound` states `D.LocallySound sat`; `agrees` states `X = S` for the registered system `S` | `J`, the claims with statements and axioms |
+| `derivation N := p (presentation := P) (system := D)` | `p` is a proof tree of `P`'s type; each of `verdicts` states `check e = r` where `e` encodes `p` (as a tree, or flattened into lines) in a registered format; `derives` states `S Γ φ` | renderings in every tree and lines format, the indexed steps (rule, judgment, cited lines) and the conclusion (by evaluation), each verdict's checker, result and stage |
 
 `Silmaril.LogicGraph.Consequence.Formal.Defs` registers five rows: FOL, PA, second-order
 arithmetic, HOL and extensional MLTT. The explorer page `#/formal/` puts them in a table, with
 FOL, PA and second-order arithmetic first. `#/formal-row/<name>` shows one row; problems,
 properties and presentations each have a page of their own. A problem's page switches between
-presentations and keeps the choice in the URL. The browser suite is
+presentations and keeps the choice in the URL. `#/derivation-system/<name>` shows a derivation
+system's checked claims; `#/derivation/<name>` shows a proof's verdicts (accepted, or rejected with
+the stage), its proof tree, its indexed steps (hovering a step highlights its premises) and its
+S-expression in each format (kept in the URL). The browser suite is
 `tools/silmaril-project/tests/explore/formal.mjs`.
 
 ## Acceptance matrix
@@ -162,9 +167,9 @@ indexed derivation format will follow this format rather than invent a JSONL sch
    - MLTT problems are not registered.
    - Unbounded extensional MLTT is sound only relative to an assumed `SetHierarchy`, so its
      consistency is not claimed.
-4. **Derivation systems**: the framework, checkers and PA/Q instance are done (above). Not yet
-   done: second-order arithmetic, HOL and MLTT as derivation systems; derivation-system morphisms;
-   registry, database and explorer pages for derivation systems and proofs.
+4. **Derivation systems**: the framework, checkers, PA/Q instance, and registry, database and
+   explorer pages are done (above). Not yet done: second-order arithmetic, HOL and MLTT as
+   derivation systems; derivation-system morphisms.
 5. **Proof formats**:
    - the S-expression tree and lines formats are done, with PA/Q elaboration;
    - Lean-NDJSON (lean4export 3.1.0 files of real derivation declarations, decoded with

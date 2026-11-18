@@ -377,7 +377,42 @@ CREATE TABLE logic_rows(
   presentations TEXT NOT NULL,
   properties TEXT NOT NULL,
   problems TEXT NOT NULL,
+  derivation_systems TEXT NOT NULL,
+  derivations TEXT NOT NULL,
   row_order INTEGER,
+  doc TEXT,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL
+);
+CREATE TABLE derivation_systems(
+  name TEXT NOT NULL PRIMARY KEY,
+  decl TEXT NOT NULL,
+  arg TEXT,
+  judgment TEXT NOT NULL,
+  judgments TEXT,
+  formats TEXT NOT NULL,
+  system TEXT,
+  locally_sound TEXT,
+  agrees TEXT,
+  claims TEXT NOT NULL,
+  title TEXT,
+  doc TEXT,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL
+);
+CREATE TABLE derivations(
+  name TEXT NOT NULL PRIMARY KEY,
+  decl TEXT NOT NULL,
+  presentation TEXT NOT NULL,
+  system TEXT NOT NULL,
+  sexp TEXT NOT NULL,
+  renderings TEXT NOT NULL,
+  conclusion TEXT NOT NULL,
+  steps TEXT NOT NULL,
+  verdicts TEXT NOT NULL,
+  derives TEXT NOT NULL,
+  derives_system TEXT,
+  title TEXT,
   doc TEXT,
   module TEXT NOT NULL,
   origin TEXT NOT NULL

@@ -106,6 +106,8 @@ struct RecordRows {
     logic_properties: Vec<LogicProperty>,
     logic_problems: Vec<LogicProblem>,
     logic_rows: Vec<LogicRow>,
+    derivation_systems: Vec<DerivationSystem>,
+    derivations: Vec<ProofDerivation>,
     logic_exclusions: Vec<LogicExclusion>,
     machines: Vec<Machine>,
     bindings: Vec<MachineBinding>,
@@ -351,6 +353,14 @@ fn record_rows(
                 ..x.clone()
             }),
             Record::LogicRow(x) => rows.logic_rows.push(LogicRow {
+                origin: org,
+                ..x.clone()
+            }),
+            Record::DerivationSystem(x) => rows.derivation_systems.push(DerivationSystem {
+                origin: org,
+                ..x.clone()
+            }),
+            Record::ProofDerivation(x) => rows.derivations.push(ProofDerivation {
                 origin: org,
                 ..x.clone()
             }),
@@ -642,6 +652,8 @@ pub(super) fn run(
     db.push(&recs.logic_properties);
     db.push(&recs.logic_problems);
     db.push(&recs.logic_rows);
+    db.push(&recs.derivation_systems);
+    db.push(&recs.derivations);
     db.push(&recs.machines);
     db.push(&recs.bindings);
     db.push(&recs.domains);

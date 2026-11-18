@@ -5,6 +5,7 @@ public import Silmaril.Project.Registry.Language.Defs
 public import Silmaril.Project.Registry.Predicate.Defs
 public import Silmaril.Logic.Consequence.Soundness.Defs
 public import Silmaril.Logic.Concrete.Codec.Defs
+public import Silmaril.Logic.Consequence.Derivation.SExp.Defs
 
 /-!
 # Silmaril projects: formal rows, presentations, properties and problems
@@ -26,6 +27,19 @@ claims from their **types**. A theorem's name never stands in for its statement.
 * `nontriviality`: `System.ContextConsistent S Γ`; Lean fills `context`.
 * `satisfiability`: `Room.Satisfiable R Γ` or `Satisfaction.Satisfiable I Γ`, with no system.
 * `inclusion`: `S ≤ T`, for the registered systems `S` (`system`) and `T` (`target`).
+
+**Derivation systems and derivations:**
+* `derivation_system N := D (arg := a)`: `D a : DerivationSystem J`. Optional claims, each a Lean
+  term: `(locally_sound := t)`, checked as `D.LocallySound sat`; `(agrees := t) (system := S)`,
+  checked as `X = S` for the registered system `S`. `(judgments := P)` must present `J`, and every
+  presentation in `formats` must present proof trees or indexed lines over `J`.
+* `derivation N := p (presentation := P) (system := D)`: `p` is of `P`'s abstract type. Lean prints `p`
+  in every registered presentation of proof trees of that type and, flattened into indexed lines
+  (`ProofTree.lines 0 p`), in every registered presentation of lines (`renderings`). Each theorem in
+  `verdicts` must state `check e = r`, where `e` is one of those encodings of `p`; Lean records the
+  checker, the result and whether it accepts (`Except.ok`). Lean also records the indexed `steps`
+  (rule, judgment in the system's `judgments` presentation, cited lines) by evaluation. `(derives := t) (derives_system := S)`
+  is checked as `S Γ φ`.
 
 **Claims of `logic_problem`** (each optional):
 * `(derived := t) (system := S)`: `t : S Γ φ` for some context `Γ`;
@@ -239,10 +253,200 @@ def checkTruth (kind : String) (t : Name) (I φ : Expr) : TermElabM Json := do
       fs := fs.set "truth" (← checkTruth kind t.toName I φ)
     return #[(name, fs)]
 
+/-! ## Derivation systems and derivations -/
+
+/-- Elaborate a field holding a Lean term (a name or a string). -/
+def termField (kind key : String) (fs : Fields) : TermElabM (Option Expr) := do
+  match fs.get? key with
+  | some (.str s) =>
+    match Parser.runParserCategory (← getEnv) `term s with
+    | .ok stx => return some (← elabClosed stx none)
+    | .error err => throwError "silmaril {kind}: `{key}`: {err}"
+  | none => return none
+  | some _ => throwError "silmaril {kind}: `{key}` is a Lean term"
+
+/-- A proof's statement and axioms, as recorded JSON. -/
+def proofJson (kind key : String) (e : Expr) (extra : List (String × Json) := []) : TermElabM Json := do
+  let ty ← instantiateMVars (← inferType e)
+  let some c := e.getAppFn.constName? | throwError "silmaril {kind}: `{key}` is not a theorem application"
+  let axioms := ((← collectAxioms c).map toString).qsort (· < ·)
+  return Json.mkObj ([("proof", .str (← ppOneLine e)), ("statement", .str (← ppOneLine ty)),
+    ("axioms", toJson axioms)] ++ extra)
+
+/-- A constant with fresh universe levels, applied to the given arguments (which may contain
+metavariables). -/
+def appFresh (n : Name) (args : Array Expr) : MetaM Expr :=
+  return mkAppN (← mkConstWithFreshMVarLevels n) args
+
+/-- `D : DerivationSystem J`: the judgment type `J`. -/
+def derivationSystemType? (ty : Expr) : MetaM (Option Expr) := do
+  let ty ← whnfR ty
+  return if ty.isAppOfArity ``Silmaril.Consequence.DerivationSystem 1 then some ty.appArg! else none
+
+/-- A registered presentation's codec and abstract type. -/
+def presentationCodec (kind pname : String) : TermElabM (Expr × Expr) := do
+  let pr ← needRecord kind "presentation" pname
+  let some pd := pr.str? "decl" | throwError "silmaril {kind}: presentation {pname} has no `decl`"
+  let c ← mkConstWithFreshMVarLevels pd.toName
+  let some A ← codecType? (← inferType c) | throwError "silmaril {kind}: bad presentation {pname}"
+  return (c, A)
+
+@[silmaril_kind derivation_system] def derivationSystemHandler : Handler where
+  run? := some fun kind name? fs => do
+    let name ← liftCoreM (needName kind name?)
+    liftTermElabM do
+    let d ← fs.const kind "decl"
+    let at? := match fs.get? "arg" with | some (.str a) => some a | _ => none
+    let D ← elabApplied kind d at?
+    let some J ← derivationSystemType? (← inferType D)
+      | throwError "silmaril {kind}: {d} is not a `DerivationSystem`"
+    let mut fs := fs
+    fs ← fs.push kind "judgment" (.str (← ppOneLine (← whnfR J)))
+    if let some (.str p) := fs.get? "judgments" then
+      let (_, A) ← presentationCodec kind p
+      unless ← isDefEq A J do throwError "silmaril {kind}: presentation {p} does not present {J}"
+    if let some (.arr ps) := fs.get? "formats" then
+      for x in ps do
+        let .str p := x | throwError "silmaril {kind}: `formats` is a list of presentations"
+        let (_, A) ← presentationCodec kind p
+        let R ← mkFreshTypeMVar
+        let tree ← appFresh ``Silmaril.Consequence.ProofTree #[R, J]
+        let lines ← appFresh ``List #[← appFresh ``Silmaril.Consequence.Line #[R, J]]
+        unless (← isDefEq A tree) || (← isDefEq A lines) do
+          throwError "silmaril {kind}: presentation {p} presents neither proof trees nor lines over {J}"
+    let mut claims : Array Json := #[]
+    if let some t ← termField kind "locally_sound" fs then
+      -- `DerivationSystem.LocallySound {J} D {M} sat`
+      let (target, xs) ← roleTarget kind ``Silmaril.Consequence.DerivationSystem.LocallySound [(1, D)]
+      let sat := xs[3]!
+      unless ← isDefEq (← inferType t) target do
+        roleFail kind (← inferType t) "`D.LocallySound sat` for this derivation system"
+      claims := claims.push (← proofJson kind "locally_sound" t
+        [("role", .str "locally_sound"), ("interpretation", .str (← ppOneLine (← instantiateMVars sat)))])
+    if let some t ← termField kind "agrees" fs then
+      let S := Lean.mkConst (← systemDecl kind (← fs.str kind "system"))
+      let X ← mkFreshExprMVar none
+      unless ← isDefEq (← inferType t) (← mkEq X S) do
+        roleFail kind (← inferType t) "`X = S` for the registered system `S`"
+      claims := claims.push (← proofJson kind "agrees" t [("role", .str "agrees")])
+    fs ← fs.push kind "claims" (toJson claims)
+    return #[(name, fs)]
+
+/-- Print a value with a codec, by evaluation. -/
+def printWith (c v : Expr) : TermElabM String := do
+  let bytes ← mkAppM ``Silmaril.Logic.Concrete.SExpCodec.print #[c, v]
+  let text ← evalString (← mkAppM ``String.fromUTF8! #[← mkAppM ``List.toByteArray #[bytes]])
+  return String.ofList (text.toList.reverse.dropWhile Char.isWhitespace).reverse
+
+/-- A checker such as `checkTree Theory.pa`, with short names: the function's last name component
+and, for constant arguments, their last two. -/
+def shortApp (e : Expr) : MetaM String := do
+  let short (n : Name) (k : Nat) : String :=
+    ".".intercalate ((n.componentsRev.take k).reverse.map toString)
+  let some f := e.getAppFn.constName? | ppOneLine e
+  let args ← e.getAppArgs.toList.mapM fun a => do
+    match a.constName? with
+    | some c => pure (short c 2)
+    | none => pure s!"({← ppOneLine a})"
+  return " ".intercalate (short f 1 :: args)
+
+@[silmaril_kind derivation] def derivationHandler : Handler where
+  run? := some fun kind name? fs => do
+    let name ← liftCoreM (needName kind name?)
+    liftTermElabM do
+    let pn ← fs.const kind "decl"
+    let p ← mkConstWithFreshMVarLevels pn
+    let sysRec ← needRecord kind "derivation_system" (← fs.str kind "system")
+    let fname ← fs.str kind "presentation"
+    let (c, A) ← presentationCodec kind fname
+    unless ← isDefEq (← inferType p) A do
+      throwError "silmaril {kind}: {pn} is not of the format's abstract type{indentExpr A}"
+    let R ← mkFreshTypeMVar
+    let J ← mkFreshTypeMVar
+    unless ← isDefEq A (← appFresh ``Silmaril.Consequence.ProofTree #[R, J]) do
+      throwError "silmaril {kind}: presentation {fname} does not present proof trees"
+    let flat ← mkAppM ``Silmaril.Consequence.ProofTree.lines #[mkNatLit 0, p]
+    let linesTy ← instantiateMVars (← appFresh ``List #[← appFresh ``Silmaril.Consequence.Line #[R, J]])
+    -- every registered rendering: trees of this type, and the flattened lines
+    let mut renderings : Array (String × Json) := #[]
+    let mut encodings : Array (String × Expr) := #[]
+    for r in records (← getEnv) do
+      if r.kind != "presentation" then continue
+      let some rd := r.str? "decl" | continue
+      let c' ← mkConstWithFreshMVarLevels rd.toName
+      let some A' ← codecType? (← inferType c') | continue
+      let v? ← if ← isDefEq A' A then pure (some p)
+        else if ← isDefEq A' linesTy then pure (some flat) else pure none
+      let some v := v? | continue
+      renderings := renderings.push (r.name, .str (← printWith c' v))
+      encodings := encodings.push (r.name, ← mkAppM ``Silmaril.Logic.Concrete.SExpCodec.encode #[c', v])
+    let mut verdicts : Array Json := #[]
+    if let some (.arr ts) := fs.get? "verdicts" then
+      for x in ts do
+        let .str t := x | throwError "silmaril {kind}: `verdicts` is a list of theorems"
+        let e ← mkConstWithFreshMVarLevels (← realizeGlobalConstNoOverload (mkIdent t.toName))
+        let ty ← whnfR (← inferType e)
+        let some (_, lhs, rhs) := ty.eq?
+          | throwError "silmaril {kind}: {t} is not an equation `check e = r`"
+        let some arg := (if lhs.isApp then some lhs.appArg! else none)
+          | throwError "silmaril {kind}: {t}: the left side is not a checker applied to a proof"
+        let mut fmt? : Option String := none
+        for (n, enc) in encodings do
+          if fmt?.isNone then
+            if ← withNewMCtxDepth (isDefEq arg enc) then fmt? := some n
+        let some fmt := fmt?
+          | throwError "silmaril {kind}: {t} does not check an encoding of {pn}"
+        let rhs' ← whnfR rhs
+        let accepted := rhs'.isAppOf ``Except.ok
+        -- a rejection's stage: the last component of the error's constructor
+        let stage := if accepted || !rhs'.isApp then "" else
+          match rhs'.appArg!.getAppFn.constName? with
+          | some n => n.componentsRev.head?.map toString |>.getD ""
+          | none => ""
+        verdicts := verdicts.push (← proofJson kind "verdicts" e
+          [("checker", .str (← shortApp lhs.appFn!)), ("format", .str fmt),
+           ("result", .str (← ppOneLine rhs)), ("accepted", .bool accepted), ("stage", .str stage)])
+    -- the indexed steps, with judgments in the system's judgment presentation
+    let mut steps : Array Json := #[]
+    if let some jp := sysRec.str? "judgments" then
+      let (cj, _) ← presentationCodec kind jp
+      let txt ← evalString (← mkAppM ``Silmaril.Consequence.ProofSExp.stepsText #[cj, p])
+      let mut i := 0
+      for row in txt.splitOn "\n" do
+        match row.splitOn "\t" with
+        | [k, r, j, ps] =>
+          let prems := (ps.splitOn ",").filterMap String.toNat?
+          steps := steps.push (Json.mkObj [("index", toJson i), ("kind", .str k), ("rule", .str r),
+            ("judgment", .str j), ("premises", toJson prems)])
+        | _ => throwError "silmaril {kind}: malformed step row {row.quote}"
+        i := i + 1
+    let mut fs := fs
+    fs ← fs.push kind "steps" (toJson steps)
+    fs ← fs.push kind "sexp" (.str (← printWith c p))
+    fs ← fs.push kind "renderings" (Json.mkObj renderings.toList)
+    -- the conclusion: the last step's judgment, as printed; otherwise the Lean term
+    let concl ← match steps.back? with
+      | some st => pure (st.getObjValAs? String "judgment" |>.toOption.getD "")
+      | none => ppOneLine (← whnfR (← mkAppM ``Silmaril.Consequence.ProofTree.concl #[p]))
+    fs ← fs.push kind "conclusion" (.str concl)
+    fs := fs.set "verdicts" (toJson verdicts)
+    if let some (.str t) := fs.get? "derives" then
+      let S := Lean.mkConst (← systemDecl kind (← fs.str kind "derives_system"))
+      let e ← mkConstWithFreshMVarLevels (← realizeGlobalConstNoOverload (mkIdent t.toName))
+      let Γ ← mkFreshExprMVar none
+      let φ ← mkFreshExprMVar none
+      unless ← isDefEq (← inferType e) (mkApp2 S Γ φ) do
+        roleFail kind (← inferType e) "`S Γ φ` for the registered system"
+      fs := fs.set "derives" (← proofJson kind "derives" e
+        [("context", .str (← ppOneLine (← instantiateMVars Γ))),
+         ("sentence", .str (← ppOneLine (← instantiateMVars φ)))])
+    return #[(name, fs)]
+
 /-- The record kind of each list field of a `logic_row`. -/
 def rowRefs : List (String × String) :=
   [("systems", "consequence_system"), ("presentations", "presentation"),
-   ("properties", "logic_property"), ("problems", "logic_problem")]
+   ("properties", "logic_property"), ("problems", "logic_problem"),
+   ("derivation_systems", "derivation_system"), ("derivations", "derivation")]
 
 @[silmaril_kind logic_row] def logicRowHandler : Handler where
   run? := some fun kind name? fs => do

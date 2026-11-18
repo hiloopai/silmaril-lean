@@ -266,6 +266,12 @@ pub(super) fn follow<'a>(
                     ("presentations", "presentation", &r.presentations),
                     ("properties", "logic_property", &r.properties),
                     ("problems", "logic_problem", &r.problems),
+                    (
+                        "derivation_systems",
+                        "derivation_system",
+                        &r.derivation_systems,
+                    ),
+                    ("derivations", "derivation", &r.derivations),
                 ] {
                     refs.extend(list(v).into_iter().map(|n| (key, kind, n)));
                 }
@@ -274,6 +280,43 @@ pub(super) fn follow<'a>(
                         .iter()
                         .map(|s| ("institution", "institution", s.clone())),
                 );
+            }
+            Record::DerivationSystem(d) => {
+                refs.extend(
+                    d.judgments
+                        .iter()
+                        .map(|s| ("judgments", "presentation", s.clone())),
+                );
+                if let Some(a) = d.formats.as_array() {
+                    refs.extend(
+                        a.iter()
+                            .filter_map(|x| x.as_str())
+                            .map(|s| ("formats", "presentation", s.to_string())),
+                    );
+                }
+                refs.extend(
+                    d.system
+                        .iter()
+                        .map(|s| ("system", "consequence_system", s.clone())),
+                );
+                if d.agrees.is_some() && d.system.is_none() {
+                    o.error(&at, "an `agrees` claim names its consequence system");
+                }
+            }
+            Record::ProofDerivation(d) => {
+                refs.push(("presentation", "presentation", d.presentation.clone()));
+                refs.push(("system", "derivation_system", d.system.clone()));
+                refs.extend(
+                    d.derives_system
+                        .iter()
+                        .map(|s| ("derives_system", "consequence_system", s.clone())),
+                );
+                if d.verdicts.as_array().is_none_or(Vec::is_empty) {
+                    o.error(&at, "a derivation states at least one verdict");
+                }
+                if !d.derives.is_null() && d.derives_system.is_none() {
+                    o.error(&at, "a `derives` claim names its consequence system");
+                }
             }
             Record::LogicExclusion(x) => {
                 if !EXCLUSION_CATEGORIES.contains(&x.category.as_str()) {

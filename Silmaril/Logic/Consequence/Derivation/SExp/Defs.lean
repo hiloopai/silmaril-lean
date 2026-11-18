@@ -3,6 +3,7 @@ module
 public import Silmaril.Logic.Consequence.Derivation.Defs
 public import Silmaril.Logic.Concrete.Codec.Defs
 public import Silmaril.Logic.Concrete.SExp.Defs
+public import Silmaril.Logic.Smt.SExpr.Writer.Defs
 
 /-!
 # Derivations as S-expressions (presentations `silmaril.derivation.tree` and `….lines`, v1)
@@ -24,6 +25,9 @@ with Alethe (`assume`, `step … :premises`) and with index-based NDJSON formats
 
 `treeCodec cj` and `linesCodec cj` are presentations (`SExpCodec`): each decoder accepts exactly
 the canonical forms (`Thms`).
+
+**Steps** (`stepsText`): a tree flattened into indexed lines, one tab-separated row per line
+(`assume` or `infer`, the rule, the judgment, the cited lines), for tables and explorers.
 -/
 
 @[expose] public section
@@ -110,5 +114,16 @@ def readLineList : List SE → Option (List (Line SE J))
 def readLines : SE → Option (List (Line SE J))
   | .list (.atom "proof" :: es) => readLineList cj es
   | _ => none
+
+/-- The text of an S-expression, without the printer's trailing space. -/
+def text (e : SE) : String :=
+  String.ofList ((String.fromUTF8! (Silmaril.Logic.Smt.SExpr.Writer.render e).toByteArray).toList.reverse.dropWhile
+    Char.isWhitespace).reverse
+
+/-- **The steps of a proof tree**: its indexed lines, one tab-separated row each. -/
+def stepsText (t : ProofTree SE J) : String :=
+  "\n".intercalate ((t.lines 0).map fun
+    | .assume j => s!"assume\t\t{text (cj.encode j)}\t"
+    | .infer r c ixs => s!"infer\t{text r}\t{text (cj.encode c)}\t{",".intercalate (ixs.map toString)}")
 
 end Silmaril.Consequence.ProofSExp

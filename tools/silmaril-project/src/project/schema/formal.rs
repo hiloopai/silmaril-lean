@@ -84,7 +84,8 @@ table! {
 
 table! {
     /// `silmaril logic_row N`: a logic's row: its systems, interpretations (Lean declarations),
-    /// presentations, properties and problems (JSON lists of names), the logic-graph
+    /// presentations, properties, problems, derivation systems and derivations (JSON lists of
+    /// names), the logic-graph
     /// `institution` it is, its exact `variant`, and its place in the table (`row_order`).
     LogicRow = "logic_rows", key("name") {
         name: String = "TEXT NOT NULL",
@@ -96,7 +97,60 @@ table! {
         #[serde(default)] presentations: serde_json::Value = "TEXT NOT NULL",
         #[serde(default)] properties: serde_json::Value = "TEXT NOT NULL",
         #[serde(default)] problems: serde_json::Value = "TEXT NOT NULL",
+        #[serde(default)] derivation_systems: serde_json::Value = "TEXT NOT NULL",
+        #[serde(default)] derivations: serde_json::Value = "TEXT NOT NULL",
         #[serde(rename = "order")] row_order: Option<i64> = "INTEGER",
+        doc: Option<String> = "TEXT",
+        module: String = "TEXT NOT NULL",
+        #[serde(skip)] origin: String = "TEXT NOT NULL",
+    }
+}
+
+table! {
+    /// `silmaril derivation_system N := D (arg := a)`: a derivation system `D a : DerivationSystem
+    /// J` (`judgment` is `J`), the presentation of its judgments (`judgments`), its proof
+    /// formats (`formats`, JSON list of presentations), and its claims (JSON), each checked by
+    /// Lean: `locally_sound` (`D.LocallySound sat`) and `agrees` (`X = S` for the registered
+    /// consequence system `system`).
+    DerivationSystem = "derivation_systems", key("name") {
+        name: String = "TEXT NOT NULL",
+        decl: String = "TEXT NOT NULL",
+        arg: Option<String> = "TEXT",
+        judgment: String = "TEXT NOT NULL",
+        judgments: Option<String> = "TEXT",
+        #[serde(default)] formats: serde_json::Value = "TEXT NOT NULL",
+        system: Option<String> = "TEXT",
+        locally_sound: Option<String> = "TEXT",
+        agrees: Option<String> = "TEXT",
+        #[serde(default)] claims: serde_json::Value = "TEXT NOT NULL",
+        title: Option<String> = "TEXT",
+        doc: Option<String> = "TEXT",
+        module: String = "TEXT NOT NULL",
+        #[serde(skip)] origin: String = "TEXT NOT NULL",
+    }
+}
+
+table! {
+    /// `silmaril derivation N := p (presentation := P) (system := D)`: a concrete proof `p` of
+    /// the derivation system `D`, written in the proof format `P`: its S-expression (`sexp`) and its
+    /// renderings in every registered tree and lines format (`renderings`, JSON), its conclusion,
+    /// its indexed `steps` (JSON: index, kind, rule, judgment, premises), and its `verdicts`
+    /// (JSON: each a theorem `check e = r` about an encoding of `p`, with the checker, the format,
+    /// the result and whether it accepts); `derives` is an optional derivability claim (by
+    /// `derives_system`).
+    ProofDerivation = "derivations", key("name") {
+        name: String = "TEXT NOT NULL",
+        decl: String = "TEXT NOT NULL",
+        presentation: String = "TEXT NOT NULL",
+        system: String = "TEXT NOT NULL",
+        sexp: String = "TEXT NOT NULL",
+        #[serde(default)] renderings: serde_json::Value = "TEXT NOT NULL",
+        conclusion: String = "TEXT NOT NULL",
+        #[serde(default)] steps: serde_json::Value = "TEXT NOT NULL",
+        #[serde(default)] verdicts: serde_json::Value = "TEXT NOT NULL",
+        #[serde(default)] derives: serde_json::Value = "TEXT NOT NULL",
+        derives_system: Option<String> = "TEXT",
+        title: Option<String> = "TEXT",
         doc: Option<String> = "TEXT",
         module: String = "TEXT NOT NULL",
         #[serde(skip)] origin: String = "TEXT NOT NULL",
