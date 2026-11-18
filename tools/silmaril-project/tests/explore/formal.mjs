@@ -50,8 +50,8 @@ try {
     `FOL: soundness of checked proof trees for ℕ and for every structure (an inclusion), consistency of consequence and of the order theory, a model (${t[0][3]}, ${t[0][4]}, ${t[0][5]}, ${t[0][6]})`);
   check(/✓ 2/.test(t[0][8]) && /\/ 5/.test(t[0][8]), `FOL: 2 accepted proofs of 5 registered (${t[0][8]})`);
   check(/silmaril\.fol\.formula/.test(t[0][1]) && /silmaril\.arithmetic\.formula/.test(t[1][1]) && /\+4/.test(t[1][1]), "default presentations; PA with its words presentation and its judgment and proof formats");
-  check(/proved \(1\)/.test(t[3][3]) && /proved \(2\)/.test(t[3][4]) && /silmaril\.hol-light\.prop/.test(t[3][1]),
-    `HOL: soundness for the standard interpretation, consistency pure and classical, the proposition presentation (${t[3][1]}, ${t[3][3]}, ${t[3][4]})`);
+  check(/proved \(2\)/.test(t[3][3]) && /proved \(3\)/.test(t[3][4]) && /silmaril\.hol-light\.prop/.test(t[3][1]) && t[3][7] === "5",
+    `HOL: soundness for the standard interpretation and for models of a user theory, consistency pure, classical and of the user theory, five problems (${t[3][1]}, ${t[3][3]}, ${t[3][4]}, ${t[3][7]})`);
   check(/proved \(4\)/.test(t[4][5]), `MLTT: four consistency (nontriviality) results, bounded extensional and intensional (${t[4][5]})`);
   check(/proved \(3\)/.test(t[4][3]) && /proved \(3\)/.test(t[4][4]) && t[4][7] === "1",
     `MLTT: soundness for finite ZFSet towers at 1, 2, 3 universe levels; ⊢ 0 : 𝟘 not derivable at each; one problem (${t[4][3]}, ${t[4][4]}, ${t[4][7]})`);
@@ -99,6 +99,12 @@ try {
   check((await p.textContent("#fr-sexp")).trim() === "( jdg ( ctx ) nat zero zero )", "the MLTT problem's S-expression");
   const mc = await p.textContent(".fr-claims");
   check(/bounded_zero_derived/.test(mc) && /bounded_zero_true/.test(mc) && /boundedTowers/.test(mc), "derived by the bounded rules and true in every tower");
+
+  // a HOL problem over a user signature: c, from its axiom, true in the model c ↦ true
+  await open("/formal-problem/" + encodeURIComponent("logic.formal.hol.coin.c"), "#fr-sexp");
+  check((await p.textContent("#fr-sexp")).trim() === "( const 0 )", "the user constant c as an S-expression");
+  const uc = await p.textContent(".fr-claims");
+  check(/cProp_derived/.test(uc) && /cProp_true/.test(uc) && /pointsOf/.test(uc), "derived from the theory c and true at a model of it");
 
   // a property and a presentation
   await open("/formal-property/" + encodeURIComponent("logic.formal.z2.consistency"), "main h2");

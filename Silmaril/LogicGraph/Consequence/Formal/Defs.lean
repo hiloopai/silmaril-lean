@@ -8,6 +8,8 @@ public import Silmaril.Logic.Consequence.FirstOrder.Thms
 public import Silmaril.Logic.HOLLight.SExp.Thms
 public import Silmaril.Logic.Consequence.HOL.Standard.Thms
 public meta import Silmaril.Logic.Consequence.HOL.Standard.Thms
+public import Silmaril.Logic.Consequence.HOL.UserSig.Thms
+public meta import Silmaril.Logic.Consequence.HOL.UserSig.Thms
 public import Silmaril.Logic.TypeTheory.ExtensionalMLTT.SExp.Thms
 public meta import Silmaril.Logic.Consequence.Arithmetic.Thms
 public meta import Silmaril.Logic.Consequence.SecondOrder.Thms
@@ -49,6 +51,12 @@ noncomputable def z2DerivesSExp := (SecondOrder.derives .Z2).viaCodec Logic.Seco
 def paWords := Logic.Arithmetic.SExp.wordsCodec 0
 /-- HOL propositions over the initial signature, as S-expressions (decode and type-check). -/
 def holPropCodec := HOL.propCodec HOL.initialSig
+/-- HOL propositions over the user signature `coinSig` (one boolean constant `c`). -/
+def holCoinCodec := HOL.propCodec HOL.coinSig
+/-- Pure HOL over `coinSig`. -/
+def holCoinKernel := HOL.kernel HOL.coinSig
+/-- HOL over `coinSig` with the axiom `c`. -/
+def holCoinTheory := HOL.kernelFrom HOL.coinSig HOL.cTheory
 /-- HOL with HOL Light's classical axioms (ETA, SELECT, INFINITY), on propositions. -/
 def holClassical := HOL.kernelFrom HOL.initialSig Logic.HOLLight.classicalTheory
 /-- `⊢ 0 : ℕ`, with one universe level. -/
@@ -106,6 +114,10 @@ silmaril consequence_system logic.formal.z2.derives.sexp :=
   (reading := "derivability") (title := "Z₂ over S-expressions (silmaril.soa.formula)")
 silmaril consequence_system logic.formal.hol.classical := Silmaril.LogicGraph.Consequence.Formal.holClassical
   (reading := "derivability") (title := "HOL with ETA, SELECT and INFINITY: the kernel on propositions")
+silmaril consequence_system logic.formal.hol.coin.kernel := Silmaril.LogicGraph.Consequence.Formal.holCoinKernel
+  (reading := "derivability") (title := "Pure HOL over the user signature coinSig (one boolean constant c)")
+silmaril consequence_system logic.formal.hol.coin.theory := Silmaril.LogicGraph.Consequence.Formal.holCoinTheory
+  (reading := "derivability") (title := "HOL over coinSig with the axiom c")
 silmaril consequence_system logic.formal.mltt.bounded1.derives := Silmaril.LogicGraph.Consequence.Formal.mlttBounded1
   (reading := "derivability") (title := "Extensional MLTT with 1 universe level: derivability")
 silmaril consequence_system logic.formal.mltt.bounded2.derives := Silmaril.LogicGraph.Consequence.Formal.mlttBounded2
@@ -384,6 +396,17 @@ silmaril logic_property logic.formal.mltt.bounded3.no_empty :=
   (role := "consistency") (system := "logic.formal.mltt.bounded3.derives")
   (title := "⊢ 0 : 𝟘 is not derivable with 3 universe levels")
 
+silmaril presentation logic.formal.hol.coin.sexp := Silmaril.LogicGraph.Consequence.Formal.holCoinCodec
+  (title := "HOL propositions over coinSig as S-expressions")
+
+silmaril logic_property logic.formal.hol.coin.soundness := Silmaril.Consequence.HOL.kernelFrom_soundFor
+  (arg := "Silmaril.Consequence.HOL.coinSig Silmaril.Consequence.HOL.cTheory")
+  (role := "soundness") (system := "logic.formal.hol.coin.theory")
+  (title := "HOL with the axiom c is sound for the models of c")
+silmaril logic_property logic.formal.hol.coin.consistency := Silmaril.Consequence.HOL.cTheory_consistent
+  (role := "consistency") (system := "logic.formal.hol.coin.theory")
+  (title := "The theory c over coinSig does not derive ⊥ (its model interprets c as true)")
+
 /-! ## Concrete problems -/
 
 silmaril logic_problem logic.formal.pa.zero_add_zero := Silmaril.Consequence.Arithmetic.zeroAddZero
@@ -444,6 +467,19 @@ silmaril logic_problem logic.formal.mltt.zero := Silmaril.LogicGraph.Consequence
   (interpretation := "Silmaril.Consequence.TypeTheory.boundedTowers.{1} 1")
   (title := "⊢ 0 : ℕ with one universe level: derived, and true in every tower")
 
+silmaril logic_problem logic.formal.hol.coin.c := Silmaril.Consequence.HOL.cProp
+  (presentation := "logic.formal.hol.coin.sexp")
+  (derived := Silmaril.Consequence.HOL.cProp_derived) (system := "logic.formal.hol.coin.theory")
+  (truth := Silmaril.Consequence.HOL.cProp_true)
+  (interpretation := "Silmaril.Consequence.HOL.pointsOf.{0} Silmaril.Consequence.HOL.coinSig Silmaril.Consequence.HOL.cTheory")
+  (title := "c, over the user signature coinSig, from its axiom: true in the model c ↦ true")
+silmaril logic_problem logic.formal.hol.coin.refl := Silmaril.Consequence.HOL.cReflProp
+  (presentation := "logic.formal.hol.coin.sexp")
+  (derived := Silmaril.Consequence.HOL.cReflProp_derived) (system := "logic.formal.hol.coin.kernel")
+  (truth := Silmaril.Consequence.HOL.cReflProp_true)
+  (interpretation := "Silmaril.Consequence.HOL.points.{0} Silmaril.Consequence.HOL.coinSig")
+  (title := "c = c over coinSig, by REFL: true at every point of every model")
+
 /-! ## Rows -/
 
 silmaril logic_row logic.formal.row.fol
@@ -497,13 +533,16 @@ silmaril logic_row logic.formal.row.second_order
   (order := 3)
 silmaril logic_row logic.formal.row.hol
   (title := "HOL (HOL Light kernel)")
-  (variant := "HOL Light's kernel over its initial signature (bool, ind, =, @), on propositions; pure and with HOL Light's classical axioms ETA, SELECT and INFINITY. Standard semantics: models in Type u with bool as ULift Bool, ind as ULift ℕ, full function spaces, = as equality and @ as Hilbert choice; consistency is relative to the standard model at universe 0. No definition rules (new_definition, new_type_definition).")
-  (systems := [logic.consequence.hol.kernel, logic.formal.hol.classical, logic.consequence.hol.seq])
-  (interpretations := [Silmaril.Consequence.HOL.points])
-  (presentations := [logic.formal.hol.prop.sexp, logic.formal.hol.sexp])
+  (variant := "HOL Light's kernel over its initial signature (bool, ind, =, @), on propositions; pure and with HOL Light's classical axioms ETA, SELECT and INFINITY. Standard semantics: models in Type u with bool as ULift Bool, ind as ULift ℕ, full function spaces, = as equality and @ as Hilbert choice; consistency is relative to the standard model at universe 0. Also over a user signature (coinSig, one boolean constant c) with the axiom c: sound for the models of its axioms, consistent by the model c ↦ true. No definition rules (new_definition, new_type_definition).")
+  (systems := [logic.consequence.hol.kernel, logic.formal.hol.classical, logic.consequence.hol.seq,
+    logic.formal.hol.coin.kernel, logic.formal.hol.coin.theory])
+  (interpretations := [Silmaril.Consequence.HOL.points, Silmaril.Consequence.HOL.pointsOf])
+  (presentations := [logic.formal.hol.prop.sexp, logic.formal.hol.sexp, logic.formal.hol.coin.sexp])
   (properties := [logic.formal.hol.soundness, logic.formal.hol.consistency,
-    logic.formal.hol.classical.consistency, logic.formal.hol.nontriviality, logic.formal.hol.kernel.soundness])
-  (problems := [logic.formal.hol.truth, logic.formal.hol.refl, logic.formal.hol.excluded_middle])
+    logic.formal.hol.classical.consistency, logic.formal.hol.nontriviality, logic.formal.hol.kernel.soundness,
+    logic.formal.hol.coin.soundness, logic.formal.hol.coin.consistency])
+  (problems := [logic.formal.hol.truth, logic.formal.hol.refl, logic.formal.hol.excluded_middle,
+    logic.formal.hol.coin.c, logic.formal.hol.coin.refl])
   (order := 4)
 silmaril logic_row logic.formal.row.mltt
   (title := "Martin-Löf type theory: extensional (bounded universes) and intensional (original rules)")
