@@ -10,7 +10,7 @@ public import Silmaril.Cerberus.Elaboration.NullPointers.Defs
 public import Silmaril.Cerberus.Elaboration.IntegerCasts.Defs
 
 /-! Actual typed-Ail expression dispatcher for constants, object
-identifiers/rvalues, scalar add/sub/mul, scalar gt/eq, direct integer casts, integer-zero pointer casts and normal fixed-integer direct calls.
+identifiers/rvalues, scalar add/sub/mul, scalar lt/le/gt/ge/eq, direct integer casts, integer-zero pointer casts and normal fixed-integer direct calls.
 The frozen constant port remains independently usable. Recursive effects,
 marker freshness, full-expression bounds and annotation order are retained.
 Other expression forms and expression-result lifetimes outside the call helper
@@ -55,10 +55,19 @@ def expression (config : Target.Config) (env : Target.Environment) (bindings : L
             | .gt =>
                 Comparisons.greater config env bindings type leftType rightType
                   (expression config env bindings left aliases) (expression config env bindings right aliases)
+            | .lt =>
+                Comparisons.relational .less config env bindings type leftType rightType
+                  (expression config env bindings left aliases) (expression config env bindings right aliases)
+            | .le =>
+                Comparisons.relational .lessEqual config env bindings type leftType rightType
+                  (expression config env bindings left aliases) (expression config env bindings right aliases)
+            | .ge =>
+                Comparisons.relational .greaterEqual config env bindings type leftType rightType
+                  (expression config env bindings left aliases) (expression config env bindings right aliases)
             | .eq =>
                 Comparisons.equal config env bindings type leftType rightType
                   (expression config env bindings left aliases) (expression config env bindings right aliases)
-            | _ => throw (.message "unsupported: binary operator outside scalar add/sub/mul/gt/eq")
+            | _ => throw (.message "unsupported: binary operator outside scalar add/sub/mul/lt/le/gt/ge/eq")
         | .cast _ destination operand => do
             let source ← Constants.liftResult
               (Constants.targetResult (GeneralizedTypes.expressionType config env operand))

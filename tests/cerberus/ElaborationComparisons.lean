@@ -101,3 +101,29 @@ example : (ControlTests.equalZero Target.pinnedApple Target.emptyEnvironment
 #print axioms Comparisons.booleanInteger_shape
 #print axioms Comparisons.specifiedPair_shape
 #print axioms ControlTests.equalZero_integer
+
+-- Additional scalar relations retain source-before-allocation scheduling,
+-- standard annotations, unspecified fallback and all five wrappers.
+private def relation (operator : Comparisons.RelationalOperator) :=
+  State.run (Comparisons.relational operator Target.pinnedApple Target.emptyEnvironment
+    runtime resultType leftType rightType marked right) context
+example (operator : Comparisons.RelationalOperator) :
+    leadingBinder (relation operator).1 = some 101 ∧
+    (relation operator).2.freshness.next = 106 ∧
+    fallback (relation operator).1 = some (unspecified resultType) := by
+  cases operator <;> cbv
+example (operator : Comparisons.RelationalOperator) : relationalBranch (relation operator).1 = some
+    ([.std "§6.5.8#6"], ifPure (operation operator.toCore
+      (standardPure "§6.5.8#3" (converted 103))
+      (standardPure "§6.5.8#3" (converted 104)))
+      (specified (integer 1)) (specified (integer 0))) := by
+  cases operator <;> cbv
+example (operator : Comparisons.RelationalOperator) :
+    (State.run (Comparisons.relational operator Target.pinnedApple Target.emptyEnvironment runtime
+      resultType (.mk [] (.pointer ⟨false, false, false⟩ (.mk [] .void))) rightType marked right)
+      context).1.isOk = false := by
+  cases operator <;> cbv
+example (operator : Comparisons.RelationalOperator) :
+    (State.run (Comparisons.relational operator {Target.pinnedApple with cheri := true}
+      Target.emptyEnvironment runtime resultType leftType rightType marked right) context).1.isOk = false := by
+  cases operator <;> cbv
