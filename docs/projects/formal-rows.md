@@ -72,6 +72,24 @@ conditions for `hyp`, `weaken` and the theory's axioms).
   six rejections (wrong axiom conclusion, unknown rule, missing hypothesis, forward citation, empty
   lines, not a proof) and byte-level syntax errors.
 
+## First-order natural deduction (`Silmaril.Logic.Consequence.FirstOrder.Derivation`)
+
+Over any unsorted signature whose symbols of each arity have decidable equality (named signatures
+do), with judgments `Γ ⊢ φ` at `k` variables and rule instances carrying their data
+(`FirstOrder.ND.Rule`): hypothesis, weakening along `⊆`, `⊤`-introduction, `¬`-introduction (from
+`ψ` and `¬ψ`), `¬`-elimination (explosion), double negation, the `∧` rules, `∀`-introduction and
+elimination, equality reflexivity and elimination. The syntax operations it needs (renaming,
+substitution, `shift`, `inst`, decidable equality) are `…FirstOrder.Syntax`, with
+`holds_subst`, `holds_shift`, `holds_inst`.
+
+* `locallySound`: every rule instance preserves validity in every structure; hence
+  `treeDerives_le_consequence` and `treeDerives_soundFor M`.
+* `orderTheory_tree_consistent`: over `orderSig`, the order theory does not derive `¬⊤` (model ℕ).
+* Concrete syntax: `silmaril.fol.sequent` v1, the tree and lines formats, `elabRule`, and
+  `checkTree` / `checkLines` with `checkTree_sound`, as for PA.
+* Kernel-checked proofs (`…Derivation.Examples`): `orderTheory ⊢ ∀x ¬ succ x < succ x` (trees and
+  lines), `⊢ ∀x ∀y ¬(x = y ∧ ¬ y = x)`, and three rejections. All are registered on the FOL row.
+
 ## Lean-NDJSON: lean4export files of proof declarations (`Silmaril.ProofFormats.LeanNDJSON`)
 
 **The format** is lean4export's NDJSON, format version **3.1.0** (`.lake/packages/mathlib/lean4export`,
@@ -140,7 +158,7 @@ S-expression in each format (kept in the URL). The browser suite is
 
 | row | abstract syntax | presentations | derivation (proof objects) | interpretation | soundness | consistency | concrete problems |
 |---|---|---|---|---|---|---|---|
-| **FOL** (unsorted; signature `orderSig`) | ◆ `UFOL.Formula` (existing) | ◆ `silmaril.fol.formula` v1 over named signatures (arity-checked; `decodeFormula_eq_some_iff` ✓) | — none yet | ◆ one specified structure (`inStructure natStructure`, ℕ) and all structures (`consequence`) | — (no derivations) | ✓ model existence `orderTheory_satisfiable`; ✓ nontrivial consequence `orderTheory_nontrivial` | ✓ `orderTheory_entails_succIrrefl` (every structure), `succIrrefl_true` (ℕ) |
+| **FOL** (unsorted; signature `orderSig`) | ◆ `UFOL.Formula` (existing); ✓ renaming, substitution, decidable equality (`…FirstOrder.Syntax`) | ◆ `silmaril.fol.formula` v1 over named signatures (arity-checked; `decodeFormula_eq_some_iff` ✓); ✓ `silmaril.fol.sequent` v1 and the proof formats | ✓ classical natural deduction over any signature with decidable symbols (`FirstOrder.ND.system`), checked trees and lines | ◆ one specified structure (`inStructure natStructure`, ℕ) and all structures (`consequence`) | ✓ `treeDerives_le_consequence` (every structure), `treeDerives_soundFor` (ℕ), by `locallySound` | ✓ model existence `orderTheory_satisfiable`; ✓ nontrivial consequence `orderTheory_nontrivial`; ✓ `orderTheory_tree_consistent` | ✓ `orderTheory_entails_succIrrefl`, `succIrrefl_true`; ✓ `succIrrefl_derives` (a checked proof, trees and lines), `eqSymm_derives` |
 | **PA** (and Q) | ◆ `Arithmetic.Formula` (existing) | ◆ `silmaril.arithmetic.formula` v1 (default), `….words` v1; ✓ bytes round trip for every formula | ◆ `PAProof`, `QProof` (existing natural deduction); ✓ as a derivation system with checked proof trees and lines (`treeDerives_pa`, `treeDerives_q`), S-expression proofs `silmaril.derivation.tree` / `….lines` | ◆ standard model ℕ (`standard`) | ✓ `pa_soundFor`, `q_soundFor` | ✓ `pa_consistent`, `q_consistent`, `paConcrete_consistent` | ✓ `zeroAddZero`, `zeroOrSuccessor` (decoded, derived, true in ℕ) |
 | **Second-order arithmetic**: `RCA0`, `WKL0Sep` (Σ⁰₁ separation), `ACA0`, `Z2`, `Z2Full` | ◆ `SecondOrderArithmetic.Formula` (existing, named) | ◆ `silmaril.soa.formula` v1 | ◆ `Proof` (existing Hilbert), `HProof` with hypotheses | ◆ **full** standard (`full`: ℕ and every subset) and **Henkin** (`henkin S`: structures validating `S`'s axioms) | ✓ `derives_soundFor_full`, `derives_soundFor_henkin` | ✓ `consistent S` for every subsystem, `concrete_consistent` | ✓ `succNeZero` (RCA0), `comprehensionEq` (Z2) |
 | **HOL** (HOL Light kernel, initial signature) | ◆ existing; ✓ type checker `Tm.typeOf?` sound and complete | ◆ `silmaril.hol-light.prop` v1 (decode, type-check, require `bool`; errors exact: `decodeProp_eq_none_iff`), `silmaril.hol-light.term` v1 | ◆ `HOLLight.Derives` (existing), on propositions `kernel`, `kernelFrom … classicalTheory` | ◆ standard models (`points`: model in `Type u`, type valuation, assignment); `denote` of typed terms; `standardPoint` | ✓ `kernel_soundFor` | ✓ `kernel_consistent` (pure), `classical_consistent'` (ETA, SELECT, INFINITY) | ✓ `truthProp`, `reflProp` (derived, true), `emProp` (derived from the classical axioms) |
@@ -194,8 +212,10 @@ indexed derivation format will follow this format rather than invent a JSONL sch
 
 ## Not done yet (exact obligations)
 
-1. **A FOL derivation system** with proof objects and soundness (generalize `Arithmetic.Derivation`
-   to an arbitrary signature); FOL's row has semantics and model existence only.
+1. **FOL**: the derivation system is done (natural deduction for `=`, relations, `⊤`, `¬`, `∧`,
+   `∀` over any signature with decidable symbols, sound for every structure). Completeness is not
+   claimed; disjunction, implication and `∃` are not primitive in this syntax (they are defined
+   connectives), and FOL proofs are not imported from Lean-NDJSON yet.
 2. **HOL**: the standard interpretation is stated for the initial signature; HOL problems over
    user signatures and constants (with a model interpreting them) are not registered yet. The
    kernel has no definition rules.

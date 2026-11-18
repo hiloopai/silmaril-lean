@@ -46,7 +46,9 @@ try {
   check(/proved \(4\)/.test(t[1][3]) && /proved \(5\)/.test(t[1][4]), `PA: soundness ×4, consistency ×5, with the checked proof trees (${t[1][3]}, ${t[1][4]})`);
   check(/✓ 4/.test(t[1][8]) && /\/ 7/.test(t[1][8]), `PA: 4 accepted proofs of 7 registered (${t[1][8]})`);
   check(/proved \(8\)/.test(t[2][3]) && /proved \(5\)/.test(t[2][4]), `second order: soundness ×8 (full and Henkin), consistency ×5 (${t[2][3]}, ${t[2][4]})`);
-  check(t[0][3] === "—" && /proved \(1\)/.test(t[0][4]) && /proved \(1\)/.test(t[0][5]), `FOL: no soundness (no derivations), consistency of consequence and a model (${t[0][3]}, ${t[0][4]}, ${t[0][5]})`);
+  check(/proved \(1\)/.test(t[0][3]) && /proved \(2\)/.test(t[0][4]) && /proved \(1\)/.test(t[0][5]) && /proved \(1\)/.test(t[0][6]),
+    `FOL: soundness of checked proof trees for ℕ and for every structure (an inclusion), consistency of consequence and of the order theory, a model (${t[0][3]}, ${t[0][4]}, ${t[0][5]}, ${t[0][6]})`);
+  check(/✓ 2/.test(t[0][8]) && /\/ 5/.test(t[0][8]), `FOL: 2 accepted proofs of 5 registered (${t[0][8]})`);
   check(/silmaril\.fol\.formula/.test(t[0][1]) && /silmaril\.arithmetic\.formula/.test(t[1][1]) && /\+4/.test(t[1][1]), "default presentations; PA with its words presentation and its judgment and proof formats");
   check(/proved \(1\)/.test(t[3][3]) && /proved \(2\)/.test(t[3][4]) && /silmaril\.hol-light\.prop/.test(t[3][1]),
     `HOL: soundness for the standard interpretation, consistency pure and classical, the proposition presentation (${t[3][1]}, ${t[3][3]}, ${t[3][4]})`);
@@ -141,6 +143,16 @@ try {
     "a deep link opens the lines format; the lines checker's verdict is listed");
   await open("/derivation/" + encodeURIComponent("logic.formal.pa.proof.unknown_rule"), "#fr-verdicts");
   check(/rejected by checkTree Theory\.pa at elaboration/.test(await p.textContent("#fr-verdicts")), "an unknown rule is rejected at elaboration");
+
+  // a first-order derivation over orderSig
+  await open("/derivation/" + encodeURIComponent("logic.formal.fol.proof.succ_irrefl"), "#fr-tree");
+  const fv = await p.textContent("#fr-verdicts");
+  check(/accepted by checkTree orderOps orderRels/.test(fv.replace(/\S*\.(orderOps|orderRels)/g, "$1")) && /accepted by checkLines/.test(fv),
+    `FOL: the tree and lines checkers accept ∀x ¬ succ x < succ x from the order theory (${fv.slice(0, 120)})`);
+  const fr = await p.evaluate(() => [...document.querySelectorAll("#fr-tree .fr-rule")].map((x) => x.textContent));
+  check(fr.length === 3 && fr[0] === "all-intro" && /all-elim \(app succ \(var 0\)\)/.test(fr[1]) && fr[2] === "hyp", `FOL: the proof tree (${fr})`);
+  await open("/derivation/" + encodeURIComponent("logic.formal.fol.proof.wrong_instance"), "#fr-verdicts");
+  check(/rejected by .* at check/.test(await p.textContent("#fr-verdicts")), "FOL: an instance at the wrong term is rejected at the check");
 
   // a phone
   const m = await b.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });

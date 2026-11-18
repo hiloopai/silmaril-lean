@@ -13,6 +13,8 @@ public meta import Silmaril.Logic.Consequence.Arithmetic.Thms
 public meta import Silmaril.Logic.Consequence.SecondOrder.Thms
 public meta import Silmaril.Logic.Consequence.FirstOrder.Thms
 public import Silmaril.Logic.Consequence.Arithmetic.Derivation.Examples
+public import Silmaril.Logic.Consequence.FirstOrder.Derivation.Examples
+public meta import Silmaril.Logic.Consequence.FirstOrder.Derivation.Examples
 public meta import Silmaril.Logic.Consequence.Arithmetic.Derivation.Examples
 
 /-!
@@ -58,6 +60,14 @@ def mlttBounded3 := TypeTheory.boundedDerives.{3} 3
 def paTreeDerives := Arithmetic.ND.treeDerives .pa
 /-- Q derivability by checked proof trees. -/
 def qTreeDerives := Arithmetic.ND.treeDerives .q
+/-- First-order derivability over `orderSig` by checked proof trees. -/
+def folTreeDerives := FirstOrder.ND.treeDerives FirstOrder.orderSig
+/-- First-order judgments over `orderSig` as S-expressions. -/
+def folSeqCodec := FirstOrder.ND.seqCodec FirstOrder.orderOps FirstOrder.orderRels
+/-- First-order proofs over `orderSig` as S-expression trees. -/
+def folTreeCodec := FirstOrder.ND.treeCodec FirstOrder.orderOps FirstOrder.orderRels
+/-- First-order proofs over `orderSig` as indexed S-expression lines. -/
+def folLinesCodec := FirstOrder.ND.linesCodec FirstOrder.orderOps FirstOrder.orderRels
 /-- First-order semantic consequence over `orderSig`. -/
 def folConsequence := FirstOrder.consequence FirstOrder.orderSig
 /-- Truth in ℕ over `orderSig`. -/
@@ -100,6 +110,9 @@ silmaril consequence_system logic.formal.mltt.bounded3.derives := Silmaril.Logic
 silmaril consequence_system logic.formal.fol.consequence :=
     Silmaril.LogicGraph.Consequence.Formal.folConsequence
   (title := "FOL over orderSig: truth in every structure")
+silmaril consequence_system logic.formal.fol.tree.derives :=
+    Silmaril.LogicGraph.Consequence.Formal.folTreeDerives
+  (reading := "derivability") (title := "FOL over orderSig: checked natural-deduction proof trees")
 silmaril consequence_system logic.formal.fol.truth_nat := Silmaril.LogicGraph.Consequence.Formal.folTruthNat
   (title := "FOL over orderSig: truth in ℕ")
 
@@ -284,6 +297,63 @@ silmaril derivation logic.formal.pa.proof.missing_hyp := Silmaril.Consequence.Ar
   (verdicts := [Silmaril.Consequence.Arithmetic.ND.Examples.missingHyp_rejected])
   (title := "Rejected: a hypothesis that is not in the context")
 
+silmaril presentation logic.formal.fol.sequent := Silmaril.LogicGraph.Consequence.Formal.folSeqCodec
+  (title := "FOL judgments over orderSig: (seq k (hypotheses) conclusion)")
+silmaril presentation logic.formal.fol.proof_tree := Silmaril.LogicGraph.Consequence.Formal.folTreeCodec
+  (title := "FOL proofs over orderSig as S-expression trees")
+silmaril presentation logic.formal.fol.proof_lines := Silmaril.LogicGraph.Consequence.Formal.folLinesCodec
+  (title := "FOL proofs over orderSig as indexed S-expression lines")
+
+silmaril logic_property logic.formal.fol.tree.soundness :=
+    Silmaril.Consequence.FirstOrder.ND.treeDerives_le_consequence
+  (arg := "(Sg := Silmaril.Consequence.FirstOrder.orderSig)")
+  (role := "inclusion") (system := "logic.formal.fol.tree.derives")
+  (target := "logic.formal.fol.consequence")
+  (title := "Checked FOL proof trees derive only semantic consequences (soundness)")
+silmaril logic_property logic.formal.fol.tree.soundness_nat := Silmaril.Consequence.FirstOrder.ND.treeDerives_soundFor
+  (arg := "Silmaril.Consequence.FirstOrder.natStructure")
+  (role := "soundness") (system := "logic.formal.fol.tree.derives")
+  (title := "Checked FOL proof trees are sound for the structure ℕ")
+silmaril logic_property logic.formal.fol.tree.consistency :=
+    Silmaril.Consequence.FirstOrder.ND.orderTheory_tree_consistent
+  (role := "consistency") (system := "logic.formal.fol.tree.derives")
+  (title := "The order theory does not derive ¬⊤ by checked proof trees")
+
+silmaril derivation_system logic.formal.fol.nd := Silmaril.Consequence.FirstOrder.ND.system
+  (arg := "Silmaril.Consequence.FirstOrder.orderSig")
+  (judgments := "logic.formal.fol.sequent")
+  (formats := [logic.formal.fol.proof_tree, logic.formal.fol.proof_lines])
+  (locally_sound := "Silmaril.Consequence.FirstOrder.ND.locallySound (Sg := Silmaril.Consequence.FirstOrder.orderSig)")
+  (title := "FOL natural deduction over orderSig: rule instances checked step by step")
+
+silmaril derivation logic.formal.fol.proof.succ_irrefl :=
+    Silmaril.Consequence.FirstOrder.ND.Examples.succIrreflProof
+  (presentation := "logic.formal.fol.proof_tree") (system := "logic.formal.fol.nd")
+  (verdicts := [Silmaril.Consequence.FirstOrder.ND.Examples.succIrreflProof_checks,
+    Silmaril.Consequence.FirstOrder.ND.Examples.succIrreflProof_lines_checks])
+  (derives := Silmaril.Consequence.FirstOrder.ND.Examples.succIrrefl_derives)
+  (derives_system := "logic.formal.fol.tree.derives")
+  (title := "∀x ¬ succ x < succ x from the order theory, by ∀-elimination (trees and lines)")
+silmaril derivation logic.formal.fol.proof.eq_symm := Silmaril.Consequence.FirstOrder.ND.Examples.eqSymmProof
+  (presentation := "logic.formal.fol.proof_tree") (system := "logic.formal.fol.nd")
+  (verdicts := [Silmaril.Consequence.FirstOrder.ND.Examples.eqSymmProof_checks])
+  (derives := Silmaril.Consequence.FirstOrder.ND.Examples.eqSymm_derives)
+  (derives_system := "logic.formal.fol.tree.derives")
+  (title := "∀x ∀y ¬(x = y ∧ ¬ y = x), by equality elimination")
+silmaril derivation logic.formal.fol.proof.not_a_hyp := Silmaril.Consequence.FirstOrder.ND.Examples.notAHyp
+  (presentation := "logic.formal.fol.proof_tree") (system := "logic.formal.fol.nd")
+  (verdicts := [Silmaril.Consequence.FirstOrder.ND.Examples.notAHyp_rejected])
+  (title := "Rejected: ∀x ¬ succ x < succ x is not a hypothesis of the order theory")
+silmaril derivation logic.formal.fol.proof.wrong_instance :=
+    Silmaril.Consequence.FirstOrder.ND.Examples.wrongInstance
+  (presentation := "logic.formal.fol.proof_tree") (system := "logic.formal.fol.nd")
+  (verdicts := [Silmaril.Consequence.FirstOrder.ND.Examples.wrongInstance_rejected])
+  (title := "Rejected: ∀-elimination at x claimed as the instance at succ x")
+silmaril derivation logic.formal.fol.proof.unknown_rule := Silmaril.Consequence.FirstOrder.ND.Examples.unknownRule
+  (presentation := "logic.formal.fol.proof_tree") (system := "logic.formal.fol.nd")
+  (verdicts := [Silmaril.Consequence.FirstOrder.ND.Examples.unknownRule_rejected])
+  (title := "Rejected: an unknown rule")
+
 /-! ## Concrete problems -/
 
 silmaril logic_problem logic.formal.pa.zero_add_zero := Silmaril.Consequence.Arithmetic.zeroAddZero
@@ -328,6 +398,8 @@ silmaril logic_problem logic.formal.hol.excluded_middle := Silmaril.Consequence.
   (title := "⊤ ∨ ¬⊤, by excluded middle from the classical axioms")
 silmaril logic_problem logic.formal.fol.succ_irrefl := Silmaril.Consequence.FirstOrder.succIrrefl
   (presentation := "logic.formal.fol.sexp")
+  (derived := Silmaril.Consequence.FirstOrder.ND.Examples.succIrrefl_derives)
+  (system := "logic.formal.fol.tree.derives")
   (entailed := Silmaril.Consequence.FirstOrder.orderTheory_entails_succIrrefl)
   (entailed_by := "logic.formal.fol.consequence")
   (truth := Silmaril.Consequence.FirstOrder.succIrrefl_true)
@@ -338,13 +410,18 @@ silmaril logic_problem logic.formal.fol.succ_irrefl := Silmaril.Consequence.Firs
 
 silmaril logic_row logic.formal.row.fol
   (title := "First-order logic (unsorted), over orderSig")
-  (variant := "Unsorted first-order logic with equality; signature orderSig (zero, succ, <); structures with nonempty carriers. No derivation system yet: consistency is model existence.")
+  (variant := "Unsorted first-order logic with equality (=, relations, ⊤, ¬, ∧, ∀); signature orderSig (zero, succ, <); structures with nonempty carriers. Classical natural deduction over any signature with decidable symbols, sound for every structure; consistency of the order theory by the model ℕ.")
   (institution := "logic.institution.examples.ufol.inst")
-  (systems := [logic.formal.fol.consequence, logic.formal.fol.truth_nat])
+  (systems := [logic.formal.fol.consequence, logic.formal.fol.truth_nat, logic.formal.fol.tree.derives])
   (interpretations := [Silmaril.Consequence.FirstOrder.inStructure])
-  (presentations := [logic.formal.fol.sexp])
-  (properties := [logic.formal.fol.satisfiable, logic.formal.fol.nontrivial])
+  (presentations := [logic.formal.fol.sexp, logic.formal.fol.sequent, logic.formal.fol.proof_tree,
+    logic.formal.fol.proof_lines])
+  (properties := [logic.formal.fol.satisfiable, logic.formal.fol.nontrivial, logic.formal.fol.tree.soundness,
+    logic.formal.fol.tree.soundness_nat, logic.formal.fol.tree.consistency])
   (problems := [logic.formal.fol.succ_irrefl])
+  (derivation_systems := [logic.formal.fol.nd])
+  (derivations := [logic.formal.fol.proof.succ_irrefl, logic.formal.fol.proof.eq_symm,
+    logic.formal.fol.proof.not_a_hyp, logic.formal.fol.proof.wrong_instance, logic.formal.fol.proof.unknown_rule])
   (order := 1)
 silmaril logic_row logic.formal.row.pa
   (title := "Peano arithmetic (and Robinson's Q)")
