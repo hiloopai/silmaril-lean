@@ -53,6 +53,8 @@ try {
   check(/proved \(1\)/.test(t[3][3]) && /proved \(2\)/.test(t[3][4]) && /silmaril\.hol-light\.prop/.test(t[3][1]),
     `HOL: soundness for the standard interpretation, consistency pure and classical, the proposition presentation (${t[3][1]}, ${t[3][3]}, ${t[3][4]})`);
   check(/proved \(4\)/.test(t[4][5]), `MLTT: four consistency (nontriviality) results, bounded extensional and intensional (${t[4][5]})`);
+  check(/proved \(3\)/.test(t[4][3]) && /proved \(3\)/.test(t[4][4]) && t[4][7] === "1",
+    `MLTT: soundness for finite ZFSet towers at 1, 2, 3 universe levels; ⊢ 0 : 𝟘 not derivable at each; one problem (${t[4][3]}, ${t[4][4]}, ${t[4][7]})`);
   await shot("formal-table");
 
   // a row
@@ -91,6 +93,12 @@ try {
   check(/reflProp_derived/.test(hc) && /reflProp_true/.test(hc) && /points/.test(hc), "derived in the kernel and true at the standard point");
   await open("/formal-property/" + encodeURIComponent("logic.formal.hol.classical.consistency"), "main h2");
   check(/ConsistentWrt/.test(await p.textContent("main")) && /classicalTheory/.test(await p.textContent("main")), "HOL with the classical axioms is consistent (its statement)");
+
+  // an MLTT problem: ⊢ 0 : ℕ with one universe level
+  await open("/formal-problem/" + encodeURIComponent("logic.formal.mltt.zero"), "#fr-sexp");
+  check((await p.textContent("#fr-sexp")).trim() === "( jdg ( ctx ) nat zero zero )", "the MLTT problem's S-expression");
+  const mc = await p.textContent(".fr-claims");
+  check(/bounded_zero_derived/.test(mc) && /bounded_zero_true/.test(mc) && /boundedTowers/.test(mc), "derived by the bounded rules and true in every tower");
 
   // a property and a presentation
   await open("/formal-property/" + encodeURIComponent("logic.formal.z2.consistency"), "main h2");

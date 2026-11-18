@@ -190,7 +190,7 @@ S-expression in each format (kept in the URL). The browser suite is
 | **PA** (and Q) | ◆ `Arithmetic.Formula` (existing) | ◆ `silmaril.arithmetic.formula` v1 (default), `….words` v1; ✓ bytes round trip for every formula | ◆ `PAProof`, `QProof` (existing natural deduction); ✓ as a derivation system with checked proof trees and lines (`treeDerives_pa`, `treeDerives_q`), S-expression proofs `silmaril.derivation.tree` / `….lines` | ◆ standard model ℕ (`standard`) | ✓ `pa_soundFor`, `q_soundFor` | ✓ `pa_consistent`, `q_consistent`, `paConcrete_consistent` | ✓ `zeroAddZero`, `zeroOrSuccessor` (decoded, derived, true in ℕ) |
 | **Second-order arithmetic**: `RCA0`, `WKL0Sep` (Σ⁰₁ separation), `ACA0`, `Z2`, `Z2Full` | ◆ `SecondOrderArithmetic.Formula` (existing, named) | ◆ `silmaril.soa.formula` v1 | ◆ `Proof` (existing Hilbert), `HProof` with hypotheses | ◆ **full** standard (`full`: ℕ and every subset) and **Henkin** (`henkin S`: structures validating `S`'s axioms) | ✓ `derives_soundFor_full`, `derives_soundFor_henkin` | ✓ `consistent S` for every subsystem, `concrete_consistent` | ✓ `succNeZero` (RCA0), `comprehensionEq` (Z2) |
 | **HOL** (HOL Light kernel, initial signature) | ◆ existing; ✓ type checker `Tm.typeOf?` sound and complete | ◆ `silmaril.hol-light.prop` v1 (decode, type-check, require `bool`; errors exact: `decodeProp_eq_none_iff`), `silmaril.hol-light.term` v1 | ◆ `HOLLight.Derives` (existing), on propositions `kernel`, `kernelFrom … classicalTheory` | ◆ standard models (`points`: model in `Type u`, type valuation, assignment); `denote` of typed terms; `standardPoint` | ✓ `kernel_soundFor` | ✓ `kernel_consistent` (pure), `classical_consistent'` (ETA, SELECT, INFINITY) | ✓ `truthProp`, `reflProp` (derived, true), `emProp` (derived from the classical axioms) |
-| **MLTT** | ◆ existing | ◆ `silmaril.mltt.judgment` v1 (extensional) | ◆ existing (`ECtx.JEqB`, `ECtx.JEqH`, original intensional rules) | ◆ ZFSet towers (extensional), realizability (intensional) | ✓ existing (as inclusions) | ✓ nontriviality: extensional with 1, 2, 3 universe levels (`bounded_consistent_one/two/three`), intensional with J at every stage (`intensional_consistent`) | — |
+| **MLTT** | ◆ existing | ◆ `silmaril.mltt.judgment` v1 (extensional); ✓ `silmaril.mltt.judgment.bounded` v1 (`boundedCodec`) | ◆ existing (`ECtx.JEqB`, `ECtx.JEqH`, original intensional rules) | ◆ ZFSet towers (extensional), realizability (intensional); ✓ `boundedTowers levels`, the finite-tower interpretation at fixed low universes | ✓ `bounded_soundFor_one/two/three`; ✓ existing (as inclusions) | ✓ nontriviality: extensional with 1, 2, 3 universe levels (`bounded_consistent_one/two/three`), intensional with J at every stage (`intensional_consistent`); ✓ `⊢ 0 : 𝟘` not derivable (`bounded_empty_consistent_one/two/three`) | ✓ `⊢ 0 : ℕ` (`bounded_zero_derived`, `bounded_zero_true`) |
 
 `WKL0Sep` is RCA0 with Σ⁰₁ separation; its equivalence to weak König's lemma is not proved. `Z2`
 and `Z2Full` prove the same formulas (`z2_full_provable_iff`, existing). Full second-order
@@ -248,9 +248,12 @@ indexed derivation format will follow this format rather than invent a JSONL sch
    user signatures and constants (with a model interpreting them) are not registered yet. The
    kernel has no definition rules.
 3. **MLTT**:
-   - The standard interpretation in Lean types at fixed low universes is not done; the existing
-     models are ZFSet towers (extensional) and realizability (intensional).
-   - MLTT problems are not registered.
+   - Done: bounded extensional MLTT (1, 2, 3 universe levels) is sound for its finite ZFSet towers
+     at fixed low universes (`bounded_soundFor_*`), does not derive `⊢ 0 : 𝟘`, and has a registered
+     problem (`⊢ 0 : ℕ`, derived and true in every tower).
+   - Not done: an interpretation in Lean *types* (rather than ZFSets). The syntax is untyped and
+     derivability is a `Prop`-valued relation, so a type-valued interpretation would recurse into
+     typing derivations as data; that is a separate development, deliberately not started here.
    - Unbounded extensional MLTT is sound only relative to an assumed `SetHierarchy`, so its
      consistency is not claimed.
 4. **Derivation systems**: the framework, checkers, PA/Q instance, and registry, database and

@@ -12,6 +12,7 @@ public import Silmaril.Logic.TypeTheory.ExtensionalMLTT.SExp.Thms
 public meta import Silmaril.Logic.Consequence.Arithmetic.Thms
 public meta import Silmaril.Logic.Consequence.SecondOrder.Thms
 public meta import Silmaril.Logic.Consequence.FirstOrder.Thms
+public meta import Silmaril.Logic.Consequence.TypeTheory.Thms
 public import Silmaril.Logic.Consequence.Arithmetic.Derivation.Examples
 public import Silmaril.Logic.Consequence.FirstOrder.Derivation.Examples
 public meta import Silmaril.Logic.Consequence.FirstOrder.Derivation.Examples
@@ -50,6 +51,10 @@ def paWords := Logic.Arithmetic.SExp.wordsCodec 0
 def holPropCodec := HOL.propCodec HOL.initialSig
 /-- HOL with HOL Light's classical axioms (ETA, SELECT, INFINITY), on propositions. -/
 def holClassical := HOL.kernelFrom HOL.initialSig Logic.HOLLight.classicalTheory
+/-- `⊢ 0 : ℕ`, with one universe level. -/
+def mlttZero := Logic.TypeTheory.ExtensionalMLTT.Finite.zeroSentence 1
+/-- Bounded MLTT judgments (one universe level) as S-expressions. -/
+def mlttBounded1Codec := TypeTheory.boundedCodec 1
 /-- Extensional MLTT with one universe level (bounded rules). -/
 def mlttBounded1 := TypeTheory.boundedDerives.{1} 1
 /-- Two universe levels. -/
@@ -354,6 +359,31 @@ silmaril derivation logic.formal.fol.proof.unknown_rule := Silmaril.Consequence.
   (verdicts := [Silmaril.Consequence.FirstOrder.ND.Examples.unknownRule_rejected])
   (title := "Rejected: an unknown rule")
 
+silmaril presentation logic.formal.mltt.bounded1.sexp := Silmaril.LogicGraph.Consequence.Formal.mlttBounded1Codec
+  (title := "Bounded MLTT judgments (one universe level) as S-expressions")
+
+silmaril logic_property logic.formal.mltt.bounded1.soundness := Silmaril.Consequence.TypeTheory.bounded_soundFor_one
+  (role := "soundness") (system := "logic.formal.mltt.bounded1.derives")
+  (title := "Extensional MLTT with 1 universe level is sound for its finite ZFSet towers (Lean universe 1)")
+silmaril logic_property logic.formal.mltt.bounded2.soundness := Silmaril.Consequence.TypeTheory.bounded_soundFor_two
+  (role := "soundness") (system := "logic.formal.mltt.bounded2.derives")
+  (title := "Extensional MLTT with 2 universe levels is sound for its finite ZFSet towers (Lean universe 2)")
+silmaril logic_property logic.formal.mltt.bounded3.soundness := Silmaril.Consequence.TypeTheory.bounded_soundFor_three
+  (role := "soundness") (system := "logic.formal.mltt.bounded3.derives")
+  (title := "Extensional MLTT with 3 universe levels is sound for its finite ZFSet towers (Lean universe 3)")
+silmaril logic_property logic.formal.mltt.bounded1.no_empty :=
+    Silmaril.Consequence.TypeTheory.bounded_empty_consistent_one
+  (role := "consistency") (system := "logic.formal.mltt.bounded1.derives")
+  (title := "⊢ 0 : 𝟘 is not derivable with 1 universe level")
+silmaril logic_property logic.formal.mltt.bounded2.no_empty :=
+    Silmaril.Consequence.TypeTheory.bounded_empty_consistent_two
+  (role := "consistency") (system := "logic.formal.mltt.bounded2.derives")
+  (title := "⊢ 0 : 𝟘 is not derivable with 2 universe levels")
+silmaril logic_property logic.formal.mltt.bounded3.no_empty :=
+    Silmaril.Consequence.TypeTheory.bounded_empty_consistent_three
+  (role := "consistency") (system := "logic.formal.mltt.bounded3.derives")
+  (title := "⊢ 0 : 𝟘 is not derivable with 3 universe levels")
+
 /-! ## Concrete problems -/
 
 silmaril logic_problem logic.formal.pa.zero_add_zero := Silmaril.Consequence.Arithmetic.zeroAddZero
@@ -405,6 +435,14 @@ silmaril logic_problem logic.formal.fol.succ_irrefl := Silmaril.Consequence.Firs
   (truth := Silmaril.Consequence.FirstOrder.succIrrefl_true)
   (interpretation := "Silmaril.Consequence.FirstOrder.inStructure Silmaril.Consequence.FirstOrder.natStructure")
   (title := "∀x ¬ succ x < succ x, from the order theory in every structure")
+
+silmaril logic_problem logic.formal.mltt.zero := Silmaril.LogicGraph.Consequence.Formal.mlttZero
+  (presentation := "logic.formal.mltt.bounded1.sexp")
+  (derived := Silmaril.Consequence.TypeTheory.bounded_zero_derived)
+  (system := "logic.formal.mltt.bounded1.derives")
+  (truth := Silmaril.Consequence.TypeTheory.bounded_zero_true)
+  (interpretation := "Silmaril.Consequence.TypeTheory.boundedTowers.{1} 1")
+  (title := "⊢ 0 : ℕ with one universe level: derived, and true in every tower")
 
 /-! ## Rows -/
 
@@ -469,13 +507,16 @@ silmaril logic_row logic.formal.row.hol
   (order := 4)
 silmaril logic_row logic.formal.row.mltt
   (title := "Martin-Löf type theory: extensional (bounded universes) and intensional (original rules)")
-  (variant := "Extensional MLTT (Π, Σ, ℕ, 𝟎, 𝟏, identity with reflection, cumulative universes): consistent with 1, 2 or 3 universe levels, relative to Lean and ZFSet towers at Lean universes 1–3 (no inaccessibles assumed); the unbounded system is sound for assumed set hierarchies, whose existence is not proved, so its consistency is not claimed. Intensional MLTT (Martin-Löf's original rules with J, unbounded cumulative universes): consistent at every stage, by term realizability (a syntactic model, not a Lean-type model). Consistency here is nontriviality: some judgment is not derivable. A standard interpretation in Lean types at fixed low universes is not done yet.")
+  (variant := "Extensional MLTT (Π, Σ, ℕ, 𝟎, 𝟏, identity with reflection, cumulative universes): consistent with 1, 2 or 3 universe levels, relative to Lean and ZFSet towers at Lean universes 1–3 (no inaccessibles assumed); the unbounded system is sound for assumed set hierarchies, whose existence is not proved, so its consistency is not claimed. Intensional MLTT (Martin-Löf's original rules with J, unbounded cumulative universes): consistent at every stage, by term realizability (a syntactic model, not a Lean-type model). Consistency here is nontriviality: some judgment is not derivable. The bounded systems are sound for their standard set-theoretic interpretation, finite ZFSet towers at fixed low universes, and do not derive ⊢ 0 : 𝟘. A standard interpretation in Lean types (rather than ZFSets) is not done: it needs a dependent interpretation of typing derivations.")
   (systems := [logic.formal.mltt.bounded1.derives, logic.formal.mltt.bounded2.derives,
     logic.formal.mltt.bounded3.derives, logic.consequence.mltt.extensional.derives,
     logic.consequence.mltt.extensional.entails, logic.consequence.mltt.intensional.derives,
     logic.consequence.mltt.intensional.entails])
-  (presentations := [logic.formal.mltt.sexp])
+  (presentations := [logic.formal.mltt.sexp, logic.formal.mltt.bounded1.sexp])
   (properties := [logic.formal.mltt.bounded1.consistency, logic.formal.mltt.bounded2.consistency,
     logic.formal.mltt.bounded3.consistency, logic.formal.mltt.intensional.consistency,
-    logic.formal.mltt.extensional.soundness, logic.formal.mltt.intensional.soundness])
+    logic.formal.mltt.extensional.soundness, logic.formal.mltt.intensional.soundness,
+    logic.formal.mltt.bounded1.soundness, logic.formal.mltt.bounded2.soundness, logic.formal.mltt.bounded3.soundness,
+    logic.formal.mltt.bounded1.no_empty, logic.formal.mltt.bounded2.no_empty, logic.formal.mltt.bounded3.no_empty])
+  (problems := [logic.formal.mltt.zero])
   (order := 5)
