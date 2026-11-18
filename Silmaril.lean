@@ -54,6 +54,9 @@ public import Silmaril.Calculi
 -- SSA calculi, λRTL and the SSA-form machine RTL (docs/projects/ssa.md).
 public import Silmaril.Calculi.Dataflow.Thms
 public import Silmaril.Machine.LambdaRTLLir.Thms
+public import Silmaril.Machine.Vex.CFG.Defs
+public import Silmaril.Machine.Vex.CFG.Rows.Thms
+public import Silmaril.Machine.Vex.Validate.Thms
 public import Silmaril.Machine.OfLambdaSSA.Thms
 public import Silmaril.Machine.RTL.Thms
 public import Silmaril.SSA.Isotope.Thms

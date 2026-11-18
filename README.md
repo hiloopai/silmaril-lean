@@ -85,6 +85,7 @@ longer proofs under `Silmaril/Proofs/`.
 - [WAT quotations in Lean](docs/projects/wasm-wat.md): `wat1!`, `watLime!`, `wat3!` and expression forms
 - [Versioned Wasm execution models](docs/projects/wasm-semantics.md)
 - [Compiler and pass APIs](docs/projects/compilers.md)
+- [AMD64Scalar VEX translation validation](docs/projects/vex.md)
 - [Institutions and logics](docs/projects/logic.md): HOL, Metamath, ZF/ZFC,
   arithmetic and Hets-style development graphs
 - [Lambda cube and parametricity](docs/projects/lambda-cube.md): all eight pure type systems,

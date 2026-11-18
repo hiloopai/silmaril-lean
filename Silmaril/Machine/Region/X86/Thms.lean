@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Machine.Region.X86.Defs
 public import Silmaril.Semantics.Region.Semantic.Thms
+public import Silmaril.Semantics.Region.Simulation.Defs
 import Silmaril.Proofs.Machine.Region.X86
 
 @[expose] public section
@@ -9,6 +10,21 @@ namespace Silmaril.Machine.Region.X86
 open Silmaril.Semantics.Region
 open Silmaril.X86 (MState Word)
 open Silmaril.X86.Decompile
+
+theorem system_step_unique {ret : Word} {s t u : MState} {es fs : List Empty}
+    (step : (system ret).step s es t) (other : (system ret).step s fs u) : es = fs ∧ t = u :=
+  ⟨step.1.trans other.1.symm, Silmaril.X86.Ext.Outcome.retired.inj (step.2.symm.trans other.2)⟩
+
+theorem system_determinate (ret : Word) : Determinate (system ret) :=
+  ⟨system_step_unique, fun step halt => halt.2 _ (halt.1.symm.trans step.2)⟩
+
+/-- Reuse the actual fetch/execute boundary for instructions that are not RET. -/
+theorem system_retire {ret : Word} {s t : MState} {instr : Silmaril.X86.Ext.Instr} {size : Nat}
+    (fetch : Silmaril.X86.Ext.fetch s.memory s.core.rip.toNat = .decoded instr size)
+    (exec : Silmaril.X86.Ext.exec instr s.core s.memory = .ok t.core t.memory)
+    (nonreturn : instr ≠ .ret) : (system ret).step s [] t := by
+  refine ⟨rfl, ?_⟩
+  simp [Silmaril.X86.Ext.step, fetch, exec, nonreturn]
 
 theorem instruction_sound {d : Decoded} {s core : Silmaril.X86.State}
     {memory memory' : Silmaril.Process.Memory}

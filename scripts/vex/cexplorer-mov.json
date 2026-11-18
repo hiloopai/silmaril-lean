@@ -1,0 +1,22 @@
+{
+  "schema": "silmaril.compiler-explorer.problem/1",
+  "id": "vex-mov-jump-evidence",
+  "lean": {"modules": ["Silmaril.Machine.Vex.X86.MovJump.Examples"]},
+  "obligations": [
+    {
+      "id": "loaded-mov-jump-fixture",
+      "decl": "Silmaril.Machine.Vex.AMD64Scalar.MovJump.fixture_agreement",
+      "statement": "open Silmaril.Machine.Vex.AMD64Scalar Silmaril.Machine.Vex.AMD64Scalar.MovJump Silmaril.Machine.Vex.Fixtures in ∀ (completion : Bool) (ret : Silmaril.X86.Word), ∃ (initial final : Silmaril.X86.MState) (pair : Pair), validate 0x1000 movBytes movLift = .ok pair ∧ initial.core.rip = 0x1000 ∧ movFixture.code.LoadedIn initial.memory ∧ Silmaril.Semantics.Region.ExitsNormally (Silmaril.Machine.Region.X86.system ret) movFixture.support initial [] final ∧ pair.target.run (project completion initial) = .ok (project completion final) ∧ final.core.read .rax = 42 ∧ final.core.rip = 0x1005"
+    },
+    {
+      "id": "mov-jump-region-exit",
+      "decl": "Silmaril.Machine.Vex.AMD64Scalar.MovJump.Fragment.region_sound",
+      "statement": "open Silmaril.Machine.Vex.AMD64Scalar Silmaril.Machine.Vex.AMD64Scalar.MovJump in ∀ (fragment : Fragment), fragment.Guard → ∀ (ret : Silmaril.X86.Word), Silmaril.Semantics.Region.Sound (Silmaril.Machine.Region.X86.system ret) (fun initial => initial.core.rip = fragment.base ∧ fragment.code.LoadedIn initial.memory) fragment.support (· = fragment.target.toNat)"
+    },
+    {
+      "id": "mov-jump-named-root-agreement",
+      "decl": "Silmaril.Machine.Vex.AMD64Scalar.MovJump.Fragment.validated_beh",
+      "statement": "open Silmaril.Machine.Vex.AMD64Scalar Silmaril.Machine.Vex.AMD64Scalar.MovJump in ∀ (fragment : Fragment), fragment.Guard → ∀ (completion : Bool) (ret : Silmaril.X86.Word) {raw : Silmaril.Machine.Vex.Raw.Block} {pair : Pair}, validate fragment.base fragment.bytes raw = .ok pair → ∀ {initial : Silmaril.X86.MState}, initial.core.rip = fragment.base → fragment.code.LoadedIn initial.memory → ∃ final, Silmaril.Semantics.Region.ExitsNormally (Silmaril.Machine.Region.X86.system ret) fragment.support initial [] final ∧ ∀ outcome, (targetSem pair.target).Beh (project completion initial) outcome ↔ outcome = .returned (project completion final)"
+    }
+  ]
+}
