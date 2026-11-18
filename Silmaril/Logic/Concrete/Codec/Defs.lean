@@ -116,6 +116,21 @@ where
       conv => rhs; rw [← List.map_id es]
       exact List.map_congr_left fun e _ => mapAtoms_inv σ e
 
+/-- **A presentation from a reader** that inverts the encoder: decoding reads, then keeps only
+the canonical form, so it accepts exactly the encodings. -/
+def ofReader (name version : String) (encode : A → SE) (read : SE → Option A)
+    (h : ∀ a, read (encode a) = some a) : SExpCodec A where
+  name := name
+  version := version
+  encode := encode
+  decode e := (read e).bind fun a => if encode a = e then some a else none
+  decode_eq_some_iff e a := by
+    constructor
+    · intro hd
+      obtain ⟨b, _, hb⟩ := Option.bind_eq_some_iff.1 hd
+      split at hb <;> simp_all
+    · rintro rfl; simp [h]
+
 end SExpCodec
 
 end Silmaril.Logic.Concrete

@@ -28,6 +28,50 @@ S-expression morphism. `SExpCodec.Induces c₁ c₂ m f` states that an S-expres
 map `f` of abstract syntax; this is the shape of the institution morphisms that are simple
 S-expression morphisms, with no claim that every morphism has it.
 
+## Derivation systems (`Silmaril.Logic.Consequence.Derivation`)
+
+A **derivation system** `D : DerivationSystem J` has rule labels `D.Rule` and rule instances
+`D.Instance r ps c` (rule `r` concludes `c` from the premises `ps`). A label names a rule
+*instance*, with the data it needs, so checking one step is decidable.
+
+| notion | Lean | reading |
+|---|---|---|
+| proof objects | `ProofTree R J` (`assume j`, `infer r c ts`); `Line R J` (`assume j`, `infer r c prems`) | trees, and indexed lines citing earlier lines by position (the Alethe / NDJSON shape) |
+| validity | `D.Valid Γ t`, `D.LinesValid Γ prev ls` | every leaf in `Γ`; every node an instance of its rule |
+| consequence | `D.derives : System (List J) J`, `D.proofs` (a `WSystem`), `D.linearDerives` | some valid proof from `Γ` concludes `c` |
+| checker | `D.check`, `D.checkLines`; `check_iff`, `checkLines_iff` | Boolean checkers that decide validity exactly |
+| structure | `derives_closed` | identity, weakening along `⊆`, multi-cut (by grafting proofs onto leaves) |
+| formats agree | `linearDerives_eq` (`ProofTree.lines` flattens a tree) | lines and trees derive the same judgments |
+| soundness | `LocallySound sat` ⇒ `derives_soundFor : D.derives.SoundFor (listSat M sat)` | every rule preserves truth in each model |
+| consistency | `consistentWrt_of_locallySound` | a model of `Γ` falsifying `ff` |
+| elaboration | `ProofTree.elaborate`, `Line.elaborate`; `derives_of_elaborate`, `derives_of_elaborateLines` | raw labels (a rule name and a few arguments) become rule labels by an *untrusted* function; the result is checked |
+
+**Proof formats** (`Silmaril.Logic.Consequence.Derivation.SExp`), generic in the presentation of
+judgments; the readers invert the encoders, so both are presentations (`SExpCodec`):
+
+```
+silmaril.derivation.tree  v1:  tree ::= (assume J) | (infer RULE J tree*)
+silmaril.derivation.lines v1:  (proof line*)   line ::= (assume J) | (infer RULE J (i*))
+```
+
+**PA and Q** (`Silmaril.Logic.Consequence.Arithmetic.Derivation`): judgments `Seq` (`Γ ⊢ φ` with
+`n` variables, presentation `silmaril.arithmetic.sequent` v1: `(seq n (φ*) ψ)`); rule instances
+`Rule n` (every rule of `Derivation`, each determining its premises and conclusion; side
+conditions for `hyp`, `weaken` and the theory's axioms).
+
+* `locallySound_derivable`, `locallySound_valid`: every rule instance is a `Derivation` step, and
+  valid in ℕ.
+* `treeDerives_pa : treeDerives .pa = paDerives`, `treeDerives_q : treeDerives .q = qDerives`:
+  tree-checked proofs derive exactly what the existing natural deduction derives.
+* `treeDerives_soundFor`, `pa_tree_consistent`, `q_tree_consistent`.
+* `checkTree`, `checkLines` (and `…Bytes`): decode, elaborate (`elabRule`), check; rejections
+  name the stage (`syntax`, `elaboration`, `check`, `empty`). `checkTree_sound`,
+  `checkLines_sound`: an accepted proof is a derivation.
+* Kernel-checked examples (`…Derivation.Examples`): `⊢ 0 + 0 = 0`; `∀`-elimination (trees and
+  lines); `⊢ ∀x ∀y. x = y → y = x`; `⊢ ∀x. 0 + x = x` **by induction** (PA accepts; Q rejects);
+  six rejections (wrong axiom conclusion, unknown rule, missing hypothesis, forward citation, empty
+  lines, not a proof) and byte-level syntax errors.
+
 ## Registry and explorer
 
 Four record kinds (`Silmaril.Project.Registry.Formal.Defs`). In each, Lean checks the claim from
@@ -54,7 +98,7 @@ presentations and keeps the choice in the URL. The browser suite is
 | row | abstract syntax | presentations | derivation (proof objects) | interpretation | soundness | consistency | concrete problems |
 |---|---|---|---|---|---|---|---|
 | **FOL** (unsorted; signature `orderSig`) | ◆ `UFOL.Formula` (existing) | ◆ `silmaril.fol.formula` v1 over named signatures (arity-checked; `decodeFormula_eq_some_iff` ✓) | — none yet | ◆ one specified structure (`inStructure natStructure`, ℕ) and all structures (`consequence`) | — (no derivations) | ✓ model existence `orderTheory_satisfiable`; ✓ nontrivial consequence `orderTheory_nontrivial` | ✓ `orderTheory_entails_succIrrefl` (every structure), `succIrrefl_true` (ℕ) |
-| **PA** (and Q) | ◆ `Arithmetic.Formula` (existing) | ◆ `silmaril.arithmetic.formula` v1 (default), `….words` v1; ✓ bytes round trip for every formula | ◆ `PAProof`, `QProof` (existing natural deduction) | ◆ standard model ℕ (`standard`) | ✓ `pa_soundFor`, `q_soundFor` | ✓ `pa_consistent`, `q_consistent`, `paConcrete_consistent` | ✓ `zeroAddZero`, `zeroOrSuccessor` (decoded, derived, true in ℕ) |
+| **PA** (and Q) | ◆ `Arithmetic.Formula` (existing) | ◆ `silmaril.arithmetic.formula` v1 (default), `….words` v1; ✓ bytes round trip for every formula | ◆ `PAProof`, `QProof` (existing natural deduction); ✓ as a derivation system with checked proof trees and lines (`treeDerives_pa`, `treeDerives_q`), S-expression proofs `silmaril.derivation.tree` / `….lines` | ◆ standard model ℕ (`standard`) | ✓ `pa_soundFor`, `q_soundFor` | ✓ `pa_consistent`, `q_consistent`, `paConcrete_consistent` | ✓ `zeroAddZero`, `zeroOrSuccessor` (decoded, derived, true in ℕ) |
 | **Second-order arithmetic**: `RCA0`, `WKL0Sep` (Σ⁰₁ separation), `ACA0`, `Z2`, `Z2Full` | ◆ `SecondOrderArithmetic.Formula` (existing, named) | ◆ `silmaril.soa.formula` v1 | ◆ `Proof` (existing Hilbert), `HProof` with hypotheses | ◆ **full** standard (`full`: ℕ and every subset) and **Henkin** (`henkin S`: structures validating `S`'s axioms) | ✓ `derives_soundFor_full`, `derives_soundFor_henkin` | ✓ `consistent S` for every subsystem, `concrete_consistent` | ✓ `succNeZero` (RCA0), `comprehensionEq` (Z2) |
 | **HOL** (HOL Light kernel, initial signature) | ◆ existing; ✓ type checker `Tm.typeOf?` sound and complete | ◆ `silmaril.hol-light.prop` v1 (decode, type-check, require `bool`; errors exact: `decodeProp_eq_none_iff`), `silmaril.hol-light.term` v1 | ◆ `HOLLight.Derives` (existing), on propositions `kernel`, `kernelFrom … classicalTheory` | ◆ standard models (`points`: model in `Type u`, type valuation, assignment); `denote` of typed terms; `standardPoint` | ✓ `kernel_soundFor` | ✓ `kernel_consistent` (pure), `classical_consistent'` (ETA, SELECT, INFINITY) | ✓ `truthProp`, `reflProp` (derived, true), `emProp` (derived from the classical axioms) |
 | **MLTT** | ◆ existing | ◆ `silmaril.mltt.judgment` v1 (extensional) | ◆ existing (`ECtx.JEqB`, `ECtx.JEqH`, original intensional rules) | ◆ ZFSet towers (extensional), realizability (intensional) | ✓ existing (as inclusions) | ✓ nontriviality: extensional with 1, 2, 3 universe levels (`bounded_consistent_one/two/three`), intensional with J at every stage (`intensional_consistent`) | — |
@@ -118,10 +162,12 @@ indexed derivation format will follow this format rather than invent a JSONL sch
    - MLTT problems are not registered.
    - Unbounded extensional MLTT is sound only relative to an assumed `SetHierarchy`, so its
      consistency is not claimed.
-4. **Derivation systems**: explicit derivation objects with rule instances, a checker and
-   soundness, integrated with `System`/`WSystem` and institutions, and explorable.
+4. **Derivation systems**: the framework, checkers and PA/Q instance are done (above). Not yet
+   done: second-order arithmetic, HOL and MLTT as derivation systems; derivation-system morphisms;
+   registry, database and explorer pages for derivation systems and proofs.
 5. **Proof formats**:
-   - an S-expression derivation syntax;
-   - Lean-NDJSON indexed derivations, with reference validation and a checked translation;
-   - a documented Alethe fragment with an adapter that rejects unsupported rules.
+   - the S-expression tree and lines formats are done, with PA/Q elaboration;
+   - Lean-NDJSON (lean4export 3.1.0 files of real derivation declarations, decoded with
+     reference validation and independently checked) is not done;
+   - a documented Alethe fragment with an adapter that rejects unsupported rules is not done.
 6. Standard JSON and DASL syntaxes are future plans, outside this scope.
