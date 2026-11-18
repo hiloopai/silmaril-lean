@@ -90,8 +90,9 @@ lean-ndjson-check:
 	scripts/lean-ndjson/export-fixtures.sh --check
 
 json-loading-check:
-	$(LAKE) build --wfail Silmaril.Formats.Json.Fast.Elab
+	$(LAKE) build --wfail Silmaril.Formats.Json.Fast.Elab +Silmaril.Formats.Json.Fast.Parser.Wire.Thms
 	$(LAKE) env lean -DautoImplicit=false -E warning tests/json-loading/Regression.lean
+	$(LAKE) env lean -DautoImplicit=false -E warning tests/json-loading/ParserProofs.lean
 
 # The compiler explorer end to end: the exporter on every manifest, the statuses against
 # examples/compiler-explorer/expected-status.txt, the database and view tests

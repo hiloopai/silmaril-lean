@@ -81,6 +81,25 @@ theorem tokensOf_number {w : List Char} (hw : NumberChars w) {X : List Char}
     ∃ n, tokensOf (w ++ X) = (tokensOf X).map (.number n :: ·) :=
   Silmaril.Proofs.Formats.JsonWire.Lexer.tokensOf_number hw hX
 
+/-- The lexer preserves the exact number payload read by `decimal?`. -/
+theorem tokensOf_number_exact {w X : List Char} {number : Number}
+    (parsed : decimal? .rfc8259 w = some number)
+    (follow : ∀ char ∈ X.head?, delimiter .rfc8259 char = true) :
+    tokensOf (w ++ X) = (tokensOf X).map (.number number :: ·) :=
+  Silmaril.Proofs.Formats.JsonWire.Lexer.tokensOf_number_exact parsed follow
+
+theorem tokensOf_literal {w : List Char} {tok : Token} (word : w = "true".toList ∧ tok = .bool true ∨
+    w = "false".toList ∧ tok = .bool false ∨ w = "null".toList ∧ tok = .null) {rest : List Char}
+    (follows : ∀ c ∈ rest.head?, delimiter .rfc8259 c = true) :
+    tokensOf (w ++ rest) = (tokensOf rest).map (tok :: ·) :=
+  Silmaril.Proofs.Formats.JsonWire.Lexer.tokensOf_literal word follows
+
+theorem tokensOf_punct {c : Char} {tok : Token} (punct : c = '[' ∧ tok = .arrayOpen ∨
+    c = ']' ∧ tok = .arrayClose ∨ c = '{' ∧ tok = .objectOpen ∨ c = '}' ∧ tok = .objectClose ∨
+    c = ',' ∧ tok = .comma ∨ c = ':' ∧ tok = .colon) (rest : List Char) :
+    tokensOf (c :: rest) = (tokensOf rest).map (tok :: ·) :=
+  Silmaril.Proofs.Formats.JsonWire.Lexer.tokensOf_punct punct rest
+
 /-- `quoted?` reads a string body up to its closing quote. -/
 theorem quoted?_sound {fuel : Nat} {cs rest : List Char} {u : Units}
     (h : quoted? .rfc8259 '"' fuel cs = some (u, rest)) : ∃ b, cs = b ++ '"' :: rest ∧ StrBody b :=

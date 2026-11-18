@@ -127,6 +127,22 @@ maximum over the measured Lean phases, not their sum.
 The monolithic baseline is the `agreement` row of `run.py --case medium --seconds 20`.
 The 35 KiB linked query selects the final entry by ordinal (not by hash index) after import. The
 certificate succeeds below the memory cap but is not a faster implementation of `SourceMatches`.
+
+## Applying production parser soundness
+
+Import `Silmaril.Formats.Json.Fast.Parser.Wire.Thms` to use
+`Json.Fast.parseBytes_sound`. Given `parseBytes bytes limits = .ok result`, it
+provides the exact ordered wire AST both for `result.toWire? limits.depth` and
+for the independent `JsonWire.parse? ⟨bytes⟩`. `parseBytes_isJson` transfers the
+same successful-read proof to the RFC byte grammar. These are success theorems,
+not completeness (the fast reader has limits and rejects lone surrogates).
+
+For a precomputed term, obtain the successful-read equality separately, for
+example with `SourceMatches` and `json_source` as in
+`tests/json-loading/ParserProofs.lean`. Neither typing the term nor applying
+soundness supplies that equality. The proof modules leave the production
+reader unchanged and do not remove the measured kernel cost of establishing
+the input-specific equality.
 The wide run did not get as far as byte linking: even small independent fragments still pay to
 reduce the text parser and check their decoded values. The next architecture to test is a
 lexical-event checker over packed spans, proving token decoding and ordered AST assembly
