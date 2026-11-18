@@ -98,6 +98,10 @@ pub enum Record {
     LogicPending(LogicPending),
     LogicCatalogue(LogicCatalogue),
     LogicExclusion(LogicExclusion),
+    Presentation(Presentation),
+    LogicProperty(LogicProperty),
+    LogicProblem(LogicProblem),
+    LogicRow(LogicRow),
     Machine(Box<Machine>),
     MachineBinding(MachineBinding),
     LanguageDomain(LanguageDomain),
@@ -156,6 +160,10 @@ record_kinds! {
     LogicPending = "logic_pending", key name, object None;
     LogicCatalogue = "logic_catalogue", key name, object None;
     LogicExclusion = "logic_exclusion", key name, object None;
+    Presentation = "presentation", key name, object None;
+    LogicProperty = "logic_property", key name, object None;
+    LogicProblem = "logic_problem", key name, object None;
+    LogicRow = "logic_row", key name, object None;
     Machine = "machine", key name, object Some("machine");
     MachineBinding = "machine_binding", key name, object None;
     LanguageDomain = "language_domain", key name, object Some("language_domain");
@@ -278,6 +286,7 @@ macro_rules! table {
 pub mod artifacts;
 pub mod consequence;
 pub mod dag;
+pub mod formal;
 pub mod languages;
 pub mod logic;
 pub mod machines;
@@ -291,6 +300,7 @@ pub mod values;
 pub use artifacts::*;
 pub use consequence::*;
 pub use dag::*;
+pub use formal::*;
 pub use languages::*;
 pub use logic::*;
 pub use machines::*;
@@ -461,6 +471,10 @@ pub fn tables() -> Vec<TableInfo> {
         info::<LogicPending>(),
         info::<LogicCatalogue>(),
         info::<LogicExclusion>(),
+        info::<Presentation>(),
+        info::<LogicProperty>(),
+        info::<LogicProblem>(),
+        info::<LogicRow>(),
         info::<Machine>(),
         info::<MachineBinding>(),
         info::<LanguageDomain>(),

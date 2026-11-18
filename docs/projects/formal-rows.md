@@ -28,6 +28,25 @@ S-expression morphism. `SExpCodec.Induces c₁ c₂ m f` states that an S-expres
 map `f` of abstract syntax; this is the shape of the institution morphisms that are simple
 S-expression morphisms, with no claim that every morphism has it.
 
+## Registry and explorer
+
+Four record kinds (`Silmaril.Project.Registry.Formal.Defs`). In each, Lean checks the claim from
+the theorem's **type**, never from its name:
+
+| kind | Lean checks | the record keeps |
+|---|---|---|
+| `presentation N := c` | `c : SExpCodec A` | the codec's own name and version (reduced from `c`), `A`, default flag |
+| `logic_property N := t (role := r) (system := S)` | `t`'s statement has the role's shape for the registered system: soundness `System.SoundFor S I`, consistency `System.ConsistentWrt S ff Γ`, nontriviality `System.ContextConsistent S Γ`, satisfiability `Room.Satisfiable` / `Satisfaction.Satisfiable`, inclusion `S ≤ T` | statement, interpretation / falsity / context, axioms |
+| `logic_problem N := φ (presentation := P)` | each claim theorem is about `φ`: `S Γ φ` (derived, entailed) or `I.satC m φ` (true) | the S-expression of `φ` in every registered presentation of its abstract syntax, computed by running the printers |
+| `logic_row N` | every referenced record exists | systems, interpretations, presentations, properties, problems, variant |
+
+`Silmaril.LogicGraph.Consequence.Formal.Defs` registers five rows: FOL, PA, second-order
+arithmetic, HOL and extensional MLTT. The explorer page `#/formal/` puts them in a table, with
+FOL, PA and second-order arithmetic first. `#/formal-row/<name>` shows one row; problems,
+properties and presentations each have a page of their own. A problem's page switches between
+presentations and keeps the choice in the URL. The browser suite is
+`tools/silmaril-project/tests/explore/formal.mjs`.
+
 ## Acceptance matrix
 
 ✓ proved · ◆ defined · ◇ conditional (on a stated hypothesis) · — not done
@@ -88,8 +107,9 @@ indexed derivation format will follow this format rather than invent a JSONL sch
 
 ## Not done yet (exact obligations)
 
-1. **Registry and explorer** for these rows, their presentations, interpretations and problems,
-   with the roles of the soundness and consistency theorems type-checked.
+1. HOL and MLTT rows state their consistency in this framework: the library's
+   `HOLLight.classical_consistent` and `ECtx.JEqB.consistent_one` are not yet
+   `System.ConsistentWrt` statements.
 2. **A FOL derivation system** with proof objects and soundness, generalizing
    `Arithmetic.Derivation` to an arbitrary signature.
 3. **HOL**:

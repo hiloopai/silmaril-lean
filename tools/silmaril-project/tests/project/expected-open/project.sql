@@ -320,6 +320,68 @@ CREATE TABLE logic_exclusions(
   module TEXT NOT NULL,
   origin TEXT NOT NULL
 );
+CREATE TABLE presentations(
+  name TEXT NOT NULL PRIMARY KEY,
+  decl TEXT NOT NULL,
+  abstract_type TEXT NOT NULL,
+  codec_name TEXT NOT NULL,
+  codec_version TEXT NOT NULL,
+  is_default INTEGER NOT NULL,
+  title TEXT,
+  doc TEXT,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL
+);
+CREATE TABLE logic_properties(
+  name TEXT NOT NULL PRIMARY KEY,
+  decl TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('soundness','consistency','nontriviality','satisfiability','inclusion')),
+  system TEXT,
+  target TEXT,
+  arg TEXT,
+  statement TEXT NOT NULL,
+  interpretation TEXT,
+  falsity TEXT,
+  context TEXT,
+  axioms TEXT NOT NULL,
+  title TEXT,
+  doc TEXT,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL
+);
+CREATE TABLE logic_problems(
+  name TEXT NOT NULL PRIMARY KEY,
+  decl TEXT NOT NULL,
+  presentation TEXT NOT NULL,
+  sexp TEXT NOT NULL,
+  renderings TEXT NOT NULL,
+  sentence TEXT NOT NULL,
+  system TEXT,
+  entailed_by TEXT,
+  interpretation TEXT,
+  derived TEXT NOT NULL,
+  entailed TEXT NOT NULL,
+  truth TEXT NOT NULL,
+  title TEXT,
+  doc TEXT,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL
+);
+CREATE TABLE logic_rows(
+  name TEXT NOT NULL PRIMARY KEY,
+  title TEXT NOT NULL,
+  variant TEXT,
+  institution TEXT,
+  systems TEXT NOT NULL,
+  interpretations TEXT NOT NULL,
+  presentations TEXT NOT NULL,
+  properties TEXT NOT NULL,
+  problems TEXT NOT NULL,
+  row_order INTEGER,
+  doc TEXT,
+  module TEXT NOT NULL,
+  origin TEXT NOT NULL
+);
 CREATE TABLE machines(
   sid TEXT NOT NULL PRIMARY KEY,
   name TEXT NOT NULL,

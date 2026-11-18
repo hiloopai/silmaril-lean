@@ -210,6 +210,71 @@ pub(super) fn follow<'a>(
                 logic_fact_check("corridor", &x.facts, &at, o);
             }
             Record::LogicCatalogue(c) => catalogue_check(c, &at, &mut refs, o),
+            Record::LogicProperty(p) => {
+                if !PROPERTY_ROLES.contains(&p.role.as_str()) {
+                    o.error(
+                        &at,
+                        format!(
+                            "role {:?} is not one of {}",
+                            p.role,
+                            PROPERTY_ROLES.join(", ")
+                        ),
+                    );
+                }
+                refs.extend(
+                    p.system
+                        .iter()
+                        .map(|s| ("system", "consequence_system", s.clone())),
+                );
+                refs.extend(
+                    p.target
+                        .iter()
+                        .map(|s| ("target", "consequence_system", s.clone())),
+                );
+            }
+            Record::LogicProblem(p) => {
+                refs.push(("presentation", "presentation", p.presentation.clone()));
+                refs.extend(
+                    p.system
+                        .iter()
+                        .map(|s| ("system", "consequence_system", s.clone())),
+                );
+                refs.extend(
+                    p.entailed_by
+                        .iter()
+                        .map(|s| ("entailed_by", "consequence_system", s.clone())),
+                );
+                if p.derived.is_null() && p.entailed.is_null() && p.truth.is_null() {
+                    o.error(
+                        &at,
+                        "a problem states at least one claim (derived, entailed or truth)",
+                    );
+                }
+            }
+            Record::LogicRow(r) => {
+                let list = |v: &serde_json::Value| -> Vec<String> {
+                    v.as_array()
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(|x| x.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                };
+                for (key, kind, v) in [
+                    ("systems", "consequence_system", &r.systems),
+                    ("presentations", "presentation", &r.presentations),
+                    ("properties", "logic_property", &r.properties),
+                    ("problems", "logic_problem", &r.problems),
+                ] {
+                    refs.extend(list(v).into_iter().map(|n| (key, kind, n)));
+                }
+                refs.extend(
+                    r.institution
+                        .iter()
+                        .map(|s| ("institution", "institution", s.clone())),
+                );
+            }
             Record::LogicExclusion(x) => {
                 if !EXCLUSION_CATEGORIES.contains(&x.category.as_str()) {
                     o.error(
