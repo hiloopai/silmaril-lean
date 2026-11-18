@@ -39,12 +39,15 @@ try {
   await p.click('#nav a[href="#/formal"]'); await p.waitForSelector("#fr-rows", { timeout: 60000 }); await settle();
   const t = await rows("#fr-rows");
   check(t.length === 5, `five logics (${t.length})`);
-  check(/First-order/.test(t[0][0]) && /Peano/.test(t[1][0]) && /Second-order/.test(t[2][0]) && /HOL/.test(t[3][0]) && /MLTT/.test(t[4][0]),
+  check(/First-order/.test(t[0][0]) && /Peano/.test(t[1][0]) && /Second-order/.test(t[2][0]) && /HOL/.test(t[3][0]) && /Martin-Löf/.test(t[4][0]),
     `first-order logic, PA and second-order arithmetic come first (${t.map((r) => r[0].slice(0, 20))})`);
   check(/proved \(2\)/.test(t[1][3]) && /proved \(3\)/.test(t[1][4]), `PA: soundness ×2, consistency ×3 (${t[1][3]}, ${t[1][4]})`);
   check(/proved \(8\)/.test(t[2][3]) && /proved \(5\)/.test(t[2][4]), `second order: soundness ×8 (full and Henkin), consistency ×5 (${t[2][3]}, ${t[2][4]})`);
   check(t[0][3] === "—" && /proved \(1\)/.test(t[0][4]) && /proved \(1\)/.test(t[0][5]), `FOL: no soundness (no derivations), consistency of consequence and a model (${t[0][3]}, ${t[0][4]}, ${t[0][5]})`);
   check(/silmaril\.fol\.formula/.test(t[0][1]) && /silmaril\.arithmetic\.formula/.test(t[1][1]) && /\+1/.test(t[1][1]), "default presentations, PA with a second one");
+  check(/proved \(1\)/.test(t[3][3]) && /proved \(2\)/.test(t[3][4]) && /silmaril\.hol-light\.prop/.test(t[3][1]),
+    `HOL: soundness for the standard interpretation, consistency pure and classical, the proposition presentation (${t[3][1]}, ${t[3][3]}, ${t[3][4]})`);
+  check(/proved \(4\)/.test(t[4][5]), `MLTT: four consistency (nontriviality) results, bounded extensional and intensional (${t[4][5]})`);
   await shot("formal-table");
 
   // a row
@@ -74,6 +77,15 @@ try {
   check((await p.textContent("#fr-sexp")).trim() === "( = ( add zero zero ) zero )", "a deep link opens the chosen presentation");
   await open("/formal-problem/" + encodeURIComponent("logic.formal.fol.succ_irrefl"), "#fr-sexp");
   check(/rel < \( app succ/.test(await p.textContent("#fr-sexp")) && /a semantic consequence/.test(await p.textContent(".fr-claims")), "the first-order problem: entailed in every structure, true in ℕ");
+
+  // a HOL problem: decoded and type-checked, derived in the kernel, true at the standard point
+  await open("/formal-problem/" + encodeURIComponent("logic.formal.hol.refl"), "#fr-sexp");
+  const hs = (await p.textContent("#fr-sexp")).trim();
+  check(/^\( app \( app \( = bool \) \( fvar 0 bool \) \) \( fvar 0 bool \) \)$/.test(hs), `the HOL problem's S-expression (${hs})`);
+  const hc = await p.textContent(".fr-claims");
+  check(/reflProp_derived/.test(hc) && /reflProp_true/.test(hc) && /points/.test(hc), "derived in the kernel and true at the standard point");
+  await open("/formal-property/" + encodeURIComponent("logic.formal.hol.classical.consistency"), "main h2");
+  check(/ConsistentWrt/.test(await p.textContent("main")) && /classicalTheory/.test(await p.textContent("main")), "HOL with the classical axioms is consistent (its statement)");
 
   // a property and a presentation
   await open("/formal-property/" + encodeURIComponent("logic.formal.z2.consistency"), "main h2");
