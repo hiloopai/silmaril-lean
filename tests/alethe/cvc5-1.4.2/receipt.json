@@ -1,0 +1,110 @@
+{
+  "producer": "cvc5 1.4.2 [git 282d5e0 on branch HEAD], official static Linux x86-64 release",
+  "archive": {
+    "url": "https://github.com/cvc5/cvc5/releases/download/cvc5-1.4.2/cvc5-Linux-x86_64-static.zip",
+    "sha256": "7eb18f8c814c36a46c5a7d003983e9cfbc4b0a9828d6dd596239291bd4cc61d8"
+  },
+  "executable": {
+    "path": "cvc5-Linux-x86_64-static/bin/cvc5",
+    "sha256": "6aecddf466552b83bb5883756c7955e0c9d5ddcc6d7f45b48c2f6e06a741b102"
+  },
+  "limits": "ulimit -t 5 -v 268435456; --tlimit=5000",
+  "runs": [
+    {
+      "problem": "p1.smt2",
+      "output": "p1.alethe",
+      "args": [
+        "--dump-proofs",
+        "--proof-format-mode=alethe",
+        "--proof-granularity=dsl-rewrite",
+        "--proof-check=eager",
+        "--proof-alethe-res-pivots",
+        "--no-proof-allow-trust",
+        "--tlimit=5000",
+        "p1.smt2"
+      ]
+    },
+    {
+      "problem": "p2.smt2",
+      "output": "p2.alethe",
+      "args": [
+        "--dump-proofs",
+        "--proof-format-mode=alethe",
+        "--proof-granularity=dsl-rewrite",
+        "--proof-check=eager",
+        "--proof-alethe-res-pivots",
+        "--no-proof-allow-trust",
+        "--tlimit=5000",
+        "p2.smt2"
+      ]
+    },
+    {
+      "problem": "p3.smt2",
+      "output": "p3.alethe",
+      "args": [
+        "--dump-proofs",
+        "--proof-format-mode=alethe",
+        "--proof-granularity=dsl-rewrite",
+        "--proof-check=eager",
+        "--proof-alethe-res-pivots",
+        "--no-proof-allow-trust",
+        "--tlimit=5000",
+        "p3.smt2"
+      ]
+    },
+    {
+      "problem": "p4.smt2",
+      "output": "p4.alethe",
+      "args": [
+        "--dump-proofs",
+        "--proof-format-mode=alethe",
+        "--proof-granularity=dsl-rewrite",
+        "--proof-check=eager",
+        "--proof-alethe-res-pivots",
+        "--no-proof-allow-trust",
+        "--tlimit=5000",
+        "p4.smt2"
+      ]
+    },
+    {
+      "problem": "p5.smt2",
+      "output": "p5.alethe",
+      "args": [
+        "--dump-proofs",
+        "--proof-format-mode=alethe",
+        "--proof-granularity=dsl-rewrite",
+        "--proof-check=eager",
+        "--proof-alethe-res-pivots",
+        "--no-proof-allow-trust",
+        "--tlimit=5000",
+        "p5.smt2"
+      ]
+    },
+    {
+      "problem": "p2.smt2",
+      "output": "p2-no-pivots.alethe",
+      "args": [
+        "--dump-proofs",
+        "--proof-format-mode=alethe",
+        "--proof-granularity=dsl-rewrite",
+        "--proof-check=eager",
+        "--no-proof-allow-trust",
+        "--tlimit=5000",
+        "p2.smt2"
+      ]
+    }
+  ],
+  "files": {
+    "p1.alethe": "8f8f72e85846de2029eeb601c3bb7c4fc0945e20556ef97e5eb5a01e51b751c9",
+    "p1.smt2": "d40861d0a26202aac6e9eb3563161f244b3904e2ae05e5bdc7ea3432386c144c",
+    "p2-no-pivots.alethe": "3b9b7df48e9788b93e0de64d70d7af1c1e81a0ce11f01ec239f0cb974855f9fd",
+    "p2.alethe": "15d63bb307fabdfb3784105f3c8cd888661758fd3ddfa90075c47ee734d36913",
+    "p2.smt2": "369bde6d338483273f50967ab1f17c7b519b7a31d1a4853801aa0736f8cb8546",
+    "p3.alethe": "e8d2d48866fdb97cccb72cb59c937f63dcd5fe37b90f72eb5c1018697f92ee6d",
+    "p3.smt2": "950409de4402264d67c95215846919c81535a851a4cd8b8ee92b9a9523cdce83",
+    "p4.alethe": "a9199f86e77530d386f0bfcde63cb47c5f6ea99cbae96a603d7011a8d28bd291",
+    "p4.smt2": "476603ccbc27889920a89373d4acbc80ec6e53037e62155001f1ecfc1f5d9d3a",
+    "p5.alethe": "ef6fccbf681a7e032fa1fdadf725f80f2663162ba3bc0fa29ac497929c07f6b8",
+    "p5.smt2": "fbedb6ed12bed9e86f219a99a70e2d24e5e8a20e1429f72e7b4ac39589ba8b30"
+  }
+}

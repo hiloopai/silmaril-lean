@@ -1,0 +1,7 @@
+unsat
+(
+(assume a0 (! (= a b) :named @p_1))
+(assume a1 (! (not (= b a)) :named @p_2))
+(step t0 (cl (not @p_1)) :rule not_symm :premises (a1))
+(step t1 (cl) :rule resolution :premises (a0 t0) :args (@p_1 true))
+)

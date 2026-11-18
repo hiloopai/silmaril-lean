@@ -1,0 +1,14 @@
+unsat
+(
+(assume a0 (! (or p q) :named @p_1))
+(assume a1 (! (or (! (not p) :named @p_2) r) :named @p_3))
+(assume a2 (! (or (! (not q) :named @p_4) r) :named @p_5))
+(assume a3 (! (not r) :named @p_6))
+(step t0 (cl (! (not @p_1) :named @p_7) p q) :rule or_pos)
+(step t1 (cl @p_2 r) :rule or :premises (a1))
+(step t2 (cl @p_2) :rule resolution :premises (t1 a3))
+(step t3 (cl @p_4 r) :rule or :premises (a2))
+(step t4 (cl @p_4) :rule resolution :premises (t3 a3))
+(step t5 (cl @p_7) :rule resolution :premises (t0 t2 t4))
+(step t6 (cl) :rule resolution :premises (a0 t5))
+)

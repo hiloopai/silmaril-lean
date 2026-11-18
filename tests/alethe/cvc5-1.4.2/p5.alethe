@@ -1,0 +1,18 @@
+unsat
+(
+(assume a0 (! (or p q r) :named @p_1))
+(assume a1 (! (or (! (not p) :named @p_2) s) :named @p_3))
+(assume a2 (! (or (! (not q) :named @p_4) s) :named @p_5))
+(assume a3 (! (or (! (not r) :named @p_6) s) :named @p_7))
+(assume a4 (! (and (! (not s) :named @p_8) (or p @p_2)) :named @p_9))
+(step t0 (cl (! (not @p_1) :named @p_10) p q r) :rule or_pos)
+(step t1 (cl @p_2 s) :rule or :premises (a1))
+(step t2 (cl @p_8) :rule and :premises (a4) :args (0))
+(step t3 (cl @p_2) :rule resolution :premises (t1 t2) :args (s true))
+(step t4 (cl @p_4 s) :rule or :premises (a2))
+(step t5 (cl @p_4) :rule resolution :premises (t4 t2) :args (s true))
+(step t6 (cl @p_6 s) :rule or :premises (a3))
+(step t7 (cl @p_6) :rule resolution :premises (t6 t2) :args (s true))
+(step t8 (cl @p_10) :rule resolution :premises (t0 t3 t5 t7) :args (p true q true r true))
+(step t9 (cl) :rule resolution :premises (a0 t8) :args (@p_1 true))
+)

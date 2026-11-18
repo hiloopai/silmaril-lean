@@ -110,6 +110,34 @@ declared type (no effect) and a replaced value (a different conclusion), and sev
 of the real file (a duplicated record, a forward reference, a self-reference, an unknown field,
 `mdata`, a wrong format version, an empty line), each refused with its reason.
 
+## Alethe: a propositional fragment, with real cvc5 proofs (`Silmaril.ProofFormats.Alethe`)
+
+**The clause system** (`Silmaril.Logic.Consequence.Resolution`): judgments are clauses of SMT terms;
+a valuation interprets atoms, and `true`, `false`, `not`, `or`, `and` are interpreted (every other
+term is an atom, so only **propositional** reasoning is claimed). Rules: `resolution` with explicit
+pivots, `orElim`, `andElim`, `notOrElim`, `orPos`, `orNeg`, `andPos`, `andNeg`, `contraction`,
+`trueTaut`, `falseTaut`; a step is an instance when its computed conclusion is a subset of the
+stated one. `locallySound`, and `refutes_units`: the empty clause derived from asserted formulas
+shows that no valuation satisfies them.
+
+**The adapter**: `checkRefutation problem proof` reads an SMT-LIB problem (assertions; `define-fun`
+and other meaning-changing commands are refused) and an Alethe proof (`assume`, and `step` with
+`:rule`, `:premises`, `:args`), expands `(! t :named @n)` sharing, maps premise names to earlier
+lines, elaborates each supported rule (untrusted), and checks the lines against the assertions;
+the proof must end with `(cl)`. Unsupported rules (theory rules, `trust`, …), subproofs (`anchor`,
+`:discharge`), resolution without pivots, unknown or later premises, and assumptions that are not
+assertions are refused by name. `checkRefutation_sound`: an accepted proof refutes the problem's
+assertions.
+
+**Fixtures** (`tests/alethe/cvc5-1.4.2/`): five problems and the proofs the official cvc5 1.4.2
+static release printed for them, plus one printed without `--proof-alethe-res-pivots`;
+`receipt.json` records the release archive and executable hashes, the exact arguments and limits,
+and every file's hash. `scripts/alethe/check-fixtures.sh` verifies the hashes and, given the
+executable (`CVC5=…`), regenerates every proof and compares. At build time
+(`…Alethe.Examples`): four refutations accepted (`or_pos`, `or`, `and`, resolution chains, `:named`
+sharing); the theory proof (`not_symm`) and the pivot-less proof refused; six mutations of the
+real files refused with their reasons.
+
 ## Registry and explorer
 
 Six record kinds (`Silmaril.Project.Registry.Formal.Defs`). In each, Lean checks the claim from
@@ -213,5 +241,6 @@ indexed derivation format will follow this format rather than invent a JSONL sch
    - Lean-NDJSON is done for PA and Q (above); other logics' proof objects are not imported yet,
      and kernel-level checking of the exported environment (typing of declarations) is out of
      scope;
-   - a documented Alethe fragment with an adapter that rejects unsupported rules is not done.
+   - the Alethe fragment is done for propositional reasoning (above); theory rules (equality,
+     arithmetic, quantifiers) and subproofs are refused, not checked.
 6. Standard JSON and DASL syntaxes are future plans, outside this scope.
