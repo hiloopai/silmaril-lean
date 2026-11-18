@@ -30,6 +30,10 @@ arguments) and lets the conclusions carry the rest. `ProofTree.elaborate f` turn
 rule labels with an untrusted function `f`, which sees each node's premise conclusions and
 conclusion; the result is then checked, so `f` is never trusted.
 
+**Morphisms** (`DerivationSystem.Hom D E`): a map of judgments and a map of rule labels taking
+every rule instance of `D` to a rule instance of `E`. `Hom.mapTree` translates proof trees, and
+`Thms` proves it preserves validity, so derivability transports (`Hom.derives`).
+
 **Semantics.** A satisfaction relation on judgments `sat : M → J → Prop` makes `D` *locally
 sound* (`LocallySound`) when every rule instance preserves truth in each model. `listSat M sat`
 is the interpretation of `D.derives` (a model satisfies a list of assumptions when it satisfies
@@ -224,6 +228,38 @@ def Line.elaborate {R : Type v} {R' : Type w} {J : Type u} (f : R → List J →
     match (DerivationSystem.cite prev ixs).bind (f r · c), Line.elaborate f (prev ++ [c]) ls with
     | some r', some ls' => some (.infer r' c ixs :: ls')
     | _, _ => none
+
+namespace DerivationSystem
+
+variable {J : Type u} {K : Type w}
+
+/-- **A morphism of derivation systems**: judgments map along `f`, rule labels along `rule`, and
+every rule instance of `D` becomes a rule instance of `E`. -/
+structure Hom (D : DerivationSystem.{u, v} J) (E : DerivationSystem.{w, v} K) where
+  /-- The map of judgments. -/
+  f : J → K
+  /-- The map of rule labels. -/
+  rule : D.Rule → E.Rule
+  /-- Rule instances map to rule instances. -/
+  map_instance : ∀ r ps c, D.Instance r ps c → E.Instance (rule r) (ps.map f) (f c)
+
+mutual
+
+/-- Translate a proof tree along a morphism. -/
+def Hom.mapTree {D : DerivationSystem.{u, v} J} {E : DerivationSystem.{w, v} K} (h : Hom D E) :
+    D.Proof → E.Proof
+  | .assume j => .assume (h.f j)
+  | .infer r c ts => .infer (h.rule r) (h.f c) (h.mapTrees ts)
+
+/-- Translate subproofs. -/
+def Hom.mapTrees {D : DerivationSystem.{u, v} J} {E : DerivationSystem.{w, v} K} (h : Hom D E) :
+    List D.Proof → List E.Proof
+  | [] => []
+  | t :: ts => h.mapTree t :: h.mapTrees ts
+
+end
+
+end DerivationSystem
 
 /-- **The interpretation of assumption lists**: a model satisfies a list when it satisfies each
 judgment of it. -/

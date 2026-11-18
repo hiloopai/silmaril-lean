@@ -75,4 +75,66 @@ theorem holds_inst {k : ℕ} (φ : Formula Sg (k + 1)) (t : Term Sg k) (η : Fin
   apply iff_of_eq; congr 1; funext i
   refine Fin.cases ?_ (fun i => ?_) i <;> rfl
 
+/-! ## Signature morphisms commute with renaming and substitution -/
+
+section Map
+
+variable {Sg' : Signature} (σ : Sg ⟶ Sg')
+
+theorem term_map_rename {k m : ℕ} (ρ : Fin k → Fin m) :
+    ∀ t : Term Sg k, (t.rename ρ).map σ = (t.map σ).rename ρ
+  | .var _ => rfl
+  | .app o args => by
+    simp only [Term.rename, Term.map]
+    exact congrArg (Term.app _) (funext fun j => term_map_rename ρ (args j))
+
+theorem term_map_subst {k m : ℕ} (τ : Fin k → Term Sg m) :
+    ∀ t : Term Sg k, (t.subst τ).map σ = (t.map σ).subst fun i => (τ i).map σ
+  | .var _ => rfl
+  | .app o args => by
+    simp only [Term.subst, Term.map]
+    exact congrArg (Term.app _) (funext fun j => term_map_subst τ (args j))
+
+theorem map_liftSubst {k m : ℕ} (τ : Fin k → Term Sg m) (i : Fin (k + 1)) :
+    (liftSubst τ i).map σ = liftSubst (fun i => (τ i).map σ) i := by
+  refine Fin.cases ?_ (fun i => ?_) i
+  · rfl
+  · simp only [liftSubst, Fin.cases_succ, Term.shift, term_map_rename]
+
+theorem formula_map_rename : ∀ {k m : ℕ} (ρ : Fin k → Fin m) (φ : Formula Sg k),
+    (φ.rename ρ).map σ = (φ.map σ).rename ρ
+  | _, _, ρ, .eq t u => by simp [Formula.rename, Formula.map, term_map_rename]
+  | _, _, ρ, .rel r args => by
+    simp only [Formula.rename, Formula.map]
+    exact congrArg (Formula.rel _) (funext fun j => term_map_rename σ ρ (args j))
+  | _, _, _, .tt => rfl
+  | _, _, ρ, .not φ => by simp [Formula.rename, Formula.map, formula_map_rename ρ φ]
+  | _, _, ρ, .and φ ψ => by
+    simp [Formula.rename, Formula.map, formula_map_rename ρ φ, formula_map_rename ρ ψ]
+  | _, _, ρ, .all φ => by simp [Formula.rename, Formula.map, formula_map_rename (liftRename ρ) φ]
+
+theorem formula_map_subst : ∀ {k m : ℕ} (τ : Fin k → Term Sg m) (φ : Formula Sg k),
+    (φ.subst τ).map σ = (φ.map σ).subst fun i => (τ i).map σ
+  | _, _, τ, .eq t u => by simp [Formula.subst, Formula.map, term_map_subst]
+  | _, _, τ, .rel r args => by
+    simp only [Formula.subst, Formula.map]
+    exact congrArg (Formula.rel _) (funext fun j => term_map_subst σ τ (args j))
+  | _, _, _, .tt => rfl
+  | _, _, τ, .not φ => by simp [Formula.subst, Formula.map, formula_map_subst τ φ]
+  | _, _, τ, .and φ ψ => by
+    simp [Formula.subst, Formula.map, formula_map_subst τ φ, formula_map_subst τ ψ]
+  | _, _, τ, .all φ => by
+    simp only [Formula.subst, Formula.map, formula_map_subst (liftSubst τ) φ]
+    exact congrArg Formula.all (congrArg (Formula.subst · (φ.map σ)) (funext (map_liftSubst σ τ)))
+
+theorem formula_map_inst {k : ℕ} (φ : Formula Sg (k + 1)) (t : Term Sg k) :
+    (φ.inst t).map σ = (φ.map σ).inst (t.map σ) := by
+  rw [Formula.inst, formula_map_subst]
+  congr 1; funext i; refine Fin.cases ?_ (fun i => ?_) i <;> rfl
+
+theorem formula_map_shift {k : ℕ} (φ : Formula Sg k) : φ.shift.map σ = (φ.map σ).shift :=
+  formula_map_rename σ Fin.succ φ
+
+end Map
+
 end Silmaril.Proofs.Logic.Consequence.FirstOrder.Syntax

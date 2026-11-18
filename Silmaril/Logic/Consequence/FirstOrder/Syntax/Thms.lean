@@ -8,6 +8,7 @@ import Silmaril.Proofs.Logic.Consequence.FirstOrder.Syntax
 
 * `holds_rename`, `holds_subst`: renaming or substituting, then evaluating, is evaluating in the
   composed assignment.
+* `Formula.map_inst`, `Formula.map_shift`: signature morphisms commute with them.
 * `holds_shift`: an unused variable does not matter; `holds_inst`: `φ[t]` holds when `φ` holds
   with the innermost variable at the value of `t`.
 -/
@@ -33,5 +34,15 @@ theorem Formula.holds_shift {k : ℕ} (φ : Formula Sg k) (η : Fin k → M.carr
 theorem Formula.holds_inst {k : ℕ} (φ : Formula Sg (k + 1)) (t : Term Sg k)
     (η : Fin k → M.carrier) : (φ.inst t).Holds M η ↔ φ.Holds M (Fin.cons (t.eval M η) η) :=
   Silmaril.Proofs.Logic.Consequence.FirstOrder.Syntax.holds_inst M φ t η
+
+/-- Signature morphisms commute with instantiation. -/
+theorem Formula.map_inst {Sg' : Signature} (σ : Sg ⟶ Sg') {k : ℕ} (φ : Formula Sg (k + 1))
+    (t : Term Sg k) : (φ.inst t).map σ = (φ.map σ).inst (t.map σ) :=
+  Silmaril.Proofs.Logic.Consequence.FirstOrder.Syntax.formula_map_inst σ φ t
+
+/-- Signature morphisms commute with shifting. -/
+theorem Formula.map_shift {Sg' : Signature} (σ : Sg ⟶ Sg') {k : ℕ} (φ : Formula Sg k) :
+    φ.shift.map σ = (φ.map σ).shift :=
+  Silmaril.Proofs.Logic.Consequence.FirstOrder.Syntax.formula_map_shift σ φ
 
 end Silmaril.Logic.Institution.Examples.UFOL

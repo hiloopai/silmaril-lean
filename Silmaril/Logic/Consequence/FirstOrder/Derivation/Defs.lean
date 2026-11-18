@@ -151,4 +151,31 @@ variable (Sg) in
 def treeDerives : System (List (Sentence Sg)) (Sentence Sg) :=
   fun Γ φ => (system Sg).derives [] ⟨0, Γ, φ⟩
 
+/-! ## Translation along signature morphisms -/
+
+section Map
+
+variable {Sg' : Signature} (σ : Sg ⟶ Sg')
+
+/-- Translate a judgment along a signature morphism. -/
+def Seq.map (s : Seq Sg) : Seq Sg' := ⟨s.k, s.ctx.map (Formula.map σ), s.goal.map σ⟩
+
+/-- Translate a rule instance along a signature morphism. -/
+def Rule.map {k : ℕ} : Rule Sg k → Rule Sg' k
+  | .hyp Γ φ => .hyp (Γ.map (Formula.map σ)) (φ.map σ)
+  | .weaken Γ Δ φ => .weaken (Γ.map (Formula.map σ)) (Δ.map (Formula.map σ)) (φ.map σ)
+  | .ttIntro Γ => .ttIntro (Γ.map (Formula.map σ))
+  | .notIntro Γ φ ψ => .notIntro (Γ.map (Formula.map σ)) (φ.map σ) (ψ.map σ)
+  | .notElim Γ φ ψ => .notElim (Γ.map (Formula.map σ)) (φ.map σ) (ψ.map σ)
+  | .dne Γ φ => .dne (Γ.map (Formula.map σ)) (φ.map σ)
+  | .andIntro Γ φ ψ => .andIntro (Γ.map (Formula.map σ)) (φ.map σ) (ψ.map σ)
+  | .andLeft Γ φ ψ => .andLeft (Γ.map (Formula.map σ)) (φ.map σ) (ψ.map σ)
+  | .andRight Γ φ ψ => .andRight (Γ.map (Formula.map σ)) (φ.map σ) (ψ.map σ)
+  | .allIntro Γ φ => .allIntro (Γ.map (Formula.map σ)) (φ.map σ)
+  | .allElim Γ φ t => .allElim (Γ.map (Formula.map σ)) (φ.map σ) (t.map σ)
+  | .eqRefl Γ t => .eqRefl (Γ.map (Formula.map σ)) (t.map σ)
+  | .eqElim Γ φ s t => .eqElim (Γ.map (Formula.map σ)) (φ.map σ) (s.map σ) (t.map σ)
+
+end Map
+
 end Silmaril.Consequence.FirstOrder.ND

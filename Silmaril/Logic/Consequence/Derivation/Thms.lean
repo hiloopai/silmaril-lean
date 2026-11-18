@@ -17,6 +17,8 @@ import Silmaril.Proofs.Logic.Consequence.Derivation.Basic
   `consistentWrt_of_locallySound` gives consistency from a model in which the falsity fails.
 * `derives_of_elaborate`: an elaborated, checked raw proof derives its conclusion; the
   elaboration function is untrusted.
+* `Hom.valid`, `Hom.derives`, `Hom.translation`: a morphism of derivation systems translates proof
+  trees, preserving validity, so it is a translation of the consequence systems.
 -/
 
 @[expose] public section
@@ -92,5 +94,28 @@ theorem derives_of_elaborateLines [DecidableEq J] [∀ r ps c, Decidable (D.Inst
   rw [← linearDerives_eq]
   refine ⟨ls', checkLines_iff.1 hc, ?_⟩
   rw [← List.getLast?_map, elaborateLines_concl f he, List.getLast?_map, hlast]
+
+/-! ## Morphisms -/
+
+section Hom
+
+variable {K : Type w} {E : DerivationSystem.{w, v} K}
+
+/-- **A morphism preserves validity of proof trees.** -/
+theorem Hom.valid (h : Hom D E) {Γ : List J} {t : D.Proof} (ht : D.Valid Γ t) :
+    E.Valid (Γ.map h.f) (h.mapTree t) :=
+  Proofs.Logic.Consequence.Derivation.Hom.valid h ht
+
+/-- **A morphism transports derivability.** -/
+theorem Hom.derives (h : Hom D E) {Γ : List J} {c : J} (hd : D.derives Γ c) :
+    E.derives (Γ.map h.f) (h.f c) := by
+  obtain ⟨t, ht, rfl⟩ := hd
+  exact ⟨h.mapTree t, h.valid ht, Proofs.Logic.Consequence.Derivation.mapTree_concl h t⟩
+
+/-- **A morphism of derivation systems is a translation of their consequence systems.** -/
+def Hom.translation (h : Hom D E) : Translation D.derives E.derives :=
+  ⟨List.map h.f, h.f, fun _ _ hd => h.derives hd⟩
+
+end Hom
 
 end Silmaril.Consequence.DerivationSystem

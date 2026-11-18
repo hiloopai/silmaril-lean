@@ -51,4 +51,32 @@ theorem rule_valid (M : Structure Sg) {k : ℕ} (r : Rule Sg k) (hs : r.side = t
     have heq : s.eval M η = t.eval M η := hp.1 η hΓ
     exact (Formula.holds_inst M φ t η).2 (heq ▸ h)
 
+/-! ## Translation along signature morphisms -/
+
+section Map
+
+variable {Sg' : Signature} [∀ n, DecidableEq (Sg'.Op n)] [∀ n, DecidableEq (Sg'.Rel n)]
+  (σ : Sg ⟶ Sg')
+
+omit [∀ n, DecidableEq (Sg.Op n)] [∀ n, DecidableEq (Sg.Rel n)]
+  [∀ n, DecidableEq (Sg'.Op n)] [∀ n, DecidableEq (Sg'.Rel n)] in
+theorem rule_map_prems {k : ℕ} (r : Rule Sg k) : (r.map σ).prems = r.prems.map (Seq.map σ) := by
+  cases r <;> simp [Rule.map, Rule.prems, Seq.map, Formula.map, Formula.map_shift,
+    Formula.map_inst, List.map_map, Function.comp_def]
+
+omit [∀ n, DecidableEq (Sg.Op n)] [∀ n, DecidableEq (Sg.Rel n)]
+  [∀ n, DecidableEq (Sg'.Op n)] [∀ n, DecidableEq (Sg'.Rel n)] in
+theorem rule_map_concl {k : ℕ} (r : Rule Sg k) : (r.map σ).concl = r.concl.map σ := by
+  cases r <;> simp [Rule.map, Rule.concl, Seq.map, Formula.map, Formula.map_inst]
+
+theorem rule_map_side {k : ℕ} (r : Rule Sg k) (h : r.side = true) : (r.map σ).side = true := by
+  cases r <;> simp only [Rule.side, Rule.map, decide_eq_true_eq] at h ⊢
+  case hyp => exact List.mem_map_of_mem h
+  case weaken =>
+    intro ψ hψ
+    obtain ⟨φ, hφ, rfl⟩ := List.mem_map.1 hψ
+    exact List.mem_map_of_mem (h φ hφ)
+
+end Map
+
 end Silmaril.Proofs.Logic.Consequence.FirstOrder.Derivation

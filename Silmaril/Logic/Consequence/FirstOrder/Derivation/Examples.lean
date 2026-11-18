@@ -14,6 +14,8 @@ the stated conclusion, and `…_derives` turns acceptance into derivability (`tr
   by `∀`-elimination of irreflexivity at `succ x`; also as indexed lines.
 * `eqSymmProof`: `∀x ∀y. x = y → …`, in this language `∀x ∀y ¬(x = y ∧ ¬ y = x)`, by equality
   elimination and the negation rules.
+* `succIrrefl_derives_ext`: the same derivation, translated along the inclusion of `orderSig` into
+  a signature with one more symbol (`treeDerives_map`).
 * **Rejections**: a hypothesis that is not in the context, an `∀`-elimination at the wrong term, an
   unknown rule.
 -/
@@ -85,6 +87,30 @@ theorem eqSymmProof_checks :
   rw [checkTree_encode]; rfl
 
 theorem eqSymm_derives : treeDerives orderSig [] eqSymm := checkTree_sound eqSymmProof_checks
+
+/-! ## Along a signature morphism -/
+
+/-- A larger signature: `orderSig` with a binary `plus`. -/
+def extOps : String → Option ℕ
+  | "zero" => some 0
+  | "succ" => some 1
+  | "plus" => some 2
+  | _ => none
+
+/-- `orderSig` with `plus`. -/
+abbrev extSig : Signature := named extOps orderRels
+
+theorem extOps_of {f : String} {n : ℕ} (h : orderOps f = some n) : extOps f = some n := by
+  unfold orderOps at h; split at h <;> simp_all [extOps]
+
+/-- **The inclusion of `orderSig` into `extSig`**, a signature morphism. -/
+def inclusion : orderSig ⟶ extSig := ⟨fun o => ⟨o.1, extOps_of o.2⟩, fun r => r⟩
+
+/-- **The derivation transports**: over `extSig`, the translated order theory derives the
+translated sentence, by translating the checked proof tree (`treeDerives_map`). -/
+theorem succIrrefl_derives_ext :
+    treeDerives extSig (orderTheory.map (Formula.map inclusion)) (succIrrefl.map inclusion) :=
+  treeDerives_map inclusion succIrrefl_derives
 
 /-! ## Rejections -/
 

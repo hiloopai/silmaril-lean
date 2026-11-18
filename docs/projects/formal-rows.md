@@ -45,6 +45,7 @@ A **derivation system** `D : DerivationSystem J` has rule labels `D.Rule` and ru
 | soundness | `LocallySound sat` ⇒ `derives_soundFor : D.derives.SoundFor (listSat M sat)` | every rule preserves truth in each model |
 | consistency | `consistentWrt_of_locallySound` | a model of `Γ` falsifying `ff` |
 | elaboration | `ProofTree.elaborate`, `Line.elaborate`; `derives_of_elaborate`, `derives_of_elaborateLines` | raw labels (a rule name and a few arguments) become rule labels by an *untrusted* function; the result is checked |
+| morphisms | `DerivationSystem.Hom D E` (judgment map, rule map, instances to instances); `Hom.valid`, `Hom.derives`, `Hom.translation` | proof trees translate, preserving validity, so a morphism is a translation of the consequence systems |
 
 **Proof formats** (`Silmaril.Logic.Consequence.Derivation.SExp`), generic in the presentation of
 judgments; the readers invert the encoders, so both are presentations (`SExpCodec`):
@@ -87,6 +88,10 @@ substitution, `shift`, `inst`, decidable equality) are `…FirstOrder.Syntax`, w
 * `orderTheory_tree_consistent`: over `orderSig`, the order theory does not derive `¬⊤` (model ℕ).
 * Concrete syntax: `silmaril.fol.sequent` v1, the tree and lines formats, `elabRule`, and
   `checkTree` / `checkLines` with `checkTree_sound`, as for PA.
+* Along signature morphisms (`mapHom σ`, a morphism of derivation systems; `treeDerives_map`):
+  proofs translate by `Formula.map σ`, which commutes with substitution and shifting
+  (`Formula.map_inst`, `Formula.map_shift`); the example transports the derivation of
+  `∀x ¬ succ x < succ x` into a signature with one more symbol.
 * Kernel-checked proofs (`…Derivation.Examples`): `orderTheory ⊢ ∀x ¬ succ x < succ x` (trees and
   lines), `⊢ ∀x ∀y ¬(x = y ∧ ¬ y = x)`, and three rejections. All are registered on the FOL row.
 
@@ -255,7 +260,8 @@ indexed derivation format will follow this format rather than invent a JSONL sch
      consistency is not claimed.
 4. **Derivation systems**: the framework, checkers, PA/Q instance, and registry, database and
    explorer pages are done (above). Not yet done: second-order arithmetic, HOL and MLTT as
-   derivation systems; derivation-system morphisms.
+   derivation systems. Morphisms are done (`DerivationSystem.Hom`), with FOL proofs translating
+   along any signature morphism (`FirstOrder.ND.mapHom`, `treeDerives_map`).
 5. **Proof formats**:
    - the S-expression tree and lines formats are done, with PA/Q elaboration;
    - Lean-NDJSON is done for PA and Q (above); other logics' proof objects are not imported yet,

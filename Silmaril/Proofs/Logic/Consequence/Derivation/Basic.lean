@@ -299,4 +299,45 @@ theorem elaborateLines_concl {R : Type w} (f : R → List J → J → Option D.R
     · next r' ls'' _ h' => cases h; simp [Line.concl, elaborateLines_concl f h']
     · cases h
 
+/-! ## Morphisms -/
+
+section Hom
+
+variable {K : Type w} {E : DerivationSystem.{w, v} K} (h : DerivationSystem.Hom D E)
+
+theorem mapTree_concl : ∀ t : D.Proof, (h.mapTree t).concl = h.f t.concl
+  | .assume _ => rfl
+  | .infer _ _ _ => rfl
+
+theorem mapTrees_map_concl : ∀ ts : List D.Proof,
+    (h.mapTrees ts).map ProofTree.concl = (ts.map ProofTree.concl).map h.f
+  | [] => rfl
+  | t :: ts => by
+    simp only [DerivationSystem.Hom.mapTrees, List.map_cons, mapTree_concl h t,
+      mapTrees_map_concl ts]
+
+theorem mem_mapTrees : ∀ {ts : List D.Proof} {s : E.Proof}, s ∈ h.mapTrees ts →
+    ∃ t ∈ ts, s = h.mapTree t
+  | [], _, hs => by simp [DerivationSystem.Hom.mapTrees] at hs
+  | t :: ts, s, hs => by
+    simp only [DerivationSystem.Hom.mapTrees, List.mem_cons] at hs
+    rcases hs with rfl | hs
+    · exact ⟨t, List.mem_cons_self, rfl⟩
+    · obtain ⟨t', ht', rfl⟩ := mem_mapTrees hs
+      exact ⟨t', List.mem_cons_of_mem _ ht', rfl⟩
+
+/-- **A morphism preserves validity.** -/
+theorem Hom.valid {Γ : List J} {t : D.Proof} (ht : D.Valid Γ t) :
+    E.Valid (Γ.map h.f) (h.mapTree t) := by
+  induction ht with
+  | assume hj => exact .assume (List.mem_map_of_mem hj)
+  | @infer r c ts hr _ ih =>
+    refine .infer ?_ ?_
+    · rw [mapTrees_map_concl]; exact h.map_instance _ _ _ hr
+    · intro s hs
+      obtain ⟨t, ht, rfl⟩ := mem_mapTrees h hs
+      exact ih t ht
+
+end Hom
+
 end Silmaril.Proofs.Logic.Consequence.Derivation

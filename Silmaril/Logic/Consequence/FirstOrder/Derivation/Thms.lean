@@ -14,6 +14,8 @@ import Silmaril.Proofs.Logic.Consequence.FirstOrder.Derivation
   interpretation in any one structure.
 * `orderTheory_tree_consistent`: over `orderSig`, the order theory does not derive `¬⊤`, by the
   model ℕ.
+* `mapHom σ`, `treeDerives_map`: proofs translate along a signature morphism `σ` (a morphism of
+  derivation systems), so derivability transports along the institution's sentence translation.
 -/
 
 @[expose] public section
@@ -49,5 +51,42 @@ satisfies it. -/
 theorem orderTheory_tree_consistent : (treeDerives orderSig).ConsistentWrt falsity orderTheory :=
   consistentWrt_of_sound (treeDerives_soundFor natStructure) () natStructure_models
     (by simp [inStructure, Sentence.Holds, Formula.Holds, falsity])
+
+/-! ## Translation along signature morphisms -/
+
+section Map
+
+variable {Sg' : Signature} [∀ n, DecidableEq (Sg'.Op n)] [∀ n, DecidableEq (Sg'.Rel n)]
+
+theorem Rule.map_side (σ : Sg ⟶ Sg') {k : ℕ} (r : Rule Sg k) (h : r.side = true) :
+    (r.map σ).side = true :=
+  Proofs.Logic.Consequence.FirstOrder.Derivation.rule_map_side σ r h
+
+omit [∀ n, DecidableEq (Sg.Op n)] [∀ n, DecidableEq (Sg.Rel n)]
+  [∀ n, DecidableEq (Sg'.Op n)] [∀ n, DecidableEq (Sg'.Rel n)] in
+theorem Rule.map_prems (σ : Sg ⟶ Sg') {k : ℕ} (r : Rule Sg k) :
+    (r.map σ).prems = r.prems.map (Seq.map σ) :=
+  Proofs.Logic.Consequence.FirstOrder.Derivation.rule_map_prems σ r
+
+omit [∀ n, DecidableEq (Sg.Op n)] [∀ n, DecidableEq (Sg.Rel n)]
+  [∀ n, DecidableEq (Sg'.Op n)] [∀ n, DecidableEq (Sg'.Rel n)] in
+theorem Rule.map_concl (σ : Sg ⟶ Sg') {k : ℕ} (r : Rule Sg k) : (r.map σ).concl = r.concl.map σ :=
+  Proofs.Logic.Consequence.FirstOrder.Derivation.rule_map_concl σ r
+
+/-- **Proofs translate along signature morphisms**: a morphism of derivation systems, mapping
+judgments by `Formula.map σ` and each rule instance to the mapped instance. -/
+def mapHom (σ : Sg ⟶ Sg') : DerivationSystem.Hom (system Sg) (system Sg') where
+  f := Seq.map σ
+  rule r := ⟨r.1, r.2.map σ⟩
+  map_instance := fun r _ _ ⟨hs, hp, hc⟩ =>
+    ⟨Rule.map_side σ r.2 hs, by rw [Rule.map_prems, hp], by rw [Rule.map_concl, hc]⟩
+
+/-- **Derivability transports along signature morphisms**: the proof-level counterpart of the
+institution's sentence translation (`Formula.map`). -/
+theorem treeDerives_map (σ : Sg ⟶ Sg') {Γ : List (Sentence Sg)} {φ : Sentence Sg}
+    (h : treeDerives Sg Γ φ) : treeDerives Sg' (Γ.map (Formula.map σ)) (φ.map σ) :=
+  (mapHom σ).derives h
+
+end Map
 
 end Silmaril.Consequence.FirstOrder.ND
