@@ -45,6 +45,11 @@ scope = "SSA and effectful intermediate representations: syntax, typing, equatio
 deps = ["Prelude", "Semantics", "Logic"]
 
 [[region]]
+name = "ProofFormats"
+scope = "Proof-format integration: concrete proof formats (lean4export Lean-NDJSON, an Alethe fragment) read into the derivation systems of Logic and checked there. Generic decoders stay in Formats; derivation systems, checkers and soundness stay in Logic."
+deps = ["Prelude", "Semantics", "Logic", "Formats"]
+
+[[region]]
 name = "Calculi"
 scope = "Small calculi and their semantics: lambda calculi, PCF, game semantics, Imp."
 deps = ["Prelude", "Semantics", "Logic", "Formats", "SSA"]

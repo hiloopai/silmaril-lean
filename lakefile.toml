@@ -82,7 +82,7 @@ globs = [
   "Silmaril.Calculi.*", "Silmaril.Cli.*", "Silmaril.Compile.+",
   "Silmaril.Containers.+", "Silmaril.Courses.+", "Silmaril.Crypto.+", "Silmaril.Data.+", "Silmaril.Elf.+", "Silmaril.Encoding.*",
   "Silmaril.Formats.+", "Silmaril.Foundations.+", "Silmaril.Games.+", "Silmaril.Sim.+", "Silmaril.Libc.+", "Silmaril.Logic.*", "Silmaril.LogicGraph.Nodes.+", "Silmaril.LogicGraph.Edges.+", "Silmaril.LogicGraph.Audit.+", "Silmaril.LogicGraph.Consequence.+",
-  "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+",
+  "Silmaril.Machine.+", "Silmaril.Numeric.+", "Silmaril.Parse.+", "Silmaril.Prelude.+", "Silmaril.ProofFormats.+",
   "Silmaril.Raw.Libc.+",
   "Silmaril.Problems.+", "Silmaril.Process.+",
   # Project, except `Project.WasmComponents` and `Project.WasmP3Rust` (`SilmarilWasmProject` below).
@@ -95,7 +95,7 @@ globs = [
   "Silmaril.Proofs.Cli.+", "Silmaril.Proofs.Containers.+", "Silmaril.Proofs.Compile.+", "Silmaril.Proofs.Data.+", "Silmaril.Proofs.Prelude.+", "Silmaril.Proofs.Elf.+",
   "Silmaril.Proofs.Formats.+", "Silmaril.Proofs.Libc.+", "Silmaril.Proofs.Numeric.+",
   "Silmaril.Proofs.Games.+", "Silmaril.Proofs.Sim.+", "Silmaril.Proofs.Logic.+", "Silmaril.Raw.Logic.+", "Silmaril.Proofs.Problems.+",
-  "Silmaril.Proofs.Process.+", "Silmaril.Proofs.Project.+", "Silmaril.Proofs.SSA.+",
+  "Silmaril.Proofs.Process.+", "Silmaril.Proofs.Project.+", "Silmaril.Proofs.ProofFormats.+", "Silmaril.Proofs.SSA.+",
   "Silmaril.Proofs.Wasm.Abstract.+", "Silmaril.Proofs.Wasm.Acceptor.+", "Silmaril.Proofs.Wasm.Auto.+", "Silmaril.Proofs.Wasm.Auto2.+",
   "Silmaril.Proofs.Wasm.Behaviour.+", "Silmaril.Proofs.Wasm.Binaryen.+",
   "Silmaril.Proofs.Wasm.Examples.+", "Silmaril.Proofs.Wasm.Execution.+",

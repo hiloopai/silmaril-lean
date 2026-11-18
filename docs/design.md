@@ -75,6 +75,7 @@ The intended region map and dependencies are recorded in `regions.toml`:
 Prelude
 └ Semantics
   ├ Logic ─ Computability
+  │ └ ProofFormats (+ Formats)
   ├ Numeric ─ Science
   │ └ Crypto ─ Formats
   └ SSA (Semantics, Logic)
