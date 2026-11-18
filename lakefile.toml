@@ -759,3 +759,8 @@ srcDir = "tools/elf-staged"
 name = "elf-pages"
 root = "ElfPages"
 srcDir = "tools/elf-pages"
+
+[[lean_exe]]
+name = "elf-region-inventory"
+root = "Inventory"
+srcDir = "tools/elf-region-inventory"

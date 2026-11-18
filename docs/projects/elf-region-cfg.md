@@ -179,3 +179,7 @@ project's CI; no correctness check or timing budget is relaxed.
 | Operational effects | Instruction/call/syscall event adequacy and halt policy, separate from normal-edge coverage |
 | Dominator/structured views | Reachability and dominance/shape witnesses for the chosen graph and exit policy |
 | Nested Wasm maps | Per-body instruction-to-byte validation with structured nested spans; unrelated to these ELF certificates |
+
+The [complete function-extent guide](elf-complete-functions.md) adds a checked
+whole symbol extent, with explicit external-tail and RET policy, and a measured
+seven-file candidate inventory. It distinguishes native discovery from proofs.
