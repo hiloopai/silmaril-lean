@@ -45,22 +45,24 @@ call `.toList` only if you need all its entries. See [the regression and file ex
 
 | Interface | What the kernel checks | When JSON is parsed |
 | --- | --- | --- |
-| `json% "…"` / `json_file doc from "path.json"` | The term applies the logical parser to the embedded input. Checking a positive claim about the result requires reduction. | On evaluation/reduction, not at elaboration. |
-| `json_precomputed% "…"` / `json_file_precomputed doc from "path.json"` | The emitted term has the declared type. This alone certifies neither the parser output nor the relationship to the bytes. | During elaboration, with the compiled parser. Invalid JSON is an elaboration error. |
+| `json% "…"` / `json_file doc from "path.json"` | The emitted constructor term has the declared type. This alone certifies neither the parser output nor the relationship to the bytes. | During elaboration, with the compiled parser. JSON syntax and limit errors become `Except.error` terms. |
+| Same forms with `set_option silmaril.json.precompute false in` | The term applies the logical parser to the embedded input. | On evaluation/reduction, not at elaboration. |
+| `json_text input from "path.json"` | The definition is a `String` literal; it says nothing about any `Value`. | Never. |
 
-The precomputed forms require a local opt-in, `set_option silmaril.json.allowPrecomputed true in`.
-There is no switch to native proof evaluation, and no automatic fallback. Importing a module
-with precomputed definitions does not rerun or validate its generator or consult the option.
-Both file commands read relative to the `.lean` file and emit a noncomputable `doc` and
-`doc.source : String`. Invalid UTF-8 prevents the command from embedding a `String` in either
-mode. Make the JSON file an explicit build input in your own workflow: Lake does not track reads
-by these elaborators. Rebuild after input changes.
+The option only chooses how to construct terms; there is no switch to native proof evaluation
+or automatic fallback. Importing a module does not rerun or validate its generator or consult
+the option. Each file command reads relative to the `.lean` file. `json_file` emits only the
+noncomputable result definition; use `json_text` when you also want a separate text definition.
+Invalid UTF-8 is a file-command error. Lake does not track these reads: make the input a build
+dependency in your workflow and rebuild after changes.
 
 `json_decide` runs `decide +kernel`. On precomputed data a field claim is about the resulting
 Lean term, not the source file. To certify agreement, prove a separate closed goal:
 
 ```lean
-example : SourceMatches doc.source.toUTF8 doc := by json_source
+json_file doc from "path.json"
+json_text input from "path.json"
+example : SourceMatches input.toUTF8 doc := by json_source
 ```
 
 `json_source` asks the kernel to check equality to `parseBytes` of the bytes in the goal; it

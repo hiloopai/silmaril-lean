@@ -5,32 +5,21 @@ public meta import Silmaril.Formats.Json.Fast.Parser.Defs
 public meta import Lean.Elab.Tactic
 public meta import Lean.Compiler.NoncomputableAttr
 
-/-! `json% "…"` and `json_file name from "path"` embed input for the logical parser.
-The explicitly named `json_precomputed%` and `json_file_precomputed` instead run the parser
-during elaboration and emit constructor terms. Those terms are type checked, not verified
-against the source. `json_source` checks a `SourceMatches` claim in the kernel. -/
+/-! `json% "…"` and `json_file name from "path"` normally emit constructor terms. Type
+checking those terms does not verify their source. `json_text` independently embeds text
+and `json_source` checks a separate `SourceMatches` claim in the kernel. -/
 
 public meta section
 
 open Lean Elab Command
 namespace Silmaril.Formats.Json.Fast
 
-register_option silmaril.json.allowPrecomputed : Bool := {
-  defValue := false
-  descr := "allow explicitly precomputed JSON terms without proving parser/source agreement"
+register_option silmaril.json.precompute : Bool := {
+  defValue := true
+  descr := "emit JSON constructor terms at elaboration; when false, embed a logical parser application"
 }
 
 namespace Elab
-
-inductive Mode where
-  | source | precomputed
-
-def checkMode (mode : Mode) : CoreM Unit := do
-  match mode with
-  | .source => pure ()
-  | .precomputed =>
-    unless silmaril.json.allowPrecomputed.get (← getOptions) do
-      throwError "precomputed JSON requires `set_option silmaril.json.allowPrecomputed true`"
 
 def valueType : Expr := mkConst ``Value
 def resultType : Expr := mkApp2 (mkConst ``Except [0, 0]) (mkConst ``Error) valueType
@@ -77,50 +66,48 @@ def timePhase {α : Type} (phase : String) (work : Unit → α) : CoreM α := do
   logInfo m!"JSON: {phase}_ns={elapsed}"
   result.get
 
-def resultExpr (mode : Mode) (text : String) (source : Expr) : CoreM Expr := do
-  match mode with
-  | .source => return mkApp2 (mkConst ``parseText) source (mkConst ``defaultLimits)
-  | .precomputed =>
-    let parsed ← timePhase "parse" fun _ => parseText text
-    match parsed with
-    | .error error => throwError "JSON: {repr error.kind} at byte {error.offset}"
-    | .ok value =>
-      timePhase "emit" (fun _ => mkApp3 (Lean.mkConst ``Except.ok [0, 0])
-        (Lean.mkConst ``Error) valueType (valueExpr value))
+def errorExpr (error : Error) : Expr :=
+  let kind := match error.kind with
+    | .invalidUtf8 => ``ErrorKind.invalidUtf8
+    | .syntax => ``ErrorKind.syntax
+    | .trailingInput => ``ErrorKind.trailingInput
+    | .unpairedSurrogate => ``ErrorKind.unpairedSurrogate
+    | .depthLimit => ``ErrorKind.depthLimit
+    | .numberLimit => ``ErrorKind.numberLimit
+  mkApp2 (mkConst ``Error.mk) (mkNatLit error.offset) (mkConst kind)
+
+def resultExpr (text : String) : CoreM Expr := do
+  if !silmaril.json.precompute.get (← getOptions) then
+    return mkApp2 (mkConst ``parseText) (mkStrLit text) (mkConst ``defaultLimits)
+  let parsed ← timePhase "parse" fun _ => parseText text
+  timePhase "emit" fun _ => match parsed with
+    | .error error => mkApp3 (mkConst ``Except.error [0, 0]) (mkConst ``Error) valueType (errorExpr error)
+    | .ok value => mkApp3 (mkConst ``Except.ok [0, 0]) (mkConst ``Error) valueType (valueExpr value)
 
 def addDef (name : Name) (type body : Expr) : CoreM Unit :=
   withExporting <| withOptions (Lean.Elab.async.set · false) do
     addDecl (.defnDecl { name, levelParams := [], type, value := body, hints := .abbrev, safety := .safe })
     modifyEnv (addNoncomputable · name)
 
-def fromFile (mode : Mode) (name : Name) (path : String) : CommandElabM Unit := do
-  liftCoreM <| checkMode mode
+def readText (path : String) : CommandElabM String := do
   let file := (System.FilePath.mk (← getFileName)).parent.getD "." / path
   let bytes ← IO.FS.readBinFile file
   let some text := String.fromUTF8? bytes | throwError "JSON: invalid UTF-8 in {file}"
-  let name := (← getCurrNamespace) ++ name
-  let source := name ++ `source
-  let result ← liftCoreM <| resultExpr mode text (mkConst source)
-  liftCoreM do
-    addDef source (mkConst ``String) (mkStrLit text)
-    addDef name resultType result
+  return text
 
 end Elab
 
-elab "json% " text:str : term => do
-  let source := text.getString
-  Elab.resultExpr .source source (mkStrLit source)
+elab "json% " text:str : term => Elab.resultExpr text.getString
 
-elab "json_precomputed% " text:str : term => do
-  Elab.checkMode .precomputed
-  let source := text.getString
-  Elab.resultExpr .precomputed source (mkStrLit source)
+elab "json_file " name:ident " from " path:str : command => do
+  let text ← Elab.readText path.getString
+  let name := (← getCurrNamespace) ++ name.getId
+  liftCoreM do Elab.addDef name Elab.resultType (← Elab.resultExpr text)
 
-elab "json_file " name:ident " from " path:str : command =>
-  Elab.fromFile .source name.getId path.getString
-
-elab "json_file_precomputed " name:ident " from " path:str : command =>
-  Elab.fromFile .precomputed name.getId path.getString
+elab "json_text " name:ident " from " path:str : command => do
+  let text ← Elab.readText path.getString
+  let name := (← getCurrNamespace) ++ name.getId
+  liftCoreM <| Elab.addDef name (mkConst ``String) (mkStrLit text)
 
 macro "json_decide" : tactic => `(tactic| decide +kernel)
 

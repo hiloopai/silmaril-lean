@@ -129,9 +129,9 @@ def main():
                 for variant, statement, goals in (
                     ("Wire", f'noncomputable def result := JsonWire.parse? ⟨(include_str "{fixture.name}").toUTF8⟩',
                      {"wire": f"wireSelect result {steps}"}),
-                    ("Source", f'json_file result from "{fixture.name}"',
+                    ("Source", f'set_option silmaril.json.precompute false in\njson_file result from "{fixture.name}"',
                      {"source": f"fastSelect true result {steps}"}),
-                    ("Prepared", f'set_option silmaril.json.allowPrecomputed true in\njson_file_precomputed result from "{fixture.name}"',
+                    ("Prepared", f'json_file result from "{fixture.name}"',
                      {"indexed": f"fastSelect true result {steps}", "linear": f"fastSelect false result {steps}"}),
                 ):
                     source = output / f"{variant}.lean"
@@ -151,7 +151,8 @@ def main():
                         run(case, size, repeat, "query", label, [probe.name])
                     if variant == "Prepared" and case in ("small", "medium"):
                         probe.write_text(header + LIMITS +
-                            "example : Json.Fast.SourceMatches result.source.toUTF8 result := by json_source\n",
+                            f'json_text source from "{fixture.name}"\n'
+                            "example : Json.Fast.SourceMatches source.toUTF8 result := by json_source\n",
                             encoding="utf-8")
                         run(case, size, repeat, "agreement", variant, [probe.name])
 

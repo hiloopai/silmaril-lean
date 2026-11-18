@@ -13,27 +13,33 @@ def field {α : Type} (doc : Except Error Value) (path : JsonPath) (access : Val
   doc.toOption.bind (fun value => (value.at? path).bind access)
 
 json_file manifest from "example.json"
+json_text manifestText from "example.json"
 
-example : SourceMatches manifest.source.toUTF8 manifest := by json_source
+theorem manifestMatches : SourceMatches manifestText.toUTF8 manifest := by json_source
 example : field manifest [.key "registry", .key "active"] Value.bool? = some true := by json_decide
+example : field manifest [.key "entries", .index 1] Value.string? = some "𝄞" := by json_decide
+example : field manifest [.key "exact"] Value.number? = some ⟨true, 0, 7⟩ := by json_decide
 
-/-- error: precomputed JSON requires `set_option silmaril.json.allowPrecomputed true` -/
-#guard_msgs in
-example : Except Error Value := json_precomputed% "true"
+set_option silmaril.json.precompute false in
+json_file logicalManifest from "example.json"
 
-set_option silmaril.json.allowPrecomputed true in
-json_file_precomputed prepared from "example.json"
+open Lean in
+run_cmd do
+  let eager ← getConstInfo `manifest
+  let logical ← getConstInfo `logicalManifest
+  unless eager.value?.any (·.isAppOfArity ``Except.ok 3) do throwError "expected constructor term"
+  unless logical.value?.any (·.isAppOfArity ``parseText 2) do throwError "expected parser application"
 
-theorem preparedMatches : SourceMatches prepared.source.toUTF8 prepared := by json_source
-example : field prepared [.key "entries", .index 1] Value.string? = some "𝄞" := by json_decide
-example : field prepared [.key "exact"] Value.number? = some ⟨true, 0, 7⟩ := by json_decide
+example : logicalManifest = manifest := by
+  change parseText manifestText defaultLimits = manifest
+  rw [← parseBytes_toUTF8]
+  exact manifestMatches
 example : ¬ SourceMatches "false".toUTF8 (json% "true") := by
   intro agreement
   simp only [SourceMatches, parseBytes_toUTF8] at agreement
   have select := congrArg (fun result : Except Error Value => result.toOption.bind Value.bool?) agreement
   have left : (parseText "false").toOption.bind Value.bool? = some false := by json_decide
-  have right : (parseText "true").toOption.bind Value.bool? = some true := by json_decide
-  simp only [left, right] at select
+  simp only [left] at select
   contradiction
 
 example : field (json% "[\"😀\",\"\\uD83D\\uDE00\",\"é\",\"e\\u0301\"]")
@@ -74,8 +80,7 @@ def collisionSecond := "d2d837d4c0d63d36"
 
 example : keyHash collisionFirst = keyHash collisionSecond := by json_decide
 
-set_option silmaril.json.allowPrecomputed true in
-def wide : Except Error Value := json_precomputed% r#"{"2d3c3bdde54f96f7":true,"d2d837d4c0d63d36":false,"a":null,"b":null,"c":null,"d":null,"e":null,"f":null,"g":null,"h":null,"i":null,"j":null,"k":null,"l":null,"m":null,"n":null,"o":null,"p":null,"q":null,"r":null,"s":null,"t":null,"u":null,"v":null,"w":null,"x":null,"y":null,"z":null,"0":null,"1":null,"2":null,"3":null,"4":null,"2d3c3bdde54f96f7":false,"last":true}"#
+def wide : Except Error Value := json% r#"{"2d3c3bdde54f96f7":true,"d2d837d4c0d63d36":false,"a":null,"b":null,"c":null,"d":null,"e":null,"f":null,"g":null,"h":null,"i":null,"j":null,"k":null,"l":null,"m":null,"n":null,"o":null,"p":null,"q":null,"r":null,"s":null,"t":null,"u":null,"v":null,"w":null,"x":null,"y":null,"z":null,"0":null,"1":null,"2":null,"3":null,"4":null,"2d3c3bdde54f96f7":false,"last":true}"#
 
 example : (wide.toOption.bind fun value => (value.member? collisionFirst).bind Value.bool?) = some true := by
   json_decide
@@ -102,4 +107,4 @@ def sameWire (text : String) : Bool :=
   unless sameWire (include_str "../../examples/containers/noop-oci/layout/manifest.json") do
     throw (IO.userError "wire mismatch on OCI manifest")
 
-example : (prepared.toOption.bind (Value.toWire? 128)) = JsonWire.parse? ⟨prepared.source.toUTF8⟩ := by rfl
+example : (manifest.toOption.bind (Value.toWire? 128)) = JsonWire.parse? ⟨manifestText.toUTF8⟩ := by rfl

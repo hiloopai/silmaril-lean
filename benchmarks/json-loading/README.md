@@ -21,7 +21,8 @@ still apply. For meaningful comparisons, avoid rebuilding the library during a r
   repository modules need not run through identical machine-code paths in this harness; this
   is not a standalone native executable benchmark.
 - **Declare:** new Lean processes write an `.olean` for a source-only Wire or Fast parser
-  application or a precomputed Fast constructor tree. The precomputed logs separate the
+  application (Fast with `silmaril.json.precompute false`) or the default precomputed Fast
+  constructor tree. The precomputed logs separate the
   compiled parse and expression emission, and Lean profiles kernel `type checking` and
   `.olean serialization`. External wall time includes startup, IO, elaboration and output.
 - **Import:** a fresh Lean process only imports the corresponding `.olean`.
@@ -30,7 +31,7 @@ still apply. For meaningful comparisons, avoid rebuilding the library during a r
   chunk routing in both variants. Wall/RSS include the common module load; compare to import
   to approximate the incremental cost.
 - **Agreement:** a fresh process checks `SourceMatches` for the complete precomputed result
-  on the small and medium inputs, not just a field claim.
+  on the small and medium inputs against a separate `json_text` definition, not just a field claim.
 
 ## Results
 
