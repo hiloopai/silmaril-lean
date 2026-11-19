@@ -644,3 +644,6 @@ See [the example-first adapter development](containers-stage2.md) for loader/run
 checked event profiles, outcome/UB policies, cheap CAS variants, CLI/WASI and SHA report bridges,
 typed POSIX responses, a signal protocol, and the higher-order executor certificate. Its scope
 table separates checked laws from the remaining concrete simulations.
+
+A concrete synchronous model instance with nondeterministic WIT imports, host linking and
+container certificate transfer is in [the synchronous component example](containers-sync-component.md).

@@ -1,0 +1,15 @@
+package silmaril:examples@0.1.0;
+
+interface choice {
+    choose: func() -> bool;
+}
+
+interface sampler {
+    // A synchronous defined guest trap when trap is true.
+    sample: func(trap: bool) -> bool;
+}
+
+world sample-world {
+    import choice;
+    export sampler;
+}
