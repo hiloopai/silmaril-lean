@@ -673,6 +673,82 @@ root = "tests.cerberus.ParameterCallRuntime"
 name = "ci_cerberus_integer_cast"
 root = "tests.cerberus.IntegerCastRuntime"
 
+# Native runtime drivers for the unchanged corpus observation checks.
+# Building these executables does not run their main functions or prove semantics.
+[[lean_exe]]
+name = "ci_corpus_cjson_array_item_core"
+root = "tests.cerberus.CjsonArrayItemContext"
+supportInterpreter = true
+# Lake hashes these inputs; driver/import/toolchain facets remain ordinary Lake dependencies.
+needs = ["corpusReplayPlanner", "corpusReplayRunner", "corpusReplaySampler", "corpusReplayNativeTests", "corpusReplayMemoryTests", "corpusReplayOutputTests"]
+moreLinkObjs = ["corpusReplayBootstrap"]
+moreLinkArgs = ["-Werror", "-fstack-clash-protection", "-ffp-contract=off", "-fdata-sections", "-ffunction-sections", "-fPIC", "-fvisibility=hidden", "-O3", "-DNDEBUG", "-DLEAN_EXPORTING", "-iwithsysroot", "/include/clang", "-DREPLAY_INITIALIZE=initialize_silmaril_tests_cerberus_CjsonArrayItemContext", "-Wl,--wrap=main"]
+
+[[lean_exe]]
+name = "ci_corpus_cjson_array_item_machine"
+root = "tests.cerberus.CjsonArrayItemMachine"
+supportInterpreter = true
+# Lake hashes these inputs; driver/import/toolchain facets remain ordinary Lake dependencies.
+needs = ["corpusReplayPlanner", "corpusReplayRunner", "corpusReplaySampler", "corpusReplayNativeTests", "corpusReplayMemoryTests", "corpusReplayOutputTests"]
+moreLinkObjs = ["corpusReplayBootstrap"]
+moreLinkArgs = ["-Werror", "-fstack-clash-protection", "-ffp-contract=off", "-fdata-sections", "-ffunction-sections", "-fPIC", "-fvisibility=hidden", "-O3", "-DNDEBUG", "-DLEAN_EXPORTING", "-iwithsysroot", "/include/clang", "-DREPLAY_INITIALIZE=initialize_silmaril_tests_cerberus_CjsonArrayItemMachine", "-Wl,--wrap=main"]
+
+# Both the runtime validator and bootstrap/planner participate in Lake scope/invalidation.
+[[input_file]]
+name = "corpusReplayBootstrap"
+path = "tools/corpus/replay_native_bootstrap.c"
+text = false
+
+[[input_file]]
+name = "corpusReplayPlanner"
+path = "tools/corpus/replay_native_bootstrap.py"
+text = false
+
+[[input_file]]
+name = "corpusReplayRunner"
+path = "tools/corpus/run_compiled_replays.py"
+text = false
+
+[[input_file]]
+name = "corpusReplaySampler"
+path = "tools/corpus/replay_measure.py"
+text = false
+
+[[input_file]]
+name = "corpusReplayNativeTests"
+path = "tools/corpus/test_replay_native.py"
+text = false
+
+[[input_file]]
+name = "corpusReplayMemoryTests"
+path = "tools/corpus/test_replay_measure.py"
+text = false
+
+[[input_file]]
+name = "corpusReplayOutputTests"
+path = "tools/corpus/test_replay_output.py"
+text = false
+
+# Separate per-case transcript audit. Generate these instrumentation-only copies
+# with tools/corpus/replay_observation_audit.py before building these targets.
+[[lean_exe]]
+name = "ci_corpus_replay_audit_core"
+root = "ReplayAuditCore"
+srcDir = "build/corpus-replay-audit"
+supportInterpreter = true
+needs = ["corpusReplayPlanner", "corpusReplayRunner", "corpusReplaySampler"]
+moreLinkObjs = ["corpusReplayBootstrap"]
+moreLinkArgs = ["-Werror", "-fstack-clash-protection", "-ffp-contract=off", "-fdata-sections", "-ffunction-sections", "-fPIC", "-fvisibility=hidden", "-O3", "-DNDEBUG", "-DLEAN_EXPORTING", "-iwithsysroot", "/include/clang", "-DREPLAY_INITIALIZE=initialize_silmaril_ReplayAuditCore", "-Wl,--wrap=main"]
+
+[[lean_exe]]
+name = "ci_corpus_replay_audit_machine"
+root = "ReplayAuditMachine"
+srcDir = "build/corpus-replay-audit"
+supportInterpreter = true
+needs = ["corpusReplayPlanner", "corpusReplayRunner", "corpusReplaySampler"]
+moreLinkObjs = ["corpusReplayBootstrap"]
+moreLinkArgs = ["-Werror", "-fstack-clash-protection", "-ffp-contract=off", "-fdata-sections", "-ffunction-sections", "-fPIC", "-fvisibility=hidden", "-O3", "-DNDEBUG", "-DLEAN_EXPORTING", "-iwithsysroot", "/include/clang", "-DREPLAY_INITIALIZE=initialize_silmaril_ReplayAuditMachine", "-Wl,--wrap=main"]
+
 # The worked example of the System V translation-validation shapes (docs/projects/sysv-tv.md):
 # it reads the records and the registry under `silmaril/` and the objects it registers.
 [[lean_lib]]
