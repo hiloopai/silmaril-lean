@@ -778,3 +778,8 @@ srcDir = "tools/elf-pages"
 name = "wasm-region-map"
 root = "Report"
 srcDir = "tools/wasm-region-map"
+
+[[lean_exe]]
+name = "elf-region-inventory"
+root = "Inventory"
+srcDir = "tools/elf-region-inventory"

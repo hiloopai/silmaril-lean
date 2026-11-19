@@ -8,6 +8,7 @@ import Silmaril.Elf.Staged.Pinned.ZlibLibz.Defs
 import Silmaril.Elf.Staged.Pinned.GlibcLibm.Defs
 import Silmaril.Elf.Staged.Pinned.GlibcLibc.Defs
 import Silmaril.Crypto.SHA256
+import Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.Defs
 
 /-!
 # `elf-pages`: the explorer's ELF tab data
@@ -788,10 +789,90 @@ def page (P : Pinned) (thms : Array Thm) (dis : Option Json) : Json := Id.run do
 
 /-! ## Driver -/
 
+/-! ## Byte-grounded region/CFG rows, separate from ELF-part coverage -/
+
+/-- Serialized provenance is a sum: native acceptance alone cannot select
+`certifiedByteCFG`; the checked statement/evidence path must supply it. -/
+inductive RegionProvenance where
+  | stated
+  | certifiedByteCFG
+
+def RegionProvenance.tag : RegionProvenance → String
+  | .stated => "stated"
+  | .certifiedByteCFG => "certified-byte-cfg"
+
+/-- Runtime data only. Certificates are discovered from checked theorem types,
+not these names or native acceptance of the candidate. -/
+def regionRows (P : Pinned) : Array (Name × Silmaril.Machine.Region.X86.CFG.Row × String) :=
+  if P.slug != "hello-gcc" then #[] else
+    let ns := ``Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.compareRow |>.getPrefix
+    let R := Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.compareRow
+    #[(ns ++ `compareRow, R, "Conditional branch window"),
+      (ns ++ `tailRow, Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.tailRow, "Direct tail-jump window"),
+      (ns ++ `statedCompare, Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.statedCompare, "Stated matching decomposition"),
+      (ns ++ `missingFallthrough, Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.missingFallthrough,
+        "Stated incomplete alternative (omits conditional fallthrough)")]
+
+def regionPage (env : Environment) (P : Pinned) : IO Json := do
+  let rows := regionRows P
+  let mut evidence : Std.HashMap Name (Array Json) := {}
+  if !rows.isEmpty then
+    let mod := P.ns ++ `Regions.Thms
+    let some idx := env.getModuleIdx? mod | throw (IO.userError s!"{mod}: certificate module not imported")
+    for (name, ci) in env.constants.toList do
+      unless env.getModuleIdxFor? name == some idx do continue
+      let .thmInfo ti := ci | continue
+      if name.isInternal then continue
+      let ty := ti.type.consumeMData
+      unless ty.isAppOfArity ``Silmaril.Elf.Region.CFG.Valid 2 do
+        throw (IO.userError s!"{name}: not an ELF byte/CFG certificate")
+      unless constName? (ty.getArg! 0) == some (P.ns ++ `F) do
+        throw (IO.userError s!"{name}: names another ELF file")
+      let some row := constName? (ty.getArg! 1) | throw (IO.userError s!"{name}: row is not a constant")
+      unless rows.any (fun (n, _, _) => n == row) do
+        throw (IO.userError s!"{name}: unregistered row {row}")
+      let axioms ← runCore env (Lean.collectAxioms name)
+      unless axioms.all (standardAxioms.contains ·) do
+        throw (IO.userError s!"{name}: certificate uses unsupported axioms {axioms}")
+      let line ← runCore env do return (← Lean.findDeclarationRanges? name).map (·.range.pos.line)
+      let statement ← runCore env do return toString (← (Lean.Meta.ppExpr ti.type).run')
+      let proof := Json.mkObj [("decl", js name.toString), ("status", js "checked"),
+        ("row", js row.toString), ("sha256", js P.sha256),
+        ("claim", js "ELF CodeAt and intrinsic direct CFG"),
+        ("file", js (mod.toString.replace "." "/" ++ ".lean")),
+        ("line", toJson line), ("statement", js statement),
+        ("axioms", toJson (axioms.map Name.toString))]
+      evidence := evidence.insert row ((evidence[row]?.getD #[]).push proof)
+  let mut out := #[]
+  for (name, row, title) in rows do
+    let proofs := evidence[name]?.getD #[]
+    let native := decide row.Valid
+    if !proofs.isEmpty && !native then throw (IO.userError s!"{name}: native consistency check disagrees with certificate")
+    let ph := P.L.phdrs.find? (codeSeg row.code.base row.code.bytes.length)
+    let offset := ph.map fun h => h.offset + (row.code.base - h.virtualAddress)
+    out := out.push <| Json.mkObj [
+      ("id", js name.toString), ("title", js title), ("entry", jn row.entry),
+      ("va", jn row.code.base), ("size", jn row.code.bytes.length), ("offset", toJson offset),
+      ("bytes", toJson (row.code.bytes.map BitVec.toNat)),
+      ("vertices", toJson (row.listing.map (·.addr))),
+      ("instructions", toJson (row.listing.map fun d => Json.mkObj [
+        ("address", jn d.addr), ("size", jn d.size), ("instruction", js (reprStr d.instr))])),
+      ("edges", toJson (row.edges.map fun (a, b) => [a, b])), ("exits", toJson row.exits),
+      ("provenance", Json.mkObj [("kind", js (if proofs.isEmpty then RegionProvenance.stated.tag else RegionProvenance.certifiedByteCFG.tag)),
+        ("file", js ((name.getPrefix.toString.replace "." "/") ++ "/Defs.lean")),
+        ("declaration", js name.toString)]),
+      ("certificates", Json.arr proofs), ("nativeIntrinsicAccepted", toJson native),
+      ("execution", js "Conditional theorem available; loading, admitted invariant and interference premises are not discharged for this file")]
+  pure <| Json.mkObj [("schema", js "silmaril.elf-regions.v1"), ("slug", js P.slug),
+    ("sha256", js P.sha256), ("rows", Json.arr out),
+    ("semantics", js "handwritten X86.Ext; normal retired edges; nonretirement is a distinguished halt"),
+    ("scope", js "Two selected windows, four instructions and 14 of 265 .text bytes in hello-gcc; other pinned files have no CFG certificates here")]
+
 def loadEnv : IO Environment := do
   Lean.initSearchPath (← Lean.findSysroot)
   importModules (pinned.toArray.flatMap fun P => #[{ module := P.ns ++ `Thms }, { module := P.ns ++ `Functions }] ++
-    (if P.slug == "zlib-checksums" then #[{ module := P.ns ++ `Contracts }] else #[])) {}
+    (if P.slug == "zlib-checksums" then #[{ module := P.ns ++ `Contracts }] else #[]) ++
+    (if P.slug == "hello-gcc" then #[{ module := P.ns ++ `Regions.Thms }] else #[])) {}
 
 def generate : IO (List (String × Json) × List (String × ByteArray)) := do
   let e0 ← IO.monoMsNow
@@ -826,9 +907,10 @@ def generate : IO (List (String × Json) × List (String × ByteArray)) := do
     let dis ← disassemble P bytes
     let t3 ← IO.monoMsNow
     let pg := page P thms (dis.map (·.1))
+    let regions ← regionPage env P
     if (← IO.getEnv "ELF_PAGES_PROFILE").isSome then
       IO.eprintln s!"{P.slug}: theorems {t1 - t0} ms, recheck {t2 - t1} ms, disassembly {t3 - t2} ms, page {(← IO.monoMsNow) - t3} ms ({pg.compress.length} B)"
-    files := files ++ [(s!"f/{P.slug}.json", pg)]
+    files := files ++ [(s!"f/{P.slug}.json", pg), (s!"regions/{P.slug}.json", regions)]
     if let some (d, cs) := dis then
       files := files ++ [(s!"dis/{P.slug}.json", d)] ++ (cs.mapIdx fun k c => (s!"dis/{P.slug}/{k}.json", c)).toList
     blobs := blobs ++ [(s!"blob/{P.slug}.bin", bytes)]
@@ -896,7 +978,13 @@ def tampers : List (String × String × (Json → Json)) :=
       r.setObjVal! "theorem" ((a[2]?.map (·.getObjValD "theorem")).getD Json.null)) "functions"),
    ("contract linked to another function", "f/zlib-checksums.json", modArr (modFirst
       (fun r => r.getObjValD "name" == Json.str "crc32_z") fun r =>
-        r.setObjVal! "contracts" (Json.arr #[js "Silmaril.Elf.Staged.Pinned.ZlibChecksums.adler32_z_contract"])) "functions")]
+        r.setObjVal! "contracts" (Json.arr #[js "Silmaril.Elf.Staged.Pinned.ZlibChecksums.adler32_z_contract"])) "functions"),
+   ("CFG edge changed", "regions/hello-gcc.json", modArr (fun a => a.modify 0 fun r =>
+      r.setObjVal! "edges" (Json.arr #[])) "rows"),
+   ("stated row promoted without evidence", "regions/hello-gcc.json", modArr (fun a => a.modify 2 fun r =>
+      r.setObjVal! "provenance" (Json.mkObj [("kind", js "certified-byte-cfg")])) "rows"),
+   ("CFG evidence removed", "regions/hello-gcc.json", modArr (fun a => a.modify 0 fun r =>
+      r.setObjVal! "certificates" (Json.arr #[])) "rows")]
 
 def main (args : List String) : IO UInt32 := do
   match args with

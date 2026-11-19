@@ -87,6 +87,7 @@ table.elf-dis tr.hit td { background:#fff1b8; }
   function tabs(slug, on) {
     return '<div class="elf-tabs">' + [["overview", `#/elf-file/${enc(slug)}`], ["bytes", `#/elf-bytes/${enc(slug)}/0x0`],
       ["functions", `#/elf-funcs/${enc(slug)}`], ["disassembly (unverified)", `#/elf-disasm/${enc(slug)}`],
+      ["regions", `#/elf-regions/${enc(slug)}`], ["graph", `#/elf-graph/${enc(slug)}`],
       ["theorems", `#/elf-file/${enc(slug)}/theorems`]].map(([t, h]) =>
       `<a href="${h}" class="${t.startsWith(on) ? "on" : ""}">${esc(t)}</a>`).join("") + "</div>";
   }
@@ -417,7 +418,94 @@ table.elf-dis tr.hit td { background:#fff1b8; }
     return { html: h, init };
   }
 
+  // ---------- region rows and their full outgoing adjacency ----------
+  const regionProof = (c) => {
+    const src = typeof repoFile === "function" ? repoFile(c.file) : null;
+    return `<span class="prov prov-lean">byte/CFG kernel certificate</span> <code>${esc(c.decl)}</code>` +
+      (src ? ` <a href="${esc(src.blob)}${c.line ? "#L" + c.line : ""}" target="_blank" rel="noopener noreferrer">source</a>` : "") +
+      `<details><summary>statement and axioms</summary><pre>${esc(c.statement)}</pre><p>${esc(c.axioms.join(", ") || "no axioms")}</p></details>`;
+  };
+  const regionSource = (r) => {
+    const src = typeof repoFile === "function" ? repoFile(r.provenance.file) : null;
+    return `<details><summary>row provenance</summary><code>${esc(r.provenance.declaration)}</code>` +
+      (src ? ` <a href="${esc(src.blob)}" target="_blank" rel="noopener noreferrer">source</a>` : `<p>${esc(r.provenance.file)}</p>`) + '</details>';
+  };
+  const regionStatus = (r, sha) => ElfRegions.certification(r, sha).kind === "stated"
+    ? '<span class="prov prov-gen">stated · certificate unknown</span>'
+    : '<span class="prov prov-lean">certified bytes + direct CFG</span>';
+  const labels = (xs) => xs.map(hx).join(", ") || "∅";
+  const edgeLabels = (xs) => xs.map((x) => x.split(":").map((n) => hx(+n)).join(" → ")).join(", ") || "∅";
+  async function elfRegions(arg, graphTab = false) {
+    const [slug, requested] = arg.split("/");
+    let d, data;
+    try { [d, data] = await Promise.all([elfJson(`f/${enc(slug)}.json`), elfJson(`regions/${enc(slug)}.json`)]); }
+    catch (e) { return elfMissing(e); }
+    if (data.sha256 !== d.sha256 || data.schema !== "silmaril.elf-regions.v1") return '<p class="err">Region data image/schema mismatch.</p>';
+    let h = head(d, graphTab ? "graph" : "regions") + `<p class="note">${esc(data.scope)}</p>` +
+      '<p>Certificates bind ELF bytes and exact direct-transfer syntax. Execution soundness has separate loading, admitted-invariant, and interference premises. ' +
+      'Normal edges do not prove progress, termination or absence of traps/faults. Missing certificates remain unknown.</p>';
+    if (!data.rows.length) return h + '<p>No region/CFG rows are exported for this file.</p>';
+    const rows = data.rows;
+    const option = (r, selected) => `<option value="${esc(r.id)}"${r.id === selected ? " selected" : ""}>${esc(r.title)}</option>`;
+    if (graphTab) {
+      const selected = rows.find((r) => r.id === decodeURIComponent(requested || "")) || rows[0];
+      h += `<label>Graph constant <select id="elf-graph-row">${rows.map((r) => option(r, selected.id)).join("")}</select></label><div id="elf-graph"></div>`;
+      return { html: h, init: () => {
+        const show = () => {
+          const r = rows.find((r) => r.id === $("#elf-graph-row").value), g = ElfRegions.graph(r);
+          const nodes = new Map(g.nodes.map((n, i) => [n.id, { ...n,
+            x: 340 + 210 * Math.cos(i * 2 * Math.PI / g.nodes.length - Math.PI / 2),
+            y: 190 + 125 * Math.sin(i * 2 * Math.PI / g.nodes.length - Math.PI / 2) }]));
+          const paths = g.edges.map((e, i) => {
+            const a = nodes.get(e.source), b = nodes.get(e.target), dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+            const parallel = g.edges.slice(0, i).filter((x) => x.source === e.source && x.target === e.target).length;
+            const path = a.id === b.id ? `M ${a.x - 12} ${a.y - 15} C ${a.x - 65} ${a.y - 90 - parallel * 16}, ${a.x + 65} ${a.y - 90 - parallel * 16}, ${a.x + 15} ${a.y - 15}`
+              : `M ${a.x + dx * 39 / len} ${a.y + dy * 20 / len} Q ${(a.x + b.x) / 2 - dy * parallel * .12} ${(a.y + b.y) / 2 + dx * parallel * .12} ${b.x - dx * 42 / len} ${b.y - dy * 23 / len}`;
+            return `<path data-edge="${e.source}:${e.target}" d="${path}" fill="none" stroke="#526576" stroke-width="2" marker-end="url(#elf-cfg-arrow)"><title>${hx(e.source)} → ${hx(e.target)}</title></path>`;
+          }).join("");
+          const vertices = [...nodes.values()].map((n) => `<g data-node="${n.id}"><rect x="${n.x - 39}" y="${n.y - 20}" width="78" height="40" rx="${n.internal ? 18 : 2}" fill="${n.entry ? "#d5e9ff" : n.internal ? "#e3f3e6" : "#fff0ce"}" stroke="#526576"/><text x="${n.x}" y="${n.y + 4}" text-anchor="middle" font-size="13">${hx(n.id)}</text><title>${n.entry ? "entry; " : ""}${n.internal ? "internal instruction start" : "outside support"}${n.exit ? "; declared exit" : ""}</title></g>`).join("");
+          $("#elf-graph").innerHTML = `<h3>${esc(r.title)}</h3><p>${regionStatus(r, data.sha256)}</p>` +
+            `<svg role="img" aria-label="Directed instruction CFG" viewBox="0 -60 680 440" style="max-width:800px;width:100%;border:1px solid var(--line)"><defs><marker id="elf-cfg-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#526576"/></marker></defs>${paths}${vertices}</svg>` +
+            '<p class="muted">Blue: entry. Rounded green: internal instruction starts. Square amber: outside support. Outgoing arrows are successors, including loops and cross edges; no dominance arcs are inferred. Layout is browser-generated.</p>' +
+            '<h3>Relationships and properties</h3><table><thead><tr><th>view</th><th>representation / orientation</th><th>properties</th><th>status / loss</th></tr></thead><tbody>' +
+            `<tr><td>Directed multi / edge rows</td><td>source → successor, edge-row identities</td><td>${g.properties.vertices} vertices; ${g.properties.edgeRows} edges; ${g.properties.loops} loops; ${g.properties.parallelDuplicates} duplicate pairs</td><td>Displayed verbatim; row IDs are serialization positions, not machine events</td></tr>` +
+            `<tr><td>Directed relation</td><td>ordered pairs; loops allowed</td><td>${g.properties.relationalEdges} distinct pairs</td><td>Certificate checks this extensional view; parallel identities forgotten</td></tr>` +
+            `<tr><td>Undirected simple projection</td><td>symmetrized unordered pairs; no loops</td><td>${g.properties.undirectedSimpleEdges} pairs</td><td>Browser computation; loses direction, loops and multiplicity</td></tr>` +
+            '<tr><td>Dominator tree</td><td>Immediate-dominance children differ from outgoing edges</td><td>Not supplied</td><td>Requires rooted reachability and a separate dominance witness</td></tr></tbody></table>' +
+            '<h3>Complete adjacency</h3><table><thead><tr><th>source</th><th>target</th><th>boundary role</th></tr></thead><tbody>' +
+            g.edges.map((e) => `<tr><td>${hx(e.source)}</td><td>${hx(e.target)}</td><td>${r.vertices.includes(e.target) ? "internal" : "outward"}${r.exits.includes(e.target) ? "; declared exit" : ""}</td></tr>`).join("") + '</tbody></table>' +
+            `<p><a href="#/elf-regions/${enc(slug)}">Compare region rows and proof provenance</a></p>`;
+        };
+        $("#elf-graph-row").addEventListener("change", show); show();
+      }};
+    }
+    h += '<div class="tablebox"><table id="elf-regions"><thead><tr><th>row / provenance</th><th>byte extent (half-open)</th><th>boundary / support</th><th>evidence</th></tr></thead><tbody>' +
+      rows.map((r) => `<tr data-region="${esc(r.id)}"><td><b>${esc(r.title)}</b><br>${regionStatus(r, data.sha256)}${regionSource(r)}<br><a href="#/elf-graph/${enc(slug)}/${enc(r.id)}">graph</a></td>` +
+        `<td>ELF VA [${hx(r.va)}, ${hx(r.va + r.size)})<br>${r.offset == null ? "no file mapping" : blink(slug, r.offset, r.size, `file [${hx(r.offset)}, ${hx(r.offset + r.size)})`)}<br><code>${r.bytes.map((b) => b.toString(16).padStart(2, "0")).join(" ")}</code></td>` +
+        `<td>entry ${hx(r.entry)}<br>exits ${labels(r.exits)}<br>instruction starts ${labels(r.vertices)}</td><td>` +
+        ElfRegions.certification(r, data.sha256).evidence.map(regionProof).join("") +
+        `<p>Native consistency checker: ${r.nativeIntrinsicAccepted ? "accepts" : "rejects"} (not a kernel certificate)</p><details><summary>execution scope</summary>${esc(r.execution)}</details></td></tr>`).join("") + '</tbody></table></div>';
+    const defaultB = rows.find((r) => r.id.endsWith(".statedCompare")) || rows[1] || rows[0];
+    h += `<h3>Compare decompositions of this image</h3><div class="controls"><label>A <select id="elf-region-a">${rows.map((r) => option(r, rows[0].id)).join("")}</select></label>` +
+      `<label>B <select id="elf-region-b">${rows.map((r) => option(r, defaultB.id)).join("")}</select></label></div><div id="elf-region-comparison"></div>`;
+    return { html: h, init: () => {
+      const show = () => {
+        const a = rows.find((r) => r.id === $("#elf-region-a").value), b = rows.find((r) => r.id === $("#elf-region-b").value), c = ElfRegions.compare(a, b);
+        const disagreement = c.onlyA.length + c.onlyB.length;
+        $("#elf-region-comparison").innerHTML = `<p>${c.overlapBytes} overlapping bytes; ${c.sharedSources.length} shared instruction starts. ` +
+          (c.sharedSources.length ? (disagreement ? '<b>Adjacency disagrees at shared sources.</b>' : '<b>Adjacency agrees at shared sources.</b>') : 'No common source to compare.') + '</p>' +
+          `<table><tbody><tr><th>Edges only in A at shared sources</th><td>${edgeLabels(c.onlyA)}</td></tr><tr><th>Edges only in B at shared sources</th><td>${edgeLabels(c.onlyB)}</td></tr>` +
+          `<tr><th>Entry</th><td>${c.entryAgrees ? "agrees" : "differs"}</td></tr><tr><th>Declared exits</th><td>${c.sameSupport ? `only A: ${labels(c.exitsOnlyA)}; only B: ${labels(c.exitsOnlyB)}` : "Different support; exit sets describe different boundaries"}</td></tr>` +
+          `<tr><th>Sources covered only by A / B</th><td>${labels(c.uncoveredSourcesA)} / ${labels(c.uncoveredSourcesB)}</td></tr></tbody></table>` +
+          '<p class="muted">Data agreement is not certificate transport. A difference is a disagreement between statements, not proof that an unproved statement is false. Disjoint support is coverage difference. All computations here are browser observations.</p>';
+      };
+      for (const id of ["#elf-region-a", "#elf-region-b"]) $(id).addEventListener("change", show); show();
+    }};
+  }
+
   registerView({ id: "elf", title: "ELF", nav: 85, render: elfIndex });
+  registerView({ id: "elf-regions", title: "ELF regions", tab: "elf", render: (arg) => elfRegions(arg) });
+  registerView({ id: "elf-graph", title: "ELF graph", tab: "elf", render: (arg) => elfRegions(arg, true) });
   registerView({ id: "elf-funcs", title: "ELF functions", tab: "elf", render: (arg) => elfFuncs(arg) });
   registerView({ id: "elf-file", title: "ELF file", tab: "elf", render: (arg) => elfFile(arg) });
   registerView({ id: "elf-bytes", title: "ELF bytes", tab: "elf", render: (arg) => elfBytes(arg) });

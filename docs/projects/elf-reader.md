@@ -189,3 +189,8 @@ downstream project's files.
 The library files are stripped, so only exported functions have symbols: their gaps are mostly
 code of internal functions, not padding. The coverage is what the symbol table supports, and is
 reported as such.
+
+The [ELF region/CFG guide](elf-region-cfg.md) describes byte-grounded direct CFG
+certificates, the region comparison and graph tabs, and their separate loading
+and interference obligations. These certificates do not change ELF-part byte
+coverage or the status of the external disassembly.
