@@ -51,9 +51,9 @@ class SqliteBinaryEquivalences(unittest.TestCase):
                     for symbol,f in endpoint['functions'].items():
                         db.execute('INSERT INTO corpus_functions VALUES(?,?,?,?)',(endpoint['id'],symbol,f['address'],f['size']))
             rows=e.export(project,out)
-            self.assertEqual(len(rows),15)
+            self.assertEqual(len(rows),16)
             registry=json.loads((ROOT/e.c.REGISTRY).read_text())['statements']
-            self.assertEqual(sum(x['kind']=='functional_equivalence' for x in registry),15)
+            self.assertEqual(sum(x['kind']=='functional_equivalence' for x in registry),16)
             self.assertEqual(sum(x['kind']=='functional_equivalence' and x.get('viewer_kind')!='binary_equivalence' for x in registry),0)
             for row in rows:
                 p=json.loads((out/Path(row['static_path']).name).read_text())

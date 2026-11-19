@@ -1,0 +1,134 @@
+{
+  "schema": "silmaril.binary-equivalence.v1",
+  "root": "Silmaril.Elf.Corpus.DarkhttpdLogEncoding.Equivalence.Thms",
+  "definition": "Silmaril/Elf/Corpus/DarkhttpdLogEncoding/Equivalence/Defs.lean",
+  "endpoints": [
+    {
+      "id": "darkhttpdO0",
+      "path": "corpus/variants/darkhttpd/1.17/default/x86_64/O0/unstripped/darkhttpd",
+      "sha256": "9e107552b0d523f90b1b0b2eacd475f1172a1040316de9d1fc7060dc4799a698",
+      "functions": {
+        "needs_logencoding": {
+          "address": 20542,
+          "size": 41,
+          "file_offset": 20542,
+          "bytes_hex": "55 48 89 e5 89 f8 88 45 fc 80 7d fc 1f 76 0c 80 7d fc 7e 77 06 80 7d fc 22 75 07 b8 01 00 00 00 eb 05 b8 00 00 00 00 5d c3",
+          "code_sha256": "73b13a65471207fbe249b466fd698d3a383d8e612807d245485337de70da248a",
+          "identity_check": "ELF symbol + executable PT_LOAD bytes checked by Python; kernel CodeAt lives in the linked Lean modules"
+        }
+      },
+      "receipt": {
+        "path": "corpus/variants/darkhttpd/1.17/default/x86_64/O0/unstripped/receipt.json",
+        "sha256": "1c95d7aa037fa73a31df7559b843c4ac8df9c0b669eb446d7fed48de7e805419"
+      },
+      "build": {
+        "project": "darkhttpd",
+        "version": "1.17",
+        "configuration": "default",
+        "target": "x86_64-linux-gnu",
+        "optimization": "O0",
+        "image_id": "sha256:fa677ba07a2e15e09323f3b00494134c725ca6dfdc255abd4e37d2b79a2b0127",
+        "source_inputs": [
+          {
+            "url": "https://github.com/emikulic/darkhttpd/archive/refs/tags/v1.17.tar.gz",
+            "sha256": "4fee9927e2d8bb0a302f0dd62f9ff1e075748fa9f5162c9481a7a58b41462b56"
+          }
+        ],
+        "cflags": "-O0 -g0 -ffile-prefix-map=/build/darkhttpd=. -MMD",
+        "configure_args": "(none: make CC=gcc CFLAGS='-O0 -g0 -ffile-prefix-map=/build/darkhttpd=. -MMD' darkhttpd)",
+        "compiler": "gcc (Debian 14.2.0-19) 14.2.0",
+        "path": "corpus/variants/darkhttpd/1.17/default/x86_64/O0/build.json",
+        "sha256": "607e843d8885ca948819c3cceb707d307acb0b107a995bca5a11dfb3296d3e9c",
+        "source_sha256": "450280b0010ee689b1984d8258afcc37d3f43a2cd8825661d275f9744e1f3ce8"
+      },
+      "source": {
+        "path": "corpus/darkhttpd/upstream/darkhttpd-1.17/darkhttpd.c",
+        "sha256": "450280b0010ee689b1984d8258afcc37d3f43a2cd8825661d275f9744e1f3ce8",
+        "definitions": {
+          "needs_logencoding": {
+            "offset": 42815,
+            "length": 110,
+            "sha256": "36a3cb857a4fee91bbfc1494950afde02e83acf8c067d9d5360775fb66b00721",
+            "text": "static int needs_logencoding(const unsigned char c) {\n    return ((c <= 0x1F) || (c >= 0x7F) || (c == '\"'));\n}"
+          }
+        }
+      }
+    },
+    {
+      "id": "darkhttpdOg",
+      "path": "corpus/variants/darkhttpd/1.17/default/x86_64/Og/unstripped/darkhttpd",
+      "sha256": "1a558f0eca05769307bd2950e91c4c817214b77c30e1a2eedd2376f4afbaaa99",
+      "functions": {
+        "needs_logencoding": {
+          "address": 10262,
+          "size": 21,
+          "file_offset": 10262,
+          "bytes_hex": "8d 47 e0 3c 5e 0f 97 c0 40 80 ff 22 0f 94 c2 09 d0 0f b6 c0 c3",
+          "code_sha256": "21d8a3bf40fb31fd00a93b4a18bd1c4bc2565b60592383cf0ba21c0d15ec667a",
+          "identity_check": "ELF symbol + executable PT_LOAD bytes checked by Python; kernel CodeAt lives in the linked Lean modules"
+        }
+      },
+      "receipt": {
+        "path": "corpus/variants/darkhttpd/1.17/default/x86_64/Og/unstripped/receipt.json",
+        "sha256": "0307971f561801a3b0c96ef2e552c9588583f1bf3abd9eaf969cbe5f5af599c0"
+      },
+      "build": {
+        "project": "darkhttpd",
+        "version": "1.17",
+        "configuration": "default",
+        "target": "x86_64-linux-gnu",
+        "optimization": "Og",
+        "image_id": "sha256:fa677ba07a2e15e09323f3b00494134c725ca6dfdc255abd4e37d2b79a2b0127",
+        "source_inputs": [
+          {
+            "url": "https://github.com/emikulic/darkhttpd/archive/refs/tags/v1.17.tar.gz",
+            "sha256": "4fee9927e2d8bb0a302f0dd62f9ff1e075748fa9f5162c9481a7a58b41462b56"
+          }
+        ],
+        "cflags": "-Og -g0 -ffile-prefix-map=/build/darkhttpd=. -MMD",
+        "configure_args": "(none: make CC=gcc CFLAGS='-Og -g0 -ffile-prefix-map=/build/darkhttpd=. -MMD' darkhttpd)",
+        "compiler": "gcc (Debian 14.2.0-19) 14.2.0",
+        "path": "corpus/variants/darkhttpd/1.17/default/x86_64/Og/build.json",
+        "sha256": "e82cabbdb2a9627bef2799fd995b422efe17f5708958093e502c41a97dac16b6",
+        "source_sha256": "450280b0010ee689b1984d8258afcc37d3f43a2cd8825661d275f9744e1f3ce8"
+      },
+      "source": {
+        "path": "corpus/darkhttpd/upstream/darkhttpd-1.17/darkhttpd.c",
+        "sha256": "450280b0010ee689b1984d8258afcc37d3f43a2cd8825661d275f9744e1f3ce8",
+        "definitions": {
+          "needs_logencoding": {
+            "offset": 42815,
+            "length": 110,
+            "sha256": "36a3cb857a4fee91bbfc1494950afde02e83acf8c067d9d5360775fb66b00721",
+            "text": "static int needs_logencoding(const unsigned char c) {\n    return ((c <= 0x1F) || (c >= 0x7F) || (c == '\"'));\n}"
+          }
+        }
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "name": "logencodingOptimization",
+      "declaration": "Silmaril.Elf.Corpus.DarkhttpdLogEncoding.Equivalence.Task.optimization",
+      "function_symbol": "needs_logencoding",
+      "profile": "darkhttpd-byte-predicate-v1",
+      "left": "darkhttpdO0",
+      "right": "darkhttpdOg",
+      "left_frame": 12,
+      "right_frame": 0,
+      "value": null
+    }
+  ],
+  "excluded": [
+    "O2/O3 do not retain this standalone static symbol; no invented body or inlined-function equivalence is claimed.",
+    "Other versions/configurations/targets are not selected. Full HTTP-server contexts are outside this function slice."
+  ],
+  "limits": [
+    "UNPROVED binary obligation; finite native/Open.step observations are not an equivalence proof.",
+    "All256 unsigned-byte inputs; arbitrary shared caller registers, flags, memory and upper56 RDI bits. Og uses actual LEA/byte comparison/SETA/SETE/OR/MOVZX; O0 branches and spills the byte. SysV DIL low8 argument and EAX low32 result.",
+    "Both actual first returns, joint entry existence for every byte, callee-saved ABI, exact12/0 private frames, unrelated caller bytes and complete region metadata preservation are obligations. No return equality, expected predicate result, refinement, safety or termination is an entry premise.",
+    "Function excerpt placement in one shared initial memory, not whole-ELF loading, whole-server correctness or x86 hardware refinement. No globals, heap, callees or I/O effects are permitted.",
+    "Included source is exact upstream provenance for both builds. The separate O0 source/Core/ELF context is not an Og source refinement proof. Historical preprocessing/build/frontend adequacy remains unproved; no new ELF builds.",
+    "Broad corpus coverage remains unfinished. Existing unsupported FIPS, distinct jemalloc configurations, cJSON provenance/runtime limitations and upstream/preexisting first-party security alerts remain."
+  ]
+}

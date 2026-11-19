@@ -1,0 +1,1 @@
+PASS1024 actual shared-initial-memory Open.step byte-predicate pairs: all256 bytes under four upper-register/flags/stack patterns, equal actual EAX, ABI and caller memory/mappings preserved outside exact12/0 frames; UNPROVED, finite observations are not semantic proofs

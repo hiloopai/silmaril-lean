@@ -1,0 +1,34 @@
+{
+  "artifacts": [
+    {
+      "path": "corpus/variants/darkhttpd/1.17/default/x86_64/O0/unstripped/darkhttpd",
+      "sha256": "9e107552b0d523f90b1b0b2eacd475f1172a1040316de9d1fc7060dc4799a698",
+      "address": 20542,
+      "size": 41,
+      "file_offset": 20542,
+      "bytes_hex": "55 48 89 e5 89 f8 88 45 fc 80 7d fc 1f 76 0c 80 7d fc 7e 77 06 80 7d fc 22 75 07 b8 01 00 00 00 eb 05 b8 00 00 00 00 5d c3",
+      "code_sha256": "73b13a65471207fbe249b466fd698d3a383d8e612807d245485337de70da248a",
+      "identity_check": "ELF symbol + executable PT_LOAD bytes checked by Python; kernel CodeAt lives in the linked Lean modules"
+    },
+    {
+      "path": "corpus/variants/darkhttpd/1.17/default/x86_64/Og/unstripped/darkhttpd",
+      "sha256": "1a558f0eca05769307bd2950e91c4c817214b77c30e1a2eedd2376f4afbaaa99",
+      "address": 10262,
+      "size": 21,
+      "file_offset": 10262,
+      "bytes_hex": "8d 47 e0 3c 5e 0f 97 c0 40 80 ff 22 0f 94 c2 09 d0 0f b6 c0 c3",
+      "code_sha256": "21d8a3bf40fb31fd00a93b4a18bd1c4bc2565b60592383cf0ba21c0d15ec667a",
+      "identity_check": "ELF symbol + executable PT_LOAD bytes checked by Python; kernel CodeAt lives in the linked Lean modules"
+    }
+  ],
+  "pairs": 1024,
+  "byte_inputs": 256,
+  "upper_register_patterns": [
+    0,
+    1,
+    5124095576030430,
+    72057594037927935
+  ],
+  "actual_native_eax_equality": true,
+  "scope": "Exact ELF excerpts in anonymous RX mappings; no SUT rebuild, whole-ELF load, general ABI/memory or semantic proof. Finite native observations; contextual obligation UNPROVED."
+}

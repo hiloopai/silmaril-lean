@@ -21,7 +21,7 @@ try{
   const initialReads=fs.readFileSync(requestLog,'utf8').trim().split('\n').map(JSON.parse).filter(r=>r.path==='/project.sqlite');
   assert.ok(initialReads.reduce((n,r)=>n+(r.method==='GET'?r.bytes:0),0)<2*1024*1024,'landing page reads compact indexes rather than artifact evidence payloads');
   assert.match(await page.locator('#main').innerText(),/32 contextual C → ELF statements/);
-  assert.match(await page.locator('#main').innerText(),/15 registered function-equivalence statements · 15 connected binary viewer entries/);
+  assert.match(await page.locator('#main').innerText(),/16 registered function-equivalence statements · 16 connected binary viewer entries/);
   const combined=Number(execFileSync('python3',['-c',
     "import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); print(c.execute(\"SELECT count(*) FROM sqlite_master WHERE type='table' AND name='projects'\").fetchone()[0]); c.close()",
     path.join(site,'project.sqlite')],{encoding:'utf8'}).trim())>0;

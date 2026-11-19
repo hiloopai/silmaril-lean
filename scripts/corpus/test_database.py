@@ -29,11 +29,11 @@ class CorpusDatabase(unittest.TestCase):
 
     def test_concrete_function_statement_binding(self):
         data = inventory(ROOT)
-        self.assertEqual(data['binary_viewer_statement_count'], 15)
-        self.assertEqual(data['formal_statement_counts'], {'contextual_c_to_elf': 32, 'functional_equivalence': 15})
+        self.assertEqual(data['binary_viewer_statement_count'], 16)
+        self.assertEqual(data['formal_statement_counts'], {'contextual_c_to_elf': 32, 'functional_equivalence': 16})
         participants = [a for a in data['artifacts'] if a['functional_equivalence_statements']]
-        self.assertEqual(len(participants), 18)
-        self.assertEqual({a['project'] for a in participants}, {'mimalloc', 'tinycc', 'sqlite', 'cjson'})
+        self.assertEqual(len(participants), 20)
+        self.assertEqual({a['project'] for a in participants}, {'mimalloc', 'tinycc', 'sqlite', 'cjson', 'darkhttpd'})
         source_participants = [a for a in data['artifacts'] if a['contextual_c_to_elf_statements']]
         self.assertEqual([a['path'] for a in source_participants], ['corpus/elf/cjson/x86_64/libcjson.so.1', 'corpus/elf/mimalloc/x86_64/libmimalloc.so.2.1', 'corpus/elf/openssl/x86_64/libssl.so.3', 'corpus/elf/sqlite/x86_64/libsqlite3.so', 'corpus/variants/cjson/1.7.19/default/x86_64/O0/unstripped/libcjson.so.1', 'corpus/variants/darkhttpd/1.17/default/x86_64/O0/unstripped/darkhttpd', 'corpus/variants/tinycc/0.9.27/default/x86_64/O0/unstripped/tcc'])
         statements = json.loads((ROOT / 'corpus/measurements/formal-functions/checks.json').read_text())['statements']

@@ -9,11 +9,24 @@ _spec = importlib.util.spec_from_file_location('binary_corpus', Path(__file__).w
 c = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(c)
 MANIFEST = 'corpus/sqlite/equivalence/build-queries/manifest.json'
-MANIFESTS = [MANIFEST, 'corpus/cjson/equivalence/array-size/manifest.json', 'corpus/cjson/equivalence/detach/manifest.json', 'corpus/legacy/equivalence/manifest.json']
+MANIFESTS = [MANIFEST, 'corpus/cjson/equivalence/array-size/manifest.json', 'corpus/cjson/equivalence/detach/manifest.json', 'corpus/legacy/equivalence/manifest.json', 'corpus/darkhttpd/equivalence/logencoding/manifest.json']
 
 
 def validate_pair(pair, left, right):
     """Reject incompatible observed queries; this does not prove machine semantics."""
+    if pair.get('profile') == 'darkhttpd-byte-predicate-v1':
+        if pair['function_symbol'] != 'needs_logencoding' or pair.get('value') is not None:
+            raise ValueError('invalid byte-predicate observation')
+        if pair['left_frame'] != 12 or pair['right_frame'] != 0:
+            raise ValueError('unexpected byte-predicate frame')
+        for key in ['source_sha256', 'project', 'version', 'configuration', 'target', 'source_inputs']:
+            if left['build'][key] != right['build'][key]:
+                raise ValueError('incompatible byte-predicate build pair')
+        if left['source'] != right['source']:
+            raise ValueError('incompatible byte-predicate source')
+        if left['build']['optimization'] != 'O0' or right['build']['optimization'] != 'Og':
+            raise ValueError('invalid byte-predicate optimization pair')
+        return
     if pair.get('profile') in ['legacy-mimalloc-version-v1', 'legacy-tinycc-isid-v1']:
         version = pair['profile'] == 'legacy-mimalloc-version-v1'
         if pair['function_symbol'] != ('mi_version' if version else 'isid') or pair['value'] != (219 if version else None):
@@ -87,6 +100,33 @@ def validate_cjson_build(root, endpoint):
         raise ValueError('traversal canonical receipt mismatch')
 
 
+def validate_darkhttpd_build(root, endpoint):
+    """Validate display identity against the actual variant build and receipt."""
+    receipt = json.loads(c.public_file(root, endpoint['receipt']['path']).read_bytes())
+    build = endpoint['build']
+    actual = json.loads(c.public_file(root, build['path']).read_bytes())
+    if build['project'] != 'darkhttpd' or build['configuration'] != 'default' or build['target'] != 'x86_64-linux-gnu':
+        raise ValueError('byte-predicate project/configuration/target mismatch')
+    for key in ['project', 'version', 'configuration', 'target', 'optimization', 'image_id', 'source_inputs']:
+        if actual[key] != build[key]:
+            raise ValueError('byte-predicate build identity mismatch')
+    if receipt['package'] != build['project'] or receipt['version'] != build['version'] or receipt['arch'] != 'x86_64':
+        raise ValueError('byte-predicate receipt identity mismatch')
+    if any(receipt[k] != build[k] for k in ['compiler', 'cflags', 'configure_args']):
+        raise ValueError('byte-predicate receipt fields mismatch')
+    if receipt['image']['id'] != build['image_id'] or receipt['inputs'] != build['source_inputs']:
+        raise ValueError('byte-predicate receipt image/source mismatch')
+    if not re.search(r'(?:^| )-'+build['optimization']+r'(?: |$)', receipt['cflags']):
+        raise ValueError('byte-predicate receipt optimization mismatch')
+    if build['source_sha256'] != endpoint['source']['sha256'] or not any(
+            x['path'] == endpoint['source']['path'] and x['sha256'] == endpoint['source']['sha256']
+            for x in actual['included_source_files']):
+        raise ValueError('byte-predicate included source mismatch')
+    outputs = [x for x in receipt['outputs'] if x['object'] == 'darkhttpd']
+    if len(outputs) != 1 or outputs[0]['path'] != endpoint['path'] or outputs[0]['sha256'] != endpoint['sha256']:
+        raise ValueError('byte-predicate receipt artifact mismatch')
+
+
 def export(project, output, root=c.ROOT):
     registry_data = c.public_file(root, c.REGISTRY).read_bytes()
     statements = [s for s in json.loads(registry_data)['statements'] if s.get('viewer_kind') == 'binary_equivalence']
@@ -132,7 +172,10 @@ def export(project, output, root=c.ROOT):
                     raw = c.public_file(root, evidence['path']).read_bytes()
                     if pins.get(evidence['path']) != c.sha(raw) or evidence['sha256'] != c.sha(raw):
                         raise ValueError('stale binary build/source receipt')
-                if pair.get('profile') in ['cjson-finite-list-v1', 'cjson-interior-detach-v1']:
+                if pair.get('profile') == 'darkhttpd-byte-predicate-v1':
+                    validate_darkhttpd_build(root, e)
+                    raw_source = c.public_file(root, e['source']['path']).read_bytes()
+                elif pair.get('profile') in ['cjson-finite-list-v1', 'cjson-interior-detach-v1']:
                     validate_cjson_build(root, e)
                     raw_source = c.public_file(root, e['source']['path']).read_bytes()
                 elif pair.get('profile') in ['legacy-mimalloc-version-v1', 'legacy-tinycc-isid-v1']:
