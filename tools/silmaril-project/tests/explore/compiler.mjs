@@ -29,14 +29,32 @@ try {
     }catch{}
     await new Promise(resolve=>setTimeout(resolve,100));
   }
+  const initialListing=JSON.parse(fs.readFileSync(path.join(site,'compiler/api/problems.json'),'utf8'));
+  const initialPath=initialListing[0].static_path;
+  let captureInitial;
+  const initialPaused=new Promise(resolve=>{captureInitial=resolve;});
+  await page.route('**/'+initialPath,route=>captureInitial(route));
   await page.goto(base+'/index.html#/compiler');
   const link=page.getByRole('link',{name:'Open the source ↔ target viewer',exact:true});
-  await link.waitFor({timeout:60000}); await link.click();
+  await link.waitFor({timeout:60000});
+  const initialRequested=page.waitForRequest('**/'+initialPath);
+  await link.click();
   await page.waitForFunction(()=>document.querySelectorAll('#program option').length>0);
   const listing=JSON.parse(fs.readFileSync(path.join(site,'compiler/api/problems.json'),'utf8'));
   assert.ok(listing.length>0,'actual compiler fixtures exported');
+  await initialRequested;
   await page.selectOption('#program','compiles-to/straight');
   await page.waitForFunction(()=>document.querySelector('#src-title').textContent.includes('straight'));
+  // Complete the older initial selection only after the newer selection painted.
+  // The old response must not overwrite its source, target or semantic state.
+  const selectedTitle=await page.locator('#src-title').innerText();
+  const initialFinished=page.waitForResponse('**/'+initialPath);
+  await (await initialPaused).fulfill({status:200,contentType:'application/json',body:fs.readFileSync(path.join(site,'compiler',initialPath),'utf8')});
+  await (await initialFinished).finished();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.equal(await page.locator('#src-title').innerText(),selectedTitle,'older fixture response must not replace the newer selection');
+  await page.unroute('**/'+initialPath);
+  console.log('PASS out-of-order fixture responses preserve the latest selection');
   assert.ok(await page.locator('#src .line').count()>1,'actual source text');
   assert.ok(await page.locator('#tgt .line').count()>1,'actual target listing');
   await page.selectOption('#mode','semantic');

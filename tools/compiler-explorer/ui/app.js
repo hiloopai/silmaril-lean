@@ -52,8 +52,12 @@ function fillBuilds(want) {
   if (want && [...b.options].some((o) => o.value === want)) b.value = want;
 }
 
+let loadGeneration = 0;
 async function load(id) {
-  state.problem = await getJSON(state.list.find(p => p.id === id)?.static_path || ("api/problems/" + encodeURIComponent(id)));
+  const generation = ++loadGeneration;
+  const problem = await getJSON(state.list.find(p => p.id === id)?.static_path || ("api/problems/" + encodeURIComponent(id)));
+  if (generation !== loadGeneration) return;
+  state.problem = problem;
   state.locked = null;
   render();
 }
