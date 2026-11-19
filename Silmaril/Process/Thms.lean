@@ -13,7 +13,7 @@ theorem lpsTranslatedArms_length : LPS.translatedArms.length = 90 :=
 theorem lpsSpecTable_complete : LPS.specTable.all (·.status == .translated) = true :=
   LPS.specTable_all_translated
 
-theorem sha256Cli_total : LPS.Problems.Sha256Cli.TotalGoal :=
+public theorem sha256Cli_total : LPS.Problems.Sha256Cli.TotalGoal :=
   LPS.Problems.Sha256Cli.sha256cli_lps_total
 
 /-! ## GNU `sha256sum-min` (stdin tier)
@@ -27,7 +27,7 @@ theorem gnuSha256sum_sysTotal : LPS.Problems.GnuSha256sum.Registry.sysTotal :=
   LPS.Problems.GnuSha256sum.Close.sysTotal_close
 
 /-- Total correctness in LPS on the stdin tier: the GNU digest line of the input. -/
-theorem gnuSha256sum_lpsTotal : LPS.Problems.GnuSha256sum.Registry.lpsTotal :=
+public theorem gnuSha256sum_lpsTotal : LPS.Problems.GnuSha256sum.Registry.lpsTotal :=
   LPS.Problems.GnuSha256sum.Close.lpsTotal_close
 
 /-- Total correctness in LPS on standard input of at most 1024 bytes. -/

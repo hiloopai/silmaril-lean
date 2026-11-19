@@ -637,3 +637,10 @@ lake build --wfail Silmaril.Containers.Fixtures.Examples Silmaril.Containers.Min
   Silmaril.Containers.HttpServe.Thms \
   Silmaril.Containers.Institution.Defs Silmaril.LogicGraph.Nodes.Containers.Defs
 ```
+
+## Experimental adapters and Stage2
+
+See [the example-first adapter development](containers-stage2.md) for loader/runtime categories,
+checked event profiles, outcome/UB policies, cheap CAS variants, CLI/WASI and SHA report bridges,
+typed POSIX responses, a signal protocol, and the higher-order executor certificate. Its scope
+table separates checked laws from the remaining concrete simulations.

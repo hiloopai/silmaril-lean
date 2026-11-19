@@ -280,11 +280,19 @@ def layerOf (bs : List UInt8) : Except Refusal (Layer (List UInt8)) := do
 /-! ## Images -/
 
 /-- **Read an image** from a layout, starting at the digest of its manifest. -/
-def load (L : Layout) (manifest : Digest) : Except Refusal (Flat (List UInt8)) := do
-  let m ← jsonOf (← L.fetch manifest)
+def loadFrom (fetch : Digest → Except Refusal (List UInt8)) (manifest : Digest) :
+    Except Refusal (Flat (List UInt8)) := do
+  let fetchSizedFrom := fun d : Digest × Nat => do
+    let bs ← fetch d.1
+    if bs.length = d.2 then pure bs else .error .badDigest
+  let m ← jsonOf (← fetch manifest)
   let (cfgD, layerDs) ← manifestOf m
-  let cfg ← configOf (← jsonOf (← L.fetchSized cfgD))
-  let layers ← layerDs.mapM fun d => do layerOf (← L.fetchSized d)
+  let cfg ← configOf (← jsonOf (← fetchSizedFrom cfgD))
+  let layers ← layerDs.mapM fun d => do layerOf (← fetchSizedFrom d)
   pure ⟨cfg, Tree.empty.applyAll layers⟩
+
+/-- The original checked reader, using exactly the original parser and size checks. -/
+def load (L : Layout) (manifest : Digest) : Except Refusal (Flat (List UInt8)) :=
+  loadFrom L.fetch manifest
 
 end Silmaril.Containers.Oci
