@@ -65,6 +65,8 @@ project:
   - 'examples/wasm-acceptors/**'
   - 'examples/wasm-checkers/**'
   - 'examples/compiles-to/**'
+  - 'examples/c-programs/**'
+  - 'examples/c-tv/**'
   - 'examples/sysv-tv/**'
   - 'tools/silmaril-project/**'
   - 'Makefile'

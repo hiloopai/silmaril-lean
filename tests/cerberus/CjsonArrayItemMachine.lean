@@ -1,6 +1,7 @@
 module
 public meta import Silmaril.Elf.Corpus.CjsonArrayItem.Context.Defs
 public meta import Silmaril.X86.Open.Thms
+public meta import tests.cerberus.RuntimeShard
 public meta section
 open Silmaril.X86
 open Silmaril.Elf.Corpus.CjsonArrayItem
@@ -21,10 +22,12 @@ private partial def execute (fuel : Nat) (m : MState) : IO MState := do
  match Open.step m with
  | some next => execute (fuel-1) next
  | none => throw <| IO.userError s!"actual caller/helper machine stuck at{m.core.rip.toNat}"
-public def main : IO Unit := do
+public def main (args : List String) : IO Unit := do
+ let seeds ← Cerberus.RuntimeShard.seeds args
+ let mut cases := 0
  for n in (List.finRange 9).map (fun n => (⟨n.val,by have := n.isLt; omega⟩ : Fin 65)) ++ [⟨64,by decide⟩] do
   for index in ([-1,0,1,4,8,9,2147483647] : List Int) do
-   for seed in List.finRange 3 do
+   for seed in seeds do
     for isNull in [false,true] do
      let input := sample n index seed isNull
      let source ← match Context.prepare input with
@@ -66,4 +69,6 @@ public def main : IO Unit := do
       unless sp-72 ≤ a && a < sp do
        unless after.memory.bytes.get? a == before.memory.bytes.get? a do
         throw <| IO.userError "caller/code/other backing bytes changed outside72-byte nested private frame"
- IO.println "PASS420 actual context-prepared Open.step caller/helper cases: null/list lengths0..8 and64, three actual source addresses/payloads, readonly caller+unrelated heap preserved, pointer returns, noncanonical high argument bits, SysV callee-saved/stack,72-byte nested private frame and complete mapping/key preservation; finite observations only"
+     cases := cases + 1
+ IO.println s!"PASS{cases} actual context-prepared Open.step caller/helper cases: null/list lengths0..8 and64, three actual source addresses/payloads, readonly caller+unrelated heap preserved, pointer returns, noncanonical high argument bits, SysV callee-saved/stack,72-byte nested private frame and complete mapping/key preservation; finite observations only"
+ Cerberus.RuntimeShard.report "machine" seeds cases

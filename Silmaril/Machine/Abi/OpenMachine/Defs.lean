@@ -21,8 +21,9 @@ unchanged, as in A's `Open.ffiExecute`. Hence the `Ffi.Return`/`Win64.Returns` o
 **by the model, not by the code** (`Silmaril.Machine.Abi.FsBase.callModel_carried`). The FFI
 `fsBase` is a copy, distinct from the `machine.core.fsBase` that `%fs:` operands read; the
 entry invariant `FsBase.FsCoherent` and `FsBase.callModel_fsBase` (conditional on
-`FsBase.Task.openStepKeepsFs`) relate them. Since `Open.step` is a function, `callModel s` has at
-most one element (`Thms.callModel_subsingleton`). So the *demonic* satisfaction of track C
+`FsBase.Task.openStepKeepsFs`, proved as `FsBase.openStepKeepsFs`) relate them. Since
+`Open.step` is a function, `callModel s` has at most one element
+(`Thms.callModel_subsingleton`). So the *demonic* satisfaction of track C
 (`Contracts.Sat`: some outcome, and every outcome meets the post) is *not* weakened by
 non-determinism, and it is not the angelic `∃ final` of `Realizes`.
 

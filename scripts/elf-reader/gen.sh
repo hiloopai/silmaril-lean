@@ -42,8 +42,12 @@ emit() {  # emit FILE NAME TITLE SLUG
 emit examples/dyn/pinned/hello-gcc HelloGcc '`hello` (gcc 13.3 -O2, dynamically linked against glibc 2.39: `PT_INTERP` ld-linux-x86-64.so.2, `DT_NEEDED` libc.so.6)' hello-gcc
 emit examples/dyn/pinned/hello-clang HelloClang '`hello` (clang 18.1 -O2, dynamically linked against glibc 2.39: `PT_INTERP` ld-linux-x86-64.so.2, `DT_NEEDED` libc.so.6)' hello-clang
 emit examples/elf/pinned/gnu-sha256sum Sha256sum 'GNU coreutils 9.4 (Ubuntu 9.4-3ubuntu6.3) `sha256sum`' gnu-sha256sum
+emit examples/elf-ladder/01-leaf-arith/pinned/leaf-arith LeafArith 'elf-ladder rung 01 `leaf-arith` (`arith.c` leaf functions, GCC 13.3 `-O2`, static, not stripped; `examples/elf-ladder/01-leaf-arith`)' leaf-arith
 emit examples/elf-ladder/03-zlib-checksums/pinned/zlib-checksums ZlibChecksums 'zlib 1.3.1 `adler32.c` and `crc32.c` (`-DZ_SOLO -O2`, GCC 13.3; `examples/elf-ladder/03-zlib-checksums`)' zlib-checksums
 emit examples/elf/pinned/zlib-libz.so.1.3 ZlibLibz 'zlib 1.3 `libz.so.1.3` (Ubuntu zlib1g 1:1.3.dfsg-3.1ubuntu2.3)' zlib-libz
+emit examples/elf/pinned/zlib-libz.so.1.2.11 ZlibLibz1211 'zlib 1.2.11 `libz.so.1.2.11` (Ubuntu zlib1g 1:1.2.11.dfsg-2ubuntu9.2)' zlib-libz-1.2.11
+emit examples/libs/zlib/pinned/libz.so.1.3.1-gcc-13 ZlibLibz131Gcc 'zlib 1.3.1 `libz.so.1.3.1` (GCC 13.3 `-O2`, upstream tarball; `examples/libs/zlib`)' zlib-libz-1.3.1-gcc
+emit examples/libs/zlib/pinned/libz.so.1.3.1-clang-18 ZlibLibz131Clang 'zlib 1.3.1 `libz.so.1.3.1` (Clang 18.1 `-O2`, upstream tarball; `examples/libs/zlib`)' zlib-libz-1.3.1-clang
 emit examples/elf/pinned/glibc-libm.so.6 GlibcLibm 'glibc 2.39 `libm.so.6` (Ubuntu libc6 2.39-0ubuntu8.9)' glibc-libm
 emit examples/elf/pinned/glibc-libc.so.6 GlibcLibc 'glibc 2.39 `libc.so.6` (Ubuntu libc6 2.39-0ubuntu8.9)' glibc-libc
 echo "gen.sh: ok"

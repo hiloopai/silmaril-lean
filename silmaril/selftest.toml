@@ -49,10 +49,12 @@ children = ["silmaril.selftest.truth", "silmaril.selftest.small", "silmaril.self
   "silmaril.selftest.open",
   "silmaril.selftest.hello.six", "silmaril.selftest.square", "silmaril.selftest.hello.six_row",
   "silmaril.selftest.formats", "silmaril.shapes", "silmaril.sysv_tv.max2",
-  "silmaril.compiles_to.all", "silmaril.compiler_explorer.all", "silmaril.selftest.languages",
+  "silmaril.compiles_to.all", "silmaril.c_tv.all", "silmaril.compiler_explorer.all", "silmaril.selftest.languages",
   "formats.examples",
   "formats.catalogue", "silmaril.selftest.consequence", "silmaril.selftest.wasm_acceptors",
-  "silmaril.elf.cli", "containers"]
+  "containers", "silmaril.elf.cli", "silmaril.elf.start", "silmaril.abi", "silmaril.abi.sse", "silmaril.abi.zlib", "silmaril.abi.zlib_libz",
+  "silmaril.abi.zlib_libz_1_2_11", "silmaril.abi.zlib_libz_1_3_1_gcc", "silmaril.abi.zlib_libz_1_3_1_clang",
+  "silmaril.abi.zlib_matrix", "silmaril.abi.zlib_libz_api"]
 
 # The container shapes and the instances over the minimal machine (docs/projects/containers.md).
 [[group]]
@@ -93,6 +95,10 @@ children = ["silmaril.shapes.format.parses", "silmaril.shapes.format.agree",
   "silmaril.shapes.compiler_explorer.c.translation", "silmaril.shapes.compiler_explorer.c.nonvacuous",
   "silmaril.shapes.compiler_explorer.c.edge", "silmaril.shapes.compiler_explorer.c.mapping",
   "silmaril.shapes.compiler_explorer.c.refines_location",
+  "silmaril.shapes.c.tv.refines", "silmaril.shapes.c.tv.refines_ub_free",
+  "silmaril.shapes.c.tv.not_refines", "silmaril.shapes.c.tv.equivalent",
+  "silmaril.shapes.c.tv.profile_coherent_at", "silmaril.shapes.c.tv.profile_applies",
+  "silmaril.shapes.c.tv.refines_on", "silmaril.shapes.c.tv.context_refines",
   "silmaril.shapes.machine.reach", "silmaril.shapes.machine.reach_set",
   "silmaril.shapes.machine.simulates", "silmaril.shapes.machine.bisimilar",
   "silmaril.shapes.machine.sat", "silmaril.shapes.machine.json.reach",

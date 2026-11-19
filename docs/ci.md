@@ -33,6 +33,33 @@ changed. These changes check everything:
 - any other file that is not in the Makefile's `SCOPE_EXCLUDE` list (files that
   Lake never reads), such as `.github/`, the `Makefile` or `tools/binaryen-lean/`.
 With no Lake target, the job restores nothing and runs only the source checks.
+The 32 Cerberus runtime checks in `tests/cerberus/runtime-checks.json` run in at
+most four command slots, with separate temporary directories and one Lean thread
+per command. The two larger cJSON array-item tests partition their original
+three seeds, preserving all 168 Core and 420 machine cases. The runner rejects
+missing/duplicate seeds, incorrect counts, child failures and timeouts, and kills
+and reaps command groups on cancellation. No-argument test commands still run all
+original seeds. This runtime work remains inside `make check` and its timing budget.
+After the complete Lake build, the runtime phase overlaps the feature phase.
+The feature phase keeps its existing order: native release, ELF, headers, logic,
+then compiler explorer (including the unchanged official serial kernel replay).
+Runtime commands only read their compiled modules and fixtures; each has its own
+temporary directory. Feature outputs use their existing separate paths. The logic
+incremental test edits only its own records and loader, outside the runtime import
+closures; the phase coordinator also restores that input on failure/cancellation.
+The coordinator records actual CPU affinity/quota and memory limits. It caps runtime
+slots at two while overlapping up to four native release slots, with one Lean
+thread per command, reducing allocations or running serially on smaller containers.
+The standalone runtime runner still permits four slots. Four overlapping runtime
+slots exceeded the conservative aggregate RSS bound during ELF export in CI.
+Both phase results must succeed. Failure, timeout or a termination signal cancels
+the peer, kills command groups before reaping them, and waits for cleanup. Logs
+include phase boundaries, CPU time and sampled aggregate container memory (including
+file cache). A separate process-tree RSS sample covers only this check's descendants;
+the coordinator cancels both phases above 16 GiB (conservatively counting shared
+pages in each process). The hosted worker can also hold other sessions, so its
+container memory is not presented as this check's own usage. This scheduling changes
+no test, theorem check or timing exemption.
 The timing check waits for all selected correctness jobs. It includes their
 setup, cache transfer, tests and publication, plus waits after the attempt
 starts. Time Lake spends compiling modules the run had to build does not count:

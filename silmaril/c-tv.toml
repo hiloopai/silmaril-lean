@@ -1,0 +1,239 @@
+# The C translation-validation rows (docs/projects/c-tv.md), a child of the root group in
+# `silmaril/selftest.toml`. Solved in examples/c-tv/CTvRows.lean (verdicts computed by `cbv`).
+schema = "silmaril.records.v0.2"
+
+[[group]]
+name = "silmaril.c_tv.all"
+title = "C translation validation: Core-to-Core rows and the per-type coherence of the x86-64 profile"
+children = ["silmaril.c_tv.examples", "silmaril.c_tv.profile.linux_x86_64"]
+
+[[group]]
+name = "silmaril.c_tv.examples"
+title = "Core-to-Core rows over elaborated `return a + b;` programs (no compiler-origin claim)"
+children = ["silmaril.c_tv.examples.fold.refines", "silmaril.c_tv.examples.fold.refines_ub_free",
+  "silmaril.c_tv.examples.fold.equivalent", "silmaril.c_tv.examples.wrong_fold.refines",
+  "silmaril.c_tv.examples.overflow.refines", "silmaril.c_tv.examples.overflow.refines_ub_free",
+  "silmaril.c_tv.examples.fold.applies", "silmaril.c_tv.examples.fold.refines_on",
+  "silmaril.c_tv.examples.float_signature.applies", "silmaril.c_tv.examples.main_fold.context_refines"]
+
+[[instance]]
+name = "silmaril.c_tv.examples.fold.refines"
+of = "silmaril.shapes.c.tv.refines"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", src = "Silmaril.Project.CTV.Examples.foldSource", tgt = "Silmaril.Project.CTV.Examples.foldTarget" }
+expect = "THM"
+title = "return 3 + 0; refines return 1 + 2; (Core to Core)"
+
+[[instance]]
+name = "silmaril.c_tv.examples.fold.refines_ub_free"
+of = "silmaril.shapes.c.tv.refines_ub_free"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", src = "Silmaril.Project.CTV.Examples.foldSource", tgt = "Silmaril.Project.CTV.Examples.foldTarget" }
+expect = "THM"
+title = "... and the source has no undefined behaviour"
+
+[[instance]]
+name = "silmaril.c_tv.examples.fold.equivalent"
+of = "silmaril.shapes.c.tv.equivalent"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", P = "Silmaril.Project.CTV.Examples.foldSource", Q = "Silmaril.Project.CTV.Examples.foldTarget" }
+expect = "THM"
+title = "return 1 + 2; and return 3 + 0; are equivalent (Core)"
+
+[[instance]]
+name = "silmaril.c_tv.examples.wrong_fold.refines"
+of = "silmaril.shapes.c.tv.refines"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", src = "Silmaril.Project.CTV.Examples.foldSource", tgt = "Silmaril.Project.CTV.Examples.wrongFoldTarget" }
+expect = "UNS"
+title = "return 2 + 2; does not refine return 1 + 2;"
+
+[[instance]]
+name = "silmaril.c_tv.examples.overflow.refines"
+of = "silmaril.shapes.c.tv.refines"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", src = "Silmaril.Project.CTV.Examples.overflow", tgt = "Silmaril.Project.CTV.Examples.overflowTarget" }
+expect = "THM"
+title = "anything refines INT_MAX + 1 (only through source undefined behaviour)"
+
+[[instance]]
+name = "silmaril.c_tv.examples.overflow.refines_ub_free"
+of = "silmaril.shapes.c.tv.refines_ub_free"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", src = "Silmaril.Project.CTV.Examples.overflow", tgt = "Silmaril.Project.CTV.Examples.overflowTarget" }
+expect = "UNS"
+title = "the INT_MAX + 1 row is not UB-free: it is not counted as a defined-source validation"
+
+[[instance]]
+name = "silmaril.c_tv.examples.fold.applies"
+of = "silmaril.shapes.c.tv.profile_applies"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", b = "Silmaril.Project.CTV.Examples.foldSourceBindings" }
+expect = "THM"
+title = "the x86-64 per-type check passes on return 1 + 2; (its reachable Core names _Bool and int only)"
+
+[[instance]]
+name = "silmaril.c_tv.examples.fold.refines_on"
+of = "silmaril.shapes.c.tv.refines_on"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", src = "Silmaril.Project.CTV.Examples.foldSourceBindings", tgt = "Silmaril.Project.CTV.Examples.foldTargetBindings" }
+expect = "THM"
+title = "the fold refines (Core), and the x86-64 per-type check passes on both (a necessary filter, not a target statement)"
+
+[[instance]]
+name = "silmaril.c_tv.examples.float_signature.applies"
+of = "silmaril.shapes.c.tv.profile_applies"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", b = "Silmaril.Project.CTV.Examples.floatSignatureBindings" }
+expect = "UNS"
+title = "the x86-64 per-type check fails on a (synthetic) file whose Core names float"
+
+[[instance]]
+name = "silmaril.c_tv.examples.main_fold.context_refines"
+of = "silmaril.shapes.c.tv.context_refines"
+args = { impl = "Silmaril.Cerberus.Spec.Impl.lp64", ctxs = "Silmaril.Project.CTV.Examples.mainContexts", f = "Silmaril.Project.CTV.Examples.mainSym", before = "Silmaril.Project.CTV.Examples.mainFoldBefore", after = "Silmaril.Project.CTV.Examples.mainFoldAfter" }
+expect = "THM"
+title = "replacing main's Core (return 1 + 2;) by that of return 3 + 0; refines the program, in the listed context (function level)"
+
+[[group]]
+name = "silmaril.c_tv.profile.linux_x86_64"
+title = "Per scalar type: is the Core semantics coherent with x86-64 System V (linuxX86_64)?"
+children = ["silmaril.c_tv.profile.linux_x86_64.bool", "silmaril.c_tv.profile.linux_x86_64.char", "silmaril.c_tv.profile.linux_x86_64.schar", "silmaril.c_tv.profile.linux_x86_64.uchar", "silmaril.c_tv.profile.linux_x86_64.short", "silmaril.c_tv.profile.linux_x86_64.ushort", "silmaril.c_tv.profile.linux_x86_64.int", "silmaril.c_tv.profile.linux_x86_64.uint", "silmaril.c_tv.profile.linux_x86_64.long", "silmaril.c_tv.profile.linux_x86_64.ulong", "silmaril.c_tv.profile.linux_x86_64.long_long", "silmaril.c_tv.profile.linux_x86_64.ulong_long", "silmaril.c_tv.profile.linux_x86_64.size", "silmaril.c_tv.profile.linux_x86_64.ptrdiff", "silmaril.c_tv.profile.linux_x86_64.intptr", "silmaril.c_tv.profile.linux_x86_64.uintptr", "silmaril.c_tv.profile.linux_x86_64.wchar", "silmaril.c_tv.profile.linux_x86_64.pointer", "silmaril.c_tv.profile.linux_x86_64.float", "silmaril.c_tv.profile.linux_x86_64.double", "silmaril.c_tv.profile.linux_x86_64.long_double"]
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.bool"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.bool" }
+expect = "THM"
+title = "bool: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.char"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.char" }
+expect = "THM"
+title = "char: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.schar"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.schar" }
+expect = "THM"
+title = "schar: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.uchar"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.uchar" }
+expect = "THM"
+title = "uchar: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.short"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.short" }
+expect = "THM"
+title = "short: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.ushort"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.ushort" }
+expect = "THM"
+title = "ushort: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.int"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.int" }
+expect = "THM"
+title = "int: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.uint"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.uint" }
+expect = "THM"
+title = "uint: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.long"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.long" }
+expect = "THM"
+title = "long: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.ulong"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.ulong" }
+expect = "THM"
+title = "ulong: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.long_long"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.longLong" }
+expect = "THM"
+title = "longLong: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.ulong_long"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.ulongLong" }
+expect = "THM"
+title = "ulongLong: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.size"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.size" }
+expect = "THM"
+title = "size: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.ptrdiff"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.ptrdiff" }
+expect = "THM"
+title = "ptrdiff: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.intptr"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.intptr" }
+expect = "THM"
+title = "intptr: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.uintptr"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.uintptr" }
+expect = "THM"
+title = "uintptr: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.wchar"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.wchar" }
+expect = "UNS"
+title = "wchar: not coherent (no real x86-64 Linux claim at this type)"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.pointer"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.pointer" }
+expect = "THM"
+title = "pointer: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.float"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.float" }
+expect = "UNS"
+title = "float: not coherent (no real x86-64 Linux claim at this type)"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.double"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.double" }
+expect = "THM"
+title = "double: coherent"
+
+[[instance]]
+name = "silmaril.c_tv.profile.linux_x86_64.long_double"
+of = "silmaril.shapes.c.tv.profile_coherent_at"
+args = { p = "Silmaril.Project.Shapes.CTV.linuxX86_64", s = "Silmaril.Cerberus.TV.Scalar.longDouble" }
+expect = "UNS"
+title = "longDouble: not coherent (no real x86-64 Linux claim at this type)"

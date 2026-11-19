@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "run_id": "347260ff-b1ba-4d95-bbe1-799085bfc33d",
+  "stage": "lean-elaboration-and-kernel-check",
+  "measurement_tool_sha256": "73b879b4211a225b213deb84986411385e6506134c39de6f42768fb60ffeb07a",
+  "started_utc": "2026-11-19T02:23:46.070013+00:00",
+  "command": [
+    "lake",
+    "build",
+    "--wfail",
+    "Silmaril.Elf.Corpus.CjsonArrayItem.Context.Defs",
+    "tests.cerberus.RuntimeShard",
+    "tests.cerberus.CjsonArrayItemContext",
+    "tests.cerberus.CjsonArrayItemMachine"
+  ],
+  "cwd": "/cache/sessions/hiloopai--silmaril-lean@leanprover--lean4-nightly---nightly-2026-11-05/9/checkout",
+  "target": "array-item-statement-and-unchanged-test-case-sharding",
+  "repository": {
+    "commit": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28",
+    "dirty": false,
+    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "cache": "warm",
+  "concurrency": 1,
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "runner": {
+    "hostname": "prove-floor-6bc9864754-6gpwk",
+    "platform": "Linux-6.18.56-125.164.amzn2023.x86_64-x86_64-with-glibc2.41",
+    "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+    "visible_cpus": 32,
+    "task_cpu_budget": 8,
+    "task_memory_budget_bytes": 17179869184,
+    "cgroup": {
+      "cpu.max": "max 100000",
+      "memory.max": "246960619520"
+    }
+  },
+  "inputs": [
+    {
+      "path": "Silmaril/Elf/Corpus/CjsonArrayItem/Context/Defs.lean",
+      "sha256": "29d6aa7f62ed10b5696bbe459c525e15acf7c0bcf59a1b9e9144b935b8c3fbc3"
+    },
+    {
+      "path": "tests/cerberus/RuntimeShard.lean",
+      "sha256": "38e82a79d53e4d8b687c74c4ab52270bd1f40b12f4dafd534ac6772611b471a5"
+    },
+    {
+      "path": "tests/cerberus/CjsonArrayItemContext.lean",
+      "sha256": "f707373ee29ec0628a2d64e1e2c306b03e84a20ec159caccf0e500b05b9dc049"
+    },
+    {
+      "path": "tests/cerberus/CjsonArrayItemMachine.lean",
+      "sha256": "5f1bbedd8a61f0a6f88c8025bea79caaaa69c7b554075d27915f60734c3e9476"
+    }
+  ],
+  "wall_seconds": 1.1755214730001171,
+  "exit_code": 0,
+  "user_cpu_seconds": 1.573564,
+  "system_cpu_seconds": 0.513405,
+  "peak_rss_kib": 823884,
+  "measurement": "Linux wait4 child accounting; includes waited-for descendants; RSS is maximum, not sum"
+}

@@ -240,6 +240,9 @@ captured loaded-integer conversions (`ci_cerberus_integer_cast`); a parameter ca
 - The System V / x86 translation-validation machinery and the native C compiler.
   These are planned for later releases.
 
+Whole-program translation validation over this port (refinement between closed Core programs,
+target-profile coherence, the roadmap) is described in [c-tv.md](c-tv.md).
+
 ### Selected null-pointer equality lowering
 
 The native typed-Ail dispatcher supports a pointer compared with a null

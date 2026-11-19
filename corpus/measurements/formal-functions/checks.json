@@ -2306,7 +2306,7 @@
       "status": "stated-unproved",
       "declaration": "Silmaril.Elf.Corpus.CjsonArrayItem.Context.Task.compilesTo",
       "root": "Silmaril.Elf.Corpus.CjsonArrayItem.Context.Defs",
-      "run_receipt": "corpus/measurements/formal-functions/runs/13f6a20f-ec53-4607-ac90-edc3314cb84e.json",
+      "run_receipt": "corpus/measurements/formal-functions/runs/347260ff-b1ba-4d95-bbe1-799085bfc33d.json",
       "prior_compilation_receipt": "corpus/measurements/formal-functions/runs/1c4555f8-e28c-470e-9d64-d68729f0fc05.json",
       "function_symbol": "cJSON_GetArrayItem",
       "function_address": 21543,
@@ -2353,12 +2353,14 @@
         "corpus/compiler-bindings/CjsonArrayItem-Context.json": "506c340c96392c129df29e8bcadc01fd50ec5aaca1cf4ad9015d23d25cf24c5b",
         "corpus/variants/cjson/1.7.19/default/x86_64/O0/build.json": "339ad3cc14b3fca5defc990a3eaba0f045e3959bd7ecef15d6e32fb84dbc389e",
         "corpus/variants/cjson/1.7.19/default/x86_64/O0/unstripped/receipt.json": "0778e34eecd2f85992fa73722d86c84675d816fb072064120ec9bf6a169292ca",
-        "tests/cerberus/CjsonArrayItemContext.lean": "d06e0ad71a590ef47e803502478713821d060d2658d3be5a5b793c0d58e53028",
-        "tests/cerberus/CjsonArrayItemMachine.lean": "697e513aa70cc688de87e7443b40ddc1e0307634085888a50ed8302763b6fc93",
+        "tests/cerberus/CjsonArrayItemContext.lean": "f707373ee29ec0628a2d64e1e2c306b03e84a20ec159caccf0e500b05b9dc049",
+        "tests/cerberus/CjsonArrayItemMachine.lean": "5f1bbedd8a61f0a6f88c8025bea79caaaa69c7b554075d27915f60734c3e9476",
         "tools/corpus/CjsonArrayItemInputs.lean": "cf82a16a3d2556475b221e223aedbbab72d60eebef7007ee9a9f773a21a5b94f",
         "tools/corpus/check_cjson_array_item_inputs.py": "97b076d41dbc2aee9d7d9cceb77906afa2feaca7112968f247be30d376d4dbd2",
-        "tools/corpus/check_cjson_array_item_native.py": "347cfad6553053087b6a2cedddf73872e1882dfd55340739fca78a3fbbf7940d"
-      }
+        "tools/corpus/check_cjson_array_item_native.py": "347cfad6553053087b6a2cedddf73872e1882dfd55340739fca78a3fbbf7940d",
+        "tests/cerberus/RuntimeShard.lean": "38e82a79d53e4d8b687c74c4ab52270bd1f40b12f4dafd534ac6772611b471a5"
+      },
+      "prior_statement_check_receipt": "corpus/measurements/formal-functions/runs/13f6a20f-ec53-4607-ac90-edc3314cb84e.json"
     },
     {
       "artifact_sha256": {

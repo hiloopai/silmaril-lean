@@ -20,6 +20,7 @@ classification and native contracts) and on `Silmaril.X86` (the open machines `O
 | `Silmaril.Machine.Abi.Win64` | Microsoft x64 (`ms_abi`) as a second comorphism: `win64`, `win64_sat`, the result conventions |
 | `Silmaril.Machine.Abi.CrossAbi`, `CrossAbi.Gcc` | thunks between the two conventions (`sysv_of_ms`, `ms_of_sysv`); GCC's `call_ms` transition code decoded and proved a System V → `ms_abi` thunk (`callMs_sound`) |
 | `Silmaril.Machine.Abi.{Link,LinkTags,LinkSim}` | link compatibility: ABI tags on imports and exports, the linker's `checkAbi` guard, link soundness through simulations (`checkAbi_link_sound`, `callMs_link_sound`) |
+| `Silmaril.Machine.Abi.Conformance` | ABI conformance of a function as a standard problem (`Conforms`; `HeaderSatPartial`, `HeaderSatAvailable`, `HeaderSatComplete`) on a stated machine model, with the prototype from a C header and a versioned `AbiDef`: [ABI conformance](abi-conformance.md) |
 | `Silmaril.Machine.Abi.Thunk` | `Thunk.Correct` versus forward simulation (`Thunk.Simulates.sound`) |
 | `Silmaril.Machine.Abi.OpenMachine`, `OpenMachine.Rel` | the conventions' call model on the open machine (`callModel`): first returns, `FnContract Open.isa` and block certificates as convention-level contracts; the relational (`RelIsa`) version |
 | `Silmaril.Machine.Abi.{CallFootprint,CtypeBridge,FsBase,Infer,LibMini,SpecNotions}` | argument-dependent footprints for `Realizes`; the bridge to the native compiler's C types; the thread pointer; ABI inference from register usage; libmini's C header; the three notions of a spec (author, compiled, export) and how they relate |
@@ -44,7 +45,7 @@ in `Silmaril.X86.*` namespaces the public tree does not otherwise use. They are 
 | Conventions as comorphisms, satisfaction transfer, thunk soundness, cross-ABI thunks, link soundness | proved |
 | GCC's `call_ms` thunk (`callMs_sound`, decode and fetch) | proved, for the decoded code and an abstract callee relation |
 | GCC's reverse transition `ms_calls_sysv` (`Task.msCallsSysvBridge`) | open: a `def Task.… : Prop`; the results that need it take it as a hypothesis |
-| The open machine keeps the thread pointer (`Task.openStepKeepsFs`) | open: `def Task.… : Prop`, used as a hypothesis |
+| The open machine keeps the thread pointer (`Task.openStepKeepsFs`, `Task.open9StepKeepsFs`) | proved: `FsBase.openStepKeepsFs`, `FsBase.open9StepKeepsFs` (from `Open.step_fsBase`, `Open9.step_fsBase`) |
 | Rung 01 leaves (`sat_add_u32`, `bswap32_manual`, `clamp_i32`, `gcd_u32`) | proved on the open machine, tied to the pinned executable |
 | libmini `Realizes` certificates | proved |
 | The x86 models themselves | trusted definitions (see [the x86 guide](../x86.md)) |

@@ -13,12 +13,12 @@ public import Silmaril.Data.Layout.Defs
   well-formed (power-of-two alignment dividing the size).
 * `declLayout_wf`: every computed struct or union layout is `DeclLayout.WF`: members in bounds,
   aligned, disjoint (structs), at offset zero (unions).
-* The five data models are well-formed (`sysvX86_64_wf`, ...).
+* The six data models are well-formed (`sysvX86_64_wf`, ...; `msX64_wf` is in `Bitfield.Thms`).
 
-Open goals:
-* `Task.bitfieldLayout`: bit-fields (`Field.bits`) are rejected by `layoutTy`; their psABI
-  allocation (storage units of the declared type, no straddling, unnamed bit-fields do not
-  affect alignment) and its well-formedness at bit granularity are pending.
+Discharged elsewhere:
+* `Task.bitfieldLayout`: bit-fields (`Field.bits`) are rejected by `layoutTy`; their bit-level
+  placement (System V and Microsoft x64) and its well-formedness are
+  `Silmaril.Data.Layout.Bitfield`, and `Silmaril.Data.Layout.bitfieldLayout` proves the task.
 -/
 
 @[expose] public section

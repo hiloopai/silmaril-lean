@@ -1,0 +1,14 @@
+artifact: arith.json
+image: silkeh/clang@sha256:3914c93a02e866795aafc80737488e515b96390eff3d2787cf8c5095997baea9
+clang: Debian clang version 18.1.8 (++20240731024826+3b5b5c1ec4a3-1~exp1~20240731144843.145)
+target: x86_64-unknown-linux-gnu
+std: gnu11
+cwd: 01-leaf-arith
+command: clang -target x86_64-unknown-linux-gnu -x c -std=gnu11 -ffreestanding -fno-builtin -I../common arith.h -Xclang -ast-dump=json -fsyntax-only
+include: ../common
+filter: python3 -I filter.py arith.h ../common/rt.h
+filter-sha256: f7234d7a7bbf7792b9482c54edfb2d2a4ee1cb9f1c192a769e8cf0f34613241f
+input: arith.h 61eb45a5756b10db4d130c18d9e34130d1ad06ef359cdeb31527b1983f55ebd0
+input: ../common/rt.h bad2f2ad76bea06a400ad4ecfa9571627468a16077aabffe497468254b8a2174
+json-sha256: 29504cc856844187f9e8135636df614e1cda8246dcac26a431e3b5a3f2f3907d
+json-bytes: 7748

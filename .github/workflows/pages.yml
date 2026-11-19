@@ -71,7 +71,7 @@ jobs:
       - name: Dump, check and write the database and the page, on prove
         run: |
           hiloop-prove run --build Silmaril --build SilmarilLogicGraphData --build ProjectSelfTest --build SysVTvExample \
-            --build CompilesToExamples --build wasm-pages --build elf-pages --out pages-site.tar.gz -- \
+            --build CompilesToExamples --build CTvRows --build wasm-pages --build elf-pages --build header-pages --build c-pages --out pages-site.tar.gz -- \
             env -u CARGO_TARGET_DIR make pages-archive PAGES_SOURCE_REV="$GITHUB_SHA"
           tar -xzf pages-site.tar.gz
           ls -l _site
@@ -93,7 +93,7 @@ jobs:
           - group: languages
             tests: wasm_acceptors acceptor_runs wasm_languages languages attention
           - group: corpus-compiler
-            tests: elf logic formal corpus compiler
+            tests: elf asm cli headers c c_tamper logic formal corpus compiler
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 15

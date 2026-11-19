@@ -1,0 +1,239 @@
+module
+
+public import Silmaril.Machine.Abi.Conformance.Import.Defs
+public import Silmaril.Machine.Abi.Conformance.SysvScalar.Defs
+public import Silmaril.Machine.Abi.Conformance.LeafArith.Defs
+public import Silmaril.Data.Layout.Header.Import.Pinned.Thms
+import Silmaril.Proofs.Machine.Abi.Conformance.Import
+
+/-!
+# Coverage and `Declares` from the clang import: theorems
+
+PROVED (standard axioms; the per-header facts rewrite with `Pinned.import_<name>` and run
+`decide +kernel` on the literal entries, never on the JSON):
+
+* `declares_iff_of_header`, `declares_iff_of_all`: when the subset reader's header is the
+  import's (or the two agree on a list of names, and `A` lowers alike with the two routes' tag
+  definitions, as `sysvInt`, which reads none, does) and the conventions are `sysvInt`'s, the
+  two routes give the same `Declares`;
+* `arith_declares_iff`: for `arith.h`, `Declares sysvInt LeafArith.hdr` (the subset reader) and
+  `DeclaresImport sysvInt sysvCcs Pinned.arith` (clang) are the same relation, for every name and
+  prototype;
+* `zlibSolo_declares_iff`, `zlibHosted_declares_iff`: the same for the checksum API, on the
+  names where the two routes agree (all eleven under `-DZ_SOLO`; nine hosted);
+* `zlibHosted_disagreement_lowers_alike`: the hosted disagreement (`z_size_t` = `size_t` as
+  `.size` or as `unsigned long`) lowers to the same System V prototype, `uint64 (uint64,
+  pointer, uint64)`;
+* `arith_coverage`: the twenty functions are claimable, none unsupported, and the conformance
+  example's `LeafArith.coverage` (checked by the subset route, `Coverage.check`) is also a
+  checked coverage of the import;
+* `zlibSolo_coverage`, `zlibHosted_coverage`, `probe_coverage`, `glibcString_coverage`: each
+  header's claimable functions and its unsupported ones with the reasons;
+* `glibcStdlib_coverage`: glibc's `stdlib.h` as pinned under `sysvInt`, **by name** (101 distinct
+  explicit function names; `reallocarray` is declared twice): 73 claimable + 28 refused = 101,
+  the refusals listed exactly, in two disjoint groups:
+  - **ABI scope of the INTEGER fragment (19)**: 16 with a floating parameter or result
+    (`atof`, `strtod`, `strtof`, `strtold`, `drand48`, `erand48`, and the ten `ecvt`/`fcvt`/
+    `gcvt` functions) and 3 returning a struct by value (`div`, `ldiv`, `lldiv`);
+  - **gaps of the import and of `CProto` (9), not ABI refusals**: the 9 entries whose prototype
+    the import cannot represent (`Pinned.glibcStdlib_reads`): 5 with a function-pointer
+    parameter (`atexit`, `at_quick_exit`, `on_exit`, `bsearch`, `qsort`; the ABI passes it as a
+    pointer) and 4 with a typedef the import cannot resolve (`size_t` in
+    `__ctype_get_mb_cur_max`, `int32_t` in `random_r`, `__uint32_t` in `arc4random`, `wchar_t`
+    in `mbtowc`). Follow-ups; closing them would make these functions claimable.
+  The 19 `internal` entries are clang's implicit builtin declarations, each an **excluded
+  duplicate** of an explicit declaration that is classified on its own; `internal` does not
+  mean a private function.
+* `glibcMath_coverage`: glibc's `math.h` (libm) as pinned (`-std=gnu11`, default feature set;
+  `Pinned.glibcMath_reads`) under the INTEGER fragment `sysvInt`: nothing is claimable; all 438
+  explicit functions are refused because a parameter or the result is a floating type (SSE/x87
+  classes). The 177 `internal` entries are clang's implicit builtin declarations, each the
+  duplicate of one of those 438 (`Pinned.glibcMath_implicit_duplicates`), so no public name is
+  classified internal. This is `sysvInt`'s scope, not a statement about libm or the whole
+  `math.h` API: the `double`/`float` declarations are for `sysvScalar` with an SSE-capable
+  machine, `long double` is X87 class, outside both;
+* `glibcMath_coverage_sysvScalar`: the same `math.h` under `sysvScalar` (float and double in
+  SSE): 288 of the 438 explicit functions are claimable (`sin`, `sinf`, …); the other 150 are
+  refused, every one because a parameter or the result is `long double` (X87/X87UP class), which
+  includes `nexttoward`/`nexttowardf` (a `long double` parameter). Claimable means the
+  prototype lowers and the calling convention is the default one; it is not conformance of any
+  libm binary, and a row on such code needs a machine with SSE steps (#994, stage 2).
+-/
+
+@[expose] public section
+
+namespace Silmaril.Machine.Abi.Conformance
+
+open Silmaril.Data.Layout.Header.Import
+open Silmaril.Data.Layout.Header.Import.Pinned
+
+variable {A : AbiDef} {hdr : HeaderSrc} {ccs : List CallConv} {imp : Imported} {f : String}
+  {p : A.V.Proto}
+
+theorem declares_iff_of_header
+    (h : (Silmaril.Data.Layout.Header.read hdr.files hdr.root).toOption = some imp.header)
+    (hcc : ccsOk ccs imp = true) :
+    Declares A hdr f p ↔ DeclaresImport A ccs imp f p :=
+  Silmaril.Proofs.Machine.Abi.Conformance.Import.declares_iff_of_header h hcc
+
+theorem declares_iff_of_all {fs : List String}
+    (h : fs.all (fun f => hdr.proto? f == imp.proto? f &&
+      (imp.fn? f).any (fun x => ccs.contains x.2.cc)) = true)
+    (he : ∀ cp, A.lower hdr.env cp = A.lower imp.header.env cp) :
+    ∀ f ∈ fs, ∀ p : A.V.Proto, Declares A hdr f p ↔ DeclaresImport A ccs imp f p :=
+  Silmaril.Proofs.Machine.Abi.Conformance.Import.declares_iff_of_all h he
+
+set_option maxRecDepth 100000 in
+theorem arith_coverage :
+    claimable sysvInt sysvCcs arith = ["sc3", "rt_write", "rt_read", "rt_puts", "rt_put_hex",
+      "rt_check", "rt_failures", "rt_finish", "memcpy", "memset", "memmove", "memcmp", "strlen",
+      "popcount32", "gcd_u32", "clamp_i32", "isqrt_u32", "sat_add_u32", "bswap32_manual",
+      "ilog2_u32"] ∧
+    unsupportedFns sysvInt sysvCcs arith = [] ∧ ccsOk sysvCcs arith = true ∧
+    checkCoverage sysvInt sysvCcs arith LeafArith.coverage = true ∧
+    Coverage.check sysvInt LeafArith.hdr LeafArith.coverage = true := by
+  rw [import_arith]; decide +kernel
+
+theorem arith_declares_iff (f : String) (p : sysvInt.V.Proto) :
+    Declares sysvInt LeafArith.hdr f p ↔ DeclaresImport sysvInt sysvCcs arith f p :=
+  declares_iff_of_header arith_routes_agree.2.2.2 arith_coverage.2.2.1
+
+set_option maxRecDepth 100000 in
+theorem zlibSolo_declares_iff :
+    ∀ f ∈ Silmaril.Data.Layout.Header.Zlib.checksumApi, ∀ p : sysvInt.V.Proto,
+      Declares sysvInt Silmaril.Data.Layout.Header.Zlib.solo f p ↔
+        DeclaresImport sysvInt sysvCcs zlibSolo f p :=
+  declares_iff_of_all (by rw [import_zlibSolo]; decide +kernel) (fun _ => rfl)
+
+set_option maxRecDepth 100000 in
+theorem zlibHosted_declares_iff :
+    ∀ f ∈ ["zlibVersion", "zlibCompileFlags", "adler32", "crc32", "crc32_combine_op",
+        "adler32_combine", "crc32_combine", "crc32_combine_gen", "get_crc_table"],
+      ∀ p : sysvInt.V.Proto,
+      Declares sysvInt Silmaril.Data.Layout.Header.Zlib.hosted f p ↔
+        DeclaresImport sysvInt sysvCcs zlibHosted f p :=
+  declares_iff_of_all (by rw [import_zlibHosted]; decide +kernel) (fun _ => rfl)
+
+theorem zlibHosted_disagreement_lowers_alike :
+    (sysvInt.lower [] (Silmaril.Data.Layout.Header.Zlib.sizedProto .size)).toOption.map
+        (·.signature) = some ⟨[.uint64, .pointer, .uint64], some .uint64⟩ ∧
+    (sysvInt.lower [] (Silmaril.Data.Layout.Header.Zlib.sizedProto .long)).toOption.map
+        (·.signature) = some ⟨[.uint64, .pointer, .uint64], some .uint64⟩ := by
+  decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem zlibSolo_coverage :
+    (claimable sysvInt sysvCcs zlibSolo).length = 47 ∧
+    Silmaril.Data.Layout.Header.Zlib.checksumApi.all
+      (claimable sysvInt sysvCcs zlibSolo).contains = true ∧
+    unsupportedFns sysvInt sysvCcs zlibSolo =
+      [("inflateBack", "parameter 2: typedef in_func: function or function-pointer type: \
+        outside CProto")] ∧
+    (interface sysvInt sysvCcs zlibSolo).length = 48 := by
+  rw [import_zlibSolo]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem zlibHosted_coverage :
+    (claimable sysvInt sysvCcs zlibHosted).length = 79 ∧
+    Silmaril.Data.Layout.Header.Zlib.checksumApi.all
+      (claimable sysvInt sysvCcs zlibHosted).contains = true ∧
+    unsupportedFns sysvInt sysvCcs zlibHosted =
+      [("inflateBack", "parameter 2: typedef in_func: function or function-pointer type: \
+        outside CProto"),
+       ("gzprintf", "variadic: the %al count and va_list are outside the INTEGER fragment")] ∧
+    (interface sysvInt sysvCcs zlibHosted).length = 81 := by
+  rw [import_zlibHosted]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem probe_coverage :
+    claimable sysvInt sysvCcs probe =
+      ["plain", "die", "die2", "nn", "old", "hidden", "sysv", "arr", "mk"] ∧
+    unsupportedFns sysvInt sysvCcs probe =
+      [("knr", "no prototype (K&R f()): outside CProto"),
+       ("vf", "variadic: the %al count and va_list are outside the INTEGER fragment"),
+       ("renamed", "asm label: the symbol is renamed_v2, and a row binds the C name"),
+       ("win", "calling convention ms_abi"),
+       ("rc", "calling convention regcall"),
+       ("by_value", "struct pair by value: aggregates are outside the INTEGER fragment"),
+       ("fp", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("flag", "result: _Bool: outside the INTEGER fragment (4- and 8-byte integers and \
+        pointers)"),
+       ("sort", "parameter 3: typedef cmp_fn: function or function-pointer type: outside CProto"),
+       ("paint", "enum color: enumerations are outside the INTEGER fragment")] ∧
+    (table sysvInt sysvCcs probe).filter (fun x => x.2 matches .internal _) =
+      [("inl", .internal "static: internal linkage")] := by
+  rw [import_probe]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem glibcString_coverage :
+    (claimable sysvInt sysvCcs glibcString).length = 39 ∧
+    unsupportedFns sysvInt sysvCcs glibcString =
+      [("strerror_r", "asm label: the symbol is __xpg_strerror_r, and a row binds the C name")] ∧
+    ((table sysvInt sysvCcs glibcString).filter (fun x => x.2 matches .internal _)).length =
+      26 := by
+  rw [import_glibcString]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem glibcMath_coverage :
+    claimable sysvInt sysvCcs glibcMath = [] ∧
+    (unsupportedFns sysvInt sysvCcs glibcMath).length = 438 ∧
+    (unsupportedFns sysvInt sysvCcs glibcMath).all (fun x =>
+      x.2 == "floating type: SSE/x87 classes are outside the INTEGER fragment" ||
+      x.2 == "result: floating type: SSE/x87 classes are outside the INTEGER fragment") ∧
+    ((table sysvInt sysvCcs glibcMath).filter (fun x => x.2 matches .internal _)).length =
+      177 := by
+  rw [import_glibcMath]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem glibcStdlib_coverage :
+    (claimable sysvInt sysvCcs glibcStdlib).length = 73 ∧
+    unsupportedFns sysvInt sysvCcs glibcStdlib =
+      [("__ctype_get_mb_cur_max", "result: unknown type name size_t"),
+       ("atof", "result: floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("strtod", "result: floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("strtof", "result: floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("strtold", "result: floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("random_r", "parameter 2: unknown type name int32_t"),
+       ("drand48", "result: floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("erand48", "result: floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("arc4random", "result: unknown type name __uint32_t"),
+       ("atexit", "parameter 1: function or function-pointer type: outside CProto"),
+       ("at_quick_exit", "parameter 1: function or function-pointer type: outside CProto"),
+       ("on_exit", "parameter 1: function or function-pointer type: outside CProto"),
+       ("bsearch", "parameter 5: typedef __compar_fn_t: function or function-pointer type: outside CProto"),
+       ("qsort", "parameter 4: typedef __compar_fn_t: function or function-pointer type: outside CProto"),
+       ("div", "result: struct div_t by value: aggregates are outside the INTEGER fragment"),
+       ("ldiv", "result: struct ldiv_t by value: aggregates are outside the INTEGER fragment"),
+       ("lldiv", "result: struct lldiv_t by value: aggregates are outside the INTEGER fragment"),
+       ("ecvt", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("fcvt", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("gcvt", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("qecvt", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("qfcvt", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("qgcvt", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("ecvt_r", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("fcvt_r", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("qecvt_r", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("qfcvt_r", "floating type: SSE/x87 classes are outside the INTEGER fragment"),
+       ("mbtowc", "parameter 1: unknown type name wchar_t")] ∧
+    ((table sysvInt sysvCcs glibcStdlib).filter (fun x => x.2 matches .internal _)).length = 19 := by
+  rw [import_glibcStdlib]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem glibcMath_coverage_sysvScalar :
+    (claimable sysvScalar sysvCcs glibcMath).length = 288 ∧
+    (unsupportedFns sysvScalar sysvCcs glibcMath).length = 150 ∧
+    (unsupportedFns sysvScalar sysvCcs glibcMath).all (fun x =>
+      x.2 == "long double: X87/X87UP class (passed in memory, returned in %st0); outside the \
+        scalar fragment" ||
+      x.2 == "result: long double: X87/X87UP class (passed in memory, returned in %st0); \
+        outside the scalar fragment") ∧
+    (claimable sysvScalar sysvCcs glibcMath).contains "sin" ∧
+    (claimable sysvScalar sysvCcs glibcMath).contains "sinf" ∧
+    ((unsupportedFns sysvScalar sysvCcs glibcMath).map (·.1)).contains "sinl" ∧
+    ((unsupportedFns sysvScalar sysvCcs glibcMath).map (·.1)).contains "nexttoward" := by
+  rw [import_glibcMath]; decide +kernel
+
+end Silmaril.Machine.Abi.Conformance
+
+end

@@ -1,6 +1,7 @@
 module
 public meta import Silmaril.Elf.Corpus.CjsonArrayItem.Context.Defs
 public meta import Silmaril.Cerberus.Core.Outcome.Defs
+public meta import tests.cerberus.RuntimeShard
 public meta section
 open Silmaril.Cerberus Silmaril.Cerberus.Core Silmaril.Cerberus.Core.Dynamics
 open Silmaril.Elf.Corpus.CjsonArrayItem
@@ -13,7 +14,9 @@ private def sample (n : Fin 65) (index : Int) (seed : Fin 3) (isNull : Bool) : C
   aligned := by omega
   lower := by omega
   upper := by have := seed.isLt; omega
-public def main : IO Unit := do
+public def main (args : List String) : IO Unit := do
+  let seeds ← Cerberus.RuntimeShard.seeds args
+  let mut cases := 0
   let F := Source.Elaboration.function
   unless reprStr Source.Elaboration.core.funs == reprStr Source.programDocument.bindings.funs &&
       reprStr Source.Elaboration.core.funInfo == reprStr Source.programDocument.bindings.funInfo do
@@ -21,7 +24,7 @@ public def main : IO Unit := do
   let lengths : List (Fin 65) := [⟨0,by decide⟩,⟨1,by decide⟩,⟨8,by decide⟩,⟨64,by decide⟩]
   for n in lengths do
     for index in ([-1,0,1,4,8,64,2147483647] : List Int) do
-      for seed in List.finRange 3 do
+      for seed in seeds do
         for isNull in [false,true] do
           let input := sample n index seed isNull
           let before ← match Context.prepare input with
@@ -67,4 +70,6 @@ public def main : IO Unit := do
           unless (Context.pointerWord input (.loaded (.specified (.pointer (.allocated 0 input.base))))).isNone &&
               (Context.pointerWord input (.loaded (.specified (.pointer (.allocated 2 (input.base+8)))))).isNone do
             throw <| IO.userError "forged provenance/offset pointer accepted by observation"
-  IO.println "PASS168 actual registered-candidate caller/helper Core cases: null/list lengths0,1,8,64; seven signed indices; three addresses/payloads; typed readonly caller memory/provenance/lifetimes and private cleanup; missing-allocation/forged-provenance negatives. Finite observations, no semantic/termination proof."
+          cases := cases + 1
+  IO.println s!"PASS{cases} actual registered-candidate caller/helper Core cases: null/list lengths0,1,8,64; seven signed indices; three addresses/payloads; typed readonly caller memory/provenance/lifetimes and private cleanup; missing-allocation/forged-provenance negatives. Finite observations, no semantic/termination proof."
+  Cerberus.RuntimeShard.report "core" seeds cases

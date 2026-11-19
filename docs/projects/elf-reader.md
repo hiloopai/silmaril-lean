@@ -95,6 +95,28 @@ The ELF tab (`tools/silmaril-project/src/project/explore/views/elf.js`) has thes
   **UNVERIFIED** warning. Each row's bytes are checked against the file. Addresses link to the
   byte view. No theorem is about the decoding.
 
+The Assembly tab (`views/asm.js`) shows the assembly functions of `tools/elf-asm`
+([elf-asm.md](elf-asm.md)). `elf-pages` copies the committed `examples/elf-asm/samples.json`
+(`silmaril.elf.asm/1`) unchanged to `elf/asm.json`; its evidence is read from theorem statements
+and checked by `elf-asm --check`, not re-derived here. `elf/asm-decls.json` gives the module and
+source line of every declaration the file names, looked up in the checked environment.
+
+* `#/asm`: every function record, one column per evidence dimension;
+* `#/asm/FILE/NAME[/DECL]`: one record (`FILE` is the ELF tab's slug, else the file's base name; a
+  chooser when several records of a file share a name). It shows the extent as given (`null` as
+  unknown), the exact bytes, the objdump display lines (**display only, not checked**) beside each
+  instruction model's decoding with its `DecodesAs` theorem, the references with their origin and
+  grounding, and the evidence panel. The panel has one row per dimension: arch, bytes (segment,
+  section, `CodeAt`), symbol, decodes (per model), lines tile, references grounded, contract
+  (with its machine), and ABI conformance. Each row lists its declarations with source links,
+  axioms and premises. A dimension with no theorem shows `none`. No row is inferred from another,
+  and there is no overall status. `abiRef` is shown as metadata, not evidence. The data has no ABI
+  conformance evidence yet ("no conformance row"); an optional `abi` array per function
+  (`problemId`, `decl`, `abiId`, `mode`, `frame`, `status`) is the view's extension point for it.
+
+The ELF tab's function table links a symbol to its assembly records (same file path and name),
+and a record links back to the file and to the unverified objdump view.
+
 Checks: `make elf-check`, run by `make check` when `elf-pages` is in scope, checks the pins,
 regeneration and the tamper test. `tools/silmaril-project/tests/explore/elf.mjs` runs in the
 Pages workflow's browser tests.
@@ -115,9 +137,14 @@ files are stripped).
   `.gnu.version_d`/`_r` bodies: `@@` is the default version, `@` a non-default one. The segment,
   file offset and owning section come from the checked layout. Aliases are other function symbols
   with the same address. Overlaps are function ranges that intersect but differ.
-- **Contract.** A row shows a contract only when a theorem's statement starts with
-  `Silmaril.Elf.CodeAt F v code` at the row's address (`Pinned.ZlibChecksums.Contracts`). Every
-  other row shows **no contract statement**.
+- **Contract.** A row shows a contract only when a theorem of `Pinned.ZlibChecksums.Contracts`
+  meets three conditions; every other row shows **no contract statement**:
+  - its statement starts with `Silmaril.Elf.CodeAt F v code` at the row's address;
+  - the code literal is exactly the symbol's `st_size` bytes;
+  - the statement also says that the contract's entry precondition loads that same literal
+    (`Loaded m.memory e code`), which is the **code identity** between the file's bytes and the
+    contract. For the two wrappers it also states where the callee's code sits relative to the
+    entry, matching the file. `elf-pages` stops if a contract theorem lacks the identity conjunct.
 
 **What a row does not say**
 - A row is not a recovered function, and it says nothing about the System V ABI.
@@ -150,7 +177,8 @@ checks that `--verify` rejects each of these edits:
 - a widened coverage class;
 - hidden axioms;
 - a function row given another row's theorem;
-- a contract linked to another function.
+- a contract linked to another function;
+- an assembly function's evidence kind changed, or a piece of its evidence dropped (`asm.json`).
 
 Axioms are collected with one cache for all theorems, and checked against `Lean.collectAxioms` on
 a sample.

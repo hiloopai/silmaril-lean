@@ -3,6 +3,24 @@
 schema = "silmaril.artifacts.v0.2"
 
 [[artifact]]
+cid = "bafkr4ia4zienww4xrm2mku33iqtgisdm6thbaptlahi56aqw4cm5sa56za"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-overflow.provenance"
+paths = ["examples/c-programs/signed-overflow/provenance.json"]
+size = 7237
+sha256 = "defe49f35a370582ec88764fdda78fd3ff4714299334843e2387730a147b5acc"
+git_sha1 = "ba8cdd6fc946db91fa91b37ac666509c236133c2"
+
+[[artifact]]
+cid = "bafkr4ia6jwwzbmhnbeenxfbdhgdympuv6m6onfey37amubyxidwm4xdsze"
+type = "blob"
+name = "silmaril.c_tv.corpus.return-constant.provenance"
+paths = ["examples/c-programs/return-constant/provenance.json"]
+size = 7367
+sha256 = "6a0bf64c40f4986d0236adfd079cdda9f7c3e61fe01855bc1203807bdb79ac6c"
+git_sha1 = "5fae27d5ab4d35ab27aff70b513af8a721c18d4a"
+
+[[artifact]]
 cid = "bafkr4ia6ni4xr6hzdf2dxgsxx5dgcnsbxwqej6jol2xevz7eoamjbxpe4e"
 type = "blob"
 name = "silmaril.compiles_to.straight.source"
@@ -10,6 +28,33 @@ paths = ["examples/compiles-to/straight/straight.c"]
 size = 155
 sha256 = "8b49538da88e3926f7c457e54fff82234e5ef0efb3c81372537b8f690f38b4b6"
 git_sha1 = "7c5be30070c4b48dd17e810e5fb461d5cc810612"
+
+[[artifact]]
+cid = "bafkr4iaaddzqmm2utv4mkc5mf7biccbv6xaiwyaqq2ts7i4z4idtds2hmi"
+type = "blob"
+name = "silmaril.c_tv.corpus.division-by-zero.source"
+paths = ["examples/c-programs/division-by-zero/source.c"]
+size = 68
+sha256 = "4f7495ba101dae3f210daf6831cf9164f2274265ae76bc3d7a99020deeb75671"
+git_sha1 = "ee2649918c6986f655042ac1422b2ab5ef741963"
+
+[[artifact]]
+cid = "bafkr4iaflegz5qnfrap4cyh6gq7fvf5o6y2ajlohtd26rivyu5ufm2twvq"
+type = "blob"
+name = "silmaril.c_tv.corpus.nested-calls.source"
+paths = ["examples/c-programs/nested-calls/source.c"]
+size = 115
+sha256 = "45aea32f77aa24b14b56f3dcb06166081be553c143a88a56efd6cbf4fa0943c5"
+git_sha1 = "5e98de7f074796de7c4e7301de92ade296507a79"
+
+[[artifact]]
+cid = "bafkr4iaijqv3cpirwd3xbcpslkw5f736wyrym7b7kebpbrbzbx2enb37pe"
+type = "blob"
+name = "silmaril.c_tv.corpus.recursion.source"
+paths = ["examples/c-programs/recursion/source.c"]
+size = 107
+sha256 = "35888579a50aaed36378ebeef4a1137101080c999ce2b29f5d6a70b5c955988d"
+git_sha1 = "b2fec42e0e4f488487b49e876ec764a5bb399a66"
 
 [[artifact]]
 cid = "bafkr4ialkxfgfwrnf7rx6rjx57kzqmey6jqs5536k4irxrxl3c5bfvyi4a"
@@ -33,6 +78,15 @@ derivation = "silmaril.wasm_components.gen.run.recipe"
 meta = { wasm = { custom = [], exports = ["func run"], imports = ["func get"], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4iar7nat4pzyxpu35mjr22obilftkfqcjuevxoe4wmx5pfi4mum32u"
+type = "blob"
+name = "silmaril.c_tv.corpus.arithmetic.source"
+paths = ["examples/c-programs/arithmetic/source.c"]
+size = 43
+sha256 = "81ce1cb66259297398a2ad0f56f931659be1e80dedf9232bc9e687c81ec0d35f"
+git_sha1 = "e0537ce36c1da171276f4e5de0865b6bfec377e7"
+
+[[artifact]]
 cid = "bafkr4ias57qpxdadwjv52mhbzjcb35ix57aweohwqy7ey2i7pjk2jfqgpu"
 type = "blob"
 name = "silmaril.wasm_components.wac.pilot.composed.blob"
@@ -44,6 +98,24 @@ derivation = "silmaril.wasm_components.wac.pilot.composed.compose"
 meta = { wasm = { composition_of = "silmaril.wasm_components.wac.pilot.blob", custom = ["component-name", "producers"], exports = ["func run"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4iavqynv7dbwth7y3q2dy5zsp56xjhblywd7vok2bhn6qoy64apctu"
+type = "blob"
+name = "silmaril.c_tv.corpus.globals.source"
+paths = ["examples/c-programs/globals/source.c"]
+size = 126
+sha256 = "0b6d5633f843ee3aa4e29c28287e623f542ddd85a2cafd80bbe1b1d49acf01ab"
+git_sha1 = "abc754b563fd0262cdcbc59220dfe602a49eba90"
+
+[[artifact]]
+cid = "bafkr4iawzz4xp2rcn4aqvcso4pikm5c6ckpe4klnqtfblcrwccy6ojngbe"
+type = "blob"
+name = "silmaril.c_tv.corpus.local-if.provenance"
+paths = ["examples/c-programs/local-if/provenance.json"]
+size = 5821
+sha256 = "2b9a6a8a36f9cb70d1cb5a96398c798879648d81923f5db90c811f7c96e7ea97"
+git_sha1 = "53da45fe207795153b502c3e4690f219fa3ba087"
+
+[[artifact]]
 cid = "bafkr4iayh6sghvglya2f5njxpzh5g3mgpnk72jf5vq3pglvmurqcakavqu"
 type = "blob"
 name = "silmaril.sysv_tv.max2.o2_obj"
@@ -51,6 +123,15 @@ paths = ["examples/sysv-tv/max2/O2/max2.o"]
 size = 736
 sha256 = "707f0a3662799f76ba7587663c87d64200acde6a33c1ecd53225fbdca30dc279"
 git_sha1 = "fb9a6bfd343d1dd715ee4e8bef9d720c26751b51"
+
+[[artifact]]
+cid = "bafkr4ib3fcojui76jivuuhx7idxflclexsmpkctkc25ovreadjwxspfw2q"
+type = "blob"
+name = "silmaril.c_tv.corpus.control-flow.source"
+paths = ["examples/c-programs/control-flow/source.c"]
+size = 125
+sha256 = "0458b980464b1e0211ee37b96259bb5a38636f4de5f5459e5fa34f2ec9d5c485"
+git_sha1 = "3c62550ede0d510c066ec6634ab19d4bd1516a72"
 
 [[artifact]]
 cid = "bafkr4ib4owwgjjlpdyshelx5yz5lgspygf47tzhkwpajtqjrxivic5aqy4"
@@ -84,6 +165,15 @@ derivation = "silmaril.wasm_components.wasi.io.v0_2_6.oci.fetch"
 meta = { wasm = { custom = ["package-docs", "producers", "component-name", "version"], exports = ["type error", "type poll", "type streams", "type imports"], imports = [], layer = "component", license = "Apache-2.0 WITH LLVM-exception", package = "wasi:io@0.2.6", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4ibab3dbe27ir43j6xf34qaliypwmwc4emum6hijii4n2tlcj2y44i"
+type = "blob"
+name = "silmaril.c_tv.corpus.division-by-zero.provenance"
+paths = ["examples/c-programs/division-by-zero/provenance.json"]
+size = 5063
+sha256 = "0919c6ed5ab55488e49a7ffc67da9de955b3804a0c419213cc379ee28eb96614"
+git_sha1 = "5970d750352be66ee212e5726c49b1b56d65e6a1"
+
+[[artifact]]
 cid = "bafkr4ibahvakl3iotlqggh5fy5645ytlcupxdxwansos7xccprmmm7f5vq"
 type = "blob"
 name = "silmaril.compiles_to.branch.o2.object"
@@ -102,6 +192,33 @@ sha256 = "3719fe9008f66170e4a853b8bafdf4e61bc8beafb9c65038e427821191173476"
 git_sha1 = "6984f2d8085780cb8efb677ebf0c2e645437e440"
 
 [[artifact]]
+cid = "bafkr4ibdwwyzl3nf3l4vstsjoduu4u7vml4mk2lwbmzns5omuhxpdi2mmq"
+type = "blob"
+name = "silmaril.c_tv.corpus.compare.source"
+paths = ["examples/c-programs/compare/source.c"]
+size = 51
+sha256 = "1ffe8a6149321d932e29ad9b31754eef609a3b590917bc30043e7f35310f4ebb"
+git_sha1 = "f3a7316cc26a988ad1f9deaa9830f829ba276dd3"
+
+[[artifact]]
+cid = "bafkr4ibher7k2zrgjim5wqo3ep3gzrewy4lf46oj6n4v2jhusutp6wghhu"
+type = "blob"
+name = "silmaril.c_tv.corpus.attribute.provenance"
+paths = ["examples/c-programs/attribute/provenance.json"]
+size = 5613
+sha256 = "cdaefe6ee1b361426adeb3202ccd74e94576fe4cb4e3e0ff141276c4b38f8c64"
+git_sha1 = "6d1fbac483dc5945912a793616b5b101f8044c59"
+
+[[artifact]]
+cid = "bafkr4ibx7liug5bcie5xxobegruf5tivliterjxnyfl2775oyjxdkzjzea"
+type = "blob"
+name = "silmaril.c_tv.corpus.sign-extend.source"
+paths = ["examples/c-programs/sign-extend/source.c"]
+size = 54
+sha256 = "73261278ca05db0268f2840031f9b1b556af8e5dc1e0150fdd31aa1ab22572ce"
+git_sha1 = "da4cc504feb7fe3b6dad2548e26fc558de0883eb"
+
+[[artifact]]
 cid = "bafkr4ibxw3nqchjnfxq5hz7ldez5icwbothe3jvuktrsu5edaxsvncycta"
 type = "blob"
 name = "silmaril.wasm_components.gen.provider.blob"
@@ -111,6 +228,15 @@ sha256 = "98b99d2e593b6d3e30d767854b7ab38156e1f14173afc77ccff938bc3b0fa820"
 git_sha1 = "fab40c64c076929f5befd66599da93f25faa4156"
 derivation = "silmaril.wasm_components.gen.provider.recipe"
 meta = { wasm = { custom = [], exports = ["func get"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4ic4sktgneoiqtut27uw3fltn5p55vqfdwgtaz4rvjhandg74x3wuy"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-overflow.source"
+paths = ["examples/c-programs/signed-overflow/source.c"]
+size = 66
+sha256 = "b02f6dc27b4eb88886043a7e750849a599199dd50c1de3f1c3cf63074ad04026"
+git_sha1 = "488e4603ea3ee17e44b456c7922399ea8ff28d78"
 
 [[artifact]]
 cid = "bafkr4ic6n6megvodyd2vunfrri6rltghpbtmmk7qwwbxotm4k5vpobhjqy"
@@ -140,6 +266,15 @@ size = 213
 sha256 = "f86b7fc993ce4aaeeffafc91efbbf7bb4505e7aaebf832d62fb3d59cfe0f6ad7"
 git_sha1 = "9fbb024ae8787f532979a137f7b097ac429a7b0f"
 meta = { wasm = { custom = [], exports = ["func accept"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4iccnqfsiqsxdzx5blhuxo4pqd2wbeayipctj6fgxta2lq6fqr4g2m"
+type = "blob"
+name = "silmaril.c_tv.corpus.asm-label.provenance"
+paths = ["examples/c-programs/asm-label/provenance.json"]
+size = 5753
+sha256 = "634fb294ce86e481f00e0afbb0d4a42d3e55e3e67a336583d6ed33778b673359"
+git_sha1 = "f6a90f392f33375b5fc2522beb9e39c7d59a84b0"
 
 [[artifact]]
 cid = "bafkr4iccoqsy5a346yjdsg2dsmfxpdoxw354jxdtdjdawnqnwy3glk7yha"
@@ -183,6 +318,15 @@ sha256 = "482026b8561dfbb3b2d13e49aba4d78354d6bee097524a97d5bdf662a48b26f4"
 git_sha1 = "1e6a36ba79198219bec280074e61c7a8f1fd7418"
 
 [[artifact]]
+cid = "bafkr4icoq6aty3ouczqdl3n2rgmvnvkcnx4xyd6ldd2uwhbzxl62kztua4"
+type = "blob"
+name = "silmaril.c_tv.corpus.statement-expression.provenance"
+paths = ["examples/c-programs/statement-expression/provenance.json"]
+size = 4603
+sha256 = "b0789f3878673b3711c9f9a213402e2bdb95211e77be304cd3878739f8b902db"
+git_sha1 = "97e6da4ab3b2b42a14b3ed80203e1a0cdd41ded7"
+
+[[artifact]]
 cid = "bafkr4ictqucxu35a3436izezq5vb26k2agik7xus5o73igkx2k4hjchxde"
 type = "blob"
 name = "silmaril.wasm_components.gen.toy.world.blob"
@@ -205,6 +349,42 @@ derivation = "silmaril.wasm_components.gen.recipe"
 meta = { wasm = { custom = [], exports = ["func get"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
 
 [[artifact]]
+cid = "bafkr4idasijzgeoybdfhygh7g7ufc5p3blgfde4lwte2sfwt2lxv7vmhbe"
+type = "blob"
+name = "silmaril.c_tv.corpus.asm-label.source"
+paths = ["examples/c-programs/asm-label/source.c"]
+size = 113
+sha256 = "ad8b54dcd83b0a3f3be10d7ec123d88929d4792e120c0100d21d00d877faa3c0"
+git_sha1 = "d9df15c84f03a6838d0852ab8c4e3e384669ef50"
+
+[[artifact]]
+cid = "bafkr4idbsztz2kgj6tfnrfc5v6uhnvavesbz3pmxkon72ejpufuxxyxxoi"
+type = "blob"
+name = "silmaril.c_tv.corpus.pointer.provenance"
+paths = ["examples/c-programs/pointer/provenance.json"]
+size = 6078
+sha256 = "a96ff1a1687656f2f144307270b7c2812adf7e249abc98521ea55b75b0dd0201"
+git_sha1 = "15805676620137b15725099117494da85d8d9fd7"
+
+[[artifact]]
+cid = "bafkr4idczarwkhfucltdke4xwv5sqpyvuynupbfpwrtu33rpxklduooypi"
+type = "blob"
+name = "silmaril.c_tv.corpus.globals.provenance"
+paths = ["examples/c-programs/globals/provenance.json"]
+size = 9156
+sha256 = "69412985e20712b75460adada28afd8c4d90f277c6021880af4a99712f633d62"
+git_sha1 = "bb90ba2681909297c6d4a341db0abe34356e6861"
+
+[[artifact]]
+cid = "bafkr4idoelh5kltbh4sgl4xtdy5yarjl2xzk7j232persmm6kekua6fozq"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-calls.source"
+paths = ["examples/c-programs/unsequenced-calls/source.c"]
+size = 147
+sha256 = "ef79ad7b3691ab3bc5e9bb1c8a3f82b2b27984e1487b66733d37d51e8e995485"
+git_sha1 = "457232aa25d6a95c41cdc966f1df377b463e6e17"
+
+[[artifact]]
 cid = "bafkr4idoj3jthgktqxbftz44w246p3wdpidf2ovoow33snorjmipg7akay"
 type = "blob"
 name = "silmaril.wasm.examples.empty_check.prog"
@@ -213,6 +393,42 @@ size = 45
 sha256 = "54c4c74e6990f39b6cd1a5c7c1af7eae3a4dd6a725acd2eb7de2c21b1b0ce9ce"
 git_sha1 = "2282fc103b615d71c4b38f6ef89047419214b321"
 meta = { wasm = { custom = [], exports = ["func check"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
+
+[[artifact]]
+cid = "bafkr4idproz2yj5w7a6oaz3sxqadib6zdtleyupusuhtbcacy4gwfy7dze"
+type = "blob"
+name = "silmaril.c_tv.corpus.pointer.source"
+paths = ["examples/c-programs/pointer/source.c"]
+size = 83
+sha256 = "8e629333b962a0df7997dc4e6192256fbeb5dbfa78c9ce2ebe94b99402faf04e"
+git_sha1 = "197e9fa8e343a87faea66c676167df8dcd6a6fc2"
+
+[[artifact]]
+cid = "bafkr4idrdvg3xdrgejcguqto66vy6l55vaaeamk3qzw4ytlp3zsyjdx5pm"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-parameter.provenance"
+paths = ["examples/c-programs/unsigned-parameter/provenance.json"]
+size = 7371
+sha256 = "e38750c5d8e0995ef9d46aac62069582bfc28cf4bfd89834eeeee0682e5ff7b6"
+git_sha1 = "ca9d7626bbf8492caae9e5a810afcfa1cab46f34"
+
+[[artifact]]
+cid = "bafkr4idyadqk6pknwn6oyewpwb6i2rdjmbmnrrsyarm3fvmrqxxxgbzws4"
+type = "blob"
+name = "silmaril.c_tv.corpus.arithmetic.provenance"
+paths = ["examples/c-programs/arithmetic/provenance.json"]
+size = 7363
+sha256 = "47ad5a7358777a733ce937dc4e1954f10205869b4d0400eda22614b7504b4ed5"
+git_sha1 = "0ba425263362952954fd3de4d23753db80b2e006"
+
+[[artifact]]
+cid = "bafkr4idzvt25k7wkl7nms4onnbvuhefwmsjmma3kw5rkxbcrn2vb5o6dai"
+type = "blob"
+name = "silmaril.c_tv.corpus.calls.source"
+paths = ["examples/c-programs/calls/source.c"]
+size = 134
+sha256 = "eb1e4dfc10c49ae5c42e6afe37163116055fbdabb62abee9cbcacd28d23e5290"
+git_sha1 = "7910b89733d1b4e076e3a04fcd0480f3f9df9ba4"
 
 [[artifact]]
 cid = "bafkr4ie2cya46wczkn5es7olssvrgbd6czastr2k7kbqpv3ehslchsocge"
@@ -246,6 +462,33 @@ sha256 = "f61fd62f57c41269c3c23f360eeaf1090b1db9c38651106674d48bc65dba88ba"
 git_sha1 = "357f72da7a0db8add83699082fd51d46bf3352fb"
 
 [[artifact]]
+cid = "bafkr4ieet2kloi4ebyedt2hyyojenyhsfsqgzev2jm6iscm27or562q4je"
+type = "blob"
+name = "silmaril.c_tv.corpus.return-constant.source"
+paths = ["examples/c-programs/return-constant/source.c"]
+size = 30
+sha256 = "7fbc7c908f797d1f300a709612039356f21f0a219e50286fefc599af2103cc77"
+git_sha1 = "8250209b35dd7aaed9215af11b8b8dc101802aac"
+
+[[artifact]]
+cid = "bafkr4iejhwgbogzas5ziifin7hftwq5uh7ejmpml6i5v2uonk3vecgty5u"
+type = "blob"
+name = "silmaril.c_tv.corpus.compare.provenance"
+paths = ["examples/c-programs/compare/provenance.json"]
+size = 7360
+sha256 = "498901f3d519b02cf305e3d0d84d18cfd11343ab16fe91a08c54e475618ae35d"
+git_sha1 = "495eaa51a787839787a3977355e5de3b78a67bb1"
+
+[[artifact]]
+cid = "bafkr4ielfznyl42eadtlzqokfoyapr7p6jw2incnaerll52glyyaarwtla"
+type = "blob"
+name = "silmaril.c_tv.corpus.locals.source"
+paths = ["examples/c-programs/locals/source.c"]
+size = 78
+sha256 = "a1b5cb5bf9f1c4a89b3a7990fae056bc46b9983b4782faaa48353c7fa582cee8"
+git_sha1 = "d8a6503df20c9c4ff4bcfc755a5ec3c5f53791dd"
+
+[[artifact]]
 cid = "bafkr4ieojr6bxgo37viopkkrqx7k2xxbish2sbfc7xlxr2xv6ln72yu2te"
 type = "blob"
 name = "silmaril.selftest.hello_txt"
@@ -262,6 +505,60 @@ paths = ["examples/sysv-tv/max2/O0/max2.o"]
 size = 760
 sha256 = "23f2e8e0fe7f97665952687233e5a2465f00b0dd5bc6a8714bf533c1fbd8159e"
 git_sha1 = "207dbf73c7494d2cac2c6e3df2aa6fa94f9d0597"
+
+[[artifact]]
+cid = "bafkr4iespcw3qdsayv4ls5ysp3ln3b5ke7nkv6ij3qziqyjftk2fvwy3hm"
+type = "blob"
+name = "silmaril.c_tv.corpus.calls.provenance"
+paths = ["examples/c-programs/calls/provenance.json"]
+size = 7361
+sha256 = "ed8fe0118cae20335ecbf6196d4d4337cf2ad3930a7045365c04799883f7bade"
+git_sha1 = "0df99d91276dad3bf4629b3a2fba7664a453d2fb"
+
+[[artifact]]
+cid = "bafkr4ietdpjzlkbskx72csrtu6hzvil64oxfprgxxjlurfbacds2pabagm"
+type = "blob"
+name = "silmaril.c_tv.corpus.locals.provenance"
+paths = ["examples/c-programs/locals/provenance.json"]
+size = 7232
+sha256 = "6055100c6eb4cfa188d185b5b24eaa79f477e3beaab3d70af7335e8b9b583473"
+git_sha1 = "968c9a9f4c75862757ea153ec37d7f2b0bb7b0ea"
+
+[[artifact]]
+cid = "bafkr4ietfxd73n3megmp5wj3j6lwbrnhkjresqbnnyog5xgesnfkhd4t3i"
+type = "blob"
+name = "silmaril.c_tv.corpus.recursion.provenance"
+paths = ["examples/c-programs/recursion/provenance.json"]
+size = 9164
+sha256 = "70216c53a83d25516c9965bf4f0dc064cabddbc495f1941b5c64793524c49d50"
+git_sha1 = "9d2bb6b02dfcbae68bc729b072d32098942cdaa2"
+
+[[artifact]]
+cid = "bafkr4ievhrour3qagzq537r7zcil3aegafrvjybblbcjch7ulpf3n7f32e"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-narrow.source"
+paths = ["examples/c-programs/signed-narrow/source.c"]
+size = 123
+sha256 = "407f1cb52df14d759ed61757211568881ab425de62065e5a58b6b2fddf761859"
+git_sha1 = "1ef9f5fc8e111c5446e0dcd3e6d13392f2c47303"
+
+[[artifact]]
+cid = "bafkr4iey6t7zdyatfjhzlus5rsjj373whj5kj4gzegscno5wyetizkcj4q"
+type = "blob"
+name = "silmaril.c_tv.corpus.overflow-return.provenance"
+paths = ["examples/c-programs/overflow-return/provenance.json"]
+size = 7368
+sha256 = "ae25cc825cf0c189d514f9dea713929a3c03e4b0ee1d4a3be69545addb8c34da"
+git_sha1 = "019d56602b8147177cd8a85a414e8e596292cfb8"
+
+[[artifact]]
+cid = "bafkr4if3sp5uejrlv23i6ssjaks2rnvyoxrzzaiuww2cjbk44jpi5llfye"
+type = "blob"
+name = "silmaril.c_tv.corpus.signed-narrow.provenance"
+paths = ["examples/c-programs/signed-narrow/provenance.json"]
+size = 7366
+sha256 = "7544efd2717588b6abee93ce867672a1b8e9b56a93ac8dd22363170bc1d8cdb4"
+git_sha1 = "0879bb2bda1af60d5679ebc6a38185f5b10392ab"
 
 [[artifact]]
 cid = "bafkr4if7lm7jpnq7acg5hqxn7mnkkeuye3wrqc7i7wgfczwqjizhqf2apa"
@@ -285,6 +582,51 @@ derivation = "silmaril.wasm_components.gen.toy.recipe"
 meta = { wasm = { custom = [], exports = ["type r", "func make", "func get", "func drop"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4ifas45pli475wffbeunqvxqraeo6zugweceqvqmz5vwhptxdk6smy"
+type = "blob"
+name = "silmaril.c_tv.corpus.nested-calls.provenance"
+paths = ["examples/c-programs/nested-calls/provenance.json"]
+size = 7368
+sha256 = "318062c2da66714cae907e08ec70219b9804db4073d2ec3833bd8d14400506e2"
+git_sha1 = "defd8d632ec54b66a6f0cf8ff5fe78d41596bfa7"
+
+[[artifact]]
+cid = "bafkr4ifdsqyv4fvsio2ewv4owtb4l4pnrcazkm5fdxa5mldqjrqlx76znq"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-wrap.source"
+paths = ["examples/c-programs/unsigned-wrap/source.c"]
+size = 67
+sha256 = "c70e1c0c264476997868b3641c981df607cec416ed3a248de5ba30173844c53d"
+git_sha1 = "8d88891791553c61de9817c2926d315a986159b8"
+
+[[artifact]]
+cid = "bafkr4ifix7wizfupn67scakm5vnnk5ns6cawgh6wcsm65ho7xf7bcsngiq"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-ub.provenance"
+paths = ["examples/c-programs/unsequenced-ub/provenance.json"]
+size = 7236
+sha256 = "2cc5d41af799804a42a1af031e13d064d4785cc6ca429fad9dfe4c3e9f5c8eb2"
+git_sha1 = "488259eebea3bc58fe8ce119beeb2c2276811299"
+
+[[artifact]]
+cid = "bafkr4ifqntcol7775lg6iqy2uuw25bd3erniitm46d5fem7kj4vfw5y2am"
+type = "blob"
+name = "silmaril.c_tv.corpus.statement-expression.source"
+paths = ["examples/c-programs/statement-expression/source.c"]
+size = 51
+sha256 = "3f0ab67a6984a40fbd11046a416573dbe017a88c85534770fadb893926ca98a5"
+git_sha1 = "51a7b15a37f40e2a2a28eea113ebca701ca7f2db"
+
+[[artifact]]
+cid = "bafkr4ifqre753ekajzjt56sirra63qbebak6kaohqpd7ydrpnnetuvwdze"
+type = "blob"
+name = "silmaril.c_tv.corpus.local-if.source"
+paths = ["examples/c-programs/local-if/source.c"]
+size = 70
+sha256 = "cd069bae8c7cf3e99502e2c35ed7d5a9537ec3dec272ea176a85d0b85f463ee7"
+git_sha1 = "b91b7774333fc1ba106de8850c3cf80b8c813445"
+
+[[artifact]]
 cid = "bafkr4iftejn2uc2tq5nhwijs7kpn3nbh3hjjyqix34k7hvzdvsilsxxbva"
 type = "blob"
 name = "silmaril.wasm.game.examples.ex_start"
@@ -304,6 +646,42 @@ sha256 = "e8f7e2796fdf49e5ab68ef7ef68014d8ab064a042cab4bf293b69e6c98737e58"
 git_sha1 = "ad8a9a88c1dd4ec5c3d0402d841ac01f0db4d5b3"
 derivation = "silmaril.wasm_components.gen.linked.world.project"
 meta = { wasm = { layer = "component", version = 13, world_of = "silmaril.wasm_components.gen.linked.blob" } }
+
+[[artifact]]
+cid = "bafkr4ifxt4umejcgr4yf26j4t434djfyqjd7lok7527mj6vadpyb45rlle"
+type = "blob"
+name = "silmaril.c_tv.corpus.float.provenance"
+paths = ["examples/c-programs/float/provenance.json"]
+size = 5052
+sha256 = "ad8dcf52f20105df9eb440530a152c5ac95c8aff37c28ca3acaa439d08410e1a"
+git_sha1 = "d968a2a0717d4f82b49a9e3043cd924d14ec1bd5"
+
+[[artifact]]
+cid = "bafkr4ifzl7fqyx5nnnsxzup7onyd7mfdgmb46n6zmw5gj7dct7rmcg6bie"
+type = "blob"
+name = "silmaril.c_tv.corpus.sign-extend.provenance"
+paths = ["examples/c-programs/sign-extend/provenance.json"]
+size = 7364
+sha256 = "db27fb86d65f5d8f9d602b4b2130c7253249c8af82be52b892ea717cdcf47280"
+git_sha1 = "63dd5f81e91d85486b9eb1cb9be171fb1929d06d"
+
+[[artifact]]
+cid = "bafkr4ig4tqsywktq4xhrmqk4dkspv3idyfenu6byikamz7vky7oixscubi"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-wrap.provenance"
+paths = ["examples/c-programs/unsigned-wrap/provenance.json"]
+size = 7366
+sha256 = "6626133cbd37c794d1d7548af1a7300d72c21952c6a17ace427e2238f5cc7f8d"
+git_sha1 = "3a08241129a1106de381c173d222ccd7d8ef9768"
+
+[[artifact]]
+cid = "bafkr4ig6o5gz66s5hcyx3wodcjkgj2yktl476ambbhkwkr3kvt7pahicne"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-ub.source"
+paths = ["examples/c-programs/unsequenced-ub/source.c"]
+size = 65
+sha256 = "464a9d6905b7ee2857fc89873178183940c93ccc1582f8a42492634702192fb2"
+git_sha1 = "87e079c3aaeceb977461051ed03cd588bfb10d8f"
 
 [[artifact]]
 cid = "bafkr4igd5n4qywsi5wnzogjwvltd3chsrjoa6um4ed6cb5o5vig73jztka"
@@ -326,6 +704,33 @@ git_sha1 = "e8d7b1a4b7eef943d0916d0eee09ceedc472bc8e"
 meta = { wasm = { custom = [], exports = ["func check"], imports = [], layer = "module", license = "LicenseRef-silmaril-lean", version = 1 } }
 
 [[artifact]]
+cid = "bafkr4igfrqjkfjmltt3j6euye6fk5cmecxm2sqqxbqeqeg3cp2a5ws55zm"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsequenced-calls.provenance"
+paths = ["examples/c-programs/unsequenced-calls/provenance.json"]
+size = 7246
+sha256 = "8354770f6d4ebd785585e5c052172d6d6af485728f521e985bb1f48bae13b52f"
+git_sha1 = "e16a96598b26aedffa965acf224d317ebdedd8dc"
+
+[[artifact]]
+cid = "bafkr4igmmlwgzatnkmwdqmysnnnttecnzimndc7wadauzpe7o3wzeum4ie"
+type = "blob"
+name = "silmaril.c_tv.corpus.float.source"
+paths = ["examples/c-programs/float/source.c"]
+size = 76
+sha256 = "44d640014b4a603f7115ffb33580a8d1014c570e1dbdbfe7cbc4c252431cc57d"
+git_sha1 = "af1ee6fe5f6edddfcb85ba505c53495721e70294"
+
+[[artifact]]
+cid = "bafkr4igqaa3isdytqx2l5f3dejmc5h5zynkrlefuek2ni2tnw4j74mydum"
+type = "blob"
+name = "silmaril.c_tv.corpus.attribute.source"
+paths = ["examples/c-programs/attribute/source.c"]
+size = 107
+sha256 = "5500c53777f1441fb7a50c166a0fa9f419753e27074f7581a761de908bdb3396"
+git_sha1 = "3253f66959bf0f6fab5205695d02238d16a8a1db"
+
+[[artifact]]
 cid = "bafkr4igulxj2rvkhkohnqu54m63jomq7anzzitot7w3qet5p55evslf3aa"
 type = "blob"
 name = "silmaril.wasm_components.gen.linked.blob"
@@ -335,6 +740,15 @@ sha256 = "f81b97a4e607ec7b090cfa220054e8b07c109c417a211a9147a510d2553e4a87"
 git_sha1 = "2dcf9157d4bce646c3fa2c40d63498c823d7996f"
 derivation = "silmaril.wasm_components.gen.recipe"
 meta = { wasm = { custom = ["producers"], exports = ["func run"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
+
+[[artifact]]
+cid = "bafkr4igvjacqyylnercz7xof3qelh3u4vx2fkpjoioihgbwyb4dkpzr6z4"
+type = "blob"
+name = "silmaril.c_tv.corpus.control-flow.provenance"
+paths = ["examples/c-programs/control-flow/provenance.json"]
+size = 6085
+sha256 = "540779c07abdf1396e2a8fdae638bccf3cadc5ad72c4f0bbf6e6a87a27c9385c"
+git_sha1 = "94abf23b0b60a9d84d91e7e89c70dfce6ebb0576"
 
 [[artifact]]
 cid = "bafkr4igwf2kmhj2niyipfy4vqf2uebfabr62oxgwpxv7oonxmn32x4cli4"
@@ -358,6 +772,15 @@ git_sha1 = "08b04a5c89cff872f23503c52ddf96dcf096ad53"
 meta = { wasm = { custom = [], exports = ["func check-stream", "func check-nested"], imports = [], layer = "component", license = "LicenseRef-silmaril-lean", version = 13 } }
 
 [[artifact]]
+cid = "bafkr4ihhb2chrlxma56yl4h4zahixr46i6pj3ftbh6bmmism4vd3bbual4"
+type = "blob"
+name = "silmaril.c_tv.corpus.overflow-return.source"
+paths = ["examples/c-programs/overflow-return/source.c"]
+size = 125
+sha256 = "5706f295e81f8a0810d3b226ad883a6fdf4e0fd5eaaccfebb8ee3d38f7cfe0a8"
+git_sha1 = "b54c1893deaa343a7da805bee28c509da74526cc"
+
+[[artifact]]
 cid = "bafkr4ihjitr643vnhzwmwj2kyxkvpad23ayzskzhpihwasjbozsyeux65q"
 type = "blob"
 name = "silmaril.wasm_components.wac.pilot.blob"
@@ -366,6 +789,15 @@ size = 316
 sha256 = "4ec2af5297141cc06d702c332b3ba392baac034413bde69f79fca78aa5fc497b"
 git_sha1 = "79672c496c3cc005d89a277765d9152b8d7b96c0"
 meta = { wac = { exports = ["b.run"], instantiates = ["silmaril:provider", "silmaril:comp-b"], license = "LicenseRef-silmaril-lean", package = "silmaril:pilot" } }
+
+[[artifact]]
+cid = "bafkr4ihkgioltbwlz4vq7ut3yy3xz326c3stsq2exau2ht444n6xfongoy"
+type = "blob"
+name = "silmaril.c_tv.corpus.unsigned-parameter.source"
+paths = ["examples/c-programs/unsigned-parameter/source.c"]
+size = 73
+sha256 = "80f31a7762137d7def9dd5aad94f29e39714fa8ed8a8c7107ca3d7cf5fc2bfa2"
+git_sha1 = "cafdee59e0e5ee0a528b6fda4aa04a2d6151e001"
 
 [[artifact]]
 cid = "bafkr4ihqbonquru6xcz27telzewjvmfmhwu4rs7xzqmny7jm5oc2yofwi4"

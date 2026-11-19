@@ -136,4 +136,48 @@ def step (F : FeatureSet) (exts : List Extension) (s : LState) : Option LState :
 abbrev stepOf (p : Silmaril.X86.Features.Profile) (s : LState) : Option LState :=
   step p.features (lanesWith p) s
 
+/-! ## Listed lane forms -/
+
+/-- The x87 decoder (`Fpu.decode`) rejects every byte string with `w`'s first byte: it is not
+`fwait` (`9B`), an FS override (`64`), a REX prefix or an escape opcode (`D8`–`DF`). -/
+def fpuNo : List Byte → Bool
+  | [] => false
+  | b :: _ => b != 0x9B#8 && b != 0x64#8 && !Silmaril.X86.Ext.isRex b &&
+    b.extractLsb' 3 5 != 0b11011#5
+
+/-- **No decoder of `Str9X` claims a fetch window that starts with `w`**, whatever follows:
+no layer of `Str9V` reads it (`Str9D.lowerBad`), it is not `std`/`cld` and shows a non-string
+opcode, and the x87 decoder rejects it (`fpuNo`). Checked by `decide` on the bytes of a form. -/
+def laneBad (w : List Byte) : Bool :=
+  Str9D.lowerBad w && (Str9D.decodeFlag w).isNone && !Str9D.strClaims w && fpuNo w
+
+/-! ## Features of the tower's own forms -/
+
+/-- **The CPUID features a `Str9V` form needs** (SDM Vol. 2, the instruction pages' CPUID
+columns): the VEX moves, `vzeroupper` and the 128-bit VEX integer forms need AVX; the 256-bit
+VEX integer forms, `vpmovmskb ymm` and `vpbroadcastb/d` need AVX2; `bzhi`, `shlx`, `shrx` and
+`sarx` need BMI2; `blsmsk` needs BMI1; `movbe` needs MOVBE. The legacy forms (`rep movsb`,
+`rep stosb`, the 8/16-bit `inc`/`dec`/`not`, `bts`, 32-bit `lea`, `prefetch`, `movntdq`) need
+nothing beyond the x86-64 baseline. `Str9L.step` itself does not check these (the lanes'
+`Features.extStep` checks theirs); `towerMissing` is the check a machine on `Str9L` applies. -/
+def vRequires : Str9V.Instr → List Feature
+  | .movbe .. => [.movbe]
+  | .vmovToX .. | .vmovFromX .. | .vmovqLoad .. | .vmovqStore .. | .vload .. | .vstore ..
+  | .vzeroupper => [.avx]
+  | .vbin _ wide .. | .vpmovmskb wide .. => if wide then [.avx2] else [.avx]
+  | .vbcast .. => [.avx2]
+  | .bmi .. => [.bmi2]
+  | .blsmsk .. => [.bmi1]
+  | _ => []
+
+/-- **The feature the tower's form at RIP needs and `F` lacks**: where no layer below `Str9V`
+claims the bytes and `Str9V` decodes one of its own forms there (the form `Str9L.step` then
+runs), the first feature of `vRequires` missing from `F`; `none` elsewhere. -/
+def towerMissing (F : FeatureSet) (s : LState) : Option Feature :=
+  if Str9V.lowerClaims s.x.d.v.g then none
+  else
+    match Str9V.fetchNew s.memory s.core.rip.toNat with
+    | some (some (i, _)) => F.missing (vRequires i)
+    | _ => none
+
 end Silmaril.X86.Str9L

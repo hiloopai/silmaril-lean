@@ -1,0 +1,105 @@
+{
+ "bounds": {
+  "budget": 2000000,
+  "depth": 100000
+ },
+ "elaborator": "Silmaril.Cerberus.Elaboration.Functions.elaborate, TargetCoherence.linuxLP64",
+ "evidence": "compiled",
+ "fresh": 8,
+ "observations": [
+  {
+   "check": {
+    "cerberus": "admitted"
+   },
+   "name": "gcc-O0",
+   "stdoutBytes": 0,
+   "termination": "exit 12"
+  },
+  {
+   "check": {
+    "cerberus": "admitted"
+   },
+   "name": "gcc-O2",
+   "stdoutBytes": 0,
+   "termination": "exit 12"
+  }
+ ],
+ "pairs": [],
+ "profile": "linuxX86_64",
+ "routes": {
+  "cerberus": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     },
+     {
+      "issues": [
+       "unknown: Struct: outside the coherence table"
+      ],
+      "type": "outside:Struct"
+     }
+    ],
+    "mentions": [
+     "bool",
+     "float",
+     "double",
+     "longDouble",
+     "size",
+     "ushort",
+     "outside:Struct",
+     "char",
+     "pointer",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
+   "core": "cerberus.core.sexp.gz",
+   "coreSha256": "b0ecea6920aa5fb01ba08b35a1a9a0b40424f9dcc71244e1a535e57538862a56",
+   "explore": {
+    "endings": 2,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 12,
+       "kind": "defined"
+      },
+      "stdout": ""
+     },
+     {
+      "outcome": {
+       "exit": 21,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 2295,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  },
+  "clang": {
+   "stage": "elaborate",
+   "status": "rejected",
+   "why": "Silmaril.Cerberus.Elaboration.State.Error.message\n  \"unsupported: unknown block location needs omitted upstream cursor information\""
+  }
+ },
+ "runtime": "benchmarks/cerberus-elaboration/oracle/constant-return/core.sexp.gz",
+ "schema": "silmaril.c-tv.pipeline.v1"
+}

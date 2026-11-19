@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Machine.Abi.OpenMachine.Defs
+public import Silmaril.X86.Open9.Defs
 /-! # The FFI thread pointer and the machine's FS base
 
 the ABI model's `Ffi.State` (`Silmaril.Machine.SystemV.Abi.Ffi.Defs`, not edited here) carries its own
@@ -30,11 +31,15 @@ For the thread pointer this module gives the code-level reading:
 
 * `FsCoherent s`: the **entry invariant** `s.fsBase = s.machine.core.fsBase`. A call whose
   initial state meets it has an FFI thread pointer that is the real one.
-* `Task.openStepKeepsFs`: no open-machine step writes `core.fsBase` (Silmaril's
-  `Ext.Semantics` says "`fsBase` is never written", but proves no lemma; open).
-* `Thms.ffiExecute_fsBase`, `Thms.callModel_fsBase` (conditional on the Task): from a
-  coherent initial state, the final state is coherent and its **machine** FS base equals the
-  initial one, so `Return.threadPointer` then also holds of the register `%fs:` reads.
+* `Task.openStepKeepsFs`, `Task.open9StepKeepsFs`: no step of the open machine (`Open`, resp.
+  `Open9`) writes `core.fsBase`. Both are **proved** (`Thms.openStepKeepsFs`,
+  `Thms.open9StepKeepsFs`, from `Silmaril.X86.Open.step_fsBase` and
+  `Silmaril.X86.Open9.step_fsBase` in `Silmaril.X86.Open.FsBase.Thms`); the names stay as the
+  hypotheses the theorems below take.
+* `Thms.ffiExecute_fsBase`, `Thms.callModel_fsBase` (stated with `Task.openStepKeepsFs` as a
+  hypothesis, discharged by `Thms.openStepKeepsFs`): from a coherent initial state, the final
+  state is coherent and its **machine** FS base equals the initial one, so
+  `Return.threadPointer` then also holds of the register `%fs:` reads.
 -/
 
 @[expose] public section
@@ -58,8 +63,13 @@ structure Carried (s s' : Ffi.State) : Prop where
   vectors : s'.vectors = s.vectors
   x87 : s'.x87 = s.x87
 
-/-- Open goal: no step of the open machine writes the FS base. -/
+/-- No step of the open machine writes the FS base (proved: `Thms.openStepKeepsFs`). -/
 def Task.openStepKeepsFs : Prop :=
   ∀ m m' : MState, Open.step m = some m' → m'.core.fsBase = m.core.fsBase
+
+/-- No step of the open machine over `Ext9` writes the FS base (proved:
+`Thms.open9StepKeepsFs`). -/
+def Task.open9StepKeepsFs : Prop :=
+  ∀ m m' : MState, Open9.step m = some m' → m'.core.fsBase = m.core.fsBase
 
 end Silmaril.Machine.Abi.FsBase

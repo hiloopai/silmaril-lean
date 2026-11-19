@@ -5,15 +5,16 @@ description = "The silmaril library: formats, standard shapes, and the self-test
 modules = ["ProjectSelfTest", "Silmaril.Project.Formats.Thms", "Silmaril.Project.Shapes.Format.Thms",
   "Silmaril.Project.Shapes.Language.Thms", "Silmaril.Project.Shapes.Consequence.Thms",
   "Silmaril.Project.Languages.Wasm.Defs",
-  "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Elf.CliExe.Hello.Thms", "Silmaril.Project.Shapes.X86.Thms",
+  "Silmaril.Project.Shapes.Elf.Thms", "Silmaril.Elf.CliExe.Hello.Thms", "Silmaril.Elf.CliExe.Start.Thms", "Silmaril.Project.Shapes.Abi.Defs", "Silmaril.Project.Shapes.Abi.Sse.Thms", "Silmaril.Elf.Abi.LeafArith.Thms", "Silmaril.Elf.Abi.Zlib.Thms", "Silmaril.Elf.Abi.ZlibLibz.Thms", "Silmaril.Elf.Abi.ZlibMatrix.Thms", "Silmaril.Elf.Abi.ZlibMatrix.Api.Thms", "Silmaril.Project.Shapes.X86.Thms",
   "Silmaril.Project.Shapes.SysV.Thms", "Silmaril.Project.Shapes.C.Thms",
   "Silmaril.Project.Shapes.SysV.Rtl.Defs", "SysVTvExample", "SysVTvRtl",
   "Silmaril.Project.Shapes.CompilesTo.Thms", "CompilesToExamples",
   "Silmaril.Project.Shapes.CompilesTo.Explorer.Thms", "CompilesToExamples.Explorer.Rows",
+  "Silmaril.Project.Shapes.CTV.Thms", "CTvRows",
   "Silmaril.Automata.Shapes.Thms", "Silmaril.LogicGraph.Audit.Defs", "Silmaril.LogicGraph.Catalogue.Defs",
   "Silmaril.LogicGraph.Consequence.Defs", "Silmaril.LogicGraph.Consequence.Containers.Defs", "Silmaril.LogicGraph.Consequence.Coverage.Defs",
   "Silmaril.LogicGraph.Consequence.Formal.Defs",
   "Silmaril.Project.WasmComponents.Thms", "Silmaril.Project.WasmComponents.Relations.Thms",
   "Silmaril.Project.WasmComponents.Toy.Thms", "Silmaril.Project.WasmComponents.Versions.Thms",
   "Silmaril.Project.WasmComponents.Wac.Thms", "Silmaril.Project.WasmComponents.Wac.Verdicts.Thms"]
-roots = ["Silmaril.Project", "Silmaril.Elf.CliExe", "Silmaril.Automata", "Silmaril.Containers", "Silmaril.LogicGraph", "ProjectSelfTest", "SysVTvExample", "SysVTvRtl", "CompilesToExamples"]
+roots = ["Silmaril.Project", "Silmaril.Elf.CliExe", "Silmaril.Elf.Abi", "Silmaril.Automata", "Silmaril.Containers", "Silmaril.LogicGraph", "ProjectSelfTest", "SysVTvExample", "SysVTvRtl", "CompilesToExamples", "CTvRows"]

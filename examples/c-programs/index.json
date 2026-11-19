@@ -1,0 +1,351 @@
+{
+ "programs": [
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "arithmetic",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [
+    "cerberus"
+   ],
+   "failures": [
+    "clang.tail"
+   ],
+   "name": "asm-label",
+   "routes": {
+    "cerberus": "elaborated"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [
+    "cerberus.tail"
+   ],
+   "name": "attribute",
+   "routes": {
+    "clang": "elaborated"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "calls",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "compare",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "control-flow",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "division-by-zero",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "float",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "globals",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "local-if",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "rejected"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "locals",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "rejected"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "nested-calls",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "overflow-return",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-only",
+   "verdicts": {
+    "cerberus->clang": "validated (only through source UB)",
+    "clang->cerberus": "validated (only through source UB)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "pointer",
+   "routes": {
+    "cerberus": "rejected",
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "recursion",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "return-constant",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "sign-extend",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "signed-narrow",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "signed-overflow",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "rejected"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [
+    "cerberus.tail"
+   ],
+   "name": "statement-expression",
+   "routes": {
+    "clang": "rejected"
+   },
+   "status": "elaborator-rejected",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsequenced-calls",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "rejected"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsequenced-ub",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "rejected"
+   },
+   "status": "single-route",
+   "verdicts": {}
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsigned-parameter",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  },
+  {
+   "blockedRoutes": [],
+   "failures": [],
+   "name": "unsigned-wrap",
+   "routes": {
+    "cerberus": "elaborated",
+    "clang": "elaborated"
+   },
+   "status": "agreement-ub-free",
+   "verdicts": {
+    "cerberus->clang": "validated (UB-free source)",
+    "clang->cerberus": "validated (UB-free source)"
+   }
+  }
+ ],
+ "reportReplays": {
+  "control-flow": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "globals": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "locals": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "pointer": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "recursion": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "signed-overflow": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "unsequenced-calls": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  },
+  "unsequenced-ub": {
+   "pipelineSha256": "bbf7a200eafd2e74eeb5d4a2331c5607f2d0b64a9995b55e15829ba619a09592",
+   "repositoryRevision": "2c073d7a5b97818cfd78f18a14f4c43d16b9df28"
+  }
+ },
+ "schema": "silmaril.c-tv.corpus.v1",
+ "tools": {
+  "cerb-lean": "7388fce668288274cff2f963061052343a183f1f59e2d41a2c62f2bc3e1f60e7",
+  "cfront": "3c1fa73fd49ec347703964e29b2d79b7b65c2164f2a7a5ef822f6e8c2df9032a",
+  "clang": "Debian clang version 19.1.7 (3+b1)",
+  "ctv-pipeline": "bf5770e21d848c6ed224e8e938ad48fa0e0305d1dd3dc2b94c7341f39182ce93",
+  "gcc": "gcc (Debian 14.2.0-19) 14.2.0"
+ }
+}

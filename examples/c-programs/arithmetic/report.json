@@ -1,0 +1,154 @@
+{
+ "bounds": {
+  "budget": 2000000,
+  "depth": 100000
+ },
+ "elaborator": "Silmaril.Cerberus.Elaboration.Functions.elaborate, TargetCoherence.linuxLP64",
+ "evidence": "compiled",
+ "fresh": 1,
+ "observations": [
+  {
+   "check": {
+    "cerberus": "admitted",
+    "clang": "admitted"
+   },
+   "name": "gcc-O0",
+   "stdoutBytes": 0,
+   "termination": "exit 37"
+  },
+  {
+   "check": {
+    "cerberus": "admitted",
+    "clang": "admitted"
+   },
+   "name": "gcc-O2",
+   "stdoutBytes": 0,
+   "termination": "exit 37"
+  }
+ ],
+ "pairs": [
+  {
+   "coveredOnlyByUB": false,
+   "relation": "frontend agreement (Core to Core)",
+   "source": "cerberus",
+   "target": "clang",
+   "uncovered": 0,
+   "validatedUBFree": true,
+   "verdict": "validated"
+  },
+  {
+   "coveredOnlyByUB": false,
+   "relation": "frontend agreement (Core to Core)",
+   "source": "clang",
+   "target": "cerberus",
+   "uncovered": 0,
+   "validatedUBFree": true,
+   "verdict": "validated"
+  }
+ ],
+ "profile": "linuxX86_64",
+ "routes": {
+  "cerberus": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     }
+    ],
+    "mentions": [
+     "pointer",
+     "bool",
+     "float",
+     "double",
+     "longDouble",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
+   "core": "cerberus.core.sexp.gz",
+   "coreSha256": "a97827169c1372d9246e54bf8ee142c43695185e7d027e707d4fe8690e983efe",
+   "explore": {
+    "endings": 1,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 37,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 356,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  },
+  "clang": {
+   "applicability": {
+    "applies": false,
+    "blockers": [
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 4/4",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.binary32"
+      ],
+      "type": "float"
+     },
+     {
+      "issues": [
+       "differs: core memory 8/8 vs data model 16/16",
+       "differs: core computes in Silmaril.Cerberus.NativeTypes.Floating.binary64, target format Silmaril.Cerberus.NativeTypes.Floating.x87"
+      ],
+      "type": "longDouble"
+     }
+    ],
+    "mentions": [
+     "pointer",
+     "bool",
+     "float",
+     "double",
+     "longDouble",
+     "int"
+    ],
+    "profile": "linuxX86_64"
+   },
+   "core": "clang.core.sexp.gz",
+   "coreSha256": "651910769772f6ef18619a768016602432b2fde99ed117f032b6111ca24363fb",
+   "explore": {
+    "endings": 1,
+    "gap": false,
+    "limited": false,
+    "sample": [
+     {
+      "outcome": {
+       "exit": 37,
+       "kind": "defined"
+      },
+      "stdout": ""
+     }
+    ],
+    "steps": 345,
+    "stuck": false,
+    "ub": false
+   },
+   "status": "elaborated"
+  }
+ },
+ "runtime": "benchmarks/cerberus-elaboration/oracle/constant-return/core.sexp.gz",
+ "schema": "silmaril.c-tv.pipeline.v1"
+}
