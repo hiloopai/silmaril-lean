@@ -11,6 +11,7 @@ lean:
   - 'silmaril/**'
   - 'silmaril.toml'
   - 'specs/**'
+  - 'tests/json-loading/**'
   - '.process-promotion.json'
   - 'lake*'
   - 'lean-toolchain'

@@ -75,6 +75,8 @@ use the definitions above; they do not restate them.
   declarative grammars in `Silmaril.Formats.JsonWire.Grammar.Thms`, see "Proving a reader against
   a byte grammar" below. No other reader is related to these languages, and no lexer from bytes to
   events is proved.
+- **Fast JSON loading:** [the scalar-Unicode loader](json-loading.md) provides indexed values,
+  file elaborators and kernel proof tools without changing the wire reader or its guarantees.
 - **Acceptors:** the JSON, JSON Lines and CBOR acceptors buffer their input; only
   `utf8Acceptor` is incremental.
 
