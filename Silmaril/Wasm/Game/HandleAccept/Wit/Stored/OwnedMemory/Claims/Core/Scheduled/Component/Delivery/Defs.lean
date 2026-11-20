@@ -689,4 +689,16 @@ def LowerCancelResolution.continued (wait : K1Wait atWait thread taskId) (atResu
     store := resolution.resolvedStore.setTaskState taskId .resolved
     ctl := ⟨some thread, .prog (wait.next false), wait.segments⟩ :: rest }
 
+/-- The resolved-cancellation caller finishes on the reached store, clearing
+the temporary waiter before taking the pending event and releasing its lends. -/
+def ParkedCancel.cancelledReply {cfg : Config (core3 grow) (HostState sig)}
+    (cancel : ParkedCancel cfg subtask) (atExit : Config (core3 grow) (HostState sig)) (state : SubtaskState) :
+    Config (core3 grow) (HostState sig) :=
+  let delivered := cancelDelivered (atExit.store.setSyncWaiterSt (.subtask subtask) none) subtask
+  let result := subtaskCancelResult (some state)
+  { atExit with
+    store := delivered
+    ctl := ⟨some cancel.thread, .core ((core3 grow).resume delivered.core cancel.core (.values [i32Flat result])) cancel.next,
+      cancel.segments⟩ :: cancel.rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

@@ -137,10 +137,10 @@ theorem joinStep {E : CoreEngine} {Host : Type} {hr : HostReady Host} {dispatch 
       { state with store := state.store.joinSt waitable set, ctl := ⟨thread, .prog next, segments⟩ :: rest } :=
   .step (Step.modify focused) (fun pending => pendingJoin pending waitable set) (.done _)
 
-private theorem consumeClears (store : CStore (core3 grow)) (pending : PendingAt store subtask index) :
-    ∃ record, (cancelDelivered store subtask).subtask? subtask = some record ∧ record.common.pending = none ∧
-      record.lenders = none ∧ record.state = .returned ∧ record.index = some index := by
-  obtain ⟨record, live, returned, indexed, _⟩ := pending
+private theorem consumeRecord (store : CStore (core3 grow)) (record : Subtask) (live : store.subtask? subtask = some record) :
+    (cancelDelivered store subtask).subtask? subtask = some { record with
+      common := { record.common with pending := none }
+      lenders := none } := by
   let clear := fun common : WaitableCommon => { common with pending := none }
   let cleared := store.modifyWaitableCommon (.subtask subtask) clear
   let event := { record with common := clear record.common }
@@ -154,11 +154,16 @@ private theorem consumeClears (store : CStore (core3 grow)) (pending : PendingAt
     induction lenders generalizing start with
     | nil => rfl
     | cons handle rest ih => exact ih (ArenaField.resHandles.modify start handle _)
-  refine ⟨{ event with lenders := none }, ?_, rfl, rfl, returned, indexed⟩
   change (cleared.deliverResolveSt subtask).subtask? subtask = _
   rw [CStore.deliverResolveSt, clearedAt]
   rw [CStore.subtask?, ArenaField.get?_modify_self]
   exact congrArg (Option.map fun entry => { entry with lenders := none }) ((frame _ _).trans clearedAt)
+
+private theorem consumeClears (store : CStore (core3 grow)) (pending : PendingAt store subtask index) :
+    ∃ record, (cancelDelivered store subtask).subtask? subtask = some record ∧ record.common.pending = none ∧
+      record.lenders = none ∧ record.state = .returned ∧ record.index = some index := by
+  obtain ⟨record, live, returned, indexed, _⟩ := pending
+  exact ⟨_, consumeRecord store record live, rfl, rfl, returned, indexed⟩
 
 theorem deliveredClears (poll : ParkedPoll parked subtask profile) (pending : PendingAt parked.store subtask index) :
     ∃ record, poll.delivered.subtask? subtask = some record ∧ record.common.pending = none ∧
@@ -673,6 +678,43 @@ theorem lowerCancelNotReturned {store : CStore (core3 grow)} {caller : CallerId}
   by_cases starting : resolution.record.state = .starting <;>
     simp [LowerCancelResolution.resolvedRecord, LowerCancelResolution.cancelledState, starting] at returned
 
+theorem cancelCallbackDelivers (cancel : ParkedCancel parked subtask) (atExit : Config (core3 grow) (HostState sig))
+    (record : Subtask) (focused : atExit.ctl = cancel.callbackTail)
+    (live : atExit.store.subtask? subtask = some record)
+    (cancelled : record.state = .cancelledBeforeStarted ∨ record.state = .cancelledBeforeReturned)
+    (pending : record.common.pending = some (.subtask subtask)) :
+    Steps profile ready (specDispatch ready impl) atExit (List.replicate 8 .tau) (cancel.cancelledReply atExit record.state) := by
+  have resolved : record.state.resolved = true := by rcases cancelled with state | state <;> simp [state, SubtaskState.resolved]
+  have readyBefore : atExit.store.subtaskResolved subtask = true := by simp [CStore.subtaskResolved, live, resolved]
+  let cleared := atExit.store.setSyncWaiterSt (.subtask subtask) none
+  let current := { record with common := { record.common with hasSyncWaiter := false, syncOwner := none } }
+  have before : ArenaField.subtasks.get? atExit.store subtask = some record := live
+  have clearedLive : cleared.subtask? subtask = some current := by
+    simp only [cleared, CStore.setSyncWaiterSt, CStore.modifyWaitableCommon, CStore.subtask?, ArenaField.get?_modify_self,
+      before, Option.map_some, current]
+    rfl
+  have readyAfter : cleared.subtaskResolved subtask = true := by simp [CStore.subtaskResolved, clearedLive, current, resolved]
+  let erased := cleared.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }
+  have erasedLive : erased.subtask? subtask = some { current with common := { current.common with pending := none } } := by
+    have lookup : ArenaField.subtasks.get? cleared subtask = some current := clearedLive
+    simp only [erased, CStore.modifyWaitableCommon, CStore.subtask?, ArenaField.get?_modify_self, lookup, Option.map_some]
+  have take : cleared.takeWaitableEvent (.subtask subtask) =
+      (cancelDelivered cleared subtask, some ⟨.subtask, record.index.getD 0, record.state.toNat⟩) := by
+    simp [CStore.takeWaitableEvent, clearedLive, current, pending, CStore.subtaskEvent, erasedLive, erased, resolved, cancelDelivered]
+  have final := consumeRecord cleared current clearedLive
+  change ArenaField.subtasks.get? (cancelDelivered cleared subtask) subtask = _ at final
+  simp only [cleared] at readyAfter take final
+  have returned := Step.popProg (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
+  refine .cons returned (.cons (.get rfl) ?_)
+  simp [Prog.bind, readyBefore, pure]
+  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, readyAfter, ParkedCancel.result, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, take, pure]
+  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, CStore.takeWaitableEventSt, take, final, pure, current]
+  exact .cons (.popCore rfl) (.refl _)
+
 theorem initialK1Cancel {caller : ParkedCancel parked subtask} (request : TaskCancelAdmission caller)
     (wait : K1Wait atWait request.implicitThread request.taskId) {between}
     (path : ParkedPrefix profile ready (specDispatch ready impl) request.implicitThread wait.blocked between parked)
@@ -712,7 +754,7 @@ theorem initialK1Lower {cancel : ParkedCancel parked subtask} (request : TaskCan
       Steps profile ready (specDispatch ready impl) parked
         (List.replicate request.reentrySteps .tau ++ List.replicate 5 .tau ++ List.replicate resolution.callbackSteps .tau)
         (resolution.continued wait (request.reentered wait.saved) cancel.callbackTail) ∧
-      resolution.resolvedRecord.state = .cancelledBeforeStarted := by
+      resolution.resolvedRecord.state = .cancelledBeforeStarted ∧ resolution.record.index = request.record.index := by
   have reachedCaller : ArenaField.callers.get? (wait.deliveredStore (request.reentered wait.saved).store)
       request.callee.caller = some (.lower subtask context args position ft maxParams maxResults) := by
     unfold K1Wait.deliveredStore TaskCancelAdmission.reentered
@@ -733,8 +775,39 @@ theorem initialK1Lower {cancel : ParkedCancel parked subtask} (request : TaskCan
       request.callee.caller subtask :=
     ⟨context, args, position, ft, maxParams, maxResults, marked, reachedCaller, reachedSubtask, rfl, .inl starting⟩
   refine ⟨resolution, appendSteps ((initialK1Cancel request wait path initialTask).1 empty)
-    (k1LowerCancel wait _ resolution _), ?_⟩
+    (k1LowerCancel wait _ resolution _), ?_, rfl⟩
   simp [resolution, LowerCancelResolution.resolvedRecord, LowerCancelResolution.cancelledState, marked, starting]
+
+theorem initialK1Delivers {cancel : ParkedCancel parked subtask} (request : TaskCancelAdmission cancel)
+    (wait : K1Wait atWait request.implicitThread request.taskId) {between}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) request.implicitThread wait.blocked between parked)
+    (initialTask : request.callee.state = .initial) (empty : request.callee.numBorrows = 0)
+    (starting : request.record.state = .starting) (indexed : request.record.index = some index)
+    (cancelledTail : wait.next false = .pure .unit) (emptySegments : wait.segments = [])
+    {context : LiftLowerContext (core3 grow)} {args position ft maxParams maxResults}
+    (linked : ArenaField.callers.get? parked.store request.callee.caller =
+      some (.lower subtask context args position ft maxParams maxResults)) :
+    ∃ exited,
+      Steps profile ready (specDispatch ready impl) parked
+        (List.replicate request.reentrySteps .tau ++ List.replicate 13 .tau ++ [.tau]) exited ∧
+      Steps profile ready (specDispatch ready impl) exited (List.replicate 8 .tau)
+        (cancel.cancelledReply exited .cancelledBeforeStarted) := by
+  obtain ⟨resolution, resolved, cancelled, sameIndex⟩ := initialK1Lower request wait path initialTask empty starting linked
+  let atResume := request.reentered wait.saved
+  let exited := { atResume with
+    store := StepDefs.threadStatusSt request.implicitThread .exited (resolution.resolvedStore.setTaskState request.taskId .resolved)
+    ctl := cancel.callbackTail }
+  have exit : Step profile ready (specDispatch ready impl) (resolution.continued wait atResume cancel.callbackTail) .tau exited :=
+    Step.threadExit (r := .unit) (by simp [LowerCancelResolution.continued, cancelledTail, emptySegments])
+  have live : exited.store.subtask? subtask = some resolution.resolvedRecord := lowerCancelRecord resolution
+  have pending : resolution.resolvedRecord.common.pending = some (.subtask subtask) := by
+    simp [LowerCancelResolution.resolvedRecord, sameIndex, indexed]
+  have run := cancelCallbackDelivers (profile := profile) (ready := ready) (impl := impl)
+    cancel exited resolution.resolvedRecord rfl live (.inl cancelled) pending
+  refine ⟨exited, ?_, by simpa only [cancelled] using run⟩
+  have cut := appendSteps resolved (.cons exit (.refl _))
+  simpa only [LowerCancelResolution.callbackSteps, sameIndex, indexed, Option.isSome_some, ite_true,
+    ← List.replicate_add, List.append_assoc] using cut
 
 private theorem startedCancelMarked (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel) :
     request.callbackReturned.store.subtask? subtask = some { request.record with

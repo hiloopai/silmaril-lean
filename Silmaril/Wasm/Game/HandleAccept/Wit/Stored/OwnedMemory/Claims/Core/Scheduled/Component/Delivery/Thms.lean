@@ -278,8 +278,40 @@ theorem TaskCancelAdmission.initial_k1_resolves {cancel : ParkedCancel parked su
       Steps profile ready (specDispatch ready impl) parked
         (List.replicate request.reentrySteps .tau ++ List.replicate 5 .tau ++ List.replicate resolution.callbackSteps .tau)
         (resolution.continued wait (request.reentered wait.saved) cancel.callbackTail) ∧
-      resolution.resolvedRecord.state = .cancelledBeforeStarted :=
+      resolution.resolvedRecord.state = .cancelledBeforeStarted ∧ resolution.record.index = request.record.index :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.initialK1Lower request wait path initialTask empty starting linked
+
+/-- After the callback has resolved the subtask, clear the synchronous waiter,
+consume the reached cancelled event and return its status to the same Core caller. -/
+theorem ParkedCancel.finish_cancelled_callback (cancel : ParkedCancel parked subtask)
+    (atExit : Config (core3 grow) (HostState sig)) (record : Subtask) (focused : atExit.ctl = cancel.callbackTail)
+    (live : atExit.store.subtask? subtask = some record)
+    (cancelled : record.state = .cancelledBeforeStarted ∨ record.state = .cancelledBeforeReturned)
+    (pending : record.common.pending = some (.subtask subtask)) :
+    Steps profile ready (specDispatch ready impl) atExit (List.replicate 8 .tau) (cancel.cancelledReply atExit record.state) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelCallbackDelivers cancel atExit record
+    focused live cancelled pending
+
+/-- Initial K1 cancellation of a linked indexed subtask reaches the actual
+callee exit, then consumes the cancelled event and replies to the original Core
+caller. The exit cut keeps canonical resolution distinct from delivery. -/
+theorem TaskCancelAdmission.initial_k1_delivers {cancel : ParkedCancel parked subtask}
+    {atWait : Config (core3 grow) (HostState sig)} (request : TaskCancelAdmission cancel)
+    (wait : K1Wait atWait request.implicitThread request.taskId) {between}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) request.implicitThread wait.blocked between parked)
+    (initialTask : request.callee.state = .initial) (empty : request.callee.numBorrows = 0)
+    (starting : request.record.state = .starting) (indexed : request.record.index = some index)
+    (cancelledTail : wait.next false = .pure .unit) (emptySegments : wait.segments = [])
+    {context : LiftLowerContext (core3 grow)} {args position ft maxParams maxResults}
+    (linked : ArenaField.callers.get? parked.store request.callee.caller =
+      some (.lower subtask context args position ft maxParams maxResults)) :
+    ∃ exited,
+      Steps profile ready (specDispatch ready impl) parked
+        (List.replicate request.reentrySteps .tau ++ List.replicate 13 .tau ++ [.tau]) exited ∧
+      Steps profile ready (specDispatch ready impl) exited (List.replicate 8 .tau)
+        (cancel.cancelledReply exited .cancelledBeforeStarted) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.initialK1Delivers request wait path initialTask empty
+    starting indexed cancelledTail emptySegments linked
 
 /-- On this closed guest callback path, cancel marks the started task pending
 cancel, clears the temporary waiter and returns BLOCKED to the same Core caller. -/
