@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Callback
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackDelivery
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackEarly
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackResume
 
 public section
 
@@ -270,6 +271,30 @@ theorem CallbackWait.wait_traps_empty (wait : CallbackWait grow sig) {set : Wset
         .trap (.internal "WaitableSet.get_pending_event: no pending event")]
       (StepDefs.trapCfg { reached with store := wait.shuffled reached.store set record permutation }) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackWaitEmpty wait kind focused live noCancel
+    setLive empty allowed
+
+/-- Resume the same blocked callback occurrence after any retaining prefix.
+The resumer remains below it. The primitive does not test readiness. -/
+theorem CallbackResume.resumes_tracked {wait : CallbackWait grow sig} (resume : CallbackResume wait reached) {leading}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) wait.thread (wait.blocked start rest) leading reached) :
+    Steps profile ready (specDispatch ready impl) (wait.blocked start rest) (leading ++ resume.labels) resume.resumed :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeTrackedCallback resume path
+
+/-- The original K3 occurrence can be forcibly resumed with no event, and
+then traps after decrement and shuffle on the reached store. -/
+theorem CallbackResume.traps_empty {wait : CallbackWait grow sig} (resume : CallbackResume wait reached) {leading}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) wait.thread (wait.blocked start rest) leading reached)
+    {set : WsetId} (kind : wait.kind = .wait set)
+    {liveTask : Task (core3 grow)} (live : resume.resumed.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {record : WaitableSet} (setLive : (wait.decrement resume.resumed.store).wset? set = some record)
+    (empty : (wait.decrement resume.resumed.store).wsetHasEvent set = false)
+    {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation) :
+    Steps profile ready (specDispatch ready impl) (wait.blocked start rest)
+      ((leading ++ resume.labels) ++ [.tau, .tau, .tau, .choice (.shuffle record.elems.length) permutation, .tau, .tau,
+        .trap (.internal "WaitableSet.get_pending_event: no pending event")])
+      (StepDefs.trapCfg { resume.resumed with store := wait.shuffled resume.resumed.store set record permutation }) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeCallbackEmpty resume path kind live noCancel
     setLive empty allowed
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

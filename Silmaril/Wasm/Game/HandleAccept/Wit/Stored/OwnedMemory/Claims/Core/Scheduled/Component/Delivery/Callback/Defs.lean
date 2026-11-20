@@ -220,4 +220,28 @@ def CallbackWait.shuffled (wait : CallbackWait grow sig) (store : CStore (core3 
     (record : WaitableSet) (permutation : List Nat) : CStore (core3 grow) :=
   (wait.decrement store).wsetSetElemsSt set (applyPerm permutation record.elems)
 
+/-- A reached forced resume of the callback, separate from its scheduler
+selection and the subsequent cancellation or event read. -/
+structure CallbackResume (wait : CallbackWait grow sig) (atResume : Config (core3 grow) (HostState sig)) where
+  thread : Option ThreadId
+  next : Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : atResume.ctl = ⟨thread, .prog (Thread.resume wait.thread >>= fun () => next), segments⟩ :: rest
+
+variable {atResume : Config (core3 grow) (HostState sig)}
+
+def CallbackResume.tail (resume : CallbackResume wait atResume) : List (Activation (core3 grow) (HostState sig)) :=
+  ⟨resume.thread, .prog resume.next, resume.segments⟩ :: resume.rest
+
+def CallbackResume.labels (_ : CallbackResume wait atResume) : List (Label (core3 grow) (HostState sig)) :=
+  List.replicate (if atResume.store.threadIs Thread.waiting wait.thread then 3 else 2) .tau
+
+def CallbackResume.resumed (resume : CallbackResume wait atResume) : Config (core3 grow) (HostState sig) :=
+  let store := if atResume.store.threadIs Thread.waiting wait.thread then atResume.store.stopWaitingSt wait.thread
+    else atResume.store
+  { (atResume.setCont wait.thread none) with
+    store := StepDefs.threadStatusSt wait.thread .running store
+    ctl := wait.saved :: resume.tail }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

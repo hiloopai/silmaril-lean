@@ -1236,6 +1236,12 @@ decrements the waiter count before the shuffle and takes the event before
 retaking the lock and calling Core. The selected event and Core callback return
 are separate observations.
 
+`CallbackResume.resumes_tracked` follows the original K2/K3 saved occurrence
+through a retaining prefix and a reached forced `Thread.resume`. It restores
+the exact suffix above the resumer without a readiness assumption. On a live
+empty K3 set with no pending cancellation, `traps_empty` retains the waiter
+decrement and shuffle but never reaches the Core callback.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery
