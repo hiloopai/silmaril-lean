@@ -1,6 +1,6 @@
 module
 
-import Silmaril.Wasm.Sublanguages.Strict.Thms
+import Silmaril.Wasm.Sublanguages.Strict.Link.Thms
 import Silmaril.Wasm.Verify.Kernel.Defs
 
 open Silmaril.Wasm Silmaril.Wasm.Sublanguages
@@ -12,7 +12,7 @@ private def program : FunctionModule where
   imports := [⟨"env", "read", ⟨0⟩⟩, ⟨"env", "next", ⟨1⟩⟩]
   sections := {
     types := [⟨[⟨true, [], .func readType⟩]⟩, ⟨[⟨true, [], .func nextType⟩]⟩]
-    funcs := [⟨⟨0⟩, [], [.call ⟨0⟩, .call ⟨1⟩]⟩]
+    funcs := [⟨⟨0⟩, [], [.block (.typeIdx ⟨0⟩) [.call ⟨0⟩, .call ⟨1⟩]]⟩]
     exports := [⟨"run", ⟨2⟩⟩, ⟨"source", ⟨0⟩⟩] }
 
 private def strictProgram : Strict := ⟨program, by
@@ -49,14 +49,43 @@ example : Ultrastrict.ofLegacy noImports.toLegacy = noImports := Ultrastrict.leg
 
 private def provider : Ultrastrict := ⟨{
   types := program.sections.types
-  funcs := [⟨⟨0⟩, [], [.intConst .i32 7]⟩, ⟨⟨1⟩, [], [.localGet ⟨0⟩]⟩]
-  exports := [⟨"read", ⟨0⟩⟩, ⟨"next", ⟨1⟩⟩] }, by
+  funcs := [⟨⟨1⟩, [], [.localGet ⟨0⟩]⟩, ⟨⟨0⟩, [], [.intConst .i32 7]⟩, ⟨⟨0⟩, [], [.intConst .i32 0]⟩]
+  exports := [⟨"read", ⟨1⟩⟩, ⟨"next", ⟨0⟩⟩] }, by
     change Models.Module.inFeatB strictCaps _ = true
     kernel_rfl⟩
 
 private def staticLink := strictReadback.link? "env" provider.toStrict strictProgram
 example : staticLink.isSome = true := by kernel_rfl
 example : (staticLink.bind fun mod => Ultrastrict.ofCore? mod.toCore).isSome = true := by kernel_rfl
+
+private def nativeLink := StrictLink.link? "env" provider strictProgram
+private def nativeResult := nativeLink.get (by kernel_rfl)
+
+example : nativeResult.val.funcs[3]? =
+    some ⟨⟨2⟩, [], [.block (.typeIdx ⟨2⟩) [.call ⟨1⟩, .call ⟨0⟩]]⟩ := by kernel_rfl
+example : nativeResult.val.exports =
+    [⟨"read", ⟨1⟩⟩, ⟨"next", ⟨0⟩⟩, ⟨"run", ⟨3⟩⟩, ⟨"source", ⟨1⟩⟩] := by kernel_rfl
+example : nativeResult.toCore.imports = [] := rfl
+example : Validation.ModuleValid nativeResult.toCore := StrictLink.link?_valid (Option.some_get _).symm
+example : Link.GC.link? "env" provider.toCore strictProgram.toCore = some nativeResult.toCore :=
+  (StrictLink.link?_toCore "env" provider strictProgram).symm.trans (congrArg _ (Option.some_get _).symm)
+
+example : StrictLink.link? "wrong" provider strictProgram = none := by kernel_rfl
+
+private def missingProvider : Ultrastrict := ⟨{ provider.val with exports := [⟨"next", ⟨0⟩⟩] }, by
+  exact provider.property⟩
+
+private def wrongSignature : Ultrastrict := ⟨{ provider.val with exports := [⟨"read", ⟨0⟩⟩, ⟨"next", ⟨0⟩⟩] }, by
+  exact provider.property⟩
+
+private def duplicateExport : Ultrastrict := ⟨{ provider.val with exports := provider.val.exports ++ [⟨"run", ⟨2⟩⟩] }, by
+  exact provider.property⟩
+
+example : StrictLink.link? "env" missingProvider strictProgram = none := by kernel_rfl
+example : (Validation.validate? wrongSignature.toCore).isSome = true := by kernel_rfl
+example : StrictLink.link? "env" wrongSignature strictProgram = none := by kernel_rfl
+example : (StrictLink.assemble? "env" duplicateExport.val strictProgram.val).isSome = true := by kernel_rfl
+example : StrictLink.link? "env" duplicateExport strictProgram = none := by kernel_rfl
 
 private def memoryType : MemoryType := ⟨.i32, ⟨1, none⟩⟩
 private def addImport (type : ExternType) : Silmaril.Wasm.Module :=
@@ -97,3 +126,8 @@ example : (Strict.validate? badStrict).isSome = false := by kernel_rfl
 #print axioms FunctionImport.port_type
 #print axioms Ultrastrict.legacyEquiv
 #print axioms typedProgram
+#print axioms StrictLink.assemble?_toCore
+#print axioms StrictLink.assemble_features
+#print axioms StrictLink.link?_toCore
+#print axioms StrictLink.link?_valid
+#print axioms nativeResult
