@@ -429,6 +429,51 @@ theorem poll_returned_bad_range {prof : ProfileKind} {ready : HostReady (HostSta
     ws set perm subtask record index setLive member allowed selects live returned indexed eventPending cx ptr address size
     aligned memory sized outside resume focused
 
+/-- A parked Core poll resolves the live waitable-set handle and consumes the
+selected returned event before validating the output buffer. A valid buffer
+receives both words before Core resumes. Alignment and range traps keep event
+consumption and lend release but perform neither write nor Core resumption. -/
+theorem parked_poll_returned {prof : ProfileKind} {ready : HostReady (HostState sig)}
+    {config : Config (core3 grow) (HostState sig)} {segments rest}
+    (impl : HostImpl (core3 grow) (HostState sig)) (mem : Nat)
+    (slot out : FlatValue) (ws : WsetId) (th : ThreadId) (active : Thread) (task : Task (core3 grow))
+    (instance_ : InstState) (core : (core3 grow).Thread (CanonHost (core3 grow)))
+    (next : List FlatValue → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨some th, .core core next, segments⟩ :: rest)
+    (callout : (core3 grow).status config.store.core core =
+      .callout (.builtin (.waitableSetPoll mem) task.inst) [slot, out])
+    (liveThread : ArenaField.threads.get? config.store th = some active)
+    (liveTask : ArenaField.tasks.get? config.store active.task = some task)
+    (liveInst : ArenaField.insts.get? config.store task.inst = some instance_)
+    (mayLeave : instance_.mayLeave = true) (handle : instance_.handles.get? (flatNat slot) = some (.wset ws))
+    (set : WaitableSet) (perm : List Nat) (subtask : SubtaskId) (record : Subtask) (index : Nat)
+    (setLive : config.store.wset? ws = some set) (member : .subtask subtask ∈ set.elems)
+    (allowed : Allowed prof (.shuffle set.elems.length) perm)
+    (selects : (applyPerm perm set.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask))
+    (live : config.store.subtask? subtask = some record)
+    (returned : record.state = .returned) (indexed : record.index = some index)
+    (eventPending : record.common.pending = some (.subtask subtask)) :
+    let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    let delivered := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+      |>.deliverResolveSt subtask
+    let written := writeMemSt mem (flatNat out + 4) (u32Bytes SubtaskState.returned.toNat)
+      (writeMemSt mem (flatNat out) (u32Bytes index) delivered)
+    let deliveredLabels := List.replicate 10 (Label.tau (E := core3 grow) (σ := HostState sig)) ++
+      [.choice (.shuffle set.elems.length) perm] ++ List.replicate 4 .tau
+    (flatNat out % 4 ≠ 0 → Steps prof ready (specDispatch ready impl) config (deliveredLabels ++ [.trap .unalignedPointer])
+      { config with store := StepDefs.lockdownSt delivered, ctl := [] }) ∧
+    (∀ size, flatNat out % 4 = 0 → (core3 grow).memSize? config.store.core mem = some size →
+      (flatNat out + 8 ≤ size → Steps prof ready (specDispatch ready impl) config (deliveredLabels ++ List.replicate 6 .tau)
+        { config with store := written, ctl := ⟨some th,
+            .core ((core3 grow).resume written.core core (.values [i32Flat EventCode.subtask.toNat])) next,
+            segments⟩ :: rest }) ∧
+      (size < flatNat out + 8 → Steps prof ready (specDispatch ready impl) config
+        (deliveredLabels ++ [.tau, .trap .outOfBounds]) { config with store := StepDefs.lockdownSt delivered, ctl := [] })) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.parked_poll_returned
+    impl mem slot out ws th active task instance_ core next focused callout liveThread liveTask liveInst mayLeave handle
+    set perm subtask record index setLive member allowed selects live returned indexed eventPending
+
 theorem host_checked (bindings : List (Binding sig)) (callees : List (Callee sig)) :
     HostImplSafe CheckedWrite (hostWithComponent (grow := grow) bindings callees) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ScheduledTranscript.Component.hostWithComponent_safe

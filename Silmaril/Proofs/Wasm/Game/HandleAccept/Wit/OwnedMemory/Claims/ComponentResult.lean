@@ -448,6 +448,36 @@ private theorem appendSteps {first middle last : Config (core3 grow) (HostState 
   | refl => exact tail
   | cons step _ ih => exact .cons step (ih tail)
 
+theorem parked_poll_entry (impl : HostImpl (core3 grow) (HostState sig)) (mem : Nat)
+    (slot out : FlatValue) (ws : WsetId) (th : ThreadId) (active : Thread) (task : Task (core3 grow))
+    (instance_ : InstState) (core : (core3 grow).Thread (CanonHost (core3 grow)))
+    (next : List FlatValue → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨some th, .core core next, segments⟩ :: rest)
+    (callout : (core3 grow).status config.store.core core =
+      .callout (.builtin (.waitableSetPoll mem) task.inst) [slot, out])
+    (liveThread : ArenaField.threads.get? config.store th = some active)
+    (liveTask : ArenaField.tasks.get? config.store active.task = some task)
+    (liveInst : ArenaField.insts.get? config.store task.inst = some instance_)
+    (mayLeave : instance_.mayLeave = true) (handle : instance_.handles.get? (flatNat slot) = some (.wset ws)) :
+    Steps prof ready (specDispatch ready impl) config (List.replicate 8 .tau)
+      { config with ctl := ⟨some th, .prog (wsetPoll ws >>= fun event =>
+          unpackEvent (Builtins.eventCx mem task.inst) (flatNat out) event >>= fun code => pure (.flat [i32Flat code])),
+        .core core next :: segments⟩ :: rest } := by
+  have admitted : calloutEntry config.store (some th) (.builtin (.waitableSetPoll mem) task.inst) = none := by
+    simp [calloutEntry, instOfThread?, liveThread, liveTask]
+  refine .cons (.coreCallout focused callout) ?_
+  refine .cons (.currentThread rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, admitted, calloutBody, builtinProg, withArgs2, Builtins.waitableSetPoll, Builtins.enterWaitableBuiltin]
+  refine .cons (.currentThread rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, getTask, getObj, liveThread, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, liveTask, getInst, getObj, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, liveInst, mayLeave, trapIf, handlesGet, getInst, getObj, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, liveInst, handle, orTrap, Builtins.expectWset, pure, Prog.bind_assoc]
+  exact .refl _
+
 theorem poll_delivers_returned (ws : WsetId) (set : WaitableSet) (perm : List Nat)
     (subtask : SubtaskId) (record : Subtask) (index : Nat)
     (setLive : config.store.wset? ws = some set) (member : .subtask subtask ∈ set.elems)
@@ -634,5 +664,73 @@ theorem resolve_linked_commit (callee : Callee sig) (ticket : Nat) (caller : Cal
   refine ⟨?_, commit.2⟩
   have run := Steps.cons beginRun (appendSteps progress.1 (appendSteps write.1 commit.1))
   cases indexed : record.index <;> simpa [resultReady, queued, handle, indexed] using run
+
+theorem parked_poll_returned (impl : HostImpl (core3 grow) (HostState sig)) (mem : Nat)
+    (slot out : FlatValue) (ws : WsetId) (th : ThreadId) (active : Thread) (task : Task (core3 grow))
+    (instance_ : InstState) (core : (core3 grow).Thread (CanonHost (core3 grow)))
+    (next : List FlatValue → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨some th, .core core next, segments⟩ :: rest)
+    (callout : (core3 grow).status config.store.core core =
+      .callout (.builtin (.waitableSetPoll mem) task.inst) [slot, out])
+    (liveThread : ArenaField.threads.get? config.store th = some active)
+    (liveTask : ArenaField.tasks.get? config.store active.task = some task)
+    (liveInst : ArenaField.insts.get? config.store task.inst = some instance_)
+    (mayLeave : instance_.mayLeave = true) (handle : instance_.handles.get? (flatNat slot) = some (.wset ws))
+    (set : WaitableSet) (perm : List Nat) (subtask : SubtaskId) (record : Subtask) (index : Nat)
+    (setLive : config.store.wset? ws = some set) (member : .subtask subtask ∈ set.elems)
+    (allowed : Allowed prof (.shuffle set.elems.length) perm)
+    (selects : (applyPerm perm set.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask))
+    (live : config.store.subtask? subtask = some record)
+    (returned : record.state = .returned) (indexed : record.index = some index)
+    (eventPending : record.common.pending = some (.subtask subtask)) :
+    let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    let delivered := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+      |>.deliverResolveSt subtask
+    let written := writeMemSt mem (flatNat out + 4) (u32Bytes SubtaskState.returned.toNat)
+      (writeMemSt mem (flatNat out) (u32Bytes index) delivered)
+    let deliveredLabels := List.replicate 10 (Label.tau (E := core3 grow) (σ := HostState sig)) ++
+      [.choice (.shuffle set.elems.length) perm] ++ List.replicate 4 .tau
+    (flatNat out % 4 ≠ 0 → Steps prof ready (specDispatch ready impl) config (deliveredLabels ++ [.trap .unalignedPointer])
+      { config with store := StepDefs.lockdownSt delivered, ctl := [] }) ∧
+    (∀ size, flatNat out % 4 = 0 → (core3 grow).memSize? config.store.core mem = some size →
+      (flatNat out + 8 ≤ size → Steps prof ready (specDispatch ready impl) config (deliveredLabels ++ List.replicate 6 .tau)
+        { config with store := written, ctl := ⟨some th,
+            .core ((core3 grow).resume written.core core (.values [i32Flat EventCode.subtask.toNat])) next,
+            segments⟩ :: rest }) ∧
+      (size < flatNat out + 8 → Steps prof ready (specDispatch ready impl) config
+        (deliveredLabels ++ [.tau, .trap .outOfBounds]) { config with store := StepDefs.lockdownSt delivered, ctl := [] })) := by
+  let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+  let delivered := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+    |>.deliverResolveSt subtask
+  let event : EventTuple := ⟨.subtask, index, SubtaskState.returned.toNat⟩
+  let cx : LiftLowerContext (core3 grow) := Builtins.eventCx mem task.inst
+  let reply : Nat → Session grow sig (Ret (core3 grow)) := fun code => pure (.flat [i32Flat code])
+  let entered := { config with ctl := ⟨some th, .prog (wsetPoll ws >>= fun event => unpackEvent cx (flatNat out) event >>= reply),
+    .core core next :: segments⟩ :: rest }
+  let reached := { config with
+    store := delivered
+    ctl := ⟨some th, .prog (unpackEvent cx (flatNat out) event >>= reply), .core core next :: segments⟩ :: rest }
+  have enter := parked_poll_entry (prof := prof) (ready := ready) impl mem slot out ws th active task instance_ core next
+    focused callout liveThread liveTask liveInst mayLeave handle
+  have poll := poll_delivers_returned (prof := prof) (ready := ready) (dispatch := specDispatch ready impl)
+    (config := entered) ws set perm subtask record index setLive member allowed selects live returned indexed eventPending
+    (fun event => unpackEvent cx (flatNat out) event >>= reply) rfl
+  have run := appendSteps enter poll
+  have sameCore : reached.store.core = config.store.core :=
+    delivered_core (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }) subtask
+  refine ⟨?_, ?_⟩
+  · intro misaligned
+    exact appendSteps run (unpack_event_bad_alignment (config := reached) cx (flatNat out) event misaligned reply rfl)
+  · intro size aligned sized
+    have reachedSize : (core3 grow).memSize? reached.store.core mem = some size := by rw [sameCore]; exact sized
+    constructor
+    · intro inBounds
+      have write := unpack_event_write (prof := prof) (ready := ready) (dispatch := specDispatch ready impl)
+        (config := reached) cx (flatNat out) mem size event aligned rfl reachedSize inBounds reply rfl
+      exact appendSteps run (appendSteps write (.cons (.popCore rfl) (.refl _)))
+    · intro outside
+      exact appendSteps run (unpack_event_bad_range (config := reached) cx (flatNat out) mem size event
+        aligned rfl reachedSize outside reply rfl)
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult
