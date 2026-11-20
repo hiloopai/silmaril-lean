@@ -1247,12 +1247,14 @@ pending event and lender list from the actual take. That is not a reply to the
 outer cancellation caller.
 
 `ClosedCallbackPrefix.reaches` composes any finite chain of host-free Core
-steps, reached callback returns entering a new K2/K3 loop, and early K2 or
-other-waitable K3 calls. It keeps the exact tracked record at each cut without
-assuming a frame for Core bytes or a further return. Actual return decoding,
-the reached task and waitable-set lookup, and the permitted choices justify
-each iteration. The prefix may end in a still-running Core callback; it
-does not establish eventual EXIT or outer delivery.
+steps, reached callback returns entering a new K2/K3 loop, and K2 NONE or
+other-waitable K3 calls. The early and parked paths share the same suffix.
+Non-early park, a reached forced resume, and an actual ready-thread tick
+can be included in the prefix; none changes the tracked record. The tick
+must select the reached thread, and `CallbackWait.resumes_on_tick` tracks
+its original saved occurrence through an intervening parked prefix. The
+finite-prefix proof does not assume preservation of Core bytes, eventual
+scheduler selection, callback return or outer delivery.
 
 On a reached EXIT, `CallbackCancelImport.delivers_after_closed_prefix`
 rechecks the live registration at that cut and unwinds the intervening loop

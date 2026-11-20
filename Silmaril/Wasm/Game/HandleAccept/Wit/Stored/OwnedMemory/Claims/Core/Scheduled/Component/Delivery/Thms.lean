@@ -117,6 +117,12 @@ theorem ParkedWait.delivers_early (wait : ParkedWait initial) (available : initi
     delivery.outcomes index ready impl initial (ParkedWait.readyLabels true) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.earlyWaitDelivery wait available allowed delivery pending
 
+/-- The reached scheduler choice enters `Thread.resume` for the selected thread. -/
+theorem SelectedTick.selects_thread {atHost : Config (core3 grow) (HostState sig)} {thread : ThreadId}
+    (tick : SelectedTick thread atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) atHost tick.selectionLabels tick.atResume :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.selectTick tick
+
 /-- On the selected tick, resume the saved wait and reach selection in the current store.
 This does not assume that the scheduler will ever select that waiter. -/
 theorem WaitTick.resumes {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}

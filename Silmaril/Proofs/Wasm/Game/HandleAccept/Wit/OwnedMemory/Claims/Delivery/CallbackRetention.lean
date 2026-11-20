@@ -5,6 +5,8 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Callback
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackEarly
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackDelivery
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackResume
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -15,6 +17,7 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmari
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open ComponentCall ComponentCall.Delivery
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
@@ -119,6 +122,24 @@ theorem callbackWaitTakesResolution (wait : CallbackWait grow sig) {set : WsetId
     ((shuffledKeeps wait kind reached.store record permutation target).trans tracked) resolved pending
   exact ⟨callbackWaitEvent wait kind focused live noCancel setLive allowed selects take chosen, cleared⟩
 
+private theorem resumeKeeps {wait : CallbackWait grow sig} (resume : CallbackResume wait reached) (target : SubtaskId) :
+    resume.resumed.store.subtask? target = reached.store.subtask? target := by
+  unfold CallbackResume.resumed
+  split <;> rfl
+
+theorem callbackTickResumes (wait : CallbackWait grow sig) (tick : SelectedTick wait.thread reached ready profile)
+    (saved : reached.cont? wait.thread = some wait.saved) :
+    Steps profile ready (specDispatch ready impl) reached (tick.selectionLabels ++ (wait.tickResume tick).labels)
+      (wait.tickResume tick).resumed :=
+  stepsAppend tick.selects_thread (resumeCallback (wait.tickResume tick) saved)
+
+theorem callbackTrackedTick (wait : CallbackWait grow sig) (tick : SelectedTick wait.thread reached ready profile)
+    {leading} (path : ParkedPrefix profile ready (specDispatch ready impl) wait.thread (wait.blocked start rest) leading reached) :
+    Steps profile ready (specDispatch ready impl) (wait.blocked start rest)
+      (leading ++ (tick.selectionLabels ++ (wait.tickResume tick).labels)) (wait.tickResume tick).resumed := by
+  obtain ⟨run, kept⟩ := path.reaches
+  exact stepsAppend run (callbackTickResumes wait tick (kept.trans (Config.cont?_setCont_self _ _ _)))
+
 theorem closedCallbackPrefixReaches {labels target}
     (path : ClosedCallbackPrefix profile ready impl target start labels reached) :
     Steps profile ready (specDispatch ready impl) start labels reached ∧
@@ -131,13 +152,20 @@ theorem closedCallbackPrefixReaches {labels target}
   | nextWait wait focused returned decoded live noCancel selected _ ih =>
     exact ⟨stepsAppend (callbackNextWait wait focused returned decoded live noCancel selected) ih.1,
       ih.2.trans (releasedKeeps _ _ target)⟩
-  | earlyYield wait kind available early live noCancel chosen _ ih =>
-    obtain ⟨run, retained⟩ := callbackEarlyYieldRetains wait kind available early live noCancel chosen target
-    exact ⟨stepsAppend run ih.1, ih.2.trans (retained.trans (releasedKeeps wait _ target).symm)⟩
-  | earlyOther wait kind available early live noCancel setLive allowed selects take chosen other _ ih =>
-    obtain ⟨run, retained⟩ := callbackEarlyWaitRetains wait kind available early live noCancel setLive allowed selects take
+  | early wait available early _ ih =>
+    exact ⟨stepsAppend (callbackEarly wait available early) ih.1, ih.2⟩
+  | park wait availability _ ih =>
+    exact ⟨stepsAppend (callbackBlocks wait availability) ih.1, ih.2⟩
+  | resume resume saved _ ih =>
+    exact ⟨stepsAppend (resumeCallback resume saved) ih.1, ih.2.trans (resumeKeeps resume target)⟩
+  | tick wait tick saved _ ih =>
+    exact ⟨stepsAppend (callbackTickResumes wait tick saved) ih.1, ih.2.trans (resumeKeeps (wait.tickResume tick) target)⟩
+  | yieldNone wait kind focused live noCancel chosen _ ih =>
+    exact ⟨stepsAppend (callbackYieldNone wait kind focused live noCancel chosen) ih.1, ih.2⟩
+  | waitOther wait kind focused live noCancel setLive allowed selects take chosen other _ ih =>
+    obtain ⟨run, retained⟩ := callbackWaitOtherRetains wait kind focused live noCancel setLive allowed selects take
       chosen target other
-    exact ⟨stepsAppend run ih.1, ih.2.trans (retained.trans (releasedKeeps wait _ target).symm)⟩
+    exact ⟨stepsAppend run ih.1, ih.2.trans retained⟩
 
 theorem callbackCancelDeliversAfterClosedPrefix {wait finalWait : CallbackWait grow sig}
     (entry : CallbackCancelImport wait reached) {subtask : SubtaskId} (cancel : ParkedCancel parked subtask)

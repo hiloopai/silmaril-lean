@@ -244,8 +244,13 @@ def CallbackResume.resumed (resume : CallbackResume wait atResume) : Config (cor
     store := StepDefs.threadStatusSt wait.thread .running store
     ctl := wait.saved :: resume.tail }
 
+def CallbackWait.tickResume (wait : CallbackWait grow sig) {atHost : Config (core3 grow) (HostState sig)}
+    {ready : HostReady (HostState sig)} {profile : ProfileKind} (tick : SelectedTick wait.thread atHost ready profile) :
+    CallbackResume wait tick.atResume :=
+  ⟨none, modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit, [], [], rfl⟩
+
 /-- Finite callback fragments made from actual Core steps and reached canonical
-loop entries. Early K3 may deliver another waitable, not the tracked subtask.
+loop entries, parks and resumes. K3 may deliver another waitable, not the tracked subtask.
 One may stop while Core is still running; no eventual return is required. -/
 inductive ClosedCallbackPrefix (profile : ProfileKind) (ready : HostReady (HostState sig))
     (impl : HostImpl (core3 grow) (HostState sig)) (target : SubtaskId) :
@@ -267,33 +272,48 @@ inductive ClosedCallbackPrefix (profile : ProfileKind) (ready : HostReady (HostS
         ((wait.followingWait task kind).entry (wait.nextIteration start (kind.code, index) rest) rest) labels last) :
       ClosedCallbackPrefix profile ready impl target start
         (([.tau, .tau] ++ List.replicate kind.entrySteps .tau) ++ labels) last
-  | earlyYield {start last labels} (wait : CallbackWait grow sig) {rest} (kind : wait.kind = .yield)
+  | early {start last labels} (wait : CallbackWait grow sig) {rest}
       (available : wait.readyAt start = true) (early : Allowed profile (.earlyReturn wait.site) true)
-      {task : Task (core3 grow)} (live : (wait.early start rest).store.task? wait.taskId = some task)
+      (tail : ClosedCallbackPrefix profile ready impl target (wait.early start rest) labels last) :
+      ClosedCallbackPrefix profile ready impl target (wait.entry start rest)
+        ([.tau, .tau, .choice (.earlyReturn wait.site) true] ++ labels) last
+  | park {start last labels} (wait : CallbackWait grow sig) {rest available}
+      (availability : wait.readyAt start = available)
+      (tail : ClosedCallbackPrefix profile ready impl target (wait.blocked start rest) labels last) :
+      ClosedCallbackPrefix profile ready impl target (wait.entry start rest) (wait.parkLabels available ++ labels) last
+  | resume {wait : CallbackWait grow sig} {atResume last labels} (resume : CallbackResume wait atResume)
+      (saved : atResume.cont? wait.thread = some wait.saved)
+      (tail : ClosedCallbackPrefix profile ready impl target resume.resumed labels last) :
+      ClosedCallbackPrefix profile ready impl target atResume (resume.labels ++ labels) last
+  | tick {atHost last labels} (wait : CallbackWait grow sig) (tick : SelectedTick wait.thread atHost ready profile)
+      (saved : atHost.cont? wait.thread = some wait.saved)
+      (tail : ClosedCallbackPrefix profile ready impl target (wait.tickResume tick).resumed labels last) :
+      ClosedCallbackPrefix profile ready impl target atHost
+        ((tick.selectionLabels ++ (wait.tickResume tick).labels) ++ labels) last
+  | yieldNone {reached last labels} (wait : CallbackWait grow sig) {rest} (kind : wait.kind = .yield)
+      (focused : reached.ctl = wait.saved :: rest)
+      {task : Task (core3 grow)} (live : reached.store.task? wait.taskId = some task)
       (noCancel : task.state ≠ .pendingCancel)
       {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback)
       (tail : ClosedCallbackPrefix profile ready impl target
-        (wait.eventCall (wait.early start rest) (wait.early start rest).store callback .none rest) labels last) :
-      ClosedCallbackPrefix profile ready impl target (wait.entry start rest)
-        (([.tau, .tau, .choice (.earlyReturn wait.site) true] ++ List.replicate 3 .tau) ++ labels) last
-  | earlyOther {start last labels} (wait : CallbackWait grow sig) {rest set} (kind : wait.kind = .wait set)
-      (available : wait.readyAt start = true) (early : Allowed profile (.earlyReturn wait.site) true)
-      {task : Task (core3 grow)} (live : (wait.early start rest).store.task? wait.taskId = some task)
+        (wait.eventCall reached reached.store callback .none rest) labels last) :
+      ClosedCallbackPrefix profile ready impl target reached (List.replicate 3 .tau ++ labels) last
+  | waitOther {reached last labels} (wait : CallbackWait grow sig) {rest set} (kind : wait.kind = .wait set)
+      (focused : reached.ctl = wait.saved :: rest)
+      {task : Task (core3 grow)} (live : reached.store.task? wait.taskId = some task)
       (noCancel : task.state ≠ .pendingCancel)
-      {record : WaitableSet} (setLive : (wait.decrement (wait.early start rest).store).wset? set = some record)
+      {record : WaitableSet} (setLive : (wait.decrement reached.store).wset? set = some record)
       {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation)
       {selected : Waitable} (selects : (applyPerm permutation record.elems).find?
-        (wait.shuffled (wait.early start rest).store set record permutation).waitableHasEvent = some selected)
+        (wait.shuffled reached.store set record permutation).waitableHasEvent = some selected)
       {taken : CStore (core3 grow)} {event : EventTuple}
-      (take : (wait.shuffled (wait.early start rest).store set record permutation).takeWaitableEvent selected =
-        (taken, some event))
+      (take : (wait.shuffled reached.store set record permutation).takeWaitableEvent selected = (taken, some event))
       {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback)
       (other : selected ≠ .subtask target)
       (tail : ClosedCallbackPrefix profile ready impl target
-        (wait.eventCall (wait.early start rest) taken callback event rest) labels last) :
-      ClosedCallbackPrefix profile ready impl target (wait.entry start rest)
-        (([.tau, .tau, .choice (.earlyReturn wait.site) true] ++
-          (List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau)) ++ labels) last
+        (wait.eventCall reached taken callback event rest) labels last) :
+      ClosedCallbackPrefix profile ready impl target reached
+        ((List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau) ++ labels) last
 
 /-- The reached registration and ABI return needed for a resolved callback
 to exit, with every loop continuation accounted for. -/

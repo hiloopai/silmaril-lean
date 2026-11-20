@@ -28,7 +28,7 @@ private theorem appendRun {first middle last : Config (core3 grow) (HostState si
   | refl => exact right
   | cons step _ ih => exact .cons step (ih right)
 
-private theorem resumeCallback (resume : CallbackResume wait atResume)
+theorem resumeCallback (resume : CallbackResume wait atResume)
     (saved : atResume.cont? wait.thread = some wait.saved) :
     Steps profile ready (specDispatch ready impl) atResume resume.labels resume.resumed := by
   have get := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) resume.focused

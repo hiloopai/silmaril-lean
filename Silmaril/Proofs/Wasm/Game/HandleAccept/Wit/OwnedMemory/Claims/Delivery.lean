@@ -295,7 +295,7 @@ theorem selectedTickWaiting {atHost : Config (core3 grow) (HostState sig)} {thre
     cases condition : record.readyCond <;> simp [Thread.ready, Thread.waiting, condition] at available ⊢
     exact available.1
 
-private theorem selectTick {atHost : Config (core3 grow) (HostState sig)} {thread : ThreadId}
+theorem selectTick {atHost : Config (core3 grow) (HostState sig)} {thread : ThreadId}
     (tick : SelectedTick thread atHost ready profile) :
     Steps profile ready (specDispatch ready impl) atHost tick.selectionLabels tick.atResume := by
   refine .cons (.hostTick tick.hostReady) (.cons (.modify rfl) (.cons (.get rfl) (.cons (.hostGet rfl) ?_)))

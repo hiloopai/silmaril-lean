@@ -389,6 +389,14 @@ theorem ClosedCallbackPrefix.reaches {labels target}
       reached.store.subtask? target = start.store.subtask? target :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.closedCallbackPrefixReaches path
 
+/-- A host tick which actually chooses this callback's saved occurrence
+restores the original K2/K3 suffix, before further event selection. -/
+theorem CallbackWait.resumes_on_tick (wait : CallbackWait grow sig) (tick : SelectedTick wait.thread reached ready profile)
+    {leading} (path : ParkedPrefix profile ready (specDispatch ready impl) wait.thread (wait.blocked start rest) leading reached) :
+    Steps profile ready (specDispatch ready impl) (wait.blocked start rest)
+      (leading ++ (tick.selectionLabels ++ (wait.tickResume tick).labels)) (wait.tickResume tick).resumed :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackTrackedTick wait tick path
+
 /-- A started cancellation can cross repeated retaining closed iterations
 before a reached EXIT, then deliver the retained event to the original caller.
 The reached callback registration is checked at EXIT, not framed by assumption. -/
