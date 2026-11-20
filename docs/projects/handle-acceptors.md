@@ -1169,6 +1169,12 @@ substitute for the original after a resume or overwrite. Tick choice and event
 selection remain explicit; the theorem gives neither scheduler liveness nor a
 correspondence for arbitrary export sequences.
 
+When the set is already ready, `Delivery.ParkedWait.ready_choice` follows the
+profile's reached early-return choice. The non-early branch still installs the
+saved wait. `delivers_early` uses the same selection and result-buffer proof as
+the resumed wait, but requires no block or tick; a late buffer trap still follows
+event consumption and lend release.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery

@@ -165,21 +165,27 @@ theorem deliveredClears (poll : ParkedPoll parked subtask profile) (pending : Pe
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
   consumeClears (parked.store.wsetSetElemsSt poll.ws (applyPerm poll.perm poll.set.elems)) pending
 
-theorem parkedWaitBlocks (wait : ParkedWait initial) (empty : initial.store.wsetHasEvent wait.ws = false) :
-    Steps profile ready (specDispatch ready impl) initial (List.replicate 13 .tau) wait.blocked := by
+private theorem incrementWaiters_keepsReady (store : CStore (core3 grow)) (ws : WsetId) :
+    (store.wsetIncWaitingSt ws).wsetHasEvent ws = store.wsetHasEvent ws := by
+  have sameEvent : (store.wsetIncWaitingSt ws).waitableHasEvent = store.waitableHasEvent := by
+    funext waitable
+    cases waitable <;> rfl
+  have updated : (store.wsetIncWaitingSt ws).wset? ws =
+      (store.wset? ws).map (fun entry => { entry with numWaiting := entry.numWaiting + 1 }) :=
+    ArenaField.get?_modify_self _ _ _ _
+  rw [CStore.wsetHasEvent, updated, sameEvent]
+  cases live : store.wset? ws <;> simp only [CStore.wsetHasEvent, live, Option.map_some, Option.map_none]
+
+private def waitEntry (wait : ParkedWait initial) : Config (core3 grow) (HostState sig) :=
+  { initial with ctl := ⟨some wait.thread, .prog (do
+      let event ← wsetWait wait.ws
+      let code ← unpackEvent (Builtins.eventCx wait.memory wait.task.inst) (flatNat wait.out) event
+      pure (.flat [i32Flat code])), .core wait.core wait.next :: wait.segments⟩ :: wait.rest }
+
+private theorem enterWait (wait : ParkedWait initial) :
+    Steps profile ready (specDispatch ready impl) initial (List.replicate 8 .tau) (waitEntry wait) := by
   have admitted : calloutEntry initial.store (some wait.thread) (.builtin (.waitableSetWait wait.memory) wait.task.inst) = none := by
     simp [calloutEntry, instOfThread?, wait.liveThread, wait.liveTask]
-  have emptyAfter : (initial.store.wsetIncWaitingSt wait.ws).wsetHasEvent wait.ws = false := by
-    have sameEvent : (initial.store.wsetIncWaitingSt wait.ws).waitableHasEvent = initial.store.waitableHasEvent := by
-      funext waitable
-      cases waitable <;> rfl
-    have updated : (initial.store.wsetIncWaitingSt wait.ws).wset? wait.ws =
-        (initial.store.wset? wait.ws).map (fun entry => { entry with numWaiting := entry.numWaiting + 1 }) :=
-      ArenaField.get?_modify_self _ _ _ _
-    rw [CStore.wsetHasEvent, updated, sameEvent]
-    cases live : initial.store.wset? wait.ws with
-    | none => rfl
-    | some record => simpa only [CStore.wsetHasEvent, live, Option.map_some] using empty
   refine .cons (.coreCallout wait.focused wait.callout) ?_
   refine .cons (.currentThread rfl) (.cons (.get rfl) ?_)
   simp [Prog.bind, admitted, calloutBody, builtinProg, withArgs2, Builtins.waitableSetWait, Builtins.enterWaitableBuiltin]
@@ -190,11 +196,35 @@ theorem parkedWaitBlocks (wait : ParkedWait initial) (empty : initial.store.wset
   refine .cons (.get rfl) ?_
   simp [Prog.bind, wait.liveInst, wait.mayLeave, trapIf, handlesGet, getInst, getObj, pure]
   refine .cons (.get rfl) ?_
-  simp [Prog.bind, wait.liveInst, wait.handle, orTrap, Builtins.expectWset, pure, wsetWait]
+  simp [Prog.bind, wait.liveInst, wait.handle, orTrap, Builtins.expectWset, pure, Prog.bind_assoc, waitEntry]
+  exact .refl _
+
+theorem parkedWaitBlocks (wait : ParkedWait initial) (empty : initial.store.wsetHasEvent wait.ws = false) :
+    Steps profile ready (specDispatch ready impl) initial (List.replicate 13 .tau) wait.blocked := by
+  have emptyAfter := (incrementWaiters_keepsReady initial.store wait.ws).trans empty
+  refine appendSteps (enterWait wait) ?_
   refine .cons (.modify rfl) (.cons (.currentThread rfl) (.cons (.get rfl) ?_))
-  simp [ReadyCond.eval, emptyAfter, pure, Prog.bind, Thread.startWaiting, Prog.bind_assoc]
+  simp [waitEntry, ReadyCond.eval, emptyAfter, pure, Prog.bind, Thread.startWaiting, Prog.bind_assoc]
   refine .cons (.modify rfl) (.cons (.block rfl) ?_)
   exact .refl _
+
+theorem parkedWaitReady (wait : ParkedWait initial) (available : initial.store.wsetHasEvent wait.ws = true)
+    (early : Bool) (allowed : Allowed profile (.earlyReturn .waitableSetWait) early) :
+    Steps profile ready (specDispatch ready impl) initial (ParkedWait.readyLabels early)
+      (if early then wait.early else wait.blocked) := by
+  have readyAfter := (incrementWaiters_keepsReady initial.store wait.ws).trans available
+  refine appendSteps (trailing := [.tau, .tau, .tau, .choice (.earlyReturn .waitableSetWait) early] ++
+      List.replicate (if early then 1 else 2) .tau) (enterWait wait) ?_
+  refine .cons (.modify rfl) (.cons (.currentThread rfl) (.cons (.get rfl) ?_))
+  simp [waitEntry, ReadyCond.eval, readyAfter, pure, Prog.bind, Prog.bind_assoc]
+  refine .cons (Step.choose (ck := .earlyReturn .waitableSetWait) early rfl allowed) ?_
+  cases early with
+  | false =>
+    simp [Prog.bind]
+    refine .cons (.modify rfl) (.cons (.block rfl) (.refl _))
+  | true =>
+    simp [Prog.bind]
+    exact .cons (.modify rfl) (.refl _)
 
 theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
     (tick : WaitTick wait atHost ready profile) (saved : atHost.cont? wait.thread = some wait.saved) :
@@ -226,23 +256,25 @@ theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : Pa
   simp [waiting, Thread.stopWaiting, Prog.bind]
   exact .cons (.modify rfl) (.cons (.resumeThread rfl saved) (.cons (.modify rfl) (.refl _)))
 
-theorem waitDelivery {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
-    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
-    (pending : PendingAt tick.reached.store subtask index) {labels}
-    (prefixRun : Steps profile ready (specDispatch ready impl) initial labels tick.reached) :
-    delivery.outcomes index impl initial labels := by
+private theorem waitDelivery {reached : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
+    (delivery : WaitDelivery wait reached profile subtask)
+    (focused : reached.ctl = ⟨some wait.thread, .prog wait.takeEvent,
+      .core wait.core wait.next :: wait.segments⟩ :: reached.ctl.drop 1)
+    (pending : PendingAt reached.store subtask index) {labels}
+    (prefixRun : Steps profile ready (specDispatch ready impl) initial labels reached) :
+    delivery.outcomes index ready impl initial labels := by
   obtain ⟨record, live, returned, indexed, queued⟩ := pending
   let cx := Builtins.eventCx (E := core3 grow) wait.memory wait.task.inst
   let reply : Nat → Session grow sig (Ret (core3 grow)) := fun code => pure (.flat [i32Flat code])
   let handleEvent := fun event => unpackEvent cx (flatNat wait.out) event >>= reply
   let event : EventTuple := ⟨.subtask, index, SubtaskState.returned.toNat⟩
-  let consumed := { tick.reached with
+  let consumed := { reached with
     store := delivery.delivered
-    ctl := ⟨some wait.thread, .prog (handleEvent event), .core wait.core wait.next :: wait.segments⟩ :: tick.reached.ctl.drop 1 }
-  have taken : Steps profile ready (specDispatch ready impl) tick.reached delivery.labels consumed :=
-    get_delivers_returned (config := tick.reached) wait.ws delivery.set delivery.perm subtask record index
+    ctl := ⟨some wait.thread, .prog (handleEvent event), .core wait.core wait.next :: wait.segments⟩ :: reached.ctl.drop 1 }
+  have taken : Steps profile ready (specDispatch ready impl) reached delivery.labels consumed :=
+    get_delivers_returned (config := reached) wait.ws delivery.set delivery.perm subtask record index
       delivery.setLive delivery.allowed delivery.selects live returned indexed queued handleEvent
-      (by simp [WaitTick.reached, ParkedWait.takeEvent, handleEvent, reply, cx, pure])
+      (by simpa [ParkedWait.takeEvent, handleEvent, reply, cx, pure] using focused)
   have leading := appendSteps prefixRun taken
   constructor
   · intro misaligned
@@ -257,23 +289,29 @@ theorem waitDelivery {atHost : Config (core3 grow) (HostState sig)} {wait : Park
       exact appendSteps leading (unpack_event_bad_range (config := consumed) cx (flatNat wait.out) wait.memory size event
         aligned rfl sized outside reply rfl)
 
+theorem earlyWaitDelivery (wait : ParkedWait initial) (available : initial.store.wsetHasEvent wait.ws = true)
+    (allowed : Allowed profile (.earlyReturn .waitableSetWait) true)
+    (delivery : WaitDelivery wait wait.early profile subtask) (pending : PendingAt initial.store subtask index) :
+    delivery.outcomes index ready impl initial (ParkedWait.readyLabels true) :=
+  waitDelivery delivery rfl pending (parkedWaitReady wait available true allowed)
+
 theorem resolutionWait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
-    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
+    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery wait tick.reached profile subtask)
     (resolve : LinkedResolution initial subtask index) {between}
     (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost)
     (saved : atHost.cont? wait.thread = some wait.saved) :
-    delivery.outcomes index impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) := by
+    delivery.outcomes index ready impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) := by
   obtain ⟨commitRun, queued⟩ := resolutionIndexed (profile := profile) (ready := ready) (impl := impl) resolve
   obtain ⟨replay, pending⟩ := retainingPath path queued
-  exact waitDelivery delivery pending (appendSteps (appendSteps commitRun replay) (resumeWaitTick tick saved))
+  exact waitDelivery delivery rfl pending (appendSteps (appendSteps commitRun replay) (resumeWaitTick tick saved))
 
 theorem blockedResolutionWait {atHost resolving : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
-    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
+    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery wait tick.reached profile subtask)
     (empty : initial.store.wsetHasEvent wait.ws = false) {whileBlocked between}
     (runs : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked whileBlocked resolving)
     (resolve : LinkedResolution resolving subtask index)
     (path : ParkedRetaining profile ready (specDispatch ready impl) wait.thread subtask index resolve.committed between atHost) :
-    delivery.outcomes index impl initial
+    delivery.outcomes index ready impl initial
       ((((List.replicate 13 .tau ++ whileBlocked) ++ List.replicate 17 .tau) ++ between) ++ tick.labels) := by
   obtain ⟨commitRun, queued⟩ := resolutionIndexedParked (profile := profile) (ready := ready) (impl := impl) resolve
   obtain ⟨replay, pending⟩ := retainingParked path queued
@@ -284,7 +322,7 @@ theorem blockedResolutionWait {atHost resolving : Config (core3 grow) (HostState
     rw [keptAfter, keptCommit, keptBefore]
     exact Config.cont?_setCont_self _ _ _
   have blocked := parkedWaitBlocks (profile := profile) (ready := ready) (impl := impl) wait empty
-  exact waitDelivery delivery pending
+  exact waitDelivery delivery rfl pending
     (appendSteps (appendSteps (appendSteps (appendSteps blocked before) commits) after) (resumeWaitTick tick saved))
 
 private theorem cancelReturnedEntry (cancel : ParkedCancel parked subtask) (record : Subtask)

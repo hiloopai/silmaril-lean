@@ -212,6 +212,16 @@ def ParkedWait.blocked {cfg : Config (core3 grow) (HostState sig)} (wait : Parke
       ((cfg.store.wsetIncWaitingSt wait.ws).startWaitingSt wait.thread (.wsetHasEvent wait.ws))
     ctl := wait.rest }
 
+def ParkedWait.early {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg) :
+    Config (core3 grow) (HostState sig) :=
+  { cfg with
+    store := (cfg.store.wsetIncWaitingSt wait.ws).wsetDecWaitingSt wait.ws
+    ctl := ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ :: wait.rest }
+
+def ParkedWait.readyLabels {E : CoreEngine} {Host : Type} (early : Bool) : List (Label E Host) :=
+  List.replicate 11 .tau ++ [.choice (.earlyReturn .waitableSetWait) early] ++
+    List.replicate (if early then 1 else 2) .tau
+
 /-- The host is allowed to tick, the actual saved activation still occupies
 its slot, and the scheduler chooses it from the current ready candidates. -/
 structure WaitTick {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg)
@@ -273,42 +283,42 @@ def PollAdmission.retentionOutcomes {cfg : Config (core3 grow) (HostState sig)} 
 
 /-- The shuffle and selection are read after the tick restores the waiter,
 not at the initial callout or at publication. -/
-structure WaitDelivery {cfg atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait cfg}
-    {ready : HostReady (HostState sig)} {profile : ProfileKind} (tick : WaitTick wait atHost ready profile)
-    (subtask : SubtaskId) where
+structure WaitDelivery {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg)
+    (reached : Config (core3 grow) (HostState sig)) (profile : ProfileKind) (subtask : SubtaskId) where
   set : WaitableSet
   perm : List Nat
-  setLive : tick.reached.store.wset? wait.ws = some set
+  setLive : reached.store.wset? wait.ws = some set
   allowed : Allowed profile (.shuffle set.elems.length) perm
   selects : (applyPerm perm set.elems).find?
-    (tick.reached.store.wsetSetElemsSt wait.ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask)
+    (reached.store.wsetSetElemsSt wait.ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask)
 
 section WaitDelivery
 
-variable {cfg atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait cfg}
-  {ready : HostReady (HostState sig)} {profile : ProfileKind} {tick : WaitTick wait atHost ready profile} {subtask : SubtaskId}
+variable {cfg reached : Config (core3 grow) (HostState sig)} {wait : ParkedWait cfg}
+  {profile : ProfileKind} {subtask : SubtaskId}
 
-def WaitDelivery.delivered (delivery : WaitDelivery tick subtask) : CStore (core3 grow) :=
-  let shuffled := tick.reached.store.wsetSetElemsSt wait.ws (applyPerm delivery.perm delivery.set.elems)
+def WaitDelivery.delivered (delivery : WaitDelivery wait reached profile subtask) : CStore (core3 grow) :=
+  let shuffled := reached.store.wsetSetElemsSt wait.ws (applyPerm delivery.perm delivery.set.elems)
   (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }).deliverResolveSt subtask
 
-def WaitDelivery.labels (delivery : WaitDelivery tick subtask) : List (Label (core3 grow) (HostState sig)) :=
+def WaitDelivery.labels (delivery : WaitDelivery wait reached profile subtask) : List (Label (core3 grow) (HostState sig)) :=
   [.tau, .choice (.shuffle delivery.set.elems.length) delivery.perm, .tau, .tau, .tau, .tau]
 
-def WaitDelivery.resumed (delivery : WaitDelivery tick subtask) (index : Nat) : Config (core3 grow) (HostState sig) :=
+def WaitDelivery.resumed (delivery : WaitDelivery wait reached profile subtask) (index : Nat) : Config (core3 grow) (HostState sig) :=
   let ptr := flatNat wait.out
   let written := writeMemSt wait.memory (ptr + 4) (u32Bytes SubtaskState.returned.toNat)
     (writeMemSt wait.memory ptr (u32Bytes index) delivery.delivered)
-  { tick.reached with store := written, ctl := ⟨some wait.thread,
+  { reached with store := written, ctl := ⟨some wait.thread,
     .core ((core3 grow).resume written.core wait.core (.values [i32Flat EventCode.subtask.toNat])) wait.next,
-    wait.segments⟩ :: tick.reached.ctl.drop 1 }
+    wait.segments⟩ :: reached.ctl.drop 1 }
 
-def WaitDelivery.outcomes (delivery : WaitDelivery tick subtask) (index : Nat)
-    (impl : HostImpl (core3 grow) (HostState sig)) (initial : Config (core3 grow) (HostState sig))
+def WaitDelivery.outcomes (delivery : WaitDelivery wait reached profile subtask) (index : Nat)
+    (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig))
+    (initial : Config (core3 grow) (HostState sig))
     (prefixLabels : List (Label (core3 grow) (HostState sig))) : Prop :=
   let ptr := flatNat wait.out
   let labels := prefixLabels ++ delivery.labels
-  let trapped := { tick.reached with store := StepDefs.lockdownSt delivery.delivered, ctl := [] }
+  let trapped := { reached with store := StepDefs.lockdownSt delivery.delivered, ctl := [] }
   let dispatch := specDispatch ready impl
   (ptr % 4 ≠ 0 → Steps profile ready dispatch initial (labels ++ [.trap .unalignedPointer]) trapped) ∧
   (∀ size, ptr % 4 = 0 → (core3 grow).memSize? delivery.delivered.core wait.memory = some size →

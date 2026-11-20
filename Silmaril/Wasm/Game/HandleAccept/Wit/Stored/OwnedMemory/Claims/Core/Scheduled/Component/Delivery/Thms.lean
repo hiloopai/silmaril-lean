@@ -85,6 +85,22 @@ theorem ParkedWait.blocks (wait : ParkedWait initial) (empty : initial.store.wse
     Steps profile ready (specDispatch ready impl) initial (List.replicate 13 .tau) wait.blocked :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.parkedWaitBlocks wait empty
 
+/-- A ready Core wait still obeys the profile's actual choice: the early
+branch reaches event selection; the other branch installs the saved wait. -/
+theorem ParkedWait.ready_choice (wait : ParkedWait initial) (available : initial.store.wsetHasEvent wait.ws = true)
+    (early : Bool) (allowed : Allowed profile (.earlyReturn .waitableSetWait) early) :
+    Steps profile ready (specDispatch ready impl) initial (ParkedWait.readyLabels early)
+      (if early then wait.early else wait.blocked) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.parkedWaitReady wait available early allowed
+
+/-- The early branch consumes the selected return from the reached store and
+then writes the buffer or traps, without a block or host tick. -/
+theorem ParkedWait.delivers_early (wait : ParkedWait initial) (available : initial.store.wsetHasEvent wait.ws = true)
+    (allowed : Allowed profile (.earlyReturn .waitableSetWait) true)
+    (delivery : WaitDelivery wait wait.early profile subtask) (pending : PendingAt initial.store subtask index) :
+    delivery.outcomes index ready impl initial (ParkedWait.readyLabels true) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.earlyWaitDelivery wait available allowed delivery pending
+
 /-- On the selected tick, resume the saved wait and reach selection in the current store.
 This does not assume that the scheduler will ever select that waiter. -/
 theorem WaitTick.resumes {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
@@ -95,22 +111,22 @@ theorem WaitTick.resumes {atHost : Config (core3 grow) (HostState sig)} {wait : 
 /-- A resolution can feed a previously blocked Core wait on the selected tick.
 The actual buffer check follows consumption; a trap retains the earlier effects. -/
 theorem LinkedResolution.then_wait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
-    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
+    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery wait tick.reached profile subtask)
     (resolve : LinkedResolution initial subtask index) {between}
     (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost)
     (saved : atHost.cont? wait.thread = some wait.saved) :
-    delivery.outcomes index impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) :=
+    delivery.outcomes index ready impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resolutionWait delivery resolve path saved
 
 /-- Compose the actual block, reached resolution and selected wakeup. The
 same saved activation is derived from the actual edits, not a final lookup. -/
 theorem ParkedWait.then_resolution {atHost resolving : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
-    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
+    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery wait tick.reached profile subtask)
     (empty : initial.store.wsetHasEvent wait.ws = false) {whileBlocked between}
     (runs : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked whileBlocked resolving)
     (resolve : LinkedResolution resolving subtask index)
     (path : ParkedRetaining profile ready (specDispatch ready impl) wait.thread subtask index resolve.committed between atHost) :
-    delivery.outcomes index impl initial
+    delivery.outcomes index ready impl initial
       ((((List.replicate 13 .tau ++ whileBlocked) ++ List.replicate 17 .tau) ++ between) ++ tick.labels) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.blockedResolutionWait delivery empty runs resolve path
 
