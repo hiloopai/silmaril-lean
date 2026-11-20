@@ -371,6 +371,30 @@ theorem poll_delivers_returned {prof : ProfileKind} {ready : HostReady (HostStat
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.poll_delivers_returned
     ws set perm subtask record index setLive member allowed selects live returned indexed eventPending resume focused
 
+/-- Consume the selected return event in the shared wait/poll selection body. -/
+theorem get_delivers_returned {prof : ProfileKind} {ready : HostReady (HostState sig)}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {config : Config (core3 grow) (HostState sig)} {thread : Option ThreadId} {segments rest}
+    (ws : WsetId) (set : WaitableSet) (perm : List Nat)
+    (subtask : SubtaskId) (record : Subtask) (index : Nat)
+    (setLive : config.store.wset? ws = some set)
+    (allowed : Allowed prof (.shuffle set.elems.length) perm)
+    (selects : (applyPerm perm set.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask))
+    (live : config.store.subtask? subtask = some record)
+    (returned : record.state = .returned) (indexed : record.index = some index)
+    (eventPending : record.common.pending = some (.subtask subtask))
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
+    let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    Steps prof ready dispatch config [.tau, .choice (.shuffle set.elems.length) perm, .tau, .tau, .tau, .tau]
+      { config with
+        store := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+          |>.deliverResolveSt subtask
+        ctl := ⟨thread, .prog (resume ⟨.subtask, index, SubtaskState.returned.toNat⟩), segments⟩ :: rest } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.get_delivers_returned
+    ws set perm subtask record index setLive allowed selects live returned indexed eventPending resume focused
+
 /-- Execute the canonical event-buffer writes in the reached store. Both
 four-byte writes follow the alignment and whole eight-byte range checks. -/
 theorem unpack_event_write {prof : ProfileKind} {ready : HostReady (HostState sig)}
@@ -399,6 +423,18 @@ theorem unpack_event_bad_alignment {prof : ProfileKind} {ready : HostReady (Host
     Steps prof ready dispatch config [.trap .unalignedPointer] (StepDefs.trapCfg config) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.unpack_event_bad_alignment
     cx ptr event misaligned resume focused
+
+theorem unpack_event_bad_range {prof : ProfileKind} {ready : HostReady (HostState sig)}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {config : Config (core3 grow) (HostState sig)} {thread : Option ThreadId} {segments rest}
+    (cx : LiftLowerContext (core3 grow)) (ptr address size : Nat) (event : EventTuple)
+    (aligned : ptr % 4 = 0) (memory : cx.opts.memory = some address)
+    (sized : (core3 grow).memSize? config.store.core address = some size) (outside : size < ptr + 8)
+    (resume : Nat → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (unpackEvent cx ptr event >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .trap .outOfBounds] (StepDefs.trapCfg config) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.unpack_event_bad_range
+    cx ptr address size event aligned memory sized outside resume focused
 
 /-- A late range trap locks down the store after event consumption and lend
 release. Neither event word is written and the already reached host is kept. -/

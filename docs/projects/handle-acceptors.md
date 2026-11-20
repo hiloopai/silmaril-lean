@@ -1146,8 +1146,16 @@ with an actual scheduled prefix and a selected parked Core poll of the same
 subtask arena object. The intervening steps must keep the returned event pending;
 a final lookup cannot substitute for that prefix. Moving the waitable between
 sets preserves the pending event. The poll clears it and releases lends even if
-the later output-buffer check traps. This is a selected-poll result, not a
-guarantee that polling happens or a correspondence for wait and cancellation.
+the later output-buffer check traps.
+
+`Delivery.ParkedWait.then_resolution` starts at an actual Core wait callout with
+no event available. It registers the waiter and saves the Core continuation;
+after the indexed commit and a retaining prefix, the selected host tick restores
+that continuation, decrements the wait count and runs the same canonical event
+selection as poll. A valid buffer returns the event code to Core. An invalid
+buffer traps after event consumption and lend release. The theorem requires the
+reached saved slot, tick choice and event selection; it gives neither scheduler
+liveness nor a correspondence for cancellation or arbitrary export sequences.
 
 ## Checking
 

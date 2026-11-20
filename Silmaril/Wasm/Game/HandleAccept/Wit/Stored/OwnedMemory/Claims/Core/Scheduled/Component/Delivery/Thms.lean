@@ -52,4 +52,38 @@ theorem ParkedPoll.delivered_clears (poll : ParkedPoll parked subtask profile) (
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.deliveredClears poll pending
 
+/-- With no event available, the wait registers the actual ready condition and parks the
+Core continuation. It neither returns to Core nor consumes an event. -/
+theorem ParkedWait.blocks (wait : ParkedWait initial) (empty : initial.store.wsetHasEvent wait.ws = false) :
+    Steps profile ready (specDispatch ready impl) initial (List.replicate 13 .tau) wait.blocked :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.parkedWaitBlocks wait empty
+
+/-- On the selected tick, resume the saved wait and reach selection in the current store.
+This does not assume that the scheduler will ever select that waiter. -/
+theorem WaitTick.resumes {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (tick : WaitTick wait atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeWaitTick tick
+
+/-- A resolution can feed a previously blocked Core wait on the selected tick.
+The actual buffer check follows consumption; a trap retains the earlier effects. -/
+theorem LinkedResolution.then_wait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
+    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
+    (resolve : LinkedResolution initial subtask index) {between}
+    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost) :
+    delivery.outcomes index impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resolutionWait delivery resolve path
+
+/-- Compose the actual blocked callout, the reached result-resolution prefix, and
+the selected scheduler wakeup. No result is delivered on the initial block. -/
+theorem ParkedWait.then_resolution {atHost resolving : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
+    (empty : initial.store.wsetHasEvent wait.ws = false) {whileBlocked between}
+    (runs : Steps profile ready (specDispatch ready impl) wait.blocked whileBlocked resolving)
+    (resolve : LinkedResolution resolving subtask index)
+    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost) :
+    delivery.outcomes index impl initial
+      ((((List.replicate 13 .tau ++ whileBlocked) ++ List.replicate 17 .tau) ++ between) ++ tick.labels) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.blockedResolutionWait delivery empty runs resolve path
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

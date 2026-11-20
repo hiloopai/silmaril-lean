@@ -197,20 +197,17 @@ theorem deliver_pending (subtask : SubtaskId) (record : Subtask) (index : Nat)
   simp only [CStore.takeWaitableEventSt, take_returned subtask record index live returned indexed eventPending]
   exact .refl _
 
-theorem poll_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
-    (setLive : config.store.wset? ws = some record) (hasEvent : config.store.wsetHasEvent ws = true)
+theorem get_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
+    (setLive : config.store.wset? ws = some record)
     (allowed : Allowed prof (.shuffle record.elems.length) perm)
     (selects : (applyPerm perm record.elems).find?
       (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = some selected)
     (resume : EventTuple → Session grow sig (Ret (core3 grow)))
-    (focused : config.ctl = ⟨thread, .prog (wsetPoll ws >>= resume), segments⟩ :: rest) :
-    Steps prof ready dispatch config [.tau, .tau, .choice (.shuffle record.elems.length) perm, .tau, .tau]
+    (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau]
       { config with
         store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems)
         ctl := ⟨thread, .prog (Waitable.getPendingEvent selected >>= resume), segments⟩ :: rest } := by
-  have readyRead := Step.get (prof := prof) (hr := ready) (dispatch := dispatch) focused
-  simp [Prog.bind, hasEvent, pure] at readyRead
-  refine .cons readyRead ?_
   have lookup : ArenaField.wsets.get? config.store ws = some record := setLive
   let pick := fun (elems : List Waitable) (store : CStore (core3 grow)) =>
     (match elems.find? store.waitableHasEvent with
@@ -221,10 +218,8 @@ theorem poll_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (sel
     .op (.modify (CStore.wsetSetElemsSt ws elems)) fun _ => .op .get (pick elems)
   let afterLookup := { config with ctl := ⟨thread,
     .prog (.op (.choose (.shuffle record.elems.length)) onChoice), segments⟩ :: rest }
-  have readSet := Step.get (prof := prof) (hr := ready) (dispatch := dispatch)
-    (m := { config with ctl := ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest }) rfl
-  have reachedChoice : Machine.Step prof ready dispatch
-      { config with ctl := ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest } .tau afterLookup := by
+  have readSet := Step.get (prof := prof) (hr := ready) (dispatch := dispatch) focused
+  have reachedChoice : Machine.Step prof ready dispatch config .tau afterLookup := by
     simp only [Prog.bind, lookup] at readSet
     exact readSet
   refine .cons reachedChoice (.cons (Step.choose (m := afterLookup) (ck := .shuffle record.elems.length)
@@ -241,6 +236,22 @@ theorem poll_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (sel
     simp only [pick, shuffled, elems, selects]
   rw [chosen]
   exact .refl _
+
+theorem poll_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
+    (setLive : config.store.wset? ws = some record) (hasEvent : config.store.wsetHasEvent ws = true)
+    (allowed : Allowed prof (.shuffle record.elems.length) perm)
+    (selects : (applyPerm perm record.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = some selected)
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetPoll ws >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .tau, .choice (.shuffle record.elems.length) perm, .tau, .tau]
+      { config with
+        store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems)
+        ctl := ⟨thread, .prog (Waitable.getPendingEvent selected >>= resume), segments⟩ :: rest } := by
+  have readyRead := Step.get (prof := prof) (hr := ready) (dispatch := dispatch) focused
+  simp [Prog.bind, hasEvent, pure] at readyRead
+  let entered := { config with ctl := ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest }
+  exact .cons readyRead (get_selects (config := entered) ws record perm selected setLive allowed selects resume rfl)
 
 private theorem resultLayout (width : AddrType) :
     ABI.layout width resultType = ⟨.four, 2⟩ := by
@@ -504,6 +515,29 @@ theorem poll_delivers_returned (ws : WsetId) (set : WaitableSet) (perm : List Na
   have selected := poll_selects (prof := prof) (ready := ready) (dispatch := dispatch)
     ws set perm (.subtask subtask) setLive hasEvent allowed selects resume focused
   exact appendSteps selected
+    (deliver_pending (config := shuffled) subtask record index live returned indexed eventPending resume rfl)
+
+theorem get_delivers_returned (ws : WsetId) (set : WaitableSet) (perm : List Nat)
+    (subtask : SubtaskId) (record : Subtask) (index : Nat)
+    (setLive : config.store.wset? ws = some set)
+    (allowed : Allowed prof (.shuffle set.elems.length) perm)
+    (selects : (applyPerm perm set.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask))
+    (live : config.store.subtask? subtask = some record)
+    (returned : record.state = .returned) (indexed : record.index = some index)
+    (eventPending : record.common.pending = some (.subtask subtask))
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
+    let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    Steps prof ready dispatch config [.tau, .choice (.shuffle set.elems.length) perm, .tau, .tau, .tau, .tau]
+      { config with
+        store := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+          |>.deliverResolveSt subtask
+        ctl := ⟨thread, .prog (resume ⟨.subtask, index, SubtaskState.returned.toNat⟩), segments⟩ :: rest } := by
+  let shuffled := { config with
+    store := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    ctl := ⟨thread, .prog (Waitable.getPendingEvent (.subtask subtask) >>= resume), segments⟩ :: rest }
+  exact appendSteps (get_selects ws set perm (.subtask subtask) setLive allowed selects resume focused)
     (deliver_pending (config := shuffled) subtask record index live returned indexed eventPending resume rfl)
 
 theorem unpack_event_write (cx : LiftLowerContext (core3 grow)) (ptr address size : Nat) (event : EventTuple)
