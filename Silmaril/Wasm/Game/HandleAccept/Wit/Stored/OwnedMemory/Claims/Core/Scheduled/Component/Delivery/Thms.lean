@@ -137,6 +137,23 @@ theorem ParkedCancel.delivers_returned (cancel : ParkedCancel parked subtask) (p
     Steps profile ready (specDispatch ready impl) parked (List.replicate 15 .tau) cancel.resumed :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelReturned cancel pending available
 
+/-- An unresolved cancel first records the request and its sync waiter, then
+enters the actual late-bound cancellation callback. No return is assumed. -/
+theorem ParkedCancel.requests (cancel : ParkedCancel parked subtask) (record : Subtask)
+    (live : parked.store.subtask? subtask = some record) (unresolved : record.state.resolved = false)
+    (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+    (notJoined : record.common.wset = none) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 14 .tau)
+      (cancel.callbackEntry record ready impl) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelRequests cancel record live
+    unresolved notDelivered notRequested notJoined
+
+/-- On this closed guest callback path, cancel marks the started task pending
+cancel, clears the temporary waiter and returns BLOCKED to the same Core caller. -/
+theorem StartedCancel.resumes_blocked {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 24 .tau) request.resumed :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelStartedBlocked cancel request
+
 theorem ParkedCancel.delivered_clears (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index) :
     ∃ record, cancel.resumed.store.subtask? subtask = some record ∧ record.common.pending = none ∧
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=

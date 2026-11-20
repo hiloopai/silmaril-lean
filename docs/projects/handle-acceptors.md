@@ -1175,6 +1175,15 @@ saved wait. `delivers_early` uses the same selection and result-buffer proof as
 the resumed wait, but requires no block or tick; a late buffer trap still follows
 event consumption and lend release.
 
+Before resolution, `Delivery.ParkedCancel.requests` derives the live request
+and temporary sync waiter before the actual cancellation callback starts. The
+closed asynchronous case in `StartedCancel.resumes_blocked` executes a started
+guest task's callback with a noncancellable implicit thread: it marks the task
+pending cancel, clears the temporary waiter and returns `BLOCKED` to the same
+Core caller. This path neither resolves nor delivers the subtask. It does not
+classify an initial or immediately resumed callee, a synchronous wait, or an
+open host cancellation hook.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery

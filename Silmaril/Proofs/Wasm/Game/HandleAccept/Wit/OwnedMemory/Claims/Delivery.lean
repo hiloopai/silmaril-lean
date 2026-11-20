@@ -325,12 +325,17 @@ theorem blockedResolutionWait {atHost resolving : Config (core3 grow) (HostState
   exact waitDelivery delivery rfl pending
     (appendSteps (appendSteps (appendSteps (appendSteps blocked before) commits) after) (resumeWaitTick tick saved))
 
-private theorem cancelReturnedEntry (cancel : ParkedCancel parked subtask) (record : Subtask)
-    (live : parked.store.subtask? subtask = some record) (returned : record.state = .returned)
+private def cancelResultWords (subtask : SubtaskId) (resolved : Bool) : Session grow sig (List FlatValue) :=
+  if resolved then Builtins.subtaskCancelDeliver subtask else pure [i32Flat (subtaskCancelResult none)]
+
+private theorem cancelEntry (cancel : ParkedCancel parked subtask) (record : Subtask)
+    (live : parked.store.subtask? subtask = some record)
     (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
     (notJoined : record.common.wset = none) :
     Steps profile ready (specDispatch ready impl) parked (List.replicate 11 .tau)
-      { parked with ctl := ⟨some cancel.thread, .prog (Builtins.subtaskCancelDeliver subtask >>= fun words => pure (.flat words)),
+      { parked with ctl := ⟨some cancel.thread, .prog ((if record.state.resolved then Builtins.subtaskCancelDeliver subtask
+          else Builtins.subtaskCancelRequest cancel.async_ subtask record.onCancel >>= cancelResultWords subtask) >>=
+        fun words => pure (.flat words)),
         .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest } := by
   have admitted : calloutEntry parked.store (some cancel.thread) (.builtin (.subtaskCancel cancel.async_) cancel.task.inst) = none := by
     simp [calloutEntry, instOfThread?, cancel.liveThread, cancel.liveTask]
@@ -355,8 +360,78 @@ private theorem cancelReturnedEntry (cancel : ParkedCancel parked subtask) (reco
   refine .cons (.get rfl) ?_
   simp [Prog.bind, arena, notRequested]
   refine .cons (.get rfl) ?_
-  simp [Prog.bind, outside, returned, SubtaskState.resolved, pure]
+  simp [Prog.bind, outside, pure]
   exact .refl _
+
+theorem cancelRequests (cancel : ParkedCancel parked subtask) (record : Subtask)
+    (live : parked.store.subtask? subtask = some record) (unresolved : record.state.resolved = false)
+    (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+    (notJoined : record.common.wset = none) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 14 .tau)
+      (cancel.callbackEntry record ready impl) := by
+  have admission := cancelEntry (profile := profile) (ready := ready) (impl := impl) cancel record live
+    notDelivered notRequested notJoined
+  simp only [unresolved, Bool.false_eq_true, ite_false] at admission
+  have normalize : ((Builtins.subtaskCancelRequest cancel.async_ subtask record.onCancel >>= cancelResultWords subtask) >>=
+      fun words => pure (.flat words) : Session grow sig (Ret (core3 grow))) = (do
+      let thread ← currentThreadId
+      modifyStore (Builtins.WaitableSt.requestCancel subtask thread)
+      let returned ← callRet (.onCancel record.onCancel)
+      cancel.afterCallback returned) := by
+    simp only [Builtins.subtaskCancelRequest, ParkedCancel.afterCallback, callUnit, ParkedCancel.result,
+      cancelResultWords, bind_assoc]
+    congr 1
+    funext runningThread
+    congr 1
+    funext ignored
+    congr 1
+    funext returned
+    cases returned <;> rfl
+  rw [normalize] at admission
+  refine appendSteps admission (.cons (.currentThread rfl) (.cons (.modify rfl) (.cons (.call rfl) ?_)))
+  change Steps profile ready (specDispatch ready impl) _ [] _
+  exact .refl _
+
+theorem cancelStartedBlocked (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 24 .tau) request.resumed := by
+  let marked := cancel.callbackEntry request.record ready impl
+  let pending := marked.store.setTaskState request.taskId .pendingCancel
+  have taskLive : ArenaField.tasks.get? (cancel.callbackEntry request.record ready impl).store
+      request.taskId = some request.callee := request.taskLive
+  have threadLive : ArenaField.threads.get? ((cancel.callbackEntry request.record ready impl).store.setTaskState
+      request.taskId .pendingCancel) request.implicitThread = some request.implicitState := request.threadLive
+  have hasRequest : pending.subtask? subtask = some { request.record with
+      cancellationRequested := true
+      common := { request.record.common with hasSyncWaiter := true, syncOwner := some cancel.thread } } := by
+    change ArenaField.subtasks.get? (ArenaField.subtasks.modify parked.store subtask _) subtask = _
+    rw [ArenaField.get?_modify_self]
+    have requestLive := request.live
+    rw [CStore.subtask?] at requestLive
+    rw [requestLive]
+    rfl
+  have stillUnresolved : (((cancel.callbackEntry request.record ready impl).store.setTaskState request.taskId .pendingCancel)
+      |>.setSyncWaiterSt (.subtask subtask) none).subtaskResolved subtask = false := by
+    change (pending.setSyncWaiterSt (.subtask subtask) none).subtaskResolved subtask = false
+    simp only [CStore.subtaskResolved, CStore.setSyncWaiterSt, CStore.modifyWaitableCommon, CStore.subtask?,
+      ArenaField.get?_modify_self, show ArenaField.subtasks.get? pending subtask = _ from hasRequest,
+      Option.map_some, request.unresolved]
+  have called : marked.ctl = ⟨some cancel.thread, .prog (do
+      Task.requestCancellation ready request.taskId
+      pure .unit), .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest := by
+    simp [marked, ParkedCancel.callbackEntry, request.callback, specDispatch, dispatch, onCancelProg]
+  have requested := cancelRequests (profile := profile) (ready := ready) (impl := impl) cancel request.record request.live
+    request.unresolved request.notDelivered request.notRequested request.notJoined
+  refine appendSteps requested (.cons (.get called) ?_)
+  simp [Prog.bind, taskLive, request.started, request.implicitLive, orTrap, pure, Prog.bind_assoc]
+  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, threadLive, pure]
+  refine .cons (.get rfl) (.cons (.hostGet rfl) ?_)
+  simp [Prog.bind, request.notCancellable, pure]
+  refine .cons (.popProg rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, request.asynchronous, pure]
+  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, stillUnresolved, ParkedCancel.result, pure]
+  exact .cons (.popCore rfl) (.refl _)
 
 theorem cancelReturned (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index)
     (available : CancelAvailable parked.store subtask) :
@@ -372,8 +447,9 @@ theorem cancelReturned (cancel : ParkedCancel parked subtask) (pending : Pending
   let entered := { parked with ctl := ⟨some cancel.thread, .prog (Waitable.getPendingEvent (.subtask subtask) >>= reply),
     .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
   have enter : Steps profile ready (specDispatch ready impl) parked (List.replicate 11 .tau) entered := by
-    simpa [entered, Builtins.subtaskCancelDeliver, reply, Prog.bind_assoc, pure] using
-      cancelReturnedEntry (profile := profile) (ready := ready) (impl := impl) cancel record live returned
+    simpa [entered, returned, SubtaskState.resolved, Builtins.subtaskCancelDeliver, reply,
+      Prog.bind_assoc, pure] using
+      cancelEntry (profile := profile) (ready := ready) (impl := impl) cancel record live
         notDelivered notRequested notJoined
   have take := deliver_pending (prof := profile) (ready := ready) (dispatch := specDispatch ready impl)
     (config := entered) subtask record index live returned indexed queued reply rfl

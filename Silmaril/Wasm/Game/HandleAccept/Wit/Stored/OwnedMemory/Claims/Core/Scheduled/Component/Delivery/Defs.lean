@@ -365,4 +365,62 @@ def ParkedCancel.resumed {cfg : Config (core3 grow) (HostState sig)} {subtask : 
     .core ((core3 grow).resume delivered.core cancel.core (.values [i32Flat result])) cancel.next,
     cancel.segments⟩ :: cancel.rest }
 
+def ParkedCancel.result {grow : SingleThreaded.GrowOracle} {sig : Signature} (subtask : SubtaskId) (resolved : Bool) :
+    Session grow sig (Ret (core3 grow)) :=
+  (if resolved then Builtins.subtaskCancelDeliver subtask else pure [i32Flat (subtaskCancelResult none)]) >>= fun words =>
+    pure (.flat words)
+
+def ParkedCancel.afterCallback {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) (returned : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) := do
+  let _ ← (match returned with
+    | .unit => pure ()
+    | _ => internal "late-bound call: expected Ret.unit" : Session grow sig Unit)
+  Builtins.subtaskCancelSyncWait cancel.async_ subtask
+  modifyStore (CStore.setSyncWaiterSt (.subtask subtask) none)
+  let resolved ← Builtins.subtaskResolvedNow subtask
+  ParkedCancel.result subtask resolved
+
+def ParkedCancel.callbackEntry {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) (record : Subtask) (ready : HostReady (HostState sig))
+    (impl : HostImpl (core3 grow) (HostState sig)) : Config (core3 grow) (HostState sig) :=
+  { cfg with
+    store := Builtins.WaitableSt.requestCancel subtask cancel.thread cfg.store
+    ctl := ⟨some cancel.thread, .prog (specDispatch ready impl (.onCancel record.onCancel)),
+      .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
+
+/-- An asynchronous cancel of an unresolved guest callee whose started task
+does not admit immediate reentry because its implicit thread is not cancellable. -/
+structure StartedCancel {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) where
+  record : Subtask
+  taskId : TaskId
+  callee : Task (core3 grow)
+  implicitThread : ThreadId
+  implicitState : Thread
+  live : cfg.store.subtask? subtask = some record
+  unresolved : record.state.resolved = false
+  notDelivered : record.lenders.isSome = true
+  notRequested : record.cancellationRequested = false
+  notJoined : record.common.wset = none
+  callback : record.onCancel = .task taskId
+  taskLive : cfg.store.task? taskId = some callee
+  started : callee.state = .started
+  implicitLive : callee.implicitThread = some implicitThread
+  threadLive : cfg.store.thread? implicitThread = some implicitState
+  notCancellable : implicitState.cancellable = false
+  asynchronous : cancel.async_ = true
+
+def StartedCancel.settledStore {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : StartedCancel cancel) : CStore (core3 grow) :=
+  let marked := Builtins.WaitableSt.requestCancel subtask cancel.thread cfg.store
+  let pending := marked.setTaskState request.taskId .pendingCancel
+  pending.setSyncWaiterSt (.subtask subtask) none
+
+def StartedCancel.resumed {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : StartedCancel cancel) : Config (core3 grow) (HostState sig) :=
+  let store := request.settledStore
+  { cfg with store := store, ctl := ⟨some cancel.thread,
+    .core ((core3 grow).resume store.core cancel.core (.values [i32Flat (subtaskCancelResult none)])) cancel.next,
+    cancel.segments⟩ :: cancel.rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
