@@ -217,6 +217,26 @@ theorem callbackExitUnresolved (wait : CallbackWait grow sig) {index : Nat} {liv
   simp only [Prog.bind, lookup, pure, guard, trapIf, ite_true]
   exact .cons (.trap rfl) (.refl _)
 
+theorem callbackNextWait (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
+    {values : List FlatValue} (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (result : (core3 grow).status reached.store.core core = .returned (.values values))
+    {kind : CallbackWaitKind} {index : Nat} (decoded : callbackReturn values = .ok (kind.code, index))
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel) (selected : (wait.followingWait liveTask kind).selected reached index) :
+    let entry := wait.nextIteration reached (kind.code, index) rest
+    let following := wait.followingWait liveTask kind
+    Steps profile ready (specDispatch ready impl) reached
+      ([.tau, .tau] ++ List.replicate kind.entrySteps .tau) (following.entry entry rest) := by
+  have returned := callbackReturned (profile := profile) (ready := ready) (impl := impl) wait focused result
+  rw [decoded] at returned
+  dsimp only
+  refine appendRun returned ?_
+  cases kind with
+  | yield => exact callbackYieldEntry rfl live noCancel
+  | wait set =>
+    obtain ⟨inst, instLive, handle⟩ := selected
+    exact callbackWaitEntry rfl live noCancel instLive handle
+
 theorem callbackReparks (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
     {values : List FlatValue} (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
     (result : (core3 grow).status reached.store.core core = .returned (.values values))
@@ -228,15 +248,9 @@ theorem callbackReparks (wait : CallbackWait grow sig) {core : (core3 grow).Thre
     Steps profile ready (specDispatch ready impl) reached
       ([.tau, .tau] ++ (List.replicate kind.entrySteps .tau ++ following.parkLabels (following.readyAt entry)))
       (following.blocked entry rest) := by
-  have returned := callbackReturned (profile := profile) (ready := ready) (impl := impl) wait focused result
-  rw [decoded] at returned
   dsimp only
-  refine appendRun returned (appendRun ?_ (callbackBlocks _ rfl))
-  cases kind with
-  | yield => exact callbackYieldEntry rfl live noCancel
-  | wait set =>
-    obtain ⟨inst, instLive, handle⟩ := selected
-    exact callbackWaitEntry rfl live noCancel instLive handle
+  rw [← List.append_assoc]
+  exact appendRun (callbackNextWait wait focused result decoded live noCancel selected) (callbackBlocks _ rfl)
 
 theorem callbackExitResolved (wait : CallbackWait grow sig) {index : Nat} {liveTask : Task (core3 grow)}
     (focused : reached.ctl = ⟨some wait.thread,

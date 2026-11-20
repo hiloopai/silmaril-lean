@@ -1246,6 +1246,14 @@ are not consumed by either path. When K3 selects the tracked resolution itself,
 pending event and lender list from the actual take. That is not a reply to the
 outer cancellation caller.
 
+`ClosedCallbackPrefix.reaches` composes any finite chain of host-free Core
+steps, reached callback returns entering a new K2/K3 loop, and early K2 or
+other-waitable K3 calls. It keeps the exact tracked record at each cut without
+assuming a frame for Core bytes or a further return. Actual return decoding,
+the reached task and waitable-set lookup, and the permitted choices justify
+each iteration. The prefix may end in a still-running Core callback; it
+does not establish eventual EXIT or outer delivery.
+
 `CallbackResume.resumes_tracked` follows the original K2/K3 saved occurrence
 through a retaining prefix and a reached forced `Thread.resume`. It restores
 the exact suffix above the resumer without a readiness assumption. On a live

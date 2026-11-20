@@ -380,4 +380,13 @@ theorem CallbackWait.wait_takes_resolution (wait : CallbackWait grow sig) {set :
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackWaitTakesResolution wait kind focused live
     noCancel setLive allowed selects tracked resolved pending chosen
 
+/-- Any finite chain of these closed callback fragments keeps the exact
+tracked record. This conclusion is derived from the reached actions, not
+provided as a per-cycle frame or inferred from a callback return code. -/
+theorem ClosedCallbackPrefix.reaches {labels target}
+    (path : ClosedCallbackPrefix profile ready impl target start labels reached) :
+    Steps profile ready (specDispatch ready impl) start labels reached ∧
+      reached.store.subtask? target = start.store.subtask? target :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.closedCallbackPrefixReaches path
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

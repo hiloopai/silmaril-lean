@@ -2,7 +2,9 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Callback
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackEarly
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackDelivery
 
 public section
 
@@ -116,5 +118,25 @@ theorem callbackWaitTakesResolution (wait : CallbackWait grow sig) {set : WsetId
   obtain ⟨take, cleared⟩ := take_pending_resolution _ pendingRecord
     ((shuffledKeeps wait kind reached.store record permutation target).trans tracked) resolved pending
   exact ⟨callbackWaitEvent wait kind focused live noCancel setLive allowed selects take chosen, cleared⟩
+
+theorem closedCallbackPrefixReaches {labels target}
+    (path : ClosedCallbackPrefix profile ready impl target start labels reached) :
+    Steps profile ready (specDispatch ready impl) start labels reached ∧
+      reached.store.subtask? target = start.store.subtask? target := by
+  induction path with
+  | done state => exact ⟨.refl state, rfl⟩
+  | core wait focused run _ ih =>
+    obtain ⟨_, frame⟩ := callbackCoreOnlyCut wait focused run
+    exact ⟨stepsAppend run ih.1, ih.2.trans (congrArg (fun cut => cut.store.subtask? target) frame)⟩
+  | nextWait wait focused returned decoded live noCancel selected _ ih =>
+    exact ⟨stepsAppend (callbackNextWait wait focused returned decoded live noCancel selected) ih.1,
+      ih.2.trans (releasedKeeps _ _ target)⟩
+  | earlyYield wait kind available early live noCancel chosen _ ih =>
+    obtain ⟨run, retained⟩ := callbackEarlyYieldRetains wait kind available early live noCancel chosen target
+    exact ⟨stepsAppend run ih.1, ih.2.trans (retained.trans (releasedKeeps wait _ target).symm)⟩
+  | earlyOther wait kind available early live noCancel setLive allowed selects take chosen other _ ih =>
+    obtain ⟨run, retained⟩ := callbackEarlyWaitRetains wait kind available early live noCancel setLive allowed selects take
+      chosen target other
+    exact ⟨stepsAppend run ih.1, ih.2.trans (retained.trans (releasedKeeps wait _ target).symm)⟩
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery
