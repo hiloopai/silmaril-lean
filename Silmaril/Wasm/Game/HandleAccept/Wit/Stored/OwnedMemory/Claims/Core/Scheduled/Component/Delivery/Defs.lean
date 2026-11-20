@@ -542,13 +542,68 @@ def TaskCancelAdmission.reentrySteps {cfg : Config (core3 grow) (HostState sig)}
     {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel) : Nat :=
   (if request.callee.state = .initial then 16 else 19) + (if request.waiting then 3 else 2)
 
+def ParkedCancel.callbackTail {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) : List (Activation (core3 grow) (HostState sig)) :=
+  ⟨some cancel.thread, .prog (pure .unit),
+    .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest
+
 def TaskCancelAdmission.reentered {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel)
     (callee : Activation (core3 grow) (HostState sig)) : Config (core3 grow) (HostState sig) :=
   let store := if request.waiting then request.markedStore.stopWaitingSt request.implicitThread else request.markedStore
   { (cfg.setCont request.implicitThread none) with
     store := StepDefs.threadStatusSt request.implicitThread .running store
-    ctl := callee :: ⟨some cancel.thread, .prog (pure .unit),
-      .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
+    ctl := callee :: cancel.callbackTail }
+
+/-- An actual lift-side K1 wait reached before its entry count is incremented. -/
+structure K1Wait (cfg : Config (core3 grow) (HostState sig)) (thread : ThreadId) (task : TaskId) where
+  instance_ : InstId
+  exclusive : Bool
+  next : Bool → Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : cfg.ctl = ⟨some thread, .prog (Task.backpressureWait task instance_ exclusive >>= next),
+    segments⟩ :: rest
+
+variable {thread : ThreadId} {taskId : TaskId} {atWait : Config (core3 grow) (HostState sig)}
+
+def K1Wait.condition (wait : K1Wait atWait thread taskId) : ReadyCond :=
+  .backpressure wait.instance_ wait.exclusive
+
+def K1Wait.incremented (wait : K1Wait atWait thread taskId) : CStore (core3 grow) :=
+  ArenaField.insts.modify atWait.store wait.instance_ InstState.incWaitingToEnter
+
+def K1Wait.saved (wait : K1Wait atWait thread taskId) : Activation (core3 grow) (HostState sig) :=
+  ⟨some thread, .prog (do
+    modifyInst wait.instance_ InstState.decWaitingToEnter
+    let cancelled ← Task.deliverPendingCancel taskId
+    (if cancelled then Task.cancel taskId >>= fun () => pure false else pure true : Session grow sig Bool) >>= wait.next),
+    wait.segments⟩
+
+def K1Wait.blocked (wait : K1Wait atWait thread taskId) : Config (core3 grow) (HostState sig) :=
+  { (atWait.setCont thread (some wait.saved)) with
+    store := StepDefs.threadStatusSt thread .blocked (wait.incremented.startWaitingSt thread wait.condition)
+    ctl := wait.rest }
+
+def K1Wait.deliveredStore (wait : K1Wait atWait thread taskId) (store : CStore (core3 grow)) : CStore (core3 grow) :=
+  (ArenaField.insts.modify store wait.instance_ InstState.decWaitingToEnter).setTaskState taskId .cancelDelivered
+
+def K1Wait.afterResolve (wait : K1Wait atWait thread taskId) (returned : Ret (core3 grow)) :
+    Session grow sig (Ret (core3 grow)) :=
+  match returned with
+  | .unit => modifyStore (CStore.setTaskState taskId .resolved) >>= fun () => wait.next false
+  | _ => internal "late-bound call: expected Ret.unit"
+
+def K1Wait.resolveEntry (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
+    (caller : CallerId) (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig))
+    (rest : List (Activation (core3 grow) (HostState sig))) : Config (core3 grow) (HostState sig) :=
+  { atResume with
+    store := wait.deliveredStore atResume.store
+    ctl := ⟨some thread, .prog (specDispatch ready impl (.onResolve caller none)),
+      .prog wait.afterResolve :: wait.segments⟩ :: rest }
+
+def K1Wait.borrowTrap (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig)) :
+    Config (core3 grow) (HostState sig) :=
+  StepDefs.trapCfg { atResume with store := wait.deliveredStore atResume.store }
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

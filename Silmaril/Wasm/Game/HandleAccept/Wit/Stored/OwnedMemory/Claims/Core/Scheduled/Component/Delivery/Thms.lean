@@ -191,6 +191,29 @@ theorem TaskCancelAdmission.reenters {cancel : ParkedCancel parked subtask} (req
       (request.reentered callee) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.taskCancelReenters cancel request mode saved
 
+/-- An unready K1 wait installs the canonical backpressure continuation
+without an early-return choice. -/
+theorem K1Wait.blocks {atWait : Config (core3 grow) (HostState sig)} {thread : ThreadId} {taskId : TaskId}
+    (wait : K1Wait atWait thread taskId) (unready : wait.condition.eval (fun _ => false) wait.incremented = false) :
+    Steps profile ready (specDispatch ready impl) atWait (List.replicate 5 .tau) wait.blocked :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.k1Blocks wait unready
+
+/-- Initial cancellation forces the same installed K1 continuation, decrements
+the reached instance count and delivers cancellation to the task. Outstanding
+borrows trap after those effects, rather than resolving or rolling them back. -/
+theorem TaskCancelAdmission.initial_k1 {cancel : ParkedCancel parked subtask}
+    {atWait : Config (core3 grow) (HostState sig)} (request : TaskCancelAdmission cancel)
+    (wait : K1Wait atWait request.implicitThread request.taskId) {between}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) request.implicitThread wait.blocked between parked)
+    (initialTask : request.callee.state = .initial) :
+    (request.callee.numBorrows = 0 → Steps profile ready (specDispatch ready impl) parked
+      (List.replicate request.reentrySteps .tau ++ List.replicate 5 .tau)
+      (wait.resolveEntry (request.reentered wait.saved) request.callee.caller ready impl cancel.callbackTail)) ∧
+    (request.callee.numBorrows > 0 → Steps profile ready (specDispatch ready impl) parked
+      (List.replicate request.reentrySteps .tau ++ (List.replicate 4 .tau ++ [.trap .borrowsRemain]))
+      (wait.borrowTrap (request.reentered wait.saved))) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.initialK1Cancel request wait path initialTask
+
 /-- On this closed guest callback path, cancel marks the started task pending
 cancel, clears the temporary waiter and returns BLOCKED to the same Core caller. -/
 theorem StartedCancel.resumes_blocked {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel)

@@ -506,6 +506,101 @@ theorem taskCancelReenters (cancel : ParkedCancel parked subtask) (request : Tas
   rw [TaskCancelAdmission.reentrySteps, List.replicate_add]
   exact appendSteps selected (taskCancelResume cancel request saved)
 
+variable {thread : ThreadId} {taskId : TaskId} {atWait : Config (core3 grow) (HostState sig)}
+
+theorem k1Blocks (wait : K1Wait atWait thread taskId) (unready : wait.condition.eval (fun _ => false) wait.incremented = false) :
+    Steps profile ready (specDispatch ready impl) atWait (List.replicate 5 .tau) wait.blocked := by
+  have enter := Step.modify (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) wait.focused
+  refine .cons enter (.cons (.currentThread rfl) (.cons (.get rfl) ?_))
+  change ReadyCond.eval (fun _ => false) (ArenaOps.updateSt ArenaField.insts wait.instance_
+    InstState.incWaitingToEnter atWait.store) (.backpressure wait.instance_ wait.exclusive) = false at unready
+  simp [Prog.bind, unready, pure, Thread.startWaiting, Prog.bind_assoc]
+  exact .cons (.modify rfl) (.cons (.block rfl) (.refl _))
+
+private def k1Check (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
+    (task : Task (core3 grow)) (rest : List (Activation (core3 grow) (HostState sig))) :
+    Config (core3 grow) (HostState sig) :=
+  { atResume with
+    store := wait.deliveredStore atResume.store
+    ctl := ⟨some thread, .prog (trapIf (decide (task.numBorrows > 0)) .borrowsRemain >>= fun () =>
+      callRet (.onResolve task.caller none) >>= wait.afterResolve), wait.segments⟩ :: rest }
+
+private theorem k1CheckRun (wait : K1Wait atWait thread taskId) {atResume : Config (core3 grow) (HostState sig)}
+    {task : Task (core3 grow)} {rest} (focused : atResume.ctl = wait.saved :: rest)
+    (live : atResume.store.task? taskId = some task) (pending : task.state = .pendingCancel) :
+    Steps profile ready (specDispatch ready impl) atResume (List.replicate 4 .tau) (k1Check wait atResume task rest) := by
+  have decLive : ArenaField.tasks.get? (ArenaOps.updateSt ArenaField.insts wait.instance_
+      InstState.decWaitingToEnter atResume.store) taskId = some task := live
+  have delivered : ArenaField.tasks.get? ((ArenaOps.updateSt ArenaField.insts wait.instance_
+      InstState.decWaitingToEnter atResume.store).setTaskState taskId .cancelDelivered) taskId =
+      some (task.withState .cancelDelivered) := by
+    simp only [CStore.setTaskState, ArenaField.get?_modify_self, decLive, Option.map_some]
+  have cancelTail : (callUnit (.onResolve task.caller none)).bind (fun () =>
+      (modifyStore (CStore.setTaskState taskId .resolved)).bind (fun () => wait.next false)) =
+      (callRet (.onResolve task.caller none)).bind wait.afterResolve := by
+    simp [callUnit, callRet, perform, Eff, Prog.lift, Prog.bind, pure]
+    apply congrArg (fun tail => Prog.op (S := Eff (core3 grow) (HostState sig))
+      (.call (.onResolve task.caller none)) tail)
+    funext returned
+    cases returned <;> first | rfl | (simp [K1Wait.afterResolve, internal, trap, Eff, Prog.bind]; funext failure; cases failure)
+  have start := Step.modify (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
+  refine .cons start (.cons (.get rfl) ?_)
+  simp [Prog.bind, decLive, pending, pure, Prog.bind_assoc]
+  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, delivered, Task.withState, trapIf, pure, Prog.bind_assoc, k1Check, cancelTail]
+  exact .refl _
+
+theorem k1CancelOutcomes (wait : K1Wait atWait thread taskId) {atResume : Config (core3 grow) (HostState sig)}
+    {task : Task (core3 grow)} {rest} (focused : atResume.ctl = wait.saved :: rest)
+    (live : atResume.store.task? taskId = some task) (pending : task.state = .pendingCancel) :
+    (task.numBorrows = 0 → Steps profile ready (specDispatch ready impl) atResume (List.replicate 5 .tau)
+      (wait.resolveEntry atResume task.caller ready impl rest)) ∧
+    (task.numBorrows > 0 → Steps profile ready (specDispatch ready impl) atResume
+      (List.replicate 4 .tau ++ [.trap .borrowsRemain]) (wait.borrowTrap atResume)) := by
+  have leading := k1CheckRun (profile := profile) (ready := ready) (impl := impl) wait focused live pending
+  constructor
+  · intro empty
+    refine appendSteps leading (.cons (.call ?_) (.refl _))
+    simp [k1Check, trapIf, empty, callRet, perform]
+    rfl
+  · intro borrows
+    have trapped : (k1Check wait atResume task rest).ctl =
+        ⟨some thread, .prog (trap .borrowsRemain), wait.segments⟩ :: rest := by
+      simp only [k1Check, trapIf, decide_eq_true borrows, ite_true, Prog.bind_eq, trap]
+      simp [Eff, Prog.bind]
+      apply congrArg (fun tail => Focus.prog (Prog.op (S := Eff (core3 grow) (HostState sig))
+        (.trap .borrowsRemain) tail))
+      funext failure
+      cases failure
+    exact appendSteps leading (.cons (.trap trapped) (.refl _))
+
+theorem initialK1Cancel {caller : ParkedCancel parked subtask} (request : TaskCancelAdmission caller)
+    (wait : K1Wait atWait request.implicitThread request.taskId) {between}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) request.implicitThread wait.blocked between parked)
+    (initialTask : request.callee.state = .initial) :
+    (request.callee.numBorrows = 0 → Steps profile ready (specDispatch ready impl) parked
+      (List.replicate request.reentrySteps .tau ++ List.replicate 5 .tau)
+      (wait.resolveEntry (request.reentered wait.saved) request.callee.caller ready impl caller.callbackTail)) ∧
+    (request.callee.numBorrows > 0 → Steps profile ready (specDispatch ready impl) parked
+      (List.replicate request.reentrySteps .tau ++ (List.replicate 4 .tau ++ [.trap .borrowsRemain]))
+      (wait.borrowTrap (request.reentered wait.saved))) := by
+  have saved := path.reaches.2.trans (Config.cont?_setCont_self _ _ _)
+  have entered := taskCancelReenters (profile := profile) (ready := ready) (impl := impl) caller request (.initial initialTask) saved
+  have marked : request.markedStore.task? request.taskId = some (request.callee.withState .pendingCancel) := by
+    change ArenaField.tasks.get? (ArenaField.tasks.modify (Builtins.WaitableSt.requestCancel subtask caller.thread
+      parked.store) request.taskId _) request.taskId = _
+    rw [ArenaField.get?_modify_self]
+    have live : ArenaField.tasks.get? (Builtins.WaitableSt.requestCancel subtask caller.thread parked.store)
+      request.taskId = some request.callee := request.taskLive
+    rw [live]
+    rfl
+  have reached : (request.reentered wait.saved).store.task? request.taskId =
+      some (request.callee.withState .pendingCancel) := by
+    unfold TaskCancelAdmission.reentered
+    split <;> exact marked
+  obtain ⟨returned, trapped⟩ := k1CancelOutcomes (profile := profile) (ready := ready) (impl := impl) wait rfl reached rfl
+  exact ⟨fun empty => appendSteps entered (returned empty), fun borrows => appendSteps entered (trapped borrows)⟩
+
 private theorem startedCancelMarked (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel) :
     request.callbackReturned.store.subtask? subtask = some { request.record with
       cancellationRequested := true
