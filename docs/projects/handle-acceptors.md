@@ -1141,6 +1141,14 @@ check ordering across refusal and success, and the deferred replay checks cancel
 and stale start. This reconstructs committed acceptance, not the set of inputs a guest
 will accept or a guarantee that an interrupted caller received its result.
 
+`Delivery.LinkedResolution.then_poll` composes the reached indexed result commit
+with an actual scheduled prefix and a selected parked Core poll of the same
+subtask arena object. The intervening steps must keep the returned event pending;
+a final lookup cannot substitute for that prefix. Moving the waitable between
+sets preserves the pending event. The poll clears it and releases lends even if
+the later output-buffer check traps. This is a selected-poll result, not a
+guarantee that polling happens or a correspondence for wait and cancellation.
+
 ## Checking
 
 ```
