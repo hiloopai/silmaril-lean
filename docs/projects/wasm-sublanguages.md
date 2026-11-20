@@ -5,6 +5,9 @@ without losing information. Use `Profiles` for the edition-indexed syntax
 and typing API or `Models.FeatureSet` for capabilities. These answer different
 questions: **what AST do I have?** and **which Core features can it use?**
 
+For the smaller strict module record, including function imports, see
+[Strict and Ultrastrict](wasm-open-strict.md).
+
 ## Syntax and admission
 
 `Language` chooses instruction, function and module types, with injective maps
