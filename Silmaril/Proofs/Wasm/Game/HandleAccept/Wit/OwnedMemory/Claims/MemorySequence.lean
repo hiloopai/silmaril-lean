@@ -359,7 +359,7 @@ theorem valueTailWith {older : ReturnFrame.Substitutions (core3 grow) (HostState
   refine replay (origin := checked.store) (.elements area.size) destination inst entries 0 pointer _ checkPublish canonPublish _
     frame (Core3.Grows.refl _) region.width (elementSlots destination.width matched region.aligned region.bounds _ children) ?_ ?_ ?_
   · intro reached reference check canon paired grown checkAt canonAt
-    obtain ⟨store, result, labels, observed, lhsRun, rhsRun⟩ :=
+    obtain ⟨store, result, labels, observed, lhsRun, rhsRun, _⟩ :=
       collection_descriptor_cut (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings))
         (destination.context inst) destination.width output pointer entries.length reached reference check canon
         (fun value => checkNext (.ok value)) canonNext paired.store checkAt canonAt
@@ -562,7 +562,7 @@ private theorem mapReplay {older : ReturnFrame.Substitutions (core3 grow) (HostS
     (elementSlots destination.width matched region.aligned region.bounds _ (fun _ _ _ fit => fit))
     (children _ _ region.width region.sized) ?_ ?_ ?_
   · intro reached reference check canon paired grown checkAt canonAt
-    obtain ⟨store, result, labels, observed, lhsRun, rhsRun⟩ :=
+    obtain ⟨store, result, labels, observed, lhsRun, rhsRun, _⟩ :=
       collection_descriptor_cut (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings))
         (destination.context inst) destination.width output pointer entries.length reached reference check canon
         (fun value => checkNext (.ok value)) canonNext paired.store checkAt canonAt

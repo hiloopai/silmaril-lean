@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadEffects.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.CanonicalTree.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCursor.Defs
 
@@ -247,7 +248,12 @@ def StringLocalCut {grow : SingleThreaded.GrowOracle} {Host Result : Type} (prof
     CoreGrowthSteps profile ready dispatch left labels
       (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
     CoreGrowthSteps profile ready dispatch right labels
-      (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result)
+      (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
+    ∀ value, result = .ok value → ∀ depth,
+      ReturnFrame.Occurrence.Prefix profile ready dispatch left (.active 0 depth) labels
+        (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) (.active 0 depth) ∧
+      ReturnFrame.Occurrence.Prefix profile ready dispatch right (.active 0 depth) labels
+        (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) (.active 0 depth)
 
 def MemoryReaches {E : CoreEngine} {Host : Type} (profile : ProfileKind) (ready : HostReady Host)
     (dispatch : Call E → P E Host (Ret E)) (left right : Config E Host)

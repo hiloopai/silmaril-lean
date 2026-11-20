@@ -120,6 +120,8 @@ private theorem prepend {left right left' right' : Config (core3 grow) Host} {ch
     {checkNext canonNext : Result → P (core3 grow) Host (Ret (core3 grow))}
     (leftGrows : CoreUpdateGrows left) (rightGrows : CoreUpdateGrows right)
     (leftStep : Step profile ready dispatch left .tau left') (rightStep : Step profile ready dispatch right .tau right')
+    (leftEdit : ReturnFrame.Occurrence.transitionEdit left .tau = .same)
+    (rightEdit : ReturnFrame.Occurrence.transitionEdit right .tau = .same)
     (leftHost : left'.host = left.host) (rightHost : right'.host = right.host)
     (leftEnd : ∀ store outcome, localLeafEnd left' left.host store check.thread check.frames check.rest checkNext outcome =
       localLeafEnd left left.host store check.thread check.frames check.rest checkNext outcome)
@@ -127,15 +129,20 @@ private theorem prepend {left right left' right' : Config (core3 grow) Host} {ch
       localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext outcome)
     (next : StringLocalCut profile ready dispatch left' right' check canon checkNext canonNext) :
     StringLocalCut profile ready dispatch left right check canon checkNext canonNext := by
-  obtain ⟨store, outcome, labels, observed, lhs, rhs⟩ := next
+  obtain ⟨store, outcome, labels, observed, lhs, rhs, tracks⟩ := next
   rw [leftHost, leftEnd] at lhs
   rw [rightHost, rightEnd] at rhs
-  refine ⟨store, outcome, .tau :: labels, ?_, .cons leftGrows leftStep lhs, .cons rightGrows rightStep rhs⟩
-  cases outcome with
-  | ok value => exact observed
-  | error reason =>
-    obtain ⟨count, rfl⟩ := observed
-    exact ⟨count + 1, rfl⟩
+  refine ⟨store, outcome, .tau :: labels, ?_, .cons leftGrows leftStep lhs, .cons rightGrows rightStep rhs, ?_⟩
+  · cases outcome with
+    | ok value => exact observed
+    | error reason =>
+      obtain ⟨count, rfl⟩ := observed
+      exact ⟨count + 1, rfl⟩
+  · intro value returned depth
+    obtain ⟨keptLeft, keptRight⟩ := tracks value returned depth
+    rw [leftHost, leftEnd] at keptLeft
+    rw [rightHost, rightEnd] at keptRight
+    exact ⟨.step leftStep (by rw [leftEdit]; rfl) keptLeft, .step rightStep (by rw [rightEdit]; rfl) keptRight⟩
 
 private theorem closedCut {body : P (core3 grow) Host Result} (closed : Closed body)
     (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
@@ -145,31 +152,34 @@ private theorem closedCut {body : P (core3 grow) Host Result} (closed : Closed b
     StringLocalCut profile ready dispatch left right check canon checkNext canonNext := by
   induction closed generalizing left right with
   | pure value =>
-    refine ⟨right.store, .ok value, [], rfl, ?_, ?_⟩
-    · have ends : localLeafEnd left left.host right.store check.thread check.frames check.rest checkNext (.ok value) = left := by
-        cases left
-        simp_all [localLeafEnd, Cursor.control]
-      rw [ends]
-      exact .refl _
-    · have ends : localLeafEnd right right.host right.store canon.thread canon.frames canon.rest canonNext (.ok value) = right := by
-        cases right
-        simp_all [localLeafEnd, Cursor.control]
-      rw [ends]
-      exact .refl _
+    have leftEnd : localLeafEnd left left.host right.store check.thread check.frames check.rest checkNext (.ok value) = left := by
+      cases left
+      simp_all [localLeafEnd, Cursor.control]
+    have rightEnd : localLeafEnd right right.host right.store canon.thread canon.frames canon.rest canonNext (.ok value) = right := by
+      cases right
+      simp_all [localLeafEnd, Cursor.control]
+    refine ⟨right.store, .ok value, [], rfl, leftEnd ▸ .refl _, rightEnd ▸ .refl _, ?_⟩
+    intro _ _ depth
+    rw [leftEnd, rightEnd]
+    exact ⟨.done _ _, .done _ _⟩
   | @op effect continuation admitted _ ih =>
     cases effect with
     | get =>
       refine prepend (by simp [CoreUpdateGrows, checkAt, Cursor.control, Prog.bind])
-        (by simp [CoreUpdateGrows, canonAt, Cursor.control, Prog.bind]) (.get checkAt) (.get canonAt) rfl rfl
+        (by simp [CoreUpdateGrows, canonAt, Cursor.control, Prog.bind]) (.get checkAt) (.get canonAt) ?_ ?_ rfl rfl
         (fun _ result => by cases result <;> rfl) (fun _ result => by cases result <;> rfl) ?_
-      exact ih right.store _ _ same (congrArg (fun store => check.control (continuation store >>= checkNext)) same) rfl
+      · rw [ReturnFrame.Occurrence.transitionEdit, checkAt]; rfl
+      · rw [ReturnFrame.Occurrence.transitionEdit, canonAt]; rfl
+      · exact ih right.store _ _ same (congrArg (fun store => check.control (continuation store >>= checkNext)) same) rfl
     | modify update =>
       refine prepend (by simpa [CoreUpdateGrows, checkAt, Cursor.control, Prog.bind] using admitted left.store)
         (by simpa [CoreUpdateGrows, canonAt, Cursor.control, Prog.bind] using admitted right.store)
-        (.modify checkAt) (.modify canonAt) rfl rfl (fun _ result => by cases result <;> rfl)
+        (.modify checkAt) (.modify canonAt) ?_ ?_ rfl rfl (fun _ result => by cases result <;> rfl)
         (fun _ result => by cases result <;> rfl) (ih () _ _ (congrArg update same) rfl rfl)
+      · rw [ReturnFrame.Occurrence.transitionEdit, checkAt]; rfl
+      · rw [ReturnFrame.Occurrence.transitionEdit, canonAt]; rfl
     | trap reason =>
-      refine ⟨right.store, .error reason, [.trap reason], ⟨0, rfl⟩, ?_, ?_⟩
+      refine ⟨right.store, .error reason, [.trap reason], ⟨0, rfl⟩, ?_, ?_, fun _ returned => by cases returned⟩
       · rw [← same]
         exact .cons (by simp [CoreUpdateGrows, checkAt, Cursor.control, Prog.bind]) (.trap checkAt) (.refl _)
       · exact .cons (by simp [CoreUpdateGrows, canonAt, Cursor.control, Prog.bind]) (.trap canonAt) (.refl _)

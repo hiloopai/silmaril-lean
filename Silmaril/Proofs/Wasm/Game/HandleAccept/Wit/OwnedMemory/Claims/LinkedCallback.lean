@@ -429,6 +429,15 @@ theorem stringReturnTracks (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (old
   rw [string_realloc_focus cx ptr oldSize alignment size steps finish] at focused
   exact Occurrence.Prefix.under_call focused install run (.popProg returning) pops depth
 
+private theorem stringInstallEdit (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (oldSize : Option Nat)
+    (alignment : Alignment) (size : Nat) (steps : List StoreStep) (finish : Nat → Session grow sig (Ret (core3 grow)))
+    (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) (depth : Nat)
+    (focused : start.ctl = cursor.control (runStoreSteps cx ptr
+      ((oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)) :: steps) >>= finish)) :
+    (Occurrence.transitionEdit start .tau).follow (.active 0 depth) = some (.active 0 (depth + 1)) := by
+  rw [Occurrence.transitionEdit, focused, string_realloc_focus]
+  rfl
+
 theorem stringPlanCut {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (steps : List StoreStep)
     (checkNext canonNext : Nat → Session grow sig (Ret (core3 grow)))
@@ -438,14 +447,14 @@ theorem stringPlanCut {changes : ReturnFrame.Substitutions (core3 grow) (HostSta
     (canonAt : right.ctl = canon.control (runStoreSteps cx ptr steps >>= canonNext)) :
     StringPlanCut profile ready bindings changes cx steps.length left right check canon checkNext canonNext := by
   let dispatch := specDispatch ready (host (grow := grow) bindings)
-  obtain ⟨store, outcome, labels, observed, lhs, rhs⟩ :=
+  obtain ⟨store, outcome, labels, observed, lhs, rhs, tracked⟩ :=
     string_front_cut (profile := profile) (ready := ready) (dispatch := dispatch)
       cx ptr steps left right check canon checkNext canonNext frame.store checkAt canonAt
   cases outcome with
-  | error reason => exact .done ⟨store, .error reason, labels, observed, lhs, rhs⟩
+  | error reason => exact .done ⟨store, .error reason, labels, observed, lhs, rhs, fun _ returned => by cases returned⟩
   | ok front =>
     cases front with
-    | done returned => exact .done ⟨store, .ok returned, labels, observed, lhs, rhs⟩
+    | done returned => exact .done ⟨store, .ok returned, labels, observed, lhs, rhs, fun _ _ depth => tracked (.done returned) rfl depth⟩
     | call pointer oldSize alignment size rest shorter =>
       let action : StoreStep := oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)
       let checkStart := { left with store, ctl := check.control (runStoreSteps cx pointer (action :: rest) >>= checkNext) }
@@ -457,10 +466,15 @@ theorem stringPlanCut {changes : ReturnFrame.Substitutions (core3 grow) (HostSta
       have leftGrow : CoreUpdateGrows checkStart := by cases oldSize <;> trivial
       have rightGrow : CoreUpdateGrows canonStart := by cases oldSize <;> trivial
       unfold LocalLeafLabels at observed
-      exact .installed pointer oldSize alignment size rest shorter
+      refine .installed pointer oldSize alignment size rest shorter
         (lhs.append (.cons leftGrow leftStep (.refl _))) (rhs.append (.cons rightGrow rightStep (.refl _)))
-        (by simpa only [LocalLeafLabels, List.all_append, List.all_cons, List.all_nil, Bool.and_true] using observed) paired
-        (childFrameOutside middle _ _ _)
+        (by simpa only [LocalLeafLabels, List.all_append, List.all_cons, List.all_nil, Bool.and_true] using observed) ?_
+        paired (childFrameOutside middle _ _ _)
+      intro depth
+      obtain ⟨leftTrack, rightTrack⟩ := tracked (.call pointer oldSize alignment size rest shorter) rfl depth
+      have leftEdit := stringInstallEdit cx pointer oldSize alignment size rest checkNext checkStart check depth rfl
+      have rightEdit := stringInstallEdit cx pointer oldSize alignment size rest canonNext canonStart canon depth rfl
+      exact ⟨leftTrack.append (.step leftStep leftEdit (.done _ _)), rightTrack.append (.step rightStep rightEdit (.done _ _))⟩
 
 theorem stringReplay {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {origin : CStore (core3 grow)}
     (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (steps : List StoreStep)
@@ -485,13 +499,15 @@ theorem stringReplay {changes : ReturnFrame.Substitutions (core3 grow) (HostStat
     rw [StringReplay]
     cases cut with
     | done localRun =>
-      obtain ⟨store, result, labels, silent, checked, canonical⟩ := localRun
-      refine .done silent checked canonical (fun pointer done => ends _ _ _ _ pointer
+      obtain ⟨store, result, labels, silent, checked, canonical, tracked⟩ := localRun
+      refine .done silent checked canonical (fun pointer done depth => ?_) (fun pointer done => ends _ _ _ _ pointer
         ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩ ?_ rfl rfl)
-      subst result
-      exact growth.trans checked.grows
-    | @installed pointer oldSize alignment size rest shorter store labels checked canonical silent paired outside =>
-      refine .allocated pointer oldSize alignment size rest shorter checked canonical silent ?_
+      · subst result
+        exact tracked pointer rfl depth
+      · subst result
+        exact growth.trans checked.grows
+    | @installed pointer oldSize alignment size rest shorter store labels checked canonical silent tracked paired outside =>
+      refine .allocated pointer oldSize alignment size rest shorter checked canonical silent tracked ?_
       intro dispatch leftEntry rightEntry first second wider last seen protectedReturn path covers
       obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, matched, leftSeen, rightSeen, remaining, leftTrail, rightTrail⟩ :=
         replayMarked path covers paired outside
@@ -504,19 +520,23 @@ theorem stringReplay {changes : ReturnFrame.Substitutions (core3 grow) (HostStat
           some (.prog second) := rfl
       have old : Occurrence.Outside changes (Occurrence.segmentStorage last) (Occurrence.segmentStorage other)
           (some (.active 0 0)) := atMark ▸ remaining
-      obtain ⟨otherCursor, residual, _, leftPop, rightPop⟩ := markedReturn (profile := profile) (ready := ready)
+      obtain ⟨otherCursor, residual, rightAt, leftPop, rightPop⟩ := markedReturn (profile := profile) (ready := ready)
         (bindings := bindings) matched old leftAt (rightMark.trans rightInstalled)
       have resumedLeft : first (.nat value) = (runStoreSteps cx value rest >>= checkNext) := rfl
       have resumedRight : second (.nat value) = (runStoreSteps cx value rest >>= canonNext) := rfl
       rw [resumedLeft] at leftPop
       rw [resumedRight] at rightPop
-      refine ⟨otherCursor, leftPop, rightPop, ?_⟩
-      exact ih rest.length shorter value rest
-        (show ChildFrameOver changes { last with ctl := cursor.control (runStoreSteps cx value rest >>= checkNext) }
-          { other with ctl := otherCursor.control (runStoreSteps cx value rest >>= canonNext) } cursor otherCursor from
-          ⟨residual.store, residual.pending, residual.results, residual.cancels, residual.blocked, residual.thread,
-            residual.frames, residual.rest⟩)
-        ((growth.trans checked.grows).trans lhs.grows) rfl rfl rfl
+      refine ⟨otherCursor, leftPop, rightPop, ?_, ?_⟩
+      · intro depth
+        obtain ⟨leftTrack, rightTrack⟩ := tracked depth
+        exact ⟨Occurrence.Trail.through_return leftTrack (atMark ▸ leftTrail) leftAt,
+          Occurrence.Trail.through_return rightTrack (atMark ▸ rightTrail) rightAt⟩
+      · exact ih rest.length shorter value rest
+          (show ChildFrameOver changes { last with ctl := cursor.control (runStoreSteps cx value rest >>= checkNext) }
+            { other with ctl := otherCursor.control (runStoreSteps cx value rest >>= canonNext) } cursor otherCursor from
+            ⟨residual.store, residual.pending, residual.results, residual.cancels, residual.blocked, residual.thread,
+              residual.frames, residual.rest⟩)
+          ((growth.trans checked.grows).trans lhs.grows) rfl rfl rfl
 
 theorem stringFieldReplay {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     (destination : RecordDestination) (inst : InstId) (str : Value.StrVal) (valid : str.Valid)
@@ -593,7 +613,7 @@ theorem stringFieldThen {older : ReturnFrame.Substitutions (core3 grow) (HostSta
   refine ⟨reads, memory, flat, stringReplay (profile := profile) (ready := ready) (bindings := bindings)
     cx 0 plan.steps checked canonical entered growth rfl rfl ?_⟩
   intro lhs rhs check canon pointer frame growing lhsAt rhsAt
-  obtain ⟨store, result, labels, silent, lhsRun, rhsRun⟩ := string_descriptor_cut cx destination.width output plan pointer
+  obtain ⟨store, result, labels, silent, lhsRun, rhsRun, _⟩ := string_descriptor_cut cx destination.width output plan pointer
     lhs rhs check canon (fun value => checkNext (.ok value)) canonNext frame.store lhsAt rhsAt
   refine ⟨store, result, labels, silent, lhsRun, rhsRun, ?_⟩
   intro value success

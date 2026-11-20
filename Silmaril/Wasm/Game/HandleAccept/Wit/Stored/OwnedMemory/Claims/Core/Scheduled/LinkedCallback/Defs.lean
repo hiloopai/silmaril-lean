@@ -231,6 +231,13 @@ inductive StringPlanCut (profile : ProfileKind) (ready : HostReady (HostState si
       (canonical : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) right labels
         (stringReallocEntry ready bindings cx ptr oldSize alignment size rest canonNext { right with store } canon))
       (silent : LocalLeafLabels (.ok ()) labels)
+      (tracked : ∀ depth,
+        ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings)) left (.active 0 depth) labels
+          (stringReallocEntry ready bindings cx ptr oldSize alignment size rest checkNext { left with store } check)
+          (.active 0 (depth + 1)) ∧
+        ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings)) right (.active 0 depth) labels
+          (stringReallocEntry ready bindings cx ptr oldSize alignment size rest canonNext { right with store } canon)
+          (.active 0 (depth + 1)))
       (paired : HostFrame.Related.Paired (ReturnFrame.Extend changes (stringPlanResume cx rest checkNext)
           (stringPlanResume cx rest canonNext))
         (stringReallocEntry ready bindings cx ptr oldSize alignment size rest checkNext { left with store } check)
@@ -262,6 +269,11 @@ inductive StringReplayLayer (profile : ProfileKind) (ready : HostReady (HostStat
         (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result))
       (canonical : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) right labels
         (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result))
+      (tracked : ∀ pointer, result = .ok pointer → ∀ depth,
+        ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings)) left (.active 0 depth) labels
+          { left with store, ctl := check.control (checkNext pointer) } (.active 0 depth) ∧
+        ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings)) right (.active 0 depth) labels
+          { right with store, ctl := canon.control (canonNext pointer) } (.active 0 depth))
       (finished : ∀ pointer, result = .ok pointer → finish
         { left with store, ctl := check.control (checkNext pointer) }
         { right with store, ctl := canon.control (canonNext pointer) } check canon pointer) :
@@ -273,6 +285,13 @@ inductive StringReplayLayer (profile : ProfileKind) (ready : HostReady (HostStat
       (canonical : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) right labels
         (stringReallocEntry ready bindings cx ptr oldSize alignment size rest canonNext { right with store } canon))
       (silent : LocalLeafLabels (.ok ()) labels)
+      (tracked : ∀ depth,
+        ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings)) left (.active 0 depth) labels
+          (stringReallocEntry ready bindings cx ptr oldSize alignment size rest checkNext { left with store } check)
+          (.active 0 (depth + 1)) ∧
+        ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings)) right (.active 0 depth) labels
+          (stringReallocEntry ready bindings cx ptr oldSize alignment size rest canonNext { right with store } canon)
+          (.active 0 (depth + 1)))
       (replay :
         let dispatch := specDispatch ready (host (grow := grow) bindings)
         let leftEntry := stringReallocEntry ready bindings cx ptr oldSize alignment size rest checkNext { left with store } check
@@ -295,6 +314,11 @@ inductive StringReplayLayer (profile : ProfileKind) (ready : HostReady (HostStat
                 let after := { last with ctl := cursor.control (runStoreSteps cx value rest >>= checkNext) }
                 let otherAfter := { other with ctl := otherCursor.control (runStoreSteps cx value rest >>= canonNext) }
                 Step profile ready dispatch last .tau after ∧ Step profile ready dispatch other .tau otherAfter ∧
+                (∀ depth,
+                  ReturnFrame.Occurrence.Prefix profile ready dispatch left (.active 0 depth)
+                    (labels ++ (leftLabels ++ [.tau])) after (.active 0 depth) ∧
+                  ReturnFrame.Occurrence.Prefix profile ready dispatch right (.active 0 depth)
+                    (labels ++ (rightLabels ++ [.tau])) otherAfter (.active 0 depth)) ∧
                 smaller rest.length shorter after otherAfter cursor otherCursor)) :
         StringReplayLayer profile ready bindings older cx checkNext canonNext finish length smaller left right check canon
 
