@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.CollectionVisit.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -22,6 +23,24 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedule
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
 
+private theorem returnRangeSteps {start reached after : State grow sig} {labels mark}
+    (run : ReturnRangeTrace profile ready bindings start reached labels after mark) :
+    Steps profile ready (specDispatch ready (host bindings)) start labels after := by
+  obtain ⟨leading, trailing, rfl, leadingRun, marked, suffix⟩ := run
+  have tail := (ReturnFrame.Occurrence.prefix_survives (suffix 0)).1
+  clear marked suffix
+  induction leadingRun with
+  | refl => exact tail
+  | cons step _ ih => exact .cons step (ih tail)
+
+theorem returnRangeThroughInstall {start entered reached after : State grow sig} {leading labels}
+    (install : ∀ depth, ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings))
+      start (.active 0 depth) leading entered (.active 0 (depth + 1)))
+    (run : ReturnRangeTrace profile ready bindings entered reached labels after (some (.active 0 0))) :
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) start (leading ++ labels) after := by
+  obtain ⟨callbackLabels, localLabels, rfl, _, marked, tail⟩ := run
+  exact ReturnFrame.Occurrence.Trail.through_return_suffix install marked tail
+
 theorem afterRange {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {resume : ReturnFrame.Continuation (core3 grow) (HostState sig)}
     (destination : RecordDestination) (inst : InstId) (type : TypeOf) (area : Layout) (entries : List Field)
@@ -32,7 +51,7 @@ theorem afterRange {older : ReturnFrame.Substitutions (core3 grow) (HostState si
     (cut : RangeCutOver profile ready bindings older resume left right last check destination area entries.length pointer
       (Field.listObjects entries) (fun ptr live => checkedCollectionTail destination inst entries area index output ptr live >>= checkNext)
       (fun ptr => canonicalCollectionTail destination inst entries area output ptr
-        (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) seen False)
+        (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) seen False (some (.active 0 0)))
     (visit : ∀ bytes reference canon, Admitted older destination area entries pointer bytes left last reference check canon →
       next bytes
         { last with ctl := check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext) }
@@ -70,7 +89,7 @@ theorem memoryMap {older : ReturnFrame.Substitutions (core3 grow) (HostState sig
       RangeCutOver profile ready bindings older resume left right last check destination area entries.length pointer
         (Field.listObjects entries) (fun ptr live => checkedCollectionTail destination inst entries area index (.memory address) ptr live >>= checkNext)
         (fun ptr => canonicalCollectionTail destination inst entries area (.memory address) ptr
-          (.memoryMap destination.width key element) >>= canonNext) seen False) :
+          (.memoryMap destination.width key element) >>= canonNext) seen False (some (.active 0 0))) :
     let area := layout destination.width (.record (mapEntryFields key element))
     CollectionVisit.Outcome profile ready bindings older destination inst (.map key element) area entries index pointer (.memory address)
       left right last check checkNext canonNext seen (reachesNext profile ready bindings left.store checkNext canonNext) := by
@@ -99,9 +118,9 @@ theorem reaches {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
       (fun store => Core3.Grows left.store.core store.core) left right check canon checkNext canonNext := by
   cases cut with
   | admitted _ checked canonical checkSeen canonSeen visit =>
-    exact ⟨_, ReachesKeeping.prepend checked canonical (checkSeen.trans canonSeen.symm) visit⟩
+    exact ⟨_, ReachesKeeping.prepend (returnRangeSteps checked) (returnRangeSteps canonical) (checkSeen.trans canonSeen.symm) visit⟩
   | @refused reference canon issue checkLabels canonLabels _ frame checked canonical checkSeen canonSeen =>
-    exact ⟨canon, .refused _, checkLabels, canonLabels, _, _, checked, canonical, frame.store,
+    exact ⟨canon, .refused _, checkLabels, canonLabels, _, _, returnRangeSteps checked, returnRangeSteps canonical, frame.store,
       checkSeen.trans canonSeen.symm, trivial, rfl⟩
   | @rangeTrap reference reason checkLabels canonLabels same checked canonical checkSeen canonSeen =>
     exact ⟨check, .trapped reason, checkLabels, canonLabels, StepDefs.trapCfg last, StepDefs.trapCfg reference,

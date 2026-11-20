@@ -191,6 +191,12 @@ abbrev RetainsActiveSlots (profile : ProfileKind) (ready : HostReady Host) (disp
     (before : Config E Host) (labels : List (Label E Host)) (after : Config E Host) : Prop :=
   ∀ depth, Prefix profile ready dispatch before (.active 0 depth) labels after (.active 0 depth)
 
+/-- The older slots survive a prefix ending one slot shallower. This is the
+coordinate change at a return, followed by any slot-preserving local work. -/
+abbrev RetainsBelowTop (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E))
+    (before : Config E Host) (labels : List (Label E Host)) (after : Config E Host) : Prop :=
+  ∀ depth, Prefix profile ready dispatch before (.active 0 (depth + 1)) labels after (.active 0 depth)
+
 /-- Follow an optional marked occurrence through every actual step. Absence
 can only result from an edit removing the mark, and remains absent afterward. -/
 inductive Trail (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E)) :

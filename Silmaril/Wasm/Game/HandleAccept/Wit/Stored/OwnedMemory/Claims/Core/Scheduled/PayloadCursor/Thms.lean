@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Sequence.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Width.Thms
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCursor.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadCursor
 
 public section
@@ -14,6 +15,7 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.ABI Silmaril.
   Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
   Silmaril.Wasm.Execution.Core
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.RecordLower
+open ReturnFrame.Occurrence (RetainsBelowTop)
 
 variable {grow : SingleThreaded.GrowOracle} {Host : Type}
   {profile : ProfileKind} {ready : HostReady Host}
@@ -103,7 +105,7 @@ theorem RecordDestination.listRange_resume (destination : RecordDestination) (in
     let body := validateListRange (destination.context inst) area count pointer
     match (Plain.runBody body after.store after.host (some thread)).2.2 with
     | .ok value => ∃ labels, (∀ label ∈ labels, label = .tau) ∧
-        Machine.Steps profile ready dispatch after labels
+        RetainsBelowTop profile ready dispatch after labels
           { after with ctl := ⟨thread, .prog (finish value), segments⟩ :: rest }
     | .error (.trapped reason) => ∃ count, Machine.Steps profile ready dispatch after
         (List.replicate count .tau ++ [.trap reason]) (Machine.StepDefs.trapCfg after)
@@ -132,7 +134,7 @@ theorem RecordDestination.listRange_recheck {sig : Stored.Signature} {ready : Ho
     (sized : (core3 grow).memSize? reached.store.core destination.memory = some bytes)
     (bounds : pointer + count * area.size ≤ bytes) :
     ∃ labels, (∀ label ∈ labels, label = .tau) ∧
-      Machine.Steps profile ready dispatch reached labels
+      RetainsBelowTop profile ready dispatch reached labels
         { reached with ctl := ⟨thread, .prog (finish pointer
           (Record.prepare reached.store reached.host.writer plan)), segments⟩ :: rest } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadCursor.list_range_recheck

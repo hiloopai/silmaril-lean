@@ -15,6 +15,16 @@ open Stored.Endpoints Stored.Endpoints.RecordLower PayloadPrefix
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
 
+/-- Carry the older caller slots from the actual allocation install through
+the same marked callback path and valid range/recheck suffix. The checked
+suffix may enter its children or stop with a typed live-claim refusal. -/
+theorem ReturnRangeTrace.through_install {start entered reached after : State grow sig} {leading labels}
+    (install : ∀ depth, ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings))
+      start (.active 0 depth) leading entered (.active 0 (depth + 1)))
+    (run : ReturnRangeTrace profile ready bindings entered reached labels after (some (.active 0 0))) :
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) start (leading ++ labels) after :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.CollectionVisit.returnRangeThroughInstall install run
+
 /-- On the marked return, continue only if both range validation and the
 fresh checked authority plan succeed. A refusal reaches the real typed
 error continuation and leaves the reference at its reached entry prefix. -/
@@ -28,7 +38,7 @@ theorem RangeCutOver.visit_collection {older : ReturnFrame.Substitutions (core3 
     (cut : RangeCutOver profile ready bindings older resume left right last check destination area entries.length pointer
       (Field.listObjects entries) (fun ptr live => checkedCollectionTail destination inst entries area index output ptr live >>= checkNext)
       (fun ptr => canonicalCollectionTail destination inst entries area output ptr
-        (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) seen False)
+        (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) seen False (some (.active 0 0)))
     (visit : ∀ bytes reference canon, CollectionVisit.Admitted older destination area entries pointer bytes left last reference check canon →
       next bytes
         { last with ctl := check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext) }
@@ -55,7 +65,7 @@ theorem RangeCutOver.visit_memory_map {older : ReturnFrame.Substitutions (core3 
       RangeCutOver profile ready bindings older resume left right last check destination area entries.length pointer
         (Field.listObjects entries) (fun ptr live => checkedCollectionTail destination inst entries area index (.memory address) ptr live >>= checkNext)
         (fun ptr => canonicalCollectionTail destination inst entries area (.memory address) ptr
-          (.memoryMap destination.width key element) >>= canonNext) seen False) :
+          (.memoryMap destination.width key element) >>= canonNext) seen False (some (.active 0 0))) :
     let area := layout destination.width (.record (mapEntryFields key element))
     CollectionVisit.Outcome profile ready bindings older destination inst (.map key element) area entries index pointer (.memory address)
       left right last check checkNext canonNext seen (CollectionVisit.reachesNext profile ready bindings left.store checkNext canonNext) :=

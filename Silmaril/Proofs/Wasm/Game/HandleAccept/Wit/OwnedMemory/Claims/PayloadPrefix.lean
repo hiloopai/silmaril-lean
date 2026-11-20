@@ -1004,7 +1004,9 @@ theorem collectionReturnKeepingAt (destination : RecordDestination) (inst : Inst
     exact finishTrap .unalignedPointer prefixed.1 prefixed.2
   by_cases fits : pointer + entries.length * area.size ≤ bytes
   · simp only [ite_eq_right aligned, ite_eq_left fits] at prefixed
-    obtain ⟨⟨checkLabels, checkSilent, checkSteps⟩, ⟨canonLabels, canonSilent, canonSteps⟩⟩ := prefixed
+    obtain ⟨⟨checkLabels, checkSilent, checkTracks⟩, ⟨canonLabels, canonSilent, canonTracks⟩⟩ := prefixed
+    have checkSteps := (ReturnFrame.Occurrence.prefix_survives (checkTracks 0)).1
+    have canonSteps := (ReturnFrame.Occurrence.prefix_survives (canonTracks 0)).1
     cases verdict : Record.prepare left.store left.host.writer (Field.listObjects entries) with
     | ok passed =>
       cases passed

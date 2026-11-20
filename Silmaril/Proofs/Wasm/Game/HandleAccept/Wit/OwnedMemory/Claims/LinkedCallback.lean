@@ -935,10 +935,12 @@ theorem childCollectionInstall {changes : ReturnFrame.Substitutions (core3 grow)
 
 private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) (area : Layout)
     (count pointer : Nat) (plan : List Object) {left right last other : State grow sig} {seen leftLabels rightLabels}
-    {changes older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {allowCommon : Prop}
+    {changes older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {allowCommon : Prop} {mark}
     {cursor canonCursor : Cursor (E := core3 grow) (HostState sig)}
     (lhs : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) left leftLabels last)
     (rhs : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) right rightLabels other)
+    (checkTrail : Occurrence.Trail profile ready (specDispatch ready (host bindings)) left mark leftLabels last mark)
+    (canonTrail : Occurrence.Trail profile ready (specDispatch ready (host bindings)) right mark rightLabels other mark)
     (reached : HostFrame.Related.Paired changes last other)
     (frame : ChildFrameOver older last other cursor canonCursor)
     (seenLeft : visible leftLabels = seen) (seenRight : visible rightLabels = seen)
@@ -953,7 +955,7 @@ private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) 
       let live ← Record.Effects.reserve recordClaims plan
       checkNext ptr live))
     (canonBody : second (.nat pointer) = (validateListRange (destination.context inst) area count pointer >>= canonNext)) :
-    RangeCutOver profile ready bindings older first left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon := by
+    RangeCutOver profile ready bindings older first left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark := by
     have width := lhs.grows.memAddrType present
     obtain ⟨reachedBytes, reachedSize, _⟩ := lhs.grows.memSize sized
     have validation := destination.paired_range_recheck (profile := profile) (ready := ready)
@@ -972,7 +974,7 @@ private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) 
           (StepDefs.trapCfg last))
         (canonical : ∃ steps, Steps profile ready dispatch other (List.replicate steps .tau ++ [.trap reason])
           (StepDefs.trapCfg other)) :
-        RangeCutOver profile ready bindings older first left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon := by
+        RangeCutOver profile ready bindings older first left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark := by
       obtain ⟨checkCount, checked⟩ := checked
       obtain ⟨canonCount, canonical⟩ := canonical
       refine .trapped (reason := reason) frame.store (append lhs.steps checked) (append rhs.steps canonical) ?_ ?_
@@ -988,17 +990,19 @@ private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) 
       exact trapped .unalignedPointer validation.1 validation.2
     by_cases fits : pointer + count * area.size ≤ reachedBytes
     · rw [ite_eq_right unaligned, ite_eq_left fits] at validation
-      obtain ⟨⟨checkLabels, checkSilent, checkSteps⟩, ⟨canonLabels, canonSilent, canonSteps⟩⟩ := validation
+      obtain ⟨⟨checkLabels, checkSilent, checkTracks⟩, ⟨canonLabels, canonSilent, canonTracks⟩⟩ := validation
       have hide {labels : List (Label (core3 grow) (HostState sig))}
           (allTau : ∀ label ∈ labels, label = .tau) : visible labels = [] := by
         apply List.filter_eq_nil_iff.mpr
         intro label member
         simp only [allTau label member, Bool.false_eq_true, not_false_eq_true]
       have canonThread : canonCursor.thread = cursor.thread := frame.thread.symm
-      have canonRun : Steps profile ready dispatch other canonLabels { other with ctl := canonCursor.control (canonNext pointer) } := by
-        simpa only [Cursor.control, canonThread] using canonSteps
+      have canonRun : Occurrence.RetainsBelowTop profile ready dispatch other canonLabels
+          { other with ctl := canonCursor.control (canonNext pointer) } := by
+        simpa only [Cursor.control, canonThread] using canonTracks
       refine .reached (canonCursor := canonCursor) width reachedSize (Classical.not_not.mp unaligned) fits frame lhs.grows
-        (append lhs.steps checkSteps) (append rhs.steps canonRun) ?_ ?_
+        ⟨leftLabels, checkLabels, rfl, lhs.steps, checkTrail, checkTracks⟩
+        ⟨rightLabels, canonLabels, rfl, rhs.steps, canonTrail, canonRun⟩ ?_ ?_
       · rw [show visible (leftLabels ++ checkLabels) = visible leftLabels ++ visible checkLabels from List.filter_append ..,
           seenLeft, hide checkSilent, List.append_nil]
       · rw [show visible (rightLabels ++ canonLabels) = visible rightLabels ++ visible canonLabels from List.filter_append ..,
@@ -1027,7 +1031,8 @@ theorem rangeCutOver (destination : RecordDestination) (inst : InstId) (area : L
     RangeCutOver profile ready bindings changes first left right last cursor destination area count pointer plan checkNext canonNext seen := by
   obtain ⟨leftLabels, rightLabels, other, lhs, rhs, reached, seenLeft, seenRight⟩ := replayFor path covers paired
   obtain ⟨otherFrames, otherRest, ⟨resume, edge, atPop, frame⟩ | ⟨atCommon, still⟩⟩ := classifyPopFor other.host reached leftAt
-  · exact rangeAtReturn destination inst area count pointer plan lhs rhs reached frame seenLeft seenRight
+  · exact rangeAtReturn destination inst area count pointer plan lhs rhs (Occurrence.Trail.absent lhs.steps)
+      (Occurrence.Trail.absent rhs.steps) reached frame seenLeft seenRight
       leftAt atPop present sized checkNext canonNext checkBody (canonBody resume edge)
   · refine .common ⟨leftLabels ++ [.tau], rightLabels ++ [.tau], _,
       (lhs.append (.cons ?_ (.popProg leftAt) (.refl _))).steps,
@@ -1079,7 +1084,8 @@ theorem collectionReplay {older : ReturnFrame.Substitutions (core3 grow) (HostSt
   obtain ⟨otherCursor, residual, rightAt, _, _⟩ := markedReturn (profile := profile) (ready := ready) (bindings := bindings)
     matched (atMark ▸ remaining) leftAt (rightMark.trans installed)
   have alignedThread : otherCursor.thread = cursor.thread := residual.thread.symm
-  exact rangeAtReturn destination inst _ entries.length pointer _ lhs rhs matched residual leftSeen rightSeen leftAt
+  exact rangeAtReturn destination inst _ entries.length pointer _ lhs rhs (atMark ▸ leftTrail) (atMark ▸ rightTrail)
+    matched residual leftSeen rightSeen leftAt
     (by simpa only [Cursor.control, alignedThread] using rightAt) present sized _ _ rfl rfl
 
 theorem rangeCut (destination : RecordDestination) (inst : InstId) (area : Layout) (count pointer : Nat) (plan : List Object)

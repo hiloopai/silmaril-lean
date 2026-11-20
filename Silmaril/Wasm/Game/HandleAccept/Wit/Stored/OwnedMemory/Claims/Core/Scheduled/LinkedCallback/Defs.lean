@@ -570,6 +570,16 @@ def mixedFlatComparison (profile : ProfileKind) (ready : HostReady (HostState si
     (CanonicalHandle field ∧ HandleFieldThen profile ready bindings field index .flat left right check canon checkNext canonNext next) ∨
     stringFlatComparison profile ready bindings older destination inst field index left right check canon checkNext canonNext next
 
+/-- The actual callback prefix and its local return suffix, with exact labels
+and the older active slots tracked through the pop and subsequent checks. -/
+def ReturnRangeTrace (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (start reached : State grow sig) (labels : List (Label (core3 grow) (HostState sig))) (after : State grow sig)
+    (mark : Option ReturnFrame.Occurrence.Location) : Prop :=
+  let dispatch := specDispatch ready (host bindings)
+  ∃ lead tail, labels = lead ++ tail ∧ Steps profile ready dispatch start lead reached ∧
+    ReturnFrame.Occurrence.Trail profile ready dispatch start mark lead reached mark ∧
+    ReturnFrame.Occurrence.RetainsBelowTop profile ready dispatch reached tail after
+
 /-- Stop at the reached range/recheck cut without executing any children.
 On a valid range the checked continuation receives the real live verdict
 (which can refuse); the canonical continuation receives only the pointer.
@@ -581,7 +591,7 @@ inductive RangeCutOver (profile : ProfileKind) (ready : HostReady (HostState sig
     (destination : RecordDestination) (area : Layout) (count pointer : Nat) (plan : List Object)
     (checkNext : Nat → Except Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
     (canonNext : Nat → Session grow sig (Ret (core3 grow))) (seen : List (Label (core3 grow) (HostState sig)))
-    (allowCommon : Prop := True) : Prop where
+    (allowCommon : Prop := True) (mark : Option ReturnFrame.Occurrence.Location := none) : Prop where
   | reached {reference : State grow sig} {canonCursor : Cursor (E := core3 grow) (HostState sig)} {bytes : Nat}
       {checkLabels canonLabels : List (Label (core3 grow) (HostState sig))}
       (width : (core3 grow).memAddrType? last.store.core destination.memory = some destination.width)
@@ -589,22 +599,22 @@ inductive RangeCutOver (profile : ProfileKind) (ready : HostReady (HostState sig
       (aligned : pointer = alignTo pointer area.alignment) (bounds : pointer + count * area.size ≤ bytes)
       (frame : ChildFrameOver changes last reference cursor canonCursor)
       (growth : Core3.Grows left.store.core last.store.core)
-      (checked : Steps profile ready (specDispatch ready (host bindings)) left checkLabels
-        { last with ctl := cursor.control (checkNext pointer (Record.prepare last.store last.host.writer plan)) })
-      (canonical : Steps profile ready (specDispatch ready (host bindings)) right canonLabels
-        { reference with ctl := canonCursor.control (canonNext pointer) })
+      (checked : ReturnRangeTrace profile ready bindings left last checkLabels
+        { last with ctl := cursor.control (checkNext pointer (Record.prepare last.store last.host.writer plan)) } mark)
+      (canonical : ReturnRangeTrace profile ready bindings right reference canonLabels
+        { reference with ctl := canonCursor.control (canonNext pointer) } mark)
       (checkSeen : visible checkLabels = seen) (canonSeen : visible canonLabels = seen) :
-      RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon
+      RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark
   | trapped {reference : State grow sig} {reason : TrapReason}
       {checkLabels canonLabels : List (Label (core3 grow) (HostState sig))}
       (stores : last.store = reference.store)
       (checked : Steps profile ready (specDispatch ready (host bindings)) left checkLabels (StepDefs.trapCfg last))
       (canonical : Steps profile ready (specDispatch ready (host bindings)) right canonLabels (StepDefs.trapCfg reference))
       (checkSeen : visible checkLabels = seen ++ [.trap reason]) (canonSeen : visible canonLabels = seen ++ [.trap reason]) :
-      RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon
+      RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark
   | common (pop : CollectionCommonPopOver profile ready bindings changes left right
       { last with ctl := cursor.control (resume (.nat pointer)) } seen) (allowed : allowCommon) :
-      RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon
+      RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark
 
 abbrev RangeCut (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (first second : ReturnFrame.Continuation (core3 grow) (HostState sig)) :=
@@ -662,7 +672,7 @@ def CollectionReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
     fun checked canonical last cursor pointer seen =>
       RangeCutOver profile ready bindings older first checked canonical last cursor destination area entries.length pointer
         (Field.listObjects entries) (fun ptr live => checkedCollectionTail destination inst entries area index output ptr live >>= checkNext)
-        (fun ptr => canonicalCollectionTail destination inst entries area output ptr mode >>= canonNext) seen False
+        (fun ptr => canonicalCollectionTail destination inst entries area output ptr mode >>= canonNext) seen False (some (.active 0 0))
 
 /-- Allocator descent from the two actual dynamic-field programs. The cut
 hands the entry interpreters back to the caller rather than requiring

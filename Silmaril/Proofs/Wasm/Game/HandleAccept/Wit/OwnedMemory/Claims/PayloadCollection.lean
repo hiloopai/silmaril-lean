@@ -9,6 +9,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Collection.Th
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 import Silmaril.Wasm.Component.Reference.ABI.Layout.Thms
 
 public section
@@ -23,6 +24,7 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims
 open Silmaril.Wasm.Game.HandleAccept.Wit
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {Host : Type}
   {profile : ProfileKind} {ready : HostReady Host}
@@ -202,10 +204,10 @@ theorem paired_range_recheck {sig : Stored.Signature} {ready : HostReady (HostSt
         (Machine.StepDefs.trapCfg canonical))
     if pointer ≠ alignTo pointer area.alignment then trapped .unalignedPointer
     else if pointer + count * area.size ≤ bytes then
-      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch checked labels
+      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsBelowTop profile ready dispatch checked labels
         { checked with ctl := ⟨thread, .prog (checkNext pointer (Record.prepare checked.store checked.host.writer plan)),
           checkedFrames⟩ :: checkedRest }) ∧
-      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch canonical labels
+      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsBelowTop profile ready dispatch canonical labels
         { canonical with ctl := ⟨thread, .prog (canonNext pointer), canonicalFrames⟩ :: canonicalRest })
     else trapped .outOfBounds := by
   have canonSize : (core3 grow).memSize? canonical.store.core destination.memory = some bytes := by
@@ -268,7 +270,11 @@ theorem linked_range_resume {sig : Stored.Signature} {ready : HostReady (HostSta
   rw [destination.listRange_body inst area count pointer reached.store reached.host thread, memSize] at next
   by_cases aligned : pointer ≠ alignTo pointer area.alignment
   · simpa [aligned] using next
-  · by_cases fits : pointer + count * area.size ≤ bytes <;> simpa [aligned, fits] using next
+  · by_cases fits : pointer + count * area.size ≤ bytes
+    · simp only [ite_eq_right aligned, ite_eq_left fits] at next ⊢
+      obtain ⟨labels, silent, tracked⟩ := next
+      exact ⟨labels, silent, (prefix_survives (tracked 0)).1⟩
+    · simpa [aligned, fits] using next
 
 theorem linked_dynamic_refusal {sig : Stored.Signature} {ready : HostReady (HostState sig)}
     (bindings : List (Binding sig)) {initial reached : Machine.Config (core3 grow) (HostState sig)}
@@ -333,7 +339,9 @@ theorem linked_dynamic_refusal {sig : Stored.Signature} {ready : HostReady (Host
         (dispatch := specDispatch ready (host bindings)) reached inst area entries.length pointer
         (Field.listObjects entries) afterCheck resume resumes returned aligned memSize fits
       rw [refusal] at stops
-      cases issue <;> simpa only [afterCheck, checkedDynamicContinue, pure_bind] using stops
+      obtain ⟨labels, silent, tracked⟩ := stops
+      refine ⟨labels, silent, ?_⟩
+      cases issue <;> simpa only [afterCheck, checkedDynamicContinue, pure_bind] using (prefix_survives (tracked 0)).1
     · simpa [area, misaligned, fits] using range
 
 theorem record_field_guard (run : CoreGrowthSteps profile ready dispatch before trace after)

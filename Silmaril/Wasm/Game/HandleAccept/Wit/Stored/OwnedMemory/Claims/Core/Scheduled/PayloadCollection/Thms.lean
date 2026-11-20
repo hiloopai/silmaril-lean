@@ -148,10 +148,10 @@ theorem RecordDestination.paired_range_recheck {sig : Stored.Signature} {ready :
         (Machine.StepDefs.trapCfg canonical))
     if pointer ≠ alignTo pointer area.alignment then trapped .unalignedPointer
     else if pointer + count * area.size ≤ bytes then
-      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch checked labels
+      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready dispatch checked labels
         { checked with ctl := ⟨thread, .prog (checkNext pointer (Record.prepare checked.store checked.host.writer plan)),
           checkedFrames⟩ :: checkedRest }) ∧
-      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch canonical labels
+      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready dispatch canonical labels
         { canonical with ctl := ⟨thread, .prog (canonNext pointer), canonicalFrames⟩ :: canonicalRest })
     else trapped .outOfBounds :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadCollection.paired_range_recheck
@@ -181,7 +181,7 @@ theorem RecordDestination.checked_dynamic_recheck {sig : Stored.Signature} {read
     let cx := destination.context (grow := grow) inst
     let authority := Record.authority recordClaims Limits.spec cx
     ∃ labels, (∀ label ∈ labels, label = .tau) ∧
-      Machine.Steps profile ready dispatch reached labels
+      ReturnFrame.Occurrence.RetainsBelowTop profile ready dispatch reached labels
         { reached with ctl := ⟨thread, .prog (checkedDynamicContinue Limits.spec Quirks.none cx authority
             destination.width element entries index output pointer
             (Record.prepare reached.store reached.host.writer (Field.listObjects entries)) >>= finish),
