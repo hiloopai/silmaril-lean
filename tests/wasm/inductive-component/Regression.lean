@@ -12,6 +12,7 @@ import Silmaril.Wasm.Execution.Core.Exec.InstantiateIff
 import Silmaril.Wasm.Execution.Core.Exec.ValCheck
 import Silmaril.Wasm.Game.Machine.Thms
 import Silmaril.Wasm.Game.Strategy.Thms
+import Silmaril.Wasm.Institution.DirectLiftTerminal.Thms
 import Silmaril.Wasm.SingleThreaded.Exec.CheckedRun
 import Silmaril.Wasm.Verify.Kernel.Thms
 
@@ -382,6 +383,32 @@ private theorem linkedReadback {final : Component.Machine.Config (core3P selecte
     cases rejects
   | deadlock => exact False.elim reports
 
+open Silmaril.Wasm.Institution.DirectLiftTerminal
+
+private noncomputable def terminalModel : ComponentModel selected wireExport where
+  wire := wire
+  shared := (coreConsumer (ProfileHost selected)).store
+  entry := gameInstance
+  question := question
+  args := []
+  profile := oracle.prof
+  call := 7
+  prepared := preparations selected
+  boundary := boundary selected
+  signature := rfl
+  named := rfl
+
+private def returns42 : Sentence := fun out store =>
+  out = .resolved (some [.u32 42]) ∧ store = (coreTerminal Nat).store
+
+open CategoryTheory in
+example : (institution selected wireExport).Sat (1 : Fin 2) ⟨terminalModel⟩ returns42 := by
+  have arrow : (0 : Fin 2) ≤ 1 := by decide
+  apply ((institution selected wireExport).satisfaction (homOfLE arrow) ⟨terminalModel⟩ returns42).2
+  exact ⟨.resolved (some [.u32 42]), (coreTerminal Nat).store,
+    ⟨coreTerminal Nat, .values [.i32 42], executeRun, ⟨[Flat.i32 42], [.u32 42], rfl, rfl, rfl⟩, rfl⟩,
+    rfl, rfl⟩
+
 #print axioms consumerReady
 #print axioms coreNamedEntry
 #print axioms coreReturnUnique
@@ -399,6 +426,8 @@ private theorem linkedReadback {final : Component.Machine.Config (core3P selecte
 #print axioms wrongWire
 #print axioms linkedForward
 #print axioms linkedReadback
+#print axioms ComponentModel.reaches_iff
+#print axioms institution
 
 end Runtime
 
