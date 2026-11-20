@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Callback
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackDelivery
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackEarly
 
 public section
 
@@ -214,5 +215,61 @@ theorem CallbackCancelImport.delivers_started {wait : CallbackWait grow sig}
         (cancel.cancelledReply exited .cancelledBeforeReturned) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCancelDeliversStarted entry cancel
     empty resolution started indexed resumer implicitThread threadIndex remove identityFrames run focused returned decoded
+
+/-- A ready K2 or K3 may take the profile's early branch. The actual
+suffix is reached directly, without a saved activation or a resume event. -/
+theorem CallbackWait.takes_early (wait : CallbackWait grow sig) (available : wait.readyAt start = true)
+    (allowed : Allowed profile (.earlyReturn wait.site) true) :
+    Steps profile ready (specDispatch ready impl) (wait.entry start rest)
+      [.tau, .tau, .choice (.earlyReturn wait.site) true] (wait.early start rest) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackEarly wait available allowed
+
+/-- The reached K2 suffix without a pending cancel invokes Core with NONE
+after retaking the lock. This applies both to early entry and to a resume. -/
+theorem CallbackWait.yield_calls_none (wait : CallbackWait grow sig) (kind : wait.kind = .yield)
+    (focused : reached.ctl = wait.saved :: rest)
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback) :
+    Steps profile ready (specDispatch ready impl) reached (List.replicate 3 .tau)
+      (wait.eventCall reached reached.store callback .none rest) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackYieldNone wait kind focused live noCancel chosen
+
+/-- Without pending cancellation, K3 decrements the waiter count, shuffles
+and takes the selected waitable's event on the reached store, then retakes
+the lock and passes that exact event to Core. -/
+theorem CallbackWait.wait_calls_event (wait : CallbackWait grow sig) {set : WsetId} (kind : wait.kind = .wait set)
+    (focused : reached.ctl = wait.saved :: rest)
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {record : WaitableSet} (setLive : (wait.decrement reached.store).wset? set = some record)
+    {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation)
+    {selected : Waitable} (selects : (applyPerm permutation record.elems).find?
+      (wait.shuffled reached.store set record permutation).waitableHasEvent = some selected)
+    {taken : CStore (core3 grow)} {event : EventTuple}
+    (take : (wait.shuffled reached.store set record permutation).takeWaitableEvent selected = (taken, some event))
+    {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback) :
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau)
+      (wait.eventCall reached taken callback event rest) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackWaitEvent wait kind focused live noCancel
+    setLive allowed selects take chosen
+
+/-- A reached K3 suffix (for example, after a forced resume) on a live empty
+set still decrements the count and shuffles before trapping. It never
+retakes the callback lock or calls Core with a fabricated NONE event. -/
+theorem CallbackWait.wait_traps_empty (wait : CallbackWait grow sig) {set : WsetId} (kind : wait.kind = .wait set)
+    (focused : reached.ctl = wait.saved :: rest)
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {record : WaitableSet} (setLive : (wait.decrement reached.store).wset? set = some record)
+    (empty : (wait.decrement reached.store).wsetHasEvent set = false)
+    {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation) :
+    Steps profile ready (specDispatch ready impl) reached
+      [.tau, .tau, .tau, .choice (.shuffle record.elems.length) permutation, .tau, .tau,
+        .trap (.internal "WaitableSet.get_pending_event: no pending event")]
+      (StepDefs.trapCfg { reached with store := wait.shuffled reached.store set record permutation }) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackWaitEmpty wait kind focused live noCancel
+    setLive empty allowed
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

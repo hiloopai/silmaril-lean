@@ -200,4 +200,24 @@ def CallbackWait.coreAt (wait : CallbackWait grow sig) (base : Config (core3 gro
     store := { base.store with core := coreStore }
     ctl := ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest }
 
+/-- The ready branch enters the same suffix as resumption, without
+installing a saved continuation or changing the thread's wait status. -/
+def CallbackWait.early (wait : CallbackWait grow sig) (start : Config (core3 grow) (HostState sig))
+    (rest : List (Activation (core3 grow) (HostState sig))) : Config (core3 grow) (HostState sig) :=
+  { start with
+    store := wait.released start.store
+    ctl := wait.saved :: rest }
+
+def CallbackWait.eventCall (wait : CallbackWait grow sig) (base : Config (core3 grow) (HostState sig))
+    (store : CStore (core3 grow)) (callback : (core3 grow).FuncAddr) (event : EventTuple)
+    (rest : List (Activation (core3 grow) (HostState sig))) : Config (core3 grow) (HostState sig) :=
+  { base with
+    store := LiftSt.retakeCallbackSt wait.task.inst wait.thread store
+    ctl := ⟨some wait.thread, .core ((core3 grow).invoke callback (event.callbackArgs.map i32Flat))
+      wait.afterCore, wait.segments⟩ :: rest }
+
+def CallbackWait.shuffled (wait : CallbackWait grow sig) (store : CStore (core3 grow)) (set : WsetId)
+    (record : WaitableSet) (permutation : List Nat) : CStore (core3 grow) :=
+  (wait.decrement store).wsetSetElemsSt set (applyPerm permutation record.elems)
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

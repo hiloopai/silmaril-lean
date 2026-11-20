@@ -1229,6 +1229,13 @@ original caller consumes it, releases the lends and gets its Core result. An
 unfinished prefix is not delivery; intervening callouts and wait iterations
 are outside this suffix theorem.
 
+For ready K2/K3, `CallbackWait.takes_early` follows the permitted early
+choice to the same suffix used by resumption, without blocking. The no-cancel
+suffixes then pass NONE at K2 or take a reached selected event at K3. K3
+decrements the waiter count before the shuffle and takes the event before
+retaking the lock and calling Core. The selected event and Core callback return
+are separate observations.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery
