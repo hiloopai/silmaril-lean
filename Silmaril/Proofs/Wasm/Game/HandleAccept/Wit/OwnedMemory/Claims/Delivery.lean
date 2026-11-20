@@ -256,24 +256,29 @@ theorem resumeWaitEmpty {atResume : Config (core3 grow) (HostState sig)} {wait :
   exact appendSteps (resumeTrackedWait resume prefixRun)
     (get_shuffles_empty (config := resume.reached) wait.ws record perm live empty allowed reply rfl)
 
-theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
-    (tick : WaitTick wait atHost ready profile) (saved : atHost.cont? wait.thread = some wait.saved) :
-    Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached := by
-  have member : wait.thread ∈ (StepDefs.enterHostSt atHost.store).candidates (ready atHost.host) := by
-    rw [tick.candidates, ← tick.selected]
-    exact List.getElem_mem _
+theorem selectedTickWaiting {atHost : Config (core3 grow) (HostState sig)} {thread : ThreadId}
+    (tick : SelectedTick thread atHost ready profile) : tick.atResume.store.threadIs Thread.waiting thread = true := by
+  have member : thread ∈ (StepDefs.enterHostSt atHost.store).candidates (ready atHost.host) := by
+    rw [tick.candidates]
+    have picked : (tick.first :: tick.others)[tick.pick.val]'(by simpa only [List.length_cons] using tick.pick.isLt) ∈
+        tick.first :: tick.others := List.getElem_mem _
+    simpa only [tick.selected] using picked
   have available := (List.mem_filter.mp member).2
   let entered := StepDefs.enterHostSt atHost.store
-  have waiting : entered.threadIs Thread.waiting wait.thread = true := by
-    change entered.threadReady (ready atHost.host) wait.thread = true at available
-    unfold CStore.threadReady CStore.threadIs at available
-    unfold CStore.threadIs
-    cases live : entered.thread? wait.thread with
-    | none => simp [live] at available
-    | some record =>
-      rw [live] at available
-      cases condition : record.readyCond <;> simp [Thread.ready, Thread.waiting, condition] at available ⊢
-      exact available.1
+  change entered.threadReady (ready atHost.host) thread = true at available
+  change entered.threadIs Thread.waiting thread = true
+  unfold CStore.threadReady CStore.threadIs at available
+  unfold CStore.threadIs
+  cases live : entered.thread? thread with
+  | none => simp [live] at available
+  | some record =>
+    rw [live] at available
+    cases condition : record.readyCond <;> simp [Thread.ready, Thread.waiting, condition] at available ⊢
+    exact available.1
+
+private theorem selectTick {atHost : Config (core3 grow) (HostState sig)} {thread : ThreadId}
+    (tick : SelectedTick thread atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) atHost tick.selectionLabels tick.atResume := by
   refine .cons (.hostTick tick.hostReady) (.cons (.modify rfl) (.cons (.get rfl) (.cons (.hostGet rfl) ?_)))
   simp [Prog.bind, tick.candidates, pickTick, Prog.bind_assoc]
   let resumePick : Fin (tick.others.length + 1) → Session grow sig (Ret (core3 grow)) := fun pick =>
@@ -281,9 +286,13 @@ theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : Pa
       fun () => modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit
   refine .cons (Step.choose (ck := .tickPick tick.others.length) (k := resumePick) tick.pick rfl tick.allowed) ?_
   simp only [resumePick, tick.selected]
-  let after : Session grow sig (Ret (core3 grow)) := modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit
-  let resumed := { atHost with store := entered, ctl := [Activation.ofProg none (Thread.resume wait.thread >>= fun () => after)] }
-  exact resumeWait (atResume := resumed) ⟨none, after, [], [], rfl, waiting⟩ saved
+  exact .refl _
+
+theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (tick : WaitTick wait atHost ready profile) (saved : atHost.cont? wait.thread = some wait.saved) :
+    Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached :=
+  appendSteps (selectTick tick) (resumeWait (atResume := tick.atResume)
+    ⟨none, _, [], [], rfl, selectedTickWaiting tick⟩ saved)
 
 private theorem waitDelivery {reached : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
     (delivery : WaitDelivery wait reached profile subtask)
@@ -417,7 +426,7 @@ theorem cancelRequests (cancel : ParkedCancel parked subtask) (record : Subtask)
       modifyStore (Builtins.WaitableSt.requestCancel subtask thread)
       let returned ← callRet (.onCancel record.onCancel)
       cancel.afterCallback returned) := by
-    simp only [Builtins.subtaskCancelRequest, ParkedCancel.afterCallback, callUnit, ParkedCancel.result,
+    simp only [Builtins.subtaskCancelRequest, ParkedCancel.afterCallback, ParkedCancel.finish, callUnit, ParkedCancel.result,
       cancelResultWords, bind_assoc]
     congr 1
     funext runningThread
@@ -431,29 +440,24 @@ theorem cancelRequests (cancel : ParkedCancel parked subtask) (record : Subtask)
   change Steps profile ready (specDispatch ready impl) _ [] _
   exact .refl _
 
-theorem cancelStartedBlocked (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel) :
-    Steps profile ready (specDispatch ready impl) parked (List.replicate 24 .tau) request.resumed := by
+private theorem startedCancelMarked (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel) :
+    request.callbackReturned.store.subtask? subtask = some { request.record with
+      cancellationRequested := true
+      common := { request.record.common with hasSyncWaiter := true, syncOwner := some cancel.thread } } := by
+  change ArenaField.subtasks.get? (ArenaField.subtasks.modify parked.store subtask _) subtask = _
+  rw [ArenaField.get?_modify_self]
+  have requestLive := request.live
+  rw [CStore.subtask?] at requestLive
+  rw [requestLive]
+  rfl
+
+theorem cancelStartedReturns (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 20 .tau) request.callbackReturned := by
   let marked := cancel.callbackEntry request.record ready impl
-  let pending := marked.store.setTaskState request.taskId .pendingCancel
   have taskLive : ArenaField.tasks.get? (cancel.callbackEntry request.record ready impl).store
       request.taskId = some request.callee := request.taskLive
   have threadLive : ArenaField.threads.get? ((cancel.callbackEntry request.record ready impl).store.setTaskState
       request.taskId .pendingCancel) request.implicitThread = some request.implicitState := request.threadLive
-  have hasRequest : pending.subtask? subtask = some { request.record with
-      cancellationRequested := true
-      common := { request.record.common with hasSyncWaiter := true, syncOwner := some cancel.thread } } := by
-    change ArenaField.subtasks.get? (ArenaField.subtasks.modify parked.store subtask _) subtask = _
-    rw [ArenaField.get?_modify_self]
-    have requestLive := request.live
-    rw [CStore.subtask?] at requestLive
-    rw [requestLive]
-    rfl
-  have stillUnresolved : (((cancel.callbackEntry request.record ready impl).store.setTaskState request.taskId .pendingCancel)
-      |>.setSyncWaiterSt (.subtask subtask) none).subtaskResolved subtask = false := by
-    change (pending.setSyncWaiterSt (.subtask subtask) none).subtaskResolved subtask = false
-    simp only [CStore.subtaskResolved, CStore.setSyncWaiterSt, CStore.modifyWaitableCommon, CStore.subtask?,
-      ArenaField.get?_modify_self, show ArenaField.subtasks.get? pending subtask = _ from hasRequest,
-      Option.map_some, request.unresolved]
   have called : marked.ctl = ⟨some cancel.thread, .prog (do
       Task.requestCancellation ready request.taskId
       pure .unit), .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest := by
@@ -466,11 +470,137 @@ theorem cancelStartedBlocked (cancel : ParkedCancel parked subtask) (request : S
   simp [Prog.bind, threadLive, pure]
   refine .cons (.get rfl) (.cons (.hostGet rfl) ?_)
   simp [Prog.bind, request.notCancellable, pure]
-  refine .cons (.popProg rfl) (.cons (.get rfl) ?_)
-  simp [Prog.bind, request.asynchronous, pure]
+  exact .cons (.popProg rfl) (.refl _)
+
+theorem cancelStartedBlocked (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel)
+    (asynchronous : cancel.async_ = true) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 24 .tau) request.resumed := by
+  have live := startedCancelMarked cancel request
+  have stillUnresolved : request.settledStore.subtaskResolved subtask = false := by
+    change (request.callbackReturned.store.setSyncWaiterSt (.subtask subtask) none).subtaskResolved subtask = false
+    simp only [CStore.subtaskResolved, CStore.setSyncWaiterSt, CStore.modifyWaitableCommon, CStore.subtask?,
+      ArenaField.get?_modify_self, show ArenaField.subtasks.get? request.callbackReturned.store subtask = _ from live,
+      Option.map_some, request.unresolved]
+  change (((Builtins.WaitableSt.requestCancel subtask cancel.thread parked.store).setTaskState request.taskId
+    .pendingCancel).setSyncWaiterSt (.subtask subtask) none).subtaskResolved subtask = false at stillUnresolved
+  refine appendSteps (cancelStartedReturns cancel request) (.cons (.get rfl) ?_)
+  simp [StartedCancel.callbackReturned, ParkedCancel.afterCallback, Builtins.subtaskCancelSyncWait,
+    Prog.bind, asynchronous, pure, ParkedCancel.finish]
   refine .cons (.modify rfl) (.cons (.get rfl) ?_)
   simp [Prog.bind, stillUnresolved, ParkedCancel.result, pure]
   exact .cons (.popCore rfl) (.refl _)
+
+def startedCancelWait (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel)
+    (synchronous : cancel.async_ = false) : SyncCancelWait cancel request.callbackReturned :=
+  ⟨synchronous, by simp only [CStore.subtaskResolved, startedCancelMarked cancel request,
+    request.unresolved], cancel.rest, rfl⟩
+
+theorem syncCancelBlocks {atReturn} (cancel : ParkedCancel parked subtask) (wait : SyncCancelWait cancel atReturn) :
+    Steps profile ready (specDispatch ready impl) atReturn (List.replicate 5 .tau) wait.blocked := by
+  have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) wait.focused
+  simp [Prog.bind, pure, wait.synchronous,
+    wait.unresolved, Thread.waitUntilGuest, Thread.waitUntil, Prog.bind_assoc] at read
+  refine .cons read (.cons (.currentThread rfl) (.cons (.get rfl) ?_))
+  simp [ReadyCond.eval, wait.unresolved, Prog.bind, pure, Thread.startWaiting]
+  exact .cons (.modify rfl) (.cons (.block rfl) (.refl _))
+
+theorem startedCancelBlocks (cancel : ParkedCancel parked subtask) (request : StartedCancel cancel)
+    (synchronous : cancel.async_ = false) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 25 .tau)
+      (startedCancelWait cancel request synchronous).blocked := by
+  rw [show (25 : Nat) = 20 + 5 by rfl, List.replicate_add]
+  exact appendSteps (cancelStartedReturns cancel request)
+    (syncCancelBlocks cancel (startedCancelWait cancel request synchronous))
+
+private theorem resumeSyncCancel {atResume} (cancel : ParkedCancel parked subtask)
+    (resume : SyncCancelResume cancel atResume) (saved : atResume.cont? cancel.thread = some cancel.saved) :
+    Steps profile ready (specDispatch ready impl) atResume (List.replicate 3 .tau) resume.reached := by
+  have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) resume.focused
+  simp [Prog.bind, resume.waiting, Thread.stopWaiting] at read
+  exact .cons read (.cons (.modify rfl) (.cons (.resumeThread rfl saved) (.refl _)))
+
+theorem syncCancelResumes {atReturn atResume leading} (cancel : ParkedCancel parked subtask)
+    (wait : SyncCancelWait cancel atReturn) (resume : SyncCancelResume cancel atResume)
+    (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) cancel.thread wait.blocked leading atResume) :
+    Steps profile ready (specDispatch ready impl) wait.blocked (leading ++ List.replicate 3 .tau) resume.reached := by
+  have saved : wait.blocked.cont? cancel.thread = some cancel.saved := Config.cont?_setCont_self _ _ _
+  obtain ⟨run, reached⟩ := prefixRun.reaches
+  exact appendSteps run (resumeSyncCancel cancel resume (reached.trans saved))
+
+theorem syncCancelDelivers {atResume} (cancel : ParkedCancel parked subtask)
+    (resume : SyncCancelResume cancel atResume) (pending : PendingAt atResume.store subtask index) :
+    Steps profile ready (specDispatch ready impl) resume.reached (List.replicate 6 .tau) resume.delivered := by
+  obtain ⟨record, live, returned, indexed, queued⟩ := pending
+  let cleared := resume.reached.store.setSyncWaiterSt (.subtask subtask) none
+  let changed := { record with common := { record.common with hasSyncWaiter := false, syncOwner := none } }
+  have before : ArenaField.subtasks.get? resume.reached.store subtask = some record := live
+  have clearedLive : cleared.subtask? subtask = some changed := by
+    simp only [cleared, changed, CStore.setSyncWaiterSt, CStore.modifyWaitableCommon, CStore.subtask?,
+      ArenaField.get?_modify_self, before, Option.map_some]
+    rfl
+  have resolved : cleared.subtaskResolved subtask = true := by
+    simp [CStore.subtaskResolved, clearedLive, changed, returned, SubtaskState.resolved]
+  let reply : EventTuple → Session grow sig (Ret (core3 grow)) := fun _ => do
+    let current ← getObj ArenaField.subtasks subtask
+    pure (.flat [i32Flat (subtaskCancelResult (some current.state))])
+  let activations := ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest
+  let entered := { resume.reached with
+    store := cleared
+    ctl := ⟨some cancel.thread, .prog (Waitable.getPendingEvent (.subtask subtask) >>= reply),
+      .core cancel.core cancel.next :: cancel.segments⟩ :: activations }
+  have enter : Steps profile ready (specDispatch ready impl) resume.reached (List.replicate 2 .tau) entered := by
+    refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+    simp [Prog.bind, cleared, resolved, ParkedCancel.result, Builtins.subtaskCancelDeliver,
+      Prog.bind_assoc, reply, entered, pure]
+    exact .refl _
+  have take := deliver_pending (prof := profile) (ready := ready) (dispatch := specDispatch ready impl)
+    (config := entered) subtask changed index clearedLive returned indexed queued reply rfl
+  obtain ⟨settled, settledLive, _, _, state, _⟩ := consumeClears cleared ⟨changed, clearedLive, returned, indexed, queued⟩
+  have lookup : ArenaField.subtasks.get? (cancelDelivered cleared subtask) subtask = some settled := settledLive
+  simp only [cancelDelivered] at lookup
+  refine appendSteps (appendSteps enter take) (.cons (.get rfl) ?_)
+  simp [entered, Prog.bind, lookup, pure, state]
+  exact .cons (.popCore rfl) (.refl _)
+
+theorem syncCancelLinkedTick {atReturn resolving atHost whileBlocked between}
+    (cancel : ParkedCancel parked subtask) (wait : SyncCancelWait cancel atReturn)
+    (runs : ParkedPrefix profile ready (specDispatch ready impl) cancel.thread wait.blocked whileBlocked resolving)
+    (resolve : LinkedResolution resolving subtask index)
+    (path : ParkedRetaining profile ready (specDispatch ready impl) cancel.thread subtask index resolve.committed between atHost)
+    (tick : SelectedTick cancel.thread atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) atReturn
+      (List.replicate 5 .tau ++ whileBlocked ++ List.replicate 17 .tau ++ between ++
+        tick.selectionLabels ++ List.replicate 9 .tau)
+      (SyncCancelResume.afterTick tick (selectedTickWaiting tick)).delivered := by
+  obtain ⟨commitRun, queued⟩ := resolutionIndexedParked (profile := profile) (ready := ready) (impl := impl) resolve
+  obtain ⟨replay, pending⟩ := retainingParked path queued
+  obtain ⟨before, keptBefore⟩ := runs.reaches
+  obtain ⟨commits, keptCommit⟩ := (commitRun cancel.thread).reaches
+  obtain ⟨after, keptAfter⟩ := replay.reaches
+  have saved : atHost.cont? cancel.thread = some cancel.saved :=
+    keptAfter.trans (keptCommit.trans (keptBefore.trans (Config.cont?_setCont_self _ _ _)))
+  let resume := SyncCancelResume.afterTick (cancel := cancel) tick (selectedTickWaiting tick)
+  have deliver := appendSteps (profile := profile) (ready := ready) (impl := impl)
+    (resumeSyncCancel cancel resume saved) (syncCancelDelivers cancel resume pending)
+  simpa only [List.append_assoc, ← List.replicate_add] using
+    appendSteps (appendSteps (appendSteps (appendSteps (appendSteps (syncCancelBlocks cancel wait) before) commits)
+    after) (selectTick tick)) deliver
+
+theorem startedCancelLinkedTick {resolving atHost whileBlocked between} (cancel : ParkedCancel parked subtask)
+    (request : StartedCancel cancel) (synchronous : cancel.async_ = false)
+    (runs : ParkedPrefix profile ready (specDispatch ready impl) cancel.thread
+      (startedCancelWait cancel request synchronous).blocked whileBlocked resolving)
+    (resolve : LinkedResolution resolving subtask index)
+    (path : ParkedRetaining profile ready (specDispatch ready impl) cancel.thread subtask index resolve.committed between atHost)
+    (tick : SelectedTick cancel.thread atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) parked
+      (List.replicate 25 .tau ++ whileBlocked ++ List.replicate 17 .tau ++ between ++
+        tick.selectionLabels ++ List.replicate 9 .tau)
+      (SyncCancelResume.afterTick tick (selectedTickWaiting tick)).delivered := by
+  have run := syncCancelLinkedTick (impl := impl) cancel (startedCancelWait cancel request synchronous) runs resolve path tick
+  have full := appendSteps (cancelStartedReturns cancel request) run
+  rw [show (25 : Nat) = 20 + 5 by rfl, List.replicate_add]
+  simpa only [List.append_assoc] using full
 
 theorem cancelReturned (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index)
     (available : CancelAvailable parked.store subtask) :

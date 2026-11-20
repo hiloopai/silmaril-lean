@@ -184,9 +184,81 @@ theorem ParkedCancel.requests (cancel : ParkedCancel parked subtask) (record : S
 
 /-- On this closed guest callback path, cancel marks the started task pending
 cancel, clears the temporary waiter and returns BLOCKED to the same Core caller. -/
-theorem StartedCancel.resumes_blocked {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel) :
+theorem StartedCancel.resumes_blocked {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel)
+    (asynchronous : cancel.async_ = true) :
     Steps profile ready (specDispatch ready impl) parked (List.replicate 24 .tau) request.resumed :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelStartedBlocked cancel request
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelStartedBlocked cancel request asynchronous
+
+theorem StartedCancel.returns_from_callback {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 20 .tau) request.callbackReturned :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelStartedReturns cancel request
+
+def StartedCancel.syncWait {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel)
+    (synchronous : cancel.async_ = false) : SyncCancelWait cancel request.callbackReturned :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.startedCancelWait cancel request synchronous
+
+/-- With an unresolved subtask, K8 blocks without an early-return choice and
+saves the original Core continuation. -/
+theorem SyncCancelWait.blocks {cancel : ParkedCancel parked subtask} {atReturn : Config (core3 grow) (HostState sig)}
+    (wait : SyncCancelWait cancel atReturn) :
+    Steps profile ready (specDispatch ready impl) atReturn (List.replicate 5 .tau) wait.blocked :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.syncCancelBlocks cancel wait
+
+theorem StartedCancel.blocks {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel)
+    (synchronous : cancel.async_ = false) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 25 .tau) (request.syncWait synchronous).blocked :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.startedCancelBlocks cancel request synchronous
+
+theorem SyncCancelResume.resumes_tracked {cancel : ParkedCancel parked subtask}
+    {atReturn atResume : Config (core3 grow) (HostState sig)} {leading}
+    (resume : SyncCancelResume cancel atResume) (wait : SyncCancelWait cancel atReturn)
+    (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) cancel.thread wait.blocked leading atResume) :
+    Steps profile ready (specDispatch ready impl) wait.blocked (leading ++ List.replicate 3 .tau) resume.reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.syncCancelResumes cancel wait resume prefixRun
+
+/-- After resumption, a reached pending return is consumed before the same
+Core caller receives its reply. This uses the reached event, not the request-time state. -/
+theorem SyncCancelResume.delivers_returned {cancel : ParkedCancel parked subtask}
+    {atResume : Config (core3 grow) (HostState sig)} (resume : SyncCancelResume cancel atResume)
+    (pending : PendingAt atResume.store subtask index) :
+    Steps profile ready (specDispatch ready impl) resume.reached (List.replicate 6 .tau) resume.delivered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.syncCancelDelivers cancel resume pending
+
+theorem SelectedTick.waiting {thread : ThreadId} {atHost : Config (core3 grow) (HostState sig)}
+    (tick : SelectedTick thread atHost ready profile) : tick.atResume.store.threadIs Thread.waiting thread = true :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.selectedTickWaiting tick
+
+/-- Commit the linked result while K8 is parked, then deliver it to the original
+caller when the scheduler actually selects that saved thread on a tick. -/
+theorem SyncCancelWait.linked_tick_delivers {cancel : ParkedCancel parked subtask}
+    {atReturn resolving atHost : Config (core3 grow) (HostState sig)} {whileBlocked between}
+    (wait : SyncCancelWait cancel atReturn)
+    (runs : ParkedPrefix profile ready (specDispatch ready impl) cancel.thread wait.blocked whileBlocked resolving)
+    (resolve : LinkedResolution resolving subtask index)
+    (path : ParkedRetaining profile ready (specDispatch ready impl) cancel.thread subtask index resolve.committed between atHost)
+    (tick : SelectedTick cancel.thread atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) atReturn
+      (List.replicate 5 .tau ++ whileBlocked ++ List.replicate 17 .tau ++ between ++
+        tick.selectionLabels ++ List.replicate 9 .tau)
+      (SyncCancelResume.afterTick tick tick.waiting).delivered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.syncCancelLinkedTick cancel wait runs resolve path tick
+
+/-- The closed started-task route reaches K8 from the original Core callout;
+no callback-return or saved-activation equality is a premise. -/
+theorem StartedCancel.linked_tick_delivers {cancel : ParkedCancel parked subtask}
+    {resolving atHost : Config (core3 grow) (HostState sig)} {whileBlocked between}
+    (request : StartedCancel cancel) (synchronous : cancel.async_ = false)
+    (runs : ParkedPrefix profile ready (specDispatch ready impl) cancel.thread
+      (request.syncWait synchronous).blocked whileBlocked resolving)
+    (resolve : LinkedResolution resolving subtask index)
+    (path : ParkedRetaining profile ready (specDispatch ready impl) cancel.thread subtask index resolve.committed between atHost)
+    (tick : SelectedTick cancel.thread atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) parked
+      (List.replicate 25 .tau ++ whileBlocked ++ List.replicate 17 .tau ++ between ++
+        tick.selectionLabels ++ List.replicate 9 .tau)
+      (SyncCancelResume.afterTick tick tick.waiting).delivered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.startedCancelLinkedTick cancel request
+    synchronous runs resolve path tick
 
 theorem ParkedCancel.delivered_clears (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index) :
     ∃ record, cancel.resumed.store.subtask? subtask = some record ∧ record.common.pending = none ∧

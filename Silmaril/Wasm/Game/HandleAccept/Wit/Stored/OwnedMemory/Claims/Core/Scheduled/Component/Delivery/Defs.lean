@@ -241,9 +241,9 @@ def WaitResume.reached {cfg atResume : Config (core3 grow) (HostState sig)} {wai
     ctl := ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ ::
       ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest }
 
-/-- The host is allowed to tick, the actual saved activation still occupies
-its slot, and the scheduler chooses it from the current ready candidates. -/
-structure WaitTick {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg)
+/-- Admission and selection of a thread from the reached scheduler candidates.
+The saved activation in that slot is tracked separately. -/
+structure SelectedTick (thread : ThreadId)
     (atHost : Config (core3 grow) (HostState sig)) (ready : HostReady (HostState sig)) (profile : ProfileKind) where
   hostReady : StepDefs.HostReadyCfg atHost
   first : ThreadId
@@ -251,7 +251,23 @@ structure WaitTick {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWai
   candidates : (StepDefs.enterHostSt atHost.store).candidates (ready atHost.host) = first :: others
   pick : Fin (others.length + 1)
   allowed : Allowed profile (.tickPick others.length) pick
-  selected : (first :: others)[pick.val]'(by simpa only [List.length_cons] using pick.isLt) = wait.thread
+  selected : (first :: others)[pick.val]'(by simpa only [List.length_cons] using pick.isLt) = thread
+
+abbrev WaitTick {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg) :=
+  SelectedTick (grow := grow) (sig := sig) wait.thread
+
+def SelectedTick.atResume {thread : ThreadId} {atHost : Config (core3 grow) (HostState sig)}
+    {ready : HostReady (HostState sig)} {profile : ProfileKind} (_tick : SelectedTick thread atHost ready profile) :
+    Config (core3 grow) (HostState sig) :=
+  { atHost with
+    store := StepDefs.enterHostSt atHost.store
+    ctl := [Activation.ofProg none (Thread.resume thread >>= fun () =>
+      modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit)] }
+
+def SelectedTick.selectionLabels {thread : ThreadId} {atHost : Config (core3 grow) (HostState sig)}
+    {ready : HostReady (HostState sig)} {profile : ProfileKind} (tick : SelectedTick thread atHost ready profile) :
+    List (Label (core3 grow) (HostState sig)) :=
+  [.host .tick, .tau, .tau, .tau, .choice (.tickPick tick.others.length) tick.pick]
 
 def WaitTick.reached {cfg atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait cfg}
     {ready : HostReady (HostState sig)} {profile : ProfileKind} (_tick : WaitTick wait atHost ready profile) :
@@ -265,7 +281,7 @@ def WaitTick.reached {cfg atHost : Config (core3 grow) (HostState sig)} {wait : 
 def WaitTick.labels {cfg atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait cfg}
     {ready : HostReady (HostState sig)} {profile : ProfileKind} (tick : WaitTick wait atHost ready profile) :
     List (Label (core3 grow) (HostState sig)) :=
-  [.host .tick, .tau, .tau, .tau, .choice (.tickPick tick.others.length) tick.pick] ++ List.replicate 4 .tau
+  tick.selectionLabels ++ List.replicate 4 .tau
 
 /-- Both invariants describe the same intervening execution. Each cut retains
 the pending observation and each scheduler edit leaves the saved slot in place. -/
@@ -389,15 +405,19 @@ def ParkedCancel.result {grow : SingleThreaded.GrowOracle} {sig : Signature} (su
   (if resolved then Builtins.subtaskCancelDeliver subtask else pure [i32Flat (subtaskCancelResult none)]) >>= fun words =>
     pure (.flat words)
 
+def ParkedCancel.finish {grow : SingleThreaded.GrowOracle} {sig : Signature} (subtask : SubtaskId) :
+    Session grow sig (Ret (core3 grow)) := do
+  modifyStore (CStore.setSyncWaiterSt (.subtask subtask) none)
+  let resolved ← Builtins.subtaskResolvedNow subtask
+  ParkedCancel.result subtask resolved
+
 def ParkedCancel.afterCallback {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     (cancel : ParkedCancel cfg subtask) (returned : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) := do
   let _ ← (match returned with
     | .unit => pure ()
     | _ => internal "late-bound call: expected Ret.unit" : Session grow sig Unit)
   Builtins.subtaskCancelSyncWait cancel.async_ subtask
-  modifyStore (CStore.setSyncWaiterSt (.subtask subtask) none)
-  let resolved ← Builtins.subtaskResolvedNow subtask
-  ParkedCancel.result subtask resolved
+  ParkedCancel.finish subtask
 
 def ParkedCancel.callbackEntry {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     (cancel : ParkedCancel cfg subtask) (record : Subtask) (ready : HostReady (HostState sig))
@@ -407,7 +427,7 @@ def ParkedCancel.callbackEntry {cfg : Config (core3 grow) (HostState sig)} {subt
     ctl := ⟨some cancel.thread, .prog (specDispatch ready impl (.onCancel record.onCancel)),
       .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
 
-/-- An asynchronous cancel of an unresolved guest callee whose started task
+/-- A cancel of an unresolved guest callee whose started task
 does not admit immediate reentry because its implicit thread is not cancellable. -/
 structure StartedCancel {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     (cancel : ParkedCancel cfg subtask) where
@@ -427,7 +447,13 @@ structure StartedCancel {cfg : Config (core3 grow) (HostState sig)} {subtask : S
   implicitLive : callee.implicitThread = some implicitThread
   threadLive : cfg.store.thread? implicitThread = some implicitState
   notCancellable : implicitState.cancellable = false
-  asynchronous : cancel.async_ = true
+
+def StartedCancel.callbackReturned {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : StartedCancel cancel) : Config (core3 grow) (HostState sig) :=
+  { cfg with
+    store := (Builtins.WaitableSt.requestCancel subtask cancel.thread cfg.store).setTaskState request.taskId .pendingCancel
+    ctl := ⟨some cancel.thread, .prog (cancel.afterCallback .unit),
+      .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
 
 def StartedCancel.settledStore {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     {cancel : ParkedCancel cfg subtask} (request : StartedCancel cancel) : CStore (core3 grow) :=
@@ -441,5 +467,56 @@ def StartedCancel.resumed {cfg : Config (core3 grow) (HostState sig)} {subtask :
   { cfg with store := store, ctl := ⟨some cancel.thread,
     .core ((core3 grow).resume store.core cancel.core (.values [i32Flat (subtaskCancelResult none)])) cancel.next,
     cancel.segments⟩ :: cancel.rest }
+
+/-- The reached callback return before K8 reads the subtask. -/
+structure SyncCancelWait {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) (atReturn : Config (core3 grow) (HostState sig)) where
+  synchronous : cancel.async_ = false
+  unresolved : atReturn.store.subtaskResolved subtask = false
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : atReturn.ctl = ⟨some cancel.thread, .prog (cancel.afterCallback .unit),
+    .core cancel.core cancel.next :: cancel.segments⟩ :: rest
+
+def ParkedCancel.saved {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) : Activation (core3 grow) (HostState sig) :=
+  ⟨some cancel.thread, .prog (ParkedCancel.finish subtask), .core cancel.core cancel.next :: cancel.segments⟩
+
+def SyncCancelWait.blocked {cfg atReturn : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (wait : SyncCancelWait cancel atReturn) : Config (core3 grow) (HostState sig) :=
+  { (atReturn.setCont cancel.thread (some cancel.saved)) with
+    store := StepDefs.threadStatusSt cancel.thread .blocked
+      (atReturn.store.startWaitingSt cancel.thread (.subtaskResolved subtask))
+    ctl := wait.rest }
+
+/-- A reached resumer, not an assumption that a scheduler always produces one. -/
+structure SyncCancelResume {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) (atResume : Config (core3 grow) (HostState sig)) where
+  thread : Option ThreadId
+  resumeAfter : Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : atResume.ctl = ⟨thread, .prog (Thread.resume cancel.thread >>= fun () => resumeAfter),
+    segments⟩ :: rest
+  waiting : atResume.store.threadIs Thread.waiting cancel.thread = true
+
+def SyncCancelResume.reached {cfg atResume : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (resume : SyncCancelResume cancel atResume) : Config (core3 grow) (HostState sig) :=
+  { (atResume.setCont cancel.thread none) with
+    store := StepDefs.threadStatusSt cancel.thread .running (atResume.store.stopWaitingSt cancel.thread)
+    ctl := cancel.saved :: ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest }
+
+def SyncCancelResume.delivered {cfg atResume : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (resume : SyncCancelResume cancel atResume) : Config (core3 grow) (HostState sig) :=
+  let reached := resume.reached
+  let store := cancelDelivered (reached.store.setSyncWaiterSt (.subtask subtask) none) subtask
+  { reached with store, ctl := ⟨some cancel.thread,
+    .core ((core3 grow).resume store.core cancel.core (.values [i32Flat (subtaskCancelResult (some .returned))]))
+      cancel.next, cancel.segments⟩ :: ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest }
+
+def SyncCancelResume.afterTick {cfg atHost : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {ready : HostReady (HostState sig)} {profile : ProfileKind} {cancel : ParkedCancel cfg subtask}
+    (tick : SelectedTick cancel.thread atHost ready profile)
+    (waiting : tick.atResume.store.threadIs Thread.waiting cancel.thread = true) : SyncCancelResume cancel tick.atResume :=
+  ⟨none, modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit, [], [], rfl, waiting⟩
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
