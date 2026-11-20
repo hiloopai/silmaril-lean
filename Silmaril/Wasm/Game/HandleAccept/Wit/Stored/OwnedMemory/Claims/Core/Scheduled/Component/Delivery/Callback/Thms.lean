@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Callback
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackDelivery
 
 public section
 
@@ -172,5 +173,46 @@ theorem CallbackCancelImport.resolves_started {wait : CallbackWait grow sig} (en
     resolution.resolvedRecord.common.pending = some (.subtask subtask) ∧
     resolution.resolvedRecord.lenders = resolution.record.lenders :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCancelStarted entry empty resolution started indexed
+
+/-- Every finite host-free prefix of the focused Core callback keeps its
+component continuation, resumer and component arenas. The Core store can change. -/
+theorem CallbackWait.core_only_cut (wait : CallbackWait grow sig)
+    {core : (core3 grow).Thread (CanonHost (core3 grow))} {count : Nat}
+    (focused : start.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (run : Steps profile ready (specDispatch ready impl) start (List.replicate count .core) reached) :
+    ∃ next, reached = wait.coreAt start reached.store.core next rest :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCoreOnlyCut wait focused run
+
+/-- After the reached task.cancel import, a finite host-free Core suffix
+returning EXIT unregisters the callback and retains its pending event until
+the original cancellation caller takes it and releases the lends. This does
+not assert callback return, or cover intervening imports or wait iterations. -/
+theorem CallbackCancelImport.delivers_started {wait : CallbackWait grow sig}
+    (entry : CallbackCancelImport wait reached) {subtask : SubtaskId}
+    (cancel : ParkedCancel parked subtask)
+    (empty : entry.liveTask.numBorrows = 0)
+    (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask)
+    (started : resolution.record.state = .started) {index slot depth : Nat} {removed : InstState}
+    (indexed : resolution.record.index = some index)
+    (resumer : entry.rest = cancel.callbackTail)
+    (implicitThread : entry.liveTask.implicitThread = some wait.thread)
+    (threadIndex : entry.liveThread.index = some slot)
+    (remove : entry.liveInst.removeThread? slot = some (wait.thread, removed))
+    (identityFrames : wait.segments = List.replicate depth (.prog (fun returned => .pure returned)))
+    {cut : Config (core3 grow) (HostState sig)} {count : Nat}
+    (run : Steps profile ready (specDispatch ready impl) (entry.resumed resolution) (List.replicate count .core) cut)
+    {core : (core3 grow).Thread (CanonHost (core3 grow))} {values : List FlatValue} {exitIndex : Nat}
+    (focused : cut.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: entry.rest)
+    (returned : (core3 grow).status cut.store.core core = .returned (.values values))
+    (decoded : callbackReturn values = .ok (.exit, exitIndex)) :
+    ∃ exited,
+      Steps profile ready (specDispatch ready impl) reached
+        (List.replicate 9 .tau ++ List.replicate (resolution.callbackSteps + 1) .tau ++ List.replicate count .core ++
+          List.replicate (depth + 9 + (entry.liveTask.ft.async_ && entry.liveTask.needsExclusive).toNat) .tau) exited ∧
+      exited.store.subtask? subtask = some resolution.resolvedRecord ∧
+      Steps profile ready (specDispatch ready impl) exited (List.replicate 8 .tau)
+        (cancel.cancelledReply exited .cancelledBeforeReturned) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCancelDeliversStarted entry cancel
+    empty resolution started indexed resumer implicitThread threadIndex remove identityFrames run focused returned decoded
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

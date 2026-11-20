@@ -190,4 +190,14 @@ def CallbackCancelImport.resumed (entry : CallbackCancelImport wait reached) {su
     ctl := ⟨some wait.thread, .core ((core3 grow).resume store.core entry.core (.values []))
       wait.afterCore, wait.segments⟩ :: entry.rest }
 
+/-- A cut of the same running callback with the reached Core store and
+thread, but the original component continuation and resumer. -/
+def CallbackWait.coreAt (wait : CallbackWait grow sig) (base : Config (core3 grow) (HostState sig))
+    (coreStore : (core3 grow).Store (CanonHost (core3 grow)))
+    (core : (core3 grow).Thread (CanonHost (core3 grow)))
+    (rest : List (Activation (core3 grow) (HostState sig))) : Config (core3 grow) (HostState sig) :=
+  { base with
+    store := { base.store with core := coreStore }
+    ctl := ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

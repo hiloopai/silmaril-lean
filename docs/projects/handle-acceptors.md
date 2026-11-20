@@ -1220,6 +1220,15 @@ trap from entry into `onResolve(none)`. For an indexed started subtask,
 callback with the empty import result. The `CANCELLED_BEFORE_RETURNED` event
 is pending and its lenders are still attached, not delivered by the import.
 
+`CallbackWait.core_only_cut` derives the component frame of every finite
+host-free Core suffix from the machine steps; it leaves the reached Core store
+unconstrained. If that suffix returns EXIT, `CallbackCancelImport.delivers_started`
+uses the pre-import registration and reached return to unregister the callback,
+pop its identity frames and retain the indexed cancellation event until the
+original caller consumes it, releases the lends and gets its Core result. An
+unfinished prefix is not delivery; intervening callouts and wait iterations
+are outside this suffix theorem.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery
