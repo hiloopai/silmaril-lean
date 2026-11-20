@@ -427,9 +427,8 @@ def ParkedCancel.callbackEntry {cfg : Config (core3 grow) (HostState sig)} {subt
     ctl := ⟨some cancel.thread, .prog (specDispatch ready impl (.onCancel record.onCancel)),
       .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
 
-/-- A cancel of an unresolved guest callee whose started task
-does not admit immediate reentry because its implicit thread is not cancellable. -/
-structure StartedCancel {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+/-- A cancellation request through a guest task's actual implicit thread. -/
+structure TaskCancelAdmission {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     (cancel : ParkedCancel cfg subtask) where
   record : Subtask
   taskId : TaskId
@@ -443,15 +442,23 @@ structure StartedCancel {cfg : Config (core3 grow) (HostState sig)} {subtask : S
   notJoined : record.common.wset = none
   callback : record.onCancel = .task taskId
   taskLive : cfg.store.task? taskId = some callee
-  started : callee.state = .started
   implicitLive : callee.implicitThread = some implicitThread
   threadLive : cfg.store.thread? implicitThread = some implicitState
+
+def TaskCancelAdmission.markedStore {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel) : CStore (core3 grow) :=
+  (Builtins.WaitableSt.requestCancel subtask cancel.thread cfg.store).setTaskState request.taskId .pendingCancel
+
+/-- A started task whose implicit thread cannot reenter immediately. -/
+structure StartedCancel {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) extends TaskCancelAdmission cancel where
+  started : callee.state = .started
   notCancellable : implicitState.cancellable = false
 
 def StartedCancel.callbackReturned {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     {cancel : ParkedCancel cfg subtask} (request : StartedCancel cancel) : Config (core3 grow) (HostState sig) :=
   { cfg with
-    store := (Builtins.WaitableSt.requestCancel subtask cancel.thread cfg.store).setTaskState request.taskId .pendingCancel
+    store := request.toTaskCancelAdmission.markedStore
     ctl := ⟨some cancel.thread, .prog (cancel.afterCallback .unit),
       .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
 
@@ -518,5 +525,30 @@ def SyncCancelResume.afterTick {cfg atHost : Config (core3 grow) (HostState sig)
     (tick : SelectedTick cancel.thread atHost ready profile)
     (waiting : tick.atResume.store.threadIs Thread.waiting cancel.thread = true) : SyncCancelResume cancel tick.atResume :=
   ⟨none, modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit, [], [], rfl, waiting⟩
+
+/-- The initial route forces a resume. The started route checks readiness
+after marking the pending task, using the actual host state. -/
+inductive TaskCancelReentry {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel) (ready : HostReady (HostState sig)) : Prop
+  | initial (state : request.callee.state = .initial)
+  | started (state : request.callee.state = .started) (cancellable : request.implicitState.cancellable = true)
+      (available : request.markedStore.threadReady (ready cfg.host) request.implicitThread = true)
+
+def TaskCancelAdmission.waiting {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel) : Bool :=
+  request.markedStore.threadIs Thread.waiting request.implicitThread
+
+def TaskCancelAdmission.reentrySteps {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel) : Nat :=
+  (if request.callee.state = .initial then 16 else 19) + (if request.waiting then 3 else 2)
+
+def TaskCancelAdmission.reentered {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel)
+    (callee : Activation (core3 grow) (HostState sig)) : Config (core3 grow) (HostState sig) :=
+  let store := if request.waiting then request.markedStore.stopWaitingSt request.implicitThread else request.markedStore
+  { (cfg.setCont request.implicitThread none) with
+    store := StepDefs.threadStatusSt request.implicitThread .running store
+    ctl := callee :: ⟨some cancel.thread, .prog (pure .unit),
+      .prog cancel.afterCallback :: .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

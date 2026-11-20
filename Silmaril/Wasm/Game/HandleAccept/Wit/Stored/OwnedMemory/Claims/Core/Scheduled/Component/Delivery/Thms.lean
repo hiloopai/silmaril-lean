@@ -182,6 +182,15 @@ theorem ParkedCancel.requests (cancel : ParkedCancel parked subtask) (record : S
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelRequests cancel record live
     unresolved notDelivered notRequested notJoined
 
+/-- Initial cancellation forces the resume; a started guest reenters only
+when its reached implicit thread is cancellable and ready after marking. -/
+theorem TaskCancelAdmission.reenters {cancel : ParkedCancel parked subtask} (request : TaskCancelAdmission cancel)
+    (mode : TaskCancelReentry request ready) {callee : Activation (core3 grow) (HostState sig)}
+    (saved : parked.cont? request.implicitThread = some callee) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate request.reentrySteps .tau)
+      (request.reentered callee) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.taskCancelReenters cancel request mode saved
+
 /-- On this closed guest callback path, cancel marks the started task pending
 cancel, clears the temporary waiter and returns BLOCKED to the same Core caller. -/
 theorem StartedCancel.resumes_blocked {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel)
