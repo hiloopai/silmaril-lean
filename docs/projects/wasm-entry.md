@@ -44,15 +44,19 @@ aliases, function types, canonical adapters and unascribed exports. It does not
 lift arbitrary checked components or compile arbitrary Lime bodies.
 
 [The sublanguage API](wasm-sublanguages.md) embeds native syntax into Core and
-checks which feature sets admit its image. This does not translate a component
-interface or select a semantic policy. The nearest cross-dialect obligation for
-the wired slice is a named-interface resolver agreement: translating the types
-of the ordered `lime1ModuleType` imports/exports must agree with
-`core3ModuleType?` of the erased payload's Core image, and the canonical-lift
-command must respect that interface map. An operational square would then still
-need a relation on the ready stores, aligned ABI arguments/results, and host
-moves; matching raw syntax alone supplies none of these. The store-retaining
-Core read-back is one leg, not that whole square.
+checks which feature sets admit its image. It does not select a semantic policy.
+For valid native Lime payloads with function-only ports,
+[`resolveLimeFunctionPorts`](../../Silmaril/Wasm/Component/Reference/Validation/FunctionPorts/Thms.lean)
+proves that `lime1ModuleType` and `core3ModuleType?` of `toCore` agree after
+translating the function signatures. This preserves names and declaration order,
+including reexports. Export names are unique by validation; import keys may
+repeat. Exact signature equality is reflected, not ABI or subtype compatibility.
+
+The next static obligation is to lift this module-level agreement through the
+wiring and canonical-lift commands. Execution also needs a relation on ready
+stores and resolved addresses, aligned ABI arguments/results, and related host
+moves. [The independent Core ready-entry and terminal read-back proofs](https://github.com/hiloopai/silmaril-lean/pull/1410)
+supply a scoped Core-side result, not that cross-dialect square.
 
 The [room/corridor laws](../../Silmaril/Logic/Institution/Room.lean) and
 [SpecTec reduct and satisfaction laws](../../Silmaril/Wasm/SpecTec/Institution/Thms.lean)

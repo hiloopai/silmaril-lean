@@ -609,10 +609,15 @@ theorem refFunc_ok (C : Wasm.Validation.Context) {x : FuncIdx} {ft : FuncType}
   · intro i hi
     simp at hi; subst hi; exact .refFunc _
 
-/-- A valid Lime1 module maps to a Core module whose import types are `importC`. -/
-theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
+/-- Retain the ordered function export witnesses of the validation transfer,
+in addition to retaining all import types. -/
+theorem ModuleValid.toCore_ok_functionPorts {m : Module} (h : ModuleValid m) :
     ∃ xtE, Wasm.Validation.ModuleOk m.toCore
-      ⟨m.imports.map fun i => importC m.types i.desc, xtE⟩ := by
+      ⟨m.imports.map fun i => importC m.types i.desc, xtE⟩ ∧
+      List.Forall₂ (fun e xt => match e.index with
+        | .func index => ((moduleContext m).funcs[index.toNat]?).map
+            (fun ft => CExternType.func ft.toDefType) = some xt
+        | _ => True) m.exports xtE := by
   -- Core index spaces
   let dts := m.types.map V1.FuncType.toDefType
   let xtI := m.imports.map fun i => importC m.types i.desc
@@ -669,30 +674,34 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
         (ih _ (fun g' hg' => hv g' (by simp [hg'])) (hg.trans (List.prefix_append _ _))
           hl hlab hr)
       exact constExpr_toCore (hAinit D hg hl hlab hr) (hv g (by simp))
-  have hexports : ∀ e ∈ m.toCore.exports, ∃ xt, ExportOk C e xt := by
+  have hexports : ∀ e ∈ m.exports, ∃ xt, ExportOk C e.toCore xt ∧
+      (match e.index with
+      | .func index => ((moduleContext m).funcs[index.toNat]?).map
+          (fun ft => CExternType.func ft.toDefType) = some xt
+      | _ => True) := by
     intro e he
-    simp only [Module.toCore, List.mem_map] at he
-    obtain ⟨e₀, he₀, rfl⟩ := he
-    obtain ⟨et, het⟩ := h.exports e₀ he₀
-    rcases e₀ with ⟨nm, idx⟩
+    obtain ⟨et, het⟩ := h.exports e he
+    rcases e with ⟨nm, idx⟩
     cases idx with
     | func i =>
       simp only [exportType?, Option.map_eq_some_iff] at het
       obtain ⟨ft, hft, -⟩ := het
-      exact ⟨.func ft.toDefType, .func (prefix_map_getElem? hA.funcs hft)⟩
+      exact ⟨.func ft.toDefType, .func (prefix_map_getElem? hA.funcs hft), by simp [hft]⟩
     | table i =>
       simp only [exportType?, Option.map_eq_some_iff] at het
       obtain ⟨tt, htt, -⟩ := het
-      exact ⟨.table (tableToC tt), .table (prefix_map_getElem? hA.tables htt)⟩
+      exact ⟨.table (tableToC tt), .table (prefix_map_getElem? hA.tables htt), trivial⟩
     | memory i =>
       simp only [exportType?, Option.map_eq_some_iff] at het
       obtain ⟨mt, hmt, -⟩ := het
-      exact ⟨.mem mt.toCore, .mem (prefix_map_getElem? hA.mems hmt)⟩
+      exact ⟨.mem mt.toCore, .mem (prefix_map_getElem? hA.mems hmt), trivial⟩
     | global i =>
       simp only [exportType?, Option.map_eq_some_iff] at het
       obtain ⟨gt, hgt, -⟩ := het
-      exact ⟨.global (globalToC gt), .global (prefix_map_getElem? hA.globals hgt)⟩
-  obtain ⟨xtE, hxtE⟩ := forall₂_exists_of _ hexports
+      exact ⟨.global (globalToC gt), .global (prefix_map_getElem? hA.globals hgt), trivial⟩
+  obtain ⟨xtE, paired⟩ := forall₂_exists_of _ hexports
+  have hxtE : List.Forall₂ (ExportOk C) m.toCore.exports xtE :=
+    List.forall₂_map_left_iff.mpr (paired.imp fun _ _ h => h.1)
   have himports : List.Forall₂ (ImportOk { types := dts }) m.toCore.imports xtI :=
     forall₂_map_of _ _ m.imports (fun i hi => importOk_toCore m.types i (h.imports i hi))
   have hglobals' : GlobalsOk C' m.toCore.globals gts := by
@@ -751,7 +760,14 @@ theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
   have hdisjoint : (m.toCore.exports.map Wasm.Export.name).Nodup := by
     simpa [Module.toCore, V1.Export.toCore, Function.comp_def] using h.uniqueExports
   exact ⟨xtE, ModuleOk.mk (jts := []) (typesOk_map m.types {}) himports rfl rfl .nil
-    hglobals' hmems htables hfuncs hdata helems hstart hxtE hdisjoint⟩
+    hglobals' hmems htables hfuncs hdata helems hstart hxtE hdisjoint, paired.imp fun _ _ h => h.2⟩
+
+/-- A valid Lime1 module maps to a Core module whose import types are `importC`. -/
+theorem ModuleValid.toCore_ok {m : Module} (h : ModuleValid m) :
+    ∃ xtE, Wasm.Validation.ModuleOk m.toCore
+      ⟨m.imports.map fun i => importC m.types i.desc, xtE⟩ :=
+  let ⟨exports, ok, _⟩ := h.toCore_ok_functionPorts
+  ⟨exports, ok⟩
 
 /-- **Milestone.** Every valid Lime1 module maps to a valid Core 3.0 module. -/
 theorem ModuleValid.toCore {m : Module} (h : ModuleValid m) :
