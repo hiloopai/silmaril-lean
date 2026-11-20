@@ -1192,6 +1192,17 @@ Core caller. This path neither resolves nor delivers the subtask. It does not
 classify an initial or immediately resumed callee, a synchronous wait, or an
 open host cancellation hook.
 
+For a ready, cancellable started guest, `Delivery.CallbackWait` derives both
+saved callback-loop continuations from the canonical YIELD (K2) and WAIT (K3)
+branches. The K3 waiter count is decremented on resumption, before the reached
+pending-cancellation check. Cancellation takes priority over the selected set's
+events: these steps do not consume an event or release lends.
+`TaskCancelAdmission.started_calls_core` splices the tracked saved occurrence
+into the actual cancellation callout, retakes the callback lock and invokes the
+Core callback with `TASK_CANCELLED`, keeping the original Core caller parked.
+This prefix requires readiness in the reached post-mark store and does not
+assert that the callback returns, resolves the subtask or delivers its reply.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery
