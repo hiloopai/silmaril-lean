@@ -118,15 +118,14 @@ theorem joinStep {E : CoreEngine} {Host : Type} {hr : HostReady Host} {dispatch 
       { state with store := state.store.joinSt waitable set, ctl := ⟨thread, .prog next, segments⟩ :: rest } :=
   .step (Step.modify focused) (fun pending => pendingJoin pending waitable set) (.done _)
 
-theorem deliveredClears (poll : ParkedPoll parked subtask profile) (pending : PendingAt parked.store subtask index) :
-    ∃ record, poll.delivered.subtask? subtask = some record ∧ record.common.pending = none ∧
+private theorem consumeClears (store : CStore (core3 grow)) (pending : PendingAt store subtask index) :
+    ∃ record, (cancelDelivered store subtask).subtask? subtask = some record ∧ record.common.pending = none ∧
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index := by
   obtain ⟨record, live, returned, indexed, _⟩ := pending
-  let shuffled := parked.store.wsetSetElemsSt poll.ws (applyPerm poll.perm poll.set.elems)
   let clear := fun common : WaitableCommon => { common with pending := none }
-  let cleared := shuffled.modifyWaitableCommon (.subtask subtask) clear
+  let cleared := store.modifyWaitableCommon (.subtask subtask) clear
   let event := { record with common := clear record.common }
-  have selected : ArenaField.subtasks.get? shuffled subtask = some record := live
+  have selected : ArenaField.subtasks.get? store subtask = some record := live
   have clearedAt : cleared.subtask? subtask = some event := by
     simp only [cleared, CStore.modifyWaitableCommon, CStore.subtask?, ArenaField.get?_modify_self,
       selected, Option.map_some, event]
@@ -141,6 +140,11 @@ theorem deliveredClears (poll : ParkedPoll parked subtask profile) (pending : Pe
   rw [CStore.deliverResolveSt, clearedAt]
   rw [CStore.subtask?, ArenaField.get?_modify_self]
   exact congrArg (Option.map fun entry => { entry with lenders := none }) ((frame _ _).trans clearedAt)
+
+theorem deliveredClears (poll : ParkedPoll parked subtask profile) (pending : PendingAt parked.store subtask index) :
+    ∃ record, poll.delivered.subtask? subtask = some record ∧ record.common.pending = none ∧
+      record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
+  consumeClears (parked.store.wsetSetElemsSt poll.ws (applyPerm poll.perm poll.set.elems)) pending
 
 theorem parkedWaitBlocks (wait : ParkedWait initial) (empty : initial.store.wsetHasEvent wait.ws = false) :
     Steps profile ready (specDispatch ready impl) initial (List.replicate 13 .tau) wait.blocked := by
@@ -256,5 +260,77 @@ theorem blockedResolutionWait {atHost resolving : Config (core3 grow) (HostState
   have blocked := parkedWaitBlocks (profile := profile) (ready := ready) (impl := impl) wait empty
   exact waitDelivery delivery pending
     (appendSteps (appendSteps (appendSteps (appendSteps blocked runs) commitRun) replay) (resumeWaitTick tick))
+
+private theorem cancelReturnedEntry (cancel : ParkedCancel parked subtask) (record : Subtask)
+    (live : parked.store.subtask? subtask = some record) (returned : record.state = .returned)
+    (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+    (notJoined : record.common.wset = none) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 11 .tau)
+      { parked with ctl := ⟨some cancel.thread, .prog (Builtins.subtaskCancelDeliver subtask >>= fun words => pure (.flat words)),
+        .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest } := by
+  have admitted : calloutEntry parked.store (some cancel.thread) (.builtin (.subtaskCancel cancel.async_) cancel.task.inst) = none := by
+    simp [calloutEntry, instOfThread?, cancel.liveThread, cancel.liveTask]
+  have arena : ArenaField.subtasks.get? parked.store subtask = some record := live
+  have canDeliver : parked.store.subtaskResolveDelivered subtask = false := by
+    simp only [CStore.subtaskResolveDelivered, live]
+    cases l : record.lenders <;> simp [l] at notDelivered ⊢
+  have outside : ((parked.store.waitableCommon? (.subtask subtask)).bind (·.wset)).isSome = false := by
+    simp [CStore.waitableCommon?, live, notJoined]
+  refine .cons (.coreCallout cancel.focused cancel.callout) (.cons (.currentThread rfl) (.cons (.get rfl) ?_))
+  simp [Prog.bind, admitted, calloutBody, builtinProg, withArgs1, Builtins.subtaskCancel, Builtins.enterWaitableBuiltin]
+  refine .cons (.currentThread rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, getTask, getObj, cancel.liveThread, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, cancel.liveTask, getInst, getObj, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, cancel.liveInst, cancel.mayLeave, trapIf, handlesGet, getInst, getObj, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, cancel.liveInst, cancel.handle, orTrap, Builtins.expectSubtask, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, canDeliver, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, arena, notRequested]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, outside, returned, SubtaskState.resolved, pure]
+  exact .refl _
+
+theorem cancelReturned (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index)
+    (available : CancelAvailable parked.store subtask) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 15 .tau) cancel.resumed := by
+  obtain ⟨record, live, returned, indexed, queued⟩ := pending
+  obtain ⟨other, atSlot, notDelivered, notRequested, notJoined⟩ := available
+  rw [live] at atSlot
+  cases atSlot
+  obtain ⟨settled, cleared, _, _, state, _⟩ := consumeClears parked.store ⟨record, live, returned, indexed, queued⟩
+  let reply : EventTuple → Session grow sig (Ret (core3 grow)) := fun _ => do
+    let current ← getObj ArenaField.subtasks subtask
+    pure (.flat [i32Flat (subtaskCancelResult (some current.state))])
+  let entered := { parked with ctl := ⟨some cancel.thread, .prog (Waitable.getPendingEvent (.subtask subtask) >>= reply),
+    .core cancel.core cancel.next :: cancel.segments⟩ :: cancel.rest }
+  have enter : Steps profile ready (specDispatch ready impl) parked (List.replicate 11 .tau) entered := by
+    simpa [entered, Builtins.subtaskCancelDeliver, reply, Prog.bind_assoc, pure] using
+      cancelReturnedEntry (profile := profile) (ready := ready) (impl := impl) cancel record live returned
+        notDelivered notRequested notJoined
+  have take := deliver_pending (prof := profile) (ready := ready) (dispatch := specDispatch ready impl)
+    (config := entered) subtask record index live returned indexed queued reply rfl
+  refine appendSteps (appendSteps enter take) (.cons (.get rfl) ?_)
+  have settledAt : ArenaField.subtasks.get? (cancelDelivered parked.store subtask) subtask = some settled := cleared
+  simp only [cancelDelivered] at settledAt
+  simp [entered, Prog.bind, settledAt, pure, state]
+  exact .cons (.popCore rfl) (.refl _)
+
+theorem cancelClears (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index) :
+    ∃ record, cancel.resumed.store.subtask? subtask = some record ∧ record.common.pending = none ∧
+      record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
+  consumeClears parked.store pending
+
+theorem resolutionCancel (resolve : LinkedResolution initial subtask index) {between}
+    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between parked)
+    (cancel : ParkedCancel parked subtask) (available : CancelAvailable parked.store subtask) :
+    Steps profile ready (specDispatch ready impl) initial ((List.replicate 17 .tau ++ between) ++ List.replicate 15 .tau)
+      cancel.resumed := by
+  obtain ⟨commitRun, queued⟩ := resolutionIndexed (profile := profile) (ready := ready) (impl := impl) resolve
+  obtain ⟨replay, pending⟩ := retainingPath path queued
+  exact appendSteps (appendSteps commitRun replay) (cancelReturned cancel pending available)
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery

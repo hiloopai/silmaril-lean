@@ -86,4 +86,25 @@ theorem ParkedWait.then_resolution {atHost resolving : Config (core3 grow) (Host
       ((((List.replicate 13 .tau ++ whileBlocked) ++ List.replicate 17 .tau) ++ between) ++ tick.labels) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.blockedResolutionWait delivery empty runs resolve path
 
+/-- On an already resolved subtask, cancel consumes the returned event and
+reports its existing state. It does not run the cancellation callback. -/
+theorem ParkedCancel.delivers_returned (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index)
+    (available : CancelAvailable parked.store subtask) :
+    Steps profile ready (specDispatch ready impl) parked (List.replicate 15 .tau) cancel.resumed :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelReturned cancel pending available
+
+theorem ParkedCancel.delivered_clears (cancel : ParkedCancel parked subtask) (pending : PendingAt parked.store subtask index) :
+    ∃ record, cancel.resumed.store.subtask? subtask = some record ∧ record.common.pending = none ∧
+      record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.cancelClears cancel pending
+
+/-- After committing a result, a cancel callout on the same live subtask can
+deliver the result without a poll or event buffer. The publication is retained. -/
+theorem LinkedResolution.then_cancel (resolve : LinkedResolution initial subtask index) {between}
+    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between parked)
+    (cancel : ParkedCancel parked subtask) (available : CancelAvailable parked.store subtask) :
+    Steps profile ready (specDispatch ready impl) initial ((List.replicate 17 .tau ++ between) ++ List.replicate 15 .tau)
+      cancel.resumed :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resolutionCancel resolve path cancel available
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

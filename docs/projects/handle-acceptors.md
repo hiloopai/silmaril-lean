@@ -1155,7 +1155,14 @@ that continuation, decrements the wait count and runs the same canonical event
 selection as poll. A valid buffer returns the event code to Core. An invalid
 buffer traps after event consumption and lend release. The theorem requires the
 reached saved slot, tick choice and event selection; it gives neither scheduler
-liveness nor a correspondence for cancellation or arbitrary export sequences.
+liveness nor a correspondence for arbitrary export sequences.
+
+If the caller instead reaches `subtask.cancel` after the return, with a live,
+undelivered subtask that has not received a cancel request or joined a set,
+`Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery
+branch. It consumes the existing event, releases lends and returns the already
+resolved state, without an event buffer or cancellation callback. It does not
+cover cancellation requests that precede resolution.
 
 ## Checking
 

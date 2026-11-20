@@ -245,4 +245,42 @@ def WaitDelivery.outcomes (delivery : WaitDelivery tick subtask) (index : Nat)
 
 end WaitDelivery
 
+/-- The Core cancel builtin identifies a live subtask via the caller's handle table. -/
+structure ParkedCancel (cfg : Config (core3 grow) (HostState sig)) (subtask : SubtaskId) where
+  async_ : Bool
+  slot : FlatValue
+  thread : ThreadId
+  active : Thread
+  task : Task (core3 grow)
+  instance_ : InstState
+  core : (core3 grow).Thread (CanonHost (core3 grow))
+  next : List FlatValue → Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : cfg.ctl = ⟨some thread, .core core next, segments⟩ :: rest
+  callout : (core3 grow).status cfg.store.core core =
+    .callout (.builtin (.subtaskCancel async_) task.inst) [slot]
+  liveThread : ArenaField.threads.get? cfg.store thread = some active
+  liveTask : ArenaField.tasks.get? cfg.store active.task = some task
+  liveInst : ArenaField.insts.get? cfg.store task.inst = some instance_
+  mayLeave : instance_.mayLeave = true
+  handle : instance_.handles.get? (flatNat slot) = some (.waitable (.subtask subtask))
+
+/-- The returned-event route of cancel is disjoint from cancellation requests:
+the event was not already delivered, no request was made, and it is not in a set. -/
+def CancelAvailable {E : CoreEngine} (store : CStore E) (subtask : SubtaskId) : Prop :=
+  ∃ record, store.subtask? subtask = some record ∧ record.lenders.isSome = true ∧
+    record.cancellationRequested = false ∧ record.common.wset = none
+
+def cancelDelivered {E : CoreEngine} (store : CStore E) (subtask : SubtaskId) : CStore E :=
+  (store.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }).deliverResolveSt subtask
+
+def ParkedCancel.resumed {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) : Config (core3 grow) (HostState sig) :=
+  let delivered := cancelDelivered cfg.store subtask
+  let result := (subtaskCancelResult (some .returned))
+  { cfg with store := delivered, ctl := ⟨some cancel.thread,
+    .core ((core3 grow).resume delivered.core cancel.core (.values [i32Flat result])) cancel.next,
+    cancel.segments⟩ :: cancel.rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
