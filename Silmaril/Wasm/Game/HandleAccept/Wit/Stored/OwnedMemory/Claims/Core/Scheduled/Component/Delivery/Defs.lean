@@ -606,4 +606,47 @@ def K1Wait.borrowTrap (wait : K1Wait atWait thread taskId) (atResume : Config (c
     Config (core3 grow) (HostState sig) :=
   StepDefs.trapCfg { atResume with store := wait.deliveredStore atResume.store }
 
+/-- The caller and subtask read by the reached canonical `onResolve(none)`.
+The caller record selects the subtask; the cancel request alone does not. -/
+structure LowerCancelResolution (store : CStore (core3 grow)) (caller : CallerId) (subtask : SubtaskId) where
+  context : LiftLowerContext (core3 grow)
+  args : List FlatValue
+  position : Nat
+  ft : WIT.FuncType Empty RtId
+  maxParams : Nat
+  maxResults : Nat
+  record : Subtask
+  callerLive : ArenaField.callers.get? store caller = some (.lower subtask context args position ft maxParams maxResults)
+  live : store.subtask? subtask = some record
+  requested : record.cancellationRequested = true
+  active : record.state = .starting ∨ record.state = .started
+
+variable {store : CStore (core3 grow)} {caller : CallerId} {subtask : SubtaskId}
+
+def LowerCancelResolution.progressStore (resolution : LowerCancelResolution store caller subtask) : CStore (core3 grow) :=
+  if resolution.record.index.isSome then store.setPendingSt (.subtask subtask) (.subtask subtask) else store
+
+def LowerCancelResolution.cancelledState (resolution : LowerCancelResolution store caller subtask) : SubtaskState :=
+  if resolution.record.state = .starting then .cancelledBeforeStarted else .cancelledBeforeReturned
+
+def LowerCancelResolution.resolvedStore (resolution : LowerCancelResolution store caller subtask) : CStore (core3 grow) :=
+  resolution.progressStore.subtaskResolveSt subtask resolution.cancelledState []
+
+def LowerCancelResolution.resolvedRecord (resolution : LowerCancelResolution store caller subtask) : Subtask :=
+  { resolution.record with
+    state := resolution.cancelledState
+    flatResults := []
+    common := if resolution.record.index.isSome then { resolution.record.common with pending := some (.subtask subtask) }
+      else resolution.record.common }
+
+def LowerCancelResolution.callbackSteps (resolution : LowerCancelResolution store caller subtask) : Nat :=
+  if resolution.record.index.isSome then 8 else 7
+
+def LowerCancelResolution.continued (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
+    (resolution : LowerCancelResolution (wait.deliveredStore atResume.store) caller subtask)
+    (rest : List (Activation (core3 grow) (HostState sig))) : Config (core3 grow) (HostState sig) :=
+  { atResume with
+    store := resolution.resolvedStore.setTaskState taskId .resolved
+    ctl := ⟨some thread, .prog (wait.next false), wait.segments⟩ :: rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

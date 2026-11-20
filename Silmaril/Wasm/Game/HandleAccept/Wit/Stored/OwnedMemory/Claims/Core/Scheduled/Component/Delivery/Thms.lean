@@ -214,6 +214,45 @@ theorem TaskCancelAdmission.initial_k1 {cancel : ParkedCancel parked subtask}
       (wait.borrowTrap (request.reentered wait.saved))) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.initialK1Cancel request wait path initialTask
 
+/-- The reached lower callback resolves without lowering a result value. It
+releases no lends under the specification dispatcher; a queued event has not yet been consumed. -/
+theorem LowerCancelResolution.steps {atWait : Config (core3 grow) (HostState sig)} {thread : ThreadId} {taskId : TaskId}
+    {caller : CallerId} (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
+    (resolution : LowerCancelResolution (wait.deliveredStore atResume.store) caller subtask)
+    (rest : List (Activation (core3 grow) (HostState sig))) :
+    Steps profile ready (specDispatch ready impl) (wait.resolveEntry atResume caller ready impl rest)
+      (List.replicate resolution.callbackSteps .tau) (resolution.continued wait atResume rest) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.k1LowerCancel wait atResume resolution rest
+
+theorem LowerCancelResolution.live_resolved {store : CStore (core3 grow)} {caller : CallerId}
+    (resolution : LowerCancelResolution store caller subtask) :
+    resolution.resolvedStore.subtask? subtask = some resolution.resolvedRecord :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.lowerCancelRecord resolution
+
+theorem LowerCancelResolution.not_pending_return {store : CStore (core3 grow)} {caller : CallerId}
+    (resolution : LowerCancelResolution store caller subtask) (index : Nat) :
+    ¬ PendingAt resolution.resolvedStore subtask index :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.lowerCancelNotReturned resolution index
+
+/-- For a linked starting subtask, derive the reached callback admission from
+the tracked K1 frame and the caller record. The cancelled subtask is resolved;
+the surrounding cancellation call has not yet delivered its reply. -/
+theorem TaskCancelAdmission.initial_k1_resolves {cancel : ParkedCancel parked subtask}
+    {atWait : Config (core3 grow) (HostState sig)} (request : TaskCancelAdmission cancel)
+    (wait : K1Wait atWait request.implicitThread request.taskId) {between}
+    (path : ParkedPrefix profile ready (specDispatch ready impl) request.implicitThread wait.blocked between parked)
+    (initialTask : request.callee.state = .initial) (empty : request.callee.numBorrows = 0)
+    (starting : request.record.state = .starting)
+    {context : LiftLowerContext (core3 grow)} {args position ft maxParams maxResults}
+    (linked : ArenaField.callers.get? parked.store request.callee.caller =
+      some (.lower subtask context args position ft maxParams maxResults)) :
+    ∃ resolution : LowerCancelResolution (wait.deliveredStore (request.reentered wait.saved).store) request.callee.caller subtask,
+      Steps profile ready (specDispatch ready impl) parked
+        (List.replicate request.reentrySteps .tau ++ List.replicate 5 .tau ++ List.replicate resolution.callbackSteps .tau)
+        (resolution.continued wait (request.reentered wait.saved) cancel.callbackTail) ∧
+      resolution.resolvedRecord.state = .cancelledBeforeStarted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.initialK1Lower request wait path initialTask empty starting linked
+
 /-- On this closed guest callback path, cancel marks the started task pending
 cancel, clears the temporary waiter and returns BLOCKED to the same Core caller. -/
 theorem StartedCancel.resumes_blocked {cancel : ParkedCancel parked subtask} (request : StartedCancel cancel)
