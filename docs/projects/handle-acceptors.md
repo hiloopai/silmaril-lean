@@ -1153,9 +1153,12 @@ no event available. It registers the waiter and saves the Core continuation;
 after the indexed commit and a retaining prefix, the selected host tick restores
 that continuation, decrements the wait count and runs the same canonical event
 selection as poll. A valid buffer returns the event code to Core. An invalid
-buffer traps after event consumption and lend release. The theorem requires the
-reached saved slot, tick choice and event selection; it gives neither scheduler
-liveness nor a correspondence for arbitrary export sequences.
+buffer traps after event consumption and lend release. The theorem derives the
+exact saved activation at the tick from scheduler edits along the intervening
+execution, including the actual result commit. A later equal frame does not
+substitute for the original after a resume or overwrite. Tick choice and event
+selection remain explicit; the theorem gives neither scheduler liveness nor a
+correspondence for arbitrary export sequences.
 
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,

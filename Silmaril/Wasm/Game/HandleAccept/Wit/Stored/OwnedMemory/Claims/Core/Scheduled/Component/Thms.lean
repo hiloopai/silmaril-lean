@@ -2,7 +2,9 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Thms
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 import Silmaril.Wasm.Component.Reference.HostWrite.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ScheduledTranscript
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult
 
@@ -17,6 +19,7 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory (Tree)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims (State)
 open Silmaril.Wasm.Component.Value
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 
 variable {sig : Signature} {grow : SingleThreaded.GrowOracle}
 
@@ -74,8 +77,8 @@ theorem complete_commit {prof : ProfileKind} {ready : HostReady (HostState sig)}
         host := (({ config.host with writer } : HostState sig).record (.published ticket handle)).record
           (.returned ticket handle)
         ctl := ⟨thread, .prog (.pure (.cancel .none)), segments⟩ :: rest } :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.complete_commit
-    ticket handle tree writer registered expected room pending
+  (Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.complete_commit
+    ticket handle tree writer registered expected room pending ⟨0⟩).reaches.1
 
 /-- If live registration instead predicts a different handle, record a typed
 diagnostic and lock down the reached store without publishing or replying. -/
@@ -139,8 +142,10 @@ theorem resolve_progress {prof : ProfileKind} {ready : HostReady (HostState sig)
     Steps prof ready dispatch config (.tau :: .tau :: if record.index.isSome then [.tau] else []) final ∧
       final.store.subtask? subtask = some { record with common := if record.index.isSome then
         { record.common with pending := some (.subtask subtask) } else record.common } :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_progress
+  let result := Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_progress
+    (prof := prof) (ready := ready) (dispatch := dispatch)
     ticket handle caller tree subtask cx args pos ft params results record callerRecord live focused
+  ⟨(result.1 ⟨0⟩).reaches.1, result.2⟩
 
 /-- Exact reference program for the indirect acceptor reply, in either memory width.
 The typed cursor, alignment and full eight-byte range checks precede any write. The
@@ -200,9 +205,11 @@ theorem resolve_indirect_write {prof : ProfileKind} {ready : HostReady (HostStat
         completeResolvedTree ticket tree handle), segments⟩ :: rest }
     Steps prof ready dispatch config (List.replicate 8 .tau) final ∧
       final.store.subtask? subtask = some record :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_indirect_write
+  let result := Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_indirect_write
+    (prof := prof) (ready := ready) (dispatch := dispatch)
     ticket handle tree subtask cx cursor maxResults indirect pointer address atCursor aligned
     memory size sized inBounds record live focused
+  ⟨(result.1 ⟨0⟩).reaches.1, result.2⟩
 
 /-- With an aligned indirect result pointer but insufficient space, resolution traps
 before either result write. The trap uses the store reached after progress queueing. -/
@@ -284,8 +291,10 @@ theorem resolve_commit {prof : ProfileKind} {ready : HostReady (HostState sig)}
         ctl := ⟨thread, .prog (.pure (.cancel .none)), segments⟩ :: rest }
     Steps prof ready dispatch config [.tau, .tau, .tau, .tau, .tau] final ∧
       final.store.subtask? subtask = some { record with state := .returned, flatResults := flat } :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_commit
+  let result := Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_commit
+    (prof := prof) (ready := ready) (dispatch := dispatch)
     ticket handle tree writer subtask flat record live registered expected room pending
+  ⟨(result.1 ⟨0⟩).reaches.1, result.2⟩
 
 /-- A linked caller's actual lowering limits imply an indirect result in either mode.
 From the reached resolve entry with a valid out-pointer, queue progress as applicable,
@@ -321,10 +330,13 @@ theorem resolve_linked_commit {prof : ProfileKind} {ready : HostReady (HostState
         state := .returned
         flatResults := []
         common := if record.index.isSome then { record.common with pending := some (.subtask subtask) }
-          else record.common } :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_linked_commit
+          else record.common } ∧
+      (∀ saved, ParkedPrefix prof ready dispatch saved config (List.replicate (16 + record.index.isSome.toNat) .tau) final) :=
+  let result := Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.resolve_linked_commit
+    (prof := prof) (ready := ready) (dispatch := dispatch)
     callee ticket caller tree writer subtask record cx args pos callerRecord live context pointer
     atCursor aligned size sized inBounds registered room focused
+  ⟨(result.1 ⟨0⟩).reaches.1, result.2, result.1⟩
 
 /-- Delivery requires the actual queued event and an executing waitable continuation.
 It clears the event, applies the reference lend release, and returns the recorded index. -/

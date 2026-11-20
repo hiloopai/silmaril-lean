@@ -9,6 +9,7 @@ namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Sch
 
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
@@ -61,27 +62,28 @@ theorem ParkedWait.blocks (wait : ParkedWait initial) (empty : initial.store.wse
 /-- On the selected tick, resume the saved wait and reach selection in the current store.
 This does not assume that the scheduler will ever select that waiter. -/
 theorem WaitTick.resumes {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
-    (tick : WaitTick wait atHost ready profile) :
+    (tick : WaitTick wait atHost ready profile) (saved : atHost.cont? wait.thread = some wait.saved) :
     Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeWaitTick tick
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeWaitTick tick saved
 
 /-- A resolution can feed a previously blocked Core wait on the selected tick.
 The actual buffer check follows consumption; a trap retains the earlier effects. -/
 theorem LinkedResolution.then_wait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
     {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
     (resolve : LinkedResolution initial subtask index) {between}
-    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost) :
+    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost)
+    (saved : atHost.cont? wait.thread = some wait.saved) :
     delivery.outcomes index impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resolutionWait delivery resolve path
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resolutionWait delivery resolve path saved
 
-/-- Compose the actual blocked callout, the reached result-resolution prefix, and
-the selected scheduler wakeup. No result is delivered on the initial block. -/
+/-- Compose the actual block, reached resolution and selected wakeup. The
+same saved activation is derived from the actual edits, not a final lookup. -/
 theorem ParkedWait.then_resolution {atHost resolving : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
     {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
     (empty : initial.store.wsetHasEvent wait.ws = false) {whileBlocked between}
-    (runs : Steps profile ready (specDispatch ready impl) wait.blocked whileBlocked resolving)
+    (runs : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked whileBlocked resolving)
     (resolve : LinkedResolution resolving subtask index)
-    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost) :
+    (path : ParkedRetaining profile ready (specDispatch ready impl) wait.thread subtask index resolve.committed between atHost) :
     delivery.outcomes index impl initial
       ((((List.replicate 13 .tau ++ whileBlocked) ++ List.replicate 17 .tau) ++ between) ++ tick.labels) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.blockedResolutionWait delivery empty runs resolve path

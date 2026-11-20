@@ -197,6 +197,18 @@ abbrev RetainsBelowTop (profile : ProfileKind) (ready : HostReady Host) (dispatc
     (before : Config E Host) (labels : List (Label E Host)) (after : Config E Host) : Prop :=
   ∀ depth, Prefix profile ready dispatch before (.active 0 (depth + 1)) labels after (.active 0 depth)
 
+/-- A finite prefix that leaves one blocked activation in its saved slot at
+every cut. A resume, overwrite, or switch through that slot breaks the prefix
+even if the same Core segment is eventually saved there again. -/
+inductive ParkedPrefix (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E))
+    (thread : ThreadId) : Config E Host → List (Label E Host) → Config E Host → Prop where
+  | done (cfg : Config E Host) : ParkedPrefix profile ready dispatch thread cfg [] cfg
+  | step {before next after : Config E Host} {label labels} :
+      Step profile ready dispatch before label next →
+      (transitionEdit before label).follow (.saved thread.idx 0) = some (.saved thread.idx 0) →
+      ParkedPrefix profile ready dispatch thread next labels after →
+      ParkedPrefix profile ready dispatch thread before (label :: labels) after
+
 /-- Follow an optional marked occurrence through every actual step. Absence
 can only result from an edit removing the mark, and remains absent afterward. -/
 inductive Trail (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E)) :

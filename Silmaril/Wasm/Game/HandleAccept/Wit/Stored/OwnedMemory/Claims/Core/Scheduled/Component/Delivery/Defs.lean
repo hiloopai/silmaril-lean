@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.Step.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 
 @[expose] public section
 
@@ -10,6 +11,7 @@ namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Sch
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.ABI Silmaril.Wasm.Component.Canon
   Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component.AsyncRef
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 open OwnedMemory (Tree)
 open OwnedMemory.Claims (State)
 open Stored.Endpoints.RecordLower
@@ -177,7 +179,6 @@ its slot, and the scheduler chooses it from the current ready candidates. -/
 structure WaitTick {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg)
     (atHost : Config (core3 grow) (HostState sig)) (ready : HostReady (HostState sig)) (profile : ProfileKind) where
   hostReady : StepDefs.HostReadyCfg atHost
-  saved : atHost.cont? wait.thread = some wait.saved
   first : ThreadId
   others : List ThreadId
   candidates : (StepDefs.enterHostSt atHost.store).candidates (ready atHost.host) = first :: others
@@ -198,6 +199,18 @@ def WaitTick.labels {cfg atHost : Config (core3 grow) (HostState sig)} {wait : P
     {ready : HostReady (HostState sig)} {profile : ProfileKind} (tick : WaitTick wait atHost ready profile) :
     List (Label (core3 grow) (HostState sig)) :=
   [.host .tick, .tau, .tau, .tau, .choice (.tickPick tick.others.length) tick.pick] ++ List.replicate 4 .tau
+
+/-- Both invariants describe the same intervening execution. Each cut retains
+the pending observation and each scheduler edit leaves the saved slot in place. -/
+inductive ParkedRetaining {E : CoreEngine} {Host : Type} (profile : ProfileKind) (ready : HostReady Host)
+    (dispatch : Call E → P E Host (Ret E)) (thread : ThreadId) (subtask : SubtaskId) (index : Nat) :
+    Config E Host → List (Label E Host) → Config E Host → Prop where
+  | done (state : Config E Host) : ParkedRetaining profile ready dispatch thread subtask index state [] state
+  | step {start next reached labels label} (run : Step profile ready dispatch start label next)
+      (keepsSlot : (transitionEdit start label).follow (.saved thread.idx 0) = some (.saved thread.idx 0))
+      (keepsEvent : PendingAt start.store subtask index → PendingAt next.store subtask index)
+      (tail : ParkedRetaining profile ready dispatch thread subtask index next labels reached) :
+      ParkedRetaining profile ready dispatch thread subtask index start (label :: labels) reached
 
 /-- The shuffle and selection are read after the tick restores the waiter,
 not at the initial callout or at publication. -/

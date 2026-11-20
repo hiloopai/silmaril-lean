@@ -24,6 +24,19 @@ theorem step_follow {before after : Config E Host} {label : Label E Host} {place
     segmentAt (segmentStorage after) reached = segmentAt (segmentStorage before) place :=
   Proofs.Wasm.Component.Reference.MachineReturnOccurrence.step_follow run moved
 
+/-- A same-slot edit preserves the entire blocked activation, not just its
+Core return segment. This also preserves the exact suspended program. -/
+theorem step_saved {before after : Config E Host} {label : Label E Host} {thread : ThreadId}
+    (run : Step profile ready dispatch before label after)
+    (kept : (transitionEdit before label).follow (.saved thread.idx 0) = some (.saved thread.idx 0)) :
+    after.cont? thread = before.cont? thread :=
+  Proofs.Wasm.Component.Reference.MachineReturnOccurrence.step_saved run kept
+
+theorem ParkedPrefix.reaches {before after : Config E Host} {labels : List (Label E Host)} {thread : ThreadId}
+    (prefixRun : ParkedPrefix profile ready dispatch thread before labels after) :
+    Steps profile ready dispatch before labels after ∧ after.cont? thread = before.cont? thread :=
+  Proofs.Wasm.Component.Reference.MachineReturnOccurrence.parkedPrefix_reaches prefixRun
+
 theorem step_pop {before after : Config E Host} {label : Label E Host} {place : Location} {resume : Continuation E Host}
     (run : Step profile ready dispatch before label after)
     (occurs : segmentAt (segmentStorage before) place = some (.prog resume))

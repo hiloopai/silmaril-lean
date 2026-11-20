@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -10,6 +11,7 @@ namespace Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.ABI Silmaril.Wasm.Component.Canon
   Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Component.AsyncRef
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open ComponentCall ComponentCall.Delivery
@@ -44,8 +46,8 @@ private theorem appendSteps {start middle reached : Config (core3 grow) (HostSta
   | refl => exact last
   | cons step _ ih => exact .cons step (ih last)
 
-theorem resolutionIndexed (resolve : LinkedResolution initial subtask index) :
-    Steps profile ready (specDispatch ready impl) initial (List.replicate 17 .tau) resolve.committed ∧
+private theorem resolutionIndexedParked (resolve : LinkedResolution initial subtask index) :
+    (∀ saved, ParkedPrefix profile ready (specDispatch ready impl) saved initial (List.replicate 17 .tau) resolve.committed) ∧
       PendingAt resolve.committed.store subtask index := by
   have run := resolve_linked_commit (prof := profile) (ready := ready) (dispatch := specDispatch ready impl)
     resolve.callee resolve.ticket resolve.caller resolve.tree resolve.writer subtask resolve.record resolve.context
@@ -54,7 +56,24 @@ theorem resolutionIndexed (resolve : LinkedResolution initial subtask index) :
   have queued : resolve.record.index.isSome = true := by rw [resolve.indexed]; rfl
   dsimp only at run
   simp only [queued, ite_true, Bool.toNat_true] at run
-  exact ⟨run.1, ⟨_, run.2, rfl, resolve.indexed, rfl⟩⟩
+  exact ⟨run.2.2, ⟨_, run.2.1, rfl, resolve.indexed, rfl⟩⟩
+
+theorem resolutionIndexed (resolve : LinkedResolution initial subtask index) :
+    Steps profile ready (specDispatch ready impl) initial (List.replicate 17 .tau) resolve.committed ∧
+      PendingAt resolve.committed.store subtask index :=
+  let run := resolutionIndexedParked (profile := profile) (ready := ready) (impl := impl) resolve
+  ⟨(run.1 ⟨0⟩).reaches.1, run.2⟩
+
+private theorem retainingParked {labels saved}
+    (path : ParkedRetaining profile ready (specDispatch ready impl) saved subtask index committed labels parked)
+    (pending : PendingAt committed.store subtask index) :
+    ParkedPrefix profile ready (specDispatch ready impl) saved committed labels parked ∧
+      PendingAt parked.store subtask index := by
+  induction path with
+  | done => exact ⟨.done _, pending⟩
+  | step run keepsSlot keepsEvent _ ih =>
+    obtain ⟨prefixRun, stillPending⟩ := ih (keepsEvent pending)
+    exact ⟨.step run keepsSlot prefixRun, stillPending⟩
 
 theorem resolutionPoll (resolve : LinkedResolution initial subtask index) {between}
     (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between parked)
@@ -178,7 +197,7 @@ theorem parkedWaitBlocks (wait : ParkedWait initial) (empty : initial.store.wset
   exact .refl _
 
 theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
-    (tick : WaitTick wait atHost ready profile) :
+    (tick : WaitTick wait atHost ready profile) (saved : atHost.cont? wait.thread = some wait.saved) :
     Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached := by
   have member : wait.thread ∈ (StepDefs.enterHostSt atHost.store).candidates (ready atHost.host) := by
     rw [tick.candidates, ← tick.selected]
@@ -205,7 +224,7 @@ theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : Pa
   refine .cons (.get rfl) ?_
   change (StepDefs.enterHostSt atHost.store).threadIs Thread.waiting wait.thread = true at waiting
   simp [waiting, Thread.stopWaiting, Prog.bind]
-  exact .cons (.modify rfl) (.cons (.resumeThread rfl tick.saved) (.cons (.modify rfl) (.refl _)))
+  exact .cons (.modify rfl) (.cons (.resumeThread rfl saved) (.cons (.modify rfl) (.refl _)))
 
 theorem waitDelivery {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
     {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
@@ -241,25 +260,32 @@ theorem waitDelivery {atHost : Config (core3 grow) (HostState sig)} {wait : Park
 theorem resolutionWait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
     {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
     (resolve : LinkedResolution initial subtask index) {between}
-    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost) :
+    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost)
+    (saved : atHost.cont? wait.thread = some wait.saved) :
     delivery.outcomes index impl initial ((List.replicate 17 .tau ++ between) ++ tick.labels) := by
   obtain ⟨commitRun, queued⟩ := resolutionIndexed (profile := profile) (ready := ready) (impl := impl) resolve
   obtain ⟨replay, pending⟩ := retainingPath path queued
-  exact waitDelivery delivery pending (appendSteps (appendSteps commitRun replay) (resumeWaitTick tick))
+  exact waitDelivery delivery pending (appendSteps (appendSteps commitRun replay) (resumeWaitTick tick saved))
 
 theorem blockedResolutionWait {atHost resolving : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
     {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery tick subtask)
     (empty : initial.store.wsetHasEvent wait.ws = false) {whileBlocked between}
-    (runs : Steps profile ready (specDispatch ready impl) wait.blocked whileBlocked resolving)
+    (runs : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked whileBlocked resolving)
     (resolve : LinkedResolution resolving subtask index)
-    (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between atHost) :
+    (path : ParkedRetaining profile ready (specDispatch ready impl) wait.thread subtask index resolve.committed between atHost) :
     delivery.outcomes index impl initial
       ((((List.replicate 13 .tau ++ whileBlocked) ++ List.replicate 17 .tau) ++ between) ++ tick.labels) := by
-  obtain ⟨commitRun, queued⟩ := resolutionIndexed (profile := profile) (ready := ready) (impl := impl) resolve
-  obtain ⟨replay, pending⟩ := retainingPath path queued
+  obtain ⟨commitRun, queued⟩ := resolutionIndexedParked (profile := profile) (ready := ready) (impl := impl) resolve
+  obtain ⟨replay, pending⟩ := retainingParked path queued
+  obtain ⟨before, keptBefore⟩ := runs.reaches
+  obtain ⟨commits, keptCommit⟩ := (commitRun wait.thread).reaches
+  obtain ⟨after, keptAfter⟩ := replay.reaches
+  have saved : atHost.cont? wait.thread = some wait.saved := by
+    rw [keptAfter, keptCommit, keptBefore]
+    exact Config.cont?_setCont_self _ _ _
   have blocked := parkedWaitBlocks (profile := profile) (ready := ready) (impl := impl) wait empty
   exact waitDelivery delivery pending
-    (appendSteps (appendSteps (appendSteps (appendSteps blocked runs) commitRun) replay) (resumeWaitTick tick))
+    (appendSteps (appendSteps (appendSteps (appendSteps blocked before) commits) after) (resumeWaitTick tick saved))
 
 private theorem cancelReturnedEntry (cancel : ParkedCancel parked subtask) (record : Subtask)
     (live : parked.store.subtask? subtask = some record) (returned : record.state = .returned)

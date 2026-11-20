@@ -465,6 +465,47 @@ theorem step_follow {before after : Config E Host} {label : Label E Host} {place
   rw [step_edit run]
   exact read_follow moved
 
+theorem step_saved {before after : Config E Host} {label : Label E Host} {thread : ThreadId}
+    (run : Step profile ready dispatch before label after)
+    (kept : (transitionEdit before label).follow (.saved thread.idx 0) = some (.saved thread.idx 0)) :
+    after.cont? thread = before.cont? thread := by
+  cases run <;> try rfl
+  case hostDone result rest focused =>
+    (cases rest <;> cases result <;> simp [hostFinish, Config.cont?]); split <;> rfl
+  case emit => simp only [Config.cont?, observe]; split <;> rfl
+  case newThread focused allocated =>
+    simp only [transitionEdit, focused, allocated, Edit.follow] at kept
+    split at kept
+    · contradiction
+    · exact Config.getElem?_setSlot_ne _ _ _ _ (by assumption)
+  case block focused =>
+    simp only [transitionEdit, focused, Option.elim_some, Edit.follow, Location.block] at kept
+    split at kept
+    · contradiction
+    · exact Config.getElem?_setSlot_ne _ _ _ _ (by assumption)
+  case resumeThread focused found =>
+    simp only [transitionEdit, focused, Edit.follow, Location.resume] at kept
+    split at kept
+    · cases kept
+    · exact Config.getElem?_setSlot_ne _ _ _ _ (by assumption)
+  case blockSwitch focused found =>
+    simp only [transitionEdit, focused, Option.elim_some, Edit.follow, Location.block] at kept
+    split at kept
+    · contradiction
+    · rename_i notBlocked
+      simp only [Option.map_some, Location.resume] at kept
+      split at kept
+      · cases kept
+      · rename_i notResumed
+        exact (Config.getElem?_setSlot_ne _ _ _ _ notResumed).trans (Config.getElem?_setSlot_ne _ _ _ _ notBlocked)
+
+theorem parkedPrefix_reaches {before after : Config E Host} {labels : List (Label E Host)} {thread : ThreadId}
+    (prefixRun : ParkedPrefix profile ready dispatch thread before labels after) :
+    Steps profile ready dispatch before labels after ∧ after.cont? thread = before.cont? thread := by
+  induction prefixRun with
+  | done => exact ⟨.refl _, rfl⟩
+  | step run kept _ ih => exact ⟨.cons run ih.1, ih.2.trans (step_saved run kept)⟩
+
 theorem step_pop {before after : Config E Host} {label : Label E Host} {place : Location} {resume : Continuation E Host}
     (run : Step profile ready dispatch before label after)
     (occurs : segmentAt (segmentStorage before) place = some (.prog resume))

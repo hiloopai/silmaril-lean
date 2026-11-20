@@ -2,7 +2,9 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.Step.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 import Silmaril.Wasm.Component.Reference.Engine.Core3.Store.Defs
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -14,6 +16,7 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory (Tree)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims (State)
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall
 
@@ -21,6 +24,14 @@ variable {sig : Signature} {grow : SingleThreaded.GrowOracle} {prof : ProfileKin
   {ready : HostReady (HostState sig)} {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
   {config : Config (core3 grow) (HostState sig)} {thread : Option ThreadId}
   {segments : List (Seg (core3 grow) (HostState sig))} {rest : List (Activation (core3 grow) (HostState sig))}
+
+private theorem parkAppend {start middle final : Config (core3 grow) (HostState sig)} {leading trailing} {saved : ThreadId}
+    (prefixRun : ParkedPrefix prof ready dispatch saved start leading middle)
+    (tailRun : ParkedPrefix prof ready dispatch saved middle trailing final) :
+    ParkedPrefix prof ready dispatch saved start (leading ++ trailing) final := by
+  induction prefixRun with
+  | done => exact tailRun
+  | step run kept _ ih => exact .step run kept (ih tailRun)
 
 theorem resolve_begin (ticket : Nat) (caller : CallerId) (tree : Tree sig) (writer : State sig)
     (registered : config.host.writer.register tree = .ok writer) (room : writer.accepted.length < 2 ^ 32)
@@ -56,15 +67,18 @@ theorem complete_commit (ticket handle : Nat) (tree : Tree sig) (writer : State 
     (registered : config.host.writer.register tree = .ok writer)
     (expected : handle = writer.accepted.length) (room : handle < 2 ^ 32)
     (pending : config.ctl = ⟨thread, .prog (completeResolvedTree ticket tree handle), segments⟩ :: rest) :
-    Steps prof ready dispatch config [.tau, .tau, .tau, .tau]
+    ∀ saved, ParkedPrefix prof ready dispatch saved config [.tau, .tau, .tau, .tau]
       { config with
         host := (({ config.host with writer } : HostState sig).record (.published ticket handle)).record
           (.returned ticket handle)
         ctl := ⟨thread, .prog (.pure (.cancel .none)), segments⟩ :: rest } := by
   subst handle
-  refine .cons (complete_read ticket writer.accepted.length tree writer registered pending) ?_
+  intro saved
+  refine .step (complete_read ticket writer.accepted.length tree writer registered pending) ?_ ?_
+  · rw [transitionEdit, pending]
+    rfl
   simp only [bne_self_eq_false, Bool.false_eq_true, ite_false, Nat.not_le.mpr room]
-  exact .cons (.hostSet rfl) (.cons (.hostGet rfl) (.cons (.hostSet rfl) (.refl _)))
+  exact .step (.hostSet rfl) rfl (.step (.hostGet rfl) rfl (.step (.hostSet rfl) rfl (.done _)))
 
 theorem complete_stale (ticket handle : Nat) (tree : Tree sig) (writer : State sig)
     (registered : config.host.writer.register tree = .ok writer) (stale : handle ≠ writer.accepted.length)
@@ -99,17 +113,23 @@ private theorem progress_steps (subtask : SubtaskId) (record : Subtask)
     (focused : config.ctl = ⟨thread, .prog (maybeOnProgress subtask >>= fun () => next), segments⟩ :: rest) :
     let queued := if record.index.isSome then config.store.setPendingSt (.subtask subtask) (.subtask subtask)
       else config.store
-    Steps prof ready dispatch config (.tau :: if record.index.isSome then [.tau] else [])
+    ∀ saved, ParkedPrefix prof ready dispatch saved config (.tau :: if record.index.isSome then [.tau] else [])
       { config with store := queued, ctl := ⟨thread, .prog next, segments⟩ :: rest } := by
+  dsimp only
+  intro saved
+  have kept : (transitionEdit config (.tau : Label (core3 grow) (HostState sig))).follow (.saved saved.idx 0) =
+      some (.saved saved.idx 0) := by
+    rw [transitionEdit, focused]
+    rfl
   have read := Step.get (prof := prof) (hr := ready) (dispatch := dispatch) focused
   rw [CStore.subtask?] at live
   cases indexed : record.index with
   | none =>
     simp [Prog.bind, pure, live, indexed] at read ⊢
-    exact .cons read (.refl _)
+    exact .step read kept (.done _)
   | some _ =>
     simp [Prog.bind, pure, live, indexed] at read ⊢
-    exact .cons read (.cons (.modify rfl) (.refl _))
+    exact .step read kept (.step (.modify rfl) rfl (.done _))
 
 theorem resolve_progress (ticket handle : Nat) (caller : CallerId) (tree : Tree sig)
     (subtask : SubtaskId) (cx : LiftLowerContext (core3 grow)) (args : List FlatValue)
@@ -127,13 +147,22 @@ theorem resolve_progress (ticket handle : Nat) (caller : CallerId) (tree : Tree 
           ft.result.toList (some ⟨args, pos⟩)
         Subtask.resolve subtask .returned flat
         completeResolvedTree ticket tree handle), segments⟩ :: rest }
-    Steps prof ready dispatch config (.tau :: .tau :: if record.index.isSome then [.tau] else []) final ∧
+    (∀ saved, ParkedPrefix prof ready dispatch saved config (.tau :: .tau :: if record.index.isSome then [.tau] else []) final) ∧
       final.store.subtask? subtask = some { record with common := if record.index.isSome then
         { record.common with pending := some (.subtask subtask) } else record.common } := by
-  refine ⟨.cons (resolve_caller ticket handle caller tree subtask cx args pos ft params results callerRecord focused) ?_, ?_⟩
-  · apply progress_steps subtask record
-    · exact live
-    · rfl
+  constructor
+  · intro saved
+    let next : Session grow sig (Ret (core3 grow)) := do
+      let flat ← lowerFlatValues Limits.spec Quirks.none cx results [.variant 0 (some (Val.u32 handle))]
+        ft.result.toList (some ⟨args, pos⟩)
+      Subtask.resolve subtask .returned flat
+      completeResolvedTree ticket tree handle
+    refine .step (resolve_caller ticket handle caller tree subtask cx args pos ft params results callerRecord focused) ?_ ?_
+    · rw [transitionEdit, focused]
+      rfl
+    · exact progress_steps (config := { config with
+        ctl := ⟨thread, .prog (maybeOnProgress subtask >>= fun () => next), segments⟩ :: rest })
+        subtask record live next rfl saved
   · by_cases indexed : record.index.isSome = true
     · simp only [ite_eq_left indexed, CStore.setPendingSt, CStore.modifyWaitableCommon, CStore.subtask?, ArenaField.get?_modify_self]
       rw [CStore.subtask?] at live
@@ -155,13 +184,22 @@ theorem resolve_commit (ticket handle : Nat) (tree : Tree sig) (writer : State s
         host := (({ config.host with writer } : HostState sig).record (.published ticket handle)).record
           (.returned ticket handle)
         ctl := ⟨thread, .prog (.pure (.cancel .none)), segments⟩ :: rest }
-    Steps prof ready dispatch config [.tau, .tau, .tau, .tau, .tau] final ∧
+    (∀ saved, ParkedPrefix prof ready dispatch saved config [.tau, .tau, .tau, .tau, .tau] final) ∧
       final.store.subtask? subtask = some { record with state := .returned, flatResults := flat } := by
-  refine ⟨.cons (.modify pending) (complete_commit ticket handle tree writer registered expected room rfl), ?_⟩
-  change ArenaField.subtasks.get? _ _ = _
-  rw [CStore.subtaskResolveSt, ArenaField.get?_modify_self]
-  rw [CStore.subtask?] at live
-  simp [live]
+  constructor
+  · intro saved
+    have step := Step.modify (prof := prof) (hr := ready) (dispatch := dispatch) pending
+    simp only [Prog.bind] at step
+    refine .step step ?_ ?_
+    · rw [transitionEdit, pending]
+      rfl
+    exact complete_commit (config := { config with
+      store := config.store.subtaskResolveSt subtask .returned flat, ctl := _ })
+      ticket handle tree writer registered expected room rfl saved
+  · change ArenaField.subtasks.get? _ _ = _
+    rw [CStore.subtaskResolveSt, ArenaField.get?_modify_self]
+    rw [CStore.subtask?] at live
+    simp [live]
 
 private theorem take_returned {store : CStore (core3 grow)} (subtask : SubtaskId)
     (record : Subtask) (index : Nat) (live : store.subtask? subtask = some record)
@@ -347,7 +385,7 @@ theorem resolve_indirect_write (ticket handle : Nat) (tree : Tree sig) (subtask 
       ctl := ⟨thread, .prog (do
         Subtask.resolve subtask .returned []
         completeResolvedTree ticket tree handle), segments⟩ :: rest }
-    Steps prof ready dispatch config (List.replicate 8 .tau) final ∧
+    (∀ saved, ParkedPrefix prof ready dispatch saved config (List.replicate 8 .tau) final) ∧
       final.store.subtask? subtask = some record := by
   let out := flatNat pointer
   have payloadOffset : ABI.alignTo (flatNat pointer + 1) .four = flatNat pointer + 4 := by
@@ -366,22 +404,25 @@ theorem resolve_indirect_write (ticket handle : Nat) (tree : Tree sig) (subtask 
   obtain ⟨payloadCore, payload⟩ := Option.isSome_iff_exists.mp payloadWrite
   dsimp only [out] at tagged payload
   refine ⟨?_, ?_⟩
-  · have program := lower_result_program (sig := sig) cx cursor maxResults indirect (some handle)
+  · intro saved
+    have program := lower_result_program (sig := sig) cx cursor maxResults indirect (some handle)
     simp only [Option.elim_some] at program
     rw [program] at focused
     have first := Step.get (prof := prof) (hr := ready) (dispatch := dispatch) focused
-    refine .cons first ?_
+    refine .step first ?_ ?_
+    · rw [transitionEdit, focused]
+      rfl
     simp [Prog.bind, FlatCursor.next, atCursor, pure, trapIf, ← aligned, checkInBounds, memLen,
       memAddr, memory, orTrap]
-    refine .cons (.get rfl) ?_
+    refine .step (.get rfl) rfl ?_
     simp [sized, Nat.not_lt.mpr inBounds, Prog.bind]
-    refine .cons (.get rfl) (.cons (.get rfl) ?_)
+    refine .step (.get rfl) rfl (.step (.get rfl) rfl ?_)
     simp only [storeInt, writeMem, memAddr, memory, orTrap, Prog.bind, pure]
-    refine .cons (.get rfl) ?_
+    refine .step (.get rfl) rfl ?_
     simp only [Prog.bind, tagged, payloadOffset]
-    refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+    refine .step (.modify rfl) rfl (.step (.get rfl) rfl ?_)
     simp only [Prog.bind, payload]
-    exact .cons (.modify rfl) (.refl _)
+    exact .step (.modify rfl) rfl (.done _)
   · change (writeMemSt address (out + 4) (intToLE 4 handle)
       (writeMemSt address out (intToLE 1 0) config.store)).subtask? subtask = some record
     simpa only [write_subtask] using live
@@ -661,7 +702,7 @@ theorem resolve_linked_commit (callee : Callee sig) (ticket : Nat) (caller : Cal
       host := (({ config.host with writer } : HostState sig).record (.published ticket handle)).record
         (.returned ticket handle)
       ctl := ⟨thread, .prog (.pure (.cancel .none)), segments⟩ :: rest }
-    Steps prof ready dispatch config (List.replicate (16 + record.index.isSome.toNat) .tau) final ∧
+    (∀ saved, ParkedPrefix prof ready dispatch saved config (List.replicate (16 + record.index.isSome.toNat) .tau) final) ∧
       final.store.subtask? subtask = some { record with
         state := .returned
         flatResults := []
@@ -696,7 +737,12 @@ theorem resolve_linked_commit (callee : Callee sig) (ticket : Nat) (caller : Cal
   have commit := resolve_commit (prof := prof) (ready := ready) (dispatch := dispatch)
     ticket handle tree writer subtask [] progressed write.2 registered rfl room rfl
   refine ⟨?_, commit.2⟩
-  have run := Steps.cons beginRun (appendSteps progress.1 (appendSteps write.1 commit.1))
+  intro saved
+  have kept : (transitionEdit config (.tau : Label (core3 grow) (HostState sig))).follow (.saved saved.idx 0) =
+      some (.saved saved.idx 0) := by
+    rw [transitionEdit, focused]
+    rfl
+  have run := ParkedPrefix.step beginRun kept (parkAppend (progress.1 saved) (parkAppend (write.1 saved) (commit.1 saved)))
   cases indexed : record.index <;> simpa [resultReady, queued, handle, indexed] using run
 
 theorem parked_poll_returned (impl : HostImpl (core3 grow) (HostState sig)) (mem : Nat)
