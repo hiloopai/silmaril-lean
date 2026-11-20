@@ -22,6 +22,22 @@ theorem Retaining.reaches {labels}
     Steps profile ready (specDispatch ready impl) committed labels parked ∧ PendingAt parked.store subtask index :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.retainingPath path pending
 
+theorem take_event_other (store : CStore (core3 grow)) (selected : Waitable) (target : SubtaskId)
+    (other : selected ≠ .subtask target) :
+    (store.takeWaitableEventSt selected).subtask? target = store.subtask? target :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.takeEvent_other store selected target other
+
+/-- A selected resolved subtask clears its event and releases the recorded
+lends, without changing the subtask's resolution code or numeric index. -/
+theorem take_pending_resolution (store : CStore (core3 grow)) (record : Subtask)
+    (live : store.subtask? subtask = some record) (resolved : record.state.resolved = true)
+    (pending : record.common.pending = some (.subtask subtask)) :
+    store.takeWaitableEvent (.subtask subtask) =
+      (cancelDelivered store subtask, some ⟨.subtask, record.index.getD 0, record.state.toNat⟩) ∧
+    (cancelDelivered store subtask).subtask? subtask = some { record with
+      common := { record.common with pending := none }, lenders := none } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.takePendingResolution store record live resolved pending
+
 theorem Retaining.of_subtasks {E : CoreEngine} {Host : Type} {hr : HostReady Host} {dispatch : Call E → P E Host (Ret E)}
     {state reached : Config E Host} {label} (run : Step profile hr dispatch state label reached)
     (same : reached.store.subtasks = state.store.subtasks) : Retaining profile hr dispatch subtask index state [label] reached :=

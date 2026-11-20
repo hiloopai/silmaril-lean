@@ -159,6 +159,20 @@ private theorem consumeRecord (store : CStore (core3 grow)) (record : Subtask) (
   rw [CStore.subtask?, ArenaField.get?_modify_self]
   exact congrArg (Option.map fun entry => { entry with lenders := none }) ((frame _ _).trans clearedAt)
 
+theorem takePendingResolution (store : CStore (core3 grow)) (record : Subtask)
+    (live : store.subtask? subtask = some record) (resolved : record.state.resolved = true)
+    (pending : record.common.pending = some (.subtask subtask)) :
+    store.takeWaitableEvent (.subtask subtask) =
+      (cancelDelivered store subtask, some ⟨.subtask, record.index.getD 0, record.state.toNat⟩) ∧
+    (cancelDelivered store subtask).subtask? subtask = some { record with
+      common := { record.common with pending := none }, lenders := none } := by
+  let erased := store.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }
+  have erasedLive : erased.subtask? subtask = some { record with common := { record.common with pending := none } } := by
+    have lookup : ArenaField.subtasks.get? store subtask = some record := live
+    simp only [erased, CStore.modifyWaitableCommon, CStore.subtask?, ArenaField.get?_modify_self, lookup, Option.map_some]
+  refine ⟨?_, consumeRecord store record live⟩
+  simp [CStore.takeWaitableEvent, live, pending, CStore.subtaskEvent, erasedLive, erased, resolved, cancelDelivered]
+
 private theorem consumeClears (store : CStore (core3 grow)) (pending : PendingAt store subtask index) :
     ∃ record, (cancelDelivered store subtask).subtask? subtask = some record ∧ record.common.pending = none ∧
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index := by
@@ -694,14 +708,7 @@ theorem cancelCallbackDelivers (cancel : ParkedCancel parked subtask) (atExit : 
       before, Option.map_some, current]
     rfl
   have readyAfter : cleared.subtaskResolved subtask = true := by simp [CStore.subtaskResolved, clearedLive, current, resolved]
-  let erased := cleared.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }
-  have erasedLive : erased.subtask? subtask = some { current with common := { current.common with pending := none } } := by
-    have lookup : ArenaField.subtasks.get? cleared subtask = some current := clearedLive
-    simp only [erased, CStore.modifyWaitableCommon, CStore.subtask?, ArenaField.get?_modify_self, lookup, Option.map_some]
-  have take : cleared.takeWaitableEvent (.subtask subtask) =
-      (cancelDelivered cleared subtask, some ⟨.subtask, record.index.getD 0, record.state.toNat⟩) := by
-    simp [CStore.takeWaitableEvent, clearedLive, current, pending, CStore.subtaskEvent, erasedLive, erased, resolved, cancelDelivered]
-  have final := consumeRecord cleared current clearedLive
+  obtain ⟨take, final⟩ := takePendingResolution cleared current clearedLive resolved pending
   change ArenaField.subtasks.get? (cancelDelivered cleared subtask) subtask = _ at final
   simp only [cleared] at readyAfter take final
   have returned := Step.popProg (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused

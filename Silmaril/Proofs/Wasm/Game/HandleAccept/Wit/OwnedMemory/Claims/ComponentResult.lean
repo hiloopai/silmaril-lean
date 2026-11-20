@@ -438,7 +438,7 @@ private theorem endDelivery_keepsSubtask (store : CStore (core3 grow)) (selected
   unfold deliver
   split <;> rfl
 
-private theorem takeEvent_other (store : CStore (core3 grow)) (selected : Waitable) (target : SubtaskId)
+theorem takeEvent_other (store : CStore (core3 grow)) (selected : Waitable) (target : SubtaskId)
     (other : selected ≠ .subtask target) : (store.takeWaitableEventSt selected).subtask? target = store.subtask? target := by
   cases selected with
   | end_ endpoint =>

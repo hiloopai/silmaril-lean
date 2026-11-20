@@ -1236,6 +1236,16 @@ decrements the waiter count before the shuffle and takes the event before
 retaking the lock and calling Core. The selected event and Core callback return
 are separate observations.
 
+`CallbackWait.early_yield_retains` and `early_wait_retains_other` compose the
+early choice with the reached Core invocation and preserve the exact tracked
+subtask record, not just its resolution code. In K3 this requires selection
+of a different arena waitable; the waiter decrement, shuffle and selected
+event take still occur. In particular a pending cancellation and its lends
+are not consumed by either path. When K3 selects the tracked resolution itself,
+`wait_takes_resolution` instead derives the event passed to Core and the cleared
+pending event and lender list from the actual take. That is not a reply to the
+outer cancellation caller.
+
 `CallbackResume.resumes_tracked` follows the original K2/K3 saved occurrence
 through a retaining prefix and a reached forced `Thread.resume`. It restores
 the exact suffix above the resumer without a readiness assumption. On a live

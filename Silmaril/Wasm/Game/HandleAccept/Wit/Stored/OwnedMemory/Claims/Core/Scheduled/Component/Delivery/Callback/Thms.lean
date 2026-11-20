@@ -5,6 +5,7 @@ import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Ca
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackDelivery
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackEarly
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackResume
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRetention
 
 public section
 
@@ -296,5 +297,87 @@ theorem CallbackResume.traps_empty {wait : CallbackWait grow sig} (resume : Call
       (StepDefs.trapCfg { resume.resumed with store := wait.shuffled resume.resumed.store set record permutation }) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeCallbackEmpty resume path kind live noCancel
     setLive empty allowed
+
+/-- Early K2 calls Core with NONE and keeps the exact tracked subtask, including
+its pending event and lenders. No frame on the subsequent Core body is assumed. -/
+theorem CallbackWait.early_yield_retains (wait : CallbackWait grow sig) (kind : wait.kind = .yield)
+    (available : wait.readyAt start = true) (early : Allowed profile (.earlyReturn wait.site) true)
+    {liveTask : Task (core3 grow)} (live : (wait.early start rest).store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback) (target : SubtaskId) :
+    let suffix := wait.early start rest
+    let called := wait.eventCall suffix suffix.store callback .none rest
+    Steps profile ready (specDispatch ready impl) (wait.entry start rest)
+      ([.tau, .tau, .choice (.earlyReturn wait.site) true] ++ List.replicate 3 .tau) called ∧
+    called.store.subtask? target = start.store.subtask? target :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackEarlyYieldRetains wait kind available early
+    live noCancel chosen target
+
+/-- K3 compares arena waitable identities, not the event's numeric handle.
+Taking another waitable's event keeps the complete tracked subtask record. -/
+theorem CallbackWait.wait_retains_other (wait : CallbackWait grow sig) {set : WsetId} (kind : wait.kind = .wait set)
+    (focused : reached.ctl = wait.saved :: rest)
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {record : WaitableSet} (setLive : (wait.decrement reached.store).wset? set = some record)
+    {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation)
+    {selected : Waitable} (selects : (applyPerm permutation record.elems).find?
+      (wait.shuffled reached.store set record permutation).waitableHasEvent = some selected)
+    {taken : CStore (core3 grow)} {event : EventTuple}
+    (take : (wait.shuffled reached.store set record permutation).takeWaitableEvent selected = (taken, some event))
+    {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback)
+    (target : SubtaskId) (other : selected ≠ .subtask target) :
+    let called := wait.eventCall reached taken callback event rest
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau) called ∧
+    called.store.subtask? target = reached.store.subtask? target :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackWaitOtherRetains wait kind focused live
+    noCancel setLive allowed selects take chosen target other
+
+/-- The ready K3 path keeps the tracked cancellation pending if its actual
+selection is a different waitable. It does not cover a take of that cancellation. -/
+theorem CallbackWait.early_wait_retains_other (wait : CallbackWait grow sig) {set : WsetId} (kind : wait.kind = .wait set)
+    (available : wait.readyAt start = true) (early : Allowed profile (.earlyReturn wait.site) true)
+    {liveTask : Task (core3 grow)} (live : (wait.early start rest).store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {record : WaitableSet} (setLive : (wait.decrement (wait.early start rest).store).wset? set = some record)
+    {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation)
+    {selected : Waitable} (selects : (applyPerm permutation record.elems).find?
+      (wait.shuffled (wait.early start rest).store set record permutation).waitableHasEvent = some selected)
+    {taken : CStore (core3 grow)} {event : EventTuple}
+    (take : (wait.shuffled (wait.early start rest).store set record permutation).takeWaitableEvent selected =
+      (taken, some event))
+    {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback)
+    (target : SubtaskId) (other : selected ≠ .subtask target) :
+    let called := wait.eventCall (wait.early start rest) taken callback event rest
+    Steps profile ready (specDispatch ready impl) (wait.entry start rest)
+      ([.tau, .tau, .choice (.earlyReturn wait.site) true] ++
+        (List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau)) called ∧
+    called.store.subtask? target = start.store.subtask? target :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackEarlyWaitRetains wait kind available early
+    live noCancel setLive allowed selects take chosen target other
+
+/-- If K3 selects the tracked resolution itself, it passes the actual event
+to Core with pending cleared and lends released. This is not outer caller reply. -/
+theorem CallbackWait.wait_takes_resolution (wait : CallbackWait grow sig) {set : WsetId} (kind : wait.kind = .wait set)
+    (focused : reached.ctl = wait.saved :: rest)
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel)
+    {record : WaitableSet} (setLive : (wait.decrement reached.store).wset? set = some record)
+    {permutation : List Nat} (allowed : Allowed profile (.shuffle record.elems.length) permutation)
+    {target : SubtaskId} (selects : (applyPerm permutation record.elems).find?
+      (wait.shuffled reached.store set record permutation).waitableHasEvent = some (.subtask target))
+    {pendingRecord : Subtask} (tracked : reached.store.subtask? target = some pendingRecord)
+    (resolved : pendingRecord.state.resolved = true) (pending : pendingRecord.common.pending = some (.subtask target))
+    {callback : (core3 grow).FuncAddr} (chosen : wait.task.opts.callback = some callback) :
+    let shuffled := wait.shuffled reached.store set record permutation
+    let event : EventTuple := ⟨.subtask, pendingRecord.index.getD 0, pendingRecord.state.toNat⟩
+    let called := wait.eventCall reached (cancelDelivered shuffled target) callback event rest
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau) called ∧
+    called.store.subtask? target = some { pendingRecord with
+      common := { pendingRecord.common with pending := none }, lenders := none } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackWaitTakesResolution wait kind focused live
+    noCancel setLive allowed selects tracked resolved pending chosen
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
