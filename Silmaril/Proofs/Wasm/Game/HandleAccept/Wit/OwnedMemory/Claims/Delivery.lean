@@ -508,6 +508,27 @@ theorem taskCancelReenters (cancel : ParkedCancel parked subtask) (request : Tas
 
 variable {thread : ThreadId} {taskId : TaskId} {atWait : Config (core3 grow) (HostState sig)}
 
+theorem k1GateSteps {atGate : Config (core3 grow) (HostState sig)} (entry : K1GateEntry atGate thread taskId) :
+    Steps profile ready (specDispatch ready impl) atGate (List.replicate 4 .tau) entry.waitingEntry := by
+  have liveTask : ArenaField.tasks.get? atGate.store taskId = some entry.task := entry.liveTask
+  have marked : ArenaField.tasks.get? (atGate.store.setImplicitThread taskId thread) taskId = some entry.markedTask := by
+    simp only [CStore.setImplicitThread, ArenaField.get?_modify_self, liveTask, Option.map_some, K1GateEntry.markedTask]
+  have liveInst : ArenaField.insts.get? (atGate.store.setImplicitThread taskId thread) entry.markedTask.inst = some entry.instance_ :=
+    entry.liveInst
+  have asyncMarked : entry.markedTask.ft.async_ = true := entry.asynchronous
+  have sameExclusive : entry.markedTask.needsExclusive = entry.task.needsExclusive := rfl
+  have gated : entry.instance_.hasBackpressure entry.markedTask.needsExclusive = true ∨
+      0 < entry.instance_.numWaitingToEnter := by
+    rw [sameExclusive]
+    simpa only [Bool.or_eq_true, decide_eq_true_eq] using entry.gated
+  have start := Step.currentThread (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) entry.focused
+  simp [Prog.bind, pure, Prog.bind_assoc] at start
+  refine .cons start (.cons (.modify rfl) (.cons (.get rfl) ?_))
+  simp [Prog.bind, marked, asyncMarked, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, liveInst, Quirks.none, gated, pure, Prog.bind_assoc, K1GateEntry.waitingEntry]
+  exact .refl _
+
 theorem k1Blocks (wait : K1Wait atWait thread taskId) (unready : wait.condition.eval (fun _ => false) wait.incremented = false) :
     Steps profile ready (specDispatch ready impl) atWait (List.replicate 5 .tau) wait.blocked := by
   have enter := Step.modify (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) wait.focused
@@ -516,6 +537,25 @@ theorem k1Blocks (wait : K1Wait atWait thread taskId) (unready : wait.condition.
     InstState.incWaitingToEnter atWait.store) (.backpressure wait.instance_ wait.exclusive) = false at unready
   simp [Prog.bind, unready, pure, Thread.startWaiting, Prog.bind_assoc]
   exact .cons (.modify rfl) (.cons (.block rfl) (.refl _))
+
+theorem liftK1Gate {atGate : Config (core3 grow) (HostState sig)} (callee : (core3 grow).FuncAddr)
+    (task : Task (core3 grow)) (instance_ : InstState) (rest : List (Activation (core3 grow) (HostState sig)))
+    (focused : atGate.ctl = ⟨some thread, .prog (liftThreadBody .spec .none taskId callee), []⟩ :: rest)
+    (liveTask : atGate.store.task? taskId = some task) (asynchronous : task.ft.async_ = true)
+    (liveInst : atGate.store.inst? task.inst = some instance_)
+    (gated : (instance_.hasBackpressure task.needsExclusive || decide (instance_.numWaitingToEnter > 0)) = true) :
+    ∃ entry : K1GateEntry atGate thread taskId,
+      Steps profile ready (specDispatch ready impl) atGate (List.replicate 4 .tau) entry.waitingEntry ∧
+      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] := by
+  have splitBody : ∃ next : Bool → Session grow sig (Ret (core3 grow)),
+      liftThreadBody .spec .none taskId callee = (Task.enterImplicitThread .none taskId >>= next) ∧
+      next false = .pure .unit := by
+    unfold liftThreadBody
+    exact ⟨_, rfl, rfl⟩
+  obtain ⟨next, body, cancelled⟩ := splitBody
+  let entry : K1GateEntry atGate thread taskId :=
+    ⟨task, instance_, next, [], rest, by rw [focused, body], liveTask, asynchronous, liveInst, gated⟩
+  exact ⟨entry, k1GateSteps entry, cancelled, rfl⟩
 
 private def k1Check (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
     (task : Task (core3 grow)) (rest : List (Activation (core3 grow) (HostState sig))) :

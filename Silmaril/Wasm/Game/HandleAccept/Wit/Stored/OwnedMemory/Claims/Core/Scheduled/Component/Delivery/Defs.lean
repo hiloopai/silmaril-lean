@@ -606,6 +606,46 @@ def K1Wait.borrowTrap (wait : K1Wait atWait thread taskId) (atResume : Config (c
     Config (core3 grow) (HostState sig) :=
   StepDefs.trapCfg { atResume with store := wait.deliveredStore atResume.store }
 
+/-- The specification entry gate of the actual implicit thread. A positive
+entry count can send the thread to K1 even if the condition is already ready. -/
+structure K1GateEntry (cfg : Config (core3 grow) (HostState sig)) (thread : ThreadId) (taskId : TaskId) where
+  task : Task (core3 grow)
+  instance_ : InstState
+  next : Bool → Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : cfg.ctl = ⟨some thread, .prog (Task.enterImplicitThread .none taskId >>= next), segments⟩ :: rest
+  liveTask : cfg.store.task? taskId = some task
+  asynchronous : task.ft.async_ = true
+  liveInst : cfg.store.inst? task.inst = some instance_
+  gated : (instance_.hasBackpressure task.needsExclusive || decide (instance_.numWaitingToEnter > 0)) = true
+
+variable {atGate : Config (core3 grow) (HostState sig)}
+
+def K1GateEntry.afterWait (entry : K1GateEntry atGate thread taskId)
+    (task : Task (core3 grow)) (entered : Bool) : Session grow sig (Ret (core3 grow)) := do
+  let accepted ← (if entered then do
+    (if task.needsExclusive then modifyInst task.inst (InstState.withExclusive (some thread)) else pure () : Session grow sig Unit)
+    pure true
+  else pure false : Session grow sig Bool)
+  let registered ← (if accepted then do
+    let _ ← Task.registerThread taskId thread
+    pure true
+  else pure false : Session grow sig Bool)
+  entry.next registered
+
+def K1GateEntry.markedTask (entry : K1GateEntry atGate thread taskId) : Task (core3 grow) :=
+  { entry.task with implicitThread := some thread }
+
+def K1GateEntry.waitingEntry (entry : K1GateEntry atGate thread taskId) : Config (core3 grow) (HostState sig) :=
+  { atGate with
+    store := atGate.store.setImplicitThread taskId thread
+    ctl := ⟨some thread, .prog (Task.backpressureWait taskId entry.task.inst entry.task.needsExclusive >>=
+      entry.afterWait entry.markedTask), entry.segments⟩ :: entry.rest }
+
+def K1GateEntry.wait (entry : K1GateEntry atGate thread taskId) : K1Wait entry.waitingEntry thread taskId :=
+  ⟨entry.task.inst, entry.task.needsExclusive, entry.afterWait entry.markedTask, entry.segments, entry.rest, rfl⟩
+
 /-- The caller and subtask read by the reached canonical `onResolve(none)`.
 The caller record selects the subtask; the cancel request alone does not. -/
 structure LowerCancelResolution (store : CStore (core3 grow)) (caller : CallerId) (subtask : SubtaskId) where

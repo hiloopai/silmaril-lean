@@ -198,6 +198,21 @@ theorem K1Wait.blocks {atWait : Config (core3 grow) (HostState sig)} {thread : T
     Steps profile ready (specDispatch ready impl) atWait (List.replicate 5 .tau) wait.blocked :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.k1Blocks wait unready
 
+/-- Reach the K1 wait from the canonical lifted thread body, not an assumed
+wait continuation. Cancelling the gate skips registration and the callee body. -/
+theorem lift_k1_gate {atGate : Config (core3 grow) (HostState sig)} {thread : ThreadId} {taskId : TaskId}
+    (callee : (core3 grow).FuncAddr) (task : Task (core3 grow)) (instance_ : InstState)
+    (rest : List (Activation (core3 grow) (HostState sig)))
+    (focused : atGate.ctl = ⟨some thread, .prog (liftThreadBody .spec .none taskId callee), []⟩ :: rest)
+    (liveTask : atGate.store.task? taskId = some task) (asynchronous : task.ft.async_ = true)
+    (liveInst : atGate.store.inst? task.inst = some instance_)
+    (gated : (instance_.hasBackpressure task.needsExclusive || decide (instance_.numWaitingToEnter > 0)) = true) :
+    ∃ entry : K1GateEntry atGate thread taskId,
+      Steps profile ready (specDispatch ready impl) atGate (List.replicate 4 .tau) entry.waitingEntry ∧
+      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.liftK1Gate
+    callee task instance_ rest focused liveTask asynchronous liveInst gated
+
 /-- Initial cancellation forces the same installed K1 continuation, decrements
 the reached instance count and delivers cancellation to the task. Outstanding
 borrows trap after those effects, rather than resolving or rolling them back. -/
@@ -228,6 +243,19 @@ theorem LowerCancelResolution.live_resolved {store : CStore (core3 grow)} {calle
     (resolution : LowerCancelResolution store caller subtask) :
     resolution.resolvedStore.subtask? subtask = some resolution.resolvedRecord :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.lowerCancelRecord resolution
+
+/-- The false lift-entry continuation exits the resolved callee and restores
+its resumer. It does not deliver or consume the subtask event. -/
+theorem LowerCancelResolution.exits {atWait : Config (core3 grow) (HostState sig)} {thread : ThreadId} {taskId : TaskId}
+    {caller : CallerId} (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
+    (resolution : LowerCancelResolution (wait.deliveredStore atResume.store) caller subtask)
+    (rest : List (Activation (core3 grow) (HostState sig))) (cancelled : wait.next false = .pure .unit)
+    (emptySegments : wait.segments = []) :
+    Step profile ready (specDispatch ready impl) (resolution.continued wait atResume rest) .tau
+      { atResume with
+        store := StepDefs.threadStatusSt thread .exited (resolution.resolvedStore.setTaskState taskId .resolved)
+        ctl := rest } :=
+  Step.threadExit (r := .unit) (by simp [LowerCancelResolution.continued, cancelled, emptySegments])
 
 theorem LowerCancelResolution.not_pending_return {store : CStore (core3 grow)} {caller : CallerId}
     (resolution : LowerCancelResolution store caller subtask) (index : Nat) :
