@@ -353,10 +353,10 @@ theorem string_plan_entry {grow : SingleThreaded.GrowOracle} {sig : Signature} {
     let cx := destination.context inst
     let plan := storePlanFor Quirks.none destination.encoding destination.width str
     let body := runStoreSteps cx 0 plan.steps
-    ∃ reads, Machine.Steps profile ready dispatch left (List.replicate reads .tau)
+    ∃ reads, ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left (List.replicate reads .tau)
       { left with ctl := checkCursor.control (body >>= fun ptr => stringPlanTail cx destination.width output plan ptr >>=
           fun value => checkNext (.ok value)) } ∧
-      Step profile ready dispatch right .tau
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right [.tau]
         { right with ctl := canonCursor.control (body >>= fun ptr => stringPlanTail cx destination.width output plan ptr >>= canonNext) } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.stringPlanEntry
     destination inst str valid index output left right checkCursor canonCursor checkNext canonNext same present realloc fit placed checkAt canonAt

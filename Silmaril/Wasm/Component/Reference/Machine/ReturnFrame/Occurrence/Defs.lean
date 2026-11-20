@@ -185,6 +185,12 @@ inductive Prefix (profile : ProfileKind) (ready : HostReady Host) (dispatch : Ca
       Prefix profile ready dispatch next middle labels after reached →
       Prefix profile ready dispatch before place (label :: labels) after reached
 
+/-- An execution that carries every slot of the active top frame to its
+original location. Intermediate steps need not leave each slot in place. -/
+abbrev RetainsActiveSlots (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E))
+    (before : Config E Host) (labels : List (Label E Host)) (after : Config E Host) : Prop :=
+  ∀ depth, Prefix profile ready dispatch before (.active 0 depth) labels after (.active 0 depth)
+
 /-- Follow an optional marked occurrence through every actual step. Absence
 can only result from an edit removing the mark, and remains absent afterward. -/
 inductive Trail (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E)) :

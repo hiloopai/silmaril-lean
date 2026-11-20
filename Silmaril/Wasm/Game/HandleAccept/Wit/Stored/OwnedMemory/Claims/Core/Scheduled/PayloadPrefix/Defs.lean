@@ -276,7 +276,11 @@ def LocalCutKeeping {E : CoreEngine} {Host Result : Type} (profile : ProfileKind
       (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
     visible checked = visible canonical ∧
     match result with
-    | .ok _ => keep store
+    | .ok _ => keep store ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left checked
+          (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right canonical
+          (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result)
     | .error reason => ∃ leading, visible canonical = leading ++ [.trap reason]
 
 def CompareLocalKeepingAt {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)

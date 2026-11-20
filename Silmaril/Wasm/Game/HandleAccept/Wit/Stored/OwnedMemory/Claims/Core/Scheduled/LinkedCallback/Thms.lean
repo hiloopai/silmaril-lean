@@ -235,8 +235,8 @@ theorem ChildFrameOver.string_field_replay {changes : ReturnFrame.Substitutions 
     let canonical := fun ptr => stringPlanTail cx destination.width output plan ptr >>= canonNext
     let lhs := { left with ctl := check.control (runStoreSteps cx 0 plan.steps >>= checked) }
     let rhs := { right with ctl := canon.control (runStoreSteps cx 0 plan.steps >>= canonical) }
-    ∃ reads, Steps profile ready dispatch left (List.replicate reads .tau) lhs ∧
-      Step profile ready dispatch right .tau rhs ∧
+    ∃ reads, ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left (List.replicate reads .tau) lhs ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right [.tau] rhs ∧
       StringReplay profile ready bindings changes cx checked canonical plan.steps.length lhs rhs check canon
         (fun left right check canon _ =>
           StringLocalCut profile ready dispatch left right check canon (fun value => checkNext (.ok value)) canonNext) :=

@@ -359,13 +359,14 @@ theorem valueTailWith {older : ReturnFrame.Substitutions (core3 grow) (HostState
   refine replay (origin := checked.store) (.elements area.size) destination inst entries 0 pointer _ checkPublish canonPublish _
     frame (Core3.Grows.refl _) region.width (elementSlots destination.width matched region.aligned region.bounds _ children) ?_ ?_ ?_
   · intro reached reference check canon paired grown checkAt canonAt
-    obtain ⟨store, result, labels, observed, lhsRun, rhsRun, _⟩ :=
+    obtain ⟨store, result, labels, observed, lhsRun, rhsRun, tracked⟩ :=
       collection_descriptor_cut (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings))
         (destination.context inst) destination.width output pointer entries.length reached reference check canon
         (fun value => checkNext (.ok value)) canonNext paired.store checkAt canonAt
     refine ⟨store, result, labels, observed, lhsRun, rhsRun, ?_⟩
     intro value returned
     subst result
+    refine ⟨fun depth => (tracked value rfl depth).1, fun depth => (tracked value rfl depth).2, ?_⟩
     exact ends value _ _ _ _
       ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩
       (region.growth.trans (grown.trans lhsRun.grows)) rfl rfl
@@ -562,13 +563,14 @@ private theorem mapReplay {older : ReturnFrame.Substitutions (core3 grow) (HostS
     (elementSlots destination.width matched region.aligned region.bounds _ (fun _ _ _ fit => fit))
     (children _ _ region.width region.sized) ?_ ?_ ?_
   · intro reached reference check canon paired grown checkAt canonAt
-    obtain ⟨store, result, labels, observed, lhsRun, rhsRun, _⟩ :=
+    obtain ⟨store, result, labels, observed, lhsRun, rhsRun, tracked⟩ :=
       collection_descriptor_cut (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings))
         (destination.context inst) destination.width output pointer entries.length reached reference check canon
         (fun value => checkNext (.ok value)) canonNext paired.store checkAt canonAt
     refine ⟨store, result, labels, observed, lhsRun, rhsRun, ?_⟩
     intro value returned
     subst result
+    refine ⟨fun depth => (tracked value rfl depth).1, fun depth => (tracked value rfl depth).2, ?_⟩
     cases value
     exact ends _ _ _ _
       ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩
@@ -618,7 +620,8 @@ private theorem scalarRule {older : ReturnFrame.Substitutions (core3 grow) (Host
   refine .inr ⟨⟨type, payload, rfl, data⟩, store, result, chk, ref, checkRun, canonRun, labels, ?_⟩
   cases result with
   | ok value =>
-    exact ends _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩ status rfl rfl
+    exact ⟨status.2.1, status.2.2,
+      ends _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩ status.1 rfl rfl⟩
   | error _ => exact status
 
 private theorem layoutCaseMap (width : AddrType) (cases : List (String × Option TypeOf)) :
@@ -755,9 +758,10 @@ theorem listTreeRule {older : ReturnFrame.Substitutions (core3 grow) (HostState 
       | error _ => exact status
       | ok value =>
         cases value
+        refine ⟨status.2.1, status.2.2, ?_⟩
         cases selected with
         | none =>
-          exact ends _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩ status rfl rfl
+          exact ends _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩ status.1 rfl rfl
         | some item =>
           let addressAt := sumPayloadAddress destination.width arms address
           obtain ⟨area, member, matchChild⟩ := selectedLayout destination.width matched
@@ -778,7 +782,7 @@ theorem listTreeRule {older : ReturnFrame.Substitutions (core3 grow) (HostState 
           exact ih item addressAt present sized (fun leaf path => allocator leaf (.sum path))
             (child item rfl) matchChild fits 0 (aggregateNext index checkNext) canonNext
             entered reference check canon ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
-            status rfl rfl finish (fun _ _ _ _ frame grew checkAt canonAt => ends _ _ _ _ frame grew checkAt canonAt)
+            status.1 rfl rfl finish (fun _ _ _ _ frame grew checkAt canonAt => ends _ _ _ _ frame grew checkAt canonAt)
     | @fixed _ element length entries child =>
       obtain ⟨count, entriesMatch⟩ : entries.length = length ∧ Field.EntriesMatch entries element := by
         cases matched with | fixed count matchItems => exact ⟨count, matchItems⟩

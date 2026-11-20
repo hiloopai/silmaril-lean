@@ -560,8 +560,8 @@ theorem stringFieldReplay {changes : ReturnFrame.Substitutions (core3 grow) (Hos
     let canonical := fun ptr => stringPlanTail cx destination.width output plan ptr >>= canonNext
     let lhs := { left with ctl := check.control (runStoreSteps cx 0 plan.steps >>= checked) }
     let rhs := { right with ctl := canon.control (runStoreSteps cx 0 plan.steps >>= canonical) }
-    ∃ reads, Steps profile ready dispatch left (List.replicate reads .tau) lhs ∧
-      Step profile ready dispatch right .tau rhs ∧
+    ∃ reads, Occurrence.RetainsActiveSlots profile ready dispatch left (List.replicate reads .tau) lhs ∧
+      Occurrence.RetainsActiveSlots profile ready dispatch right [.tau] rhs ∧
       StringReplay profile ready bindings changes cx checked canonical plan.steps.length lhs rhs check canon
         (fun left right check canon _ =>
           StringLocalCut profile ready dispatch left right check canon (fun value => checkNext (.ok value)) canonNext) := by
@@ -613,13 +613,14 @@ theorem stringFieldThen {older : ReturnFrame.Substitutions (core3 grow) (HostSta
   refine ⟨reads, memory, flat, stringReplay (profile := profile) (ready := ready) (bindings := bindings)
     cx 0 plan.steps checked canonical entered growth rfl rfl ?_⟩
   intro lhs rhs check canon pointer frame growing lhsAt rhsAt
-  obtain ⟨store, result, labels, silent, lhsRun, rhsRun, _⟩ := string_descriptor_cut cx destination.width output plan pointer
+  obtain ⟨store, result, labels, silent, lhsRun, rhsRun, tracked⟩ := string_descriptor_cut cx destination.width output plan pointer
     lhs rhs check canon (fun value => checkNext (.ok value)) canonNext frame.store lhsAt rhsAt
   refine ⟨store, result, labels, silent, lhsRun, rhsRun, ?_⟩
   intro value success
   subst result
-  exact ends value _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
-    (growing.trans lhsRun.grows) rfl rfl
+  exact ⟨fun depth => (tracked value rfl depth).1, fun depth => (tracked value rfl depth).2,
+    ends value _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+      (growing.trans lhsRun.grows) rfl rfl⟩
 
 theorem flatSequenceReplay {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {origin : CStore (core3 grow)}
     (destination : RecordDestination) (inst : InstId) (items : List Field) (index : Nat) (leading : List FlatValue)
@@ -727,8 +728,9 @@ private theorem flatSumThen {older : ReturnFrame.Substitutions (core3 grow) (Hos
     cases result with
     | error _ => exact status
     | ok value =>
-      exact ends value _ _ _ _ ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩
-        status rfl rfl
+      exact ⟨status.2.1, status.2.2,
+        ends value _ _ _ _ ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩
+          status.1 rfl rfl⟩
   cases selected with
   | none =>
     have checked : left.ctl = check.control (flatSumTail destination.width type arms.length tag [] [] >>= fun value => checkNext (.ok value)) := by

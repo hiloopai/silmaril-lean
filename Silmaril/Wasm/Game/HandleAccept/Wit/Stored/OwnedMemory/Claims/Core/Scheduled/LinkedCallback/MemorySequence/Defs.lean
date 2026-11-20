@@ -182,13 +182,7 @@ def publishCanonical (destination : RecordDestination) (inst : InstId) (pointer 
 def DescriptorThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (output : Lower.Output) (checkNext : ValueCheckNext grow sig output) (canonNext : ValueCanonNext grow sig output)
     (next : ValueFinish grow sig output) : Finish grow sig := fun left right check canon =>
-  let dispatch := specDispatch ready (host bindings)
-  let lhs := fun store => localLeafEnd left left.host store check.thread check.frames check.rest (fun value => checkNext (.ok value))
-  let rhs := fun store => localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext
-  ∃ store verdict labels, LocalLeafLabels verdict labels ∧
-    CoreGrowthSteps profile ready dispatch left labels (lhs store verdict) ∧
-    CoreGrowthSteps profile ready dispatch right labels (rhs store verdict) ∧
-    ∀ value, verdict = .ok value → next value (lhs store (.ok value)) (rhs store (.ok value)) check canon
+  LocalThen profile ready bindings left right check canon (fun value => checkNext (.ok value)) canonNext next
 
 /-- The actual admitted value-mode collection tail: strided entries followed
 by the descriptor only on common success. Indirect maps do not use it. -/
@@ -327,7 +321,10 @@ def SumThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (binding
     visible checkLabels = visible canonLabels ∧
     match result with
     | .error reason => ∃ leading, visible canonLabels = leading ++ [.trap reason]
-    | .ok () => match selected with
+    | .ok () =>
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left checkLabels lhs ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
+      match selected with
       | none => finish lhs rhs check canon
       | some item => compare item 0 address lhs rhs check canon (aggregateNext index checkNext) canonNext finish
 

@@ -298,8 +298,9 @@ private theorem flatAllocatingRule {older : ReturnFrame.Substitutions (core3 gro
     cases result with
     | error _ => exact status
     | ok words =>
-      exact ends words _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
-        status rfl rfl
+      exact ⟨status.2.1, status.2.2,
+        ends words _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+          status.1 rfl rfl⟩
   · have certs : Field.EntriesMatch entries element ∧ CanonicalTree.EntryMode.forOutput destination.width type .flat = .value := by
       cases matched with
       | list matching => exact ⟨matching, rfl⟩

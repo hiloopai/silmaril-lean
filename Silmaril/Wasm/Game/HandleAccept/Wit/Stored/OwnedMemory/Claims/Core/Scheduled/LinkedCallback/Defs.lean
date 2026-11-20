@@ -334,8 +334,8 @@ def StringReplay (profile : ProfileKind) (ready : HostReady (HostState sig)) (bi
     left right check canon
 termination_by length
 
-/-- Compare a shared local result segment and continue only on common
-success. The terminal lock-down segment on a trap is kept as reached. -/
+/-- Compare a shared local result segment. Successful execution tracks the
+active slots into the next consumer; traps retain the reached lockdown. -/
 def LocalThen {Result : Type} (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (left right : State grow sig) (check canon : Cursor (E := core3 grow) (HostState sig))
     (checkNext canonNext : Result → Session grow sig (Ret (core3 grow)))
@@ -343,14 +343,14 @@ def LocalThen {Result : Type} (profile : ProfileKind) (ready : HostReady (HostSt
       Cursor (E := core3 grow) (HostState sig) → Prop) : Prop :=
   let dispatch := specDispatch ready (host bindings)
   ∃ (store : CStore (core3 grow)) (result : Except TrapReason Result) (labels : List (Label (core3 grow) (HostState sig))),
-    LocalLeafLabels result labels ∧
-    CoreGrowthSteps profile ready dispatch left labels
-      (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
-    CoreGrowthSteps profile ready dispatch right labels
-      (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
-    ∀ value, result = .ok value → next value
-      { left with store, ctl := check.control (checkNext value) }
-      { right with store, ctl := canon.control (canonNext value) } check canon
+    let lhs := localLeafEnd left left.host store check.thread check.frames check.rest checkNext
+    let rhs := localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext
+    LocalLeafLabels result labels ∧ CoreGrowthSteps profile ready dispatch left labels (lhs result) ∧
+    CoreGrowthSteps profile ready dispatch right labels (rhs result) ∧
+    ∀ value, result = .ok value →
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left labels (lhs (.ok value)) ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right labels (rhs (.ok value)) ∧
+      next value (lhs (.ok value)) (rhs (.ok value)) check canon
 
 /-- A string field installs the actual plan, allows suspended callback
 prefixes, and starts the next comparison only after its own result succeeds. -/
@@ -369,8 +369,8 @@ def StringFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) 
   let canonical := fun ptr => stringPlanTail cx destination.width output plan ptr >>= canonNext
   let lhs := { left with ctl := check.control (runStoreSteps cx 0 plan.steps >>= checked) }
   let rhs := { right with ctl := canon.control (runStoreSteps cx 0 plan.steps >>= canonical) }
-  ∃ reads, Steps profile ready dispatch left (List.replicate reads .tau) lhs ∧
-    Step profile ready dispatch right .tau rhs ∧
+  ∃ reads, ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left (List.replicate reads .tau) lhs ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right [.tau] rhs ∧
     StringReplay profile ready bindings older cx checked canonical plan.steps.length lhs rhs check canon
       (fun lhs rhs check canon _ => LocalThen profile ready bindings lhs rhs check canon
         (fun value => checkNext (.ok value)) canonNext next)
@@ -488,7 +488,10 @@ def LocalFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (
     Steps profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
     visible checkLabels = visible canonLabels ∧
     match result with
-    | .ok value => finish value lhs rhs check canon
+    | .ok value =>
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left checkLabels lhs ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
+      finish value lhs rhs check canon
     | .error reason => ∃ leading, visible canonLabels = leading ++ [.trap reason]
 
 def flatSumTail (width : AddrType) (type : TypeOf) (count tag : Nat) (haves : List CoreType) (words : List FlatValue) :

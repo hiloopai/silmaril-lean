@@ -87,6 +87,14 @@ theorem Prefix.append {before middle after : Config E Host} {leading trailing : 
     Prefix profile ready dispatch before place (leading ++ trailing) after final :=
   Proofs.Wasm.Component.Reference.MachineReturnOccurrence.prefix_append left right
 
+/-- A store read changes the focused program but does not edit any segment slot. -/
+theorem Prefix.read {before : Config E Host} {thread frames rest}
+    {next : CStore E → P E Host (Ret E)} (depth : Nat)
+    (focused : before.ctl = ⟨thread, .prog (.op (S := Eff E Host) .get next), frames⟩ :: rest) :
+    Prefix profile ready dispatch before (.active 0 depth) [.tau]
+      { before with ctl := ⟨thread, .prog (next before.store), frames⟩ :: rest } (.active 0 depth) :=
+  .step (.get focused) (by rw [transitionEdit, focused]; rfl) (.done _ _)
+
 /-- While the marked frame survives, older slots in its activation move with it,
 including through suspension, resume, and switches. This does not show that
 the marked callback returns. -/
