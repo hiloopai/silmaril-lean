@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Validation.Modules
 public import Silmaril.Wasm.Execution.Memory
 public import Silmaril.Wasm.Execution.Host
+public meta import Lean.PrettyPrinter.Delaborator.Basic
 
 @[expose] public section
 
@@ -34,6 +35,11 @@ map, with no extra case.
 `H : Type` is the embedder's host-function type (the component model instantiates
 it). `HostSemantics H` is a *relation*: a host call may return a new store and a
 result (values, exception, or trap) or diverge — the spec's `$hostcall` result set.
+
+**Memory representations.** `MemInst R`, `Store H R` and `Config H R` hold memory bytes in a
+representation `R` whose default is the specification's `ByteArray`: `MemInst`, `Store H` and
+`Config H` are the `ByteArray` instances, so every statement written without `R` is about
+`ByteArray`. Code generic in `[MemRep R]` (`Execution.MemRep`) runs on other representations.
 -/
 
 namespace Silmaril.Wasm.Execution.Core
@@ -108,9 +114,11 @@ structure GlobalInst where
   value : Val
   deriving DecidableEq, Repr
 
-structure MemInst where
+/-- `meminst`. The bytes are held in a representation `R`, by default the specification's
+`ByteArray`; other representations run Core through `MemRep R` (`Execution.MemRep`). -/
+structure MemInst (R : Type := ByteArray) where
   type : MemoryType
-  bytes : ByteArray
+  bytes : R
   deriving DecidableEq, Repr
 
 structure TableInst where
@@ -154,11 +162,12 @@ structure ExnInst where
   fields : List Val
   deriving DecidableEq, Repr
 
-/-- `store`. The GC heap (`structs`, `arrays`, `exns`) only grows. -/
-structure Store (H : Type) where
+/-- `store`. The GC heap (`structs`, `arrays`, `exns`) only grows. Memories are held in the
+representation `R`, by default `ByteArray` (`Store H` is `Store H ByteArray`). -/
+structure Store (H : Type) (R : Type := ByteArray) where
   tags : List TagInst := []
   globals : List GlobalInst := []
-  mems : List MemInst := []
+  mems : List (MemInst R) := []
   tables : List TableInst := []
   funcs : List (FuncInst H) := []
   datas : List DataInst := []
@@ -194,11 +203,42 @@ inductive Admin where
   deriving Repr
 
 /-- `config = store; frame; instr*`. -/
-structure Config (H : Type) where
-  store : Store H
+structure Config (H : Type) (R : Type := ByteArray) where
+  store : Store H R
   frame : Frame
   code : List Admin
   deriving Repr
+
+open Lean PrettyPrinter Delaborator SubExpr in
+/-- Field notation for the projections of `MemInst`, `Store` and `Config` at the default
+memory representation. The generic application delaborator prints an implicit parameter
+whose value is its `optParam` default as an explicit argument (`s.mems ByteArray`); this
+prints `s.mems`. -/
+meta def delabDefaultMemProj : Delab :=
+  whenNotPPOption getPPExplicit <| whenPPOption getPPFieldNotation do
+    let e ← getExpr
+    let .const c _ := e.getAppFn | failure
+    let some info := (← getEnv).getProjectionFnInfo? c | failure
+    guard <| e.getAppNumArgs == info.numParams + 1
+    guard <| (e.getArg! (info.numParams - 1)).isConstOf ``ByteArray
+    let s ← withAppArg delab
+    `($s.$(mkIdent (Name.mkSimple c.getString!)))
+
+attribute [delab app.Silmaril.Wasm.Execution.Core.MemInst.type,
+  delab app.Silmaril.Wasm.Execution.Core.MemInst.bytes,
+  delab app.Silmaril.Wasm.Execution.Core.Store.tags,
+  delab app.Silmaril.Wasm.Execution.Core.Store.globals,
+  delab app.Silmaril.Wasm.Execution.Core.Store.mems,
+  delab app.Silmaril.Wasm.Execution.Core.Store.tables,
+  delab app.Silmaril.Wasm.Execution.Core.Store.funcs,
+  delab app.Silmaril.Wasm.Execution.Core.Store.datas,
+  delab app.Silmaril.Wasm.Execution.Core.Store.elems,
+  delab app.Silmaril.Wasm.Execution.Core.Store.structs,
+  delab app.Silmaril.Wasm.Execution.Core.Store.arrays,
+  delab app.Silmaril.Wasm.Execution.Core.Store.exns,
+  delab app.Silmaril.Wasm.Execution.Core.Config.store,
+  delab app.Silmaril.Wasm.Execution.Core.Config.frame,
+  delab app.Silmaril.Wasm.Execution.Core.Config.code] delabDefaultMemProj
 
 /-- `result = _VALS val* | (REF.EXN_ADDR a) THROW_REF | TRAP`. -/
 inductive Result where

@@ -96,9 +96,9 @@ theorem locked_core_step {E : CoreEngine} {σ : Type} {prof : ProfileKind} {hr :
     {ct ct' : E.Thread (CanonHost E)} {c' : E.Store (CanonHost E)}
     {k : List FlatValue → Canon.P E σ (Ret E)} {segs : List (Seg E σ)}
     {rest : List (Activation E σ)} (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .running) (hi : E.Internal (m.store.core, ct) (c', ct')) :
+    (hs : E.status m.core ct = .running) (hi : E.Internal (m.core, ct) (c', ct')) :
     Machine.Step prof hr dispatch m .core
-      { m with store := { m.store with core := c' }, ctl := ⟨th, .core ct' k, segs⟩ :: rest } :=
+      { m with core := c', ctl := ⟨th, .core ct' k, segs⟩ :: rest } :=
   Silmaril.Proofs.Wasm.Component.Reference.LinkedGRound.locked_core_step m hc hs hi
 
 /-- **The corrected R3 implies R3** (proved). -/

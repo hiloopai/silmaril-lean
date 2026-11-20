@@ -47,15 +47,15 @@ structure Garb (P : Profile) (σ : Type := Unit) where
   cancels : List (CallId × CancelRef)
 
 /-- The store between calls. -/
-def readyStore (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
+def readyStore (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) : CStore (E3 P) :=
-  { core := cs, insts := [ι], funcs := fs, tasks := G.tasks, threads := G.threads,
+  { insts := [ι], funcs := fs, tasks := G.tasks, threads := G.threads,
     callers := G.callers }
 
 /-- The configuration between calls, with host state `h`. -/
 def readyCfgH (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P σ) (h : σ) : Machine.Config (E3 P) σ :=
-  { store := readyStore cs ι fs G, host := h, conts := G.conts, pending := G.pending,
+  { store := readyStore ι fs G, core := cs, host := h, conts := G.conts, pending := G.pending,
     results := G.results, cancels := G.cancels }
 
 /-- The configuration between calls. -/

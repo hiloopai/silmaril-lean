@@ -194,13 +194,13 @@ theorem memWrite?_mapH {H H' : Type} (g : H → H') (s : Store H) (a st : Nat) (
   unfold Silmaril.Wasm.SingleThreaded.memWrite?
   show (do
       let mi ← s.mems[a]?
-      let b ← Silmaril.Wasm.Execution.Memory.writeBytes mi.bytes st bs
+      let b ← Silmaril.Wasm.Execution.MemRep.writeBytes mi.bytes st bs
       return (Store.mapH g s).setMem a { mi with bytes := b }) = _
   cases s.mems[a]? with
   | none => rfl
   | some mi =>
     simp only [Option.bind_eq_bind, Option.bind_some]
-    cases Silmaril.Wasm.Execution.Memory.writeBytes mi.bytes st bs with
+    cases Silmaril.Wasm.Execution.MemRep.writeBytes mi.bytes st bs with
     | none => rfl
     | some b => rfl
 

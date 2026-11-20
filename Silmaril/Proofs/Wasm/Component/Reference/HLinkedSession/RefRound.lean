@@ -67,7 +67,7 @@ theorem trapsAtSH_out {impl : HostImpl (E3 P) σ} {M m' : Machine.Config (E3 P) 
     {out : CallOutcome} {cid : CallId} (hT : TrapsAtSH prof P impl M c h)
     (r : Steps prof (fun _ _ => false) (DI P impl) M tr m')
     (ho : out.Holds (fun _ _ => false) cid m') :
-    out = .trap ∧ m'.store.core = c ∧ m'.host = h := by
+    out = .trap ∧ m'.core = c ∧ m'.host = h := by
   obtain ⟨tr₁, mT, rT, -, hrun, hlive, hu, hc, hh⟩ := hT
   rcases hrun.inv r with hl' | ⟨tr'', -, r''⟩
   · exact absurd ho (hl'.not_holds _ _)
@@ -430,7 +430,7 @@ def RoundBackH (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
         ∀ (rest' : List (Move Ii.E Ii.F)) (q : Ii.HState),
           (∀ s t, Silmaril.Wasm.Game.Reach P (s, t) z → Ii.Path P (.running f s t) rest' q) →
           Ii.Path P (.running f x.1 x.2) (callMoves rs ++ rest') q) ∨
-      (∃ u₁ : Store Nat, out = .trap ∧ LReady P l.toW Ie Ii s₀ u₀ F₀ m'.store.core u₁ π₁ ∧
+      (∃ u₁ : Store Nat, out = .trap ∧ LReady P l.toW Ie Ii s₀ u₀ F₀ m'.core u₁ π₁ ∧
         m'.host = s' ∧
         Ii.Path P (.running f x.1 x.2) (callMoves rs ++ [.inr (.ans f .trap)]) (.idle u₁)))
 
@@ -486,7 +486,7 @@ theorem RoundBackH.trap1 {x x₁ : Store Nat × STh} {π π₁ : Store Nat} {s s
     (he : Ii.importOp? e.1.val args = some e)
     (hrel : Silmaril.Wasm.Component.Reference.ImpRel l.imp Ii ⟨e, .trap⟩ ds)
     (hexp : HLinked2.ExpRunH P l Ie π ds π₁) (hhr : HostRun g s (l.hostCalls ds) s')
-    (hRd : LReady P l.toW Ie Ii s₀ u₀ F₀ m'.store.core x₁.1 π₁) (hh : m'.host = s') :
+    (hRd : LReady P l.toW Ie Ii s₀ u₀ F₀ m'.core x₁.1 π₁) (hh : m'.host = s') :
     RoundBackH prof P impl g l Ie Ii s₀ u₀ u F₀ M₀ th K segs rest f x π s tr m' .trap := by
   have hP : Ii.Path P (.running f x.1 x.2)
       [.inl (.ask e), .inl (.ans e .trap), .inr (.ans f .trap)] (.idle x₁.1) :=

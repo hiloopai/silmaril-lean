@@ -55,8 +55,8 @@ theorem runs_lower_borrow {th : Option ThreadId} (t : TaskId) (rep : ℕ)
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatParams [.borrow rep] (paramTypes ftGet) none) m [.tau, .tau] [i32Flat rep] m := by
   rw [lower_borrow_eq]
-  refine .get ?_
-  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store _) [.borrow rep]
+  refine .readCore ?_
+  show RunsQ _ _ (lowerFlatTypes Limits.spec Quirks.none _ (ptrTypeIn (CoreEngine.view _ m.core) _) [.borrow rep]
     [.borrow ⟨0⟩]) _ _ _ _
   unfold lowerFlatTypes
   rw [lowerFlatAt.eq_def]
@@ -110,10 +110,10 @@ theorem lower_get_traps {th : Option ThreadId} (t : TaskId) (args : List Silmari
           (TrapsQ.left (TrapsQ.trap _ (isTrap_trap _)))⟩
       · rw [lowerFlatAt_borrow_other _ _ v (fun rep e => hv ⟨rep, e⟩)]
         exact ⟨_, _, TrapsQ.left (TrapsQ.trap _ (isTrap_trap _))⟩
-  obtain ⟨trT, mT, hT⟩ := h (ptrTypeIn m.store
+  obtain ⟨trT, mT, hT⟩ := h (ptrTypeIn (CoreEngine.view _ m.core)
     ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P)))
   rw [lower_borrow_eq]
-  exact ⟨_, _, TrapsQ.bind (RunsQ.get (RunsQ.pure _ _)) hT⟩
+  exact ⟨_, _, TrapsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) hT⟩
 
 end Lower
 
@@ -126,14 +126,14 @@ open Silmaril.Wasm.Logic.Core (Outcome Post)
 variable (P : Silmaril.Wasm.Numerics.Profile)
 
 /-- The toy's core store with the counter at `c`. -/
-noncomputable abbrev toyCs (c : ℕ) := setCtr P (toyInst P).store.core c
+noncomputable abbrev toyCs (c : ℕ) := setCtr P (toyInst P).core c
 
-theorem toyCs_funcs (c : ℕ) : (toyCs P c).funcs = (toyInst P).store.core.funcs := rfl
+theorem toyCs_funcs (c : ℕ) : (toyCs P c).funcs = (toyInst P).core.funcs := rfl
 
-theorem toyCore_get_code : ((toyInst P).store.core.funcs[3]?).map FuncInst.code =
+theorem toyCore_get_code : ((toyInst P).core.funcs[3]?).map FuncInst.code =
     some (.wasm ⟨⟨0⟩, [], [.localGet ⟨0⟩]⟩) := by kernel_rfl
 
-theorem toyCore_get_type : ((toyInst P).store.core.funcs[3]?).map
+theorem toyCore_get_type : ((toyInst P).core.funcs[3]?).map
     (fun fi => decide (Expand fi.type
       (Silmaril.Wasm.Game.FnType.toComp ⟨[.num (.int .i32)], [.num (.int .i32)]⟩))) =
       some true := by kernel_rfl
@@ -150,12 +150,12 @@ variable {P}
 theorem getSpec_valid
     {host : HostSemantics (Silmaril.Wasm.Component.Runtime.CanonHost
       (Silmaril.Wasm.Component.Reference.core3P P))} :
-    FSpecValid P host 3 (getSpec (toyInst P).store.core.funcs)
+    FSpecValid P host 3 (getSpec (toyInst P).core.funcs)
   | 0 => fun _ _ _ _ _ _ _ => trivial
   | n + 1 => by
     have hc := toyCore_get_code P
     have ht := toyCore_get_type P
-    cases hf : (toyInst P).store.core.funcs[3]? with
+    cases hf : (toyInst P).core.funcs[3]? with
     | none => simp [hf] at hc
     | some fi =>
       simp only [hf, Option.map_some, Option.some.injEq, decide_eq_true_eq] at hc ht
@@ -180,7 +180,7 @@ theorem get_core {c : ℕ} {w : BitVec 32} {y : CoreSt (E3 P)}
     (∀ h args, (E3 P).status y.1 y.2 ≠ .callout h args) := by
   have hs : Steps P (noHostH _) (invoke (toyCs P c) 3 [.i32 w]) (y.2.config y.1) :=
     internalP_steps (coreSteps_internalP hy)
-  have hpre : (getSpec (toyInst P).store.core.funcs).pre (toyCs P c) [.i32 w] := ⟨rfl, w, rfl⟩
+  have hpre : (getSpec (toyInst P).core.funcs).pre (toyCs P c) [.i32 w] := ⟨rfl, w, rfl⟩
   have hv := getSpec_valid (P := P) (host := noHostH _)
   refine ⟨fun ys hst => ?_, fun h args hst => ?_⟩
   · show y.1 = toyCs P c ∧ ys = [.int .i32 w]
@@ -228,8 +228,8 @@ theorem runs_lift_get {th : Option ThreadId} (t : TaskId) (w : BitVec 32) :
     resultTypes_liftedFt x (by decide),
     show FlatCursor.ofList [.int .i32 w] = ⟨[.int .i32 w], 0⟩ from rfl,
     liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none _ (by decide)]
-  refine .get ?_
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store _)
+  refine .readCore ?_
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn (CoreEngine.view _ m.core) _)
     (toClosedList x.ty.results) ⟨[.int .i32 w], 0⟩) _ _ _ _
   rw [ptrTypeIn_none _ _ rfl, hc]
   exact .pure _ _
@@ -254,16 +254,16 @@ theorem get_lowerAt : ∀ m : Machine.Config (E3 P) Unit,
   exact runs_lower_borrow _ rep _ rfl
 
 /-- The lift of `[i32 w]` at the return point of a call of `get`. -/
-theorem get_liftAt (cs' : (core3P P).Store (CanonHost (core3P P))) (w : BitVec 32) :
+theorem get_liftAt (w : BitVec 32) :
     ∃ ws cur, ∀ m : Machine.Config (E3 P) Unit,
-      m.store = { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-          (callIn ι ⟨G.threads.length⟩) G.handles with core := cs' } →
+      m.store = (tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+          (callIn ι ⟨G.threads.length⟩) G.handles) →
       RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
         ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
         ABI.maxFlatResults (.ofList [.int .i32 w]) (resultTypes ftGet)) m [.tau] (ws, cur)
         { m with
-          store := { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-              (callIn ι ⟨G.threads.length⟩) G.handles with core := cs' } } := by
+          store := tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+              (callIn ι ⟨G.threads.length⟩) G.handles } := by
   obtain ⟨ws, cur, hlift⟩ := runs_lift_get (P := P) (th := some ⟨G.threads.length⟩)
     ⟨G.tasks.length⟩ w
   refine ⟨ws, cur, fun m hm => ?_⟩
@@ -291,18 +291,18 @@ theorem get_after {M₀ m₁ m' : Machine.Config (E3 P) Unit} {th : Option Threa
     (hst : M₀.store = tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
       (callIn ι ⟨G.threads.length⟩) G.handles)
     (hret : ∀ ws cur, (∀ m : Machine.Config (E3 P) Unit,
-        m.store = { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-          (callIn ι ⟨G.threads.length⟩) G.handles with core := y.1 } →
+        m.store = (tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+          (callIn ι ⟨G.threads.length⟩) G.handles) →
         RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ftGet)) m [.tau] (ws, cur)
           { m with
-            store := { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-                (callIn ι ⟨G.threads.length⟩) G.handles with core := y.1 } }) →
+            store := tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+                (callIn ι ⟨G.threads.length⟩) G.handles }) →
       ∃ trR, LRun prof (refHost P).hr (D P)
         { M₀ with
-          store := { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-              (callIn ι ⟨G.threads.length⟩) G.handles with core := y.1 },
+          store := tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+              (callIn ι ⟨G.threads.length⟩) G.handles, core := y.1,
           ctl := ⟨th, .prog (K ys), segs⟩ :: rest } trR (toyCfgX P c (getI ι G) (getG G k rep ws)))
     (hys : ys = [.int .i32 (BitVec.ofNat 32 rep)]) (hm₁ : m₁ = retCfg M₀ th K segs rest y ys)
     (r₃ : Steps prof (refHost P).hr (D P) m₁ tr m')
@@ -310,7 +310,7 @@ theorem get_after {M₀ m₁ m' : Machine.Config (E3 P) Unit} {th : Option Threa
     (ho : (CallOutcome.resolved r).Holds (refHost P).hr ⟨k⟩ m') :
     ∃ ws, r = some ws ∧ m' = toyCfgX P c (getI ι G) (getG G k rep ws) := by
   obtain ⟨ws, cur, hlift⟩ := get_liftAt (P := P) (c := c) (ι := ι) (G := G) (k := k) (rep := rep)
-    y.1 (BitVec.ofNat 32 rep)
+    (BitVec.ofNat 32 rep)
   obtain ⟨trR, hR⟩ := hret ws cur (hys ▸ hlift)
   have hR' : LRun prof (refHost P).hr (D P) m₁ trR (toyCfgX P c (getI ι G) (getG G k rep ws)) := by
     rw [hm₁, retCfg, hst]
@@ -331,19 +331,19 @@ theorem get_from_core {M₀ m' : Machine.Config (E3 P) Unit} {th : Option Thread
       (callIn ι ⟨G.threads.length⟩) G.handles)
     (hret : ∀ (cs' : (core3P P).Store (CanonHost (core3P P))) (ys : List FlatValue) ws cur,
       (∀ m : Machine.Config (E3 P) Unit,
-        m.store = { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-          (callIn ι ⟨G.threads.length⟩) G.handles with core := cs' } →
+        m.store = (tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+          (callIn ι ⟨G.threads.length⟩) G.handles) →
         RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
           ABI.maxFlatResults (.ofList ys) (resultTypes ftGet)) m [.tau] (ws, cur)
           { m with
-            store := { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-                (callIn ι ⟨G.threads.length⟩) G.handles with core := cs' } }) →
+            store := tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+                (callIn ι ⟨G.threads.length⟩) G.handles }) →
       cs' = toyCs P c →
       ∃ trR, LRun prof (refHost P).hr (D P)
         { M₀ with
-          store := { tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
-              (callIn ι ⟨G.threads.length⟩) G.handles with core := cs' },
+          store := tStore₄ P ftGet c ι (callIn ι ⟨G.threads.length⟩) G k [.borrow rep]
+              (callIn ι ⟨G.threads.length⟩) G.handles, core := cs',
           ctl := ⟨th, .prog (K ys), segs⟩ :: rest } trR (toyCfgX P c (getI ι G) (getG G k rep ws)))
     (r' : Steps prof (refHost P).hr (D P) (coreCfg M₀ th K segs rest
       (toyCs P c, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat 3 [i32Flat rep])) tr m')
@@ -382,16 +382,15 @@ theorem toy_get {a : List Silmaril.Wasm.Component.Value.Val} {m' : Machine.Confi
       m' = toyCfgX P c (getI ι G) (getG G k rep ws)
     obtain ⟨rep, ha⟩ := ha
     subst ha
-    obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, -, hctl, hst, -, hret⟩ := toy_callAt prof ftGet 1 3
+    obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, -, hctl, hst, hcore, -, hret⟩ := toy_callAt prof ftGet 1 3
       [.borrow rep] [i32Flat rep] c ι _ _ G k G.handles _ rfl rfl hadd get_lowerAt
     rcases hpre.inv (hm₂ ▸ r₁) with hl | ⟨tr', e, r'⟩
     · exact absurd ho (hl.not_holds _ _)
-    have hcore : M₀.store.core = toyCs P c := by rw [hst]; rfl
     have hev' : ∀ ev, Label.host ev ∈ tr' → CallHostEvent ⟨k⟩ ev :=
       fun ev hm => hev ev (e ▸ List.mem_append_right _ hm)
     obtain ⟨ws, hr, hm'⟩ := get_from_core hG hk hst
       (fun cs' ys ws cur hl hcs => hret cs' _ _ G.handles G.handles ys ws cur [.tau] c hl hcs
-        (removeThread?_call _ _)) (hcore ▸ eq_coreCfg hctl ▸ r') hev' ho
+        (removeThread?_call _ _)) ((show M₀.core = toyCs P c from hcore) ▸ eq_coreCfg hctl ▸ r') hev' ho
     exact ⟨rep, ws, rfl, hr, hk, hm'⟩
   · obtain ⟨trT, mT, rT, hrun, hlive, hu⟩ := toy_callAt_trap prof ftGet 1 3 a c ι _ G k rfl rfl
       hadd (fun m hm => lower_get_traps _ a (fun rep e => ha ⟨rep, e⟩) m (by rw [hm]; rfl))

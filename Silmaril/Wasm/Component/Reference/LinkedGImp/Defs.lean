@@ -46,7 +46,7 @@ structure CoreFoot.Bounded {H : Type} (F : CoreFoot) (σ : Store H) : Prop where
 /-- **R6: footprints are allocated**: the footprint of every `Hold` lies inside the allocated
 structs and arrays of its core store. -/
 def ExpSpec.RefData.Bounded {P : Profile} {e : ExpSpec} (d : e.RefData P) : Prop :=
-  ∀ (pl : d.Pl) (s : e.St) (S : CStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
+  ∀ (pl : d.Pl) (s : e.St) (S : RefStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
     F.Bounded (S.core : Store (CanonHost (core3P P)))
 
 /-- **The reference interface of an exporter, with allocated footprints** (R1–R6). -/

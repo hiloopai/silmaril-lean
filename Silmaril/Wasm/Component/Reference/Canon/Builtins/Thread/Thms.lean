@@ -62,7 +62,7 @@ theorem threadNewIndirect (tbl : E.TableAddr) (ft : V1.FuncType) (fi : Nat) (c :
     Canon.P.Inv.bind (Canon.P.Inv.getTask _) fun _ =>
       Canon.P.Inv.bind (Canon.P.Inv.getInst _) fun _ =>
         Canon.P.Inv.bind (Canon.P.Inv.trapIf _ _) fun _ =>
-          Canon.P.Inv.bind Canon.P.Inv.getStore fun _ =>
+          Canon.P.Inv.bind Canon.P.Inv.readCore fun _ =>
             Canon.P.Inv.bind (Canon.P.Inv.orTrap _ _) fun _ =>
               Canon.P.Inv.bind (Canon.P.Inv.trapIf _ _) fun _ =>
                 Canon.P.Inv.bind (Canon.P.Inv.newThread _) fun nt =>

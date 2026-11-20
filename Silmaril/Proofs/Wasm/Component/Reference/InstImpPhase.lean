@@ -137,11 +137,11 @@ instances and the lifted functions of the exports. -/
 theorem toRefDefsI_run {c : SimpleI} (hc : c.Good) (hi : c.Inst) (har : c.Arity)
     {I : Silmaril.Wasm.Game.ScalarInstance} {cs : (core3P Pf).Store (CanonHost (core3P Pf))}
     {ci : (core3P Pf).Inst} (hF : CoreFactsI c I cs ci) (cfg : Machine.Config (core3P Pf) σ)
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = hostList 0 c.imports) :
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = hostList 0 c.imports) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R ⟨0⟩ outer (importArgs c.imports)) {} c.toRef)
         cfg sc'
-        { cfg with store :=
-            liftStore cs cfg.store (liftedList (fun k => I.addrs.getD k 0) ⟨0⟩ c.exports) } ∧
+        { cfg with core := cs, store :=
+            liftStore cfg.store (liftedList (fun k => I.addrs.getD k 0) ⟨0⟩ c.exports) } ∧
       funcExports sc'.exports = exportMapI c := by
   have hget : ∀ j (hj : j < c.imports.length), ArenaField.funcs.get? cfg.store ⟨j⟩ =
       some (.host (witFt c.imports[j].2) ⟨j⟩) := hostList_get hfuncs
@@ -176,7 +176,7 @@ theorem toRefDefsI_run {c : SimpleI} (hc : c.Good) (hi : c.Inst) (har : c.Arity)
     { scA with frame := { scA.frame with coreModules := scA.frame.coreModules ++ ([c.mod.mod] : List (core3P Pf).Module),
                                          coreFuncs := scA.frame.coreFuncs ++
                                            addrList Pf (List.range' 0 c.imports.length) } }
-    { cfg with store := { cfg.store with core := trampStore Pf c.imports } } c.mod.imports hcfC
+    { cfg with core := trampStore Pf c.imports } c.mod.imports hcfC
   -- the core instantiation
   have hmE : (scA.frame.coreModules ++ ([c.mod.mod] : List (core3P Pf).Module)) = ([c.mod.mod] : List (core3P Pf).Module) := by rw [hfA]; rfl
   have hciE : (scA.frame.coreInstances ++
@@ -190,7 +190,7 @@ theorem toRefDefsI_run {c : SimpleI} (hc : c.Good) (hi : c.Inst) (har : c.Arity)
                                          coreInstances := scA.frame.coreInstances ++
                                            ([envExports c.mod.imports] :
                                              List (List (String × (core3P Pf).ExternVal))) } }
-    { cfg with store := { cfg.store with core := trampStore Pf c.imports } } hmE
+    { cfg with core := trampStore Pf c.imports } hmE
     (hF.imports _ hciE) hF.prepare
   -- the exports
   have hinv : ExpInvAt ((core3P Pf).exports ci) 1 c.imports.length 0
@@ -212,7 +212,7 @@ theorem toRefDefsI_run {c : SimpleI} (hc : c.Good) (hi : c.Inst) (har : c.Arity)
     · show scA.frame.funcs.length = _
       rw [hfA]
       simp [Frame.empty]
-  have hs : (setCoreSt cs { cfg.store with core := trampStore Pf c.imports }).funcs.length =
+  have hs : cfg.store.funcs.length =
       c.imports.length + 0 := by
     show cfg.store.funcs.length = _
     rw [hfuncs, hostList_length, Nat.add_zero]
@@ -226,7 +226,7 @@ theorem toRefDefsI_run {c : SimpleI} (hc : c.Good) (hi : c.Inst) (har : c.Arity)
                                            ([envExports c.mod.imports] :
                                              List (List (String × (core3P Pf).ExternVal))) ++
                                            [(core3P Pf).exports ci] } }
-    { cfg with store := setCoreSt cs { cfg.store with core := trampStore Pf c.imports } }
+    { cfg with core := cs }
     hinv hs (fun x hx => hF.lookup x hx)
   have hlA' : scA.frame.types.length = (SimpleI.importsDefs c.imports 0).2 := hlA
   rw [hlA'] at rF
@@ -316,20 +316,20 @@ section Prog
 
 /-- The store after root instantiation of `c.toRef`: instance `0`, the core store and the
 lifted functions after the host functions. -/
-noncomputable def instStoreI (cs : (core3P Pf).Store (CanonHost (core3P Pf)))
+noncomputable def instStoreI
     (s : CStore (core3P Pf)) (addr : Nat → Nat) (c : SimpleI) : CStore (core3P Pf) :=
-  liftStore cs (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr ⟨0⟩ c.exports)
+  liftStore (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr ⟨0⟩ c.exports)
 
 /-- **Root instantiation of `c.toRef` runs silently**: the root checks pass, instance `0` is
 allocated, and the definitions run (`toRefDefsI_run`). -/
 theorem rootCallI_run {c : SimpleI} (hc : c.Good) (hi : c.Inst) (har : c.Arity)
     {I : Silmaril.Wasm.Game.ScalarInstance} {cs : (core3P Pf).Store (CanonHost (core3P Pf))}
     {ci : (core3P Pf).Inst} (hF : CoreFactsI c I cs ci) (cfg : Machine.Config (core3P Pf) σ)
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = hostList 0 c.imports)
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = hostList 0 c.imports)
     (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = exportMapI c ∧
       TRuns (instantiateRootCall c.toRef (importArgs c.imports) : P (core3P Pf) σ _) cfg (⟨0⟩, es)
-        { cfg with store := instStoreI cs cfg.store (fun k => I.addrs.getD k 0) c } := by
+        { cfg with core := cs, store := instStoreI cfg.store (fun k => I.addrs.getD k 0) c } := by
   obtain ⟨sc', hr, hx⟩ := toRefDefsI_run (R := callRecurse) (outer := []) hc hi har hF
     { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store } hcore hfuncs
   have hac : argsComplete c.toRef (importArgs c.imports : Exports (core3P Pf)) = true :=

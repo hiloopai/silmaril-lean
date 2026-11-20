@@ -33,7 +33,7 @@ theorem tStoreX_nil (ft : WIT.FuncType Empty RtId) (c : ℕ) (ι ι' : InstState
     (k : ℕ) (args : List Silmaril.Wasm.Component.Reference.Val) (ιx : InstState) (Hx : List ResourceHandle)
     (cs : (core3P P).Store (CanonHost (core3P P))) :
     tStoreX P ft c ι ι' G k args ιx Hx cs [] [] [] =
-      { tStore₄ P ft c ι ι' G k args ιx Hx with core := cs } := by
+      (tStore₄ P ft c ι ι' G k args ιx Hx) := by
   unfold tStoreX
   simp only [List.append_nil]
   rfl
@@ -89,10 +89,10 @@ theorem drop_from_core {M₀ m' : Machine.Config (E3 P) Unit} {n i : ℕ} {T₄ 
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ftDrop)) m trF (ws, cur)
             { m with store := tStoreX P ftDrop c ι (callI ι G) G k [.own n] ι₅ H₅ cs' Xt Xth Xc }) →
-        cs' = setCtr P (toyInst P).store.core c' →
+        cs' = setCtr P (toyInst P).core c' →
         ι₅.removeThread? 1 = some (⟨G.threads.length⟩, InstState.removeThread 1 ι₅) →
         ∃ tr, LRun prof (refHost P).hr (D P)
-          { M₀ with store := tStoreX P ftDrop c ι (callI ι G) G k [.own n] ιc Hc cs' Xt Xth Xc,
+          { M₀ with store := tStoreX P ftDrop c ι (callI ι G) G k [.own n] ιc Hc cs' Xt Xth Xc, core := cs',
                     conts := C, ctl := ⟨some ⟨G.threads.length⟩, .prog (K ys), segs⟩ :: rest } tr
           (toyCfgX P c' (InstState.removeThread 1 ι₅)
             (nextGX P G ftDrop k 2 4 [.own n] ws H₅ Xt Xth Xc C)))
@@ -155,6 +155,7 @@ theorem drop_from_core {M₀ m' : Machine.Config (E3 P) Unit} {n i : ℕ} {T₄ 
     have hm₁' : m₁ = { M₀ with
         store := tStoreX P ftDrop c ι (callI ι G) G k [.own n] { callI ι G with handles := T₄ }
           (G.handles ++ [{ rt := ⟨0⟩, rep := n, own := true }]) y.1 [] [] []
+        core := y.1
         conts := M₀.conts
         ctl := ⟨some ⟨G.threads.length⟩, .prog (K []), segs⟩ :: rest } := by
       rw [hm₁, tStoreX_nil]
@@ -178,6 +179,7 @@ theorem drop_from_core {M₀ m' : Machine.Config (E3 P) Unit} {n i : ℕ} {T₄ 
         store := tStoreX P ftDrop c ι (callI ι G) G k [.own n] ι₅
           (G.handles ++ [{ rt := ⟨0⟩, rep := n, own := true }]) y.1 [dtk] [dthr]
           [.sub (.destructor n)]
+        core := y.1
         conts := C
         ctl := ⟨some ⟨G.threads.length⟩, .prog (K []), segs⟩ :: rest } := by
       rw [hm₁]
@@ -233,19 +235,18 @@ theorem toy_drop {a : List Silmaril.Wasm.Component.Reference.Val} {m' : Machine.
       simp [InstState.addHandle?, hT]
     obtain ⟨trL, hL⟩ := runs_lower_drop (P := P) (th := some ⟨G.threads.length⟩)
       ⟨G.tasks.length⟩ n
-    obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, rfl, hctl, hst, -, hret⟩ := toy_callAtX prof ftDrop
+    obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, rfl, hctl, hst, hcore, -, hret⟩ := toy_callAtX prof ftDrop
       2 4 [.own n] [i32Flat i] c ι _ { callI ι G with handles := T₄ } G k
       (G.handles ++ [{ rt := ⟨0⟩, rep := n, own := true }]) trL rfl rfl hadd
       (drop_lowerAt hL hadd₄)
     rcases hpre.inv (hm₂ ▸ r₁) with hl | ⟨tr', e, r'⟩
     · exact absurd ho (hl.not_holds _ _)
-    have hcore : M₀.store.core = toyCs P c := by rw [hst]; rfl
     have hev' : ∀ ev, Label.host ev ∈ tr' → CallHostEvent ⟨k⟩ ev :=
       fun ev hm => hev ev (e ▸ List.mem_append_right _ hm)
     exact drop_from_core hι hth hG hk hleave hi32 hTB₄ hAR.2.1 hst
       (fun cs' ιc ι₅ Hc H₅ ys ws cur trF c' Xt Xth Xc C hl hcs hrem =>
         hret cs' ιc ι₅ Hc H₅ ys ws cur trF c' Xt Xth Xc C hl hcs hrem)
-      (hcore ▸ eq_coreCfg hctl ▸ r') hev' ho
+      ((show M₀.core = toyCs P c from hcore) ▸ eq_coreCfg hctl ▸ r') hev' ho
   · have hT : ∀ m : Machine.Config (E3 P) Unit, m.store = tStore₃ P ftDrop c ι (callI ι G) G k a →
         ∃ trT mT, TrapsQ (D P) (some ⟨G.threads.length⟩) (lowerFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))

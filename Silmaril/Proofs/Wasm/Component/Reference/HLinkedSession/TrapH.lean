@@ -138,7 +138,7 @@ theorem gframe_of {cs : (core3P P).Store (CanonHost (core3P P))} {ιe ιi' : Ins
 def TrapEndH (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
     (M : Machine.Config (E3 P) σ) (c : (E3 P).Store (CanonHost (E3 P))) (h : σ) : Prop :=
   ∃ tr m', Steps prof (fun _ _ => false) (DI P impl) M tr m' ∧ (∀ ev, Label.host ev ∉ tr) ∧
-    (∀ msg, Label.trap (.internal msg) ∉ tr) ∧ m'.store.lockdown = true ∧ m'.store.core = c ∧
+    (∀ msg, Label.trap (.internal msg) ∉ tr) ∧ m'.store.lockdown = true ∧ m'.core = c ∧
     m'.host = h
 
 theorem TrapEndH.toEnd {M : Machine.Config (E3 P) σ} {c : (E3 P).Store (CanonHost (E3 P))}

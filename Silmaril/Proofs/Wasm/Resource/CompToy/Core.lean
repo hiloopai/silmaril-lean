@@ -222,14 +222,14 @@ abbrev calloutCfg (B : Machine.Config (E3 P) Unit) (th : Option ThreadId)
   { coreCfg B th K segs rest x with
     ctl := ⟨th, .prog (D P (.hostCallout h ys)), .core x.2 K :: segs⟩ :: rest }
 
-/-- **A built-in callout run to flat results** by the machine's callout program, ending in a
-store with the same core store: a live deterministic run to the resumed activation. -/
+/-- **A built-in callout run to flat results** by the machine's callout program, ending in some
+store: a live deterministic run to the resumed activation. -/
 theorem builtin_lrun {B : Machine.Config (E3 P) Unit} {th : Option ThreadId}
     {K : List FlatValue → Canon.P (E3 P) Unit (Ret (E3 P))} {segs : List (Seg (E3 P) Unit)}
     {rest : List (Activation (E3 P) Unit)} {x : CoreSt (E3 P)} {h : CanonHost (E3 P)}
     {ys flat : List FlatValue} {tr : List (Label (E3 P) Unit)} {S' : CStore (E3 P)}
     (hl : B.store.lockdown = false) (hs : (E3 P).status x.1 x.2 = .callout h ys)
-    (hS' : S'.lockdown = false) (hcore : S'.core = x.1)
+    (hS' : S'.lockdown = false)
     (hrun : RunsQ (D P) th (D P (.hostCallout h ys)) (calloutCfg B th K segs rest x h ys) tr
       (.flat flat) { calloutCfg B th K segs rest x h ys with store := S' }) :
     LRun prof (refHost P).hr (D P) (coreCfg B th K segs rest x) (.tau :: (tr ++ [.tau]))
@@ -246,16 +246,12 @@ theorem builtin_lrun {B : Machine.Config (E3 P) Unit} {th : Option ThreadId}
   have s₂ : UniqueStep prof (refHost P).hr (D P)
       { M₁ with store := S', ctl := ⟨th, .prog (Prog.pure (.flat flat)), .core x.2 K :: segs⟩ :: rest }
       .tau
-      { M₁ with store := S', ctl := ⟨th, .core ((E3 P).resume S'.core x.2 (.values flat)) K,
+      { M₁ with store := S', ctl := ⟨th, .core ((E3 P).resume x.1 x.2 (.values flat)) K,
           segs⟩ :: rest } :=
     .of_prog rfl (fun _ _ e => by cases e) (Step.popCore rfl)
-  have e : ({ M₁ with store := S', ctl := ⟨th, .core ((E3 P).resume S'.core x.2 (.values flat)) K,
+  have e : ({ M₁ with store := S', ctl := ⟨th, .core ((E3 P).resume x.1 x.2 (.values flat)) K,
       segs⟩ :: rest } : Machine.Config (E3 P) Unit) =
-      coreCfg { B with store := S' } th K segs rest (x.1, (E3 P).resume x.1 x.2 (.values flat)) := by
-    rw [hcore]
-    cases S'
-    dsimp only at hcore
-    subst hcore
+      coreCfg { B with store := S' } th K segs rest (x.1, (E3 P).resume x.1 x.2 (.values flat)) :=
     rfl
   exact .cons ⟨List.cons_ne_nil _ _, hl⟩ s₁ (r₁.trans (.cons ⟨List.cons_ne_nil _ _, hS'⟩
     (e ▸ s₂) (.refl _)))

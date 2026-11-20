@@ -161,7 +161,7 @@ def TrapT {e : ExpSpec} (d : e.RefData P) (pl : d.Pl) (s₀ : Store Nat)
     (g : CanonHost (E3 P) → Nat) (Oc₀ : Own) (Fc : CoreFoot) (σ₀ : Store (CanonHost (E3 P)))
     (S₀ : CStore (E3 P)) (s : e.St) (c : (E3 P).Store (CanonHost (E3 P))) (u : Store Nat) :
     Prop :=
-  ∃ (S' : CStore (E3 P)) (F' : CoreFoot) (ρc : Ren) (Oc : Own), S'.core = c ∧
+  ∃ (S' : RefStore (E3 P)) (F' : CoreFoot) (ρc : Ren) (Oc : Own), S'.core = c ∧
     S'.funcs = S₀.funcs ∧ d.Hold pl s S' F' ∧ PartRel ρc Oc (reloc s₀ u) (Store.mapH g c) ∧
     Oc.fn = Oc₀.fn ∧ Oc.gl = Oc₀.gl ∧ FootDisj F' ρc Oc c ∧ Fc.Within σ₀ c ∧
     Under Fc σ₀ (footUnion F' (img ρc Oc))
@@ -182,7 +182,7 @@ theorem relT_start {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh} {ρ
 
 /-- **A run of the importer's part, tracked**: `LInvG.reach_fwd` keeping `RelT`. -/
 theorem RelT.reach (SI : ImpStatG P b Ii u₀ F₀ g tr) (hFr : d.Frame) {s : e.St}
-    {M : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
+    {M : RefStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x) (hT : RelT s₀ g Oc₀ Fc σ₀ F y x)
     {x' : Store Nat × STh} (hx : Silmaril.Wasm.Game.Reach P x x') :
     ∃ y', Relation.ReflTransGen (CoreStep (E3 P)) y y' ∧
@@ -206,12 +206,12 @@ theorem RelT.reach (SI : ImpStatG P b Ii u₀ F₀ g tr) (hFr : d.Frame) {s : e.
 
 /-- **The exporter returned, tracked**: `LInvG.resume_fwd` keeping `RelT` at the exporter's
 grown footprint. -/
-theorem RelT.resume {s : e.St} {M : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)}
+theorem RelT.resume {s : e.St} {M : RefStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)}
     {x : Store Nat × STh} (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x)
     (hT : RelT s₀ g Oc₀ Fc σ₀ F y x) {k : Nat} {p : FuncTy}
     {E : Silmaril.Wasm.SingleThreaded.Ctx} {a : Nat} {args : List Silmaril.Wasm.Execution.Core.Val}
     (hdx : Silmaril.Wasm.SingleThreaded.decompose? x.1 (x.2.config x.1).code = some (E, a, k, args))
-    (us : List IVal) {M' : CStore (E3 P)} {F' : CoreFoot}
+    (us : List IVal) {M' : RefStore (E3 P)} {F' : CoreFoot}
     (hw : F.Within (M.core : Store (CanonHost (E3 P))) M'.core)
     (hgF : F.Grows F' (M.core : Store (CanonHost (E3 P))))
     (hB : F'.Bounded (M'.core : Store (CanonHost (E3 P)))) :
@@ -237,7 +237,7 @@ theorem RelT.resume {s : e.St} {M : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E
     under_grows hU (grows_union hgF (grows_refl _ _)) hW.structs_len hW.arrays_len⟩
 
 /-- **The importer stopped, tracked**: `trapAt_of_linv` with `TrapT`. -/
-theorem trapT_of_linv {s : e.St} {S S₀ : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)}
+theorem trapT_of_linv {s : e.St} {S : RefStore (E3 P)} {S₀ : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)}
     {x : Store Nat × STh} (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s S F y x)
     (hT : RelT s₀ g Oc₀ Fc σ₀ F y x) (hf : S.funcs = S₀.funcs) :
     TrapT d pl s₀ g Oc₀ Fc σ₀ S₀ s y.1 x.1 := by
@@ -248,7 +248,7 @@ theorem trapT_of_linv {s : e.St} {S S₀ : CStore (E3 P)} {F : CoreFoot} {y : Co
   exact ⟨S, F, ρc, Oc, hI.core, hf, hI.hold, hR0, hfn, hgl, hD, hW, hU⟩
 
 /-- **The exporter trapped, tracked**: `trapAt_of_within` with `TrapT`. -/
-theorem trapT_of_within {s s' : e.St} {S S₀ S' : CStore (E3 P)} {F F' : CoreFoot}
+theorem trapT_of_within {s s' : e.St} {S S' : RefStore (E3 P)} {S₀ : CStore (E3 P)} {F F' : CoreFoot}
     {y : CoreSt (E3 P)} {x : Store Nat × STh} (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s S F y x)
     (hT : RelT s₀ g Oc₀ Fc σ₀ F y x) (hH : d.Hold pl s' S' F') (hf : S'.funcs = S₀.funcs)
     (hw : F.Within (S.core : Store (CanonHost (E3 P))) S'.core)
@@ -286,15 +286,15 @@ def RoundEndT (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ) {e 
     (rest : List (Activation (E3 P) σ)) (y : CoreSt (E3 P)) (s₁ : e.St) (u₁ : Store Nat)
     (w : Ii.F.Ar f) : Prop :=
   (∃ (trc : List (Label (E3 P) σ)) (C' : List (Option (Activation (E3 P) σ)))
-      (S'' : CStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)) (t' : STh)
+      (S'' : RefStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)) (t' : STh)
       (r : Silmaril.Wasm.Execution.Core.Result),
     Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) trc
-      (coreCfg { M with conts := C', store := S'' } th K segs rest yc) ∧ NoHI trc ∧
+      (coreCfg { M with conts := C', store := S''.toCStore } th K segs rest yc) ∧ NoHI trc ∧
     LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s₁ S'' F' yc (u₁, t') ∧
     RelT s₀ g Oc₀ Fc σ₀ F' yc (u₁, t') ∧
     Silmaril.Wasm.Game.ResultAt u₁ t' r ∧
     Silmaril.Wasm.Game.Answer.ofResult? (Ii.exports.get f.1) r = some w ∧
-    FrameG d pl ii th S'' ∧ CallExt d pl M.store S'') ∨
+    FrameG d pl ii th S'' ∧ CallExt d pl M.ref S'') ∨
   (∃ c, TrapEnd prof P impl (coreCfg M th K segs rest y) c ∧
     TrapAtG d pl Ii s₀ u₀ F₀ g Oc₀ f M.store s₁ c u₁ ∧
     TrapT d pl s₀ g Oc₀ Fc σ₀ M.store s₁ c u₁ ∧
@@ -316,7 +316,7 @@ theorem rounds_fwdT (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
       (dss : List (List (Σ _ : (sigN lg.imp.imports.length).Op, Option Payload)))
       (M : Machine.Config (E3 P) σ) (s s₁ : lg.exp.St) (F : CoreFoot) (y : CoreSt (E3 P))
       (x : Store Nat × STh) (u₁ : Store Nat),
-      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y x → RelT s₀ g Oc₀ Fc σ₀ F y x →
+      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y x → RelT s₀ g Oc₀ Fc σ₀ F y x →
       FrameG d pl ii th M.store →
       List.Forall₂ (Silmaril.Wasm.Component.Reference.ImpRel lg.imp Ii) rs dss →
       LinkedG.ExpRun P lg s dss.flatten s₁ →
@@ -342,13 +342,13 @@ theorem rounds_fwdT (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
     obtain ⟨s', t', k, args, run, co, op, hpath'⟩ := path_round_inv (rest := callMoves rs ++
       [.inr (.ans f w)]) (by simpa [callMoves] using hpath)
     obtain ⟨y₁, hy₁, hI₁, hT₁⟩ := RelT.reach SI hFr hI hT run
-    let M₁ : Machine.Config (E3 P) σ := { M with store := { M.store with core := y₁.1 } }
-    have hFG₁ : FrameG d pl ii th M₁.store := hFG.core _
+    let M₁ : Machine.Config (E3 P) σ := { M with core := y₁.1 }
+    have hFG₁ : FrameG d pl ii th M₁.store := hFG
     obtain ⟨tr₀, htr₀, r₀⟩ := Adequacy.coreCfg_steps_of (prof := prof) (hr := fun _ _ => false)
       (dispatch := DI P impl) (B := M) (th := th) (K := K) (segs := segs) (rest := rest) hy₁
     have r₀' : Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) tr₀
         (coreCfg M₁ th K segs rest y₁) := r₀
-    have hX₁ : CallExt d pl M.store M₁.store := callExt_refl _
+    have hX₁ : CallExt d pl M.ref M₁.ref := callExt_refl _
     obtain ⟨nm, p, ys, E, a, hk, hdx, hys, hst, hyty⟩ := hI₁.callout_fwd SI co op
     obtain ⟨wi, xe, hwire, hxe, hty, htr⟩ := W.site k nm p hk
     have hek := ifaceOp?_some op
@@ -376,7 +376,7 @@ theorem rounds_fwdT (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
       cases hexp
       obtain ⟨ιi, hi, hleave⟩ := hFG₁.imp
       obtain ⟨ιe, hie, hth⟩ := hFG₁.exp wi ⟨xe, hxe⟩
-      obtain ⟨hf, -⟩ := hFr.lifted pl s M₁.store F wi xe hI₁.hold hxe
+      obtain ⟨hf, -⟩ := hFr.lifted pl s M₁.ref F wi xe hI₁.hold hxe
       rw [hty] at hf
       rw [htr] at hst
       have hT := (nest_trap_argsG (prof := prof) (impl := impl) (d.inst pl wi) ii M₁ hFG₁.lock ιe
@@ -412,9 +412,9 @@ theorem rounds_fwdT (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
           have hBH := hB pl _ S'' F' hH
           have hI₂ := LInvG.resume_fwd SI hI₁ hk hdx op hck hH hwi hgr hBH
           have hT₂ := RelT.resume (p := ft) hI₁ hT₁ hdx us hwi hgr hBH
-          have hX₂ : CallExt d pl M.store S'' := callExt_trans hX₁ hX
+          have hX₂ : CallExt d pl M.ref S'' := callExt_trans hX₁ hX
           rcases rounds_fwdT SI W hFr hFw hB th K segs rest rs dss
-              { M₁ with conts := C', store := S'' } s₂ s₁ F' _ _ u₁ hI₂ hT₂ hFG₂ hrel' hrest
+              { M₁ with conts := C', store := S''.toCStore, core := S''.core } s₂ s₁ F' _ _ u₁ hI₂ hT₂ hFG₂ hrel' hrest
               hpath' with
             ⟨trc', C'', S''', F'', yc, t'', r, hrun', hq', hIc, hTc, final, hw'', hFG', hX'⟩ |
             ⟨c, hTE, hTA, hTT, hw''⟩

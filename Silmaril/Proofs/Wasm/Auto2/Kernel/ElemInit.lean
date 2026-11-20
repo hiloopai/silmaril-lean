@@ -119,7 +119,7 @@ theorem tableInitLoop_fast {f : Frame} {x : TableIdx} {y : ElemIdx} {a : AddrTyp
       exact congrArg some (tableLast s ta ti i.toNat _ _ k hk0)
 
 /-- **`tableInitLoopK = tableInitLoop`.** -/
-theorem tableInitLoopK_eq : @tableInitLoopK H = @tableInitLoop H := by
+theorem tableInitLoopK_eq : @tableInitLoopK H = @tableInitLoop H ByteArray := by
   funext s f x y a i j n
   unfold tableInitLoopK
   split

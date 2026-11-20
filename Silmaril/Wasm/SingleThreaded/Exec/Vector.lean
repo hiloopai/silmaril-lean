@@ -23,7 +23,7 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace Vec
 
@@ -171,8 +171,8 @@ def pure? (P : Profile) : Instr → List Val → Option (Nat × List Admin)
 end Vec
 
 /-- The vector-family head step of the single-threaded profile. -/
-def vectorStep? (o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def vectorStep? (o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .plain i => (Vec.pure? (profile o) i vs.reverse).map fun p => (p.1, ⟨s, f, p.2⟩)
   | _ => none

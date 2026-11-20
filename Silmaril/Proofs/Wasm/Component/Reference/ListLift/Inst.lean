@@ -36,10 +36,10 @@ no component function, to the core store `cs` and the component functions `fs`, 
 function exports `em`. -/
 def DefsRun (ds : Core3Component) (cs : (core3P Pf).Store (CanonHost (core3P Pf)))
     (fs : List (CFuncInst (core3P Pf))) (em : List (String × FuncId)) : Prop :=
-  ∀ cfg : Machine.Config (core3P Pf) Unit, cfg.store.core = (core3P Pf).empty _ →
+  ∀ cfg : Machine.Config (core3P Pf) Unit, cfg.core = (core3P Pf).empty _ →
     cfg.store.funcs = [] →
     ∃ sc', TRuns (List.foldlM (instantiateDef callRecurse ⟨0⟩ [] []) {} ds) cfg sc'
-        { cfg with store := liftStore cs cfg.store fs } ∧
+        { cfg with core := cs, store := liftStore cfg.store fs } ∧
       funcExports sc'.exports = em
 
 /-- **Root instantiation of an import-free component runs silently**: the root checks pass,
@@ -47,11 +47,11 @@ instance `0` is allocated, and the definitions run. -/
 theorem rootCall_runG {ds : Core3Component} {cs : (core3P Pf).Store (CanonHost (core3P Pf))}
     {fs : List (CFuncInst (core3P Pf))} {em : List (String × FuncId)} (hn : NoImport ds)
     (hrun : DefsRun ds cs fs em) (cfg : Machine.Config (core3P Pf) Unit)
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = [])
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = [])
     (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = em ∧
       TRuns (instantiateRootCall ds [] : P (core3P Pf) Unit _) cfg (⟨0⟩, es)
-        { cfg with store := liftStore cs (ArenaOps.allocSt ArenaField.insts {} cfg.store) fs } := by
+        { cfg with core := cs, store := liftStore (ArenaOps.allocSt ArenaField.insts {} cfg.store) fs } := by
   obtain ⟨sc', hr, hx⟩ := hrun { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store }
     hcore hfuncs
   have hac : argsComplete ds ([] : Exports (core3P Pf)) = true := by

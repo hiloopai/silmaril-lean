@@ -235,7 +235,7 @@ structure InitW {e : ExpSpec} (d : e.RefData P) (pl : d.Pl) (F : CoreFoot)
 /-- **R4 with the read-back reaches the exporter's exports by a live run**, in any context. -/
 theorem reach_initU {e : ExpSpec} {d : e.RefData P} (hI : d.InitUX) (th : Option ThreadId)
     (outer : List (Instantiate.Frame (core3P P))) (M : Machine.Config (core3P P) σ)
-    (hcore : M.store.core = (core3P P).empty _) :
+    (hcore : M.core = (core3P P).empty _) :
     ReachL prof (linkHost impl).hr (linkHost impl).dispatch th
       (callRet (.instantiate ⟨e.ref, outer⟩ []) : Canon.P (core3P P) σ (Ret (core3P P))) M
       (fun os r m => os = [] ∧ ∃ pl F es, r = .items es ∧ InitW d pl F es M m) := by

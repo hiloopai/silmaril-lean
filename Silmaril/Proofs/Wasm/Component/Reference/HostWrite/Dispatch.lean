@@ -98,8 +98,6 @@ theorem ns_withArgs3 {α : Type} {args : List FlatValue} {k : ℕ → ℕ → �
   · exact hk _ _ _
   · exact P.Inv.internal _
 
-theorem tf_memWrite : Builtins.Inv.MemWritePres (TT : CStore E → Prop) := by (repeat intro); trivial
-
 theorem ns_newBuiltin (lim : Silmaril.Wasm.Component.Limits) (k : Silmaril.Wasm.Component.AsyncRef.EndKind) (t : Option (WIT.ClosedType RtId)) :
     TI (Builtins.newBuiltin (σ := σ) lim k t) :=
   Builtins.Inv.newBuiltin tf_addHandle (fun _ _ _ => tf_insts')
@@ -209,8 +207,7 @@ theorem ns_builtinProg (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (hr :
       opts p n (fun _ => tf_insts') (fun _ _ _ _ => trivial)
   | errorContextDebugMessage opts =>
     exact ns_withArgs2 fun i p =>
-      Builtins.P.Inv.errorContextDebugMessage lim q opts i p fun _ _ _ =>
-        tf_insts'
+      Builtins.P.Inv.errorContextDebugMessage lim q opts i p
   | errorContextDrop =>
     exact ns_withArgs1 fun i => Builtins.P.Inv.errorContextDrop i
       fun _ _ _ => trivial
@@ -221,11 +218,10 @@ theorem ns_builtinProg (lim : Silmaril.Wasm.Component.Limits) (q : Quirks) (hr :
     exact ns_withArgs2 fun si p => Builtins.Inv.waitableSetWait lim mem
       si p (fun _ => tf_insts') (fun _ => tf_insts')
       (fun _ _ => tf_insts') (fun _ _ => tf_insts')
-      (fun _ => tf_insts') tf_memWrite
+      (fun _ => tf_insts')
   | waitableSetPoll mem =>
     exact ns_withArgs2 fun si p => Builtins.Inv.waitableSetPoll lim mem
       si p (fun _ _ => tf_insts') (fun _ => tf_insts')
-      tf_memWrite
   | waitableSetDrop =>
     exact ns_withArgs1 fun i => Builtins.Inv.waitableSetDrop lim i
       fun _ _ _ => trivial
@@ -273,8 +269,8 @@ theorem ns_allocInst : TI (allocInst (E := E) (σ := σ)) :=
   P.Inv.allocObj _ _ (fun _ _ => trivial)
 
 theorem ns_allocCoreHost (h : CanonHost E) : TI (allocCoreHost (σ := σ) h) :=
-  P.Inv.bind P.Inv.getStore fun _ =>
-    P.Inv.bind (P.Inv.modifyStore (tf_insts')) fun _ => P.Inv.pure _
+  P.Inv.bind P.Inv.readCore fun _ =>
+    P.Inv.bind (P.Inv.allocHostOp _ _) fun _ => P.Inv.pure _
 
 theorem ns_runStart (inst : InstId) (sf : E.FuncAddr) : TI (runStart (σ := σ) inst sf) :=
   P.Inv.bind (P.Inv.allocObj _ _ (tf_insts')) fun _ =>
@@ -295,11 +291,11 @@ variable [∀ a b, Decidable (E.ExternSub a b)]
 
 theorem ns_instantiateCore (inst : InstId) (f : Frame E) (m : ℕ) (args : List (String × ℕ)) :
     TI (instantiateCore (σ := σ) inst f m args) := by
-  refine P.Inv.bind (ns_need _ _) fun md => P.Inv.bind P.Inv.getStore fun s =>
+  refine P.Inv.bind (ns_need _ _) fun md => P.Inv.bind P.Inv.readCore fun v =>
     P.Inv.bind (ns_need _ _) fun imports => ?_
-  rcases E.prepare? s.core md imports with _ | ⟨core', ci, start⟩
+  rcases v.prepare? md imports with _ | ⟨exports, start⟩
   · exact P.Inv.trap _
-  · refine P.Inv.bind (P.Inv.modifyStore (tf_insts')) fun _ => ?_
+  · refine P.Inv.bind (P.Inv.prepareOp _ _) fun _ => ?_
     rcases start with _ | sf
     · exact P.Inv.bind (P.Inv.pure _) fun _ => P.Inv.pure _
     · exact P.Inv.bind (ns_runStart _ _) fun _ => P.Inv.pure _

@@ -57,6 +57,18 @@ theorem SRuns.oruns {α : Type} {p : P E σ α} {m m' : Machine.Config E σ} {os
   | @emit o _ _ _ _ _ _ ih =>
     obtain ⟨tr, hr, ho⟩ := ih
     exact ⟨_, .emit hr, congrArg (o :: ·) ho⟩
+  | readCore _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .readCore hr, ho⟩
+  | memWrite _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .memWrite hr, ho⟩
+  | allocHost _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .allocHost hr, ho⟩
+  | prepare _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .prepare hr, ho⟩
 
 namespace ORuns
 
@@ -239,7 +251,7 @@ noncomputable def linkStore (cse csi : (core3P Pf).Store (CanonHost (core3P Pf))
 theorem linkStoreE_nextInst (cse : (core3P Pf).Store (CanonHost (core3P Pf))) (addrE : Nat → Nat)
     (l : Linked2) {s : CStore (core3P Pf)} (hs : s.insts = [{}]) :
     nextInst (linkStoreE cse addrE l s) = ⟨2⟩ := by
-  simp [linkStoreE, nestStore, liftStore, setCoreSt, nextInst, ArenaField.size, ArenaField.insts,
+  simp [linkStoreE, nestStore, liftStore, nextInst, ArenaField.size, ArenaField.insts,
     ArenaOps.allocSt, ArenaField.alloc, Arena.alloc, hs]
 
 theorem getD_lt {l : List Nat} {i : Nat} (h : i < l.length) : l.getD i 0 = l[i] := by
@@ -273,11 +285,11 @@ theorem toRefL_run {l : Linked2}
     (hIn : (l.imp.imports.map (·.1)).Nodup) (hW : l.WireTy) (hN : l.NamesOk)
     {addrI : Nat → Nat} {csi : (core3P Pf).Store (CanonHost (core3P Pf))} {cii : (core3P Pf).Inst}
     (hFi : CoreFactsL l.imp cse ⟨2⟩ l.wireFid addrI csi cii)
-    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.store.core = (core3P Pf).empty _)
+    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.core = (core3P Pf).empty _)
     (hfuncs : cfg.store.funcs = []) (hinsts : cfg.store.insts = [{}]) :
     ∃ sc', ORuns D (List.foldlM (instantiateDef (callRecurse : Recurse (core3P Pf) σ) ⟨0⟩ [] [])
         {} l.toRef) cfg [] sc'
-        { cfg with store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store } ∧
+        { cfg with core := csi, store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store } ∧
       funcExports sc'.exports = exportMapL l := by
   -- the closures
   let sc₁ : Scope (core3P Pf) := { frame := { Frame.empty with components := [clE l] } }
@@ -361,7 +373,7 @@ theorem toRefL_run {l : Linked2}
     (hn2 ▸ hFi) rfl hfb hb
   rw [hn2] at hrI
   let cfgI : Machine.Config (core3P Pf) σ :=
-    { cfg with store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store }
+    { cfg with core := csi, store := linkStore cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store }
   let sc₅ : Scope (core3P Pf) :=
     { frame := { Frame.empty with components := [clE l, clI l], instances := [esE, esI],
                                   funcs := l.wire.map FuncId.mk } }
@@ -433,11 +445,11 @@ theorem rootCallL_run {l : Linked2}
     (hIn : (l.imp.imports.map (·.1)).Nodup) (hW : l.WireTy) (hN : l.NamesOk)
     {addrI : Nat → Nat} {csi : (core3P Pf).Store (CanonHost (core3P Pf))} {cii : (core3P Pf).Inst}
     (hFi : CoreFactsL l.imp cse ⟨2⟩ l.wireFid addrI csi cii)
-    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.store.core = (core3P Pf).empty _)
+    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.core = (core3P Pf).empty _)
     (hfuncs : cfg.store.funcs = []) (hinsts : cfg.store.insts = []) :
     ∃ es, funcExports es = exportMapL l ∧
       ORuns D (instantiateRootCall l.toRef [] : P (core3P Pf) σ _) cfg [] (⟨0⟩, es)
-        { cfg with store :=
+        { cfg with core := csi, store :=
             rootStoreL cse csi (fun k => Ie.addrs.getD k 0) addrI l cfg.store } := by
   obtain ⟨sc', hr, hx⟩ := toRefL_run hD hEg hFe hIg hIa hIn hW hN hFi
     { cfg with store := ArenaOps.allocSt ArenaField.insts {} cfg.store } hcore hfuncs
@@ -467,9 +479,10 @@ the shared core store `csi`, three component instances (the root, the exporter, 
 the exporter's lifted functions then the importer's. -/
 noncomputable def afterLink (P : Profile) (csi : (core3P P).Store (CanonHost (core3P P)))
     (addrE addrI : Nat → Nat) (l : Linked2) (h : σ) : Machine.Config (core3P P) σ :=
-  Config.init
-    { core := csi, insts := [{}, {}, {}],
-      funcs := liftedList addrE ⟨1⟩ l.exp.exports ++ liftedList addrI ⟨2⟩ l.imp.exports } h
+  { Config.init
+    { insts := [{}, {}, {}],
+      funcs := liftedList addrE ⟨1⟩ l.exp.exports ++ liftedList addrI ⟨2⟩ l.imp.exports } h with
+    core := csi }
 
 /-- **The instantiation program of `l.toRef` runs** from the initial configuration to
 `afterLink`, observing the root instance `0` and the export map `exportMapL l`. -/

@@ -61,9 +61,9 @@ theorem locked_core_step (m : Machine.Config E σ) {th : Option ThreadId}
     {ct ct' : E.Thread (CanonHost E)} {c' : E.Store (CanonHost E)}
     {k : List FlatValue → Canon.P E σ (Ret E)} {segs : List (Seg E σ)}
     {rest : List (Activation E σ)} (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .running) (hi : E.Internal (m.store.core, ct) (c', ct')) :
+    (hs : E.status m.core ct = .running) (hi : E.Internal (m.core, ct) (c', ct')) :
     Step prof hr dispatch m .core
-      { m with store := { m.store with core := c' }, ctl := ⟨th, .core ct' k, segs⟩ :: rest } :=
+      { m with core := c', ctl := ⟨th, .core ct' k, segs⟩ :: rest } :=
   Step.coreInternal hc (.inl hs) hi
 
 end Locked
@@ -83,7 +83,7 @@ theorem bwdT_bwd {e : ExpSpec} {d : e.RefData P} (h : d.BwdT) : d.Bwd := by
 
 /-- **The corrected middle case is a return**: its end is not locked down. -/
 theorem endsT_unlocked {e : ExpSpec} {d : e.RefData P} {σ : Type} {pl : d.Pl} {x : Export}
-    {S : CStore (core3P P)} {F : CoreFoot} {M : Machine.Config (core3P P) σ}
+    {S : RefStore (core3P P)} {F : CoreFoot} {M : Machine.Config (core3P P) σ}
     {th : Option ThreadId} {K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P))}
     {segs : List (Seg (core3P P) σ)} {rest : List (Activation (core3P P) σ)}
     {R : Option Payload} {s' : e.St} {m : Machine.Config (core3P P) σ}
@@ -110,14 +110,14 @@ theorem simple_bwdT {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I)
   have haddr : sAddr c I w = I.addrs.getD c.exports[w].core 0 := by
     simp [sAddr, List.getElem?_eq_getElem hwl]
   obtain ⟨ρ, O, hR, hO, rfl⟩ := hH.rel
-  have hRg : PartRel ρ O s (Store.mapH (hIdx M.store.core) M.store.core) := partRel_mapH hR
-  have hFg : FnPre ({} : Store Nat) (Store.mapH (hIdx M.store.core) M.store.core) s :=
+  have hRg : PartRel ρ O s (Store.mapH (hIdx M.core) M.core) := partRel_mapH hR
+  have hFg : FnPre ({} : Store Nat) (Store.mapH (hIdx M.core) M.core) s :=
     fnPre_mapH hH.free hH.fn
   have hOw : O.fn (I.addrs.getD c.exports[w].core 0) := hO ▸ owned_init hc hI _ hxm
   obtain ⟨nm, hcx⟩ := hc.core _ hxm
   have typed : ValTy.checkList c.exports[w].ty.params vs = true := hxty ▸ htyped
   have hstart : (simpleData P c I).startCfg pl w x vs M th K segs rest =
-      coreCfg M th K segs rest (M.store.core, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat
+      coreCfg M th K segs rest (M.core, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat
         (I.addrs.getD c.exports[w].core 0) (lowerArgs c.exports[w].ty.params vs)) := by
     show { M with ctl := ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (sAddr c I w)
       (lowerArgs x.ty.params vs)) K, segs⟩ :: rest } = _
@@ -128,8 +128,8 @@ theorem simple_bwdT {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I)
       ⟨y, pre, l, m₁, tr₂, hy, hpre, rfl, hxit, st, r₂⟩
   · exact .inl ⟨List.cons_ne_nil _ _, hlock⟩
   obtain ⟨π', t', ρ', O', hL, hrel, hgr, htc, hfπ, hnco, hval, htrap⟩ :=
-    exp_back1 hI ⟨nm, hcx⟩ typed hH.wf (hIdx M.store.core) hRg hFg hOw hy
-  have hfe : (y.1 : Store (CanonHost (E3 P))).funcs = (M.store.core : Store _).funcs :=
+    exp_back1 hI ⟨nm, hcx⟩ typed hH.wf (hIdx M.core) hRg hFg hOw hy
+  have hfe : (y.1 : Store (CanonHost (E3 P))).funcs = (M.core : Store _).funcs :=
     coreSteps_funcs hy
   have hW := within_of_touch' htc hfe
   have hG := grows_of_grow (grow_unmapH hgr)
@@ -142,8 +142,8 @@ theorem simple_bwdT {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I)
       have hRA := hret ws hus
       have hH' := shold_after hH hO hL hrel hgr hfπ (RetAt.wellFormed hI ⟨nm, hcx⟩ hH.wf hRA)
       refine .inr (.inl ⟨pre ++ [.tau], tr₂, _, some (.vals ws), π', by simp, r₁, r₂,
-        .ret hwl hRA, ⟨.inl ⟨{ M.store with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty',
-          ?_, storeExt_core c I pl M.store y.1, hH', hW, hG⟩,
+        .ret hwl hRA, ⟨.inl ⟨{ M.ref with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty',
+          ?_, storeExt_core c I pl M.ref y.1, hH', hW, hG⟩,
           fun h => absurd (hlock.symm.trans h) (by decide)⟩, List.cons_ne_nil _ _⟩)
       show liftArgs x.ty.results zs = some ws
       rw [hxty]
@@ -152,8 +152,8 @@ theorem simple_bwdT {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I)
       have hT := hnlift hus
       have hH' := shold_after hH hO hL hrel hgr hfπ (hT.wellFormed hI ⟨nm, hcx⟩ hH.wf)
       refine .inr (.inl ⟨pre ++ [.tau], tr₂, _, none, π', by simp, r₁, r₂,
-        .trap hwl hT, ⟨.inl ⟨{ M.store with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty',
-          ?_, storeExt_core c I pl M.store y.1, hH', hW, hG⟩,
+        .trap hwl hT, ⟨.inl ⟨{ M.ref with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty',
+          ?_, storeExt_core c I pl M.ref y.1, hH', hW, hG⟩,
           fun h => absurd (hlock.symm.trans h) (by decide)⟩, List.cons_ne_nil _ _⟩)
       show liftArgs x.ty.results zs = none
       rw [hxty]
@@ -161,7 +161,7 @@ theorem simple_bwdT {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I)
   · have hT := htrap htr
     have hH' := shold_after hH hO hL hrel hgr hfπ (hT.wellFormed hI ⟨nm, hcx⟩ hH.wf)
     rw [steps_of_locked rfl rfl r₂]
-    exact .inr (.inr ⟨rfl, fun _ => ⟨π', { M.store with core := y.1 }, img ρ' O', .trap hwl hT,
+    exact .inr (.inr ⟨rfl, fun _ => ⟨π', { M.ref with core := y.1 }, img ρ' O', .trap hwl hT,
       rfl, rfl, hH'⟩⟩)
   · exact (hnco h ys hco).elim
 

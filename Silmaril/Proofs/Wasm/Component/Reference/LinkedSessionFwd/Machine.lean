@@ -134,7 +134,7 @@ configuration holding the core store `c`. -/
 def TrapEnd (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
     (M : Machine.Config (E3 P) σ) (c : (E3 P).Store (CanonHost (E3 P))) : Prop :=
   ∃ tr m', Steps prof (fun _ _ => false) (DI P impl) M tr m' ∧ (∀ ev, Label.host ev ∉ tr) ∧
-    (∀ msg, Label.trap (.internal msg) ∉ tr) ∧ m'.store.lockdown = true ∧ m'.store.core = c
+    (∀ msg, Label.trap (.internal msg) ∉ tr) ∧ m'.store.lockdown = true ∧ m'.core = c
 
 theorem TrapsAtS.trapEnd {M : Machine.Config (E3 P) σ} {c : (E3 P).Store (CanonHost (E3 P))}
     (h : TrapsAtS prof P impl M c) : TrapEnd prof P impl M c := by

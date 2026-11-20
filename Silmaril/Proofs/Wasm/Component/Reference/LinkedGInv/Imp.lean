@@ -121,7 +121,7 @@ variable {b : SimpleI} {Ii : SInst} {u₀ s₀ : Store Nat} {F₀ : List (FuncIn
   {e : ExpSpec} {d : e.RefData P} {pl : d.Pl}
 
 /-- The importer's part thread is typed. -/
-theorem linvG_typed (SI : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {S : CStore (E3 P)}
+theorem linvG_typed (SI : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {S : RefStore (E3 P)}
     {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s S F y x) :
     ∃ ts, Silmaril.Wasm.Execution.Core.StoreOk x.1 ∧
@@ -137,7 +137,7 @@ theorem linvG_typed (SI : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {S : CStore
 /-- **A core run of the shared thread is the image of a run of the importer's part**, `LInvG`
 holding at its end with the same exporter state and footprint (R1). -/
 theorem linvG_reach_back (SI : ImpStatG P b Ii u₀ F₀ g tr) (hFr : d.Frame) {s : e.St}
-    {M : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
+    {M : RefStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x) {y' : CoreSt (E3 P)}
     (hy : Relation.ReflTransGen (CoreStep (E3 P)) y y') :
     ∃ x', LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s { M with core := y'.1 } F y' x' ∧
@@ -156,7 +156,7 @@ theorem linvG_reach_back (SI : ImpStatG P b Ii u₀ F₀ g tr) (hFr : d.Frame) {
 
 /-- **A callout of the shared thread is a typed import question of the importer's part**, to
 the trampoline `tr k` of the import `k`. -/
-theorem linvG_callout_back (SI : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : CStore (E3 P)}
+theorem linvG_callout_back (SI : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : RefStore (E3 P)}
     {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x) {h : CanonHost (E3 P)} {ys : List Flat}
     (hst : (E3 P).status y.1 y.2 = .callout h ys) :

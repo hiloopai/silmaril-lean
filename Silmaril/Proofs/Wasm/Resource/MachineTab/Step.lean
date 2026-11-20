@@ -203,7 +203,8 @@ theorem step_cfgTab (hd : TabDispatch j dispatch) {m m' : Config E σ} {l : Labe
   | hostDone hc => exact cfgTab_hostFinish hm hc
   | call hc => exact cfgTab_set hm hc (actTab_call hd) m.store
   | callCore hc => exact cfgTab_set hm hc actTab_callCore m.store
-  | coreInternal hc _ _ => exact cfgTab_set hm hc actTab_core _
+  | @coreInternal _ _ _ _ _ c' _ hc _ _ =>
+    exact cfgTab_set (m := { m with core := c' }) hm hc actTab_core m.store
   | coreReturned hc _ => exact cfgTab_set hm hc (fun h => actTab_coreReturned h _) m.store
   | coreTrap hc _ => exact cfgTab_trapCfg hm
   | coreCallout hc _ => exact cfgTab_set hm hc (fun h => actTab_coreCallout hd h _) m.store
@@ -219,6 +220,10 @@ theorem step_cfgTab (hd : TabDispatch j dispatch) {m m' : Config E σ} {l : Labe
   | hostGet hc => exact cfgTab_set hm hc (fun h => actTab_op h _) m.store
   | hostSet hc => exact cfgTab_set hm hc (fun h => actTab_op h _) m.store
   | emit hc => exact cfgTab_emit hm hc
+  | readCore hc => exact cfgTab_set hm hc (fun h => actTab_op h _) m.store
+  | memWrite hc => exact cfgTab_set (m := { m with core := _ }) hm hc (fun h => actTab_op h _) m.store
+  | allocHost hc => exact cfgTab_set (m := { m with core := _ }) hm hc (fun h => actTab_op h _) m.store
+  | prepare hc => exact cfgTab_set (m := { m with core := _ }) hm hc (fun h => actTab_op h _) m.store
   | fault _ => exact cfgTab_trapCfg hm
   | hostInvoke _ _ => exact cfgTab_host hm (tabProg_invokeProg _ _ _)
   | hostTick _ => exact cfgTab_host hm (tabProg_tickProg hr)

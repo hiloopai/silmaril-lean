@@ -105,14 +105,14 @@ def RoundEndB (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ) {e 
     (rest : List (Activation (E3 P) σ)) (y : CoreSt (E3 P)) (s₁ : e.St) (u₁ : Store Nat)
     (w : Ii.F.Ar f) : Prop :=
   (∃ (trc : List (Label (E3 P) σ)) (C' : List (Option (Activation (E3 P) σ)))
-      (S'' : CStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)) (t' : STh)
+      (S'' : RefStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)) (t' : STh)
       (r : Silmaril.Wasm.Execution.Core.Result),
     Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) trc
-      (coreCfg { M with conts := C', store := S'' } th K segs rest yc) ∧ NoHI trc ∧
+      (coreCfg { M with conts := C', store := S''.toCStore } th K segs rest yc) ∧ NoHI trc ∧
     LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s₁ S'' F' yc (u₁, t') ∧
     Silmaril.Wasm.Game.ResultAt u₁ t' r ∧
     Silmaril.Wasm.Game.Answer.ofResult? (Ii.exports.get f.1) r = some w ∧
-    FrameG d pl ii th S'' ∧ CallExt d pl M.store S'') ∨
+    FrameG d pl ii th S'' ∧ CallExt d pl M.ref S'') ∨
   (∃ c, TrapEnd prof P impl (coreCfg M th K segs rest y) c ∧
     TrapAtG d pl Ii s₀ u₀ F₀ g Oc₀ f M.store s₁ c u₁ ∧
     Silmaril.Wasm.Game.Answer.ofResult? (Ii.exports.get f.1) .trap = some w)
@@ -135,7 +135,7 @@ theorem rounds_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
       (dss : List (List (Σ _ : (sigN lg.imp.imports.length).Op, Option Payload)))
       (M : Machine.Config (E3 P) σ) (s s₁ : lg.exp.St) (F : CoreFoot) (y : CoreSt (E3 P))
       (x : Store Nat × STh) (u₁ : Store Nat),
-      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y x → FrameG d pl ii th M.store →
+      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y x → FrameG d pl ii th M.store →
       List.Forall₂ (Silmaril.Wasm.Component.Reference.ImpRel lg.imp Ii) rs dss →
       LinkedG.ExpRun P lg s dss.flatten s₁ →
       Ii.Path P (.running f x.1 x.2) (callMoves rs ++ [.inr (.ans f w)]) (.idle u₁) →
@@ -160,13 +160,13 @@ theorem rounds_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
     obtain ⟨s', t', k, args, run, co, op, hpath'⟩ := path_round_inv (rest := callMoves rs ++
       [.inr (.ans f w)]) (by simpa [callMoves] using hpath)
     obtain ⟨y₁, hy₁, hI₁⟩ := LInvG.reach_fwd SI hFr hI run
-    let M₁ : Machine.Config (E3 P) σ := { M with store := { M.store with core := y₁.1 } }
-    have hFG₁ : FrameG d pl ii th M₁.store := hFG.core _
+    let M₁ : Machine.Config (E3 P) σ := { M with core := y₁.1 }
+    have hFG₁ : FrameG d pl ii th M₁.store := hFG
     obtain ⟨tr₀, htr₀, r₀⟩ := Adequacy.coreCfg_steps_of (prof := prof) (hr := fun _ _ => false)
       (dispatch := DI P impl) (B := M) (th := th) (K := K) (segs := segs) (rest := rest) hy₁
     have r₀' : Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) tr₀
         (coreCfg M₁ th K segs rest y₁) := r₀
-    have hX₁ : CallExt d pl M.store M₁.store := callExt_refl _
+    have hX₁ : CallExt d pl M.ref M₁.ref := callExt_refl _
     obtain ⟨nm, p, ys, E, a, hk, hdx, hys, hst, hyty⟩ := hI₁.callout_fwd SI co op
     obtain ⟨wi, xe, hwire, hxe, hty, htr⟩ := W.site k nm p hk
     have hek := ifaceOp?_some op
@@ -194,7 +194,7 @@ theorem rounds_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
       cases hexp
       obtain ⟨ιi, hi, hleave⟩ := hFG₁.imp
       obtain ⟨ιe, hie, hth⟩ := hFG₁.exp wi ⟨xe, hxe⟩
-      obtain ⟨hf, -⟩ := hFr.lifted pl s M₁.store F wi xe hI₁.hold hxe
+      obtain ⟨hf, -⟩ := hFr.lifted pl s M₁.ref F wi xe hI₁.hold hxe
       rw [hty] at hf
       rw [htr] at hst
       have hT := (nest_trap_argsG (prof := prof) (impl := impl) (d.inst pl wi) ii M₁ hFG₁.lock ιe
@@ -225,9 +225,9 @@ theorem rounds_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
             rw [hup, payloadAnswer_flat (w := .values ⟨_, SI.resAnswer hk hek.1 hck⟩) rfl]
             rfl
           rw [hv] at hpath'
-          have hX₂ : CallExt d pl M.store S'' := callExt_trans hX₁ hX
+          have hX₂ : CallExt d pl M.ref S'' := callExt_trans hX₁ hX
           rcases rounds_fwdB SI W hFr hFw hB th K segs rest rs dss
-              { M₁ with conts := C', store := S'' } s₂ s₁ F' _ _ u₁ hI₂ hFG₂ hrel' hrest
+              { M₁ with conts := C', store := S''.toCStore, core := S''.core } s₂ s₁ F' _ _ u₁ hI₂ hFG₂ hrel' hrest
               hpath' with
             ⟨trc', C'', S''', F'', yc, t'', r, hrun', hq', hIc, final, hw'', hFG', hX'⟩ |
             ⟨c, hT, hTA, hw''⟩

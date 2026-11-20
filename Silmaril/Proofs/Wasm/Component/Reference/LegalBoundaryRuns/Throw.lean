@@ -48,7 +48,7 @@ variable {hr : HostReady σ} {dispatch : Call (core3P P) → Canon.P (core3P P) 
 theorem stepTwin_throw_trap :
     StepTwin prof hr dispatch (coreCfg m th (.active f (throwing a)) k segs rest)
       (coreCfg m th (.active f [.trap]) k segs rest) :=
-  ⟨fun _ _ => step_throw_iff_step_trap, rfl, rfl, by simp [coreCfg], by simp [coreCfg]⟩
+  ⟨fun _ _ => step_throw_iff_step_trap, rfl, rfl, rfl, by simp [coreCfg], by simp [coreCfg]⟩
 
 theorem coreCfg_throw_ne_trap :
     coreCfg m th (.active f (throwing a)) k segs rest ≠

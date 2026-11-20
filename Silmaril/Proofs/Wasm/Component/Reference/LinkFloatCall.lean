@@ -39,14 +39,14 @@ theorem runs_lift_somePV {th : Option ThreadId} (p : Silmaril.Wasm.Component.Fun
       (.ofList ys) (resultTypes (witFt p))) m [.tau]
       ((canonAtVList p.results ws).map toRefVal, c) m := by
   have h := liftFlatTypes_liftArgs_floatV (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-    (ptrTypeIn m.store cx) hys
+    (ptrTypeIn (CoreEngine.view _ m.core) cx) hys
   rw [hws] at h
   obtain ⟨c, hc⟩ := h
   refine ⟨c, ?_⟩
   rw [resultTypes_witFt p hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
     liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
-  refine .get ?_
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx)
+  refine .readCore ?_
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ m.core) cx)
     (toClosedList p.results) ⟨ys, 0⟩) _ _ _ _
   rw [hc]
   exact .pure _ _
@@ -68,17 +68,17 @@ theorem lrun_lift_trapPV {α : Type} {th : Option ThreadId} (p : Silmaril.Wasm.C
     rw [resultTypes_witFt p hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
       liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
   have hT := liftFlatTypes_liftArgs_floatV (σ := σ) (E := E3 P) Limits.spec Quirks.none cx
-    (ptrTypeIn M.store cx) hys
+    (ptrTypeIn (CoreEngine.view _ M.core) cx) hys
   rw [hnone] at hT
   obtain ⟨r, k₀, hk⟩ := hT
-  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .get fun s =>
+  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .readCore fun s =>
       (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toClosedList p.results)
         ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest := by
     rw [hc, e]
     rfl
   have s₁ : Step prof (fun _ _ => false) (DI P impl) M .tau { M with ctl := ⟨th, .prog
-      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn M.store cx) (toClosedList p.results)
-        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.get hc'
+      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ M.core) cx) (toClosedList p.results)
+        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.readCore hc'
   rw [hk] at s₁
   exact ⟨_, r, .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) s₁) (.refl _), ⟨List.cons_ne_nil _ _, hl⟩,
@@ -94,6 +94,17 @@ theorem uniqueStep_getD {M : Machine.Config (E3 P) σ} {th : Option ThreadId}
       { M with ctl := ⟨th, .prog (g M.store), segs⟩ :: rest } :=
   .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) (.get hc)) (.refl _)
+
+/-- A `readCore` in focus is one live deterministic step under `DI P impl`. -/
+theorem uniqueStep_readCoreD {M : Machine.Config (E3 P) σ} {th : Option ThreadId}
+    {g : CoreEngine.CoreView (E3 P) (CanonHost (E3 P)) → Canon.P (E3 P) σ (Ret (E3 P))}
+    {segs : List (Seg (E3 P) σ)} {rest : List (Activation (E3 P) σ)}
+    (hc : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .readCore g), segs⟩ :: rest)
+    (hl : M.store.lockdown = false) :
+    LRun prof (fun _ _ => false) (DI P impl) M [.tau]
+      { M with ctl := ⟨th, .prog (g (CoreEngine.view _ M.core)), segs⟩ :: rest } :=
+  .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
+    (.of_prog hc (fun _ _ e => by cases e) (.readCore hc)) (.refl _)
 
 /-! ## The call on flat arguments -/
 
@@ -230,17 +241,17 @@ theorem call_trunL (prof : ProfileKind) (cs : (core3P P).Store (CanonHost (core3
       (invoked3 P cs fs h₀ j (vs.map toRefVal)) := by
   obtain ⟨Mℓ, th, cx, f, segs, rest, tr₁, hpre, hc, hl, hpost⟩ :=
     call_at_floatL (impl := impl) prof cs fs h₀ j a x vs hres hmaxr hf
-  have hc' : Mℓ.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .get fun s =>
+  have hc' : Mℓ.ctl = ⟨th, .prog (.op (S := Eff (E3 P) σ) .readCore fun s =>
       lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toRefVals vs)
         (toClosedList x.ty.params) >>= f), segs⟩ :: rest := by
     rw [hc, paramTypes_liftedFt, lowerFlatValues_float (max := ABI.maxFlatParams) _ _ _ hmax]
     rfl
   have hch := lowerFlatTypesV (E := E3 P) (σ := σ) Limits.spec Quirks.none cx
-    (ptrTypeIn Mℓ.store cx) prof x.ty.params vs hck
+    (ptrTypeIn (CoreEngine.view _ Mℓ.core) cx) prof x.ty.params vs hck
   have ht := ChoiceProg.trun (hr := fun _ _ => false) (dispatch := DI P impl) hch
-    { Mℓ with ctl := ⟨th, .prog (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn Mℓ.store cx)
+    { Mℓ with ctl := ⟨th, .prog (lowerFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ Mℓ.core) cx)
       (toRefVals vs) (toClosedList x.ty.params) >>= f), segs⟩ :: rest } f th segs rest rfl hl
-  refine TRun.of_lrun hpre (TRun.of_lrun (uniqueStep_getD hc' hl) (ht.bind ?_))
+  refine TRun.of_lrun hpre (TRun.of_lrun (uniqueStep_readCoreD hc' hl) (ht.bind ?_))
   rintro m ⟨out, ⟨vs', hn, hck', rfl⟩, rfl⟩
   obtain ⟨M₀, th', K, segs', rest', tr₂, hl₁, hat⟩ := hpost (lowerArgs x.ty.params vs')
   exact TRun.of_lrun hl₁ (.done ⟨vs', th', K, segs', rest', hn, hck', hat⟩)

@@ -27,7 +27,18 @@ variable {H : Type}
 theorem initDataSegK?_eq : @initDataSegK? H = initDataSeg? evalConst? := by
   funext s f k d
   simp only [initDataSegK?, initDataSeg?, memoryInitLoopK_eq]
-  rfl
+  cases hm : d.mode with
+  | passive => rfl
+  | active y off =>
+    dsimp only
+    rcases evalConst? s f off with _ | ⟨s₁, v⟩
+    · rfl
+    · dsimp only
+      rcases v.addr? with _ | ⟨a, i⟩
+      · rfl
+      · dsimp only
+        rcases memoryInitLoop s₁ f y ⟨Fin.ofNat _ k⟩ a i 0 (BitVec.ofNat 32 d.bytes.size)
+            with _ | s₂ <;> rfl
 
 theorem initDataListK?_eq : @initDataListK? H = initDataList? evalConst? := by
   funext s f l
@@ -41,7 +52,19 @@ theorem initDataListK?_eq : @initDataListK? H = initDataList? evalConst? := by
 theorem initElemSegK?_eq : @initElemSegK? H = initElemSeg? evalConst? := by
   funext s f k e
   simp only [initElemSegK?, initElemSeg?, tableInitLoopK_eq]
-  rfl
+  cases hm : e.mode with
+  | passive => rfl
+  | declarative => rfl
+  | active y off =>
+    dsimp only
+    rcases evalConst? s f off with _ | ⟨s₁, v⟩
+    · rfl
+    · dsimp only
+      rcases v.addr? with _ | ⟨a, i⟩
+      · rfl
+      · dsimp only
+        rcases tableInitLoop s₁ f y ⟨Fin.ofNat _ k⟩ a i 0 (BitVec.ofNat 32 e.init.length)
+            with _ | s₂ <;> rfl
 
 theorem initElemListK?_eq : @initElemListK? H = initElemList? evalConst? := by
   funext s f l
@@ -56,18 +79,24 @@ theorem initSegmentsK?_eq : @initSegmentsK? H = initSegments? evalConst? := by
   funext s f m
   simp only [initSegmentsK?, initSegments?, initData?, initElem?, initDataListK?_eq,
     initElemListK?_eq]
-  rfl
+  rcases initElemList? evalConst? s f ((List.range m.elems.length).zip m.elems) with _ | s₁ <;>
+    rfl
 
 theorem prepareDirectK?_eq : @prepareDirectK? H = instantiateDirect? := by
   funext s m xas
   simp only [prepareDirectK?, instantiateDirect?, prepareDirect?, initSegmentsK?_eq]
-  rfl
+  rcases prepare? evalConst? s m xas with _ | ⟨c, st⟩
+  · rfl
+  · dsimp only
+    rcases initSegments? evalConst? c.store c.frame m with _ | ⟨s', f'⟩ <;> rfl
 
 /-- **The instantiation with closed-form data segments is the specification's.** -/
 theorem instantiateOnceK?_eq : @instantiateOnceK? H = instantiateOnce? := by
   funext s m xas
   simp only [instantiateOnceK?, instantiateOnce?, prepareDirectK?_eq]
-  rfl
+  rcases evalGlobals? evalConst? s { module := ModuleInst.initial s m xas }
+    (Module.closedGlobalTypes m) (List.map Global.init m.globals) with _ | ⟨s₁, f₁, vs⟩ <;>
+    rfl
 
 theorem imports_nil_of_validate {m : Module} {mt : CModuleType} (h : validate? m = some mt)
     (hi : m.imports = []) : mt.imports = [] := by

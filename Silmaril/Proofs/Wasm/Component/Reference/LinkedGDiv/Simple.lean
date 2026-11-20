@@ -61,16 +61,16 @@ theorem simple_div {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
   have haddr : sAddr c I w = I.addrs.getD c.exports[w].core 0 := by
     simp [sAddr, List.getElem?_eq_getElem hwl]
   obtain ⟨ρ, O, hR, hO, rfl⟩ := hH.rel
-  have hs := hostsSat_hIdx (P := P) M.store.core
-  have hRg : PartRel ρ O s (Store.mapH (hIdx M.store.core) M.store.core) := partRel_mapH hR
-  have hFg : FnPre ({} : Store Nat) (Store.mapH (hIdx M.store.core) M.store.core) s :=
+  have hs := hostsSat_hIdx (P := P) M.core
+  have hRg : PartRel ρ O s (Store.mapH (hIdx M.core) M.core) := partRel_mapH hR
+  have hFg : FnPre ({} : Store Nat) (Store.mapH (hIdx M.core) M.core) s :=
     fnPre_mapH hH.free hH.fn
   have hOw : O.fn (I.addrs.getD c.exports[w].core 0) := hO ▸ owned_init hc hI _ hxm
   obtain ⟨nm, hcx⟩ := hc.core _ hxm
   have hk : c.exports[w].core < c.mod.exports.length := (List.getElem?_eq_some_iff.mp hcx).1
   have typed : ValTy.checkList c.exports[w].ty.params vs = true := hxty ▸ htyped
   have hstart : (simpleData P c I).startCfg pl w x vs M th K segs rest =
-      coreCfg M th K segs rest (M.store.core, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat
+      coreCfg M th K segs rest (M.core, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat
         (I.addrs.getD c.exports[w].core 0) (lowerArgs c.exports[w].ty.params vs)) := by
     show { M with ctl := ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (sAddr c I w)
       (lowerArgs x.ty.params vs)) K, segs⟩ :: rest } = _
@@ -88,7 +88,7 @@ theorem simple_div {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
     rw [hjw] at hdiv
     obtain ⟨g, hg0, hg⟩ := hdiv.run
     exact SessionDiv.coreCfg_diverges_of
-      (LinkedSessionDiv.link_inf (hIdx M.store.core) (hInv M.store.core) hg hs (hg0 ▸ hL₀))
+      (LinkedSessionDiv.link_inf (hIdx M.core) (hInv M.core) hg hs (hg0 ▸ hL₀))
   · -- backward
     intro hd
     rcases LinkedSessionDivInv.coreCfg_diverges_step hd with hinf |
@@ -97,13 +97,13 @@ theorem simple_div {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
       left
       obtain ⟨ts, htyped', -⟩ := Silmaril.Wasm.Game.ScalarInstance.invoke_typed hH.wf
         (opAt hI hk (exp_hxs hcx typed hk))
-      have hrun := LinkedSessionDivInv.link_inf_back (hIdx M.store.core) hinf hL₀
+      have hrun := LinkedSessionDivInv.link_inf_back (hIdx M.core) hinf hL₀
         hH.wf.storeOk htyped'
       exact ⟨⟨w, hwl⟩, vs, rfl, typed, hrun⟩
     · right
       obtain ⟨π', t', ρ', O', hL, hrel, hgr, htc, hfπ, hnco, hval, -⟩ :=
-        exp_back1 hI ⟨nm, hcx⟩ typed hH.wf (hIdx M.store.core) hRg hFg hOw hy
-      have hfe : (y.1 : Store (CanonHost (E3 P))).funcs = (M.store.core : Store _).funcs :=
+        exp_back1 hI ⟨nm, hcx⟩ typed hH.wf (hIdx M.core) hRg hFg hOw hy
+      have hfe : (y.1 : Store (CanonHost (E3 P))).funcs = (M.core : Store _).funcs :=
         coreSteps_funcs hy
       have hW := within_of_touch' htc hfe
       have hG := grows_of_grow (grow_unmapH hgr)
@@ -126,8 +126,8 @@ theorem simple_div {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
           have hRA := hret ws hus
           have hH' := shold_after hH hO hL hrel hgr hfπ (RetAt.wellFormed hI ⟨nm, hcx⟩ hH.wf hRA)
           refine ⟨tr ++ [.tau], _, some (.vals ws), π', r₁, hq.1, .ret hwl hRA,
-            ⟨.inl ⟨{ M.store with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty', ?_,
-              storeExt_core c I pl M.store y.1, hH', hW, hG⟩, hunl⟩,
+            ⟨.inl ⟨{ M.ref with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty', ?_,
+              storeExt_core c I pl M.ref y.1, hH', hW, hG⟩, hunl⟩,
             List.cons_ne_nil _ _, d₁⟩
           show liftArgs x.ty.results zs = some ws
           rw [hxty]
@@ -136,8 +136,8 @@ theorem simple_div {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
           have hT := hnl hus
           have hH' := shold_after hH hO hL hrel hgr hfπ (hT.wellFormed hI ⟨nm, hcx⟩ hH.wf)
           refine ⟨tr ++ [.tau], _, none, π', r₁, hq.1, .trap hwl hT,
-            ⟨.inl ⟨{ M.store with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty', ?_,
-              storeExt_core c I pl M.store y.1, hH', hW, hG⟩, hunl⟩,
+            ⟨.inl ⟨{ M.ref with core := y.1 }, M.conts, zs, img ρ' O', rfl, hty', ?_,
+              storeExt_core c I pl M.ref y.1, hH', hW, hG⟩, hunl⟩,
             List.cons_ne_nil _ _, d₁⟩
           show liftArgs x.ty.results zs = none
           rw [hxty]

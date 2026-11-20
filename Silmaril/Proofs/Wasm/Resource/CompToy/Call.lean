@@ -52,9 +52,8 @@ def toyFuncs : List (CFuncInst (core3P P)) :=
     .lifted (show (core3P P).FuncAddr from (3 : ℕ)) ftGet {} ⟨0⟩,
     .lifted (show (core3P P).FuncAddr from (4 : ℕ)) ftDrop {} ⟨0⟩]
 
-/-- The store between calls, with every field but the core store explicit. -/
-noncomputable def toyStoreX (c : ℕ) (ι : InstState) (G : ToyGarb P) : CStore (core3P P) where
-  core := setCtr P (toyInst P).store.core c
+/-- The store between calls, with every field explicit. -/
+noncomputable def toyStoreX (_c : ℕ) (ι : InstState) (G : ToyGarb P) : CStore (core3P P) where
   insts := [ι]
   resourceTypes := [{ impl := some ⟨0⟩ }]
   funcs := toyFuncs P
@@ -67,6 +66,7 @@ noncomputable def toyStoreX (c : ℕ) (ι : InstState) (G : ToyGarb P) : CStore 
 noncomputable def toyCfgX (c : ℕ) (ι : InstState) (G : ToyGarb P) :
     Machine.Config (core3P P) Unit where
   store := toyStoreX P c ι G
+  core := setCtr P (toyInst P).core c
   host := ()
   conts := G.conts
   pending := G.pending
@@ -323,7 +323,7 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
     ∃ M₀ th K segs rest tr₁, LRun prof (refHost P).hr (D P) (toyInvoked P c ι G k ⟨j⟩ args) tr₁ M₀ ∧
       th = some ⟨G.threads.length⟩ ∧ M₀.ctl =
         ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat addr xs) K, segs⟩ :: rest ∧
-      M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧
+      M₀.store = tStore₄ P ft c ι ι' G k args ι₄ H₄ ∧ M₀.core = setCtr P (toyInst P).core c ∧
       (∀ ys, ∃ (β : Type) (f : List Silmaril.Wasm.Component.Reference.Val × FlatCursor → Canon.P (E3 P) Unit β)
         (g : β → Canon.P (E3 P) Unit (Ret (E3 P))), K ys = (liftFlatValues Limits.spec Quirks.none
           ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
@@ -332,15 +332,15 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
         (Hc H₅ : List ResourceHandle) (ys : List FlatValue) (ws : List Silmaril.Wasm.Component.Reference.Val) (cur : FlatCursor)
         (trF : List (Label (E3 P) Unit)) (c' : ℕ),
         (∀ m : Machine.Config (E3 P) Unit,
-          m.store = { tStore₄ P ft c ι ι' G k args ιc Hc with core := cs' } →
+          m.store = (tStore₄ P ft c ι ι' G k args ιc Hc) →
           RunsQ (D P) (some ⟨G.threads.length⟩) (liftFlatValues Limits.spec Quirks.none
             ({ opts := {}, inst := ⟨0⟩, scope := .task ⟨G.tasks.length⟩ } : LiftLowerContext (E3 P))
             ABI.maxFlatResults (.ofList ys) (resultTypes ft)) m trF (ws, cur)
-            { m with store := { tStore₄ P ft c ι ι' G k args ι₅ H₅ with core := cs' } }) →
-        cs' = setCtr P (toyInst P).store.core c' →
+            { m with store := (tStore₄ P ft c ι ι' G k args ι₅ H₅) }) →
+        cs' = setCtr P (toyInst P).core c' →
         ι₅.removeThread? 1 = some (⟨G.threads.length⟩, InstState.removeThread 1 ι₅) →
         ∃ tr, LRun prof (refHost P).hr (D P)
-          { M₀ with store := { tStore₄ P ft c ι ι' G k args ιc Hc with core := cs' },
+          { M₀ with store := (tStore₄ P ft c ι ι' G k args ιc Hc), core := cs',
                     ctl := ⟨th, .prog (K ys), segs⟩ :: rest } tr
           (toyCfgX P c' (InstState.removeThread 1 ι₅) (nextG P G ft k j addr args ws H₅)) := by
   apply Exists.intro; apply Exists.intro; apply Exists.intro
@@ -385,16 +385,15 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
   apply RunsQ.chunk rfl (hlow _ (setTaskState_last (Gt := G.tasks) rfl _)) rfl
   mstep
   exact .refl _
-  refine ⟨rfl, rfl, rfl, fun ys => ⟨_, _, _, rfl⟩, ?_⟩
+  refine ⟨rfl, rfl, rfl, rfl, fun ys => ⟨_, _, _, rfl⟩, ?_⟩
   intro cs' ιc ι₅ Hc H₅ ys ws cur trF c' hlift hcs hrem
   apply Exists.intro
-  have hS : ∀ ιx Hx, ({ tStore₄ P ft c ι ι' G k args ιx Hx with core := cs' }).tasks =
+  have hS : ∀ ιx Hx, (tStore₄ P ft c ι ι' G k args ιx Hx).tasks =
       G.tasks ++ [(tTask₁ P ft G.callers ⟨G.threads.length⟩).withState .started] := fun _ _ => rfl
   apply RunsQ.chunk2 rfl (hlift _ rfl) rfl
   apply RunsQ.chunk2 rfl
     (runs_return (Gt := G.tasks) (Gc := G.callers) _ (hS ι₅ H₅) rfl rfl rfl rfl) rfl
   apply LRun.store_congr (S' := { tStore₄ P ft c ι ι' G k args ι₅ H₅ with
-      core := cs'
       tasks := G.tasks ++ [((tTask₁ P ft G.callers ⟨G.threads.length⟩).withState .started).withState
         .resolved] })
     (by refine setTaskState_last (Gt := G.tasks) ?_ _; rfl)
@@ -403,12 +402,10 @@ theorem toy_callAt (prof : ProfileKind) (ft : WIT.FuncType Empty RtId) (j addr :
       (y := ((tTask₁ P ft G.callers ⟨G.threads.length⟩).withState .started).withState .resolved)
       (z := (thread₁ G.tasks).withIndex 1) (ι := ι₅) rfl rfl rfl hasync rfl rfl rfl rfl hrem) rfl
   apply LRun.store_congr (S' := { tStore₄ P ft c ι ι' G k args ι₅ H₅ with
-      core := cs'
       tasks := G.tasks ++ [tTask₂ P ft G.callers ⟨G.threads.length⟩]
       insts := [InstState.removeThread 1 ι₅] }) (unregisterThreadSt_eq _ _ rfl rfl rfl)
   mstep
   apply LRun.store_congr (S' := { tStore₄ P ft c ι ι' G k args ι₅ H₅ with
-      core := cs'
       tasks := G.tasks ++ [tTask₂ P ft G.callers ⟨G.threads.length⟩]
       insts := [InstState.removeThread 1 ι₅]
       threads := G.threads ++ [{ (thread₁ G.tasks).withIndex 1 with status := .exited }] })

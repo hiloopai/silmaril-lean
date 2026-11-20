@@ -44,8 +44,8 @@ abbrev SpecR (prof : ProfileKind) (P : Profile) {α : Type} :=
   @Spec (E3 P) Unit prof (refHost P).hr (D P) α
 
 /-- The renamed core store. -/
-abbrev cmap (s : CStore (E3 P)) : Silmaril.Wasm.Execution.Core.Store Nat :=
-  Store.mapH (fun _ => 0) s.core
+abbrev cmap (c : (E3 P).Store (CanonHost (E3 P))) : Silmaril.Wasm.Execution.Core.Store Nat :=
+  Store.mapH (fun _ => 0) c
 
 /-! ## Core facts -/
 
@@ -94,7 +94,7 @@ theorem spec_lowerU32s {th : Option ThreadId} {m : Config (E3 P) Unit}
       (paramTypes (reallocType .i32)) none) m
       (fun xs m' => xs = [u32Flat a, u32Flat b, u32Flat c, u32Flat d] ∧ m' = m) := by
   unfold lowerFlatValues
-  refine Spec.bind (Spec.gets _) fun p m' ⟨hp, hm⟩ _ _ => ?_
+  refine Spec.bind (Spec.getsCore _) fun p m' ⟨hp, hm⟩ _ _ => ?_
   subst m'
   have hp' : p = .i32 := by
     rw [hp]
@@ -116,7 +116,7 @@ theorem spec_liftU32 {th : Option ThreadId} {m : Config (E3 P) Unit}
       (.ofList [⟨.int .i32, b⟩]) (resultTypes (reallocType .i32))) m
       (fun r m' => r.1 = [.int .u32 (b.toNat : Int)] ∧ m' = m) := by
   unfold liftFlatValues
-  refine Spec.bind (Spec.gets _) fun p m' ⟨hp, hm⟩ _ _ => ?_
+  refine Spec.bind (Spec.getsCore _) fun p m' ⟨hp, hm⟩ _ _ => ?_
   subst m'
   have hp' : p = .i32 := by
     rw [hp]
@@ -201,14 +201,14 @@ theorem single_i32 {vs : List FlatValue}
     subst h
     exact ⟨b, rfl⟩
 
-/-- What the allocator's run leaves: a Core run of the allocator from the renamed store `cmap s`
-on `(0, 0, align, n)` returning `p` into `cmap s'`, a well-formed instance, the memory address
-types of `s`. -/
+/-- What the allocator's run leaves: a Core run of the allocator from the renamed core store
+`cmap c` on `(0, 0, align, n)` returning `p` into `cmap c'`, a well-formed instance, the memory
+address types of `c`. -/
 structure AllocRun (P : Profile) (I : Silmaril.Wasm.Game.ScalarInstance) (ra align n : Nat)
-    (s s' : CStore (E3 P)) (p : Nat) : Prop where
-  run : ReallocRun P ra (cmap s) align n p (cmap s')
-  wf : I.WellFormed (cmap s')
-  mem : ∀ a t, (E3 P).memAddrType? s.core a = some t → (E3 P).memAddrType? s'.core a = some t
+    (c c' : (E3 P).Store (CanonHost (E3 P))) (p : Nat) : Prop where
+  run : ReallocRun P ra (cmap c) align n p (cmap c')
+  wf : I.WellFormed (cmap c')
+  mem : ∀ a t, (E3 P).memAddrType? c a = some t → (E3 P).memAddrType? c' a = some t
 
 theorem getElem?_modify_self {α : Type} (l : List α) (i : Nat) (f : α → α) :
     (l.modify i f)[i]? = l[i]?.map f := by
@@ -225,11 +225,11 @@ theorem modify_modify {α : Type} (l : List α) (i : Nat) (f g : α → α) :
 
 /-- The view of the allocator's task: resolved, other tasks unchanged. -/
 abbrev BodyPost (I : Silmaril.Wasm.Game.ScalarInstance) (ra align n : Nat) (T : TaskId)
-    (c : CallerId) (s : CStore (E3 P)) (m' : Config (E3 P) Unit) : Prop :=
-  ∃ p, AllocRun P I ra align n s m'.store p ∧
-    m'.store.callers = s.callers.modify c.idx
+    (c : CallerId) (M m' : Config (E3 P) Unit) : Prop :=
+  ∃ p, AllocRun P I ra align n M.core m'.core p ∧
+    m'.store.callers = M.store.callers.modify c.idx
       (LiftSt.recordReallocResult (.int .u32 (p : Int))) ∧
-    tview m'.store = (tview s).modify T.idx (fun x => (x.1, .resolved))
+    tview m'.store = (tview M.store).modify T.idx (fun x => (x.1, .resolved))
 
 /-- **The allocator's thread body**: on an accepting path it records the pointer `p` that a
 Core run of the allocator returns, resolves the task and exits. -/
@@ -238,9 +238,9 @@ theorem spec_reallocBody {I : Silmaril.Wasm.Game.ScalarInstance} {ra align n : N
     {m : Config (E3 P) Unit}
     (hv : (tview m.store)[T.idx]? = some (keyR inst c, .initial))
     (hc : ArenaField.callers.get? m.store c = some (.sub (.realloc (reallocArgs align n) none)))
-    (hw : I.WellFormed (cmap m.store)) :
+    (hw : I.WellFormed (cmap m.core)) :
     SpecR prof P (some t) (liftThreadBody Limits.spec Quirks.none T ra) m
-      (fun _ m' => BodyPost I ra align n T c m.store m') := by
+      (fun _ m' => BodyPost I ra align n T c m m') := by
   obtain ⟨hI, k, hk, hra, hty⟩ := hA
   subst hra
   unfold liftThreadBody
@@ -265,11 +265,11 @@ theorem spec_reallocBody {I : Silmaril.Wasm.Game.ScalarInstance} {ra align n : N
   refine Spec.bind (spec_lowerU32s _ rfl _ _ _ _) fun xs m₄ ⟨hxs, hm⟩ _ _ => ?_
   subst xs m₄
   refine Spec.ite_true rfl ?_
-  refine Spec.bind (R := fun _ m' => BodyPost I (I.addrs.getD k 0) align n T c m.store m') ?_
+  refine Spec.bind (R := fun _ m' => BodyPost I (I.addrs.getD k 0) align n T c m m') ?_
     fun _ m₅ hR _ _ => Spec.mono (Spec.pure _) fun _ m' ⟨_, hm⟩ _ _ => hm ▸ hR
   unfold liftSyncTail
-  have hw₁ : I.WellFormed (cmap m₁.store) := by
-    show I.WellFormed (Store.mapH _ m₁.store.core)
+  have hw₁ : I.WellFormed (cmap m₁.core) := by
+    show I.WellFormed (Store.mapH _ m₁.core)
     rw [hcore₁]
     exact hw
   have hxs : [u32Flat 0, u32Flat 0, u32Flat align, u32Flat n].map
@@ -306,7 +306,7 @@ theorem spec_reallocBody {I : Silmaril.Wasm.Game.ScalarInstance} {ra align n : N
     fun _ m' ⟨t', i, hm⟩ _ _ => ?_
   subst m'
   have run' : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost
-      (Silmaril.Wasm.Execution.Core.invoke (Store.mapH (fun _ => 0) m₁.store.core)
+      (Silmaril.Wasm.Execution.Core.invoke (Store.mapH (fun _ => 0) m₁.core)
         (I.addrs.getD k 0)
         ([u32Flat 0, u32Flat 0, u32Flat align, u32Flat n].map Silmaril.Wasm.SingleThreaded.ofFlat))
       ⟨Store.mapH (fun _ => 0) y.1, f',
@@ -320,18 +320,16 @@ theorem spec_reallocBody {I : Silmaril.Wasm.Game.ScalarInstance} {ra align n : N
   rw [hcore₁, e1] at run'
   refine ⟨b.toNat, ⟨⟨f', ?_, b.isLt⟩, ?_, fun a t₀ ha => ?_⟩, ?_, ?_⟩
   · dsimp only [cmap]
-    rw [(unregisterThreadSt_core _ _ _ _).1, e2]
+    rw [e2]
     exact run'
   · dsimp only [cmap]
-    rw [(unregisterThreadSt_core _ _ _ _).1]
     exact hwf
   · dsimp only
-    rw [(unregisterThreadSt_core _ _ _ _).1]
     refine coreSteps_memAddrType hy a t₀ ?_
-    show (E3 P).memAddrType? m₁.store.core a = some t₀
+    show (E3 P).memAddrType? m₁.core a = some t₀
     rw [hcore₁]
     exact ha
-  · rw [(unregisterThreadSt_core _ _ _ _).2]
+  · rw [unregisterThreadSt_callers]
     show m₁.store.callers.modify c.idx _ = _
     rw [hcall₁]
   · rw [tview_unregisterThreadSt, tview_setTaskState]
@@ -342,20 +340,10 @@ theorem spec_reallocBody {I : Silmaril.Wasm.Game.ScalarInstance} {ra align n : N
 /-! ## `Thread.resume` and the nested `canon lift` -/
 
 theorem AllocRun.congr {I : Silmaril.Wasm.Game.ScalarInstance} {ra align n p : Nat}
-    {s₁ s₂ s₁' s₂' : CStore (E3 P)} (hr : AllocRun P I ra align n s₁ s₁' p)
-    (h : s₁.core = s₂.core) (h' : s₁'.core = s₂'.core) : AllocRun P I ra align n s₂ s₂' p := by
-  obtain ⟨run, wf, mem⟩ := hr
-  refine ⟨?_, ?_, ?_⟩
-  · unfold cmap
-    rw [← h, ← h']
-    exact run
-  · unfold cmap
-    rw [← h']
-    exact wf
-  · intro a t ha
-    rw [← h']
-    rw [← h] at ha
-    exact mem a t ha
+    {c₁ c₂ c₁' c₂' : (E3 P).Store (CanonHost (E3 P))} (hr : AllocRun P I ra align n c₁ c₁' p)
+    (h : c₁ = c₂) (h' : c₁' = c₂') : AllocRun P I ra align n c₂ c₂' p := by
+  subst h h'
+  exact hr
 
 /-- **`Thread.resume`** of a thread whose saved activation is the start of `body`: the body
 runs (in a configuration with the same continuations, core store, callers and tasks) and the
@@ -363,7 +351,7 @@ thread exits. -/
 theorem spec_threadResume {th : Option ThreadId} {t : ThreadId} {m : Config (E3 P) Unit}
     {body : Canon.P (E3 P) Unit (Ret (E3 P))} {R : Ret (E3 P) → Config (E3 P) Unit → Prop}
     (hb : m.cont? t = some ⟨some t, .prog body, []⟩)
-    (hbody : ∀ m' : Config (E3 P) Unit, m'.conts = m.conts → m'.store.core = m.store.core →
+    (hbody : ∀ m' : Config (E3 P) Unit, m'.conts = m.conts → m'.core = m.core →
       m'.store.callers = m.store.callers → m'.store.tasks = m.store.tasks →
       SpecR prof P (some t) body
         { m'.setCont t none with store := threadStatusSt t .running m'.store } R) :
@@ -407,9 +395,9 @@ theorem spec_canonLiftRealloc {I : Silmaril.Wasm.Game.ScalarInstance} {ra align 
     (hA : AllocAt I ra) {th : Option ThreadId} {c : CallerId} {inst : InstId}
     {m : Config (E3 P) Unit}
     (hc : ArenaField.callers.get? m.store c = some (.sub (.realloc (reallocArgs align n) none)))
-    (hw : I.WellFormed (cmap m.store)) :
+    (hw : I.WellFormed (cmap m.core)) :
     SpecR prof P th (canonLift Limits.spec Quirks.none ra (reallocType .i32) {} inst c) m
-      (fun _ m' => ∃ p, AllocRun P I ra align n m.store m'.store p ∧
+      (fun _ m' => ∃ p, AllocRun P I ra align n m.core m'.core p ∧
         m'.store.callers = m.store.callers.modify c.idx
           (LiftSt.recordReallocResult (.int .u32 (p : Int))) ∧
         tview m'.store = tview m.store ++ [(keyR inst c, .resolved)]) := by
@@ -435,9 +423,9 @@ theorem spec_canonLiftRealloc {I : Silmaril.Wasm.Game.ScalarInstance} {ra align 
       (TaskId.mk m.store.tasks.length) ra)
       (R := fun _ m'' => BodyPost I ra align n
         (TaskId.mk m.store.tasks.length) c
-        (ArenaOps.allocSt ArenaField.tasks
+        { m with store := (ArenaOps.allocSt ArenaField.tasks
           ({ ft := reallocType .i32, opts := {}, inst := inst, caller := c } : Task (E3 P))
-          m.store) m'')
+          m.store) } m'')
       hcont fun m' hconts hcore hcall htasks => ?_)
     fun _ m₃ ⟨r, m₄, hpost, _, hm⟩ _ _ => ?_
   · have hv' : (tview (threadStatusSt t .running m'.store))[(TaskId.mk
@@ -452,8 +440,7 @@ theorem spec_canonLiftRealloc {I : Silmaril.Wasm.Game.ScalarInstance} {ra align 
       show m'.store.callers[c.idx]? = _
       rw [hcall]
       exact hc
-    have hw' : I.WellFormed (cmap (threadStatusSt t .running m'.store)) := by
-      show I.WellFormed (Store.mapH _ m'.store.core)
+    have hw' : I.WellFormed (cmap m'.core) := by
       rw [hcore]
       exact hw
     refine Spec.mono (spec_reallocBody (t := t) (c := c) hA hv' hc' hw')
@@ -522,20 +509,21 @@ theorem spec_realloc {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} (hA :
     {th : Option ThreadId} {cx : LiftLowerContext (E3 P)}
     (hmem : cx.opts.memory = some (show (E3 P).MemAddr from ma))
     (hra : cx.opts.realloc = some ra) {m : Config (E3 P) Unit}
-    (hm0 : (E3 P).memAddrType? m.store.core (show (E3 P).MemAddr from ma) = some .i32)
-    (hw : I.WellFormed (cmap m.store)) (align n : Nat) :
+    (hm0 : (E3 P).memAddrType? m.core (show (E3 P).MemAddr from ma) = some .i32)
+    (hw : I.WellFormed (cmap m.core)) (align n : Nat) :
     SpecR prof P th (D P (.reallocate cx 0 0 align n)) m
-      (fun r m' => ∃ p, r = .nat p ∧ AllocRun P I ra align n m.store m'.store p ∧
+      (fun r m' => ∃ p, r = .nat p ∧ AllocRun P I ra align n m.core m'.core p ∧
         m'.store.callers = m.store.callers ++ [reallocRec align n p] ∧
         tview m'.store = tview m.store ++
           [(keyR cx.inst ⟨m.store.callers.length⟩, .resolved)]) := by
   show SpecR prof P th (reallocProg Limits.spec Quirks.none cx 0 0 align n) m _
   unfold reallocProg
-  refine Spec.bind (Spec.gets _) fun pt m₁ ⟨hpt, hm⟩ _ _ => ?_
+  refine Spec.bind (Spec.getsCore _) fun pt m₁ ⟨hpt, hm⟩ _ _ => ?_
   subst m₁
   have hpt' : pt = .i32 := by
     rw [hpt]
-    simp [ptrTypeIn, CanonOpts.ptrType, hmem, hm0]
+    simp only [ptrTypeIn, CanonOpts.ptrType, hmem]
+    exact congrArg (Option.getD · _) hm0
   subst hpt'
   refine Spec.bind (Spec.orTrap _ _) fun f m₂ ⟨hf, hm⟩ _ _ => ?_
   subst m₂

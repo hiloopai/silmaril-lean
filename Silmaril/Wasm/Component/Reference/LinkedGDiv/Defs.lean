@@ -86,12 +86,12 @@ chain) for some `Step`, the machine diverging from there. -/
 def Div : Prop :=
   ∀ (pl : d.Pl) (s : e.St) (w : Nat) (vs : List IVal) (x : Export),
     e.comp.exports[w]? = some x → ValTy.checkList x.ty.params vs = true →
-    ∀ (S : CStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
+    ∀ (S : RefStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
     ∀ {σ : Type} (prof : ProfileKind) (impl : HostImpl (core3P P) σ)
       (M : Machine.Config (core3P P) σ) (th : Option ThreadId)
       (K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P)))
       (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-      M.store = S → S.lockdown = false → instOfThread? S th = some ⟨d.inst pl w⟩ →
+      M.ref = S → S.lockdown = false → instOfThread? S.toCStore th = some ⟨d.inst pl w⟩ →
       (e.DivStep P s (w, .vals vs) →
         Machine.Diverges prof (linkHost impl).hr (linkHost impl).dispatch
           (d.startCfg pl w x vs M th K segs rest)) ∧

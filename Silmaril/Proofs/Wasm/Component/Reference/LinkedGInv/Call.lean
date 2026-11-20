@@ -53,7 +53,7 @@ variable {P : Profile} {σ : Type} {prof : ProfileKind} {impl : HostImpl (E3 P) 
 theorem trapsAtS_back {M m' : Machine.Config (E3 P) σ} {c : (E3 P).Store (CanonHost (E3 P))}
     {tr : List (Label (E3 P) σ)} (H : TrapsAtS prof P impl M c)
     (r : Machine.Steps prof (fun _ _ => false) (DI P impl) M tr m') :
-    Live m' ∨ ∃ mT : Machine.Config (E3 P) σ, m' = trapCfg mT ∧ mT.store.core = c := by
+    Live m' ∨ ∃ mT : Machine.Config (E3 P) σ, m' = trapCfg mT ∧ mT.core = c := by
   obtain ⟨tr₁, mT, rT, hr, hrun, hlive, hu, hc⟩ := H
   rcases trapsAtSH_back (h := mT.host) ⟨tr₁, mT, rT, hr, hrun, hlive, hu, hc, rfl⟩ r with h |
     ⟨mT', -, -, h₁, h₂, -⟩
@@ -89,7 +89,7 @@ variable {lg : LinkedG} {d : lg.exp.RefData P} {pl : d.Pl} {ii : Nat} {Ii : SIns
 /-- `ReadyB` at `resumeCfg` of a trapped call, from the parts at the trapped core store. -/
 theorem ready_trapB (hRes : d.Resume) {m m' : Machine.Config (E3 P) σ} {s s₁ : lg.exp.St}
     {u u₁ : Store Nat} {k : Nat} (R : ReadyB d pl ii Ii s₀ ui F₀ g Oc₀ fs m s u k) {f : Ii.F.Op}
-    (hTA : TrapAtG d pl Ii s₀ u F₀ g Oc₀ f m.store s₁ m'.store.core u₁) :
+    (hTA : TrapAtG d pl Ii s₀ u F₀ g Oc₀ f m.store s₁ m'.core u₁) :
     ReadyB d pl ii Ii s₀ ui F₀ g Oc₀ fs (resumeCfg m m') s₁ u₁ (k + 1) :=
   ⟨R.ctl, R.lock, R.nest, R.funcs, R.imp, R.exp,
     fun x hx => Nat.lt_succ_of_lt (R.pending x hx), fun x hx => Nat.lt_succ_of_lt (R.results x hx),
@@ -138,9 +138,10 @@ theorem linkCall_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf)
   obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, hat⟩ := call_atG (impl := impl) prof m R.lock k
     (jf j) _ ii lg.imp.exports[j] vs hpf hvs hmax hres hmaxr hrf hii hth hfj
   -- the invariants at the start of the importer's core activation
-  have hR₀ : LReadyG d pl Ii s₀ ui F₀ g Oc₀ M₀.store s u := by
-    refine lready_frame hFr R.inv (by rw [hat.store]; rfl) (by rw [hat.store]; rfl) ?_
+  have hR₀ : LReadyG d pl Ii s₀ ui F₀ g Oc₀ M₀.ref s u := by
+    refine lready_frame hFr R.inv hat.core (by show M₀.store.funcs = _; rw [hat.store]; rfl) ?_
     intro i hi
+    show M₀.store.insts[i]? = _
     rw [hat.store]
     exact List.getElem?_set_ne (fun h => ST.out (by rw [h]; exact hi))
   obtain ⟨F, hI₀⟩ := linv_readyG hR₀ ST.own (f := f) hf₂
@@ -166,17 +167,18 @@ theorem linkCall_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf)
         hleave⟩
     · intro w hw
       obtain ⟨xe, hxe⟩ := hw
-      obtain ⟨-, hblk⟩ := hFr.lifted pl s m.store F₁ w xe hH₀ hxe
+      obtain ⟨-, hblk⟩ := hFr.lifted pl s m.ref F₁ w xe hH₀ hxe
       rw [hat.store]
       show ∃ ι, (List.set m.store.insts ii (enterInst ιi ⟨m.store.threads.length⟩))[d.inst pl w]? =
         some ι ∧ _
       have hne : ii ≠ d.inst pl w := fun h => ST.out (by rw [h]; exact hblk)
       rw [List.getElem?_set_ne hne]
       exact R.exp w ⟨xe, hxe⟩
-  have hM₀ : M₀ = coreCfg M₀ th K segs rest (M₀.store.core,
+  have hM₀ : M₀ = coreCfg M₀ th K segs rest (M₀.ref.core,
       Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (s₀.funcs.length + Ii.addr f.1)
         (lowerArgs lg.imp.exports[j].ty.params vs)) := eq_coreCfg hat.ctl
-  have hS₀f : M₀.store.funcs = m.store.funcs := by rw [hat.store]; rfl
+  have hS₀f : M₀.ref.funcs = m.store.funcs := by
+    rw [Machine.Config.ref_toCStore, hat.store]; rfl
   -- the run
   obtain ⟨trc, hs, hev, hnoint, ho⟩ := hcalls
   obtain ⟨m₂, st, r₁⟩ := Machine.Steps.cons_iff.mp hs
@@ -246,13 +248,13 @@ theorem linkCall_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf)
         obtain ⟨rfl, rfl⟩ := hlocked rfl rfl
         refine ⟨⟨j, vs, f, rs, w, dss⟩, x'.1, s₁, none, rfl, rfl, hok w, hP, hexp, hR', rfl,
           ready_trapB (f := f) hRes R ?_⟩
-        show TrapAtG d pl Ii s₀ u F₀ g Oc₀ f m.store s₁ mT.store.core x'.1
+        show TrapAtG d pl Ii s₀ u F₀ g Oc₀ f m.store s₁ mT.core x'.1
         rw [hcT]
         exact hTA₀
       | some ws =>
         rw [hl] at hR'
         -- the call's records in the store at the return
-        have hM₀s := hat.store
+        have hM₀s : M₀.ref.toCStore = _ := hat.store
         obtain ⟨RT, hRT⟩ := prefix_concat_split (hM₀s ▸ hXc.tasks)
         obtain ⟨RH, hRH⟩ := prefix_concat_split (hM₀s ▸ hXc.threads)
         obtain ⟨CL, hCL⟩ := prefix_concat_split (hM₀s ▸ hXc.callers)
@@ -311,7 +313,7 @@ theorem linkCall_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf)
             (removeThread_enter_mayLeave _ _).trans hleave⟩
         · intro w' hw'
           obtain ⟨xe, hxe⟩ := hw'
-          obtain ⟨-, hblk⟩ := hFr.lifted pl s m.store F₁ w' xe hH₀ hxe
+          obtain ⟨-, hblk⟩ := hFr.lifted pl s m.ref F₁ w' xe hH₀ hxe
           show ∃ ι, (List.set S''.insts ii _)[d.inst pl w']? = some ι ∧ _
           have hne : ii ≠ d.inst pl w' := fun h => ST.out (by rw [h]; exact hblk)
           rw [List.getElem?_set_ne hne]

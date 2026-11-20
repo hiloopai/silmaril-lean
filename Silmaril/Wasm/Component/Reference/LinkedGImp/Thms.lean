@@ -81,7 +81,7 @@ theorem Simple.expSpec_refAdeqB (P : Profile) {c : Simple} (hc : c.Good) (hi : c
 has data meeting R1–R5 all of whose footprints own every struct address. -/
 theorem ExpSpec.refAdeq_allStructs {P : Profile} {e : ExpSpec} (h : e.RefAdeq P) :
     ∃ d : e.RefData P, d.Frame ∧ d.Fwd ∧ d.Bwd ∧ d.Init ∧ d.Resume ∧
-      ∀ (pl : d.Pl) (s : e.St) (S : Runtime.CStore (core3P P)) (F : CoreFoot),
+      ∀ (pl : d.Pl) (s : e.St) (S : RefStore (core3P P)) (F : CoreFoot),
         d.Hold pl s S F → ∀ a, F.st a :=
   Silmaril.Proofs.Wasm.Component.Reference.LinkedGImp.refAdeq_allStructs h
 

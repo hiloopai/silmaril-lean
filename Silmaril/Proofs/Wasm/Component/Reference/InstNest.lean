@@ -47,6 +47,18 @@ theorem SRuns.runsQ {α : Type} {p : P E σ α} {m m' : Machine.Config E σ} {os
   | @emit o _ _ _ _ _ _ ih =>
     obtain ⟨tr, hr, hq⟩ := ih
     exact ⟨_, .emit hr, SRuns.Quiet.cons (.inr ⟨o, rfl⟩) hq⟩
+  | readCore _ ih =>
+    obtain ⟨tr, hr, hq⟩ := ih
+    exact ⟨_, .readCore hr, SRuns.Quiet.cons (.inl rfl) hq⟩
+  | memWrite _ ih =>
+    obtain ⟨tr, hr, hq⟩ := ih
+    exact ⟨_, .memWrite hr, SRuns.Quiet.cons (.inl rfl) hq⟩
+  | allocHost _ ih =>
+    obtain ⟨tr, hr, hq⟩ := ih
+    exact ⟨_, .allocHost hr, SRuns.Quiet.cons (.inl rfl) hq⟩
+  | prepare _ ih =>
+    obtain ⟨tr, hr, hq⟩ := ih
+    exact ⟨_, .prepare hr, SRuns.Quiet.cons (.inl rfl) hq⟩
 
 end Embed
 
@@ -58,10 +70,10 @@ variable {Pf : Silmaril.Wasm.Numerics.Profile} {σ : Type}
 
 /-- The store after the nested instantiation of a simple component in the instance allocated
 next: as `instStore`, at an arbitrary instance id. -/
-noncomputable def nestStore (cs : (core3P Pf).Store (CanonHost (core3P Pf)))
+noncomputable def nestStore (_cs : (core3P Pf).Store (CanonHost (core3P Pf)))
     (s : CStore (core3P Pf)) (addr : Nat → Nat) (inst : InstId) (c : Simple) :
     CStore (core3P Pf) :=
-  liftStore cs (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr inst c.exports)
+  liftStore (ArenaOps.allocSt ArenaField.insts {} s) (liftedList addr inst c.exports)
 
 /-- The id of the next component instance. -/
 noncomputable abbrev nextInst (s : CStore (core3P Pf)) : InstId :=
@@ -71,7 +83,7 @@ noncomputable abbrev nextInst (s : CStore (core3P Pf)) : InstId :=
 noncomputable def nestCfg (cs : (core3P Pf).Store (CanonHost (core3P Pf)))
     (cfg : Machine.Config (core3P Pf) σ) (addr : Nat → Nat) (c : Simple) :
     Machine.Config (core3P Pf) σ :=
-  { cfg with store := nestStore cs cfg.store addr (nextInst cfg.store) c }
+  { cfg with core := cs, store := nestStore cs cfg.store addr (nextInst cfg.store) c }
 
 /-- **The nested instantiation of an import-free simple component runs silently**: from a store
 with the empty core store and no component function, the dispatcher's program for
@@ -81,7 +93,7 @@ theorem instantiateCall_simple {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstan
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFacts c I cs ci) (outer : List (Frame (core3P Pf)))
     (cfg : Machine.Config (core3P Pf) σ)
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ es, funcExports es = exportMap c ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ [] : P (core3P Pf) σ (Ret (core3P Pf))) cfg
         (.items es)

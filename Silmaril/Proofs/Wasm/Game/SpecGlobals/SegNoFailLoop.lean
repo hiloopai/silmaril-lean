@@ -115,6 +115,8 @@ theorem memoryInitLoop_some {f : Frame} {x : MemIdx} {y : DataIdx} {a : AddrType
     refine ⟨s, ?_, rfl⟩
     have hb : i.toNat + nb.toNat ≤ mi.bytes.size ∧ j.toNat + nb.toNat ≤ di.bytes.size := ⟨hi, hj⟩
     rw [memoryInitLoop, hm, hd]
+    simp only [Silmaril.Wasm.Execution.MemRep.size_byteArray,
+      Silmaril.Wasm.Execution.MemRep.store_byteArray]
     simp only [hb, and_self, ite_true]
     simp only [hz, dite_true]
   | succ n ih =>
@@ -143,6 +145,8 @@ theorem memoryInitLoop_some {f : Frame} {x : MemIdx} {y : DataIdx} {a : AddrType
     obtain ⟨s', hs', hel⟩ := ih _ (i + 1) (j + 1) (nb - 1) hp _ hm' hd' hi' hj'
     refine ⟨s', ?_, hel⟩
     rw [memoryInitLoop, hm, hd]
+    simp only [Silmaril.Wasm.Execution.MemRep.size_byteArray,
+      Silmaril.Wasm.Execution.MemRep.store_byteArray]
     simp only [hi, hj, and_self, ite_true, hnz, dite_false, hr, hb]
     exact hs'
 

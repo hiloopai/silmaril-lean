@@ -36,7 +36,7 @@ Divergence from `x` is `Machine.Diverges` itself (and `Machine.DivergesWithHost`
 runs with host events).
 
 `StepTwin prof hr dispatch x y`: two mid-call configurations with exactly the same steps (labels
-and successors), the same component store and host state, and a running activation each. The
+and successors), the same component and core stores and host state, and a running activation each. The
 theorems (`LegalBoundaryRuns.Thms`) prove that twins have the same rests for each of the above,
 and that a core activation that threw and the same activation trapped (`[.trap]`) are twins.
 -/
@@ -51,12 +51,13 @@ open Silmaril.Games.Abstract (streamTake)
 
 variable {E : CoreEngine} {σ : Type}
 
-/-- **Twin mid-call configurations**: the same steps (labels and successors), the same store
-and host state, and both have a running activation (the host is not in control). -/
+/-- **Twin mid-call configurations**: the same steps (labels and successors), component and core
+stores, and host state, and both have a running activation (the host is not in control). -/
 structure StepTwin (prof : ProfileKind) (hr : HostReady σ) (dispatch : Call E → P E σ (Ret E))
     (x y : Config E σ) : Prop where
   step : ∀ l m', Step prof hr dispatch x l m' ↔ Step prof hr dispatch y l m'
   store : x.store = y.store
+  core : x.core = y.core
   host : x.host = y.host
   ctl_x : x.ctl ≠ []
   ctl_y : y.ctl ≠ []

@@ -61,7 +61,7 @@ theorem specQ_threadResume {Q : Prop} {th : Option ThreadId} {t : ThreadId}
     {m : Config (E3 P) Unit} {body : Canon.P (E3 P) Unit (Ret (E3 P))}
     {R : Ret (E3 P) → Config (E3 P) Unit → Prop}
     (hb : m.cont? t = some ⟨some t, .prog body, []⟩)
-    (hbody : ∀ m' : Config (E3 P) Unit, m'.store.core = m.store.core →
+    (hbody : ∀ m' : Config (E3 P) Unit, m'.core = m.core →
       m'.store.callers = m.store.callers → m'.store.tasks = m.store.tasks →
       m'.results = m.results →
       SpecQR prof P Q (some t) body
@@ -182,14 +182,14 @@ theorem paramTypes_liftedFtL (x : ListExport) :
 
 /-- The lift of the core function's single `i32` result as a `bool`. -/
 theorem spec_liftBool {th : Option ThreadId} {m : Config (E3 P) Unit}
-    (cx : LiftLowerContext (E3 P)) (hp : ptrTypeIn m.store cx = .i32) (b : BitVec 32)
+    (cx : LiftLowerContext (E3 P)) (hp : ptrTypeIn ((E3 P).view m.core) cx = .i32) (b : BitVec 32)
     (rt : List (WIT.ClosedType RtId)) (hrt : rt = [.prim .bool]) :
     SpecR prof P th (liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults
       (.ofList [⟨.int .i32, b⟩]) rt) m
       (fun r m' => r.1 = [.bool (liftFlatBool ⟨.int .i32, b⟩)] ∧ m' = m) := by
   subst hrt
   unfold liftFlatValues
-  refine Spec.bind (Spec.gets _) fun p m' ⟨hp', hm⟩ _ _ => ?_
+  refine Spec.bind (Spec.getsCore _) fun p m' ⟨hp', hm⟩ _ _ => ?_
   subst m'
   rw [hp] at hp'
   subst hp'
@@ -215,7 +215,7 @@ theorem specQ_mainBody {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance} (h
     {t₀ : ThreadId} {m : Config (E3 P) Unit}
     (hv : (tview m.store)[0]? = some (tkey (mainTask P c I c.exports[j]), .initial))
     (hcl : ArenaField.callers.get? m.store ⟨0⟩ = some (.host ⟨0⟩ (vs.map LVal.toRef) 0))
-    (hres : m.results = []) (hcs : cmap m.store = I.store) (hinv : LInv P I c.memIdx m) :
+    (hres : m.results = []) (hcs : cmap m.core = I.store) (hinv : LInv P I c.memIdx m) :
     SpecQR prof P (CallGoal P c I c.exports[j] vs) (some t₀)
       (liftThreadBody Limits.spec Quirks.none ⟨0⟩ (c.coreAddr I c.exports[j].core)) m
       (fun _ _ => False) := by
@@ -249,14 +249,13 @@ theorem specQ_mainBody {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance} (h
   have hinv₃ : LInv P I c.memIdx
       { m₁ with store := CStore.setTaskState ⟨0⟩ .started m₁.store } := by
     refine ⟨?_, ?_⟩
-    · show (E3 P).memAddrType? m₁.store.core (memAt P c.memIdx) = some .i32
+    · show (E3 P).memAddrType? m₁.core (memAt P c.memIdx) = some .i32
       rw [hcore₁]
       exact hinv.mem
-    · show I.WellFormed (Store.mapH _ m₁.store.core)
+    · show I.WellFormed (Store.mapH _ m₁.core)
       rw [hcore₁]
       exact hinv.wf
-  have hcs₃ : cmap (CStore.setTaskState ⟨0⟩ .started m₁.store) = I.store := by
-    show Store.mapH _ m₁.store.core = _
+  have hcs₃ : cmap m₁.core = I.store := by
     rw [hcore₁]
     exact hcs
   rw [paramTypes_liftedFtL]
@@ -276,7 +275,7 @@ theorem specQ_mainBody {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance} (h
   obtain ⟨⟨f', run⟩, htys, hwf⟩ := core_returned (P := P) hi.noImports hi₄.wf hk hxs y hy hst
   rw [hkt] at htys
   obtain ⟨r, rfl⟩ := single_i32 htys
-  have hi₅ : LInv P I c.memIdx { m₄ with store := { m₄.store with core := y.1 } } :=
+  have hi₅ : LInv P I c.memIdx { m₄ with core := y.1 } :=
     ⟨coreSteps_memAddrType hy _ _ hi₄.mem, hwf⟩
   refine SpecQ.bind (SpecQ.ofSpec (spec_liftBool _ ?hp r _ ?hrt))
     fun res m₆ ⟨hr, hm⟩ _ _ => ?_
@@ -323,7 +322,7 @@ theorem specQ_mainBody {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance} (h
   case hq =>
     intro hb
     simp only [Option.some.injEq, List.cons.injEq, Value.Val.bool.injEq, and_true] at hb
-    refine ⟨cmap m₄.store, fl.map Silmaril.Wasm.SingleThreaded.ofFlat, Store.mapH (fun _ => 0) y.1,
+    refine ⟨cmap m₄.core, fl.map Silmaril.Wasm.SingleThreaded.ofFlat, Store.mapH (fun _ => 0) y.1,
       f', r, ?_, ?_, liftFlatBool_true hb⟩
     · rw [← hcs₃]
       exact hp₄
@@ -389,13 +388,13 @@ theorem specQ_invoke {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance} (hi 
   · show m'.results = []
     rw [hres']
     rfl
-  · show Store.mapH _ m'.store.core = _
+  · show Store.mapH _ m'.core = _
     rw [hcore]
     exact hcs
-  · show (E3 P).memAddrType? m'.store.core (memAt P c.memIdx) = some .i32
+  · show (E3 P).memAddrType? m'.core (memAt P c.memIdx) = some .i32
     rw [hcore]
     exact hmem
-  · show I.WellFormed (Store.mapH _ m'.store.core)
+  · show I.WellFormed (Store.mapH _ m'.core)
     rw [hcore]
     exact hwf
 

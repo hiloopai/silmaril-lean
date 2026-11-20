@@ -255,13 +255,13 @@ no component function: the core instance, then the lifted functions of the expor
 theorem toRefDefs_runL {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance}
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFactsL c I cs ci) (hi : c.Inst I) (cfg : Machine.Config (core3P Pf) σ)
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = []) :
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs = []) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R inst outer args) {} c.toRef) cfg sc'
-        { cfg with store := (liftStore cs cfg.store
+        { cfg with core := cs, store := (liftStore cfg.store
             (liftedListL (Pf := Pf) (c.coreAddr I) c.memIdx (c.coreAddr I c.reallocName) inst
               c.exports)) } ∧
       funcExports sc'.exports = exportMapL c ∧ NoImport c.toRef := by
-  have hp : (core3P Pf).prepare? cfg.store.core c.mod [] = some (cs, ci, none) := by
+  have hp : (core3P Pf).prepare? cfg.core c.mod [] = some (cs, ci, none) := by
     rw [hcore]
     exact hF.prepare
   set ra := c.coreAddr I c.reallocName
@@ -289,7 +289,7 @@ theorem toRefDefs_runL {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance}
   obtain ⟨new, hf₆⟩ := hP₆.2.1
   obtain ⟨sc₇, hr₇, hx₇, hf₇⟩ := lifts_run (R := R) (inst := inst) (outer := outer)
     (args := args) c.memIdx ra (c.coreAddr I) c.exports 0 (ListComp.funcTypeIdx c.exports 0) sc₆
-    { cfg with store := setCoreSt cs cfg.store }
+    { cfg with core := cs }
     (by rw [hf₆]; rfl) (by rw [hf₆]; rfl)
     (fun j hj => by
       rw [hf₆]

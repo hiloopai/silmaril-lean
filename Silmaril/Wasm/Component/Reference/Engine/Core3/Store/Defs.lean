@@ -142,6 +142,7 @@ theorem memWrite?_eq_some {s s' : Store H} {m st : Nat} {bs : ByteArray}
       Silmaril.Wasm.Execution.Memory.writeBytes mi.bytes st bs = some b ∧
       s' = s.setMem m { mi with bytes := b } := by
   unfold SingleThreaded.memWrite? at h
+  simp only [Silmaril.Wasm.Execution.MemRep.writeBytes_byteArray] at h
   cases hm : s.mems[m]? with
   | none => simp [hm] at h
   | some mi =>
@@ -180,6 +181,7 @@ theorem memWrite?_memSize {s s' : Store H} {m st : Nat} {bs : ByteArray}
     SingleThreaded.memSize? s' m' = SingleThreaded.memSize? s m' := by
   obtain ⟨mi, b, hm, hw, hm', hne⟩ := memWrite?_mems h
   unfold SingleThreaded.memSize?
+  simp only [Silmaril.Wasm.Execution.MemRep.size_byteArray]
   by_cases e : m' = m
   · subst e
     rw [hm', hm, Option.map_some, Option.map_some,
@@ -202,6 +204,7 @@ theorem memWrite?_read {s s' : Store H} {m st : Nat} {bs : ByteArray}
     SingleThreaded.memRead? s' m st bs.size = some bs := by
   obtain ⟨mi, b, -, hw, hm', -⟩ := memWrite?_mems h
   unfold SingleThreaded.memRead?
+  simp only [Silmaril.Wasm.Execution.MemRep.readBytes_byteArray]
   rw [hm']
   simp only [Option.bind_eq_bind, Option.bind_some]
   exact Silmaril.Wasm.Execution.Memory.readBytes_writeBytes _ _ _ _ hw
@@ -213,6 +216,7 @@ theorem memWrite?_read_other {s s' : Store H} {m st : Nat} {bs : ByteArray} {m' 
     SingleThreaded.memRead? s' m' st' len = SingleThreaded.memRead? s m' st' len := by
   obtain ⟨mi, b, hm, hw, hm', hne⟩ := memWrite?_mems h
   unfold SingleThreaded.memRead?
+  simp only [Silmaril.Wasm.Execution.MemRep.readBytes_byteArray]
   by_cases e : m' = m
   · subst e
     have hdis : st' + len ≤ st ∨ st + bs.size ≤ st' := hd.resolve_left (fun h => h rfl)
@@ -225,6 +229,8 @@ theorem memRead?_isSome_iff {s : Store H} {m st len : Nat} :
     (SingleThreaded.memRead? s m st len).isSome ↔
       ∃ n, SingleThreaded.memSize? s m = some n ∧ st + len ≤ n := by
   unfold SingleThreaded.memRead? SingleThreaded.memSize?
+  simp only [Silmaril.Wasm.Execution.MemRep.readBytes_byteArray,
+    Silmaril.Wasm.Execution.MemRep.size_byteArray]
   cases s.mems[m]? with
   | none => simp
   | some mi =>
@@ -235,6 +241,7 @@ theorem memRead?_isSome_iff {s : Store H} {m st len : Nat} :
 theorem memRead?_size {s : Store H} {m st len : Nat} {bs : ByteArray}
     (h : SingleThreaded.memRead? s m st len = some bs) : bs.size = len := by
   unfold SingleThreaded.memRead? at h
+  simp only [Silmaril.Wasm.Execution.MemRep.readBytes_byteArray] at h
   cases hm : s.mems[m]? with
   | none => simp [hm] at h
   | some mi =>
@@ -246,6 +253,8 @@ theorem memWrite?_isSome_iff {s : Store H} {m st : Nat} {bs : ByteArray} :
     (SingleThreaded.memWrite? s m st bs).isSome ↔
       ∃ n, SingleThreaded.memSize? s m = some n ∧ st + bs.size ≤ n := by
   unfold SingleThreaded.memWrite? SingleThreaded.memSize?
+  simp only [Silmaril.Wasm.Execution.MemRep.writeBytes_byteArray,
+    Silmaril.Wasm.Execution.MemRep.size_byteArray]
   cases s.mems[m]? with
   | none => simp
   | some mi =>
@@ -256,6 +265,7 @@ theorem memWrite?_isSome_iff {s : Store H} {m st : Nat} {bs : ByteArray} :
 theorem memAddrType?_isSome_iff {s : Store H} {m : Nat} :
     (SingleThreaded.memAddrType? s m).isSome ↔ (SingleThreaded.memSize? s m).isSome := by
   unfold SingleThreaded.memAddrType? SingleThreaded.memSize?
+  simp only [Silmaril.Wasm.Execution.MemRep.size_byteArray]
   cases s.mems[m]? <;> rfl
 
 /-! ## Instantiation -/

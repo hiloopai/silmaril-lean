@@ -31,11 +31,11 @@ def startCode : Option FuncIdx → List Admin
   | none => []
 
 section
-variable (ev : Store H → Frame → Expr → Option (Store H × Val))
+variable {R : Type} [MemRep R] (ev : Store H R → Frame → Expr → Option (Store H R × Val))
 
 /-- Allocation followed by direct segment initialisation. -/
-def prepareDirect? (s : Store H) (m : Module) (xas : List ExternAddr) :
-    Option (Store H × Frame × Option FuncIdx) :=
+def prepareDirect? (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Store H R × Frame × Option FuncIdx) :=
   match prepare? ev s m xas with
   | none => none
   | some (c, st) =>
@@ -111,8 +111,8 @@ theorem prepareDirect?_sound (hev : EvalSound P host ev) {s s' : Store H} {m : M
   exact Steps.withStart hs
 
 /-- Concrete direct instantiation, driven by `evalConst?`. -/
-def instantiateDirect? (s : Store H) (m : Module) (xas : List ExternAddr) :
-    Option (Store H × Frame × Option FuncIdx) :=
+def instantiateDirect? {R : Type} [MemRep R] (s : Store H R) (m : Module) (xas : List ExternAddr) :
+    Option (Store H R × Frame × Option FuncIdx) :=
   prepareDirect? evalConst? s m xas
 
 theorem instantiateDirect?_start {s s' : Store H} {m : Module} {xas : List ExternAddr}

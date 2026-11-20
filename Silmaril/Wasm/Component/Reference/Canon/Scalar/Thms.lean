@@ -36,10 +36,9 @@ theorem loadInt (cx : LiftLowerContext E) (ptr nbytes : Nat) (signed : Bool) :
     P.InvW I W (Canon.loadInt cx ptr nbytes signed : P E σ Int) :=
   bind (readMem cx ptr nbytes) fun _ => pure _
 
-theorem storeInt (cx : LiftLowerContext E) (v : Int) (ptr nbytes : Nat) (signed : Bool)
-    (h : ∀ m s, I s → I (writeMemSt m ptr (intToLE nbytes v) s)) :
+theorem storeInt (cx : LiftLowerContext E) (v : Int) (ptr nbytes : Nat) (signed : Bool) :
     P.InvW I W (Canon.storeInt cx v ptr nbytes signed : P E σ Unit) :=
-  writeMem cx ptr _ h
+  writeMem cx ptr _
 
 theorem convertI32ToChar (i : BitVec 32) :
     P.InvW I W (Canon.convertI32ToChar i : P E σ Char) := orTrap _ _

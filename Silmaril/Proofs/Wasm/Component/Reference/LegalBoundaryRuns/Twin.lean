@@ -43,7 +43,7 @@ theorem infiniteTrace_congr {A : Type} {R : A → A → Prop} {a b : A}
 variable {x y : Config E σ}
 
 theorem twin_symm (t : StepTwin prof hr dispatch x y) : StepTwin prof hr dispatch y x :=
-  ⟨fun l m' => (t.step l m').symm, t.store.symm, t.host.symm, t.ctl_y, t.ctl_x⟩
+  ⟨fun l m' => (t.step l m').symm, t.store.symm, t.core.symm, t.host.symm, t.ctl_y, t.ctl_x⟩
 
 theorem twin_steps_cons (t : StepTwin prof hr dispatch x y) {l : Label E σ} {tr : List (Label E σ)}
     {m' : Config E σ} :
@@ -78,7 +78,7 @@ theorem twin_holds (t : StepTwin prof hr dispatch x y) (c : CallId) (out : CallO
 
 theorem twin_resumeCfg_eq [∀ a b, Decidable (E.ExternSub a b)] (t : StepTwin prof hr dispatch x y)
     (m₀ : Config E σ) : resumeCfg m₀ x = resumeCfg m₀ y := by
-  simp [resumeCfg, t.store, t.host]
+  simp [resumeCfg, t.core, t.host]
 
 /-- One direction of `sessRest`. -/
 theorem twin_sessRest_of [∀ a b, Decidable (E.ExternSub a b)] {h : Host E σ}

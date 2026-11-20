@@ -203,14 +203,14 @@ theorem sessDiv_forward (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.
       have CR := callRunT (prof := prof) C R hff hmax hres hmaxr hffr hget
       obtain ⟨m', hcall, hcore'⟩ := call_forward_trap C R CR htrap
       have hwf : I.WellFormed s₁ := htrap.wellFormed hI (hc.core _ hx) R.wf
-      have hs₁ : Store.mapH (fun _ => (0 : Nat)) m'.store.core = s₁ := by
+      have hs₁ : Store.mapH (fun _ => (0 : Nat)) m'.core = s₁ := by
         rw [hcore']
         exact mapH_mapH_of_noHostFns _ _ (noHostFns_of_wf hI.2.1 hwf)
-      have R₁ : ReadyAt I m'.store.core ι G (k + 1) :=
+      have R₁ : ReadyAt I m'.core ι G (k + 1) :=
         resume_ready C R (hs₁ ▸ htrap)
       refine .trap hcall ?_
       rw [resumeCfg_ready]
-      exact sessDiv_forward hc hf ha hI j vs hvs calls outs' m'.store.core ι G (k + 1) s R₁ ht'
+      exact sessDiv_forward hc hf ha hI j vs hvs calls outs' m'.core ι G (k + 1) s R₁ ht'
         (hs₁ ▸ hseq) hd
 
 /-- **Reference sessions ending in a divergent call are specification ones**, between
@@ -253,7 +253,7 @@ theorem sessDiv_inv (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.
       have htrap := call_trap_inv C R hff hmax hres hmaxr hffr
         (liftedFuncs_get? (P := P) c (fun k => I.addrs.getD k 0) j'.isLt) hcall
       rw [resumeCfg_ready] at hS'
-      obtain ⟨outs', s', hseq, rfl, hd⟩ := sessDiv_inv hc hf ha hI j vs hvs calls m₁.store.core
+      obtain ⟨outs', s', hseq, rfl, hd⟩ := sessDiv_inv hc hf ha hI j vs hvs calls m₁.core
         ι G (k + 1) _ (resume_ready C R htrap) ht' hS'
       exact ⟨none :: outs', s', .trap htrap hseq, rfl, hd⟩
 

@@ -17,13 +17,13 @@ namespace Silmaril.Wasm.SingleThreaded.Exec
 open Silmaril.Wasm.Execution.Core Silmaril.Wasm.Numerics Silmaril.Wasm.Validation
   Silmaril.Wasm.SingleThreaded.Det
 
-variable {H : Type}
+variable {H R : Type}
 
 namespace Adm
 
 /-- Label body at its first non-value `c` (under values `vs`, before `rest`). -/
-def labelAt (s : Store H) (f : Frame) (n : Nat) (cont : List Instr) (vs : List Val) (c : Admin)
-    (rest : List Admin) : Option (Config H) :=
+def labelAt (s : Store H R) (f : Frame) (n : Nat) (cont : List Instr) (vs : List Val) (c : Admin)
+    (rest : List Admin) : Option (Config H R) :=
   match c with
   | .plain (.br l) =>
     if l.toNat = 0 then
@@ -43,14 +43,14 @@ def labelAt (s : Store H) (f : Frame) (n : Nat) (cont : List Instr) (vs : List V
     | _, _ => none
   | _ => none
 
-def labelStep (s : Store H) (f : Frame) (n : Nat) (cont : List Instr) (body : List Admin) :
-    Option (Config H) :=
+def labelStep (s : Store H R) (f : Frame) (n : Nat) (cont : List Instr) (body : List Admin) :
+    Option (Config H R) :=
   match splitVals body with
   | (vs, []) => some ⟨s, f, vals vs⟩
   | (vs, c :: rest) => labelAt s f n cont vs c rest
 
 /-- The code a handler clause jumps to on catching exception `a`, if it catches it. -/
-def catchStep (s : Store H) (f : Frame) (a : Nat) : Catch → Option (List Admin)
+def catchStep (s : Store H R) (f : Frame) (a : Nat) : Catch → Option (List Admin)
   | .catch_ x l =>
     match s.exns[a]?, f.module.tags[x.toNat]? with
     | some e, some t => if e.tag = t then some (vals e.fields ++ [.plain (.br l)]) else none
@@ -63,8 +63,8 @@ def catchStep (s : Store H) (f : Frame) (a : Nat) : Catch → Option (List Admin
   | .catchAll l => some [.plain (.br l)]
   | .catchAllRef l => some [.ref (.exn a), .plain (.br l)]
 
-def throwHandler (s : Store H) (f : Frame) (n : Nat) (cs : List Catch) (a : Nat) :
-    Option (Config H) :=
+def throwHandler (s : Store H R) (f : Frame) (n : Nat) (cs : List Catch) (a : Nat) :
+    Option (Config H R) :=
   match cs with
   | [] => some ⟨s, f, [.ref (.exn a), .plain .throwRef]⟩
   | c :: cs' =>
@@ -72,8 +72,8 @@ def throwHandler (s : Store H) (f : Frame) (n : Nat) (cs : List Catch) (a : Nat)
     | some code => some ⟨s, f, code⟩
     | none => some ⟨s, f, [.handler n cs' [.ref (.exn a), .plain .throwRef]]⟩
 
-def handlerAt (s : Store H) (f : Frame) (n : Nat) (cs : List Catch) (vs : List Val) (c : Admin)
-    (rest : List Admin) : Option (Config H) :=
+def handlerAt (s : Store H R) (f : Frame) (n : Nat) (cs : List Catch) (vs : List Val) (c : Admin)
+    (rest : List Admin) : Option (Config H R) :=
   match c with
   | .plain (.br l) => some ⟨s, f, vals vs ++ [.plain (.br l)]⟩
   | .plain .return_ => some ⟨s, f, vals vs ++ [.plain .return_]⟩
@@ -89,14 +89,14 @@ def handlerAt (s : Store H) (f : Frame) (n : Nat) (cs : List Catch) (vs : List V
     | _, _ => none
   | _ => none
 
-def handlerStep (s : Store H) (f : Frame) (n : Nat) (cs : List Catch) (body : List Admin) :
-    Option (Config H) :=
+def handlerStep (s : Store H R) (f : Frame) (n : Nat) (cs : List Catch) (body : List Admin) :
+    Option (Config H R) :=
   match splitVals body with
   | (vs, []) => some ⟨s, f, vals vs⟩
   | (vs, c :: rest) => handlerAt s f n cs vs c rest
 
 /-- `RETURN_CALL_REF` leaving a frame: `vs` are the values under the tail call `c`. -/
-def frameRCR (s : Store H) (f fi : Frame) (vs : List Val) (c : Admin) : Option (Config H) :=
+def frameRCR (s : Store H R) (f fi : Frame) (vs : List Val) (c : Admin) : Option (Config H R) :=
   match vs.getLast? with
   | some (.ref .null) => some ⟨s, f, [.trap]⟩
   | some (.ref (.func a)) =>
@@ -112,8 +112,8 @@ def frameRCR (s : Store H) (f fi : Frame) (vs : List Val) (c : Admin) : Option (
     | none => none
   | _ => none
 
-def frameAt (s : Store H) (f : Frame) (n : Nat) (fi : Frame) (vs : List Val) (c : Admin)
-    (rest : List Admin) : Option (Config H) :=
+def frameAt (s : Store H R) (f : Frame) (n : Nat) (fi : Frame) (vs : List Val) (c : Admin)
+    (rest : List Admin) : Option (Config H R) :=
   match c with
   | .plain .return_ =>
     if n ≤ vs.length then some ⟨s, f, vals (vs.drop (vs.length - n))⟩ else none
@@ -129,8 +129,8 @@ def frameAt (s : Store H) (f : Frame) (n : Nat) (fi : Frame) (vs : List Val) (c 
     | _, _ => none
   | _ => none
 
-def frameStep (s : Store H) (f : Frame) (n : Nat) (fi : Frame) (body : List Admin) :
-    Option (Config H) :=
+def frameStep (s : Store H R) (f : Frame) (n : Nat) (fi : Frame) (body : List Admin) :
+    Option (Config H R) :=
   match splitVals body with
   | (vs, []) => if vs.length = n then some ⟨s, f, vals vs⟩ else none
   | (vs, c :: rest) => frameAt s f n fi vs c rest
@@ -144,8 +144,8 @@ end Adm
 
 set_option linter.unusedVariables false in
 /-- One non-context head step of a `LABEL_`, `HANDLER_` or `FRAME_`; consumes no operands. -/
-def adminStep? (o : GrowOracle) (s : Store H) (f : Frame) (vs : List Val) (e : Admin) :
-    Option (Nat × Config H) :=
+def adminStep? (o : GrowOracle) (s : Store H R) (f : Frame) (vs : List Val) (e : Admin) :
+    Option (Nat × Config H R) :=
   match e with
   | .label n cont is => (Adm.labelStep s f n cont is).map (0, ·)
   | .handler n cs is => (Adm.handlerStep s f n cs is).map (0, ·)

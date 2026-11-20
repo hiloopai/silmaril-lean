@@ -72,7 +72,7 @@ theorem toExpData_div (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) (hDv : d.Di
   -- the start of the importer's core activation, for a core question `f` of export `j`
   have hstart : ∀ f : Ii.F.Op, f.1.val = lg.imp.exports[j].core →
       (toExpData lg d Ii).startCfg pl j.val x vs M th K segs rest =
-        coreCfg M th K segs rest (M.store.core,
+        coreCfg M th K segs rest (M.core,
           Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr f.1)
             (lowerArgs lg.imp.exports[j].ty.params vs)) := by
     intro f hf₁
@@ -114,10 +114,13 @@ theorem toExpData_div (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) (hDv : d.Di
         dcs ddss M st.2 π₁ F _ _ sB tB hI₀ hFG₀ hrel hexp hpath' with
       ⟨trc, C', S'', F', yc, hrun, hnh, -, hIc, hFG'⟩ | hdm
     · refine steps_diverges hrun hnh ?_
+      let M₁ : Machine.Config (E3 P) σ :=
+        { M with conts := C', store := S''.toCStore, core := S''.core }
+      show Machine.Diverges prof (fun _ _ => false) (DI P impl) (coreCfg M₁ th K segs rest yc)
       rcases hsrc with h | h | h
-      · exact divB_coreG SIu hIc h _ th K segs rest
-      · exact divA_coreG SIu ST.wire hFr hDv hIc th hFG' h K segs rest
-      · exact chatter_coreG SIu ST.wire hFr hFw hB hIc th hFG' h K segs rest
+      · exact divB_coreG (M := M₁) SIu hIc h th K segs rest
+      · exact divA_coreG (M := M₁) SIu ST.wire hFr hDv hIc th hFG' h K segs rest
+      · exact chatter_coreG (M := M₁) SIu ST.wire hFr hFw hB hIc th hFG' h K segs rest
     · exfalso
       rcases hsrc with h | ⟨e, s', t', nm, ft, ws, w', h, _⟩ | ⟨q, c, ds, st', hq0, _, hc⟩
       · exact not_divB_doomed hdm h
@@ -140,11 +143,11 @@ theorem toExpData_div (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) (hDv : d.Di
     have hft' : Ii.exports.get f.1 = fnOf lg.imp.exports[j].ty.flat := by rw [hft, hflat]
     obtain ⟨hI₀, hT₀⟩ := linv_readyW hR hsub ST.own (f := f) hf₂
     rw [hstart f hf₁] at hd ⊢
-    let z₀ : DStG P σ lg.exp := ⟨M.conts, M.store, F, (M.store.core,
+    let z₀ : DStG P σ lg.exp := ⟨M.conts, M.ref, F, (M.core,
         Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr f.1)
           (lowerArgs lg.imp.exports[j].ty.params vs)), (st.1, Ii.initThread f), st.2⟩
     have hz₀ : DInvG prof impl d pl.ple pl.ii Ii pl.s₀ st.1 F₀ g pl.Oc₀ f th K segs rest M Fc
-        M.store.core z₀ :=
+        M.core z₀ :=
       ⟨hd, hI₀, hFG₀, callExt_refl _, hT₀⟩
     obtain ⟨cs, dss, z, trc, hpath, hrel, hexp, hz, hrun, hnh, hsrc⟩ :=
       ldiv_classifyG SIu ST.wire hFr hDv hB hz₀
@@ -159,10 +162,11 @@ theorem toExpData_div (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) (hDv : d.Di
     -- (iv) the importer's activation exits after the chain of served calls
     right
     obtain ⟨y₁, x₁, lb, m₁, hy, hr₁, hIc, hTc, hnco, hx, d₁⟩ := hX
-    have hXc : CallExt d pl.ple M.store { z.S with core := y₁.1 } :=
+    have hXc : CallExt d pl.ple M.ref { z.S with core := y₁.1 } :=
       callExt_trans hz.ext (callExt_refl _)
-    have hFGc : FrameG d pl.ple pl.ii th { z.S with core := y₁.1 } := hz.frame.core _
-    have hS₀ : ({ z.S with core := y₁.1 } : CStore (E3 P)).funcs = M.store.funcs :=
+    have hFGc : FrameG d pl.ple pl.ii th ({ z.S with core := y₁.1 } : RefStore (E3 P)).toCStore :=
+      hz.frame
+    have hS₀ : ({ z.S with core := y₁.1 } : RefStore (E3 P)).funcs = M.store.funcs :=
       callExt_funcs hXc
     obtain ⟨ρ₁, O₁, hL, -⟩ := hIc.rel
     obtain ⟨ts, hst', htt⟩ := linvG_typed SIu hIc
@@ -190,17 +194,17 @@ theorem toExpData_div (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) (hDv : d.Di
         lifted_answer hw' hm
       obtain ⟨tr₀, htr₀, r₀⟩ := Adequacy.coreCfg_steps_of (prof := prof)
         (hr := (linkHost impl).hr) (dispatch := (linkHost impl).dispatch)
-        (B := { M with conts := z.C, store := z.S }) (th := th) (K := K) (segs := segs)
+        (B := { M with conts := z.C, store := z.S.toCStore, core := z.S.core }) (th := th) (K := K) (segs := segs)
         (rest := rest) hy
       have s₃ : Step prof (linkHost impl).hr (linkHost impl).dispatch
-          (coreCfg { M with conts := z.C, store := z.S } th K segs rest y₁) .tau
-          (retCfg { M with conts := z.C, store := z.S } th K segs rest y₁ zs) :=
+          (coreCfg { M with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest y₁) .tau
+          (retCfg { M with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest y₁ zs) :=
         Step.coreReturned rfl hst
-      have hret : retCfg { M with conts := z.C, store := z.S } th K segs rest y₁ zs =
+      have hret : retCfg { M with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest y₁ zs =
           ExpSpec.RefData.retCfg' M { z.S with core := y₁.1 } z.C th K segs rest zs := rfl
       rw [hret] at s₃ d₁
       have hrun₃ : Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
-          (coreCfg M th K segs rest (M.store.core,
+          (coreCfg M th K segs rest (M.core,
             Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr f.1)
               (lowerArgs lg.imp.exports[j].ty.params vs))) (trc ++ (tr₀ ++ [.tau]))
           (ExpSpec.RefData.retCfg' M { z.S with core := y₁.1 } z.C th K segs rest zs) :=
@@ -208,21 +212,21 @@ theorem toExpData_div (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) (hDv : d.Di
           hrun (Adequacy.steps_append r₀ (.cons s₃ (.refl _)))
       obtain ⟨ρ₂, O₂, hR₂, hW₂, hU₂⟩ := lready_afterW hR.toG hIc hTc
       have hout := ST.out
-      have hii : ({ z.S with core := y₁.1 } : CStore (E3 P)).insts[pl.ii]? =
+      have hii : ({ z.S with core := y₁.1 } : RefStore (E3 P)).insts[pl.ii]? =
           M.store.insts[pl.ii]? := hXc.insts_out pl.ii hout
       have hH₂ : HoldX lg d Ii pl (x₁.1, z.s) { z.S with core := y₁.1 }
-          (growFoot Fc M.store.core y₁.1) := by
+          (growFoot Fc M.core y₁.1) := by
         refine holdX_grow hH.bound (hS₀ ▸ ST) hR₂ hW₂ hU₂ ?_ hFGc.exp
         rw [hii]
         exact hH.imp
-      have hext : (toExpData lg d Ii).StoreExt pl M.store { z.S with core := y₁.1 } :=
+      have hext : (toExpData lg d Ii).StoreExt pl M.ref { z.S with core := y₁.1 } :=
         ⟨hXc.eq, hXc.insts_len, fun i hi => hXc.insts_out i (fun h => hi (.inl h)), fun _ => hii,
           hXc.subtasks, hXc.callers, hXc.tasks, hXc.threads⟩
-      have hlS'' : ({ z.S with core := y₁.1 } : CStore (E3 P)).lockdown = false := hFGc.lock
+      have hlS'' : ({ z.S with core := y₁.1 } : RefStore (E3 P)).lockdown = false := hFGc.lock
       refine ⟨trc ++ (tr₀ ++ [.tau]), _,
         (LinkedG.SessRound.ans ⟨j, vs, f, cs, w', dss⟩ : Option Payload), (x₁.1, z.s),
         hrun₃, ?_, ⟨⟨j, vs, f, cs, w', dss⟩, ⟨_, hck, hf₁, hf₂, hrel⟩, hP, hexp, rfl⟩,
-        ⟨.inl ⟨{ z.S with core := y₁.1 }, z.C, zs, growFoot Fc M.store.core y₁.1, rfl,
+        ⟨.inl ⟨{ z.S with core := y₁.1 }, z.C, zs, growFoot Fc M.core y₁.1, rfl,
           hxty ▸ hzty, ?_, hext, hH₂, hW₂, grows_growFoot _ _ _⟩,
           fun h => absurd (h.symm.trans hlS'') (by decide)⟩, List.cons_ne_nil _ _, d₁⟩
       · intro ev hm

@@ -30,7 +30,7 @@ namespace P.Inv
 
 variable {I : CStore E → Prop} {W : σ → Prop}
 
-theorem ptrType (cx : LiftLowerContext E) : P.InvW I W (Canon.ptrType cx : P E σ _) := gets _
+theorem ptrType (cx : LiftLowerContext E) : P.InvW I W (Canon.ptrType cx : P E σ _) := getsCore _
 
 theorem ptrSize (cx : LiftLowerContext E) : P.InvW I W (Canon.ptrSize cx : P E σ _) :=
   bind (ptrType cx) fun _ => pure _
@@ -39,20 +39,19 @@ theorem memAddr (cx : LiftLowerContext E) : P.InvW I W (Canon.memAddr cx : P E �
   orTrap _ _
 
 theorem memLen (cx : LiftLowerContext E) : P.InvW I W (Canon.memLen cx : P E σ _) :=
-  bind (memAddr cx) fun _ => bind getStore fun _ => orTrap _ _
+  bind (memAddr cx) fun _ => bind readCore fun _ => orTrap _ _
 
 theorem readMem (cx : LiftLowerContext E) (ptr len : Nat) :
     P.InvW I W (Canon.readMem cx ptr len : P E σ _) :=
-  bind (memAddr cx) fun _ => bind getStore fun _ => orTrap _ _
+  bind (memAddr cx) fun _ => bind readCore fun _ => orTrap _ _
 
-/-- `writeMem` preserves `I` when every memory write does. -/
-theorem writeMem (cx : LiftLowerContext E) (ptr : Nat) (bytes : ByteArray)
-    (h : ∀ m s, I s → I (writeMemSt m ptr bytes s)) :
+/-- `writeMem` preserves every component-store invariant: it writes only the core store. -/
+theorem writeMem (cx : LiftLowerContext E) (ptr : Nat) (bytes : ByteArray) :
     P.InvW I W (Canon.writeMem cx ptr bytes : P E σ Unit) :=
-  bind (memAddr cx) fun m => bind getStore fun s => by
-    cases E.memWrite? s.core m ptr bytes with
-    | none => exact trap _
-    | some _ => exact modifyStore (h m)
+  bind (memAddr cx) fun m => bind readCore fun v => by
+    cases v.memWriteOk m ptr bytes with
+    | false => exact trap _
+    | true => exact memWriteOp _ _ _
 
 theorem checkAligned (ptr align : Nat) : P.InvW I W (Canon.checkAligned ptr align : P E σ _) :=
   trapIf _ _
@@ -61,12 +60,10 @@ theorem checkInBounds (cx : LiftLowerContext E) (ptr size : Nat) :
     P.InvW I W (Canon.checkInBounds cx ptr size : P E σ _) :=
   bind (memLen cx) fun _ => trapIf _ _
 
-theorem unpackEvent (cx : LiftLowerContext E) (ptr : Nat) (e : AsyncRef.EventTuple)
-    (h : ∀ m p v s, I s → I (writeMemSt m p (u32Bytes v) s)) :
+theorem unpackEvent (cx : LiftLowerContext E) (ptr : Nat) (e : AsyncRef.EventTuple) :
     P.InvW I W (Canon.unpackEvent cx ptr e : P E σ Nat) :=
   bind (checkAligned _ _) fun _ => bind (checkInBounds _ _ _) fun _ =>
-    bind (writeMem _ _ _ (h · _ _)) fun _ =>
-      bind (writeMem _ _ _ (h · _ _)) fun _ => pure _
+    bind (writeMem _ _ _) fun _ => bind (writeMem _ _ _) fun _ => pure _
 
 theorem reallocate (cx : LiftLowerContext E) (old oldLen align newLen : Nat) :
     P.InvW I W (Canon.reallocate cx old oldLen align newLen : P E σ Nat) := callNat _
@@ -84,7 +81,8 @@ open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtim
   _root_.Silmaril.Wasm.Component.Value
 variable {E : CoreEngine} {σ : Type} {α : Type}
 
-theorem ptrTypeIn_none (s : CStore E) (cx : LiftLowerContext E) (h : cx.opts.memory = none) :
+theorem ptrTypeIn_none (s : CoreEngine.CoreView E (CanonHost E)) (cx : LiftLowerContext E)
+    (h : cx.opts.memory = none) :
     ptrTypeIn s cx = .i32 := CanonOpts.ptrType_none _ _ h
 
 end Silmaril.Wasm.Component.Canon

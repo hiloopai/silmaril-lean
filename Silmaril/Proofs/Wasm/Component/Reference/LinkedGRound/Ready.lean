@@ -46,7 +46,7 @@ variable {P : Profile}
 state `s` and the importer's store `u`. -/
 structure LReadyG {e : ExpSpec} (d : e.RefData P) (pl : d.Pl) (Ii : SInst) (s₀ ui : Store Nat)
     (F₀ : List (FuncInst (CanonHost (E3 P)))) (g : CanonHost (E3 P) → Nat) (Oc₀ : Own)
-    (S : CStore (E3 P)) (s : e.St) (u : Store Nat) : Prop where
+    (S : RefStore (E3 P)) (s : e.St) (u : Store Nat) : Prop where
   rel : ∃ (F : CoreFoot) (ρc : Ren) (Oc : Own), PartRel ρc Oc (reloc s₀ u) (Store.mapH g S.core) ∧
     Oc.fn = Oc₀.fn ∧ Oc.gl = Oc₀.gl ∧ FootDisj F ρc Oc S.core ∧ d.Hold pl s S F
   fnC : FnPre s₀ (Store.mapH g S.core) u
@@ -62,7 +62,7 @@ variable {e : ExpSpec} {d : e.RefData P} {pl : d.Pl} {Ii : SInst} {s₀ ui : Sto
 
 /-- **The invariant at the importer's export call**: the shared thread invokes the relocated
 address of the export question `f` on flat arguments, the part its initial thread. -/
-theorem linv_readyG {S : CStore (E3 P)} {s : e.St} {u : Store Nat}
+theorem linv_readyG {S : RefStore (E3 P)} {s : e.St} {u : Store Nat}
     (hR : LReadyG d pl Ii s₀ ui F₀ g Oc₀ S s u)
     (hO : ∀ a, a < ui.funcs.length → Oc₀.fn (s₀.funcs.length + a)) {f : Ii.F.Op}
     {xs : List Flat} (hxs : f.2.1 = xs.map Silmaril.Wasm.SingleThreaded.ofFlat) :
@@ -116,7 +116,7 @@ theorem typing_after {u : Store Nat} (hwf : Ii.WellFormed u) (hgood : SGoodSt (o
 
 /-- **The invariant between calls from the invariant along a call** started from `LReadyG` at
 the importer's store `u`. -/
-theorem lready_afterG {S S' : CStore (E3 P)} {s s' : e.St} {u : Store Nat}
+theorem lready_afterG {S S' : RefStore (E3 P)} {s s' : e.St} {u : Store Nat}
     (hR : LReadyG d pl Ii s₀ ui F₀ g Oc₀ S s u) {f : Ii.F.Op} {F : CoreFoot}
     {y : CoreSt (E3 P)} {x : Store Nat × STh} (hI : LInvG d pl Ii s₀ u F₀ g Oc₀ f s' S' F y x) :
     LReadyG d pl Ii s₀ ui F₀ g Oc₀ S' s' x.1 := by
@@ -133,7 +133,7 @@ theorem lready_afterG {S S' : CStore (E3 P)} {s s' : e.St} {u : Store Nat}
 
 /-- **The invariant between calls after a trapped call**, at the store `S₀` of the call's start
 with the trapped core store `c` (as `resumeCfg` resumes), from R5. -/
-theorem lready_trapG (hRes : d.Resume) {S₀ : CStore (E3 P)} {s s₁ : e.St} {u u₁ : Store Nat}
+theorem lready_trapG (hRes : d.Resume) {S₀ : RefStore (E3 P)} {s s₁ : e.St} {u u₁ : Store Nat}
     (hR : LReadyG d pl Ii s₀ ui F₀ g Oc₀ S₀ s u) {f : Ii.F.Op}
     {c : (E3 P).Store (CanonHost (E3 P))}
     (hT : TrapAtG d pl Ii s₀ u F₀ g Oc₀ f S₀ s₁ c u₁) :
@@ -147,7 +147,7 @@ theorem lready_trapG (hRes : d.Resume) {S₀ : CStore (E3 P)} {s s₁ : e.St} {u
 
 /-- **The invariant between calls is kept by the importer's changes outside the core store**:
 the same core store and functions, the exporter's instances unchanged (R1). -/
-theorem lready_frame (hFr : d.Frame) {S S' : CStore (E3 P)} {s : e.St} {u : Store Nat}
+theorem lready_frame (hFr : d.Frame) {S S' : RefStore (E3 P)} {s : e.St} {u : Store Nat}
     (hR : LReadyG d pl Ii s₀ ui F₀ g Oc₀ S s u) (hc : S'.core = S.core)
     (hf : S'.funcs = S.funcs) (hb : ∀ i, d.block pl i → S'.insts[i]? = S.insts[i]?) :
     LReadyG d pl Ii s₀ ui F₀ g Oc₀ S' s u := by

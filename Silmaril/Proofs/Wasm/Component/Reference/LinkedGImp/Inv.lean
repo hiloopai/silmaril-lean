@@ -163,7 +163,7 @@ exporter's state `s`, the component store `S` (with core store `y.1`), the expor
 `F`, the shared thread `y` and the importer's part thread `x`. -/
 structure LInvG {e : ExpSpec} (d : e.RefData P) (pl : d.Pl) (Ii : SInst) (s₀ u₀ : Store Nat)
     (F₀ : List (FuncInst (CanonHost (E3 P)))) (g : CanonHost (E3 P) → Nat) (Oc₀ : Own)
-    (f : Ii.F.Op) (s : e.St) (S : CStore (E3 P)) (F : CoreFoot) (y : CoreSt (E3 P))
+    (f : Ii.F.Op) (s : e.St) (S : RefStore (E3 P)) (F : CoreFoot) (y : CoreSt (E3 P))
     (x : Store Nat × STh) : Prop where
   rel : ∃ ρc Oc, LinkSt s₀ ρc Oc x (Store.mapH g y.1, y.2) ∧ Oc.fn = Oc₀.fn ∧ Oc.gl = Oc₀.gl ∧
     FootDisj F ρc Oc y.1
@@ -188,7 +188,7 @@ theorem ImpStatG.hostsSat (S : ImpStatG P b Ii u₀ F₀ g tr) {σ : Store (Cano
 /-- **A run of the importer's part is a core run of the shared thread**, `LInvG` holding at its
 end with the same exporter state and footprint (R1). -/
 theorem LInvG.reach_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) (hFr : d.Frame) {s : e.St}
-    {M : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
+    {M : RefStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x) {x' : Store Nat × STh}
     (hx : Silmaril.Wasm.Game.Reach P x x') :
     ∃ y', Relation.ReflTransGen (CoreStep (E3 P)) y y' ∧
@@ -206,7 +206,7 @@ theorem LInvG.reach_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) (hFr : d.Frame) {s 
 /-- **A callout of the importer's part is a callout of the shared thread** to the trampoline
 `tr k` of the import `k` (type `p`), on the flat arguments of the part's, of the flat parameter
 types. -/
-theorem LInvG.callout_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : CStore (E3 P)}
+theorem LInvG.callout_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : RefStore (E3 P)}
     {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x) {k : Nat}
     {args : List Silmaril.Wasm.Execution.Core.Val}
@@ -274,7 +274,7 @@ component store from `M` to `M'` inside its footprint `F` and by fresh addresses
 state `s'` with footprint `F'` grown from `F` and allocated; the shared thread resumed with the
 lowering of `us` (results of the import's type) and the part resumed with the same values
 satisfy `LInvG` at `s'`, `M'`, `F'`. -/
-theorem LInvG.resume_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : CStore (E3 P)}
+theorem LInvG.resume_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : RefStore (E3 P)}
     {F : CoreFoot} {y : CoreSt (E3 P)} {x : Store Nat × STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M F y x) {k : Nat} {nm : String} {p : FuncTy}
     {E : Silmaril.Wasm.SingleThreaded.Ctx} {a : Nat}
@@ -282,7 +282,7 @@ theorem LInvG.resume_fwd (S : ImpStatG P b Ii u₀ F₀ g tr) {s : e.St} {M : CS
     (hk : b.imports[k]? = some (nm, p))
     (hdx : Silmaril.Wasm.SingleThreaded.decompose? x.1 (x.2.config x.1).code = some (E, a, k, args))
     (he : Ii.importOp? k args = some q) {us : List IVal}
-    (hus : ValTy.checkList p.results us = true) {s' : e.St} {M' : CStore (E3 P)}
+    (hus : ValTy.checkList p.results us = true) {s' : e.St} {M' : RefStore (E3 P)}
     {F' : CoreFoot} (hH : d.Hold pl s' M' F')
     (hw : F.Within (M.core : Store (CanonHost (E3 P))) M'.core)
     (hgF : F.Grows F' (M.core : Store (CanonHost (E3 P))))

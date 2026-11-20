@@ -17,7 +17,7 @@ divergences and productive runs of `Linked2`, `LinkedSessionDiv`/`LinkedSessionO
 `SessExec` and `CallHostProd` (those of `HLinked2`, `HLinkedSessionDiv`/`HLinkedSessionInf`), and
 `Machine.Diverges` (`LinkedGDiv`'s R7, `CallDiverges`).
 
-**Hypotheses.** For the generic part, `StepTwin x y` (the same steps, store and host state, a
+**Hypotheses.** For the generic part, `StepTwin x y` (the same steps, both stores and host state, a
 running activation each). For the boundary, none beyond the shapes stated: `X_throw` is
 `coreCfg m th (.active f (throwing a)) k segs rest` (a core activation, any thread, continuation,
 pending segments and resumers, whose code is an exception that escaped every handler), and

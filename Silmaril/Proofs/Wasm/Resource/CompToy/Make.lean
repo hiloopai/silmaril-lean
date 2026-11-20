@@ -45,7 +45,7 @@ theorem runs_lower_make {th : Option ThreadId} (t : TaskId) (m : Machine.Config 
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))
       ABI.maxFlatParams [] (paramTypes ftMake) none) m [.tau] [] m := by
   rw [lower_make_eq]
-  exact .get (.pure _ _)
+  exact .readCore (.pure _ _)
 
 /-- Any argument list but `[]` makes the lowering of `make`'s arguments trap. -/
 theorem lower_make_traps {th : Option ThreadId} (t : TaskId) (args : List Silmaril.Wasm.Component.Reference.Val) (hne : args ≠ [])
@@ -58,7 +58,7 @@ theorem lower_make_traps {th : Option ThreadId} (t : TaskId) (args : List Silmar
     | nil => exact absurd rfl hne
     | cons v vs => exact ⟨v, vs, rfl⟩
   rw [lower_make_eq]
-  exact ⟨_, _, TrapsQ.bind (RunsQ.get (RunsQ.pure _ _)) (TrapsQ.trap _ (isTrap_trap _))⟩
+  exact ⟨_, _, TrapsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) (TrapsQ.trap _ (isTrap_trap _))⟩
 
 /-! ## The callout to `resource.new` -/
 
@@ -251,8 +251,8 @@ holding the handle table `T`, the handle objects `Hs` and the core store `cs`. -
 def mkB (M₀ : Machine.Config (E3 P) Unit) (ι' : InstState) (T : Silmaril.Wasm.Component.Runtime.Table HandleEntry)
     (Hs : List ResourceHandle) (cs : (E3 P).Store (CanonHost (E3 P))) : Machine.Config (E3 P) Unit :=
   { M₀ with
+    core := cs
     store := { M₀.store with
-      core := cs
       insts := [{ ι' with handles := T }]
       resHandles := Hs } }
 
@@ -378,7 +378,7 @@ theorem make_calloutsAns {prof : ProfileKind} {M₀ : Machine.Config (E3 P) Unit
     refine ⟨mkB M₀ ι' T' (Hs ++ [{ rt := ⟨0⟩, rep := c, own := true }]) x.1, [i32Flat i], tr ++ [.tau],
       ⟨T', _, x.1, rfl, hTB', newOwn_add hn hr⟩, ⟨newSpec P c (Jmake ι'.handles), by rw [toyBind_new]; rfl, rfl, rfl, i, ⟨hi32, hfree⟩,
         rfl⟩, ?_⟩
-    exact builtin_lrun hl hst hl rfl hrun
+    exact builtin_lrun hl hst hl hrun
 
 /-! ## Lifting the `own` result -/
 
@@ -454,8 +454,8 @@ theorem runs_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config (
     show RunsQ _ _ (liftOwn Limits.spec _ ⟨0⟩ (flatNat (.int .i32 (BitVec.ofNat 32 j))) >>= _) _ _ _ _
     rw [hjn]
     exact RunsQ.bind hown (.pure _ _)
-  refine RunsQ.get ?_
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store
+  refine RunsQ.readCore ?_
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn (CoreEngine.view _ m.core)
     ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))) [.own ⟨0⟩]
     (.ofList [.int .i32 (BitVec.ofNat 32 j)])) _ _ _ _
   simp only [liftFlatTypes, liftFlatTypesWith]
@@ -485,8 +485,8 @@ theorem traps_lift_make {th : Option ThreadId} (t : TaskId) {m : Machine.Config 
     exact TrapsQ.left h₁
   have hjn : flatNat (.int .i32 (BitVec.ofNat 32 j)) = j := flatNat_i32 hj
   rw [lift_make_eq]
-  exact ⟨_, _, TrapsQ.bind (RunsQ.get (RunsQ.pure _ _)) (by
-    show TrapsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn m.store
+  exact ⟨_, _, TrapsQ.bind (RunsQ.readCore (RunsQ.pure _ _)) (by
+    show TrapsQ _ _ (liftFlatTypes Limits.spec Quirks.none _ (ptrTypeIn (CoreEngine.view _ m.core)
       ({ opts := {}, inst := ⟨0⟩, scope := .task t } : LiftLowerContext (E3 P))) [.own ⟨0⟩]
       (.ofList [.int .i32 (BitVec.ofNat 32 j)])) _ _ _
     simp only [liftFlatTypes, liftFlatTypesWith, liftFlatAtWith, FlatLoadCarrier.reference,

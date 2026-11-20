@@ -50,6 +50,18 @@ of the host (embedder / test harness) state. This file fixes:
 | `resumeThread t` | `Unit` | REF `Thread.resume` (resume site, R1-R4) |
 | `hostGet` / `hostSet s` | `σ` / `Unit` | host state (E1) |
 | `emit o` | `Unit` | record a host-visible observation |
+| `readCore` | `CoreView E (CanonHost E)` | the queries of the core store (`CoreEngine.view`) |
+| `memWrite m ptr bytes` | `Unit` | write core memory `m` (no change when the engine write fails) |
+| `allocHost ty h` | `Unit` | allocate a canon host function in the core store |
+| `prepare md imports` | `Unit` | core instantiation on the core store (no change when it fails) |
+
+`Op E σ` is indexed by the static part `E : CoreEngine.Static` of the engine. The core store
+is held by the machine (`Machine.Config.core`); programs reach it only through the last four
+operations. A program reads the result of an update (the allocated address, the new
+instance's exports) from the queries before issuing it. So the programs of two engines with the
+same static part (`E` and `E.withStore I`, `Engine.Sim`) have the same type, and a program
+definition that uses only the static part and the store-free fields of its engine is the same
+term over both engines up to unfolding (`Machine.Transfer`).
 
 `newThread b` allocates the `Runtime.Thread` object (status blocked, no ready condition, task
 `b.task`) whose saved continuation, held by the machine (never by `CStore`), is
@@ -126,7 +138,9 @@ recurses. The REF loops are exactly:
   resolution status), not `Ret.optVals`: REF `invoke` returns `on_cancel`, and
   `on_resolve(None)` (cancelled) must be distinguishable from a pending call.
 * `Op.PreservesInv I` only constrains `modify`. The store effects of `trap`, `callCore`,
-  `newThread`, `block`, `resumeThread` and `call` are the machine's (`Machine/Step.lean`);
+  `newThread`, `block`, `resumeThread` and `call` are the machine's (`Machine/Step.lean`); the
+  core operations `memWrite`, `allocHost` and `prepare` change only the core store, which is
+  not part of `CStore`;
   invariants across them are proved against the machine (`Machine/Invariant.lean`), not here.
 * `Call` and `Ret` have no `DecidableEq`: `Call.instantiate` and `Ret.items` carry
   instantiation-time item values (`Instantiate.ItemVal`), which contain semantic types and
@@ -234,7 +248,7 @@ instance instDecidableAllowed (prof : ProfileKind) :
 
 /-- The universal result of a late-bound call (see the call contract table). `E` is a phantom
 parameter kept for uniformity with `Call E`. -/
-inductive Ret (E : CoreEngine) where
+inductive Ret (E : CoreEngine.Static) where
   | unit
   | nat (n : Nat)
   | flat (vs : List FlatValue)
@@ -249,7 +263,7 @@ inductive Ret (E : CoreEngine) where
   | items (exports : List (String × Instantiate.ItemVal E))
 
 /-- A REF `thread_func` closure, as data. -/
-inductive ThreadBody (E : CoreEngine) where
+inductive ThreadBody (E : CoreEngine.Static) where
   /-- The implicit thread of `canon_lift` (`thread_func`, L2077-2135) of task `task` calling
   `callee`. -/
   | liftImplicit (task : TaskId) (callee : E.FuncAddr)
@@ -272,7 +286,7 @@ def ThreadBody.task {E : CoreEngine} : ThreadBody E → TaskId
 
 /-- A REF `while` loop, entered at its head (one constructor per loop; see the module
 docstring). -/
-inductive LoopPoint (E : CoreEngine) where
+inductive LoopPoint (E : CoreEngine.Static) where
   /-- `canon_lift` callback loop (L2108-2134): `while code != EXIT` for task `task` on its
   implicit thread `thread`, with the last unpacked callback code and waitable-set index. -/
   | callbackLoop (task : TaskId) (thread : ThreadId) (code si : Nat)
@@ -306,7 +320,7 @@ inductive HostObs where
 
 /-- Late-bound calls: defunctionalized Python closures and loops, resolved by the
 non-recursive dispatcher (`Canon.dispatch`). See the call contract table in the module docstring. -/
-inductive Call (E : CoreEngine) where
+inductive Call (E : CoreEngine.Static) where
   /-- REF `LiftLowerContext.reallocate` (`Ret.nat`). -/
   | reallocate (cx : LiftLowerContext E) (old oldLen align newLen : Nat)
   /-- REF `FuncInst(on_start, on_resolve)` of function value `f` (`Ret.cancel`). -/
@@ -369,8 +383,9 @@ def Call.beq {E : CoreEngine} : Call E → Call E → Bool
 
 /-! ## Operations and the signature -/
 
-/-- The operations of the specification carrier (see the table in the module docstring). -/
-inductive Op (E : CoreEngine) (σ : Type) where
+/-- The operations of the specification carrier (see the table in the module docstring). They
+are indexed by the static part of the engine only: programs never see a core store. -/
+inductive Op (E : CoreEngine.Static) (σ : Type) where
   | get
   | modify (f : CStore E → CStore E)
   | trap (r : TrapReason)
@@ -384,9 +399,13 @@ inductive Op (E : CoreEngine) (σ : Type) where
   | hostGet
   | hostSet (s : σ)
   | emit (o : HostObs)
+  | readCore
+  | memWrite (m : E.MemAddr) (ptr : Nat) (bytes : ByteArray)
+  | allocHost (ty : V1.FuncType) (h : CanonHost E)
+  | prepare (md : E.Module) (imports : List E.ExternVal)
 
 /-- Response types of the operations. -/
-def Op.Resp {E : CoreEngine} {σ : Type} : Op E σ → Type
+def Op.Resp {E : CoreEngine.Static} {σ : Type} : Op E σ → Type
   | .get => CStore E
   | .modify _ => Unit
   | .trap _ => Empty
@@ -400,14 +419,18 @@ def Op.Resp {E : CoreEngine} {σ : Type} : Op E σ → Type
   | .hostGet => σ
   | .hostSet _ => Unit
   | .emit _ => Unit
+  | .readCore => CoreEngine.CoreView E (CanonHost E)
+  | .memWrite _ _ _ => Unit
+  | .allocHost _ _ => Unit
+  | .prepare _ _ => Unit
 
 /-- The effect signature of the Canonical ABI specification. -/
-def Eff (E : CoreEngine) (σ : Type) : Sig := ⟨Op E σ, Op.Resp⟩
+def Eff (E : CoreEngine.Static) (σ : Type) : Sig := ⟨Op E σ, Op.Resp⟩
 
 /-- Specification programs. -/
-abbrev P (E : CoreEngine) (σ : Type) := Prog (Eff E σ)
+abbrev P (E : CoreEngine.Static) (σ : Type) := Prog (Eff E σ)
 
-variable {E : CoreEngine} {σ : Type} {α β : Type}
+variable {E : CoreEngine.Static} {σ : Type} {α β : Type}
 
 /-! ## Primitive operations -/
 
@@ -459,6 +482,29 @@ def hostSet (s : σ) : P E σ Unit := perform (.hostSet s)
 
 /-- Record a host-visible observation. -/
 def emit (o : HostObs) : P E σ Unit := perform (.emit o)
+
+/-- Read the core store through its queries (`CoreEngine.view`). -/
+def readCore : P E σ (CoreEngine.CoreView E (CanonHost E)) := perform .readCore
+
+/-- Write `bytes` at `ptr` in memory `m` of the core store (no change when the engine write
+fails). -/
+def memWriteOp (m : E.MemAddr) (ptr : Nat) (bytes : ByteArray) : P E σ Unit :=
+  perform (.memWrite m ptr bytes)
+
+/-- Allocate a canon host function of flat type `ty` with host code `h` in the core store (its
+address is `CoreView.allocAddr ty h` of the store before). -/
+def allocHostOp (ty : V1.FuncType) (h : CanonHost E) : P E σ Unit :=
+  perform (.allocHost ty h)
+
+/-- Core instantiation (`CoreEngine.prepare?`) of `md` with positional imports on the core
+store (no change when it fails; the exports and start function of the new instance are
+`CoreView.prepare? md imports` of the store before). -/
+def prepareOp (md : E.Module) (imports : List E.ExternVal) : P E σ Unit :=
+  perform (.prepare md imports)
+
+/-- Read a projection of the core-store queries. -/
+def getsCore (f : CoreEngine.CoreView E (CanonHost E) → α) : P E σ α := do
+  return f (← readCore)
 
 /-- Read a projection of the store. -/
 def gets (f : CStore E → α) : P E σ α := do return f (← getStore)
@@ -676,7 +722,7 @@ namespace Silmaril.Wasm.Component.Canon
 open _root_.Silmaril.Wasm.Component.Engine _root_.Silmaril.Wasm.Component.Runtime
   _root_.Silmaril.Wasm.Component.Value
 
-variable {E : CoreEngine} {σ : Type} {α β : Type}
+variable {E : CoreEngine.Static} {σ : Type} {α β : Type}
 
 /-- REF `inst.handles.add(e)` (L670-679): trap `tableFull` past `Table.MAX_LENGTH`. -/
 def handlesAdd (inst : InstId) (e : HandleEntry) : P E σ Nat := do

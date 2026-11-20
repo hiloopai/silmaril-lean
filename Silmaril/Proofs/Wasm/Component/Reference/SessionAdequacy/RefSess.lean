@@ -93,7 +93,7 @@ theorem fresh_succ {G : Garb P} {k : Nat} (h : G.Fresh k) : G.Fresh (k + 1) :=
 configuration. -/
 theorem resumeCfg_ready (cs : (core3P P).Store (CanonHost (core3P P))) (ι : InstState)
     (fs : List (CFuncInst (core3P P))) (G : Garb P) (m' : Machine.Config (E3 P) Unit) :
-    resumeCfg (readyCfg cs ι fs G) m' = readyCfg m'.store.core ι fs G := rfl
+    resumeCfg (readyCfg cs ι fs G) m' = readyCfg m'.core ι fs G := rfl
 
 variable {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
   {cs : (core3P P).Store (CanonHost (core3P P))} {x : SimpleExport}
@@ -134,7 +134,7 @@ theorem call_forward_trap (C : CallCtxAt P c I cs x vs) (R : ReadyAt I cs ι G k
     (CR : CallRunT prof P cs ι fs G k j x vs I) {s' : Store Nat}
     (h : TrapAt P c I x vs (Store.mapH (fun _ => 0) cs) s') :
     ∃ m', Calls prof (refHost P).hr (D P) (readyCfg cs ι fs G) ⟨k⟩ ⟨j⟩ (vs.map toRefVal) m'
-      .trap ∧ m'.store.core = Store.mapH (someHost P) s' := by
+      .trap ∧ m'.core = Store.mapH (someHost P) s' := by
   obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, hat⟩ := CR.run
   obtain ⟨t', res, run, final', hres⟩ := h.run
   obtain ⟨tr₂, htr₂, r₂⟩ := core_to_result (prof := prof) C hat.toCallAtK.ctl hat.toCallAtK.core run
@@ -168,7 +168,7 @@ theorem call_forward_trap (C : CallCtxAt P c I cs x vs) (R : ReadyAt I cs ι G k
   -- a trap of the core activation
   have trapCase : (E3 P).status (Store.mapH (someHost P) s') t' = .returned .trap →
       ∃ m', Calls prof (refHost P).hr (D P) (readyCfg cs ι fs G) ⟨k⟩ ⟨j⟩ (vs.map toRefVal)
-        m' .trap ∧ m'.store.core = Store.mapH (someHost P) s' := by
+        m' .trap ∧ m'.core = Store.mapH (someHost P) s' := by
     intro hst
     have s₃ : Step prof (refHost P).hr (D P)
         (coreCfg M₀ th K segs rest (Store.mapH (someHost P) s', t')) (.trap .coreTrap)
@@ -253,15 +253,16 @@ theorem call_forward_trap (C : CallCtxAt P c I cs x vs) (R : ReadyAt I cs ι G k
         · simp at hm
       · simp only [List.mem_singleton, Label.trap.injEq] at hm
         exact hrT msg hm.symm
-    · show mT.store.core = _
-      rw [hsT]
+    · show mT.core = _
+      rw [hsT.2]
       rfl
 
 /-- After a lift trap keeping the store, the call traps at that store. -/
 theorem trapsNextT_inv {m₁ m' : Machine.Config (E3 P) Unit} {k : Nat}
     {tr : List (Label (E3 P) Unit)} {out : CallOutcome} (hT : TrapsNextT prof P m₁)
     (hs : Machine.Steps prof (refHost P).hr (D P) m₁ tr m')
-    (ho : out.Holds (refHost P).hr ⟨k⟩ m') : ∃ mT, mT.store = m₁.store ∧ m' = trapCfg mT := by
+    (ho : out.Holds (refHost P).hr ⟨k⟩ m') :
+    ∃ mT, (mT.store = m₁.store ∧ mT.core = m₁.core) ∧ m' = trapCfg mT := by
   obtain ⟨mT, r, -, hlr, hst, hlive, hu⟩ := hT
   rcases hlr.inv hs with hl | ⟨tr₄, -, r'⟩
   · exact absurd ho (hl.not_holds _ _)
@@ -281,7 +282,7 @@ theorem call_trap_inv (C : CallCtxAt P c I cs x vs) (R : ReadyAt I cs ι G k)
     {m' : Machine.Config (E3 P) Unit}
     (hcalls : Calls prof (refHost P).hr (D P) (readyCfg cs ι fs G) ⟨k⟩ ⟨j⟩ (vs.map toRefVal) m'
       .trap) :
-    TrapAt P c I x vs (Store.mapH (fun _ => 0) cs) (Store.mapH (fun _ => 0) m'.store.core) := by
+    TrapAt P c I x vs (Store.mapH (fun _ => 0) cs) (Store.mapH (fun _ => 0) m'.core) := by
   obtain ⟨tr, hs, hev, -, ho⟩ := hcalls
   obtain ⟨m₂, s, r⟩ := Machine.Steps.cons_iff.mp hs
   have r₁ : Machine.Steps prof (refHost P).hr (D P) (invokedAt cs ι fs G k j (vs.map toRefVal))
@@ -312,9 +313,9 @@ theorem call_trap_inv (C : CallCtxAt P c I cs x vs) (R : ReadyAt I cs ι G k)
       cases he
     | none =>
       obtain ⟨mT, hsT, rfl⟩ := trapsNextT_inv (hat.trapT y ys hty hl) (hm ▸ r'') ho
-      have hcore' : (trapCfg mT).store.core = y.1 := by
-        show mT.store.core = _
-        rw [hsT]
+      have hcore' : (trapCfg mT).core = y.1 := by
+        show mT.core = _
+        rw [hsT.2]
         rfl
       rw [hcore']
       exact ⟨C.typed, y.2, .values cvs, hreach, (config_code_mapH _ _ _).trans hc,
@@ -367,14 +368,14 @@ theorem sessCalls_forward (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : 
       have CR := callRunT (prof := prof) C R hff hmax hres hmaxr hffr hget
       obtain ⟨m', hcall, hcore'⟩ := call_forward_trap C R CR htrap
       have hwf : I.WellFormed s₁ := htrap.wellFormed hI (hc.core _ hx) R.wf
-      have hs₁ : Store.mapH (fun _ => (0 : Nat)) m'.store.core = s₁ := by
+      have hs₁ : Store.mapH (fun _ => (0 : Nat)) m'.core = s₁ := by
         rw [hcore']
         exact mapH_mapH_of_noHostFns _ _ (noHostFns_of_wf hI.2.1 hwf)
-      have R₁ : ReadyAt I m'.store.core ι G (k + 1) :=
+      have R₁ : ReadyAt I m'.core ι G (k + 1) :=
         resume_ready C R (hs₁ ▸ htrap)
       refine .trap hcall ?_
       rw [resumeCfg_ready]
-      exact sessCalls_forward hc hf ha hI calls outs' m'.store.core ι G (k + 1) s' R₁ ht'
+      exact sessCalls_forward hc hf ha hI calls outs' m'.core ι G (k + 1) s' R₁ ht'
         (hs₁ ▸ hseq)
 
 /-- **Reference sessions are specification sessions**, between calls. -/
@@ -406,7 +407,7 @@ theorem sess_inv (hc : c.Good) (hf : c.FloatFree) (ha : c.Arity) (hI : c.mod.IsI
       have htrap := call_trap_inv C R hff hmax hres hmaxr hffr
         (liftedFuncs_get? (P := P) c (fun k => I.addrs.getD k 0) j.isLt) hcall
       rw [resumeCfg_ready] at hS'
-      obtain ⟨outs', s', hseq, rfl⟩ := sess_inv hc hf ha hI calls m₁.store.core ι G (k + 1) _
+      obtain ⟨outs', s', hseq, rfl⟩ := sess_inv hc hf ha hI calls m₁.core ι G (k + 1) _
         (resume_ready C R htrap) ht' hS'
       exact ⟨none :: outs', s', .trap htrap hseq, rfl⟩
 

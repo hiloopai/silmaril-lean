@@ -71,6 +71,26 @@ theorem runsQ_quiet {α : Type} {th : Option ThreadId} {p : P E σ α} {m m' : C
     rcases List.mem_cons.1 hl with rfl | hl
     · exact .inl rfl
     · exact ih l hl
+  | readCore _ ih =>
+    intro l hl
+    rcases List.mem_cons.1 hl with rfl | hl
+    · exact .inl rfl
+    · exact ih l hl
+  | memWrite _ ih =>
+    intro l hl
+    rcases List.mem_cons.1 hl with rfl | hl
+    · exact .inl rfl
+    · exact ih l hl
+  | allocHost _ ih =>
+    intro l hl
+    rcases List.mem_cons.1 hl with rfl | hl
+    · exact .inl rfl
+    · exact ih l hl
+  | prepare _ ih =>
+    intro l hl
+    rcases List.mem_cons.1 hl with rfl | hl
+    · exact .inl rfl
+    · exact ih l hl
   | call _ _ ih₁ ih₂ =>
     intro l hl
     rcases List.mem_cons.1 hl with rfl | hl

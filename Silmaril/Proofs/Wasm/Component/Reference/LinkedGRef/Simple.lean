@@ -217,7 +217,7 @@ def sAddr (c : Simple) (I : SInst) (w : Nat) : Nat :=
 /-- **The relation of a simple exporter**: at placement `pl` (instance, function ids), its store
 `π`, the component store `S` and the footprint `F`. -/
 structure SHold (P : Profile) (c : Simple) (I : SInst) (pl : Nat × List Nat) (π : Store Nat)
-    (S : CStore (E3 P)) (F : CoreFoot) : Prop where
+    (S : RefStore (E3 P)) (F : CoreFoot) : Prop where
   rel : ∃ (ρ : Ren) (O : Own), PartRel ρ O π (Store.mapH (h0 _) (S.core : Store (CanonHost (E3 P))))
     ∧ O.fn = (ownOf I.store).fn ∧ F = img ρ O
   fn : FnPre ({} : Store Nat) (Store.mapH (h0 _) (S.core : Store (CanonHost (E3 P)))) π
@@ -225,7 +225,7 @@ structure SHold (P : Profile) (c : Simple) (I : SInst) (pl : Nat × List Nat) (�
   funcs : π.funcs = I.store.funcs
   free : HostFree π
   lifted : ∀ (w : Nat) (x : Export), (SimpleI.ofSimple c).toComp.exports[w]? = some x →
-    ArenaField.funcs.get? S ⟨pl.2.getD w 0⟩ =
+    ArenaField.funcs.get? S.toCStore ⟨pl.2.getD w 0⟩ =
       some (.lifted (sAddr c I w) (witFt x.ty) {} ⟨pl.1⟩)
 
 /-- **The reference data of a simple exporter.** -/
@@ -257,8 +257,7 @@ theorem simple_frame (c : Simple) (I : SInst) : (simpleData P c I).Frame where
 theorem simple_resume (c : Simple) (I : SInst) : (simpleData P c I).Resume := by
   intro pl s s' S₀ S' F₀ F' h₀ h' hf
   exact ⟨h'.rel, h'.fn, h'.wf, h'.funcs, h'.free,
-    fun w x hx => by rw [show ArenaField.funcs.get? { S₀ with core := S'.core } _ =
-      ArenaField.funcs.get? S₀ _ from rfl]; exact h₀.lifted w x hx⟩
+    fun w x hx => h₀.lifted w x hx⟩
 
 /-! ## R2 -/
 
@@ -296,7 +295,7 @@ theorem within_of_touch' {g : CanonHost (E3 P) → Nat} {ρ : Ren} {O : Own}
 
 /-- **The relation after a run of the exporter**, at the core store the run ends in. -/
 theorem shold_after {c : Simple} {I : SInst} {pl : Nat × List Nat} {π π' : Store Nat}
-    {S : CStore (E3 P)} {ρ : Ren} {O : Own} (hH : SHold P c I pl π S (img ρ O))
+    {S : RefStore (E3 P)} {ρ : Ren} {O : Own} (hH : SHold P c I pl π S (img ρ O))
     (hO : O.fn = (ownOf I.store).fn) {g : CanonHost (E3 P) → Nat} {e : CoreSt (E3 P)}
     {ρ' : Ren} {O' : Own} {t' : STh}
     (hL : LinkSt ({} : Store Nat) ρ' O' (π', t') (Store.mapH g e.1, e.2))
@@ -307,7 +306,7 @@ theorem shold_after {c : Simple} {I : SInst} {pl : Nat × List Nat} {π π' : St
   exact ⟨⟨ρ', O', partRel_mapH hrel, hgr.fn.trans hO, rfl⟩, fnPre_mapH hfree hL.fn, hwf,
     hf.trans hH.funcs, hfree, fun w x hx => hH.lifted w x hx⟩
 
-theorem storeExt_core (c : Simple) (I : SInst) (pl : Nat × List Nat) (S : CStore (E3 P))
+theorem storeExt_core (c : Simple) (I : SInst) (pl : Nat × List Nat) (S : RefStore (E3 P))
     (cs : (E3 P).Store (CanonHost (E3 P))) :
     (simpleData P c I).StoreExt pl S { S with core := cs } where
   eq := rfl
@@ -337,15 +336,15 @@ theorem simple_fwd {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
   have haddr : sAddr c I w = I.addrs.getD c.exports[w].core 0 := by
     simp [sAddr, List.getElem?_eq_getElem hwl]
   obtain ⟨ρ, O, hR, hO, rfl⟩ := hH.rel
-  have hs := hostsSat_hIdx (P := P) M.store.core
-  have hRg : PartRel ρ O s (Store.mapH (hIdx M.store.core) M.store.core) := partRel_mapH hR
-  have hFg : FnPre ({} : Store Nat) (Store.mapH (hIdx M.store.core) M.store.core) s :=
+  have hs := hostsSat_hIdx (P := P) M.core
+  have hRg : PartRel ρ O s (Store.mapH (hIdx M.core) M.core) := partRel_mapH hR
+  have hFg : FnPre ({} : Store Nat) (Store.mapH (hIdx M.core) M.core) s :=
     fnPre_mapH hH.free hH.fn
   have hOw : O.fn (I.addrs.getD c.exports[w].core 0) := hO ▸ owned_init hc hI _ hxm
   obtain ⟨nm, hcx⟩ := hc.core _ hxm
   have hk : c.exports[w].core < c.mod.exports.length := (List.getElem?_eq_some_iff.mp hcx).1
   have hstart : (simpleData P c I).startCfg pl w x vs M th K segs rest =
-      coreCfg M th K segs rest (M.store.core, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat
+      coreCfg M th K segs rest (M.core, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat
         (I.addrs.getD c.exports[w].core 0) (lowerArgs c.exports[w].ty.params vs)) := by
     show { M with ctl := ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (sAddr c I w)
       (lowerArgs x.ty.params vs)) K, segs⟩ :: rest } = _
@@ -356,8 +355,8 @@ theorem simple_fwd {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
   | ret hj hRet =>
     obtain ⟨t', cvs, zs, run, final, hm, hus⟩ := hRet.run
     obtain ⟨e, ρ', O', hrun, hL, hrel, hgr, htc, hfe⟩ :=
-      exp_fwd1 (hIdx M.store.core) (hInv M.store.core) hs hRg hFg hOw _ run
-    have hst := status_of_values (hIdx M.store.core) hL final hm
+      exp_fwd1 (hIdx M.core) (hInv M.core) hs hRg hFg hOw _ run
+    have hst := status_of_values (hIdx M.core) hL final hm
     have hxs := exp_hxs hcx hRet.typed hk
     have steps : Silmaril.Wasm.Execution.Core.Steps P Silmaril.Wasm.SingleThreaded.Det.noHost
         (Silmaril.Wasm.Execution.Core.invoke s (I.addrs.getD c.exports[w].core 0)
@@ -376,8 +375,8 @@ theorem simple_fwd {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
         .tau (retCfg M th K segs rest e zs) := Step.coreReturned rfl hst
     have hq : Quiet (P := P) (σ := σ) (tr ++ [.tau]) := (Quiet.of_core htr).append Quiet.tau
     refine ⟨tr ++ [.tau], _, Adequacy.steps_append r (.cons s₄ (.refl _)), hq.1,
-      fun msg hm' => hq.2 _ hm', .inl ⟨{ M.store with core := e.1 }, M.conts, zs, img ρ' O', rfl,
-        hty, ?_, storeExt_core c I pl M.store e.1,
+      fun msg hm' => hq.2 _ hm', .inl ⟨{ M.ref with core := e.1 }, M.conts, zs, img ρ' O', rfl,
+        hty, ?_, storeExt_core c I pl M.ref e.1,
         shold_after hH hO hL hrel hgr (reach_funcs' run)
           (RetAt.wellFormed hI ⟨nm, hcx⟩ hH.wf hRet),
         within_of_touch' htc hfe, grows_of_grow (grow_unmapH hgr)⟩⟩
@@ -387,7 +386,7 @@ theorem simple_fwd {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
   | trap hj hT =>
     obtain ⟨t', res, run, final, hout⟩ := hT.run
     obtain ⟨e, ρ', O', hrun, hL, hrel, hgr, htc, hfe⟩ :=
-      exp_fwd1 (hIdx M.store.core) (hInv M.store.core) hs hRg hFg hOw _ run
+      exp_fwd1 (hIdx M.core) (hInv M.core) hs hRg hFg hOw _ run
     have hH' := shold_after hH hO hL hrel hgr (reach_funcs' run)
       (hT.wellFormed hI ⟨nm, hcx⟩ hH.wf)
     obtain ⟨tr, htr, r⟩ := Adequacy.coreCfg_steps_of (prof := prof) (hr := (linkHost impl).hr)
@@ -395,12 +394,12 @@ theorem simple_fwd {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
       (rest := rest) hrun
     cases res with
     | trap =>
-      have hst := status_of_trap (hIdx M.store.core) hL final
+      have hst := status_of_trap (hIdx M.core) hL final
       have s₄ : Step prof (linkHost impl).hr (linkHost impl).dispatch (coreCfg M th K segs rest e)
           (.trap .coreTrap) (StepDefs.trapCfg (coreCfg M th K segs rest e)) :=
         Step.coreTrap rfl hst
       refine ⟨tr ++ [.trap .coreTrap], _, Adequacy.steps_append r (.cons s₄ (.refl _)), ?_, ?_,
-        .inr ⟨rfl, rfl, { M.store with core := e.1 }, img ρ' O', rfl, rfl, hH',
+        .inr ⟨rfl, rfl, { M.ref with core := e.1 }, img ρ' O', rfl, rfl, hH',
           within_of_touch' htc hfe, grows_of_grow (grow_unmapH hgr)⟩⟩
       · intro ev hm'
         rcases List.mem_append.mp hm' with hm' | hm'
@@ -440,13 +439,13 @@ theorem simple_fwd {c : Simple} (hc : c.Good) {I : SInst} (hI : c.mod.IsInst I) 
         cases liftArgs c.exports[w].ty.results zs with
         | none => intro _; rfl
         | some _ => intro h; cases h
-      have hst := status_of_values (hIdx M.store.core) hL final hm
+      have hst := status_of_values (hIdx M.core) hL final hm
       have s₄ : Step prof (linkHost impl).hr (linkHost impl).dispatch (coreCfg M th K segs rest e)
           .tau (retCfg M th K segs rest e zs) := Step.coreReturned rfl hst
       have hq : Quiet (P := P) (σ := σ) (tr ++ [.tau]) := (Quiet.of_core htr).append Quiet.tau
       exact ⟨tr ++ [.tau], _, Adequacy.steps_append r (.cons s₄ (.refl _)), hq.1,
-        fun msg hm' => hq.2 _ hm', .inl ⟨{ M.store with core := e.1 }, M.conts, zs, img ρ' O',
-          rfl, hty, hn, storeExt_core c I pl M.store e.1, hH', within_of_touch' htc hfe,
+        fun msg hm' => hq.2 _ hm', .inl ⟨{ M.ref with core := e.1 }, M.conts, zs, img ρ' O',
+          rfl, hty, hn, storeExt_core c I pl M.ref e.1, hH', within_of_touch' htc hfe,
           grows_of_grow (grow_unmapH hgr)⟩⟩
 
 /-! ## The relation holds where `Linked2` starts its sessions -/
@@ -475,7 +474,7 @@ theorem linked2_hold (P : Profile) (prof : ProfileKind) (l : Linked2) (hl : l.Ad
     {es : List (String × FuncId)}
     (hr : InstResult.instance m₀ inst es ∈
       instBehaviours prof (linkHost impl) (initConfig h₀) l.toRef []) :
-    ∃ F, SHold P l.exp I (1, List.range l.exp.exports.length) I.store m₀.store F := by
+    ∃ F, SHold P l.exp I (1, List.range l.exp.exports.length) I.store m₀.ref F := by
   obtain ⟨hEg, hEi, hIg, hIi, har, hff, hW, hN, hn, hS⟩ := hl
   obtain ⟨Ie, cse, cie, hFe, hall⟩ := instBehavioursL_inst (Pf := P) (σ := σ) hEg hEi hIg hIi
     har ⟨hS.imp.data, hS.imp.elems⟩ hW hN
@@ -506,7 +505,7 @@ theorem linked2_hold (P : Profile) (prof : ProfileKind) (l : Linked2) (hl : l.Ad
   have hlen : (liftedList (Pf := P) (fun k => I.addrs.getD k 0) ⟨1⟩ l.exp.exports).length =
       l.exp.exports.length := List.length_map _
   simp only [ArenaField.get?, ArenaField.funcs, Arena.get?_eq_getElem?, afterLink,
-    Machine.Config.init, List.getD_eq_getElem?_getD, List.getElem?_range hwl, Option.getD_some]
+    Machine.Config.ref, Machine.Config.init, List.getD_eq_getElem?_getD, List.getElem?_range hwl, Option.getD_some]
   rw [List.getElem?_append_left (hlen ▸ hwl)]
   simp only [liftedList, List.getElem?_map, List.getElem?_eq_getElem hwl, Option.map_some,
     sAddr, Option.elim, hxty]
@@ -524,7 +523,7 @@ theorem simple_refFwd (P : Profile) {c : Simple} (hc : c.Good) {I : SInst}
         (m₀ : Machine.Config (core3P P) σ) (inst : InstId) (es : List (String × FuncId)),
         InstResult.instance m₀ inst es ∈
           instBehaviours prof (linkHost impl) (initConfig h₀) l.toRef [] →
-        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.store F ∧
+        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.ref F ∧
           (∀ i, d.block pl i ↔ i = 1) ∧
           ∀ (w : Nat) (xe : SimpleExport), c.exports[w]? = some xe →
             d.addr pl w = I.addrs.getD xe.core 0 ∧ d.inst pl w = 1 ∧ d.fid pl w = w := by

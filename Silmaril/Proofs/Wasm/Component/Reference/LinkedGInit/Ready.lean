@@ -178,7 +178,7 @@ variable {lg : LinkedG} {d : lg.exp.RefData P} {pl : d.Pl} {F : CoreFoot}
   {r : Store (CanonHost (core3P P) × Nat)} {Ii : Silmaril.Wasm.Game.ScalarInstance}
 
 /-- R4's core store, as a store. -/
-def cseG (m₁ : Machine.Config (core3P P) σ) : Store (CanonHost (core3P P)) := m₁.store.core
+def cseG (m₁ : Machine.Config (core3P P) σ) : Store (CanonHost (core3P P)) := m₁.core
 
 /-- The exporter's core store after R4, renamed. -/
 def s0G (d : lg.exp.RefData P) (pl : d.Pl) (m₁ : Machine.Config (core3P P) σ) : Store Nat :=
@@ -189,13 +189,13 @@ def coreG (m₁ : Machine.Config (core3P P) σ) (r : Store (CanonHost (core3P P)
     Store (CanonHost (core3P P)) :=
   reloc (cseG m₁) (Store.mapH Prod.fst r)
 
-theorem afterG_core : (afterG lg Ii m₁ r).store.core = coreG m₁ r := rfl
+theorem afterG_core : (afterG lg Ii m₁ r).core = coreG m₁ r := rfl
 
 theorem afterG_funcs : (afterG lg Ii m₁ r).store.funcs = m₁.store.funcs ++
     liftedList (addrL (cseG m₁).funcs.length Ii) ⟨m₁.store.insts.length⟩ lg.imp.exports := rfl
 
 theorem afterG_insts : (afterG lg Ii m₁ r).store.insts = m₁.store.insts ++ [({} : InstState)] := by
-  simp [afterG, impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+  simp [afterG, impStore, nestStoreI, liftStore, ArenaOps.allocSt,
     ArenaField.alloc, Arena.alloc, ArenaField.insts, DispatchSt.decNestingSt]
 
 theorem s0G_funcs_length : (s0G d pl m₁).funcs.length = (cseG m₁).funcs.length := by
@@ -302,7 +302,7 @@ theorem readyB_init (hFr : d.Frame) (hB : d.Bounded) (hW : lg.WireTy) (hn : lg.w
       (afterG lg Ii m₁ r).store.funcs (afterG lg Ii m₁ r) lg.exp.init Ii.store 0 := by
   have hgu : StoreGood Ii.store := storeGood_inst hS hI.1.choose_spec
   -- the exporter's relation moves along the importer's instantiation (R1)
-  have hB₁ := hB pl lg.exp.init m₁.store F hA.hold
+  have hB₁ := hB pl lg.exp.init m₁.ref F hA.hold
   have hgl : ∀ a, F.gl a → a < (cseG m₁).globals.length := hA.globals
   have hst : ∀ a, F.st a → a < (cseG m₁).structs.length := hB₁.st
   have har : ∀ a, F.ar a → a < (cseG m₁).arrays.length := hB₁.ar
@@ -313,17 +313,19 @@ theorem readyB_init (hFr : d.Frame) (hB : d.Bounded) (hW : lg.WireTy) (hn : lg.w
     · rw [coreG, reloc_globals, List.getElem?_append_left (hgl a ha)]
     · rw [coreG, reloc_structs, List.getElem?_append_left (hst a ha)]
     · rw [coreG, reloc_arrays, List.getElem?_append_left (har a ha)]
-  have hH : d.Hold pl lg.exp.init (afterG lg Ii m₁ r).store F := by
-    refine hFr.agree pl _ m₁.store _ F hA.hold hag ?_ fun i hi => ?_
-    · rw [afterG_funcs]
+  have hH : d.Hold pl lg.exp.init (afterG lg Ii m₁ r).ref F := by
+    refine hFr.agree pl _ m₁.ref _ F hA.hold hag ?_ fun i hi => ?_
+    · show m₁.store.funcs <+: (afterG lg Ii m₁ r).store.funcs
+      rw [afterG_funcs]
       exact List.prefix_append _ _
-    · rw [afterG_insts, List.getElem?_append_left (hA.block i hi).2]
+    · show (afterG lg Ii m₁ r).store.insts[i]? = m₁.store.insts[i]?
+      rw [afterG_insts, List.getElem?_append_left (hA.block i hi).2]
   have hmap := mapH_coreG hW hn hA hrs hh
   refine ⟨rfl, ?_, ?_, rfl, ?_, ?_, ?_, ?_, ?_⟩
-  · simp [afterG, impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+  · simp [afterG, impStore, nestStoreI, liftStore, ArenaOps.allocSt,
       ArenaField.alloc, Arena.alloc, ArenaField.insts, DispatchSt.decNestingSt, hA.lock]
   · have hn₁ := hA.nest
-    simp [afterG, impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+    simp [afterG, impStore, nestStoreI, liftStore, ArenaOps.allocSt,
       ArenaField.alloc, Arena.alloc, ArenaField.insts, DispatchSt.decNestingSt, hn₁, hnest]
   · refine ⟨{}, ?_, threadsOk_empty, rfl⟩
     rw [afterG_insts]
@@ -351,7 +353,7 @@ theorem readyB_init (hFr : d.Frame) (hB : d.Bounded) (hW : lg.WireTy) (hn : lg.w
     cases this
   · refine ⟨⟨F, Ren.id, shOwn (sh (s0G d pl m₁)) (ownOf Ii.store), ?_, rfl, rfl, ?_, hH⟩, ?_,
       hI.1.choose_spec.ok, rfl, rfl, sgoodSt_of_storeGood hgu⟩
-    · rw [afterG_core, hmap]
+    · rw [Machine.Config.ref_core, afterG_core, hmap]
       exact partRel_reloc (s₀ := s0G d pl m₁) hgu
     · refine ⟨fun a ha hF => ?_, fun a b ha hb e => ?_, fun a b ha hb e => ?_,
         hB _ _ _ F hH⟩
@@ -369,7 +371,7 @@ theorem readyB_init (hFr : d.Frame) (hB : d.Bounded) (hW : lg.WireTy) (hn : lg.w
         simp only [s0G, Store.mapH] at h₂
         have e' : b = a := e
         omega
-    · rw [afterG_core, hmap]
+    · rw [Machine.Config.ref_core, afterG_core, hmap]
       exact fnPre_refl _ _
 
 end Init

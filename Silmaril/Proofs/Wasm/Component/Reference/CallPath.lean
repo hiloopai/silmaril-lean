@@ -53,7 +53,9 @@ macro "mstep" : tactic => `(tactic| apply LRun.prog rfl (fun _ _ e => by cases e
     | exact Step.currentThread rfl | exact Step.hostGet rfl | exact Step.hostSet rfl
     | exact Step.emit rfl
     | exact Step.resumeThread rfl rfl | exact Step.newThread rfl rfl | exact Step.threadExit rfl
-    | exact Step.hostDone rfl | exact Step.callCore rfl))
+    | exact Step.hostDone rfl | exact Step.callCore rfl
+    | exact Step.readCore rfl | exact Step.memWrite rfl | exact Step.allocHost rfl
+    | exact Step.prepare rfl))
 
 theorem runs_getObj {d : Call (E3 P) → Canon.P (E3 P) σ (Ret (E3 P))} {α Id : Type}
     {th : Option ThreadId} (F : ArenaField (E3 P) Id α) (i : Id)
@@ -75,7 +77,7 @@ theorem runs_lower {th : Option ThreadId} (x : SimpleExport)
       (paramTypes (liftedFt x)) none) m [.tau]
       (Silmaril.Wasm.Component.lowerArgs x.ty.params vs) m := by
   rw [paramTypes_liftedFt, lowerFlatValues_toClosed (max := ABI.maxFlatParams) _ _ _ hf hck hmax]
-  exact .get (.pure _ _)
+  exact .readCore (.pure _ _)
 
 theorem resultTypes_liftedFt (x : SimpleExport)
     (h : x.ty.results.length ≤ 1) : resultTypes (liftedFt x) = toClosedList x.ty.results := by
@@ -93,14 +95,14 @@ theorem runs_lift_some {th : Option ThreadId} (x : SimpleExport)
     ∃ c, RunsQ (D P) th (liftFlatValues Limits.spec Quirks.none cx ABI.maxFlatResults (.ofList ys)
       (resultTypes (liftedFt x))) m [.tau] (ws.map toRefVal, c) m := by
   have h := liftFlatTypes_liftArgs (σ := Unit) (E := E3 P) Limits.spec Quirks.none cx
-    (ptrTypeIn m.store cx) hff hys
+    (ptrTypeIn (CoreEngine.view _ m.core) cx) hff hys
   rw [hws] at h
   obtain ⟨c, hc⟩ := h
   refine ⟨c, ?_⟩
   rw [resultTypes_liftedFt x hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
     liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
-  refine .get ?_
-  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn m.store cx)
+  refine .readCore ?_
+  show RunsQ _ _ (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ m.core) cx)
     (toClosedList x.ty.results) ⟨ys, 0⟩) _ _ _ _
   rw [hc]
   exact .pure _ _
@@ -125,17 +127,17 @@ theorem lrun_lift_trap {α : Type} {th : Option ThreadId} (prof : ProfileKind) (
     rw [resultTypes_liftedFt x hres, show FlatCursor.ofList ys = ⟨ys, 0⟩ from rfl,
       liftFlatValues_toClosed (max := ABI.maxFlatResults) Limits.spec Quirks.none cx hmaxr]
   have hT := liftFlatTypes_liftArgs (σ := Unit) (E := E3 P) Limits.spec Quirks.none cx
-    (ptrTypeIn M.store cx) hff hys
+    (ptrTypeIn (CoreEngine.view _ M.core) cx) hff hys
   rw [hnone] at hT
   obtain ⟨r, k₀, hk⟩ := hT
-  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .get fun s =>
+  have hc' : M.ctl = ⟨th, .prog (.op (S := Eff (E3 P) Unit) .readCore fun s =>
       (liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn s cx) (toClosedList x.ty.results)
         ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest := by
     rw [hc, e]
     rfl
   have s₁ : Step prof (refHost P).hr (D P) M .tau { M with ctl := ⟨th, .prog
-      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn M.store cx) (toClosedList x.ty.results)
-        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.get hc'
+      ((liftFlatTypes Limits.spec Quirks.none cx (ptrTypeIn (CoreEngine.view _ M.core) cx) (toClosedList x.ty.results)
+        ⟨ys, 0⟩ >>= f) >>= g), segs⟩ :: rest } := Step.readCore hc'
   rw [hk] at s₁
   refine ⟨_, r, .cons ⟨by rw [hc]; exact List.cons_ne_nil _ _, hl⟩
     (.of_prog hc (fun _ _ e => by cases e) s₁) (.refl _), ⟨List.cons_ne_nil _ _, hl⟩,
@@ -179,7 +181,7 @@ structure CallAt (prof : ProfileKind) (P : Profile) (cs : (core3P P).Store (Cano
     (rest : List (Activation (E3 P) Unit)) : Prop where
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a
     (lowerArgs x.ty.params vs)) K, segs⟩ :: rest
-  core : M₀.store.core = cs
+  core : M₀.core = cs
   lock : M₀.store.lockdown = false
   ret : ∀ (y : CoreSt (E3 P)) (ys : List Flat) (ws : List Silmaril.Wasm.Component.Val),
     ys.map (·.type) = ValTy.flatList x.ty.results → liftArgs x.ty.results ys = some ws →

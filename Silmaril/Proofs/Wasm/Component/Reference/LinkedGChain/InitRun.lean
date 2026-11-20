@@ -135,7 +135,7 @@ def FoldEndX (d : lg.exp.RefData P) (Ii : Silmaril.Wasm.Game.ScalarInstance)
     InitW d pl F es cfg m₁ ∧ Store.mapH Prod.snd r = Ii.store ∧
     TrampsOf lg (fidG d pl) (nextInst m₁.store) r ∧
     xs = lg.imp.exports.mapIdx (fun i x => (x.name, ItemVal.func ⟨m₁.store.funcs.length + i⟩)) ∧
-    m = { m₁ with store := impStore lg Ii m₁.store r }
+    m = impCfg lg Ii m₁ r
 
 /-! ## The stages at any instance, outer frames and thread -/
 
@@ -145,7 +145,7 @@ variable (inst : InstId) (outer : List (Frame (core3P P))) (th : Option ThreadId
 
 /-- The closures and the exporter's nested instantiation (R4). -/
 theorem stageAo (hInit : d.InitUX) (cfg : Machine.Config (core3P P) σ)
-    (hcore : cfg.store.core = (core3P P).empty _) :
+    (hcore : cfg.core = (core3P P).empty _) :
     ReachL prof (linkHost impl).hr (linkHost impl).dispatch th
       (List.foldlM (instantiateDef (callRecurse : Recurse (core3P P) σ) inst outer []) {}
         ([.component lg.exp.ref, .component lg.imp.toRef, .instance_ (.instantiate 0 [])] :
@@ -219,9 +219,9 @@ theorem stageIo (hFr : d.Frame) (hW : lg.WireTy) (hIg : lg.imp.Good) (hIi : lg.i
         TrampsOf lg (fidG d pl) (nextInst m.store) r ∧
         funcExports esI = lg.imp.exports.mapIdx (fun i x => (x.name, ⟨m.store.funcs.length + i⟩)) ∧
         TagOrFunc esI ∧ sc = scIo d pl outer es esI ∧
-        m' = { m with store := impStore lg Ii m.store r }) := by
+        m' = impCfg lg Ii m r) := by
   have hlen : lg.wire.length = lg.imp.imports.length := hW.length
-  obtain ⟨r, ci, hrs, hh, hF⟩ := coreFactsL_of_inst (Pf := P) hIg hIi hseg hI m.store.core
+  obtain ⟨r, ci, hrs, hh, hF⟩ := coreFactsL_of_inst (Pf := P) hIg hIi hseg hI m.core
     (nextInst m.store) (fidG d pl)
   have hv : ((lg.imp.imports.mapIdx fun k p =>
       (p.1, (⟨.func, k⟩ : Syntax.SortIdx Syntax.Sort_)))).mapM
@@ -243,7 +243,7 @@ theorem stageIo (hFr : d.Frame) (hW : lg.WireTy) (hIg : lg.imp.Good) (hIi : lg.i
     have hfid : fidG d pl j = ⟨d.fid pl lg.wire[j]⟩ := by
       show (⟨d.fid pl (lg.wire.getD j 0)⟩ : FuncId) = _
       rw [getD_lt hjw]
-    obtain ⟨hl, -⟩ := hFr.lifted pl lg.exp.init m.store F lg.wire[j] x hA.hold hx
+    obtain ⟨hl, -⟩ := hFr.lifted pl lg.exp.init m.ref F lg.wire[j] x hA.hold hx
     refine ⟨?_, _, by rw [hfid]; exact hl, ?_⟩
     · have h := lookup_mapIdx_val (·.1)
         (fun k => (ItemVal.func (fidG d pl k) : ItemVal (core3P P))) 0 lg.imp.imports j hj
@@ -258,10 +258,10 @@ theorem stageIo (hFr : d.Frame) (hW : lg.WireTy) (hIg : lg.imp.Good) (hIi : lg.i
   have r₅ := instDef_instantiate (σ := σ) (scWo d pl outer es) (inst := inst) (outer := outer)
     (args := []) (c := 1) (cl := clIGo P lg outer) rfl hv
   refine ReachL.foldlM_cons (Q := fun os sc m' => os = [] ∧ sc = scIo d pl outer es esI ∧
-    m' = { m with store := impStore lg Ii m.store r }) ?_ fun os s m' h => ReachL.foldlM_nil ?_
+    m' = impCfg lg Ii m r) ?_ fun os s m' h => ReachL.foldlM_nil ?_
   · refine ReachL.of_eq r₅ ?_
     refine ReachL.bind (ReachL.callItems (R := fun os es' m' => os = [] ∧ es' = esI ∧
-        m' = { m with store := impStore lg Ii m.store r }) (ReachL.call hrI)
+        m' = impCfg lg Ii m r) (ReachL.call hrI)
         fun os r' m' ⟨h₁, h₂, h₃⟩ => ⟨esI, h₂, h₁, rfl, h₃⟩)
       fun os es' m' ⟨h₁, h₂, h₃⟩ => ReachL.pure_of ?_
     subst h₁ h₂ h₃
@@ -315,7 +315,7 @@ theorem toRefG_reacho (hInit : d.InitUX) (hFr : d.Frame) (hW : lg.WireTy) (hIg :
     (hseg : lg.imp.mod.mod.data = [] ∧ lg.imp.mod.mod.elems = [])
     (hNI : ∀ x ∈ lg.imp.exports, ∀ n, x.name ≠ tag "t" n)
     {Ii : Silmaril.Wasm.Game.ScalarInstance} (hI : lg.imp.mod.IsInst Ii)
-    (cfg : Machine.Config (core3P P) σ) (hcore : cfg.store.core = (core3P P).empty _) :
+    (cfg : Machine.Config (core3P P) σ) (hcore : cfg.core = (core3P P).empty _) :
     ReachL prof (linkHost impl).hr (linkHost impl).dispatch th
       (List.foldlM (instantiateDef (callRecurse : Recurse (core3P P) σ) inst outer []) {}
         lg.toRef)
@@ -327,7 +327,7 @@ theorem toRefG_reacho (hInit : d.InitUX) (hFr : d.Frame) (hW : lg.WireTy) (hIg :
       TrampsOf lg (fidG d pl) (nextInst m₁.store) r ∧
       (∀ j < lg.imp.exports.length,
         sc.frame.funcs[lg.wire.length + j]? = some ⟨m₁.store.funcs.length + j⟩) ∧
-      sc.exports = [] ∧ m = { m₁ with store := impStore lg Ii m₁.store r }) ?_ ?_
+      sc.exports = [] ∧ m = impCfg lg Ii m₁ r) ?_ ?_
   · refine ReachL.foldlM_append (Q := fun os sc m => os = [] ∧ ∃ (m₁ : Machine.Config (core3P P) σ)
         (pl : d.Pl) (F : CoreFoot) (es esI : List (String × ItemVal (core3P P)))
         (r : Store (CanonHost (core3P P) × Nat)),
@@ -336,7 +336,7 @@ theorem toRefG_reacho (hInit : d.InitUX) (hFr : d.Frame) (hW : lg.WireTy) (hIg :
         funcExports esI =
           lg.imp.exports.mapIdx (fun i x => (x.name, ⟨m₁.store.funcs.length + i⟩)) ∧
         TagOrFunc esI ∧ sc = scIo d pl outer es esI ∧
-        m = { m₁ with store := impStore lg Ii m₁.store r }) ?_ ?_
+        m = impCfg lg Ii m₁ r) ?_ ?_
     · refine ReachL.foldlM_append (Q := fun os sc m => os = [] ∧ ∃ (pl : d.Pl) (F : CoreFoot)
           (es : List (String × ItemVal (core3P P))), InitW d pl F es cfg m ∧
           sc = scWo d pl outer es) ?_ ?_
@@ -382,7 +382,7 @@ theorem instCallG_reach (hInit : d.InitUX) (hFr : d.Frame) (hW : lg.WireTy) (hIg
     (hNI : ∀ x ∈ lg.imp.exports, ∀ n, x.name ≠ tag "t" n)
     {Ii : Silmaril.Wasm.Game.ScalarInstance} (hI : lg.imp.mod.IsInst Ii)
     (th : Option ThreadId) (outer : List (Frame (core3P P)))
-    (M : Machine.Config (core3P P) σ) (hcore : M.store.core = (core3P P).empty _) :
+    (M : Machine.Config (core3P P) σ) (hcore : M.core = (core3P P).empty _) :
     ReachL prof (linkHost impl).hr (linkHost impl).dispatch th
       (callRet (.instantiate ⟨lg.toRef, outer⟩ []) : Canon.P (core3P P) σ (Ret (core3P P))) M
       (fun os r m => os = [] ∧ ∃ xs, r = .items xs ∧

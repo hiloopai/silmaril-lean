@@ -78,23 +78,21 @@ theorem tview_unregisterThreadSt (s : CStore E) (T : TaskId) (t : ThreadId) (i :
   · rfl
   · exact tview_modify s T _ (fun _ => rfl) (fun _ => rfl)
 
-theorem registerThreadSt_core (s : CStore E) (T : TaskId) (t : ThreadId) :
-    (CStore.registerThreadSt T t s).core = s.core ∧
-      (CStore.registerThreadSt T t s).callers = s.callers := by
+theorem registerThreadSt_callers (s : CStore E) (T : TaskId) (t : ThreadId) :
+    (CStore.registerThreadSt T t s).callers = s.callers := by
   unfold CStore.registerThreadSt
   split
-  · exact ⟨rfl, rfl⟩
+  · rfl
   · split
-    · exact ⟨rfl, rfl⟩
-    · exact ⟨rfl, rfl⟩
+    · rfl
+    · rfl
 
-theorem unregisterThreadSt_core (s : CStore E) (T : TaskId) (t : ThreadId) (i : Nat) :
-    (CStore.unregisterThreadSt T t i s).core = s.core ∧
-      (CStore.unregisterThreadSt T t i s).callers = s.callers := by
+theorem unregisterThreadSt_callers (s : CStore E) (T : TaskId) (t : ThreadId) (i : Nat) :
+    (CStore.unregisterThreadSt T t i s).callers = s.callers := by
   unfold CStore.unregisterThreadSt
   split
-  · exact ⟨rfl, rfl⟩
-  · exact ⟨rfl, rfl⟩
+  · rfl
+  · rfl
 
 theorem registerThreadSt_lockdown (s : CStore E) (T : TaskId) (t : ThreadId) :
     (CStore.registerThreadSt T t s).lockdown = s.lockdown := by
@@ -165,10 +163,10 @@ end Spec
 /-! ## Task methods -/
 
 /-- The frame of the task methods: core store and callers unchanged, task view `v`. -/
-def TFrame (s s' : CStore E)
+def TFrame (m m' : Config E σ)
     (v : List ((WIT.FuncType Empty RtId × CanonOpts E × InstId × CallerId) × TaskState)) :
     Prop :=
-  s'.core = s.core ∧ s'.callers = s.callers ∧ tview s' = v
+  m'.core = m.core ∧ m'.store.callers = m.store.callers ∧ tview m'.store = v
 
 /-- `Task.registerThread`: one store update (or a trap). -/
 theorem spec_registerThread (th : Option ThreadId) (T : TaskId) (t : ThreadId) {m : Config E σ} :
@@ -190,7 +188,7 @@ theorem spec_enterImplicitThread (q : Quirks) {t : ThreadId} {T : TaskId} {m : C
     {k : _} {st : TaskState} (hv : (tview m.store)[T.idx]? = some (k, st))
     (ha : k.1.async_ = false) :
     Spec prof hr dispatch (some t) (Task.enterImplicitThread q T) m
-      (fun b m' => b = true ∧ TFrame m.store m'.store (tview m.store)) := by
+      (fun b m' => b = true ∧ TFrame m m' (tview m.store)) := by
   unfold Task.enterImplicitThread
   refine Spec.bind (Spec.currentThreadId t) fun t' m₁ ⟨ht, hm⟩ _ _ => ?_
   subst t' m₁
@@ -209,7 +207,7 @@ theorem spec_enterImplicitThread (q : Quirks) {t : ThreadId} {T : TaskId} {m : C
   subst m₅
   refine Spec.mono (Spec.pure true) fun b m' ⟨hb, hm⟩ _ _ => ⟨hb, ?_⟩
   subst m'
-  refine ⟨(registerThreadSt_core _ _ _).1, (registerThreadSt_core _ _ _).2, ?_⟩
+  refine ⟨rfl, registerThreadSt_callers _ _ _, ?_⟩
   rw [tview_registerThreadSt, tview_setImplicitThread]
 
 theorem setTaskState_lockdown (s : CStore E) (T : TaskId) (st : TaskState) :

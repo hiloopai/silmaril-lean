@@ -58,7 +58,7 @@ def InitU : Prop :=
     (outer : List (Instantiate.Frame (core3P P)))
     (k : Ret (core3P P) → Canon.P (core3P P) σ (Ret (core3P P)))
     (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-    M.store.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
+    M.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
     ∃ (tr : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ) (pl : d.Pl)
       (F : CoreFoot) (es : List (String × Instantiate.ItemVal (core3P P))),
       LiveDet prof (linkHost impl).hr (linkHost impl).dispatch
@@ -75,7 +75,7 @@ def InitUX : Prop :=
     (outer : List (Instantiate.Frame (core3P P)))
     (k : Ret (core3P P) → Canon.P (core3P P) σ (Ret (core3P P)))
     (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-    M.store.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
+    M.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
     ∃ (tr : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ) (pl : d.Pl)
       (F : CoreFoot) (es : List (String × Instantiate.ItemVal (core3P P))),
       LiveDet prof (linkHost impl).hr (linkHost impl).dispatch

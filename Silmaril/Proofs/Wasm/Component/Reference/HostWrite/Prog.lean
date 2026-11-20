@@ -62,6 +62,10 @@ theorem of_every {I : CStore E → Prop} {p : P E σ α}
     | block t => exact .op c trivial fun r => ih r none
     | resumeThread t => exact .op c trivial fun r => ih r none
     | emit o => exact .op c trivial fun r => ih r none
+    | readCore => exact .op c trivial fun r => ih r none
+    | memWrite m ptr bytes => exact .op c trivial fun r => ih r none
+    | allocHost ty h => exact .op c trivial fun r => ih r none
+    | prepare md imports => exact .op c trivial fun r => ih r none
 
 /-- `P.InvW I (fun _ => False)` programs are host-safe. -/
 theorem of_invW {I : CStore E → Prop} {p : P E σ α} (h : P.InvW I (fun _ : σ => False) p)

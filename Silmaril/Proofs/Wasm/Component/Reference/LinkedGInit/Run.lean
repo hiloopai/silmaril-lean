@@ -54,7 +54,7 @@ theorem initS_initSX {e : ExpSpec} {d : e.RefData P} (h : d.InitS) : d.InitSX :=
 /-- **R4 reaches the exporter's exports**, in any context. -/
 theorem reach_initS {e : ExpSpec} {d : e.RefData P} (hI : d.InitSX) (th : Option ThreadId)
     (outer : List (Frame (core3P P))) (M : Machine.Config (core3P P) σ)
-    (hcore : M.store.core = (core3P P).empty _) :
+    (hcore : M.core = (core3P P).empty _) :
     Reach prof (linkHost impl).hr (linkHost impl).dispatch th
       (callRet (.instantiate ⟨e.ref, outer⟩ []) : Canon.P (core3P P) σ (Ret (core3P P))) M
       (fun os r m => os = [] ∧ ∃ pl F es, r = .items es ∧ d.InitAtX pl F es M m) := by
@@ -97,12 +97,25 @@ def linkArgsG (lg : LinkedG) (fid : Nat → FuncId) : Exports (core3P P) :=
 def exportMapG (lg : LinkedG) (fb : Nat) : List (String × FuncId) :=
   lg.imp.exports.mapIdx fun i x => (x.name, ⟨fb + i⟩)
 
-/-- The store after the importer's nested instantiation from the store `s` after the
-exporter's, the importer's core store `r` relocated after `s.core`. -/
+/-- The store after the importer's nested instantiation from the store `s` and the core store
+`c` after the exporter's, the importer's core store `r` relocated after `c`. -/
 def impStore (lg : LinkedG) (Ii : Silmaril.Wasm.Game.ScalarInstance) (s : CStore (core3P P))
-    (r : Store (CanonHost (core3P P) × Nat)) : CStore (core3P P) :=
-  nestStoreI (reloc (s.core : Store (CanonHost (core3P P))) (Store.mapH Prod.fst r)) s
-    (addrL (s.core : Store (CanonHost (core3P P))).funcs.length Ii) (nextInst s) lg.imp
+    (c : Store (CanonHost (core3P P))) (r : Store (CanonHost (core3P P) × Nat)) :
+    CStore (core3P P) :=
+  nestStoreI (reloc c (Store.mapH Prod.fst r)) s (addrL c.funcs.length Ii) (nextInst s) lg.imp
+
+/-- The core store after the importer's nested instantiation from the core store `c`: the
+importer's core store `r` relocated after `c`. -/
+def impCore (c : Store (CanonHost (core3P P))) (r : Store (CanonHost (core3P P) × Nat)) :
+    Store (CanonHost (core3P P)) :=
+  reloc c (Store.mapH Prod.fst r)
+
+/-- The configuration after the importer's nested instantiation from `m` (`impStore`,
+`impCore`). -/
+def impCfg (lg : LinkedG) (Ii : Silmaril.Wasm.Game.ScalarInstance)
+    (m : Machine.Config (core3P P) σ) (r : Store (CanonHost (core3P P) × Nat)) :
+    Machine.Config (core3P P) σ :=
+  { m with store := impStore lg Ii m.store m.core r, core := impCore m.core r }
 
 /-- The host code of the importer's store `r`: trampoline `k` paired with `k`. -/
 def TrampsOf (lg : LinkedG) (fid : Nat → FuncId) (inst : InstId)
@@ -120,7 +133,7 @@ def FoldEnd {lg : LinkedG} (d : lg.exp.RefData P) (Ii : Silmaril.Wasm.Game.Scala
     d.InitAtX pl F es cfg m₁ ∧ Store.mapH Prod.snd r = Ii.store ∧
     TrampsOf lg (fidG d pl) (nextInst m₁.store) r ∧
     funcExports xs = exportMapG lg m₁.store.funcs.length ∧
-    m = { m₁ with store := impStore lg Ii m₁.store r }
+    m = impCfg lg Ii m₁ r
 
 /-! ### Folding definitions -/
 
@@ -185,7 +198,7 @@ variable {lg : LinkedG} {d : lg.exp.RefData P}
 
 /-- The closures and the exporter's nested instantiation (R4). -/
 theorem stageA (hInit : d.InitSX) (cfg : Machine.Config (core3P P) σ)
-    (hcore : cfg.store.core = (core3P P).empty _) :
+    (hcore : cfg.core = (core3P P).empty _) :
     Reach prof (linkHost impl).hr (linkHost impl).dispatch none
       (List.foldlM (instantiateDef (callRecurse : Recurse (core3P P) σ) ⟨0⟩ [] []) {}
         ([.component lg.exp.ref, .component lg.imp.toRef, .instance_ (.instantiate 0 [])] :
@@ -256,9 +269,9 @@ theorem stageI (hFr : d.Frame) (hW : lg.WireTy) (hIg : lg.imp.Good) (hIi : lg.im
         (r : Store (CanonHost (core3P P) × Nat)), Store.mapH Prod.snd r = Ii.store ∧
         TrampsOf lg (fidG d pl) (nextInst m.store) r ∧
         funcExports esI = lg.imp.exports.mapIdx (fun i x => (x.name, ⟨m.store.funcs.length + i⟩)) ∧
-        TagOrFunc esI ∧ sc = scI d pl es esI ∧ m' = { m with store := impStore lg Ii m.store r }) := by
+        TagOrFunc esI ∧ sc = scI d pl es esI ∧ m' = impCfg lg Ii m r) := by
   have hlen : lg.wire.length = lg.imp.imports.length := hW.length
-  obtain ⟨r, ci, hrs, hh, hF⟩ := coreFactsL_of_inst (Pf := P) hIg hIi hseg hI m.store.core
+  obtain ⟨r, ci, hrs, hh, hF⟩ := coreFactsL_of_inst (Pf := P) hIg hIi hseg hI m.core
     (nextInst m.store) (fidG d pl)
   have hv : ((lg.imp.imports.mapIdx fun k p =>
       (p.1, (⟨.func, k⟩ : Syntax.SortIdx Syntax.Sort_)))).mapM
@@ -280,7 +293,7 @@ theorem stageI (hFr : d.Frame) (hW : lg.WireTy) (hIg : lg.imp.Good) (hIi : lg.im
     have hfid : fidG d pl j = ⟨d.fid pl lg.wire[j]⟩ := by
       show (⟨d.fid pl (lg.wire.getD j 0)⟩ : FuncId) = _
       rw [getD_lt hjw]
-    obtain ⟨hl, -⟩ := hFr.lifted pl lg.exp.init m.store F lg.wire[j] x hA.hold hx
+    obtain ⟨hl, -⟩ := hFr.lifted pl lg.exp.init m.ref F lg.wire[j] x hA.hold hx
     refine ⟨?_, _, by rw [hfid]; exact hl, ?_⟩
     · have h := lookup_mapIdx_val (·.1)
         (fun k => (ItemVal.func (fidG d pl k) : ItemVal (core3P P))) 0 lg.imp.imports j hj
@@ -295,10 +308,10 @@ theorem stageI (hFr : d.Frame) (hW : lg.WireTy) (hIg : lg.imp.Good) (hIi : lg.im
   have r₅ := instDef_instantiate (σ := σ) (scW d pl es) (inst := ⟨0⟩) (outer := []) (args := [])
     (c := 1) (cl := clIG P lg) rfl hv
   refine Reach.foldlM_cons (Q := fun os sc m' => os = [] ∧ sc = scI d pl es esI ∧
-    m' = { m with store := impStore lg Ii m.store r }) ?_ fun os s m' h => Reach.foldlM_nil ?_
+    m' = impCfg lg Ii m r) ?_ fun os s m' h => Reach.foldlM_nil ?_
   · refine Reach.of_eq r₅ ?_
     refine Reach.bind (Reach.callItems (R := fun os es' m' => os = [] ∧ es' = esI ∧
-        m' = { m with store := impStore lg Ii m.store r }) (Reach.call hrI)
+        m' = impCfg lg Ii m r) (Reach.call hrI)
         fun os r' m' ⟨h₁, h₂, h₃⟩ => ⟨esI, h₂, h₁, rfl, h₃⟩)
       fun os es' m' ⟨h₁, h₂, h₃⟩ => Reach.pure_of ?_
     subst h₁ h₂ h₃
@@ -355,7 +368,7 @@ theorem toRefG_reach (hInit : d.InitSX) (hFr : d.Frame) (hW : lg.WireTy) (hIg : 
     (hseg : lg.imp.mod.mod.data = [] ∧ lg.imp.mod.mod.elems = [])
     (hNI : ∀ x ∈ lg.imp.exports, ∀ n, x.name ≠ tag "t" n)
     {Ii : Silmaril.Wasm.Game.ScalarInstance} (hI : lg.imp.mod.IsInst Ii)
-    (cfg : Machine.Config (core3P P) σ) (hcore : cfg.store.core = (core3P P).empty _) :
+    (cfg : Machine.Config (core3P P) σ) (hcore : cfg.core = (core3P P).empty _) :
     Reach prof (linkHost impl).hr (linkHost impl).dispatch none
       (List.foldlM (instantiateDef (callRecurse : Recurse (core3P P) σ) ⟨0⟩ [] []) {} lg.toRef)
       cfg (fun os sc m => os = [] ∧ FoldEnd d Ii cfg sc.exports m) := by
@@ -366,7 +379,7 @@ theorem toRefG_reach (hInit : d.InitSX) (hFr : d.Frame) (hW : lg.WireTy) (hIg : 
       TrampsOf lg (fidG d pl) (nextInst m₁.store) r ∧
       (∀ j < lg.imp.exports.length,
         sc.frame.funcs[lg.wire.length + j]? = some ⟨m₁.store.funcs.length + j⟩) ∧
-      sc.exports = [] ∧ m = { m₁ with store := impStore lg Ii m₁.store r }) ?_ ?_
+      sc.exports = [] ∧ m = impCfg lg Ii m₁ r) ?_ ?_
   · refine Reach.foldlM_append (Q := fun os sc m => os = [] ∧ ∃ (m₁ : Machine.Config (core3P P) σ)
         (pl : d.Pl) (F : CoreFoot) (es esI : List (String × ItemVal (core3P P)))
         (r : Store (CanonHost (core3P P) × Nat)),
@@ -375,7 +388,7 @@ theorem toRefG_reach (hInit : d.InitSX) (hFr : d.Frame) (hW : lg.WireTy) (hIg : 
         funcExports esI =
           lg.imp.exports.mapIdx (fun i x => (x.name, ⟨m₁.store.funcs.length + i⟩)) ∧
         TagOrFunc esI ∧ sc = scI d pl es esI ∧
-        m = { m₁ with store := impStore lg Ii m₁.store r }) ?_ ?_
+        m = impCfg lg Ii m₁ r) ?_ ?_
     · refine Reach.foldlM_append (Q := fun os sc m => os = [] ∧ ∃ (pl : d.Pl) (F : CoreFoot)
           (es : List (String × ItemVal (core3P P))), d.InitAtX pl F es cfg m ∧ sc = scW d pl es)
         ?_ ?_
@@ -425,7 +438,7 @@ theorem rootG_reach (hInit : d.InitSX) (hFr : d.Frame) (hW : lg.WireTy) (hIg : l
     (hseg : lg.imp.mod.mod.data = [] ∧ lg.imp.mod.mod.elems = [])
     (hNI : ∀ x ∈ lg.imp.exports, ∀ n, x.name ≠ tag "t" n)
     {Ii : Silmaril.Wasm.Game.ScalarInstance} (hI : lg.imp.mod.IsInst Ii)
-    (cfg : Machine.Config (core3P P) σ) (hcore : cfg.store.core = (core3P P).empty _)
+    (cfg : Machine.Config (core3P P) σ) (hcore : cfg.core = (core3P P).empty _)
     (hinsts : cfg.store.insts = []) :
     Reach prof (linkHost impl).hr (linkHost impl).dispatch none
       (instantiateRootCall lg.toRef [] : Canon.P (core3P P) σ (InstId × Exports (core3P P))) cfg
@@ -479,7 +492,9 @@ theorem instProgG_reach (hInit : d.InitSX) (hFr : d.Frame) (hW : lg.WireTy) (hIg
         d.InitAtX pl F es (startG h₀) m₁ ∧ Store.mapH Prod.snd r = Ii.store ∧
         TrampsOf lg (fidG d pl) (nextInst m₁.store) r ∧
         os = [instantiatedObs ⟨0⟩ (exportMapG lg m₁.store.funcs.length)] ∧
-        m = { m₁ with store := DispatchSt.decNestingSt (impStore lg Ii m₁.store r) }) := by
+        m = { m₁ with
+          store := DispatchSt.decNestingSt (impStore lg Ii m₁.store m₁.core r)
+          core := impCore m₁.core r }) := by
   unfold instantiateProg
   refine Reach.bind_eq (Reach.ofTRuns
     (TRuns.modifyStore (f := DispatchSt.incNestingSt) (fun _ => rfl) _)) ?_
@@ -503,7 +518,10 @@ theorem instProgG_reach (hInit : d.InitSX) (hFr : d.Frame) (hW : lg.WireTy) (hIg
 importer's nested instantiation after it, the nesting depth decremented, the host in control. -/
 def afterG (lg : LinkedG) (Ii : Silmaril.Wasm.Game.ScalarInstance) (m₁ : Machine.Config (core3P P) σ)
     (r : Store (CanonHost (core3P P) × Nat)) : Machine.Config (core3P P) σ :=
-  { m₁ with store := DispatchSt.decNestingSt (impStore lg Ii m₁.store r), ctl := [] }
+  { m₁ with
+    store := DispatchSt.decNestingSt (impStore lg Ii m₁.store m₁.core r)
+    core := impCore m₁.core r
+    ctl := [] }
 
 /-- **The instantiation of `lg.toRef` as a host event** from the initial configuration: a run
 without host events to `afterG`, observing the root instance `0` and the export map. -/

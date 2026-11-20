@@ -92,6 +92,7 @@ def startedCfgA (g : σ → HostFuncId → List Silmaril.Wasm.Component.Referenc
     (cs' : (core3P P).Store (CanonHost (core3P P))) : Machine.Config (E3 P) σ :=
   { M with
     store := sStore₅ M.store a ι' cs'
+    core := cs'
     conts := Config.setSlot (Config.setSlot M.conts M.store.threads.length
       (some (threadAct (DA P g) ⟨M.store.threads.length⟩
         (.liftImplicit ⟨M.store.tasks.length⟩ a)))) M.store.threads.length none }
@@ -107,7 +108,7 @@ structure StartAtA (prof : ProfileKind) (g : σ → HostFuncId → List Silmaril
     (restc : List (Activation (E3 P) σ)) : Prop where
   ctl : M₀.ctl = ⟨thc, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) Kc, segsc⟩ ::
     restc
-  core : M₀.store.core = M.store.core
+  core : M₀.core = M.core
   lock : M₀.store.lockdown = false
   host : M₀.host = M.host
   ret : ∀ y : CoreSt (E3 P), ∃ tr, LRun prof (answerHostS P g).hr (DA P g)
@@ -189,8 +190,8 @@ theorem start_atA (prof : ProfileKind) (M : Machine.Config (E3 P) σ) (a : Nat)
       apply Exists.intro
       refine ⟨?_, ?_⟩
       · show LRun prof (answerHostS P g).hr (DA P g) (retCfg _ _ _ _ _ y []) _ _
-        apply LRun.store_congr (S' := sStore₃ { S with core := y.1 } a ι') rfl
-        have hS₃ : (sStore₃ { S with core := y.1 } a ι').tasks =
+        apply LRun.store_congr (S' := sStore₃ S a ι') rfl
+        have hS₃ : (sStore₃ S a ι').tasks =
             S.tasks ++ [(task₁ startEx S.callers ⟨S.threads.length⟩).withState .started] := rfl
         unfold retCfg
         apply RunsQ.chunk2 rfl (runs_lift_someA (P := P) (g := g) startEx (Nat.zero_le _)

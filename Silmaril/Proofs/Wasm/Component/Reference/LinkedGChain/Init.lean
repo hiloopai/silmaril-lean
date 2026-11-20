@@ -66,31 +66,45 @@ theorem arenasExtend_alloc (s : CStore (core3P P)) :
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
     simp [ArenaOps.allocSt, ArenaField.alloc, Arena.alloc, ArenaField.insts]
 
-theorem arenasExtend_impStore (s : CStore (core3P P)) (r : Store (CanonHost (core3P P) × Nat)) :
-    ArenasExtend s (impStore lg Ii s r) := by
+theorem arenasExtend_impStore (s : CStore (core3P P)) (c : Store (CanonHost (core3P P)))
+    (r : Store (CanonHost (core3P P) × Nat)) :
+    ArenasExtend s (impStore lg Ii s c r) := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-    simp [impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+    simp [impStore, nestStoreI, liftStore, ArenaOps.allocSt,
       ArenaField.alloc, Arena.alloc, ArenaField.insts]
 
-theorem impStore_insts (s : CStore (core3P P)) (r : Store (CanonHost (core3P P) × Nat)) :
-    (impStore lg Ii s r).insts = s.insts ++ [({} : InstState)] := by
-  simp [impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+theorem impStore_insts (s : CStore (core3P P)) (c : Store (CanonHost (core3P P)))
+    (r : Store (CanonHost (core3P P) × Nat)) :
+    (impStore lg Ii s c r).insts = s.insts ++ [({} : InstState)] := by
+  simp [impStore, nestStoreI, liftStore, ArenaOps.allocSt,
     ArenaField.alloc, Arena.alloc, ArenaField.insts]
 
-theorem impStore_funcs (s : CStore (core3P P)) (r : Store (CanonHost (core3P P) × Nat)) :
-    s.funcs <+: (impStore lg Ii s r).funcs := by
-  simp [impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+theorem impStore_funcs (s : CStore (core3P P)) (c : Store (CanonHost (core3P P)))
+    (r : Store (CanonHost (core3P P) × Nat)) :
+    s.funcs <+: (impStore lg Ii s c r).funcs := by
+  simp [impStore, nestStoreI, liftStore, ArenaOps.allocSt,
     ArenaField.alloc, Arena.alloc, ArenaField.insts]
 
-theorem impStore_lockdown (s : CStore (core3P P)) (r : Store (CanonHost (core3P P) × Nat)) :
-    (impStore lg Ii s r).lockdown = s.lockdown := by
-  simp [impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+theorem impStore_lockdown (s : CStore (core3P P)) (c : Store (CanonHost (core3P P)))
+    (r : Store (CanonHost (core3P P) × Nat)) :
+    (impStore lg Ii s c r).lockdown = s.lockdown := by
+  simp [impStore, nestStoreI, liftStore, ArenaOps.allocSt,
     ArenaField.alloc, Arena.alloc, ArenaField.insts]
 
-theorem impStore_nest (s : CStore (core3P P)) (r : Store (CanonHost (core3P P) × Nat)) :
-    (impStore lg Ii s r).nestingDepth = s.nestingDepth := by
-  simp [impStore, nestStoreI, liftStore, Instantiate.setCoreSt, ArenaOps.allocSt,
+theorem impStore_nest (s : CStore (core3P P)) (c : Store (CanonHost (core3P P)))
+    (r : Store (CanonHost (core3P P) × Nat)) :
+    (impStore lg Ii s c r).nestingDepth = s.nestingDepth := by
+  simp [impStore, nestStoreI, liftStore, ArenaOps.allocSt,
     ArenaField.alloc, Arena.alloc, ArenaField.insts]
+
+/-- The component store and the shared core store after the importer's nested instantiation
+from `m₁` (`impCfg`). -/
+def impRef (lg : LinkedG) (Ii : SInst) {σ : Type} (m₁ : Machine.Config (core3P P) σ)
+    (r : Store (CanonHost (core3P P) × Nat)) : RefStore (core3P P) :=
+  ⟨impStore lg Ii m₁.store m₁.core r, impCore m₁.core r⟩
+
+theorem impCfg_ref {σ : Type} (m₁ : Machine.Config (core3P P) σ)
+    (r : Store (CanonHost (core3P P) × Nat)) : (impCfg lg Ii m₁ r).ref = impRef lg Ii m₁ r := rfl
 
 /-- **The placement after the nested instantiation.** -/
 def initPl (d : lg.exp.RefData P) (Ii : SInst) {σ : Type} (pl : d.Pl)
@@ -105,10 +119,10 @@ theorem holdX_init (hFr : d.Frame) (hB : d.Bounded) (hl : lg.LinkOk) (hI : lg.im
     {M m₁ : Machine.Config (core3P P) σ} {r : Store (CanonHost (core3P P) × Nat)}
     (hA : d.InitAtX pl F es M m₁) (hrs : Store.mapH Prod.snd r = Ii.store)
     (hh : TrampsOf lg (fidG d pl) (nextInst m₁.store) r) :
-    HoldX lg d Ii (initPl d Ii pl m₁) (Ii.store, lg.exp.init) (impStore lg Ii m₁.store r)
+    HoldX lg d Ii (initPl d Ii pl m₁) (Ii.store, lg.exp.init) (impRef lg Ii m₁ r)
       (footUnion F (img Ren.id (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store)))) := by
   have hgu : StoreGood Ii.store := storeGood_inst hl.split hI.1.choose_spec
-  have hB₁ := hB pl lg.exp.init m₁.store F hA.hold
+  have hB₁ := hB pl lg.exp.init m₁.ref F hA.hold
   have hgl : ∀ a, F.gl a → a < (cseG m₁).globals.length := hA.globals
   have hst : ∀ a, F.st a → a < (cseG m₁).structs.length := hB₁.st
   have har : ∀ a, F.ar a → a < (cseG m₁).arrays.length := hB₁.ar
@@ -119,19 +133,21 @@ theorem holdX_init (hFr : d.Frame) (hB : d.Bounded) (hl : lg.LinkOk) (hI : lg.im
     · rw [coreG, reloc_globals, List.getElem?_append_left (hgl a ha)]
     · rw [coreG, reloc_structs, List.getElem?_append_left (hst a ha)]
     · rw [coreG, reloc_arrays, List.getElem?_append_left (har a ha)]
-  have hH : d.Hold pl lg.exp.init (impStore lg Ii m₁.store r) F := by
-    refine hFr.agree pl _ m₁.store _ F hA.hold hag (impStore_funcs _ _) fun i hi => ?_
-    rw [impStore_insts, List.getElem?_append_left (hA.block i hi).2]
+  have hH : d.Hold pl lg.exp.init (impRef lg Ii m₁ r) F := by
+    refine hFr.agree pl _ m₁.ref _ F hA.hold hag (impStore_funcs m₁.store m₁.core r) fun i hi => ?_
+    show (impStore lg Ii m₁.store m₁.core r).insts[i]? = _
+    rw [impStore_insts m₁.store m₁.core r, List.getElem?_append_left (hA.block i hi).2]
+    rfl
   have hmap := mapH_coreG hl.wireTy hl.nodup hA hrs hh
   have ST : StatB P lg d pl m₁.store.insts.length Ii (s0G d pl m₁) Ii.store (coreG m₁ r).funcs
       (gX d pl m₁.store.insts.length (cseG m₁).funcs)
       (trX d pl m₁.store.insts.length (cseG m₁).funcs)
-      (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store)) (impStore lg Ii m₁.store r).funcs
+      (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store)) (impStore lg Ii m₁.store m₁.core r).funcs
       (fun j => m₁.store.funcs.length + j) :=
     statB_init hl.wireTy hl.nodup hl.good hl.arity hl.floats hI hA hh
-  have hcore : (impStore lg Ii m₁.store r).core = coreG m₁ r := rfl
+  have hcore : (impRef lg Ii m₁ r).core = coreG m₁ r := rfl
   have hD : FootDisj F Ren.id (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store))
-      (impStore lg Ii m₁.store r).core := by
+      (impRef lg Ii m₁ r).core := by
     refine ⟨fun a ha hF => ?_, fun a b ha hb e => ?_, fun a b ha hb e => ?_,
       hB _ _ _ F hH⟩
     · have h₁ := hgl a hF
@@ -150,28 +166,28 @@ theorem holdX_init (hFr : d.Frame) (hB : d.Bounded) (hl : lg.LinkOk) (hI : lg.im
       omega
   have hR : PartRel Ren.id (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store)) (reloc (s0G d pl m₁) Ii.store)
       (Store.mapH (gX d pl m₁.store.insts.length (cseG m₁).funcs)
-        (impStore lg Ii m₁.store r).core) := by
+        (impRef lg Ii m₁ r).core) := by
     rw [hcore, hmap]
     exact partRel_reloc (s₀ := s0G d pl m₁) hgu
   have hfC : FnPre (s0G d pl m₁) (Store.mapH (gX d pl m₁.store.insts.length (cseG m₁).funcs)
-      (impStore lg Ii m₁.store r).core) Ii.store := by
+      (impRef lg Ii m₁ r).core) Ii.store := by
     rw [hcore, hmap]
     exact fnPre_refl _ _
   have hRW : LReadyW d pl Ii (s0G d pl m₁) Ii.store (coreG m₁ r).funcs
       (gX d pl m₁.store.insts.length (cseG m₁).funcs) (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store))
-      (impStore lg Ii m₁.store r) lg.exp.init Ii.store F Ren.id
+      (impRef lg Ii m₁ r) lg.exp.init Ii.store F Ren.id
       (shOwn (sh (s0G d pl m₁)) (ownOf Ii.store)) :=
     ⟨hR, rfl, rfl, hD, hH, hfC, hI.1.choose_spec.ok, rfl, rfl, sgoodSt_of_storeGood hgu⟩
   refine ⟨⟨_, _, _, F, Ren.id, _, ST, hRW, ⟨fun _ h => h, fun _ h => h, fun _ h => h⟩⟩,
     real_bounded hD hR, ⟨{}, ?_, rfl⟩, ?_⟩
-  · show (impStore lg Ii m₁.store r).insts[m₁.store.insts.length]? = _
-    rw [impStore_insts]
+  · show (impStore lg Ii m₁.store m₁.core r).insts[m₁.store.insts.length]? = _
+    rw [impStore_insts m₁.store m₁.core r]
     exact List.getElem?_concat_length
   · rintro w ⟨xe, hxe⟩
     obtain ⟨-, ι, hι, ht⟩ := hA.exports w xe hxe
     refine ⟨ι, ?_, .inl ht⟩
-    show (impStore lg Ii m₁.store r).insts[d.inst pl w]? = some ι
-    rw [impStore_insts, List.getElem?_append_left (List.getElem?_eq_some_iff.1 hι).1]
+    show (impStore lg Ii m₁.store m₁.core r).insts[d.inst pl w]? = some ι
+    rw [impStore_insts m₁.store m₁.core r, List.getElem?_append_left (List.getElem?_eq_some_iff.1 hι).1]
     exact hι
 
 /-- **R4 for a linked component**: `toExpData lg d Ii` meets `RefData.InitUX`, from R1, R4 and
@@ -194,11 +210,11 @@ theorem toExpData_initUX (hInit : d.InitUX) (hFr : d.Frame) (hB : d.Bounded) (hl
     hh, ht, ho, rfl, ⟨hl', ?_, holdX_init hFr hB hl hI hA hrs htr, ?_, ?_, hA.pending,
       hA.results, ?_, ?_, ?_⟩, hW.waiting⟩
   · exact arenasExtend_trans (arenasExtend_trans (arenasExtend_alloc _) hA.ext)
-      (arenasExtend_impStore _ _)
+      (arenasExtend_impStore m₁.store m₁.core r)
   · intro i hi
-    have hl₂ : (impStore lg Ii m₁.store r).insts.length = m₁.store.insts.length + 1 := by
-      rw [impStore_insts, List.length_append, List.length_singleton]
-    show M.store.insts.length ≤ i ∧ i < (impStore lg Ii m₁.store r).insts.length
+    have hl₂ : (impStore lg Ii m₁.store m₁.core r).insts.length = m₁.store.insts.length + 1 := by
+      rw [impStore_insts m₁.store m₁.core r, List.length_append, List.length_singleton]
+    show M.store.insts.length ≤ i ∧ i < (impStore lg Ii m₁.store m₁.core r).insts.length
     rw [hl₂]
     rcases hi with hi | hi
     · have := hA.block i hi
@@ -213,11 +229,11 @@ theorem toExpData_initUX (hInit : d.InitUX) (hFr : d.Frame) (hB : d.Bounded) (hl
     · rw [hxs, hname]
       exact lookup_mapIdx_val (·.name) (fun k => (ItemVal.func ⟨k⟩ : ItemVal (core3P P)))
         m₁.store.funcs.length lg.imp.exports w hw hl.good.names
-    · show (impStore lg Ii m₁.store r).insts[m₁.store.insts.length]? = _
-      rw [impStore_insts]
+    · show (impStore lg Ii m₁.store m₁.core r).insts[m₁.store.insts.length]? = _
+      rw [impStore_insts m₁.store m₁.core r]
       exact List.getElem?_concat_length
-  · show (impStore lg Ii m₁.store r).nestingDepth = M.store.nestingDepth
-    rw [impStore_nest, hA.nest]
+  · show (impStore lg Ii m₁.store m₁.core r).nestingDepth = M.store.nestingDepth
+    rw [impStore_nest m₁.store m₁.core r, hA.nest]
     simp [ArenaOps.allocSt, ArenaField.alloc, Arena.alloc, ArenaField.insts]
   · rintro a (ha | ha)
     · have h₁ := hA.globals a ha

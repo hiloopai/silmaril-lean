@@ -83,21 +83,20 @@ theorem _root_.Silmaril.Proofs.Wasm.Component.Reference.TRuns.getObjR {Id α : T
 
 theorem _root_.Silmaril.Proofs.Wasm.Component.Reference.TRuns.allocCoreHostR (h : CanonHost (core3R Pf V IR)) (m : Machine.Config (core3R Pf V IR) σ) :
     TRuns (Instantiate.allocCoreHost h : P (core3R Pf V IR) σ _) m
-      ((core3R Pf V IR).allocHost m.store.core (h.coreType (addrTypesOf m.store)) h).2
-      { m with store := allocHostSt (h.coreType (addrTypesOf m.store)) h m.store } :=
-  (TRuns.getStore m).bind ((TRuns.modifyStore
-    (f := allocHostSt (h.coreType (addrTypesOf m.store)) h) (fun _ => rfl) m).bind
-    (TRuns.pure _ _))
+      ((core3R Pf V IR).allocHost m.core (h.coreType (addrTypesOf (CoreEngine.view _ m.core))) h).2
+      { m with core :=
+        ((core3R Pf V IR).allocHost m.core (h.coreType (addrTypesOf (CoreEngine.view _ m.core))) h).1 } :=
+  (TRuns.readCore m).bind ((TRuns.allocHostOp _ h m).bind (TRuns.pure _ _))
 
 /-- `canon lower` of component function `fid` without options allocates its trampoline. -/
 theorem lower_run (sc : Scope (core3R Pf V IR)) (cfg : Machine.Config (core3R Pf V IR) σ) {k : Nat}
     {fid : FuncId} {fi : CFuncInst (core3R Pf V IR)} {ty : Silmaril.Wasm.V1.FuncType}
     (hf : sc.frame.funcs[k]? = some fid) (hs : ArenaField.funcs.get? cfg.store fid = some fi)
-    (hty : (CanonHost.lowered fid fi.ft {} inst).coreType (addrTypesOf cfg.store) = ty) :
+    (hty : (CanonHost.lowered fid fi.ft {} inst).coreType (addrTypesOf (CoreEngine.view _ cfg.core)) = ty) :
     TRuns (instantiateDef R inst outer args sc (.canon (.lower k []))) cfg
       { sc with frame := { sc.frame with coreFuncs := sc.frame.coreFuncs ++
-                             [((core3R Pf V IR).allocHost cfg.store.core ty (.lowered fid fi.ft {} inst)).2] } }
-      { cfg with store := allocHostSt ty (.lowered fid fi.ft {} inst) cfg.store } := by
+                             [((core3R Pf V IR).allocHost cfg.core ty (.lowered fid fi.ft {} inst)).2] } }
+      { cfg with core := ((core3R Pf V IR).allocHost cfg.core ty (.lowered fid fi.ft {} inst)).1 } := by
   have hr : resolveLower? sc.frame k [] = some (fid, {}) := by
     simp only [resolveLower?, Frame.func?, hf, resolveOpts?_nil]
     rfl
@@ -124,23 +123,30 @@ theorem instantiateEnv_run (sc : Scope (core3R Pf V IR)) (cfg : Machine.Config (
     {m : Silmaril.Wasm.Module} {xas : List (core3R Pf V IR).ExternVal}
     {cs : (core3R Pf V IR).Store (CanonHost (core3R Pf V IR))} {ci : (core3R Pf V IR).Inst}
     (hm : sc.frame.coreModules = [m])
-    (himp : coreImportsFor? cfg.store.core m [("env", 0)] sc.frame = some xas)
-    (hp : (core3R Pf V IR).prepare? cfg.store.core m xas = some (cs, ci, none)) :
+    (himp : coreImportsFor? cfg.core m [("env", 0)] sc.frame = some xas)
+    (hp : (core3R Pf V IR).prepare? cfg.core m xas = some (cs, ci, none)) :
     TRuns (instantiateDef R inst outer args sc (.coreInstance (.instantiate 0 [("env", 0)])))
       cfg { sc with frame := { sc.frame with
         coreInstances := sc.frame.coreInstances ++ [(core3R Pf V IR).exports ci] } }
-      { cfg with store := setCoreSt cs cfg.store } := by
+      { cfg with core := cs } := by
   have hmod : sc.frame.coreModule? 0 = some m := by rw [Frame.coreModule?, hm]; rfl
   have hc : TRuns (instantiateCore inst sc.frame 0 [("env", 0)] : P (core3R Pf V IR) σ _) cfg
-      ((core3R Pf V IR).exports ci) { cfg with store := setCoreSt cs cfg.store } := by
+      ((core3R Pf V IR).exports ci) { cfg with core := cs } := by
     unfold instantiateCore
     rw [hmod]
-    refine (TRuns.pure _ cfg).bind ((TRuns.getStore cfg).bind ?_)
-    rw [himp]
+    refine (TRuns.pure _ cfg).bind ((TRuns.readCore cfg).bind ?_)
+    erw [show coreImportsWith? (CoreEngine.view _ cfg.core).externType? _ _ _ = some _ from himp]
     refine (TRuns.pure _ cfg).bind ?_
     dsimp only
-    rw [hp]
-    exact (TRuns.modifyStore (f := setCoreSt cs) (fun _ => rfl) cfg).bind (TRuns.pure _ _)
+    rw [show (CoreEngine.view _ cfg.core).prepare? m xas = some (CoreEngine.exports _ ci, none) by
+      show Option.map (fun r => (CoreEngine.exports _ r.2.1, r.2.2))
+        ((core3R Pf V IR).prepare? cfg.core m xas) = _
+      rw [hp]; rfl]
+    dsimp only
+    have hpc : prepareCore cfg.core m xas = cs := by unfold prepareCore; rw [hp]
+    rw [← hpc]
+    exact (TRuns.prepareOp m xas cfg).bind (f := fun _ => Pure.pure (CoreEngine.exports _ ci))
+      (TRuns.pure _ _)
   exact hc.bind (TRuns.pure _ _)
 
 end Silmaril.Proofs.Wasm.Component.Param.Core3R

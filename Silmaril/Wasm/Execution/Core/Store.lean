@@ -21,7 +21,7 @@ namespace Silmaril.Wasm.Execution.Core
 
 open Silmaril.Wasm.Validation
 
-variable {H : Type}
+variable {H : Type} {R : Type}
 
 /-! ## Accessors (relative to the current frame) -/
 
@@ -35,71 +35,71 @@ def Frame.local? (f : Frame) (x : LocalIdx) : Option (Option Val) := f.locals[x.
 def Frame.setLocal (f : Frame) (x : LocalIdx) (v : Val) : Frame :=
   { f with locals := f.locals.set x.toNat (some v) }
 
-def Store.funcAt? (s : Store H) (a : Nat) : Option (FuncInst H) := s.funcs[a]?
+def Store.funcAt? (s : Store H R) (a : Nat) : Option (FuncInst H) := s.funcs[a]?
 
 /-- `$func(z, x)` with its address. -/
-def Store.func? (s : Store H) (f : Frame) (x : FuncIdx) : Option (Nat × FuncInst H) := do
+def Store.func? (s : Store H R) (f : Frame) (x : FuncIdx) : Option (Nat × FuncInst H) := do
   let a ← f.module.funcs[x.toNat]?
   return (a, ← s.funcs[a]?)
 
 /-- `$tag(z, x)` with its address. -/
-def Store.tag? (s : Store H) (f : Frame) (x : TagIdx) : Option (Nat × TagInst) := do
+def Store.tag? (s : Store H R) (f : Frame) (x : TagIdx) : Option (Nat × TagInst) := do
   let a ← f.module.tags[x.toNat]?
   return (a, ← s.tags[a]?)
 
 /-- `$global(z, x)` with its address. -/
-def Store.global? (s : Store H) (f : Frame) (x : GlobalIdx) : Option (Nat × GlobalInst) := do
+def Store.global? (s : Store H R) (f : Frame) (x : GlobalIdx) : Option (Nat × GlobalInst) := do
   let a ← f.module.globals[x.toNat]?
   return (a, ← s.globals[a]?)
 
 /-- `$mem(z, x)` with its address. -/
-def Store.mem? (s : Store H) (f : Frame) (x : MemIdx) : Option (Nat × MemInst) := do
+def Store.mem? (s : Store H R) (f : Frame) (x : MemIdx) : Option (Nat × MemInst R) := do
   let a ← f.module.mems[x.toNat]?
   return (a, ← s.mems[a]?)
 
 /-- `$table(z, x)` with its address. -/
-def Store.table? (s : Store H) (f : Frame) (x : TableIdx) : Option (Nat × TableInst) := do
+def Store.table? (s : Store H R) (f : Frame) (x : TableIdx) : Option (Nat × TableInst) := do
   let a ← f.module.tables[x.toNat]?
   return (a, ← s.tables[a]?)
 
 /-- `$data(z, x)` with its address. -/
-def Store.data? (s : Store H) (f : Frame) (x : DataIdx) : Option (Nat × DataInst) := do
+def Store.data? (s : Store H R) (f : Frame) (x : DataIdx) : Option (Nat × DataInst) := do
   let a ← f.module.datas[x.toNat]?
   return (a, ← s.datas[a]?)
 
 /-- `$elem(z, x)` with its address. -/
-def Store.elem? (s : Store H) (f : Frame) (x : ElemIdx) : Option (Nat × ElemInst) := do
+def Store.elem? (s : Store H R) (f : Frame) (x : ElemIdx) : Option (Nat × ElemInst) := do
   let a ← f.module.elems[x.toNat]?
   return (a, ← s.elems[a]?)
 
 /-! ## Updates -/
 
-def Store.setGlobal (s : Store H) (a : Nat) (v : Val) : Store H :=
+def Store.setGlobal (s : Store H R) (a : Nat) (v : Val) : Store H R :=
   { s with globals := s.globals.modify a fun g => { g with value := v } }
 
-def Store.setTable (s : Store H) (a : Nat) (ti : TableInst) : Store H :=
+def Store.setTable (s : Store H R) (a : Nat) (ti : TableInst) : Store H R :=
   { s with tables := s.tables.set a ti }
 
-def Store.setMem (s : Store H) (a : Nat) (mi : MemInst) : Store H :=
+def Store.setMem (s : Store H R) (a : Nat) (mi : MemInst R) : Store H R :=
   { s with mems := s.mems.set a mi }
 
-def Store.setElem (s : Store H) (a : Nat) (refs : List Ref) : Store H :=
+def Store.setElem (s : Store H R) (a : Nat) (refs : List Ref) : Store H R :=
   { s with elems := s.elems.modify a fun e => { e with refs := refs } }
 
-def Store.setData (s : Store H) (a : Nat) (bytes : ByteArray) : Store H :=
+def Store.setData (s : Store H R) (a : Nat) (bytes : ByteArray) : Store H R :=
   { s with datas := s.datas.modify a fun _ => ⟨bytes⟩ }
 
 /-- `$with_struct(z, a, i, fv)`. -/
-def Store.setStructField (s : Store H) (a i : Nat) (fv : FieldVal) : Store H :=
+def Store.setStructField (s : Store H R) (a i : Nat) (fv : FieldVal) : Store H R :=
   { s with structs := s.structs.modify a fun si => { si with fields := si.fields.set i fv } }
 
 /-- `$with_array(z, a, i, fv)`. -/
-def Store.setArrayField (s : Store H) (a i : Nat) (fv : FieldVal) : Store H :=
+def Store.setArrayField (s : Store H R) (a i : Nat) (fv : FieldVal) : Store H R :=
   { s with arrays := s.arrays.modify a fun ai => { ai with fields := ai.fields.set i fv } }
 
-def Store.addStruct (s : Store H) (si : StructInst) : Store H := { s with structs := s.structs ++ [si] }
-def Store.addArray (s : Store H) (ai : ArrayInst) : Store H := { s with arrays := s.arrays ++ [ai] }
-def Store.addExn (s : Store H) (e : ExnInst) : Store H := { s with exns := s.exns ++ [e] }
+def Store.addStruct (s : Store H R) (si : StructInst) : Store H R := { s with structs := s.structs ++ [si] }
+def Store.addArray (s : Store H R) (ai : ArrayInst) : Store H R := { s with arrays := s.arrays ++ [ai] }
+def Store.addExn (s : Store H R) (e : ExnInst) : Store H R := { s with exns := s.exns ++ [e] }
 
 /-! ## Growth (`$growtable`, `$growmem`) -/
 

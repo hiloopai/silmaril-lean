@@ -146,6 +146,22 @@ theorem opStep_sound {m : Config E σ} {th : Option ThreadId} {segs : List (Seg 
     obtain ⟨rfl, rfl, rfl⟩ := h
     rw [observe_eq]
     exact .emit hc
+  | readCore =>
+    simp only [opStep, tauStep, Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    exact .readCore hc
+  | memWrite ma ptr bytes =>
+    simp only [opStep, tauStep, Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    exact .memWrite hc
+  | allocHost ty hh =>
+    simp only [opStep, tauStep, Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    exact .allocHost hc
+  | prepare md imports =>
+    simp only [opStep, tauStep, Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    exact .prepare hc
 
 end StepSound
 
@@ -330,10 +346,10 @@ theorem retStep_sound {m : Config E σ} {th : Option ThreadId} {segs : List (Seg
 internal step, if any. -/
 theorem coreStep_internal {m : Config E σ} {a : Activation E σ} {rest : List (Activation E σ)}
     {t : E.Thread (CanonHost E)} {k : List FlatValue → P E σ (Ret E)}
-    (hs : E.status m.store.core t = .running ∨ E.status m.store.core t = .stuck) :
+    (hs : E.status m.core t = .running ∨ E.status m.core t = .stuck) :
     coreStep dispatch X o m a rest t k =
-      (X.step? (m.store.core, t)).map fun (c', t') =>
-        (Label.core, o.state, (m.mapStore (CStoreOps.setCore c')).withCtl
+      (X.step? (m.core, t)).map fun (c', t') =>
+        (Label.core, o.state, { m with core := c' }.withCtl
           ({ a with focus := .core t' k } :: rest)) := by
   rcases hs with hs | hs <;> simp only [coreStep, hs] <;> split <;> simp_all
 
@@ -343,14 +359,14 @@ theorem coreStep_sound {m : Config E σ} {th : Option ThreadId} {segs : List (Se
     (hc : m.ctl = ⟨th, .core t k, segs⟩ :: rest)
     (h : coreStep dispatch X o m ⟨th, .core t k, segs⟩ rest t k = some (l, st, m')) :
     Step o.prof hr dispatch m l m' := by
-  have internal (hs : E.status m.store.core t = .running ∨ E.status m.store.core t = .stuck) :
+  have internal (hs : E.status m.core t = .running ∨ E.status m.core t = .stuck) :
       Step o.prof hr dispatch m l m' := by
     rw [coreStep_internal dispatch X o hs] at h
     obtain ⟨⟨c', t'⟩, he, hl⟩ := Option.map_eq_some_iff.mp h
     obtain ⟨rfl, -, rfl⟩ : Label.core = l ∧ o.state = st ∧ _ = m' := by
       simpa only [Prod.mk.injEq] using hl
     exact .coreInternal hc hs (X.step?_sound he)
-  cases hs : E.status m.store.core t with
+  cases hs : E.status m.core t with
   | running => exact internal (.inl hs)
   | stuck => exact internal (.inr hs)
   | returned r =>

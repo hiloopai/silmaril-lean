@@ -255,14 +255,4 @@ def subtaskDrop (_lim : Limits) (i : Nat) : P E σ (List FlatValue) := do
 
 Each built-in preserves a store invariant `I` as soon as the named updates it issues do. -/
 
-namespace Inv
-
-variable {I : CStore E → Prop}
-
-/-- Memory writes of `unpack_event` preserve `I`. -/
-abbrev MemWritePres (I : CStore E → Prop) : Prop :=
-  ∀ m p v s, I s → I (writeMemSt m p (u32Bytes v) s)
-
-end Inv
-
 end Silmaril.Wasm.Component.Canon.Builtins

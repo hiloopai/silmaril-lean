@@ -8,7 +8,7 @@ public import Silmaril.Wasm.Component.Reference.SessionObs.Defs
 # A core activation whose status is a trap, on the reference machine (proofs)
 
 For any engine `E`, a configuration `m` whose running activation is a core activation `ct` with
-`E.status m.store.core ct = .returned .trap`:
+`E.status m.core ct = .returned .trap`:
 
 * `step_iff_of_status_trap`: its only step is `coreTrap`, with label `.trap .coreTrap` and
   successor `trapCfg m` (no other rule applies: the program rules need a program head, the
@@ -39,7 +39,7 @@ variable {E : CoreEngine} {σ : Type} {prof : ProfileKind} {hr : HostReady σ}
 
 theorem step_iff_of_status_trap {m m' : Config E σ} {l : Label E σ} {th ct k segs rest}
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap) :
+    (hs : E.status m.core ct = .returned .trap) :
     Step prof hr dispatch m l m' ↔ l = .trap .coreTrap ∧ m' = trapCfg m := by
   constructor
   · intro h
@@ -81,7 +81,7 @@ theorem not_step_trapCfg {m m' : Config E σ} {l : Label E σ} :
 
 theorem steps_iff_of_status_trap {m m' : Config E σ} {tr : List (Label E σ)} {th ct k segs rest}
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap) :
+    (hs : E.status m.core ct = .returned .trap) :
     Steps prof hr dispatch m tr m' ↔
       (tr = [] ∧ m' = m) ∨ (tr = [.trap .coreTrap] ∧ m' = trapCfg m) := by
   constructor
@@ -99,7 +99,7 @@ theorem steps_iff_of_status_trap {m m' : Config E σ} {tr : List (Label E σ)} {
 
 theorem not_diverges_of_status_trap {m : Config E σ} {th ct k segs rest}
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap) :
+    (hs : E.status m.core ct = .returned .trap) :
     ¬ Diverges prof hr dispatch m := by
   intro d
   obtain ⟨b, ⟨l, -, s⟩, d'⟩ := d.unfold
@@ -109,9 +109,9 @@ theorem not_diverges_of_status_trap {m : Config E σ} {th ct k segs rest}
 theorem step_iff_step_of_status_trap {m₁ m₂ m' : Config E σ} {l : Label E σ}
     {th₁ ct₁ k₁ segs₁ rest₁ th₂ ct₂ k₂ segs₂ rest₂}
     (hc₁ : m₁.ctl = ⟨th₁, .core ct₁ k₁, segs₁⟩ :: rest₁)
-    (hs₁ : E.status m₁.store.core ct₁ = .returned .trap)
+    (hs₁ : E.status m₁.core ct₁ = .returned .trap)
     (hc₂ : m₂.ctl = ⟨th₂, .core ct₂ k₂, segs₂⟩ :: rest₂)
-    (hs₂ : E.status m₂.store.core ct₂ = .returned .trap) (ht : trapCfg m₁ = trapCfg m₂) :
+    (hs₂ : E.status m₂.core ct₂ = .returned .trap) (ht : trapCfg m₁ = trapCfg m₂) :
     Step prof hr dispatch m₁ l m' ↔ Step prof hr dispatch m₂ l m' := by
   rw [step_iff_of_status_trap hc₁ hs₁, step_iff_of_status_trap hc₂ hs₂, ht]
 
@@ -128,7 +128,7 @@ theorem calls_trap_of_status_trap {m₀ m : Config E σ} {c : CallId} {f : FuncI
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent c ev)
     (hint : ∀ msg, Label.trap (.internal msg) ∉ tr)
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap) :
+    (hs : E.status m.core ct = .returned .trap) :
     Calls prof hr dispatch m₀ c f args (trapCfg m) .trap := by
   refine ⟨tr ++ [.trap .coreTrap], ?_, ?_, ?_, trapCfg_lockdown m⟩
   · exact steps_snoc h₁ (.coreTrap hc hs)
@@ -144,9 +144,9 @@ theorem calls_trap_of_status_trap {m₀ m : Config E σ} {c : CallId} {f : FuncI
 theorem calls_outcome_of_status_trap {m m' : Config E σ} {tr : List (Label E σ)} {c : CallId}
     {out : CallOutcome} {th ct k segs rest}
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap)
+    (hs : E.status m.core ct = .returned .trap)
     (h : Steps prof hr dispatch m tr m') (hout : out.Holds hr c m') :
-    out = .trap ∧ m'.store.core = m.store.core ∧ m'.host = m.host := by
+    out = .trap ∧ m'.core = m.core ∧ m'.host = m.host := by
   rcases (steps_iff_of_status_trap hc hs).1 h with ⟨-, rfl⟩ | ⟨-, rfl⟩
   · refine ⟨?_, rfl, rfl⟩
     cases out with
@@ -166,9 +166,9 @@ theorem sessStep_trap_of_status_trap [∀ a b, Decidable (E.ExternSub a b)]
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨n⟩ ev)
     (hint : ∀ msg, Label.trap (.internal msg) ∉ tr)
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap) :
+    (hs : E.status m.core ct = .returned .trap) :
     SessStep prof h m₀ n f args none (resumeCfg m₀ (trapCfg m)) ∧
-      (resumeCfg m₀ (trapCfg m)).store.core = m.store.core ∧
+      (resumeCfg m₀ (trapCfg m)).core = m.core ∧
       (resumeCfg m₀ (trapCfg m)).host = m.host :=
   ⟨.trap (calls_trap_of_status_trap h₁ hev hint hc hs), rfl, rfl⟩
 
@@ -180,7 +180,7 @@ theorem sessCalls_trap_of_status_trap [∀ a b, Decidable (E.ExternSub a b)]
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨n⟩ ev)
     (hint : ∀ msg, Label.trap (.internal msg) ∉ tr)
     (hc : m.ctl = ⟨th, .core ct k, segs⟩ :: rest)
-    (hs : E.status m.store.core ct = .returned .trap)
+    (hs : E.status m.core ct = .returned .trap)
     (hrest : SessCalls prof h (resumeCfg m₀ (trapCfg m)) (n + 1) cs outs) :
     SessCalls prof h m₀ n ((f, args) :: cs) (none :: outs) :=
   .trap (calls_trap_of_status_trap h₁ hev hint hc hs) hrest

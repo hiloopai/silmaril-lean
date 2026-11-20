@@ -68,18 +68,18 @@ def PhaseB (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ) {lg : 
     List.Forall₂ (Silmaril.Wasm.Component.Reference.ImpRel lg.imp Ii) rs dss ∧
     LinkedG.ExpRun P lg s dss.flatten s₁ ∧
     ((∃ (tr₂ : List (Label (E3 P) σ)) (C' : List (Option (Activation (E3 P) σ)))
-        (S'' : CStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)) (l : Label (E3 P) σ)
+        (S'' : RefStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)) (l : Label (E3 P) σ)
         (m₁ : Machine.Config (E3 P) σ),
         (∀ ev, Label.host ev ∉ tr₂) ∧ (∀ h ys, (E3 P).status yc.1 yc.2 ≠ .callout h ys) ∧
-        CoreExit { M with conts := C', store := S'' } th K segs rest yc l m₁ ∧
+        CoreExit { M with conts := C', store := S''.toCStore } th K segs rest yc l m₁ ∧
         Machine.Steps prof (fun _ _ => false) (DI P impl) m₁ tr₂ E ∧
         LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s₁ S'' F' yc x' ∧ FrameG d pl ii th S'' ∧
-        CallExt d pl M.store S'' ∧
+        CallExt d pl M.ref S'' ∧
         ∀ (mv : List (Move Ii.E Ii.F)) (q : Ii.HState),
           (∀ a t, Silmaril.Wasm.Game.Reach P (a, t) x' → Ii.Path P (.running f a t) mv q) →
           Ii.Path P (.running f x.1 x.2) (callMoves rs ++ mv) q) ∨
      (E.store.lockdown = true ∧ E.ctl = [] ∧
-        TrapAtG d pl Ii s₀ u₀ F₀ g Oc₀ f M.store s₁ E.store.core x'.1 ∧
+        TrapAtG d pl Ii s₀ u₀ F₀ g Oc₀ f M.store s₁ E.core x'.1 ∧
         Ii.Path P (.running f x.1 x.2) (callMoves rs ++ [.inr (.ans f .trap)]) (.idle x'.1)))
 
 section Phase
@@ -97,7 +97,7 @@ theorem phase_backB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
     ∀ (n : Nat) (M : Machine.Config (E3 P) σ) (s : lg.exp.St) (F : CoreFoot)
       (y : CoreSt (E3 P)) (x : Store Nat × STh) (trr : List (Label (E3 P) σ))
       (E : Machine.Config (E3 P) σ),
-      trr.length ≤ n → LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y x →
+      trr.length ≤ n → LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y x →
       FrameG d pl ii th M.store →
       Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) trr E →
       (∀ ev, Label.host ev ∉ trr) → ¬ Live E →
@@ -116,8 +116,8 @@ theorem phase_backB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
     rcases coreCfg_steps_inv' r with ⟨y', -, rfl⟩ | ⟨y', pre, l, m₁, tr₂, hy, rfl, st, hx, r₂⟩
     · exact absurd ⟨List.cons_ne_nil _ _, hFG.lock⟩ hE
     obtain ⟨x₁, hI₁, hr₁⟩ := linvG_reach_back SI hFr hI hy
-    let M' : Machine.Config (E3 P) σ := { M with store := { M.store with core := y'.1 } }
-    have hFG₁ : FrameG d pl ii th M'.store := hFG.core _
+    let M' : Machine.Config (E3 P) σ := { M with core := y'.1 }
+    have hFG₁ : FrameG d pl ii th M'.store := hFG
     have hh₂ : ∀ ev, Label.host ev ∉ l :: tr₂ :=
       fun ev hm => hh ev (List.mem_append_right _ hm)
     by_cases hco : ∃ h ys, (E3 P).status y'.1 y'.2 = .callout h ys
@@ -156,7 +156,7 @@ theorem phase_backB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
       -- the arguments do not lift: a trap at the callout, no component import call
       obtain ⟨ιi, hi, hleave⟩ := hFG₁.imp
       obtain ⟨ιe, hie, hth⟩ := hFG₁.exp wi ⟨xe, hxe⟩
-      obtain ⟨hf, -⟩ := hFr.lifted pl s M'.store F wi xe hI₁.hold hxe
+      obtain ⟨hf, -⟩ := hFr.lifted pl s M'.ref F wi xe hI₁.hold hxe
       rw [hty] at hf
       rw [htr] at hst'
       rcases nest_trap_args_backG (prof := prof) (impl := impl) (d.inst pl wi) ii M' hFG₁.lock ιe
@@ -171,7 +171,7 @@ theorem phase_backB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
         rw [hfilt, hws]
         exact ⟨rfl, rfl⟩
       refine ⟨[⟨q, .trap⟩], [[]], s, x₁, .cons hds .nil, .nil s, .inr ⟨rfl, rfl, ?_, hpath_trap⟩⟩
-      show TrapAtG d pl Ii s₀ u₀ F₀ g Oc₀ f M.store s mT.store.core x₁.1
+      show TrapAtG d pl Ii s₀ u₀ F₀ g Oc₀ f M.store s mT.core x₁.1
       rw [hcT]
       exact trapAt_of_linv hI₁ rfl
     | some ws =>
@@ -196,7 +196,7 @@ theorem phase_backB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
         have hni₃ : E.store.lockdown = true → E.ctl = [] →
             ∀ msg, Label.trap (.internal msg) ∉ tr₃ :=
           fun hlk hct msg hm => hn' msg hlk hct (etr ▸ List.mem_append_right _ hm)
-        obtain ⟨rs, dss, s₁, x', hrel, hexp, hend⟩ := ih { M' with conts := C', store := S'' } s'
+        obtain ⟨rs, dss, s₁, x', hrel, hexp, hend⟩ := ih { M' with conts := C', store := S''.toCStore, core := S''.core } s'
           F' _ _ tr₃ E hlen hI₂ hFG₂ r₃ hh₃ hE hni₃
         have hrel₁ := impRel_linkG (b := lg.imp) (Ii := Ii) hk hek.1 hek.2 hys hws hck
           (.values ⟨_, SI.resAnswer hk hek.1 hck⟩) rfl
@@ -204,7 +204,7 @@ theorem phase_backB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
         have hexp' : LinkedG.ExpRun P lg s
             ([⟨(⟨q.1.val, hkl⟩, .vals ws), some (.vals us)⟩] :: dss).flatten s₁ :=
           .step ⟨wi, hwl⟩ hw' hstep hexp
-        have hX' : CallExt d pl M.store S'' := callExt_trans (callExt_refl _) hX
+        have hX' : CallExt d pl M.ref S'' := callExt_trans (callExt_refl _) hX
         refine ⟨_ :: rs, _ :: dss, s₁, x', .cons hrel₁ hrel, hexp', ?_⟩
         rcases hend with ⟨tr₄, C'', S''', F'', yc, l', m₂, hh₄, hnco, hx', r₄, hIc, hFGc, hXc,
             hpath⟩ | ⟨hlk, hct, hTA, hpath⟩

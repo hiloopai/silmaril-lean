@@ -146,18 +146,19 @@ def withCalloutEntry {α : Type} (h : CanonHost E) (k : CStore E → Option Thre
   | some r => trap r
   | none => k s th
 
-/-- The operations confined code may issue: reads of the store, the current thread and the host
-state, writes of the host state, choices, free-form test notes and traps. Store updates, calls,
+/-- The operations confined code may issue: reads of the store (component and core), the
+current thread and the host state, writes of the host state, choices, free-form test notes and traps. Store updates, calls,
 core calls and thread operations would leave the instance, and the other observations are acted
 on by the machine (`resolved` records the result of a top-level call, `Machine.Config.observe`;
 REF code whose instance may not leave causes no `on_resolve`, L2171, L2313). -/
 def Op.observes : Op E σ → Bool
-  | .get | .currentThread | .hostGet | .hostSet _ | .choose _ | .trap _ => true
+  | .get | .readCore | .currentThread | .hostGet | .hostSet _ | .choose _ | .trap _ => true
   | .emit o =>
     match o with
     | .note _ _ => true
     | .started _ | .resolved _ _ | .received _ _ => false
-  | .modify _ | .call _ | .callCore _ _ | .newThread _ | .block _ | .resumeThread _ => false
+  | .modify _ | .call _ | .callCore _ _ | .newThread _ | .block _ | .resumeThread _
+  | .memWrite _ _ _ | .allocHost _ _ | .prepare _ _ => false
 
 /-- `p` confined to observation: `p` runs as long as it only `observes`, and its first other
 operation traps `cannotLeave` (an embedder import called while the current instance may not

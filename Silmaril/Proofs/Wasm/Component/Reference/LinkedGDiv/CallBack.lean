@@ -103,9 +103,10 @@ theorem linkDiv_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
   obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, hat⟩ := call_atG (impl := impl) prof m R.lock k
     (jf j) _ ii lg.imp.exports[j] vs hpf hvs hmax hres hmaxr hrf hii hth hfj
   -- the invariants at the start of the importer's core activation
-  have hR₀ : LReadyG d pl Ii s₀ ui F₀ g Oc₀ M₀.store s u := by
-    refine lready_frame hFr R.inv (by rw [hat.store]; rfl) (by rw [hat.store]; rfl) ?_
+  have hR₀ : LReadyG d pl Ii s₀ ui F₀ g Oc₀ M₀.ref s u := by
+    refine lready_frame hFr R.inv hat.core (by show M₀.store.funcs = _; rw [hat.store]; rfl) ?_
     intro i hi
+    show M₀.store.insts[i]? = _
     rw [hat.store]
     exact List.getElem?_set_ne (fun h => ST.out (by rw [h]; exact hi))
   obtain ⟨F, hI₀⟩ := linv_readyG hR₀ ST.own (f := f) hf₂
@@ -131,14 +132,14 @@ theorem linkDiv_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
         hleave⟩
     · intro w hw
       obtain ⟨xe, hxe⟩ := hw
-      obtain ⟨-, hblk⟩ := hFr.lifted pl s m.store F₁ w xe hH₀ hxe
+      obtain ⟨-, hblk⟩ := hFr.lifted pl s m.ref F₁ w xe hH₀ hxe
       rw [hat.store]
       show ∃ ι, (List.set m.store.insts ii (enterInst ιi ⟨m.store.threads.length⟩))[d.inst pl w]? =
         some ι ∧ _
       have hne : ii ≠ d.inst pl w := fun h => ST.out (by rw [h]; exact hblk)
       rw [List.getElem?_set_ne hne]
       exact R.exp w ⟨xe, hxe⟩
-  have hM₀ : M₀ = coreCfg M₀ th K segs rest (M₀.store.core,
+  have hM₀ : M₀ = coreCfg M₀ th K segs rest (M₀.ref.core,
       Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (s₀.funcs.length + Ii.addr f.1)
         (lowerArgs lg.imp.exports[j].ty.params vs)) := eq_coreCfg hat.ctl
   -- the divergence
@@ -149,12 +150,12 @@ theorem linkDiv_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
   subst hm₂
   have d₀ := hpre.diverges d₂
   rw [hM₀] at d₀
-  let z₀ : DStG P σ lg.exp := ⟨M₀.conts, M₀.store, F, (M₀.store.core,
+  let z₀ : DStG P σ lg.exp := ⟨M₀.conts, M₀.ref, F, (M₀.core,
       Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (s₀.funcs.length + Ii.addr f.1)
         (lowerArgs lg.imp.exports[j].ty.params vs)), (u, Ii.initThread f), s⟩
   obtain ⟨ρc₀, Oc₀', hL₀, hfn₀, hgl₀, hD₀⟩ := hI₀.rel
   have hz₀ : DInvG prof impl d pl ii Ii s₀ u F₀ g Oc₀ f th K segs rest M₀
-      (footUnion F (img ρc₀ Oc₀')) M₀.store.core z₀ :=
+      (footUnion F (img ρc₀ Oc₀')) M₀.core z₀ :=
     ⟨d₀, hI₀, hFG₀, callExt_refl _, relT_start hL₀ hfn₀ hgl₀ hD₀⟩
   obtain ⟨cs, dss, z, trc, hpath, hrel, hexp, hz, -, -, hsrc⟩ :=
     ldiv_classifyG SIu ST.wire hFr hDv hB hz₀
@@ -169,9 +170,9 @@ theorem linkDiv_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
   -- an exit of the importer's activation does not diverge
   exfalso
   obtain ⟨y₁, x₁, lb, m₁, -, -, hI₁, -, hnco, hx, d₁⟩ := hX
-  have hXc : CallExt d pl M₀.store { z.S with core := y₁.1 } :=
+  have hXc : CallExt d pl M₀.ref { z.S with core := y₁.1 } :=
     callExt_trans hz.ext (callExt_refl _)
-  have hlS : ({ z.S with core := y₁.1 } : CStore (E3 P)).lockdown = false := hz.frame.lock
+  have hlS : ({ z.S with core := y₁.1 } : RefStore (E3 P)).lockdown = false := hz.frame.lock
   obtain ⟨ρc, Oc, hL, -⟩ := hI₁.rel
   obtain ⟨ts, hst', htt⟩ := linvG_typed SIu hI₁
   rcases hx with ⟨zs, hst, -, rfl⟩ | ⟨-, -, rfl⟩ | ⟨h', ys', hc'⟩
@@ -193,17 +194,17 @@ theorem linkDiv_invB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
     cases hl : liftArgs lg.imp.exports[j].ty.results zs with
     | none =>
       exact TrapsFrom.not_diverges (trapsFrom_of_S
-        (hat.trap { z.S with core := y₁.1 } z.C y₁ zs hlS hty hl)) d₁
+        (hat.trap z.S.toCStore z.C y₁ zs hlS hty hl)) d₁
     | some ws =>
-      have hM₀s := hat.store
+      have hM₀s : M₀.ref.toCStore = _ := hat.store
       obtain ⟨RT, hRT⟩ := prefix_concat_split (hM₀s ▸ hXc.tasks)
       obtain ⟨RH, hRH⟩ := prefix_concat_split (hM₀s ▸ hXc.threads)
       obtain ⟨CL, hCL⟩ := prefix_concat_split (hM₀s ▸ hXc.callers)
-      have hIi : ({ z.S with core := y₁.1 } : CStore (E3 P)).insts[ii]? =
+      have hIi : ({ z.S with core := y₁.1 } : RefStore (E3 P)).insts[ii]? =
           some (enterInst ιi ⟨m.store.threads.length⟩) := by
         rw [hXc.insts_out ii ST.out, hM₀s]
         exact List.getElem?_set_self (lt_of_getElem? hii)
-      obtain ⟨tr₃, mE, hlr, hmE⟩ := hat.ret { z.S with core := y₁.1 } z.C RT RH CL y₁ zs ws hRT
+      obtain ⟨tr₃, mE, hlr, hmE⟩ := hat.ret z.S.toCStore z.C RT RH CL y₁ zs ws hRT
         hRH hCL hIi hlS hty hl
       have hmEc : mE.ctl = [] := by rw [hmE]
       exact not_diverges_of_ctl_nil hmEc (hlr.diverges d₁)

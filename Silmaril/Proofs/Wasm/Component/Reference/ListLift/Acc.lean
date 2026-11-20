@@ -163,6 +163,17 @@ theorem modify (g : CStore E → CStore E) (hg : (g m.store).lockdown = m.store.
   exact acc_prog' (fun _ _ e => by cases e) hl (Step.modify rfl)
     (k _ _ rfl (hg.trans hl) rfl)
 
+theorem readCore : Spec prof hr dispatch th (Canon.readCore : P E σ _) m
+    (fun v m' => v = E.view m.core ∧ m' = m) := by
+  intro hl f segs rest Q k
+  exact acc_prog' (fun _ _ e => by cases e) hl (Step.readCore rfl) (k _ m ⟨rfl, rfl⟩ hl rfl)
+
+theorem memWriteOp (a : E.MemAddr) (ptr : Nat) (bytes : ByteArray) :
+    Spec prof hr dispatch th (Canon.memWriteOp a ptr bytes : P E σ Unit) m
+      (fun _ m' => m' = { m with core := (E.memWrite? m.core a ptr bytes).getD m.core }) := by
+  intro hl f segs rest Q k
+  exact acc_prog' (fun _ _ e => by cases e) hl (Step.memWrite rfl) (k _ _ rfl hl rfl)
+
 theorem currentThread : Spec prof hr dispatch th (Canon.currentThread : P E σ _) m
     (fun t m' => t = th ∧ m' = m) := by
   intro hl f segs rest Q k
@@ -223,16 +234,16 @@ theorem resumeThread {t : ThreadId} {body : P E σ (Ret E)} {R : Ret E → Confi
 /-- **A core call** that never calls out continues at its returned values, in the core store
 it left. -/
 theorem callCore {a : E.FuncAddr} {args : List FlatValue}
-    (hno : ∀ y, Relation.ReflTransGen (CoreStep E) (m.store.core, E.invoke a args) y →
+    (hno : ∀ y, Relation.ReflTransGen (CoreStep E) (m.core, E.invoke a args) y →
       ∀ h xs, E.status y.1 y.2 ≠ .callout h xs) :
     Spec prof hr dispatch th (Canon.callCore a args : P E σ (List FlatValue)) m
-      (fun vs m' => ∃ y, Relation.ReflTransGen (CoreStep E) (m.store.core, E.invoke a args) y ∧
+      (fun vs m' => ∃ y, Relation.ReflTransGen (CoreStep E) (m.core, E.invoke a args) y ∧
         E.status y.1 y.2 = .returned (.values vs) ∧
-        m' = { m with store := { m.store with core := y.1 } }) := by
+        m' = { m with core := y.1 }) := by
   intro hl f segs rest Q k
   exact acc_prog' (fun _ _ e => by cases e) hl (Step.callCore rfl)
-    (acc_core (B := m) (x := (m.store.core, E.invoke a args)) hno
-      fun y vs hy hs => k vs { m with store := { m.store with core := y.1 } } ⟨y, hy, hs, rfl⟩
+    (acc_core (B := m) (x := (m.core, E.invoke a args)) hno
+      fun y vs hy hs => k vs { m with core := y.1 } ⟨y, hy, hs, rfl⟩
         hl rfl)
 
 /-! ### Derived programs -/
@@ -273,6 +284,14 @@ theorem orTrap (r : TrapReason) (o : Option α) :
   cases o with
   | none => exact trap _ _
   | some a => exact mono (pure a) fun b m' ⟨hb, hm⟩ _ _ => ⟨hb ▸ rfl, hm⟩
+
+theorem getsCore (g : CoreEngine.CoreView E (CanonHost E) → α) :
+    Spec prof hr dispatch th (Canon.getsCore g : P E σ α) m
+      (fun a m' => a = g (E.view m.core) ∧ m' = m) := by
+  unfold Canon.getsCore
+  refine bind readCore fun v m' ⟨hv, hm⟩ _ _ => ?_
+  subst hv hm
+  exact pure _
 
 theorem gets (g : CStore E → α) :
     Spec prof hr dispatch th (Canon.gets g : P E σ α) m (fun a m' => a = g m.store ∧ m' = m) := by

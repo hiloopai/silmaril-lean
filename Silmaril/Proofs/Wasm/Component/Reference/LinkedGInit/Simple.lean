@@ -65,7 +65,7 @@ theorem simple_initS {c : Simple} (hc : c.Good) (hi : c.Inst) {I : SInst} (hI : 
       M.store.funcs ++ liftedList (fun j => I.addrs.getD j 0) ⟨kk⟩ c.exports := rfl
   have hinsts : (nestCfg cs M (fun j => I.addrs.getD j 0) c).store.insts =
       M.store.insts ++ [({ } : InstState)] := by
-    simp [nestCfg, nestStore, liftStore, setCoreSt, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
+    simp [nestCfg, nestStore, liftStore, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
       ArenaField.insts]
   have hlenE : ∀ {w : Nat} {x : Export}, (SimpleI.ofSimple c).toComp.exports[w]? = some x →
       w < c.exports.length := fun hx => by
@@ -74,7 +74,7 @@ theorem simple_initS {c : Simple} (hc : c.Good) (hi : c.Inst) {I : SInst} (hI : 
   refine ⟨tr, _, simplePl c kk o, img Ren.id (ownOf I.store), es, hsteps, hhost, htrap, ho, rfl,
     ⟨hlock, ?_, ?_, ?_, ?_, rfl, rfl, ?_, ?_, ?_, ?_⟩⟩
   · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-      simp [nestCfg, nestStore, liftStore, setCoreSt, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
+      simp [nestCfg, nestStore, liftStore, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
         ArenaField.insts]
   · refine ⟨⟨Ren.id, ownOf I.store, ?_, rfl, rfl⟩, ?_, hI.1.choose_spec.ok, rfl,
       hostFree_inst hF, fun w x hx => ?_⟩
@@ -91,7 +91,8 @@ theorem simple_initS {c : Simple} (hc : c.Good) (hi : c.Inst) {I : SInst} (hI : 
         rw [← hwx.2]
         exact LinkedG.ofSimple_ty c hwx.1 hwl
       rw [simplePl_fid c kk o hwl]
-      simp only [ArenaField.get?, ArenaField.funcs, Arena.get?_eq_getElem?, hfuncs]
+      simp only [ArenaField.get?, ArenaField.funcs, Arena.get?_eq_getElem?,
+        Machine.Config.ref_toCStore, hfuncs]
       rw [List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
       simp only [liftedList, List.getElem?_map, List.getElem?_eq_getElem hwl, Option.map_some,
         sAddr, Option.elim, hxty]
@@ -114,7 +115,7 @@ theorem simple_initS {c : Simple} (hc : c.Good) (hi : c.Inst) {I : SInst} (hI : 
     · show (nestCfg cs M (fun j => I.addrs.getD j 0) c).store.insts[kk]? = some ({ } : InstState)
       rw [hinsts]
       exact List.getElem?_concat_length
-  · simp [nestCfg, nestStore, liftStore, setCoreSt, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
+  · simp [nestCfg, nestStore, liftStore, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
       ArenaField.insts]
   · intro a fi h ha hc'
     exact hostsSat_cse hF a fi h ha hc'

@@ -98,9 +98,9 @@ example (x : WaitableSet) :
 /-- Allocating in one arena leaves the other arenas and the `Store` fields unchanged. -/
 theorem threads_alloc_frame (s : CStore E) (x : Thread) :
     let s' := (ArenaField.threads.alloc s x).1
-    s'.core = s.core ∧ s'.tasks = s.tasks ∧ s'.waiting = s.waiting ∧
+    s'.tasks = s.tasks ∧ s'.waiting = s.waiting ∧
       s'.nestingDepth = s.nestingDepth ∧ s'.lockdown = s.lockdown :=
-  ⟨rfl, rfl, rfl, rfl, rfl⟩
+  ⟨rfl, rfl, rfl, rfl⟩
 
 end CStore
 

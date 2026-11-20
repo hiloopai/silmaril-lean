@@ -83,8 +83,8 @@ theorem expandArray?_sound {d : DefType} {ft : CFieldType}
   · cases h
 
 /-- `struct.new x` on a stack. -/
-def structNew? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
-    Option (Store H × List Val) := do
+def structNew? {R : Type} (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx) :
+    Option (Store H R × List Val) := do
   let d ← f.type? x
   let fs ← expandStruct? d
   let (pre, args) ← popN? vs fs.length
@@ -94,8 +94,8 @@ def structNew? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) :
   else none
 
 /-- `array.new_fixed x n` on a stack. -/
-def arrayNewFixed? (s : Store H) (f : Frame) (vs : List Val) (x : TypeIdx) (n : Fin (2 ^ 32)) :
-    Option (Store H × List Val) := do
+def arrayNewFixed? {R : Type} (s : Store H R) (f : Frame) (vs : List Val) (x : TypeIdx)
+    (n : Fin (2 ^ 32)) : Option (Store H R × List Val) := do
   let d ← f.type? x
   let ft ← expandArray? d
   let (pre, args) ← popN? vs n.val
@@ -137,7 +137,8 @@ theorem pop2?_eq {vs pre : List Val} {v₁ v₂ : Val} (h : pop2? vs = some (pre
 /-! ## The evaluator -/
 
 /-- Execute one constant instruction on a value stack. -/
-def constInstr? (s : Store H) (f : Frame) (vs : List Val) : Instr → Option (Store H × List Val)
+def constInstr? {R : Type} (s : Store H R) (f : Frame) (vs : List Val) :
+    Instr → Option (Store H R × List Val)
   | .intConst t x => some (s, vs ++ [.num ⟨.int t, x⟩])
   | .floatConst t x => some (s, vs ++ [.num ⟨.float t, x⟩])
   | .vecConst b => some (s, vs ++ [.vec b])
@@ -194,11 +195,11 @@ def constInstr? (s : Store H) (f : Frame) (vs : List Val) : Instr → Option (St
   | _ => none
 
 /-- Evaluate an expression of constant instructions from the empty stack. -/
-def constExpr? (s : Store H) (f : Frame) (e : Expr) : Option (Store H × List Val) :=
-  e.foldlM (fun (st : Store H × List Val) i => constInstr? st.1 f st.2 i) (s, [])
+def constExpr? {R : Type} (s : Store H R) (f : Frame) (e : Expr) : Option (Store H R × List Val) :=
+  e.foldlM (fun (st : Store H R × List Val) i => constInstr? st.1 f st.2 i) (s, [])
 
 /-- Evaluate a constant expression to exactly one value. -/
-def evalConst? (s : Store H) (f : Frame) (e : Expr) : Option (Store H × Val) :=
+def evalConst? {R : Type} (s : Store H R) (f : Frame) (e : Expr) : Option (Store H R × Val) :=
   match constExpr? s f e with
   | some (s', [v]) => some (s', v)
   | _ => none

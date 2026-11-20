@@ -68,22 +68,22 @@ theorem roundsPre_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg 
       (dss : List (List (Σ _ : (sigN lg.imp.imports.length).Op, Option Payload)))
       (M : Machine.Config (E3 P) σ) (s s₁ : lg.exp.St) (F : CoreFoot) (y : CoreSt (E3 P))
       (x : Store Nat × STh) (sB : Store Nat) (tB : STh),
-      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y x → FrameG d pl ii th M.store →
+      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y x → FrameG d pl ii th M.store →
       List.Forall₂ (Silmaril.Wasm.Component.Reference.ImpRel lg.imp Ii) rs dss →
       LinkedG.ExpRun P lg s dss.flatten s₁ →
       Ii.Path P (.running f x.1 x.2) (callMoves rs) (.running f sB tB) →
       (∃ (trc : List (Label (E3 P) σ)) (C' : List (Option (Activation (E3 P) σ)))
-          (S'' : CStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)),
+          (S'' : RefStore (E3 P)) (F' : CoreFoot) (yc : CoreSt (E3 P)),
         Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) trc
-          (coreCfg { M with conts := C', store := S'' } th K segs rest yc) ∧
+          (coreCfg { M with conts := C', store := S''.toCStore } th K segs rest yc) ∧
         (∀ ev, Label.host ev ∉ trc) ∧ (rs = [] ∨ trc ≠ []) ∧
-        LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s₁ S'' F' yc (sB, tB) ∧ FrameG d pl ii th S'') ∨
+        LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s₁ S'' F' yc (sB, tB) ∧ FrameG d pl ii th S''.toCStore) ∨
       Doomed sB tB
   | [], dss, M, s, s₁, F, y, x, sB, tB, hI, hFG, hrel, hexp, hpath => by
     cases hrel
     cases hexp
     cases hpath
-    refine .inl ⟨[], M.conts, M.store, F, y, .refl _, ?_, Or.inl rfl, hI, hFG⟩
+    refine .inl ⟨[], M.conts, M.ref, F, y, .refl _, ?_, Or.inl rfl, hI, hFG⟩
     intro ev h
     cases h
   | ⟨eq, v⟩ :: rs, dss₀, M, s, s₁, F, y, x, sB, tB, hI, hFG, hrel, hexp, hpath => by
@@ -107,8 +107,8 @@ theorem roundsPre_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg 
         obtain ⟨e', v'⟩ := r
         exact (doomed_no_ask (doomed_resume co) hpath').elim
     obtain ⟨y₁, hy₁, hI₁⟩ := LInvG.reach_fwd SI hFr hI run
-    let M₁ : Machine.Config (E3 P) σ := { M with store := { M.store with core := y₁.1 } }
-    have hFG₁ : FrameG d pl ii th M₁.store := hFG.core _
+    let M₁ : Machine.Config (E3 P) σ := { M with core := y₁.1 }
+    have hFG₁ : FrameG d pl ii th M₁.store := hFG
     obtain ⟨tr₀, htr₀, r₀⟩ := Adequacy.coreCfg_steps_of (prof := prof) (hr := fun _ _ => false)
       (dispatch := DI P impl) (B := M) (th := th) (K := K) (segs := segs) (rest := rest) hy₁
     have r₀' : Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) tr₀
@@ -158,7 +158,7 @@ theorem roundsPre_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg 
             rfl
           rw [hv] at hpath'
           rcases roundsPre_fwdB SI W hFr hFw hB th K segs rest rs dss
-              { M₁ with conts := C', store := S'' } s₂ s₁ F' _ _ sB tB hI₂ hFG₂ hrel' hrest
+              { M₁ with conts := C', store := S''.toCStore, core := S''.core } s₂ s₁ F' _ _ sB tB hI₂ hFG₂ hrel' hrest
               hpath' with
             ⟨trc', C'', S''', F'', yc, hrun', hnh', -, hIc, hFG'⟩ | hdm
           · refine .inl ⟨tr₀ ++ (trc ++ trc'), C'', S''', F'', yc,
@@ -179,7 +179,7 @@ theorem roundsPre_fwdB (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg 
 
 /-- **(i) The importer diverges host-free**: the machine diverges in its core activation. -/
 theorem divB_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) {s : lg.exp.St}
-    {S : CStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {sB : Store Nat} {tB : STh}
+    {S : RefStore (E3 P)} {F : CoreFoot} {y : CoreSt (E3 P)} {sB : Store Nat} {tB : STh}
     (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s S F y (sB, tB)) (hd : Linked2.DivB P sB tB)
     (M : Machine.Config (E3 P) σ) (th : Option ThreadId)
     (K : List Flat → Canon.P (E3 P) σ (Ret (E3 P))) (segs : List (Seg (E3 P) σ))
@@ -195,7 +195,7 @@ of the exporter's export (R7 forward). -/
 theorem divA_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d pl tr ii)
     (hFr : d.Frame) (hDv : d.Div) {s : lg.exp.St} {M : Machine.Config (E3 P) σ}
     {F : CoreFoot} {y : CoreSt (E3 P)} {sB : Store Nat} {tB : STh}
-    (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y (sB, tB)) (th : Option ThreadId)
+    (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y (sB, tB)) (th : Option ThreadId)
     (hFG : FrameG d pl ii th M.store) (hd : LinkedG.DivA P lg Ii f sB tB s)
     (K : List Flat → Canon.P (E3 P) σ (Ret (E3 P))) (segs : List (Seg (E3 P) σ))
     (rest : List (Activation (E3 P) σ)) :
@@ -209,8 +209,8 @@ theorem divA_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d pl
       cases h₁ with
       | ucall run co op => exact ⟨_, _, _, run, co, op⟩
   obtain ⟨y₁, hy₁, hI₁⟩ := LInvG.reach_fwd SI hFr hI run
-  let M₁ : Machine.Config (E3 P) σ := { M with store := { M.store with core := y₁.1 } }
-  have hFG₁ : FrameG d pl ii th M₁.store := hFG.core _
+  let M₁ : Machine.Config (E3 P) σ := { M with core := y₁.1 }
+  have hFG₁ : FrameG d pl ii th M₁.store := hFG
   obtain ⟨tr₀, htr₀, r₀⟩ := Adequacy.coreCfg_steps_of (prof := prof) (hr := fun _ _ => false)
     (dispatch := DI P impl) (B := M) (th := th) (K := K) (segs := segs) (rest := rest) hy₁
   have r₀' : Machine.Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) tr₀
@@ -241,30 +241,30 @@ theorem divA_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d pl
   obtain ⟨ιi, hi, hleave⟩ := hFG₁.imp
   obtain ⟨ιe, hie, hth⟩ := hFG₁.exp wi ⟨xe, hxe⟩
   rw [htr] at hst hentry
-  obtain ⟨hf, -⟩ := hFr.lifted pl s M₁.store F wi xe hI₁.hold hxe
+  obtain ⟨hf, -⟩ := hFr.lifted pl s M₁.ref F wi xe hI₁.hold hxe
   rw [hty] at hf
   let ie := d.inst pl wi
   let t : ThreadId := ⟨M₁.store.threads.length⟩
   have hadd : ιe.addThread? t = some (1, enterInst ιe t) := addThread?_ok hth t
   have hrem : (enterInst ιe t).removeThread? 1 =
       some (t, InstState.removeThread 1 (enterInst ιe t)) := removeThread?_enter ιe t
-  obtain ⟨pos, M₂, K', segs', rest', tr₁, h₁, hc₁, hst₁, -, -, -, -, hinst₁, -, -⟩ :=
+  obtain ⟨pos, M₂, K', segs', rest', tr₁, h₁, hc₁, hst₁, hcore₂, -, -, -, -, hinst₁, -, -⟩ :=
     nest_atX (prof := prof) (impl := impl) ie ii M₁ hl ιe (enterInst ιe t) th K segs rest y₁
       ⟨d.fid pl wi⟩ (d.addr pl wi) ft ys ιi ws hst hentry hi hleave hf hie hadd hrem hpf hyty hmaxp
       hlift hres hrf hmaxr
-  have hS₁ : M₂.store = nstore { M₁.store with core := y₁.1 } { inst := ⟨ii⟩, state := .started }
+  have hS₁ : M₂.store = nstore M₁.store { inst := ⟨ii⟩, state := .started }
       (lowerRec ⟨M₁.store.subtasks.length⟩ ⟨ii⟩ ys ft pos)
-      ((ntask₁G ie { M₁.store with core := y₁.1 } ft).withState .started)
+      ((ntask₁G ie M₁.store ft).withState .started)
       ((thread₁ M₁.store.tasks).withIndex 1) (M₁.store.insts.set ie (enterInst ιe t)) :=
     hst₁.trans (nstoreCore_eqG _ _ _ _ _ _ _)
-  have hH₁ : d.Hold pl s M₂.store F :=
-    hold_threads hFr hI₁.hold hie _ (by rw [hS₁]; exact hI₁.core.symm) (by rw [hS₁]; rfl)
-      (by rw [hS₁]; rfl)
+  have hH₁ : d.Hold pl s M₂.ref F :=
+    hold_threads hFr hI₁.hold hie _ (hcore₂.trans hI₁.core.symm)
+      (by show M₂.store.funcs = _; rw [hS₁]; rfl) (by show M₂.store.insts = _; rw [hS₁]; rfl)
   have hl₁ : M₂.store.lockdown = false := by rw [hS₁]; exact hl
   have htyped : ValTy.checkList xe.ty.params ws = true := by
     rw [hty]
     exact Silmaril.Wasm.Component.checkList_of_liftArgs hlift
-  have hdM := (hDv pl s wi ws xe hxe htyped M₂.store F hH₁ prof impl M₂ (some t) K' segs' rest'
+  have hdM := (hDv pl s wi ws xe hxe htyped M₂.ref F hH₁ prof impl M₂ (some t) K' segs' rest'
     rfl hl₁ hinst₁).1 hdiv
   have hstart : d.startCfg pl wi xe ws M₂ (some t) K' segs' rest' = M₂ := by
     show { M₂ with ctl := _ } = M₂
@@ -279,7 +279,7 @@ theorem divA_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d pl
 theorem chatter_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d pl tr ii)
     (hFr : d.Frame) (hFw : d.Fwd) (hB : d.Bounded) {s : lg.exp.St}
     {M : Machine.Config (E3 P) σ} {F : CoreFoot} {y : CoreSt (E3 P)} {sB : Store Nat}
-    {tB : STh} (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y (sB, tB))
+    {tB : STh} (hI : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y (sB, tB))
     (th : Option ThreadId) (hFG : FrameG d pl ii th M.store)
     (hd : LinkedG.Chatter P lg Ii f sB tB s)
     (K : List Flat → Canon.P (E3 P) σ (Ret (E3 P))) (segs : List (Seg (E3 P) σ))
@@ -289,7 +289,7 @@ theorem chatter_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d
   refine diverges_of_segs (fun m => ∃ (k : Nat) (M' : Machine.Config (E3 P) σ) (F' : CoreFoot)
       (y' : CoreSt (E3 P)) (x : Store Nat × STh),
       m = coreCfg M' th K segs rest y' ∧ q k = .running f x.1 x.2 ∧
-      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f (st k) M'.store F' y' x ∧ FrameG d pl ii th M'.store) ?_
+      LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f (st k) M'.ref F' y' x ∧ FrameG d pl ii th M'.store) ?_
     ⟨0, M, F, y, (sB, tB), rfl, hq0, hst0 ▸ hI, hFG⟩
   rintro m ⟨k, M', F', y', x, rfl, hqk, hIk, hFGk⟩
   obtain ⟨hpath, hrel, hexp⟩ := hc k
@@ -309,7 +309,8 @@ theorem chatter_coreG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d
       [ds k] M' (st k) (st (k + 1)) F' y' x s₁ t₁ hIk hFGk (.cons hrel .nil) hexp' hpath with
     ⟨trc, C', S'', F'', yc, hrun, hnh, hne, hIc, hFG'⟩ | hdm
   · have htr : trc ≠ [] := hne.resolve_left (List.cons_ne_nil _ _)
-    exact ⟨trc, _, hrun, htr, hnh, k + 1, { M' with conts := C', store := S'' }, F'', yc,
+    exact ⟨trc, _, hrun, htr, hnh, k + 1,
+      { M' with conts := C', store := S''.toCStore, core := S''.core }, F'', yc,
       (s₁, t₁), rfl, hq₁, hIc, hFG'⟩
   · have h₂ := (hc (k + 1)).1
     rw [hq₁] at h₂

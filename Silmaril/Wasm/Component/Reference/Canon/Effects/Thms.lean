@@ -102,6 +102,21 @@ theorem modifyStore {f : CStore E → CStore E} (h : ∀ s, I s → I (f s)) :
 
 theorem choose (k : ChoiceKind) : P.InvW I W (Canon.choose k : P E σ k.Resp) := perform trivial
 
+theorem readCore : P.InvW I W (Canon.readCore : P E σ _) := perform trivial
+
+theorem getsCore (f : CoreEngine.CoreView E (CanonHost E) → α) :
+    P.InvW I W (Canon.getsCore f : P E σ α) :=
+  bind readCore fun _ => pure _
+
+theorem memWriteOp (m : E.MemAddr) (ptr : Nat) (bytes : ByteArray) :
+    P.InvW I W (Canon.memWriteOp m ptr bytes : P E σ _) := perform trivial
+
+theorem allocHostOp (ty : V1.FuncType) (h : CanonHost E) :
+    P.InvW I W (Canon.allocHostOp ty h : P E σ _) := perform trivial
+
+theorem prepareOp (md : E.Module) (imports : List E.ExternVal) :
+    P.InvW I W (Canon.prepareOp md imports : P E σ _) := perform trivial
+
 theorem callCore (f : E.FuncAddr) (args : List FlatValue) :
     P.InvW I W (Canon.callCore f args : P E σ _) := perform trivial
 

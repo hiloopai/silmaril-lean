@@ -46,8 +46,8 @@ theorem bv32_sub_one_lt {n : BitVec 32} (hn : n ≠ 0) : (n - 1).toNat < n.toNat
   simp; omega
 
 /-- The direct effect of `table.init x y` from `i`, `j`, `n`. -/
-def tableInitLoop (s : Store H) (f : Frame) (x : TableIdx) (y : ElemIdx) (a : AddrType)
-    (i : BitVec a.intType.width) (j n : BitVec 32) : Option (Store H) :=
+def tableInitLoop {R : Type} (s : Store H R) (f : Frame) (x : TableIdx) (y : ElemIdx)
+    (a : AddrType) (i : BitVec a.intType.width) (j n : BitVec 32) : Option (Store H R) :=
   match s.table? f x, s.elem? f y with
   | some (ta, ti), some (_, ei) =>
     if i.toNat + n.toNat ≤ ti.refs.length ∧ j.toNat + n.toNat ≤ ei.refs.length then
@@ -64,16 +64,16 @@ termination_by n.toNat
 decreasing_by exact bv32_sub_one_lt _hn
 
 /-- The direct effect of `memory.init x y` from `i`, `j`, `n`. -/
-def memoryInitLoop (s : Store H) (f : Frame) (x : MemIdx) (y : DataIdx) (a : AddrType)
-    (i : BitVec a.intType.width) (j n : BitVec 32) : Option (Store H) :=
+def memoryInitLoop {R : Type} [MemRep R] (s : Store H R) (f : Frame) (x : MemIdx) (y : DataIdx)
+    (a : AddrType) (i : BitVec a.intType.width) (j n : BitVec 32) : Option (Store H R) :=
   match s.mem? f x, s.data? f y with
   | some (ma, mi), some (_, di) =>
-    if i.toNat + n.toNat ≤ mi.bytes.size ∧ j.toNat + n.toNat ≤ di.bytes.size then
+    if i.toNat + n.toNat ≤ MemRep.size mi.bytes ∧ j.toNat + n.toNat ≤ di.bytes.size then
       if _hn : n = 0 then some s
       else
         match di.bytes.data[j.toNat]? with
         | some byte =>
-          match Memory.store mi.bytes (effAddr i.toNat memarg0) (count := PackSize.i8.width / 8)
+          match MemRep.store mi.bytes (effAddr i.toNat memarg0) (count := PackSize.i8.width / 8)
               ((BitVec.ofNat 32 byte.toNat).setWidth _) with
           | some b =>
             memoryInitLoop (s.setMem ma { mi with bytes := b }) f x y a (i + 1) (j + 1) (n - 1)
@@ -85,18 +85,18 @@ termination_by n.toNat
 decreasing_by exact bv32_sub_one_lt _hn
 
 section
-variable (ev : Store H → Frame → Expr → Option (Store H × Val))
+variable {R : Type} [MemRep R] (ev : Store H R → Frame → Expr → Option (Store H R × Val))
 
 /-- `elem.drop y` applied directly. -/
-def elemDrop? (s : Store H) (f : Frame) (y : ElemIdx) : Option (Store H) :=
+def elemDrop? (s : Store H R) (f : Frame) (y : ElemIdx) : Option (Store H R) :=
   (s.elem? f y).map fun (ea, _) => s.setElem ea []
 
 /-- `data.drop y` applied directly. -/
-def dataDrop? (s : Store H) (f : Frame) (y : DataIdx) : Option (Store H) :=
+def dataDrop? (s : Store H R) (f : Frame) (y : DataIdx) : Option (Store H R) :=
   (s.data? f y).map fun (da, _) => s.setData da ByteArray.empty
 
 /-- The effect of `$runelem_(k, e)`. -/
-def initElemSeg? (s : Store H) (f : Frame) (k : Nat) (e : Elem) : Option (Store H) :=
+def initElemSeg? (s : Store H R) (f : Frame) (k : Nat) (e : Elem) : Option (Store H R) :=
   match e.mode with
   | .passive => some s
   | .declarative => elemDrop? s f ⟨Fin.ofNat _ k⟩
@@ -112,7 +112,7 @@ def initElemSeg? (s : Store H) (f : Frame) (k : Nat) (e : Elem) : Option (Store 
         | some s₂ => elemDrop? s₂ f ⟨Fin.ofNat _ k⟩
 
 /-- The effect of `$rundata_(k, d)`. -/
-def initDataSeg? (s : Store H) (f : Frame) (k : Nat) (d : Data) : Option (Store H) :=
+def initDataSeg? (s : Store H R) (f : Frame) (k : Nat) (d : Data) : Option (Store H R) :=
   match d.mode with
   | .passive => some s
   | .active y off =>
@@ -127,14 +127,14 @@ def initDataSeg? (s : Store H) (f : Frame) (k : Nat) (d : Data) : Option (Store 
         | some s₂ => dataDrop? s₂ f ⟨Fin.ofNat _ k⟩
 
 /-- Run a list of indexed segments. -/
-def initElemList? : Store H → Frame → List (Nat × Elem) → Option (Store H)
+def initElemList? : Store H R → Frame → List (Nat × Elem) → Option (Store H R)
   | s, _, [] => some s
   | s, f, (k, e) :: es =>
     match initElemSeg? ev s f k e with
     | none => none
     | some s₁ => initElemList? s₁ f es
 
-def initDataList? : Store H → Frame → List (Nat × Data) → Option (Store H)
+def initDataList? : Store H R → Frame → List (Nat × Data) → Option (Store H R)
   | s, _, [] => some s
   | s, f, (k, d) :: ds =>
     match initDataSeg? ev s f k d with
@@ -142,15 +142,15 @@ def initDataList? : Store H → Frame → List (Nat × Data) → Option (Store H
     | some s₁ => initDataList? s₁ f ds
 
 /-- All element segments of `m`. -/
-def initElem? (s : Store H) (f : Frame) (m : Module) : Option (Store H × Frame) :=
+def initElem? (s : Store H R) (f : Frame) (m : Module) : Option (Store H R × Frame) :=
   (initElemList? ev s f ((List.range m.elems.length).zip m.elems)).map (·, f)
 
 /-- All data segments of `m`. -/
-def initData? (s : Store H) (f : Frame) (m : Module) : Option (Store H × Frame) :=
+def initData? (s : Store H R) (f : Frame) (m : Module) : Option (Store H R × Frame) :=
   (initDataList? ev s f ((List.range m.data.length).zip m.data)).map (·, f)
 
 /-- Element segments, then data segments. -/
-def initSegments? (s : Store H) (f : Frame) (m : Module) : Option (Store H × Frame) :=
+def initSegments? (s : Store H R) (f : Frame) (m : Module) : Option (Store H R × Frame) :=
   match initElem? ev s f m with
   | none => none
   | some (s₁, f₁) => initData? ev s₁ f₁ m

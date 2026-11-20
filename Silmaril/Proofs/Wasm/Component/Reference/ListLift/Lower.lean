@@ -168,12 +168,13 @@ theorem store_list (cx : LiftLowerContext (E3 P)) (vs : List Value.Val)
 /-- The pointer type of a lowering context is `i32`. -/
 theorem ptrTypeIn_i32 {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat}
     {cx : LiftLowerContext (E3 P)} (hcx : LowerCx P I ra ma cx) {m : Config (E3 P) Unit}
-    (hi : LInv P I ma m) : ptrTypeIn m.store cx = .i32 := by
-  simp [ptrTypeIn, CanonOpts.ptrType, hcx.mem, hi.mem]
+    (hi : LInv P I ma m) : ptrTypeIn ((E3 P).view m.core) cx = .i32 := by
+  simp only [ptrTypeIn, CanonOpts.ptrType, hcx.mem]
+  exact congrArg (Option.getD · _) hi.mem
 
 /-- A store that changes only the core store keeps the caller records and tasks. -/
 theorem Grows.core (m : Config (E3 P) Unit) (c' : (E3 P).Store (CanonHost (E3 P))) :
-    Grows m { m with store := { m.store with core := c' } } :=
+    Grows m { m with core := c' } :=
   ⟨List.prefix_refl _, List.prefix_refl _⟩
 
 /-- **The `s32` element store.** -/
@@ -228,9 +229,9 @@ theorem spec_store_s64 {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} {th
 theorem spec_storeInt_nat {th : Option ThreadId} {ma : Nat} {cx : LiftLowerContext (E3 P)}
     (hcx : cx.opts.memory = some (memAt P ma)) {m : Config (E3 P) Unit} (q a : Nat) :
     SpecR prof P th (storeInt cx (q : Int) a 4) m
-      (fun _ m' => ∃ c', Silmaril.Wasm.SingleThreaded.memWrite? m.store.core ma a
+      (fun _ m' => ∃ c', Silmaril.Wasm.SingleThreaded.memWrite? m.core ma a
         (le32 (BitVec.ofNat 32 q)) = some c' ∧
-        m' = { m with store := { m.store with core := c' } }) := by
+        m' = { m with core := c' }) := by
   unfold storeInt
   rw [intToLE_nat]
   exact spec_writeMem hcx _ _
@@ -253,7 +254,7 @@ theorem spec_storeListL {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} {t
     SpecR prof P th (storeListIntoRangeWith cx (ABI.layout .i32 t.toClosed)
       (fun e a => Canon.store Limits.spec Quirks.none cx e t.toClosed a) (us.map LVal.toRef)) m
       (fun r m' => LInv P I ma m' ∧ Grows m m' ∧ ∃ q, r = (q, us.length) ∧
-        LList P ra ma t us (cmap m.store) q (cmap m'.store)) := by
+        LList P ra ma t us (cmap m.core) q (cmap m'.core)) := by
   refine Spec.mono (spec_storeListIntoRange hcx _ LVal.toRef _ _ us hel hi)
     fun r m' ⟨hi', hg', q, s₁, hr, hrun, hq, hb, he⟩ _ _ => ⟨hi', hg', q, hr, ?_⟩
   rw [layout_toClosed t] at hrun hq hb he
@@ -271,7 +272,7 @@ theorem spec_store_list {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} {t
   show SpecR prof P th (Canon.store Limits.spec Quirks.none cx (.list (LVal.toRefList us))
     (.list t.toClosed) a) m _
   rw [store_list, toRefList_eq_map]
-  refine Spec.bind (Spec.gets _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
+  refine Spec.bind (Spec.getsCore _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
   subst m₁
   rw [ptrTypeIn_i32 hcx hi] at hp
   subst hp
@@ -281,7 +282,7 @@ theorem spec_store_list {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} {t
   subst r
   dsimp only
   unfold ptrSize
-  refine Spec.bind (Spec.bind (Spec.gets _) fun p m₃ ⟨hp, hm⟩ _ _ => ?_)
+  refine Spec.bind (Spec.bind (Spec.getsCore _) fun p m₃ ⟨hp, hm⟩ _ _ => ?_)
     (R := fun sz m' => sz = 4 ∧ m' = m₂) fun sz m₄ ⟨hsz, hm⟩ _ _ => ?_
   · subst m₃
     rw [ptrTypeIn_i32 hcx hi₂] at hp
@@ -365,7 +366,7 @@ theorem spec_storeTuple {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat}
       SpecR prof P th (storeTuple Limits.spec Quirks.none cx (LVal.toRefList vs)
         (LTy.toClosedList ts) a) m
         (fun _ m' => LInv P I ma m' ∧ Grows m m' ∧
-          LFields P ra ma ts vs a (cmap m.store) (cmap m'.store))
+          LFields P ra ma ts vs a (cmap m.core) (cmap m'.core))
   | [], [], _, a, m, hi => by
     simp only [LVal.toRefList, LTy.toClosedList]
     rw [storeTuple_nil]
@@ -376,7 +377,7 @@ theorem spec_storeTuple {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat}
     simp only [LTy.checkFields, Bool.and_eq_true] at h
     simp only [LVal.toRefList, LTy.toClosedList]
     rw [storeTuple_cons]
-    refine Spec.bind (Spec.gets _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
+    refine Spec.bind (Spec.getsCore _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
     subst m₁
     rw [ptrTypeIn_i32 hcx hi] at hp
     subst hp
@@ -406,8 +407,8 @@ theorem spec_lowerFlatTypes {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat
       SpecR prof P th (lowerFlatTypes Limits.spec Quirks.none cx .i32 (vs.map LVal.toRef)
         (ts.map LTy.toClosed)) m
         (fun fl m' => LInv P I ma m' ∧ Grows m m' ∧
-          LParams P ra ma ts vs (cmap m.store) (fl.map Silmaril.Wasm.SingleThreaded.ofFlat)
-            (cmap m'.store))
+          LParams P ra ma ts vs (cmap m.core) (fl.map Silmaril.Wasm.SingleThreaded.ofFlat)
+            (cmap m'.core))
   | [], [], _, _, m, hi => Spec.mono (Spec.pure _) fun fl m' ⟨hfl, hm⟩ _ _ => by
       subst fl m'
       exact ⟨hi, Grows.refl _, .nil⟩
@@ -434,7 +435,7 @@ theorem spec_lowerFlatTypes {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat
     unfold storeListIntoRange
     rw [toRefList_eq_map]
     simp only [bind_assoc]
-    refine Spec.bind (Spec.gets _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
+    refine Spec.bind (Spec.getsCore _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
     subst m₁
     rw [ptrTypeIn_i32 hcx hi] at hp
     subst hp
@@ -483,10 +484,10 @@ theorem spec_lowerParams {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat}
     SpecR prof P th (lowerFlatValues Limits.spec Quirks.none cx ABI.maxFlatParams
       (vs.map LVal.toRef) (ts.map LTy.toClosed) none) m
       (fun fl m' => LInv P I ma m' ∧ Grows m m' ∧
-        LParams P ra ma ts vs (cmap m.store) (fl.map Silmaril.Wasm.SingleThreaded.ofFlat)
-          (cmap m'.store)) := by
+        LParams P ra ma ts vs (cmap m.core) (fl.map Silmaril.Wasm.SingleThreaded.ofFlat)
+          (cmap m'.core)) := by
   unfold lowerFlatValues
-  refine Spec.bind (Spec.gets _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
+  refine Spec.bind (Spec.getsCore _) fun p m₁ ⟨hp, hm⟩ _ _ => ?_
   subst m₁
   rw [ptrTypeIn_i32 hcx hi] at hp
   subst hp

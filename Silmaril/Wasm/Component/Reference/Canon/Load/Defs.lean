@@ -102,14 +102,14 @@ variable {E : CoreEngine} {σ : Type}
 
 /-! ## Precondition -/
 
-/-- The REF assertions of `load(cx, ptr, t)` (L1257-1258) in store `s`: `ptr` is aligned to
+/-- The REF assertions of `load(cx, ptr, t)` (L1257-1258) for the core-store queries `v`: `ptr` is aligned to
 `alignment(t)` and `[ptr, ptr + elem_size(t))` lies in `cx`'s memory. A precondition (D-f),
 never checked by `load`. -/
-def LoadPre (s : CStore E) (cx : LiftLowerContext E) (t : WIT.ClosedType RtId) (ptr : Nat) :
-    Prop :=
-  let l := layout (ptrTypeIn s cx) t
+def LoadPre (v : CoreEngine.CoreView E (CanonHost E)) (cx : LiftLowerContext E) (t : WIT.ClosedType RtId)
+    (ptr : Nat) : Prop :=
+  let l := layout (ptrTypeIn v cx) t
   ptr % l.alignment.bytes = 0 ∧
-    ∃ m n, cx.opts.memory = some m ∧ E.memSize? s.core m = some n ∧ ptr + l.size ≤ n
+    ∃ m n, cx.opts.memory = some m ∧ v.memSize? m = some n ∧ ptr + l.size ≤ n
 
 /-! ## Non-recursive building blocks -/
 

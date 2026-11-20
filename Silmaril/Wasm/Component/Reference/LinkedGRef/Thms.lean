@@ -129,7 +129,7 @@ theorem Simple.expSpec_refFwd (P : Profile) {c : Simple} (hc : c.Good)
         (m₀ : Machine.Config (core3P P) σ) (inst : InstId) (es : List (String × FuncId)),
         InstResult.instance m₀ inst es ∈
           instBehaviours prof (linkHost impl) (initConfig h₀) l.toRef [] →
-        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.store F ∧
+        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.ref F ∧
           (∀ i, d.block pl i ↔ i = 1) ∧
           ∀ (w : Nat) (xe : SimpleExport), c.exports[w]? = some xe →
             d.addr pl w = I.addrs.getD xe.core 0 ∧ d.inst pl w = 1 ∧ d.fid pl w = w :=
@@ -145,7 +145,7 @@ theorem Simple.expSpec_refFwdBwd (P : Profile) {c : Simple} (hc : c.Good)
         (m₀ : Machine.Config (core3P P) σ) (inst : InstId) (es : List (String × FuncId)),
         InstResult.instance m₀ inst es ∈
           instBehaviours prof (linkHost impl) (initConfig h₀) l.toRef [] →
-        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.store F ∧
+        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.ref F ∧
           (∀ i, d.block pl i ↔ i = 1) ∧
           ∀ (w : Nat) (xe : SimpleExport), c.exports[w]? = some xe →
             d.addr pl w = I.addrs.getD xe.core 0 ∧ d.inst pl w = 1 ∧ d.fid pl w = w :=

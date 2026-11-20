@@ -63,7 +63,7 @@ structure SubFoot (F G : CoreFoot) : Prop where
 `ρc` and ownership `Oc`. -/
 structure LReadyW {e : ExpSpec} (d : e.RefData P) (pl : d.Pl) (Ii : SInst) (s₀ ui : Store Nat)
     (F₀ : List (FuncInst (CanonHost (E3 P)))) (g : CanonHost (E3 P) → Nat) (Oc₀ : Own)
-    (S : CStore (E3 P)) (s : e.St) (u : Store Nat) (F : CoreFoot) (ρc : Ren) (Oc : Own) :
+    (S : RefStore (E3 P)) (s : e.St) (u : Store Nat) (F : CoreFoot) (ρc : Ren) (Oc : Own) :
     Prop where
   rel : PartRel ρc Oc (reloc s₀ u) (Store.mapH g S.core)
   fn : Oc.fn = Oc₀.fn
@@ -95,7 +95,7 @@ structure ExpPl (lg : LinkedG) (d : lg.exp.RefData P) where
 /-- **The relation of a linked component** at placement `pl`, its state `st` (the importer's
 store and the exporter's state), the component store `S` and the footprint `Fc`. -/
 structure HoldX (lg : LinkedG) (d : lg.exp.RefData P) (Ii : SInst) (pl : ExpPl lg d)
-    (st : Store Nat × lg.exp.St) (S : CStore (E3 P)) (Fc : CoreFoot) : Prop where
+    (st : Store Nat × lg.exp.St) (S : RefStore (E3 P)) (Fc : CoreFoot) : Prop where
   inv : ∃ (F₀ : List (FuncInst (CanonHost (E3 P)))) (g : CanonHost (E3 P) → Nat)
       (tr : Nat → CanonHost (E3 P)) (F : CoreFoot) (ρc : Ren) (Oc : Own),
     StatB P lg d pl.ple pl.ii Ii pl.s₀ pl.ui F₀ g tr pl.Oc₀ S.funcs (fun j => pl.fb + j) ∧
@@ -127,14 +127,14 @@ section W
 variable {e : ExpSpec} {d : e.RefData P} {pl : d.Pl} {Ii : SInst} {s₀ ui : Store Nat}
   {F₀ : List (FuncInst (CanonHost (E3 P)))} {g : CanonHost (E3 P) → Nat} {Oc₀ : Own}
 
-theorem LReadyW.toG {S : CStore (E3 P)} {s : e.St} {u : Store Nat} {F : CoreFoot} {ρc : Ren}
+theorem LReadyW.toG {S : RefStore (E3 P)} {s : e.St} {u : Store Nat} {F : CoreFoot} {ρc : Ren}
     {Oc : Own} (h : LReadyW d pl Ii s₀ ui F₀ g Oc₀ S s u F ρc Oc) :
     LReadyG d pl Ii s₀ ui F₀ g Oc₀ S s u :=
   ⟨⟨F, ρc, Oc, h.rel, h.fn, h.gl, h.disj, h.hold⟩, h.fnC, h.wfI, h.funcs, h.ufuncs, h.good⟩
 
 /-- **`linv_readyG` at a witness, tracked**: `LInvG` at the export call, and `RelT` from the
 store there with any footprint containing the combined one. -/
-theorem linv_readyW {S : CStore (E3 P)} {s : e.St} {u : Store Nat} {F : CoreFoot} {ρc : Ren}
+theorem linv_readyW {S : RefStore (E3 P)} {s : e.St} {u : Store Nat} {F : CoreFoot} {ρc : Ren}
     {Oc : Own} (hR : LReadyW d pl Ii s₀ ui F₀ g Oc₀ S s u F ρc Oc) {Fc : CoreFoot}
     (hsub : SubFoot (footUnion F (img ρc Oc)) Fc)
     (hO : ∀ a, a < ui.funcs.length → Oc₀.fn (s₀.funcs.length + a)) {f : Ii.F.Op}
@@ -168,7 +168,7 @@ theorem linv_readyW {S : CStore (E3 P)} {s : e.St} {u : Store Nat} {F : CoreFoot
 
 /-- **`lready_afterG` at a witness, tracked**: from `LInvG` and `RelT` along a call started from
 `LReadyG`, the invariant between calls at the witness of `RelT`. -/
-theorem lready_afterW {S S' : CStore (E3 P)} {s s' : e.St} {u : Store Nat}
+theorem lready_afterW {S S' : RefStore (E3 P)} {s s' : e.St} {u : Store Nat}
     (hR : LReadyG d pl Ii s₀ ui F₀ g Oc₀ S s u) {f : Ii.F.Op} {F : CoreFoot}
     {y : CoreSt (E3 P)} {x : Store Nat × STh} (hI : LInvG d pl Ii s₀ u F₀ g Oc₀ f s' S' F y x)
     {Fc : CoreFoot} {σ₀ : Store (CanonHost (E3 P))} (hT : RelT s₀ g Oc₀ Fc σ₀ F y x) :
@@ -187,7 +187,7 @@ theorem lready_afterW {S S' : CStore (E3 P)} {s s' : e.St} {u : Store Nat}
 
 /-- **`lready_trapG` at a witness, tracked**: after a trapped call, the invariant between calls
 at the earlier store with the trapped core store, at the witness of `TrapT` (R5). -/
-theorem lready_trapW (hRes : d.Resume) {S₀ : CStore (E3 P)} {s s₁ : e.St} {u u₁ : Store Nat}
+theorem lready_trapW (hRes : d.Resume) {S₀ : RefStore (E3 P)} {s s₁ : e.St} {u u₁ : Store Nat}
     (hR : LReadyG d pl Ii s₀ ui F₀ g Oc₀ S₀ s u) {f : Ii.F.Op}
     {c : (E3 P).Store (CanonHost (E3 P))}
     (hT : TrapAtG d pl Ii s₀ u F₀ g Oc₀ f S₀ s₁ c u₁) {Fc : CoreFoot}
@@ -205,7 +205,7 @@ theorem lready_trapW (hRes : d.Resume) {S₀ : CStore (E3 P)} {s s₁ : e.St} {u
 
 /-- **`LReadyW` is kept by a change outside the core store**, the functions and the exporter's
 block (R1). -/
-theorem LReadyW.frame (hFr : d.Frame) {S S' : CStore (E3 P)} {s : e.St} {u : Store Nat}
+theorem LReadyW.frame (hFr : d.Frame) {S S' : RefStore (E3 P)} {s : e.St} {u : Store Nat}
     {F : CoreFoot} {ρc : Ren} {Oc : Own} (hR : LReadyW d pl Ii s₀ ui F₀ g Oc₀ S s u F ρc Oc)
     (hc : S'.core = S.core) (hf : S'.funcs = S.funcs)
     (hb : ∀ i, d.block pl i → S'.insts[i]? = S.insts[i]?) :
@@ -255,7 +255,7 @@ theorem toExpData_resume (hRes : d.Resume) : (toExpData lg d Ii).Resume := by
 /-- **R1's `threads` for a linked component**: the thread table of the importer's instance does
 not matter. -/
 theorem toExpData_threads (hFr : d.Frame) (pl : (toExpData lg d Ii).Pl)
-    (st : (lg.toExp Ii).St) (S : CStore (core3P P)) (Fc : CoreFoot) (w : Nat) (ι : InstState)
+    (st : (lg.toExp Ii).St) (S : RefStore (core3P P)) (Fc : CoreFoot) (w : Nat) (ι : InstState)
     (t : Silmaril.Wasm.Component.Runtime.Table ThreadId)
     (h : (toExpData lg d Ii).Hold pl st S Fc) (hι : S.insts[(toExpData lg d Ii).inst pl w]? = some ι) :
     (toExpData lg d Ii).Hold pl st
@@ -281,9 +281,9 @@ theorem toExpData_threads (hFr : d.Frame) (pl : (toExpData lg d Ii).Pl)
 /-- **R1's `lifted` for a linked component**: export `w` is the importer's lift of its core
 export, at function id `fb + w`. -/
 theorem toExpData_lifted (pl : (toExpData lg d Ii).Pl) (st : (lg.toExp Ii).St)
-    (S : CStore (core3P P)) (Fc : CoreFoot) (w : Nat) (x : Export)
+    (S : RefStore (core3P P)) (Fc : CoreFoot) (w : Nat) (x : Export)
     (h : (toExpData lg d Ii).Hold pl st S Fc) (hx : (lg.toExp Ii).comp.exports[w]? = some x) :
-    ArenaField.funcs.get? S ⟨(toExpData lg d Ii).fid pl w⟩ =
+    ArenaField.funcs.get? S.toCStore ⟨(toExpData lg d Ii).fid pl w⟩ =
       some (.lifted ((toExpData lg d Ii).addr pl w) (witFt x.ty) {}
         ⟨(toExpData lg d Ii).inst pl w⟩) ∧
     (toExpData lg d Ii).block pl ((toExpData lg d Ii).inst pl w) := by

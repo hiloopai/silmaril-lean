@@ -62,12 +62,12 @@ allocation, `F` growing by fresh addresses. -/
 def BwdF : Prop :=
   ∀ (pl : d.Pl) (s : e.St) (w : Nat) (vs : List IVal) (x : Export),
     e.comp.exports[w]? = some x → ValTy.checkList x.ty.params vs = true →
-    ∀ (S : CStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
+    ∀ (S : RefStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
     ∀ {σ : Type} (prof : ProfileKind) (impl : HostImpl (core3P P) σ)
       (M : Machine.Config (core3P P) σ) (th : Option ThreadId)
       (K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P)))
       (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-      M.store = S → S.lockdown = false → instOfThread? S th = some ⟨d.inst pl w⟩ →
+      M.ref = S → S.lockdown = false → instOfThread? S.toCStore th = some ⟨d.inst pl w⟩ →
       ∀ (tr : List (Label (core3P P) σ)) (m' : Machine.Config (core3P P) σ),
         Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
           (d.startCfg pl w x vs M th K segs rest) tr m' → (∀ ev, Label.host ev ∉ tr) →
@@ -81,10 +81,10 @@ def BwdF : Prop :=
           e.Step P s ⟨(w, .vals vs), R⟩ s' ∧ d.EndsT pl x S F M th K segs rest R s' m ∧
           m.ctl ≠ []) ∨
         (m'.store.lockdown = true ∧ m'.ctl = [] ∧ ((∀ msg, Label.trap (.internal msg) ∉ tr) →
-          ∃ (s' : e.St) (S' : CStore (core3P P)) (F' : CoreFoot),
+          ∃ (s' : e.St) (S' : RefStore (core3P P)) (F' : CoreFoot),
             e.Step P s ⟨(w, .vals vs), none⟩ s' ∧
-            S'.core = m'.store.core ∧ S'.funcs = S.funcs ∧ d.Hold pl s' S' F' ∧
-            F.Within (S.core : Store (CanonHost (core3P P))) m'.store.core ∧
+            S'.core = m'.core ∧ S'.funcs = S.funcs ∧ d.Hold pl s' S' F' ∧
+            F.Within (S.core : Store (CanonHost (core3P P))) m'.core ∧
             F.Grows F' (S.core : Store (CanonHost (core3P P)))))
 
 end ExpSpec.RefData

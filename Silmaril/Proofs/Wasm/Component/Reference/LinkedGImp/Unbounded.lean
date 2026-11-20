@@ -33,7 +33,7 @@ open Silmaril.Proofs.Wasm.Game.Linking.Split (Own Ren)
 variable {P : Profile} {e : ExpSpec}
 
 /-- `d`'s relation at a footprint with `F`'s globals, at most `F`'s arrays, and every struct. -/
-def HoldAll (d : e.RefData P) (pl : d.Pl) (s : e.St) (S : CStore (core3P P)) (F : CoreFoot) :
+def HoldAll (d : e.RefData P) (pl : d.Pl) (s : e.St) (S : RefStore (core3P P)) (F : CoreFoot) :
     Prop :=
   ∃ F₀ : CoreFoot, d.Hold pl s S F₀ ∧ (∀ a, F.gl a ↔ F₀.gl a) ∧ (∀ a, F₀.ar a → F.ar a) ∧
     ∀ a, F.st a
@@ -82,20 +82,20 @@ section Data
 
 variable (d : e.RefData P)
 
-theorem holdAll_grow {pl : d.Pl} {s : e.St} {S : CStore (core3P P)} {F F₀' : CoreFoot}
+theorem holdAll_grow {pl : d.Pl} {s : e.St} {S : RefStore (core3P P)} {F F₀' : CoreFoot}
     (h : d.Hold pl s S F₀') : (allData d).Hold pl s S (footGrow F F₀') :=
   ⟨F₀', h, fun _ => Iff.rfl, fun _ ha => .inr ha, fun _ => trivial⟩
 
-theorem holdAll_all {pl : d.Pl} {s : e.St} {S : CStore (core3P P)} {F₀ : CoreFoot}
+theorem holdAll_all {pl : d.Pl} {s : e.St} {S : RefStore (core3P P)} {F₀ : CoreFoot}
     (h : d.Hold pl s S F₀) : (allData d).Hold pl s S (footAll F₀) :=
   ⟨F₀, h, fun _ => Iff.rfl, fun _ ha => ha, fun _ => trivial⟩
 
-theorem storeExt_all {pl : d.Pl} {S S' : CStore (core3P P)} (h : d.StoreExt pl S S') :
+theorem storeExt_all {pl : d.Pl} {S S' : RefStore (core3P P)} (h : d.StoreExt pl S S') :
     (allData d).StoreExt pl S S' :=
   ⟨h.eq, h.insts_len, h.insts_out, h.insts_exp, h.subtasks, h.callers, h.tasks, h.threads⟩
 
 /-- **The ends of a call, with every struct owned.** -/
-theorem ends_of_all {σ : Type} {pl : d.Pl} {x : Export} {S : CStore (core3P P)}
+theorem ends_of_all {σ : Type} {pl : d.Pl} {x : Export} {S : RefStore (core3P P)}
     {F F₀ : CoreFoot} {M : Machine.Config (core3P P) σ} {th : Option ThreadId}
     {K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P))}
     {segs : List (Seg (core3P P) σ)} {rest : List (Activation (core3P P) σ)}
@@ -152,19 +152,19 @@ theorem allData_resume (h : d.Resume) : (allData d).Resume := by
   exact ⟨G', h pl s s' S₀ S' G₀ G' g₀ g' hf, hgl, har, hst⟩
 
 /-- Every footprint of `allData d` owns every struct address. -/
-theorem allData_st {pl : d.Pl} {s : e.St} {S : CStore (core3P P)} {F : CoreFoot}
+theorem allData_st {pl : d.Pl} {s : e.St} {S : RefStore (core3P P)} {F : CoreFoot}
     (h : (allData d).Hold pl s S F) (a : Nat) : F.st a := by
   obtain ⟨-, -, -, -, hst⟩ := h
   exact hst a
 
 /-- **The footprints of `allData d` are not allocated.** -/
-theorem allData_not_bounded {pl : d.Pl} {s : e.St} {S : CStore (core3P P)} {F : CoreFoot}
+theorem allData_not_bounded {pl : d.Pl} {s : e.St} {S : RefStore (core3P P)} {F : CoreFoot}
     (h : (allData d).Hold pl s S F) :
     ¬ F.Bounded (S.core : Store (CanonHost (core3P P))) := fun hB =>
   Nat.lt_irrefl _ (hB.st _ (allData_st d h _))
 
 /-- **The footprints of `allData d` are disjoint from no part owning a struct.** -/
-theorem allData_not_disj {H : Type} {pl : d.Pl} {s : e.St} {S : CStore (core3P P)}
+theorem allData_not_disj {H : Type} {pl : d.Pl} {s : e.St} {S : RefStore (core3P P)}
     {F : CoreFoot} (h : (allData d).Hold pl s S F) {ρ : Ren} {O : Own} {σ : Store H}
     (hD : FootDisj F ρ O σ) (b : Nat) : ¬ O.st b := fun hb =>
   hD.st (ρ.st b) b (allData_st d h _) hb rfl
@@ -175,7 +175,7 @@ end Data
 R1–R5 whose footprints own every struct address. -/
 theorem refAdeq_allStructs (h : e.RefAdeq P) :
     ∃ d : e.RefData P, d.Frame ∧ d.Fwd ∧ d.Bwd ∧ d.Init ∧ d.Resume ∧
-      ∀ (pl : d.Pl) (s : e.St) (S : CStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
+      ∀ (pl : d.Pl) (s : e.St) (S : RefStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
         ∀ a, F.st a := by
   obtain ⟨d, h1, h2, h3, h4, h5⟩ := h
   exact ⟨allData d, allData_frame d h1, allData_fwd d h2, allData_bwd d h3, allData_init d h4,

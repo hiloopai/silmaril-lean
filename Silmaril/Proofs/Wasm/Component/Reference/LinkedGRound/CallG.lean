@@ -145,6 +145,7 @@ structure CallAtG (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
   ctl : M₀.ctl = ⟨th, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a
     (lowerArgs x.ty.params vs)) K, segs⟩ :: rest
   store : M₀.store = storeG₃ m.store x ii ιi' k (vs.map toRefVal)
+  core : M₀.core = m.core
   host : M₀.host = m.host
   pending : M₀.pending = m.pending ++ [(⟨k⟩, ⟨j⟩, vs.map toRefVal)]
   results : M₀.results = m.results
@@ -164,12 +165,12 @@ structure CallAtG (prof : ProfileKind) (P : Profile) (impl : HostImpl (E3 P) σ)
         (retCfg { M₀ with store := S', conts := C' } th K segs rest y zs) tr mE ∧
       mE = { M₀ with
         store := { S' with
-          core := y.1
           tasks := m.store.tasks ++ [taskG₂ x ii m.store.callers ⟨m.store.threads.length⟩] ++ RT
           threads := m.store.threads ++
             [{ (thread₁ m.store.tasks).withIndex 1 with status := .exited }] ++ RH
           insts := S'.insts.set ii (InstState.removeThread 1 ιi')
           nestingDepth := S'.nestingDepth - 1 }
+        core := y.1
         conts := C'
         ctl := []
         results := M₀.results ++ [(⟨k⟩, some (ws.map toRefVal))]
@@ -246,6 +247,7 @@ theorem call_atG (prof : ProfileKind) (m : Machine.Config (E3 P) σ)
     lstep hl
     exact .refl _
   apply CallAtG.mk
+  · rfl
   · rfl
   · rfl
   · rfl

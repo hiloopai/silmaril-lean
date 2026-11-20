@@ -35,7 +35,9 @@ macro "mstepL" : tactic => `(tactic| apply LRun.prog rfl (fun _ _ e => by cases 
     | exact Step.currentThread rfl | exact Step.hostGet rfl | exact Step.hostSet rfl
     | exact Step.emit rfl
     | exact Step.resumeThread rfl rfl | exact Step.newThread rfl rfl | exact Step.threadExit rfl
-    | exact Step.hostDone rfl | exact Step.callCore rfl))
+    | exact Step.hostDone rfl | exact Step.callCore rfl
+    | exact Step.readCore rfl | exact Step.memWrite rfl | exact Step.allocHost rfl
+    | exact Step.prepare rfl))
 
 /-- The start function as a pseudo-export: no parameters, no results. -/
 def startEx : SimpleExport := ⟨"", ⟨[], []⟩, 0⟩
@@ -124,9 +126,8 @@ def sStore₃ (S : CStore (E3 P)) (a : Nat) (ι' : InstState) : CStore (E3 P) :=
 
 /-- The store when the start task resolved (core store `cs'`). -/
 def sStore₄ (S : CStore (E3 P)) (a : Nat) (ι' : InstState)
-    (cs' : (core3P P).Store (CanonHost (core3P P))) : CStore (E3 P) :=
+    (_cs' : (core3P P).Store (CanonHost (core3P P))) : CStore (E3 P) :=
   { sStore₃ S a ι' with
-    core := cs'
     tasks := S.tasks ++ [((task₁ startEx S.callers ⟨S.threads.length⟩).withState .started).withState
       .resolved] }
 
@@ -143,6 +144,7 @@ def startedCfg (M : Machine.Config (E3 P) Unit) (a : Nat) (ι' : InstState)
     (cs' : (core3P P).Store (CanonHost (core3P P))) : Machine.Config (E3 P) Unit :=
   { M with
     store := sStore₅ M.store a ι' cs'
+    core := cs'
     conts := Config.setSlot (Config.setSlot M.conts M.store.threads.length
       (some (threadAct (D P) ⟨M.store.threads.length⟩
         (.liftImplicit ⟨M.store.tasks.length⟩ a)))) M.store.threads.length none }
@@ -157,7 +159,7 @@ structure StartAt (prof : ProfileKind) (M : Machine.Config (E3 P) Unit) (a : Nat
     (restc : List (Activation (E3 P) Unit)) : Prop where
   ctl : M₀.ctl = ⟨thc, .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a []) Kc, segsc⟩ ::
     restc
-  core : M₀.store.core = M.store.core
+  core : M₀.core = M.core
   lock : M₀.store.lockdown = false
   ret : ∀ y : CoreSt (E3 P), ∃ tr, LRun prof (refHost P).hr (D P) (retCfg M₀ thc Kc segsc restc y [])
     tr { startedCfg M a ι' y.1 with ctl := ⟨th, .prog (K ()), segs⟩ :: rest } ∧ traceObs tr = []
@@ -232,8 +234,8 @@ theorem start_at (prof : ProfileKind) (M : Machine.Config (E3 P) Unit) (a : Nat)
       apply Exists.intro
       refine ⟨?_, ?_⟩
       · show LRun prof (refHost P).hr (D P) (retCfg _ _ _ _ _ y []) _ _
-        apply LRun.store_congr (S' := sStore₃ { S with core := y.1 } a ι') rfl
-        have hS₃ : (sStore₃ { S with core := y.1 } a ι').tasks =
+        apply LRun.store_congr (S' := sStore₃ S a ι') rfl
+        have hS₃ : (sStore₃ S a ι').tasks =
             S.tasks ++ [(task₁ startEx S.callers ⟨S.threads.length⟩).withState .started] := rfl
         unfold retCfg
         apply RunsQ.chunk2 rfl (runs_lift_some (P := P) startEx (Nat.zero_le _) (Nat.zero_le _) rfl

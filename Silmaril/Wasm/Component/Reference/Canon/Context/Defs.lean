@@ -8,15 +8,16 @@ public import Silmaril.Wasm.Component.Reference.Canon.Effects.Defs
 The memory-facing helpers of REF `LiftLowerContext` and `MemInst`
 (`design/mvp/canonical-abi/definitions.py` at component-model `a25fc0b`,
 <https://github.com/WebAssembly/component-model/blob/a25fc0b372dd21f07f0242c46e98bd0f1ea0c0e1/design/mvp/canonical-abi/definitions.py>),
-written in `P E σ` over the core memory of the engine store `CStore.core`:
+written in `P E σ` over the core memory of the engine store, which programs read through
+`Op.readCore` (the queries `CoreEngine.CoreView`) and write through `Op.memWrite`:
 
 | Lean | REF |
 | --- | --- |
-| `ptrTypeIn s cx`, `ptrType cx` | `cx.opts.memory.ptr_type()` (`MemInst.ptr_type`, L588) |
+| `ptrTypeIn v cx`, `ptrType cx` | `cx.opts.memory.ptr_type()` (`MemInst.ptr_type`, L588) |
 | `ptrSizeOf`, `ptrSize cx` | `ptr_size` (L567), `MemInst.ptr_size` (L591) |
 | `utf16Tag cx` | the UTF-16 tag bit `ABI.utf16Tag` (bit 31 or 63) of the pointer width |
 | `memLen cx` | `len(cx.opts.memory)` |
-| `memBytes? s cx ptr len` | `cx.opts.memory[ptr : ptr+len]` (pure, no trap) |
+| `memBytes? v cx ptr len` | `cx.opts.memory[ptr : ptr+len]` (pure, no trap) |
 | `readMem cx ptr len` | the same, trapping `outOfBounds` |
 | `writeMem cx ptr bytes` | `cx.opts.memory[ptr : ptr+len] = bytes`, trapping `outOfBounds` |
 | `checkAligned ptr align` | `trap_if(ptr != align_to(ptr, alignment))` |
@@ -59,9 +60,9 @@ variable {E : CoreEngine} {σ : Type} {α : Type}
 
 /-! ## Pointer width -/
 
-/-- The pointer type of `cx` in store `s` (D-g: `.i32` without a memory). -/
-def ptrTypeIn (s : CStore E) (cx : LiftLowerContext E) : AddrType :=
-  cx.opts.ptrType (fun m => (E.memAddrType? s.core m).getD .i32)
+/-- The pointer type of `cx` for the core-store queries `v` (D-g: `.i32` without a memory). -/
+def ptrTypeIn (v : CoreEngine.CoreView E (CanonHost E)) (cx : LiftLowerContext E) : AddrType :=
+  cx.opts.ptrType (fun m => (v.memAddrType? m).getD .i32)
 
 /-- REF `ptr_size` (L567): 4 for `i32`, 8 for `i64`. -/
 def ptrSizeOf : AddrType → Nat
@@ -69,7 +70,7 @@ def ptrSizeOf : AddrType → Nat
   | .i64 => 8
 
 /-- REF `cx.opts.memory.ptr_type()` (D-g: `.i32` without a memory). -/
-def ptrType (cx : LiftLowerContext E) : P E σ AddrType := gets (ptrTypeIn · cx)
+def ptrType (cx : LiftLowerContext E) : P E σ AddrType := getsCore (ptrTypeIn · cx)
 
 /-- REF `cx.opts.memory.ptr_size()`. -/
 def ptrSize (cx : LiftLowerContext E) : P E σ Nat := do return ptrSizeOf (← ptrType cx)
@@ -83,32 +84,28 @@ def utf16Tag (cx : LiftLowerContext E) : P E σ Nat := do return ABI.utf16Tag (�
 def memAddr (cx : LiftLowerContext E) : P E σ E.MemAddr :=
   orTrap .noMemory cx.opts.memory
 
-/-- `cx.opts.memory[ptr : ptr+len]` in store `s`, if in bounds (pure). -/
-def memBytes? (s : CStore E) (cx : LiftLowerContext E) (ptr len : Nat) : Option ByteArray :=
-  cx.opts.memory.bind fun m => E.memRead? s.core m ptr len
+/-- `cx.opts.memory[ptr : ptr+len]` for the core-store queries `v`, if in bounds (pure). -/
+def memBytes? (v : CoreEngine.CoreView E (CanonHost E)) (cx : LiftLowerContext E) (ptr len : Nat) :
+    Option ByteArray :=
+  cx.opts.memory.bind fun m => v.memRead? m ptr len
 
 /-- REF `len(cx.opts.memory)` in bytes. -/
 def memLen (cx : LiftLowerContext E) : P E σ Nat := do
   let m ← memAddr cx
-  orTrap (.internal "dangling memory address") (E.memSize? (← getStore).core m)
+  orTrap (.internal "dangling memory address") ((← readCore).memSize? m)
 
 /-- Read `len` bytes at `ptr`, trapping `outOfBounds`. -/
 def readMem (cx : LiftLowerContext E) (ptr len : Nat) : P E σ ByteArray := do
   let m ← memAddr cx
-  orTrap .outOfBounds (E.memRead? (← getStore).core m ptr len)
+  orTrap .outOfBounds ((← readCore).memRead? m ptr len)
 
-/-- The store update of `writeMem` (unchanged if the engine write fails). -/
-def writeMemSt (m : E.MemAddr) (ptr : Nat) (bytes : ByteArray) (s : CStore E) : CStore E :=
-  match E.memWrite? s.core m ptr bytes with
-  | some c => { s with core := c }
-  | none => s
-
-/-- Write `bytes` at `ptr`, trapping `outOfBounds`. -/
+/-- Write `bytes` at `ptr`, trapping `outOfBounds` (and writing nothing) when the engine write
+fails. -/
 def writeMem (cx : LiftLowerContext E) (ptr : Nat) (bytes : ByteArray) : P E σ Unit := do
   let m ← memAddr cx
-  match E.memWrite? (← getStore).core m ptr bytes with
-  | none => trap .outOfBounds
-  | some _ => modifyStore (writeMemSt m ptr bytes)
+  match (← readCore).memWriteOk m ptr bytes with
+  | false => trap .outOfBounds
+  | true => memWriteOp m ptr bytes
 
 /-- REF `trap_if(ptr != align_to(ptr, alignment))`. -/
 def checkAligned (ptr align : Nat) : P E σ Unit :=

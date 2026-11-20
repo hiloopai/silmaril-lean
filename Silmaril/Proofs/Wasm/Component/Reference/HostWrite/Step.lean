@@ -172,7 +172,7 @@ theorem step_cfgSafe (hd : DispatchSafe Ext dispatch) {m m' : Config E σ} {l : 
   | @popCore th vs ct k segs rest hc =>
     have h := (cfgSafe_head hm hc).1
     exact cfgSafe_set hm hc
-      (a' := ⟨th, .core (E.resume m.store.core ct (.values vs)) k, segs⟩) (fun _ =>
+      (a' := ⟨th, .core (E.resume m.core ct (.values vs)) k, segs⟩) (fun _ =>
       ⟨h.2 _ List.mem_cons_self, fun g hg => h.2 g (List.mem_cons_of_mem _ hg)⟩) m.store
   | threadExit hc => exact cfgSafe_pop hm hc _
   | @hostDone r rest hc =>
@@ -192,8 +192,8 @@ theorem step_cfgSafe (hd : DispatchSafe Ext dispatch) {m m' : Config E σ} {l : 
     exact cfgSafe_set hm hc (a' := ⟨th, .core (E.invoke f args) k, segs⟩) (fun _ =>
       ⟨fun vs => HostSafe.of_op (by trivial) h.1 vs, h.2⟩) m.store
   | @coreInternal th ct k segs rest c' ct' hc _ _ =>
-    exact cfgSafe_set hm hc (a' := ⟨th, .core ct' k, segs⟩) (fun h => h)
-      { m.store with core := c' }
+    exact cfgSafe_set (m := { m with core := c' }) hm hc (a' := ⟨th, .core ct' k, segs⟩)
+      (fun h => h) m.store
   | @coreReturned th ct k segs rest vs hc _ =>
     have h := (cfgSafe_head hm hc).1
     exact cfgSafe_set hm hc (a' := ⟨th, .prog (k vs), segs⟩) (fun _ =>
@@ -250,6 +250,18 @@ theorem step_cfgSafe (hd : DispatchSafe Ext dispatch) {m m' : Config E σ} {l : 
       rw [hh]
       exact ⟨actSafe_op (by trivial) (cfgSafe_head hm hc).1 (), (cfgSafe_head hm hc).2⟩
     · cases o <;> exact hb
+  | @readCore th k segs rest hc =>
+    exact cfgSafe_set hm hc (a' := ⟨th, .prog (k (E.view m.core)), segs⟩)
+      (fun h => actSafe_op (by trivial) h _) m.store
+  | @memWrite th a ptr bytes k segs rest hc =>
+    exact cfgSafe_set (m := { m with core := _ }) hm hc (a' := ⟨th, .prog (k ()), segs⟩)
+      (fun h => actSafe_op (by trivial) h _) m.store
+  | @allocHost th ty h k segs rest hc =>
+    exact cfgSafe_set (m := { m with core := _ }) hm hc (a' := ⟨th, .prog (k ()), segs⟩)
+      (fun h => actSafe_op (by trivial) h _) m.store
+  | @prepare th md imports k segs rest hc =>
+    exact cfgSafe_set (m := { m with core := _ }) hm hc (a' := ⟨th, .prog (k ()), segs⟩)
+      (fun h => actSafe_op (by trivial) h _) m.store
   | fault _ => exact cfgSafe_trapCfg hm
   | hostInvoke _ _ => exact cfgSafe_host hm (hostSafe_invokeProg _ _ _)
   | hostTick _ => exact cfgSafe_host hm (hostSafe_tickProg hr)

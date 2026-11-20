@@ -57,13 +57,13 @@ variable {Pf : Profile} {σ : Type} {R : Recurse (core3P Pf) σ}
 theorem toRefDefs_runO {c : Simple} {I : SInst}
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFacts c I cs ci) (cfg : Machine.Config (core3P Pf) σ)
-    (hcore : cfg.store.core = (core3P Pf).empty _) :
+    (hcore : cfg.core = (core3P Pf).empty _) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R inst outer args) {} c.toRef) cfg sc'
-        { cfg with store :=
-            liftStore cs cfg.store (liftedList (fun k => I.addrs.getD k 0) inst c.exports) } ∧
+        { cfg with core := cs, store :=
+            liftStore cfg.store (liftedList (fun k => I.addrs.getD k 0) inst c.exports) } ∧
       funcExports sc'.exports =
         c.exports.mapIdx (fun k x => (x.name, ⟨cfg.store.funcs.length + 0 + k⟩)) := by
-  have hp : (core3P Pf).prepare? cfg.store.core c.mod.mod [] = some (cs, ci, none) := by
+  have hp : (core3P Pf).prepare? cfg.core c.mod.mod [] = some (cs, ci, none) := by
     rw [hcore]
     exact hF.prepare
   have h₁ := instDef_coreModule (R := R) (inst := inst) (outer := outer) (args := args) {}
@@ -73,11 +73,11 @@ theorem toRefDefs_runO {c : Simple} {I : SInst}
       exports := [] } cfg rfl hF.imports hp
   have hinv : ExpInv ((core3P Pf).exports ci) 0 (coreFrame c.mod.mod ((core3P Pf).exports ci)) :=
     ⟨rfl, rfl, rfl⟩
-  have hs : (setCoreSt cs cfg.store).funcs.length = cfg.store.funcs.length + 0 := rfl
+  have hs : cfg.store.funcs.length = cfg.store.funcs.length + 0 := rfl
   obtain ⟨sc', hr, hx⟩ := exportsDefs_runO (R := R) (inst := inst) (outer := outer)
     (args := args) c.mod cfg.store.funcs.length (fun k => I.addrs.getD k 0) c.exports 0
     { frame := coreFrame c.mod.mod ((core3P Pf).exports ci), exports := [] }
-    { cfg with store := setCoreSt cs cfg.store } hinv hs hF.lookup
+    { cfg with core := cs } hinv hs hF.lookup
   refine ⟨sc', ?_, hx⟩
   unfold Simple.toRef
   exact TRuns.foldlM_append (TRuns.foldlM_cons (TRuns.of_eq cfg h₁)
@@ -89,7 +89,7 @@ generated type names, export `k` the lifted function `o + k`. -/
 theorem instantiateCall_simpleO {c : Simple} {I : SInst}
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFacts c I cs ci) (outer : List (Frame (core3P Pf)))
-    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.store.core = (core3P Pf).empty _) :
+    (cfg : Machine.Config (core3P Pf) σ) (hcore : cfg.core = (core3P Pf).empty _) :
     ∃ es, funcExports es =
         c.exports.mapIdx (fun k x => (x.name, ⟨cfg.store.funcs.length + k⟩)) ∧ TagOrFunc es ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ [] : P (core3P Pf) σ (Ret (core3P Pf))) cfg
@@ -198,14 +198,14 @@ theorem simple_init {c : Simple} (hc : c.Good) (hi : c.Inst) {I : SInst} (hI : c
   have hfuncs : (nestCfg cs M (fun j => I.addrs.getD j 0) c).store.funcs =
       M.store.funcs ++ liftedList (fun j => I.addrs.getD j 0) ⟨kk⟩ c.exports := rfl
   have hinsts : (nestCfg cs M (fun j => I.addrs.getD j 0) c).store.insts = M.store.insts ++ [({ } : InstState)] := by
-    simp [nestCfg, nestStore, liftStore, setCoreSt, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
+    simp [nestCfg, nestStore, liftStore, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
       ArenaField.insts]
-  have hcore' : (nestCfg cs M (fun j => I.addrs.getD j 0) c).store.core = cs := rfl
+  have hcore' : (nestCfg cs M (fun j => I.addrs.getD j 0) c).core = cs := rfl
   refine ⟨tr, _, simplePl c kk o, img Ren.id (ownOf I.store), es, hsteps, hhost, htrap, rfl, ?_, ?_,
     ?_, ?_, ?_⟩
   · exact hlock
   · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-      simp [nestCfg, nestStore, liftStore, setCoreSt, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
+      simp [nestCfg, nestStore, liftStore, ArenaOps.allocSt, ArenaField.alloc, Arena.alloc,
         ArenaField.insts]
   · refine ⟨⟨Ren.id, ownOf I.store, ?_, rfl, rfl⟩, ?_, hI.1.choose_spec.ok, rfl,
       hostFree_inst hF, fun w x hx => ?_⟩
@@ -226,7 +226,8 @@ theorem simple_init {c : Simple} (hc : c.Good) (hi : c.Inst) {I : SInst} (hI : c
       have hlen : (liftedList (Pf := P) (fun j => I.addrs.getD j 0) ⟨kk⟩ c.exports).length =
           c.exports.length := List.length_map _
       rw [simplePl_fid c kk o hwl]
-      simp only [ArenaField.get?, ArenaField.funcs, Arena.get?_eq_getElem?, hfuncs]
+      simp only [ArenaField.get?, ArenaField.funcs, Arena.get?_eq_getElem?, Machine.Config.ref_toCStore,
+        hfuncs]
       rw [List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
       simp only [liftedList, List.getElem?_map, List.getElem?_eq_getElem hwl, Option.map_some,
         sAddr, Option.elim, hxty]
@@ -264,7 +265,7 @@ theorem simple_refFwdBwd (P : Profile) {c : Simple} (hc : c.Good) {I : SInst}
         (m₀ : Machine.Config (core3P P) σ) (inst : InstId) (es : List (String × FuncId)),
         InstResult.instance m₀ inst es ∈
           instBehaviours prof (linkHost impl) (initConfig h₀) l.toRef [] →
-        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.store F ∧
+        ∃ (pl : d.Pl) (F : CoreFoot), d.Hold pl I.store m₀.ref F ∧
           (∀ i, d.block pl i ↔ i = 1) ∧
           ∀ (w : Nat) (xe : SimpleExport), c.exports[w]? = some xe →
             d.addr pl w = I.addrs.getD xe.core 0 ∧ d.inst pl w = 1 ∧ d.fid pl w = w := by

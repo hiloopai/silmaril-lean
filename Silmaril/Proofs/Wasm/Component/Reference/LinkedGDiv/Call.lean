@@ -87,9 +87,10 @@ theorem linkDiv_fwdB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
   obtain ⟨M₀, th, K, segs, rest, tr₁, hpre, hat⟩ := call_atG (impl := impl) prof m R.lock k
     (jf dr.j) _ ii lg.imp.exports[dr.j] dr.vs hpf hvs hmax hres hmaxr hrf hii hth hfj
   -- the invariants at the start of the importer's core activation
-  have hR₀ : LReadyG d pl Ii s₀ ui F₀ g Oc₀ M₀.store s u := by
-    refine lready_frame hFr R.inv (by rw [hat.store]; rfl) (by rw [hat.store]; rfl) ?_
+  have hR₀ : LReadyG d pl Ii s₀ ui F₀ g Oc₀ M₀.ref s u := by
+    refine lready_frame hFr R.inv hat.core (by show M₀.store.funcs = _; rw [hat.store]; rfl) ?_
     intro i hi
+    show M₀.store.insts[i]? = _
     rw [hat.store]
     exact List.getElem?_set_ne (fun h => ST.out (by rw [h]; exact hi))
   obtain ⟨F, hI₀⟩ := linv_readyG hR₀ ST.own (f := dr.f) hf₂
@@ -115,7 +116,7 @@ theorem linkDiv_fwdB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
         hleave⟩
     · intro w hw
       obtain ⟨xe, hxe⟩ := hw
-      obtain ⟨-, hblk⟩ := hFr.lifted pl s m.store F₁ w xe hH₀ hxe
+      obtain ⟨-, hblk⟩ := hFr.lifted pl s m.ref F₁ w xe hH₀ hxe
       rw [hat.store]
       show ∃ ι, (List.set m.store.insts ii (enterInst ιi ⟨m.store.threads.length⟩))[d.inst pl w]? =
         some ι ∧ _
@@ -131,7 +132,7 @@ theorem linkDiv_fwdB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
     | cons h₁ h₂ =>
       cases h₁
       exact h₂
-  have hM₀ : M₀ = coreCfg M₀ th K segs rest (M₀.store.core,
+  have hM₀ : M₀ = coreCfg M₀ th K segs rest (M₀.ref.core,
       Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (s₀.funcs.length + Ii.addr dr.f.1)
         (lowerArgs lg.imp.exports[dr.j].ty.params dr.vs)) := eq_coreCfg hat.ctl
   have hlive₀ : Live M₀ := ⟨by rw [hat.ctl]; exact List.cons_ne_nil _ _, by
@@ -144,10 +145,13 @@ theorem linkDiv_fwdB (ST : StatB P lg d pl ii Ii s₀ ui F₀ g tr Oc₀ fs jf) 
     refine ⟨_, invoke_stepG R.ctl R.lock R.nest R.pending _ _, steps_diverges
       (Adequacy.steps_append hpre.steps hrun)
       (fun ev hm => (List.mem_append.mp hm).elim (hq₁.1 ev) (hnh ev)) ?_⟩
+    let M₁ : Machine.Config (E3 P) σ :=
+      { M₀ with conts := C', store := S''.toCStore, core := S''.core }
+    show Machine.Diverges prof (fun _ _ => false) (DI P impl) (coreCfg M₁ th K segs rest yc)
     rcases hsrc with h | h | h
-    · exact divB_coreG SIu hIc h _ th K segs rest
-    · exact divA_coreG SIu ST.wire hFr hDv hIc th hFG' h K segs rest
-    · exact chatter_coreG SIu ST.wire hFr hFw hB hIc th hFG' h K segs rest
+    · exact divB_coreG (M := M₁) SIu hIc h th K segs rest
+    · exact divA_coreG (M := M₁) SIu ST.wire hFr hDv hIc th hFG' h K segs rest
+    · exact chatter_coreG (M := M₁) SIu ST.wire hFr hFw hB hIc th hFG' h K segs rest
   · exfalso
     rcases hsrc with h | ⟨e, s', t', nm, ft, ws, w, h, _⟩ | ⟨q, c, ds, st, hq0, _, hc⟩
     · exact not_divB_doomed hdm h

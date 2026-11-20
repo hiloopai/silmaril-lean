@@ -36,14 +36,14 @@ theorem Reaches.seqT {th : Option ThreadId} {X : Canon.P E σ Unit} {α β : Typ
 
 variable {Pf : Profile}
 
-/-- The store at the start function: instance `0` allocated, the core store `cs`. -/
-def holeStore (cs : (core3P Pf).Store (CanonHost (core3P Pf))) : CStore (core3P Pf) :=
-  setCoreSt cs (ArenaOps.allocSt ArenaField.insts {}
-    (DispatchSt.incNestingSt (initConfig () : Machine.Config (core3P Pf) Unit).store))
+/-- The store at the start function: instance `0` allocated. -/
+def holeStore : CStore (core3P Pf) :=
+  ArenaOps.allocSt ArenaField.insts {}
+    (DispatchSt.incNestingSt (initConfig () : Machine.Config (core3P Pf) Unit).store)
 
 /-- The configuration at the start function. -/
 def holeCfg (cs : (core3P Pf).Store (CanonHost (core3P Pf))) : Machine.Config (core3P Pf) Unit :=
-  { (initConfig () : Machine.Config (core3P Pf) Unit) with store := holeStore cs }
+  { (initConfig () : Machine.Config (core3P Pf) Unit) with store := holeStore, core := cs }
 
 /-- The export map after the start function: export `i` is function `1 + i`. -/
 def exportMapS (c : Simple) : List (String × FuncId) :=
@@ -84,39 +84,43 @@ theorem core_reaches {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst} {a : Nat}
     (hF : CoreFactsS c I cs ci (some a)) (f : Frame (core3P Pf))
     (hm : f.coreModules = [c.mod.mod]) (m : Machine.Config (core3P Pf) Unit)
-    (hcore : m.store.core = (core3P Pf).empty _) :
+    (hcore : m.core = (core3P Pf).empty _) :
     ∃ tr, Reaches prof (refHost Pf).hr (D Pf) none (runStart ⟨0⟩ a)
       (instantiateCore ⟨0⟩ f 0 [] : Canon.P (core3P Pf) Unit _) m tr
-      { m with store := setCoreSt cs m.store }
+      { m with core := cs }
       (fun m₂ tr' r m' => RunsQ (D Pf) none (pure ((core3P Pf).exports ci)) m₂ tr' r m') ∧
       traceObs tr = [] := by
   have hmod : f.coreModule? 0 = some c.mod.mod := by rw [Frame.coreModule?, hm]; rfl
-  have himps : coreImportsFor? m.store.core c.mod.mod [] f = some [] := by
-    unfold coreImportsFor?
+  have himps : ∀ ety, coreImportsWith? ety c.mod.mod [] f = some [] := fun ety => by
+    unfold coreImportsWith?
     rw [hF.imports]
     rfl
-  have hp : (core3P Pf).prepare? m.store.core c.mod.mod [] = some (cs, ci, some a) := by
+  have hp : (core3P Pf).prepare? m.core c.mod.mod [] = some (cs, ci, some a) := by
     rw [hcore]
     exact hF.prepare
   have R₄ := Reaches.here (prof := prof) (hr := (refHost Pf).hr) (dispatch := D Pf) (th := none)
     (X := runStart ⟨0⟩ a) (fun _ => (pure ((core3P Pf).exports ci) : Canon.P (core3P Pf) Unit _))
-    { m with store := setCoreSt cs m.store }
+    { m with core := cs }
   have R₃ : Reaches prof (refHost Pf).hr (D Pf) none (runStart ⟨0⟩ a)
-      (Canon.modifyStore (setCoreSt cs) >>= fun _ =>
+      (prepareOp c.mod.mod [] >>= fun _ =>
         (runStart ⟨0⟩ a >>= fun _ => (pure ((core3P Pf).exports ci) : Canon.P (core3P Pf) Unit _)))
-      m ([.tau] ++ []) { m with store := setCoreSt cs m.store }
+      m ([.tau] ++ []) { m with core := cs }
       (fun m₂ tr' r m' => RunsQ (D Pf) none (pure ((core3P Pf).exports ci)) m₂ tr' r m') :=
-    Reaches.seq (RunsQ.modify rfl (.pure () _)) R₄
+    have hpc : prepareCore m.core c.mod.mod [] = cs := by unfold prepareCore; rw [hp]
+    Reaches.seq (RunsQ.prepare (.pure () _)) (by rw [hpc]; exact R₄)
   unfold instantiateCore
   rw [hmod]
   apply Exists.intro
   apply And.intro
   · apply Reaches.seq (RunsQ.pure _ _)
-    apply Reaches.seq (RunsQ.get (.pure _ _))
-    dsimp only
-    rw [himps]
+    apply Reaches.seq (RunsQ.readCore (.pure _ _))
+    simp only [himps]
     apply Reaches.seq (RunsQ.pure _ _)
-    rw [hp]
+    rw [show (CoreEngine.view _ m.core).prepare? c.mod.mod [] =
+        some (CoreEngine.exports _ ci, some a) by
+      show Option.map (fun r => (CoreEngine.exports _ r.2.1, r.2.2))
+        ((core3P Pf).prepare? m.core c.mod.mod []) = _
+      rw [hp]; rfl]
     exact R₃
   · simp [traceObs, Label.obs?]
 
@@ -151,10 +155,10 @@ lifted exports. -/
 theorem defs_reaches {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst} {a : Nat}
     (hF : CoreFactsS c I cs ci (some a)) (m : Machine.Config (core3P Pf) Unit)
-    (hcore : m.store.core = (core3P Pf).empty _) :
+    (hcore : m.core = (core3P Pf).empty _) :
     ∃ tr Post, Reaches prof (refHost Pf).hr (D Pf) none (runStart ⟨0⟩ a)
       (List.foldlM (instantiateDef callRecurse ⟨0⟩ [] []) {} c.toRef) m tr
-      { m with store := setCoreSt cs m.store } Post ∧ traceObs tr = [] ∧
+      { m with core := cs } Post ∧ traceObs tr = [] ∧
       ∀ m₂ : Machine.Config (core3P Pf) Unit, m₂.store.funcs.length = 1 →
         ∃ tr' sc', Post m₂ tr' sc' { m₂ with store := { m₂.store with
           funcs := m₂.store.funcs ++ liftedList (fun k => I.addrs.getD k 0) ⟨0⟩ c.exports } } ∧
@@ -221,8 +225,7 @@ theorem inst_reaches {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     (hF : CoreFactsS c I cs ci (some a)) :
     ∃ tr Post, Reaches prof (refHost Pf).hr (D Pf) none (runStart ⟨0⟩ a)
       (instantiateProg c.toRef [] : Canon.P (core3P Pf) Unit _) (initConfig ()) tr
-      { (allocCfg : Machine.Config (core3P Pf) Unit) with
-        store := setCoreSt cs (allocCfg : Machine.Config (core3P Pf) Unit).store } Post ∧
+      { (allocCfg : Machine.Config (core3P Pf) Unit) with core := cs } Post ∧
       traceObs tr = [] ∧
       ∀ m₂ : Machine.Config (core3P Pf) Unit, m₂.store.funcs.length = 1 →
         ∃ tr', Post m₂ tr' .unit (endCfg m₂ (fun k => I.addrs.getD k 0) c) ∧

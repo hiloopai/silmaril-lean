@@ -79,26 +79,26 @@ def makeSpec (c : ℕ) (J : ℕ → Prop) : FSpec (CanonHost (E3 P)) where
 
 /-! ## Facts about the toy's core store (kernel evaluation) -/
 
-theorem toyCore_make_code : ((toyInst P).store.core.funcs[2]?).map FuncInst.code =
+theorem toyCore_make_code : ((toyInst P).core.funcs[2]?).map FuncInst.code =
     some (.wasm ⟨⟨2⟩, [], makeBody⟩) := by kernel_rfl
 
-theorem toyCore_make_type : ((toyInst P).store.core.funcs[2]?).map
+theorem toyCore_make_type : ((toyInst P).core.funcs[2]?).map
     (fun fi => decide (Expand fi.type
       (Silmaril.Wasm.Game.FnType.toComp ⟨[], [.num (.int .i32)]⟩))) = some true := by kernel_rfl
 
-theorem toyCore_make_module : ((toyInst P).store.core.funcs[2]?).map
+theorem toyCore_make_module : ((toyInst P).core.funcs[2]?).map
     (fun fi => (fi.module.funcs[0]?, fi.module.globals[0]?)) = some (some 0, some 0) := by
   kernel_rfl
 
-theorem toyCore_new_code : ((toyInst P).store.core.funcs[0]?).map FuncInst.code =
+theorem toyCore_new_code : ((toyInst P).core.funcs[0]?).map FuncInst.code =
     some (.host (newH P)) := by kernel_rfl
 
-theorem toyCore_new_type : ((toyInst P).store.core.funcs[0]?).map
+theorem toyCore_new_type : ((toyInst P).core.funcs[0]?).map
     (fun fi => decide (Expand fi.type
       (Silmaril.Wasm.Game.FnType.toComp ⟨[.num (.int .i32)], [.num (.int .i32)]⟩))) = some true := by
   kernel_rfl
 
-theorem toyCore_globals : ((toyInst P).store.core.globals[0]?).map (fun g => g.value) =
+theorem toyCore_globals : ((toyInst P).core.globals[0]?).map (fun g => g.value) =
     some (.i32 0) := by kernel_rfl
 
 variable {P}
@@ -107,11 +107,11 @@ variable {P}
 theorem toyCs_global (c : ℕ) : ∃ g : GlobalInst, (toyCs P c).globals[0]? = some g ∧
     g.value = .i32 (BitVec.ofNat 32 c) := by
   have h := toyCore_globals P
-  cases hg : (toyInst P).store.core.globals[0]? with
+  cases hg : (toyInst P).core.globals[0]? with
   | none => simp [hg] at h
   | some g =>
     refine ⟨{ g with value := .i32 (BitVec.ofNat 32 c) }, ?_, rfl⟩
-    show (List.modify (toyInst P).store.core.globals 0 _)[0]? = _
+    show (List.modify (toyInst P).core.globals 0 _)[0]? = _
     rw [List.getElem?_modify]
     simp [hg]
 
@@ -212,7 +212,7 @@ end Body
 /-- The call of `res.new` at the end of `make`. -/
 theorem make_call {c : ℕ} {J : ℕ → Prop} {F f : Frame} {fi₀ : FuncInst (CanonHost (E3 P))}
     {vs₀ : List Execution.Core.Val} {k nr : ℕ} (hnr : nr = 1) (hc : c + 1 < 2 ^ 32)
-    (hx : F.module.funcs[0]? = some 0) (hf₀ : (toyInst P).store.core.funcs[0]? = some fi₀)
+    (hx : F.module.funcs[0]? = some 0) (hf₀ : (toyInst P).core.funcs[0]? = some fi₀)
     (hcode : fi₀.code = .host (newH P))
     (he : Expand fi₀.type (Silmaril.Wasm.Game.FnType.toComp ⟨[.num (.int .i32)], [.num (.int .i32)]⟩)) :
     HWP P (Hnew P c J) (toyCs P (c + 1)) F (vals [.i32 (BitVec.ofNat 32 c)] ++ [.plain (.call ⟨0⟩)])
@@ -246,10 +246,10 @@ theorem makeSpec_valid {c : ℕ} (hc : c < 2 ^ 32) (J : ℕ → Prop) :
     have hmod := toyCore_make_module P
     have hc₀ := toyCore_new_code P
     have ht₀ := toyCore_new_type P
-    cases hf : (toyInst P).store.core.funcs[2]? with
+    cases hf : (toyInst P).core.funcs[2]? with
     | none => simp [hf] at hcode
     | some fi =>
-    cases hf₀ : (toyInst P).store.core.funcs[0]? with
+    cases hf₀ : (toyInst P).core.funcs[0]? with
     | none => simp [hf₀] at hc₀
     | some fi₀ =>
       simp only [hf, hf₀, Option.map_some, Option.some.injEq, decide_eq_true_eq,

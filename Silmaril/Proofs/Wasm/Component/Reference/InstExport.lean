@@ -56,6 +56,23 @@ theorem modifyStore {f : CStore E → CStore E} (hf : ∀ s, (f s).lockdown = s.
     TRuns (Canon.modifyStore f : P E σ Unit) m () { m with store := f m.store } :=
   .modify hf (.pure _ _)
 
+theorem readCore (m : Machine.Config E σ) :
+    TRuns (Canon.readCore : P E σ _) m (E.view m.core) m :=
+  SRuns.readCore (.pure _ _)
+
+theorem allocHostOp (ty : _) (h : CanonHost E) (m : Machine.Config E σ) :
+    TRuns (Canon.allocHostOp ty h : P E σ Unit) m () { m with core := (E.allocHost m.core ty h).1 } :=
+  SRuns.allocHost (.pure _ _)
+
+theorem prepareOp (md : E.Module) (imports : List E.ExternVal) (m : Machine.Config E σ) :
+    TRuns (Canon.prepareOp md imports : P E σ Unit) m () { m with core := prepareCore m.core md imports } :=
+  SRuns.prepare (.pure _ _)
+
+theorem memWriteOp (ma : E.MemAddr) (ptr : Nat) (bytes : ByteArray) (m : Machine.Config E σ) :
+    TRuns (Canon.memWriteOp ma ptr bytes : P E σ Unit) m ()
+      { m with core := (E.memWrite? m.core ma ptr bytes).getD m.core } :=
+  SRuns.memWrite (.pure _ _)
+
 theorem allocObj {Id α : Type} (F : ArenaField E Id α)
     (hF : ∀ s a, (F.put s a).lockdown = s.lockdown) (x : α) (m : Machine.Config E σ) :
     TRuns (Canon.allocObj F x : P E σ Id) m (F.mkId (F.size m.store))

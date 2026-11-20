@@ -89,7 +89,7 @@ variable {P : Profile} {lg : LinkedG} {d : lg.exp.RefData P} {Ii : SInst}
 /-- **`HoldX` at the grown footprint**: the static facts at the functions of the start, the
 invariant between calls at a witness whose combined footprint lies under `Fc` at `σ₀`, the
 importer's instance and the export instances. -/
-theorem holdX_grow {pl : ExpPl lg d} {st : Store Nat × lg.exp.St} {S' : CStore (E3 P)}
+theorem holdX_grow {pl : ExpPl lg d} {st : Store Nat × lg.exp.St} {S' : RefStore (E3 P)}
     {Fc : CoreFoot} {σ₀ : Store (CanonHost (E3 P))} (hB : Fc.Bounded σ₀)
     {F₀ : List (FuncInst (CanonHost (E3 P)))} {g : CanonHost (E3 P) → Nat}
     {tr : Nat → CanonHost (E3 P)}
@@ -169,7 +169,7 @@ theorem toExpData_fwd (hFr : d.Frame) (hFw : d.Fwd) (hRes : d.Resume) (hB : d.Bo
       cases h₁
       exact h₂
   have hstart : (toExpData lg d Ii).startCfg pl dr.j.val x dr.vs M th K segs rest =
-      coreCfg M th K segs rest (M.store.core,
+      coreCfg M th K segs rest (M.core,
         Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr dr.f.1)
           (lowerArgs lg.imp.exports[dr.j].ty.params dr.vs)) := by
     show { M with ctl := _ } = _
@@ -179,23 +179,23 @@ theorem toExpData_fwd (hFr : d.Frame) (hFw : d.Fwd) (hRes : d.Resume) (hB : d.Bo
   have hround := rounds_fwdT (prof := prof) (impl := impl) SIu ST.wire hFr hFw hB th K segs rest
     dr.cs dr.dss M st.2 st'.2 F _ _ st'.1 hI₀ hT₀ hFG₀ hrel hexp hpath'
   -- a trapped end
-  have hfr : ∀ c, TrapEnd prof P impl (coreCfg M th K segs rest (M.store.core,
+  have hfr : ∀ c, TrapEnd prof P impl (coreCfg M th K segs rest (M.core,
         Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr dr.f.1)
           (lowerArgs lg.imp.exports[dr.j].ty.params dr.vs))) c →
       TrapAtG d pl.ple Ii pl.s₀ st.1 F₀ g pl.Oc₀ dr.f M.store st'.2 c st'.1 →
-      TrapT d pl.ple pl.s₀ g pl.Oc₀ Fc M.store.core M.store st'.2 c st'.1 → dr.ans = none →
+      TrapT d pl.ple pl.s₀ g pl.Oc₀ Fc M.core M.store st'.2 c st'.1 → dr.ans = none →
       ∃ (tr' : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ),
         Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
-          (coreCfg M th K segs rest (M.store.core,
+          (coreCfg M th K segs rest (M.core,
             Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr dr.f.1)
               (lowerArgs lg.imp.exports[dr.j].ty.params dr.vs))) tr' m ∧
         (∀ ev, Label.host ev ∉ tr') ∧ (∀ msg, Label.trap (.internal msg) ∉ tr') ∧
-        (toExpData lg d Ii).Ends pl x M.store Fc M th K segs rest dr.ans st' m := by
+        (toExpData lg d Ii).Ends pl x M.ref Fc M th K segs rest dr.ans st' m := by
     intro c hT hTA hTT hn
     obtain ⟨tr', m', hrun, hh, hi, hl, hc⟩ := hT
     obtain ⟨F', ρc', Oc', hR', hW', hU'⟩ := lready_trapW hRes hR.toG hTA hTT
     refine ⟨tr', m', hrun, hh, hi, .inr ⟨hn, hl, { M.store with core := c },
-      growFoot Fc M.store.core c, hc.symm, rfl, ?_, hc ▸ hW', grows_growFoot _ _ _⟩⟩
+      growFoot Fc M.core c, hc.symm, rfl, ?_, hc ▸ hW', grows_growFoot _ _ _⟩⟩
     exact holdX_grow hH.bound ST hR' hW' hU' hH.imp hH.exp
   rcases hround with ⟨trc, C', S'', F', yc, t', r, hrun, hq, hIc, hTc, final, hwr, hFG', hX'⟩ |
     ⟨c, hT, hTA, hTT, hwr⟩
@@ -223,10 +223,10 @@ theorem toExpData_fwd (hFr : d.Frame) (hFw : d.Fwd) (hRes : d.Resume) (hB : d.Bo
       have hR' : dr.ans = (liftArgs lg.imp.exports[dr.j].ty.results zs).map .vals :=
         lifted_answer hwr hm
       have s₃ : Step prof (linkHost impl).hr (linkHost impl).dispatch
-          (coreCfg { M with conts := C', store := S'' } th K segs rest yc) .tau
-          (retCfg { M with conts := C', store := S'' } th K segs rest yc zs) :=
+          (coreCfg { M with conts := C', store := S''.toCStore } th K segs rest yc) .tau
+          (retCfg { M with conts := C', store := S''.toCStore } th K segs rest yc zs) :=
         Step.coreReturned rfl hst
-      have hret : retCfg { M with conts := C', store := S'' } th K segs rest yc zs =
+      have hret : retCfg { M with conts := C', store := S''.toCStore } th K segs rest yc zs =
           ExpSpec.RefData.retCfg' M S'' C' th K segs rest zs := by
         unfold retCfg
         rw [← hIc.core]
@@ -236,15 +236,15 @@ theorem toExpData_fwd (hFr : d.Frame) (hFw : d.Fwd) (hRes : d.Resume) (hB : d.Bo
       have hSf : S''.funcs = M.store.funcs := hS₀
       have hout := ST.out
       have hii : S''.insts[pl.ii]? = M.store.insts[pl.ii]? := hX'.insts_out pl.ii hout
-      have hH₂ : HoldX lg d Ii pl st' S'' (growFoot Fc M.store.core S''.core) := by
+      have hH₂ : HoldX lg d Ii pl st' S'' (growFoot Fc M.core S''.core) := by
         refine holdX_grow hH.bound (hSf ▸ ST) hR₂ hW₂ hU₂ ?_ hFG'.exp
         rw [hii]
         exact hH.imp
-      have hext : (toExpData lg d Ii).StoreExt pl M.store S'' :=
+      have hext : (toExpData lg d Ii).StoreExt pl M.ref S'' :=
         ⟨hX'.eq, hX'.insts_len, fun i hi => hX'.insts_out i (fun h => hi (.inl h)), fun _ => hii,
           hX'.subtasks, hX'.callers, hX'.tasks, hX'.threads⟩
       have hrun₃ : Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
-          (coreCfg M th K segs rest (M.store.core,
+          (coreCfg M th K segs rest (M.core,
             Silmaril.Wasm.SingleThreaded.Thread.invokeFlat (pl.s₀.funcs.length + Ii.addr dr.f.1)
               (lowerArgs lg.imp.exports[dr.j].ty.params dr.vs))) (trc ++ [.tau])
           (ExpSpec.RefData.retCfg' M S'' C' th K segs rest zs) :=
@@ -252,7 +252,7 @@ theorem toExpData_fwd (hFr : d.Frame) (hFw : d.Fwd) (hRes : d.Resume) (hB : d.Bo
           hrun (.cons s₃ (.refl _))
       refine ⟨trc ++ [.tau], _, hrun₃,
         (noHI_cons_tau hq).1, (noHI_cons_tau hq).2, .inl ⟨S'', C', zs,
-          growFoot Fc M.store.core S''.core, rfl, hxty ▸ hzty, ?_, hext, hH₂, hW₂,
+          growFoot Fc M.core S''.core, rfl, hxty ▸ hzty, ?_, hext, hH₂, hW₂,
           grows_growFoot _ _ _⟩⟩
       rw [hR', hxty]
       cases liftArgs lg.imp.exports[dr.j].ty.results zs <;> rfl

@@ -62,7 +62,7 @@ exporter's footprint `F`, the shared thread `y`, the importer's part `x` and the
 state `s`. -/
 structure DStG (P : Profile) (σ : Type) (e : ExpSpec) where
   C : List (Option (Activation (E3 P) σ))
-  S : CStore (E3 P)
+  S : RefStore (E3 P)
   F : CoreFoot
   y : CoreSt (E3 P)
   x : Store Nat × STh
@@ -80,10 +80,10 @@ activation at `z`, `LInvG` and the importer's frame hold, and the store extends 
 calls so far; the footprint is tracked (`RelT`: changes since `σ₀` inside `Fc`). -/
 structure DInvG (z : DStG P σ lg.exp) : Prop where
   div : Machine.Diverges prof (fun _ _ => false) (DI P impl)
-    (coreCfg { M₀ with conts := z.C, store := z.S } th K segs rest z.y)
+    (coreCfg { M₀ with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest z.y)
   inv : LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f z.s z.S z.F z.y z.x
-  frame : FrameG d pl ii th z.S
-  ext : CallExt d pl M₀.store z.S
+  frame : FrameG d pl ii th z.S.toCStore
+  ext : CallExt d pl M₀.ref z.S
   track : RelT s₀ g Oc₀ Fc σ₀ z.F z.y z.x
 
 /-- **(iv) The importer's core activation exits otherwise and the machine diverges after the
@@ -96,7 +96,7 @@ def ExitDivG (z : DStG P σ lg.exp) : Prop :=
     LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f z.s { z.S with core := y₁.1 } z.F y₁ x₁ ∧
     RelT s₀ g Oc₀ Fc σ₀ z.F y₁ x₁ ∧
     (∀ h ys, (E3 P).status y₁.1 y₁.2 ≠ .callout h ys) ∧
-    CoreExit { M₀ with conts := z.C, store := z.S } th K segs rest y₁ lb m₁ ∧
+    CoreExit { M₀ with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest y₁ lb m₁ ∧
     Machine.Diverges prof (fun _ _ => false) (DI P impl) m₁
 
 variable {prof impl d pl ii Ii s₀ u₀ F₀ g Oc₀ f th K segs rest M₀ Fc σ₀}
@@ -117,15 +117,15 @@ theorem ldiv_roundG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
         LinkedG.ExpRun P lg z.s ds z'.s ∧
         DInvG prof impl d pl ii Ii s₀ u₀ F₀ g Oc₀ f th K segs rest M₀ Fc σ₀ z' ∧
         Machine.Steps prof (fun _ _ => false) (DI P impl)
-          (coreCfg { M₀ with conts := z.C, store := z.S } th K segs rest z.y) trc
-          (coreCfg { M₀ with conts := z'.C, store := z'.S } th K segs rest z'.y) ∧
+          (coreCfg { M₀ with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest z.y) trc
+          (coreCfg { M₀ with conts := z'.C, store := z'.S.toCStore, core := z'.S.core } th K segs rest z'.y) ∧
         (∀ ev, Label.host ev ∉ trc) := by
   rcases z with ⟨C, S, F, y, x, s⟩
   obtain ⟨hd, hI, hFG, hX, hT⟩ := hz
   dsimp only at hd hI hFG hX hT ⊢
-  let M : Machine.Config (E3 P) σ := { M₀ with conts := C, store := S }
+  let M : Machine.Config (E3 P) σ := { M₀ with conts := C, store := S.toCStore, core := S.core }
   change Machine.Diverges prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest y) at hd
-  change LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.store F y x at hI
+  change LInvG d pl Ii s₀ u₀ F₀ g Oc₀ f s M.ref F y x at hI
   change FrameG d pl ii th M.store at hFG
   rcases coreCfg_diverges_step hd with hinf | ⟨y₁, lb, m₁, hy, hx, dy₁, d₁⟩
   · -- (i) the importer's core activation runs forever
@@ -157,8 +157,8 @@ theorem ldiv_roundG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
   have hfilt : q.2.1.filterMap Silmaril.Wasm.SingleThreaded.toFlat? = ys' :=
     hek.2 ▸ filterMap_of_mapM hys
   have hwl : wi < lg.exp.comp.exports.length := (List.getElem?_eq_some_iff.mp hxe).1
-  let M' : Machine.Config (E3 P) σ := { M with store := { M.store with core := y₁.1 } }
-  have hFG₁ : FrameG d pl ii th M'.store := hFG.core _
+  let M' : Machine.Config (E3 P) σ := { M with core := y₁.1 }
+  have hFG₁ : FrameG d pl ii th M'.store := hFG
   have dy₁' : Machine.Diverges prof (fun _ _ => false) (DI P impl)
       (coreCfg M' th K segs rest y₁) := dy₁
   cases hws : liftArgs p.params ys' with
@@ -166,7 +166,7 @@ theorem ldiv_roundG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg d p
     -- the arguments do not lift: a trap at the callout, which does not diverge
     obtain ⟨ιi, hi, hleave⟩ := hFG₁.imp
     obtain ⟨ιe, hie, hth⟩ := hFG₁.exp wi ⟨xe, hxe⟩
-    obtain ⟨hf, -⟩ := hFr.lifted pl s M'.store F wi xe hI₁.hold hxe
+    obtain ⟨hf, -⟩ := hFr.lifted pl s M'.ref F wi xe hI₁.hold hxe
     rw [hty] at hf
     rw [htr] at hst'
     exact absurd dy₁' (TrapsFrom.not_diverges (trapsFrom_of_SH (nest_trap_argsG (prof := prof)
@@ -222,7 +222,7 @@ theorem ldiv_classifyG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg 
       DInvG prof impl d pl ii Ii s₀ u₀ F₀ g Oc₀ f th K segs rest M₀ Fc σ₀ z ∧
       Machine.Steps prof (fun _ _ => false) (DI P impl)
         (coreCfg { M₀ with conts := z₀.C, store := z₀.S } th K segs rest z₀.y) trc
-        (coreCfg { M₀ with conts := z.C, store := z.S } th K segs rest z.y) ∧
+        (coreCfg { M₀ with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest z.y) ∧
       (∀ ev, Label.host ev ∉ trc) ∧
       (Linked2.DivB P z.x.1 z.x.2 ∨ LinkedG.DivA P lg Ii f z.x.1 z.x.2 z.s ∨
         LinkedG.Chatter P lg Ii f z.x.1 z.x.2 z.s ∨
@@ -236,7 +236,7 @@ theorem ldiv_classifyG (SI : ImpStatG P lg.imp Ii u₀ F₀ g tr) (W : WireG lg 
     LinkedG.ExpRun P lg z₀.s dss.flatten z.s ∧
     Machine.Steps prof (fun _ _ => false) (DI P impl)
       (coreCfg { M₀ with conts := z₀.C, store := z₀.S } th K segs rest z₀.y) trc
-      (coreCfg { M₀ with conts := z.C, store := z.S } th K segs rest z.y) ∧
+      (coreCfg { M₀ with conts := z.C, store := z.S.toCStore, core := z.S.core } th K segs rest z.y) ∧
     (∀ ev, Label.host ev ∉ trc)
   by_cases hfin : ∃ z, Pre z ∧ DInvG prof impl d pl ii Ii s₀ u₀ F₀ g Oc₀ f th K segs rest M₀ Fc σ₀ z ∧
       (Linked2.DivB P z.x.1 z.x.2 ∨ LinkedG.DivA P lg Ii f z.x.1 z.x.2 z.s ∨

@@ -86,10 +86,10 @@ def ntaskRetG (ie : Nat) (S : CStore (E3 P)) (p : Silmaril.Wasm.Component.FuncTy
 
 /-- The store after a nested call returned `us` at core store `cs`, before the caller's
 callout program resumes. -/
-def nstoreRetG (ie ii : Nat) (S : CStore (E3 P)) (cs : (E3 P).Store (CanonHost (E3 P)))
+def nstoreRetG (ie ii : Nat) (S : CStore (E3 P)) (_cs : (E3 P).Store (CanonHost (E3 P)))
     (ys : List Flat) (p : Silmaril.Wasm.Component.FuncTy) (ιe' : InstState) (pos : Nat)
     (us : List Silmaril.Wasm.Component.Val) : CStore (E3 P) :=
-  nstore { S with core := cs } (nsubRetG ii (lowerArgs p.results us))
+  nstore S (nsubRetG ii (lowerArgs p.results us))
     (lowerRec ⟨S.subtasks.length⟩ ⟨ii⟩ ys p pos) (ntaskRetG ie S p) (nthreadRet S)
     (S.insts.set ie (InstState.removeThread 1 ιe'))
 
@@ -151,30 +151,30 @@ theorem nstoreCore_eqG (ie ii : Nat) (S : CStore (E3 P)) (ys : List Flat)
     ArenaField.modify, Arena.modify, ArenaField.tasks, ArenaField.callers, ArenaField.subtasks,
     modify_concat_length, lowerRec, LowerSt.Caller.withPos]
 
-theorem nstore_returnG (ie ii : Nat) (S : CStore (E3 P)) (cs : (E3 P).Store (CanonHost (E3 P)))
+theorem nstore_returnG (ie ii : Nat) (S : CStore (E3 P)) (_cs : (E3 P).Store (CanonHost (E3 P)))
     (ys : List Flat) (p : Silmaril.Wasm.Component.FuncTy) (ιe' : InstState) (pos : Nat)
     (flat : List Flat) :
     CStore.setTaskState ⟨S.tasks.length⟩ .resolved (CStore.subtaskResolveSt ⟨S.subtasks.length⟩
         .returned flat
-        (nstore { S with core := cs } { inst := ⟨ii⟩, state := .started }
+        (nstore S { inst := ⟨ii⟩, state := .started }
           (lowerRec ⟨S.subtasks.length⟩ ⟨ii⟩ ys p pos) ((ntask₁G ie S p).withState .started)
           ((thread₁ S.tasks).withIndex 1) (S.insts.set ie ιe'))) =
-      nstore { S with core := cs } (nsubRetG ii flat) (lowerRec ⟨S.subtasks.length⟩ ⟨ii⟩ ys p pos)
+      nstore S (nsubRetG ii flat) (lowerRec ⟨S.subtasks.length⟩ ⟨ii⟩ ys p pos)
         (((ntask₁G ie S p).withState .started).withState .resolved) ((thread₁ S.tasks).withIndex 1)
         (S.insts.set ie ιe') := by
   simp [nstore, CStore.subtaskResolveSt, CStore.setTaskState, ArenaField.modify, Arena.modify,
     ArenaField.tasks, ArenaField.subtasks, modify_concat_length, nsubRetG]
 
-theorem nstore_exitG (ie : Nat) (S : CStore (E3 P)) (cs : (E3 P).Store (CanonHost (E3 P)))
+theorem nstore_exitG (ie : Nat) (S : CStore (E3 P)) (_cs : (E3 P).Store (CanonHost (E3 P)))
     (sub : Subtask) (cl : Caller (E3 P)) (p : Silmaril.Wasm.Component.FuncTy) (ιe' : InstState) :
     threadStatusSt ⟨S.threads.length⟩ .exited
       (CStore.unregisterThreadSt ⟨S.tasks.length⟩ ⟨S.threads.length⟩ 1
-        (nstore { S with core := cs } sub cl
+        (nstore S sub cl
           (((ntask₁G ie S p).withState .started).withState .resolved)
           ((thread₁ S.tasks).withIndex 1) (S.insts.set ie ιe'))) =
-      nstore { S with core := cs } sub cl (ntaskRetG ie S p) (nthreadRet S)
+      nstore S sub cl (ntaskRetG ie S p) (nthreadRet S)
         (S.insts.set ie (InstState.removeThread 1 ιe')) := by
-  have h₁ : (nstore { S with core := cs } sub cl
+  have h₁ : (nstore S sub cl
       (((ntask₁G ie S p).withState .started).withState .resolved) ((thread₁ S.tasks).withIndex 1)
       (S.insts.set ie ιe')).task? ⟨S.tasks.length⟩ =
       some (((ntask₁G ie S p).withState .started).withState .resolved) := tasks_get_last rfl
@@ -217,7 +217,7 @@ theorem lift_body_atG (ie ii : Nat) (M₀ : Machine.Config (E3 P) σ) (S : CStor
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl)
           (retCfg { M₀ with store := nstoreCoreG ie ii S ys p ιe' pos } (some ⟨S.threads.length⟩)
             K' segs' R y zs) tr'
-          { M₀ with store := nstoreRetG ie ii S y.1 ys p ιe' pos us, ctl := R }) ∧
+          { M₀ with store := nstoreRetG ie ii S y.1 ys p ιe' pos us, core := y.1, ctl := R }) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
         TrapsNextD prof P impl
@@ -248,9 +248,9 @@ theorem lift_body_atG (ie ii : Nat) (M₀ : Machine.Config (E3 P) σ) (S : CStor
   · intro y zs us hzs hus
     apply Exists.intro
     unfold retCfg
-    apply LRun.store_congr (S' := nstore { S with core := y.1 } { inst := ⟨ii⟩, state := .started }
+    apply LRun.store_congr (S' := nstore S { inst := ⟨ii⟩, state := .started }
       (lowerRec ⟨S.subtasks.length⟩ ⟨ii⟩ ys p pos) ((ntask₁G ie S p).withState .started)
-      ((thread₁ S.tasks).withIndex 1) (S.insts.set ie ιe')) (by rw [nstoreCore_eqG]; rfl)
+      ((thread₁ S.tasks).withIndex 1) (S.insts.set ie ιe')) (by rw [nstoreCore_eqG])
     apply RunsQ.chunk2 rfl (runs_lift_someP (impl := impl) p hres hmaxr hrf hzs hus _ _).choose_spec
       (by exact hl)
     apply RunsQ.chunk2 rfl (by exact (runs_returnL (impl := impl) (Gt := S.tasks) rfl rfl rfl rfl
@@ -259,7 +259,7 @@ theorem lift_body_atG (ie ii : Nat) (M₀ : Machine.Config (E3 P) σ) (S : CStor
     apply LRun.store_congr (nstore_returnG ie ii S y.1 ys p ιe' pos _)
     apply RunsQ.chunk rfl (runs_exitG (impl := impl) (Gt := S.tasks) (Gth := S.threads) rfl rfl rfl
       rfl rfl rfl (by exact hie') hrem) (by exact hl)
-    lstep ((CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.2.1.trans hl)
+    lstep ((CStore.unregisterThreadSt_frame (E := E3 P) _ _ _ _).2.2.2.2.2.2.1.trans hl)
     exact lrun_refl_store (nstore_exitG ie S y.1 _ _ p ιe')
   · intro y zs hzs hn
     exact ⟨lrun_lift_trapP p hres hmaxr hrf hzs hn rfl (by exact hl),
@@ -281,7 +281,7 @@ theorem lift_body_trapG (ie ii : Nat) (M₀ : Machine.Config (E3 P) σ) (S : CSt
           (ntask₀G ie S p) (thread₁ S.tasks) S.insts
         ctl := ⟨some ⟨S.threads.length⟩,
           .prog (DI P impl (.threadBody (.liftImplicit ⟨S.tasks.length⟩ a))), []⟩ :: R }
-      S.core M₀.host := by
+      M₀.core M₀.host := by
   obtain ⟨trS, mT, hst, hcore, hhost⟩ := traps_startLTSH (impl := impl)
     (th := some ⟨S.threads.length⟩)
     (m := { M₀ with
@@ -307,10 +307,9 @@ theorem lift_body_trapG (ie ii : Nat) (M₀ : Machine.Config (E3 P) σ) (S : CSt
 /-! ## The caller's side -/
 
 theorem nstore_retFrame (M : Machine.Config (E3 P) σ) (ie : Nat) (ι : InstState) (r : NRec P)
-    (C : List (Option (Activation (E3 P) σ))) (c₀ cs : (E3 P).Store (CanonHost (E3 P))) :
-    nstore { ({ M.store with core := c₀ } : CStore (E3 P)) with core := cs } r.sub r.caller r.task
-        r.thread (M.store.insts.set ie ι) =
-      { (retFrame M ie ι r C).store with core := cs } := rfl
+    (C : List (Option (Activation (E3 P) σ))) :
+    nstore M.store r.sub r.caller r.task r.thread (M.store.insts.set ie ι) =
+      (retFrame M ie ι r C).store := rfl
 
 /-- **The caller's side of a nested call** (`nest_pre` at instances `ie`, `ii`, in any frame
 `M` not locked down): from the callout of the caller's core activation to the callee's lifted
@@ -328,22 +327,23 @@ theorem nest_preG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.loc
     (hf : ArenaField.funcs.get? M.store f = some (.lifted a (witFt p) {} ⟨ie⟩)) :
     ∃ C₁ R tr, LRun prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest x)
       tr { coreCfg M th K segs rest x with
-        store := nstore { M.store with core := x.1 } { inst := ⟨ii⟩ }
+        store := nstore M.store { inst := ⟨ii⟩ }
           (lowerRec ⟨M.store.subtasks.length⟩ ⟨ii⟩ ys p 0)
-          (ntask₀G ie { M.store with core := x.1 } p) (thread₁ M.store.tasks) M.store.insts
+          (ntask₀G ie M.store p) (thread₁ M.store.tasks) M.store.insts
         conts := C₁
         ctl := ⟨some ⟨M.store.threads.length⟩,
           .prog (DI P impl (.threadBody (.liftImplicit ⟨M.store.tasks.length⟩ a))), []⟩ :: R } ∧
       ∀ (cs : (E3 P).Store (CanonHost (E3 P))) (pos : Nat) (us : List Silmaril.Wasm.Component.Val),
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl)
           { coreCfg M th K segs rest x with
-            store := nstoreRetG ie ii { M.store with core := x.1 } cs ys p ιe' pos us
+            store := nstoreRetG ie ii M.store cs ys p ιe' pos us
+            core := cs
             conts := C₁
             ctl := R } tr'
           (coreCfg (retFrame M ie (InstState.removeThread 1 ιe')
-            (nrecG ie ii { M.store with core := x.1 } ys p pos (lowerArgs p.results us)) C₁)
+            (nrecG ie ii M.store ys p pos (lowerArgs p.results us)) C₁)
             th K segs rest (cs, (E3 P).resume cs x.2 (.values (lowerArgs p.results us)))) := by
-  let S : CStore (E3 P) := { M.store with core := x.1 }
+  let S : CStore (E3 P) := M.store
   apply Exists.intro; apply Exists.intro; apply Exists.intro
   refine ⟨?_, ?_⟩
   apply LRun.cons (m := coreCfg M th K segs rest x) ⟨List.cons_ne_nil _ _, hl⟩
@@ -379,7 +379,7 @@ theorem nest_preG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.loc
   apply LRun.store_congr (nstore_deliver _ _ _ _ _ _ _ rfl)
   repeat lstep hl
   exact lrun_refl_store (nstore_retFrame M ie (InstState.removeThread 1 ιe')
-    (nrecG ie ii S ys p pos (lowerArgs p.results us)) _ x.1 cs)
+    (nrecG ie ii S ys p pos (lowerArgs p.results us)) _)
 
 /-- **A callout of the caller answered by the callee's `canon lift`** (`nest_at`, `nest_atTSH`
 at instances `ie`, `ii`, in any frame `M` not locked down): from the caller's core activation
@@ -415,12 +415,12 @@ theorem nest_atG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.lock
       LRun prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest x) tr M₁ ∧
       M₁.ctl = ⟨th', .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a (lowerArgs p.params ws))
         K', segs'⟩ :: rest' ∧
-      M₁.store.core = x.1 ∧ M₁.store.lockdown = false ∧ M₁.host = M.host ∧
+      M₁.core = x.1 ∧ M₁.store.lockdown = false ∧ M₁.host = M.host ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat) (us : List Silmaril.Wasm.Component.Val),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = some us →
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr'
           (coreCfg (retFrame M ie (InstState.removeThread 1 ιe')
-            (nrecG ie ii { M.store with core := x.1 } ys p pos (lowerArgs p.results us)) C₁)
+            (nrecG ie ii M.store ys p pos (lowerArgs p.results us)) C₁)
             th K segs rest (y.1, (E3 P).resume y.1 x.2 (.values (lowerArgs p.results us))))) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
@@ -429,7 +429,7 @@ theorem nest_atG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.lock
   obtain ⟨C₁, R, tr₁, h₁, hback⟩ := nest_preG (prof := prof) (impl := impl) ie ii M hl ιe' th K
     segs rest x f a p ys ιi hs hentry hi hleave hf
   obtain ⟨pos, K', segs', tr₂, h₂, hret, htrap⟩ := lift_body_atG (prof := prof) (impl := impl)
-    ie ii { coreCfg M th K segs rest x with conts := C₁ } { M.store with core := x.1 } ys p ws a R
+    ie ii { coreCfg M th K segs rest x with conts := C₁ } M.store ys p ws a R
     hie hadd hrem hl hpf hys hmaxp hws hres hrf hmaxr
   refine ⟨pos, C₁, _, _, K', segs', _, _, h₁.trans h₂, rfl, rfl, hl, rfl, ?_, htrap⟩
   intro y zs us hzs hus
@@ -457,7 +457,7 @@ theorem nest_trap_argsG (ie ii : Nat) (M : Machine.Config (E3 P) σ)
   obtain ⟨C₁, R, tr₁, h₁, -⟩ := nest_preG (prof := prof) (impl := impl) ie ii M hl ιe' th K segs
     rest x f a p ys ιi hs hentry hi hleave hf
   exact TrapsAtSH.lrun h₁ (lift_body_trapG (prof := prof) (impl := impl) ie ii
-    { coreCfg M th K segs rest x with conts := C₁ } { M.store with core := x.1 } ys p a R hie hadd
+    { coreCfg M th K segs rest x with conts := C₁ } M.store ys p a R hie hadd
     hl hpf hys hmaxp hws)
 
 /-- A specification trap with the host state is a trap. -/
@@ -475,7 +475,7 @@ theorem trapsAtSH_back {M m' : Machine.Config (E3 P) σ} {c : (E3 P).Store (Cano
     {h : σ} {tr : List (Label (E3 P) σ)} (H : TrapsAtSH prof P impl M c h)
     (r : Steps prof (fun _ _ => false) (DI P impl) M tr m') :
     Live m' ∨ ∃ (mT : Machine.Config (E3 P) σ) (rr : TrapReason), (∀ msg, rr ≠ .internal msg) ∧
-      m' = trapCfg mT ∧ mT.store.core = c ∧ mT.host = h := by
+      m' = trapCfg mT ∧ mT.core = c ∧ mT.host = h := by
   obtain ⟨tr₁, mT, rT, hr, hrun, hlive, hu, hc, hh⟩ := H
   rcases hrun.inv r with hl' | ⟨tr'', -, r''⟩
   · exact .inl hl'
@@ -515,7 +515,7 @@ theorem nest_backG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.lo
       LRun prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest x) tr M₁ ∧
       M₁ = coreCfg M₁ th' K' segs' rest'
         (x.1, Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a (lowerArgs p.params ws)) ∧
-      M₁.store.core = x.1 ∧ M₁.store.lockdown = false ∧ M₁.host = M.host ∧
+      M₁.core = x.1 ∧ M₁.store.lockdown = false ∧ M₁.host = M.host ∧
       (∀ (tr₀ : List (Label (E3 P) σ)) (m' : Machine.Config (E3 P) σ),
         Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest x) tr₀ m' →
         Live m' ∨ ∃ tr₂, tr₀ = tr ++ tr₂ ∧ Steps prof (fun _ _ => false) (DI P impl) M₁ tr₂ m') ∧
@@ -523,13 +523,13 @@ theorem nest_backG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.lo
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = some us →
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr'
           (coreCfg (retFrame M ie (InstState.removeThread 1 ιe')
-            (nrecG ie ii { M.store with core := x.1 } ys p pos (lowerArgs p.results us)) C₁)
+            (nrecG ie ii M.store ys p pos (lowerArgs p.results us)) C₁)
             th K segs rest (y.1, (E3 P).resume y.1 x.2 (.values (lowerArgs p.results us)))) ∧
           ∀ (tr₀ : List (Label (E3 P) σ)) (m' : Machine.Config (E3 P) σ),
             Steps prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr₀ m' →
             Live m' ∨ ∃ tr₂, tr₀ = tr' ++ tr₂ ∧ Steps prof (fun _ _ => false) (DI P impl)
               (coreCfg (retFrame M ie (InstState.removeThread 1 ιe')
-                (nrecG ie ii { M.store with core := x.1 } ys p pos (lowerArgs p.results us)) C₁)
+                (nrecG ie ii M.store ys p pos (lowerArgs p.results us)) C₁)
                 th K segs rest (y.1, (E3 P).resume y.1 x.2 (.values (lowerArgs p.results us))))
               tr₂ m') ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
@@ -537,7 +537,7 @@ theorem nest_backG (ie ii : Nat) (M : Machine.Config (E3 P) σ) (hl : M.store.lo
         ∀ (tr₀ : List (Label (E3 P) σ)) (m' : Machine.Config (E3 P) σ),
           Steps prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr₀ m' →
           Live m' ∨ ∃ (mT : Machine.Config (E3 P) σ) (rr : TrapReason),
-            (∀ msg, rr ≠ .internal msg) ∧ m' = trapCfg mT ∧ mT.store.core = y.1 ∧
+            (∀ msg, rr ≠ .internal msg) ∧ m' = trapCfg mT ∧ mT.core = y.1 ∧
             mT.host = M.host) := by
   obtain ⟨pos, C₁, M₁, th', K', segs', rest', tr, h₁, h₂, h₃, h₄, h₅, h₆, h₇⟩ :=
     nest_atG (prof := prof) (impl := impl) ie ii M hl ιe ιe' th K segs rest x f a p ys ιi ws hs
@@ -569,7 +569,7 @@ theorem nest_trap_args_backG (ie ii : Nat) (M : Machine.Config (E3 P) σ)
     {tr : List (Label (E3 P) σ)} {m' : Machine.Config (E3 P) σ}
     (r : Steps prof (fun _ _ => false) (DI P impl) (coreCfg M th K segs rest x) tr m') :
     Live m' ∨ ∃ (mT : Machine.Config (E3 P) σ) (rr : TrapReason), (∀ msg, rr ≠ .internal msg) ∧
-      m' = trapCfg mT ∧ mT.store.core = x.1 ∧ mT.host = M.host :=
+      m' = trapCfg mT ∧ mT.core = x.1 ∧ mT.host = M.host :=
   trapsAtSH_back (nest_trap_argsG (prof := prof) (impl := impl) ie ii M hl ιe ιe' th K segs rest x
     f a p ys ιi hs hentry hi hleave hf hie hadd hpf hys hmaxp hws) r
 
@@ -639,7 +639,7 @@ theorem lift_body_at_inst (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P)) 
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl)
           (retCfg { M₀ with store := nstoreCore S ys p ιe' pos } (some ⟨S.threads.length⟩) K'
             segs' R y zs) tr'
-          { M₀ with store := nstoreRet S y.1 ys p ιe' pos us, ctl := R }) ∧
+          { M₀ with store := nstoreRet S y.1 ys p ιe' pos us, core := y.1, ctl := R }) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
         TrapsNextD prof P impl
@@ -676,7 +676,7 @@ theorem lift_body_atTSH_inst (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3 P
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl)
           (retCfg { M₀ with store := nstoreCore S ys p ιe' pos } (some ⟨S.threads.length⟩) K'
             segs' R y zs) tr'
-          { M₀ with store := nstoreRet S y.1 ys p ιe' pos us, ctl := R }) ∧
+          { M₀ with store := nstoreRet S y.1 ys p ιe' pos us, core := y.1, ctl := R }) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
         TrapsAtSH prof P impl
@@ -700,7 +700,7 @@ theorem lift_body_trapTSH_inst (M₀ : Machine.Config (E3 P) σ) (S : CStore (E3
           (thread₁ S.tasks) S.insts
         ctl := ⟨some ⟨S.threads.length⟩,
           .prog (DI P impl (.threadBody (.liftImplicit ⟨S.tasks.length⟩ a))), []⟩ :: R }
-      S.core M₀.host :=
+      M₀.core M₀.host :=
   lift_body_trapG (prof := prof) (impl := impl) 1 2 M₀ S ys p a R hie hadd hl hpf hys hmaxp hws
 
 /-- `lift_body_trap` is `lift_body_trapG` at `ie = 1`, `ii = 2`. -/
@@ -732,9 +732,9 @@ theorem nest_pre_inst (B : Machine.Config (E3 P) σ) (ιe ιe' : InstState) (N :
     (hf : ArenaField.funcs.get? B.store f = some (.lifted a (witFt p) {} ⟨1⟩)) :
     ∃ C₁ R tr, LRun prof (fun _ _ => false) (DI P impl) (coreCfg (extN B ιe N C) th K segs rest x)
       tr { coreCfg (extN B ιe N C) th K segs rest x with
-        store := nstore { (extN B ιe N C).store with core := x.1 } { inst := ⟨2⟩ }
+        store := nstore (extN B ιe N C).store { inst := ⟨2⟩ }
           (lowerRec ⟨(extN B ιe N C).store.subtasks.length⟩ ⟨2⟩ ys p 0)
-          (ntask₀ { (extN B ιe N C).store with core := x.1 } p)
+          (ntask₀ (extN B ιe N C).store p)
           (thread₁ (extN B ιe N C).store.tasks) (extN B ιe N C).store.insts
         conts := C₁
         ctl := ⟨some ⟨(extN B ιe N C).store.threads.length⟩,
@@ -743,11 +743,12 @@ theorem nest_pre_inst (B : Machine.Config (E3 P) σ) (ιe ιe' : InstState) (N :
       ∀ (cs : (E3 P).Store (CanonHost (E3 P))) (pos : Nat) (us : List Silmaril.Wasm.Component.Val),
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl)
           { coreCfg (extN B ιe N C) th K segs rest x with
-            store := nstoreRet { (extN B ιe N C).store with core := x.1 } cs ys p ιe' pos us
+            store := nstoreRet (extN B ιe N C).store cs ys p ιe' pos us
+            core := cs
             conts := C₁
             ctl := R } tr'
           (coreCfg (extN B (InstState.removeThread 1 ιe')
-            (N ++ [nrec { (extN B ιe N C).store with core := x.1 } ys p pos (lowerArgs p.results us)])
+            (N ++ [nrec (extN B ιe N C).store ys p pos (lowerArgs p.results us)])
             C₁) th K segs rest (cs, (E3 P).resume cs x.2 (.values (lowerArgs p.results us)))) := by
   obtain ⟨C₁, R, tr, h₁, h₂⟩ := nest_preG (prof := prof) (impl := impl) 1 2 (extN B ιe N C) rfl
     ιe' th K segs rest x f a p ys ιi hs hentry hi hleave hf
@@ -781,12 +782,12 @@ theorem nest_atTSH_inst (B : Machine.Config (E3 P) σ) (ιe ιe' : InstState) (N
       LRun prof (fun _ _ => false) (DI P impl) (coreCfg (extN B ιe N C) th K segs rest x) tr M₁ ∧
       M₁.ctl = ⟨th', .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a (lowerArgs p.params ws))
         K', segs'⟩ :: rest' ∧
-      M₁.store.core = x.1 ∧ M₁.store.lockdown = false ∧ M₁.host = B.host ∧
+      M₁.core = x.1 ∧ M₁.store.lockdown = false ∧ M₁.host = B.host ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat) (us : List Silmaril.Wasm.Component.Val),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = some us →
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr'
           (coreCfg (extN B (InstState.removeThread 1 ιe')
-            (N ++ [nrec { (extN B ιe N C).store with core := x.1 } ys p pos (lowerArgs p.results us)])
+            (N ++ [nrec (extN B ιe N C).store ys p pos (lowerArgs p.results us)])
             C₁) th K segs rest (y.1, (E3 P).resume y.1 x.2 (.values (lowerArgs p.results us))))) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →
@@ -826,12 +827,12 @@ theorem nest_at_inst (B : Machine.Config (E3 P) σ) (ιe ιe' : InstState) (N : 
       LRun prof (fun _ _ => false) (DI P impl) (coreCfg (extN B ιe N C) th K segs rest x) tr M₁ ∧
       M₁.ctl = ⟨th', .core (Silmaril.Wasm.SingleThreaded.Thread.invokeFlat a (lowerArgs p.params ws))
         K', segs'⟩ :: rest' ∧
-      M₁.store.core = x.1 ∧ M₁.store.lockdown = false ∧
+      M₁.core = x.1 ∧ M₁.store.lockdown = false ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat) (us : List Silmaril.Wasm.Component.Val),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = some us →
         ∃ tr', LRun prof (fun _ _ => false) (DI P impl) (retCfg M₁ th' K' segs' rest' y zs) tr'
           (coreCfg (extN B (InstState.removeThread 1 ιe')
-            (N ++ [nrec { (extN B ιe N C).store with core := x.1 } ys p pos (lowerArgs p.results us)])
+            (N ++ [nrec (extN B ιe N C).store ys p pos (lowerArgs p.results us)])
             C₁) th K segs rest (y.1, (E3 P).resume y.1 x.2 (.values (lowerArgs p.results us))))) ∧
       (∀ (y : CoreSt (E3 P)) (zs : List Flat),
         zs.map (·.type) = ValTy.flatList p.results → liftArgs p.results zs = none →

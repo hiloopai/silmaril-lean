@@ -219,7 +219,7 @@ store and host state. -/
 theorem calls_outcome_throw {tr : List (Label (core3P P) σ)} {c : CallId} {out : CallOutcome}
     (h : Steps prof hr dispatch (coreCfg m th (.active f (throwing a)) k segs rest) tr m')
     (hout : out.Holds hr c m') :
-    out = .trap ∧ m'.store.core = m.store.core ∧ m'.host = m.host :=
+    out = .trap ∧ m'.core = m.core ∧ m'.host = m.host :=
   Silmaril.Proofs.Wasm.Component.Reference.LegalBoundary.calls_outcome_of_status_trap
     (m := coreCfg m th (.active f (throwing a)) k segs rest) rfl (core3P_status_throw a) h hout
 
@@ -232,7 +232,7 @@ theorem sessStep_throw {h : Host (core3P P) σ} {m₀ : Config (core3P P) σ} {n
     (hev : ∀ ev, Label.host ev ∈ tr → CallHostEvent ⟨n⟩ ev)
     (hint : ∀ msg, Label.trap (.internal msg) ∉ tr) :
     SessStep prof h m₀ n g args none (resumeCfg m₀ (trapCfg m)) ∧
-      (resumeCfg m₀ (trapCfg m)).store.core = m.store.core ∧
+      (resumeCfg m₀ (trapCfg m)).core = m.core ∧
       (resumeCfg m₀ (trapCfg m)).host = m.host :=
   Silmaril.Proofs.Wasm.Component.Reference.LegalBoundary.sessStep_trap_of_status_trap
     (m := coreCfg m th (.active f (throwing a)) k segs rest) h₁ hev hint rfl

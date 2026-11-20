@@ -71,7 +71,7 @@ structure InitAt {σ : Type} (pl : d.Pl) (F : CoreFoot) (es : List (String × In
     (M m : Machine.Config (core3P P) σ) : Prop where
   lock : m.store.lockdown = false
   ext : Instantiate.ArenasExtend M.store m.store
-  hold : d.Hold pl e.init m.store F
+  hold : d.Hold pl e.init m.ref F
   block : ∀ i, d.block pl i → M.store.insts.length ≤ i ∧ i < m.store.insts.length
   exports : ∀ (w : Nat) (x : Export), e.comp.exports[w]? = some x →
     es.lookup x.name = some (.func ⟨d.fid pl w⟩) ∧
@@ -80,9 +80,9 @@ structure InitAt {σ : Type} (pl : d.Pl) (F : CoreFoot) (es : List (String × In
   results : m.results = M.results
   nest : m.store.nestingDepth = M.store.nestingDepth
   hostFree : ∀ (a : Nat) (fi : Silmaril.Wasm.Execution.Core.FuncInst (CanonHost (core3P P)))
-    (h : CanonHost (core3P P)), (m.store.core : Store (CanonHost (core3P P))).funcs[a]? = some fi →
+    (h : CanonHost (core3P P)), (m.core : Store (CanonHost (core3P P))).funcs[a]? = some fi →
     fi.code ≠ .host h
-  globals : ∀ a, F.gl a → a < (m.store.core : Store (CanonHost (core3P P))).globals.length
+  globals : ∀ a, F.gl a → a < (m.core : Store (CanonHost (core3P P))).globals.length
   fidInj : ∀ (w w' : Nat) (x x' : Export), e.comp.exports[w]? = some x →
     e.comp.exports[w']? = some x' → d.fid pl w = d.fid pl w' → w = w'
 
@@ -95,7 +95,7 @@ def InitS : Prop :=
     (outer : List (Instantiate.Frame (core3P P)))
     (k : Ret (core3P P) → Canon.P (core3P P) σ (Ret (core3P P)))
     (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-    M.store.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
+    M.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
     ∃ (tr : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ) (pl : d.Pl)
       (F : CoreFoot) (es : List (String × Instantiate.ItemVal (core3P P))),
       Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
@@ -113,7 +113,7 @@ structure InitAtX {σ : Type} (pl : d.Pl) (F : CoreFoot)
     Prop where
   lock : m.store.lockdown = false
   ext : Instantiate.ArenasExtend M.store m.store
-  hold : d.Hold pl e.init m.store F
+  hold : d.Hold pl e.init m.ref F
   block : ∀ i, d.block pl i → M.store.insts.length ≤ i ∧ i < m.store.insts.length
   exports : ∀ (w : Nat) (x : Export), e.comp.exports[w]? = some x →
     es.lookup x.name = some (.func ⟨d.fid pl w⟩) ∧
@@ -121,7 +121,7 @@ structure InitAtX {σ : Type} (pl : d.Pl) (F : CoreFoot)
   pending : m.pending = M.pending
   results : m.results = M.results
   nest : m.store.nestingDepth = M.store.nestingDepth
-  globals : ∀ a, F.gl a → a < (m.store.core : Store (CanonHost (core3P P))).globals.length
+  globals : ∀ a, F.gl a → a < (m.core : Store (CanonHost (core3P P))).globals.length
   fidInj : ∀ (w w' : Nat) (x x' : Export), e.comp.exports[w]? = some x →
     e.comp.exports[w']? = some x' → d.fid pl w = d.fid pl w' → w = w'
 
@@ -132,7 +132,7 @@ def InitSX : Prop :=
     (outer : List (Instantiate.Frame (core3P P)))
     (k : Ret (core3P P) → Canon.P (core3P P) σ (Ret (core3P P)))
     (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-    M.store.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
+    M.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
     ∃ (tr : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ) (pl : d.Pl)
       (F : CoreFoot) (es : List (String × Instantiate.ItemVal (core3P P))),
       Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch

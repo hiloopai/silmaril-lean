@@ -176,7 +176,7 @@ def bugProg : RefProg E0 Xt := ⟨bugComp, [], names⟩
 first in a store holding only the toy's core instance), as an unsigned number; `0` when it is
 not numeric. The measure `ctr` of the counter verification condition `CtrVCOn`. -/
 def toyCtr (m : Config E0 Unit) : ℕ :=
-  let cs : Silmaril.Wasm.Execution.Core.Store (CanonHost E0) := m.store.core
+  let cs : Silmaril.Wasm.Execution.Core.Store (CanonHost E0) := m.core
   match (cs.globals[0]?).map Silmaril.Wasm.Execution.Core.GlobalInst.value with
   | some (Silmaril.Wasm.Execution.Core.Val.num v) => v.bits.toNat
   | _ => 0
@@ -224,7 +224,7 @@ def toySession : List (Xt.Exp × List Silmaril.Wasm.Component.Reference.Val) :=
 /-! ## Over every profile: the reachable configurations between calls -/
 
 /-- **A silent evaluator** of specification programs: store reads, store updates that keep the
-lockdown flag at the current store, and observations; `none` at any other operation. The
+lockdown flag at the current store, core-store reads and updates, and observations; `none` at any other operation. The
 observations, the result and the final configuration (whose control chain is left alone). -/
 def silentRun {E : CoreEngine} {σ α : Type} :
     Canon.P E σ α → Config E σ → Option (List HostObs × α × Config E σ)
@@ -236,6 +236,12 @@ def silentRun {E : CoreEngine} {σ α : Type} :
     else none
   | .op (.emit o) k, m =>
     (silentRun (k ()) (StepDefs.observe m o)).map fun (os, a, m') => (o :: os, a, m')
+  | .op .readCore k, m => silentRun (k (E.view m.core)) m
+  | .op (.memWrite a ptr bytes) k, m =>
+    silentRun (k ()) { m with core := (E.memWrite? m.core a ptr bytes).getD m.core }
+  | .op (.allocHost ty h) k, m => silentRun (k ()) { m with core := (E.allocHost m.core ty h).1 }
+  | .op (.prepare md imports) k, m =>
+    silentRun (k ()) { m with core := prepareCore m.core md imports }
   | .op _ _, _ => none
 
 variable (P : Silmaril.Wasm.Numerics.Profile)
@@ -245,7 +251,7 @@ def toyProgP : RefProg (core3P P) Xt := ⟨toyComp, [], names⟩
 
 /-- The counter `toyCtr` over `core3P P`: core global `0` as an unsigned number. -/
 def toyCtrP (m : Config (core3P P) Unit) : ℕ :=
-  let cs : Silmaril.Wasm.Execution.Core.Store (CanonHost (core3P P)) := m.store.core
+  let cs : Silmaril.Wasm.Execution.Core.Store (CanonHost (core3P P)) := m.core
   match (cs.globals[0]?).map Silmaril.Wasm.Execution.Core.GlobalInst.value with
   | some (Silmaril.Wasm.Execution.Core.Val.num v) => v.bits.toNat
   | _ => 0
@@ -292,8 +298,8 @@ def ToyGarb.Ok {P : Silmaril.Wasm.Numerics.Profile} (G : ToyGarb P) : Prop :=
 component instance `ι` and the leftovers `G`. -/
 noncomputable def toyCfg (c : ℕ) (ι : InstState) (G : ToyGarb P) : Config (core3P P) Unit :=
   { toyInst P with
+    core := setCtr P (toyInst P).core c
     store := { (toyInst P).store with
-      core := setCtr P (toyInst P).store.core c
       insts := [ι]
       tasks := G.tasks
       threads := G.threads

@@ -39,12 +39,12 @@ function `o + i`. -/
 theorem toRefDefs_runO {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFacts c I cs ci) (cfg : Machine.Config (core3P Pf) σ) {o : Nat}
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs.length = o) :
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs.length = o) :
     ∃ sc', TRuns (List.foldlM (instantiateDef R inst outer args) {} c.toRef) cfg sc'
-        { cfg with store :=
-            liftStore cs cfg.store (liftedList (fun k => I.addrs.getD k 0) inst c.exports) } ∧
+        { cfg with core := cs, store :=
+            liftStore cfg.store (liftedList (fun k => I.addrs.getD k 0) inst c.exports) } ∧
       funcExports sc'.exports = c.exports.mapIdx (fun k x => (x.name, ⟨o + 0 + k⟩)) := by
-  have hp : (core3P Pf).prepare? cfg.store.core c.mod.mod [] = some (cs, ci, none) := by
+  have hp : (core3P Pf).prepare? cfg.core c.mod.mod [] = some (cs, ci, none) := by
     rw [hcore]
     exact hF.prepare
   have h₁ := instDef_coreModule (R := R) (inst := inst) (outer := outer) (args := args) {}
@@ -54,11 +54,11 @@ theorem toRefDefs_runO {c : Simple} {I : Silmaril.Wasm.Game.ScalarInstance}
       exports := [] } cfg rfl hF.imports hp
   have hinv : ExpInv ((core3P Pf).exports ci) 0 (coreFrame c.mod.mod ((core3P Pf).exports ci)) :=
     ⟨rfl, rfl, rfl⟩
-  have hs : (setCoreSt cs cfg.store).funcs.length = o + 0 := hfuncs
+  have hs : cfg.store.funcs.length = o + 0 := hfuncs
   obtain ⟨sc', hr, hx⟩ := exportsDefs_runO (R := R) (inst := inst) (outer := outer)
     (args := args) c.mod o (fun k => I.addrs.getD k 0) c.exports 0
     { frame := coreFrame c.mod.mod ((core3P Pf).exports ci), exports := [] }
-    { cfg with store := setCoreSt cs cfg.store } hinv hs hF.lookup
+    { cfg with core := cs } hinv hs hF.lookup
   refine ⟨sc', ?_, hx⟩
   unfold Simple.toRef
   exact TRuns.foldlM_append (TRuns.foldlM_cons (TRuns.of_eq cfg h₁)
@@ -71,7 +71,7 @@ theorem instantiateCall_simpleO {c : Simple} {I : Silmaril.Wasm.Game.ScalarInsta
     {cs : (core3P Pf).Store (CanonHost (core3P Pf))} {ci : (core3P Pf).Inst}
     (hF : CoreFacts c I cs ci) (outer : List (Frame (core3P Pf)))
     (cfg : Machine.Config (core3P Pf) σ) {o : Nat}
-    (hcore : cfg.store.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs.length = o) :
+    (hcore : cfg.core = (core3P Pf).empty _) (hfuncs : cfg.store.funcs.length = o) :
     ∃ es, funcExports es = c.exports.mapIdx (fun k x => (x.name, ⟨o + k⟩)) ∧ TagOrFunc es ∧
       TRuns (instantiateCallProg ⟨c.toRef, outer⟩ [] : P (core3P Pf) σ (Ret (core3P Pf))) cfg
         (.items es)

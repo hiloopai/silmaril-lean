@@ -237,12 +237,6 @@ theorem resourceType?_eq {s₀ s : CStore E} (h : ArenasExtend s₀ s) {r : RtId
 
 variable {s₀ : CStore E}
 
-theorem setCoreSt {s : CStore E} (c : E.Store (CanonHost E)) (h : ArenasExtend s₀ s) :
-    ArenasExtend s₀ (Instantiate.setCoreSt c s) := h
-
-theorem allocHostSt {s : CStore E} (ty : V1.FuncType) (hc : CanonHost E)
-    (h : ArenasExtend s₀ s) : ArenasExtend s₀ (Instantiate.allocHostSt ty hc s) := h
-
 theorem alloc_insts {s : CStore E} (x : InstState) (h : ArenasExtend s₀ s) :
     ArenasExtend s₀ (ArenaOps.allocSt ArenaField.insts x s) := by
   obtain ⟨a1, rest⟩ := h
@@ -294,8 +288,8 @@ theorem allocFunc_inv (fi : CFuncInst E) : P.Inv I (allocFunc fi : P E σ FuncId
   P.Inv.allocObj _ _ fun _ => ArenasExtend.alloc_funcs _
 
 theorem allocCoreHost_inv (h : CanonHost E) : P.Inv I (allocCoreHost h : P E σ E.FuncAddr) :=
-  P.Inv.bind P.Inv.getStore fun _ =>
-    P.Inv.bind (P.Inv.modifyStore fun _ => ArenasExtend.allocHostSt _ _) fun _ => P.Inv.pure _
+  P.Inv.bind P.Inv.readCore fun _ =>
+    P.Inv.bind (P.Inv.allocHostOp _ _) fun _ => P.Inv.pure _
 
 theorem runStart_inv (inst : InstId) (sf : E.FuncAddr) :
     P.Inv I (runStart inst sf : P E σ Unit) :=
@@ -315,11 +309,11 @@ variable [∀ a b, Decidable (E.ExternSub a b)]
 
 theorem instantiateCore_inv (inst : InstId) (f : Frame E) (m : Nat)
     (args : List (String × Nat)) : P.Inv I (instantiateCore inst f m args : P E σ _) := by
-  refine P.Inv.bind (need_inv _ _) fun md => P.Inv.bind P.Inv.getStore fun s =>
+  refine P.Inv.bind (need_inv _ _) fun md => P.Inv.bind P.Inv.readCore fun v =>
     P.Inv.bind (need_inv _ _) fun imports => ?_
-  rcases E.prepare? s.core md imports with _ | ⟨core', ci, start⟩
+  rcases v.prepare? md imports with _ | ⟨exports, start⟩
   · exact P.Inv.trap _
-  · refine P.Inv.bind (P.Inv.modifyStore fun _ => ArenasExtend.setCoreSt _) fun _ => ?_
+  · refine P.Inv.bind (P.Inv.prepareOp _ _) fun _ => ?_
     rcases start with _ | sf
     · exact P.Inv.bind (P.Inv.pure _) fun _ => P.Inv.pure _
     · exact P.Inv.bind (runStart_inv _ _) fun _ => P.Inv.pure _

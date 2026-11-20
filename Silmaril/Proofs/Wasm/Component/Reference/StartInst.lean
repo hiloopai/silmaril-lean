@@ -162,6 +162,18 @@ theorem SRuns.runsQO {α : Type} {p : Canon.P E σ α} {m m' : Machine.Config E 
   | @emit o _ _ _ _ _ _ ih =>
     obtain ⟨tr, hr, ho⟩ := ih
     exact ⟨_, .emit hr, congrArg (o :: ·) ho⟩
+  | readCore _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .readCore hr, ho⟩
+  | memWrite _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .memWrite hr, ho⟩
+  | allocHost _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .allocHost hr, ho⟩
+  | prepare _ ih =>
+    obtain ⟨tr, hr, ho⟩ := ih
+    exact ⟨_, .prepare hr, ho⟩
 
 end Embed
 

@@ -68,8 +68,8 @@ theorem importDefs_eq (p : String × FuncTy) (n : Nat) :
 
 /-- The emitted function type of an import resolves to `witFt`. -/
 theorem resolveFuncType_witFt {f : Frame (core3R Pf V IR)} {ft : FuncTy} {ps rs : List Syntax.VT}
-    (hp : List.Forall₂ (Res f.types) ps (toClosedList ft.params))
-    (hr : List.Forall₂ (Res f.types) rs (toClosedList ft.results)) :
+    (hp : List.Forall₂ (Res (E := core3R Pf V IR) f.types) ps (toClosedList ft.params))
+    (hr : List.Forall₂ (Res (E := core3R Pf V IR) f.types) rs (toClosedList ft.results)) :
     resolveFuncType? f { params := labels "a" ps, result := rs.head? } = some (witFt ft) :=
   resolveFuncType_lifted (x := ⟨"", ft, 0⟩) hp hr
 

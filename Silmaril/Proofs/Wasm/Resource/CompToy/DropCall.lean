@@ -37,7 +37,7 @@ theorem builtin_lrunL {B : Machine.Config (E3 P) Unit} {th : Option ThreadId}
     {ys flat : List FlatValue} {tr : List (Label (E3 P) Unit)} {S' : CStore (E3 P)}
     {C : List (Option (Activation (E3 P) Unit))}
     (hl : B.store.lockdown = false) (hs : (E3 P).status x.1 x.2 = .callout h ys)
-    (hS' : S'.lockdown = false) (hcore : S'.core = x.1)
+    (hS' : S'.lockdown = false)
     (hrun : LRun prof (refHost P).hr (D P) (calloutCfg B th K segs rest x h ys) tr
       { calloutCfg B th K segs rest x h ys with
         store := S'
@@ -59,19 +59,15 @@ theorem builtin_lrunL {B : Machine.Config (E3 P) Unit} {th : Option ThreadId}
       { M₁ with
         store := S'
         conts := C
-        ctl := ⟨th, .core ((E3 P).resume S'.core x.2 (.values flat)) K, segs⟩ :: rest } :=
+        ctl := ⟨th, .core ((E3 P).resume x.1 x.2 (.values flat)) K, segs⟩ :: rest } :=
     .of_prog rfl (fun _ _ e => by cases e) (Step.popCore rfl)
   have e : ({ M₁ with
       store := S'
       conts := C
-      ctl := ⟨th, .core ((E3 P).resume S'.core x.2 (.values flat)) K, segs⟩ :: rest } :
+      ctl := ⟨th, .core ((E3 P).resume x.1 x.2 (.values flat)) K, segs⟩ :: rest } :
         Machine.Config (E3 P) Unit) =
       coreCfg { B with store := S', conts := C } th K segs rest
-        (x.1, (E3 P).resume x.1 x.2 (.values flat)) := by
-    rw [hcore]
-    cases S'
-    dsimp only at hcore
-    subst hcore
+        (x.1, (E3 P).resume x.1 x.2 (.values flat)) :=
     rfl
   exact .cons ⟨List.cons_ne_nil _ _, hl⟩ s₁ (hrun.trans (.cons ⟨List.cons_ne_nil _ _, hS'⟩
     (e ▸ s₂) (.refl _)))
@@ -157,14 +153,14 @@ theorem removeThread_dropT (ι : InstState) (t : ThreadId) (T : Silmaril.Wasm.Co
 store `S₀` (core store `cs`). -/
 abbrev dF0 (M₀ : Machine.Config (E3 P) Unit) (S₀ : CStore (E3 P))
     (cs : (E3 P).Store (CanonHost (E3 P))) : Machine.Config (E3 P) Unit :=
-  { M₀ with store := { S₀ with core := cs } }
+  { M₀ with store := S₀, core := cs }
 
 /-- The frame after the destructor call of a drop of a handle of representation `rep`: one more
 task `dtk`, thread `dthr` and caller record, the instance `ι₅`, continuation slots `C`. -/
 abbrev dF1 (M₀ : Machine.Config (E3 P) Unit) (S₀ : CStore (E3 P)) (rep : ℕ) (ι₅ : InstState)
     (cs : (E3 P).Store (CanonHost (E3 P))) (dtk : Runtime.Task (E3 P)) (dthr : Runtime.Thread)
     (C : List (Option (Activation (E3 P) Unit))) : Machine.Config (E3 P) Unit :=
-  { M₀ with store := dStore { S₀ with core := cs } rep ι₅ dtk dthr, conts := C }
+  { M₀ with store := dStore S₀ rep ι₅ dtk dthr, core := cs, conts := C }
 
 /-- The invariant of `drop`'s core phase: before the drop, or after it. -/
 def DInv (M₀ : Machine.Config (E3 P) Unit) (S₀ : CStore (E3 P)) (rep : ℕ) (ι₅ : InstState)
@@ -224,7 +220,7 @@ theorem drop_calloutsAns {M₀ : Machine.Config (E3 P) Unit} {c : ℕ} {ι : Ins
         { callIn ι ⟨G.threads.length⟩ with handles := T₅, threads := dropT ⟨G.threads.length⟩ }
         x.1 dtk dthr C, [], tr ++ [.tau], ⟨x.1, .inr ⟨dtk, dthr, C, rfl⟩⟩,
       ⟨dropSpec P (BitVec.ofNat 32 i), by rw [toyBind_drop]; rfl, rfl, rfl, rfl⟩,
-      builtin_lrunL rfl hst rfl rfl hrun⟩
+      builtin_lrunL rfl hst rfl hrun⟩
   · right
     have hrem : ({ callIn ι ⟨G.threads.length⟩ with
         handles := T₅

@@ -197,7 +197,7 @@ theorem fnPre_congr {H : Type} {s₀ u : Store Nat} {g g' : H → Nat} {σ σ' :
 footprint, with the functions a prefix and its block unchanged; the host-code renaming is
 re-chosen on the grown functions (`gRe`, `trRe`). -/
 theorem toExpData_agree (hFr : d.Frame) (pl : (toExpData lg d Ii).Pl) (st : (lg.toExp Ii).St)
-    (S S' : CStore (core3P P)) (Fc : CoreFoot) (h : (toExpData lg d Ii).Hold pl st S Fc)
+    (S S' : RefStore (core3P P)) (Fc : CoreFoot) (h : (toExpData lg d Ii).Hold pl st S Fc)
     (ha : Fc.Agree (S.core : Store (CanonHost (core3P P))) S'.core) (hf : S.funcs <+: S'.funcs)
     (hb : ∀ i, (toExpData lg d Ii).block pl i → S'.insts[i]? = S.insts[i]?) :
     (toExpData lg d Ii).Hold pl st S' Fc := by

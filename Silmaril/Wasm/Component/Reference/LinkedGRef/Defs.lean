@@ -87,6 +87,37 @@ open Silmaril.Wasm.Execution.Core (Store)
 
 local notation "IVal" => Silmaril.Wasm.Component.Val
 
+/-! ## The component store with the shared core store -/
+
+/-- **The component store with the shared core store**: the machine's `Config.store` and
+`Config.core` together. The exporter's relation `Hold` and the store relations of the interface
+are stated on it (the component store `CStore` does not hold the core store, which lives in the
+machine configuration). -/
+structure RefStore (E : CoreEngine) extends CStore E where
+  /-- The shared core-engine store. -/
+  core : E.Store (CanonHost E)
+
+instance {E : CoreEngine} : Coe (RefStore E) (CStore E) := ⟨RefStore.toCStore⟩
+
+/-- The component store and the shared core store of a configuration. -/
+def _root_.Silmaril.Wasm.Component.Machine.Config.ref {E : CoreEngine} {σ : Type}
+    (m : Machine.Config E σ) : RefStore E :=
+  { m.store with core := m.core }
+
+/-- `m` with the component store and the shared core store of `S`. -/
+def _root_.Silmaril.Wasm.Component.Machine.Config.withRef {E : CoreEngine} {σ : Type}
+    (m : Machine.Config E σ) (S : RefStore E) : Machine.Config E σ :=
+  { m with store := S.toCStore, core := S.core }
+
+@[simp] theorem _root_.Silmaril.Wasm.Component.Machine.Config.ref_toCStore {E : CoreEngine}
+    {σ : Type} (m : Machine.Config E σ) : m.ref.toCStore = m.store := rfl
+
+@[simp] theorem _root_.Silmaril.Wasm.Component.Machine.Config.ref_core {E : CoreEngine}
+    {σ : Type} (m : Machine.Config E σ) : m.ref.core = m.core := rfl
+
+@[simp] theorem _root_.Silmaril.Wasm.Component.Machine.Config.withRef_ref {E : CoreEngine}
+    {σ : Type} (m : Machine.Config E σ) (S : RefStore E) : (m.withRef S).ref = S := rfl
+
 /-! ## Footprints in the shared core store -/
 
 /-- **A footprint in a shared core store**, in the shared store's addresses: the globals, the
@@ -148,7 +179,7 @@ structure ExpSpec.RefData (P : Profile) (e : ExpSpec) where
   block : Pl → Nat → Prop
   /-- The exporter's state `s` at the component store `S`, with footprint `F` in its core
   store. -/
-  Hold : Pl → e.St → CStore (core3P P) → CoreFoot → Prop
+  Hold : Pl → e.St → RefStore (core3P P) → CoreFoot → Prop
 
 namespace ExpSpec.RefData
 
@@ -157,7 +188,7 @@ variable {P : Profile} {e : ExpSpec} (d : e.RefData P)
 /-- **The exporter's changes to the component store** during the core activation of one of its
 exports: the core store, its own instances (not the export instances), and records appended to
 the subtask, caller, task and thread arenas; nothing else. -/
-structure StoreExt (pl : d.Pl) (S S' : CStore (core3P P)) : Prop where
+structure StoreExt (pl : d.Pl) (S S' : RefStore (core3P P)) : Prop where
   eq : S' = { S with
     core := S'.core
     insts := S'.insts
@@ -184,11 +215,15 @@ def startCfg {σ : Type} (pl : d.Pl) (w : Nat) (x : Export) (vs : List IVal)
 
 /-- The configuration `M` at store `S'` and continuation slots `C'` once the core activation
 returned `zs` to `K`. -/
-def retCfg' {σ : Type} (M : Machine.Config (core3P P) σ) (S' : CStore (core3P P))
+def retCfg' {σ : Type} (M : Machine.Config (core3P P) σ) (S' : RefStore (core3P P))
     (C' : List (Option (Activation (core3P P) σ))) (th : Option ThreadId)
     (K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P))) (segs : List (Seg (core3P P) σ))
     (rest : List (Activation (core3P P) σ)) (zs : List FlatValue) : Machine.Config (core3P P) σ :=
-  { M with store := S', conts := C', ctl := ⟨th, .prog (K zs), segs⟩ :: rest }
+  { M with
+    store := S'.toCStore
+    core := S'.core
+    conts := C'
+    ctl := ⟨th, .prog (K zs), segs⟩ :: rest }
 
 /-- **The ways the core activation of a call ends** (from `S` with footprint `F`, the round's
 answer `R`, the exporter's state `s'` after it): a return of flat results of the result types
@@ -196,12 +231,12 @@ of `x` at the configuration `m`, lifting to the answer (`R = some (vals ws)`), o
 (`R = none`), at a store extending `S` (`StoreExt`) that holds `s'`; or (`R = none`) a trapped
 configuration `m` whose core store holds `s'`. A's writes stay in `F` and fresh addresses,
 its footprint growing by fresh addresses. -/
-def Ends {σ : Type} (pl : d.Pl) (x : Export) (S : CStore (core3P P)) (F : CoreFoot)
+def Ends {σ : Type} (pl : d.Pl) (x : Export) (S : RefStore (core3P P)) (F : CoreFoot)
     (M : Machine.Config (core3P P) σ) (th : Option ThreadId)
     (K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P))) (segs : List (Seg (core3P P) σ))
     (rest : List (Activation (core3P P) σ)) (R : Option Payload) (s' : e.St)
     (m : Machine.Config (core3P P) σ) : Prop :=
-  (∃ (S' : CStore (core3P P)) (C' : List (Option (Activation (core3P P) σ))) (zs : List Flat)
+  (∃ (S' : RefStore (core3P P)) (C' : List (Option (Activation (core3P P) σ))) (zs : List Flat)
       (F' : CoreFoot),
     m = retCfg' M S' C' th K segs rest zs ∧ zs.map (·.type) = ValTy.flatList x.ty.results ∧
     (match R with
@@ -211,24 +246,25 @@ def Ends {σ : Type} (pl : d.Pl) (x : Export) (S : CStore (core3P P)) (F : CoreF
     d.StoreExt pl S S' ∧ d.Hold pl s' S' F' ∧
     F.Within (S.core : Store (CanonHost (core3P P))) S'.core ∧ F.Grows F' (S.core : Store _)) ∨
   (R = none ∧ m.store.lockdown = true ∧
-    ∃ (S' : CStore (core3P P)) (F' : CoreFoot), S'.core = m.store.core ∧ S'.funcs = S.funcs ∧
+    ∃ (S' : RefStore (core3P P)) (F' : CoreFoot), S'.core = m.core ∧ S'.funcs = S.funcs ∧
       d.Hold pl s' S' F' ∧
-      F.Within (S.core : Store (CanonHost (core3P P))) m.store.core ∧ F.Grows F' (S.core : Store _))
+      F.Within (S.core : Store (CanonHost (core3P P))) m.core ∧ F.Grows F' (S.core : Store _))
 
 /-! ## The parts R1–R5 -/
 
 /-- **R1: the relation is kept by the importer**, does not depend on the thread tables of the
 export instances, and gives the lifted record of each export. -/
 structure Frame : Prop where
-  agree : ∀ (pl : d.Pl) (s : e.St) (S S' : CStore (core3P P)) (F : CoreFoot),
+  agree : ∀ (pl : d.Pl) (s : e.St) (S S' : RefStore (core3P P)) (F : CoreFoot),
     d.Hold pl s S F → F.Agree (S.core : Store (CanonHost (core3P P))) S'.core →
     S.funcs <+: S'.funcs → (∀ i, d.block pl i → S'.insts[i]? = S.insts[i]?) → d.Hold pl s S' F
-  threads : ∀ (pl : d.Pl) (s : e.St) (S : CStore (core3P P)) (F : CoreFoot) (w : Nat)
+  threads : ∀ (pl : d.Pl) (s : e.St) (S : RefStore (core3P P)) (F : CoreFoot) (w : Nat)
     (ι : InstState) (t : Silmaril.Wasm.Component.Runtime.Table ThreadId), d.Hold pl s S F → S.insts[d.inst pl w]? = some ι →
     d.Hold pl s { S with insts := S.insts.set (d.inst pl w) { ι with threads := t } } F
-  lifted : ∀ (pl : d.Pl) (s : e.St) (S : CStore (core3P P)) (F : CoreFoot) (w : Nat) (x : Export),
+  lifted : ∀ (pl : d.Pl) (s : e.St) (S : RefStore (core3P P)) (F : CoreFoot) (w : Nat)
+    (x : Export),
     d.Hold pl s S F → e.comp.exports[w]? = some x →
-    ArenaField.funcs.get? S ⟨d.fid pl w⟩ =
+    ArenaField.funcs.get? S.toCStore ⟨d.fid pl w⟩ =
       some (.lifted (d.addr pl w) (witFt x.ty) {} ⟨d.inst pl w⟩) ∧ d.block pl (d.inst pl w)
 
 /-- **R2: forward runs of the exporter's core activation**, one for each step of its
@@ -236,12 +272,12 @@ specification, in any frame. -/
 def Fwd : Prop :=
   ∀ (pl : d.Pl) (s s' : e.St) (w : Nat) (vs : List IVal) (R : Option Payload) (x : Export),
     e.Step P s ⟨(w, .vals vs), R⟩ s' → e.comp.exports[w]? = some x →
-    ∀ (S : CStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
+    ∀ (S : RefStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
     ∀ {σ : Type} (prof : ProfileKind) (impl : HostImpl (core3P P) σ)
       (M : Machine.Config (core3P P) σ) (th : Option ThreadId)
       (K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P)))
       (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-      M.store = S → S.lockdown = false → instOfThread? S th = some ⟨d.inst pl w⟩ →
+      M.ref = S → S.lockdown = false → instOfThread? S.toCStore th = some ⟨d.inst pl w⟩ →
       ∃ (tr : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ),
         Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
           (d.startCfg pl w x vs M th K segs rest) tr m ∧
@@ -254,12 +290,12 @@ still running, or passed through an end of R2 for some step of the specification
 def Bwd : Prop :=
   ∀ (pl : d.Pl) (s : e.St) (w : Nat) (vs : List IVal) (x : Export),
     e.comp.exports[w]? = some x → ValTy.checkList x.ty.params vs = true →
-    ∀ (S : CStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
+    ∀ (S : RefStore (core3P P)) (F : CoreFoot), d.Hold pl s S F →
     ∀ {σ : Type} (prof : ProfileKind) (impl : HostImpl (core3P P) σ)
       (M : Machine.Config (core3P P) σ) (th : Option ThreadId)
       (K : List FlatValue → Canon.P (core3P P) σ (Ret (core3P P)))
       (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-      M.store = S → S.lockdown = false → instOfThread? S th = some ⟨d.inst pl w⟩ →
+      M.ref = S → S.lockdown = false → instOfThread? S.toCStore th = some ⟨d.inst pl w⟩ →
       ∀ (tr : List (Label (core3P P) σ)) (m' : Machine.Config (core3P P) σ),
         Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
           (d.startCfg pl w x vs M th K segs rest) tr m' → (∀ ev, Label.host ev ∉ tr) →
@@ -273,8 +309,9 @@ def Bwd : Prop :=
           e.Step P s ⟨(w, .vals vs), R⟩ s' ∧ d.Ends pl x S F M th K segs rest R s' m ∧
           m.ctl ≠ []) ∨
         (m'.store.lockdown = true ∧ ((∀ msg, Label.trap (.internal msg) ∉ tr) →
-          ∃ (s' : e.St) (S' : CStore (core3P P)) (F' : CoreFoot), e.Step P s ⟨(w, .vals vs), none⟩ s' ∧
-            S'.core = m'.store.core ∧ S'.funcs = S.funcs ∧ d.Hold pl s' S' F'))
+          ∃ (s' : e.St) (S' : RefStore (core3P P)) (F' : CoreFoot),
+            e.Step P s ⟨(w, .vals vs), none⟩ s' ∧
+            S'.core = m'.core ∧ S'.funcs = S.funcs ∧ d.Hold pl s' S' F'))
 
 /-- **R4: instantiation**: the nested instantiation of `e.ref` (closure under the outer frames
 `outer`, no arguments) from a configuration with an empty core store runs, without host events
@@ -287,7 +324,7 @@ def Init : Prop :=
     (outer : List (Instantiate.Frame (core3P P)))
     (k : Ret (core3P P) → Canon.P (core3P P) σ (Ret (core3P P)))
     (segs : List (Seg (core3P P) σ)) (rest : List (Activation (core3P P) σ)),
-    M.store.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
+    M.core = (core3P P).empty (CanonHost (core3P P)) → M.store.lockdown = false →
     ∃ (tr : List (Label (core3P P) σ)) (m : Machine.Config (core3P P) σ) (pl : d.Pl)
       (F : CoreFoot) (es : List (String × Instantiate.ItemVal (core3P P))),
       Machine.Steps prof (linkHost impl).hr (linkHost impl).dispatch
@@ -295,7 +332,7 @@ def Init : Prop :=
           rest } tr m ∧
       (∀ ev, Label.host ev ∉ tr) ∧ (∀ r, Label.trap r ∉ tr) ∧
       m.ctl = ⟨th, .prog (k (.items es)), segs⟩ :: rest ∧ m.store.lockdown = false ∧
-      Instantiate.ArenasExtend M.store m.store ∧ d.Hold pl e.init m.store F ∧
+      Instantiate.ArenasExtend M.store m.store ∧ d.Hold pl e.init m.ref F ∧
       (∀ i, d.block pl i → M.store.insts.length ≤ i ∧ i < m.store.insts.length) ∧
       ∀ (w : Nat) (x : Export), e.comp.exports[w]? = some x →
         es.lookup x.name = some (.func ⟨d.fid pl w⟩) ∧
@@ -304,7 +341,7 @@ def Init : Prop :=
 /-- **R5: the relation survives `resumeCfg`**: the component part of an earlier store at which
 `Hold` held, with the core store of a later one, holds the later state. -/
 def Resume : Prop :=
-  ∀ (pl : d.Pl) (s s' : e.St) (S₀ S' : CStore (core3P P)) (F₀ F' : CoreFoot),
+  ∀ (pl : d.Pl) (s s' : e.St) (S₀ S' : RefStore (core3P P)) (F₀ F' : CoreFoot),
     d.Hold pl s S₀ F₀ → d.Hold pl s' S' F' → S'.funcs = S₀.funcs →
     d.Hold pl s' { S₀ with core := S'.core } F'
 

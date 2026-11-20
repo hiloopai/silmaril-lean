@@ -41,8 +41,8 @@ abbrev memAt (P : Profile) (ma : Nat) : (E3 P).MemAddr := show Nat from ma
 formed at the renamed core store. -/
 structure LInv (P : Profile) (I : Silmaril.Wasm.Game.ScalarInstance) (ma : Nat)
     (m : Config (E3 P) Unit) : Prop where
-  mem : (E3 P).memAddrType? m.store.core (memAt P ma) = some .i32
-  wf : I.WellFormed (cmap m.store)
+  mem : (E3 P).memAddrType? m.core (memAt P ma) = some .i32
+  wf : I.WellFormed (cmap m.core)
 
 /-- The caller records and the task view only get longer. -/
 def Grows (m m' : Config (E3 P) Unit) : Prop :=
@@ -79,44 +79,45 @@ theorem memWrite?_memAddrType {s s' : (E3 P).Store (CanonHost (E3 P))} {a st : N
       Silmaril.Wasm.SingleThreaded.memAddrType? s b :=
   Silmaril.Wasm.Component.Engine.Core3.memWrite?_memAddrType h b
 
-theorem writeMemSt_lockdown (a : (E3 P).MemAddr) (ptr : Nat) (bytes : ByteArray)
-    (s : CStore (E3 P)) : (writeMemSt a ptr bytes s).lockdown = s.lockdown := by
-  unfold writeMemSt
-  split <;> rfl
-
 /-- **A memory write** of `cx` (memory `ma`): the core store's `memWrite?`. -/
 theorem spec_writeMem {th : Option ThreadId} {m : Config (E3 P) Unit} {ma : Nat}
     {cx : LiftLowerContext (E3 P)} (hcx : cx.opts.memory = some (memAt P ma)) (ptr : Nat)
     (bytes : ByteArray) :
     SpecR prof P th (writeMem cx ptr bytes) m
-      (fun _ m' => ∃ c', Silmaril.Wasm.SingleThreaded.memWrite? m.store.core ma ptr bytes = some c' ∧
-        m' = { m with store := { m.store with core := c' } }) := by
+      (fun _ m' => ∃ c', Silmaril.Wasm.SingleThreaded.memWrite? m.core ma ptr bytes = some c' ∧
+        m' = { m with core := c' }) := by
   unfold writeMem memAddr
   rw [hcx]
   refine Spec.bind (Spec.orTrap _ _) fun a m₁ ⟨ha, hm⟩ _ _ => ?_
   subst m₁
   cases ha
-  refine Spec.bind Spec.get fun s m₂ ⟨hs, hm⟩ _ _ => ?_
-  subst m₂ s
-  split
-  · exact Spec.trap _ _
-  · next c' hw =>
-    refine Spec.mono (Spec.modify _ (writeMemSt_lockdown _ _ _ _)) fun _ m' hm _ _ => ⟨c', hw, ?_⟩
+  refine Spec.bind Spec.readCore fun v m₂ ⟨hv, hm⟩ _ _ => ?_
+  subst m₂ v
+  cases hw : (E3 P).memWrite? m.core (memAt P ma) ptr bytes with
+  | none =>
+    have hok : ((E3 P).view m.core).memWriteOk (memAt P ma) ptr bytes = false := by
+      simp [CoreEngine.view, hw]
+    rw [hok]
+    exact Spec.trap _ _
+  | some c' =>
+    have hok : ((E3 P).view m.core).memWriteOk (memAt P ma) ptr bytes = true := by
+      simp [CoreEngine.view, hw]
+    rw [hok]
+    refine Spec.mono (Spec.memWriteOp _ _ _) fun _ m' hm _ _ => ⟨c', hw, ?_⟩
     subst m'
-    show _ = { m with store := { m.store with core := c' } }
-    unfold writeMemSt
-    rw [show (E3 P).memWrite? m.store.core (memAt P ma) ptr bytes = some c' from hw]
+    rw [hw]
+    rfl
 
 /-- A write keeps `LInv`, and is a `memWrite?` of the renamed stores. -/
 theorem LInv.write {I : Silmaril.Wasm.Game.ScalarInstance} {ma : Nat} {m : Config (E3 P) Unit}
     (hi : LInv P I ma m) {ptr : Nat} {bytes : ByteArray} {c' : (E3 P).Store (CanonHost (E3 P))}
-    (hw : Silmaril.Wasm.SingleThreaded.memWrite? m.store.core ma ptr bytes = some c') :
-    LInv P I ma { m with store := { m.store with core := c' } } ∧
-      Silmaril.Wasm.SingleThreaded.memWrite? (cmap m.store) ma ptr bytes =
+    (hw : Silmaril.Wasm.SingleThreaded.memWrite? m.core ma ptr bytes = some c') :
+    LInv P I ma { m with core := c' } ∧
+      Silmaril.Wasm.SingleThreaded.memWrite? (cmap m.core) ma ptr bytes =
         some (Store.mapH (fun _ => 0) c') := by
-  have hm : Silmaril.Wasm.SingleThreaded.memWrite? (cmap m.store) ma ptr bytes =
+  have hm : Silmaril.Wasm.SingleThreaded.memWrite? (cmap m.core) ma ptr bytes =
       some (Store.mapH (fun _ => 0) c') := by
-    have h := memWrite?_mapH (H := CanonHost (E3 P)) (fun _ => (0 : Nat)) m.store.core ma ptr bytes
+    have h := memWrite?_mapH (H := CanonHost (E3 P)) (fun _ => (0 : Nat)) m.core ma ptr bytes
     rw [hw] at h
     exact h
   refine ⟨⟨?_, wellFormed_memWrite? hi.wf hm⟩, hm⟩
@@ -134,7 +135,7 @@ def ElemSpec (prof : ProfileKind) (P : Profile) (I : Silmaril.Wasm.Game.ScalarIn
     (Elem : α → Nat → Silmaril.Wasm.Execution.Core.Store Nat →
       Silmaril.Wasm.Execution.Core.Store Nat → Prop) (u : α) : Prop :=
   ∀ a (m : Config (E3 P) Unit), LInv P I ma m → SpecR prof P th (storeElem (toV u) a) m
-    (fun _ m' => LInv P I ma m' ∧ Grows m m' ∧ Elem u a (cmap m.store) (cmap m'.store))
+    (fun _ m' => LInv P I ma m' ∧ Grows m m' ∧ Elem u a (cmap m.core) (cmap m'.core))
 
 /-- **The element loop** of `store_list_into_valid_range`, from index `k`. -/
 theorem spec_storeElems {I : Silmaril.Wasm.Game.ScalarInstance} {ma : Nat} {th : Option ThreadId}
@@ -146,7 +147,7 @@ theorem spec_storeElems {I : Silmaril.Wasm.Game.ScalarInstance} {ma : Nat} {th :
       SpecR prof P th (Prog.forM ((us.map toV).zipIdx k)
         (fun (e, i) => storeElem e (ptr + i * size))) m
         (fun _ m' => LInv P I ma m' ∧ Grows m m' ∧
-          ElemsRel size Elem us (ptr + k * size) (cmap m.store) (cmap m'.store))
+          ElemsRel size Elem us (ptr + k * size) (cmap m.core) (cmap m'.core))
   | [], _, k, m, hi =>
     Spec.mono (Spec.pure _) fun _ m' ⟨_, hm⟩ _ _ => by
       subst m'
@@ -164,11 +165,11 @@ theorem spec_storeElems {I : Silmaril.Wasm.Game.ScalarInstance} {ma : Nat} {th :
 /-! ## `allocate` and the checks -/
 
 /-- `memLen` of the renamed store is the core store's memory size. -/
-theorem memLen_cmap {s : CStore (E3 P)} {ma N : Nat}
-    (h : (E3 P).memSize? s.core (memAt P ma) = some N) : ListLift.memLen (cmap s) ma = N := by
-  have h' : (s.core.mems[ma]?).map (·.bytes.size) = some N := h
+theorem memLen_cmap {c : (E3 P).Store (CanonHost (E3 P))} {ma N : Nat}
+    (h : (E3 P).memSize? c (memAt P ma) = some N) : ListLift.memLen (cmap c) ma = N := by
+  have h' : (c.mems[ma]?).map (·.bytes.size) = some N := h
   unfold ListLift.memLen
-  show ((s.core.mems[ma]?).map (·.bytes.size)).getD 0 = N
+  show ((c.mems[ma]?).map (·.bytes.size)).getD 0 = N
   rw [h']
   rfl
 
@@ -177,7 +178,7 @@ theorem spec_allocate {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} {th 
     {cx : LiftLowerContext (E3 P)} (hcx : LowerCx P I ra ma cx) {m : Config (E3 P) Unit}
     (hi : LInv P I ma m) (align n : Nat) :
     SpecR prof P th (allocate cx align n) m
-      (fun q m' => LInv P I ma m' ∧ Grows m m' ∧ AllocRun P I ra align n m.store m'.store q) := by
+      (fun q m' => LInv P I ma m' ∧ Grows m m' ∧ AllocRun P I ra align n m.core m'.core q) := by
   unfold allocate reallocate callNat
   refine Spec.bind (Spec.call (spec_realloc hcx.alloc hcx.mem hcx.realloc hi.mem hi.wf align n))
     fun r m' ⟨p, hr, hrun, hcl, htv⟩ _ _ => ?_
@@ -194,16 +195,16 @@ theorem spec_allocate {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma : Nat} {th 
 theorem spec_checkInBounds {th : Option ThreadId} {ma : Nat} {cx : LiftLowerContext (E3 P)}
     (hcx : cx.opts.memory = some (memAt P ma)) {m : Config (E3 P) Unit} (ptr size : Nat) :
     SpecR prof P th (checkInBounds cx ptr size) m
-      (fun _ m' => ptr + size ≤ ListLift.memLen (cmap m.store) ma ∧ m' = m) := by
+      (fun _ m' => ptr + size ≤ ListLift.memLen (cmap m.core) ma ∧ m' = m) := by
   unfold checkInBounds Canon.memLen memAddr
   rw [hcx]
   refine Spec.bind (Spec.bind (Spec.orTrap _ _) fun a m₁ ⟨ha, hm⟩ _ _ => ?_)
-    (R := fun N m' => (E3 P).memSize? m.store.core (memAt P ma) = some N ∧ m' = m)
+    (R := fun N m' => (E3 P).memSize? m.core (memAt P ma) = some N ∧ m' = m)
     fun N m₂ ⟨hN, hm⟩ _ _ => ?_
   · subst m₁
     cases ha
-    refine Spec.bind Spec.get fun s m₂ ⟨hs, hm⟩ _ _ => ?_
-    subst m₂ s
+    refine Spec.bind Spec.readCore fun v m₂ ⟨hv, hm⟩ _ _ => ?_
+    subst m₂ v
     exact Spec.mono (Spec.orTrap _ _) fun N m' ⟨hN, hm⟩ _ _ => ⟨hN, hm⟩
   · subst m₂
     refine Spec.mono (Spec.trapIf _ _) fun _ m' ⟨hc, hm⟩ _ _ => ⟨?_, hm⟩
@@ -233,9 +234,9 @@ theorem spec_storeListIntoRange {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma :
     {m : Config (E3 P) Unit} (hi : LInv P I ma m) :
     SpecR prof P th (storeListIntoRangeWith cx el storeElem (us.map toV)) m
       (fun r m' => LInv P I ma m' ∧ Grows m m' ∧ ∃ q s₁, r = (q, us.length) ∧
-        ReallocRun P ra (cmap m.store) el.alignment.bytes (us.length * el.size) q s₁ ∧
+        ReallocRun P ra (cmap m.core) el.alignment.bytes (us.length * el.size) q s₁ ∧
         q % el.alignment.bytes = 0 ∧ q + us.length * el.size ≤ ListLift.memLen s₁ ma ∧
-        ElemsRel el.size Elem us q s₁ (cmap m'.store)) := by
+        ElemsRel el.size Elem us q s₁ (cmap m'.core)) := by
   unfold storeListIntoRangeWith
   rw [List.length_map]
   refine Spec.bind (spec_allocate hcx hi _ _) fun q m₁ ⟨hi₁, hg₁, hrun⟩ _ _ => ?_
@@ -247,7 +248,7 @@ theorem spec_storeListIntoRange {I : Silmaril.Wasm.Game.ScalarInstance} {ra ma :
     fun _ m₄ ⟨hi₄, hg₄, he₄⟩ _ _ => ?_
   refine Spec.mono (Spec.pure _) fun r m' ⟨hr, hm⟩ _ _ => ?_
   subst r m'
-  refine ⟨hi₄, hg₁.trans hg₄, q, cmap m₁.store, rfl, hrun.run, mod_of_alignTo ha, hb, ?_⟩
+  refine ⟨hi₄, hg₁.trans hg₄, q, cmap m₁.core, rfl, hrun.run, mod_of_alignTo ha, hb, ?_⟩
   simpa using he₄
 
 end Silmaril.Proofs.Wasm.Component.Reference.ListLift
