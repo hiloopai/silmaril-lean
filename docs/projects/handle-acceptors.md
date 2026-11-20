@@ -1212,6 +1212,14 @@ the live registration and lock release, and `unwind_callback` pops the loop's
 identity continuations back to the resumer. Returning to that resumer is not
 the same as consuming the subtask event or replying to the original caller.
 
+When the callback reaches a canonical `task.cancel` import, the reached
+instance, asynchronous option and delivered cancellation are checked before
+resolution. `CallbackCancelImport.enters_resolution` separates the live-borrow
+trap from entry into `onResolve(none)`. For an indexed started subtask,
+`resolves_started` follows the actual lower caller and resumes the Core
+callback with the empty import result. The `CANCELLED_BEFORE_RETURNED` event
+is pending and its lenders are still attached, not delivered by the import.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery

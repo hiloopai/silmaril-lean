@@ -153,4 +153,41 @@ def CallbackWait.exitComplete (wait : CallbackWait grow sig) (reached : Config (
     else unregistered
     ctl := ⟨some wait.thread, .prog (.pure .unit), wait.segments⟩ :: rest }
 
+/-- A callback's actual callout to its own instance's canonical task.cancel. -/
+structure CallbackCancelImport (wait : CallbackWait grow sig) (reached : Config (core3 grow) (HostState sig)) where
+  core : (core3 grow).Thread (CanonHost (core3 grow))
+  rest : List (Activation (core3 grow) (HostState sig))
+  liveTask : Task (core3 grow)
+  liveThread : Thread
+  liveInst : InstState
+  focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest
+  callout : (core3 grow).status reached.store.core core = .callout (.builtin .taskCancel liveTask.inst) []
+  threadRecord : ArenaField.threads.get? reached.store wait.thread = some liveThread
+  taskIdentity : liveThread.task = wait.taskId
+  taskRecord : reached.store.task? wait.taskId = some liveTask
+  instRecord : reached.store.inst? liveTask.inst = some liveInst
+  mayLeave : liveInst.mayLeave = true
+  asyncOpts : liveTask.opts.async_ = true
+  delivered : liveTask.state = .cancelDelivered
+
+variable {wait : CallbackWait grow sig} {reached : Config (core3 grow) (HostState sig)}
+
+def CallbackCancelImport.afterResolve (_ : CallbackCancelImport wait reached)
+    (result : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) :=
+  match result with
+  | .unit => modifyStore (CStore.setTaskState wait.taskId .resolved) >>= fun () => pure (.flat [])
+  | _ => internal "late-bound call: expected Ret.unit"
+
+def CallbackCancelImport.resolveEntry (entry : CallbackCancelImport wait reached) : Config (core3 grow) (HostState sig) :=
+  { reached with ctl := ⟨some wait.thread, .prog (callerOnResolve .spec .none entry.liveTask.caller none),
+    .prog entry.afterResolve :: .core entry.core wait.afterCore :: wait.segments⟩ :: entry.rest }
+
+def CallbackCancelImport.resumed (entry : CallbackCancelImport wait reached) {subtask : SubtaskId}
+    (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask) : Config (core3 grow) (HostState sig) :=
+  let store := resolution.resolvedStore.setTaskState wait.taskId .resolved
+  { reached with
+    store := store
+    ctl := ⟨some wait.thread, .core ((core3 grow).resume store.core entry.core (.values []))
+      wait.afterCore, wait.segments⟩ :: entry.rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

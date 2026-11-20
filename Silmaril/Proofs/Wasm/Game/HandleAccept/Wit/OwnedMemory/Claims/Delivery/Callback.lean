@@ -281,4 +281,118 @@ theorem unwindCallback (depth : Nat)
   | zero => exact .cons (.threadExit focused) (.refl _)
   | succ depth ih => exact .cons (.popProg focused) (ih rfl)
 
+private def importGuard {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached) :
+    Config (core3 grow) (HostState sig) :=
+  { reached with ctl := ⟨some wait.thread, .prog (do
+    trapIf (decide (entry.liveTask.numBorrows > 0)) .borrowsRemain
+    callUnit (.onResolve entry.liveTask.caller none)
+    modifyStore (CStore.setTaskState wait.taskId .resolved)
+    pure (.flat [])), .core entry.core wait.afterCore :: wait.segments⟩ :: entry.rest }
+
+private theorem callbackCancelGuard {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached) :
+    Steps profile ready (specDispatch ready impl) reached (List.replicate 8 .tau) (importGuard entry) := by
+  have taskLive : ArenaField.tasks.get? reached.store wait.taskId = some entry.liveTask := entry.taskRecord
+  have instLive : ArenaField.insts.get? reached.store entry.liveTask.inst = some entry.liveInst := entry.instRecord
+  have admitted : calloutEntry reached.store (some wait.thread) (.builtin .taskCancel entry.liveTask.inst) = none := by
+    simp [calloutEntry, instOfThread?, entry.threadRecord, entry.taskIdentity, taskLive]
+  refine .cons (.coreCallout (dispatch := specDispatch ready impl) entry.focused entry.callout)
+    (.cons (.currentThread rfl) (.cons (.get rfl) ?_))
+  simp [Prog.bind, admitted, calloutBody, builtinProg, withArgs0, Builtins.taskCancel]
+  refine .cons (.currentThread rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, entry.threadRecord, entry.taskIdentity, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, taskLive, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, instLive, entry.mayLeave, entry.asyncOpts, trapIf, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, taskLive, entry.delivered, trapIf, pure, importGuard, Prog.bind_assoc]
+  exact .refl _
+
+theorem callbackCancelImport {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached) :
+    (entry.liveTask.numBorrows = 0 → Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 9 .tau) entry.resolveEntry) ∧
+    (entry.liveTask.numBorrows > 0 → Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 8 .tau ++ [.trap .borrowsRemain]) (StepDefs.trapCfg reached)) := by
+  have leading := callbackCancelGuard (profile := profile) (ready := ready) (impl := impl) entry
+  constructor
+  · intro empty
+    have focused : (importGuard entry).ctl = ⟨some wait.thread, .prog (.op (.call (.onResolve entry.liveTask.caller none))
+      entry.afterResolve), .core entry.core wait.afterCore :: wait.segments⟩ :: entry.rest := by
+      simp [importGuard, trapIf, empty, callUnit, callRet, perform, Eff, Prog.lift, pure]
+      apply congrArg (fun tail => Focus.prog (Prog.op (S := Eff (core3 grow) (HostState sig))
+        (.call (.onResolve entry.liveTask.caller none)) tail))
+      funext result
+      cases result <;> first | rfl |
+        (simp [CallbackCancelImport.afterResolve, internal, trap, Eff, Prog.bind]; funext failure; cases failure)
+    exact appendRun leading (.cons (.call focused) (.refl _))
+  · intro borrows
+    have focused : (importGuard entry).ctl = ⟨some wait.thread, .prog (trap .borrowsRemain),
+      .core entry.core wait.afterCore :: wait.segments⟩ :: entry.rest := by
+      simp only [importGuard, trapIf, decide_eq_true borrows, ite_true, Prog.bind_eq, trap]
+      simp [Eff, Prog.bind]
+      apply congrArg (fun tail => Focus.prog (Prog.op (S := Eff (core3 grow) (HostState sig)) (.trap .borrowsRemain) tail))
+      funext failure
+      cases failure
+    exact appendRun leading (.cons (.trap focused) (.refl _))
+
+theorem callbackCancelResolve {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached)
+    {subtask : SubtaskId} (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask) :
+    Steps profile ready (specDispatch ready impl) entry.resolveEntry
+      (List.replicate (resolution.callbackSteps + 1) .tau) (entry.resumed resolution) := by
+  have live : ArenaField.subtasks.get? reached.store subtask = some resolution.record := resolution.live
+  let progressRecord := { resolution.record with common := { resolution.record.common with pending := some (.subtask subtask) } }
+  have queued : ArenaField.subtasks.get? (reached.store.setPendingSt (.subtask subtask) (.subtask subtask)) subtask =
+      some progressRecord := by
+    simp only [CStore.setPendingSt, CStore.modifyWaitableCommon, ArenaField.get?_modify_self, live, Option.map_some, progressRecord]
+  have selectState : (if resolution.record.state = .starting then
+      Subtask.resolve (E := core3 grow) (σ := HostState sig) subtask .cancelledBeforeStarted []
+      else Subtask.resolve subtask .cancelledBeforeReturned []) = Subtask.resolve subtask resolution.cancelledState [] := by
+    unfold LowerCancelResolution.cancelledState
+    split <;> rfl
+  have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl)
+    (show entry.resolveEntry.ctl = ⟨some wait.thread,
+      .prog (callerOnResolve .spec .none entry.liveTask.caller none),
+      .prog entry.afterResolve :: .core entry.core wait.afterCore :: wait.segments⟩ :: entry.rest from rfl)
+  simp [Prog.bind, CallbackCancelImport.resolveEntry, resolution.callerLive, pure] at read
+  cases found : resolution.record.index <;>
+    simp only [LowerCancelResolution.callbackSteps, found, Option.isSome_none, Option.isSome_some, Bool.false_eq_true,
+      ite_false, ite_true] <;>
+    refine .cons read (.cons (.get rfl) ?_) <;>
+    simp [Prog.bind, resolution.callerLive, pure, Quirks.none, Prog.bind_assoc]
+  · refine .cons (.get rfl) ?_
+    simp [Prog.bind, live, found, pure]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, live, pure, selectState]
+    refine .cons (.modify rfl) (.cons (.popProg rfl) (.cons (.modify rfl) (.cons (.popCore rfl) ?_)))
+    simp [CallbackCancelImport.resumed, LowerCancelResolution.resolvedStore, LowerCancelResolution.progressStore, found]
+    exact .refl _
+  · refine .cons (.get rfl) ?_
+    simp [Prog.bind, live, found, pure]
+    refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+    simp [Prog.bind, queued, progressRecord, pure, selectState]
+    refine .cons (.modify rfl) (.cons (.popProg rfl) (.cons (.modify rfl) (.cons (.popCore rfl) ?_)))
+    simp [CallbackCancelImport.resumed, LowerCancelResolution.resolvedStore, LowerCancelResolution.progressStore, found]
+    exact .refl _
+
+theorem callbackCancelLinked {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached)
+    (empty : entry.liveTask.numBorrows = 0)
+    {subtask : SubtaskId} (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask) :
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 9 .tau ++ List.replicate (resolution.callbackSteps + 1) .tau) (entry.resumed resolution) :=
+  appendRun ((callbackCancelImport entry).1 empty) (callbackCancelResolve entry resolution)
+
+theorem callbackCancelStarted {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached)
+    (empty : entry.liveTask.numBorrows = 0)
+    {subtask : SubtaskId} (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask)
+    (started : resolution.record.state = .started) {index : Nat} (indexed : resolution.record.index = some index) :
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 9 .tau ++ List.replicate (resolution.callbackSteps + 1) .tau) (entry.resumed resolution) ∧
+    (entry.resumed resolution).store.subtask? subtask = some resolution.resolvedRecord ∧
+    resolution.resolvedRecord.state = .cancelledBeforeReturned ∧ resolution.resolvedRecord.index = some index ∧
+    resolution.resolvedRecord.common.pending = some (.subtask subtask) ∧
+    resolution.resolvedRecord.lenders = resolution.record.lenders := by
+  refine ⟨callbackCancelLinked entry empty resolution, resolution.live_resolved, ?_, indexed, ?_, rfl⟩
+  · simp [LowerCancelResolution.resolvedRecord, LowerCancelResolution.cancelledState, started]
+  · simp [LowerCancelResolution.resolvedRecord, indexed]
+
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery

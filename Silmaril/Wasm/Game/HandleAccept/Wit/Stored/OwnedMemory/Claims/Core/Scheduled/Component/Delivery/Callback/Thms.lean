@@ -148,4 +148,29 @@ theorem unwind_callback (depth : Nat)
       { reached with store := StepDefs.threadStatusSt thread .exited reached.store, ctl := rest } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.unwindCallback depth focused
 
+/-- The actual task.cancel import reads the reached callback task. A live
+borrow traps before resolution; otherwise the machine enters onResolve(none)
+above the original Core callback invocation. -/
+theorem CallbackCancelImport.enters_resolution {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached) :
+    (entry.liveTask.numBorrows = 0 → Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 9 .tau) entry.resolveEntry) ∧
+    (entry.liveTask.numBorrows > 0 → Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 8 .tau ++ [.trap .borrowsRemain]) (StepDefs.trapCfg reached)) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCancelImport entry
+
+/-- Resolve the reached indexed started subtask, then return the empty
+task.cancel results to the callback. The cancelled event remains pending and
+the subtask's lenders are still attached; neither is delivered by this callout. -/
+theorem CallbackCancelImport.resolves_started {wait : CallbackWait grow sig} (entry : CallbackCancelImport wait reached)
+    (empty : entry.liveTask.numBorrows = 0)
+    {subtask : SubtaskId} (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask)
+    (started : resolution.record.state = .started) {index : Nat} (indexed : resolution.record.index = some index) :
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate 9 .tau ++ List.replicate (resolution.callbackSteps + 1) .tau) (entry.resumed resolution) ∧
+    (entry.resumed resolution).store.subtask? subtask = some resolution.resolvedRecord ∧
+    resolution.resolvedRecord.state = .cancelledBeforeReturned ∧ resolution.resolvedRecord.index = some index ∧
+    resolution.resolvedRecord.common.pending = some (.subtask subtask) ∧
+    resolution.resolvedRecord.lenders = resolution.record.lenders :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCancelStarted entry empty resolution started indexed
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
