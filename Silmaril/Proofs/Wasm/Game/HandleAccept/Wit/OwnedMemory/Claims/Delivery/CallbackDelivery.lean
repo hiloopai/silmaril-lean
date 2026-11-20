@@ -58,6 +58,21 @@ private theorem appendRun {first mid last : Config (core3 grow) (HostState sig)}
   | refl => exact right
   | cons step _ ih => exact .cons step (ih right)
 
+theorem callbackExit (wait : CallbackWait grow sig) (exit : CallbackExit wait reached) :
+    Steps profile ready (specDispatch ready impl) reached exit.labels exit.unwound ∧
+      exit.unwound.store.subtasks = reached.store.subtasks := by
+  have returned := callbackReturned (profile := profile) (ready := ready) (impl := impl) wait exit.focused exit.returned
+  rw [exit.decoded] at returned
+  have unregistered := callbackExitResolved (profile := profile) (ready := ready) (impl := impl)
+    wait.exitFrame (reached := wait.nextIteration reached (.exit, exit.index) exit.rest)
+    rfl exit.taskLive exit.implicitThread exit.resolved exit.threadLive exit.threadIndex exit.instanceLive exit.remove
+  have unwind : Steps profile ready (specDispatch ready impl) exit.unregistered (List.replicate (exit.depth + 2) .tau)
+      exit.unwound :=
+    unwindCallback (exit.depth + 1) (by simp [CallbackExit.unregistered, CallbackWait.exitComplete, CallbackWait.exitFrame,
+      List.replicate_succ, exit.frames])
+  refine ⟨?_, exitSubtasks wait.exitFrame _ _ _⟩
+  simpa only [CallbackExit.labels, List.append_assoc] using appendRun returned (appendRun unregistered unwind)
+
 theorem callbackCancelDeliversStarted {wait : CallbackWait grow sig}
     (entry : CallbackCancelImport wait reached) {subtask : SubtaskId}
     (cancel : ParkedCancel parked subtask)
@@ -86,13 +101,8 @@ theorem callbackCancelDeliversStarted {wait : CallbackWait grow sig}
   obtain ⟨resolve, liveRecord, cancelled, _, pending, _⟩ :=
     callbackCancelStarted (profile := profile) (ready := ready) (impl := impl) entry empty resolution started indexed
   obtain ⟨next, frame⟩ := callbackCoreOnlyCut wait rfl run
-  let loop := wait.nextIteration cut (.exit, exitIndex) entry.rest
-  let following := { wait with segments := .prog (fun result => .pure result) :: wait.segments }
   let liveTask := entry.liveTask.withState .resolved
-  have returnedSteps : Steps profile ready (specDispatch ready impl) cut [.tau, .tau] loop := by
-    simpa only [decoded] using callbackReturned (profile := profile) (ready := ready) (impl := impl) wait focused returned
-  have live : loop.store.task? wait.taskId = some liveTask := by
-    change cut.store.task? wait.taskId = some liveTask
+  have live : cut.store.task? wait.taskId = some liveTask := by
     rw [frame]
     change ArenaField.tasks.get? (ArenaField.tasks.modify resolution.resolvedStore wait.taskId _) wait.taskId = _
     rw [ArenaField.get?_modify_self]
@@ -103,44 +113,35 @@ theorem callbackCancelDeliversStarted {wait : CallbackWait grow sig}
     rw [tasks]
     rw [show reached.store.tasks.get? wait.taskId.idx = some entry.liveTask from entry.taskRecord]
     rfl
-  have threadLive : ArenaField.threads.get? loop.store wait.thread = some entry.liveThread := by
-    change ArenaField.threads.get? cut.store wait.thread = _
+  have threadLive : ArenaField.threads.get? cut.store wait.thread = some entry.liveThread := by
     rw [frame]
     unfold CallbackWait.coreAt CallbackCancelImport.resumed LowerCancelResolution.resolvedStore
       LowerCancelResolution.progressStore
     split <;> exact entry.threadRecord
-  have instanceLive : loop.store.inst? liveTask.inst = some entry.liveInst := by
+  have instanceLive : cut.store.inst? liveTask.inst = some entry.liveInst := by
     change cut.store.inst? entry.liveTask.inst = _
     rw [frame]
     unfold CallbackWait.coreAt CallbackCancelImport.resumed LowerCancelResolution.resolvedStore
       LowerCancelResolution.progressStore
     split <;> exact entry.instRecord
-  let done := following.exitComplete loop liveTask slot entry.rest
-  have exitSteps : Steps profile ready (specDispatch ready impl) loop
-      (List.replicate (5 + (liveTask.ft.async_ && liveTask.needsExclusive).toNat) .tau) done :=
-    callbackExitResolved following rfl live implicitThread rfl threadLive threadIndex instanceLive remove
-  let exited := { done with store := StepDefs.threadStatusSt wait.thread .exited done.store, ctl := entry.rest }
-  have unwind : Steps profile ready (specDispatch ready impl) done (List.replicate (depth + 2) .tau) exited :=
-    unwindCallback (depth + 1) (by simp [done, CallbackWait.exitComplete, following, List.replicate_succ, identityFrames])
-  have retained : exited.store.subtask? subtask = some resolution.resolvedRecord := by
-    have subtasks : exited.store.subtasks = (entry.resumed resolution).store.subtasks := by
-      change done.store.subtasks = _
-      rw [exitSubtasks]
-      change cut.store.subtasks = _
-      rw [frame]
-      rfl
-    change exited.store.subtasks.get? subtask.idx = _
-    exact (congrArg (fun arena => arena.get? subtask.idx) subtasks).trans liveRecord
+  let exit : CallbackExit wait cut :=
+    ⟨core, entry.rest, values, exitIndex, depth, liveTask, entry.liveThread, slot, entry.liveInst, removed,
+      focused, returned, decoded, live, implicitThread, rfl, threadLive, threadIndex, instanceLive, remove, identityFrames⟩
+  obtain ⟨exitSteps, keeps⟩ := callbackExit (profile := profile) (ready := ready) (impl := impl) wait exit
+  have retained : exit.unwound.store.subtask? subtask = some resolution.resolvedRecord := by
+    refine (congrArg (fun arena => arena.get? subtask.idx) keeps).trans ?_
+    rw [frame]
+    exact liveRecord
   have finish := cancel.finish_cancelled_callback (profile := profile) (ready := ready) (impl := impl)
-    exited resolution.resolvedRecord resumer retained (Or.inr cancelled) pending
-  refine ⟨exited, ?_, retained, by simpa only [cancelled] using finish⟩
-  have trace := appendRun resolve (appendRun run (appendRun returnedSteps (appendRun exitSteps unwind)))
+    exit.unwound resolution.resolvedRecord resumer retained (Or.inr cancelled) pending
+  refine ⟨exit.unwound, ?_, retained, by simpa only [cancelled] using finish⟩
+  have trace := appendRun resolve (appendRun run exitSteps)
   have lengths : 2 + ((5 + (liveTask.ft.async_ && liveTask.needsExclusive).toNat) + (depth + 2)) =
       depth + 9 + (entry.liveTask.ft.async_ && entry.liveTask.needsExclusive).toNat := by
     change 2 + ((5 + (entry.liveTask.ft.async_ && entry.liveTask.needsExclusive).toNat) + (depth + 2)) = _
     omega
   rw [← lengths]
-  simpa only [List.replicate_add, List.append_assoc,
+  simpa only [CallbackExit.labels, exit, liveTask, Task.withState, List.replicate_add, List.append_assoc,
     show List.replicate 2 (.tau : Label (core3 grow) (HostState sig)) = [.tau, .tau] from rfl] using trace
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery

@@ -295,4 +295,46 @@ inductive ClosedCallbackPrefix (profile : ProfileKind) (ready : HostReady (HostS
         (([.tau, .tau, .choice (.earlyReturn wait.site) true] ++
           (List.replicate 3 .tau ++ [.choice (.shuffle record.elems.length) permutation] ++ List.replicate 6 .tau)) ++ labels) last
 
+/-- The reached registration and ABI return needed for a resolved callback
+to exit, with every loop continuation accounted for. -/
+structure CallbackExit (wait : CallbackWait grow sig) (cut : Config (core3 grow) (HostState sig)) where
+  core : (core3 grow).Thread (CanonHost (core3 grow))
+  rest : List (Activation (core3 grow) (HostState sig))
+  values : List FlatValue
+  index : Nat
+  depth : Nat
+  task : Task (core3 grow)
+  thread : Thread
+  slot : Nat
+  instance_ : InstState
+  removed : InstState
+  focused : cut.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest
+  returned : (core3 grow).status cut.store.core core = .returned (.values values)
+  decoded : callbackReturn values = .ok (.exit, index)
+  taskLive : cut.store.task? wait.taskId = some task
+  implicitThread : task.implicitThread = some wait.thread
+  resolved : task.state = .resolved
+  threadLive : ArenaField.threads.get? cut.store wait.thread = some thread
+  threadIndex : thread.index = some slot
+  instanceLive : cut.store.inst? task.inst = some instance_
+  remove : instance_.removeThread? slot = some (wait.thread, removed)
+  frames : wait.segments = List.replicate depth (.prog (fun returned => .pure returned))
+
+def CallbackWait.exitFrame (wait : CallbackWait grow sig) : CallbackWait grow sig :=
+  { wait with segments := .prog (fun returned => .pure returned) :: wait.segments }
+
+def CallbackExit.unregistered {cut : Config (core3 grow) (HostState sig)} (exit : CallbackExit wait cut) :
+    Config (core3 grow) (HostState sig) :=
+  wait.exitFrame.exitComplete (wait.nextIteration cut (.exit, exit.index) exit.rest)
+    exit.task exit.slot exit.rest
+
+def CallbackExit.unwound {cut : Config (core3 grow) (HostState sig)} (exit : CallbackExit wait cut) :
+    Config (core3 grow) (HostState sig) :=
+  { exit.unregistered with store := StepDefs.threadStatusSt wait.thread .exited exit.unregistered.store, ctl := exit.rest }
+
+def CallbackExit.labels {cut : Config (core3 grow) (HostState sig)} (exit : CallbackExit wait cut) :
+    List (Label (core3 grow) (HostState sig)) :=
+  [.tau, .tau] ++ List.replicate (5 + (exit.task.ft.async_ && exit.task.needsExclusive).toNat) .tau ++
+    List.replicate (exit.depth + 2) .tau
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

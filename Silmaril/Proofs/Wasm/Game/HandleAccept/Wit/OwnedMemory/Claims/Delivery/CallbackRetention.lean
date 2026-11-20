@@ -18,7 +18,7 @@ open ComponentCall ComponentCall.Delivery
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
-  {start reached : Config (core3 grow) (HostState sig)}
+  {start reached parked : Config (core3 grow) (HostState sig)}
   {rest : List (Activation (core3 grow) (HostState sig))}
 
 private theorem releasedKeeps (wait : CallbackWait grow sig) (store : CStore (core3 grow)) (target : SubtaskId) :
@@ -138,5 +138,28 @@ theorem closedCallbackPrefixReaches {labels target}
     obtain ⟨run, retained⟩ := callbackEarlyWaitRetains wait kind available early live noCancel setLive allowed selects take
       chosen target other
     exact ⟨stepsAppend run ih.1, ih.2.trans (retained.trans (releasedKeeps wait _ target).symm)⟩
+
+theorem callbackCancelDeliversAfterClosedPrefix {wait finalWait : CallbackWait grow sig}
+    (entry : CallbackCancelImport wait reached) {subtask : SubtaskId} (cancel : ParkedCancel parked subtask)
+    (empty : entry.liveTask.numBorrows = 0)
+    (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask)
+    (started : resolution.record.state = .started) {index : Nat} (indexed : resolution.record.index = some index)
+    {cut labels} (path : ClosedCallbackPrefix profile ready impl subtask (entry.resumed resolution) labels cut)
+    (exit : CallbackExit finalWait cut) (resumer : exit.rest = cancel.callbackTail) :
+    Steps profile ready (specDispatch ready impl) reached
+      ((List.replicate 9 .tau ++ List.replicate (resolution.callbackSteps + 1) .tau) ++ (labels ++ exit.labels))
+      exit.unwound ∧
+    exit.unwound.store.subtask? subtask = some resolution.resolvedRecord ∧
+    Steps profile ready (specDispatch ready impl) exit.unwound (List.replicate 8 .tau)
+      (cancel.cancelledReply exit.unwound .cancelledBeforeReturned) := by
+  obtain ⟨resolve, atResume, cancelled, _, pending, _⟩ :=
+    callbackCancelStarted (profile := profile) (ready := ready) (impl := impl) entry empty resolution started indexed
+  obtain ⟨run, retained⟩ := closedCallbackPrefixReaches path
+  obtain ⟨exitRun, frame⟩ := callbackExit (profile := profile) (ready := ready) (impl := impl) finalWait exit
+  have atExit : exit.unwound.store.subtask? subtask = some resolution.resolvedRecord :=
+    (congrArg (fun arena => arena.get? subtask.idx) frame).trans (retained.trans atResume)
+  have reply := cancel.finish_cancelled_callback (profile := profile) (ready := ready) (impl := impl)
+    exit.unwound resolution.resolvedRecord resumer atExit (Or.inr cancelled) pending
+  exact ⟨stepsAppend resolve (stepsAppend run exitRun), atExit, by simpa only [cancelled] using reply⟩
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery

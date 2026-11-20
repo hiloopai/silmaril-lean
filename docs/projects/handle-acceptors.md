@@ -1254,6 +1254,11 @@ the reached task and waitable-set lookup, and the permitted choices justify
 each iteration. The prefix may end in a still-running Core callback; it
 does not establish eventual EXIT or outer delivery.
 
+On a reached EXIT, `CallbackCancelImport.delivers_after_closed_prefix`
+rechecks the live registration at that cut and unwinds the intervening loop
+frames. The exact cancelled record survives until the original Core caller's
+separate delivery steps take it, release its lends, and return its status.
+
 `CallbackResume.resumes_tracked` follows the original K2/K3 saved occurrence
 through a retaining prefix and a reached forced `Thread.resume`. It restores
 the exact suffix above the resumer without a readiness assumption. On a live

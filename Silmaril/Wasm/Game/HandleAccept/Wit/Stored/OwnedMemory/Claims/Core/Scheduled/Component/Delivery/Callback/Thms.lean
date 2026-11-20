@@ -389,4 +389,23 @@ theorem ClosedCallbackPrefix.reaches {labels target}
       reached.store.subtask? target = start.store.subtask? target :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.closedCallbackPrefixReaches path
 
+/-- A started cancellation can cross repeated retaining closed iterations
+before a reached EXIT, then deliver the retained event to the original caller.
+The reached callback registration is checked at EXIT, not framed by assumption. -/
+theorem CallbackCancelImport.delivers_after_closed_prefix {wait finalWait : CallbackWait grow sig}
+    (entry : CallbackCancelImport wait reached) {subtask : SubtaskId} (cancel : ParkedCancel parked subtask)
+    (empty : entry.liveTask.numBorrows = 0)
+    (resolution : LowerCancelResolution reached.store entry.liveTask.caller subtask)
+    (started : resolution.record.state = .started) {index : Nat} (indexed : resolution.record.index = some index)
+    {cut labels} (path : ClosedCallbackPrefix profile ready impl subtask (entry.resumed resolution) labels cut)
+    (exit : CallbackExit finalWait cut) (resumer : exit.rest = cancel.callbackTail) :
+    Steps profile ready (specDispatch ready impl) reached
+      ((List.replicate 9 .tau ++ List.replicate (resolution.callbackSteps + 1) .tau) ++ (labels ++ exit.labels))
+      exit.unwound ∧
+    exit.unwound.store.subtask? subtask = some resolution.resolvedRecord ∧
+    Steps profile ready (specDispatch ready impl) exit.unwound (List.replicate 8 .tau)
+      (cancel.cancelledReply exit.unwound .cancelledBeforeReturned) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackCancelDeliversAfterClosedPrefix entry cancel
+    empty resolution started indexed path exit resumer
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
