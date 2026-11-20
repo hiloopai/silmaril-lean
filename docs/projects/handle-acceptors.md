@@ -1175,6 +1175,14 @@ saved wait. `delivers_early` uses the same selection and result-buffer proof as
 the resumed wait, but requires no block or tick; a late buffer trap still follows
 event consumption and lend release.
 
+`Delivery.WaitResume` separates the reached canonical resume from the policy
+that selected it; the selected tick uses the same resume proof. The reached
+resume restores the tracked saved activation and updates the wait count without
+consulting readiness. `traps_empty` shows that a forced resume of a live set
+with no pending event still shuffles before trapping, unlike an empty poll.
+`delivers_returned` handles a selected pending return after a retaining prefix.
+These theorems do not infer that any particular call will force the resume.
+
 Before resolution, `Delivery.ParkedCancel.requests` derives the live request
 and temporary sync waiter before the actual cancellation callback starts. The
 closed asynchronous case in `StartedCancel.resumes_blocked` executes a started

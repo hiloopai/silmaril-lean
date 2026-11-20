@@ -108,6 +108,40 @@ theorem WaitTick.resumes {atHost : Config (core3 grow) (HostState sig)} {wait : 
     Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeWaitTick tick saved
 
+/-- A reached resume of the same blocked occurrence restores its actual saved
+activation, without requiring a tick or a ready event. Selection is subsequent. -/
+theorem WaitResume.resumes_tracked {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) {leading}
+    (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked leading atResume) :
+    Steps profile ready (specDispatch ready impl) wait.blocked (leading ++ List.replicate 4 .tau) resume.reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeTrackedWait resume prefixRun
+
+/-- A reached forced resume without an event does not behave like an empty poll.
+The actual wait decrements its count and shuffles before trapping. -/
+theorem WaitResume.traps_empty {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) {leading}
+    (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked leading atResume)
+    (record : WaitableSet) (perm : List Nat) (live : resume.reached.store.wset? wait.ws = some record)
+    (empty : resume.reached.store.wsetHasEvent wait.ws = false) (allowed : Allowed profile (.shuffle record.elems.length) perm) :
+    Steps profile ready (specDispatch ready impl) wait.blocked
+      ((leading ++ List.replicate 4 .tau) ++ [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau,
+        .trap (.internal "WaitableSet.get_pending_event: no pending event")])
+      (StepDefs.trapCfg { resume.reached with
+        store := resume.reached.store.wsetSetElemsSt wait.ws (applyPerm perm record.elems) }) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeWaitEmpty resume prefixRun
+    record perm live empty allowed
+
+/-- If the same pending return survives to a reached resume, the selected
+delivery uses the reached store and the caller from the original saved wait. -/
+theorem WaitResume.delivers_returned {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) {leading}
+    (prefixRun : ParkedRetaining profile ready (specDispatch ready impl) wait.thread subtask index
+      wait.blocked leading atResume)
+    (pending : PendingAt wait.blocked.store subtask index)
+    (delivery : WaitDelivery wait resume.reached profile subtask) :
+    delivery.outcomes index ready impl wait.blocked (leading ++ List.replicate 4 .tau) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumedWaitDelivery resume prefixRun pending delivery
+
 /-- A resolution can feed a previously blocked Core wait on the selected tick.
 The actual buffer check follows consumption; a trap retains the earlier effects. -/
 theorem LinkedResolution.then_wait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}

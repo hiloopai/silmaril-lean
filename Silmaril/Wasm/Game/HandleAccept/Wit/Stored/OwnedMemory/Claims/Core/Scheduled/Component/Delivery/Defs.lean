@@ -222,6 +222,25 @@ def ParkedWait.readyLabels {E : CoreEngine} {Host : Type} (early : Bool) : List 
   List.replicate 11 .tau ++ [.choice (.earlyReturn .waitableSetWait) early] ++
     List.replicate (if early then 1 else 2) .tau
 
+/-- A reached invocation of canonical `Thread.resume`, distinct from the
+policy that selected it. The primitive does not consult the readiness predicate. -/
+structure WaitResume {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg)
+    (atResume : Config (core3 grow) (HostState sig)) where
+  thread : Option ThreadId
+  resumeAfter : Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : atResume.ctl = ⟨thread, .prog (Thread.resume wait.thread >>= fun () => resumeAfter), segments⟩ :: rest
+  waiting : atResume.store.threadIs Thread.waiting wait.thread = true
+
+def WaitResume.reached {cfg atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait cfg}
+    (resume : WaitResume wait atResume) : Config (core3 grow) (HostState sig) :=
+  { (atResume.setCont wait.thread none) with
+    store := (StepDefs.threadStatusSt wait.thread .running (atResume.store.stopWaitingSt wait.thread))
+      |>.wsetDecWaitingSt wait.ws
+    ctl := ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ ::
+      ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest }
+
 /-- The host is allowed to tick, the actual saved activation still occupies
 its slot, and the scheduler chooses it from the current ready candidates. -/
 structure WaitTick {cfg : Config (core3 grow) (HostState sig)} (wait : ParkedWait cfg)

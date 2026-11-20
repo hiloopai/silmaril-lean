@@ -226,6 +226,36 @@ theorem parkedWaitReady (wait : ParkedWait initial) (available : initial.store.w
     simp [Prog.bind]
     exact .cons (.modify rfl) (.refl _)
 
+private theorem resumeWait {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) (saved : atResume.cont? wait.thread = some wait.saved) :
+    Steps profile ready (specDispatch ready impl) atResume (List.replicate 4 .tau) resume.reached := by
+  have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) resume.focused
+  simp [Prog.bind, resume.waiting, Thread.stopWaiting] at read
+  exact .cons read (.cons (.modify rfl) (.cons (.resumeThread rfl saved) (.cons (.modify rfl) (.refl _))))
+
+theorem resumeTrackedWait {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) {leading}
+    (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked leading atResume) :
+    Steps profile ready (specDispatch ready impl) wait.blocked (leading ++ List.replicate 4 .tau) resume.reached := by
+  obtain ⟨steps, kept⟩ := prefixRun.reaches
+  exact appendSteps steps (resumeWait resume (kept.trans (Config.cont?_setCont_self _ _ _)))
+
+theorem resumeWaitEmpty {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) {leading}
+    (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked leading atResume)
+    (record : WaitableSet) (perm : List Nat) (live : resume.reached.store.wset? wait.ws = some record)
+    (empty : resume.reached.store.wsetHasEvent wait.ws = false) (allowed : Allowed profile (.shuffle record.elems.length) perm) :
+    Steps profile ready (specDispatch ready impl) wait.blocked
+      ((leading ++ List.replicate 4 .tau) ++ [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau,
+        .trap (.internal "WaitableSet.get_pending_event: no pending event")])
+      (StepDefs.trapCfg { resume.reached with
+        store := resume.reached.store.wsetSetElemsSt wait.ws (applyPerm perm record.elems) }) := by
+  let reply : EventTuple → Session grow sig (Ret (core3 grow)) := fun event => do
+    let code ← unpackEvent (Builtins.eventCx wait.memory wait.task.inst) (flatNat wait.out) event
+    pure (.flat [i32Flat code])
+  exact appendSteps (resumeTrackedWait resume prefixRun)
+    (get_shuffles_empty (config := resume.reached) wait.ws record perm live empty allowed reply rfl)
+
 theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
     (tick : WaitTick wait atHost ready profile) (saved : atHost.cont? wait.thread = some wait.saved) :
     Steps profile ready (specDispatch ready impl) atHost tick.labels tick.reached := by
@@ -250,11 +280,10 @@ theorem resumeWaitTick {atHost : Config (core3 grow) (HostState sig)} {wait : Pa
     Thread.resume ((tick.first :: tick.others)[pick.val]'(by simpa only [List.length_cons] using pick.isLt)) >>=
       fun () => modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit
   refine .cons (Step.choose (ck := .tickPick tick.others.length) (k := resumePick) tick.pick rfl tick.allowed) ?_
-  simp [resumePick, tick.selected, Thread.resume]
-  refine .cons (.get rfl) ?_
-  change (StepDefs.enterHostSt atHost.store).threadIs Thread.waiting wait.thread = true at waiting
-  simp [waiting, Thread.stopWaiting, Prog.bind]
-  exact .cons (.modify rfl) (.cons (.resumeThread rfl saved) (.cons (.modify rfl) (.refl _)))
+  simp only [resumePick, tick.selected]
+  let after : Session grow sig (Ret (core3 grow)) := modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit
+  let resumed := { atHost with store := entered, ctl := [Activation.ofProg none (Thread.resume wait.thread >>= fun () => after)] }
+  exact resumeWait (atResume := resumed) ⟨none, after, [], [], rfl, waiting⟩ saved
 
 private theorem waitDelivery {reached : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
     (delivery : WaitDelivery wait reached profile subtask)
@@ -294,6 +323,16 @@ theorem earlyWaitDelivery (wait : ParkedWait initial) (available : initial.store
     (delivery : WaitDelivery wait wait.early profile subtask) (pending : PendingAt initial.store subtask index) :
     delivery.outcomes index ready impl initial (ParkedWait.readyLabels true) :=
   waitDelivery delivery rfl pending (parkedWaitReady wait available true allowed)
+
+theorem resumedWaitDelivery {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) {leading}
+    (prefixRun : ParkedRetaining profile ready (specDispatch ready impl) wait.thread subtask index
+      wait.blocked leading atResume)
+    (pending : PendingAt wait.blocked.store subtask index)
+    (delivery : WaitDelivery wait resume.reached profile subtask) :
+    delivery.outcomes index ready impl wait.blocked (leading ++ List.replicate 4 .tau) := by
+  obtain ⟨kept, queued⟩ := retainingParked prefixRun pending
+  exact waitDelivery delivery rfl queued (resumeTrackedWait resume kept)
 
 theorem resolutionWait {atHost : Config (core3 grow) (HostState sig)} {wait : ParkedWait parked}
     {tick : WaitTick wait atHost ready profile} (delivery : WaitDelivery wait tick.reached profile subtask)

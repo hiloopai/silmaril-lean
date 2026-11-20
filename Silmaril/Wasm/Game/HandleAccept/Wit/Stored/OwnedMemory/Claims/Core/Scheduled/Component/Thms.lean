@@ -407,6 +407,21 @@ theorem get_delivers_returned {prof : ProfileKind} {ready : HostReady (HostState
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.get_delivers_returned
     ws set perm subtask record index setLive allowed selects live returned indexed eventPending resume focused
 
+/-- Selection on a live but empty set still shuffles before the internal trap. -/
+theorem get_shuffles_empty {prof : ProfileKind} {ready : HostReady (HostState sig)}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {config : Config (core3 grow) (HostState sig)} {thread : Option ThreadId} {segments rest}
+    (ws : WsetId) (record : WaitableSet) (perm : List Nat)
+    (setLive : config.store.wset? ws = some record) (empty : config.store.wsetHasEvent ws = false)
+    (allowed : Allowed prof (.shuffle record.elems.length) perm)
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau,
+      .trap (.internal "WaitableSet.get_pending_event: no pending event")]
+      (StepDefs.trapCfg { config with store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems) }) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.get_shuffles_empty ws record perm
+    setLive empty allowed resume focused
+
 /-- Execute the canonical event-buffer writes in the reached store. Both
 four-byte writes follow the alignment and whole eight-byte range checks. -/
 theorem unpack_event_write {prof : ProfileKind} {ready : HostReady (HostState sig)}

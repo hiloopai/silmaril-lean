@@ -264,24 +264,27 @@ private theorem retainingAppend {start middle final : Config (core3 grow) (HostS
   | done => exact last
   | step run keptSlot keptEvent _ ih => exact .step run keptSlot keptEvent (ih last)
 
-theorem get_selects_retaining (saved : ThreadId) (subtask : SubtaskId) (index : Nat)
-    (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
+private def runSelection (selected : Option Waitable) : Session grow sig EventTuple :=
+  match selected with
+  | some waitable => Waitable.getPendingEvent waitable
+  | none => internal "WaitableSet.get_pending_event: no pending event"
+
+private theorem get_shuffles_retaining (saved : ThreadId) (subtask : SubtaskId) (index : Nat)
+    (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Option Waitable)
     (setLive : config.store.wset? ws = some record)
     (allowed : Allowed prof (.shuffle record.elems.length) perm)
     (selects : (applyPerm perm record.elems).find?
-      (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = some selected)
+      (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = selected)
     (resume : EventTuple → Session grow sig (Ret (core3 grow)))
     (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
     ParkedRetaining prof ready dispatch saved subtask index config
       [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau]
       { config with
         store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems)
-        ctl := ⟨thread, .prog (Waitable.getPendingEvent selected >>= resume), segments⟩ :: rest } := by
+        ctl := ⟨thread, .prog (runSelection selected >>= resume), segments⟩ :: rest } := by
   have lookup : ArenaField.wsets.get? config.store ws = some record := setLive
   let pick := fun (elems : List Waitable) (store : CStore (core3 grow)) =>
-    (match elems.find? store.waitableHasEvent with
-    | some waitable => Waitable.getPendingEvent waitable
-    | none => internal "WaitableSet.get_pending_event: no pending event") >>= resume
+    runSelection (elems.find? store.waitableHasEvent) >>= resume
   let onChoice : List Nat → Session grow sig (Ret (core3 grow)) := fun order =>
     let elems := applyPerm order record.elems
     .op (.modify (CStore.wsetSetElemsSt ws elems)) fun _ => .op .get (pick elems)
@@ -304,10 +307,46 @@ theorem get_selects_retaining (saved : ThreadId) (subtask : SubtaskId) (index : 
   change ParkedRetaining prof ready dispatch saved subtask index { config with
     store := shuffled
     ctl := ⟨thread, .prog (pick elems shuffled), segments⟩ :: rest } [] _
-  have chosen : pick elems shuffled = (Waitable.getPendingEvent selected >>= resume) := by
+  have chosen : pick elems shuffled = (runSelection selected >>= resume) := by
     simp only [pick, shuffled, elems, selects]
   rw [chosen]
   exact .done _
+
+theorem get_selects_retaining (saved : ThreadId) (subtask : SubtaskId) (index : Nat)
+    (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
+    (setLive : config.store.wset? ws = some record)
+    (allowed : Allowed prof (.shuffle record.elems.length) perm)
+    (selects : (applyPerm perm record.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = some selected)
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
+    ParkedRetaining prof ready dispatch saved subtask index config
+      [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau]
+      { config with
+        store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems)
+        ctl := ⟨thread, .prog (Waitable.getPendingEvent selected >>= resume), segments⟩ :: rest } :=
+  get_shuffles_retaining saved subtask index ws record perm (some selected) setLive allowed selects resume focused
+
+theorem get_shuffles_empty (ws : WsetId) (record : WaitableSet) (perm : List Nat)
+    (setLive : config.store.wset? ws = some record) (empty : config.store.wsetHasEvent ws = false)
+    (allowed : Allowed prof (.shuffle record.elems.length) perm)
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .choice (.shuffle record.elems.length) perm, .tau, .tau,
+      .trap (.internal "WaitableSet.get_pending_event: no pending event")]
+      (StepDefs.trapCfg { config with store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems) }) := by
+  have shownEmpty : record.elems.any config.store.waitableHasEvent = false := by
+    simpa only [CStore.wsetHasEvent, setLive] using empty
+  have noSelection : (applyPerm perm record.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = none := by
+    apply List.find?_eq_none.mpr
+    intro candidate member
+    obtain ⟨slot, _, lookup⟩ := List.mem_filterMap.mp member
+    have inSet : candidate ∈ record.elems := List.mem_of_getElem? lookup
+    exact List.any_eq_false.mp shownEmpty candidate inSet
+  have run := get_shuffles_retaining (prof := prof) (ready := ready) (dispatch := dispatch)
+    ⟨0⟩ ⟨0⟩ 0 ws record perm none setLive allowed noSelection resume focused
+  exact retainingSteps (retainingAppend run (retainingStep (.trap rfl) rfl rfl (.done _)))
 
 theorem get_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
     (setLive : config.store.wset? ws = some record)
