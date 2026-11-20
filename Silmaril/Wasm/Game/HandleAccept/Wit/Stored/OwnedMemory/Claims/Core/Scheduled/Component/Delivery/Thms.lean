@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult
 
 public section
 
@@ -52,6 +53,31 @@ theorem ParkedPoll.delivered_clears (poll : ParkedPoll parked subtask profile) (
     ∃ record, poll.delivered.subtask? subtask = some record ∧ record.common.pending = none ∧
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.deliveredClears poll pending
+
+/-- An empty poll or another waitable's delivery preserves the tracked return event
+and saved slot at each cut, including through the actual canonical shuffle and take.
+The endpoint is just before result-buffer validation and writes. -/
+theorem PollAdmission.retains_until_unpack (poll : PollAdmission parked) (saved : ThreadId)
+    (selection : PollRetention profile parked.store poll.ws subtask) :
+    ParkedRetaining profile ready (specDispatch ready impl) saved subtask index parked
+      (List.replicate 8 .tau ++ selection.labels) (poll.beforeUnpack selection.reached) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.poll_retains_until_unpack
+    impl poll saved subtask index selection
+
+theorem ParkedRetaining.reaches {saved labels}
+    (path : ParkedRetaining profile ready (specDispatch ready impl) saved subtask index committed labels parked)
+    (pending : PendingAt committed.store subtask index) :
+    ParkedPrefix profile ready (specDispatch ready impl) saved committed labels parked ∧
+      PendingAt parked.store subtask index :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.retainingParked path pending
+
+/-- Extend the same retained path through the actual buffer writes and Core reply,
+or through a late buffer trap. A trap does not undo another waitable's delivery. -/
+theorem PollAdmission.retains_through_reply (poll : PollAdmission parked) (saved : ThreadId)
+    (selection : PollRetention profile parked.store poll.ws subtask) :
+    poll.retentionOutcomes selection ready impl saved index :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.ComponentResult.poll_retention_outcomes
+    impl poll saved subtask index selection
 
 /-- With no event available, the wait registers the actual ready condition and parks the
 Core continuation. It neither returns to Core nor consumes an event. -/

@@ -1148,6 +1148,15 @@ a final lookup cannot substitute for that prefix. Moving the waitable between
 sets preserves the pending event. The poll clears it and releases lends even if
 the later output-buffer check traps.
 
+`Delivery.PollAdmission.retains_until_unpack` derives the intervening frame for an
+admitted Core poll with no event, or with a reached selection and successful take
+from a different subtask, stream, or future. The poll's shuffle and take preserve
+the tracked subtask's pending return and the same saved activation at each cut.
+`retains_through_reply` extends that path through the checked buffer writes and
+reply to the original Core caller or the alignment/range trap. The range check
+uses the reached store; a trap retains the other delivery. These are classified
+poll paths, not every possible scheduler step.
+
 `Delivery.ParkedWait.then_resolution` starts at an actual Core wait callout with
 no event available. It registers the waiter and saves the Core continuation;
 after the indexed commit and a retaining prefix, the selected host tick restores

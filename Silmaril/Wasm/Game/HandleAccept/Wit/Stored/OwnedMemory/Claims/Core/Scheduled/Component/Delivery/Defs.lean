@@ -76,10 +76,8 @@ def LinkedResolution.committed {cfg : Config (core3 grow) (HostState sig)} {subt
       (.returned resolve.ticket handle)
     ctl := ⟨resolve.thread, .prog (.pure (.cancel .none)), resolve.segments⟩ :: resolve.rest }
 
-/-- Reached caller and selection facts, independent of a proof that the
-selected subtask still has its original pending returned event. -/
-structure ParkedPoll (cfg : Config (core3 grow) (HostState sig)) (subtask : SubtaskId)
-    (profile : ProfileKind) where
+/-- Admission of a public Core poll, before inspecting its waitable set. -/
+structure PollAdmission (cfg : Config (core3 grow) (HostState sig)) where
   memory : Nat
   slot : FlatValue
   out : FlatValue
@@ -92,8 +90,6 @@ structure ParkedPoll (cfg : Config (core3 grow) (HostState sig)) (subtask : Subt
   next : List FlatValue → Session grow sig (Ret (core3 grow))
   segments : List (Seg (core3 grow) (HostState sig))
   rest : List (Activation (core3 grow) (HostState sig))
-  set : WaitableSet
-  perm : List Nat
   focused : cfg.ctl = ⟨some thread, .core core next, segments⟩ :: rest
   callout : (core3 grow).status cfg.store.core core =
     .callout (.builtin (.waitableSetPoll memory) task.inst) [slot, out]
@@ -102,11 +98,53 @@ structure ParkedPoll (cfg : Config (core3 grow) (HostState sig)) (subtask : Subt
   liveInst : ArenaField.insts.get? cfg.store task.inst = some instance_
   mayLeave : instance_.mayLeave = true
   handle : instance_.handles.get? (flatNat slot) = some (.wset ws)
+
+/-- Reached caller and selection facts, independent of a proof that the
+selected subtask still has its original pending returned event. -/
+structure ParkedPoll (cfg : Config (core3 grow) (HostState sig)) (subtask : SubtaskId)
+    (profile : ProfileKind) extends PollAdmission cfg where
+  set : WaitableSet
+  perm : List Nat
   setLive : cfg.store.wset? ws = some set
   member : .subtask subtask ∈ set.elems
   allowed : Allowed profile (.shuffle set.elems.length) perm
   selects : (applyPerm perm set.elems).find?
     (cfg.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask)
+
+/-- An empty poll or an actual selection of another waitable. The event check is on
+the shuffled store, and a different numerical index is not evidence of another waitable. -/
+inductive PollRetention {E : CoreEngine} (profile : ProfileKind) (store : CStore E)
+    (ws : WsetId) (target : SubtaskId) : Type where
+  | empty (noEvent : store.wsetHasEvent ws = false)
+  | other (set : WaitableSet) (perm : List Nat) (selected : Waitable) (event : EventTuple)
+      (live : store.wset? ws = some set) (hasEvent : store.wsetHasEvent ws = true)
+      (allowed : Allowed profile (.shuffle set.elems.length) perm)
+      (selects : (applyPerm perm set.elems).find?
+        (store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some selected)
+      (unrelated : selected ≠ .subtask target)
+      (take : ((store.wsetSetElemsSt ws (applyPerm perm set.elems)).takeWaitableEvent selected).2 = some event)
+
+def PollRetention.reached {E : CoreEngine} {profile : ProfileKind} {store : CStore E} {ws target} :
+    PollRetention profile store ws target → CStore E × EventTuple
+  | .empty _ => (store, EventTuple.none)
+  | .other set perm selected event .. =>
+    ((store.wsetSetElemsSt ws (applyPerm perm set.elems)).takeWaitableEventSt selected, event)
+
+def PollRetention.labels {E : CoreEngine} {Host : Type} {profile : ProfileKind} {store : CStore E} {ws target} :
+    PollRetention profile store ws target → List (Label E Host)
+  | .empty _ => [.tau]
+  | .other set perm .. => [.tau, .tau, .choice (.shuffle set.elems.length) perm, .tau, .tau, .tau, .tau]
+
+def PollAdmission.unpack {cfg : Config (core3 grow) (HostState sig)} (poll : PollAdmission cfg)
+    (event : EventTuple) : Session grow sig (Ret (core3 grow)) := do
+  let code ← unpackEvent (Builtins.eventCx poll.memory poll.task.inst) (flatNat poll.out) event
+  pure (.flat [i32Flat code])
+
+def PollAdmission.beforeUnpack {cfg : Config (core3 grow) (HostState sig)} (poll : PollAdmission cfg)
+    (reached : CStore (core3 grow) × EventTuple) : Config (core3 grow) (HostState sig) :=
+  { cfg with
+    store := reached.1
+    ctl := ⟨some poll.thread, .prog (poll.unpack reached.2), .core poll.core poll.next :: poll.segments⟩ :: poll.rest }
 
 def ParkedPoll.delivered {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId} {profile : ProfileKind}
     (poll : ParkedPoll cfg subtask profile) : CStore (core3 grow) :=
@@ -211,6 +249,27 @@ inductive ParkedRetaining {E : CoreEngine} {Host : Type} (profile : ProfileKind)
       (keepsEvent : PendingAt start.store subtask index → PendingAt next.store subtask index)
       (tail : ParkedRetaining profile ready dispatch thread subtask index next labels reached) :
       ParkedRetaining profile ready dispatch thread subtask index start (label :: labels) reached
+
+def PollAdmission.retentionOutcomes {cfg : Config (core3 grow) (HostState sig)} (poll : PollAdmission cfg)
+    {profile : ProfileKind} {target : SubtaskId} (selection : PollRetention profile cfg.store poll.ws target)
+    (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig))
+    (saved : ThreadId) (index : Nat) : Prop :=
+  let reached := poll.beforeUnpack selection.reached
+  let event := selection.reached.2
+  let ptr := flatNat poll.out
+  let written := writeMemSt poll.memory (ptr + 4) (u32Bytes event.payload)
+    (writeMemSt poll.memory ptr (u32Bytes event.index) reached.store)
+  let resumed := { reached with
+    store := written
+    ctl := ⟨some poll.thread,
+      .core ((core3 grow).resume written.core poll.core (.values [i32Flat event.code.toNat])) poll.next,
+      poll.segments⟩ :: poll.rest }
+  let retaining := ParkedRetaining profile ready (specDispatch ready impl) saved target index cfg
+  let leading := List.replicate 8 .tau ++ selection.labels
+  (ptr % 4 ≠ 0 → retaining (leading ++ [.trap .unalignedPointer]) (StepDefs.trapCfg reached)) ∧
+    ∀ size, ptr % 4 = 0 → (core3 grow).memSize? reached.store.core poll.memory = some size →
+      (ptr + 8 ≤ size → retaining (leading ++ List.replicate 6 .tau) resumed) ∧
+      (size < ptr + 8 → retaining (leading ++ [.tau, .trap .outOfBounds]) (StepDefs.trapCfg reached))
 
 /-- The shuffle and selection are read after the tick restores the waiter,
 not at the initial callout or at publication. -/

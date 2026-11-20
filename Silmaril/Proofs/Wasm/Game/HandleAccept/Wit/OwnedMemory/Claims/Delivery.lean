@@ -64,7 +64,7 @@ theorem resolutionIndexed (resolve : LinkedResolution initial subtask index) :
   let run := resolutionIndexedParked (profile := profile) (ready := ready) (impl := impl) resolve
   ⟨(run.1 ⟨0⟩).reaches.1, run.2⟩
 
-private theorem retainingParked {labels saved}
+theorem retainingParked {labels saved}
     (path : ParkedRetaining profile ready (specDispatch ready impl) saved subtask index committed labels parked)
     (pending : PendingAt committed.store subtask index) :
     ParkedPrefix profile ready (specDispatch ready impl) saved committed labels parked ∧
