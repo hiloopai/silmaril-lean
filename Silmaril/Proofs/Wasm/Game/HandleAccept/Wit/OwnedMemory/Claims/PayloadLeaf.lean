@@ -3,6 +3,8 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadLeaf.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.CanonicalTree.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.Step.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -16,18 +18,11 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.RecordLower (Field)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims (Spend)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Record
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature}
 variable {profile : ProfileKind} {ready : HostReady (HostState sig)}
 variable {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
-
-private theorem chain {before middle after : Machine.Config (core3 grow) (HostState sig)} {front back}
-    (left : Machine.Steps profile ready dispatch before front middle)
-    (right : Machine.Steps profile ready dispatch middle back after) :
-    Machine.Steps profile ready dispatch before (front ++ back) after := by
-  induction left with
-  | refl => exact right
-  | cons step _ ih => exact .cons step (ih right)
 
 private def readPlan (initial : CStore (core3 grow)) (item : Field) (index : Nat) :
     Session grow sig (Except RecordLower.Issue (Option Spend)) :=
@@ -75,28 +70,30 @@ private theorem transfer_eq (initial : CStore (core3 grow)) (item : Field) (inde
 private theorem reads (reached : Machine.Config (core3 grow) (HostState sig)) (item : Field) (index : Nat)
     (finish : Except RecordLower.Issue (Option Spend) → Session grow sig (Ret (core3 grow))) {thread segments rest}
     (focused : reached.ctl = ⟨thread, .prog (readPlan reached.store item index >>= finish), segments⟩ :: rest) :
-    ∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch reached labels
+    ∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsActiveSlots profile ready dispatch reached labels
       { reached with ctl := ⟨thread, .prog (finish (liveLeafPlan reached.store reached.host.writer index item)),
         segments⟩ :: rest } := by
   cases item with
-  | owner => exact ⟨[.tau], by simp, .cons (.hostGet focused) (.refl _)⟩
-  | endpoint | context => exact ⟨[.tau, .tau], by simp, .cons (.hostGet focused) (.cons (.get rfl) (.refl _))⟩
+  | owner => exact ⟨[.tau], by simp, fun depth => .step (.hostGet focused)
+      (by rw [transitionEdit, focused]; rfl) (.done _ _)⟩
+  | endpoint | context => exact ⟨[.tau, .tau], by simp, fun _ => .step (.hostGet focused)
+      (by rw [transitionEdit, focused]; rfl) (.step (.get rfl) rfl (.done _ _))⟩
   | _ =>
     refine ⟨[], by simp, ?_⟩
     change reached.ctl = ⟨thread, .prog (finish (.ok none)), segments⟩ :: rest at focused
-    change Machine.Steps profile ready dispatch reached []
+    change RetainsActiveSlots profile ready dispatch reached []
       { reached with ctl := ⟨thread, .prog (finish (.ok none)), segments⟩ :: rest }
     rw [← focused]
     cases reached
-    exact .refl _
+    exact fun _ => .done _ _
 
 private theorem spends (reached : Machine.Config (core3 grow) (HostState sig)) (spend : Spend)
     (finish : Session grow sig (Ret (core3 grow))) {thread segments rest}
     (focused : reached.ctl = ⟨thread, .prog (claims.spend spend >>= fun _ => finish), segments⟩ :: rest) :
-    Machine.Steps profile ready dispatch reached [.tau, .tau]
+    RetainsActiveSlots profile ready dispatch reached [.tau, .tau]
       { reached with host := { reached.host with writer := spend.apply reached.host.writer }
                      ctl := ⟨thread, .prog finish, segments⟩ :: rest } :=
-  .cons (.hostGet focused) (.cons (.hostSet rfl) (.refl _))
+  fun _ => .step (.hostGet focused) (by rw [transitionEdit, focused]; rfl) (.step (.hostSet rfl) rfl (.done _ _))
 
 theorem leaf_prefix (reached : Machine.Config (core3 grow) (HostState sig)) (destination : RecordDestination)
     (inst : InstId) (item : Field) (index : Nat) (output : Lower.Output)
@@ -109,7 +106,7 @@ theorem leaf_prefix (reached : Machine.Config (core3 grow) (HostState sig)) (des
       | .error issue => (reached.host, finish (.error issue))
       | .ok none => (reached.host, canonical)
       | .ok (some spend) => ({ reached.host with writer := spend.apply reached.host.writer }, canonical)
-    ∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch reached labels
+    ∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsActiveSlots profile ready dispatch reached labels
       { reached with host := postHost, ctl := ⟨thread, .prog next, segments⟩ :: rest } := by
   let canonical := RecordLower.CanonicalTree.leaf Limits.spec Quirks.none (destination.context inst)
     destination.width item output >>= fun result => finish (.ok result)
@@ -139,12 +136,12 @@ theorem leaf_prefix (reached : Machine.Config (core3 grow) (HostState sig)) (des
     | none => exact ⟨labels, silent, by simpa only [plan, next, applyPlan, pure_bind, onSuccess] using readSteps⟩
     | some spend =>
       let afterRead := { reached with ctl := ⟨thread, .prog (next (.ok (some spend))), segments⟩ :: rest }
-      have readDone : Machine.Steps profile ready dispatch reached labels afterRead := by
+      have readDone : RetainsActiveSlots profile ready dispatch reached labels afterRead := by
         simpa only [plan, afterRead] using readSteps
       have spendSteps := spends (profile := profile) (ready := ready) (dispatch := dispatch) afterRead spend canonical
         (thread := thread) (segments := segments) (rest := rest) (by
           simp only [afterRead, next, applyPlan, bind_assoc, pure_bind, onSuccess])
-      refine ⟨labels ++ [.tau, .tau], ?_, chain readDone spendSteps⟩
+      refine ⟨labels ++ [.tau, .tau], ?_, fun depth => (readDone depth).append (spendSteps depth)⟩
       intro label member
       rcases List.mem_append.mp member with front | back
       · exact silent label front

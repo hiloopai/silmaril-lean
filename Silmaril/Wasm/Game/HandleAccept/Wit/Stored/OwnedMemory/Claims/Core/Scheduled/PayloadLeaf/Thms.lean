@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadLeaf.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.CanonicalTree.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.Step.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadLeaf
 
 public section
@@ -17,7 +18,8 @@ open Stored.Endpoints.RecordLower (Field)
 canonical operation. A successful exclusive check spends exactly its own
 claim, then enters the identical reference leaf program. The scheduler runs
 these reads and spends before any canonical leaf effect, even if that leaf
-later traps. A shared context can proceed without a spend. -/
+later traps. A shared context can proceed without a spend. These local edits
+preserve the actual active slots even when the verdict is a typed refusal. -/
 theorem RecordDestination.checked_leaf_prefix {grow : SingleThreaded.GrowOracle} {sig : Signature}
     {profile : ProfileKind} {ready : HostReady (HostState sig)}
     {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
@@ -33,7 +35,7 @@ theorem RecordDestination.checked_leaf_prefix {grow : SingleThreaded.GrowOracle}
       | .error issue => (reached.host, finish (.error issue))
       | .ok none => (reached.host, canonical)
       | .ok (some spend) => ({ reached.host with writer := spend.apply reached.host.writer }, canonical)
-    ∃ labels, (∀ label ∈ labels, label = .tau) ∧ Machine.Steps profile ready dispatch reached labels
+    ∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch reached labels
       { reached with host := postHost, ctl := ⟨thread, .prog next, segments⟩ :: rest } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadLeaf.leaf_prefix
     reached destination inst item index output finish focused

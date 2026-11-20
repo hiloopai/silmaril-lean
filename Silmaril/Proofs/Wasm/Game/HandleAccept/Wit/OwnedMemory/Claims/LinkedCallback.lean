@@ -880,11 +880,13 @@ theorem handleFieldThen {older : ReturnFrame.Substitutions (core3 grow) (HostSta
   | error issue => simpa only [planned, Cursor.control] using run
   | ok plan =>
     rw [planned] at run
-    obtain ⟨store, result, leading, checkLabels, canonLabels, grew, silent, checkTrace, canonTrace, checked, canonical⟩ := run
+    obtain ⟨store, result, leading, checkLabels, canonLabels, grew, silent, checkTrace, canonTrace, checked, canonical, tracks⟩ := run
     have canonThread := frame.thread
     refine ⟨store, result, leading, checkLabels, canonLabels, silent, checkTrace, canonTrace, checked, ?_, ?_⟩
     · simpa only [canonThread] using canonical
     · intro value success
+      obtain ⟨checkTrack, canonTrack⟩ := tracks value success
+      refine ⟨checkTrack, by simpa only [canonThread, localLeafEnd, Cursor.control] using canonTrack, ?_⟩
       exact ends value _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
         ((frame.store ▸ growth).trans grew) rfl rfl
 

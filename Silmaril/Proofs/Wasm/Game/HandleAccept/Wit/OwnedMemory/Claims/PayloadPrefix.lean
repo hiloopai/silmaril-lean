@@ -543,11 +543,12 @@ private theorem handleKeeping (destination : RecordDestination) (inst : InstId) 
   cases verdict : liveLeafPlan left.store left.host.writer index item with
   | error issue =>
     rw [verdict] at paired
-    obtain ⟨labels, allTau, steps⟩ := paired
-    exact ⟨.refused issue, labels, [], _, right, steps, .refl right, same, silent allTau, trivial, rfl⟩
+    obtain ⟨labels, allTau, tracks⟩ := paired
+    exact ⟨.refused issue, labels, [], _, right, (ReturnFrame.Occurrence.prefix_survives (tracks 0)).1,
+      .refl right, same, silent allTau, trivial, rfl⟩
   | ok plan =>
     rw [verdict] at paired
-    obtain ⟨reached, outcome, leading, chk, ref, grown, allTau, checkTrace, canonTrace, checkRun, canonRun⟩ := paired
+    obtain ⟨reached, outcome, leading, chk, ref, grown, allTau, checkTrace, canonTrace, checkRun, canonRun, _⟩ := paired
     have labels : visible (leading ++ chk) = visible ref := by
       cases outcome <;> rw [visible_append, silent allTau, List.nil_append, trace checkTrace, trace canonTrace]
     cases outcome with
@@ -1282,7 +1283,7 @@ theorem collectionInstall (destination : RecordDestination) (inst : InstId) (typ
   simpa only [mode] using collectionInstallMode destination inst type element entries output index left right cursor
     checkNext canonNext same reachedWidth prepared checkAt canonAt
 
-private theorem checkPlacementRun {placementDispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
+theorem checkPlacementRun {placementDispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
     (destination : RecordDestination) (inst : InstId)
     (start : Config (core3 grow) Host) (area : Layout) (ptr : Nat) (cursor : Cursor (E := core3 grow) Host)
     (finish : P (core3 grow) Host (Ret (core3 grow)))

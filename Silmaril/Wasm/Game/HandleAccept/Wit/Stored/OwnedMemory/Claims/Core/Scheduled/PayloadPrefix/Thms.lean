@@ -869,6 +869,25 @@ theorem check_placement_steps {World : Type} {placementReady : HostReady World}
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.checkPlacement
     destination inst start area ptr cursor finish focused
 
+/-- Successful placement preserves the active return slots across the actual
+bounds read. Failed placement instead runs to canonical lockdown. -/
+theorem check_placement_tracks {World : Type} {placementReady : HostReady World}
+    {placementDispatch : Call (core3 grow) → P (core3 grow) World (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (start : Config (core3 grow) World)
+    (area : Layout) (ptr : Nat) (cursor : Cursor (E := core3 grow) World)
+    (finish : P (core3 grow) World (Ret (core3 grow)))
+    (focused : start.ctl = cursor.control (do
+      checkAligned ptr area.alignment.bytes
+      checkInBounds (destination.context inst) ptr area.size
+      finish)) :
+    match placement destination start.store area ptr with
+    | .ok () => ReturnFrame.Occurrence.RetainsActiveSlots profile placementReady placementDispatch start [.tau]
+        { start with ctl := cursor.control finish }
+    | .error reason => ∃ count, Steps profile placementReady placementDispatch start
+        (List.replicate count .tau ++ [.trap reason]) (StepDefs.trapCfg start) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.checkPlacementRun
+    destination inst start area ptr cursor finish focused
+
 /-- Enter the actual compiled root body, or trap before any child runs. A
 flat output has no placement steps; a memory output uses its reached store. -/
 theorem root_placement_steps (destination : RecordDestination) (inst : InstId) (type : TypeOf)

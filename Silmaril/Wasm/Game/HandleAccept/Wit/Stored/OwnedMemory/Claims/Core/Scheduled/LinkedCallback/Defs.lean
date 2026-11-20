@@ -381,9 +381,10 @@ structure StringField where
 
 def StringField.field (item : StringField) : Field := .data (.prim .string) ⟨.string item.value, .string item.valid⟩
 
-/-- On refusal only the checked live guard advances. On success the next
-field sees the spent writer and the reached canonical store. On trap neither
-side enters a success continuation, and the reached effects are retained. -/
+/-- On refusal only the checked live guard advances, retaining the caller
+slots. On success the same slots reach the next field along with the spent
+writer and the reached canonical store. On trap neither side enters a success
+continuation, and the reached effects are retained. -/
 def HandleFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (item : Field) (index : Nat) (output : Stored.Lower.Output) (left right : State grow sig)
     (check canon : Cursor (E := core3 grow) (HostState sig))
@@ -393,7 +394,7 @@ def HandleFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) 
       Cursor (E := core3 grow) (HostState sig) → Prop) : Prop :=
   let dispatch := specDispatch ready (host bindings)
   match liveLeafPlan left.store left.host.writer index item with
-  | .error issue => ∃ labels, (∀ label ∈ labels, label = .tau) ∧ Steps profile ready dispatch left labels
+  | .error issue => ∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left labels
       { left with ctl := check.control (checkNext (.error issue)) }
   | .ok plan =>
     let spent := plan.elim left.host (fun spend => { left.host with writer := spend.apply left.host.writer })
@@ -404,9 +405,12 @@ def HandleFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) 
         (localLeafEnd left spent store check.thread check.frames check.rest (fun value => checkNext (.ok value)) result) ∧
       Steps profile ready dispatch right canonLabels
         (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
-      ∀ value, result = .ok value → next value
-        { left with store, host := spent, ctl := check.control (checkNext (.ok value)) }
-        { right with store, ctl := canon.control (canonNext value) } check canon
+      ∀ value, result = .ok value →
+        let lhs := { left with store, host := spent, ctl := check.control (checkNext (.ok value)) }
+        let rhs := { right with store, ctl := canon.control (canonNext value) }
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left (leading ++ checkLabels) lhs ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right canonLabels rhs ∧
+        next value lhs rhs check canon
 
 def flatSequenceChecked (destination : RecordDestination) (inst : InstId) (items : List Field) (index : Nat)
     (leading : List FlatValue) (finish : Except Endpoints.RecordLower.Issue (List FlatValue) → Session grow sig (Ret (core3 grow))) :

@@ -95,7 +95,8 @@ theorem aggregate_replay {older : ReturnFrame.Substitutions (core3 grow) (HostSt
       destination.width (.aggregate type items) index (.memory address) >>= checkNext))
     (canonAt : right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none (destination.context inst)
       destination.width (.aggregate type items) (.memory address) >>= canonNext)) :
-    Steps profile ready (specDispatch ready (host bindings)) left [.tau] (enterAggregate destination inst items index address left check checkNext) ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau]
+      (enterAggregate destination inst items index address left check checkNext) ∧
       Replay profile ready bindings .fields destination inst compare (aggregateNext index checkNext) canonNext finish
         items 0 address (enterAggregate destination inst items index address left check checkNext) right check canon :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.MemorySequence.aggregateReplay

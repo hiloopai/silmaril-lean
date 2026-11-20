@@ -46,6 +46,21 @@ theorem runBody_thread_steps {E : CoreEngine} {Host Result : Type} (body : P E H
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.body_steps_at
     body start updated host result finish thread segs rest profile ready dispatch focused (some thread) (.inr rfl) success
 
+/-- A successful body ending at its consumer preserves the active return slots
+through the actual reads and writes, rather than reconstructing them afterward. -/
+theorem runBody_thread_tracks {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
+    (start : Machine.Config E Host) (updated : CStore E) (host : Host) (result : Result)
+    (finish : Result → P E Host (Ret E)) (thread : Option ThreadId)
+    (segs : List (Machine.Seg E Host)) (rest : List (Machine.Activation E Host))
+    (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E))
+    (focused : start.ctl = ⟨thread, .prog (body >>= finish), segs⟩ :: rest)
+    (success : runBody body start.store start.host (some thread) = (updated, host, .ok result)) :
+    ∃ labels, labels.all (· matches .tau) = true ∧
+      Machine.ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch start labels
+        { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.body_tracks_at
+    body start updated host result finish thread segs rest profile ready dispatch focused (some thread) (.inr rfl) success
+
 /-- A canonical trap in a non-suspending body locks down the reached store, not
 the entry store. Earlier host effects survive, and no continuation is resumed.
 Interpreter capability errors are not canonical traps. -/

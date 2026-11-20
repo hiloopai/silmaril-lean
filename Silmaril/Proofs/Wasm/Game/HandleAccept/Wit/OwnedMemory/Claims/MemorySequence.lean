@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Defs
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Width.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 import Silmaril.Wasm.Component.Reference.ABI.Layout.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Collection.Thms
@@ -24,6 +25,7 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedule
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence
+open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
@@ -87,11 +89,24 @@ theorem elementSlots (width : AddrType) {element : TypeOf} {items : List Field} 
       · simpa only [List.length_cons, Nat.succ_mul, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using bounds
       · exact fun entry member => child entry (List.mem_cons_of_mem _ member)
 
+private theorem readWidthTracks (destination : RecordDestination) (inst : InstId) (right : State grow sig)
+    (canon : Cursor (E := core3 grow) (HostState sig)) (body : AddrType → Session grow sig (Ret (core3 grow)))
+    (width : (core3 grow).memAddrType? right.store.core destination.memory = some destination.width)
+    (focused : right.ctl = canon.control (ptrType (destination.context inst) >>= body)) :
+    RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right [.tau]
+      { right with ctl := canon.control (body destination.width) } := by
+  have reached : ptrTypeIn right.store (destination.context inst) = destination.width := by
+    simp [ptrTypeIn, CanonOpts.ptrType, RecordDestination.context, width]
+  intro depth
+  simpa only [Cursor.control, reached] using
+    (Prefix.read (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings)) (before := right)
+      (next := fun store => body (ptrTypeIn store (destination.context inst))) depth focused)
+
 private theorem focusStep (mode : Track) (destination : RecordDestination) (inst : InstId) (item : Field) (rest : List Field)
     (cursor : Nat) (canonNext : CanonNext grow sig) (right : State grow sig) (canon : Cursor (E := core3 grow) (HostState sig))
     (width : (core3 grow).memAddrType? right.store.core destination.memory = some destination.width)
     (atProgram : right.ctl = canon.control (mode.canonical destination inst (item :: rest) cursor >>= canonNext)) :
-    Steps profile ready (specDispatch ready (host bindings)) right mode.readLabels
+    RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right mode.readLabels
       (focus mode destination inst item cursor right canon
         (canonTail mode destination inst rest (mode.slot destination.width item cursor).2 canonNext)) := by
   cases mode with
@@ -107,9 +122,9 @@ private theorem focusStep (mode : Track) (destination : RecordDestination) (inst
       rfl
     have same : entered = right :=
       (congrArg (fun ctl => { right with ctl }) control.symm).trans (by cases right; rfl)
-    change Steps profile ready (specDispatch ready (host bindings)) right [] entered
+    change RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right [] entered
     rw [same]
-    exact .refl right
+    exact fun _ => .done _ _
   | elements stride =>
     let entered := focus (.elements stride) destination inst item cursor right canon
       (canonTail (.elements stride) destination inst rest (cursor + stride) canonNext)
@@ -124,9 +139,9 @@ private theorem focusStep (mode : Track) (destination : RecordDestination) (inst
       rw [Prog.bind_assoc]
     have same : entered = right :=
       (congrArg (fun ctl => { right with ctl }) control.symm).trans (by cases right; rfl)
-    change Steps profile ready (specDispatch ready (host bindings)) right [] entered
+    change RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right [] entered
     rw [same]
-    exact .refl right
+    exact fun _ => .done _ _
   | fields =>
     let cx := destination.context (grow := grow) inst
     let body := fun current =>
@@ -146,9 +161,7 @@ private theorem focusStep (mode : Track) (destination : RecordDestination) (inst
       let tail : Session grow sig Unit := CanonicalTree.memory Limits.spec Quirks.none cx destination.width rest (address + area.size)
       change (head.bind (fun () => tail)).bind canonNext = head.bind (fun () => tail.bind canonNext)
       rw [Prog.bind_assoc]
-    have step := (CoreGrowthSteps.refl (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings)) right).read_width
-      cx rfl width body atRead
-    exact step.steps
+    exact readWidthTracks destination inst right canon body width atRead
 
 theorem replay {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {origin : CStore (core3 grow)}
     (mode : Track) (destination : RecordDestination) (inst : InstId) (items : List Field) (index cursor : Nat)
@@ -227,7 +240,8 @@ private theorem aggregateEntry {origin : CStore (core3 grow)}
     (bounds : address + (layout destination.width type).size ≤ bytes)
     (checkAt : left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none (destination.context inst)
       destination.width (.aggregate type items) index (.memory address) >>= checkNext)) :
-    Steps profile ready (specDispatch ready (host bindings)) left [.tau] (enterAggregate destination inst items index address left check checkNext) := by
+    RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau]
+      (enterAggregate destination inst items index address left check checkNext) := by
   let area := layout destination.width type
   let body := Track.fields.checked (grow := grow) (sig := sig) destination inst items 0 address >>= aggregateNext index checkNext
   obtain ⟨reachedBytes, sizeAt, widened⟩ := growth.memSize sized
@@ -253,7 +267,7 @@ private theorem aggregateEntry {origin : CStore (core3 grow)}
       simp only [Prog.bind_assoc, Prog.pure_bind']
       rfl
     simpa [checkAligned, trapIf, area, aligned, Prog.bind_eq, Prog.pure_bind', range] using focused
-  have guard := check_placement_steps (profile := profile) (placementReady := ready) (placementDispatch := specDispatch ready (host bindings))
+  have guard := check_placement_tracks (profile := profile) (placementReady := ready) (placementDispatch := specDispatch ready (host bindings))
     destination inst left area address check body guardAt
   rw [placementAt] at guard
   exact guard
@@ -276,7 +290,8 @@ theorem aggregateReplay {older : ReturnFrame.Substitutions (core3 grow) (HostSta
       destination.width (.aggregate type items) index (.memory address) >>= checkNext))
     (canonAt : right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none (destination.context inst)
       destination.width (.aggregate type items) (.memory address) >>= canonNext)) :
-    Steps profile ready (specDispatch ready (host bindings)) left [.tau] (enterAggregate destination inst items index address left check checkNext) ∧
+    RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau]
+      (enterAggregate destination inst items index address left check checkNext) ∧
       Replay profile ready bindings .fields destination inst compare (aggregateNext index checkNext) canonNext finish
         items 0 address (enterAggregate destination inst items index address left check checkNext) right check canon := by
   have guard := aggregateEntry (profile := profile) (ready := ready) (bindings := bindings)
@@ -800,9 +815,9 @@ theorem listTreeRule {older : ReturnFrame.Substitutions (core3 grow) (HostState 
         rfl
       have width : (core3 grow).memAddrType? right.store.core destination.memory = some destination.width :=
         frame.store ▸ growth.memAddrType present
-      have read := (CoreGrowthSteps.refl (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings)) right).read_width
-        cx rfl width canonBody canonRead
-      refine .inr (.inr (.inr (.inr (.inr ⟨element, length, entries, rfl, read.steps, ?_⟩))))
+      have read := readWidthTracks (profile := profile) (ready := ready) (bindings := bindings)
+        destination inst right canon canonBody width canonRead
+      refine .inr (.inr (.inr (.inr (.inr ⟨element, length, entries, rfl, read, ?_⟩))))
       have alignMod := placement.1
       change address % (layout destination.width (.fixedList element length)).alignment.bytes = 0 at alignMod
       rw [layout] at alignMod

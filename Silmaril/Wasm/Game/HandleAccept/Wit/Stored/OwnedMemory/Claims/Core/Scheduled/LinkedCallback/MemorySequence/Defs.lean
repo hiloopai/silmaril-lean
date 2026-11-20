@@ -125,7 +125,7 @@ def Replay (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings
     let nextCheck := checkTail mode destination inst rest (index + 1) slot.2 checkNext
     let nextCanon := canonTail mode destination inst rest slot.2 canonNext
     let reference := focus mode destination inst item cursor right canon nextCanon
-    Steps profile ready (specDispatch ready (host bindings)) right mode.readLabels reference ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right mode.readLabels reference ∧
     compare item index slot.1 left reference check canon nextCheck nextCanon
       (Replay profile ready bindings mode destination inst compare checkNext canonNext finish rest (index + 1) slot.2)
 
@@ -157,7 +157,7 @@ def nested (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings
     mixed profile ready bindings older destination inst item index address left right check canon checkNext canonNext finish ∨
       ∃ type children, item = .aggregate type children ∧
         let entered := enterAggregate destination inst children index address left check checkNext
-        Steps profile ready (specDispatch ready (host bindings)) left [.tau] entered ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau] entered ∧
           Replay profile ready bindings .fields destination inst (nested profile ready bindings older destination inst depth)
             (aggregateNext index checkNext) canonNext finish children 0 address entered right check canon
 
@@ -254,7 +254,7 @@ def MapEntriesReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
     let nextCanon : CanonNext grow sig := fun () => mapTail destination inst key element rest (cursor + stride) >>= canonNext
     ∃ keyField valueField, entry = .aggregate type [keyField, valueField] ∧
       let entered := enterAggregate destination inst [keyField, valueField] index cursor left check nextCheck
-      Steps profile ready (specDispatch ready (host bindings)) left [.tau] entered ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau] entered ∧
       Replay profile ready bindings .placedFields destination inst compare (aggregateNext index nextCheck) nextCanon
         (MapEntriesReplay profile ready bindings destination inst compare key element checkNext canonNext finish rest (index + 1) (cursor + stride))
         [keyField, valueField] 0 cursor entered right check canon
@@ -339,7 +339,7 @@ def listTree (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindin
     memoryLeaf profile ready bindings older destination inst item index address left right check canon checkNext canonNext finish ∨
       (∃ type children, item = .aggregate type children ∧
         let entered := enterAggregate destination inst children index address left check checkNext
-        Steps profile ready (specDispatch ready (host bindings)) left [.tau] entered ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau] entered ∧
           Replay profile ready bindings .fields destination inst child (aggregateNext index checkNext) canonNext finish
             children 0 address entered right check canon) ∨
       (∃ element entries, item = .dynamic (.list element) element entries ∧
@@ -362,7 +362,7 @@ def listTree (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindin
       ∃ element length entries, item = .fixed element length entries ∧
         let mode := Track.elements (layout destination.width element).size
         let reference := { right with ctl := canon.control (mode.canonical destination inst entries address >>= canonNext) }
-        Steps profile ready (specDispatch ready (host bindings)) right [.tau] reference ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right [.tau] reference ∧
           Replay profile ready bindings mode destination inst child (aggregateNext index checkNext) canonNext finish
             entries 0 address left reference check canon
 
