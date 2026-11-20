@@ -162,4 +162,123 @@ theorem startedCancelCore {parked : Config (core3 grow) (HostState sig)} {subtas
     split <;> exact marked
   exact appendRun entered (callbackCancelCore wait rfl live rfl chosen)
 
+private theorem callbackReturnBody (wait : CallbackWait grow sig) (values : List FlatValue) :
+    wait.afterCore values =
+      match callbackReturn values with
+      | .ok (code, index) => callRet (.loop (.callbackLoop wait.taskId wait.thread code.toNat index))
+      | .error reason => trap reason := by
+  cases values with
+  | nil => rfl
+  | cons packed more =>
+    cases more with
+    | cons => rfl
+    | nil =>
+      cases decoded : AsyncRef.unpackCallbackResult (flatNat packed) with
+      | some next =>
+        cases next
+        simp [CallbackWait.afterCore, callbackReturn, Canon.unpackCallbackResult, decoded, orTrap, Prog.bind, pure]
+      | none =>
+        simp only [CallbackWait.afterCore, callbackReturn, Canon.unpackCallbackResult, decoded, orTrap, trap]
+        apply congrArg (fun tail => Prog.op (S := Eff (core3 grow) (HostState sig)) (.trap .unsupportedCallbackCode) tail)
+        funext failure
+        cases failure
+
+theorem callbackReturned (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
+    {values : List FlatValue}
+    (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (result : (core3 grow).status reached.store.core core = .returned (.values values)) :
+    match callbackReturn values with
+    | .ok next => Steps profile ready (specDispatch ready impl) reached [.tau, .tau] (wait.nextIteration reached next rest)
+    | .error reason => Steps profile ready (specDispatch ready impl) reached [.tau, .trap reason] (StepDefs.trapCfg reached) := by
+  have returned := Step.coreReturned (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused result
+  rw [callbackReturnBody] at returned
+  cases classified : callbackReturn values with
+  | ok next =>
+    cases next
+    simp only [classified] at returned ⊢
+    exact .cons returned (.cons (.call rfl) (.refl _))
+  | error reason =>
+    simp only [classified] at returned ⊢
+    exact .cons returned (.cons (.trap rfl) (.refl _))
+
+theorem callbackExitUnresolved (wait : CallbackWait grow sig) {index : Nat} {liveTask : Task (core3 grow)}
+    (focused : reached.ctl = ⟨some wait.thread,
+      .prog (callbackLoopBody .spec wait.taskId wait.thread CallbackCode.exit.toNat index), wait.segments⟩ :: rest)
+    (live : reached.store.task? wait.taskId = some liveTask) (implicitThread : liveTask.implicitThread = some wait.thread)
+    (lastThread : (liveTask.threads.erase wait.thread).isEmpty = true) (unresolved : liveTask.state ≠ .resolved) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau, .trap .taskNotResolved]
+      (StepDefs.trapCfg reached) := by
+  have lookup : ArenaField.tasks.get? reached.store wait.taskId = some liveTask := live
+  refine .cons (.get focused) ?_
+  simp [Prog.bind, lookup, implicitThread, orTrap, pure, Task.unregisterThread]
+  refine .cons (.get rfl) ?_
+  have guard : ((liveTask.threads.erase wait.thread).isEmpty && !decide (liveTask.state = .resolved)) = true := by
+    simp only [lastThread, decide_eq_false unresolved, Bool.not_false, Bool.and_true]
+  simp only [Prog.bind, lookup, pure, guard, trapIf, ite_true]
+  exact .cons (.trap rfl) (.refl _)
+
+theorem callbackReparks (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
+    {values : List FlatValue} (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (result : (core3 grow).status reached.store.core core = .returned (.values values))
+    {kind : CallbackWaitKind} {index : Nat} (decoded : callbackReturn values = .ok (kind.code, index))
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel) (selected : (wait.followingWait liveTask kind).selected reached index) :
+    let entry := wait.nextIteration reached (kind.code, index) rest
+    let following := wait.followingWait liveTask kind
+    Steps profile ready (specDispatch ready impl) reached
+      ([.tau, .tau] ++ (List.replicate kind.entrySteps .tau ++ following.parkLabels (following.readyAt entry)))
+      (following.blocked entry rest) := by
+  have returned := callbackReturned (profile := profile) (ready := ready) (impl := impl) wait focused result
+  rw [decoded] at returned
+  dsimp only
+  refine appendRun returned (appendRun ?_ (callbackBlocks _ rfl))
+  cases kind with
+  | yield => exact callbackYieldEntry rfl live noCancel
+  | wait set =>
+    obtain ⟨inst, instLive, handle⟩ := selected
+    exact callbackWaitEntry rfl live noCancel instLive handle
+
+theorem callbackExitResolved (wait : CallbackWait grow sig) {index : Nat} {liveTask : Task (core3 grow)}
+    (focused : reached.ctl = ⟨some wait.thread,
+      .prog (callbackLoopBody .spec wait.taskId wait.thread CallbackCode.exit.toNat index), wait.segments⟩ :: rest)
+    (live : reached.store.task? wait.taskId = some liveTask) (implicitThread : liveTask.implicitThread = some wait.thread)
+    (resolved : liveTask.state = .resolved) {threadState : Thread} {slot : Nat}
+    (threadLive : ArenaField.threads.get? reached.store wait.thread = some threadState)
+    (threadIndex : threadState.index = some slot) {inst removed : InstState}
+    (instanceLive : reached.store.inst? liveTask.inst = some inst)
+    (remove : inst.removeThread? slot = some (wait.thread, removed)) :
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate (5 + (liveTask.ft.async_ && liveTask.needsExclusive).toNat) .tau)
+      (wait.exitComplete reached liveTask slot rest) := by
+  have lookup : ArenaField.tasks.get? reached.store wait.taskId = some liveTask := live
+  have instLookup : ArenaField.insts.get? reached.store liveTask.inst = some inst := instanceLive
+  have count := List.replicate_add (α := Label (core3 grow) (HostState sig)) 5
+    (liveTask.ft.async_ && liveTask.needsExclusive).toNat .tau
+  rw [count]
+  refine .cons (.get focused) ?_
+  simp [Prog.bind, lookup, implicitThread, orTrap, pure, Task.unregisterThread]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, lookup, resolved, pure, trapIf]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, threadLive, threadIndex, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, instLookup, remove, pure]
+  refine .cons (.modify rfl) ?_
+  cases release : (liveTask.ft.async_ && liveTask.needsExclusive) with
+  | false =>
+    simp only [CallbackWait.exitComplete, ← Bool.and_eq_true, release, Bool.false_eq_true, ite_false]
+    exact .refl _
+  | true =>
+    simp only [CallbackWait.exitComplete, ← Bool.and_eq_true, release, ite_true]
+    exact .cons (.modify rfl) (.refl _)
+
+theorem unwindCallback (depth : Nat)
+    (focused : reached.ctl = ⟨some thread, .prog (.pure .unit),
+      List.replicate depth (.prog (fun returned => .pure returned))⟩ :: rest) :
+    Steps profile ready (specDispatch ready impl) reached (List.replicate (depth + 1) .tau)
+      { reached with store := StepDefs.threadStatusSt thread .exited reached.store, ctl := rest } := by
+  induction depth generalizing reached with
+  | zero => exact .cons (.threadExit focused) (.refl _)
+  | succ depth ih => exact .cons (.popProg focused) (ih rfl)
+
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery

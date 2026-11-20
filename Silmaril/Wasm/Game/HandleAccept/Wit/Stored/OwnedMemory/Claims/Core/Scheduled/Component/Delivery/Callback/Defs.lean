@@ -105,4 +105,52 @@ def CallbackWait.called (wait : CallbackWait grow sig) (reached : Config (core3 
     ctl := ⟨some wait.thread, .core ((core3 grow).invoke callback (EventTuple.taskCancelled.callbackArgs.map i32Flat))
       wait.afterCore, wait.segments⟩ :: rest }
 
+/-- Classify a reached normal Core return using the canonical callback ABI.
+A Core execution trap is separate from an invalid successful Core return. -/
+def callbackReturn (values : List FlatValue) : Except TrapReason (CallbackCode × Nat) :=
+  match values with
+  | [packed] =>
+    match AsyncRef.unpackCallbackResult (flatNat packed) with
+    | some next => .ok next
+    | none => .error .unsupportedCallbackCode
+  | _ => .error (.internal "canon_lift: callback must return one value")
+
+def CallbackWait.nextIteration (wait : CallbackWait grow sig) (reached : Config (core3 grow) (HostState sig))
+    (next : CallbackCode × Nat) (rest : List (Activation (core3 grow) (HostState sig))) :
+    Config (core3 grow) (HostState sig) :=
+  { reached with ctl := ⟨some wait.thread, .prog (callbackLoopBody .spec wait.taskId wait.thread next.1.toNat next.2),
+    .prog (fun returned => .pure returned) :: wait.segments⟩ :: rest }
+
+def CallbackWaitKind.code : CallbackWaitKind → CallbackCode
+  | .yield => .yield
+  | .wait _ => .wait
+
+def CallbackWaitKind.entrySteps : CallbackWaitKind → Nat
+  | .yield => 3
+  | .wait _ => 6
+
+def CallbackWait.readyAt (wait : CallbackWait grow sig) (start : Config (core3 grow) (HostState sig)) : Bool :=
+  wait.condition.eval (fun _ => false) (wait.released start.store)
+
+def CallbackWait.selected (wait : CallbackWait grow sig) (start : Config (core3 grow) (HostState sig))
+    (index : Nat) : Prop :=
+  match wait.kind with
+  | .yield => True
+  | .wait set => ∃ inst, (LiftSt.releaseCallbackSt wait.task.inst wait.thread start.store).inst? wait.task.inst = some inst ∧
+      inst.handles.get? index = some (.wset set)
+
+def CallbackWait.followingWait (wait : CallbackWait grow sig) (task : Task (core3 grow))
+    (kind : CallbackWaitKind) : CallbackWait grow sig :=
+  { wait with task, kind, segments := .prog (fun returned => .pure returned) :: wait.segments }
+
+def CallbackWait.exitComplete (wait : CallbackWait grow sig) (reached : Config (core3 grow) (HostState sig))
+    (live : Task (core3 grow)) (slot : Nat) (rest : List (Activation (core3 grow) (HostState sig))) :
+    Config (core3 grow) (HostState sig) :=
+  let unregistered := reached.store.unregisterThreadSt wait.taskId wait.thread slot
+  { reached with
+    store := if live.ft.async_ && live.needsExclusive then
+      ArenaField.insts.modify unregistered live.inst (InstState.withExclusive none)
+    else unregistered
+    ctl := ⟨some wait.thread, .prog (.pure .unit), wait.segments⟩ :: rest }
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

@@ -1203,6 +1203,15 @@ Core callback with `TASK_CANCELLED`, keeping the original Core caller parked.
 This prefix requires readiness in the reached post-mark store and does not
 assert that the callback returns, resolves the subtask or delivers its reply.
 
+At a reached Core outcome, `CallbackWait.core_trapped` and `core_returned`
+distinguish a Core trap, a malformed callback result and a valid next loop
+code. `core_reparks` reads the reached task and handle table and installs the
+next K2/K3 continuation on a non-early park. `exit_unresolved` traps if EXIT
+would discard the last thread of an unresolved task. `exit_resolved` follows
+the live registration and lock release, and `unwind_callback` pops the loop's
+identity continuations back to the resumer. Returning to that resumer is not
+the same as consuming the subtask event or replying to the original caller.
+
 If the caller instead reaches `subtask.cancel` after the return, with a live,
 undelivered subtask that has not received a cancel request or joined a set,
 `Delivery.LinkedResolution.then_cancel` uses the canonical direct-delivery

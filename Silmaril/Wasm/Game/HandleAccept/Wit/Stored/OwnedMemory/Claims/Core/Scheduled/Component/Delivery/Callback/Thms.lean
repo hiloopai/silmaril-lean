@@ -72,4 +72,80 @@ theorem TaskCancelAdmission.started_calls_core {subtask : SubtaskId} {cancel : P
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.startedCancelCore request wait sameThread sameTask
     path started cancellable available chosen
 
+/-- Classify the values at a reached Core return, not an assumed callback
+outcome. A valid result re-enters the actual callback loop with the reached
+store and outer frames. Bad arity or an unsupported code traps in place. -/
+theorem CallbackWait.core_returned (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
+    {values : List FlatValue}
+    (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (result : (core3 grow).status reached.store.core core = .returned (.values values)) :
+    match callbackReturn values with
+    | .ok next => Steps profile ready (specDispatch ready impl) reached [.tau, .tau] (wait.nextIteration reached next rest)
+    | .error reason => Steps profile ready (specDispatch ready impl) reached [.tau, .trap reason] (StepDefs.trapCfg reached) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackReturned wait focused result
+
+/-- A trap of the actual Core callback is not an ABI decode or an unresolved
+cancellation reply. Lockdown retains the reached store's earlier effects. -/
+theorem CallbackWait.core_trapped (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
+    (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (result : (core3 grow).status reached.store.core core = .returned .trap) :
+    Step profile ready (specDispatch ready impl) reached (.trap .coreTrap) (StepDefs.trapCfg reached) :=
+  .coreTrap focused result
+
+/-- An EXIT code cannot discard the last thread of an unresolved task. This
+checks the reached task after Core ran, without presuming it resolved. -/
+theorem CallbackWait.exit_unresolved (wait : CallbackWait grow sig) {index : Nat} {liveTask : Task (core3 grow)}
+    (focused : reached.ctl = ⟨some wait.thread,
+      .prog (callbackLoopBody .spec wait.taskId wait.thread CallbackCode.exit.toNat index), wait.segments⟩ :: rest)
+    (live : reached.store.task? wait.taskId = some liveTask) (implicitThread : liveTask.implicitThread = some wait.thread)
+    (lastThread : (liveTask.threads.erase wait.thread).isEmpty = true) (unresolved : liveTask.state ≠ .resolved) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau, .trap .taskNotResolved]
+      (StepDefs.trapCfg reached) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackExitUnresolved wait focused live
+    implicitThread lastThread unresolved
+
+/-- A valid YIELD or WAIT return can park again. The next iteration reads the
+reached task and resolves the reached handle; it does not inherit a waitable
+set identity from the preceding iteration. The original resumer stays below
+the new saved activation, with no assumption of another return. -/
+theorem CallbackWait.core_reparks (wait : CallbackWait grow sig) {core : (core3 grow).Thread (CanonHost (core3 grow))}
+    {values : List FlatValue} (focused : reached.ctl = ⟨some wait.thread, .core core wait.afterCore, wait.segments⟩ :: rest)
+    (result : (core3 grow).status reached.store.core core = .returned (.values values))
+    {kind : CallbackWaitKind} {index : Nat} (decoded : callbackReturn values = .ok (kind.code, index))
+    {liveTask : Task (core3 grow)} (live : reached.store.task? wait.taskId = some liveTask)
+    (noCancel : liveTask.state ≠ .pendingCancel) (selected : (wait.followingWait liveTask kind).selected reached index) :
+    let entry := wait.nextIteration reached (kind.code, index) rest
+    let following := wait.followingWait liveTask kind
+    Steps profile ready (specDispatch ready impl) reached
+      ([.tau, .tau] ++ (List.replicate kind.entrySteps .tau ++ following.parkLabels (following.readyAt entry)))
+      (following.blocked entry rest) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackReparks wait focused result decoded live
+    noCancel selected
+
+/-- The resolved EXIT route unregisters the reached implicit thread and
+releases its exclusive lock when required. It does not consume a subtask event. -/
+theorem CallbackWait.exit_resolved (wait : CallbackWait grow sig) {index : Nat} {liveTask : Task (core3 grow)}
+    (focused : reached.ctl = ⟨some wait.thread,
+      .prog (callbackLoopBody .spec wait.taskId wait.thread CallbackCode.exit.toNat index), wait.segments⟩ :: rest)
+    (live : reached.store.task? wait.taskId = some liveTask) (implicitThread : liveTask.implicitThread = some wait.thread)
+    (resolved : liveTask.state = .resolved) {threadState : Thread} {slot : Nat}
+    (threadLive : ArenaField.threads.get? reached.store wait.thread = some threadState)
+    (threadIndex : threadState.index = some slot) {inst removed : InstState}
+    (instanceLive : reached.store.inst? liveTask.inst = some inst)
+    (remove : inst.removeThread? slot = some (wait.thread, removed)) :
+    Steps profile ready (specDispatch ready impl) reached
+      (List.replicate (5 + (liveTask.ft.async_ && liveTask.needsExclusive).toNat) .tau)
+      (wait.exitComplete reached liveTask slot rest) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackExitResolved wait focused live
+    implicitThread resolved threadLive threadIndex instanceLive remove
+
+/-- Pop every identity continuation left by the reached loop iterations, and
+then return control to the resumer without fabricating a cancellation reply. -/
+theorem unwind_callback (depth : Nat)
+    (focused : reached.ctl = ⟨some thread, .prog (.pure .unit),
+      List.replicate depth (.prog (fun returned => .pure returned))⟩ :: rest) :
+    Steps profile ready (specDispatch ready impl) reached (List.replicate (depth + 1) .tau)
+      { reached with store := StepDefs.threadStatusSt thread .exited reached.store, ctl := rest } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.unwindCallback depth focused
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery
