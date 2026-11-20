@@ -952,8 +952,17 @@ string allocation or resize, using the marked callback and its designated pop.
 preflight reads and the reference width read into each collection allocator.
 `Trail.through_return` composes such an install with the marked run and its
 actual pop; a surviving suspended mark instead carries older slots by
-`Prefix.under`. These certificates do not identify a continued occurrence after
-loss of the mark or thread it through the entire recursive body. `Site.refusal_resumes` extends a
+`Prefix.under`. Loss of the mark does not identify a surviving occurrence.
+`parked_memory_rejoined` and `parked_flat_rejoined` thread the older-slot paths
+through the entire compiler-derived body: record/tuple and array siblings,
+selected sum arms, nested list entries, and allocation-time indirect map
+placement. A successful return uses the composed path from the parked give to
+resume the original Core caller with the same ABI words and reached store.
+The traversal retains finite suspended callback paths and executes range and
+live-claim checks at the reached return. Typed stops do not run later siblings;
+canonical traps keep the reached effects. Callback classification and readiness
+still apply, and Core resumption does not prove async event delivery.
+`Site.refusal_resumes` extends a
 reached preflight refusal on the checked side only. These local completion
 rules do not imply that a suspended callback returns or an async event is
 delivered.
