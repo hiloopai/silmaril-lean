@@ -1,5 +1,7 @@
 # Indexed Wasm syntax
 
+For component and execution entry points, see [Choosing a Wasm entry point](wasm-entry.md).
+
 Import `Silmaril.Wasm.Profiles.Syntax.Thms`. `moduleFamily W` and
 `functionFamily W context` are views of the existing `Profiles.HasSyntax`
 and `HasTyping` instances, not a second class registry. A function's context
