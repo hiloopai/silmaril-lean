@@ -579,7 +579,6 @@ theorem spilled_string_plan {dispatch : Call (core3 grow) → Session grow sig (
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.spilledStringPlan
     context value values types pointer cursor enter focused
 
-/-- Execute the actual scalar tuple store after live spill placement. The
 /-- Allocation within an argument is a closed request at the actual
 call site, regardless of subsequent allocator reentry. -/
 theorem ArgumentStringAllocation.linked_install (alloc : ArgumentStringAllocation start) (ready : HostReady (HostState sig))
@@ -588,7 +587,6 @@ theorem ArgumentStringAllocation.linked_install (alloc : ArgumentStringAllocatio
     Step profile ready (Dispatch.linked ready bindings callees) start .tau (alloc.installed ready bindings) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.stringArgumentInstall alloc ready bindings callees
 
-/-- A finite allocator path may stop with the residual plan saved rather
 /-- A classified allocator trace is admissible even if it traps and loses
 the continuation. Its final configuration is the actual reached one. -/
 theorem ArgumentStringAllocation.linked_steps (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
@@ -600,6 +598,7 @@ theorem ArgumentStringAllocation.linked_steps (alloc : ArgumentStringAllocation 
   let install := alloc.linked_install ready bindings callees
   ⟨.cons install.1 path, .cons install.2 (Dispatch.Compatible.of_closed path closed).steps⟩
 
+/-- A finite allocator path may stop with the residual plan saved rather
 than return. Transport the actual occurrence and all reached effects. -/
 theorem ArgumentStringAllocation.linked_prefix (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
     {callees : List (Callee sig)} {last : State grow sig} {labels mark}
@@ -652,6 +651,7 @@ theorem CalleeSpillReturn.spilled_string_plan {site : OnStartSite start} {handof
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.calleeSpillStringPlan
     result schema input aligned selected sized fits
 
+/-- Execute the actual scalar tuple store after live spill placement. The
 computed result uses the store from each previous write, including on a trap. -/
 theorem CalleeSpillReturn.placed_scalar_writes {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}

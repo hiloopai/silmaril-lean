@@ -1274,6 +1274,16 @@ branch. It consumes the existing event, releases lends and returns the already
 resolved state, without an event buffer or cancellation callback. It does not
 cover cancellation requests that precede resolution.
 
+For a resumed worker's first string argument, `CalleeArguments.direct_string_pair`
+and `CalleeSpillReturn.spilled_string_pair` execute the canonical string plan on
+both session dispatchers. The local interpreter stops at the next allocator
+request, and only a return from the marked occurrence advances to the shorter
+residual plan. A finite callback may stay suspended or trap. A successful
+string passes the flat words or reaches the spill tuple suffix after writing
+its descriptor. These cuts classify only the reached callback prefix; they
+do not assume that it returns or preserves memory and do not yet traverse the
+remaining argument fields or prove worker completion.
+
 ## Checking
 
 ```

@@ -239,21 +239,27 @@ def stringFront {E : CoreEngine} {Host : Type} (cx : LiftLowerContext E) (ptr : 
 /-- Both sides execute the same local effects up to a returned cursor or
 trap. On return the original active and blocked frame tails are intact; a
 trap locks down the reached store without undoing its writes. -/
-def StringLocalCut {grow : SingleThreaded.GrowOracle} {Host Result : Type} (profile : ProfileKind)
-    (ready : HostReady Host) (dispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow)))
+def StringLocalCutBetween {grow : SingleThreaded.GrowOracle} {Host Result : Type} (profile : ProfileKind)
+    (ready : HostReady Host) (dispatch reference : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow)))
     (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
     (checkNext canonNext : Result → P (core3 grow) Host (Ret (core3 grow))) : Prop :=
   ∃ (store : CStore (core3 grow)) (result : Except TrapReason Result) (labels : List (Label (core3 grow) Host)),
     LocalLeafLabels result labels ∧
     CoreGrowthSteps profile ready dispatch left labels
       (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
-    CoreGrowthSteps profile ready dispatch right labels
+    CoreGrowthSteps profile ready reference right labels
       (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
     ∀ value, result = .ok value → ∀ depth,
       ReturnFrame.Occurrence.Prefix profile ready dispatch left (.active 0 depth) labels
         (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) (.active 0 depth) ∧
-      ReturnFrame.Occurrence.Prefix profile ready dispatch right (.active 0 depth) labels
+      ReturnFrame.Occurrence.Prefix profile ready reference right (.active 0 depth) labels
         (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) (.active 0 depth)
+
+abbrev StringLocalCut {grow : SingleThreaded.GrowOracle} {Host Result : Type} (profile : ProfileKind)
+    (ready : HostReady Host) (dispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow)))
+    (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
+    (checkNext canonNext : Result → P (core3 grow) Host (Ret (core3 grow))) : Prop :=
+  StringLocalCutBetween profile ready dispatch dispatch left right check canon checkNext canonNext
 
 def MemoryReaches {E : CoreEngine} {Host : Type} (profile : ProfileKind) (ready : HostReady Host)
     (dispatch : Call E → P E Host (Ret E)) (left right : Config E Host)

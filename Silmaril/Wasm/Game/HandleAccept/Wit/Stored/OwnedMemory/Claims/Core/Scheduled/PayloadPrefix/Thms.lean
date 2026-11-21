@@ -416,6 +416,20 @@ theorem string_front_cut {grow : SingleThreaded.GrowOracle} {Host : Type} {profi
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.cut
     cx ptr steps left right check canon checkNext canonNext same checkAt canonAt
 
+/-- Local string instructions do not invoke either dispatcher. -/
+theorem string_front_cut_between {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind}
+    {ready : HostReady Host} {dispatch reference : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
+    (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (steps : List StoreStep)
+    (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
+    (checkNext canonNext : Nat → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
+    (checkAt : left.ctl = check.control (runStoreSteps cx ptr steps >>= checkNext))
+    (canonAt : right.ctl = canon.control (runStoreSteps cx ptr steps >>= canonNext)) :
+    StringLocalCutBetween profile ready dispatch reference left right check canon
+      (fun front : StringFront steps.length => front.remaining cx >>= checkNext)
+      (fun front : StringFront steps.length => front.remaining cx >>= canonNext) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.cut
+    cx ptr steps left right check canon checkNext canonNext same checkAt canonAt
+
 /-- Complete a string at its reached pointer. Memory output reads pointer
 size at this point and retains the first word if writing the second traps. -/
 theorem string_descriptor_cut {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}
@@ -426,6 +440,18 @@ theorem string_descriptor_cut {grow : SingleThreaded.GrowOracle} {Host : Type} {
     (checkAt : left.ctl = check.control (stringPlanTail cx width output plan ptr >>= checkNext))
     (canonAt : right.ctl = canon.control (stringPlanTail cx width output plan ptr >>= canonNext)) :
     StringLocalCut profile ready dispatch left right check canon checkNext canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.descriptor
+    cx width output plan ptr left right check canon checkNext canonNext same checkAt canonAt
+
+/-- Encoding the reached pointer and count does not invoke either dispatcher. -/
+theorem string_descriptor_cut_between {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind}
+    {ready : HostReady Host} {dispatch reference : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
+    (cx : LiftLowerContext (core3 grow)) (width : AddrType) (output : Lower.Output) (plan : StorePlan) (ptr : Nat)
+    (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
+    (checkNext canonNext : output.Result → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
+    (checkAt : left.ctl = check.control (stringPlanTail cx width output plan ptr >>= checkNext))
+    (canonAt : right.ctl = canon.control (stringPlanTail cx width output plan ptr >>= canonNext)) :
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.descriptor
     cx width output plan ptr left right check canon checkNext canonNext same checkAt canonAt
 

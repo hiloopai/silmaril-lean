@@ -114,12 +114,12 @@ private theorem closedTail (cx : LiftLowerContext (core3 grow)) (width : AddrTyp
       closedWrite cx (address + bytes) (strWordBytes bytes plan.taggedCodeUnits)
 
 variable {profile : ProfileKind} {ready : HostReady Host}
-  {dispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
+  {dispatch reference : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
 
 private theorem prepend {left right left' right' : Config (core3 grow) Host} {check canon}
     {checkNext canonNext : Result → P (core3 grow) Host (Ret (core3 grow))}
     (leftGrows : CoreUpdateGrows left) (rightGrows : CoreUpdateGrows right)
-    (leftStep : Step profile ready dispatch left .tau left') (rightStep : Step profile ready dispatch right .tau right')
+    (leftStep : Step profile ready dispatch left .tau left') (rightStep : Step profile ready reference right .tau right')
     (leftEdit : ReturnFrame.Occurrence.transitionEdit left .tau = .same)
     (rightEdit : ReturnFrame.Occurrence.transitionEdit right .tau = .same)
     (leftHost : left'.host = left.host) (rightHost : right'.host = right.host)
@@ -127,8 +127,8 @@ private theorem prepend {left right left' right' : Config (core3 grow) Host} {ch
       localLeafEnd left left.host store check.thread check.frames check.rest checkNext outcome)
     (rightEnd : ∀ store outcome, localLeafEnd right' right.host store canon.thread canon.frames canon.rest canonNext outcome =
       localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext outcome)
-    (next : StringLocalCut profile ready dispatch left' right' check canon checkNext canonNext) :
-    StringLocalCut profile ready dispatch left right check canon checkNext canonNext := by
+    (next : StringLocalCutBetween profile ready dispatch reference left' right' check canon checkNext canonNext) :
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext := by
   obtain ⟨store, outcome, labels, observed, lhs, rhs, tracks⟩ := next
   rw [leftHost, leftEnd] at lhs
   rw [rightHost, rightEnd] at rhs
@@ -149,7 +149,7 @@ private theorem closedCut {body : P (core3 grow) Host Result} (closed : Closed b
     (checkNext canonNext : Result → P (core3 grow) Host (Ret (core3 grow)))
     (same : left.store = right.store) (checkAt : left.ctl = check.control (body >>= checkNext))
     (canonAt : right.ctl = canon.control (body >>= canonNext)) :
-    StringLocalCut profile ready dispatch left right check canon checkNext canonNext := by
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext := by
   induction closed generalizing left right with
   | pure value =>
     have leftEnd : localLeafEnd left left.host right.store check.thread check.frames check.rest checkNext (.ok value) = left := by
@@ -190,7 +190,7 @@ theorem cut (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (steps : List Store
     (checkNext canonNext : Nat → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
     (checkAt : left.ctl = check.control (runStoreSteps cx ptr steps >>= checkNext))
     (canonAt : right.ctl = canon.control (runStoreSteps cx ptr steps >>= canonNext)) :
-    StringLocalCut profile ready dispatch left right check canon
+    StringLocalCutBetween profile ready dispatch reference left right check canon
       (fun front : StringFront steps.length => front.remaining cx >>= checkNext)
       (fun front : StringFront steps.length => front.remaining cx >>= canonNext) := by
   apply closedCut (closedFront cx ptr steps) left right check canon _ _ same
@@ -204,7 +204,7 @@ theorem descriptor (cx : LiftLowerContext (core3 grow)) (width : AddrType) (outp
     (checkNext canonNext : output.Result → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
     (checkAt : left.ctl = check.control (stringPlanTail cx width output plan ptr >>= checkNext))
     (canonAt : right.ctl = canon.control (stringPlanTail cx width output plan ptr >>= canonNext)) :
-    StringLocalCut profile ready dispatch left right check canon checkNext canonNext :=
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext :=
   closedCut (closedTail cx width output plan ptr) left right check canon checkNext canonNext same checkAt canonAt
 
 theorem collectionDescriptor (cx : LiftLowerContext (core3 grow)) (width : AddrType) (output : Stored.Lower.Output)
