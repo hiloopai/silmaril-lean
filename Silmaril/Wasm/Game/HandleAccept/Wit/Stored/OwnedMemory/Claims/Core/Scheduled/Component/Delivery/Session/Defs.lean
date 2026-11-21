@@ -215,6 +215,33 @@ def LiftSite.coreEntered (site : LiftSite grow sig) (flat : List FlatValue)
     (next : List FlatValue → Session grow sig (Ret (core3 grow))) : State grow sig :=
   site.coreEnteredAt site.onStart flat next
 
+/-- The scheduler selected the actual saved K1 activation at this host cut. -/
+structure K1Resume {atWait : State grow sig} {thread : ThreadId} {task : TaskId}
+    (wait : K1Wait atWait thread task) (atHost : State grow sig)
+    (ready : HostReady (HostState sig)) (profile : ProfileKind) where
+  tick : SelectedTick thread atHost ready profile
+  saved : atHost.cont? thread = some wait.saved
+
+section
+
+variable {atWait atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+  {wait : K1Wait atWait thread task} {ready : HostReady (HostState sig)}
+
+def K1Resume.reached (resume : K1Resume wait atHost ready profile) : State grow sig :=
+  { (resume.tick.atResume.setCont thread none) with
+    store := StepDefs.threadStatusSt thread .running (resume.tick.atResume.store.stopWaitingSt thread)
+    ctl := wait.saved :: [Activation.ofProg none (modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit)] }
+
+def K1Resume.labels (resume : K1Resume wait atHost ready profile) : Trace grow sig :=
+  resume.tick.selectionLabels ++ [.tau, .tau, .tau]
+
+def K1Resume.admitted (resume : K1Resume wait atHost ready profile) : State grow sig :=
+  { resume.reached with
+    store := ArenaField.insts.modify resume.reached.store wait.instance_ InstState.decWaitingToEnter
+    ctl := ⟨some thread, .prog (wait.next true), wait.segments⟩ :: resume.reached.ctl.drop 1 }
+
+end
+
 /-- Direct parameters that need neither allocating nor nondeterministic lowering. -/
 inductive DirectArgument where
   | bool (value : Bool)
@@ -439,6 +466,8 @@ inductive Action where
   | coreReply (values : List FlatValue)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
+  | k1Resume (thread : ThreadId)
+  | k1Admit (task : TaskId)
   | coreStep
   | coreReturn
   | coreTrap
@@ -545,6 +574,13 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
         { start with ctl := ⟨thread, .core ((core3 grow).resume start.store.core core (.values values)) next, segments⟩ :: rest }
   | tick {start thread} (tick : SelectedTick thread start ready profile) :
       Transition profile ready impl start (.tick thread) tick.selectionLabels tick.atResume
+  | k1Resume {atWait start thread task} {wait : K1Wait atWait thread task}
+      (resume : K1Resume wait start ready profile) :
+      Transition profile ready impl start (.k1Resume thread) resume.labels resume.reached
+  | k1Admit {atWait start thread task} {wait : K1Wait atWait thread task}
+      (resume : K1Resume wait start ready profile) {record : Task (core3 grow)}
+      (live : resume.reached.store.task? task = some record) (notPending : record.state ≠ .pendingCancel) :
+      Transition profile ready impl resume.reached (.k1Admit task) [.tau, .tau] resume.admitted
   | coreInternal {start thread core next segments rest coreStore advanced}
       (focused : start.ctl = ⟨thread, .core core next, segments⟩ :: rest)
       (running : (core3 grow).status start.store.core core = .running ∨ (core3 grow).status start.store.core core = .stuck)

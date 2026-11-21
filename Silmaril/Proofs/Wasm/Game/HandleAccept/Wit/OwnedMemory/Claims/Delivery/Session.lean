@@ -758,6 +758,42 @@ private theorem lowerTableFull (returned : LowerReturn request reached) {instanc
 
 end LowerReturn
 
+section K1Resume
+
+variable {atWait atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+  {wait : K1Wait atWait thread task}
+
+theorem k1ResumeSelected (resume : K1Resume wait atHost ready profile) :
+    Steps profile ready (specDispatch ready impl) atHost resume.labels resume.reached := by
+  have focused : resume.tick.atResume.ctl =
+      [Activation.ofProg none (Thread.resume thread >>= fun () =>
+        modifyStore StepDefs.leaveHostSt >>= fun () => pure .unit)] := rfl
+  have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
+  simp [Prog.bind, resume.tick.waiting, Thread.stopWaiting] at read
+  exact appendSteps resume.tick.selects_thread
+    (.cons read (.cons (.modify rfl) (.cons (.resumeThread rfl resume.saved) (.refl _))))
+
+theorem k1ResumeAdmitted (resume : K1Resume wait atHost ready profile) {record : Task (core3 grow)}
+    (live : resume.reached.store.task? task = some record) (notPending : record.state ≠ .pendingCancel) :
+    Steps profile ready (specDispatch ready impl) resume.reached [.tau, .tau] resume.admitted := by
+  have decLive : ArenaField.tasks.get? (ArenaOps.updateSt ArenaField.insts wait.instance_
+      InstState.decWaitingToEnter resume.reached.store) task = some record := live
+  have focused : resume.reached.ctl = wait.saved :: resume.reached.ctl.drop 1 := rfl
+  have first := Step.modify (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
+  refine .cons first (.cons (.get rfl) ?_)
+  simp [K1Resume.admitted, Prog.bind, pure, decLive, notPending]
+  exact .refl _
+
+theorem k1ResumePair (resume : K1Resume wait atHost ready profile) {record : Task (core3 grow)}
+    (live : resume.reached.store.task? task = some record) (notPending : record.state ≠ .pendingCancel)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) atHost (resume.labels ++ [.tau, .tau]) resume.admitted ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) atHost (resume.labels ++ [.tau, .tau]) resume.admitted :=
+  ⟨appendSteps (k1ResumeSelected resume) (k1ResumeAdmitted resume live notPending),
+    appendSteps (k1ResumeSelected resume) (k1ResumeAdmitted resume live notPending)⟩
+
+end K1Resume
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
@@ -783,6 +819,8 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
     exact lowerTableFull returned asyncLower unresolved live full
   | coreReply focused => exact .cons (.popCore focused) (.refl _)
   | tick tick => exact tick.selects_thread
+  | k1Resume resume => exact k1ResumeSelected resume
+  | k1Admit resume live notPending => exact k1ResumeAdmitted resume live notPending
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)
   | coreReturned focused returned => exact .cons (.coreReturned focused returned) (.refl _)
   | coreTrap focused trapped => exact .cons (.coreTrap focused trapped) (.refl _)

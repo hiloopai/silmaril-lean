@@ -207,6 +207,25 @@ theorem Run.append {first second leading trailing} (left : Run profile ready imp
     Run profile ready impl start (first ++ second) (leading ++ trailing) finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runAppend left right
 
+/-- Both dispatchers follow the same selected K1 continuation and read the
+task at the reached store. This branch does not deliver a pending cancel. -/
+theorem K1Resume.linked_admission {atWait atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {wait : K1Wait atWait thread task} (resume : K1Resume wait atHost ready profile)
+    {record : Task (core3 grow)} (live : resume.reached.store.task? task = some record)
+    (notPending : record.state ≠ .pendingCancel) (bindings : List (Binding sig)) (callees : List (ComponentCall.Callee sig)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) atHost (resume.labels ++ [.tau, .tau]) resume.admitted ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) atHost (resume.labels ++ [.tau, .tau]) resume.admitted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1ResumePair resume live notPending bindings callees
+
+/-- A parked prefix can end before selection. If selected and not cancelled,
+extend the run with the resume and live admission as separate actions. -/
+theorem Run.resume_k1 {atWait : State grow sig} {thread : ThreadId} {task : TaskId}
+    {wait : K1Wait atWait thread task} (resume : K1Resume wait middle ready profile) {actions labels}
+    (run : Run profile ready impl start actions labels middle) {record : Task (core3 grow)}
+    (live : resume.reached.store.task? task = some record) (notPending : record.state ≠ .pendingCancel) :
+    Run profile ready impl start (actions ++ [.k1Resume thread, .k1Admit task]) (labels ++ (resume.labels ++ [.tau, .tau])) resume.admitted :=
+  run.append (.next (.k1Resume resume) (.next (.k1Admit resume live notPending) (.stop _)))
+
 /-- Extend a finite run that reached the original lower continuation. The
 result is ready to reply; it has not popped the saved Core caller. -/
 theorem Run.finish_pending_lower {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
