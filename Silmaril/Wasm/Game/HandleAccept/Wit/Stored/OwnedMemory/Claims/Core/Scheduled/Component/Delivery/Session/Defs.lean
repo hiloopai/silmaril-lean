@@ -211,6 +211,43 @@ def LiftSite.coreEntered (site : LiftSite grow sig) (flat : List FlatValue)
     (next : List FlatValue → Session grow sig (Ret (core3 grow))) : State grow sig :=
   { site.onStart with ctl := ⟨some site.storeAndThread.2, .core ((core3 grow).invoke site.core flat) next, []⟩ :: site.workerTail }
 
+/-- Direct parameters that need neither allocating nor nondeterministic lowering. -/
+inductive DirectArgument where
+  | bool (value : Bool)
+  | u32 (value : BitVec 32)
+
+def DirectArgument.type : DirectArgument → Stored.TypeOf
+  | .bool _ => .prim .bool
+  | .u32 _ => .prim .u32
+
+def DirectArgument.value : DirectArgument → Value.Val
+  | .bool value => .bool value
+  | .u32 value => .int .u32 value.toNat
+
+def DirectArgument.flat : DirectArgument → FlatValue
+  | .bool value => i32Flat (if value then 1 else 0)
+  | .u32 value => lowerFlatInt .u32 value.toNat
+
+/-- The exact host request reached in a guest activation, with the Core
+continuation that the machine will park beneath the callout. -/
+structure CoreCallSite (start : State grow sig) where
+  thread : Option ThreadId
+  core : (core3 grow).Thread (CanonHost (core3 grow))
+  next : List FlatValue → Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  target : CanonHost (core3 grow)
+  args : List FlatValue
+  focused : start.ctl = ⟨thread, .core core next, segments⟩ :: rest
+  calling : (core3 grow).status start.store.core core = .callout target args
+
+def CoreCallSite.reached {start : State grow sig} (site : CoreCallSite start)
+    (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig)) : State grow sig :=
+  let body := match calloutEntry start.store site.thread site.target with
+    | some reason => trap reason
+    | none => calloutBody Limits.spec Quirks.none ready impl start.store site.thread site.target site.args
+  { start with ctl := ⟨site.thread, .prog body, .core site.core site.next :: site.segments⟩ :: site.rest }
+
 /-- No K1 wait is entered on this branch. Full registration tables are not
 classified as admitted and must take the canonical trap branch instead. -/
 structure LiftAdmission (site : LiftSite grow sig) where
@@ -234,6 +271,8 @@ inductive Action where
   | liftLaunch (task : TaskId) (thread : ThreadId)
   | liftAdmit (task : TaskId) (thread : ThreadId)
   | liftArguments (call : CallId)
+  | coreEnter (thread : ThreadId)
+  | coreCallout
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -287,6 +326,13 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (live : ArenaField.callers.get? site.start.store site.caller = some (.host call args 0)) :
       Transition profile ready impl site.onStart (.liftArguments call) [.tau, .tau, .obs (.started call), .tau]
         (site.withArguments args)
+  | directCore {site : LiftSite grow sig} {args : List DirectArgument} {next}
+      (entry : Steps profile ready (specDispatch ready impl) (site.withArguments (args.map DirectArgument.value))
+        [.tau, .tau] (site.coreEntered (args.map DirectArgument.flat) next)) :
+      Transition profile ready impl (site.withArguments (args.map DirectArgument.value))
+        (.coreEnter site.storeAndThread.2) [.tau, .tau] (site.coreEntered (args.map DirectArgument.flat) next)
+  | coreCallout {start : State grow sig} (site : CoreCallSite start) :
+      Transition profile ready impl start .coreCallout [.tau, .tau, .tau] (site.reached ready impl)
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })

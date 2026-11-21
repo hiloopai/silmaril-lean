@@ -250,6 +250,32 @@ theorem Run.enter_empty_core {site : LiftSite grow sig} {actions labels}
     ∃ next, Steps profile ready (specDispatch ready impl) start (labels ++ [.tau, .tau]) (site.coreEntered [] next) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runEmptyCore run empty
 
+/-- Direct Boolean and unsigned word parameters are lowered by the original canonical
+program after the live width read. No argument effect needs an open hook, and the reached
+Core activation is a composable session cut. Spill and allocating arguments are separate. -/
+theorem Run.enter_direct_core {site : LiftSite grow sig} {actions labels} (args : List DirectArgument)
+    (run : Run profile ready impl start actions labels (site.withArguments (args.map DirectArgument.value)))
+    (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
+    (fits : args.length ≤ ABI.maxFlatParams) :
+    ∃ next, Run profile ready impl start (actions ++ [.coreEnter site.storeAndThread.2])
+      (labels ++ [.tau, .tau]) (site.coreEntered (args.map DirectArgument.flat) next) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runDirectCore args run schema fits
+
+/-- Park the actual Core continuation and read the live caller and store. An entry
+denial focuses the canonical trap, rather than executing the body or erasing the caller. -/
+theorem Run.enter_core_callout {actions labels}
+    (run : Run profile ready impl start actions labels middle) (site : CoreCallSite middle) :
+    Run profile ready impl start (actions ++ [.coreCallout]) (labels ++ [.tau, .tau, .tau])
+      (site.reached ready impl) :=
+  run.append (.next (.coreCallout site) (.stop _))
+
+/-- Both dispatchers follow the same reached Core request through its actual
+entry check. The body is only installed: later open requests must be classified separately. -/
+theorem CoreCallSite.linked_entry (site : CoreCallSite start) (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start [.tau, .tau, .tau] (site.reached ready (host bindings)) ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) start [.tau, .tau, .tau] (site.reached ready (host bindings)) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.coreCalloutPair site bindings callees
+
 /-- Actual backpressure makes the launched worker park at K1, even after
 incrementing the entry count. The async parent returns the cancellation
 handle while that worker is still saved; this is not result delivery. -/

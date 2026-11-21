@@ -259,17 +259,72 @@ theorem liftArguments (site : LiftSite grow sig) {call args}
   simp [Prog.bind, pure, reached]
   exact .cons (.emit rfl) (.cons (.popProg rfl) (.refl _))
 
-theorem liftEmptyCore (site : LiftSite grow sig) (empty : paramTypes site.registeredTask.ft = []) :
-    ∃ next, Steps profile ready (specDispatch ready impl) (site.withArguments []) [.tau, .tau] (site.coreEntered [] next) := by
+theorem directArgumentCount (width : AddrType) (args : List DirectArgument) :
+    (ABI.flattenTypes width (args.map DirectArgument.type)).length = args.length := by
+  induction args with
+  | nil => rw [List.map_nil, ABI.flattenTypes]; rfl
+  | cons arg rest ih =>
+    rw [List.map_cons, ABI.flattenTypes, List.length_append, ih, List.length_cons]
+    cases arg <;> simp [DirectArgument.type, ABI.flatten, ABI.flattenPrimitive, Nat.add_comm]
+
+theorem lowerDirectArguments {engine : CoreEngine} {hostState : Type} (cx : LiftLowerContext engine)
+    (width : AddrType) (args : List DirectArgument) :
+    (lowerFlatTypes Limits.spec Quirks.none cx width (args.map DirectArgument.value) (args.map DirectArgument.type) :
+      P engine hostState (List FlatValue)) = pure (args.map DirectArgument.flat) := by
+  induction args with
+  | nil => rw [List.map_nil, List.map_nil, List.map_nil, lowerFlatTypes]
+  | cons arg rest ih =>
+    rw [List.map_cons, List.map_cons, List.map_cons, lowerFlatTypes, ih]
+    cases arg <;> rw [DirectArgument.value, DirectArgument.type, lowerFlatAt] <;> rfl
+
+theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
+    (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
+    (fits : args.length ≤ ABI.maxFlatParams) :
+    ∃ next, Steps profile ready (specDispatch ready impl) (site.withArguments (args.map DirectArgument.value))
+      [.tau, .tau] (site.coreEntered (args.map DirectArgument.flat) next) := by
+  let values := args.map DirectArgument.value
+  let flat := args.map DirectArgument.flat
+  let ctx : LiftLowerContext (core3 grow) :=
+    { opts := site.registeredTask.opts, inst := site.registeredTask.inst, scope := .task site.storeAndTask.2 }
+  have lower : (lowerFlatValues Limits.spec Quirks.none ctx ABI.maxFlatParams values
+      (paramTypes site.registeredTask.ft) none : Session grow sig (List FlatValue)) =
+      (ptrType ctx >>= fun _ => pure flat) := by
+    simp only [lowerFlatValues, schema, directArgumentCount, ite_eq_right (Nat.not_lt_of_ge fits),
+      values, flat, lowerDirectArguments]
   suffices path : ∃ (read : CStore (core3 grow) → Session grow sig (Ret (core3 grow))),
-      (site.withArguments []).ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail ∧
-      ∃ next, read site.onStart.store = .op (.callCore site.core []) next by
+      (site.withArguments values).ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail ∧
+      ∃ next, read site.onStart.store = .op (.callCore site.core flat) next by
     obtain ⟨read, focus, next, call⟩ := path
-    have sameStore : (site.withArguments []).store = site.onStart.store := rfl
+    have sameStore : (site.withArguments values).store = site.onStart.store := rfl
     exact ⟨next, .cons (.get focus) (.cons (.callCore (by rw [sameStore, call])) (.refl _))⟩
+  simp only [LiftSite.withArguments, LiftSite.argumentsTail, liftArgumentsBody]
+  rw [show (lowerFlatValues Limits.spec Quirks.none
+      { opts := site.registeredTask.opts, inst := site.registeredTask.inst, scope := .task site.storeAndTask.2 }
+      ABI.maxFlatParams values (paramTypes site.registeredTask.ft) none : Session grow sig (List FlatValue)) =
+      (ptrType ctx >>= fun _ => pure flat) from lower]
   refine ⟨_, rfl, ?_⟩
   cases mode : site.registeredTask.opts.async_ <;> cases callback : site.registeredTask.opts.callback <;>
-    simp [Prog.bind, pure, ABI.flattenTypes, lowerFlatTypes, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+    simp [Prog.bind, pure, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+
+theorem coreCalloutSteps (site : CoreCallSite start) :
+    Steps profile ready (specDispatch ready impl) start [.tau, .tau, .tau] (site.reached ready impl) := by
+  exact .cons (.coreCallout site.focused site.calling)
+    (.cons (.currentThread rfl) (.cons (.get rfl) (.refl _)))
+
+theorem coreCalloutOverlay (site : CoreCallSite start) (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    site.reached ready (host bindings) = site.reached ready (hostWithComponent bindings callees) := by
+  have body (target : CanonHost (core3 grow)) :
+      calloutBody Limits.spec Quirks.none ready (host bindings) start.store site.thread target site.args =
+      calloutBody Limits.spec Quirks.none ready (hostWithComponent bindings callees) start.store site.thread target site.args := by
+    cases target <;> rfl
+  simp only [CoreCallSite.reached, body]
+
+theorem coreCalloutPair (site : CoreCallSite start) (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start [.tau, .tau, .tau] (site.reached ready (host bindings)) ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) start [.tau, .tau, .tau] (site.reached ready (host bindings)) := by
+  refine ⟨coreCalloutSteps site, ?_⟩
+  rw [coreCalloutOverlay site bindings callees]
+  exact coreCalloutSteps site
 
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
@@ -325,6 +380,8 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | liftLaunch site => exact liftLaunchSteps site
   | liftAdmit site admission => exact liftAdmission site admission
   | liftArguments site live => exact liftArguments site live
+  | directCore entry => exact entry
+  | coreCallout site => exact coreCalloutSteps site
   | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)
@@ -454,8 +511,17 @@ theorem runEmptyCore {site : LiftSite grow sig} {actions labels}
     (run : Run profile ready impl start actions labels (site.withArguments []))
     (empty : paramTypes site.registeredTask.ft = []) :
     ∃ next, Steps profile ready (specDispatch ready impl) start (labels ++ [.tau, .tau]) (site.coreEntered [] next) := by
-  obtain ⟨next, core⟩ := liftEmptyCore site empty
+  obtain ⟨next, core⟩ := liftDirectCore site [] empty (Nat.zero_le _)
   exact ⟨next, appendSteps (runSteps run) core⟩
+
+theorem runDirectCore {site : LiftSite grow sig} {actions labels} (args : List DirectArgument)
+    (run : Run profile ready impl start actions labels (site.withArguments (args.map DirectArgument.value)))
+    (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
+    (fits : args.length ≤ ABI.maxFlatParams) :
+    ∃ next, Run profile ready impl start (actions ++ [.coreEnter site.storeAndThread.2])
+      (labels ++ [.tau, .tau]) (site.coreEntered (args.map DirectArgument.flat) next) := by
+  obtain ⟨next, entry⟩ := liftDirectCore site args schema fits
+  exact ⟨next, runAppend run (.next (.directCore entry) (.stop _))⟩
 
 theorem closedRecord {target labels} (edge : Transition profile ready impl start (.closedCallback target) labels finish) :
     finish.store.subtask? target = start.store.subtask? target := by
