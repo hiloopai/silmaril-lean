@@ -173,6 +173,21 @@ theorem parkCore {left right : Config E Host} (paired : PairedOf changes left ri
     obtain ⟨_, _, atRight, head, tail⟩ := activeHead control focused
     exact ⟨_, _, atRight, .mk tail (setSlot_pair .none thread.idx blocked (.some (.mk (.cons (.same _) head))))⟩
 
+theorem parkUnderCore {left right : Config E Host} (paired : PairedOf changes left right)
+    {thread focus core coreNext frames rest}
+    (focused : left.ctl = ⟨some thread, focus, .core core coreNext :: frames⟩ :: rest) (saved : Focus E Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨some thread, focus, .core core coreNext :: otherFrames⟩ :: otherRest ∧
+      PairedOf changes
+        { (left.setCont thread (some ⟨some thread, saved, .core core coreNext :: frames⟩)) with ctl := rest }
+        { (right.setCont thread (some ⟨some thread, saved, .core core coreNext :: otherFrames⟩)) with ctl := otherRest } := by
+  cases paired with
+  | mk control blocked =>
+    obtain ⟨_, _, atRight, head, tail⟩ := activeHead control focused
+    cases head with
+    | cons shared older =>
+      cases shared
+      exact ⟨_, _, atRight, .mk tail (setSlot_pair .none thread.idx blocked (.some (.mk (.cons (.same _) older))))⟩
+
 theorem resumeCore {left right : Config E Host} (paired : PairedOf changes left right)
     {thread focus frames rest target saved core coreNext savedFrames}
     (focused : left.ctl = ⟨thread, focus, frames⟩ :: rest)

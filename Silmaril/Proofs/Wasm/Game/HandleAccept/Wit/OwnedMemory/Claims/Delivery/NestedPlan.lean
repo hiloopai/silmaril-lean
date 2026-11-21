@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 
@@ -77,6 +78,9 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
     exact (Transition.cancelRequest (impl := base) cancel record live unresolved notDelivered notRequested notJoined).steps
   | cancelReentry request mode saved => exact (Transition.cancelReentry (impl := base) request mode saved).steps
   | cancelCallbackDone request => exact (Transition.cancelCallbackDone (impl := base) request).steps
+  | cancelPark wait => exact (Transition.cancelPark (impl := base) wait).steps
+  | cancelResume resume saved => exact (Transition.cancelResume (impl := base) resume saved).steps
+  | cancelFinish cancel record focused live resolved pending => exact cancel.finish_delivers record focused live resolved pending
   | sequence _ _ front back => exact append front back
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
@@ -147,6 +151,18 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     obtain ⟨_, replay, aligned⟩ := Transition.cancel_callback_done_paired (profile := profile) (ready := ready)
       (impl := LiveDispatch.host bindings base) request paired
     exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | cancelPark wait =>
+    obtain ⟨_, replay, aligned⟩ := Transition.cancel_park_paired (profile := profile) (ready := ready)
+      (impl := LiveDispatch.host bindings base) wait paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | cancelResume resume saved =>
+    obtain ⟨_, replay, aligned⟩ := Transition.cancel_resume_paired (profile := profile) (ready := ready)
+      (impl := LiveDispatch.host bindings base) resume saved paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | cancelFinish cancel record focused live resolved pending =>
+    obtain ⟨_, replay, aligned⟩ := cancel_finish_paired (profile := profile) (ready := ready)
+      (impl := LiveDispatch.host bindings base) cancel record focused live resolved pending paired
+    exact ⟨_, _, replay, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | sequence _ _ replayFront replayBack =>
     obtain ⟨_, _, front, frontPrefix, ⟨seenFront, aligned⟩ | cut⟩ := replayFront paired
     · obtain ⟨_, _, back, backPrefix, result⟩ := replayBack aligned

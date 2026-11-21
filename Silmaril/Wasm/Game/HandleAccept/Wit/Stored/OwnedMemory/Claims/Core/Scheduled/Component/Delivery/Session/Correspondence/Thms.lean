@@ -255,6 +255,35 @@ theorem Transition.cancel_callback_done_paired {target} {cancel : ParkedCancel s
       HostFrame.Related.Paired older request.callbackReturned reached :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelCallbackDonePaired request paired
 
+theorem Transition.cancel_park_paired {initial : State grow sig} {target} {cancel : ParkedCancel initial target}
+    (wait : SyncCancelWait cancel start) {other : State grow sig}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancelPark target) (List.replicate 5 .tau) reached ∧
+      HostFrame.Related.Paired older wait.blocked reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelParkPaired wait paired
+
+theorem Transition.cancel_resume_paired {initial : State grow sig} {target} {cancel : ParkedCancel initial target}
+    (resume : SyncCancelResume cancel start) (saved : start.cont? cancel.thread = some cancel.saved)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancelResume target) (List.replicate 3 .tau) reached ∧
+      HostFrame.Related.Paired older resume.reached reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelResumePaired resume saved paired
+
+theorem cancel_finish_paired {initial : State grow sig} {target} (cancel : ParkedCancel initial target)
+    (record : Subtask) {rest}
+    (focused : start.ctl = ⟨some cancel.thread, .prog (ParkedCancel.finish target),
+      .core cancel.core cancel.next :: cancel.segments⟩ :: rest)
+    (live : start.store.subtask? target = some record) (resolved : record.state.resolved = true)
+    (pending : record.common.pending = some (.subtask target))
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Steps profile ready (specDispatch ready impl) other (List.replicate 6 .tau) reached ∧
+      HostFrame.Related.Paired older (cancel.finishReply start record.state rest) reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelFinishPaired
+    cancel record focused live resolved pending paired
+
 /-- Replay the actual selected candidate, not an arbitrary runnable
 thread. No host-read premise is needed for store-only ready conditions. -/
 theorem Transition.tick_on_journal {thread} (tick : SelectedTick thread start ready profile) (other : HostState sig)

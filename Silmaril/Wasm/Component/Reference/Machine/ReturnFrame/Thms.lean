@@ -126,6 +126,17 @@ theorem Paired.park_core {left right : Config E Host} (paired : Paired changes l
         { (right.setCont thread (some ⟨some thread, saved, .core core coreNext :: otherFrames⟩)) with ctl := otherRest } :=
   Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.parkCore paired focused saved
 
+/-- Park a program already holding a shared Core caller, preserving the
+older active and saved frames. -/
+theorem Paired.park_under_core {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus core coreNext frames rest}
+    (focused : left.ctl = ⟨some thread, focus, .core core coreNext :: frames⟩ :: rest) (saved : Focus E Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨some thread, focus, .core core coreNext :: otherFrames⟩ :: otherRest ∧
+      Paired changes
+        { (left.setCont thread (some ⟨some thread, saved, .core core coreNext :: frames⟩)) with ctl := rest }
+        { (right.setCont thread (some ⟨some thread, saved, .core core coreNext :: otherFrames⟩)) with ctl := otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.parkUnderCore paired focused saved
+
 /-- Restore the actual saved activation, preserving both sets of older frames. -/
 theorem Paired.resume_core {left right : Config E Host} (paired : Paired changes left right)
     {thread focus frames rest target saved core coreNext savedFrames}

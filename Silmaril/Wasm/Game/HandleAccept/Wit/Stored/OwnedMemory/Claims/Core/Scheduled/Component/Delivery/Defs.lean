@@ -411,6 +411,14 @@ def ParkedCancel.finish {grow : SingleThreaded.GrowOracle} {sig : Signature} (su
   let resolved ← Builtins.subtaskResolvedNow subtask
   ParkedCancel.result subtask resolved
 
+def ParkedCancel.finishReply {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    (cancel : ParkedCancel cfg subtask) (reached : Config (core3 grow) (HostState sig))
+    (state : SubtaskState) (rest : List (Activation (core3 grow) (HostState sig))) : Config (core3 grow) (HostState sig) :=
+  let store := cancelDelivered (reached.store.setSyncWaiterSt (.subtask subtask) none) subtask
+  { reached with store, ctl := ⟨some cancel.thread,
+    .core ((core3 grow).resume store.core cancel.core (.values [i32Flat (subtaskCancelResult (some state))]))
+      cancel.next, cancel.segments⟩ :: rest }
+
 def ParkedCancel.afterCallback {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     (cancel : ParkedCancel cfg subtask) (returned : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) := do
   let _ ← (match returned with
@@ -514,11 +522,7 @@ def SyncCancelResume.reached {cfg atResume : Config (core3 grow) (HostState sig)
 
 def SyncCancelResume.delivered {cfg atResume : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     {cancel : ParkedCancel cfg subtask} (resume : SyncCancelResume cancel atResume) : Config (core3 grow) (HostState sig) :=
-  let reached := resume.reached
-  let store := cancelDelivered (reached.store.setSyncWaiterSt (.subtask subtask) none) subtask
-  { reached with store, ctl := ⟨some cancel.thread,
-    .core ((core3 grow).resume store.core cancel.core (.values [i32Flat (subtaskCancelResult (some .returned))]))
-      cancel.next, cancel.segments⟩ :: ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest }
+  cancel.finishReply resume.reached .returned (⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest)
 
 def SyncCancelResume.afterTick {cfg atHost : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     {ready : HostReady (HostState sig)} {profile : ProfileKind} {cancel : ParkedCancel cfg subtask}
@@ -710,11 +714,6 @@ the temporary waiter before taking the pending event and releasing its lends. -/
 def ParkedCancel.cancelledReply {cfg : Config (core3 grow) (HostState sig)}
     (cancel : ParkedCancel cfg subtask) (atExit : Config (core3 grow) (HostState sig)) (state : SubtaskState) :
     Config (core3 grow) (HostState sig) :=
-  let delivered := cancelDelivered (atExit.store.setSyncWaiterSt (.subtask subtask) none) subtask
-  let result := subtaskCancelResult (some state)
-  { atExit with
-    store := delivered
-    ctl := ⟨some cancel.thread, .core ((core3 grow).resume delivered.core cancel.core (.values [i32Flat result])) cancel.next,
-      cancel.segments⟩ :: cancel.rest }
+  cancel.finishReply atExit state cancel.rest
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery

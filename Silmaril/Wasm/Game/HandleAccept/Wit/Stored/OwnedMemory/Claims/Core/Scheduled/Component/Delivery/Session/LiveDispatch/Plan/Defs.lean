@@ -63,6 +63,18 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
   | cancelCallbackDone {start target} {cancel : ComponentCall.Delivery.ParkedCancel start target}
       (request : ComponentCall.Delivery.StartedCancel cancel) :
       NestedPlan bindings profile ready base start (List.replicate 20 .tau) request.callbackReturned
+  | cancelPark {initial start target} {cancel : ComponentCall.Delivery.ParkedCancel initial target}
+      (wait : ComponentCall.Delivery.SyncCancelWait cancel start) :
+      NestedPlan bindings profile ready base start (List.replicate 5 .tau) wait.blocked
+  | cancelResume {initial start target} {cancel : ComponentCall.Delivery.ParkedCancel initial target}
+      (resume : ComponentCall.Delivery.SyncCancelResume cancel start) (saved : start.cont? cancel.thread = some cancel.saved) :
+      NestedPlan bindings profile ready base start (List.replicate 3 .tau) resume.reached
+  | cancelFinish {initial start target rest} (cancel : ComponentCall.Delivery.ParkedCancel initial target) (record : Subtask)
+      (focused : start.ctl = ⟨some cancel.thread, .prog (ComponentCall.Delivery.ParkedCancel.finish target),
+        .core cancel.core cancel.next :: cancel.segments⟩ :: rest)
+      (live : start.store.subtask? target = some record) (resolved : record.state.resolved = true)
+      (pending : record.common.pending = some (.subtask target)) :
+      NestedPlan bindings profile ready base start (List.replicate 6 .tau) (cancel.finishReply start record.state rest)
   | sequence {start middle finish leading trailing}
       (front : NestedPlan bindings profile ready base start leading middle)
       (back : NestedPlan bindings profile ready base middle trailing finish) :

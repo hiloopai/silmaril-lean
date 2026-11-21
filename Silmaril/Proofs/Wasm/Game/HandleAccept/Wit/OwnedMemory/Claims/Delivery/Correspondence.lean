@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
 
@@ -569,6 +570,62 @@ theorem cancelCallbackDonePaired {target} {cancel : ParkedCancel start target} (
   have reached := framed.set_store request.callbackReturned.store
   simpa only [StartedCancel.callbackReturned, TaskCancelAdmission.markedStore, ParkedCancel.afterCallback,
     HostFrame.Related.Paired, HostFrame.replace, pending, replayTaskCancel, replay, replayCancel, ← store] using reached
+
+private def cancelAtFrames {initial : State grow sig} {target} (cancel : ParkedCancel initial target)
+    (segments : List (Seg (core3 grow) (HostState sig))) :
+    ParkedCancel { initial with ctl := ⟨some cancel.thread, .core cancel.core cancel.next, segments⟩ :: cancel.rest } target :=
+  { cancel with segments, focused := rfl }
+
+theorem cancelParkPaired {initial : State grow sig} {target} {cancel : ParkedCancel initial target}
+    (wait : SyncCancelWait cancel start) {other : State grow sig}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancelPark target) (List.replicate 5 .tau) reached ∧
+      HostFrame.Related.Paired older wait.blocked reached := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨segments, rest, focused, framed⟩ := aligned.park_under_core wait.focused cancel.saved.focus
+  let replay : SyncCancelWait (cancelAtFrames cancel segments) other :=
+    { wait with rest, focused, unresolved := paired.data.1 ▸ wait.unresolved }
+  refine ⟨_, .cancelPark replay, ?_⟩
+  have result := framed.set_store wait.blocked.store
+  simpa only [SyncCancelWait.blocked, ParkedCancel.saved, HostFrame.Related.Paired, HostFrame.replace,
+    replay, cancelAtFrames, Config.setCont, ← paired.data.1] using result
+
+theorem cancelResumePaired {initial : State grow sig} {target} {cancel : ParkedCancel initial target}
+    (resume : SyncCancelResume cancel start) (saved : start.cont? cancel.thread = some cancel.saved)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancelResume target) (List.replicate 3 .tau) reached ∧
+      HostFrame.Related.Paired older resume.reached reached := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨segments, rest, savedFrames, focused, otherSaved, framed⟩ :=
+    aligned.resume_core resume.focused (show start.cont? cancel.thread = some ⟨some cancel.thread,
+      cancel.saved.focus, .core cancel.core cancel.next :: cancel.segments⟩ from saved) (.prog resume.resumeAfter) cancel.saved.focus
+  let replay : SyncCancelResume (cancelAtFrames cancel savedFrames) other :=
+    { resume with segments, rest, focused, waiting := paired.data.1 ▸ resume.waiting }
+  refine ⟨_, .cancelResume replay otherSaved, ?_⟩
+  have result := framed.set_store resume.reached.store
+  simpa only [SyncCancelResume.reached, ParkedCancel.saved, HostFrame.Related.Paired, HostFrame.replace,
+    replay, cancelAtFrames, Config.setCont, ← paired.data.1] using result
+
+theorem cancelFinishPaired {initial : State grow sig} {target} (cancel : ParkedCancel initial target)
+    (record : Subtask) {rest}
+    (focused : start.ctl = ⟨some cancel.thread, .prog (ParkedCancel.finish target),
+      .core cancel.core cancel.next :: cancel.segments⟩ :: rest)
+    (live : start.store.subtask? target = some record) (resolved : record.state.resolved = true)
+    (pending : record.common.pending = some (.subtask target))
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Steps profile ready (specDispatch ready impl) other (List.replicate 6 .tau) reached ∧
+      HostFrame.Related.Paired older (cancel.finishReply start record.state rest) reached := by
+  let written := (cancel.finishReply start record.state rest).store
+  let resumed := (core3 grow).resume written.core cancel.core (.values [i32Flat (subtaskCancelResult (some record.state))])
+  obtain ⟨segments, rest', focused', framed⟩ :=
+    paired.retarget_core_frame focused (.core resumed cancel.next) start.host other.host
+  let replay := cancelAtFrames cancel segments
+  refine ⟨replay.finishReply other record.state rest',
+    replay.finish_delivers record focused' (paired.data.1 ▸ live) resolved pending, ?_⟩
+  simpa only [ParkedCancel.finishReply, replay, cancelAtFrames, ← paired.data.1, written, resumed] using framed.set_store written
 
 private theorem tickCandidates (other : HostState sig) (agrees : TickReadsAgree ready start other) :
     (StepDefs.enterHostSt start.store).candidates (ready start.host) =

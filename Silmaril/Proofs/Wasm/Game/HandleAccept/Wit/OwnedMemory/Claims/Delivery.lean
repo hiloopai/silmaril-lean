@@ -702,14 +702,14 @@ theorem lowerCancelNotReturned {store : CStore (core3 grow)} {caller : CallerId}
   by_cases starting : resolution.record.state = .starting <;>
     simp [LowerCancelResolution.resolvedRecord, LowerCancelResolution.cancelledState, starting] at returned
 
-theorem cancelCallbackDelivers (cancel : ParkedCancel parked subtask) (atExit : Config (core3 grow) (HostState sig))
-    (record : Subtask) (focused : atExit.ctl = cancel.callbackTail)
+theorem cancelFinishDelivers (cancel : ParkedCancel parked subtask) (atExit : Config (core3 grow) (HostState sig))
+    (record : Subtask) {rest}
+    (focused : atExit.ctl = ⟨some cancel.thread, .prog (ParkedCancel.finish subtask),
+      .core cancel.core cancel.next :: cancel.segments⟩ :: rest)
     (live : atExit.store.subtask? subtask = some record)
-    (cancelled : record.state = .cancelledBeforeStarted ∨ record.state = .cancelledBeforeReturned)
+    (resolved : record.state.resolved = true)
     (pending : record.common.pending = some (.subtask subtask)) :
-    Steps profile ready (specDispatch ready impl) atExit (List.replicate 8 .tau) (cancel.cancelledReply atExit record.state) := by
-  have resolved : record.state.resolved = true := by rcases cancelled with state | state <;> simp [state, SubtaskState.resolved]
-  have readyBefore : atExit.store.subtaskResolved subtask = true := by simp [CStore.subtaskResolved, live, resolved]
+    Steps profile ready (specDispatch ready impl) atExit (List.replicate 6 .tau) (cancel.finishReply atExit record.state rest) := by
   let cleared := atExit.store.setSyncWaiterSt (.subtask subtask) none
   let current := { record with common := { record.common with hasSyncWaiter := false, syncOwner := none } }
   have before : ArenaField.subtasks.get? atExit.store subtask = some record := live
@@ -721,16 +721,26 @@ theorem cancelCallbackDelivers (cancel : ParkedCancel parked subtask) (atExit : 
   obtain ⟨take, final⟩ := takePendingResolution cleared current clearedLive resolved pending
   change ArenaField.subtasks.get? (cancelDelivered cleared subtask) subtask = _ at final
   simp only [cleared] at readyAfter take final
-  have returned := Step.popProg (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
-  refine .cons returned (.cons (.get rfl) ?_)
-  simp [Prog.bind, readyBefore, pure]
-  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  refine .cons (.modify focused) (.cons (.get rfl) ?_)
   simp [Prog.bind, readyAfter, ParkedCancel.result, pure]
   refine .cons (.get rfl) ?_
   simp [Prog.bind, take, pure]
   refine .cons (.modify rfl) (.cons (.get rfl) ?_)
   simp [Prog.bind, CStore.takeWaitableEventSt, take, final, pure, current]
   exact .cons (.popCore rfl) (.refl _)
+
+theorem cancelCallbackDelivers (cancel : ParkedCancel parked subtask) (atExit : Config (core3 grow) (HostState sig))
+    (record : Subtask) (focused : atExit.ctl = cancel.callbackTail)
+    (live : atExit.store.subtask? subtask = some record)
+    (cancelled : record.state = .cancelledBeforeStarted ∨ record.state = .cancelledBeforeReturned)
+    (pending : record.common.pending = some (.subtask subtask)) :
+    Steps profile ready (specDispatch ready impl) atExit (List.replicate 8 .tau) (cancel.cancelledReply atExit record.state) := by
+  have resolved : record.state.resolved = true := by rcases cancelled with state | state <;> simp [state, SubtaskState.resolved]
+  have readyBefore : atExit.store.subtaskResolved subtask = true := by simp [CStore.subtaskResolved, live, resolved]
+  have returned := Step.popProg (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
+  refine .cons returned (.cons (.get rfl) ?_)
+  simp [Prog.bind, readyBefore, pure]
+  exact cancelFinishDelivers cancel _ record rfl live resolved pending
 
 theorem initialK1Cancel {caller : ParkedCancel parked subtask} (request : TaskCancelAdmission caller)
     (wait : K1Wait atWait request.implicitThread request.taskId) {between}
@@ -916,37 +926,10 @@ theorem syncCancelResumes {atReturn atResume leading} (cancel : ParkedCancel par
 theorem syncCancelDelivers {atResume} (cancel : ParkedCancel parked subtask)
     (resume : SyncCancelResume cancel atResume) (pending : PendingAt atResume.store subtask index) :
     Steps profile ready (specDispatch ready impl) resume.reached (List.replicate 6 .tau) resume.delivered := by
-  obtain ⟨record, live, returned, indexed, queued⟩ := pending
-  let cleared := resume.reached.store.setSyncWaiterSt (.subtask subtask) none
-  let changed := { record with common := { record.common with hasSyncWaiter := false, syncOwner := none } }
-  have before : ArenaField.subtasks.get? resume.reached.store subtask = some record := live
-  have clearedLive : cleared.subtask? subtask = some changed := by
-    simp only [cleared, changed, CStore.setSyncWaiterSt, CStore.modifyWaitableCommon, CStore.subtask?,
-      ArenaField.get?_modify_self, before, Option.map_some]
-    rfl
-  have resolved : cleared.subtaskResolved subtask = true := by
-    simp [CStore.subtaskResolved, clearedLive, changed, returned, SubtaskState.resolved]
-  let reply : EventTuple → Session grow sig (Ret (core3 grow)) := fun _ => do
-    let current ← getObj ArenaField.subtasks subtask
-    pure (.flat [i32Flat (subtaskCancelResult (some current.state))])
-  let activations := ⟨resume.thread, .prog resume.resumeAfter, resume.segments⟩ :: resume.rest
-  let entered := { resume.reached with
-    store := cleared
-    ctl := ⟨some cancel.thread, .prog (Waitable.getPendingEvent (.subtask subtask) >>= reply),
-      .core cancel.core cancel.next :: cancel.segments⟩ :: activations }
-  have enter : Steps profile ready (specDispatch ready impl) resume.reached (List.replicate 2 .tau) entered := by
-    refine .cons (.modify rfl) (.cons (.get rfl) ?_)
-    simp [Prog.bind, cleared, resolved, ParkedCancel.result, Builtins.subtaskCancelDeliver,
-      Prog.bind_assoc, reply, entered, pure]
-    exact .refl _
-  have take := deliver_pending (prof := profile) (ready := ready) (dispatch := specDispatch ready impl)
-    (config := entered) subtask changed index clearedLive returned indexed queued reply rfl
-  obtain ⟨settled, settledLive, _, _, state, _⟩ := consumeClears cleared ⟨changed, clearedLive, returned, indexed, queued⟩
-  have lookup : ArenaField.subtasks.get? (cancelDelivered cleared subtask) subtask = some settled := settledLive
-  simp only [cancelDelivered] at lookup
-  refine appendSteps (appendSteps enter take) (.cons (.get rfl) ?_)
-  simp [entered, Prog.bind, lookup, pure, state]
-  exact .cons (.popCore rfl) (.refl _)
+  obtain ⟨record, live, returned, _, queued⟩ := pending
+  have resolved : record.state.resolved = true := by simp [returned, SubtaskState.resolved]
+  simpa only [SyncCancelResume.delivered, ← returned] using
+    (cancelFinishDelivers (profile := profile) (ready := ready) (impl := impl) cancel resume.reached record rfl live resolved queued)
 
 theorem syncCancelLinkedTick {atReturn resolving atHost whileBlocked between}
     (cancel : ParkedCancel parked subtask) (wait : SyncCancelWait cancel atReturn)
