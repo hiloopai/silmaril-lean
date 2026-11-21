@@ -207,6 +207,14 @@ theorem descriptor (cx : LiftLowerContext (core3 grow)) (width : AddrType) (outp
     StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext :=
   closedCut (closedTail cx width output plan ptr) left right check canon checkNext canonNext same checkAt canonAt
 
+theorem write (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (data : ByteArray)
+    (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
+    (checkNext canonNext : Unit → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
+    (checkAt : left.ctl = check.control (writeMem cx ptr data >>= checkNext))
+    (canonAt : right.ctl = canon.control (writeMem cx ptr data >>= canonNext)) :
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext :=
+  closedCut (closedWrite cx ptr data) left right check canon checkNext canonNext same checkAt canonAt
+
 theorem collectionDescriptor (cx : LiftLowerContext (core3 grow)) (width : AddrType) (output : Stored.Lower.Output)
     (ptr count : Nat) (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
     (checkNext canonNext : output.Result → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)

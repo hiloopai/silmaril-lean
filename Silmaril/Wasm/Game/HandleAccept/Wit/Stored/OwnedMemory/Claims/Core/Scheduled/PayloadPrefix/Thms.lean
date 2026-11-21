@@ -455,6 +455,19 @@ theorem string_descriptor_cut_between {grow : SingleThreaded.GrowOracle} {Host :
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.descriptor
     cx width output plan ptr left right check canon checkNext canonNext same checkAt canonAt
 
+/-- A reached canonical write either commits or traps locally, without
+using either dispatcher. Its memory and bounds checks read the live store. -/
+theorem write_cut_between {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind}
+    {ready : HostReady Host} {dispatch reference : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
+    (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (data : ByteArray)
+    (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
+    (checkNext canonNext : Unit → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
+    (checkAt : left.ctl = check.control (writeMem cx ptr data >>= checkNext))
+    (canonAt : right.ctl = canon.control (writeMem cx ptr data >>= canonNext)) :
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.write
+    cx ptr data left right check canon checkNext canonNext same checkAt canonAt
+
 /-- Replay the actual pointer/count descriptor from the reached store. A
 late trap in memory output keeps the write to the first word, if it ran. -/
 theorem collection_descriptor_cut {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}

@@ -1283,12 +1283,15 @@ string passes the flat words or reaches the spill tuple suffix after writing
 its descriptor. These cuts classify only the reached callback prefix; they
 do not assume that it returns or preserves memory.
 
-`direct_string_arguments` and `spilled_string_arguments` iterate those
-cuts across a parameter list of strings. The next field uses the reached
-cursor; in the spill path it starts at the previous field's ABI end offset.
+`direct_arguments` and `spilled_arguments` iterate those cuts across a
+parameter list mixing bool, u32, and strings. Direct scalars add their
+canonical flat word; spilled scalars do a live width read and bounds-checked
+write. The next field uses the reached cursor; in the spill path it starts at
+the previous field's ABI end offset. The string-only theorems specialize the
+same traversal.
 `enter_stackful_after_strings` starts actual Core execution with the computed
 flat words or the outer spill pointer when lowering completes. A suspension
-or trap does not enter Core. This does not yet cover mixed or nested parameter
+or trap does not enter Core. This does not yet cover nested parameter
 schemas, arbitrary component host reentry, or post-callee completion.
 
 ## Checking

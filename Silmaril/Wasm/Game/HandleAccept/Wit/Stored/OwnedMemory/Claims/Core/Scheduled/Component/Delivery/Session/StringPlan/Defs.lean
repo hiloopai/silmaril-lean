@@ -65,6 +65,20 @@ def stringArgumentValues (values : List Value.StrVal) : List Value.Val := values
 
 def stringArgumentTypes (values : List Value.StrVal) : List Stored.TypeOf := values.map (fun _ => .prim .string)
 
+/-- The supported canonical argument leaves for the shared descent. Keeping
+the type and value together rules out an arity or leaf-shape mismatch. -/
+inductive ArgumentField where
+  | scalar (arg : DirectArgument)
+  | string (value : Value.StrVal)
+
+def ArgumentField.type : ArgumentField → Stored.TypeOf
+  | .scalar arg => arg.type
+  | .string _ => .prim .string
+
+def ArgumentField.value : ArgumentField → Value.Val
+  | .scalar arg => arg.value
+  | .string value => .string value
+
 /-- The lowering stopped before Core entry: either a trap or an actual
 suspended callback with its occurrence still live. -/
 abbrev StringPlanStopped (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
