@@ -13,6 +13,7 @@ namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Sch
 
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
+open PayloadPrefix (Cursor)
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
@@ -27,6 +28,61 @@ park or a trap. Neither a scheduler choice nor eventual delivery is promised. -/
 theorem Run.steps {actions labels} (path : Run profile ready impl start actions labels finish) :
     Steps profile ready (specDispatch ready impl) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runSteps path
+
+/-- Use an actual paired compiler-body cut, including a natural allocator
+return from the collection visit theorem. A live typed refusal
+leaves the canonical side at its reached prefix. A trap retains the
+reached locked-down store, with the actual trap label on both sides. -/
+theorem GiveBodyCut.of_reaches {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) {check canon : Cursor (E := core3 grow) (HostState sig)} {keep}
+    (path : PayloadPrefix.ReachesKeeping profile ready (Dispatch.coreOnly ready bindings) keep site.checked
+      (site.reference site.referenceReply) check canon site.reply site.referenceReply)
+    (dispatch : GiveCutDispatch profile ready bindings callees site) :
+    GiveBodyCut profile ready bindings callees site check canon :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.giveBodyCut site path dispatch
+
+/-- At the collection return, use the selected bounds/claim branch and its
+actual traces. In particular, a late range trap is not a placement trap. -/
+theorem GiveBodyCut.of_collection_return {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {type : Stored.TypeOf} {area : ABI.Layout} {entries : List Stored.Endpoints.RecordLower.Field}
+    {index pointer : Nat} {left right last : State grow sig} {check : Cursor (E := core3 grow) (HostState sig)}
+    {seen checkLabels canonLabels}
+    (entry : Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels left)
+    (referenceEntry : Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels right)
+    (seenEntry : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+    (cut : LinkedCallback.CollectionVisit.Outcome profile ready bindings older site.destination site.inst type area entries index pointer
+      route.output left right last check site.reply site.referenceReply seen
+      (LinkedCallback.CollectionVisit.reachesNext profile ready bindings left.store site.reply site.referenceReply))
+    (dispatch : GiveCutDispatch profile ready bindings callees site) :
+    ∃ canon, GiveBodyCut profile ready bindings callees site check canon :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.giveCollectionCut
+    site entry referenceEntry seenEntry cut dispatch
+
+/-- Closed reached traces need no component-function hook agreement. -/
+theorem GiveCutDispatch.of_closed {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}
+    {site : PayloadRoot.Site grow sig route}
+    (closed : ∀ {checkLabels canonLabels reached reference check phase},
+      GiveStop site check phase canonLabels reached reference →
+      Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached →
+      Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference →
+      Dispatch.ClosedThrough profile ready bindings site.checked checkLabels reached ∧
+      Dispatch.ClosedThrough profile ready bindings (site.reference site.referenceReply) canonLabels reference) :
+    GiveCutDispatch profile ready bindings callees site := fun stop _ _ checked canonical =>
+  let paths := closed stop checked canonical
+  ⟨Dispatch.Compatible.of_closed checked paths.1, Dispatch.Compatible.of_closed canonical paths.2⟩
+
+/-- The original marked Core occurrence can receive the checked refusal.
+This records the typed completion on the reached host, does not roll back
+earlier effects, and has no matching canonical reply. -/
+theorem Transition.give_refusal_reply {bindings : List (Binding sig)} {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) {check : Cursor (E := core3 grow) (HostState sig)} {issue labels}
+    (control : start.ctl = check.control (site.reply (.error issue)))
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      site.checked (.active 0 0) labels start (.active 0 0)) :
+    ∃ segments, Transition profile ready impl start (.give route (.refusalReplied issue)) [.tau, .tau, .tau]
+      (refusedBodyReply site start check segments issue) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.giveRefusalReply site control path
 
 /-- A host invocation of a reached lifted export enters the real canonical
 lift with its freshly allocated caller and original host return frame. Caller

@@ -10,6 +10,7 @@ namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Sch
 
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.AsyncRef
+open PayloadPrefix (Cursor)
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
 
@@ -25,6 +26,9 @@ inductive GivePhase where
   | refused (issue : Stored.Endpoints.RecordLower.Issue)
   | placementTrap (reason : TrapReason)
   | returned
+  | bodyRefused (issue : Stored.Endpoints.RecordLower.Issue)
+  | bodyTrap (reason : TrapReason)
+  | refusalReplied (issue : Stored.Endpoints.RecordLower.Issue)
 
 def BufferResult.finish {α : Type} (result : BufferResult) (resumed trapped : α) : α :=
   match result with
@@ -40,6 +44,40 @@ inductive BufferBranch (store : CStore (core3 grow)) (memory ptr : Nat) :
       (bad : size < ptr + 8) : BufferBranch store memory ptr (.trapped .outOfBounds) [.tau, .trap .outOfBounds]
   | inside {size} (aligned : ptr % 4 = 0) (sized : (core3 grow).memSize? store.core memory = some size)
       (fits : ptr + 8 ≤ size) : BufferBranch store memory ptr .replied (List.replicate 6 .tau)
+
+/-- The reference side stops at a real prefix on a checked refusal. Only
+the trap case requires both traces to end with an actual canonical trap. -/
+inductive GiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (check : Cursor (E := core3 grow) (HostState sig)) :
+    GivePhase → Trace grow sig → State grow sig → State grow sig → Prop where
+  | refused {issue labels reached reference}
+      (control : reached.ctl = check.control (site.reply (.error issue))) :
+      GiveStop site check (.bodyRefused issue) labels reached reference
+  | trapped {reason labels reached reference}
+      (checked : reached.ctl = []) (canonical : reference.ctl = [])
+      (trapLabel : ∃ leading, PayloadPrefix.visible labels = leading ++ [.trap reason]) :
+      GiveStop site check (.bodyTrap reason) labels reached reference
+
+/-- Transport only compared stopped prefixes, not every schedule or all
+implementations of any host-function hook they may reach. -/
+def GiveCutDispatch (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (callees : List (Callee sig)) {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) : Prop :=
+  ∀ {checkLabels canonLabels reached reference check phase},
+    GiveStop site check phase canonLabels reached reference →
+    reached.store = reference.store → PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels →
+    Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached →
+    Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference →
+    Dispatch.Compatible profile ready bindings callees site.checked checkLabels reached ∧
+    Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonLabels reference
+
+def refusedBodyReply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (reached : State grow sig)
+    (check : Cursor (E := core3 grow) (HostState sig)) (segments : List (Seg (core3 grow) (HostState sig)))
+    (issue : Stored.Endpoints.RecordLower.Issue) : State grow sig :=
+  let reply := route.reply site.destination site.start.host.nextTicket (.error issue)
+  { reached with
+    host := reached.host.record reply.1
+    ctl := ⟨check.thread, .core ((core3 grow).resume reached.store.core site.core (.values reply.2)) site.resume,
+      segments⟩ :: check.rest }
 
 def pollReply {start : State grow sig} {target : SubtaskId} (poll : ParkedPoll start target profile)
     (index : Nat) : State grow sig :=
@@ -257,6 +295,35 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
       (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right) :
       Transition profile ready impl site.checked (.give route .returned) (checkLabels ++ [.tau, .tau, .tau]) left
+  | giveStopped {route bindings callees checkLabels canonLabels reached reference check phase}
+      (site : PayloadRoot.Site grow sig route) (overlay : impl = hostWithComponent bindings callees)
+      (checked : Dispatch.Compatible profile ready bindings callees site.checked checkLabels reached)
+      (canonical : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonLabels reference)
+      (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+      (store : reached.store = reference.store) (stopped : GiveStop site check phase canonLabels reached reference) :
+      Transition profile ready impl site.checked (.give route phase) checkLabels reached
+  | giveRefusalReply {route reached check segments issue} (site : PayloadRoot.Site grow sig route)
+      (control : reached.ctl = check.control (site.reply (.error issue)))
+      (caller : check.frames = .core site.core site.resume :: segments) :
+      Transition profile ready impl reached (.give route (.refusalReplied issue)) [.tau, .tau, .tau]
+        (refusedBodyReply site reached check segments issue)
+
+/-- Keep the original compared traces at a returning cut. A stopped cut
+already induces a checked session edge and has no canonical reply step. -/
+inductive GiveBodyCut (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (callees : List (Callee sig)) {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (check canon : Cursor (E := core3 grow) (HostState sig)) : Prop where
+  | returned {value checkLabels canonLabels reached reference}
+      (checked : Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached)
+      (canonical : Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference)
+      (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels) (store : reached.store = reference.store)
+      (checkControl : reached.ctl = check.control (site.reply (.ok value)))
+      (canonControl : reference.ctl = canon.control (site.referenceReply value)) :
+      GiveBodyCut profile ready bindings callees site check canon
+  | stopped {phase labels canonLabels reached reference}
+      (stop : GiveStop site check phase canonLabels reached reference)
+      (edge : Transition profile ready (hostWithComponent bindings callees) site.checked (.give route phase) labels reached) :
+      GiveBodyCut profile ready bindings callees site check canon
 
 /-- Finite concatenation, with machine labels in their original order. A run
 can stop at a parked callback, at a producer, or at a delivery trap. -/

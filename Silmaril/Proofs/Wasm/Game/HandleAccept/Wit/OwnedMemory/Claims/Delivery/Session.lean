@@ -5,6 +5,9 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Thms
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.CollectionVisit.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
@@ -14,8 +17,11 @@ namespace Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
+open Silmaril.Wasm.Game.HandleAccept.Wit
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
+open ComponentCall (Callee)
 open ComponentCall.Delivery ComponentCall.Delivery.FiniteSession
+open PayloadPrefix (Cursor)
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
@@ -102,12 +108,61 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | giveReturned _ _ overlay checked _ _ replies =>
     subst impl
     exact appendSteps checked.steps (replies.1 _)
+  | giveStopped _ overlay checked _ _ _ _ =>
+    subst impl
+    exact checked.steps
+  | giveRefusalReply site control caller =>
+    exact Plain.give_completion_steps _ (by simpa [PayloadRoot.Site.reply, Cursor.control, caller] using control)
 
 theorem runSteps {actions labels} (path : Run profile ready impl start actions labels finish) :
     Steps profile ready (specDispatch ready impl) start labels finish := by
   induction path with
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
+
+theorem giveBodyCut {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) {check canon : Cursor (E := core3 grow) (HostState sig)} {keep}
+    (path : PayloadPrefix.ReachesKeeping profile ready (Dispatch.coreOnly ready bindings) keep site.checked
+      (site.reference site.referenceReply) check canon site.reply site.referenceReply)
+    (dispatch : GiveCutDispatch profile ready bindings callees site) :
+    GiveBodyCut profile ready bindings callees site check canon := by
+  obtain ⟨outcome, checkLabels, canonLabels, reached, reference, checked, canonical, stores, seen, _, cut⟩ := path
+  cases outcome with
+  | returned value => exact .returned checked canonical seen stores cut.1 cut.2
+  | refused issue =>
+    have stopped : GiveStop site check (.bodyRefused issue) canonLabels reached reference := .refused cut
+    obtain ⟨lhs, rhs⟩ := dispatch stopped stores seen checked canonical
+    exact .stopped stopped (.giveStopped site rfl lhs rhs seen stores stopped)
+  | trapped reason =>
+    have stopped : GiveStop site check (.bodyTrap reason) canonLabels reached reference := .trapped cut.1 cut.2.1 cut.2.2
+    obtain ⟨lhs, rhs⟩ := dispatch stopped stores seen checked canonical
+    exact .stopped stopped (.giveStopped site rfl lhs rhs seen stores stopped)
+
+theorem giveRefusalReply {bindings : List (Binding sig)} {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) {check : Cursor (E := core3 grow) (HostState sig)} {issue labels}
+    (control : start.ctl = check.control (site.reply (.error issue)))
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      site.checked (.active 0 0) labels start (.active 0 0)) :
+    ∃ segments, Transition profile ready impl start (.give route (.refusalReplied issue)) [.tau, .tau, .tau]
+      (refusedBodyReply site start check segments issue) := by
+  obtain ⟨segments, caller⟩ := site.reached_caller control path
+  exact ⟨segments, .giveRefusalReply site control caller⟩
+
+theorem giveCollectionCut {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {type : Stored.TypeOf} {area : ABI.Layout} {entries : List Stored.Endpoints.RecordLower.Field}
+    {index pointer : Nat} {left right last : State grow sig} {check : Cursor (E := core3 grow) (HostState sig)}
+    {seen checkLabels canonLabels}
+    (entry : Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels left)
+    (referenceEntry : Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels right)
+    (seenEntry : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+    (cut : LinkedCallback.CollectionVisit.Outcome profile ready bindings older site.destination site.inst type area entries index pointer
+      route.output left right last check site.reply site.referenceReply seen
+      (LinkedCallback.CollectionVisit.reachesNext profile ready bindings left.store site.reply site.referenceReply))
+    (dispatch : GiveCutDispatch profile ready bindings callees site) :
+    ∃ canon, GiveBodyCut profile ready bindings callees site check canon := by
+  obtain ⟨canon, path⟩ := cut.reaches
+  exact ⟨canon, giveBodyCut site (PayloadPrefix.ReachesKeeping.prepend entry referenceEntry seenEntry path) dispatch⟩
 
 theorem invokeLifted {call func args core fnType opts inst}
     (hostReady : StepDefs.HostReadyCfg start) (fresh : ∀ entry ∈ start.pending, entry.1 ≠ call)
