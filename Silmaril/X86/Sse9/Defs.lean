@@ -2,6 +2,7 @@ module
 
 public import Silmaril.X86.Open9.Defs
 public import Silmaril.X86.Float.Instr
+public import Silmaril.X86.Sse9.Logical.Defs
 
 /-!
 # `Sse9`: the open `Ext9` machine with XMM registers and an SSE data-movement subset
@@ -252,7 +253,8 @@ def unpackLoDq (d v : Xmm) : Xmm :=
 /-- `punpcklqdq`: the low quadword of the source above the low quadword of the destination. -/
 def unpackLoQdq (d v : Xmm) : Xmm := (v.setWidth 64 ++ d.setWidth 64 : BitVec 128)
 
-/-- **Execute an SSE instruction**, given the address of the next instruction. -/
+/-- **Execute an SSE instruction**, given the address of the next instruction.
+This legacy entry point assumes SSE/SSE2 are enabled. -/
 def exec (i : Instr) (s : State) (x : XFile) (memory : Memory) (next : Word) : XResult :=
   let wr := Silmaril.Machine.RegisterFile.write x
   match i with
@@ -293,10 +295,30 @@ def exec (i : Instr) (s : State) (x : XFile) (memory : Memory) (next : Word) : X
       match storeN memory (m.addr s next) 8 ((x src).setWidth 64) with
       | none => .dataFault
       | some memory' => .ok { s with rip := next } x memory'
-  | .pxor dst src => binop (· ^^^ ·) dst src s x memory next
-  | .xorps dst src => binop (· ^^^ ·) dst src s x memory next
+  | .pxor dst src => binop (Logical.Op.eval .pxor) dst src s x memory next
+  | .xorps dst src => binop (Logical.Op.eval .xorps) dst src s x memory next
   | .punpcklqdq dst src => binop unpackLoQdq dst src s x memory next
   | .punpckldq dst src => binop unpackLoDq dst src s x memory next
+
+/-- Embed the typed logical subset in the existing decoded instruction type. -/
+def Logical.Op.toInstr (op : Logical.Op) (dst : XReg) (src : XRM) : Instr :=
+  match op with
+  | .pxor => .pxor dst src
+  | .xorps => .xorps dst src
+
+/-- Why a decoded instruction was refused before operand access. -/
+inductive LogicalRefusal where
+  | featureDisabled
+  deriving DecidableEq, Repr
+
+/-- Execute an already decoded legacy XMM XOR under explicit feature assumptions.
+A disabled form is outside this profile, not a modeled CPU exception or UB. On an
+enabled form, the existing alignment/data-access faults and retirement are preserved.
+No decoding, exception delivery, or Linux effects are performed here. -/
+def execLogical (profile : Logical.Profile) (op : Logical.Op) (dst : XReg) (src : XRM)
+    (s : State) (x : XFile) (memory : Memory) (next : Word) : Except LogicalRefusal XResult :=
+  if op.enabled profile then .ok (exec (op.toInstr dst src) s x memory next)
+  else .error .featureDisabled
 
 /-! ## Fetch and step -/
 

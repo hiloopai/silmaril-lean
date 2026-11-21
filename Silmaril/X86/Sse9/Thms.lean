@@ -30,6 +30,7 @@ All statements are proved with the standard axioms (proofs in
 * `step_of_listed_sse`, `step_of_fetch_sse`: a listed SSE form (`decodeL`) at the program
   counter of a loaded image that executes is one step.
 * `exec_pxor_self`, `exec_xorps_self`: the zeroing idiom writes `0`.
+* `execLogical_of_read`: a defined logical instruction updates only RIP and its destination.
 * `decodeL_*`: example encodings gcc emits decode to the intended forms (`decide`), and
   `F2`, FS-prefixed and truncated SSE bytes are rejected.
 
@@ -131,13 +132,32 @@ theorem step_of_listed_sse {x : XState} {base : Word} {code : List Byte} {o l : 
 theorem exec_pxor_self (d : XReg) (s : State) (x : XFile) (mem : Memory) (next : Word) :
     exec (.pxor d (.reg d)) s x mem next =
       .ok { s with rip := next } (Silmaril.Machine.RegisterFile.write x d 0) mem := by
-  simp [exec, binop, misaligned, readX]
+  simp [exec, binop, misaligned, readX, Logical.Op.eval]
 
 /-- `xorps %xmm, %xmm` zeroes the register. -/
 theorem exec_xorps_self (d : XReg) (s : State) (x : XFile) (mem : Memory) (next : Word) :
     exec (.xorps d (.reg d)) s x mem next =
       .ok { s with rip := next } (Silmaril.Machine.RegisterFile.write x d 0) mem := by
-  simp [exec, binop, misaligned, readX]
+  simp [exec, binop, misaligned, readX, Logical.Op.eval]
+
+/-- The guarded interface agrees with the old entry point on enabled forms, including faults. -/
+theorem execLogical_enabled {profile : Logical.Profile} {op : Logical.Op} {dst : XReg} {src : XRM}
+    {s : State} {x : XFile} {memory : Memory} {next : Word} (enabled : op.enabled profile = true) :
+    execLogical profile op dst src s x memory next = .ok (exec (op.toInstr dst src) s x memory next) := by
+  simp [execLogical, enabled]
+
+/-- On a defined step, only RIP and the destination XMM register change. `readX` reads
+the pre-state, including when the source aliases the destination; memory and the rest of
+the core are framed. -/
+theorem execLogical_of_read {profile : Logical.Profile} {op : Logical.Op} {dst : XReg} {src : XRM}
+    {s : State} {x : XFile} {memory : Memory} {next : Word} {value : Xmm}
+    (enabled : op.enabled profile = true) (aligned : misaligned src s next = false)
+    (read : readX src s x memory next = some value) :
+    execLogical profile op dst src s x memory next =
+      .ok (.ok { s with rip := next }
+        (Silmaril.Machine.RegisterFile.write x dst (x dst ^^^ value)) memory) := by
+  rw [execLogical_enabled enabled]
+  cases op <;> simp [Logical.Op.toInstr, exec, binop, aligned, read, Logical.Op.eval]
 
 /-! ## Decoder regressions (example encodings) -/
 
