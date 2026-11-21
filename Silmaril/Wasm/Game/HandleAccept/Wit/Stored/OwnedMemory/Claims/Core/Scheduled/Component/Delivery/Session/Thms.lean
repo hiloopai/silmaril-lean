@@ -553,6 +553,17 @@ theorem CalleeSpillReturn.of_occurrence {site : OnStartSite start} {handoff : Lo
 
 /-- The direct string field reads its live plan width. After the plan,
 the canonical suffix appends its actual words before entering the guest. -/
+theorem flat_argument_string (context : LiftLowerContext (core3 grow)) (width : AddrType) (value : Value.StrVal) :
+    (lowerFlatAt .spec .none context width (.string value) (.prim .string) : Session grow sig (List FlatValue)) =
+      .op .get (argumentStringBody context width .flat value) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.flatArgumentString context width value
+
+theorem memory_argument_string (context : LiftLowerContext (core3 grow)) (width : AddrType)
+    (value : Value.StrVal) (address : Nat) :
+    (store .spec .none context (.string value) (.prim .string) address : Session grow sig Unit) =
+      .op .get (argumentStringBody context width (.memory address) value) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.memoryArgumentString context width value address
+
 theorem direct_string_plan {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     (context : LiftLowerContext (core3 grow)) (width : AddrType) (value : Value.StrVal)
     (values : List Value.Val) (types : List Stored.TypeOf) (cursor : Cursor (E := core3 grow) (HostState sig))

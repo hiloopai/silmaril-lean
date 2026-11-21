@@ -65,19 +65,47 @@ def stringArgumentValues (values : List Value.StrVal) : List Value.Val := values
 
 def stringArgumentTypes (values : List Value.StrVal) : List Stored.TypeOf := values.map (fun _ => .prim .string)
 
-/-- The supported canonical argument leaves for the shared descent. Keeping
-the type and value together rules out an arity or leaf-shape mismatch. -/
+/-- The supported canonical argument trees. The same tree names the checked
+shape and supplies the actual canonical value, including tuple arity. -/
 inductive ArgumentField where
   | scalar (arg : DirectArgument)
   | string (value : Value.StrVal)
+  | tuple (members : List ArgumentField)
+  | record (members : List (String × ArgumentField))
+
+private theorem namedArgumentSize {members : List (String × ArgumentField)} {member : String × ArgumentField}
+    (present : member ∈ members) : sizeOf member.2 < sizeOf members := by
+  have smaller := List.sizeOf_lt_of_mem present
+  obtain ⟨name, field⟩ := member
+  simp only [Prod.mk.sizeOf_spec] at smaller ⊢
+  omega
 
 def ArgumentField.type : ArgumentField → Stored.TypeOf
   | .scalar arg => arg.type
   | .string _ => .prim .string
+  | .tuple members => .tuple (members.map type)
+  | .record members => .record (members.map fun member => (member.1, type member.2))
+termination_by field => sizeOf field
+decreasing_by
+  all_goals simp_wf
+  all_goals first | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega | have := namedArgumentSize ‹_ ∈ _›; omega
 
 def ArgumentField.value : ArgumentField → Value.Val
   | .scalar arg => arg.value
   | .string value => .string value
+  | .tuple members => .record (members.map value)
+  | .record members => .record (members.map fun member => value member.2)
+termination_by field => sizeOf field
+decreasing_by
+  all_goals simp_wf
+  all_goals first | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega | have := namedArgumentSize ‹_ ∈ _›; omega
+
+/-- The actual canonical lowering of a single argument at the selected output. -/
+def ArgumentField.lower (context : LiftLowerContext (core3 grow)) (width : AddrType)
+    (field : ArgumentField) (output : Stored.Lower.Output) : Session grow sig output.Result :=
+  match output with
+  | .flat => lowerFlatAt .spec .none context width field.value field.type
+  | .memory address => store .spec .none context field.value field.type address
 
 /-- The lowering stopped before Core entry: either a trap or an actual
 suspended callback with its occurrence still live. -/

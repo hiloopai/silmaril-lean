@@ -66,8 +66,8 @@ theorem CalleeSpillReturn.spilled_string_pair {site : OnStartSite start} {handof
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.spilledCallee
     result schema input aligned selected sized fits choose
 
-/-- Compose direct scalar and string arguments in ABI order. Each allocating
-argument reads its plan at the reached cursor. -/
+/-- Compose direct scalar and string arguments through nested tuples and
+records in ABI order. Each string reads its plan at the reached cursor. -/
 theorem CalleeArguments.direct_arguments {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached : State grow sig} {returned : LowerArgumentReturn handoff reached}
     (args : CalleeArguments returned) (fields : List ArgumentField)
@@ -78,8 +78,9 @@ theorem CalleeArguments.direct_arguments {site : OnStartSite start} {handoff : L
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.directArguments
     args fields schema input fits choose
 
-/-- Compose scalar writes and string descriptor stores after actual spill
-placement. A late trap retains the writes of the reached prefix. -/
+/-- Compose scalar writes and string descriptor stores through nested tuples
+and records after actual spill placement. A late trap retains the writes of
+the reached prefix. -/
 theorem CalleeSpillReturn.spilled_arguments {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
     (result : CalleeSpillReturn args state) (fields : List ArgumentField) {memory size}
