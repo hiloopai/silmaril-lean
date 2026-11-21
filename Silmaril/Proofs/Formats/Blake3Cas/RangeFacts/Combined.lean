@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Formats.Blake3Cas.RangeFacts.Combined.Defs
 import Init.Data.Vector.OfFn
+import Silmaril.Formats.Blake3Cas.RangeFacts.Projection.Thms
 
 public section
 
@@ -12,6 +13,7 @@ open Silmaril.Formats
 open Silmaril.Formats.Blake3Cas
 open Silmaril.Formats.Blake3Cas.RangeFacts
 open Silmaril.Formats.Blake3Cas.RangeFacts.Combined
+open Silmaril.Formats.Blake3Cas.RangeFacts.Projection (Contiguous)
 
 private theorem split_bounds {width : Nat} (large : 1024 < width) :
     0 < splitBytes width ∧ splitBytes width < width ∧ splitBytes width % 1024 = 0 := by
@@ -341,22 +343,6 @@ private theorem Replay.spans_append {size : Nat} {digest : Bytes} {start mid fin
   | @cons state next final raw fields cell step rest ih =>
     cases cell <;> simp [Replay.append, Replay.tape, Tape.spans, ih]
 
-private inductive Contiguous {size : Nat} {digest : Bytes} : Nat → List (SpanFact size digest) → Bytes → Prop where
-  | nil (base : Nat) : Contiguous base [] []
-  | cons {base : Nat} {fact : SpanFact size digest} {tail : List (SpanFact size digest)} {rest : Bytes}
-      (offset : fact.offset = base) (next : Contiguous (base + fact.bytes.length) tail rest) :
-      Contiguous base (fact :: tail) (fact.bytes ++ rest)
-
-private theorem Contiguous.append {size : Nat} {digest : Bytes} {base : Nat}
-    {lhs rhs : List (SpanFact size digest)} {left right : Bytes}
-    (first : Contiguous base lhs left) (last : Contiguous (base + left.length) rhs right) :
-    Contiguous base (lhs ++ rhs) (left ++ right) := by
-  induction first with
-  | nil => simpa using last
-  | cons offset next ih =>
-    rw [List.cons_append, List.append_assoc]
-    exact .cons offset (ih (by simpa [Nat.add_assoc] using last))
-
 private theorem Renders.replay {size : Nat} {digest bytes : Bytes} {shape : Shape} {base : Nat}
     {root : Bool} {cv : CV} {fields : List Bytes} (rendered : Renders size shape base root cv bytes fields)
     {edge : Bool} (anchor : Anchor size digest shape root cv base edge)
@@ -410,62 +396,14 @@ private theorem Renders.replay {size : Nat} {digest bytes : Bytes} {shape : Shap
       rw [Replay.spans_append]
       exact leftBytes.append (by simpa only [leftSize] using rightBytes)
 
-private theorem taken_value {size base : Nat} {digest bytes part : Bytes}
-    (same : part = bytes) (nonempty : 0 < part.length) (checked : Checked concrete size digest base part) :
-    ∃ advance : Advance size digest base (base + bytes.length), HEq (Advance.take base part nonempty checked) advance ∧
-      advance.bytes = bytes := by
-  cases same
-  exact ⟨Advance.take base bytes nonempty checked, HEq.rfl, rfl⟩
-
-private theorem full_cell {size base : Nat} {digest : Bytes} (fact : SpanFact size digest)
-    (offset : fact.offset = base) (fits : base + fact.bytes.length ≤ size) :
-    ∃ advance, project? ⟨0, size⟩ base fact = some ⟨base + fact.bytes.length, advance⟩ ∧
-      advance.bytes = fact.bytes := by
-  have bound : fact.offset + fact.bytes.length ≤ size := by omega
-  by_cases empty : fact.bytes = []
-  · have noop : project? ⟨0, size⟩ base fact = some ⟨base, .skip base⟩ := by
-      simp [project?, empty]
-    have same : base + fact.bytes.length = base := by simp [empty]
-    rw [same]
-    exact ⟨.skip base, noop, empty.symm⟩
-  · have pos : 0 < fact.bytes.length := List.length_pos_iff.mpr empty
-    have lt : base < base + fact.bytes.length := by omega
-    simp [project?, Nat.min_eq_right fits, lt, offset, pos]
-    apply taken_value
-    simp [Nat.min_eq_right bound]
-
-private theorem full_project {size base : Nat} {digest bytes : Bytes} {fields : List Bytes}
-    (tape : Tape size digest fields) (contiguous : Contiguous base tape.spans bytes)
-    (fits : base + bytes.length ≤ size) :
-    ∃ coverage, tape.project? ⟨0, size⟩ base = some ⟨base + bytes.length, coverage⟩ ∧ coverage.bytes = bytes := by
-  induction tape generalizing base bytes with
-  | nil =>
-    cases contiguous
-    exact ⟨.nil _, rfl, rfl⟩
-  | cons cell tail ih =>
-    cases cell with
-    | pair span root lcv rcv expected wire hit location =>
-      obtain ⟨coverage, done, values⟩ := ih contiguous fits
-      exact ⟨.cons (.skip base) coverage, by simp [Tape.project?, Cell.project?, done], by simpa [Coverage.bytes, Advance.bytes]⟩
-    | data span fact location =>
-      change Contiguous base (fact :: tail.spans) bytes at contiguous
-      cases contiguous with
-      | cons offset next =>
-        rename_i rest
-        have same : base + (fact.bytes ++ rest).length = base + fact.bytes.length + rest.length := by
-          simp [Nat.add_assoc]
-        rw [same] at fits ⊢
-        obtain ⟨advance, advanced, headBytes⟩ := full_cell fact offset (by omega)
-        obtain ⟨coverage, done, tailBytes⟩ := ih next fits
-        exact ⟨.cons advance coverage, by simp [Tape.project?, Cell.project?, advanced, done],
-          by simp [Coverage.bytes, headBytes, tailBytes]⟩
-
 set_option maxRecDepth 2048 in
-theorem complete {digest original : Bytes} {cap : Nat}
-    (named : Named concrete digest original) (withinCap : original.length ≤ cap) :
+theorem completeWindow {digest original : Bytes} {cap : Nat} (request : Request)
+    (named : Named concrete digest original) (withinCap : original.length ≤ cap)
+    (within : let window := request.window original.length; window.start + window.count ≤ original.length) :
     ∃ wire response, encode? original = some wire ∧
-      decodeCombined? cap digest (.toEnd 0) wire = some response ∧
-      response.claim = original.length ∧ response.eof.isSome = true ∧ response.done.bytes = original := by
+      decodeCombined? cap digest request wire = some response ∧
+      response.claim = original.length ∧ response.eof.isSome = true ∧
+      response.done.bytes = (original.drop (request.window original.length).start).take (request.window original.length).count := by
   obtain ⟨valid, cv, hashTrace, digestEq⟩ := named
   subst digest
   let size := original.length
@@ -514,18 +452,14 @@ theorem complete {digest original : Bytes} {cap : Nat}
   let body : CompleteBody size (digestBytes cv) fields := ⟨run.tape, ⟨[], eof⟩, rfl⟩
   have checked : checkBody? size cap (digestBytes cv) (Bao.fullPlan size 1) fields = some body := by
     simp [checkBody?, init, run.check, body]
-  have fitsAll : 0 + original.length ≤ original.length := by simp
-  obtain ⟨coverage, projection, value⟩ := full_project (base := 0) run.tape contiguous fitsAll
-  change run.tape.project? ⟨0, size⟩ 0 = some ⟨0 + size, coverage⟩ at projection
-  have got : ∃ result, body.range? ((Request.toEnd 0).window size) = some result ∧ result.coverage.bytes = original := by
-    have window : (Request.toEnd 0).window size = ⟨0, size⟩ := by simp [Request.window]
-    rw [window]
-    have bound0 : 0 + size ≤ size := by simp
-    refine ⟨⟨bound0, coverage⟩, ?_, value⟩
-    simp only [CompleteBody.range?, bound0, dite_true, show body.tape = run.tape from rfl, projection,
-      Option.bind_eq_bind, Option.bind_some]
-  obtain ⟨result, done, bytes⟩ := got
-  refine ⟨wire, ⟨size, .body body done, eof⟩, output, ?_, rfl, right, bytes⟩
+  have ends : (request.window size).start + (request.window size).count ≤ 0 + original.length := by
+    simpa only [Nat.zero_add] using within
+  obtain ⟨result, done, bytes⟩ := Projection.range (base := 0) (request.window size) body contiguous
+    (Nat.zero_le _) ends within
+  refine ⟨wire, ⟨size, .body body done, eof⟩, output, ?_, rfl, right, ?_⟩
+  swap
+  · change result.coverage.bytes = _
+    simpa only [Nat.sub_zero] using bytes
   have within : ¬cap < size := Nat.not_lt.mpr withinCap
   simp only [decodeCombined?, checkBaoInline?, InlineEncoding.encoding, header, Option.bind_eq_bind,
     Option.bind_some, within, ite_false]
@@ -541,5 +475,12 @@ theorem complete {digest original : Bytes} {cap : Nat}
       have same := Option.some.inj (success.symm.trans done)
       cases same
       rfl
+
+theorem complete {digest original : Bytes} {cap : Nat}
+    (named : Named concrete digest original) (withinCap : original.length ≤ cap) :
+    ∃ wire response, encode? original = some wire ∧
+      decodeCombined? cap digest (.toEnd 0) wire = some response ∧
+      response.claim = original.length ∧ response.eof.isSome = true ∧ response.done.bytes = original := by
+  simpa [Request.window] using completeWindow (.toEnd 0) named withinCap (by simp [Request.window])
 
 end Silmaril.Proofs.Formats.Blake3Cas.RangeFacts.Combined
