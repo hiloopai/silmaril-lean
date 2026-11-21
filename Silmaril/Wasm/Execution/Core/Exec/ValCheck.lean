@@ -99,6 +99,29 @@ theorem refType?_ok {s : Store H} :
         · simp at h
       · simp at h
 
+/-- `refType?` is closed-valid as soon as the store's principal types (`Ref.type?`) are. -/
+theorem refType?_typeOk_of_ty {s : Store H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀) :
+    ∀ {r : Ref} {rt : CRefType}, refType? s r = some rt → TyOk {} rt
+  | .null, _, h => by cases h; exact .ref .bot
+  | .i31 b, _, h => by cases h; exact .ref (.abs _)
+  | .struct a, _, h => hs (.struct a) _ h
+  | .array a, _, h => hs (.array a) _ h
+  | .func a, _, h => hs (.func a) _ h
+  | .exn a, _, h => by
+    simp only [refType?, Option.map_eq_some_iff] at h
+    obtain ⟨ei, h, rfl⟩ := h; exact .ref (.abs _)
+  | .host a, _, h => by cases h; exact .ref (.abs _)
+  | .extern r, rt, h => by
+    simp only [refType?] at h
+    split at h
+    · simp at h
+    · split at h
+      · split at h
+        · cases h; exact .ref (.abs _)
+        · simp at h
+      · simp at h
+
 theorem refType?_typeOk {s : Store H} (hs : StoreOk s) :
     ∀ {r : Ref} {rt : CRefType}, refType? s r = some rt → TyOk {} rt
   | .null, _, h => by cases h; exact .ref .bot
@@ -126,8 +149,10 @@ theorem refType?_typeOk {s : Store H} (hs : StoreOk s) :
         · simp at h
       · simp at h
 
-/-- Under a typed store, `refType?` agrees with `Ref.type?` on typable references. -/
-theorem refType?_of_refOk {s : Store H} (hs : StoreOk s) :
+/-- `refType?` agrees with `Ref.type?` on typable references (at closed-valid principal
+types). -/
+theorem refType?_of_refOk_of_ty {s : Store H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀) :
     ∀ {r : Ref} {rt : CRefType}, RefOk s r rt → refType? s r = Ref.type? s r
   | .null, _, _ => rfl
   | .i31 _, _, _ => rfl
@@ -139,7 +164,7 @@ theorem refType?_of_refOk {s : Store H} (hs : StoreOk s) :
   | .extern r, rt, h => by
     obtain ⟨_, _, _, hx⟩ := h.principal
     obtain ⟨hr, hn⟩ := hx r rfl
-    have e := refType?_of_refOk hs hr
+    have e := refType?_of_refOk_of_ty hs hr
     obtain ⟨rt₀, e₀, hrt, -⟩ := hr.principal
     rw [← e] at e₀
     have hsub : Sub ({} : TypeCtx) rt₀ (Ty.ref false (.abs .any)) := by
@@ -147,18 +172,42 @@ theorem refType?_of_refOk {s : Store H} (hs : StoreOk s) :
       · rw [← h']; exact Sub.refl _ (k := .ref) trivial _
       · exact h'
     have hc : Sub.check {} rt₀ (Ty.ref false (.abs .any)) = true :=
-      Sub.check_complete TypeCtx.ok_empty rfl hsub (refType?_typeOk hs e₀) tyOk_any
+      Sub.check_complete TypeCtx.ok_empty rfl hsub (refType?_typeOk_of_ty hs e₀) tyOk_any
     simp [refType?, hn, e₀, hc, Ref.type?]
+
+/-- In a typed store, principal types (`Ref.type?`) are closed-valid. -/
+theorem type?_typeOk_of_storeOk {s : Store H} (hs : StoreOk s) :
+    ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀
+  | .extern _, _, h => by cases h; exact .ref (.abs _)
+  | .null, _, h => refType?_typeOk hs (r := .null) h
+  | .i31 b, _, h => refType?_typeOk hs (r := .i31 b) h
+  | .struct a, _, h => refType?_typeOk hs (r := .struct a) h
+  | .array a, _, h => refType?_typeOk hs (r := .array a) h
+  | .func a, _, h => refType?_typeOk hs (r := .func a) h
+  | .exn a, _, h => refType?_typeOk hs (r := .exn a) h
+  | .host a, _, h => refType?_typeOk hs (r := .host a) h
+
+/-- Under a typed store, `refType?` agrees with `Ref.type?` on typable references. -/
+theorem refType?_of_refOk {s : Store H} (hs : StoreOk s) :
+    ∀ {r : Ref} {rt : CRefType}, RefOk s r rt → refType? s r = Ref.type? s r :=
+  refType?_of_refOk_of_ty (type?_typeOk_of_storeOk hs)
+
+/-- Principal typing at closed-valid principal types. -/
+theorem RefOk.principal'_of_ty {s : Store H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀)
+    {r : Ref} {rt : CRefType} (h : RefOk s r rt) :
+    ∃ rt', refType? s r = some rt' ∧ Sub {} rt' rt ∧ TyOk {} rt := by
+  obtain ⟨rt₀, e, hrt, -⟩ := h.principal
+  rw [← refType?_of_refOk_of_ty hs h] at e
+  rcases hrt with rfl | ⟨hok, h'⟩
+  · exact ⟨_, e, Sub.refl _ (k := .ref) trivial _, refType?_typeOk_of_ty hs e⟩
+  · exact ⟨_, e, h', hok⟩
 
 /-- Principal typing: every typing of a reference in a typed store is a supertype of
 `refType?`. -/
 theorem RefOk.principal' {s : Store H} (hs : StoreOk s) {r : Ref} {rt : CRefType}
-    (h : RefOk s r rt) : ∃ rt', refType? s r = some rt' ∧ Sub {} rt' rt ∧ TyOk {} rt := by
-  obtain ⟨rt₀, e, hrt, -⟩ := h.principal
-  rw [← refType?_of_refOk hs h] at e
-  rcases hrt with rfl | ⟨hok, h'⟩
-  · exact ⟨_, e, Sub.refl _ (k := .ref) trivial _, refType?_typeOk hs e⟩
-  · exact ⟨_, e, h', hok⟩
+    (h : RefOk s r rt) : ∃ rt', refType? s r = some rt' ∧ Sub {} rt' rt ∧ TyOk {} rt :=
+  h.principal'_of_ty (type?_typeOk_of_storeOk hs)
 
 theorem refOk?_sound {s : Store H} {r : Ref} {rt : CRefType} (h : refOk? s r rt = true) :
     RefOk s r rt := by
@@ -169,14 +218,25 @@ theorem refOk?_sound {s : Store H} {r : Ref} {rt : CRefType} (h : refOk? s r rt 
     exact .sub (refType?_ok e) (TyOk.check_sound h.1) (Sub.check_sound h.2)
   · simp at h
 
-theorem refOk?_complete {s : Store H} (hs : StoreOk s) {r : Ref} {rt : CRefType}
-    (h : RefOk s r rt) : refOk? s r rt = true := by
-  obtain ⟨rt', e, hsub, hok⟩ := h.principal' hs
+/-- Completeness of `refOk?` needs of the store only that principal types are closed-valid. -/
+theorem refOk?_complete_of_ty {s : Store H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀)
+    {r : Ref} {rt : CRefType} (h : RefOk s r rt) : refOk? s r rt = true := by
+  obtain ⟨rt', e, hsub, hok⟩ := h.principal'_of_ty hs
   unfold refOk?
   rw [e]
   simp only [Bool.and_eq_true]
   exact ⟨TyOk.check_complete TypeCtx.ok_empty rfl hok,
-    Sub.check_complete TypeCtx.ok_empty rfl hsub (refType?_typeOk hs e) hok⟩
+    Sub.check_complete TypeCtx.ok_empty rfl hsub (refType?_typeOk_of_ty hs e) hok⟩
+
+theorem refOk?_complete {s : Store H} (hs : StoreOk s) {r : Ref} {rt : CRefType}
+    (h : RefOk s r rt) : refOk? s r rt = true :=
+  refOk?_complete_of_ty (type?_typeOk_of_storeOk hs) h
+
+theorem refOk?_iff_of_ty {s : Store H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀)
+    {r : Ref} {rt : CRefType} : refOk? s r rt = true ↔ RefOk s r rt :=
+  ⟨refOk?_sound, refOk?_complete_of_ty hs⟩
 
 theorem refOk?_iff {s : Store H} (hs : StoreOk s) {r : Ref} {rt : CRefType} :
     refOk? s r rt = true ↔ RefOk s r rt :=
