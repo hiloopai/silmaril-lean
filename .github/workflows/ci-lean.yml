@@ -123,7 +123,7 @@ jobs:
           echo "Lake targets: ${targets:-none, so only the source gates run}"
       - name: Run the source gates
         if: env.CHECK_TARGETS == ''
-        run: make check
+        run: make check CHECK_TARGETS=''
       - name: Assume the Lean CAS role
         if: env.CHECK_TARGETS != ''
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
