@@ -197,6 +197,51 @@ theorem deliver_pending (subtask : SubtaskId) (record : Subtask) (index : Nat)
   simp only [CStore.takeWaitableEventSt, take_returned subtask record index live returned indexed eventPending]
   exact .refl _
 
+theorem poll_selects (ws : WsetId) (record : WaitableSet) (perm : List Nat) (selected : Waitable)
+    (setLive : config.store.wset? ws = some record) (hasEvent : config.store.wsetHasEvent ws = true)
+    (allowed : Allowed prof (.shuffle record.elems.length) perm)
+    (selects : (applyPerm perm record.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm record.elems)).waitableHasEvent = some selected)
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetPoll ws >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .tau, .choice (.shuffle record.elems.length) perm, .tau, .tau]
+      { config with
+        store := config.store.wsetSetElemsSt ws (applyPerm perm record.elems)
+        ctl := ⟨thread, .prog (Waitable.getPendingEvent selected >>= resume), segments⟩ :: rest } := by
+  have readyRead := Step.get (prof := prof) (hr := ready) (dispatch := dispatch) focused
+  simp [Prog.bind, hasEvent, pure] at readyRead
+  refine .cons readyRead ?_
+  have lookup : ArenaField.wsets.get? config.store ws = some record := setLive
+  let pick := fun (elems : List Waitable) (store : CStore (core3 grow)) =>
+    (match elems.find? store.waitableHasEvent with
+    | some waitable => Waitable.getPendingEvent waitable
+    | none => internal "WaitableSet.get_pending_event: no pending event") >>= resume
+  let onChoice : List Nat → Session grow sig (Ret (core3 grow)) := fun order =>
+    let elems := applyPerm order record.elems
+    .op (.modify (CStore.wsetSetElemsSt ws elems)) fun _ => .op .get (pick elems)
+  let afterLookup := { config with ctl := ⟨thread,
+    .prog (.op (.choose (.shuffle record.elems.length)) onChoice), segments⟩ :: rest }
+  have readSet := Step.get (prof := prof) (hr := ready) (dispatch := dispatch)
+    (m := { config with ctl := ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest }) rfl
+  have reachedChoice : Machine.Step prof ready dispatch
+      { config with ctl := ⟨thread, .prog (wsetGetPendingEvent ws >>= resume), segments⟩ :: rest } .tau afterLookup := by
+    simp only [Prog.bind, lookup] at readSet
+    exact readSet
+  refine .cons reachedChoice (.cons (Step.choose (m := afterLookup) (ck := .shuffle record.elems.length)
+    (k := onChoice) perm rfl allowed) ?_)
+  refine .cons (.modify (f := CStore.wsetSetElemsSt ws (applyPerm perm record.elems))
+    (k := fun _ => .op .get (pick (applyPerm perm record.elems))) rfl) ?_
+  refine .cons (.get (k := pick (applyPerm perm record.elems)) rfl) ?_
+  let elems := applyPerm perm record.elems
+  let shuffled := config.store.wsetSetElemsSt ws elems
+  change Steps prof ready dispatch { config with
+    store := shuffled
+    ctl := ⟨thread, .prog (pick elems shuffled), segments⟩ :: rest } [] _
+  have chosen : pick elems shuffled = (Waitable.getPendingEvent selected >>= resume) := by
+    simp only [pick, shuffled, elems, selects]
+  rw [chosen]
+  exact .refl _
+
 private theorem resultLayout (width : AddrType) :
     ABI.layout width resultType = ⟨.four, 2⟩ := by
   simp only [resultType, ABI.layout, ABI.layoutOption, ABI.primitiveLayout]
@@ -402,6 +447,132 @@ private theorem appendSteps {first middle last : Config (core3 grow) (HostState 
   induction lead with
   | refl => exact tail
   | cons step _ ih => exact .cons step (ih tail)
+
+theorem poll_delivers_returned (ws : WsetId) (set : WaitableSet) (perm : List Nat)
+    (subtask : SubtaskId) (record : Subtask) (index : Nat)
+    (setLive : config.store.wset? ws = some set) (member : .subtask subtask ∈ set.elems)
+    (allowed : Allowed prof (.shuffle set.elems.length) perm)
+    (selects : (applyPerm perm set.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask))
+    (live : config.store.subtask? subtask = some record)
+    (returned : record.state = .returned) (indexed : record.index = some index)
+    (eventPending : record.common.pending = some (.subtask subtask))
+    (resume : EventTuple → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetPoll ws >>= resume), segments⟩ :: rest) :
+    let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    Steps prof ready dispatch config [.tau, .tau, .choice (.shuffle set.elems.length) perm, .tau, .tau, .tau, .tau]
+      { config with
+        store := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+          |>.deliverResolveSt subtask
+        ctl := ⟨thread, .prog (resume ⟨.subtask, index, SubtaskState.returned.toNat⟩), segments⟩ :: rest } := by
+  have hasEvent : config.store.wsetHasEvent ws = true := by
+    rw [CStore.wsetHasEvent, setLive]
+    exact List.any_eq_true.mpr ⟨.subtask subtask, member, by simp [CStore.waitableHasEvent, live, eventPending]⟩
+  let shuffled := { config with
+    store := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    ctl := ⟨thread, .prog (Waitable.getPendingEvent (.subtask subtask) >>= resume), segments⟩ :: rest }
+  have selected := poll_selects (prof := prof) (ready := ready) (dispatch := dispatch)
+    ws set perm (.subtask subtask) setLive hasEvent allowed selects resume focused
+  exact appendSteps selected
+    (deliver_pending (config := shuffled) subtask record index live returned indexed eventPending resume rfl)
+
+theorem unpack_event_write (cx : LiftLowerContext (core3 grow)) (ptr address size : Nat) (event : EventTuple)
+    (aligned : ptr % 4 = 0) (memory : cx.opts.memory = some address)
+    (sized : (core3 grow).memSize? config.store.core address = some size) (inBounds : ptr + 8 ≤ size)
+    (resume : Nat → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (unpackEvent cx ptr event >>= resume), segments⟩ :: rest) :
+    let indexed := writeMemSt address ptr (u32Bytes event.index) config.store
+    Steps prof ready dispatch config [.tau, .tau, .tau, .tau, .tau]
+      { config with
+        store := writeMemSt address (ptr + 4) (u32Bytes event.payload) indexed
+        ctl := ⟨thread, .prog (resume event.code.toNat), segments⟩ :: rest } := by
+  have indexWrite : ((core3 grow).memWrite? config.store.core address ptr (u32Bytes event.index)).isSome := by
+    apply Core3.memWrite?_isSome_iff.2
+    exact ⟨size, sized, by change ptr + 4 ≤ size; omega⟩
+  obtain ⟨indexCore, wroteIndex⟩ := Option.isSome_iff_exists.mp indexWrite
+  have indexSize : (core3 grow).memSize? (writeMemSt address ptr (u32Bytes event.index) config.store).core address = some size := by
+    simp only [writeMemSt, wroteIndex]
+    exact (Core3.memWrite?_memSize wroteIndex address).trans sized
+  have payloadWrite : ((core3 grow).memWrite? (writeMemSt address ptr (u32Bytes event.index) config.store).core
+      address (ptr + 4) (u32Bytes event.payload)).isSome := by
+    apply Core3.memWrite?_isSome_iff.2
+    exact ⟨size, indexSize, by change ptr + 4 + 4 ≤ size; omega⟩
+  obtain ⟨payloadCore, wrotePayload⟩ := Option.isSome_iff_exists.mp payloadWrite
+  simp [unpackEvent, checkAligned, aligned, Prog.bind, pure, trapIf, checkInBounds, memLen, memAddr, memory, orTrap] at focused
+  refine .cons (.get focused) ?_
+  simp [sized, Nat.not_lt.mpr inBounds, Prog.bind, writeMem, memAddr, memory, orTrap, pure]
+  refine .cons (.get rfl) ?_
+  simp only [Prog.bind, wroteIndex]
+  refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+  simp only [Prog.bind, wrotePayload]
+  exact .cons (.modify rfl) (.refl _)
+
+theorem unpack_event_bad_alignment (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (event : EventTuple)
+    (misaligned : ptr % 4 ≠ 0) (resume : Nat → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (unpackEvent cx ptr event >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.trap .unalignedPointer] (StepDefs.trapCfg config) := by
+  simp [unpackEvent, checkAligned, misaligned, trapIf, pure] at focused
+  exact .cons (.trap focused) (.refl _)
+
+theorem unpack_event_bad_range (cx : LiftLowerContext (core3 grow)) (ptr address size : Nat) (event : EventTuple)
+    (aligned : ptr % 4 = 0) (memory : cx.opts.memory = some address)
+    (sized : (core3 grow).memSize? config.store.core address = some size) (outside : size < ptr + 8)
+    (resume : Nat → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (unpackEvent cx ptr event >>= resume), segments⟩ :: rest) :
+    Steps prof ready dispatch config [.tau, .trap .outOfBounds] (StepDefs.trapCfg config) := by
+  simp [unpackEvent, checkAligned, aligned, Prog.bind, pure, trapIf, checkInBounds, memLen, memAddr, memory, orTrap] at focused
+  refine .cons (.get focused) ?_
+  simp [sized, outside, Prog.bind]
+  exact .cons (.trap rfl) (.refl _)
+
+private theorem lenders_core (store : CStore (core3 grow)) (lenders : List HandleObjId) :
+    (lenders.foldl (fun acc handle => ArenaField.resHandles.modify acc handle fun entry =>
+      { entry with numLends := entry.numLends - 1 }) store).core = store.core := by
+  induction lenders generalizing store with
+  | nil => rfl
+  | cons handle lenders ih => exact ih (ArenaField.resHandles.modify store handle _)
+
+private theorem delivered_core (store : CStore (core3 grow)) (subtask : SubtaskId) :
+    (store.deliverResolveSt subtask).core = store.core := by
+  unfold CStore.deliverResolveSt
+  split
+  · rfl
+  · exact lenders_core store _
+
+theorem poll_returned_bad_range (ws : WsetId) (set : WaitableSet) (perm : List Nat)
+    (subtask : SubtaskId) (record : Subtask) (index : Nat)
+    (setLive : config.store.wset? ws = some set) (member : .subtask subtask ∈ set.elems)
+    (allowed : Allowed prof (.shuffle set.elems.length) perm)
+    (selects : (applyPerm perm set.elems).find?
+      (config.store.wsetSetElemsSt ws (applyPerm perm set.elems)).waitableHasEvent = some (.subtask subtask))
+    (live : config.store.subtask? subtask = some record)
+    (returned : record.state = .returned) (indexed : record.index = some index)
+    (eventPending : record.common.pending = some (.subtask subtask))
+    (cx : LiftLowerContext (core3 grow)) (ptr address size : Nat)
+    (aligned : ptr % 4 = 0) (memory : cx.opts.memory = some address)
+    (sized : (core3 grow).memSize? config.store.core address = some size) (outside : size < ptr + 8)
+    (resume : Nat → Session grow sig (Ret (core3 grow)))
+    (focused : config.ctl = ⟨thread, .prog (wsetPoll ws >>= fun event => unpackEvent cx ptr event >>= resume),
+      segments⟩ :: rest) :
+    let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+    let delivered := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+      |>.deliverResolveSt subtask
+    Steps prof ready dispatch config
+      [.tau, .tau, .choice (.shuffle set.elems.length) perm, .tau, .tau, .tau, .tau, .tau, .trap .outOfBounds]
+      { config with store := StepDefs.lockdownSt delivered, ctl := [] } := by
+  let shuffled := config.store.wsetSetElemsSt ws (applyPerm perm set.elems)
+  let delivered := (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none })
+    |>.deliverResolveSt subtask
+  let event : EventTuple := ⟨.subtask, index, SubtaskState.returned.toNat⟩
+  let reached := { config with
+    store := delivered
+    ctl := ⟨thread, .prog (unpackEvent cx ptr event >>= resume), segments⟩ :: rest }
+  have sameCore : reached.store.core = config.store.core :=
+    delivered_core (shuffled.modifyWaitableCommon (.subtask subtask) fun common => { common with pending := none }) subtask
+  have poll := poll_delivers_returned (prof := prof) (ready := ready) (dispatch := dispatch)
+    ws set perm subtask record index setLive member allowed selects live returned indexed eventPending _ focused
+  exact appendSteps poll (unpack_event_bad_range (config := reached) cx ptr address size event aligned memory
+    (by rw [sameCore]; exact sized) outside resume rfl)
 
 theorem resolve_linked_commit (callee : Callee sig) (ticket : Nat) (caller : CallerId)
     (tree : Tree sig) (writer : State sig) (subtask : SubtaskId) (record : Subtask)

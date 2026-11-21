@@ -1071,9 +1071,14 @@ without clearing the pending event or releasing lends. `resolve_linked_commit` c
 these steps from the linked resolve entry: both linked modes spill this result, and
 queueing preserves the memory observed at entry. An indexed subtask retains the newly
 queued event after resolution; an unindexed one keeps its original slot.
-`deliver_pending` takes the actual
-returned event and applies reference lend release in a later waitable step. Neither publication
-nor the presence of an event guarantees that a guest polls or that its event write succeeds.
+`deliver_pending` takes the actual returned event and applies reference lend release in a
+later waitable step. `poll_delivers_returned` derives readiness from a reached member's
+pending slot and executes the selected shuffle before consuming that event. The partial trace
+includes the actual shuffle label and its persisted order. `unpack_event_write` executes
+both event words on a valid buffer. On a late out-of-bounds buffer, `poll_returned_bad_range`
+locks down after consumption and lend release without writing either word or changing the
+reached host. These rules start at the reached poll body; they do not prove public builtin
+admission, wait/cancel sequencing, or that publication guarantees a guest polls.
 The linked replays cover a misaligned result pointer, and a late out-of-bounds poll write
 that traps after consuming the event while preserving the earlier publication.
 `ComponentCall.checked_of_session` gives publication, writer and transcript conservation
