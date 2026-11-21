@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Thms
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -55,6 +56,14 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | cancelReturned cancel pending available => exact cancel.delivers_returned pending available
   | cancelReply cancel record focused live cancelled pending =>
     exact cancel.finish_cancelled_callback _ record focused live cancelled pending
+  | cancelRequest cancel record live unresolved notDelivered notRequested notJoined =>
+    exact cancel.requests record live unresolved notDelivered notRequested notJoined
+  | cancelReentry request mode saved => exact request.reenters mode saved
+  | cancelCallbackDone request => exact request.returns_from_callback
+  | cancelPark wait => exact wait.blocks
+  | cancelResume resume saved => exact resume.resumes saved
+  | cancelTake resume pending => exact resume.delivers_returned pending
+  | callbackCancelled wait focused live pending chosen => exact wait.cancel_calls_core focused live pending chosen
   | callbackPark wait availability => exact wait.parks availability
   | callbackResume resume saved => exact resume.resumes saved
   | callbackTake wait kind focused live noCancel setLive allowed selects tracked resolved pending chosen =>
@@ -126,5 +135,25 @@ theorem giveReturned {route : GiveEffectRoute} {bindings : List (Binding sig)} {
   obtain ⟨checkRun, canonRun⟩ := agreement checkLabels canonLabels checked canonical
   exact ⟨checkLabels, canonLabels, left, right, .giveReturned site value rfl checkRun canonRun seen replies,
     appendSteps canonRun.steps (replies.2.1 _), seen, replies⟩
+
+theorem startedCancelDelivery {initial atHost : State grow sig} {target : SubtaskId} {index : Nat}
+    {cancel : ParkedCancel initial target} (request : StartedCancel cancel) (synchronous : cancel.async_ = false)
+    {actions labels} (interleaving : Run profile ready impl (request.syncWait synchronous).blocked actions labels atHost)
+    (occurrence : ReturnFrame.Occurrence.ParkedPrefix profile ready (specDispatch ready impl) cancel.thread
+      (request.syncWait synchronous).blocked labels atHost)
+    (tick : SelectedTick cancel.thread atHost ready profile) (pending : PendingAt atHost.store target index) :
+    let resume := SyncCancelResume.afterTick tick tick.waiting
+    Run profile ready impl initial
+      (.cancelCallbackDone target :: .cancelPark target :: (actions ++ [.tick cancel.thread, .cancelResume target, .cancel target .returned]))
+      (List.replicate 20 .tau ++ (List.replicate 5 .tau ++ (labels ++
+        (tick.selectionLabels ++ (List.replicate 3 .tau ++ List.replicate 6 .tau))))) resume.delivered := by
+  let resume : SyncCancelResume cancel tick.atResume := SyncCancelResume.afterTick tick tick.waiting
+  have saved : tick.atResume.cont? cancel.thread = some cancel.saved :=
+    occurrence.reaches.2.trans (Config.cont?_setCont_self _ _ _)
+  have wakes : Run profile ready impl atHost [.tick cancel.thread, .cancelResume target, .cancel target .returned]
+      (tick.selectionLabels ++ (List.replicate 3 .tau ++ List.replicate 6 .tau)) resume.delivered := by
+    refine .next (.tick tick) (.next (.cancelResume resume saved) ?_)
+    exact .next (.cancelTake resume pending) (.stop _)
+  exact .next (.cancelCallbackDone request) (.next (.cancelPark (request.syncWait synchronous)) (runAppend interleaving wakes))
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession

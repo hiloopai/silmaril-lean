@@ -902,7 +902,7 @@ theorem startedCancelBlocks (cancel : ParkedCancel parked subtask) (request : St
   exact appendSteps (cancelStartedReturns cancel request)
     (syncCancelBlocks cancel (startedCancelWait cancel request synchronous))
 
-private theorem resumeSyncCancel {atResume} (cancel : ParkedCancel parked subtask)
+theorem resumeSyncCancel {atResume} (cancel : ParkedCancel parked subtask)
     (resume : SyncCancelResume cancel atResume) (saved : atResume.cont? cancel.thread = some cancel.saved) :
     Steps profile ready (specDispatch ready impl) atResume (List.replicate 3 .tau) resume.reached := by
   have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) resume.focused

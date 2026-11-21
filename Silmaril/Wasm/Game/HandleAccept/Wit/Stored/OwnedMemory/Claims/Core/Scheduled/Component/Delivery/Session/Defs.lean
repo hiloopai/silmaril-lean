@@ -69,6 +69,12 @@ inductive Action where
   | waitEnter (thread : ThreadId) (early : Bool)
   | waitResume (thread : ThreadId)
   | cancel (target : SubtaskId) (state : SubtaskState)
+  | cancelRequest (target : SubtaskId)
+  | cancelReentry (target : SubtaskId) (thread : ThreadId)
+  | cancelCallbackDone (target : SubtaskId)
+  | cancelPark (target : SubtaskId)
+  | cancelResume (target : SubtaskId)
+  | callbackCancelled (thread : ThreadId)
   | callbackPark (thread : ThreadId)
   | callbackResume (thread : ThreadId)
   | callbackTake (target : SubtaskId) (event : EventTuple)
@@ -133,6 +139,30 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (cancelled : record.state = .cancelledBeforeStarted ∨ record.state = .cancelledBeforeReturned)
       (pending : record.common.pending = some (.subtask target)) :
       Transition profile ready impl start (.cancel target record.state) (List.replicate 8 .tau) (cancel.cancelledReply start record.state)
+  | cancelRequest {start target} (cancel : ParkedCancel start target) (record : Subtask)
+      (live : start.store.subtask? target = some record) (unresolved : record.state.resolved = false)
+      (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+      (notJoined : record.common.wset = none) :
+      Transition profile ready impl start (.cancelRequest target) (List.replicate 14 .tau) (cancel.callbackEntry record ready impl)
+  | cancelReentry {start target callee} {cancel : ParkedCancel start target} (request : TaskCancelAdmission cancel)
+      (mode : TaskCancelReentry request ready) (saved : start.cont? request.implicitThread = some callee) :
+      Transition profile ready impl start (.cancelReentry target request.implicitThread)
+        (List.replicate request.reentrySteps .tau) (request.reentered callee)
+  | cancelCallbackDone {start target} {cancel : ParkedCancel start target} (request : StartedCancel cancel) :
+      Transition profile ready impl start (.cancelCallbackDone target) (List.replicate 20 .tau) request.callbackReturned
+  | cancelPark {initial start target} {cancel : ParkedCancel initial target} (wait : SyncCancelWait cancel start) :
+      Transition profile ready impl start (.cancelPark target) (List.replicate 5 .tau) wait.blocked
+  | cancelResume {initial start target} {cancel : ParkedCancel initial target} (resume : SyncCancelResume cancel start)
+      (saved : start.cont? cancel.thread = some cancel.saved) :
+      Transition profile ready impl start (.cancelResume target) (List.replicate 3 .tau) resume.reached
+  | cancelTake {initial atResume target index} {cancel : ParkedCancel initial target} (resume : SyncCancelResume cancel atResume)
+      (pending : PendingAt resume.reached.store target index) :
+      Transition profile ready impl resume.reached (.cancel target .returned) (List.replicate 6 .tau) resume.delivered
+  | callbackCancelled {start rest liveTask callback} (wait : CallbackWait grow sig) (focused : start.ctl = wait.saved :: rest)
+      (live : start.store.task? wait.taskId = some liveTask) (pending : liveTask.state = .pendingCancel)
+      (chosen : wait.task.opts.callback = some callback) :
+      Transition profile ready impl start (.callbackCancelled wait.thread) (List.replicate wait.cancelSteps .tau)
+        (wait.called start callback rest)
   | callbackPark {start rest available} (wait : CallbackWait grow sig)
       (availability : wait.condition.eval (fun _ => false) (wait.released start.store) = available) :
       Transition profile ready impl (wait.entry start rest) (.callbackPark wait.thread) (wait.parkLabels available) (wait.blocked start rest)

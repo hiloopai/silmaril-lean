@@ -390,6 +390,12 @@ theorem SyncCancelResume.resumes_tracked {cancel : ParkedCancel parked subtask}
     Steps profile ready (specDispatch ready impl) wait.blocked (leading ++ List.replicate 3 .tau) resume.reached :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.syncCancelResumes cancel wait resume prefixRun
 
+theorem SyncCancelResume.resumes {cancel : ParkedCancel parked subtask}
+    {atResume : Config (core3 grow) (HostState sig)} (resume : SyncCancelResume cancel atResume)
+    (saved : atResume.cont? cancel.thread = some cancel.saved) :
+    Steps profile ready (specDispatch ready impl) atResume (List.replicate 3 .tau) resume.reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeSyncCancel cancel resume saved
+
 /-- After resumption, a reached pending return is consumed before the same
 Core caller receives its reply. This uses the reached event, not the request-time state. -/
 theorem SyncCancelResume.delivers_returned {cancel : ParkedCancel parked subtask}

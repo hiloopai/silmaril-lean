@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Traversal.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
@@ -107,5 +108,22 @@ theorem linked_flat_root {schema : Stored.TypeOf} {bindings : List (Binding sig)
   obtain ⟨flatDepth, entryDepth, cut⟩ := LinkedCallback.MemorySequence.parked_flat_rejoined (profile := profile) (ready := ready)
     site linked (hostWithComponent bindings callees)
   exact ⟨flatDepth, entryDepth, Transition.give_root site linked cut⟩
+
+/-- Start an actual synchronous cancel, park its Core caller, allow a finite
+classified interleaving, and deliver after the scheduler chooses that saved
+occurrence. The returned event need only be pending at the reached tick. -/
+theorem Run.started_cancel_delivery {initial atHost : State grow sig} {target : SubtaskId} {index : Nat}
+    {cancel : ParkedCancel initial target} (request : StartedCancel cancel) (synchronous : cancel.async_ = false)
+    {actions labels} (interleaving : Run profile ready impl (request.syncWait synchronous).blocked actions labels atHost)
+    (occurrence : ReturnFrame.Occurrence.ParkedPrefix profile ready (specDispatch ready impl) cancel.thread
+      (request.syncWait synchronous).blocked labels atHost)
+    (tick : SelectedTick cancel.thread atHost ready profile) (pending : PendingAt atHost.store target index) :
+    let resume := SyncCancelResume.afterTick tick tick.waiting
+    Run profile ready impl initial
+      (.cancelCallbackDone target :: .cancelPark target :: (actions ++ [.tick cancel.thread, .cancelResume target, .cancel target .returned]))
+      (List.replicate 20 .tau ++ (List.replicate 5 .tau ++ (labels ++
+        (tick.selectionLabels ++ (List.replicate 3 .tau ++ List.replicate 6 .tau))))) resume.delivered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.startedCancelDelivery
+    request synchronous interleaving occurrence tick pending
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession
