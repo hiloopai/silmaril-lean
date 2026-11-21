@@ -1313,9 +1313,15 @@ loop and descriptor cut. Direct map elements use the actual canonical
 record stores. Indirect map elements instead place the key and value using
 the allocation-time layout, even when a string key allocates before the
 value is written. Map keys in this fragment are bool, u32, or string; an
-empty map still supplies both shapes. General variants, results, resources,
-and arbitrary component host reentry remain outside this worker argument
-proof.
+empty map still supplies both shapes. Variants and results now traverse their
+selected, possibly allocating payload in the same induction. Inactive arms
+contribute their actual schemas to the layout and joined flat slots but
+do not execute. The memory tag is written before the payload can suspend
+or trap. The flat path runs canonical coercion (including admissible NaN
+choices) and padding only after the payload completes. This is a paired
+canonical worker path, not checked schema admission or a proof of agreement
+between distinct checked and canonical states. Resources and arbitrary
+component host reentry remain outside this worker argument proof.
 
 `finish_stackful_after_arguments` continues the reached Core entry along a
 selected finite body. Guest-only paths classify without a host premise;

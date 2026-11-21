@@ -6,6 +6,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Component.Reference.Canon.Prog.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
+import Silmaril.Wasm.Component.Reference.Machine.Oracle.Defs
 
 public section
 
@@ -476,6 +477,104 @@ private theorem sumTag (context : LiftLowerContext (core3 grow)) (payloadAlign :
   exact mapPair next (fun _ : Unit => (width, address width))
     (argumentWrite context ptr bytes _ afterWidth cursor rfl)
 
+private inductive SlotOp : (Eff (core3 grow) (HostState sig)).Op → Prop where
+  | nan (kind : FloatType) (bits : BitVec kind.width) : SlotOp (.choose (.nan kind bits))
+  | trap (reason : TrapReason) : SlotOp (.trap reason)
+
+private theorem slotBind {Input Result : Type} {program : Session grow sig Input}
+    {next : Input → Session grow sig Result} (localOps : Prog.Every SlotOp program)
+    (tail : ∀ value, Prog.Every SlotOp (next value)) : Prog.Every SlotOp (program >>= next) := by
+  induction localOps with
+  | pure value => exact tail value
+  | op allowed _ ih => exact .op allowed ih
+
+private theorem slotEncode (kind : FloatType) (bits : BitVec kind.width) :
+    Prog.Every (S := Eff (core3 grow) (HostState sig)) SlotOp (encodeFloat kind bits) := by
+  apply slotBind _ (fun _ => .pure _)
+  unfold lowerFloat
+  split
+  · exact .op (.nan kind bits) (fun _ => .pure _)
+  · exact .pure _
+
+private theorem slotCoerce (haveType wantType : CoreType) (word : FlatValue) :
+    Prog.Every (S := Eff (core3 grow) (HostState sig)) SlotOp (coerceLower haveType wantType word) := by
+  unfold coerceLower
+  split <;> first | exact .pure _ | exact slotBind (slotEncode _ _) (fun _ => .pure _)
+
+private theorem slotList (haveTypes wantTypes : List CoreType) (words : List FlatValue) :
+    Prog.Every (S := Eff (core3 grow) (HostState sig)) SlotOp (coerceLowerSlots haveTypes wantTypes words) := by
+  induction haveTypes generalizing wantTypes words with
+  | nil => exact .pure _
+  | cons haveType haveTypes ih =>
+    cases words with
+    | nil => cases wantTypes <;> exact .pure _
+    | cons word words =>
+      cases wantTypes with
+      | nil => exact .op (.trap _) (fun answer => nomatch answer)
+      | cons wantType wantTypes =>
+        exact slotBind (slotCoerce haveType wantType word) (fun _ =>
+          slotBind (ih wantTypes words) (fun _ => .pure _))
+
+private theorem runSlots {Result : Type} {program : Session grow sig Result}
+    (localOps : Prog.Every SlotOp program) (next : Result → Session grow sig (Ret (core3 grow)))
+    (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (program >>= next)) :
+    StringPlanPair profile ready bindings callees start next := by
+  induction localOps generalizing start with
+  | pure result => exact ⟨[], start, .refl _, .refl _, .complete cursor result focused⟩
+  | op allowed _ ih =>
+    cases allowed with
+    | trap reason =>
+      exact ⟨[.trap reason], _, .cons (.trap focused) (.refl _), .cons (.trap focused) (.refl _), .trap (leading := []) reason⟩
+    | nan kind bits =>
+      let answer := firstNan profile kind bits
+      have admissible : Allowed profile (.nan kind bits) answer := firstNan_allowed profile kind bits
+      apply prependPair (.cons (.choose answer focused admissible) (.refl _))
+        (.cons (.choose answer focused admissible) (.refl _))
+      exact ih answer _ rfl
+
+private theorem storeSelectedCase (context : LiftLowerContext (core3 grow))
+    (before after : List (String × Option Stored.TypeOf)) (label : String)
+    (payload : Option Value.Val) (type : Option Stored.TypeOf) (address : Nat) :
+    (storeCase .spec .none context before.length payload (before ++ (label, type) :: after) address : Session grow sig Unit) =
+      storeOpt .spec .none context payload type address := by
+  induction before with
+  | nil => simp only [List.length_nil, List.nil_append, storeCase.eq_def]
+  | cons entry before ih =>
+    rcases entry with ⟨name, schema⟩
+    rw [List.length_cons, List.cons_append, storeCase.eq_def]
+    exact ih
+
+private theorem flatSelectedCase (context : LiftLowerContext (core3 grow)) (width : AddrType)
+    (before after : List (String × Option Stored.TypeOf)) (label : String)
+    (payload : Option Value.Val) (type : Option Stored.TypeOf) :
+    (lowerFlatCase .spec .none context width before.length payload (before ++ (label, type) :: after) :
+      Session grow sig (List FlatValue)) = lowerFlatOpt .spec .none context width payload type := by
+  induction before with
+  | nil => rfl
+  | cons entry before ih => rcases entry with ⟨_, _⟩; exact ih
+
+private theorem sumStore (context : LiftLowerContext (core3 grow)) (shape : ArgumentSum)
+    (payload : Option Value.Val) (type : Option Stored.TypeOf) (ptr : Nat) :
+    (store .spec .none context (.variant shape.tag payload) (shape.type type) ptr : Session grow sig Unit) = (do
+      let width ← ptrType context
+      let address ← storeVariantHead context shape.count (shape.alignment type width) shape.tag ptr
+      storeOpt .spec .none context payload type address) := by
+  cases shape <;> simp only [ArgumentSum.type, ArgumentSum.tag, ArgumentSum.count, ArgumentSum.alignment, store.eq_def,
+    List.length_append, List.length_cons, storeSelectedCase]
+
+private theorem sumFlat (context : LiftLowerContext (core3 grow)) (width : AddrType) (shape : ArgumentSum)
+    (payload : Option Value.Val) (type : Option Stored.TypeOf) :
+    (lowerFlatAt .spec .none context width (.variant shape.tag payload) (shape.type type) : Session grow sig (List FlatValue)) =
+      lowerFlatVariantWith shape.count (shape.joined type width) shape.tag (flattenOption width type)
+        (lowerFlatOpt .spec .none context width payload type) := by
+  cases shape <;> simp only [ArgumentSum.type, ArgumentSum.tag, ArgumentSum.count, ArgumentSum.joined, lowerFlatAt,
+    List.length_append, List.length_cons, caseFlat, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self,
+    List.getElem?_cons_zero, flatSelectedCase, resultWants]
+
+private theorem sumTagFits (shape : ArgumentSum) : shape.tag < shape.count := by
+  cases shape <;> simp [ArgumentSum.tag, ArgumentSum.count]
+
 private theorem flatFieldNames (context : LiftLowerContext (core3 grow)) (width : AddrType)
     (values : List Value.Val) (types : List (String × Stored.TypeOf)) :
     (lowerFlatFields .spec .none context width values types : Session grow sig (List FlatValue)) =
@@ -620,6 +719,57 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
         2 1 ptr tail start cursor tagAt)
         (fun last reached placed nextAt => lowerArgument context placed.1 (.memory placed.2) next choose payload typed
           last reached nextAt)
+  | @sum shape payload typed =>
+    cases output with
+    | flat =>
+      change List FlatValue → Session grow sig (Ret (core3 grow)) at next
+      let type := payload.map ArgumentField.type
+      let joined := shape.joined type width
+      let haveTypes := flattenOption width type
+      let finish := fun words => (coerceLowerSlots haveTypes joined words).bind fun result =>
+        next (i32Flat shape.tag :: (result.1 ++ result.2.map Execution.Runtime.Value.zero))
+      have finishPair : ∀ (last : State grow sig) (reached : Cursor (E := core3 grow) (HostState sig)) words,
+          last.ctl = reached.control (finish words) →
+          StringPlanPair profile ready bindings callees last next := by
+        intro last reached words atFinish
+        exact mapPair next (fun result : List FlatValue × List CoreType =>
+          i32Flat shape.tag :: (result.1 ++ result.2.map Execution.Runtime.Value.zero))
+          (runSlots (slotList haveTypes joined words) _ last reached atFinish)
+      cases payload with
+      | none =>
+        apply finishPair start cursor []
+        rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, sumFlat, lowerFlatVariantWith,
+          ite_eq_left (sumTagFits shape), lowerFlatOpt] at focused
+        change start.ctl = cursor.control (Prog.bind _ next) at focused
+        simpa only [Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind',
+          finish, haveTypes, joined, type, Option.map_none] using focused
+      | some child =>
+        apply continuePair (lowerArgument context width .flat finish choose child (typed child rfl) start cursor ?_) finishPair
+        change start.ctl = cursor.control (Prog.bind (child.lower context width .flat) finish)
+        rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, sumFlat, lowerFlatVariantWith,
+          ite_eq_left (sumTagFits shape), lowerFlatOpt] at focused
+        change start.ctl = cursor.control (Prog.bind _ next) at focused
+        simp only [ArgumentField.lower, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind',
+          finish, haveTypes, joined, type, Option.map_some] at focused ⊢
+        exact focused
+    | memory ptr =>
+      change Unit → Session grow sig (Ret (core3 grow)) at next
+      cases payload with
+      | none =>
+        exact mapPair next (fun _ : AddrType × Nat => ()) (sumTag context (shape.alignment none) shape.count
+          shape.tag ptr (fun _ => next ()) start cursor (by
+            rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, sumStore] at focused
+            change start.ctl = cursor.control (Prog.bind _ next) at focused
+            simpa only [storeOpt, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind'] using focused))
+      | some child =>
+        let tail := fun placed : AddrType × Nat => Prog.bind (child.lower context placed.1 (.memory placed.2)) next
+        refine continuePair (sumTag context (shape.alignment (some child.type)) shape.count shape.tag ptr tail
+          start cursor ?_) (fun last reached placed atChild =>
+            lowerArgument context placed.1 (.memory placed.2) next choose child (typed child rfl) last reached atChild)
+        rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, sumStore] at focused
+        change start.ctl = cursor.control (Prog.bind _ next) at focused
+        simp only [tail, ArgumentField.lower, storeOpt, Prog.bind_eq, Prog.bind_assoc] at focused ⊢
+        exact focused
   | @list element members _ typed schema =>
     cases output with
     | flat =>

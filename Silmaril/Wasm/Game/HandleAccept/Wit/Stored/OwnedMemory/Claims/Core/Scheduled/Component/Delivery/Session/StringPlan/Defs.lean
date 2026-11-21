@@ -65,6 +65,41 @@ def stringArgumentValues (values : List Value.StrVal) : List Value.Val := values
 
 def stringArgumentTypes (values : List Value.StrVal) : List Stored.TypeOf := values.map (fun _ => .prim .string)
 
+/-- A selected sum arm. Inactive arms keep their schemas, not fabricated
+values. The selected schema comes from the actual payload witness. -/
+inductive ArgumentSum where
+  | variant (before : List (String × Option Stored.TypeOf)) (label : String)
+      (after : List (String × Option Stored.TypeOf))
+  | resultOk (err : Option Stored.TypeOf)
+  | resultErr (ok : Option Stored.TypeOf)
+
+def ArgumentSum.type (shape : ArgumentSum) (payload : Option Stored.TypeOf) : Stored.TypeOf :=
+  match shape with
+  | .variant before label after => .variant (before ++ (label, payload) :: after)
+  | .resultOk err => .result payload err
+  | .resultErr ok => .result ok payload
+
+def ArgumentSum.tag : ArgumentSum → Nat
+  | .variant before _ _ => before.length
+  | .resultOk _ => 0
+  | .resultErr _ => 1
+
+def ArgumentSum.count : ArgumentSum → Nat
+  | .variant before _ after => before.length + (after.length + 1)
+  | .resultOk _ | .resultErr _ => 2
+
+def ArgumentSum.alignment (shape : ArgumentSum) (payload : Option Stored.TypeOf) (width : AddrType) : ABI.Alignment :=
+  ABI.maxCaseAlignment <| match shape with
+  | .variant before label after => ABI.layoutCases width (before ++ (label, payload) :: after)
+  | .resultOk err => [ABI.layoutOption width payload, ABI.layoutOption width err]
+  | .resultErr ok => [ABI.layoutOption width ok, ABI.layoutOption width payload]
+
+def ArgumentSum.joined (shape : ArgumentSum) (payload : Option Stored.TypeOf) (width : AddrType) : List CoreType :=
+  match shape with
+  | .variant before label after => variantPayload (flattenCases width (before ++ (label, payload) :: after))
+  | .resultOk err => joinFlat (flattenOption width payload) (flattenOption width err)
+  | .resultErr ok => joinFlat (flattenOption width ok) (flattenOption width payload)
+
 /-- The supported canonical argument trees. The same tree names the checked
 shape and supplies the actual canonical value, including tuple arity. -/
 inductive ArgumentField where
@@ -74,6 +109,7 @@ inductive ArgumentField where
   | record (members : List (String × ArgumentField))
   | optionNone (payloadShape : ArgumentField)
   | optionSome (payload : ArgumentField)
+  | sum (shape : ArgumentSum) (payload : Option ArgumentField)
   | list (elementShape : ArgumentField) (members : List ArgumentField)
   | map (key : WIT.KeyType) (keyShape valueShape : ArgumentField) (members : List (ArgumentField × ArgumentField))
 
@@ -98,6 +134,8 @@ def ArgumentField.type : ArgumentField → Stored.TypeOf
   | .record members => .record (members.map fun member => (member.1, type member.2))
   | .optionNone payloadShape => .option (type payloadShape)
   | .optionSome payload => .option (type payload)
+  | .sum shape none => shape.type none
+  | .sum shape (some payload) => shape.type (some (type payload))
   | .list elementShape _ => .list (type elementShape)
   | .map key _ valueShape _ => .map key (type valueShape)
 termination_by field => sizeOf field
@@ -112,12 +150,15 @@ def ArgumentField.value : ArgumentField → Value.Val
   | .record members => .record (members.map fun member => value member.2)
   | .optionNone _ => .variant 0 none
   | .optionSome payload => .variant 1 (some (value payload))
+  | .sum shape none => .variant shape.tag none
+  | .sum shape (some payload) => .variant shape.tag (some (value payload))
   | .list _ members => .list (members.map value)
   | .map _ _ _ members => .list (members.map fun member => .record [value member.1, value member.2])
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf
   all_goals first
+    | omega
     | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega
     | have := namedArgumentSize ‹_ ∈ _›; omega
     | obtain ⟨_, _⟩ := mapArgumentSizes ‹_ ∈ _›; omega
@@ -132,6 +173,8 @@ inductive ArgumentField.Valid : ArgumentField → Prop where
   | record {members : List (String × ArgumentField)} (typed : ∀ child ∈ members, Valid child.2) : Valid (.record members)
   | optionNone {child : ArgumentField} (typed : Valid child) : Valid (.optionNone child)
   | optionSome {child : ArgumentField} (typed : Valid child) : Valid (.optionSome child)
+  | sum {shape : ArgumentSum} {payload : Option ArgumentField}
+      (typed : ∀ child, payload = some child → Valid child) : Valid (.sum shape payload)
   | list {shape : ArgumentField} {members : List ArgumentField} (shapeTyped : Valid shape)
       (typed : ∀ child ∈ members, Valid child) (schema : ∀ child ∈ members, child.type = shape.type) : Valid (.list shape members)
   | map {key : WIT.KeyType} {keyShape valueShape : ArgumentField} {members : List (ArgumentField × ArgumentField)}
