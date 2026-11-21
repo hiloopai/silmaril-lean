@@ -170,7 +170,7 @@ theorem ofRejoined (site : PayloadRoot.Site grow sig route) (linked : site.Linke
       LiveSession profile ready bindings callees left after tailActions finish) :
     LiveSession profile ready bindings callees start incoming
       ((actions ++ [.give route .entered, .give route .returned]) ++ tailActions) finish := by
-  obtain ⟨⟨checkLabels, canonLabels, seen, checked, canonical⟩, left, right, replies⟩ := comparison
+  obtain ⟨⟨checkLabels, canonLabels, seen, checked, canonical, _⟩, left, right, replies⟩ := comparison
   obtain ⟨checkRun, canonRun⟩ := agreement checkLabels canonLabels checked canonical
   exact .returned site linked between roots entry value checkRun canonRun replies seen (observes canonRun replies) (tail replies)
 

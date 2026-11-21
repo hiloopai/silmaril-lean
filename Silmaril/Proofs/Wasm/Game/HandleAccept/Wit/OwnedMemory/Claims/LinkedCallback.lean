@@ -81,10 +81,25 @@ theorem replayMarked {left right last : State grow sig} {visibleLabels}
     · exact (List.filter_append [_] leftLabels).trans (congrArg (PayloadPrefix.visible [_] ++ ·) seenLeft)
     · exact (List.filter_append [_] rightLabels).trans (congrArg (PayloadPrefix.visible [_] ++ ·) seenRight)
   | closedGive callout _ ih =>
-    obtain ⟨leftCount, rightCount, _, _, _, lhs, rhs, _, matched, _, _, leftTrack, rightTrack⟩ :=
+    obtain ⟨leftCount, rightCount, nextRight, rightFrames, rightRest, lhs, rhs, _, matched, _, _, leftTrack,
+      rightTrack, rightParked, nextState⟩ :=
       Plain.parked_closed_give_rejoin bindings callout.name callout.type callout.args callout.inst
         callout.destination callout.schema paired callout.thread profile ready callout.parked
         callout.calling callout.linked callout.caller callout.live callout.closed
+    have sameStore := paired.data.1
+    let peer : ClosedGive bindings right :=
+      { callout with
+        frames := rightFrames
+        rest := rightRest
+        parked := rightParked
+        calling := by rw [← sameStore]; exact callout.calling
+        caller := by rw [← sameStore]; exact callout.caller
+        live := by rw [← sameStore]; exact callout.live }
+    have sameWords : peer.reply.2 = callout.reply.2 := by
+      cases calloutSchema : callout.schema <;> simp [peer, ClosedGive.reply, calloutSchema, completion, flatCompletion]
+    have nextEq : nextRight = peer.resume := by
+      rw [nextState, ClosedGive.resume, sameWords, ← sameStore]
+      rfl
     have nextOutside := fun place offMark first second leftAt rightAt => outside place offMark first second
       ((Occurrence.prefix_survives (leftTrack place)).2.symm.trans leftAt)
       ((Occurrence.prefix_survives (rightTrack place)).2.symm.trans rightAt)
@@ -92,7 +107,7 @@ theorem replayMarked {left right last : State grow sig} {visibleLabels}
       leftTrail, rightTrail, trace⟩ := ih matched nextOutside
     refine ⟨_, _, other, reached, lhs.append leftTail, rhs.append rightTail, still, ?_, ?_, remaining,
       (trailUnchanged lhs.steps leftTrack mark).append leftTrail, (trailUnchanged rhs.steps rightTrack mark).append rightTrail,
-      .closedGive callout paired lhs.steps rhs.steps trace⟩
+      .closedGive callout peer lhs.steps (nextEq ▸ rhs.steps) (nextEq ▸ trace)⟩
     · rw [PayloadPrefix.visible, List.filter_append]
       exact (congrArg (· ++ PayloadPrefix.visible leftLabels) (silent leftCount)).trans seenLeft
     · rw [PayloadPrefix.visible, List.filter_append]
@@ -101,6 +116,15 @@ theorem replayMarked {left right last : State grow sig} {visibleLabels}
     let chooseNext := syncLiftCandidates (E := core3 grow) (σ := HostState sig) task
     let residual := chooseNext (start.store.instCandidates (ready start.host) inst)
     obtain ⟨otherFrames, otherRest, atOther, matched⟩ := paired.retarget focused (.prog residual) start.host right.host
+    have sameStore := paired.data.1
+    have rightFocused : right.ctl = ⟨thread, .prog (.op .hostGet (fun current =>
+        syncLiftCandidates task (right.store.instCandidates (ready current) inst))), otherFrames⟩ :: otherRest := by
+      simpa only [← sameStore] using atOther
+    have rightAgrees : ReadyAgreement ready right inst := by
+      rw [ReadyAgreement, ← sameStore]
+      intro entry live thread member suspended found blocked query condition other
+      exact (agrees entry live thread member suspended found blocked query condition right.host).symm.trans
+        (agrees entry live thread member suspended found blocked query condition other)
     have candidates := HostFrame.instCandidates_eq start.store inst (ready start.host) (ready right.host)
       (fun entry live thread member suspended found blocked query condition =>
         agrees entry live thread member suspended found blocked query condition right.host)
@@ -119,7 +143,7 @@ theorem replayMarked {left right last : State grow sig} {visibleLabels}
     refine ⟨.tau :: leftLabels, .tau :: rightLabels, other, reached,
       .cons (by simp [CoreUpdateGrows, focused]) (.hostGet focused) lhs,
       .cons (by simp [CoreUpdateGrows, atOther]) stepRight rhs, still, seenLeft, seenRight, remaining, ?_, ?_,
-      .syncReady focused agrees stepRight trace⟩
+      .syncReady focused agrees rightFocused rightAgrees (by simpa only [← sameStore, ← candidates] using trace)⟩
     · exact .step (.hostGet focused) (by
         rw [show mark.bind (Occurrence.transitionEdit start .tau).follow = mark by
           rw [Occurrence.transitionEdit, focused]; cases mark <;> rfl]; exact leftTrail)
@@ -942,6 +966,7 @@ private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) 
     {cursor canonCursor : Cursor (E := core3 grow) (HostState sig)}
     (lhs : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) left leftLabels last)
     (rhs : CoreGrowthSteps profile ready (specDispatch ready (host bindings)) right rightLabels other)
+    (classified : ReplayTrace profile ready bindings left leftLabels last right rightLabels other)
     (checkTrail : Occurrence.Trail profile ready (specDispatch ready (host bindings)) left mark leftLabels last mark)
     (canonTrail : Occurrence.Trail profile ready (specDispatch ready (host bindings)) right mark rightLabels other mark)
     (reached : HostFrame.Related.Paired changes last other)
@@ -980,7 +1005,8 @@ private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) 
         RangeCutOver profile ready bindings older first left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark := by
       obtain ⟨checkCount, checked⟩ := checked
       obtain ⟨canonCount, canonical⟩ := canonical
-      refine .trapped (reason := reason) frame.store (append lhs.steps checked) (append rhs.steps canonical) ?_ ?_
+      refine .trapped (reason := reason) frame.store (append lhs.steps checked) (append rhs.steps canonical)
+        (classified.append (.segments checked canonical)) ?_ ?_
       · rw [show visible (leftLabels ++ (List.replicate checkCount .tau ++ [.trap reason])) =
           visible leftLabels ++ (visible (List.replicate checkCount .tau) ++ visible [.trap reason]) from by
           simp only [visible, List.filter_append], seenLeft, silent checkCount]; rfl
@@ -1005,7 +1031,9 @@ private theorem rangeAtReturn (destination : RecordDestination) (inst : InstId) 
         simpa only [Cursor.control, canonThread] using canonTracks
       refine .reached (canonCursor := canonCursor) width reachedSize (Classical.not_not.mp unaligned) fits frame lhs.grows
         ⟨leftLabels, checkLabels, rfl, lhs.steps, checkTrail, checkTracks⟩
-        ⟨rightLabels, canonLabels, rfl, rhs.steps, canonTrail, canonRun⟩ ?_ ?_
+        ⟨rightLabels, canonLabels, rfl, rhs.steps, canonTrail, canonRun⟩
+        (classified.append (.segments (Occurrence.prefix_survives (checkTracks 0)).1
+          (Occurrence.prefix_survives (canonRun 0)).1)) ?_ ?_
       · rw [show visible (leftLabels ++ checkLabels) = visible leftLabels ++ visible checkLabels from List.filter_append ..,
           seenLeft, hide checkSilent, List.append_nil]
       · rw [show visible (rightLabels ++ canonLabels) = visible rightLabels ++ visible canonLabels from List.filter_append ..,
@@ -1032,9 +1060,10 @@ theorem rangeCutOver (destination : RecordDestination) (inst : InstId) (area : L
     (canonBody : ∀ resume, changes first resume →
       resume (.nat pointer) = (validateListRange (destination.context inst) area count pointer >>= canonNext)) :
     RangeCutOver profile ready bindings changes first left right last cursor destination area count pointer plan checkNext canonNext seen := by
-  obtain ⟨leftLabels, rightLabels, other, lhs, rhs, reached, seenLeft, seenRight⟩ := replayFor path covers paired
+  obtain ⟨leftLabels, rightLabels, other, _, lhs, rhs, reached, seenLeft, seenRight, _, _, _, classified⟩ :=
+    replayMarked path covers paired (Occurrence.paired_outside (left := HostFrame.replace left right.host) paired)
   obtain ⟨otherFrames, otherRest, ⟨resume, edge, atPop, frame⟩ | ⟨atCommon, still⟩⟩ := classifyPopFor other.host reached leftAt
-  · exact rangeAtReturn destination inst area count pointer plan lhs rhs (Occurrence.Trail.absent lhs.steps)
+  · exact rangeAtReturn destination inst area count pointer plan lhs rhs classified (Occurrence.Trail.absent lhs.steps)
       (Occurrence.Trail.absent rhs.steps) reached frame seenLeft seenRight
       leftAt atPop present sized checkNext canonNext checkBody (canonBody resume edge)
   · refine .common ⟨leftLabels ++ [.tau], rightLabels ++ [.tau], _,
@@ -1088,7 +1117,7 @@ theorem collectionReplay {older : ReturnFrame.Substitutions (core3 grow) (HostSt
   obtain ⟨otherCursor, residual, rightAt, _, _⟩ := markedReturn (profile := profile) (ready := ready) (bindings := bindings)
     matched (atMark ▸ remaining) leftAt (rightMark.trans installed)
   have alignedThread : otherCursor.thread = cursor.thread := residual.thread.symm
-  exact rangeAtReturn destination inst _ entries.length pointer _ lhs rhs (atMark ▸ leftTrail) (atMark ▸ rightTrail)
+  exact rangeAtReturn destination inst _ entries.length pointer _ lhs rhs trace (atMark ▸ leftTrail) (atMark ▸ rightTrail)
     matched residual leftSeen rightSeen leftAt
     (by simpa only [Cursor.control, alignedThread] using rightAt) present sized _ _ rfl rfl
 

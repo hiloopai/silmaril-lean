@@ -180,9 +180,33 @@ theorem callbackPlanExact {right reference : Config (core3 grow) (HostState sig)
     NestedPlan bindings profile ready (Scheduled.host bindings) start labels finish := by
   induction trace with
   | done left _ => exact .localSegment (.refl left)
+  | segments lhs _ => exact planOfSteps lhs
+  | append _ _ head tail => exact .sequence head tail
   | step lhs _ _ ih => exact .sequence (planOfSteps (.cons lhs (.refl _))) ih
   | closedGive callout _ lhs _ _ ih => exact .sequence (.closedGive callout lhs) ih
-  | syncReady focused agrees _ _ ih => exact .sequence (.syncReady focused agrees) ih
+  | syncReady focused agrees _ _ _ ih => exact .sequence (.syncReady focused agrees) ih
+
+theorem callbackPeerPlanExact {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    NestedPlan bindings profile ready (Scheduled.host bindings) right referenceLabels reference := by
+  induction trace with
+  | done _ right => exact .localSegment (.refl right)
+  | segments _ rhs => exact planOfSteps rhs
+  | append _ _ head tail => exact .sequence head tail
+  | step _ rhs _ ih => exact .sequence (planOfSteps (.cons rhs (.refl _))) ih
+  | closedGive _ peer _ rhs _ ih => exact .sequence (.closedGive peer rhs) ih
+  | syncReady _ _ focused agrees _ ih => exact .sequence (.syncReady focused agrees) ih
+
+theorem rejoinedBodyPlan {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route}
+    {value : route.output.Result} {checked reference : Config (core3 grow) (HostState sig)}
+    (comparison : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings checked reference) :
+    ∃ checkLabels referenceLabels,
+      Steps profile ready (specDispatch ready (Scheduled.host bindings)) site.checked checkLabels checked ∧
+      NestedPlan bindings profile ready (Scheduled.host bindings) (site.reference site.referenceReply) referenceLabels reference ∧
+      PayloadPrefix.visible checkLabels = PayloadPrefix.visible referenceLabels := by
+  obtain ⟨checkLabels, referenceLabels, seen, retained, _, classified⟩ := comparison.1
+  exact ⟨checkLabels, referenceLabels, (ReturnFrame.Occurrence.prefix_survives (retained 0)).1,
+    callbackPeerPlanExact classified, seen⟩
 
 theorem rootAdmission {route} {site : PayloadRoot.Site grow sig route} {body : Prop} (linked : site.Linked bindings)
     (cut : PayloadRoot.Cut site profile ready bindings body base) : RootAdmission bindings profile ready base site body := by
@@ -229,9 +253,9 @@ theorem rejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig
     ∃ checkLabels checked baseline,
       NestedPlan bindings profile ready (Scheduled.host bindings) site.start (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∧
       LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline := by
-  obtain ⟨⟨checkLabels, canonLabels, seen, left, right⟩, checked, baseline, replies⟩ := compared
-  exact ⟨checkLabels, checked, baseline, comparedGive site linked value entry
-    (ReturnFrame.Occurrence.prefix_survives (left 0)).1 (ReturnFrame.Occurrence.prefix_survives (right 0)).1 seen replies, replies⟩
+  obtain ⟨⟨checkLabels, _, seen, left, _, classified⟩, checked, baseline, replies⟩ := compared
+  exact ⟨checkLabels, checked, baseline, .give site linked entry (ReturnFrame.Occurrence.prefix_survives (left 0)).1
+    (.sequence (callbackPeerPlanExact classified) (planOfSteps (replies.2.1 _))) value replies seen, replies⟩
 
 theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {callees : List (ComponentCall.Callee sig)} {entryLabels reached reference} (value : route.output.Result)
@@ -244,7 +268,7 @@ theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site gr
           (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
         Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
         Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference) := by
-  obtain ⟨⟨checkLabels, canonLabels, seen, left, right⟩, checked, baseline, replies⟩ := compared
+  obtain ⟨⟨checkLabels, canonLabels, seen, left, right, _⟩, checked, baseline, replies⟩ := compared
   refine ⟨checkLabels, canonLabels, checked, baseline, replies, ?_⟩
   rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives (left 0)).1 with accepted | lookup
   · rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives (right 0)).1 with canonical | lookup

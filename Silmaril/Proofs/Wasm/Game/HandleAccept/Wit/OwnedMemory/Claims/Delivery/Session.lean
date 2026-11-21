@@ -1861,7 +1861,7 @@ theorem giveReturned {route : GiveEffectRoute} {bindings : List (Binding sig)} {
       Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) (canonLabels ++ [.tau]) right ∧
       PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
       LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right := by
-  obtain ⟨⟨checkLabels, canonLabels, seen, checked, canonical⟩, left, right, replies⟩ := comparison
+  obtain ⟨⟨checkLabels, canonLabels, seen, checked, canonical, _⟩, left, right, replies⟩ := comparison
   obtain ⟨checkRun, canonRun⟩ := agreement checkLabels canonLabels checked canonical
   exact ⟨checkLabels, canonLabels, left, right, .giveReturned site value rfl checkRun canonRun seen replies,
     appendSteps canonRun.steps (replies.2.1 _), seen, replies⟩

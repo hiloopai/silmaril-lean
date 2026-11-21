@@ -60,6 +60,10 @@ inductive Outcome (profile : ProfileKind) (ready : HostReady (HostState sig)) (b
       (canonical : ReturnRangeTrace profile ready bindings right reference canonLabels
         { reference with ctl := canon.control (canonicalCollectionTail destination inst entries area output pointer
           (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) } (some (.active 0 0)))
+      (classified : ReplayTrace profile ready bindings left checkLabels
+        { last with ctl := check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext) }
+        right canonLabels { reference with ctl := canon.control (canonicalCollectionTail destination inst entries area output pointer
+          (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) })
       (checkSeen : visible checkLabels = seen) (canonSeen : visible canonLabels = seen)
       (visit : next bytes
         { last with ctl := check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext) }
@@ -75,6 +79,10 @@ inductive Outcome (profile : ProfileKind) (ready : HostReady (HostState sig)) (b
       (canonical : ReturnRangeTrace profile ready bindings right reference canonLabels
         { reference with ctl := canon.control (canonicalCollectionTail destination inst entries area output pointer
           (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) } (some (.active 0 0)))
+      (classified : ReplayTrace profile ready bindings left checkLabels
+        { last with ctl := check.control (checkNext (.error (afterAllocation index issue))) }
+        right canonLabels { reference with ctl := canon.control (canonicalCollectionTail destination inst entries area output pointer
+          (CanonicalTree.EntryMode.forOutput destination.width type output) >>= canonNext) })
       (checkSeen : visible checkLabels = seen) (canonSeen : visible canonLabels = seen) :
       Outcome profile ready bindings older destination inst type area entries index pointer output left right last check checkNext canonNext seen next
   | rangeTrap {reference : State grow sig} {reason : TrapReason}
@@ -82,6 +90,8 @@ inductive Outcome (profile : ProfileKind) (ready : HostReady (HostState sig)) (b
       (same : last.store = reference.store)
       (checked : Steps profile ready (specDispatch ready (host bindings)) left checkLabels (StepDefs.trapCfg last))
       (canonical : Steps profile ready (specDispatch ready (host bindings)) right canonLabels (StepDefs.trapCfg reference))
+      (classified : ReplayTrace profile ready bindings left checkLabels (StepDefs.trapCfg last)
+        right canonLabels (StepDefs.trapCfg reference))
       (checkSeen : visible checkLabels = seen ++ [.trap reason]) (canonSeen : visible canonLabels = seen ++ [.trap reason]) :
       Outcome profile ready bindings older destination inst type area entries index pointer output left right last check checkNext canonNext seen next
 

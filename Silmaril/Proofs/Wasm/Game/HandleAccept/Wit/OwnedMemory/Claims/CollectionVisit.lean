@@ -60,20 +60,22 @@ theorem afterRange {older : ReturnFrame.Substitutions (core3 grow) (HostState si
     CollectionVisit.Outcome profile ready bindings older destination inst type area entries index pointer output
       left right last check checkNext canonNext seen next := by
   cases cut with
-  | @reached reference canon bytes checkLabels canonLabels width sized aligned bounds frame growth checked canonical checkSeen canonSeen =>
+  | @reached reference canon bytes checkLabels canonLabels width sized aligned bounds frame growth checked canonical
+      classified checkSeen canonSeen =>
     cases live : Record.prepare last.store last.host.writer (Field.listObjects entries) with
     | error issue =>
       have stopped : (checkedCollectionTail destination inst entries area index output pointer (.error issue) >>= checkNext) =
           checkNext (.error (afterAllocation index issue)) := by cases issue <;> rfl
-      rw [live, stopped] at checked
-      exact .refused live frame checked canonical checkSeen canonSeen
+      rw [live, stopped] at checked classified
+      exact .refused live frame checked canonical classified checkSeen canonSeen
     | ok result =>
       cases result
-      rw [live] at checked
+      rw [live] at checked classified
       have region : Admitted older destination area entries pointer bytes left last reference check canon :=
         ⟨width, sized, aligned, bounds, frame, growth, live⟩
-      exact .admitted region checked canonical checkSeen canonSeen (visit bytes reference canon region)
-  | trapped same checked canonical checkSeen canonSeen => exact .rangeTrap same checked canonical checkSeen canonSeen
+      exact .admitted region checked canonical classified checkSeen canonSeen (visit bytes reference canon region)
+  | trapped same checked canonical classified checkSeen canonSeen =>
+    exact .rangeTrap same checked canonical classified checkSeen canonSeen
   | common _ allowed => exact False.elim allowed
 
 theorem memoryMap {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
@@ -117,12 +119,12 @@ theorem reaches {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     ∃ canon, ReachesKeeping profile ready (specDispatch ready (host bindings))
       (fun store => Core3.Grows left.store.core store.core) left right check canon checkNext canonNext := by
   cases cut with
-  | admitted _ checked canonical checkSeen canonSeen visit =>
+  | admitted _ checked canonical _ checkSeen canonSeen visit =>
     exact ⟨_, ReachesKeeping.prepend (returnRangeSteps checked) (returnRangeSteps canonical) (checkSeen.trans canonSeen.symm) visit⟩
-  | @refused reference canon issue checkLabels canonLabels _ frame checked canonical checkSeen canonSeen =>
+  | @refused reference canon issue checkLabels canonLabels _ frame checked canonical _ checkSeen canonSeen =>
     exact ⟨canon, .refused _, checkLabels, canonLabels, _, _, returnRangeSteps checked, returnRangeSteps canonical, frame.store,
       checkSeen.trans canonSeen.symm, trivial, rfl⟩
-  | @rangeTrap reference reason checkLabels canonLabels same checked canonical checkSeen canonSeen =>
+  | @rangeTrap reference reason checkLabels canonLabels same checked canonical _ checkSeen canonSeen =>
     exact ⟨check, .trapped reason, checkLabels, canonLabels, StepDefs.trapCfg last, StepDefs.trapCfg reference,
       checked, canonical, congrArg StepDefs.lockdownSt same, checkSeen.trans canonSeen.symm, trivial, rfl, rfl, seen, canonSeen⟩
 

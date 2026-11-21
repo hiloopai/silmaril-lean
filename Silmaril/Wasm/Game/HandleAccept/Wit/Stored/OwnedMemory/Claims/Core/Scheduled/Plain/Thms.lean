@@ -473,7 +473,13 @@ theorem parked_closed_give_rejoin {sig : Signature} {grow : SingleThreaded.GrowO
       (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready dispatch start place (List.replicate leftCount .tau)
         leftNext place) ∧
       (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready dispatch other place (List.replicate rightCount .tau)
-        rightNext place) :=
+        rightNext place) ∧
+      other.ctl = ⟨thread, .core core continuation, otherSegments⟩ :: otherRest ∧
+      rightNext = { other with
+        ctl := ⟨thread, next, otherSegments⟩ :: otherRest
+        host := (other.host.enter name type args).record
+          (schema.elim (completion other.host.nextTicket (.error .wrongContext))
+            (fun payload => flatCompletion other.host.nextTicket (ABI.flatten destination.width payload) (.error .wrongContext))).1 } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_closed_give_rejoin
     bindings name type args inst destination schema paired thread profile ready parked calling linked caller live closed
 

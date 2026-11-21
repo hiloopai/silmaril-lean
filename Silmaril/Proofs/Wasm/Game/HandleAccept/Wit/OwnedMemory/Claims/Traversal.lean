@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.Traversal.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.CollectionVisit.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
+import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 
 public section
 
@@ -23,12 +24,20 @@ theorem advanceAppend {left right middle other reached reference : State grow si
     (leading : TrackedAdvance profile ready bindings left right middle other)
     (trailing : TrackedAdvance profile ready bindings middle other reached reference) :
     TrackedAdvance profile ready bindings left right reached reference := by
-  obtain ⟨leftLabels, rightLabels, same, leftPath, rightPath⟩ := leading
-  obtain ⟨tailLeft, tailRight, sameTail, leftTail, rightTail⟩ := trailing
+  obtain ⟨leftLabels, rightLabels, same, leftPath, rightPath, leftClassified⟩ := leading
+  obtain ⟨tailLeft, tailRight, sameTail, leftTail, rightTail, rightClassified⟩ := trailing
   refine ⟨leftLabels ++ tailLeft, rightLabels ++ tailRight, ?_,
-    fun depth => (leftPath depth).append (leftTail depth), fun depth => (rightPath depth).append (rightTail depth)⟩
+    fun depth => (leftPath depth).append (leftTail depth), fun depth => (rightPath depth).append (rightTail depth),
+    leftClassified.append rightClassified⟩
   simp only [visible, List.filter_append] at *
   rw [same, sameTail]
+
+theorem advanceSegment {left right reached reference : State grow sig} {leftLabels rightLabels}
+    (seen : visible leftLabels = visible rightLabels)
+    (lhs : RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left leftLabels reached)
+    (rhs : RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right rightLabels reference) :
+    TrackedAdvance profile ready bindings left right reached reference :=
+  ⟨leftLabels, rightLabels, seen, lhs, rhs, .segments (prefix_survives (lhs 0)).1 (prefix_survives (rhs 0)).1⟩
 
 private theorem localTrackFinish {Result : Type} {originLeft originRight left right : State grow sig}
     {check canon : Cursor (E := core3 grow) (HostState sig)}
@@ -41,7 +50,7 @@ private theorem localTrackFinish {Result : Type} {originLeft originRight left ri
   obtain ⟨store, result, labels, silent, checked, canonical, returned⟩ := run
   refine ⟨store, result, labels, silent, checked, canonical, fun value valid => ?_⟩
   obtain ⟨leftPath, rightPath, tail⟩ := returned value valid
-  exact ⟨leftPath, rightPath, next _ _ _ _ _ (advanceAppend leading ⟨labels, labels, rfl, leftPath, rightPath⟩) tail⟩
+  exact ⟨leftPath, rightPath, next _ _ _ _ _ (advanceAppend leading (advanceSegment rfl leftPath rightPath)) tail⟩
 
 theorem localFieldTrackFinish {originLeft originRight left right : State grow sig}
     {check canon : Cursor (E := core3 grow) (HostState sig)} {output : Lower.Output} {checkNext canonNext finish target}
@@ -56,7 +65,7 @@ theorem localFieldTrackFinish {originLeft originRight left right : State grow si
   | error reason => exact outcome
   | ok value =>
     obtain ⟨lhs, rhs, tail⟩ := outcome
-    exact ⟨lhs, rhs, next _ _ _ _ _ (advanceAppend leading ⟨leftLabels, rightLabels, seen, lhs, rhs⟩) tail⟩
+    exact ⟨lhs, rhs, next _ _ _ _ _ (advanceAppend leading (advanceSegment seen lhs rhs)) tail⟩
 
 private theorem silentOfAllTau {labels : List (Label (core3 grow) (HostState sig))}
     (allTau : ∀ label ∈ labels, label = .tau) : visible labels = [] :=
@@ -78,7 +87,7 @@ theorem handleTrackFinish {originLeft originRight left right : State grow sig}
     intro value returned
     subst result
     obtain ⟨lhs, rhs, finish⟩ := tail value rfl
-    refine ⟨lhs, rhs, next _ _ _ _ _ (advanceAppend leading ⟨reads ++ checkLabels, canonLabels, ?_, lhs, rhs⟩) finish⟩
+    refine ⟨lhs, rhs, next _ _ _ _ _ (advanceAppend leading (advanceSegment ?_ lhs rhs)) finish⟩
     have allTau {labels : List (Label (core3 grow) (HostState sig))} (silent : LocalLeafLabels (.ok value) labels) :
         ∀ label ∈ labels, label = .tau := by
       intro label member
@@ -102,8 +111,8 @@ private theorem stringTrackFinish {older : ReturnFrame.Substitutions (core3 grow
     cases run with
     | @done store result labels silent checked canonical tracked finished =>
       exact .done silent checked canonical tracked (fun pointer done =>
-        next _ _ _ _ _ (advanceAppend leading ⟨labels, labels, rfl, fun depth => (tracked pointer done depth).1,
-          fun depth => (tracked pointer done depth).2⟩) (finished pointer done))
+        next _ _ _ _ _ (advanceAppend leading (advanceSegment rfl (fun depth => (tracked pointer done depth).1)
+          (fun depth => (tracked pointer done depth).2))) (finished pointer done))
     | @allocated pointer oldSize alignment size rest shorter store labels checked canonical silent tracked replay =>
       refine .allocated pointer oldSize alignment size rest shorter checked canonical silent tracked ?_
       intro dispatch leftEntry rightEntry first second changes last seen protectedReturn path covers
@@ -115,7 +124,8 @@ private theorem stringTrackFinish {older : ReturnFrame.Substitutions (core3 grow
       refine ⟨otherCursor, leftPop, rightPop, retained, ih rest.length shorter ?_ smaller⟩
       apply advanceAppend leading
       refine ⟨labels ++ (leftLabels ++ [.tau]), labels ++ (rightLabels ++ [.tau]), ?_,
-        fun depth => (retained depth).1, fun depth => (retained depth).2⟩
+        fun depth => (retained depth).1, fun depth => (retained depth).2,
+        (ReplayTrace.segments checked.steps canonical.steps).append (trace.append (.step leftPop rightPop (.done _ _)))⟩
       simp only [show ∀ front back : List (Label (core3 grow) (HostState sig)),
         visible (front ++ back) = visible front ++ visible back from fun _ _ => List.filter_append .., leftSeen, rightSeen]
 
@@ -137,7 +147,7 @@ theorem stringFieldTrackFinish {older : ReturnFrame.Substitutions (core3 grow) (
   obtain ⟨reads, leftPath, rightPath, rest⟩ := run
   refine ⟨reads, leftPath, rightPath, ?_⟩
   exact stringTrackFinish (advanceAppend leading
-    ⟨List.replicate reads .tau, [.tau], silentReads reads, leftPath, rightPath⟩) rest
+    (advanceSegment (silentReads reads) leftPath rightPath)) rest
     (fun _ _ _ _ _ path run => localTrackFinish path run next)
 
 theorem collectionTrackEntries {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
@@ -165,15 +175,17 @@ theorem collectionTrackEntries {older : ReturnFrame.Substitutions (core3 grow) (
     trace, ?_⟩
   intro pointer cursor atMark atReturn
   cases returns pointer cursor atMark atReturn with
-  | admitted region checked canonical checkedSeen canonSeen tail =>
-    refine .admitted region checked canonical checkedSeen canonSeen (visit _ _ _ _ _ _ (advanceAppend leading ?_) tail)
-    refine ⟨_, _, ?_, checked.through_install leftInstall, canonical.through_install rightInstall⟩
+  | admitted region checked canonical classified checkedSeen canonSeen tail =>
+    refine .admitted region checked canonical classified checkedSeen canonSeen
+      (visit _ _ _ _ _ _ (advanceAppend leading ?_) tail)
+    refine ⟨_, _, ?_, checked.through_install leftInstall, canonical.through_install rightInstall,
+      (ReplayTrace.segments (prefix_survives (leftInstall 0)).1 (prefix_survives (rightInstall 0)).1).append classified⟩
     simp only [show ∀ front back : List (Label (core3 grow) (HostState sig)),
       visible (front ++ back) = visible front ++ visible back from fun _ _ => List.filter_append .., checkedSeen, canonSeen]
     rfl
-  | refused live frame checked canonical checkedSeen canonSeen =>
-    exact .refused live frame checked canonical checkedSeen canonSeen
-  | rangeTrap same checked canonical checkedSeen canonSeen =>
-    exact .rangeTrap same checked canonical checkedSeen canonSeen
+  | refused live frame checked canonical classified checkedSeen canonSeen =>
+    exact .refused live frame checked canonical classified checkedSeen canonSeen
+  | rangeTrap same checked canonical classified checkedSeen canonSeen =>
+    exact .rangeTrap same checked canonical classified checkedSeen canonSeen
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Traversal

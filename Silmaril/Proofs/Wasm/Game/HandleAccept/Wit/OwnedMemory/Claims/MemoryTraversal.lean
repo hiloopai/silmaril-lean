@@ -22,12 +22,12 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : Profile
 private theorem checkedSilent {left right reached : State grow sig}
     (read : RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left [.tau] reached) :
     TrackedAdvance profile ready bindings left right reached right :=
-  ⟨[.tau], [], rfl, read, fun _ => .done _ _⟩
+  .of_segment (leftLabels := [.tau]) (rightLabels := []) rfl read (fun _ => .done _ _)
 
 private theorem canonicalSilent {left right reached : State grow sig} (mode : Track)
     (read : RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right mode.readLabels reached) :
     TrackedAdvance profile ready bindings left right left reached :=
-  ⟨[], mode.readLabels, by cases mode <;> rfl, (fun _ => .done _ _), read⟩
+  .of_segment (by cases mode <;> rfl) (fun _ => .done _ _) read
 
 theorem sequenceTrack {compare : FieldComparison grow sig} (child : CarriesFinish profile ready bindings compare)
     {mode : Track} {destination : RecordDestination} {inst : InstId} {items : List Field} {index cursor : Nat}
@@ -97,7 +97,7 @@ private theorem sumTrack {compare : FieldComparison grow sig} (child : CarriesFi
   | error reason => exact outcome
   | ok _ =>
     obtain ⟨lhs, rhs, tail⟩ := outcome
-    have advance := leading.append ⟨leftLabels, rightLabels, seen, lhs, rhs⟩
+    have advance := leading.append (.of_segment seen lhs rhs)
     refine ⟨lhs, rhs, ?_⟩
     cases selected with
     | none => exact next _ _ _ _ advance tail
@@ -113,7 +113,7 @@ private theorem descriptorTrack {output : Lower.Output} {checkNext canonNext fin
   obtain ⟨store, result, labels, silent, checked, canonical, finish⟩ := run
   refine ⟨store, result, labels, silent, checked, canonical, fun value done => ?_⟩
   obtain ⟨lhs, rhs, tail⟩ := finish value done
-  exact ⟨lhs, rhs, next _ _ _ _ _ (leading.append ⟨labels, labels, rfl, lhs, rhs⟩) tail⟩
+  exact ⟨lhs, rhs, next _ _ _ _ _ (leading.append (.of_segment rfl lhs rhs)) tail⟩
 
 theorem entriesTrack {compare : FieldComparison grow sig} (child : CarriesFinish profile ready bindings compare)
     {destination : RecordDestination} {inst : InstId} {element : TypeOf} {entries : List Field} {index pointer : Nat}
@@ -227,7 +227,7 @@ private theorem rejoin {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
     (canonical : reference.ctl = canon.control (call.referenceReply value)) :
     RejoinedGive call value profile ready bindings reached reference := by
   refine ⟨advance, ?_⟩
-  obtain ⟨_, _, _, path, _⟩ := advance
+  obtain ⟨_, _, _, path, _, _⟩ := advance
   exact resume_returned_give call value frame (path 0) checked canonical
 
 theorem parkedMemoryRejoined {pointer : FlatValue} (call : PayloadRoot.Site grow sig (.memory pointer))

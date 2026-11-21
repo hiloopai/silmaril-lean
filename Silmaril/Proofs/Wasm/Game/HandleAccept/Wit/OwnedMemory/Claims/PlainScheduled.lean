@@ -1005,7 +1005,13 @@ theorem parked_closed_give_rejoin {sig : Signature} {grow : SingleThreaded.GrowO
       (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready dispatch start place (List.replicate leftCount .tau)
         leftNext place) ∧
       (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready dispatch other place (List.replicate rightCount .tau)
-        rightNext place) := by
+        rightNext place) ∧
+      other.ctl = ⟨thread, .core core continuation, otherSegments⟩ :: otherRest ∧
+      rightNext = { other with
+        ctl := ⟨thread, next, otherSegments⟩ :: otherRest
+        host := (other.host.enter name type args).record
+          (schema.elim (completion other.host.nextTicket (.error .wrongContext))
+            (fun payload => flatCompletion other.host.nextTicket (ABI.flatten destination.width payload) (.error .wrongContext))).1 } := by
   intro dispatch reply next leftNext
   let otherReply := schema.elim (completion other.host.nextTicket (.error .wrongContext))
     (fun payload => flatCompletion other.host.nextTicket (ABI.flatten destination.width payload) (.error .wrongContext))
@@ -1030,7 +1036,7 @@ theorem parked_closed_give_rejoin {sig : Signature} {grow : SingleThreaded.GrowO
     place at rightPrefix
   rw [sameReply, sameCore] at right rightPrefix
   exact ⟨leftCount, rightCount, _, otherSegments, otherRest, left, right, rfl, rejoined, leftWriter, rightWriter,
-    leftPrefix, rightPrefix⟩
+    leftPrefix, rightPrefix, otherParked, rfl⟩
 
 private def admitGive {E : CoreEngine} {Host Result : Type} (inst : InstId)
     (selection : P E Host (Except Claims.Core.Scheduled.Issue Result)) :

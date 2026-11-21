@@ -19,7 +19,14 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : Profile
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
 
 theorem TrackedAdvance.refl (left right : State grow sig) : TrackedAdvance profile ready bindings left right left right :=
-  ⟨[], [], rfl, fun _ => .done _ _, fun _ => .done _ _⟩
+  ⟨[], [], rfl, fun _ => .done _ _, fun _ => .done _ _, .done _ _⟩
+
+theorem TrackedAdvance.of_segment {left right reached reference : State grow sig} {leftLabels rightLabels}
+    (seen : visible leftLabels = visible rightLabels)
+    (lhs : RetainsActiveSlots profile ready (specDispatch ready (host bindings)) left leftLabels reached)
+    (rhs : RetainsActiveSlots profile ready (specDispatch ready (host bindings)) right rightLabels reference) :
+    TrackedAdvance profile ready bindings left right reached reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Traversal.advanceSegment seen lhs rhs
 
 /-- Concatenate reached paths without counting silent carrier steps as observations. -/
 theorem TrackedAdvance.append {left right middle other reached reference : State grow sig}

@@ -54,6 +54,26 @@ theorem NestedPlan.of_callback_trace {right reference : Config (core3 grow) (Hos
     NestedPlan bindings profile ready (Scheduled.host bindings) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPlanExact trace
 
+/-- The substituted canonical body has its own exact callback classifications,
+including the actual confined caller and readiness read at each reentry. -/
+theorem NestedPlan.of_callback_peer {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    NestedPlan bindings profile ready (Scheduled.host bindings) right referenceLabels reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPeerPlanExact trace
+
+/-- Extract the canonical body plan from a reached public give comparison.
+It uses the same trace as the recursive traversal and does not rebuild a plan
+from unclassified steps. Component-only dispatch extensions are not asserted
+compatible by this theorem. -/
+theorem rejoined_give_body_plan {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route}
+    {value : route.output.Result} {checked reference : Config (core3 grow) (HostState sig)}
+    (comparison : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings checked reference) :
+    ∃ checkLabels referenceLabels,
+      Steps profile ready (specDispatch ready (Scheduled.host bindings)) site.checked checkLabels checked ∧
+      NestedPlan bindings profile ready (Scheduled.host bindings) (site.reference site.referenceReply) referenceLabels reference ∧
+      PayloadPrefix.visible checkLabels = PayloadPrefix.visible referenceLabels :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.rejoinedBodyPlan comparison
+
 /-- At the reached linked memory give, use the public entry guards and the
 compiled recursive body. A preflight refusal becomes a checked reply and a
 stopped live canonical prefix, not a canonical error. A placement trap is

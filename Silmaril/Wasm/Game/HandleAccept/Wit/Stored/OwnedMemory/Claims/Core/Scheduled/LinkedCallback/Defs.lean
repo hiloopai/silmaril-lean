@@ -103,26 +103,38 @@ inductive ReplayTrace (profile : ProfileKind) (ready : HostReady (HostState sig)
     State grow sig → List (Label (core3 grow) (HostState sig)) → State grow sig →
     State grow sig → List (Label (core3 grow) (HostState sig)) → State grow sig → Prop where
   | done (left right : State grow sig) : ReplayTrace profile ready bindings left [] left right [] right
+  | segments {left right last other leftLabels rightLabels}
+      (lhs : Steps profile ready (specDispatch ready (host bindings)) left leftLabels last)
+      (rhs : Steps profile ready (specDispatch ready (host bindings)) right rightLabels other) :
+      ReplayTrace profile ready bindings left leftLabels last right rightLabels other
+  | append {left right midLeft midRight last other leftLabels rightLabels tailLeft tailRight}
+      (head : ReplayTrace profile ready bindings left leftLabels midLeft right rightLabels midRight)
+      (tail : ReplayTrace profile ready bindings midLeft tailLeft last midRight tailRight other) :
+      ReplayTrace profile ready bindings left (leftLabels ++ tailLeft) last right (rightLabels ++ tailRight) other
   | step {left right nextLeft nextRight last other label leftLabels rightLabels}
       (lhs : Step profile ready (specDispatch ready (host bindings)) left label nextLeft)
       (rhs : Step profile ready (specDispatch ready (host bindings)) right label nextRight)
       (tail : ReplayTrace profile ready bindings nextLeft leftLabels last nextRight rightLabels other) :
       ReplayTrace profile ready bindings left (label :: leftLabels) last right (label :: rightLabels) other
-  | closedGive {left right nextRight last other leftCount rightCount leftLabels rightLabels changes}
-      (callout : ClosedGive bindings left) (paired : HostFrame.Related.Paired changes left right)
+  | closedGive {left right last other leftCount rightCount leftLabels rightLabels}
+      (callout : ClosedGive bindings left) (peer : ClosedGive bindings right)
       (lhs : Steps profile ready (specDispatch ready (host bindings)) left (List.replicate leftCount .tau) callout.resume)
-      (rhs : Steps profile ready (specDispatch ready (host bindings)) right (List.replicate rightCount .tau) nextRight)
-      (tail : ReplayTrace profile ready bindings callout.resume leftLabels last nextRight rightLabels other) :
+      (rhs : Steps profile ready (specDispatch ready (host bindings)) right (List.replicate rightCount .tau) peer.resume)
+      (tail : ReplayTrace profile ready bindings callout.resume leftLabels last peer.resume rightLabels other) :
       ReplayTrace profile ready bindings left (List.replicate leftCount .tau ++ leftLabels) last
         right (List.replicate rightCount .tau ++ rightLabels) other
-  | syncReady {left right nextRight last other leftLabels rightLabels task inst thread frames rest}
+  | syncReady {left right last other leftLabels rightLabels task inst thread frames rest rightFrames rightRest}
       (focused : left.ctl = ⟨thread, .prog (.op .hostGet (fun current =>
         syncLiftCandidates task (left.store.instCandidates (ready current) inst))), frames⟩ :: rest)
       (agrees : ReadyAgreement ready left inst)
-      (rhs : Step profile ready (specDispatch ready (host bindings)) right .tau nextRight)
+      (rightFocused : right.ctl = ⟨thread, .prog (.op .hostGet (fun current =>
+        syncLiftCandidates task (right.store.instCandidates (ready current) inst))), rightFrames⟩ :: rightRest)
+      (rightAgrees : ReadyAgreement ready right inst)
       (tail : ReplayTrace profile ready bindings { left with ctl := ⟨thread,
         .prog (syncLiftCandidates task (left.store.instCandidates (ready left.host) inst)), frames⟩ :: rest }
-        leftLabels last nextRight rightLabels other) :
+        leftLabels last { right with ctl := ⟨thread,
+          .prog (syncLiftCandidates task (right.store.instCandidates (ready right.host) inst)), rightFrames⟩ :: rightRest }
+        rightLabels other) :
       ReplayTrace profile ready bindings left (.tau :: leftLabels) last right (.tau :: rightLabels) other
 
 /-- The classified replay and occurrence trails refer to the very same traces.
@@ -637,6 +649,9 @@ inductive RangeCutOver (profile : ProfileKind) (ready : HostReady (HostState sig
         { last with ctl := cursor.control (checkNext pointer (Record.prepare last.store last.host.writer plan)) } mark)
       (canonical : ReturnRangeTrace profile ready bindings right reference canonLabels
         { reference with ctl := canonCursor.control (canonNext pointer) } mark)
+      (classified : ReplayTrace profile ready bindings left checkLabels
+        { last with ctl := cursor.control (checkNext pointer (Record.prepare last.store last.host.writer plan)) }
+        right canonLabels { reference with ctl := canonCursor.control (canonNext pointer) })
       (checkSeen : visible checkLabels = seen) (canonSeen : visible canonLabels = seen) :
       RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark
   | trapped {reference : State grow sig} {reason : TrapReason}
@@ -644,6 +659,8 @@ inductive RangeCutOver (profile : ProfileKind) (ready : HostReady (HostState sig
       (stores : last.store = reference.store)
       (checked : Steps profile ready (specDispatch ready (host bindings)) left checkLabels (StepDefs.trapCfg last))
       (canonical : Steps profile ready (specDispatch ready (host bindings)) right canonLabels (StepDefs.trapCfg reference))
+      (classified : ReplayTrace profile ready bindings left checkLabels (StepDefs.trapCfg last)
+        right canonLabels (StepDefs.trapCfg reference))
       (checkSeen : visible checkLabels = seen ++ [.trap reason]) (canonSeen : visible canonLabels = seen ++ [.trap reason]) :
       RangeCutOver profile ready bindings changes resume left right last cursor destination area count pointer plan checkNext canonNext seen allowCommon mark
   | common (pop : CollectionCommonPopOver profile ready bindings changes left right
