@@ -65,4 +65,19 @@ def ClosedThrough (profile : ProfileKind) (ready : HostReady (HostState sig)) (b
     Steps profile ready (coreOnly ready bindings) start leading cut →
     Steps profile ready (coreOnly ready bindings) cut (label :: trailing) finish → ClosedAt cut
 
+/-- The finite common prefix stops at a reached direct request whose
+installed program differs across the component overlay. This is a lookup
+boundary, not an unsupported operation or a trap. A subsequent arena read
+may still select the same continuation (as in Compatible.liftedLookup). -/
+inductive LookupCut (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (callees : List (Callee sig)) (start : Config (core3 grow) (HostState sig)) :
+    List (Label (core3 grow) (HostState sig)) → Config (core3 grow) (HostState sig) → Prop where
+  | reached {cut finish leading label trailing thread call next frames rest}
+      (common : Compatible profile ready bindings callees start leading cut)
+      (focus : cut.ctl = ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest)
+      (component : UsesComponent call)
+      (different : coreOnly ready bindings call ≠ linked ready bindings callees call)
+      (suffix : Steps profile ready (coreOnly ready bindings) cut (label :: trailing) finish) :
+      LookupCut profile ready bindings callees start (leading ++ label :: trailing) finish
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession.Dispatch

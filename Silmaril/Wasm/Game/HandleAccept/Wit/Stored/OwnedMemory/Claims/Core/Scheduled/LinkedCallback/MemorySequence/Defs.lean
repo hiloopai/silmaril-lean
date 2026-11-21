@@ -317,7 +317,7 @@ def SumThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (binding
     let rhs := localLeafEnd right right.host store canon.thread canon.frames canon.rest
       (sumCanonicalNext destination inst selected address canonNext) result
     Steps profile ready (specDispatch ready (host bindings)) left checkLabels lhs ∧
-    Steps profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
+    LocalSteps profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
     visible checkLabels = visible canonLabels ∧
     match result with
     | .error reason => ∃ leading, visible canonLabels = leading ++ [.trap reason]

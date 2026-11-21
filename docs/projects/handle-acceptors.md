@@ -1389,6 +1389,17 @@ host read or substituted return there. The worker plan still needs a
 classified body and delivery tail; this does not classify all recursive
 callback paths.
 
+`LiveDispatch.linked_rejoined_give_plan` uses the paths and saved Core reply
+from a reached recursive `givePayload` or `giveFlat` rejoin. Data and sum
+cuts keep their local canonical step certificates. On the reached bodies,
+the component overlay classification derives agreement for ordinary
+allocation, local operations and Core callouts. If it encounters an unequal
+direct install, it exposes the common prefix and actual request instead of
+inventing an error; a later lookup may still find a common continuation.
+Even after this dispatch comparison, live canonical replay can cut at a
+nested give, an open host observation, or a substituted return. This result
+does not turn a typed stopped prefix into a successful reply.
+
 ## Checking
 
 ```

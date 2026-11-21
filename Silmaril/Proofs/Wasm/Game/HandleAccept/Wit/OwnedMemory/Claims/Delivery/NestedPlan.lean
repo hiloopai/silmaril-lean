@@ -6,6 +6,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Public.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCursor.Thms
@@ -14,6 +15,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -23,6 +25,7 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmari
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open Silmaril.Wasm.Game.HandleAccept.Wit
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
+open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open LiveDispatch ComponentCall.Delivery.FiniteSession
 
@@ -121,6 +124,58 @@ theorem replayLocal (run : PayloadPrefix.LocalSteps profile ready (specDispatch 
     · cases install with
       | direct focused give => exact (give (unchanged.direct focused)).elim
       | core focused calling give => exact (give (unchanged.core focused calling)).elim
+
+theorem planOfSteps (run : Steps profile ready (specDispatch ready base) start labels finish) :
+    NestedPlan bindings profile ready base start labels finish := by
+  classical
+  induction run with
+  | refl _ => exact .localSegment (.refl _)
+  | @cons before next finish label labels step _ tail =>
+    have front : NestedPlan bindings profile ready base before [label] next := by
+      by_cases localFocus : PayloadPrefix.LocalFocus before
+      · exact .localSegment (.cons localFocus step (.refl _))
+      · exact .segment (.cons step (.refl _))
+    exact .sequence front tail
+
+theorem comparedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {entryLabels checkLabels canonLabels reached reference checked baseline} (value : route.output.Result)
+    (entry : Transition profile ready base site.start (.give route .entered) entryLabels site.checked)
+    (left : Steps profile ready (specDispatch ready base) site.checked checkLabels reached)
+    (right : Steps profile ready (specDispatch ready base) (site.reference site.referenceReply) canonLabels reference)
+    (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+    (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline) :
+    NestedPlan bindings profile ready base site.start (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked :=
+  .give site linked entry left (planOfSteps (append right (replies.2.1 _))) value replies seen
+
+theorem rejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {entryLabels reached reference} (value : route.output.Result)
+    (entry : Transition profile ready (Scheduled.host bindings) site.start (.give route .entered) entryLabels site.checked)
+    (compared : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference) :
+    ∃ checkLabels checked baseline,
+      NestedPlan bindings profile ready (Scheduled.host bindings) site.start (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∧
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline := by
+  obtain ⟨⟨checkLabels, canonLabels, seen, left, right⟩, checked, baseline, replies⟩ := compared
+  exact ⟨checkLabels, checked, baseline, comparedGive site linked value entry
+    (ReturnFrame.Occurrence.prefix_survives (left 0)).1 (ReturnFrame.Occurrence.prefix_survives (right 0)).1 seen replies, replies⟩
+
+theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {callees : List (ComponentCall.Callee sig)} {entryLabels reached reference} (value : route.output.Result)
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
+      site.start (.give route .entered) entryLabels site.checked)
+    (compared : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference) :
+    ∃ checkLabels canonLabels checked baseline,
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
+      (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
+          (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
+        Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
+        Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference) := by
+  obtain ⟨⟨checkLabels, canonLabels, seen, left, right⟩, checked, baseline, replies⟩ := compared
+  refine ⟨checkLabels, canonLabels, checked, baseline, replies, ?_⟩
+  rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives (left 0)).1 with accepted | lookup
+  · rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives (right 0)).1 with canonical | lookup
+    · exact .inl (comparedGive site linked value entry accepted.steps canonical.steps seen replies)
+    · exact .inr (.inr lookup)
+  · exact .inr (.inl lookup)
 
 theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     (paired : HostFrame.Related.Paired older start incoming) :

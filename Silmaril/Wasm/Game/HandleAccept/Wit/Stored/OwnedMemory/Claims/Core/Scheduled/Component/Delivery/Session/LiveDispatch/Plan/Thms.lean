@@ -11,6 +11,7 @@ namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Sch
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open ComponentCall.Delivery.FiniteSession
+open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind} {ready : HostReady (HostState sig)}
   {bindings : List (Binding sig)} {base : HostImpl (core3 grow) (HostState sig)}
@@ -20,6 +21,56 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : Profile
 theorem NestedPlan.source (plan : NestedPlan bindings profile ready base start labels finish) :
     Steps profile ready (specDispatch ready base) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.source plan
+
+/-- Decompose an actual prefix at its reached foci. Local steps replay fully;
+nonlocal steps still go through the live request/read/return classifier. -/
+theorem NestedPlan.of_steps (run : Steps profile ready (specDispatch ready base) start labels finish) :
+    NestedPlan bindings profile ready base start labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.planOfSteps run
+
+/-- Join a recursive public give's reached checked and canonical bodies to
+the actual caller replies. This constructs the replay plan from the compared
+paths; it does not assume that a reached nested callout can be replayed. -/
+theorem compared_give_plan {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {entryLabels checkLabels canonLabels reached reference checked baseline} (value : route.output.Result)
+    (entry : Transition profile ready base site.start (.give route .entered) entryLabels site.checked)
+    (left : Steps profile ready (specDispatch ready base) site.checked checkLabels reached)
+    (right : Steps profile ready (specDispatch ready base) (site.reference site.referenceReply) canonLabels reference)
+    (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+    (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline) :
+    NestedPlan bindings profile ready base site.start (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.comparedGive
+    site linked value entry left right seen replies
+
+/-- For either recursive public give that reaches its successful caller
+rejoin, build the session plan on the Core binding dispatcher without a
+separate child/body plan. Finite checked refusal and trap are not successful
+rejoins. When run live, an intervening nested give may still cut the plan. -/
+theorem rejoined_give_plan {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {entryLabels reached reference} (value : route.output.Result)
+    (entry : Transition profile ready (Scheduled.host bindings) site.start (.give route .entered) entryLabels site.checked)
+    (compared : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference) :
+    ∃ checkLabels checked baseline,
+      NestedPlan bindings profile ready (Scheduled.host bindings) site.start (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∧
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.rejoinedGive site linked value entry compared
+
+/-- Classify the successful recursive rejoin under the worker's linked
+dispatcher. No agreement premise is needed at ordinary allocation, local
+operations or Core callouts. An unequal direct install is exposed at its
+actual common-prefix cut, not converted to a refusal or canonical trap. -/
+theorem linked_rejoined_give_plan {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {callees : List (ComponentCall.Callee sig)} {entryLabels reached reference} (value : route.output.Result)
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
+      site.start (.give route .entered) entryLabels site.checked)
+    (compared : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference) :
+    ∃ checkLabels canonLabels checked baseline,
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
+      (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
+          (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
+        Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
+        Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedRejoinedGive site linked value entry compared
 
 /-- A closed local segment replays to the end, even with a different host and
 older paired continuations. Each reached focus rules out a give installation,

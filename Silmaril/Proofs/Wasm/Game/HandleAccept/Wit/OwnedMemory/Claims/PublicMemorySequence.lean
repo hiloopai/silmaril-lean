@@ -296,7 +296,7 @@ private theorem flatAllocatingRule {older : ReturnFrame.Substitutions (core3 gro
       local_data_leaf_frame (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings))
         destination inst type data payload index .flat origin left right (frame.store ▸ growth) width rfl
         frame.store check canon frame.thread checkNext canonNext checkAt canonAt
-    refine .inr (.inl ⟨⟨type, payload, rfl, data⟩, store, result, chk, ref, checkRun, canonRun.steps, labels, ?_⟩)
+    refine .inr (.inl ⟨⟨type, payload, rfl, data⟩, store, result, chk, ref, checkRun, canonRun, labels, ?_⟩)
     cases result with
     | error _ => exact status
     | ok words =>

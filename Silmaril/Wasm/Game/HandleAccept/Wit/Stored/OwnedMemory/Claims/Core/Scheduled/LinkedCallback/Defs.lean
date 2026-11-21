@@ -489,7 +489,7 @@ def LocalFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (
     let lhs := localLeafEnd left left.host store check.thread check.frames check.rest (fun value => checkNext (.ok value)) result
     let rhs := localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result
     Steps profile ready (specDispatch ready (host bindings)) left checkLabels lhs ∧
-    Steps profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
+    LocalSteps profile ready (specDispatch ready (host bindings)) right canonLabels rhs ∧
     visible checkLabels = visible canonLabels ∧
     match result with
     | .ok value =>

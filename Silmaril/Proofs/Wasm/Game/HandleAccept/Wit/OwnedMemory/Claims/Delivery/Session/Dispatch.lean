@@ -160,6 +160,27 @@ theorem closedPrefix {labels} (run : Steps profile ready (coreOnly ready binding
     intro leading cut label trailing eq before after
     exact closed (leading := _ :: leading) (congrArg (_ :: ·) eq) (.cons step before) after
 
+theorem compatibleOrLookup {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish) :
+    Compatible profile ready bindings callees start labels finish ∨ LookupCut profile ready bindings callees start labels finish := by
+  classical
+  induction run with
+  | refl _ => exact .inl (.done _)
+  | @cons before middle after label labels step tail ih =>
+    by_cases agrees : AgreesAt ready bindings callees before
+    · rcases ih with whole | openCall
+      · exact .inl (.next agrees step whole)
+      · cases openCall with
+        | reached common focus component different suffix =>
+          exact .inr (.reached (.next agrees step common) focus component different suffix)
+    · have request : ∃ thread call next frames rest,
+          before.ctl = ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest ∧
+          coreOnly ready bindings call ≠ linked ready bindings callees call := by
+        by_contra absent
+        exact agrees (fun focused => Classical.byContradiction fun different => absent ⟨_, _, _, _, _, focused, different⟩)
+      obtain ⟨_, call, _, _, _, focus, different⟩ := request
+      have component : UsesComponent call := Classical.byContradiction fun closed => different (closedDispatch closed)
+      exact .inr (.reached (.done _) focus component different (.cons step tail))
+
 theorem closedOccurrence {labels origin mark}
     (path : ReturnFrame.Occurrence.Prefix profile ready (coreOnly ready bindings) start origin labels finish mark)
     (closed : ClosedThrough profile ready bindings start labels finish) :

@@ -62,6 +62,14 @@ theorem Compatible.of_closed {labels} (run : Steps profile ready (coreOnly ready
     (closed : ClosedThrough profile ready bindings start labels finish) : Compatible profile ready bindings callees start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedPrefix run closed
 
+/-- Classify the actual finite Core-binding path under the component overlay.
+Only a reached unequal direct install can cut this comparison. In particular,
+ordinary allocator requests, Core steps and Core callouts need no additional
+dispatch-agreement premise. -/
+theorem compatible_or_lookup {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish) :
+    Compatible profile ready bindings callees start labels finish ∨ LookupCut profile ready bindings callees start labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.compatibleOrLookup run
+
 /-- A closed prefix retains exactly the same allocator occurrence under the
 linked dispatch overlay, including at a saved slot. -/
 theorem occurrence_of_closed {labels origin mark}
