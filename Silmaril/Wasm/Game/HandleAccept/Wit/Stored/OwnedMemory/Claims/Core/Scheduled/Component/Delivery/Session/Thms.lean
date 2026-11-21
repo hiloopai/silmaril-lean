@@ -226,6 +226,25 @@ theorem Run.resume_k1 {atWait : State grow sig} {thread : ThreadId} {task : Task
     Run profile ready impl start (actions ++ [.k1Resume thread, .k1Admit task]) (labels ++ (resume.labels ++ [.tau, .tau])) resume.admitted :=
   run.append (.next (.k1Resume resume) (.next (.k1Admit resume live notPending) (.stop _)))
 
+/-- Register the resumed worker and reach the new `onStart` call. The live
+instance controls registration capacity and the current task selects the caller. -/
+theorem K1LiftStart.start_steps {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) :
+    Steps profile ready (specDispatch ready impl) resume.admitted handoff.labels handoff.onStart :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1StartLift handoff
+
+/-- Join selected resumption, the live cancellation check and registration on
+both closed dispatchers. The actual `onStart` request is the next cut. -/
+theorem K1LiftStart.linked_start {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) (notPending : handoff.record.state ≠ .pendingCancel)
+    (bindings : List (Binding sig)) (callees : List (ComponentCall.Callee sig)) :
+    let labels := (resume.labels ++ [.tau, .tau]) ++ handoff.labels
+    Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels handoff.onStart ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) atHost labels handoff.onStart :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1LiftStartPair handoff notPending bindings callees
+
 /-- Extend a finite run that reached the original lower continuation. The
 result is ready to reply; it has not popped the saved Core caller. -/
 theorem Run.finish_pending_lower {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
@@ -264,7 +283,7 @@ theorem LiftSite.k1_gate (site : LiftSite grow sig) {instance_ : InstState}
       decide (instance_.numWaitingToEnter > 0)) = true) :
     ∃ entry : K1GateEntry site.launched site.storeAndThread.2 site.storeAndTask.2,
       Steps profile ready (specDispatch ready impl) site.launched (List.replicate 4 .tau) entry.waitingEntry ∧
-      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] :=
+      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] ∧ entry.next = liftAdmissionTail site.storeAndTask.2 site.core :=
   lift_k1_gate site.core _ instance_ _ rfl site.live_task asyncMode live gated
 
 /-- A real K1 park in a nested async lift yields the fresh task's cancel
@@ -281,7 +300,8 @@ theorem LowerRequest.k1_parent {site : CoreCallSite start} (request : LowerReque
       entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } ∧
       returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved ∧
       returned.cancelInstalled.store.inst? request.inst = (start.store.inst? request.inst).map
-        (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) :=
+        (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) ∧
+      entry.next = liftAdmissionTail lift.storeAndTask.2 core :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerK1Parent request live asyncMode pressure
 
 /-- A pending reply returns the index selected by the original caller's
@@ -299,7 +319,8 @@ theorem LowerRequest.k1_pending_reply {site : CoreCallSite start} (request : Low
       (returned : LowerReturn request entry.wait.blocked),
       Steps profile ready (specDispatch ready impl) lift.start (List.replicate 21 .tau) (returned.pendingReply record index) ∧
       (returned.pendingReply record index).cont? lift.storeAndThread.2 = some entry.wait.saved ∧
-      (returned.pendingReply record index).store.subtask? returned.subtask = some record :=
+      (returned.pendingReply record index).store.subtask? returned.subtask = some record ∧
+      entry.next = liftAdmissionTail lift.storeAndTask.2 core :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerK1PendingReply
     request live asyncMode pressure asyncLower callerLive room
 

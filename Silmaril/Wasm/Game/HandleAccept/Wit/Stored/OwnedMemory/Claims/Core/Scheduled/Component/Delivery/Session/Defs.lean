@@ -242,6 +242,48 @@ def K1Resume.admitted (resume : K1Resume wait atHost ready profile) : State grow
 
 end
 
+/-- K1 takes the exclusive lock according to its saved admission branch,
+then registration consults the live task and the reached instance table. -/
+def K1Resume.entryStore {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {ready : HostReady (HostState sig)}
+    (resume : K1Resume entry.wait atHost ready profile) : CStore (core3 grow) :=
+  if entry.markedTask.needsExclusive then
+    ArenaField.insts.modify resume.admitted.store entry.markedTask.inst (InstState.withExclusive (some thread))
+  else resume.admitted.store
+
+structure K1LiftStart {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {ready : HostReady (HostState sig)}
+    (resume : K1Resume entry.wait atHost ready profile) where
+  callee : (core3 grow).FuncAddr
+  body : entry.next = liftAdmissionTail task callee
+  record : Task (core3 grow)
+  live : resume.reached.store.task? task = some record
+  instance_ : InstState
+  liveInstance : (resume.entryStore (entry := entry)).inst? record.inst = some instance_
+  index : Nat
+  installed : InstState
+  capacity : instance_.addThread? thread = some (index, installed)
+
+section
+
+variable {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+  {entry : K1GateEntry atGate thread task} {ready : HostReady (HostState sig)}
+  {resume : K1Resume entry.wait atHost ready profile}
+
+def K1LiftStart.registered (start : K1LiftStart resume) : Task (core3 grow) :=
+  { start.record with threads := start.record.threads ++ [thread] }
+
+def K1LiftStart.onStart (start : K1LiftStart resume) : State grow sig :=
+  { resume.admitted with
+    store := ((resume.entryStore (entry := entry)).registerThreadSt task thread).setTaskState task .started
+    ctl := ⟨some thread, .prog (callVals (.onStart start.registered.caller) >>=
+      liftArgumentsBody .spec .none task start.callee start.registered), entry.segments⟩ :: resume.admitted.ctl.drop 1 }
+
+def K1LiftStart.labels (_start : K1LiftStart resume) : Trace grow sig :=
+  List.replicate (if entry.markedTask.needsExclusive then 7 else 6) .tau
+
+end
+
 /-- Direct parameters that need neither allocating nor nondeterministic lowering. -/
 inductive DirectArgument where
   | bool (value : Bool)
@@ -468,6 +510,7 @@ inductive Action where
   | tick (selected : ThreadId)
   | k1Resume (thread : ThreadId)
   | k1Admit (task : TaskId)
+  | k1Start (task : TaskId)
   | coreStep
   | coreReturn
   | coreTrap
@@ -581,6 +624,9 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (resume : K1Resume wait start ready profile) {record : Task (core3 grow)}
       (live : resume.reached.store.task? task = some record) (notPending : record.state ≠ .pendingCancel) :
       Transition profile ready impl resume.reached (.k1Admit task) [.tau, .tau] resume.admitted
+  | k1Start {atGate start thread task} {entry : K1GateEntry atGate thread task}
+      {resume : K1Resume entry.wait start ready profile} (handoff : K1LiftStart resume) :
+      Transition profile ready impl resume.admitted (.k1Start task) handoff.labels handoff.onStart
   | coreInternal {start thread core next segments rest coreStore advanced}
       (focused : start.ctl = ⟨thread, .core core next, segments⟩ :: rest)
       (running : (core3 grow).status start.store.core core = .running ∨ (core3 grow).status start.store.core core = .stuck)

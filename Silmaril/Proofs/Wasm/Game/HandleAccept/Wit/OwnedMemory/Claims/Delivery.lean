@@ -579,16 +579,12 @@ theorem liftK1Gate {atGate : Config (core3 grow) (HostState sig)} (callee : (cor
     (gated : (instance_.hasBackpressure task.needsExclusive || decide (instance_.numWaitingToEnter > 0)) = true) :
     ∃ entry : K1GateEntry atGate thread taskId,
       Steps profile ready (specDispatch ready impl) atGate (List.replicate 4 .tau) entry.waitingEntry ∧
-      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] := by
-  have splitBody : ∃ next : Bool → Session grow sig (Ret (core3 grow)),
-      liftThreadBody .spec .none taskId callee = (Task.enterImplicitThread .none taskId >>= next) ∧
-      next false = .pure .unit := by
-    unfold liftThreadBody
-    exact ⟨_, rfl, rfl⟩
-  obtain ⟨next, body, cancelled⟩ := splitBody
+      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] ∧ entry.next = liftAdmissionTail taskId callee := by
+  have body : liftThreadBody .spec .none taskId callee =
+      (Task.enterImplicitThread .none taskId >>= liftAdmissionTail (sig := sig) taskId callee) := rfl
   let entry : K1GateEntry atGate thread taskId :=
-    ⟨task, instance_, next, [], rest, by rw [focused, body], liveTask, asynchronous, liveInst, gated⟩
-  exact ⟨entry, k1GateSteps entry, cancelled, rfl⟩
+    ⟨task, instance_, liftAdmissionTail taskId callee, [], rest, by rw [focused, body], liveTask, asynchronous, liveInst, gated⟩
+  exact ⟨entry, k1GateSteps entry, rfl, rfl, rfl⟩
 
 private def k1Check (wait : K1Wait atWait thread taskId) (atResume : Config (core3 grow) (HostState sig))
     (task : Task (core3 grow)) (rest : List (Activation (core3 grow) (HostState sig))) :

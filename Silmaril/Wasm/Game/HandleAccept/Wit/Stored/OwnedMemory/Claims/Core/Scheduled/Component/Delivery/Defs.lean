@@ -646,6 +646,14 @@ def K1GateEntry.waitingEntry (entry : K1GateEntry atGate thread taskId) : Config
 def K1GateEntry.wait (entry : K1GateEntry atGate thread taskId) : K1Wait entry.waitingEntry thread taskId :=
   ⟨entry.task.inst, entry.task.needsExclusive, entry.afterWait entry.markedTask, entry.segments, entry.rest, rfl⟩
 
+/-- The lift continuation after the canonical implicit-thread admission. -/
+def liftAdmissionTail (task : TaskId) (callee : (core3 grow).FuncAddr) (entered : Bool) :
+    Session grow sig (Ret (core3 grow)) := do
+  if !entered then return .unit
+  let record ← getTask task
+  let args ← Task.start task
+  liftArgumentsBody .spec .none task callee record args
+
 /-- The caller and subtask read by the reached canonical `onResolve(none)`.
 The caller record selects the subtask; the cancel request alone does not. -/
 structure LowerCancelResolution (store : CStore (core3 grow)) (caller : CallerId) (subtask : SubtaskId) where

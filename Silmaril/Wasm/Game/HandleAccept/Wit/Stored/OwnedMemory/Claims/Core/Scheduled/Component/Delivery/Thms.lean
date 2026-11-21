@@ -252,7 +252,7 @@ theorem lift_k1_gate {atGate : Config (core3 grow) (HostState sig)} {thread : Th
     (gated : (instance_.hasBackpressure task.needsExclusive || decide (instance_.numWaitingToEnter > 0)) = true) :
     ∃ entry : K1GateEntry atGate thread taskId,
       Steps profile ready (specDispatch ready impl) atGate (List.replicate 4 .tau) entry.waitingEntry ∧
-      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] :=
+      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] ∧ entry.next = liftAdmissionTail taskId callee :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.liftK1Gate
     callee task instance_ rest focused liveTask asynchronous liveInst gated
 

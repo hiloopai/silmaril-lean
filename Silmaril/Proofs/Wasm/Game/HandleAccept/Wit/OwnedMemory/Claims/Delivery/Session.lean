@@ -484,14 +484,15 @@ theorem lowerK1Parent {site : CoreCallSite start} (request : LowerRequest site) 
       entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } ∧
       returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved ∧
       returned.cancelInstalled.store.inst? request.inst = (start.store.inst? request.inst).map
-        (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) := by
+        (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) ∧
+      entry.next = liftAdmissionTail lift.storeAndTask.2 core := by
   let lift := request.lifted core fnType opts inst
   let task := liftTaskData fnType opts inst request.storeAndCaller.2
   have taskLive : lift.launched.store.task? lift.storeAndTask.2 = some task :=
     ArenaField.get?_alloc_self ArenaField.tasks lift.start.store task
   have pressured : instance_.hasBackpressure task.needsExclusive = true := pressure
   have liveInst : lift.launched.store.inst? inst = some instance_ := live
-  obtain ⟨entry, gate, _, _⟩ := lift_k1_gate (profile := profile) (ready := ready) (impl := impl)
+  obtain ⟨entry, gate, _, _, continuation⟩ := lift_k1_gate (profile := profile) (ready := ready) (impl := impl)
     core task instance_ _ (atGate := lift.launched) (thread := lift.storeAndThread.2) rfl taskLive asyncMode liveInst (by simp [pressured])
   have sameTask : entry.task = task := Option.some.inj (entry.liveTask.symm.trans taskLive)
   have reached : entry.waitingEntry.store.inst? entry.task.inst = some instance_ := by
@@ -537,7 +538,7 @@ theorem lowerK1Parent {site : CoreCallSite start} (request : LowerRequest site) 
     have instEq : entry.task.inst = inst := congrArg Task.inst sameTask
     rw [unchanged, instEq]
     split <;> simp_all
-  exact ⟨entry, returned, appendSteps (liftLaunchSteps lift) parked, rfl, liveSub, saved, callerFrame⟩
+  exact ⟨entry, returned, appendSteps (liftLaunchSteps lift) parked, rfl, liveSub, saved, callerFrame, continuation⟩
 
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
@@ -794,6 +795,51 @@ theorem k1ResumePair (resume : K1Resume wait atHost ready profile) {record : Tas
 
 end K1Resume
 
+theorem k1StartLift {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) :
+    Steps profile ready (specDispatch ready impl) resume.admitted handoff.labels handoff.onStart := by
+  have lockedTask : ArenaField.tasks.get? (resume.entryStore (entry := entry)) task = some handoff.record := by
+    unfold K1Resume.entryStore
+    split <;> exact handoff.live
+  have enteredInst : ArenaField.insts.get? (resume.entryStore (entry := entry)) handoff.record.inst = some handoff.instance_ :=
+    handoff.liveInstance
+  have registered : ArenaField.tasks.get? ((resume.entryStore (entry := entry)).registerThreadSt task thread) task =
+      some handoff.registered := by
+    simp only [CStore.registerThreadSt, CStore.task?, CStore.inst?, lockedTask, enteredInst, Option.bind_some, handoff.capacity]
+    change (ArenaField.tasks.get? (ArenaField.tasks.modify _ task _) task) = _
+    rw [ArenaField.get?_modify_self, lockedTask, Option.map_some]
+    rfl
+  have focused : resume.admitted.ctl = ⟨some thread, .prog (entry.afterWait entry.markedTask true),
+      entry.segments⟩ :: resume.admitted.ctl.drop 1 := rfl
+  cases exclusive : entry.markedTask.needsExclusive
+  all_goals
+    simp [K1LiftStart.labels, exclusive]
+    simp [K1GateEntry.afterWait, Prog.bind, pure, exclusive, Task.registerThread, handoff.body] at focused
+    simp [K1Resume.entryStore, exclusive] at lockedTask enteredInst registered
+    try refine .cons (.modify focused) ?_
+    first | refine .cons (.get focused) ?_ | refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, ArenaOps.updateSt, lockedTask]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, enteredInst, handoff.capacity]
+    refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+    simp [Prog.bind, pure, registered, Task.start]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, registered]
+    refine .cons (.modify rfl) ?_
+    simp [K1LiftStart.onStart, K1Resume.entryStore, Prog.bind, exclusive]
+    exact .refl _
+
+theorem k1LiftStartPair {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) (notPending : handoff.record.state ≠ .pendingCancel)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    let labels := (resume.labels ++ [.tau, .tau]) ++ handoff.labels
+    Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels handoff.onStart ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) atHost labels handoff.onStart :=
+  let paths := k1ResumePair resume handoff.live notPending bindings callees
+  ⟨appendSteps paths.1 (k1StartLift handoff), appendSteps paths.2 (k1StartLift handoff)⟩
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
@@ -821,6 +867,7 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | tick tick => exact tick.selects_thread
   | k1Resume resume => exact k1ResumeSelected resume
   | k1Admit resume live notPending => exact k1ResumeAdmitted resume live notPending
+  | k1Start handoff => exact k1StartLift handoff
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)
   | coreReturned focused returned => exact .cons (.coreReturned focused returned) (.refl _)
   | coreTrap focused trapped => exact .cons (.coreTrap focused trapped) (.refl _)
@@ -890,9 +937,10 @@ theorem lowerK1PendingReply {site : CoreCallSite start} (request : LowerRequest 
       (returned : LowerReturn request entry.wait.blocked),
       Steps profile ready (specDispatch ready impl) lift.start (List.replicate 21 .tau) (returned.pendingReply record index) ∧
       (returned.pendingReply record index).cont? lift.storeAndThread.2 = some entry.wait.saved ∧
-      (returned.pendingReply record index).store.subtask? returned.subtask = some record := by
+      (returned.pendingReply record index).store.subtask? returned.subtask = some record ∧
+      entry.next = liftAdmissionTail lift.storeAndTask.2 core := by
   let lift := request.lifted core fnType opts inst
-  obtain ⟨entry, returned, path, cancel, fresh, saved, frame⟩ :=
+  obtain ⟨entry, returned, path, cancel, fresh, saved, frame, continuation⟩ :=
     lowerK1Parent (core := core) (profile := profile) (ready := ready) (impl := impl) request live asyncMode pressure
   let current := if inst = request.inst then caller.incWaitingToEnter else caller
   have currentLive : returned.cancelInstalled.store.inst? request.inst = some current := by
@@ -922,7 +970,7 @@ theorem lowerK1PendingReply {site : CoreCallSite start} (request : LowerRequest 
   have record : updated = { inst := request.inst, onCancel := .task lift.storeAndTask.2, index := some index } := by
     dsimp [updated, original]
     rw [cancel]
-  refine ⟨entry, returned, ?_, ?_, ?_⟩
+  refine ⟨entry, returned, ?_, ?_, ?_, continuation⟩
   · rw [← record]
     exact total
   · exact saved
@@ -944,7 +992,7 @@ theorem lowerK1FullTrap {site : CoreCallSite start} (request : LowerRequest site
       (StepDefs.trapCfg returned.tableFull).store.subtask? returned.subtask =
         some { inst := request.inst, onCancel := .task lift.storeAndTask.2 } := by
   let lift := request.lifted core fnType opts inst
-  obtain ⟨entry, returned, path, cancel, fresh, _, frame⟩ :=
+  obtain ⟨entry, returned, path, cancel, fresh, _, frame, _⟩ :=
     lowerK1Parent (core := core) (profile := profile) (ready := ready) (impl := impl) request live asyncMode pressure
   let current := if inst = request.inst then caller.incWaitingToEnter else caller
   have currentLive : returned.cancelInstalled.store.inst? request.inst = some current := by
