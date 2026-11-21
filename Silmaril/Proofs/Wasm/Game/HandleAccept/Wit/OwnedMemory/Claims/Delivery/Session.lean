@@ -472,6 +472,63 @@ theorem lowerFresh {site : CoreCallSite start} (request : LowerRequest site) {co
         handoff.flat = site.args :=
   ⟨lowerFreshStart request, rfl, rfl, rfl, rfl⟩
 
+set_option maxHeartbeats 500000 in
+theorem lowerK1Parent {site : CoreCallSite start} (request : LowerRequest site) {core fnType opts inst instance_}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData fnType opts inst request.storeAndCaller.2).needsExclusive = true) :
+    let lift := request.lifted core fnType opts inst
+    ∃ (entry : K1GateEntry lift.launched lift.storeAndThread.2 lift.storeAndTask.2)
+      (returned : LowerReturn request entry.wait.blocked),
+      Steps profile ready (specDispatch ready impl) lift.start (List.replicate 14 .tau) entry.wait.blocked ∧
+      returned.cancel = .task lift.storeAndTask.2 ∧
+      entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } ∧
+      returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved := by
+  let lift := request.lifted core fnType opts inst
+  let task := liftTaskData fnType opts inst request.storeAndCaller.2
+  have taskLive : lift.launched.store.task? lift.storeAndTask.2 = some task :=
+    ArenaField.get?_alloc_self ArenaField.tasks lift.start.store task
+  have pressured : instance_.hasBackpressure task.needsExclusive = true := pressure
+  have liveInst : lift.launched.store.inst? inst = some instance_ := live
+  obtain ⟨entry, gate, _, _⟩ := lift_k1_gate (profile := profile) (ready := ready) (impl := impl)
+    core task instance_ _ (atGate := lift.launched) (thread := lift.storeAndThread.2) rfl taskLive asyncMode liveInst (by simp [pressured])
+  have sameTask : entry.task = task := Option.some.inj (entry.liveTask.symm.trans taskLive)
+  have reached : entry.waitingEntry.store.inst? entry.task.inst = some instance_ := by
+    change lift.launched.store.inst? entry.task.inst = some instance_
+    rw [sameTask]
+    exact liveInst
+  have unready : entry.wait.condition.eval (fun _ => false) entry.wait.incremented = false := by
+    unfold K1Wait.condition K1Wait.incremented ReadyCond.eval
+    change (match ArenaField.insts.get? (ArenaField.insts.modify entry.waitingEntry.store entry.task.inst
+      InstState.incWaitingToEnter) entry.task.inst with
+      | some current => !current.hasBackpressure entry.task.needsExclusive
+      | none => false) = false
+    rw [ArenaField.get?_modify_self, show ArenaField.insts.get? entry.waitingEntry.store entry.task.inst = _ from reached]
+    change (!instance_.hasBackpressure entry.task.needsExclusive) = false
+    rw [sameTask, pressured]
+    rfl
+  have parent : entry.rest = lift.workerTail := (congrArg List.tail entry.focused).symm
+  let returned : LowerReturn request entry.wait.blocked := ⟨.task lift.storeAndTask.2, by
+    change entry.rest = _
+    rw [parent]
+    simp only [LiftSite.workerTail, liftAfterThread, show lift.fnType.async_ = true from asyncMode,
+      Bool.not_true, Bool.false_eq_true, ite_false]
+    rfl⟩
+  have liveSub : entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } := by
+    have parkedFrame : entry.wait.blocked.store.subtasks = lift.launched.store.subtasks := by
+      rfl
+    have launchFrame : lift.launched.store.subtasks = request.storeAndSubtask.1.subtasks := by
+      rfl
+    change entry.wait.blocked.store.subtasks.get? request.storeAndSubtask.2.idx = _
+    rw [parkedFrame, launchFrame]
+    exact ArenaField.get?_alloc_self ArenaField.subtasks start.store { inst := request.inst }
+  have saved : returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved := by
+    change (entry.waitingEntry.setCont lift.storeAndThread.2 (some entry.wait.saved)).cont? _ = _
+    exact Config.cont?_setCont_self entry.waitingEntry lift.storeAndThread.2 (some entry.wait.saved)
+  have parked : Steps profile ready (specDispatch ready impl) lift.launched (List.replicate 9 .tau) entry.wait.blocked :=
+    appendSteps gate (entry.wait.blocks unready)
+  refine ⟨entry, returned, ?_, rfl, liveSub, saved⟩
+  exact appendSteps (liftLaunchSteps lift) parked
+
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : State grow sig}

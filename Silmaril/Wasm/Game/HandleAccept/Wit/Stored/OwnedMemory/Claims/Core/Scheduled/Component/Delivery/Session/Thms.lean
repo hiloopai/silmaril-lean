@@ -248,6 +248,21 @@ theorem LiftSite.k1_gate (site : LiftSite grow sig) {instance_ : InstState}
       entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] :=
   lift_k1_gate site.core _ instance_ _ rfl site.live_task asyncMode live gated
 
+/-- A real K1 park in a nested async lift yields the fresh task's cancel
+handle to the original lower. The worker stays saved, and the unstarted
+subtask comes from the original allocation, not a post-park assumption. -/
+theorem LowerRequest.k1_parent {site : CoreCallSite start} (request : LowerRequest site) {core fnType opts inst instance_}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData fnType opts inst request.storeAndCaller.2).needsExclusive = true) :
+    let lift := request.lifted core fnType opts inst
+    ∃ (entry : K1GateEntry lift.launched lift.storeAndThread.2 lift.storeAndTask.2)
+      (returned : LowerReturn request entry.wait.blocked),
+      Steps profile ready (specDispatch ready impl) lift.start (List.replicate 14 .tau) entry.wait.blocked ∧
+      returned.cancel = .task lift.storeAndTask.2 ∧
+      entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } ∧
+      returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerK1Parent request live asyncMode pressure
+
 /-- A host invocation starts the actual lift body and leaves the parent
 continuation pending. It does not assume the body returns or delivers. -/
 theorem Run.invoke_launched {call func args core fnType opts inst}
