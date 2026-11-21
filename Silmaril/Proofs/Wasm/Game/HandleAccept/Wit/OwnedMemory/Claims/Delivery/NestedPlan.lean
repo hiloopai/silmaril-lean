@@ -322,12 +322,7 @@ theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site gr
     (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
       site.start (.give route .entered) entryLabels site.checked)
     (compared : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference) :
-    ∃ checkLabels canonLabels checked baseline,
-      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
-      (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
-          (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
-        CallbackOverlayCut bindings profile ready callees site.checked checkLabels reached ∨
-        CallbackOverlayCut bindings profile ready callees (site.reference site.referenceReply) canonLabels reference) := by
+    LinkedGiveExit bindings profile ready callees site entryLabels value reached reference := by
   obtain ⟨⟨checkLabels, canonLabels, seen, _, _, classified⟩, checked, baseline, replies⟩ := compared
   refine ⟨checkLabels, canonLabels, checked, baseline, replies, ?_⟩
   rcases linkedCallbackPeer (callees := callees) (swapTrace classified) with accepted | lookup
@@ -336,6 +331,37 @@ theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site gr
         (.sequence canonical (planOfSteps (replies.2.1 _))) value replies seen)
     · exact .inr (.inr lookup)
   · exact .inr (.inl lookup)
+
+private theorem composeLinkedReturn {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    LinkedCallback.MemorySequence.OnGiveReturn site profile ready bindings (ComponentCall.hostWithComponent bindings callees)
+      (fun value reached reference => ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels value reached reference) := by
+  intro labels silent verdict prepared run value reached reference comparison
+  exact ⟨labels, linkedRejoinedGive site linked value (.giveEntry site linked silent verdict prepared run) comparison⟩
+
+theorem linkedMemoryExit {pointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory pointer))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ depth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedMemoryBody site depth profile ready bindings (fun reached reference =>
+        ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels () reached reference)) := by
+  obtain ⟨depth, cut⟩ := LinkedCallback.MemorySequence.parked_memory_then (profile := profile) (ready := ready) site linked
+    (ComponentCall.hostWithComponent bindings callees) rfl
+    (finish := fun reached reference => ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels () reached reference)
+    (by
+      intro labels silent verdict prepared run value reached reference compared
+      cases value
+      exact composeLinkedReturn site linked (callees := callees) (labels := labels) silent verdict prepared run () reached reference compared)
+  exact ⟨depth, rootAdmission linked cut⟩
+
+theorem linkedFlatExit {schema : Stored.TypeOf} (site : PayloadRoot.Site grow sig (.flat schema))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ flatDepth entryDepth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedFlatResult site flatDepth entryDepth profile ready bindings (fun value reached reference =>
+        ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels value reached reference)) := by
+  obtain ⟨flatDepth, entryDepth, cut⟩ := LinkedCallback.MemorySequence.parked_flat_then (profile := profile) (ready := ready) site linked
+    (ComponentCall.hostWithComponent bindings callees) rfl
+    (composeLinkedReturn (profile := profile) (ready := ready) site linked (callees := callees))
+  exact ⟨flatDepth, entryDepth, rootAdmission linked cut⟩
 
 theorem linkedGiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}

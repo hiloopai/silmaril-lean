@@ -142,6 +142,20 @@ def CallbackOverlayCut (bindings : List (Binding sig)) (profile : ProfileKind) (
     Dispatch.LookupCut profile ready bindings callees middle window after ∧
     Steps profile ready (Dispatch.coreOnly ready bindings) after suffix finish
 
+/-- The comparison at an actual successful return. If a dispatcher window
+cannot be transported, the checked/canonical replies from the narrower
+comparison remain evidence, not a claim of a live canonical reply. -/
+def LinkedGiveExit (bindings : List (Binding sig)) (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (callees : List (ComponentCall.Callee sig)) {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (entryLabels : Trace grow sig) (value : route.output.Result)
+    (reached reference : Config (core3 grow) (HostState sig)) : Prop :=
+  ∃ checkLabels canonLabels checked baseline,
+    LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
+    (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
+        (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
+      CallbackOverlayCut bindings profile ready callees site.checked checkLabels reached ∨
+      CallbackOverlayCut bindings profile ready callees (site.reference site.referenceReply) canonLabels reference)
+
 /-- Reasons to stop at an actual live configuration. A local checked stop
 has a matched store and observed trace, but does not rejoin (including when
 the plan has a later checked-only suffix). Unselected roots are not assumed

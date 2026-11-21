@@ -230,10 +230,11 @@ private theorem rejoin {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
   obtain ⟨_, _, _, path, _, _⟩ := advance
   exact resume_returned_give call value frame (path 0) checked canonical
 
-theorem parkedMemoryRejoined {pointer : FlatValue} (call : PayloadRoot.Site grow sig (.memory pointer))
+theorem parkedMemoryThen {pointer : FlatValue} (call : PayloadRoot.Site grow sig (.memory pointer))
     (linked : call.Linked bindings) (impl : HostImpl (core3 grow) (HostState sig))
-    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
-    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedRejoinedMemory call depth profile ready bindings) impl := by
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) {finish : State grow sig → State grow sig → Prop}
+    (onReturn : OnGiveReturn call profile ready bindings impl (fun _ => finish)) :
+    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedMemoryBody call depth profile ready bindings finish) impl := by
   obtain ⟨depth, cut⟩ := parked_compiled_memory (profile := profile) (ready := ready) call linked call.referenceReply impl embedder
   refine ⟨depth, ?_⟩
   cases cut with
@@ -242,14 +243,16 @@ theorem parkedMemoryRejoined {pointer : FlatValue} (call : PayloadRoot.Site grow
   | placed silent verdict prepared run body =>
     refine .placed silent verdict prepared run (listTreeTracks depth call.field 0 (flatNat pointer) _ _ _ _ _ _
       (.refl _ _) body ?_)
-    intro lhs rhs check canon path finish
-    exact rejoin call () path finish.1 finish.2.1 finish.2.2
+    intro lhs rhs check canon path atReturn
+    exact onReturn silent verdict prepared run () lhs rhs (rejoin call () path atReturn.1 atReturn.2.1 atReturn.2.2)
 
-theorem parkedFlatRejoined {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema))
+theorem parkedFlatThen {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema))
     (linked : call.Linked bindings) (impl : HostImpl (core3 grow) (HostState sig))
-    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder)
+    {finish : List FlatValue → State grow sig → State grow sig → Prop}
+    (onReturn : OnGiveReturn call profile ready bindings impl finish) :
     ∃ flatDepth entryDepth, PayloadRoot.Cut call profile ready bindings
-      (ParkedRejoinedFlat call flatDepth entryDepth profile ready bindings) impl := by
+      (ParkedFlatResult call flatDepth entryDepth profile ready bindings finish) impl := by
   obtain ⟨flatDepth, entryDepth, cut⟩ := parked_compiled_flat (profile := profile) (ready := ready) call linked call.referenceReply impl embedder
   refine ⟨flatDepth, entryDepth, ?_⟩
   cases cut with
@@ -258,7 +261,20 @@ theorem parkedFlatRejoined {schema : TypeOf} (call : PayloadRoot.Site grow sig (
   | placed silent verdict prepared run body =>
     refine .placed silent verdict prepared run (flatTreeTracks flatDepth entryDepth call.field 0 _ _ _ _ _ _
       (.refl _ _) body ?_)
-    intro words lhs rhs check canon path finish
-    exact rejoin call words path finish.1 finish.2.1 finish.2.2
+    intro words lhs rhs check canon path atReturn
+    exact onReturn silent verdict prepared run words lhs rhs (rejoin call words path atReturn.1 atReturn.2.1 atReturn.2.2)
+
+theorem parkedMemoryRejoined {pointer : FlatValue} (call : PayloadRoot.Site grow sig (.memory pointer))
+    (linked : call.Linked bindings) (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
+    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedRejoinedMemory call depth profile ready bindings) impl :=
+  parkedMemoryThen call linked impl embedder (fun _ _ _ _ _ _ _ compared => compared)
+
+theorem parkedFlatRejoined {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema))
+    (linked : call.Linked bindings) (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
+    ∃ flatDepth entryDepth, PayloadRoot.Cut call profile ready bindings
+      (ParkedRejoinedFlat call flatDepth entryDepth profile ready bindings) impl :=
+  parkedFlatThen call linked impl embedder (fun _ _ _ _ _ _ _ compared => compared)
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.MemoryTraversal

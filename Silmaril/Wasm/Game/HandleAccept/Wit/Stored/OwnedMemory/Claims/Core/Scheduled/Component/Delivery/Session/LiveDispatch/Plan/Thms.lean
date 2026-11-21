@@ -139,13 +139,26 @@ theorem linked_rejoined_give_plan {route : GiveEffectRoute} (site : PayloadRoot.
     (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
       site.start (.give route .entered) entryLabels site.checked)
     (compared : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference) :
-    ∃ checkLabels canonLabels checked baseline,
-      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
-      (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
-          (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
-        CallbackOverlayCut bindings profile ready callees site.checked checkLabels reached ∨
-        CallbackOverlayCut bindings profile ready callees (site.reference site.referenceReply) canonLabels reference) :=
+    LinkedGiveExit bindings profile ready callees site entryLabels value reached reference :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedRejoinedGive site linked value entry compared
+
+/-- Derive entry and the recursive success continuation at the reached memory
+give. The caller supplies neither a body comparison nor a replay plan. -/
+theorem linked_memory_exit {pointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory pointer))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ depth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedMemoryBody site depth profile ready bindings (fun reached reference =>
+        ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels () reached reference)) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedMemoryExit site linked
+
+/-- The flat give specializes the same reached-entry construction, with its
+computed ABI words in the returned comparison. -/
+theorem linked_flat_exit {schema : Stored.TypeOf} (site : PayloadRoot.Site grow sig (.flat schema))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ flatDepth entryDepth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedFlatResult site flatDepth entryDepth profile ready bindings (fun value reached reference =>
+        ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels value reached reference)) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedFlatExit site linked
 
 /-- Classify the actual matched body prefix of a typed refusal or canonical
 trap. Reaching a refusal does not pop a canonical caller or emit its checked
