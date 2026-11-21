@@ -378,6 +378,65 @@ theorem lowerLinkedLift {site : CoreCallSite start} (request : LowerRequest site
   rw [coreCalloutOverlay site bindings callees] at linked
   exact appendSteps linked (appendSteps (lowerAllocate request live allowed) (Dispatch.liftedLookup_steps rfl actual))
 
+theorem lowerStart {site : LiftSite grow sig} (handoff : LowerStart site) :
+    Steps profile ready (specDispatch ready impl) site.onStart (List.replicate handoff.steps .tau) handoff.reading := by
+  have unroll : (callVals (.onStart site.registeredTask.caller) >>= site.argumentsTail) =
+      .op (.call (.onStart site.registeredTask.caller)) (LowerStart.resume site) := by
+    simp [callVals, callRet, perform, Prog.lift]
+    dsimp [Bind.bind, Prog.bind]
+    congr 1
+    funext result
+    cases result <;> rfl
+  have focused : site.onStart.ctl = ⟨some site.storeAndThread.2,
+      .prog (.op (.call (.onStart site.registeredTask.caller)) (LowerStart.resume site)), []⟩ :: site.workerTail := by
+    simp only [LiftSite.onStart, unroll]
+  cases indexed : handoff.record.index <;> simp only [LowerStart.steps, indexed, Option.isSome, Bool.false_eq_true, ite_false, ite_true]
+  all_goals
+    refine .cons (.call focused) (.cons (.get rfl) ?_)
+    simp [Prog.bind, pure, handoff.callerLive]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, handoff.callerLive]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, handoff.subtaskLive, indexed, Waitable.setPendingEvent]
+  · refine .cons (.modify rfl) ?_
+    convert (Steps.refl (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) handoff.reading) using 1
+    simp [LowerStart.reading, LowerStart.progress, LowerStart.readArgs, indexed]
+    dsimp [Prog.bind]
+  · refine .cons (.modify rfl) (.cons (.modify rfl) ?_)
+    convert (Steps.refl (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) handoff.reading) using 1
+    simp [LowerStart.reading, LowerStart.progress, LowerStart.readArgs, indexed]
+    dsimp [Prog.bind]
+
+theorem lowerStartRecord {site : LiftSite grow sig} (handoff : LowerStart site) :
+    handoff.reading.store.subtask? handoff.subtask = some handoff.startedRecord := by
+  change ArenaField.subtasks.get? (LowerSt.startSt handoff.subtask handoff.progress) handoff.subtask = _
+  cases indexed : handoff.record.index <;>
+    simp [LowerSt.startSt, LowerStart.progress, LowerStart.startedRecord, indexed, CStore.setPendingSt,
+      CStore.modifyWaitableCommon, ArenaField.get?_modify_self, handoff.subtaskLive]
+
+private def lowerFreshStart {site : CoreCallSite start} (request : LowerRequest site) {core fnType opts inst} :
+    LowerStart (request.lifted core fnType opts inst) := by
+  let lift := request.lifted core fnType opts inst
+  obtain ⟨_, _, subtaskFrame, _, _, _, _, _, _, _, _, callerFrame⟩ :=
+    CStore.registerThreadSt_frame lift.storeAndTask.2 lift.storeAndThread.2 lift.entryStore
+  refine ⟨request.storeAndSubtask.2, ⟨request.opts, request.inst, .subtask request.storeAndSubtask.2⟩,
+    site.args, 0, request.fnType, (lowerLimits request.opts.async_).1, (lowerLimits request.opts.async_).2,
+    { inst := request.inst }, ?_, ?_⟩
+  · change ((lift.entryStore.registerThreadSt lift.storeAndTask.2 lift.storeAndThread.2).callers.get? _) = _
+    rw [callerFrame]
+    unfold LiftSite.entryStore
+    split <;> exact ArenaField.get?_alloc_self ArenaField.callers request.storeAndSubtask.1 request.callerData
+  · change ((lift.entryStore.registerThreadSt lift.storeAndTask.2 lift.storeAndThread.2).subtasks.get? _) = _
+    rw [subtaskFrame]
+    unfold LiftSite.entryStore
+    split <;> exact ArenaField.get?_alloc_self ArenaField.subtasks start.store { inst := request.inst }
+
+theorem lowerFresh {site : CoreCallSite start} (request : LowerRequest site) {core fnType opts inst} :
+    ∃ handoff : LowerStart (request.lifted core fnType opts inst),
+      handoff.subtask = request.storeAndSubtask.2 ∧ handoff.record = { inst := request.inst } ∧ handoff.pos = 0 ∧
+        handoff.flat = site.args :=
+  ⟨lowerFreshStart request, rfl, rfl, rfl, rfl⟩
+
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : State grow sig}
@@ -435,6 +494,7 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | directCore entry => exact entry
   | coreCallout site => exact coreCalloutSteps site
   | lowerAllocate request live allowed => exact lowerAllocate request live allowed
+  | lowerStart handoff => exact lowerStart handoff
   | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)

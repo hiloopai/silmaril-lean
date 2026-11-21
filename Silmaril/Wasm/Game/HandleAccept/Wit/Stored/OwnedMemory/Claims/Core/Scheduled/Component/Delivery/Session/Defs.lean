@@ -298,6 +298,57 @@ def LowerRequest.lifted {site : CoreCallSite start} (request : LowerRequest site
 
 end
 
+/-- The lower caller read by the admitted lift, including the live progress
+record. Re-reading it distinguishes eager start from a pending event replacement. -/
+structure LowerStart (site : LiftSite grow sig) where
+  subtask : SubtaskId
+  context : LiftLowerContext (core3 grow)
+  flat : List FlatValue
+  pos : Nat
+  fnType : WIT.FuncType Empty RtId
+  maxParams : Nat
+  maxResults : Nat
+  record : Subtask
+  callerLive : ArenaField.callers.get? site.onStart.store site.registeredTask.caller =
+    some (.lower subtask context flat pos fnType maxParams maxResults)
+  subtaskLive : ArenaField.subtasks.get? site.onStart.store subtask = some record
+
+section
+
+variable {site : LiftSite grow sig}
+
+def LowerStart.readArgs (handoff : LowerStart site) : Session grow sig (Ret (core3 grow)) :=
+  (do
+    let (values, cursor) ← liftFlatValues Limits.spec Quirks.none handoff.context handoff.maxParams
+      ⟨handoff.flat, handoff.pos⟩ (handoff.fnType.params.map (·.2))
+    modifyStore (LowerSt.setCallerPosSt site.registeredTask.caller cursor.pos)
+    pure values) >>= fun values => pure (.vals values)
+
+def LowerStart.resume (site : LiftSite grow sig) (result : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) :=
+  (match result with
+  | .vals values => pure values
+  | _ => internal "late-bound call: expected Ret.vals") >>= site.argumentsTail
+
+def LowerStart.progress (handoff : LowerStart site) : CStore (core3 grow) :=
+  let store := site.onStart.store
+  if handoff.record.index.isSome then CStore.setPendingSt (.subtask handoff.subtask) (.subtask handoff.subtask) store else store
+
+def LowerStart.reading (handoff : LowerStart site) : State grow sig :=
+  { site.onStart with
+    store := LowerSt.startSt handoff.subtask handoff.progress
+    ctl := ⟨some site.storeAndThread.2, .prog handoff.readArgs, [.prog (LowerStart.resume site)]⟩ :: site.workerTail }
+
+def LowerStart.startedRecord (handoff : LowerStart site) : Subtask :=
+  { handoff.record with
+    state := .started
+    common := if handoff.record.index.isSome then { handoff.record.common with pending := some (.subtask handoff.subtask) }
+      else handoff.record.common }
+
+def LowerStart.steps (handoff : LowerStart site) : Nat :=
+  if handoff.record.index.isSome then 6 else 5
+
+end
+
 /-- No K1 wait is entered on this branch. Full registration tables are not
 classified as admitted and must take the canonical trap branch instead. -/
 structure LiftAdmission (site : LiftSite grow sig) where
@@ -324,6 +375,7 @@ inductive Action where
   | coreEnter (thread : ThreadId)
   | coreCallout
   | lowerAllocate (subtask : SubtaskId) (caller : CallerId)
+  | lowerStart (subtask : SubtaskId) (indexed : Bool)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -388,6 +440,9 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       {instance_ : InstState} (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true) :
       Transition profile ready impl (site.reached ready impl) (.lowerAllocate request.storeAndSubtask.2 request.storeAndCaller.2)
         [.tau, .tau, .tau, .tau, .tau] request.allocated
+  | lowerStart {site : LiftSite grow sig} (handoff : LowerStart site) :
+      Transition profile ready impl site.onStart (.lowerStart handoff.subtask handoff.record.index.isSome)
+        (List.replicate handoff.steps .tau) handoff.reading
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })

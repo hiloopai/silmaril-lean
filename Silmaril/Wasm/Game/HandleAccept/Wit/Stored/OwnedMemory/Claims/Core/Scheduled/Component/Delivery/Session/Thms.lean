@@ -323,6 +323,38 @@ theorem Run.enter_lowered_lift {site : CoreCallSite middle} {actions labels}
   run.append (.next (.coreCallout site) (.next (.lowerAllocate request live allowed)
     (.next (.liftedLookup (start := request.allocated) rfl lookup) (.stop _))))
 
+/-- Dispatch the actual lower caller's start request. An unindexed record
+does not touch its event; an indexed one replaces the pending event before
+marking the subtask started. The remaining program lifts the original cursor. -/
+theorem LowerStart.handoff_steps {site : LiftSite grow sig} (handoff : LowerStart site) :
+    Steps profile ready (specDispatch ready impl) site.onStart (List.replicate handoff.steps .tau) handoff.reading :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerStart handoff
+
+theorem LowerStart.started_record {site : LiftSite grow sig} (handoff : LowerStart site) :
+    handoff.reading.store.subtask? handoff.subtask = some handoff.startedRecord :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerStartRecord handoff
+
+/-- The reached start request uses only the arena-backed canonical caller program. -/
+theorem LowerStart.linked_handoff {site : LiftSite grow sig} (handoff : LowerStart site)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) site.onStart (List.replicate handoff.steps .tau) handoff.reading ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) site.onStart (List.replicate handoff.steps .tau) handoff.reading :=
+  ⟨handoff.handoff_steps, handoff.handoff_steps⟩
+
+/-- No independent live-caller or progress-record premise is needed on the
+fresh, directly admitted lifted path: lift launch and registration leave both arenas alone. -/
+theorem LowerRequest.fresh_start {site : CoreCallSite start} (request : LowerRequest site) {core fnType opts inst} :
+    ∃ handoff : LowerStart (request.lifted core fnType opts inst),
+      handoff.subtask = request.storeAndSubtask.2 ∧ handoff.record = { inst := request.inst } ∧ handoff.pos = 0 ∧
+        handoff.flat = site.args :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerFresh request
+
+theorem Run.start_lowered {site : LiftSite grow sig} {actions labels}
+    (run : Run profile ready impl start actions labels site.onStart) (handoff : LowerStart site) :
+    Run profile ready impl start (actions ++ [.lowerStart handoff.subtask handoff.record.index.isSome])
+      (labels ++ List.replicate handoff.steps .tau) handoff.reading := by
+  simpa only [List.append_nil] using run.append (.next (.lowerStart handoff) (.stop _))
+
 /-- Actual backpressure makes the launched worker park at K1, even after
 incrementing the entry count. The async parent returns the cancellation
 handle while that worker is still saved; this is not result delivery. -/
