@@ -68,7 +68,7 @@ segments can still end at an explicit dispatch lookup boundary. -/
 theorem linked_callback_peer_plan {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
     {callees : List (ComponentCall.Callee sig)}
     (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
-    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) right referenceLabels reference ∨
+    CallbackOverlayPlan bindings profile ready callees right referenceLabels reference ∨
       CallbackOverlayCut bindings profile ready callees right referenceLabels reference :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedCallbackPeer trace
 
@@ -179,15 +179,15 @@ theorem linked_stopped_give_plan {route : GiveEffectRoute} (site : PayloadRoot.S
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedGiveStop
     site linked entry left right stop store seen
 
-/-- Classify the actual finite callback of a public give while its allocator
-occurrence still survives. The mark can be active or saved; there is no
-return premise. The observed canonical prefix and the original occurrence
-are retained, even if subsequent progress is not known. -/
+/-- Classify the actual finite callback of a public give, preserving active,
+saved and absent occurrence marks. An absent mark is not evidence of return.
+The canonical plan keeps the already executed classified edges without a
+premise that the allocator makes further progress. -/
 theorem linked_allocator_cut {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route}
     {callees : List (ComponentCall.Callee sig)} {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : Config (core3 grow) (HostState sig)}
     {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
-    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels (some mark))
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels mark)
     (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
     (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
     (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
@@ -196,11 +196,12 @@ theorem linked_allocator_cut {route : GiveEffectRoute} {site : PayloadRoot.Site 
     let checkTrace := checkEntryLabels ++ [.tau, .tau, .tau] ++ checkLabels
     let canonTrace := canonEntryLabels ++ [.tau, .tau] ++ canonLabels
     (Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.checked
-        (.give route (.allocatorPrefix (some mark))) checkTrace reached ∧
-      Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) canonTrace reference ∧
+        (.give route (.allocatorPrefix mark)) checkTrace reached ∧
+      NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees)
+        (site.reference site.referenceReply) canonTrace reference ∧
       PayloadPrefix.visible checkTrace = PayloadPrefix.visible canonTrace) ∨
-      Dispatch.LookupCut profile ready bindings callees left checkLabels reached ∨
-      Dispatch.LookupCut profile ready bindings callees right canonLabels reference :=
+      CallbackOverlayCut bindings profile ready callees left checkLabels reached ∨
+      CallbackOverlayCut bindings profile ready callees right canonLabels reference :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedAllocatorCut
     cut checkEntry canonEntry seenEntry checkInstall canonInstall
 

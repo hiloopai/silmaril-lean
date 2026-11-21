@@ -142,6 +142,14 @@ def CallbackOverlayCut (bindings : List (Binding sig)) (profile : ProfileKind) (
     Dispatch.LookupCut profile ready bindings callees middle window after ∧
     Steps profile ready (Dispatch.coreOnly ready bindings) after suffix finish
 
+/-- At a fully classified window, retain both the exact dispatcher comparison
+and the specialized edges needed to replay against a paired host. -/
+def CallbackOverlayPlan (bindings : List (Binding sig)) (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (callees : List (ComponentCall.Callee sig)) (start : Config (core3 grow) (HostState sig))
+    (labels : Trace grow sig) (finish : Config (core3 grow) (HostState sig)) : Prop :=
+  Dispatch.Compatible profile ready bindings callees start labels finish ∧
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) start labels finish
+
 /-- The comparison at an actual successful return. If a dispatcher window
 cannot be transported, the checked/canonical replies from the narrower
 comparison remain evidence, not a claim of a live canonical reply. -/
