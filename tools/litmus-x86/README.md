@@ -92,6 +92,20 @@ futex programs of `examples/litmus-c/futex` with their CIR programs for a bounde
 trace-inclusion check. All three are untrusted: Lean checks everything they emit. The module
 documentation of each source file describes its input and output.
 
+One `decide +kernel` of a large C11 test's check needs up to 15 GB of kernel memory, more than a
+pull-request runner has, so `c11 cir` checks any test with more than 8 candidates in slices of
+its choices of runs. It reads their flags and candidate counts from `export/c11-slices.json`.
+After changing the C11 corpus, regenerate that file before `c11 cir`:
+
+```sh
+cargo run --release -- c11 cir                  # the new Corpus/Defs.lean first
+lake build Silmaril.X86.Concurrency.Cir.C11.Corpus.Defs
+lake env lean tools/litmus-x86/lean/C11Slices.lean   # from the repository root
+cargo run --release -- c11 cir                  # the kernel checks, now with the new slices
+```
+
+The numbers only choose and state the slices; each slice's `decide +kernel` fails on a wrong one.
+
 ## Translation validation into CIR (`cir`)
 
 ```sh
