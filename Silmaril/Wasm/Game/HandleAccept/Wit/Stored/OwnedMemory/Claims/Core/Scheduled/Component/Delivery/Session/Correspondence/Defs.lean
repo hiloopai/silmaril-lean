@@ -55,4 +55,38 @@ def ReadFreeThrough (dispatch : Call (core3 grow) → Session grow sig (Ret (cor
     Steps profile ready dispatch start leading reached → Steps profile ready dispatch reached (label :: trailing) finish →
     ∀ {thread read frames rest}, reached.ctl ≠ ⟨thread, .prog (.op .hostGet read), frames⟩ :: rest
 
+/-- Only reached waiting threads whose ready condition queries the host
+can distinguish the two journals at a scheduler tick. -/
+def TickReadsAgree (ready : HostReady (HostState sig)) (start : State grow sig) (other : HostState sig) : Prop :=
+  let entered := StepDefs.enterHostSt start.store
+  ∀ thread ∈ entered.waiting, ∀ entry, entered.thread? thread = some entry → entry.blocked = true →
+    ∀ query, entry.readyCond = some (.host query) → ready start.host query = ready other query
+
+open ComponentCall.Delivery (LinkedResolution)
+
+/-- These actions execute in both sessions with reached stores and separate
+journals. A commit installs its current event; a delivery can consume it
+or a different live event. A tick uses the actual sampled readiness queries. -/
+inductive JournalInterleaving (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (impl : HostImpl (core3 grow) (HostState sig)) :
+    State grow sig → HostState sig → List Action → Trace grow sig → State grow sig → HostState sig → Prop where
+  | stop (state : State grow sig) (other : HostState sig) : JournalInterleaving profile ready impl state other [] [] state other
+  | neutral {start other action leading middle actions trailing finish outgoing}
+      (edge : Transition profile ready impl start action leading middle) (closed : JournalNeutralAction action)
+      (tail : JournalInterleaving profile ready impl middle other actions trailing finish outgoing) :
+      JournalInterleaving profile ready impl start other (action :: actions) (leading ++ trailing) finish outgoing
+  | commit {start other target index actions trailing finish outgoing}
+      (resolve : LinkedResolution start target index) {writer : OwnedMemory.Claims.State sig}
+      (registered : other.writer.register resolve.tree = .ok writer)
+      (sameHandle : writer.accepted.length = resolve.writer.accepted.length)
+      (tail : JournalInterleaving profile ready impl resolve.committed
+        ((({ other with writer } : HostState sig).record (.published resolve.ticket writer.accepted.length)).record
+          (.returned resolve.ticket writer.accepted.length)) actions trailing finish outgoing) :
+      JournalInterleaving profile ready impl start other (.commit target index :: actions)
+        (List.replicate 17 .tau ++ trailing) finish outgoing
+  | tick {start other thread actions trailing finish outgoing}
+      (tick : ComponentCall.Delivery.SelectedTick thread start ready profile) (agrees : TickReadsAgree ready start other)
+      (tail : JournalInterleaving profile ready impl tick.atResume other actions trailing finish outgoing) :
+      JournalInterleaving profile ready impl start other (.tick thread :: actions) (tick.selectionLabels ++ trailing) finish outgoing
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession

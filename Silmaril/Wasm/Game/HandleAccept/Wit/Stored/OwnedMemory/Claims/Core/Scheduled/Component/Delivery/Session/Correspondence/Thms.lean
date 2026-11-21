@@ -126,4 +126,108 @@ theorem Transition.commit_on_journal {target index} (resolve : LinkedResolution 
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.commitOnJournal
     resolve other registered sameHandle
 
+/-- Replay the actual selected candidate, not an arbitrary runnable
+thread. No host-read premise is needed for store-only ready conditions. -/
+theorem Transition.tick_on_journal {thread} (tick : SelectedTick thread start ready profile) (other : HostState sig)
+    (agrees : TickReadsAgree ready start other) :
+    Transition profile ready impl (HostFrame.replace start other) (.tick thread) tick.selectionLabels
+      (HostFrame.replace tick.atResume other) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.tickOnJournal tick other agrees
+
+/-- Closed waiting conditions cannot observe a changed journal. -/
+theorem TickReadsAgree.of_closed {other : HostState sig}
+    (closed : let entered := StepDefs.enterHostSt start.store
+      ∀ thread ∈ entered.waiting, ∀ entry, entered.thread? thread = some entry → entry.blocked = true →
+        ∀ query, entry.readyCond ≠ some (.host query)) : TickReadsAgree ready start other :=
+  fun thread member entry live blocked query condition => (closed thread member entry live blocked query condition).elim
+
+/-- Both projections are actual classified runs. In particular, a
+delivery step inspects the event at that step, not at the initial commit. -/
+theorem JournalInterleaving.runs {actions labels incoming outgoing}
+    (path : JournalInterleaving profile ready impl start incoming actions labels finish outgoing) :
+    Run profile ready impl start actions labels finish ∧
+      Run profile ready impl (HostFrame.replace start incoming) actions labels (HostFrame.replace finish outgoing) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.interleavingRuns path
+
+/-- The next returning give starts from the journals reached after any
+finite classified interleaving. An observation mismatch stops at its
+actual host read; it is not a checked refusal or a canonical trap. -/
+theorem JournalInterleaving.next_returned_give {bindings : List (Binding sig)} {callees : List (ComponentCall.Callee sig)}
+    {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) {actions labels incoming outgoing entryLabels}
+    (between : JournalInterleaving profile ready (ComponentCall.hostWithComponent bindings callees)
+      start incoming actions labels site.start outgoing)
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.start (.give route .entered)
+      entryLabels site.checked)
+    (value : route.output.Result) {reached reference : State grow sig}
+    (comparison : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference)
+    (agreement : GiveBodyAgreement profile ready bindings callees site reached reference) :
+    let dispatch := Dispatch.linked ready bindings callees
+    ∃ checkedLabels canonicalLabels checked baseline,
+      Run profile ready (ComponentCall.hostWithComponent bindings callees) start
+        (actions ++ [.give route .entered, .give route .returned]) checkedLabels checked ∧
+      Steps profile ready dispatch (HostFrame.replace start incoming) labels (HostFrame.replace site.start outgoing) ∧
+      Steps profile ready dispatch (site.reference site.referenceReply) canonicalLabels baseline ∧
+      PayloadPrefix.visible checkedLabels = PayloadPrefix.visible (labels ++ canonicalLabels) ∧
+      baseline = HostFrame.replace checked baseline.host ∧
+      JournalReplay profile ready dispatch (site.reference site.referenceReply) outgoing canonicalLabels baseline :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.interleavedGive
+    site between entry value comparison agreement
+
+/-- A typed guard refusal ends at the reached canonical prefix, without
+a canonical refusal reply. A trap keeps the actual canonical trap label
+and store effects. A journal mismatch is a separate reached boundary. -/
+theorem JournalInterleaving.next_stopped_give {bindings : List (Binding sig)} {callees : List (ComponentCall.Callee sig)}
+    {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    {actions labels incoming outgoing entryLabels phase checkLabels canonLabels reached reference}
+    (between : JournalInterleaving profile ready (ComponentCall.hostWithComponent bindings callees)
+      start incoming actions labels site.start outgoing)
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.start (.give route .entered)
+      entryLabels site.checked)
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (stop : GiveStop site check phase canonLabels reached reference) (sameStore : reached.store = reference.store)
+    (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+    (checked : Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached)
+    (canonical : Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference)
+    (agreement : GiveCutDispatch profile ready bindings callees site) :
+    let dispatch := Dispatch.linked ready bindings callees
+    ∃ checkedLabels,
+      Run profile ready (ComponentCall.hostWithComponent bindings callees) start
+        (actions ++ [.give route .entered, .give route phase]) checkedLabels reached ∧
+      Steps profile ready dispatch (HostFrame.replace start incoming) labels (HostFrame.replace site.start outgoing) ∧
+      Steps profile ready dispatch (site.reference site.referenceReply) canonLabels reference ∧
+      PayloadPrefix.visible checkedLabels = PayloadPrefix.visible (labels ++ canonLabels) ∧
+      JournalReplay profile ready dispatch (site.reference site.referenceReply) outgoing canonLabels reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.interleavedStop
+    site between entry stop sameStore seen checked canonical agreement
+
+/-- Follow the actual allocator occurrence through a finite body prefix.
+A saved mark still denotes a suspended call, not an allocator return. -/
+theorem JournalInterleaving.next_allocator_prefix {route : GiveEffectRoute} {bindings : List (Binding sig)}
+    {callees : List (Callee sig)} (site : PayloadRoot.Site grow sig route)
+    {actions labels incoming outgoing entryLabels}
+    (between : JournalInterleaving profile ready (hostWithComponent bindings callees) start incoming actions labels site.start outgoing)
+    (entry : Transition profile ready (hostWithComponent bindings callees) site.start (.give route .entered) entryLabels site.checked)
+    {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {beforeCheck beforeCanon left right reached reference : State grow sig}
+    {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels mark)
+    (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+    (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+    (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+    (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+    (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right)
+    (checked : Dispatch.Compatible profile ready bindings callees left checkLabels reached)
+    (canonical : Dispatch.Compatible profile ready bindings callees right canonLabels reference) :
+    let dispatch := Dispatch.linked ready bindings callees
+    let canonTrace := canonEntryLabels ++ [.tau, .tau] ++ canonLabels
+    ∃ checkedLabels,
+      Run profile ready (hostWithComponent bindings callees) start
+        (actions ++ [.give route .entered, .give route (.allocatorPrefix mark)]) checkedLabels reached ∧
+      Steps profile ready dispatch (HostFrame.replace start incoming) labels (HostFrame.replace site.start outgoing) ∧
+      PayloadPrefix.visible checkedLabels = PayloadPrefix.visible (labels ++ canonTrace) ∧
+      JournalReplay profile ready dispatch (site.reference site.referenceReply) outgoing canonTrace reference :=
+  let compared := cut.session checkEntry canonEntry seenEntry checkInstall canonInstall checked canonical
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.interleavedCut
+    site between entry compared.1 compared.2.1 compared.2.2
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession
