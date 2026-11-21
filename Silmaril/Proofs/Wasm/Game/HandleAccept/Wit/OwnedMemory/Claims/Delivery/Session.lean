@@ -277,34 +277,42 @@ theorem lowerDirectArguments {engine : CoreEngine} {hostState : Type} (cx : Lift
     rw [List.map_cons, List.map_cons, List.map_cons, lowerFlatTypes, ih]
     cases arg <;> rw [DirectArgument.value, DirectArgument.type, lowerFlatAt] <;> rfl
 
+theorem directCalleePlan (task : TaskId) (callee : (core3 grow).FuncAddr) (record : Task (core3 grow))
+    (args : List DirectArgument) (schema : paramTypes record.ft = args.map DirectArgument.type)
+    (fits : args.length ≤ ABI.maxFlatParams) :
+    ∃ (read : CStore (core3 grow) → Session grow sig (Ret (core3 grow))),
+      liftArgumentsBody .spec .none task callee record (args.map DirectArgument.value) = .op .get read ∧
+      ∀ store, ∃ next, read store = .op (.callCore callee (args.map DirectArgument.flat)) next := by
+  let values := args.map DirectArgument.value
+  let flat := args.map DirectArgument.flat
+  let ctx : LiftLowerContext (core3 grow) :=
+    { opts := record.opts, inst := record.inst, scope := .task task }
+  have lower : (lowerFlatValues Limits.spec Quirks.none ctx ABI.maxFlatParams values
+      (paramTypes record.ft) none : Session grow sig (List FlatValue)) =
+      (ptrType ctx >>= fun _ => pure flat) := by
+    simp only [lowerFlatValues, schema, directArgumentCount, ite_eq_right (Nat.not_lt_of_ge fits),
+      values, flat, lowerDirectArguments]
+  simp only [liftArgumentsBody]
+  rw [show (lowerFlatValues Limits.spec Quirks.none
+      { opts := record.opts, inst := record.inst, scope := .task task }
+      ABI.maxFlatParams values (paramTypes record.ft) none : Session grow sig (List FlatValue)) =
+      (ptrType ctx >>= fun _ => pure flat) from lower]
+  refine ⟨_, rfl, ?_⟩
+  intro store
+  cases mode : record.opts.async_ <;> cases callback : record.opts.callback <;>
+    simp [Prog.bind, pure, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+
 theorem liftDirectCoreAt (site : LiftSite grow sig) (state : State grow sig) (args : List DirectArgument)
     (focused : state.ctl = (site.withArguments (args.map DirectArgument.value)).ctl)
     (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
     (fits : args.length ≤ ABI.maxFlatParams) :
     ∃ next, ∀ (profile : ProfileKind) (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig)),
       Steps profile ready (specDispatch ready impl) state [.tau, .tau] (site.coreEnteredAt state (args.map DirectArgument.flat) next) := by
-  let values := args.map DirectArgument.value
-  let flat := args.map DirectArgument.flat
-  let ctx : LiftLowerContext (core3 grow) :=
-    { opts := site.registeredTask.opts, inst := site.registeredTask.inst, scope := .task site.storeAndTask.2 }
-  have lower : (lowerFlatValues Limits.spec Quirks.none ctx ABI.maxFlatParams values
-      (paramTypes site.registeredTask.ft) none : Session grow sig (List FlatValue)) =
-      (ptrType ctx >>= fun _ => pure flat) := by
-    simp only [lowerFlatValues, schema, directArgumentCount, ite_eq_right (Nat.not_lt_of_ge fits),
-      values, flat, lowerDirectArguments]
-  suffices path : ∃ (read : CStore (core3 grow) → Session grow sig (Ret (core3 grow))),
-      (site.withArguments values).ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail ∧
-      ∃ next, read state.store = .op (.callCore site.core flat) next by
-    obtain ⟨read, focus, next, call⟩ := path
-    exact ⟨next, fun _ _ _ => .cons (.get (focused.trans focus)) (.cons (.callCore (by rw [call])) (.refl _))⟩
-  simp only [LiftSite.withArguments, LiftSite.argumentsTail, liftArgumentsBody]
-  rw [show (lowerFlatValues Limits.spec Quirks.none
-      { opts := site.registeredTask.opts, inst := site.registeredTask.inst, scope := .task site.storeAndTask.2 }
-      ABI.maxFlatParams values (paramTypes site.registeredTask.ft) none : Session grow sig (List FlatValue)) =
-      (ptrType ctx >>= fun _ => pure flat) from lower]
-  refine ⟨_, rfl, ?_⟩
-  cases mode : site.registeredTask.opts.async_ <;> cases callback : site.registeredTask.opts.callback <;>
-    simp [Prog.bind, pure, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+  obtain ⟨read, body, call⟩ := directCalleePlan site.storeAndTask.2 site.core site.registeredTask args schema fits
+  obtain ⟨next, selected⟩ := call state.store
+  have focus : state.ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail := by
+    rw [focused, LiftSite.withArguments, LiftSite.argumentsTail, body]
+  exact ⟨next, fun _ _ _ => .cons (.get focus) (.cons (.callCore (by rw [selected])) (.refl _))⟩
 
 theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
     (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
@@ -421,6 +429,110 @@ theorem lowerStartRecord {site : OnStartSite start} (handoff : LowerStartAt site
   cases indexed : handoff.record.index <;>
     simp [LowerSt.startSt, LowerStartAt.progress, LowerStartAt.startedRecord, indexed, CStore.setPendingSt,
       CStore.modifyWaitableCommon, ArenaField.get?_modify_self, handoff.subtaskLive]
+
+theorem lowerReadPlan {site : OnStartSite start} (handoff : LowerStartAt site) :
+    handoff.readArgs = (do
+      let width ← ptrType handoff.context
+      handoff.readAt width >>= handoff.finishRead) := by
+  simp only [LowerStartAt.readArgs, liftFlatValues, LowerStartAt.readAt, LowerStartAt.types,
+    LowerStartAt.spillLayout, LowerStartAt.cursor, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
+  rfl
+
+theorem lowerReadWidth {site : OnStartSite start} (handoff : LowerStartAt site) :
+    Steps profile ready (specDispatch ready impl) handoff.reading [.tau] handoff.selectedRead := by
+  have focus : handoff.reading.ctl = handoff.readControl (do
+      let width ← ptrType handoff.context
+      handoff.readAt width >>= handoff.finishRead) := by
+    rw [← lowerReadPlan]
+    rfl
+  exact .cons (.get focus) (.refl _)
+
+theorem lowerSpill {site : OnStartSite start} (handoff : LowerStartAt site) {pointer memory size}
+    (spilled : handoff.maxParams < (ABI.flattenTypes handoff.readWidth handoff.types).length)
+    (found : handoff.flat[handoff.pos]? = some pointer)
+    (aligned : flatNat pointer = ABI.alignTo (flatNat pointer) (handoff.spillLayout handoff.readWidth).alignment)
+    (selected : handoff.context.opts.memory = some memory)
+    (sized : (core3 grow).memSize? handoff.selectedRead.store.core memory = some size)
+    (fits : flatNat pointer + (handoff.spillLayout handoff.readWidth).size ≤ size) :
+    Steps profile ready (specDispatch ready impl) handoff.selectedRead [.tau] (handoff.spillBody pointer) := by
+  have focus := show handoff.selectedRead.ctl = handoff.readControl
+      (handoff.readAt handoff.readWidth >>= handoff.finishRead) from rfl
+  simp [LowerStartAt.readAt, spilled, FlatCursor.next, LowerStartAt.cursor, found, Prog.bind, pure,
+    trapIf, ← aligned, checkInBounds, memLen, memAddr, selected, orTrap] at focus
+  refine .cons (.get focus) ?_
+  simp [sized, Nat.not_lt.mpr fits, Prog.bind, Prog.bind_assoc, LowerStartAt.spillBody, LowerStartAt.cursor]
+  exact .refl _
+
+theorem lowerSpillRangeTrap {site : OnStartSite start} (handoff : LowerStartAt site) {pointer memory size}
+    (spilled : handoff.maxParams < (ABI.flattenTypes handoff.readWidth handoff.types).length)
+    (found : handoff.flat[handoff.pos]? = some pointer)
+    (aligned : flatNat pointer = ABI.alignTo (flatNat pointer) (handoff.spillLayout handoff.readWidth).alignment)
+    (selected : handoff.context.opts.memory = some memory)
+    (sized : (core3 grow).memSize? handoff.selectedRead.store.core memory = some size)
+    (outside : size < flatNat pointer + (handoff.spillLayout handoff.readWidth).size) :
+    Steps profile ready (specDispatch ready impl) handoff.selectedRead [.tau, .trap .outOfBounds]
+      (StepDefs.trapCfg handoff.selectedRead) := by
+  have focus := show handoff.selectedRead.ctl = handoff.readControl
+      (handoff.readAt handoff.readWidth >>= handoff.finishRead) from rfl
+  simp [LowerStartAt.readAt, spilled, FlatCursor.next, LowerStartAt.cursor, found, Prog.bind, pure,
+    trapIf, ← aligned, checkInBounds, memLen, memAddr, selected, orTrap] at focus
+  refine .cons (.get focus) ?_
+  simp [sized, outside, Prog.bind]
+  exact .cons (.trap rfl) (.refl _)
+
+theorem liftDirectArgument {engine : CoreEngine} {hostState : Type} (cx : LiftLowerContext engine)
+    (width : AddrType) (arg : DirectArgument) (cursor : FlatCursor)
+    (found : cursor.values[cursor.pos]? = some arg.flat) :
+    (liftFlatAt .spec .none cx width arg.type cursor : P engine hostState (Value.Val × FlatCursor)) =
+      pure (arg.value, { cursor with pos := cursor.pos + 1 }) := by
+  cases arg with
+  | bool value => cases value <;>
+      simp only [DirectArgument.type, liftFlatAtWith, FlatLoadCarrier.reference, liftFlatPrim,
+        FlatCursor.next, found, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind'] <;> rfl
+  | u32 value =>
+    have number : (value.toNat : Int) % (2 ^ 32) = value.toNat := by
+      have bound := value.isLt
+      exact Int.emod_eq_of_lt (Int.natCast_nonneg _) (by exact_mod_cast bound)
+    simp only [DirectArgument.type, liftFlatAtWith, FlatLoadCarrier.reference, liftFlatPrim,
+      Value.IntKind.ofPrimitive, FlatCursor.next, found, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind']
+    congr 3
+    change ((BitVec.ofInt 32 (value.toNat : Int)).toNat : Int) % (2 ^ 32) = value.toNat
+    simpa only [BitVec.ofInt_natCast, BitVec.ofNat_toNat, BitVec.setWidth_eq] using number
+
+theorem liftDirectArguments {engine : CoreEngine} {hostState : Type} (cx : LiftLowerContext engine)
+    (width : AddrType) (args : List DirectArgument) (cursor : FlatCursor) (suffix : List FlatValue)
+    (words : cursor.values.drop cursor.pos = args.map DirectArgument.flat ++ suffix) :
+    (liftFlatTypes .spec .none cx width (args.map DirectArgument.type) cursor :
+      P engine hostState (List Value.Val × FlatCursor)) =
+      pure (args.map DirectArgument.value, { cursor with pos := cursor.pos + args.length }) := by
+  induction args generalizing cursor with
+  | nil => cases cursor; rfl
+  | cons arg rest ih =>
+    have found : cursor.values[cursor.pos]? = some arg.flat := by
+      rw [← List.head?_drop, words]
+      rfl
+    have tail : cursor.values.drop (cursor.pos + 1) = rest.map DirectArgument.flat ++ suffix := by
+      rw [← List.drop_drop, words]
+      rfl
+    simp only [List.map_cons, liftFlatTypesWith, liftDirectArgument cx width arg cursor found,
+      Prog.bind_eq, Prog.pure_eq, Prog.pure_bind', ih { cursor with pos := cursor.pos + 1 } tail, List.length_cons]
+    rw [Nat.add_right_comm cursor.pos 1 rest.length, Nat.add_assoc]
+
+def lowerDirectReturn {site : OnStartSite start} (handoff : LowerStartAt site) (args : List DirectArgument)
+    (schema : handoff.types = args.map DirectArgument.type) (fits : args.length ≤ handoff.maxParams)
+    (suffix : List FlatValue) (words : handoff.flat.drop handoff.pos = args.map DirectArgument.flat ++ suffix) :
+    LowerArgumentReturn handoff handoff.selectedRead := by
+  refine ⟨args.map DirectArgument.value, { handoff.cursor with pos := handoff.pos + args.length }, ?_⟩
+  unfold LowerStartAt.selectedRead
+  simp only [LowerStartAt.readAt, schema, directArgumentCount, not_lt.mpr fits, ite_false,
+    liftDirectArguments handoff.context handoff.readWidth args handoff.cursor suffix words, Prog.bind_eq,
+    Prog.pure_eq, Prog.pure_bind']
+  rfl
+
+theorem lowerArgsReturn {site : OnStartSite start} {handoff : LowerStartAt site} {reached : State grow sig}
+    (returned : LowerArgumentReturn handoff reached) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau] returned.resumed := by
+  exact .cons (.modify returned.focused) (.cons (.popProg rfl) (.refl _))
 
 theorem lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (empty : handoff.fnType.params = []) :
     Steps profile ready (specDispatch ready impl) handoff.reading [.tau, .tau, .tau]
@@ -852,6 +964,7 @@ theorem k1LowerHandoff {atGate atHost : State grow sig} {thread : ThreadId} {tas
     ∃ cursor : LowerStartAt handoff.startCursor,
       let labels := ((resume.labels ++ [.tau, .tau]) ++ handoff.labels) ++ List.replicate cursor.steps .tau
       cursor.subtask = subtask ∧ cursor.record = subtaskRecord ∧ cursor.flat = flat ∧ cursor.pos = pos ∧
+      cursor.fnType = fnType ∧ cursor.maxParams = maxParams ∧
         Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels cursor.reading ∧
         Steps profile ready (Dispatch.linked ready bindings callees) atHost labels cursor.reading ∧
         cursor.reading.store.subtask? subtask = some cursor.startedRecord := by
@@ -868,7 +981,7 @@ theorem k1LowerHandoff {atGate atHost : State grow sig} {thread : ThreadId} {tas
       unfold K1Resume.entryStore
       split <;> exact live
   obtain ⟨checked, canonical⟩ := k1LiftStartPair handoff notPending bindings callees
-  exact ⟨cursor, rfl, rfl, rfl, rfl, appendSteps checked (lowerStart cursor),
+  exact ⟨cursor, rfl, rfl, rfl, rfl, rfl, rfl, appendSteps checked (lowerStart cursor),
     appendSteps canonical (lowerStart cursor), lowerStartRecord cursor⟩
 
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
@@ -884,7 +997,14 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | coreCallout site => exact coreCalloutSteps site
   | lowerAllocate request live allowed => exact lowerAllocate request live allowed
   | lowerStart handoff => exact lowerStart handoff
+  | lowerReadWidth handoff => exact lowerReadWidth handoff
+  | lowerSpill handoff spilled found aligned selected sized fits => exact lowerSpill handoff spilled found aligned selected sized fits
+  | lowerSpillRangeTrap handoff spilled found aligned selected sized outside =>
+    exact lowerSpillRangeTrap handoff spilled found aligned selected sized outside
+  | lowerArgsReturn returned => exact lowerArgsReturn returned
   | lowerEmptyArgs handoff empty => exact lowerEmptyArgs handoff empty
+  | lowerDirectCore focused selected =>
+    exact .cons (.get focused) (.cons (.callCore (by rw [selected])) (.refl _))
   | lowerEmptyCore _ entry => exact entry
   | invokeReturn focused => exact invokeReturnSteps focused
   | lowerInstallCancel returned => exact lowerInstallCancel returned
@@ -1051,6 +1171,53 @@ theorem runSteps {actions labels} (path : Run profile ready impl start actions l
   induction path with
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
+
+theorem runLowerDirect {site : OnStartSite start} (handoff : LowerStartAt site)
+    (task : TaskId) (callee : (core3 grow).FuncAddr) (record : Task (core3 grow))
+    (body : site.next = liftArgumentsBody .spec .none task callee record) (args : List DirectArgument)
+    (callerSchema : handoff.types = args.map DirectArgument.type) (calleeSchema : paramTypes record.ft = args.map DirectArgument.type)
+    (callerFits : args.length ≤ handoff.maxParams) (calleeFits : args.length ≤ ABI.maxFlatParams)
+    (suffix : List FlatValue) (words : handoff.flat.drop handoff.pos = args.map DirectArgument.flat ++ suffix) :
+    ∃ (returned : LowerArgumentReturn handoff handoff.selectedRead), ∃ next,
+      returned.cursor.pos = handoff.pos + args.length ∧
+      ∀ impl, Run profile ready impl handoff.reading
+        [.lowerReadWidth site.caller, .lowerArgsReturn site.caller, .coreEnter site.thread]
+        [.tau, .tau, .tau, .tau, .tau] (site.entered returned.resumed callee (args.map DirectArgument.flat) next) := by
+  let returned := lowerDirectReturn handoff args callerSchema callerFits suffix words
+  obtain ⟨read, plan, call⟩ := directCalleePlan task callee record args calleeSchema calleeFits
+  obtain ⟨next, selected⟩ := call returned.resumed.store
+  have focused : returned.resumed.ctl = ⟨some site.thread, .prog (.op .get read), site.segments⟩ :: site.rest := by
+    change ⟨some site.thread, .prog (site.next (args.map DirectArgument.value)), site.segments⟩ :: site.rest = _
+    rw [body, plan]
+  exact ⟨returned, next, rfl, fun _ => .next (.lowerReadWidth handoff) (.next (.lowerArgsReturn returned)
+    (.next (.lowerDirectCore (site := site) focused selected) (.stop _)))⟩
+
+theorem k1LowerDirect {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) (notPending : handoff.record.state ≠ .pendingCancel)
+    {subtask context flat pos fnType maxParams maxResults subtaskRecord}
+    (caller : ArenaField.callers.get? atHost.store handoff.record.caller =
+      some (.lower subtask context flat pos fnType maxParams maxResults))
+    (live : atHost.store.subtask? subtask = some subtaskRecord)
+    (args : List DirectArgument) (callerSchema : paramTypes fnType = args.map DirectArgument.type)
+    (calleeSchema : paramTypes handoff.registered.ft = args.map DirectArgument.type)
+    (callerFits : args.length ≤ maxParams) (calleeFits : args.length ≤ ABI.maxFlatParams)
+    (suffix : List FlatValue) (words : flat.drop pos = args.map DirectArgument.flat ++ suffix)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    ∃ (cursor : LowerStartAt handoff.startCursor) (returned : LowerArgumentReturn cursor cursor.selectedRead), ∃ next,
+      let labels := (((resume.labels ++ [.tau, .tau]) ++ handoff.labels) ++ List.replicate cursor.steps .tau) ++
+        [.tau, .tau, .tau, .tau, .tau]
+      let entered := handoff.startCursor.entered returned.resumed handoff.callee (args.map DirectArgument.flat) next
+      returned.cursor.pos = pos + args.length ∧
+        Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels entered ∧
+        Steps profile ready (Dispatch.linked ready bindings callees) atHost labels entered := by
+  obtain ⟨cursor, _, _, actualFlat, actualPos, actualSchema, actualLimit, check, canon, _⟩ :=
+    k1LowerHandoff handoff notPending caller live bindings callees
+  obtain ⟨returned, next, offset, run⟩ := runLowerDirect (profile := profile) (ready := ready) cursor task handoff.callee
+    handoff.registered rfl args (by rw [LowerStartAt.types, actualSchema]; exact callerSchema) calleeSchema
+    (by rw [actualLimit]; exact callerFits) calleeFits suffix (by rw [actualFlat, actualPos]; exact words)
+  exact ⟨cursor, returned, next, offset.trans (congrArg (· + args.length) actualPos),
+    appendSteps check (runSteps (run (host bindings))), appendSteps canon (runSteps (run (hostWithComponent bindings callees)))⟩
 
 theorem giveBodyCut {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}
     (site : PayloadRoot.Site grow sig route) {check canon : Cursor (E := core3 grow) (HostState sig)} {keep}

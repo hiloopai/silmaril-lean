@@ -426,6 +426,11 @@ structure OnStartSite (state : State grow sig) where
   rest : List (Activation (core3 grow) (HostState sig))
   focused : state.ctl = ⟨some thread, .prog (callVals (.onStart caller) >>= next), segments⟩ :: rest
 
+def OnStartSite.entered {state : State grow sig} (site : OnStartSite state) (reached : State grow sig)
+    (callee : (core3 grow).FuncAddr) (flat : List FlatValue)
+    (next : List FlatValue → Session grow sig (Ret (core3 grow))) : State grow sig :=
+  { reached with ctl := ⟨some site.thread, .core ((core3 grow).invoke callee flat) next, site.segments⟩ :: site.rest }
+
 def LiftSite.startCursor (site : LiftSite grow sig) : OnStartSite site.onStart :=
   ⟨site.storeAndThread.2, site.registeredTask.caller, site.argumentsTail, [], site.workerTail, rfl⟩
 
@@ -477,6 +482,56 @@ def LowerStartAt.reading (handoff : LowerStartAt site) : State grow sig :=
     store := LowerSt.startSt handoff.subtask handoff.progress
     ctl := ⟨some site.thread, .prog handoff.readArgs, .prog site.resume :: site.segments⟩ :: site.rest }
 
+def LowerStartAt.types (handoff : LowerStartAt site) : List Stored.TypeOf := handoff.fnType.params.map (·.2)
+
+def LowerStartAt.cursor (handoff : LowerStartAt site) : FlatCursor := ⟨handoff.flat, handoff.pos⟩
+
+def LowerStartAt.readWidth (handoff : LowerStartAt site) : AddrType := ptrTypeIn handoff.reading.store handoff.context
+
+def LowerStartAt.finishRead (_handoff : LowerStartAt site) (result : List Value.Val × FlatCursor) :
+    Session grow sig (Ret (core3 grow)) := do
+  modifyStore (LowerSt.setCallerPosSt site.caller result.2.pos)
+  pure (.vals result.1)
+
+def LowerStartAt.readControl (_handoff : LowerStartAt site) (body : Session grow sig (Ret (core3 grow))) :
+    List (Activation (core3 grow) (HostState sig)) :=
+  ⟨some site.thread, .prog body, .prog site.resume :: site.segments⟩ :: site.rest
+
+def LowerStartAt.spillLayout (handoff : LowerStartAt site) (width : AddrType) : ABI.Layout :=
+  ABI.layout width (.tuple handoff.types : Stored.TypeOf)
+
+def LowerStartAt.readAt (handoff : LowerStartAt site) (width : AddrType) : Session grow sig (List Value.Val × FlatCursor) :=
+  if (ABI.flattenTypes width handoff.types).length > handoff.maxParams then do
+    let (pointer, cursor) ← handoff.cursor.next (ABI.pointerType width)
+    let layout := handoff.spillLayout width
+    trapIf (decide (flatNat pointer ≠ ABI.alignTo (flatNat pointer) layout.alignment)) .unalignedPointer
+    checkInBounds handoff.context (flatNat pointer) layout.size
+    let values ← loadTypesAt .spec .none handoff.context width handoff.types (flatNat pointer)
+    pure (values, cursor)
+  else liftFlatTypes .spec .none handoff.context width handoff.types handoff.cursor
+
+def LowerStartAt.selectedRead (handoff : LowerStartAt site) : State grow sig :=
+  { handoff.reading with ctl := handoff.readControl (handoff.readAt handoff.readWidth >>= handoff.finishRead) }
+
+/-- A returned spill pointer is consumed once, independently of the number of loaded fields. -/
+def LowerStartAt.spillBody (handoff : LowerStartAt site) (pointer : FlatValue) : State grow sig :=
+  { handoff.selectedRead with ctl := handoff.readControl (do
+      let values ← loadTypesAt .spec .none handoff.context handoff.readWidth handoff.types (flatNat pointer)
+      handoff.finishRead (values, { handoff.cursor with pos := handoff.pos + 1 })) }
+
+/-- The original `onStart` result frame has reached the caller cursor update.
+Its store may already include effects from lifting the arguments. -/
+structure LowerArgumentReturn (handoff : LowerStartAt site) (reached : State grow sig) where
+  values : List Value.Val
+  cursor : FlatCursor
+  focused : reached.ctl = handoff.readControl (handoff.finishRead (values, cursor))
+
+def LowerArgumentReturn.resumed {handoff : LowerStartAt site} {reached : State grow sig}
+    (returned : LowerArgumentReturn handoff reached) : State grow sig :=
+  { reached with
+    store := LowerSt.setCallerPosSt site.caller returned.cursor.pos reached.store
+    ctl := ⟨some site.thread, .prog (site.next returned.values), site.segments⟩ :: site.rest }
+
 def LiftSite.withLowerValues (site : LiftSite grow sig) (state : State grow sig) (args : List Value.Val)
     (pos : Nat) : State grow sig :=
   { state with
@@ -522,6 +577,10 @@ inductive Action where
   | lowerAllocate (subtask : SubtaskId) (caller : CallerId)
   | lowerStart (subtask : SubtaskId) (indexed : Bool)
   | lowerEmptyArgs (caller : CallerId)
+  | lowerReadWidth (caller : CallerId)
+  | lowerSpill (caller : CallerId)
+  | lowerArgsReturn (caller : CallerId)
+  | lowerSpillTrap (caller : CallerId) (reason : TrapReason)
   | lowerInstallCancel (subtask : SubtaskId)
   | lowerEagerDelivery (subtask : SubtaskId)
   | lowerPending (subtask : SubtaskId) (index : Nat)
@@ -597,6 +656,34 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | lowerStart {start} {site : OnStartSite start} (handoff : LowerStartAt site) :
       Transition profile ready impl start (.lowerStart handoff.subtask handoff.record.index.isSome)
         (List.replicate handoff.steps .tau) handoff.reading
+  | lowerReadWidth {start} {site : OnStartSite start} (handoff : LowerStartAt site) :
+      Transition profile ready impl handoff.reading (.lowerReadWidth site.caller) [.tau] handoff.selectedRead
+  | lowerSpill {start} {site : OnStartSite start} (handoff : LowerStartAt site)
+      {pointer : FlatValue} {memory : (core3 grow).MemAddr} {size : Nat}
+      (spilled : handoff.maxParams < (ABI.flattenTypes handoff.readWidth handoff.types).length)
+      (found : handoff.flat[handoff.pos]? = some pointer)
+      (aligned : flatNat pointer = ABI.alignTo (flatNat pointer) (handoff.spillLayout handoff.readWidth).alignment)
+      (selected : handoff.context.opts.memory = some memory)
+      (sized : (core3 grow).memSize? handoff.selectedRead.store.core memory = some size)
+      (fits : flatNat pointer + (handoff.spillLayout handoff.readWidth).size ≤ size) :
+      Transition profile ready impl handoff.selectedRead (.lowerSpill site.caller) [.tau] (handoff.spillBody pointer)
+  | lowerSpillRangeTrap {start} {site : OnStartSite start} (handoff : LowerStartAt site)
+      {pointer : FlatValue} {memory : (core3 grow).MemAddr} {size : Nat}
+      (spilled : handoff.maxParams < (ABI.flattenTypes handoff.readWidth handoff.types).length)
+      (found : handoff.flat[handoff.pos]? = some pointer)
+      (aligned : flatNat pointer = ABI.alignTo (flatNat pointer) (handoff.spillLayout handoff.readWidth).alignment)
+      (selected : handoff.context.opts.memory = some memory)
+      (sized : (core3 grow).memSize? handoff.selectedRead.store.core memory = some size)
+      (outside : size < flatNat pointer + (handoff.spillLayout handoff.readWidth).size) :
+      Transition profile ready impl handoff.selectedRead (.lowerSpillTrap site.caller .outOfBounds)
+        [.tau, .trap .outOfBounds] (StepDefs.trapCfg handoff.selectedRead)
+  | lowerArgsReturn {start reached} {site : OnStartSite start} {handoff : LowerStartAt site}
+      (returned : LowerArgumentReturn handoff reached) :
+      Transition profile ready impl reached (.lowerArgsReturn site.caller) [.tau, .tau] returned.resumed
+  | lowerDirectCore {start reached} {site : OnStartSite start} {callee flat next read}
+      (focused : reached.ctl = ⟨some site.thread, .prog (.op .get read), site.segments⟩ :: site.rest)
+      (selected : read reached.store = .op (.callCore callee flat) next) :
+      Transition profile ready impl reached (.coreEnter site.thread) [.tau, .tau] (site.entered reached callee flat next)
   | lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (empty : handoff.fnType.params = []) :
       Transition profile ready impl handoff.reading (.lowerEmptyArgs site.registeredTask.caller) [.tau, .tau, .tau]
         (site.withLowerValues handoff.reading [] handoff.pos)

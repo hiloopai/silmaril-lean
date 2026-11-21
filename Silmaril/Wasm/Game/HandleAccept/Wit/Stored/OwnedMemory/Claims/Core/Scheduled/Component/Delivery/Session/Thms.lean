@@ -492,11 +492,52 @@ theorem K1LiftStart.linked_lower_handoff {atGate atHost : State grow sig} {threa
     ∃ cursor : LowerStartAt handoff.startCursor,
       let labels := ((resume.labels ++ [.tau, .tau]) ++ handoff.labels) ++ List.replicate cursor.steps .tau
       cursor.subtask = subtask ∧ cursor.record = subtaskRecord ∧ cursor.flat = flat ∧ cursor.pos = pos ∧
+      cursor.fnType = fnType ∧ cursor.maxParams = maxParams ∧
         Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels cursor.reading ∧
         Steps profile ready (Dispatch.linked ready bindings callees) atHost labels cursor.reading ∧
         cursor.reading.store.subtask? subtask = some cursor.startedRecord :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1LowerHandoff
     handoff notPending caller live bindings callees
+
+/-- The closed argument handoff reads the caller width, lifts and commits
+exactly the selected words, and enters the real callee on the original activation. -/
+theorem LowerStartAt.direct_callee {site : OnStartSite start} (handoff : LowerStartAt site)
+    (task : TaskId) (callee : (core3 grow).FuncAddr) (record : Task (core3 grow))
+    (body : site.next = liftArgumentsBody .spec .none task callee record) (args : List DirectArgument)
+    (callerSchema : handoff.types = args.map DirectArgument.type) (calleeSchema : paramTypes record.ft = args.map DirectArgument.type)
+    (callerFits : args.length ≤ handoff.maxParams) (calleeFits : args.length ≤ ABI.maxFlatParams)
+    (suffix : List FlatValue) (words : handoff.flat.drop handoff.pos = args.map DirectArgument.flat ++ suffix) :
+    ∃ (returned : LowerArgumentReturn handoff handoff.selectedRead), ∃ next,
+      returned.cursor.pos = handoff.pos + args.length ∧
+      ∀ impl, Run profile ready impl handoff.reading
+        [.lowerReadWidth site.caller, .lowerArgsReturn site.caller, .coreEnter site.thread]
+        [.tau, .tau, .tau, .tau, .tau] (site.entered returned.resumed callee (args.map DirectArgument.flat) next) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runLowerDirect
+    handoff task callee record body args callerSchema calleeSchema callerFits calleeFits suffix words
+
+/-- A selected K1 worker reaches its direct callee under both dispatchers.
+Unlike the initially admitted path, the retained tail is the reached tick's tail. -/
+theorem K1LiftStart.linked_direct_callee {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) (notPending : handoff.record.state ≠ .pendingCancel)
+    {subtask context flat pos fnType maxParams maxResults subtaskRecord}
+    (caller : ArenaField.callers.get? atHost.store handoff.record.caller =
+      some (.lower subtask context flat pos fnType maxParams maxResults))
+    (live : atHost.store.subtask? subtask = some subtaskRecord)
+    (args : List DirectArgument) (callerSchema : paramTypes fnType = args.map DirectArgument.type)
+    (calleeSchema : paramTypes handoff.registered.ft = args.map DirectArgument.type)
+    (callerFits : args.length ≤ maxParams) (calleeFits : args.length ≤ ABI.maxFlatParams)
+    (suffix : List FlatValue) (words : flat.drop pos = args.map DirectArgument.flat ++ suffix)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    ∃ (cursor : LowerStartAt handoff.startCursor) (returned : LowerArgumentReturn cursor cursor.selectedRead), ∃ next,
+      let labels := (((resume.labels ++ [.tau, .tau]) ++ handoff.labels) ++ List.replicate cursor.steps .tau) ++
+        [.tau, .tau, .tau, .tau, .tau]
+      let entered := handoff.startCursor.entered returned.resumed handoff.callee (args.map DirectArgument.flat) next
+      returned.cursor.pos = pos + args.length ∧
+        Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels entered ∧
+        Steps profile ready (Dispatch.linked ready bindings callees) atHost labels entered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1LowerDirect
+    handoff notPending caller live args callerSchema calleeSchema callerFits calleeFits suffix words bindings callees
 
 /-- No independent live-caller or progress-record premise is needed on the
 fresh, directly admitted lifted path: lift launch and registration leave both arenas alone. -/
