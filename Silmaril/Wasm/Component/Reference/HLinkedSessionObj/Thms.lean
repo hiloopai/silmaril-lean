@@ -89,10 +89,11 @@ reference composition needs `HLinked2.Adequate` and typed calls, as `HLinked2.se
 ## Not claimed (what remains)
 
 * **The open object** `compSessionO`: equality of open objects should imply `RefSessEquivFull`
-  (soundness); it does not follow from it, since the open interface admits a refusal followed by
-  an answer of the same call (`not_hostRun_refuse_answer`). The concrete pair of components
-  separating them (an importer that answers differently when its previous call trapped in a host
-  call it then repeats) is **not proved** here.
+  (soundness); that is not proved. The converse fails: the open interface admits a refusal
+  followed by an answer of the same call (`not_hostRun_refuse_answer`), and the concrete pair of
+  `HLinkedSep` (an importer whose global remembers that its previous call trapped in the host
+  call it then repeats) is `RefSessEquivFull` with equal host-realizable objects but different
+  open objects (`HLinkedSep.refSessEquivFull`, `HLinkedSep.compSessionO_ne`, proved there).
 * Nondeterministic profiles. The relation to the generic `SessionLink.linkS` is in
   `HLinkedLink`: the open triple is exactly the link of the host passthrough beside the exporter
   serving the importer (legally restricted), and the host-realizable triple is its realizable
