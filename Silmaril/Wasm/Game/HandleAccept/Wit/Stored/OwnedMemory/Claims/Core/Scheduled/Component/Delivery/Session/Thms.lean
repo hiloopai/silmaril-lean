@@ -241,6 +241,15 @@ theorem Run.invoke_arguments {call func args core fnType opts inst}
     (.next (.liftAdmit _ admission)
       (.next (.liftArguments _ (ArenaField.get?_alloc_self ArenaField.callers start.store (.host call args 0))) (.stop _)))
 
+/-- A run through the original empty-argument handoff reaches the actual Core
+activation in two more steps, retaining the pending parent continuation. It
+does not assume that the Core activation terminates or replies. -/
+theorem Run.enter_empty_core {site : LiftSite grow sig} {actions labels}
+    (run : Run profile ready impl start actions labels (site.withArguments []))
+    (empty : paramTypes site.registeredTask.ft = []) :
+    ∃ next, Steps profile ready (specDispatch ready impl) start (labels ++ [.tau, .tau]) (site.coreEntered [] next) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runEmptyCore run empty
+
 /-- Actual backpressure makes the launched worker park at K1, even after
 incrementing the entry count. The async parent returns the cancellation
 handle while that worker is still saved; this is not result delivery. -/

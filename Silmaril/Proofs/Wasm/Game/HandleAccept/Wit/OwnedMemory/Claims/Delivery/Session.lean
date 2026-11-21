@@ -259,6 +259,18 @@ theorem liftArguments (site : LiftSite grow sig) {call args}
   simp [Prog.bind, pure, reached]
   exact .cons (.emit rfl) (.cons (.popProg rfl) (.refl _))
 
+theorem liftEmptyCore (site : LiftSite grow sig) (empty : paramTypes site.registeredTask.ft = []) :
+    ∃ next, Steps profile ready (specDispatch ready impl) (site.withArguments []) [.tau, .tau] (site.coreEntered [] next) := by
+  suffices path : ∃ (read : CStore (core3 grow) → Session grow sig (Ret (core3 grow))),
+      (site.withArguments []).ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail ∧
+      ∃ next, read site.onStart.store = .op (.callCore site.core []) next by
+    obtain ⟨read, focus, next, call⟩ := path
+    have sameStore : (site.withArguments []).store = site.onStart.store := rfl
+    exact ⟨next, .cons (.get focus) (.cons (.callCore (by rw [sameStore, call])) (.refl _))⟩
+  refine ⟨_, rfl, ?_⟩
+  cases mode : site.registeredTask.opts.async_ <;> cases callback : site.registeredTask.opts.callback <;>
+    simp [Prog.bind, pure, ABI.flattenTypes, lowerFlatTypes, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : State grow sig}
@@ -437,6 +449,13 @@ theorem runAppend {first second leading trailing} (left : Run profile ready impl
   induction left with
   | stop => exact right
   | next edge _ ih => simpa only [List.cons_append, List.append_assoc] using Run.next edge (ih right)
+
+theorem runEmptyCore {site : LiftSite grow sig} {actions labels}
+    (run : Run profile ready impl start actions labels (site.withArguments []))
+    (empty : paramTypes site.registeredTask.ft = []) :
+    ∃ next, Steps profile ready (specDispatch ready impl) start (labels ++ [.tau, .tau]) (site.coreEntered [] next) := by
+  obtain ⟨next, core⟩ := liftEmptyCore site empty
+  exact ⟨next, appendSteps (runSteps run) core⟩
 
 theorem closedRecord {target labels} (edge : Transition profile ready impl start (.closedCallback target) labels finish) :
     finish.store.subtask? target = start.store.subtask? target := by

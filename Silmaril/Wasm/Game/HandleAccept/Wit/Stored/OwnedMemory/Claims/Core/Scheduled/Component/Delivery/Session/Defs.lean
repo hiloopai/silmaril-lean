@@ -207,6 +207,10 @@ def LiftSite.onStart (site : LiftSite grow sig) : State grow sig :=
 def LiftSite.withArguments (site : LiftSite grow sig) (args : List Value.Val) : State grow sig :=
   { site.onStart with ctl := ⟨some site.storeAndThread.2, .prog (site.argumentsTail args), []⟩ :: site.workerTail }
 
+def LiftSite.coreEntered (site : LiftSite grow sig) (flat : List FlatValue)
+    (next : List FlatValue → Session grow sig (Ret (core3 grow))) : State grow sig :=
+  { site.onStart with ctl := ⟨some site.storeAndThread.2, .core ((core3 grow).invoke site.core flat) next, []⟩ :: site.workerTail }
+
 /-- No K1 wait is entered on this branch. Full registration tables are not
 classified as admitted and must take the canonical trap branch instead. -/
 structure LiftAdmission (site : LiftSite grow sig) where
