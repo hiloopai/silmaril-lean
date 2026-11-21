@@ -132,16 +132,17 @@ def ComparedPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
     Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) rightStart canonLabels right ∧
     PayloadPrefix.visible checkLabels = seen ∧ PayloadPrefix.visible canonLabels = seen ∧ left.store = right.store
 
-/-- A compared prefix after the active slots rejoin their original locations.
-The trails follow occurrences through all intermediate scheduler edits. -/
+/-- A compared prefix with occurrence trails for active slots. The starting
+offset accounts for older slots below an allocator frame that is popped. -/
 def ComparedSlots (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (leftStart rightStart : Config (core3 grow) (HostState sig)) (seen : Trace grow sig)
-    (left right : Config (core3 grow) (HostState sig)) : Prop :=
+    (left right : Config (core3 grow) (HostState sig)) (offset : Nat := 0) : Prop :=
   open ReturnFrame.Occurrence in
   ∃ checkLabels canonLabels,
-    RetainsActiveSlots profile ready (specDispatch ready base) leftStart checkLabels left ∧
-    RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base)) rightStart canonLabels right ∧
+    (∀ depth, Prefix profile ready (specDispatch ready base) leftStart (.active 0 (depth + offset)) checkLabels left (.active 0 depth)) ∧
+    (∀ depth, Prefix profile ready (specDispatch ready (LiveDispatch.host bindings base))
+      rightStart (.active 0 (depth + offset)) canonLabels right (.active 0 depth)) ∧
     PayloadPrefix.visible checkLabels = seen ∧ PayloadPrefix.visible canonLabels = seen
 
 /-- A cumulative view of the actual string plan. Compare a finite stopped
@@ -156,7 +157,7 @@ def LiveStringPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
       PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) →
       Trace grow sig → Prop)
     (length : Nat) (left right : Config (core3 grow) (HostState sig))
-    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (seen : Trace grow sig) : Prop :=
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (seen : Trace grow sig) (offset : Nat := 0) : Prop :=
   open PayloadPrefix ReturnFrame.Occurrence in
   let checkDispatch := specDispatch ready base
   let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
@@ -169,7 +170,7 @@ def LiveStringPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
     match result with
     | .error reason => lhs.ctl = [] ∧ rhs.ctl = [] ∧
       ComparedPaths profile ready base bindings leftStart rightStart (seen ++ [.trap reason]) lhs rhs
-    | .ok (.done pointer) => ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs ∧
+    | .ok (.done pointer) => ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs offset ∧
       finish pointer lhs rhs check canon seen
     | .ok (.call pointer oldSize alignment size rest _) =>
       let first := stringPlanResume cx rest checkNext
@@ -188,7 +189,7 @@ def LiveStringPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
               let after := { reached with ctl := cursor.control (first (.nat value)) }
               let referenceAfter := { reference with ctl := peer.control (second (.nat value)) }
               LiveStringPaths profile ready base bindings older cx checkNext canonNext leftStart rightStart finish
-                rest.length after referenceAfter cursor peer (seen ++ observed)
+                rest.length after referenceAfter cursor peer (seen ++ observed) offset
 termination_by length
 
 /-- Validate the pointer from an actual marked return. The invalid branches
@@ -484,12 +485,13 @@ def LinkedStringMapBody (profile : ProfileKind) (ready : HostReady (HostState si
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
     (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
     (basePtr : Nat) (left right : Config (core3 grow) (HostState sig))
-    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (index : Nat := 0) (origin : CStore (core3 grow) := left.store) : Prop :=
   let publish : Session grow sig route.output.Result := Stored.Endpoints.ListLower.publish
     (site.destination.context site.inst) site.destination.width basePtr entries.length route.output
   let checkTail := PayloadPrefix.checkedSequenceNext (.nested 0) (fun (_ : Unit) => publish >>= fun value => pure (.ok value)) site.reply
   let canonTail := fun (_ : Unit) => publish >>= site.referenceReply
-  LinkedStringMapTraversal profile ready base bindings older site element entries 0 left.store basePtr left right check canon
+  LinkedStringMapTraversal profile ready base bindings older site element entries index origin basePtr left right check canon
     checkTail canonTail (fun lhs rhs cursor _ =>
       CollectionSegment profile ready base bindings older lhs rhs cursor site.reply site.referenceReply 0 (fun _ => False))
 
@@ -536,7 +538,7 @@ def CollectionSegmentReplies (profile : ProfileKind) (ready : HostReady (HostSta
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
     (site : PayloadRoot.Site grow sig route) (checked canonical : Config (core3 grow) (HostState sig))
-    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) : Prop :=
+    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) (offset : Nat := 1) : Prop :=
   ∃ (outcome : PayloadPrefix.Outcome route.output.Result) (checkLabels canonLabels : Trace grow sig)
     (left right : Config (core3 grow) (HostState sig)),
     Steps profile ready (specDispatch ready base) checked checkLabels left ∧
@@ -556,8 +558,8 @@ def CollectionSegmentReplies (profile : ProfileKind) (ready : HostReady (HostSta
         (stop : Session grow sig (Ret (core3 grow))), stopsAt stop ∧
         checkLabels = checkBody ++ [.tau, .tau, .tau] ∧
         Steps profile ready (specDispatch ready base) checked checkBody before ∧
-        ReturnFrame.Occurrence.RetainsBelowTop profile ready (specDispatch ready (LiveDispatch.host bindings base))
-          canonical canonLabels right ∧
+        (∀ depth, ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (LiveDispatch.host bindings base))
+          canonical (.active 0 (depth + offset)) canonLabels right (.active 0 depth)) ∧
         left.host = before.host.record (route.reply site.destination site.start.host.nextTicket (.error issue)).1 ∧
         (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧ right.ctl = canon.control stop
     | .trapped reason => left.ctl = [] ∧ right.ctl = [] ∧ ∃ leading, PayloadPrefix.visible canonLabels = leading ++ [.trap reason]
@@ -582,6 +584,78 @@ def LinkedStringMapReturn (profile : ProfileKind) (ready : HostReady (HostState 
     PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
     Prefix profile ready checkedDispatch site.checked (.active 0 0) callerLabels left (.active 0 0) ∧
     LinkedStringMapBody profile ready base bindings older site element entries pointer left right check canon
+
+/-- A traversal rooted at the prepared public body. Every reached allocator
+prefix has a cumulative comparison. A completed entry advances to the actual
+next suffix; a terminal segment carries the original caller result. -/
+def LinkedStringMapPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (index basePtr : Nat) (leftStart rightStart left right : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (seen : Trace grow sig) (offset : Nat := 0) : Prop :=
+  open Stored.Endpoints.RecordLower ABI PayloadPrefix ReturnFrame.Occurrence in
+  let destination := site.destination
+  let cx := destination.context site.inst
+  let type : Stored.TypeOf := .record (mapEntryFields .string element)
+  let stride := (layout destination.width type).size
+  let publish : Session grow sig route.output.Result := Stored.Endpoints.ListLower.publish cx destination.width basePtr entries.length route.output
+  let checkNext := checkedSequenceNext (.nested 0) (fun (_ : Unit) => publish >>= fun value => pure (.ok value)) site.reply
+  let canonNext := fun (_ : Unit) => publish >>= site.referenceReply
+  let terminal := CollectionSegmentReplies profile ready base bindings older site leftStart rightStart
+    (MapReturnStop destination site.inst .string element entries route.output basePtr site.referenceReply) offset
+  if present : index < entries.length then
+    let ptr := basePtr + index * stride
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) route.output
+    let rest := entries.drop (index + 1)
+    let checkTail := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+      | .error issue => pure (.error issue)
+      | .ok () => OwnedMemory.Claims.Record.Effects.elements recordClaims Limits.spec Quirks.none cx destination.width
+          rest stride (ptr + stride) (index + 1)) >>= checkNext
+    let canonTail := fun (_ : Unit) => CanonicalTree.elements Limits.spec Quirks.none cx destination.width
+      rest mode stride (ptr + stride) >>= canonNext
+    ∃ (key : LinkedCallback.StringField) (value : Field), entries[index] = .aggregate type [key.field, value] ∧
+      let keyArea := layout destination.width key.field.type
+      let keyPtr := alignTo ptr keyArea.alignment
+      let afterKey := keyPtr + keyArea.size
+      let pending := mapValueProgram destination site.inst mode value afterKey canonTail
+      let valuePtr := alignTo afterKey (layout destination.width value.type).alignment
+      let report := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => checkTail (verdict.mapError (.nested index))
+      let checked := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+        | .error issue => pure (.error issue)
+        | .ok () => OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+            value 1 (.memory valuePtr)) >>= report
+      let plan := storePlanFor Quirks.none destination.encoding destination.width key.value
+      let checkString := fun addr => stringPlanTail cx destination.width (.memory keyPtr) plan addr >>= fun result => checked (.ok result)
+      let canonString := fun addr => stringPlanTail cx destination.width (.memory keyPtr) plan addr >>= fun _ => pending
+      let checkBody := { left with ctl := check.control (runStoreSteps cx 0 plan.steps >>= checkString) }
+      let canonBody := { right with ctl := canon.control (runStoreSteps cx 0 plan.steps >>= canonString) }
+      ComparedSlots profile ready base bindings left right [] checkBody canonBody ∧
+      LiveStringPaths profile ready base bindings older cx checkString canonString leftStart rightStart
+        (fun _ lhs rhs cursor _ observations => terminal ∨
+          ∃ nextLeft nextRight nextCanon suffix,
+            ComparedSlots profile ready base bindings lhs rhs suffix nextLeft nextRight ∧
+            LinkedStringMapPaths profile ready base bindings older site element entries (index + 1) basePtr
+              leftStart rightStart nextLeft nextRight cursor nextCanon (observations ++ suffix) offset)
+        plan.steps.length checkBody canonBody check canon seen offset
+  else terminal
+termination_by entries.length - index
+
+/-- The actual paths after a marked outer allocator return, for either public give.
+Before entry, refusal retains the outer frame offset. After entry, each finite
+allocator prefix is tracked from the return state and terminal replies use the
+original caller. -/
+def LinkedStringMapReturnPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (pointer : Nat) (checked canonical : Config (core3 grow) (HostState sig))
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+  CollectionSegmentReplies profile ready base bindings older site checked canonical
+    (MapReturnStop site.destination site.inst .string element entries route.output pointer site.referenceReply) ∨
+  ∃ left right canon seen, ComparedSlots profile ready base bindings checked canonical seen left right 1 ∧
+    LinkedStringMapPaths profile ready base bindings older site element entries 0 pointer checked canonical left right
+      check canon seen 1
 
 abbrev CollectionReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))

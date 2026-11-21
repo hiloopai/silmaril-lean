@@ -122,12 +122,13 @@ private theorem prependSegment {older : ReturnFrame.Substitutions (core3 grow) (
     {cursor : Cursor (E := core3 grow) (HostState sig)} {Result : Type}
     {checkNext : Except RecordLower.Issue Result → Session grow sig (Ret (core3 grow))}
     {canonNext : Result → Session grow sig (Ret (core3 grow))}
-    {stopsAt : Session grow sig (Ret (core3 grow)) → Prop} {keep : CStore (core3 grow) → Prop}
-    (leftTracks : RetainsActiveSlots profile ready (specDispatch ready base) startLeft leftLabels left)
-    (rightTracks : RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base)) startRight rightLabels right)
+    {stopsAt : Session grow sig (Ret (core3 grow)) → Prop} {keep : CStore (core3 grow) → Prop} {offset : Nat}
+    (leftTracks : ∀ depth, Prefix profile ready (specDispatch ready base) startLeft (.active 0 (depth + offset)) leftLabels left (.active 0 depth))
+    (rightTracks : ∀ depth, Prefix profile ready (specDispatch ready (LiveDispatch.host bindings base))
+      startRight (.active 0 (depth + offset)) rightLabels right (.active 0 depth))
     (seen : visible leftLabels = visible rightLabels)
     (tail : CollectionSegment profile ready base bindings older left right cursor checkNext canonNext 0 stopsAt keep) :
-    CollectionSegment profile ready base bindings older startLeft startRight cursor checkNext canonNext 0 stopsAt keep := by
+    CollectionSegment profile ready base bindings older startLeft startRight cursor checkNext canonNext offset stopsAt keep := by
   obtain ⟨peer, outcome, checkLabels, canonLabels, lhs, rhs, checkRun, canonRun, same, observations, status⟩ := tail
   refine ⟨peer, outcome, _, _, lhs, rhs, appendRun (prefix_survives (leftTracks 0)).1 checkRun,
     appendRun (prefix_survives (rightTracks 0)).1 canonRun, same, by rw [appendVisible, appendVisible, seen, observations], ?_⟩
@@ -458,10 +459,10 @@ private theorem localTail (destination : RecordDestination) (inst : InstId) (ele
 theorem replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)}
-    {callerLabels stopsAt}
-    (caller : Prefix profile ready (specDispatch ready base) site.checked (.active 0 0) callerLabels checked (.active 0 1))
-    (cut : CollectionSegment profile ready base bindings older checked canonical check site.reply site.referenceReply 1 stopsAt) :
-    CollectionSegmentReplies profile ready base bindings older site checked canonical stopsAt := by
+    {callerLabels stopsAt offset}
+    (caller : Prefix profile ready (specDispatch ready base) site.checked (.active 0 0) callerLabels checked (.active 0 offset))
+    (cut : CollectionSegment profile ready base bindings older checked canonical check site.reply site.referenceReply offset stopsAt) :
+    CollectionSegmentReplies profile ready base bindings older site checked canonical stopsAt offset := by
   obtain ⟨canon, outcome, lhs, rhs, left, right, checkedRun, canonRun, same, seen, result⟩ := cut
   have silentTail (trace suffix : Trace grow sig) (tau : visible suffix = []) : visible (trace ++ suffix) = visible trace := by
     change List.filter _ (trace ++ suffix) = _
@@ -473,13 +474,14 @@ theorem replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig rout
   | returned value =>
     obtain ⟨frame, checkAt, canonAt, tracks, _, _⟩ := result
     obtain ⟨checkEnd, canonEnd, checkReply, canonReply, stores, checkHost, canonHost, paired⟩ :=
-      LinkedCallback.MemorySequence.resume_returned_give site value frame (caller.append (tracks 0)) checkAt canonAt
+      LinkedCallback.MemorySequence.resume_returned_give site value frame
+        (caller.append (by simpa only [Nat.zero_add] using tracks 0)) checkAt canonAt
     exact ⟨.returned value, _, _, checkEnd, canonEnd, appendRun checkedRun (checkReply _), appendRun canonRun (canonReply _),
       stores, by rw [silentTail _ _ rfl, silentTail _ _ rfl, seen], left, right, lhs, rhs, rfl, rfl,
       checkedRun, canonRun, checkReply, canonReply, checkHost, canonHost, paired⟩
   | refused issue =>
     obtain ⟨stop, stopped, checkAt, canonAt, tracks, canonTracks⟩ := result
-    obtain ⟨segments, callerAt⟩ := site.reached_caller checkAt (caller.append (tracks 0))
+    obtain ⟨segments, callerAt⟩ := site.reached_caller checkAt (caller.append (by simpa only [Nat.zero_add] using tracks 0))
     let reply := route.reply site.destination site.start.host.nextTicket (.error issue)
     have atReply : left.ctl = ⟨check.thread, .prog (do return .flat (← writeCompletion reply)),
         .core site.core site.resume :: segments⟩ :: check.rest := by
@@ -1297,6 +1299,80 @@ theorem linkedStringMapBody {route : GiveEffectRoute} (site : PayloadRoot.Site g
         ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩,
         rfl, rfl, fun depth => (tracks descriptor rfl depth).1, fun depth => (tracks descriptor rfl depth).2, trivial⟩
 
+theorem linkedStringMapPaths {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (element : Stored.TypeOf) (entries : List Field) (index basePtr : Nat)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {leftStart rightStart left right : Config (core3 grow) (HostState sig)}
+    {check canon : Cursor (E := core3 grow) (HostState sig)} {seen callerLabels} {origin : CStore (core3 grow)}
+    {offset : Nat}
+    (caller : Prefix profile ready (specDispatch ready base) site.checked (.active 0 0) callerLabels leftStart (.active 0 offset))
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart seen left right offset)
+    (body : LinkedStringMapBody profile ready base bindings older site element entries basePtr left right check canon index origin) :
+    LinkedStringMapPaths profile ready base bindings older site element entries index basePtr leftStart rightStart left right check canon seen offset := by
+  unfold LinkedStringMapBody at body
+  rw [LinkedStringMapTraversal] at body
+  obtain ⟨⟨checkAt, canonAt⟩, stage⟩ := body
+  rw [LinkedStringMapPaths]
+  dsimp only
+  split
+  next present =>
+    rw [dite_eq_left present] at stage
+    unfold LinkedStringMapEntry at stage
+    dsimp only at stage
+    obtain ⟨key, value, selected, keyRun⟩ := stage checkAt canonAt
+    obtain ⟨checkLabels, canonLabels, checkSeen, canonSeen, checkTracks, canonTracks, _, replay⟩ := keyRun
+    have placed := CallbackPrefix.appendComparedSlots leading ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩
+    rw [List.append_nil] at placed
+    refine ⟨key, value, selected, ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩,
+      CallbackPrefix.stringPaths ?_ placed replay⟩
+    intro ptr lhs rhs cursor peer observed localCut accumulated
+    obtain ⟨reached, outcome, lhsTrace, rhsTrace, leftFinal, rightFinal, leftRun, rightRun, same, traceSame, result⟩ := localCut
+    let destination := site.destination
+    let stride := (layout destination.width (.record (mapEntryFields .string element))).size
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) route.output
+    let stop := MapReturnStop destination site.inst .string element entries route.output basePtr site.referenceReply
+    have terminal (cut : CollectionSegment profile ready base bindings older lhs rhs cursor site.reply site.referenceReply 0 stop) :
+        CollectionSegmentReplies profile ready base bindings older site leftStart rightStart stop offset := by
+      obtain ⟨lhsPrefix, rhsPrefix, lhsTracks, rhsTracks, lhsSeen, rhsSeen⟩ := accumulated
+      exact replies site caller (prependSegment lhsTracks rhsTracks (lhsSeen.trans rhsSeen.symm) cut)
+    cases outcome with
+    | trapped reason =>
+      exact .inl (terminal ⟨reached, .trapped reason, lhsTrace, rhsTrace, leftFinal, rightFinal, leftRun, rightRun, same, traceSame, result⟩)
+    | refused issue =>
+      obtain ⟨pending, pendingAt, lhsAt, rhsAt, lhsTracks, rhsTracks⟩ := result
+      have suffixOK : stop pending := by
+        refine .inr ⟨entries.take index, entries.drop (index + 1), key.field, value, ?_, ?_⟩
+        · calc
+            entries = entries.take index ++ entries.drop index := (List.take_append_drop index entries).symm
+            _ = _ := congrArg (entries.take index ++ ·)
+              ((List.drop_eq_getElem_cons present).trans (congrArg (· :: entries.drop (index + 1)) selected))
+        · rw [pendingAt]
+          simp only [List.length_take, Nat.min_eq_left (Nat.le_of_lt present)]
+          rfl
+      exact .inl (terminal ⟨reached, .refused (.nested 0 issue), lhsTrace, rhsTrace, leftFinal, rightFinal,
+        leftRun, rightRun, same, traceSame, pending, suffixOK, lhsAt, rhsAt, lhsTracks, rhsTracks⟩)
+    | returned resultValue =>
+      cases resultValue
+      obtain ⟨_, _, _, lhsTracks, rhsTracks, tail⟩ := result
+      let suffix := visible lhsTrace
+      have continued : ComparedSlots profile ready base bindings lhs rhs suffix leftFinal rightFinal :=
+        ⟨lhsTrace, rhsTrace, lhsTracks, rhsTracks, rfl, traceSame.symm⟩
+      exact .inr ⟨leftFinal, rightFinal, reached, suffix, continued,
+        linkedStringMapPaths site element entries (index + 1) basePtr caller (CallbackPrefix.appendComparedSlots accumulated continued) tail⟩
+  next absent =>
+    rw [dite_eq_right absent] at stage
+    obtain ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩ := leading
+    exact replies site caller (prependSegment checkTracks canonTracks (checkSeen.trans canonSeen.symm)
+      (by
+        obtain ⟨peer, outcome, lhs, rhs, lhsEnd, rhsEnd, lhsRun, rhsRun, stores, labels, ending⟩ := stage.2.2.2.2
+        refine ⟨peer, outcome, lhs, rhs, lhsEnd, rhsEnd, lhsRun, rhsRun, stores, labels, ?_⟩
+        cases outcome with
+        | returned _ | trapped _ => exact ending
+        | refused _ =>
+          obtain ⟨_, impossible, _⟩ := ending
+          exact impossible.elim))
+termination_by entries.length - index
+
 theorem linkedStringMapReturn {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
     (nominal : NominalElement element)
@@ -1333,6 +1409,39 @@ theorem linkedStringMapReturn {route : GiveEffectRoute} (site : PayloadRoot.Site
   intro bytes left right canon reachedWidth sized aligned bounds frame checkAt canonAt lhs rhs checkRun canonRun seen
   exact .inr ⟨left, right, canon, lhs, rhs, _, checkRun, canonRun, seen, caller.append (checkRun 0),
     linkedStringMapBody site linked element entries nominal field fits pointer bytes reachedWidth sized aligned bounds frame embedder checkAt canonAt⟩
+
+theorem linkedStringMapReturnPaths {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (pointer : Nat) (admitted : Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    {older wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace}
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    let entryType : Stored.TypeOf := .record (mapEntryFields .string element)
+    let area := layout site.destination.width entryType
+    let output := route.output
+    let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) output
+    let first := checkedCollectionResume site.destination site.inst entries area 0 output site.reply
+    let second := canonicalCollectionResume site.destination site.inst entries area output site.referenceReply mode
+    AllocatorMark profile ready base bindings older
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    LinkedStringMapReturnPaths profile ready base bindings older site element entries pointer checked canonical check := by
+  intro entryType area output mode first second mark paired returned growth
+  rcases linkedStringMapReturn site linked element entries nominal field fits pointer admitted embedder mark paired returned growth with
+    terminal | ⟨left, right, canon, lhs, rhs, _, checkRun, canonRun, seen, _, body⟩
+  · exact .inl terminal
+  rw [field] at admitted
+  obtain ⟨_, caller⟩ := collectionCaller site linked (.map .string element) entryType entries field admitted mark.checkedTrail
+  have leading : ComparedSlots profile ready base bindings checked canonical (visible lhs) left right 1 :=
+    ⟨lhs, rhs, checkRun, canonRun, rfl, seen.symm⟩
+  exact .inr ⟨left, right, canon, visible lhs, leading, linkedStringMapPaths site element entries 0 pointer caller leading body⟩
 
 theorem nominalMapReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)

@@ -454,6 +454,36 @@ theorem AllocatorMark.string_map_return {route : GiveEffectRoute} (site : Payloa
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapReturn
     site linked element entries nominal field fits pointer admitted embedder
 
+/-- Compare the reached string-key nominal map paths through the original public
+caller rejoins. A finite suspended key keeps its accumulated occurrence path;
+late refusal rejoins only checked and traps execute neither reply. -/
+theorem AllocatorMark.string_map_paths {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (pointer : Nat) (admitted : OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)}
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace}
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    let entryType : Stored.TypeOf := .record (mapEntryFields .string element)
+    let area := layout site.destination.width entryType
+    let output := route.output
+    let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) output
+    let first := PayloadPrefix.checkedCollectionResume site.destination site.inst entries area 0 output site.reply
+    let second := PayloadPrefix.canonicalCollectionResume site.destination site.inst entries area output site.referenceReply mode
+    AllocatorMark profile ready base bindings older
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    LinkedStringMapReturnPaths profile ready base bindings older site element entries pointer checked canonical check :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapReturnPaths
+    site linked element entries nominal field fits pointer admitted embedder
+
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys
 remain written if a later value refuses or traps. Flat entries read the

@@ -427,10 +427,10 @@ theorem stringReplayMap {cx : LiftLowerContext (core3 grow)}
       exact ⟨peer, checked, canonical, ih rest.length shorter tail⟩
 
 theorem appendComparedSlots {leftStart rightStart left right lhs rhs : Config (core3 grow) (HostState sig)}
-    {before after : Trace grow sig}
-    (leading : ComparedSlots profile ready base bindings leftStart rightStart before left right)
+    {before after : Trace grow sig} {offset : Nat}
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart before left right offset)
     (trailing : ComparedSlots profile ready base bindings left right after lhs rhs) :
-    ComparedSlots profile ready base bindings leftStart rightStart (before ++ after) lhs rhs := by
+    ComparedSlots profile ready base bindings leftStart rightStart (before ++ after) lhs rhs offset := by
   obtain ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩ := leading
   obtain ⟨leftLabels, rightLabels, leftTracks, rightTracks, leftSeen, rightSeen⟩ := trailing
   exact ⟨checkLabels ++ leftLabels, canonLabels ++ rightLabels,
@@ -439,8 +439,8 @@ theorem appendComparedSlots {leftStart rightStart left right lhs rhs : Config (c
     (List.filter_append ..).trans (congrArg₂ List.append canonSeen rightSeen)⟩
 
 theorem appendComparedPaths {leftStart rightStart left right lhs rhs : Config (core3 grow) (HostState sig)}
-    {before after : Trace grow sig}
-    (leading : ComparedSlots profile ready base bindings leftStart rightStart before left right)
+    {before after : Trace grow sig} {offset : Nat}
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart before left right offset)
     (trailing : ComparedPaths profile ready base bindings left right after lhs rhs) :
     ComparedPaths profile ready base bindings leftStart rightStart (before ++ after) lhs rhs := by
   obtain ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩ := leading
@@ -457,13 +457,13 @@ theorem stringPaths {cx : LiftLowerContext (core3 grow)}
       PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop}
     {second : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
       PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Trace grow sig → Prop}
-    (next : ∀ ptr lhs rhs check canon seen, first ptr lhs rhs check canon →
-      ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs → second ptr lhs rhs check canon seen)
+    {offset : Nat} (next : ∀ ptr lhs rhs check canon seen, first ptr lhs rhs check canon →
+      ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs offset → second ptr lhs rhs check canon seen)
     {length : Nat} {left right : Config (core3 grow) (HostState sig)}
     {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {seen : Trace grow sig}
-    (leading : ComparedSlots profile ready base bindings leftStart rightStart seen left right)
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart seen left right offset)
     (run : LiveStringReplay profile ready base bindings older cx checkNext canonNext first length left right check canon) :
-    LiveStringPaths profile ready base bindings older cx checkNext canonNext leftStart rightStart second length left right check canon seen := by
+    LiveStringPaths profile ready base bindings older cx checkNext canonNext leftStart rightStart second length left right check canon seen offset := by
   induction length using Nat.strong_induction_on generalizing left right check canon seen with
   | ind length ih =>
     rw [LiveStringReplay] at run
