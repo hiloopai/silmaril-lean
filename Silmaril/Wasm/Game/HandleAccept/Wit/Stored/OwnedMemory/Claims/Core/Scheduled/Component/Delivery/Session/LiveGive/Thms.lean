@@ -66,4 +66,68 @@ theorem JournalInterleaving.live_stopped_give (site : PayloadRoot.Site grow sig 
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveGive.stopped
     site linked between roots entry stop sameStore seen checked canonical agreement observes
 
+/-- Continue a session from an actual recursive body comparison and caller
+rejoin. The continuation receives the reached canonical replay, rather than
+starting with the journal from the original site. -/
+theorem LiveSession.of_rejoined (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {incoming outgoing actions leading entryLabels tailActions finish reached reference}
+    (between : JournalInterleaving profile ready (hostWithComponent bindings callees)
+      start incoming actions leading site.start outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted)
+    (entry : Transition profile ready (hostWithComponent bindings callees) site.start (.give route .entered) entryLabels site.checked)
+    (value : route.output.Result)
+    (comparison : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference)
+    (agreement : GiveBodyAgreement profile ready bindings callees site reached reference)
+    (observes : ∀ {canonLabels left right},
+      Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonLabels reference →
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right →
+        GivePrefixObservations profile ready bindings callees (site.reference site.referenceReply) outgoing (canonLabels ++ [.tau]) right)
+    (tail : ∀ {canonLabels left right after},
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right →
+      Steps profile ready (Dispatch.linked ready bindings callees)
+        (HostFrame.replace (site.reference site.referenceReply) outgoing) (canonLabels ++ [.tau]) (HostFrame.replace right after) →
+      LiveSession profile ready bindings callees left after tailActions finish) :
+    LiveSession profile ready bindings callees start incoming
+      ((actions ++ [.give route .entered, .give route .returned]) ++ tailActions) finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveGive.ofRejoined
+    site linked between roots entry value comparison agreement observes tail
+
+/-- A finite allocator cut ends at the paired reached store, even if the
+allocator frame remains parked. In particular it is not a give return. -/
+theorem LiveSession.of_allocator (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {incoming outgoing actions leading entryLabels}
+    (between : JournalInterleaving profile ready (hostWithComponent bindings callees)
+      start incoming actions leading site.start outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted)
+    (entry : Transition profile ready (hostWithComponent bindings callees) site.start (.give route .entered) entryLabels site.checked)
+    {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {beforeCheck beforeCanon left right reached reference : State grow sig}
+    {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels mark)
+    (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+    (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+    (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+    (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+    (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right)
+    (checked : Dispatch.Compatible profile ready bindings callees left checkLabels reached)
+    (canonical : Dispatch.Compatible profile ready bindings callees right canonLabels reference)
+    (observes : GivePrefixObservations profile ready bindings callees (site.reference site.referenceReply)
+      outgoing (canonEntryLabels ++ [.tau, .tau] ++ canonLabels) reference) :
+    LiveSession profile ready bindings callees start incoming (actions ++ [.give route .entered, .give route (.allocatorPrefix mark)])
+      reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveGive.ofAllocator
+    site linked between roots entry cut checkEntry canonEntry seenEntry checkInstall canonInstall checked canonical observes
+
+/-- Execute each classified episode under a single live reference dispatcher.
+Only actual returns rejoin the caller and continue; a terminal cut retains
+the reached store and visible labels without forcing a canonical reply. -/
+theorem LiveSession.runs {incoming actions finish}
+    (session : LiveSession profile ready bindings callees start incoming actions finish) :
+    ∃ checkLabels canonLabels reference,
+      Run profile ready (hostWithComponent bindings callees) start actions checkLabels finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (hostWithComponent bindings callees)))
+        (HostFrame.replace start incoming) canonLabels reference ∧
+      PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧ finish.store = reference.store :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveGive.sessionRuns session
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession

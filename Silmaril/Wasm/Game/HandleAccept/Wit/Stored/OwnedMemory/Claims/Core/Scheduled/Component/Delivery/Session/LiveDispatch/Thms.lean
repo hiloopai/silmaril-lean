@@ -36,6 +36,14 @@ theorem LiveDispatch.replay {labels} (run : Steps profile ready (specDispatch re
     Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.replay run closed
 
+/-- A classified interleaving runs under the live give overlay with the
+same steps against its reached store and journal. -/
+theorem LiveDispatch.interleaving_steps {actions labels incoming outgoing}
+    (between : JournalInterleaving profile ready base start incoming actions labels finish outgoing) :
+    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base))
+      (HostFrame.replace start incoming) labels (HostFrame.replace finish outgoing) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.interleavingSteps between
+
 /-- The classified Core, delivery, publication and tick transitions do not install
 an embedder body. Their dispatcher compatibility follows from their constructors,
 not a premise that the two finished runs agree. The reached readiness and root

@@ -242,6 +242,12 @@ theorem interleavingRoots {actions labels incoming outgoing}
       ((congrArg (resolve.tree :: ·) roots).trans (Stored.OwnedMemory.Claims.register_claims resolve.registered).1.symm)
   | tick tick _ _ ih => exact ih roots
 
+theorem interleavingSteps {actions labels incoming outgoing}
+    (between : JournalInterleaving profile ready base start incoming actions labels finish outgoing) :
+    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base))
+      (HostFrame.replace start incoming) labels (HostFrame.replace finish outgoing) :=
+  (interleavingRetarget (impl := LiveDispatch.host bindings base) between).runs.2.steps
+
 theorem afterInterleaving (site : Site grow sig route) (linked : site.Linked bindings) {incoming outgoing : HostState sig}
     (selected : Stored.Endpoints.Core.childFromHistory outgoing.writer.accepted site.handle = some site.tree)
     {leading middleLabels actions}
@@ -251,9 +257,8 @@ theorem afterInterleaving (site : Site grow sig route) (linked : site.Linked bin
     ∃ labels, labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) start
         (leading ++ middleLabels ++ labels) (HostFrame.replace (site.reference site.referenceReply) outgoing) := by
-  have classified := interleavingRetarget (impl := LiveDispatch.host bindings base) between
   obtain ⟨labels, silent, entered⟩ := entry (profile := profile) (ready := ready) (base := base) site linked outgoing selected
-  exact ⟨labels, silent, append (append prior classified.runs.2.steps) entered⟩
+  exact ⟨labels, silent, append (append prior (interleavingSteps between)) entered⟩
 
 theorem afterSameRoots (site : Site grow sig route) (linked : site.Linked bindings) {incoming outgoing : HostState sig}
     (roots : incoming.writer.accepted = finish.host.writer.accepted) {leading middleLabels actions}
