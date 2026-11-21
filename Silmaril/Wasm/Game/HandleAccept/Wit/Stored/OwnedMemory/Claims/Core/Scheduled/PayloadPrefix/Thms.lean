@@ -493,6 +493,34 @@ theorem collection_descriptor_cut {grow : SingleThreaded.GrowOracle} {Host : Typ
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.collectionDescriptor
     cx width output ptr count left right check canon checkNext canonNext same checkAt canonAt
 
+theorem local_data_objects {element : TypeOf} {entries : List Field} (data : LocalDataType element)
+    (matched : Field.EntriesMatch entries element) : Field.listObjects entries = [] :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localDataObjects data matched
+
+/-- Traverse the actual checked and canonical list elements, deriving each
+child's program and placement from the validated interval and compiled layout.
+Only a successful traversal executes the pointer/count descriptor. -/
+theorem local_data_collection_tail
+    {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (element : TypeOf) (data : LocalDataType element)
+    (entries : List Field) (matched : Field.EntriesMatch entries element)
+    (pointer bytes index : Nat) (output : Lower.Output) (left right : Config (core3 grow) (HostState sig))
+    (width : (core3 grow).memAddrType? left.store.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? left.store.core destination.memory = some bytes)
+    (aligned : pointer = alignTo pointer (layout destination.width element).alignment)
+    (bounds : pointer + entries.length * (layout destination.width element).size ≤ bytes)
+    (same : left.store = right.store) (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
+    (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (checkAt : left.ctl = check.control (checkedCollectionTail destination inst entries (layout destination.width element)
+      index output pointer (.ok ()) >>= checkNext))
+    (canonAt : right.ctl = canon.control (canonicalCollectionTail destination inst entries (layout destination.width element)
+      output pointer .value >>= canonNext)) :
+    LocalCutKeepingBetween profile ready dispatch reference (fun store => Core3.Grows left.store.core store.core)
+      left right check canon (fun value => checkNext (.ok value)) canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localDataCollectionTail destination inst element data
+    entries matched pointer bytes index output left right width sized aligned bounds same check canon thread checkNext canonNext checkAt canonAt
+
 /-- Use the validated collection range, rather than a fresh placement
 assumption for the scalar at its reached list index. -/
 theorem primitive_list_entry (destination : RecordDestination) (inst : InstId) (primitive : WIT.Primitive)

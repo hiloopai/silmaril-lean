@@ -232,13 +232,13 @@ theorem localAppend {before middle finish leading trailing}
   | refl => exact back
   | cons focus step _ ih => exact .cons focus step (ih back)
 
-private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
+private theorem closedCutBetween {body : P E Host Result} {keep : CStore E → Prop} {reference : Call E → P E Host (Ret E)}
     (closed : Prog.Every (ClosedOp profile keep) body) :
     ∀ (left right : Config E Host) (check canon : Cursor (E := E) Host)
       (checkNext canonNext : Result → P E Host (Ret E)),
       keep right.store → left.store = right.store → check.thread = canon.thread →
       left.ctl = check.control (body >>= checkNext) → right.ctl = canon.control (body >>= canonNext) →
-      LocalCutKeeping profile ready dispatch keep left right check canon checkNext canonNext := by
+      LocalCutKeepingBetween profile ready dispatch reference keep left right check canon checkNext canonNext := by
   induction closed with
   | pure value =>
     intro left right check canon checkNext canonNext kept same _ checkAt canonAt
@@ -261,12 +261,12 @@ private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
         (leftStore rightStore : CStore E) (kept : keep rightStore) (same : leftStore = rightStore)
         (checked : Step profile ready dispatch left label
           { left with store := leftStore, ctl := check.control (next response >>= checkNext) })
-        (canonical : Step profile ready dispatch right label
+        (canonical : Step profile ready reference right label
           { right with store := rightStore, ctl := canon.control (next response >>= canonNext) })
         (localFocus : LocalFocus right)
         (checkEdit : ReturnFrame.Occurrence.transitionEdit left label = .same)
         (canonEdit : ReturnFrame.Occurrence.transitionEdit right label = .same) :
-        LocalCutKeeping profile ready dispatch keep left right check canon checkNext canonNext := by
+        LocalCutKeepingBetween profile ready dispatch reference keep left right check canon checkNext canonNext := by
       obtain ⟨store, result, chk, ref, runChk, runRef, labels, outcome⟩ :=
         ih response { left with store := leftStore, ctl := check.control (next response >>= checkNext) }
           { right with store := rightStore, ctl := canon.control (next response >>= canonNext) }
@@ -326,6 +326,15 @@ private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
         (.choose answer checkAt allowed) (.choose answer canonAt allowed)
         (by simp only [LocalFocus, canonAt, Cursor.control, Prog.bind_eq, Prog.bind]) rfl rfl
     | _ => contradiction
+
+private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
+    (closed : Prog.Every (ClosedOp profile keep) body) :
+    ∀ (left right : Config E Host) (check canon : Cursor (E := E) Host)
+      (checkNext canonNext : Result → P E Host (Ret E)),
+      keep right.store → left.store = right.store → check.thread = canon.thread →
+      left.ctl = check.control (body >>= checkNext) → right.ctl = canon.control (body >>= canonNext) →
+      LocalCutKeeping profile ready dispatch keep left right check canon checkNext canonNext :=
+  closedCutBetween closed
 
 private theorem localCutReaches {keep : CStore E → Prop} {left right : Config E Host} {check canon : Cursor (E := E) Host}
     {checkNext : Except RecordLower.Issue Result → P E Host (Ret E)} {canonNext : Result → P E Host (Ret E)}
@@ -1654,12 +1663,13 @@ theorem stringReallocInstall (cx : LiftLowerContext E) (ptr : Nat) (oldSize : Op
   exact .call focused
 
 private theorem prependLocalCut {left right : Config E Host} {enteredCtl : List (Activation E Host)}
+    {reference : Call E → P E Host (Ret E)}
     {leading : List (Label E Host)} {keep : CStore E → Prop} {check canon : Cursor (E := E) Host}
     {checkNext canonNext : Result → P E Host (Ret E)}
     (tracked : ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left leading { left with ctl := enteredCtl })
     (silent : visible leading = [])
-    (cut : LocalCutKeeping profile ready dispatch keep { left with ctl := enteredCtl } right check canon checkNext canonNext) :
-    LocalCutKeeping profile ready dispatch keep left right check canon checkNext canonNext := by
+    (cut : LocalCutKeepingBetween profile ready dispatch reference keep { left with ctl := enteredCtl } right check canon checkNext canonNext) :
+    LocalCutKeepingBetween profile ready dispatch reference keep left right check canon checkNext canonNext := by
   obtain ⟨store, result, chk, ref, runChk, runRef, seen, status⟩ := cut
   have final : localLeafEnd { left with ctl := enteredCtl } left.host store check.thread check.frames check.rest checkNext result =
       localLeafEnd left left.host store check.thread check.frames check.rest checkNext result := by cases result <;> rfl
@@ -1873,12 +1883,13 @@ private theorem localDataProgram {keep : CStore (core3 grow) → Prop} (writes :
         first | exact closedIntKeeping writes cx _ address (flagsSize labels.length) |
           exact .op trivial (fun impossible => nomatch impossible)
 
-theorem localDataLeafFrame (destination : RecordDestination) (inst : InstId) (type : TypeOf) (data : LocalDataType type)
+theorem localDataLeafFrameBetween {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (type : TypeOf) (data : LocalDataType type)
     (payload : Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Payload type) (index : Nat) (output : Lower.Output) (origin : CStore (core3 grow))
     (left right : Config (core3 grow) (HostState sig)) (growth : Core3.Grows origin.core right.store.core)
     (width : ptrTypeIn left.store (destination.context inst) = destination.width)
     (placed : rootPlacement destination left.store type output = .ok ()) :
-    CompareLocalKeepingAt profile scheduledReady scheduledDispatch (fun store => Core3.Grows origin.core store.core) left right
+    CompareLocalKeepingBetween profile scheduledReady scheduledDispatch reference (fun store => Core3.Grows origin.core store.core) left right
       (Record.Effects.field recordClaims Limits.spec Quirks.none (destination.context inst) destination.width
         (.data type payload) index output)
       (CanonicalTree.field Limits.spec Quirks.none (destination.context inst) destination.width
@@ -1899,8 +1910,205 @@ theorem localDataLeafFrame (destination : RecordDestination) (inst : InstId) (ty
   obtain ⟨reads, entered⟩ := dataEntry destination inst type payload index output left check checkedNext
     width schema options fit placed checkAt
   exact prependLocalCut entered (silent (fun _ member => List.eq_of_mem_replicate member))
-    (closedCut (localDataProgram (growthWrites origin) destination inst type data payload output)
+    (closedCutBetween (localDataProgram (growthWrites origin) destination inst type data payload output)
       _ right check canon (fun value => checkedNext (.ok value)) canonNext growth same thread rfl canonAt)
+
+theorem localDataLeafFrame (destination : RecordDestination) (inst : InstId) (type : TypeOf) (data : LocalDataType type)
+    (payload : Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Payload type) (index : Nat) (output : Lower.Output)
+    (origin : CStore (core3 grow)) (left right : Config (core3 grow) (HostState sig)) (growth : Core3.Grows origin.core right.store.core)
+    (width : ptrTypeIn left.store (destination.context inst) = destination.width)
+    (placed : rootPlacement destination left.store type output = .ok ()) :
+    CompareLocalKeepingAt profile scheduledReady scheduledDispatch (fun store => Core3.Grows origin.core store.core) left right
+      (Record.Effects.field recordClaims Limits.spec Quirks.none (destination.context inst) destination.width
+        (.data type payload) index output)
+      (CanonicalTree.field Limits.spec Quirks.none (destination.context inst) destination.width
+        (.data type payload) output) :=
+  localDataLeafFrameBetween destination inst type data payload index output origin left right growth width placed
+
+private theorem continueLocal {keep : CStore E → Prop} {reference : Call E → P E Host (Ret E)}
+    {left right : Config E Host} {check canon : Cursor (E := E) Host}
+    {checkMid canonMid : Result → P E Host (Ret E)} {checkNext canonNext : Next → P E Host (Ret E)}
+    (first : LocalCutKeepingBetween profile ready dispatch reference keep left right check canon checkMid canonMid)
+    (suffix : ∀ store value, keep store →
+      LocalCutKeepingBetween profile ready dispatch reference keep
+        (localLeafEnd left left.host store check.thread check.frames check.rest checkMid (.ok value))
+        (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonMid (.ok value))
+        check canon checkNext canonNext) :
+    LocalCutKeepingBetween profile ready dispatch reference keep left right check canon checkNext canonNext := by
+  obtain ⟨store, result, lhs, rhs, checkRun, canonRun, seen, ends⟩ := first
+  cases result with
+  | error reason => exact ⟨store, .error reason, lhs, rhs, checkRun, canonRun, seen, ends⟩
+  | ok value =>
+    obtain ⟨kept, checkTrack, canonTrack⟩ := ends
+    obtain ⟨reached, verdict, trailing, referenceLabels, checked, canonical, visibleTail, endCut⟩ := suffix store value kept
+    have collapse (start : Config E Host) (cursor : Cursor (E := E) Host) (middle : Result → P E Host (Ret E))
+        (finish : Next → P E Host (Ret E)) :
+        localLeafEnd (localLeafEnd start start.host store cursor.thread cursor.frames cursor.rest middle (.ok value))
+          (localLeafEnd start start.host store cursor.thread cursor.frames cursor.rest middle (.ok value)).host
+          reached cursor.thread cursor.frames cursor.rest finish verdict =
+        localLeafEnd start start.host reached cursor.thread cursor.frames cursor.rest finish verdict := by
+      cases verdict <;> rfl
+    rw [collapse] at checked canonical
+    refine ⟨reached, verdict, lhs ++ trailing, rhs ++ referenceLabels, chain checkRun checked,
+      localAppend canonRun canonical, by rw [visible_append, visible_append, seen, visibleTail], ?_⟩
+    cases verdict with
+    | error reason =>
+      obtain ⟨leading, seenTrap⟩ := endCut
+      exact ⟨visible rhs ++ leading, by rw [visible_append, seenTrap, List.append_assoc]⟩
+    | ok value =>
+      refine ⟨endCut.1, ?_, ?_⟩
+      · intro depth
+        have run := endCut.2.1 depth
+        rw [collapse] at run
+        exact (checkTrack depth).append run
+      · intro depth
+        have run := endCut.2.2 depth
+        rw [collapse] at run
+        exact (canonTrack depth).append run
+
+private theorem localDataField {element : TypeOf} {item : Field} (data : LocalDataType element)
+    (matched : item.LayoutMatches element) :
+    ∃ payload : Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Payload element, item = .data element payload := by
+  cases matched with
+  | data payload => exact ⟨payload, rfl⟩
+  | endpoint => rename_i channel _ _; cases channel <;> cases data
+  | _ => cases data
+
+theorem localDataObjects {element : TypeOf} {entries : List Field} (data : LocalDataType element)
+    (matched : Field.EntriesMatch entries element) : Field.listObjects entries = [] := by
+  induction entries with
+  | nil => rfl
+  | cons item rest ih =>
+    cases matched with
+    | cons head tail =>
+      obtain ⟨_, rfl⟩ := localDataField data head
+      simpa only [Field.listObjects, Field.objects, List.nil_append] using ih tail
+
+private theorem localDataElements {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (element : TypeOf) (data : LocalDataType element)
+    (origin : CStore (core3 grow)) (base bytes count : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : base = alignTo base (layout destination.width element).alignment)
+    (bounds : base + count * (layout destination.width element).size ≤ bytes)
+    (entries : List Field) (matched : Field.EntriesMatch entries element)
+    (index : Nat) (room : index + entries.length ≤ count)
+    (left right : Config (core3 grow) (HostState sig)) (growth : Core3.Grows origin.core right.store.core) :
+    let cx := destination.context inst
+    let stride := (layout destination.width element).size
+    CompareLocalKeepingBetween profile scheduledReady scheduledDispatch reference
+      (fun store => Core3.Grows origin.core store.core) left right
+      (Record.Effects.elements recordClaims Limits.spec Quirks.none cx destination.width entries stride (base + index * stride) index)
+      (CanonicalTree.elements Limits.spec Quirks.none cx destination.width entries .value stride (base + index * stride)) := by
+  let cx := destination.context (grow := grow) inst
+  let stride := (layout destination.width element).size
+  dsimp only
+  induction entries generalizing index left right with
+  | nil =>
+    rw [Record.Effects.elements, CanonicalTree.elements]
+    intro same check canon thread checkedNext canonNext checkAt canonAt
+    exact closedCutBetween (.pure ()) left right check canon (fun value => checkedNext (.ok value)) canonNext
+      growth same thread checkAt canonAt
+  | cons item rest ih =>
+    cases matched with
+    | cons head tail =>
+      obtain ⟨payload, rfl⟩ := localDataField data head
+      let pointer := base + index * stride
+      have entry : index < count := by simp only [List.length_cons] at room; omega
+      have nextRoom : index + 1 + rest.length ≤ count := by simp only [List.length_cons] at room; omega
+      have nextPtr : base + (index + 1) * stride = pointer + stride := by
+        simp only [Nat.add_mul, Nat.one_mul, Nat.add_assoc, pointer]
+      intro same check canon thread checkedNext canonNext checkAt canonAt
+      obtain ⟨modulo, within⟩ := listEntryBounds (layout destination.width element) aligned bounds entry
+      have reachedWidth : (core3 grow).memAddrType? left.store.core destination.memory = some destination.width := by
+        rw [same]; exact growth.memAddrType width
+      obtain ⟨enlarged, reachedSize, widened⟩ := growth.memSize sized
+      have sizeAt : (core3 grow).memSize? left.store.core destination.memory = some enlarged := by rw [same]; exact reachedSize
+      have placed : rootPlacement destination left.store element (.memory pointer) = .ok () := by
+        simp [rootPlacement, placement, modulo, sizeAt, Nat.not_lt.mpr (within.trans widened), pointer, stride]
+        rfl
+      let following := fun (verdict : Except RecordLower.Issue Unit) => (match verdict with
+        | .error issue => pure (.error issue)
+        | .ok () => Record.Effects.elements recordClaims Limits.spec Quirks.none cx destination.width rest stride
+            (pointer + stride) (index + 1)) >>= checkedNext
+      let refFollowing := fun () => CanonicalTree.elements Limits.spec Quirks.none cx destination.width rest .value stride
+        (pointer + stride) >>= canonNext
+      let refHead : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width
+        (.data element payload) (.memory pointer)
+      let refBody : Unit → Session grow sig Unit := fun _ => CanonicalTree.elements Limits.spec Quirks.none cx
+        destination.width rest .value stride (pointer + stride)
+      have leaf := localDataLeafFrameBetween (profile := profile) (scheduledReady := scheduledReady)
+        (scheduledDispatch := scheduledDispatch) (reference := reference) destination inst element data payload index
+        (.memory pointer) origin left right growth (by simp [ptrTypeIn, CanonOpts.ptrType, RecordDestination.context, reachedWidth]) placed
+        same check canon thread following refFollowing
+        (by
+          rw [checkAt, Record.Effects.elements]
+          congr 1
+          simp only [Prog.bind_eq, Prog.bind_assoc, following]
+          congr 1
+          funext verdict
+          cases verdict with
+          | error issue => rfl
+          | ok value => cases value; rfl)
+        (by
+          rw [CanonicalTree.elements] at canonAt
+          change right.ctl = canon.control ((refHead.bind refBody).bind canonNext) at canonAt
+          rw [Prog.bind_assoc] at canonAt
+          rw [canonAt]
+          congr 2)
+      apply continueLocal leaf
+      intro store value grown
+      cases value
+      have lower := ih tail (index + 1) nextRoom
+        (localLeafEnd left left.host store check.thread check.frames check.rest (fun value => following (.ok value)) (.ok ()))
+        (localLeafEnd right right.host store canon.thread canon.frames canon.rest refFollowing (.ok ())) grown
+      rw [nextPtr] at lower
+      exact lower rfl check canon thread checkedNext canonNext rfl rfl
+
+theorem localDataCollectionTail {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (element : TypeOf) (data : LocalDataType element)
+    (entries : List Field) (matched : Field.EntriesMatch entries element)
+    (pointer bytes index : Nat) (output : Lower.Output) (left right : Config (core3 grow) (HostState sig))
+    (width : (core3 grow).memAddrType? left.store.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? left.store.core destination.memory = some bytes)
+    (aligned : pointer = alignTo pointer (layout destination.width element).alignment)
+    (bounds : pointer + entries.length * (layout destination.width element).size ≤ bytes)
+    (same : left.store = right.store) (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
+    (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (checkAt : left.ctl = check.control (checkedCollectionTail destination inst entries (layout destination.width element)
+      index output pointer (.ok ()) >>= checkNext))
+    (canonAt : right.ctl = canon.control (canonicalCollectionTail destination inst entries (layout destination.width element)
+      output pointer .value >>= canonNext)) :
+    LocalCutKeepingBetween profile scheduledReady scheduledDispatch reference (fun store => Core3.Grows left.store.core store.core)
+      left right check canon (fun value => checkNext (.ok value)) canonNext := by
+  let cx := destination.context (grow := grow) inst
+  let descriptor : Session grow sig output.Result := ListLower.publish cx destination.width pointer entries.length output
+  let finish := fun (verdict : Except RecordLower.Issue Unit) => (match verdict with
+    | .error issue => pure (.error (.nested index issue))
+    | .ok () => do return .ok (← descriptor)) >>= checkNext
+  let refFinish := fun () => descriptor >>= canonNext
+  have grown : Core3.Grows left.store.core right.store.core := same ▸ Core3.Grows.refl _
+  have elements := localDataElements (profile := profile) (scheduledReady := scheduledReady)
+    (scheduledDispatch := scheduledDispatch) (reference := reference) destination inst element data left.store pointer bytes entries.length
+    width sized aligned bounds entries matched 0 (by simp) left right grown same check canon thread finish refFinish
+  simp only [Nat.zero_mul, Nat.add_zero] at elements
+  have visited := elements
+    (by
+      rw [checkAt]
+      congr 1
+      simp only [checkedCollectionTail, Prog.bind_eq, Prog.bind_assoc]
+      congr 1)
+    (by simpa only [canonicalCollectionTail, Prog.bind_eq, Prog.bind_assoc, refFinish, descriptor, cx] using canonAt)
+  apply continueLocal visited
+  intro store value kept
+  cases value
+  apply closedCutBetween (closedDescriptor (growthWrites left.store) cx destination.width pointer entries.length output)
+  · exact kept
+  · rfl
+  · exact thread
+  · simp only [localLeafEnd, Cursor.control, finish, descriptor, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
+  · rfl
 
 private theorem scalarField {primitive : WIT.Primitive} {item : Field}
     (layoutMatch : item.LayoutMatches (.prim primitive)) :

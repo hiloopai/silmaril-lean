@@ -98,6 +98,57 @@ def CollectionRangeCut (profile : ProfileKind) (ready : HostReady (HostState sig
         { canonical with ctl := canonCursor.control (canonNext pointer) })
     else traps .outOfBounds
 
+/-- Continuations reached after consuming a marked allocator return. A
+typed refusal only enters the checked continuation; the canonical cursor
+has not executed the children. The retained slots exclude the popped frame. -/
+def CollectionReturn (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (checked canonical : Config (core3 grow) (HostState sig))
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) {Result : Type}
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : Result → Session grow sig (Ret (core3 grow))) (childEntry : Session grow sig (Ret (core3 grow))) : Prop :=
+  let checkedDispatch := specDispatch ready base
+  let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
+  ∃ (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (outcome : PayloadPrefix.Outcome Result)
+    (checkLabels canonLabels : Trace grow sig) (left right : Config (core3 grow) (HostState sig)),
+    Steps profile ready checkedDispatch checked checkLabels left ∧ Steps profile ready canonDispatch canonical canonLabels right ∧
+    left.store = right.store ∧ PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
+    match outcome with
+    | .trapped reason => left.ctl = [] ∧ right.ctl = [] ∧ ∃ leading, PayloadPrefix.visible canonLabels = leading ++ [.trap reason]
+    | .returned value => LinkedCallback.ChildFrameOver older left right check canon ∧
+        left.ctl = check.control (checkNext (.ok value)) ∧ right.ctl = canon.control (canonNext value) ∧
+        ReturnFrame.Occurrence.RetainsBelowTop profile ready checkedDispatch checked checkLabels left ∧
+        ReturnFrame.Occurrence.RetainsBelowTop profile ready canonDispatch canonical canonLabels right
+    | .refused issue => left.ctl = check.control (checkNext (.error issue)) ∧ right.ctl = canon.control childEntry ∧
+        ReturnFrame.Occurrence.RetainsBelowTop profile ready checkedDispatch checked checkLabels left ∧
+        ReturnFrame.Occurrence.RetainsBelowTop profile ready canonDispatch canonical canonLabels right
+
+/-- Complete the actual public replies from a reached allocator return.
+Only a returned descriptor rejoins both machines. A typed refusal records
+the checked completion and rejoins its caller, leaving canonical suspended
+at the child-entry program. A canonical trap executes no reply. -/
+def CollectionReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (checked canonical : Config (core3 grow) (HostState sig))
+    (childEntry : Session grow sig (Ret (core3 grow))) : Prop :=
+  ∃ (outcome : PayloadPrefix.Outcome route.output.Result) (checkLabels canonLabels : Trace grow sig)
+    (left right : Config (core3 grow) (HostState sig)),
+    Steps profile ready (specDispatch ready base) checked checkLabels left ∧
+    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) canonical canonLabels right ∧
+    left.store = right.store ∧ PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
+    match outcome with
+    | .returned value => ∃ before canonBefore,
+        (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧
+        (∀ dispatch, Steps profile ready dispatch canonBefore [.tau] right) ∧
+        left.host = before.host.record (route.reply site.destination site.start.host.nextTicket (.ok value)).1 ∧
+        right.host = canonBefore.host ∧ HostFrame.Related.Paired older left right
+    | .refused issue => ∃ (before : Config (core3 grow) (HostState sig)) (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)),
+        left.host = before.host.record (route.reply site.destination site.start.host.nextTicket (.error issue)).1 ∧
+        (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧ right.ctl = canon.control childEntry
+    | .trapped reason => left.ctl = [] ∧ right.ctl = [] ∧ ∃ leading, PayloadPrefix.visible canonLabels = leading ++ [.trap reason]
+
 /-- Stops before the recursive body. A checked preflight refusal resumes its
 caller; a bad placement traps the checked machine. Neither executes the
 canonical body, whose memory placement is a precondition. -/

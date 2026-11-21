@@ -172,6 +172,64 @@ theorem AllocatorMark.collection_range (destination : RecordDestination) (inst :
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.collectionRange
     destination inst type element entries output index pointer checkNext canonNext
 
+/-- Finish a reached allocating list root on either scheduled public give
+route. The compiler certificate determines the entries. The installed mark
+and its lower-slot trail identify the original Core caller; a returned pointer
+does not promise successful range checks, element writes or publication. -/
+theorem AllocatorMark.local_list_replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (data : PayloadPrefix.LocalDataType element) (field : site.field = .dynamic (.list element) element entries) (pointer : Nat)
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)}
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
+    let area := layout site.destination.width element
+    let first := PayloadPrefix.checkedCollectionResume site.destination site.inst entries area 0 route.output site.reply
+    let second := PayloadPrefix.canonicalCollectionResume site.destination site.inst entries area route.output site.referenceReply
+    AllocatorMark profile ready base bindings older
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    CollectionReplies profile ready base bindings older site checked canonical
+      (PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area route.output pointer >>= site.referenceReply) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localListReplies
+    site linked element entries data field pointer
+
+/-- On a valid reached range with failed live preparation, execute exactly
+the checked refusal reply. This applies to the actual map entry mode as
+well as ordinary list placement; canonical never enters those children. -/
+theorem CollectionRangeCut.refused_reply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (type element : Stored.TypeOf) (entries : List Field) (index pointer bytes : Nat)
+    {checked canonical : Config (core3 grow) (HostState sig)} {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    {leading issue} :
+    let area := layout site.destination.width element
+    let child := PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area route.output pointer
+      (CanonicalTree.EntryMode.forOutput site.destination.width type route.output) >>= site.referenceReply
+    let reply := route.reply site.destination site.start.host.nextTicket
+      (.error (LinkedCallback.CollectionVisit.afterAllocation index issue))
+    CollectionRangeCut profile ready base bindings older checked canonical check site.destination area entries.length pointer
+      (Field.listObjects entries)
+      (fun addr live => PayloadPrefix.checkedCollectionTail site.destination site.inst entries area index route.output addr live >>= site.reply)
+      (fun addr => PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area route.output addr
+        (CanonicalTree.EntryMode.forOutput site.destination.width type route.output) >>= site.referenceReply) →
+    ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready base) site.checked (.active 0 0) leading checked (.active 0 1) →
+    (core3 grow).memSize? checked.store.core site.destination.memory = some bytes →
+    pointer = alignTo pointer area.alignment → pointer + entries.length * area.size ≤ bytes →
+    Stored.OwnedMemory.Claims.Record.prepare checked.store checked.host.writer (Field.listObjects entries) = .error issue →
+    ∃ (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (checkedLabels canonLabels : Trace grow sig)
+      (segments : List (Seg (core3 grow) (HostState sig))),
+      (∀ label ∈ checkedLabels, label = .tau) ∧ (∀ label ∈ canonLabels, label = .tau) ∧
+      Steps profile ready (specDispatch ready base) checked (checkedLabels ++ [.tau, .tau, .tau])
+        { checked with
+          host := checked.host.record reply.1
+          ctl := ⟨check.thread, .core ((core3 grow).resume checked.store.core site.core (.values reply.2)) site.resume,
+            segments⟩ :: check.rest } ∧
+      ReturnFrame.Occurrence.RetainsBelowTop profile ready (specDispatch ready (LiveDispatch.host bindings base)) canonical canonLabels
+        { canonical with ctl := canon.control child } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.refusalReply site type element entries index pointer bytes
+
 theorem NestedPlan.source (plan : NestedPlan bindings profile ready base start labels finish) :
     Steps profile ready (specDispatch ready base) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.source plan

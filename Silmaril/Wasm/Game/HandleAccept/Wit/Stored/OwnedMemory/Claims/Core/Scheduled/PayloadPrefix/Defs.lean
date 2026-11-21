@@ -293,31 +293,41 @@ inductive LocalSteps {E : CoreEngine} {Host : Type} (profile : ProfileKind) (rea
 
 /-- A local comparison with exact reached configurations. Unlike the
 handle-only cut, it permits synchronized observations such as NaN choices. -/
-def LocalCutKeeping {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
-    (dispatch : Call E → P E Host (Ret E)) (keep : CStore E → Prop) (left right : Config E Host)
+def LocalCutKeepingBetween {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
+    (dispatch reference : Call E → P E Host (Ret E)) (keep : CStore E → Prop) (left right : Config E Host)
     (check canon : Cursor (E := E) Host) (checkNext canonNext : Result → P E Host (Ret E)) : Prop :=
   ∃ (store : CStore E) (result : Except TrapReason Result) (checked canonical : List (Label E Host)),
     Steps profile ready dispatch left checked
       (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
-    LocalSteps profile ready dispatch right canonical
+    LocalSteps profile ready reference right canonical
       (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
     visible checked = visible canonical ∧
     match result with
     | .ok _ => keep store ∧
         ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left checked
           (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
-        ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right canonical
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready reference right canonical
           (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result)
     | .error reason => ∃ leading, visible canonical = leading ++ [.trap reason]
 
-def CompareLocalKeepingAt {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
+abbrev LocalCutKeeping {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
     (dispatch : Call E → P E Host (Ret E)) (keep : CStore E → Prop) (left right : Config E Host)
+    (check canon : Cursor (E := E) Host) (checkNext canonNext : Result → P E Host (Ret E)) : Prop :=
+  LocalCutKeepingBetween profile ready dispatch dispatch keep left right check canon checkNext canonNext
+
+def CompareLocalKeepingBetween {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
+    (dispatch reference : Call E → P E Host (Ret E)) (keep : CStore E → Prop) (left right : Config E Host)
     (checked : P E Host (Except RecordLower.Issue Result)) (canonical : P E Host Result) : Prop :=
   left.store = right.store →
     ∀ (check canon : Cursor (E := E) Host), check.thread = canon.thread →
       ∀ (checkNext : Except RecordLower.Issue Result → P E Host (Ret E)) (canonNext : Result → P E Host (Ret E)),
         left.ctl = check.control (checked >>= checkNext) → right.ctl = canon.control (canonical >>= canonNext) →
-        LocalCutKeeping profile ready dispatch keep left right check canon (fun value => checkNext (.ok value)) canonNext
+        LocalCutKeepingBetween profile ready dispatch reference keep left right check canon (fun value => checkNext (.ok value)) canonNext
+
+abbrev CompareLocalKeepingAt {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
+    (dispatch : Call E → P E Host (Ret E)) (keep : CStore E → Prop) (left right : Config E Host)
+    (checked : P E Host (Except RecordLower.Issue Result)) (canonical : P E Host Result) : Prop :=
+  CompareLocalKeepingBetween profile ready dispatch dispatch keep left right checked canonical
 
 def sumPayloadAddress (width : AddrType) (arms : List (Option TypeOf)) (base : Nat) : Nat :=
   alignTo (base + discSize arms.length) (maxCaseAlignment (arms.map (layoutOption width)))
