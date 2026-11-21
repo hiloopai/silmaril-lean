@@ -409,29 +409,114 @@ private def reallocSession (inst : ModuleInst) (flat : Bool) : Session grow real
   call "rep" [1] [77]
   return .unit
 
-private def reallocSetup (flat invalid : Bool) :
-    Option (List (Binding reallocSignature) × Machine.Config engine (HostState reallocSignature)) := do
+private def reallocInput : List Instr :=
+  storeWord 32 1 ++ storeWord 36 64 ++ storeWord 40 1 ++ storeWord 44 91 ++ storeWord 64 77
+
+private def reallocModule (invalid : Bool)
+    (extraImports : List (String × V1.FuncType × CanonHost engine) := [])
+    (extraLocals : List (String × V1.FuncType × List Instr) := []) :
+    Option (List (Binding reallocSignature) × Store (CanonHost engine) × ModuleInst) := do
   let input := Endpoints.Core.Scheduled.acceptType reallocContract
   let entries := [
     ("accept-node", input, CanonHost.embedder "accept-node" input),
     ("give-payload", wordFn 2 2, .embedder "give-payload" (wordFn 2 2)),
     ("give-flat", wordFn 1 5, .embedder "give-flat" (wordFn 1 5)),
     ("new-own", wordFn 1 1, .builtin (.resourceNew resource .i32) ⟨0⟩),
-    ("rep", wordFn 1 1, .builtin (.resourceRep resource .i32) ⟨0⟩)]
+    ("rep", wordFn 1 1, .builtin (.resourceRep resource .i32) ⟨0⟩)] ++ extraImports
   let (store, inst) ← instantiateWith {} entries (fun name =>
-    if name == "accept-node" then storeWord 32 1 ++ storeWord 36 64 ++ storeWord 40 1 ++ storeWord 44 91 ++ storeWord 64 77
-    else []) [("realloc", wordFn 4 1, reallocBody invalid)]
+    if name == "accept-node" then reallocInput else [])
+    ([("realloc", wordFn 4 1, reallocBody invalid)] ++ extraLocals)
   let reallocIndex := some (entries.length * 2)
   let .ok memory := Binding.givePayload "give-payload" ⟨0⟩ inst 0 .i32 .utf8 reallocIndex | none
   let .ok flatBinding := Binding.giveFlat (sig := reallocSignature) "give-flat" ⟨0⟩ inst 0 .i32 .utf8
     (reallocSignature.payload ()) reallocIndex | none
+  return ([Binding.accept reallocContract inst 0, memory, flatBinding], store, inst)
+
+private def reallocSetup (flat invalid : Bool) :
+    Option (List (Binding reallocSignature) × Machine.Config engine (HostState reallocSignature)) := do
+  let (bindings, store, inst) ← reallocModule invalid
   let reference : CStore engine := { CStore.empty with
     core := store, insts := [{}], resourceTypes := [{ impl := some ⟨0⟩ }],
     tasks := [{ ft := ⟨[], none, false⟩, opts := {}, inst := ⟨0⟩, caller := ⟨0⟩ }],
     threads := [{ status := .running, task := ⟨0⟩ }] }
-  return ([Binding.accept reallocContract inst 0, memory, flatBinding], {
+  return (bindings, {
     store := reference, host := {}, conts := [none],
     ctl := [Machine.Activation.ofProg (some ⟨0⟩) (reallocSession inst flat)] })
+
+private def expectWords (expected : List Nat) : List Instr :=
+  expected.reverse.flatMap fun value => [word value, .intRelOp .i32 .eq, .if_ .empty [] [.unreachable]]
+
+private def liftedReallocBody (flat : Bool) : List Instr :=
+  [word 77, .call ⟨3⟩] ++ expectWords [1] ++ reallocInput ++
+  [word 0, word 32, word 0, word 0, .call ⟨0⟩] ++ expectWords [0, 1] ++
+  (if flat then [word 1, .call ⟨2⟩] ++ expectWords [0, 1, 65536, 1, 91]
+    else [word 1, word 0, .call ⟨1⟩] ++ expectWords [0, 0]) ++
+  [word 1, .call ⟨4⟩] ++ expectWords [77] ++ storeWord 216 91 ++
+  [.call ⟨5⟩] ++ expectWords [0] ++ [word 91, .call ⟨6⟩]
+
+private def liftedReallocSetup (flat invalid : Bool) :
+    Option (List (Binding reallocSignature) × Machine.Config engine (HostState reallocSignature)) := do
+  let opts : CanonOpts engine := { async_ := true }
+  let result : Option (WIT.ClosedType RtId) := some (.prim .u32)
+  let (bindings, core, inst) ← reallocModule invalid
+    [("yield", wordFn 0 1, .builtin .threadYield ⟨0⟩),
+     ("task-return", wordFn 1 0, .builtin (.taskReturn result opts) ⟨0⟩)]
+    [("run", wordFn 0 0, liftedReallocBody flat)]
+  let address ← exportAddr inst "run"
+  let store : CStore engine := { CStore.empty with
+    core, insts := [{}], resourceTypes := [{ impl := some ⟨0⟩ }],
+    funcs := [.lifted address ⟨[], result, true⟩ opts ⟨0⟩] }
+  return (bindings, { store, host := {} })
+
+private def runLiftedRealloc (bindings : List (Binding reallocSignature))
+    (start : Machine.Config engine (HostState reallocSignature)) :=
+  Machine.runTopCall ready (specDispatch ready (host bindings)) (core3Exec grow)
+    Machine.Oracle.first 1500 ⟨0⟩ ⟨0⟩ [] start
+
+theorem lifted_realloc_replay_sound (bindings : List (Binding reallocSignature))
+    (start : Machine.Config engine (HostState reallocSignature)) {replay}
+    (ran : runLiftedRealloc bindings start = some replay) :
+    ∃ tail, replay.labels = .host (.invoke ⟨0⟩ ⟨0⟩ []) :: tail ∧
+      Machine.Steps .deterministic ready (specDispatch ready (host bindings)) start
+        replay.labels replay.config ∧ (⟨0⟩, ⟨0⟩, []) ∈ replay.config.pending :=
+  Machine.runTopCall_sound ready (specDispatch ready (host bindings)) (core3Exec grow) Machine.Oracle.first ran
+
+private def liftedReallocParked (flat : Bool) : Bool := Id.run do
+  let some (bindings, start) := liftedReallocSetup flat false | return false
+  let some (_, invoked) := Machine.hostStep? ready (.invoke ⟨0⟩ ⟨0⟩ []) start | return false
+  let paused := run bindings invoked
+  let state := paused.config
+  let returned := if flat then .returnedFlat 1 ([1, 65536, 1, 91].map i32Flat) else Event.returned 1 0
+  return paused.outcome == .running && state.hostReady && state.conts.any Option.isSome &&
+    (state.cancel? ⟨0⟩).isSome && (state.result? ⟨0⟩).isNone &&
+    state.host.publications == [(0, 1)] && state.host.transcript.contains returned
+
+private def liftedReallocRegression (flat invalid : Bool) : Bool := Id.run do
+  let some (bindings, start) := liftedReallocSetup flat invalid | return false
+  let some replay := runLiftedRealloc bindings start | return false
+  let final := replay.config
+  let bytes := (final.store.core.mems[0]?.map (·.bytes)).getD ByteArray.empty
+  let ticked := replay.labels.any (· matches .host .tick)
+  let returned := if flat then .returnedFlat 1 ([1, 65536, 1, 91].map i32Flat) else Event.returned 1 0
+  let returnRecorded := final.host.transcript.contains returned
+  let outcome := if invalid then
+      replay.outcome == .trap && replay.labels.any (· matches .trap .unalignedPointer) &&
+        (final.result? ⟨0⟩).isNone && !ticked && !returnRecorded
+    else replay.outcome == .resolved && final.result? ⟨0⟩ == some (some [.int .u32 91]) &&
+      ticked && returnRecorded
+  return outcome && final.host.publications == [(0, 1)] && final.host.refusals == [.wrongContext] &&
+    final.host.writer.held.isEmpty &&
+    ((final.store.inst? ⟨0⟩).bind (·.handles.get? 1)) == some (.resource ⟨1⟩) &&
+    bytes.size == 131072 && (bytes.extract 208 216).data == #[4, 0, 0, 0, 4, 0, 0, 0] &&
+    (bytes.extract 216 220).data == (if invalid then #[0, 0, 0, 0] else #[91, 0, 0, 0]) &&
+    (bytes.extract 65536 65540).data == (if invalid then #[0, 0, 0, 0] else #[77, 0, 0, 0])
+
+#guard liftedReallocParked false
+#guard liftedReallocParked true
+#guard liftedReallocRegression false false
+#guard liftedReallocRegression true false
+#guard liftedReallocRegression false true
+#guard liftedReallocRegression true true
 
 private def reallocRegression (flat invalid : Bool) : Bool :=
   match reallocSetup flat invalid with
