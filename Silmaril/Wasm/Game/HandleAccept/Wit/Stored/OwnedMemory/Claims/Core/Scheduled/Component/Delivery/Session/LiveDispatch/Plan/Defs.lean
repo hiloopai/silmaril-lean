@@ -493,6 +493,27 @@ def CollectionSegmentReplies (profile : ProfileKind) (ready : HostReady (HostSta
         (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧ right.ctl = canon.control stop
     | .trapped reason => left.ctl = [] ∧ right.ctl = [] ∧ ∃ leading, PayloadPrefix.visible canonLabels = leading ++ [.trap reason]
 
+/-- A marked string-key map return either traps or refuses before any entry,
+or reaches the recursive body with the original checked caller still tracked. -/
+def LinkedStringMapReturn (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (pointer : Nat) (checked canonical : Config (core3 grow) (HostState sig))
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+  open ReturnFrame.Occurrence in
+  let checkedDispatch := specDispatch ready base
+  let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
+  CollectionSegmentReplies profile ready base bindings older site checked canonical
+    (MapReturnStop site.destination site.inst .string element entries route.output pointer site.referenceReply) ∨
+  ∃ (left right : Config (core3 grow) (HostState sig)) (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkLabels canonLabels callerLabels : Trace grow sig),
+    RetainsBelowTop profile ready checkedDispatch checked checkLabels left ∧
+    RetainsBelowTop profile ready canonDispatch canonical canonLabels right ∧
+    PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
+    Prefix profile ready checkedDispatch site.checked (.active 0 0) callerLabels left (.active 0 0) ∧
+    LinkedStringMapBody profile ready base bindings older site element entries pointer left right check canon
+
 abbrev CollectionReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
