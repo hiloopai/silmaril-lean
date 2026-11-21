@@ -516,6 +516,31 @@ theorem LowerStartAt.direct_callee {site : OnStartSite start} (handoff : LowerSt
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runLowerDirect
     handoff task callee record body args callerSchema calleeSchema callerFits calleeFits suffix words
 
+/-- A spilled scalar tuple is loaded in ABI field order from the reached memory.
+It consumes one caller word before using the same direct callee entry as flat arguments. -/
+theorem LowerStartAt.spilled_scalar_callee {site : OnStartSite start} (handoff : LowerStartAt site)
+    (task : TaskId) (callee : (core3 grow).FuncAddr) (record : Task (core3 grow))
+    (body : site.next = liftArgumentsBody .spec .none task callee record) (args : List DirectArgument)
+    (callerSchema : handoff.types = args.map DirectArgument.type) (calleeSchema : paramTypes record.ft = args.map DirectArgument.type)
+    (callerSpills : handoff.maxParams < args.length) (calleeFits : args.length ≤ ABI.maxFlatParams)
+    {pointer : FlatValue} {memory : (core3 grow).MemAddr} {size : Nat}
+    (found : handoff.flat[handoff.pos]? = some pointer)
+    (aligned : flatNat pointer = ABI.alignTo (flatNat pointer) (handoff.spillLayout handoff.readWidth).alignment)
+    (selected : handoff.context.opts.memory = some memory)
+    (sized : (core3 grow).memSize? handoff.selectedRead.store.core memory = some size)
+    (fits : flatNat pointer + (handoff.spillLayout handoff.readWidth).size ≤ size)
+    (fields : ScalarSpill handoff.selectedRead.store memory handoff.readWidth args (flatNat pointer)) :
+    ∃ (returned : LowerArgumentReturn handoff (handoff.spillLoaded (args.map DirectArgument.value))), ∃ next,
+      returned.cursor.pos = handoff.pos + 1 ∧
+      (record.opts.async_ = true → record.opts.callback = none → next = stackfulTail task) ∧
+      ∀ impl, Run profile ready impl handoff.reading
+        [.lowerReadWidth site.caller, .lowerSpill site.caller, .lowerLoadScalars site.caller, .lowerArgsReturn site.caller,
+          .coreEnter site.thread]
+        ([.tau, .tau] ++ (List.replicate args.length .tau ++ [.tau, .tau, .tau, .tau]))
+        (site.entered returned.resumed callee (args.map DirectArgument.flat) next) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runLowerSpilledScalars
+    handoff task callee record body args callerSchema calleeSchema callerSpills calleeFits found aligned selected sized fits fields
+
 /-- A selected K1 worker reaches its direct callee under both dispatchers.
 Unlike the initially admitted path, the retained tail is the reached tick's tail. -/
 theorem K1LiftStart.linked_direct_callee {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}

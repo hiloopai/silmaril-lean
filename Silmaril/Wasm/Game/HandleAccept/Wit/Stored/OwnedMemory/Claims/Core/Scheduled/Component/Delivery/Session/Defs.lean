@@ -301,6 +301,28 @@ def DirectArgument.flat : DirectArgument → FlatValue
   | .bool value => i32Flat (if value then 1 else 0)
   | .u32 value => lowerFlatInt .u32 value.toNat
 
+def DirectArgument.byteCount : DirectArgument → Nat
+  | .bool _ => 1
+  | .u32 _ => 4
+
+def DirectArgument.decode (arg : DirectArgument) (bytes : ByteArray) : Value.Val :=
+  match arg with
+  | .bool _ => .bool (convertIntToBool (intOfLE false bytes))
+  | .u32 _ => .int .u32 (intOfLE false bytes)
+
+def DirectArgument.address (arg : DirectArgument) (width : AddrType) (ptr : Nat) : Nat :=
+  ABI.alignTo ptr (ABI.layout width arg.type).alignment
+
+/-- The reached bytes and decoded values at each canonical tuple-field offset. -/
+inductive ScalarSpill (store : CStore (core3 grow)) (memory : (core3 grow).MemAddr) (width : AddrType) :
+    List DirectArgument → Nat → Prop where
+  | nil (ptr : Nat) : ScalarSpill store memory width [] ptr
+  | cons {arg args ptr} (bytes : ByteArray)
+      (read : (core3 grow).memRead? store.core memory (arg.address width ptr) arg.byteCount = some bytes)
+      (decoded : arg.decode bytes = arg.value)
+      (rest : ScalarSpill store memory width args (arg.address width ptr + (ABI.layout width arg.type).size)) :
+      ScalarSpill store memory width (arg :: args) ptr
+
 /-- The exact host request reached in a guest activation, with the Core
 continuation that the machine will park beneath the callout. -/
 structure CoreCallSite (start : State grow sig) where
@@ -514,10 +536,16 @@ def LowerStartAt.selectedRead (handoff : LowerStartAt site) : State grow sig :=
   { handoff.reading with ctl := handoff.readControl (handoff.readAt handoff.readWidth >>= handoff.finishRead) }
 
 /-- A returned spill pointer is consumed once, independently of the number of loaded fields. -/
+def LowerStartAt.spillCursor (handoff : LowerStartAt site) : FlatCursor :=
+  { handoff.cursor with pos := handoff.pos + 1 }
+
 def LowerStartAt.spillBody (handoff : LowerStartAt site) (pointer : FlatValue) : State grow sig :=
   { handoff.selectedRead with ctl := handoff.readControl (do
       let values ← loadTypesAt .spec .none handoff.context handoff.readWidth handoff.types (flatNat pointer)
-      handoff.finishRead (values, { handoff.cursor with pos := handoff.pos + 1 })) }
+      handoff.finishRead (values, handoff.spillCursor)) }
+
+def LowerStartAt.spillLoaded (handoff : LowerStartAt site) (values : List Value.Val) : State grow sig :=
+  { handoff.selectedRead with ctl := handoff.readControl (handoff.finishRead (values, handoff.spillCursor)) }
 
 /-- The original `onStart` result frame has reached the caller cursor update.
 Its store may already include effects from lifting the arguments. -/
@@ -629,6 +657,7 @@ inductive Action where
   | lowerEmptyArgs (caller : CallerId)
   | lowerReadWidth (caller : CallerId)
   | lowerSpill (caller : CallerId)
+  | lowerLoadScalars (caller : CallerId)
   | lowerArgsReturn (caller : CallerId)
   | lowerSpillTrap (caller : CallerId) (reason : TrapReason)
   | lowerInstallCancel (subtask : SubtaskId)
@@ -730,6 +759,13 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (outside : size < flatNat pointer + (handoff.spillLayout handoff.readWidth).size) :
       Transition profile ready impl handoff.selectedRead (.lowerSpillTrap site.caller .outOfBounds)
         [.tau, .trap .outOfBounds] (StepDefs.trapCfg handoff.selectedRead)
+  | lowerLoadScalars {start} {site : OnStartSite start} (handoff : LowerStartAt site)
+      {pointer : FlatValue} {memory : (core3 grow).MemAddr} {args : List DirectArgument}
+      (schema : handoff.types = args.map DirectArgument.type)
+      (selected : handoff.context.opts.memory = some memory)
+      (fields : ScalarSpill handoff.selectedRead.store memory handoff.readWidth args (flatNat pointer)) :
+      Transition profile ready impl (handoff.spillBody pointer) (.lowerLoadScalars site.caller)
+        (List.replicate args.length .tau) (handoff.spillLoaded (args.map DirectArgument.value))
   | lowerArgsReturn {start reached} {site : OnStartSite start} {handoff : LowerStartAt site}
       (returned : LowerArgumentReturn handoff reached) :
       Transition profile ready impl reached (.lowerArgsReturn site.caller) [.tau, .tau] returned.resumed

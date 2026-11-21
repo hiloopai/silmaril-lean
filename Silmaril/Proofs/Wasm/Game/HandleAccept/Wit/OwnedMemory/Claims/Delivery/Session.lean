@@ -461,7 +461,7 @@ theorem lowerSpill {site : OnStartSite start} (handoff : LowerStartAt site) {poi
   simp [LowerStartAt.readAt, spilled, FlatCursor.next, LowerStartAt.cursor, found, Prog.bind, pure,
     trapIf, ← aligned, checkInBounds, memLen, memAddr, selected, orTrap] at focus
   refine .cons (.get focus) ?_
-  simp [sized, Nat.not_lt.mpr fits, Prog.bind, Prog.bind_assoc, LowerStartAt.spillBody, LowerStartAt.cursor]
+  simp [sized, Nat.not_lt.mpr fits, Prog.bind, Prog.bind_assoc, LowerStartAt.spillBody]
   exact .refl _
 
 theorem lowerSpillRangeTrap {site : OnStartSite start} (handoff : LowerStartAt site) {pointer memory size}
@@ -480,6 +480,55 @@ theorem lowerSpillRangeTrap {site : OnStartSite start} (handoff : LowerStartAt s
   refine .cons (.get focus) ?_
   simp [sized, outside, Prog.bind]
   exact .cons (.trap rfl) (.refl _)
+
+theorem loadDirectArgument (cx : LiftLowerContext (core3 grow)) (width : AddrType) (arg : DirectArgument) (ptr : Nat) :
+    (loadAt .spec .none cx width arg.type ptr : Session grow sig Value.Val) = (do
+      let bytes ← readMem cx ptr arg.byteCount
+      pure (arg.decode bytes)) := by
+  cases arg <;> simp only [DirectArgument.type, DirectArgument.byteCount, DirectArgument.decode,
+    loadAtWith, LoadCarrier.reference, loadPrim, loadInt, Prog.bind_eq, Prog.pure_eq, Prog.bind_assoc, Prog.pure_bind']
+
+theorem loadScalarSpill (cx : LiftLowerContext (core3 grow)) {memory : (core3 grow).MemAddr} (width : AddrType)
+    (selected : cx.opts.memory = some memory) {store : CStore (core3 grow)} {args : List DirectArgument} {ptr : Nat}
+    (fields : ScalarSpill store memory width args ptr) {state : State grow sig}
+    (live : state.store = store) {thread segments rest}
+    (consume : List Value.Val → Session grow sig (Ret (core3 grow)))
+    (focused : state.ctl = ⟨thread, .prog (loadTypesAt .spec .none cx width (args.map DirectArgument.type) ptr >>= consume),
+      segments⟩ :: rest) :
+    Steps profile ready (specDispatch ready impl) state (List.replicate args.length .tau)
+      { state with ctl := ⟨thread, .prog (consume (args.map DirectArgument.value)), segments⟩ :: rest } := by
+  induction fields generalizing state consume with
+  | nil ptr =>
+    change state.ctl = ⟨thread, .prog (consume []), segments⟩ :: rest at focused
+    have same : { state with ctl := ⟨thread, .prog (consume []), segments⟩ :: rest } = state := by
+      rw [← focused]
+    simp only [List.map_nil]
+    rw [same]
+    exact .refl _
+  | @cons arg args ptr bytes read decoded remaining ih =>
+    have readHere : (core3 grow).memRead? state.store.core memory (ABI.alignTo ptr (ABI.layout width arg.type).alignment)
+        arg.byteCount = some bytes := by
+      rw [live]
+      exact read
+    simp only [List.map_cons, loadTypesAtWith, loadDirectArgument,
+      Prog.bind_eq, Prog.pure_eq, Prog.bind_assoc, Prog.pure_bind'] at focused
+    simp [readMem, memAddr, selected, orTrap, Prog.bind, pure] at focused
+    simp only [List.length_cons, List.replicate_succ]
+    refine .cons (.get focused) ?_
+    simp only [readHere, Prog.bind, Prog.pure_bind', decoded]
+    apply ih _ (fun values => consume (arg.value :: values))
+    · rfl
+    · exact live
+
+theorem lowerLoadScalars {site : OnStartSite start} (handoff : LowerStartAt site)
+    {pointer : FlatValue} {memory : (core3 grow).MemAddr} {args : List DirectArgument}
+    (schema : handoff.types = args.map DirectArgument.type) (selected : handoff.context.opts.memory = some memory)
+    (fields : ScalarSpill handoff.selectedRead.store memory handoff.readWidth args (flatNat pointer)) :
+    Steps profile ready (specDispatch ready impl) (handoff.spillBody pointer) (List.replicate args.length .tau)
+      (handoff.spillLoaded (args.map DirectArgument.value)) := by
+  apply loadScalarSpill handoff.context handoff.readWidth selected fields (state := handoff.spillBody pointer) rfl
+    (fun args => handoff.finishRead (args, handoff.spillCursor))
+  simp only [LowerStartAt.spillBody, LowerStartAt.readControl, schema]
 
 theorem liftDirectArgument {engine : CoreEngine} {hostState : Type} (cx : LiftLowerContext engine)
     (width : AddrType) (arg : DirectArgument) (cursor : FlatCursor)
@@ -1053,6 +1102,7 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | lowerSpill handoff spilled found aligned selected sized fits => exact lowerSpill handoff spilled found aligned selected sized fits
   | lowerSpillRangeTrap handoff spilled found aligned selected sized outside =>
     exact lowerSpillRangeTrap handoff spilled found aligned selected sized outside
+  | lowerLoadScalars handoff schema selected fields => exact lowerLoadScalars handoff schema selected fields
   | lowerArgsReturn returned => exact lowerArgsReturn returned
   | lowerEmptyArgs handoff empty => exact lowerEmptyArgs handoff empty
   | lowerDirectCore focused selected =>
@@ -1227,6 +1277,21 @@ theorem runSteps {actions labels} (path : Run profile ready impl start actions l
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
 
+theorem lowerEnterDirect {site : OnStartSite start} {handoff : LowerStartAt site} {reached : State grow sig}
+    (returned : LowerArgumentReturn handoff reached) (task : TaskId) (callee : (core3 grow).FuncAddr)
+    (record : Task (core3 grow)) (body : site.next = liftArgumentsBody .spec .none task callee record)
+    (args : List DirectArgument) (values : returned.values = args.map DirectArgument.value)
+    (schema : paramTypes record.ft = args.map DirectArgument.type) (fits : args.length ≤ ABI.maxFlatParams) :
+    ∃ next, (record.opts.async_ = true → record.opts.callback = none → next = stackfulTail task) ∧
+      ∀ impl, Transition profile ready impl returned.resumed (.coreEnter site.thread) [.tau, .tau]
+        (site.entered returned.resumed callee (args.map DirectArgument.flat) next) := by
+  obtain ⟨read, plan, call⟩ := directCalleePlan task callee record args schema fits
+  obtain ⟨next, selected, stackful⟩ := call returned.resumed.store
+  have focused : returned.resumed.ctl = ⟨some site.thread, .prog (.op .get read), site.segments⟩ :: site.rest := by
+    change ⟨some site.thread, .prog (site.next returned.values), site.segments⟩ :: site.rest = _
+    rw [values, body, plan]
+  exact ⟨next, stackful, fun _ => .lowerDirectCore (site := site) focused (by rw [selected]; rfl)⟩
+
 theorem runLowerDirect {site : OnStartSite start} (handoff : LowerStartAt site)
     (task : TaskId) (callee : (core3 grow).FuncAddr) (record : Task (core3 grow))
     (body : site.next = liftArgumentsBody .spec .none task callee record) (args : List DirectArgument)
@@ -1240,13 +1305,44 @@ theorem runLowerDirect {site : OnStartSite start} (handoff : LowerStartAt site)
         [.lowerReadWidth site.caller, .lowerArgsReturn site.caller, .coreEnter site.thread]
         [.tau, .tau, .tau, .tau, .tau] (site.entered returned.resumed callee (args.map DirectArgument.flat) next) := by
   let returned := lowerDirectReturn handoff args callerSchema callerFits suffix words
-  obtain ⟨read, plan, call⟩ := directCalleePlan task callee record args calleeSchema calleeFits
-  obtain ⟨next, selected, stackful⟩ := call returned.resumed.store
-  have focused : returned.resumed.ctl = ⟨some site.thread, .prog (.op .get read), site.segments⟩ :: site.rest := by
-    change ⟨some site.thread, .prog (site.next (args.map DirectArgument.value)), site.segments⟩ :: site.rest = _
-    rw [body, plan]
+  obtain ⟨next, stackful, enter⟩ := lowerEnterDirect (profile := profile) (ready := ready) returned
+    task callee record body args rfl calleeSchema calleeFits
   exact ⟨returned, next, rfl, stackful, fun _ => .next (.lowerReadWidth handoff) (.next (.lowerArgsReturn returned)
-    (.next (.lowerDirectCore (site := site) focused (by rw [selected]; rfl)) (.stop _)))⟩
+    (.next (enter _) (.stop _)))⟩
+
+theorem runLowerSpilledScalars {site : OnStartSite start} (handoff : LowerStartAt site)
+    (task : TaskId) (callee : (core3 grow).FuncAddr) (record : Task (core3 grow))
+    (body : site.next = liftArgumentsBody .spec .none task callee record) (args : List DirectArgument)
+    (callerSchema : handoff.types = args.map DirectArgument.type) (calleeSchema : paramTypes record.ft = args.map DirectArgument.type)
+    (callerSpills : handoff.maxParams < args.length) (calleeFits : args.length ≤ ABI.maxFlatParams)
+    {pointer : FlatValue} {memory : (core3 grow).MemAddr} {size : Nat}
+    (found : handoff.flat[handoff.pos]? = some pointer)
+    (aligned : flatNat pointer = ABI.alignTo (flatNat pointer) (handoff.spillLayout handoff.readWidth).alignment)
+    (selected : handoff.context.opts.memory = some memory)
+    (sized : (core3 grow).memSize? handoff.selectedRead.store.core memory = some size)
+    (fits : flatNat pointer + (handoff.spillLayout handoff.readWidth).size ≤ size)
+    (fields : ScalarSpill handoff.selectedRead.store memory handoff.readWidth args (flatNat pointer)) :
+    ∃ (returned : LowerArgumentReturn handoff (handoff.spillLoaded (args.map DirectArgument.value))), ∃ next,
+      returned.cursor.pos = handoff.pos + 1 ∧
+      (record.opts.async_ = true → record.opts.callback = none → next = stackfulTail task) ∧
+      ∀ impl, Run profile ready impl handoff.reading
+        [.lowerReadWidth site.caller, .lowerSpill site.caller, .lowerLoadScalars site.caller, .lowerArgsReturn site.caller,
+          .coreEnter site.thread]
+        ([.tau, .tau] ++ (List.replicate args.length .tau ++ [.tau, .tau, .tau, .tau]))
+        (site.entered returned.resumed callee (args.map DirectArgument.flat) next) := by
+  let returned : LowerArgumentReturn handoff (handoff.spillLoaded (args.map DirectArgument.value)) :=
+    ⟨args.map DirectArgument.value, handoff.spillCursor, rfl⟩
+  obtain ⟨next, stackful, enter⟩ := lowerEnterDirect (profile := profile) (ready := ready) returned
+    task callee record body args rfl calleeSchema calleeFits
+  have spilled : handoff.maxParams < (ABI.flattenTypes handoff.readWidth handoff.types).length := by
+    rwa [callerSchema, directArgumentCount]
+  refine ⟨returned, next, rfl, stackful, ?_⟩
+  intro impl
+  have entered := Run.next (enter impl) (.stop _)
+  have committed := Run.next (.lowerArgsReturn returned) entered
+  have loaded := Run.next (.lowerLoadScalars (pointer := pointer) handoff callerSchema selected fields) committed
+  have placed := Run.next (.lowerSpill handoff spilled found aligned selected sized fits) loaded
+  simpa only [List.cons_append, List.nil_append, List.append_nil] using Run.next (.lowerReadWidth handoff) placed
 
 theorem k1LowerDirect {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
     {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
