@@ -17,6 +17,11 @@ inductive Instr (context : Context) : Lime1.ResultType → Lime1.ResultType → 
   | intConst (width : IntType) (bits : BitVec width.width) : Instr context [] [.int width]
   | intBinOp (width : IntType) (op : IntBinOp) : Instr context [.int width, .int width] [.int width]
   | intRelOp (width : IntType) (op : IntRelOp) : Instr context [.int width, .int width] [.i32]
+  | floatConst (width : FloatType) (bits : BitVec width.width) : Instr context [] [.float width]
+  | floatUnOp (width : FloatType) (op : FloatUnOp) : Instr context [.float width] [.float width]
+  | floatBinOp (width : FloatType) (op : FloatBinOp) : Instr context [.float width, .float width] [.float width]
+  | floatRelOp (width : FloatType) (op : FloatRelOp) : Instr context [.float width, .float width] [.i32]
+  | convert (op : Lime1.ConvertOp) : Instr context [op.source] [op.target]
   | select (type : Lime1.ValType) : Instr context [type, type, .i32] [type]
   | localGet (index : LocalIdx) {type : Lime1.ValType} (found : context.locals[index.toNat]? = some type) :
       Instr context [] [type]
@@ -29,6 +34,11 @@ def Instr.erase {context inputs outputs} : Instr context inputs outputs → Lime
   | .intConst width bits => .intConst width bits
   | .intBinOp width op => .intBinOp width op
   | .intRelOp width op => .intRelOp width op
+  | .floatConst width bits => .floatConst width bits
+  | .floatUnOp width op => .floatUnOp width op
+  | .floatBinOp width op => .floatBinOp width op
+  | .floatRelOp width op => .floatRelOp width op
+  | .convert op => .convert op
   | .select _ => .select
   | .localGet index _ => .localGet index
   | .localSet index _ => .localSet index

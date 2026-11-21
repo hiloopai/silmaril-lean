@@ -15,6 +15,11 @@ theorem instr_sound {context inputs outputs} (term : Instr context inputs output
   | intConst width bits => exact .intConst width bits
   | intBinOp width op => exact .intBinOp width op
   | intRelOp width op => exact .intRelOp width op
+  | floatConst width bits => exact .floatConst width bits
+  | floatUnOp width op => exact .floatUnOp width op
+  | floatBinOp width op => exact .floatBinOp width op
+  | floatRelOp width op => exact .floatRelOp width op
+  | convert op => exact .convert op
   | select type => exact .select type
   | localGet index found => exact .localGet index found
   | localSet index found => exact .localSet index found

@@ -1,5 +1,7 @@
 module
 
+import Silmaril.Wasm.Lime1.Execution.Callout
+import Silmaril.Wasm.Lime1.Execution.Instantiation
 import Silmaril.Wasm.Profiles.Syntax.LimeScalar.Thms
 import Silmaril.Wasm.Validation.Intrinsic.Reify
 import Silmaril.Wasm.Verify.Kernel.Defs
@@ -59,11 +61,78 @@ example : Lime1.Validation.ModuleValid swap.erase := swapChecked.2.property
 example : ¬ V1.Validation.FuncTypeValid swapSig := by change ¬ 2 ≤ 1; decide
 example : swap.erase.funcs = [⟨⟨0⟩, [], [.localGet ⟨1⟩, .localGet ⟨0⟩]⟩] := rfl
 
+private def floatSig (width : FloatType) : Lime1.FuncType :=
+  ⟨[.float width, .float width], [.float width, .i32, .i32]⟩
+
+private def floatProbe (width : FloatType) (increment : BitVec width.width) :
+    LimeScalar.ClosedModule (floatSig width) where
+  exportName := "probe"
+  fn := {
+    resolved := rfl
+    locals := []
+    body := .step [] (.localGet ⟨0⟩ rfl) <|
+      .step [.float width] (.floatConst width increment) <|
+      .step [] (.floatBinOp width .add) <|
+      .step [] (.floatUnOp width .neg) <|
+      .step [.float width] (.localGet ⟨0⟩ rfl) <|
+      .step [.float width, .float width] (.localGet ⟨1⟩ rfl) <|
+      .step [.float width] (.floatRelOp width .lt) <|
+      .step [.float width, .i32] (.localGet ⟨1⟩ rfl) <|
+      .step [.float width, .i32] (.convert (.truncSat width .i32 .signed)) (.nil (floatSig width).results) }
+
+private def floatChecked (width : FloatType) (increment : BitVec width.width) :=
+  LimeScalar.moduleWitness.checked (index := ()) ⟨floatSig width, floatProbe width increment⟩
+
+example (width : FloatType) (increment : BitVec width.width) :
+    Lime1.Validation.ModuleValid (floatProbe width increment).erase := (floatChecked width increment).property
+
+example (width : FloatType) (increment : BitVec width.width) :
+    Validation.ModuleValid (floatProbe width increment).erase.toCore :=
+  (Injections.validLimeToWasm3 (floatChecked width increment)).property
+
+example (width : FloatType) (increment : BitVec width.width) :
+    (floatProbe width increment).erase.funcs.map (fun fn => fn.body) =
+      [[.localGet ⟨0⟩, .floatConst width increment, .floatBinOp width .add, .floatUnOp width .neg,
+        .localGet ⟨0⟩, .localGet ⟨1⟩, .floatRelOp width .lt,
+        .localGet ⟨1⟩, .convert (.truncSat width .i32 .signed)]] := rfl
+
+open Silmaril.Wasm.Execution.Runtime (Result Value) in
+private def runFloatProbe (width : FloatType) (increment left right : BitVec width.width) : Option Result := do
+  let prepared ← Lime1.Execution.prepare? ({} : Lime1.Execution.Store Unit) (floatProbe width increment).erase []
+  let exported ← prepared.module.exports.find? (fun entry => entry.name == "probe")
+  let .func address := exported.value | none
+  let args := Lime1.Execution.values [Value.float width left, Value.float width right]
+  match (Lime1.Execution.run 16 ⟨prepared.store, { module := prepared.module }, args ++ [.invoke address]⟩).2 with
+  | .returned result => some result
+  | _ => none
+
+example : runFloatProbe .f32 0x3f800000 0xc0200000 0x40700000 =
+    some (.values [.float .f32 0x3fc00000, .int .i32 1, .int .i32 3]) := by decide +kernel
+
+example : runFloatProbe .f64 0x3ff0000000000000 0x3fe0000000000000 0xfff0000000000000 =
+    some (.values [.float .f64 0xbff8000000000000, .int .i32 0, .int .i32 0x80000000]) := by decide +kernel
+
+example : runFloatProbe .f32 0x80000000 0x80000000 0x80000000 =
+    some (.values [.float .f32 0, .int .i32 0, .int .i32 0]) := by decide +kernel
+
+example : runFloatProbe .f32 0x80000000 0 0x7fc01234 =
+    some (.values [.float .f32 0x80000000, .int .i32 0, .int .i32 0]) := by decide +kernel
+
+example : runFloatProbe .f64 0x8000000000000000 0x8000000000000000 0x8000000000000000 =
+    some (.values [.float .f64 0, .int .i32 0, .int .i32 0]) := by decide +kernel
+
+example : runFloatProbe .f64 0x8000000000000000 0 0x7ff8000000001234 =
+    some (.values [.float .f64 0x8000000000000000, .int .i32 0, .int .i32 0]) := by decide +kernel
+
 example : True := by
   fail_if_success
     let wrong : LimeScalar.Body (LimeScalar.closedContext swapSig) [] [.i64, .i32] := .nil []
   fail_if_success
     let outOfBounds := LimeScalar.Instr.localGet (context := { locals := [.i32] }) ⟨1⟩ (type := .i32) rfl
+  fail_if_success
+    let mixed : LimeScalar.Instr {} [.f32, .f64] [.f32] := .floatBinOp .f32 .add
+  fail_if_success
+    let wrongResult : LimeScalar.Instr {} [.f64] [.f64] := .convert (.truncSat .f64 .i32 .signed)
   trivial
 
 private def raw := (Injections.validLimeToWasm3 swapChecked.2).val

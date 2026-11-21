@@ -37,11 +37,14 @@ functions). Its inverse need not be executable.
 - **Wasm1 and Lime:** `moduleFamily Wasm1` or `Syntax.Lime.moduleSyntax` use
   native module validity. The analogous function views retain the resolved
   type. Import `Silmaril.Wasm.Profiles.Syntax.LimeScalar.Thms` for explicit
-  stack-indexed Lime witnesses for integer operations, scalar `select`,
-  locals and direct calls, with one exported definition in the closed module
-  slice. Multi-result functions work natively. The function and module maps
-  from the existing Wasm1 scalar slice commute exactly with native erasure and
-  validation. Neither slice supplies lifting for all native modules/functions.
+  stack-indexed Lime witnesses for integer operations, `f32`/`f64` constants,
+  arithmetic and comparisons, native conversions (including saturating
+  float-to-int), scalar `select`, locals and direct calls, with one exported
+  definition in the closed module slice. Multi-result functions work natively.
+  Erasure emits the corresponding `Lime1.Instr`, with a proof of its native
+  stack effect; it does not choose a NaN policy or validate any component ABI. The
+  function and module maps from the Wasm1 scalar slice commute exactly with
+  native erasure and validation. Neither slice lifts all native modules/functions.
 - **Wasm2:** Native checked forms and `Injections.checkedWasm2ToWasm3`
   are available. The raw conversion is partial, so it is not registered as
   a total `Family.Map`. There is no native intrinsic family here.
@@ -78,7 +81,11 @@ for the additional model-side data and proofs.
 The [regression](../../tests/wasm/profiles/IndexedSyntax.lean) crosses the
 Wasm1–Lime–Core syntax path, checks a two-result Lime export, passes its Core
 image through the real reifier and `ModuleParts`, and exercises a Core feature
-inclusion and a counterexample to forgetting a nonunique index.
+inclusion and a counterexample to forgetting a nonunique index. It also checks
+the erasure and validity of a typed export with float parameters and a float
+result, invokes it with the native Lime interpreter at both widths (including
+signed-zero arithmetic, unordered NaN comparison, and saturating conversion),
+and rejects mixed-width arithmetic and an incorrect conversion result type.
 
 ```sh
 make check CHECK_TARGETS=+Silmaril.Wasm.Profiles.Syntax.LimeScalar.Thms
