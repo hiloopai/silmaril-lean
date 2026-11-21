@@ -3,6 +3,8 @@
 Import `Silmaril.Semantics.Arena.Traits.Thms`. This is a Lean specification
 of two Rust-shaped traits, not a Rust implementation or a borrow-checker
 formalization. It adds no requirement to existing arena or Prolly APIs.
+See the [language handoff](arena-trait-language-handoff.md) for the combined
+operation/law index and Rust, Python, and JavaScript contract sketches.
 
 | Rust-side operation | Lean interface | Observation |
 | --- | --- | --- |
